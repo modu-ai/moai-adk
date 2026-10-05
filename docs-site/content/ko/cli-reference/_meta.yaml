@@ -30,7 +30,7 @@ handoff:
 session:
   title: "moai session 세션 레지스트리"
 launchers:
-  title: "moai cc / cg / glm 런처"
+  title: "moai cc / glm 런처"
 worktree:
   title: "moai worktree 워크트리"
 "tool-policy":
@@ -49,3 +49,5 @@ tokens:
   title: "moai tokens 토큰 회계"
 memory:
   title: "moai memory 메모리 관리"
+contract:
+  title: "moai contract 자율 실행 계약"

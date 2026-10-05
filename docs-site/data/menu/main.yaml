@@ -155,12 +155,6 @@ main:
           zh: TRUST 5 质量框架
         ref: /core-concepts/trust-5
       - name:
-          ko: 칸반 보드 용어
-          en: Kanban Board Terms
-          ja: カンバンボード用語
-          zh: 看板术语
-        ref: /core-concepts/kanban-board-terms
-      - name:
           ko: 검증 경로 무결성
           en: Verification Claim Integrity
           ja: 検証クレーム完全性
@@ -306,6 +300,12 @@ main:
           ja: /moai todo
           zh: /moai todo
         ref: /utility-commands/moai-todo
+      - name:
+          ko: /moai gtd
+          en: /moai gtd
+          ja: /moai gtd
+          zh: /moai gtd
+        ref: /utility-commands/moai-gtd
 
   - name:
       ko: CLI 레퍼런스
@@ -401,10 +401,10 @@ main:
           zh: moai session 会话注册表
         ref: /cli-reference/session
       - name:
-          ko: moai cc / cg / glm 런처
-          en: moai cc / cg / glm Launchers
-          ja: moai cc / cg / glm ランチャー
-          zh: moai cc / cg / glm 启动器
+          ko: moai cc / glm 런처
+          en: moai cc / glm Launchers
+          ja: moai cc / glm ランチャー
+          zh: moai cc / glm 启动器
         ref: /cli-reference/launchers
       - name:
           ko: moai worktree 워크트리
@@ -471,10 +471,10 @@ main:
     defaultOpen: true
     sub:
       - name:
-          ko: CG 모드 (Claude + GLM)
-          en: CG Mode
-          ja: CG Mode
-          zh: CG Mode
+          ko: CG 폐기와 설정 이전
+          en: CG retirement and migration
+          ja: CG の廃止と設定の移行
+          zh: CG 停用与配置迁移
         ref: /multi-llm/cg-mode
       - name:
           ko: 모델 정책
@@ -482,12 +482,6 @@ main:
           ja: Model Policy
           zh: Model Policy
         ref: /multi-llm/model-policy
-      - name:
-          ko: 칸반 모드
-          en: Kanban Mode
-          ja: カンバンモード
-          zh: 看板模式
-        ref: /multi-llm/kanban-mode
 
   - name:
       ko: 비용 최적화
@@ -715,22 +709,22 @@ main:
           zh: moai web 控制台
         ref: /advanced/moai-web-console
       - name:
-          ko: 칸반 모드
-          en: Kanban Mode
-          ja: カンバンモード
-          zh: 看板模式
-        ref: /advanced/kanban-mode
-      - name:
           ko: 팩토리 모드
           en: Factory Mode
           ja: ファクトリーモード
           zh: 工厂模式
         ref: /advanced/factory-mode
       - name:
-          ko: manager-lead 리드 코디네이터
-          en: manager-lead Lead Coordinator
-          ja: manager-lead リードコーディネーター
-          zh: manager-lead 领导协调者
+          ko: 세션 계보 체인
+          en: Origin-Trail Chain
+          ja: セッション系譜チェーン
+          zh: 会话溯源链
+        ref: /advanced/origin-trail-chain
+      - name:
+          ko: manager-lead 리더 코디네이터
+          en: manager-lead Leader Coordinator
+          ja: manager-lead リーダーコーディネーター
+          zh: manager-lead 主导协调者
         ref: /advanced/manager-lead
       - name:
           ko: BAS Navigator 3단계 코드맵 동기화

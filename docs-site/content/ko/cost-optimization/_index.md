@@ -23,7 +23,7 @@ MoAI-ADK v3.0의 세 가지 핵심 가운데 비용을 맡은 영역이 **토크
 
 | 레버 | 하는 일 | 대표 문서 |
 |------|--------|----------|
-| **모델 배정** | 작업의 무게에 맞춰 알맞은 모델·effort를 고른다 | [모델 정책](/ko/multi-llm/model-policy) · [CG 모드](/ko/multi-llm/cg-mode) |
+| **모델 배정** | 작업의 무게에 맞춰 알맞은 모델·effort를 고른다 | [모델 정책](/ko/multi-llm/model-policy) · [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/) |
 | **자율성 티어** | 티어마다 비용·속도 균형점을 다르게 잡는다 (`MOAI_AUTONOMY_TIER`) | [자율성 티어](/ko/advanced/autonomy-tier) |
 | **프롬프트 캐싱** | 직전 요청과 같은 앞부분을 캐시에서 싼 값에 읽는다 (이 섹션) | [프롬프트 캐싱](/ko/cost-optimization/prompt-caching) |
 
@@ -68,7 +68,7 @@ flowchart TD
 
 캐싱 말고 비용을 줄이는 두 레버가 궁금하다면 아래 문서로 이어 보세요.
 
-- [멀티 LLM](/ko/multi-llm) — 작업에 맞는 모델 배정과 CG 모드 (Claude 리더 + GLM 워커로 구현 중심 작업을 약 60–70% 절감)
+- [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)
 - [모델 정책](/ko/multi-llm/model-policy) — 에이전트별 모델·effort 배정표
 - [자율성 티어](/ko/advanced/autonomy-tier) — `MOAI_AUTONOMY_TIER`별 비용·속도 트레이드오프
 - [토크노믹스 개요](/ko/advanced/tokenomics-overview) — 토크노믹스 4층 구조의 전체 그림

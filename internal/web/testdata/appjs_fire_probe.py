@@ -1,0 +1,1307 @@
+#!/usr/bin/env python3
+"""app.js handler fire probe (SPEC-APPJS-FIRE-GUARD-001, card t1060).
+
+Derived from the field-proven t1041 browser probe
+(.claude/worktrees/t1041/.moai/reports/t1041/browser-probe.py) — that probe
+caught a real regression in two builds (t1041 verdict E3: all five indicators
+died on the broken build, all five lived on the fixed one). This probe keeps
+the same CDP-over-websockets machinery and adds what the SPEC requires:
+
+  - an explicit (page, selector, observable effect) MANIFEST covering every
+    click/change-family addEventListener group in internal/web/assets/app.js
+    (each group is a manifest entry or an exclusion with a stated reason),
+  - a three-value exit contract: 0 = every indicator fired AND zero
+    ReferenceErrors on load/swap windows AND every manifest selector matched;
+    1 = an indicator collapsed or a selector matched nothing (the report names
+    WHAT flipped); 2 = machine fault (CDP unreachable, server unreachable) —
+    a fault is not a product defect and must not read as red against the app,
+  - a --lint-manifest offline self-check (effect-kind allowlist, coverage
+    count, post-swap presence).
+
+Orthogonality: this guard is orthogonal to the static sibling
+SPEC-APPJS-IIFE-GUARD-001 (static-scope analysis). Neither guard's green
+implies the other's. A static IIFE-scope pass does not prove a handler fires
+in a real browser; a green run here does not pinpoint the offending
+identifier or line — static-scope stays the owner of precise cause reports.
+
+What this guard does NOT cover (SPEC-APPJS-FIRE-GUARD-001 spec.md §F):
+  1. interactions outside the manifest (excluded groups are not measured —
+     the quality of the exclusion reasons bounds the guard),
+  2. paths the fixed scenario never exercises (one scenario, one order),
+  3. browsers other than Chrome (single-engine guard),
+  4. precise static-cause attribution (that is the static guard's job),
+  5. anything about the banner beyond its paint (card t1106): this measures a
+     layout box, no hiding ancestor, and non-empty text - the wording, the
+     contrast, the scroll position and the focus move are outside it,
+  6. writes outside the sandbox-root (card t1106): the byte-invariance
+     assertion watches the disposable copy and nothing else, so traces left in
+     a profile store, a temp directory or the process environment are not
+     measured. An exclusion from the comparison is only as good as its stated
+     reason, and lint_manifest refuses one that reaches a write seam.
+
+Usage:
+  appjs_fire_probe.py [--cdp-port N] [--base-url URL]
+                      [--sandbox-base-url URL --sandbox-root PATH]
+                      [--primary-entries-only] <server-port> <label>
+  appjs_fire_probe.py --lint-manifest [--extra-entry JSON]
+  appjs_fire_probe.py --print-routing --base-url URL --sandbox-base-url URL
+
+Two bases, one report: entries carrying the sandbox-serving marker are driven
+against the disposable copy the second server serves, every other entry
+against the primary base, and both families' observations join one three-value
+judgement (REQ-AFG-014 (1)).
+
+Dependencies: stdlib (asyncio, json, sys, urllib.request) + websockets (the
+only third-party dependency; pinned in the test-browser CI job — never a Go
+module). websockets is imported where the CDP connection is opened, not at
+module scope, so the browser-free modes (--lint-manifest, --print-routing)
+run on the stdlib alone and need nothing installed. Chrome is located by the
+caller (the Go driver or the CI job) and reached through its CDP port.
+"""
+
+import asyncio
+import hashlib
+import json
+import optparse
+import os
+import sys
+import urllib.request
+
+# ── Manifest ────────────────────────────────────────────────────────────────
+#
+# inventory_total is the count of click/change-family addEventListener
+# registration sites in internal/web/assets/app.js, measured 2026-09-22 on
+# tree WT-appjs-handler-guard (spec.md §B.3):
+#
+#   grep -n -E "addEventListener\((['\"])(click|submit|change|input)" \
+#     internal/web/assets/app.js   -> 13 sites
+#
+# Every group is either a manifest entry (line_group records the source line
+# at authoring time — a documentation anchor only; the load-bearing checks are
+# selector survival and the count cross-check the Go driver performs against
+# the live asset) or an exclusion with a stated reason. If app.js gains or
+# loses a registration group, the Go driver's inventory cross-check goes red
+# and this manifest must be updated — a stale manifest is never silently green.
+
+# The three agent-settings groups (profile matrix, tier radio, haiku lock) left
+# with that tab (SPEC-AGENT-MODEL-INHERIT-001), taking the total from 13 to 10.
+INVENTORY_TOTAL = 13
+
+# Reversible effect kinds a manifest entry may exercise unconditionally
+# (REQ-AFG-012). Save- and submit-family controls are outside this family: the
+# probe must never write project configuration.
+ALLOWED_EFFECTS = {"visibility", "label", "clipboard", "tab", "swap"}
+
+# Conditional persistence family (REQ-AFG-014, card t1106). A CLOSED
+# enumeration whose only member today is `validation-reject`: such an entry may
+# exercise a form submit ONLY when it carries BOTH markers below. This is an
+# enumeration, not a rule - "any persisting kind that carries the markers"
+# would be a widening, and adding a member is a SPEC amendment.
+CONDITIONAL_EFFECTS = {"validation-reject"}
+
+# The two manifest markers a conditional entry must carry, inseparably:
+#   requires_sandbox_serving    -> REQ-AFG-014 (1): a dedicated second server
+#                                  serves this entry from a disposable project
+#                                  copy, never from the real repo root. This
+#                                  marker IS the routing key (route_for_entry).
+#   requires_no_write_assertion -> REQ-AFG-014 (2): the probe snapshots the
+#                                  sandbox root immediately before the submit
+#                                  and right after the reject render settles,
+#                                  and fails on a single changed byte.
+# REQ-AFG-014 (3) (lifetime bound to t.TempDir()) is deliberately NOT a
+# manifest marker: it is a Go-side lifetime property a committed manifest
+# cannot carry, and the driver judges it (AC-AFG-011 (d)).
+REQUIRED_CONDITIONAL_MARKERS = ("requires_sandbox_serving", "requires_no_write_assertion")
+
+# Paths the exercised request's write seams can reach inside the sandbox root.
+# POST /save persists project configuration through SyncToProjectConfig and
+# writeProjectConfig (internal/web/handlers.go), and both land under
+# .moai/config/sections/. A no-write comparison exclusion MUST NOT cover this
+# subtree even with a stated reason (REQ-AFG-014 (2)): excluding it would make
+# the assertion green by construction exactly where a regression would appear.
+WRITE_SEAM_PREFIXES = (".moai/config/sections",)
+
+# Paths excluded from the byte-invariance comparison, each with its reason.
+# EMPTY today, and that emptiness is measured rather than assumed: the sandbox
+# server's profile store lives OUTSIDE the sandbox root (ProfileBaseDir is a
+# separate t.TempDir()), so the reject path touches nothing inside it. An
+# entry added here must state WHY, and lint_manifest refuses any entry that
+# reaches into WRITE_SEAM_PREFIXES.
+NO_WRITE_EXCLUSIONS = []  # [{"path": "<relative path>", "reason": "<why>"}]
+
+ENTRIES = [
+    {
+        "id": "popover_open",
+        "line_group": 73,
+        "page": "/settings",
+        "selector": '[data-pop="profile"]',
+        "effect": "visibility",
+        "check": "click opens the profile popover panel (hidden true -> false)",
+    },
+    {
+        "id": "popover_close_btn",
+        "line_group": 83,
+        "page": "/settings",
+        "selector": "[data-pop-close]",
+        "effect": "visibility",
+        "check": "the panel's close button hides the popover panel",
+    },
+    {
+        "id": "popover_outside_close",
+        "line_group": 109,
+        "page": "/settings",
+        "selector": '[data-pop="profile"]',
+        "effect": "visibility",
+        "check": "an outside document click hides the open popover panel",
+    },
+    {
+        "id": "settings_tabs",
+        "line_group": 352,
+        "page": "/settings",
+        "selector": '.subnav__row[role="tab"]',
+        "effect": "tab",
+        "check": "clicking an inactive tab selects it (aria-selected true)",
+    },
+    {
+        "id": "glm_reveal",
+        "line_group": 603,
+        "page": "/settings",
+        "selector": "#glmKeyReveal",
+        "effect": "visibility",
+        "check": "click reveals the GLM key output node (hidden true -> false)",
+    },
+    {
+        # card t1108: the link lives under the settings form's hx-boost, so the
+        # click is a real htmx body swap on /settings. The selector is not what
+        # makes it a swap - the four REQ-AFG-016 premise legs are, and the probe
+        # measures them itself on every run.
+        "id": "swap_boosted_tab",
+        "line_group": None,
+        "page": "/settings",
+        "selector": '#settings-form a[href="/settings?tab=audit"]',
+        "effect": "swap",
+        "check": "clicking a link under the settings form's hx-boost performs a real htmx body swap "
+        "(REQ-AFG-016: boost ancestor, same document, htmx:afterSwap + htmx:afterSettle observed, "
+        "post-swap trigger is a swap-inserted node)",
+    },
+    {
+        "id": "popover_after_swap",
+        "line_group": 73,
+        "page": "/settings",
+        "selector": '[data-pop="profile"]',
+        "effect": "visibility",
+        "post_swap": True,
+        "check": "REQ-AFG-007: an indicator still fires AFTER the hx-boost swap, exercised once htmx:afterSettle is observed",
+    },
+    {
+        "id": "copy_button",
+        "line_group": 648,
+        "page": "/specs",
+        "selector": "[data-copy]",
+        "effect": "label",
+        "check": "click flashes the copy button label to the check mark",
+    },
+    {
+        # card t1106 - the validation-reject submit surface. line_group is None
+        # for the same reason swap_boosted_tab's is: this is an htmx-boost +
+        # server-render surface, not an app.js addEventListener registration
+        # group, so it does not move INVENTORY_TOTAL.
+        "id": "validation_reject_banner",
+        "line_group": None,
+        "page": "/settings",
+        "selector": "#settings-form",
+        "effect": "validation-reject",
+        "requires_sandbox_serving": True,
+        "requires_no_write_assertion": True,
+        "submit_button": 'button[type="submit"][form="settings-form"]',
+        "banner_selector": '.banner[role="status"]',
+        "invalid_field": "permission_mode",
+        "invalid_value": "bogus",
+        "check": "submitting an invalid permission_mode paints the validation-reject banner (the card t1105 fix) on screen",
+    },
+]
+
+EXCLUSIONS = [
+    {
+        "line_group": 158,
+        "selector": "#serverShutdown",
+        "reason": "destructive: POST /__shutdown__ stops the server (REQ-AFG-012 data-loss path)",
+    },
+    {
+        "line_group": 327,
+        "selector": "#uiLangSelect",
+        "reason": "persisting side effect: writes the locale to browser localStorage; excluded by default per REQ-AFG-012 / plan §C",
+    },
+    {
+        "line_group": 412,
+        "selector": 'select[name^="llm.glm.models."]',
+        "reason": "GLM flash effort lock: option disabled-state pairing — form state outside the allowlist",
+    },
+    {
+        # SPEC-WEB-AGENTFM-RESTORE-001 M4: the restored agent-overrides surface
+        # adds three change groups, all form-state pairing like the GLM lock
+        # above — select/radio state set client-side, outside the probe's
+        # visibility/click effects family.
+        "line_group": 485,
+        "selector": 'select[name^="agentfm."]',
+        "reason": "profile-matrix repopulation: marks dirty selects and flips the Custom radio — form state pairing outside the allowlist",
+    },
+    {
+        "line_group": 493,
+        "selector": 'input[name="performance_tier"]',
+        "reason": "tier repopulation handler: resets agentfm selects to the tier's matrix cells — form state pairing outside the allowlist",
+    },
+    {
+        "line_group": 552,
+        "selector": 'select[name^="agentfm."][name$=".model"]',
+        "reason": "haiku effort lock: effort select disabled-state pairing — form state outside the allowlist (same shape as the GLM lock)",
+    },
+    {
+        "line_group": 430,
+        "selector": 'select[name="statusline_preset"]',
+        "reason": "dead surface: no served template renders select[name=statusline_preset] or #custom-segments today; listener is inert (guard inside app.js)",
+    },
+]
+
+
+def effect_problems(entry):
+    """Judge one entry's effect kind against the two closed families.
+
+    Returns a list of problem strings, each NAMING what is missing (AC-AFG-012
+    (b) requires the rejection to say WHICH condition is absent).
+    """
+    eid = entry.get("id")
+    effect = entry.get("effect")
+    if effect in ALLOWED_EFFECTS:
+        return []
+    if effect in CONDITIONAL_EFFECTS:
+        missing = [m for m in REQUIRED_CONDITIONAL_MARKERS if entry.get(m) is not True]
+        return [
+            "entry %r declares effect %r but is missing the required condition marker %r "
+            "- the effect kind and its conditions are inseparable (REQ-AFG-014)"
+            % (eid, effect, m)
+            for m in missing
+        ]
+    return [
+        "entry %r effect %r belongs to neither closed family: unconditional %s / conditional %s"
+        % (eid, effect, sorted(ALLOWED_EFFECTS), sorted(CONDITIONAL_EFFECTS))
+    ]
+
+
+def route_for_entry(entry, primary_base, sandbox_base):
+    """Return the base URL this entry is driven against (REQ-AFG-014 (1)).
+
+    The sandbox-serving marker IS the routing key, in BOTH directions: a marked
+    entry never runs against the primary base, and an unmarked entry never runs
+    against the sandbox base. Returns None when a marked entry has no sandbox
+    base - the caller turns that into exit 2 (caller wiring fault), never a
+    silent skip and never a fallback to the primary base.
+    """
+    if entry.get("requires_sandbox_serving") is True:
+        return sandbox_base or None
+    return primary_base
+
+
+def lint_manifest(extra_entry=None):
+    """--lint-manifest: offline structural self-check of the manifest.
+
+    Exit 0 = manifest well-formed; 1 = a rule is violated (named); 2 = the
+    mode itself was misused. --extra-entry appends ONE synthetic entry to the
+    judged set without touching the committed manifest, so the reverse
+    direction of the rule (does it actually reject?) can be OBSERVED rather
+    than assumed (AC-AFG-012 (b)).
+    """
+    problems = []
+    entries = list(ENTRIES)
+    if extra_entry is not None:
+        entries.append(extra_entry)
+    if len(entries) == 0:
+        problems.append("manifest has zero entries - a green with an empty manifest measures nothing")
+    for e in entries:
+        for field in ("id", "page", "selector", "effect", "check"):
+            if not e.get(field):
+                problems.append("entry %r missing field %r" % (e.get("id"), field))
+        problems.extend(effect_problems(e))
+    for x in EXCLUSIONS:
+        if not x.get("selector") or not x.get("reason"):
+            problems.append("exclusion for line_group %r needs selector and reason" % (x.get("line_group"),))
+    # No-write comparison exclusions: each needs a reason, and none may cover a
+    # path the exercised write seam can reach (REQ-AFG-014 (2)).
+    for x in NO_WRITE_EXCLUSIONS:
+        if not x.get("path") or not x.get("reason"):
+            problems.append("no-write exclusion %r needs both path and reason" % (x,))
+            continue
+        rel = x["path"].lstrip("./")
+        for prefix in WRITE_SEAM_PREFIXES:
+            if rel == prefix or rel.startswith(prefix + "/"):
+                problems.append(
+                    "no-write exclusion %r covers %r, which the exercised request's write seam reaches "
+                    "- excluding it would make the byte-invariance assertion green by construction"
+                    % (x["path"], prefix)
+                )
+    entry_groups = {e["line_group"] for e in ENTRIES if e.get("line_group")}
+    exclusion_groups = {x["line_group"] for x in EXCLUSIONS if x.get("line_group")}
+    overlap = entry_groups & exclusion_groups
+    if overlap:
+        problems.append("line_group(s) %s appear as both entry and exclusion" % sorted(overlap))
+    covered = entry_groups | exclusion_groups
+    if len(covered) != INVENTORY_TOTAL:
+        problems.append(
+            "inventory coverage: %d unique groups covered, INVENTORY_TOTAL=%d - every click/change "
+            "registration group must be an entry or an exclusion" % (len(covered), INVENTORY_TOTAL)
+        )
+    if not any(e.get("post_swap") for e in ENTRIES):
+        problems.append("no entry exercises an indicator AFTER the hx-boost swap (REQ-AFG-007)")
+    if problems:
+        for p in problems:
+            print("LINT: " + p)
+        return 1
+    print(
+        "LINT OK: %d entries + %d exclusions cover %d inventory groups; effects within "
+        "unconditional %s or conditional %s (conditional entries carry %s); post-swap entry present"
+        % (
+            len(entries),
+            len(EXCLUSIONS),
+            len(covered),
+            sorted(ALLOWED_EFFECTS),
+            sorted(CONDITIONAL_EFFECTS),
+            list(REQUIRED_CONDITIONAL_MARKERS),
+        )
+    )
+    return 0
+
+
+# ── CDP machinery (inherited from the t1041 probe) ──────────────────────────
+
+
+def new_tab(cdp_host):
+    req = urllib.request.Request(cdp_host + "/json/new?about:blank", method="PUT")
+    return json.load(urllib.request.urlopen(req, timeout=10))
+
+
+def close_tab(cdp_host, tid):
+    try:
+        urllib.request.urlopen(cdp_host + "/json/close/" + tid, timeout=5).read()
+    except Exception:
+        pass
+
+
+class CDP:
+    def __init__(self, ws):
+        self.ws = ws
+        self.n = 0
+        self.events = []
+
+    async def send(self, method, params=None, timeout=20):
+        self.n += 1
+        mid = self.n
+        await self.ws.send(json.dumps({"id": mid, "method": method, "params": params or {}}))
+        while True:
+            msg = json.loads(await asyncio.wait_for(self.ws.recv(), timeout=timeout))
+            if msg.get("id") == mid:
+                if msg.get("error"):
+                    raise RuntimeError("CDP %s failed: %s" % (method, msg["error"]))
+                return msg
+            if "method" in msg:
+                self.events.append(msg)
+
+    async def drain(self, seconds):
+        try:
+            while True:
+                msg = json.loads(await asyncio.wait_for(self.ws.recv(), timeout=seconds))
+                if "method" in msg:
+                    self.events.append(msg)
+        except asyncio.TimeoutError:
+            pass
+
+    def take_errors(self):
+        out = []
+        for e in self.events:
+            method = e.get("method")
+            p = e.get("params", {})
+            if method == "Runtime.exceptionThrown":
+                d = p.get("exceptionDetails", {})
+                ex = d.get("exception") or {}
+                out.append((d.get("text", "") + " " + (ex.get("description") or "")).strip())
+            elif method == "Runtime.consoleAPICalled" and p.get("type") == "error":
+                out.append(" ".join(str(a.get("value", a.get("description", ""))) for a in p.get("args", [])))
+            elif method == "Log.entryAdded" and p.get("entry", {}).get("level") == "error":
+                out.append(p["entry"].get("text", ""))
+        self.events = []
+        return out
+
+
+def only_reference_errors(errors):
+    return [e for e in errors if "ReferenceError" in e]
+
+
+async def ev(cdp, expr):
+    r = await cdp.send(
+        "Runtime.evaluate",
+        {"expression": expr, "returnByValue": True, "awaitPromise": True, "userGesture": True},
+    )
+    return r.get("result", {}).get("result", {}).get("value")
+
+
+async def poll(cdp, expr, want, timeout=5.0, interval=0.2):
+    """Poll a JS expression until it equals `want` (condition wait, not sleep)."""
+    waited = 0.0
+    while waited < timeout:
+        val = await ev(cdp, expr)
+        if val == want:
+            return val
+        await asyncio.sleep(interval)
+        waited += interval
+    return await ev(cdp, expr)
+
+
+async def navigate(cdp, url, drain_seconds=4.0):
+    await cdp.send("Page.navigate", {"url": url})
+    await cdp.drain(drain_seconds)
+
+
+# ── Scenario ────────────────────────────────────────────────────────────────
+
+# ReferenceError collection windows: page load, the post-swap window, and the
+# final fresh load. A ReferenceError in ANY of them fails the run.
+
+ENTRY_BY_ID = {e["id"]: e for e in ENTRIES}
+
+# Upper bound on the htmx:afterSettle wait (card t1108). It is not a delay: the
+# wait returns the moment the event arrives. It only converts "never arrived"
+# into a named red (REQ-AFG-007 (3)).
+SETTLE_WAIT_BOUND_MS = 8000
+
+# Arms the swap self-check and clicks, in ONE evaluation so the listeners are
+# provably registered before the click (REQ-AFG-007 (2), REQ-AFG-016):
+#   - window.__fireSwap is the document marker (leg (b)); a new main-frame
+#     document has no such object,
+#   - the listeners record htmx:afterSwap / htmx:afterSettle into it (leg (c))
+#     and resolve the settle promise the wait awaits,
+#   - the old trigger node is tagged so leg (d) can tell a swap-inserted node
+#     from a survivor,
+#   - leg (a) is read at click time from the click target's nearest hx-boost
+#     ancestor.
+SWAP_ARM_AND_CLICK_JS = """(function(){
+  var token=%s, a=document.querySelector(%s);
+  if(!a){return {clicked:false};}
+  var m={token:token, ev:[]};
+  m.settled=new Promise(function(res){
+    document.addEventListener('htmx:afterSwap', function(){m.ev.push('htmx:afterSwap');});
+    document.addEventListener('htmx:afterSettle', function(){m.ev.push('htmx:afterSettle');if(m.tSettle==null){m.tSettle=performance.now();}res(true);});
+  });
+  window.__fireSwap=m;
+  var old=document.querySelector('[data-pop="profile"]');
+  if(old){old.setAttribute('data-fire-old-trigger', token);}
+  var b=a.closest('[hx-boost]');
+  var boosted=!!b && b.getAttribute('hx-boost')==='true';
+  m.t0=performance.now();
+  a.click();
+  return {clicked:true, boost_ancestor:boosted};
+})()"""
+
+# Awaits the settle promise planted by SWAP_ARM_AND_CLICK_JS, bounded in-page.
+# Resolves true on the event, false on expiry, and throws when the marker is
+# gone (the document was replaced before the wait began).
+SETTLE_WAIT_JS = """(function(){
+  var m=window.__fireSwap;
+  if(!m){throw new Error('document marker gone before the wait began');}
+  return Promise.race([m.settled, new Promise(function(r){setTimeout(function(){r(false);}, %d);})]);
+})()"""
+
+# Premise legs (b)(c)(d), read at the moment the post-swap indicator is
+# exercised (REQ-AFG-016).
+SWAP_PREMISE_JS = """(function(){
+  var token=%s, m=window.__fireSwap, t=document.querySelector('[data-pop="profile"]');
+  var same=!!m && m.token===token;
+  return {
+    b_same_document: same,
+    c_swap_events: same && m.ev.indexOf('htmx:afterSwap')>=0 && m.ev.indexOf('htmx:afterSettle')>=0,
+    d_swap_inserted_trigger: !!t && t.getAttribute('data-fire-old-trigger')!==token,
+    settle_ms: (same && m.tSettle!=null) ? (m.tSettle - m.t0) : null
+  };
+})()"""
+
+# The four REQ-AFG-016 premise legs, in report order. A leg missing from the
+# observation counts as false: a report that never measured a leg cannot pass it.
+PREMISE_LEGS = ("a_boost_ancestor", "b_same_document", "c_swap_events", "d_swap_inserted_trigger")
+
+
+def premise_false_legs(premise):
+    """Names of the premise legs that are not true, in PREMISE_LEGS order."""
+    premise = premise or {}
+    return [leg for leg in PREMISE_LEGS if premise.get(leg) is not True]
+
+
+def post_swap_fired(rep):
+    """The post-swap indicator counts as fired only on a swap that was a swap
+    and whose afterSettle was observed (REQ-AFG-016): a flip after a full
+    navigation or an expired wait measures a race, not re-wiring."""
+    return (
+        rep.get("p6_panel_flip_observed") is True
+        and rep.get("p5_settle_wait") == "observed"
+        and not rep.get("p5_swap_premise_false_legs")
+    )
+
+
+async def wait_after_settle(cdp):
+    """Wait for the htmx:afterSettle event armed before the click.
+
+    Returns (outcome, detail) with outcome one of "observed", "expired", or
+    "document replaced". Deliberately NOT built on poll(): poll hands back the
+    current value on expiry and lets the caller carry on, and REQ-AFG-007 (3)
+    forbids that meaning here - expiry is a failure event, not a value.
+    """
+    try:
+        r = await cdp.send(
+            "Runtime.evaluate",
+            {
+                "expression": SETTLE_WAIT_JS % SETTLE_WAIT_BOUND_MS,
+                "returnByValue": True,
+                "awaitPromise": True,
+            },
+            timeout=SETTLE_WAIT_BOUND_MS / 1000.0 + 10,
+        )
+    except RuntimeError as exc:
+        # A main-frame navigation mid-await tears down the context the promise
+        # lives in; that is the full-navigation shape, not a machine fault.
+        msg = str(exc)
+        if "navigat" in msg or "context" in msg.lower() or "destroyed" in msg:
+            return "document replaced", msg
+        raise
+    res = r.get("result", {})
+    if res.get("exceptionDetails"):
+        return "document replaced", (res["exceptionDetails"].get("exception") or {}).get("description", "")
+    value = res.get("result", {}).get("value")
+    if value is True:
+        return "observed", "htmx:afterSettle observed"
+    return "expired", "htmx:afterSettle not observed within %d ms" % SETTLE_WAIT_BOUND_MS
+
+
+# Readiness of the document that replaced the armed one (card t1167): the
+# marker is gone (so this IS the new document, not the old one mid-teardown)
+# and the new document finished loading. Without this the premise legs and
+# phase 6 read a document that may still be mid-parse, and leg (d) flips on
+# runner speed instead of on what the swap did.
+REPLACED_DOCUMENT_READY_JS = "!window.__fireSwap && document.readyState==='complete'"
+REPLACED_NOT_READY_REASON = "replaced document not ready within %d ms" % SETTLE_WAIT_BOUND_MS
+
+
+async def wait_replaced_document_ready(cdp):
+    """After a "document replaced" settle outcome, wait for the new document to
+    finish loading, bounded by SETTLE_WAIT_BOUND_MS. Returns True when it did,
+    False on expiry - the caller records it and judge() names it, so an
+    expired wait is never read as a loaded document."""
+    ready = await poll(cdp, REPLACED_DOCUMENT_READY_JS, True, timeout=SETTLE_WAIT_BOUND_MS / 1000.0)
+    return ready is True
+
+
+async def run_scenario(cdp, base):
+    rep = {}
+
+    # Phase 1 — load /settings (carries the GLM reveal control, the tabs, and
+    # the shell rail popover).
+    await navigate(cdp, base + "/settings")
+    rep["p1_load_referenceerrors"] = only_reference_errors(cdp.take_errors())
+    rep["p1_has_glm_btn"] = await ev(cdp, "!!document.querySelector('#glmKeyReveal')")
+
+    # Phase 2 — glm_reveal: click reveals the output node. Poll the visibility
+    # flip (the reveal fetch may resolve or fail; both paths un-hide the node).
+    rep["p2_revealed_hidden_before"] = await ev(
+        cdp, "(document.getElementById('glmKeyRevealed')||{}).hidden"
+    )
+    await ev(cdp, "document.querySelector('#glmKeyReveal').click()")
+    rep["p2_revealed_hidden_after"] = await poll(
+        cdp, "(document.getElementById('glmKeyRevealed')||{}).hidden", False
+    )
+    rep["p2_glm_handler_fired"] = (
+        rep["p2_revealed_hidden_before"] is True and rep["p2_revealed_hidden_after"] is False
+    )
+    cdp.take_errors()
+
+    # Phase 3 — popover_open / popover_close_btn / popover_outside_close.
+    panel_sel = '[data-pop-panel="profile"]'
+    rep["p3_panel_hidden_before"] = await ev(cdp, "(document.querySelector('%s')||{}).hidden" % panel_sel)
+    await ev(cdp, "document.querySelector('[data-pop=\"profile\"]').click()")
+    rep["p3_panel_hidden_after_open"] = await poll(cdp, "(document.querySelector('%s')||{}).hidden" % panel_sel, False)
+    rep["p3_popover_open_fired"] = (
+        rep["p3_panel_hidden_before"] is True and rep["p3_panel_hidden_after_open"] is False
+    )
+    rep["p3_has_close_btn"] = await ev(cdp, "!!document.querySelector('[data-pop-close]')")
+    await ev(cdp, "document.querySelector('[data-pop-close]').click()")
+    rep["p3_panel_hidden_after_close"] = await poll(
+        cdp, "(document.querySelector('%s')||{}).hidden" % panel_sel, True
+    )
+    rep["p3_popover_close_btn_fired"] = rep["p3_panel_hidden_after_close"] is True
+    await ev(cdp, "document.querySelector('[data-pop=\"profile\"]').click()")
+    await poll(cdp, "(document.querySelector('%s')||{}).hidden" % panel_sel, False)
+    await ev(cdp, "document.body.click()")
+    rep["p3_panel_hidden_after_outside"] = await poll(
+        cdp, "(document.querySelector('%s')||{}).hidden" % panel_sel, True
+    )
+    rep["p3_popover_outside_close_fired"] = rep["p3_panel_hidden_after_outside"] is True
+    cdp.take_errors()
+
+    # Phase 4 — settings_tabs: click the tab after the active one.
+    rep["p4_tab_count"] = await ev(
+        cdp, "document.querySelectorAll('.subnav__row[role=\"tab\"]').length"
+    )
+    rep["p4_tab_selected_before"] = await ev(
+        cdp,
+        "(function(){var t=document.querySelectorAll('.subnav__row[role=\"tab\"]');"
+        "for(var i=0;i<t.length;i++){if(t[i].getAttribute('aria-selected')==='true')return i}return -1})()",
+    )
+    rep["p4_tab_clicked"] = await ev(
+        cdp,
+        "(function(){var t=document.querySelectorAll('.subnav__row[role=\"tab\"]');"
+        "var i=(%d===-1)?0:((%d+1)%%t.length);t[i].click();return i})()" % (rep["p4_tab_selected_before"] or 0, rep["p4_tab_selected_before"] or 0),
+    )
+    rep["p4_tab_selected_after"] = await poll(
+        cdp,
+        "(function(){var t=document.querySelectorAll('.subnav__row[role=\"tab\"]');"
+        "for(var i=0;i<t.length;i++){if(t[i].getAttribute('aria-selected')==='true')return i}return -1})()",
+        rep["p4_tab_clicked"] if isinstance(rep["p4_tab_clicked"], int) else 1,
+    )
+    rep["p4_settings_tabs_fired"] = (
+        isinstance(rep["p4_tab_selected_before"], int)
+        and isinstance(rep["p4_tab_selected_after"], int)
+        and rep["p4_tab_selected_before"] != rep["p4_tab_selected_after"]
+        and rep["p4_tab_selected_after"] == rep["p4_tab_clicked"]
+    )
+    cdp.take_errors()
+
+    # Phase 5 — swap_boosted_tab (card t1108): click a link under the settings
+    # form's hx-boost, so htmx swaps the body in place. BEFORE the click, in the
+    # same document and in the same evaluation, the probe plants a document
+    # marker, registers htmx:afterSwap / htmx:afterSettle listeners, and tags
+    # the old trigger node (REQ-AFG-016 legs (b)(c)(d)). app.js registered its
+    # own afterSettle listener at load, so initConsole's re-wiring runs before
+    # the probe's listener resolves the wait (listener order = registration
+    # order - an observed property, not a contract; plan.md §F).
+    token = os.urandom(8).hex()
+    swap = ENTRY_BY_ID["swap_boosted_tab"]
+    # --settle-delay-ms (AC-AFG-014 measurement step 2): widen the gap between
+    # the body swap and htmx:afterSettle. The value is read back from the page
+    # and reported, so the report says what was applied, not what was asked.
+    if opts.settle_delay_ms is not None:
+        rep["p5_settle_delay_ms"] = await ev(
+            cdp,
+            "(function(){if(!window.htmx){return null;}htmx.config.defaultSettleDelay=%d;"
+            "return htmx.config.defaultSettleDelay})()" % opts.settle_delay_ms,
+        )
+    clicked = await ev(cdp, SWAP_ARM_AND_CLICK_JS % (json.dumps(token), json.dumps(swap["selector"])))
+    clicked = clicked or {}
+    rep["p5_swap_clicked"] = clicked.get("clicked") is True
+    # Wait for the htmx:afterSettle EVENT, not for a URL and not for time. The
+    # bound turns absence into a named red: on expiry the wait reports
+    # "expired" and the run fails - it never returns a current value and
+    # carries on (REQ-AFG-007 (3)).
+    if rep["p5_swap_clicked"]:
+        rep["p5_settle_wait"], rep["p5_settle_wait_detail"] = await wait_after_settle(cdp)
+    else:
+        rep["p5_settle_wait"], rep["p5_settle_wait_detail"] = "not started", "the swap link was not clicked"
+    # A full navigation ends the settle wait as soon as the marker is gone,
+    # which can be before the new document has parsed its body (card t1167).
+    if rep["p5_settle_wait"] == "document replaced":
+        rep["p5_replaced_document_ready"] = await wait_replaced_document_ready(cdp)
+    rep["p5_url_after_swap"] = await ev(cdp, "location.pathname + location.search")
+    rep["p5_swap_referenceerrors"] = only_reference_errors(cdp.take_errors())
+    cdp.take_errors()
+
+    # Phase 6 — popover_after_swap (REQ-AFG-007): the swap replaced the body;
+    # a popover trigger on the NEW body must still fire, and it is exercised
+    # only after htmx:afterSettle was observed in phase 5 (initConsole re-runs
+    # on that event). The premise legs (b)(c)(d) are read at exercise time.
+    legs = await ev(cdp, SWAP_PREMISE_JS % json.dumps(token)) or {}
+    rep["p5_swap_premise"] = {
+        "a_boost_ancestor": clicked.get("boost_ancestor") is True,
+        "b_same_document": legs.get("b_same_document") is True,
+        "c_swap_events": legs.get("c_swap_events") is True,
+        "d_swap_inserted_trigger": legs.get("d_swap_inserted_trigger") is True,
+    }
+    rep["p5_swap_premise_false_legs"] = premise_false_legs(rep["p5_swap_premise"])
+    # click -> htmx:afterSettle, in page time (null when the event was never
+    # recorded in this document).
+    rep["p5_settle_elapsed_ms"] = legs.get("settle_ms")
+    rep["p6_panel_hidden_before"] = await ev(cdp, "(document.querySelector('%s')||{}).hidden" % panel_sel)
+    await ev(cdp, "document.querySelector('[data-pop=\"profile\"]').click()")
+    rep["p6_panel_hidden_after"] = await poll(cdp, "(document.querySelector('%s')||{}).hidden" % panel_sel, False)
+    rep["p6_panel_flip_observed"] = (
+        rep["p6_panel_hidden_before"] is True and rep["p6_panel_hidden_after"] is False
+    )
+    rep["p6_popover_after_swap_fired"] = post_swap_fired(rep)
+    cdp.take_errors()
+
+    # Phase 7 — fresh load of /specs, then copy_button label flash.
+    await navigate(cdp, base + "/specs")
+    rep["p7_load_referenceerrors"] = only_reference_errors(cdp.take_errors())
+    rep["p7_has_copy_btn"] = await ev(cdp, "!!document.querySelector('[data-copy]')")
+    rep["p7_label_before_click"] = await ev(
+        cdp,
+        "(function(){var b=document.querySelector('[data-copy]');if(!b)return null;"
+        "return (b.querySelector('[data-i18n]')||b).textContent})()",
+    )
+    await ev(
+        cdp,
+        "(function(){var b=document.querySelector('[data-copy]');if(!b)return false;b.click();return true})()",
+    )
+    rep["p7_label_after_click"] = await poll(
+        cdp,
+        "(function(){var b=document.querySelector('[data-copy]');if(!b)return null;"
+        "return (b.querySelector('[data-i18n]')||b).textContent})()",
+        "✓",
+    )
+    rep["p7_copy_handler_fired"] = rep["p7_label_after_click"] == "✓"
+    cdp.take_errors()
+
+    return rep
+
+
+# ── Byte invariance over the sandbox root (REQ-AFG-014 (2)) ───────────
+
+
+def no_write_excluded(rel):
+    """True when `rel` is a stated exclusion from the byte comparison.
+
+    NO_WRITE_EXCLUSIONS is empty today, so this returns False for everything
+    and the comparison covers the whole sandbox root. lint_manifest refuses an
+    exclusion that reaches into WRITE_SEAM_PREFIXES, so this can never be made
+    to look away from the paths the exercised request actually writes.
+    """
+    for x in NO_WRITE_EXCLUSIONS:
+        path = x.get("path", "").lstrip("./")
+        if path and (rel == path or rel.startswith(path + "/")):
+            return True
+    return False
+
+
+def snapshot_tree(root):
+    """Content hash of every file under `root`, keyed by relative path."""
+    out = {}
+    for dirpath, _dirnames, filenames in os.walk(root):
+        for fn in filenames:
+            full = os.path.join(dirpath, fn)
+            rel = os.path.relpath(full, root).replace(os.sep, "/")
+            if no_write_excluded(rel):
+                continue
+            try:
+                with open(full, "rb") as fh:
+                    out[rel] = hashlib.sha256(fh.read()).hexdigest()
+            except OSError as exc:
+                out[rel] = "unreadable: %s" % exc
+    return out
+
+
+def diff_snapshots(before, after):
+    """Name every path that changed — a count alone would not say WHAT moved."""
+    changed = []
+    for rel, digest in after.items():
+        if rel not in before:
+            changed.append({"path": rel, "change": "added"})
+        elif before[rel] != digest:
+            changed.append({"path": rel, "change": "modified"})
+    for rel in before:
+        if rel not in after:
+            changed.append({"path": rel, "change": "removed"})
+    return sorted(changed, key=lambda c: c["path"])
+
+
+# ── Sandbox scenario: the validation-reject submit (card t1106) ──────────
+
+
+async def poll_nonempty(cdp, expr, timeout=10.0, interval=0.2):
+    """Poll until a JS expression yields a non-empty value (condition wait)."""
+    waited = 0.0
+    val = None
+    while waited < timeout:
+        val = await ev(cdp, expr)
+        if val:
+            return val
+        await asyncio.sleep(interval)
+        waited += interval
+    return val
+
+
+# The paint predicate (REQ-AFG-015). Presence in the DOM is NOT the question —
+# the response-body layer already answers that. This asks whether the banner
+# REACHED THE SCREEN: a layout box of non-zero area, no hiding ancestor
+# anywhere up the chain, and non-empty text. What it deliberately does not
+# judge is named in limit 5 of the header: wording, contrast, scroll position
+# and focus are outside this guard.
+PAINT_JS = """(function(){
+  var b=document.querySelector(%s);
+  if(!b){return {found:false};}
+  var r=b.getBoundingClientRect();
+  var hidden=false, by='';
+  for(var n=b;n&&n.nodeType===1;n=n.parentElement){
+    var cs=window.getComputedStyle(n);
+    if(n.hasAttribute('hidden')||cs.display==='none'||cs.visibility==='hidden'||
+       cs.visibility==='collapse'||parseFloat(cs.opacity)===0){
+      hidden=true; by=n.tagName+(n.className?('.'+String(n.className).split(' ').join('.')):''); break;
+    }
+  }
+  var txt=(b.textContent||'').trim();
+  return {found:true, box:(r.width>0&&r.height>0), width:r.width, height:r.height,
+          hidden:hidden, hidden_by:by, text_len:txt.length, text:txt.slice(0,200)};
+})()"""
+
+
+async def run_sandbox_scenario(cdp, base, sandbox_root, entry):
+    """Drive the one sandbox-served entry: submit invalid, observe the paint.
+
+    The byte-invariance window is narrow on purpose (plan §A0): the snapshots
+    bracket the submit and the settled reject render, not the page load, so a
+    server's ordinary read-path side effects never enter the comparison as
+    noise.
+    """
+    rep = {}
+    banner_sel = json.dumps(entry["banner_selector"])
+    submit_sel = json.dumps(entry["submit_button"])
+    form_sel = json.dumps(entry["selector"])
+
+    await navigate(cdp, base + entry["page"])
+    rep["s_load_referenceerrors"] = only_reference_errors(cdp.take_errors())
+    rep["s_has_form"] = await ev(cdp, "!!document.querySelector(%s)" % form_sel)
+    rep["s_has_submit"] = await ev(cdp, "!!document.querySelector(%s)" % submit_sel)
+    # A banner already on screen before the submit would make "painted after
+    # the reject" vacuous — the run must start from its absence.
+    rep["s_banner_before_submit"] = await ev(cdp, "!!document.querySelector(%s)" % banner_sel)
+
+    before = snapshot_tree(sandbox_root)
+    rep["s_snapshot_files"] = len(before)
+
+    # Place a value the server-side validator rejects. The control is a select
+    # with no such option, so the option is appended first: the point is to
+    # exercise the server's reject path, not to simulate a reachable keystroke.
+    # Card t1390: permission_mode now renders as a segRadio RADIO group (card
+    # t1381 regen), and setting `.value` on a radio changes only its property
+    # while the form still submits the CHECKED radio — the stale probe reported
+    # "bogus" set while the server received a valid value, saved, and answered
+    # with the success banner. A radio gets a checked sentinel input carrying
+    # the invalid value appended to the form instead, so the submission
+    # genuinely carries the rejectable value.
+    rep["s_invalid_set"] = await ev(
+        cdp,
+        """(function(){
+  var f=document.querySelector(%s); if(!f){return 'no-form';}
+  var el=f.querySelector('[name=%s]'); if(!el){return 'no-field';}
+  if(el.tagName==='SELECT'){var o=document.createElement('option');o.value=%s;o.textContent=%s;el.appendChild(o);}
+  if(el.type==='radio'){
+    var r=document.createElement('input');
+    r.type='radio'; r.name=el.name; r.value=%s; r.checked=true;
+    f.appendChild(r);
+    return r.value;
+  }
+  el.value=%s;
+  return el.value;
+})()"""
+        % (
+            form_sel,
+            json.dumps(entry["invalid_field"]),
+            json.dumps(entry["invalid_value"]),
+            json.dumps(entry["invalid_value"]),
+            json.dumps(entry["invalid_value"]),
+            json.dumps(entry["invalid_value"]),
+        ),
+    )
+    rep["s_submit_clicked"] = await ev(
+        cdp,
+        "(function(){var b=document.querySelector(%s); if(!b){return false;} b.click(); return true;})()" % submit_sel,
+    )
+    rep["s_banner_text"] = await poll_nonempty(
+        cdp, "(function(){var b=document.querySelector(%s); return b?(b.textContent||'').trim():'';})()" % banner_sel
+    )
+
+    # Mutation-probe hooks. Both are OFF unless the caller asks for them, and
+    # both exist so the red direction of an assertion can be OBSERVED instead
+    # of argued: a guard nobody has seen fail is a guard nobody has measured.
+    if opts.inject_sandbox_write:
+        target = os.path.join(sandbox_root, opts.inject_sandbox_write)
+        with open(target, "ab") as fh:
+            fh.write(b"\n")
+        rep["s_injected_write"] = opts.inject_sandbox_write
+    if opts.inject_banner_hidden:
+        rep["s_injected_banner_hidden"] = await ev(
+            cdp,
+            "(function(){var b=document.querySelector(%s); if(!b){return false;} b.style.display='none'; return true;})()"
+            % banner_sel,
+        )
+
+    rep["s_paint"] = await ev(cdp, PAINT_JS % banner_sel)
+    rep["s_window_referenceerrors"] = only_reference_errors(cdp.take_errors())
+
+    after = snapshot_tree(sandbox_root)
+    rep["s_changed_paths"] = diff_snapshots(before, after)
+    return rep
+
+
+# ── Judgement (three-value exit contract) ───────────────────────────────────
+#
+# exit 0 = every manifest indicator fired AND every selector matched AND zero
+#          ReferenceErrors in the load/swap windows.
+# exit 1 = an indicator collapsed, a selector matched nothing, or a
+#          ReferenceError appeared — the report names WHAT failed.
+# exit 2 = machine fault (server unreachable, CDP unreachable) — never a
+#          product defect.
+
+
+def judge(rep, driven_ids):
+    """Return the list of failure names for the observed report.
+
+    Only the DRIVEN entries are judged: an entry the run declared out of scope
+    is reported by name in the run's accounting (REQ-AFG-014 (1)(ii)), never
+    silently judged against observations that were never made.
+    """
+    failures = []
+    missing = []
+    paint = rep.get("s_paint") or {}
+    by_id = {
+        "glm_reveal": rep.get("p2_glm_handler_fired"),
+        "popover_open": rep.get("p3_popover_open_fired"),
+        "popover_close_btn": rep.get("p3_popover_close_btn_fired"),
+        "popover_outside_close": rep.get("p3_popover_outside_close_fired"),
+        "settings_tabs": rep.get("p4_settings_tabs_fired"),
+        # card t1108: a swap is judged by its own premise self-check
+        # (REQ-AFG-016), never by the URL it landed on.
+        "swap_boosted_tab": rep.get("p5_swap_clicked") is True and rep.get("p5_swap_premise_false_legs") == [],
+        "popover_after_swap": rep.get("p6_popover_after_swap_fired"),
+        "copy_button": rep.get("p7_copy_handler_fired"),
+        # card t1106: the banner must be PAINTED, the submit must have carried
+        # a value the validator rejects, and the sandbox must be untouched.
+        "validation_reject_banner": (
+            rep.get("s_invalid_set") == "bogus"
+            and paint.get("found") is True
+            and paint.get("box") is True
+            and paint.get("hidden") is False
+            and (paint.get("text_len") or 0) > 0
+            and not rep.get("s_changed_paths")
+        ),
+    }
+    selector_found = {
+        "glm_reveal": rep.get("p1_has_glm_btn"),
+        "popover_open": rep.get("p3_panel_hidden_before") is not None,
+        "popover_close_btn": rep.get("p3_has_close_btn"),
+        "popover_outside_close": rep.get("p3_panel_hidden_before") is not None,
+        "settings_tabs": isinstance(rep.get("p4_tab_count"), int) and rep.get("p4_tab_count", 0) > 0,
+        "swap_boosted_tab": rep.get("p5_swap_clicked") is True,
+        "popover_after_swap": rep.get("p6_panel_hidden_before") is not None,
+        "copy_button": rep.get("p7_has_copy_btn"),
+        "validation_reject_banner": rep.get("s_has_form") is True and rep.get("s_has_submit") is True,
+    }
+    # card t1108: the two swap entries say WHY they did not pass. A false
+    # premise leg names the swap entry and the leg (REQ-AFG-016); a settle wait
+    # that did not observe the event names the post-swap entry (REQ-AFG-007 (3)).
+    false_legs = rep.get("p5_swap_premise_false_legs") or []
+    settle = rep.get("p5_settle_wait")
+    swap_reasons = {}
+    if false_legs:
+        swap_reasons["swap_boosted_tab"] = "swap premise not met: " + ", ".join(false_legs)
+    if settle == "expired":
+        swap_reasons["popover_after_swap"] = "afterSettle wait expired"
+    elif settle != "observed":
+        swap_reasons["popover_after_swap"] = "afterSettle wait ended without the event (%s)" % settle
+        if rep.get("p5_replaced_document_ready") is False:
+            swap_reasons["popover_after_swap"] += "; " + REPLACED_NOT_READY_REASON
+    elif false_legs:
+        swap_reasons["popover_after_swap"] = "not judged as fired: swap premise not met (%s)" % ", ".join(false_legs)
+    for entry in ENTRIES:
+        eid = entry["id"]
+        if eid not in driven_ids:
+            continue
+        if selector_found.get(eid) is not True:
+            missing.append({"entry": eid, "selector": entry["selector"]})
+            # A selector that matches nothing is itself a failure (REQ-AFG-004):
+            # manifest staleness must be red, never a quiet zero.
+            failures.append(
+                {"entry": eid, "reason": "selector matched nothing", "selector": entry["selector"]}
+            )
+            continue
+        if by_id.get(eid) is not True:
+            failures.append({"entry": eid, "reason": swap_reasons.get(eid, "indicator did not fire"), "check": entry["check"]})
+    # An expired settle wait is always named on the post-swap entry, even when
+    # that entry already failed for another reason (e.g. its selector check).
+    if (
+        "popover_after_swap" in driven_ids
+        and settle == "expired"
+        and not any(f.get("reason") == "afterSettle wait expired" for f in failures)
+    ):
+        failures.append({"entry": "popover_after_swap", "reason": "afterSettle wait expired"})
+    # Likewise an expired readiness wait on a replaced document (card t1167):
+    # the premise was read off a document that never finished loading, and
+    # the report must say so even when the entry failed for another reason.
+    if (
+        "popover_after_swap" in driven_ids
+        and rep.get("p5_replaced_document_ready") is False
+        and not any(REPLACED_NOT_READY_REASON in (f.get("reason") or "") for f in failures)
+    ):
+        failures.append({"entry": "popover_after_swap", "reason": REPLACED_NOT_READY_REASON})
+    windows = ["p1_load_referenceerrors", "p5_swap_referenceerrors", "p7_load_referenceerrors"]
+    if "validation_reject_banner" in driven_ids:
+        windows += ["s_load_referenceerrors", "s_window_referenceerrors"]
+        # A changed byte is its own failure, named by path: "an indicator did
+        # not fire" would say nothing about WHAT the reject path wrote.
+        for changed in rep.get("s_changed_paths") or []:
+            failures.append(
+                {
+                    "entry": "validation_reject_banner",
+                    "reason": "sandbox root changed across the submit (%s)" % changed.get("change"),
+                    "detail": changed.get("path"),
+                }
+            )
+    for window in windows:
+        for err in rep.get(window, []) or []:
+            failures.append({"entry": None, "reason": "ReferenceError in %s" % window, "detail": err})
+    rep["failures"] = failures
+    rep["missing_selectors"] = missing
+    return failures
+
+
+def judge_report_file(path):
+    """--judge-report: judge a recorded (or synthetic) report offline.
+
+    The derived swap fields are recomputed from the raw observations with the
+    helpers run_scenario uses, so what is exercised is the live rule and not a
+    copy of it. The driven set is the report's own when it carries one, and
+    the real-root family otherwise. Exit 2 when the file cannot be read.
+    """
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rep = json.load(fh)
+    except (OSError, ValueError) as exc:
+        print(json.dumps({"error": "cannot read report %s: %s" % (path, exc)}))
+        return 2
+    if not isinstance(rep, dict):
+        print(json.dumps({"error": "report %s is not a JSON object" % path}))
+        return 2
+    rep["p5_swap_premise_false_legs"] = premise_false_legs(rep.get("p5_swap_premise"))
+    rep["p6_popover_after_swap_fired"] = post_swap_fired(rep)
+    driven = rep.get("driven_entries")
+    if not isinstance(driven, list):
+        driven = [e["id"] for e in ENTRIES if e.get("requires_sandbox_serving") is not True]
+    failures = judge(rep, set(driven))
+    rep["exit"] = 0 if not failures else 1
+    print(json.dumps(rep, ensure_ascii=False, indent=2))
+    return rep["exit"]
+
+
+async def main_async(args):
+    port = args[0]
+    label = args[1]
+    base = opts.base_url or ("http://127.0.0.1:" + port)
+    cdp_host = "http://127.0.0.1:" + str(opts.cdp_port)
+
+    sandbox_base = opts.sandbox_base_url
+    rep = {
+        "label": label,
+        "port": port,
+        "base_url": base,
+        "sandbox_base_url": sandbox_base,
+        "sandbox_root": opts.sandbox_root,
+        "cdp_port": opts.cdp_port,
+    }
+
+    # Which entries does THIS run drive? A run may narrow to the real-root
+    # family, but only by saying so: the reduction is an affirmative
+    # declaration, never inferred from a missing sandbox base (REQ-AFG-014
+    # (1)). The accounting below is what keeps a narrowed run honest — the
+    # driven count and the names of the excluded entries both travel in the
+    # report, so a reader can tell WHICH cycle produced a green.
+    marked = [e for e in ENTRIES if e.get("requires_sandbox_serving") is True]
+    if opts.primary_entries_only:
+        driven = [e for e in ENTRIES if e.get("requires_sandbox_serving") is not True]
+        excluded = [e["id"] for e in marked]
+    else:
+        driven = list(ENTRIES)
+        excluded = []
+    rep["reduction_declared"] = bool(opts.primary_entries_only)
+    rep["driven_entries"] = [e["id"] for e in driven]
+    rep["driven_count"] = len(driven)
+    rep["excluded_entries"] = excluded
+
+    if not driven:
+        rep["failures"] = [{"entry": None, "reason": "the declaration drives no entry at all", "detail": ""}]
+        rep["exit"] = 1
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 1
+
+    driven_marked = [e for e in driven if e.get("requires_sandbox_serving") is True]
+    # Caller-wiring faults are exit 2, not exit 1: a missing sandbox base is a
+    # defect in how the probe was invoked, not in the product. Skipping the
+    # marked entry silently is forbidden by name — that would be this guard
+    # committing the very sin it exists to catch (an unmeasured green).
+    if driven_marked and not sandbox_base:
+        rep["error"] = (
+            "sandbox-serving entries were driven without --sandbox-base-url: %s "
+            "(declare --primary-entries-only to drive the real-root family only; absence is not a declaration)"
+            % [e["id"] for e in driven_marked]
+        )
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 2
+    if driven_marked and not opts.sandbox_root:
+        rep["error"] = (
+            "sandbox-serving entries were driven without --sandbox-root: %s — "
+            "there is no tree to assert byte invariance over" % [e["id"] for e in driven_marked]
+        )
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 2
+
+    # Machine-fault preflight: the servers must answer before Chrome is engaged.
+    # It asks for /settings - the page both scenarios load first - rather than
+    # "/": the overview aggregates the whole served tree, and on the real repo
+    # root under machine load it measured 1.5-3.8 s against this 5 s bound
+    # (card t1108), turning a liveness check into a machine-load check.
+    for name, url in (("primary", base), ("sandbox", sandbox_base if driven_marked else None)):
+        if not url:
+            continue
+        try:
+            urllib.request.urlopen(url + "/settings", timeout=5).read(1024)
+        except Exception as exc:
+            print(json.dumps({"label": label, "error": "%s server unreachable: %s" % (name, exc)}))
+            return 2
+
+    # Imported here, not at module scope: the browser-free modes must not
+    # depend on a package only the gated test-browser job installs. A missing
+    # package on this path still fails loudly — there is no fallback.
+    import websockets
+
+    tab = new_tab(cdp_host)
+    try:
+        async with websockets.connect(tab["webSocketDebuggerUrl"], max_size=20_000_000) as ws:
+            cdp = CDP(ws)
+            await cdp.send("Runtime.enable")
+            await cdp.send("Log.enable")
+            await cdp.send("Page.enable")
+            # --cpu-throttle (AC-AFG-014): tab-scoped CPU throttling. It lives
+            # and dies with this tab - closing the tab in the finally below is
+            # the whole cleanup, there is no process to reap.
+            if opts.cpu_throttle is not None:
+                await cdp.send("Emulation.setCPUThrottlingRate", {"rate": opts.cpu_throttle})
+                rep["cpu_throttle_rate"] = opts.cpu_throttle
+            if [e for e in driven if e.get("requires_sandbox_serving") is not True]:
+                rep.update(await run_scenario(cdp, base))
+            for entry in driven_marked:
+                rep.update(await run_sandbox_scenario(cdp, sandbox_base, opts.sandbox_root, entry))
+    finally:
+        close_tab(cdp_host, tab["id"])
+
+    failures = judge(rep, set(rep["driven_entries"]))
+    rep["exit"] = 0 if not failures else 1
+    print(json.dumps(rep, ensure_ascii=False, indent=2))
+    return rep["exit"]
+
+
+def main():
+    p = optparse.OptionParser(usage="%prog [--cdp-port N] [--base-url URL] [--lint-manifest] <server-port> <label>")
+    p.add_option("--cdp-port", default="9222", help="Chrome DevTools protocol port")
+    p.add_option("--base-url", default=None, help="base URL of the console server (default http://127.0.0.1:<port>)")
+    p.add_option("--lint-manifest", action="store_true", default=False, help="validate the manifest offline and exit")
+    p.add_option(
+        "--sandbox-base-url",
+        default=None,
+        help="base URL of the SECOND server, the one serving the disposable project copy; "
+        "entries carrying the sandbox-serving marker are driven against this base and no other",
+    )
+    p.add_option(
+        "--sandbox-root",
+        default=None,
+        help="filesystem path of the disposable project copy — the tree whose byte invariance the "
+        "no-write assertion measures across the submit (REQ-AFG-014 (2))",
+    )
+    p.add_option(
+        "--primary-entries-only",
+        action="store_true",
+        default=False,
+        help="affirmative reduction declaration (REQ-AFG-014 (1)): drive ONLY the entries without "
+        "the sandbox-serving marker. Absence of --sandbox-base-url never implies this — without the "
+        "declaration a marked entry with no sandbox base is exit 2, never a silent skip",
+    )
+    p.add_option(
+        "--inject-sandbox-write",
+        default=None,
+        help="mutation probe: append one byte to <sandbox-root>/<PATH> between the two snapshots, so the "
+        "red direction of the byte-invariance assertion can be observed (AC-AFG-011 (c))",
+    )
+    p.add_option(
+        "--inject-banner-hidden",
+        action="store_true",
+        default=False,
+        help="mutation probe: hide the reject banner before measuring paint, so a predicate that only "
+        "checks node existence is caught passing a banner nobody can see (AC-AFG-010)",
+    )
+    p.add_option(
+        "--print-routing",
+        action="store_true",
+        default=False,
+        help="offline: print the per-entry base-URL routing decision as JSON and exit, so the routing "
+        "can be judged in both directions without a browser (AC-AFG-013)",
+    )
+    p.add_option(
+        "--extra-entry",
+        default=None,
+        help="mutation probe: JSON object appended to the judged entry set for --lint-manifest only "
+        "(the committed manifest is never modified) - lets the reverse direction of the rule be observed",
+    )
+    p.add_option(
+        "--cpu-throttle",
+        type="float",
+        default=None,
+        help="tab-scoped CPU throttling rate applied through Emulation.setCPUThrottlingRate for the "
+        "whole run (AC-AFG-014); it ends when the probe closes its tab",
+    )
+    p.add_option(
+        "--settle-delay-ms",
+        type="int",
+        default=None,
+        help="set htmx.config.defaultSettleDelay on /settings before the swap click, widening the gap "
+        "between the body swap and htmx:afterSettle (AC-AFG-014 measurement step 2); the applied "
+        "value is read back and reported",
+    )
+    p.add_option(
+        "--judge-report",
+        default=None,
+        help="offline: read a report JSON file, re-derive the swap premise from its raw observations "
+        "with the same rules the live run uses, judge it, print it and exit 0/1 - so the premise "
+        "rule can be observed leg by leg without a browser (AC-AFG-015 (v))",
+    )
+    global opts
+    (opts, args) = p.parse_args()
+    if opts.judge_report:
+        return judge_report_file(opts.judge_report)
+    if opts.lint_manifest:
+        extra = None
+        if opts.extra_entry:
+            try:
+                extra = json.loads(opts.extra_entry)
+            except ValueError as exc:
+                print("LINT: --extra-entry is not valid JSON: %s" % exc)
+                return 2
+            if not isinstance(extra, dict):
+                print("LINT: --extra-entry must be a JSON object")
+                return 2
+        return lint_manifest(extra)
+    if opts.print_routing:
+        routes = {}
+        for e in ENTRIES:
+            routes[e["id"]] = route_for_entry(e, opts.base_url, opts.sandbox_base_url)
+        print(
+            json.dumps(
+                {
+                    "routes": routes,
+                    "sandbox_marked": {e["id"]: e.get("requires_sandbox_serving") is True for e in ENTRIES},
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+    if len(args) != 2:
+        p.error("expected <server-port> <label>")
+    try:
+        return asyncio.run(main_async(args))
+    except Exception as exc:  # machine fault: CDP / protocol / navigation failure
+        print(json.dumps({"label": args[1] if args else "", "error": "machine fault: %s" % exc}))
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

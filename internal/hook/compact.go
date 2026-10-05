@@ -30,7 +30,10 @@ func (h *compactHandler) EventType() EventType {
 // writes a session memo for post-compaction recovery, and returns preservation
 // status in the Data field. Errors are non-blocking.
 func (h *compactHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
-	projectDir := resolveProjectDir(input)
+	// The memo is a write, so the root comes from the write-side resolver
+	// rather than resolveProjectDir (input.CWD first): a subdirectory cwd would
+	// otherwise grow a stray <subdir>/.moai/state/ tree (card t1165).
+	projectDir := resolveProjectRoot(input)
 
 	slog.Info("pre-compact context preservation",
 		"session_id", input.SessionID,

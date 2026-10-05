@@ -45,6 +45,14 @@ const (
 	// EnvNoColor disables color output when set to "true" or "1".
 	EnvNoColor = "MOAI_NO_COLOR"
 
+	// EnvPreCommitMarker is exported by the git pre-commit hook when it
+	// invokes `moai gate` (value "1"). Under the marker the gate runner honors
+	// gate.pre_commit.enabled: when that key is false (the default) the
+	// project-wide heavy steps are skipped and the run passes. A standalone
+	// `moai gate` invocation — marker absent — never reads the key
+	// (SPEC-PRECOMMIT-GATE-SCOPE-001, operator decision 2).
+	EnvPreCommitMarker = "MOAI_PRECOMMIT"
+
 	// EnvStatuslineMode selects the statusline display mode.
 	EnvStatuslineMode = "MOAI_STATUSLINE_MODE"
 
@@ -58,8 +66,28 @@ const (
 	// EnvSkipBinaryUpdate skips binary self-update when set to "1".
 	EnvSkipBinaryUpdate = "MOAI_SKIP_BINARY_UPDATE"
 
+	// EnvSkipPluginInstall opts out of the moai plugin install step (SPEC-PLUGIN-
+	// MARKETPLACE-001 REQ-015) when set to "1" or "true"; an empty value or "0"
+	// does not opt out. Automated callers of `moai init` (the doctor embed-check
+	// re-entry, the e2e journeys) set it so they never act on a real profile.
+	EnvSkipPluginInstall = "MOAI_SKIP_PLUGIN_INSTALL"
+
 	// EnvGLMNoAutoTools skips automatic Z.AI MCP server enable on moai glm launch.
 	EnvGLMNoAutoTools = "MOAI_GLM_NO_AUTO_TOOLS"
+
+	// EnvClaudeBin pins the Claude Code binary the launcher launches (issue
+	// #1697). When set to a non-empty path, every launcher (cc / glm / cg all
+	// funnel through launchClaudeDefault) launches THIS binary instead of
+	// searching PATH for `claude` — an operator pins a known-good release when
+	// a newer Claude Code release breaks compatibility with a third-party
+	// endpoint, instead of every lane auto-adopting the broken build. The path
+	// must exist and be executable; an invalid pin fails the launch rather
+	// than silently falling back (a silent fallback would re-expose the blast
+	// radius the pin exists to stop). Resolution order: this env var → the
+	// llm.claude_bin config key → PATH lookup (unchanged default). The env var
+	// wins over the config key so a single launch can be re-pointed without
+	// editing llm.yaml.
+	EnvClaudeBin = "MOAI_CLAUDE_BIN"
 
 	// EnvGitConvention overrides the git commit convention.
 	EnvGitConvention = "MOAI_GIT_CONVENTION"
@@ -145,120 +173,133 @@ const (
 	// file loader; the managed layer injects this env var instead.
 	EnvDisableBypassPermissionsMode = "MOAI_DISABLE_BYPASS_PERMISSIONS_MODE"
 
-	// EnvMoaiKanban carries the Kanban Mode signal from the launcher entry
-	// point to the block-cap inject further down the launch chain. The launcher
-	// sets it on the process environment before launching (restoring the prior
-	// value and prior presence afterwards) rather than threading a parameter
-	// through the chain, because the launch environment is already derived from
-	// os.Environ() at the inject's call site — so the variable reaches both the
-	// inject and the child session without a signature change. A non-empty
-	// value means the session is a kanban session.
-	//
-	// This variable is load-bearing: removing or renaming it silently disables
-	// the raised Stop-hook block cap, and the failure is quiet — the chain
-	// simply stops after the default number of consecutive blocks.
-	EnvMoaiKanban = "MOAI_KANBAN"
-
-	// EnvMoaiKanbanSpec names the SPEC a kanban chain targets. It is set only
-	// when the operator supplied an identifier; its absence means the chain
-	// begins at plan-phase from the operator's first prompt.
-	EnvMoaiKanbanSpec = "MOAI_KANBAN_SPEC"
-
-	// EnvMoaiKanbanID carries the run identifier that distinguishes one kanban
-	// run from another on the same machine. The lead session generates it once at
+	// EnvFactoryRunID carries the run identifier that distinguishes one factory
+	// run from another on the same machine. The leader session generates it once at
 	// launch; the SessionStart hook reads it to name itself and the leader
-	// socket. It is lead-owned state: a companion neither carries nor publishes
+	// socket. It is leader-owned state: a companion neither carries nor publishes
 	// it (companion names are bare roles, so no companion surface holds a run id
-	// that could disagree with the lead's).
-	EnvMoaiKanbanID = "MOAI_KANBAN_ID"
+	// that could disagree with the leader's).
+	EnvFactoryRunID = "MOAI_KANBAN_ID"
 
-	// EnvMoaiKanbanLabel marks a session as a COMPANION of a kanban run, and
-	// carries its label — the bare role name, or the bumped `<role>-<n>` form a
-	// collision produces. It is deliberately distinct from
-	// EnvMoaiKanban: a companion needs the raised Stop-hook block cap (it arms
-	// its own goal mid-session, exactly like the lead) but must NOT be seeded
-	// with the plan -> run -> verify -> sync chain, which only the lead drives.
-	// Setting EnvMoaiKanban on a companion would give every session the whole
-	// chain to drive.
-	EnvMoaiKanbanLabel = "MOAI_KANBAN_LABEL"
-
-	// EnvMoaiKanbanSettingsInjected signals to the SessionStart hook that the
+	// EnvFactorySettingsInjected signals to the SessionStart hook that the
 	// launcher wrote a transient settings file carrying
 	// {"crossSessionInbound": "accept"} and passed it to the backend via
 	// --settings. The hook reads it to decide which inbound-automation notice
 	// line to print: when set to "1", cross-session messages are auto-accepted
-	// (no operator action needed); when unset in a kanban session, the hook
+	// (no operator action needed); when unset in a factory session, the hook
 	// prints the operator advisory instead (verify the field is present in the
 	// operator's own --settings file, or it was not injected due to a fail-open
 	// write failure).
-	EnvMoaiKanbanSettingsInjected = "MOAI_KANBAN_SETTINGS_INJECTED"
+	EnvFactorySettingsInjected = "MOAI_KANBAN_SETTINGS_INJECTED"
 
-	// EnvMoaiKanbanLeadAddr carries the leader socket path — the address on
+	// EnvFactoryLeadAddr carries the leader socket path — the address on
 	// the cross-session messaging substrate that companions send messages to.
-	// Set by the launcher when enterKanbanMode classifies a lead, read by the
-	// SessionStart hook to surface the address in the lead notice.
-	EnvMoaiKanbanLeadAddr = "MOAI_KANBAN_LEAD_ADDR"
+	// Set by the launcher when it classifies a factory leader, read by the
+	// SessionStart hook to surface the address in the leader notice.
+	//
+	// Name kept under REQ-RNC-011 (this SPEC); the value it carries follows the
+	// leader/lane vocabulary.
+	EnvFactoryLeadAddr = "MOAI_KANBAN_LEAD_ADDR"
 
-	// EnvMoaiKanbanBackend names the backend the launcher opened the session
-	// on: kanban.BackendClaude or kanban.BackendGLM.
+	// EnvFactoryBackend names the backend the launcher opened the session
+	// on: factory.BackendClaude, factory.BackendGLM, or factory.BackendGPT.
 	//
 	// It exists because the backend is the one launch fact a session cannot
-	// observe for itself. Before this key the value reached the kanban record
+	// observe for itself. Before this key the value reached the factory record
 	// only as a literal argument at the launcher's call sites, which is fine
 	// while the launcher writes the record and impossible once the session
 	// does. It is deliberately carried rather than inferred: ANTHROPIC_BASE_URL
 	// is set by the GLM path but is settable by anyone, so deriving the backend
 	// from it would be a guess dressed as a measurement
 	// (SPEC-KANBAN-RECORD-SESSION-KEY-001 REQ-KRS-006).
-	EnvMoaiKanbanBackend = "MOAI_KANBAN_BACKEND"
+	EnvFactoryBackend = "MOAI_KANBAN_BACKEND"
 
-	// EnvMoaiKanbanCard names the queue card the session is working, and is
+	// EnvMoaiLaunchProvider records the launcher-selected initial provider
+	// (claude, glm, or gpt), never the current request route.
+	EnvMoaiLaunchProvider = "MOAI_LAUNCH_PROVIDER"
+
+	// EnvFactoryCard names the queue card the session is working, and is
 	// the EXPLICIT OVERRIDE of the card identifier a session otherwise derives
 	// from its own worktree root. It is read by the session, not required of
-	// the launcher: an operator or a lead that knows the card exports it into
+	// the launcher: an operator or a leader that knows the card exports it into
 	// the launch environment, and the launcher passes the environment through
 	// unchanged.
 	//
 	// An empty value is treated as unset, so an empty export never blanks a
 	// derivable value (REQ-KRS-005).
-	EnvMoaiKanbanCard = "MOAI_KANBAN_CARD"
+	EnvFactoryCard = "MOAI_KANBAN_CARD"
 
-	// EnvMoaiKanbanLeadName carries the lead session's RESOLVED name — the value
+	// EnvFactoryLeadName carries the leader session's RESOLVED name — the value
 	// that actually reached the backend argv as `--name`, which is the operator's
 	// own name when they supplied one and the bare-or-bumped role otherwise.
 	//
 	// It exists because a session name and a session TITLE are two different
 	// registrations in Claude Code. `--name` registers the messaging address, and
-	// peers address the lead correctly by it; the title shown in the session list
-	// is a separate record, and a lead that never set one is given a generated
-	// title instead — which is how a lead came to be listed under an unrelated
+	// peers address the leader correctly by it; the title shown in the session list
+	// is a separate record, and a leader that never set one is given a generated
+	// title instead — which is how a leader came to be listed under an unrelated
 	// SPEC heading while messaging worked perfectly (issue #1596). The launcher is
 	// the only place that knows the resolved name, and the UserPromptSubmit hook
 	// is the only place that can register a title, so the value travels between
 	// them through the environment the child session already inherits.
 	//
-	// It is set on the LEAD only. A companion's title is not registered from here.
-	EnvMoaiKanbanLeadName = "MOAI_KANBAN_LEAD_NAME"
+	// It is set on the LEADER only. A companion's title is not registered from here.
+	//
+	// Name kept under REQ-RNC-011 (this SPEC); the value it carries follows the
+	// leader/lane vocabulary.
+	EnvFactoryLeadName = "MOAI_KANBAN_LEAD_NAME"
 
 	// EnvMoaiFactoryWorkers carries the Factory Mode signal and the run's
-	// worker count from the launcher entry point to the block-cap inject and
-	// the SessionStart hook. It is set on BOTH the factory lead and every
-	// worker — the count travels in the worker's own `-f <N>` token, which is
-	// why the worker launch command carries it. A non-empty value is what
-	// marks a session a factory session; the value is the fan-out size N.
+	// lane count from the launcher entry point to the block-cap inject and
+	// the SessionStart hook. It is set on BOTH the factory leader and every
+	// lane — the leader carries the run's declared fan-out size N, and a lane
+	// started with `-l` carries 0 (the count-less form). A non-empty value is
+	// what marks a session a factory session; the value is the fan-out size N.
 	//
-	// A factory run reuses EnvMoaiKanbanID and EnvMoaiKanbanLeadAddr on the
-	// lead (run id, leader socket) and deliberately does NOT set
-	// EnvMoaiKanban or EnvMoaiKanbanLabel: those seed the four-role kanban
-	// chain, which a factory run never drives.
+	// A factory run reuses EnvFactoryRunID and EnvFactoryLeadAddr on the
+	// leader (run id, leader socket). It sets no chain marker: a factory run
+	// never seeds a plan -> run -> verify -> sync chain.
+	//
+	// Name kept under REQ-RNC-011 (this SPEC); the value it carries follows the
+	// leader/lane vocabulary.
 	EnvMoaiFactoryWorkers = "MOAI_FACTORY_WORKERS"
 
-	// EnvMoaiFactoryWorker marks a session as a WORKER of a factory run and
-	// carries its `lane-<n>` label. It is the factory counterpart of
-	// EnvMoaiKanbanLabel: the lane needs the raised Stop-hook block cap
-	// (it fields long dispatch-driven turns) but must not be seeded with any
-	// chain, and the lead is signalled by EnvMoaiFactoryWorkers instead.
+	// EnvMoaiFactorySlowLaunchMS is the operator-configurable slow-launch
+	// threshold of the codex lane launch's pre-exec phase, in milliseconds
+	// (SPEC-CODEX-LANE-SLOTS-001 REQ-012): when the phase exceeds it, the
+	// launcher prints one timing line per pre-exec step. The default value
+	// lives in internal/config/defaults.go (DefaultFactorySlowLaunchThreshold);
+	// this variable is the override surface, never an inline literal.
+	EnvMoaiFactorySlowLaunchMS = "MOAI_FACTORY_SLOW_LAUNCH_MS"
+
+	// EnvMoaiFactoryWorker marks a session as a LANE of a factory run and
+	// carries its `lane-<n>` label. The lane needs the raised Stop-hook block
+	// cap (it fields long dispatch-driven turns) but must not be seeded with
+	// any chain, and the leader is signalled by EnvMoaiFactoryWorkers instead.
+	//
+	// Name kept under REQ-RNC-011 (this SPEC); the value it carries follows the
+	// leader/lane vocabulary.
 	EnvMoaiFactoryWorker = "MOAI_FACTORY_WORKER"
+
+	// EnvMoaiFactoryManaged is the explicit opt-in for the managed Factory
+	// session (SPEC-FACTORY-MANAGED-SESSION-001): a factory launch diverts to
+	// the managed owner only when this is "1" or "true" AND the factory
+	// stamps are present. Unset, empty, or any other value leaves every launch
+	// on its ordinary door.
+	EnvMoaiFactoryManaged = "MOAI_FACTORY_MANAGED"
+
+	// EnvMoaiFactoryManagedTUI is the operator opt-out of the managed Codex
+	// session's TUI attach (SPEC-FACTORY-MANAGED-TUI-001 REQ-MT-003): "0",
+	// "false" or "off" (case-insensitive, trimmed) keeps the session headless.
+	// It only turns the new behavior off inside the managed gate; it is not a
+	// second opt-in.
+	EnvMoaiFactoryManagedTUI = "MOAI_FACTORY_MANAGED_TUI"
+
+	// EnvMoaiFactoryAppServerToken names the environment variable that carries
+	// the owned Codex App Server's capability token to the operator TUI child
+	// (SPEC-FACTORY-MANAGED-TUI-001 REQ-MT-002). Only the name is ever put on a
+	// command line; the value travels in the child's environment.
+	EnvMoaiFactoryAppServerToken = "MOAI_FACTORY_APP_SERVER_TOKEN"
 
 	// EnvMoaiSessionPID carries an explicit override for the PID recorded in
 	// the multi-session coordination registry. A hook subprocess exits within
@@ -270,6 +311,15 @@ const (
 	// injecting a known-live PID).
 	EnvMoaiSessionPID = "MOAI_SESSION_PID"
 
+	// EnvRustLog is the Rust logging filter the codex child reads
+	// (SPEC-CODEX-DEBUG-MODE-001 REQ-010): when launcher debug mode is on and
+	// the operator set no value, the launcher appends RUST_LOG=debug to the
+	// child environment (best-effort linkage — the codex CLI documents no
+	// logging flag; an unknown variable is harmless to the child). An
+	// operator-supplied value is never modified (REQ-011). This constant is
+	// the only spelling site; no inline "RUST_LOG" literals elsewhere.
+	EnvRustLog = "RUST_LOG"
+
 	// EnvChainNodeID carries the origin-trail chain node ID from the spawning
 	// context to the child process. Set by the spawner (moai cc -w,
 	// EnterWorktree, Agent isolation:worktree) on the child environment before
@@ -277,6 +327,87 @@ const (
 	// re-inject after /clear env loss (REQ-CHAIN-013).
 	// SPEC-CHAIN-CORE-001 REQ-CHAIN-006.
 	EnvChainNodeID = "MOAI_CHAIN_NODE_ID"
+
+	// EnvTodoDecider selects the standing classification decider the todo
+	// add paths use (SPEC-TCD-LLM-DECIDER-001 REQ-TLD-002). Accepted values:
+	// {default, llm}. Unset/empty/"default" keep the deterministic
+	// DefaultCardDecider; "llm" selects the LLM-backed decider; any other
+	// value is a usage refusal (exit 2) with nothing written — an
+	// operator-authored misconfiguration fails loud, never silently reverts
+	// to the default. --classification-file outranks it.
+	EnvTodoDecider = "MOAI_TODO_DECIDER"
+)
+
+// Factory-role marker constants (SPEC-AUTONOMY-PRECONDITION-001
+// REQ-AP-012). The contract-sign and contract-decide guard
+// (internal/hook/contract_sign_guard.go) reads these constants — never a
+// repeated literal — so the marker's spelling has one home.
+const (
+	// EnvFactoryRole carries a session's factory role claim. The name is
+	// kept under SPEC-ROLE-NAMING-CODE-001 REQ-RNC-011; the value it marks
+	// follows the leader/lane vocabulary (REQ-RNC-019). The guard denies
+	// the non-interactive sign path (`--signer llm` /
+	// `--signer llm+jev`) and `moai contract decide` in a session whose
+	// value equals FactoryRoleLane, and allows them otherwise (REQ-AP-011):
+	// the allow direction is the leader session's own decide path when the
+	// decider is llm or llm+jev. A session that sets no such variable makes
+	// no role claim. Until card t1240 stamps the variable into lane launch
+	// environments, the role gate denies nothing in production — the
+	// protection that does not depend on the marker is the boundary-keyed
+	// human-path deny (REQ-AP-003).
+	EnvFactoryRole = "MOAI_FACTORY_ROLE"
+
+	// FactoryRoleLane is the role value the guard expects: the canonical
+	// canonical lane role spelling (internal/cli's factoryLaneRoleToken), held
+	// equal to internal/factory's lane-label prefix factoryLaneRole by the
+	// REQ-AP-013 equality assertion (AC-AP-018), restored at
+	// SPEC-ROLE-NAMING-CODE-001 M4 (REQ-RNC-012). The legacy spellings
+	// `worker` and `agent` are not accepted; internal/config cannot import
+	// internal/cli back without a cycle, and both carriers are unexported,
+	// which is why the pin lives inside the carrier packages.
+	FactoryRoleLane = "lane"
+
+	// EnvFactoryClearPolicy carries the clear policy a Claude-harness
+	// factory lane launch selected (SPEC-FACTORY-SELF-DISPATCH-001
+	// REQ-SD-020): the launcher stamps it into the lane session's
+	// environment and the `complete` output reads it to pick its
+	// end-of-card line. Codex-harness lanes take no policy and the name
+	// never enters the Codex MCP env_vars allowlist — the §D carve-out of
+	// the same SPEC names this one carrier so REQ-SD-022's frozen surfaces
+	// stay untouched. An absent value reads as FactoryClearPolicyEach.
+	EnvFactoryClearPolicy = "MOAI_FACTORY_CLEAR_POLICY"
+
+	// FactoryClearPolicyEach is the default clear policy: after each
+	// completion the lane asks the operator to /clear and continues on the
+	// fresh session.
+	FactoryClearPolicyEach = "clear-each"
+
+	// EnvFactoryAutoDispatch carries the auto-dispatch selection a factory
+	// lane launch made (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-011): the
+	// launcher stamps it into the lane session's environment and the
+	// SessionStart lane rule reads it. The DEFAULT is auto-dispatch and is
+	// recorded in code, not in this carrier — the stamp always overwrites
+	// (the clear-policy discipline) so an outer session's value cannot leak
+	// into a lane launched without one. Any value other than
+	// FactoryDispatchManual reads as the default.
+	EnvFactoryAutoDispatch = "MOAI_FACTORY_AUTO_DISPATCH"
+
+	// FactoryDispatchAuto is the stamped default: the lane enters its
+	// factory-next self-dispatch loop without a per-card lead routing step.
+	FactoryDispatchAuto = "auto"
+
+	// FactoryDispatchManual is the --no-auto-dispatch opt-out stamp: the lane
+	// receives a manual-mode rule instead of the next-card rule.
+	FactoryDispatchManual = "manual"
+
+	// FactoryClearPolicyWhenFull asks for /clear only once the session's
+	// context-usage record reaches the model-specific handoff threshold;
+	// below it the lane continues with the next card in the same session.
+	FactoryClearPolicyWhenFull = "clear-when-full"
+
+	// FactoryClearPolicyRelaunch asks the operator to end the session; the
+	// supervising launcher starts a fresh session for the next card.
+	FactoryClearPolicyRelaunch = "relaunch"
 )
 
 // GLM inject/clear env-var names (set onto the process env when entering
@@ -316,6 +447,121 @@ func GLMEnvVarSet() []string {
 	}
 }
 
+// Settings-axis env-var names that had no constant of their own before the
+// canonical declaration below needed them. Both were previously spelled only as
+// string literals at their delete sites.
+const (
+	// EnvMoaiBackupAuthToken is where the GLM injection path parks a
+	// pre-existing OAuth token so the cleanup paths can restore it as
+	// EnvAnthropicAuthToken on the way out. No non-MoAI flow writes it and no
+	// user sets it by hand, which is why a settings file carrying it is by
+	// definition a MoAI-written file.
+	EnvMoaiBackupAuthToken = "MOAI_BACKUP_AUTH_TOKEN"
+
+	// EnvAPITimeoutMs raises the Anthropic client request timeout (milliseconds)
+	// for the slower Z.AI-proxied endpoint. A legacy settings-axis member: the
+	// live route that wrote it into settings.local.json is closed, so it is
+	// cleaned as residue from a file an older binary wrote.
+	EnvAPITimeoutMs = "API_TIMEOUT_MS"
+)
+
+// settingsAxisEntry is one key of the canonical settings-axis declaration,
+// carrying the live-or-legacy classification the two views below filter on.
+type settingsAxisEntry struct {
+	name string
+	// legacy marks a key no live producer can write today. It still reaches
+	// settings.local.json from a file an older binary wrote, so it is cleaned;
+	// it is simply not part of what a current producer can put there.
+	legacy bool
+}
+
+// settingsAxis is the canonical, ordered declaration of the SETTINGS AXIS — the
+// keys deleted from the `env` object of .claude/settings.local.json.
+//
+// It is DISTINCT FROM THE TMUX AXIS (buildTmuxInjectVars / buildTmuxClearVars in
+// internal/cli/glm.go), which injects into and clears from a tmux pane's process
+// environment. The two axes have different members and different lifetimes;
+// comparing one's length against the other's measures nothing.
+//
+// FIVE FORMER HAND-MAINTAINED LISTS DERIVE FROM IT: the delete blocks of
+// removeGLMEnv (internal/cli/launcher.go), stripGLMCredsAndSetTeammateMode
+// (internal/cli/settings.go) and cleanupGLMSettingsLocal
+// (internal/hook/session_end.go), plus the two test key lists
+// liveSettingsAxisKeys (internal/cli) and liveHookWrittenKeys (internal/hook).
+// Nothing tied those five together and they had already drifted apart; this
+// declaration is the single place a settings-axis key is now named.
+//
+// This is a SIBLING of GLMEnvVarSet, not a widening of it: GLMEnvVarSet answers
+// a different question — the 3-key inject↔clear parity anchor of
+// SPEC-CLIFIX-HYGIENE-001 REQ-HYG-001-003.
+//
+// The order is stable and load-bearing for readability: a future addition shows
+// up as a one-line diff rather than a reshuffle.
+//
+// Membership is NOT a deletion instruction for every key. Two members —
+// EnvAnthropicAuthToken and EnvMoaiBackupAuthToken — are the OAuth restore's
+// target and source; their disposition belongs to the restore branch of each
+// cleanup function, which runs before, and instead of, the deletion loop. A
+// consumer that simply iterates the cleanup view over those two destroys the
+// user's own OAuth token.
+//
+// @MX:ANCHOR: [AUTO] settings-axis key SSOT — the single declaration five former lists derive from
+// @MX:REASON: five hand-written lists spelling one axis had already drifted; a key added here reaches every cleanup path at once, and a key added to only one path again re-opens the drift
+var settingsAxis = []settingsAxisEntry{
+	{name: EnvMoaiBackupAuthToken},
+	{name: EnvAnthropicAuthToken},
+	{name: EnvAnthropicBaseURL},
+	{name: EnvAnthropicDefaultHaikuModel},
+	{name: EnvAnthropicDefaultSonnetModel},
+	{name: EnvAnthropicDefaultOpusModel},
+	{name: EnvAnthropicDefaultFableModel, legacy: true},
+	{name: EnvClaudeCodeDisableExperimentalBetas},
+	{name: EnvAPITimeoutMs, legacy: true},
+	{name: EnvClaudeCodeDisableNonessentialTraffic, legacy: true},
+	{name: EnvClaudeCodeTeammateDisplay, legacy: true},
+	{name: EnvStatuslineContextSize, legacy: true},
+	{name: EnvClaudeCodeAutoCompactWindow},
+	{name: EnvClaudeCodeMaxContextTokens},
+}
+
+// SettingsAxisCleanupKeys returns the full settings-axis cleanup view in
+// declaration order: every key a cleanup path removes from
+// settings.local.json's `env`, live and legacy alike.
+//
+// Consumed by the three production cleanup functions. See the settingsAxis doc
+// comment for the token-pair carve-out — two members are owned by the OAuth
+// restore branch, not by the deletion loop.
+//
+// A fresh slice is returned on every call, so a caller mutating it cannot
+// corrupt the declaration for the next one.
+func SettingsAxisCleanupKeys() []string {
+	keys := make([]string, 0, len(settingsAxis))
+	for _, e := range settingsAxis {
+		keys = append(keys, e.name)
+	}
+	return keys
+}
+
+// SettingsAxisLiveKeys returns the live view: the settings-axis keys a live
+// producer can put into settings.local.json's `env` today, in declaration order.
+// It is the cleanup view minus the legacy tail, derived by filtering the one
+// declaration rather than by re-listing the keys.
+//
+// Consumed by the live-key guards and by the cross-axis tmux-parity guard, which
+// means this view — not the cleanup view — is what those guards iterate.
+//
+// A fresh slice is returned on every call, so a caller mutating it cannot
+// corrupt the declaration for the next one.
+func SettingsAxisLiveKeys() []string {
+	keys := make([]string, 0, len(settingsAxis))
+	for _, e := range settingsAxis {
+		if !e.legacy {
+			keys = append(keys, e.name)
+		}
+	}
+	return keys
+}
+
 // MoAI test-only environment variables.
 const (
 	// EnvTestMode enables test mode behavior when set to "1".
@@ -323,6 +569,30 @@ const (
 
 	// EnvTestGLMKey provides a test GLM API key for integration tests.
 	EnvTestGLMKey = "MOAI_TEST_GLM_KEY"
+
+	// EnvTestTypeSafeKey provides a test TypeSafe API credential, honoured by
+	// jevcred.Load as a short-circuit ahead of the on-disk read. Sibling of
+	// EnvTestGLMKey; internal/jevcred mirrors the literal as a local alias to
+	// stay standard-library-only.
+	EnvTestTypeSafeKey = "MOAI_TEST_TYPESAFE_KEY"
+
+	// EnvTestHomeStateLiveCoverage opts in to the internal/cli test that
+	// measures home-state changed-surface coverage against the live repository
+	// when set to "1". It resolves the audited evidence chain at HEAD, so it
+	// fails whenever an audited production file changed after the last
+	// certification marker — the live pre-apply gate refusing, as designed.
+	EnvTestHomeStateLiveCoverage = "MOAI_TEST_HOME_STATE_LIVE_COVERAGE"
+
+	// EnvAnchorTrace turns on the session-anchor decision trace
+	// (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-007..009): when set to a truthy
+	// value ("1" or "true", case-insensitive), every anchor decision point —
+	// branch-guard Seam A anchor reads, registry relocations, disposal-side
+	// anchor decisions — appends one verbose JSONL row carrying session_id,
+	// pid, cwd, and a timestamp to .moai/logs/anchor-trace.jsonl. Unset or
+	// falsy: no trace output and no per-decision overhead beyond this single
+	// environment lookup (REQ-SAA-008). This constant is the trace switch's
+	// only name declaration site (REQ-SAA-009).
+	EnvAnchorTrace = "MOAI_ANCHOR_TRACE"
 )
 
 // Claude Code environment variables (set by Claude Code runtime).
@@ -338,6 +608,13 @@ const (
 	// (session.CurrentSideChannelFile), which holds a single slot and is
 	// overwritten by whichever session started most recently.
 	EnvClaudeCodeSessionID = "CLAUDE_CODE_SESSION_ID"
+
+	// EnvClaudeCode is set to a non-empty value in the environment of every
+	// process Claude Code spawns (its Bash tool, hooks). The contract signer
+	// treats it, together with EnvClaudeCodeSessionID, as an agent-harness
+	// marker: a human-path `moai contract sign` refuses to run while either
+	// is set (SPEC-AUTONOMY-CONTRACT-001 REQ-CONTRACT-021).
+	EnvClaudeCode = "CLAUDECODE"
 
 	// EnvClaudeConfigDir is the Claude Code configuration directory.
 	EnvClaudeConfigDir = "CLAUDE_CONFIG_DIR"
@@ -380,13 +657,23 @@ const (
 
 	// EnvClaudeCodeMaxConcurrentSubagents is the runtime per-session cap on
 	// concurrently running subagents (default 20 per turn). t118 (v3.1.1
-	// launcher axis): the launcher seeds it on every kanban companion and
-	// factory worker lane so one lane's fan-out cannot crowd out the others —
+	// launcher axis): the launcher seeds it on every factory lane
+	// session so one lane's fan-out cannot crowd out the others —
 	// the operator-confirmed architecture is DefaultLaneMaxConcurrentSubagents
 	// (10) agents in parallel per lane. MoAI does not own this env (it is a
 	// Claude Code runtime env); the const centralizes the name per
 	// CLAUDE.local.md §14.
 	EnvClaudeCodeMaxConcurrentSubagents = "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS"
+
+	// EnvClaudeCodeHarborKite forces the cross-session messaging channel on
+	// when set: the channel's gate checks this variable BEFORE reading the
+	// machine-global cachedGrowthBookFeatures.tengu_harbor_kite slot in
+	// ~/.claude.json. It is an upstream internal flag rather than a documented
+	// interface, so the name can change without notice; it exists here because
+	// the doctor Shared Flag Slot check reports it (card t702). MoAI neither
+	// reads nor writes it outside that diagnostic; the const centralizes the
+	// name per CLAUDE.local.md §14.
+	EnvClaudeCodeHarborKite = "CLAUDE_CODE_HARBOR_KITE"
 )
 
 // Anthropic API environment variables.
@@ -417,7 +704,9 @@ const (
 	// (--model, this variable, a settings `model` value, or an organization
 	// default) chose a model.
 	//
-	// MoAI neither reads nor writes it.
+	// MoAI never writes it. The Claude launcher reads it only to leave the
+	// choice to Claude Code: while it is set, the launcher does not pass a
+	// saved /model value (card t1441).
 	EnvAnthropicModel = "ANTHROPIC_MODEL"
 
 	// EnvAnthropicDefaultModel names the model new sessions start on (Claude

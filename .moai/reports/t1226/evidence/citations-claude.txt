@@ -1,0 +1,53 @@
+.claude/agents/moai/manager-design.md:208:- **Agent catalog**: `CLAUDE.md` § 4 (13 retained agents — manager-design is row 6 of the Selection Decision Tree).
+.claude/output-styles/moai/moai.md:93:2. **Does the specialist agent exist in the catalog?** (CLAUDE.md §4)
+.claude/output-styles/moai/moai.md:771:Canonical sources — do not duplicate here: Agent Catalog (CLAUDE.md §4), Safe Development Protocol (CLAUDE.md §7), User Interaction Architecture (CLAUDE.md §8), Configuration Refere
+.claude/rules/moai/NOTICE.md:185:Anthropic Claude Code documentation — fair-use academic attribution. The agent catalog was realigned to Anthropic 2026 best practices (8 retained agents at consolidation time; now 10 per 
+.claude/rules/moai/development/agent-authoring.md:128:The MoAI agent catalog consists of exactly **13 retained agents** (12 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with CLAUDE.md §4. The v2 architecture (S
+.claude/rules/moai/workflow/archived-agent-rejection.md:164:- The agent catalog consolidation policy's retain-vs-archive matrix — design-time SSOT for the 8-retain (at decision time; now 10 per CLAUDE.md §4) / 12-archive
+.claude/rules/moai/workflow/session-handoff-format.md:67:- CLAUDE.md §11 (Error Handling) — token-limit recovery
+.claude/rules/moai/workflow/session-handoff.md:120:- Output-style §6 (Persistence & Context Awareness) and CLAUDE.md §11 (token-limit recovery): `session-handoff-format.md` § Cross-references
+.claude/rules/moai/workflow/spec-workflow.md:17:Per the canonical agent catalog policy, the MoAI agent catalog consists of exactly 11 retained agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `ma
+.claude/skills/moai-foundation-cc/reference/claude-code-custom-slash-commands-official.md:63:> (see `CLAUDE.md §3 Command Reference`).
+.claude/skills/moai-foundation-cc/reference/sub-agents/sub-agent-examples.md:10:> be spawned** in MoAI (see `CLAUDE.md §4 Archived Agents`).
+.claude/skills/moai-foundation-cc/reference/sub-agents/sub-agent-integration-patterns.md:297:# see CLAUDE.md §4 Watch note). The `Agent` entry in `tools:` above is
+.claude/skills/moai-foundation-quality/SKILL.md:183:Agents (see CLAUDE.md §4 for the 11-agent catalog):
+.claude/skills/moai-foundation-quality/references/reference.md:69:The quality-bearing roles from the CLAUDE.md §4 retained-agent catalog. That
+docs/design/major-v3-master.md:438:Dynamic team generation (SPEC-TEAM-001 in v2) preserved: teammates spawned via `Agent(subagent_type: "general-purpose")` with runtime overrides from `workflow.yaml` role profiles (resea
+internal/cli/CLAUDE.md:29:- Root CLAUDE.md §4 (Agent Catalog), §14 (Parallel Execution Safeguards § Background Agent Write Restriction)
+internal/cli/agentlint/agent_lint.go:773:	// Reconciled to the CLAUDE.md §4 retained-agent catalog by SPEC-CLIFIX-LINTER-STALE-001
+internal/cli/agentlint/linter_stale_test.go:168:			t.Errorf("writeHeavyAgents must not name archived agent %q (CLAUDE.md §4 SSOT)", name)
+internal/cli/testdata/codex-rollouts-t1171/real/rollout-2026-09-24T18-40-19-01a0d2c9-8d51-7623-a979-b364671a0205.jsonl:9:{"timestamp":"2026-09-24T09:40:19.553Z","ordinal":8,"type":"response_item","payload":{"type":"messa
+internal/cli/testdata/codex-rollouts-t1171/roles-other-version/manager-design.toml:205:- **Agent catalog**: `CLAUDE.md` § 4 (13 retained agents — manager-design is row 6 of the Selection Decision Tree).
+internal/cli/testdata/codex-rollouts-t1171/roles/manager-design.toml:204:- **Agent catalog**: `CLAUDE.md` § 4 (13 retained agents — manager-design is row 6 of the Selection Decision Tree).
+internal/harness/delegationmap/analyze_test.go:115:// (CLAUDE.md §4, agent-authoring.md § catalog, agent-patterns.md § static-agent
+internal/harness/delegationmap/types.go:73:// Source: CLAUDE.md §4 (the 13 retained agents — 12 MoAI-custom plus the
+internal/harness/rosterguard/axis.go:159:	// line with another integer — delegationmap/types.go cites "CLAUDE.md §4
+internal/harness/rosterguard/numeral.go:52:// (anthropic-best-practices-2026-05-24.md — "CLAUDE.md §4 agent catalog name
+internal/harness/rosterguard/numeral.go:105:// assumed: the live delegationmap citation "CLAUDE.md §4 (the 13 retained
+internal/harness/rosterguard/numeral.go:215:// leftmost rule reads the LIVE string "CLAUDE.md §4 (the 13 retained agents"
+internal/harness/rosterguard/numeral_test.go:34:			line: "// CLAUDE.md §4 (the 13 retained agents — 12 MoAI-custom plus the",
+internal/harness/rosterguard/registry.go:400:		// retainedCatalog and CLAUDE.md §4 agree, as cross-checks). The
+internal/harness/rosterguard/registry.go:603:		// CLAUDE.md §4". The LIVE half is registered here; the historical half
+internal/harness/rosterguard/registry.go:809:			Reason: "MEASURED FALSE POSITIVE: the numeral is the section marker in \"`CLAUDE.md` §4 — the retained agent catalog\".",
+internal/harness/rosterguard/registry.go:819:			Reason: "MEASURED FALSE POSITIVE: the numeral is the section marker in \"CLAUDE.md §4 retained-agent catalog\".",
+internal/harness/rosterguard/registry.go:835:			Reason: "MEASURED FALSE POSITIVE: the numeral is the section marker in a comment citing \"CLAUDE.md §4 retained-agent catalog\".",
+internal/harness/rosterguard/rosterguard_test.go:149:				"Declare its axis — %s (the CLAUDE.md §4 roster), %s (the .claude/agents/moai/*.md file population), or %s (a listing that is legitimately partial) — and say wheth
+internal/template/agent_frontmatter_audit_test.go:266:			description: "CLAUDE.md §4 Manager Agents 및 §5 Agent Chain",
+internal/template/manager_lead_depth_test.go:28://   - CLAUDE.md §4 Watch note (subagent nesting enabled by default as of recent
+internal/template/templates/.claude/agents/moai/manager-design.md:210:- **Agent catalog**: `CLAUDE.md` § 4 (13 retained agents — manager-design is row 6 of the Selection Decision Tree).
+internal/template/templates/.claude/output-styles/moai/moai.md:93:2. **Does the specialist agent exist in the catalog?** (CLAUDE.md §4)
+internal/template/templates/.claude/output-styles/moai/moai.md:771:Canonical sources — do not duplicate here: Agent Catalog (CLAUDE.md §4), Safe Development Protocol (CLAUDE.md §7), User Interaction Architecture (CLAUDE.
+internal/template/templates/.claude/rules/moai/NOTICE.md:185:Anthropic Claude Code documentation — fair-use academic attribution. The agent catalog was realigned to Anthropic 2026 best practices (8 retained agents at con
+internal/template/templates/.claude/rules/moai/development/agent-authoring.md:128:The MoAI agent catalog consists of exactly **13 retained agents** (12 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with CLAUDE.m
+internal/template/templates/.claude/rules/moai/workflow/archived-agent-rejection.md:164:- The agent catalog consolidation policy's retain-vs-archive matrix — design-time SSOT for the 8-retain (at decision time; now 10 pe
+internal/template/templates/.claude/rules/moai/workflow/session-handoff-format.md:67:- CLAUDE.md §11 (Error Handling) — token-limit recovery
+internal/template/templates/.claude/rules/moai/workflow/session-handoff.md:120:- Output-style §6 (Persistence & Context Awareness) and CLAUDE.md §11 (token-limit recovery): `session-handoff-format.md` § Cross-references
+internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md:17:Per the canonical agent catalog policy, the MoAI agent catalog consists of exactly 11 retained agents (`manager-spec`, `manager-develop`, `manag
+internal/template/templates/.claude/skills/moai-foundation-cc/reference/claude-code-custom-slash-commands-official.md:63:> (see `CLAUDE.md §3 Command Reference`).
+internal/template/templates/.claude/skills/moai-foundation-cc/reference/sub-agents/sub-agent-examples.md:10:> be spawned** in MoAI (see `CLAUDE.md §4 Archived Agents`).
+internal/template/templates/.claude/skills/moai-foundation-cc/reference/sub-agents/sub-agent-integration-patterns.md:297:# see CLAUDE.md §4 Watch note). The `Agent` entry in `tools:` above is
+internal/template/templates/.claude/skills/moai-foundation-quality/SKILL.md:183:Agents (see CLAUDE.md §4 for the 11-agent catalog):
+internal/template/templates/.claude/skills/moai-foundation-quality/references/reference.md:65:The quality-bearing roles from the CLAUDE.md §4 retained-agent catalog. That
+internal/template/templates/.codex/agents/moai/manager-design.toml:204:- **Agent catalog**: `CLAUDE.md` § 4 (13 retained agents — manager-design is row 6 of the Selection Decision Tree).
+internal/web/agentfm.go:142:// map to their CLAUDE.md §4 catalog class; every other agent (Explore /
+internal/web/agentfm.go:202:// agent's catalog class (CLAUDE.md §4): rank 0 → "CORE / MANAGER", 1 →

@@ -1,0 +1,4 @@
+sqlite backlog.db files: 133
+row totals: {'items': 128, 'findings': 0, 'archived_items': 0, 'archived_findings': 0}
+dbs missing the archived_* tables (older schema): 49
+item texts: [('first card', 128)]

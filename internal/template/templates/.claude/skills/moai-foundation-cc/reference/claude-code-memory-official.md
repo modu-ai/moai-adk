@@ -122,7 +122,7 @@ The directory contains a `MEMORY.md` index and optional topic files:
 
 ### How It Works
 
-The first 200 lines of `MEMORY.md` (or the first 25KB, whichever comes first) are loaded at the start of every session. Content beyond that threshold is not loaded automatically.
+The first 200 lines of `MEMORY.md` (or the first 25KB, whichever comes first) are loaded at the start of every session. Content beyond that threshold is not loaded automatically. Source: Claude Code CHANGELOG **2.1.83** — *"Memory: `MEMORY.md` index now truncates at 25KB as well as 200 lines"*. The truncation is not silent: an over-limit write errors explicitly rather than truncating silently (2.1.210), and the truncation warning names how many lines were cut and where (2.1.268).
 
 Topic files like `debugging.md` are not loaded at startup. Claude reads them on demand using standard file tools when the information is needed.
 

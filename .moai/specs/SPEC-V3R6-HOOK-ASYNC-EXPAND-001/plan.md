@@ -2,7 +2,6 @@
 id: SPEC-V3R6-HOOK-ASYNC-EXPAND-001
 title: "Hook async 확대 — Implementation Plan (Tier M, M1-M5)"
 version: "0.1.0"
-status: draft
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec

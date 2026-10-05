@@ -2,7 +2,6 @@
 id: SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001
 title: "Implementation Plan — Session-ID attribution dead-feature repair"
 version: "0.1.0"
-status: in-progress
 created: 2026-06-17
 updated: 2026-06-17
 author: manager-spec

@@ -26,11 +26,11 @@ func TestItoa(t *testing.T) {
 // TestLastSegment covers the `.` / `/` and bare branches.
 func TestLastSegment(t *testing.T) {
 	cases := map[string]string{
-		"pkg.ParseHeader":          "ParseHeader",
-		"internal/x/Foo":           "Foo",
-		"Bare":                     "Bare",
-		"pkg.sub.More":             "More",
-		"path/with/both.and.dots":  "dots",
+		"pkg.ParseHeader":         "ParseHeader",
+		"internal/x/Foo":          "Foo",
+		"Bare":                    "Bare",
+		"pkg.sub.More":            "More",
+		"path/with/both.and.dots": "dots",
 	}
 	for in, want := range cases {
 		if got := lastSegment(in); got != want {

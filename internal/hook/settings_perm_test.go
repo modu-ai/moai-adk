@@ -7,6 +7,7 @@ package hook
 
 import (
 	"encoding/json"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -33,6 +34,10 @@ func statSettings(t *testing.T, path string) os.FileMode {
 // ensureGLMCredentials writes settings.local.json with 0o600 when injecting
 // ANTHROPIC_AUTH_TOKEN.
 func TestEnsureGLMCredentialsFilePerm(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
+	// .env.glm is staged under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX file-mode test skipped on Windows (ACL model differs)")
 	}
@@ -108,6 +113,7 @@ func TestEnsureGLMCredentialsFilePerm(t *testing.T) {
 // TestEnsureTeammateModeFilePerm covers AC-SEC-001 for the teammateMode
 // write path in session_start.go (line 403 baseline).
 func TestEnsureTeammateModeFilePerm(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX file-mode test skipped on Windows")
 	}
@@ -178,6 +184,7 @@ func TestInjectCLAUDEEnvFilePerm(t *testing.T) {
 // TestSessionEndSettingsPerm covers AC-SEC-002:
 // the cleanup write-back at session_end.go:667 also persists 0o600.
 func TestSessionEndSettingsPerm(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX file-mode test skipped on Windows")
 	}

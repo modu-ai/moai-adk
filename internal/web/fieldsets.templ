@@ -105,28 +105,12 @@ templ fieldsetLaunch(view pageView) {
 		DescKey: "sec.launch.desc", Desc: "How sessions start — permissions, model, and reasoning effort.",
 		Count: len(settings.SectionFields(settings.SectionLaunch)),
 	}) {
-		<div class="field">
-			@fieldHead("permission_mode", "Permission mode", "permission_mode")
-			<p class="field__help" data-i18n="f.permission_mode.desc">How much the agent may do before asking you.</p>
-			<div class="field__ctl">
-				<select
-					class="sel"
-					id="permission_mode"
-					name="permission_mode"
-					if hasFieldError(view.FieldErrors, "permission_mode") {
-						aria-invalid="true"
-						aria-describedby="err_permission_mode"
-					}
-				>
-					for _, m := range view.PermissionModes {
-						@permissionOption(m, view.Prefs.PermissionMode)
-					}
-				</select>
-			</div>
-			@fieldErr(view.FieldErrors, "permission_mode")
-		</div>
-		@optSelect(optSelectArgs{Name: "model", Title: "Model", Key: "model", Desc: "The specific model to run.", Value: view.Prefs.Model, Empty: settings.EmptyLabelFor("model"), EmptyKey: settings.EmptyLabelKeyFor("model"), Options: view.ModelOptions, Errors: view.FieldErrors})
-		@optSelect(optSelectArgs{Name: "effort_level", Title: "Effort level", Key: "effort_level", Desc: "How much reasoning effort the model spends per task.", Value: view.Prefs.EffortLevel, Empty: settings.EmptyLabelFor("effort_level"), EmptyKey: settings.EmptyLabelKeyFor("effort_level"), Options: view.EffortLevels, Errors: view.FieldErrors})
+		// t1278 — 3 위젯 모두 segmented 라디오로(네이티브 select 대체). permission_mode 의
+		// 빈 옵션은 view.PermissionModes 가 이미 옵션으로 갖고 있어(permissionOption 이
+		// "(project default)" 로 렌더하던 것) segRadio 에 별도 Empty 를 넣지 않는다.
+		@segRadio(segRadioArgs{Name: "permission_mode", Title: "Permission mode", Key: "permission_mode", Desc: "How much the agent may do before asking you.", Value: view.Prefs.PermissionMode, Options: view.PermissionModes, Errors: view.FieldErrors})
+		@segRadio(segRadioArgs{Name: "model", Title: "Model", Key: "model", Desc: "The specific model to run.", Value: view.Prefs.Model, Empty: settings.EmptyLabelFor("model"), EmptyKey: settings.EmptyLabelKeyFor("model"), Options: view.ModelOptions, Errors: view.FieldErrors})
+		@segRadio(segRadioArgs{Name: "effort_level", Title: "Effort level", Key: "effort_level", Desc: "How much reasoning effort the model spends per task.", Value: view.Prefs.EffortLevel, Empty: settings.EmptyLabelFor("effort_level"), EmptyKey: settings.EmptyLabelKeyFor("effort_level"), Options: view.EffortLevels, Errors: view.FieldErrors})
 	}
 }
 
@@ -167,6 +151,16 @@ templ fieldsetSchemaSection(view pageView, meta schemaSectionMeta) {
 		for _, f := range meta.Fields {
 			@schemaFieldWidget(view, f)
 		}
+		// 고급 접기 영역 (t1280) — 기본값 유지가 정답인 운영 한도 필드. 네이티브
+		// <details>라 JS 없이 동작하고, 접혀 있어도 폼 제출에 그대로 포함된다.
+		if len(meta.Advanced) > 0 {
+			<details class="panel__advanced">
+				<summary data-i18n="settings.advanced.summary">Advanced — defaults are fine for most projects</summary>
+				for _, f := range meta.Advanced {
+					@schemaFieldWidget(view, f)
+				}
+			</details>
+		}
 		for _, ro := range settings.ReadOnlyDisplayFields() {
 			if meta.Extras && ro.Section == meta.ID {
 				@schemaReadOnlyRow(ro.Name, view.SchemaValues[ro.Name], ro.NoteKey)
@@ -179,11 +173,233 @@ templ fieldsetSchemaSection(view pageView, meta schemaSectionMeta) {
 		if glmKeyFieldBelongsToLLMSection(meta.ID) {
 			@fieldsetGLMKey(view)
 		}
+		// SPEC-JEV-OPTIN-MEASURE-001: the Jev sub-section — enable toggle,
+		// privacy statement, credential — rendered inside the workflow panel.
+		// Keyed on PanelID rather than section ID because SectionWorkflow
+		// fronts several panels, and keying on the section would render the
+		// sub-section on every one of them.
+		if meta.PanelID == "workflow" {
+			@fieldsetJevSection(view)
+		}
+		// SPEC-WEB-AGENTFM-RESTORE-001 M4: the agent-overrides sub-section —
+		// the profile selector plus per-agent model/effort overrides — rendered
+		// inside the 3rd Party LLM panel: the panel whose section file
+		// (llm.yaml) the surface persists to. Keyed on PanelID like the two
+		// sub-sections above.
+		if meta.PanelID == "llm" {
+			@fieldsetAgentFM(view)
+		}
+		// The agent-tier sub-section (tier axis): the chart-grounding table
+		// and the per-class tier radios as one surface. Same PanelID keying
+		// as the Jev sub-section above — render placement inside the workflow
+		// panel, persistence on the SectionWorkflow seam.
+		if meta.PanelID == "workflow" {
+			@fieldsetAgentTiers(view)
+		}
 		for _, rb := range settings.RawViewBlocks() {
 			if meta.Extras && rb.Section == meta.ID {
 				@schemaRawBlock(rb.Name, view.RawBlocks[rb.Name], rb.NoteKey)
 			}
 		}
+	}
+}
+
+// fieldsetAgentTiers renders the agent-tier sub-section of the workflow panel
+// (tier axis): the chart-grounding table (each tier's Terminal-Bench accuracy
+// and cost figures — display data straight from the config table, never
+// restated here) followed by the per-class tier radios. The radios are schema
+// fields closed to config.ValidAgentTiers(), so the selection accepts only
+// the closed set; an empty submit is the class's "unset" and the resolver
+// falls back to the compiled default.
+templ fieldsetAgentTiers(view pageView) {
+	<div class="subsection" data-section={ agentTierSectionMarker }>
+		<div class="field__head">
+			<span class="field__label" data-i18n="sec.agenttiers.title">Agent tiers</span>
+		</div>
+		<p class="panel__help" data-i18n="sec.agenttiers.help">
+			Which model-and-effort pair each agent class runs at. Tier tokens are configuration keys, not effort values — an unset class keeps the compiled default, and audit surfaces ride the audit pins, never a tier.
+		</p>
+		<div class="tier-chart" role="table" aria-label="Tier chart grounding">
+			<div class="tier-chart__row tier-chart__row--head" role="row">
+				<span data-i18n="sec.agenttiers.col.tier">Tier</span>
+				<span data-i18n="sec.agenttiers.col.pair">Model @ effort</span>
+				<span data-i18n="sec.agenttiers.col.score">Accuracy</span>
+				<span data-i18n="sec.agenttiers.col.cost">Cost/attempt</span>
+			</div>
+			for _, row := range agentTierChartRows() {
+				<div class="tier-chart__row" role="row">
+					<span><code class="key">{ row.Tier }</code></span>
+					<span><code class="key">{ row.Pair }</code></span>
+					<span>{ row.Score }</span>
+					<span>{ row.Cost }</span>
+				</div>
+			}
+		</div>
+		for _, f := range agentTierSectionFields() {
+			@schemaFieldWidget(view, f)
+		}
+	</div>
+}
+
+// fieldsetAgentFM renders the agent-overrides sub-section of the llm
+// panel (SPEC-WEB-AGENTFM-RESTORE-001, the restored console surface): the
+// profile selector (persisted to llm.profile — never the retired
+// performance_tier alias), the profile-matrix island the client tier
+// repopulation reads, and one row per scanned moai agent. Harness rows are
+// scanned but never rendered (REQ-AFR-001) — an unrendered agent submits no
+// form values, which parseAgentFMForm reads as "preserve".
+templ fieldsetAgentFM(view pageView) {
+	<div class="subsection" data-section={ agentOverridesSectionMarker }>
+		<div class="field__head">
+			<span class="field__label" data-i18n="sec.agentfm.title">Agents</span>
+			<code class="key">llm.agent_overrides</code>
+		</div>
+		<p class="panel__help" data-i18n="sec.agentfm.help">
+			Per-agent model/effort overrides on top of the selected profile. An agent without an override resolves the profile cell — plain inheritance is the default — and a pin equal to the profile default is cleared on save. The per-class tier chart lives in the Workflow panel.
+		</p>
+		// Stored llm.yaml type fidelity (v0.3.0 M7, REQ-AFR-015): a non-boolean
+		// agent_overrides_consume stored in llm.yaml rejects the save; the
+		// strict checker's message renders here, next to the surface the key
+		// belongs to. The error is keyed by the yaml key, so a type mismatch in
+		// any other llm key renders under its own name when one exists.
+		@fieldErr(view.FieldErrors, "agent_overrides_consume")
+		@fieldErr(view.FieldErrors, "llm.yaml")
+		// t66 web half: under a GLM backend the model axis is session-inherited,
+		// so the effort(reasoning) map is the per-agent routing surface — state
+		// that on the sub-section, gated on the backend signal (never rendered
+		// for a Claude session, where the GLM reading is noise).
+		if agentFMIsGLMBackend(view.LLM) {
+			<p class="panel__help" data-i18n="agentfm.glmnote">Under a GLM backend every sub-agent inherits the session model (llm.glm.models), so effort is the only per-agent axis — each row shows the z.ai reasoning state its effort collapses to. The runtime delivers one session-wide reasoning value; these states record per-agent intent.</p>
+		}
+		// Contract-state chip (v0.3.0 M9, REQ-AFR-019): the overrides map is
+		// storage-only unless llm.agent_overrides_consume is on — state which
+		// one this session is in, so a stored pin is never silently read as a
+		// live one.
+		if agentFMConsumeOn(view.LLM) {
+			<p class="panel__help" data-contract-state="consume-on" data-i18n="agentfm.consume.on">Spawn consumption is ON: the orchestrator consults these overrides before each subagent spawn and passes the configured model on the Agent() call.</p>
+		} else {
+			<p class="panel__help" data-contract-state="consume-off" data-i18n="agentfm.consume.off">Stored overrides only: spawn consumption is off, so these pins stay console-stored — every subagent keeps the session model/effort it inherits.</p>
+		}
+		<div class="field">
+			<div class="field__head">
+				<span class="field__label" data-i18n="agentfm.tier.title">Performance tier</span>
+				<code class="key">llm.profile</code>
+			</div>
+			<p class="field__help" data-i18n="agentfm.tier.desc">Sets each agent's model/effort from this tier column (max / medium / low). Per-agent edits below are saved as overrides and shown as Custom.</p>
+			<div class="field__ctl">
+				<div class="seg">
+					for _, opt := range agentFMPerfTierOptions() {
+						<label class="seg__b">
+							if !view.PerfTierCustom && (opt == view.PerfTier || (view.PerfTierIsEmpty && opt == agentFMPerfTierDefault)) {
+								<input type="radio" id={ "performance_tier--" + opt } name="performance_tier" value={ opt } checked/>
+							} else {
+								<input type="radio" id={ "performance_tier--" + opt } name="performance_tier" value={ opt }/>
+							}
+							<span>{ opt }</span>
+						</label>
+					}
+					<label class="seg__b">
+						if view.PerfTierCustom {
+							<input type="radio" id="performance_tier--custom" name="performance_tier" value="custom" checked/>
+						} else {
+							<input type="radio" id="performance_tier--custom" name="performance_tier" value="custom"/>
+						}
+						<span data-i18n="agentfm.tier.custom">Custom</span>
+					</label>
+				</div>
+			</div>
+			if view.PerfTierIsEmpty {
+				<p class="field__help" data-i18n="agentfm.tier.default">(runtime default: medium)</p>
+			}
+			@fieldErr(view.FieldErrors, "performance_tier")
+		</div>
+		@templ.JSONScript("moai-profile-matrix", profileMatrixData())
+		// Single consolidated per-agent explanation, at the table head rather
+		// than repeated under every row.
+		<p class="panel__help" data-i18n="hint.effort.go_unbound">Resolved from the profile above — per-agent edits save as overrides.</p>
+		<div class="tbl">
+			// Group header rows: emit a divider when the current agent's
+			// catalog-class group differs from the previous rendered row's. The
+			// render rows (with group-change flags) are precomputed in Go
+			// (agentFMGridRows) so the templ loop stays state-free.
+			for _, r := range agentFMGridRows(view.AgentFMs) {
+				if r.GroupHead != "" {
+					<div class="tr tr--group"><span>{ r.GroupHead }</span></div>
+				}
+				@agentFMRow(r.Agent, view.LLM, view.FieldErrors)
+			}
+		</div>
+	</div>
+}
+
+// agentFMRow는 agent 1종의 model/effort select 쌍이다. 빈 옵션 = 현재값 유지
+// (empty=preserve). 파싱 실패 행은 편집 비활성 표시만 한다 (design.md §C.1
+// 견고성 — 전체 페이지 실패 금지).
+templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]string) {
+	if agent.ParseOK {
+		<div class="tr tr--afm" data-agent-row={ agent.Name }>
+			<div class="tr__sub">
+				<span class="tr__name">
+					if agentTierBadge(agent.Name, agent.Model, agent.Effort).HasBadge {
+						<span class={ "badge", templ.KV("badge--strong", agentTierBadge(agent.Name, agent.Model, agent.Effort).IsCustom) } data-i18n-title={ agentTierBadge(agent.Name, agent.Model, agent.Effort).TooltipKey }>{ agentTierBadge(agent.Name, agent.Model, agent.Effort).Glyph }</span>
+					}
+					<code class="key">{ agent.Name }</code>
+				</span>
+				// The English text is the SERVER-SIDE BASELINE, read from the agent
+				// .md frontmatter (the SSOT). agentdesc.<name> carries only the
+				// ko/ja/zh translations; en has no such key. data-i18n-baseline pins
+				// the server text so applyI18n can RESTORE it when the active locale's
+				// dictionary lacks the key — otherwise a KO→EN switch leaves the
+				// previous locale's text stuck on the row.
+				if short := agentDescriptionShort(agent.Description); short != "" {
+					<span class="tr__desc" data-i18n={ "agentdesc." + agent.Name } data-i18n-baseline={ short }>{ short }</span>
+				}
+			</div>
+			<select class="sel" name={ "agentfm." + agent.Name + ".model" } id={ "agentfm." + agent.Name + ".model" } aria-label={ "Model for " + agent.Name }>
+				for _, m := range agentFMModelValues() {
+					if m == agentSelectedModel(llm, agent) {
+						<option value={ m } selected data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
+					} else {
+						<option value={ m } data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
+					}
+				}
+			</select>
+			<div>
+				// Haiku does not honor reasoning effort — disable the effort select
+				// (initial render, so the no-JS page is correct too). app.js re-toggles
+				// this live when the paired model select changes. A disabled select does
+				// not submit; parseAgentFMForm backfills the unsubmitted effort.
+				<select class="sel" name={ "agentfm." + agent.Name + ".effort" } id={ "agentfm." + agent.Name + ".effort" } aria-label={ "Effort for " + agent.Name } disabled?={ agentModelIsHaiku(llm, agent) }>
+					for _, e := range agentFMEffortValues() {
+						if e == agentSelectedEffort(llm, agent) {
+							<option value={ e } selected data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
+						} else {
+							<option value={ e } data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
+						}
+					}
+				</select>
+				// Muted note explaining the disabled effort — present in the DOM always
+				// so app.js can toggle it client-side; hidden until the model is haiku.
+				<span class="field__help" data-haiku-hint data-i18n="hint.effort.haiku_na" hidden?={ !agentModelIsHaiku(llm, agent) }>Effort N/A for Haiku</span>
+				// t66: the GLM reading of this row's effort — the z.ai reasoning
+				// state it collapses to, rendered only under a GLM backend. The
+				// tooltip reuses the canonical option keys the GLM section serves,
+				// so the two surfaces share one vocabulary; the value itself is a
+				// technical identifier and stays untranslated.
+				if rs := agentGLMReasoning(llm, agent.Name); rs != "" {
+					<code class="key" data-glm-reasoning={ rs } data-i18n-title={ "f.llm.glm.effort.opt." + rs }>{ rs }</code>
+				}
+			</div>
+			@fieldErr(errs, "agentfm."+agent.Name+".model")
+			@fieldErr(errs, "agentfm."+agent.Name+".effort")
+		</div>
+	} else {
+		<div class="tr tr--afm">
+			<div class="tr__sub">
+				<span class="tr__name"><code class="key">{ agent.Name }</code></span>
+				<span class="tr__desc" data-i18n="agentfm.unavailable">unavailable (frontmatter parse failed)</span>
+			</div>
+		</div>
 	}
 }
 
@@ -243,11 +459,81 @@ templ fieldsetGLMKey(view pageView) {
 	</div>
 }
 
+// fieldsetJevSection renders the Jev opt-in section (SPEC-JEV-OPTIN-MEASURE-001
+// REQ-JEVO-001/003): the privacy statement, the enable toggle, and the
+// credential control, together.
+//
+// The three belong together. The statement is what makes the toggle an
+// informed choice, and the credential is useless without the toggle — a reader
+// who sees any one of them in isolation is missing what they need to decide.
+templ fieldsetJevSection(view pageView) {
+	<div class="subsection" data-section={ jevSectionMarker }>
+		<div class="field__head">
+			<span class="field__label" data-i18n="tab.jev.title">Jev</span>
+		</div>
+		<p class="panel__help" data-i18n={ jevPrivacyNoteKey }>{ jevPrivacyNoteBaseline }</p>
+		for _, f := range jevSectionFields() {
+			@schemaFieldWidget(view, f)
+		}
+		@fieldsetJevKey(view)
+	</div>
+}
+
+// fieldsetJevKey renders the Jev credential control (SPEC-JEV-OPTIN-MEASURE-001
+// REQ-JEVO-001). Same secret-class shape as fieldsetGLMKey: type="password"
+// masks typed characters, autocomplete="off" opts out of browser autofill, and
+// the value attribute is UNCONDITIONALLY empty so a stored credential is never
+// echoed back into the form.
+//
+// It carries NO reveal control. The GLM precedent has one because that key has
+// to be readable back out; here the disclosure requirement is met by the
+// configured indicator plus the trailing four characters, so the one path that
+// would cross the never-echo contract is simply not built.
+templ fieldsetJevKey(view pageView) {
+	<div class="field">
+		<div class="field__head">
+			<span class="field__label" data-i18n="f.jev_api_key.title">Jev credential</span>
+			<code class="key">~/.moai/.env.typesafe</code>
+		</div>
+		<p class="field__help" data-i18n="f.jev_api_key.desc">Credential for the Jev backend. Stored at mode 0600 outside the project tree; never echoed back, and there is no route that reveals it.</p>
+		<div class="field__ctl">
+			<input
+				class="in"
+				type="password"
+				id={ jevAPIKeyFormField }
+				name={ jevAPIKeyFormField }
+				autocomplete="off"
+				value=""
+				if hasFieldError(view.FieldErrors, jevAPIKeyFormField) {
+					aria-invalid="true"
+					aria-describedby={ "err_" + jevAPIKeyFormField }
+				}
+			/>
+			if view.JevKeyConfigured {
+				<p class="field__help">
+					@iconAt("check", 13)
+					<span data-i18n="f.jev_api_key.configured">Configured</span>
+					if view.JevKeyHint != "" {
+						<code class="key">…{ view.JevKeyHint }</code>
+					}
+				</p>
+			}
+		</div>
+		@fieldErr(view.FieldErrors, jevAPIKeyFormField)
+	</div>
+}
+
 // schemaFieldWidget은 FieldDef.Type에 따라 위젯을 선택한다.
 templ schemaFieldWidget(view pageView, f settings.FieldDef) {
 	switch f.Type {
 		case settings.TypeBool:
-			@schemaToggleRow(f, view.SchemaValues[f.Name] == "true")
+			// AbsentDefault polarity (sync-audit F1-D, SPEC-WEB-WRITE-SAFETY-001):
+			// the write gate interprets an ABSENT key through the field's declared
+			// runtime default, so the render must agree — a default-ON field shows
+			// checked while its key is absent (same reading as mcpToolRow's
+			// `!= "false"` below). An `== "true"` check here drew absent as OFF,
+			// and the untouched-rendered save then recorded enabled: false.
+			@schemaToggleRow(f, view.SchemaValues[f.Name] == "true" || (view.SchemaValues[f.Name] == "" && f.AbsentDefault == "true"))
 		case settings.TypeSelect:
 			@schemaSelectRow(f, view.SchemaValues[f.Name], view.FieldErrors)
 		case settings.TypeRadio:
@@ -377,15 +663,15 @@ templ boolSegment(name string, checked bool) {
 }
 
 // schemaSelectRow — 닫힌 옵션 select. EmptyLabel이 있으면 빈 옵션을 렌더한다.
-// effort 필드에는 선언적 힌트를 덧붙인다 — Go 런타임이 행동적으로 바인딩하지
-// 않는 값임을 알린다. baseline 텍스트는 영어다: 하드코딩된 한국어는 JS 미실행
+// effort 필드(감사 백엔드 핀)에는 그 백엔드에만 적용된다는 힌트를 덧붙인다 —
+// MoAI 서브에이전트는 세션 effort를 상속한다. baseline 텍스트는 영어다: 하드코딩된 한국어는 JS 미실행
 // 렌더에서 모든 로케일에 한국어를 노출했다.
 templ schemaSelectRow(f settings.FieldDef, value string, errs map[string]string) {
 	<div class="field">
 		@schemaFieldHead(f)
 		<p class="field__help" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</p>
 		if strings.HasSuffix(f.Name, ".effort") {
-			<p class="field__help" data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.</p>
+			<p class="field__help" data-i18n="hint.effort.go_unbound">Applies to this backend only. MoAI subagents inherit the session's effort.</p>
 		}
 		<div class="field__ctl">
 			<select
@@ -442,7 +728,7 @@ templ schemaRadioRow(f settings.FieldDef, value string, errs map[string]string) 
 				<div class="seg seg--stacked">
 					for _, opt := range f.Options {
 						<label class="seg__b">
-							if opt.Value == value {
+							if opt.Value == radioEffectiveValue(f, value) {
 								<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value } checked/>
 							} else {
 								<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value }/>
@@ -456,7 +742,7 @@ templ schemaRadioRow(f settings.FieldDef, value string, errs map[string]string) 
 				<div class="seg">
 					if f.EmptyLabel != "" {
 						<label class="seg__b">
-							if value == "" {
+							if radioEffectiveValue(f, value) == "" {
 								<input type="radio" id={ f.Name + "--empty" } name={ f.Name } value="" checked/>
 							} else {
 								<input type="radio" id={ f.Name + "--empty" } name={ f.Name } value=""/>
@@ -466,7 +752,7 @@ templ schemaRadioRow(f settings.FieldDef, value string, errs map[string]string) 
 					}
 					for _, opt := range f.Options {
 						<label class="seg__b">
-							if opt.Value == value {
+							if opt.Value == radioEffectiveValue(f, value) {
 								<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value } checked/>
 							} else {
 								<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value }/>
@@ -507,161 +793,6 @@ templ schemaRawBlock(name, content, noteKey string) {
 		</summary>
 		<pre class="raw__pre">{ content }</pre>
 	</details>
-}
-
-// ─── SPEC-WEB-CONSOLE-011 M3: sub-agent frontmatter 편집 표 ──────────────────
-
-// fieldsetAgentFrontmatter는 .claude/agents/moai/ sub-agent의 model/effort
-// frontmatter 편집 표를 렌더한다. 지속 경고("moai update가 덮어쓸 수 있음",
-// REQ-WC11-028) + llm 교차 참조 + dynamic-workflows taxonomy 참조(REQ-WC11-026)를
-// 포함한다. effort의 "(absent)" 옵션은 키 삭제를 의미한다 (EC-7).
-//
-// harness 행은 렌더하지 않는다. 스캔 자체는 그대로라 미렌더 agent는 폼 값을
-// 제출하지 않고, parseAgentFMForm이 이를 "preserve"로 읽으므로 harness
-// frontmatter는 기록되지 않는다.
-templ fieldsetAgentFrontmatter(view pageView) {
-	@settingsPanel(panelChrome{
-		Icon: "user-round", TitleKey: "sec.agentfm.title", Title: "Agents",
-		DescKey: "sec.agentfm.desc",
-		Desc:    "Per-agent model/effort frontmatter of the live agent files (frontmatter-only writes; bodies untouched).",
-		Count:   agentFMRenderCount(view.AgentFMs),
-	}) {
-		<p class="banner banner--warn" role="alert">
-			@iconAt("alert", 14)
-			<span data-i18n="agentfm.warn">These files are template-managed — a later `moai update` may overwrite live edits.</span>
-		</p>
-		<p class="panel__help" data-i18n="agentfm.llmnote">Per-agent model/effort here follows the performance tier above. GLM backend tiers are in the 3rd Party LLM section.</p>
-		// t66 web half: under a GLM backend the model axis is session-inherited,
-		// so the effort(reasoning) map is the per-agent routing surface — state
-		// that on the panel, gated on the backend signal (never rendered for a
-		// Claude session, where the GLM reading is noise).
-		if agentFMIsGLMBackend(view.LLM) {
-			<p class="panel__help" data-i18n="agentfm.glmnote">Under a GLM backend every sub-agent inherits the session model (llm.glm.models), so effort is the only per-agent axis — each row shows the z.ai reasoning state its effort collapses to. The runtime delivers one session-wide reasoning value; these states record per-agent intent.</p>
-		}
-		<p class="panel__help">
-			<span data-i18n="agentfm.taxonomy">workflow_agents purpose defaults follow the purpose taxonomy in</span>
-			<code class="key">.claude/rules/moai/workflow/dynamic-workflows.md</code>
-		</p>
-		<div class="field">
-			<div class="field__head">
-				<span class="field__label" data-i18n="agentfm.tier.title">Performance tier</span>
-				<code class="key">llm.performance_tier</code>
-			</div>
-			<p class="field__help" data-i18n="agentfm.tier.desc">Sets each sub-agent's model/effort from this tier column (max / medium / low). Per-agent edits below are saved as overrides and shown as Custom.</p>
-			<div class="field__ctl">
-				<div class="seg">
-					for _, opt := range agentFMPerfTierOptions() {
-						<label class="seg__b">
-							if !view.PerfTierCustom && (opt == view.PerfTier || (view.PerfTierIsEmpty && opt == "medium")) {
-								<input type="radio" id={ "performance_tier--" + opt } name="performance_tier" value={ opt } checked/>
-							} else {
-								<input type="radio" id={ "performance_tier--" + opt } name="performance_tier" value={ opt }/>
-							}
-							<span>{ opt }</span>
-						</label>
-					}
-					<label class="seg__b">
-						if view.PerfTierCustom {
-							<input type="radio" id="performance_tier--custom" name="performance_tier" value="custom" checked/>
-						} else {
-							<input type="radio" id="performance_tier--custom" name="performance_tier" value="custom"/>
-						}
-						<span data-i18n="agentfm.tier.custom">Custom</span>
-					</label>
-				</div>
-			</div>
-			if view.PerfTierIsEmpty {
-				<p class="field__help" data-i18n="agentfm.tier.default">(runtime default: medium)</p>
-			}
-			@fieldErr(view.FieldErrors, "performance_tier")
-		</div>
-		@templ.JSONScript("moai-profile-matrix", profileMatrixData())
-		// Single consolidated per-agent explanation, at the table head rather than
-		// repeated under every row.
-		<p class="panel__help" data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.</p>
-		<div class="tbl">
-			// Group header rows: emit a divider when the current agent's
-			// catalog-class group differs from the previous rendered row's. The
-			// render rows (with group-change flags) are precomputed in Go
-			// (agentFMGridRows) so the templ loop stays state-free.
-			for _, r := range agentFMGridRows(view.AgentFMs) {
-				if r.GroupHead != "" {
-					<div class="tr tr--group"><span>{ r.GroupHead }</span></div>
-				}
-				@agentFMRow(r.Agent, view.LLM, view.FieldErrors)
-			}
-		</div>
-	}
-}
-
-// agentFMRow는 agent 1종의 model/effort select 쌍이다. 빈 옵션 = 현재값 유지
-// (empty=preserve). 파싱 실패 행은 편집 비활성 표시만 한다 (design.md §C.1).
-templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]string) {
-	if agent.ParseOK {
-		<div class="tr tr--afm" data-agent-row={ agent.Name }>
-			<div class="tr__sub">
-				<span class="tr__name">
-					if agentTierBadge(agent.Name, agent.Model, agent.Effort).HasBadge {
-						<span class={ "badge", templ.KV("badge--strong", agentTierBadge(agent.Name, agent.Model, agent.Effort).IsCustom) } data-i18n-title={ agentTierBadge(agent.Name, agent.Model, agent.Effort).TooltipKey }>{ agentTierBadge(agent.Name, agent.Model, agent.Effort).Glyph }</span>
-					}
-					<code class="key">{ agent.Name }</code>
-				</span>
-				// The English text is the SERVER-SIDE BASELINE, read from the agent
-				// .md frontmatter (the SSOT). agentdesc.<name> carries only the
-				// ko/ja/zh translations; en has no such key. data-i18n-baseline pins
-				// the server text so applyI18n can RESTORE it when the active locale's
-				// dictionary lacks the key — otherwise a KO→EN switch leaves the
-				// previous locale's text stuck on the row.
-				if short := agentDescriptionShort(agent.Description); short != "" {
-					<span class="tr__desc" data-i18n={ "agentdesc." + agent.Name } data-i18n-baseline={ short }>{ short }</span>
-				}
-			</div>
-			<select class="sel" name={ "agentfm." + agent.Name + ".model" } id={ "agentfm." + agent.Name + ".model" } aria-label={ "Model for " + agent.Name }>
-				for _, m := range agentFMModelValues() {
-					if m == agentSelectedModel(llm, agent) {
-						<option value={ m } selected data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
-					} else {
-						<option value={ m } data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
-					}
-				}
-			</select>
-			<div>
-				// Haiku does not honor reasoning effort — disable the effort select
-				// (initial render, so the no-JS page is correct too). app.js re-toggles
-				// this live when the paired model select changes. A disabled select does
-				// not submit; parseAgentFMForm backfills the unsubmitted effort.
-				<select class="sel" name={ "agentfm." + agent.Name + ".effort" } id={ "agentfm." + agent.Name + ".effort" } aria-label={ "Effort for " + agent.Name } disabled?={ agentModelIsHaiku(llm, agent) }>
-					for _, e := range agentFMEffortValues() {
-						if e == agentSelectedEffort(llm, agent) {
-							<option value={ e } selected data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
-						} else {
-							<option value={ e } data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
-						}
-					}
-				</select>
-				// Muted note explaining the disabled effort — present in the DOM always
-				// so app.js can toggle it client-side; hidden until the model is haiku.
-				<span class="field__help" data-haiku-hint data-i18n="hint.effort.haiku_na" hidden?={ !agentModelIsHaiku(llm, agent) }>Effort N/A for Haiku</span>
-				// t66: the GLM reading of this row's effort — the z.ai reasoning
-				// state it collapses to, rendered only under a GLM backend. The
-				// tooltip reuses the canonical option keys the 3rd Party LLM
-				// section serves, so the two surfaces share one vocabulary; the
-				// value itself is a technical identifier and stays untranslated.
-				if rs := agentGLMReasoning(llm, agent.Name); rs != "" {
-					<code class="key" data-glm-reasoning={ rs } data-i18n-title={ "f.llm.glm.effort.opt." + rs }>{ rs }</code>
-				}
-			</div>
-			@fieldErr(errs, "agentfm."+agent.Name+".model")
-			@fieldErr(errs, "agentfm."+agent.Name+".effort")
-		</div>
-	} else {
-		<div class="tr tr--afm">
-			<div class="tr__sub">
-				<span class="tr__name"><code class="key">{ agent.Name }</code></span>
-				<span class="tr__desc" data-i18n="agentfm.unavailable">unavailable (frontmatter parse failed)</span>
-			</div>
-		</div>
-	}
 }
 
 // ─── SPEC-MCP-CONSOLE-001 M2: per-tool MCP enablement panel ──────────────────

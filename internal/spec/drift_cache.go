@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 )
 
 // drift_cache.go — HEAD-SHA-keyed drift result cache
@@ -76,18 +78,66 @@ func loadDriftCache(baseDir, head string) (*DriftReport, bool) {
 	return &DriftReport{Records: records, Count: cached.Count}, true
 }
 
+// CacheHeadSHA resolves the drift cache's KEY for a project root: the HEAD SHA
+// the cache is stored against.
+//
+// It exists so the SessionStart handler's suppression record and the cache
+// itself are keyed on the same value resolved the same way — a record keyed on
+// a differently-derived head would suppress fills for a cache entry that never
+// matches. O(1): one `git rev-parse`, no git-log work.
+func CacheHeadSHA(baseDir string) (string, error) {
+	return gitHeadSHAAt(baseDir)
+}
+
+// CachedDriftCount returns the drift count cached against the current HEAD.
+//
+// ok=false means "no usable entry for this HEAD" and is returned for every
+// failure mode: a non-git checkout, an absent or unreadable cache file,
+// malformed JSON, or an entry written against a different HEAD. It performs NO
+// git-log work on either path — that is the whole point: the session-start
+// advisory resolves from the cache alone, and a miss costs nothing.
+func CachedDriftCount(baseDir string) (int, bool) {
+	head, err := gitHeadSHAAt(baseDir)
+	if err != nil || head == "" {
+		return 0, false
+	}
+	report, ok := loadDriftCache(baseDir, head)
+	if !ok || report == nil {
+		return 0, false
+	}
+	return report.Count, true
+}
+
+// driftCacheReplaceFn is the final rename step of the cache write, as a seam so
+// an interrupted write can be observed directly rather than inferred. Production
+// points it at the in-tree atomic primitive.
+var driftCacheReplaceFn = atomicfile.Replace
+
 // saveDriftCache persists report keyed on head.
 //
 // Best-effort by design: every error is swallowed. A failed cache write costs a
 // recompute on the next run, which is strictly better than failing a check whose
 // entire purpose is advisory.
+//
+// The write is ATOMIC — temp file in the destination directory, then
+// atomicfile.Replace. The out-of-band fill child (the only writer of this file
+// that is bounded by a deadline) is bounded at a duration engineered to fire
+// near completion, which is exactly when an in-place os.WriteFile of a large
+// JSON payload is most likely to be mid-flight. loadDriftCache would fail open
+// on the truncated result; a torn file is prevented rather than tolerated.
+//
+// Replace is the counterpart of atomicfile.Claim and the two are never
+// substituted: Replace answers "make this path hold this content" (an existing
+// destination is success), Claim answers "am I the one who proceeds" (an
+// existing path is failure).
 func saveDriftCache(baseDir, head string, report *DriftReport) {
 	if head == "" || report == nil {
 		return
 	}
 
 	path := driftCachePath(baseDir)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return
 	}
 
@@ -103,5 +153,27 @@ func saveDriftCache(baseDir, head string, report *DriftReport) {
 		return
 	}
 
-	_ = os.WriteFile(path, data, 0o644)
+	tmp, err := os.CreateTemp(dir, ".drift-cache-*.tmp")
+	if err != nil {
+		return
+	}
+	tmpName := tmp.Name()
+	// Every failure path below removes the temp file: a residual artefact in
+	// .moai/state/ is indistinguishable from state the runtime owns.
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+		return
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpName)
+		return
+	}
+	if err := os.Chmod(tmpName, 0o644); err != nil {
+		_ = os.Remove(tmpName)
+		return
+	}
+	if err := driftCacheReplaceFn(tmpName, path); err != nil {
+		_ = os.Remove(tmpName)
+	}
 }

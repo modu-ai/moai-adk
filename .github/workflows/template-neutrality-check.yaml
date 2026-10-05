@@ -28,7 +28,7 @@ on:
       - 'internal/template/template_neutrality_audit_test.go'
       - 'internal/template/internal_content_leak_test.go'
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - 'internal/template/templates/**'
       - 'internal/template/template_neutrality_audit_test.go'

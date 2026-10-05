@@ -19,12 +19,27 @@ import (
 )
 
 // subagentStopHandler processes SubagentStop events.
-// It cleans up tmux panes when teammates shut down.
-type subagentStopHandler struct{}
+// It cleans up tmux panes when teammates shut down, and records the model that
+// actually answered the subagent (served_model_stop.go).
+type subagentStopHandler struct {
+	// cfg is the configuration provider the served-model observer resolves the
+	// profile model through — the same provider the PreToolUse agent-model
+	// guard reads. nil means no configuration is reachable.
+	cfg ConfigProvider
+}
 
-// NewSubagentStopHandler creates a new SubagentStop event handler.
+// NewSubagentStopHandler creates a new SubagentStop event handler without a
+// configuration provider. The served-model observer then has only the
+// declared model to compare against; an undeclared spawn records `unknown`.
 func NewSubagentStopHandler() Handler {
-	return &subagentStopHandler{}
+	return NewSubagentStopHandlerWithConfig(nil)
+}
+
+// NewSubagentStopHandlerWithConfig creates a SubagentStop event handler whose
+// served-model observer resolves the expected model through cfg — the same
+// provider the PreToolUse handler is constructed with.
+func NewSubagentStopHandlerWithConfig(cfg ConfigProvider) Handler {
+	return &subagentStopHandler{cfg: cfg}
 }
 
 // EventType returns EventSubagentStop.
@@ -36,6 +51,45 @@ func (h *subagentStopHandler) EventType() EventType {
 // the teammate's tmux pane ID, kills the pane, and updates the config.
 // W3 (REQ-HRA-001): also dispatches to harness-learner capture pipeline.
 func (h *subagentStopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	// Audit-receipt guard (SPEC-CODEX-AUDIT-GATE-AXES-001 REQ-CAG-011..013,016).
+	// Evaluated first so the decision is taken from the auditor's own final
+	// message before any teardown runs, and merged into whatever the teardown
+	// path returns below. nil means the guard has no opinion, which is every
+	// case outside an auditor in a tree that declared the codex gate required.
+	guard := checkAuditorStop(input)
+	// Served-model observation (SPEC-SERVED-MODEL-AUDIT-001). Never blocks and
+	// never fails the hook: its only outputs are an audit row and, at most, a
+	// warning message appended to the merged output.
+	obs, warning := h.observeServedModel(input)
+	notice := checkServedModelStop(input, obs)
+	out, err := h.handleTeardown(ctx, input)
+	out = appendSystemMessage(mergeAuditorStopGuard(out, guard), warning)
+	return appendSystemMessage(out, notice), err
+}
+
+// mergeAuditorStopGuard lays the guard's decision over the teardown output.
+// The teardown never returns a decision of its own, so there is nothing to
+// displace — the merge exists so a later teardown decision would have to be
+// reconciled deliberately rather than silently dropped.
+func mergeAuditorStopGuard(out, guard *HookOutput) *HookOutput {
+	if guard == nil {
+		return out
+	}
+	if out == nil {
+		return guard
+	}
+	if guard.Decision != "" {
+		out.Decision, out.Reason = guard.Decision, guard.Reason
+	}
+	if guard.SystemMessage != "" {
+		out.SystemMessage = guard.SystemMessage
+	}
+	return out
+}
+
+// handleTeardown is the pre-existing SubagentStop body: capture dispatch,
+// routing ledger, and tmux pane cleanup.
+func (h *subagentStopHandler) handleTeardown(ctx context.Context, input *HookInput) (*HookOutput, error) {
 	slog.Info("subagent stopped",
 		"session_id", input.SessionID,
 		"agent_id", input.AgentID,

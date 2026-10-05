@@ -505,7 +505,9 @@ func withFakeOwnershipLookup(t *testing.T, rec *ownershipTransitionRecord, err e
 // OwnershipTransitionInvalid finding referencing the commit SHA — because the matrix
 // assigns `in-progress → implemented` to manager-docs, NOT manager-develop.
 //
-// Negative fixture: same diff WITHOUT the trailer → zero findings (silent SKIP).
+// Negative fixture (intentional behavior change, SPEC-OWNERSHIP-SILENCE-001
+// REQ-OWN-006): same diff WITHOUT the trailer → one OwnershipTransitionUnmeasured
+// Info finding (formerly a silent SKIP).
 func TestOwnershipTransitionDetected(t *testing.T) {
 	const commitSHA = "deadbeef1234"
 
@@ -547,13 +549,18 @@ func TestOwnershipTransitionDetected(t *testing.T) {
 		}
 	})
 
-	t.Run("trailer_absent_silent_skip", func(t *testing.T) {
+	t.Run("trailer_absent_emits_unmeasured", func(t *testing.T) {
+		// intentional behavior change (SPEC-OWNERSHIP-SILENCE-001 REQ-OWN-006): silent skip → unmeasured Info.
+		// The M4-era form (`trailer_absent_silent_skip`) asserted zero findings on a
+		// trailer-less commit; the fix reports the unmeasured state as a plain Info
+		// finding instead. No OwnershipTransitionInvalid may appear — an unmeasured
+		// state is not a violation.
 		restore := withFakeOwnershipLookup(t, &ownershipTransitionRecord{
 			PreviousStatus:  "in-progress",
 			CurrentStatus:   "implemented",
 			CommitSubject:   "feat(SPEC-FOO-001): M5 close-out implementation",
 			CommitSHA:       commitSHA,
-			AuthoredByAgent: "", // legacy / non-MoAI commit — no trailer
+			AuthoredByAgent: "", // trailer-less commit — unmeasured, reported as Info
 		}, nil)
 		defer restore()
 
@@ -568,10 +575,20 @@ func TestOwnershipTransitionDetected(t *testing.T) {
 		rule := &OwnershipTransitionRule{}
 		findings := rule.Check(doc, nil)
 
+		var unmeasured int
 		for _, f := range findings {
 			if f.Code == "OwnershipTransitionInvalid" {
-				t.Errorf("expected silent SKIP (zero OwnershipTransitionInvalid) for trailer-less commit, got: %s", f.Message)
+				t.Errorf("unmeasured state must not be reported as OwnershipTransitionInvalid, got: %s", f.Message)
 			}
+			if f.Code == "OwnershipTransitionUnmeasured" {
+				unmeasured++
+				if f.Severity != SeverityInfo {
+					t.Errorf("expected Info severity, got %s", f.Severity)
+				}
+			}
+		}
+		if unmeasured != 1 {
+			t.Errorf("expected exactly 1 OwnershipTransitionUnmeasured finding for trailer-less commit, got %d: %+v", unmeasured, findings)
 		}
 	})
 
@@ -603,6 +620,183 @@ func TestOwnershipTransitionDetected(t *testing.T) {
 			}
 		}
 	})
+}
+
+// TestOwnershipTransitionUnmeasured exercises the SPEC-OWNERSHIP-SILENCE-001 behavior:
+// a FOUND transition commit WITHOUT the `Authored-By-Agent:` trailer is reported as an
+// OwnershipTransitionUnmeasured Info finding ("noisy unmeasured") instead of passing
+// silently (the former M4 silent-skip guard).
+//
+// RED (pre-fix tree, b642479ec): the trailer-less branch returned nil, so both subtests
+// failed with "expected exactly 1 OwnershipTransitionUnmeasured finding, got 0" —
+// the failure reason is the silent nil branch itself, not a compile or fixture error.
+func TestOwnershipTransitionUnmeasured(t *testing.T) {
+	const commitSHA = "a1b2c3d4e5f6a7b8"
+
+	t.Run("trailer_absent_emits_unmeasured", func(t *testing.T) {
+		restore := withFakeOwnershipLookup(t, &ownershipTransitionRecord{
+			PreviousStatus:  "in-progress",
+			CurrentStatus:   "implemented",
+			CommitSubject:   "feat(SPEC-FOO-001): M5 close-out implementation",
+			CommitSHA:       commitSHA,
+			AuthoredByAgent: "", // trailer-less commit — unmeasured, reported as Info
+		}, nil)
+		defer restore()
+
+		doc := &SPECDoc{
+			Path: ".moai/specs/SPEC-FOO-001/spec.md",
+			Frontmatter: SPECFrontmatter{
+				ID:     "SPEC-FOO-001",
+				Status: "implemented",
+			},
+		}
+
+		rule := &OwnershipTransitionRule{}
+		findings := rule.Check(doc, nil)
+
+		var unmeasured []Finding
+		for _, f := range findings {
+			if f.Code == "OwnershipTransitionUnmeasured" {
+				unmeasured = append(unmeasured, f)
+			}
+		}
+		if len(unmeasured) != 1 {
+			t.Fatalf("expected exactly 1 OwnershipTransitionUnmeasured finding, got %d: %+v", len(unmeasured), findings)
+		}
+		f := unmeasured[0]
+		if f.Severity != SeverityInfo {
+			t.Errorf("expected Info severity, got %s", f.Severity)
+		}
+		if f.Advisory {
+			t.Errorf("expected plain Info (no Advisory flag), got Advisory=true")
+		}
+		// REQ-OWN-002: message must carry all five elements — SPEC id, prev → curr,
+		// commit SHA, commit subject, and the reason.
+		for _, want := range []string{
+			"SPEC-FOO-001",
+			`"in-progress" → "implemented"`,
+			commitSHA,
+			"feat(SPEC-FOO-001): M5 close-out implementation",
+			"no Authored-By-Agent trailer",
+		} {
+			if !strings.Contains(f.Message, want) {
+				t.Errorf("expected finding message to contain %q, got: %s", want, f.Message)
+			}
+		}
+	})
+
+	t.Run("none_to_draft_emits_unmeasured_with_none_literal", func(t *testing.T) {
+		// (none) → draft transition: PreviousStatus is empty and MUST be rendered as
+		// the literal "(none)" via emptyOrValue in the finding message.
+		restore := withFakeOwnershipLookup(t, &ownershipTransitionRecord{
+			PreviousStatus:  "",
+			CurrentStatus:   "draft",
+			CommitSubject:   "feat(SPEC-FOO-001): plan-phase artifacts (M, 3 artifacts)",
+			CommitSHA:       commitSHA,
+			AuthoredByAgent: "", // trailer-less commit — unmeasured, reported as Info
+		}, nil)
+		defer restore()
+
+		doc := &SPECDoc{
+			Path: ".moai/specs/SPEC-FOO-001/spec.md",
+			Frontmatter: SPECFrontmatter{
+				ID:     "SPEC-FOO-001",
+				Status: "draft",
+			},
+		}
+
+		rule := &OwnershipTransitionRule{}
+		findings := rule.Check(doc, nil)
+
+		var unmeasured []Finding
+		for _, f := range findings {
+			if f.Code == "OwnershipTransitionUnmeasured" {
+				unmeasured = append(unmeasured, f)
+			}
+		}
+		if len(unmeasured) != 1 {
+			t.Fatalf("expected exactly 1 OwnershipTransitionUnmeasured finding, got %d: %+v", len(unmeasured), findings)
+		}
+		f := unmeasured[0]
+		if f.Severity != SeverityInfo {
+			t.Errorf("expected Info severity, got %s", f.Severity)
+		}
+		for _, want := range []string{
+			"SPEC-FOO-001",
+			`"(none)" → "draft"`,
+			commitSHA,
+			"feat(SPEC-FOO-001): plan-phase artifacts (M, 3 artifacts)",
+			"no Authored-By-Agent trailer",
+		} {
+			if !strings.Contains(f.Message, want) {
+				t.Errorf("expected finding message to contain %q, got: %s", want, f.Message)
+			}
+		}
+	})
+}
+
+// TestOwnershipTransitionUnmeasuredStrictSafe mirrors the lint.go strict-promotion
+// condition (`r.Strict && f.Severity == SeverityWarning && !f.Advisory`) for the new
+// OwnershipTransitionUnmeasured finding (SPEC-OWNERSHIP-SILENCE-001 REQ-OWN-004/005):
+// the Info finding must NEVER flip HasErrors() under --strict, and must stay a distinct
+// code+severity from OwnershipTransitionInvalid (Warning) — an unmeasured state is a
+// statement about measurement, never a violation.
+func TestOwnershipTransitionUnmeasuredStrictSafe(t *testing.T) {
+	const commitSHA = "feedface1234"
+
+	// (1) Standalone Report carrying only the new Info finding.
+	infoReport := &Report{
+		Findings: []Finding{
+			{
+				File:     ".moai/specs/SPEC-FOO-001/spec.md",
+				Line:     1,
+				Severity: SeverityInfo,
+				Code:     "OwnershipTransitionUnmeasured",
+				Message:  `SPEC SPEC-FOO-001 transition "in-progress" → "implemented" unmeasured`,
+			},
+		},
+		Strict: true,
+	}
+	if infoReport.HasErrors() {
+		t.Errorf("expected HasErrors()==false with Strict=true for a standalone OwnershipTransitionUnmeasured Info, got true")
+	}
+
+	// (2) Report built from the actual Check() return on a trailer-less transition.
+	restore := withFakeOwnershipLookup(t, &ownershipTransitionRecord{
+		PreviousStatus:  "in-progress",
+		CurrentStatus:   "implemented",
+		CommitSubject:   "feat(SPEC-FOO-001): M5 close-out implementation",
+		CommitSHA:       commitSHA,
+		AuthoredByAgent: "",
+	}, nil)
+	defer restore()
+
+	doc := &SPECDoc{
+		Path: ".moai/specs/SPEC-FOO-001/spec.md",
+		Frontmatter: SPECFrontmatter{
+			ID:     "SPEC-FOO-001",
+			Status: "implemented",
+		},
+	}
+	rule := &OwnershipTransitionRule{}
+	findings := rule.Check(doc, nil)
+	if len(findings) == 0 {
+		t.Fatalf("expected the OwnershipTransitionUnmeasured finding from Check(), got none")
+	}
+	checkReport := &Report{Findings: findings, Strict: true}
+	if checkReport.HasErrors() {
+		t.Errorf("expected HasErrors()==false with Strict=true for the Check() report, got true: %+v", findings)
+	}
+
+	// (3) REQ-OWN-005: distinct code + severity from OwnershipTransitionInvalid.
+	for _, f := range findings {
+		if f.Code == "OwnershipTransitionInvalid" {
+			t.Errorf("unmeasured state must not be reported as OwnershipTransitionInvalid, got: %s", f.Message)
+		}
+		if f.Severity == SeverityWarning {
+			t.Errorf("unmeasured finding must be Info, not Warning (Warning is strict-escalatable), got: %s", f.Severity)
+		}
+	}
 }
 
 // TestSkipOptOut exercises the AC-LSG-012 lint.skip opt-out path.

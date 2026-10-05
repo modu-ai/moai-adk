@@ -140,11 +140,16 @@ go build ./...; build_rc=$?; echo "build_exit=$build_rc"
 # Mechanical: every value ADDED to envkeys.go must already exist in the base-tree
 # production inventory. `comm -13` emits lines present ONLY on the right (added
 # values with no base-tree counterpart) -- i.e. an invented or typo'd value.
-comm -13 \
-  <(git grep -ho -E '"ANTHROPIC_[A-Z_]*"' 76d9a8f3b \
-      -- 'internal/*.go' 'pkg/*.go' 'cmd/*.go' ':(exclude)*_test.go' | sort -u) \
-  <(git diff 76d9a8f3b -- internal/config/envkeys.go \
-      | grep '^+' | grep -oE '"ANTHROPIC_[A-Z_]*"' | sort -u)
+# Mechanical: every value ADDED to envkeys.go must already exist in the base-tree
+# production inventory. `comm -13` emits lines present ONLY on the right (added
+# values with no base-tree counterpart) -- i.e. an invented or typo'd value.
+# (The two git captures run as separate plain commands — process substitution with
+# git inside is refused by the worktree guard.)
+git grep -ho -E '"ANTHROPIC_[A-Z_]*"' 76d9a8f3b \
+    -- 'internal/*.go' 'pkg/*.go' 'cmd/*.go' ':(exclude)*_test.go' | sort -u > /tmp/ek-base.txt
+git diff 76d9a8f3b -- internal/config/envkeys.go \
+    | grep '^+' | grep -oE '"ANTHROPIC_[A-Z_]*"' | sort -u > /tmp/ek-added.txt
+comm -13 /tmp/ek-base.txt /tmp/ek-added.txt
 ```
 
 - **Baseline observed:** `build_exit=0`. The `comm -13` produced **empty output**

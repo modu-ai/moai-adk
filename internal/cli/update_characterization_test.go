@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update"
-	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 )
 
 // This file is the M3b characterization safety net (SPEC-CLI-TUX-V3-003,

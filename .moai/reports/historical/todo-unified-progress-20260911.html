@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Todo
+DB 통일 · 착수 및 구현 인계 보고</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+:root{--ivory:#FAF9F5;--paper:#fff;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;--olive:#788C5D;--g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;--sans:Pretendard,system-ui,sans-serif;--serif:ui-serif,Georgia,serif;--mono:ui-monospace,monospace}*{box-sizing:border-box}body{margin:0;background:var(--ivory);color:var(--slate);font:16px/1.75 var(--sans)}main{max-width:1120px;margin:auto;padding:40px 24px 80px}header{background:var(--slate);color:var(--ivory);padding:28px;border-radius:12px}h1{font-size:30px;line-height:1.35}h2{font-size:23px;margin-top:36px}h3{font-size:19px}section{margin:24px 0;padding:20px;background:var(--paper);border:1px solid var(--g300);border-radius:12px}.strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}.strip div{padding:16px;background:var(--oat);border-radius:8px}.strip small{display:block}.strip strong{font-size:18px}a{color:var(--clay-d)}p,li,td{overflow-wrap:anywhere}table{width:100%;border-collapse:collapse;background:var(--paper);font-size:14px}td,th{text-align:left;vertical-align:top;padding:10px;border-bottom:1px solid var(--g300)}th{background:var(--oat)}pre{overflow:auto;background:var(--g100);padding:16px;border-radius:8px;font:12px/1.7 var(--mono)}code{font-family:var(--mono)}blockquote{border-left:4px solid var(--clay);padding:12px;background:var(--oat)}footer{margin-top:32px;font-size:13px;color:var(--g700)}@media(max-width:700px){main{padding:20px 12px}.strip{grid-template-columns:repeat(2,1fr)}table{display:block;overflow:auto}h1{font-size:25px}}@media print{body{background:#fff}main{padding:0}header{background:#eee;color:#000}nav{display:none}pre{white-space:pre-wrap}tr{break-inside:avoid}}
+</style></head><body><main>
+<header><p>MOAI · t648 · 2026-09-11</p><h1>Todo DB 통일 · 착수 및 구현
+인계
+보고</h1><p>승인 범위 확정 · 선행 변경 통합 완료 · 신규 구현은 실행 환경 제한으로 미착수</p></header>
+<div class="strip"><div><small>카드</small><strong>t648 · picked</strong></div><div><small>통합 기준</small><strong>8ab93ee20</strong></div><div><small>신규 기능</small><strong>미구현</strong></div><div><small>원격 전달</small><strong>미실행</strong></div></div>
+<section><h2>무엇을 한곳에 모으는가</h2><p>두 실행 모드가 카드 상태를 각각 저장하면 완료 여부를 다시 맞춰야 합니다. 새 설계에서는 카드와 실행 권한, 완료를 증명하는 기록을 Todo DB 한곳에서 확정합니다. heartbeat는 작업자가 살아 있는지 참고하는 정보이며, 그 자체로 카드 소유권이나 완료를 결정하지 않습니다.</p>
+<pre class="mermaid">flowchart TD
+K[칸반 모드] --> S[공통 Todo 실행 서비스]
+F[팩토리 모드] --> S
+S --> T[Todo DB: 카드·실행 권한·완료 기록]
+T --> G[근거가 있는 관계 Graph]
+G --> V[읽기 전용 시각화]
+F -. 생존 관측 .-> H[별도 heartbeat·상세 로그]
+</pre><p>설계 순서: 공통 완료 확정·복구 → 관계 Graph → 시각화. 위 도식은 목표 구조이며 현재 구현 상태가 아닙니다.</p><noscript><p>칸반과 팩토리가 같은 Todo 실행 서비스를 사용하고, 그 DB의 확정 정보를 Graph와 화면에서 읽도록 설계합니다.</p></noscript>
+<h3>재시도의 의미</h3><p>예를 들어 t648의 완료 기록을 저장한 직후 응답 전에 프로그램이 종료되었다면, 재시도는 새 완료를 만들지 않고 이미 확정된 기록을 반환해야 합니다. 이 사례는 앞으로 검증할 수용 조건이며 이번에 통과한 테스트가 아닙니다.</p></section>
+<details><summary>목차</summary><nav><ul>
+<li><a href="#claim-현재까지-완료한-작업"
+id="toc-claim-현재까지-완료한-작업">Claim — 현재까지 완료한 작업</a>
+<ul>
+<li><a href="#코드-조사로-확인한-저장-경계"
+id="toc-코드-조사로-확인한-저장-경계">코드 조사로 확인한 저장
+경계</a></li>
+<li><a href="#최소-변경-설계안-아직-구현되지-않음"
+id="toc-최소-변경-설계안-아직-구현되지-않음">최소 변경 설계안 — 아직
+구현되지 않음</a></li>
+<li><a href="#새-구현에서-필요한-검증-실행-전-계획"
+id="toc-새-구현에서-필요한-검증-실행-전-계획">새 구현에서 필요한 검증 —
+실행 전 계획</a></li>
+</ul></li>
+<li><a href="#evidence-실행-명령과-실제-출력"
+id="toc-evidence-실행-명령과-실제-출력">Evidence — 실행 명령과 실제
+출력</a>
+<ul>
+<li><a href="#카드" id="toc-카드">카드</a></li>
+<li><a href="#선행-변경-통합" id="toc-선행-변경-통합">선행 변경
+통합</a></li>
+<li><a href="#실행-환경의-차단" id="toc-실행-환경의-차단">실행 환경의
+차단</a></li>
+</ul></li>
+<li><a href="#baseline-attribution-이번-관측의-기준"
+id="toc-baseline-attribution-이번-관측의-기준">Baseline-attribution —
+이번 관측의 기준</a></li>
+<li><a href="#gaps-아직-하지-않은-일"
+id="toc-gaps-아직-하지-않은-일">Gaps — 아직 하지 않은 일</a></li>
+<li><a href="#residual-risk-후속-작업의-주의점"
+id="toc-residual-risk-후속-작업의-주의점">Residual-risk — 후속 작업의
+주의점</a>
+<ul>
+<li><a href="#후속-구현용-생산-경로-목록"
+id="toc-후속-구현용-생산-경로-목록">후속 구현용 생산 경로 목록</a></li>
+</ul></li>
+</ul></nav></details>
+<h1 id="claim-현재까지-완료한-작업">Claim — 현재까지 완료한 작업</h1>
+<p><strong>t648을 발행·착수 상태로 기록하고, 새 작업 공간에 선행 Todo
+감사 변경을 통합했다. DB 통일·완료 자동 확정·Graph·시각화의 신규 구현은
+아직 하지 않았다.</strong></p>
+<p>운영자가 확정한 범위는 카드 및 실행의 정확성에 필요한 정보를 프로젝트
+Todo DB로 통일하는 것이다. heartbeat와 상세 로그는 별도 저장할 수 있다.
+네 단계는 독립적인 상태 저장소가 아니라 하나의 공통 모델을 순차
+확장하므로, 이번에는 t648 한 장 아래 단계별로 추적한다.</p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>순서</th>
+<th>우선순위</th>
+<th>구현 범위</th>
+<th>현재 상태</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>High</td>
+<td>카드 identity, 실행 소유권, 완료 기록, 중단·중복·재개 복구를 Todo
+DB에서 처리</td>
+<td>조사, 미구현</td>
+</tr>
+<tr>
+<td>2</td>
+<td>High</td>
+<td>칸반·팩토리·sync의 공통 완료 호출과 단일 상태 조회</td>
+<td>조사, 미구현</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Medium</td>
+<td>카드·실행·SPEC·커밋·검증·완료 기록의 의미 있는 관계</td>
+<td>조사, 미구현</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Low</td>
+<td>기존 Todo 화면에서 의존성·완료 근거·복구 대기 사유 표시</td>
+<td>연결 위치 확인, 미구현</td>
+</tr>
+</tbody>
+</table>
+<h2 id="코드-조사로-확인한-저장-경계">코드 조사로 확인한 저장 경계</h2>
+<p>아래는 소스 구조 관측이며, 신규 설계가 동작한다는 검증 결과가
+아니다.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>영역</th>
+<th>관측한 소스</th>
+<th>설계에 반영할 사항</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Factory 실행 시작</td>
+<td><code>internal/kanban/factory_runtime.go</code> →
+<code>homestate.RecordRun</code></td>
+<td>실행의 정확성에 필요한 기록은 Todo 공통 서비스로 이동</td>
+</tr>
+<tr>
+<td>Factory 카드 상태</td>
+<td><code>internal/cli/todo.go</code> →
+<code>recordFactoryCardState</code> →
+<code>homestate.RecordCard</code></td>
+<td>별도 Factory 카드 상태를 완료 판단의 기준으로 유지하지 않음</td>
+</tr>
+<tr>
+<td>별도 스키마</td>
+<td><code>internal/homestate/factory.go</code>와
+<code>internal/kanban/backlog_sqlite.go</code></td>
+<td>두 DB의 <code>meta.schema_version</code> 계약이 다르므로 경로만
+바꾸지 않음</td>
+</tr>
+<tr>
+<td>Todo 변경 잠금</td>
+<td><code>BacklogStore.Mutate</code>와
+<code>writeRecordArchive</code></td>
+<td>모든 writer가 공통 잠금을 사용하고 완료 관련 변경을 같은 SQL
+transaction에 포함</td>
+</tr>
+<tr>
+<td>실행 소유권</td>
+<td><code>internal/kanban/factory_slots.go</code>의 슬롯 선점</td>
+<td>heartbeat와 구별하여 슬롯 소유권도 정확성 데이터로 취급</td>
+</tr>
+<tr>
+<td>재개 권리</td>
+<td><code>internal/homestate/handoff.go</code>의 claim token·만료·소비
+처리</td>
+<td>오래된 실행이 재개 권리를 행사하지 않도록 공통 실행 세대와 연결</td>
+</tr>
+<tr>
+<td>sync 체크포인트</td>
+<td><code>internal/session/checkpoint.go</code>의
+<code>SyncCheckpoint</code></td>
+<td>SPEC/PR/DocsSynced만으로 카드 완료를 확정하지 않음</td>
+</tr>
+<tr>
+<td>웹 읽기</td>
+<td><code>internal/web/todo_queue_read.go</code>의
+<code>LoadPure</code></td>
+<td>조회가 migration·recovery·완료 처리를 실행하지 않도록 유지</td>
+</tr>
+<tr>
+<td>기존 Graph</td>
+<td><code>internal/graph/graph.go</code>, <code>reader.go</code></td>
+<td>JSONL 코드 그래프와 Todo의 정식 관계를 구분하고 기존 탐색 함수를
+필요한 곳에 재사용</td>
+</tr>
+</tbody>
+</table>
+<p>Factory worker 정보에는 슬롯 선점과 heartbeat가 함께 존재한다. 따라서
+workers 테이블 전체를 단순 관측 로그로 남긴다는 해석은 승인된 범위에
+맞지 않는다. 슬롯 소유권과 실행 세대는 Todo의 공통 상태에 연결하고,
+heartbeat는 실행 생존 여부의 참고 자료로 분리하는 방향으로 설계해야
+한다.</p>
+<h2 id="최소-변경-설계안-아직-구현되지-않음">최소 변경 설계안 — 아직
+구현되지 않음</h2>
+<ol type="1">
+<li>카드의 불변 UUID와 표시용 <code>tNN</code>, 실행 세대를 구분한다.
+기존 live/archive 기록도 식별자를 유지한다.</li>
+<li>실행 선점은 owner token과 generation으로 보호한다. 완료 취소 또는
+실행 인수 후 이전 token으로 온 완료 요청을 거절한다.</li>
+<li>증거 수집·Git 조회는 쓰기 잠금 밖에서 수행한다. 확정 시 현재 실행과
+증거 대상을 다시 대조한다.</li>
+<li>하나의 Todo 쓰기 transaction에서 완료 기록·카드 archive·실행 완료를
+확정한다. 같은 요청의 재실행은 기존 완료 기록을 반환한다.</li>
+<li>외부 알림 등 실제 DB 밖으로 전달할 일이 있을 때만 재시도 기록을
+둔다. Factory 카드 상태를 복제하기 위한 별도 동기화는 만들지
+않는다.</li>
+<li>Graph 관계에는 종류·출처·대상 식별자·근거 유효성을 둔다. 추론한
+관계만으로 pick/drop/완료를 수행하지 않는다.</li>
+<li>기존 <code>/todo</code> 화면의 읽기 전용 원칙, 텍스트 escaping,
+접근성을 유지한다. 완료된 카드의 과거 상태 <code>picked</code>와 현재
+완료 여부를 구분하여 표시한다.</li>
+</ol>
+<p>SQLite는 같은 DB에서 여러 reader와 하나의 writer를 허용한다. WAL을
+사용하는 별도 DB들을 단순히 연결한다고 전체 원자성이 보장되는 것은
+아니다. 이는 정확성 데이터를 한 DB에 모으는 설계의 근거이며, 이번 작업의
+성능 실측은 아니다. <a
+href="https://www.sqlite.org/lang_transaction.html">SQLite transaction
+공식 문서</a>, <a href="https://www.sqlite.org/wal.html">SQLite WAL 공식
+문서</a></p>
+<h2 id="새-구현에서-필요한-검증-실행-전-계획">새 구현에서 필요한 검증 —
+실행 전 계획</h2>
+<ul>
+<li>완료 기록 insert 실패 시 카드·실행 변경도 함께 rollback되는지
+확인한다.</li>
+<li>commit 직후 응답 전 종료 후 재시도해도 완료 기록이 한 개만 남는지
+확인한다.</li>
+<li>동일 카드의 동시 선점과 동시 완료를 두 모드에서 경쟁시킨다.</li>
+<li>undone 후 이전 실행 token으로 완료를 요청해도 live 카드가 유지되는지
+확인한다.</li>
+<li>같은 표시 ID가 다른 프로젝트에 있을 때 서로 영향을 주지 않는지
+확인한다.</li>
+<li>schema backfill 중단 후 구 schema 또는 완전한 새 schema만 관찰되는지
+확인한다.</li>
+<li>active WAL을 읽을 때 카드·완료 기록·실행 정보가 같은 스냅숏인지
+확인한다.</li>
+<li>history·Graph·웹 조회가 저장된 카드나 schema를 변경하지 않는지
+확인한다.</li>
+<li>Graph의 순환·깊이 제한·archive 이력·근거 누락을 검증한다.</li>
+<li>실제 화면에서 키보드 탐색·작은 화면·오류와 빈 결과 구분을
+확인한다.</li>
+</ul>
+<h1 id="evidence-실행-명령과-실제-출력">Evidence — 실행 명령과 실제
+출력</h1>
+<h2 id="카드">카드</h2>
+<p>등록 명령은
+<code>moai todo add '&lt;승인 범위와 완료 조건 전문&gt;' --pick</code>이었다.
+실제 출력:</p>
+<pre class="text"><code>picked t648 [TODO-UNIFIED-20260911 · 운영자 범위 확정 및 진행 ...</code></pre>
+<p>완료 처리하지 않고 아래 명령으로 다시 읽었다.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">moai</span> todo list <span class="at">--json</span> <span class="kw">|</span> <span class="ex">jq</span> <span class="st">&#39;{items:[.items[] | select(.id==&quot;t648&quot;) | {id,state,text}]}&#39;</span></span></code></pre></div>
+<p>출력 중 상태 필드의 원문:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;id&quot;</span><span class="er">:</span> <span class="st">&quot;t648&quot;</span><span class="er">,</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;state&quot;</span><span class="er">:</span> <span class="st">&quot;picked&quot;</span></span></code></pre></div>
+<h2 id="선행-변경-통합">선행 변경 통합</h2>
+<p>전문 Git 담당이 새 작업 공간에서 실행한 명령:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> <span class="at">-C</span> /Users/goos/MoAI/moai-adk-go/.claude/worktrees/todo-unified merge <span class="at">--no-ff</span> <span class="at">--no-commit</span> 2bae4f1cc1892af61632b0c672056bdff7198932</span></code></pre></div>
+<p>실제 출력:</p>
+<pre class="text"><code>Auto-merging internal/cli/mcp_build_identity_test.go
+CONFLICT (content): Merge conflict in internal/cli/mcp_build_identity_test.go
+Auto-merging internal/template/catalog.yaml
+Automatic merge failed; fix conflicts and then commit the result.</code></pre>
+<p>충돌은 실제 소스 위치에 맞춰 <code>todo_landed.go:216</code>에서
+<code>:217</code>로 고친 테스트 기대값과 주석이었다. home-state 위치
+<code>245/253</code>은 유지했다. 이후 담당이 실행한 회귀 검증:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="bu">unset</span> <span class="va">MOAI_HOME</span> <span class="va">MOAI_CONFIG_DIR</span> <span class="va">MOAI_PROJECT_ROOT</span> <span class="va">CLAUDE_PROJECT_DIR</span> <span class="va">GIT_DIR</span> <span class="va">GIT_WORK_TREE</span> <span class="va">GIT_INDEX_FILE</span> <span class="va">GIT_COMMON_DIR</span> <span class="kw">&amp;&amp;</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="ex">go</span> test ./internal/cli <span class="at">-run</span> <span class="st">&#39;^TestAuditLagUsesBinlagSeam$&#39;</span> <span class="at">-count</span><span class="op">=</span>1 <span class="at">-timeout</span><span class="op">=</span>120s</span></code></pre></div>
+<pre class="text"><code>ok      github.com/modu-ai/moai-adk/internal/cli    2.566s</code></pre>
+<p>통합 커밋 출력:</p>
+<pre class="text"><code>[WT-todo-unified 8ab93ee20] chore(todo): integrate audit baseline (card t648)</code></pre>
+<p>루트 담당이 통합 후 다시 실행한 <code>git rev-parse HEAD</code>
+출력:</p>
+<pre class="text"><code>8ab93ee20d3adb4750552067f29fcf96977fb724</code></pre>
+<p>통합 직후 <code>git status --short</code>는 출력이 없었다. 이
+보고서를 추가하기 전 상태이며, 보고서 작성 후에도 clean이었다는 주장이
+아니다.</p>
+<h2 id="실행-환경의-차단">실행 환경의 차단</h2>
+<p>전문 설계 담당 생성 두 차례의 출력:</p>
+<pre class="text"><code>collab spawn failed: agent thread limit reached</code></pre>
+<p>이전 연결 담당을 재개하려 한 한 차례의 출력:</p>
+<pre class="text"><code>collab tool failed: agent thread limit reached</code></pre>
+<p>이는 MoAI 애플리케이션의 오류가 아니라 현재 대화의 에이전트 도구
+제한이다. 구현 담당·독립 감사 담당을 추가로 실행하지 못했으며, 제한 해제
+방법은 관측하지 못했다. 에이전트가 완료 상태인 것을 확인한 뒤에도 새
+생성은 거부되었다.</p>
+<h1 id="baseline-attribution-이번-관측의-기준">Baseline-attribution —
+이번 관측의 기준</h1>
+<ul>
+<li>일자: 2026-09-11.</li>
+<li>새 작업 공간은 원격 기본 브랜치 <code>origin/develop</code>의
+<code>b155c95f9942206d820ad3b7b4fc1cb132f41bb4</code>에서 생성했다.</li>
+<li>선행 감사 브랜치
+<code>2bae4f1cc1892af61632b0c672056bdff7198932</code>를 통합한 기준은
+<code>8ab93ee20d3adb4750552067f29fcf96977fb724</code>다.</li>
+<li>저장소 연구 담당의 일부 소스 읽기는 해당 병합이 진행 중인 트리에서
+수행했다. 테스트 기준과 혼동하지 않는다.</li>
+<li>primary checkout의 기존 dirty 변경은 보존했다.</li>
+<li>과거 t647 성능 수치를 새 설계의 측정값으로 사용하지 않았다.</li>
+</ul>
+<h1 id="gaps-아직-하지-않은-일">Gaps — 아직 하지 않은 일</h1>
+<ul>
+<li>신규 SPEC 작성과 독립 plan audit, DB 통일 구현, 자동 완료 연결,
+Graph와 화면 구현.</li>
+<li>위 신규 검증 계획의 실행, 전체 테스트와 원격 CI, 브라우저 E2E.</li>
+<li>운영 홈 DB 이전, 설치 바이너리 교체, 원격 push/PR/병합/배포.</li>
+<li>실제 SQLite <code>synchronous</code> 설정 및 전원 손실 내구성 시험.
+프로세스 종료 복구와 전원 장애 내구성은 다르다.</li>
+<li>과거 완료 누락 사례 전체의 원인 확정. 소스 관측만으로 모든 운영
+사례의 원인을 단정하지 않는다.</li>
+</ul>
+<h1 id="residual-risk-후속-작업의-주의점">Residual-risk — 후속 작업의
+주의점</h1>
+<p>한 DB로 합쳐도 writer 경쟁은 남는다. 기존 전체 레코드 저장과 새 SQL
+writer의 잠금 규약이 다르면 갱신을 잃을 수 있으므로 반드시 공통 변경
+경계를 사용해야 한다. 기존 schema 불변성 테스트는 새 버전을 지원하도록
+바꾸되 조회 전후 불변성 검증 자체는 제거하지 않는다. 새 schema와 옛
+바이너리의 혼용, 활성 세션이 있는 운영 데이터 전환은 별도의 안전 조건이
+필요하다.</p>
+<p><strong>재개 기록:</strong>
+<code>.moai/reports/t648/dispatch.md</code>. 현재 카드의 승인은
+유지되며, t648을 중복 등록하거나 선행 통합을 다시 실행하지 않는다. 작업
+공간은 미전달 변경을 보유하므로 삭제하지 않는다.</p>
+<h2 id="후속-구현용-생산-경로-목록">후속 구현용 생산 경로 목록</h2>
+<p>조사 담당이 최종 <code>8ab93ee20</code>에서 재확인한 연결이다. 줄
+번호는 후속 편집 전에 다시 확인한다.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>소비자</th>
+<th>현재 호출</th>
+<th>통일 시 놓치지 않을 부분</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>internal/cli/cc.go:172</code>, <code>glm.go:228</code></td>
+<td><code>RecordFactoryRunStart</code></td>
+<td>실행 시작 실패 전파</td>
+</tr>
+<tr>
+<td><code>internal/cli/todo.go:693,710,871,917,924</code></td>
+<td>archive/pick/unpick 후 별도 Factory 기록</td>
+<td>한 번의 공통 상태 변경</td>
+</tr>
+<tr>
+<td><code>internal/cli/factory.go:341</code></td>
+<td><code>ClaimFactoryWorkerName</code></td>
+<td>슬롯 소유권</td>
+</tr>
+<tr>
+<td><code>internal/hook/session_start_factory.go:150</code></td>
+<td><code>FactoryFreeSlots</code></td>
+<td>실제 배차 입력</td>
+</tr>
+<tr>
+<td><code>internal/web/factory_lanes.go:63</code></td>
+<td>worker PID와 세션 기록 결합</td>
+<td>공통 claim을 표시 기준으로 사용</td>
+</tr>
+<tr>
+<td><code>internal/homestate/runtime_census.go:99</code></td>
+<td>workers PID 활성 조사</td>
+<td>운영 이전 안전 검사도 새 저장소 반영</td>
+</tr>
+<tr>
+<td><code>internal/hook/handoff/pending.go:86,138,164,227,278,288</code></td>
+<td>save/clear/read/claim/expire/finish</td>
+<td>재개 claim과 ack의 정확성</td>
+</tr>
+<tr>
+<td><code>internal/hook/handoff_inject.go:63,114,136</code></td>
+<td>read→claim→finish</td>
+<td>주입 성공과 소비 확정 연결</td>
+</tr>
+<tr>
+<td><code>internal/cli/factory_handoff_recover.go:25</code></td>
+<td>legacy resume 복구</td>
+<td>이전 token·process identity·활성 조사 보존</td>
+</tr>
+<tr>
+<td><code>internal/session/store.go:84,186</code></td>
+<td>checkpoint와 중단 전이 탐지</td>
+<td>완료 기록과 연결하되 JSON 존재만으로 확정 금지</td>
+</tr>
+</tbody>
+</table>
+<p>현재 import 방향은
+<code>cli/hook/web → kanban → homestate</code>이다.
+<code>homestate → kanban</code>를 추가하지 않는다.
+<code>BacklogPathForRoot</code>와 <code>BacklogStore.EnginePath</code>가
+실제 큐 위치를 정하므로 home의 예정 경로만 직접 열어 별도 빈 큐를 만드는
+방식을 피한다.</p>
+<p>기존 resume 기록에는 card UUID/run revision이 없으므로 임의의 카드로
+연결하지 않는다. 이전 dry-run에서 충돌·고아·연결 불가 기록을 별도로
+보고하고 원본을 보존한다. Factory의 completed 행만으로 기존 Todo 카드를
+일괄 완료 처리하지 않는다. memory handoff는 카드 완료의 근거로 사용하지
+않는 한 별도 유지할 수 있다.</p>
+<footer>plan 모드 · MoAI-Easy에서 도출한 basic 설명형. 사실·명령·미완료 범위는 같은 이름의 Markdown에 보존합니다. 오프라인에서는 도식 원문과 대체 설명을 읽을 수 있습니다.</footer>
+</main><script type="module">import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';mermaid.initialize({startOnLoad:true,theme:'base',themeVariables:{primaryColor:'#FAF9F5',primaryTextColor:'#141413',primaryBorderColor:'#D97757',lineColor:'#87867F'}});</script></body></html>

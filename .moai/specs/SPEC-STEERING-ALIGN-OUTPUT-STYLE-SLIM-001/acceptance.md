@@ -166,7 +166,7 @@ go test ./internal/template/ -run 'TestTemplateNeutralityAudit|TestOutputStylesE
 # PASS: ok (all three guards green on the post-diet template tree)
 
 # Optional informational delta (NOT the gate): only NEW forbidden tokens vs the pre-diet baseline matter.
-git diff --no-index <(git show HEAD:internal/template/templates/.claude/output-styles/moai/moai.md) "$TMPL" \
+git diff HEAD -- internal/template/templates/.claude/output-styles/moai/moai.md \
   | grep '^+' | grep -nE 'SPEC-[A-Z]+-[0-9]{3}|feedback_|/Users/|Audit [0-9]+ Finding|CLAUDE\.local' \
   || echo "no NEW internal-artifact token added by the diet"
 ```

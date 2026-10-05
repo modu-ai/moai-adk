@@ -1,0 +1,31 @@
+=== RUN   TestCodexLocalInstructions_AgentsLocalReadFirst
+    codex_local_instructions_test.go:196: ALPHA (AGENTS.local.md) at 72 must precede BETA (CLAUDE.local.md) at 33: "<!-- source: CLAUDE.local.md -->\nBETA\n\n<!-- source: AGENTS.local.md -->\nALPHA\n"
+    codex_local_instructions_test.go:201: provenance order: AGENTS.local.md@39 must precede CLAUDE.local.md@0
+--- FAIL: TestCodexLocalInstructions_AgentsLocalReadFirst (0.00s)
+=== RUN   TestCodexLocalInstructions_DualFileMatrix
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/absent/absent
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/absent/empty
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/absent/body
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/empty/absent
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/empty/empty
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/empty/body
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/body/absent
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/body/empty
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/body/body
+    codex_local_instructions_test.go:241: payload = "<!-- source: CLAUDE.local.md -->\nCLAUDE.local.md instruction without final newline\n<!-- source: AGENTS.local.md -->\nAGENTS.local.md instruction without final newline", want "<!-- source: AGENTS.local.md -->\nAGENTS.local.md instruction without final newline\n<!-- source: CLAUDE.local.md -->\nCLAUDE.local.md instruction without final newline"
+--- FAIL: TestCodexLocalInstructions_DualFileMatrix (0.01s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/absent/absent (0.00s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/absent/empty (0.00s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/absent/body (0.00s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/empty/absent (0.00s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/empty/empty (0.00s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/empty/body (0.00s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/body/absent (0.00s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/body/empty (0.00s)
+    --- FAIL: TestCodexLocalInstructions_DualFileMatrix/body/body (0.00s)
+=== RUN   TestCodexLocalInstructions_LargeBodySlicesAndFreshRead
+    codex_local_instructions_test.go:271: missing first provenance
+--- FAIL: TestCodexLocalInstructions_LargeBodySlicesAndFreshRead (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.000s
+FAIL

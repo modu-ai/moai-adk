@@ -47,24 +47,26 @@ func TestAC003_BlockCapDoctrineClauseSpecific(t *testing.T) {
 	}
 }
 
-// clearKanbanLauncherEnv unsets every kanban signal variable plus the runtime
+// clearFactoryLauncherEnv unsets every kanban signal variable plus the runtime
 // block-cap key so the inject's negative controls below start from a
 // known-absent state. A session running these tests inside Kanban Mode carries
 // the launcher-injected MOAI_KANBAN* variables in its ambient env, and the
 // inject's kanban branch is unconditional on them — without this isolation the
 // "no signal → env unchanged" controls fail on the developer's own machine.
 // t.Setenv registers the restore, so the process env is returned to its prior
-// value when the test ends. Same pattern as clearKanbanEnv in
-// internal/hook/session_start_kanban_test.go.
-func clearKanbanLauncherEnv(t *testing.T) {
+// value when the test ends. Same pattern as clearFactoryEnv in
+// internal/hook/session_start_env_helper_test.go. The three retired markers
+// stay in the list by their written-out names, so a surviving session's
+// ambient value cannot reach TestRetiredChainSignalsDoNotRaiseBlockCap.
+func clearFactoryLauncherEnv(t *testing.T) {
 	t.Helper()
 	for _, key := range []string{
-		config.EnvMoaiKanban,
-		config.EnvMoaiKanbanID,
-		config.EnvMoaiKanbanSpec,
-		config.EnvMoaiKanbanLabel,
-		config.EnvMoaiKanbanSettingsInjected,
-		config.EnvMoaiKanbanLeadAddr,
+		retiredLeaderMarker,
+		config.EnvFactoryRunID,
+		retiredSpecMarker,
+		retiredLaneLabelMarker,
+		config.EnvFactorySettingsInjected,
+		config.EnvFactoryLeadAddr,
 		config.EnvMoaiFactoryWorkers,
 		config.EnvMoaiFactoryWorker,
 		config.EnvClaudeCodeStopHookBlockCap,
@@ -79,7 +81,7 @@ func clearKanbanLauncherEnv(t *testing.T) {
 // MaxTurns==0 goal exists for the resolving session, and leaves the env
 // unchanged when no such goal exists (backward compat).
 func TestAC003_LauncherInjectsRaisedBlockCapForInfiniteGoal(t *testing.T) {
-	clearKanbanLauncherEnv(t)
+	clearFactoryLauncherEnv(t)
 	tmp := t.TempDir()
 	ctx := context.Background()
 
@@ -134,44 +136,34 @@ func armInfiniteGoalFixture(t *testing.T, projectRoot, sessionID string, maxTurn
 	}
 }
 
-// ── SPEC-FACTORY-MODE-001 M5 ──
+// ── Factory block-cap clause (SPEC-FACTORY-MODE-001 M5; the kanban clause was
+// removed by SPEC-LAUNCHER-ENTRY-FLAGS-001 M5a) ──
 
-// TestACFM022a_KanbanRaisesBlockCapUnconditionally is AC-FM-022a. The
-// pre-existing inject is goal-conditional and reads goal state at LAUNCH time;
-// a kanban chain arms its goal mid-session, so that predicate is structurally
-// unable to see it. The kanban branch is therefore unconditional on the
-// process-environment signal, ahead of the goal read.
+// TestRetiredChainSignalsDoNotRaiseBlockCap pins the removal of the kanban
+// clause: the retired chain and companion signals, set in the environment with
+// no armed goal, no longer raise the Stop-hook block cap. The names are written
+// out because no launcher publishes them any more.
 //
 // Non-parallel by construction: t.Setenv mutates process-global state.
-func TestACFM022a_KanbanRaisesBlockCapUnconditionally(t *testing.T) {
-	clearKanbanLauncherEnv(t)
+func TestRetiredChainSignalsDoNotRaiseBlockCap(t *testing.T) {
+	clearFactoryLauncherEnv(t)
 	tmp := t.TempDir()
 	ctx := context.Background()
 	base := []string{"PATH=/usr/bin", "HOME=/tmp"}
-	want := config.EnvClaudeCodeStopHookBlockCap + "=" + strconv.Itoa(DefaultRaisedStopHookBlockCap)
 
-	// Negative control FIRST, so a leaked MOAI_KANBAN from an earlier test in
-	// this binary fails here loudly rather than silently validating the kanban
-	// branch (the ordering hazard AC-FM-023d exists to close).
+	t.Setenv("MOAI_KANBAN", "1")
+	t.Setenv(retiredLaneLabelMarker, "run-tjlgt1")
 	if got := injectStopHookBlockCapForGoal(ctx, base, tmp, ""); !slices.Equal(got, base) {
-		t.Errorf("AC-FM-022a negative control: with %s unset and no armed goal the env must be unchanged, got %v",
-			config.EnvMoaiKanban, got)
-	}
-
-	t.Setenv(config.EnvMoaiKanban, "1")
-	// No armed goal, and an empty sessionID — the pre-existing branch cannot
-	// fire here, so a match proves the kanban branch supplied the entry.
-	got := injectStopHookBlockCapForGoal(ctx, base, tmp, "")
-	if !slices.Contains(got, want) {
-		t.Errorf("AC-FM-022a: expected %q in the launch env, got %v", want, got)
+		t.Errorf("the retired chain signals raised the block cap: %v, want the base environment unchanged", got)
 	}
 }
 
-// TestACFM022a_KanbanCapReplacesPreexistingEntry asserts the kanban branch
-// reuses the replace-in-place discipline of the goal branch rather than
-// appending a duplicate key, which a child process would resolve ambiguously.
-func TestACFM022a_KanbanCapReplacesPreexistingEntry(t *testing.T) {
-	t.Setenv(config.EnvMoaiKanban, "1")
+// TestFactoryCapReplacesPreexistingEntry asserts the factory branch reuses the
+// replace-in-place discipline of the goal branch rather than appending a
+// duplicate key, which a child process would resolve ambiguously.
+func TestFactoryCapReplacesPreexistingEntry(t *testing.T) {
+	clearFactoryLauncherEnv(t)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 	key := config.EnvClaudeCodeStopHookBlockCap
 	base := []string{"PATH=/usr/bin", key + "=8"}
 
@@ -181,49 +173,23 @@ func TestACFM022a_KanbanCapReplacesPreexistingEntry(t *testing.T) {
 		if strings.HasPrefix(e, key+"=") {
 			count++
 			if e != key+"="+strconv.Itoa(DefaultRaisedStopHookBlockCap) {
-				t.Errorf("AC-FM-022a: stale cap survived: %q", e)
+				t.Errorf("stale cap survived: %q", e)
 			}
 		}
 	}
 	if count != 1 {
-		t.Errorf("AC-FM-022a: expected exactly one %s entry, got %d in %v", key, count, got)
+		t.Errorf("expected exactly one %s entry, got %d in %v", key, count, got)
 	}
 }
 
-// TestKanbanCompanionRaisesBlockCap asserts a COMPANION takes the same raise
-// as the lead. A companion arms its own goal mid-session, so the
-// goal-conditional branch is structurally unable to see it — exactly the lead's
-// problem — and without the raise it would stop after the runtime default of 8
-// consecutive blocks.
-//
-// Non-parallel by construction: t.Setenv mutates process-global state.
-func TestKanbanCompanionRaisesBlockCap(t *testing.T) {
-	clearKanbanLauncherEnv(t)
-	tmp := t.TempDir()
-	ctx := context.Background()
-	base := []string{"PATH=/usr/bin", "HOME=/tmp"}
-	want := config.EnvClaudeCodeStopHookBlockCap + "=" + strconv.Itoa(DefaultRaisedStopHookBlockCap)
-
-	// Negative control first: a leaked variable from an earlier test in this
-	// binary must fail loudly here rather than silently validate the branch.
-	if got := injectStopHookBlockCapForGoal(ctx, base, tmp, ""); !slices.Equal(got, base) {
-		t.Errorf("negative control: env must be unchanged with no kanban signal and no armed goal, got %v", got)
-	}
-
-	t.Setenv(config.EnvMoaiKanbanLabel, "run-tjlgt1")
-	got := injectStopHookBlockCapForGoal(ctx, base, tmp, "")
-	if !slices.Contains(got, want) {
-		t.Errorf("expected %q in the launch env for a companion session, got %v", want, got)
-	}
-}
-
-// TestFactoryRaisesBlockCap asserts the factory branch of the unconditional
+// TestFactoryRaisesBlockCap asserts the factory clause of the unconditional
 // raise (SPEC-FACTORY-WORKER-FANOUT-001): a session signalled by
-// MOAI_FACTORY_WORKERS — lead or worker, both branches set it — takes the
-// same raised cap, because a factory run's dispatch-driven turn chains are
-// long and meant to survive unattended.
+// MOAI_FACTORY_WORKERS — leader or lane, both branches set it — takes the
+// raised cap, because a factory run's dispatch-driven turn chains are long and
+// meant to survive unattended. The goal read cannot see them, since the session
+// arms its goal mid-session.
 func TestFactoryRaisesBlockCap(t *testing.T) {
-	clearKanbanLauncherEnv(t)
+	clearFactoryLauncherEnv(t)
 	tmp := t.TempDir()
 	ctx := context.Background()
 	base := []string{"PATH=/usr/bin", "HOME=/tmp"}
@@ -243,23 +209,30 @@ func TestFactoryRaisesBlockCap(t *testing.T) {
 	}
 }
 
-// TestACFM023c_KanbanEnvReachesChildEnvironment is AC-FM-023c: the load-bearing
-// link. The cap raise of AC-FM-022a is reachable in production only if the
-// kanban variables survive into the os.Environ()-derived launch env that
-// launchClaudeDefault builds immediately above the inject call. A unit test of
-// the inject alone would stay green through that failure.
-func TestACFM023c_KanbanEnvReachesChildEnvironment(t *testing.T) {
-	t.Setenv(config.EnvMoaiKanban, "1")
-	t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-PLACEHOLDER")
+// TestFactoryEnvReachesChildEnvironment: the load-bearing link of the factory
+// cap raise. It is reachable in production only if the factory variables
+// survive into the os.Environ()-derived launch env that launchClaudeDefault
+// builds immediately above the inject call. A unit test of the inject alone
+// would stay green through that failure.
+func TestFactoryEnvReachesChildEnvironment(t *testing.T) {
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	t.Setenv(config.EnvFactoryRunID, "run-placeholder")
 
-	launchEnv := buildEnvForLaunch("high", os.Environ())
+	// Neither the plain Claude path (card t595) nor the gateway path (card t668)
+	// wraps os.Environ() any more — both moved their CLAUDE_CODE_EFFORT_LEVEL
+	// injection into the --settings payload, because that variable is an
+	// override Claude Code refuses to let /effort or /model change mid-session.
+	// The one wrapper that still filters the inherited environment, and so still
+	// carries the drop hazard this test guards, is buildEnvForGLMLaunch. The
+	// assertion follows it rather than becoming a tautology over os.Environ().
+	launchEnv := buildEnvForGLMLaunch(config.GLMModels{}, "", "high", os.Environ())
 
 	for _, want := range []string{
-		config.EnvMoaiKanban + "=1",
-		config.EnvMoaiKanbanSpec + "=SPEC-PLACEHOLDER",
+		config.EnvMoaiFactoryWorkers + "=1",
+		config.EnvFactoryRunID + "=run-placeholder",
 	} {
 		if !slices.Contains(launchEnv, want) {
-			t.Errorf("AC-FM-023c: %q missing from the child environment", want)
+			t.Errorf("%q missing from the child environment", want)
 		}
 	}
 }

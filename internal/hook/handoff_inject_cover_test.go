@@ -2,7 +2,6 @@ package hook
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -87,14 +86,14 @@ func TestIsHex8(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]bool{
-		"a1b2c3d4": true,
-		"00000000": true,
-		"ffffffff": true,
-		"A1B2C3D4": false, // uppercase not accepted by isHex8 itself
-		"g1b2c3d4": false, // 'g' not hex
-		"a1b2c3d":  false, // 7 chars
+		"a1b2c3d4":  true,
+		"00000000":  true,
+		"ffffffff":  true,
+		"A1B2C3D4":  false, // uppercase not accepted by isHex8 itself
+		"g1b2c3d4":  false, // 'g' not hex
+		"a1b2c3d":   false, // 7 chars
 		"a1b2c3d45": false, // 9 chars
-		"":         false,
+		"":          false,
 	}
 	for in, want := range tests {
 		if got := isHex8(in); got != want {
@@ -175,21 +174,5 @@ func TestRenderHandoffContext_AllDirectives(t *testing.T) {
 	}
 	if !strings.Contains(plain, "just body") {
 		t.Error("no-directive render should still carry the body")
-	}
-}
-
-// TestConsumedDir_Path covers the ConsumedDir path helper directly (attribution
-// artifact: it is exercised by claimAndInject but attributed to the hook binary).
-func TestConsumedDir_Path(t *testing.T) {
-	t.Parallel()
-
-	pd := "/tmp/proj"
-	got := handoff.ConsumedDir(pd)
-	// ConsumedDir is a real filesystem path (MkdirAll/rename target), so it is
-	// built with filepath.Join and uses OS-native separators. Build the
-	// expectation the same way rather than hardcoding forward slashes.
-	want := filepath.Join(pd, ".moai", "state", "handoff", "consumed")
-	if got != want {
-		t.Errorf("ConsumedDir: got %q, want %q", got, want)
 	}
 }

@@ -1,0 +1,106 @@
+name: Judgment-First Consistency Guard
+
+# Static consistency guard: the pull-mode doctrine text and the §8 banner
+# templates must stay consistent with the pull convention. If a future edit
+# removes the doctrine SSOT sections, drops a banner withholding branch, or
+# desynchronizes a mirror pair, this job fails rather than letting the
+# inconsistency accumulate silently.
+#
+# Checks (all mechanical; empty-sweep safe — a zero on a ≥1 assertion fails):
+#   1. askuser-protocol.md carries the Recommendation mode + On-request emission
+#      sections (the SSOT the banner rules cite).
+#   2. moai.md's banner rules still reference interview.recommendation_mode.
+#   3. moai.md's banner rules still cite § On-request emission by name
+#      (≥2 occurrences — "both banner rules").
+#   4. The S5 Error Recovery options stay in the cost order (least destructive
+#      first) and the old "A. Retry as-is" first position stays gone.
+#   5. Mirror parity: moai.md, askuser-protocol.md, and
+#      context-window-management.md stay byte-identical to their template mirrors.
+#   6. The distributed config default stays push.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.claude/rules/moai/core/askuser-protocol.md'
+      - '.claude/output-styles/moai/moai.md'
+      - '.claude/rules/moai/workflow/context-window-management.md'
+      - 'internal/template/templates/.claude/rules/moai/core/askuser-protocol.md'
+      - 'internal/template/templates/.claude/output-styles/moai/moai.md'
+      - 'internal/template/templates/.claude/rules/moai/workflow/context-window-management.md'
+      - 'internal/template/templates/.moai/config/sections/interview.yaml'
+      - '.github/workflows/judgment-first-consistency.yaml'
+  push:
+    branches: [main, develop]
+    paths:
+      - '.claude/rules/moai/core/askuser-protocol.md'
+      - '.claude/output-styles/moai/moai.md'
+      - '.claude/rules/moai/workflow/context-window-management.md'
+      - 'internal/template/templates/.claude/rules/moai/core/askuser-protocol.md'
+      - 'internal/template/templates/.claude/output-styles/moai/moai.md'
+      - 'internal/template/templates/.claude/rules/moai/workflow/context-window-management.md'
+      - 'internal/template/templates/.moai/config/sections/interview.yaml'
+      - '.github/workflows/judgment-first-consistency.yaml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  judgment-first-consistency:
+    name: Judgment-First Consistency
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check doctrine and banner consistency with the pull convention
+        run: |
+          set -eu
+
+          DOCTRINE=.claude/rules/moai/core/askuser-protocol.md
+          STYLE=.claude/output-styles/moai/moai.md
+          CWM=.claude/rules/moai/workflow/context-window-management.md
+          T_DOCTRINE=internal/template/templates/.claude/rules/moai/core/askuser-protocol.md
+          T_STYLE=internal/template/templates/.claude/output-styles/moai/moai.md
+          T_CWM=internal/template/templates/.claude/rules/moai/workflow/context-window-management.md
+          T_INTERVIEW=internal/template/templates/.moai/config/sections/interview.yaml
+
+          fail() { echo "JUDGMENT-FIRST-CONSISTENCY: $1" >&2; exit 1; }
+
+          # 1. Doctrine SSOT sections exist (>=1 each).
+          c=$(grep -c '^### Recommendation mode' "$DOCTRINE" || true)
+          [ "$c" -ge 1 ] || fail "doctrine lost the Recommendation mode section (got $c)"
+          c=$(grep -c '^### On-request emission' "$DOCTRINE" || true)
+          [ "$c" -ge 1 ] || fail "doctrine lost the On-request emission section (got $c)"
+
+          # 2. Banner rules still reference the mode key (>=5 across S2-S6).
+          c=$(grep -c 'interview\.recommendation_mode' "$STYLE" || true)
+          [ "$c" -ge 5 ] || fail "banner recommendation_mode references dropped below 5 (got $c)"
+          c=$(grep -c 'interview\.recommendation_mode' "$CWM" || true)
+          [ "$c" -ge 1 ] || fail "S6 lost its recommendation_mode branch (got $c)"
+
+          # 3. Both banner rules cite On-request emission by name (>=2).
+          c=$(grep -c 'On-request emission' "$STYLE" || true)
+          [ "$c" -ge 2 ] || fail "On-request emission name citations dropped below 2 (got $c)"
+
+          # 4. S5 stays in the cost order; the old A-first ordering stays gone.
+          c=$(grep -c 'Pause.*Retry as-is.*Alt approach.*Abort+preserve' "$STYLE" || true)
+          [ "$c" -ge 1 ] || fail "S5 cost-ordered sequence missing (got $c)"
+          if grep -q 'A\. Retry as-is' "$STYLE"; then
+            fail "S5 old A-first ordering reappeared"
+          fi
+
+          # 5. Mirror parity — each pair byte-identical.
+          diff -q "$STYLE" "$T_STYLE"   || fail "moai.md drifted from its template mirror"
+          diff -q "$DOCTRINE" "$T_DOCTRINE" || fail "askuser-protocol.md drifted from its template mirror"
+          diff -q "$CWM" "$T_CWM"       || fail "context-window-management.md drifted from its template mirror"
+
+          # 6. The distributed config default stays push.
+          grep -q '^  recommendation_mode: push$' "$T_INTERVIEW" \
+            || fail "template interview.yaml default is no longer push"
+
+          echo "JUDGMENT-FIRST-CONSISTENCY: all checks pass"

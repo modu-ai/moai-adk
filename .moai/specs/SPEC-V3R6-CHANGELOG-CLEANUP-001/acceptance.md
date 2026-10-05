@@ -95,16 +95,14 @@ Exit 0 = PASS (sha256 일치). Exit !=0 = FAIL.
 
 ```bash
 # 본 SPEC scope 의 정확한 파일 집합만 변경됨 (CHANGELOG + template + 4 SPEC artifact)
-CHANGED_FILES=$(git diff --name-only HEAD~3..HEAD | sort -u)
-EXPECTED_FILES=$(printf 'CHANGELOG.md\n.claude/rules/moai/development/manager-develop-prompt-template.md\n.moai/specs/SPEC-V3R6-CHANGELOG-CLEANUP-001/plan.md\n.moai/specs/SPEC-V3R6-CHANGELOG-CLEANUP-001/spec.md\n.moai/specs/SPEC-V3R6-CHANGELOG-CLEANUP-001/acceptance.md\n.moai/specs/SPEC-V3R6-CHANGELOG-CLEANUP-001/progress.md\n' | sort -u)
+git diff --name-only HEAD~3..HEAD | sort -u > /tmp/cc-changed.txt
+printf 'CHANGELOG.md\n.claude/rules/moai/development/manager-develop-prompt-template.md\n.moai/specs/SPEC-V3R6-CHANGELOG-CLEANUP-001/plan.md\n.moai/specs/SPEC-V3R6-CHANGELOG-CLEANUP-001/spec.md\n.moai/specs/SPEC-V3R6-CHANGELOG-CLEANUP-001/acceptance.md\n.moai/specs/SPEC-V3R6-CHANGELOG-CLEANUP-001/progress.md\n' | sort -u > /tmp/cc-expected.txt
 
-# (B2 fix) CHANGED_FILES 가 EXPECTED_FILES 와 byte-identical 이어야 PASS (out-of-scope 변경 absolute 차단)
-UNEXPECTED_CHANGES=$(comm -23 <(echo "$CHANGED_FILES") <(echo "$EXPECTED_FILES") | wc -l | tr -d ' ')
-test "$UNEXPECTED_CHANGES" -eq 0 && \
+# (B2 fix) 두 목록이 byte-identical 이어야 PASS (out-of-scope 변경 absolute 차단)
+comm -23 /tmp/cc-changed.txt /tmp/cc-expected.txt | wc -l | tr -d ' '   # 기대: 0 — 0 이 아니면 FAIL
 
 # 5 sibling SPEC 디렉토리 0건 변경 (cross-check, B2 와 중복이지만 explicit)
-SIBLING_CHANGES=$(git diff --name-only HEAD~3..HEAD .moai/specs/SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001/ .moai/specs/SPEC-V3R6-HOOK-ASYNC-EXPAND-001/ .moai/specs/SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001/ .moai/specs/SPEC-V3R6-CI-BASELINE-DRIFT-001/ .moai/specs/SPEC-V3R6-SESSION-HANDOFF-AUTO-001/ | wc -l | tr -d ' ')
-test "$SIBLING_CHANGES" -eq 0
+git diff --name-only HEAD~3..HEAD .moai/specs/SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001/ .moai/specs/SPEC-V3R6-HOOK-ASYNC-EXPAND-001/ .moai/specs/SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001/ .moai/specs/SPEC-V3R6-CI-BASELINE-DRIFT-001/ .moai/specs/SPEC-V3R6-SESSION-HANDOFF-AUTO-001/ | wc -l | tr -d ' '   # 기대: 0
 ```
 
 Exit 0 = PASS (sibling SPEC 디렉토리 0건 변경). Exit !=0 = FAIL.

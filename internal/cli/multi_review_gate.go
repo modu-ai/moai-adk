@@ -27,8 +27,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/hook"
 
 	"github.com/spf13/cobra"
@@ -47,7 +49,7 @@ import (
 //  4. no session id / missing state file     → ALLOW (fail-open; no result yet)
 //  5. malformed state file                   → ALLOW (fail-open; corrupt JSON)
 //  6. overall_verdict = pass                 → ALLOW (all required PASS, or an advisory-only conflict — never blocks)
-//  7. overall_verdict = fail (required FAIL) → BLOCK (the gate's ONLY block path)
+//  7. overall_verdict = fail                 → BLOCK (the gate's ONLY block path — a required FAIL, or a gate the project explicitly configured `required` left unmet by a fail-open inconclusive; both arrive as overall=fail from the convergence engine)
 //
 // `enabled` is read by the caller (runMultiReviewGate via
 // readMultiReviewGateEnabled) and passed in so this function stays free of
@@ -56,9 +58,12 @@ import (
 // The gate does NOT distinguish "fail because all required agree on fail" from
 // "fail because of a required split" — both surface as overall=fail in the
 // ConvergenceResult (the convergence engine resolves them identically per
-// REQ-AMM-006 #2/#3). The residual_risk_note in the result already names which
-// backend(s) failed; this gate's BLOCK reason echoes that note so the operator
-// sees the same trail at the Stop surface.
+// REQ-AMM-006 #2/#3). Nor does it distinguish them from "fail because a gate
+// explicitly configured `required` was left unmet by a fail-open inconclusive"
+// — the engine's enforcement layers that on as the same overall=fail. The
+// residual_risk_note in the result already names which backend(s) failed (or
+// which gate went unmet); this gate's BLOCK reason echoes that note so the
+// operator sees the same trail at the Stop surface.
 func HandleMultiReviewGate(input *hook.HookInput, enabled bool, projectDir, sessionID string) (*hook.HookOutput, error) {
 	allow := &hook.HookOutput{}
 	if !enabled {
@@ -71,8 +76,8 @@ func HandleMultiReviewGate(input *hook.HookInput, enabled bool, projectDir, sess
 		return allow, nil // (3) self-gate — nothing reviewable ⇒ no false block
 	}
 
-	result, ok := loadConvergenceResult(projectDir, sessionID)
-	if !ok {
+	results := loadConvergenceResults(projectDir, sessionID)
+	if len(results) == 0 {
 		return allow, nil // (4)+(5) fail-open: missing/malformed state ⇒ ALLOW
 	}
 
@@ -80,11 +85,16 @@ func HandleMultiReviewGate(input *hook.HookInput, enabled bool, projectDir, sess
 	// REQ-AMM-006 policy table (advisory-never-blocks baked in at AC-AMM-009).
 	// A required FAIL produces overall=fail; advisory-only conflict yields
 	// overall=pass + disagreement_flag=true. The gate trusts that derivation.
-	if result.OverallVerdict == overallVerdictFail {
-		return &hook.HookOutput{
-			Decision: hook.DecisionBlock, // (7) the gate's ONLY BLOCK path
-			Reason:   blockReason(result),
-		}, nil
+	// A store shared by a primary checkout and its config-orphaned worktrees
+	// can hold one result per tree for the session; any fail blocks, whichever
+	// tree the gate's input named (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-007).
+	for _, result := range results {
+		if result.OverallVerdict == overallVerdictFail {
+			return &hook.HookOutput{
+				Decision: hook.DecisionBlock, // (7) the gate's ONLY BLOCK path
+				Reason:   blockReason(result),
+			}, nil
+		}
 	}
 	return allow, nil // pass / advisory conflict / fail-open to claude ⇒ ALLOW
 }
@@ -121,6 +131,51 @@ func loadConvergenceResult(projectDir, sessionID string) (ConvergenceResult, boo
 		return ConvergenceResult{}, false
 	}
 	return r, true
+}
+
+// treeQualifiedSuffix matches the tail of a tree-qualified convergence file
+// name, <session>--tree-<12 hex>.json (auditreceipt.TreeKey).
+var treeQualifiedSuffix = regexp.MustCompile(`^--tree-[0-9a-f]{12}\.json$`)
+
+// loadConvergenceResults reads every ConvergenceResult persisted for sessionID
+// in the store root of projectDir: the store's own <session>.json and each
+// tree-qualified <session>--tree-<key>.json a config-orphaned worktree wrote
+// there (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-006/007). Missing, unreadable,
+// and malformed files are skipped (fail-open, as loadConvergenceResult); a root
+// whose store cannot be resolved yields none rather than another root's state.
+func loadConvergenceResults(projectDir, sessionID string) []ConvergenceResult {
+	if projectDir == "" || sessionID == "" {
+		return nil
+	}
+	store, err := auditreceipt.StoreRoot(projectDir)
+	if err != nil {
+		return nil
+	}
+	dir := filepath.Join(store, ".moai", "state", "audit-multi")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var out []ConvergenceResult
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasPrefix(name, sessionID) {
+			continue
+		}
+		if rest := strings.TrimPrefix(name, sessionID); rest != ".json" && !treeQualifiedSuffix.MatchString(rest) {
+			continue
+		}
+		b, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		var r ConvergenceResult
+		if err := json.Unmarshal(b, &r); err != nil {
+			continue
+		}
+		out = append(out, r)
+	}
+	return out
 }
 
 // ─── config gate reader ───
@@ -206,7 +261,7 @@ func runMultiReviewGate(cmd *cobra.Command, _ []string) error {
 		return emitHookOutput(cmd.OutOrStdout(), &hook.HookOutput{})
 	}
 	projectDir := resolveProjectDirFromInput(input)
-	enabled := readMultiReviewGateEnabled(projectDir)
+	enabled := readMultiReviewGateEnabled(reviewGateConfigRoot(projectDir))
 	out, gateErr := HandleMultiReviewGate(input, enabled, projectDir, input.SessionID)
 	if gateErr != nil {
 		// Fail-open: a handler error MUST NOT trap the Stop pipeline.

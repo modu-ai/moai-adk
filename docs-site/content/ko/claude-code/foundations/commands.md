@@ -36,18 +36,18 @@ description: "Claude Code의 슬래시 명령어 — 내장 명령, 커스텀 �
 | 명령 | 용도 | 버전 |
 | :--- | :--- | :--- |
 | `/goal <condition>` | 완료 조건을 세우고 여러 턴에 걸쳐 자율 진행 | v2.1.139+ |
-| `/workflows` | 다이내믹 워크플로우 실행 목록 관리 UI | v2.1.139+ |
+| `/workflows` | 다이내믹 워크플로우 실행 목록 관리 UI | v2.1.154+ |
 | `/rewind` (별칭: `/checkpoint`, `/undo`) | 코드와 대화를 이전 체크포인트로 되돌리기 | v2.1.191+ |
 | `/context [all]` | 현재 컨텍스트 윈도우 사용량 분석 | 기본 |
 | `/memory` | `CLAUDE.md` + 자동 메모리 로드 목록/토글 | v2.1.59+ |
 | `/compact` | 같은 대화를 유지한 채 지금까지의 내용을 요약해 컨텍스트 확보 | 기본 |
 | `/clear` (별칭: `/reset`, `/new`) | 컨텍스트를 비우고 새 대화 시작 | 기본 |
-| `/agents` | 서브에이전트 관리 (v2.1.198에서 생성 마법사 제거 — Claude에게 요청하거나 `.claude/agents/`를 직접 편집) | v2.1.139+ |
+| `/agents` | 서브에이전트 안내 — v2.1.198부터 마법사 대신 Claude에게 요청하거나 `.claude/agents/`를 직접 편집하라는 안내만 표시, v2.1.281부터 명령 메뉴와 `/help`에서 빠짐 | v1.0.60+ |
 | `/mcp` | MCP 서버 연결 및 OAuth 인증 관리 | v2.1.186+ |
 | `/plugin` | 플러그인 관리 | 기본 |
 | `/effort [low\|medium\|high\|xhigh\|max\|ultracode\|auto]` | 모델의 추론 강도 또는 오케스트레이션 설정 | 기본 |
 | `/model` | AI 모델 선택 | 기본 |
-| `/background` (별칭: `/bg`) | 백그라운드 실행 | v2.1.139+ |
+| `/background` (별칭: `/bg`) | 백그라운드 실행 | v2.1.141에서 확인; 도입 버전 미확인 |
 | `/fork <directive>` | 대화를 상속한 포크 서브에이전트 | v2.1.161+ |
 | `/recap` | 세션 요약 | 기본 |
 | `/btw` | 사이드 질문 | v2.1.187+ |
@@ -73,9 +73,10 @@ description: "Claude Code의 슬래시 명령어 — 내장 명령, 커스텀 �
 
 ### 명령 가용성 참고
 
+- [v2.1.154 변경 기록](https://github.com/anthropics/claude-code/blob/v2.1.154/CHANGELOG.md)은 다이내믹 워크플로우와 `/workflows` 도입을 명시합니다. [v2.1.141 변경 기록](https://github.com/anthropics/claude-code/blob/v2.1.141/CHANGELOG.md)의 `/bg` 수정 항목은 당시 명령이 있었음을 보여 주지만, 도입 버전을 특정하지는 못합니다.
 - 같은 기능을 여러 이름으로 부를 수 있는 경우가 많습니다 (별칭).
 - 일부 명령은 플랫폼, 플랜, 환경에 따라 노출 여부가 달라집니다.
-- `ultracode`는 현재 워크플로우 트리거 키워드(pre-v2.1.160에는 `workflow`였음)이면서 동시에 `/effort` 레벨입니다.
+- `ultracode`는 현재 워크플로우 트리거 키워드(pre-v2.1.160에는 `workflow`였음)이면서, v2.1.284부터는 `/effort`에서 켜고 끄는 독립 토글이기도 합니다. effort 레벨이 아니므로 켜고 꺼도 레벨은 바뀌지 않습니다.
 
 ## 핵심 명령을 깊이 파보기
 
@@ -88,8 +89,8 @@ description: "Claude Code의 슬래시 명령어 — 내장 명령, 커스텀 �
 | 모델 | 특징 |
 | :--- | :--- |
 | Fable 5 (`claude-fable-5`) | 현재 최상위(Mythos-tier). 가장 깊은 추론 |
-| Opus 5 | 차상위. 복잡한 코딩과 설계 |
-| Sonnet 5 | 균형형. 일상 작업 |
+| Opus 5.5 | 차상위. 복잡한 코딩과 설계 |
+| Sonnet 5.5 | 균형형. 일상 작업 |
 | Haiku 4.5 | 가볍고 빠른 경량 작업 |
 
 모델마다 추론 깊이·속도·비용이 다릅니다. 무거운 설계 작업은 Fable이나 Opus에, 빠르고 반복적인 일은 Sonnet이나 Haiku에 맡기는 식으로 작업 무게에 맞춰 고릅니다. 단축키 `Option+P`(macOS) 또는 `Alt+P`로도 빠르게 전환할 수 있습니다.
@@ -120,9 +121,9 @@ flowchart TD
     E --> G["새 주제로<br>처음부터"]
 ```
 
-### /agents — 서브에이전트 관리
+### /agents — 이제는 안내만 띄우는 명령
 
-`/agents`는 세션 안에서 불러 쓰는 **서브에이전트** (subagent)를 살펴보는 명령입니다. v2.1.198부터는 새 서브에이전트를 만들던 대화형 마법사가 걷혔습니다 — 이제 새 서브에이전트를 만드는 길은 두 가지입니다.
+`/agents`는 이제 서브에이전트를 만들거나 관리하는 화면을 열지 않습니다. v2.1.198부터는 입력하면 Claude에게 요청하거나 `.claude/agents/`(개인용은 `~/.claude/agents/`)를 직접 편집하라는 안내만 띄우고, v2.1.281부터는 명령 메뉴와 `/help` 목록에서도 빠졌습니다. 새 서브에이전트를 만드는 길은 두 가지입니다.
 
 1. Claude에게 "코드 리뷰 서브에이전트를 만들어 줘"처럼 자연어로 부탁하기
 2. `.claude/agents/` 폴더에 마크다운 파일을 직접 만들기
@@ -133,7 +134,7 @@ flowchart TD
 
 ### /effort와 ultrathink — 추론 깊이 조절
 
-`/effort`로 모델의 추론 강도를 정합니다. `low` · `medium` · `high` · `xhigh` · `max`의 단계와 `auto`, 그리고 워크플로우 오케스트레이션을 켜는 `ultracode`가 있습니다. 코딩처럼 생각이 깊이 필요한 작업에서는 보통 `xhigh`를 권합니다.
+`/effort`로 모델의 추론 강도를 정합니다. `low` · `medium` · `high` · `xhigh` · `max`의 단계와 `auto`가 있습니다. 워크플로우 오케스트레이션을 켜는 `ultracode`는 레벨과 별개인 토글이며 `/effort ultracode off`로 끕니다. 코딩처럼 생각이 깊이 필요한 작업에서는 보통 `xhigh`를 권합니다.
 
 대화창에 `ultrathink`라는 키워드를 적는 것도 같은 효과를 냅니다. `ultrathink`는 `effort`를 `xhigh`로 올리는 동시에 **Adaptive Thinking** (모델이 스스로 추론에 쓸 토큰 양을 정하는 방식)을 켭니다. 고정된 사고 예산인 `budget_tokens`를 직접 지정하던 옛 방식은 더 이상 권장하지 않습니다 — Opus 4.7 이상에서는 고정 예산이 거부됩니다.
 

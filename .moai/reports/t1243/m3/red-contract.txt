@@ -1,0 +1,152 @@
+=== RUN   TestCodexContractLinkCreation
+=== RUN   TestCodexContractLinkCreation/fixture=i1_both_absent
+    codex_contract_link_test.go:240: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+=== RUN   TestCodexContractLinkCreation/fixture=i2_agents_only
+    codex_contract_link_test.go:240: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+=== RUN   TestCodexContractLinkCreation/fixture=i3_claude_only
+    codex_contract_link_test.go:228: CLAUDE.md bytes diverge from the expected sequence:
+         got  = "# user claude notes\n\ninstruction prose for claude\n@AGENTS.md\n"
+         want = "# user claude notes\n\ninstruction prose for claude\n@AGENTS.md\n@AGENTS.local.md\n"
+    codex_contract_link_test.go:240: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+=== RUN   TestCodexContractLinkCreation/fixture=i4_both_no_link
+    codex_contract_link_test.go:228: CLAUDE.md bytes diverge from the expected sequence:
+         got  = "# user claude notes\n\ninstruction prose for claude\n@AGENTS.md\n"
+         want = "# user claude notes\n\ninstruction prose for claude\n@AGENTS.md\n@AGENTS.local.md\n"
+    codex_contract_link_test.go:240: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+=== RUN   TestCodexContractLinkCreation/fixture=i5a_line_front
+=== RUN   TestCodexContractLinkCreation/fixture=i5b_line_middle
+=== RUN   TestCodexContractLinkCreation/fixture=i5c_line_end
+=== RUN   TestCodexContractLinkCreation/fixture=i5d_crlf
+=== RUN   TestCodexContractLinkCreation/fixture=i6_fenced_only
+    codex_contract_link_test.go:228: CLAUDE.md bytes diverge from the expected sequence:
+         got  = "# title\n\n```\n@AGENTS.md\n```\n\nbody\n@AGENTS.md\n"
+         want = "# title\n\n```\n@AGENTS.md\n```\n\nbody\n@AGENTS.md\n@AGENTS.local.md\n"
+    codex_contract_link_test.go:240: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+=== RUN   TestCodexContractLinkCreation/fixture=i7_quoted_only
+    codex_contract_link_test.go:228: CLAUDE.md bytes diverge from the expected sequence:
+         got  = "# title\n\n> @AGENTS.md\n\nbody\n@AGENTS.md\n"
+         want = "# title\n\n> @AGENTS.md\n\nbody\n@AGENTS.md\n@AGENTS.local.md\n"
+    codex_contract_link_test.go:240: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+=== RUN   TestCodexContractLinkCreation/fixture=i8_agents_link_only
+    codex_contract_link_test.go:206: CLAUDE.md renames = 0, want 1
+    codex_contract_link_test.go:228: CLAUDE.md bytes diverge from the expected sequence:
+         got  = "# title\n\n@AGENTS.md\n\nbody\n"
+         want = "# title\n\n@AGENTS.md\n\nbody\n@AGENTS.local.md\n"
+    codex_contract_link_test.go:240: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+=== RUN   TestCodexContractLinkCreation/fixture=i9_local_link_only
+--- FAIL: TestCodexContractLinkCreation (0.02s)
+    --- FAIL: TestCodexContractLinkCreation/fixture=i1_both_absent (0.00s)
+    --- FAIL: TestCodexContractLinkCreation/fixture=i2_agents_only (0.00s)
+    --- FAIL: TestCodexContractLinkCreation/fixture=i3_claude_only (0.00s)
+    --- FAIL: TestCodexContractLinkCreation/fixture=i4_both_no_link (0.00s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i5a_line_front (0.00s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i5b_line_middle (0.00s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i5c_line_end (0.00s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i5d_crlf (0.00s)
+    --- FAIL: TestCodexContractLinkCreation/fixture=i6_fenced_only (0.00s)
+    --- FAIL: TestCodexContractLinkCreation/fixture=i7_quoted_only (0.00s)
+    --- FAIL: TestCodexContractLinkCreation/fixture=i8_agents_link_only (0.00s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i9_local_link_only (0.00s)
+=== RUN   TestCodexContractIdempotent
+=== RUN   TestCodexContractIdempotent/fixture=i1_both_absent
+    codex_contract_link_test.go:352: snapshot 1: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 2: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 3: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+=== RUN   TestCodexContractIdempotent/fixture=i2_agents_only
+    codex_contract_link_test.go:352: snapshot 1: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 2: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 3: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+=== RUN   TestCodexContractIdempotent/fixture=i3_claude_only
+    codex_contract_link_test.go:352: snapshot 1: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 2: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 3: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+=== RUN   TestCodexContractIdempotent/fixture=i4_both_no_link
+    codex_contract_link_test.go:352: snapshot 1: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 2: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 3: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+=== RUN   TestCodexContractIdempotent/fixture=i5a_line_front
+=== RUN   TestCodexContractIdempotent/fixture=i5b_line_middle
+=== RUN   TestCodexContractIdempotent/fixture=i5c_line_end
+=== RUN   TestCodexContractIdempotent/fixture=i5d_crlf
+=== RUN   TestCodexContractIdempotent/fixture=i6_fenced_only
+    codex_contract_link_test.go:352: snapshot 1: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 2: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 3: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+=== RUN   TestCodexContractIdempotent/fixture=i7_quoted_only
+    codex_contract_link_test.go:352: snapshot 1: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 2: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 3: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+=== RUN   TestCodexContractIdempotent/fixture=i8_agents_link_only
+    codex_contract_link_test.go:352: snapshot 1: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 2: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 3: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+=== RUN   TestCodexContractIdempotent/fixture=i9_local_link_only
+=== RUN   TestCodexContractIdempotent/fixture=l1_local_present
+    codex_contract_link_test.go:352: snapshot 1: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 2: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 3: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+=== RUN   TestCodexContractIdempotent/fixture=l2_local_absent
+    codex_contract_link_test.go:352: snapshot 1: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 2: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:352: snapshot 3: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+--- FAIL: TestCodexContractIdempotent (0.08s)
+    --- FAIL: TestCodexContractIdempotent/fixture=i1_both_absent (0.00s)
+    --- FAIL: TestCodexContractIdempotent/fixture=i2_agents_only (0.00s)
+    --- FAIL: TestCodexContractIdempotent/fixture=i3_claude_only (0.00s)
+    --- FAIL: TestCodexContractIdempotent/fixture=i4_both_no_link (0.00s)
+    --- PASS: TestCodexContractIdempotent/fixture=i5a_line_front (0.00s)
+    --- PASS: TestCodexContractIdempotent/fixture=i5b_line_middle (0.00s)
+    --- PASS: TestCodexContractIdempotent/fixture=i5c_line_end (0.01s)
+    --- PASS: TestCodexContractIdempotent/fixture=i5d_crlf (0.02s)
+    --- FAIL: TestCodexContractIdempotent/fixture=i6_fenced_only (0.00s)
+    --- FAIL: TestCodexContractIdempotent/fixture=i7_quoted_only (0.01s)
+    --- FAIL: TestCodexContractIdempotent/fixture=i8_agents_link_only (0.00s)
+    --- PASS: TestCodexContractIdempotent/fixture=i9_local_link_only (0.01s)
+    --- FAIL: TestCodexContractIdempotent/fixture=l1_local_present (0.00s)
+    --- FAIL: TestCodexContractIdempotent/fixture=l2_local_absent (0.00s)
+=== RUN   TestCodexLocalSeparation
+=== RUN   TestCodexLocalSeparation/fixture=l1_local_present/entry=AGENTS.md
+=== RUN   TestCodexLocalSeparation/fixture=l1_local_present/entry=CLAUDE.md
+    codex_contract_link_test.go:425: entry CLAUDE.md: local sentinel reachable = false, want true
+    codex_contract_link_test.go:431: entry CLAUDE.md: directives pointing at AGENTS.local.md = 0, want 1
+=== RUN   TestCodexLocalSeparation/fixture=l2_local_absent/entry=AGENTS.md
+=== RUN   TestCodexLocalSeparation/fixture=l2_local_absent/entry=CLAUDE.md
+    codex_contract_link_test.go:431: entry CLAUDE.md: directives pointing at AGENTS.local.md = 0, want 1
+--- FAIL: TestCodexLocalSeparation (0.01s)
+    --- PASS: TestCodexLocalSeparation/fixture=l1_local_present/entry=AGENTS.md (0.00s)
+    --- FAIL: TestCodexLocalSeparation/fixture=l1_local_present/entry=CLAUDE.md (0.00s)
+    --- PASS: TestCodexLocalSeparation/fixture=l2_local_absent/entry=AGENTS.md (0.00s)
+    --- FAIL: TestCodexLocalSeparation/fixture=l2_local_absent/entry=CLAUDE.md (0.00s)
+=== RUN   TestCodexContractLink_LocalImportMatrix
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_absent/local_present=true
+    codex_contract_link_test.go:611: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:635: executing directive order = [AGENTS.md], want AGENTS.md before AGENTS.local.md and AGENTS.local.md last
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_absent/local_present=false
+    codex_contract_link_test.go:611: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:635: executing directive order = [AGENTS.md], want AGENTS.md before AGENTS.local.md and AGENTS.local.md last
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_unlinked/local_present=true
+    codex_contract_link_test.go:611: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:635: executing directive order = [AGENTS.md], want AGENTS.md before AGENTS.local.md and AGENTS.local.md last
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_unlinked/local_present=false
+    codex_contract_link_test.go:611: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:635: executing directive order = [AGENTS.md], want AGENTS.md before AGENTS.local.md and AGENTS.local.md last
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_agents_link_only/local_present=true
+    codex_contract_link_test.go:611: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:635: executing directive order = [AGENTS.md], want AGENTS.md before AGENTS.local.md and AGENTS.local.md last
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_agents_link_only/local_present=false
+    codex_contract_link_test.go:611: executing @AGENTS.local.md imports in CLAUDE.md = 0, want 1
+    codex_contract_link_test.go:635: executing directive order = [AGENTS.md], want AGENTS.md before AGENTS.local.md and AGENTS.local.md last
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_both_links/local_present=true
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_both_links/local_present=false
+--- FAIL: TestCodexContractLink_LocalImportMatrix (0.02s)
+    --- FAIL: TestCodexContractLink_LocalImportMatrix/claude=claude_absent/local_present=true (0.00s)
+    --- FAIL: TestCodexContractLink_LocalImportMatrix/claude=claude_absent/local_present=false (0.00s)
+    --- FAIL: TestCodexContractLink_LocalImportMatrix/claude=claude_unlinked/local_present=true (0.00s)
+    --- FAIL: TestCodexContractLink_LocalImportMatrix/claude=claude_unlinked/local_present=false (0.00s)
+    --- FAIL: TestCodexContractLink_LocalImportMatrix/claude=claude_agents_link_only/local_present=true (0.00s)
+    --- FAIL: TestCodexContractLink_LocalImportMatrix/claude=claude_agents_link_only/local_present=false (0.00s)
+    --- PASS: TestCodexContractLink_LocalImportMatrix/claude=claude_both_links/local_present=true (0.00s)
+    --- PASS: TestCodexContractLink_LocalImportMatrix/claude=claude_both_links/local_present=false (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.954s
+FAIL

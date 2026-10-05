@@ -343,6 +343,45 @@
   //
   // 패널은 DOM 에서 제거되지 않고 CSS display:none 만 토글된다 — 비활성 패널의
   // 폼 필드도 그대로 제출된다 (atomic Save contract).
+  // updateSettingsPageHead 은 settings-page-head(설정 상세 머리글)를 방금 활성화한
+  // 탭의 제목·설명·효과 배지로 맞춘다. 서버가 그린 머리글은 로드 시점 탭 기준이라,
+  // 클라이언트 탭 전환만 일어나면 머리글이 첫 탭에 고착됐다 (t1280 — 구스 스크린샷
+  // #27·#28: 모든 페이지 제목이 '에이전트'로 남는 결함). 탭 메타는 shell.templ
+  // subnav 행의 data-page-* 속성이 실어 준다. 머리글이 없는 화면에서는 조용히
+  // 아무것도 하지 않는다 — 설정 화면 밖에서는 갱신할 대상이 없다.
+  function updateSettingsPageHead(link) {
+    var head = document.querySelector(".settings-page-head");
+    var title = document.getElementById("settings-page-title");
+    if (!head || !title) {
+      return;
+    }
+    var tKey = link.getAttribute("data-page-title-key");
+    if (tKey) {
+      title.setAttribute("data-i18n", tKey);
+      title.textContent = link.getAttribute("data-page-title") || tKey;
+    }
+    var desc = head.querySelector(".settings-page-head__desc");
+    var dKey = link.getAttribute("data-page-desc-key");
+    if (desc && dKey) {
+      desc.setAttribute("data-i18n", dKey);
+      desc.textContent = link.getAttribute("data-page-desc") || dKey;
+    }
+    var badge = head.querySelector(".settings-page-head__meta .badge");
+    var eKey = link.getAttribute("data-page-effect-key");
+    if (badge && eKey) {
+      badge.setAttribute("data-i18n", eKey);
+      badge.textContent = link.getAttribute("data-page-effect") || eKey;
+    }
+    var direct = head.querySelector(".settings-page-head__link");
+    var href = link.getAttribute("href");
+    if (direct && href) {
+      direct.setAttribute("href", href);
+    }
+    // 영문 baseline 으로 바꿔 놓은 텍스트를 현재 로케일 사전으로 재번역한다 —
+    // 이 호출이 없으면 ko/ja/zh 화면에서 탭을 옮길 때마다 영어로 튄다.
+    applyI18n(readPersistedLang());
+  }
+
   function wireTabs() {
     var tabLinks = document.querySelectorAll('.subnav__row[role="tab"]');
     if (tabLinks.length === 0) {
@@ -365,6 +404,7 @@
         }
         this.setAttribute("aria-selected", "true");
         panel.classList.add("is-active");
+        updateSettingsPageHead(this);
         // 새로고침해도 같은 탭으로 돌아오도록 주소만 맞춰 둔다. 히스토리에는
         // 쌓지 않는다 — 탭 전환은 뒤로 가기로 되돌릴 일이 아니다.
         var href = this.getAttribute("href");
@@ -380,15 +420,54 @@
     }
   }
 
-  // (구 wireAgentFMSubtabs 는 제거됐다: agentfm 섹션의 subagents/harness sub-tab
-  // 이 사라지고 .claude/agents/moai/ 행만 단일 그리드로 렌더된다. data-agentfm-*
-  // 속성을 방출하는 마크업이 더 이상 없다.)
+  // ── GLM flash → effort-select lock (3rd Party LLM → GLM Settings 탭) ──
+
+  // applyGLMFlashEffortLock 은 한 GLM 티어의 model select 값이 "glm-5.3-flash"
+  // 이면 같은 티어의 effort select 를 max 로 고정하고 max 이외의 옵션을 비활성화한다.
+  // flash 는 z.ai reasoning_effort "max" 만 받는다(공식 스펙 — low/high 는 미지원).
+  // 티어 페어링은 name 접미사(high/medium/low/fable)로 한다: models.* 전체 뒤에
+  // effort.* 전체가 렌더되어 두 select 가 같은 행 컨테이너에 있지 않기 때문.
+  // haiku 잠금과 달리 select 자체는 활성으로 남겨 "max 고정" 상태를 보여준다.
+  function applyGLMFlashEffortLock(modelSel) {
+    var tier = modelSel.name.slice("llm.glm.models.".length);
+    var effort = document.querySelector('select[name="llm.glm.effort.' + tier + '"]');
+    if (!effort) return;
+    var isFlash = modelSel.value === "glm-5.3-flash";
+    for (var o = 0; o < effort.options.length; o++) {
+      var opt = effort.options[o];
+      opt.disabled = isFlash && opt.value !== "max";
+      if (opt.disabled && opt.selected) effort.value = "max";
+    }
+  }
+
+  // reapplyGLMFlashLocks 는 리스너를 건드리지 않고 현재 값 기준으로 전체 티어의
+  // 잠금을 다시 적용한다 (초기 로드 + 저장 후 body swap 이후 호출).
+  function reapplyGLMFlashLocks() {
+    var models = document.querySelectorAll('select[name^="llm.glm.models."]');
+    for (var i = 0; i < models.length; i++) applyGLMFlashEffortLock(models[i]);
+  }
+
+  // wireGLMFlashEffortLock 은 각 GLM 티어 model select 의 change 에 잠금을 배선한다.
+  function wireGLMFlashEffortLock() {
+    var models = document.querySelectorAll('select[name^="llm.glm.models."]');
+    for (var i = 0; i < models.length; i++) {
+      (function (sel) {
+        sel.addEventListener("change", function () {
+          applyGLMFlashEffortLock(sel);
+        });
+      })(models[i]);
+    }
+    reapplyGLMFlashLocks();
+  }
+
+  // ── Agent overrides: profile matrix → cell repopulation (G3-3) ──
 
   // wireProfileMatrix 는 성능 티어 라디오(max/medium/low) 변경 시 각 에이전트의
   // model/effort select 를 그 티어의 프로파일 매트릭스 셀로 즉시 재설정한다 (G3-3 —
   // 클라이언트 전용, 서버 왕복 없음). #moai-profile-matrix JSON blob 에서
   // matrix[tier][agent] = {model, effort} 를 읽는다. 사용자가 이번 세션에서 직접
   // 편집한 select(dirty)는 보존하며, 셀을 직접 편집하면 즉시 Custom 라디오로 전환한다.
+  // (SPEC-WEB-AGENTFM-RESTORE-001 M4 — 삭제 커밋 384eb3460 이전 구현의 재포트.)
   function wireProfileMatrix() {
     var el = document.getElementById("moai-profile-matrix");
     if (!el) return;
@@ -438,7 +517,7 @@
     }
   }
 
-  // ── Haiku → effort-select lock ──
+  // ── Agent overrides: Haiku → effort-select lock ──
 
   // applyHaikuEffortLock 은 한 model select 값이 "haiku" 이면 같은 행
   // ([data-agent-row]) 의 effort select 를 비활성화하고, "Effort N/A for Haiku"
@@ -478,46 +557,6 @@
     reapplyHaikuLocks(); // 초기 상태(서버 렌더가 이미 disabled 를 방출하지만 재확인).
   }
 
-  // ── GLM flash → effort-select lock (3rd Party LLM → GLM Settings 탭) ──
-
-  // applyGLMFlashEffortLock 은 한 GLM 티어의 model select 값이 "glm-5.3-flash"
-  // 이면 같은 티어의 effort select 를 max 로 고정하고 max 이외의 옵션을 비활성화한다.
-  // flash 는 z.ai reasoning_effort "max" 만 받는다(공식 스펙 — low/high 는 미지원).
-  // 티어 페어링은 name 접미사(high/medium/low/fable)로 한다: models.* 전체 뒤에
-  // effort.* 전체가 렌더되어 두 select 가 같은 행 컨테이너에 있지 않기 때문.
-  // haiku 잠금과 달리 select 자체는 활성으로 남겨 "max 고정" 상태를 보여준다.
-  function applyGLMFlashEffortLock(modelSel) {
-    var tier = modelSel.name.slice("llm.glm.models.".length);
-    var effort = document.querySelector('select[name="llm.glm.effort.' + tier + '"]');
-    if (!effort) return;
-    var isFlash = modelSel.value === "glm-5.3-flash";
-    for (var o = 0; o < effort.options.length; o++) {
-      var opt = effort.options[o];
-      opt.disabled = isFlash && opt.value !== "max";
-      if (opt.disabled && opt.selected) effort.value = "max";
-    }
-  }
-
-  // reapplyGLMFlashLocks 는 리스너를 건드리지 않고 현재 값 기준으로 전체 티어의
-  // 잠금을 다시 적용한다 (초기 로드 + 저장 후 body swap 이후 호출).
-  function reapplyGLMFlashLocks() {
-    var models = document.querySelectorAll('select[name^="llm.glm.models."]');
-    for (var i = 0; i < models.length; i++) applyGLMFlashEffortLock(models[i]);
-  }
-
-  // wireGLMFlashEffortLock 은 각 GLM 티어 model select 의 change 에 잠금을 배선한다.
-  function wireGLMFlashEffortLock() {
-    var models = document.querySelectorAll('select[name^="llm.glm.models."]');
-    for (var i = 0; i < models.length; i++) {
-      (function (sel) {
-        sel.addEventListener("change", function () {
-          applyGLMFlashEffortLock(sel);
-        });
-      })(models[i]);
-    }
-    reapplyGLMFlashLocks();
-  }
-
   // initConsole 는 모든 콘솔 초기화를 한 곳에서 수행한다 — DOMContentLoaded(첫
   // 로드 / htmx 비활성 전체 새로고침) 와 htmx:afterSettle(boost body swap 직후)
   // 양쪽에서 호출된다. boost swap 은 body 전체를 교체하므로 새 요소는 리스너가
@@ -537,9 +576,10 @@
     // M5-b D1: 탭 nav 배선. CSS show/hide 만으로 동작 — 패널은 DOM 에 상주한다
     // (atomic Save contract: 비활성 패널의 필드도 제출됨).
     wireTabs();
-    // G3-3: 성능 티어 → 에이전트 매트릭스 셀 즉시 재설정.
+    // G3-3 (SPEC-WEB-AGENTFM-RESTORE-001 M4): 성능 티어 → 에이전트 매트릭스 셀
+    // 즉시 재설정 + haiku model → effort select 비활성 잠금(초기 + change +
+    // 티어 repopulation).
     wireProfileMatrix();
-    // haiku model → effort select 비활성 잠금(초기 + change + 티어 repopulation).
     wireHaikuEffortLock();
     // GLM flash model → 티어 effort select 를 max 로 고정(초기 + change).
     wireGLMFlashEffortLock();
@@ -549,9 +589,6 @@
   // htmx boost 가 body 를 swap 한 직후 document 에서 발생한다. afterSettle 없으면
   // swap 이후 DOMContentLoaded 가 재발생하지 않아 초기화가 누락된다.
   document.addEventListener("htmx:afterSettle", initConsole);
-  // Fires only after a swap actually landed, so a rejected refresh leaves the
-  // clock reading its last real value instead of claiming a fetch that failed.
-  document.addEventListener("htmx:afterSettle", stampRefreshed);
 
   // SPEC-WEB-CONSOLE-011 M5 — SPEC 보드의 remediation 명령 복사 버튼.
   // document 레벨 위임 리스너를 IIFE 최상위에서 "한 번만" 등록한다(initConsole
@@ -676,7 +713,7 @@
 (function () {
   "use strict";
 
-  var EVENTS = ["spec", "session", "goal", "verify", "kanban", "config"];
+  var EVENTS = ["spec", "session", "goal", "verify", "factory", "config"];
   var POLL_MS = 30000;
   var pollTimer = null;
   var failures = 0;
@@ -721,6 +758,13 @@
     el.textContent =
       pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
   }
+
+  // The refresh listener belongs to this IIFE because stampRefreshed is scoped
+  // here. Registering it in the earlier console IIFE raises a ReferenceError
+  // before the live refresh handlers can finish loading.
+  // It fires only after a swap actually landed, so a rejected refresh leaves
+  // the clock reading its last real value instead of claiming a fetch that failed.
+  document.addEventListener("htmx:afterSettle", stampRefreshed);
 
   function setLive(on) {
     var el = document.querySelector("[data-live-indicator]");

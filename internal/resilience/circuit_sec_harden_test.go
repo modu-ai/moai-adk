@@ -153,7 +153,8 @@ func TestCircuitBreaker_HalfOpenPermitReleased(t *testing.T) {
 // breaker의 post-transition state가 정상이어야 한다.
 //
 // (AC-SEC-M5-004 OBSERVATIONAL RED는 픽스 전 panic이 프로세스를 crash시키므로 자동 테스트로
-//  commit하지 않는다 — 수동 1회 관측 후 progress.md에 기록.)
+//
+//	commit하지 않는다 — 수동 1회 관측 후 progress.md에 기록.)
 func TestCircuitBreaker_PanickingCallbackRecovered(t *testing.T) {
 	t.Parallel()
 

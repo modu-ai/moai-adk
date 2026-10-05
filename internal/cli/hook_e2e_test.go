@@ -374,6 +374,7 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 		"codex-review-gate":                  true, // SPEC-MOAI-MCP-SERVER-001 M2 REQ-MCP-008: Stop-hook domain gate (shares EventStop; opt-in via workflow.codex.review_gate.enabled)
 		"multi-review-gate":                  true, // SPEC-AUDIT-MULTI-MODEL-001 M5 REQ-AMM-013: Stop-hook domain gate (shares EventStop; opt-in via workflow.multi.review_gate.enabled)
 		"chain-event":                        true, // SPEC-CHAIN-CORE-001 REQ-CHAIN-012: SubagentStop domain hook (shares EventSubagentStop; appends completion-edge to chain ledger)
+		"interrupt":                          true, // SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2e: Codex-only Interrupt handler; internal/hook carries no Interrupt event type (AC-HPR-011)
 	}
 
 	for _, cmd := range hookCmd.Commands() {

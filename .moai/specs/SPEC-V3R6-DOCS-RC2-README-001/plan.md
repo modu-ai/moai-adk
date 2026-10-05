@@ -2,7 +2,6 @@
 id: SPEC-V3R6-DOCS-RC2-README-001
 title: "Implementation Plan — v3.0.0-rc2 README + CHANGELOG factual-alignment"
 version: "0.3.0"
-status: in-progress
 created: 2026-06-19
 updated: 2026-06-19
 author: manager-spec

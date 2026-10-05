@@ -1,7 +1,6 @@
 ---
 id: SPEC-V3R3-BRAIN-001
 version: "0.1.0"
-status: draft
 created_at: 2026-05-04
 updated_at: 2026-05-04
 author: MoAI Plan Workflow

@@ -2,7 +2,6 @@
 id: SPEC-V3R2-SPC-003
 document: research
 version: "0.1.0"
-status: backfilled
 created: 2026-05-10
 updated: 2026-05-10
 author: manager-spec (Batch 3 backfill)

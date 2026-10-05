@@ -1,0 +1,24 @@
+=== RUN   TestCodexLocalInstructions_AgentsLocalReadFirst
+--- PASS: TestCodexLocalInstructions_AgentsLocalReadFirst (0.00s)
+=== RUN   TestCodexLocalInstructions_DualFileMatrix
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/absent/absent
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/absent/empty
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/absent/body
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/empty/absent
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/empty/empty
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/empty/body
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/body/absent
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/body/empty
+=== RUN   TestCodexLocalInstructions_DualFileMatrix/body/body
+--- PASS: TestCodexLocalInstructions_DualFileMatrix (0.01s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/absent/absent (0.00s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/absent/empty (0.00s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/absent/body (0.00s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/empty/absent (0.00s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/empty/empty (0.00s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/empty/body (0.00s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/body/absent (0.00s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/body/empty (0.00s)
+    --- PASS: TestCodexLocalInstructions_DualFileMatrix/body/body (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.017s

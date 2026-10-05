@@ -99,7 +99,7 @@ flowchart TD
 
 ## 定義方法の概要
 
-サブエージェントは YAML フロントマターを持つマークダウンファイルで定義します。`/agents` コマンドで対話的に生成することも、ファイルを直接書くこともできます。（CC 2.1.198 で `/agents` 作成ウィザードが削除されました — Claude に依頼するか `.claude/agents/` を直接編集してください。公式ドキュメントには 2026-07 時点で `/agents` インターフェースがまだ残っているため、実際の 2.1.198 セッションで確認してください。）
+サブエージェントは YAML フロントマターを持つマークダウンファイルで定義します。Claude に作成を依頼することも、ファイルを直接書くこともできます。v2.1.198 以降、`/agents` コマンドは対話式の作成ウィザードを開かず、Claude に依頼するか `.claude/agents/` を直接編集するよう案内するだけです（ファイル形式と保存場所は変わりません）。
 
 ```markdown
 ---
@@ -159,7 +159,7 @@ model: sonnet
 
 ## 深掘りは MoAI エージェントガイドへ
 
-ここまでが Claude Code 次元のサブエージェント概念です。MoAI-ADK はこのメカニズムの上に **11 個のエージェントカタログ** を運用します — Manager 系列 (manager-spec / manager-develop / manager-docs / manager-git / manager-design) が plan→run→sync ライフサイクルを、Evaluator 系列 (plan-auditor / sync-auditor) が独立監査を、builder-harness がハーネススキャフォールド生成を、super-advisor が高推論の助言を、e2e-tester が Web/モバイル/デスクトップの E2E テスト実行を、そして Anthropic 内蔵 `Explore` が読み取り専用の探索を担当します。計画と監査が分離されているという点 — 作ったエージェントが自分で検査しないこと — がこのカタログの核心的な設計です。各エージェントに作業の性質に合ったモデルと推論深度 (effort) を宣言的に割り当てることがトークノミクスの「計画は深く、実装は安く、検証は独立して」原則です。詳しい内容は下記の応用ガイドで扱います。
+ここまでが Claude Code 次元のサブエージェント概念です。MoAI-ADK はこのメカニズムの上に **13 個のエージェントカタログ** を運用します — Manager 系列 (manager-spec / manager-develop / manager-docs / manager-git / manager-design / manager-lead) が plan→run→sync ライフサイクルと Tier L の調整を、Evaluator 系列 (plan-auditor / sync-auditor) が独立監査を、builder-harness がハーネススキャフォールド生成を、super-advisor が高推論の助言を、e2e-tester が Web/モバイル/デスクトップの E2E テスト実行を、manager-todo がタスクキュー管理と GTD 自動ミッションの判定 (読み取り専用サブロール) を、そして Anthropic 内蔵 `Explore` が読み取り専用の探索を担当します。計画と監査が分離されているという点 — 作ったエージェントが自分で検査しないこと — がこのカタログの核心的な設計です。各エージェントに作業の性質に合ったモデルと推論深度 (effort) を宣言的に割り当てることがトークノミクスの「計画は深く、実装は安く、検証は独立して」原則です。詳しい内容は下記の応用ガイドで扱います。
 
 ## 関連ドキュメント
 

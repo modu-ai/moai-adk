@@ -15,8 +15,6 @@ type OptionTranslation struct {
 
 // UIStrings holds translated UI strings.
 type UIStrings struct {
-	HelpSelect    string
-	HelpInput     string
 	ErrorRequired string
 	// ConfirmYes / ConfirmNo localize the huh Confirm affirmative/negative
 	// button labels. huh v2's Confirm exposes only static Affirmative/Negative
@@ -42,14 +40,6 @@ var translations = map[string]map[string]QuestionTranslation{
 		"project_name": {
 			Title:       "프로젝트 이름 입력",
 			Description: "프로젝트의 이름입니다.",
-		},
-		"development_mode": {
-			Title:       "개발 방법론 선택",
-			Description: "구현 시 사용할 개발 워크플로우 사이클을 설정합니다.",
-			Options: []OptionTranslation{
-				{Label: "TDD (권장)", Desc: "테스트 주도 개발: RED-GREEN-REFACTOR"},
-				{Label: "DDD", Desc: "도메인 주도 개발: ANALYZE-PRESERVE-IMPROVE"},
-			},
 		},
 		"report_format": {
 			Title:       "리포트 형식 선택",
@@ -96,88 +86,27 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "GitLab 개인 액세스 토큰 입력 (선택사항)",
 			Description: "MR 생성 및 푸시에 필요합니다. 비워두거나 glab CLI를 사용할 수 있습니다.",
 		},
-		"model_policy": {
-			Title:       "모델 정책 선택",
-			Description: "각 에이전트에 할당되는 Claude 모델 등급을 제어합니다. Claude 플랜에 맞추세요.",
-			Options: []OptionTranslation{
-				{Label: "Max", Desc: "Opus 5 (high~medium) + Sonnet (low, 문서/단발성 작업) — Max $200 플랜"},
-				{Label: "Medium (권장)", Desc: "Opus 5 (high~low) + Sonnet (low, 문서/단발성 작업) — Max $100 플랜"},
-				{Label: "Low", Desc: "Opus 5 (high~low) + Sonnet (low, 문서/E2E/단발성 작업) — Plus $20 플랜"},
-			},
-		},
-		"project_mode": {
-			Title:       "프로젝트 모드 선택",
-			Description: "협업 설정을 제어합니다. 솔로 개발자는 'personal'이 권장 기본값입니다.",
-			Options: []OptionTranslation{
-				{Label: "Personal (권장)", Desc: "솔로 개발자 — 팀 조율 오버헤드 없음"},
-				{Label: "Team", Desc: "다중 개발자 환경 — 팀 협업 기능 활성화"},
-			},
-		},
-		"worktree_auto_create": {
-			Title:       "워크트리 자동 생성을 활성화할까요?",
-			Description: "활성화하면 moai init / moai profile / moai web이 자동으로 워크트리에 진입합니다. 기본은 비활성화입니다(솔로 개발자 권장).",
-		},
-		"todo_enabled": {
-			Title:       "백로그 큐(todo)를 사용할까요?",
-			Description: "사용하지 않으면 백로그 안내가 먼저 뜨지 않습니다 — 세션 시작 시 대기 카드 요약도, 상태줄 TODO 표시도 없습니다. `moai todo` 명령과 직접 부른 `/moai todo` 는 어느 쪽이든 그대로 동작합니다.",
-		},
-		"feedback_auto_submit": {
-			Title:       "확인 절차 없이 피드백을 제출할까요?",
-			Description: "끄면(기본값) 피드백 워크플로가 마스킹된 제목과 본문을 보여주고 공개 이슈를 열기 전에 한 번 묻습니다. 켜면 그 확인 단계를 건너뜁니다.",
-		},
 		"autonomy_tier": {
-			Title:       "자율성 등급 선택",
-			Description: "프롬프트 없이 세션이 몇 턴까지 실행될지 제어합니다. 'semi-auto'가 권장 기본값입니다.",
+			Title:       "세션 권한 모드 선택",
+			Description: "Claude Code 권한 모드를 사용자 설정에 기록합니다. '편집 자동 수락'이 권장 기본값입니다.",
 			Options: []OptionTranslation{
-				{Label: "Semi-auto (권장)", Desc: "중요하지 않은 동작 전에 항상 확인"},
-				{Label: "Automatic", Desc: "마일스톤 자율 실행; 게이트에서 확인"},
-				{Label: "Fully-autonomous", Desc: "샌드박스 증명 필요 (Docker/gVisor 등)"},
+				{Label: "편집 자동 수락 (권장)", Desc: "파일 편집은 자동 수락; 다른 도구는 확인"},
+				{Label: "자동 모드", Desc: "분류기 안전 검사 하에 도구 호출 자동 승인"},
+				{Label: "권한 우회", Desc: "모든 프롬프트 생략; 샌드박스 증명 필요 (Docker/gVisor 등)"},
 			},
 		},
-		"audit_model": {
-			Title:       "감사 모델 선택",
-			Description: "활성 감사 백엔드. 'claude'가 배포 기본값입니다.",
+		"agent_wiring": {
+			Title:       "배포하고 연결할 에이전트 하니스 선택",
+			Description: "이 프로젝트에 MoAI가 배포하고 연결할 LLM 하니스입니다. 'claude'가 권장 기본값이며, --llm 플래그가 이 답변보다 우선합니다.",
 			Options: []OptionTranslation{
-				{Label: "Claude", Desc: "기본 앵커 판정"},
-				{Label: "Codex", Desc: "Codex JSON-RPC 검토자"},
-				{Label: "GLM", Desc: "GLM (z.ai) 검토자"},
-				{Label: "Multi", Desc: "다중 검토자 수렴 (지연됨)"},
+				{Label: "Claude 단독 (권장)", Desc: ".claude/ 표면과 AGENTS.md를 배포합니다 (지금까지의 기본 동작)"},
+				{Label: "Codex 단독", Desc: "AGENTS.md와 Codex 표면만 배포합니다 — .claude/ 디렉터리, CLAUDE.md, .mcp.json이 생기지 않습니다"},
+				{Label: "Claude + Codex", Desc: "동일한 .claude/ 배포에 .codex/ 연결을 더하고 .mcp.json 프로비저닝을 강제로 켭니다"},
 			},
 		},
-		"audit_gate_claude": {
-			Title:       "Claude 감사 게이트",
-			Description: "Claude 앵커 판정의 게이트.",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "Claude 감사자 비활성화"},
-				{Label: "Advisory", Desc: "실행하되 차단 안 함"},
-				{Label: "Required", Desc: "실패 시 수렴 차단"},
-			},
-		},
-		"audit_gate_codex": {
-			Title:       "Codex 감사 게이트",
-			Description: "Codex 검토자의 게이트.",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "Codex 감사자 비활성화"},
-				{Label: "Advisory", Desc: "실행하되 차단 안 함"},
-				{Label: "Required", Desc: "실패 시 수렴 차단"},
-			},
-		},
-		"audit_gate_glm": {
-			Title:       "GLM 감사 게이트",
-			Description: "GLM 검토자의 게이트. 기본 'advisory' — GLM 키가 없어도 차단하지 않습니다.",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "GLM 감사자 비활성화"},
-				{Label: "Advisory", Desc: "실행하되 차단 안 함"},
-				{Label: "Required", Desc: "실패 시 수렴 차단"},
-			},
-		},
-		"codex_audit_enabled": {
-			Title:       "Codex 검토 게이트 Stop 훅을 활성화할까요?",
-			Description: "기본 비활성화. 활성화하면 Stop 훅이 미커밋 변경 사항에 대해 codex를 실행합니다.",
-		},
-		"mcp_provision": {
-			Title:       "moai MCP 서버를 프로비저닝할까요?",
-			Description: "기본 활성화. 건너뛰려면 아니요를 선택하세요.",
+		"jev_enabled": {
+			Title:       "Jev 판정 기능을 켤까요? (선택, 기본은 꺼짐)",
+			Description: "Jev는 건네받은 상태에 대해 정해진 형태의 질문에 답하고 확률을 돌려줍니다. 스스로 결정하지는 않으며, 답은 사람이 읽습니다. 소프트웨어가 자동으로 쓰더라도 신호로만 쓰입니다 — 예를 들어 `moai todo --auto` 가 대기 카드를 살피는 순서, 또는 확인하거나 사람에게 넘기기만 하는 선택형 착수 교차 검증이 있습니다. 이 신호만으로 카드를 승인하거나 병합하거나 바꾸지는 않습니다. 켜면 카드 본문이나 요청 본문이 외부 업체 서버로 전송됩니다. 이 질문은 init 때만 묻습니다 — 나중에 바꾸려면 `moai web` 설정 화면을 여세요.",
 		},
 	},
 	"ja": {
@@ -192,14 +121,6 @@ var translations = map[string]map[string]QuestionTranslation{
 		"project_name": {
 			Title:       "プロジェクト名を入力",
 			Description: "プロジェクトの名前です。",
-		},
-		"development_mode": {
-			Title:       "開発方法論を選択",
-			Description: "実装時に使用する開発ワークフローサイクルを制御します。",
-			Options: []OptionTranslation{
-				{Label: "TDD (推奨)", Desc: "テスト駆動開発: RED-GREEN-REFACTOR"},
-				{Label: "DDD", Desc: "ドメイン駆動開発: ANALYZE-PRESERVE-IMPROVE"},
-			},
 		},
 		"report_format": {
 			Title:       "レポート形式を選択",
@@ -246,88 +167,27 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "GitLabパーソナルアクセストークンを入力（省略可）",
 			Description: "MR作成とプッシュに必要です。空欄のままスキップまたはglab CLIを使用してください。",
 		},
-		"model_policy": {
-			Title:       "モデルポリシーを選択",
-			Description: "各エージェントに割り当てる Claude モデルのティアを制御します。ご利用の Claude プランに合わせてください。",
-			Options: []OptionTranslation{
-				{Label: "Max", Desc: "Opus 5 (high~medium) + Sonnet (low, ドキュメント/単発タスク) — Max $200 プラン"},
-				{Label: "Medium (推奨)", Desc: "Opus 5 (high~low) + Sonnet (low, ドキュメント/単発タスク) — Max $100 プラン"},
-				{Label: "Low", Desc: "Opus 5 (high~low) + Sonnet (low, ドキュメント/E2E/単発タスク) — Plus $20 プラン"},
-			},
-		},
-		"project_mode": {
-			Title:       "プロジェクトモードを選択",
-			Description: "コラボレーション設定を制御します。ソロ開発者には 'personal' が推奨デフォルトです。",
-			Options: []OptionTranslation{
-				{Label: "Personal (推奨)", Desc: "ソロ開発者 — チーム調整のオーバーヘッドなし"},
-				{Label: "Team", Desc: "複数人開発 — チームコラボレーション機能を有効化"},
-			},
-		},
-		"worktree_auto_create": {
-			Title:       "ワークツリー自動作成を有効にしますか?",
-			Description: "有効にすると、moai init / moai profile / moai web が自動的にワークツリーに入ります。既定は無効です(ソロ開発者推奨)。",
-		},
-		"todo_enabled": {
-			Title:       "バックログキュー(todo)を使いますか?",
-			Description: "無効にすると、バックログの案内が出なくなります — セッション開始時の待機カード要約も、ステータスラインの TODO 表示もありません。`moai todo` コマンドと明示的な `/moai todo` はどちらの設定でもそのまま動きます。",
-		},
-		"feedback_auto_submit": {
-			Title:       "確認なしでフィードバックを送信しますか?",
-			Description: "無効(既定)の場合、フィードバックワークフローはマスク済みのタイトルと本文を表示し、公開 issue を作成する前に一度確認します。有効にするとその確認を省略します。",
-		},
 		"autonomy_tier": {
-			Title:       "自律レベルを選択",
-			Description: "プロンプトなしでセッションが何ターン実行するかを制御します。'semi-auto' が推奨デフォルトです。",
+			Title:       "セッションの権限モードを選択",
+			Description: "Claude Code の権限モードをユーザー設定に書き込みます。「編集を自動承認」が推奨デフォルトです。",
 			Options: []OptionTranslation{
-				{Label: "Semi-auto (推奨)", Desc: "重要でない操作の前に常に確認"},
-				{Label: "Automatic", Desc: "マイルストーンを自律実行; ゲートで確認"},
-				{Label: "Fully-autonomous", Desc: "サンドボックス証明が必要 (Docker/gVisor 等)"},
+				{Label: "編集を自動承認 (推奨)", Desc: "ファイル編集は自動承認; その他のツールは確認"},
+				{Label: "自動モード", Desc: "分類器の安全検査のもとでツール呼び出しを自動承認"},
+				{Label: "権限をバイパス", Desc: "すべてのプロンプトを省略; サンドボックス証明が必要 (Docker/gVisor 等)"},
 			},
 		},
-		"audit_model": {
-			Title:       "監査モデルを選択",
-			Description: "アクティブな監査バックエンド。'claude' が配布デフォルトです。",
+		"agent_wiring": {
+			Title:       "デプロイして接続するエージェントハーネスを選択",
+			Description: "このプロジェクトに MoAI がデプロイ・接続する LLM ハーネスです。'claude' が推奨デフォルトで、--llm フラグがこの回答より優先されます。",
 			Options: []OptionTranslation{
-				{Label: "Claude", Desc: "デフォルト アンカー評決"},
-				{Label: "Codex", Desc: "Codex JSON-RPC レビューア"},
-				{Label: "GLM", Desc: "GLM (z.ai) レビューア"},
-				{Label: "Multi", Desc: "マルチレビューアー収束 (延期)"},
+				{Label: "Claude のみ (推奨)", Desc: ".claude/ サーフェスと AGENTS.md をデプロイします (従来のデフォルト動作)"},
+				{Label: "Codex のみ", Desc: "AGENTS.md と Codex サーフェスのみデプロイ — .claude/ ツリー、CLAUDE.md、.mcp.json は作成されません"},
+				{Label: "Claude + Codex", Desc: "同じ .claude/ デプロイに .codex/ 接続を追加し、.mcp.json のプロビジョニングを強制有効化"},
 			},
 		},
-		"audit_gate_claude": {
-			Title:       "Claude 監査ゲート",
-			Description: "Claude アンカー評決のゲート。",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "Claude 監査を無効化"},
-				{Label: "Advisory", Desc: "実行するがブロックしない"},
-				{Label: "Required", Desc: "失敗時収束ブロック"},
-			},
-		},
-		"audit_gate_codex": {
-			Title:       "Codex 監査ゲート",
-			Description: "Codex レビューアのゲート。",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "Codex 監査を無効化"},
-				{Label: "Advisory", Desc: "実行するがブロックしない"},
-				{Label: "Required", Desc: "失敗時収束ブロック"},
-			},
-		},
-		"audit_gate_glm": {
-			Title:       "GLM 監査ゲート",
-			Description: "GLM レビューアのゲート。デフォルト 'advisory' — GLM キーがなくてもブロックしません。",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "GLM 監査を無効化"},
-				{Label: "Advisory", Desc: "実行するがブロックしない"},
-				{Label: "Required", Desc: "失敗時収束ブロック"},
-			},
-		},
-		"codex_audit_enabled": {
-			Title:       "Codex レビューゲート Stop フックを有効にしますか?",
-			Description: "デフォルト無効。有効化すると Stop フックが未コミット変更に codex を実行します。",
-		},
-		"mcp_provision": {
-			Title:       "moai MCP サーバーをプロビジョニングしますか?",
-			Description: "デフォルト有効。スキップする場合はいいえを選択してください。",
+		"jev_enabled": {
+			Title:       "Jev の型付き判定を有効にしますか？（任意・既定は無効）",
+			Description: "Jev は渡された状態について型付きの質問に答え、確率を返します。判断そのものは行わず、答えは人が読みます。自動で使われる場合も信号としてだけです — 例えば `moai todo --auto` が待機中のカードを検討する順序や、確認するか人に引き継ぐだけの任意の着手の交差検証があります。この信号だけでカードを承認・マージ・変更することはありません。有効にすると、カード本文やリクエスト本文が外部ベンダーのサーバーへ送信されます。この質問は init のときだけ尋ねます — 後から変える場合は `moai web` の設定画面を開いてください。",
 		},
 	},
 	"zh": {
@@ -342,14 +202,6 @@ var translations = map[string]map[string]QuestionTranslation{
 		"project_name": {
 			Title:       "输入项目名称",
 			Description: "项目的名称。",
-		},
-		"development_mode": {
-			Title:       "选择开发方法论",
-			Description: "控制实施期间使用的开发工作流程周期。",
-			Options: []OptionTranslation{
-				{Label: "TDD (推荐)", Desc: "测试驱动开发: RED-GREEN-REFACTOR"},
-				{Label: "DDD", Desc: "领域驱动开发: ANALYZE-PRESERVE-IMPROVE"},
-			},
 		},
 		"report_format": {
 			Title:       "选择报告格式",
@@ -396,88 +248,27 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "输入GitLab个人访问令牌（可选）",
 			Description: "MR创建和推送所需。留空以跳过或使用glab CLI。",
 		},
-		"model_policy": {
-			Title:       "选择模型策略",
-			Description: "控制为每个智能体分配的 Claude 模型等级。请与您的 Claude 套餐匹配。",
-			Options: []OptionTranslation{
-				{Label: "Max", Desc: "Opus 5 (high~medium) + Sonnet (low, 文档/一次性任务) — Max $200 套餐"},
-				{Label: "Medium (推荐)", Desc: "Opus 5 (high~low) + Sonnet (low, 文档/一次性任务) — Max $100 套餐"},
-				{Label: "Low", Desc: "Opus 5 (high~low) + Sonnet (low, 文档/E2E/一次性任务) — Plus $20 套餐"},
-			},
-		},
-		"project_mode": {
-			Title:       "选择项目模式",
-			Description: "控制协作设置。单人开发者推荐使用 'personal' 默认值。",
-			Options: []OptionTranslation{
-				{Label: "Personal (推荐)", Desc: "单人开发者 — 无团队协调开销"},
-				{Label: "Team", Desc: "多人开发 — 启用团队协作功能"},
-			},
-		},
-		"worktree_auto_create": {
-			Title:       "是否启用工作树自动创建?",
-			Description: "启用后,moai init / moai profile / moai web 会自动进入工作树。默认关闭(推荐单人开发者)。",
-		},
-		"todo_enabled": {
-			Title:       "是否使用待办队列(todo)?",
-			Description: "关闭后将不再主动提示待办内容 — 会话开始时不显示等待卡片数量,状态栏也不显示 TODO。无论开关如何,`moai todo` 命令和显式调用的 `/moai todo` 都照常工作。",
-		},
-		"feedback_auto_submit": {
-			Title:       "是否跳过确认直接提交反馈?",
-			Description: "关闭时(默认),反馈流程会先展示脱敏后的标题与正文,并在创建公开 issue 前询问一次。开启后将跳过该确认步骤。",
-		},
 		"autonomy_tier": {
-			Title:       "选择自主等级",
-			Description: "控制会话在不提示的情况下运行多少轮。'semi-auto' 是推荐默认值。",
+			Title:       "选择会话权限模式",
+			Description: "将 Claude Code 权限模式写入用户设置。「自动接受编辑」是推荐默认值。",
 			Options: []OptionTranslation{
-				{Label: "Semi-auto (推荐)", Desc: "每个重要操作前都确认"},
-				{Label: "Automatic", Desc: "自主运行里程碑;在关卡确认"},
-				{Label: "Fully-autonomous", Desc: "需要沙箱证明 (Docker/gVisor 等)"},
+				{Label: "自动接受编辑 (推荐)", Desc: "自动接受文件编辑;其他工具仍需确认"},
+				{Label: "自动模式", Desc: "在分类器安全检查下自动批准工具调用"},
+				{Label: "跳过权限检查", Desc: "跳过所有提示;需要沙箱证明 (Docker/gVisor 等)"},
 			},
 		},
-		"audit_model": {
-			Title:       "选择审计模型",
-			Description: "活跃的审计后端。'claude' 是锁定分发默认值。",
+		"agent_wiring": {
+			Title:       "选择要部署并接入的代理框架",
+			Description: "MoAI 为本项目部署并接入的 LLM 框架。'claude' 是推荐默认值，--llm 参数优先于此答案。",
 			Options: []OptionTranslation{
-				{Label: "Claude", Desc: "默认锚定裁决"},
-				{Label: "Codex", Desc: "Codex JSON-RPC 审查者"},
-				{Label: "GLM", Desc: "GLM (z.ai) 审查者"},
-				{Label: "Multi", Desc: "多审查者收敛(延期)"},
+				{Label: "仅 Claude (推荐)", Desc: "部署 .claude/ 表面与 AGENTS.md（沿用至今的默认行为）"},
+				{Label: "仅 Codex", Desc: "仅部署 AGENTS.md 与 Codex 表面 — 不会生成 .claude/ 目录、CLAUDE.md 和 .mcp.json"},
+				{Label: "Claude + Codex", Desc: "在相同的 .claude/ 部署之上追加 .codex/ 接入，并强制开启 .mcp.json 供应"},
 			},
 		},
-		"audit_gate_claude": {
-			Title:       "Claude 审计关卡",
-			Description: "Claude 锚定裁决的关卡。",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "禁用 Claude 审计者"},
-				{Label: "Advisory", Desc: "运行但不阻塞"},
-				{Label: "Required", Desc: "失败阻塞收敛"},
-			},
-		},
-		"audit_gate_codex": {
-			Title:       "Codex 审计关卡",
-			Description: "Codex 审查者的关卡。",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "禁用 Codex 审计者"},
-				{Label: "Advisory", Desc: "运行但不阻塞"},
-				{Label: "Required", Desc: "失败阻塞收敛"},
-			},
-		},
-		"audit_gate_glm": {
-			Title:       "GLM 审计关卡",
-			Description: "GLM 审查者的关卡。默认 'advisory' — 缺少 GLM key 不会阻塞(失败开放)。",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "禁用 GLM 审计者"},
-				{Label: "Advisory", Desc: "运行但不阻塞"},
-				{Label: "Required", Desc: "失败阻塞收敛"},
-			},
-		},
-		"codex_audit_enabled": {
-			Title:       "是否启用 Codex 审查关卡 Stop 钩子?",
-			Description: "默认关闭。启用后 Stop 钩子对未提交变更运行 codex。",
-		},
-		"mcp_provision": {
-			Title:       "是否供应 moai MCP 服务器?",
-			Description: "默认开启。如需跳过请选择否。",
+		"jev_enabled": {
+			Title:       "要启用 Jev 类型化判断吗？（可选，默认关闭）",
+			Description: "Jev 针对传入的状态回答类型化问题并返回概率，它本身不做任何决定，答案由人来读。即使被自动使用，也只作为信号 — 例如 `moai todo --auto` 查看待办卡片的顺序，或只能确认或移交给人的可选启动交叉验证；仅凭该信号不会批准、合并或更改卡片。启用后，卡片正文或请求正文会发送到外部厂商的服务器。此问题仅在 init 时询问 — 之后要更改请打开 `moai web` 设置页面。",
 		},
 	},
 }
@@ -485,29 +276,21 @@ var translations = map[string]map[string]QuestionTranslation{
 // uiStrings maps language code to UI strings.
 var uiStrings = map[string]UIStrings{
 	"en": {
-		HelpSelect:    "Use arrow keys to navigate, Enter to select, Esc to cancel",
-		HelpInput:     "Type your answer, Enter to confirm, Esc to cancel",
 		ErrorRequired: "This field is required",
 		ConfirmYes:    "Yes",
 		ConfirmNo:     "No",
 	},
 	"ko": {
-		HelpSelect:    "방향키로 이동, Enter로 선택, Esc로 취소",
-		HelpInput:     "답변 입력 후 Enter로 확인, Esc로 취소",
 		ErrorRequired: "필수 입력 항목입니다",
 		ConfirmYes:    "예",
 		ConfirmNo:     "아니오",
 	},
 	"ja": {
-		HelpSelect:    "矢印キーで移動、Enterで選択、Escでキャンセル",
-		HelpInput:     "入力してEnterで確定、Escでキャンセル",
 		ErrorRequired: "この項目は必須です",
 		ConfirmYes:    "はい",
 		ConfirmNo:     "いいえ",
 	},
 	"zh": {
-		HelpSelect:    "使用方向键导航，Enter选择，Esc取消",
-		HelpInput:     "输入答案，Enter确认，Esc取消",
 		ErrorRequired: "此字段为必填项",
 		ConfirmYes:    "是",
 		ConfirmNo:     "否",
@@ -570,4 +353,106 @@ func GetUIStrings(locale string) UIStrings {
 		return strings
 	}
 	return uiStrings["en"]
+}
+
+// ============================================================================
+// M1/M2 absorbed wizard strings (plan.md M7: folded into the translations.go
+// scheme so every wizard UI string table lives in one file).
+// ============================================================================
+
+// helpActionLabels maps the English help action strings of huh's default key
+// map to each locale (design.md §7). The en column is the identity so every
+// locale carries the same action set. Key names (enter, ↑, …) are never
+// translated; only the action after them is.
+var helpActionLabels = map[string]map[string]string{
+	"en": {"next": "next", "submit": "submit", "back": "back", "select": "select", "up": "up", "down": "down",
+		"filter": "filter", "set filter": "set filter", "clear filter": "clear filter", "toggle": "toggle", "complete": "complete"},
+	"ko": {"next": "다음", "submit": "제출", "back": "이전", "select": "선택", "up": "위", "down": "아래",
+		"filter": "검색", "set filter": "검색 적용", "clear filter": "검색 해제", "toggle": "전환", "complete": "자동 완성"},
+	"ja": {"next": "次へ", "submit": "送信", "back": "戻る", "select": "選択", "up": "上", "down": "下",
+		"filter": "絞り込み", "set filter": "絞り込み確定", "clear filter": "絞り込み解除", "toggle": "切替", "complete": "補完"},
+	"zh": {"next": "下一步", "submit": "提交", "back": "返回", "select": "选择", "up": "上", "down": "下",
+		"filter": "筛选", "set filter": "应用筛选", "clear filter": "清除筛选", "toggle": "切换", "complete": "补全"},
+}
+
+// downgradeConfirmText is the localized title format (current, target) and
+// description of the `moai update --version` downgrade confirmation.
+type downgradeConfirmText struct {
+	TitleFormat string
+	Description string
+}
+
+// downgradeConfirmTexts holds the downgrade confirmation strings for the four
+// locales (design.md §6).
+var downgradeConfirmTexts = map[string]downgradeConfirmText{
+	"en": {TitleFormat: "Downgrade %s → %s?", Description: "The requested tag is older than the running version."},
+	"ko": {TitleFormat: "다운그레이드할까요? %s → %s", Description: "요청한 태그가 지금 실행 중인 버전보다 오래되었습니다."},
+	"ja": {TitleFormat: "ダウングレードしますか？ %s → %s", Description: "指定したタグは実行中のバージョンより古いバージョンです。"},
+	"zh": {TitleFormat: "要降级吗？%s → %s", Description: "请求的标签比当前运行的版本旧。"},
+}
+
+// profileQuestionTexts maps locale -> profile question id -> translation
+// for the profile wizard (`moai profile setup`); moved here from
+// profile_translations.go in the M7 strings fold (plan.md M7).
+// profileQuestionTexts maps locale -> profile question id -> translation for
+// the profile wizard (`moai profile setup`). The strings are the form strings
+// the v1 profile wizard carried in the cli package (profileSetupText), moved
+// here unchanged so the absorbed v2 form renders the same text in every
+// locale.
+//
+// The table is keyed separately from the init wizard's `translations` because
+// four profile ids (conversation_language, user_name, model_policy,
+// development_mode) also exist in the init set with different wording; one
+// shared id-keyed table cannot hold both. Option labels are NOT carried here:
+// the caller resolves them (schema label bridge) and passes them in through
+// ProfileOptions.
+var profileQuestionTexts = map[string]map[string]QuestionTranslation{
+	"en": {
+		"conversation_language": {Title: "Select your language", Description: "Language for this wizard and Claude's responses."},
+		"user_name":             {Title: "User name", Description: "Your display name for configuration files. Press Enter to skip."},
+		"git_commit_lang":       {Title: "Git commit message language", Description: "Language for commit messages."},
+		"code_comment_lang":     {Title: "Code comment language", Description: "Language for code comments."},
+		"doc_lang":              {Title: "Documentation language", Description: "Language for documentation files."},
+		"model":                 {Title: "Default model override", Description: "Override the model when launching with this profile."},
+		"model_policy":          {Title: "Session model policy", Description: "Sets the default reasoning effort of the Claude session launched with this profile when no effort level is chosen. Subagents inherit the session's model and effort."},
+		"effort_level":          {Title: "Session effort level", Description: "Reasoning depth for the Claude session launched with this profile. xhigh/max need a model that supports them (Opus 5.5, Sonnet 5, Opus 4.7+). Subagents inherit this session's effort."},
+		"permission_mode":       {Title: "Permission mode", Description: "Controls how Claude asks for permission before taking actions."},
+		"development_mode":      {Title: "Development mode", Description: "Project methodology written to quality.yaml. Empty keeps the project default."},
+	},
+	"ko": {
+		"conversation_language": {Title: "언어를 선택하세요", Description: "이 설정 마법사와 Claude 응답에 사용할 언어입니다."},
+		"user_name":             {Title: "사용자 이름", Description: "설정 파일에 표시될 이름입니다. Enter를 눌러 건너뛰세요."},
+		"git_commit_lang":       {Title: "Git 커밋 메시지 언어", Description: "커밋 메시지에 사용할 언어입니다."},
+		"code_comment_lang":     {Title: "코드 주석 언어", Description: "코드 주석에 사용할 언어입니다."},
+		"doc_lang":              {Title: "문서 언어", Description: "문서 파일에 사용할 언어입니다."},
+		"model":                 {Title: "기본 모델 오버라이드", Description: "이 프로필로 실행할 때 모델을 오버라이드합니다."},
+		"model_policy":          {Title: "세션 모델 정책", Description: "추론 강도를 따로 고르지 않았을 때, 이 프로필로 실행하는 Claude 세션의 기본 추론 강도를 정합니다. 서브에이전트는 세션의 모델과 추론 강도를 그대로 따릅니다."},
+		"effort_level":          {Title: "세션 추론 강도", Description: "이 프로필로 실행하는 Claude 세션의 추론 깊이입니다. xhigh/max는 이를 지원하는 모델(Opus 5.5, Sonnet 5, Opus 4.7 이상)이 필요합니다. 서브에이전트는 이 세션의 추론 강도를 그대로 따릅니다."},
+		"permission_mode":       {Title: "권한 모드", Description: "Claude가 작업 수행 전 권한을 요청하는 방식을 제어합니다."},
+		"development_mode":      {Title: "개발 방법론", Description: "quality.yaml에 기록되는 프로젝트 개발 방법론. 비워두면 프로젝트 기본값을 유지합니다."},
+	},
+	"ja": {
+		"conversation_language": {Title: "言語を選択してください", Description: "このウィザードとClaudeの応答に使用する言語です。"},
+		"user_name":             {Title: "ユーザー名", Description: "設定ファイルに表示される名前です。Enterでスキップできます。"},
+		"git_commit_lang":       {Title: "Gitコミットメッセージ言語", Description: "コミットメッセージに使用する言語です。"},
+		"code_comment_lang":     {Title: "コードコメント言語", Description: "コードコメントに使用する言語です。"},
+		"doc_lang":              {Title: "ドキュメント言語", Description: "ドキュメントファイルに使用する言語です。"},
+		"model":                 {Title: "デフォルトモデルオーバーライド", Description: "このプロファイルで起動する際のモデルをオーバーライドします。"},
+		"model_policy":          {Title: "セッションモデルポリシー", Description: "推論強度を個別に選ばなかったとき、このプロファイルで起動する Claude セッションの既定の推論強度を決めます。サブエージェントはセッションのモデルと推論強度をそのまま引き継ぎます。"},
+		"effort_level":          {Title: "セッション推論レベル", Description: "このプロファイルで起動する Claude セッションの推論深度です。xhigh/max は対応モデル（Opus 5.5、Sonnet 5、Opus 4.7 以降）が必要です。サブエージェントはこのセッションの推論強度を引き継ぎます。"},
+		"permission_mode":       {Title: "権限モード", Description: "Claudeがアクション実行前に権限を要求する方法を制御します。"},
+		"development_mode":      {Title: "開発方法論", Description: "quality.yaml に記録されるプロジェクトの開発方法論。空欄の場合はプロジェクトのデフォルトを維持します。"},
+	},
+	"zh": {
+		"conversation_language": {Title: "请选择语言", Description: "用于此向导和Claude响应的语言。"},
+		"user_name":             {Title: "用户名", Description: "配置文件中显示的名称。按Enter跳过。"},
+		"git_commit_lang":       {Title: "Git提交消息语言", Description: "提交消息使用的语言。"},
+		"code_comment_lang":     {Title: "代码注释语言", Description: "代码注释使用的语言。"},
+		"doc_lang":              {Title: "文档语言", Description: "文档文件使用的语言。"},
+		"model":                 {Title: "默认模型覆盖", Description: "使用此配置文件启动时覆盖模型。"},
+		"model_policy":          {Title: "会话模型策略", Description: "未单独选择推理强度时，决定使用此配置文件启动的 Claude 会话的默认推理强度。子代理沿用会话的模型与推理强度。"},
+		"effort_level":          {Title: "会话推理强度", Description: "使用此配置文件启动的 Claude 会话的推理深度。xhigh/max 需要支持它们的模型（Opus 5.5、Sonnet 5、Opus 4.7 及以上）。子代理沿用此会话的推理强度。"},
+		"permission_mode":       {Title: "权限模式", Description: "控制Claude在执行操作前如何请求权限。"},
+		"development_mode":      {Title: "开发方法论", Description: "写入 quality.yaml 的项目开发方法论。留空则保留项目默认值。"},
+	},
 }

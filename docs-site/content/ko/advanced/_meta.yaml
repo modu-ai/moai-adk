@@ -17,10 +17,10 @@ index:
   title: "자율 연속 루프"
 "autonomy-tier":
   title: "자율성 티어 (MOAI_AUTONOMY_TIER)"
-"kanban-mode":
-  title: "칸반 모드"
 "factory-mode":
   title: "팩토리 모드"
+"origin-trail-chain":
+  title: "세션 계보 체인"
 "skill-guide":
   title: "스킬 가이드"
 "agent-guide":
@@ -28,7 +28,7 @@ index:
 "builder-agents":
   title: "빌더 에이전트 가이드"
 "manager-lead":
-  title: "manager-lead 리드 코디네이터"
+  title: "manager-lead 리더 코디네이터"
 "hooks-guide":
   title: "Hooks 가이드"
 "hooks-reference":
@@ -75,7 +75,6 @@ index:
 # slug 가 이 목록에 있으면 사이드바에 자동으로 NEW 배지가 렌더된다.
 # M4 가 페이지를 생성한 뒤 이 슬러그들이 실제 페이지를 가리키게 된다.
 new_items:
-  - kanban-mode
   - bas-navigator
   - manager-lead
   - multi-model-audit

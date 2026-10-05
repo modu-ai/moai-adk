@@ -44,8 +44,12 @@ moai profile setup work     # 设置 "work" 配置文件
 **向导设置项:**
 - **Identity**:用户名、角色
 - **Languages**:对话语言、代码注释语言
-- **Model Settings**:默认模型、1M 上下文模型选择
+- **Model Settings**:默认模型覆盖、会话模型策略（会话的默认 effort 回退）、会话推理强度
 - **Display**:输出风格、状态栏设置
+
+{{< callout type="info" >}}
+这里设置的模型与 effort 是**会话层面**的值：以此配置启动的 Claude 会话以它们运行，子代理沿用会话的模型与推理深度。曾经的逐智能体分配（配置矩阵）已退役 —— 参见[配置矩阵](/zh/advanced/profile-matrix/)页面。
+{{< /callout >}}
 
 ### moai profile current
 
@@ -72,7 +76,7 @@ moai profile delete old-profile
 ```bash
 moai cc -p work          # 用 work 配置文件运行 Claude
 moai glm -p cost-save    # 用 cost-save 配置文件运行 GLM
-moai cg -p team          # 用 team 配置文件运行 CG 模式
+moai cc -p team          # 使用 team 配置的 Claude 会话
 ```
 
 {{< callout type="info" >}}
@@ -106,7 +110,7 @@ MOAI_NO_PROFILE_FALLBACK=1 moai cc    # 忽略记录,以默认配置文件运行
 **需要了解的限制**
 
 - 移动项目目录或更改其名称后,原有条目将与任何路径都不匹配。该条目会被静默跳过,因此不会影响运行。
-- `projects:` 列表会随项目增多而一起增长,目前还没有可清理它的命令。
+- 工作树中的运行会并入已注册项目的条目,因此列表每个项目只保留一条。项目目录已消失的条目可用 `moai worktree clean` 清理。
 - `moai profile current` 会原样显示全局记录。因此在记住的配置文件与全局记录不同的项目中,`moai profile current` 给出的名称,可能与不带 `-p` 的 `moai cc` 实际启动的配置文件不一致。
 
 ## 新配置文件的首次运行
@@ -145,7 +149,6 @@ Notice: profile "work" has no Claude Code configuration yet.
 |------|------|
 | `moai cc` → `moai glm` | 自动注入 GLM 环境变量 |
 | `moai glm` → `moai cc` | 自动移除 GLM 环境变量 |
-| `moai cc` → `moai cg` | 仅向 tmux 会话注入 GLM env,Leader 保持 Claude |
 
 ## 相关文档
 

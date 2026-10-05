@@ -15,7 +15,7 @@ tags: ["security", "cwe", "audit"]
 3 つの欠陥はすべて GLM 統合 + 自動アップデート経路に関連します。
 
 - **CWE-732 / CWE-552** — `.claude/settings.local.json` ファイルの mode `0o600` 強制 (所有者専用 read/write)
-- **CWE-214** — `moai cg` の tmux 環境変数注入が argv の代わりに source-file 経由 (GLM token の argv 非可視化)
+- **CWE-214** — GLM/tmux の 環境変数注入が argv の代わりに source-file 経由 (GLM token の argv 非可視化)
 - **CWE-345** — `moai update` の checksum 検証を mandatory 化 (ダウンロード失敗時に update を拒否)
 
 各項目は回帰テストでロックされ、将来の回帰が遮断されます。
@@ -67,9 +67,9 @@ chmod 0600 .claude/settings.local.json
 
 ### 変更事項
 
-`moai cg` (CG モード) が GLM token (`ANTHROPIC_AUTH_TOKEN`) を tmux セッション環境変数に注入するとき、**argv チャネル** (`tmux set-environment <KEY> <VALUE>`) の代わりに **source-file チャネル** (`tmux source-file <tmp>`) を使います。token はもはや `ps auxe`、`/proc/<pid>/cmdline`、auditd ログ、sysmon 追跡、クラッシュダンプに平文で露出しません。
+GLM/tmux 資格情報ヘルパー が GLM token (`ANTHROPIC_AUTH_TOKEN`) を tmux セッション環境変数に注入するとき、**argv チャネル** (`tmux set-environment <KEY> <VALUE>`) の代わりに **source-file チャネル** (`tmux source-file <tmp>`) を使います。token はもはや `ps auxe`、`/proc/<pid>/cmdline`、auditd ログ、sysmon 追跡、クラッシュダンプに平文で露出しません。
 
-CG モードはトークノミクスの核心的な削減手段 (Claude リーダー + GLM ワーカー、60-70% 削減) であるだけに、その資格情報経路のセキュリティが特に重要です。
+CG は廃止されました。`moai migrate cg` で移行先を確認してください。
 
 ### 実装フロー
 
@@ -103,10 +103,10 @@ source-file 注入が失敗すると (ディスク満杯、tmux source-file 失�
 
 ### 自己点検
 
-CG モード実行中に token が argv に露出するか確認します。
+GLM/tmux 資格情報注入中に token が argv に露出するか確認します。
 
 ```bash
-# moai cg 実行後、新しい tmux セッション内で
+# GLM/tmux 資格情報注入中、新しい tmux セッション内で
 ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
 # 期待値: 0 matches (token が argv にない)
 ```
@@ -129,7 +129,7 @@ stat -c '%a' ~/.moai/.env.glm    # Linux: 600
 stat -f '%A' ~/.moai/.env.glm    # macOS: 600
 ```
 
-詳しい内容: [CG モード](/ja/multi-llm/cg-mode/)
+詳しい内容: [CG の廃止と設定の移行](/ja/multi-llm/cg-mode/)
 
 ## CWE-345 — Update フローの mandatory checksum 検証 {#cwe-345}
 
@@ -210,7 +210,7 @@ stat -c '%a' .claude/settings.local.json 2>/dev/null \
   || stat -f '%A' .claude/settings.local.json 2>/dev/null
 # 期待値: 600
 
-# 2. CWE-214 — CG モード実行中の token argv 露出 (cg モードが有効な状態で)
+# 2. CWE-214 — GLM/tmux 資格情報注入中の token argv 露出
 ps auxe 2>/dev/null | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
 # 期待値: 0 matches
 
@@ -259,4 +259,4 @@ stat -c '%a' ~/.moai/.env.glm 2>/dev/null \
 
 - [settings.json ガイド](/ja/advanced/settings-json/) — `settings.local.json` 権限セクション
 - [アップデート](/ja/cli-reference/update/) — checksum 検証セクション
-- [CG モード](/ja/multi-llm/cg-mode/) — tmux 環境変数注入のセキュリティモデル
+- [CG の廃止と設定の移行](/ja/multi-llm/cg-mode/)

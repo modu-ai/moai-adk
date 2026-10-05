@@ -10,11 +10,11 @@ Go is the implementation language for the MoAI-ADK rewrite. The project uses Go 
 
 **Minimum Recommended Version: Claude Code v2.1.110+** (April 2026). v3.0 development tracks the v2.1.219+ subagent-nesting defaults and the v2.1.198+ background-subagent defaults.
 
-**Opus 5 / 4.8 Model Matrix** (v3.0):
-- Anchor model: `claude-opus-5` (1M-context, the default Opus as of Claude Code 2.1.219); `claude-opus-4-8` and `claude-opus-4-7` still supported
-- Effort levels: `low` / `medium` / `high` (default) / `xhigh` / `max`. Opus 5 carries a previously-set effort level across sessions (no hold)
+**Opus 5.5 / 4.8 Model Matrix** (v3.0):
+- Anchor model: `claude-opus-5-5` (1M-context, 128K output, the `opus` alias target and default Opus as of Claude Code 2.1.280, which is also its minimum version); `claude-opus-4-8` and `claude-opus-4-7` still supported, and the previous `claude-opus-5` (superseded) stays selectable by full model name
+- Effort levels: `low` / `medium` / `high` / `xhigh` / `max`. Opus 5.5 defaults to `medium`, which is also the recommended session effort. Other effort-capable models default to `high`, except Opus 4.7, which defaults to `xhigh`
 - Adaptive Thinking: enabled via `thinking: {type: "adaptive"}` -- Opus 4.7+ rejects fixed `budget_tokens` with HTTP 400, so fixed thinking budgets are prohibited
-- 33-cell profile matrix: 11 retained agents x 3 model tiers (`low` / `medium` / `high`) materialized by `internal/template/profile_matrix.go` and rendered into agent frontmatter at deploy time
+- Sub-agent model/effort: agents inherit the main session's model and effort by default (SPEC-AGENT-MODEL-INHERIT-001); the `moai web` console additionally persists per-agent overrides (SPEC-WEB-AGENTFM-RESTORE-001) to `llm.profile` and `llm.agent_overrides`, re-shipped in the template `llm.yaml` with empty defaults (membership in `template.ShippedRetiredModelKeys` = strip exemption). Still retired and stripped on `moai update`: `llm.profiles`, `llm.performance_tier`, `llm.harness_agents`, `workflow.model_routing*`, `workflow.workflow_agents`
 - GLM tier-models table (`internal/config/defaults.go`): `DefaultGLMHigh = "glm-5.2"` (NO `[1m]` suffix -- the `[1m]` is added at the launcher layer in `internal/cli/launcher.go` only when the 1M-context variant is requested); `DefaultGLMMedium = "glm-4.7"`; `DefaultGLMLow = "glm-4.5-air"`; `DefaultGLMBaseURL = "https://api.z.ai/api/anthropic"`
 
 ## Go Module
@@ -55,7 +55,7 @@ The module path follows Go conventions with the GitHub organization and reposito
 | System Calls | `golang.org/x/sys` | v0.47.0 | Low-level OS primitives (signal, syscall) |
 | Test Assertions | `github.com/stretchr/testify` | v1.11.1 | Replaces the earlier "stdlib-only" stance at v3.0 |
 | Goroutine Leak Detection | `go.uber.org/goleak` | v1.3.0 | Goroutine-leak assertions in tests |
-| Configuration | Custom YAML loader | -- | 14 `loader_*.go` files composing 32 YAML (Viper was not used) |
+| Configuration | Custom YAML loader | -- | 13 `loader_*.go` files composing 32 YAML (Viper was not used) |
 | Git Operations | System Git via `exec.Command` | -- | All Git operations use system Git binary (go-git was not used) |
 | Logging | `log/slog` (stdlib) | Go 1.26 | Structured, leveled logging with JSON and text handlers |
 | Testing | `testing` (stdlib) | Go 1.26 | Standard test framework with benchmarks and fuzzing |
@@ -142,7 +142,7 @@ The following dependencies were considered during planning but replaced with sim
 
 | Planned Package | Replacement | Rationale |
 |----------------|-------------|-----------|
-| `github.com/spf13/viper` | Custom YAML loader (14 `loader_*.go` files) | Simpler, type-safe configuration without Viper's complexity |
+| `github.com/spf13/viper` | Custom YAML loader (13 `loader_*.go` files) | Simpler, type-safe configuration without Viper's complexity |
 | `github.com/go-git/go-git/v5` | System Git via `exec.Command` | Full Git feature coverage including worktrees without library limitations |
 | `go.lsp.dev/protocol` | `github.com/charmbracelet/x/powernap` + in-tree types in `internal/lsp/` | Multi-language LSP client without `go.lsp.dev` coupling |
 | `go.lsp.dev/jsonrpc2` | `powernap` JSON-RPC codec in `internal/lsp/transport/` | Lightweight implementation tailored to MoAI's needs |

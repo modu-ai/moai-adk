@@ -94,8 +94,8 @@ func TestProfile_GenerateDockerSnippet(t *testing.T) {
 	t.Parallel()
 
 	opts := SandboxOptions{
-		WritableScope:  []string{"/workspace"},
-		DockerImage:    "alpine:latest",
+		WritableScope: []string{"/workspace"},
+		DockerImage:   "alpine:latest",
 	}
 
 	snippet, err := GenerateDockerSnippet(opts)

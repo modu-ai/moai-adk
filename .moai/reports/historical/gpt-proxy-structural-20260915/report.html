@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>MoAI GPT 구조 비교 및 장애 개선</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="preconnect" href="https://fonts.googleapis.com" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+:root{--ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;--olive:#788C5D;--g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;--sans:Pretendard,system-ui,-apple-system,sans-serif;--serif:Pretendard,serif;--mono:ui-monospace,SFMono-Regular,monospace;--max-width:1060px;--radius-panel:12px;--radius-row:8px;--border:1.5px solid var(--g300)}
+*{box-sizing:border-box}body{margin:0;background:var(--ivory);color:var(--slate);font:16px/1.7 var(--sans);padding:48px 24px 90px}main{max-width:var(--max-width);margin:auto}h1{font-size:36px;line-height:1.25}h2{font-size:24px;margin:40px 0 16px}h3{font-size:18px}a{color:var(--clay-d)}header p,.note{color:var(--g700)}.tldr{background:var(--slate);color:var(--ivory);padding:26px;border-radius:12px}.tldr strong{color:#f3c2ae}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:22px 0}.card{background:var(--paper);border:var(--border);border-radius:12px;padding:20px}.card b{display:block;font-size:28px}.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;background:white}th,td{text-align:left;vertical-align:top;padding:14px;border-bottom:1px solid var(--g300)}th{background:var(--g100)}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--slate);color:var(--ivory);padding:20px;border-radius:10px;font:13px/1.65 var(--mono)}code{font-family:var(--mono);overflow-wrap:anywhere}details{border:var(--border);padding:16px;border-radius:10px;margin:12px 0}summary{cursor:pointer;font-weight:600}.warn{border-left:5px solid var(--clay);padding:14px 20px;background:var(--paper)}li{margin:10px 0}.mermaid{background:var(--paper);color:var(--slate)}footer{margin-top:42px;border-top:var(--border);padding-top:20px;font-size:13px}@media(max-width:650px){body{padding:24px 15px}.cards{grid-template-columns:1fr}h1{font-size:28px}th,td{padding:10px;min-width:140px}}@media print{body{padding:0;background:white}details{break-inside:avoid}.tldr{background:#eee;color:black}.tldr strong{color:black}h2{break-after:avoid}}
+</style></head><body><main>
+<header><p>2026-09-15 · incident / basic · MoAI-Easy 설정 기준</p><h1>증상별 패치에서<br>상태와 오류 계약의 검증으로</h1><p>claude-code-proxy 전수 독해 · MoAI GPT 구조 비교 · 운영 장애와 회귀 검사</p></header>
+<div class="tldr"><strong>App Server는 유지한다. 원본은 통째로 복제하지 않는다.</strong><p>모델이 잘못 만든 도구 인자를 세션 중단 오류로 처리한 결함은 수정했다. 다만 실제 agent_summary의 400은 새 세션에서도 재발했다. 소스 수정, 로컬 검사, 설치 배포, 실제 운영 수락을 구분한다.</p></div>
+<div class="cards"><div class="card"><b>126개 / 77,078행</b>원본 Rust 파일 EOF 독해</div><div class="card"><b>394개 통과</b>원본 Codex lib 테스트<br>우리 제품 성공과 별개</div><div class="card"><b>미배포</b>기존 rc.11 설치본 유지<br>새 창 ≠ 새 수정본</div></div>
+<h2>1. 무엇을 확인했나</h2><p>원본의 구현 방식뿐 아니라 테스트가 실제로 무엇을 확인하는지도 읽었다. 전수 독해는 코드를 끝까지 검토했다는 뜻이지, 실계정에서 모든 기능을 실행했다는 뜻은 아니다.</p>
+<div class="scroll"><table><thead><tr><th>범위</th><th>파일 / 행</th><th>근거 문서</th></tr></thead><tbody><tr><td>서버·공통·UI</td><td>26 / 15,921</td><td><a href="parent-read-ledger.md">주 담당 장부</a></td></tr><tr><td>Codex</td><td>35 / 30,465</td><td><a href="codex-analysis.md">Codex 전체 분석</a></td></tr><tr><td>기타 제공자·공통</td><td>54 / 20,809</td><td><a href="other-providers-analysis.md">기타 제공자 분석</a></td></tr><tr><td>통합 테스트</td><td>11 / 9,883</td><td><a href="test-contract-analysis.md">테스트 계약·실행 스크립트 분석</a></td></tr><tr><td>문서·사이트 소스</td><td>고유 27 / 2,810</td><td><a href="docs-analysis.md">문서 대조</a></td></tr></tbody></table></div>
+<p class="note">기준: Proxy b642a6ee1a5fff8ebc9bedfc4b438ddfa3ae8f8e / 0.1.39. MoAI WT-gpt-session-repair / b45c81349 + dirty 변경분. 생성 lock·이미지·바이너리 본문은 제외했다. 전체 MoAI 저장소 EOF 감사는 아니다.</p>
+<h2>2. 이번에 고친 원인</h2><p>Agent 호출에는 description과 prompt가 필수였다. GPT가 description을 빠뜨리자 기존 코드는 도구 입력 오류를 세션을 중단해야 하는 오류로 처리했다. 실패한 세션 상태가 남아 후속 요청도 거부됐다.</p>
+<div class="scroll"><table><thead><tr><th>기존</th><th>수정</th></tr></thead><tbody><tr><td>schema 오류 → 일반 실패 → turn 중단 → failed barrier</td><td>권한 검증 통과 + schema 오류 → GPT에 실패 피드백 → 같은 turn에서 인자 교정</td></tr><tr><td>다음 요청도 recovery_required</td><td>유효한 호출만 Claude Code에 한 번 전달</td></tr><tr><td>인자 오류와 권한 오류가 같은 실패 경로</td><td>다른 thread·미등록 도구·교정 예산 초과는 계속 차단</td></tr></tbody></table></div>
+<pre class="mermaid">flowchart TD
+  A[App Server 도구 호출] --> B{소유권과 도구 등록 유효?}
+  B -->|아니오| C[명시적 거부]
+  B -->|예| D{인자 schema 유효?}
+  D -->|아니오| E[최대 3회 실패 피드백]
+  E --> A
+  D -->|예| F[Claude Code가 도구 실행]
+  F --> G[같은 turn에 결과 반환]
+</pre><noscript><p>권한·도구 등록 검증 후 schema만 잘못됐다면 최대 3회 GPT에 교정을 요청한다. 유효한 호출만 Claude Code에 전달한다. 권한 위반은 복구 피드백 없이 거부한다.</p></noscript>
+<p><strong>실제 검증 예:</strong> 응답 텍스트를 이미 보낸 상태에서 잘못된 Agent 호출이 발생해도, 실패 피드백 1회 뒤 교정된 Agent 호출 1개만 전달하고 HTTP200으로 완료했다. 이 검사는 가짜 App Server peer를 사용했다. 실제 GPT가 반드시 교정한다는 보장은 아니다.</p>
+<h2>3. 원본에서 가져올 것과 가져오지 않을 것</h2><p>원본의 장점은 상태 경계를 명시하고 교차 요청을 시험하는 방식이다. 제공자별 우회 구현까지 옮기면 사용자 모델 선택과 도구 실행 의미가 달라질 수 있다.</p>
+<div class="scroll"><table><thead><tr><th>흡수할 계약</th><th>그대로 가져오지 않을 구현</th></tr></thead><tbody><tr><td>소유자·세대별 연속성, 오래된 완료의 상태 변경 금지</td><td>잘못된 identity를 무조건 stateless로 처리하여 MoAI receipt 검증 완화</td></tr><tr><td>의미 있는 출력 전후를 나누는 재시도·완료 판정</td><td>이미 실행한 도구 재생, 빈 응답 11회 재시도 정책</td></tr><tr><td>첫 출력과 실제 생성 시간·usage 구분</td><td>Kimi/Cursor의 전체 응답 버퍼링</td></tr><tr><td>mock을 통한 실제 HTTP 경로·후속 입력 검증</td><td>어떤 timeout 결과도 통과시키는 assertion을 성공 증거로 사용</td></tr><tr><td>보조 요청이 메인 연속성을 오염시키지 않는 계약</td><td>모든 summary를 같은 요청으로 간주하거나 무조건 소형 모델로 대체</td></tr></tbody></table></div>
+<p>메인 모델 하나와 서브에이전트별 지정 모델이라는 제품 개념을 유지한다. plan/run/routine별 메인 세션을 만들지 않는다. Factory는 lead+lane 구조이고 Kanban은 되살리지 않는다. 원본 이미지 모델은 gpt-image-2이므로 요청한 gpt-image-2.5 지원 근거가 될 수 없다.</p>
+<h2>4. 실행 근거</h2><p>상류 테스트와 MoAI 검사를 별도로 기록했다. 아래 시간은 테스트 실행 시간이며 GPT 응답 속도가 아니다.</p>
+<details open><summary>MoAI 핵심 패키지 전체 race 검사 — 통과</summary><pre>go test -race ./internal/codextools ./internal/codexbridge ./internal/codexapp ./internal/gateway/... -count=1
+ok  github.com/modu-ai/moai-adk/internal/codextools 1.314s
+ok  github.com/modu-ai/moai-adk/internal/codexbridge 18.318s
+ok  github.com/modu-ai/moai-adk/internal/codexapp 4.258s
+ok  github.com/modu-ai/moai-adk/internal/gateway 15.370s
+ok  github.com/modu-ai/moai-adk/internal/gateway/auth 7.320s
+ok  github.com/modu-ai/moai-adk/internal/gateway/conversation 4.944s
+ok  github.com/modu-ai/moai-adk/internal/gateway/opaque 3.268s
+ok  github.com/modu-ai/moai-adk/internal/gateway/receipt 5.540s
+ok  github.com/modu-ai/moai-adk/internal/gateway/translate 6.784s</pre></details>
+<details><summary>CLI 범위 검사 · vet · 관측한 실패</summary><pre>go test -race ./internal/cli -run 'TestProductionGatewayCorrectsInvalidAgentAfterStreamingText|TestProductionGatewayClearStartsDistinctAttestedThread|TestManagedGPT|TestGPTAppServer' -count=1
+ok github.com/modu-ai/moai-adk/internal/cli 3.204s
+
+go vet ./internal/codextools ./internal/codexbridge ./internal/codexapp ./internal/gateway/... ./internal/cli
+[출력 없음, exit 0]
+
+넓힌 CLI 검사에서 별도 관측:
+--- FAIL: TestProductionGatewayFactoryRejectsUnauthenticatedRequest (8.01s)
+gateway_product_binding_test.go:98: gateway private configuration or verified dependencies unavailable
+
+fixture 수정 후 동일한 넓은 필터 재검증:
+go test -race ./internal/cli -run 'TestProductionGateway|TestManagedGPT|TestGPTAppServer' -count=1
+ok github.com/modu-ai/moai-adk/internal/cli 3.351s</pre><p>기존 테스트가 shared App Server 없이 test binary를 supervisor로 기동하려는 fixture 문제였다. 기존 protocol fixture를 사용하고 잘못된 session Bearer의 로컬401을 검증하도록 테스트만 수정했다. 제품 인증 우회는 없다.</p></details>
+<details><summary>원본 Codex lib 검사 — 우리 제품과 별개</summary><pre>cargo test --offline --locked --lib providers::codex --quiet -- --test-threads=2
+running 394 tests
+test result: ok. 394 passed; 0 failed; 0 ignored; 0 measured; 490 filtered out; finished in 55.16s</pre></details>
+<h2>5. 실시간 관측과 남은 문제</h2><p>첫 byte가 빠르다고 추론이 빠른 것은 아니다. 스트림 시작 이벤트·이미 대기 중인 도구 segment·실제 새 텍스트 생성을 구분해야 한다.</p>
+<ul><li><code>04c54aae…</code>: 첫 byte 16.230초, Agent 필수 인자 누락 후 실패. 새 수정은 미배포.</li><li><code>d17bf130…</code>: 첫 턴 40 tool results 중 오류 0. 별도 away_summary는 first byte 2.549초 후 finished. agent_summary 해결 근거는 아니다.</li><li><code>eefd29ac…</code>: agent_summary scope mismatch 5건 재발. 38.893초 first-byte 구간에는 native exec의 30초 sleep이 포함됐다. 순수 생성 지연으로 해석하지 않는다. 17:08:25.875Z 세션 종료 관측.</li></ul>
+<p>새 세션의 native sleep 합계는 85.950초로 App Server turn 145.006초의 59.3%였다. 실행 지침의 실제 적용과 대기 감소는 수정 후보 운영 검증이 필요하다.</p>
+<div class="warn"><strong>아직 해결됐다고 할 수 없는 것</strong><p>실제 agent_summary의 정확한 거부 분기, 모든 Claude Code 기능, 실제 GPT 인자 교정의 운영 수락, 이미지 2.5, 구독 ToS 판정. 새 설치본 배포와 활성 세션 재시작도 하지 않았다.</p></div>
+<p>로컬 후보: <code>/tmp/moai-rc11-structural.A9FWOD/moai</code><br>BuildID: <code>v3.2.0-rc.11-b45c81349-argument-repair-dirty</code><br>빌드 완료와 SHA256은 MD에 기록했다. 설치본과는 다르다.</p>
+<h2>6. 다음 개선과 확인할 기준</h2><ol><li>오류를 입력·권한/이력·전송·취소·자원 한도로 나누고, 실패 fixture부터 추가한다.</li><li>main/child/sibling/summary/clear의 소유권과 세대를 교차 검증한다.</li><li>부분 출력 후 재실행·도구 중복·가짜 성공 terminal이 없는지 기존 테스트를 확장한다.</li><li>요청별 upstream 대기·첫 텍스트·tool 대기·완료·usage를 연결한다. 계측 없는 TPS는 미상으로 둔다.</li><li>실제 새 후보 빌드로 운영 수락을 확인한 뒤 설치본 교체를 결정한다.</li></ol>
+<p><strong>직접 확인할 것:</strong> 실행 BuildID가 바뀌었는지, 실패한 요청이 main인지 summary인지, 수정 검사가 mock인지 실제 GPT인지. 이 세 가지가 섞이면 같은 장애를 고쳤다고 오판하기 쉽다.</p>
+<footer><a href="report.md">전체 근거·검사 명령·잔여 위험 MD</a> · <a href="https://claude-code-proxy.raine.dev/">원본 문서</a><p>html-report incident 템플릿의 구성·색상·인쇄 규칙을 적용했다. 참조 design-tokens.md는 로컬에 없어 SKILL 본문 토큰을 사용했다. 원격 의존성은 글꼴과 basic용 Mermaid이며, JavaScript 없이도 본문과 흐름 원문을 읽을 수 있다.</p></footer>
+</main><script type="module">import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';mermaid.initialize({startOnLoad:true,theme:'base',themeVariables:{primaryColor:'#FAF9F5',primaryTextColor:'#141413',primaryBorderColor:'#D97757',lineColor:'#87867F'}});</script></body></html>

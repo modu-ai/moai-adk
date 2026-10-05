@@ -4,6 +4,12 @@ import "time"
 
 // GitStatus holds the working tree state.
 type GitStatus struct {
+	// Branch is the checked-out branch name, read from the `## ` header of
+	// `git status --porcelain --branch`. It is EMPTY on a detached HEAD (and
+	// on any header shape that does not name a branch); callers wanting the
+	// detached-HEAD error contract use Repository.CurrentBranch instead.
+	Branch string
+
 	// Staged lists files with changes in the index (staged for commit).
 	Staged []string
 

@@ -168,18 +168,18 @@ flowchart TD
 
 团队清理始终通过队长执行。工作结束后请队长清理，但若仍有运行中的队员，清理会失败，需先让其退出。
 
-## 与 MoAI CG 模式的衔接 —— 把团队结构变成代币经济学
+## CG 停用与配置迁移
 
-MoAI-ADK 在这套原生团队运行时之上叠加 **CG 模式**（`moai cg`，Claude + GLM 混合）以优化成本。队长用 Claude 协调战略·计划·审计，队员通过 tmux 会话级环境隔离继承 GLM 环境执行大批量实现工作。这是把"谁做什么"的团队结构问题与"哪种模型做多少钱的活"的代币经济学答案结合起来 —— 在实现密集的 SPEC、代码生成、测试编写这类令牌消耗大的工作中获得 **60-70% 的成本削减**。
+Claude Code 原生队友运行时与 MoAI 已退役的静态 Agent Teams 编排是两项不同功能。本页的原生 API 说明不代表已停用的 CG 启动器仍可使用。 CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 
-有一点需要区分。MoAI-ADK 在自身的工作流编排中已让静态智能体团队层退役，默认使用顺序子智能体与动态工作流；但本页所讲的 Claude Code 原生团队运行时（tmux 窗格、共享任务列表）被 CG 模式原样利用。也就是说"团队"这一执行形态仍然存续，只是用途从协作协调转向了成本路由。
+迁移会写入 `llm.team_mode: claude`、`llm.gateway.teammate_mode: in-process` 和 `llm.gateway.teammate_provider: inherit`。这会取消原有混合角色分配，并不会保留 Claude 领队与 GLM 队友窗格的分工。
 
-CG 模式的配置与运营方法在单独文档中详述，请参考下方链接。
+`claude-glm` 表示 Claude 领队搭配 tmux 中的 GLM 队友。目前 TEAMMATE 集成验证尚未通过，因此不能应用或启动该方案，只能预览。安装 tmux 或设置 `verified: true` 都不能解除限制。
 
 ## 相关文档
 
 - [动态工作流](/zh/claude-code/agentic/workflows)
-- [CG 模式 (Claude + GLM)](/zh/multi-llm/cg-mode)
+- [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
 
 ## 参考资料
 

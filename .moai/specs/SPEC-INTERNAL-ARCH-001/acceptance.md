@@ -1,6 +1,5 @@
 ---
 id: SPEC-INTERNAL-ARCH-001
-status: draft
 updated: 2026-07-08
 ---
 

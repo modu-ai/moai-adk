@@ -48,11 +48,26 @@ func TestInitQuestions_HasAutonomyTierPage(t *testing.T) {
 
 func TestAutonomyTierQuestion_FullyAutonomousNotRecommended(t *testing.T) {
 	// AC-006: the selector copy MUST NOT pre-pick / recommend fully-autonomous.
-	// The (Recommended) label lives on semi-auto, never on fully-autonomous.
+	// The (Recommended) label lives on the acceptEdits-backed option
+	// (semi-auto), never on fully-autonomous (SPEC-AUT-PERMMODES-001 REQ-002).
+	// REQ-001: the labels speak Claude Code permission-mode vocabulary.
 	questions := InitQuestions("/tmp/test-project")
 	q := QuestionByID(questions, "autonomy_tier")
 	if q == nil {
 		t.Fatal("autonomy_tier question missing")
+	}
+	wantLabels := map[string]string{
+		config.AutonomyTierSemiAuto:        "Accept edits on",
+		config.AutonomyTierAutomatic:       "Auto mode",
+		config.AutonomyTierFullyAutonomous: "Bypass permissions",
+	}
+	for _, opt := range q.Options {
+		if want, ok := wantLabels[opt.Value]; ok && !contains(opt.Label, want) {
+			t.Errorf("option %q label must carry the CC permission-mode vocabulary %q (REQ-001): %q", opt.Value, want, opt.Label)
+		}
+		if opt.Value == config.AutonomyTierSemiAuto && !contains(opt.Label, "(Recommended)") {
+			t.Errorf("the acceptEdits-backed option (semi-auto) MUST carry the Recommended signal (REQ-002): %q", opt.Label)
+		}
 	}
 	for _, opt := range q.Options {
 		if opt.Value == config.AutonomyTierFullyAutonomous {
@@ -60,11 +75,6 @@ func TestAutonomyTierQuestion_FullyAutonomousNotRecommended(t *testing.T) {
 				if contains(opt.Label, marker) {
 					t.Errorf("fully-autonomous option MUST NOT carry %q: %q", marker, opt.Label)
 				}
-			}
-		}
-		if opt.Value == config.AutonomyTierSemiAuto {
-			if !contains(opt.Label, "(Recommended)") {
-				t.Errorf("semi-auto option MUST carry (Recommended): %q", opt.Label)
 			}
 		}
 	}

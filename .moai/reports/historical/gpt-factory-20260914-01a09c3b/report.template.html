@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>moai gpt 팩토리 — Codex 실행 경로 조사</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@600;700&display=swap">
+<style>
+:root{--ivory:#FAF9F5;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;--olive:#788C5D;--pale:#F0EEE6;--line:#D1CFC5;--muted:#626157}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:24px}body{margin:0;background:var(--ivory);color:var(--slate);font:16px/1.85 'Noto Sans KR',sans-serif;word-break:keep-all;overflow-wrap:anywhere}a{color:var(--clay-d);text-decoration-thickness:1px;text-underline-offset:4px}a:hover{color:var(--slate)}a:focus-visible{outline:3px solid var(--clay);outline-offset:4px}.wrap{max-width:1240px;margin:auto;padding:44px 40px 70px}.eyebrow{font:500 12px/1.6 'JetBrains Mono',monospace;letter-spacing:.12em;color:var(--clay-d);text-transform:uppercase}.masthead{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid var(--line);padding-bottom:18px;font-size:12px;color:var(--muted)}.hero{padding:45px 0 34px}.hero h1{font:700 clamp(32px,4.5vw,54px)/1.35 'Noto Serif KR',serif;letter-spacing:-.045em;max-width:880px;margin:14px 0 24px}.hero .lead{font-size:20px;max-width:900px;line-height:1.8;margin:0}.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}.chip{border:1px solid var(--line);border-radius:4px;padding:5px 11px;font-size:12px}.chip.good{background:#edf0e8;border-color:#b8c3a7}.chip.warn{background:#f6e9df;border-color:#dec2b1}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:0 0 30px}.card{border-top:3px solid var(--clay);padding:20px 22px;background:var(--pale);border-radius:0 0 6px 6px}.card .n{font:12px 'JetBrains Mono',monospace;color:var(--muted)}.card h2{font-size:19px;line-height:1.5;margin:9px 0}.card p{font-size:14px;line-height:1.8;margin:0}.architecture{padding:24px;background:#fff;border:1px solid var(--line);border-radius:8px;margin-bottom:42px}.architecture h2{font-size:20px;margin:0 0 6px}.architecture .caption{font-size:13px;color:var(--muted);margin:0 0 20px}.diagram-scroll{overflow-x:auto}.mermaid{min-width:680px;text-align:center;display:none}.flow-fallback{border-left:3px solid var(--olive);padding:10px 20px;background:var(--pale);font-size:14px}.layout{display:grid;grid-template-columns:205px minmax(0,1fr);gap:45px}.toc{position:sticky;top:24px;align-self:start;font-size:12px;line-height:1.65;border-left:1px solid var(--line);padding-left:18px}.toc strong{display:block;margin-bottom:12px;letter-spacing:.04em}.toc a{display:block;text-decoration:none;color:var(--muted);margin:0 0 11px}.toc a:hover{color:var(--clay-d)}article{min-width:0}article h2{font:700 27px/1.5 'Noto Serif KR',serif;letter-spacing:-.03em;margin:52px 0 22px;padding-top:24px;border-top:1px solid var(--line)}article h2:first-child{margin-top:0}article h3{font-size:19px;line-height:1.6;margin:32px 0 14px}article p{margin:14px 0}article li{margin:8px 0}article ul,article ol{padding-left:25px}article strong{font-weight:700}code{font:13px/1.7 'JetBrains Mono',monospace;background:var(--pale);padding:2px 4px;border-radius:3px;word-break:break-word}pre{background:#21211f;color:#f1eee6;border-radius:6px;padding:18px;overflow:auto;line-height:1.7;white-space:pre}pre code{background:none;padding:0;color:inherit;word-break:normal}.table-wrap{overflow-x:auto;max-width:100%;margin:22px 0;border:1px solid var(--line);border-radius:5px}table{border-collapse:collapse;font-size:13px;line-height:1.75;width:100%;min-width:620px;margin:0}th{text-align:left;background:var(--oat);font-weight:600}th,td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}tr:last-child td{border-bottom:0}tbody tr:nth-child(even){background:#f4f2ec}td:first-child{min-width:120px}blockquote{border-left:3px solid var(--clay);margin:20px 0;padding:8px 20px;background:var(--pale)}.foot{margin-top:50px;padding-top:22px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}.foot a{margin-right:20px}
+@media(max-width:900px){.layout{grid-template-columns:minmax(0,1fr);gap:20px}.toc{position:static;display:flex;gap:8px 18px;flex-wrap:wrap}.toc strong{width:100%}.toc a{margin-bottom:4px}.wrap{padding:26px 24px 50px}.summary{gap:10px}.card{padding:16px}}
+@media(max-width:600px){body{font-size:15px}.wrap{padding:22px 18px 40px}.masthead{font-size:10px}.hero{padding:30px 0}.hero .lead{font-size:17px}.summary{grid-template-columns:1fr}.card{padding:16px 20px}.card h2{margin:6px 0}.architecture{padding:18px}article h2{font-size:24px;margin-top:36px}.toc{font-size:11px}pre{padding:14px}code{font-size:12px}.chip{font-size:11px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+@media print{.wrap{max-width:none;padding:0}.toc{display:none}.layout{display:block}.summary,.architecture{break-inside:avoid}article h2{break-after:avoid}a{color:inherit}.table-wrap{overflow:visible}table{min-width:0}pre{white-space:pre-wrap}body{font-size:10pt}.hero h1{font-size:28pt}}
+</style>
+</head>
+<body><div class="wrap">
+<header class="masthead"><span>MoAI · ENGINEERING RESEARCH</span><span>2026.09.14 · develop c9ceff175</span></header>
+<section class="hero" aria-labelledby="title"><div class="eyebrow">Decision report · Plan only</div>
+<h1 id="title">명령은 그대로,<br>GPT 실행은 Codex 안에서.</h1>
+<p class="lead"><code>moai gpt -f</code>와 GLM식 모델 매핑을 유지하려면, <strong>Messages proxy 입구 + 공식 Codex App Server 실행부</strong>를 결합한다. 이미 있는 구현을 실제 런처에 연결하고, 이력의 소유권과 도구 왕복을 정리하는 것이 핵심이다.</p>
+<div class="chips"><span class="chip good">코드·커밋·로그 조사</span><span class="chip good">선택 테스트 + 구조적 재현</span><span class="chip warn">실계정 팩토리 미검증</span><span class="chip warn">양사 지원·ToS 무위험 보증 아님</span></div></section>
+<section class="summary" aria-label="핵심 판단"><div class="card"><span class="n">01 / UX</span><h2>팩토리 진입점은 재사용</h2><p>공통 <code>-f</code> 파서는 존재한다. 다만 현재 GPT의 네 모델 슬롯은 하나의 선택 모델로 묶인다.</p></div><div class="card"><span class="n">02 / FAILURE</span><h2>400 원인은 분리해서 판단</h2><p>중간 이력 삽입은 CauseChain으로 재현됐다. 실제 장애 wire가 없어 현장 원인을 하나로 확정하지 않는다.</p></div><div class="card"><span class="n">03 / DELIVERY</span><h2>App Server는 배선이 남음</h2><p>bridge와 도구 왕복 구성요소는 있다. develop의 GPT 생산 경로는 아직 직접 구독 프록시다.</p></div></section>
+<section class="architecture" aria-labelledby="arch-title"><h2 id="arch-title">권고 구조 — proxy와 App Server는 서로 다른 계층</h2><p class="caption">제안 설계. 현재 제품의 완성된 실행 경로를 표현한 그림이 아니다. 도구 실행·hooks·승인은 Claude Code에 남긴다.</p>
+<div class="diagram-scroll"><div class="mermaid" id="architecture-mermaid">flowchart LR
+ CC["Claude Code<br/>moai gpt -f / Agent / hooks"] -->|Messages| GW["MoAI gateway<br/>모델 매핑 · lane/agent binding"]
+ GW -->|JSON-RPC stdio| AS["공식 Codex App Server<br/>인증 · thread · turn"]
+ AS --> GPT["GPT 모델"]
+ AS -->|dynamic tool call| GW
+ GW -->|tool_use| CC
+ CC -->|tool_result| GW
+</div></div>
+<div class="flow-fallback" id="flow-fallback"><strong>오프라인에서도 읽을 수 있는 구조 설명</strong><br>Claude Code → Messages gateway → lane·agent별 thread 라우터 → 공식 Codex App Server → GPT.<br>도구 호출은 반대로 Claude Code에 전달한다. Claude가 승인·hooks를 거쳐 실행한 결과만 대기 중인 Codex 호출에 돌려준다.</div></section>
+<div class="layout"><nav class="toc" aria-label="보고서 목차"><strong>이 보고서에서 확인할 것</strong><div id="toc-items"></div><a href="evidence.md">실행 근거 원본 ↗</a><a href="report.md">Markdown 보고서 ↗</a></nav><article id="report-body">$body$</article></div>
+<footer class="foot"><p>조사와 설계 제안의 완료는 제품 수리·실계정 운영 인수와 다르다. 외부 문서는 조사 시점 기준이며, 진행 중 카드와 실행 바이너리의 상태는 바뀔 수 있다.</p><a href="report.md">보고서 MD</a><a href="evidence.md">명령·출력·검증 범위</a><a href="#title">맨 위로</a></footer>
+</div>
+<script>
+document.querySelectorAll('article table').forEach(function(t){var w=document.createElement('div');w.className='table-wrap';w.tabIndex=0;w.setAttribute('role','region');w.setAttribute('aria-label','가로로 스크롤 가능한 비교 표');t.parentNode.insertBefore(w,t);w.appendChild(t)});
+document.querySelectorAll('article h2').forEach(function(h,i){if(!h.id)h.id='section-'+i;var a=document.createElement('a');a.href='#'+h.id;a.textContent=h.textContent;document.getElementById('toc-items').appendChild(a)});
+</script>
+<script type="module">
+try{const {default:mermaid}=await import('https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs');mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:'base',themeVariables:{fontFamily:'Noto Sans KR, sans-serif',primaryColor:'#F0EEE6',primaryTextColor:'#141413',primaryBorderColor:'#D1CFC5',lineColor:'#788C5D',secondaryColor:'#E3DACC',tertiaryColor:'#FAF9F5'}});const node=document.getElementById('architecture-mermaid');node.style.display='block';await mermaid.run({nodes:[node]});document.getElementById('flow-fallback').hidden=true;}catch(e){document.getElementById('architecture-mermaid').style.display='none';}
+</script>
+</body></html>

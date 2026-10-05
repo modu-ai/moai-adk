@@ -2,7 +2,6 @@
 id: SPEC-KANBAN-TODO-CLI-001
 title: "Plan — moai todo CLI subcommand with lock-guarded backlog store"
 version: "0.1.1"
-status: in-progress
 created: 2026-08-14
 updated: 2026-08-14
 author: manager-spec

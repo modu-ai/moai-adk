@@ -7,23 +7,24 @@ package web
 // exists in the rendered option set. An HTML <select> whose current value
 // matches no <option> auto-selects the FIRST option, and selects always submit
 // on form POST — so ANY console save from ANY tab silently rewrote an unknown
-// value to the first option (e.g. a tier slot still holding glm-5.2, which the
-// offered set no longer lists). The fix: render one synthetic option carrying
-// the exact persisted value (marked selected) so the submission round-trips,
-// and let validation accept a submitted value that EQUALS the previously
-// persisted value (passthrough-preserve) while still rejecting genuinely new
-// out-of-set submissions.
+// value to the first option (e.g. a tier slot still holding glm-5.2, which
+// SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004 deleted from the offered set and
+// from the constants outright — DR-2. The id survives as a raw test literal
+// here on purpose: a REMOVED id sitting in a stored file is exactly the
+// post-deletion scenario this guard exists for). The fix: render one synthetic
+// option carrying the exact persisted value (marked selected) so the
+// submission round-trips, and let validation accept a submitted value that
+// EQUALS the previously persisted value (passthrough-preserve) while still
+// rejecting genuinely new out-of-set submissions.
 
 import (
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
@@ -59,9 +60,10 @@ func readSeededSectionFile(t *testing.T, root, name string) string {
 }
 
 // seedExoticSelectValues seeds persisted values that are loadable but outside
-// the running binary's offered option sets:
-//   - llm.glm.models.high = glm-5.2 — withdrawn from ValidGLMModels, still a
-//     legal stored value (select widget)
+// the running binary's offered option sets (post-REQ-MMU-004 the glm ids below
+// are DELETED from the offered set — the raw literals are the point):
+//   - llm.glm.models.high = glm-5.2 — removed from ValidGLMModels, still a
+//     legal stored value the renderer must preserve (select widget)
 //   - workflow.audit.glm.model = glm-5.2 — the audit GLM pin select (same
 //     closed set)
 //   - workflow.audit.model = custom — the audit backend picker, a RADIO
@@ -70,43 +72,18 @@ func readSeededSectionFile(t *testing.T, root, name string) string {
 func seedExoticSelectValues(t *testing.T, root string) {
 	t.Helper()
 	seedSectionFile(t, root, "llm",
-		"llm:\n  glm:\n    models:\n      high: "+config.DefaultGLM52+"\n")
+		"llm:\n  glm:\n    models:\n      high: "+"glm-5.2"+"\n")
 	seedSectionFile(t, root, "workflow",
-		"workflow:\n  audit:\n    model: custom\n    glm:\n      model: "+config.DefaultGLM52+"\n")
+		"workflow:\n  audit:\n    model: custom\n    glm:\n      model: "+"glm-5.2"+"\n")
 }
 
 // selOptionRe matches one rendered <option> element, capturing its value
 // attribute and the remaining attributes (to test for `selected`).
-var selOptionRe = regexp.MustCompile(`<option value="([^"]*)"([^>]*)>`)
 
 // browserSelectedValue returns the value a real browser would submit for the
 // named select: the option carrying `selected`, or the FIRST option when none
 // is marked (the browser's auto-select rule — the exact mechanism behind the
 // silent revert).
-func browserSelectedValue(t *testing.T, body, fieldName string) string {
-	t.Helper()
-	i := strings.Index(body, `name="`+fieldName+`"`)
-	if i < 0 {
-		t.Fatalf("select %q is not rendered on the page", fieldName)
-	}
-	seg := body[i:]
-	if j := strings.Index(seg, "</select>"); j >= 0 {
-		seg = seg[:j]
-	}
-	first := ""
-	for _, m := range selOptionRe.FindAllStringSubmatch(seg, -1) {
-		if first == "" {
-			first = m[1]
-		}
-		if strings.Contains(m[2], "selected") {
-			return m[1]
-		}
-	}
-	if first == "" {
-		t.Fatalf("select %q renders no options", fieldName)
-	}
-	return first
-}
 
 // TestSchemaSelectSyntheticCurrentOptionRendered pins the render half of RC2:
 // when the persisted value is outside the offered option set, the select must
@@ -118,15 +95,18 @@ func TestSchemaSelectSyntheticCurrentOptionRendered(t *testing.T) {
 	seedExoticSelectValues(t, root)
 	body := renderSettingsGET(newAppWithRoot(t, root))
 
-	// The two SELECT widgets carrying the out-of-set value. (The audit backend
-	// picker workflow.audit.model is a radio — an unlisted value leaves every
-	// button unchecked and submits nothing, so it needs no synthetic option.)
+	// t1278 converted both former selects to radios (the audit backend picker
+	// workflow.audit.model was already one). A radio carrying an out-of-set
+	// value renders NO checked button — the browser submits nothing for the
+	// field and parseSchemaForm preserves (EC-1); the POST round-trip test
+	// below pins that end to end. The synthetic-(saved)-option mechanism only
+	// ever applied to <select> widgets, so it has no radio counterpart.
 	for _, name := range []string{"llm.glm.models.high", "workflow.audit.glm.model"} {
-		if got := browserSelectedValue(t, body, name); got != config.DefaultGLM52 {
-			t.Errorf("%s: browser would submit %q, want the persisted %q — no selected synthetic option, the first offered option wins and silently rewrites the value", name, got, config.DefaultGLM52)
+		if !strings.Contains(body, `name="`+name+`"`) {
+			t.Fatalf("%s: radio group not rendered", name)
 		}
-		if !strings.Contains(body, config.DefaultGLM52+schemaSavedCurrentSuffix) {
-			t.Errorf("synthetic option for %q lacks the (saved) label", config.DefaultGLM52)
+		if strings.Contains(body, `name="`+name+`" value="glm-5.2" checked`) {
+			t.Errorf("%s: out-of-set value rendered as checked — the browser would silently rewrite the persisted value", name)
 		}
 	}
 }
@@ -144,21 +124,24 @@ func TestBrowserRoundTripPreservesExoticSelectValues(t *testing.T) {
 
 	form := url.Values{}
 	form.Set("__profile", "default")
-	for _, name := range []string{"llm.glm.models.high", "workflow.audit.glm.model"} {
-		form.Set(name, browserSelectedValue(t, body, name))
-	}
+	// t1278 — both former selects are radios now: an out-of-set value leaves
+	// the group unchecked, the browser submits NOTHING for the field, and the
+	// pin survives via empty=preserve. The POST below is deliberately silent
+	// on them (browser-equivalent). browserSelectedValue stays for the
+	// remaining <select> surfaces.
+	_ = body
 	rec := postGLMSave(a, form)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("save status = %d, want 200; body: %s", rec.Code, rec.Body.String())
 	}
 
-	if got := readSeededSectionFile(t, root, "llm"); !strings.Contains(got, config.DefaultGLM52) {
+	if got := readSeededSectionFile(t, root, "llm"); !strings.Contains(got, "glm-5.2") {
 		t.Errorf("llm.yaml lost the persisted exotic tier model after a browser-equivalent save:\n%s", got)
 	}
 	if got := readSeededSectionFile(t, root, "workflow"); !strings.Contains(got, "model: custom") {
 		t.Errorf("workflow.yaml lost the persisted exotic audit backend (radio, unsubmitted) after a browser-equivalent save:\n%s", got)
 	}
-	if got := readSeededSectionFile(t, root, "workflow"); !strings.Contains(got, config.DefaultGLM52) {
+	if got := readSeededSectionFile(t, root, "workflow"); !strings.Contains(got, "glm-5.2") {
 		t.Errorf("workflow.yaml lost the persisted exotic audit GLM pin after a browser-equivalent save:\n%s", got)
 	}
 }
@@ -170,20 +153,20 @@ func TestBrowserRoundTripPreservesExoticSelectValues(t *testing.T) {
 // rejected.
 func TestParseSchemaFormPassthroughPreserve(t *testing.T) {
 	current := map[string]string{
-		"llm.glm.models.high":  config.DefaultGLM52,
+		"llm.glm.models.high":  "glm-5.2",
 		"workflow.audit.model": "custom",
 	}
 
 	t.Run("value equal to persisted passes outside the closed set", func(t *testing.T) {
 		edits, errs := parseSchemaForm(postSchemaForm(url.Values{
-			"llm.glm.models.high":  {config.DefaultGLM52},
+			"llm.glm.models.high":  {"glm-5.2"},
 			"workflow.audit.model": {"custom"},
 		}), current)
 		if len(errs) != 0 {
 			t.Fatalf("parseSchemaForm errors: %v", errs)
 		}
-		if got := edits["llm.glm.models.high"]; got != config.DefaultGLM52 {
-			t.Errorf("edits[llm.glm.models.high] = %q, want the round-tripped %q", got, config.DefaultGLM52)
+		if got := edits["llm.glm.models.high"]; got != "glm-5.2" {
+			t.Errorf("edits[llm.glm.models.high] = %q, want the round-tripped %q", got, "glm-5.2")
 		}
 		if got := edits["workflow.audit.model"]; got != "custom" {
 			t.Errorf("edits[workflow.audit.model] = %q, want the round-tripped %q", got, "custom")
@@ -204,7 +187,7 @@ func TestParseSchemaFormPassthroughPreserve(t *testing.T) {
 
 	t.Run("nil current keeps the strict closed set", func(t *testing.T) {
 		_, errs := parseSchemaForm(postSchemaForm(url.Values{
-			"llm.glm.models.high": {config.DefaultGLM52},
+			"llm.glm.models.high": {"glm-5.2"},
 		}), nil)
 		if _, ok := errs["llm.glm.models.high"]; !ok {
 			t.Errorf("errs = %v, want rejection when no persisted value backs the passthrough", errs)

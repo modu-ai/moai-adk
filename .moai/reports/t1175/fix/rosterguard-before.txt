@@ -1,0 +1,140 @@
+numeral re-derivation (in-run, this tree)
+  breadth-set hits                : 116
+  breadth-set paths               : 63
+  registry rows carrying Count    : 43
+  registry paths carrying Count   : 39
+  ...declared NumeralUnreachable  : 5
+  hits discharged by a Count row  : 32
+  hits discharged by an exemption : 31
+  residual (undeclared)           : 0
+  numeral exemptions declared     : 33
+--- FAIL: TestNumeralResidualArithmeticCloses (32.91s)
+    numeral_rederivation_test.go:90: 34 reachable Count paths but 32 discharged hits — a registered count row is not being reached; re-measure it or declare NumeralUnreachable
+digit-axis hit .claude/agents/moai/manager-design.md:208 13 retained agents
+digit-axis hit .claude/agents/moai/manager-docs.md:5 8-agent catalog
+digit-axis hit .claude/agents/moai/manager-spec.md:5 8-agent catalog
+digit-axis hit .claude/rules/moai/NOTICE.md:185 8 retained agents
+digit-axis hit .claude/rules/moai/development/agent-authoring.md:128 13 retained agents
+digit-axis hit .claude/rules/moai/development/agent-authoring.md:128 8-agent catalog
+digit-axis hit .claude/rules/moai/development/agent-patterns.md:269 13-agent catalog
+digit-axis hit .claude/rules/moai/development/spec-frontmatter-schema.md:94 7) and the agent catalog
+digit-axis hit .claude/rules/moai/development/spec-frontmatter-schema.md:94 8 retained agents
+digit-axis hit .claude/rules/moai/workflow/spec-workflow.md:17 11 retained agents
+digit-axis hit .claude/skills/moai-foundation-core/SKILL.md:239 11-agent retained catalog
+digit-axis hit .claude/skills/moai-foundation-core/modules/INDEX.md:118 11 retained agents
+digit-axis hit .claude/skills/moai-foundation-core/modules/INDEX.md:121 11 retained agents
+digit-axis hit .claude/skills/moai-foundation-core/modules/INDEX.md:273 11 retained agents
+digit-axis hit .claude/skills/moai-foundation-core/modules/agents-reference.md:11 11 retained agents
+digit-axis hit .claude/skills/moai-foundation-core/modules/agents-reference.md:42 11 retained agents
+digit-axis hit .claude/skills/moai-foundation-core/modules/delegation-advanced.md:12 11-agent catalog
+digit-axis hit .claude/skills/moai-foundation-core/modules/delegation-implementation.md:12 11-agent catalog
+digit-axis hit .claude/skills/moai-foundation-core/modules/token-optimization.md:10 11-agent catalog
+digit-axis hit .claude/skills/moai-foundation-quality/SKILL.md:183 11-agent catalog
+digit-axis hit .claude/skills/moai-foundation-quality/references/reference.md:69 4 retained-agent catalog
+digit-axis hit .moai/config/sections/delegation.yaml:14 13 retained agents
+digit-axis hit .moai/docs/git-workflow-doctrine.md:148 8 retained agents
+digit-axis hit .moai/docs/template-internal-isolation-doctrine.md:35 25), the agent catalog
+digit-axis hit .moai/project/codemaps/docs-truth.md:28 13 retained agents
+digit-axis hit .moai/project/codemaps/docs-truth.md:56 13 retained agents
+digit-axis hit .moai/project/product.md:151 11 retained agents
+digit-axis hit .moai/project/tech.md:17 11 retained agents
+digit-axis hit README.md:501 13-agent catalog
+digit-axis hit internal/cli/agentlint/agent_lint.go:773 4 retained-agent catalog
+digit-axis hit internal/cli/testdata/codex-rollouts-t1171/real/rollout-2026-09-24T18-40-19-01a0d2c9-8d51-7623-a979-b364671a0205.jsonl:9 13 retained agents
+digit-axis hit internal/cli/testdata/codex-rollouts-t1171/roles-other-version/manager-design.toml:205 13 retained agents
+digit-axis hit internal/cli/testdata/codex-rollouts-t1171/roles-other-version/manager-docs.toml:6 8-agent catalog
+digit-axis hit internal/cli/testdata/codex-rollouts-t1171/roles-other-version/manager-spec.toml:6 8-agent catalog
+digit-axis hit internal/cli/testdata/codex-rollouts-t1171/roles/manager-design.toml:204 13 retained agents
+digit-axis hit internal/cli/testdata/codex-rollouts-t1171/roles/manager-docs.toml:6 8-agent catalog
+digit-axis hit internal/cli/testdata/codex-rollouts-t1171/roles/manager-spec.toml:6 8-agent catalog
+digit-axis hit internal/harness/delegationmap/types.go:73 13 retained agents
+digit-axis hit internal/harness/rosterguard/axis.go:160 12 retained agents
+digit-axis hit internal/harness/rosterguard/numeral.go:52 4 agent catalog
+digit-axis hit internal/harness/rosterguard/numeral.go:90 11-agent catalog
+digit-axis hit internal/harness/rosterguard/numeral.go:107 11 retained agents
+digit-axis hit internal/harness/rosterguard/numeral.go:215 13 retained agents
+digit-axis hit internal/harness/rosterguard/numeral_test.go:34 13 retained agents
+digit-axis hit internal/harness/rosterguard/numeral_test.go:40 13 retained agents
+digit-axis hit internal/harness/rosterguard/numeral_test.go:46 11-agent catalog
+word-axis hit internal/harness/rosterguard/numeral_test.go:67 thirteen retained agents
+word-axis hit internal/harness/rosterguard/numeral_test.go:109 one of the N retained agents
+digit-axis hit internal/harness/rosterguard/numeral_test.go:122 11 retained agents
+word-axis hit internal/harness/rosterguard/numeral_test.go:127 thirteen retained agents
+digit-axis hit internal/harness/rosterguard/numeral_test.go:149 11 retained agents
+digit-axis hit internal/harness/rosterguard/numeral_test.go:218 9 retained agents
+digit-axis hit internal/harness/rosterguard/numeral_test.go:220 9 retained agents
+digit-axis hit internal/harness/rosterguard/numeral_test.go:488 11 retained agents
+digit-axis hit internal/harness/rosterguard/numeral_test.go:493 11 retained agents
+digit-axis hit internal/harness/rosterguard/numeral_test.go:499 11 retained agents
+word-axis hit internal/harness/rosterguard/numeral_test.go:505 eleven retained agents
+digit-axis hit internal/harness/rosterguard/numeral_test.go:522 11 retained agents
+digit-axis hit internal/harness/rosterguard/numeral_test.go:528 11 retained agents
+digit-axis hit internal/harness/rosterguard/registry.go:79 13 retained agents
+digit-axis hit internal/harness/rosterguard/registry.go:307 11 retained agents
+digit-axis hit internal/harness/rosterguard/registry.go:455 11-agent retained catalog
+digit-axis hit internal/harness/rosterguard/registry.go:550 11-agent catalog
+digit-axis hit internal/harness/rosterguard/registry.go:580 4 \((\d+) retained agents
+digit-axis hit internal/harness/rosterguard/registry.go:588 4 \((\d+) retained agents
+digit-axis hit internal/harness/rosterguard/registry.go:596 4 \((\d+) retained agents
+digit-axis hit internal/harness/rosterguard/registry.go:602 8 retained agents
+digit-axis hit internal/harness/rosterguard/registry.go:666 11-agent catalog
+digit-axis hit internal/harness/rosterguard/registry.go:713 8-agent catalog
+digit-axis hit internal/harness/rosterguard/registry.go:713 8 agent catalog
+digit-axis hit internal/harness/rosterguard/registry.go:736 13 retained agents
+digit-axis hit internal/harness/rosterguard/registry.go:752 8 retained agents
+digit-axis hit internal/harness/rosterguard/registry.go:763 7 retained agents
+digit-axis hit internal/harness/rosterguard/registry.go:784 7 retained agent
+digit-axis hit internal/harness/rosterguard/registry.go:791 001): agent catalog
+digit-axis hit internal/harness/rosterguard/registry.go:799 8 retained agents
+digit-axis hit internal/harness/rosterguard/registry.go:809 4 — the retained agent
+digit-axis hit internal/harness/rosterguard/registry.go:819 4 retained-agent catalog
+digit-axis hit internal/harness/rosterguard/registry.go:830 25), the agent catalog
+digit-axis hit internal/harness/rosterguard/registry.go:835 4 retained-agent catalog
+digit-axis hit internal/harness/rosterguard/registry.go:840 9 named retained agents
+digit-axis hit internal/harness/rosterguard/rosterguard_test.go:262 11 retained agents
+digit-axis hit internal/harness/rosterguard/rosterguard_test.go:304 4 retained agents
+digit-axis hit internal/template/catalog_loader_test.go:39 8 agent catalog
+digit-axis hit internal/template/catalog_tier_audit_test.go:225 7 retained agents
+digit-axis hit internal/template/catalog_tier_audit_test.go:250 8 agent catalog
+digit-axis hit internal/template/contract_schema_test.go:96 001): agent catalog
+digit-axis hit internal/template/embed_catalog_test.go:32 8 agent catalog
+digit-axis hit internal/template/embed_test.go:64 7 retained agents
+digit-axis hit internal/template/embed_test.go:66 7 retained agent
+digit-axis hit internal/template/templates/.claude/agents/moai/manager-design.md:210 13 retained agents
+digit-axis hit internal/template/templates/.claude/agents/moai/manager-docs.md:5 8-agent catalog
+digit-axis hit internal/template/templates/.claude/agents/moai/manager-spec.md:5 8-agent catalog
+digit-axis hit internal/template/templates/.claude/rules/moai/NOTICE.md:185 8 retained agents
+digit-axis hit internal/template/templates/.claude/rules/moai/development/agent-authoring.md:128 13 retained agents
+digit-axis hit internal/template/templates/.claude/rules/moai/development/agent-authoring.md:128 8-agent catalog
+digit-axis hit internal/template/templates/.claude/rules/moai/development/agent-patterns.md:269 13-agent catalog
+digit-axis hit internal/template/templates/.claude/rules/moai/development/spec-frontmatter-schema.md:94 7) and the agent catalog
+digit-axis hit internal/template/templates/.claude/rules/moai/development/spec-frontmatter-schema.md:94 8 retained agents
+digit-axis hit internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md:17 11 retained agents
+digit-axis hit internal/template/templates/.claude/skills/moai-foundation-core/SKILL.md:239 11-agent retained catalog
+digit-axis hit internal/template/templates/.claude/skills/moai-foundation-core/modules/INDEX.md:117 11 retained agents
+digit-axis hit internal/template/templates/.claude/skills/moai-foundation-core/modules/INDEX.md:120 11 retained agents
+digit-axis hit internal/template/templates/.claude/skills/moai-foundation-core/modules/INDEX.md:272 11 retained agents
+digit-axis hit internal/template/templates/.claude/skills/moai-foundation-core/modules/agents-reference.md:11 11 retained agents
+digit-axis hit internal/template/templates/.claude/skills/moai-foundation-core/modules/agents-reference.md:42 11 retained agents
+digit-axis hit internal/template/templates/.claude/skills/moai-foundation-core/modules/delegation-advanced.md:12 11-agent catalog
+digit-axis hit internal/template/templates/.claude/skills/moai-foundation-core/modules/delegation-implementation.md:12 11-agent catalog
+digit-axis hit internal/template/templates/.claude/skills/moai-foundation-core/modules/token-optimization.md:10 11-agent catalog
+digit-axis hit internal/template/templates/.claude/skills/moai-foundation-quality/SKILL.md:183 11-agent catalog
+digit-axis hit internal/template/templates/.claude/skills/moai-foundation-quality/references/reference.md:65 4 retained-agent catalog
+digit-axis hit internal/template/templates/.codex/agents/moai/manager-design.toml:204 13 retained agents
+digit-axis hit internal/template/templates/.codex/agents/moai/manager-docs.toml:6 8-agent catalog
+digit-axis hit internal/template/templates/.codex/agents/moai/manager-spec.toml:6 8-agent catalog
+digit-axis hit internal/template/templates/.moai/config/sections/delegation.yaml:14 13 retained agents
+digit-axis hit internal/web/agentfm.go:141 9 named retained agents
+--- FAIL: TestNumeralBreadthSetEqualsTheDeclaredUnion (0.00s)
+    numeral_test.go:397: declared path internal/template/templates/.claude/rules/moai/workflow/skill-routing.md is not in the breadth set — the row or exemption was written against text the layer no longer reaches; re-measure it, or declare NumeralUnreachable with a reason
+    numeral_test.go:397: declared path CLAUDE.md is not in the breadth set — the row or exemption was written against text the layer no longer reaches; re-measure it, or declare NumeralUnreachable with a reason
+    numeral_test.go:397: declared path internal/template/templates/CLAUDE.md is not in the breadth set — the row or exemption was written against text the layer no longer reaches; re-measure it, or declare NumeralUnreachable with a reason
+    numeral_test.go:397: declared path .claude/rules/moai/workflow/skill-routing.md is not in the breadth set — the row or exemption was written against text the layer no longer reaches; re-measure it, or declare NumeralUnreachable with a reason
+    numeral_test.go:413: breadth set: 63 paths, 116 hits
+--- FAIL: TestRegisteredSitesMatchTheirDeclaredAxis (0.03s)
+    rosterguard_test.go:112: site claude-md-section-4: CountPattern "consists of exactly \\*\\*(\\d+) retained agents\\*\\*" matched 0 times in CLAUDE.md, want exactly 1 (0 = the anchor moved; >1 = ambiguous which claim is asserted)
+    rosterguard_test.go:112: site claude-md-section-4-mirror: CountPattern "consists of exactly \\*\\*(\\d+) retained agents\\*\\*" matched 0 times in internal/template/templates/CLAUDE.md, want exactly 1 (0 = the anchor moved; >1 = ambiguous which claim is asserted)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/harness/rosterguard	35.286s
+FAIL

@@ -1,6 +1,6 @@
 # moai-mcp Tool Catalogue
 
-> Single source of truth for the 28 tools exposed by the self-hosted `moai` MCP
+> Single source of truth for the 47 tools exposed by the self-hosted `moai` MCP
 > server (`.mcp.json` → `{command: "moai", args: ["mcp-server"]}`). Each tool is
 > prefixed `mcp__moai__` at the call site. This rule tells agents and the
 > orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.
@@ -19,10 +19,17 @@ the CLI form reads more naturally inline.
 
 ## The `project_root` input — name your own tree
 
-Nine tools accept an optional `project_root` string: `spec_progress`,
-`spec_audit`, `spec_drift`, `codex_audit`, `glm_audit`, `audit_multi`,
-`graph_file_api`, `graph_find_code`, and `graph_trace_calls`. It names the tree
-the call should act on.
+Twenty-two tools accept an optional `project_root` string: `spec_progress`,
+`spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,
+`codex_review`, `codex_task`, `glm_audit`, `glm_review`, `claude_audit`,
+`audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,
+`graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`,
+`factory_stage`, and `factory_complete`. It names the tree the call should act
+on. Four of the twenty-two
+REQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,
+and `factory_complete` reject a call without it naming the argument, and
+`codex_task` is required rather than optional — pass your own toplevel or the
+call is refused (`project_root is required ...`); it is never defaulted.
 
 [HARD] **An agent working inside a worktree MUST pass it**, and the value is its
 own `git rev-parse --show-toplevel`. This is not a convenience. The server cannot
@@ -34,8 +41,7 @@ checkout instead, which means a SPEC that exists only on the card's branch is no
 in the catalogue the auditor reads. It is not reported missing; it is simply
 absent.
 
-The caller is the only party that holds the answer, which is why it is an input
-rather than something inferred.
+The caller is the only party that holds the answer, which is why it is an input.
 
 | Situation | What to pass | What happens |
 |---|---|---|
@@ -43,54 +49,28 @@ rather than something inferred.
 | Session in the primary checkout | nothing | resolves exactly as it always has |
 | Path that is not a MoAI project root | — | the call is REJECTED with an error naming the path |
 
-The rejection is deliberate and is not a rough edge. A silent fallback to the
-default would send a caller who mistyped its own worktree path back to acting on
-the primary checkout — the exact failure the parameter exists to prevent —
-while reporting success.
+The rejection is deliberate, not a rough edge: a silent fallback would send a
+caller who mistyped its own worktree path back to the primary checkout — the
+exact failure the parameter exists to prevent — while reporting success.
 
-An accepted path is **canonicalized** before use — symlinks are resolved, so the
-call acts on the real directory rather than on whichever spelling reached it, and
-a later containment check cannot be walked through by pointing a link at a tree
-outside the boundary. A path that cannot be canonicalized is rejected on the same
-terms as any other unusable one.
+An accepted path is **canonicalized** before use, so the call acts on the real
+directory rather than on whichever spelling reached it and a containment check
+cannot be walked through by pointing a link outside the boundary. A path that
+cannot be canonicalized is rejected on the same terms.
 
-For `audit_multi` the root reaches BOTH backends of the fan-out: codex receives
-it as the working directory it reviews in, and the GLM path uses it to collect
-the diff it sends to z.ai. Passing it is what keeps the two secondary opinions
-about the same tree.
+A registered linked worktree of a repository that keeps `.moai` untracked is also
+accepted; rules and caveats: `moai-mcp-tools-catalogue.md` § Linked worktrees.
 
-## Tool families (24 of the 28 tools; the session-messaging family follows below)
+For `audit_multi` the root reaches every backend in the fan-out: Claude and GLM
+use it to collect the diff sent to their isolated reviewer, while codex receives
+it as the working directory it reviews in. Passing it keeps all independent
+opinions about the same tree.
 
-| Family | Tools | Wired consumers |
-|---|---|---|
-| SPEC lifecycle | `spec_progress`, `spec_audit`, `spec_drift` | manager-spec, manager-docs, plan-auditor, super-advisor |
-| Verification snapshots | `verify_snapshot`, `verify_trend` | manager-develop, sync-auditor, super-advisor |
-| Goal + session | `goal_arm`, `goal_status`, `session_list` | orchestrator only / manager-develop, manager-lead |
-| Cross-model audit | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | plan-auditor, sync-auditor |
-| Codex delegation | `codex_task`, `codex_setup`, `codex_job_{status,result,cancel}` | super-advisor |
-| GLM delegation | `glm_task`, `glm_job_{status,result,cancel}` | super-advisor |
-| Code queries | `graph_file_api`, `graph_find_code`, `graph_trace_calls` | any agent (signature-level code navigation from the code-derived edge layer; every answer carries tree+commit provenance) |
+## Cross-reference
 
-Per-tool purpose, consumer, and CLI equivalent: `moai-mcp-tools-catalogue.md`. Both codex and GLM
-are OPTIONAL and fail open — an unavailable backend returns `inconclusive`, never a hard error.
-
-### Session messaging broker (Claude ↔ Codex)
-
-| Tool | Purpose | Consumer | CLI equivalent |
-|------|---------|----------|----------------|
-| `mcp__moai__session_msg_register` | Register this session (kind: claude or codex, plus name) in the local message broker; idempotent — same kind+name returns the same agentId | Any Claude or Codex agent session | — |
-| `mcp__moai__session_msg_list` | List registered broker agents (agentId, name, kind, online, pending count) — the family's only read-only tool | Any Claude or Codex agent session | — |
-| `mcp__moai__session_msg_send` | Send a short, self-contained fact message to another registered agent's mailbox | Any Claude or Codex agent session | — |
-| `mcp__moai__session_msg_poll` | Claim pending messages from this agent's mailbox (at-least-once) and optionally ack processed ids | Any Claude or Codex agent session | — |
-
-Reach any session kind symmetrically: a Codex session has no native peer-messaging runtime, so the broker is its only path, while claude↔claude keeps the native runtime as the recommended route. Delivery is poll-based — a send is a record, not a delivery guarantee. Newly added tools become visible only after the session restarts its MCP server (a long-lived server does not see tools added after it started), so the restart is procedure step zero whenever a new tool seems missing.
-
-## Unwired-by-design
-
-`goal_arm` is intentionally wired to NO agent. Arming an autonomous loop is an
-orchestrator concern (preserves the orchestrator-only arming surface and the
-flat hierarchy invariant). Agents that need a goal's state read `goal_status`;
-only the orchestrator arms.
+`moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue
+(47 tools) · § Tool families (the family-to-consumer map) · § Session messaging
+broker (Claude ↔ Codex) · § Unwired-by-design (why `goal_arm` reaches no agent).
 
 ---
 

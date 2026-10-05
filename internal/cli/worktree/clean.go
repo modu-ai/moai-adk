@@ -57,17 +57,20 @@ func runClean(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--stale and --merged-only are mutually exclusive")
 	}
 
+	// REQ-WR-013 (issue #1704): --json is the inspect half of this command in
+	// EVERY combination, not only alongside --stale. Routing it here — above
+	// the sweep dispatch — is what keeps `clean --json` from falling through
+	// to the default path, where it pruned and printed a "Cleaned" banner
+	// instead of the JSON the help promises. The report below removes nothing
+	// and prunes nothing, so --yes stays inert with it too.
+	if asJSON, _ := cmd.Flags().GetBool("json"); asJSON {
+		base, _ := cmd.Flags().GetString("base")
+		return reportStaleWorktrees(cmd, base)
+	}
+
 	if stale {
 		base, _ := cmd.Flags().GetString("base")
 		apply, _ := cmd.Flags().GetBool("yes")
-		asJSON, _ := cmd.Flags().GetBool("json")
-		if asJSON {
-			// REQ-WR-013: the reporting path removes nothing. --json is a
-			// report, so it overrides --yes rather than combining with it —
-			// an inventory that could delete on a stray flag is not an
-			// inventory.
-			return reportStaleWorktrees(cmd, base)
-		}
 		return cleanStaleWorktrees(cmd, base, apply)
 	}
 
@@ -79,6 +82,11 @@ func runClean(cmd *cobra.Command, _ []string) error {
 	if err := WorktreeProvider.Prune(); err != nil {
 		return fmt.Errorf("prune worktrees: %w", err)
 	}
+
+	// One-time/periodic surface for launch-ledger reclamation (card t297):
+	// every dead projects[] row goes here, whether or not a disposal on this
+	// machine produced it.
+	pruneLaunchLedgerAfterDisposal(out, cmd.ErrOrStderr())
 
 	_, _ = fmt.Fprintln(out, wtSuccessCard("Cleaned stale worktree references"))
 	return nil
@@ -104,7 +112,9 @@ func cleanMergedWorktrees(cmd *cobra.Command, base string) error {
 		// stdout is reserved for machine-readable output (internal/cli
 		// CLAUDE.md) — a caller parsing it must not receive an error line.
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), lockSourceUnreadableNotice(lockErr))
-		return nil
+		// Card t231 (REQ-WR-016 as revised): the degraded run is a
+		// distinguished preservation signal — exit 2, not a silent success.
+		return &ExitCodeError{Code: 2, Detail: fmt.Sprintf("lock source unreadable (%v); sweep aborted, nothing removed", lockErr)}
 	}
 
 	var removed int
@@ -152,6 +162,9 @@ func cleanMergedWorktrees(cmd *cobra.Command, base string) error {
 			removed++
 		}
 	}
+
+	// Reclaim launch-ledger rows left dead by the removals above (card t297).
+	pruneLaunchLedgerAfterDisposal(out, cmd.ErrOrStderr())
 
 	if removed == 0 {
 		_, _ = fmt.Fprintln(out, "No merged worktrees to clean.")
@@ -248,7 +261,7 @@ func cleanStaleWorktrees(cmd *cobra.Command, base string, apply bool) error {
 
 	if len(removable) == 0 {
 		_, _ = fmt.Fprintln(out, "No stale worktrees to clean.")
-		return nil
+		return cleanDegradedExit(lockErr)
 	}
 
 	if !apply {
@@ -257,7 +270,7 @@ func cleanStaleWorktrees(cmd *cobra.Command, base string, apply bool) error {
 			_, _ = fmt.Fprintf(out, "  %s [%s]\n", c.Path, c.Branch)
 		}
 		_, _ = fmt.Fprintln(out, "\nThis was a preview. Re-run with --yes to remove them.")
-		return nil
+		return cleanDegradedExit(lockErr)
 	}
 
 	var removed int
@@ -282,7 +295,27 @@ func cleanStaleWorktrees(cmd *cobra.Command, base string, apply bool) error {
 		removed++
 	}
 	_, _ = fmt.Fprintf(out, "Removed %d stale worktree(s). Branches were left intact.\n", removed)
-	return nil
+
+	// Reclaim launch-ledger rows left dead by the removals above (card t297).
+	// Apply limb only: the preview and the --json inventory remove nothing, so
+	// they reclaim nothing either.
+	pruneLaunchLedgerAfterDisposal(out, cmd.ErrOrStderr())
+
+	return cleanDegradedExit(lockErr)
+}
+
+// cleanDegradedExit maps the stale sweep's lock-read failure to its error
+// contract (card t231, REQ-WR-016 as revised): nil on a fully-observed run;
+// the distinguished preservation signal — process exit code 2 — when the
+// authoritative anchor source could not be read. The signal never means work
+// was destroyed: the sweep keeps every tree it could not judge and completes
+// its report; the code only tells the caller the run was degraded, so a
+// machine reading only the exit status is not told a lie of silence.
+func cleanDegradedExit(lockErr error) error {
+	if lockErr == nil {
+		return nil
+	}
+	return &ExitCodeError{Code: 2, Detail: fmt.Sprintf("lock source unreadable (%v); kept every tree, anchor states undetermined", lockErr)}
 }
 
 // classifyStaleWorktrees evaluates every non-protected worktree once. It is
@@ -368,9 +401,14 @@ func isBaseBranch(branch, base string) bool {
 // worktree — worktree-ness is a checkout property, not a branch-name one — so
 // the report reaches trees no branch-name glob would find.
 func reportStaleWorktrees(cmd *cobra.Command, base string) error {
-	if err := WorktreeProvider.Prune(); err != nil {
-		return fmt.Errorf("prune worktrees: %w", err)
-	}
+	// Pure read (issue #1704): no prune on the reporting path either. The
+	// prune this used to run first is exactly the mutation the issue reports —
+	// the flag an operator reaches for to LOOK must not change what it looks
+	// at. A dangling administrative entry (directory already gone) now
+	// surfaces in the inventory carrying its unreadable-tree keep reason
+	// instead of being silently dropped; dropping it is the prune's job, and
+	// prune stays with the mutating sweeps (the --stale sweep prunes at its
+	// own start, and so does the default path).
 	worktrees, err := WorktreeProvider.List()
 	if err != nil {
 		return fmt.Errorf("list worktrees: %w", err)
@@ -378,14 +416,20 @@ func reportStaleWorktrees(cmd *cobra.Command, base string) error {
 	// The lock-read error is carried by every record's keep_reason (and by
 	// anchored="undetermined"), so the inventory reports the degraded run
 	// rather than failing — a report that cannot be read tells the operator
-	// less than one that says what it could not determine.
-	candidates, _ := classifyStaleWorktrees(worktrees, base)
+	// less than one that says what it could not determine. The report still
+	// completes in full on stdout; the degraded run then ends with the
+	// distinguished exit-2 signal (card t231, REQ-WR-016 as revised) so a
+	// caller reading only the exit status is not told a lie of silence.
+	candidates, lockErr := classifyStaleWorktrees(worktrees, base)
 	if candidates == nil {
 		candidates = []staleCandidate{}
 	}
 	enc := json.NewEncoder(cmd.OutOrStdout())
 	enc.SetIndent("", "  ")
-	return enc.Encode(candidates)
+	if err := enc.Encode(candidates); err != nil {
+		return err
+	}
+	return cleanDegradedExit(lockErr)
 }
 
 // staleKeepReason returns the reason a worktree must be kept, or "" when both

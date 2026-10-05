@@ -102,7 +102,7 @@ Additional behaviors worth knowing:
 | Item | Description |
 |------|------|
 | `/deep-research <question>` | A bundled workflow. Fans out web searches from multiple angles, cross-checks and votes on sources, then returns a cited report with claims that failed verification filtered out. Requires the WebSearch tool |
-| `/effort ultracode` | Combines `xhigh` reasoning intensity with automatic workflow orchestration. While on, Claude plans a workflow for every substantive task. Applies to the current session only and resets in a new session. Return to everyday work with `/effort high` |
+| `/effort ultracode` | An independent on/off toggle. Turning it on or off leaves the effort level unchanged, and while it is on, Claude plans a workflow for every substantive task. Turn it off with `/effort ultracode off`. A toggle made with the command applies to the current session only and must be re-issued in a new session. To start every session with it on, set `"ultracode": true` in a settings file (since v2.1.284 the key leaves the effort level unchanged). The one exception: the `--effort ultracode` launch flag also starts the session at `xhigh` |
 
 ### How to Turn It Off
 

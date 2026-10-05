@@ -293,6 +293,9 @@ func TestEscapeDotenvValue_SpecialCharacters(t *testing.T) {
 }
 
 func TestSaveGLMKey_Success(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -340,6 +343,9 @@ func TestSaveGLMKey_SpecialCharacters(t *testing.T) {
 }
 
 func TestSaveGLMKey_EmptyKey(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -366,25 +372,30 @@ func TestResolveGLMModels(t *testing.T) {
 		wantLow    string
 	}{
 		{
-			name:       "only High/Medium/Low set",
-			models:     config.GLMModels{High: "custom-high", Medium: "custom-medium", Low: "custom-low"},
-			wantHigh:   "custom-high",
-			wantMedium: "custom-medium",
-			wantLow:    "custom-low",
+			// Offered-set values pass through verbatim (the passthrough half
+			// of the REQ-MMU-004 fallback: only out-of-set values fall back).
+			name:       "offered High/Medium/Low set passes through",
+			models:     config.GLMModels{High: "glm-5.3", Medium: "glm-5.3-flash", Low: "glm-5.3-flash"},
+			wantHigh:   "glm-5.3",
+			wantMedium: "glm-5.3-flash",
+			wantLow:    "glm-5.3-flash",
 		},
 		{
-			name:       "only Opus/Sonnet/Haiku set",
-			models:     config.GLMModels{Opus: "legacy-opus", Sonnet: "legacy-sonnet", Haiku: "legacy-haiku"},
-			wantHigh:   "legacy-opus",
-			wantMedium: "legacy-sonnet",
-			wantLow:    "legacy-haiku",
+			// REQ-MMU-004 (DR-2): a REMOVED old-model id (glm-4.7 and friends
+			// were fully deleted) falls back to the tier default — never a
+			// silent pass-through. The offered-set values pass through.
+			name:       "removed ids fall back to the tier default",
+			models:     config.GLMModels{High: "glm-4.7", Medium: "glm-5.1", Low: "glm-4.6"},
+			wantHigh:   defaults.GLM.Models.High,
+			wantMedium: defaults.GLM.Models.Medium,
+			wantLow:    defaults.GLM.Models.Low,
 		},
 		{
-			name:       "both set - High/Medium/Low priority",
-			models:     config.GLMModels{High: "new-high", Medium: "new-medium", Low: "new-low", Opus: "old-opus", Sonnet: "old-sonnet", Haiku: "old-haiku"},
-			wantHigh:   "new-high",
-			wantMedium: "new-medium",
-			wantLow:    "new-low",
+			name:       "arbitrary unknown id falls back to the tier default",
+			models:     config.GLMModels{High: "totally-made-up"},
+			wantHigh:   defaults.GLM.Models.High,
+			wantMedium: defaults.GLM.Models.Medium,
+			wantLow:    defaults.GLM.Models.Low,
 		},
 		{
 			name:       "neither set - defaults",
@@ -408,6 +419,41 @@ func TestResolveGLMModels(t *testing.T) {
 				t.Errorf("low = %q, want %q", gotLow, tt.wantLow)
 			}
 		})
+	}
+}
+
+// TestResolveGLMModels_WarnsOnRemovedId pins the one-line stderr warning of
+// REQ-MMU-004 (DR-2's management device): the fallback for a removed id is
+// announced on ONE line naming the removed value, the slot, and the tier
+// default — fail-open, never silent, never a hard error.
+func TestResolveGLMModels_WarnsOnRemovedId(t *testing.T) {
+	defaults := config.NewDefaultLLMConfig()
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	prevStderr := os.Stderr
+	os.Stderr = w
+	defer func() { os.Stderr = prevStderr }()
+
+	_, _, _, _ = resolveGLMModels(config.GLMModels{High: "glm-4.7"})
+
+	if err := w.Close(); err != nil {
+		t.Fatalf("close pipe writer: %v", err)
+	}
+	out := make([]byte, 4096)
+	n, _ := r.Read(out)
+	stderrText := string(out[:n])
+	_ = r.Close()
+
+	if strings.Count(stderrText, "\n") != 1 {
+		t.Errorf("fallback warning must be exactly ONE line, got %d newlines:\n%s", strings.Count(stderrText, "\n"), stderrText)
+	}
+	for _, want := range []string{"glm-4.7", "high", defaults.GLM.Models.High} {
+		if !strings.Contains(stderrText, want) {
+			t.Errorf("warning line missing %q:\n%s", want, stderrText)
+		}
 	}
 }
 
@@ -532,52 +578,5 @@ func TestGLMReasoningEnvVarsForModel(t *testing.T) {
 					tc.model, tc.effort, config.EnvAnthropicReasoningEffort, v, tc.wantReasoning)
 			}
 		})
-	}
-}
-
-// ── SPEC-FACTORY-MODE-001 M5 ──
-
-// TestGLM_KanbanFlagParity is AC-FM-005: `moai glm --kanban` reaches the
-// launcher in glm mode with the kanban signal published, confirming parity
-// with `moai cc`. Both launchers are single-backend, so both support the mode.
-func TestGLM_KanbanFlagParity(t *testing.T) {
-	origLaunch := unifiedLaunchFunc
-	defer func() { unifiedLaunchFunc = origLaunch }()
-
-	var capturedMode string
-	var capturedArgs []string
-	var kanbanAtLaunch, specAtLaunch string
-	unifiedLaunchFunc = func(_ string, mode string, args []string) error {
-		capturedMode = mode
-		capturedArgs = args
-		kanbanAtLaunch = os.Getenv(config.EnvMoaiKanban)
-		specAtLaunch = os.Getenv(config.EnvMoaiKanbanSpec)
-		return nil
-	}
-
-	origFn := findProjectRootFn
-	findProjectRootFn = func() (string, error) { return t.TempDir(), nil }
-	defer func() { findProjectRootFn = origFn }()
-
-	buf := new(bytes.Buffer)
-	glmCmd.SetOut(buf)
-	glmCmd.SetErr(buf)
-
-	if err := runGLM(glmCmd, []string{"--kanban", "SPEC-PLACEHOLDER"}); err != nil {
-		t.Fatalf("AC-FM-005: runGLM(--kanban) should not error, got: %v", err)
-	}
-	if capturedMode != "glm" {
-		t.Errorf("AC-FM-005: mode = %q, want %q", capturedMode, "glm")
-	}
-	for _, a := range capturedArgs {
-		if a == "--kanban" || a == "-k" {
-			t.Errorf("AC-FM-005: kanban token must not reach the launcher, got %v", capturedArgs)
-		}
-	}
-	if kanbanAtLaunch != "1" {
-		t.Errorf("AC-FM-005: %s must be set at launch, got %q", config.EnvMoaiKanban, kanbanAtLaunch)
-	}
-	if specAtLaunch != "SPEC-PLACEHOLDER" {
-		t.Errorf("AC-FM-005: %s must carry the identifier at launch, got %q", config.EnvMoaiKanbanSpec, specAtLaunch)
 	}
 }

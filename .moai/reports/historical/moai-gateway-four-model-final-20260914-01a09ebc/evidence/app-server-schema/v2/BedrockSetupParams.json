@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "oneOf": [
+    {
+      "properties": {
+        "profile": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "profile"
+          ],
+          "title": "Profilev2::BedrockSetupParamsType",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile",
+        "region",
+        "type"
+      ],
+      "title": "Profilev2::BedrockSetupParams",
+      "type": "object"
+    },
+    {
+      "properties": {
+        "region": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "environment"
+          ],
+          "title": "Environmentv2::BedrockSetupParamsType",
+          "type": "string"
+        }
+      },
+      "required": [
+        "region",
+        "type"
+      ],
+      "title": "Environmentv2::BedrockSetupParams",
+      "type": "object"
+    }
+  ],
+  "title": "BedrockSetupParams"
+}

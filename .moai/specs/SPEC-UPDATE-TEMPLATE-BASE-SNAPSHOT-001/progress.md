@@ -149,7 +149,7 @@ ac_pass_count: 23
 ac_fail_count: 0
 ac_tbs_010_non_vacuity: independently reproduced (RED leg reverts the snapshot-as-BASE switch and asserts the correctness test FAILS against the wrong-base code, proving the AC is non-vacuous)
 b12_self_test_a_changelog_duplicate: 1 (pre-existing mention is a forward-reference inside the SPEC-UPDATE-YAML-PRESERVE-001 entry naming this SPEC as the deferred follow-up, NOT a dedicated entry — not a duplicate)
-b12_self_test_b_ac_count_match: 23 distinct ACs in acceptance.md (AC-TBS-001..022 with 006 split into 006a/006b) == 23 ac_pass_count
+b12_self_test_b_ac_count_match: 28 `### AC-TBS-` headings in acceptance.md as of 2026-09-24 (card t1139 amendment; was 23 at the 2026-08-03 close — AC-TBS-001..022 with 006 split into 006a/006b)
 b12_self_test_c_file_paths_verified: all 8 cited implementation files exist via `ls` (snapshot.go, snapshot_test.go, base_loader.go, base_loader_test.go, snapshot_provenance_test.go, snapshot_survival_test.go, update_snapshot_hook.go, update_snapshot_hook_test.go)
 changelog_entry_position: CHANGELOG.md `[Unreleased]` ### Fixed
 frontmatter_status_transitions:
@@ -159,3 +159,9 @@ frontmatter_status_transitions:
 canary_compliance_check: n/a (internal `internal/cli/update/backup` Go sources + SPEC artifacts only; 0 template files touched → §25 template neutrality N/A; gitignored `.moai/cache/template-snapshot/` is a runtime artifact, not a distributed template)
 readme_or_docs_site_change: none (internal `moai update` merge-mechanism correctness fix; docs-site documents no `moai update` merge/preservation behavior — `grep -rln "3-way\|three-way\|MergeYAML\|template-blessed\|base.*merge" docs-site/content/` returns 0; README unchanged — no user-facing feature changed)
 closes_d5_from: SPEC-UPDATE-YAML-PRESERVE-001 (#1243) Decision D5 — the deferred provenance defect. The prior SPEC's CHANGELOG entry explicitly named this SPEC as the D5 owner.
+
+### 2026-09-24 amendment (card t1139)
+
+- Decision D4 now has 3 snapshot write triggers, each immediately after the template deploy: `moai init` (via `InitOptions.AfterTemplateDeploy`), `moai update` template-sync, and `moai update` clean-install. `runUpdateRestore` (`moai update --restore`) no longer writes the snapshot. The "all 4 Decision D4 trigger sites" line in §E.2 M3 records the original run-phase state and is left unedited.
+- AC count: `grep -c '^### AC-TBS-' acceptance.md` → 28 (previously 23).
+- Commits: `c72008a1d` (D4 amendment), `aa89ed5e9` (snapshot ACs pointed at call-site tests).

@@ -528,10 +528,11 @@ func TestGLMTask_BackgroundDeadlineRecordsFailed(t *testing.T) {
 
 // ─── model resolution ───
 
-// TestResolveGLMTaskModel_SSOT proves model resolution goes through the SSOT
-// (template.ResolveAgentModelEffort) and falls back to the documented GLM
-// default when no llm.yaml is resolvable — never a Claude id.
-func TestResolveGLMTaskModel_SSOT(t *testing.T) {
+// TestResolveGLMTaskModel_BackendDefault proves the default task model is the
+// documented GLM backend default when no llm.yaml is resolvable — never a
+// Claude id. MoAI assigns no per-agent model (SPEC-AGENT-MODEL-INHERIT-001
+// design D5).
+func TestResolveGLMTaskModel_BackendDefault(t *testing.T) {
 	t.Setenv("CLAUDE_PROJECT_DIR", "")
 	old := projectDirResolver
 	projectDirResolver = func() string { return "" } // no sections dir available
@@ -552,7 +553,7 @@ func TestResolveGLMTaskModel_SSOT(t *testing.T) {
 // TestGLMTaskFactoryModeIgnoresModelOverride is the Go half of the factory
 // no-model-override discipline (t85 lead loop): when the MCP server process
 // runs inside a factory session (MOAI_FACTORY_WORKERS inherited from the
-// session env), a caller-supplied model is IGNORED in favor of the SSOT
+// session env), a caller-supplied model is IGNORED in favor of the backend
 // default and the result says so — a per-call override would split the
 // session's caches and can bypass the ANTHROPIC_DEFAULT_*_MODEL slot-to-GLM
 // tier mapping the launcher established. Outside factory mode the override
@@ -569,7 +570,7 @@ func TestGLMTaskFactoryModeIgnoresModelOverride(t *testing.T) {
 			"model":  "caller-picked-model",
 		}))
 		if m, _ := got["model"].(string); m != resolveGLMTaskModel() {
-			t.Errorf("model = %q, want the resolved SSOT default %q", m, resolveGLMTaskModel())
+			t.Errorf("model = %q, want the resolved backend default %q", m, resolveGLMTaskModel())
 		}
 		note, _ := got["note"].(string)
 		if !strings.Contains(note, "factory mode") || !strings.Contains(note, "caller-picked-model") {
@@ -579,6 +580,11 @@ func TestGLMTaskFactoryModeIgnoresModelOverride(t *testing.T) {
 
 	t.Run("outside factory mode the override is honored", func(t *testing.T) {
 		clearFactoryTestEnv(t)
+		// The response names the model it served, matching the request, so the
+		// empty-note assertion below isolates the factory note: a response that
+		// named no model would legitimately carry a served-model absence note
+		// (SPEC-MCP-SERVED-MODEL-001 REQ-MSM-004).
+		stub.body = glmTextRespWithModel("ok", "caller-picked-model")
 
 		got := structuredMap(t, callGLMTaskTool(t, map[string]any{
 			"prompt": "do the thing",

@@ -2,7 +2,6 @@
 id: SPEC-V3R6-CI-BASELINE-DRIFT-001
 title: "CI baseline drift cleanup — acceptance"
 version: "0.1.0"
-status: draft
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec

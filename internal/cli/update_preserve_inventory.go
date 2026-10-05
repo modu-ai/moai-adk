@@ -46,6 +46,10 @@ import (
 // reassign it to drive the stat failure branch without relying on POSIX
 // permission bits, which Windows does not model and which root bypasses.
 //
+// It has more than one consumer — judgeCodexSkillEntry
+// (codex_skills_prune.go) stats through it for the same reason, so that an
+// indeterminate stat can be exercised portably. Grep before assuming a count.
+//
 // @MX:WARN: [AUTO] package-level test seam — reassigning tests MUST NOT call
 // t.Parallel().
 // @MX:REASON: This is the package's second package-level seam (after

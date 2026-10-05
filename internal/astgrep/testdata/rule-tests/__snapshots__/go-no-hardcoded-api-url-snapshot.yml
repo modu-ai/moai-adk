@@ -1,0 +1,9 @@
+id: go-no-hardcoded-api-url
+snapshots:
+  ? |
+    var endpoint = "https://api.example.com/v1"
+  : labels:
+    - source: '"https://api.example.com/v1"'
+      style: primary
+      start: 15
+      end: 43

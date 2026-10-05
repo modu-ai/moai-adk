@@ -59,7 +59,7 @@ type Entry struct {
 // Each pack has a human-readable description, an optional dependency list
 // (other pack names), and lists of skills and agents it provides.
 type Pack struct {
-	Description string  `yaml:"description"`
+	Description string   `yaml:"description"`
 	DependsOn   []string `yaml:"depends_on"`
 	Skills      []Entry  `yaml:"skills"`
 	Agents      []Entry  `yaml:"agents"`
@@ -80,9 +80,9 @@ type TierSection struct {
 
 // CatalogSections is the top-level catalog container.
 type CatalogSections struct {
-	Core             TierSection        `yaml:"core"`
-	OptionalPacks    map[string]*Pack   `yaml:"optional_packs"`
-	HarnessGenerated TierSection        `yaml:"harness_generated"`
+	Core             TierSection      `yaml:"core"`
+	OptionalPacks    map[string]*Pack `yaml:"optional_packs"`
+	HarnessGenerated TierSection      `yaml:"harness_generated"`
 }
 
 // Catalog is the root document type for catalog.yaml.

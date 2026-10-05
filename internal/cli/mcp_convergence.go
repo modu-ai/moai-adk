@@ -3,10 +3,11 @@
 // mcp_convergence.go implements the parallel cross-backend fan-out + the
 // disagreement-synthesis algorithm layered ON TOP of the single-backend
 // infrastructure shipped by SPEC-MOAI-MCP-SERVER-001. It activates the `multi`
-// audit_model token: when `audit_model: multi`, the engine runs codex + glm in
-// parallel (per their audit_gate), accepts the in-session claude verdict as the
-// always-available anchor, and converges the per-backend verdicts into a single
-// ConvergenceResult.
+// audit_model token: when `audit_model: multi`, the engine runs the active
+// Claude, codex, and GLM legs in parallel (per their audit_gate). A
+// Claude-origin session may reuse its in-session verdict; GPT, GLM, and unknown
+// origins execute the independent Claude subscription backend. It converges
+// those per-backend verdicts into a single ConvergenceResult.
 //
 // Design decisions locked at M0 (progress.md §D + design.md §1, §3, §5, §7):
 //   - ConvergenceResult carries per_backend_verdicts[], overall_verdict,
@@ -19,18 +20,18 @@
 //     to overall = fail via the per-backend required-gate contract (NOT a new
 //     disagreement-block category).
 //   - Super-review independence (REQ-AMM-003 / C4): claude_verdict is consumed
-//     ONLY by the converge(...) synthesis step. The codex/glm goroutines receive
-//     (target, focus) — NEVER the claude analysis. Enforced structurally by the
-//     backendCaller signature.
+//     ONLY as a Claude-origin anchor. Every external-backend goroutine receives
+//     (target, focus, projectRoot) — NEVER another model's analysis. Enforced
+//     structurally by the backendCaller signature.
 //   - Fail-open identity (C2): a missing/unauthenticated/optional backend
 //     returns VerdictInconclusive for that slot and convergence continues over
 //     the rest. Evidence of absence ≠ evidence of failure.
 //   - DQ-1: ConvergenceResult is written to .moai/state/audit-multi/<session>
 //     .json on every call so the M5 multi-review-gate Stop hook reads the most
 //     recent result rather than re-invoking convergence.
-//   - DQ-2: claude_verdict absent → the engine REFUSES (overall = fail + a
-//     residual_risk_note explaining the missing anchor). The refusal is a
-//     structured result, NEVER a hard error — fail-open direction preserved.
+//   - A missing Claude-origin anchor uses the same independent Claude backend
+//     as GPT/GLM origins. An unavailable backend remains a structured
+//     inconclusive result, NEVER a hard error.
 //
 // The engine NEVER invokes AskUserQuestion (subagent boundary, REQ-AMM-018 /
 // C5): a missing-input or inconclusive condition is returned as a structured
@@ -42,6 +43,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -49,6 +51,7 @@ import (
 	"sync"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"golang.org/x/sync/errgroup"
 )
@@ -98,6 +101,12 @@ type PerBackendVerdict struct {
 	// this backend's own verdict signals disagreed. It is forwarded rather than
 	// re-derived because converge sees only verdicts, never review bodies.
 	SynthesisNote string `json:"synthesis_note,omitempty"`
+	// Source distinguishes a Claude verdict produced by the subscription-backed
+	// MCP subprocess from the backwards-compatible in-session anchor.
+	Source string `json:"source,omitempty"`
+	// Provenance is forwarded from a real backend call. In-session anchors do
+	// not invent transport or usage evidence.
+	Provenance *AuditProvenance `json:"provenance,omitempty"`
 }
 
 // ConvergenceResult is the synthesis output of converge(...) — the single
@@ -107,10 +116,81 @@ type ConvergenceResult struct {
 	PerBackendVerdicts []PerBackendVerdict `json:"per_backend_verdicts"`
 	// OverallVerdict ∈ {pass, fail} — the existing review-output.schema.json
 	// values. NO VerdictDisagreement enum is ever produced (REQ-AMM-008).
-	OverallVerdict   string   `json:"overall_verdict"`
-	DisagreementFlag bool     `json:"disagreement_flag"`
+	OverallVerdict string `json:"overall_verdict"`
+	// DisagreementFlag is a *bool (SPEC-AUDIT-PARTICIPANT-COUNT-001): the
+	// nullable third state is the point. nil = undetermined — fewer than 2
+	// participants were compared, so neither "they agreed" nor "they
+	// disagreed" is a grounded claim, and a bare `false` would assert a
+	// comparison that never happened. Non-nil = the three-pass derivation's
+	// boolean at ≥2 participants, or `true` below 2 when the intra-backend
+	// synthesis pass directly observed a divergence (REQ-APC-003 carve-out —
+	// observed information is never discarded, C3). NO omitempty: a nil
+	// pointer must serialize as an explicit JSON null, never vanish — an
+	// absent member is indistinguishable from an older binary's output
+	// (REQ-APC-003 / AC-APC-003).
+	DisagreementFlag *bool `json:"disagreement_flag"`
+	// ParticipantCount is how many on-target backends contributed a
+	// comparable verdict (REQ-APC-001): gate != off AND verdict pass|fail
+	// (REQ-APC-002). Inconclusive entries — missing, unauthenticated,
+	// errored — are evidence-of-absence, not participants (C2). Always
+	// present, 0 included, so a one-backend result is distinguishable from a
+	// three-backend agreement in the derived summary alone. This SPEC
+	// reports the count; it never acts on it (no minimum-participant
+	// policy, no gate — spec.md §E).
+	ParticipantCount int      `json:"participant_count"`
 	ResidualRiskNote string   `json:"residual_risk_note"`
 	FailOpenBackends []string `json:"fail_open_backends"`
+	GateUnmet        string   `json:"gate_unmet,omitempty"`
+
+	// AuditReceipt carries the id of the receipt recorded for THIS fan-out,
+	// present only where the audited tree explicitly declared
+	// workflow.audit.gates.codex: required and codex actually participated.
+	// Additive + omitempty — the only change this SPEC makes to a convergence
+	// result, and invisible to every project that did not declare the gate.
+	AuditReceipt string `json:"audit_receipt,omitempty"`
+
+	// PlanSource is "config" when at least one backend's gate came from the
+	// audited tree's configuration (audit.gates or the audit.model token)
+	// (SPEC-AUDIT-MODEL-CONVERGE-001 REQ-ACV-006). Additive + omitempty: with no
+	// configuration and no gates the member is absent, so the result of an
+	// unconfigured tree stays byte-identical to the pre-change one. Its consumer
+	// is the plan checker, which reads the member to tell a current server from
+	// one that predates the resolver.
+	PlanSource string `json:"plan_source,omitempty"`
+
+	// SecondReviewRecordError carries the A4 append failure
+	// (SPEC-AUTONOMY-CLOSURE-001 REQ-CLOSURE-012): non-empty only when a
+	// card_id was supplied and the record could not be written. omitempty —
+	// absent when no card_id was supplied, which is what keeps a card-less
+	// fan-out byte-identical to the pre-change output.
+	SecondReviewRecordError string `json:"second_review_record_error,omitempty"`
+
+	// BuildCommit / BuildLag record the identity of the ONE binary that
+	// serviced all three backends (SPEC-AUDIT-BUILD-IDENTITY-001) —
+	// deliberately TOP-LEVEL, not on PerBackendVerdict: repeating the same
+	// value per backend would be triple bookkeeping of a single fact.
+	// Commit, not version: one version string names both a lagging build and
+	// a current one (REQ-ABI-003). Flat siblings, additive + omitempty (the
+	// SynthesisNote precedent): an absent identity changes no existing
+	// consumer's JSON. Because persistConvergenceResult marshals THIS struct
+	// verbatim, filling the returned result is all REQ-ABI-002 needs — the
+	// state file follows automatically. Assembled ONLY by auditBuildIdentity
+	// (REQ-ABI-007).
+	BuildCommit string `json:"build_commit,omitempty"`
+	BuildLag    string `json:"build_lag,omitempty"`
+
+	// TreeRoot is the canonical tree this result was produced for. The result
+	// of a config-orphaned worktree is kept in its primary checkout's store
+	// beside the primary's own and every sibling worktree's, and a result of
+	// one tree never replaces another's (SPEC-WORKTREE-STATE-ROOT-001
+	// REQ-WSR-003). Additive + omitempty.
+	TreeRoot string `json:"tree_root,omitempty"`
+
+	// StateNotice names a state write this call skipped and why — set only
+	// when a config-orphaned worktree's primary checkout could not be
+	// identified, so there was no store to write to (REQ-WSR-004). The verdict
+	// itself is unchanged. Additive + omitempty.
+	StateNotice string `json:"state_notice,omitempty"`
 }
 
 // ─── convergence algorithm (design.md §3) ───
@@ -131,7 +211,11 @@ type ConvergenceResult struct {
 // Fail-open: when all required backends returned VerdictInconclusive (or a
 // pass/inconclusive mix with no required FAIL), the overall verdict falls back
 // to the claude verdict (AC-AMM-021 / EC-4). A missing optional backend is
-// evidence-of-absence, NOT evidence-of-failure (C2).
+// evidence-of-absence, NOT evidence-of-failure (C2). This function is PURE and
+// stays fail-open unconditionally: the sole production caller (runMultiAudit)
+// layers the explicit-required gate enforcement (enforceRequiredGateUnmet) on
+// its result, so a gate the project explicitly configured `required` still
+// fails the overall verdict when left unmet.
 //
 // disagreement_flag is set when (a) the required set contains both pass and
 // fail (a split), OR (b) an advisory backend's pass/fail verdict conflicts with
@@ -159,9 +243,9 @@ func converge(verdicts []PerBackendVerdict) ConvergenceResult {
 		overall = overallVerdictPass
 	default:
 		// No required FAIL, but not all required PASS — i.e. some required are
-		// inconclusive (missing/erroring optionals). Fail-OPEN to claude
-		// (AC-AMM-021 / EC-1 / EC-4): the in-session claude verdict is the
-		// always-available anchor.
+		// inconclusive (missing/erroring optionals). Fail-OPEN to the Claude
+		// participant (AC-AMM-021 / EC-1 / EC-4): either the valid in-session
+		// anchor or the independently acquired Claude subscription verdict.
 		overall = claudeVerdictOrDefault(verdicts, overallVerdictPass)
 	}
 
@@ -196,6 +280,24 @@ func converge(verdicts []PerBackendVerdict) ConvergenceResult {
 		disagreement = true
 	}
 
+	// ── Step 2c: participant-count narrowing (REQ-APC-003 / REQ-APC-004) ──
+	// `false` is a positive claim — two or more participants were compared
+	// and none disagreed — and a single participant cannot ground it. Below
+	// 2 participants the flag becomes nil (undetermined), EXCEPT when the
+	// Step 2b pass directly observed an intra-backend divergence, whose
+	// `true` is kept rather than discarded (the REQ-APC-003 carve-out).
+	// At 2+ participants the boolean is exactly what the three-pass
+	// derivation above produced, unchanged (REQ-APC-004).
+	participantCount := countParticipants(verdicts)
+	var disagreementFlag *bool
+	switch {
+	case participantCount >= 2:
+		disagreementFlag = &disagreement
+	case len(synthesisNotes) > 0:
+		diverged := true // carve-out: observed information, never discarded (C3)
+		disagreementFlag = &diverged
+	}
+
 	// ── Step 3: residual_risk_note + fail_open_backends ──
 	// The note is surfaced for the Verification Matrix residual-risk row whenever
 	// there is something for a human reader to see: a disagreement (split or
@@ -222,7 +324,8 @@ func converge(verdicts []PerBackendVerdict) ConvergenceResult {
 	return ConvergenceResult{
 		PerBackendVerdicts: verdicts,
 		OverallVerdict:     overall,
-		DisagreementFlag:   disagreement,
+		DisagreementFlag:   disagreementFlag,
+		ParticipantCount:   participantCount,
 		ResidualRiskNote:   note,
 		FailOpenBackends:   collectFailOpen(verdicts),
 	}
@@ -248,6 +351,25 @@ func filterVerdict(vs []PerBackendVerdict, want string) []PerBackendVerdict {
 		}
 	}
 	return out
+}
+
+// countParticipants returns how many entries actually contributed a
+// comparable verdict (SPEC-AUDIT-PARTICIPANT-COUNT-001 REQ-APC-002): a
+// participant is an entry whose gate is not `off` AND whose verdict is pass
+// or fail. An `inconclusive` entry — missing, unauthenticated, or errored —
+// is evidence-of-absence, not a participant, whatever its gate (C2); a
+// gate-`off` entry never counts, whatever verdict it carries.
+func countParticipants(vs []PerBackendVerdict) int {
+	n := 0
+	for _, v := range vs {
+		if v.Gate == config.AuditGateOff {
+			continue
+		}
+		if v.Verdict == "pass" || v.Verdict == "fail" {
+			n++
+		}
+	}
+	return n
 }
 
 // allPass reports whether vs is empty OR every entry is a pass. (Vacuous truth
@@ -323,7 +445,8 @@ func collectFailOpen(vs []PerBackendVerdict) []string {
 // describeRequiredFails names the required backends that FAILED, for the
 // AC-AMM-007 "residual_risk_note records which backend(s) failed" requirement.
 // Used in the no-split case (all required agree on fail) where disagreement_flag
-// is false but the Verification Matrix still needs to name the failures.
+// is false but the Verification Matrix still needs to name the failures, and as
+// the leading reason of a split that includes a required FAIL (describeDisagreement).
 func describeRequiredFails(fails []PerBackendVerdict) string {
 	names := make([]string, 0, len(fails))
 	for _, v := range fails {
@@ -349,6 +472,10 @@ func collectSynthesisNotes(vs []PerBackendVerdict) []string {
 	return out
 }
 
+// advisoryDisagreementQualifier marks a disagreement note whose split does not
+// change the verdict. Any later step that fails the verdict must remove it.
+const advisoryDisagreementQualifier = " (advisory, NOT a block)"
+
 func describeDisagreement(vs []PerBackendVerdict) string {
 	var passList, failList []string
 	for _, v := range vs {
@@ -364,8 +491,15 @@ func describeDisagreement(vs []PerBackendVerdict) string {
 		// required pass. Surface a generic note rather than an empty one.
 		return "cross-model disagreement detected; see per_backend_verdicts for details"
 	}
-	return fmt.Sprintf("cross-model disagreement (advisory, NOT a block): pass=[%s] fail=[%s]",
-		strings.Join(passList, ", "), strings.Join(failList, ", "))
+	// A split that includes a required FAIL fails the overall verdict, and the
+	// multi-review gate blocks on it — the wording must say so. Only a split with
+	// no required FAIL is advisory.
+	if requiredFails := filterVerdict(filterRequired(vs), "fail"); len(requiredFails) > 0 {
+		return fmt.Sprintf("%s; cross-model disagreement: pass=[%s] fail=[%s]",
+			describeRequiredFails(requiredFails), strings.Join(passList, ", "), strings.Join(failList, ", "))
+	}
+	return fmt.Sprintf("cross-model disagreement%s: pass=[%s] fail=[%s]",
+		advisoryDisagreementQualifier, strings.Join(passList, ", "), strings.Join(failList, ", "))
 }
 
 // ─── fan-out: errgroup parallel invocation of the active backends ───
@@ -377,21 +511,52 @@ type MultiAuditConfig struct {
 	Gates     config.AuditGates
 	SessionID string // for .moai/state/audit-multi/<session>.json (DQ-1)
 
-	// ProjectRoot names the tree the secondary backends should read
+	// ProjectRoot names the tree the external backends should read
 	// (SPEC-MCP-WORKTREE-ROOT-001). Empty ⇒ each backend keeps whatever it
 	// resolved before this parameter existed, so an unaware caller sees no
 	// change. Validated by the handler, never here.
 	ProjectRoot string
+
+	// OriginProvider is the launcher-owned initial provider. Only a Claude
+	// origin may reuse a caller-supplied in-session Claude anchor; GPT, GLM, and
+	// unknown origins must execute the actual Claude backend.
+	OriginProvider string
+
+	// CardID is the A4 card argument (SPEC-AUTONOMY-CLOSURE-001
+	// REQ-CLOSURE-012). Non-empty ⇒ the fan-out appends one second-review
+	// record binding the review to the card, the audited commit, the reviewed
+	// scope, and the signed contract digest, into the card evidence
+	// directory. Empty ⇒ byte-identical pre-change behavior.
+	CardID string
+
+	// PlanSource is threaded to ConvergenceResult.PlanSource: the handler sets it
+	// to "config" when the resolved plan took a gate from the tree's
+	// configuration. Empty ⇒ the member is omitted.
+	PlanSource string
+
+	// EnforcementGates are the gates the unmet-gate enforcement keys on, fixed by
+	// the handler from the plan it resolved at call start (SPEC-AUDIT-MODEL-
+	// CONVERGE-001 REQ-ACV-006/008). Non-nil ⇒ the enforcement reads these and
+	// never re-reads workflow.yaml after the fan-out, so the entry's gate and the
+	// enforcement agree and an edit made while the backends run changes neither.
+	// Nil ⇒ the caller carries no plan and the enforcement re-reads the audited
+	// tree's configuration (workflowAuditGates), byte-identically to before.
+	EnforcementGates *config.AuditGates
+
+	// EnforcementNote accompanies EnforcementGates: the residual-risk prefix for
+	// a gate assumed `required` because a config-orphaned root's primary checkout
+	// could not be identified. Empty otherwise.
+	EnforcementNote string
 }
 
-// backendCallFn is the injectable seam for the secondary-backend invocation.
-// Production wires defaultBackendCaller (which reuses the codex/glm handler
-// paths from mcp_codex.go / mcp_glm.go); tests swap it to record calls,
+// backendCallFn is the injectable seam for external-backend invocation.
+// Production wires defaultBackendCaller (which reuses the Claude/codex/GLM
+// handler paths); tests swap it to record calls,
 // simulate slow backends, or fail-open specific backends.
 //
 // INDEPENDENCE-INVARIANT (REQ-AMM-003 / C4 — load-bearing): the signature carries
-// NO verdict of any kind. claude_verdict is structurally forbidden from reaching a
-// secondary backend — it is consumed ONLY by converge, and a future edit that tried
+// NO verdict of any kind. claude_verdict is structurally forbidden from reaching an
+// external backend — it is consumed ONLY as an anchor, and a future edit that tried
 // to thread it in would not compile against this signature.
 //
 // The parameter list is (ctx, backend, target, focus, projectRoot). projectRoot was
@@ -413,6 +578,12 @@ var backendCall backendCallFn = defaultBackendCaller
 // GLM z.ai API call from mcp_glm.go (C1 — additive to MOAI-MCP-SERVER).
 func defaultBackendCaller(ctx context.Context, backend, target, focus, projectRoot string) ReviewOutput {
 	switch backend {
+	case BackendClaude:
+		return performClaudeAudit(ctx, claudeAuditRequest{
+			Target:      target,
+			Focus:       focus,
+			ProjectRoot: projectRoot,
+		})
 	case BackendCodex:
 		return performCodexAudit(ctx, target, focus, projectRoot)
 	case BackendGLM:
@@ -463,7 +634,19 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 	if root := strings.TrimSpace(projectRoot); root != "" {
 		params["cwd"] = root
 	}
-	out, _ := codexReviewRPC(ctx, binaryPath, codexMethodTurnStart, params) // fail-open inside
+	// The leg ends within a bound derived from the codex audit bound: the process
+	// is killed at the deadline, its stream closes, and the turn reader returns
+	// the inconclusive review. Only this leg is bounded; codex_audit keeps the
+	// request context.
+	legCtx, cancel := context.WithTimeout(ctx, config.DefaultCodexAuditLegTimeout)
+	defer cancel()
+	out, _ := codexReviewRPC(legCtx, binaryPath, codexMethodTurnStart, params) // fail-open inside
+	// Reword the summary only when the leg's OWN deadline ended an inconclusive
+	// turn: a verdict that arrived is never replaced, and a caller that gave up
+	// first keeps the reader's cause.
+	if out.Verdict == VerdictInconclusive && errors.Is(legCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil {
+		return inconclusiveReviewWithSummary("codex leg timed out after " + config.DefaultCodexAuditLegTimeout.String())
+	}
 	return out
 }
 
@@ -498,47 +681,53 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 	if strings.TrimSpace(diff) == "" {
 		return glmInconclusive("no reviewable change: target " + target + " produced an empty diff")
 	}
-	me := resolveGLMAuditModelEffort(root) // pin > SSOT, from the SAME tree as the diff (CR #8)
+	me, pinErr := resolveGLMAuditModelEffort(root) // pin > backend default, from the SAME tree as the diff (CR #8)
+	if pinErr != nil {
+		// The pin read failed: surface it rather than auditing with an
+		// assumed-absent pin (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+		return glmInconclusive("workflow.audit pins unreadable: " + pinErr.Error())
+	}
 	return callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, nil)
 }
 
 // runMultiAudit is the fan-out entry point invoked by the `audit_multi` MCP tool
 // (M3) and read by the multi-review-gate Stop hook (M5). It:
-//  1. DQ-2: refuses if claude_verdict is absent (the always-available anchor).
-//  2. Fans out across the active secondary backends (codex, glm) in parallel
+//  1. Resolves the Claude source: reuse a valid Claude-main anchor, otherwise
+//     schedule the independent Claude subscription backend.
+//  2. Fans out across the active external backends (Claude, codex, GLM) in parallel
 //     via errgroup — each goroutine receives (target, focus, cfg.ProjectRoot)
 //     and NEVER the claude verdict (super-review independence).
-//  3. Assembles per_backend_verdicts (claude anchor + secondary results).
+//  3. Assembles per_backend_verdicts (Claude anchor/backend + other results).
 //  4. converge()s them into a ConvergenceResult.
-//  5. DQ-1: persists the result to .moai/state/audit-multi/<session>.json.
+//  5. Enforces the explicit-required gates (GH #1632 item 3): a gate the
+//     audited tree's workflow.yaml explicitly configures `required` fails the
+//     overall verdict when its backend returned no verdict (see
+//     enforceRequiredGateUnmet). Unset gates keep the fail-open behavior.
+//  6. DQ-1: persists the result to .moai/state/audit-multi/<session>.json.
 //
 // It NEVER returns a hard error — every path produces a structured
 // ConvergenceResult (fail-open identity, C2). The orchestrator translates any
 // inconclusive condition through its own AskUserQuestion channel (C5).
 func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focus string, cfg MultiAuditConfig, token mcp.ProgressToken) ConvergenceResult {
-	// ── DQ-2: claude_verdict anchor presence ──
-	if strings.TrimSpace(claudeVerdict.Verdict) == "" {
-		// REFUSE: claude_verdict is the always-available anchor per the fail-open
-		// identity; proceeding without it would invert the fail-open direction
-		// (synthesizing over secondary-only verdicts when the anchor that
-		// guarantees a claude fallback is missing). The refusal is a STRUCTURED
-		// result (overall = fail + a note), never a hard error.
-		return ConvergenceResult{
-			PerBackendVerdicts: []PerBackendVerdict{},
-			OverallVerdict:     overallVerdictFail,
-			DisagreementFlag:   false,
-			ResidualRiskNote:   "claude_verdict anchor missing — refusing to synthesize (fail-open direction preserved; the in-session claude verdict is the always-available anchor)",
-			FailOpenBackends:   []string{},
-		}
-	}
+	// Build identity is assembled ONCE for the whole convergence (REQ-ABI-007)
+	// and rides every result below. The
+	// comparison uses cfg.ProjectRoot when the caller named a tree; an absent
+	// one falls back to the process cwd INSIDE auditBuildIdentity, for the
+	// comparison only — the backends still receive exactly what
+	// resolveOptionalToolProjectRoot resolved (nothing, on an omitted
+	// project_root).
+	buildCommit, buildLag := auditBuildIdentity(ctx, cfg.ProjectRoot)
 
-	// ── assemble claude's per-backend entry ──
+	// ── resolve Claude source ──
 	claudeGate := cfg.Gates.Claude
 	if claudeGate == "" {
 		claudeGate = config.AuditGateRequired // distributed default
 	}
-	verdicts := []PerBackendVerdict{
-		{
+	useClaudeAnchor := strings.EqualFold(strings.TrimSpace(cfg.OriginProvider), BackendClaude) &&
+		validReviewVerdict(claudeVerdict.Verdict) && claudeGate != config.AuditGateOff
+	verdicts := make([]PerBackendVerdict, 0, 3)
+	if useClaudeAnchor {
+		verdicts = append(verdicts, PerBackendVerdict{
 			Backend:       BackendClaude,
 			Gate:          claudeGate,
 			Verdict:       claudeVerdict.Verdict,
@@ -546,18 +735,20 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 			Findings:      claudeVerdict.Findings,
 			NextSteps:     claudeVerdict.NextSteps,
 			SynthesisNote: claudeVerdict.SynthesisNote,
-		},
+			Source:        "in_session_anchor",
+		})
 	}
 
-	// ── fan out across the active secondary backends ──
+	// ── fan out across the active external backends ──
 	type secondaryResult struct {
 		backend string
 		gate    string
 		out     ReviewOutput
 	}
-	var secondaries = []struct {
+	var backends = []struct {
 		name, gate string
 	}{
+		{BackendClaude, claudeGate},
 		{BackendCodex, gateOr(cfg.Gates.Codex, config.AuditGateRequired)},
 		{BackendGLM, gateOr(cfg.Gates.GLM, config.AuditGateAdvisory)},
 	}
@@ -567,13 +758,16 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		parts []secondaryResult
 	)
 	eg, gctx := errgroup.WithContext(ctx)
-	for _, s := range secondaries {
+	for _, s := range backends {
 		s := s
 		if s.gate == config.AuditGateOff {
 			continue // gate off ⇒ backend NOT invoked (AC-AMM-014)
 		}
+		if s.name == BackendClaude && useClaudeAnchor {
+			continue
+		}
 		eg.Go(func() error {
-			// The secondary backend receives (target, focus, projectRoot) — no
+			// The external backend receives (target, focus, projectRoot) — no
 			// verdict of any kind. claude_verdict stays structurally excluded by
 			// the backendCaller signature; projectRoot names a directory and
 			// carries no analysis, so the independence guarantee is unchanged.
@@ -590,11 +784,15 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	}
 	_ = eg.Wait() // errors are already fail-opened inside the callers; ignore the errgroup error
 
-	// Append secondary results in canonical order (codex before glm) so the
+	// Append backend results in canonical order (claude before codex before glm) so the
 	// per_backend_verdicts array reads deterministically.
-	for _, wantName := range []string{BackendCodex, BackendGLM} {
+	for _, wantName := range []string{BackendClaude, BackendCodex, BackendGLM} {
 		for _, p := range parts {
 			if p.backend == wantName {
+				source := ""
+				if p.backend == BackendClaude {
+					source = "mcp_claude_audit"
+				}
 				verdicts = append(verdicts, PerBackendVerdict{
 					Backend:       p.backend,
 					Gate:          p.gate,
@@ -603,21 +801,140 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 					Findings:      p.out.Findings,
 					NextSteps:     p.out.NextSteps,
 					SynthesisNote: p.out.SynthesisNote,
+					Source:        source,
+					Provenance:    p.out.Provenance,
 				})
 			}
 		}
 	}
 
 	result := converge(verdicts)
+	// Set BEFORE persist: persistConvergenceResult marshals this struct
+	// verbatim, so filling the returned result is what makes the state file
+	// carry the same commit the verdict carried (REQ-ABI-002 — no separate
+	// persistence-side code).
+	result.BuildCommit, result.BuildLag = buildCommit, buildLag
+	result.PlanSource = cfg.PlanSource
+
+	// ── explicit-required gate enforcement (GH #1632 item 3) ──
+	// converge above is deliberately fail-open: a required backend that
+	// returned no verdict falls back to the claude anchor, so an unmet gate
+	// rode to an overall pass. The operator decision closes that gap for gates
+	// the project EXPLICITLY configured `required`: such a gate left unmet
+	// fails the overall verdict. The raw workflow.yaml value decides — an
+	// UNSET gate keeps the fail-open behavior byte-for-byte, because the
+	// engine's distributed default (codex required) is not an opt-in. Runs
+	// BEFORE persist so the state file the multi-review-gate Stop hook reads
+	// carries the enforced verdict.
+	var (
+		enforcementGates config.AuditGates
+		gateAssumedNote  string
+		// gateReadErr carries a workflow.audit configuration the resolution
+		// path could not read: it is surfaced on the result (never silently
+		// read as an absent configuration) and fails the gate posture closed
+		// (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+		gateReadErr error
+		// receiptCodexRequired is the call-start codex gate the receipt exposure
+		// follows; nil (no plan carried) keeps the configuration re-read.
+		receiptCodexRequired *bool
+	)
+	if cfg.EnforcementGates != nil {
+		enforcementGates, gateAssumedNote = *cfg.EnforcementGates, cfg.EnforcementNote
+		codexRequired := enforcementGates.Codex == config.AuditGateRequired
+		receiptCodexRequired = &codexRequired
+	} else {
+		enforcementGates, gateAssumedNote, gateReadErr = workflowAuditGates(cfg.ProjectRoot)
+		if gateReadErr != nil {
+			// Fail-closed: with the gate posture unreadable, every backend's
+			// missing verdict is treated as an unmet required gate, and the
+			// cause rides the result's gate_unmet.
+			enforcementGates = config.AuditGates{
+				Claude: config.AuditGateRequired,
+				Codex:  config.AuditGateRequired,
+				GLM:    config.AuditGateRequired,
+			}
+		}
+	}
+	// The actual Claude backend is a default-required independent audit. Unlike
+	// the legacy optional backends, an unavailable required Claude review must
+	// not fall through to a caller-supplied or secondary-model verdict.
+	if claudeGate == config.AuditGateRequired {
+		enforcementGates.Claude = config.AuditGateRequired
+	}
+	result = enforceRequiredGateUnmet(result, verdicts, enforcementGates)
+	if gateReadErr != nil {
+		// The configuration error surfaces on the result whatever the verdict
+		// outcome: a caller must be able to tell a broken audit configuration
+		// from an absent one (SPEC-AUDIT-CEILING-002 REQ-ACR-006). And it
+		// promotes the OVERALL verdict to fail (CR2-P2-2): every backend may
+		// have carried a verdict, but a gate posture that cannot be read is
+		// not an absent one — pass must not survive on a note alone.
+		gateErrNote := "workflow.audit gates unreadable: " + gateReadErr.Error()
+		if result.GateUnmet == "" {
+			result.GateUnmet = gateErrNote
+		} else {
+			result.GateUnmet = gateErrNote + "; " + result.GateUnmet
+		}
+		result.OverallVerdict = overallVerdictFail
+	}
+	if gateAssumedNote != "" && result.GateUnmet != "" {
+		result.ResidualRiskNote = gateAssumedNote + " | " + result.ResidualRiskNote
+	}
+
+	// ── audit receipt (SPEC-CODEX-AUDIT-GATE-AXES-001 axis (b)) ──
+	// A receipt is recorded only when codex actually took part: a fan-out that
+	// skipped codex is not evidence that a codex audit ran, and recording one
+	// would let an auditor cite it as if it were. Runs BEFORE persist so the
+	// state file carries the same id the caller receives.
+	var notices []string
+	if codexVerdict, participated := codexParticipation(verdicts); participated {
+		var notice string
+		result.AuditReceipt, notice = recordAuditReceiptAt(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, result.GateUnmet, receiptCodexRequired)
+		if notice != "" {
+			notices = append(notices, notice)
+		}
+	}
 
 	// ── DQ-1: persist to .moai/state/audit-multi/<session>.json ──
 	// Best-effort: a write failure is logged via the returned error but MUST NOT
 	// block the flow (fail-open). The convergence result is valid regardless of
-	// whether the state file landed.
+	// whether the state file landed. A named tree's result carries its identity
+	// (REQ-WSR-003); a config-orphaned worktree whose primary cannot be
+	// identified has no store, so the write is skipped and the result says so
+	// (REQ-WSR-004).
+	if cfg.ProjectRoot != "" {
+		result.TreeRoot = cfg.ProjectRoot
+	}
 	if cfg.SessionID != "" {
-		_ = persistConvergenceResult(result, cfg.SessionID, cfg.ProjectRoot)
+		var unresolved *auditreceipt.UnresolvedStoreError
+		if err := persistConvergenceResult(result, cfg.SessionID, cfg.ProjectRoot); errors.As(err, &unresolved) {
+			notices = append(notices, "convergence result for session "+cfg.SessionID+" not persisted: "+err.Error())
+		}
+	}
+	result.StateNotice = strings.Join(notices, " | ")
+
+	// ── A4 second-review record (SPEC-AUTONOMY-CLOSURE-001 REQ-CLOSURE-012)
+	// ── Append-only, after the existing persistence step. A failure rides
+	// the result's second_review_record_error — the audit result itself is
+	// never altered. Empty CardID skips the whole block byte-identically.
+	if cfg.CardID != "" {
+		if err := appendSecondReviewRecord(cfg, result, target); err != nil {
+			result.SecondReviewRecordError = err.Error()
+		}
 	}
 	return result
+}
+
+// codexParticipation reports the codex backend's verdict in this fan-out and
+// whether codex took part at all. A gate set to off keeps codex out of the
+// backend loop, so no codex entry reaches the verdicts slice.
+func codexParticipation(verdicts []PerBackendVerdict) (string, bool) {
+	for _, v := range verdicts {
+		if v.Backend == BackendCodex {
+			return v.Verdict, true
+		}
+	}
+	return "", false
 }
 
 // gateOr returns g unless empty, in which case it returns dflt. Used to honor
@@ -627,6 +944,103 @@ func gateOr(g, dflt string) string {
 		return dflt
 	}
 	return g
+}
+
+func validReviewVerdict(verdict string) bool {
+	switch strings.TrimSpace(verdict) {
+	case "pass", "fail", VerdictInconclusive:
+		return true
+	default:
+		return false
+	}
+}
+
+// ─── explicit-required gate enforcement (GH #1632 item 3) ───
+
+// enforceRequiredGateUnmet fails the overall verdict when a backend the
+// project EXPLICITLY configured `required` returned no verdict, instead of
+// letting it ride the claude-anchor fall-through to a pass. Operator decision:
+// fail-closed for an explicit `required`; the annotate-only fail-open behavior
+// is preserved byte-for-byte when `required` is NOT set.
+//
+// The gates argument is the audited tree's RAW workflow.audit.gates block (zero
+// values where unset) — the same value applyGateUnmet reads at the
+// single-backend surface, and deliberately NOT the engine-defaulted gate: the
+// distributed default (codex required, glm advisory, applied via gateOr when
+// the key is absent) must never count as an opt-in, or every existing project
+// would flip to fail-closed.
+//
+// Only overall_verdict and residual_risk_note move. per_backend_verdicts keeps
+// the backend's true inconclusive verdict and fail_open_backends keeps naming
+// it, so the audit trail still says "this backend never ran" — the enforcement
+// changes what the verdict DECIDES, not what the backends REPORTED.
+func enforceRequiredGateUnmet(r ConvergenceResult, verdicts []PerBackendVerdict, gates config.AuditGates) ConvergenceResult {
+	var unmet []string
+	for _, v := range verdicts {
+		if v.Verdict != VerdictInconclusive {
+			continue // a pass/fail verdict satisfied (or failed) its gate on the existing contracts
+		}
+		if explicitGateFor(gates, v.Backend) != config.AuditGateRequired {
+			continue // not explicitly configured required — fail-open preserved
+		}
+		unmet = append(unmet, v.Backend)
+	}
+	if len(unmet) == 0 {
+		return r
+	}
+	r.OverallVerdict = overallVerdictFail
+	r.GateUnmet = strings.Join(unmet, ",")
+	note := "required gate unmet (explicitly configured required, no verdict): " + strings.Join(unmet, ", ")
+	if r.ResidualRiskNote != "" {
+		// The verdict now fails, so a disagreement written as advisory is no
+		// longer "not a block" — keep the split, drop the qualifier.
+		note += " | " + strings.Replace(r.ResidualRiskNote, advisoryDisagreementQualifier, "", 1)
+	}
+	r.ResidualRiskNote = note
+	return r
+}
+
+// explicitGateFor returns the backend's raw configured gate token from the
+// workflow.audit.gates block. Unconfigured backends return "" — the
+// engine-default application (gateOr) deliberately does NOT run here, because
+// the enforcement keys on what the project wrote, not on the distributed
+// default.
+func explicitGateFor(gates config.AuditGates, backend string) string {
+	switch backend {
+	case BackendClaude:
+		return gates.Claude
+	case BackendCodex:
+		return gates.Codex
+	case BackendGLM:
+		return gates.GLM
+	default:
+		return ""
+	}
+}
+
+// workflowAuditGates reads the audited tree's raw workflow.audit.gates block —
+// the same section-file seam (workflowAuditPins) applyGateUnmet uses at the
+// single-backend surface, so both surfaces read one config the same way.
+// projectRoot names the tree when the caller supplied one (SPEC-MCP-WORKTREE-
+// ROOT-001); empty falls back to resolveProjectDir, the same convention
+// performGLMAudit uses. An absent file yields zero gates — the legitimate
+// not-configured case. An unreadable/unparseable file and a resolver
+// rejection return the error: the enforcement never treats a broken
+// configuration as an absent one (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+//
+// A config-orphaned worktree root takes the gate from its primary checkout;
+// when that primary cannot be identified the codex gate is assumed `required`
+// and the second return value says so (SPEC-MCP-WORKTREE-UNTRACKED-001
+// REQ-MWU-011/012). Every other root keeps the behaviour above.
+func workflowAuditGates(projectRoot string) (config.AuditGates, string, error) {
+	root := strings.TrimSpace(projectRoot)
+	if root == "" {
+		root = resolveProjectDir()
+	}
+	if root == "" {
+		return config.AuditGates{}, "", nil
+	}
+	return resolveAuditGates(root)
 }
 
 // ─── DQ-1: state-file persistence ───
@@ -643,8 +1057,27 @@ func gateOr(g, dflt string) string {
 // gate never looks — and mixed several worktrees' verdicts into one directory.
 // Empty ⇒ the package-level convergenceStateDir, so an unaware caller and the
 // existing tests that override that variable see no change.
+//
+// A config-orphaned worktree's result goes to its primary checkout's store
+// under a tree-qualified name (<session>--tree-<key>.json), so the results of
+// the primary and of every sibling worktree for one session coexist rather
+// than replace one another (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-002/003). Every
+// other root writes <session>.json under itself exactly as before. A worktree
+// whose primary cannot be identified returns *auditreceipt.UnresolvedStoreError
+// and writes nothing.
 func persistConvergenceResult(r ConvergenceResult, sessionID, projectRoot string) error {
-	dir := filepath.Join(convergenceStateDirFor(projectRoot), "audit-multi")
+	stateDir, name := convergenceStateDirFor(projectRoot), sessionID+".json"
+	if root := strings.TrimSpace(projectRoot); root != "" {
+		store, err := auditreceipt.StoreRoot(root)
+		if err != nil {
+			return err
+		}
+		stateDir = filepath.Join(store, ".moai", "state")
+		if store != root {
+			name = sessionID + "--" + auditreceipt.TreeKey(root) + ".json"
+		}
+	}
+	dir := filepath.Join(stateDir, "audit-multi")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("convergence state dir: %w", err)
 	}
@@ -652,7 +1085,7 @@ func persistConvergenceResult(r ConvergenceResult, sessionID, projectRoot string
 	if err != nil {
 		return fmt.Errorf("convergence state marshal: %w", err)
 	}
-	path := filepath.Join(dir, sessionID+".json")
+	path := filepath.Join(dir, name)
 	if err := os.WriteFile(path, b, 0o644); err != nil {
 		return fmt.Errorf("convergence state write: %w", err)
 	}

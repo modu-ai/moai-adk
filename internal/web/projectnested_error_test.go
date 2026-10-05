@@ -45,7 +45,7 @@ func TestProjectNestedGitConventionRoundTrip(t *testing.T) {
 
 // TestProjectNestedRejectStillRejects covers the rejected-POST server contract after
 // the project render surface was retired (SPEC-DESIGN-MOAIWEBV2-001 M1): a POST with
-// an invalid nested field is still validated and rejected atomically (400, no disk
+// an invalid nested field is still validated and rejected atomically (banner, no disk
 // write). The value-echo re-render assertions were removed with the project widgets —
 // those fields no longer render (development_mode / git_convention / quality.* are now
 // editable via yaml config / CLI), but the preserved parse+validate seam
@@ -67,9 +67,10 @@ func TestProjectNestedRejectStillRejects(t *testing.T) {
 		"git_convention.auto_detection.sample_size":          "175",
 	})
 	rec := servePost(t, a.routes(), "/save", form)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("reject status = %d, want 400; body: %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("reject status = %d, want 200; body: %s", rec.Code, rec.Body.String())
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	// Atomic reject — no value persisted (originals survive).
 	cfg := loadRawCfg(t, root)
 	if cfg.Quality.TestCoverageTarget != 70 {
@@ -91,8 +92,12 @@ func TestProjectNestedWriteFailureSurfacesError(t *testing.T) {
 	}
 	form := nestedSaveForm(map[string]string{"quality.test_coverage_target": "85"})
 	rec := servePost(t, a.routes(), "/save", form)
-	if rec.Code < 400 {
-		t.Errorf("nested write failure status = %d, want >= 400", rec.Code)
+	// SPEC-WEB-CONSOLE-017 REQ-WC-017-001: a failed save answers 200 — the
+	// boosted form discards non-2xx bodies, so the readable error only reaches
+	// the browser through a 2xx re-render. The error surfaces via the banner,
+	// asserted below.
+	if rec.Code != http.StatusOK {
+		t.Errorf("nested write failure status = %d, want 200", rec.Code)
 	}
 	if !strings.Contains(rec.Body.String(), "nested config save boom") {
 		t.Errorf("nested write failure should surface the error, got: %s", rec.Body.String())

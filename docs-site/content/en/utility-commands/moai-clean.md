@@ -248,6 +248,41 @@ The retention window is read only from the **HOME tier** file `~/.moai/config/se
 
 The full story: [Home Directory Hygiene](/en/advanced/home-hygiene).
 
+## A different surface — `moai clean --codex-skills` (ghost skill registrations)
+
+{{< callout type="warning" >}}
+This scope **modifies `~/.codex/config.toml`** — the one `moai clean` scope that writes outside `~/.moai`. It is a dry run by default, and even under `--force` the file is backed up before anything is written.
+{{< /callout >}}
+
+Codex records every registered skill as a `[[skills.config]]` array-of-tables entry in `~/.codex/config.toml` (or `$CODEX_HOME/config.toml`). Delete the file an entry points at and Codex neither removes the entry nor complains — the registration lives on as a **ghost**. `moai doctor` already counts them; this scope is the hand that removes them.
+
+```bash
+# Dry run by default — lists what would go, and what stays and why
+$ moai clean --codex-skills
+
+# Real removal — backs up first, then reports the backup path and its sha256
+$ moai clean --codex-skills --force
+```
+
+- **Only provable absence is removed.** An entry goes only when it declares a non-empty `path`, that path is absolute (or home-relative with a home that resolves), and a `stat` on the resolved path reports that the file does not exist.
+- **`enabled` is not a gate.** A registration with `enabled = true` whose path is gone is a ghost too: disabling one does not protect it, and enabling one does not condemn it.
+- **Nothing outside the removed entries changes.** Other tables, comments, multi-line literals, whitespace, and the file's line endings survive byte for byte — the file is never re-serialized.
+- `--home` and `--codex-skills` select different files and may not be combined.
+
+### The seven never-removed classes
+
+| Class | Why it stays |
+|---|---|
+| A relative path (`skills/x/SKILL.md`) | nothing here chooses a base to resolve it against, so absence cannot be decided |
+| An oddly-formed path (`~other/x`) | not resolvable |
+| A home-relative path whose home does not resolve | existence is indeterminate |
+| A `stat` that did not complete — permission denied, a symlink loop, an I/O error | indeterminate, not absent |
+| No `path` key, or `path = ""` | there is nothing to check |
+| A path that resolves — **a directory resolves too** | not absent |
+| A line range holding anything the parser did not recognise | the range may contain a healthy registration that a multi-line literal swallowed |
+
+Every kept entry is reported with its reason. Reporting removals only would leave you believing the ghosts were all gone.
+
 ## Related Documents
 
 - [/moai fix - one-shot auto-fix](/en/utility-commands/moai-fix)

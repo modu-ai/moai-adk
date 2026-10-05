@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>moai todo — 백로그 큐 학습 노트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+  --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC; --olive:#788C5D;
+  --g100:#F0EEE6; --g300:#D1CFC5; --g500:#87867F; --g700:#3D3D3A;
+  --sans:"Noto Sans KR",system-ui,-apple-system,sans-serif;
+  --serif:"Noto Serif KR",ui-serif,Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",monospace;
+  --max-width:900px; --radius-panel:12px; --radius-row:8px;
+  --border:1.5px solid var(--g300);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);
+  font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased}
+.wrap{display:grid;grid-template-columns:224px minmax(0,1fr);gap:44px;
+  max-width:var(--max-width);margin:0 auto;padding:0 24px 96px}
+nav{position:sticky;top:0;align-self:start;padding-top:40px;max-height:100vh;overflow-y:auto}
+nav .navtitle{font-family:var(--mono);font-size:11px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--g500);margin-bottom:12px}
+nav ol{list-style:none;margin:0;padding:0;font-size:13.5px;line-height:1.5}
+nav li{margin-bottom:9px}
+nav a{color:var(--g700);text-decoration:none;border-left:2px solid var(--g300);padding-left:10px;display:block}
+nav a:hover{color:var(--clay);border-left-color:var(--clay)}
+main{min-width:0;padding-top:40px}
+header.hd{border-bottom:3px solid var(--slate);padding-bottom:22px;margin-bottom:34px}
+.kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--clay);font-weight:600;margin-bottom:10px}
+h1{font-family:var(--serif);font-size:34px;line-height:1.25;margin:0 0 12px;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--g700);font-size:15px;margin:0}
+.meta{font-family:var(--mono);font-size:11.5px;color:var(--g500);margin-top:14px;line-height:1.9}
+h2{font-family:var(--serif);font-size:23px;margin:56px 0 8px;font-weight:700;
+  padding-top:16px;border-top:var(--border);letter-spacing:-.01em}
+h2 .num{font-family:var(--mono);font-size:13px;color:var(--clay);display:block;
+  margin-bottom:5px;font-weight:600;letter-spacing:.06em}
+h3{font-size:16.5px;margin:30px 0 8px;font-weight:700;color:var(--g700)}
+p{margin:0 0 15px}
+.lead{font-size:17px;color:var(--g700);border-left:3px solid var(--clay);
+  padding:2px 0 2px 16px;margin:0 0 22px}
+code{font-family:var(--mono);font-size:.865em;background:var(--g100);
+  padding:2px 5px;border-radius:4px;color:var(--clay-d);word-break:break-word}
+pre{background:var(--slate);color:#F0EEE6;padding:16px 18px;border-radius:var(--radius-row);
+  overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.65;margin:0 0 18px}
+pre code{background:none;color:inherit;padding:0;font-size:inherit}
+table{width:100%;border-collapse:collapse;margin:0 0 20px;font-size:13.8px}
+th{text-align:left;padding:9px 10px;border-bottom:2px solid var(--slate);
+  font-weight:700;font-size:12px;letter-spacing:.03em;color:var(--g700)}
+td{padding:9px 10px;border-bottom:1px solid var(--g300);vertical-align:top}
+tbody tr:nth-child(even){background:var(--g100)}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.callout{background:var(--paper);border:var(--border);border-left:4px solid var(--clay);
+  border-radius:var(--radius-row);padding:15px 18px;margin:0 0 20px}
+.callout.olive{border-left-color:var(--olive)}
+.callout.warn{border-left-color:var(--clay-d);background:#FDF6F3}
+.callout .ct{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--g500);font-weight:600;margin-bottom:7px}
+.callout p:last-child{margin-bottom:0}
+.analogy{background:var(--g100);border-radius:var(--radius-panel);padding:20px 22px;margin:0 0 22px}
+.analogy .ct{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--olive);font-weight:600;margin-bottom:8px}
+.analogy p:last-child{margin-bottom:0}
+details{border:var(--border);border-radius:var(--radius-row);padding:0;margin:0 0 12px;background:var(--paper)}
+summary{cursor:pointer;padding:12px 16px;font-weight:700;font-size:14.5px;list-style:none;
+  display:flex;align-items:center;gap:9px}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"▸";color:var(--clay);font-size:12px;transition:transform .15s}
+details[open] summary::before{transform:rotate(90deg)}
+details .body{padding:0 16px 14px;font-size:14.5px}
+details .body > :last-child{margin-bottom:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0 0 20px}
+.card{background:var(--paper);border:var(--border);border-radius:var(--radius-row);padding:14px 16px}
+.card .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--g500);margin-bottom:5px}
+.card .v{font-family:var(--serif);font-size:26px;font-weight:700;line-height:1.15}
+.card .d{font-size:12.5px;color:var(--g500);margin-top:5px;line-height:1.5}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 24px}
+pre.mermaid{background:var(--paper);color:var(--g700);border:var(--border);
+  padding:18px;text-align:center;font-size:12px}
+.mermaid svg{max-width:100%;height:auto}
+.gloss{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:6px 20px 14px;margin:0 0 22px}
+.gloss dt{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--clay-d);margin-top:13px}
+.gloss dd{margin:3px 0 0;font-size:14px;color:var(--g700)}
+ul,ol{margin:0 0 16px;padding-left:22px}
+li{margin-bottom:6px}
+.pill{display:inline-block;font-family:var(--mono);font-size:10.5px;padding:2px 7px;
+  border-radius:20px;background:var(--oat);color:var(--g700);font-weight:600;letter-spacing:.03em}
+.pill.r{background:#F5DDD4;color:var(--clay-d)}
+.pill.g{background:#DFE6D4;color:#4A5A38}
+footer{margin-top:60px;padding-top:20px;border-top:var(--border);
+  font-family:var(--mono);font-size:11.5px;color:var(--g500);line-height:1.9}
+@media(max-width:820px){
+  .wrap{grid-template-columns:1fr;gap:0}
+  nav{position:static;max-height:none;padding-top:24px;border-bottom:var(--border);padding-bottom:16px}
+  nav ol{columns:2;font-size:12.5px}
+  .kpis{grid-template-columns:1fr 1fr}
+  .grid2{grid-template-columns:1fr}
+  h1{font-size:27px}
+}
+@media print{
+  nav{display:none} .wrap{grid-template-columns:1fr;max-width:none}
+  body{background:#fff;font-size:11pt} pre{background:#f4f4f4;color:#000;border:1px solid #ccc}
+  details{border:1px solid #ccc} details .body{display:block!important}
+  h2{page-break-after:avoid} table{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav>
+  <div class="navtitle">목차</div>
+  <ol>
+    <li><a href="#s0">읽기 전에</a></li>
+    <li><a href="#s1">1. 한 문장 요약</a></li>
+    <li><a href="#s2">2. 왜 필요했나</a></li>
+    <li><a href="#s3">3. 카드의 일생</a></li>
+    <li><a href="#s4">4. 동사 17개</a></li>
+    <li><a href="#s5">5. 저장소 — SQLite</a></li>
+    <li><a href="#s6">6. 큐가 하나인 이유</a></li>
+    <li><a href="#s7">7. 중복 분석기</a></li>
+    <li><a href="#s8">8. pr — 착지 판정</a></li>
+    <li><a href="#s9">9. 운영자 경계</a></li>
+    <li><a href="#s10">10. 노출 표면 · 게이팅</a></li>
+    <li><a href="#s11">11. 이 저장소 실측</a></li>
+    <li><a href="#s12">12. 함정 6가지</a></li>
+    <li><a href="#s13">용어집</a></li>
+    <li><a href="#s14">자가 점검</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="hd">
+  <div class="kicker">MoAI-Learn · 학습 노트</div>
+  <h1>moai todo — 백로그 큐</h1>
+  <p class="sub">여러 세션이 동시에 도는 개발 현장에서, "다음에 뭘 하지"를 사람의 기억도 세션의 수명도 아닌 <strong>디스크</strong>가 답하게 만든 장치.</p>
+  <div class="meta">
+    측정일 2026-09-03 · 대상 <code>origin/develop</code> + 설치 바이너리 <code>v3.2.0-rc.0</code> (<code>e79c010b8</code>)<br>
+    독자 수준 <span class="pill">입문</span> · 범위 <span class="pill">사용법 + 운영 + 내부</span> · 형식 <span class="pill">학습 노트</span>
+  </div>
+</header>
+
+<h2 id="s0"><span class="num">먼저</span>읽기 전에 — 이 문서가 무엇을 근거로 쓰였나</h2>
+
+<div class="callout warn">
+  <div class="ct">근거의 출처를 먼저 밝힙니다</div>
+  <p>이 노트는 <strong>지금 열려 있는 체크아웃의 소스를 근거로 쓰지 않았습니다.</strong> 그 체크아웃(<code>main</code>, <code>7ad9f8534</code>)은 <code>origin/develop</code>보다 <strong>1547 커밋 뒤져</strong> 있어서, 여기서 설명하는 코드의 상당수가 아예 존재하지 않습니다.</p>
+  <p>그래서 대상을 둘로 고정했습니다 — <strong>①</strong> <code>origin/develop</code>의 파일(<code>git show origin/develop:&lt;path&gt;</code>로 직독), <strong>②</strong> 설치된 바이너리 <code>v3.2.0-rc.0</code>의 실제 동작(<code>--help</code> 및 실행 결과). 두 출처가 일치하는 사실만 적었습니다.</p>
+  <p>그리고 중요한 한 가지: SQLite 전환 커밋 <code>18a2a6978</code>은 <code>git tag --contains</code>가 <strong>공백</strong>을 반환합니다. 즉 <strong>아직 출시되지 않았습니다.</strong> 최신 태그는 <code>v3.1.2</code>이고, 이 기능은 릴리스 후보 바이너리에만 들어 있습니다.</p>
+</div>
+
+<h2 id="s1"><span class="num">01</span>한 문장 요약</h2>
+
+<p class="lead"><code>moai todo</code>는 MoAI 칸반의 <strong>위임 채널</strong>입니다. 세션끼리 주고받는 메시지가 아니라, 디스크에 있는 <strong>단 하나의 큐</strong>가 "누가 무엇을 할 차례인지"를 결정합니다.</p>
+
+<div class="analogy">
+  <div class="ct">비유 · 병원 접수대</div>
+  <p>큰 병원을 떠올려 보세요. 진료실이 여러 개고 의사도 여럿입니다. 그런데 "다음 환자 누구죠?"를 <strong>의사끼리 말로</strong> 주고받는다면 어떻게 될까요. 한 명이 자리를 비우면 그 말은 사라집니다. 두 사람이 같은 환자를 부르기도 하고요.</p>
+  <p>그래서 병원은 <strong>접수대에 대기표를 쌓아둡니다.</strong> 의사가 바뀌어도, 퇴근했다 돌아와도, 대기표는 그 자리에 그대로 있습니다. 누가 몇 번을 불렀는지도 적혀 있고요.</p>
+  <p><code>moai todo</code>가 정확히 그 <strong>접수대</strong>입니다. 그리고 대기표 한 장이 <strong>카드(card)</strong> — 이 문서에서 계속 나올 단어입니다.</p>
+</div>
+
+<h2 id="s2"><span class="num">02</span>왜 필요했나 — 메시지로는 안 되는 이유</h2>
+
+<p>MoAI는 세션을 여러 개 띄워서 씁니다. <strong>리드(lead)</strong> 세션 하나가 지휘하고, <strong>레인(lane)</strong> 세션 여럿이 실제 작업을 하는 구조예요. 세션끼리 메시지를 보낼 수 있는 기능도 있습니다.</p>
+
+<p>그런데 그 메시지에는 <strong>도착 보장이 없습니다.</strong> 플랫폼(윈도우 네이티브)에 따라 채널 자체가 없기도 하고, 특정 설정에서는 조용히 꺼지기도 합니다. 그리고 전달된 메시지는 <em>주장</em>이지 <em>관측</em>이 아닙니다 — "다 했어요"라는 말과 실제로 끝난 것은 다른 사실이니까요.</p>
+
+<pre class="mermaid">
+flowchart TD
+  O["운영자"] -->|"1. add — 카드 추가"| Q[("큐 · 디스크<br/>backlog.db")]
+  O -->|"2. next n — 지명"| Q
+  L["리드 세션"] -->|"3. 큐를 읽음"| Q
+  L -.->|"4. 알림 (도착 보장 없음)"| W["레인 세션"]
+  W -->|"5. 큐를 직접 읽음"| Q
+  W -->|"6. 증거를 디스크에 씀"| E[("progress.md<br/>검증 로그")]
+  L -->|"7. 증거를 읽고 판정"| E
+  style Q fill:#E3DACC,stroke:#D97757,stroke-width:2px
+  style E fill:#F0EEE6,stroke:#87867F
+</pre>
+
+<noscript>
+<p><strong>흐름 요약:</strong> 운영자가 큐에 카드를 넣고(add) 지명합니다(next). 리드는 큐를 읽어 일을 배분하고, 레인에 알림을 보내지만 그 알림은 도착 보장이 없습니다 — 레인도 큐를 직접 읽습니다. 레인은 결과를 디스크에 증거로 남기고, 리드는 그 증거를 읽어 판정합니다. 점선(알림)이 끊겨도 실선(디스크)은 끊기지 않는 것이 이 설계의 핵심입니다.</p>
+</noscript>
+
+<div class="callout olive">
+  <div class="ct">핵심</div>
+  <p>위 그림에서 <strong>점선은 하나뿐</strong>이고 나머지는 전부 실선입니다. 점선(메시지)이 끊겨도 보드는 멈추지 않습니다 — 위임은 이미 디스크에 기록돼 있으니까요. 메시지는 "새 대기표 나왔어요" 하는 <strong>알림</strong>일 뿐, 위임 그 자체가 아닙니다.</p>
+</div>
+
+<h2 id="s3"><span class="num">03</span>카드의 일생 — 상태 4개와 되돌리기</h2>
+
+<p>카드 한 장은 언제나 네 가지 상태 중 하나에 있습니다. 그리고 <strong>모든 전이에 역방향이 있습니다</strong> — 이게 이 설계에서 제일 마음에 드는 부분입니다.</p>
+
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> queued : add
+  queued --> picked : next &lt;n&gt;
+  picked --> queued : unpick &lt;n&gt;
+  queued --> dropped : drop &lt;n&gt; &lt;reason&gt;
+  dropped --> queued : undrop &lt;n&gt;
+  queued --> archived : done &lt;n&gt;
+  picked --> archived : done &lt;n&gt;
+  archived --> queued : undone &lt;n&gt;
+  archived --> [*] : 영구 보존
+</pre>
+
+<noscript>
+<p><strong>상태 전이:</strong> add로 queued 생성 → next로 picked(지명) → done으로 archived(마감). 역방향 전부 존재: unpick(picked→queued), undrop(dropped→queued), undone(archived→원위치). drop은 queued에서만 가능하며, picked 카드는 먼저 unpick해야 합니다.</p>
+</noscript>
+
+<table>
+<thead><tr><th style="width:110px">상태</th><th>뜻</th><th>보이는 곳</th></tr></thead>
+<tbody>
+<tr><td><code>queued</code></td><td>대기 중. 운영자가 지명하기를 기다림</td><td>기본 목록, <code>next</code> 후보</td></tr>
+<tr><td><code>picked</code></td><td>지명됨. 보드에 올라가 작업 중</td><td>기본 목록, statusline</td></tr>
+<tr><td><code>dropped</code></td><td>버림. 사유와 함께 <strong>남아 있음</strong></td><td><code>list --dropped</code>에서만</td></tr>
+<tr><td><code>archived</code></td><td>마감됨. 별도 테이블로 이동</td><td><code>history</code>에서만</td></tr>
+</tbody>
+</table>
+
+<div class="callout">
+  <div class="ct">설계 감상 · drop과 done은 다른 일이다</div>
+  <p><code>drop</code>은 <strong>버린 카드를 사유와 함께 남깁니다.</strong> 텍스트 앞에 <code>[DROPPED — 사유] </code>가 붙고, 기본 목록에서는 개수 한 줄 뒤로 숨습니다. <code>done</code>은 <strong>끝난 카드를 아카이브로 옮깁니다.</strong> 둘 다 삭제가 아니라서, <code>undrop</code>과 <code>undone</code>이 <strong>바이트 단위로 동일한 복원</strong>을 보장합니다.</p>
+  <p><code>undone</code>은 카드만 되살리지 않고 <strong>그 카드를 지목하던 판정 기록(finding)도 함께</strong> 되살립니다. 기록만 잃는 복원은 "복원했다"고 말하면서 조용히 뭔가를 버리는 것이니까요.</p>
+</div>
+
+<h2 id="s4"><span class="num">04</span>동사 17개 — 무엇을 언제 쓰나</h2>
+
+<p>처음 보면 많아 보이지만, <strong>쓰기 여부</strong>로 나누면 금방 정리됩니다.</p>
+
+<div class="kpis">
+  <div class="card"><div class="k">전체 동사</div><div class="v">17</div><div class="d">서브커맨드</div></div>
+  <div class="card"><div class="k">읽기 전용</div><div class="v">4</div><div class="d">락 없음</div></div>
+  <div class="card"><div class="k">카드 변경</div><div class="v">10</div><div class="d">락 1회 쓰기</div></div>
+  <div class="card"><div class="k">기록만</div><div class="v">3</div><div class="d">카드 불변</div></div>
+</div>
+
+<h3>읽기 전용 <span class="pill g">락 없음 · 안심하고 자주</span></h3>
+<div class="tw">
+<table>
+<thead><tr><th style="width:180px">동사</th><th>하는 일</th></tr></thead>
+<tbody>
+<tr><td><code>moai todo</code><br><code>moai todo list</code></td><td>큐를 렌더. <code>--json</code>(기계용), <code>--limit</code>(기본 20, <code>0</code>=무제한), <code>--dropped</code>(버린 카드만)</td></tr>
+<tr><td><code>moai todo next</code></td><td>인자 없이 부르면 <strong>후보만 나열</strong>합니다. 지명이 아닙니다</td></tr>
+<tr><td><code>moai todo why &lt;n&gt;</code></td><td>그 카드를 지목하는 모든 판정 기록 출력</td></tr>
+<tr><td><code>moai todo pr [&lt;id&gt;]</code></td><td>카드별 PR 연결·착지 상태 <a href="#s8">(8장에서 자세히)</a></td></tr>
+<tr><td><code>moai todo history [&lt;id&gt;]</code></td><td>카드의 행방(<code>live</code>/<code>archived</code>/<code>absent</code>) 또는 아카이브 목록</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>카드를 바꾸는 동사 <span class="pill r">락 1회 쓰기</span></h3>
+<div class="tw">
+<table>
+<thead><tr><th style="width:210px">동사</th><th>하는 일 · 안전장치</th></tr></thead>
+<tbody>
+<tr><td><code>add &lt;텍스트&gt;</code></td><td>카드 추가. <code>--pick</code>은 추가와 지명을 <strong>한 번의 락 쓰기로</strong> 처리, <code>--force</code>는 정확 중복을 강제 통과(강제했다는 사실이 기록됨)</td></tr>
+<tr><td><code>next &lt;n&gt;</code></td><td>지명. <code>--spec &lt;SPEC-ID&gt;</code>로 SPEC 부착, <code>--expect &lt;접두&gt;</code>로 <strong>엉뚱한 카드 지명 방지</strong></td></tr>
+<tr><td><code>unpick &lt;n&gt;</code></td><td>지명 취소</td></tr>
+<tr><td><code>done &lt;n&gt;</code></td><td>마감(아카이브 이동). <code>--expect</code>, <code>--require-landed</code> <a href="#s12">(함정 2번 주의)</a></td></tr>
+<tr><td><code>undone &lt;n&gt;</code></td><td>마감 취소. <strong>id가 이미 다른 카드에 재발급됐으면 거부</strong> — 한 id가 두 카드에 걸치는 게 원래 실수보다 나쁘니까</td></tr>
+<tr><td><code>edit &lt;n&gt; &lt;텍스트&gt;</code></td><td>텍스트만 교체. id·생성시각·상태·SPEC은 보존 — <code>done</code> 후 재추가와 달리 <strong>카드의 정체성이 안 바뀝니다</strong></td></tr>
+<tr><td><code>move &lt;n&gt;</code></td><td>순서 이동. <code>--top</code>/<code>--bottom</code>/<code>--before &lt;m&gt;</code>/<code>--after &lt;m&gt;</code> 중 <strong>정확히 하나 필수</strong> — 없거나 둘이면 추측하지 않고 에러</td></tr>
+<tr><td><code>drop &lt;n&gt; &lt;사유&gt;</code></td><td>버림. <strong>queued만 가능</strong> — picked는 먼저 <code>unpick</code>. <code>undrop</code>이 못 되돌릴 것은 애초에 안 가져감</td></tr>
+<tr><td><code>undrop &lt;n&gt;</code></td><td>버림 취소. <code>[DROPPED — …] </code> 접두 제거. <strong>state가 권위</strong>라, 손으로 표시한 카드는 텍스트 그대로 복귀</td></tr>
+<tr><td><code>export-json</code></td><td>레거시 <code>backlog.json</code> 내보내기 — <strong>다운그레이드 대비용</strong>. 마이그레이션 역행이 아니라 시점 복사본</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>기록만 하는 동사 <span class="pill">카드 불변</span></h3>
+<div class="tw">
+<table>
+<thead><tr><th style="width:210px">동사</th><th>하는 일</th></tr></thead>
+<tbody>
+<tr><td><code>analyze</code></td><td>큐 전체를 다시 분석해 판정 기록을 남김. <strong>카드는 하나도 안 바뀝니다</strong></td></tr>
+<tr><td><code>relate &lt;a&gt; &lt;b&gt; --relation</code></td><td>두 카드의 관계 기록: <code>contains</code>(포함) / <code>absorbs</code>(흡수) / <code>replaces</code>(대체) / <code>conflicts</code>(충돌)</td></tr>
+<tr><td><code>unrelate &lt;index&gt;</code></td><td>기록 1건 제거</td></tr>
+</tbody>
+</table>
+</div>
+
+<details>
+<summary>--expect 가 왜 중요한가 (실제 예시)</summary>
+<div class="body">
+<p>카드 번호는 사람이 헷갈리기 쉽습니다. <code>t450</code>을 닫으려다 <code>t405</code>를 닫으면, 되돌릴 수는 있어도(<code>undone</code>) 그 사실을 <strong>알아채기까지가 문제</strong>죠.</p>
+<pre><code># 그냥 닫기 — 잘못 눌러도 그대로 실행됨
+moai todo done 450
+
+# 카드 텍스트 앞부분을 함께 못 박기
+moai todo done 450 --expect "[lane-10, t367"
+# → 텍스트가 그 접두로 시작하지 않으면 거부. 파일은 손대지 않음</code></pre>
+<p><code>--expect</code>는 <code>done</code>·<code>edit</code>·<code>drop</code>·<code>undrop</code>·<code>next</code>에 전부 있습니다. "내가 생각한 그 카드가 맞나"를 기계가 대신 확인해 주는 장치입니다.</p>
+</div>
+</details>
+
+<details>
+<summary>한 단어 카드는 왜 add 를 명시해야 하나</summary>
+<div class="body">
+<p><code>moai todo</code>는 모르는 첫 토큰을 만나면 두 갈래로 갑니다.</p>
+<ul>
+<li><strong>한 단어</strong>(<code>moai todo lst</code>) → <span class="pill r">에러</span> 오타난 동사로 봅니다. 오타가 조용히 카드가 되면 안 되니까요.</li>
+<li><strong>두 단어 이상</strong>(<code>moai todo fix the flaky gate</code>) → <span class="pill g">카드 추가</span> 문장으로 봅니다.</li>
+</ul>
+<p>그래서 진짜로 한 단어 카드를 넣고 싶으면 <code>moai todo add "리팩터링"</code>처럼 <strong>동사를 명시</strong>해야 합니다. 오타를 시끄럽게 만드는 대가로 치르는 불편입니다.</p>
+<p>거부되는 모양이 하나 더 있습니다: <code>moai todo pick t151</code>처럼 <strong>동사꼴 단어 + 카드 id</strong>는 폴스루하지 않고 에러가 납니다(알려진 동사 목록을 알려줍니다). 문장 중간에 id가 섞인 카드는 정상 추가됩니다.</p>
+</div>
+</details>
+
+<h2 id="s5"><span class="num">05</span>저장소 — 왜 JSON에서 SQLite로 갔나</h2>
+
+<p>예전에는 큐 전체가 <strong>JSON 파일 한 장</strong>이었습니다. 지금은 <strong>SQLite 데이터베이스 파일</strong>입니다.</p>
+
+<div class="analogy">
+  <div class="ct">비유 · 장부 한 권 vs 서랍장</div>
+  <p>JSON 한 장은 <strong>공책 한 권</strong>입니다. 한 줄을 고치려면 공책을 통째로 펴서 새로 옮겨 적어야 해요. 두 사람이 동시에 적으면 한 사람의 글씨가 통째로 사라집니다.</p>
+  <p>SQLite는 <strong>칸이 나뉜 서랍장</strong>입니다. 한 칸만 열어 고칠 수 있고, 자물쇠도 서랍장이 직접 관리합니다. 무엇보다 <strong>고치다 만 상태로 끝나지 않습니다</strong> — 다 되거나, 아무것도 안 되거나 둘 중 하나예요.</p>
+</div>
+
+<h3>엔진 설정 — 세 가지가 왜 그 값인가</h3>
+<div class="tw">
+<table>
+<thead><tr><th style="width:180px">설정</th><th>값</th><th>이유</th></tr></thead>
+<tbody>
+<tr><td>journal mode</td><td><code>WAL</code></td><td>읽는 쪽이 쓰는 쪽을 <strong>막지 않게</strong>. statusline은 매 렌더마다 카운트를 읽는데, 그게 쓰기를 막으면 안 됩니다</td></tr>
+<tr><td>busy_timeout</td><td><code>5000ms</code> 이상</td><td>다른 프로세스가 쓰는 중이면 <strong>기다립니다.</strong> 곧바로 실패하면 레인이 헛되이 재시도하게 되니까</td></tr>
+<tr><td>트랜잭션</td><td><code>IMMEDIATE</code></td><td>쓰기 잠금을 <strong>시작할 때</strong> 잡습니다. 중간에 승격하다 실패하는 경로를 아예 없앰</td></tr>
+<tr><td>드라이버</td><td><code>modernc.org/sqlite</code></td><td><strong>순수 Go</strong> 구현이라 <code>CGO_ENABLED=0</code>으로도 빌드됩니다 — 크로스 컴파일이 깨지지 않음</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>잠금은 두 겹</h3>
+<pre class="mermaid">
+flowchart LR
+  P1["프로세스 A<br/>moai todo add"] --> LK[["backlog.lock<br/>파일 락 (프로세스 간)"]]
+  P2["프로세스 B<br/>moai todo done"] --> LK
+  LK --> CONN[["단일 풀 커넥션<br/>(프로세스 내)"]]
+  CONN --> DB[("backlog.db<br/>WAL + busy_timeout")]
+  R["읽기 전용<br/>list · why · pr"] -.->|"락 우회"| DB
+  style LK fill:#E3DACC,stroke:#D97757,stroke-width:2px
+  style DB fill:#F0EEE6,stroke:#87867F
+</pre>
+
+<noscript>
+<p><strong>잠금 구조:</strong> 프로세스 간 직렬화는 바깥쪽 <code>backlog.lock</code> 파일 락이, 프로세스 내 직렬화는 스토어당 단일 풀 커넥션이 담당합니다. 읽기 전용 동사는 락을 아예 잡지 않고 DB를 직접 읽습니다.</p>
+</noscript>
+
+<p>이 저장소의 락 파일을 실제로 열어보면 이렇게 생겼습니다 — 어느 프로세스가 언제 잡았는지가 그대로 적혀 있어서, 멈춘 락을 진단할 수 있습니다.</p>
+<pre><code>$ cat .moai/state/todo/backlog.lock
+{
+  "pid": 15785,
+  "created_at": "2026-09-03T12:00:09Z"
+}</code></pre>
+
+<h3>스키마 — 테이블 4개 + 메타</h3>
+<pre><code>items             seq(위치) · id · text · added_at · spec_id · state
+findings          subject_id · related_id · relation · source · score · note · at
+archived_items    items와 같은 컬럼 + position
+archived_findings archive_seq · position + findings 컬럼
+meta              schema_version=1 · last_seq=475</code></pre>
+
+<div class="callout">
+  <div class="ct">주의 깊게 볼 점 · seq는 id 번호가 아니다</div>
+  <p><code>items.seq</code>는 <strong>배열 위치</strong>이지 <code>t475</code>의 475가 아닙니다. <code>move</code>로 순서를 바꾸면 배열 순서와 id 순서가 갈라지는데, 저장해야 하는 계약은 <strong>배열 순서</strong>거든요. id의 무결성은 <code>UNIQUE(id)</code>와 <code>meta.last_seq</code>가 따로 지키므로 seq를 위치로 써도 안전합니다.</p>
+</div>
+
+<h3>마이그레이션 — 지연 실행, 원본 격리</h3>
+<pre class="mermaid">
+flowchart TD
+  S["moai todo 실행"] --> C{"backlog.json<br/>있나?"}
+  C -->|"아니오"| DB[("backlog.db<br/>그대로 사용")]
+  C -->|"예"| M["1회 흡수<br/>(items · findings)"]
+  M --> R["backlog.json<br/>→ backlog.json.migrated<br/>rename"]
+  R --> DB
+  style R fill:#E3DACC,stroke:#D97757,stroke-width:2px
+</pre>
+
+<noscript>
+<p><strong>마이그레이션:</strong> 레거시 <code>backlog.json</code>이 있으면 최초 접근 시 1회 흡수한 뒤, 원본을 <code>backlog.json.migrated</code>로 rename해 격리합니다. 삭제하지도 비우지도 않습니다.</p>
+</noscript>
+
+<p>원본을 <strong>지우지 않고 이름만 바꾸는</strong> 게 핵심입니다. 마이그레이션이 잘못됐을 때 돌아갈 곳이 남아야 하니까요. 이 저장소에도 <code>backlog.json.migrated</code>(155KB, 2026-08-27)가 그대로 있습니다.</p>
+
+<div class="callout warn">
+  <div class="ct">그런데 파일 이름은 여전히 backlog.json 을 반환한다</div>
+  <p>내부 함수 <code>BacklogPathForRoot</code>는 SQLite 전환 후에도 <code>backlog.json</code> 경로를 돌려줍니다. 일부러 그렇게 뒀어요 — 호출자 계약이 전부 그대로 보존되고, <strong>다운그레이드 서사</strong>("옛 바이너리는 <code>backlog.json</code>만 읽는다")가 그대로 성립하기 때문입니다. 엔진은 그 경로의 <strong>형제 파일</strong>로 <code>backlog.db</code>를 스스로 유도합니다.</p>
+</div>
+
+<h2 id="s6"><span class="num">06</span>큐가 하나인 이유 — 워크트리 해석</h2>
+
+<p><strong>워크트리(worktree)</strong>는 같은 저장소를 여러 폴더에 동시에 펼쳐 두는 git 기능입니다. MoAI 레인은 각자 워크트리에서 일하죠. 그런데 <code>.moai/state/</code>는 gitignore돼 있어서 <strong>primary 체크아웃에만 존재</strong>합니다.</p>
+
+<div class="callout warn">
+  <div class="ct">실제로 났던 사고 · 2026-08-17</div>
+  <p>primary에는 카드 <strong>30장</strong>이 있는데, 링크드 워크트리에서 <code>moai todo</code>를 부르면 <strong>"큐가 비었음"</strong>이 나왔습니다. 큐가 갈라진 겁니다 — 위임 채널이 두 개가 되면, 두 세션이 서로 다른 현실을 보게 됩니다.</p>
+</div>
+
+<pre class="mermaid">
+flowchart TD
+  A["moai todo 실행"] --> B{"git이 답하나?"}
+  B -->|"예"| C["git common dir의 부모<br/>= PRIMARY 체크아웃 루트"]
+  B -->|"아니오"| D["~/.moai/todo/&lt;project-key&gt;/"]
+  C --> Q[("하나의 큐")]
+  D --> E{"폴백에 큐 파일 없고<br/>프로젝트-로컬엔 있나?"}
+  E -->|"예 (read-through)"| F["프로젝트-로컬 루트<br/>쓰기는 여전히 없음"]
+  E -->|"아니오"| Q2[("폴백 큐")]
+  style Q fill:#E3DACC,stroke:#D97757,stroke-width:2px
+</pre>
+
+<noscript>
+<p><strong>큐 루트 해석:</strong> git이 답하면 common dir의 부모(= primary 체크아웃 루트)로 해석해 어느 워크트리에서 불러도 같은 큐를 봅니다. git이 답하지 못하면 홈 기반 폴백을 쓰되, 폴백에 큐가 없고 프로젝트-로컬에 있으면 그쪽으로 읽어 넘깁니다(쓰기는 하지 않음).</p>
+</noscript>
+
+<h3>해석과 채택을 나눈 이유</h3>
+<div class="tw">
+<table>
+<thead><tr><th style="width:250px">함수</th><th>성격</th><th>쓰는 곳</th></tr></thead>
+<tbody>
+<tr><td><code>ResolveTodoQueueRoot</code></td><td><strong>순수.</strong> <code>MkdirAll</code>·<code>Rename</code>·<code>WriteFile</code> 전부 없음</td><td><code>internal/web</code> — 웹 콘솔</td></tr>
+<tr><td><code>ResolveTodoQueueRootAdopting</code></td><td>해석 후 채택(마이그레이션 수행)</td><td><code>moai todo</code> 명령 경로</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>왜 나눴을까요? <strong>웹 콘솔이 페이지를 하나 그렸다는 이유로 운영자의 백로그를 마이그레이션해서는 안 되기 때문입니다.</strong> 보기만 했는데 데이터가 옮겨지는 건 놀라움이지 기능이 아니니까요.</p>
+
+<h2 id="s7"><span class="num">07</span>중복 분석기 — 거절은 딱 한 경우만</h2>
+
+<p>같은 카드를 두 번 넣는 일은 흔합니다. 그래서 <code>add</code>는 넣기 전에 기존 큐와 텍스트를 견줍니다.</p>
+
+<div class="tw">
+<table>
+<thead><tr><th style="width:110px">판정</th><th>조건</th><th>결과</th></tr></thead>
+<tbody>
+<tr><td><code>exact</code></td><td>정규화 텍스트가 완전히 같음</td><td><span class="pill r">추가 거절</span> <code>--force</code>로만 통과</td></tr>
+<tr><td><code>near</code></td><td>토큰집합 Jaccard 유사도 <strong>0.80 이상</strong></td><td><span class="pill">기록만</span> 추가는 됨</td></tr>
+<tr><td><code>none</code></td><td>그 아래</td><td><span class="pill g">그냥 추가</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<details>
+<summary>Jaccard 유사도 0.80이 무슨 뜻인가 (직접 계산해 보기)</summary>
+<div class="body">
+<p><strong>토큰집합 Jaccard</strong>는 두 문장을 단어 집합으로 만든 뒤 <em>겹치는 단어 수 ÷ 전체 단어 수</em>로 계산합니다. 순서는 안 봅니다.</p>
+<pre><code>A = "pre-commit go vet 패키지 해석 오류"
+B = "pre-commit go vet 패키지 해석 실패"
+
+A의 단어집합 = {pre-commit, go, vet, 패키지, 해석, 오류}   (6개)
+B의 단어집합 = {pre-commit, go, vet, 패키지, 해석, 실패}   (6개)
+
+교집합 = {pre-commit, go, vet, 패키지, 해석}              (5개)
+합집합 = 위 5개 + {오류, 실패}                            (7개)
+
+Jaccard = 5 / 7 = 0.714  →  0.80 미만  →  none (기록조차 안 남음)</code></pre>
+<p>단어 하나만 달라도 0.80을 넘기려면 문장이 꽤 길어야 합니다. 임계값이 <strong>일부러 높게</strong> 잡힌 것이죠.</p>
+</div>
+</details>
+
+<div class="callout olive">
+  <div class="ct">설계 결정 · 오차가 비대칭이다</div>
+  <p>임계값을 <strong>낮게</strong> 잡으면: 판정 기록이 카드보다 많아집니다 → 운영자가 목록을 안 읽게 됩니다 → <strong>기능이 없느니만 못한 상태</strong>가 됩니다.</p>
+  <p>임계값을 <strong>높게</strong> 잡으면: 근사 중복 하나를 놓칩니다 → 그건 <strong>이 기능 도입 전과 똑같은 상태</strong>입니다. 손해가 아니라 제자리죠.</p>
+  <p>두 손해의 크기가 다르니, 높은 쪽으로 기울인 겁니다. 0.80은 그 판단의 결과입니다.</p>
+</div>
+
+<div class="callout">
+  <div class="ct">그리고 분석기는 '뜻'을 보지 않는다</div>
+  <p>분석기는 <strong>텍스트만</strong> 봅니다. 같은 뜻을 다른 말로 쓴 두 카드는 <code>none</code>이고, 이건 나중에 메꿀 구멍이 아닙니다. 이 계층의 오탐은 <strong>정당한 카드를 거절</strong>해서 운영자가 일을 잃게 만드니까요.</p>
+  <p>뜻을 판단하는 건 에이전트 계층(<code>todo relate</code>)의 몫이고, 거기서는 결과가 <strong>거절이 아니라 기록</strong>입니다. 사람이 읽고 판단할 자료로 남을 뿐, 아무것도 막지 않습니다.</p>
+</div>
+
+<h2 id="s8"><span class="num">08</span><code>pr</code> — 이미 누가 하고 있진 않나</h2>
+
+<p>카드를 배차하기 전에 물어야 할 게 있습니다: <strong>"이거 이미 PR 올라가 있지 않나? 이미 머지되지 않았나?"</strong> <code>moai todo pr</code>이 그 질문에 답합니다. <strong>아무것도 쓰지 않습니다</strong> — 카드도, 기록도, 캐시도, 락도.</p>
+
+<div class="tw">
+<table>
+<thead><tr><th style="width:130px">결과</th><th>뜻</th><th>해석</th></tr></thead>
+<tbody>
+<tr><td><code>linked</code></td><td>열린 PR 하나가 이 카드 id를 담고 있음</td><td>확신도 <code>exact</code>(PR 제목에서 읽음) / <code>inferred</code>(PR 본문 하나에서 읽음)</td></tr>
+<tr><td><code>ambiguous</code></td><td>여러 PR 본문이 담고 있음</td><td>후보를 전부 나열하고 <strong>고르지 않음</strong></td></tr>
+<tr><td><code>landed</code></td><td><code>origin/main</code> 이력이 이 카드를 지목</td><td><strong>주의:</strong> "무언가가 착지"이지 "마지막 단계가 착지"가 아님</td></tr>
+<tr><td><code>no-link</code></td><td>아무도 시작 안 함</td><td>배차 가능</td></tr>
+<tr><td><code>unknown</code></td><td>질문 자체를 못 함(ref 없음·git 없음·질의 실패)</td><td><strong>not-landed의 증거가 아님</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>착지 검사는 <strong>로컬 git</strong>이라 <code>gh</code>(GitHub CLI)가 없어도 동작합니다. <code>gh</code>가 없거나 로그인 안 됐거나 오프라인이면 링크 열만 비고, 저하됐다는 사실은 stderr에 남으며, <strong>종료 코드는 0을 유지</strong>합니다.</p>
+
+<h2 id="s9"><span class="num">09</span>운영자 경계 — 누가 무엇을 결정하나</h2>
+
+<p>여기가 이 기능의 <strong>정치</strong>입니다. 기술보다 중요할 수 있어요.</p>
+
+<div class="callout warn">
+  <div class="ct">[HARD] 지명은 운영자의 행위다</div>
+  <p>리드 세션은 <strong>미리 고르지 않고</strong>, <strong>추론한 우선순위로 재정렬하지 않고</strong>, <strong>"맨 위 것부터 시작" 같은 기본값을 붙이지 않습니다.</p>
+  <p>그리고 <strong>빈 큐는 정당한 상태입니다.</strong> 일을 발명하라는 신호가 아니라, 그냥 할 일이 없다는 사실이에요.</p>
+</div>
+
+<h3>그럼 일괄 승인은?</h3>
+<p>가능합니다. 운영자가 카드 여러 장을 지목하거나 "순서대로 다 소진해"라고 말할 수 있어요. 그건 <strong>한 번에 몰아서 한 지명</strong>이지, 리드가 대신 고른 게 아닙니다. 다만 그게 주는 권한은 딱 그것뿐 — <strong>카드 추가 권한도, 재정렬 권한도 아닙니다.</strong></p>
+
+<h3>상시 발행원 — 딱 하나</h3>
+<p><strong>상시 발행원(standing source)</strong>은 "매번 물어보지 말고, 끝나면 카드 하나 만들어 둬"라고 운영자가 <strong>미리 한 번</strong> 승인해 둔 워크플로입니다. 승인이 먼저인 건 그대로고, 바뀌는 건 <em>언제</em> 주느냐일 뿐입니다.</p>
+
+<p>현재 <code>/moai project</code> <strong>하나뿐</strong>이고, 다섯 조건이 전부 구속합니다.</p>
+<ol>
+<li><strong>실행당 1장.</strong> 문서당도, 기능당도, 발견당도 아님</li>
+<li><strong>파생이지 발명이 아님.</strong> 그 실행의 <code>harness-spec.yaml</code>에서 텍스트를 끌어옴 — 운영자가 인터뷰에서 한 말을 다시 적는 것. 끌어올 게 없으면 아무것도 안 만들고 그 사실을 보고</li>
+<li><strong>앞에 표시.</strong> <code>[PROJECT] </code> 접두 — 목록에서 "워크플로가 낸 카드"와 "사람이 친 카드"가 한눈에 구분됨</li>
+<li><strong>발행한 id를 보고.</strong> 완료 보고에 <code>t&lt;n&gt;</code>이 나옴 — 만들어진 즉시 보임</li>
+<li><strong>시작은 별도 지명.</strong> 카드는 queued로 들어갈 뿐, 작업이 시작되진 않음</li>
+</ol>
+
+<p>TODO 주석, 열린 이슈, 감사 결과, 리포트 마일스톤 — <strong>전부 발행원이 아닙니다.</strong> 운영자에게 보여주고, 운영자가 원할 때 카드를 요청합니다.</p>
+
+<h2 id="s10"><span class="num">10</span>노출 표면 4개 · 게이팅 플래그</h2>
+
+<div class="tw">
+<table>
+<thead><tr><th style="width:140px">표면</th><th style="width:250px">파일</th><th>성격</th></tr></thead>
+<tbody>
+<tr><td>CLI</td><td><code>internal/cli/todo*.go</code></td><td>동사 17개</td></tr>
+<tr><td>SessionStart 훅</td><td><code>internal/hook/session_start_kanban.go</code></td><td><strong>이중 발화</strong>: 에이전트용(영어, <code>additionalContext</code>) + 운영자용(로케일, <code>systemMessage</code>). 명령·경로·id는 어느 언어에서든 그대로 — 운영자의 붙여넣기가 계속 동작해야 하니까</td></tr>
+<tr><td>statusline</td><td><code>internal/statusline/backlog.go</code></td><td>picked/queued 카운트. <strong>dropped는 안 셈</strong>(늘기만 하는 숫자는 소음). 워크트리는 <code>worktree.original_cwd</code>로 해석 — 매 렌더마다 서브프로세스를 띄우지 않으려고</td></tr>
+<tr><td>웹 콘솔</td><td><code>internal/web/todo_view.go</code></td><td><code>/todo</code> 읽기 전용. 단일 read seam <code>readTodoQueue</code> — 저장소가 바뀌어도 고칠 곳이 한 군데</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>끄고 싶다면 — <code>workflow.todo.enabled</code></h3>
+
+<div class="callout">
+  <div class="ct">'부재 = 활성'을 표현하려고 *bool 을 쓴다</div>
+  <p>배포 템플릿에는 todo 블록이 아예 없습니다. 그러니 <strong>"미설정"이 거의 모든 사용자의 상태</strong>이고, 이건 <strong>명시적 opt-out과 구분돼야</strong> 합니다. Go에서 <code>bool</code>은 미설정과 <code>false</code>가 같은 값이라 구분이 안 되죠. 그래서 <code>*bool</code>입니다.</p>
+  <p>그리고 <code>false</code>가 끄는 것은 <strong>가이던스 표면</strong>뿐입니다 — SessionStart 라인, statusline 세그먼트, 스킬의 자동 라우팅. <strong>명령은 계속 등록되고 모든 동사가 동작합니다.</strong> 명시적 <code>/moai todo</code>도 정상 실행되고요. 플래그는 <em>안내</em>를 끄지 <em>기능</em>을 없애지 않습니다.</p>
+  <p>실패 방향도 <strong>fail-open</strong>입니다: 빈 루트, <code>.moai</code> 없음, 로드 에러 — 전부 <code>true</code>. 설정을 못 읽었다는 이유로 사라진 표면은, 남아 있는 표면보다 훨씬 진단하기 어렵기 때문입니다.</p>
+</div>
+
+<h2 id="s11"><span class="num">11</span>이 저장소 실측 <span class="pill">2026-09-03</span></h2>
+
+<div class="kpis">
+  <div class="card"><div class="k">queued</div><div class="v">12</div><div class="d">대기 중</div></div>
+  <div class="card"><div class="k">picked</div><div class="v">6</div><div class="d">작업 중</div></div>
+  <div class="card"><div class="k">dropped</div><div class="v">26</div><div class="d">사유와 함께 보존</div></div>
+  <div class="card"><div class="k">archived</div><div class="v">142</div><div class="d">마감</div></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th style="width:210px">항목</th><th style="width:230px">값</th><th>측정 명령</th></tr></thead>
+<tbody>
+<tr><td>상태별 카드 수</td><td>12 / 6 / 26</td><td><code>sqlite3 backlog.db "SELECT state,COUNT(*) FROM items GROUP BY state"</code></td></tr>
+<tr><td>아카이브</td><td>142</td><td><code>SELECT COUNT(*) FROM archived_items</code></td></tr>
+<tr><td>판정 기록</td><td>0</td><td><code>SELECT COUNT(*) FROM findings</code></td></tr>
+<tr><td>schema_version / last_seq</td><td>1 / 475</td><td><code>SELECT key,value FROM meta</code></td></tr>
+<tr><td><code>backlog.db</code> 크기</td><td>372,736 B</td><td><code>ls -la .moai/state/todo/</code></td></tr>
+<tr><td>WAL 활성</td><td><code>-wal</code>, <code>-shm</code> 존재</td><td><code>ls .moai/state/todo/backlog.db*</code></td></tr>
+<tr><td>체크아웃 격차</td><td><code>origin/develop</code> 1547 ahead</td><td><code>git rev-list --count --left-right origin/develop...HEAD</code></td></tr>
+<tr><td>SQLite 전환 출시 여부</td><td><strong>미출시</strong>(태그 없음)</td><td><code>git tag --contains 18a2a6978</code> → 공백</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout warn">
+  <div class="ct">findings 가 0이라는 사실</div>
+  <p>판정 기록이 <strong>0건</strong>입니다. 카드 186장(12+6+26+142)이 쌓인 큐인데 관계 기록이 하나도 없다는 건, <code>relate</code>/<code>analyze</code>가 실운영에서 <strong>거의 안 쓰이고 있다</strong>는 뜻입니다. 기능의 결함은 아니지만, 설계 의도와 실사용의 간극으로 기록해 둘 만합니다.</p>
+</div>
+
+<h3>이 기능과 직접 연결된 미해결 카드 2장</h3>
+<ul>
+<li><strong>t470</strong> <span class="pill">queued</span> — JSON→SQL 전환의 <strong>사용자 업그레이드 경로가 릴리스 전에 한 번도 실사용 검증되지 않음.</strong> 위 "미출시" 사실과 맞물리는 위험입니다.</li>
+<li><strong>t472</strong> <span class="pill">queued</span> — picked인데 이미 착지한 카드가 적체됨. 착지 판정이 이 리포에서 원리상 불가능한 구조라서 생기는 문제입니다(<a href="#s8">8장의 <code>landed</code> 한계</a>와 같은 뿌리).</li>
+</ul>
+
+<h2 id="s12"><span class="num">12</span>함정 6가지</h2>
+
+<details open>
+<summary>1. <code>backlog.json</code>을 큐로 읽는 것</summary>
+<div class="body">
+<p>정규 경로에 <code>backlog.json</code>이 있어도 <strong>그건 큐가 아닙니다.</strong> 낡은 export이거나 레거시 잔재이고, 내용은 <strong>임의로 오래됐을 수 있습니다</strong>. 이 저장소 실측: <code>backlog.db</code>는 9/3 21:00, <code>backlog.json</code>은 9/2 10:54 — 하루 이상 차이 납니다.</p>
+<p>이 함정을 막는 방식이 인상적입니다. 그 파일을 쓴 범인을 <strong>끝내 특정하지 못했기 때문에</strong>, 청소로는 재발을 막을 수 없었어요. 그래서 <strong>읽는 쪽이 말하게</strong> 만들었습니다 — <code>moai todo</code> 계열 동사가 stderr에 한 줄 고지를 냅니다. 범인이 누구로 밝혀지든 통하는 방어입니다.</p>
+<p>고지가 <strong>stderr</strong>인 것도 이유가 있습니다: stdout은 기계 표면이에요(<code>--json</code>을 foreman 루프가 읽습니다). 한 바이트도 달라지면 안 됩니다.</p>
+</div>
+</details>
+
+<details>
+<summary>2. <code>done</code>의 착지 판정 기본값은 <code>unknown</code>이다</summary>
+<div class="body">
+<p><code>--require-landed</code>를 주지 않으면 <strong>착지 질의를 아예 실행하지 않습니다.</strong> 그리고 모든 실행이 stdout에 한 줄을 찍습니다:</p>
+<pre><code>done t450 landing=landed|not-landed|unknown</code></pre>
+<p>플래그가 없으면 <code>unknown</code>입니다. <strong>"가드가 통과했다"와 "가드가 실행되지 않았다"는 다른 사실</strong>이고, 이제 같은 바이트로 나오지 않습니다. 이 구분이 없으면 "통과했다"고 착각한 채 카드를 닫게 됩니다.</p>
+<p>그리고 <code>--require-landed</code>조차 한계가 명시돼 있습니다: "이 카드를 지목한 무언가가 그 ref에 착지했나"에 답할 뿐 <strong>"이 카드의 마지막 단계가 착지했나"에는 답하지 못합니다.</strong> run 커밋과 sync 커밋을 구분하지 못하거든요.</p>
+</div>
+</details>
+
+<details>
+<summary>3. <code>pr</code>의 <code>landed</code>를 완료로 읽는 것</summary>
+<div class="body">
+<p>2번과 같은 뿌리입니다. <code>landed</code>는 <strong>"무언가가 착지"</strong>이지 <strong>"이 카드가 끝났다"</strong>가 아닙니다. 실제로 이 저장소의 <strong>t472</strong> 카드가 바로 이 문제를 다룹니다 — picked인데 이미 착지한 카드가 쌓이는데, 착지 판정이 원리상 불가능해서 정리가 안 되는 상황이요.</p>
+</div>
+</details>
+
+<details>
+<summary>4. <code>unknown</code>을 not-landed로 읽는 것</summary>
+<div class="body">
+<p><code>unknown</code>은 <strong>"질문을 하지 못했다"</strong>는 뜻입니다 — ref가 없거나, git이 없거나, 질의가 실패했거나. <strong>"착지하지 않았다"의 증거가 아닙니다.</strong></p>
+<p>이건 MoAI 전체를 관통하는 원칙의 한 사례입니다: <em>부재는 증거가 아니다.</em> 실패 신호가 없다고 해서 검사가 통과한 것이 아니듯이요.</p>
+</div>
+</details>
+
+<details>
+<summary>5. 한 단어 카드가 에러로 튕기는 것</summary>
+<div class="body">
+<p><code>moai todo 리팩터링</code> → <span class="pill r">에러</span>. 오타난 동사로 봅니다.<br>
+<code>moai todo add "리팩터링"</code> → <span class="pill g">추가됨</span>.</p>
+<p>불편해 보이지만 의도된 거래입니다 — <strong>오타를 시끄럽게</strong> 만드는 대가로 치르는 값이에요. <code>moai todo lst</code>가 조용히 "lst"라는 카드가 되는 쪽이 훨씬 나쁩니다.</p>
+</div>
+</details>
+
+<details>
+<summary>6. <code>moai todo pick t151</code> 형태</summary>
+<div class="body">
+<p><strong>동사꼴 단어 + 카드 id</strong> 조합은 폴스루하지 않고 에러가 납니다(알려진 동사 목록을 알려줍니다). <code>pick</code>은 없는 동사고(<code>next</code>가 맞습니다), 이걸 카드 텍스트로 받아들이면 오타가 큐에 쌓이니까요.</p>
+<p>반면 문장 중간에 id가 섞인 카드는 정상 추가됩니다: <code>moai todo t151 관련 회귀 테스트 추가</code> → 카드가 됩니다.</p>
+</div>
+</details>
+
+<h2 id="s13"><span class="num">용어</span>용어집</h2>
+
+<dl class="gloss">
+<dt>카드 (card)</dt><dd>큐에 든 작업 한 건. id는 <code>t</code> + 번호(<code>t470</code>)</dd>
+<dt>큐 (queue / backlog)</dt><dd>카드가 쌓이는 곳. 이 저장소에서는 <code>.moai/state/todo/backlog.db</code></dd>
+<dt>리드 (lead)</dt><dd>칸반을 지휘하는 세션. 카드를 배차하고 증거를 읽어 판정함</dd>
+<dt>레인 (lane)</dt><dd>실제 작업을 하는 세션. 각자 워크트리에서 일함</dd>
+<dt>워크트리 (worktree)</dt><dd>같은 저장소를 여러 폴더에 동시에 펼치는 git 기능</dd>
+<dt>primary 체크아웃</dt><dd>원래의 저장소 폴더. 링크드 워크트리와 구분됨. 큐는 언제나 여기에 있음</dd>
+<dt>advisory lock</dt><dd>"내가 쓰는 중"을 알리는 파일. OS가 강제하지 않고 참여자끼리 지키는 약속</dd>
+<dt>WAL (Write-Ahead Log)</dt><dd>SQLite의 저널 방식. 변경을 별도 로그에 먼저 적어서 <strong>읽는 쪽이 쓰는 쪽을 막지 않음</strong></dd>
+<dt>Jaccard 유사도</dt><dd>두 집합의 <em>교집합 ÷ 합집합</em>. 0=전혀 안 겹침, 1=완전히 같음</dd>
+<dt>finding (판정 기록)</dt><dd>두 카드의 관계를 적어 둔 기록. <strong>카드를 바꾸지 않음</strong> — 사람이 읽을 자료</dd>
+<dt>fail-open</dt><dd>실패했을 때 <strong>켜진 쪽</strong>으로 떨어지는 설계. 사라진 표면보다 남은 표면이 진단하기 쉬우므로</dd>
+<dt>seam</dt><dd>구현을 갈아끼울 수 있게 만든 단일 지점. 저장소가 바뀌어도 고칠 곳이 한 군데</dd>
+</dl>
+
+<h2 id="s14"><span class="num">점검</span>자가 점검 — 이해했는지 확인하기</h2>
+
+<p>답을 보지 말고 먼저 스스로 답해 보세요. 막히는 문항이 있으면 그 장으로 돌아가시면 됩니다.</p>
+
+<details>
+<summary>Q1. 리드가 레인에 보낸 메시지가 전달되지 않았습니다. 보드는 멈추나요?</summary>
+<div class="body">
+<p><strong>멈추지 않습니다.</strong> 위임은 메시지가 아니라 디스크의 큐로 이루어지기 때문입니다. 메시지는 "새 카드 나왔어요" 하는 알림일 뿐이고, 레인은 큐를 직접 읽습니다. 그래서 <a href="#s2">2장 그림</a>에서 점선(메시지)이 딱 하나뿐인 겁니다.</p>
+</div>
+</details>
+
+<details>
+<summary>Q2. <code>picked</code> 상태의 카드를 <code>drop</code>하려 합니다. 어떻게 되나요? 왜 그렇게 설계됐을까요?</summary>
+<div class="body">
+<p><strong>거부됩니다.</strong> <code>drop</code>은 <code>queued</code>에서만 가능하고, picked 카드는 먼저 <code>unpick</code>해야 합니다.</p>
+<p>이유는 되돌리기 보장입니다 — <code>undrop</code>이 복원하는 상태는 <code>queued</code>인데, picked에서 바로 drop을 허용하면 undrop이 <strong>원래 상태로 못 돌려놓습니다.</strong> "undrop이 복원하지 못할 것은 애초에 가져가지 않는다"는 규칙이에요.</p>
+</div>
+</details>
+
+<details>
+<summary>Q3. <code>moai todo done 450</code>을 실행했더니 <code>landing=unknown</code>이 나왔습니다. 이 카드는 착지하지 않은 건가요?</summary>
+<div class="body">
+<p><strong>알 수 없습니다.</strong> <code>--require-landed</code>를 주지 않았으므로 <strong>착지 질의 자체가 실행되지 않았습니다.</strong> <code>unknown</code>은 "착지하지 않음"이 아니라 "묻지 않음"입니다.</p>
+<p>이 구분이 왜 중요할까요? 같은 <code>unknown</code> 바이트가 "가드 통과"로 오독되면, 착지하지 않은 카드를 닫아 놓고 닫았다고 믿게 되기 때문입니다.</p>
+</div>
+</details>
+
+<details>
+<summary>Q4. 근사 중복 임계값을 0.80에서 0.50으로 낮추면 무슨 일이 벌어질까요?</summary>
+<div class="body">
+<p>판정 기록이 <strong>카드보다 많아집니다.</strong> 관련 없는 카드끼리 계속 엮이고, 운영자는 목록을 읽지 않게 되고, 결국 <strong>기능이 없느니만 못한 상태</strong>가 됩니다.</p>
+<p>반대 방향(놓치기)의 손해는 <strong>기능 도입 전과 같은 상태</strong>일 뿐이라 훨씬 가볍습니다. 오차가 비대칭이라 높은 쪽으로 기울인 겁니다.</p>
+</div>
+</details>
+
+<details>
+<summary>Q5. 링크드 워크트리에서 <code>moai todo</code>를 실행하면 어느 큐를 보나요? 그렇게 만든 이유는?</summary>
+<div class="body">
+<p><strong>primary 체크아웃의 큐</strong>를 봅니다. git common dir의 부모가 primary 루트인데, 그 값은 어느 워크트리에서 물어도 같기 때문입니다.</p>
+<p>이유: <code>.moai/state/</code>는 gitignore돼서 primary에만 있고, 워크트리가 각자 큐를 가지면 <strong>위임 채널이 갈라집니다.</strong> 실제로 2026-08-17에 primary 30장 vs 워크트리 "비었음" 사고가 있었고, 이 해석은 그 사고의 결과물입니다.</p>
+</div>
+</details>
+
+<details>
+<summary>Q6. <code>workflow.todo.enabled: false</code>로 두면 <code>moai todo add</code>가 동작하나요?</summary>
+<div class="body">
+<p><strong>동작합니다.</strong> 이 플래그가 끄는 것은 <strong>가이던스 표면</strong>뿐입니다 — SessionStart 라인, statusline 세그먼트, 스킬의 자동 라우팅. 명령은 계속 등록되고 모든 동사가 정상 동작하며, 명시적 <code>/moai todo</code>도 실행됩니다.</p>
+<p>플래그는 <em>안내</em>를 끄지 <em>기능</em>을 없애지 않습니다. 명시적 호출을 거부하거나 조용히 무시하는 건 의도된 동작이 아니라 결함입니다.</p>
+</div>
+</details>
+
+<details>
+<summary>Q7. <code>items.seq</code>가 <code>t475</code>의 475가 아니라 배열 위치인 이유는?</summary>
+<div class="body">
+<p><code>move</code> 때문입니다. 순서를 바꾸면 <strong>배열 순서와 id 순서가 갈라지는데</strong>, 저장해야 하는 계약은 배열 순서입니다(레거시 JSON이 보존하던 것이 그거였으니까요).</p>
+<p>id의 무결성은 <code>UNIQUE(id)</code>와 <code>meta.last_seq</code>가 따로 지킵니다 — 둘 다 <code>seq</code>를 읽지 않으므로, seq를 위치로 써도 id는 안전합니다.</p>
+</div>
+</details>
+
+<footer>
+  MoAI-Learn 학습 노트 · 2026-09-03<br>
+  근거: <code>origin/develop</code> 직독 + 설치 바이너리 <code>v3.2.0-rc.0</code> (<code>e79c010b8</code>) 실행<br>
+  관련 SPEC 18건 — BACKLOG-HYGIENE / BACKLOG-JSON-DISCLOSURE / BACKLOG-LOCK-BUDGET / KANBAN-BOARD / KANBAN-BOOTSTRAP / KANBAN-PR-CARD-TRACEABILITY / KANBAN-QUEUE-PR-SYNC / KANBAN-RECORD-SESSION-KEY / KANBAN-RENAME / KANBAN-TODO-CLI / KANBAN-WORKTREE / TODO-ANALYSIS / TODO-ARCHIVE-QUERY / TODO-DESTRUCTIVE-GUARD / TODO-ENABLE-FLAG / TODO-LANDING-STATE / TODO-SQLITE / WEB-TODO-QUEUE<br>
+  경량 마크다운 트윈: <code>.moai/learning/2026-09-03-moai-todo.md</code>
+</footer>
+
+</main>
+</div>
+
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({
+  startOnLoad: true,
+  theme: "base",
+  themeVariables: {
+    primaryColor:       "#FAF9F5",
+    primaryTextColor:   "#141413",
+    primaryBorderColor: "#D97757",
+    lineColor:          "#87867F",
+    secondaryColor:     "#E3DACC",
+    tertiaryColor:      "#F0EEE6",
+    fontFamily:         '"Noto Sans KR", system-ui, sans-serif'
+  }
+});
+</script>
+</body>
+</html>

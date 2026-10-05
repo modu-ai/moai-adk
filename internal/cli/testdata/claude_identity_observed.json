@@ -1,0 +1,43 @@
+{
+  "source": "Claude Code 2.1.270 live client against local mock HTTP server, synthetic prompt only",
+  "capture_command": "PROBE_DIR=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-identity-4X2E79 node /tmp/moai-identity-probe.mjs",
+  "capture_transport": "PTY",
+  "observed_session": "44b406fc-93cd-461f-a7f9-bc36e18285d3",
+  "observed_agent": "a6267ddef22eab1d7",
+  "requests": [
+    {"role": "title", "x-claude-code-session-id": "44b406fc-93cd-461f-a7f9-bc36e18285d3", "agent_header_present": false, "tools": 0, "output_format": "json_schema", "schema_required": ["title"]},
+    {"role": "main", "x-claude-code-session-id": "44b406fc-93cd-461f-a7f9-bc36e18285d3", "agent_header_present": false, "tools": ["Agent"]},
+    {"role": "agent", "x-claude-code-session-id": "44b406fc-93cd-461f-a7f9-bc36e18285d3", "x-claude-code-agent-id": "a6267ddef22eab1d7", "system_sha256": "7e0a99f1f3e88d0498dfb3bf986a1296ff7740dba5b313ad061a43a0e5f9df96", "tools": []},
+    {"role": "agent_summary", "x-claude-code-session-id": "44b406fc-93cd-461f-a7f9-bc36e18285d3", "x-claude-code-agent-id": "a6267ddef22eab1d7", "system_sha256": "7e0a99f1f3e88d0498dfb3bf986a1296ff7740dba5b313ad061a43a0e5f9df96", "tools": [], "last_user_block_prefix": "Describe your most recent action in 3-5 words using present tense (-ing). Name the file or function, not the branch. Do not use tools."}
+  ],
+  "query_source_header_observed": false,
+  "compact_capture": {
+    "command": "PROBE_COMPACT=1 PROBE_DIR=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-identity-4X2E79 node internal/cli/testdata/claude_identity_probe.mjs",
+    "session": "320262b9-f176-4b4d-b72c-509adb15a34a",
+    "actions": ["Remember COLOR=blue and reply MAIN_OK", "/compact", "What color did I ask you to remember?", "/exit"],
+    "exit": 0,
+    "summary_request": {
+      "agent_header_present": false,
+      "system_same_as_main": true,
+      "tools": [],
+      "last_user_content_type": "string",
+      "prefix": "CRITICAL: Respond with TEXT ONLY. Do NOT call any tools.\n\n- Do NOT use Read, Bash, Grep, Glob, Edit, Write, or ANY other tool.",
+      "suffix": "REMINDER: Do NOT call any tools. Respond with plain text only — an <analysis> block followed by a <summary> block. Tool calls will be rejected and you will fail the task."
+    },
+    "continued_request": {
+      "agent_header_present": false,
+      "messages_count": 1,
+      "first_message_role": "user",
+      "summary_block_prefix": "This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.\n\n",
+      "local_command_marker": "<command-name>/compact</command-name>",
+      "prior_assistant_present": false
+    }
+  },
+  "notes": [
+    "Agent summary retains the child's agent header and system prompt. Header-only and system-hash-only routing collide.",
+    "The exact full summary prompt is preserved independently in TestManagedGPTActualClaudeAgentAndSummaryIdentity.",
+    "An earlier --print probe did not issue agent_summary after a 32-second child delay; PTY did issue it at the 30-second timer.",
+    "This verifies Claude request shape, not OpenAI availability or end-to-end gateway repair.",
+    "The persisted probe has subsequently been hardened to whitelist environment and logged headers; the capture command identifies the original observed run."
+  ]
+}

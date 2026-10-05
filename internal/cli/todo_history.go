@@ -1,0 +1,302 @@
+// todo_history.go — SPEC-TODO-ARCHIVE-QUERY-001: `moai todo history [id]`,
+// the read surface over the backlog archive.
+//
+// The archive already exists and rides in memory on every read
+// (readRecord → readArchive); what the queue never had is a reader. This
+// verb answers, in one call, which of the four fates an id holds — the
+// three live states (`queued` | `picked` | `dropped`, all of them live rows)
+// or `archived` — and lists the archive most-recently-archived first when
+// asked with no id.
+//
+// The line shape is the contract an operator scripts against: tab-separated,
+// card text LAST, so a consumer reading the tail is unaffected if a column
+// is ever added — the convention `pr` already holds:
+//
+//	<id>\tlive\tqueued|picked|dropped\t<landing>\t<text>
+//	<id>\tarchived\t<state-at-archive>\t<landing>\t<text>
+//	<id>\tabsent
+//
+// The landing column (card t665) is the archive's answer to "which commit
+// delivered this card". Before it, `landed --sha <sha>` recorded the evidence
+// and the archive kept it in the column, but no read surface over the archive
+// ever returned it — so a closed card's delivering commit was recoverable
+// only by opening the database. The column is inserted BEFORE the text
+// precisely because the text is last: the shape above is the extension point
+// this file's contract already names.
+//
+// READ-ONLY (REQ-TAQ-010): the verb reads through LoadPure — the read that
+// never adopts, never migrates a legacy queue, and never takes the lock —
+// and calls no Mutate. A store that cannot vouch for an archive is
+// disclosed on stderr rather than answered silently (REQ-TAQ-013).
+//
+// SUBAGENT BOUNDARY (REQ-TAQ-014): nothing here prompts.
+package cli
+
+import (
+	"fmt"
+	"io"
+
+	"github.com/spf13/cobra"
+
+	"github.com/modu-ai/moai-adk/internal/factory"
+)
+
+// todoHistoryEmptyArchive is the explicit empty-archive line (REQ-TAQ-009):
+// silence is indistinguishable from a crash, so an empty listing says so.
+const todoHistoryEmptyArchive = "archive is empty"
+
+// todoHistoryDefaultLimit is the listing's default bound (REQ-TAQ-007):
+// a bounded read is the default, --limit raises or lowers it, and
+// --limit 0 lifts the bound entirely.
+const todoHistoryDefaultLimit = 20
+
+// newTodoHistoryCmd — `moai todo history [<id|n>]`. The constructor name is
+// a fixed contract: AC-TAQ-011 clause 1 and AC-TAQ-014 locate the verb by
+// grepping this exact symbol.
+func newTodoHistoryCmd() *cobra.Command {
+	var limit int
+	cmd := &cobra.Command{
+		Use:   "history [<id|n>]",
+		Short: "Look up a card's fate, or list the archive",
+		Long: `Answer what became of a card. 'moai todo history <id>' prints one
+line naming the id and its fate — 'live' with the card's current state
+('queued', 'picked', or 'dropped'), 'archived' with the state it held when
+it was closed, or 'absent' when the queue holds no record of it. A bare
+ordinal is normalized to the id form, the same rule done, undone, why and
+next accept.
+
+Every 'live' and 'archived' line carries a landing column before the card
+text: 'landing=<sha>' for a delivering commit the operator recorded with
+'moai todo landed', 'landing=ref-head' for a record holding only the
+observed ref position, 'landing=-' when no record was made, and
+'landing=malformed' when a stored record fails validation.
+
+Before the card text, appended after the landing column, the time axis
+follows (SPEC-TODO-TRANSITION-STAMPS-001): 'live' lines carry picked_at and
+dropped_at; 'archived' lines carry picked_at, dropped_at, archived_at, and
+the done-time verdict record as 'verdict=<kind>@<ref>' ('verdict=-' when
+done closed the card without --require-landed, so no query answered). Every
+absent value renders '-'. The card text is always the LAST field, and the
+pre-existing fields keep their order and content, so scripts reading the
+prefix fields are unaffected.
+
+'moai todo history' with no id lists the archive most-recently-archived
+first, bounded at 20 entries ('--limit 0' lifts the bound).
+
+The verb changes no card or schema and takes no queue mutation lock. SQLite
+may use transient coordination files while reading. Archived rows stay
+invisible to every other reader (list, next, why, analyze and the counts
+unchanged).`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runTodoHistory(cmd, args, limit)
+		},
+	}
+	cmd.Flags().IntVar(&limit, "limit", todoHistoryDefaultLimit,
+		"Maximum archived entries to list (0 = unbounded)")
+	return cmd
+}
+
+// todoHistoryLandingCell renders the landing column for one card (card
+// t665): `landing=<sha>` when the operator recorded a delivering commit,
+// `landing=ref-head` when the record carries only the observed ref position,
+// `landing=-` when no record was made, and `landing=malformed` when a stored
+// record fails its own validation.
+//
+// The three absences are kept apart deliberately. "No record" and "a record
+// asserting no delivering commit" are different facts about the card, and
+// collapsing them into one dash would let a reader conclude the operator
+// never recorded anything when in fact they recorded an observation without
+// a SHA.
+//
+// The SHA is rendered in FULL here, where `pr` abbreviates it to seven. The
+// two surfaces have different constraints: `pr` renders an aligned table
+// whose column width is the scarce resource, while this line is
+// tab-separated and unaligned, and its whole purpose is to hand back a value
+// an operator can paste into `git show` without a second lookup.
+func todoHistoryLandingCell(e *factory.LandingEvidence) string {
+	if e == nil {
+		return "landing=-"
+	}
+	if err := e.Validate(); err != nil {
+		return "landing=" + todoPRLandingMarkerMalformed
+	}
+	if e.Marker() == factory.LandingMarkerRefHead {
+		return "landing=" + factory.LandingMarkerRefHead
+	}
+	return "landing=" + e.SHA
+}
+
+// todoHistoryStampCell renders one transition stamp: the stored TEXT value,
+// or "-" when the stamp is absent — the same absent-value convention the
+// landing cell's `landing=-` established (SPEC-TODO-TRANSITION-STAMPS-001
+// REQ-TST-011).
+func todoHistoryStampCell(s *string) string {
+	if s == nil || *s == "" {
+		return "-"
+	}
+	return *s
+}
+
+// todoHistoryVerdictCell renders the done-time landing verdict record
+// (REQ-TST-011): `verdict=<kind>@<ref>` when the row carries a record, or
+// "verdict=-" when it does not. The ref rides in the SAME cell — the record
+// is the answer's coordinates, kind and ref together — and contains no tab,
+// so the line stays machine-parseable.
+func todoHistoryVerdictCell(v *factory.LandingVerdict) string {
+	if v == nil {
+		return "verdict=-"
+	}
+	return "verdict=" + string(v.Verdict) + "@" + v.Ref
+}
+
+// runTodoHistory renders the fate answer or the archive listing.
+func runTodoHistory(cmd *cobra.Command, args []string, limit int) error {
+	store := newTodoReadStore()
+	// Which store is answering is probed BEFORE the read: opening a
+	// dropped-tables database runs the DDL, whose IF NOT EXISTS recreates
+	// the archive tables and would erase exactly the fact the REQ-TAQ-013
+	// disclosure reports. The probe runs on its own connection and runs no
+	// DDL.
+	vouch := factory.InspectBacklogArchiveVouch(store.Path())
+
+	rec, err := store.LoadPure()
+	if err != nil {
+		if _, werr := fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err); werr != nil {
+			return werr
+		}
+		return err
+	}
+	errOut := cmd.ErrOrStderr()
+	// REQ-TAQ-013 — a store that cannot vouch for an archive says which
+	// store answered, on stderr only, so a machine reading stdout is
+	// unaffected and `absent` is never mistaken for an authoritative
+	// archive answer.
+	switch vouch.Store {
+	case factory.BacklogStoreLegacyJSON:
+		if _, werr := fmt.Fprintf(errOut, "history: answered by %s; no archive is available\n", vouch.Store); werr != nil {
+			return werr
+		}
+	case factory.BacklogStoreSQLite:
+		if !vouch.HasArchive {
+			if _, werr := fmt.Fprintf(errOut, "history: answered by %s; its archive tables are missing; no archive is available\n", vouch.Store); werr != nil {
+				return werr
+			}
+		}
+	}
+	// REQ-BJD-002 — the same vouch already in hand carries the State D
+	// fact; no second probe (REQ-BJD-006).
+	if werr := discloseNonAuthoritativeBacklogJSON(errOut, "history", vouch); werr != nil {
+		return werr
+	}
+	// SPEC-TODO-STALE-STORE-001 REQ-TSS-001 — history enters disclosure
+	// ONLY through this direct call (AC-TSS-001e), so the stale-store fact
+	// rides the same stream here; the fact is the single stale-store detector's
+	// (REQ-TSS-004), not a second probe.
+	if werr := discloseStaleLocalStores(errOut, "history",
+		factory.InspectStaleLocalStores(todoQueueRootForDisclosure())); werr != nil {
+		return werr
+	}
+
+	out := cmd.OutOrStdout()
+	if len(args) == 0 {
+		if limit < 0 {
+			return fmt.Errorf("todo history: --limit must be >= 0 (got %d)", limit)
+		}
+		return renderTodoHistoryListing(out, errOut, rec, limit)
+	}
+	return renderTodoHistoryLookup(out, errOut, rec, normalizeTodoRef(args[0]))
+}
+
+// renderTodoHistoryLookup prints the one fate line for id on behalf of the
+// history verb. See renderTodoLookup — the machine is shared with `show`
+// (SPEC-TODO-SURFACE-POLISH-001 REQ-TSP-001), and only the stderr
+// qualifier's verb name differs.
+func renderTodoHistoryLookup(out, errOut io.Writer, rec *factory.BacklogRecord, id string) error {
+	return renderTodoLookup(out, errOut, rec, id, "history")
+}
+
+// renderTodoLookup prints the one fate line for id, the shared lookup
+// machine behind `history <id>` and `show <id>`. An absent id at or below
+// the queue's issued-id mark additionally qualifies the answer on stderr
+// (REQ-TAQ-004, extended to show by REQ-TSP-002): the mark is the queue's
+// durable record of how many ids were ever issued, so such an id MAY have
+// been issued and destroyed — keyed on last_seq, never on archive emptiness
+// (an emptiness key would go silent after the first done while destroyed
+// cards stay destroyed). The qualifier names the verb that answered, so a
+// reader tracing a stderr line back to its surface is never misled.
+//
+// Ordering coupling (plan §F M2): rec.LastSeq is populated by readRecord's
+// readLastSeq (backlog_migrate.go:106-110), which runs after readArchive on
+// every completed read. Every reachable degraded path here — the probe-keyed
+// disclosure and the legacy-JSON load — completes that read, so the mark is
+// present exactly where the note is most needed.
+func renderTodoLookup(out, errOut io.Writer, rec *factory.BacklogRecord, id, verb string) error {
+	for _, it := range rec.Items {
+		if it.ID == id {
+			// The live line appends the time axis before the card text
+			// (REQ-TST-012): picked_at and dropped_at, "-" marking absence.
+			// SPEC-TODO-CLAIM-LEASE-001 REQ-TCL-010: a claimed card also
+			// carries the by=/lease= cells before the text; an un-claimed
+			// card renders none, keeping its historical shape.
+			_, err := fmt.Fprintf(out, "%s\tlive\t%s\t%s\t%s\t%s\t%s%s\n",
+				it.ID, it.State, todoHistoryLandingCell(it.Landing),
+				todoHistoryStampCell(it.PickedAt), todoHistoryStampCell(it.DroppedAt),
+				todoLeaseCells(it), todoPRCell(it.Text))
+			return err
+		}
+	}
+	if at := rec.ArchivedIndex(id); at >= 0 {
+		entry := rec.Archived[at]
+		_, err := fmt.Fprintf(out, "%s\tarchived\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			entry.Item.ID, entry.Item.State, todoHistoryLandingCell(entry.Item.Landing),
+			todoHistoryStampCell(entry.Item.PickedAt), todoHistoryStampCell(entry.Item.DroppedAt),
+			todoHistoryStampCell(entry.ArchivedAt), todoHistoryVerdictCell(entry.LandingVerdict),
+			todoPRCell(entry.Item.Text))
+		return err
+	}
+	_, err := fmt.Fprintf(out, "%s\tabsent\n", id)
+	if n, ok := factory.ParseBacklogSeq(id); ok && n <= rec.LastSeq {
+		if _, werr := fmt.Fprintf(errOut,
+			"%s: %s is at or below this queue's issued-id mark (last_seq %d) — it may have been issued and its record destroyed; absent does not establish never-issued\n",
+			verb, id, rec.LastSeq); werr != nil {
+			return werr
+		}
+	}
+	return err
+}
+
+// renderTodoHistoryListing prints the archive newest-first (the record
+// stores archive order oldest-first, so the listing walks it backwards),
+// bounded at limit entries (0 = unbounded). A truncated listing states the
+// withheld count on stderr (REQ-TAQ-008) — a truncated read must never be
+// mistaken for a complete one.
+func renderTodoHistoryListing(out, errOut io.Writer, rec *factory.BacklogRecord, limit int) error {
+	total := len(rec.Archived)
+	if total == 0 {
+		_, err := fmt.Fprintln(out, todoHistoryEmptyArchive)
+		return err
+	}
+	shown := total
+	if limit > 0 && limit < total {
+		shown = limit
+	}
+	for i := 0; i < shown; i++ {
+		entry := rec.Archived[total-1-i]
+		if _, err := fmt.Fprintf(out, "%s\tarchived\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			entry.Item.ID, entry.Item.State, todoHistoryLandingCell(entry.Item.Landing),
+			todoHistoryStampCell(entry.Item.PickedAt), todoHistoryStampCell(entry.Item.DroppedAt),
+			todoHistoryStampCell(entry.ArchivedAt), todoHistoryVerdictCell(entry.LandingVerdict),
+			todoPRCell(entry.Item.Text)); err != nil {
+			return err
+		}
+	}
+	if withheld := total - shown; withheld > 0 {
+		if _, err := fmt.Fprintf(errOut,
+			"history: %d archived entries withheld — showing %d of %d (--limit 0 lists all)\n",
+			withheld, shown, total); err != nil {
+			return err
+		}
+	}
+	return nil
+}

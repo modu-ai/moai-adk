@@ -1,34 +1,43 @@
 package config
 
-// profile.go — SPEC-MODEL-PROFILE-MATRIX-001 M1: the llm.profile closed-set
-// enum, its effective-default resolution (with the legacy performance_tier
-// read-time alias), the {model, effort} pair type, and per-agent-override
-// validation. The profile selects the active per-agent-group model+effort
-// column {max, medium, low}, replacing the retired plan_type × tier axis.
+// profile.go — the llm.profile closed-set enum, its effective-default
+// resolution, and per-agent-override validation. Re-ported under
+// SPEC-WEB-AGENTFM-RESTORE-001 M1 (operator card t1411) from the copy
+// SPEC-AGENT-MODEL-INHERIT-001 M5 deleted (3fa8bd2ab): the console surface
+// that reads and writes these keys is restored, so their reader machinery
+// returns with it. The `llm.profiles` config-mirror field and the legacy
+// `llm.performance_tier` read-time alias leg are deliberately NOT re-ported
+// (plan §D.4-3 — the alias key stays retired and stripped; the Go default
+// matrix in template is the SSOT), so the resolution chain is
+// profile → default medium only.
 
 import "strings"
 
-// Profile closed-set values (REQ-MPM-001). Named constants per CLAUDE.local.md
-// §14 (no magic strings for the enum), mirroring the validPlanTypes pattern.
-//
-// The top column is named "high" (formerly "max"). The rename unifies three
-// vocabularies that previously disagreed: llm.profile, the legacy
-// llm.performance_tier, and template.ModelPolicy are now all {high, medium,
-// low}, so the former performance_tier high->max projection is an identity and
-// no migration pass is required. Configs written before the rename carry
-// profile: max; LegacyProfileMax keeps them resolving via NormalizeProfile.
+// Profile closed-set values. Named constants per CLAUDE.local.md §14 (no
+// magic strings for the enum). The top column carries TWO LIVE SPELLINGS:
+// "high" is the config-canonical spelling this package's closed set speaks,
+// and "max" is the restored console selector's wire spelling
+// (template.ValidPerformanceTiers), which the console persists verbatim to
+// llm.profile (AC-AFR-002, REQ-AFR-003). Reads fold max → high via
+// NormalizeProfile so both spellings resolve the same column; display
+// surfaces that address the selector restore the wire spelling at the render
+// boundary (web agentFMPerfTierSeed).
 const (
-	// ProfileHigh is the highest-quality profile column.
+	// ProfileHigh is the highest-quality profile column (the canonical
+	// spelling).
 	ProfileHigh = "high"
-	// ProfileMedium is the balanced default profile column (DECISION-002).
+	// ProfileMedium is the balanced default profile column.
 	ProfileMedium = "medium"
 	// ProfileLow is the economical profile column.
 	ProfileLow = "low"
-	// LegacyProfileMax is the superseded name of the top column. It is accepted
-	// as a read-time alias for ProfileHigh and is never written back.
+	// LegacyProfileMax is the selector's wire spelling of the top column —
+	// the same column as ProfileHigh, persisted verbatim by the console
+	// selector (AC-AFR-002) and folded to ProfileHigh on read. The name
+	// records its pre-restore lineage, not a dead value.
 	LegacyProfileMax = "max"
-	// DefaultProfile is the effective profile when llm.profile is absent/empty
-	// and no legacy performance_tier alias applies (REQ-MPM-002, DECISION-002).
+	// DefaultProfile is the effective profile when llm.profile is absent or
+	// empty: agents resolve the session model/effort (REQ-AFR-002 inheritance
+	// default), and the console matrix resolves its medium column.
 	DefaultProfile = ProfileMedium
 )
 
@@ -39,12 +48,13 @@ var validProfiles = map[string]bool{
 	ProfileLow:    true,
 }
 
-// NormalizeProfile maps a persisted profile value onto the canonical closed set,
-// translating the superseded top-column name (max -> high). Any other value is
-// returned verbatim so callers can still reject it as out-of-set.
+// NormalizeProfile maps a persisted profile value onto the canonical closed
+// set, translating the selector's wire spelling of the top column
+// (max -> high — LegacyProfileMax). Any other value is returned verbatim so
+// callers can still reject it as out-of-set.
 //
 // @MX:ANCHOR: [AUTO] NormalizeProfile — the max->high read-time alias
-// @MX:REASON: [AUTO] fan_in >= 3 (EffectiveProfile + validateProfile + template NormalizeToTier); the sole compatibility bridge for pre-rename configs
+// @MX:REASON: [AUTO] fan_in >= 2 (EffectiveProfile + validateProfile + template tier helpers); the sole compatibility bridge for pre-restore configs
 func NormalizeProfile(name string) string {
 	if name == LegacyProfileMax {
 		return ProfileHigh
@@ -67,56 +77,32 @@ func ValidProfiles() []string {
 	return []string{ProfileHigh, ProfileMedium, ProfileLow}
 }
 
-// ModelEffort carries a {model, effort} assignment for one agent or one
-// profile group cell. Model is a Claude Code short alias (opus/sonnet/fable/
-// inherit); Effort is a reasoning effort level (low/medium/high/xhigh/max).
-type ModelEffort struct {
-	Model  string `yaml:"model"`
-	Effort string `yaml:"effort"`
-}
-
-// EffectiveProfile resolves the active profile (REQ-MPM-002):
+// EffectiveProfile resolves the active profile:
 //  1. a non-empty llm.profile value passes through NormalizeProfile
 //     (max -> high; high/medium/low verbatim);
-//  2. else the legacy llm.performance_tier is used the same way — since the
-//     top column is now named "high", the former high->max projection is an
-//     identity and a pre-rename "max" resolves to "high";
-//  3. else the default profile ("medium", DECISION-002).
+//  2. else the default profile ("medium").
 //
-// The separate init-selection constant DefaultModelPolicy = "medium"
-// (template package) is NOT consulted here; since
-// SPEC-CLI-WIZARD-RESTRUCTURE-001 it happens to agree with this function's own
-// default. With the top column renamed from "max" to "high", the profile and
-// performance_tier axes share one vocabulary, so no separate projection
-// survives — only the max -> high read alias remains.
+// The legacy llm.performance_tier alias leg of the pre-deletion resolver is
+// deliberately absent: that key stays retired (plan §D.4-3), no reader
+// survives for it, and an llm.yaml still carrying the key has it stripped by
+// the update pipeline. An out-of-set value is returned verbatim so callers
+// can reject it (validateProfile names it in the atomic-reject set).
 func (l LLMConfig) EffectiveProfile() string {
 	if p := strings.TrimSpace(l.Profile); p != "" {
 		return NormalizeProfile(p)
-	}
-	if pt := strings.TrimSpace(l.PerformanceTier); pt != "" {
-		return NormalizeProfile(pt)
 	}
 	return DefaultProfile
 }
 
 // validOverrideModels is the closed set of model aliases accepted in an
-// llm.agent_overrides entry. It matches the aliases used by Matrix A, plus the
-// inherit sentinel, plus "haiku" as an explicit user opt-in.
-//
-// haiku is admitted HERE ONLY. The relaxation is deliberately scoped to the
-// per-agent override surface — a hand-picked, per-agent economy choice — and
-// changes nothing else:
-//   - defaultProfileMatrix (template package) stays haiku-free: no profile
-//     column ever resolves an agent to haiku on its own.
-//   - validRoutingModels (model_routing.go) stays haiku-free: the
-//     model_routing_profiles closed set is a separate surface.
-//
-// The tier layer already contemplates haiku for mechanical agents (see
-// template.ModelPolicyMedium/Low), so admitting it as an explicit override
-// removes an asymmetry rather than introducing one.
+// llm.agent_overrides entry (REQ-AFR-006). It matches the aliases the console
+// selector offers, plus the inherit sentinel, plus "haiku" as an explicit
+// user opt-in. haiku is admitted HERE ONLY: no profile column ever resolves
+// an agent to haiku on its own, and no other closed set in the tree admits it.
 //
 // Caveat worth knowing when picking haiku: Claude's reasoning-effort levels do
-// not apply to Haiku, so the effort paired with a haiku override is inert.
+// not apply to Haiku, so the effort paired with a haiku override is inert
+// (the console disables the effort select and backfills the resolved value).
 var validOverrideModels = map[string]bool{
 	"opus":    true,
 	"sonnet":  true,
@@ -126,7 +112,8 @@ var validOverrideModels = map[string]bool{
 }
 
 // validOverrideEfforts is the closed set of effort levels accepted in an
-// llm.agent_overrides entry (the canonical 5-tier effort vocabulary).
+// llm.agent_overrides entry (the canonical 5-tier effort vocabulary,
+// REQ-AFR-006).
 var validOverrideEfforts = map[string]bool{
 	"low":    true,
 	"medium": true,
@@ -135,9 +122,14 @@ var validOverrideEfforts = map[string]bool{
 	"max":    true,
 }
 
-// retainedAgentNames is the closed set of canonical retained-agent names an
-// llm.agent_overrides entry may key on (REQ-MPM-007). The 10 MoAI-custom
-// agents plus the Anthropic built-in Explore.
+// retainedAgentNames is the closed set of canonical agent names an
+// llm.agent_overrides entry may key on (REQ-AFR-006, REQ-MPM-007 lineage).
+// It is the canonical retained catalog (template.RetainedAgents lineage, 13
+// names): the definition-file agents at the 2026-10-02 measurement
+// (manager-todo in, mission-governor out) plus the Anthropic built-in
+// Explore, which keeps its entry so pre-restore overrides for it stay valid
+// and resolvable. A newly retained agent must be registered here before an
+// operator can target it with an override.
 var retainedAgentNames = map[string]bool{
 	"manager-spec":    true,
 	"plan-auditor":    true,
@@ -145,17 +137,20 @@ var retainedAgentNames = map[string]bool{
 	"manager-develop": true,
 	"super-advisor":   true,
 	"manager-design":  true,
+	"manager-lead":    true,
 	"builder-harness": true,
 	"e2e-tester":      true,
 	"manager-docs":    true,
 	"manager-git":     true,
+	"manager-todo":    true,
 	"Explore":         true,
 }
 
-// validateProfile checks the llm.profile value against the closed set
-// (REQ-MPM-008). An empty value is the effective default (medium) and is not an
-// error. A non-empty out-of-set value returns a ValidationError naming the
-// offending value AND the closed set {max, medium, low}.
+// validateProfile checks the llm.profile value against the closed set. An
+// empty value is the effective default (medium) and is not an error. A
+// non-empty out-of-set value returns a ValidationError naming the offending
+// value AND the closed set, joining the console's atomic-reject flow
+// (REQ-AFR-006/007).
 func validateProfile(cfg *Config) []ValidationError {
 	p := strings.TrimSpace(cfg.LLM.Profile)
 	if p == "" || IsValidProfile(p) {
@@ -169,10 +164,10 @@ func validateProfile(cfg *Config) []ValidationError {
 	}}
 }
 
-// validateAgentOverrides checks each llm.agent_overrides entry (REQ-MPM-007).
-// An entry naming an agent outside the retained catalog, or carrying a model or
-// effort value outside the valid enums, returns a ValidationError naming the
-// offending agent and field. An empty map is valid.
+// validateAgentOverrides checks each llm.agent_overrides entry (REQ-AFR-006).
+// An entry naming an agent outside the retained catalog, or carrying a model
+// or effort value outside the valid enums, returns a ValidationError naming
+// the offending agent and field. An empty map is valid.
 func validateAgentOverrides(cfg *Config) []ValidationError {
 	var errs []ValidationError
 	for agent, me := range cfg.LLM.AgentOverrides {

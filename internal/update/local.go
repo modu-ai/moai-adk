@@ -11,6 +11,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // LocalConfig holds configuration for local file-based updates.
@@ -146,12 +147,12 @@ func (c *localChecker) IsUpdateAvailable(current string) (bool, *VersionInfo, er
 	return true, info, nil
 }
 
-// isDevVersion checks if the version string indicates a dev build.
+// isDevVersion checks if the version string indicates a dev build. It
+// delegates to the shared pkg/version discriminator so local-file checks and
+// the remote auto-update path classify codename builds (e.g. "moai_cp/...")
+// identically (card t678).
 func (c *localChecker) isDevVersion(v string) bool {
-	return strings.Contains(v, "dirty") ||
-		strings.Contains(v, "dev") ||
-		strings.Contains(v, "none") ||
-		!strings.HasPrefix(v, "v") && !strings.Contains(v, ".")
+	return version.IsDevBuild(v)
 }
 
 // localVersionInfo represents the contents of version.json.

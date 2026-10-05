@@ -17,7 +17,7 @@ There are three broad ways to use Claude Code for agent-tic development. (1) Use
 | **Quality gates** | User checks manually each time | Varies per tool | SPEC 3-phase + TRUST 5, auto-verification |
 | **Learning loop** | Fresh start each session | Usually none | Self-evolution accumulating observations into rules |
 | **Session continuity** | Breaks at every `/clear` | Varies per tool | Paste-ready history + auto-injection |
-| **Agent roster** | Single session | Single session | 12-agent catalog + 3-phase workflow |
+| **Agent roster** | Single session | Single session | 13-agent catalog + 3-phase workflow |
 
 Claude Code alone is not bad. Rather, MoAI-ADK does NOT replace Claude Code — it **wraps** it and adds structure on top. Model routing, quality gates, cost control, learning loops, session continuity — the parts Claude Code left to users, the harness takes as system responsibility.
 
@@ -39,7 +39,7 @@ Unit prices dropped 98% in three years (Linux Foundation), yet enterprise AI spe
 
 {{< icon target >}} **Claude Code alone / Generic wrapper** — The model plans its own steps, and the user watches cost. Even with low unit prices, many steps still make large bills.
 
-{{< icon target primary >}} **MoAI-ADK** — What divides cost is not unit price but **assignment**. In the DeepSWE benchmark, Opus 5's lowest inference scored higher than Sonnet 5's highest while costing one-sixteenth per task. Retry loops write the bill, not token unit prices. So assign the right model and inference depth per task, diet the context, and stop before budget overflow. `moai cg`'s Claude+GLM hybrid mode brings 60-70% cost reduction on implementation-heavy work.
+{{< icon target primary >}} **MoAI-ADK** — What divides cost is not unit price but **assignment**. In the DeepSWE benchmark, Opus 5's lowest inference scored higher than Sonnet 5's highest while costing one-sixteenth per task. Retry loops write the bill, not token unit prices. So assign the right model and inference depth per task, diet the context, and stop before budget overflow. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
 Covered in detail in [Tokenomics overview](/en/advanced/tokenomics-overview/) and [Cost optimization](/en/cost-optimization/).
 
@@ -61,7 +61,7 @@ Rework is the largest token waste. A bug that returns once costs more than all r
 
 {{< icon package >}} **Generic wrapper** — Quality standards vary per tool or don't exist at all.
 
-{{< icon package primary >}} **MoAI-ADK** — Changes "done" to *verified done*. SPEC 3-phase (plan → run → sync) and TRUST 5 gates (tested·readable·unified·secured·trackable) apply to every change. Gates judge verification, not agents. The 12-agent catalog separates planning and auditing from the start, so the planning side can't mark its own homework. The [Verification-Claim Integrity](/en/core-concepts/verification-claim-integrity/) rule prevents unobserved "passes" from slipping through as gaps.
+{{< icon package primary >}} **MoAI-ADK** — Changes "done" to *verified done*. SPEC 3-phase (plan → run → sync) and TRUST 5 gates (tested·readable·unified·secured·trackable) apply to every change. Gates judge verification, not agents. The 13-agent catalog separates planning and auditing from the start, so the planning side can't mark its own homework. The [Verification-Claim Integrity](/en/core-concepts/verification-claim-integrity/) rule prevents unobserved "passes" from slipping through as gaps.
 
 Covered in detail in [Harness engineering](/en/core-concepts/harness-engineering/), [TRUST 5 Quality](/en/core-concepts/trust-5/), [SPEC-based development](/en/core-concepts/spec-based-dev/).
 

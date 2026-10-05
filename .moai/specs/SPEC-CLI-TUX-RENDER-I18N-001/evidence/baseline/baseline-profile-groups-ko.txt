@@ -1,0 +1,30 @@
+=== RUN   TestPtyCaptureChild
+● ○ ○ ○ ○ ○ ○ ○ ○ ○ 1 / 10
+┃ 언어를 선택하세요
+┃ 이 설정 마법사와 Claude 응답에 사용할 언어입니다.
+┃   English           - English
+┃ ▸ Korean (한국어)   - 한국어
+┃   Japanese (日本語) - 日本語
+┃   Chinese (中文)    - 中文
+
+
+
+
+
+
+
+
+
+
+
+
+
+↑ 위 • ↓ 아래 • / 검색 • enter 선택
+
+
+
+
+
+
+
+

@@ -1,0 +1,18 @@
+id: go-defer-in-loop
+snapshots:
+  ? |
+    for idx := range items {
+        defer release(idx)
+    }
+  : labels:
+    - source: defer release(idx)
+      style: primary
+      start: 29
+      end: 47
+    - source: |-
+        for idx := range items {
+            defer release(idx)
+        }
+      style: secondary
+      start: 0
+      end: 49

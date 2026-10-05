@@ -13,9 +13,9 @@ package config
 // @MX:NOTE: [AUTO] audit_models.go — multi-model audit enum + AuditConfig surface for the MCP audit backends
 // @MX:SPEC: SPEC-MOAI-MCP-SERVER-001
 
-// AuditModel enum (audit_model in workflow.yaml). `multi` is a DECLARED token
-// only — its convergence logic is owned by SPEC-AUDIT-MULTI-MODEL; the M3
-// surface accepts the token but does NOT orchestrate the parallel fan-out.
+// AuditModel enum (audit_model in workflow.yaml). The token is validated and
+// consumed by ResolveAuditPlan, which maps it to a per-backend gate; the `multi`
+// fan-out across backends is orchestrated by the audit_multi tool.
 const (
 	// AuditModelClaude is the default single-backend audit model.
 	AuditModelClaude = "claude"
@@ -23,9 +23,9 @@ const (
 	AuditModelCodex = "codex"
 	// AuditModelGLM selects the GLM reviewer as the active backend.
 	AuditModelGLM = "glm"
-	// AuditModelMulti declares the multi-auditor convergence model. Accepted as
-	// a stored value; its convergence logic is deferred to
-	// SPEC-AUDIT-MULTI-MODEL (AP-8).
+	// AuditModelMulti selects the multi-auditor convergence model: the
+	// audit_multi tool fans the review out across the backends and converges
+	// their verdicts.
 	AuditModelMulti = "multi"
 )
 
@@ -45,12 +45,26 @@ const (
 // enum token (off|advisory|required). The zero value (empty string) is treated
 // by the convergence engine as "unset — apply the distributed default".
 type AuditGates struct {
-	// Claude gates the always-available anchor verdict.
+	// Claude gates the source-aware Claude participant: the in-session anchor
+	// for Claude-origin sessions, or the independent subscription backend.
 	Claude string `yaml:"claude,omitempty" json:"claude,omitempty"`
 	// Codex gates the codex JSON-RPC reviewer.
 	Codex string `yaml:"codex,omitempty" json:"codex,omitempty"`
 	// GLM gates the GLM reviewer (advisory by default — user-enabled).
 	GLM string `yaml:"glm,omitempty" json:"glm,omitempty"`
+}
+
+// ModelEffort carries a {model, effort} assignment for one audit pin (or any
+// other single-recipient {model, effort} pair that survives the retirement of
+// the per-agent profile matrix under SPEC-AGENT-MODEL-INHERIT-001). Model is a
+// Claude Code short alias (opus/sonnet/fable/inherit) or a backend-specific
+// model id; Effort is a reasoning effort level (low/medium/high/xhigh/max, or
+// the z.ai {low, high, max} vocabulary on the GLM pin). It lived in profile.go
+// until that file was deleted; it is relocated here because the audit pins are
+// its remaining consumers.
+type ModelEffort struct {
+	Model  string `yaml:"model"`
+	Effort string `yaml:"effort"`
 }
 
 // AuditConfig is the workflow.audit block: the active audit_model, the
@@ -61,13 +75,25 @@ type AuditConfig struct {
 	Model string `yaml:"model,omitempty" json:"model,omitempty"`
 	// Gates carries the per-auditor gate tokens.
 	Gates AuditGates `yaml:"gates,omitempty" json:"gates,omitempty"`
+	// Claude pins the subscription-backed Claude audit backend. An empty model
+	// means no pin; the runtime uses its documented
+	// claude-opus-5-5/medium default (SPEC-MODEL-MATRIX-UPDATE-001
+	// REQ-MMU-002, operator gate 2026-09-30 — previously sonnet/high).
+	Claude ModelEffort `yaml:"claude,omitempty" json:"claude,omitempty"`
 	// Codex pins the codex audit backend's {model, effort}
 	// (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-001/002). Precedence at the
 	// audit entry points: this pin > SSOT sync-auditor cell > empty. An empty
 	// Model is NO pin (effort alone pins nothing — the model is the gate), and
-	// the empty fallback resolves exactly as before this SPEC (REQ-AMP-004).
+	// an explicit caller model still outranks the pin (REQ-AMP-004).
 	// Effort uses the codex/Claude vocabulary (low|medium|high|xhigh|max).
-	// Distributed default and Go default stay EMPTY (REQ-AMP-005 neutrality).
+	//
+	// REQ-AMP-005 SUPERSEDED (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-001,
+	// operator directive 2026-09-30): the AMP-005 "distributed default and Go
+	// default stay EMPTY" neutrality no longer holds — the distributed template
+	// (workflow.yaml), the Go default (NewDefaultWorkflowConfig), and the
+	// resolver terminal fallback (resolveCodexAuditModelEffort) all carry the
+	// new {gpt-6.1-sol, high} pin. REQ-AMP-008 (audit-only pin, never task
+	// delegation) is unchanged.
 	Codex ModelEffort `yaml:"codex,omitempty" json:"codex,omitempty"`
 	// GLM pins the GLM audit backend's {model, effort} (REQ-AMP-001/003).
 	// Same pin semantics as Codex (empty model = no pin). Effort uses the

@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK 是用 **成本 · 自我改进 · 品质把控** 三大核心把 Claude Code 包起来的 **Agentic Development Kit**。同等质量的代码用更少的 token 产出（成本，代币经济学），每轮会话跑过都会把观察沉淀成规则，让 harness 越用越好（自我改进，智能体循环工程），并用 SPEC 3-phase 与 TRUST 5 门禁挡住返工，用证据判定「完成」（品质把控，智能体 Harness）—— 模型选择、推理深度、上下文用量都由系统从外部强制。11 个专业 AI 智能体与 31 个技能协作，对新项目自动应用 TDD（默认），对测试覆盖率低的既有项目自动应用 DDD。
+MoAI-ADK 是用 **成本 · 自我改进 · 品质把控** 三大核心把 Claude Code 包起来的 **Agentic Development Kit**。同等质量的代码用更少的 token 产出（成本，代币经济学），每轮会话跑过都会把观察沉淀成规则，让 harness 越用越好（自我改进，智能体循环工程），并用 SPEC 3-phase 与 TRUST 5 门禁挡住返工，用证据判定「完成」（品质把控，智能体 Harness）—— 模型选择、推理深度、上下文用量都由系统从外部强制。13 个专业 AI 智能体与 31 个技能协作，对新项目自动应用 TDD（默认），对测试覆盖率低的既有项目自动应用 DDD。
 
 用 Go 编写的单一二进制 —— 无依赖即可在所有平台上即时运行。
 
@@ -22,7 +22,7 @@ MoAI-ADK 是一个 **让智能体在 Claude Code 内相互协作进行智能体�
 | AI 开发团队 | MoAI-ADK | 角色 |
 |----------|----------|------|
 | 产品负责人 | 用户(开发者) | 决定要做什么 |
-| 团队领导 / Tech Lead | MoAI 编排器 | 协调整体工作并委派给 11 个智能体 |
+| 团队队长 / Tech Lead | MoAI 编排器 | 协调整体工作并委派给 13 个智能体 |
 | 策划 / Spec Writer | manager-spec | 把需求整理成 SPEC 文档 |
 | 开发者 / Engineers | manager-develop(注入领域上下文) | 用 DDD/TDD 实现实际代码 |
 | QA / 代码评审者 | plan-auditor · sync-auditor | 独立审计计划与产出物 |
@@ -33,7 +33,7 @@ v3.0 的价值可归纳为三大核心。
 
 ### 代币经济学(Token Economics)
 
-最大化性价比的智能资源分配。按作业阶段与 SPEC 大小声明式地分配模型与推理深度的 **3 层模型策略**,组合 Claude 领导与 GLM Worker 将实现成本降低 60-70% 的 **CG 模式**,在超预算前正常停止的 **Token Circuit Breaker**,以及缩减常驻加载上下文的 **上下文瘦身** —— 这些构成了这一核心。
+最大化性价比的智能资源分配。决定会话的模型与推理深度的 **会话模型策略**（子代理沿用会话的模型与推理深度）,在超预算前正常停止的 **Token Circuit Breaker**,以及缩减常驻加载上下文的 **上下文瘦身** —— 这些构成了这一核心。
 
 ### 智能体循环工程(Agentic Loop Engineering)
 
@@ -41,7 +41,7 @@ v3.0 的价值可归纳为三大核心。
 
 ### 智能体 harness(Agentic Harness)
 
-不亲自写代码,而是设计智能体能好好工作的环境。11 个智能体目录、基于 SPEC 的 3-phase 工作流(plan → run → sync)、TRUST 5 质量门禁、用自然语言请求生成项目专用 harness 的 Harness v4 Builder 构成这一核心。详细概念请参阅[harness 工程](/zh/core-concepts/harness-engineering)文档。
+不亲自写代码,而是设计智能体能好好工作的环境。13 个智能体目录、基于 SPEC 的 3-phase 工作流(plan → run → sync)、TRUST 5 质量门禁、用自然语言请求生成项目专用 harness 的 Harness v4 Builder 构成这一核心。详细概念请参阅[harness 工程](/zh/core-concepts/harness-engineering)文档。
 
 ## 为何是这三个
 
@@ -63,7 +63,7 @@ token 单价持续下降,但智能体式开发的 token 用量增长得更快。
 
 ### 品质把控 —— 智能体 Harness
 
-不亲自写代码,而是设计智能体能好好工作的环境。11 个智能体目录从设计阶段起就把计划与审计分离,确保写的人不会给自己的工作打分;SPEC 3-phase（plan → run → sync）、TRUST 5 门禁与 worktree 隔离一起,用证据而非「好像完成了」来判定完成。
+不亲自写代码,而是设计智能体能好好工作的环境。13 个智能体目录从设计阶段起就把计划与审计分离,确保写的人不会给自己的工作打分;SPEC 3-phase（plan → run → sync）、TRUST 5 门禁与 worktree 隔离一起,用证据而非「好像完成了」来判定完成。
 
 ## 为何是 MoAI-ADK?
 
@@ -82,7 +82,7 @@ token 单价持续下降,但智能体式开发的 token 用量增长得更快。
 
 ### 核心数字(以 v3.0 为准)
 
-- **11 个** 智能体目录(10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`)
+- **13 个** 智能体目录(12 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`)
 - **31 个** 技能(template-managed)
 - **36 个** CLI 命令 · **16 种** `/moai` 子命令
 - **16 种** 编程语言支持
@@ -122,7 +122,7 @@ flowchart TD
 | 破坏既有代码 | 用 **DDD/TDD** 先写测试来保护既有功能 |
 | 重复说明 | 用 **CLAUDE.md 与技能系统** 自动加载项目上下文 |
 | 缺少验证 | 用 **LSP 质量门禁** 自动验证代码质量 |
-| 浪费 token | 用 **模型策略 + Token Circuit Breaker** 让系统管理成本 |
+| 浪费 token | 用 **会话模型策略 + Token Circuit Breaker** 让系统管理成本 |
 
 ## 系统要求
 
@@ -241,9 +241,9 @@ MoAI-ADK 实现 **harness 工程** (Harness Engineering)范式 —— 不是亲�
 
 ## AI 智能体编排
 
-MoAI 是 **战略编排器**。它不亲自写代码,而是把工作委派给 11 个保留智能体(10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`)。核心设计原则是 **计划与审计的分离** —— 制作者不检查。
+MoAI 是 **战略编排器**。它不亲自写代码,而是把工作委派给 13 个保留智能体(12 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`)。核心设计原则是 **计划与审计的分离** —— 制作者不检查。
 
-### 11 个智能体目录
+### 13 个智能体目录
 
 | 分类 | 智能体 | 成本 | 角色 |
 |------|---------|------|------|
@@ -252,25 +252,28 @@ MoAI 是 **战略编排器**。它不亲自写代码,而是把工作委派给 11
 | | manager-docs | 🔵 | Sync 阶段: 文档化与创建 PR |
 | | manager-git | 🩵 | Git 工作流与基于 Tier 的 PR 路由 |
 | | manager-design | 🟠 | Design 阶段: Claude Design 协作 |
+| | manager-lead | 🔴 | Tier L 多里程碑协调(worktree 隔离的叶子工作者扇出 · 目录中唯一的 Agent-carrier) |
 | **Evaluator** | plan-auditor | 🔴 | SPEC 计划的独立审计(防偏见) |
 | | sync-auditor | 🔴 | 4 维质量评估(功能 40 · 安全 25 · 匠心 20 · 一致性 15) |
 | **Builder** | builder-harness | 🟠 | 生成项目专用 harness(智能体/技能/命令) |
 | **Advisor** | super-advisor | 🔵 | 高推理咨询(E1-E4 升级) |
 | **Specialist** | e2e-tester | 🟠 | 执行 Web/移动/桌面 E2E 测试 |
+| | manager-todo | 🔴 | 管理待办队列；其只读判定子角色读取已批准的 GTD 自动任务的封存快照，只返回一条判定(实际动作由确定性执行器完成) |
 | **内置** | Explore | ⚪ | 只读代码库探索 |
 
-成本颜色以默认 `medium` 配置文件的 model×effort 单元为准（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 继承会话模型（用户自行添加的智能体）。切换配置文件（`high`/`low`）时分配会变化。
+成本颜色反映各智能体工作所用模型的深度：🔴 Opus 深度推理 · 🟠 Opus 标准推理 · 🔵 浅推理 · ⚪ 只读探索。v3.2 起所有智能体都以**会话的模型与推理深度**运行 —— 子代理沿用主会话的模型与推理深度，因此看到的颜色跟随当时启动的会话，而不是逐智能体分配表（已退役）。
 
 ```mermaid
 flowchart TD
     MoAI["MoAI 编排器\n分析用户请求并委派"]
 
-    subgraph Managers["Manager 智能体 (5 个)"]
+    subgraph Managers["Manager 智能体 (6 个)"]
         M1["manager-spec\nPlan 阶段: 生成 SPEC"]
         M2["manager-develop\nRun 阶段: DDD/TDD 实现"]
         M3["manager-docs\nSync 阶段: 文档化"]
         M4["manager-git\n创建 PR, Git 操作"]
         M5["manager-design\nDesign 协作"]
+        M6["manager-lead\nTier L 多里程碑协调"]
     end
 
     subgraph Evaluators["评估智能体 (2 个)"]
@@ -283,8 +286,9 @@ flowchart TD
         B2["super-advisor\n高推理咨询"]
     end
 
-    subgraph Specialist["Specialist (1 个)"]
+    subgraph Specialist["Specialist (2 个)"]
         S1["e2e-tester\n执行 E2E 测试"]
+        S2["manager-todo\nGTD 自动任务判定"]
     end
 
     subgraph Explore["内置 (1 个)"]
@@ -363,7 +367,7 @@ Plan 阶段产出物由 **plan-auditor** 独立审计,进入 Run 阶段前会经
 
 #### 执行模式选择门禁
 
-从 Plan 阶段转到 Run 阶段时,MoAI 会自动检测当前执行环境(cc/glm/cg)并显示用户可确认或更改的选择 UI。
+从 Plan 阶段转到 Run 阶段时,MoAI 会自动检测当前执行环境(cc/glm)并显示用户可确认或更改的选择 UI。
 
 ```mermaid
 flowchart TD
@@ -371,7 +375,6 @@ flowchart TD
     B --> C{"模式选择 UI"}
     C -->|"CC"| D["Claude 专用执行"]
     C -->|"GLM"| E["GLM 专用执行"]
-    C -->|"CG"| F["Claude Leader + GLM Workers"]
 ```
 
 该门禁保证无论环境状态如何都使用正确的执行模式,防止实现过程中的模式不一致。
@@ -430,47 +433,15 @@ MoAI 编排器分析作业复杂度来选择执行形态。
 | **并行子智能体** | 3-5 个只读智能体同时扇出 | 调查·评审·审计等并行分析 |
 | **动态工作流** | 脚本编排多个智能体 | 大规模扫描、交叉验证研究 |
 
-{{< callout type="info" >}}
-**v3.0 变更**:过去的 Agent Teams 静态编排层已退役。即使强制 `--team` 也会回退到子智能体模式。不过 Claude Code 的原生 teammate 运行时 —— `moai cg` 的 tmux 分割窗口 —— 原样保留。团队模式质量钩子(TeammateIdle 的 LSP 门禁验证、TaskCompleted 的 SPEC 参照确认)也与 native teammate 运行时一同保留。
-{{< /callout >}}
+{{< callout type="info" >}} **v3.0 变更**:过去的 Agent Teams 静态编排层已退役。 即使强制 `--team` 也会回退到子智能体模式。 团队模式质量钩子(TeammateIdle 的 LSP 门禁验证、TaskCompleted 的 SPEC 参照确认)也与 native teammate 运行时一同保留。 {{< /callout >}} CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 
-### CG 模式(Claude + GLM 混合)
+### CG 停用与配置迁移
 
-代币经济学核心的实战工具。Leader 使用 **Claude API**、Workers 使用 **GLM API** 的混合模式,通过 tmux 会话级环境变量隔离实现。策略·计划·审计由 Claude 承担,大量实现由 GLM 承担,在实现为主的作业中节省 60-70% 成本。
+`moai cg` 已停用。它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  LEADER (当前 tmux pane, Claude API)                         │
-│  - moai cg 激活后用 /moai 命令编排                            │
-│  - 处理 plan, quality, sync 阶段                             │
-│  - 无 GLM 环境 → 使用 Claude API                            │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ Agent Teams (新 tmux pane)
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│  TEAMMATES (新 tmux pane, GLM API)                           │
-│  - 继承 tmux 会话环境 → 使用 GLM API                        │
-│  - 在 run 阶段执行实现作业                                    │
-│  - 用 SendMessage 与领导通信                                  │
-└─────────────────────────────────────────────────────────────┘
-```
+迁移会写入 `llm.team_mode: claude`、`llm.gateway.teammate_mode: in-process` 和 `llm.gateway.teammate_provider: inherit`。这会取消原有混合角色分配，并不会保留 Claude 领队与 GLM 队友窗格的分工。
 
-```bash
-# 1. 保存 GLM API 密钥(仅一次)
-moai glm setup sk-your-glm-api-key
-
-# 2. 激活 CG 模式(在 tmux 会话内运行 —— Claude Code 自动启动)
-moai cg
-
-# 3. 运行工作流
-/moai "作业说明"
-```
-
-| 命令 | Leader | Workers | 需要 tmux | 成本节省 | 使用场景 |
-|--------|--------|---------|----------|----------|----------|
-| `moai cc` | Claude | Claude | 否 | - | 复杂作业、最高质量 |
-| `moai glm` | GLM | GLM | 推荐 | ~70% | 成本优化 |
-| `moai cg` | Claude | GLM | **必需** | **~60%** | 质量 + 成本平衡 |
+`claude-glm` 表示 Claude 领队搭配 tmux 中的 GLM 队友。目前 TEAMMATE 集成验证尚未通过，因此不能应用或启动该方案，只能预览。安装 tmux 或设置 `verified: true` 都不能解除限制。
 
 ### 自主开发循环(Ralph Engine)
 
@@ -549,26 +520,26 @@ MoAI-ADK 使用 **@MX 代码级注释系统** 在 AI 智能体间传递上下文
 
 ## 模型策略(代币经济学的核心)
 
-MoAI-ADK 为每个智能体分配最优的模型与推理深度。目标是在套餐用量限制内最大化质量 —— 策略调整的是每个智能体在 Opus effort 阶梯上的位置,而不是换成更弱的模型级别,因为在长时程 agentic 作业中,更弱的模型会消耗更多步骤,每任务成本反而更高。
+目标是在套餐用量限制内最大化质量。在长时程 agentic 作业中，更弱的模型会消耗更多步骤、每任务成本反而更高，所以不去换更弱的模型级别，而是在同一个模型内部只调节推理深度。v3.2 起这个调节以**会话**为单位：子代理沿用主会话的模型与推理深度，智能体定义对两者都不作声明，旧版本的逐智能体分配表已经退役。
 
-| 策略 | 特点 |
+| 会话模型策略 | 特点 |
 |------|------|
-| **high** | 最高质量 —— 对调用频率最低的两个智能体使用 `max` 推理深度 |
-| **medium** (默认) | 质量与成本的平衡 —— 成本/评分曲线的拐点 |
-| **low** | 每任务成本最低 —— agentic 智能体降到 Opus `low` effort,Sonnet 仅用于单次调用的行 |
+| **high** | 会话 effort 回退 `high` |
+| **medium** (默认) | 会话 effort 回退 `medium` —— 成本/评分曲线的拐点 |
+| **low** | 会话 effort 回退 `low` —— 同一个模型内部的节省用法 |
 
 ### 设置方法
 
 ```bash
-# 项目初始化时
-moai init my-project          # 在交互式向导中选择模型策略
+# 设置会话模型策略（会话模型策略问题）
+moai profile setup
 
-# 既有项目重新设置
-moai update                   # 对各设置步骤给出交互式提示
+# 随时调整会话 effort
+# /effort low|medium|high|xhigh|max  ·  ultrathink
 ```
 
 {{< callout type="info" >}}
-默认策略是 `medium`。GLM 设置隔离在 `settings.local.json` 中(不提交到 Git)。设置键是 `llm.yaml` 的 `profile: high | medium | low`(配置矩阵列)，legacy `performance_tier` 字段在 `profile` 缺失时作为别名读取(`--high`/`--low` 分别是 `--model-policy high`/`low` 的 deprecated 别名)。可用 `--profile high|medium|low` 标志直接指定，legacy 的 `max` 值也可作为输入并规范化为 `high`。
+默认 effort 回退为 `medium`。GLM 设置隔离在 `settings.local.json` 中(不提交到 Git)。已退役的 `--model-policy` / `--profile` / `--high` / `--medium-alias` / `--low` 旗标是弃用桩 —— 只打印指向 `moai profile setup` 的警告，没有任何效果。
 {{< /callout >}}
 
 ## Task 指标日志
@@ -589,7 +560,7 @@ Task 工具完成时 PostToolUse 钩子记录指标。用这些数据分析智�
 my-project/
 ├── CLAUDE.md                  # MoAI 的执行指南
 ├── .claude/
-│   ├── agents/moai/           # 10 个 MoAI 自定义智能体定义 (+ Explore 内置)
+│   ├── agents/moai/           # 12 个 MoAI 自定义智能体定义 (+ Explore 内置)
 │   ├── skills/moai-*/         # 31 个技能模块
 │   ├── hooks/moai/            # 自动化钩子脚本
 │   └── rules/moai/            # 编码规则与标准

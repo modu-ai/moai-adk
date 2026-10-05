@@ -7,7 +7,6 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/settings"
-	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
 // projectNestedForm carries the curated nested project-config fields submitted by
@@ -153,15 +152,17 @@ func parseProjectNestedForm(r *http.Request) projectNestedForm {
 // @MX:WARN: [AUTO] readProjectConfig/writeProjectConfig는 프로필 스토어가 아닌 *프로젝트 설정*
 // (.moai/config/sections/quality.yaml + git-convention.yaml)을 디스크에서 읽고 쓰는 두 번째 영속화 경계다
 // (SPEC-WEB-CONSOLE-003). handlers.go handleSave의 첫 번째 경계(WritePreferences + SyncToProjectConfig)와는 별개다.
-// @MX:REASON: [AUTO] 이 함수 쌍의 영속화는 반드시 config.NewConfigManager()/LoadRaw/SetSection/Save 를 통해서만
-// 수행하며, 그 scope는 quality(development_mode) + git_convention(convention) 두 섹션으로 한정된다. 웹 레이어에서
-// YAML을 직접 marshal/os.WriteFile 하는 것은 금지된 안티패턴(REQ-WC3-008). 구 REQ-WC3-007의 "workflow/harness/
-// git-strategy/llm 절대 금지" 조항은 SPEC-WEB-CONSOLE-011 REQ-WC11-001이 공식 SUPERSEDE했고 SPEC-WEB-CONSOLE-012
-// (REQ-WC12-040)가 최종 계약으로 좁혔다 — 편집 가능 표면은 typed 2종(git-strategy, llm) + seam 전용 6종
-// (workflow, harness, ralph, feedback, observability, security)이며 라우팅 SSOT는 settings.RouteForSection이다.
-// Save() 경로가 없는 6개 seam 섹션은 yamlpatch seam 전용(REQ-WC11-017)이고 workflow.yaml의 typed re-marshal은
-// 금지(REQ-WC11-005). 제외군(state/system/project/cache/sunset/tool-policy/lsp/mx/미지명)과 폐선 섹션
-// db(settings SSOT)·research(SPEC-WEB-CONSOLE-012 REQ-WC12-010 유령 seam 경로 제거)는 REQ-WC11-018로 계속 쓰기 금지.
+// @MX:REASON: [AUTO] 이 함수 쌍의 영속화는 settings.WriteProjectScalars(yamlpatch 라인-스플라이스,
+// SPEC-WEB-SAVE-LOSSLESS-001)를 통해서만 수행한다 — 구 LoadRaw/SetSection/Save 전체-재마샬은
+// quality.yaml 미모델링 키(constitution.session_effort_default)와 주석을 파괴하므로 금지된 경로다
+// (REQ-WSL-002/003, GitHub issue #1731). 웹 레이어에서 YAML을 직접 marshal/os.WriteFile 하는 것 역시
+// 금지된 안티패턴(REQ-WC3-008). 구 REQ-WC3-007의 "workflow/harness/git-strategy/llm 절대 금지" 조항은
+// SPEC-WEB-CONSOLE-011 REQ-WC11-001이 공식 SUPERSEDE했고 SPEC-WEB-CONSOLE-012 (REQ-WC12-040)가 최종 계약으로
+// 좁혔다 — 편집 가능 표면은 typed 2종(git-strategy, llm) + seam 전용 6종(workflow, harness, ralph, feedback,
+// observability, security)이며 라우팅 SSOT는 settings.RouteForSection이다. Save() 경로가 없는 6개 seam 섹션은
+// yamlpatch seam 전용(REQ-WC11-017)이고 workflow.yaml의 typed re-marshal은 금지(REQ-WC11-005). 제외군
+// (state/system/project/cache/sunset/tool-policy/lsp/mx/미지명)과 폐선 섹션 db(settings SSOT)·research
+// (SPEC-WEB-CONSOLE-012 REQ-WC12-010 유령 seam 경로 제거)는 REQ-WC11-018로 계속 쓰기 금지.
 // 비어있는 제출값은 기존 영속값을 덮어쓰지 않는다(empty = "keep existing", EC-1).
 
 // readProjectConfig is the real read seam (REQ-WC3-004). It loads the project
@@ -214,44 +215,14 @@ func readProjectNestedConfig(projectRoot string) (projectNestedCurrent, error) {
 }
 
 // writeProjectConfig is the real write seam (REQ-WC3-005/007). It persists each
-// non-empty value into its project-config section via the config-manager API
-// (LoadRaw → mutate only non-empty → SetSection → Save). Empty submissions leave
-// the existing persisted value unchanged (EC-1). It writes ONLY the quality
-// (development_mode) and git_convention (convention) sections — Save() round-trips
-// every other section's content unchanged. No direct yaml.Marshal/os.WriteFile.
+// non-empty value into its project-config section through the shared settings
+// seam (SPEC-WEB-SAVE-LOSSLESS-001 — settings.WriteProjectScalars, a
+// yamlpatch line-splice that rewrites only the target row). Empty submissions
+// leave the existing persisted value unchanged (EC-1). It writes ONLY the
+// quality (development_mode) and git_convention (convention) rows; every other
+// byte of both files survives. No direct yaml.Marshal/os.WriteFile.
 func writeProjectConfig(projectRoot, devMode, convention string) error {
-	mgr := config.NewConfigManager()
-	cfg, err := mgr.LoadRaw(projectRoot)
-	if err != nil {
-		return fmt.Errorf("load project config: %w", err)
-	}
-
-	changed := false
-
-	if devMode != "" && string(cfg.Quality.DevelopmentMode) != devMode {
-		quality := cfg.Quality
-		quality.DevelopmentMode = models.DevelopmentMode(devMode)
-		if err := mgr.SetSection("quality", quality); err != nil {
-			return fmt.Errorf("set quality section: %w", err)
-		}
-		changed = true
-	}
-
-	if convention != "" && cfg.GitConvention.Convention != convention {
-		gc := cfg.GitConvention
-		gc.Convention = convention
-		if err := mgr.SetSection("git_convention", gc); err != nil {
-			return fmt.Errorf("set git_convention section: %w", err)
-		}
-		changed = true
-	}
-
-	if changed {
-		if err := mgr.Save(); err != nil {
-			return fmt.Errorf("save project config: %w", err)
-		}
-	}
-	return nil
+	return settings.WriteProjectScalars(projectRoot, devMode, convention)
 }
 
 // writeProjectNestedConfig is the load-modify-write seam for the 7 curated nested

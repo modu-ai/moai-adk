@@ -1,0 +1,11 @@
+=== RUN   TestAlwaysLoadedTokenBudget
+    token_budget_guard_test.go:70: always-loaded surface = 66310 tokens (budget 77600, headroom 11290, 16 entries)
+--- PASS: TestAlwaysLoadedTokenBudget (0.04s)
+=== RUN   TestCodexContractByteCeiling
+    token_budget_guard_test.go:109: contract document AGENTS.md = 18106 bytes (ceiling 24576, headroom 6470)
+    token_budget_guard_test.go:109: contract document internal/template/templates/AGENTS.md.tmpl = 19640 bytes (ceiling 24576, headroom 4936)
+--- PASS: TestCodexContractByteCeiling (0.01s)
+=== RUN   TestCodexNestedTemplateDiscoveryBudget
+--- PASS: TestCodexNestedTemplateDiscoveryBudget (0.08s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config	0.428s

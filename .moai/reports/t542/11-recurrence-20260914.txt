@@ -1,0 +1,46 @@
+# Recurrence observation — 2026-09-14 (lane-3, card t542 continuation)
+
+Measured 2026-09-14 against the live ~/.moai/todo. Verbatim outputs.
+
+$ find ~/.moai/todo -mindepth 1 -maxdepth 1 -type d | wc -l
+       4
+
+$ stat -f '%N  birth=%SB  mod=%Sm' ~/.moai/todo/*
+/Users/goos/.moai/todo/001-3d9b96cd  birth=Sep 14 04:19:58 2026  mod=Sep 14 04:19:58 2026
+/Users/goos/.moai/todo/proj-325ca0b6  birth=Aug 23 20:23:23 2026  mod=Aug 23 20:23:23 2026
+/Users/goos/.moai/todo/t203-probe-d7a16ea2  birth=Aug 24 01:20:49 2026  mod=Aug 24 01:20:49 2026
+/Users/goos/.moai/todo/youtube-4ee46d07  birth=Sep  9 03:31:05 2026  mod=Sep  9 03:31:05 2026
+
+$ find ~/.moai/todo/001-3d9b96cd -type f
+/Users/goos/.moai/todo/001-3d9b96cd/.moai/state/kanban/backlog.lock
+/Users/goos/.moai/todo/001-3d9b96cd/.moai/state/kanban/backlog.json
+
+$ cat ~/.moai/todo/001-3d9b96cd/.moai/state/kanban/backlog.json
+{
+  "version": 1,
+  "last_seq": 1,
+  "items": [
+    {
+      "id": "t1",
+      "text": "first card",
+      "added_at": "2026-09-13T19:19:58Z",
+      "spec_id": null,
+      "state": "queued"
+    }
+  ],
+  "findings": []
+}
+
+$ du -sh ~/.moai/todo ~/.moai/todo/001-3d9b96cd
+ 96K	/Users/goos/.moai/todo
+ 8.0K	/Users/goos/.moai/todo/001-3d9b96cd
+
+# Reading
+# - 001-3d9b96cd: first post-sweep recurrence (sweep was 2026-09-13 08:54 +0900,
+#   leaving 3). Born 2026-09-14 04:19:58 +0900 — ~19.5 hours after the sweep,
+#   twelve days after the t422 guard landed in develop (a1cba5425, 2026-09-02 04:14).
+# - 001-* test shape (the class the guard was to stop) + nested kanban layout
+#   (previously seen only on the two production-origin directories).
+# - NOT deleted: outside the 2026-09-13 operator-approved enumeration (the 341
+#   then-existing 001-* only); home-directory deletion requires re-approval per
+#   the card's [HARD] clause. Preserved as t536 material.

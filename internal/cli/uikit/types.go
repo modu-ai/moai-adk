@@ -15,4 +15,10 @@ const (
 	CheckWarn CheckStatus = "warn"
 	// CheckFail indicates a critical failure.
 	CheckFail CheckStatus = "fail"
+	// CheckInfo indicates an informational observation, never a gate
+	// (SPEC-INIT-HARNESS-001 REQ-IH-011: a codex-only project's claude-surface
+	// absence is an expected state, not a warning). The renderer's default
+	// branch already printed "info" for unrecognized statuses; this constant
+	// names it.
+	CheckInfo CheckStatus = "info"
 )

@@ -2,7 +2,6 @@
 id: SPEC-UI-001
 title: Terminal UI Framework - Implementation Plan
 version: 0.1.0
-status: draft
 created: 2026-02-03
 updated: 2026-02-03
 spec_ref: SPEC-UI-001/spec.md

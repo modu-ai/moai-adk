@@ -16,29 +16,39 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
+	"strings"
 	"time"
 
 	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/session"
 )
 
 // branchGuardExemptEnv is the sentinel env var that exempts a session from the
 // guard, complementing the AgentType identity axis (REQ-WBG-011b).
 //
-// Reachability — both axes are read from what arrives at THIS process, and a
-// tool-spawned subagent can supply neither:
+// Reachability — both axes are read from what arrives at THIS process, and they
+// differ in whether a spawned agent can reach them
+// (SPEC-BRANCHGUARD-EXEMPT-REACH-001, measured 2026-09-27):
 //
-//   - AgentType arrives only in the hook payload, and Claude Code populates
-//     agent_type for a main-thread `claude --agent <name>` launch. A subagent
-//     spawned through the Agent tool sends no agent_type on PreToolUse, so the
-//     identity axis cannot fire for it.
+//   - AgentType arrives in the hook payload, and Claude Code DOES populate
+//     agent_type for an agent spawned through the Agent tool — snake_case, the
+//     same spelling HookInput decodes, carrying the spawn name verbatim rather
+//     than a catalog name. The identity axis therefore fires for a spawned
+//     agent named manager-git, and a three-arm check confirmed the deny is
+//     suppressed for it while still firing for a main-session payload and for
+//     a spawned agent under any other name. The prior comment here claimed the
+//     opposite; that claim was never measured.
 //   - This env var is read from the hook process's own environment. The hook
 //     runs as a separate process spawned BEFORE the guarded command executes,
 //     so an `export` inside that command cannot reach it. The variable must be
-//     present in the environment Claude Code itself was launched with.
+//     present in the environment Claude Code itself was launched with. This
+//     axis was NOT re-measured by that card and is unchanged.
 //
-// Exporting the sentinel inside the command being guarded is therefore a no-op,
-// and was mistaken for a broken exemption. Neither axis is defective; both are
-// simply unreachable from inside a guarded command.
+// Exporting the sentinel inside the command being guarded is therefore still a
+// no-op, and was mistaken for a broken exemption. Neither axis is defective —
+// but the reasons now differ: the sentinel's value never arrives, whereas the
+// identity value does arrive and simply did not match manager-git.
 const branchGuardExemptEnv = "MOAI_BRANCH_GUARD_EXEMPT"
 
 // branchGuardAuditRelPath is the fail-open advisory log path, relative to the
@@ -49,10 +59,14 @@ const branchGuardAuditRelPath = ".moai/logs/branch-guard-audit.log"
 // pattern-matches without parsing the full reason (REQ-WBG-001).
 const branchGuardViolationPrefix = "BRANCH_GUARD_VIOLATION"
 
-// branchStatePattern pairs a compiled branch-state regex with a human-readable
-// deny-reason suffix naming the matched command class.
+// branchStatePattern pairs a branch-state matcher — a compiled regex OR a
+// predicate function — with a human-readable deny-reason suffix naming the
+// matched command class. The predicate form (match) carries the token-level
+// `git branch` flag-class classifier (SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001);
+// every other entry uses the regex form.
 type branchStatePattern struct {
 	re     *regexp.Regexp
+	match  func(string) bool
 	suffix string
 }
 
@@ -87,23 +101,19 @@ type branchStatePattern struct {
 //     trailing token is not in the mutating set and the bare-prefix branch is
 //     anchored to end-of-string. AC-REQ-2a/2b/2d.
 //
-// Branch-form completion (kanban card t42, 2026-08-15 measurement): the
-// `git branch` pattern above already discriminates subcommands via the
-// optional mutating-flag group + the "non-flag token" rule, so every read-only
-// inquiry passes (`git branch --list develop -v`, `-v`/`-vv`/`-a`/`-r`, bare
-// `git branch`, `--show-current`, `--contains`). The card's measured incident
-// — `git branch --list develop -v` denied in the primary checkout — does NOT
-// reproduce against any committed state of this file (pickaxe across history:
-// no revision ever carried an undiscriminating `git branch` pattern), so the
-// binary that produced it predates or diverged from this source; the
-// read-only test pins keep every inquiry form excluded regardless. What WAS
-// live here: the copy flags `-c`/`-C` (git 2.23+, branch copy — a mutating
-// form that creates a ref) were missing from the flag class, so
-// `git branch -c foo` slipped through as an under-match. They are added to
-// the class, completing the mutating set
-// create(bare-name)/-d/-D/-m/-M/-c/-C. Residual (accepted): exotic combined
-// short flags (`git branch -vD foo`) do not match — under-matching an
-// obfuscated form is the documented correct direction for a fail-open guard.
+// Branch-form completion (card t42, 2026-08-15 measurement; superseded
+// for `git branch` by SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001, card t467):
+// the card's measured incident — `git branch --list develop -v` denied in the
+// primary checkout — does NOT reproduce against any committed state of this
+// file (pickaxe across history: no revision ever carried an undiscriminating
+// `git branch` pattern). t42 added the copy flags `-c`/`-C` to the then-regex
+// flag class; t467's M1 matrix then measured that the single-char class +
+// "non-flag token" rule under-matched every other mutation form
+// (`-f`/`--force`, `-u` family, `-t` family, `--delete`/`--move`/`--copy`,
+// `--edit-description`, combined clusters `-df`/`-vD`/`-vt`/`-vux`,
+// option-prefixed creation `-q qbranch`/`--no-force nfbranch`), closing the
+// residual t42 had accepted for combined short flags — the entry is now the
+// token-level classifier `matchGitBranchMutation` below.
 //
 // Patterns are case-insensitive (compiled with the (?i) prefix, matching the
 // existing compilePatterns convention in pre_tool.go).
@@ -117,7 +127,14 @@ var branchStatePatterns = func() []branchStatePattern {
 	}{
 		{`\bgit\s+switch\b`, "git switch"},
 		{`\bgit\s+checkout\s+(-b\s+)?[^\s-]`, "git checkout <branch/-b>"},
-		{`\bgit\s+branch\s+(-[dDmMcC]\s+)?[^\s-]`, "git branch"},
+		// NOTE: the `git branch` entry is NO LONGER a regex — it is the
+		// token-level flag-class classifier appended after this specs list
+		// (matchGitBranchMutation, SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001).
+		// The old `\bgit\s+branch\s+(-[dDmMcC]\s+)?[^\s-]` single-char class
+		// under-matched mutation forms (-f/--force, the -u upstream family,
+		// -t track, --delete/--move/--copy/--edit-description, combined
+		// clusters like -df/-vD, and option-prefixed creation like
+		// `-q qbranch`), which the M1 matrix measured as the defect.
 		{`\bgit\s+reset\s+--hard\b`, "git reset --hard"},
 		// `git stash` followed by EITHER a mutating subcommand (push/pop/apply/
 		// drop), end-of-input, OR a command separator/operator boundary ([;&|]).
@@ -137,7 +154,7 @@ var branchStatePatterns = func() []branchStatePattern {
 		// form always carries a branch argument (`git merge feature/x`).
 		{`\bgit\s+merge\s`, "git merge"},
 	}
-	out := make([]branchStatePattern, 0, len(specs))
+	out := make([]branchStatePattern, 0, len(specs)+1)
 	for _, s := range specs {
 		re, err := regexp.Compile("(?i)" + s.pattern)
 		if err != nil {
@@ -146,6 +163,10 @@ var branchStatePatterns = func() []branchStatePattern {
 		}
 		out = append(out, branchStatePattern{re: re, suffix: s.suffix})
 	}
+	// The `git branch` entry: predicate-matcher form (see the specs-list NOTE
+	// above). Kept INSIDE the set so blanking branchStatePatterns (M6
+	// deny-origin tests) disables it together with every regex entry.
+	out = append(out, branchStatePattern{match: matchGitBranchMutation, suffix: "git branch"})
 	return out
 }()
 
@@ -186,19 +207,767 @@ func substituteQuotedArguments(command string) string {
 	return quotedArgumentPattern.ReplaceAllString(command, quotedArgumentPlaceholder)
 }
 
+// insideAnySpan reports whether offset falls within one of the [start, end)
+// spans, which arrive sorted and non-overlapping from FindAllStringIndex.
+func insideAnySpan(offset int, spans [][]int) bool {
+	for _, s := range spans {
+		if offset >= s[0] && offset < s[1] {
+			return true
+		}
+	}
+	return false
+}
+
+// heredocOpenerPattern matches a heredoc redirection operator and captures its
+// delimiter word in whichever of the three spellings the shell accepts:
+// `<<EOF`, `<<'EOF'` and `<<"EOF"` (with `<<-` and surrounding spaces allowed).
+var heredocOpenerPattern = regexp.MustCompile(`<<-?\s*(?:'([^']*)'|"([^"]*)"|([A-Za-z_][A-Za-z0-9_]*))`)
+
+// substituteHeredocBodies replaces the BODY lines of every heredoc with the
+// same placeholder quoted spans collapse to, leaving the command line that
+// opens the heredoc — and every line after the terminator — intact.
+//
+// A heredoc body is data written to the command's stdin; it never executes.
+// Without this, the pattern scan read that data as if it were the command:
+// `moai handoff save --stdin … <<EOF … EOF` was denied with `git merge in
+// primary checkout` because the resume body it was saving named
+// `git merge --no-ff <sha>` (measured twice on 2026-09-10). The lane then
+// skipped the save, which closed the handoff-record path — the guard's false
+// positive cost a record, while the command it refused was never a git command
+// at all. substituteQuotedArguments does not cover this: a heredoc body carries
+// no quotes.
+//
+// The collapse is bounded to the body so the guard is not blinded: a real
+// branch-state command sharing the line with a heredoc, or following its
+// terminator, still matches.
+func substituteHeredocBodies(command string) string {
+	if !strings.Contains(command, "<<") {
+		return command
+	}
+	lines := strings.Split(command, "\n")
+	out := make([]string, 0, len(lines))
+	var pending []string // delimiters opened on the current line, in order
+	for _, line := range lines {
+		if len(pending) > 0 {
+			// Inside a body: the terminator is the delimiter alone on its line
+			// (leading whitespace allowed — `<<-` strips indentation).
+			if strings.TrimSpace(line) == pending[0] {
+				pending = pending[1:]
+				out = append(out, line)
+				continue
+			}
+			out = append(out, quotedArgumentPlaceholder)
+			continue
+		}
+		quoted := quotedArgumentPattern.FindAllStringIndex(line, -1)
+		for _, m := range heredocOpenerPattern.FindAllStringSubmatchIndex(line, -1) {
+			// A `<<EOF` inside a quoted argument is text the shell never reads
+			// as a redirection. Honouring it would let any command blind the
+			// guard for every following line simply by quoting the token.
+			if insideAnySpan(m[0], quoted) {
+				continue
+			}
+			for g := 1; g <= 3; g++ {
+				if m[2*g] >= 0 {
+					pending = append(pending, line[m[2*g]:m[2*g+1]])
+					break
+				}
+			}
+		}
+		out = append(out, line)
+	}
+	return strings.Join(out, "\n")
+}
+
+// shellCommentStart returns the byte offset of the `#` that opens a shell
+// comment on the line, or -1 when the line opens none. POSIX: `#` begins a
+// comment only at the start of a word — at line start, or immediately
+// preceded by whitespace or one of the command separators `;`, `&`, `|`, `(`.
+// A `#` inside a word is a literal hash (`git switch feat#123`,
+// `v=bar/#x`); admitting any of those characters to the word-start set would
+// blind the guard on exactly the operands branch names carry. `)` and `}` are
+// deliberately NOT admitted either — the shell does open a comment after
+// them, so omitting them over-matches (the guard scans text the shell
+// discards) instead of blinding, the safe direction for this set
+// (SPEC-GUARD-COMMENT-SCAN-001 REQ-GCS-002; residuals in that spec's §F).
+func shellCommentStart(line string) int {
+	for i := 0; i < len(line); i++ {
+		if line[i] != '#' {
+			continue
+		}
+		if i == 0 {
+			return i
+		}
+		switch line[i-1] {
+		case ' ', '\t', ';', '&', '|', '(':
+			return i
+		}
+	}
+	return -1
+}
+
+// substituteShellComments elides shell comments from the command before the
+// pattern scan, so a branch-state pattern matches the command being RUN
+// rather than prose carried in a comment.
+//
+// A comment is text the shell strips before execution — it can never be the
+// command being run. Without this step the pattern scan read that prose as if
+// it were the command: `# align with git merge --ff-only develop` matched
+// `git merge` (measured 2026-09-21, SPEC-GUARD-COMMENT-SCAN-001), the same
+// "data is not a command" defect class the quoted-argument and heredoc
+// collapses already close.
+//
+// The elision is bounded to the physical line the comment opens on and no
+// further (a real command on the next line is fully scannable), starts at the
+// FIRST word-start `#` on the line (a second `#` later in the same run does
+// not restart it), and leaves the text preceding that `#` intact — a
+// branch-state command carrying a trailing comment still matches. The comment
+// run is elided rather than replaced by the operand placeholder: a quoted
+// span IS an operand the shell passes to the command, but a comment is
+// removed by the shell, so modelling it as an operand would misstate the
+// shell — `git checkout -b # x` must present no operand after `-b`.
+//
+// Ordering is load-bearing: this step runs LAST — outermost, on the already
+// quote- and heredoc-collapsed string — so a `#` inside a quoted argument or
+// a heredoc body is already part of the placeholder and opens no comment
+// (`echo "text # more" ; git switch main` keeps matching).
+//
+// Residuals (accepted, SPEC-GUARD-COMMENT-SCAN-001 spec.md §F): a manufactured
+// word-start `#` after a quoted span (`foo"bar"#baz` arrives here as
+// `foo X #baz`) elides the rest of the line — blinding; the sound fix belongs
+// to substituteQuotedArguments, a different step outside that SPEC's scope. A
+// backslash-newline continuation leaves the next physical line's `#` mid-word
+// to the shell when no whitespace precedes the backslash, but line-start here.
+// `)` and `}` are not in the word-start set, so a `#` after them is scanned
+// though the shell discards it (over-match, the safe side).
+func substituteShellComments(command string) string {
+	if !strings.Contains(command, "#") {
+		return command
+	}
+	lines := strings.Split(command, "\n")
+	for i, line := range lines {
+		if idx := shellCommentStart(line); idx >= 0 {
+			lines[i] = line[:idx]
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
 // matchBranchStateCommand returns the deny-reason suffix of the first
 // branch-state pattern matching command, and a bool indicating whether any
-// pattern matched. Quoted arguments collapse to a placeholder first
-// (substituteQuotedArguments) so a match reflects the command being invoked,
-// not its data. Used by checkBranchState (M2) and by M1 pattern-set tests.
+// pattern matched. Heredoc bodies and quoted arguments collapse to a
+// placeholder first (substituteHeredocBodies, substituteQuotedArguments) and
+// shell comments are elided last (substituteShellComments) so a match
+// reflects the command being invoked, not its data. The PowerShell form
+// expansions of SPEC-HOOK-GUARD-POWERSHELL-FORMS-001 run inside the same
+// scan: the .exe-suffixed git spelling normalizes onto the plain one, a call
+// operator's quoted call target is unquoted (it is command, not data), and
+// command-position backtick escapes are de-escaped. When the outer text does
+// not match, a pwsh -Command-family payload is scanned with the same
+// pipeline — the payload is executed code. Used by checkBranchState (M2) and
+// by M1 pattern-set tests.
 func matchBranchStateCommand(command string) (string, bool) {
-	scanned := substituteQuotedArguments(command)
+	if suffix, matched := matchNormalizedBranchState(command); matched {
+		return suffix, true
+	}
+	// REQ-HGF-004: a -Command payload is executed code, not data. The full
+	// pipeline — quoted-span collapse and comment elision included — is
+	// computed WITHIN the payload, so a query payload passes and a nested
+	// quoted span inside the payload stays data
+	// (pwsh -Command "Write-Output 'git switch'" keeps its allow).
+	if payload := extractPowerShellCommandPayload(command); payload != "" {
+		if suffix, matched := matchNormalizedBranchState(payload); matched {
+			return suffix, true
+		}
+	}
+	return "", false
+}
+
+// matchNormalizedBranchState runs the collapse pipeline and the pattern set
+// over one text (the outer command, or a -Command payload).
+func matchNormalizedBranchState(command string) (string, bool) {
+	scanned := normalizeCommandForScan(command)
 	for _, p := range branchStatePatterns {
-		if p.re.MatchString(scanned) {
+		if p.match != nil {
+			if p.match(scanned) {
+				return p.suffix, true
+			}
+			continue
+		}
+		if p.re != nil && p.re.MatchString(scanned) {
 			return p.suffix, true
 		}
 	}
 	return "", false
+}
+
+// normalizeCommandForScan applies the command normalization pipeline every
+// branch-state-class scan shares: heredoc-body collapse, PowerShell
+// call-operator unquoting, quoted-argument collapse, backtick de-escaping,
+// .exe-suffix normalization, and comment elision — in the fixed order the
+// individual functions document. Extracted verbatim from
+// matchNormalizedBranchState so the protected-commit matcher
+// (SPEC-MAIN-COMMIT-BAN-001 D1) shares the EXACT pipeline rather than a
+// hand-copied sequence that could drift.
+func normalizeCommandForScan(command string) string {
+	return substituteShellComments(normalizeGitExeSuffix(
+		substituteCommandBackticks(substituteQuotedArguments(
+			substituteCallOperatorTargets(substituteHeredocBodies(command))))))
+}
+
+// --- Protected-branch commit deny (SPEC-MAIN-COMMIT-BAN-001) ---
+//
+// The second, branch-CONDITIONAL deny class of the BranchGuard family
+// (REQ-2.4): where branchStatePatterns above are branch-AGNOSTIC (they deny in
+// the primary checkout on any branch), this class additionally requires the
+// resolved HEAD branch to be in the configured deny_commits_on list. It runs
+// inside the same family: same opt-in gate (Workflow.BranchGuard.Enabled —
+// REQ-3.4, no new flag), same Seam A discriminant, same exemption axes, same
+// fail-open advisory path, same normalization pipeline.
+
+// protectedCommitPattern matches a commit-CREATING git command (D2's chosen
+// matcher): git commit (covering --amend and -a by the word anchor), git
+// revert, git cherry-pick. The \b word anchors keep "precommit"-style prose
+// from matching; case-insensitive like branchStatePatterns. Evaluated ONLY
+// for the protected-branch deny — pull/fetch/tag of a protected branch stay
+// legitimate (spec §D Non-Goals).
+var protectedCommitPattern = regexp.MustCompile(`(?i)\bgit\s+(commit|revert|cherry-pick)\b`)
+
+// resolveHeadBranch is the package-level indirection over
+// gitcore.ResolveHeadBranch. Tests swap it with a counting stub (the M6
+// deny-origin package-var idiom) to prove WHICH path resolved HEAD — notably
+// the empty-list short-circuit, whose subtest asserts a stub invocation count
+// of exactly zero (AC-7, REQ-2.5).
+var resolveHeadBranch = gitcore.ResolveHeadBranch
+
+// matchProtectedCommitCommand reports whether the command invokes a
+// commit-CREATING git verb, sharing the exact normalization pipeline
+// matchBranchStateCommand uses (normalizeCommandForScan) so quoted spans,
+// heredoc bodies, comments, and PowerShell forms classify identically: the
+// quoted text of `git commit -m "git switch main"` is data, but the command
+// verb IS a commit and still matches; `moai todo add "git commit -m x"`
+// collapses to a foreign command carrying no commit verb and does not. A pwsh
+// -Command payload is scanned as executed code (REQ-HGF-004 parity).
+func matchProtectedCommitCommand(command string) bool {
+	if protectedCommitPattern.MatchString(normalizeCommandForScan(command)) {
+		return true
+	}
+	if payload := extractPowerShellCommandPayload(command); payload != "" {
+		return protectedCommitPattern.MatchString(normalizeCommandForScan(payload))
+	}
+	return false
+}
+
+// checkProtectedCommit denies a commit-CREATING git command (git commit /
+// revert / cherry-pick) when ALL of these hold, evaluated in this order so
+// the cost is bounded to the positive path (D3):
+//
+//  0. the deny list is non-empty — REQ-2.5: checked FIRST, before the command
+//     is even extracted; unconfigured users pay one len();
+//  1. the command matches protectedCommitPattern;
+//  2. the invoking agent is not exempt (both axes, unchanged);
+//  3. the command's actual cwd is the primary checkout (Seam A discriminant);
+//  4. HEAD resolves AT THAT CWD to a branch in the deny list.
+//
+// Fail-open (REQ-2.3): a HEAD-resolution error or any git-context uncertainty
+// allows + writes the stderr advisory + appends the audit-log entry. Detached
+// HEAD resolves to ("", nil) — no named branch to protect — and ALLOWS
+// deliberately (not an uncertainty path, no advisory requirement).
+//
+// The deny reason carries the BRANCH_GUARD_VIOLATION sentinel prefix with the
+// protected branch named (REQ-2.2), and — per the t43 rule checkBranchState
+// already implements — never suggests delegating to a manager-git agent.
+func checkProtectedCommit(input *HookInput, projectDir string, denyList []string) (decision string, reason string) {
+	if input == nil || len(input.ToolInput) == 0 {
+		return "", ""
+	}
+	if len(denyList) == 0 {
+		// REQ-2.5: the zero-cost short-circuit. An empty configured list means
+		// the workflow declares no protected branch; nothing here may run.
+		return "", ""
+	}
+	command := extractBranchStateCommand(input.ToolInput)
+	if command == "" {
+		return "", ""
+	}
+	if !matchProtectedCommitCommand(command) {
+		return "", ""
+	}
+	if isExemptAgent(input) {
+		return "", ""
+	}
+	// Seam A: query the git context at the command's actual cwd — the same
+	// discriminant checkBranchState uses (see its comment for why the
+	// audit-log project dir must NOT feed this query).
+	gitContextCwd := resolveProjectRootFromInputOrEnv(input, "branch_guard")
+	isPrimary, err := isPrimaryCheckout(gitContextCwd)
+	if err != nil {
+		// Fail OPEN with advisory (REQ-2.3): uncertainty never denies.
+		appendBranchGuardAdvisory(input, projectDir, command, err, gitContextCwd)
+		return "", ""
+	}
+	if !isPrimary {
+		return "", ""
+	}
+	branch, err := resolveHeadBranch(gitContextCwd)
+	if err != nil {
+		// Fail OPEN with advisory (REQ-2.3): a failed HEAD query is
+		// uncertainty, not evidence of a protected branch.
+		appendBranchGuardAdvisory(input, projectDir, command, err, gitContextCwd)
+		return "", ""
+	}
+	if branch == "" {
+		// Detached HEAD: `git branch --show-current` prints empty output. No
+		// named branch to protect — ALLOW, deliberately (REQ-2.3).
+		return "", ""
+	}
+	if !slices.Contains(denyList, branch) {
+		return "", ""
+	}
+	reason = fmt.Sprintf("%s: commit on protected branch %q in primary checkout (use a worktree; do not route around this by naming a spawned agent manager-git - the identity exemption does reach spawned agents, and using it that way defeats the guard; the %s sentinel is main-thread-only)",
+		branchGuardViolationPrefix, branch, branchGuardExemptEnv)
+	return DecisionDeny, reason
+}
+
+// --- PowerShell form expansions (SPEC-HOOK-GUARD-POWERSHELL-FORMS-001) ---
+
+// gitExeSuffixPattern matches the .exe-suffixed spelling of the git
+// executable, optionally behind a path (REQ-HGF-001). The \b bounds keep a
+// longer word like `gitexe` or `xgit.exe` from matching.
+var gitExeSuffixPattern = regexp.MustCompile(`(?i)\bgit\.exe\b`)
+
+// normalizeGitExeSuffix rewrites the .exe-suffixed git spelling onto the
+// plain spelling so the branch-state patterns reach it. Runs on the
+// quote-collapsed text — a `git.exe` inside quoted prose is already part of
+// the placeholder and is never normalized.
+func normalizeGitExeSuffix(command string) string {
+	return gitExeSuffixPattern.ReplaceAllString(command, "git")
+}
+
+// callOperatorTargetPattern locates a PowerShell call operator (&) in command
+// position — at the start of the command, after a segment separator or an
+// opening parenthesis, or after whitespace following one — immediately
+// followed by a quoted span. That span names the executable the call operator
+// invokes: it is the ONE site where a quoted span is command, not data
+// (REQ-HGF-002).
+var callOperatorTargetPattern = regexp.MustCompile(`(?:^|[(;&|][ \t]*|[ \t]+)&[ \t]*('[^']*'|"[^"]*")`)
+
+// isGitExecutableSpelling reports whether content names the git executable —
+// plain, .exe-suffixed, or behind a path. Only a git-naming span gains
+// command meaning; any other call target stays data (collapsed by
+// substituteQuotedArguments like every quoted span), so the expansion never
+// widens what counts as a git invocation.
+func isGitExecutableSpelling(content string) bool {
+	base := content[strings.LastIndexAny(content, `/\`)+1:]
+	return strings.EqualFold(base, "git") || strings.EqualFold(base, "git.exe")
+}
+
+// substituteCallOperatorTargets unquotes ONLY the quoted span immediately
+// following a PowerShell call operator in command position, and only when the
+// span names git. PowerShell resolves that span as the executable name, so
+// `& 'git' switch probe` must reach the same decision as `git switch probe`.
+//
+// The general quoted-argument collapse is untouched: a quoted `git switch`
+// carried as data inside another command's argument is still collapsed to the
+// placeholder by substituteQuotedArguments, which runs right after — the
+// measured quoted-prose false positive (`moai todo add "… git switch …"`)
+// stays protected. An & that merely sits inside quoted prose is skipped too:
+// the & position is checked against the quoted spans before any rewrite.
+func substituteCallOperatorTargets(command string) string {
+	matches := callOperatorTargetPattern.FindAllStringSubmatchIndex(command, -1)
+	if len(matches) == 0 {
+		return command
+	}
+	quoted := quotedArgumentPattern.FindAllStringIndex(command, -1)
+	var b strings.Builder
+	last := 0
+	for _, m := range matches {
+		spanStart, spanEnd := m[2], m[3]
+		if spanStart < 0 {
+			continue
+		}
+		ampIdx := strings.LastIndexByte(command[m[0]:spanStart], '&')
+		if ampIdx < 0 {
+			continue
+		}
+		if insideAnySpan(m[0]+ampIdx, quoted) {
+			continue // the & itself sits in quoted prose — the collapse will blank it
+		}
+		content := command[spanStart+1 : spanEnd-1]
+		if !isGitExecutableSpelling(content) {
+			continue // not git: the span stays data
+		}
+		b.WriteString(command[last:spanStart])
+		b.WriteString(content)
+		last = spanEnd
+	}
+	if last == 0 {
+		return command
+	}
+	b.WriteString(command[last:])
+	return b.String()
+}
+
+// substituteCommandBackticks removes PowerShell backtick escape characters
+// from the scanned text (REQ-HGF-003). PowerShell itself de-escapes a
+// backtick in command position — “git swi`tch probe“ runs as
+// `git switch probe` — so the guard reaches the decision the de-escaped
+// command reaches. Single-quoted spans are already collapsed to the
+// placeholder at this point in the pipeline, so a literal backtick inside one
+// is gone with its span; that is the bound the REQ states.
+func substituteCommandBackticks(command string) string {
+	if !strings.ContainsRune(command, '`') {
+		return command
+	}
+	return strings.ReplaceAll(command, "`", "")
+}
+
+// splitPSCommandSegments splits a command on segment separators that sit
+// OUTSIDE quoted spans (`;`, `|`, `&&`, newline). A bare `&` is the call
+// operator, not a separator. Quoted tracking is single-level, matching the
+// quote model substituteQuotedArguments uses.
+func splitPSCommandSegments(command string) []string {
+	var segs []string
+	start := 0
+	quote := byte(0)
+	for i := 0; i < len(command); i++ {
+		c := command[i]
+		if quote != 0 {
+			if c == quote {
+				quote = 0
+			}
+			continue
+		}
+		switch c {
+		case '\'', '"':
+			quote = c
+		case ';', '|', '\n':
+			segs = append(segs, command[start:i])
+			start = i + 1
+		case '&':
+			if i+1 < len(command) && command[i+1] == '&' {
+				segs = append(segs, command[start:i])
+				start = i + 2
+				i++
+			}
+		}
+	}
+	return append(segs, command[start:])
+}
+
+// splitPSTokens splits one command segment into whitespace-separated tokens,
+// keeping quoted spans as single tokens so a -Command payload token survives
+// whole (`"git switch probe"` is one token, not five).
+func splitPSTokens(segment string) []string {
+	var toks []string
+	var cur strings.Builder
+	quote := byte(0)
+	for i := 0; i < len(segment); i++ {
+		c := segment[i]
+		if quote != 0 {
+			cur.WriteByte(c)
+			if c == quote {
+				quote = 0
+			}
+			continue
+		}
+		switch c {
+		case '\'', '"':
+			quote = c
+			cur.WriteByte(c)
+		case ' ', '\t':
+			if cur.Len() > 0 {
+				toks = append(toks, cur.String())
+				cur.Reset()
+			}
+		default:
+			cur.WriteByte(c)
+		}
+	}
+	if cur.Len() > 0 {
+		toks = append(toks, cur.String())
+	}
+	return toks
+}
+
+// stripOuterQuotes removes ONE layer of quoting — the layer the shell or
+// wrapper stripped on its way to pwsh, which is not part of the executed
+// script text. Inner quoting survives and is handled by the payload's own
+// pipeline (the nested-quote mutant must stay allowed).
+func stripOuterQuotes(tok string) string {
+	if len(tok) >= 2 {
+		if (tok[0] == '"' && tok[len(tok)-1] == '"') || (tok[0] == '\'' && tok[len(tok)-1] == '\'') {
+			return tok[1 : len(tok)-1]
+		}
+	}
+	return tok
+}
+
+// commandPayloadParameter reports whether a PowerShell parameter name selects
+// the -Command family — the parameter whose payload is executed code
+// (REQ-HGF-004). Covers -Command, -c, -CommandWithArgs and their prefix
+// abbreviations.
+func commandPayloadParameter(name string) bool {
+	if name == "c" || name == "cwa" {
+		return true
+	}
+	return strings.HasPrefix("command", name) || strings.HasPrefix(name, "commandwith")
+}
+
+// extractPowerShellCommandPayload returns the script text pwsh executes for a
+// -Command-family parameter, or "" when the command carries none. The payload
+// is every token after the parameter, with the outer quoting of each token
+// stripped — that quoting belongs to the wrapper, not the script. -File and
+// other script parameters end the parameter scan: their remaining tokens
+// belong to the script FILE, not to an inline payload. Each pwsh /
+// powershell segment is considered independently, so an iex segment sharing
+// the line does not blind the extraction.
+func extractPowerShellCommandPayload(command string) string {
+	for _, seg := range splitPSCommandSegments(command) {
+		tokens := splitPSTokens(seg)
+		for i, tok := range tokens {
+			base := tok[strings.LastIndexAny(tok, `/\`)+1:]
+			base = strings.TrimSuffix(base, ".exe")
+			if low := strings.ToLower(base); low != "pwsh" && low != "powershell" {
+				continue
+			}
+			for j := i + 1; j < len(tokens); j++ {
+				name, ok := powerShellParameterName(tokens[j])
+				if !ok {
+					continue
+				}
+				if commandPayloadParameter(name) {
+					payload := make([]string, 0, len(tokens)-j-1)
+					for _, p := range tokens[j+1:] {
+						payload = append(payload, stripOuterQuotes(p))
+					}
+					return strings.Join(payload, " ")
+				}
+				if isScriptParameter(name) {
+					break // -File: the remaining tokens belong to the script
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// --- git branch flag-class discrimination (SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001) ---
+//
+// The corrected discrimination rule (plan.md §G): a `git branch` command is
+// MUTATING (deny) iff either holds for the token stream after `git branch`:
+//
+//  1. Positional creation — a non-flag operand appears with NO list/filter
+//     action selected and not consumed as the value of a preceding
+//     value-taking flag. Covers bare creation, creation at a start point,
+//     option-prefixed creation (`-- cr2`, `-q qbranch`, `--no-force nfbranch`,
+//     `--color colprobe`), and creation modifiers (`--create-reflog <name>`).
+//  2. Mutating flag anywhere — a short-flag cluster containing any of
+//     d/D/m/M/c/C/f/t/u (leading OR mid-cluster), or a long flag whose name —
+//     split at `=` first — exactly matches a member of the mutation set.
+//
+// Everything else allows. List/filter mode is selected by `--list`,
+// `--show-current`, `-l` anywhere in a cluster, OR any filter selector
+// (`--contains`/`--no-contains`/`--merged`/`--no-merged`/`--points-at`), and
+// is VARIADIC: all remaining positionals are filter patterns. Long flags with
+// a REQUIRED space-separated value (`--contains`, `--no-contains`, `--merged`,
+// `--no-merged`, `--points-at`, `--format`, `--sort`) consume the following
+// token; ATTACHED-ONLY optional-value flags (`--color`, `--abbrev`,
+// `--column`) consume an attached `=<value>` only — a space-separated token
+// after them is a positional (creation operand). Unknown flags fail OPEN
+// (E-5): git prefix-abbreviations (`--dele` for `--delete`) and unknown
+// short flags cannot be classified by full-token matching → allow, the
+// documented under-match direction. Classification is case-insensitive
+// (input is lowercased; a case-fold of a known mutation flag still denies).
+//
+// Residuals (named, fail-open): `git -C <path> branch …` breaks `git branch`
+// adjacency and escapes classification; shell-wrapped forms are excluded by
+// quoted-span collapse before this classifier runs.
+//
+// @MX:NOTE: [AUTO] git branch flag-class classifier — M1 matrix (branch_guard_flagclass_test.go) is the classification authority
+// @MX:SPEC: SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001
+
+// gitBranchCmdRe locates `git branch` occurrences (case-insensitive via the
+// pre-lowered input) in the quoted-collapsed command.
+var gitBranchCmdRe = regexp.MustCompile(`\bgit\s+branch\b`)
+
+// gitBranchSeparatorRe matches command separators/operators that end the
+// `git branch` segment of a compound command (E-6): the segment classifies
+// alone, then any sibling patterns (e.g. `git switch`) match independently.
+var gitBranchSeparatorRe = regexp.MustCompile(`&&|\|\||[;|&\n]`)
+
+// gitBranchMutationLongFlags — whole-token long-flag mutation set (plan §G
+// rule 2). Keys are the flag names without the `--` prefix and without any
+// attached `=value`.
+var gitBranchMutationLongFlags = map[string]bool{
+	"force":            true,
+	"delete":           true,
+	"move":             true,
+	"copy":             true,
+	"set-upstream":     true,
+	"set-upstream-to":  true,
+	"unset-upstream":   true,
+	"track":            true,
+	"no-track":         true,
+	"edit-description": true,
+}
+
+// gitBranchSpaceValueLongFlags — long flags with a REQUIRED space-separated
+// value: they consume the following token so it is never read as a creation
+// operand (Q-13/Q-14/Q-16 arity pins).
+var gitBranchSpaceValueLongFlags = map[string]bool{
+	"contains":    true,
+	"no-contains": true,
+	"merged":      true,
+	"no-merged":   true,
+	"points-at":   true,
+	"format":      true,
+	"sort":        true,
+}
+
+// gitBranchFilterSelectors — the subset of space-value flags that ALSO select
+// variadic list/filter mode: every positional after the consumed value is a
+// filter pattern, not a creation operand.
+var gitBranchFilterSelectors = map[string]bool{
+	"contains":    true,
+	"no-contains": true,
+	"merged":      true,
+	"no-merged":   true,
+	"points-at":   true,
+}
+
+// gitBranchListSelectors — list-action selectors that take NO value.
+var gitBranchListSelectors = map[string]bool{
+	"list":         true,
+	"show-current": true,
+}
+
+// gitBranchKnownLongFlags — the full known long-flag universe (the sets above
+// plus the attached-only optional-value flags). Used ONLY by the
+// prefix-abbreviation check: a strict prefix of a known flag is a git
+// prefix-abbreviation (`--dele` → `--delete`) that full-token matching cannot
+// classify → the command allows (E-5 fail-open).
+var gitBranchKnownLongFlags = func() map[string]bool {
+	m := map[string]bool{"color": true, "abbrev": true, "column": true}
+	for k := range gitBranchMutationLongFlags {
+		m[k] = true
+	}
+	for k := range gitBranchSpaceValueLongFlags {
+		m[k] = true
+	}
+	for k := range gitBranchListSelectors {
+		m[k] = true
+	}
+	return m
+}()
+
+const (
+	// gitBranchMutationShortChars — a short-flag cluster containing any of
+	// these letters is mutating (input is lowercased, so this covers
+	// d/D/m/M/c/C/f/F/t/T/u/U). No query short flag contains any of them.
+	gitBranchMutationShortChars = "dmcftu"
+	// gitBranchKnownShortChars — every real git branch short flag known to
+	// this classifier (query: a i l q r v; mutation: c d f m t u). A cluster
+	// containing a letter outside this set is not a real git branch flag —
+	// git rejects the invocation — and the command is unclassifiable → allow
+	// (E-5 fail-open).
+	gitBranchKnownShortChars = "acdfilmqrtuv"
+)
+
+// matchGitBranchMutation reports whether the quoted-collapsed command
+// contains a `git branch` invocation classified as mutating. It is the
+// predicate-matcher entry of branchStatePatterns (suffix "git branch").
+func matchGitBranchMutation(scanned string) bool {
+	lower := strings.ToLower(scanned)
+	for _, loc := range gitBranchCmdRe.FindAllStringIndex(lower, -1) {
+		if classifyGitBranchTail(lower[loc[1]:]) {
+			return true
+		}
+	}
+	return false
+}
+
+// classifyGitBranchTail classifies the token stream following one `git
+// branch` occurrence (already lowercased). Returns true when the invocation
+// presents a mutating flag or a positional creation operand.
+func classifyGitBranchTail(tail string) bool {
+	if m := gitBranchSeparatorRe.FindStringIndex(tail); m != nil {
+		tail = tail[:m[0]] // E-6: classify the git branch segment alone
+	}
+	listMode := false    // a list/filter action consumes positionals as patterns
+	consumeNext := false // next token is a space-separated flag value
+	for _, tok := range strings.Fields(tail) {
+		if consumeNext {
+			consumeNext = false
+			continue
+		}
+		switch {
+		case tok == "--":
+			// End-of-options marker: later positionals are creation operands
+			// (M-26). Nothing to consume; the positional arm below decides.
+		case strings.HasPrefix(tok, "--"):
+			name := strings.TrimPrefix(tok, "--")
+			attached := false
+			if i := strings.IndexByte(name, '='); i >= 0 {
+				name, attached = name[:i], true
+			}
+			if gitBranchMutationLongFlags[name] {
+				return true // rule 2: whole-token mutation membership
+			}
+			if gitBranchSpaceValueLongFlags[name] {
+				if gitBranchFilterSelectors[name] {
+					listMode = true
+				}
+				if !attached {
+					consumeNext = true
+				}
+				continue
+			}
+			if gitBranchListSelectors[name] {
+				listMode = true
+				continue
+			}
+			// Attached-only optional-value flags (color/abbrev/column) fall
+			// through: an attached =value is consumed by the split above; a
+			// space-separated token after them is a positional (M-31/M-32).
+			if isGitBranchFlagAbbreviation(name) {
+				return false // E-5: prefix-abbreviation → unclassifiable → allow
+			}
+			// A genuinely unknown long flag is neutral at the flag level;
+			// positional analysis still applies (M-28/M-30 measured creation).
+		case len(tok) > 1 && tok[0] == '-':
+			cluster := tok[1:]
+			if strings.ContainsAny(cluster, gitBranchMutationShortChars) {
+				return true // rule 2: cluster scan (leading or mid-cluster)
+			}
+			for i := 0; i < len(cluster); i++ {
+				if !strings.ContainsRune(gitBranchKnownShortChars, rune(cluster[i])) {
+					return false // E-5: unknown short flag → unclassifiable → allow
+				}
+			}
+			if strings.ContainsRune(cluster, 'l') {
+				listMode = true // -l anywhere in a cluster selects list mode
+			}
+		default:
+			if !listMode {
+				return true // rule 1: positional creation operand
+			}
+			// list/filter mode: the positional is a pattern — continue.
+		}
+	}
+	return false
+}
+
+// isGitBranchFlagAbbreviation reports whether name is a STRICT prefix of a
+// known long flag — a git prefix-abbreviation (`--dele` → `--delete`) that
+// full-token matching cannot classify.
+func isGitBranchFlagAbbreviation(name string) bool {
+	for k := range gitBranchKnownLongFlags {
+		if len(k) > len(name) && strings.HasPrefix(k, name) {
+			return true
+		}
+	}
+	return false
 }
 
 // isExemptAgent returns true when the invoking agent identity is the trusted
@@ -244,12 +1013,15 @@ func isPrimaryCheckout(projectDir string) (bool, error) {
 // The deny fires ONLY on positive evidence; uncertainty never denies.
 //
 // The deny reason's remediation directs the caller to a worktree and
-// deliberately does NOT suggest delegating to a manager-git subagent: both
-// exemption axes are unreachable from tool-spawned subagents (see the
-// branchGuardExemptEnv reachability note above), so such a delegation
-// reproduces the same deny. Kanban card t43: the old "(use a worktree or
-// invoke via manager-git)" wording sent orchestrator sessions down that dead
-// end — one wasted turn per session, observed in two sessions.
+// deliberately does NOT suggest delegating to a manager-git agent. Card
+// t43 introduced that rule because the old "(use a worktree or invoke via
+// manager-git)" wording sent two orchestrator sessions down what was believed
+// to be a dead end, burning a turn each. The rule survives but its reason is
+// inverted: SPEC-BRANCHGUARD-EXEMPT-REACH-001 measured that the identity
+// exemption DOES reach a spawned agent, so the delegation would succeed — and
+// succeeding is exactly what this guard exists to prevent in the primary
+// checkout. A remediation must not name a route whose only effect is to defeat
+// the guard.
 //
 // The projectDir argument is the AUDIT-LOG project directory — resolved by the
 // caller (pre_tool.go) via $CLAUDE_PROJECT_DIR → os.Getwd() and pinned to the
@@ -271,6 +1043,13 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	}
 	suffix, matched := matchBranchStateCommand(command)
 	if !matched {
+		// D2 (SPEC-HOOK-MATCHER-POWERSHELL-001 REQ-HMP-010): a PowerShell
+		// indirection the pattern scan cannot see is allowed, and recorded.
+		if isPowerShellTool(input.ToolName) {
+			if construct := powerShellIndirection(command); construct != "" {
+				recordBranchGuardUnclassified(input, projectDir, command, construct)
+			}
+		}
 		return "", ""
 	}
 	if isExemptAgent(input) {
@@ -284,6 +1063,12 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	// argument; only which directory the caller asks it to query changes.
 	gitContextCwd := resolveProjectRootFromInputOrEnv(input, "branch_guard")
 	isPrimary, err := isPrimaryCheckout(gitContextCwd)
+	// W3 (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-007): this Seam A anchor read
+	// is one of the traced anchor decision points. One env lookup when
+	// MOAI_ANCHOR_TRACE is off (REQ-SAA-008); the audit-log project dir
+	// anchor (CLAUDE_PROJECT_DIR chain) is unchanged (REQ-SAA-012).
+	session.TraceAnchorDecision(projectDir, "branch_guard.anchor_read", input.SessionID, gitContextCwd,
+		fmt.Sprintf("is_primary=%t err=%v", isPrimary, err))
 	if err != nil {
 		// Fail OPEN with advisory (REQ-WBG-012). The deny requires positive
 		// evidence of a primary checkout; an error is NOT evidence. The
@@ -295,12 +1080,33 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	if !isPrimary {
 		return "", ""
 	}
-	reason = fmt.Sprintf("%s: %s in primary checkout (use a worktree; the manager-git identity and %s exemptions fire only for main-thread launches, not for tool-spawned subagents)",
+	reason = fmt.Sprintf("%s: %s in primary checkout (use a worktree; do not route around this by naming a spawned agent manager-git - the identity exemption does reach spawned agents, and using it that way defeats the guard; the %s sentinel is main-thread-only)",
 		branchGuardViolationPrefix, suffix, branchGuardExemptEnv)
 	return DecisionDeny, reason
 }
 
-// extractBranchStateCommand parses the command string from Bash tool input
+// recordBranchGuardUnclassified appends one unclassifiable-command line for a
+// PowerShell call the guard could not classify — but only where a classified
+// command would have been judged at all: the agent is not exempt and the
+// command's cwd is the primary checkout. An uncertain git context takes the
+// existing fail-open advisory instead. The call is allowed on every path.
+func recordBranchGuardUnclassified(input *HookInput, projectDir, command, construct string) {
+	if isExemptAgent(input) {
+		return
+	}
+	gitContextCwd := resolveProjectRootFromInputOrEnv(input, "branch_guard")
+	isPrimary, err := isPrimaryCheckout(gitContextCwd)
+	if err != nil {
+		appendBranchGuardAdvisory(input, projectDir, command, err, gitContextCwd)
+		return
+	}
+	if !isPrimary {
+		return
+	}
+	appendUnclassifiedAudit(projectDir, branchGuardAuditRelPath, input, construct, command, gitContextCwd)
+}
+
+// extractBranchStateCommand parses the command string from shell tool input
 // JSON. Returns "" when the input is not parseable or lacks a command field.
 func extractBranchStateCommand(toolInput json.RawMessage) string {
 	var parsed map[string]any

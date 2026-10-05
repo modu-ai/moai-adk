@@ -16,16 +16,26 @@ import (
 // testFixedNow is a stable reference time for staleness tests.
 var testFixedNow = time.Date(2026, 4, 25, 12, 0, 0, 0, time.UTC)
 
+// Model-id expectations follow SPEC-MODEL-MATRIX-UPDATE-001 DR-2: the built-in
+// glmContextWindows table dropped the seven retired ids (glm-5.2,
+// glm-4.5-air, …), so a retired id now resolves to 0 and both hooks leave the
+// env keys unset; llm.yaml glm.context_windows is the override path for any
+// custom id.
 func TestMaybeSet1MAutoCompactWindow(t *testing.T) {
 	t.Parallel()
 
+	// DELETION RECORD (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004, DR-2): the
+	// seven old-model ids no longer resolve in the statusline table —
+	// llm.glm.context_windows is the user override path. Retired-id rows pin
+	// that contract against accidental substring inheritance.
 	tests := []struct {
 		name       string
 		env        map[string]string
 		wantWindow string // "" means expect the key unset
 	}{
-		{name: "glm-5.2 resolves to 1M, no window → sets 1M", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.2"}, wantWindow: "1000000"},
-		{name: "glm-4.5-air resolves to 128K (< 1M tier), no window → unset", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air"}, wantWindow: ""},
+		{name: "glm-5.3 resolves to 1M, no window → sets 1M", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3"}, wantWindow: "1000000"},
+		{name: "retired glm-5.2 no longer resolves → unset (post DR-2)", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.2"}, wantWindow: ""},
+		{name: "retired glm-4.5-air no longer resolves → unset (post DR-2)", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air"}, wantWindow: ""},
 		{name: "claude model → unset (ResolveGLMContextWindow returns 0 for claude-prefixed)", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8"}, wantWindow: ""},
 		{name: "window already set → preserved, not overwritten", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.2", config.EnvClaudeCodeAutoCompactWindow: "500000"}, wantWindow: "500000"},
 		{name: "empty opus model → unset", env: map[string]string{}, wantWindow: ""},
@@ -44,13 +54,17 @@ func TestMaybeSet1MAutoCompactWindow(t *testing.T) {
 func TestMaybeDeclareGLMContextWindow(t *testing.T) {
 	t.Parallel()
 
+	// DELETION RECORD (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004, DR-2): a
+	// retired id is not declared here either — with no sub-1M id left in the
+	// table, the "non-1M tier still declared" arm has no living instance and
+	// retired names pin the unset contract.
 	tests := []struct {
 		name     string
 		env      map[string]string
 		wantDecl string // "" means expect the key unset
 	}{
 		{name: "glm-5.3 resolves to 1M → declares 1000000", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3"}, wantDecl: "1000000"},
-		{name: "glm-4.5-air resolves to 128K (non-1M tier still declared)", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air"}, wantDecl: "128000"},
+		{name: "retired glm-4.5-air no longer resolves → unset (post DR-2)", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air"}, wantDecl: ""},
 		{name: "claude model → unset (ResolveGLMContextWindow returns 0 for claude-prefixed)", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8"}, wantDecl: ""},
 		{name: "declaration already set → preserved, not overwritten", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3", config.EnvClaudeCodeMaxContextTokens: "500000"}, wantDecl: "500000"},
 		{name: "empty opus model → unset", env: map[string]string{}, wantDecl: ""},
@@ -69,10 +83,14 @@ func TestMaybeDeclareGLMContextWindow(t *testing.T) {
 // TestEnsureGLMCredentials_ExistingTokenDeclaresContextWindow is the PR #1574
 // review regression: with credentials already present (the steady state), the
 // hook must still ensure the context-window envs — settings written by an
-// older binary or `moai glm setup` carry neither window key, and without the
-// declaration Claude Code assumes a 200K window for the custom GLM model ID.
+// older binary carry neither window key, and without the declaration Claude
+// Code assumes a 200K window for the custom GLM model ID.
+//
+// `moai glm setup` is NOT such a source, though an earlier revision of this
+// comment named it alongside the older binary: it writes ~/.moai/.env.glm only
+// and never produces a settings.local.json env block (card t803).
 func TestEnsureGLMCredentials_ExistingTokenDeclaresContextWindow(t *testing.T) {
-	t.Parallel()
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 
 	dir := t.TempDir()
 	claudeDir := filepath.Join(dir, ".claude")
@@ -160,13 +178,12 @@ func TestSessionStartHandler_Handle(t *testing.T) {
 	// isolate the env, not weaken the SUT.
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 
-	// Isolate the kanban PROCESS env as well: a session launched by the
-	// kanban launcher carries MOAI_KANBAN_* variables, and
-	// kanbanBootstrapNotice() injects its notice into AdditionalContext even
+	// Isolate the launch-marker PROCESS env as well: a session launched by the
+	// factory launcher carries MOAI_KANBAN_* and MOAI_FACTORY_* variables, and
+	// the factory bootstrap notice injects itself into AdditionalContext even
 	// when SessionID/ProjectDir is empty — breaking the "nil config" and
-	// "empty project config" subtests below. Same isolation as the kanban
-	// notice tests in session_start_kanban_test.go.
-	clearKanbanEnv(t)
+	// "empty project config" subtests below.
+	clearFactoryEnv(t)
 
 	tests := []struct {
 		name         string
@@ -264,6 +281,10 @@ func TestSessionStartHandler_Handle(t *testing.T) {
 }
 
 func TestEnsureGLMCredentials(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
+	// .env.glm is staged under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	// Not parallel: subtests use t.Setenv which requires non-parallel parent
 
 	t.Run("no settings file", func(t *testing.T) {

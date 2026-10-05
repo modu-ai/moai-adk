@@ -45,9 +45,9 @@ const (
 
 // validZoneClasses is the set of allowed values for the zone_class 4-enum.
 var validZoneClasses = map[string]bool{
-	"frozen-canonical":      true,
-	"frozen-safety":         true,
-	"evolvable-tuning":      true,
+	"frozen-canonical":       true,
+	"frozen-safety":          true,
+	"evolvable-tuning":       true,
 	"evolvable-experimental": true,
 }
 
@@ -117,6 +117,17 @@ type ValidationResult struct {
 	// the [SUPERSEDED …] retirement marker. Always 0 under --strict, which checks
 	// retired entries verbatim like any other.
 	RetiredCount int `json:"retired_count"`
+
+	// CheckedCount is the number of entries whose clause was actually checked
+	// against its source file — every registry entry except the retired ones.
+	// Reporters MUST print this rather than a literal, so the reported number
+	// changes when the registry does.
+	CheckedCount int `json:"checked_count"`
+
+	// TotalCount is the number of entries the registry holds, checked or not.
+	// CheckedCount + RetiredCount == TotalCount, which is what lets a reader
+	// reconcile the reported number against `constitution list`.
+	TotalCount int `json:"total_count"`
 
 	// Entries is the list of error/warning items.
 	Entries []ValidationEntry `json:"entries"`
@@ -201,6 +212,7 @@ func Validate(opts ValidateOptions) (ValidationResult, error) {
 	result.Status = ValidateStatusOK
 	result.Entries = []ValidationEntry{}
 	result.Warnings = []string{}
+	result.TotalCount = len(reg.Entries)
 
 	// Track seen source files to avoid duplicate reads
 	sourceCache := make(map[string]string)
@@ -227,6 +239,7 @@ func Validate(opts ValidateOptions) (ValidationResult, error) {
 			result.RetiredCount++
 			continue
 		}
+		result.CheckedCount++
 
 		// 2. FROZEN_WITHOUT_CANARY check
 		if entry.Zone == ZoneFrozen && !entry.CanaryGate {

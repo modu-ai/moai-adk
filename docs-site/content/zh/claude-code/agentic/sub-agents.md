@@ -97,7 +97,7 @@ flowchart TD
 
 ## 定义方法概览
 
-子代理通过带有 YAML 前置元数据的 Markdown 文件来定义。既可以用 `/agents` 命令交互式生成，也可以直接手写文件。（CC 2.1.198 移除了 `/agents` 创建向导 — 让 Claude 代劳或直接编辑 `.claude/agents/`；官方文档中截至 2026-07 `/agents` 界面仍存在，请在实际 2.1.198 会话中确认。）
+子代理通过带有 YAML 前置元数据的 Markdown 文件来定义。既可以请 Claude 创建，也可以直接手写文件。自 v2.1.198 起，`/agents` 命令不再打开交互式创建向导，只提示让 Claude 代劳或直接编辑 `.claude/agents/`（文件格式和存放位置不变）。
 
 ```markdown
 ---
@@ -157,7 +157,7 @@ model: sonnet
 
 ## 深入请看 MoAI 智能体指南
 
-以上是 Claude Code 层面的子智能体概念。MoAI-ADK 在这套机制之上运营**11 个智能体的目录** —— Manager 系列（manager-spec / manager-develop / manager-docs / manager-git / manager-design）负责 plan→run→sync 生命周期，Evaluator 系列（plan-auditor / sync-auditor）负责独立审计，builder-harness 负责生成挽具脚手架，super-advisor 负责高推理咨询，e2e-tester 负责网页/移动/桌面的 E2E 测试执行，Anthropic 内置的 `Explore` 负责只读探索。计划与审计相互分离 —— 制造者不自我检查 —— 是这份目录的核心设计。为每个智能体声明式地分配契合工作性质的模型与推理深度 (effort)，正是代币经济学"计划要深、实现要省、验证要独立"的原则。详情见下方的深入指南。
+以上是 Claude Code 层面的子智能体概念。MoAI-ADK 在这套机制之上运营**13 个智能体的目录** —— Manager 系列（manager-spec / manager-develop / manager-docs / manager-git / manager-design / manager-lead）负责 plan→run→sync 生命周期与 Tier L 协调，Evaluator 系列（plan-auditor / sync-auditor）负责独立审计，builder-harness 负责生成挽具脚手架，super-advisor 负责高推理咨询，e2e-tester 负责网页/移动/桌面的 E2E 测试执行，manager-todo 负责任务队列管理，并在其只读判定子角色中负责 GTD 自动任务的判定，Anthropic 内置的 `Explore` 负责只读探索。计划与审计相互分离 —— 制造者不自我检查 —— 是这份目录的核心设计。为每个智能体声明式地分配契合工作性质的模型与推理深度 (effort)，正是代币经济学"计划要深、实现要省、验证要独立"的原则。详情见下方的深入指南。
 
 ## 相关文档
 

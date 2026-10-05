@@ -2,7 +2,6 @@
 id: SPEC-KANBAN-RENAME-001
 title: "Implementation plan — Factory Mode to Kanban Mode rename"
 version: "0.5.0"
-status: in-progress
 created: 2026-08-10
 updated: 2026-08-11
 author: manager-spec

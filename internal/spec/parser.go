@@ -3,6 +3,7 @@ package spec
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -58,22 +59,154 @@ type acParsedLine struct {
 	then   string
 	reqIDs []string
 	indent int
+	line   int
 }
 
-// findACSectionStart finds the start index of Acceptance Criteria section in markdown
-func findACSectionStart(lines []string) int {
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "##") && strings.Contains(strings.ToLower(trimmed), "acceptance") {
-			return i + 1
+// acSectionVocabulary is the explicit list of phrases that name an acceptance
+// criteria section (card t565). Matching is case-insensitive and runs after the
+// file name acceptance.md is removed, so a heading that only points at the
+// sibling file does not name the section.
+var acSectionVocabulary = []string{
+	"acceptance",
+	"success criteria",
+	"ac matrix",
+	"수락 기준",
+	"인수 기준",
+	"검수 기준",
+	"수용 기준",
+	"성공 기준",
+	"ac summary",
+}
+
+// acNegativeSectionMarkers mark a heading about what the SPEC does not cover;
+// such a heading never anchors, even when it mentions acceptance criteria.
+var acNegativeSectionMarkers = []string{"out of scope", "out-of-scope", "non-goal"}
+
+// markdownHeadingLevel returns the ATX heading level of a trimmed line, or 0
+// when the line is not a heading.
+func markdownHeadingLevel(trimmed string) int {
+	level := 0
+	for level < len(trimmed) && trimmed[level] == '#' {
+		level++
+	}
+	if level == 0 || level > 6 {
+		return 0
+	}
+	if level < len(trimmed) && trimmed[level] != ' ' && trimmed[level] != '\t' {
+		return 0
+	}
+	return level
+}
+
+// isNegativeSectionHeading reports whether a heading is about what the SPEC
+// does not cover; such a heading never anchors, by any criterion.
+func isNegativeSectionHeading(trimmed string) bool {
+	text := strings.ReplaceAll(strings.ToLower(trimmed), "acceptance.md", "")
+	for _, marker := range acNegativeSectionMarkers {
+		if strings.Contains(text, marker) {
+			return true
 		}
 	}
-	return -1
+	return false
 }
 
-// extractACLines extracts parsed line list from AC section
+// isACSectionHeading reports whether a heading names the acceptance criteria
+// section.
+func isACSectionHeading(trimmed string) bool {
+	if isNegativeSectionHeading(trimmed) {
+		return false
+	}
+	text := strings.ReplaceAll(strings.ToLower(trimmed), "acceptance.md", "")
+	for _, phrase := range acSectionVocabulary {
+		if strings.Contains(text, phrase) {
+			return true
+		}
+	}
+	return false
+}
+
+// acRegionDeclarationRe — the region qualifier (SPEC-AC-ANCHOR-SCOPE-001,
+// plan §C(i)(a)): the AC-shaped LIST form, a bullet plus an AC-…: colon. The
+// separator is REQUIRED — the same requirement acIDPattern carries — because
+// it is what keeps a prose bullet that merely mentions an AC id from naming a
+// region (REQ-ACAS-004, the mixed-document bound of
+// lint_coverage_sibling.go). The id grammar is the probe's loose discriminator
+// shape, deliberately wider than acIDPattern's: the region qualifier decides
+// WHERE a section is, while the line grammar alone decides WHAT parses.
+var acRegionDeclarationRe = regexp.MustCompile(`^\s*[-*+]\s+\*{0,2}AC-[A-Za-z0-9.-]*[A-Za-z0-9]\*{0,2}\s*(?:\([^()]*\)\s*)?\*{0,2}\s*[:—–]\s*`)
+
+// sectionHoldsACDeclaration reports whether the section starting at startIdx
+// (the line after its anchor heading) holds at least one AC-shaped declaration
+// line (acRegionDeclarationRe). The scan breaks at the next heading of the
+// anchor's own level or higher, mirroring extractACLines' region rule, so the
+// two region qualifiers read the same section.
+func sectionHoldsACDeclaration(lines []string, startIdx int) bool {
+	anchorLevel := markdownHeadingLevel(strings.TrimSpace(lines[startIdx-1]))
+	for i := startIdx; i < len(lines); i++ {
+		trimmed := strings.TrimSpace(lines[i])
+		if level := markdownHeadingLevel(trimmed); level > 0 && level <= anchorLevel {
+			break
+		}
+		if acRegionDeclarationRe.MatchString(lines[i]) {
+			return true
+		}
+	}
+	return false
+}
+
+// findACSectionStart finds the start index of Acceptance Criteria section in markdown:
+// the line after the first heading of level 2 or deeper that names the section
+// and whose section holds at least one criterion line. An empty summary section
+// that precedes the real one does not take the anchor; when every vocabulary
+// section is empty, the terminal fallback is declaration-aware (loose axis,
+// SPEC-AC-ANCHOR-SCOPE-001): the first declaration-bearing region anchors, and
+// only a document with no such region falls back to its first vocabulary
+// section (a document with no vocabulary headings at all was previously left
+// unanchored entirely).
+//
+// SPEC-AC-ANCHOR-SCOPE-001 (narrow axis): a heading that does not name the
+// section may still carry its declarations — a heading whose section holds at
+// least one AC-shaped declaration line (acRegionDeclarationRe) is also an
+// anchor candidate, so a document whose AC list lives under a non-vocabulary
+// heading anchors that region instead of nothing. Negative-marker headings
+// never anchor, by either criterion.
+//
+// @MX:NOTE: [AUTO] fan-in anchor selector — the vocabulary early-return keeps
+// every pre-repair anchor; only vocabulary-less documents gain an anchor here
+// (SPEC-AC-ANCHOR-SCOPE-001).
+func findACSectionStart(lines []string) int {
+	firstVocabulary := -1
+	firstDeclaration := -1
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		level := markdownHeadingLevel(trimmed)
+		if level < 2 || isNegativeSectionHeading(trimmed) {
+			continue
+		}
+		if isACSectionHeading(trimmed) {
+			if firstVocabulary < 0 {
+				firstVocabulary = i + 1
+			}
+			if len(extractACLines(lines, i+1, false)) > 0 {
+				return i + 1
+			}
+		}
+		if firstDeclaration < 0 && sectionHoldsACDeclaration(lines, i+1) {
+			firstDeclaration = i + 1
+		}
+	}
+	if firstDeclaration >= 0 {
+		return firstDeclaration
+	}
+	return firstVocabulary
+}
+
+// extractACLines extracts parsed line list from AC section. The section ends at
+// the next heading of the same or a higher level than its anchor, so its own
+// deeper subheadings are read.
 func extractACLines(lines []string, startIdx int, isFlatFormat bool) []acParsedLine {
 	var acLines []acParsedLine
+	anchorLevel := markdownHeadingLevel(strings.TrimSpace(lines[startIdx-1]))
 
 	for i := startIdx; i < len(lines); i++ {
 		line := lines[i]
@@ -83,7 +216,7 @@ func extractACLines(lines []string, startIdx int, isFlatFormat bool) []acParsedL
 			continue
 		}
 
-		if strings.HasPrefix(trimmed, "##") {
+		if level := markdownHeadingLevel(trimmed); level > 0 && level <= anchorLevel {
 			break
 		}
 
@@ -106,6 +239,7 @@ func extractACLines(lines []string, startIdx int, isFlatFormat bool) []acParsedL
 			then:   parsed.then,
 			reqIDs: parsed.reqIDs,
 			indent: indent,
+			line:   i + 1,
 		})
 	}
 
@@ -124,6 +258,12 @@ func buildTree(acLines []acParsedLine, _ bool, result *ParseResult) []Acceptance
 	var roots []Acceptance
 	var stack []stackEntry
 	seenIDs := make(map[string]bool)
+	// Duplicate ids (card t564): the grammar cannot tell a bullet that cites an
+	// id from the bullet that declares it, so dropping either line loses its REQ
+	// mapping silently. The first line's text is kept, every later line's REQ
+	// mappings are collected here and merged below, and the duplicate is still
+	// reported so the author sees it.
+	duplicateReqIDs := make(map[string][]string)
 
 	for i, acLine := range acLines {
 		node := Acceptance{
@@ -138,7 +278,9 @@ func buildTree(acLines []acParsedLine, _ bool, result *ParseResult) []Acceptance
 			result.Errors = append(result.Errors, &DuplicateAcceptanceID{
 				ID:    acLine.id,
 				Depth: acLine.indent,
+				Line:  acLine.line,
 			})
+			duplicateReqIDs[acLine.id] = append(duplicateReqIDs[acLine.id], acLine.reqIDs...)
 			continue
 		}
 		seenIDs[acLine.id] = true
@@ -173,6 +315,10 @@ func buildTree(acLines []acParsedLine, _ bool, result *ParseResult) []Acceptance
 		}
 	}
 
+	// Merge before auto-wrapping, which copies RequirementIDs into the wrapper's
+	// child and would otherwise leave the merged ids on the empty wrapper.
+	mergeDuplicateReqIDs(roots, duplicateReqIDs)
+
 	for i := range roots {
 		if len(roots[i].Children) == 0 && !hasIDSuffix(roots[i].ID) {
 			roots[i] = autoWrapSingle(roots[i])
@@ -180,6 +326,22 @@ func buildTree(acLines []acParsedLine, _ bool, result *ParseResult) []Acceptance
 	}
 
 	return roots
+}
+
+// mergeDuplicateReqIDs appends to each node the REQ ids mapped by later lines
+// carrying the same AC id, skipping ids the node already holds.
+func mergeDuplicateReqIDs(nodes []Acceptance, extra map[string][]string) {
+	if len(extra) == 0 {
+		return
+	}
+	for i := range nodes {
+		for _, id := range extra[nodes[i].ID] {
+			if !slices.Contains(nodes[i].RequirementIDs, id) {
+				nodes[i].RequirementIDs = append(nodes[i].RequirementIDs, id)
+			}
+		}
+		mergeDuplicateReqIDs(nodes[i].Children, extra)
+	}
 }
 
 func hasIDSuffix(id string) bool {
@@ -202,6 +364,64 @@ func autoWrapSingle(ac Acceptance) Acceptance {
 	return wrapped
 }
 
+// acIDPattern anchors an AC declaration line, applied after the leading
+// "- *" run has been trimmed. Its four widening axes were each derived from the
+// corpus (SPEC-AC-COLLECTOR-ANCHOR-001 §B); the anchor is compiled once because
+// it is evaluated per line over every spec.md.
+//
+//	AC-(?:[A-Za-z0-9]+-)*[0-9]+   axis 1 — variable segment count with
+//	                              alphanumeric middle segments. The LAST segment
+//	                              stays numeric: it is the only measured property
+//	                              separating a declaration id from an arbitrary
+//	                              AC-prefixed token, so dropping it would admit
+//	                              any such token with nothing left to narrow it.
+//	(?:\.[a-z](?:\.[a-z]+)?)?     axis 2 — sub-id suffix, UNCHANGED from the
+//	                              pre-widening anchor. hasIDSuffix/autoWrapSingle
+//	                              branch on the dot, so altering this changes the
+//	                              tree shape rather than only recognition.
+//	\*{0,2}                       axis 3 — the CLOSING bold marker. The opening
+//	                              one is already removed by the TrimLeft below,
+//	                              which is deliberately left alone: widening the
+//	                              preprocessing would move the risk surface from
+//	                              this anchor to every line in the section.
+//	(?:\([^()]*\)\s*)?            axis 4a — one parenthesised qualifier between
+//	                              the id and the separator, e.g. "(A1)",
+//	                              "(REQ-001)". Skipping it exposes the real
+//	                              separator behind it. Axes 3 and 4a compose in
+//	                              EITHER order, which is why \*{0,2} appears on
+//	                              both sides: the corpus writes the qualifier both
+//	                              inside the bold span ("**AC-CSS-001-01
+//	                              (isolation-validity)** —") and after it
+//	                              ("**AC-HFC-001a** (REQ-HFC-001):"), and fixing
+//	                              one order rejects 53 lines for a property of
+//	                              this anchor rather than of the corpus.
+//	                              BRACKET qualifiers ("**AC-1 [REQ-002]**:", 17
+//	                              lines) stay out: that is a new axis, not the
+//	                              composition of two declared ones.
+//	[:—–]                         axis 4b — separator set: colon, em dash
+//	                              (U+2014, observed), en dash (U+2013, a design
+//	                              decision with no corpus observation). The
+//	                              separator stays REQUIRED; widening the set is
+//	                              not the same as dropping the requirement, and
+//	                              the requirement is what keeps prose bullets out.
+var acIDPattern = regexp.MustCompile(`^(AC-(?:[A-Za-z0-9]+-)*[0-9]+(?:\.[a-z](?:\.[a-z]+)?)?)\*{0,2}\s*(?:\([^()]*\)\s*)?\*{0,2}\s*[:—–]\s*`)
+
+// The remaining fixed patterns parseSingleACLine applies to every acceptance
+// line. Compiling them inside the function re-paid regexp compilation per line,
+// which dominated the allocation profile of the SPEC audit path.
+// @MX:REASON: eliminates per-call regexp.MustCompile in the SPEC AC parsing hot path
+var (
+	// acReqRemoverPattern strips the `(maps REQ-...)` section once its IDs are extracted.
+	acReqRemoverPattern = regexp.MustCompile(`\(?\s*(?:maps|MAPS)\s+REQ-[A-Z0-9-]+\s*\)?`)
+	// The three EARS clause patterns. Given and When capture the keyword that
+	// ends their clause in group 2, because the match spans it: consuming the
+	// whole match would eat the next clause's keyword and leave the remainder
+	// unmatchable, dropping every clause after the first (card t808).
+	acGivenPattern = regexp.MustCompile(`(?i)^Given\s+(.+?)(?:,\s*(When|Then)|$)`)
+	acWhenPattern  = regexp.MustCompile(`(?i)^When\s+(.+?)(?:,\s*(Then)|$)`)
+	acThenPattern  = regexp.MustCompile(`(?i)^Then\s+(.+)`)
+)
+
 func parseSingleACLine(line string) *struct {
 	id     string
 	given  string
@@ -214,8 +434,6 @@ func parseSingleACLine(line string) *struct {
 	trimmed = strings.TrimLeft(trimmed, "- *")
 	trimmed = strings.TrimSpace(trimmed)
 
-	// AC ID pattern: AC-XXX-NNN-NN or AC-XXX-NNN-NN.a or AC-XXX-NNN-NN.a.i
-	acIDPattern := regexp.MustCompile(`^(AC-[A-Z0-9]+-[0-9]+-[0-9]+(?:\.[a-z](?:\.[a-z]+)?)?)\s*:\s*`)
 	idMatch := acIDPattern.FindStringSubmatch(trimmed)
 
 	if len(idMatch) < 2 {
@@ -229,29 +447,25 @@ func parseSingleACLine(line string) *struct {
 	reqIDs := ExtractRequirementMappings(content)
 
 	// Remove REQ mapping part
-	reqRemover := regexp.MustCompile(`\(?\s*(?:maps|MAPS)\s+REQ-[A-Z0-9-]+\s*\)?`)
-	cleanContent := strings.TrimSpace(reqRemover.ReplaceAllString(content, ""))
+	cleanContent := strings.TrimSpace(acReqRemoverPattern.ReplaceAllString(content, ""))
 
 	// EARS pattern parsing: Given ... When ... Then ...
 	var given, when, then string
 
 	// Extract Given
-	givenRe := regexp.MustCompile(`(?i)^Given\s+(.+?)(?:,\s*(?:When|then)|$)`)
-	if match := givenRe.FindStringSubmatch(cleanContent); len(match) > 1 {
+	if match := acGivenPattern.FindStringSubmatch(cleanContent); len(match) > 1 {
 		given = "Given " + strings.TrimSpace(match[1])
-		cleanContent = strings.TrimSpace(cleanContent[len(match[0]):])
+		cleanContent = strings.TrimSpace(cleanContent[len(match[0])-len(match[2]):])
 	}
 
 	// Extract When
-	whenRe := regexp.MustCompile(`(?i)^When\s+(.+?)(?:,\s*(?:Then|then)|$)`)
-	if match := whenRe.FindStringSubmatch(cleanContent); len(match) > 1 {
+	if match := acWhenPattern.FindStringSubmatch(cleanContent); len(match) > 1 {
 		when = "When " + strings.TrimSpace(match[1])
-		cleanContent = strings.TrimSpace(cleanContent[len(match[0]):])
+		cleanContent = strings.TrimSpace(cleanContent[len(match[0])-len(match[2]):])
 	}
 
 	// Extract Then
-	thenRe := regexp.MustCompile(`(?i)^Then\s+(.+)`)
-	if match := thenRe.FindStringSubmatch(cleanContent); len(match) > 1 {
+	if match := acThenPattern.FindStringSubmatch(cleanContent); len(match) > 1 {
 		then = "Then " + strings.TrimSpace(match[1])
 	}
 

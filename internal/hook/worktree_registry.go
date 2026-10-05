@@ -58,6 +58,14 @@ func registerWorktree(projectDir, path, branch, agentName string) {
 	saveWorktreeEntries(stateFile, entries)
 }
 
+// RegisterLauncherWorktree records a worktree created by the moai launcher's
+// `-w <name> --branch <existing>` path (card t295) in the same persistent
+// state file the WorktreeCreate hook maintains, so `moai worktree clean`'s
+// anchor check sees launcher-created trees too. Non-blocking on error.
+func RegisterLauncherWorktree(projectDir, path, branch, agentName string) {
+	registerWorktree(projectDir, path, branch, agentName)
+}
+
 // unregisterWorktree removes the entry matching the given path from the
 // persistent state file.  Non-blocking on error: failures are logged.
 func unregisterWorktree(projectDir, path string) {

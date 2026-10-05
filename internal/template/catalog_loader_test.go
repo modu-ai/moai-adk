@@ -1,6 +1,8 @@
 package template
 
 import (
+	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -26,7 +28,8 @@ func TestLoadCatalog(t *testing.T) {
 		t.Error("LoadCatalog: OptionalPacks is nil")
 	}
 
-	// AllEntries should return all 38 entries.
+	// AllEntries should match the catalog.yaml entry count — derived from the
+	// file's own `- name:` lines below, not a hand-maintained constant.
 	// Workflow audit 2026-05-16 Bundle C / F-003: 8 zombie agents purged
 	// (was 65 = 57 + 8 retired stubs).
 	// SPEC-V3R5-CORE-SLIM-B-001 (2026-05-20): 5 entries removed
@@ -67,13 +70,27 @@ func TestLoadCatalog(t *testing.T) {
 	// SPEC-NAVIGATOR-SYNC + SPEC-AUDIT-MULTI-MODEL (2026-08): manager-kanban agent
 	// (core.agents, hierarchical-team coordinator) + moai-ref-cross-model-audit
 	// skill (optional-pack:devops), net +2 = 43.
-	// moai-kanban-foreman added (kanban foreman loop-iteration skill driving the
+	// moai-factory-foreman added (factory foreman loop-iteration skill driving the
 	// bare /loop backlog dispatch cycle, core.skills), net +1 = 44.
+	// The skill was named moai-kanban-foreman until SPEC-LAUNCHER-ENTRY-FLAGS-001 renamed
+	// it in place: the entry count is unchanged by the rename.
 	// moai-domain-design-dna added (reference-design deconstruction + generation
-	// domain skill, core.skills), net +1 = 45.
-	const expectedTotal = 45
-	if len(all) != expectedTotal {
-		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
+	// domain skill, core.skills, and manager-todo), net +2 = 46.
+	// moai-ref-jev-question-design added (question-design rules reference for
+	// the gated judgment capability, core.skills), net +1 = 47.
+	// The total is DERIVED from the catalog.yaml source text, not hardcoded:
+	// AllEntries() must equal the file's own `- name:` entry count, so the
+	// loader still reddens if it drops an entry while a new catalog entry no
+	// longer needs a hand-bumped constant (card t1367 — the 47-vs-48 stale
+	// constant this replaces; the comparison the test's own comment always
+	// promised).
+	rawCatalog, err := os.ReadFile("catalog.yaml")
+	if err != nil {
+		t.Fatalf("read catalog.yaml: %v", err)
+	}
+	wantTotal := len(regexp.MustCompile(`(?m)^[ \t]*- name:`).FindAll(rawCatalog, -1))
+	if len(all) != wantTotal {
+		t.Errorf("AllEntries() returned %d entries, want %d (catalog.yaml `- name:` count)", len(all), wantTotal)
 	}
 
 	// LookupSkill: known core skill

@@ -2,7 +2,6 @@
 id: SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001
 title: "Acceptance — Template Internal-Content Isolation"
 version: "0.1.4"
-status: completed
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec

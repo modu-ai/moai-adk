@@ -6,7 +6,7 @@
 
 - **Per-AC binary PASS/PARTIAL/FAIL**: every AC verifies via a deterministic command (grep, file existence, lint exit code, agent-body inspection). No "subjective quality" ACs.
 - **Peer cross-validation applies to run-phase AC evidence**, not to plan-phase AC verification: plan-auditor runs once at plan-phase gate; REQ-PEER-001's second-worker re-run fires only at run-phase milestone boundaries. Plan-phase AC verification uses the standard manager-spec self-verification batch.
-- **Evidence persistence**: every run-phase AC verification command's verbatim output redirects to `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}` per REQ-FOLD-002. Cited paths MUST resolve at audit time.
+- **Evidence persistence**: every run-phase AC verification command's verbatim output redirects to `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}` as machine-local scratch per REQ-FOLD-002. Any cited evidence path MUST name a tracked file under `.moai/reports/<card-id>/` (export before citing) and resolve at audit time — a citation to a gitignored path is a Gap, never a pass. (Revised by t390 — the pre-revision bullet required "Cited paths MUST resolve at audit time" while pointing citations at the gitignored scratch path.)
 - **Template-mirror parity**: every distributed-surface AC (CLAUDE.md, `.claude/rules/moai/**`, `.claude/agents/moai/manager-lead.md`) verifies BOTH the live edit AND its template mirror under `internal/template/templates/`. Per §25 template-neutrality, template copies MUST NOT carry SPEC IDs / REQ tokens / internal dates.
 
 ## §B. Severity model
@@ -128,14 +128,14 @@ All ACs in §D are MUST unless marked otherwise.
 ### AC-FOLD-002 — Evidence-persistence + GAP marking
 
 **Given** the M3 fold procedure is in effect.
-**When** the inspector probes a §E.2 fold row's cited evidence path.
+**When** the inspector probes a §E.2 fold row's cited evidence path and its scratch copy.
 **Then** ALL of:
-- the path resolves on disk (NO dangling references);
-- the path is under `.moai/state/verify/<session>/` (NOT `/tmp`);
+- the cited path resolves on disk (NO dangling references) and is a tracked file under `.moai/reports/<card-id>/` (export before citing) — a citation pointing at the gitignored `.moai/state/verify/` scratch is a Gap, never a pass;
+- the scratch copy of the same output exists under `.moai/state/verify/<session>/` (NOT `/tmp`);
 - any AC whose evidence could not be populated is marked `GAP` (NOT `PASS`) in the fold row;
 - manager-lead did NOT advance to M{n+1} while a GAP marker was unresolved (return-blocker evidence).
 
-**Verify**: `find .moai/state/verify/<session>/M<n>.* -type f` resolves; `grep -E 'GAP' .moai/specs/SPEC-HIERARCHICAL-TEAM-001/progress.md` (expect 0 in a clean run; any GAP is blocker-evidence).
+**Verify**: the fold row's cited path resolves and `git ls-files` lists it under `.moai/reports/<card-id>/`; `find .moai/state/verify/<session>/M<n>.* -type f` resolves (scratch); `grep -E 'GAP' .moai/specs/SPEC-HIERARCHICAL-TEAM-001/progress.md` (expect 0 in a clean run; any GAP is blocker-evidence). (Revised by t390 — the pre-revision Then verified the scratch path itself as the citation target.)
 
 ### AC-FOLD-003 — Bounded-context invariant
 

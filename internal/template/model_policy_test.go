@@ -53,17 +53,25 @@ func TestIsValidModelPolicy(t *testing.T) {
 	}
 }
 
-// TestModelClaudeOpus5Constant verifies the claude-opus-5 model ID constant
-// and that the opus alias resolves to it.
-func TestModelClaudeOpus5Constant(t *testing.T) {
-	if ModelIDOpus5 != "claude-opus-5" {
-		t.Errorf("ModelIDOpus5 = %q, want %q", ModelIDOpus5, "claude-opus-5")
+// TestModelOpusAliasTargetsOpus55 verifies the opus alias resolves to the
+// Opus 5.5 canonical id.
+func TestModelOpusAliasTargetsOpus55(t *testing.T) {
+	if got := ModelAliasCanonicalID("opus"); got != "claude-opus-5-5" {
+		t.Errorf("opus alias = %q, want %q", got, "claude-opus-5-5")
 	}
-	if got := ModelAliasCanonicalID("opus"); got != ModelIDOpus5 {
-		t.Errorf("opus alias = %q, want %q", got, ModelIDOpus5)
+	if got := ModelAliasFromCanonicalID("claude-opus-5-5"); got != "opus" {
+		t.Errorf("claude-opus-5-5 reverse-maps to %q, want opus", got)
 	}
-	if got := ModelAliasFromCanonicalID(ModelIDOpus48); got != "opus" {
-		t.Errorf("deprecated claude-opus-4-8 reverse-maps to %q, want opus", got)
+}
+
+// TestModelDeprecatedOpusIDsNormalizeToAlias verifies every superseded Opus
+// canonical id still normalizes back to the opus alias, so historical prefs
+// files keep resolving after an alias bump.
+func TestModelDeprecatedOpusIDsNormalizeToAlias(t *testing.T) {
+	for _, id := range []string{"claude-opus-5", "claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6"} {
+		if got := ModelAliasFromCanonicalID(id); got != "opus" {
+			t.Errorf("ModelAliasFromCanonicalID(%q) = %q, want opus", id, got)
+		}
 	}
 }
 
@@ -276,27 +284,6 @@ func TestDeployExistingUserFile(t *testing.T) {
 	}
 }
 
-// TestMapModelPolicyToTier (REQ-MPM-002 alias) asserts the ModelPolicy→tier
-// mapping. Since the top tier was renamed max→high the mapping is an IDENTITY on
-// every member; empty/unknown still fall back to medium.
-func TestMapModelPolicyToTier(t *testing.T) {
-	tests := []struct {
-		policy ModelPolicy
-		want   string
-	}{
-		{ModelPolicyHigh, "high"},
-		{ModelPolicyMedium, "medium"},
-		{ModelPolicyLow, "low"},
-		{ModelPolicy(""), "medium"},      // empty → default-when-absent
-		{ModelPolicy("bogus"), "medium"}, // unknown → default-when-absent
-	}
-	for _, tt := range tests {
-		if got := MapModelPolicyToTier(tt.policy); got != tt.want {
-			t.Errorf("MapModelPolicyToTier(%q) = %q, want %q", tt.policy, got, tt.want)
-		}
-	}
-}
-
 // TestMapModelPolicyToEffort asserts the runtime-LAUNCH effort projection of the
 // legacy {high,medium,low} ModelPolicy vocabulary: high→high, medium→medium,
 // low→low on the EFFORT axis. Empty/unknown → "" (no override).
@@ -318,21 +305,6 @@ func TestMapModelPolicyToEffort(t *testing.T) {
 	}
 }
 
-// TestNormalizeToTier asserts the call-site resolver folds the superseded top-tier
-// name ("max") onto the canonical vocabulary ({high, medium, low}) and defaults
-// unknown/empty input to medium.
-func TestNormalizeToTier(t *testing.T) {
-	cases := map[string]string{
-		"high": "high", "medium": "medium", "low": "low",
-		"max": "high", "": "medium", "bogus": "medium",
-	}
-	for in, want := range cases {
-		if got := NormalizeToTier(in); got != want {
-			t.Errorf("NormalizeToTier(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
-
 func containsString(s, substr string) bool {
 	for i := 0; i <= len(s)-len(substr); i++ {
 		if s[i:i+len(substr)] == substr {
@@ -340,41 +312,4 @@ func containsString(s, substr string) bool {
 		}
 	}
 	return false
-}
-
-// writeLLMSection writes a minimal llm.yaml under root's sections dir with the
-// given body (already indented under `llm:`).
-func writeLLMSection(t *testing.T, root, body string) {
-	t.Helper()
-	dir := filepath.Join(root, ".moai", "config", "sections")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatalf("MkdirAll: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "llm.yaml"), []byte(body), 0o644); err != nil {
-		t.Fatalf("WriteFile llm.yaml: %v", err)
-	}
-}
-
-// TestResolveProjectPerformanceTier — the legacy alias axis reads the persisted
-// performance_tier from llm.yaml; absent/empty → medium (default).
-func TestResolveProjectPerformanceTier(t *testing.T) {
-	root := t.TempDir()
-	if got := ResolveProjectPerformanceTier(root); got != "medium" {
-		t.Errorf("absent llm.yaml: got %q, want medium", got)
-	}
-
-	writeLLMSection(t, root, "llm:\n  performance_tier: \"max\"\n")
-	if got := ResolveProjectPerformanceTier(root); got != "max" {
-		t.Errorf("explicit max: got %q, want max", got)
-	}
-
-	writeLLMSection(t, root, "llm:\n  performance_tier: \"\"\n")
-	if got := ResolveProjectPerformanceTier(root); got != "medium" {
-		t.Errorf("empty performance_tier: got %q, want medium", got)
-	}
-
-	writeLLMSection(t, root, "llm:\n  performance_tier: low\n")
-	if got := ResolveProjectPerformanceTier(root); got != "low" {
-		t.Errorf("unquoted low: got %q, want low", got)
-	}
 }

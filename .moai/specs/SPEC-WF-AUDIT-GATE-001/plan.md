@@ -1,7 +1,6 @@
 ---
 id: SPEC-WF-AUDIT-GATE-001
 version: "1.0.0"
-status: draft
 created_at: 2026-04-25
 updated_at: 2026-04-25
 author: GOOS

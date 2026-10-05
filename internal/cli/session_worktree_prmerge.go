@@ -139,12 +139,12 @@ func parseWorktreeList(porcelain string) []wtEntry {
 }
 
 // prMergeCleanup is the on-touch PR-merge auto-cleanup (M8,
-// REQ-SW-022/023/024). Invoked at `moai session register` and `moai session
-// list` RunE, gated by the AutoCleanup toggle. NEVER returns an error and
-// NEVER aborts the caller — every failure path is a non-blocking notice
+// REQ-SW-022/023/024). Invoked at `moai session register`, gated by the
+// AutoCleanup toggle. The read-only `session list` never invokes this sweep.
+// NEVER returns an error and NEVER aborts the caller — failure paths emit notices
 // (REQ-SW-004 fail-open spirit).
 //
-// @MX:ANCHOR: [AUTO] PR-merge auto-cleanup sweep (M8 on-touch at session register/list)
+// @MX:ANCHOR: [AUTO] PR-merge auto-cleanup sweep (M8 on-touch at session register)
 // @MX:REASON: REQ-SW-022/023/024 — same toggle as session-exit cleanup; gh primary + squash-blind fallback; dirty guard re-checked immediately before removal (EC-11); notice prefix MUST stay distinct from session-exit
 func prMergeCleanup(cfg *config.Config, out io.Writer) {
 	if cfg == nil || !cfg.Workflow.Worktree.AutoCleanup {
@@ -191,6 +191,20 @@ func prMergeCleanup(cfg *config.Config, out io.Writer) {
 		}
 		if dirty {
 			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (cause=dirty; uncommitted changes): worktree %s preserved (dispose manually via 'moai worktree remove' or 'git worktree remove')\n", e.path)
+			continue
+		}
+		// Card t673: a merged verdict does not cover commits added to the
+		// branch AFTER the merge, and the dirty guard above cannot see
+		// committed work at all. A clean tree holding unpushed commits is
+		// exactly the state the "unpushed branch's worktree is the only copy"
+		// discipline protects — the unpushed predicate preserves it.
+		unpushed, uerr := sessionWorktreeGitHasUnpushed(e.path)
+		if uerr != nil {
+			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (cause=unpushed-check-failed; unpushed-check failed: %v): worktree %s preserved\n", uerr, e.path)
+			continue
+		}
+		if unpushed {
+			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (cause=unpushed-commits; branch has commits not on its upstream or any remote): worktree %s preserved\n", e.path)
 			continue
 		}
 		// t73 anchor guard: never remove a worktree a live session is

@@ -454,14 +454,14 @@ func (a *Applier) writeLineageEntry(proposal Proposal, decision, appliedSurface,
 		return nil
 	}
 	return WriteLineageEntry(a.manifestPath, LineageEntry{
-		ProposalID:      proposal.ID,
-		TargetPath:      proposal.TargetPath,
-		AppliedSurface:  appliedSurface,
-		Decision:        decision,
-		Reason:          reason,
-		LearnedSurface:  learnedSurface,
-		BulletsChanged:  bulletsChanged,
-		SnapshotDir:     snapshotDir,
+		ProposalID:     proposal.ID,
+		TargetPath:     proposal.TargetPath,
+		AppliedSurface: appliedSurface,
+		Decision:       decision,
+		Reason:         reason,
+		LearnedSurface: learnedSurface,
+		BulletsChanged: bulletsChanged,
+		SnapshotDir:    snapshotDir,
 	})
 }
 

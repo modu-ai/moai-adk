@@ -6,6 +6,7 @@ package handoff
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
@@ -16,6 +17,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // validBody is the canonical Markdown body that satisfies REQ-SHA-005 structural
@@ -209,6 +212,66 @@ supersedes: project_sprint2_session-handoff-auto-001_plan_ready.md
 				t.Errorf("MEMORY.md first line missing index entry; firstLine=%q", firstLine)
 			}
 		})
+	}
+}
+
+func TestPersistIfPending_NewerLegacyFileSupersedesPendingDatabaseRow(t *testing.T) {
+	projectDir := makeProjectDir(t, validFrontmatter+validBody)
+	memoryDir := makeMemoryDir(t)
+	db, err := homestate.OpenFactory(projectDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldBody := "## Next Session Entry Point\n\n```text\nold database row\n```\n"
+	if err := db.SaveMemory(t.Context(), homestate.MemoryHandoff{
+		Sprint: "sprint1", Spec: "old-spec", Status: "plan_ready", Body: oldBody,
+		IndexLine: "- [old](project_sprint1_old-spec_plan_ready.md)",
+	}); err != nil {
+		_ = db.Close()
+		t.Fatal(err)
+	}
+	_ = db.Close()
+
+	if err := PersistIfPending(t.Context(), "session-new", projectDir, memoryDir); err != nil {
+		t.Fatal(err)
+	}
+	newMemory := filepath.Join(memoryDir, "project_sprint2_session-handoff-auto-001_plan_ready.md")
+	got, err := os.ReadFile(newMemory)
+	if err != nil {
+		t.Fatalf("newer legacy handoff was not persisted: %v", err)
+	}
+	if string(got) != validBody {
+		t.Fatalf("persisted body=%q, want newer legacy body", got)
+	}
+	if _, err := os.Stat(filepath.Join(memoryDir, "project_sprint1_old-spec_plan_ready.md")); !os.IsNotExist(err) {
+		t.Fatalf("stale database row was persisted, stat err=%v", err)
+	}
+}
+
+func TestRemovePendingIfUnchangedPreservesConcurrentReplacement(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pending.md")
+	original := []byte(validFrontmatter + validBody)
+	replacement := []byte(strings.Replace(validFrontmatter, "sprint2", "sprint3", 1) + validBody)
+	if err := os.WriteFile(path, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	expected := sha256.Sum256(original)
+	if err := os.WriteFile(path, replacement, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	removed, err := removePendingIfUnchanged(path, expected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if removed {
+		t.Fatal("concurrent replacement was removed")
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("replacement missing: %v", err)
+	}
+	if !bytes.Equal(got, replacement) {
+		t.Fatalf("replacement changed: got %q", got)
 	}
 }
 

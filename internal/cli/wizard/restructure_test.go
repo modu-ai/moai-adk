@@ -12,11 +12,14 @@ import (
 	"testing"
 )
 
-// Page group labels (plan.md §A.1 D1).
+// Page group labels (plan.md §A.1 D1; Agents & Autonomy per the Q5 regroup).
 const (
 	pageBasic          = "Basic"
 	pageModelReport    = "Model & Report"
-	pageQualityWorkflw = "Quality & Workflow"
+	pageAgentsAutonomy = "Agents & Autonomy"
+	// SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005: the Jev opt-in carries its own
+	// page label so its privacy statement is not pushed out of the viewport.
+	pageJudgment = "Judgment Capability"
 )
 
 // questionIDsInGroup returns the IDs of the questions carrying the given Group
@@ -63,8 +66,10 @@ func expectedGroupCount(questions []Question) int {
 	return count
 }
 
-// TestInitPages_Membership pins AC-WIZ-002: the three topic pages and their
-// exact membership + order.
+// TestInitPages_Membership pins AC-WIZ-002 as narrowed by
+// SPEC-INIT-QUIET-WIZARD-001: each page's exact membership + order. The
+// Model & Report page is empty on the init path — its two questions remain
+// for reconfigure only.
 func TestInitPages_Membership(t *testing.T) {
 	t.Parallel()
 	questions := InitQuestions(t.TempDir())
@@ -73,10 +78,10 @@ func TestInitPages_Membership(t *testing.T) {
 		page string
 		want []string
 	}{
-		{pageBasic, []string{"conversation_language", "user_name", "project_name"}},
-		{pageModelReport, []string{"model_policy", "report_format"}},
-		{pageQualityWorkflw, []string{"project_mode", "worktree_auto_create", "todo_enabled", "feedback_auto_submit", "audit_model", "audit_gate_claude", "audit_gate_codex", "audit_gate_glm", "codex_audit_enabled", "mcp_provision"}},
-		{"Autonomy", []string{"autonomy_tier"}},
+		{pageBasic, []string{"conversation_language", "user_name"}},
+		{pageModelReport, nil},
+		{pageAgentsAutonomy, []string{"agent_wiring", "autonomy_tier"}},
+		{pageJudgment, []string{"jev_enabled"}},
 	}
 	for _, tc := range cases {
 		got := questionIDsInGroup(questions, tc.page)
@@ -101,8 +106,10 @@ func TestInitPages_MergeIntoOneGroupPerPage(t *testing.T) {
 	}
 
 	// Each page's unconditional questions must form a single contiguous
-	// same-label run — otherwise the page would split across huh groups.
-	for _, page := range []string{pageBasic, pageModelReport, pageQualityWorkflw} {
+	// same-label run — otherwise the page would split across huh groups. Only
+	// the pages the init set still carries are walked (Model & Report is
+	// reconfigure-only since SPEC-INIT-QUIET-WIZARD-001).
+	for _, page := range []string{pageBasic, pageAgentsAutonomy} {
 		runs, inRun := 0, false
 		for i := range questions {
 			q := &questions[i]
@@ -119,19 +126,21 @@ func TestInitPages_MergeIntoOneGroupPerPage(t *testing.T) {
 }
 
 // TestPage3_NoModeGate pins AC-WIZ-003 + the C3 half of AC-WIZ-001: the
-// Quality & Workflow questions are visible with NO gate. With the four
-// default-true confirms removed (2026-08-03), only project_mode remains on
-// page 3, and it must be unconditional.
+// page-3 questions are visible with NO gate. Since SPEC-INIT-QUIET-WIZARD-001
+// page 3 carries agent_wiring and autonomy_tier, and both must be
+// unconditional.
 func TestPage3_NoModeGate(t *testing.T) {
 	t.Parallel()
 	questions := InitQuestions(t.TempDir())
 
-	pm := QuestionByID(questions, "project_mode")
-	if pm == nil {
-		t.Fatal("project_mode missing from the init question set")
-	}
-	if pm.Condition != nil {
-		t.Error("project_mode must be unconditional (no mode gate) so it stays on Page 3")
+	for _, id := range []string{"agent_wiring", "autonomy_tier"} {
+		q := QuestionByID(questions, id)
+		if q == nil {
+			t.Fatalf("%s missing from the init question set", id)
+		}
+		if q.Condition != nil {
+			t.Errorf("%s must be unconditional (no mode gate)", id)
+		}
 	}
 }
 
@@ -141,8 +150,8 @@ func TestReconfigureMembershipExcludesPage3(t *testing.T) {
 	t.Parallel()
 	reconf := ReconfigureQuestions(t.TempDir())
 
-	// Every page-3 question (now just project_mode after the 2026-08-03 removal
-	// of the four default-true confirms) must NOT leak into reconfigure.
+	// Every page-3 question (agent_wiring and autonomy_tier since
+	// SPEC-INIT-QUIET-WIZARD-001) must NOT leak into reconfigure.
 	for _, q := range Page3Questions(t.TempDir()) {
 		if QuestionByID(reconf, q.ID) != nil {
 			t.Errorf("Page-3 question %q leaked into ReconfigureQuestions", q.ID)
@@ -151,7 +160,7 @@ func TestReconfigureMembershipExcludesPage3(t *testing.T) {
 	// The pre-restructure member set is retained (Basic + Model + Git).
 	for _, id := range []string{
 		"conversation_language", "user_name", "project_name",
-		"model_policy", "report_format",
+		"report_format",
 		"git_mode", "git_provider", "gitlab_instance_url",
 		"github_username", "github_token", "gitlab_username", "gitlab_token",
 	} {
@@ -201,7 +210,8 @@ func TestAdvancedBridgeRemoved(t *testing.T) {
 }
 
 // TestBasicPage_LocaleLiveRender pins AC-WIZ-004: changing conversation_language
-// re-renders the SIBLING Page-1 questions (they now share one group with it).
+// re-renders the SIBLING Page-1 question (user_name shares one group with it;
+// project_name left the init set with SPEC-INIT-QUIET-WIZARD-001).
 func TestBasicPage_LocaleLiveRender(t *testing.T) {
 	t.Parallel()
 	questions := InitQuestions(t.TempDir())
@@ -209,7 +219,7 @@ func TestBasicPage_LocaleLiveRender(t *testing.T) {
 	locale := "en"
 
 	before := map[string]string{}
-	for _, id := range []string{"user_name", "project_name"} {
+	for _, id := range []string{"user_name"} {
 		before[id] = GetLocalizedQuestion(QuestionByID(questions, id), locale).Title
 	}
 
@@ -217,7 +227,7 @@ func TestBasicPage_LocaleLiveRender(t *testing.T) {
 	if locale != "ko" {
 		t.Fatalf("live locale = %q, want %q", locale, "ko")
 	}
-	for _, id := range []string{"user_name", "project_name"} {
+	for _, id := range []string{"user_name"} {
 		got := GetLocalizedQuestion(QuestionByID(questions, id), locale).Title
 		if got == before[id] || got == "" {
 			t.Errorf("%s title did not re-render after the locale switch (still %q)", id, got)

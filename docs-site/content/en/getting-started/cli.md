@@ -19,7 +19,7 @@ The `moai` CLI is divided into three groups.
 
 | Group | Commands | Description |
 |------|--------|------|
-| **Launch** | `moai cc` · `moai cg` · `moai glm` | Start a Claude Code session (choose the backend) |
+| **Launch** | `moai cc` · `moai glm` | Start a Claude Code session (choose the backend) |
 | **Project** | `moai init` · `moai update` · `moai doctor` · `moai status` | Project initialization, update, diagnostics, status |
 | **Tools** | `moai profile` · `moai inventory` · `moai hook` · `moai worktree` · `moai spec` · `moai harness` · ... | Configuration, inventory, hooks, worktrees, and other tools |
 
@@ -66,13 +66,12 @@ moai init [project-name] [OPTIONS]
 | `--root <path>` | Project root directory (default: current directory) |
 | `--git-mode <manual\|personal\|team>` | Git workflow mode (default: manual) |
 | `--git-provider <github\|gitlab>` | Git provider |
-| `--project-mode <personal\|team>` | Project mode (default: personal) |
 | `--enable-lsp` | Enable LSP integration (default: true) |
 | `--enforce-quality` | Enforce quality gates (default: true) |
 | `--enable-design` | Enable the design workflow (default: true) |
-| `--profile <high\|medium\|low>` | Model+effort profile — stored in `llm.yaml` `profile` (selects the profile matrix column). The legacy value `max` is accepted as input and normalized to `high` |
-| `--model-policy <high\|medium\|low>` | Legacy performance tier — stored in `llm.yaml` `performance_tier` (alias when `profile` is absent) |
-| `--high` | **Deprecated** alias for `--model-policy high` |
+| `--profile <high\|medium\|low>` | **Deprecated stub** — accepted for script compatibility, has no effect, and prints a deprecation warning pointing at `moai profile setup` |
+| `--model-policy <high\|medium\|low>` | **Deprecated stub** — accepted for script compatibility, has no effect, and prints a deprecation warning pointing at `moai profile setup` |
+| `--high` | **Deprecated stub** — alias of the retired `--model-policy high`; prints the same deprecation warning |
 
 ### Examples
 
@@ -85,7 +84,7 @@ cd my-existing-project
 moai init
 
 # Non-interactive (CI/CD)
-moai init --non-interactive --project-mode personal --model-policy medium
+moai init --non-interactive
 ```
 
 For detailed wizard steps, see the [Initial Setup](./init-wizard) page.
@@ -114,7 +113,7 @@ moai update [OPTIONS]
 | `--no-hooks` | Skip Git hook installation |
 | `--verbose` | Show all warnings (diagnostic mode) |
 | `--shell-env` | Configure shell environment variables for Claude Code |
-| `--profile <high\|medium\|low>` | Override the model+effort profile (stored in `llm.yaml` `profile`) |
+| `--profile <high\|medium\|low>` | **Deprecated stub** — accepted for script compatibility, has no effect, and prints a deprecation warning pointing at `moai profile setup` |
 
 ### Examples
 
@@ -231,7 +230,6 @@ Specify a profile at launch with the `-p` flag:
 ```bash
 moai cc -p work       # Run Claude with the work profile
 moai glm -p cost-save # Run GLM with the cost-save profile
-moai cg -p team       # Run CG mode with the team profile
 ```
 
 For more details, see the [Profile Management](./profile) page.
@@ -326,37 +324,20 @@ git worktree list               # list worktrees
 
 ---
 
-## moai cc / moai cg / moai glm
+## moai cc / moai glm
 
-Launch commands that start Claude Code while choosing the backend. All three support the `-p <profile>` flag to specify a profile. Passing arguments after `--` straight through to Claude Code is supported only by `moai cc` and `moai glm` (`moai cg` does not support it).
+`moai cc` and `moai glm` launch Claude Code with an explicitly selected backend. Legacy CG configurations require migration before launch.
 
 ```bash
 moai cc [-p profile] [-- claude-args...]
 moai glm [-p profile] [-- claude-args...]
-moai cg [-p profile]
 ```
 
-| Command | Leader | Workers | tmux required | Use case |
-|--------|------|------|-----------|------|
-| `moai cc` | Claude | Claude | No | Highest quality (single backend) |
-| `moai glm` | GLM | GLM | No | Cost optimization (GLM only) |
-| `moai cg` | Claude | GLM | Required | Quality + cost balance (hybrid) |
-
-`moai cg` activates CG mode (a Claude leader + GLM teammates). It must be run inside a tmux session, and it injects the GLM environment variables into the tmux session while the leader pane uses the Claude API. `moai cg` starts Claude Code directly in the current pane after setup, so there is no separate `claude` launch step.
-
-```bash
-# 1. Save your GLM API key (once)
-moai glm setup sk-your-glm-api-key
-
-# 2. Activate CG mode (run inside tmux — Claude Code starts directly in the current pane)
-moai cg
-```
-
-For detailed CG mode guidance, see [Introduction — Save tokens with GLM](./introduction#save-tokens-with-glm-5070).
+`moai cg` has been retired. It exits with a migration diagnostic without starting Claude or GLM. It is not an alias for `moai cc`. Projects with `llm.team_mode: cg` must make an explicit migration choice before launching a session. [CG retirement and migration](/en/multi-llm/cg-mode/)
 
 ### Launch flags
 
-Flags common to all three launch commands.
+Flags common to both launch commands.
 
 | Flag | Description |
 |--------|------|
@@ -370,9 +351,22 @@ Flags common to all three launch commands.
 |--------|------|
 | `-c, --continue` | Continue the previous session |
 | `-m, --model <model>` | Override the model selection |
-| `--chrome` / `--no-chrome` | Toggle the Chrome MCP |
+| `--chrome` / `--no-chrome` | Passed through to Claude Code unchanged; the launcher adds neither, so `/chrome` can attach unless you pass `--no-chrome` |
 
-> The `auto` permission mode is not available on GLM (a third-party provider) — it is supported only in `moai cc` or `moai cg`.
+> The `auto` permission mode is not available on GLM (a third-party provider) — it is supported only in `moai cc`.
+
+### Session model resolution (`moai cc`)
+
+`moai cc` looks for the session model in the order below and passes the first value it finds to Claude Code as `--model`.
+
+1. An explicit `--model` argument
+2. The profile's model (the value chosen in `moai profile setup`)
+3. The `ANTHROPIC_MODEL` environment variable (this launch only)
+4. The `model` in the project's `.claude/settings.local.json` (this project only)
+5. The value saved with `/model` in that profile's user-scope `settings.json` — the launch prints a one-line notice such as `model: opus (user /model)`
+6. If all of the above are empty, nothing is passed. The project's `.claude/settings.json` `model` pin then decides the session model, and the launcher names that value and how to change it
+
+The more specific and more recent choice wins. Claude Code applies steps 3 and 4 itself, so the launcher passes no `--model` and stays out of their way. Project settings outrank user-scope settings, so without step 5 a model picked with `/model` would be hidden behind the project pin. `moai glm` does not follow this rule: GLM needs the model as a slot alias, and a value picked with `/model` on an Anthropic account names a different model family that would route to the wrong slot.
 
 ### moai glm subcommands
 
@@ -464,23 +458,23 @@ moai --version    # identical
 
 ## Model policy (performance tier)
 
-MoAI-ADK provides a performance-tier system that assigns the optimal AI model to each agent — the starting point of Tokenomics. It is set via the `performance_tier` field in `llm.yaml`, chosen with the `--model-policy` flag or the initialization wizard.
+The former per-agent performance-tier system is retired. Since v3.2, **subagents inherit the main session's model and effort** — pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. What remains of the model policy is one session-level choice: the **Session model policy** question in `moai profile setup` sets the default reasoning effort of the Claude session launched with the profile, used when no effort level is chosen.
 
-| Tier | Characteristics |
+| Legacy value | Today's meaning |
 |------|------|
-| **high** | Highest quality — `max` reasoning depth on the two rarest-invocation agents |
-| **medium** (default) | Balance of quality and cost — the knee of the cost/score curve |
-| **low** | Lowest cost per task — agentic agents drop to Opus `low` effort; Sonnet only on single-shot rows |
+| **high** | Session effort fallback `high` |
+| **medium** | Session effort fallback `medium` |
+| **low** | Session effort fallback `low` |
 
 ```bash
-# Set at initialization
-moai init my-project --model-policy high
+# Configure the session model policy (and everything else about a profile)
+moai profile setup
 
-# Reconfigure an existing project
-moai update -c
+# The retired per-agent flags print a deprecation warning and do nothing
+moai init my-project --model-policy high
 ```
 
-The profile (`profile`: high/medium/low) selects the active column of the profile matrix, determining each agent's model+effort. For the detailed per-agent mapping, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
+The old `--model-policy`, `--profile`, `--high`, `--medium-alias`, and `--low` flags are deprecated stubs: values are accepted for script compatibility, have no effect, and print a warning pointing at `moai profile setup`. For the session-level model and effort controls, see the [Model Policy](/en/multi-llm/model-policy/) page; for how the matrix was retired, [Profile Matrix](/en/advanced/profile-matrix/).
 
 ---
 

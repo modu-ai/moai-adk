@@ -8,7 +8,6 @@
 package session
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,10 +46,17 @@ import (
 // (RelocateSession); before that relocation runs they keep their
 // launch-time CWD and stay invisible here.
 func LiveAnchoredSessions(treePath string, now time.Time) []Entry {
+	return LiveAnchoredSessionsForProject(treePath, callerProjectRoot(), now)
+}
+
+// LiveAnchoredSessionsForProject checks the tree-local and explicit project
+// registries. Update migrations use the primary checkout as projectRoot even
+// when invoked from a linked worktree or with CLAUDE_PROJECT_DIR set elsewhere.
+func LiveAnchoredSessionsForProject(treePath, projectRoot string, now time.Time) []Entry {
 	if treePath == "" {
 		return nil
 	}
-	roots := []string{treePath, callerProjectRoot()}
+	roots := []string{treePath, projectRoot}
 	host, _ := os.Hostname()
 	stale := DefaultStaleMinutes * time.Minute
 	seen := make(map[string]bool)
@@ -87,6 +93,15 @@ func LiveAnchoredSessions(treePath string, now time.Time) []Entry {
 	return anchored
 }
 
+// IsProcessAlive reports whether a process with the given PID is running.
+// It is the exported face of the per-platform probe so sibling packages
+// (internal/cli update-cleanup, internal/web console view models) share one
+// liveness definition instead of growing private copies (t426 windows
+// census axis 2).
+func IsProcessAlive(pid int) bool {
+	return isProcessAlive(pid)
+}
+
 // callerProjectRoot resolves the project root of the process asking about
 // anchors: CLAUDE_PROJECT_DIR when the runtime set it, else the working
 // directory. This is where a `moai cc -w` lane's entry lives when the
@@ -107,22 +122,15 @@ func callerProjectRoot() string {
 // its launch-time CWD otherwise, which makes it invisible to anchor
 // detection. Idempotent on a missing entry — mirrors Heartbeat
 // (REQ-COORD-004): no error when the session is not registered anywhere.
+//
+// SPEC-SESSION-ANCHOR-ATTR-001 W2: the rewrite is audited — the legacy entry
+// point delegates to RelocateSessionWithOptions with zero options, so every
+// relocation appends an audit row (trigger "unspecified", ownership
+// unclassified). The hook layer calls the Options form to carry the trigger
+// event and the target-tree lock context.
 func (r *Registry) RelocateSession(sessionID, newCwd string) error {
-	if sessionID == "" {
-		return errors.New("session registry: sessionID cannot be empty")
-	}
-	if newCwd == "" {
-		return errors.New("session registry: newCwd cannot be empty")
-	}
-	return r.withLock(func(entries []Entry) ([]Entry, error) {
-		for i := range entries {
-			if entries[i].SessionID == sessionID {
-				entries[i].CWD = newCwd
-				return entries, nil
-			}
-		}
-		return entries, nil
-	})
+	_, err := r.RelocateSessionWithOptions(sessionID, newCwd, RelocationOptions{})
+	return err
 }
 
 // pathWithinTree reports whether the recorded working directory child lies

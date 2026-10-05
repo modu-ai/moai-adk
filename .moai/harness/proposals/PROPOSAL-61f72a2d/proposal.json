@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-61f72a2d",
+  "generated_at": "2026-09-13T06:25:53Z",
+  "generator_version": "0.1.0",
+  "observation_count": 10,
+  "pattern_key": "tool_failure:Bash:WorktreeGuardRefusal",
+  "source_ts": "2026-09-13T08:08:58Z",
+  "tier": "auto_update"
+}

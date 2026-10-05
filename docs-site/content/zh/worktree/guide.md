@@ -57,7 +57,7 @@ MoAI-ADK 在这一功能之上叠加了 SPEC 单位的隔离环境。因为每�
 
 | 你想做的事 | 负责方 |
 |-----------|------|
-| 创建 Worktree、进入 Worktree | 启动器 `moai cc`、`moai glm`、`moai cg` 的 `-w` 标志 |
+| 创建 Worktree、进入 Worktree | 启动器 `moai cc`、`moai glm` 的 `-w` 标志 |
 | 查看 Worktree 列表 | `git worktree list` |
 | 同步、清理、恢复、状态守卫 | `moai worktree` (别名 `moai wt`) 子命令 |
 
@@ -75,7 +75,6 @@ MoAI-ADK 在这一功能之上叠加了 SPEC 单位的隔离环境。因为每�
 ```bash
 moai cc  -w [名称] [--spawn]
 moai glm -w [名称] [--spawn]
-moai cg  -w [名称] [--spawn]
 ```
 
 #### `-w` 的取值如何解析
@@ -106,7 +105,7 @@ moai cc -w feat-auth
 moai glm -w feat-auth
 
 # 保留当前会话 + 在新 tmux 窗口中启动 GLM 队友
-moai cg -w feat-auth --spawn
+moai cc -w feat-auth --spawn
 
 # 想在任意位置手动建工作树,直接用 git
 git worktree add -b feature/SPEC-AUTH-001 \

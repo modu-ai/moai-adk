@@ -80,6 +80,11 @@ func viewAcceptanceCriteria(cmd *cobra.Command, specID string, shapeTrace bool) 
 			case *spec.MissingRequirementMapping:
 				// handle only missing REQ mapping warnings for leaf nodes
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: %v\n", e)
+			case *spec.DuplicateAcceptanceID:
+				// The parser keeps the first line and collects every line's REQ
+				// mappings (card t564), so the tree is still meaningful; lint
+				// reports the same duplicate as a finding.
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: %v\n", e)
 			default:
 				// other errors are fatal
 				return fmt.Errorf("parse error: %w", err)

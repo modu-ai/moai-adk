@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>moai-proxy 도입 타당성 및 실행 계획</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&amp;family=Noto+Sans+KR:wght@400;500;600;700;800&amp;family=Noto+Serif+KR:wght@600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    :root{--ink:#29241f;--muted:#6f665d;--ivory:#f7f1e7;--paper:#fffdf8;--clay:#b85f3f;--clay-deep:#87412c;--sage:#55755e;--amber:#b47b25;--rose:#a14747;--line:#ddd0be;--soft:#efe5d7;--shadow:0 16px 42px rgba(71,49,31,.10);--radius:18px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--ivory);color:var(--ink);font-family:"Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.68}
+    a{color:var(--clay-deep);text-decoration-thickness:1px;text-underline-offset:3px}a:hover{color:var(--clay)}code,pre{font-family:"JetBrains Mono",monospace}.wrap{width:min(1180px,calc(100% - 36px));margin:auto}
+    .hero{padding:72px 0 48px;background:linear-gradient(135deg,#302820 0%,#5a392b 55%,#9e573c 100%);color:#fff9f0;position:relative;overflow:hidden}.hero:after{content:"";position:absolute;width:520px;height:520px;border:1px solid rgba(255,255,255,.13);border-radius:50%;right:-180px;top:-260px;box-shadow:0 0 0 70px rgba(255,255,255,.035),0 0 0 150px rgba(255,255,255,.02)}
+    .eyebrow{font-size:.78rem;letter-spacing:.18em;text-transform:uppercase;font-weight:800;color:#f2c4aa}.hero h1{font-family:"Noto Serif KR",serif;font-size:clamp(2.1rem,5vw,4.2rem);line-height:1.15;margin:.4rem 0 1rem;max-width:900px;letter-spacing:-.045em}.hero p{max-width:780px;color:#f0e4d9;font-size:1.08rem;margin:0}.meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}.meta span{padding:7px 11px;border:1px solid rgba(255,255,255,.22);border-radius:999px;background:rgba(255,255,255,.08);font-size:.82rem}
+    nav{position:sticky;top:0;z-index:20;background:rgba(247,241,231,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}nav .wrap{display:flex;gap:18px;overflow:auto;padding-top:12px;padding-bottom:12px}nav a{white-space:nowrap;text-decoration:none;font-weight:700;font-size:.84rem;color:var(--muted)}nav a:hover{color:var(--clay)}
+    main{padding:42px 0 80px}section{margin:0 0 58px;scroll-margin-top:76px}.section-kicker{color:var(--clay);font-size:.75rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}.section-title{font-family:"Noto Serif KR",serif;font-size:clamp(1.55rem,3vw,2.25rem);line-height:1.28;margin:.25rem 0 .8rem;letter-spacing:-.03em}.lede{color:var(--muted);max-width:850px;font-size:1.02rem}
+    .decision{display:grid;grid-template-columns:1.4fr .8fr;gap:20px;margin-top:-74px;position:relative;z-index:2}.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:26px}.verdict{border-top:6px solid var(--amber)}.verdict b{font-family:"Noto Serif KR",serif;font-size:1.55rem}.verdict p{margin-bottom:0}.boundary{background:#362b24;color:#fff8ef;border-color:#4d3e34}.boundary h2{font-size:1rem;color:#f1c6ad;margin:0 0 8px}.boundary p{margin:0;color:#f4e9de}
+    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:20px}.metric{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px}.metric .value{font-family:"Noto Serif KR",serif;font-size:1.45rem;font-weight:700}.metric .label{font-size:.82rem;color:var(--muted)}.pass{color:var(--sage)}.block{color:var(--rose)}.partial{color:var(--amber)}
+    .callout{border-left:5px solid var(--clay);background:#fff9f1;padding:18px 20px;border-radius:0 12px 12px 0;margin:20px 0}.callout strong{display:block;margin-bottom:4px}.callout.warn{border-left-color:var(--amber)}.callout.danger{border-left-color:var(--rose)}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px;background:var(--paper)}table{width:100%;border-collapse:collapse;min-width:760px}th,td{text-align:left;vertical-align:top;padding:13px 14px;border-bottom:1px solid var(--soft);font-size:.9rem}th{background:#ede1d1;color:#4d4035;font-weight:800}tr:last-child td{border-bottom:0}.pill{display:inline-block;border-radius:999px;padding:3px 9px;font-size:.72rem;font-weight:800;white-space:nowrap}.pill.ok{background:#e4efe5;color:#365d40}.pill.no{background:#f4dddd;color:#8f3838}.pill.some{background:#f6ead1;color:#8a5d17}
+    .diagram{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:22px;overflow:auto}.mermaid{display:flex;justify-content:center;min-width:720px}.fallback{background:#f2e8da;padding:16px;border-radius:10px}
+    .timeline{position:relative;margin-left:12px}.timeline:before{content:"";position:absolute;left:13px;top:8px;bottom:8px;width:2px;background:var(--line)}.step{position:relative;padding:0 0 28px 48px}.step:before{content:attr(data-n);position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;background:var(--clay);color:white;display:grid;place-items:center;font-size:.76rem;font-weight:800;box-shadow:0 0 0 6px var(--ivory)}.step h3{margin:0 0 5px;font-size:1.08rem}.step p{margin:0;color:var(--muted)}.step ul{margin:.55rem 0 0;padding-left:1.2rem}
+    .cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}.evidence{background:#27231f;color:#f7eee4;border-radius:14px;padding:18px;overflow:auto;font-size:.78rem;line-height:1.55}.evidence .good{color:#9fd5aa}.evidence .bad{color:#f0a0a0}.evidence .dim{color:#bfb3a8}
+    details{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0}summary{cursor:pointer;font-weight:800}details p,details ul{color:var(--muted)}
+    .risk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.risk{background:var(--paper);border:1px solid var(--line);border-top:5px solid var(--amber);border-radius:14px;padding:18px}.risk.high{border-top-color:var(--rose)}.risk.low{border-top-color:var(--sage)}.risk h3{margin:.1rem 0 .45rem;font-size:1rem}.risk p{color:var(--muted);font-size:.9rem;margin:0}
+    .sources{columns:2;column-gap:34px}.sources li{break-inside:avoid;margin-bottom:9px}.footer{border-top:1px solid var(--line);padding:28px 0 44px;color:var(--muted);font-size:.84rem}
+    @media(max-width:900px){.decision,.cols{grid-template-columns:1fr}.cards{grid-template-columns:repeat(2,1fr)}.risk-grid{grid-template-columns:1fr}.sources{columns:1}.decision{margin-top:-38px}}
+    @media(max-width:560px){.wrap{width:min(100% - 24px,1180px)}.hero{padding:54px 0 38px}.cards{grid-template-columns:1fr}.panel{padding:20px}.section-title{font-size:1.55rem}}
+    @media print{nav{display:none}.hero{background:#fff;color:#211d19;padding:28px 0;border-bottom:2px solid #333}.hero p,.meta span{color:#333}.decision{margin-top:22px}.panel,.metric,.diagram,.risk,details{box-shadow:none;break-inside:avoid}section{break-inside:auto}.wrap{width:100%}a{color:#222;text-decoration:none}.mermaid{min-width:0}}
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="eyebrow">Feasibility &amp; Delivery Plan · 2026-09-10</div>
+      <h1>moai-proxy 도입 타당성 및 실행 계획</h1>
+      <p>ccmproxy를 실측하고, Claude Code에서 GPT‑6와 GLM을 실제로 호출한 결과를 바탕으로 라이선스·보안·공급망까지 포함한 도입 경로를 정리했다.</p>
+      <div class="meta"><span>계획 보고</span><span>독자 수준: basic</span><span>MoAI-Easy에서 도출</span><span>세션 01a088fd…474</span></div>
+    </div>
+  </header>
+  <nav aria-label="보고서 목차"><div class="wrap"><a href="#decision">판정</a><a href="#measure">갭 실측</a><a href="#evidence">증거</a><a href="#architecture">구조</a><a href="#plan">계획</a><a href="#acceptance">합격 기준</a><a href="#risk">잔여 위험</a><a href="#sources">출처</a></div></nav>
+  <main class="wrap">
+    <section id="decision" class="decision" aria-labelledby="decision-title">
+      <div class="panel verdict">
+        <div class="section-kicker">Decision</div>
+        <h2 id="decision-title"><b>조건부 GO</b></h2>
+        <p>Claude Code에서 GPT‑6 응답·모델 선택기·Read 도구 왕복이 모두 실제로 성공했다. GLM도 기존 <code>moai glm</code>에서 실호출과 도구 왕복이 성공했다. 기술적 가능성은 확인됐으나, GPL 코드를 Apache-2.0 본체에 직접 편입하는 방식은 승인 대상이 아니다.</p>
+      </div>
+      <aside class="panel boundary">
+        <h2>권고 경계</h2>
+        <p><strong>moai-proxy</strong>는 GPL‑3.0 독립 실행 파일로 두고, Apache‑2.0 <strong>moai</strong>는 설치·실행·상태·정리만 맡는다. 단일 Apache 바이너리가 필수라면 별도 허락 또는 clean-room이 먼저다.</p>
+      </aside>
+    </section>
+
+    <div class="cards" aria-label="핵심 실측 요약">
+      <div class="metric"><div class="value pass">PASS</div><div class="label">GPT‑6 실제 응답</div></div>
+      <div class="metric"><div class="value pass">PASS</div><div class="label">GPT 도구 왕복</div></div>
+      <div class="metric"><div class="value pass">PASS</div><div class="label">GLM 직결 + 도구</div></div>
+      <div class="metric"><div class="value block">15건</div><div class="label">상류 reachable 취약점</div></div>
+    </div>
+
+    <section style="margin-top:58px">
+      <div class="section-kicker">Executive Summary</div>
+      <h2 class="section-title">할 수 있는가, 그리고 어떻게 해야 하는가</h2>
+      <p class="lede">답은 “할 수 있으나, 그대로 복사해서는 안 된다”이다. 안전한 최초 사용자 여정은 <code>moai gpt setup</code>으로 설치·GPL 고지·인증을 마친 뒤 <code>moai gpt</code>로 실행하는 명시적 2단계다. 내부적으로는 시스템 CA나 <code>/etc/hosts</code>를 건드리지 않는 loopback HTTP gateway를 띄우고 Claude Code에 임시 설정과 환경을 주입한다.</p>
+      <div class="callout"><strong>가장 단순한 안전 경로</strong>GPT는 독립 GPL companion으로 제품화하고, GLM은 이미 검증된 <code>moai glm</code>을 유지한다. 통합 provider는 같은 세션에서 GPT↔GLM 전환이 꼭 필요할 때만 추가한다.</div>
+      <div class="callout danger"><strong>착수 전 차단 조건</strong>Go 1.26.6+ 갱신과 취약점 0건, GPL 배포 경계, 최신 Codex OAuth·모델·헤더 계약의 재기준화가 끝나기 전에는 릴리스하면 안 된다.</div>
+    </section>
+
+    <section id="measure">
+      <div class="section-kicker">Measured Gaps</div>
+      <h2 class="section-title">갭을 실제로 닫은 범위와 남은 경계</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>항목</th><th>이번 실행의 관측</th><th>상태</th><th>다음 관문</th></tr></thead>
+        <tbody>
+          <tr><td>Claude Code → GPT‑6</td><td><code>MOAI_PROXY_GPT6_OK</code>, exit 0, Codex Responses 200</td><td><span class="pill ok">닫힘</span></td><td>계약 canary 고정</td></tr>
+          <tr><td>모델 선택기</td><td>TUI에 <code>GPT-6 Astra (Codex)</code> 행 표시</td><td><span class="pill ok">닫힘</span></td><td><code>modelPicker.options</code> 유지</td></tr>
+          <tr><td>GPT 도구 왕복</td><td>Read 도구, 2턴, 정확한 fixture 회수</td><td><span class="pill ok">닫힘</span></td><td>golden E2E</td></tr>
+          <tr><td>시스템 변경 없는 연결</td><td>평문 loopback gateway로 성공</td><td><span class="pill ok">닫힘</span></td><td>기본 모드로 채택</td></tr>
+          <tr><td>GLM</td><td><code>glm-5.3-flash[1m]</code> 응답과 Read 왕복 성공</td><td><span class="pill ok">닫힘</span></td><td>기존 직결 경로 유지</td></tr>
+          <tr><td>Claude 비필수 egress</td><td>privacy env 적용 전 event/eval 관측, 적용 후 해당 호출 소멸</td><td><span class="pill some">부분</span></td><td><code>/api/hello</code> 로컬 처리·allow-list</td></tr>
+          <tr><td>Go 품질</td><td>unit·race·vet 통과; coverage는 toolchain 불일치로 실패</td><td><span class="pill some">부분</span></td><td>깨끗한 Go 1.26.6+에서 coverage</td></tr>
+          <tr><td>취약점</td><td>Go 1.26.1 stdlib reachable 15건</td><td><span class="pill no">차단</span></td><td>Go 1.26.6+·govulncheck 0</td></tr>
+          <tr><td>Codex 계약</td><td>모델·effort·OAuth refresh·session header 드리프트</td><td><span class="pill no">차단</span></td><td>공식 Codex 기준 profile 재작성</td></tr>
+          <tr><td>Credential 쓰기</td><td>프로세스 간 lock/CAS/atomic replace 없음</td><td><span class="pill no">차단</span></td><td>전용 저장소 또는 안전한 병합</td></tr>
+          <tr><td>공급망</td><td>checksum·재현 빌드 일치; attestation 없음, tag unsigned</td><td><span class="pill some">부분</span></td><td>서명·SBOM·provenance</td></tr>
+          <tr><td>플랫폼</td><td>6 target cross-compile; macOS arm64만 현지 실행</td><td><span class="pill some">부분</span></td><td>6 target runtime smoke</td></tr>
+          <tr><td>GPL/Apache</td><td>ccmproxy GPL‑3.0, MoAI Apache‑2.0</td><td><span class="pill no">차단</span></td><td>독립 배포·법률 검토</td></tr>
+          <tr><td>1M 실문맥</td><td>Claude client가 1,000,000으로 인식; 272k 초과 payload 미실행</td><td><span class="pill some">부분</span></td><td>승인형 비용 제한 canary</td></tr>
+        </tbody>
+      </table></div>
+      <h3 style="margin-top:28px">공식 Codex 기준선과의 구체적 차이</h3>
+      <p class="lede">ccmproxy <code>1125881…</code>와 공식 Codex <code>5a9eb14…</code>를 대조했다. 아래 “공식”은 해당 Codex commit의 구현값이며 영구 공개 API 계약을 뜻하지 않는다.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>계약</th><th>ccmproxy</th><th>공식 Codex</th><th>목표·실패 동작</th></tr></thead>
+        <tbody>
+          <tr><td>기본 effort</td><td>Astra/Sol <code>medium</code></td><td><code>low</code></td><td>profile 고정; drift면 릴리스 차단</td></tr>
+          <tr><td>effort 집합</td><td>Astra/Sol/Terra에 <code>ultra</code> 없음</td><td><code>ultra</code> 지원</td><td>집합 보존; 조용한 강등 금지</td></tr>
+          <tr><td>context</td><td>Sol/Terra/Luna <code>372000</code></td><td>표준 <code>272000</code>, experimental max <code>872000</code></td><td>두 필드 분리; fixture 실패</td></tr>
+          <tr><td>Spark</td><td><code>gpt-5.3-codex-spark</code> 노출</td><td>visible catalog에 없음</td><td>entitlement 없으면 숨김</td></tr>
+          <tr><td>OAuth authorize</td><td>기본 scope, originator query 없음</td><td>connector scope·originator 포함</td><td>공식 fixture 불일치 시 시작 거절</td></tr>
+          <tr><td>OAuth refresh</td><td>form, scope 포함</td><td>JSON, scope 없음</td><td>불일치 시 token write 금지</td></tr>
+          <tr><td>session header</td><td><code>Session_id</code></td><td><code>session-id</code>, <code>thread-id</code></td><td>두 hyphen header; contract test 실패</td></tr>
+          <tr><td>originator</td><td><code>codex-tui</code></td><td><code>codex_cli_rs</code></td><td>versioned profile; canary 차단</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="evidence">
+      <div class="section-kicker">Evidence</div>
+      <h2 class="section-title">핵심 실행 증거</h2>
+      <div class="cols">
+        <pre class="evidence"><span class="dim"># Claude Code 2.1.267 → GPT-6</span>
+model: gpt-6-astra
+result: <span class="good">MOAI_PROXY_GPT6_OK</span>
+exit: <span class="good">0</span>
+POST /backend-api/codex/responses → <span class="good">200</span>
+
+<span class="dim"># Read tool round-trip</span>
+fixture: MOAI_PROXY_TOOL_ROUNDTRIP_OK
+turns: 2
+permission denials: 0
+exit: <span class="good">0</span></pre>
+        <pre class="evidence"><span class="dim"># Existing MoAI GLM path</span>
+model: glm-5.3-flash[1m]
+result: <span class="good">MOAI_GLM_LIVE_OK</span>
+exit: <span class="good">0</span>
+
+<span class="dim"># Upstream security</span>
+go test ./...             <span class="good">PASS</span>
+go test -race ./...       <span class="good">PASS</span>
+go vet ./...              <span class="good">PASS</span>
+govulncheck ./...         <span class="bad">15 reachable</span>
+go test ./... -cover      <span class="bad">tool mismatch</span></pre>
+      </div>
+      <details open><summary>릴리스 무결성 실측</summary><p>darwin/arm64 archive SHA256 <code>345e55a4bb2df6d512f2f2a432ee8c00515fbbfca75eb6e89dac899858a915c7</code>가 checksums.txt와 일치했다. tag 소스를 같은 빌드 명령으로 다시 빌드한 binary SHA256도 릴리스 binary와 일치했다. 다만 GitHub attestation은 HTTP 404였고, tag·commit은 unsigned, macOS binary는 ad-hoc 서명이었다.</p></details>
+      <details><summary>기준선 귀속</summary><p>MoAI는 <code>main@93299267a</code>, ccmproxy는 <code>112588175eb2b3b693a5bd23d58d8c501e0ae406</code>, 공식 Codex 비교는 <code>5a9eb145c4c05fcfc7158d7c25b80e1322eccae1</code>에 대해 이번 실행에서 측정했다. 공유 checkout은 <code>origin/main...HEAD = 1 1</code>이고 기존 변경이 많아 보고서 외 파일을 수정하지 않았다.</p></details>
+      <details open><summary>명령·출력 원장 — 기준선과 상류 검사</summary><pre class="evidence">$ git -C &lt;TEMP&gt;/repo rev-parse HEAD
+112588175eb2b3b693a5bd23d58d8c501e0ae406
+
+$ go test ./... -count=1
+ok github.com/jclab-joseph/claude-code-model-proxy/cmd/ccmproxy
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/ca
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/codex
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/config
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/httplog
+?  github.com/jclab-joseph/claude-code-model-proxy/internal/logx [no test files]
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/proxy
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/resolve
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/router
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/tokenize
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/translate
+exit 0
+
+$ govulncheck ./...
+Your code is affected by 15 vulnerabilities from the Go standard library.
+This scan also found 5 vulnerabilities in packages you import and 8
+vulnerabilities in modules you require, but your code doesn't appear to call
+these vulnerabilities.</pre></details>
+      <details><summary>명령·출력 원장 — GPT‑6 live</summary><pre class="evidence"># 임시 경로와 dummy credential만 마스킹
+$ env HTTPS_PROXY=http://127.0.0.1:18080 \
+  HTTP_PROXY=http://127.0.0.1:18080 \
+  NODE_EXTRA_CA_CERTS=&lt;REDACTED&gt;/ca.crt ANTHROPIC_API_KEY=&lt;DUMMY&gt; \
+  claude --model gpt-6-astra --permission-mode default --safe-mode \
+  --restricted --strict-mcp-config --tools '' --effort low \
+  --no-session-persistence --output-format json --print '&lt;FIXED_TOKEN_PROMPT&gt;'
+
+result: MOAI_PROXY_GPT6_OK
+inputTokens: 1006
+outputTokens: 11
+contextWindow: 200000
+maxOutputTokens: 32000
+exit: 0
+
+proxy:
+codex messages model=gpt-6-astra -&gt; gpt-6-astra effort=low
+POST https://chatgpt.com/backend-api/codex/responses -&gt; 200</pre></details>
+      <details><summary>명령·출력 원장 — GLM live</summary><pre class="evidence">$ gtimeout 90 moai glm --permission-mode default --safe-mode --restricted \
+  --strict-mcp-config --tools '' --effort low --no-session-persistence \
+  --output-format json --print '&lt;FIXED_TOKEN_PROMPT&gt;'
+
+result: MOAI_GLM_LIVE_OK
+model: glm-5.3-flash[1m]
+inputTokens: 1900
+outputTokens: 13
+contextWindow: 1000000
+maxOutputTokens: 32000
+exit: 0</pre></details>
+      <details><summary>소스 조사 근거</summary><ul><li><a href="https://github.com/jclab-joseph/claude-code-model-proxy/blob/112588175eb2b3b693a5bd23d58d8c501e0ae406/cmd/ccmproxy/main.go#L680-L706">미인용 env 출력</a></li><li><a href="https://github.com/jclab-joseph/claude-code-model-proxy/blob/112588175eb2b3b693a5bd23d58d8c501e0ae406/run.sh#L1-L42">예측 가능한 /tmp 경로·setcap·hosts 수정</a></li><li><a href="https://github.com/jclab-joseph/claude-code-model-proxy/blob/112588175eb2b3b693a5bd23d58d8c501e0ae406/internal/codex/store.go#L152-L292">credential 직접 쓰기</a></li><li><a href="https://github.com/jclab-joseph/claude-code-model-proxy/blob/112588175eb2b3b693a5bd23d58d8c501e0ae406/internal/config/config.go#L180-L206">고정 User-Agent·originator</a></li><li><a href="https://github.com/jclab-joseph/claude-code-model-proxy/blob/112588175eb2b3b693a5bd23d58d8c501e0ae406/.github/workflows/release.yml#L1-L156">release workflow</a></li></ul></details>
+      <details><summary>명령·출력 원장 — race, vet, format, coverage</summary><pre class="evidence">Target: main 112588175eb2b3b693a5bd23d58d8c501e0ae406
+
+$ go test -race ./... -count=1
+ok github.com/jclab-joseph/claude-code-model-proxy/cmd/ccmproxy 1.870s
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/ca 3.982s
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/codex 5.997s
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/config 6.295s
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/httplog 6.989s
+?  github.com/jclab-joseph/claude-code-model-proxy/internal/logx [no test files]
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/proxy 6.659s
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/resolve 8.649s
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/router 12.337s
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/tokenize 8.462s
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/translate 8.104s
+exit 0
+
+$ go vet ./...
+&lt;empty&gt;
+exit 0
+
+$ gofmt -l .
+&lt;empty&gt;
+exit 0
+
+$ go test ./... -count=1 -cover
+compile: version "go1.26.1" does not match go tool version "go1.26.0"
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/ca 1.326s coverage: 76.8% of statements
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/codex 1.723s coverage: 67.7% of statements
+ok github.com/jclab-joseph/claude-code-model-proxy/internal/router 3.467s coverage: 84.3% of statements
+exit 1
+
+$ govulncheck ./...
+Your code is affected by 15 vulnerabilities from the Go standard library.
+exit 3</pre></details>
+      <details><summary>명령·출력 원장 — picker, HTTP-only, privacy, GLM tool</summary><pre class="evidence">Picker procedure:
+HTTP-only proxy :18081 → isolated Claude Code 2.1.267
+--settings picker-settings.json --model gpt-6-astra --safe-mode
+input: /model
+observed:
+GPT-6 Astra (Codex) with low effort
+6. GPT-6 Astra (Codex) ✔ OpenAI GPT-6 Astra through a local Codex proxy.
+termination: Esc + Ctrl-C twice; UI exit was not a pass criterion
+cleanup: proxy Ctrl-C; :18081 not LISTEN
+
+HTTP-only command shape:
+ANTHROPIC_BASE_URL=http://127.0.0.1:18081 claude --model gpt-6-astra ...
+result: MOAI_HTTP_GATEWAY_OK
+exit 0
+repeat --model 'gpt-6-astra[1m]': MOAI_HTTP_1M_OK
+contextWindow: 1000000; maxOutputTokens: 64000; exit 0
+
+Privacy comparison transcript:
+without privacy env: /api/eval/... 200; /api/event_logging/v2/batch 200
+with CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1,
+DISABLE_TELEMETRY=1, DISABLE_ERROR_REPORTING=1:
+result: MOAI_PRIVACY_ENV_OK; exit 0
+policy_limits/settings 401; Codex Responses 200
+no eval/event_logging path observed in that run
+boundary: original temp proxy log file was not retained
+
+GLM Read command shape:
+gtimeout 90 moai glm --safe-mode --restricted --tools Read \
+  --add-dir &lt;REDACTED&gt; --output-format json --print '&lt;READ_FIXTURE_PROMPT&gt;'
+result: MOAI_PROXY_TOOL_ROUNDTRIP_OK
+num_turns: 2; permission_denials: []
+inputTokens: 2641; cacheReadInputTokens: 2496; outputTokens: 66
+exit 0</pre></details>
+      <details><summary>명령·출력 원장 — cross-build와 release</summary><pre class="evidence">$ CGO_ENABLED=0 GOOS=&lt;os&gt; GOARCH=&lt;arch&gt; go build ...
+darwin/amd64 PASS
+darwin/arm64 PASS
+linux/amd64 PASS
+linux/arm64 PASS
+windows/amd64 PASS
+windows/arm64 PASS
+exit 0
+
+$ shasum -a 256 ccmproxy.tar.gz ccmproxy ccmproxy-rebuilt
+345e55a4bb2df6d512f2f2a432ee8c00515fbbfca75eb6e89dac899858a915c7  ccmproxy.tar.gz
+b7ca6bd502638f602e22555d7b990bc626e435bf9b09777d31a9ef443a1cc402  ccmproxy
+b7ca6bd502638f602e22555d7b990bc626e435bf9b09777d31a9ef443a1cc402  ccmproxy-rebuilt
+exit 0
+
+$ gh release download v0.1.0 --repo jclab-joseph/claude-code-model-proxy \
+  --pattern checksums.txt --output /tmp/ccmproxy-checksums-audit.txt
+$ rg 'ccmproxy_v0.1.0_darwin_arm64.tar.gz' /tmp/ccmproxy-checksums-audit.txt
+345e55a4bb2df6d512f2f2a432ee8c00515fbbfca75eb6e89dac899858a915c7  ccmproxy_v0.1.0_darwin_arm64.tar.gz
+exit 0
+
+$ go version -m ccmproxy
+ccmproxy: go1.26.1
+mod github.com/jclab-joseph/claude-code-model-proxy v0.1.0
+build vcs.revision=2f7f68362198cd08d275c9b59ea85989c141b2bf
+exit 0
+
+$ gh attestation verify ccmproxy.tar.gz --repo jclab-joseph/claude-code-model-proxy
+Error: HTTP 404: Not Found (.../attestations/sha256:345e55a4...)
+exit 1
+
+$ git tag -v v0.1.0
+object 2f7f68362198cd08d275c9b59ea85989c141b2bf
+error: no signature found
+exit 1
+
+$ codesign -dv --verbose=4 ccmproxy
+Format=Mach-O thin (arm64)
+Signature=adhoc
+TeamIdentifier=not set
+exit 0
+
+$ gh api .../commits/1125881... --jq '.commit.verification'
+{"reason":"unsigned","signature":null,"verified":false}
+exit 0</pre></details>
+      <p class="lede">임시 경로와 dummy credential만 마스킹한 전체 원장은 <a href="moai-proxy-feasibility-plan-20260910.md">Markdown 쌍둥이 문서</a>에 보존했다.</p>
+    </section>
+
+    <section id="architecture">
+      <div class="section-kicker">Target Architecture</div>
+      <h2 class="section-title">Apache 본체와 GPL companion을 분리한다</h2>
+      <p class="lede">최초 1회 사용자는 <code>moai gpt setup</code>으로 GPL 고지·설치·Codex 인증을 마친다. 이후에는 <code>moai gpt</code>가 검증된 companion을 자식으로 띄우고 readiness 뒤 Claude Code를 실행하며, 종료 시 정확한 PID와 임시 설정을 정리한다.</p>
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart LR
+  U[사용자: moai gpt] --> M[moai · Apache-2.0]
+  M -->|digest 검증·spawn·supervise| P[moai-proxy · GPL-3.0]
+  M -->|임시 settings + ANTHROPIC_BASE_URL| C[Claude Code]
+  C -->|Anthropic Messages · loopback HTTP| P
+  P --> R{fail-closed provider registry}
+  R -->|GPT| O[ChatGPT Codex Responses]
+  R -. 선택 기능 .-> Z[Z.AI GLM]
+  G[moai glm · 기존 직결] --> Z
+  M -->|signal·exit code·cleanup| C
+        </pre>
+        <noscript><div class="fallback">최초 1회 <code>moai gpt setup</code>으로 설치·고지·인증을 마친다. 이후 <code>moai gpt</code>를 실행하면 Apache-2.0 MoAI가 GPL-3.0 moai-proxy를 별도 자식 프로세스로 시작한다. Claude Code는 loopback HTTP로 proxy에 요청하고, proxy는 GPT 요청만 Codex backend로 보낸다. GLM은 기본적으로 기존 <code>moai glm</code> 직결 경로를 유지한다.</div></noscript>
+      </div>
+      <div class="callout warn"><strong>왜 평문 loopback인가</strong>실측에서 <code>ANTHROPIC_BASE_URL=http://127.0.0.1:&lt;port&gt;</code> 방식이 GPT‑6와 <code>[1m]</code> client context 모두 성공했다. 따라서 기본 설치가 system CA, <code>/etc/hosts</code>, privileged port를 변경할 이유가 없다.</div>
+    </section>
+
+    <section id="plan">
+      <div class="section-kicker">Delivery Plan</div>
+      <h2 class="section-title">단계별 구현 계획</h2>
+      <div class="timeline">
+        <article class="step" data-n="0"><h3>라이선스·제품 경계</h3><p>GPL 독립 저장소·릴리스, source 제공, LICENSE/NOTICE, 수정 고지를 먼저 확정한다. Apache-only가 필수면 별도 허락 또는 clean-room으로 전환한다.</p></article>
+        <article class="step" data-n="1"><h3>상류 포크 하드닝</h3><p>Go 1.26.6+, govulncheck 0건, PR/main CI, Actions SHA pin, SBOM·attestation·signed checksum을 적용한다. HTTP-only에서 CA를 만들지 않고 shell <code>eval</code> 표면을 제거한다.</p></article>
+        <article class="step" data-n="2"><h3>호환성·보안 재기준화</h3><p>공식 Codex 모델·effort·OAuth·헤더 계약으로 profile을 다시 만든다. unknown route는 실패시키고, credential은 lock+reread+fsync+atomic replace 또는 전용 저장소로 격리한다.</p></article>
+        <article class="step" data-n="3"><h3>MoAI 명령 통합</h3><p>명시적 2단계를 고정한다. 최초 <code>moai gpt setup</code>은 GPL 동의 뒤 POSIX <code>~/.local/share/moai/bin/moai-proxy</code> 또는 Windows <code>%LOCALAPPDATA%\MoAI\bin\moai-proxy.exe</code>에 설치하고, auth가 없으면 proxy login을 실행한다. 이후 <code>moai gpt</code>가 실행을 담당한다. 취소 시 부분 설치를 제거하고, update readiness 실패 시 직전 binary로 되돌린다.</p></article>
+        <article class="step" data-n="4"><h3>GPT‑6 E2E와 플랫폼 릴리스</h3><p>단문·stream·도구·thinking·picker·오류·정리를 검증하고 6개 OS/arch 실제 smoke를 릴리스 SHA에 귀속한다. 장문맥과 비용은 별도 승인형 canary로 측정한다.</p></article>
+        <article class="step" data-n="5"><h3>선택적 GLM provider</h3><p>기존 <code>moai glm</code>보다 분명한 가치가 있을 때만 같은 세션 전환을 추가한다. Z.AI Anthropic-compatible payload는 불필요하게 Codex translator를 거치지 않는다.</p></article>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>MoAI 영역</th><th>수정 후보</th><th>적용 원칙</th></tr></thead>
+        <tbody>
+          <tr><td>명령 등록</td><td><code>internal/cli/root.go</code>, 신규 <code>internal/cli/gpt.go</code></td><td>self-contained·nil-safe</td></tr>
+          <tr><td>자식 감독</td><td><code>launcher.go</code>, <code>codex_job_control.go</code></td><td>정확한 PID, no <code>pkill</code></td></tr>
+          <tr><td>설정</td><td><code>types.go</code>, <code>defaults.go</code>, <code>validation.go</code></td><td>loopback HTTP 전용 validator</td></tr>
+          <tr><td>배포 템플릿</td><td><code>internal/template/templates/.moai/config/sections/llm.yaml</code></td><td>로컬 ignore 파일이 아닌 배포 원본</td></tr>
+          <tr><td>설치·롤백</td><td><code>internal/update</code> 구조 재사용</td><td>digest 누락·불일치 fail closed</td></tr>
+          <tr><td>진단</td><td><code>doctor.go</code>, <code>doctor_codex.go</code> 패턴</td><td>선택 기능, 비밀 마스킹</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="acceptance">
+      <div class="section-kicker">Acceptance Gates</div>
+      <h2 class="section-title">“설치가 쉽다”를 증명하는 합격 기준</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>급</th><th>이진 판정 조건</th></tr></thead>
+        <tbody>
+          <tr><td>LIC-01</td><td>P0</td><td>지정 법률 검토자의 GPL 경계 checklist 서명 + archive의 source URL·LICENSE·NOTICE·수정일 존재</td></tr>
+          <tr><td>SEC-01</td><td>P0</td><td>4 model route × 3 credential fixture 12개에서 잘못된 Authorization header 0건</td></tr>
+          <tr><td>SUP-01</td><td>P0</td><td>checksum·signature·metadata의 missing/mismatch 6개가 모두 non-zero exit, 기존 설치 SHA 유지</td></tr>
+          <tr><td>VUL-01</td><td>P0</td><td>pinned Go ≥1.26.6의 <code>govulncheck ./...</code>가 <code>No vulnerabilities found.</code>, exit 0</td></tr>
+          <tr><td>INS-01</td><td>P1</td><td>깨끗한 임시 HOME에서 setup→gpt가 설치·login·ready·고정 응답 완주; 취소 전후 SHA 동일</td></tr>
+          <tr><td>SYS-01</td><td>P1</td><td>실행 전후 hosts SHA·system trust·privileged listener 목록 동일</td></tr>
+          <tr><td>E2E-01</td><td>P1</td><td>Claude Code 2.1.267에서 picker·단문·SSE·Read fixture 모두 exit 0</td></tr>
+          <tr><td>CLN-01</td><td>P1</td><td>정상·Ctrl-C·proxy crash·Claude 오류 뒤 child PID, ready port LISTEN, temp settings 모두 0건</td></tr>
+          <tr><td>DRF-01</td><td>P1</td><td>pinned Codex SHA의 model·OAuth·header golden fixture 통과; 차이 fixture는 CI non-zero</td></tr>
+          <tr><td>OS-01</td><td>P1</td><td>darwin/linux/windows × amd64/arm64 6개 runtime smoke가 동일 release SHA로 통과</td></tr>
+          <tr><td>CTX-01</td><td>P2</td><td>승인·비용 상한 아래 272k 초과 결과와 dashboard 사용량을 run ID로 연결</td></tr>
+          <tr><td>GLM-01</td><td>P2</td><td>제품 책임자 승인 후 same-session tool/reasoning 전환과 SEC-01 통과 때만 flag 활성화</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section>
+      <div class="section-kicker">Do Not Adopt</div>
+      <h2 class="section-title">차용하지 말아야 할 상류 관행</h2>
+      <div class="cols">
+        <ul><li>GPL 소스를 Apache 본체에 직접 복사</li><li><code>eval "$(... env)"</code> shell 출력</li><li>예측 가능한 <code>/tmp</code> 경로 뒤 <code>setcap</code></li><li><code>/etc/hosts</code> 전체 재작성</li><li>고정 포트 선점과 process-name cleanup</li></ul>
+        <ul><li>unknown model을 Anthropic으로 조용히 전달</li><li>Codex auth 파일의 직접 덮어쓰기</li><li>고정된 모델 catalog와 User-Agent</li><li>unsigned checksum·mutable Action tag</li><li>GLM을 Codex translator에 통과시키는 구조</li></ul>
+      </div>
+    </section>
+
+    <section id="risk">
+      <div class="section-kicker">Gaps &amp; Residual Risk</div>
+      <h2 class="section-title">아직 주장하지 않는 것</h2>
+      <div class="cols">
+        <div class="panel"><h3>미관측 범위</h3><ul><li>272k 초과 GPT‑6 실제 backend 문맥</li><li>provider dashboard 과금·할당량</li><li>강제 OAuth refresh token 회전</li><li>이번 머신은 macOS arm64만 실행; 상류 CI의 Linux amd64 smoke만 별도 확인</li><li>MCP·subagent·image·PDF·structured output E2E</li><li>GPT↔GLM↔Claude 동일 세션 전환</li><li>최종 법률 의견과 서비스 약관 허용 여부</li></ul></div>
+        <div class="panel"><h3>남는 위험</h3><ul><li>ChatGPT backend와 Claude picker는 안정 공개 계약이 아님</li><li>Anthropic은 비-Claude 모델 라우팅을 지원하지 않는다고 명시</li><li>별도 프로세스도 패키징 결합도에 따라 GPL 판단이 달라질 수 있음</li><li>두 API의 의미론 차이로 새 content/tool 유형 손실 가능</li><li>실계정 canary는 credential·비용·조직 정책 위험을 가짐</li></ul></div>
+      </div>
+    </section>
+
+    <section id="sources">
+      <div class="section-kicker">Sources</div>
+      <h2 class="section-title">검증에 사용한 주요 원천</h2>
+      <ul class="sources">
+        <li><a href="https://github.com/jclab-joseph/claude-code-model-proxy">ccmproxy 저장소</a></li>
+        <li><a href="https://github.com/jclab-joseph/claude-code-model-proxy/tree/112588175eb2b3b693a5bd23d58d8c501e0ae406">ccmproxy 기준 commit</a></li>
+        <li><a href="https://github.com/openai/codex/tree/5a9eb145c4c05fcfc7158d7c25b80e1322eccae1">공식 Codex 기준 commit</a></li>
+        <li><a href="https://developers.openai.com/api/docs/models/gpt-6-astra">OpenAI GPT‑6 Astra 모델 문서</a></li>
+        <li><a href="https://code.claude.com/docs/en/network-config">Anthropic 네트워크 설정</a></li>
+        <li><a href="https://code.claude.com/docs/en/llm-gateway">Anthropic LLM gateway</a></li>
+        <li><a href="https://docs.z.ai/devpack/tool/claude">Z.AI Claude Code 설정</a></li>
+        <li><a href="https://www.gnu.org/licenses/gpl-faq.html#MereAggregation">GNU GPL FAQ — aggregate</a></li>
+      </ul>
+    </section>
+
+    <section class="panel">
+      <div class="section-kicker">Final Recommendation</div>
+      <h2 class="section-title">독립 GPL companion이면 진행, Apache-only 단일 배포면 중단</h2>
+      <p>Claude Code에서 GPT‑6를 쓰는 핵심 경로와 기존 MoAI의 GLM 경로는 모두 실제로 작동했다. 따라서 핵심 기술 경로의 가능성은 확인됐다. 다만 첫 구현은 translator 복사가 아니라 GPL 경계, Go 보안 갱신, Codex 계약 재기준화, fail-closed 설치와 자식 프로세스 감독이어야 한다.</p>
+    </section>
+  </main>
+  <footer class="footer"><div class="wrap">보고 모드: plan · 독자 수준: basic · 도출 근거: MoAI-Easy · 기준일: 2026-09-10 · 코드 구현/커밋/PR은 수행하지 않음</div></footer>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({startOnLoad:true,theme:'base',securityLevel:'strict',themeVariables:{primaryColor:'#efe5d7',primaryTextColor:'#29241f',primaryBorderColor:'#b85f3f',lineColor:'#87412c',secondaryColor:'#e4efe5',tertiaryColor:'#fffdf8',fontFamily:'Noto Sans KR, sans-serif'}});
+  </script>
+</body>
+</html>

@@ -27,15 +27,66 @@ const (
 	// Deprecated indicates the file has been removed in the new
 	// template version. Notify user but preserve the file.
 	Deprecated Provenance = "deprecated"
+
+	// GeneratedManaged indicates a file a MoAI generator (not the template
+	// deployer) writes into, where user-owned and MoAI-owned parts can share
+	// one file. Ownership is decided per part (FileEntry.Parts), never for
+	// the whole file.
+	GeneratedManaged Provenance = "generated_managed"
 )
 
 // IsValid checks if the Provenance value is one of the defined constants.
 func (p Provenance) IsValid() bool {
 	switch p {
-	case TemplateManaged, UserModified, UserCreated, Deprecated:
+	case TemplateManaged, UserModified, UserCreated, Deprecated, GeneratedManaged:
 		return true
 	}
 	return false
+}
+
+// PartKind names the unit of ownership inside a generated file.
+type PartKind string
+
+const (
+	// PartWholeFile is the whole file, owned only when MoAI created it.
+	PartWholeFile PartKind = "whole-file"
+	// PartHookHandler is one hook handler, keyed by event and command.
+	PartHookHandler PartKind = "hook-handler"
+	// PartJSONKey is one top-level JSON key.
+	PartJSONKey PartKind = "json-key"
+	// PartTOMLTable is one TOML table MoAI appended as a whole.
+	PartTOMLTable PartKind = "toml-table"
+	// PartTOMLKey is one TOML assignment MoAI inserted into a table it does
+	// not own.
+	PartTOMLKey PartKind = "toml-key"
+)
+
+// PartOrigin records who put a part in a generated file.
+type PartOrigin string
+
+const (
+	// OriginCreated means MoAI wrote the part and may remove it.
+	OriginCreated PartOrigin = "created"
+	// OriginPreexisting means the part was present before any MoAI wiring
+	// evidence existed; it is user-owned.
+	OriginPreexisting PartOrigin = "preexisting"
+	// OriginUnknown means the part was present, earlier wiring evidence
+	// existed, and no part record did; ownership cannot be established.
+	OriginUnknown PartOrigin = "unknown"
+)
+
+// Part is one ownership record inside a generated file. A preexisting or
+// unknown part is never promoted to created by a later run.
+type Part struct {
+	Kind   PartKind   `json:"kind"`
+	Key    string     `json:"key"`
+	Origin PartOrigin `json:"origin"`
+	// Hash is the sha256 of the bytes MoAI wrote for the part; empty for a
+	// preexisting or unknown part.
+	Hash string `json:"hash,omitempty"`
+	// Region is the exact byte region MoAI inserted (TOML parts only),
+	// including the separator it inserted with it.
+	Region string `json:"region,omitempty"`
 }
 
 // Manifest represents the file tracking manifest stored at .moai/manifest.json.
@@ -51,6 +102,8 @@ type FileEntry struct {
 	TemplateHash string     `json:"template_hash"`
 	DeployedHash string     `json:"deployed_hash"`
 	CurrentHash  string     `json:"current_hash"`
+	// Parts is the per-part ownership of a GeneratedManaged file.
+	Parts []Part `json:"parts,omitempty"`
 }
 
 // ChangedFile represents a file whose content has changed since last tracking.

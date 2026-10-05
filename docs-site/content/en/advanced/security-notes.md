@@ -15,7 +15,7 @@ An agentic harness is a system that hands execution authority to agents. The mor
 All three defects relate to the GLM integration + auto-update paths.
 
 - **CWE-732 / CWE-552** — `.claude/settings.local.json` file mode enforced to `0o600` (owner-only read/write)
-- **CWE-214** — `moai cg` tmux environment-variable injection goes via source-file instead of argv (GLM token no longer visible in argv)
+- **CWE-214** — GLM/tmux environment-variable injection goes via source-file instead of argv (GLM token no longer visible in argv)
 - **CWE-345** — `moai update` checksum verification is mandatory (update refused on download failure)
 
 Each item is locked by regression tests, blocking future regressions.
@@ -67,9 +67,9 @@ Workflows that expect `group-readable` (the very rare scenario of a separate OS 
 
 ### What Changed
 
-When `moai cg` (CG mode) injects the GLM token (`ANTHROPIC_AUTH_TOKEN`) into the tmux session environment, it uses the **source-file channel** (`tmux source-file <tmp>`) instead of the **argv channel** (`tmux set-environment <KEY> <VALUE>`). The token is no longer exposed in plaintext to `ps auxe`, `/proc/<pid>/cmdline`, auditd logs, sysmon traces, or crash dumps.
+When the GLM/tmux credential helper injects the GLM token (`ANTHROPIC_AUTH_TOKEN`) into the tmux session environment, it uses the **source-file channel** (`tmux source-file <tmp>`) instead of the **argv channel** (`tmux set-environment <KEY> <VALUE>`). The token is no longer exposed in plaintext to `ps auxe`, `/proc/<pid>/cmdline`, auditd logs, sysmon traces, or crash dumps.
 
-Since CG mode is the key savings mechanism of tokenomics (Claude leader + GLM workers, 60-70% savings), the security of its credential path is especially important.
+CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
 ### Implementation Flow
 
@@ -103,10 +103,10 @@ If the source-file injection fails (disk full, tmux source-file failure, etc.), 
 
 ### Self-Audit
 
-Check whether the token is exposed in argv while CG mode is running.
+Check whether the token is exposed in argv during GLM/tmux credential injection.
 
 ```bash
-# Inside a new tmux session after running moai cg
+# Inside a new tmux session during GLM/tmux credential injection
 ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
 # Expected: 0 matches (token is not present in argv)
 ```
@@ -129,7 +129,7 @@ stat -c '%a' ~/.moai/.env.glm    # Linux: 600
 stat -f '%A' ~/.moai/.env.glm    # macOS: 600
 ```
 
-Details: [CG Mode](/en/multi-llm/cg-mode/)
+Details: [CG retirement and migration](/en/multi-llm/cg-mode/)
 
 ## CWE-345 — Mandatory Checksum Verification in the Update Flow {#cwe-345}
 
@@ -210,7 +210,7 @@ stat -c '%a' .claude/settings.local.json 2>/dev/null \
   || stat -f '%A' .claude/settings.local.json 2>/dev/null
 # Expected: 600
 
-# 2. CWE-214 — token argv exposure while CG mode is running (with cg mode active)
+# 2. CWE-214 — token argv exposure during GLM/tmux credential injection
 ps auxe 2>/dev/null | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
 # Expected: 0 matches
 
@@ -259,4 +259,4 @@ If all 5 items meet the expected values, the v3.0.0 security hardening is functi
 
 - [settings.json Guide](/en/advanced/settings-json/) — the `settings.local.json` permissions section
 - [Updating](/en/cli-reference/update/) — the checksum verification section
-- [CG Mode](/en/multi-llm/cg-mode/) — the tmux environment-variable injection security model
+- [CG retirement and migration](/en/multi-llm/cg-mode/)

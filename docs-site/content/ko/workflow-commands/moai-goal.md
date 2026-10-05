@@ -8,6 +8,12 @@ added_in: "v3.1"
 
 {{< new-badge v3.1 >}}
 
+{{< callout type="warning" >}}
+`/moai goal --auto "<임무>"`는 아래의 조건 선언형 루프와 다른 경로입니다. 자연어를 `mission_mode=auto`, `state=draft`로 저장할 뿐이며 승인이 필요합니다. 실제 공급자의 지속 실행 능력이 확인되지 않으면 `active-session-only`로 동작합니다. [명령 참고서](/ko/utility-commands/moai-goal#auto-임무-모드)
+{{< /callout >}}
+
+Auto 임무를 승인한 뒤에는 `goal run --supervise`가 봉인된 계획을 제한 반복합니다. 감독 Git 효과에는 분리된 `--card-worktree`와 `--develop-worktree`가 필요하며, 기존 `--repo`는 효과 0건으로 거절됩니다. `--recommend`는 권한이 아니고, 각 효과에는 typed true evidence와 결속된 `0600` governor 결정 receipt 및 별도의 독립 감사 PASS receipt가 필요합니다. 완료에는 행동 소진이 아니라 병합 ancestry가 담긴 `0600` 완료 receipt가 추가로 필요합니다. 미구성 원격·release provider는 `provider_unsupported`로 멈춥니다.
+
 # /moai goal
 
 끝나는 조건만 선언하면, 세션이 그 조건이 성립할 때까지 턴을 이어가는 **조건 선언형 자율 루프**입니다. 매 턴 끝에 평가기가 조건을 검사해, 조건이 채워지면 루프가 스스로 멈춥니다. 사용자가 매 단계마다 "계속"을 누르지 않아도 됩니다.
@@ -83,7 +89,7 @@ $ CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200
 > /moai goal "<condition>" --max-turns 0 --max-duration 14400
 ```
 
-v3.1부터 `moai goal arm --max-turns 0`으로 무장하거나 칸반 모드 진입 시 런처가 이 상한을 자동으로 200으로 주입합니다. 그래서 사용자가 직접 환경변수를 건드리지 않아도 4시간짜리 체인이 중간에 끊기지 않습니다.
+v3.1부터 `moai goal arm --max-turns 0`으로 무장하거나 팩토리 세션(`-f` 또는 `-l`) 시작 시 런처가 이 상한을 자동으로 200으로 주입합니다. 그래서 사용자가 직접 환경변수를 건드리지 않아도 4시간짜리 체인이 중간에 끊기지 않습니다.
 
 ## arm-only와 안전 경계
 
@@ -121,7 +127,7 @@ v3.1부터 `moai goal arm --max-turns 0`으로 무장하거나 칸반 모드 진
 
 - **`/moai loop`** — 진단 주도의 결정적 루프. 무엇을 고칠지 도구가 판정한다는 점이 다릅니다. [`/moai loop`](/ko/utility-commands/moai-loop)는 유틸리티 명령어 섹션에 있습니다.
 - **`/moai run`** — 일을 시작하는 명령. goal과 짝으로 씁니다. [`/moai run`](./moai-run).
-- **칸반 모드** — `/moai goal`의 무한 지속 골을 `plan → run → sync` 체인으로 묶은 진입 스위치. [칸반 모드](/ko/advanced/kanban-mode)에서 다룹니다.
+- **팩토리 모드** — 리더(`-f`)와 레인(`-l`)으로 팩토리 런을 열거나 합류하는 런처 진입. 자체적으로 목표를 걸지는 않으며, 런처가 세션의 Stop 훅 차단 상한만 올립니다. [팩토리 모드](/ko/advanced/factory-mode)에서 다룹니다.
 
 ## 이 명령이 하지 않는 것 (범위 경계)
 
@@ -133,6 +139,6 @@ v3.1부터 `moai goal arm --max-turns 0`으로 무장하거나 칸반 모드 진
 ## 관련 문서
 
 - [자율 연속 루프](/ko/advanced/autonomous-loops) — goal 엔진의 정체 가드와 상한 의미론
-- [칸반 모드](/ko/advanced/kanban-mode) — 리드 세션이 이끄는 3-단계 체인
+- [팩토리 모드](/ko/advanced/factory-mode) — 리더 세션이 카드를 레인에 배분하고, 레인이 카드 한 장을 plan·run·sync까지 맡는 구조
 - [`/moai loop`](/ko/utility-commands/moai-loop) — 진단 주도의 결정적 루프 (형제 명령)
 - [하네스 엔지니어링](/ko/core-concepts/harness-engineering) — 루프와 관찰이 하네스 학습으로 흐르는 경로

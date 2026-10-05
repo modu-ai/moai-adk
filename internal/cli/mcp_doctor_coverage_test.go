@@ -244,6 +244,7 @@ func TestReadSettingsLocalForLaunch_MissingFile(t *testing.T) {
 func TestReadSettingsLocalForLaunch_ValidFile(t *testing.T) {
 	origDir, _ := os.Getwd()
 	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatalf("chdir: %v", err)
 	}
@@ -341,8 +342,11 @@ func TestSyncPermissionModeToSettingsLocal_SetsBypassPermissions(t *testing.T) {
 	}
 }
 
-// TestSyncPermissionModeToSettingsLocal_AcceptEditsRemovesOverride removes defaultMode.
-func TestSyncPermissionModeToSettingsLocal_AcceptEditsRemovesOverride(t *testing.T) {
+// TestSyncPermissionModeToSettingsLocal_AcceptEditsWritesOverride persists
+// defaultMode for acceptEdits too: the template settings.json stopped
+// shipping a defaultMode default (20b4ff0f6), so the override is what keeps
+// CC 2.1.283+'s built-in default from winning silently (card t1414).
+func TestSyncPermissionModeToSettingsLocal_AcceptEditsWritesOverride(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -350,7 +354,7 @@ func TestSyncPermissionModeToSettingsLocal_AcceptEditsRemovesOverride(t *testing
 
 	// First set bypass.
 	_ = syncPermissionModeToSettingsLocal(path, "bypassPermissions")
-	// Then clear to acceptEdits.
+	// Then switch to acceptEdits — the override is updated, not removed.
 	if err := syncPermissionModeToSettingsLocal(path, "acceptEdits"); err != nil {
 		t.Fatalf("error: %v", err)
 	}
@@ -358,8 +362,8 @@ func TestSyncPermissionModeToSettingsLocal_AcceptEditsRemovesOverride(t *testing
 	data, _ := os.ReadFile(path)
 	var s SettingsLocal
 	_ = json.Unmarshal(data, &s)
-	if _, ok := s.Permissions["defaultMode"]; ok {
-		t.Error("defaultMode should be absent for acceptEdits mode")
+	if got, ok := s.Permissions["defaultMode"]; !ok || got != "acceptEdits" {
+		t.Errorf("defaultMode = %v, want \"acceptEdits\" (the mode is persisted like any other, card t1414)", got)
 	}
 }
 
@@ -411,82 +415,6 @@ func TestSyncPermissionModeToSettingsLocal_PreservesExistingEnv(t *testing.T) {
 	}
 	if s.Permissions["defaultMode"] != "auto" {
 		t.Errorf("defaultMode = %v, want auto", s.Permissions["defaultMode"])
-	}
-}
-
-// --- buildEnvForLaunch ---
-
-// TestBuildEnvForLaunch_EmptyEffort returns base unchanged.
-func TestBuildEnvForLaunch_EmptyEffort(t *testing.T) {
-	t.Parallel()
-
-	base := []string{"A=1", "B=2"}
-	result := buildEnvForLaunch("", base)
-	if len(result) != len(base) {
-		t.Errorf("expected same slice length, got %d", len(result))
-	}
-}
-
-// TestBuildEnvForLaunch_AddsNewEntry adds CLAUDE_CODE_EFFORT_LEVEL when absent.
-func TestBuildEnvForLaunch_AddsNewEntry(t *testing.T) {
-	t.Parallel()
-
-	base := []string{"A=1", "B=2"}
-	result := buildEnvForLaunch("high", base)
-	found := false
-	for _, e := range result {
-		if e == "CLAUDE_CODE_EFFORT_LEVEL=high" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Errorf("CLAUDE_CODE_EFFORT_LEVEL=high not found in %v", result)
-	}
-}
-
-// TestBuildEnvForLaunch_ReplacesExisting replaces existing CLAUDE_CODE_EFFORT_LEVEL.
-func TestBuildEnvForLaunch_ReplacesExisting(t *testing.T) {
-	t.Parallel()
-
-	base := []string{"CLAUDE_CODE_EFFORT_LEVEL=low", "A=1"}
-	result := buildEnvForLaunch("max", base)
-
-	count := 0
-	for _, e := range result {
-		if strings.HasPrefix(e, "CLAUDE_CODE_EFFORT_LEVEL=") {
-			count++
-			if e != "CLAUDE_CODE_EFFORT_LEVEL=max" {
-				t.Errorf("expected CLAUDE_CODE_EFFORT_LEVEL=max, got %q", e)
-			}
-		}
-	}
-	if count != 1 {
-		t.Errorf("expected exactly 1 CLAUDE_CODE_EFFORT_LEVEL entry, got %d", count)
-	}
-}
-
-// TestBuildEnvForLaunch_PreservesOtherVars other env vars remain untouched.
-func TestBuildEnvForLaunch_PreservesOtherVars(t *testing.T) {
-	t.Parallel()
-
-	base := []string{"PATH=/usr/bin", "HOME=/home/user", "CLAUDE_CODE_EFFORT_LEVEL=medium"}
-	result := buildEnvForLaunch("xhigh", base)
-
-	seen := make(map[string]bool)
-	for _, e := range result {
-		k := strings.SplitN(e, "=", 2)[0]
-		seen[k] = true
-	}
-
-	if !seen["PATH"] {
-		t.Error("PATH not preserved")
-	}
-	if !seen["HOME"] {
-		t.Error("HOME not preserved")
-	}
-	if !seen["CLAUDE_CODE_EFFORT_LEVEL"] {
-		t.Error("CLAUDE_CODE_EFFORT_LEVEL not present")
 	}
 }
 

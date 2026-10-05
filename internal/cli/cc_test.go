@@ -5,14 +5,11 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
-	"github.com/modu-ai/moai-adk/internal/session"
 )
 
 func TestCCCmd_Exists(t *testing.T) {
@@ -47,6 +44,7 @@ func TestCCCmd_IsSubcommandOfRoot(t *testing.T) {
 }
 
 func TestCCCmd_Execution_NoDeps(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	// Use a temporary project root to prevent any mutation of real project files.
 	// The project root finder is overridden via findProjectRootFn.
 	tmpDir := t.TempDir()
@@ -66,9 +64,10 @@ func TestCCCmd_Execution_NoDeps(t *testing.T) {
 	origLaunch := launchClaudeFunc
 	defer func() { launchClaudeFunc = origLaunch }()
 
-	var launchedProfile string
+	var launchedProfile, launchedProvider string
 	launchClaudeFunc = func(profile string, args []string) error {
 		launchedProfile = profile
+		launchedProvider = os.Getenv(config.EnvMoaiLaunchProvider)
 		return nil
 	}
 
@@ -83,6 +82,9 @@ func TestCCCmd_Execution_NoDeps(t *testing.T) {
 
 	if launchedProfile != "" {
 		t.Errorf("default profile should be empty, got %q", launchedProfile)
+	}
+	if launchedProvider != BackendClaude {
+		t.Errorf("moai cc launch provider = %q, want %q", launchedProvider, BackendClaude)
 	}
 }
 
@@ -140,6 +142,17 @@ func TestCharacterize_CC_HelpFlag(t *testing.T) {
 			}
 			if called {
 				t.Errorf("launchClaudeFunc must not be called when %s is present", flag)
+			}
+			help := buf.String()
+			for _, want := range []string{"moai init default", "permission-modes docs"} {
+				if !strings.Contains(help, want) {
+					t.Errorf("help for %s missing %q", flag, want)
+				}
+			}
+			for _, stale := range []string{"project default", "Team plan", "Sonnet/Opus 4.6"} {
+				if strings.Contains(help, stale) {
+					t.Errorf("help for %s retains stale wording %q", flag, stale)
+				}
 			}
 		})
 	}
@@ -279,336 +292,6 @@ func TestCharacterize_CC_LaunchError(t *testing.T) {
 	err := runCC(ccCmd, []string{})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error to propagate, got: %v", err)
-	}
-}
-
-// ── SPEC-FACTORY-MODE-001 M5: Kanban Mode entry surface ──
-
-// TestParseKanbanFlag_LongFormWithoutSpec asserts the bare --kanban form
-// enables Kanban Mode, reports no SPEC identifier (REQ-FM-005: absence means
-// the chain heads at plan-phase), and strips the token from the forwarded args.
-func TestParseKanbanFlag_LongFormWithoutSpec(t *testing.T) {
-	p, err := parseKanbanFlag([]string{"--kanban", "-b"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
-	if !enabled {
-		t.Error("--kanban must enable Kanban Mode")
-	}
-	if spec != "" {
-		t.Errorf("bare --kanban carries no SPEC identifier, got %q", spec)
-	}
-	if !slices.Equal(rest, []string{"-b"}) {
-		t.Errorf("--kanban must be stripped from the forwarded args, got %v", rest)
-	}
-}
-
-// TestParseKanbanFlag_ShortFormWithSpec is AC-FM-002: `moai cc -k
-// SPEC-PLACEHOLDER` yields the identifier, enables the mode, and removes both
-// tokens from the forwarded args.
-func TestParseKanbanFlag_ShortFormWithSpec(t *testing.T) {
-	p, err := parseKanbanFlag([]string{"-k", "SPEC-PLACEHOLDER", "--print"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
-	if !enabled {
-		t.Error("AC-FM-002: -k must enable Kanban Mode")
-	}
-	if spec != "SPEC-PLACEHOLDER" {
-		t.Errorf("AC-FM-002: expected spec %q, got %q", "SPEC-PLACEHOLDER", spec)
-	}
-	if !slices.Equal(rest, []string{"--print"}) {
-		t.Errorf("AC-FM-002: both tokens must be stripped, got %v", rest)
-	}
-}
-
-// TestParseKanbanFlag_PassThroughBoundary is AC-FM-003: a --kanban token at
-// or after the -- pass-through marker belongs to the child process, not to
-// this parser. Mirrors stripSpawnFlag's boundary discipline exactly.
-func TestParseKanbanFlag_PassThroughBoundary(t *testing.T) {
-	p, err := parseKanbanFlag([]string{"--", "--kanban"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
-	if enabled {
-		t.Error("AC-FM-003: --kanban after -- must NOT enable Kanban Mode")
-	}
-	if spec != "" {
-		t.Errorf("AC-FM-003: no SPEC identifier is consumed past --, got %q", spec)
-	}
-	if !slices.Equal(rest, []string{"--", "--kanban"}) {
-		t.Errorf("AC-FM-003: tokens past -- are forwarded verbatim, got %v", rest)
-	}
-}
-
-// TestParseKanbanFlag_SpecIsNotStolenFromAFlag guards the optional-positional
-// parse: a following flag token is a separate argument, never the SPEC value.
-func TestParseKanbanFlag_SpecIsNotStolenFromAFlag(t *testing.T) {
-	p, err := parseKanbanFlag([]string{"--kanban", "--print"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
-	if !enabled {
-		t.Error("--kanban must enable Kanban Mode")
-	}
-	if spec != "" {
-		t.Errorf("a flag token must not be consumed as the SPEC identifier, got %q", spec)
-	}
-	if !slices.Equal(rest, []string{"--print"}) {
-		t.Errorf("the following flag must survive, got %v", rest)
-	}
-}
-
-// TestCC_KanbanFlagStrippedBeforeLaunch is AC-FM-001: the seam sees neither
-// --kanban nor -k, and the process environment carries the kanban signal at
-// the moment the launch happens (the signal REQ-FM-023 transports).
-func TestCC_KanbanFlagStrippedBeforeLaunch(t *testing.T) {
-	origLaunch := unifiedLaunchFunc
-	defer func() { unifiedLaunchFunc = origLaunch }()
-
-	var capturedArgs []string
-	var kanbanAtLaunch, specAtLaunch string
-	unifiedLaunchFunc = func(_ string, _ string, args []string) error {
-		capturedArgs = args
-		kanbanAtLaunch = os.Getenv(config.EnvMoaiKanban)
-		specAtLaunch = os.Getenv(config.EnvMoaiKanbanSpec)
-		return nil
-	}
-
-	origFn := findProjectRootFn
-	findProjectRootFn = func() (string, error) { return t.TempDir(), nil }
-	defer func() { findProjectRootFn = origFn }()
-
-	origDeps := deps
-	defer func() { deps = origDeps }()
-	deps = nil
-
-	buf := new(bytes.Buffer)
-	ccCmd.SetOut(buf)
-	ccCmd.SetErr(buf)
-
-	if err := runCC(ccCmd, []string{"--kanban", "SPEC-PLACEHOLDER"}); err != nil {
-		t.Fatalf("AC-FM-001: runCC(--kanban) should not error, got: %v", err)
-	}
-	for _, a := range capturedArgs {
-		if a == "--kanban" || a == "-k" {
-			t.Errorf("AC-FM-001: kanban token must not reach the launcher, got %v", capturedArgs)
-		}
-	}
-	if kanbanAtLaunch != "1" {
-		t.Errorf("AC-FM-001: %s must be set at launch, got %q", config.EnvMoaiKanban, kanbanAtLaunch)
-	}
-	if specAtLaunch != "SPEC-PLACEHOLDER" {
-		t.Errorf("AC-FM-001: %s must carry the identifier at launch, got %q", config.EnvMoaiKanbanSpec, specAtLaunch)
-	}
-}
-
-// TestCC_KanbanWritesNoStateRecord supersedes the record-writing half of
-// AC-FM-023a. The launcher no longer writes the kanban record: it runs before
-// the session it launches exists, so the identifier it keyed on came from the
-// project-wide sidecar slot and named the LAUNCHING session
-// (SPEC-KANBAN-RECORD-SESSION-KEY-001 REQ-KRS-002, AC-KRS-003). The session's
-// own SessionStart writes it now, covered in internal/hook.
-//
-// What survives here is AC-FM-023a's other half, unchanged: entering Kanban
-// Mode must not fail the launch, including when the state directory cannot be
-// written.
-func TestCC_KanbanWritesNoStateRecord(t *testing.T) {
-	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
-	tmp := t.TempDir()
-	sessionID := "kanban-record-session"
-	sidecar := filepath.Join(tmp, session.CurrentSideChannelFile)
-	if err := os.MkdirAll(filepath.Dir(sidecar), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(sidecar, []byte(sessionID), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
-
-	origLaunch := unifiedLaunchFunc
-	defer func() { unifiedLaunchFunc = origLaunch }()
-	unifiedLaunchFunc = func(_ string, _ string, _ []string) error { return nil }
-
-	origFn := findProjectRootFn
-	findProjectRootFn = func() (string, error) { return tmp, nil }
-	defer func() { findProjectRootFn = origFn }()
-
-	origDeps := deps
-	defer func() { deps = origDeps }()
-	deps = nil
-
-	buf := new(bytes.Buffer)
-	ccCmd.SetOut(buf)
-	ccCmd.SetErr(buf)
-
-	if err := runCC(ccCmd, []string{"--kanban", "SPEC-PLACEHOLDER"}); err != nil {
-		t.Fatalf("AC-FM-023a: runCC should not error, got: %v", err)
-	}
-
-	// AC-KRS-003: no record is created by the launch, under the sidecar's
-	// identifier or any other. The sidecar holds sessionID, which is exactly
-	// what the pre-change writer keyed on.
-	if _, err := kanban.Read(tmp, sessionID); err == nil {
-		t.Errorf("AC-KRS-003: the launcher wrote a record under the sidecar identifier %q", sessionID)
-	}
-	// *.json in that directory is not a record glob — the lead-name registry
-	// (leads.json) and the backlog queue live there too, and the launch
-	// legitimately writes the former. A RECORD is a file carrying session_id,
-	// and no such file may appear.
-	recordDir := filepath.Join(tmp, ".moai", "state", "kanban")
-	entries, err := os.ReadDir(recordDir)
-	if err != nil && !os.IsNotExist(err) {
-		t.Fatalf("ReadDir: %v", err)
-	}
-	for _, e := range entries {
-		raw, readErr := os.ReadFile(filepath.Join(recordDir, e.Name()))
-		if readErr != nil {
-			continue
-		}
-		if strings.Contains(string(raw), `"session_id"`) {
-			t.Errorf("AC-KRS-003: the launch created a record %q:\n%s", e.Name(), raw)
-		}
-	}
-
-	// Fail-open: a state directory that cannot be written into must not block
-	// the launch. Scoped to a subtest so the assertions above still run on
-	// Windows, where the seal cannot be applied.
-	t.Run("fail_open_unwritable_state_dir", func(t *testing.T) {
-		if runtime.GOOS == "windows" {
-			t.Skip("a 0500 directory does not deny writes on Windows; the record would be written and the fail-open control asserts it is genuinely absent")
-		}
-		blocked := t.TempDir()
-		stateDir := filepath.Join(blocked, ".moai", "state")
-		if err := os.MkdirAll(stateDir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(blocked, session.CurrentSideChannelFile), []byte("blocked-session"), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Chmod(stateDir, 0o500); err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = os.Chmod(stateDir, 0o755) })
-
-		t.Setenv("CLAUDE_PROJECT_DIR", blocked)
-		if err := runCC(ccCmd, []string{"--kanban"}); err != nil {
-			t.Errorf("AC-FM-023a: an unwritable state directory must not block the launch, got: %v", err)
-		}
-		if _, err := kanban.Read(blocked, "blocked-session"); err == nil {
-			t.Error("AC-FM-023a fail-open control: the record must genuinely be absent, otherwise the case is vacuous")
-		}
-	})
-}
-
-// TestCC_KanbanEnvMutationIsRestored is AC-FM-023d: the process-environment
-// mutation is scoped to the call. Both the success path and the error path are
-// asserted — a defer that only runs on success is the same leak with a
-// narrower trigger — and an initially-absent variable is restored to ABSENT,
-// not to the empty string.
-func TestCC_KanbanEnvMutationIsRestored(t *testing.T) {
-	origFn := findProjectRootFn
-	findProjectRootFn = func() (string, error) { return t.TempDir(), nil }
-	defer func() { findProjectRootFn = origFn }()
-
-	origDeps := deps
-	defer func() { deps = origDeps }()
-	deps = nil
-
-	origLaunch := unifiedLaunchFunc
-	defer func() { unifiedLaunchFunc = origLaunch }()
-
-	buf := new(bytes.Buffer)
-	ccCmd.SetOut(buf)
-	ccCmd.SetErr(buf)
-
-	// Baseline: neither variable is set in this process.
-	_ = os.Unsetenv(config.EnvMoaiKanban)
-	_ = os.Unsetenv(config.EnvMoaiKanbanSpec)
-
-	cases := []struct {
-		name    string
-		launch  func(string, string, []string) error
-		wantErr bool
-	}{
-		{"success path", func(string, string, []string) error { return nil }, false},
-		{"error path", func(string, string, []string) error { return errors.New("launch failed") }, true},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			beforeKanban, beforeKanbanSet := os.LookupEnv(config.EnvMoaiKanban)
-			beforeSpec, beforeSpecSet := os.LookupEnv(config.EnvMoaiKanbanSpec)
-
-			unifiedLaunchFunc = tc.launch
-			err := runCC(ccCmd, []string{"--kanban", "SPEC-PLACEHOLDER"})
-			if tc.wantErr && err == nil {
-				t.Fatal("AC-FM-023d: expected the seam error to propagate")
-			}
-
-			for _, pair := range []struct {
-				key    string
-				val    string
-				wasSet bool
-			}{
-				{config.EnvMoaiKanban, beforeKanban, beforeKanbanSet},
-				{config.EnvMoaiKanbanSpec, beforeSpec, beforeSpecSet},
-			} {
-				got, gotSet := os.LookupEnv(pair.key)
-				if gotSet != pair.wasSet {
-					t.Errorf("AC-FM-023d: %s presence = %v after runCC, want %v (an absent variable must be unset, not set to \"\")",
-						pair.key, gotSet, pair.wasSet)
-				}
-				if got != pair.val {
-					t.Errorf("AC-FM-023d: %s = %q after runCC, want %q", pair.key, got, pair.val)
-				}
-			}
-		})
-	}
-}
-
-// TestEnterKanbanMode_RestoresPriorValue covers the other half of the restore
-// contract: when a variable was ALREADY set before entry, the restore returns
-// its prior value rather than unsetting it. Absence-restoration is asserted by
-// TestCC_KanbanEnvMutationIsRestored; both branches must hold for the restore
-// to be a genuine round-trip.
-func TestEnterKanbanMode_RestoresPriorValue(t *testing.T) {
-	t.Setenv(config.EnvMoaiKanban, "prior-kanban")
-	t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-PRIOR")
-
-	restore := enterKanbanMode("SPEC-PLACEHOLDER", "")
-	if got := os.Getenv(config.EnvMoaiKanban); got != "1" {
-		t.Errorf("inside Kanban Mode %s = %q, want %q", config.EnvMoaiKanban, got, "1")
-	}
-	if got := os.Getenv(config.EnvMoaiKanbanSpec); got != "SPEC-PLACEHOLDER" {
-		t.Errorf("inside Kanban Mode %s = %q, want %q", config.EnvMoaiKanbanSpec, got, "SPEC-PLACEHOLDER")
-	}
-
-	restore()
-	if got, ok := os.LookupEnv(config.EnvMoaiKanban); !ok || got != "prior-kanban" {
-		t.Errorf("%s = (%q, %v) after restore, want (%q, true)", config.EnvMoaiKanban, got, ok, "prior-kanban")
-	}
-	if got, ok := os.LookupEnv(config.EnvMoaiKanbanSpec); !ok || got != "SPEC-PRIOR" {
-		t.Errorf("%s = (%q, %v) after restore, want (%q, true)", config.EnvMoaiKanbanSpec, got, ok, "SPEC-PRIOR")
-	}
-}
-
-// TestEnterKanbanMode_WithoutSpecLeavesSpecVarUntouched asserts the optional
-// identifier is genuinely optional: a bare --kanban publishes the mode signal
-// without inventing a SPEC identifier the operator never supplied.
-func TestEnterKanbanMode_WithoutSpecLeavesSpecVarUntouched(t *testing.T) {
-	_ = os.Unsetenv(config.EnvMoaiKanbanSpec)
-	restore := enterKanbanMode("", "")
-	defer restore()
-
-	if got := os.Getenv(config.EnvMoaiKanban); got != "1" {
-		t.Errorf("%s = %q, want %q", config.EnvMoaiKanban, got, "1")
-	}
-	if got, ok := os.LookupEnv(config.EnvMoaiKanbanSpec); ok {
-		t.Errorf("%s must stay unset when no identifier was supplied, got %q", config.EnvMoaiKanbanSpec, got)
 	}
 }
 

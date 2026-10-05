@@ -65,6 +65,47 @@ func TestRenderHooks_FreshProjectCoversAdaptedEvents(t *testing.T) {
 	}
 }
 
+// TestRenderHooks_InterruptInstalled verifies the Interrupt row reaches the
+// install surface now that it is adapted with the Codex-only `interrupt`
+// dispatcher arg (SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2e, design.md §D7). This
+// is the intentional inversion of TestRenderHooks_InterruptNeverInstalled
+// (SPEC-CODEX-EVENT-COVERAGE-001 REQ-CEV-004 / AC-CEV-005 reversed): the
+// rendered document carries an Interrupt key whose MoAI handler is
+// `moai hook interrupt --harness codex`, and a merge over an existing document
+// still preserves a user-owned Interrupt entry beside it.
+func TestRenderHooks_InterruptInstalled(t *testing.T) {
+	const wantCommand = "moai hook interrupt" + harnessCodexSuffix
+
+	rendered, err := RenderHooks(nil)
+	if err != nil {
+		t.Fatalf("RenderHooks(nil): %v", err)
+	}
+	var doc struct {
+		Hooks map[string][]entryJSON `json:"hooks"`
+	}
+	if err := json.Unmarshal(rendered, &doc); err != nil {
+		t.Fatalf("parse rendered hooks: %v\n%s", err, rendered)
+	}
+	entries, ok := doc.Hooks["Interrupt"]
+	if !ok {
+		t.Fatalf("Interrupt event key not rendered into hooks.json — the adapted row must be installed:\n%s", rendered)
+	}
+	if len(entries) != 1 || len(entries[0].Hooks) != 1 || entries[0].Hooks[0].Command != wantCommand {
+		t.Fatalf("Interrupt entries = %+v, want exactly one handler %q", entries, wantCommand)
+	}
+
+	merged, err := RenderHooks([]byte(`{"hooks":{"Interrupt":[{"hooks":[{"type":"command","command":"user-interrupt-hook"}]}]}}`))
+	if err != nil {
+		t.Fatalf("RenderHooks(existing Interrupt doc): %v", err)
+	}
+	if !strings.Contains(string(merged), "user-interrupt-hook") {
+		t.Errorf("user-owned Interrupt entry dropped by the merge:\n%s", merged)
+	}
+	if strings.Count(string(merged), wantCommand) != 1 {
+		t.Errorf("merged render carries %d MoAI Interrupt handlers, want 1:\n%s", strings.Count(string(merged), wantCommand), merged)
+	}
+}
+
 // TestRenderHooks_CommandsResolveToDispatcherArgs verifies every emitted
 // handler command is `moai hook <arg> --harness codex` with <arg> exactly the
 // EventTable's dispatcher arg for that event (AC-CW-002b, REQ-CW-002).
@@ -371,5 +412,88 @@ func TestRenderHooks_ValidationGateRejectsViolatingUserKeys(t *testing.T) {
 	}
 	if len(violations) == 0 {
 		t.Errorf("rendered bytes carrying user's 'version' key passed the whitelist gate — Wire would write a file Codex silently disables:\n%s", rendered)
+	}
+}
+
+// TestRenderHooksDeduplicatesLegacyWrapperEntry — card t590.
+//
+// A legacy registration that shells out to a script inside the MoAI-managed
+// .codex/hooks/moai/ namespace is MoAI-owned even though its command does not
+// start with "moai hook ". The strip predicate must remove it, or every wiring
+// refresh appends a second PreToolUse handler beside it — two handlers for one
+// event, of which the wrapper one emits Claude-shaped output under Codex (the
+// duplicate observed in a user project: .codex/hooks.json carrying both the
+// handle-pre-tool.sh wrapper and the direct `moai hook pre-tool --harness
+// codex` entry).
+func TestRenderHooksDeduplicatesLegacyWrapperEntry(t *testing.T) {
+	existing := []byte(`{
+  "hooks": {
+    "PreToolUse": [
+      {"hooks": [{"type": "command", "command": "/Users/me/proj/.codex/hooks/moai/handle-pre-tool.sh", "timeout": 60}]},
+      {"hooks": [{"type": "command", "command": "moai hook pre-tool --harness codex", "timeout": 10}]}
+    ],
+    "Stop": [
+      {"hooks": [{"type": "command", "command": "my-own-stop-hook"}]}
+    ]
+  }
+}`)
+	rendered, err := RenderHooks(existing)
+	if err != nil {
+		t.Fatalf("RenderHooks: %v", err)
+	}
+
+	var doc struct {
+		Hooks map[string][]struct {
+			Hooks []struct {
+				Command string `json:"command"`
+			} `json:"hooks"`
+		} `json:"hooks"`
+	}
+	if err := json.Unmarshal(rendered, &doc); err != nil {
+		t.Fatalf("parse rendered: %v", err)
+	}
+
+	pre := doc.Hooks["PreToolUse"]
+	if len(pre) != 1 {
+		t.Fatalf("PreToolUse entries = %d, want 1 after dedup:\n%s", len(pre), rendered)
+	}
+	if len(pre[0].Hooks) != 1 || pre[0].Hooks[0].Command != "moai hook pre-tool --harness codex" {
+		t.Errorf("surviving PreToolUse handler = %+v, want the single direct invocation", pre[0].Hooks)
+	}
+
+	// A genuinely user-owned entry must survive alongside the appended
+	// current-table entries (D2: MoAI handlers append after user entries).
+	userStopKept := false
+	for _, e := range doc.Hooks["Stop"] {
+		for _, h := range e.Hooks {
+			if h.Command == "my-own-stop-hook" {
+				userStopKept = true
+			}
+		}
+	}
+	if !userStopKept {
+		t.Errorf("user Stop entry was not preserved:\n%s", rendered)
+	}
+}
+
+// TestRenderHooksDeduplicatesWindowsStyleWrapperPath — card t590.
+//
+// hooks.json on Windows carries backslash paths; the namespace predicate must
+// recognize both separators or the duplicate survives there.
+func TestRenderHooksDeduplicatesWindowsStyleWrapperPath(t *testing.T) {
+	existing := []byte(`{
+  "hooks": {
+    "PreToolUse": [
+      {"hooks": [{"type": "command", "command": "C:\\proj\\.codex\\hooks\\moai\\handle-pre-tool.cmd"}]}
+    ]
+  }
+}`)
+	rendered, err := RenderHooks(existing)
+	if err != nil {
+		t.Fatalf("RenderHooks: %v", err)
+	}
+
+	if got := strings.Count(string(rendered), "handle-pre-tool"); got != 0 {
+		t.Fatalf("legacy wrapper entry survived the merge (%d occurrences):\n%s", got, rendered)
 	}
 }

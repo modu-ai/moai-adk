@@ -1,0 +1,25 @@
+{
+  "isError": false,
+  "structured": {
+    "build_commit": "\u003cbuild_commit\u003e",
+    "build_lag": "\u003cbuild_lag\u003e",
+    "findings": [],
+    "gate_unmet": "workflow.audit gates unreadable: audit.gates.codex \"REQUIRED\" unknown (want one of off|advisory|required)",
+    "next_steps": [
+      "fall back to the active auditor (claude)"
+    ],
+    "summary": "workflow.audit gates unreadable: audit.gates.codex \"REQUIRED\" unknown (want one of off|advisory|required): codex unavailable: codex binary not found in PATH",
+    "verdict": "fail"
+  },
+  "text": {
+    "build_commit": "\u003cbuild_commit\u003e",
+    "build_lag": "\u003cbuild_lag\u003e",
+    "findings": [],
+    "gate_unmet": "workflow.audit gates unreadable: audit.gates.codex \"REQUIRED\" unknown (want one of off|advisory|required)",
+    "next_steps": [
+      "fall back to the active auditor (claude)"
+    ],
+    "summary": "workflow.audit gates unreadable: audit.gates.codex \"REQUIRED\" unknown (want one of off|advisory|required): codex unavailable: codex binary not found in PATH",
+    "verdict": "fail"
+  }
+}

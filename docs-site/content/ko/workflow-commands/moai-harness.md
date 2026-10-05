@@ -338,7 +338,7 @@ Builder가 알아서 이렇게 처리합니다:
 ## 관련 문서
 
 - [Harness v4 Builder 가이드](/ko/advanced/builder-agents) - Builder 4-phase 상세
-- [에이전트 가이드](/ko/advanced/agent-guide) - 11개 에이전트 카탈로그 이해
+- [에이전트 가이드](/ko/advanced/agent-guide) - 13개 에이전트 카탈로그 이해
 - [SPEC 기반 개발](/ko/workflow-commands/moai-plan) - SPEC 워크플로우 개요
 - [/moai goal](./moai-goal) - 자율 루프가 관찰을 축적하면 하네스 학습의 원료로 흐른다 (v3.1)
 

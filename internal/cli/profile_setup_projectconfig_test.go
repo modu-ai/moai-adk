@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 )
@@ -133,36 +134,42 @@ func TestPersistProjectConfig_ReadCurrent(t *testing.T) {
 	}
 }
 
-// TestProfileSetupConstructsProjectSelects is a construction grep guard
-// (AC-WC3-006a): the wizard source must bind a development_mode huh.Select
-// offering the canonical option values.
-//
-// The git_convention half of this guard moved to a NEGATIVE assertion in
-// profile_setup_removed_questions_test.go: that Select was removed from the
-// wizard, so binding it again is now the regression, not the requirement.
+// TestProfileSetupConstructsProjectSelects is the AC-ITI-010 S5 guard,
+// re-aimed per design.md §10 from a source grep to a behavior test over the
+// ABSORBED question set: the profile wizard asks development_mode offering the
+// canonical option values. The git_convention half of this guard moved to a
+// NEGATIVE assertion in profile_setup_removed_questions_test.go: that Select
+// was removed from the wizard, so binding it again is now the regression, not
+// the requirement.
 func TestProfileSetupConstructsProjectSelects(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("profile_setup.go")
-	if err != nil {
-		t.Fatalf("read profile_setup.go: %v", err)
+	opts := buildProfileOptions(getProfileText("en"))
+	qs := wizard.ProfileQuestions(opts, wizard.ProfileResult{})
+	q := wizard.QuestionByID(qs, "development_mode")
+	if q == nil {
+		t.Fatal("the absorbed profile question set has no development_mode question")
 	}
-	src := string(data)
-	if !strings.Contains(src, "&developmentMode") {
-		t.Error("profile_setup.go must bind a select to &developmentMode")
-	}
-	// The canonical option values must be OFFERED by the select. The option list is
-	// derived from the shared settings schema (schemaSelectOptions) rather than
-	// written inline, so this is asserted against the built option list instead of
-	// the source text — a stronger check: it fails if the schema stops offering a
-	// value, which a source grep could not see.
-	txt := getProfileText("en")
 	offered := map[string]bool{}
-	for _, o := range schemaSelectOptions(txt, "development_mode", false) {
+	for _, o := range q.Options {
 		offered[o.Value] = true
 	}
-	for _, v := range []string{"ddd", "tdd"} {
+	for _, v := range []string{"", "ddd", "tdd"} {
 		if !offered[v] {
 			t.Errorf("development_mode select does not offer canonical option value %q", v)
+		}
+	}
+
+	// The canonical option values must also be OFFERED by the shared schema
+	// the option list derives from — a stronger check than the wizard-side
+	// list alone: it fails if the schema stops offering a value.
+	txt := getProfileText("en")
+	schemaOffered := map[string]bool{}
+	for _, o := range schemaSelectOptions(txt, "development_mode", false) {
+		schemaOffered[o.Value] = true
+	}
+	for _, v := range []string{"ddd", "tdd"} {
+		if !schemaOffered[v] {
+			t.Errorf("schema development_mode options do not offer canonical value %q", v)
 		}
 	}
 }

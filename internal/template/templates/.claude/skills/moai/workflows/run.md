@@ -24,9 +24,9 @@ triggers:
   phases: ["run"]
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
-<!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai run Phase <N> <enter|exit> -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 # Run Workflow Entry Router
 
@@ -49,7 +49,8 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 4-mode catalog
 | Phase 0: Context Loading | `Read workflows/run/context-loading.md` | Mode dispatch, UltraThink, harness level, context loading, worktree path rules |
 | Phase 1~1.8: Phase Execution | `Read workflows/run/phase-execution.md` | Plan Audit Gate, environment assessment, JIT language detection, scale-based mode, analysis/planning, task decomposition, development mode routing |
 | Phase 11~4: Implementation | `Read workflows/run/task-decomposition.md` | DDD/TDD cycles, quality validation (Phase 13/2.8), git operations (Phase 19), completion guidance (Phase 20) |
-| Mode Routing + Completion | `Read workflows/run/mode-orchestration.md` | Execution mode gate, mode dispatch routing, context propagation, completion criteria, verify exit gate (factory contract), test scenarios |
+| Mode Routing + Completion | `Read workflows/run/mode-orchestration.md` | Execution mode gate, mode dispatch routing, context propagation, completion criteria, verify exit gate, test scenarios |
+| External Model Delegation | `Read workflows/run/external-delegation.md` | Optional hand-off of bounded mechanical subtasks to an external model — the single home of the delegation procedure |
 
 ## Fan-Out Index
 
@@ -124,22 +125,26 @@ Read .claude/skills/moai/workflows/run/mode-orchestration.md
 
 A CI audit verifies the literal `MODE_UNKNOWN` sentinel remains present in this skill body (shared with `design.md`). `MODE_UNKNOWN` is emitted when `--mode <value>` is supplied to `/moai run` but `<value>` is not in the valid set `{autopilot, loop, team, pipeline}` (note: pipeline is itself rejected with the separate `MODE_PIPELINE_ONLY_UTILITY` sentinel — see line 71). The complementary `MODE_PIPELINE_ONLY_UTILITY` and `MODE_TEAM_UNAVAILABLE` sentinels are documented in this skill body and in `design.md`. `MODE_TEAM_UNAVAILABLE` is retained as the historical retired-era fallback marker (the `team` mode is now experimental-live; see the Mode dispatch list above).
 
-Ordering invariant (read before the autonomy section below): the Implementation Kickoff Approval `AskUserQuestion` human gate is always cleared FIRST; any run-phase autonomy set is downstream of it. The next section documents that ordering and the autonomy condition together.
+Ordering invariant (read before the autonomy section below): the plan→run Kickoff gate is always met FIRST — its default autonomous form (audit-cross evidence + decision record per `.claude/rules/moai/workflow/auto-semantics.md` §9.1) or the operator form keep-set cases keep; any run-phase autonomy set is downstream of it. The next section documents that ordering and the autonomy condition together.
 
 ## Run-phase Autonomy (ac_converge)
 
-This section wires the run-phase autonomy mechanisms — the Implementation Kickoff Approval human-gate ordering reference and the `ac_converge` goal condition — into a single co-located place. The two parts are ORDERED: the Implementation Kickoff Approval `AskUserQuestion` human gate is described FIRST (it must be cleared before any autonomy begins), then the `ac_converge` arming (entered only after Implementation Kickoff Approval approval).
+This section wires the run-phase autonomy mechanisms — the plan→run Kickoff gate ordering reference and the `ac_converge` goal condition — into a single co-located place. The two parts are ORDERED: the Kickoff gate is described FIRST (it must be met before any autonomy begins), then the `ac_converge` arming (entered only after the gate is met).
 
-> **Progression-mode axis (autonomous vs. semi-autonomous)**: the Implementation Kickoff Approval gate also offers a progression-mode choice — autonomous (default; the loop continues without per-turn prompts) or semi-autonomous (the `stop-goal` hook emits a checkpoint-signal each turn for orchestrator-side `AskUserQuestion` confirmation). This axis selects ONLY post-approval progression; the gate stays mandatory in both modes. See `.claude/skills/moai/workflows/goal.md` § Progression Mode.
+> **Progression-mode axis (autonomous vs. semi-autonomous)**: the Kickoff gate also offers a progression-mode choice — autonomous (default; the loop continues without per-turn prompts) or semi-autonomous (the `stop-goal` hook emits a checkpoint-signal each turn for orchestrator-side `AskUserQuestion` confirmation). This axis selects ONLY post-gate progression; the gate's evidence standard holds in both modes. See `goal.md` § Progression Mode.
 
-### 1. Implementation Kickoff Approval ordering (the human gate comes first)
+### 1. Kickoff gate ordering (the gate comes first)
 
-[HARD] Before any run-phase autonomy (arming a goal, a sweep Workflow launch, or any autonomous loop), the orchestrator MUST have already obtained explicit Implementation Kickoff Approval approval. Implementation Kickoff Approval is the plan→run HUMAN GATE: a mandatory orchestrator-issued `AskUserQuestion` round (run-phase entry / further review / abort, first option marked "(Recommended)") presented after Phase 1 (Plan Audit Gate) and before Phase 4 (Mode Selection). The orchestrator emits this gate; it is never embedded inside a subagent body (subagents cannot prompt the user — the asymmetric boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary).
+[HARD] Before any run-phase autonomy (arming a goal, a sweep Workflow launch, or any autonomous loop), the orchestrator MUST have already met the plan→run Kickoff gate in one of its two forms. DEFAULT form — autonomous: the independent audit cross (plan-auditor verdict PASS; FAIL / INCONCLUSIVE fail closed), the SPEC's plan phase recorded audit-ready, artifact-hash integrity since that verdict, and no open blocker — the transition writes a decision record the sync audit re-reads (`.claude/rules/moai/workflow/auto-semantics.md` §9.1). Operator form — keep-set cases only: an orchestrator-issued `AskUserQuestion` round (run-phase entry / further review / abort, first option marked "(Recommended)" — the label is withheld while `interview.recommendation_mode` is `pull`, per `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles) presented after Phase 1 (Plan Audit Gate) and before Phase 4 (Mode Selection); operator-form rows that wait together are presented through §9.2 of that rule. The gate is never embedded inside a subagent body (subagents cannot prompt the user — the asymmetric boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary).
 
-[HARD] Implementation Kickoff Approval is **score-independent**: the orchestrator emits the Implementation Kickoff Approval `AskUserQuestion` gate **regardless of the plan-auditor score**, including the high skip-eligible case. Skip-eligibility (a high autonomous-bypass score) applies ONLY to Phase 1 plan-auditor verdict re-execution — NOT to Implementation Kickoff Approval. A high plan-auditor score never authorizes skipping the Implementation Kickoff Approval human gate. This is the Implementation Kickoff Approval mandatory-restoration invariant per the Implementation Kickoff Approval mandatory-restoration policy.
+[HARD] The gate's entry evidence is verdict-governed: the adjudication consumes the plan-auditor verdict itself, not a raw score claim. Skip-eligibility (a high autonomous-bypass score) applies ONLY to Phase 1 plan-auditor verdict re-execution — NOT to the Kickoff gate. Implementation Kickoff Approval is emitted regardless of the plan-auditor score — the per-tier skip-eligible thresholds (S 0.75 / M 0.80 / L 0.85) waive nothing here. Under the default-autonomous transition (`.claude/rules/moai/workflow/auto-semantics.md` §9.1), a PASS verdict + unchanged artifact hashes + audit-ready status + no open blocker is not a bypass of the gate — it IS the gate's autonomous entry evidence, written as a decision record; keep-set cases still take the operator form.
 
 Because Implementation Kickoff Approval also drains all user preferences (Tier, mode preference, PR strategy), the orchestrator collects every preference at this gate BEFORE launching any autonomy — goal-loop turn agents and sweep Workflow agents cannot prompt the user mid-run, so the one decision that must involve the user is taken here.
 
+<!-- moai:contract-mode-start id="contract-signing-run" -->
+Where `workflow.autonomy.mode: contract` — the gate above is `moai contract kickoff-check <SPEC-ID> --card <card>` exiting 0, and no Kickoff question is emitted. A kickoff decision outcome of reject or human refuses the receipt signature and needs a human decision, so follow the human signing procedure for both. A non-zero exit is escalated, never downgraded to guided mode. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
+
+<!-- moai:contract-mode-end -->
 ### 2. The `ac_converge` goal condition (armed only after Implementation Kickoff Approval approval)
 
 ONLY after Implementation Kickoff Approval approval is obtained, the orchestrator MAY arm the `ac_converge` goal via `/moai goal "<condition>"` to grant phase-internal autonomy (it removes per-turn STOP prompts so the run-phase loop continues until convergence). Because arming is **arm-only** — it records the condition but starts no work — the orchestrator arms it ALONGSIDE the run-phase work it is driving, never in place of that work (`goal-directive.md` § Goal-Presentation Timing). The condition is hard-coded inline (no registry dependency) and is authored entirely as **model conditions** — every predicate references a line the orchestrator surfaces in the conversation, so the evaluator judges it against the transcript rather than by opening a file:
@@ -158,15 +163,7 @@ auto-fix semantic failures.
 ```
 > **Actual turn ceiling:** the legacy "Max 20 turns" clause above is NOT parsed — `parseCondition` matches only a trailing `exits <N>`, so a "Max 20 turns" / "stop after N turns" suffix has no mechanical effect. The `ac_converge` goal therefore arms at the default 30-turn ceiling and actually runs up to 30 turns (subject to `min(30, block cap)` and the stagnation guard). The literal is retained only as the historical reference for the author's intent. To bound a goal at a specific turn count, use `--max-turns N`; for an effectively-unbounded goal, use `--max-turns 0 --max-duration <seconds>`.
 
-### 3. Autonomy invariants (cite, do not restate — full doctrine in canonical rules)
-
-The following HARD invariants govern the `ac_converge` loop. Each is the canonical rule's render surface here; the rule is the SSOT.
-
-- **Transcript-measurability**: the `acceptance.md` reference NAMES where the AC list lives — it is NOT a path the evaluator opens. Because every predicate above is a model condition, the `stop-goal` evaluator judges only what the orchestrator SURFACES into the transcript (per-AC PASS line, `go test ./...` exit 0, `git status`).
-- **Semantic-failure escalation (HARD)**: on a data race / deadlock / panic / test assertion failure surfaced during the loop, clear the goal (`/moai goal clear`) and escalate via `AskUserQuestion` — NEVER auto-fix a semantic failure (per `ci-autofix-protocol.md` semantic-failure-handling).
-- **Non-substitution (HARD)**: the goal removes per-turn STOP prompts only. It does NOT authorize bypassing Implementation Kickoff Approval (already cleared), PR creation, or any destructive operation — those remain separately-surfaced explicit gates.
-- **Blocker reports, never user prompts**: a goal-loop turn or sweep Workflow agent lacking input returns a structured blocker report; the orchestrator runs `AskUserQuestion` and re-delegates (asymmetric boundary per `agent-common-protocol.md` § User Interaction Boundary).
-- **Graceful degradation**: the goal engine's evaluator IS a Stop hook (`moai hook stop-goal`), so `/moai goal` is unavailable when hooks are disabled (`disableAllHooks`, or `allowManagedHooksOnly` permitting only managed hooks). It carries no runtime-version floor of its own. When the engine is unavailable, run-phase autonomy degrades to the standard manual per-turn flow rather than failing.
+Autonomy invariants for the `ac_converge` loop (HARD): Read `workflows/run/phase-execution.md` § 3. Autonomy invariants.
 
 ### Cross-references (cite, do not restate)
 
@@ -178,6 +175,10 @@ The following HARD invariants govern the `ac_converge` loop. Each is the canonic
 
 ---
 
+<!-- moai:contract-mode-start id="contract-lifecycle-run" -->
+Where `workflow.autonomy.mode: contract` — the run phase carries the first four stages of the one-pass lifecycle: Discovery (re-observe the contract's `reobserve` list), RED (commit the failing tests first), GREEN (the same tests pass), Qualification (scoped tests, lint, coverage, mutation check, second-model review). Record each stage's evidence and run `moai contract kickoff-check` at every stage boundary; an open escalation record or a revocation stops the run there. See `.claude/rules/moai/workflow/contract-autonomy.md` § One-pass lifecycle.
+
+<!-- moai:contract-mode-end -->
 ## Recursive Self-Diagnosis Loop (bounded — DIAGNOSE-PATCH-VERIFY)
 
 The bounded self-diagnosis loop handles MECHANICAL run-phase failures fast (DIAGNOSE-PATCH-VERIFY, max 3 iterations) and escalates SEMANTIC failures immediately. It is the run-phase projection of the `cycle_type=autofix` DIAGNOSE-PATCH-VERIFY contract; the canonical doctrine lives in the cross-referenced rules above. Summary contract:
@@ -188,13 +189,12 @@ The bounded self-diagnosis loop handles MECHANICAL run-phase failures fast (DIAG
 | Iteration bound | [HARD] max 3 iterations; iteration 4 PROHIBITED; on iteration-3 fail the orchestrator runs an `AskUserQuestion` escalation (continue / revert+re-plan / abort) with no auto-resume | `ci-autofix-protocol.md` max-3 + `runtime-recovery-doctrine.md` §3 invariant 1 |
 | Semantic safety | [HARD] semantic failures NEVER auto-patched (the constitutional rule) | `ci-autofix-protocol.md` |
 | PATCH scope | [HARD] SPEC scope ONLY; MUST NOT touch `.env*` / credentials / CI watch infrastructure and workflow definitions / files outside plan.md §A EXTEND envelope (the constitutional rule/013) | `manager-develop-prompt-template.md` § cycle_type=autofix |
-| Foreground | sub-agent runs `run_in_background: false` (it patches code; background-write prohibition binds) | `agent-common-protocol.md` § Background Agent Execution |
+| Concurrency | the sub-agent patches code, so it is the only write-capable agent running; orchestrator work alongside it stays read-only, and foreground vs background is left to the runtime | `agent-common-protocol.md` § Background Agent Execution |
 | Flat hierarchy | spawned BY THE ORCHESTRATOR (not manager-develop — subagents cannot spawn subagents); blocker reports never direct user prompts | `agent-common-protocol.md` § User Interaction Boundary |
-| Ledger | [HARD] each iteration appended to `progress.md` `## §E Recursive Self-Diagnosis Log` (iteration #, classification, root-cause, patch, VERIFY result, escalation reason); grep-verifiable via `grep -A 10 "Recursive Self-Diagnosis Log" .moai/specs/<SPEC-ID>/progress.md` | `runtime-recovery-doctrine.md` §3 invariant 4 (abort-closes-ledger) |
+| Ledger | [HARD] each iteration appended to the `progress.md` Recursive Self-Diagnosis Log section, lettered per `spec-frontmatter-schema.md` § progress.md Section Map (iteration #, classification, root-cause, patch, VERIFY result, escalation reason); grep-verifiable via `grep -A 10 "Recursive Self-Diagnosis Log" .moai/specs/<SPEC-ID>/progress.md` | `runtime-recovery-doctrine.md` §3 invariant 4 (abort-closes-ledger) |
 
 This loop is COMPLEMENTARY to the independent audits (plan-auditor Phase 5, sync-auditor Phase 19) — self-audit handles mechanical failures fast; independent audit handles SPEC-quality assurance. See `orchestration-mode-selection.md` §J.3.
 
 ## Routing Ledger Recording
 
-At run dispatch, the orchestrator records the routing decision to the routing-ledger via `moai harness ledger record` (per the SKILL.md router recording obligation). As run-phase gates complete, it appends machine evidence via `moai harness ledger evidence` — a terminal gate exit (`--kind gate_exit --value 0 --terminal --ref "go test ./..."`) or a verify-log path (`--kind verify_path --ref <.moai/state/verify/... log>`). Outcome is finalized from that machine evidence only — never supplied as an input. The recording is opt-in and fail-open; it never blocks the run phase.
-
+At run dispatch, the orchestrator records the routing decision to the routing-ledger via `moai harness ledger record` (per the SKILL.md router recording obligation). As run-phase gates complete, it appends machine evidence via `moai harness ledger evidence` — a terminal gate exit (`--kind gate_exit --value 0 --terminal --ref "go test ./..."`) or a verify-log path (`--kind verify_path --ref <.moai/reports/<card-id>/... log>`). The `--ref` value is read later by a person auditing the ledger, not opened by the finalizer, so it names an **exported tracked file** — a scratch path recorded there resolves nowhere but the machine that wrote it. Outcome is finalized from that machine evidence only — never supplied as an input. The recording is opt-in and fail-open; it never blocks the run phase.

@@ -17,26 +17,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
 // writeFactoryRegistry writes root's lane registry from a label→pid map.
 func writeFactoryRegistry(t *testing.T, root string, lanes map[string]int) {
 	t.Helper()
-	reg := make(map[string]kanban.FactoryWorkerEntry, len(lanes))
+	reg := make(map[string]factory.FactoryLaneEntry, len(lanes))
 	for label, pid := range lanes {
-		reg[label] = kanban.FactoryWorkerEntry{PID: pid, RegisteredAt: time.Now().UTC().Format(time.RFC3339)}
+		reg[label] = factory.FactoryLaneEntry{PID: pid, RegisteredAt: time.Now().UTC().Format(time.RFC3339)}
 	}
-	path := kanban.FactoryRegistryPath(root)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("mkdir factory dir: %v", err)
-	}
-	body, err := json.Marshal(reg)
-	if err != nil {
-		t.Fatalf("marshal registry: %v", err)
-	}
-	if err := os.WriteFile(path, body, 0o600); err != nil {
+	path := factory.FactoryRegistryPath(root)
+	if err := factory.SaveFactoryRegistry(path, reg); err != nil {
 		t.Fatalf("write registry: %v", err)
 	}
 }
@@ -57,18 +50,10 @@ func writeActiveSessions(t *testing.T, root string, entries []session.Entry) {
 	}
 }
 
-// writeKanbanRecord writes one kanban record keyed by its session id.
-func writeKanbanRecord(t *testing.T, root string, rec kanban.Record) {
+// writeFactoryRecord writes one factory record keyed by its session id.
+func writeFactoryRecord(t *testing.T, root string, rec factory.Record) {
 	t.Helper()
-	dir := filepath.Join(root, ".moai", "state", "kanban")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatalf("mkdir kanban dir: %v", err)
-	}
-	body, err := json.Marshal(rec)
-	if err != nil {
-		t.Fatalf("marshal record: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, rec.SessionID+".json"), body, 0o600); err != nil {
+	if err := factory.Write(root, &rec); err != nil {
 		t.Fatalf("write record: %v", err)
 	}
 }
@@ -103,17 +88,17 @@ func TestFactoryLanesResolveCompleteJoin(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-2": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-lane-2", pid)})
-	writeKanbanRecord(t, root, kanban.Record{
+	writeFactoryRecord(t, root, factory.Record{
 		SessionID: "sess-lane-2",
 		SpecID:    "SPEC-EXAMPLE-001",
 		Role:      "lane",
-		Backend:   kanban.BackendGLM,
+		Backend:   factory.BackendGLM,
 		Lane:      2,
 		CardID:    "t207",
 	})
 
 	_, byID := loadSessions(root, time.Now())
-	lanes := loadFactoryLanes(root, byID, loadKanbanRecords(root))
+	lanes := loadFactoryLanes(root, byID, loadFactoryRecords(root))
 
 	row := laneByNumber(t, lanes, 2)
 	if row.Unresolved {
@@ -134,8 +119,8 @@ func TestFactoryLanesResolveCompleteJoin(t *testing.T) {
 	if !row.StageEstimated {
 		t.Error("StageEstimated = false, want true — heartbeat estimation is not a recorded transition")
 	}
-	if row.Backend != kanban.BackendGLM {
-		t.Errorf("Backend = %q, want %q", row.Backend, kanban.BackendGLM)
+	if row.Backend != factory.BackendGLM {
+		t.Errorf("Backend = %q, want %q", row.Backend, factory.BackendGLM)
 	}
 }
 
@@ -150,7 +135,7 @@ func TestFactoryLanesPresentsUnresolvedLanes(t *testing.T) {
 	// No record for sess-lane-6, and no session at all for lane-4's pid.
 
 	_, byID := loadSessions(root, time.Now())
-	lanes := loadFactoryLanes(root, byID, loadKanbanRecords(root))
+	lanes := loadFactoryLanes(root, byID, loadFactoryRecords(root))
 
 	for _, n := range []int{4, 6} {
 		row := laneByNumber(t, lanes, n)
@@ -170,13 +155,13 @@ func TestFactoryLanesDuplicatePIDFactorySide(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-1": pid, "lane-5": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-dup", pid)})
-	writeKanbanRecord(t, root, kanban.Record{
+	writeFactoryRecord(t, root, factory.Record{
 		SessionID: "sess-dup", SpecID: "SPEC-EXAMPLE-001", Role: "lane",
-		Backend: kanban.BackendClaude, Lane: 1, CardID: "t999",
+		Backend: factory.BackendClaude, Lane: 1, CardID: "t999",
 	})
 
 	_, byID := loadSessions(root, time.Now())
-	lanes := loadFactoryLanes(root, byID, loadKanbanRecords(root))
+	lanes := loadFactoryLanes(root, byID, loadFactoryRecords(root))
 
 	for _, n := range []int{1, 5} {
 		row := laneByNumber(t, lanes, n)
@@ -200,13 +185,13 @@ func TestFactoryLanesDuplicatePIDSessionSide(t *testing.T) {
 		liveEntry("sess-stale", pid),
 		liveEntry("sess-live", pid),
 	})
-	writeKanbanRecord(t, root, kanban.Record{
+	writeFactoryRecord(t, root, factory.Record{
 		SessionID: "sess-live", SpecID: "SPEC-EXAMPLE-001", Role: "lane",
-		Backend: kanban.BackendClaude, Lane: 1, CardID: "t888",
+		Backend: factory.BackendClaude, Lane: 1, CardID: "t888",
 	})
 
 	_, byID := loadSessions(root, time.Now())
-	lanes := loadFactoryLanes(root, byID, loadKanbanRecords(root))
+	lanes := loadFactoryLanes(root, byID, loadFactoryRecords(root))
 
 	row := laneByNumber(t, lanes, 1)
 	if !row.Unresolved {
@@ -229,7 +214,7 @@ func TestFactoryLanesMissingAndMalformedRegistry(t *testing.T) {
 	})
 	t.Run("malformed", func(t *testing.T) {
 		root := t.TempDir()
-		path := kanban.FactoryRegistryPath(root)
+		path := factory.FactoryRegistryPath(root)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatalf("mkdir: %v", err)
 		}
@@ -250,11 +235,11 @@ func TestFactoryLanesJoinWritesNothing(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-3": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-3", pid)})
-	writeKanbanRecord(t, root, kanban.Record{SessionID: "sess-3", Role: "lane", Lane: 3, CardID: "t3"})
+	writeFactoryRecord(t, root, factory.Record{SessionID: "sess-3", Role: "lane", Lane: 3, CardID: "t3"})
 
 	before := listStateTree(t, root)
 	_, byID := loadSessions(root, time.Now())
-	_ = loadFactoryLanes(root, byID, loadKanbanRecords(root))
+	_ = loadFactoryLanes(root, byID, loadFactoryRecords(root))
 	after := listStateTree(t, root)
 
 	if len(before) != len(after) {

@@ -1,20 +1,20 @@
 # Cache-Aware Execution
 
-Prompt-caching-aware ordering rules for orchestrator execution. Anthropic prompt caching is a **prefix match** over the rendered request (`tools` → `system` → `messages`): cache reads cost ~0.1× the base input price, writes cost 1.25× (5-minute TTL by default). The TTL is **idle-based** — any gap longer than the window without a request (typically a blocking `AskUserQuestion` wait) expires the cache, and the next turn re-writes the full accumulated prefix at 1.25×. Since Claude Code 2.1.243 the `promptCacheTtl`/`subagentPromptCacheTtl` settings let API-key and cloud-provider sessions hold a 1-hour cache on the main conversation while subagents stay at 5 minutes; MoAI sets neither (cache spend is a user decision), the settings' effect on third-party gateways such as z.ai is unmeasured, and the directives below keep the 5-minute default as their operating assumption. These rules govern WHEN and IN WHAT ORDER the orchestrator acts; they change no gate semantics and never bypass any approval gate.
+Prompt-caching-aware ordering rules for orchestrator execution. Caching is a **prefix match** over the rendered request: reads are far cheaper than writes, the TTL is **idle-based**, and a blocking wait longer than the window makes the next turn re-write the whole accumulated prefix. The directives below assume the 5-minute default — MoAI sets no TTL override, because cache spend is a user decision. Cited numbers, the TTL-setting caveat, and per-directive rationale: `cache-aware-execution-reference.md`. These rules govern WHEN and IN WHAT ORDER the orchestrator acts; they change no gate semantics and never bypass any approval gate.
 
 > **Loading scope**: Intentionally always-loaded — the directives bind ordering decisions the orchestrator makes on any non-trivial turn (gate placement, agent spawns, rule edits, `/clear` timing).
 
 ## Directives
 
-1. **Front-load user gates** [ZONE:Evolvable] While intent-drain gates can be asked early (Clarify stage, small context), ask them there rather than late in a large context. A blocking user wait late in a session risks expiring the cache over the entire accumulated prefix — the larger the context, the more expensive each gate-wait becomes. Unavoidable late gates (sync approval, completion decisions) SHOULD be batched into consecutive rounds so the expiry window is paid at most once, not per question.
+1. **Front-load user gates** [ZONE:Evolvable] Ask intent-drain gates early (Clarify stage, small context) rather than late in a large one: a blocking wait late in a session risks expiring the cache over the whole accumulated prefix. Unavoidable late gates (sync approval, completion decisions) SHOULD be batched into consecutive rounds so the expiry window is paid at most once, not per question.
 
-2. **Stagger-spawn parallel same-type agents** [ZONE:Evolvable] When fanning out N parallel subagents that share the same agent definition (identical system prompt + rules prefix), spawn ONE first, and spawn the remaining N−1 after the first has started producing output. Concurrent requests cannot read a cache entry that is still being written — simultaneous fan-out makes all N pay the cold cache write for the shared prefix, while a staggered fan-out lets N−1 spawns read the first spawn's cache. This composes with (does not replace) the fanout bounds in `orchestration-mode-selection.md` §C.2 (the 3-5 advisory band this directive grounds; the hard bound is the runtime subagent cap).
+2. **Stagger-spawn parallel same-type agents** [ZONE:Evolvable] When fanning out N parallel subagents sharing one agent definition, spawn ONE first and the remaining N−1 after it starts producing output: concurrent requests cannot read a cache entry still being written, so simultaneous fan-out makes all N pay the cold write. This composes with (does not replace) the fanout bounds in `orchestration-mode-selection.md` §C.2.
 
 3. **Defer session-loaded file edits to task end** [ZONE:Evolvable] Files loaded into the session prefix at start (`.claude/rules/`, `CLAUDE.md`, output styles, always-loaded skills) invalidate the entire cache prefix when edited mid-session — every subsequent turn re-writes from the edit point. Batch such edits at the END of a task, or immediately before a `/clear` boundary. This aligns naturally with the Template-First cycle (edit → `make build` → commit → session boundary).
 
-4. **Consider `/clear` before large batches** [ZONE:Evolvable] `/clear` discards the warm cache but shrinks the prefix. When a large multi-spawn batch is about to start and the current context is bloated with completed unrelated work, a `/clear` + paste-ready resume BEFORE the batch is cheaper than carrying the bloated prefix through N spawns — even below the model-specific handoff threshold in `context-window-management.md`. When only short follow-up work remains, keep the warm cache instead.
+4. **Consider `/clear` before large batches** [ZONE:Evolvable] `/clear` discards the warm cache but shrinks the prefix. Apply `.claude/rules/moai/workflow/context-clear-policy.md`: persist a paste-ready handoff and clear before a large multi-spawn batch when unrelated context is bloated, an audit needs independence, or a prefix/model/effort change invalidates the warm state. When only short follow-up work remains and the plan/tree identity is unchanged, keep the warm cache instead.
 
-5. **Inherit the session model on spawns** [ZONE:Evolvable] Caches are model-scoped: a per-spawn model override splits the spawn off from every cache the session has built. Omit model overrides unless the task genuinely requires a different tier (already the default per agent-authoring guidance); this directive records the caching cost of violating it.
+5. **Inherit the session model on spawns** [ZONE:Evolvable] Caches are model-scoped: a per-spawn model override splits the spawn off from every cache the session has built. MoAI passes no model on a spawn and its agent definitions declare none, so every subagent shares the session's model; this directive records the caching cost of overriding it. The one sanctioned override surface is the opt-in `llm.agent_overrides_consume` key (boolean, default `false`): a session that sets it `true` accepts this cache-split cost on its opted-in spawns — every override-bearing spawn starts on a cold model-scoped cache — while key-less sessions keep the inherit default, and directive 10's effort caution applies unchanged.
 
 6. **Pass files by `@`-mention, not by name** [ZONE:Evolvable] [HARD] When a prompt needs a file's content, pass it with an `@`-mention or a Read call rather than citing the filename for the model to fetch — one deterministic load beats a fetch-retry cycle. Use `/context` only as a one-shot audit of what is loaded, not a routine check.
 
@@ -24,22 +24,20 @@ Prompt-caching-aware ordering rules for orchestrator execution. Anthropic prompt
 
 9. **Weigh session length as a cost axis** [ZONE:Evolvable] [HARD] One long session is cheaper than several short ones for the same work — every fresh session re-pays the always-loaded prefix at write price, a continuing one reads it from cache — if it stays warm: a >5-min idle gap or prefix edit reverts it to write price. Treat session splitting as directive 4 treats `/clear`: a cost to justify, not a default.
 
-10. **A mid-session model or effort switch busts the cache** [ZONE:Evolvable] [HARD] Changing model or effort mid-session (thinking budget included — `MAX_THINKING_TOKENS`) discards the prompt cache; prefer a natural boundary for the switch. Directive 5 and this one govern the main session's cache; `agent-common-protocol.md` § Per-Spawn Model Injection governs which model a subagent runs on — different axes, not a contradiction.
+10. **A mid-session model or effort switch busts the cache** [ZONE:Evolvable] [HARD] Changing model or effort mid-session (thinking budget included — `MAX_THINKING_TOKENS`) discards the prompt cache; prefer a natural boundary for the switch.
 
 ## Non-goals
 
-- These directives NEVER justify skipping, weakening, or reordering an approval gate's *semantics* — Implementation Kickoff Approval and all HUMAN GATEs remain mandatory where defined. Only the *placement and batching* of questions is governed here.
-- Claude Code manages cache breakpoints internally; the orchestrator does not (and cannot) place `cache_control` markers. These rules optimize the variables the orchestrator does control: ordering, spawn timing, edit timing.
+- These directives NEVER justify skipping, weakening, or reordering an approval gate's *semantics* — the gate SEMANTICS are unchanged: keep-set gates (environment-impossible, operator-held, irreversible external-shared operations) remain operator-mandatory, and the default gates transition per the inventory in `.claude/rules/moai/workflow/auto-semantics.md` §9 with their evidence standard intact. Only the *placement and batching* of questions is governed here.
+- Cache breakpoints are managed internally by the runtime; the orchestrator can only order its own actions, so these rules govern ordering, spawn timing, and edit timing.
 
 ## Cross-references
 
 - `.claude/rules/moai/workflow/orchestration-mode-selection.md` — fanout parallel fan-out (stagger-spawn composes with its concurrency ceiling)
 - `.claude/rules/moai/workflow/context-window-management.md` — model-specific `/clear` thresholds (directive 4 is an additional, earlier trigger)
-- `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution — single-turn verification batching (already cache-optimal: incremental append)
-- `.claude/rules/moai/core/askuser-protocol.md` — gate mechanics (unchanged by this rule)
-- `.claude/rules/moai/workflow/cache-aware-execution-reference.md` — cited cache numbers for directives 6-10
+- `cache-aware-execution-reference.md` — the lazy companion. Load it for § Cited cache numbers · § Directive rationale (directives 6-10).
 
 ---
 
-Version: 1.1.0
+Version: 1.2.0 (directive 5 — the opt-in `llm.agent_overrides_consume` key named as the single sanctioned override surface)
 Classification: Evolvable operational rule — execution ordering only; gate semantics unchanged.

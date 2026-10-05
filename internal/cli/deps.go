@@ -26,6 +26,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/ralph"
 	"github.com/modu-ai/moai-adk/internal/resilience"
+	"github.com/modu-ai/moai-adk/internal/stateanchor"
 	"github.com/modu-ai/moai-adk/internal/update"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
@@ -166,8 +167,19 @@ func InitDependencies() {
 	// Eagerly load the project config (see InitDependencies godoc). Fail-open:
 	// a load error logs a warning and leaves Get() returning nil, so handlers
 	// fall back to defaults and glm.go's nil-safe path stays compatible.
+	// B4 (SPEC-STATE-ANCHOR-001): the load anchors to the project's state
+	// anchor — the git-resolved primary checkout — not to the raw cwd, so the
+	// config cache lands at the project root even when the process stands in
+	// a subdirectory or a linked worktree. The raw cwd remains the fallback
+	// only where no git context exists, keeping non-git MoAI projects on
+	// their project-local config; a non-project cwd never gains a .moai (the
+	// cache skips writing when the config directory is absent).
 	cfgLoadStart := time.Now()
-	if _, err := deps.Config.Load(cwd); err != nil {
+	cfgRoot := stateanchor.FromDirectory(cwd)
+	if cfgRoot == "" {
+		cfgRoot = cwd
+	}
+	if _, err := deps.Config.Load(cfgRoot); err != nil {
 		logger.Warn("config load failed; config-dependent handlers fall back to defaults",
 			"cwd", cwd,
 			"error", err,
@@ -217,7 +229,7 @@ func InitDependencies() {
 	// Initialize ast-grep analyzer (ScanFile returns empty results if sg CLI is absent)
 	astAnalyzer := astgrep.NewAnalyzer(cwd)
 
-	// Register default hook handlers
+	// Register default hook handlers.
 	deps.HookRegistry.Register(hook.NewSessionStartHandler(deps.Config))
 	// SessionEnd handler: use observability-aware variant when configured.
 	deps.HookRegistry.Register(buildSessionEndHandler(cwd))
@@ -236,12 +248,17 @@ func InitDependencies() {
 	// additionalContext alongside the other SessionStart handlers' output.
 	deps.HookRegistry.Register(hook.NewSessionStartCompactHandler())
 
-	deps.HookRegistry.Register(hook.NewStopHandler())
+	deps.HookRegistry.Register(hook.WithEscalationConfig(hook.NewStopHandler(), deps.Config))
 	// Build security policy: defaults + extra patterns from security.yaml (REQ-SEC-003).
 	secPolicy := hook.DefaultSecurityPolicy()
 	secPolicy.MergeExtraPatterns(security.LoadExtraSecurityConfig(cwd))
 	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, secPolicy, securityScanner))
-	deps.HookRegistry.Register(hook.NewPostToolHandlerWithMxValidatorAndTimeout(diagnosticsCollector, astAnalyzer, cwd, 500*time.Millisecond))
+	// WithEscalationConfig hands the contract-mode escalation detector the
+	// configuration without giving the handler a cfg (which would change its
+	// lint_as_instruction default).
+	deps.HookRegistry.Register(hook.WithEscalationConfig(
+		hook.NewPostToolHandlerWithMxValidatorAndTimeout(diagnosticsCollector, astAnalyzer, cwd, 500*time.Millisecond),
+		deps.Config))
 	// The regex security guardian runs in this process alongside the post-tool
 	// handler; the registry accumulates its additionalContext next to the
 	// post-tool handler's systemMessage, so neither advisory is dropped. It
@@ -249,7 +266,7 @@ func InitDependencies() {
 	// `moai hook security-scan` subcommand it fronted stays registered.
 	deps.HookRegistry.Register(hook.NewPostToolGuardianHandler())
 	deps.HookRegistry.Register(hook.NewCompactHandler())
-	deps.HookRegistry.Register(hook.NewPostToolUseFailureHandler())
+	deps.HookRegistry.Register(hook.WithEscalationConfig(hook.NewPostToolUseFailureHandler(), deps.Config))
 	deps.HookRegistry.Register(hook.NewNotificationHandlerWithConfig(deps.Config))
 	// Config-ful constructor so project-context additionalContext injection is
 	// live in production (the no-config constructor left buildContext dead).
@@ -263,11 +280,11 @@ func InitDependencies() {
 	deps.HookRegistry.Register(hook.NewPostCompactHandler())
 	deps.HookRegistry.Register(hook.NewInstructionsLoadedHandler())
 	deps.HookRegistry.Register(hook.NewStopFailureHandler())
-	deps.HookRegistry.Register(hook.NewSubagentStopHandler())
+	deps.HookRegistry.Register(hook.NewSubagentStopHandlerWithConfig(deps.Config))
 	deps.HookRegistry.Register(hook.NewTaskCreatedHandlerWithConfig(deps.Config))
 	deps.HookRegistry.Register(hook.NewPermissionDeniedHandler())
 	deps.HookRegistry.Register(hook.NewConfigChangeHandler())
-	deps.HookRegistry.Register(hook.NewCwdChangedHandler())
+	deps.HookRegistry.Register(hook.NewCwdChangedHandlerWithConfig(deps.Config))
 	deps.HookRegistry.Register(hook.NewFileChangedHandler())
 	// Config-ful constructors so the observability opt-in
 	// (system.yaml hook.observability_events) can actually activate — the
@@ -484,11 +501,17 @@ func buildAutoUpdateFunc() hook.AutoUpdateFunc {
 	return func(ctx context.Context) (*hook.AutoUpdateResult, error) {
 		currentVersion := version.GetVersion()
 
-		// Skip dev builds
-		isDevBuild := strings.Contains(currentVersion, "dirty") ||
-			currentVersion == "dev" ||
-			strings.Contains(currentVersion, "none")
-		if isDevBuild {
+		// Skip dev builds. version.IsDevBuild also rejects build codenames
+		// like "moai_cp/20260910_130400" that the legacy substring check let
+		// through — a codename build read as "older than any release" and the
+		// SessionStart auto-update then installed the release over it (card t678).
+		if version.IsDevBuild(currentVersion) {
+			return &hook.AutoUpdateResult{Updated: false}, nil
+		}
+
+		// Honor the same opt-out `moai update` reads (shouldSkipBinaryUpdate):
+		// a pinned binary must not be replaced mid-session (GitHub #1714).
+		if os.Getenv(config.EnvSkipBinaryUpdate) == "1" {
 			return &hook.AutoUpdateResult{Updated: false}, nil
 		}
 

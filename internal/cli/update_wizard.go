@@ -15,7 +15,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/defs"
-	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
@@ -297,38 +296,6 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		}
 		if err := atomicfile.Write(gitStratPath, updatedData, defs.FilePerm); err != nil {
 			return fmt.Errorf("write git-strategy.yaml: %w", err)
-		}
-	}
-
-	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016/024): the former plan_type × tier
-	// agent-frontmatter mutation is RETIRED — persist the resolved model policy to
-	// llm.profile (normalized {high,medium,low} → {max,medium,low}) instead of
-	// mutating agent frontmatter, which stays at model: inherit.
-	if result.ModelPolicy != "" {
-		policy := template.ModelPolicy(result.ModelPolicy)
-		if template.IsValidModelPolicy(string(policy)) {
-			if err := template.ApplyProfile(projectRoot, template.NormalizeToTier(result.ModelPolicy)); err != nil {
-				return fmt.Errorf("apply profile: %w", err)
-			}
-			// Persist model_policy to system.yaml so it survives future updates
-			systemPath := filepath.Join(sectionsDir, defs.SystemYAML)
-			systemData, _ := os.ReadFile(systemPath)
-			var sys map[string]any
-			if len(systemData) > 0 {
-				_ = yaml.Unmarshal(systemData, &sys)
-			}
-			if sys == nil {
-				sys = make(map[string]any)
-			}
-			moaiSection, _ := sys["moai"].(map[string]any)
-			if moaiSection == nil {
-				moaiSection = make(map[string]any)
-			}
-			moaiSection["model_policy"] = string(policy)
-			sys["moai"] = moaiSection
-			if updatedData, err := yaml.Marshal(sys); err == nil {
-				_ = atomicfile.Write(systemPath, updatedData, defs.FilePerm)
-			}
 		}
 	}
 

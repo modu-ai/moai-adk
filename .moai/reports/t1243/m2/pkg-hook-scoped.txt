@@ -1,0 +1,184 @@
+=== RUN   TestBranchGuard_DenyReasonRemediationContract
+--- PASS: TestBranchGuard_DenyReasonRemediationContract (0.62s)
+=== RUN   TestFrozenInstructionFilesPinnedInContract
+--- PASS: TestFrozenInstructionFilesPinnedInContract (0.00s)
+=== RUN   TestContractSignAgentInvocationDenied
+--- PASS: TestContractSignAgentInvocationDenied (0.00s)
+=== RUN   TestContractSignPositiveControlsAllowed
+--- PASS: TestContractSignPositiveControlsAllowed (0.00s)
+=== RUN   TestContractSignUnclassifiedDeniedClosed
+--- PASS: TestContractSignUnclassifiedDeniedClosed (0.00s)
+=== RUN   TestContractSignDeniedBeforeVerbExists
+--- PASS: TestContractSignDeniedBeforeVerbExists (0.24s)
+=== RUN   TestContractRoleScopedDenyUnderWorkerMarker
+--- PASS: TestContractRoleScopedDenyUnderWorkerMarker (0.00s)
+=== RUN   TestContractRoleScopedAllowWithoutWorkerMarker
+=== RUN   TestContractRoleScopedAllowWithoutWorkerMarker/marker_unset
+=== RUN   TestContractRoleScopedAllowWithoutWorkerMarker/marker_other_value
+--- PASS: TestContractRoleScopedAllowWithoutWorkerMarker (0.00s)
+    --- PASS: TestContractRoleScopedAllowWithoutWorkerMarker/marker_unset (0.00s)
+    --- PASS: TestContractRoleScopedAllowWithoutWorkerMarker/marker_other_value (0.00s)
+=== RUN   TestContractSignWrapperBypassesDenied
+--- PASS: TestContractSignWrapperBypassesDenied (0.00s)
+=== RUN   TestContractSignUnknownWrapperFailsClosed
+--- PASS: TestContractSignUnknownWrapperFailsClosed (0.00s)
+=== RUN   TestContractSignParserVerdicts
+=== RUN   TestContractSignParserVerdicts/env_-u_split
+=== RUN   TestContractSignParserVerdicts/env_-u_glued
+=== RUN   TestContractSignParserVerdicts/env_assignment_+_-i_decide
+=== RUN   TestContractSignParserVerdicts/command_-p
+=== RUN   TestContractSignParserVerdicts/command_-v_lookup
+=== RUN   TestContractSignParserVerdicts/exec_-a_NAME
+=== RUN   TestContractSignParserVerdicts/exec_-c
+=== RUN   TestContractSignParserVerdicts/exec_-l
+=== RUN   TestContractSignParserVerdicts/exec_-lc_glued
+=== RUN   TestContractSignParserVerdicts/timeout_full_flags
+=== RUN   TestContractSignParserVerdicts/timeout_-k_glued
+=== RUN   TestContractSignParserVerdicts/timeout_unknown_flag_stops
+=== RUN   TestContractSignParserVerdicts/sudo_full_flags
+=== RUN   TestContractSignParserVerdicts/sudo_-nE_glued
+=== RUN   TestContractSignParserVerdicts/sudo_-u_glued
+=== RUN   TestContractSignParserVerdicts/sudo_unknown_flag_stops
+=== RUN   TestContractSignParserVerdicts/stdbuf_split_modes
+=== RUN   TestContractSignParserVerdicts/stdbuf_-i_glued
+=== RUN   TestContractSignParserVerdicts/nice_-n_split
+=== RUN   TestContractSignParserVerdicts/nice_-n_glued
+=== RUN   TestContractSignParserVerdicts/xargs_full_flags
+=== RUN   TestContractSignParserVerdicts/xargs_-n_glued
+=== RUN   TestContractSignParserVerdicts/sh_options_before_-c
+=== RUN   TestContractSignParserVerdicts/sh_-c_no_payload
+=== RUN   TestContractSignParserVerdicts/bash_without_-c
+=== RUN   TestContractSignParserVerdicts/bare_sh
+=== RUN   TestContractSignParserVerdicts/sudo_+_env_chain
+=== RUN   TestContractSignParserVerdicts/substitution_no_call
+=== RUN   TestContractSignParserVerdicts/backtick_carries_call
+=== RUN   TestContractSignParserVerdicts/signer_glued
+=== RUN   TestContractSignParserVerdicts/signer_human_split
+=== RUN   TestContractSignParserVerdicts/mixed_quotes
+=== RUN   TestContractSignParserVerdicts/escaped_space_joins_word
+--- PASS: TestContractSignParserVerdicts (0.00s)
+    --- PASS: TestContractSignParserVerdicts/env_-u_split (0.00s)
+    --- PASS: TestContractSignParserVerdicts/env_-u_glued (0.00s)
+    --- PASS: TestContractSignParserVerdicts/env_assignment_+_-i_decide (0.00s)
+    --- PASS: TestContractSignParserVerdicts/command_-p (0.00s)
+    --- PASS: TestContractSignParserVerdicts/command_-v_lookup (0.00s)
+    --- PASS: TestContractSignParserVerdicts/exec_-a_NAME (0.00s)
+    --- PASS: TestContractSignParserVerdicts/exec_-c (0.00s)
+    --- PASS: TestContractSignParserVerdicts/exec_-l (0.00s)
+    --- PASS: TestContractSignParserVerdicts/exec_-lc_glued (0.00s)
+    --- PASS: TestContractSignParserVerdicts/timeout_full_flags (0.00s)
+    --- PASS: TestContractSignParserVerdicts/timeout_-k_glued (0.00s)
+    --- PASS: TestContractSignParserVerdicts/timeout_unknown_flag_stops (0.00s)
+    --- PASS: TestContractSignParserVerdicts/sudo_full_flags (0.00s)
+    --- PASS: TestContractSignParserVerdicts/sudo_-nE_glued (0.00s)
+    --- PASS: TestContractSignParserVerdicts/sudo_-u_glued (0.00s)
+    --- PASS: TestContractSignParserVerdicts/sudo_unknown_flag_stops (0.00s)
+    --- PASS: TestContractSignParserVerdicts/stdbuf_split_modes (0.00s)
+    --- PASS: TestContractSignParserVerdicts/stdbuf_-i_glued (0.00s)
+    --- PASS: TestContractSignParserVerdicts/nice_-n_split (0.00s)
+    --- PASS: TestContractSignParserVerdicts/nice_-n_glued (0.00s)
+    --- PASS: TestContractSignParserVerdicts/xargs_full_flags (0.00s)
+    --- PASS: TestContractSignParserVerdicts/xargs_-n_glued (0.00s)
+    --- PASS: TestContractSignParserVerdicts/sh_options_before_-c (0.00s)
+    --- PASS: TestContractSignParserVerdicts/sh_-c_no_payload (0.00s)
+    --- PASS: TestContractSignParserVerdicts/bash_without_-c (0.00s)
+    --- PASS: TestContractSignParserVerdicts/bare_sh (0.00s)
+    --- PASS: TestContractSignParserVerdicts/sudo_+_env_chain (0.00s)
+    --- PASS: TestContractSignParserVerdicts/substitution_no_call (0.00s)
+    --- PASS: TestContractSignParserVerdicts/backtick_carries_call (0.00s)
+    --- PASS: TestContractSignParserVerdicts/signer_glued (0.00s)
+    --- PASS: TestContractSignParserVerdicts/signer_human_split (0.00s)
+    --- PASS: TestContractSignParserVerdicts/mixed_quotes (0.00s)
+    --- PASS: TestContractSignParserVerdicts/escaped_space_joins_word (0.00s)
+=== RUN   TestContractSignScanCallPriority
+--- PASS: TestContractSignScanCallPriority (0.00s)
+=== RUN   TestContractSignGuardInputEdges
+--- PASS: TestContractSignGuardInputEdges (0.00s)
+=== RUN   TestContractValidate
+=== PAUSE TestContractValidate
+=== RUN   TestContractGuarantees
+=== PAUSE TestContractGuarantees
+=== RUN   TestContractNonGuarantees
+=== PAUSE TestContractNonGuarantees
+=== RUN   TestContractValidate_PathIsFile
+=== PAUSE TestContractValidate_PathIsFile
+=== RUN   TestFrozenFileUnionTrips
+=== RUN   TestFrozenFileUnionTrips/with-frozen-files
+=== RUN   TestFrozenFileUnionTrips/without-frozen-files
+--- PASS: TestFrozenFileUnionTrips (0.35s)
+    --- PASS: TestFrozenFileUnionTrips/with-frozen-files (0.17s)
+    --- PASS: TestFrozenFileUnionTrips/without-frozen-files (0.18s)
+=== RUN   TestEscalationGuidedGolden
+=== RUN   TestEscalationGuidedGolden/mode-absent
+2026/09/27 19:51:02 WARN file access security check tool_name=Write decision=deny reason="Path traversal detected: file is outside project directory"
+2026/09/27 19:51:02 WARN bash command security check tool_name=Bash decision=deny reason="Dangerous command blocked: removal of protected path \"/\""
+=== RUN   TestEscalationGuidedGolden/mode-guided
+2026/09/27 19:51:02 WARN file access security check tool_name=Write decision=deny reason="Path traversal detected: file is outside project directory"
+2026/09/27 19:51:02 WARN bash command security check tool_name=Bash decision=deny reason="Dangerous command blocked: removal of protected path \"/\""
+=== RUN   TestEscalationGuidedGolden/mode-empty
+2026/09/27 19:51:02 WARN file access security check tool_name=Write decision=deny reason="Path traversal detected: file is outside project directory"
+2026/09/27 19:51:02 WARN bash command security check tool_name=Bash decision=deny reason="Dangerous command blocked: removal of protected path \"/\""
+=== RUN   TestEscalationGuidedGolden/mode-bogus
+2026/09/27 19:51:02 WARN file access security check tool_name=Write decision=deny reason="Path traversal detected: file is outside project directory"
+2026/09/27 19:51:02 WARN bash command security check tool_name=Bash decision=deny reason="Dangerous command blocked: removal of protected path \"/\""
+--- PASS: TestEscalationGuidedGolden (0.42s)
+    --- PASS: TestEscalationGuidedGolden/mode-absent (0.13s)
+    --- PASS: TestEscalationGuidedGolden/mode-guided (0.10s)
+    --- PASS: TestEscalationGuidedGolden/mode-empty (0.09s)
+    --- PASS: TestEscalationGuidedGolden/mode-bogus (0.10s)
+=== RUN   TestFrozenInstructionFiles
+=== RUN   TestFrozenInstructionFiles/AGENTS.local.md
+=== RUN   TestFrozenInstructionFiles/AGENTS.md
+=== RUN   TestFrozenInstructionFiles/CLAUDE.local.md
+=== RUN   TestFrozenInstructionFiles/CLAUDE.md
+--- PASS: TestFrozenInstructionFiles (0.00s)
+    --- PASS: TestFrozenInstructionFiles/AGENTS.local.md (0.00s)
+    --- PASS: TestFrozenInstructionFiles/AGENTS.md (0.00s)
+    --- PASS: TestFrozenInstructionFiles/CLAUDE.local.md (0.00s)
+    --- PASS: TestFrozenInstructionFiles/CLAUDE.md (0.00s)
+=== RUN   TestDriftFill_DetachContractOnTheConstructedCommand
+--- PASS: TestDriftFill_DetachContractOnTheConstructedCommand (0.00s)
+=== RUN   TestSessionStart_GuardLivenessReportsAContractViolation
+2026/09/27 19:51:02 INFO session started session_id=sess-guard-liveness-violation cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_GuardLivenessReportsAContractViolation1149390395/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_GuardLivenessReportsAContractViolation1149390395/002
+2026/09/27 19:51:02 WARN configuration not available, proceeding with defaults session_id=sess-guard-liveness-violation
+2026/09/27 19:51:02 INFO teammateMode updated mode=in-process in_tmux=false
+--- PASS: TestSessionStart_GuardLivenessReportsAContractViolation (0.17s)
+=== RUN   TestStopEvidenceGate_StdoutContractUnchanged
+=== PAUSE TestStopEvidenceGate_StdoutContractUnchanged
+=== RUN   TestAnalyzeSession_SafetyFiltersFrozenFiles
+--- PASS: TestAnalyzeSession_SafetyFiltersFrozenFiles (0.01s)
+=== CONT  TestContractValidate
+=== CONT  TestContractValidate_PathIsFile
+=== CONT  TestContractNonGuarantees
+--- PASS: TestContractNonGuarantees (0.00s)
+=== CONT  TestContractGuarantees
+--- PASS: TestContractGuarantees (0.00s)
+=== CONT  TestStopEvidenceGate_StdoutContractUnchanged
+2026/09/27 19:51:02 INFO stop requested session_id=sess-stdout-contract stop_hook_active=false
+2026/09/27 19:51:02 ERROR contract validation failed: path is not a directory work_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestContractValidate_PathIsFile2884674736/001/not-a-dir.txt
+=== RUN   TestContractValidate/valid_working_directory
+=== PAUSE TestContractValidate/valid_working_directory
+2026/09/27 19:51:02 WARN evidence-gate: unbacked success claim session_id=sess-stdout-contract path_kind=code-change success_claims=1 binary_pass_observed=false binary_fail_observed=true
+[evidence-gate] session sess-stdout-contract claimed success without observed binary evidence (path-kind=code-change, success claims=1, binary pass observed=false, binary fail observed=true); verify the claimed completion was actually observed
+=== RUN   TestContractValidate/non-existent_working_directory
+=== PAUSE TestContractValidate/non-existent_working_directory
+=== RUN   TestContractValidate/empty_working_directory_string
+=== PAUSE TestContractValidate/empty_working_directory_string
+=== RUN   TestContractValidate/cancelled_context
+=== PAUSE TestContractValidate/cancelled_context
+=== CONT  TestContractValidate/valid_working_directory
+=== CONT  TestContractValidate/cancelled_context
+2026/09/27 19:51:02 ERROR contract validation failed: context already done error="context canceled"
+=== CONT  TestContractValidate/empty_working_directory_string
+2026/09/27 19:51:02 ERROR contract validation failed: empty working directory
+=== CONT  TestContractValidate/non-existent_working_directory
+2026/09/27 19:51:02 ERROR contract validation failed: working directory not accessible work_dir=/nonexistent/path/that/does/not/exist error="stat /nonexistent/path/that/does/not/exist: no such file or directory"
+--- PASS: TestContractValidate_PathIsFile (0.00s)
+--- PASS: TestContractValidate (0.00s)
+    --- PASS: TestContractValidate/valid_working_directory (0.00s)
+    --- PASS: TestContractValidate/cancelled_context (0.00s)
+    --- PASS: TestContractValidate/empty_working_directory_string (0.00s)
+    --- PASS: TestContractValidate/non-existent_working_directory (0.00s)
+--- PASS: TestStopEvidenceGate_StdoutContractUnchanged (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	2.289s

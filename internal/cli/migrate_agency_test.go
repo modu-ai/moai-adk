@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // setupAgencyFixture creates a minimal .agency/ directory in dir.
@@ -407,6 +409,9 @@ func TestMigrateAgency_Archive(t *testing.T) {
 // TestMigrateAgency_Resume verifies AC-MIGRATE-010: --resume resumes from checkpoint.
 // @MX:SPEC: SPEC-AGENCY-ABSORB-001:REQ-MIGRATE-013
 func TestMigrateAgency_Resume(t *testing.T) {
+	// The resume checkpoint is staged under the temp home seam; drop the
+	// TestMain MOAI_HOME sandbox so its path derives from it (card t1229).
+	t.Setenv(config.EnvHome, "")
 	dir := t.TempDir()
 	setupAgencyFixture(t, dir)
 

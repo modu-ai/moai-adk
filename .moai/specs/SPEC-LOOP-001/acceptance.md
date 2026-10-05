@@ -1,7 +1,6 @@
 ---
 spec_id: SPEC-LOOP-001
 title: Ralph Feedback Loop Engine - Acceptance Criteria
-status: planned
 priority: Medium-High
 tags:
   - loop

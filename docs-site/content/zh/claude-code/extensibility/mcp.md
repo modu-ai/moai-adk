@@ -98,7 +98,7 @@ flowchart TD
 
 MoAI-ADK **默认不预置** MCP 服务器。需要外部资料时，改用内置 `WebSearch` / `WebFetch` 查阅官方文档与最佳实践的回退策略（`.claude/rules/moai/core/agent-common-protocol.md` § MCP Fallback Strategy）。这样设计是为了让架构·分析质量不依赖 MCP 的可用性。
 
-一个例外是后端路由。在 `moai glm` 或 `moai cg` 的 GLM 面板中运行时，网页搜索与网页抓取会路由到 z.ai MCP 工具而非内置工具（`.claude/rules/moai/core/glm-web-tooling.md`）。无论在哪个后端，搜索·抓取能力本身都保留，只是路径不同。
+一个例外是后端路由。在 `moai glm`中运行时，网页搜索与网页抓取会路由到 z.ai MCP 工具而非内置工具（`.claude/rules/moai/core/glm-web-tooling.md`）。无论在哪个后端，搜索·抓取能力本身都保留，只是路径不同。
 
 ## 相关文档
 

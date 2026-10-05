@@ -1,0 +1,9 @@
+# Test pair for the map-lookup-without-ok-check rule. The valid sample uses the
+# two-value lookup form.
+id: go-map-no-ok-check
+valid:
+  - |
+    cached, ok := table[key]
+invalid:
+  - |
+    v = table[key]

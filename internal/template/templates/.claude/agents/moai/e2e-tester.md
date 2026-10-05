@@ -14,8 +14,6 @@ description: |
   (manager-spec), unit/integration test authoring within a TDD cycle (manager-develop),
   documentation (manager-docs), git operations (manager-git).
 tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
-model: inherit
-effort: low
 color: cyan
 permissionMode: default
 memory: project
@@ -42,6 +40,8 @@ The e2e workflow delegates the following phases to this agent by name:
 | Recording | Capture traces/recordings via the selected toolchain's NATIVE facility only |
 
 Toolchain and journey SELECTION is out of scope: the orchestrator collects all selections via its own user-question channel and injects them into this agent's spawn prompt. This agent never prompts the user — a missing input produces a blocker report (§ Blocker Report Protocol).
+
+A subagent never invokes Aside (the `aside` CLI or the Aside MCP tools); a task that needs Aside returns a blocker report to the orchestrator.
 
 ## Toolchain Execution Recipes
 
@@ -143,5 +143,5 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 ## Subagent Boundary
 
 - The `tools` list excludes nested agent spawning and user-question channels by design; results return to the orchestrator, which owns all user interaction.
-- Task tracking: each journey is tracked via TaskCreate/TaskUpdate (pending → in_progress → completed; failed journeys stay in_progress with failure details).
+- Task tracking: each journey is tracked through the harness's `task-list` capability across pending → in_progress → completed; failed journeys stay in_progress with failure details. Where the harness has no `task-list`, report the same per-journey states as prose in the run report.
 - Scope discipline: touch only `e2e/` artifact directories and toolchain config files the workflow names; never modify application source as a side effect of test authoring.

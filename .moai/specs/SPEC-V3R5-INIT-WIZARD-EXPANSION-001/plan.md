@@ -1,7 +1,6 @@
 ---
 spec_id: SPEC-V3R5-INIT-WIZARD-EXPANSION-001
 version: "0.1.0"
-status: draft
 ---
 
 # Plan — INIT Wizard Decision-Point Expansion (Tier M)

@@ -23,6 +23,14 @@ type Pipeline struct {
 
 	// LockFilePath is the single-writer lock file path.
 	LockFilePath string
+
+	// rename is the forward-rename operation of the apply step; nil means
+	// os.Rename. restore writes one file's pre-apply bytes back, or removes a
+	// file that did not exist; nil means restoreFile. Per-pipeline fields, not
+	// package variables, so a test can fail the Nth rename or a restore without
+	// touching process-global state (SPEC-CON-AMEND-APPLY-001 REQ-CAA-011).
+	rename  func(oldpath, newpath string) error
+	restore func(path string, data []byte, existed bool) error
 }
 
 // NewPipeline creates a Pipeline with default implementations.
@@ -53,6 +61,9 @@ func NewPipeline() *Pipeline {
 // - Record in evolution-log.md
 //
 // On failure: returns error from the corresponding layer.
+//
+// @MX:WARN: [AUTO] cyclomatic complexity 22; ordered pre-gate checks, the five FROZEN layers, and the dry-run/real split in one function
+// @MX:REASON: the check order is load-bearing — REQ-CAA-017/020/021 and the empty-After and rule-file alias guards must reject before Layer 1, so no rejection follows Layer 5 approval; moving a branch changes which error a caller sees
 func (p *Pipeline) Execute(proposal *AmendmentProposal, projectDir string, dryRun bool) (*AmendmentLog, error) {
 	// 0. Attempt to acquire single-writer lock
 	if err := p.acquireLock(dryRun); err != nil {
@@ -62,17 +73,42 @@ func (p *Pipeline) Execute(proposal *AmendmentProposal, projectDir string, dryRu
 		defer p.releaseLock()
 	}
 
-	// Load registry
-	registryPath := filepath.Join(projectDir, ".claude", "rules", "moai", "core", "zone-registry.md")
-	registry, err := LoadRegistry(registryPath, projectDir)
+	// Resolve the registry path with the resolver the CLI uses (REQ-CAA-019)
+	// and admit it, every entry's file:, and the evolution log only when they
+	// lie inside projectDir (REQ-CAA-020, REQ-CAA-021). The registry-path
+	// check runs before the registry is read.
+	registryPath := ResolveRegistryPath(projectDir)
+	registry, err := LoadAmendRegistry(registryPath, projectDir)
 	if err != nil {
 		return nil, fmt.Errorf("registry load error: %w", err)
+	}
+	evolutionLogPath := filepath.Join(projectDir, ".moai", "research", "evolution-log.md")
+	if err := checkContained(projectDir, evolutionLogPath); err != nil {
+		return nil, fmt.Errorf("evolution log load error: %w", err)
 	}
 
 	// Lookup current rule
 	currentRule, exists := registry.Get(proposal.RuleID)
 	if !exists {
 		return nil, fmt.Errorf("rule %q not found", proposal.RuleID)
+	}
+
+	// The proposal must amend the clause the registry holds now, byte for
+	// byte, in both modes, before any gate runs (REQ-CAA-017).
+	if proposal.Before != currentRule.Clause {
+		return nil, fmt.Errorf("proposal for rule %s: Before differs from the current registry clause", proposal.RuleID)
+	}
+	if proposal.After == "" {
+		return nil, fmt.Errorf("proposal for rule %s: After is empty", proposal.RuleID)
+	}
+
+	// The rule file must be neither the registry nor the evolution log. The
+	// check runs before any gate, so a rejection never follows the user's
+	// Layer 5 approval; it needs only the three paths, which it stats, and
+	// reads or writes no file.
+	rulePath := ruleFilePath(projectDir, currentRule.File)
+	if sameFile(rulePath, registryPath) || sameFile(rulePath, evolutionLogPath) {
+		return nil, fmt.Errorf("rule file %s: is also the registry or the evolution log", rulePath)
 	}
 
 	// Skip Canary for rules with canary_gate=false
@@ -112,7 +148,6 @@ func (p *Pipeline) Execute(proposal *AmendmentProposal, projectDir string, dryRu
 	}
 
 	// ===== Layer 4: RateLimiter =====
-	evolutionLogPath := filepath.Join(projectDir, ".moai", "research", "evolution-log.md")
 	if err := p.RateLimiter.Admit(proposal, evolutionLogPath); err != nil {
 		return nil, fmt.Errorf("layer 4 (RateLimiter) failed: %w", err)
 	}
@@ -130,18 +165,18 @@ func (p *Pipeline) Execute(proposal *AmendmentProposal, projectDir string, dryRu
 	proposal.ApprovedAt = time.Now()
 
 	// ===== Apply Amendment =====
+	// Validate against the real bytes in both modes, so a dry-run fails
+	// exactly where a real apply would (REQ-CAA-012); a dry-run writes nothing.
+	changes, log, err := p.prepareApply(proposal, currentRule, projectDir, registryPath, evolutionLogPath)
+	if err != nil {
+		return nil, fmt.Errorf("amendment validation error: %w", err)
+	}
 	if dryRun {
-		// Dry-run: only return log creation
-		log := p.createLogEntry(proposal, currentRule.Zone)
 		return log, nil
 	}
-
-	// Actual application: update source file, registry, evolution-log
-	if err := p.applyAmendment(proposal, currentRule, projectDir, registryPath); err != nil {
+	if err := p.commitChanges(changes); err != nil {
 		return nil, fmt.Errorf("amendment application error: %w", err)
 	}
-
-	log := p.createLogEntry(proposal, currentRule.Zone)
 	return log, nil
 }
 
@@ -185,34 +220,70 @@ func (p *Pipeline) createLogEntry(proposal *AmendmentProposal, originalZone Zone
 	}
 }
 
-// applyAmendment applies the amendment to the file system.
-// Modifies 3 files: source rule file, zone registry, evolution-log.
-func (p *Pipeline) applyAmendment(proposal *AmendmentProposal, rule Rule, projectDir, registryPath string) error {
-	// 1. Update source rule file
-	sourceFilePath := rule.File
-	if !filepath.IsAbs(sourceFilePath) {
-		sourceFilePath = filepath.Join(projectDir, sourceFilePath)
+// prepareApply runs every pre-apply validation against the real bytes of the
+// three files and returns their new contents plus the new log entry, writing
+// nothing (REQ-CAA-001 … REQ-CAA-004, REQ-CAA-009, REQ-CAA-016). The evolution
+// log content is its pre-apply bytes followed by the new entry (REQ-CAA-010).
+// Execute has already rejected a rule file that is the registry or the
+// evolution log, before the gates.
+func (p *Pipeline) prepareApply(proposal *AmendmentProposal, rule Rule, projectDir, registryPath, logPath string) ([]*fileChange, *AmendmentLog, error) {
+	source, err := readForChange("rule file", ruleFilePath(projectDir, rule.File), false)
+	if err != nil {
+		return nil, nil, err
 	}
-	if err := updateSourceFile(sourceFilePath, rule.Anchor, proposal.After); err != nil {
-		return fmt.Errorf("source file update error: %w", err)
+	registry, err := readForChange("registry", registryPath, false)
+	if err != nil {
+		return nil, nil, err
+	}
+	logFile, err := readForChange("evolution log", logPath, true)
+	if err != nil {
+		return nil, nil, err
+	}
+	if source.newData, err = replaceSourceClause(source.path, source.oldData, rule.Clause, proposal.After); err != nil {
+		return nil, nil, err
+	}
+	if registry.newData, err = rewriteRegistryClause(registry.path, registry.oldData, proposal.RuleID, proposal.After); err != nil {
+		return nil, nil, err
 	}
 
-	// 2. Update zone registry (Clause only)
-	if err := updateRegistryClause(registryPath, proposal.RuleID, proposal.After); err != nil {
-		return fmt.Errorf("registry update error: %w", err)
+	logs, err := parseEvolutionLog(logFile.path, string(logFile.oldData))
+	if err != nil {
+		return nil, nil, err
 	}
-
-	// 3. Record in evolution-log
-	evolutionLogPath := filepath.Join(projectDir, ".moai", "research", "evolution-log.md")
-	logs, _ := LoadEvolutionLogs(evolutionLogPath)
 	log := p.createLogEntry(proposal, rule.Zone)
 	log.ID = GenerateLogID(time.Now(), logs)
-
-	if err := AppendEvolutionLog(evolutionLogPath, log); err != nil {
-		return fmt.Errorf("evolution-log recording error: %w", err)
+	if err := log.Validate(); err != nil {
+		return nil, nil, fmt.Errorf("evolution log %s: %w", logFile.path, err)
 	}
+	entry, err := formatLogEntry(log)
+	if err != nil {
+		return nil, nil, err
+	}
+	prefix := logFile.oldData
+	if len(prefix) > 0 && prefix[len(prefix)-1] != '\n' {
+		prefix = append(append([]byte{}, prefix...), '\n')
+	}
+	logFile.newData = append(append([]byte{}, prefix...), entry...)
 
-	return nil
+	return []*fileChange{source, registry, logFile}, log, nil
+}
+
+// sameFile reports whether two paths name the same file. When both exist it
+// compares file identity with os.SameFile, which catches a case-variant name
+// on a case-insensitive filesystem, a hard link, and — because os.Stat follows
+// links — a symbolic link. When either path cannot be stat'ed it compares the
+// cleaned absolute paths instead: the evolution log may not exist yet, and any
+// other Stat error takes the same fallback so that a Stat failure never turns
+// into a rejection of its own.
+func sameFile(a, b string) bool {
+	infoA, errA := os.Stat(a)
+	infoB, errB := os.Stat(b)
+	if errA == nil && errB == nil {
+		return os.SameFile(infoA, infoB)
+	}
+	absA, errA := filepath.Abs(a)
+	absB, errB := filepath.Abs(b)
+	return errA == nil && errB == nil && absA == absB
 }
 
 // acquireLock acquires the single-writer lock.
@@ -249,19 +320,4 @@ func (p *Pipeline) releaseLock() {
 		_ = os.Remove(p.LockFilePath)
 		p.LockFilePath = ""
 	}
-}
-
-// updateSourceFile updates the clause for the corresponding anchor in the source rule file.
-// TODO: Implementation needed - anchor search + replacement logic.
-func updateSourceFile(filePath, anchor, newClause string) error {
-	// Simple implementation: read entire file and replace line after anchor
-	// Actual implementation requires markdown section search
-	return fmt.Errorf("updateSourceFile: not yet implemented (path=%s, anchor=%s)", filePath, anchor)
-}
-
-// updateRegistryClause updates the clause for the corresponding rule in the zone registry.
-// TODO: Implementation needed - YAML parsing + replacement logic.
-func updateRegistryClause(registryPath, ruleID, newClause string) error {
-	// Simple implementation: parse YAML, find by rule ID, replace clause
-	return fmt.Errorf("updateRegistryClause: not yet implemented (path=%s, rule=%s)", registryPath, ruleID)
 }

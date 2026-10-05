@@ -100,15 +100,15 @@ MoAI 是 Claude Code 的战略编排器。
 
 ### 4. 智能体目录
 
-MoAI-ADK 由 **11 个保留智能体**（10 个 MoAI-custom + 1 个 Anthropic built-in）组成。经过架构简化，manager-strategy、manager-quality、manager-brain、manager-project 等 12 个 archived 智能体被面向特定领域的 per-spawn `Agent(general-purpose)` 委派所取代。
+MoAI-ADK 由 **13 个保留智能体**（12 个 MoAI-custom + 1 个 Anthropic built-in）组成。经过架构简化，manager-strategy、manager-quality、manager-brain、manager-project 等 12 个 archived 智能体被面向特定领域的 per-spawn `Agent(general-purpose)` 委派所取代。
 
 | 分类 | 智能体 | 角色 |
 |------|----------|------|
-| Manager (5) | manager-spec, manager-develop, manager-docs, manager-git, manager-design | 核心生命周期各阶段专家 |
+| Manager (6) | manager-spec, manager-develop, manager-docs, manager-git, manager-design, manager-lead | 核心生命周期各阶段专家 |
 | Evaluator (2) | plan-auditor, sync-auditor | 计划/完成阶段独立质量评估 |
 | Builder (1) | builder-harness | 生成按项目的动态 Harness |
 | Advisor (1) | super-advisor | 高推理咨询（E1-E4 升级） |
-| Specialist (1) | e2e-tester | 网页/移动/桌面 E2E 测试执行 |
+| Specialist (2) | e2e-tester, manager-todo | 网页/移动/桌面 E2E 测试执行（`/moai e2e`）；任务队列管理 —— 已批准 GTD 自动任务的只读封存快照判定为其子角色 |
 | Built-in (1) | Explore (Anthropic) | 只读代码库探索 |
 
 ### 5. SPEC 工作流
@@ -354,6 +354,34 @@ flowchart TD
 | 2. Rules | `.claude/rules/*.md` | 文件模式匹配时 | 条件化细则 |
 | 3. Skills | `.claude/skills/*/skill.md` | 触发匹配时 | 专业知识、模式 |
 | 4. Agents | `.claude/agents/*.md` | 委派时 | 专家角色定义 |
+
+## 三文件结构 —— `AGENTS.md`、`CLAUDE.md`、`AGENTS.local.md`
+
+MoAI-ADK 把指令拆成三个文件：无论由哪个 harness 驱动工作，都读取同一份契约；个人指令只放在一个文件里。
+
+| 文件 | 内容 | Git 跟踪 | 读取方 |
+|------|------|----------|--------|
+| `AGENTS.md` | 各 harness 通用的契约 | 是 | Claude Code（通过 `@AGENTS.md` 导入）和 Codex |
+| `CLAUDE.md` | 承载 Claude 专属机制的薄层 | 是 | Claude Code |
+| `AGENTS.local.md` | 个人指令 | 否（`.gitignore`） | Claude Code（通过 `CLAUDE.md` 末尾的 `@AGENTS.local.md`）和 `moai codex` |
+
+```mermaid
+flowchart TD
+    A["AGENTS.md<br/>通用契约"] --> C["CLAUDE.md<br/>Claude 专属层"]
+    L["AGENTS.local.md<br/>个人指令"] --> C
+    C --> CC["Claude Code"]
+    A --> X["Codex"]
+    L --> R["moai codex 启动器"]
+    R --> X
+```
+
+`CLAUDE.local.md` 是 `AGENTS.local.md` 的旧名称。已有文件请用 `moai migrate local-instructions` 迁移：该命令把内容逐字节写入 `AGENTS.local.md`，将原文件备份到 `.moai/backups/local-instructions/` 下，再从项目根目录删除。只有这条命令会改名，`moai update`、`moai init` 和钩子都不会移动或删除这两个文件。
+
+{{< callout type="warning" >}}
+{{< icon warning warn >}} 两个文件同时存在时，Claude Code 会同时读取两者，相似的指令会被加载两次。此时 `moai migrate local-instructions` 会拒绝执行，不改动任何一个文件——保留哪一份内容，工具无从判断。请手动把 `CLAUDE.local.md` 的内容合并进 `AGENTS.local.md`，然后删除 `CLAUDE.local.md`。
+{{< /callout >}}
+
+在链接的工作树中打开的会话，只有当 `AGENTS.local.md` 位于该工作树的检出内部时才会收到它。该文件默认被 gitignore，通常只存在于项目根目录，因此未提交的副本无法到达工作树会话 —— `@AGENTS.local.md` 导入找不到任何内容，Claude Code 会静默跳过。把文件提交入库（通过 force-add 绕过 ignore 规则）后，git 会把它送达每一个工作树的检出，导入便在项目内解析，会话就能加载你的本地指令。
 
 ## 相关文档
 

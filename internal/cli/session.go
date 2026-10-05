@@ -133,38 +133,78 @@ func newSessionDeregisterCmd() *cobra.Command {
 func newSessionListCmd() *cobra.Command {
 	var jsonOutput bool
 	var filterSpec string
+	var ccVersion bool
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List active sessions (optionally filtered by --filter-spec)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// SPEC-SESSION-WORKTREE-001 M8: on-touch PR-merge cleanup fires
-			// here (REQ-SW-022). Gated by the AutoCleanup toggle inside
-			// prMergeCleanup; fail-open, non-blocking.
-			prMergeCleanup(loadSessionWorktreeConfig(cmd), cmd.ErrOrStderr())
+			// Listing must remain read-only and independent of external PR
+			// probes. Auto-cleanup belongs to mutation paths, not this query.
 			entries, err := session.QueryActiveWork(filterSpec)
 			if err != nil {
 				return fmt.Errorf("list: %w", err)
 			}
+			if !ccVersion {
+				// REQ-SCV-006 (SPEC-SESSION-CC-VERSION-001): the default path
+				// performs zero probes and emits exactly the field set it has
+				// always emitted — it is the third command of the orchestrator
+				// pre-spawn sync-check batch, and its shape is a contract.
+				if jsonOutput {
+					out, err := json.MarshalIndent(entries, "", "  ")
+					if err != nil {
+						return fmt.Errorf("marshal: %w", err)
+					}
+					_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(out))
+					return nil
+				}
+				if len(entries) == 0 {
+					_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(no active sessions)")
+					return nil
+				}
+				for _, e := range entries {
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(),
+						"session=%s spec=%s phase=%s started=%s last_hb=%s pid=%d host=%s\n",
+						shortID(e.SessionID), e.SpecID, e.Phase,
+						e.StartedAt.Format("2006-01-02T15:04:05Z"),
+						e.LastHeartbeat.Format("2006-01-02T15:04:05Z"),
+						e.PID, e.Host,
+					)
+				}
+				return nil
+			}
+			// REQ-SCV-005: --cc-version enriches each entry with the running
+			// and installed version reads — additive JSON fields plus the
+			// human rendering. A degrading entry renders unknown and is never
+			// omitted, and the command still exits 0 (the surface half of
+			// REQ-SCV-003's degradation contract).
+			type ccVersionEntry struct {
+				session.Entry
+				CCVersion session.CCVersions `json:"cc_version"`
+			}
+			views := make([]ccVersionEntry, 0, len(entries))
+			for _, e := range entries {
+				views = append(views, ccVersionEntry{Entry: e, CCVersion: session.ResolveCCVersions(e.PID)})
+			}
 			if jsonOutput {
-				out, err := json.MarshalIndent(entries, "", "  ")
+				out, err := json.MarshalIndent(views, "", "  ")
 				if err != nil {
 					return fmt.Errorf("marshal: %w", err)
 				}
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(out))
 				return nil
 			}
-			if len(entries) == 0 {
+			if len(views) == 0 {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(no active sessions)")
 				return nil
 			}
-			for _, e := range entries {
+			for _, v := range views {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(),
-					"session=%s spec=%s phase=%s started=%s last_hb=%s pid=%d host=%s\n",
-					shortID(e.SessionID), e.SpecID, e.Phase,
-					e.StartedAt.Format("2006-01-02T15:04:05Z"),
-					e.LastHeartbeat.Format("2006-01-02T15:04:05Z"),
-					e.PID, e.Host,
+					"session=%s spec=%s phase=%s started=%s last_hb=%s pid=%d host=%s cc=%s installed=%s\n",
+					shortID(v.SessionID), v.SpecID, v.Phase,
+					v.StartedAt.Format("2006-01-02T15:04:05Z"),
+					v.LastHeartbeat.Format("2006-01-02T15:04:05Z"),
+					v.PID, v.Host, v.CCVersion.Running, v.CCVersion.Installed,
 				)
 			}
 			return nil
@@ -172,6 +212,7 @@ func newSessionListCmd() *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "emit machine-readable JSON output (orchestrator pre-spawn check format)")
 	cmd.Flags().StringVar(&filterSpec, "filter-spec", "", "only return entries matching this spec_id")
+	cmd.Flags().BoolVar(&ccVersion, "cc-version", false, `resolve each session's running and installed Claude Code version (one probe per live entry; unreadable processes render "unknown")`)
 	return cmd
 }
 
@@ -262,13 +303,23 @@ func sessionIDSourceIsAuthoritative(source string) bool {
 // anchors the registry + side-channel file to input.ProjectDir; the CLI
 // runs in the same project context so this resolves identically.
 func resolveProjectDir() string {
+	dir, _ := resolveProjectDirWithSource()
+	return dir
+}
+
+// resolveProjectDirWithSource reports which tier produced the dir:
+// "env:CLAUDE_PROJECT_DIR", "server-cwd", or "unresolved" (t236 / issue
+// #1640). The MCP catalog tools surface this as response provenance so a
+// fallback resolution — which froze at server spawn — is distinguishable
+// from an explicit project_root argument instead of silent.
+func resolveProjectDirWithSource() (string, string) {
 	if dir := os.Getenv("CLAUDE_PROJECT_DIR"); dir != "" {
-		return dir
+		return dir, "env:CLAUDE_PROJECT_DIR"
 	}
 	if cwd, err := os.Getwd(); err == nil {
-		return cwd
+		return cwd, "server-cwd"
 	}
-	return ""
+	return "", "unresolved"
 }
 
 // newSessionCurrentCmd implements `moai session current` (P2 Stage 1,
@@ -384,10 +435,10 @@ REQ-WPR-001/002).`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectDir := resolveProjectDir()
-			registryPath := session.DefaultRegistryPath
-			if projectDir != "" {
-				registryPath = projectDir + string(os.PathSeparator) + registryPath
-			}
+			// The doctor reports the path the registry helpers actually use, so
+			// a run from inside a worktree names the primary checkout's file
+			// rather than a tree-local one that was never written (GH #1711).
+			registryPath := session.RegistryPathFor(projectDir)
 			_, statErr := os.Stat(registryPath)
 			registryExists := statErr == nil
 
@@ -403,7 +454,7 @@ REQ-WPR-001/002).`,
 
 			payload := map[string]any{
 				"action":                "doctor",
-				"registry_path":         session.DefaultRegistryPath,
+				"registry_path":         registryPath,
 				"registry_exists":       registryExists,
 				"entry_count":           entryCount,
 				"root_cause_candidates": candidates,
@@ -421,7 +472,7 @@ REQ-WPR-001/002).`,
 
 			// Human-readable.
 			out := cmd.OutOrStdout()
-			_, _ = fmt.Fprintf(out, "registry: %s\n", session.DefaultRegistryPath)
+			_, _ = fmt.Fprintf(out, "registry: %s\n", registryPath)
 			if registryExists {
 				_, _ = fmt.Fprintf(out, "  exists: yes (%d entries)\n", entryCount)
 			} else {

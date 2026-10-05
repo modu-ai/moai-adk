@@ -107,7 +107,7 @@ func materializeSeams(dest string) swSeams {
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
 		commonDir: func() (string, error) { return filepath.Join(dest, ".git"), nil },
-		add: func(d, _ string) (string, error) {
+		add: func(d, _, _ string) (string, error) {
 			if err := os.MkdirAll(d, 0o755); err != nil {
 				return d, err
 			}
@@ -123,7 +123,7 @@ func failBackSeams() swSeams {
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
 		commonDir: func() (string, error) { return "", errFailBackSentinel },
-		add:       func(_, _ string) (string, error) { return "", errFailBackSentinel },
+		add:       func(_, _, _ string) (string, error) { return "", errFailBackSentinel },
 		configSet: func(_, _, _ string) error { return nil },
 	}
 }

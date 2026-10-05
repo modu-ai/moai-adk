@@ -2,8 +2,11 @@
 //
 // codex_task.go owns the task-delegation surface: it drives a codex turn with
 // the caller's prompt (REQ-CX2-006), gates the writing sandbox behind an
-// explicit project opt-in (REQ-CX2-007), and can continue the last recorded
-// thread instead of opening a new one (REQ-CX2-008). It sits ON TOP of the
+// explicit project opt-in (REQ-CX2-007), and can continue a recorded thread
+// instead of opening a new one (REQ-CX2-008, scoped by
+// SPEC-CODEX-RESUME-SCOPE-001: an explicit thread_id or work_key selects the
+// thread, and a selector-less resume_last is refused when more than one thread
+// is recorded rather than guessing by recency). It sits ON TOP of the
 // session client (mcp_codex.go) and the job registry (codex_jobs.go); it writes
 // no transport and no second client (plan.md §F AP-1).
 //
@@ -32,7 +35,11 @@ package cli
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -58,7 +65,57 @@ const (
 		"The turn ran read-only."
 	codexTaskNoPriorThreadNote = "resume_last was requested but no prior thread is recorded for this project; " +
 		"a new thread was opened."
+
+	// codexServedModelUnknown is the served model every codex task result and
+	// job record carries (SPEC-MCP-SERVED-MODEL-001 REQ-MSM-006). No response
+	// the tool consumes (thread/start, turn notifications) is established to
+	// carry a model identifier, so the served model is recorded as this
+	// literal rather than guessed or copied from the requested model. Being
+	// structural, it carries no warning (REQ-MSM-007).
+	codexServedModelUnknown = "unknown"
 )
+
+// Resume selection (SPEC-CODEX-RESUME-SCOPE-001). resume_basis names WHICH rule
+// chose the thread that was sent; error_code names why a call was refused.
+const (
+	codexResumeBasisThreadID   = "thread_id"
+	codexResumeBasisWorkKey    = "work_key"
+	codexResumeBasisSoleThread = "sole_thread"
+
+	codexTaskErrThreadNotRecorded = "thread_not_recorded"
+	codexTaskErrResumeAmbiguous   = "resume_ambiguous"
+	codexTaskErrInvalidWorkKey    = "invalid_work_key"
+
+	// codexTaskWorkKeyMaxBytes bounds a work_key (REQ-CRS-005): it is stored in
+	// every record and returned in every ambiguity refusal.
+	codexTaskWorkKeyMaxBytes = 128
+
+	// codexTaskMaxCandidates bounds the candidate list of a resume_ambiguous
+	// refusal (REQ-CRS-006); candidate_total still reports the full count.
+	codexTaskMaxCandidates = 10
+)
+
+// codexTaskNoWorkKeyThreadNote states that a work_key matched no recorded
+// thread, so a new one was opened (REQ-CRS-004).
+func codexTaskNoWorkKeyThreadNote(workKey string) string {
+	return "resume_last was requested with work_key " + strconv.Quote(workKey) +
+		" but no prior thread is recorded for that work_key; a new thread was opened."
+}
+
+// validCodexWorkKey reports whether a supplied work_key is usable
+// (REQ-CRS-005): non-empty after trimming, at most codexTaskWorkKeyMaxBytes, and
+// free of control characters.
+func validCodexWorkKey(key string) bool {
+	if strings.TrimSpace(key) == "" || len(key) > codexTaskWorkKeyMaxBytes {
+		return false
+	}
+	for _, r := range key {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
 
 // codexTaskTimeoutMessage names the bound that ended a turn (REQ-CX2-017). It
 // reads the duration at call time rather than baking it in, so a shortened
@@ -66,6 +123,32 @@ const (
 func codexTaskTimeoutMessage() string {
 	return "codex_task turn timed out after " + config.DefaultCodexTaskTimeout.String() +
 		" (the bound codex_task imposes on its own turns); the turn was abandoned and the session torn down"
+}
+
+var errCodexTaskSessionDeadline = errors.New("codex_task session deadline")
+
+func codexTaskHandshakeTimeoutMessage() string {
+	return "codex_task handshake timed out after " + config.DefaultCodexTaskTimeout.String() +
+		" (the bound codex_task imposes on background sessions); the session was torn down"
+}
+
+// codexTaskCallerEndedMessage names the CALLER's context as what ended the turn
+// (t514 / GH #1687). It exists because the timeout wording above was reported
+// for turns that ended in milliseconds: both causes reach the same select arm,
+// and naming only the bound sent every diagnosis toward slow models and slow
+// networks when the turn had never been given a chance to run.
+//
+// The distinction is drawn from the PARENT context rather than the derived one:
+// the derived context reports DeadlineExceeded for the caller's deadline and
+// for ours alike, so only the parent's own error separates them.
+func codexTaskCallerEndedMessage(cause error) string {
+	reason := "cancelled by the caller"
+	if errors.Is(cause, context.DeadlineExceeded) {
+		reason = "cancelled when the caller's own deadline expired"
+	}
+	return "codex_task turn was " + reason + ", well before the " +
+		config.DefaultCodexTaskTimeout.String() +
+		" bound codex_task imposes on its own turns; the turn was abandoned and the session torn down"
 }
 
 // runCodexTaskTurn drives ONE task turn under a deadline the tool imposes
@@ -85,7 +168,8 @@ func codexTaskTimeoutMessage() string {
 // two goroutines would put two exec.Cmd.Wait calls in flight on the same
 // process.
 func runCodexTaskTurn(ctx context.Context, session *codexSessionHandle, params map[string]any) (ReviewOutput, error) {
-	ctx, cancel := context.WithTimeout(ctx, config.DefaultCodexTaskTimeout)
+	parent := ctx
+	ctx, cancel := context.WithTimeout(parent, config.DefaultCodexTaskTimeout)
 	defer cancel()
 
 	type turnOutcome struct {
@@ -102,12 +186,19 @@ func runCodexTaskTurn(ctx context.Context, session *codexSessionHandle, params m
 	case outcome := <-done:
 		return outcome.out, outcome.err
 	case <-ctx.Done():
+		// Our bound fired only if the parent is still alive; otherwise the
+		// caller ended the turn and the bound is not what happened to it.
 		msg := codexTaskTimeoutMessage()
+		nextStep := "re-run with a narrower prompt, or raise the codex_task bound"
+		if parentErr := parent.Err(); parentErr != nil && !errors.Is(context.Cause(parent), errCodexTaskSessionDeadline) {
+			msg = codexTaskCallerEndedMessage(parentErr)
+			nextStep = "re-run with a context that outlives the turn; the codex_task bound was never reached"
+		}
 		return ReviewOutput{
 			Verdict:   VerdictInconclusive,
 			Summary:   msg,
 			Findings:  []Finding{},
-			NextSteps: []string{"re-run with a narrower prompt, or raise the codex_task bound"},
+			NextSteps: []string{nextStep},
 		}, errors.New(msg)
 	}
 }
@@ -141,10 +232,42 @@ type CodexTaskResult struct {
 	// ResumedThread reports whether a previously-recorded thread was continued.
 	ResumedThread bool `json:"resumed_thread"`
 
+	// Model is the requested model the session sent in its thread request
+	// (resolveCodexModelEffort — the same resolver thread/start uses); absent
+	// when none was sent and codex applied its own configured default.
+	// ServedModel is always codexServedModelUnknown (REQ-MSM-006).
+	Model       string `json:"model,omitempty"`
+	ServedModel string `json:"served_model"`
+
+	// ResumeThreadID is the thread id SENT in thread/resume and ResumeBasis the
+	// rule that chose it (thread_id / work_key / sole_thread). Both are set once
+	// the request is written — so a rejected resume still names what was asked —
+	// and absent when no thread/resume was sent (SPEC-CODEX-RESUME-SCOPE-001
+	// REQ-CRS-001). ThreadID above stays the id codex RETURNED; the two differ
+	// exactly when ResumedThread is false despite a resume.
+	ResumeThreadID string `json:"resume_thread_id,omitempty"`
+	ResumeBasis    string `json:"resume_basis,omitempty"`
+
+	// UnusedSelectors lists supplied selector inputs that did not decide the
+	// thread because thread_id took precedence (REQ-CRS-008).
+	UnusedSelectors []string `json:"unused_selectors,omitempty"`
+
 	// Note carries the human-readable statements REQ-CX2-007 / REQ-CX2-008
 	// require; Error names a failure the tool absorbed rather than raised.
 	Note  string `json:"note,omitempty"`
 	Error string `json:"error,omitempty"`
+
+	// ErrorCode is the machine-readable code of a refusal (REQ-CRS-010):
+	// thread_not_recorded, invalid_work_key, or resume_ambiguous. A refusal is a
+	// structured result with status failed, never an MCP tool error.
+	ErrorCode string `json:"error_code,omitempty"`
+
+	// CandidateTotal and Candidates describe a resume_ambiguous refusal: the
+	// number of distinct recorded threads and the newest of them, each carrying
+	// the selector values (thread_id, work_key) the next call can pass
+	// (REQ-CRS-006).
+	CandidateTotal int                    `json:"candidate_total,omitempty"`
+	Candidates     []codexThreadCandidate `json:"candidates,omitempty"`
 }
 
 // codexLiveJobSessions holds the session handle of every RUNNING background job,
@@ -159,6 +282,19 @@ type CodexTaskResult struct {
 // with no entry here is stale (a previous server lifetime), which is exactly the
 // case REQ-CX2-012 requires the cancel path to refuse rather than signal.
 var codexLiveJobSessions sync.Map // job id (string) → *codexSessionHandle
+
+// The request context ends when a background tool call returns. Keep a
+// separate, bounded process lifetime and cancel it when the MCP server exits.
+var codexLiveJobCancels sync.Map // job id (string) → context.CancelFunc
+var codexBackgroundJobs sync.WaitGroup
+
+func stopCodexBackgroundJobs() {
+	codexLiveJobCancels.Range(func(_, value any) bool {
+		value.(context.CancelFunc)()
+		return true
+	})
+	codexBackgroundJobs.Wait()
+}
 
 // handleCodexTask is the handler for the `codex_task` MCP tool (REQ-CX2-006).
 //
@@ -175,6 +311,9 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	background := req.GetBool("background", false)
 	writeRequested := req.GetBool("write", false)
 	resumeLast := req.GetBool("resume_last", false)
+	threadID := req.GetString("thread_id", "")
+	workKey := req.GetString("work_key", "")
+	_, workKeySupplied := req.GetArguments()["work_key"]
 	token := extractProgressToken(req)
 	notifyMCPProgress(ctx, token, 0, "codex task 시작 — 프롬프트 접수")
 
@@ -182,13 +321,48 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		return toolErr(codexTaskToolName, errors.New("prompt is required")), nil
 	}
 
-	projectDir := projectDirResolver()
-	writeGranted := writeRequested && readCodexTaskAllowWrite(projectDir)
+	// project_root is REQUIRED and gates through the same registered-
+	// same-repository verification as codex_role_audit
+	// (SPEC-CODEX-ROLE-AUDIT-ROOT-001 REQ-005). An absent or empty value is
+	// refused naming the argument — the tool never defaults to the primary
+	// checkout, because the server's own resolution names the primary even for
+	// a session working inside a worktree. The accepted root becomes the
+	// turn's cwd: codex works on the tree the caller presented. The job
+	// registry and the write opt-in stay bound to the serving project — the
+	// records remain server-scoped wherever the caller sits, and the opt-in
+	// remains the serving project's policy.
+	raw := strings.TrimSpace(req.GetString("project_root", ""))
+	if raw == "" {
+		return toolErr(codexTaskToolName,
+			errors.New("project_root is required (pass your own git rev-parse --show-toplevel); codex_task does not default to any tree")), nil
+	}
+	serverDir, err := codexServingDir()
+	if err != nil {
+		return toolErr(codexTaskToolName, fmt.Errorf("cannot read the server's start directory: %w", err)), nil
+	}
+	// The serving anchor is the SERVER's identity, not the request's: a
+	// request cancelled mid-handshake must not turn the anchor lookup into a
+	// misleading refusal, so the git query runs on the background context.
+	servingTop, err := codexAuditGit(context.Background(), serverDir, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return toolErr(codexTaskToolName,
+			errors.New("the server did not start inside a git worktree; cannot verify project_root")), nil
+	}
+	// The gate is a precondition decided BEFORE any session work starts, so it
+	// answers deterministically even for an already-cancelled request: the
+	// git verification runs on the background context, and the cancellation
+	// surfaces later, at the session, where it belongs.
+	workRoot, err := codexAuditValidateRoot(context.Background(), servingTop, raw)
+	if err != nil {
+		return toolErr(codexTaskToolName, err), nil
+	}
+	writeGranted := writeRequested && readCodexTaskAllowWrite(projectDirResolver())
 
 	result := CodexTaskResult{
 		Background:     background,
 		WriteRequested: writeRequested,
 		WriteGranted:   writeGranted,
+		ServedModel:    codexServedModelUnknown,
 	}
 	if writeRequested && !writeGranted {
 		result.Note = codexTaskWriteRefusedNote
@@ -202,32 +376,112 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		return toolJSON(codexTaskToolName, result), nil
 	}
 
-	registry := newCodexJobRegistry(projectDir)
+	registry := newCodexJobRegistry(projectDirResolver())
 
-	// resume_last continues the last recorded thread instead of opening a new
-	// one. When nothing is recorded, a new thread is opened AND said so.
-	resumeThreadID := ""
-	if resumeLast {
-		if id, ok := registry.latestThreadID(); ok {
-			resumeThreadID = id
+	// Every refusal below is decided BEFORE the session opens, so a refused call
+	// starts no codex process (REQ-CRS-003/005/006).
+	if workKeySupplied && !validCodexWorkKey(workKey) {
+		return codexTaskRefusal(result, codexTaskErrInvalidWorkKey,
+			"work_key must be non-empty after trimming, at most "+strconv.Itoa(codexTaskWorkKeyMaxBytes)+
+				" bytes, and free of control characters"), nil
+	}
+	workKey = strings.TrimSpace(workKey)
+
+	resumeThreadID, resumeBasis := "", ""
+	switch {
+	case threadID != "":
+		// An explicit thread wins over every other selector (REQ-CRS-008), but
+		// only a thread THIS project recorded may be resumed (REQ-CRS-003).
+		if !registry.hasThread(threadID) {
+			return codexTaskRefusal(result, codexTaskErrThreadNotRecorded,
+				"thread_id "+strconv.Quote(threadID)+" is not recorded in this project's codex job registry"), nil
+		}
+		resumeThreadID, resumeBasis = threadID, codexResumeBasisThreadID
+		if resumeLast {
+			result.UnusedSelectors = append(result.UnusedSelectors, "resume_last")
+		}
+		if workKeySupplied {
+			result.UnusedSelectors = append(result.UnusedSelectors, "work_key")
+		}
+	case resumeLast && workKeySupplied:
+		// work_key scopes resume_last to this work item's records (REQ-CRS-004).
+		if id, ok := registry.latestThreadForWorkKey(workKey); ok {
+			resumeThreadID, resumeBasis = id, codexResumeBasisWorkKey
 		} else {
+			result.Note = appendCodexNote(result.Note, codexTaskNoWorkKeyThreadNote(workKey))
+		}
+	case resumeLast:
+		// No selector: resume only when the choice is not a guess. One distinct
+		// thread is resumed as before (REQ-CRS-007); several are refused with the
+		// candidates the caller can select from (REQ-CRS-006) — recency across
+		// work items is never the deciding rule (REQ-CRS-002).
+		threads := registry.recordedThreads()
+		switch len(threads) {
+		case 0:
 			result.Note = appendCodexNote(result.Note, codexTaskNoPriorThreadNote)
+		case 1:
+			resumeThreadID, resumeBasis = threads[0].ThreadID, codexResumeBasisSoleThread
+		default:
+			result.CandidateTotal = len(threads)
+			result.Candidates = threads[:min(len(threads), codexTaskMaxCandidates)]
+			return codexTaskRefusal(result, codexTaskErrResumeAmbiguous,
+				"resume_last matched "+strconv.Itoa(len(threads))+" recorded threads; "+
+					"pass thread_id or work_key from candidates to choose one"), nil
 		}
 	}
 
 	turnParams := map[string]any{
 		"prompt": prompt,
-		"cwd":    projectDir,
+		"cwd":    workRoot,
 		// EVERY turn carries the policy explicitly — see codexSandboxPolicy.
 		"sandboxPolicy": codexSandboxPolicy(writeGranted),
 	}
+	// An explicit caller model rides the turn params so the same resolution
+	// feeds thread/start and result.Model (resolveCodexModelEffort reads
+	// params["model"]; with no explicit model nothing is sent and codex
+	// applies its own default — the session-inherit design).
+	if explicit, ok := req.GetArguments()["model"].(string); ok && strings.TrimSpace(explicit) != "" {
+		turnParams["model"] = strings.TrimSpace(explicit)
+	}
+	// The requested model is resolved exactly as openCodexSessionOn resolves
+	// the thread/start `model` parameter, so the result names what was sent.
+	result.Model = resolveCodexModelEffort(turnParams).Model
+
+	// The SESSION's context decides the codex child's lifetime: the production
+	// runner spawns it with exec.CommandContext and stops reading stdout when
+	// that context ends (card t1186). A foreground session stays on the request
+	// context. A background session must outlive the request — the host ends it
+	// the moment this handler returns — so it gets a detached context the job
+	// goroutine cancels on exit. The task deadline also covers the handshake,
+	// while the request still bounds it through the AfterFunc tie.
+	sessionCtx, cancelSession := ctx, context.CancelFunc(func() {})
+	untieRequest := func() bool { return true }
+	if background {
+		sessionCtx, cancelSession = context.WithTimeoutCause(
+			context.WithoutCancel(ctx), config.DefaultCodexTaskTimeout, errCodexTaskSessionDeadline)
+		untieRequest = context.AfterFunc(ctx, cancelSession)
+	}
 
 	notifyMCPProgress(ctx, token, 0.2, "codex 세션 오픈 중...")
-	session, err := openCodexSessionOn(ctx, binaryPath, turnParams, resumeThreadID)
+	session, err := openCodexSessionOn(sessionCtx, binaryPath, turnParams, resumeThreadID)
+	// Report the resume once its request was written, including when codex then
+	// rejected it; a failure before the write reports none (REQ-CRS-001).
+	if resumeThreadID != "" && (err == nil || codexThreadRequestWasSent(err)) {
+		result.ResumeThreadID, result.ResumeBasis = resumeThreadID, resumeBasis
+	}
+	if background && !untieRequest() && err == nil {
+		// The request ended before hand-off; the session is already being torn
+		// down, so report that instead of starting a job on a dead session.
+		_ = session.close()
+		err = errors.New("codex_task request was cancelled before the background job was handed off")
+	}
 	if err != nil {
+		cancelSession()
 		var sErr *codexSessionError
 		result.Status = codexJobStatusFailed
-		if errors.As(err, &sErr) {
+		if background && ctx.Err() == nil && errors.Is(context.Cause(sessionCtx), errCodexTaskSessionDeadline) {
+			result.Error = codexTaskHandshakeTimeoutMessage()
+		} else if errors.As(err, &sErr) {
 			result.Error = sErr.summary
 		} else {
 			result.Error = err.Error()
@@ -262,9 +516,13 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		PID:            session.pid(),
 		Mode:           codexTaskMode,
 		RequestSummary: prompt,
+		WorkKey:        workKey, // recorded whichever selector decided (REQ-CRS-005)
+		Model:          result.Model,
+		ServedModel:    result.ServedModel,
 	})
 	if err != nil {
 		_ = session.close()
+		cancelSession()
 		return toolErr(codexTaskToolName, err), nil
 	}
 
@@ -276,10 +534,21 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	if _, err := registry.update(rec.ID, func(r *CodexJobRecord) { r.Status = codexJobStatusRunning }); err != nil {
 		codexLiveJobSessions.Delete(rec.ID)
 		_ = session.close()
+		cancelSession()
 		return toolErr(codexTaskToolName, err), nil
 	}
 
-	go runCodexBackgroundJob(ctx, registry, rec.ID, session, turnParams)
+	// The job is DETACHED from the request context (t514 / GH #1687). The MCP
+	// host ends that context when the handler returns, and for background=true
+	// the handler returns immediately — so a job handed the request context was
+	// cancelled within milliseconds of being created, every time, and reported
+	// the failure as a 10-minute bound expiry. Values (the progress token among
+	// them) are carried through; only the cancellation is dropped. The turn
+	// stays bounded by the session deadline, including its handshake; the turn
+	// also retains its own bound through runCodexTaskTurn.
+	codexLiveJobCancels.Store(rec.ID, cancelSession)
+	codexBackgroundJobs.Add(1)
+	go runCodexBackgroundJob(sessionCtx, cancelSession, registry, rec.ID, session, turnParams)
 
 	result.Status = codexJobStatusRunning
 	result.JobID = rec.ID
@@ -294,13 +563,17 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 // The live-session entry is removed and the session closed on EVERY exit path,
 // so a terminal record is never left with a live entry the cancel path could
 // still address.
-func runCodexBackgroundJob(ctx context.Context, registry *codexJobRegistry, jobID string, session *codexSessionHandle, params map[string]any) {
+func runCodexBackgroundJob(ctx context.Context, cancelSession context.CancelFunc, registry *codexJobRegistry, jobID string, session *codexSessionHandle, params map[string]any) {
 	defer func() {
 		codexLiveJobSessions.Delete(jobID)
 		_ = session.close()
+		codexLiveJobCancels.Delete(jobID)
+		cancelSession()
+		codexBackgroundJobs.Done()
 	}()
 
 	out, runErr := runCodexTaskTurn(ctx, session, params)
+	out, runErr = codexBackgroundDeadlineResult(ctx, out, runErr)
 
 	// A job cancelled while the turn was in flight keeps its cancelled status:
 	// the turn returning afterwards must not overwrite it with completed or
@@ -317,6 +590,27 @@ func runCodexBackgroundJob(ctx context.Context, registry *codexJobRegistry, jobI
 		r.Status = codexJobStatusCompleted
 		r.Output = out.Summary
 	})
+}
+
+func codexBackgroundDeadlineResult(ctx context.Context, out ReviewOutput, runErr error) (ReviewOutput, error) {
+	if runErr != nil && errors.Is(context.Cause(ctx), errCodexTaskSessionDeadline) {
+		// The child can close stdout at the deadline before the turn's
+		// select observes ctx.Done. Report the deadline, not that EOF race.
+		out.Summary = codexTaskTimeoutMessage()
+		runErr = errors.New(out.Summary)
+	}
+	return out, runErr
+}
+
+// codexTaskRefusal shapes a refusal as REQ-CRS-010 requires: a structured
+// result with status failed and the refusal's code, NOT an MCP tool error. The
+// caller can act on it — pick a candidate, fix the input — so it is an answer,
+// not a failed call.
+func codexTaskRefusal(result CodexTaskResult, code, message string) *mcp.CallToolResult {
+	result.Status = codexJobStatusFailed
+	result.ErrorCode = code
+	result.Error = message
+	return toolJSON(codexTaskToolName, result)
 }
 
 // appendCodexNote joins two result notes, keeping both statements rather than

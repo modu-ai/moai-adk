@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Todo 전수 조사 및 개선 보고</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+:root{--ivory:#FAF9F5;--paper:#fff;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;--olive:#788C5D;--g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;--sans:Pretendard,system-ui,-apple-system,sans-serif;--mono:ui-monospace,SFMono-Regular,monospace}
+*{box-sizing:border-box}body{margin:0;background:var(--ivory);color:var(--slate);font:16px/1.75 var(--sans)}main{max-width:1120px;margin:auto;padding:52px 28px 90px}header{background:var(--slate);color:var(--ivory);padding:32px;border-radius:14px;margin-bottom:36px}header p{margin:8px 0}.eyebrow{color:#efb9a6;font-weight:700;letter-spacing:.08em}h1{font-size:34px;line-height:1.3}h2{font-size:24px;margin:44px 0 16px;border-top:2px solid var(--oat);padding-top:20px}h3{font-size:19px;margin-top:30px}a{color:var(--clay-d)}p,li{overflow-wrap:anywhere}table{width:100%;border-collapse:collapse;font-size:14px;background:var(--paper);margin:20px 0}th,td{text-align:left;vertical-align:top;padding:11px 12px;border-bottom:1px solid var(--g300);overflow-wrap:anywhere}th{background:var(--oat)}tr:nth-child(even){background:#faf9f7}pre{background:#20221e;color:#f3f1ea;padding:18px;border-radius:9px;overflow:auto;font-size:12px;line-height:1.65}code{font-family:var(--mono);overflow-wrap:anywhere}p code,li code{background:var(--g100);padding:2px 4px}blockquote{margin:20px 0;padding:14px 22px;background:var(--oat);border-left:4px solid var(--clay)}.guide{padding:22px;background:var(--paper);border:1px solid var(--g300);border-radius:12px}.guide h2{margin:0;border:0;padding:0}.mermaid{background:var(--g100);color:var(--slate)}details{margin:16px 0}summary{cursor:pointer;font-weight:700}nav{font-size:14px}nav ul{padding-left:20px}footer{margin-top:40px;color:var(--g700);font-size:13px}@media(max-width:680px){main{padding:24px 14px}header{padding:22px}h1{font-size:27px}table{display:block;overflow-x:auto}th,td{min-width:90px}pre{font-size:11px}}@media print{body{background:#fff}main{max-width:none;padding:0}header{background:#eee;color:#111}pre{white-space:pre-wrap;background:#eee;color:#111}table{font-size:10px}tr{break-inside:avoid}nav{display:none}h2{break-after:avoid}}
+</style>
+</head>
+<body><main>
+<header><p class="eyebrow">MOAI · TODO · t647</p><h1>카드가 사라지거나 잘못 완료되었다고<br>보이지 않도록</h1><p>22건 구현·관련 회귀 통과 · High 7 / Medium 12 / Low 3</p><p>기준 커밋 ee99507fbe · 2026-09-11 · 로컬 구현 검증 보고서</p></header>
+<section class="guide"><h2>보고서 읽는 법</h2><p>카드 데이터의 보존과 판정 정확성을 먼저 확인하고, 명령어와 화면의 표현, 반복 실행 비용을 그다음 살폈습니다. <strong>High</strong>는 다른 프로젝트의 자료를 잘못 읽거나 카드 데이터가 가려지는 항목입니다. 구현 전 관측과 수정 후 검증은 구분하여 기록합니다.</p><p>예를 들어 카드가 300개라면 보관 여부를 바꾸는 동안에도 한 번의 조회 결과는 합계 300개여야 합니다. 조사에서는 live 300개와 archive 300개가 함께 읽혔습니다. 읽기 트랜잭션은 여러 표를 같은 시점 기준으로 읽어 이 문제를 막는 방법입니다.</p><pre class="mermaid">flowchart LR
+A[명령 또는 웹 조회] --> B[프로젝트 식별]
+B --> C[큐 저장소 해석]
+C --> D[잠금과 트랜잭션]
+D --> E[카드와 보관 이력]
+E --> F[화면 및 JSON 결과]
+</pre><p>흐름: 프로젝트 식별 → 해당 큐 선택 → 일관된 읽기·쓰기 → 카드와 이력 보존 → 결과 표시. 온라인 도식이 로드되지 않아도 위 순서와 본문을 읽을 수 있습니다.</p><noscript><p>도식 대체 설명: 프로젝트마다 큐를 구분하고, 읽기·쓰기를 하나의 일관된 작업으로 처리한 뒤, 실제로 확인한 상태를 표시합니다.</p></noscript></section>
+<details><summary>목차</summary><nav>$toc$</nav></details>
+$body$
+<footer>원본 사실·명령·판정은 같은 이름의 Markdown 보고서에 보존합니다. 이 HTML은 기본 설명형(basic)이며 MoAI-Easy 출력 설정을 따릅니다.</footer>
+</main>
+<script type="module">import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';mermaid.initialize({startOnLoad:true,theme:'base',themeVariables:{primaryColor:'#FAF9F5',primaryTextColor:'#141413',primaryBorderColor:'#D97757',lineColor:'#87867F'}});</script>
+</body></html>

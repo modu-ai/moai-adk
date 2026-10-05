@@ -462,6 +462,14 @@ func (r *registry) EnableObservability(logDir string) {
 // Shutdown is a no-op when observability is disabled (REQ-HTF-005) and is safe
 // to call repeatedly (REQ-HTF-005).
 func (r *registry) Shutdown() {
+	// Join the handlers' own background work before draining the trace writer.
+	// The two are separate async axes and BOTH outlive Dispatch: a handler that
+	// returns immediately and finishes its work on a goroutine loses that work
+	// entirely when a one-shot process exits, exactly as queued trace entries
+	// do. Handlers run first so anything they emit on the way out is still in
+	// front of the drain below.
+	r.joinAsyncHandlers()
+
 	// Take the writer reference under the mutex, then release it before
 	// waiting: writeTrace takes the same mutex, so holding it across the drain
 	// would risk a deadlock.
@@ -476,6 +484,50 @@ func (r *registry) Shutdown() {
 		slog.Warn("trace: teardown flush incomplete",
 			"error", err.Error(),
 		)
+	}
+}
+
+// asyncJoiner is the optional capability a handler implements when it hands
+// real work to a background goroutine and returns before that work finishes.
+// joinAsync waits for it, bounded by timeout, and reports whether the budget
+// was exhausted.
+//
+// It is unexported and therefore in-package only, which is the intent: this is
+// a teardown contract between the registry and the handlers it owns, not part
+// of the Handler interface every caller sees. A handler with no background work
+// simply does not implement it and is skipped.
+type asyncJoiner interface {
+	joinAsync(timeout time.Duration) error
+}
+
+// joinAsyncHandlers waits for every registered handler's in-flight background
+// work, bounding each wait by config.DefaultHookAsyncJoinTimeout.
+//
+// Exhausting a budget is logged at warn level and never escalated, on the same
+// reasoning as the trace-flush drain: a side effect that overruns must not turn
+// into a failed hook and break the user's session.
+func (r *registry) joinAsyncHandlers() {
+	// Snapshot under the mutex, then join outside it. A handler's goroutine may
+	// still be running and there is no guarantee it never touches the registry,
+	// so holding the lock across the wait would risk a deadlock — the same
+	// reason the trace drain below releases it first.
+	r.mu.Lock()
+	joiners := make([]asyncJoiner, 0, len(r.handlers))
+	for _, handlers := range r.handlers {
+		for _, h := range handlers {
+			if j, ok := h.(asyncJoiner); ok {
+				joiners = append(joiners, j)
+			}
+		}
+	}
+	r.mu.Unlock()
+
+	for _, j := range joiners {
+		if err := j.joinAsync(config.DefaultHookAsyncJoinTimeout); err != nil {
+			slog.Warn("hook: teardown join incomplete",
+				"error", err.Error(),
+			)
+		}
 	}
 }
 

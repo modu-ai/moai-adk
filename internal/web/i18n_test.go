@@ -113,10 +113,11 @@ func TestCJKFontServedFromStatic(t *testing.T) {
 
 	a := newTestApp(t)
 	h := a.routes()
-	req := httptest.NewRequest(http.MethodGet, "/static/fonts/"+sample, nil)
-	req.Host = "evil.example.com" // GET static asset is not Host-gated
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	// Static assets are Host-gated like every other route (AC-WC-009 as amended).
+	if foreign := serveWithHost(t, h, http.MethodGet, "/static/fonts/"+sample, "evil.example.com"); foreign.Code != http.StatusForbidden {
+		t.Errorf("GET %s from a foreign Host: status = %d, want 403", sample, foreign.Code)
+	}
+	rec := serveGet(t, h, "/static/fonts/"+sample)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET %s status = %d, want 200", sample, rec.Code)
@@ -171,11 +172,12 @@ func TestI18nDictionaryEmbedded(t *testing.T) {
 	}
 
 	// Served from /static/i18n.js (200, offline).
+	// Static assets are Host-gated like every other route (AC-WC-009 as amended).
 	a := newTestApp(t)
-	req := httptest.NewRequest(http.MethodGet, "/static/i18n.js", nil)
-	req.Host = "evil.example.com"
-	rec := httptest.NewRecorder()
-	a.routes().ServeHTTP(rec, req)
+	if foreign := serveWithHost(t, a.routes(), http.MethodGet, "/static/i18n.js", "evil.example.com"); foreign.Code != http.StatusForbidden {
+		t.Errorf("GET /static/i18n.js from a foreign Host: status = %d, want 403", foreign.Code)
+	}
+	rec := serveGet(t, a.routes(), "/static/i18n.js")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /static/i18n.js status = %d, want 200", rec.Code)
 	}

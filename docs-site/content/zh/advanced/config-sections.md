@@ -55,25 +55,21 @@ delegation:
 | 块 | 说明 |
 |------|------|
 | `learning` | 将路由使用管理为仅追加账本 (`.moai/state/routing-ledger.jsonl`, opt-in·fail-open)，harness学习子系统通过4-tier阶梯提出更新。`auto_apply: false` — Tier-4变更需要 `AskUserQuestion` 用户批准 |
-| `subcommands` | 每个子命令的 `agents` (要spawn的11个retained代理) + `skills` (spawn时注入的workflow技能)。0个分配也有效 (编排器直接执行) |
+| `subcommands` | 每个子命令的 `agents` (要spawn的13个retained代理) + `skills` (spawn时注入的workflow技能)。0个分配也有效 (编排器直接执行) |
 | `domain_skills` | 按任务域注入的技能 (每次spawn 0-3个)。与域信号匹配 |
 | `agents` | 每个代理的条件技能 (触发时on-demand加载) |
 
 相关: [代理指南](/zh/advanced/agent-guide), [技能指南](/zh/advanced/skill-guide).
 
-## llm.yaml — 后端·配置矩阵
+## llm.yaml — 后端·GLM 映射
 
-定义配置文件、配置矩阵、每个代理的 override 以及 GLM 模型映射。
+定义 harness 后端、GLM 环境和 GLM 模型映射。智能体运行的模型与 effort 在**会话**层面决定 —— 子代理沿用主会话的模型与推理深度，因此这个文件不再承载逐智能体的模型分配。曾经的配置矩阵键（`profile`、`profiles`、`performance_tier`、`harness_agents`、`agent_overrides`）已经退役；`moai update` 会在下次运行时从用户文件中移除这些键。主会话的推理强度来自偏好配置文件（`moai profile setup`），而非本文件。
 
 ```yaml
 llm:
-  profile: "medium"            # high | medium | low (活动矩阵列; max 读作 high)
-  performance_tier: "medium"   # legacy 别名 (profile 缺失时读取; 同一套词汇)
-  profiles:                    # 配置文件列 → 11 个代理 → {model, effort}
-    high: { ... }              # 详表: 配置矩阵页面
-    medium: { ... }
-    low: { ... }
-  agent_overrides: {}          # 每个代理的 {model, effort} override (可选)
+  harness: "claude"            # claude | gpt | both — 初始化时选择的智能体 harness
+  team_mode: ""                # glm 时切换到 z.ai 后端
+  glm_env_var: "GLM_API_KEY"
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
@@ -85,10 +81,9 @@ llm:
 
 | 键 | 说明 |
 |----|------|
-| `profile` | 活动配置矩阵列 (`high`/`medium`/`low`; 旧的 `max` 被读作 `high` 的别名)。为空时解释为 `medium`。所有子代理 spawn 的 model+effort 来源 |
-| `performance_tier` | legacy 别名字段。仅当 `profile` 缺失时读取; 与 `profile` 共享同一套 `high`/`medium`/`low` 词汇，因此不需要归一化步骤 |
-| `profiles` | 每个配置文件列的 per-agent → `{model, effort}` 矩阵 (11 个代理 × 3 列 = 33 格)。Go 默认值(`template.DefaultProfileMatrix`)是缺失格的权威 fallback |
-| `agent_overrides` | 每个规范代理名称的 `{model, effort}` override。优先于活动配置文件的代理格 (目录+enum 校验) |
+| `harness` | 初始化时部署的智能体 harness（`claude` 默认；`gpt` 表示 Codex 专用部署） |
+| `team_mode` | 为空运行 Claude；`glm` 会将会话路由到 z.ai 后端 |
+| `claude_bin` | Claude Code 二进制的显式固定（可选；环境变量 `MOAI_CLAUDE_BIN` 按次启动优先） |
 | `glm.base_url` | Z.AI Anthropic兼容代理端点 |
 | `glm.models` | 每个插槽的 GLM 模型映射。GLM将Claude的5步effort折叠为3个推理状态 (thinking-off / reasoning-high / reasoning-max) |
 
@@ -128,7 +123,6 @@ statusline:
 security:
   extra_dangerous_bash_patterns:
     - 'curl\s+.*\|\s*(ba)?sh'
-    - 'rm\s+-rf\s+/[^.]'
   extra_deny_patterns: []
   extra_ask_patterns: []
   permission:
@@ -176,6 +170,27 @@ workflow:
 
 需要切换分支的工作，正统做法是移到工作树而不是让它被拒绝。具体步骤请参阅 [moai worktree](/zh/cli-reference/worktree/)。
 
+## workflow.yaml — drift_cache_fill
+
+MoAI 在会话开始时会显示 SPEC 生命周期漂移提示。这项计算大约需要一秒，远超会话开始所能等待的时间，因此结果会按当前提交缓存下来。一旦提交发生变化，缓存便不再匹配，提示也就无内容可显示。
+
+该键开启时，会话开始处理器会在缓存不匹配时启动一个短命的后台进程去计算漂移，并立即返回而不等待它。下一次会话读取已保存的结果，提示随之恢复。
+
+```yaml
+workflow:
+    drift_cache_fill:
+        enabled: true   # 发布默认值
+```
+
+| 键 | 取值 | 说明 |
+|----|------|------|
+| `enabled` | `true`（默认） | 缓存不匹配时启动一个后台补齐进程并立即返回。提示会在下一次会话重新出现 |
+| `enabled` | `false` | 不会启动任何补齐进程。提示只依据缓存中已有的内容，因此提交之后它会一直缺席，直到有别的途径填充缓存 |
+
+**为何只有这一项默认开启。** 本页其他防护在维护者需要之前都不做任何事，所以以关闭状态出厂。这一项开启时会真正启动子进程，因此它的默认值不是无代价的，而是接受了这份代价——不补齐的话，提交之后漂移提示将永远不再出现。子进程短命、受自身期限约束、由锁限制同时只有一个，并且不产生任何输出。
+
+**失败时的走向。** 任何失败路径都不会影响会话。子进程无法启动、无法完成或什么也没写入时，处理器早已返回，提示只是维持原样——失败的补齐不会拖慢或破坏会话开始。
+
 ## workflow.yaml — audit
 
 指定跨模型审计后端（`codex_audit` · `glm_audit` · `audit_multi`）实际以哪个模型和 effort 运行。每个后端取一组 `{model, effort}`，发布默认值全部为空。
@@ -218,9 +233,40 @@ workflow:
 
 在小型一次性项目里,每次会话都弹出的待办摘要读起来像噪音时,就用这个键。队列本身的用法在 [moai todo](/zh/utility-commands/moai-todo/) 页面。
 
+## workflow.yaml — autonomy
+
+决定如何签署 SPEC 的自主执行契约（`contract.yaml`）以及约束的范围。处理契约的命令是 [moai contract](/zh/cli-reference/contract/)。它与名称相近的[自主性层级（`MOAI_AUTONOMY_TIER`）](/zh/advanced/autonomy-tier/)互不相关。
+
+```yaml
+workflow:
+    autonomy:
+        mode: guided              # guided | contract
+        contract:
+            batch_sign: false       # 一次确认签署多个 SPEC
+            second_review: required # required | advisory | off
+            push_develop: false     # 允许契约中的 push-develop 操作
+        kickoff:
+            # decider: human | llm | llm+jev   (省略时 guided 为 human，contract 为 llm)
+            jev_min_confidence: 0.50
+        escalation:
+            budget_default: { turns: 60, operations: 40, audit_retries: 2 }
+```
+
+| 键 | 说明 |
+|----|------|
+| `mode` | `guided`（默认）或 `contract`。基于回执的签署（`--signer llm`）仅在 `contract` 下可用 |
+| `contract.batch_sign` | 为 `true` 时，一次确认即可签署多个 SPEC。默认 `false` |
+| `contract.second_review` | 为 `required` 时，契约的 `review.second_model` 为 `none` 或为空即判定无效。`advisory` 和 `off` 不做此检查 |
+| `contract.push_develop` | 为 `false`（默认）时，包含 `push-develop` 操作的契约判定为无效 |
+| `kickoff.decider` | 启动决策者：`human`、`llm` 或 `llm+jev`。省略时由模式推导。单独使用 `jev` 属于配置错误，回执签署会被拒绝 |
+| `kickoff.jev_min_confidence` | 预留给启动回执签发方，作为其接受 Jev 判断的最低置信度。本版本只读取并校验该值，不影响签署与校验。默认 `0.50` |
+| `escalation.budget_default` | 契约中没有 `budget` 时，签署时填入的默认预算 |
+
+**取值无效时。** 键缺失时使用上述默认值。若 `mode`、`second_review`、`decider` 或 `jev_min_confidence` 填写了不允许的值，则回退到更严格的默认值（`guided`、`required`、`human`、`0.50`），并通过警告指出被替换的键。
+
 ## crosssession.yaml — 会话间消息
 
-决定本会话如何对待来自你其他 Claude Code 会话的消息。`moai cc` · `moai glm` · `moai cg` 启动器会在启动时把这些取值写入一个临时的 `--settings` 文件，Web 控制台则通过设置 seam 编辑本文件。不经启动器、直接用 `claude` 起的会话不会读取本文件。
+决定本会话如何对待来自你其他 Claude Code 会话的消息。`moai cc` · `moai glm` 启动器会在启动时把这些取值写入一个临时的 `--settings` 文件，Web 控制台则通过设置 seam 编辑本文件。不经启动器、直接用 `claude` 起的会话不会读取本文件。
 
 ```yaml
 crosssession:

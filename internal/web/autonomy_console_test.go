@@ -17,7 +17,6 @@ package web
 import (
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -29,9 +28,7 @@ func TestAutonomyStubResolved(t *testing.T) {
 	a := newTestApp(t)
 	h := a.routes()
 
-	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	rec := serveGet(t, h, "/settings")
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / status = %d, want 200", rec.Code)
@@ -48,9 +45,7 @@ func TestAutonomyStubResolved(t *testing.T) {
 	// unregistered path falls through to the "/" catch-all, which serves the
 	// console page — so the discriminating assertion is that the response is
 	// NOT the autonomy fragment.
-	req2 := httptest.NewRequest(http.MethodGet, "/autonomy/tiers", nil)
-	rec2 := httptest.NewRecorder()
-	h.ServeHTTP(rec2, req2)
+	rec2 := serveGet(t, h, "/autonomy/tiers")
 	body2, _ := io.ReadAll(rec2.Body)
 	if strings.Contains(string(body2), `class="autonomy-toggle"`) {
 		t.Error("/autonomy/tiers still serves the autonomy toggle fragment — the route was not removed")

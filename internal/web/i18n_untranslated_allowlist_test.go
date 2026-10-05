@@ -220,11 +220,21 @@ var i18nUntranslatedAllowlist = []i18nAllowEntry{
 		Reason:        reasonProperNoun,
 		Justification: "Anthropic Sonnet model family name.",
 	},
-	// Locale-invariant initialism.
+	// Codex audit model ids are technical identifiers — locale-invariant.
 	{
-		Key:           "sec.launch.title",
-		Reason:        reasonAcronym,
-		Justification: "LLM is a locale-invariant initialism.",
+		Key:           "f.workflow.audit.codex.model.opt.gpt-6.1-sol",
+		Reason:        reasonTechnicalIdentifier,
+		Justification: "gpt-6.1-sol is the codex audit default model id.",
+	},
+	{
+		Key:           "f.workflow.audit.codex.model.opt.gpt-5.6",
+		Reason:        reasonTechnicalIdentifier,
+		Justification: "gpt-5.6 is a codex model id.",
+	},
+	{
+		Key:           "f.workflow.audit.codex.model.opt.gpt-5.6-sol",
+		Reason:        reasonTechnicalIdentifier,
+		Justification: "gpt-5.6-sol is a codex model id.",
 	},
 	// SPEC-MCP-CONSOLE-001 M2: MCP section title — Model Context Protocol is a
 	// locale-invariant initialism identical across locales.
@@ -256,14 +266,19 @@ type i18nExemptPrefix struct {
 }
 
 // i18nEnExemptPrefixes is the explicit, enumerated registry of key prefixes
-// that may appear in non-en locales without an en counterpart. Its sole initial
-// member is agentdesc. (REQ-I18NGOV-020, C1): English reads the agent .md
-// frontmatter description as the server-rendered baseline, and applyI18n guards
-// its assignment on a non-empty string so an absent key leaves that baseline
-// intact. Adding a prefix is a reviewed act, not a silent one.
+// that may appear in non-en locales without an en counterpart. Adding a prefix
+// is a reviewed act, not a silent one, and each member must carry a
+// justification.
 var i18nEnExemptPrefixes = []i18nExemptPrefix{
 	{
+		// SPEC-WEB-AGENTFM-RESTORE-001 M5 re-registration (the registry's
+		// only member left with the agent-settings rows under
+		// SPEC-AGENT-MODEL-INHERIT-001; the rows returned with the console
+		// surface): an agent row's description renders the ENGLISH text read
+		// from the agent .md frontmatter (the SSOT) pinned via
+		// data-i18n-baseline — agentdesc.<name> carries only the ko/ja/zh
+		// translations, so en has no such key by design.
 		Prefix:        "agentdesc.",
-		Justification: "English reads the agent .md frontmatter description (the SSOT) as the server-rendered baseline; applyI18n leaves the node untouched when the key is absent, so an en copy would duplicate the .md text into a second surface that silently goes stale.",
+		Justification: "Agent row descriptions are translated summaries; the en baseline is the agent's own frontmatter description, pinned server-side via data-i18n-baseline (an en dictionary key would duplicate the frontmatter SSOT).",
 	},
 }

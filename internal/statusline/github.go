@@ -115,6 +115,16 @@ func isSelfInvocable(path string) bool {
 	return base == "moai" || base == "moai.exe"
 }
 
+// githubSpawnProbe is a test seam, set only from tests. When non-nil it is
+// invoked at the single point a refresh child would be spawned — after the TTL
+// freshness check (and the explicit-override check), before the self-invocation
+// guard — so a test can count exactly the "would have spawned" attempts.
+// Placement is load-bearing: under `go test` the isSelfInvocable guard always
+// blocks the real exec, so a counter at function entry cannot tell pre-spawn
+// gating from spawn-blocking — the distinction the opt-out gates exist to make
+// (SPEC-STATUSLINE-PROFILE-RESPECT-001 acceptance §D, kickoff decision D3).
+var githubSpawnProbe func(boardRoot string)
+
 // maybeRefreshGitHubCounts triggers a background refresh when the cache is
 // missing or older than GitHubCountsTTL, and returns immediately either way.
 // The caller keeps rendering the previous value — stale-while-revalidate, so a
@@ -123,6 +133,10 @@ func isSelfInvocable(path string) bool {
 // The stampede guard is the cache file's own timestamp: the child rewrites it
 // with a fresh FetchedAt before it starts fetching, so every render between the
 // spawn and the result sees a fresh cache and spawns nothing.
+//
+// @MX:NOTE: [AUTO] two opt-out gates reach this spawn: the segment gate at the
+// builder call site (REQ-001) and the explicit no-forge override below
+// (REQ-002) — both must keep the not-a-latch contract of GitHubCounts.Suppressed.
 func maybeRefreshGitHubCounts(boardRoot string) {
 	if boardRoot == "" {
 		return
@@ -130,6 +144,24 @@ func maybeRefreshGitHubCounts(boardRoot string) {
 	cur := resolveGitHubCounts(boardRoot)
 	if cur.Available && time.Since(time.Unix(cur.FetchedAt, 0)) < GitHubCountsTTL {
 		return
+	}
+
+	// An explicit override naming no forge is a decision the config read above
+	// already carries (cur.Suppressed). A child here could only re-derive it —
+	// at the cost of a spawn per TTL across every concurrent session, which is
+	// the polling the operator's opt-out was ordering stopped
+	// (SPEC-STATUSLINE-PROFILE-RESPECT-001 REQ-002). An UNSET override must not
+	// take this exit: detection belongs to the child, and a child-written
+	// Suppressed verdict is not a latch — gating on it would stop the very
+	// refresh that notices the CLI being installed.
+	if override := forgeOverride(boardRoot); override != "" {
+		if _, ok := resolveForge("", override); !ok {
+			return
+		}
+	}
+
+	if githubSpawnProbe != nil {
+		githubSpawnProbe(boardRoot)
 	}
 
 	self, err := os.Executable()

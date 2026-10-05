@@ -8,7 +8,7 @@ Windows で MoAI-ADK を使う際に知っておくべき環境要件と、よ�
 
 MoAI-ADK は単一の Go バイナリなので Windows でも直接実行できますが、Claude Code が扱うシェルスクリプト・パス区切り文字・文字エンコーディングは Linux/macOS の慣行に従います。そのため Windows のコマンドプロンプト (cmd.exe) やレガシー PowerShell 5.x では、パス処理がずれたりフックスクリプトが失敗しやすくなります。WSL は Windows の中で Linux 環境をそのまま使わせてくれ、この隔たりを一気に無くしてくれます。
 
-このページは WSL のインストールからプロジェクトを開くところ、(オプションで) CG モードの構成までをひとつの流れで案内します。すでに WSL をお使いなら [moai-adk のインストール手順](#インストール方法) から直接始めてもかまいません。
+このページは WSL のインストールからプロジェクトを開くところ、(オプションで) 旧 CG 設定の移行までをひとつの流れで案内します。すでに WSL をお使いなら [moai-adk のインストール手順](#インストール方法) から直接始めてもかまいません。
 
 ## サポート環境
 
@@ -120,20 +120,13 @@ cd ~/projects/
 2. WSL ターミナルで `code .` を実行
 3. VS Code が自動的に WSL モードで開く
 
-## CG モードでの tmux 利用
+## CG の廃止と設定の移行
 
-[CG モード](/ja/multi-llm/cg-mode)を使うには tmux が必要です。WSL でのインストール:
+`moai cg` は廃止されました。Claude や GLM を起動せず、移行案内を表示して終了します。`moai cc` の別名ではありません。`llm.team_mode: cg` が残るプロジェクトでは、セッションを起動する前に移行先を明示的に選ぶ必要があります。
 
-```bash
-# Ubuntu/Debian
-sudo apt install tmux
+`claude-glm` は Claude リーダーと tmux 内の GLM チームメイトを表します。現在は TEAMMATE の統合検証を通過していないため、適用と起動は利用できず、プレビューのみ可能です。tmux のインストールや `verified: true` の設定では、この制限は解除されません。
 
-# tmux セッションの開始
-tmux new -s moai
-
-# CG モードの実行
-moai cg
-```
+[CG の廃止と設定の移行](/ja/multi-llm/cg-mode/)
 
 ## トラブルシューティング
 
@@ -143,10 +136,9 @@ moai cg
 | `EINVAL` エラー | 非 ASCII ユーザー名 | 上記の [非 ASCII ユーザー名のパスエラー](#非-ascii-ユーザー名のパスエラー) を参照 |
 | 権限拒否 | インストールスクリプトの権限 | `chmod +x install.sh` の後に再実行 |
 | Git コマンドの失敗 | Git for Windows 未インストール | [Git for Windows](https://gitforwindows.org/) をインストール |
-| tmux がない | CG モードを実行できない | `sudo apt install tmux` (WSL で) |
 
 ## 次のステップ
 
 - [インストール](/ja/getting-started/installation) — インストール詳細ガイド
 - [初期設定](/ja/getting-started/init-wizard) — プロジェクトの初期化
-- [CG モード](/ja/multi-llm/cg-mode) — Claude + GLM ハイブリッドモード
+- [CG の廃止と設定の移行](/ja/multi-llm/cg-mode/)

@@ -198,10 +198,12 @@ grep -in 'attribution\|sessionUrl' .claude/rules/moai/core/settings-management.m
 
 ```bash
 # For each edited doctrine file, local vs template mirror must be identical:
-for f in $(git diff --name-only origin/main -- '.claude/**' 'CLAUDE.md' | grep -v '\.claude/worktrees/'); do
+# the changed-file list is captured by one plain command; the loop over it is git-free.
+git diff --name-only origin/main -- '.claude/**' 'CLAUDE.md' | grep -v '\.claude/worktrees/' > /tmp/cc-edited.txt
+while read -r f; do
   mirror="internal/template/templates/$f"
   [ -f "$mirror" ] && diff "$f" "$mirror" >/dev/null && echo "PARITY OK: $f" || echo "PARITY FAIL: $f"
-done
+done < /tmp/cc-edited.txt
 # Expect: every line PARITY OK.
 make build  # regenerates internal/template/embedded.go
 ```

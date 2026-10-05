@@ -1,6 +1,6 @@
 # Tools Integration Module
 
-Purpose: Integration patterns for moai-worktree with development tools, IDEs, terminals, CI/CD pipelines, and monitoring systems.
+Purpose: Integration patterns for the moai-workflow-worktree skill with development tools, IDEs, terminals, CI/CD pipelines, and monitoring systems.
 
 Version: 1.0.0
 
@@ -43,7 +43,7 @@ Worktree-Specific Settings:
 
 Task Generation Per Worktree:
 - Run Tests: Execute /moai run for the SPEC
-- Sync Worktree: Run moai-worktree sync command
+- Sync Worktree: Run moai worktree sync inside the worktree
 - Switch to Worktree: Change active directory
 
 ### JetBrains IDE Integration

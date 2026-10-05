@@ -48,6 +48,10 @@ func pbvAdv(backend, verdict string) PerBackendVerdict {
 	return pbv(backend, config.AuditGateAdvisory, verdict)
 }
 
+// boolPtr returns a pointer to v — literal convenience for the nullable
+// DisagreementFlag (*bool) introduced by SPEC-AUDIT-PARTICIPANT-COUNT-001.
+func boolPtr(v bool) *bool { return &v }
+
 // claudeReview is a reusable in-session claude verdict.
 func claudeReview(verdict string) ReviewOutput {
 	return ReviewOutput{
@@ -72,8 +76,8 @@ func TestConverge_AllRequiredPass_Case1_AC_AMM_006(t *testing.T) {
 	if r.OverallVerdict != "pass" {
 		t.Errorf("overall = %q, want pass", r.OverallVerdict)
 	}
-	if r.DisagreementFlag {
-		t.Error("disagreement_flag = true, want false (all required agree on pass)")
+	if r.DisagreementFlag == nil || *r.DisagreementFlag {
+		t.Error("disagreement_flag = nil-or-true, want non-nil false (all required agree on pass; 3 participants)")
 	}
 	if r.ResidualRiskNote != "" {
 		t.Errorf("residual_risk_note = %q, want empty", r.ResidualRiskNote)
@@ -91,8 +95,8 @@ func TestConverge_AllRequiredFail_Case2_AC_AMM_007(t *testing.T) {
 	if r.OverallVerdict != "fail" {
 		t.Errorf("overall = %q, want fail", r.OverallVerdict)
 	}
-	if r.DisagreementFlag {
-		t.Error("disagreement_flag = true, want false (no split — all required agree on fail)")
+	if r.DisagreementFlag == nil || *r.DisagreementFlag {
+		t.Error("disagreement_flag = nil-or-true, want non-nil false (no split — all required agree on fail; 2 participants)")
 	}
 	if !strings.Contains(r.ResidualRiskNote, "claude") || !strings.Contains(r.ResidualRiskNote, "codex") {
 		t.Errorf("residual_risk_note = %q, want both failed backends named", r.ResidualRiskNote)
@@ -110,8 +114,8 @@ func TestConverge_RequiredFailWithInconclusive_Case2(t *testing.T) {
 	if r.OverallVerdict != "fail" {
 		t.Errorf("overall = %q, want fail (any required fail → fail)", r.OverallVerdict)
 	}
-	if r.DisagreementFlag {
-		t.Error("disagreement_flag = true, want false (fail vs inconclusive is not a split)")
+	if r.DisagreementFlag != nil {
+		t.Errorf("disagreement_flag = %s; want nil — a single participant cannot ground a false (fail vs inconclusive is not a split, REQ-APC-003: the deliberate false→null move of SPEC-AUDIT-PARTICIPANT-COUNT-001)", flagState(r.DisagreementFlag))
 	}
 }
 
@@ -128,8 +132,8 @@ func TestConverge_RequiredSplit_Case3_AC_AMM_008(t *testing.T) {
 	if r.OverallVerdict != "fail" {
 		t.Errorf("overall = %q, want fail (required-split resolves conservatively)", r.OverallVerdict)
 	}
-	if !r.DisagreementFlag {
-		t.Error("disagreement_flag = false, want true (required split)")
+	if r.DisagreementFlag == nil || !*r.DisagreementFlag {
+		t.Error("disagreement_flag = nil-or-false, want non-nil true (required split; 3 participants)")
 	}
 	if !strings.Contains(strings.ToLower(r.ResidualRiskNote), "split") &&
 		!strings.Contains(strings.ToLower(r.ResidualRiskNote), "disagree") {
@@ -160,8 +164,8 @@ func TestConverge_AdvisoryOnlyConflict_Case4_AC_AMM_009_EC3(t *testing.T) {
 	if r.OverallVerdict != "pass" {
 		t.Errorf("overall = %q, want pass (advisory FAIL never flips overall)", r.OverallVerdict)
 	}
-	if !r.DisagreementFlag {
-		t.Error("disagreement_flag = false, want true (advisory-vs-required conflict surfaced)")
+	if r.DisagreementFlag == nil || !*r.DisagreementFlag {
+		t.Error("disagreement_flag = nil-or-false, want non-nil true (advisory-vs-required conflict surfaced; 3 participants)")
 	}
 	if r.ResidualRiskNote == "" {
 		t.Error("residual_risk_note empty; want the advisory conflict described for the Verification Matrix")
@@ -177,8 +181,8 @@ func TestConverge_DisagreementAdvisoryNotBlock_Regression_EC3(t *testing.T) {
 		pbvAdv(BackendCodex, "fail"), // codex demoted to advisory; conflicts with claude
 	}
 	r := converge(verdicts)
-	if !r.DisagreementFlag {
-		t.Fatal("disagreement_flag = false; want true (prerequisite for the regression assertion)")
+	if r.DisagreementFlag == nil || !*r.DisagreementFlag {
+		t.Fatal("disagreement_flag = nil-or-false; want non-nil true (prerequisite for the regression assertion; 2 participants)")
 	}
 	// THE LOAD-BEARING ASSERTION: disagreement alone does NOT block.
 	if r.OverallVerdict != "pass" {
@@ -198,8 +202,8 @@ func TestConverge_NoRequiredBackends_VacuousPass(t *testing.T) {
 	if r.OverallVerdict != "pass" {
 		t.Errorf("overall = %q, want pass (no required gate to satisfy)", r.OverallVerdict)
 	}
-	if r.DisagreementFlag {
-		t.Error("disagreement_flag = true; want false (advisories agree)")
+	if r.DisagreementFlag == nil || *r.DisagreementFlag {
+		t.Error("disagreement_flag = nil-or-true, want non-nil false (advisories agree; 2 participants — the inclusive boundary)")
 	}
 }
 
@@ -276,16 +280,17 @@ func (r *recordingCaller) call(_ context.Context, backend, target, focus, projec
 	return ReviewOutput{Verdict: "pass", Summary: backend + ":pass", Findings: []Finding{}, NextSteps: []string{}}
 }
 
-// DQ-2: claude_verdict absent → the engine REFUSES to synthesize. Returns a
-// structured ConvergenceResult (NOT a hard error), overall_verdict = fail,
-// residual_risk_note explains the missing anchor. Fail-open direction preserved.
-func TestRunMultiAudit_DQ2_MissingClaudeAnchor_Refuses(t *testing.T) {
+// AC-CLA-009: a GPT-origin session without a Claude anchor invokes the real
+// Claude backend seam instead of treating the caller's missing verdict as a
+// permanent gate failure.
+func TestRunMultiAudit_GPTOriginMissingClaudeAnchor_InvokesClaudeBackend(t *testing.T) {
 	rc := &recordingCaller{}
 	orig := backendCall
 	backendCall = rc.call
 	t.Cleanup(func() { backendCall = orig })
 
 	cfg := MultiAuditConfig{
+		OriginProvider: BackendCodex,
 		Gates: config.AuditGates{
 			Claude: config.AuditGateRequired,
 			Codex:  config.AuditGateRequired,
@@ -294,15 +299,17 @@ func TestRunMultiAudit_DQ2_MissingClaudeAnchor_Refuses(t *testing.T) {
 	}
 	// No claude verdict provided — Verdict field empty.
 	r := runMultiAudit(context.Background(), ReviewOutput{}, "uncommittedChanges", "concurrency", cfg, nil)
-	if r.OverallVerdict != "fail" {
-		t.Errorf("overall = %q, want fail (missing claude anchor refuses to synthesize)", r.OverallVerdict)
+	if r.OverallVerdict != "pass" {
+		t.Errorf("overall = %q, want pass after independent Claude audit", r.OverallVerdict)
 	}
-	if r.ResidualRiskNote == "" {
-		t.Error("residual_risk_note empty; want the missing-anchor explanation")
+	gotBackends := map[string]bool{}
+	for _, call := range rc.calls {
+		gotBackends[call.Backend] = true
 	}
-	// No backend should have been invoked once the anchor was found missing.
-	if len(rc.calls) != 0 {
-		t.Errorf("backend invoked %d time(s) despite missing claude anchor; want 0", len(rc.calls))
+	for _, backend := range []string{BackendClaude, BackendCodex, BackendGLM} {
+		if !gotBackends[backend] {
+			t.Errorf("backend %q was not invoked; calls=%v", backend, rc.calls)
+		}
 	}
 }
 
@@ -327,6 +334,7 @@ func TestRunMultiAudit_Independence_ClaudeVerdictNotInSecondaryPayload_AC_AMM_00
 		NextSteps: []string{claudeSecret},
 	}
 	cfg := MultiAuditConfig{
+		OriginProvider: BackendClaude,
 		Gates: config.AuditGates{
 			Claude: config.AuditGateRequired,
 			Codex:  config.AuditGateRequired,
@@ -381,7 +389,8 @@ func TestRunMultiAudit_ParallelFanOut_AC_AMM_002(t *testing.T) {
 	t.Cleanup(func() { backendCall = orig })
 
 	cfg := MultiAuditConfig{
-		Gates: config.AuditGates{Claude: config.AuditGateRequired, Codex: config.AuditGateRequired, GLM: config.AuditGateRequired},
+		OriginProvider: BackendClaude,
+		Gates:          config.AuditGates{Claude: config.AuditGateRequired, Codex: config.AuditGateRequired, GLM: config.AuditGateRequired},
 	}
 	// Run in a goroutine so we can coordinate the release timing.
 	done := make(chan ConvergenceResult, 1)
@@ -454,7 +463,7 @@ func TestPersistConvergenceResult_WritesStateFile_DQ1(t *testing.T) {
 	r := ConvergenceResult{
 		PerBackendVerdicts: []PerBackendVerdict{pbvReq(BackendClaude, "pass")},
 		OverallVerdict:     "pass",
-		DisagreementFlag:   false,
+		DisagreementFlag:   boolPtr(false),
 		ResidualRiskNote:   "",
 		FailOpenBackends:   []string{},
 	}
@@ -515,16 +524,15 @@ func TestConvergence_NoAskUserQuestion_AC_AMM_024(t *testing.T) {
 	}
 }
 
-// AC-AMM-005 / C6 (REQ-AMM-005): the convergence engine resolves model/effort
-// ONLY through template.ResolveAgentModelEffort — it does NOT read agent
-// frontmatter or llm.agent_overrides directly (fork risk). Since the engine
-// delegates the actual backend calls to the existing codex/glm handlers (which
-// already go through the SSOT), the engine itself MUST contain no direct
-// frontmatter/override read.
+// AC-AMM-005 / C6 (REQ-AMM-005): the convergence engine does NOT read agent
+// frontmatter or llm.agent_overrides (fork risk). It delegates the actual
+// backend calls to the existing codex/glm handlers, which resolve audit pin >
+// backend default, so the engine itself MUST contain no frontmatter/override
+// read.
 func TestConvergence_NoDirectFrontmatterRead_AC_AMM_005(t *testing.T) {
 	matches := grepRepo(t, []string{"internal/cli/mcp_convergence.go"}, `agent_overrides|frontmatter|ReadAgentFrontmatter`)
 	if len(matches) > 0 {
-		t.Errorf("direct frontmatter/override read in convergence engine (SSOT violation — ResolveAgentModelEffort is the sole interpreter):\n%s", strings.Join(matches, "\n"))
+		t.Errorf("direct frontmatter/override read in convergence engine (resolution belongs to the codex/glm handlers):\n%s", strings.Join(matches, "\n"))
 	}
 }
 

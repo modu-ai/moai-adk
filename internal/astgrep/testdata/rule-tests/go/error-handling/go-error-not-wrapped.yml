@@ -1,0 +1,14 @@
+# Test pair for the unwrapped-error rule (name-constrained to err/errs). The
+# valid sample returns nil.
+id: go-error-not-wrapped
+valid:
+  - |
+    func size() int {
+        return 0
+    }
+invalid:
+  - |
+    func load() error {
+        err := read()
+        return err
+    }

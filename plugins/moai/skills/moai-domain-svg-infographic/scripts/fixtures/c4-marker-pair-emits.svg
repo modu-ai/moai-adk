@@ -1,0 +1,17 @@
+<!-- expect: SVG072 -->
+<!-- C4 arrival semantics: the c4-markerless-pair geometry with marker-end on both connectors - 4 units apart on an 80-unit edge, under the 8-unit floor. The twin proves the silence there is the marker rule, not a dead check. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="c4-marker-pair-emits-title c4-marker-pair-emits-desc">
+  <title id="c4-marker-pair-emits-title">Fan-in</title>
+  <desc id="c4-marker-pair-emits-desc">Several connectors arrive on one box edge.</desc>
+  <defs>
+    <marker id="c4-marker-pair-emits-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 40 98 H 230" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c4-marker-pair-emits-arrow)"/>
+  <path d="M 40 102 H 230" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c4-marker-pair-emits-arrow)"/>
+  <rect x="240" y="60" width="120" height="80" fill="#FBE9DF" stroke="#D97757"/>
+  <text x="300" y="105" font-size="11" text-anchor="middle" fill="#141413">service</text>
+</svg>

@@ -1,0 +1,9 @@
+id: sec-log-injection-unsanitized
+snapshots:
+  ? |
+    log.Printf("user %s action %s", name, rawLine)
+  : labels:
+    - source: log.Printf("user %s action %s", name, rawLine)
+      style: primary
+      start: 0
+      end: 46

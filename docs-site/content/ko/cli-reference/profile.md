@@ -46,8 +46,12 @@ moai profile setup work     # "work" 프로필 설정
 **마법사가 묻는 항목:**
 - **Identity**: 사용자 이름, 역할
 - **Languages**: 대화 언어, 코드 주석 언어
-- **Model Settings**: 기본 모델, 1M 컨텍스트 모델 선택
+- **Model Settings**: 기본 모델 오버라이드, 세션 모델 정책 (세션의 기본 effort 폴백), 세션 추론 강도
 - **Display**: 출력 스타일, 상태 표시줄 설정
+
+{{< callout type="info" >}}
+여기서 정하는 모델과 effort는 **세션 수준** 값입니다. 이 프로필로 실행하는 Claude 세션이 그 값으로 돌고, 서브에이전트는 세션의 모델과 추론 깊이를 그대로 따릅니다. 예전의 에이전트별 배정(프로필 매트릭스)은 물러났습니다 — [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
+{{< /callout >}}
 
 ### moai profile current
 
@@ -74,7 +78,7 @@ moai profile delete old-profile
 ```bash
 moai cc -p work          # work 프로필로 Claude 실행
 moai glm -p cost-save    # cost-save 프로필로 GLM 실행
-moai cg -p team          # team 프로필로 CG 모드 실행
+moai cc -p team          # team 프로필의 Claude 세션
 ```
 
 {{< callout type="info" >}}
@@ -108,7 +112,7 @@ MOAI_NO_PROFILE_FALLBACK=1 moai cc    # 기록을 무시하고 기본 프로필�
 **알아둘 제약**
 
 - 프로젝트 디렉터리를 옮기거나 이름을 바꾸면 기존 항목은 어느 경로와도 맞지 않게 됩니다. 이 항목은 조용히 건너뛰므로 실행에 문제를 일으키지는 않습니다.
-- `projects:` 목록은 프로젝트가 늘어날수록 함께 늘어나며, 정리해 주는 명령은 아직 없습니다.
+- 워크트리 안에서의 실행은 등록된 프로젝트 항목에 기록이 합쳐지므로, 항목은 프로젝트당 하나로 유지됩니다. 프로젝트 디렉터리가 사라진 항목은 `moai worktree clean` 으로 정리할 수 있습니다.
 - `moai profile current` 는 전역 기록을 그대로 보여줍니다. 따라서 기억된 프로필이 전역 기록과 다른 프로젝트에서는, `moai profile current` 가 알려주는 이름과 `-p` 없는 `moai cc` 가 실제로 띄우는 프로필이 서로 다를 수 있습니다.
 
 ## 새 프로필의 첫 실행
@@ -147,7 +151,6 @@ Notice: profile "work" has no Claude Code configuration yet.
 |------|------|
 | `moai cc` → `moai glm` | GLM 환경 변수 자동 주입 |
 | `moai glm` → `moai cc` | GLM 환경 변수 자동 제거 |
-| `moai cc` → `moai cg` | GLM env를 tmux 세션에만 주입, Leader는 Claude 유지 |
 
 ## 관련 문서
 

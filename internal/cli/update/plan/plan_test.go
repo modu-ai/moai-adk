@@ -72,7 +72,7 @@ func TestIsUserOwnedNamespace(t *testing.T) {
 		// Note: manager-*, expert-*, builder-*, evaluator-* are NOT managed
 		// They are user-owned because they're not "moai-*" or "moai" prefix
 		// IsMoaiManaged only checks for moai-*/moai in agents directory
-		{".claude/agents/manager-test.md", false}, // Correct: user-owned, not MoAI-managed
+		{".claude/agents/manager-test.md", false},   // Correct: user-owned, not MoAI-managed
 		{".claude/agents/expert-backend.md", false}, // Correct: user-owned
 
 		// Empty and edge cases
@@ -219,7 +219,7 @@ func TestIsMoaiManaged(t *testing.T) {
 		{".claude/agents/moai-system.md", true},
 		// manager-* and expert-* are user-owned in .claude/agents/ root
 		// Only moai-* and moai prefixes are MoAI-managed
-		{".claude/agents/manager-test.md", false}, // User-owned, not managed
+		{".claude/agents/manager-test.md", false},   // User-owned, not managed
 		{".claude/agents/expert-backend.md", false}, // User-owned, not managed
 
 		// User-owned surfaces (should be false)
@@ -361,8 +361,8 @@ func TestAnalyzeFiles(t *testing.T) {
 		name         string
 		templates    []string
 		createFiles  map[string]string // files to create in tempDir
-		wantCount    int              // expected number of analyzed files
-		excludedPath string           // path that should be excluded (MoAI-managed)
+		wantCount    int               // expected number of analyzed files
+		excludedPath string            // path that should be excluded (MoAI-managed)
 	}{
 		{
 			name:      "new files only",
@@ -378,9 +378,9 @@ func TestAnalyzeFiles(t *testing.T) {
 			wantCount: 2,
 		},
 		{
-			name:        "excludes MoAI-managed files",
-			templates:   []string{".claude/skills/moai-core/SKILL.md", "user-file.md"},
-			wantCount:   1, // Only user-file.md should be analyzed
+			name:         "excludes MoAI-managed files",
+			templates:    []string{".claude/skills/moai-core/SKILL.md", "user-file.md"},
+			wantCount:    1, // Only user-file.md should be analyzed
 			excludedPath: ".claude/skills/moai-core/SKILL.md",
 		},
 		{
@@ -536,7 +536,7 @@ func TestIsUserOwnedNamespace_EdgeCases(t *testing.T) {
 		// ".claude/skills/HNS-tool" matches the ".claude/skills/" prefix pattern
 		// and "HNS-tool" is not "moai" or "moai-*", so it's user-owned
 		{".claude/skills/HNS-tool/SKILL.md", true},
-		{".claude/skills/hns-HNS/SKILL.md", true},      // Mixed case in name is fine
+		{".claude/skills/hns-HNS/SKILL.md", true}, // Mixed case in name is fine
 	}
 
 	for _, tt := range tests {
@@ -594,8 +594,8 @@ func TestClassifyFileRisk_EdgeCases(t *testing.T) {
 		want     string
 	}{
 		// Case sensitivity in basename (filepath.Base preserves case)
-		{"claude.md", false, "low"},     // Not CLAUDE.md
-		{"SETTINGS.JSON", true, "medium"},  // Case-sensitive: not exact match
+		{"claude.md", false, "low"},       // Not CLAUDE.md
+		{"SETTINGS.JSON", true, "medium"}, // Case-sensitive: not exact match
 
 		// Path with directory
 		{".claude/settings.json", true, "high"},

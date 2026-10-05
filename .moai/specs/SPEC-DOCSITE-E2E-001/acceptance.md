@@ -143,9 +143,10 @@ grep -n -B 6 "ref: /utility-commands/moai-e2e" docs-site/data/menu/main.yaml
 git diff --stat <run-base-sha>..HEAD -- docs-site/layouts/partials/menu.html | wc -l
 
 # CMD-E6 — pathspec-commit + scope audit (expect: every commit touches only docs-site/ or .moai/specs/SPEC-DOCSITE-E2E-001/)
-git log --format='%h' <run-base-sha>..HEAD | while read -r c; do
-  echo "--- $c ---"; git show --stat --format='' "$c" | head -30
-done
+# (각 커밋마다 별도 호출로 실행한다 — 루프 안의 git 은 워크트리 가드가 거부한다)
+git log --format='%h' <run-base-sha>..HEAD > /tmp/dse-commits.txt
+#   for each commit C in /tmp/dse-commits.txt:
+#     git show --stat --format='' C | head -30
 
 # ---- Hygiene (AC-DSE-008/009) ----
 

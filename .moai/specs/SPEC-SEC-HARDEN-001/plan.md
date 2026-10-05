@@ -2,7 +2,6 @@
 id: SPEC-SEC-HARDEN-001
 title: "Security & Concurrency Hardening — Implementation Plan"
 version: "0.1.0"
-status: draft
 created: 2026-06-13
 updated: 2026-06-13
 author: GOOS행님

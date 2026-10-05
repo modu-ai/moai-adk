@@ -25,10 +25,12 @@ The base layout is three lines; when a session name or backlog observation exist
 🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
 ```
 
+Once a judgment has actually been obtained, the backlog number gains one more suffix — `🔄 TODO: 1/3 ⚑2`.
+
 - **Line 1 — how the session is running**: model, reasoning depth, cache hit rate, Claude Code version, MoAI version, session time, and output style in one line. It tells you at once which configuration the session is running under.
 - **Line 2 — how much budget remains**: context-window usage (CW) and two rolling rate limits (5-hour · 7-day) as gauge bars. This is the evidence for deciding whether a heavy job can run right now.
 - **Line 3 — where, and on what**: directory, repository and branch, open issue and change-request counts, git status, the active SPEC task, and the review state of the open PR, bundled together. This is the line you will see most often in a PR-centric workflow.
-- **Line 4 (conditional) — as whom, and how much is queued**: the session name (🏷️), agent name (👤), and backlog state (🔄 `TODO: in progress/queued`). It appears naturally on named sessions — kanban companions — and segments shrink when their source of observation is missing; when all are empty, the line itself is omitted. It is also where the session name is highlighted, which makes it the first signal when you have several terminals open and lose track of which window plays which role.
+- **Line 4 (conditional) — as whom, and how much is queued**: the session name (🏷️), agent name (👤), and backlog state (🔄 `TODO: in progress/queued`). It appears naturally on named sessions — factory lanes — and segments shrink when their source of observation is missing; when all are empty, the line itself is omitted. It is also where the session name is highlighted, which makes it the first signal when you have several terminals open and lose track of which window plays which role. Once a judgment is available, the backlog count gains one more `⚑N` suffix showing how many of the picked cards already have a landing commit on the integration branch. Only a commit whose subject line is attributed to the card counts; a card number mentioned in a commit body does not. The flag does not mean done — it means "a landing commit exists, verify before marking the card done", because a card that has landed only its plan phase is counted too. It is an annotation, not a subtraction from the picked count, and it renders nothing at all until a judgment has actually been obtained (no zero is ever shown for an unmeasured state).
 
 ## The path the data takes
 
@@ -64,7 +66,7 @@ Line 2 consists of three gauge bars, each with a different meaning.
 - **5H (5-hour rolling)**: rate-limit depletion over the last 5 hours. The reset time is shown alongside, telling you how long until the limit lifts.
 - **7D (7-day rolling)**: rate-limit depletion over the last 7 days. It lets you gauge how much of the weekly budget remains.
 
-For subscription-plan users, the 5H/7D bars are effectively budget gauges. Reading them lets you decide reasonably between running the heavy job now and handing it to GLM workers in CG mode to save cost. When the CW bar is full and the 5H bar is high too, stopping the session and continuing via a handoff favors both cost and stability.
+For subscription-plan users, the 5H/7D bars help assess the remaining usage budget. When both usage and context are high, consider stopping the session and continuing through a handoff. The retired CG launcher is not an available cost-routing option.
 
 ## Line 3 — where, and on what
 
@@ -137,8 +139,8 @@ The marker attached beside the CW bar is the statusline's most important recomme
 ```mermaid
 flowchart TD
     A["measure context usage<br/>(by raw usage)"] --> B{"window size class"}
-    B -- "1M context<br/>(Opus 5, GLM-5.3)" --> C{"usage 50% or more?"}
-    B -- "200K / 256K standard<br/>(Sonnet, Haiku, Fable)" --> D{"usage 90% or more?"}
+    B -- "1M context<br/>(Opus 5.5, Sonnet 5.5, Fable, GLM-5.3)" --> C{"usage 50% or more?"}
+    B -- "200K standard<br/>(Haiku, Sonnet 4.5 and earlier)" --> D{"usage 90% or more?"}
     C -- "no" --> N["no marker<br/>(safe zone)"]
     D -- "no" --> N
     C -- "yes" --> S["soft marker (⚠️/clear)<br/>recommendation"]
@@ -150,7 +152,7 @@ flowchart TD
     S --> CLR
 ```
 
-The thresholds differ by model class because the larger the window, the more an early switch favors SSE-stall prevention. On 1M-context models the soft marker fires at half full (50%); on 200K/256K models at 90%. The hard marker is a ceiling that anticipates when auto-compact would fire. Since the runtime's auto-compact often pre-empts this ceiling first, the hard stage is in practice a top-level signal that fires rarely.
+The thresholds differ by model class because the larger the window, the more an early switch favors SSE-stall prevention. On 1M-context models the soft marker fires at half full (50%); on 200K models at 90%. The hard marker is a ceiling that anticipates when auto-compact would fire. Since the runtime's auto-compact often pre-empts this ceiling first, the hard stage is in practice a top-level signal that fires rarely.
 
 When the marker turns on, follow the fixed order: save in-flight work to `progress.md`, receive the orchestrator's paste-ready resume message, `/clear` the session, and paste the message into the new session to continue. This flow matches the session handoff rules.
 
@@ -195,7 +197,7 @@ statusline:
     github: true             # open issues/change-requests pair (repo-segment suffix)
     # line 4 — session line (on by default; rendered even when unstated)
     session: true            # 🏷️ session name + 👤 agent
-    backlog: true            # 🔄 TODO: in progress/queued
+    backlog: true            # 🔄 TODO: in progress/queued (+⚑N)
 ```
 
 Sixteen keys form the official configuration schema. The `owner/name` repository part is a seventeenth element rendered inside the `git_branch` segment, outside the schema, so it has no individual toggle. The `github` key keeps its name but now toggles the `issues/change-requests` pair on the **line 3** repo segment, while the `forge` key above decides which hosting service is asked. Of the nineteen toggles written out above, sixteen are that schema; the remaining three (`github` · `session` · `backlog`) sit outside it. All three render on by default even when unstated in the configuration — segments whose source of observation is missing (session name, backlog queue, forge cache) are quietly omitted. The former named presets (full/compact/minimal) are retired, so toggle the combination you want per segment.
@@ -206,7 +208,7 @@ The refresh interval is set by `statusLine.refreshInterval` in `settings.json` (
 
 **If the PR does not show**, check three things. Claude Code must be v2.1.145 or later for the `pr` field to arrive on stdin. Confirm an open PR exists on the current branch with `gh pr view`. And check that the configuration does not explicitly say `pr: false`.
 
-**If the handoff marker does not show**, that is usually normal. Below 50% on a 1M model, or below 90% on a 200K/256K model, the threshold simply has not been reached. If it does not show even past the threshold, check that the model's window size is mapped correctly (especially the GLM correction).
+**If the handoff marker does not show**, that is usually normal. Below 50% on a 1M model, or below 90% on a 200K model, the threshold simply has not been reached. If it does not show even past the threshold, check that the model's window size is mapped correctly (especially the GLM correction).
 
 **If colors do not show**, check that the terminal supports ANSI 256-color, that `NO_COLOR=1` is not set, and that the theme fits the environment.
 

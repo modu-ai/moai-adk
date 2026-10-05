@@ -1,0 +1,1 @@
+ · § Channel Monopoly anti-pattern · § The Other option and correct pattern · § Pre-emit self-check (completion report) · § Non-ASCII failure mode

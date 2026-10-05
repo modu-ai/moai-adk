@@ -24,6 +24,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/execerr"
@@ -47,6 +48,11 @@ var inTmuxFn = func() bool { return tmux.NewDetector().InTmuxSession() }
 // argv correctness is the whole contract of --spawn; injecting the function
 // pointer is the only way to assert cwd and command deterministically.
 var tmuxSpawnFn = defaultTmuxSpawn
+
+// spawnLookPath is the PATH-resolution seam (wraps exec.LookPath so a --spawn
+// cell is bounded by the spawn seam rather than by the binaries the host
+// running the test suite happens to have installed).
+var spawnLookPath = exec.LookPath
 
 // stripSpawnFlag removes every --spawn token appearing BEFORE the `--`
 // pass-through marker and reports whether one was found. Tokens at or after
@@ -89,6 +95,25 @@ func defaultTmuxSpawn(cwd, command string) (string, error) {
 	return parsePaneID(string(out))
 }
 
+// tmuxPanePID resolves the process hosted by a spawned pane. Keeping tmux
+// process primitives in this file preserves one ownership boundary for every
+// launcher that uses --spawn.
+func tmuxPanePID(paneID string) (int, error) {
+	out, err := exec.Command("tmux", "display-message", "-p", "-t", paneID, "#{pane_pid}").Output()
+	if err != nil {
+		return 0, err
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	if err != nil || pid <= 0 {
+		return 0, fmt.Errorf("tmux returned unexpected pane pid: %q", strings.TrimSpace(string(out)))
+	}
+	return pid, nil
+}
+
+func tmuxKillPane(paneID string) error {
+	return exec.Command("tmux", "kill-pane", "-t", paneID).Run()
+}
+
 // parsePaneID validates the stdout of `tmux new-window -P -F '#{pane_id}'`.
 // A pane id always starts with '%'; anything else means tmux printed something
 // other than the requested format, and passing that through would hand the user
@@ -99,6 +124,36 @@ func parsePaneID(out string) (string, error) {
 		return "", fmt.Errorf("tmux returned unexpected pane id: %q", paneID)
 	}
 	return paneID, nil
+}
+
+// errTmuxSessionRequired is the shared no-$TMUX diagnostic. It is a named
+// constant (not inline) because SPEC-CODEX-LAUNCHER-001 AC-CL-003 requires
+// the codex launcher's --spawn failure to be byte-identical to
+// `moai cc --spawn`'s, with the literal appearing EXACTLY ONCE across
+// non-test Go sources — a second copy would pass a by-eye comparison and
+// fail the single-source assertion.
+//
+// Phrased so the flag name is not the first word: the CLI error card
+// capitalizes the leading character, which would render "--Spawn".
+const errTmuxSessionRequired = "tmux session required for %s — no $TMUX detected\n" +
+	"  start tmux first, or drop %s to launch in the current terminal"
+
+// checkSpawnPrereqs is the shared --spawn precondition gate: inside a tmux
+// session, tmux binary on PATH, moai binary on PATH. spawnLaunch (cc/glm/cg)
+// and the codex launcher's spawn path both consume it, so every --spawn
+// surface fails with the SAME diagnostic bytes (AC-CL-003). Nothing is
+// mutated before or by these checks.
+func checkSpawnPrereqs() error {
+	if !inTmuxFn() {
+		return fmt.Errorf(errTmuxSessionRequired, spawnFlag, spawnFlag)
+	}
+	if _, err := spawnLookPath("tmux"); err != nil {
+		return fmt.Errorf("%s requires the tmux binary: %w", spawnFlag, err)
+	}
+	if _, err := spawnLookPath("moai"); err != nil {
+		return fmt.Errorf("%s needs the moai binary in PATH: %w", spawnFlag, err)
+	}
+	return nil
 }
 
 // spawnLaunch re-issues `moai <subcommand> <args...>` in a new tmux window and
@@ -115,19 +170,11 @@ func parsePaneID(out string) (string, error) {
 // Nothing has been mutated at this point (the caller invokes spawnLaunch before
 // any settings write), so an error here leaves the environment untouched.
 func spawnLaunch(out io.Writer, subcommand string, args []string) error {
-	if !inTmuxFn() {
-		// Phrased so the flag name is not the first word: the CLI error card
-		// capitalizes the leading character, which would render "--Spawn".
-		return fmt.Errorf(
-			"tmux session required for %s — no $TMUX detected\n"+
-				"  start tmux first, or drop %s to launch in the current terminal",
-			spawnFlag, spawnFlag)
+	if subcommand == "cg" {
+		return errCGRetired
 	}
-	if _, err := exec.LookPath("tmux"); err != nil {
-		return fmt.Errorf("%s requires the tmux binary: %w", spawnFlag, err)
-	}
-	if _, err := exec.LookPath("moai"); err != nil {
-		return fmt.Errorf("%s needs the moai binary in PATH: %w", spawnFlag, err)
+	if err := checkSpawnPrereqs(); err != nil {
+		return err
 	}
 
 	cwd, err := spawnWorkingDir()

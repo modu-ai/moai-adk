@@ -36,7 +36,7 @@ func Finish() {
 	if err := os.WriteFile(filepath.Join(root, "internal", "svc", "svc.go"), []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	edges, _, err := graph.BuildWithCodeLayers(root)
+	edges, _, _, err := graph.BuildWithCodeLayers(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestGraphTools_HonorProjectRoot(t *testing.T) {
 		[]byte("package svc\n\nfunc Extra() {\n\tFinish()\n}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	edgesB, _, err := graph.BuildWithCodeLayers(treeB)
+	edgesB, _, _, err := graph.BuildWithCodeLayers(treeB)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,6 +187,15 @@ func graphToolJSON(t *testing.T, res *mcp.CallToolResult) string {
 	return string(b)
 }
 
+// jsonBodyNamesTree reports whether a marshaled JSON body names a tree path.
+// JSON escaping doubles every backslash, so on Windows the raw path never
+// appears verbatim in marshaled output — the escaped form is the honest
+// match (t426 windows census axis 7).
+func jsonBodyNamesTree(body, tree string) bool {
+	return strings.Contains(body, tree) ||
+		strings.Contains(body, strings.ReplaceAll(tree, `\`, `\\`))
+}
+
 // AC-GF-020 — graph_file_api over MCP: exported signatures only, body-free,
 // provenance naming the tree.
 func TestHandleGraphFileAPI(t *testing.T) {
@@ -208,7 +217,7 @@ func TestHandleGraphFileAPI(t *testing.T) {
 	if strings.Contains(body, "Println") {
 		t.Errorf("file_api leaked a body: %s", body)
 	}
-	if !strings.Contains(body, root) {
+	if !jsonBodyNamesTree(body, root) {
 		t.Errorf("provenance must name the tree: %s", body)
 	}
 }
@@ -269,7 +278,7 @@ func TestHandleGraphFindAndTrace(t *testing.T) {
 	if len(tp.Callers) == 0 {
 		t.Errorf("Finish must have Run as caller: %s", traceBody)
 	}
-	if !strings.Contains(traceBody, root) {
+	if !jsonBodyNamesTree(traceBody, root) {
 		t.Errorf("trace provenance must name the tree: %s", traceBody)
 	}
 }

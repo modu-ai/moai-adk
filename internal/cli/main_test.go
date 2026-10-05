@@ -49,12 +49,17 @@ package cli
 // Do not merge the two traversals into a shared helper.
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
 )
 
@@ -185,8 +190,210 @@ func sandboxProfileBaseDir() func() {
 	}
 }
 
+// HOME SANDBOX (card t661).
+//
+// userHomeDirFn (glm_tools.go) resolves HOME-first through paths.Home(), so
+// under `go test` it returns the developer's real home unless a test overrides
+// it. Code paths several frames below a cobra RunE write there:
+// ensureGlobalSettingsEnv (update.go) runs os.RemoveAll on
+// <home>/.claude/hooks/moai and rewrites <home>/.claude/settings.json, and it
+// is reached from the tail of the update template sync. A test author driving
+// `moai update` has no local signal that the run touches $HOME — the same
+// situation sandboxProfileBaseDir closes for the profile ledger — so the net is
+// package-wide rather than per-test.
+//
+// The wrapper redirects ONLY the real home. It captures the real home once,
+// before any test runs, and passes every other result through unchanged: a
+// test that sets HOME (t.Setenv) or replaces userHomeDirFn keeps exactly the
+// behavior it has today on every platform. The capture deliberately uses
+// paths.Home() — the function userHomeDir delegates to — and never
+// os.UserHomeDir(), which ignores HOME on Windows and would misjudge a
+// HOME-overridden test as the real home there.
+//
+// glmcred.HomeDirFn (glm.go init) and factory.HomeDirFn (todo.go init) are
+// closures that call userHomeDirFn at call time, so they are covered too.
+// Production sites that call paths.Home() or os.UserHomeDir() directly are
+// NOT covered by this net.
+
+// homeSandboxEnv and realHomeEnv carry the sandbox path and the captured real
+// home from a test process to any test binary it re-executes (see
+// profileBaseDirEnv for the helper-subprocess pattern). The real home travels
+// with the sandbox so a child whose HOME was overridden still compares against
+// the parent's real home rather than against its own HOME.
+const (
+	homeSandboxEnv = "MOAI_CLI_TEST_HOME_SANDBOX"
+	realHomeEnv    = "MOAI_CLI_TEST_REAL_HOME"
+)
+
+// capturedRealHome is the home paths.Home() resolved to when TestMain started,
+// before any test could change HOME. Empty when resolution failed.
+var capturedRealHome string
+
+// homeSandboxDir is the directory userHomeDirFn returns in place of the real
+// home for the rest of the package run.
+var homeSandboxDir string
+
+// homeRedirectLogOnce makes the redirect announcement fire at most once per
+// process. homeRedirectStderr is the stderr captured in TestMain, so a test
+// that swaps os.Stderr for a pipe does not receive the line.
+var (
+	homeRedirectLogOnce sync.Once
+	homeRedirectStderr  *os.File
+)
+
+// homeRedirectingFn wraps orig so that a result equal to capturedRealHome is
+// replaced by homeSandboxDir. Every other result — including errors — passes
+// through untouched. announce controls the one-time stderr line that lets a
+// run prove the net actually fired.
+func homeRedirectingFn(orig func() (string, error), announce bool) func() (string, error) {
+	return func() (string, error) {
+		home, err := orig()
+		if err != nil || capturedRealHome == "" || filepath.Clean(home) != filepath.Clean(capturedRealHome) {
+			return home, err
+		}
+		if announce {
+			homeRedirectLogOnce.Do(func() {
+				_, _ = fmt.Fprintf(homeRedirectStderr,
+					"moai-cli-test: userHomeDirFn redirected real home to sandbox %s\n", homeSandboxDir)
+			})
+		}
+		return homeSandboxDir, nil
+	}
+}
+
+// sandboxUserHomeDir installs homeRedirectingFn over userHomeDirFn for the
+// whole package run and returns the restore function.
+//
+// t.TempDir() is unavailable in TestMain (no *testing.T), so the directory is
+// created and removed manually, mirroring sandboxProfileBaseDir.
+func sandboxUserHomeDir() func() {
+	orig := userHomeDirFn
+	origCodex := codexUserHomeDir
+	homeRedirectStderr = os.Stderr
+
+	// A re-executed child adopts the parent's sandbox and real home, removes
+	// nothing, and stays silent: helper bodies end in os.Exit (see
+	// sandboxProfileBaseDir), and several helpers' combined output is read by
+	// the parent test, so an extra stderr line there would be noise the parent
+	// never asked for. The parent process is the one that proves the net fired.
+	if inherited := os.Getenv(homeSandboxEnv); inherited != "" {
+		capturedRealHome = os.Getenv(realHomeEnv)
+		homeSandboxDir = inherited
+		userHomeDirFn = homeRedirectingFn(orig, false)
+		codexUserHomeDir = homeRedirectingFn(origCodex, false)
+		return func() {
+			userHomeDirFn = orig
+			codexUserHomeDir = origCodex
+		}
+	}
+
+	if resolved, err := paths.Home(); err == nil {
+		capturedRealHome = resolved
+	}
+
+	dir, err := os.MkdirTemp("", "moai-cli-home-")
+	if err != nil {
+		// Fall back to a path under the OS temp dir rather than silently
+		// leaving the real home in play.
+		dir = filepath.Join(os.TempDir(), "moai-cli-home-fallback")
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	homeSandboxDir = dir
+	userHomeDirFn = homeRedirectingFn(orig, true)
+	// The Codex home resolves through its own seam (codexUserHomeDir, which
+	// resolveCodexHomeDir joins with ".codex"), and CODEX_HOME outranks it.
+	// Redirect the seam and clear the variable for the whole package run, so no
+	// test reaches the real Codex home through the doctor registry
+	// (SPEC-PLUGIN-MARKETPLACE-001 AC-021 (c)). A test that wants a Codex home
+	// sets CODEX_HOME or assigns the seam itself.
+	codexUserHomeDir = homeRedirectingFn(origCodex, false)
+	origCodexHome, hadCodexHome := os.LookupEnv(codexHomeEnvVar)
+	_ = os.Unsetenv(codexHomeEnvVar)
+	_ = os.Setenv(homeSandboxEnv, dir)
+	_ = os.Setenv(realHomeEnv, capturedRealHome)
+	return func() {
+		userHomeDirFn = orig
+		codexUserHomeDir = origCodex
+		if hadCodexHome {
+			_ = os.Setenv(codexHomeEnvVar, origCodexHome)
+		}
+		_ = os.Unsetenv(homeSandboxEnv)
+		_ = os.Unsetenv(realHomeEnv)
+		_ = os.RemoveAll(dir)
+	}
+}
+
+// requireNotRealHome fails the test when home is the developer's real home as
+// captured in TestMain (card t661). Tests that drive the update template sync
+// call it before the drive, so a path change that lets them reach the
+// <home>/.claude sink cannot silently operate on the real home.
+func requireNotRealHome(t *testing.T, home string) {
+	t.Helper()
+	if capturedRealHome == "" {
+		t.Fatalf("TestMain captured no real home (paths.Home() failed); the " +
+			"real-home comparison would be vacuous")
+	}
+	if filepath.Clean(home) == filepath.Clean(capturedRealHome) {
+		t.Fatalf("home resolves to the real home %q: this test drives code that "+
+			"can rewrite <home>/.claude, so it must run against an injected or "+
+			"sandboxed home (card t661)", home)
+	}
+}
+
+// RESIDUE GUARD (SPEC-CLI-TEST-CWD-ISOLATION-001 REQ-3).
+//
+// Go test binaries run with cwd = the package directory, so any state write
+// whose project root resolves to an empty or relative value lands INSIDE the
+// repository tree as internal/cli/.moai (the name-claim registries
+// state/todo/leads.json and state/factory/workers.json were the measured
+// producers; the state subdirectory has already drifted once — kanban/ →
+// todo/ — so the guard watches the .moai DIRECTORY, never a file list). The
+// residue is gitignored and therefore invisible to git status, but it breaks
+// every .moai-marker upward walk that later starts below the repository root:
+// the walk stops at internal/cli/.moai and misjudges an applicable tree as
+// inapplicable — a different answer, not an error (the t317 D9 gate failure).
+//
+// The guard judges the existence DELTA across the run: .moai absent at
+// TestMain entry and present after m.Run() fails the run, naming the detected
+// path. A directory that already existed at entry is not a delta this run
+// produced, so the guard stays silent for it — the message tells the developer
+// to remove it, which re-arms the delta for the next run. Tree-wide detection
+// beyond the package directory is the AC's baseline-delta scan; the guard is
+// deliberately O(1) at the measured locus.
+//
+// TestMain always runs, so the guard rides every -run selector — including
+// selectors that match no tests, where a named guard test would be filtered
+// out and pass vacuously.
 func TestMain(m *testing.M) {
+	restoreMoaiHome := sandboxMoaiHome()
+	// Factory/kanban ambient env must not reach any test (card t1252): a lane
+	// session carries MOAI_FACTORY_WORKER/MOAI_KANBAN_ID, and the todo runtime
+	// stamping records them into golden fixtures. UnderLaneEnv twins re-set
+	// what they need via t.Setenv, so this clear strips only the ambient copy
+	// and leaves a pinned helper child's composed family alone.
+	clearFactoryAmbientEnv()
+	// The project directory a launching session exports must not steer any
+	// test's project-root resolution (SPEC-AUDIT-MODEL-CONVERGE-001
+	// REQ-ACV-019); TestMain_ScrubsClaudeProjectDir guards this line.
+	_ = os.Unsetenv(config.EnvClaudeProjectDir)
+	// Git fixtures must not inherit a hook's or lane's repository (GH #1691).
+	if err := gitenv.ScrubProcess(); err != nil {
+		restoreMoaiHome()
+		fmt.Fprintf(os.Stderr, "TestMain: %v\n", err)
+		os.Exit(1)
+	}
 	restoreProfileBaseDir := sandboxProfileBaseDir()
+	restoreUserHomeDir := sandboxUserHomeDir()
+	restoreReceiptRoot := sandboxAuditReceiptFallbackRoot()
+
+	// Pin the watched path from the entry cwd (absolute) so a test that chdirs
+	// cannot move the locus out from under the post-run check.
+	entryWD, err := os.Getwd()
+	if err != nil {
+		entryWD = "."
+	}
+	residueDir := filepath.Join(entryWD, ".moai")
+	residueExistedAtStart := residueGuardDirExists(residueDir)
 
 	warmUpCommandTree(rootCmd)
 	// Serial, single-goroutine, immediately after the warm-up: these Commands()
@@ -194,8 +401,83 @@ func TestMain(m *testing.M) {
 	warmUpTreeSize = countCommandTree(rootCmd)
 
 	code := m.Run()
+
+	if !residueExistedAtStart && residueGuardDirExists(residueDir) {
+		fmt.Fprintf(os.Stderr, "RESIDUE GUARD FAIL: this test run created %s — "+
+			"internal/cli tests must not write .moai state into the package working "+
+			"directory (SPEC-CLI-TEST-CWD-ISOLATION-001 REQ-1/REQ-2/REQ-3). Isolate the "+
+			"producing test's project root (see the SPEC's mechanism ladder), then remove "+
+			"the directory so the guard re-arms for the next run.\n", residueDir)
+		if code == 0 {
+			code = 1
+		}
+	}
+
+	restoreReceiptRoot()
+	restoreUserHomeDir()
 	restoreProfileBaseDir()
+	restoreMoaiHome()
 	os.Exit(code)
+}
+
+// moaiHomeSandboxEnv marks a process whose MOAI_HOME was already sandboxed by
+// this package's TestMain (card t1229).
+const moaiHomeSandboxEnv = "MOAI_CLI_TEST_MOAI_HOME_SANDBOX"
+
+// sandboxMoaiHome points MOAI_HOME at a directory owned by this test binary
+// and clears the two variables a lane session exports into its children.
+//
+// Tests here drive the SessionStart hook in-process and as a `moai hook`
+// subprocess. That hook enriches the profile-lease row named by
+// MOAI_PROFILE_LEASE_TOKEN (or inserts one when CLAUDE_CONFIG_DIR is set) in
+// the database under MOAI_HOME, so a run launched from a lane session rewrote
+// that lane's live lease with a test session id and a pid that exits with the
+// run (card t1229). A re-executed helper inherits the marker and keeps the
+// MOAI_HOME its parent test chose.
+func sandboxMoaiHome() func() {
+	_ = os.Unsetenv("MOAI_PROFILE_LEASE_TOKEN")
+	_ = os.Unsetenv(config.EnvClaudeConfigDir)
+	if os.Getenv(moaiHomeSandboxEnv) != "" {
+		return func() {}
+	}
+	dir, err := os.MkdirTemp("", "moai-cli-moai-home-")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "TestMain: create MOAI_HOME sandbox: %v\n", err)
+		os.Exit(1)
+	}
+	_ = os.Setenv(config.EnvHome, dir)
+	_ = os.Setenv(moaiHomeSandboxEnv, dir)
+	return func() { _ = os.RemoveAll(dir) }
+}
+
+// sandboxAuditReceiptFallbackRoot points the audit-receipt store's fallback
+// root at a throwaway directory for the whole package run.
+//
+// Every codex_audit call records a receipt, and a call that names no
+// project_root records it against resolveProjectDir() — which, in a test
+// binary, is the package working directory inside this repository. The many
+// pre-existing tests that call the tool without a root would therefore write
+// receipts into the tree they are running in. Fixing the fallback here keeps
+// the residue guard above meaningful rather than permanently tripped.
+func sandboxAuditReceiptFallbackRoot() func() {
+	dir, err := os.MkdirTemp("", "moai-audit-receipts-*")
+	if err != nil {
+		return func() {}
+	}
+	prev := auditReceiptFallbackRoot
+	auditReceiptFallbackRoot = func() string { return dir }
+	return func() {
+		auditReceiptFallbackRoot = prev
+		_ = os.RemoveAll(dir)
+	}
+}
+
+// residueGuardDirExists reports whether path names an existing directory. It is
+// deliberately separate from any other helper so the guard's judgment cannot be
+// redirected by a change to shared machinery.
+func residueGuardDirExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 // TestProfileBaseDirIsSandboxed is the guard for sandboxProfileBaseDir.
@@ -225,6 +507,83 @@ func TestProfileBaseDirIsSandboxed(t *testing.T) {
 		t.Fatalf("profile.GetBaseDir() = %q, which is the real user profile "+
 			"base. Tests in this package must never resolve to it.", got)
 	}
+}
+
+// TestMain_ScrubsClaudeProjectDir is the guard for the CLAUDE_PROJECT_DIR scrub
+// in TestMain (SPEC-AUDIT-MODEL-CONVERGE-001 REQ-ACV-019).
+//
+// A session launched from a project tree exports CLAUDE_PROJECT_DIR, and
+// resolveProjectDir() reads it ahead of the working directory. A test that names
+// no project root would then resolve the tree it is running in and read that
+// tree's committed workflow.yaml, so its verdict would depend on the checkout
+// rather than on its own fixture.
+//
+// The assertion is made package-wide on purpose: it fails whenever the variable
+// is non-empty at test start, whichever test of whichever family would have read
+// it. It fails deterministically under `CLAUDE_PROJECT_DIR=<dir> go test` if the
+// Unsetenv line in TestMain is removed. It must not call t.Parallel() or
+// t.Setenv — either would hide the ambient value it exists to observe.
+func TestMain_ScrubsClaudeProjectDir(t *testing.T) {
+	if got := os.Getenv(config.EnvClaudeProjectDir); got != "" {
+		t.Fatalf("%s=%q is visible to the test binary: TestMain must unset it "+
+			"before m.Run(). Left set, any test that names no project root "+
+			"resolves the tree it runs in and reads that tree's committed "+
+			"workflow.yaml.", config.EnvClaudeProjectDir, got)
+	}
+}
+
+// TestUserHomeDirFnSandboxesRealHome is the guard for sandboxUserHomeDir
+// (card t661). It pins both branches of the wrapper without touching the real
+// home: nothing is read from or written under either path.
+//
+// Branch 1 fails if the TestMain call is removed — userHomeDirFn then returns
+// the real home. Its expected value is resolved independently here via
+// paths.Home() rather than read from capturedRealHome, so deleting the call
+// (which also leaves capturedRealHome empty) still fails on the load-bearing
+// assertion instead of on a precondition.
+//
+// Branch 2 fails if the wrapper redirects unconditionally — a HOME-overriding
+// test would then silently lose its own temp home.
+//
+// It changes HOME and relies on userHomeDirFn, so it must not call t.Parallel().
+func TestUserHomeDirFnSandboxesRealHome(t *testing.T) {
+	t.Run("real_home_redirects_to_sandbox", func(t *testing.T) {
+		realHome, err := paths.Home()
+		if err != nil {
+			t.Fatalf("paths.Home(): %v", err)
+		}
+		got, err := userHomeDirFn()
+		if err != nil {
+			t.Fatalf("userHomeDirFn(): %v", err)
+		}
+		if filepath.Clean(got) == filepath.Clean(realHome) {
+			t.Fatalf("userHomeDirFn() = %q, which is the real home. TestMain must "+
+				"call sandboxUserHomeDir() before m.Run(); without it, any test "+
+				"reaching ensureGlobalSettingsEnv deletes <home>/.claude/hooks/moai "+
+				"and rewrites <home>/.claude/settings.json.", got)
+		}
+		if capturedRealHome != realHome {
+			t.Fatalf("HOME changed since TestMain started (captured %q, now %q): "+
+				"an earlier test leaked its HOME override, so this branch cannot "+
+				"be interpreted", capturedRealHome, realHome)
+		}
+		if homeSandboxDir == "" || got != homeSandboxDir {
+			t.Fatalf("userHomeDirFn() = %q; want the sandbox %q", got, homeSandboxDir)
+		}
+	})
+
+	t.Run("overridden_home_passes_through", func(t *testing.T) {
+		tmp := t.TempDir()
+		t.Setenv("HOME", tmp)
+		got, err := userHomeDirFn()
+		if err != nil {
+			t.Fatalf("userHomeDirFn(): %v", err)
+		}
+		if got != tmp {
+			t.Fatalf("userHomeDirFn() = %q with HOME=%q; want the overridden HOME "+
+				"returned unchanged — the sandbox must redirect only the real home", got, tmp)
+		}
+	})
 }
 
 // TestWarmUpReachability is the REQ-CFS-004 guard. It runs serially (no

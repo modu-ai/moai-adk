@@ -8,29 +8,32 @@ import (
 
 // The wizard question set is split across these constructors:
 //
-//   - DefaultQuestions      — pages 1-2 of the `moai init` set (NO Git questions)
-//   - Page3Questions        — page 3 of the `moai init` set
-//   - InitQuestions         — DefaultQuestions + Page3Questions: the full
-//     3-page `moai init` set, assembled once for the wizard entry point
+//   - DefaultQuestions      — the five Basic / Model & Report questions shared
+//     with the reconfigure path (NO Git questions)
+//   - Page3Questions        — the init-only questions: agent_wiring,
+//     autonomy_tier, and jev_enabled
+//   - InitQuestions         — the five-question `moai init` set, picked by ID
+//     from DefaultQuestions and followed by Page3Questions
 //   - GitQuestions          — the 7 Git questions, on their own
 //   - ReconfigureQuestions  — DefaultQuestions with GitQuestions spliced back
 //     in, used by the `moai update --reconfigure` path. It deliberately does
 //     NOT include the page-3 questions, so the reconfigure set keeps its
 //     pre-restructure membership.
 //
-// The `moai init` wizard renders three topic pages
-// (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-003..005):
+// The `moai init` wizard asks five questions (SPEC-INIT-QUIET-WIZARD-001
+// REQ-IQW-001 set four; SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005 added the
+// fifth), each keeping its group label:
 //
-//	Page 1 "Basic"              — conversation_language, user_name, project_name
-//	Page 2 "Model & Report"     — model_policy, report_format
-//	Page 3 "Quality & Workflow" — lsp_enabled, enforce_quality, project_mode,
-//	                              design_enabled, claude_design_enabled (nested)
+//	"Basic"                — conversation_language, user_name
+//	"Agents & Autonomy"    — agent_wiring, autonomy_tier
+//	"Judgment Capability"  — jev_enabled
 //
 // A page is a run of consecutive UNCONDITIONAL questions sharing one Group
 // label: buildFormGroups (wizard.go) merges each such run into a single huh
-// group. Pages 1-2 come from DefaultQuestions, page 3 from Page3Questions.
+// group. Every other init setting resolves to its shipped default and stays
+// changeable through CLI flags, reconfigure, or the web console.
 //
-// DefaultQuestions returns pages 1-2, in this order:
+// DefaultQuestions returns, in this order:
 //  1. Conversation language (drives the rendering language of every later question)
 //  2. User name (optional)
 //  3. Project name (required)
@@ -95,46 +98,22 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:     defaultProjectName,
 			Required:    true,
 		},
-		// 2. Model Policy
-		{
-			ID:          "model_policy",
-			Group:       "Model & Report",
-			Type:        QuestionTypeSelect,
-			Title:       "Select model policy",
-			Description: "Controls which Claude model tier is assigned to each agent. Match to your Claude plan.",
-			// Labels use the v3.0.1 tier naming (Max / Medium / Low). Values stay
-			// "high"/"medium"/"low": the internal ModelPolicy vocabulary
-			// (internal/template/model_policy.go IsValidModelPolicy) expects those
-			// values and NormalizeToTier maps high→max downstream.
-			// Descriptions mirror the actual per-tier assignments in the profile
-			// matrix SSOT (internal/template/profile_matrix.go defaultProfileMatrix,
-			// Matrix A): max leans on Fable + Opus for core agents; medium/low mix
-			// Opus and Sonnet across effort levels. Keep these in sync with that
-			// matrix, not with a marketing summary.
-			// The (Recommended) marker tracks the Default below: Medium is the default
-			// for new projects (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-008). Max/High
-			// remains a fully selectable tier — only the DEFAULT moved.
-			Options: []Option{
-				{Label: "Max", Value: "high", Desc: "Opus 5 (high~medium) + Sonnet (low, docs/single-shot rows) — Max $200 plan"},
-				{Label: "Medium (Recommended)", Value: "medium", Desc: "Opus 5 (high~low) + Sonnet (low, docs/single-shot rows) — Max $100 plan"},
-				{Label: "Low", Value: "low", Desc: "Opus 5 (high~low) + Sonnet (low, docs/e2e/single-shot rows) — Plus $20 plan"},
-			},
-			Default:  "medium",
-			Required: true,
-		},
-		// 3. Report Format — html+md vs md.
+		// 3. Report Format — html+md vs md vs artifact.
 		// The value set mirrors internal/settings reportFormatValues (the closed
-		// set {"html+md", "md"} consumed by the moai-domain-html-report skill via
-		// report.format). Keep these two Values in sync with that SSOT.
+		// set {"html+md", "md", "artifact"} consumed by the
+		// moai-domain-html-report skill via report.format; artifact publishes the
+		// HTML as a Claude Artifact and falls back to html+md when the Artifact
+		// tool is absent). Keep these Values in sync with that SSOT.
 		{
 			ID:          "report_format",
 			Group:       "Model & Report",
 			Type:        QuestionTypeSelect,
 			Title:       "Select report format",
-			Description: "Controls whether reports are generated as HTML+Markdown or Markdown only.",
+			Description: "Controls whether reports are generated as HTML+Markdown, Markdown only, or published as a Claude Artifact.",
 			Options: []Option{
 				{Label: "HTML + Markdown (Recommended)", Value: "html+md", Desc: "Generate both an HTML report (browser-viewable) and Markdown"},
 				{Label: "Markdown only", Value: "md", Desc: "Generate Markdown reports only (lighter, diff-friendly)"},
+				{Label: "Artifact (Claude)", Value: "artifact", Desc: "Publish the report as a Claude Artifact (falls back to html+md when the Artifact tool is unavailable)"},
 			},
 			Default:  "html+md",
 			Required: true,
@@ -286,18 +265,41 @@ func ReconfigureQuestions(projectRoot string) []Question {
 	return merged
 }
 
-// InitQuestions returns the FULL `moai init` question set: pages 1-2
-// (DefaultQuestions) followed by page 3 (Page3Questions). It is the single
-// assembly point consumed by the wizard entry point, so the init set cannot
-// drift from what the tests exercise.
+// initSharedQuestionIDs are the DefaultQuestions entries the `moai init` wizard
+// still asks, in order. project_name and report_format stay in
+// DefaultQuestions for the reconfigure path only.
+var initSharedQuestionIDs = []string{"conversation_language", "user_name"}
+
+// JevQuestionID is the id of the init-only Jev opt-in question. It is exported
+// because three surfaces name it — the question value, the confirm-answer
+// capture, and the translation table — and a fourth (the init persistence step)
+// reads the answer it produces.
+const JevQuestionID = "jev_enabled"
+
+// InitQuestions returns the `moai init` question set: conversation_language
+// and user_name picked by ID from DefaultQuestions, followed by Page3Questions
+// (agent_wiring, autonomy_tier, jev_enabled). It is the single assembly point
+// consumed by the wizard entry point, so the init set cannot drift from what
+// the tests exercise.
 //
 // ReconfigureQuestions deliberately does NOT build on this: the page-3
 // questions must not leak into `moai update --reconfigure` (AC-WIZ-012a).
+// SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-006 depends on that exclusion rather
+// than working around it.
+//
+// @MX:NOTE: [AUTO] The init set is five questions assembled by ID; the
+// reconfigure path keeps using DefaultQuestions unchanged (D1). Removed keys
+// resolve to their shipped defaults.
+// @MX:SPEC: SPEC-INIT-QUIET-WIZARD-001
 func InitQuestions(projectRoot string) []Question {
 	base := DefaultQuestions(projectRoot)
 	page3 := Page3Questions(projectRoot)
-	all := make([]Question, 0, len(base)+len(page3))
-	all = append(all, base...)
+	all := make([]Question, 0, len(initSharedQuestionIDs)+len(page3))
+	for _, id := range initSharedQuestionIDs {
+		if q := QuestionByID(base, id); q != nil {
+			all = append(all, *q)
+		}
+	}
 	all = append(all, page3...)
 	return all
 }
@@ -335,153 +337,96 @@ func QuestionByID(questions []Question, id string) *Question {
 	return nil
 }
 
-// Page3Questions returns page 3 of the `moai init` set, "Quality & Workflow".
+// Page3Questions returns the init-only questions, in order: agent_wiring and
+// autonomy_tier ("Agents & Autonomy"), then jev_enabled, which carries its own
+// group label ("Judgment Capability") and therefore its own page.
 //
-// The four former confirm questions — lsp_enabled, enforce_quality,
-// design_enabled, claude_design_enabled — are FIXED at their shipped true
-// defaults and no longer asked (removed 2026-08-03). Their values are seeded
-// by RunWithDefaults (see wizard.go), so interactive `moai init` writes the
-// true default for each without prompting. Only project_mode remains
-// interactive on this page.
+// The other eleven page-3 questions — project mode, worktree auto-creation,
+// backlog queue, feedback auto-submit, project continuation, audit model, the
+// three audit gates, the codex review gate, and MCP provisioning — are no
+// longer asked (SPEC-INIT-QUIET-WIZARD-001 REQ-IQW-002). Each resolves to its
+// shipped default, and interactive `moai init` provisions the .mcp.json entry
+// by default (internal/cli/init.go). The four former confirms fixed at true
+// (lsp_enabled, enforce_quality, design_enabled, claude_design_enabled) are
+// seeded by RunWithDefaults (see wizard.go).
 //
 // The constructor is named for the page it builds rather than for the retired
 // mode taxonomy (REQ-WIZ-018): no flag selects it any more.
 func Page3Questions(projectRoot string) []Question {
 	return []Question{
-		// B1 — project.mode.
+		// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-001) — the agent-harness
+		// selector, previously reachable only through `moai init --llm`. It
+		// carries NO Condition: it is asked unconditionally, and its answer
+		// decides the MCP surface (codex declines .mcp.json provisioning, both
+		// forces it on).
+		// SPEC-INIT-HARNESS-001 (REQ-IH-013, design.md D1): the option values
+		// stay FROZEN; the labels and descriptions now state the DEPLOYMENT
+		// consequences of each value — what lands at the project root — so the
+		// question keeps the promise the deployer keeps.
 		{
-			ID:          "project_mode",
-			Group:       "Quality & Workflow",
+			ID:          "agent_wiring",
+			Group:       "Agents & Autonomy",
 			Type:        QuestionTypeSelect,
-			Title:       "Select project mode",
-			Description: "Controls collaboration settings. 'personal' is the recommended default for solo developers.",
+			Title:       "Select the agent harness to deploy and wire",
+			Description: "Which LLM harness MoAI deploys and wires for this project. 'claude' is the recommended default; the --llm flag overrides this answer.",
 			Options: []Option{
-				{Label: "Personal (Recommended)", Value: "personal", Desc: "Solo developer — no team coordination overhead"},
-				{Label: "Team", Value: "team", Desc: "Multi-developer setup — enables team collaboration features"},
+				{Label: "Claude only (Recommended)", Value: "claude", Desc: "Deploy the .claude/ surface plus AGENTS.md (today's default behavior)"},
+				{Label: "GPT (Codex) only", Value: "gpt", Desc: "AGENTS.md and Codex surfaces only — no .claude/ tree, no CLAUDE.md, no .mcp.json"},
+				{Label: "Claude + Codex", Value: "both", Desc: "Same .claude/ deployment plus .codex/ wiring; .mcp.json provisioning forced on"},
 			},
-			Default:  "personal",
-			Required: true,
+			Default: "claude",
 		},
-		// Issue 3 — worktree_auto_create confirm. Mirrors the config default
-		// (workflow.worktree.auto_create = false) so the wizard ships INERT.
-		{
-			ID:          "worktree_auto_create",
-			Group:       "Quality & Workflow",
-			Type:        QuestionTypeConfirm,
-			Title:       "Enable worktree auto-creation?",
-			Description: "When enabled, moai init / moai profile / moai web automatically enter a worktree. Ships disabled (recommended for solo developers).",
-			Default:     "false",
-		},
-		// Backlog-queue guidance gate (workflow.todo.enabled). Unlike its
-		// Page-3 neighbours this one mirrors a default-ON config gate, so the
-		// default here is "true" — a copied "false" would invert the answer
-		// for everyone who accepts the default.
-		{
-			ID:          "todo_enabled",
-			Group:       "Quality & Workflow",
-			Type:        QuestionTypeConfirm,
-			Title:       "Use the backlog queue (todo)?",
-			Description: "When disabled, MoAI stops volunteering backlog guidance — no queue summary at session start, no TODO segment in the statusline. The `moai todo` command and an explicit `/moai todo` keep working either way.",
-			Default:     "true",
-		},
-		// Feedback pre-submission gate (feedback.auto_submit). Mirrors the
-		// config default (false) so the wizard ships the cautious side: the
-		// confirmation gate runs unless the user opts out of it here.
-		{
-			ID:          "feedback_auto_submit",
-			Group:       "Quality & Workflow",
-			Type:        QuestionTypeConfirm,
-			Title:       "Submit feedback without a confirmation gate?",
-			Description: "When disabled (the default), the feedback workflow shows the masked title and body and asks before opening a public issue. Enabling it skips that confirmation.",
-			Default:     "false",
-		},
-		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020) — audit +
-		// MCP opt-in selection. Reuses the M3 typed-config enum vocabulary.
-		{
-			ID:          "audit_model",
-			Group:       "Quality & Workflow",
-			Type:        QuestionTypeSelect,
-			Title:       "Select audit model",
-			Description: "The active audit backend. 'claude' is the locked distributed default.",
-			Options: []Option{
-				{Label: "Claude", Value: config.AuditModelClaude, Desc: "Default anchor verdict"},
-				{Label: "Codex", Value: config.AuditModelCodex, Desc: "Codex JSON-RPC reviewer"},
-				{Label: "GLM", Value: config.AuditModelGLM, Desc: "GLM (z.ai) reviewer"},
-				{Label: "Multi", Value: config.AuditModelMulti, Desc: "Multi-auditor convergence (deferred)"},
-			},
-			Default:  config.AuditModelClaude,
-			Required: true,
-		},
-		{
-			ID:          "audit_gate_claude",
-			Group:       "Quality & Workflow",
-			Type:        QuestionTypeSelect,
-			Title:       "Claude audit gate",
-			Description: "Gate for the claude anchor verdict.",
-			Options: []Option{
-				{Label: "Off", Value: config.AuditGateOff, Desc: "Disable the claude auditor"},
-				{Label: "Advisory", Value: config.AuditGateAdvisory, Desc: "Run but never block"},
-				{Label: "Required", Value: config.AuditGateRequired, Desc: "Fail blocks convergence"},
-			},
-			Default: config.AuditGateRequired,
-		},
-		{
-			ID:          "audit_gate_codex",
-			Group:       "Quality & Workflow",
-			Type:        QuestionTypeSelect,
-			Title:       "Codex audit gate",
-			Description: "Gate for the codex reviewer.",
-			Options: []Option{
-				{Label: "Off", Value: config.AuditGateOff, Desc: "Disable the codex auditor"},
-				{Label: "Advisory", Value: config.AuditGateAdvisory, Desc: "Run but never block"},
-				{Label: "Required", Value: config.AuditGateRequired, Desc: "Fail blocks convergence"},
-			},
-			Default: config.AuditGateRequired,
-		},
-		{
-			ID:          "audit_gate_glm",
-			Group:       "Quality & Workflow",
-			Type:        QuestionTypeSelect,
-			Title:       "GLM audit gate",
-			Description: "Gate for the GLM reviewer. 'advisory' default — a missing GLM key never hard-blocks (fail-open).",
-			Options: []Option{
-				{Label: "Off", Value: config.AuditGateOff, Desc: "Disable the GLM auditor"},
-				{Label: "Advisory", Value: config.AuditGateAdvisory, Desc: "Run but never block"},
-				{Label: "Required", Value: config.AuditGateRequired, Desc: "Fail blocks convergence"},
-			},
-			Default: config.AuditGateAdvisory,
-		},
-		{
-			ID:          "codex_audit_enabled",
-			Group:       "Quality & Workflow",
-			Type:        QuestionTypeConfirm,
-			Title:       "Enable the codex review-gate Stop hook?",
-			Description: "Opt-in default-off. When enabled, the Stop hook runs codex on uncommitted changes.",
-			Default:     "false",
-		},
-		{
-			ID:          "mcp_provision",
-			Group:       "Quality & Workflow",
-			Type:        QuestionTypeConfirm,
-			Title:       "Provision the moai MCP server?",
-			Description: "Default-on. Decline to skip.",
-			Default:     "true",
-		},
-		// SPEC-AUTONOMY-TIERS-001 M7 — interactive autonomy-tier selector.
-		// semi-auto pre-selected (REQ-006); fully-autonomous gated at apply time.
+		// SPEC-AUT-PERMMODES-001 REQ-001/REQ-002 — the autonomy question
+		// speaks Claude Code's real permission modes: "Accept edits on"
+		// (acceptEdits) is the pre-selected default; "Bypass permissions"
+		// (fully-autonomous) stays gated at apply time (sandbox proof +
+		// kill-switch, REQ-005). Persisted values are the unchanged tier
+		// tokens — only labels, descriptions, and the knob mapping moved.
 		{
 			ID:          "autonomy_tier",
-			Group:       "Autonomy",
+			Group:       "Agents & Autonomy",
 			Type:        QuestionTypeSelect,
-			Title:       "Select autonomy tier",
-			Description: "Controls how many turns the session runs without prompting. 'semi-auto' is the recommended default.",
+			Title:       "Select the session permission mode",
+			Description: "Chooses the Claude Code permission mode written to your user settings. 'Accept edits on' is the recommended default.",
 			Options: []Option{
-				{Label: "Semi-auto (Recommended)", Value: config.AutonomyTierSemiAuto, Desc: "Prompt before each non-trivial action"},
-				{Label: "Automatic", Value: config.AutonomyTierAutomatic, Desc: "Run milestones autonomously; prompt at gates"},
-				{Label: "Fully-autonomous", Value: config.AutonomyTierFullyAutonomous, Desc: "Requires sandbox proof (Docker/gVisor/etc.)"},
+				{Label: "Accept edits on (Recommended)", Value: config.AutonomyTierSemiAuto, Desc: "Auto-accept file edits; prompt for other tools"},
+				{Label: "Auto mode", Value: config.AutonomyTierAutomatic, Desc: "Auto-approve tool calls under classifier safety checks"},
+				{Label: "Bypass permissions", Value: config.AutonomyTierFullyAutonomous, Desc: "Skip all prompts; requires sandbox proof (Docker/gVisor/etc.)"},
 			},
 			Default:  config.AutonomyTierSemiAuto,
 			Required: true,
+		},
+		// SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-001/003/005/007 — the Jev opt-in.
+		//
+		// Placement: this constructor, and therefore InitQuestions only. It is
+		// NOT in DefaultQuestions and so never reaches ReconfigureQuestions,
+		// which deliberately excludes this page to preserve its pre-restructure
+		// membership. The setting is consequently UNREACHABLE from
+		// `moai update --reconfigure` (REQ-JEVO-006) — not merely inconvenient.
+		//
+		// That cost is paid by the Description, not by a second placement: it
+		// states the privacy consequence at the point of choice (REQ-JEVO-003)
+		// and names `moai web` as the only post-init path to the switch
+		// (REQ-JEVO-007), so a user who initializes from the terminal, declines,
+		// and never opens the console can still find it.
+		//
+		// Not Required, and not pre-selected: a capability that sends text to a
+		// third party defaults to declined.
+		//
+		// It carries its OWN Group label, so buildFormGroups gives it its own
+		// page. That is not cosmetic: appending it to "Agents & Autonomy" made
+		// that page taller than the viewport, and huh then scrolled the step
+		// indicator off the top — measured, not predicted. A privacy statement
+		// the user must read before answering is exactly the text that must not
+		// depend on the page fitting.
+		{
+			ID:          JevQuestionID,
+			Group:       "Judgment Capability",
+			Type:        QuestionTypeConfirm,
+			Title:       "Enable Jev typed judgments? (optional, off by default)",
+			Description: "Jev answers a typed question about supplied state and returns a probability; it makes no decision itself. A person reads its answer; where software uses it automatically, it is only as a signal — for example the order in which `moai todo --auto` considers queued cards, or an optional Kickoff cross-check that can only confirm or hand over to a person — never to approve, merge, or change a card on its own. Enabling it sends card text or request text to a third-party server. This question is asked only at init — change it later in `moai web` settings.",
+			Default:     "false",
+			Required:    false,
 		},
 	}
 }

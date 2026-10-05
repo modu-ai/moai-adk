@@ -6,7 +6,9 @@ package hook
 
 import (
 	"encoding/json"
+
 	"fmt"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"os"
 	"path/filepath"
 	"strings"
@@ -89,6 +91,7 @@ func TestCopyDirRecursive_NonExistentSrc(t *testing.T) {
 // TestEnsureTeammateMode_OutsideTmux_SetsAuto writes "auto" when not in tmux.
 // Not parallel: uses t.Setenv.
 func TestEnsureTeammateMode_OutsideTmux_SetsAuto(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	t.Setenv("TMUX", "")
 
 	dir := t.TempDir()
@@ -118,6 +121,7 @@ func TestEnsureTeammateMode_OutsideTmux_SetsAuto(t *testing.T) {
 // TestEnsureTeammateMode_InsideTmux_SetsTmux writes "tmux" when inside tmux.
 // Not parallel: uses t.Setenv.
 func TestEnsureTeammateMode_InsideTmux_SetsTmux(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	t.Setenv("TMUX", "/private/tmp/tmux-1234/default,1234,0")
 
 	dir := t.TempDir()
@@ -146,6 +150,7 @@ func TestEnsureTeammateMode_InsideTmux_SetsTmux(t *testing.T) {
 // TestEnsureTeammateMode_AlreadyCorrect_NoWrite skips write when value matches.
 // Not parallel: uses t.Setenv.
 func TestEnsureTeammateMode_AlreadyCorrect_NoWrite(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	t.Setenv("TMUX", "") // outside tmux → desired = "auto"
 
 	dir := t.TempDir()
@@ -175,6 +180,7 @@ func TestEnsureTeammateMode_AlreadyCorrect_NoWrite(t *testing.T) {
 // TestEnsureTeammateMode_MissingFile_CreatesFile verifies file creation.
 // Not parallel: uses t.Setenv.
 func TestEnsureTeammateMode_MissingFile_CreatesFile(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	t.Setenv("TMUX", "")
 
 	dir := t.TempDir()
@@ -203,6 +209,7 @@ func TestEnsureTeammateMode_MissingFile_CreatesFile(t *testing.T) {
 // is cleaned up when present.
 // Not parallel: uses t.Setenv.
 func TestEnsureTeammateMode_RemovesLegacyEnvVar(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	t.Setenv("TMUX", "")
 
 	dir := t.TempDir()

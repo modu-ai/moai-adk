@@ -7,7 +7,8 @@ import (
 	"testing"
 )
 
-// TestSurfaceForTier_Tier3 verifies REQ-HEV3-003: Tier 3 → CLAUDE.local.md (BlockTypeLearnedLocal).
+// TestSurfaceForTier_Tier3 verifies REQ-HEV3-003 as retargeted by REQ-IFU-014:
+// Tier 3 → AGENTS.local.md (BlockTypeLearnedLocal).
 func TestSurfaceForTier_Tier3(t *testing.T) {
 	t.Parallel()
 
@@ -18,8 +19,8 @@ func TestSurfaceForTier_Tier3(t *testing.T) {
 	if surface.BlockType != BlockTypeLearnedLocal {
 		t.Errorf("Tier 3 BlockType = %d, want BlockTypeLearnedLocal (%d)", surface.BlockType, BlockTypeLearnedLocal)
 	}
-	if surface.Path != "CLAUDE.local.md" {
-		t.Errorf("Tier 3 Path = %q, want CLAUDE.local.md", surface.Path)
+	if surface.Path != "AGENTS.local.md" {
+		t.Errorf("Tier 3 Path = %q, want AGENTS.local.md", surface.Path)
 	}
 }
 
@@ -120,12 +121,12 @@ func TestPrepareTierDispatch_Tier4(t *testing.T) {
 	}
 }
 
-// TestPrepareTierDispatch_Tier3 verifies the Tier-3 path (CLAUDE.local.md).
+// TestPrepareTierDispatch_Tier3 verifies the Tier-3 path (AGENTS.local.md, REQ-IFU-014).
 func TestPrepareTierDispatch_Tier3(t *testing.T) {
 	t.Parallel()
 
 	input := CuratorProposalInput{
-		TargetPath:   "CLAUDE.local.md",
+		TargetPath:   "AGENTS.local.md",
 		PatternKey:   "feature+run+autopilot+success",
 		Observations: 5,
 		BlockType:    BlockTypeLearnedLocal,
@@ -138,6 +139,9 @@ func TestPrepareTierDispatch_Tier3(t *testing.T) {
 	}
 	if surface.Tier != 3 {
 		t.Errorf("surface.Tier = %d, want 3", surface.Tier)
+	}
+	if surface.Path != "AGENTS.local.md" {
+		t.Errorf("surface.Path = %q, want AGENTS.local.md", surface.Path)
 	}
 	if content.Tier != 3 {
 		t.Errorf("content.Tier = %d, want 3", content.Tier)

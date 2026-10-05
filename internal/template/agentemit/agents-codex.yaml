@@ -25,19 +25,34 @@ layout:
 # Optional-field emission switches. A false switch means the field is omitted
 # from every emitted TOML (Codex default inheritance).
 fields:
-  # model: omitted on all 11 agents in v1 (R-011). P-03 MEASURED: an omitted
-  # model key registers and delegates (inherits the subagent default); an
-  # arbitrary bogus model string is silently accepted at parse — emitting a
-  # Claude alias would be accepted-but-wrong, so omission is the only safe
-  # choice. manager-git's "sonnet" pin is a documented drop below.
+  # model: omitted on all 12 agents in v1 (R-011). P-03 MEASURED (codex-cli
+  # 0.147.0): an omitted model key registers and delegates (inherits the
+  # subagent default); an arbitrary bogus model string is silently accepted
+  # at parse — emitting a Claude alias would be accepted-but-wrong, so
+  # omission is the only safe choice. Re-confirmed and strengthened on
+  # codex-cli 0.153.4: the agent-file model is precedence-winning over BOTH
+  # the parent default and the [agents] table default (tag-pinned docs;
+  # agent_role_config.rs flattens ConfigToml per-role), so an emitted pin
+  # becomes a dual-source hazard; valid model ids are never enumerated and
+  # churn per release (0.153.4 adds "Astra", #42874); and open-bug #32587
+  # shows the documented precedence is itself unstable (desktop app ignores
+  # the agent-file model). Flipping fields.model.emit today is inert:
+  # renderTOML (writer.go:87-155) has no model branch and the validator
+  # (manifest.go:126-137) ignores unknown fields keys — a real flip = a new
+  # writer branch + validator work + the AC-009 no-model golden inversion.
+  # manager-git's "sonnet" pin is a documented drop below.
   model:
     emit: false
-  # model_reasoning_effort: identity mapping, P-02 MEASURED (codex-cli
-  # 0.147.0): all four values registered as agents AND belong to the binary's
-  # reasoning-effort enum {minimal, low, medium, high, xhigh}. Unmapped source
-  # effort fails emission (never a silent downgrade).
+  # model_reasoning_effort: NOT emitted. The source agents declare no effort —
+  # a subagent inherits the parent session's model and effort — so there is no
+  # value to map, and inheriting is exactly what an absent key does on Codex
+  # too. The map below is the P-02 MEASURED identity enumeration (codex-cli
+  # 0.147.0: all four values register and belong to the binary's
+  # reasoning-effort enum {minimal, low, medium, high, xhigh}); it stays for a
+  # re-enable, where an unmapped source effort fails emission (never a silent
+  # downgrade).
   model_reasoning_effort:
-    emit: true
+    emit: false
     map:
       low: low
       medium: medium
@@ -48,11 +63,27 @@ fields:
   # `workspace-write`, `danger-full-access`" — and a bad value makes codex
   # drop the whole agent file (visible "Ignoring malformed agent role
   # definition" error). workspace-write is a measured member and
-  # delegation-confirmed; a read-only sandbox would break the go-test-style
-  # verification work the agent bodies mandate, so it ships for all 11.
+  # delegation-confirmed. Roles whose work does not require a local file write
+  # use read-only. The two audit roles are read-only too: their only write is
+  # the verdict or report file, the sandbox cannot confine a write to that
+  # path (write-path-scope is UNSUPPORTED below), so on Codex they return the
+  # text and the parent lane orchestrator writes the file (codex_role_addenda
+  # plus the deployed AGENTS.md audit-verdict-file row). Every value here must
+  # equal the permission contract's sandbox for that role — the emitter
+  # refuses any other mode.
+  # MEASURED (codex-cli 0.156.1): the value states the role's intended mode
+  # but is NOT applied to a role spawned as a subagent — the subagent inherits
+  # the parent session's sandbox (permission_contract sandbox row). It is
+  # still emitted: the field is accepted, harmless, and keeps the stated
+  # contract visible in each role file.
   sandbox_mode:
     emit: true
     value: workspace-write
+    role_values:
+      manager-todo: read-only
+      super-advisor: read-only
+      plan-auditor: read-only
+      sync-auditor: read-only
     accepted_values:
       - read-only
       - workspace-write
@@ -80,6 +111,7 @@ tool_classes:
   DesignSync: design-sync
   SendMessage: cross-session-messaging
   ListAgents: cross-session-messaging
+  AskUserQuestion: question-channel
   mcp__moai__: moai-mcp
 
 # Per-class dispositions — every semantic class carries exactly one, with
@@ -94,15 +126,20 @@ classes:
     disposition: documented-drop
     rationale: >-
       The Read-vs-Write tool distinction is not mechanically preserved on
-      Codex: its sandbox is workspace-level, not tool-level. Body prose
-      already disciplines write behavior.
+      Codex: its sandbox is workspace-level, not tool-level, and a role
+      spawned as a subagent inherits the parent session's sandbox rather than
+      its own sandbox_mode (measured, codex-cli 0.156.1). Every role
+      therefore relies on body scope restrictions for write discipline.
   - class: shell
     disposition: consequence
     rationale: >-
-      Shell executes built-in on Codex. A read-only sandbox would break the
-      go-test-style verification work the agent bodies mandate, so the
-      P-01-measured member workspace-write ships via the sandbox_mode field
-      (see fields.sandbox_mode).
+      Shell executes built-in on Codex. Roles that write test outputs or
+      other working files use workspace-write; roles with no local write duty,
+      and the audit roles whose verdict file the parent writes, state
+      read-only. That stated mode is not applied to a spawned subagent (it
+      inherits the parent session's sandbox — permission contract axis
+      sandbox), and in no case does the sandbox remove the shell tool from a
+      role (permission contract axis shell).
   - class: web
     disposition: documented-drop
     rationale: >-
@@ -114,12 +151,39 @@ classes:
       The Claude task-tool family has no known Codex equivalent; body prose
       degrades gracefully (workflows fall back to prose reporting).
   - class: skill-loader
-    disposition: deferred-m1
+    disposition: documented-drop
     rationale: >-
-      skills.config value set is unmeasured and M1 owns skills
-      canonicalization to .agents/skills; M5 emits no skills field. When M1
-      lands this row switches from deferred to an emission rule without any
-      M5 artifact change.
+      Refreshed on codex-cli 0.153.4 (tag-pinned skills_config.rs): the
+      per-role SkillConfig shape is {path?, name?, enabled} — an
+      enable/disable OVERRIDE of already-discovered skills, not a grant —
+      and enabled is required (t504 MEASURED at global scope: a missing
+      enabled hard-fails every codex invocation, rc=1). t505 probes P4-P7
+      MEASURED (0.153.4, isolated CODEX_HOME, zero model calls): an
+      agent-TOML model, a bogus model, and skills.config both with and
+      without enabled are ALL silent on codex debug prompt-input +
+      doctor --json, so the value set stays unobservable and the
+      ship-omitted rule still applies under either reading ("not read" vs
+      "read leniently"). Measured on codex-cli 0.152.1 (retained finding,
+      t452 m2-verdict.md:142): an agent-role skills key is not
+      observable at all on the non-interactive path, so the ship-omitted rule
+      applies and no skills field is emitted. Probes ran in an isolated /tmp
+      project with an isolated CODEX_HOME. codex debug prompt-input renders
+      the skill roots table but never the project agent roles; a session
+      asked to print the spawn_agent tool schema returned one carrying no
+      role-selection parameter; and two controls placed in turn at
+      .codex/agents/moai/ and at .codex/agents/ — a known-bad sandbox_mode,
+      the field this manifest records as producing a visible "Ignoring
+      malformed agent role definition" on the earlier measured version, and a
+      syntactically invalid TOML — both left codex exec silent at exit 0. A
+      parser cannot silently accept invalid TOML, so the project agent-role
+      directory is unread on that path and the value set is unobservable
+      rather than merely unconfirmed. Session skill loading itself IS
+      confirmed on this version (the roots table lists the project
+      .agents/skills), so this drop is about the per-agent grant, not about
+      skills reaching a session. Re-probe when an observable agent-role
+      surface exists; the top-level codex_measured_version deliberately still
+      names the earlier version, which is the one the fields above were
+      measured against.
   - class: subagent-spawn
     disposition: documented-drop
     rationale: >-
@@ -140,6 +204,17 @@ classes:
       server-level moai-mcp grant — manager-lead already carries
       mcp__moai__* tokens, so its TOML grants the server; the deputy's
       cross-session messaging doctrine lives in the agent body prose.
+  - class: question-channel
+    disposition: documented-drop
+    rationale: >-
+      Covers the Claude question channel: the AskUserQuestion tool and any
+      future tokens naming that channel. Measured on codex-cli 0.150.1 probes:
+      told to invoke the question tool, codex reported it unavailable and
+      substituted a prose question; its own request_user_input tool errors
+      "unavailable in Default mode" under the approval-never mode the project
+      launcher runs. No per-agent agent-TOML carrier exists; the AGENTS.md
+      capability-binding table directs the substitute behavior — return a
+      blocker report instead of asking the user directly.
   - class: moai-mcp
     disposition: emit-field
     field: mcp_servers
@@ -154,16 +229,21 @@ classes:
       unavailable — documented drop; the body prose already names which
       tools each agent uses.
   - class: effort
-    disposition: emit-field
-    field: model_reasoning_effort
+    disposition: omit
     rationale: >-
-      effort frontmatter maps to model_reasoning_effort through the measured
-      identity enumeration (P-02-confirmed); unmapped values fail emission.
+      Omitted — inherit the parent. The source agents declare no effort
+      frontmatter: a subagent takes the parent session's model and effort,
+      which is also what an absent model_reasoning_effort key means to Codex.
   - class: model
     disposition: omit
     rationale: >-
-      The model field is omitted for all 11 agents in v1 (R-011): a Claude
+      The model field is omitted for all 12 agents in v1 (R-011): a Claude
       alias is not a Codex model id, so emitting it would be a guess.
+      codex-cli 0.153.4 strengthens the judgment: the agent-file model is
+      precedence-winning over both the parent and [agents] defaults, valid
+      model ids churn per release (#42874), and open-bug #32587 leaves the
+      documented semantics unstable — see the fields.model comment above
+      for the full evidence set.
   - class: frontmatter-hooks
     disposition: documented-drop
     rationale: >-
@@ -187,7 +267,10 @@ documented_drops:
     rationale: >-
       manager-git pins the Claude alias "sonnet"; a Claude alias is not a
       Codex model id. Its cost intent already travels via effort: low, so the
-      TOML omits model entirely.
+      TOML omits model entirely. codex-cli 0.153.4: a Codex-side pin would
+      additionally be precedence-winning over both the parent and [agents]
+      defaults (dual-source hazard) against per-release model-id churn
+      (#42874) — see the fields.model comment above.
   - id: per-tool-mcp-filtering
     rationale: >-
       Codex exposes an MCP server's tools as a unit; restricting which of the
@@ -196,7 +279,19 @@ documented_drops:
   - id: read-vs-write-distinction
     rationale: >-
       Codex sandbox is workspace-level; the granular Read/Write tool split
-      cannot be preserved mechanically.
+      cannot be preserved mechanically. manager-todo, super-advisor,
+      plan-auditor, and sync-auditor state read-only in their role files, but
+      a role spawned as a subagent inherits the parent session's sandbox, so
+      that stated mode is not enforced (measured, codex-cli 0.156.1). Their
+      shell and MCP access cannot be restricted per tool through this TOML
+      either. The audit roles' only write duty is their verdict or report
+      file, and the sandbox cannot confine a write to one path, so
+      workspace-write would grant more than the role needs. On Codex only,
+      the audit roles therefore return the complete verdict or report text
+      (codex_role_addenda) and the parent lane orchestrator writes the file
+      with exactly that text (deployed AGENTS.md, audit-verdict-file row).
+      The Claude definitions and the Claude audit workflow are unchanged:
+      there the auditor still writes its own file.
   - id: per-agent-web-grants
     rationale: >-
       Web access is global Codex config; per-agent WebFetch/WebSearch grants
@@ -213,6 +308,63 @@ documented_drops:
       memory scope, color, and permissionMode are Claude session/UI state
       with no Codex equivalent.
 
+  # Judgment record — the global [agents] config.toml table (t505; this is
+  # the explicit t494 A1 overturn carrier). codex-cli 0.153.4 MEASURED
+  # per-key type map (.moai/reports/t505/probe-01534.md; isolated
+  # CODEX_HOME per cell, zero model calls; wrong-typed controls went red by
+  # design, so the schema check is alive):
+  #   enabled: bool, default true — emitting true is a no-op; false would
+  #     un-register the 12 moai agents.
+  #   max_threads: usize — legacy alias of max_concurrent_threads_per_session
+  #     (both parse); no moai codex resource policy exists, and limits
+  #     written into a user-editable config.toml are invasive.
+  #   max_concurrent_threads_per_session: usize — same grounds.
+  #   max_depth: source-only (V1-unstable surface); no moai policy to carry.
+  #   default_subagent_model: string — a SECOND precedence-winning model
+  #     source (dual-source hazard, same shape as fields.model) and
+  #     session-global.
+  #   default_subagent_reasoning_effort: string — not set by moai: a
+  #     subagent inherits the parent session's effort, and a session-global
+  #     default would re-pin it.
+  #   interrupt_message: BOOL, default true — the docs' name implies a
+  #     message string; MEASURED docs-schema mismatch (string value rc=1
+  #     "invalid type: string, expected a boolean"; bool value rc=0).
+  #   job_max_runtime_seconds: no-op per the source.
+  #   unknown flat keys: parsed as ROLE entries (struct AgentRoleToml,
+  #     measured P3) — [agents] is both a settings table and a role
+  #     registration map; a wrong-typed KNOWN key bricks codex startup
+  #     rc=1 (measured P2/B3b/B6).
+  #   [agents.<name>] {config_file, description}: role registration —
+  #     redundant with .codex/agents/ auto-discovery (t91 P-04 MEASURED).
+  # Overturn record: t494 candidate A1 (.moai/reports/t494/
+  # codex-doc-survey.md:266, section 5(d)) recommended ADOPTING this table
+  # (default_subagent_model / default_subagent_reasoning_effort /
+  # max_concurrent_threads_per_session) on a documentation read that
+  # PREDATES the measured type map and the dual-source semantics. That
+  # recommendation is OVERTURNED on the measured evidence above: every key
+  # A1 named fails the wire test. Never re-adopt silently; re-measure at
+  # the deciding codex version first (the schema churns per release).
+  - id: codex-global-agents-table
+    rationale: >-
+      The global [agents] config.toml table is NOT wired. Per-key judgment
+      (codex-cli 0.153.4 type map in the comment block above): enabled is a
+      no-op or, flipped, a de-registration hazard; the thread-cap keys
+      would write limits into a user-editable file moai has no policy for;
+      default_subagent_model is a second precedence-winning model source
+      (dual-source hazard, session-global); default_subagent_reasoning_effort
+      is a no-op against moai's per-agent effort keys; interrupt_message is
+      a measured docs-schema mismatch (bool, not a message string). Parsing
+      is strict — a wrong-typed known key bricks codex startup rc=1 — and
+      unknown flat keys parse as role entries, not settings. Role
+      registration ([agents.<name>]) is redundant with .codex/agents/
+      auto-discovery (t91 P-04). Wiring would also add a third merge
+      surface into .codex/config.toml (alongside EnsureMCPTable /
+      EnsureStatusLine, internal/codexwiring/configtoml.go) with new
+      idempotence obligations. This record EXPLICITLY OVERTURNS t494
+      candidate A1 (codex-doc-survey.md:266), which recommended adopting
+      the table on a documentation read predating the measured type map
+      and the dual-source semantics.
+
 # The server-level MCP grant emitted as a TOML table on every agent carrying
 # mcp__moai__* tools. Shape measured on codex-cli 0.147.0 (the array form is
 # rejected; an empty table fails transport validation — the grant must carry
@@ -222,6 +374,160 @@ mcp_server_grant:
   command: moai
   args:
     - mcp-server
+
+# Role permission contract. Each role's contract requires restrictions that
+# the emitter derives from its Claude tool list and its contract sandbox
+# (permission.go RoleRequirements): sandbox/mode always; write-path-scope for
+# writing roles; shell, subagent, web denials where the Claude role lacks that
+# tool class; mcp-server grant + mcp-tool subset for moai MCP carriers and an
+# mcp-server denial for the rest. Every required restriction maps to exactly
+# one row below, either `enforced` (a field this emitter writes; basis
+# measured or documented — never unmeasured) or `UNSUPPORTED` (the host
+# cannot express or does not apply it). A required restriction with no row
+# fails emission. The emitted sandbox_mode must equal the contract value
+# whatever the sandbox row's mapping.
+#
+# An `enforced` basis states what was observed about the field — that Codex
+# accepts it. Whether a field actually blocks the restricted action at
+# runtime is NOT claimed here; that rests only on the live role verification.
+# UNSUPPORTED rows are reported as UNSUPPORTED and never counted as passing.
+permission_contract:
+  axes:
+    - axis: sandbox
+      kind: mode
+      mapping: UNSUPPORTED
+      basis: measured
+      reason: >-
+        A role spawned as a subagent inherits the parent session's sandbox;
+        the role file's sandbox_mode is not applied, neither narrowing nor
+        widening it. The emitter still writes sandbox_mode equal to the
+        contract value (the field is accepted and states the intended mode),
+        but no per-role sandbox is enforced at runtime.
+      evidence: >-
+        codex-cli 0.147.0 (P-01) accepts the field and its three values.
+        codex-cli 0.156.1 live role run: plan-auditor and sync-auditor, whose
+        role files state read-only, ran with sandbox_policy workspace-write
+        and their probe writes succeeded, while the same role files'
+        developer_instructions and model_reasoning_effort were applied.
+        Discriminating probes: a workspace-write parent spawning plan-auditor
+        (read-only file) gave a workspace-write subagent whose write
+        succeeded; a read-only parent spawning manager-docs (workspace-write
+        file) gave a read-only subagent whose write was denied.
+    - axis: write-path-scope
+      kind: path-scope
+      mapping: UNSUPPORTED
+      basis: measured
+      reason: >-
+        sandbox_mode has three workspace-level values and no path-level
+        value, so a write cannot be confined to a path subset per role.
+      evidence: >-
+        The same P-01 accepted set (codex-cli 0.147.0) — no member names a
+        path.
+    - axis: shell
+      kind: deny
+      mapping: UNSUPPORTED
+      basis: unmeasured
+      reason: >-
+        No agent-TOML field that removes the shell tool from a role has been
+        found; shell executes built-in on Codex.
+      evidence: >-
+        No probe has tested a per-role shell switch; the classes row shell
+        records shell as a sandbox consequence, not a grant.
+    - axis: mcp-server
+      kind: grant
+      mapping: enforced
+      field: mcp_servers
+      basis: measured
+      evidence: >-
+        codex-cli 0.147.0 rejects the array form and registers the table
+        form [mcp_servers.moai] with command and args (classes row moai-mcp,
+        mcp_server_grant). Observed: the per-role table is accepted.
+    - axis: mcp-server
+      kind: deny
+      mapping: UNSUPPORTED
+      basis: unmeasured
+      reason: >-
+        Whether a role without an [mcp_servers] table inherits the project
+        config.toml registration is not known, so a per-role denial cannot
+        be claimed.
+      evidence: >-
+        No probe has run a role without the table against a project that
+        registers the server globally.
+    - axis: mcp-tool
+      kind: subset
+      mapping: UNSUPPORTED
+      basis: documented
+      reason: >-
+        Codex exposes an MCP server's tools as a unit; there is no per-tool
+        filter inside one server.
+      evidence: >-
+        Documented drop per-tool-mcp-filtering and classes row moai-mcp.
+    - axis: subagent
+      kind: deny
+      mapping: UNSUPPORTED
+      basis: unmeasured
+      reason: >-
+        No per-role spawn grant field has been found in agent TOML.
+      evidence: >-
+        classes row subagent-spawn records the grant as not expressible; no
+        probe has tested a per-role switch.
+    - axis: web
+      kind: deny
+      mapping: UNSUPPORTED
+      basis: documented
+      reason: >-
+        Web access is a global Codex setting; agent TOML has no per-role web
+        field.
+      evidence: >-
+        Documented drop per-agent-web-grants and classes row web.
+  # The sandbox each role's contract states. Kept independent of
+  # fields.sandbox_mode.role_values on purpose: the emitter refuses an
+  # emitted mode that differs from this value, so a widened override is
+  # caught rather than trusted.
+  default_sandbox: workspace-write
+  role_sandbox:
+    manager-todo: read-only
+    super-advisor: read-only
+    plan-auditor: read-only
+    sync-auditor: read-only
+
+# Codex-only text appended after a role's verbatim body in its emitted TOML.
+# The neutral .md files (and the Claude audit workflow) never carry it.
+codex_role_addenda:
+  plan-auditor: &audit_return >-
+    ## Codex Runtime Addendum
+
+
+    On Codex this role is started by the launcher, the moai MCP tool
+    `codex_role_audit`, as one top-level `codex exec` process with the
+    read-only sandbox and every MCP server disabled; it is never started
+    through `spawn_agent`. Your writes are denied, and the MCP tools named
+    above are unavailable in this process, so read the repository directly.
+    On Codex this addendum overrides the Export mandate above: where that
+    mandate says to write the verdict or report file in the same turn, and
+    calls an audit without a written file incomplete, read it as follows
+    instead. Do not write the verdict or report file yourself, and do not treat
+    a refused write as a failure of the audit. Return the complete verdict or
+    report text as your final response, including the path the file belongs
+    at; the launcher writes the verdict or report file with exactly the
+    returned text, at the destination the parent named when it started you.
+    The audit is complete when that text is returned. Everything else the
+    Export mandate requires still binds the returned text: its destination
+    path, its minimum content, and the forbidden destination.
+  sync-auditor: *audit_return
+  manager-todo: &readonly_launch >-
+    ## Codex Runtime Addendum
+
+
+    On Codex this role is started by the launcher, the moai MCP tool
+    `codex_role_audit`, as one top-level `codex exec` process with the
+    read-only sandbox and every MCP server disabled; it is never started
+    through `spawn_agent`. Your writes are denied, and the MCP tools named
+    above are unavailable in this process, so read the repository directly.
+    Return your complete result as your final response; when the parent named
+    a destination file, the launcher writes that file with exactly the
+    returned text.
+  super-advisor: *readonly_launch
 
 # Correspondence notes (no artifact emitted either side).
 correspondence_notes:

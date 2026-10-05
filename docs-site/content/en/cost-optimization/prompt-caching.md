@@ -2,7 +2,7 @@
 title: Prompt Caching — Cost Savings and the Break-Even
 weight: 30
 draft: false
-description: "How prompt caching cuts token cost. A beginner-level guide covering the 0.1x read / 1.25x write break-even, the 5-minute lifetime, and how the autonomy tier (MOAI_AUTONOMY_TIER) and CG mode affect cost and speed."
+description: "How prompt caching cuts token cost. A beginner-level guide covering the 0.1x read / 1.25x write break-even, the 5-minute lifetime, and how the autonomy tier (MOAI_AUTONOMY_TIER) affects cost and speed."
 ---
 
 # Prompt Caching — Cost Savings and the Break-Even
@@ -210,17 +210,16 @@ question but a question of **review responsibility**.
 
 The model is part of the cache key. Change the model and the same content gets
 recomputed in full. So keeping the model consistent is itself a way to save
-cache cost. MoAI-ADK protects this consistency with two devices.
+cache cost. Since v3.2, session inheritance provides this consistency by
+construction — subagents inherit the main session's model and effort, so all
+spawns share the session's cache naturally.
 
-- **Profile matrix**: the max · medium · low 3-tier profiles fix a
-  `{model, effort}` cell per agent. Query it with `moai model profile --json`.
-  When each agent's model is pinned, spawning several agents does not shake
-  the cache.
-- **Per-spawn model injection** (model-policy): name the model explicitly
-  every time you spawn `Agent()`. Agent definitions default to
-  `model: inherit`, so omitting the model quietly drops the spawn to the
-  parent session's model — a common cause of cache shake. A declared model
-  that differs from the actually resolved one is caught as drift.
+- **Session inheritance**: subagents inherit the main session's model and
+  effort, so every spawn in a session runs on one model — and therefore
+  shares one cache — by construction. The former devices that pinned a
+  `{model, effort}` cell per agent (profile matrix) or injected a model at
+  each spawn are retired. The one rule left is simple: do not switch the
+  session model (`/model`) mid-session.
 
 The **minimum token count** for content to enter the cache also differs per
 model. A prefix shorter than this is simply not cached (processed normally,
@@ -228,9 +227,10 @@ no error).
 
 | Model | Context | Minimum cache tokens |
 |------|----------|----------------|
-| Claude Fable 5 | 256K | 512 |
+| Claude Fable 5 | 1M | 512 |
+| Claude Opus 5.5 | 1M | 512 |
 | Claude Opus 5 | 1M | 1,024 |
-| Claude Sonnet 5 | 200K | 1,024 |
+| Claude Sonnet 5.5 | 1M | 1,024 |
 | Claude Opus 4.7 | 1M | 2,048 |
 | Claude Haiku 4.5 | 200K | 4,096 |
 
@@ -261,17 +261,13 @@ survives, the bigger the gain, so keep that front portion from shaking.
    cache. If only short cleanup remains, finishing while keeping the cache is
    cheaper than starting a large task carrying stale context.
 
-## Saving more with CG mode
+## CG retirement and migration
 
-If caching is the axis of "reusing the same content cheaply," **CG mode** is
-the axis of "using the expensive model less." It splits the tmux session so
-the leader runs Claude and implementation workers run the cheaper GLM (z.ai
-backend), cutting cost by roughly **60-70%** on implementation-heavy work.
-The two axes do not overlap — under CG mode, each backend handles its own
-caching (Claude with prompt caching, GLM with content-similarity-based
-implicit caching).
+`moai cg` has been retired. It exits with a migration diagnostic without starting Claude or GLM. It is not an alias for `moai cc`. Projects with `llm.team_mode: cg` must make an explicit migration choice before launching a session. [CG retirement and migration](/en/multi-llm/cg-mode/)
 
-For the detailed structure and switching commands, see [CG Mode](/en/multi-llm/cg-mode).
+This writes `llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, and `llm.gateway.teammate_provider: inherit`. It removes the old hybrid role assignment; it does not preserve a Claude leader with GLM teammate panes.
+
+The `claude-glm` target describes a Claude leader with GLM teammates in tmux. Its apply and launch paths are currently unavailable because the TEAMMATE integration gate has not passed. Preview is available. Installing tmux or setting `verified: true` does not open this gate.
 
 ## Cost monitoring
 
@@ -307,8 +303,8 @@ the one-time slow, expensive penalty.
 
 - [Prompt Caching](/en/claude-code/context-memory/prompt-caching) — how it works, prefix matching, context management (context-management perspective)
 - [Context Window](/en/claude-code/context-memory/context-window) — context window sizes and per-model differences
-- [CG Mode](/en/multi-llm/cg-mode) — cut cost 60-70% with the Claude + GLM hybrid
-- [Model Policy](/en/multi-llm/model-policy) — per-agent model injection and drift prevention
+- [CG retirement and migration](/en/multi-llm/cg-mode/)
+- [Model Policy](/en/multi-llm/model-policy) — the session model policy and effort fallback that subagents inherit
 
 ## Sources (official documentation)
 

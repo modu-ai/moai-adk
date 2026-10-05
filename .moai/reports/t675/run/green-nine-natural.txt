@@ -1,0 +1,25 @@
+# Tree: working tree after M1 edit (committed unchanged as 85f1ba686), 2026-09-18
+# Command: go test -count=1 -v -run '^(TestRunDoctor_(WithExport|WithFix|Verbose|AllFlags|VerboseAndDetail|ExportMode)|TestDoctorCmd_(Execution|ExportFlag|VerboseExecution))$' ./internal/cli/
+# Exit code: 0
+# Output (verbatim, captured from tool result; AllFlags progress block elided here only — identical 29-check list, all ✓, same as green-nine-poisoned.txt):
+=== RUN   TestRunDoctor_WithExport
+--- PASS: TestRunDoctor_WithExport (10.52s)
+=== RUN   TestRunDoctor_WithFix
+--- PASS: TestRunDoctor_WithFix (14.62s)
+=== RUN   TestRunDoctor_Verbose
+--- PASS: TestRunDoctor_Verbose (13.73s)
+=== RUN   TestRunDoctor_AllFlags
+  [29 check pairs, every result line "✓", including "  ✓ Agent Emit Embed"]
+--- PASS: TestRunDoctor_AllFlags (12.69s)
+=== RUN   TestRunDoctor_VerboseAndDetail
+--- PASS: TestRunDoctor_VerboseAndDetail (12.04s)
+=== RUN   TestRunDoctor_ExportMode
+--- PASS: TestRunDoctor_ExportMode (10.91s)
+=== RUN   TestDoctorCmd_Execution
+--- PASS: TestDoctorCmd_Execution (10.83s)
+=== RUN   TestDoctorCmd_ExportFlag
+--- PASS: TestDoctorCmd_ExportFlag (10.79s)
+=== RUN   TestDoctorCmd_VerboseExecution
+--- PASS: TestDoctorCmd_VerboseExecution (10.87s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	107.697s

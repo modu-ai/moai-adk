@@ -56,7 +56,9 @@ func sessionstartProbeTemplatePath(t *testing.T) string {
 // (traceable to REQ-HOOK-002): when all 3 moai-binary resolution tiers are
 // absent AND source=startup, the wrapper fallback emits a warning to BOTH
 // (a) the stderr log at $HOME/.moai/logs/hook-stderr.log containing 'moai' +
-//     at least one of {PATH, go/bin, .local/bin}, AND
+//
+//	at least one of {PATH, go/bin, .local/bin}, AND
+//
 // (b) stdout JSON carrying hookSpecificOutput + additionalContext.
 func TestSessionStartProbe_AC002_All3TiersAbsentEmitsWarning(t *testing.T) {
 	skipOnWindows(t)

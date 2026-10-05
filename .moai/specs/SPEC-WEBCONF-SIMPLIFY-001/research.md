@@ -2,7 +2,6 @@
 id: SPEC-WEBCONF-SIMPLIFY-001
 title: "moai web Configuration UI Simplification + Sub-Agent 4-Color Tier Redesign — Research"
 version: "0.3.0"
-status: completed
 created: 2026-07-13
 updated: 2026-07-14
 author: manager-spec

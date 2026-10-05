@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-20260726-2df5ecb2",
+  "generated_at": "2026-07-26T03:19:55Z",
+  "generator_version": "0.1.0",
+  "observation_count": 6,
+  "pattern_key": "agent_invocation:mcp__chrome-devtools__evaluate_script:",
+  "source_ts": "2026-07-26T03:19:55Z",
+  "tier": "rule"
+}

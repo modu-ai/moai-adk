@@ -5,6 +5,7 @@
 #
 # Paths covered:
 #   1. normal drain             (AC-LDS-001) — offset advance + candidates + one-line status
+#                                              in <state-dir>/last-drain.log; both streams silent (t1249)
 #   2. lock contention          (AC-LDS-002) — skip + exit 0 + contention notice, drain NOT run
 #   3. archive-before-overwrite (AC-LDS-003) — prior staged candidates preserved to clusters-history
 #   4. no-op                    (AC-LDS-004) — offset==tail: exit 0, offset unchanged, no-op status
@@ -86,8 +87,12 @@ run_wrapper "$INBOX1" "$SD1" "$FIX_TMP/p1.out" "$FIX_TMP/p1.err"
   || fail "path1: offset expected 18, got $(jq -r '.offset' "$SD1/drain-offset.json")"
 [[ "$(jq '.candidates | length' "$SD1/clusters.json")" == "3" ]] \
   || fail "path1: expected 3 candidates, got $(jq '.candidates | length' "$SD1/clusters.json")"
-grep -q '^session_drain: read=18 candidates=3 offset=18$' "$FIX_TMP/p1.err" \
-  || fail "path1: one-line status missing; stderr: $(cat "$FIX_TMP/p1.err")"
+grep -q '^session_drain: read=18 candidates=3 offset=18$' "$SD1/last-drain.log" \
+  || fail "path1: one-line status missing from last-drain.log: $(cat "$SD1/last-drain.log" 2>&1)"
+# t1249: a routine drain is silent on both streams — the hook runtime attaches
+# stderr to every SessionStart success message, so the status lives in the log.
+[[ ! -s "$FIX_TMP/p1.err" && ! -s "$FIX_TMP/p1.out" ]] \
+  || fail "path1: routine drain must be silent; stderr: $(cat "$FIX_TMP/p1.err") stdout: $(cat "$FIX_TMP/p1.out")"
 [[ ! -d "$SD1/clusters-history" ]] || fail "path1: fresh first run must not create an archive"
 ok "path1 normal drain: offset 0->18, 3 candidates, one-line status emitted"
 
@@ -129,8 +134,10 @@ run_wrapper "$INBOX1" "$SD1" "$FIX_TMP/p4.out" "$FIX_TMP/p4.err"
 [[ "$RUN_RC" -eq 0 ]] || { cat "$FIX_TMP/p4.err"; fail "path4: wrapper exited $RUN_RC"; }
 [[ "$(jq -r '.offset' "$SD1/drain-offset.json")" == "18" ]] \
   || fail "path4: offset moved on no-op: $(jq -r '.offset' "$SD1/drain-offset.json")"
-grep -q '^session_drain: no-op read=0' "$FIX_TMP/p4.err" \
-  || fail "path4: no-op status line missing; stderr: $(cat "$FIX_TMP/p4.err")"
+grep -q '^session_drain: no-op read=0' "$SD1/last-drain.log" \
+  || fail "path4: no-op status line missing from last-drain.log: $(cat "$SD1/last-drain.log" 2>&1)"
+[[ ! -s "$FIX_TMP/p4.err" && ! -s "$FIX_TMP/p4.out" ]] \
+  || fail "path4: routine no-op must be silent; stderr: $(cat "$FIX_TMP/p4.err")"
 # The no-op overwrite WIPES the live candidates (spec section B.5 ephememerality) —
 # and the archive taken BEFORE the overwrite preserves the path-1 bulk result:
 [[ "$(jq '.candidates | length' "$SD1/clusters.json")" == "0" ]] \
@@ -153,6 +160,26 @@ run_wrapper "$INBOX1" "$FIX_TMP/blocker-file/sub" "$FIX_TMP/p5b.out" "$FIX_TMP/p
 [[ "$RUN_RC" -eq 0 ]] || fail "path5b: uncreatable state dir must exit 0, got $RUN_RC"
 grep -q '^session_drain:' "$FIX_TMP/p5b.err" || fail "path5b: stderr notice missing"
 ok "path5 fail-open: inbox-absent and uncreatable state dir both exit 0 with a stderr notice"
+
+# --- path 5c/5d: unwritable drain log (t1249 F2) --------------------------------
+# The log is a convenience; the drain must never depend on it (CLAUDE.local.md
+# sec 28). H: the log path is a directory. I: the log file is read-only.
+for probe in H I; do
+  INB="$FIX_TMP/inbox5$probe.jsonl"; build_inbox "$INB"
+  SDP="$FIX_TMP/state5$probe"; mkdir -p "$SDP"
+  if [[ "$probe" == H ]]; then mkdir "$SDP/last-drain.log"; else : >"$SDP/last-drain.log"; chmod 444 "$SDP/last-drain.log"; fi
+  run_wrapper "$INB" "$SDP" "$FIX_TMP/p5$probe.out" "$FIX_TMP/p5$probe.err"
+  [[ "$RUN_RC" -eq 0 ]] || fail "path5$probe: unwritable log must exit 0, got $RUN_RC"
+  [[ "$(jq -r '.offset' "$SDP/drain-offset.json" 2>/dev/null)" == "18" ]] \
+    || fail "path5$probe: drain skipped on unwritable log — offset $(jq -r '.offset' "$SDP/drain-offset.json" 2>&1)"
+  grep -q 'log.*not writable' "$FIX_TMP/p5$probe.err" \
+    || fail "path5$probe: notice must name the unwritable log; stderr: $(cat "$FIX_TMP/p5$probe.err")"
+  grep -q 'exited non-zero' "$FIX_TMP/p5$probe.err" \
+    && fail "path5$probe: notice misattributes the cause to drain.sh"
+  [[ ! -s "$FIX_TMP/p5$probe.out" ]] || fail "path5$probe: stdout must stay empty"
+  chmod 644 "$SDP/last-drain.log" 2>/dev/null || true
+done
+ok "path5c/5d unwritable log (dir / read-only): drain still runs (offset 0->18), notice names the log"
 
 # --- path 6: mutant probe (AC-LDS-005 / the AC-LDS-010 guard) ------------------
 INBOX6="$FIX_TMP/inbox6.jsonl"; build_inbox "$INBOX6"

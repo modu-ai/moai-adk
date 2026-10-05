@@ -17,8 +17,8 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tmux"
@@ -37,7 +37,7 @@ func init() {
 }
 
 var glmCmd = &cobra.Command{
-	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -f [N] | -f lane-<n>] [-- claude-args...]",
+	Use:   "glm [-p profile] [-f | -l] [-- claude-args...]",
 	Short: "Launch Claude Code with GLM backend",
 	Long: `Launch Claude Code with GLM backend.
 
@@ -57,68 +57,60 @@ Flags:
   -b, --bypass                  Shorthand for --permission-mode bypassPermissions
   -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
                                 name omitted = auto-generated (same as claude --worktree)
+      --branch <existing>         With -w <name>: check out an EXISTING branch in the
+                                new worktree (see moai cc --help)
       --spawn                   Run this command in a new tmux window instead of
                                 replacing the current session (requires tmux)
 
-Kanban Mode:
-  -k, --kanban [SPEC-ID]       Enter as the LEAD of a kanban run. Seeds a
-                                plan -> run -> sync chain in this
-                                session. The optional SPEC-ID ties the run to a
-                                SPEC. The lead drives the whole chain; three
-                                companion sessions are launched by hand.
-  -k --name <role>             Enter as a COMPANION of an existing kanban run.
-                                Joins the run without seeding a chain. The three
-                                roles are: plan, run, sync. A role name
-                                held by a live session is bumped to the next
-                                free number (plan-1, plan-2, ...).
-
-Factory Mode (dedicated -f entry):
-  -f, --factory [N]            Enter as the LEAD of a factory run with N
-                                numbered lanes; N omitted = one lane
-                                (lane-1), grown afterwards with the
-                                incremental form below. The lead routes
+Factory Mode (dedicated -f and -l entries):
+  -f, --factory                Enter as the LEADER of a factory run (one
+                                lane, lane-1, grown afterwards with -l).
+                                The flag takes no argument. The leader routes
                                 operator-picked cards to free lanes over
                                 cross-session messages — each card goes
                                 WHOLE to one lane, which carries it through
                                 plan -> run -> sync in-session.
-  -f lane-<n>                  Launch exactly one additional lane — lane
-                                n — and connect it to the lead socket of the
-                                running factory. A number whose label is held by a
-                                live session is bumped to the next free number.
-  -k <N> / -k <N> --name lane-<i>
-                                The v1.2.0 unified -k factory shapes, still
-                                valid: -k N is the lead of an N-lane run,
-                                -k N --name lane-<i> is lane i of it (a
-                                bare -k --name lane-<i> defaults to 8).
-                                One entry token per launch: -k and -f
-                                together is an error.
+  -l, --lane                   Join the running factory as a LANE: the next
+                                free lane-<n> label is claimed for this
+                                session. The flag takes no argument. If the
+                                run's record is missing or retired while a
+                                live leader session exists, the join verifies
+                                that leader (pid + process-start) and
+                                restores its run, so the lane still lands on
+                                the live factory.
+  --leader <name>              With -l: which leader session the
+                                record-absence verification targets
+                                (default: leader). A legacy spelling of the
+                                leader name is refused.
+  One entry token per launch: -f beside -l is an error. A lane number
+  held by a live session is bumped to the next free number.
+  Legacy role and label spellings (the pre-rename nouns, any letter case)
+  are refused — the error names the canonical lane-<n> label.
 
-  Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to
-  -k/--kanban in #1513 (7f61332ef) and now drives the three-role kanban chain
-  above. -f briefly returned as the factory fan-out flag and was RETIRED
-  (v1.2.0) in favor of '-k <N>'; t118 (v3.1.1) revived it as the dedicated
-  factory entry — the kanban chain keeps -k, the factory gets -f.
+  Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to -k
+  in #1513 (7f61332ef). -f briefly returned as the factory fan-out flag and
+  was RETIRED (v1.2.0) in favor of '-k <N>'; t118 (v3.1.1) revived it as the
+  dedicated factory entry, and -k itself is now retired: a launch carrying
+  it is refused with one line naming -f and -l.
 
 Note: Auto mode is not available with GLM (third-party provider).
-Use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead.
+Use 'moai cc --permission-mode auto' instead.
 
 Note: Z.AI enforces low concurrency limits (paid tiers observe 1-3 in-flight
 requests). Multi-agent workflows that exceed this limit can surface as opaque
 errors (sometimes misreported by clients as "context window limit"). The GLM
-models themselves have ample context (glm-5.2 1M, glm-4.7 ~202K). For more
-stable parallel execution with MoAI Agent Teams, prefer 'moai cg' (hybrid mode).
+models themselves have ample context (glm-5.2 1M, glm-4.7 ~202K). Keep
+multi-agent parallelism within the in-flight budget — stagger fan-out instead
+of stacking concurrent lanes.
 
 Examples:
   moai glm setup sk-xxx    # Save API key (one-time)
   moai glm                 # Launch with GLM backend
   moai glm -p work         # Use 'work' profile with GLM
-  moai glm -k              # Kanban lead on GLM: seeds the chain
-  moai glm -k --name run           # Kanban companion on GLM (the GLM-recommended role)
-  moai glm -f              # Factory lead on GLM: one lane (lane-1)
-  moai glm -f 4            # Factory lead on GLM: announces lane-1..lane-4
-  moai glm -f lane-2       # Add lane 2 to the running factory (GLM backend)
+  moai glm -f             # Factory leader on GLM: one lane (lane-1)
+  moai glm -l              # Join the running factory as the next free lane (GLM backend)
 
-For hybrid mode (Claude lead + GLM teammates), use 'moai cg' instead.
+Mixed Claude/GLM teammate roles require verified teammate routing support.
 Use 'moai cc' to switch back to Claude backend.`,
 	GroupID:            "launch",
 	DisableFlagParsing: true,
@@ -181,6 +173,17 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// SPEC-CODEX-DEBUG-MODE-001 REQ-004: observe-only debug detection, taken
+	// BEFORE the subcommand routing (the scan decides nothing on a routed
+	// subcommand — only the launch path below consumes it). The token STAYS
+	// in the child arguments untouched; the scan mirrors the --help scan:
+	// post--- tokens are never inspected (REQ-002's scoping).
+	debugRequested := launcherDebugRequested(args)
+	var debugTiming *factoryLaunchTiming
+	if debugRequested {
+		debugTiming = &factoryLaunchTiming{debug: true}
+	}
+
 	// Manual subcommand routing (DisableFlagParsing prevents automatic routing)
 	if len(args) > 0 {
 		switch args[0] {
@@ -196,95 +199,135 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	endEntry := debugTiming.beginDebug(launchStepEntryParse, "")
+	if err := guardCGLaunchMode("glm"); err != nil {
+		endEntry()
+		return err
+	}
+
 	// --spawn: open a GLM session in a new tmux window and keep this session.
 	// Placed after subcommand routing so `moai glm setup` is never intercepted.
 	// See cc.go for the ordering rationale.
 	if spawnArgs, spawn := stripSpawnFlag(args); spawn {
+		endEntry()
+		if err := refuseBadEntryBeforeSpawn(spawnArgs); err != nil {
+			return err
+		}
 		return spawnLaunch(cmd.OutOrStdout(), "glm", spawnArgs)
 	}
 
 	profileName, filteredArgs, err := parseProfileFlag(args)
 	if err != nil {
+		endEntry()
 		return err
 	}
-	// t118 launcher axis: the unified entry parse — parseLauncherEntry covers
-	// the -k shapes (SPEC-FACTORY-BOOTSTRAP-001 + the v1.2.0 factory shapes)
-	// and the revived dedicated -f surface. See cc.go for the truth table;
+	// t118 launcher axis: the entry parse — parseLauncherEntry refuses the
+	// retired -k spelling and covers the dedicated -f / -l surface. See cc.go;
 	// glm mirrors cc exactly except for the backend constant.
 	entry, err := parseLauncherEntry(filteredArgs)
 	if err != nil {
+		endEntry()
 		return err
 	}
 	filteredArgs = entry.Rest
-	label, isCompanion := parseCompanionLabel(filteredArgs)
+	endEntry()
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
-	case factoryBranchLead:
-		leadLabel, _ := parseLeadLabel(filteredArgs)
-		defer enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)()
-		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
-		var leadName string
-		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
-		defer exportLeadSessionName(leadName)()
-		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
+	case factoryBranchLeader:
+		leaderLabel, _ := parseLeaderLabel(filteredArgs)
+		restoreFactory := enterFactoryLeaderMode(entry.FactoryLanes, leaderLabel)
+		defer restoreFactory()
+		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, false, nil)
+		if runErr != nil {
+			return runErr
+		}
+		defer restoreRun()
+		// Same recording as the cc leader: the factory run state a lane's -l join
+		// resolves. Without it every GLM-led run is unjoinable
+		// (NO_ACTIVE_FACTORY).
+		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvFactoryRunID), factory.BackendGLM, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
+			return fmt.Errorf("record factory run: %w", err)
+		}
+		defer exportFactoryLaunchFacts(entry.Spec, factory.BackendGLM)()
+		var leaderName string
+		filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+		defer exportLeaderSessionName(leaderName)()
+		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
+		settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
+		endSettings()
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
-	case factoryBranchWorker:
+	case factoryBranchLane:
+		// See cc.go: the shared lane join with the discovery fallback — one
+		// implementation for cc, glm, and the codex twin (REQ-010). Under
+		// debug the join gate records through the launch's collector.
+		restoreRun, runErr := enterFactoryLaneRun(launchProjectRoot(), entry.FactoryRun, entry.FactoryLead, debugTiming)
+		if runErr != nil {
+			return runErr
+		}
+		defer restoreRun()
 		// See cc.go: a live-held lane number is bumped, and the bumped value
 		// must reach the backend argv.
-		finalLabel := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
+		endClaim := debugTiming.beginDebug(factoryStepLaneClaim, "")
+		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, factory.BackendGLM, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		endClaim()
+		if claimErr == nil {
+			debugTiming.annotateDetail("label=" + finalLabel)
+		}
+		if claimErr != nil {
+			return claimErr
+		}
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
-		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
-		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
-		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
+		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes, entry.ClearPolicy, laneDispatchSelection(entry))()
+		defer exportFactoryLaunchFacts(entry.Spec, factory.BackendGLM)()
+		// See cc.go: the relaunch policy is the supervising loop (design.md
+		// §6) — the launcher stays the parent across every card.
+		if entry.ClearPolicy == config.FactoryClearPolicyRelaunch {
+			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
+			settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
+			endSettings()
+			defer settingsCleanup()
+			if len(settingsFlag) > 0 {
+				filteredArgs = append(filteredArgs, settingsFlag...)
+			}
+			if debugRequested {
+				debugTiming.debugDump(cmd.ErrOrStderr())
+			}
+			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs, entry.FactoryRun, entry.FactoryLead)
+		}
+		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
+		settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
+		endSettings()
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
 	}
-	if !entry.FactoryEnabled {
-		switch resolveKanbanBranch(entry.KanbanEnabled, isCompanion) {
-		case kanbanBranchLead:
-			// See cc.go: the operator's lead run id is adopted rather than replaced.
-			leadLabel, _ := parseLeadLabel(filteredArgs)
-			defer enterKanbanMode(entry.Spec, leadLabel)()
-			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
-			// See cc.go: glm mirrors the lead branch exactly.
-			var leadName string
-			filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
-			defer exportLeadSessionName(leadName)()
-			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
-			if len(settingsFlag) > 0 {
-				filteredArgs = append(filteredArgs, settingsFlag...)
-			}
-			defer settingsCleanup()
-		case kanbanBranchCompanion:
-			// See cc.go: a live-held label is bumped, and the bumped value must
-			// reach the backend argv.
-			finalLabel := resolveCompanionName(launchProjectRoot(), label, cmd.ErrOrStderr())
-			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
-			defer enterKanbanCompanionMode(finalLabel)()
-			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
-			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
-			if len(settingsFlag) > 0 {
-				filteredArgs = append(filteredArgs, settingsFlag...)
-			}
-			defer settingsCleanup()
-		}
-	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: see cc.go for the rationale.
-	if err := resolveWorktreeL2Path(filteredArgs); err != nil {
+	endWt := debugTiming.beginDebug(launchStepWorktree, "")
+	if err := resolveWorktreeL2Path(filteredArgs, cmd.ErrOrStderr()); err != nil {
+		endWt()
 		return err
 	}
+	// Card t295: see cc.go — `-w <name> --branch <existing>` creation path.
+	filteredArgs, err = resolveWorktreeExistingBranch(filteredArgs, cmd.ErrOrStderr())
+	endWt()
+	if err != nil {
+		return err
+	}
+	// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill, at the same
+	// post-validation point the cc flow applies it after its writer precheck —
+	// the glm flow has no moai-side refusal, so this is the admitted point (audit F0).
+	seedAdmittedWorktreeHooks(filteredArgs, cmd.ErrOrStderr())
 	filteredArgs = normalizeWorktreeFlag(filteredArgs)
 
 	// Auto mode is not available with third-party providers (GLM/Z.AI).
 	// Validate before launch to give a clear error instead of a cryptic Claude Code rejection.
 	if containsPermissionMode(filteredArgs, "auto") {
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "auto mode requires Claude Sonnet 4.6 or Opus 4.6 running on Anthropic's API")
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead")
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "auto mode requires a supported Claude model; GLM models are not supported (see Claude Code permission-modes docs)")
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "use 'moai cc --permission-mode auto' instead")
 		return fmt.Errorf("auto mode is not available with GLM (third-party provider)")
 	}
 
@@ -294,8 +337,15 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: moai glm uses GLM models for the MAIN SESSION. Known limitations:")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Main session context window: 1M (glm-5.3, glm-5.3-flash)")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Z.AI concurrency is limited (1-3 in-flight requests per paid tier)")
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "If you want Claude as leader and GLM for teammates, use 'moai cg' instead.")
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "Mixed Claude/GLM teammate roles require verified teammate routing support.")
 
+	endHandoff := debugTiming.beginDebug(launchStepLaunchHandoff, "")
+	filteredArgs = normalizeWorktreeFlag(filteredArgs)
+	endHandoff()
+	if debugRequested {
+		// REQ-009's cc/glm form: see cc.go — the dump precedes the launch.
+		debugTiming.debugDump(cmd.ErrOrStderr())
+	}
 	return unifiedLaunch(profileName, "glm", filteredArgs)
 }
 
@@ -388,15 +438,14 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 // (The settings.local.json twin of this wire point, injectGLMEnvForTeam, was
 // removed with its dead caller enableTeamMode in #1531.)
 //
-// Delivery status MEASURED (t175, .moai/reports/t175/measurements.md §3 —
-// closes the AC-MTP-032b residual of SPEC-MODEL-TIER-PLANTYPE-001): the z.ai
-// Anthropic-compat shim honors the Anthropic `thinking` parameter (thinking
-// blocks returned; depth scales with the budget) and silently IGNORES a
-// top-level z.ai-style `reasoning_effort` field, so the effective wire channel
-// is the thinking-budget mapping Claude Code derives from this env var, not a
-// z.ai-native reasoning_effort passthrough. The live session's thinking-block
-// responses are indirect end-to-end evidence the chain is live; delivered spend
-// per level remains unquantified (measurements §6).
+// Delivery status MEASURED, direction reversed post-close (SPEC-V3R6-AUDIT-MODEL-PIN-001
+// acceptance.md AC-AMP-006 amendment, 2026-08-24, leader-approved; closes the
+// AC-MTP-032b residual of SPEC-MODEL-TIER-PLANTYPE-001): the null-controlled
+// live differential proved the top-level `reasoning_effort` request field is
+// the effective delivery channel (ratios 1.34/1.85/1.48 against the 1.25 bound;
+// thinking-budget null 1.02). The earlier t175 probe
+// (.moai/reports/t175/measurements.md §3) reported the opposite direction and
+// is superseded by that record. Delivered spend per level remains unquantified.
 func glmReasoningEnvVars() map[string]string {
 	state := template.SessionGLMReasoningState()
 	out := make(map[string]string, 1)
@@ -422,11 +471,11 @@ func glmReasoningEnvVars() map[string]string {
 // empty); this helper is ADDITIVE and is consumed only by the main-session
 // launch path.
 //
-// Delivery status MEASURED (t175, .moai/reports/t175/measurements.md §3 —
-// closes the AC-MTP-032b residual of SPEC-MODEL-TIER-PLANTYPE-001): the z.ai
-// shim honors the Anthropic `thinking` parameter and ignores a top-level
-// z.ai-style `reasoning_effort` field, so this env reaches z.ai through the
-// thinking-budget mapping, not a native reasoning_effort passthrough.
+// Delivery status MEASURED, direction reversed post-close (SPEC-V3R6-AUDIT-MODEL-PIN-001
+// acceptance.md AC-AMP-006 amendment, 2026-08-24 — supersedes the t175 probe):
+// the top-level `reasoning_effort` request field is the effective delivery
+// channel, so this env reaches z.ai through that field, not a thinking-budget
+// mapping.
 func glmReasoningEnvVarsForModel(model, effort string) map[string]string {
 	state := template.SessionGLMReasoningStateForModel(model, effort)
 	out := make(map[string]string, 1)
@@ -685,16 +734,6 @@ func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 	if llm.GLM.Models.Fable == "" {
 		llm.GLM.Models.Fable = defaults.GLM.Models.Fable
 	}
-	// Also populate legacy model name fields for consistency
-	if llm.GLM.Models.Opus == "" {
-		llm.GLM.Models.Opus = defaults.GLM.Models.Opus
-	}
-	if llm.GLM.Models.Sonnet == "" {
-		llm.GLM.Models.Sonnet = defaults.GLM.Models.Sonnet
-	}
-	if llm.GLM.Models.Haiku == "" {
-		llm.GLM.Models.Haiku = defaults.GLM.Models.Haiku
-	}
 	// Populate GLM env var if empty
 	if llm.GLMEnvVar == "" {
 		llm.GLMEnvVar = defaults.GLMEnvVar
@@ -759,15 +798,6 @@ func llmSectionSemanticallyEqual(a, b config.LLMConfig) bool {
 // equivalence: "key absent" and "key present but empty" carry no different
 // intent for these mirrors.
 func normalizeLLMSectionMaps(c *config.LLMConfig) {
-	if c.Profiles == nil {
-		c.Profiles = map[string]map[string]config.ModelEffort{}
-	}
-	if c.HarnessAgents == nil {
-		c.HarnessAgents = map[string]map[string]config.ModelEffort{}
-	}
-	if c.AgentOverrides == nil {
-		c.AgentOverrides = map[string]config.ModelEffort{}
-	}
 	if c.GLM.ContextWindows == nil {
 		c.GLM.ContextWindows = map[string]int{}
 	}
@@ -790,40 +820,44 @@ type GLMConfigFromYAML struct {
 	EnvVar string
 }
 
-// resolveGLMModels resolves the effective high, medium, low, and fable model names.
+// resolveGLMModels resolves the effective high, medium, low, and fable model
+// names. SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004 (DR-2): a stored tier-slot
+// value naming anything outside the offered set — a removed old-model id
+// (glm-4.7 and friends were fully deleted) as readily as an arbitrary id —
+// falls back to that tier's default WITH a one-line stderr warning
+// (fail-open: never a silent pass-through, never a hard error). The legacy
+// opus/sonnet/haiku alias fields no longer participate: they are deleted, and
+// the non-strict loader silently ignores the alias keys in an existing
+// llm.yaml (the accepted silent half of DR-2).
 func resolveGLMModels(models config.GLMModels) (high, medium, low, fable string) {
 	defaults := config.NewDefaultLLMConfig()
 
-	high = models.High
-	if high == "" {
-		high = models.Opus
-	}
-	if high == "" {
-		high = defaults.GLM.Models.High
-	}
-
-	medium = models.Medium
-	if medium == "" {
-		medium = models.Sonnet
-	}
-	if medium == "" {
-		medium = defaults.GLM.Models.Medium
-	}
-
-	low = models.Low
-	if low == "" {
-		low = models.Haiku
-	}
-	if low == "" {
-		low = defaults.GLM.Models.Low
-	}
-
-	fable = models.Fable
-	if fable == "" {
-		fable = defaults.GLM.Models.Fable
-	}
+	high = resolveGLMTierSlot("high", models.High, defaults.GLM.Models.High)
+	medium = resolveGLMTierSlot("medium", models.Medium, defaults.GLM.Models.Medium)
+	low = resolveGLMTierSlot("low", models.Low, defaults.GLM.Models.Low)
+	fable = resolveGLMTierSlot("fable", models.Fable, defaults.GLM.Models.Fable)
 
 	return high, medium, low, fable
+}
+
+// resolveGLMTierSlot resolves one tier slot: an empty value falls to the tier
+// default silently (the pre-existing unset semantics — nothing was stored);
+// a non-empty value outside config.ValidGLMModels() falls to the tier default
+// and names the substitution on one stderr line (REQ-MMU-004's managed
+// transition — the warning is the whole management device).
+func resolveGLMTierSlot(tier, value, def string) string {
+	if value == "" {
+		return def
+	}
+	for _, known := range config.ValidGLMModels() {
+		if known == value {
+			return value
+		}
+	}
+	fmt.Fprintf(os.Stderr,
+		"moai: glm model %q in tier slot %q is no longer offered; using the tier default %q (llm.glm.context_windows may still map a custom window for it)\n",
+		value, tier, def)
+	return def
 }
 
 // loadGLMConfig reads GLM configuration from llm.yaml.
@@ -888,32 +922,19 @@ func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
 // for the GLM tier slot serving the main-session model (RC3,
 // glm-settings-persist).
 //
-// The alias→slot pairing mirrors setGLMEnv's ANTHROPIC_DEFAULT_*_MODEL
-// assignments — the ONE alias/slot mapping in the tree: opus feeds
-// Models.High (→ effort.high), sonnet Models.Medium, haiku Models.Low, fable
-// Models.Fable. The [1m] suffix is split before lookup (splitModelSuffix), and
-// a canonical claude-* id is reverse-mapped through
-// template.ModelAliasFromCanonicalID — the same helper resolveMainSessionModel
-// uses on the model under a GLM backend. An empty or unknown model (including
-// a raw GLM id, which is not an alias) resolves "": the caller falls back to
-// the prefs effort chain unchanged, byte-identical to the pre-RC3 launch.
+// Thin delegation to template.GLMSlotEffortForModel, which owns the ONE
+// alias/slot mapping in the tree (mirroring setGLMEnv's
+// ANTHROPIC_DEFAULT_*_MODEL assignments: opus feeds the high slot, sonnet
+// medium, haiku low, fable fable, with the [1m] suffix split and canonical
+// claude-* ids reverse-mapped). Sharing that mapping is what keeps this effort
+// half and the model half (template.GLMSlotModelOrHigh, which keys the wire
+// collapse) from drifting apart — t360 repaired exactly such a drift.
+//
+// An empty or unknown model (including a raw GLM id, which is not an alias)
+// resolves "": the caller falls back to the prefs effort chain unchanged,
+// byte-identical to the pre-RC3 launch.
 func glmSlotEffortForModel(model string, effort config.GLMTierEffort) string {
-	if model == "" {
-		return ""
-	}
-	base, _ := splitModelSuffix(model)
-	switch template.ModelAliasFromCanonicalID(base) {
-	case "opus":
-		return effort.High
-	case "sonnet":
-		return effort.Medium
-	case "haiku":
-		return effort.Low
-	case "fable":
-		return effort.Fable
-	default:
-		return ""
-	}
+	return template.GLMSlotEffortForModel(effort, model)
 }
 
 // resolveGLMMainSessionEffort resolves the effort fed to the GLM launch
@@ -978,62 +999,6 @@ func getGLMAPIKey(envVar string) string {
 		return key
 	}
 	return os.Getenv(envVar)
-}
-
-// injectGLMEnv adds GLM environment variables to settings.local.json.
-//
-// API key preservation: if a non-GLM ANTHROPIC_AUTH_TOKEN already exists
-// in settings.local.json (e.g. a user's Anthropic API key), it is saved as
-// MOAI_BACKUP_AUTH_TOKEN before being overwritten. removeGLMEnv restores it.
-// Note: Claude OAuth tokens live in ~/.claude/, not here, so OAuth is unaffected.
-func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
-	apiKey := getGLMAPIKey(glmConfig.EnvVar)
-	if apiKey == "" {
-		return fmt.Errorf("GLM API key not found. Run 'moai glm setup <api-key>' to save your key, or set %s environment variable", glmConfig.EnvVar)
-	}
-
-	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trip as map[string]any so
-	// unknown top-level keys survive the write.
-	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
-	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
-	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
-		env := settingsEnvMap(m)
-
-		// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
-		// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
-		if existing, ok := env[config.EnvAnthropicAuthToken].(string); ok && existing != "" && existing != apiKey {
-			env["MOAI_BACKUP_AUTH_TOKEN"] = existing
-		}
-
-		// Inject GLM environment variables with actual API key value
-		env[config.EnvAnthropicAuthToken] = apiKey
-		env[config.EnvAnthropicBaseURL] = glmConfig.BaseURL
-		env[config.EnvAnthropicDefaultOpusModel] = glmConfig.Models.High
-		env[config.EnvAnthropicDefaultSonnetModel] = glmConfig.Models.Medium
-		env[config.EnvAnthropicDefaultHaikuModel] = glmConfig.Models.Low
-		env[config.EnvAnthropicDefaultFableModel] = glmConfig.Models.Fable
-		// Z.AI proxy compatibility: strip Anthropic beta headers
-		env[config.EnvClaudeCodeDisableExperimentalBetas] = "1"
-		env["API_TIMEOUT_MS"] = "3000000"
-		// 1M context activation: scale auto-compact window when the High slot model
-		// resolves to the 1M context tier; otherwise clean up any stale value.
-		if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
-			env[config.EnvClaudeCodeAutoCompactWindow] = window
-		} else {
-			delete(env, config.EnvClaudeCodeAutoCompactWindow)
-		}
-		// Issue #653: declare the model's real context window (Claude Code
-		// assumes 200K for unrecognized custom IDs and caps the auto-compact
-		// window at it); otherwise clean up any stale value.
-		if tokens, ok := glmMaxContextTokens(glmConfig.Models.High); ok {
-			env[config.EnvClaudeCodeMaxContextTokens] = tokens
-		} else {
-			delete(env, config.EnvClaudeCodeMaxContextTokens)
-		}
-		if len(env) == 0 {
-			delete(m, "env")
-		}
-	})
 }
 
 // isTestEnvironment detects if we're running in a test environment.

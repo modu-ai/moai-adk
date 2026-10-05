@@ -2,7 +2,6 @@
 id: SPEC-V3R5-HARNESS-AUTONOMY-001
 title: "Harness Autonomy — Implementation Plan"
 version: "0.1.0"
-status: draft
 created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim

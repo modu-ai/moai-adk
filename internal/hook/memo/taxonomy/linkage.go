@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -20,9 +21,10 @@ import (
 
 // Linkage and capacity warning codes.
 const (
-	WarnOrphanNotIndexed  AuditCode = "MEMORY_ORPHAN_NOT_INDEXED"
-	WarnDanglingIndexLink AuditCode = "MEMORY_DANGLING_INDEX_LINK"
-	WarnTopicCountOverCap AuditCode = "MEMORY_TOPIC_COUNT_OVER_CAP"
+	WarnOrphanNotIndexed    AuditCode = "MEMORY_ORPHAN_NOT_INDEXED"
+	WarnDanglingIndexLink   AuditCode = "MEMORY_DANGLING_INDEX_LINK"
+	WarnIndexDuplicateEntry AuditCode = "MEMORY_INDEX_DUPLICATE_ENTRY"
+	WarnTopicCountOverCap   AuditCode = "MEMORY_TOPIC_COUNT_OVER_CAP"
 )
 
 // indexFileName is the index a session actually loads.
@@ -32,6 +34,26 @@ const indexFileName = "MEMORY.md"
 // prescribes, so its contents are excluded from both audits — otherwise the
 // remedy would trip the alarm it is meant to clear.
 const archiveDirName = "_archive"
+
+// secondaryIndexLinkThreshold separates an index from a memory that happens to
+// cite a sibling. Archiving in practice folds an entry out of MEMORY.md into a
+// secondary index that sits beside the topic files rather than moving the file
+// into a subdirectory, so reachability has to be read from those files too —
+// and a topic file citing a couple of relatives is not one of them.
+//
+// The threshold counts LINK MATCHES, not lines carrying a link, and the two
+// give different answers: a card record citing two siblings on one line reads
+// as 1 by line and 2 by match. Measured over the live store by match, the real
+// index files carry 42 links at the low end while the ordinary topic files
+// that cite anything at all carry 1 or 2 — so 3 sits in a gap fourteen times
+// wider than the boundary case it has to exclude.
+//
+// Counting by line put the threshold at 2, which admitted exactly one card
+// record and hid the two siblings it cited: both were reachable from nothing
+// else, so the orphan finding went silent on two real losses. A false negative
+// here is worse than a false positive — an unreported loss is the failure this
+// audit exists to catch — which is why the margin is spent on that side.
+const secondaryIndexLinkThreshold = 3
 
 // markdownLinkTarget captures the target of a markdown link. The index format
 // is one `- [Title](file.md) — hook` line per memory, so the targets are the
@@ -79,10 +101,64 @@ func indexTargets(indexPath string) (map[string]bool, error) {
 	return targets, nil
 }
 
-// AuditLinkage reports topic files the index cannot reach (orphans) and index
-// links with no file behind them (dangling). Both directions matter: an orphan
-// is a memory that will never be recalled, and a dangling link is an index
-// promising context that cannot be loaded.
+// secondaryIndex is one promoted index: the sibling files it actually reaches,
+// and the links it carries that no file answers.
+type secondaryIndex struct {
+	reaches map[string]bool
+	missing []string
+}
+
+// secondaryIndexTargets returns, for each topic file that qualifies as a
+// secondary index, what it reaches and what it only promises. A file that
+// cannot be read is treated as an ordinary memory rather than as an error: a
+// store the audit cannot fully read should report what it can, not refuse to
+// report.
+//
+// Only links with a file behind them count toward the threshold. Counting raw
+// matches let a file citing absent siblings buy index status, and the purchase
+// was self-concealing: the links that bought it were also the links no check
+// read, so a real memory the same file linked went silent behind an index that
+// reached nothing. Applying the existing threshold to resolved links closes
+// that without a second number to justify — a promotion is a claim to carry
+// reachability, and a link to a file that does not exist carries none.
+func secondaryIndexTargets(dir string, names []string, present map[string]bool) map[string]secondaryIndex {
+	out := map[string]secondaryIndex{}
+	for _, name := range names {
+		data, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		seen := map[string]bool{}
+		idx := secondaryIndex{reaches: map[string]bool{}}
+		for _, m := range markdownLinkTarget.FindAllStringSubmatch(string(data), -1) {
+			base := filepath.Base(m[1])
+			// A file linking itself reaches nothing, and the index a session
+			// already loads is not a secondary one.
+			if base == name || base == indexFileName || seen[base] {
+				continue
+			}
+			seen[base] = true
+			if present[base] {
+				idx.reaches[base] = true
+			} else {
+				idx.missing = append(idx.missing, base)
+			}
+		}
+		if len(idx.reaches) >= secondaryIndexLinkThreshold {
+			sort.Strings(idx.missing)
+			out[name] = idx
+		}
+	}
+	return out
+}
+
+// AuditLinkage reports topic files no index can reach (orphans), index links
+// with no file behind them (dangling), and files carried by two indexes at
+// once (duplicate entries). All three matter: an orphan is a memory that will
+// never be recalled, a dangling link is an index promising context that cannot
+// be loaded, and a duplicate entry is the residue of a revived memory whose
+// archive line was never removed — reachable twice, so silent in both of the
+// other directions.
 func AuditLinkage(dir string) ([]AuditFinding, error) {
 	names, err := topicFiles(dir)
 	if err != nil {
@@ -105,13 +181,32 @@ func AuditLinkage(dir string) ([]AuditFinding, error) {
 		present[n] = true
 	}
 
+	secondary := secondaryIndexTargets(dir, names, present)
+
 	var findings []AuditFinding
 	for _, n := range names {
-		if !targets[n] {
+		// Deterministic order: a finding naming an arbitrary one of several
+		// secondary indexes would change between runs on the same store.
+		var carriers []string
+		for idx, sec := range secondary {
+			if idx != n && sec.reaches[n] {
+				carriers = append(carriers, idx)
+			}
+		}
+		sort.Strings(carriers)
+
+		switch {
+		case !targets[n] && len(carriers) == 0:
 			findings = append(findings, AuditFinding{
 				Code:   WarnOrphanNotIndexed,
 				Path:   filepath.Join(dir, n),
-				Detail: fmt.Sprintf("%s is not linked from %s — a session loads the index, so this memory is never recalled", n, indexFileName),
+				Detail: fmt.Sprintf("%s is linked from no index — a session loads an index, not the directory, so this memory is never recalled", n),
+			})
+		case targets[n] && len(carriers) > 0:
+			findings = append(findings, AuditFinding{
+				Code:   WarnIndexDuplicateEntry,
+				Path:   filepath.Join(dir, n),
+				Detail: fmt.Sprintf("%s is linked from both %s and %s — one of the two entries is stale", n, indexFileName, strings.Join(carriers, ", ")),
 			})
 		}
 	}
@@ -120,6 +215,25 @@ func AuditLinkage(dir string) ([]AuditFinding, error) {
 			findings = append(findings, AuditFinding{
 				Code:   WarnDanglingIndexLink,
 				Path:   indexPath,
+				Detail: fmt.Sprintf("index links %s but no such file exists", target),
+			})
+		}
+	}
+
+	// The same direction, one carrier over: a secondary index promises files
+	// too, and reading only MEMORY.md left those promises unchecked. Reported
+	// under the same code because it is the same defect — an index line with
+	// no file behind it — differing only in which index carries it.
+	var carriers []string
+	for idx := range secondary {
+		carriers = append(carriers, idx)
+	}
+	sort.Strings(carriers)
+	for _, idx := range carriers {
+		for _, target := range secondary[idx].missing {
+			findings = append(findings, AuditFinding{
+				Code:   WarnDanglingIndexLink,
+				Path:   filepath.Join(dir, idx),
 				Detail: fmt.Sprintf("index links %s but no such file exists", target),
 			})
 		}

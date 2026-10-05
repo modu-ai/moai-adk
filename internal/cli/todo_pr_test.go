@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // todoPRCall is one observed subprocess.
@@ -42,8 +42,27 @@ type spyRunner struct {
 	// which is the fail-open fixture.
 	prJSON string
 	ghFail error
-	// landedFor is the set of cards `git log` reports as landed.
-	landedFor map[string]bool
+	// logPlan holds what each SUCCESSIVE `git log` call returns, in call
+	// order. SPEC-TODO-LANDING-ATTRIBUTION-001 removed the card id from the
+	// landing query's argv — the query is a subject stream and the predicate
+	// matches Go-side — so a stub can no longer key the answer on the argv.
+	// It plans the answers per call instead; the queue renders cards in
+	// order, so call N answers the Nth card that reaches the landed query.
+	logPlan []spyLogAnswer
+	// logCalls counts the `git log` calls seen so far.
+	logCalls int
+}
+
+// spyLogAnswer is one planned `git log` answer.
+type spyLogAnswer struct {
+	out string
+	err error
+}
+
+// landedLogLine is the one-line subject stream that makes cardID read landed:
+// the card sits in a form-2 attributing position (trailing parenthetical).
+func landedLogLine(cardID string) string {
+	return "d9899f437 fix: something (" + cardID + ")\n"
 }
 
 func installSpy(t *testing.T, s *spyRunner) *spyRunner {
@@ -59,9 +78,11 @@ func installSpy(t *testing.T, s *spyRunner) *spyRunner {
 			}
 			return s.prJSON, nil
 		case "git":
-			for card, landed := range s.landedFor {
-				if landed && strings.Contains(strings.Join(args, " "), card) {
-					return "d9899f437 fix: something (" + card + ")\n", nil
+			if len(args) > 0 && args[0] == "log" {
+				i := s.logCalls
+				s.logCalls++
+				if i < len(s.logPlan) {
+					return s.logPlan[i].out, s.logPlan[i].err
 				}
 			}
 			return "", nil
@@ -91,7 +112,7 @@ const pinnedPRJSON = `[
 ]`
 
 // seedQueue appends n cards and returns their ids.
-func seedQueue(t *testing.T, store *kanban.BacklogStore, texts ...string) []string {
+func seedQueue(t *testing.T, store *factory.BacklogStore, texts ...string) []string {
 	t.Helper()
 	ids := make([]string, 0, len(texts))
 	for _, txt := range texts {
@@ -105,17 +126,38 @@ func seedQueue(t *testing.T, store *kanban.BacklogStore, texts ...string) []stri
 }
 
 // queueDirDigest is the recursive digest AC-004 asserts on: every path under
-// the queue directory plus that file's SHA-256. A new path, a removed path,
-// or a changed byte all move it.
+// the PROJECT ROOT plus that file's SHA-256. A new path, a removed path, or a
+// changed byte all move it.
+//
+// The scope is the whole root, not the queue directory
+// (SPEC-TODO-LANDING-STATE-001 AC-TLS-008). The narrower form was porous in a
+// way that mattered: the read-only ruling prohibits a write BY THE VERB
+// anywhere, and a criterion scoped to `factory.StateDirForRoot(root)` cannot
+// fail on the "no cache" clause at all — a landing cache written to
+// `<root>/.moai/cache/` on every invocation left it fully green. The
+// assertion is therefore drawn at the verb's reach.
+//
+// Stated limit, and it is an approved residual rather than an oversight: a
+// write OUTSIDE the fixture root — $HOME, /tmp, a global cache — still evades
+// this. The criterion is "the verb's reach within the project", NOT "this verb
+// writes nowhere", and it is not claimed to be the latter.
+//
+// `.git` is skipped: the fixture is a real git repository (queue-root
+// resolution goes through git), and git's own housekeeping — gc, index
+// refresh, ref logs — moves bytes there for reasons that have nothing to do
+// with the verb under test.
 func queueDirDigest(t *testing.T, root string) string {
 	t.Helper()
-	dir := filepath.Join(root, ".moai", "state", "kanban")
+	dir := root
 	var lines []string
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
+			if d.Name() == ".git" {
+				return fs.SkipDir
+			}
 			return nil
 		}
 		data, err := os.ReadFile(path) // #nosec G304 -- test fixture path
@@ -134,9 +176,10 @@ func queueDirDigest(t *testing.T, root string) string {
 	return strings.Join(lines, "\n")
 }
 
-// AC-004 — nothing under the queue directory changes across an invocation
-// (REQ-2.1, REQ-2.2). Asserted on the linked, ambiguous, landed, and
-// fail-open paths, because the ruling has to hold on all of them.
+// AC-004 / AC-TLS-008 — nothing under the PROJECT ROOT changes across an
+// invocation (REQ-2.1, REQ-2.2, REQ-TLS-008, REQ-TLS-009). Asserted on the
+// linked, ambiguous, landed, fail-open, landed-and-picked, and unanswerable
+// paths, because the ruling has to hold on all of them.
 func TestTodoPR_QueueDirUnchanged(t *testing.T) {
 	cases := []struct {
 		name string
@@ -145,17 +188,39 @@ func TestTodoPR_QueueDirUnchanged(t *testing.T) {
 	}{
 		{"linked and ambiguous", &spyRunner{prJSON: pinnedPRJSON}, []string{"pr"}},
 		{"json form", &spyRunner{prJSON: pinnedPRJSON}, []string{"pr", "--json"}},
-		{"landed path", &spyRunner{prJSON: `[]`, landedFor: map[string]bool{"t1": true}}, []string{"pr"}},
+		{"landed path", &spyRunner{prJSON: `[]`, logPlan: []spyLogAnswer{{out: landedLogLine("t1")}, {}}}, []string{"pr"}},
 		{"fail-open path", &spyRunner{ghFail: fmt.Errorf("gh: not found")}, []string{"pr"}},
+		// The landed path exercised for a card that is NOT in the default
+		// queued state, so the state column added by
+		// SPEC-TODO-LANDING-STATE-001 is read on a landed row too. (The queue
+		// has no `completed` state — `picked` is the non-default state a
+		// landed card actually carries.)
+		{"landed and picked", &spyRunner{prJSON: `[]`, logPlan: []spyLogAnswer{{out: landedLogLine("t1")}, {}}}, []string{"pr"}},
+		// The unknown path: the verb must not write a cache while degrading.
+		{"unanswerable path", &spyRunner{prJSON: `[]`, logPlan: []spyLogAnswer{{err: fmt.Errorf("fatal: bad revision")}, {}}}, []string{"pr"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			root, store := todoFixture(t)
-			seedQueue(t, store, "first card", "second card")
+			ids := seedQueue(t, store, "first card", "second card")
+			if tc.name == "landed and picked" {
+				if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+					for i := range rec.Items {
+						if rec.Items[i].ID == ids[0] {
+							rec.Items[i].State = factory.BacklogStatePicked
+						}
+					}
+					return nil
+				}); err != nil {
+					t.Fatalf("pick %s: %v", ids[0], err)
+				}
+			}
 			installSpy(t, tc.spy)
 
 			before := queueDirDigest(t, root)
-			beforeStat, err := os.Stat(store.Path())
+			// The physical carrier is the engine's database; Path() now names
+			// the legacy document, which a migrated queue no longer has.
+			beforeStat, err := os.Stat(store.EnginePath())
 			if err != nil {
 				t.Fatalf("stat backlog: %v", err)
 			}
@@ -170,9 +235,9 @@ func TestTodoPR_QueueDirUnchanged(t *testing.T) {
 
 			after := queueDirDigest(t, root)
 			if before != after {
-				t.Errorf("queue directory changed across the invocation\nbefore:\n%s\nafter:\n%s", before, after)
+				t.Errorf("project root changed across the invocation\nbefore:\n%s\nafter:\n%s", before, after)
 			}
-			afterStat, err := os.Stat(store.Path())
+			afterStat, err := os.Stat(store.EnginePath())
 			if err != nil {
 				t.Fatalf("stat backlog after: %v", err)
 			}
@@ -199,8 +264,8 @@ func TestTodoPR_FailOpenNoGh(t *testing.T) {
 	_, store := todoFixture(t)
 	ids := seedQueue(t, store, "landed card", "untouched card")
 	installSpy(t, &spyRunner{
-		ghFail:    fmt.Errorf("exec: \"gh\": executable file not found in $PATH"),
-		landedFor: map[string]bool{ids[0]: true},
+		ghFail:  fmt.Errorf("exec: \"gh\": executable file not found in $PATH"),
+		logPlan: []spyLogAnswer{{out: landedLogLine(ids[0])}, {}},
 	})
 
 	out, errOut, err := runTodo(t, "pr")
@@ -226,9 +291,10 @@ func TestTodoPR_FailOpenNoGh(t *testing.T) {
 	if strings.Contains(errOut, "Error:") {
 		t.Errorf("stderr = %q; a degradation is a note, not an error", errOut)
 	}
-	// The landed check still runs (REQ-2.3): local git does not need gh.
-	if !strings.Contains(lines[0], string(kanban.PRLinkLanded)) {
-		t.Errorf("landed card row = %q, want the landed outcome", lines[0])
+	// Local attribution alone cannot establish that no open PR carries the
+	// card. The unavailable PR lookup makes the combined outcome unknown.
+	if !strings.Contains(lines[0], string(factory.PRLinkUnknown)) {
+		t.Errorf("landed card row = %q, want unknown while gh is unavailable", lines[0])
 	}
 }
 
@@ -245,8 +311,8 @@ func TestTodoPR_FailOpenGhNonZero(t *testing.T) {
 	if !strings.Contains(errOut, "note:") {
 		t.Errorf("stderr = %q, want a degradation note", errOut)
 	}
-	if !strings.Contains(out, string(kanban.PRLinkNoLink)) {
-		t.Errorf("stdout = %q, want the no-link outcome rendered", out)
+	if !strings.Contains(out, string(factory.PRLinkUnknown)) {
+		t.Errorf("stdout = %q, want the unknown outcome rendered", out)
 	}
 }
 
@@ -294,36 +360,38 @@ func TestTodoPR_RendersOutcomeAndConfidence(t *testing.T) {
 	 {"number":1601,"title":"docs: lifecycle","body":"card %s","state":"OPEN"},
 	 {"number":1611,"title":"chore: sweep","body":"part of %s","state":"OPEN"}
 	]`, ids[0], ids[0], ids[2], ids[1], ids[2])
-	installSpy(t, &spyRunner{prJSON: prJSON, landedFor: map[string]bool{ids[3]: true}})
+	// ids[0]-ids[2] resolve from PR hits and never reach the landed query, so
+	// the plan needs exactly one answer: ids[3]'s landed stream.
+	installSpy(t, &spyRunner{prJSON: prJSON, logPlan: []spyLogAnswer{{out: landedLogLine(ids[3])}}})
 
 	out, _, err := runTodo(t, "pr", "--json")
 	if err != nil {
 		t.Fatalf("todo pr --json: %v", err)
 	}
-	var got []kanban.PRLinkOutcome
+	var got []factory.PRLinkOutcome
 	if err := json.Unmarshal([]byte(out), &got); err != nil {
 		t.Fatalf("unmarshal %q: %v", out, err)
 	}
 	if len(got) != 4 {
 		t.Fatalf("json carried %d records, want 4", len(got))
 	}
-	byID := map[string]kanban.PRLinkOutcome{}
+	byID := map[string]factory.PRLinkOutcome{}
 	for _, o := range got {
 		byID[o.CardID] = o
 		if o.CardID == "" || o.Kind == "" {
 			t.Errorf("record %+v is missing card_id or outcome", o)
 		}
 	}
-	if o := byID[ids[0]]; o.Kind != kanban.PRLinkLinked || o.Confidence != kanban.PRLinkExact || o.PRState != "OPEN" {
+	if o := byID[ids[0]]; o.Kind != factory.PRLinkLinked || o.Confidence != factory.PRLinkExact || o.PRState != "OPEN" {
 		t.Errorf("%s = %+v, want linked/exact/OPEN", ids[0], o)
 	}
-	if o := byID[ids[1]]; o.Kind != kanban.PRLinkLinked || o.Confidence != kanban.PRLinkInferred {
+	if o := byID[ids[1]]; o.Kind != factory.PRLinkLinked || o.Confidence != factory.PRLinkInferred {
 		t.Errorf("%s = %+v, want linked/inferred", ids[1], o)
 	}
-	if o := byID[ids[2]]; o.Kind != kanban.PRLinkAmbiguous || len(o.PRs) != 2 {
+	if o := byID[ids[2]]; o.Kind != factory.PRLinkAmbiguous || len(o.PRs) != 2 {
 		t.Errorf("%s = %+v, want ambiguous with 2 candidates", ids[2], o)
 	}
-	if o := byID[ids[3]]; o.Kind != kanban.PRLinkLanded {
+	if o := byID[ids[3]]; o.Kind != factory.PRLinkLanded {
 		t.Errorf("%s = %+v, want landed", ids[3], o)
 	}
 
@@ -338,7 +406,7 @@ func TestTodoPR_RendersOutcomeAndConfidence(t *testing.T) {
 		if len(cols) < 5 || cols[1] == "" {
 			t.Fatalf("row %q does not display an outcome kind", ln)
 		}
-		if cols[1] == string(kanban.PRLinkLinked) && cols[3] == "" {
+		if cols[1] == string(factory.PRLinkLinked) && cols[3] == "" {
 			t.Errorf("linked row %q displays no confidence label", ln)
 		}
 	}

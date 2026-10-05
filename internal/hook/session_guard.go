@@ -41,7 +41,7 @@ func checkForeignSessionAdvisory(input *HookInput, projectDir string) (decision 
 	if input == nil || projectDir == "" {
 		return "", ""
 	}
-	regPath := filepath.Join(projectDir, session.DefaultRegistryPath)
+	regPath := session.RegistryPathFor(projectDir)
 	reg := session.NewRegistry(regPath, nil)
 	entries, err := reg.Query("")
 	if err != nil {

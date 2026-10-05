@@ -146,7 +146,7 @@ func TestBuild_CodeLayersAreAdditive(t *testing.T) {
 		t.Fatal("fixture must produce doc edges (import/mx-spec/spec-depends)")
 	}
 
-	allEdges, _, err := BuildWithCodeLayers(root)
+	allEdges, _, _, err := BuildWithCodeLayers(root)
 	if err != nil {
 		t.Fatalf("BuildWithCodeLayers: %v", err)
 	}
@@ -183,11 +183,11 @@ func TestBuild_DisagreementAllRevivesSuppressedDirection(t *testing.T) {
 	requireCodeExtraction(t)
 	root := docCodeFixture(t) // doc has internal/alpha→internal/beta; demo.go imports nothing internal
 
-	refuteEdges, _, err := BuildWithCodeLayersMode(root, DisagreementRefuteOnly)
+	refuteEdges, _, _, err := BuildWithCodeLayersMode(root, DisagreementRefuteOnly)
 	if err != nil {
 		t.Fatal(err)
 	}
-	allEdges, _, err := BuildWithCodeLayersMode(root, DisagreementAll)
+	allEdges, _, _, err := BuildWithCodeLayersMode(root, DisagreementAll)
 	if err != nil {
 		t.Fatal(err)
 	}

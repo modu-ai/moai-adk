@@ -9,35 +9,65 @@ import (
 // moai MCP server's tool surface. Update it ONLY together with a matching
 // registration change in registerMoaiMCPTools — the registration/catalog
 // equality guard (internal/cli TestMoaiMCPServer_RegistrationMatchesCatalog)
-// catches drift in either direction.
-const wantCatalogSize = 28
+// catches drift in either direction. The jev_ask addition rides
+// SPEC-JEV-GOAL-DIST-001 M8a: registration is unconditional, the capability
+// itself stays gated (workflow.jev.enabled ships false).
+// The factory message family contributes five further registered tools, and
+// the Codex read-only role launcher three (start, status, result).
+// SPEC-FACTORY-SELF-DISPATCH-001 M3 (REQ-SD-014) contributes the six
+// factory card + queue tools. The two on-demand self-review tools
+// (codex_review, glm_review) are read-only and bring the surface to 47.
+const wantCatalogSize = 47
 
-// TestMoaiMCPTools_Count28 asserts the catalog declares exactly
+// TestMoaiMCPTools_CatalogSize asserts the catalog declares exactly
 // wantCatalogSize tools, matching the registration count in
 // registerMoaiMCPTools.
-func TestMoaiMCPTools_Count28(t *testing.T) {
+func TestMoaiMCPTools_CatalogSize(t *testing.T) {
 	tools := MoaiMCPTools()
 	if len(tools) != wantCatalogSize {
 		t.Fatalf("catalog declares %d tools, want %d", len(tools), wantCatalogSize)
 	}
 }
 
-// TestMoaiMCPTools_NineWriteCapable asserts exactly the nine write-capable
-// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 16 are
-// read-only. session_msg_list is read-only: it enumerates registered peers
+// TestMoaiMCPTools_WriteCapableSet asserts exactly the twenty write-capable
+// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 27 are
+// read-only (the two self-review tools among them). session_msg_list is read-only: it enumerates registered peers
 // without touching the store, unlike register/send/poll which write an agent
 // record, append a message, and claim an inbox respectively.
-func TestMoaiMCPTools_NineWriteCapable(t *testing.T) {
+//
+// codex_audit and audit_multi joined the write side in card t904: both file an
+// audit receipt under the audited tree's .moai/state/audit-receipts/ on every
+// exit path, and audit_multi additionally persists its convergence result. The
+// behavioral evidence for that claim is pinned in internal/cli
+// (TestMCPAuditTools_DeclaredWriteCapableActuallyWrite) — this test pins the
+// declaration, that one pins the behavior it must match.
+//
+// SPEC-FACTORY-SELF-DISPATCH-001 M3 adds todo_add (queue insert),
+// factory_next (lease + queue promotion + card worktree), factory_stage (F1
+// edge + lease renewal), factory_complete (merge record), and
+// factory_decide (operator decision).
+func TestMoaiMCPTools_WriteCapableSet(t *testing.T) {
 	want := map[string]bool{
 		"goal_arm":             true,
 		"verify_snapshot":      true,
 		"codex_task":           true,
 		"codex_job_cancel":     true,
+		"codex_role_audit":     true,
 		"glm_task":             true,
 		"glm_job_cancel":       true,
+		"codex_audit":          true,
+		"audit_multi":          true,
 		"session_msg_register": true,
 		"session_msg_send":     true,
 		"session_msg_poll":     true,
+		"factory_msg_send":     true,
+		"factory_msg_list":     true,
+		"factory_msg_receipt":  true,
+		"todo_add":             true,
+		"factory_next":         true,
+		"factory_stage":        true,
+		"factory_complete":     true,
+		"factory_decide":       true,
 	}
 	var got []string
 	for _, tool := range MoaiMCPTools() {
@@ -46,8 +76,8 @@ func TestMoaiMCPTools_NineWriteCapable(t *testing.T) {
 		}
 	}
 	sort.Strings(got)
-	if len(got) != 9 {
-		t.Fatalf("write-capable tool count = %d (%v), want 9", len(got), got)
+	if len(got) != len(want) {
+		t.Fatalf("write-capable tool count = %d (%v), want %d", len(got), got, len(want))
 	}
 	for _, name := range got {
 		if !want[name] {

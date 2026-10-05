@@ -26,21 +26,21 @@ triggers:
   phases: ["plan"]
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
-<!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai plan Phase <N> <enter|exit> -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 # Plan Workflow Orchestration
 
 ## Phase Owners (per the canonical agent catalog policy)
 
-Phase Owners: `manager-spec` (SPEC artifact authoring — spec.md/plan.md/acceptance.md/design.md/research.md/progress.md §F.1) + `Explore` (read-only codebase investigation; Anthropic built-in agent) + `manager-git` (worktree/branch creation when Phase 3 worktree env opt-in).
+Phase Owners: `manager-spec` (SPEC artifact authoring — spec.md/plan.md/acceptance.md/design.md/research.md/progress.md §E.1, lettered per `.claude/rules/moai/development/spec-frontmatter-schema.md` § progress.md Section Map) + `Explore` (read-only codebase investigation; Anthropic built-in agent) + `manager-git` (worktree/branch creation when Phase 3 worktree env opt-in).
 
 Cross-reference: per-SPEC Phase 1 SKIP rationale recorded at `.moai/specs/SPEC-{ID}/progress.md` § Phase 1 SKIP Rationale; Phase 4 Mode Selection autopilot logging at `progress.md` § Phase 4 Mode Selection.
 
 ## Purpose
 
-Create comprehensive SPEC documents using **GEARS notation** (Generalized EARS — the canonical SPEC authoring form as of v3.0.0) as the first step of the Plan-Run-Sync workflow. EARS notation is retained as the explicit 6-month backward-compatibility legacy reference for the 88 pre-v3 SPECs (legacy window expires 2026-11-22 per the canonical GEARS migration policy). Handles project exploration, SPEC file generation, validation, and optional Git environment setup with worktree or branch creation.
+Create comprehensive SPEC documents using **GEARS notation** (Generalized EARS — the canonical SPEC authoring form as of v3.0.0) as the first step of the Plan-Run-Sync workflow. EARS notation is retained as the explicit 6-month backward-compatibility legacy reference for pre-v3 SPECs (see the canonical GEARS migration policy for the backward-compatibility window). Handles project exploration, SPEC file generation, validation, and optional Git environment setup with worktree or branch creation.
 
 Canonical GEARS authoring guide: `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format.
 
@@ -72,6 +72,10 @@ Constraints: 10k concurrent users, 100ms read latency target
 4. Orchestrator runs AskUserQuestion rounds to resolve each marked topic
 5. Implementation Kickoff Approval proceeds only after all clarifications are resolved
 
+<!-- moai:contract-mode-start id="contract-clarification" -->
+Where `workflow.autonomy.mode: contract` — markers still block the run: the contract is signed only after they are resolved, and `moai contract decide` treats any marker left in plan.md or research.md as a failed precondition that routes the Kickoff to a human signature. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
+
+<!-- moai:contract-mode-end -->
 **3-layer distinction**:
 - `[NEEDS CLARIFICATION: <topic>]` — SPEC artifact blocker (user Q required before run)
 - `TODO` — code-level implementation debt (no user Q needed, inline comment sufficient)
@@ -171,7 +175,6 @@ This signal marks the plan artifacts as finalized and enables the Plan Audit Gat
 ---
 
 Version: 2.8.0
-Updated: 2026-05-25
 Changes: Added test scenarios, Phase 3 JIT Language Detection.
 
 ---

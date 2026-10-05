@@ -8,7 +8,7 @@ draft: false
 
 MoAI-ADK 是单一 Go 二进制文件，在 Windows 上也能直接运行，但 Claude Code 所处理的 shell 脚本、路径分隔符与字符编码遵循 Linux/macOS 惯例。因此在 Windows 命令提示符(cmd.exe)或旧版 PowerShell 5.x 中，容易出现路径处理错位或 hook 脚本失败的情况。WSL 在 Windows 内直接提供 Linux 环境，一次性消除这些差距。
 
-本页将以一个完整流程引导你完成 WSL 安装、打开项目以及（可选）CG 模式配置。若已在用 WSL，可直接跳到 [WSL 设置指南](#wsl-设置指南) 开始安装 moai-adk。
+本页将以一个完整流程引导你完成 WSL 安装、打开项目以及（可选）旧 CG 配置迁移。若已在用 WSL，可直接跳到 [WSL 设置指南](#wsl-设置指南) 开始安装 moai-adk。
 
 ## 支持的环境
 
@@ -108,20 +108,13 @@ cd ~/projects/
 2. 在 WSL 终端中运行 `code .`
 3. VS Code 会自动以 WSL 模式打开
 
-## 在 CG 模式中使用 tmux
+## CG 停用与配置迁移
 
-使用 [CG 模式](/zh/multi-llm/cg-mode)需要 tmux。在 WSL 中安装：
+`moai cg` 已停用。它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。
 
-```bash
-# Ubuntu/Debian
-sudo apt install tmux
+`claude-glm` 表示 Claude 领队搭配 tmux 中的 GLM 队友。目前 TEAMMATE 集成验证尚未通过，因此不能应用或启动该方案，只能预览。安装 tmux 或设置 `verified: true` 都不能解除限制。
 
-# 启动 tmux 会话
-tmux new -s moai
-
-# 运行 CG 模式
-moai cg
-```
+[CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
 
 ## 问题排查
 
@@ -131,10 +124,9 @@ moai cg
 | 韩文路径处理失败 | 韩文用户名 | 参考上文[非 ASCII 用户名路径错误](#非-ascii-用户名路径错误) |
 | 权限被拒绝 | 安装脚本权限 | 执行 `chmod +x install.sh` 后重试 |
 | Git 命令失败 | 未安装 Git for Windows | 安装 [Git for Windows](https://gitforwindows.org/) |
-| 没有 tmux | 无法运行 CG 模式 | `sudo apt install tmux`（在 WSL 中） |
 
 ## 下一步
 
 - [安装](/zh/getting-started/installation) — 安装详细指南
 - [初始设置](/zh/getting-started/init-wizard) — 项目初始化
-- [CG 模式](/zh/multi-llm/cg-mode) — Claude + GLM 混合模式
+- [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)

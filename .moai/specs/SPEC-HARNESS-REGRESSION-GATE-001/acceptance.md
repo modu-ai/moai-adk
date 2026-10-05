@@ -2,7 +2,6 @@
 id: SPEC-HARNESS-REGRESSION-GATE-001
 title: "Acceptance Criteria — Harness M2-lite 비회귀 게이트"
 version: "0.1.1"
-status: draft
 created: 2026-06-14
 updated: 2026-06-14
 author: manager-spec
@@ -152,8 +151,7 @@ echo "$OUT2" | grep -q 'no tests to run' && { echo "FAIL: safety frozen vacuous"
 # tier tests
 go test ./internal/harness/tier/ 2>&1 | grep -q '^ok\|^PASS' || { echo "FAIL: tier tests"; exit 1; }
 # DO-NOT-MODIFY git-diff must be empty
-DIFF=$(git diff --stat internal/harness/frozen_guard.go internal/harness/safety/frozen_guard.go internal/harness/tier/tier.go internal/harness/scorer.go .moai/config/sections/harness.yaml)
-[ -z "$DIFF" ] || { echo "FAIL: FROZEN file modified: $DIFF"; exit 1; }
+git diff --stat internal/harness/frozen_guard.go internal/harness/safety/frozen_guard.go internal/harness/tier/tier.go internal/harness/scorer.go .moai/config/sections/harness.yaml   # expect: empty output; non-empty → "FAIL: FROZEN file modified", exit 1
 echo "AC-RG-008 PASS"
 ```
 

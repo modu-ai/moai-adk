@@ -665,12 +665,13 @@ func TestBranchGuard_BranchInquiryFormsInPrimary(t *testing.T) {
 // remediation wording (kanban card t43). The deny reason is the only guidance
 // the orchestrator sees when a branch-state command is refused, so it must not
 // suggest a route that cannot work from where the deny was observed:
-// delegating to a manager-git SUBAGENT reproduces the same deny, because both
-// exemption axes (AgentType identity, MOAI_BRANCH_GUARD_EXEMPT sentinel) are
-// unreachable from tool-spawned subagents — only main-thread launches can
-// carry them. The measured incident: two orchestrator sessions read the old
-// "(use a worktree or invoke via manager-git)" wording, delegated to
-// manager-git, and burned a turn on the identical deny.
+// delegating to a manager-git agent must not be named as a route. Card t43
+// introduced that rule on the belief that such a delegation reproduces the
+// deny; SPEC-BRANCHGUARD-EXEMPT-REACH-001 measured the opposite — the identity
+// axis DOES reach an Agent-tool spawn, so the delegation succeeds, which is the
+// outcome the guard exists to prevent in the primary checkout. The rule is
+// therefore unchanged and its reason is stronger. The sentinel axis stays
+// main-thread-only and was not re-measured.
 //
 // Non-parallel: t.Setenv mutates the process-global exemption env var.
 func TestBranchGuard_DenyReasonRemediationContract(t *testing.T) {
@@ -691,7 +692,10 @@ func TestBranchGuard_DenyReasonRemediationContract(t *testing.T) {
 	if strings.Contains(reason, "invoke via manager-git") {
 		t.Fatalf("deny reason still suggests the subagent-unreachable manager-git route: %q", reason)
 	}
-	if !strings.Contains(reason, branchGuardExemptEnv) || !strings.Contains(reason, "tool-spawned subagents") {
-		t.Fatalf("deny reason lacks the exemption reachability qualifier (main-thread-only): %q", reason)
+	if !strings.Contains(reason, branchGuardExemptEnv) || !strings.Contains(reason, "main-thread-only") {
+		t.Fatalf("deny reason lacks the sentinel main-thread-only qualifier: %q", reason)
+	}
+	if !strings.Contains(reason, "does reach spawned agents") {
+		t.Fatalf("deny reason lacks the measured identity-axis reachability statement: %q", reason)
 	}
 }

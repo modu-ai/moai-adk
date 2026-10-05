@@ -15,9 +15,9 @@ func TestAC004_ArmedGoalSuppressesClearDirective(t *testing.T) {
 	soft := softAtStandard()
 	data := StatusData{
 		Memory: MemoryData{
-			Available:        true,
-			TokenBudget:      200000,
-			TokensUsed:       int(float64(200000) * soft / 100 * 1.05), // 5% above soft
+			Available:         true,
+			TokenBudget:       200000,
+			TokensUsed:        int(float64(200000) * soft / 100 * 1.05), // 5% above soft
 			ContextWindowSize: 200000,
 		},
 	}

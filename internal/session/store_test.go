@@ -287,6 +287,10 @@ func TestFileSessionStoreResolveBlocker(t *testing.T) {
 		},
 		Resolved:  false,
 		Timestamp: time.Now(),
+		// t611: ResolveBlocker matches Phase+SPECID exactly, so the fixture
+		// must carry the scope it is resolved under.
+		Phase:  PhaseRun,
+		SPECID: "SPEC-001",
 	}
 
 	if err := store.RecordBlocker(report); err != nil {
@@ -338,8 +342,8 @@ func TestCheckpoint_ValidatorRejectsBadHarness(t *testing.T) {
 		Phase:  PhaseRun,
 		SPECID: "SPEC-V3R2-RT-004",
 		Checkpoint: &RunCheckpoint{
-			SPECID: "SPEC-V3R2-RT-004",
-			Status: "pass",
+			SPECID:  "SPEC-V3R2-RT-004",
+			Status:  "pass",
 			Harness: "ultra", // invalid value (oneof=minimal standard thorough)
 		},
 		UpdatedAt: time.Now(),

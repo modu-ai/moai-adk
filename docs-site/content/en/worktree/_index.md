@@ -71,7 +71,7 @@ flowchart TD
     L2 --> Who2[Created by MoAI on user opt-in]
 ```
 
-The key is **the separation of sharing and isolation**. The repository's history and remote are managed together in one place, while the working directory and the LLM configuration tied to it are split completely per tree. So no matter which worktree you commit in, the other worktrees recognize that commit immediately, and branches do not tangle. On top of that, MoAI-ADK layers an entry switch (`moai cc` · `moai glm` · `moai cg`) that bundles "which worktree to enter" and "which LLM mode to run" into a single action.
+The key is **the separation of sharing and isolation**. The repository's history and remote are managed together in one place, while the working directory and the LLM configuration tied to it are split completely per tree. So no matter which worktree you commit in, the other worktrees recognize that commit immediately, and branches do not tangle. On top of that, MoAI-ADK layers an entry switch (`moai cc` · `moai glm`) that bundles "which worktree to enter" and "which LLM mode to run" into a single action.
 
 ## Core workflow
 
@@ -123,8 +123,7 @@ main checkout as it is:
 
 The implementation phase is high-volume, but the SPEC has already set the
 direction — so a cheap model like GLM does the job perfectly well. Entering the
-worktree is the launcher's job, via the `-w` flag on `moai cc`, `moai glm`, and
-`moai cg`. If no worktree by that name exists, it is created on the spot:
+worktree is the launcher's job, via the `-w` flag on `moai cc`, `moai glm`. If no worktree by that name exists, it is created on the spot:
 
 ```bash
 # New terminal: create the worktree and enter it with the GLM backend
@@ -145,7 +144,7 @@ $ moai glm -w SPEC-AUTH-002 --spawn
 **Advantages**:
 
 - Completely isolated working environment
-- GLM cost efficiency (for the size of the savings, see [CG Mode](/en/multi-llm/cg-mode))
+- Explicit backend selection: choose `moai cc` or `moai glm` for each worktree.
 - Unlimited parallel development without conflicts
 
 #### Phase 3: Cleanup
@@ -163,7 +162,7 @@ The launcher handles entry; git handles listing:
 | What you want to do     | Command                         | Example                                |
 | ----------------------- | ------------------------------- | -------------------------------------- |
 | Create a Worktree and enter it | `moai cc -w <name>`      | `moai glm -w SPEC-AUTH-001`            |
-| Open one in a new window, keeping the session | `moai cc -w <name> --spawn` | `moai cg -w SPEC-AUTH-002 --spawn` |
+| Open one in a new window, keeping the session | `moai cc -w <name> --spawn` | `moai cc -w SPEC-AUTH-002 --spawn` |
 | List Worktrees          | `git worktree list`             | `git worktree list`                    |
 
 `moai worktree` manages the worktrees once they exist:
@@ -216,36 +215,7 @@ graph TD
 
 ### 2. LLM Independence
 
-Each Worktree gets its own LLM execution mode. Three terminals can run
-differently — `moai cc` (Claude only), `moai glm` (GLM only), and `moai cg`
-(Claude leader + GLM worker hybrid) — without interfering with each other:
-
-```mermaid
-sequenceDiagram
-    participant T1 as Terminal 1<br/>Worktree 1
-    participant T2 as Terminal 2<br/>Worktree 2
-    participant T3 as Terminal 3<br/>Worktree 3
-    participant Main as Main Repository
-
-    T1->>T1: moai cc (Claude)
-    Note over T1: Planning with a<br/>high-reasoning model
-
-    T2->>T2: moai glm
-    Note over T2: Implementing with a<br/>low-cost model
-
-    T3->>T3: moai cg
-    Note over T3: Hybrid balancing<br/>quality and cost
-
-    par Parallel work
-        T1->>Main: Plan work
-        T2->>Main: Implement work
-        T3->>Main: Implement work
-    end
-
-    Main-->>T1: Only completed SPECs merged
-    Main-->>T2: Only completed SPECs merged
-    Main-->>T3: Only completed SPECs merged
-```
+Each worktree can use an explicitly selected launcher, such as `moai cc` for a Claude session or `moai glm` for a GLM session. Neither choice recreates the retired hybrid roles.
 
 ### 3. Unlimited Parallel
 

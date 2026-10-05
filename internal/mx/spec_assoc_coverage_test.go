@@ -2,9 +2,43 @@ package mx
 
 import (
 	"fmt"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+// scanTrackedFiles scans every file `git ls-files` reports for repoRoot, so the
+// corpus is the commit's own tracked set rather than whatever the working tree
+// happens to hold. A file git lists but that cannot be read (deleted in the
+// working tree, or unreadable) is skipped rather than failed: the measurement is
+// a coverage ratio over what exists, and one missing file is not a defect in the
+// association pipeline this test is about.
+func scanTrackedFiles(t *testing.T, scanner *Scanner, repoRoot string) []Tag {
+	t.Helper()
+
+	out, err := exec.Command("git", "-C", repoRoot, "ls-files", "-z").Output()
+	if err != nil {
+		t.Skipf("git ls-files failed in %s: %v", repoRoot, err)
+	}
+	names := strings.FieldsFunc(string(out), func(r rune) bool { return r == 0 })
+	if len(names) == 0 {
+		t.Skip("git ls-files listed no files — tree not representative")
+	}
+
+	var tags []Tag
+	skipped := 0
+	for _, rel := range names {
+		fileTags, err := scanner.ScanFile(filepath.Join(repoRoot, rel))
+		if err != nil {
+			skipped++
+			continue
+		}
+		tags = append(tags, fileTags...)
+	}
+	t.Logf("tracked files listed: %d (unreadable/skipped: %d)", len(names), skipped)
+	return tags
+}
 
 // parentDir returns the parent directory of path, or path itself if it is root.
 func parentDir(path string) string {
@@ -45,15 +79,21 @@ func TestAC002_CoverageLiftOnVsOff(t *testing.T) {
 	t.Logf("known-SPEC set size: %d", len(specModules))
 
 	scanner := NewScanner()
-	// Ignore only build artifacts / VCS state, mirroring the diagnosis-report
-	// full-tree baseline (the 9.7 % / 955-of-9858 measurement scanned the whole
-	// source tree including .claude / .moai @MX-tag-bearing assets).
-	scanner.SetIgnorePatterns([]string{".git", "vendor", "node_modules"})
-	allTags, err := scanner.ScanDir(repoRoot)
-	if err != nil {
-		t.Fatalf("ScanDir: %v", err)
-	}
-	t.Logf("tags scanned: %d", len(allTags))
+	// The input set is the repository's TRACKED files, not a directory walk.
+	//
+	// Card t778. A walk of repoRoot reads whatever happens to sit in that tree:
+	// build output, generated reports, and — in the primary checkout — every
+	// linked worktree under .claude/worktrees. Measured 2026-09-18: this
+	// worktree holds 10,814 files, the primary checkout 4,216,774 (324 entries
+	// under .claude/worktrees). So the same test measured a different corpus in
+	// every tree, and in the primary checkout it ran until the timeout.
+	//
+	// Tracked files are the same set in every worktree of the same commit, so
+	// the comparison below is reproducible and attributable. The lift purpose is
+	// untouched: both the ON and OFF passes read this one set, and the assertions
+	// stay a delta plus a floor.
+	allTags := scanTrackedFiles(t, scanner, repoRoot)
+	t.Logf("tags scanned: %d (tracked files only)", len(allTags))
 
 	if len(allTags) == 0 {
 		t.Skip("no tags scanned — repo tree not representative")

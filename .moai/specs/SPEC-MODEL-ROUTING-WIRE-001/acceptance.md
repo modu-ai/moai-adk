@@ -2,7 +2,6 @@
 id: SPEC-MODEL-ROUTING-WIRE-001
 title: "Wire the Tier×Phase Model Routing Matrix into Spawn Paths — Acceptance Criteria"
 version: "0.1.0"
-status: draft
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec

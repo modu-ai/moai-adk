@@ -36,41 +36,9 @@ func v4EffortValues() []string {
 	}
 }
 
-// v4ModelValues는 v4manifest의 4-model-tier closed set이다.
-func v4ModelValues() []string {
-	return []string{
-		v4manifest.ModelInherit, v4manifest.ModelHaiku,
-		v4manifest.ModelSonnet, v4manifest.ModelOpus,
-	}
-}
-
-// V4EffortValues / V4ModelValues는 웹 계층(agent frontmatter 편집 검증,
-// REQ-WC11-029)이 소비하는 공개 접근자다.
-func V4EffortValues() []string { return v4EffortValues() }
-func V4ModelValues() []string  { return v4ModelValues() }
-
-// ─── Sub-agent tier accessors (SPEC-WEBCONF-SIMPLIFY-001 M1) ──────────────────
-//
-// 티어(tier)는 서브에이전트의 4색 추론-역할 분류다. 각 에이전트의 effort
-// frontmatter와는 독립적인 display-only 분류며 (design.md §B), canonical 테이블/
-// 접근자는 internal/harness/v4manifest에 있다. 여기선 웹 계층이 effort/model
-// closed-set 접근자(V4EffortValues/V4ModelValues)를 이미 임포트한 같은 패키지에서
-// 티어 표면도 함께 노출한다.
-
-// TierForAgent returns the display-only Tier for the named agent (keyed by
-// agent file stem, matching agentfm.AgentInfo.Name). The second return is
-// false when the name has no tier entry (a future agent not yet added to the
-// table — design.md EC-6).
-func TierForAgent(name string) (v4manifest.Tier, bool) {
-	return v4manifest.AgentTier(name)
-}
-
-// TierSuggestedModelEffort returns the suggested (model, effort) pair for the
-// tier (design.md §D). Applied only on explicit user action; writes via
-// agentfm.Patch, NOT a new tier: frontmatter key (C-7).
-func TierSuggestedModelEffort(t v4manifest.Tier) (model, effort string) {
-	return v4manifest.TierSuggestedModelEffort(t)
-}
+// NOTE: the model closed-set accessors and the sub-agent tier accessors
+// (TierForAgent / TierSuggestedModelEffort) left with the agent-settings tab
+// they served (SPEC-AGENT-MODEL-INHERIT-001).
 
 // NOTE: workflow.yaml team.role_profiles 키 목록을 반환하던 접근자와 그 isolation
 // closed-set 헬퍼는 Agent Teams 정적 레이어와 함께 제거되었다 — 웹 콘솔은 더 이상
@@ -78,8 +46,8 @@ func TierSuggestedModelEffort(t v4manifest.Tier) (model, effort string) {
 
 // NOTE: 7-purpose taxonomy 슬러그를 반환하던 zero-caller 접근자는
 // SPEC-WEB-CONSOLE-012 M4(REQ-WC12-032)에서 제거되었다 — 전 리포 호출자 0 실측.
-// taxonomy의 canonical SSOT는 dynamic-workflows.md 표 +
-// config.Workflow.WorkflowAgents 맵 키다.
+// taxonomy의 canonical SSOT는 dynamic-workflows.md 표다 (config.workflow_agents
+// 블록은 모델 승계 SPEC의 M5에서 템플릿·스키마 양쪽에서 제거되었다).
 
 // ─── 컴팩트 생성자 ───────────────────────────────────────────────────────────
 
@@ -160,8 +128,21 @@ func withOptionDesc(f FieldDef, descPrefix string) FieldDef {
 func gitStrategyFields() []FieldDef {
 	modeField := withRadio(typedField(SectionGitStrategy, "git_strategy", "mode", TypeRadio),
 		"f.git_strategy.mode.opt.", []string{"manual", "personal", "team"}, "", "")
-	modeField.Description = "fieldDesc.git_strategy.mode"
-	fields := []FieldDef{modeField}
+	// card t1504 (PR #1738 re-land): the three profiles differ in contract
+	// shape, not just name — per-option descriptions carry the difference.
+	// Keys use the ".option." form so they follow the locale (the ".opt."
+	// label guard must not match). With option descriptions present the
+	// field-level description is cleared — the per-option lines are the sole
+	// explanation (report.format precedent).
+	modeField = withOptionDesc(modeField, "f.git_strategy.mode.option.")
+	// SPEC-WORKTREE-BASEREF-001 REQ-WBR-014: free text, NOT a closed option set.
+	// A select carrying main / develop would bake two repository-specific branch
+	// names into the shipped schema, so a user whose default branch is `trunk`
+	// could not pick their own. The two common names live in the description
+	// (prose), never in an option set.
+	baseBranch := typedField(SectionGitStrategy, "git_strategy", "worktree_base_branch", TypeText)
+	baseBranch.Description = "fieldDesc.git_strategy.worktree_base_branch"
+	fields := []FieldDef{modeField, baseBranch}
 	// merge_method 옵션은 config.ValidMergeMethods() SSOT에서 정렬 파생한다
 	// (REQ-WC14-011 — 리터럴 재선언 금지; B3 — map-range 비결정성 제거를 위해 정렬
 	// 후 사용. 정렬은 파생이지 재선언이 아님). 3개 profile 공유.
@@ -191,20 +172,34 @@ func glmTiers() []string {
 // 없음. RC3(glm-settings-persist)부터 메인 세션이 해당 슬롯을 쓰면 런타임에
 // 적용된다 (llmFields 주석 참조).
 //
-// GLM-5.3 기준 기본값: high=high, medium=high, low=low, fable=max. fable만 max인
-// 것은 z.ai가 코딩 과제에 max를 권고하기 때문이고, high/medium이 max가 아닌 것은
-// 세션 전역 값이 모든 spawn에 청구되기 때문이다(SessionGLMReasoningState의 근거와
-// 동일). low 티어는 5.3에서 thinking을 끌 수 없으므로 최저 단계인 low로 내려간다.
-// (주의: collapse 오버레이에 따라 저장된 high도 wire에서는 max로 수렴한다.)
+// SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-003부터 전 티어 기본값이 max다 —
+// glm-5.3과 glm-5.3-flash 양쪽 모두 max와 양립하고(flash는 max 전용),
+// 세션 기본값도 이미 max다(SessionGLMReasoningState). high/low는 여전히
+// 유효한 저장 상태 선택지다(GLMReasoningStateNames 유지) — 바뀌는 것은
+// 기본 선택값뿐이다. (주의: collapse 오버레이에 따라 저장된 high도 wire에서는
+// max로 수렴한다.)
 func glmDefaultTierEffort(tier string) string {
+	return template.GLMStateMax
+}
+
+// glmDefaultTierModel는 티어별 모델 기본 선택값이다. config.NewDefaultLLMConfig()
+// — 런타임이 부재 키를 채우는 바로 그 기본값 — 에서 읽으며 리터럴을 재선언하지
+// 않는다. 이 Default가 없으면 llm.glm.models 블록이 디스크에 없을 때 라디오가
+// 아무것도 선택하지 않은 채 렌더되고, 기본값과 같은 선택은 no-op 게이트
+// (REQ-WSL-001)가 기록하지 않으므로 저장 후에도 빈 선택으로 돌아온다 (card t1461).
+func glmDefaultTierModel(tier string) string {
+	m := config.NewDefaultLLMConfig().GLM.Models
 	switch tier {
-	case "high", "medium":
-		return template.GLMStateHigh
+	case "high":
+		return m.High
+	case "medium":
+		return m.Medium
 	case "low":
-		return template.GLMStateLow
-	default: // fable
-		return template.GLMStateMax
+		return m.Low
+	case "fable":
+		return m.Fable
 	}
+	return ""
 }
 
 // llmFields는 GLM tier 매핑 4종(high/medium/low/fable)과 티어별 추론 강도 4종을
@@ -223,18 +218,20 @@ func glmDefaultTierEffort(tier string) string {
 // max로 고정한다. 콘솔의 안내 문구(sec.llm.effortnote)도 이 내용을 따른다.
 //
 // legacy alias opus/sonnet/haiku는 SPEC-WEB-CONSOLE-012 REQ-WC12-002에서 웹
-// 편집면에서 제거되었다 — GLMModels legacy struct 멤버는 무접촉 보존되어 legacy
-// yaml 로드가 backward-compat를 유지한다 (REQ-WC12-006).
+// 편집면에서 제거되었다. GLMModels legacy struct 멤버는 SPEC-MODEL-MATRIX-
+// UPDATE-001 REQ-MMU-004(DR-2)에서 삭제되었다 — 기존 llm.yaml의 alias 키는
+// 비엄strict 로더가 무오류 무시한다(수용된 위험의 무음 절반).
 func llmFields() []FieldDef {
 	var fields []FieldDef
 	for _, tier := range glmTiers() {
-		f := withSelect(typedField(SectionLLM, "llm", "glm.models."+tier, TypeSelect),
+		f := withRadio(typedField(SectionLLM, "llm", "glm.models."+tier, TypeRadio),
 			"f.llm.glm.models.opt.", config.ValidGLMModels(), "", "")
 		f.Description = "fieldDesc.llm.glm.models." + tier
+		f.Default = glmDefaultTierModel(tier)
 		fields = append(fields, f)
 	}
 	for _, tier := range glmTiers() {
-		f := withSelect(typedField(SectionLLM, "llm", "glm.effort."+tier, TypeSelect),
+		f := withRadio(typedField(SectionLLM, "llm", "glm.effort."+tier, TypeRadio),
 			"f.llm.glm.effort.opt.", template.GLMReasoningStateNames(), "", "")
 		f.Description = "fieldDesc.llm.glm.effort." + tier
 		f.Default = glmDefaultTierEffort(tier)
@@ -307,6 +304,24 @@ func modeDefaultFields() []FieldDef {
 	return fields
 }
 
+// tierClassFields builds the per-class agent-tier radio fields (the agent
+// tier axis): one closed-set radio per known class, in domain order. The
+// class list comes from config.AgentTierClassOrder so the schema order — the
+// render order — is deterministic. Options derive from config.ValidAgentTiers()
+// (SSOT accessor, never a restated literal set).
+func tierClassFields() []FieldDef {
+	order := config.AgentTierClassOrder()
+	fields := make([]FieldDef, 0, len(order))
+	for _, class := range order {
+		fields = append(fields, withRadio(
+			seamField(SectionWorkflow, "workflow", TypeRadio, "workflow", "agent_tiers", "classes", class),
+			"f.workflow.agent_tiers.classes.opt.",
+			config.ValidAgentTiers(), "", "",
+		))
+	}
+	return fields
+}
+
 func seamSectionFields() []FieldDef {
 	s := seamField
 	// 닫힌 집합 필드는 withRadio/withSelect로 닫힌 위젯 + 멤버십 검증을 갖춘다
@@ -354,7 +369,20 @@ func seamSectionFields() []FieldDef {
 		// template ships no todo block, so the seam writer upserts the nested
 		// mapping on first edit. The polarity is the opposite though — this key
 		// is default-ON, so the console's "absent" rendering means enabled.
-		s(SectionWorkflow, "workflow", TypeBool, "workflow", "todo", "enabled"),
+		// AbsentDefault declares that runtime polarity so the value-invariant
+		// write gate treats an explicit OFF as a real change (sync-audit F1).
+		withAbsentDefault(s(SectionWorkflow, "workflow", TypeBool, "workflow", "todo", "enabled")),
+		// SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-011: the /moai project
+		// Phase 14 completion selector. UNLIKE its two neighbours above, the
+		// distributed template DOES ship this key (`continuation: card`) — a
+		// three-value enum's domain is not discoverable from the key's absence,
+		// so shipping it is how `none` and `pipeline` become visible at all.
+		// The enum LABELS stay English by design (applyI18n's ".opt." guard);
+		// what each value DOES is carried by per-option descriptions whose keys
+		// avoid that substring so they follow the locale.
+		withOptionDesc(closedSeam(SectionWorkflow, "workflow", "f.workflow.project.continuation.opt.",
+			config.ValidProjectContinuations(), "", "", "workflow", "project", "continuation"),
+			"f.workflow.project.continuation.option."),
 		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-021): the audit
 		// selection surfaced in the web console. These are PersistSeam fields
 		// patched via yamlpatch (arbitrary-depth upsert — the doc example is a
@@ -362,7 +390,7 @@ func seamSectionFields() []FieldDef {
 		// (the IDENTICAL interpreter the wizard writes + the MCP handlers read —
 		// no fork). audit_model is the active backend; the three gates are the
 		// per-auditor strictness. Typed as text (the enum is validated at the M3
-		// config-read layer, activeAuditBackend); the wizard offers the validated
+		// config-read layer, config.ResolveAuditPlan); the wizard offers the validated
 		// select for the primary path.
 		// The audit enum LABELS stay English by design (applyI18n's ".opt."
 		// guard). What each value DOES is carried by per-option descriptions
@@ -385,20 +413,27 @@ func seamSectionFields() []FieldDef {
 		// per-backend {model, effort} pins, editable on the SAME Audit panel
 		// (the workflow.audit. prefix routes them there via isAuditFieldName)
 		// and persisted through the same workflow.yaml seam the audit
-		// resolvers read. codex.model is free-form text (a codex-servable id,
-		// e.g. gpt-*); the three selects are closed sets from the SSOT
+		// resolvers read. All six pins render as closed sets (t1278 — the two
+		// former free-text model fields graduated to radio groups: claude pins
+		// reuse the launch model-alias SSOT, codex pins the operator-confirmed
+		// ValidCodexAuditModels pair). The remaining sets come from the SSOT
 		// accessors (v4 effort vocabulary / ValidGLMModels /
 		// GLMReasoningStateNames — the z.ai state names, single reading).
 		// Empty = no pin: the resolver falls back to the SSOT sync-auditor
 		// cell (hence withEmptySubmits — clearing a pin must persist "").
 		// Unlike the llm tier effort map (stored-only, REQ-WCR-033), these
 		// efforts ARE runtime-applied — they ride the audit request builders.
-		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "codex", "model"),
-		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "codex", "effort"),
+		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "claude", "model"),
+			"f.model.opt.", template.ModelAliasPickerValues(), emptyLabelUnset, "opt.unset")),
+		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "claude", "effort"),
+			"f.workflow.audit.claude.effort.opt.", v4EffortValues(), emptyLabelUnset, "opt.unset")),
+		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "codex", "model"),
+			"f.workflow.audit.codex.model.opt.", config.ValidCodexAuditModels(), emptyLabelUnset, "opt.unset")),
+		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "codex", "effort"),
 			"f.workflow.audit.codex.effort.opt.", v4EffortValues(), emptyLabelUnset, "opt.unset")),
-		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "glm", "model"),
+		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "glm", "model"),
 			"f.workflow.audit.glm.model.opt.", config.ValidGLMModels(), emptyLabelUnset, "opt.unset")),
-		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "glm", "effort"),
+		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "glm", "effort"),
 			"f.workflow.audit.glm.effort.opt.", template.GLMReasoningStateNames(), emptyLabelUnset, "opt.unset")),
 		// SPEC-MCP-CONSOLE-001 M3 (REQ-C-6 / AC-C-009): codex opt-in toggles written
 		// through the SAME seam the fail-closed readers consume. The path
@@ -407,6 +442,16 @@ func seamSectionFields() []FieldDef {
 		// readCodexTaskAllowWrite read — one source of truth, no parallel key.
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "codex", "review_gate", "enabled"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "codex", "task", "allow_write"),
+		// The Jev opt-in toggle. Same seam, same file, same nested-patch write
+		// as its neighbours above; what is different is WHERE it renders — the
+		// console gives it its own panel (isJevFieldName routes it there) so
+		// the privacy statement and the credential control sit beside the
+		// switch they describe, rather than being one bool among thirty.
+		//
+		// The distributed template DOES ship this key (`jev: {enabled: false}`),
+		// so no absent-default declaration is needed: the console reads a real
+		// false rather than inferring one from absence.
+		s(SectionWorkflow, "workflow", TypeBool, "workflow", "jev", "enabled"),
 
 		// harness (파일: harness.yaml, 최상위 키 harness + learning).
 		selectSeam(SectionHarness, "harness", "f.harness.default_profile.opt.",
@@ -471,7 +516,9 @@ func seamSectionFields() []FieldDef {
 	}
 	// harness.mode_defaults.* 는 실행 모드 pin 집합에서 파생하므로 리터럴 목록에
 	// 인라인하지 않고 뒤에 붙인다 (렌더 순서: harness 블록 뒤).
-	return append(fields, modeDefaultFields()...)
+	// Agent-tier class radios append after the derived harness fields (tier
+	// fields: closed-set radios per class — see tierClassFields).
+	return append(append(fields, modeDefaultFields()...), tierClassFields()...)
 }
 
 // ─── SPEC-WEB-CONSOLE-013 M2: handoff / cache 섹션 (seam 전용) ────────────────
@@ -505,12 +552,15 @@ func cacheFields() []FieldDef {
 	}
 }
 
-// reportFormatValues는 report.format의 닫힌 집합이다 (html+md / md).
-// moai-domain-html-report skill이 읽어 출력 포맷을 결정한다.
-var reportFormatValues = []string{"html+md", "md"}
+// reportFormatValues는 report.format의 닫힌 집합이다 (html+md / md / artifact).
+// moai-domain-html-report skill이 읽어 출력 포맷을 결정한다. artifact는
+// Claude Artifact 게시 경로이며 Artifact 도구가 없는 세션(Codex·GLM·API-key)에서는
+// html+md로 자동 폴백한다 (SPEC-REPORT-ARTIFACT-DELIVERY-001 REQ-001/002). 기본값
+// html+md는 불변이고 기존 두 값의 순서·의미는 보존된다.
+var reportFormatValues = []string{"html+md", "md", "artifact"}
 
-// reportFields는 report 섹션의 편집 FieldDef를 반환한다: format(radio). 2-옵션
-// 닫힌 집합(html+md / md)이라 select-minimization으로 라디오 버튼 그룹으로 렌더한다
+// reportFields는 report 섹션의 편집 FieldDef를 반환한다: format(radio). 3-옵션
+// 닫힌 집합(html+md / md / artifact)이라 select-minimization으로 라디오 버튼 그룹으로 렌더한다
 // (withRadio). report tab에서 제네릭 schemaFieldWidget(→ schemaRadioRow)로 렌더되며,
 // seam 경로(report.yaml)로 영속화된다.
 //
@@ -536,6 +586,8 @@ func reportFields() []FieldDef {
 			f.Options[i].OptionDesc = "f.report.format.option.html_md.desc"
 		case "md":
 			f.Options[i].OptionDesc = "f.report.format.option.md.desc"
+		case "artifact":
+			f.Options[i].OptionDesc = "f.report.format.option.artifact.desc"
 		}
 	}
 	return []FieldDef{f}
@@ -544,8 +596,9 @@ func reportFields() []FieldDef {
 // NOTE: agent-settings 웹 렌더 표면(team.role_profiles — 7 profiles ×
 // {model, effort, isolation, mode})은 Agent Teams 정적 레이어와 함께 제거되었다
 // (SPEC-AGENT-TEAM-RETIRE-001). 웹 콘솔은 더 이상 Agent Teams 설정을 렌더하지
-// 않는다. sub-agent frontmatter 편집(agentfm.*)은 별도 표면(agentfm.go)으로
-// 유지된다 — Agent Teams와 무관하다.
+// 않는다. sub-agent model/effort 편집 표면(agentfm.*)은 llm.agent_overrides
+// 저장 경로로 복원되었다 (SPEC-WEB-AGENTFM-RESTORE-001) — 전용 스키마
+// FieldDef 없이 전용 seam(llmoverrides.go)으로 영속화된다.
 
 // withEmptySubmits opts a closed-set select into treating "" as a real,
 // submittable value: the rendered empty option writes the yaml key back to its
@@ -558,6 +611,17 @@ func withEmptySubmits(f FieldDef) FieldDef {
 	f.EmptySubmits = true
 	prev := f.Validate
 	f.Validate = func(v string) bool { return v == "" || (prev != nil && prev(v)) }
+	return f
+}
+
+// withAbsentDefault declares a bool field's runtime polarity for an ABSENT
+// key: "true" when the key's interpreter is default-ON / fail-open (absent
+// means enabled), empty for the default-off reading (absent means false).
+// The value-invariant write gate (ApplySchemaEdits) is the consumer — without
+// this declaration an explicit OFF save on a default-ON absent key would be
+// silently skipped as a no-op (sync-audit F1, SPEC-WEB-WRITE-SAFETY-001).
+func withAbsentDefault(f FieldDef) FieldDef {
+	f.AbsentDefault = "true"
 	return f
 }
 
@@ -594,7 +658,18 @@ func sectionExtraFields() []FieldDef {
 	fields = append(fields, reportFields()...)  // report.format (launch tab)
 	fields = append(fields, mcpFields()...)     // SPEC-MCP-CONSOLE-001 M1
 	fields = append(fields, crossSessionFields()...)
+	fields = append(fields, gateFields()...) // SPEC-PRECOMMIT-GATE-SCOPE-001 M2
 	return fields
+}
+
+// gateFields는 gate 섹션의 편집 FieldDef를 반환한다: pre_commit.enabled(bool).
+// yamlpatch seam으로 gate.yaml의 gate.pre_commit.enabled에 기록되며, 게이트
+// 러너는 MOAI_PRECOMMIT=1 마커 하에서만 이 키를 존중한다
+// (SPEC-PRECOMMIT-GATE-SCOPE-001 REQ-009).
+func gateFields() []FieldDef {
+	return []FieldDef{
+		seamField(SectionGate, "gate", TypeBool, "gate", "pre_commit", "enabled"),
+	}
 }
 
 // mcpFields generates one enablement bool per MCP tool declared in the shared
@@ -603,12 +678,15 @@ func sectionExtraFields() []FieldDef {
 // C-C-5 / AC-C-005). The list is DERIVED from the single catalog declaration —
 // no second tool list lives here — so a tool added to registration cannot go
 // unrepresented in the schema (AP-C-4). Default enabled (owner decision).
+// AbsentDefault declares that fail-open polarity (sync-audit F1): an absent
+// key means the tool IS enabled, so an explicit OFF submission is a real
+// change the value-invariant gate must write.
 func mcpFields() []FieldDef {
 	tools := mcpcat.MoaiMCPTools()
 	fields := make([]FieldDef, 0, len(tools))
 	for _, t := range tools {
-		fields = append(fields, seamField(SectionMCP, "mcp", TypeBool,
-			"mcp", "tools", t.Name, "enabled"))
+		fields = append(fields, withAbsentDefault(seamField(SectionMCP, "mcp", TypeBool,
+			"mcp", "tools", t.Name, "enabled")))
 	}
 	return fields
 }
@@ -702,5 +780,6 @@ func SchemaSectionIDs() []SectionID {
 		SectionSecurity,
 		SectionHandoff,
 		SectionCache,
+		SectionGate,
 	}
 }

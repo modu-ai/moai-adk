@@ -2,10 +2,10 @@
 // Implements 4-mode throttling for Tier 4 evolution proposals before AskUserQuestion.
 //
 // Modes:
-//  - ModeImmediate: emit immediately when tier 4 + L1-L4 pass (default)
-//  - ModeBatch:     queue proposals, emit at window boundary (weekly/sprint_end/manual)
-//  - ModeQuiet:     defer proposals inside quiet hours; emit outside
-//  - (mute):        muted categories never emitted (applies to all modes)
+//   - ModeImmediate: emit immediately when tier 4 + L1-L4 pass (default)
+//   - ModeBatch:     queue proposals, emit at window boundary (weekly/sprint_end/manual)
+//   - ModeQuiet:     defer proposals inside quiet hours; emit outside
+//   - (mute):        muted categories never emitted (applies to all modes)
 //
 // [HARD] No AskUserQuestion calls. Throttler emits CheckResult; orchestrator owns user interaction.
 //

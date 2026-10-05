@@ -1,5 +1,5 @@
 ---
-description: "(dev-only) release maintainer harness — MoAI-ADK production release (Enhanced GitHub Flow, scripts/release.sh + GoReleaser). NOT distributed to user projects."
+description: "(dev-only) release maintainer harness — MoAI-ADK production release (git-flow: rc build on develop, release/vX.Y.Z cut from develop, PR to main, scripts/release.sh + GoReleaser, back-merge into develop). NOT distributed to user projects."
 argument-hint: "[VERSION] [--hotfix]"
 allowed-tools: Agent
 ---

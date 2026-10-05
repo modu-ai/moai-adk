@@ -6,9 +6,13 @@ package cli
 // @MX:NOTE: [AUTO] M6-S1 DDD: cc is a thin delegate-only entry point; print sites live in launcher.go::launchClaudeDefault
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // findProjectRootFn is the function used to locate the project root.
@@ -17,7 +21,7 @@ import (
 var findProjectRootFn = findProjectRoot
 
 var ccCmd = &cobra.Command{
-	Use:   "cc [-p profile] [-k [SPEC-ID] | -k --name <role> | -f [N] | -f lane-<n>] [-- claude-args...]",
+	Use:   "cc [-p profile] [-f | -l] [-- claude-args...]",
 	Short: "Launch Claude Code with Claude backend",
 	Long: `Launch Claude Code with Claude backend.
 
@@ -36,54 +40,54 @@ Flags:
   -m, --model <model>           Override model selection
   -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
                                 name omitted = auto-generated (same as claude --worktree)
+      --branch <existing>         With -w <name>: create the worktree checked out at an
+                                EXISTING branch (e.g. moai cc -w develop --branch develop
+                                for the gitflow integration worktree) instead of a new
+                                branch. The branch must already exist — this flag never
+                                creates one. The tree is registered in
+                                .moai/state/worktrees.json for worktree tooling.
       --spawn                   Run this command in a new tmux window instead of
                                 replacing the current session (requires tmux)
-  --chrome / --no-chrome        Toggle Chrome MCP
+  --chrome / --no-chrome        Passed through to Claude Code unchanged; the
+                                launcher adds neither (Chrome stays attachable
+                                via /chrome unless you pass --no-chrome)
 
-Kanban Mode:
-  -k, --kanban [SPEC-ID]       Enter as the LEAD of a kanban run. Seeds a
-                                plan -> run -> sync chain in this
-                                session. The optional SPEC-ID ties the run to a
-                                SPEC. The lead drives the whole chain; three
-                                companion sessions are launched by hand.
-  -k --name <role>             Enter as a COMPANION of an existing kanban run.
-                                Joins the run without seeding a chain. The three
-                                roles are: plan, run, sync. A role name
-                                held by a live session is bumped to the next
-                                free number (plan-1, plan-2, ...).
+Factory Mode (dedicated -f and -l entries):
+  -f, --factory                Enter as the LEADER of a factory run. The flag
+                                takes no argument: lanes join one at a time
+                                with -l. The leader routes operator-picked
+                                cards to free lanes over cross-session
+                                messages — each card goes WHOLE to one lane,
+                                which carries it through plan -> run -> sync
+                                in-session.
+  -l, --lane                   Join the running factory as a LANE: the next
+                                free lane-<n> label is claimed for this
+                                session. The flag takes no argument. If the
+                                run's record is missing or retired while a
+                                live leader session exists, the join verifies
+                                that leader (pid + process-start) and
+                                restores its run, so the lane still lands on
+                                the live factory.
+  --leader <name>              With -l: which leader session the
+                                record-absence verification targets
+                                (default: leader). A legacy spelling of the
+                                leader name is refused.
+  One entry token per launch: -f beside -l is an error. A lane number
+  held by a live session is bumped to the next free number.
+  Legacy role and label spellings (the pre-rename nouns, any letter case)
+  are refused — the error names the canonical lane-<n> label.
 
-Factory Mode (dedicated -f entry):
-  -f, --factory [N]            Enter as the LEAD of a factory run with N
-                                numbered lanes; N omitted = one lane
-                                (lane-1), grown afterwards with the
-                                incremental form below. The lead routes
-                                operator-picked cards to free lanes over
-                                cross-session messages — each card goes
-                                WHOLE to one lane, which carries it through
-                                plan -> run -> sync in-session.
-  -f lane-<n>                  Launch exactly one additional lane — lane
-                                n — and connect it to the lead socket of the
-                                running factory. A number whose label is held by a
-                                live session is bumped to the next free number.
-  -k <N> / -k <N> --name lane-<i>
-                                The v1.2.0 unified -k factory shapes, still
-                                valid: -k N is the lead of an N-lane run,
-                                -k N --name lane-<i> is lane i of it (a
-                                bare -k --name lane-<i> defaults to 8).
-                                One entry token per launch: -k and -f
-                                together is an error.
-
-  Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to
-  -k/--kanban in #1513 (7f61332ef) and now drives the three-role kanban chain
-  above. -f briefly returned as the factory fan-out flag and was RETIRED
-  (v1.2.0) in favor of '-k <N>'; t118 (v3.1.1) revived it as the dedicated
-  factory entry — the kanban chain keeps -k, the factory gets -f.
+  Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to -k
+  in #1513 (7f61332ef). -f briefly returned as the factory fan-out flag and
+  was RETIRED (v1.2.0) in favor of '-k <N>'; t118 (v3.1.1) revived it as the
+  dedicated factory entry, and -k itself is now retired: a launch carrying
+  it is refused with one line naming -f and -l.
 
 Permission Modes:
   default            Ask permissions for file edits and commands
-  acceptEdits        Auto-accept file edits, ask for commands (project default)
+  acceptEdits        Auto-accept file edits, ask for commands (moai init default)
   plan               Read-only exploration and planning
-  auto               Background classifier checks actions (requires Team plan + Sonnet/Opus 4.6)
+  auto               Background classifier checks actions (requires a supported model and plan; see Claude Code permission-modes docs)
   bypassPermissions  Skip all checks (isolated environments only)
   dontAsk            Only pre-approved tools
 
@@ -95,13 +99,10 @@ Examples:
   moai cc -w feat-login                # Launch in isolated worktree 'feat-login'
   moai cc -w                           # Launch in auto-named isolated worktree
   moai cc -w feat-login --spawn        # Teammate session in a new tmux window
-  moai cc -k                           # Kanban lead: seeds the plan->run->sync chain
-  moai cc -k SPEC-AUTH-001             # Kanban lead tied to SPEC-AUTH-001
-  moai cc -k --name plan               # Kanban companion: joins as the plan lane
-  moai cc -f                           # Factory lead: one lane (lane-1)
-  moai cc -f 4                         # Factory lead: announces lane-1..lane-4
-  moai cc -f lane-2                    # Add lane 2 to the running factory
-  moai glm -f lane-3                   # Same lane on the GLM backend`,
+  moai cc -w develop --branch develop  # Integration worktree on the existing develop branch
+  moai cc -f                          # Factory leader: one lane (lane-1)
+  moai cc -l                           # Join the running factory as the next free lane
+  moai glm -l                          # Same lane on the GLM backend`,
 	GroupID:            "launch",
 	DisableFlagParsing: true,
 	RunE:               runCC,
@@ -113,6 +114,10 @@ func init() {
 
 // runCC switches the LLM backend to Claude, then launches Claude Code.
 func runCC(cmd *cobra.Command, args []string) error {
+	return runClaudeEntry(cmd, args, "cc", "claude", factory.BackendClaude, unifiedLaunch)
+}
+
+func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backend string, launch func(string, string, []string) error) error {
 	for _, arg := range args {
 		if arg == "--help" || arg == "-h" {
 			return cmd.Help()
@@ -122,109 +127,181 @@ func runCC(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// SPEC-CODEX-DEBUG-MODE-001 REQ-004: observe-only debug detection — the
+	// token STAYS in the child arguments untouched (the child's native -d
+	// handling is preserved); only the launcher-side trace activates. The
+	// scan mirrors the --help scan above: post--- tokens are the child's and
+	// are never inspected (REQ-002's scoping).
+	debugRequested := launcherDebugRequested(args)
+	var debugTiming *factoryLaunchTiming
+	if debugRequested {
+		debugTiming = &factoryLaunchTiming{debug: true}
+	}
+	endEntry := debugTiming.beginDebug(launchStepEntryParse, "")
+
+	// REQ-SCV-009 (SPEC-SESSION-CC-VERSION-001): a --resume token with no
+	// session id is a broken launch — refuse before any launch side effect,
+	// including the --spawn window. Pure argv scan: no environment, no
+	// filesystem, no lane claim.
+	if err := validateResumeArgs(args); err != nil {
+		endEntry()
+		return err
+	}
+
+	if err := guardCGLaunchMode(mode); err != nil {
+		endEntry()
+		return err
+	}
+
 	// --spawn re-issues this same command in a new tmux window instead of
 	// replacing the current process. It runs before any settings mutation so a
 	// failed spawn leaves the environment untouched; the spawned `moai cc`
 	// performs the mutations itself.
 	if spawnArgs, spawn := stripSpawnFlag(args); spawn {
-		return spawnLaunch(cmd.OutOrStdout(), "cc", spawnArgs)
+		endEntry()
+		if err := refuseBadEntryBeforeSpawn(spawnArgs); err != nil {
+			return err
+		}
+		return spawnLaunch(cmd.OutOrStdout(), commandName, spawnArgs)
 	}
 
 	profileName, filteredArgs, err := parseProfileFlag(args)
 	if err != nil {
+		endEntry()
 		return err
 	}
-	// The unified entry parse (t118): parseLauncherEntry covers BOTH entry
-	// tokens — the -k shapes of SPEC-FACTORY-BOOTSTRAP-001 (kanban membership,
-	// role disambiguated by --name, per the §A.2 truth table REQ-FB-001 /
-	// REQ-FB-002) plus the v1.2.0 factory shapes (-k N), and the revived
-	// dedicated -f surface (bare -f / -f N / -f lane-<n>). Parsed after
-	// --spawn is stripped (a spawned session re-issues this command and must
-	// carry the token through) and before worktree handling (so an entry token
-	// can never be mistaken for a -w value). The environment mutation is
-	// restored on every return path, including error.
+	// The entry parse (t118): parseLauncherEntry refuses the retired -k
+	// spelling, then covers the factory surface (-f for the leader, -l / --lane
+	// for a lane). Parsed after --spawn is stripped (a spawned session re-issues
+	// this command and must carry the token through) and before worktree
+	// handling (so an entry token can never be mistaken for a -w value). The
+	// environment mutation is restored on every return path, including error.
 	entry, err := parseLauncherEntry(filteredArgs)
 	if err != nil {
+		endEntry()
 		return err
 	}
 	filteredArgs = entry.Rest
-	label, isCompanion := parseCompanionLabel(filteredArgs)
+	endEntry()
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
-	case factoryBranchLead:
-		// The operator-supplied `lead-<run-id>` name is adopted on the same
-		// terms as the kanban lead (see kanban.go leadRunID) — the run id, the
-		// session name, and the lane commands the notice prints stay on one
-		// run.
-		leadLabel, _ := parseLeadLabel(filteredArgs)
-		defer enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)()
-		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendClaude)()
-		var leadName string
-		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
-		defer exportLeadSessionName(leadName)()
-		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
+	case factoryBranchLeader:
+		// The operator-supplied `leader-<run-id>` name is adopted (see
+		// factory_launch_helpers.go leaderRunID) — the run id, the session name, and the lane
+		// commands the notice prints stay on one run.
+		leaderLabel, _ := parseLeaderLabel(filteredArgs)
+		restoreFactory := enterFactoryLeaderMode(entry.FactoryLanes, leaderLabel)
+		defer restoreFactory()
+		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, false, nil)
+		if runErr != nil {
+			return runErr
+		}
+		defer restoreRun()
+		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvFactoryRunID), backend, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
+			return fmt.Errorf("record factory run: %w", err)
+		}
+		defer exportFactoryLaunchFacts(entry.Spec, backend)()
+		var leaderName string
+		filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+		defer exportLeaderSessionName(leaderName)()
+		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
+		settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
+		endSettings()
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
-	case factoryBranchWorker:
+	case factoryBranchLane:
+		// The shared lane join: record-absence refusal falls back to
+		// verified leader discovery + resume, then re-enters the gate
+		// (SPEC-FACTORY-LANE-JOIN-SOCKET-001). One implementation for cc,
+		// glm, and the codex twin (REQ-010). Under debug mode the join gate
+		// and active-run resolution record through the launch's collector —
+		// the same t1378 steps the codex lane launch names (REQ-013's
+		// shared vocabulary).
+		restoreRun, runErr := enterFactoryLaneRun(launchProjectRoot(), entry.FactoryRun, entry.FactoryLead, debugTiming)
+		if runErr != nil {
+			return runErr
+		}
+		defer restoreRun()
 		// A number held by a live session is bumped to the next free one, and
 		// the bumped value must reach the backend argv — the session name is
-		// the address the lead dispatches to.
-		finalLabel := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
+		// the address the leader dispatches to.
+		endClaim := debugTiming.beginDebug(factoryStepLaneClaim, "")
+		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, backend, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		endClaim()
+		if claimErr == nil {
+			debugTiming.annotateDetail("label=" + finalLabel)
+		}
+		if claimErr != nil {
+			return claimErr
+		}
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
-		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
-		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendClaude)()
-		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
-		if len(settingsFlag) > 0 {
-			filteredArgs = append(filteredArgs, settingsFlag...)
+		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes, entry.ClearPolicy, laneDispatchSelection(entry))()
+		defer exportFactoryLaunchFacts(entry.Spec, backend)()
+		// REQ-SD-020: the relaunch policy turns this launcher into the
+		// supervising loop — it stays the parent, leases the next card,
+		// starts one interactive session per card, and never exec's in
+		// place (design.md §6). The stamps above are live for the loop's
+		// own `next` calls and reach every child through the environment.
+		if entry.ClearPolicy == config.FactoryClearPolicyRelaunch {
+			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
+			settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
+			endSettings()
+			defer settingsCleanup()
+			filteredArgs = laneJoinChildArgv(filteredArgs, finalLabel, settingsFlag)
+			if debugRequested {
+				// The relaunch loop replaces the one-shot launch: the dump is
+				// this launcher's pre-exec trace, printed before the loop's
+				// first session handoff (REQ-009's cc/glm form).
+				debugTiming.debugDump(cmd.ErrOrStderr())
+			}
+			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs, entry.FactoryRun, entry.FactoryLead)
 		}
+		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
+		settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
+		endSettings()
+		// REQ-SCV-008: the lane-join child argv is assembled by the one pure
+		// assembler (lane_resume.go) — name pair, settings, and pass-through
+		// tokens, in a deterministic order.
+		filteredArgs = laneJoinChildArgv(filteredArgs, finalLabel, settingsFlag)
 		defer settingsCleanup()
-	}
-	if !entry.FactoryEnabled {
-		switch resolveKanbanBranch(entry.KanbanEnabled, isCompanion) {
-		case kanbanBranchLead:
-			// An operator-supplied `lead-<run-id>` name carries the run id this
-			// session already belongs to — a relaunch of an existing lead, or a
-			// board whose companions are already open. Adopting it is what keeps
-			// the session name, MOAI_KANBAN_ID, the lead socket path, and the
-			// companion commands the SessionStart notice prints on one run.
-			leadLabel, _ := parseLeadLabel(filteredArgs)
-			defer enterKanbanMode(entry.Spec, leadLabel)()
-			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendClaude)()
-			// A lead launched bare has only an AI-generated title, which claude
-			// discards on /clear; naming it explicitly is what survives.
-			var leadName string
-			filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
-			defer exportLeadSessionName(leadName)()
-			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
-			if len(settingsFlag) > 0 {
-				filteredArgs = append(filteredArgs, settingsFlag...)
-			}
-			defer settingsCleanup()
-		case kanbanBranchCompanion:
-			// A label held by a live session is bumped to the next free number
-			// for the role, and the bumped value must reach the backend argv —
-			// the session name is the address the lead dispatches to.
-			finalLabel := resolveCompanionName(launchProjectRoot(), label, cmd.ErrOrStderr())
-			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
-			defer enterKanbanCompanionMode(finalLabel)()
-			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendClaude)()
-			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
-			if len(settingsFlag) > 0 {
-				filteredArgs = append(filteredArgs, settingsFlag...)
-			}
-			defer settingsCleanup()
-		}
 	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: validate absolute-path -w values
 	// BEFORE normalizeWorktreeFlag so out-of-prefix paths are rejected with a
 	// clear error (AC-WES-010c) and L2 (~/.moai/worktrees/) paths are accepted
 	// (AC-WES-010a). normalizeWorktreeFlag remains the owner of short-name
 	// token normalization (AC-WES-010b).
-	if err := resolveWorktreeL2Path(filteredArgs); err != nil {
+	endWt := debugTiming.beginDebug(launchStepWorktree, "")
+	if err := resolveWorktreeL2Path(filteredArgs, cmd.ErrOrStderr()); err != nil {
+		endWt()
 		return err
 	}
+	// Card t295: `-w <name> --branch <existing>` materializes the worktree at
+	// the existing branch before launch; the flag tokens are stripped so the
+	// backend re-enters the tree that now exists. No-op without --branch.
+	filteredArgs, err = resolveWorktreeExistingBranch(filteredArgs, cmd.ErrOrStderr())
+	endWt()
+	if err != nil {
+		return err
+	}
+	// A tree another live session is anchored in gets no second writer. The
+	// check only reads; Claude Code writes its own lock on entry.
+	if err := ccWorktreeWriterPrecheck(filteredArgs); err != nil {
+		return err
+	}
+	// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill — applied
+	// only now that the admission above succeeded, so a refused launch leaves
+	// the tree untouched (audit F0, sync-audit-opus.md).
+	seedAdmittedWorktreeHooks(filteredArgs, cmd.ErrOrStderr())
+	endHandoff := debugTiming.beginDebug(launchStepLaunchHandoff, "")
 	filteredArgs = normalizeWorktreeFlag(filteredArgs)
-	return unifiedLaunch(profileName, "claude", filteredArgs)
+	endHandoff()
+	if debugRequested {
+		// REQ-009's cc/glm form: the backend launch replaces this process
+		// (exec), so the dump is the launcher's last output, printed before
+		// the launch call.
+		debugTiming.debugDump(cmd.ErrOrStderr())
+	}
+	return launch(profileName, mode, filteredArgs)
 }

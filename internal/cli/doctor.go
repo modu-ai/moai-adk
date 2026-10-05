@@ -5,6 +5,7 @@ package cli
 // @MX:NOTE: [AUTO] Binary freshness check detects stale builds via commit hash comparison
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,8 +19,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/astgrep"
+	"github.com/modu-ai/moai-adk/internal/binlag"
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/constitution"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/migration"
@@ -97,6 +100,11 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 
 	// Render per-section pass/fail tables + counts + summary (REQ-TUX4-002).
 	_, _ = fmt.Fprintln(out, renderDoctorGroups(out, groups, verbose, th))
+
+	// REQ-IFU-012: the same local-instruction advisory `moai update` prints.
+	if cwd, err := os.Getwd(); err == nil {
+		emitLocalInstructionsAdvisory(out, cwd)
+	}
 
 	failCount := countFailedChecks(allChecks)
 
@@ -190,6 +198,9 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"Claude Code", checkClaudeCode},
 		{"GitHub CLI", checkGitHubCLI},
 		{"ast-grep CLI", checkAstGrep},
+		// Card t702: advisory detection of the shared flag slot state for
+		// third-party-backend sessions — read-only, never gates doctor.
+		{flagSlotCheckName, checkFlagSlot},
 	}
 
 	moaiChecks := []checkFunc{
@@ -198,7 +209,34 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"MoAI Version", checkMoAIVersion},
 		{"Binary Freshness", checkBinaryFreshness},
 		{"MCP Scope Duplicates", func(v bool) DiagnosticCheck { return checkMCPScopeDuplicates(cwd, v) }},
+		// Card t1250: a local server and a claude.ai connector of the same
+		// provider escape name-based dedup and load the tools twice.
+		{mcpProviderDuplicatesCheckName, func(v bool) DiagnosticCheck { return checkMCPProviderDuplicates(cwd, v) }},
 		{mcpServerVersionCheckName, func(v bool) DiagnosticCheck { return checkMCPServerVersion(cwd, v) }},
+		// Card t1251: hook wrappers log skipped fires here; surface them so a
+		// silently missing hook is not silently forgotten.
+		{hookMissingLogCheckName, func(v bool) DiagnosticCheck { return checkHookMissingLog(cwd, v) }},
+		// Read-only sweep of subagent transcripts for the model that actually
+		// served each run; advisory, never gates doctor. Explicit-only: the
+		// default run shows one info hint row and does not sweep.
+		{servedModelCheckName, servedModelDoctorEntry(cwd, filterCheck)},
+		// SPEC-TODO-STALE-STORE-001 (card t1307): the stale project-local
+		// queue store a rollback snapshot left behind, judged from the same
+		// detector the read verbs disclose through (REQ-TSS-004). Read-only.
+		{todoStoreDivergenceCheckName, func(v bool) DiagnosticCheck { return checkTodoStoreDivergence(cwd, v) }},
+		// SPEC-TODO-SURFACE-POLISH-001 (card t1349): the non-SQLite ghost
+		// artifact inventory (legacy backlog.json, .migrated, session
+		// records), judged from the same detector (REQ-TSP-042). Read-only.
+		{todoGhostInventoryCheckName, func(v bool) DiagnosticCheck { return checkTodoGhostInventory(cwd, v) }},
+		// SPEC-SESSION-CC-VERSION-001 REQ-SCV-007: per live registry session,
+		// the running Claude Code version against the installed one. Read-only,
+		// at most one probe per live entry, advisory — never CheckFail, so it
+		// never gates doctor's exit status.
+		{ccVersionStalenessCheckName, func(v bool) DiagnosticCheck { return checkSessionCCVersionStaleness(cwd, v) }},
+		// SPEC-AGENT-EMIT-LINEAGE-001 REQ-AEL-004: embed-axis judgment point.
+		// Applicable only in a tree carrying the committed emission set — a
+		// deployed project sees one added `ok` row and the same exit status.
+		{agentEmitEmbedCheckName, func(v bool) DiagnosticCheck { return checkAgentEmitEmbed(cwd, v) }},
 		{"Constitution Registry", func(v bool) DiagnosticCheck {
 			registryPath := resolveRegistryPath(cwd)
 			strictMode := os.Getenv(constitutionStrictEnvKey) == "1"
@@ -207,23 +245,60 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"Harness 5-Layer", func(v bool) DiagnosticCheck { return runHarnessCheck(cwd) }},
 		{"Migration", func(v bool) DiagnosticCheck { return checkMigration(cwd, v) }},
 		{"Plugin Deployment", func(v bool) DiagnosticCheck { return checkPluginDeployment(cwd, v) }},
+		// SPEC-PLUGIN-MARKETPLACE-001 REQ-020..023 (card t1435): installed moai
+		// plugin version vs this binary. Reads one registry file and runs at most
+		// one bounded `codex plugin list --json`; never starts claude.
+		{pluginVersionCheckName, checkPluginVersion},
 		// SPEC-V3R6-MOAI-CLEAN-HOME-001 REQ-MCH-001: advisory home disk check.
 		{"Home Disk Usage", checkHomeDisk},
 	}
 
 	workspaceChecks := []checkFunc{
 		{"Hooks Config", func(v bool) DiagnosticCheck { return checkHooksConfig(cwd, v) }},
+		// SPEC-HOOK-WIRING-DRIFT-001 REQ-HWD-003: report template-vs-project
+		// hook-entry drift in both directions. Reports only; never repairs.
+		{hookWiringCheckName, func(v bool) DiagnosticCheck {
+			return checkHookWiringDrift(cwd, hookWiringTemplateSource(), v)
+		}},
+		// SPEC-UPDATE-HOOK-DELIVERY-001 REQ-UHD-008: read-only detection of
+		// shipped-template hook entries missing from the project's
+		// settings.json (Option B — detect + guide; never writes).
+		{"Hook Delivery", func(v bool) DiagnosticCheck { return checkHookDelivery(cwd, v) }},
 		{"Hook opt-in:", func(v bool) DiagnosticCheck { return checkHookOptIn(cwd, v) }},
 		{"Slash Commands", func(v bool) DiagnosticCheck { return checkSlashCommands(cwd, v) }},
+		// Card t1247: project/local defaultMode="bypassPermissions" is dead
+		// configuration — Claude Code only grants bypass from policy/user/flag
+		// scope, so the value warns on every session start and grants nothing.
+		{settingsDefaultModeCheckName, func(v bool) DiagnosticCheck { return checkSettingsDefaultMode(cwd, v) }},
 		{"Skills Allowlist", func(v bool) DiagnosticCheck { return checkSkillsAllowlist(cwd, v) }},
 		{"MX Tag Config", func(v bool) DiagnosticCheck { return checkMXTagConfig(cwd, v) }},
 		{"Worktree State", func(v bool) DiagnosticCheck { return checkWorktreeState(cwd, v) }},
+		// SPEC-WORKTREE-BASEREF-001 REQ-WBR-012: the read-only counterpart of
+		// the SessionStart origin/HEAD alignment step.
+		{"Worktree Base Branch", func(v bool) DiagnosticCheck { return checkWorktreeBaseBranch(cwd, v) }},
+		// SPEC-GITSTRAT-WORKFLOW-READER-001 REQ-GWS-009: the production
+		// consumer of the git-strategy workflow interpretation table.
+		{"Git Strategy Workflow", func(v bool) DiagnosticCheck { return checkGitStrategyWorkflow(cwd, v) }},
+		// SPEC-ROLE-NAMING-CODE-001 REQ-RNC-001 / AC-RNC-013: the doctor
+		// factory section — the persisted leader role, with the literal
+		// relaunch message for a legacy run.
+		{factoryRunCheckName, func(v bool) DiagnosticCheck { return checkFactoryRun(cwd, v) }},
+		// SPEC-TODO-SURFACE-POLISH-001 (card t1349): the owner_label
+		// vocabulary drift — legacy spellings left in the runtime
+		// assignments table, counted from the same detectors the refusal
+		// paths use (REQ-TSP-051). Read-only.
+		{ownerLabelDriftCheckName, func(v bool) DiagnosticCheck { return checkOwnerLabelDrift(cwd, v) }},
 		{"BODP Config", func(v bool) DiagnosticCheck { return checkBODPConfig(cwd, v) }},
 		{"Telemetry Config", func(v bool) DiagnosticCheck { return checkTelemetryConfig(cwd, v) }},
 		{"Glamour Cache", checkGlamourCache},
 		// SPEC-CODEX-WIRING-001 REQ-CW-010: advisory Codex-wiring check —
 		// informational skip in claude-only projects, never gates doctor.
 		{"Codex Wiring", func(v bool) DiagnosticCheck { return checkCodexWiring(cwd, v) }},
+		// REQ-JEVC-022: Jev readiness — enabled state, credential presence,
+		// endpoint reachability. Reports only; never gates doctor, and sends no
+		// judgment request. While the capability is disabled it makes no
+		// network call at all.
+		{jevCheckName, func(v bool) DiagnosticCheck { return checkJev(cwd, v) }},
 	}
 
 	run := func(title string, items []checkFunc) []DiagnosticCheck {
@@ -242,11 +317,64 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		return results
 	}
 
-	return []checkGroup{
+	groups := []checkGroup{
 		{title: "System", checks: run("System", systemChecks)},
 		{title: "MoAI-ADK", checks: run("MoAI-ADK", moaiChecks)},
 		{title: "Workspace", checks: run("Workspace", workspaceChecks)},
 	}
+
+	// SPEC-INIT-HARNESS-001 (REQ-IH-011, design.md D7): on a codex-only
+	// project the claude-only surfaces were never deployed, so their absence
+	// findings would all be false alarms. Downgrade them to an explicit
+	// informational line — never a failure — while the Codex checks (wiring,
+	// config.toml, skills registration) stay untouched. The harness is read
+	// once, here, from the project the cwd names.
+	if config.ReadHarness(cwd) == "gpt" {
+		groups = downgradeClaudeSurfaceChecks(groups)
+	}
+	return groups
+}
+
+// claudeSurfaceCheckNames names the doctor checks whose subject is a
+// claude-only surface (settings.json, hooks wiring, slash commands,
+// .claude/skills, .claude/rules) — the set REQ-IH-011 downgrades on a
+// codex-only project.
+var claudeSurfaceCheckNames = map[string]bool{
+	"Claude Config":         true,
+	"Hooks Config":          true,
+	hookWiringCheckName:     true,
+	"Hook Delivery":         true,
+	"Slash Commands":        true,
+	"Skills Allowlist":      true,
+	"Constitution Registry": true,
+	// Card t1247: reads .claude/settings.json + settings.local.json — a
+	// claude-only surface, downgraded on codex-only projects (REQ-IH-011).
+	settingsDefaultModeCheckName: true,
+}
+
+// claudeSurfaceDowngradedMessage is the explicit INFO line a codex-only
+// project's claude-surface checks carry instead of their absence warnings.
+const claudeSurfaceDowngradedMessage = "claude surface: not deployed (harness=codex)"
+
+// downgradeClaudeSurfaceChecks rewrites every failing-or-warning claude
+// surface check into an informational line. An OK check is left alone: it
+// means the user re-added the surface by hand (design.md §3 — user files are
+// respected, never second-guessed).
+func downgradeClaudeSurfaceChecks(groups []checkGroup) []checkGroup {
+	for gi, g := range groups {
+		for ci, c := range g.checks {
+			if !claudeSurfaceCheckNames[c.Name] || c.Status == uikit.CheckOK {
+				continue
+			}
+			g.checks[ci] = DiagnosticCheck{
+				Name:    c.Name,
+				Status:  uikit.CheckInfo,
+				Message: claudeSurfaceDowngradedMessage,
+			}
+		}
+		groups[gi] = g
+	}
+	return groups
 }
 
 // runDiagnosticChecks runs all diagnostic checks and returns a flat list.
@@ -488,54 +616,68 @@ func checkMoAIVersion(_ bool) DiagnosticCheck {
 // regressions where a fix has been committed but the user has not rebuilt
 // the binary, so hook handlers silently run the old code path.
 //
-// Skipped (reported OK) when:
+// The comparison itself lives in internal/binlag, shared with the unprompted
+// session-start advisory. This item renders that one verdict; it does not
+// carry a second copy of the comparison, so the two surfaces cannot drift
+// apart and a stub installed in the seam is observed by both.
+//
+// Reported OK (never Fail — a Fail here would promote every downstream
+// `moai doctor` run to exit 1) when:
 //   - version.GetCommit() is unset ("", "none", "unknown") — dev build
 //   - CWD is not inside a git working tree (git rev-parse walks upward)
 //   - binary commit is not an ancestor of HEAD (release/branch build)
+//
+// @MX:ANCHOR: renders the shared binlag verdict; never promotes to Fail
+// @MX:SPEC: SPEC-BINARY-LAG-VISIBILITY-001
+// @MX:REASON: the row name is fixed ("Binary Freshness") and AC-BLV-009 judges
+// mechanically that this SPEC added no new doctor check name; a Warn keeps
+// `doctorExitStatus` at 0, and raising it to Fail would break every downstream
+// project, which has no source tree to compare its binary against.
+// @MX:TEST: internal/cli/binary_lag_test.go
 func checkBinaryFreshness(verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Binary Freshness"}
 
-	binCommit := strings.TrimSpace(version.GetCommit())
-	if binCommit == "" || binCommit == "none" || binCommit == "unknown" {
-		check.Status = uikit.CheckOK
-		check.Message = "development build (no commit metadata)"
-		return check
-	}
-
 	cwd, err := os.Getwd()
 	if err != nil {
-		check.Status = uikit.CheckOK
-		check.Message = "cannot determine working directory"
-		return check
+		// Reported through the seam's own not-applicable path so the message
+		// set stays in one place.
+		cwd = ""
 	}
 
-	headOut, err := exec.Command("git", "-C", cwd, "rev-parse", "HEAD").Output()
-	if err != nil {
-		check.Status = uikit.CheckOK
-		check.Message = "not in a git source tree (skipped)"
-		return check
-	}
-	sourceHead := strings.TrimSpace(string(headOut))
+	v := binlag.Evaluate(context.Background(), binlag.Request{
+		Dir:           cwd,
+		BinaryCommit:  version.GetCommit(),
+		BinaryVersion: version.GetVersion(),
+	})
 
-	if strings.HasPrefix(sourceHead, binCommit) {
-		check.Status = uikit.CheckOK
-		check.Message = fmt.Sprintf("binary matches source HEAD (%s)", binCommit)
-		return check
-	}
-
-	// Binary differs from HEAD. Check whether it is an ancestor (= stale).
-	ancestorErr := exec.Command("git", "-C", cwd, "merge-base", "--is-ancestor", binCommit, sourceHead).Run()
-	if ancestorErr == nil {
+	switch v.Status {
+	case binlag.StatusBehind:
 		check.Status = uikit.CheckWarn
-		check.Message = fmt.Sprintf("binary is behind source tree (binary: %s, HEAD: %s)", binCommit, shortCommit(sourceHead))
-		check.Detail = "Run 'make build && make install' to rebuild with the latest fixes"
-		return check
-	}
-
-	check.Status = uikit.CheckOK
-	check.Message = fmt.Sprintf("binary from a different branch (binary: %s, HEAD: %s)", binCommit, shortCommit(sourceHead))
-	if verbose {
-		check.Detail = "binary commit is not an ancestor of source HEAD (release or branch build)"
+		check.Message = fmt.Sprintf("binary is behind source tree (binary: %s, HEAD: %s)",
+			v.BinaryCommit, binlag.Short(v.SourceHead))
+		check.Detail = "Run '" + binlag.RemedyCommand + "' to rebuild with the latest fixes"
+	case binlag.StatusFresh:
+		check.Status = uikit.CheckOK
+		check.Message = fmt.Sprintf("binary matches source HEAD (%s)", v.BinaryCommit)
+	case binlag.StatusAhead:
+		// Warn, not OK: the check ran and answered nothing. Reporting that as
+		// OK is what let a binary 643 commits behind its own branch read as
+		// healthy from the primary checkout (card t1022).
+		check.Status = uikit.CheckWarn
+		check.Message = fmt.Sprintf("binary is newer than this tree — freshness undetermined (binary: %s, HEAD: %s)",
+			v.BinaryCommit, binlag.Short(v.SourceHead))
+		check.Detail = "This tree's HEAD is an ancestor of the binary commit, so the comparison says nothing " +
+			"about whether the binary is current. Re-run from the branch the binary was built from."
+	case binlag.StatusDivergent:
+		check.Status = uikit.CheckOK
+		check.Message = fmt.Sprintf("binary from a different branch (binary: %s, HEAD: %s)",
+			v.BinaryCommit, binlag.Short(v.SourceHead))
+		if verbose {
+			check.Detail = v.Reason
+		}
+	default:
+		check.Status = uikit.CheckOK
+		check.Message = v.Reason
 	}
 	return check
 }

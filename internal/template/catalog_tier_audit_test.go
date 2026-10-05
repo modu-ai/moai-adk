@@ -172,13 +172,23 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// SPEC-AUDIT-MULTI-MODEL (2026-08): moai-ref-cross-model-audit added
 	// (cross-model audit reference for the multi-auditor convergence surface);
 	// net +1 = 32.
-	// moai-kanban-foreman added (kanban foreman loop-iteration skill driving
+	// moai-factory-foreman added (factory foreman loop-iteration skill driving
 	// the bare /loop backlog dispatch cycle, core.skills), net +1 = 33.
+	// The skill was named moai-kanban-foreman until SPEC-LAUNCHER-ENTRY-FLAGS-001 renamed
+	// it in place: the entry count is unchanged by the rename.
 	// moai-domain-design-dna added (reference-design deconstruction +
 	// generation domain skill, core.skills), net +1 = 34.
-	const expectedSkillCount = 34
-	if len(diskSkills) != expectedSkillCount {
-		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
+	// moai-ref-jev-question-design added (question-design rules reference for
+	// the gated judgment capability; core.skills), net +1 = 35.
+	// The expectation is DERIVED from the catalog, not hardcoded: the disk
+	// count must equal the catalog's skill-entry count, and every directory
+	// must be a catalog entry (loop below). A hand-maintained constant went
+	// stale at every catalog addition — the 35-vs-36 red of card t1367 was
+	// its latest recurrence; this conversion follows the dispatch's
+	// recommendation.
+	if len(diskSkills) != len(catalogSkills) {
+		t.Errorf("expected %d skill directories per catalog, found %d on disk: %v",
+			len(catalogSkills), len(diskSkills), diskSkills)
 	}
 
 	for _, skillName := range diskSkills {
@@ -253,9 +263,9 @@ func TestAllAgentsInCatalog(t *testing.T) {
 	// retained agent — /moai e2e revival, web/mobile/desktop E2E execution owner);
 	// net +1 = 10.
 	// SPEC-NAVIGATOR-SYNC hierarchical-team (2026-08): manager-kanban added
-	// (11th MoAI-custom retained agent — depth-1 Agent fan-out coordinator);
-	// net +1 = 11.
-	const expectedAgentCount = 11
+	// (11th MoAI-custom retained agent — depth-1 Agent fan-out coordinator),
+	// plus manager-todo; net +2 = 12.
+	const expectedAgentCount = 12
 	if len(diskAgents) != expectedAgentCount {
 		t.Errorf("expected %d agent files on disk, found %d: %v", expectedAgentCount, len(diskAgents), diskAgents)
 	}
@@ -413,51 +423,90 @@ func TestManifestHashFormat(t *testing.T) {
 			continue
 		}
 
-		// Hash stability check: re-compute hash from the source file and compare.
+		// Hash stability check: re-compute hash from the source and compare.
 		fsPath := strings.TrimPrefix(e.Path, "templates/")
 		fsPath = strings.TrimSuffix(fsPath, "/")
 
-		var hashSourcePath string
 		stat, statErr := fs.Stat(fsys, fsPath)
 		if statErr != nil {
 			t.Errorf("CATALOG_ENTRY_ORPHAN: %s path=%q not in FS, cannot verify hash", e.Name, e.Path)
 			continue
 		}
 
+		// Directory entries (skill directories) hash as a whole deployed tree
+		// via ComputeDirTreeHash — the same aggregation the generator uses
+		// (t323); SKILL.md-only verification would green a tree whose deployed
+		// sub-files drifted. File entries hash their single file.
+		var computedHash, hashSource string
 		if stat.IsDir() {
-			// Skill directory: hash the root SKILL.md or skill.md
-			for _, candidate := range []string{"SKILL.md", "skill.md"} {
-				candidatePath := fsPath + "/" + candidate
-				if _, err2 := fs.Stat(fsys, candidatePath); err2 == nil {
-					hashSourcePath = candidatePath
-					break
-				}
-			}
-			if hashSourcePath == "" {
-				t.Errorf("CATALOG_HASH_INVALID: %s is a directory but has no SKILL.md/skill.md for hashing", e.Name)
+			var treeErr error
+			computedHash, treeErr = ComputeDirTreeHash(fsys, fsPath)
+			if treeErr != nil {
+				t.Errorf("cannot compute tree hash for %q: %v", fsPath, treeErr)
 				continue
 			}
+			hashSource = fsPath + "/ (whole tree)"
 		} else {
-			hashSourcePath = fsPath
+			rawContent, readErr := fs.ReadFile(fsys, fsPath)
+			if readErr != nil {
+				t.Errorf("cannot read %q for hash verification: %v", fsPath, readErr)
+				continue
+			}
+			sum := sha256.Sum256(NormalizeForHash(rawContent))
+			computedHash = hex.EncodeToString(sum[:])
+			hashSource = fsPath
 		}
-
-		rawContent, readErr := fs.ReadFile(fsys, hashSourcePath)
-		if readErr != nil {
-			t.Errorf("cannot read %q for hash verification: %v", hashSourcePath, readErr)
-			continue
-		}
-
-		normalized := NormalizeForHash(rawContent)
-		sum := sha256.Sum256(normalized)
-		computedHash := hex.EncodeToString(sum[:])
 
 		if computedHash != e.Hash {
 			t.Errorf("CATALOG_HASH_UNSTABLE: %s stored hash=%s, computed hash=%s (source=%s)",
-				e.Name, e.Hash, computedHash, hashSourcePath)
+				e.Name, e.Hash, computedHash, hashSource)
 		}
 	}
 
 	t.Logf("audited %d catalog entries for hash validity", len(entries))
+}
+
+// TestCatalogHashCoversSkillSubfiles pins the t323 closure of the SKILL.md-only
+// hash gap: a skill directory entry is deployed as a whole tree
+// (//go:embed all:templates), so its catalog hash must cover every regular
+// file under the directory — ComputeDirTreeHash — not just the root SKILL.md.
+// Before t323 the deployed sub-files (modules/, references/, scripts/,
+// workflows/, schemas/, ...) sat entirely outside the catalog's integrity
+// claim: 274 files across 34 directory entries changed the deployment without
+// moving any catalog value.
+func TestCatalogHashCoversSkillSubfiles(t *testing.T) {
+	t.Parallel()
+
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates() error: %v", err)
+	}
+	cat := loadCatalog(t)
+
+	checked := 0
+	for _, e := range allCatalogEntries(cat) {
+		fsPath := strings.TrimPrefix(e.Path, "templates/")
+		fsPath = strings.TrimSuffix(fsPath, "/")
+
+		stat, statErr := fs.Stat(fsys, fsPath)
+		if statErr != nil || !stat.IsDir() {
+			continue // file entries hash their single file directly
+		}
+
+		want, treeErr := ComputeDirTreeHash(fsys, fsPath)
+		if treeErr != nil {
+			t.Fatalf("ComputeDirTreeHash(%q): %v", fsPath, treeErr)
+		}
+		if e.Hash != want {
+			t.Errorf("CATALOG_HASH_SKINNY: %s hash=%s does not cover the deployed directory tree (whole-tree hash %s) — run gen-catalog-hashes.go --all (card t323)", e.Name, e.Hash, want)
+		}
+		checked++
+	}
+
+	if checked == 0 {
+		t.Fatal("no directory entries swept — the check asserted nothing")
+	}
+	t.Logf("audited %d directory entries for whole-tree hash coverage", checked)
 }
 
 // TestWorkflowTriggerCoverage walks .claude/skills/moai/workflows/*.md files

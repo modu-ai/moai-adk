@@ -2,7 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,8 +45,8 @@ func runHandoff(t *testing.T, stdin string, args ...string) (string, error) {
 	return out.String(), err
 }
 
-// TestHandoffSave_WritesJSONNotMarkdown verifies AC-005: save writes
-// handoff/pending.json (valid JSON) and leaves session-handoff/pending.md
+// TestHandoffSave_WritesJSONNotMarkdown verifies save writes the SQLite
+// handoff row and leaves session-handoff/pending.md
 // untouched (decoy mtime unchanged).
 func TestHandoffSave_WritesJSONNotMarkdown(t *testing.T) {
 	t.Parallel()
@@ -60,13 +59,9 @@ func TestHandoffSave_WritesJSONNotMarkdown(t *testing.T) {
 		t.Fatalf("handoff save: %v (out: %s)", err, out)
 	}
 
-	data, err := os.ReadFile(handoff.PendingPath(pd))
-	if err != nil {
-		t.Fatalf("read pending.json: %v", err)
-	}
-	var parsed handoff.PendingRecord
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		t.Fatalf("pending.json invalid JSON: %v", err)
+	parsed, present, err := handoff.ReadPending(pd)
+	if err != nil || !present {
+		t.Fatalf("read pending row: present=%v err=%v", present, err)
 	}
 	if parsed.Body != "resume body 6-block" {
 		t.Errorf("body: got %q", parsed.Body)
@@ -81,7 +76,7 @@ func TestHandoffSave_WritesJSONNotMarkdown(t *testing.T) {
 	}
 }
 
-// TestHandoffSave_Schema verifies AC-006: pending.json carries schema_version,
+// TestHandoffSave_Schema verifies the pending row carries schema_version,
 // body (verbatim), directives.ultrathink==true, conversation_language, saved_at.
 func TestHandoffSave_Schema(t *testing.T) {
 	t.Parallel()
@@ -94,23 +89,9 @@ func TestHandoffSave_Schema(t *testing.T) {
 		t.Fatalf("handoff save: %v (out: %s)", err, out)
 	}
 
-	data, err := os.ReadFile(handoff.PendingPath(pd))
-	if err != nil {
-		t.Fatalf("read pending.json: %v", err)
-	}
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(data, &raw); err != nil {
-		t.Fatalf("unmarshal raw: %v", err)
-	}
-	for _, key := range []string{"schema_version", "body", "directives", "conversation_language", "saved_at"} {
-		if _, ok := raw[key]; !ok {
-			t.Errorf("pending.json missing required key %q", key)
-		}
-	}
-
-	var rec handoff.PendingRecord
-	if err := json.Unmarshal(data, &rec); err != nil {
-		t.Fatalf("unmarshal rec: %v", err)
+	rec, present, err := handoff.ReadPending(pd)
+	if err != nil || !present {
+		t.Fatalf("read pending row: present=%v err=%v", present, err)
 	}
 	if rec.SchemaVersion != handoff.PendingSchemaVersion {
 		t.Errorf("schema_version: got %d, want %d", rec.SchemaVersion, handoff.PendingSchemaVersion)
@@ -172,15 +153,15 @@ func TestHandoffClear(t *testing.T) {
 	if _, err := runHandoff(t, "", "save", "--project-dir", pd, "--body", "b"); err != nil {
 		t.Fatalf("pre-save: %v", err)
 	}
-	if _, err := os.Stat(handoff.PendingPath(pd)); err != nil {
-		t.Fatalf("pending.json should exist before clear: %v", err)
+	if _, present, err := handoff.ReadPending(pd); err != nil || !present {
+		t.Fatalf("pending row should exist before clear: present=%v err=%v", present, err)
 	}
 
 	if _, err := runHandoff(t, "", "clear", "--project-dir", pd); err != nil {
 		t.Fatalf("handoff clear: %v", err)
 	}
-	if _, err := os.Stat(handoff.PendingPath(pd)); !os.IsNotExist(err) {
-		t.Errorf("pending.json should be removed after clear, err: %v", err)
+	if _, present, err := handoff.ReadPending(pd); err != nil || present {
+		t.Errorf("pending row should be cleared, present=%v err=%v", present, err)
 	}
 
 	info, err := os.Stat(decoyPath)

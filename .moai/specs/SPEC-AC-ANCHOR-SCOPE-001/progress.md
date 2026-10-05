@@ -1,0 +1,111 @@
+# SPEC-AC-ANCHOR-SCOPE-001 — Progress
+
+## §E.1 Plan-phase Audit-Ready Signal
+
+plan_status: audit-ready
+plan_complete_at: 2026-09-14
+tier: M
+artifacts: spec.md, plan.md, acceptance.md, progress.md
+evidence: .moai/reports/t747/anchor-scope-measurement.md (+ probe/ frozen artifacts)
+spec_id_regex_check: PASS (verbatim, Bash-run at plan phase)
+id_uniqueness: no existing SPEC-AC-ANCHOR-* directory at authoring time
+plan_audit: iter1 PASS 0.81 (threshold 0.80) — findings D1-D7 applied this commit; report at .moai/reports/t747/plan-audit.md
+
+## §E.2 Run-phase Evidence
+
+_<run-phase, 2026-09-14, branch WT-ac-anchor-scope, absorb base 188ece2f9 — owned by manager-develop>_
+
+### Milestones
+
+| M | Deliverable | Commit |
+|---|---|---|
+| M1 | Probe promoted in-tree as two-column corpus test (`internal/spec/zz_t747_anchor_probe_test.go`); frozen pre-repair baseline anchor copy; in-run before-column; control set derived in-run | d5ac26636 |
+| M2 | RED fixtures (ce4446694) → narrow-axis declaration-named region selection (01bbb6360) | ce4446694, 01bbb6360 |
+| M3 | Declaration-aware terminal fallback (plan §C(ii)(a)) | b82f6ecf9 |
+| M4 | Probe instrument dual-shape (live column on parse region); control both shapes; t565 contract update | 2960af5d5 |
+| M5 | Doc comments on `findACSectionStart`/`acRegionDeclarationRe`/`sectionHoldsACDeclaration` (landed with M2/M3 commits); vet/lint/gofmt close | 01bbb6360, b82f6ecf9, 2960af5d5 |
+
+### E8 — RED failure output (TDD invariant i, verbatim, pre-GREEN)
+
+Command: `go test ./internal/spec/ -run 'TestFindACSectionStart_' -v -count=1` — verbatim output at `.moai/state/verify/t747/red-m2-unit.txt`. Failing subtests (7):
+
+```
+--- FAIL: TestFindACSectionStart_NarrowAxis_DeclarationNamedRegion/numeric_sub_IDs_under_REQ_headings
+    parser_anchor_scope_test.go:46: findACSectionStart = -1, want 7
+--- FAIL: TestFindACSectionStart_NarrowAxis_DeclarationNamedRegion/level-3_declarations_inside_level-2_section
+    parser_anchor_scope_test.go:46: findACSectionStart = -1, want 3
+--- FAIL: TestFindACSectionStart_NarrowAxis_ParseableDeclarationsParse
+--- FAIL: TestFindACSectionStart_LooseAxis_DeclarationRegionOverEmptyVocabulary/empty_acceptance_section,_declarations_under_later_heading
+    parser_anchor_scope_test.go:46: findACSectionStart = 3, want 5
+--- FAIL: TestFindACSectionStart_LooseAxis_DeclarationRegionOverEmptyVocabulary/empty_acceptance_section,_declarations_under_earlier_heading
+    parser_anchor_scope_test.go:46: findACSectionStart = 7, want 3
+--- FAIL: TestFindACSectionStart_NegativeMarker_NeverNamesRegion/out-of-scope_section_holding_declarations_never_anchors
+    parser_anchor_scope_test.go:46: findACSectionStart = -1, want 7
+```
+
+Preservation/prose-bound guards were green by design pre-GREEN (they pin the no-regression contract).
+
+### E1 — AC PASS/FAIL Matrix (all evidence in-run, this tree, HEAD 2960af5d5)
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-747-001 | PASS | `T747_PROBE_OUT=…/.moai/state/verify/t747/probe-after2 go test ./internal/spec/ -run TestT747AnchorScope -v -count=1` | `NARROW axis (decls, no anchor): before=14 after=11 repaired=3` — 3 repaired (SPEC-AC-COLLECTOR-ANCHOR-001, SPEC-CC297-001, SPEC-STATUS-AUTO-001); 11 justified no-colon-form dispositions in two classes — (a) 7 genuinely prose-shaped mentions, (b) 4 colon-less AC bullets awaiting the line-grammar axis (sync-audit F2 relabel; `defect-disposition.txt`); unjustified residual 0 |
+| AC-747-002 | PASS | same run | `EMPTY axis (anchored, 0 in-section decls): before=9 after=3 repaired=6` — 6 repaired (DESIGN-ATTACH-001, HANDOFF-MSGMODE-001, HOOK-EVENT-REGISTRY-001, V3R5-WORKFLOW-LEAN-001, V3R6-HOOK-OBSERVE-OPT-IN-001, V3R6-I18N-VALIDATOR-BUDGET-001); 3 justified residuals: GLM-EFFORT-MAX-001 ANCHOR-PARSEABLE-NONBULLET (metric artifact — the anchor reads a genuinely parseable non-bullet section), V3R6-OUTOFSCOPE-GUIDANCE-ALIGN-001 + _archive/SPEC-DESIGN-CONST-AMEND-001 ANCHORED-REGION-NO-DECLRE (declarations are colon-less bullets; recovery = line-grammar axis, out of scope per §D); unjustified residual 0 |
+| AC-747-003 | PASS | same run | `CONTROL set (decl-bearing, non-defect) = 129, strict-shape deltas = 0, parse-shape deltas = 0` — control set derived in-run from the frozen-column defect union; byte-identical on both comparison shapes; justified-delta list empty |
+| AC-747-004 | PASS | same run | `NEWLY-INCLUDED declarations = 48` — all 48 attributed narrow-defect (47: AC-COLLECTOR 3, CC297 19, STATUS-AUTO 25) or empty-defect (1: I18N-VALIDATOR-BUDGET); 0 from the 129 control files; prose layer (in=10/out=1 specimens) untouched |
+| AC-747-005 | PASS | same run (single run, before+after columns) | denominator `spec.md read = 861` (frozen filelist 860 + this SPEC's own spec.md — corpus self-modification, t528 discipline); narrow/empty reported as before/after columns from one run |
+| AC-747-006 | PASS | `git diff --name-only 188ece2f9..HEAD -- .moai/reports/t747/probe/` → 0 lines; `T528_PROBE_OUT=… go test ./internal/spec/ -run TestT528Anchor -v -count=1` | frozen before-images unmodified; `accepted by FROZEN baseline anchor = 216` (t528 PRESERVE); declRe byte-untouched; baseline column reproduces `IN-SECTION: before(frozen-strict)=1240` and both FROZEN-CROSSCHECK lines `MATCH (14 files)` / `MATCH (9 files)` |
+| AC-747-007 | PASS | `git diff --stat 188ece2f9..HEAD -- internal/spec/lint_coverage_sibling.go` → empty | sibling file untouched by any commit; full-package suite green unmodified (existing sibling tests pass) |
+
+### Verification commands + verbatim outputs
+
+- Full affected package: `go test ./internal/spec/ -count=1 -timeout 600s` → `ok github.com/modu-ai/moai-adk/internal/spec 99.574s`
+- `go vet ./internal/spec/` → exit 0
+- `golangci-lint run ./internal/spec/...` → `0 issues.` (t706 lesson honored — lint measured on this branch)
+- `gofmt -l internal/spec/` → empty (clean)
+- New anchor logic per-function coverage (coverprofile over anchor test set): `findACSectionStart 100.0%`, `sectionHoldsACDeclaration 100.0%`, `isNegativeSectionHeading 100.0%`, `isACSectionHeading 85.7%`
+- `GOOS=windows GOARCH=amd64 go build ./...` → OK
+- Probe artifacts (before/after) under `.moai/state/verify/t747/` (probe-before, probe-after2, red-m2-unit.txt, t528-after.txt)
+
+### Per-file dispositions (headline record)
+
+- Narrow 14 = 3 REPAIRED + 11 justified no-colon-form residuals, in two explicit classes (relabel per sync-audit F2 — the probe code `PROSE-SHAPED-NO-COLON-FORM` names the shared mechanical cause "no id-adjacent colon", not the document genre; the disposition conclusion is unchanged for every file):
+  - **(a) genuinely prose-shaped mentions (7 files)** — the declRe hits are discussion notes, scoping notes, or mapping tables, not AC declarations: SPEC-CLI-STATE-DIR-BOUND-001 (:322 annotation on AC-009), SPEC-CODEX-EVENT-COVERAGE-001 (:86-87 `AC-… → REQ-…` mapping table), SPEC-MOVING-REF-GUARD-001 (:264 criterion-nature note), SPEC-SYNC-GATE-FAILSTATE-001 (:54-55 revision notes), SPEC-SYNCSHA-BAND-BOUNDARY-001 (:256 criterion note), SPEC-TODO-HOME-TEMP-GUARD-001 (:60 scoping note, :193 subject discussion), SPEC-V3R6-RULES-PATH-SCOPE-001 (:88 interpretation note). The corpus declaration notion (discriminator B) over-matches prose here — exactly the mixed-document layer the guard protects.
+  - **(b) colon-less AC bullets awaiting the line-grammar axis (4 files)** — genuine AC list form (bullet + id, verification content), failing only the REQUIRED separator the line grammar carries: SPEC-V3R6-CODERABBIT-ADOPTION-001 (:48-51, AC-CRA-001..004 with verification commands), SPEC-V3R6-AGENT-MODEL-ROUTING-001 (:330), SPEC-V3R6-SKILL-COMPRESS-001 (:168, :186), SPEC-V3R6-SKILL-CONSOLIDATE-001 (:230, :244, :256). Leave-unrepaired is CORRECT for both classes: recovering (b) requires widening `acIDPattern`'s separator/id grammar — the t528 axis, out of scope per §D.
+- Empty 9 = 6 REPAIRED + 3 justified (see AC-747-002 row).
+- Note: 6 of the 9 empty-anchor entries and the B4 divergence: the plan-phase probe's strict scan (break at any `##` prefix) cannot see `###`-nested declarations that the parse's anchor-level region includes. The promoted probe measures the live column on the parse's region (AC-747-001/002's region definition) and keeps the strict shape for the frozen baseline column, which still reproduces 1240/14/9 exactly.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_complete_at: 2026-09-14
+run_commit_sha: 2960af5d5  # code-verification baseline (M4+M5); evidence commit 4a66ab689 carries this file
+run_status: complete
+ac_pass_count: 7
+ac_fail_count: 0
+preserve_list_post_run_count: 4  # lint_coverage_sibling.go; zz_t528_anchor_probe_test.go; .moai/reports/t528/**; .moai/reports/t747/probe/* — all diff-empty vs 188ece2f9
+l44_pre_commit_fetch: not-run (worktree card branch off develop; HEAD re-read before every commit instead of a shared-branch fetch)
+l44_post_push_fetch: not-applicable (lane does not push; develop push is the lead's batch act)
+new_warnings_or_lints_introduced: 0
+cross_platform_build.darwin: PASS
+cross_platform_build.windows: PASS (GOOS=windows GOARCH=amd64 go build ./...)
+total_run_phase_files: 7
+m1_to_mN_commit_strategy: one commit per milestone (M1; M2-RED; M2-GREEN; M3; M4+M5; evidence)
+```
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+sync_status: complete (3-phase close — in-progress → implemented → merged into the single sync commit)
+sync_complete_at: 2026-09-14
+sync_commit_sha: 4c87fef9b (backfilled per D3 placeholder pattern; sync commit subject `docs(SPEC-AC-ANCHOR-SCOPE-001): sync-phase — 3-phase close`)
+backfill_commit_subject: docs(SPEC-AC-ANCHOR-SCOPE-001): backfill sync_commit_sha
+sync_commit_subject: docs(SPEC-AC-ANCHOR-SCOPE-001): sync-phase — 3-phase close
+changelog_entry_position: [Unreleased] → ### Fixed → first entry (append-only; no other entries reordered)
+b12_self_test_a: PASS — `grep -c 'SPEC-AC-ANCHOR-SCOPE-001' CHANGELOG.md` → 0 (pre-emission; no duplicate from parallel BATCH-SYNC)
+b12_self_test_b: PASS — `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u` → 7 distinct live ACs (AC-747-001..007); CHANGELOG entry cites 7; the 8th pattern match is the SPEC-ID token itself, not an AC
+b12_self_test_c: PASS (after 1 correction) — initial draft named `internal/spec/anchor.go`; `ls` refuted it (findACSectionStart is at `internal/spec/parser.go:177`), entry corrected before commit; .moai/specs/SPEC-AC-ANCHOR-SCOPE-001/ verified present
+frontmatter_status_transitions: {from: in-progress, via: implemented, to: completed, fields_touched: [status, updated], body_edits: none}
+canary_compliance_check: PASS — `go test ./internal/spec/ -run 'TestT528Anchor|TestT747AnchorScope' -count=1` green at close (the two corpus probes: t528's frozen-baseline methodology + PRESERVE 216 unchanged, and t747's own 14-file narrow / 9-file empty defect lists per `.moai/reports/t747/probe/`; 129-file control byte-identical per §E.2)
+close_sanity_check: PASS — `go test ./internal/spec/ -run 'TestT528Anchor|TestT747AnchorScope' -count=1` → `ok github.com/modu-ai/moai-adk/internal/spec 0.752s`; `go vet ./internal/spec/` → exit 0 (both run post-sync-commit at 4c87fef9b, this tree)
+mx_tag_validation: sync sub-step — no new exported symbols added at run phase beyond `sectionHoldsACDeclaration`/`isNegativeSectionHeading`/`isACSectionHeading` (unexported helpers, M5 doc comments landed with M2/M3); no @MX additions required
+docs_site: no edit — internal parser behavior (`findACSectionStart` anchor selection); no user-facing CLI surface beyond lint accuracy; no docs-site page documents per-AC anchor mechanics

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -311,7 +312,7 @@ func mergeJSON(base, current, updated []byte) (*MergeResult, error) {
 		return nil, fmt.Errorf("merge json: parse updated: %w", err)
 	}
 
-	merged, conflicts := deepMergeMap(baseMap, currentMap, updatedMap, "")
+	merged, conflicts, retained := deepMergeMap(baseMap, currentMap, updatedMap, "")
 
 	data, err := json.MarshalIndent(merged, "", "  ")
 	if err != nil {
@@ -319,10 +320,11 @@ func mergeJSON(base, current, updated []byte) (*MergeResult, error) {
 	}
 
 	return &MergeResult{
-		Content:     data,
-		HasConflict: len(conflicts) > 0,
-		Conflicts:   conflicts,
-		Strategy:    JSONMerge,
+		Content:      data,
+		HasConflict:  len(conflicts) > 0,
+		Conflicts:    conflicts,
+		Strategy:     JSONMerge,
+		RetainedKeys: retained,
 	}, nil
 }
 
@@ -340,7 +342,7 @@ func mergeYAML(base, current, updated []byte) (*MergeResult, error) {
 		return nil, fmt.Errorf("merge yaml: parse updated: %w", err)
 	}
 
-	merged, conflicts := deepMergeMap(baseMap, currentMap, updatedMap, "")
+	merged, conflicts, retained := deepMergeMap(baseMap, currentMap, updatedMap, "")
 
 	data, err := yaml.Marshal(merged)
 	if err != nil {
@@ -348,18 +350,23 @@ func mergeYAML(base, current, updated []byte) (*MergeResult, error) {
 	}
 
 	return &MergeResult{
-		Content:     data,
-		HasConflict: len(conflicts) > 0,
-		Conflicts:   conflicts,
-		Strategy:    YAMLDeep,
+		Content:      data,
+		HasConflict:  len(conflicts) > 0,
+		Conflicts:    conflicts,
+		Strategy:     YAMLDeep,
+		RetainedKeys: retained,
 	}, nil
 }
 
 // deepMergeMap performs a recursive 3-way merge on map structures.
-// It returns the merged map and any conflicts detected.
-func deepMergeMap(base, current, updated map[string]any, prefix string) (map[string]any, []Conflict) {
+// It returns the merged map, any conflicts detected, and the dotted key paths
+// retained because the new template no longer carries them. The retained paths
+// come back sorted: map iteration is unordered, and an unordered advisory could
+// not be asserted on.
+func deepMergeMap(base, current, updated map[string]any, prefix string) (map[string]any, []Conflict, []string) {
 	result := make(map[string]any)
 	var conflicts []Conflict
+	var retained []string
 
 	// Collect all keys from all three maps.
 	allKeys := make(map[string]bool)
@@ -414,6 +421,7 @@ func deepMergeMap(base, current, updated map[string]any, prefix string) (map[str
 		case inBase && inCurrent && !inUpdated:
 			// Template removed key - keep user's version.
 			result[key] = curVal
+			retained = append(retained, keyPath)
 
 		case inBase && inCurrent && inUpdated:
 			baseChanged := !valuesEqual(baseVal, curVal)
@@ -444,9 +452,10 @@ func deepMergeMap(base, current, updated map[string]any, prefix string) (map[str
 					baseMap, baseIsMap := toMapInterface(baseVal)
 
 					if curIsMap && updIsMap && baseIsMap {
-						subResult, subConflicts := deepMergeMap(baseMap, curMap, updMap, keyPath)
+						subResult, subConflicts, subRetained := deepMergeMap(baseMap, curMap, updMap, keyPath)
 						result[key] = subResult
 						conflicts = append(conflicts, subConflicts...)
+						retained = append(retained, subRetained...)
 					} else {
 						// Conflict.
 						conflicts = append(conflicts, Conflict{
@@ -463,7 +472,8 @@ func deepMergeMap(base, current, updated map[string]any, prefix string) (map[str
 		}
 	}
 
-	return result, conflicts
+	sort.Strings(retained)
+	return result, conflicts, retained
 }
 
 // managedSectionHeadings is the explicit allow-list of curator-managed

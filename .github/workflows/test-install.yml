@@ -2,13 +2,16 @@ name: Test Installation Scripts
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - 'install.sh'
       - 'install.ps1'
       - 'install.bat'
       - 'docs-site/static/install.sh'
       - 'docs-site/static/install.ps1'
+      - 'scripts/test-plugin-install-step.sh'
+      - 'scripts/protected-set-hash.sh'
+      - 'internal/cli/plugin_install*.go'
       - '.github/workflows/test-install.yml'
   pull_request:
     branches: [main]
@@ -18,6 +21,9 @@ on:
       - 'install.bat'
       - 'docs-site/static/install.sh'
       - 'docs-site/static/install.ps1'
+      - 'scripts/test-plugin-install-step.sh'
+      - 'scripts/protected-set-hash.sh'
+      - 'internal/cli/plugin_install*.go'
       - '.github/workflows/test-install.yml'
   workflow_dispatch:
 
@@ -77,6 +83,22 @@ jobs:
         run: |
           bash -n install.sh
           echo "Bash syntax validation passed"
+
+      # The offline stub harness (SPEC-PLUGIN-MARKETPLACE-001, REQ-025): it runs the
+      # real `moai plugin install` verb and install.sh against stub claude, codex,
+      # go and curl, so it needs the binary under test and never a network. Being
+      # a CI step is its continued-firing answer: it runs on every push that
+      # touches the installers, the harness or the install step.
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Build moai
+        run: go build -o bin/moai ./cmd/moai
+
+      - name: Install-step harness (stub tools, offline)
+        run: sh scripts/test-plugin-install-step.sh bin/moai
 
       - name: Display script info
         run: |

@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>MoAI GPT Gateway + Factory + MCP 최종 재설계</title>
+  <style>
+    :root {
+      --paper: #f4efe4;
+      --paper-2: #ebe1d1;
+      --ink: #17221d;
+      --muted: #5f6a62;
+      --olive: #66704b;
+      --olive-dark: #414b31;
+      --clay: #b85c3b;
+      --clay-soft: #f1d8c9;
+      --gold: #c49a45;
+      --line: #d7cbbb;
+      --card: rgba(255,255,255,.72);
+      --ok: #246b4b;
+      --gap: #9b4b30;
+      --warn: #8a641f;
+      --shadow: 0 18px 45px rgba(49, 40, 28, .10);
+      --radius: 22px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 9% 4%, rgba(196,154,69,.16), transparent 24rem),
+        radial-gradient(circle at 92% 18%, rgba(102,112,75,.13), transparent 28rem),
+        var(--paper);
+      color: var(--ink);
+      font-family: Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+      line-height: 1.72;
+      word-break: keep-all;
+    }
+    a { color: var(--olive-dark); text-decoration-thickness: .08em; text-underline-offset: .18em; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code { background: #eee8de; padding: .12em .38em; border-radius: .42em; font-size: .92em; }
+    pre {
+      margin: 0;
+      padding: 18px 20px;
+      overflow: auto;
+      color: #edf0e4;
+      background: #1f2a24;
+      border: 1px solid #35443b;
+      border-radius: 16px;
+      line-height: 1.55;
+      font-size: 13px;
+    }
+    pre code { padding: 0; background: transparent; color: inherit; }
+    .shell { min-height: 100vh; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px clamp(18px,4vw,64px);
+      background: rgba(244,239,228,.88);
+      border-bottom: 1px solid rgba(102,112,75,.22);
+      backdrop-filter: blur(18px);
+    }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 850; letter-spacing: -.03em; }
+    .brand-mark {
+      width: 36px; height: 36px; display: grid; place-items: center;
+      border-radius: 12px; color: #fff; background: var(--olive-dark); box-shadow: 0 8px 20px rgba(65,75,49,.24);
+    }
+    .top-meta { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .layout {
+      width: min(1460px, calc(100% - 32px));
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 238px minmax(0,1fr);
+      gap: 28px;
+      padding: 34px 0 80px;
+    }
+    aside {
+      position: sticky;
+      top: 82px;
+      align-self: start;
+      max-height: calc(100vh - 100px);
+      overflow: auto;
+      padding: 18px;
+      background: rgba(255,255,255,.5);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+    }
+    aside .eyebrow { margin: 0 0 10px; }
+    nav { display: grid; gap: 3px; }
+    nav a {
+      display: block; padding: 8px 10px; color: var(--muted); border-radius: 9px;
+      text-decoration: none; font-size: 13px; font-weight: 720;
+    }
+    nav a:hover { color: var(--ink); background: #eee6d9; }
+    main { min-width: 0; }
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(30px,5vw,64px);
+      color: #f8f5ec;
+      background: linear-gradient(135deg, #243329 0%, #45513a 58%, #76513e 100%);
+      border-radius: 30px;
+      box-shadow: var(--shadow);
+    }
+    .hero::after {
+      content: ""; position: absolute; width: 420px; height: 420px; right: -145px; top: -175px;
+      border: 70px solid rgba(255,255,255,.07); border-radius: 50%;
+    }
+    .hero .eyebrow { color: #e3c687; }
+    .hero h1 {
+      position: relative; z-index: 1; max-width: 900px; margin: 12px 0 18px;
+      font-family: Georgia, "Noto Serif KR", serif;
+      font-size: clamp(38px,6.2vw,76px); line-height: 1.04; letter-spacing: -.055em;
+    }
+    .hero p { position: relative; z-index: 1; max-width: 900px; margin: 0; color: #e3e8de; font-size: clamp(16px,2vw,20px); }
+    .hero-tags { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+    .tag { padding: 6px 10px; border: 1px solid rgba(255,255,255,.24); border-radius: 999px; background: rgba(255,255,255,.08); font-size: 12px; font-weight: 760; }
+    .eyebrow { color: var(--clay); font-size: 12px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+    .kpis { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin: 18px 0 0; }
+    .kpi { padding: 20px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
+    .kpi strong { display: block; font-size: clamp(24px,3vw,38px); line-height: 1; color: var(--olive-dark); }
+    .kpi span { display: block; margin-top: 10px; color: var(--muted); font-size: 13px; font-weight: 700; }
+    section { scroll-margin-top: 84px; margin-top: 52px; }
+    .section-head { display: grid; grid-template-columns: minmax(0,1fr) minmax(260px,420px); align-items: end; gap: 30px; margin-bottom: 18px; }
+    h2 { margin: 5px 0 0; font-family: Georgia, "Noto Serif KR", serif; font-size: clamp(30px,4vw,48px); line-height: 1.12; letter-spacing: -.045em; }
+    h3 { margin: 28px 0 12px; font-size: 21px; letter-spacing: -.03em; }
+    h4 { margin: 0 0 7px; font-size: 16px; }
+    p { margin: 0 0 12px; }
+    .lead { color: var(--muted); font-size: 15px; }
+    .card {
+      padding: clamp(20px,3vw,32px);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 28px rgba(49,40,28,.045);
+    }
+    .grid-2 { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; }
+    .decision {
+      display: grid; grid-template-columns: 54px minmax(0,1fr); gap: 16px; align-items: start;
+      padding: 20px; border-radius: 18px; background: #fffaf1; border: 1px solid #dfcfb7;
+    }
+    .num { width: 54px; height: 54px; display: grid; place-items: center; color: #fff; background: var(--clay); border-radius: 15px; font-family: Georgia,serif; font-size: 24px; font-weight: 800; }
+    .decision p { margin: 3px 0 0; color: var(--muted); font-size: 14px; }
+    .callout { padding: 20px 22px; border-left: 5px solid var(--clay); background: var(--clay-soft); border-radius: 0 16px 16px 0; }
+    .callout strong { color: #783923; }
+    .callout.ok { border-color: var(--ok); background: #dce9df; }
+    .callout.ok strong { color: var(--ok); }
+    .callout.warn { border-color: var(--warn); background: #f2e7c9; }
+    .callout.warn strong { color: #6f4d12; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.58); }
+    table { width: 100%; border-collapse: collapse; min-width: 760px; font-size: 13px; }
+    th { padding: 13px 15px; text-align: left; color: var(--olive-dark); background: #e9e5d8; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+    td { padding: 14px 15px; vertical-align: top; border-top: 1px solid var(--line); }
+    tbody tr:hover { background: rgba(255,255,255,.52); }
+    .pill { display: inline-flex; padding: 4px 8px; border-radius: 999px; font-size: 11px; font-weight: 850; white-space: nowrap; }
+    .pill.ok { color: #16563a; background: #d9eadf; }
+    .pill.gap { color: #7d3824; background: #f0d6c9; }
+    .pill.partial { color: #755514; background: #efe4c4; }
+    .diagram { padding: 18px; overflow: auto; background: #fffdf7; border: 1px solid var(--line); border-radius: 18px; }
+    .mermaid { min-width: 720px; }
+    .legacy {
+      position: relative; overflow: hidden; padding: 28px;
+      color: #fff5ee; background: linear-gradient(135deg,#823e29,#b85c3b); border-radius: 22px;
+    }
+    .legacy::after { content: "LEGACY GAP"; position: absolute; right: -18px; bottom: -12px; color: rgba(255,255,255,.10); font-size: 52px; font-weight: 950; transform: rotate(-5deg); }
+    .legacy h3 { margin: 0 0 8px; font-size: 26px; }
+    .legacy p { position: relative; z-index: 1; max-width: 820px; color: #fae6db; }
+    .legacy ul { position: relative; z-index: 1; }
+    ul.clean { margin: 10px 0 0; padding-left: 20px; }
+    ul.clean li { margin: 6px 0; }
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .compare article { padding: 24px; border-radius: 19px; border: 1px solid var(--line); }
+    .compare .take { background: #e5ecdf; }
+    .compare .leave { background: #f2ddd2; }
+    .check-list { list-style: none; padding: 0; margin: 12px 0 0; }
+    .check-list li { position: relative; padding: 8px 0 8px 27px; border-bottom: 1px dashed rgba(65,75,49,.20); }
+    .check-list li::before { position: absolute; left: 0; top: 8px; font-weight: 900; }
+    .take .check-list li::before { content: "✓"; color: var(--ok); }
+    .leave .check-list li::before { content: "×"; color: var(--gap); }
+    .risk-ladder { display: grid; gap: 10px; counter-reset: risk; }
+    .risk-row { counter-increment: risk; display: grid; grid-template-columns: 44px minmax(0,1fr) auto; gap: 14px; align-items: center; padding: 15px; background: rgba(255,255,255,.58); border: 1px solid var(--line); border-radius: 14px; }
+    .risk-row::before { content: counter(risk); display: grid; place-items: center; width: 34px; height: 34px; color: #fff; background: var(--olive); border-radius: 50%; font-weight: 900; }
+    .risk-row:last-child::before { background: var(--clay); }
+    .risk-row p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+    .risk-label { font-size: 11px; font-weight: 900; color: var(--muted); text-transform: uppercase; white-space: nowrap; }
+    .chart { padding: 24px; background: #233129; border-radius: 20px; color: #f7f4ea; overflow: auto; }
+    .chart svg { display: block; width: 100%; min-width: 760px; height: auto; }
+    .chart-note { margin: 12px 0 0; color: #cbd3c9; font-size: 12px; }
+    .rule-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
+    .rule { padding: 18px; background: rgba(255,255,255,.63); border: 1px solid var(--line); border-radius: 16px; }
+    .rule strong { display: block; margin-bottom: 7px; color: var(--olive-dark); }
+    .rule p { margin: 0; color: var(--muted); font-size: 13px; }
+    .tool-card { padding: 24px; background: #fffaf1; border: 1px solid #ddcfbb; border-radius: 20px; }
+    .tool-title { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .tool-title h3 { margin: 0; font-size: 23px; }
+    .tool-badge { padding: 5px 9px; color: #fff; background: var(--olive); border-radius: 999px; font-size: 11px; font-weight: 900; }
+    .flowline { display: grid; grid-template-columns: repeat(7,auto); align-items: center; justify-content: center; gap: 7px; padding: 22px 10px; }
+    .flowbox { padding: 10px 13px; text-align: center; background: #fff; border: 1px solid var(--line); border-radius: 12px; font-size: 12px; font-weight: 800; }
+    .arrow { color: var(--clay); font-weight: 950; }
+    .timeline { position: relative; display: grid; gap: 13px; margin-left: 15px; }
+    .timeline::before { content: ""; position: absolute; left: 14px; top: 10px; bottom: 10px; width: 2px; background: var(--line); }
+    .milestone { position: relative; display: grid; grid-template-columns: 30px minmax(0,1fr); gap: 16px; }
+    .dot { position: relative; z-index: 1; width: 30px; height: 30px; display: grid; place-items: center; color: #fff; background: var(--olive-dark); border: 5px solid var(--paper); border-radius: 50%; font-size: 10px; font-weight: 900; }
+    .milestone article { padding: 16px 18px; background: rgba(255,255,255,.62); border: 1px solid var(--line); border-radius: 15px; }
+    .milestone h4 { margin: 0 0 4px; }
+    .milestone p { margin: 0; color: var(--muted); font-size: 13px; }
+    details { margin-top: 9px; background: rgba(255,255,255,.56); border: 1px solid var(--line); border-radius: 14px; }
+    summary { cursor: pointer; padding: 14px 16px; font-weight: 850; }
+    details > div { padding: 0 16px 16px; }
+    .evidence-grid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 10px; }
+    .evidence-grid article { padding: 16px; background: rgba(255,255,255,.62); border: 1px solid var(--line); border-radius: 15px; }
+    .evidence-grid h4 { color: var(--clay); }
+    .evidence-grid p, .evidence-grid li { color: var(--muted); font-size: 12px; }
+    .source-list { columns: 2; column-gap: 28px; padding-left: 20px; }
+    .source-list li { break-inside: avoid; margin-bottom: 8px; font-size: 13px; }
+    footer { margin-top: 52px; padding: 28px; color: #d9dfd6; background: #243129; border-radius: 22px; }
+    footer strong { color: #fff; }
+    .print-only { display: none; }
+    @media (max-width: 1100px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { position: static; max-height: none; }
+      nav { grid-template-columns: repeat(3,minmax(0,1fr)); }
+      .kpis, .rule-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .evidence-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    }
+    @media (max-width: 720px) {
+      .top-meta { display: none; }
+      .layout { width: min(100% - 20px,1460px); padding-top: 16px; }
+      aside { display: none; }
+      .hero { border-radius: 22px; }
+      .kpis, .grid-2, .grid-3, .compare, .rule-grid, .evidence-grid, .section-head { grid-template-columns: 1fr; }
+      .source-list { columns: 1; }
+      .flowline { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); text-align: center; }
+      section { margin-top: 42px; }
+    }
+    @media print {
+      body { background: #fff; }
+      .topbar, aside { display: none; }
+      .layout { display: block; width: 100%; padding: 0; }
+      .hero, .chart, footer { print-color-adjust: exact; }
+      .card, .hero { box-shadow: none; }
+      .print-only { display: block; }
+      section { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">M</span><span>MoAI Architecture Report</span></div>
+    <div class="top-meta">develop@4056f69e1 · 2026-09-14 · 설계 지시서</div>
+  </header>
+
+  <div class="layout">
+    <aside aria-label="문서 목차">
+      <p class="eyebrow">Contents</p>
+      <nav>
+        <a href="#decision">결론</a>
+        <a href="#topology">정확한 제품 구조</a>
+        <a href="#baseline">현재 구현 기준선</a>
+        <a href="#kanban">Kanban 레거시 GAP</a>
+        <a href="#proxy">Proxy 분석 · ToS</a>
+        <a href="#gateway">Gateway 목표 구조</a>
+        <a href="#deepswe">DeepSWE 분석</a>
+        <a href="#mcp">MCP V2 설계</a>
+        <a href="#factory">Factory 조합법</a>
+        <a href="#image">이미지 생성</a>
+        <a href="#milestones">구현 순서</a>
+        <a href="#acceptance">개발 시 검증</a>
+        <a href="#evidence">증거와 GAP</a>
+      </nav>
+    </aside>
+
+    <main>
+      <header class="hero">
+        <div class="eyebrow">Final redesign · evidence-led</div>
+        <h1>한 세션, 한 메인 모델.<br>Factory는 카드 단위로.</h1>
+        <p>MoAI GPT Gateway와 MCP를 “역할별 모델 배정표”가 아니라 세션·lane·전문 호출의 세 층으로 재설계했다. 좋은 모델을 많이 붙이는 것보다, 책임과 비용의 경계를 흐리지 않는 것이 먼저다.</p>
+        <div class="hero-tags">
+          <span class="tag">GPT 4 models only</span>
+          <span class="tag">Official App Server target</span>
+          <span class="tag">Factory only</span>
+          <span class="tag">Kanban retired</span>
+          <span class="tag">Go implementation</span>
+          <span class="tag">No silent fallback</span>
+        </div>
+      </header>
+
+      <div class="kpis" aria-label="핵심 설계 지표">
+        <div class="kpi"><strong>1</strong><span>세션당 메인 모델</span></div>
+        <div class="kpi"><strong>4</strong><span>허용 GPT 모델</span></div>
+        <div class="kpi"><strong>1 card</strong><span>lane당 전체 생명주기</span></div>
+        <div class="kpi"><strong>0</strong><span>자동 모델 fallback</span></div>
+      </div>
+
+      <section id="decision">
+        <div class="section-head">
+          <div><div class="eyebrow">Executive decision</div><h2>최종 결정</h2></div>
+          <p class="lead">메인 모델은 세션에 속하고, 카드 책임은 lane에 속하며, 이종 모델은 MCP의 제한된 작업 호출로만 들어온다.</p>
+        </div>
+        <div class="grid-3">
+          <article class="decision"><div class="num">1</div><div><h4>메인 세션</h4><p><code>moai cc</code>, <code>moai gpt</code>, <code>moai glm</code> 중 하나. 선택한 backend·model·effort가 세션 정체성이다.</p></div></article>
+          <article class="decision"><div class="num">2</div><div><h4>Factory lane</h4><p>lead가 카드를 배정하고 lane이 <code>plan → run → sync</code> 전체를 끝까지 책임진다.</p></div></article>
+          <article class="decision"><div class="num">3</div><div><h4>MCP 전문 호출</h4><p>다른 회사 모델은 짧고 독립적인 상담·실행·교차 검토에만 쓴다. lane 정체성은 바꾸지 않는다.</p></div></article>
+        </div>
+        <div class="callout" style="margin-top:16px">
+          <strong>폐기한 설계:</strong> lead, plan, run, routine, scan 같은 역할마다 GPT 모델을 고정하는 표는 MoAI Factory와 맞지 않는다. 역할별 GPT 이름도 API나 agent preset으로 만들지 않는다.
+        </div>
+      </section>
+
+      <section id="topology">
+        <div class="section-head">
+          <div><div class="eyebrow">Product topology</div><h2>정확한 제품 구조</h2></div>
+          <p class="lead"><code>moai gpt</code>는 보조 agent 호출기가 아니라 Claude Code 전체 메인 대화 세션을 GPT로 구동하는 launcher다.</p>
+        </div>
+        <div class="diagram" aria-label="MoAI 세션과 Factory 구조도">
+          <pre class="mermaid">
+flowchart TB
+  U[사용자] --> L{세션 시작}
+  L --> C[moai cc<br/>Claude main]
+  L --> G[moai gpt<br/>GPT main]
+  L --> Z[moai glm<br/>GLM main]
+  C --> CA[native Agent<br/>Claude 상속]
+  G --> GA[native Agent<br/>같은 GPT inherit]
+  Z --> ZA[native Agent<br/>GLM 정책 상속]
+  C -. 필요할 때만 .-> M[MCP 전문 호출]
+  G -. 필요할 때만 .-> M
+  Z -. 필요할 때만 .-> M
+  F[Factory lead] --> L1[lane-1<br/>카드 A 전체]
+  F --> L2[lane-2<br/>카드 B 전체]
+  F --> L3[lane-3<br/>카드 C 전체]
+  L1 --> P1[plan → run → sync]
+  L2 --> P2[plan → run → sync]
+  L3 --> P3[plan → run → sync]
+  classDef main fill:#dfe7d7,stroke:#66704b,color:#17221d;
+  classDef lane fill:#f1d8c9,stroke:#b85c3b,color:#17221d;
+  class C,G,Z,CA,GA,ZA main;
+  class F,L1,L2,L3,P1,P2,P3 lane;
+          </pre>
+          <noscript><pre>사용자 → moai cc/gpt/glm 메인 세션 → 같은 세션 정책을 상속하는 native Agent
+Factory lead → 번호 lane → 각 lane이 카드 하나의 plan → run → sync 전체 소유
+필요할 때만 provider별 MCP 전문 호출</pre></noscript>
+        </div>
+        <div class="grid-2" style="margin-top:16px">
+          <article class="card"><h3 style="margin-top:0">모델을 바꾸는 두 방법</h3><ul class="clean"><li>긴 독립 작업: 새 메인 세션 또는 새 Factory lane을 원하는 모델로 시작</li><li>작은 전문 작업: 현재 세션에서 <code>codex_task</code> 또는 <code>glm_task</code> 호출</li></ul></article>
+          <article class="card"><h3 style="margin-top:0">바뀌지 않는 것</h3><ul class="clean"><li>단계가 plan에서 run으로 넘어가도 lane의 메인 모델은 자동 변경되지 않음</li><li>MCP 호출 뒤에도 원래 lane의 책임과 acceptance 의무는 그대로</li></ul></article>
+        </div>
+      </section>
+
+      <section id="baseline">
+        <div class="section-head">
+          <div><div class="eyebrow">Verified as-is</div><h2>현재 develop 기준선</h2></div>
+          <p class="lead">merge됐다는 사실과 실계정 운영 acceptance를 분리했다. 아래는 <code>develop@4056f69e1</code>에서 읽은 코드 기준이다.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>항목</th><th>현재 코드</th><th>판정</th><th>핵심 근거</th></tr></thead>
+            <tbody>
+              <tr><td><code>moai gpt</code> launcher</td><td>GPT gateway를 거치는 메인 Claude Code 세션</td><td><span class="pill ok">구현됨</span></td><td><code>gpt.go</code>, <code>root.go</code>, <code>gateway_prepare.go</code></td></tr>
+              <tr><td>GPT 모델</td><td>Luna, Sol, Terra, Astra 네 모델 binding</td><td><span class="pill ok">구현됨</span></td><td><code>gateway_product_binding.go</code></td></tr>
+              <tr><td>기본 GPT</td><td><code>gpt-5.6-sol</code></td><td><span class="pill ok">구현됨</span></td><td><code>gateway_prepare.go</code></td></tr>
+              <tr><td>native sub-agent</td><td>GPT gateway에서는 model <code>inherit</code>, effort 편집</td><td><span class="pill ok">구현됨</span></td><td>t840 merge 계열</td></tr>
+              <tr><td>GPT auth broker</td><td><code>codex app-server --listen stdio://</code>로 인증 상태 중개</td><td><span class="pill ok">구현됨</span></td><td><code>internal/gateway/auth/broker.go</code></td></tr>
+              <tr><td>production turn</td><td><code>OpenAIAdapter + AuthPKCE</code></td><td><span class="pill partial">전환 필요</span></td><td><code>gateway_factory.go</code>, production binding</td></tr>
+              <tr><td>Factory</td><td>lead + 번호 lane, lane이 카드 전체 소유</td><td><span class="pill ok">구현됨</span></td><td><code>factory.go</code>, <code>cc.go</code></td></tr>
+              <tr><td>Kanban</td><td>제품 폐기 결정과 달리 <code>-k</code> 코드·규칙 잔존</td><td><span class="pill gap">레거시 GAP</span></td><td>CLI, rules, manager-lead, factory skill</td></tr>
+              <tr><td><code>codex_task</code></td><td>prompt/background/write/resume_last</td><td><span class="pill partial">V1</span></td><td><code>mcp_server.go</code>, <code>codex_task.go</code></td></tr>
+              <tr><td><code>glm_task</code></td><td>prompt/background/model/system/max_tokens</td><td><span class="pill partial">V1</span></td><td><code>mcp_server.go</code>, <code>glm_task.go</code></td></tr>
+              <tr><td>이미지 exact model</td><td><code>gpt-image-2.5</code> subscription provenance 미확인</td><td><span class="pill gap">차단</span></td><td>현재 코드 + 조사한 공개 자료</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout warn" style="margin-top:16px"><strong>Rust로 개발하는가?</strong> 아니야. Rust의 10+4 테스트는 Rust로 작성된 외부 참고 proxy 자체의 테스트일 뿐이다. MoAI 생산 코드는 기존 Go 경계인 <code>internal/cli</code>와 <code>internal/gateway</code>를 확장한다. 외부 Rust 테스트 통과를 MoAI acceptance로 계산하지 않는다.</div>
+        <div class="card" style="margin-top:16px">
+          <h3 style="margin-top:0">현재 후속 카드 readback</h3>
+          <p><span class="pill partial">queued</span> t842 모델 카탈로그 SSOT · t843 web matrix/lane 표현 · t844 실세션 증거 · t848 Astra <code>max</code> 재측정</p>
+          <p style="margin-bottom:0"><span class="pill gap">picked</span> t850/t851 receipt-chain 400 재현·원인 규명 · t853 ToS 조사 보고</p>
+        </div>
+      </section>
+
+      <section id="kanban">
+        <div class="legacy">
+          <h3>Kanban은 제품상 폐기 확정</h3>
+          <p>현재 <code>develop</code>에 남은 <code>-k</code>는 지원 기능이 아니라 제거가 덜 끝난 레거시다. 이 설계 보고서는 상태를 미화하지 않고 별도 제거 카드가 필요한 GAP으로 기록한다.</p>
+          <ul class="clean">
+            <li><code>internal/cli/cc.go</code>의 도움말과 dispatch</li>
+            <li><code>internal/cli/factory.go</code>의 <code>-k</code>/<code>-f</code> 병합 파싱</li>
+            <li><code>.claude/rules/moai/workflow/kanban-dispatch*.md</code></li>
+            <li><code>manager-lead.md</code>와 이전 factory workflow 설명</li>
+          </ul>
+          <p><strong>별도 제거 acceptance:</strong> CLI·규칙·도움말·테스트를 함께 없애고, <code>-k</code>가 명시적인 지원 중단 오류를 내며 정상 기능으로 검색되지 않아야 한다.</p>
+        </div>
+      </section>
+
+      <section id="proxy">
+        <div class="section-head">
+          <div><div class="eyebrow">Reference analysis</div><h2>Proxy의 장점만 흡수</h2></div>
+          <p class="lead"><code>claude-code-proxy</code>는 좋은 변환 참고서지만, 그 인증·비공개 endpoint 경로까지 제품 권한 원천으로 복제하면 위험이 커진다.</p>
+        </div>
+        <div class="compare">
+          <article class="take"><h3 style="margin-top:0">흡수한다</h3><ul class="check-list"><li>Anthropic ↔ provider 요청·stream 변환</li><li>provider별 모델 라우팅과 종료 사유 정규화</li><li>세션 연속성·진단·redacted trace</li><li>golden fixture 기반 호환성 회귀 테스트</li><li>이미지 기능을 텍스트 turn과 분리하는 발상</li></ul></article>
+          <article class="leave"><h3 style="margin-top:0">생산 경로에서는 버린다</h3><ul class="check-list"><li>자체 OAuth 구현과 token lifecycle 소유</li><li>비공개 ChatGPT endpoint 직접 호출</li><li>무인증 loopback listener</li><li>추정 token을 billing truth로 취급</li><li>요청 모델을 다른 모델로 조용히 대체</li></ul></article>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h3 style="margin-top:0">실제 연결 방식</h3>
+          <p>Claude Code의 Anthropic Messages 요청을 받아 Codex 요청으로 변환하고, 자체 OAuth 자격 증명으로 <code>chatgpt.com/backend-api/codex/responses</code> 계열 내부 경로를 직접 호출한다. 모델 라우팅, 스트리밍 변환, 토큰 추정, 대화 연속성, 진단을 제공한다.</p>
+          <p><a href="https://claude-code-proxy.raine.dev/how-it-works/">How it works</a> · <a href="https://claude-code-proxy.raine.dev/providers/codex/">Codex provider</a> · <a href="https://claude-code-proxy.raine.dev/reference/compatibility-and-limitations/">Compatibility &amp; limitations</a> · <a href="https://github.com/raine/claude-code-proxy">GitHub</a></p>
+        </div>
+
+        <h3>ToS·계정 위험 판단</h3>
+        <div class="risk-ladder">
+          <article class="risk-row"><div><strong>공식 Codex App Server</strong><p>사용자 자신의 공식 로그인과 공개된 thread/turn protocol을 위임하는 목표 경로.</p></div><span class="risk-label">상대적 위험 낮음</span></article>
+          <article class="risk-row"><div><strong>공식 OpenAI API</strong><p>공개 API 계약을 따르지만 ChatGPT 구독과 별도 과금이라는 경제적 차이가 있다.</p></div><span class="risk-label">계약 명확</span></article>
+          <article class="risk-row"><div><strong>현행 PKCE + 직접 adapter</strong><p>과도기 경로. 새 기능을 누적하기보다 App Server cutover 범위를 닫아야 한다.</p></div><span class="risk-label">제한 유지</span></article>
+          <article class="risk-row"><div><strong>제3자 자체 OAuth + 내부 endpoint</strong><p>unofficial client, account, 호환성 책임이 MoAI로 이동한다.</p></div><span class="risk-label">비권장</span></article>
+        </div>
+        <div class="callout warn" style="margin-top:16px"><strong>“ToS 문제 없음”은 보장할 수 없다.</strong> OpenAI 약관은 계정 공유·보호 조치 우회·프로그램 방식의 추출 등을 제한하고, Anthropic은 gateway를 통한 non-Claude model routing을 지원하지 않는다고 밝힌다. 공식 App Server가 상대적으로 가장 낮은 공학적 위험이라는 결론이지 법률 보증은 아니다.</div>
+      </section>
+
+      <section id="gateway">
+        <div class="section-head">
+          <div><div class="eyebrow">Target architecture</div><h2>App Server가 권한 원천</h2></div>
+          <p class="lead">MoAI Gateway는 인증을 흉내 내는 주체가 아니라 Claude Code와 공식 App Server 사이의 안전한 protocol adapter가 된다.</p>
+        </div>
+        <div class="flowline card">
+          <div class="flowbox">Claude Code<br>Anthropic format</div><div class="arrow">→</div>
+          <div class="flowbox">MoAI Gateway<br>Go adapter</div><div class="arrow">→</div>
+          <div class="flowbox">Codex App Server<br>auth · model · thread</div><div class="arrow">→</div>
+          <div class="flowbox">GPT<br>exact resolved model</div>
+        </div>
+        <div class="rule-grid" style="margin-top:16px">
+          <article class="rule"><strong>정확한 4개</strong><p>Luna, Sol, Terra, Astra 외 모델은 provider 호출 전에 거부.</p></article>
+          <article class="rule"><strong>교집합 검증</strong><p>정적 allowlist ∩ live <code>model/list</code>로 실제 사용 가능 목록 계산.</p></article>
+          <article class="rule"><strong>effort도 live</strong><p><code>supportedReasoningEfforts</code>와 MoAI 정책의 교집합만 승인.</p></article>
+          <article class="rule"><strong>fallback 금지</strong><p>requested와 resolved가 다르면 성공으로 포장하지 않고 실패.</p></article>
+        </div>
+        <div class="grid-2" style="margin-top:16px">
+          <article class="card"><h3 style="margin-top:0">Security</h3><ul class="clean"><li>token을 설정·argv·로그·MCP 결과에 저장하지 않음</li><li>stdio/loopback에 nonce와 origin 검증</li><li>매 turn sandbox·approval 정책 전송</li><li>prompt, source, base64, credential 기본 redaction</li></ul></article>
+          <article class="card"><h3 style="margin-top:0">Reliability</h3><ul class="clean"><li>initialize와 capability discovery 전에는 ready 금지</li><li>stream/tool/cancel을 명시적 상태기계로 처리</li><li>unknown event는 <code>PROTOCOL_DRIFT</code></li><li>requested/resolved model·effort와 usage source를 receipt에 기록</li></ul></article>
+        </div>
+      </section>
+
+      <section id="deepswe">
+        <div class="section-head">
+          <div><div class="eyebrow">Benchmark interpretation</div><h2>DeepSWE는 선택 참고표다</h2></div>
+          <p class="lead">113 tasks · 91 repos · 5 languages. Factory 역할을 고정하는 표가 아니고, 구독 청구서도 아니다. raw JSON의 같은 지표로만 비교했다.</p>
+        </div>
+        <div class="chart" role="img" aria-label="네 GPT 모델의 DeepSWE pass@1과 평균 steps 비교">
+          <svg viewBox="0 0 980 360" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="bar" x1="0" x2="1"><stop offset="0" stop-color="#d3aa59"/><stop offset="1" stop-color="#e8c984"/></linearGradient></defs>
+            <text x="24" y="34" fill="#f7f4ea" font-size="19" font-weight="800">최고 pass 행 비교</text>
+            <text x="24" y="57" fill="#bfc9bf" font-size="12">막대 = pass@1 · 오른쪽 원 = 평균 steps · raw mean_cost는 표에서 별도 확인</text>
+            <line x1="230" y1="78" x2="230" y2="310" stroke="#66766c"/>
+            <line x1="830" y1="78" x2="830" y2="310" stroke="#66766c"/>
+            <text x="230" y="330" fill="#aeb9b0" font-size="11">0.60</text><text x="500" y="330" fill="#aeb9b0" font-size="11">0.70</text><text x="815" y="330" fill="#aeb9b0" font-size="11">0.80 pass@1</text>
+            <g>
+              <text x="24" y="112" fill="#f7f4ea" font-size="15" font-weight="700">gpt-6-astra · xhigh</text>
+              <rect x="230" y="89" width="423" height="28" rx="8" fill="url(#bar)"/><text x="665" y="109" fill="#f7f4ea" font-size="13" font-weight="800">0.7412</text>
+              <circle cx="846" cy="103" r="15" fill="#b85c3b"/><text x="872" y="108" fill="#d8dfd8" font-size="12">28.75 steps</text>
+            </g>
+            <g>
+              <text x="24" y="172" fill="#f7f4ea" font-size="15" font-weight="700">gpt-5.6-sol · max</text>
+              <rect x="230" y="149" width="380" height="28" rx="8" fill="url(#bar)"/><text x="622" y="169" fill="#f7f4ea" font-size="13" font-weight="800">0.7267</text>
+              <circle cx="846" cy="163" r="24" fill="#b85c3b"/><text x="882" y="168" fill="#d8dfd8" font-size="12">61.25</text>
+            </g>
+            <g>
+              <text x="24" y="232" fill="#f7f4ea" font-size="15" font-weight="700">gpt-5.6-terra · max</text>
+              <rect x="230" y="209" width="289" height="28" rx="8" fill="url(#bar)"/><text x="531" y="229" fill="#f7f4ea" font-size="13" font-weight="800">0.6962</text>
+              <circle cx="846" cy="223" r="29" fill="#b85c3b"/><text x="887" y="228" fill="#d8dfd8" font-size="12">75.93</text>
+            </g>
+            <g>
+              <text x="24" y="292" fill="#f7f4ea" font-size="15" font-weight="700">gpt-5.6-luna · max</text>
+              <rect x="230" y="269" width="216" height="28" rx="8" fill="url(#bar)"/><text x="458" y="289" fill="#f7f4ea" font-size="13" font-weight="800">0.6719</text>
+              <circle cx="846" cy="283" r="37" fill="#b85c3b"/><text x="897" y="288" fill="#d8dfd8" font-size="12">101.68</text>
+            </g>
+          </svg>
+          <p class="chart-note">원 크기는 steps의 상대 크기를 돕기 위한 시각화다. 서로 다른 task 난도나 구독 allowance를 의미하지 않는다.</p>
+        </div>
+        <div class="table-wrap" style="margin-top:16px">
+          <table>
+            <thead><tr><th>모델</th><th>effort</th><th>pass@1</th><th>raw mean cost USD</th><th>output tokens</th><th>steps</th><th>n</th></tr></thead>
+            <tbody>
+              <tr><td><code>gpt-6-astra</code></td><td>xhigh</td><td>0.7412</td><td>6.52</td><td>29,557</td><td>28.75</td><td>452</td></tr>
+              <tr><td><code>gpt-5.6-sol</code></td><td>max</td><td>0.7267</td><td>8.39</td><td>60,014</td><td>61.25</td><td>450</td></tr>
+              <tr><td><code>gpt-5.6-terra</code></td><td>max</td><td>0.6962</td><td>4.95</td><td>71,939</td><td>75.93</td><td>451</td></tr>
+              <tr><td><code>gpt-5.6-luna</code></td><td>max</td><td>0.6719</td><td>3.03</td><td>73,400</td><td>101.68</td><td>448</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="grid-2" style="margin-top:16px">
+          <article class="card"><h3 style="margin-top:0">Astra의 중요한 교훈</h3><p><code>max</code> pass 0.7323, cost 12.37. <code>high</code>도 pass 0.7323인데 cost 5.72다. 같은 pass에서 raw mean cost가 약 2.16배이므로 <code>max</code>를 기본값으로 두지 않는다.</p></article>
+          <article class="card"><h3 style="margin-top:0">선택 정책</h3><p>일반 카드는 Sol medium/high에서 시작한다. 고위험 설계는 Astra high, 필요가 증명되면 xhigh로 올린다. Terra/Luna는 카드 유형별 내부 benchmark가 같은 acceptance에서 유리할 때 확대한다.</p></article>
+        </div>
+        <div class="callout warn" style="margin-top:16px"><strong>자료 한계:</strong> raw JSON의 cost와 렌더링 페이지의 일부 cost가 달라 raw JSON만 사용했다. 이 cost는 DeepSWE harness의 지표이며 ChatGPT 구독 청구액이 아니다.</div>
+        <p style="margin-top:12px"><a href="https://deepswe.datacurve.ai/">DeepSWE leaderboard</a> · <a href="https://deepswe.datacurve.ai/artifacts/v1.1/leaderboard-live.json">live JSON</a></p>
+      </section>
+
+      <section id="mcp">
+        <div class="section-head">
+          <div><div class="eyebrow">MCP V2</div><h2>Provider별 도구를 정직하게</h2></div>
+          <p class="lead">만능 provider router보다 기존 <code>codex_task</code>와 <code>glm_task</code>를 additive하게 확장한다. 인증·capability·오류 차이를 숨기지 않는다.</p>
+        </div>
+        <div class="grid-2">
+          <article class="tool-card">
+            <div class="tool-title"><h3><code>codex_task</code> V2</h3><span class="tool-badge">App Server</span></div>
+            <pre><code>{
+  "prompt": "required",
+  "model": "optional exact 4-model id",
+  "effort": "optional live-supported value",
+  "project_root": "canonical worktree path",
+  "write": false,
+  "background": false,
+  "continuation": "new | resume",
+  "thread_id": "required for resume"
+}</code></pre>
+            <ul class="clean"><li>정적 4-model allowlist와 live catalog의 교집합</li><li>Factory에서 <code>resume_last</code> 거부, explicit thread만 허용</li><li>generic task의 auditor profile 암묵 결합 제거</li><li>write는 기존 project opt-in과 호출 승인을 모두 확인</li></ul>
+          </article>
+          <article class="tool-card">
+            <div class="tool-title"><h3><code>glm_task</code> V2</h3><span class="tool-badge">Provider native</span></div>
+            <pre><code>{
+  "prompt": "required",
+  "model": "configured GLM model",
+  "thinking": "default | enabled | disabled",
+  "system": "optional",
+  "max_tokens": "optional",
+  "project_root": "canonical worktree path",
+  "background": false
+}</code></pre>
+            <ul class="clean"><li>GPT effort 단계를 GLM에 거짓 투영하지 않음</li><li>Factory 환경에서 explicit model을 조용히 무시하지 않음</li><li>Coding Plan entitlement와 일반 API 계약을 구분</li><li>명시 모델이 불가하면 구조화 오류로 종료</li></ul>
+          </article>
+        </div>
+
+        <h3>공통 결과 envelope</h3>
+        <pre><code>{
+  "status": "completed | failed | cancelled | queued | running | orphaned",
+  "provider": "openai-codex | glm",
+  "auth_mode": "appserver | api_key | configured",
+  "requested_model": "...",
+  "resolved_model": "...",
+  "reasoning_requested": "...",
+  "reasoning_resolved": "...",
+  "project_root": "...",
+  "job_id": "...", "thread_id": "...", "turn_id": "...",
+  "write_requested": false, "write_granted": false,
+  "usage": {"input_tokens": null, "output_tokens": null, "source": "unavailable"},
+  "retryable": false,
+  "error": {"class": "auth | capacity | policy | protocol | input | runtime", "code": "..."},
+  "output": "..."
+}</code></pre>
+        <div class="rule-grid" style="margin-top:16px">
+          <article class="rule"><strong>명시 thread</strong><p>같은 repo의 여러 lane에서 “마지막 대화”는 모호하다. ID로만 resume.</p></article>
+          <article class="rule"><strong>경로 경계</strong><p>canonicalize 후 repo/worktree 밖 escape와 교차 lane write 거부.</p></article>
+          <article class="rule"><strong>orphaned</strong><p>MCP restart 뒤 process-local job을 계속 running으로 거짓 표시하지 않음.</p></article>
+          <article class="rule"><strong>usage 출처</strong><p>provider 값이 없으면 0으로 꾸미지 않고 unavailable로 표시.</p></article>
+        </div>
+        <div class="callout ok" style="margin-top:16px"><strong>감사 도구는 그대로 분리:</strong> <code>codex_audit</code>, <code>glm_audit</code>, <code>audit_multi</code>는 gate 전용이다. task 성공은 audit PASS가 아니고, provider 실패는 GAP/NOT-RUN으로 남는다.</div>
+      </section>
+
+      <section id="factory">
+        <div class="section-head">
+          <div><div class="eyebrow">Operational matrix</div><h2>Factory에서 어떻게 섞나</h2></div>
+          <p class="lead">lead는 조율하고 lane은 끝낸다. MCP는 lane이 경계 작은 전문 작업을 위임할 때만 사용한다.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>메인 세션</th><th>native Agent</th><th>선택적 MCP</th><th>권장 사용</th></tr></thead>
+            <tbody>
+              <tr><td><code>moai cc</code></td><td>Claude 상속</td><td><code>codex_task</code>, <code>glm_task</code>, image</td><td>Claude 주도 + 경계가 작은 교차 모델 작업</td></tr>
+              <tr><td><code>moai gpt</code></td><td>선택한 같은 GPT inherit</td><td><code>glm_task</code>, 필요 시 명시적 별도 GPT thread</td><td>GPT가 메인 개발을 책임</td></tr>
+              <tr><td><code>moai glm</code></td><td>GLM 세션 정책 상속</td><td><code>codex_task</code>, image</td><td>경제적 주 작업 + 고난도 GPT 보조</td></tr>
+              <tr><td>Factory lead</td><td>lead 세션 상속</td><td>최소화</td><td>카드 분해·배정·증거 판단에 집중</td></tr>
+              <tr><td>Factory lane</td><td>lane 시작 모델 상속</td><td>독립적이고 작은 작업만</td><td>카드 하나를 plan부터 sync까지 책임</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="grid-2" style="margin-top:16px">
+          <article class="card"><h3 style="margin-top:0">MCP 호출 조건</h3><ol><li>입력과 산출물이 작고 명시적</li><li>주 lane과 독립적으로 실패·재시도 가능</li><li>다른 모델의 이득이 호출·컨텍스트 비용보다 큼</li><li>원래 lane이 acceptance를 검증</li></ol></article>
+          <article class="card"><h3 style="margin-top:0">Capacity 처리</h3><p>자동 fallback chain은 없다. <code>CAPACITY_UNAVAILABLE</code>, requested model, retryable을 반환한다. 그 다음 새 lane·모델·provider를 고르는 주체는 lead 또는 사용자다.</p></article>
+        </div>
+      </section>
+
+      <section id="image">
+        <div class="section-head">
+          <div><div class="eyebrow">Image route</div><h2>이미지는 별도 도구로</h2></div>
+          <p class="lead">텍스트 task에 이미지 옵션을 섞지 않는다. exact model provenance가 확인될 때만 문을 연다.</p>
+        </div>
+        <div class="tool-card">
+          <div class="tool-title"><h3><code>codex_image_generate</code></h3><span class="tool-badge">DEFAULT OFF</span></div>
+          <pre><code>{
+  "provider_route": "codex-images-subscription",
+  "model": "gpt-image-2.5",
+  "prompt": "required",
+  "size": "provider-supported",
+  "quality": "provider-supported",
+  "output_format": "png"
+}</code></pre>
+          <div class="grid-2" style="margin-top:16px">
+            <div><h4>성공 조건</h4><ul class="clean"><li>official capability에서 exact ID 확인</li><li>응답 provenance에도 같은 model 기록</li><li>MCP image content + structured metadata 반환</li><li>timeout·cancel·usage를 code turn과 별도 관리</li></ul></div>
+            <div><h4>실패 조건</h4><ul class="clean"><li>미확인이면 <code>MODEL_ID_UNVERIFIED</code></li><li><code>gpt-image-2</code>나 alias 응답 거부</li><li>Flare·Sunburst 등으로 silent fallback 금지</li><li>base64·prompt·credential 로그 금지</li></ul></div>
+          </div>
+        </div>
+        <div class="callout warn" style="margin-top:16px"><strong>현재 확인 범위:</strong> 조사한 proxy의 subscription images 경로는 <code>gpt-image-2</code>로 제한된다. 이것은 사용자가 요구한 <code>gpt-image-2.5</code>의 성공 근거가 아니다. 개발 단계에서 exact request·response를 확인하기 전까지 비활성화한다.</div>
+      </section>
+
+      <section id="milestones">
+        <div class="section-head">
+          <div><div class="eyebrow">Implementation order</div><h2>남은 것만 구현</h2></div>
+          <p class="lead">이미 merge된 launcher·inherit·effort 범위를 반복하지 않고, 미완료 production seam과 MCP 계약부터 닫는다.</p>
+        </div>
+        <div class="timeline">
+          <div class="milestone"><div class="dot">M0</div><article><h4>문서와 제품 표면 정합성</h4><p>Kanban 폐기를 canonical 문서에 반영하고 <code>-k</code> 제거를 별도 카드로 분리. Factory 단일 정의 확정.</p></article></div>
+          <div class="milestone"><div class="dot">M1</div><article><h4>App Server production turn cutover</h4><p><code>OpenAIAdapter + AuthPKCE</code>를 official App Server authority/adapter로 교체. t842 catalog와 resolver 공유.</p></article></div>
+          <div class="milestone"><div class="dot">M2</div><article><h4>MCP V2 계약</h4><p>Codex model·effort·project root·explicit thread, 결과 envelope, error taxonomy. V1 호환 필드는 유지.</p></article></div>
+          <div class="milestone"><div class="dot">M3</div><article><h4>GLM 의미 정합성</h4><p>provider-native thinking과 명시 모델 보장. Coding Plan entitlement와 일반 API 계약 분리.</p></article></div>
+          <div class="milestone"><div class="dot">M4</div><article><h4>job·lane 안전성</h4><p>session/lane/project identity, restart reconciliation, orphaned, explicit resume, worktree 경계.</p></article></div>
+          <div class="milestone"><div class="dot">M5</div><article><h4>이미지 capability gate</h4><p>별도 tool, exact <code>gpt-image-2.5</code> provenance, redaction, 미확인 fail closed.</p></article></div>
+          <div class="milestone"><div class="dot">M6</div><article><h4>Factory 운영 acceptance</h4><p>t844·t848·t850/t851과 연결해 실세션·effort·400·usage receipt를 관찰하고 내부 benchmark 축적.</p></article></div>
+        </div>
+      </section>
+
+      <section id="acceptance">
+        <div class="section-head">
+          <div><div class="eyebrow">Development gates</div><h2>개발할 때 검증할 것</h2></div>
+          <p class="lead">이번 문서 작업에서는 제품 테스트를 실행하지 않았다. 아래 항목은 구현 카드의 acceptance다.</p>
+        </div>
+        <details open><summary>Gateway 계약</summary><div><ul class="clean"><li>multi-turn text, tool call/result, cancellation이 App Server thread/turn과 왕복</li><li>네 모델 외 ID와 live 미지원 effort를 provider 호출 전에 거부</li><li>requested와 resolved가 다르면 실패</li><li>unknown event는 <code>PROTOCOL_DRIFT</code></li><li>token이 argv·env dump·log·receipt에 없음</li></ul></div></details>
+        <details><summary>세션과 native Agent</summary><div><ul class="clean"><li><code>moai gpt --model gpt-5.6-sol</code> 메인과 native Agent가 같은 Sol임을 receipt로 확인</li><li>native Agent에 역할별 GPT model preset이 노출되지 않음</li><li>effort가 live capability 범위에서만 전달됨</li></ul></div></details>
+        <details><summary>Factory</summary><div><ul class="clean"><li><code>-f</code>, <code>-f N</code>, <code>-f lane-N</code>의 문서와 동작 일치</li><li>lane 하나가 카드 하나의 plan → run → sync 전체 소유</li><li>lane별 서로 다른 main model 가능, phase 전환 시 모델 자동 변경 없음</li><li>별도 제거 카드 뒤 <code>-k</code>는 지원 중단 오류, 도움말·규칙에서 정상 기능 0건</li></ul></div></details>
+        <details><summary>MCP</summary><div><ul class="clean"><li>Codex exact model·effort 전달과 invalid value 무 fallback 오류</li><li>explicit thread만 resume, Factory의 <code>resume_last</code>는 모호성 오류</li><li>symlink·<code>..</code>·다른 worktree escape 거부</li><li>project opt-in 없는 write 거부</li><li>restart 뒤 running job은 orphaned</li><li>task 성공은 audit PASS가 아님</li></ul></div></details>
+        <details><summary>이미지와 실계정</summary><div><ul class="clean"><li>exact <code>gpt-image-2.5</code> request·response provenance에서만 성공</li><li>다른 model/alias, capability 미확인은 fail closed</li><li>신규 로그인·refresh·재로그인·장시간 대화·compaction·capacity failure 관찰</li><li>실제 구독 계정 경로라는 provenance와 usage source를 receipt로 확인</li></ul></div></details>
+      </section>
+
+      <section id="evidence">
+        <div class="section-head">
+          <div><div class="eyebrow">Evidence boundary</div><h2>무엇을 확인했고, 무엇은 아닌가</h2></div>
+          <p class="lead">보고서의 결론을 코드 readback과 공개 문서 범위에 묶었다. 빈칸은 성공이 아니라 GAP이다.</p>
+        </div>
+        <div class="evidence-grid">
+          <article><h4>Claim</h4><p>GPT 메인 launcher와 Factory lane 구조는 develop에 존재한다. Kanban은 폐기 결정과 달리 잔존 표면이 있다. production App Server turn cutover와 MCP V2는 남았다.</p></article>
+          <article><h4>Evidence</h4><p><code>HEAD=4056f69e1</code>, branch <code>develop</code>. gateway·factory·MCP source와 t654/t840/t841 조상 관계, todo JSON을 읽었다.</p></article>
+          <article><h4>Baseline</h4><p>2026-09-14의 develop worktree. 웹 사실은 같은 날 연 official/vendor/public source. DeepSWE는 live JSON의 같은 지표.</p></article>
+          <article><h4>Gaps</h4><p>제품 코드와 실계정 테스트는 NOT-RUN. exact image 2.5와 GLM Coding Plan 계약 미확정. <code>-k</code>는 아직 미제거.</p></article>
+          <article><h4>Residual risk</h4><p>Claude Code non-Claude routing은 Anthropic 비지원. App Server protocol·catalog·capacity 변화, process-local job, 잔존 legacy 호출 위험.</p></article>
+        </div>
+        <h3>읽은 주요 로컬 표면</h3>
+        <div class="card"><p><code>internal/cli/gpt.go</code>, <code>root.go</code>, <code>gateway_prepare.go</code>, <code>gateway_product_binding.go</code>, <code>gateway_factory.go</code>, <code>factory.go</code>, <code>cc.go</code>, <code>mcp_server.go</code>, <code>codex_task.go</code>, <code>glm_task.go</code>, <code>mcp_codex.go</code>, <code>internal/gateway/auth/broker.go</code>, <code>.moai/reports/t654/as5-verdict.md</code>와 관련 todo/verdict.</p></div>
+        <h3>외부 출처</h3>
+        <ul class="source-list">
+          <li><a href="https://learn.chatgpt.com/docs/app-server">OpenAI Codex App Server</a></li>
+          <li><a href="https://help.openai.com/en/articles/11369540-icodex-in-chatgpt">Using Codex with a ChatGPT plan</a></li>
+          <li><a href="https://openai.com/policies/row-terms-of-use/">OpenAI Terms of Use</a></li>
+          <li><a href="https://code.claude.com/docs/en/llm-gateway">Claude Code LLM gateway</a></li>
+          <li><a href="https://code.claude.com/docs/en/model-config">Claude Code model configuration</a></li>
+          <li><a href="https://claude-code-proxy.raine.dev/how-it-works/">Raine proxy — How it works</a></li>
+          <li><a href="https://claude-code-proxy.raine.dev/providers/codex/">Raine proxy — Codex provider</a></li>
+          <li><a href="https://claude-code-proxy.raine.dev/reference/compatibility-and-limitations/">Raine proxy — Limitations</a></li>
+          <li><a href="https://modelcontextprotocol.io/specification/2025-06-18/server/tools">MCP Tools specification</a></li>
+          <li><a href="https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/tasks">MCP Tasks utility</a></li>
+          <li><a href="https://docs.z.ai/api-reference/llm/chat-completion">GLM Chat Completion API</a></li>
+          <li><a href="https://docs.z.ai/guides/capabilities/thinking-mode">GLM Thinking Mode</a></li>
+          <li><a href="https://deepswe.datacurve.ai/">DeepSWE leaderboard</a></li>
+          <li><a href="https://deepswe.datacurve.ai/artifacts/v1.1/leaderboard-live.json">DeepSWE live JSON</a></li>
+        </ul>
+      </section>
+
+      <footer>
+        <strong>한 줄 설계 원칙</strong>
+        <p>긴 책임은 한 lane과 한 메인 모델에 맡기고, 다른 모델은 이득이 분명한 작은 경계에서만 호출하며, 모델·인증·비용·결과 provenance를 절대로 숨기지 않는다.</p>
+        <p style="margin:0;color:#aeb9b0;font-size:12px">문서 산출물: MD + HTML · 제품 테스트는 개발 카드에서 수행 · Kanban 잔존 표면은 별도 legacy cleanup GAP</p>
+      </footer>
+    </main>
+  </div>
+</div>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "base", securityLevel: "strict", themeVariables: { primaryColor: "#dfe7d7", primaryTextColor: "#17221d", primaryBorderColor: "#66704b", lineColor: "#66704b", secondaryColor: "#f1d8c9", tertiaryColor: "#fffaf1", fontFamily: "Pretendard, Noto Sans KR, sans-serif" }, flowchart: { curve: "basis" } });
+</script>
+</body>
+</html>

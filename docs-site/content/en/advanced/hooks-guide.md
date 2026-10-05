@@ -572,6 +572,16 @@ Hooks are configured in the `hooks` section of the `.claude/settings.json` file.
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -642,6 +652,9 @@ Hooks are configured in the `hooks` section of the `.claude/settings.json` file.
 | `"Write"` | Matches only the Write tool |
 | `"Write\|Edit"` | Matches the Write or Edit tool |
 | `"Bash"` | Matches only the Bash tool |
+| `"PowerShell"` | Matches only the PowerShell tool |
+
+MoAI-ADK registers `handle-pre-tool.sh` under `PreToolUse` twice: once for the `Write|Edit|Bash` matcher and once for a separate `PowerShell` matcher. Claude Code can run shell commands through the PowerShell tool (`CLAUDE_CODE_USE_POWERSHELL_TOOL=1`), and a `Bash` matcher does not fire for that tool. With both matchers in place, the shell-command guards (destructive-command denial, the branch guard, the integration-window lock) apply the same way whichever tool carries the command. The `PostToolUse` matcher is unchanged.
 
 ## How to Write a Custom Hook
 

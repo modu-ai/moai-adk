@@ -2,7 +2,6 @@
 id: SPEC-V3R6-LEGACY-CLEANUP-001
 title: "Implementation Plan — v2.x agency keyword residual cleanup"
 version: "0.2.0"
-status: implemented
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec

@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "ProjectSortKey": {
+      "enum": [
+        "position",
+        "recencyAt"
+      ],
+      "type": "string"
+    },
+    "SortDirection": {
+      "enum": [
+        "asc",
+        "desc"
+      ],
+      "type": "string"
+    }
+  },
+  "properties": {
+    "cursor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limit": {
+      "format": "uint32",
+      "minimum": 0.0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "sortDirection": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/SortDirection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Requires sortKey. Defaults to asc for position and desc for recencyAt."
+    },
+    "sortKey": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ProjectSortKey"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Defaults to position. Recency sorting always places empty projects last."
+    }
+  },
+  "title": "ProjectListParams",
+  "type": "object"
+}

@@ -11,6 +11,13 @@ import (
 // on the 1M tier). Claude Code assumes 200K for unrecognized custom model IDs
 // and caps CLAUDE_CODE_AUTO_COMPACT_WINDOW at that assumption, so non-1M
 // tiers must also be declared. Issue #653.
+//
+// SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004 (DR-2): "resolvable" is now the
+// two-member built-in table {glm-5.3-flash, glm-5.3} — the removed ids
+// (glm-5.2/5.1/4.7 and friends) resolve to nothing through the built-in table
+// and declare nothing; the llm.glm.context_windows override
+// (TestGLMAutoCompactWindow_OverrideKeepsRemovedId family) is the path that
+// still maps them.
 func TestGLMMaxContextTokens(t *testing.T) {
 	// Clean cwd so no project-level llm.yaml override leaks into
 	// ResolveGLMContextWindow — the built-in glmContextWindows table is the
@@ -24,10 +31,13 @@ func TestGLMMaxContextTokens(t *testing.T) {
 		wantValue string
 		wantOK    bool
 	}{
+		{"glm-5.3-flash (1M tier) declares 1M", "glm-5.3-flash", "1000000", true},
 		{"glm-5.3 (1M tier) declares 1M", "glm-5.3", "1000000", true},
-		{"glm-5.2 (1M tier) declares 1M", "glm-5.2", "1000000", true},
-		{"glm-5.1 (200K tier) declares 200K", "glm-5.1", "200000", true},
-		{"glm-4.7 (128K tier) declares 128K", "glm-4.7", "128000", true},
+		// Removed ids resolve to nothing through the built-in table (DR-2):
+		// they declare no window (previously 1M / 200K / 128K respectively).
+		{"removed glm-5.2 does not declare", "glm-5.2", "", false},
+		{"removed glm-5.1 does not declare", "glm-5.1", "", false},
+		{"removed glm-4.7 does not declare", "glm-4.7", "", false},
 		{"claude model does not declare", "claude-opus-4-8", "", false},
 		{"empty model does not declare", "", "", false},
 	}

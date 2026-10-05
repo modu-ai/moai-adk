@@ -22,8 +22,8 @@ func TestDetectProjectType_ReturnsUnknown(t *testing.T) {
 func TestLoadForProject_UnknownProject(t *testing.T) {
 	t.Parallel()
 	loader := seeds.NewLoader(seeds.LoaderConfig{
-		SSoTDir:   t.TempDir(),
-		CacheDir:  t.TempDir(),
+		SSoTDir:  t.TempDir(),
+		CacheDir: t.TempDir(),
 	})
 
 	seedList, err := loader.LoadForProject("unknown")

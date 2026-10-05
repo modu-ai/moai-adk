@@ -227,6 +227,43 @@ func nodeValuesEqual(a, b *yaml.Node) bool {
 	return ValuesEqual(av, bv)
 }
 
+// keptOverTemplateKeys returns the dotted paths of the keys the new template
+// carries whose value in the merged document differs from the template's —
+// the keys where the merge kept the user's (old) value. System fields are
+// skipped: the merge always takes them from the new template (card t1216).
+func keptOverTemplateKeys(newData, mergedData []byte) ([]string, error) {
+	newRoot, err := decodeDoc(newData, "new")
+	if err != nil {
+		return nil, err
+	}
+	mergedRoot, err := decodeDoc(mergedData, "merged")
+	if err != nil {
+		return nil, err
+	}
+	var keys []string
+	var walk func(n, m *yaml.Node, path string)
+	walk = func(n, m *yaml.Node, path string) {
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			k := n.Content[i]
+			if k == nil || k.Kind != yaml.ScalarNode || systemFields[k.Value] {
+				continue
+			}
+			mv, ok := mappingGet(m, k.Value)
+			if !ok {
+				continue
+			}
+			nv, p := n.Content[i+1], joinPath(path, k.Value)
+			if isMappingNode(nv) && isMappingNode(mv) {
+				walk(nv, mv, p)
+			} else if !nodeValuesEqual(nv, mv) {
+				keys = append(keys, p)
+			}
+		}
+	}
+	walk(newRoot, mergedRoot, "")
+	return keys, nil
+}
+
 // isMappingNode reports whether n is a non-null mapping node.
 func isMappingNode(n *yaml.Node) bool {
 	return n != nil && n.Kind == yaml.MappingNode && !isNullNode(n)

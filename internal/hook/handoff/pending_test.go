@@ -9,6 +9,39 @@ import (
 	"time"
 )
 
+func TestClaimPending_ImportsLegacyOnce(t *testing.T) {
+	t.Parallel()
+	pd := t.TempDir()
+	legacy := filepath.Join(handoffStateDir(pd), "pending.json")
+	if err := os.MkdirAll(filepath.Dir(legacy), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(&PendingRecord{SchemaVersion: 1, SavedAt: time.Now(), Body: "legacy resume"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(legacy, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	rec, id, present, err := ClaimPending(pd, "claim-a")
+	if err != nil || !present || rec == nil || id == 0 {
+		t.Fatalf("legacy claim: rec=%v id=%d present=%v err=%v", rec, id, present, err)
+	}
+	if rec.Body != "legacy resume" {
+		t.Fatalf("body=%q", rec.Body)
+	}
+	if _, err := os.Stat(legacy); !os.IsNotExist(err) {
+		t.Fatalf("legacy file must be retired after import: %v", err)
+	}
+	if err := FinishClaim(pd, id, true, "test", "claim-a"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, present, err := ClaimPending(pd, "claim-b"); err != nil || present {
+		t.Fatalf("legacy must not be re-imported: present=%v err=%v", present, err)
+	}
+}
+
 // writeDecoyPendingMD creates a session-handoff/pending.md decoy and returns its
 // path + initial modtime, so tests can assert the reverse-handoff flow never
 // touches the SessionEnd flow's file (path-isolation guard).
@@ -29,8 +62,8 @@ func writeDecoyPendingMD(t *testing.T, projectDir string) (string, time.Time) {
 	return p, info.ModTime()
 }
 
-// TestSavePending_WritesJSONNotMarkdown verifies REQ-005: save writes
-// handoff/pending.json (valid JSON) and does NOT create/modify
+// TestSavePending_WritesJSONNotMarkdown verifies save writes factory.db and
+// does NOT create/modify
 // session-handoff/pending.md.
 func TestSavePending_WritesJSONNotMarkdown(t *testing.T) {
 	t.Parallel()
@@ -43,14 +76,9 @@ func TestSavePending_WritesJSONNotMarkdown(t *testing.T) {
 		t.Fatalf("SavePending: %v", err)
 	}
 
-	// pending.json exists and is valid JSON.
-	data, err := os.ReadFile(PendingPath(projectDir))
-	if err != nil {
-		t.Fatalf("read pending.json: %v", err)
-	}
-	var parsed PendingRecord
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		t.Fatalf("pending.json is not valid JSON: %v", err)
+	parsed, present, err := ReadPending(projectDir)
+	if err != nil || !present {
+		t.Fatalf("read pending row: present=%v err=%v", present, err)
 	}
 	if parsed.Body != "resume body" {
 		t.Errorf("body: got %q, want %q", parsed.Body, "resume body")
@@ -83,24 +111,9 @@ func TestSavePending_Schema(t *testing.T) {
 		t.Fatalf("SavePending: %v", err)
 	}
 
-	data, err := os.ReadFile(PendingPath(projectDir))
-	if err != nil {
-		t.Fatalf("read pending.json: %v", err)
-	}
-	// Assert the raw JSON carries the required keys.
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(data, &raw); err != nil {
-		t.Fatalf("unmarshal raw: %v", err)
-	}
-	for _, key := range []string{"schema_version", "body", "directives", "conversation_language", "saved_at"} {
-		if _, ok := raw[key]; !ok {
-			t.Errorf("pending.json missing required key %q", key)
-		}
-	}
-
-	var parsed PendingRecord
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		t.Fatalf("unmarshal parsed: %v", err)
+	parsed, present, err := ReadPending(projectDir)
+	if err != nil || !present {
+		t.Fatalf("read pending row: present=%v err=%v", present, err)
 	}
 	if parsed.SchemaVersion != PendingSchemaVersion {
 		t.Errorf("schema_version: got %d, want %d", parsed.SchemaVersion, PendingSchemaVersion)
@@ -130,15 +143,15 @@ func TestClearPending(t *testing.T) {
 	if err := SavePending(projectDir, &PendingRecord{Body: "b"}); err != nil {
 		t.Fatalf("SavePending: %v", err)
 	}
-	if _, err := os.Stat(PendingPath(projectDir)); err != nil {
-		t.Fatalf("pending.json should exist before clear: %v", err)
+	if _, present, err := ReadPending(projectDir); err != nil || !present {
+		t.Fatalf("pending row should exist before clear: present=%v err=%v", present, err)
 	}
 
 	if err := ClearPending(projectDir); err != nil {
 		t.Fatalf("ClearPending: %v", err)
 	}
-	if _, err := os.Stat(PendingPath(projectDir)); !os.IsNotExist(err) {
-		t.Errorf("pending.json should be removed after clear, stat err: %v", err)
+	if _, present, err := ReadPending(projectDir); err != nil || present {
+		t.Errorf("pending row should be cleared: present=%v err=%v", present, err)
 	}
 
 	// Decoy untouched.
@@ -187,11 +200,11 @@ func TestReadPending_States(t *testing.T) {
 	t.Run("corrupt", func(t *testing.T) {
 		t.Parallel()
 		pd := t.TempDir()
-		dir := handoffStateDir(pd)
-		if err := os.MkdirAll(dir, 0o700); err != nil {
+		path := PendingPath(pd)
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 			t.Fatalf("mkdir: %v", err)
 		}
-		if err := os.WriteFile(PendingPath(pd), []byte("{not valid json"), 0o600); err != nil {
+		if err := os.WriteFile(path, []byte("not a sqlite database"), 0o600); err != nil {
 			t.Fatalf("write corrupt: %v", err)
 		}
 		rec, present, err := ReadPending(pd)
@@ -207,13 +220,12 @@ func TestSavePending_MkdirFails(t *testing.T) {
 	t.Parallel()
 
 	pd := t.TempDir()
-	// Create .moai/state as a FILE so MkdirAll(.moai/state/handoff) fails.
-	moaiDir := filepath.Join(pd, ".moai")
-	if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-		t.Fatalf("mkdir .moai: %v", err)
+	factoryDir := filepath.Dir(PendingPath(pd))
+	if err := os.MkdirAll(filepath.Dir(factoryDir), 0o755); err != nil {
+		t.Fatalf("mkdir parent: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(moaiDir, "state"), []byte("x"), 0o644); err != nil {
-		t.Fatalf("write state file: %v", err)
+	if err := os.WriteFile(factoryDir, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write factory blocker: %v", err)
 	}
 	if err := SavePending(pd, &PendingRecord{Body: "b"}); err == nil {
 		t.Error("SavePending should fail when the state dir cannot be created")
@@ -227,7 +239,7 @@ func TestClearPending_NonENOENTError(t *testing.T) {
 
 	pd := t.TempDir()
 	// Make pending.json a directory containing a child so Remove fails non-ENOENT.
-	pjDir := PendingPath(pd)
+	pjDir := filepath.Join(handoffStateDir(pd), "pending.json")
 	if err := os.MkdirAll(pjDir, 0o755); err != nil {
 		t.Fatalf("mkdir pending dir: %v", err)
 	}
@@ -245,7 +257,8 @@ func TestReadPending_NonENOENTError(t *testing.T) {
 	t.Parallel()
 
 	pd := t.TempDir()
-	if err := os.MkdirAll(PendingPath(pd), 0o755); err != nil {
+	legacy := filepath.Join(handoffStateDir(pd), "pending.json")
+	if err := os.MkdirAll(legacy, 0o755); err != nil {
 		t.Fatalf("mkdir pending dir: %v", err)
 	}
 	rec, present, err := ReadPending(pd)
@@ -254,17 +267,6 @@ func TestReadPending_NonENOENTError(t *testing.T) {
 	}
 	if rec != nil || present {
 		t.Errorf("non-ENOENT read: got (%v, %v), want (nil, false)", rec, present)
-	}
-}
-
-// TestConsumedDir verifies the consumed/ audit-trail path helper.
-func TestConsumedDir(t *testing.T) {
-	t.Parallel()
-
-	got := ConsumedDir("/tmp/proj")
-	want := filepath.Join("/tmp/proj", ".moai", "state", "handoff", "consumed")
-	if got != want {
-		t.Errorf("ConsumedDir: got %q, want %q", got, want)
 	}
 }
 
@@ -278,12 +280,11 @@ func TestSavePending_NilRecord(t *testing.T) {
 		t.Error("SavePending(nil) should return an error")
 	}
 	if _, err := os.Stat(PendingPath(pd)); !os.IsNotExist(err) {
-		t.Error("SavePending(nil) must not create pending.json")
+		t.Error("SavePending(nil) must not create factory.db")
 	}
 }
 
-// TestSavePending_FilePerm verifies pending.json is written 0o600 (the resume
-// body may carry session context; mirror the persist.go 0o600 discipline).
+// TestSavePending_FilePerm verifies factory.db is written 0o600.
 func TestSavePending_FilePerm(t *testing.T) {
 	t.Parallel()
 
@@ -302,6 +303,6 @@ func TestSavePending_FilePerm(t *testing.T) {
 		t.Skip("POSIX file mode bits are not represented on Windows; 0600 assertion covered on unix")
 	}
 	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Errorf("pending.json perm: got %o, want 0600", perm)
+		t.Errorf("factory.db perm: got %o, want 0600", perm)
 	}
 }

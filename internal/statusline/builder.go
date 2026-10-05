@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	gitpkg "github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/paths"
@@ -162,8 +163,13 @@ func (b *defaultBuilder) Build(ctx context.Context, r io.Reader) (string, error)
 	// (REQ-THRESHOLD-007) and best-effort — it never disrupts the render
 	// (REQ-THRESHOLD-009).
 	var sessionID string
+	// The record carries the windows the stdin itself supplied (SPEC-QUOTA-
+	// AWARE-SCHEDULING-001 REQ-QAS-001) — never data.RateLimits, which the
+	// usage provider may fill from a home-level cache fed by a network probe.
+	var limits *RateLimitInfo
 	if input != nil {
 		sessionID = input.SessionID
+		limits = input.RateLimits
 	}
 	// The model and effort ride the same record (SPEC-SESSION-TELEMETRY-001
 	// D-1): this is the one place the session id, the collected data, and both
@@ -175,7 +181,10 @@ func (b *defaultBuilder) Build(ctx context.Context, r io.Reader) (string, error)
 	if data.Effort != nil {
 		effort = data.Effort.Level
 	}
-	writeContextUsage(resolveProjectDir(input), sessionID, os.Getpid(), data.Memory, handoffGuideStage(data), data.Metrics.Model, effort)
+	// The state anchor (SPEC-STATE-ANCHOR-001 REQ-SA-001): the telemetry
+	// record lands under the project root the shared resolver returns — never
+	// under a directory the session merely visited (the GH #1694 repair).
+	writeContextUsageAt(time.Now(), resolveStateAnchor(input), sessionID, os.Getpid(), data.Memory, handoffGuideStage(data), data.Metrics.Model, effort, limits)
 
 	// Renderer directly supports v3 modes, pass mode as-is (Phase 4, REQ-V3-LAYOUT-001~003)
 	result := b.renderer.Render(data, mode)
@@ -248,7 +257,7 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		}
 	}
 
-	// Kanban backlog counts. Read from the board root rather than the session's
+	// Factory backlog counts. Read from the board root rather than the session's
 	// own directory: `.moai/state/` is gitignored, so a worktree session would
 	// otherwise find nothing. Fail-open — an unreadable backlog renders nothing.
 	if input != nil {
@@ -258,8 +267,23 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		// GitHub counts are read from cache only — the render path never calls
 		// the network. When the cache has aged out, a detached child is asked
 		// to refresh it and this render proceeds with the previous value.
+		// The segment gate reaches the spawn, not just the render: a switched-
+		// off segment must also stop the polling (REQ-001,
+		// SPEC-STATUSLINE-PROFILE-RESPECT-001). An absent segments map reads as
+		// all-enabled, so the default behavior is unchanged (REQ-003).
 		data.GitHub = resolveGitHubCounts(boardRoot)
-		maybeRefreshGitHubCounts(boardRoot)
+		if b.renderer.isSegmentEnabled(SegmentGitHub) {
+			maybeRefreshGitHubCounts(boardRoot)
+		}
+
+		// The landed judgment is read on the same terms: one small file read
+		// here, the git query in a detached child past its TTL. The spawn is
+		// gated on the same two switches the segment itself is gated on — a
+		// switched-off segment must stop the polling too, not just the drawing.
+		data.Landed = resolveLandedCounts(boardRoot)
+		if b.renderer.isSegmentEnabled(SegmentBacklog) && b.renderer.isTodoEnabled() {
+			maybeRefreshLandedCounts(boardRoot)
+		}
 	}
 
 	// SPEC-INFINITE-GOAL-001 REQ-3: resolve whether an armed goal exists for
@@ -268,7 +292,10 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	// file read); a read error or non-armed status leaves GoalArmed=false
 	// (markers shown, backward compat).
 	if input != nil {
-		data.GoalArmed = resolveGoalArmed(resolveProjectDir(input), input.SessionID)
+		// B3 (SPEC-STATE-ANCHOR-001 REQ-SA-006): the goal state is read from
+		// the anchored root, so a session that cd'd elsewhere still sees the
+		// project's goal state.
+		data.GoalArmed = resolveGoalArmed(resolveStateAnchor(input), input.SessionID)
 	}
 
 	// Extract active worktree path from workspace (REQ-CC297-003, Claude Code 2.1.97+)

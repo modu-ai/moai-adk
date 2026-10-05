@@ -44,8 +44,12 @@ moai profile setup work     # "work" プロファイル設定
 **ウィザードの設定項目:**
 - **Identity**: ユーザー名、役割
 - **Languages**: 会話言語、コードコメント言語
-- **Model Settings**: デフォルトモデル、1M コンテキストモデル選択
+- **Model Settings**: デフォルトモデルオーバーライド、セッションモデルポリシー (セッションの既定 effort フォールバック)、セッション推論レベル
 - **Display**: 出力スタイル、ステータスバー設定
+
+{{< callout type="info" >}}
+ここで決めるモデルと effort は**セッションレベル**の値です。このプロファイルで起動する Claude セッションがその値で動き、サブエージェントはセッションのモデルと推論深度をそのまま引き継ぎます。かつてのエージェント別割り当て(プロファイルマトリクス)は退きました — [プロファイルマトリクス](/ja/advanced/profile-matrix/)ページを参照してください。
+{{< /callout >}}
 
 ### moai profile current
 
@@ -72,7 +76,7 @@ moai profile delete old-profile
 ```bash
 moai cc -p work          # work プロファイルで Claude 実行
 moai glm -p cost-save    # cost-save プロファイルで GLM 実行
-moai cg -p team          # team プロファイルで CG モード実行
+moai cc -p team          # team プロファイルの Claude セッション
 ```
 
 {{< callout type="info" >}}
@@ -106,7 +110,7 @@ MOAI_NO_PROFILE_FALLBACK=1 moai cc    # 記録を無視してデフォルトプ�
 **知っておきたい制約**
 
 - プロジェクトディレクトリを移動したり名前を変えたりすると、既存の項目はどのパスとも一致しなくなります。この項目は静かに読み飛ばされるため、実行に問題を起こすことはありません。
-- `projects:` の一覧はプロジェクトが増えるほど一緒に増えていき、整理するコマンドはまだありません。
+- ワークツリー内での実行は登録済みプロジェクトの項目にまとめられるため、項目はプロジェクトごとに 1 つに保たれます。プロジェクトディレクトリが消えた項目は `moai worktree clean` で整理できます。
 - `moai profile current` はグローバル記録をそのまま表示します。そのため、記憶されたプロファイルがグローバル記録と異なるプロジェクトでは、`moai profile current` が知らせる名前と、`-p` なしの `moai cc` が実際に起動するプロファイルが食い違うことがあります。
 
 ## 新しいプロファイルの初回実行
@@ -145,7 +149,6 @@ Notice: profile "work" has no Claude Code configuration yet.
 |------|------|
 | `moai cc` → `moai glm` | GLM 環境変数を自動注入 |
 | `moai glm` → `moai cc` | GLM 環境変数を自動除去 |
-| `moai cc` → `moai cg` | GLM env を tmux セッションのみに注入、Leader は Claude を維持 |
 
 ## 関連ドキュメント
 

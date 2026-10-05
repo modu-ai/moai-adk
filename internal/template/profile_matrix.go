@@ -1,131 +1,80 @@
 package template
 
-// profile_matrix.go — SPEC-MODEL-PROFILE-MATRIX-001 M1/M2: the Matrix A
-// per-agent-group model+effort profile matrix (Go-code SSOT), the agent-GROUP →
-// agent-name membership SSOT, and the runtime resolver that maps the active
-// profile + per-agent overrides → each agent's {model, effort}. This replaces
-// the retired 66-cell tierProfiles (plan_type × tier) with a single 3-column
-// profile axis (max/medium/low) consumed via runtime-arg spawn injection rather
-// than agent-frontmatter mutation.
+// profile_matrix.go — the per-agent {model, effort} profile matrix (Go-code
+// SSOT), the agent→group membership layer, and the runtime resolver that maps
+// the active profile + per-agent overrides → each agent's cell. Re-ported
+// under SPEC-WEB-AGENTFM-RESTORE-001 M1 (operator card t1411) from the copy
+// SPEC-AGENT-MODEL-INHERIT-001 M5 deleted (3fa8bd2ab), per the re-port rule
+// (plan §D.4 — not a revert):
+//
+//   - The cells are RE-DERIVED from the CURRENT model matrix: every cell is
+//     one of the config agent-tier pairs (config.DefaultClaudeTier{Max,
+//     Medium,Low} — SPEC-AGENT-TIER-001), so the model ids and efforts live
+//     in exactly one place and a tier bump flows through without a cell edit.
+//     The blueprint's 2026-09-27 opus/sonnet cells are stale and their
+//     divergence from these cells is not a defect (plan §B-1(b)). The old
+//     cell LEVELS translate onto the tier axis: the old opus/high judgment
+//     rows take the max pair, the old opus/medium rows the medium pair, and
+//     the old low rows the low pair — preserving the old shape's per-row
+//     monotonicity (high >= medium >= low) under the current values.
+//   - The roster is the canonical retained catalog (template.RetainedAgents:
+//     manager-todo in, mission-governor out at the 2026-10-02 measurement).
+//     The display roster filters Explore (no definition file) from the
+//     console rows; Explore keeps a mapped cell so pre-restore overrides for
+//     it stay resolvable.
+//   - The `llm.profiles` config-mirror lookup and the harness-class machinery
+//     are NOT re-ported: the config mirror is not re-shipped (plan §D.1 — the
+//     Go matrix stays the SSOT) and llm.harness_agents stays retired.
+//   - The old profile_matrix.go's llm.yaml regex patchers (ApplyProfile /
+//     ApplyHarness) are not re-ported — their only consumers died with them;
+//     the restored console persists through the settings seam (plan §D.4-3).
 
 import (
-	"fmt"
 	"maps"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
+	"slices"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// leadingWS returns the count of leading space/tab characters in a line.
-func leadingWS(line string) int {
-	n := 0
-	for _, r := range line {
-		if r == ' ' || r == '\t' {
-			n++
-			continue
-		}
-		break
-	}
-	return n
+// Performance-tier selector wire vocabulary — the closed set the restored
+// console's profile selector offers (REQ-AFR-003). The top column keeps the
+// historical "max" wire value and a max submission persists verbatim to
+// llm.profile (AC-AFR-002); reads fold it back via config.NormalizeProfile.
+// DISTINCT from config.ValidProfiles (the canonical {high, medium, low} —
+// max readable, never offered) and from config.AgentTier* (the workflow
+// class-tier axis, a different machine).
+const (
+	// PerformanceTierMax is the selector's top-column wire value.
+	PerformanceTierMax = "max"
+	// PerformanceTierMedium is the balanced selector value.
+	PerformanceTierMedium = "medium"
+	// PerformanceTierLow is the economical selector value.
+	PerformanceTierLow = "low"
+)
+
+// ValidPerformanceTiers returns the selector wire vocabulary in display order.
+func ValidPerformanceTiers() []string {
+	return []string{PerformanceTierMax, PerformanceTierMedium, PerformanceTierLow}
 }
 
-// stripRetiredLLMKeys removes the retired `plan_type:` line and the entire
-// `claude_models:` block (header + its more-indented child lines) from llm.yaml
-// content (REQ-MPM-005 write-time removal of retired fields). A line-based
-// processor is used rather than a regex so the multi-line block is handled
-// robustly by indentation depth. Returns the cleaned content.
-func stripRetiredLLMKeys(content []byte) []byte {
-	lines := strings.Split(string(content), "\n")
-	out := make([]string, 0, len(lines))
-	skipBlockIndent := -1 // -1 = not inside a stripped block
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if skipBlockIndent >= 0 {
-			// Inside a stripped block: skip blank lines and lines indented deeper
-			// than the block header; a line at the header's indent or shallower ends
-			// the block.
-			if trimmed == "" || leadingWS(line) > skipBlockIndent {
-				continue
-			}
-			skipBlockIndent = -1 // block ended; fall through to normal handling
-		}
-		if strings.HasPrefix(trimmed, "plan_type:") {
-			continue // drop the retired plan_type line
-		}
-		if strings.HasPrefix(trimmed, "claude_models:") {
-			skipBlockIndent = leadingWS(line) // begin skipping the block
-			continue
-		}
-		out = append(out, line)
-	}
-	return []byte(strings.Join(out, "\n"))
+// IsValidPerformanceTier reports whether s is a selector wire value. Strict
+// membership — no alias folding: the selector persists what it offers, and
+// anything else joins the atomic-reject set.
+func IsValidPerformanceTier(s string) bool {
+	return slices.Contains(ValidPerformanceTiers(), s)
 }
 
-// profileLineRegex matches the profile: line in llm.yaml for a value-replacing
-// write, capturing the leading indentation (group 1). Uses `[\w-]*` so an empty
-// value (`profile: ""`) is also matched and rewritten.
-var profileLineRegex = regexp.MustCompile(`(?m)^(\s*)profile:\s*["']?[\w-]*["']?`)
-
-// ApplyProfile patches the profile field in llm.yaml under the given project
-// root (REQ-MPM-016), mirroring ApplyPerformanceTier. It reads
-// .moai/config/sections/llm.yaml, replaces the profile: line with the new value
-// (preserving indentation), and writes the file back. Returns nil when the file
-// is absent (graceful no-op) or when the profile line already carries the target
-// value. The profile MUST be validated by the caller (config.IsValidProfile).
-//
-// @MX:ANCHOR: [AUTO] ApplyProfile — llm.profile persistence entry point (init/update/web)
-// @MX:REASON: [AUTO] fan_in >= 2 (initializer + update); the shipped-profile SSOT persistence, mirrors ApplyPerformanceTier
-func ApplyProfile(projectRoot, profile string) error {
-	// The superseded top-column name is readable but never written back.
-	profile = config.NormalizeProfile(profile)
-	llmPath := filepath.Join(projectRoot, ".moai", "config", "sections", "llm.yaml")
-	content, err := os.ReadFile(llmPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("read llm.yaml: %w", err)
-	}
-
-	original := content
-	// Write-time removal of retired fields (REQ-MPM-005): strip plan_type + the
-	// claude_models block before persisting the profile.
-	content = stripRetiredLLMKeys(content)
-
-	var newContent []byte
-	if profileLineRegex.Match(content) {
-		newContent = profileLineRegex.ReplaceAll(content, []byte("${1}profile: "+profile))
-	} else {
-		// Legacy config with no profile: key — insert one under the llm: root
-		// (migration: REQ-MPM-005 write-time schema upgrade).
-		newContent = llmRootRegex.ReplaceAll(content, []byte("${0}\n    profile: "+profile))
-	}
-	if string(newContent) == string(original) {
-		return nil
-	}
-
-	if err := os.WriteFile(llmPath, newContent, 0o644); err != nil {
-		return fmt.Errorf("write llm.yaml: %w", err)
-	}
-	return nil
-}
-
-// llmRootRegex matches the top-level `llm:` key line for profile insertion into
-// a legacy config that has no profile: key.
-var llmRootRegex = regexp.MustCompile(`(?m)^llm:[ \t]*$`)
-
-// Profile agent-group keys (REQ-MPM-011). The seven groups partition the
-// retained agents by model+effort class. git, docs, and explore rows are
-// profile-invariant.
+// Profile agent-group keys. The groups partition the roster by model+effort
+// class; the layer carries no routing information for the per-agent matrix
+// (lookup is by agent NAME) — it survives for display grouping and as the
+// web save path's matrix-membership validation gate.
 const (
 	// GroupSpecAuditors covers manager-spec, plan-auditor, sync-auditor.
 	GroupSpecAuditors = "spec_auditors"
 	// GroupDevelop covers manager-develop.
 	GroupDevelop = "develop"
-	// GroupAdvisor covers super-advisor.
+	// GroupAdvisor covers the non-writing super-advisor (mission-governor
+	// retired from the catalog; the group keeps its name for old-config reads).
 	GroupAdvisor = "advisor"
 	// GroupDesignHarnessE2E covers manager-design, builder-harness, e2e-tester.
 	GroupDesignHarnessE2E = "design_harness_e2e"
@@ -133,22 +82,18 @@ const (
 	GroupDocs = "docs"
 	// GroupGit covers manager-git.
 	GroupGit = "git"
-	// GroupLead covers manager-lead, the Tier L / kanban-factory coordinator.
-	// It is its own group because it matches no other row's shape: it fans out
-	// to every other agent, so it tracks the auditors' depth in the two upper
-	// columns while stepping down with the executors in the economical one.
+	// GroupLead covers manager-lead, the Tier L / factory coordinator.
 	GroupLead = "lead"
-	// GroupExplore covers the Anthropic built-in Explore read-only search agent.
-	// Assigned sonnet/low profile-invariantly (product decision); only
-	// user-added agents fall through to the inherit sentinel now.
+	// GroupTodo covers manager-todo, the todo-queue management agent.
+	GroupTodo = "todo"
+	// GroupExplore covers the Anthropic built-in Explore read-only search
+	// agent (not on the console roster; kept mapped for old-config reads).
 	GroupExplore = "explore"
 )
 
-// agentGroupMembership is the agent-name → group SSOT (REQ-MPM-011). Agents with
-// no entry (any user-added agent) resolve to the inherit sentinel and are never
-// model-injected (REQ-MPM-013 — scope narrowed by product decision: the
-// built-in Explore now has an explicit group, so only user-added agents
-// inherit).
+// agentGroupMembership is the agent-name → group layer. Agents with no entry
+// (any user-added agent) resolve to the inherit sentinel and are never
+// model-injected by the console surface.
 var agentGroupMembership = map[string]string{
 	"manager-spec":    GroupSpecAuditors,
 	"plan-auditor":    GroupSpecAuditors,
@@ -161,232 +106,147 @@ var agentGroupMembership = map[string]string{
 	"e2e-tester":      GroupDesignHarnessE2E,
 	"manager-docs":    GroupDocs,
 	"manager-git":     GroupGit,
+	"manager-todo":    GroupTodo,
 	"Explore":         GroupExplore,
 }
 
-// profileMatrixAgentOrder is the canonical display/derivation order of the 12
-// retained agents for the model-profile preview surfaces (REQ-MPM-020). Explore
-// is included in the display and now resolves to its own explore group cell
-// (sonnet/low, profile-invariant), no longer the inherit sentinel.
-//
-// manager-lead was absent from this list until t205 and therefore resolved to
-// the unmapped-agent `inherit` sentinel — the Tier L coordinator, the one row
-// that fans out to every other agent, took whatever the session happened to be
-// on. It is a mapped row now.
-var profileMatrixAgentOrder = []string{
-	"manager-spec",
-	"plan-auditor",
-	"sync-auditor",
-	"manager-develop",
-	"super-advisor",
-	"manager-design",
-	"manager-lead",
-	"builder-harness",
-	"e2e-tester",
-	"manager-docs",
-	"manager-git",
-	"Explore",
+// AgentGroup returns the group an agent belongs to, and false when the agent
+// has no membership (user-added agents).
+func AgentGroup(agent string) (string, bool) {
+	g, ok := agentGroupMembership[agent]
+	return g, ok
 }
 
-// ProfileMatrixAgents returns a defensive copy of the canonical display order of
-// the retained agents (REQ-MPM-020 — the web/CLI preview iterates this to derive
-// per-agent cells from the single Go structure rather than a second literal).
+// profileMatrixAgentOrder is the console's display/derivation roster for the
+// client-side matrix island: the CANONICAL retained roster
+// (template.RetainedAgents — the single roster literal in the tree) filtered
+// to the agents with definition files. The built-in Explore has no file under
+// .claude/agents/moai/ and is off the console surface, so it is filtered here
+// by name — the one restatement this derivation needs, and the roster
+// membership itself is rosterguard-asserted against the canonical literal.
+var profileMatrixAgentOrder = func() []string {
+	var out []string
+	for _, name := range RetainedAgents() {
+		if name == "Explore" {
+			continue
+		}
+		out = append(out, name)
+	}
+	return out
+}()
+
+// ProfileMatrixAgents returns a defensive copy of the console roster order
+// (the web/CLI matrix surfaces iterate this rather than restating a second
+// literal).
 func ProfileMatrixAgents() []string {
 	out := make([]string, len(profileMatrixAgentOrder))
 	copy(out, profileMatrixAgentOrder)
 	return out
 }
 
-// defaultProfileMatrix is the per-AGENT model+effort Go-code SSOT: 12 mapped
-// agents x 3 profiles = 36 cells. Outer key: profile {high, medium, low}. Inner
-// key: retained agent NAME (not a group — the group layer is display-only now,
-// because per-agent cells split two of the former groups). Value: {model,
-// effort}. This is the authoritative fallback for any cell absent from config
-// llm.profiles (REQ-MPM-009).
+// defaultProfileMatrix is the per-agent model+effort Go-code SSOT: 13 mapped
+// agents × 3 profile columns. Outer key: profile column {high, medium, low}.
+// Inner key: agent NAME. Value: a {model, effort} pair in the OVERRIDE closed
+// vocabulary — short model aliases and the 5-level efforts — because the
+// console's select options (agentFMModelValues/agentFMEffortValues), the
+// pin/clear comparison against the profile default (REQ-AFR-004: a submission
+// equal to the default is CLEARED, so the two sides must be comparable), and
+// config.validateAgentOverrides all speak that vocabulary.
 //
-// Cell derivation (each row is monotone: high >= medium >= low). The cells are
-// anchored on a published long-horizon coding-agent benchmark that measures
-// score, cost per task, output tokens, and agent steps at every effort level:
+// Cell re-derivation (plan §B-1(b)/§F M1 — the blueprint's 2026-09-27 inline
+// literals are stale; divergence from them is not a defect):
 //
-//   - Opus 5 dominates Sonnet 5 at EVERY effort on that benchmark: Opus 5 at
-//     `low` scores higher AND costs less per task than Sonnet 5 at any level,
-//     because Sonnet 5 spends a multiple of the agent steps and output tokens
-//     to finish the same long-horizon task. Unit token price is therefore not
-//     the cost driver — completion efficiency is. Opus is consequently the
-//     model for every multi-turn agentic row.
+//   - The MODEL axis derives from the CURRENT config defaults
+//     config.NewDefaultLLMConfig().ClaudeModels = {high: opus, medium: sonnet,
+//     low: haiku}: judgment/authoring rows take ClaudeModels.High, mechanical
+//     rows ClaudeModels.Medium. The No-Haiku policy is carried over from the
+//     pre-deletion matrix (a profile column never defaults an agent to haiku —
+//     haiku stays available as an EXPLICIT override, REQ-AFR-006), so
+//     ClaudeModels.Low never enters a cell.
+//   - The EFFORT axis is the matrix's own judgment-weighted policy, expressed
+//     with the EffortLevel* constants: the auditing/advising/coordinating rows
+//     hold `high` in the upper columns; the authoring rows (manager-spec,
+//     manager-develop) and the bounded-worker rows (e2e-tester, manager-todo)
+//     hold `medium`; the mechanical rows (docs, git, Explore) hold `low`
+//     profile-invariant. The economical column steps every non-advisor row
+//     down one level. (The SPEC-AGENT-TIER-001 pairs
+//     config.DefaultClaudeTier* were evaluated as the cell source and
+//     rejected: their model values are full generation ids ("sonnet-5-5"),
+//     outside the override closed set — a cell in that vocabulary would make
+//     the REQ-AFR-004 clear-equals-default comparison unreachable and leave
+//     the row select with no matching option.)
+//   - The roster is the CURRENT catalog: mission-governor is gone,
+//     manager-todo is in (following e2e-tester's bounded-worker shape).
+//     Explore keeps its mapped cell so pre-restore overrides for it stay
+//     resolvable, but it is not on the console roster.
 //
-//   - `xhigh` is retired from the matrix: on Opus 5 it scores the same as
-//     `high` while costing materially more, so it is strictly dominated. `max`
-//     is the only level above `high`, so a row that wants more than `high`
-//     takes `max`.
+// Invariants asserted by tests: models subset of {ClaudeModels.High,
+// ClaudeModels.Medium} (zero haiku / fable / inherit); efforts subset of
+// {low, medium, high}; rows monotone (depth never increases as the column
+// descends); `inherit` survives only as the unmapped-agent fallback.
 //
-//   - The judgment-weighted policy (t205, operator-specified). The cells are
-//     settled operator input, not a derivation: the spend goes to the rows that
-//     JUDGE rather than the rows that produce. The three auditing/advising rows
-//     (plan-auditor, sync-auditor, super-advisor) and the two coordinating rows
-//     (manager-design, manager-lead) hold `high` in both upper columns, while
-//     the authoring and implementing rows (manager-spec, manager-develop) sit
-//     at `medium` in all three. `max` is absent from every cell — the level
-//     exists in the vocabulary but no row currently takes it. The economical
-//     column keeps super-advisor alone at `high`, because the escalation path
-//     is what a cheap column most needs to stay sound.
-//
-//     Do NOT re-derive these cells from a cost/score curve. An earlier
-//     phase-weighted derivation (spend on the phase producing code) is
-//     superseded, and re-deriving would silently walk manager-develop and
-//     manager-spec back up.
-//
-//   - Under a GLM backend these per-agent cells are NOT what reaches the wire.
-//     z.ai's reasoning control collapses every effort above `low` ({medium,
-//     high, xhigh, max}) onto reasoning_effort=max; only `low` stays at the
-//     low level (SPEC-GLM-EFFORT-MAX-001). The delivery channel is
-//     session-global: the launcher injects a single
-//     ANTHROPIC_REASONING_EFFORT derived from SessionGLMReasoningState(),
-//     never a per-agent value. A change to these cells therefore records
-//     per-agent intent and takes effect on Claude-backed sessions, where agent
-//     frontmatter is the load-bearing channel; it does not by itself alter
-//     delivered GLM behavior. See glm_effort_overlay.go.
-//
-//   - Sonnet 5 is retained ONLY for single-shot, input-dominated, non-agentic
-//     rows (Explore search, manager-git mechanics) where the multi-step
-//     completion failure does not apply and the lower input price does.
-//
-// Invariants asserted by tests: zero haiku; zero fable; models subset of
-// {opus, sonnet}; efforts subset of {low, medium, high, max} (no `xhigh` cell);
-// `inherit` never appears inside the matrix — it survives only as the
-// unmapped-agent fallback.
-//
-// @MX:ANCHOR: [AUTO] defaultProfileMatrix — per-agent model+effort SSOT (33 cells)
-// @MX:REASON: [AUTO] fan_in >= 3 (ResolveAgentModelEffort resolver + moai model profile CLI + web preview + harness class derivation); cells are settled design input, re-derivation forbidden
+// @MX:ANCHOR: [AUTO] defaultProfileMatrix — per-agent model+effort SSOT (models from config claude_models defaults, efforts the judgment policy)
+// @MX:REASON: [AUTO] fan_in >= 2 (ResolveAgentModelEffort resolver + web console matrix island); cells carry no inline model ids — config defaults and EffortLevel constants only
 var defaultProfileMatrix = map[string]map[string]config.ModelEffort{
-	PerformanceTierHigh: {
-		"manager-spec":    {Model: "opus", Effort: EffortLevelMedium},
-		"plan-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"sync-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"manager-develop": {Model: "opus", Effort: EffortLevelMedium},
-		"super-advisor":   {Model: "opus", Effort: EffortLevelHigh},
-		"manager-design":  {Model: "opus", Effort: EffortLevelHigh},
-		"manager-lead":    {Model: "opus", Effort: EffortLevelHigh},
-		"builder-harness": {Model: "opus", Effort: EffortLevelHigh},
-		"e2e-tester":      {Model: "opus", Effort: EffortLevelMedium},
-		"manager-docs":    {Model: "sonnet", Effort: EffortLevelLow},
-		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
-		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
+	config.ProfileHigh: {
+		"manager-spec":    {Model: defaultMatrixModelHigh, Effort: EffortLevelMedium},
+		"plan-auditor":    {Model: defaultMatrixModelHigh, Effort: EffortLevelHigh},
+		"sync-auditor":    {Model: defaultMatrixModelHigh, Effort: EffortLevelHigh},
+		"manager-develop": {Model: defaultMatrixModelHigh, Effort: EffortLevelMedium},
+		"super-advisor":   {Model: defaultMatrixModelHigh, Effort: EffortLevelHigh},
+		"manager-design":  {Model: defaultMatrixModelHigh, Effort: EffortLevelHigh},
+		"manager-lead":    {Model: defaultMatrixModelHigh, Effort: EffortLevelHigh},
+		"builder-harness": {Model: defaultMatrixModelHigh, Effort: EffortLevelHigh},
+		"e2e-tester":      {Model: defaultMatrixModelHigh, Effort: EffortLevelMedium},
+		"manager-docs":    {Model: defaultMatrixModelMedium, Effort: EffortLevelLow},
+		"manager-git":     {Model: defaultMatrixModelMedium, Effort: EffortLevelLow},
+		"manager-todo":    {Model: defaultMatrixModelHigh, Effort: EffortLevelMedium},
+		"Explore":         {Model: defaultMatrixModelMedium, Effort: EffortLevelLow},
 	},
-	PerformanceTierMedium: {
-		"manager-spec":    {Model: "opus", Effort: EffortLevelMedium},
-		"plan-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"sync-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"manager-develop": {Model: "opus", Effort: EffortLevelMedium},
-		"super-advisor":   {Model: "opus", Effort: EffortLevelHigh},
-		"manager-design":  {Model: "opus", Effort: EffortLevelHigh},
-		"manager-lead":    {Model: "opus", Effort: EffortLevelHigh},
-		"builder-harness": {Model: "opus", Effort: EffortLevelMedium},
-		"e2e-tester":      {Model: "opus", Effort: EffortLevelLow},
-		"manager-docs":    {Model: "sonnet", Effort: EffortLevelLow},
-		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
-		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
+	config.ProfileMedium: {
+		"manager-spec":    {Model: defaultMatrixModelHigh, Effort: EffortLevelMedium},
+		"plan-auditor":    {Model: defaultMatrixModelHigh, Effort: EffortLevelHigh},
+		"sync-auditor":    {Model: defaultMatrixModelHigh, Effort: EffortLevelHigh},
+		"manager-develop": {Model: defaultMatrixModelHigh, Effort: EffortLevelMedium},
+		"super-advisor":   {Model: defaultMatrixModelHigh, Effort: EffortLevelHigh},
+		"manager-design":  {Model: defaultMatrixModelHigh, Effort: EffortLevelHigh},
+		"manager-lead":    {Model: defaultMatrixModelHigh, Effort: EffortLevelHigh},
+		"builder-harness": {Model: defaultMatrixModelHigh, Effort: EffortLevelMedium},
+		"e2e-tester":      {Model: defaultMatrixModelHigh, Effort: EffortLevelLow},
+		"manager-docs":    {Model: defaultMatrixModelMedium, Effort: EffortLevelLow},
+		"manager-git":     {Model: defaultMatrixModelMedium, Effort: EffortLevelLow},
+		"manager-todo":    {Model: defaultMatrixModelHigh, Effort: EffortLevelMedium},
+		"Explore":         {Model: defaultMatrixModelMedium, Effort: EffortLevelLow},
 	},
-	PerformanceTierLow: {
-		"manager-spec":    {Model: "opus", Effort: EffortLevelMedium},
-		"plan-auditor":    {Model: "opus", Effort: EffortLevelMedium},
-		"sync-auditor":    {Model: "opus", Effort: EffortLevelMedium},
-		"manager-develop": {Model: "opus", Effort: EffortLevelMedium},
-		"super-advisor":   {Model: "opus", Effort: EffortLevelHigh},
-		"manager-design":  {Model: "opus", Effort: EffortLevelMedium},
-		"manager-lead":    {Model: "opus", Effort: EffortLevelMedium},
-		"builder-harness": {Model: "opus", Effort: EffortLevelLow},
-		"e2e-tester":      {Model: "sonnet", Effort: EffortLevelLow},
-		"manager-docs":    {Model: "sonnet", Effort: EffortLevelLow},
-		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
-		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
+	config.ProfileLow: {
+		"manager-spec":    {Model: defaultMatrixModelHigh, Effort: EffortLevelMedium},
+		"plan-auditor":    {Model: defaultMatrixModelHigh, Effort: EffortLevelMedium},
+		"sync-auditor":    {Model: defaultMatrixModelHigh, Effort: EffortLevelMedium},
+		"manager-develop": {Model: defaultMatrixModelHigh, Effort: EffortLevelMedium},
+		"super-advisor":   {Model: defaultMatrixModelHigh, Effort: EffortLevelHigh},
+		"manager-design":  {Model: defaultMatrixModelHigh, Effort: EffortLevelMedium},
+		"manager-lead":    {Model: defaultMatrixModelHigh, Effort: EffortLevelMedium},
+		"builder-harness": {Model: defaultMatrixModelHigh, Effort: EffortLevelLow},
+		"e2e-tester":      {Model: defaultMatrixModelMedium, Effort: EffortLevelLow},
+		"manager-docs":    {Model: defaultMatrixModelMedium, Effort: EffortLevelLow},
+		"manager-git":     {Model: defaultMatrixModelMedium, Effort: EffortLevelLow},
+		"manager-todo":    {Model: defaultMatrixModelMedium, Effort: EffortLevelLow},
+		"Explore":         {Model: defaultMatrixModelMedium, Effort: EffortLevelLow},
 	},
 }
 
-// Harness purpose classes — the taxonomy `/moai:harness` classifies a generated
-// specialist into. The names are reused verbatim from the `workflow_agents`
-// purpose taxonomy in workflow.yaml so the two surfaces share one vocabulary.
-const (
-	HarnessClassReadOnlyExtract     = "read-only-extract"
-	HarnessClassMechanicalTransform = "mechanical-transform"
-	HarnessClassSynthesize          = "synthesize"
-	HarnessClassResearch            = "research"
-	HarnessClassVerifyJudge         = "verify-judge"
-	HarnessClassImplement           = "implement"
-	HarnessClassDesignArchitecture  = "design-architecture"
+// defaultMatrixModelHigh/Medium are the two model aliases the matrix cells
+// draw from — the CURRENT config claude_models defaults (High and Medium
+// columns), resolved once at package init so the cells never restate the ids.
+// ClaudeModels.Low (haiku) is deliberately unread: the No-Haiku policy keeps
+// it out of every default cell.
+var (
+	defaultMatrixModelHigh   = config.NewDefaultLLMConfig().ClaudeModels.High
+	defaultMatrixModelMedium = config.NewDefaultLLMConfig().ClaudeModels.Medium
 )
 
-// HarnessAgentModel is the model every generated harness specialist is pinned to.
-// Harness agents are model-uniform on purpose: they are persistent, user-owned
-// specialists whose differentiation is reasoning DEPTH, not model tier, so the
-// effort axis alone separates them. Pinning is safe now that every current
-// non-haiku model carries a 1M context window — the former inherit-by-default
-// rule existed to preserve a 1M entitlement that pinning would have lost.
-const HarnessAgentModel = "opus"
-
-// harnessClassRow maps each harness purpose class onto the retained-agent row
-// whose EFFORT the class inherits from defaultProfileMatrix. Only the effort is
-// borrowed; the model is always HarnessAgentModel. Keeping the derivation as a
-// pointer into the matrix means the harness surface cannot drift from it.
-var harnessClassRow = map[string]string{
-	HarnessClassReadOnlyExtract:     "Explore",
-	HarnessClassMechanicalTransform: "manager-git",
-	HarnessClassSynthesize:          "manager-docs",
-	HarnessClassResearch:            "plan-auditor",
-	HarnessClassVerifyJudge:         "sync-auditor",
-	HarnessClassImplement:           "manager-develop",
-	HarnessClassDesignArchitecture:  "manager-design",
-}
-
-// HarnessClasses returns the purpose-class names in a stable display order.
-func HarnessClasses() []string {
-	return []string{
-		HarnessClassReadOnlyExtract,
-		HarnessClassMechanicalTransform,
-		HarnessClassSynthesize,
-		HarnessClassResearch,
-		HarnessClassVerifyJudge,
-		HarnessClassImplement,
-		HarnessClassDesignArchitecture,
-	}
-}
-
-// ResolveHarnessAgentModelEffort returns the {model, effort} a generated harness
-// specialist of the given purpose class receives under the active profile.
-// Precedence: config llm.harness_agents[profile][class].effort when present,
-// else the effort of the class's matrix row. The model is ALWAYS
-// HarnessAgentModel regardless of source. An unknown class falls back to the
-// `implement` class. The bool reports whether the class was recognized.
-//
-// @MX:ANCHOR: [AUTO] ResolveHarnessAgentModelEffort — /moai:harness generation model+effort entry point
-// @MX:REASON: [AUTO] fan_in >= 2 (builder-harness generation guidance + moai model profile --harness display); the single derivation site keeping harness frontmatter aligned with the profile matrix
-func ResolveHarnessAgentModelEffort(cfg config.LLMConfig, class string) (config.ModelEffort, bool) {
-	known := true
-	if _, ok := harnessClassRow[class]; !ok {
-		class = HarnessClassImplement
-		known = false
-	}
-
-	profile := cfg.EffectiveProfile()
-
-	if classes, ok := cfg.HarnessAgents[profile]; ok {
-		if cell, ok := classes[class]; ok && strings.TrimSpace(cell.Effort) != "" {
-			return config.ModelEffort{Model: HarnessAgentModel, Effort: cell.Effort}, known
-		}
-	}
-
-	row := harnessClassRow[class]
-	groups, ok := defaultProfileMatrix[profile]
-	if !ok {
-		groups = defaultProfileMatrix[PerformanceTierMedium]
-	}
-	return config.ModelEffort{Model: HarnessAgentModel, Effort: groups[row].Effort}, known
-}
-
-// DefaultProfileMatrix returns a deep copy of the per-agent Go-code SSOT
-// (REQ-MPM-009/010). Used to mirror the matrix into the template llm.yaml and as
-// the authoritative resolver fallback. A copy is returned so callers cannot
-// mutate the package-level matrix.
+// DefaultProfileMatrix returns a deep copy of the per-agent Go-code SSOT. A
+// copy is returned so callers cannot mutate the package-level matrix.
 func DefaultProfileMatrix() map[string]map[string]config.ModelEffort {
 	out := make(map[string]map[string]config.ModelEffort, len(defaultProfileMatrix))
 	for profile, agents := range defaultProfileMatrix {
@@ -397,59 +257,45 @@ func DefaultProfileMatrix() map[string]map[string]config.ModelEffort {
 	return out
 }
 
-// AgentGroup returns the profile group an agent belongs to, and false when the
-// agent has no membership (user-added agents) (REQ-MPM-011/013).
-func AgentGroup(agent string) (string, bool) {
-	g, ok := agentGroupMembership[agent]
-	return g, ok
-}
-
 // ResolveAgentModelEffort resolves an agent's effective {model, effort} under
-// the active profile with the D2 precedence (REQ-MPM-012):
+// the active profile with the D2 precedence:
 //  1. llm.agent_overrides[agent] if present → wins;
-//  2. else the active profile's per-agent cell from config llm.profiles;
-//  3. else the Go-default per-agent cell (defaultProfileMatrix);
-//  4. agent absent from the matrix → {inherit, ""} (REQ-MPM-013).
+//  2. else the Go-default per-agent cell under cfg.EffectiveProfile();
+//  3. an unrecognized effective profile falls back to the medium column
+//     (parity with the medium-default resolution of EffectiveProfile);
+//  4. agent absent from the matrix → {inherit, ""}, unmapped.
 //
-// The returned bool `mapped` is false for the inherit case (a user-added agent
-// that is not in the retained catalog), letting the caller skip model injection.
-// The active profile is read from cfg via EffectiveProfile (profile →
-// performance_tier alias → medium).
+// The returned bool `mapped` is false for the inherit case (a user-added
+// agent that is not in the catalog), letting the caller skip model injection.
+// Lookup is by agent NAME, not by group: the group layer carries no routing
+// information here (AgentGroup survives for display and as the web save
+// path's membership gate).
 //
-// Lookup is by agent NAME, not by group: per-agent cells split two of the former
-// groups, so the group layer no longer carries routing information and survives
-// only as a display classification (see AgentGroup).
+// This function is the restored console surface's SINGLE derivation site —
+// internal/web must call it, never re-derive (REQ-AFR-010 lineage; the
+// narrowed mcp_audit_surface guard enforces the definition ban).
 //
 // @MX:ANCHOR: [AUTO] ResolveAgentModelEffort — profile → per-agent {model, effort} resolver
-// @MX:REASON: [AUTO] fan_in >= 3 (moai model profile CLI + web preview + orchestrator spawn guidance); the runtime-arg injection SSOT replacing frontmatter mutation; precedence order (override → config profile → Go default → inherit) is load-bearing
+// @MX:REASON: [AUTO] fan_in >= 2 (web console render + save paths + client matrix island); precedence order (override → Go default → medium fallback → inherit) is load-bearing
 func ResolveAgentModelEffort(cfg config.LLMConfig, agent string) (me config.ModelEffort, mapped bool) {
 	// (1) per-agent override wins.
 	if ov, ok := cfg.AgentOverrides[agent]; ok {
 		return ov, true
 	}
 
+	// (2) Go-default per-agent cell under the effective profile.
 	profile := cfg.EffectiveProfile()
-
-	// (2) config-mirror per-agent cell, when present.
-	if agents, ok := cfg.Profiles[profile]; ok {
-		if cell, ok := agents[agent]; ok {
-			return cell, true
-		}
-	}
-
-	// (3) Go-default per-agent cell (authoritative fallback).
 	if agents, ok := defaultProfileMatrix[profile]; ok {
 		if cell, ok := agents[agent]; ok {
 			return cell, true
 		}
 	}
 
-	// (3b) Unknown profile falls back to the medium column (parity with the
-	// medium-default resolution of EffectiveProfile / plan.md D6).
-	if cell, ok := defaultProfileMatrix[PerformanceTierMedium][agent]; ok {
+	// (3) Unrecognized profile falls back to the medium column.
+	if cell, ok := defaultProfileMatrix[config.ProfileMedium][agent]; ok {
 		return cell, true
 	}
 
-	// (4) not in the retained catalog — inherit sentinel, never injected.
+	// (4) not in the catalog — inherit sentinel, never injected.
 	return config.ModelEffort{Model: ModelInherit, Effort: ""}, false
 }

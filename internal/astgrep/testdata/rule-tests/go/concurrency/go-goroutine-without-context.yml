@@ -1,0 +1,14 @@
+# Test pair for the goroutine-without-context rule. The valid sample starts the
+# goroutine with a context.Context parameter, so the rule must produce zero
+# findings on it.
+id: go-goroutine-without-context
+valid:
+  - |
+    go func(ctx context.Context) {
+        log.Println(ctx)
+    }(ctx)
+invalid:
+  - |
+    go func() {
+        log.Println("started")
+    }()

@@ -91,10 +91,30 @@ if [ -n "$staleness_line" ]; then
 ⚠️ ${staleness_line}"
 fi
 
-# JSON-escape the additionalContext (newline → \n, quote → \", backslash → \\).
+# JSON-escape the additionalContext. JSON forbids a raw control character
+# (U+0000-U+001F) inside a string, so escaping only backslash, quote and newline
+# is not enough: a tab carried over from the Navigator document reached the
+# output as a raw 0x09 byte and made the whole object unparseable, while the
+# hook still exited 0 — the brief was dropped with no failure signal.
 ac_escaped="$(printf '%s' "$ac" | awk '
-    BEGIN { ORS="" }
-    { gsub(/\\/, "\\\\"); gsub(/"/, "\\\""); print; if (NR < 9999) printf "\\n" }
+    BEGIN {
+        ORS=""
+        # Build the control-character table once. Five have a short JSON escape;
+        # every other C0 character takes the \uXXXX form.
+        for (i = 1; i < 32; i++) ctrl[sprintf("%c", i)] = sprintf("\\u%04x", i)
+        ctrl[sprintf("%c", 8)]  = "\\b"
+        ctrl[sprintf("%c", 9)]  = "\\t"
+        ctrl[sprintf("%c", 10)] = "\\n"
+        ctrl[sprintf("%c", 12)] = "\\f"
+        ctrl[sprintf("%c", 13)] = "\\r"
+    }
+    {
+        # Order matters: the backslash pass runs first, so the backslashes the
+        # control-character pass introduces are not doubled a second time.
+        gsub(/\\/, "\\\\"); gsub(/"/, "\\\"")
+        for (c in ctrl) gsub(c, ctrl[c])
+        print; if (NR < 9999) printf "\\n"
+    }
 ')"
 
 # Emit the Claude Code SessionStart hookSpecificOutput contract.

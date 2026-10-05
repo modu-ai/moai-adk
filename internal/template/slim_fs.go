@@ -28,13 +28,13 @@ import (
 //
 // Interface compliance is asserted via compile-time blank-identifier checks below.
 type slimFS struct {
-	underlying fs.FS              // immutable after construction
+	underlying fs.FS               // immutable after construction
 	denySet    map[string]struct{} // immutable after construction (read-only lookups)
 }
 
 // Compile-time interface assertions — fail at build time if not satisfied.
-var _ fs.FS        = (*slimFS)(nil)
-var _ fs.StatFS    = (*slimFS)(nil)
+var _ fs.FS = (*slimFS)(nil)
+var _ fs.StatFS = (*slimFS)(nil)
 var _ fs.ReadDirFS = (*slimFS)(nil)
 
 // computeDenySet builds the set of catalog entry paths that must be hidden.
@@ -86,9 +86,9 @@ func (s *slimFS) isHidden(name string) bool {
 // catalog-tier filtering as slimFS.ReadDir. This ensures consistency between
 // Open().ReadDir() and fs.ReadDir(fsys, name), which fstest.TestFS verifies.
 type slimDir struct {
-	fs.File                   // embedded underlying directory file
-	name   string             // directory path (for child path construction)
-	slim   *slimFS            // parent filter — provides isHidden
+	fs.File         // embedded underlying directory file
+	name    string  // directory path (for child path construction)
+	slim    *slimFS // parent filter — provides isHidden
 }
 
 // ReadDir implements fs.ReadDirFile for slimDir, returning only non-hidden entries.

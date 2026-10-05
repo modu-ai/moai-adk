@@ -128,7 +128,7 @@ Mandatory to state:
 - Before drafting CHANGELOG entries, `Read` every implementation file referenced in the SPEC plan.md (do NOT rely on plan.md description alone — plan-phase placeholders may diverge from final implementation).
 - Before appending to `CHANGELOG.md` `[Unreleased]` section, run `grep -c '<SPEC-ID>' CHANGELOG.md` — if the count is ≥1, halt emission and return blocker report (avoid duplicate entries from parallel BATCH-SYNC sessions).
 - Verify file paths claimed in CHANGELOG match actual `ls <package-path>` output before committing.
-- Verify AC count in CHANGELOG matches `acceptance.md` (SSOT) — NOT `progress.md` (which may include deferred AC).
+- Verify the AC count in CHANGELOG matches `acceptance.md` (SSOT) — NOT `progress.md` (which may include deferred AC) — and count LIVE identifiers only: a reserved token (`[RETIRED]` / `[REF]`) placed immediately after an identifier occurrence, same line and separated by spaces or tabs only (a newline or any other character, a closing backtick included, breaks the adjacency), excludes that occurrence; an identifier is live when none of its occurrences is marked, excluded when every one is, and **ambiguous when only some are — on ambiguous the self-test emits no count at all and halts with a blocker report naming every ambiguous identifier and the resolution**. Never soften the counter to make a halt count quietly. Full convention and the counter command: `.claude/agents/moai/manager-docs.md` § B12.
 - Origin: an earlier CHANGELOG cleanup root cause analysis (BATCH-SYNC line hallucination incident).
 
 ### Section C — Pre-flight Check List (mandatory verification before starting)

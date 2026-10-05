@@ -71,7 +71,7 @@ graph TD
 
 2. **병렬 개발** — 여러 SPEC을 동시에 진행할 수 있습니다
 3. **충돌 방지** — 작업 공간이 따로 놀아 충돌이 거의 나지 않습니다
-4. **비용 절감** — 구현 단계에 GLM을 쓰면 비용이 줄어듭니다. 절감 폭은 [CG 모드](/ko/multi-llm/cg-mode)에 정리되어 있습니다
+4. 명시적 백엔드 선택: 워크트리마다 `moai cc` 또는 `moai glm`을 선택합니다.
 
 왜 이런 분리가 가능한지 한 줄로 요약하면, 워크트리마다 `.moai/config/`가 따로 존재하기 때문입니다. 그래서 한 워크트리에서 GLM을 켜도 다른 워크트리의 Claude 설정은 흔들리지 않습니다.
 
@@ -113,7 +113,7 @@ moai glm -w SPEC-AUTH-001
 moai cc -w SPEC-AUTH-001
 
 # Claude 리더 + GLM 팀원 하이브리드로 진입
-moai cg -w SPEC-AUTH-001
+moai cc -w SPEC-AUTH-001
 ```
 
 짧은 이름은 `.claude/worktrees/<이름>/` 아래에서 해석됩니다. 이미 만들어 둔 워크트리가 다른 곳에 있다면 절대 경로를 주면 됩니다 — `~/.moai/worktrees/` 또는 `<프로젝트>/.claude/worktrees/` 아래여야 하고, 그 밖의 경로는 거부됩니다.

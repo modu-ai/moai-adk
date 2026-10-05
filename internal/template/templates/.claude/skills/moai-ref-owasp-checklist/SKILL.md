@@ -47,7 +47,7 @@ progressive_disclosure:
 | A7 | **SSRF** (Server-Side Request Forgery) | Can URL input reach internal or metadata endpoints? | Egress allowlist, block internal/metadata ranges, validate fetch targets |
 | A8 | **Security Misconfiguration** | Debug mode, verbose errors, or default accounts exposed? | Production-hardened config, security headers, inspect deployed config |
 | A9 | **Improper Inventory Management** | Undocumented, shadow, or old-version endpoints reachable? | Maintain an API inventory; deprecate and decommission old versions |
-| A10 | **Unsafe API Consumption** | Are external API responses trusted blindly? | Validate external responses, set timeouts |
+| A10 | **Unsafe Consumption of APIs** | Are external/third-party API responses trusted blindly? | Validate external responses against a schema, set timeouts, treat upstream data as untrusted |
 
 ## Authentication Checklist
 

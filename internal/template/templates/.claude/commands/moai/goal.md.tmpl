@@ -1,7 +1,9 @@
 ---
-description: {{if eq .ConversationLanguage "ko"}}완료 조건을 등록하고 자율 진행 루프를 arm{{else if eq .ConversationLanguage "ja"}}完了条件を登録して自律継続ループをarm{{else if eq .ConversationLanguage "zh"}}注册完成条件并启动自主继续循环{{else}}Register a completion condition and arm the autonomous continuation loop{{end}}
-argument-hint: "{\"<condition>\"|status [--all]|clear}"
+description: {{if eq .ConversationLanguage "ko"}}완료 조건 목표를 관리하거나 승인 기반 자율 미션을 생성·운영{{else if eq .ConversationLanguage "ja"}}完了条件ゴールを管理、または承認済み自律ミッションを作成・運用{{else if eq .ConversationLanguage "zh"}}管理完成条件目标，或创建并运行已批准的自主任务{{else}}Manage condition goals or create and operate an approved autonomous mission{{end}}
+argument-hint: "{\"<condition>\"|--auto \"<mission>\"|approve|run|status [--all]|revoke|resume|clear|render}"
 allowed-tools: Skill
 ---
 
-Use Skill("moai") with arguments: goal $ARGUMENTS
+Dispatch the moai workflow `goal` with: $ARGUMENTS
+- Harness with the Skill tool (Claude Code): invoke `Skill("moai")` with arguments: `goal` $ARGUMENTS
+- Harness without a skill loader (Codex CLI): read `.agents/skills/moai/SKILL.md` (the mirrored dispatcher body) and follow its routing for the `goal` subcommand with the same arguments

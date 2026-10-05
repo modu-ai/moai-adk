@@ -61,14 +61,15 @@ CODEX_GATE_ENABLED=$(awk -v gate="codex" '
 
 # Resolve the moai binary (3-tier: $CLAUDE_PROJECT_DIR-relative, PATH, $HOME).
 MOAI_BIN=""
-if [ -n "$CLAUDE_PROJECT_DIR" ] && [ -x "$CLAUDE_PROJECT_DIR/../../moai" ]; then
-	# Repo-relative build (dev): internal/ is two levels above .claude/hooks/moai/.
-	MOAI_BIN="$CLAUDE_PROJECT_DIR/../../moai"
+if [ -n "$CLAUDE_PROJECT_DIR" ] && [ -f "$CLAUDE_PROJECT_DIR/bin/moai" ] && [ -x "$CLAUDE_PROJECT_DIR/bin/moai" ]; then
+	# CLAUDE_PROJECT_DIR is the project root, not the hook script directory.
+	MOAI_BIN="$CLAUDE_PROJECT_DIR/bin/moai"
 fi
 if [ -z "$MOAI_BIN" ]; then
-	if command -v moai >/dev/null 2>&1; then
-		MOAI_BIN="$(command -v moai)"
-	elif [ -x "$HOME/go/bin/moai" ]; then
+	MOAI_PATH_BIN="$(command -v moai 2>/dev/null)"
+	if [ -f "$MOAI_PATH_BIN" ] && [ -x "$MOAI_PATH_BIN" ]; then
+		MOAI_BIN="$MOAI_PATH_BIN"
+	elif [ -f "$HOME/go/bin/moai" ] && [ -x "$HOME/go/bin/moai" ]; then
 		MOAI_BIN="$HOME/go/bin/moai"
 	fi
 fi

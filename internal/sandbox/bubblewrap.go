@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-
 	// @MX:WARN: [AUTO] user namespace availability for bwrap --unshare-all depends on the OS kernel configuration
 	// @MX:REASON: bwrap can fail on some Linux environments (inside containers,
 	//             older kernels) when user namespaces are disabled. The Available()
@@ -48,7 +47,8 @@ func (b *BubblewrapBackend) Available() bool {
 //
 // @MX:WARN: [AUTO] buildArgs is a security-critical function — changing argument order or values breaks sandbox isolation
 // @MX:REASON: bwrap argument ordering matters: --unshare-all must precede all other flags;
-//             --bind before --ro-bind; -- separator required before user command.
+//
+//	--bind before --ro-bind; -- separator required before user command.
 func (b *BubblewrapBackend) Exec(opts SandboxOptions, cmd []string) ([]byte, error) {
 	if !b.Available() {
 		return nil, ErrSandboxBackendUnavailable

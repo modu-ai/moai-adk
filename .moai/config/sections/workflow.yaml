@@ -13,17 +13,30 @@ workflow:
         enabled: true
         token_threshold: 150000
     # audit pins (SPEC-V3R6-AUDIT-MODEL-PIN-001): project-committed model+effort
-    # for the cross-model audit backends — audit entry points only (codex_audit /
-    # glm_audit / audit_multi), never codex_task / glm_task. Precedence per
+    # for the cross-model audit backends — audit entry points only (claude_audit /
+    # codex_audit / glm_audit / audit_multi), never task delegation. Precedence per
     # backend: this pin > llm.yaml sync-auditor SSOT cell > empty. codex effort
-    # vocabulary low|medium|high|xhigh|max; glm effort = z.ai states low|high|max.
+    # Claude/Codex effort vocabulary low|medium|high|xhigh|max; GLM effort =
+    # z.ai states low|high|max. Claude defaults to claude-opus-5-5/high and
+    # codex to gpt-6.1-sol/high (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-001/002).
+    # model: multi (SPEC-AUDIT-MODEL-CONVERGE-001) opts this repository into
+    # cross-model convergence: codex required, GLM advisory, Claude as the anchor.
+    # Relax it per backend with an audit.gates block if needed.
     audit:
+        model: codex
+        claude:
+            model: opus[1m]
+            effort: medium
         codex:
-            model: gpt-5.6-sol
+            model: gpt-6.1-sol
             effort: high
         glm:
             model: glm-5.3
             effort: max
+        gates:
+            claude: off
+            codex: required
+            glm: off
     default_mode: ""
     execution_mode: auto
     # context_folding: manager-lead's per-milestone Context-Folding trigger policy
@@ -129,6 +142,11 @@ workflow:
             L-run: {model: opus, effort: medium}
             L-sync: {model: sonnet, effort: low}
             L-mx: {model: sonnet, effort: low}
+    # project.continuation: /moai project Phase 14 완료 분기.
+    # none | card | pipeline. 부재도 미매칭도 card 로 해석되며, 미매칭 값은
+    # 완료 보고에 그대로 인용된다(런은 멈추지 않는다).
+    project:
+        continuation: card
     worktree:
         # 2026-05-22: auto_create false (user policy feedback_worktree_autonomous 정렬).
         # L1 worktree는 Claude Code runtime autonomous — MoAI orchestrator는 자동 생성 안함.
@@ -141,8 +159,8 @@ workflow:
         # `moai session list`의 부수효과가 아니라 의도된 행위여야 한다.
         # 재활성화는 제거 예정 트리를 먼저 열거한 뒤 운영자가 판단할 것
         # (acceptance.md AC-WR-023(b)).
-        auto_cleanup: false
-        auto_create: false
+        auto_cleanup: true
+        auto_create: true
         auto_merge: true
         session_name_pattern: moai-{ProjectName}-{SPEC-ID}
         tmux_preferred: true
@@ -154,6 +172,28 @@ workflow:
     # the guard is active.
     branch_guard:
         enabled: true
+        # SPEC-MAIN-COMMIT-BAN-001 (card t1337): local main is commit-dead —
+        # commit/revert/cherry-pick in the primary checkout while HEAD is on a
+        # listed branch are denied. Doctrine: .moai/docs/gitflow-integration-chain.md
+        deny_commits_on: [main]
+    # commit_identity_guard: refuse a shell command that would create a commit
+    # under a known test-fixture identity (SPEC-COMMIT-IDENTITY-GUARD-001
+    # root cause: a fixture identity written into the shared .git/config
+    # poisoned thousands of develop commits). deny_emails is additive to the
+    # guard's built-in fixture list. Local opt-in for dogfood; shipped
+    # default-false in template (internal/config/defaults.go enforces this).
+    commit_identity_guard:
+        enabled: true
+        deny_emails: []
+    # drift_cache_fill: the out-of-band drift-cache fill started from the
+    # SessionStart miss path. Unlike the guard family around it, this key ships
+    # ENABLED (internal/config/defaults.go is the SSOT) — the feature is not
+    # inert when on, and that cost is accepted because the alternative leaves
+    # the drift advisory permanently absent after a HEAD change. Set to false
+    # to stop the handler starting any fill child; the advisory then resolves
+    # from whatever the cache already holds.
+    drift_cache_fill:
+        enabled: true
     # agent_stop_guard: SendMessage deny layer against revival of stopped
     # teammates (TaskStop does not reclaim the name address; one message
     # resumes a stopped agent from its transcript). Recording + observation +
@@ -162,3 +202,103 @@ workflow:
     # (internal/config/defaults.go enforces this).
     agent_stop_guard:
         enabled: true
+    # subagent_write_guard: PreToolUse deny layer against a subagent's
+    # destructive overwrite of an existing tracked file (a Write that replaces
+    # it with a fraction of what it held). Detection and the audit row
+    # (.moai/logs/subagent-write-guard.log) always run regardless of this
+    # flag; this local opt-in enables the deny layer for dogfood. Shipped
+    # default-false in template (internal/config/defaults.go enforces this;
+    # no `enabled: true` under internal/template/templates/).
+    subagent_write_guard:
+        enabled: true
+    # served_model_gate: refuse to adopt a plan-auditor / sync-auditor verdict
+    # whose served model (the transcript's assistant-row model) differs from
+    # the expected model or cannot be determined. Observation + warning always
+    # run regardless of this flag; this local opt-in enables the refusal for
+    # dogfood. Shipped default-false in template
+    # (internal/config/defaults.go enforces this; no `enabled: true` under
+    # internal/template/templates/).
+    served_model_gate:
+        enabled: false
+    # quota_gate: steer the NEXT card away from a nearly exhausted Claude
+    # account (SPEC-QUOTA-AWARE-SCHEDULING-001). A Claude lane's `moai factory
+    # next` leases no new card while a five-hour or seven-day window reads at or
+    # above its hold percentage; `moai factory status` and `moai todo --auto`
+    # recommend non-Claude lanes. This local opt-in enables the gate for
+    # dogfood; the numeric values are the shipped unmeasured defaults. Shipped
+    # default-false in template (internal/config/defaults.go enforces this; no
+    # gate-enabling value under internal/template/templates/).
+    # max_scan_dirs: the unmeasured shipped default; more linked worktrees than
+    # this need a larger value.
+    quota_gate:
+        enabled: true
+        five_hour_hold_pct: 90
+        seven_day_hold_pct: 95
+        release_margin_pct: 5
+        max_age: 30m
+        max_scan_dirs: 128
+    # jev: the TypeSafe System One judgment capability. It answers a typed
+    # question about a supplied state and returns a typed answer with a
+    # probability; it generates no text and makes no decision itself. Ships OFF, and
+    # while it is off no request is constructed and no network call is made, so
+    # a project that never opts in pays nothing and reaches no third-party
+    # endpoint.
+    #
+    # Turning it on additionally needs a credential at ~/.moai/.env.typesafe
+    # (file mode 0600, outside the repository). Without one the capability
+    # reports itself unavailable and every consumer continues unchanged — an
+    # absent answer is never read as a negative answer.
+    #
+    # The capability is display-only: an answer is a labelled model-produced
+    # signal a person reads, never an input to a completion verdict, a merge
+    # approval, a queue mutation, or any other decision that is hard to undo.
+    # One exception: the contract-mode Kickoff `llm+jev` cross-check may use
+    # an answer as its second signal, where it can only confirm an LLM
+    # approval or route the Kickoff to a human; it never decides alone.
+    #
+    # A second exception, separate from that cross-check, is the
+    # `moai todo --auto` cycle's own candidate ranking: the
+    # auto-scoped ranking exception. Behind the default-off
+    # workflow.jev.enabled gate, an in-process caller may supply the key
+    # that orders the queued candidates the cycle is about to accept, which
+    # sets selection order only. The candidate set is fixed by
+    # mechanical filters before any answer is read, and an answer that
+    # cannot be used as a whole falls back to recorded priority over the
+    # same set. The answer never adds, removes or edits a card, is never the
+    # basis of a completion verdict, a merge approval or an operator gate,
+    # and no ordering accuracy is claimed.
+    #
+    # Where this setting is changed, and where it is NOT: `moai init` asks
+    # about it once, and after that the `moai web` settings screen is the only
+    # place it can be changed. It is deliberately absent from
+    # `moai update --reconfigure`, so a terminal-only user who declined at init
+    # reaches the switch through `moai web` or by editing this key by hand.
+    #
+    # This local opt-in enables the capability for dogfood. Shipped
+    # default-false in template (internal/config/defaults.go enforces this;
+    # no `enabled: true` under internal/template/templates/).
+    jev:
+        enabled: true
+    # autonomy: how a SPEC's autonomous-execution contract is signed and bounded.
+    # An absent key takes the default shown here; an unrecognized value for
+    # mode, second_review, decider, or jev_min_confidence falls back to the
+    # stricter default (guided, required, human, 0.50) with a warning naming
+    # the key.
+    autonomy:
+        mode: guided # guided | contract
+        contract:
+            # sign several SPECs with one confirmation
+            batch_sign: true
+            second_review: required # required | advisory | off
+            # allow the push-develop action in contracts
+            push_develop: true
+        kickoff:
+            # decider: human | llm | llm+jev   (omitted: human in guided, llm in contract)
+            jev_min_confidence: 0.50
+        escalation:
+            budget_default: {turns: 60, operations: 40, audit_retries: 2}
+    codex:
+        review_gate:
+            enabled: true
+        task:
+            allow_write: true

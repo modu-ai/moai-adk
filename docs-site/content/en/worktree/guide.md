@@ -63,7 +63,7 @@ straight first and the rest reads easily.
 
 | What you want to do | Handled by |
 |-----------|------|
-| Create a Worktree, enter it | The `-w` flag on the launchers `moai cc` · `moai glm` · `moai cg` |
+| Create a Worktree, enter it | The `-w` flag on the launchers `moai cc` · `moai glm` |
 | List Worktrees | `git worktree list` |
 | Sync · clean · recover · state guards | `moai worktree` (alias `moai wt`) subcommands |
 
@@ -81,7 +81,6 @@ straight first and the rest reads easily.
 ```bash
 moai cc  -w [name] [--spawn]
 moai glm -w [name] [--spawn]
-moai cg  -w [name] [--spawn]
 ```
 
 #### How the `-w` value is resolved
@@ -114,7 +113,7 @@ moai cc -w feat-auth
 moai glm -w feat-auth
 
 # Keep the current session + spawn a GLM teammate in a new tmux window
-moai cg -w feat-auth --spawn
+moai cc -w feat-auth --spawn
 
 # To create a worktree at an arbitrary location, use git directly
 git worktree add -b feature/SPEC-AUTH-001 \

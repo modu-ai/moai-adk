@@ -79,58 +79,36 @@ statusline:
 
 ## Q: 如何选择模型策略？
 
-MoAI-ADK 会根据 Claude Code 订阅套餐为智能体分配最优 AI 模型。这是在套餐用量限制内将质量最大化的代币经济学装置。
+v3.2 起，逐智能体的模型策略已经没有可选项了。**子代理沿用主会话的模型与推理深度** —— 生成子代理时不传 `model` 也不传 `effort`，MoAI 智能体定义对两者都不作声明。剩下的是会话层面的一个选择：`moai profile setup` 的**会话模型策略**，决定以此配置启动的 Claude 会话的默认推理强度（未单独选择推理强度时生效）。
 
-### 策略层级对比
+### 会话模型策略对比
 
-| 策略 | 特点 |
+| 值 | 含义 |
 |------|------|
-| **high** | 最高质量 — 对调用频率最低的两个智能体使用 `max` 推理深度 |
-| **medium**（默认） | 质量与成本的平衡 — 成本/评分曲线的拐点 |
-| **low** | 每任务成本最低 — agentic 智能体降到 Opus `low` effort |
+| **high** | 会话 effort 回退 `high` |
+| **medium**（默认） | 会话 effort 回退 `medium` —— 成本/评分曲线的拐点 |
+| **low** | 会话 effort 回退 `low` —— 同一个模型内部的节省用法 |
 
 {{< callout type="warning" >}}
-**为什么重要？** 降低层级降低的是*推理深度*，而不是模型级别。在长时程 agentic 任务中，Opus 的 `low` effort 比任何 effort（包括 `max`）的 Sonnet 评分更高、每任务成本更低 — 账单由模型完成任务所花的步数决定，而不是按 token 的单价。因此 `low` 是在 Opus 内部节省，仅在不存在多步完成失败问题的单次调用行（`manager-git`、`Explore`）上才使用 Sonnet。
+**为什么重要？** 降低 effort 主要降低的是*推理深度*，而不是模型级别。在长时程 agentic 任务中，Opus 的 `low` effort 比任何 effort（包括 `max`）的 Sonnet 评分更高、每任务成本更低 —— 账单由模型完成任务所花的步数决定，而不是按 token 的单价。这份节省的落点现在是会话 effort，旧版本的逐智能体分配表已经退役。
 {{< /callout >}}
 
-### 各层级智能体模型分配
+### 逐智能体分配时代之后的变化
 
-**11 个智能体目录**（10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`）中，MoAI 自定义智能体按层级分配模型。过去的 12 个归档智能体 (archived agents) 已不可用。
-
-#### Manager Agents（5 个）
-
-| 智能体 | high | medium | low |
-|---------|------|--------|-----|
-| manager-spec | opus / high | opus / medium | opus / low |
-| manager-develop | opus / max | opus / medium | opus / low |
-| manager-docs | opus / medium | opus / low | sonnet / low |
-| manager-git | sonnet / low | sonnet / low | sonnet / low |
-| manager-design | opus / high | opus / medium | opus / low |
-
-#### Evaluator · Builder · Advisor · Specialist Agents（5 个）
-
-| 智能体 | high | medium | low |
-|---------|------|--------|-----|
-| plan-auditor | opus / high | opus / medium | opus / low |
-| sync-auditor | opus / high | opus / medium | opus / low |
-| builder-harness | opus / high | opus / medium | opus / low |
-| super-advisor | opus / max | opus / high | opus / medium |
-| e2e-tester | opus / medium | opus / low | sonnet / low |
-
-内置 `Explore` 在所有列都解析为 `sonnet / low` — 因为磁盘上没有可固定的智能体文件，这是调用时的默认值。
+到 v3.1 为止，MoAI-ADK 通过配置矩阵给 13 个目录智能体各自分配 `{model, effort}`，策略层级选出矩阵的一列。这套装置在 SPEC-AGENT-MODEL-INHERIT-001 中退役了 —— 实测显示带 model 参数的调用不足 1%，分配的位置因此移到了会话本身。旧的 `--model-policy`、`--profile`、`--high`、`--medium-alias`、`--low` 旗标以只打印警告、没有任何效果的弃用桩形式保留。
 
 ### 设置方法
 
 ```bash
-# 项目初始化时
-moai init my-project          # 在交互式向导中选择模型策略
+# 设置会话模型策略（会话模型策略问题）
+moai profile setup
 
 # 既有项目重新设置
 moai update -c                # 重新运行设置向导
 ```
 
 {{< callout type="info" >}}
-默认策略为 `High`。执行 `moai update` 后，会提示用 `moai update -c` 来配置此设置。
+默认 effort 回退为 `medium`。可在 `moai profile setup` 中修改，或用 `/effort`、`ultrathink` 随时调整会话 effort —— 之后的全部子代理生成都跟随该值。
 {{< /callout >}}
 
 ---

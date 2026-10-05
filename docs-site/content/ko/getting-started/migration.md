@@ -115,13 +115,13 @@ go install github.com/modu-ai/moai-adk/cmd/moai@latest
 
 3.0 으로 올라오며 에이전트 카탈로그·자율 루프·비용 통제가 다시 짜였습니다. 마이그레이션에서 가장 자주 마주치는 변화를 정리합니다.
 
-#### 에이전트 카탈로그 11개로 통합
+#### 에이전트 카탈로그 13개로 통합
 
-archived 에이전트 이름(`manager-strategy`, `expert-backend`, `researcher` 등) 이 **spawn 시 거부** 됩니다. 대신 (a) 11개 유지 에이전트 중 하나를 쓰거나, (b) 도메인 허용 목록을 넣은 `Agent(general-purpose)` 를 자리마다 spawn 하는 패턴으로 바꿉니다.
+archived 에이전트 이름(`manager-strategy`, `expert-backend`, `researcher` 등) 이 **spawn 시 거부** 됩니다. 대신 (a) 13개 유지 에이전트 중 하나를 쓰거나, (b) 도메인 허용 목록을 넣은 `Agent(general-purpose)` 를 자리마다 spawn 하는 패턴으로 바꿉니다.
 
 #### Agent Teams 정적 편성 계층 은퇴
 
-강제 `--team` / `--mode team` 은 `MODE_TEAM_UNAVAILABLE` 을 내고 서브에이전트 모드로 폴백합니다. 네이티브 Claude Code 팀메이트 런타임(`moai cg` GLM 페이스, `worktree --team`) 은 영향을 받지 않습니다.
+강제 `--team` / `--mode team` 은 `MODE_TEAM_UNAVAILABLE` 을 내고 서브에이전트 모드로 폴백합니다. CG는 폐기되었습니다. `moai migrate cg`로 이전 선택지를 먼저 확인하세요.
 
 #### Context7 MCP 의존성 은퇴
 

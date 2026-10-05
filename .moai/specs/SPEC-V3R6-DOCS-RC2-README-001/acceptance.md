@@ -2,7 +2,6 @@
 id: SPEC-V3R6-DOCS-RC2-README-001
 title: "Acceptance Criteria — v3.0.0-rc2 README + CHANGELOG factual-alignment"
 version: "0.3.0"
-status: completed
 created: 2026-06-19
 updated: 2026-06-22
 author: manager-spec
@@ -16,6 +15,14 @@ tier: M
 ---
 
 # Acceptance Criteria — SPEC-V3R6-DOCS-RC2-README-001
+
+## HISTORY
+
+- 2026-09-08: AC-KO-002b 세 번째 불릿 검증식 정정 — `grep -cE "8 (retained )?agents" README.ko.md` ≥1 (en 문구의 ko README 존재 요구)을 **로케일 패리티 형**으로. **승인 귀속: 리드 승인 — 카드 t573 발행 dispatch** (SPEC-AC-LOCALE-TOKEN-001 M2; census `.moai/reports/t573/census.md` §3 배치 3).
+  - before: `grep -cE "8 (retained )?agents" README.ko.md` — 기준 `≥1` (동일 SPEC 의 AC-KO-003 이 "(or the KO equivalent phrasing)" 을 병기하는 것과 달리 이 불릿만 KO-동등 표현을 허용하지 않아, ko README 가 en 문구를 그대로 실어 넣도록 강제하는 왜곡형이었다)
+  - after: `grep -cE "8 (retained )?agents|8 ?개 ?에이전트|에이전트 8" README.ko.md README.md` — **두 파일의 계수가 동일해야 한다**(로케일 패리티)
+  - 실측(트리 `0e1f248cd`, 워크트리 `WT-ascii-token-criterion`, 2026-09-08): before `/usr/bin/grep -cE "8 (retained )?agents" README.ko.md` → `0`, 동일 패턴 README.md → `0` — 8-에이전트 히어로 카운트 콘텐츠는 이후 README 재작성에서 **두 로케일 모두에서 퇴역**했다. 즉 옛 불릿의 대상 콘텐츠가 소멸한 상태에서 en 문구 존재만을 요구하는 것은 도달 불가능한 계측기다(verification-completeness §2 불가능 방향 — 본 트리에서 RED).
+  - **판정 영향**: 있음. 옛 읽기는 현재 트리에서 실패한다(0 vs ≥1 — 대상 콘텐츠 퇴역 탓이지 본 불릿이 지적한 드리프트 탓이 아니다). 새 읽기(패리티 0=0)는 현재 트리에서 통과하며, 훗날 어느 로케일이 8-에이전트 카운트를 복원하면 패리티 검사가 두 로케일의 일치를 강제한다. 실패 사유의 귀속을 명시한다 — 옛 불릿의 RED 는 ko README 의 드리프트가 아니라 콘텐츠 퇴역 때문이며, 존재 요구형으로는 그 구분이 불가능했다.
 
 ## §A. Verification Philosophy
 
@@ -205,7 +212,7 @@ Each AC MUST be reported in the 5-Section Evidence-Bearing Report Format at run-
 **When** the following commands are each run, each MUST return `≥1`:
 - `grep -cE "v3\.0\.0-rc2|V3R6" README.ko.md`
 - `grep -c "glm-5.2" README.ko.md`
-- `grep -cE "8 (retained )?agents" README.ko.md`
+- `grep -cE "8 (retained )?agents|8 ?개 ?에이전트|에이전트 8" README.ko.md README.md` — 두 파일의 계수가 동일해야 한다 (로케일 패리티; 2026-09-08 HISTORY 항목 — 종전 ko 단독 en-문구 존재 요구는 대상 콘텐츠가 두 로케일 모두에서 퇴역해 도달 불가능이자 왜곡형이었다)
 - `grep -cE "3-phase|plan.{0,3}run.{0,3}sync" README.ko.md`
 
 #### AC-KO-003 — KO harness namespace fix

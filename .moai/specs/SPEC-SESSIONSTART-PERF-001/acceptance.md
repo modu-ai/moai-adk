@@ -2,7 +2,6 @@
 id: SPEC-SESSIONSTART-PERF-001
 title: "Session-Start Performance Durability — Acceptance Criteria"
 version: "0.1.0"
-status: completed
 created: 2026-07-11
 updated: 2026-07-11
 author: manager-spec

@@ -12,7 +12,7 @@ MoAI-ADK で最初のプロジェクトを作成し、開発ワークフロー�
 
 - [x] MoAI-ADK のインストール ([インストールガイド](./installation))
 - [x] 初期設定の完了 ([初期設定](./init-wizard))
-- [ ] GLM API キーの取得 (任意 — CG モードでトークンコストを節約したい場合)
+- [ ] GLM API キー（任意。GLM セッションを明示的に使う場合）
 
 ## 最初のプロジェクト作成
 
@@ -289,7 +289,7 @@ MoAI-ADK プロジェクトの標準構造:
 ```
 my-first-project/
 ├── CLAUDE.md                        # Claude Code プロジェクト指針
-├── CLAUDE.local.md                  # プロジェクトローカル設定 (個人用)
+├── AGENTS.local.md                  # 個人の指示 (Git 無視、両ハーネス共用)
 ├── .mcp.json                        # MCP サーバー設定
 ├── .claude/
 │   ├── agents/                      # Claude Code エージェント定義
@@ -377,6 +377,16 @@ graph TD
 ```
 
 ---
+
+## 個人の指示ファイル — `AGENTS.local.md`
+
+プロジェクトで守ってほしい個人のルールは、プロジェクトルートの `AGENTS.local.md` に書きます。Git で無視され、`moai update` も触れず、Claude Code と `moai codex` の両方が読みます。チームと共有する契約は `AGENTS.md`、Claude 専用の設定は `CLAUDE.md` にあります — この 3 つのファイルが指示の構成のすべてです。
+
+以前のバージョンで作った `CLAUDE.local.md` がある場合は、一度だけ移せば済みます。
+
+```bash
+moai migrate local-instructions
+```
 
 ## 次のステップ
 

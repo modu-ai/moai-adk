@@ -236,6 +236,18 @@ moai update --dry-run
 moai update --yes
 ```
 
+### 为已有项目添加 Codex
+
+无需重新初始化,即可为 claude-only 项目添加 codex harness 配线:
+
+```bash
+moai tool enable codex
+```
+
+- 创建或刷新 `.codex/hooks.json`(通过白名单门控的 hook 渲染)、`.codex/config.toml`(`[mcp_servers.moai]` + `[tui].status_line` — 自行添加的条目会保留)、`.moai/state/codex-wiring.json`(信任 sidecar)
+- 不改动 `.mcp.json`,重复执行是幂等的 — 已配线的项目不会写入任何内容,也不会重复输出信任提示
+- 运行 `moai tool enable codex --dry-run` 时,只预览配线计划,不改动文件系统
+
 ## 更新后流程
 
 ### 第 1 步:确认版本
@@ -264,7 +276,8 @@ MoAI-ADK 更新时,**CLAUDE.md** 与 `settings.json` 会同步到新版本。请
 |------|------|--------------|
 | `CLAUDE.md` | 项目根 | {{< icon warning warn >}} 更新时会变更(MoAI-ADK 管理) |
 | `settings.json` | `.claude/` | {{< icon warning warn >}} 更新时会变更(MoAI-ADK 管理) |
-| `CLAUDE.local.md` | 项目根 | {{< icon check ok >}} 无影响(个人设置) |
+| `AGENTS.local.md` | 项目根 | {{< icon check ok >}} 无影响（个人指令） |
+| `CLAUDE.local.md` | 项目根 | {{< icon check ok >}} 无影响（旧名称，仅输出提示） |
 | `.claude/settings.local.json` | 项目 | {{< icon check ok >}} 无影响(个人设置) |
 
 {{< callout type="info" >}}
@@ -360,6 +373,18 @@ moai update --verbose
 ```bash
 moai update --force
 ```
+
+## 本地指令文件提示
+
+`moai update` 不会移动、重命名或删除 `AGENTS.local.md` 与 `CLAUDE.local.md`。项目根目录仍留有 `CLAUDE.local.md` 时，它会在标准输出打印一行提示。指令分为三个文件——通用契约 `AGENTS.md`、Claude 专属层 `CLAUDE.md`、个人指令 `AGENTS.local.md`——`CLAUDE.local.md` 是 `AGENTS.local.md` 的旧名称。
+
+| 项目状态 | `moai update` 输出 |
+|----------|--------------------|
+| 只有 `CLAUDE.local.md` | 提示用 `moai migrate local-instructions` 迁移 |
+| 两个文件都存在 | 提示手动合并（迁移命令会拒绝这种状态） |
+| 只有 `AGENTS.local.md`，或两者都没有 | 无提示 |
+
+`moai doctor` 在相同条件下输出同样的提示。只有操作者亲自运行 `moai migrate local-instructions` 时才会改名。
 
 ## 下一步
 

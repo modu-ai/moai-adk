@@ -19,7 +19,7 @@ moai --help
 
 | 组 | 命令 | 说明 |
 |------|--------|------|
-| **Launch** | `moai cc` · `moai cg` · `moai glm` | 启动 Claude Code 会话(选择后端) |
+| **Launch** | `moai cc` · `moai glm` | 启动 Claude Code 会话(选择后端) |
 | **Project** | `moai init` · `moai update` · `moai doctor` · `moai status` | 项目初始化、更新、诊断、状态查询 |
 | **Tools** | `moai profile` · `moai inventory` · `moai hook` · `moai worktree` · `moai spec` · `moai harness` · ... | 配置、清单、钩子、工作树等工具 |
 
@@ -66,13 +66,12 @@ moai init [project-name] [OPTIONS]
 | `--root <path>` | 项目根目录(默认: 当前目录) |
 | `--git-mode <manual\|personal\|team>` | Git 工作流模式(默认: manual) |
 | `--git-provider <github\|gitlab>` | Git 提供者 |
-| `--project-mode <personal\|team>` | 项目模式(默认: personal) |
 | `--enable-lsp` | 启用 LSP 联动(默认: true) |
 | `--enforce-quality` | 强制质量门禁(默认: true) |
 | `--enable-design` | 启用 design 工作流(默认: true) |
-| `--profile <high\|medium\|low>` | 模型+effort 配置文件 —— 保存到 `llm.yaml` `profile` (选择配置矩阵列)。legacy 值 `max` 也接受作为输入并规范化为 `high` |
-| `--model-policy <high\|medium\|low>` | legacy 性能层级 —— 保存到 `llm.yaml` `performance_tier` (`profile` 缺失时作为别名) |
-| `--high` | **将被删除** `--model-policy high` 的别名 |
+| `--profile <high\|medium\|low>` | **已弃用的桩** —— 为脚本兼容仍接受值，但没有任何效果，并打印指向 `moai profile setup` 的弃用警告 |
+| `--model-policy <high\|medium\|low>` | **已弃用的桩** —— 为脚本兼容仍接受值，但没有任何效果，并打印指向 `moai profile setup` 的弃用警告 |
+| `--high` | **已弃用的桩** —— 已退役的 `--model-policy high` 的别名，打印同样的弃用警告 |
 
 ### 示例
 
@@ -85,7 +84,7 @@ cd my-existing-project
 moai init
 
 # 非交互(CI/CD)
-moai init --non-interactive --project-mode personal --model-policy medium
+moai init --non-interactive
 ```
 
 详细的向导步骤请参阅[初始设置](./init-wizard)页面。
@@ -114,7 +113,7 @@ moai update [OPTIONS]
 | `--no-hooks` | 跳过 Git 钩子安装 |
 | `--verbose` | 显示所有警告(诊断模式) |
 | `--shell-env` | 为 Claude Code 配置 shell 环境变量 |
-| `--profile <high\|medium\|low>` | 覆盖模型+effort 配置文件(保存到 `llm.yaml` `profile`) |
+| `--profile <high\|medium\|low>` | **已弃用的桩** —— 为脚本兼容仍接受值，但没有任何效果，并打印指向 `moai profile setup` 的弃用警告 |
 
 ### 示例
 
@@ -231,7 +230,6 @@ moai profile [COMMAND]
 ```bash
 moai cc -p work       # 用 work 配置文件运行 Claude
 moai glm -p cost-save # 用 cost-save 配置文件运行 GLM
-moai cg -p team       # 用 team 配置文件运行 CG 模式
 ```
 
 详情请参阅[配置文件管理](./profile)页面。
@@ -326,33 +324,16 @@ git worktree list               # 工作树列表
 
 ---
 
-## moai cc / moai cg / moai glm
+## moai cc / moai glm
 
-在启动 Claude Code 时选择后端的启动命令。三条命令都能用 `-p <profile>` 标志指定配置文件。把 `--` 之后的参数原样传给 Claude Code,只有 `moai cc` 与 `moai glm` 支持(`moai cg` 不支持)。
+`moai cc` 和 `moai glm` 使用明确选择的后端启动 Claude Code。旧 CG 配置必须先迁移才能启动。
 
 ```bash
 moai cc [-p profile] [-- claude-args...]
 moai glm [-p profile] [-- claude-args...]
-moai cg [-p profile]
 ```
 
-| 命令 | 领导 | Worker | 需要 tmux | 用途 |
-|--------|------|------|-----------|------|
-| `moai cc` | Claude | Claude | 否 | 最高质量(单一后端) |
-| `moai glm` | GLM | GLM | 否 | 成本优化(GLM 单独) |
-| `moai cg` | Claude | GLM | 必需 | 质量 + 成本平衡(混合) |
-
-`moai cg` 激活 CG 模式(Claude 领导 + GLM 队友)。必须在 tmux 会话内运行,它会把 GLM 环境变量注入 tmux 会话,而领导窗口使用 Claude API。`moai cg` 在设置后会直接在当前窗口启动 Claude Code,因此不需要另外的 `claude` 启动步骤。
-
-```bash
-# 1. 保存 GLM API 密钥(首次一次)
-moai glm setup sk-your-glm-api-key
-
-# 2. 激活 CG 模式(在 tmux 内运行 —— Claude Code 会在当前窗口直接启动)
-moai cg
-```
-
-详细的 CG 模式指南请参阅[简介 — 用 GLM 节省 token](./introduction#用-glm-节省-token5070)。
+`moai cg` 已停用。它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。 [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
 
 ### 启动标志
 
@@ -370,9 +351,22 @@ moai cg
 |--------|------|
 | `-c, --continue` | 续接上一个会话 |
 | `-m, --model <model>` | 覆盖模型选择 |
-| `--chrome` / `--no-chrome` | 切换 Chrome MCP |
+| `--chrome` / `--no-chrome` | 原样传递给 Claude Code。启动器不会自行添加任一标志，因此除非传入 `--no-chrome`，否则可通过 `/chrome` 连接 |
 
-> `auto` 权限模式在 GLM(第三方提供者)中不可用 —— 仅在 `moai cc` 或 `moai cg` 中支持。
+> `auto` 权限模式在 GLM(第三方提供者)中不可用 —— 仅在 `moai cc` 中支持。
+
+### 会话模型的确定顺序(`moai cc`)
+
+`moai cc` 按下面的顺序查找会话模型,并把找到的第一个值作为 `--model` 传给 Claude Code。
+
+1. 显式指定的 `--model` 参数
+2. 配置文件中的模型(在 `moai profile setup` 里选的值)
+3. 环境变量 `ANTHROPIC_MODEL`(仅本次启动)
+4. 项目 `.claude/settings.local.json` 里的 `model`(仅本项目)
+5. 该配置文件的用户级 `settings.json` 中用 `/model` 保存的值 —— 启动时会用一行提示,例如 `model: opus (user /model)`
+6. 以上都为空时不传任何值。此时由项目 `.claude/settings.json` 里的 `model` 固定值决定会话模型,启动器会指出该值以及修改方法
+
+越具体、越新近由用户直接指定的,优先级越高。第 3 步和第 4 步由 Claude Code 自己应用,所以启动器不传 `--model`,直接让路。项目设置优先于用户级设置,所以没有第 5 步时,用 `/model` 选的模型会被项目固定值盖住。`moai glm` 不适用这条规则:GLM 需要以槽位别名传入模型,而在 Anthropic 账户里用 `/model` 选的值属于另一个模型系列,会连到错误的槽位。
 
 ### moai glm 子命令
 
@@ -464,23 +458,23 @@ moai --version    # 相同
 
 ## 模型策略(性能层级)
 
-MoAI-ADK 提供为智能体分配最优 AI 模型的性能层级系统 —— 这是代币经济学的起点。通过 `llm.yaml` 的 `performance_tier` 字段设置,用 `--model-policy` 标志或初始化向导选择。
+按智能体逐一分配模型的旧性能层级系统已经退役。v3.2 起，**子代理沿用主会话的模型与推理深度** —— 生成子代理时不传 `model` 也不传 `effort`，MoAI 智能体定义对两者都不作声明。模型策略的位置上剩下的，是会话层面的一个选择：`moai profile setup` 的**会话模型策略**问题，决定以此配置文件启动的 Claude 会话的默认推理强度（未单独选择推理强度时的回退值）。
 
-| 层级 | 特点 |
+| 旧值 | 今天的含义 |
 |------|------|
-| **high** | 最高质量 —— 对调用频率最低的两个智能体使用 `max` 推理深度 |
-| **medium** (默认) | 质量与成本的平衡 —— 成本/评分曲线的拐点 |
-| **low** | 每任务成本最低 —— agentic 智能体降到 Opus `low` effort,Sonnet 仅用于单次调用的行 |
+| **high** | 会话 effort 回退 `high` |
+| **medium** | 会话 effort 回退 `medium` |
+| **low** | 会话 effort 回退 `low` |
 
 ```bash
-# 初始化时设置
-moai init my-project --model-policy high
+# 配置会话模型策略（以及配置文件的其余全部）
+moai profile setup
 
-# 在既有项目中重新设置
-moai update -c
+# 已退役的逐智能体旗标只打印弃用警告，没有任何效果
+moai init my-project --model-policy high
 ```
 
-配置文件(`profile`: high/medium/low)选择配置矩阵的活动列，确定每个代理的 model+effort。详细的每个代理映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
+旧的 `--model-policy`、`--profile`、`--high`、`--medium-alias`、`--low` 旗标是已弃用的桩：为脚本兼容仍接受值，但没有任何效果，并打印指向 `moai profile setup` 的警告。会话级模型·effort 调节见[模型策略](/zh/multi-llm/model-policy/)页面，矩阵的退役见[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 ---
 

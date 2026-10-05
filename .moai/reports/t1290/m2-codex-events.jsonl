@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"01a0e650-b34b-70b1-afed-e3b611976b23"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"Exceeded skills context budget. All skill descriptions were removed and 40 additional skills were not included in the model-visible skills list."}}
+{"type":"item.completed","item":{"id":"item_1","type":"reasoning","text":"**Checking instruction presence**"}}
+{"type":"item.completed","item":{"id":"item_2","type":"agent_message","text":"ABSENT\nABSENT"}}
+{"type":"turn.completed","usage":{"input_tokens":30309,"cached_input_tokens":12544,"cache_write_input_tokens":0,"output_tokens":40,"reasoning_output_tokens":29}}

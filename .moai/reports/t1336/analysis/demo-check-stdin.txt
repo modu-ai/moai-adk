@@ -1,0 +1,114 @@
+SUSPICIOUS: 23 finding(s)  [heuristic detector — candidates, not verdicts]
+vocab: 77477 words from git-tracked prose (targets excluded)
+<stdin>:7:27: 인트리
+    d=1  엔트리  (freq 439)
+    d=2  인프라  (freq 139)
+    d=2  실트리  (freq 13)
+    d=2  린트로  (freq 3)
+<stdin>:7:124: 문서층
+    d=2  문서는  (freq 387)
+    d=2  문서를  (freq 284)
+    d=2  문서상  (freq 18)
+<stdin>:7:128: 병합판
+    d=1  병합한  (freq 6)
+    d=2  병합은  (freq 53)
+    d=2  병합된  (freq 38)
+    d=2  병합할  (freq 11)
+    d=2  경합만  (freq 5)
+<stdin>:12:91: 나먲지
+    d=2  나머지  (freq 595)
+<stdin>:13:68: 엄트리
+    d=2  엔트리  (freq 439)
+<stdin>:14:40: 슠테일
+    d=2  스테일  (freq 160)
+<stdin>:14:100: 신귴
+    d=1  신규  (freq 3627)
+    d=2  신고  (freq 22)
+    d=2  신경  (freq 4)
+<stdin>:14:107: 엠키는
+    d=2  삼키는  (freq 11)
+    d=2  엣지는  (freq 4)
+    d=2  에지는  (freq 2)
+<stdin>:14:149: 신귵
+    d=1  신규  (freq 3627)
+    d=2  신고  (freq 22)
+    d=2  신경  (freq 4)
+<stdin>:14:152: 엠키
+    d=2  임시  (freq 750)
+    d=2  엣지  (freq 85)
+    d=2  임이  (freq 28)
+    d=2  셈이  (freq 21)
+    d=2  에코  (freq 18)
+    ... 2 more candidate(s)
+<stdin>:15:65: 숴환
+    d=1  소환  (freq 6)
+    d=2  소관  (freq 614)
+    d=2  치환  (freq 247)
+    d=2  호환  (freq 227)
+    d=2  순환  (freq 66)
+    ... 4 more candidate(s)
+<stdin>:19:29: 브랿치
+    d=2  브랜치  (freq 1312)
+<stdin>:19:87: 바이넄리
+    d=2  바이너리  (freq 614)
+<stdin>:22:84: 통
+    d=1  종  (freq 1054)
+    d=1  총  (freq 382)
+    d=1  동  (freq 16)
+    d=1  톤  (freq 8)
+    d=2  로  (freq 13981)
+    ... 69 more candidate(s)
+<stdin>:23:33: 팕
+    d=1  판  (freq 218)
+    d=1  팔  (freq 135)
+    d=2  가  (freq 19941)
+    d=2  한  (freq 5232)
+    d=2  만  (freq 3268)
+    ... 74 more candidate(s)
+<stdin>:23:98: 밖라
+    d=2  따라  (freq 907)
+    d=2  바로  (freq 604)
+    d=2  밖의  (freq 256)
+    d=2  밖에  (freq 136)
+    d=2  받아  (freq 124)
+    ... 19 more candidate(s)
+<stdin>:26:15: 채넍에서
+    d=1  채널에서  (freq 6)
+    d=2  패널에서  (freq 10)
+<stdin>:26:38: 큜
+    d=1  큐  (freq 301)
+    d=2  키  (freq 1672)
+    d=2  칸  (freq 272)
+    d=2  큰  (freq 268)
+    d=2  류  (freq 94)
+    ... 13 more candidate(s)
+<stdin>:26:59: 읠
+    d=1  의  (freq 24359)
+    d=1  을  (freq 10214)
+    d=1  일  (freq 740)
+    d=1  열  (freq 264)
+    d=1  알  (freq 161)
+    ... 94 more candidate(s)
+<stdin>:26:102: 채넍
+    d=1  채널  (freq 184)
+    d=2  배너  (freq 125)
+    d=2  패널  (freq 107)
+    d=2  채점  (freq 18)
+<stdin>:26:118: 채넎이
+    d=1  채널이  (freq 18)
+    d=2  패널이  (freq 23)
+    d=2  채널의  (freq 7)
+    d=2  채널에  (freq 5)
+<stdin>:26:122: 쓛
+    d=2  쓴  (freq 313)
+    d=2  쌍  (freq 312)
+    d=2  큐  (freq 301)
+    d=2  쓸  (freq 290)
+    d=2  곧  (freq 269)
+    ... 8 more candidate(s)
+<stdin>:26:157: 채넞
+    d=1  채널  (freq 184)
+    d=2  배너  (freq 125)
+    d=2  패널  (freq 107)
+    d=2  채점  (freq 18)
+stdin_exit=1

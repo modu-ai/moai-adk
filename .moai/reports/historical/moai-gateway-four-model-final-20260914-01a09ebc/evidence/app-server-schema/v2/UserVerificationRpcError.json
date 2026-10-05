@@ -1,0 +1,145 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "definitions": {
+    "UserVerificationCancellationReason": {
+      "enum": [
+        "userCancelled",
+        "interrupted"
+      ],
+      "type": "string"
+    },
+    "UserVerificationErrorDetails": {
+      "description": "Closed error categories; native diagnostic payloads must not cross this boundary.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "$ref": "#/definitions/UserVerificationInvalidRequestReason"
+            },
+            "type": {
+              "enum": [
+                "invalidRequest"
+              ],
+              "title": "InvalidRequestUserVerificationErrorDetailsType",
+              "type": "string"
+            }
+          },
+          "required": [
+            "reason",
+            "type"
+          ],
+          "title": "InvalidRequestUserVerificationErrorDetails",
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "$ref": "#/definitions/UserVerificationUnavailableReason"
+            },
+            "type": {
+              "enum": [
+                "unavailable"
+              ],
+              "title": "UnavailableUserVerificationErrorDetailsType",
+              "type": "string"
+            }
+          },
+          "required": [
+            "reason",
+            "type"
+          ],
+          "title": "UnavailableUserVerificationErrorDetails",
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "$ref": "#/definitions/UserVerificationCancellationReason"
+            },
+            "type": {
+              "enum": [
+                "cancelled"
+              ],
+              "title": "CancelledUserVerificationErrorDetailsType",
+              "type": "string"
+            }
+          },
+          "required": [
+            "reason",
+            "type"
+          ],
+          "title": "CancelledUserVerificationErrorDetails",
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "$ref": "#/definitions/UserVerificationFailureReason"
+            },
+            "type": {
+              "enum": [
+                "failed"
+              ],
+              "title": "FailedUserVerificationErrorDetailsType",
+              "type": "string"
+            }
+          },
+          "required": [
+            "reason",
+            "type"
+          ],
+          "title": "FailedUserVerificationErrorDetails",
+          "type": "object"
+        }
+      ]
+    },
+    "UserVerificationFailureReason": {
+      "enum": [
+        "authenticationFailed",
+        "timeout",
+        "providerError",
+        "serviceError"
+      ],
+      "type": "string"
+    },
+    "UserVerificationInvalidRequestReason": {
+      "enum": [
+        "invalidParams"
+      ],
+      "type": "string"
+    },
+    "UserVerificationUnavailableReason": {
+      "enum": [
+        "credentialMissing",
+        "biometricsUnavailable",
+        "providerUnavailable"
+      ],
+      "type": "string"
+    }
+  },
+  "description": "The error object inside the normal JSON-RPC envelope.",
+  "properties": {
+    "code": {
+      "format": "int64",
+      "type": "integer"
+    },
+    "data": {
+      "$ref": "#/definitions/UserVerificationErrorDetails"
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "code",
+    "data",
+    "message"
+  ],
+  "title": "UserVerificationRpcError",
+  "type": "object"
+}

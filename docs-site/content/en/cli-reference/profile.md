@@ -46,8 +46,12 @@ moai profile setup work     # Set up the "work" profile
 **Wizard configuration items:**
 - **Identity**: user name, role
 - **Languages**: conversation language, code comment language
-- **Model Settings**: default model, 1M context model selection
+- **Model Settings**: default model override, session model policy (the session's default effort fallback), session effort level
 - **Display**: output style, status line settings
+
+{{< callout type="info" >}}
+The model and effort configured here are **session-level** values: the Claude session launched with this profile runs on them, and subagents inherit the session's model and effort. The former per-agent assignment (profile matrix) is retired — see [Profile Matrix](/en/advanced/profile-matrix/).
+{{< /callout >}}
 
 ### moai profile current
 
@@ -74,7 +78,7 @@ Specify a profile with the `-p` (or `--profile`) flag.
 ```bash
 moai cc -p work          # Run Claude with the work profile
 moai glm -p cost-save    # Run GLM with the cost-save profile
-moai cg -p team          # Run CG mode with the team profile
+moai cc -p team          # Claude session with the team profile
 ```
 
 {{< callout type="info" >}}
@@ -108,7 +112,7 @@ The per-project record is written when you launch with `-p`, and it is updated a
 **Limitations to know**
 
 - Moving or renaming a project directory leaves the existing entry matching no path. The entry is skipped silently, so it does not break launching.
-- The `projects:` map grows as projects accumulate, and there is no command to prune it yet.
+- Worktree launches fold into the registered project's entry, so the map stays at one entry per project. Entries whose project directory is gone can be pruned with `moai worktree clean`.
 - `moai profile current` reports the global record as-is. So in a project whose remembered profile differs from the global record, the name reported by `moai profile current` may differ from the profile that `moai cc` without `-p` actually launches.
 
 ## First Launch of a New Profile
@@ -147,7 +151,6 @@ Select it in the "Model Settings" step of the setup wizard, or edit the profile 
 |------|------|
 | `moai cc` → `moai glm` | GLM environment variables injected automatically |
 | `moai glm` → `moai cc` | GLM environment variables removed automatically |
-| `moai cc` → `moai cg` | GLM env injected into the tmux session only; the Leader stays on Claude |
 
 ## Related Documents
 

@@ -1,0 +1,142 @@
+{
+  "no-config/all-pass": {
+    "disagreement_flag": false,
+    "fail_open_backends": [],
+    "overall_verdict": "pass",
+    "participant_count": 3,
+    "per_backend_verdicts": [
+      {
+        "backend": "claude",
+        "findings": [],
+        "gate": "required",
+        "next_steps": [],
+        "source": "mcp_claude_audit",
+        "summary": "claude:pass",
+        "verdict": "pass"
+      },
+      {
+        "backend": "codex",
+        "findings": [],
+        "gate": "required",
+        "next_steps": [],
+        "summary": "codex:pass",
+        "verdict": "pass"
+      },
+      {
+        "backend": "glm",
+        "findings": [],
+        "gate": "advisory",
+        "next_steps": [],
+        "summary": "glm:pass",
+        "verdict": "pass"
+      }
+    ],
+    "residual_risk_note": ""
+  },
+  "no-config/codex-inconclusive": {
+    "disagreement_flag": false,
+    "fail_open_backends": [
+      "codex"
+    ],
+    "overall_verdict": "pass",
+    "participant_count": 2,
+    "per_backend_verdicts": [
+      {
+        "backend": "claude",
+        "findings": [],
+        "gate": "required",
+        "next_steps": [],
+        "source": "mcp_claude_audit",
+        "summary": "claude:pass",
+        "verdict": "pass"
+      },
+      {
+        "backend": "codex",
+        "findings": [],
+        "gate": "required",
+        "next_steps": [],
+        "summary": "codex unavailable",
+        "verdict": "inconclusive"
+      },
+      {
+        "backend": "glm",
+        "findings": [],
+        "gate": "advisory",
+        "next_steps": [],
+        "summary": "glm:pass",
+        "verdict": "pass"
+      }
+    ],
+    "residual_risk_note": ""
+  },
+  "pins-only/all-pass": {
+    "disagreement_flag": false,
+    "fail_open_backends": [],
+    "overall_verdict": "pass",
+    "participant_count": 3,
+    "per_backend_verdicts": [
+      {
+        "backend": "claude",
+        "findings": [],
+        "gate": "required",
+        "next_steps": [],
+        "source": "mcp_claude_audit",
+        "summary": "claude:pass",
+        "verdict": "pass"
+      },
+      {
+        "backend": "codex",
+        "findings": [],
+        "gate": "required",
+        "next_steps": [],
+        "summary": "codex:pass",
+        "verdict": "pass"
+      },
+      {
+        "backend": "glm",
+        "findings": [],
+        "gate": "advisory",
+        "next_steps": [],
+        "summary": "glm:pass",
+        "verdict": "pass"
+      }
+    ],
+    "residual_risk_note": ""
+  },
+  "pins-only/codex-inconclusive": {
+    "disagreement_flag": false,
+    "fail_open_backends": [
+      "codex"
+    ],
+    "overall_verdict": "pass",
+    "participant_count": 2,
+    "per_backend_verdicts": [
+      {
+        "backend": "claude",
+        "findings": [],
+        "gate": "required",
+        "next_steps": [],
+        "source": "mcp_claude_audit",
+        "summary": "claude:pass",
+        "verdict": "pass"
+      },
+      {
+        "backend": "codex",
+        "findings": [],
+        "gate": "required",
+        "next_steps": [],
+        "summary": "codex unavailable",
+        "verdict": "inconclusive"
+      },
+      {
+        "backend": "glm",
+        "findings": [],
+        "gate": "advisory",
+        "next_steps": [],
+        "summary": "glm:pass",
+        "verdict": "pass"
+      }
+    ],
+    "residual_risk_note": ""
+  }
+}

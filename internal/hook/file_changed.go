@@ -108,8 +108,15 @@ func (h *fileChangedHandler) Handle(_ context.Context, input *HookInput) (*HookO
 	// returns immediately so the Claude Code main loop is unblocked.
 	//
 	// context.Background() decouples from the request ctx — request
-	// cancellation MUST NOT cancel the side-effect (it runs to completion
-	// or the asyncDeadline expires).
+	// cancellation MUST NOT cancel the side-effect.
+	//
+	// The deadline is NOT the outcome that decides this goroutine's fate in
+	// the field. `moai hook` is a one-shot process: it exits once the main
+	// handler returns, and process exit kills the goroutine wherever it has
+	// reached. Completing, or timing out at asyncDeadline, only happens when
+	// the process outlives the goroutine — which the hook process does not.
+	// Measured: 0/10 runs reached the sidecar write. Treat every side-effect
+	// below as best-effort-and-usually-lost, not as deferred-but-guaranteed.
 	asyncCtx, cancel := context.WithTimeout(context.Background(), asyncDeadline)
 	h.wg.Add(1)
 	go func() {
@@ -153,9 +160,12 @@ func (h *fileChangedHandler) runMXScan(ctx context.Context, input *HookInput) {
 	// early return) — 비동기 side-effect 실패는 hook 응답에 전파되지 않는다
 	// (REQ-SEC3-004 / REQ-HAE-005 보존; main handler는 고정 빈 payload 반환).
 	//
-	// 루트 해소는 중앙화된 resolveProjectRootFromInputOrEnv만 사용한다(B7 canonical;
-	// env 인라인 조회 금지, NFR-SEC3-002).
-	root := resolveProjectRootFromInputOrEnv(input, "runMXScan")
+	// 루트 해소는 중앙화된 resolver만 사용한다(B7 canonical; env 인라인 조회 금지,
+	// NFR-SEC3-002). The sidecar is a write, so the root comes from the
+	// write-side resolver resolveProjectRoot (CLAUDE_PROJECT_DIR first, .moai/
+	// required): an input.CWD-first resolver would grow a stray
+	// <subdir>/.moai/state/ tree from a subdirectory cwd (card t1165).
+	root := resolveProjectRoot(input)
 	if root == "" {
 		// 루트를 해소할 수 없으면 봉쇄 불가 → 사이드카 작업 스킵(fail-closed).
 		slog.Warn("file_changed async: project root unresolved, skipping MX scan",

@@ -11,9 +11,9 @@ const (
 	// TeamModeGLM is the llm.team_mode value written by `moai glm` (all-GLM
 	// session) — the PRIMARY GLM backend signal. persistTeamMode(root, "glm").
 	TeamModeGLM = "glm"
-	// TeamModeCG is the llm.team_mode value written by `moai cg` (Claude leader +
-	// GLM teammates). persistTeamMode(root, "cg").
-	TeamModeCG = "cg"
+	// LegacyTeamModeCG identifies historical data requiring explicit migration.
+	// It is not an executable backend or a provider selection.
+	LegacyTeamModeCG = "cg"
 	// TeamModeClaude is a legacy non-GLM team_mode value (Claude-only). Retained
 	// for backward-compat parsing; not a GLM backend signal.
 	TeamModeClaude = "claude"

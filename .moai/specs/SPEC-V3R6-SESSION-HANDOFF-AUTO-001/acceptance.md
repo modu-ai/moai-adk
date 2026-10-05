@@ -3,7 +3,6 @@ spec_id: SPEC-V3R6-SESSION-HANDOFF-AUTO-001
 acceptance_version: "0.1.0"
 created: 2026-05-23
 updated: 2026-05-23
-status: draft
 ---
 
 # Acceptance Criteria — SPEC-V3R6-SESSION-HANDOFF-AUTO-001

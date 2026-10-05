@@ -1,60 +1,426 @@
-# 진입점 및 명령 참고
+# 진입점
 
-> 이 문서는 `/moai codemaps --force`로 자동 생성된 진입점 목록입니다.
+**현재 부분 갱신 — t1524, worktree `.claude/worktrees/develop`, 브랜치 `develop`, base `d0378d37c` (2026-10-05).**
+앵커 `f4c483a5a`(t1485 판 스탬프) 뒤 창(§ `modules.md` t1524 판)을 반영했다. 등록 수치를 이 트리에서 다시 쟀다 — 비테스트 `AddCommand(` 246→**247**(+1 — `moai spec ceiling <SPEC-ID> [--evidence <dir>]... [--record]`, `spec.go`의 기존 specCmd 등록 줄 옆 한 줄 · card t1500 — 읽기 전용이 기본이고 기록은 `--record` 한 길), `rootCmd.AddCommand(` 68 불변. 새 표면: **`moai clean --audit-logs|--session-state|--apply`**(card t1518, SPEC-MOAI-HYGIENE-001 — `--audit-logs`는 감사 로그 회전기, `--session-state`는 끝난 세션 상태 GC를 돌리고 둘 다 dry-run이 기본; REQ-HYG-013 — **CLI의 변이 결정은 이 호출의 `--apply` 하나로 하고 `workflow.hygiene.mode` 설정은 자동 경로(SessionStart)만 정한다**. 기존 `--home`·`--codex-skills`·`--reports-archive`와 스코프 상호배타), **`moai session list --cc-version`**(card t1465 — 실행 중 바이너리와 설치 바이너리의 버전 대조 열; 기본 경로는 프로브가 없다), **doctor Session CC Version 권고 진단**(`doctor_ccversion.go` — stale이면 조언만 하고 gate하지 않는다). 동작 변화: `moai codex audit|role-audit`와 MCP 감사 도구 쪽 리졸버가 required-backend 거부·fail-closed 해석을 얹었다(card t1500 — `audit_pin.go`의 읽기·파스 오류는 핀 부재로 접히지 않는다), 세 런처(cc·glm relaunch 루프)에 세션 비상 재개 경로가 배선됐다(`lane_resume.go` — 값 없는 `--resume` 거부, resume 토큰 fail-closed 검출 · card t1465), SessionStart가 `.moai` 위생 엔진을 best-effort로 돌린다(`session_start_hygiene.go` — 기동을 막지 않는다 · card t1518).
 
-**모듈**: `github.com/modu-ai/moai-adk`  
-**Go 버전**: go 1.26.4
+**이전 부분 갱신 — t1485, 브랜치 `WT-codemaps-regen3`, base `83086bec5` (2026-10-04).**
+앵커 `27aa8e282` 뒤 창(§ `modules.md` t1485 판)을 반영했다. 등록 수치를 이 트리에서 다시 쟀다 — 비테스트 `AddCommand(` 239→**246**, `rootCmd.AddCommand(` 66→**68**, `AddCommand`를 부르는 비테스트 파일 **78개**. 새 동사: `moai decision record|read`(card t1481), `moai plugin install`(card t1435), `moai verify run`(card t1452), `moai update` 마이그레이션 분류(SPEC-INIT-SHRINK-001). 은퇴: 보드 CLI와 칸반 모드 런처 진입(card t1399 — 은퇴한 진입점은 `internal/cli/launcher_retired_entries.go`가 안내 문면으로만 받는다).
+
+**이전 부분 갱신 — t1456, worktree `.moai/worktrees/t1456`, 브랜치 `WT-codemaps-regen2`, base `5501c06af` (2026-10-03).**
+앵커 `a2e03d8e0` 뒤 창(아홉 Go 카드 + 수리·템플릿 착지분 — § `modules.md` t1456 판)을 반영했다. 등록 수치는 이 트리 재측정에서 변동 없었다 — 비테스트 `AddCommand(` 239 · `rootCmd.AddCommand(` 66 · root.go init() 30 · 훅 설정 엔트리 34 · 셸 래퍼 48. 새 동사 둘은 기존 줄에 합류해 호출 줄 수를 움직이지 않았다 — `moai factory relaunch`(기존 factory 등록 줄의 인자 행, card t1345)와 `moai verify audit-plan`(`verifyExtraCommands` 레지스트리 슬라이스의 init append, card t1423). **MCP 도구는 45→47** — `internal/mcp/catalog.go`의 어드바이저리 `codex_review`·`glm_review` 등록(card t1422 — 영수증 없음·required 승격 없음). 합류 창의 동작 변화: 할당량 게이트가 링크된 워크트리 기록까지 읽고(card t1442), 감사 플랜이 콜스타트에 고정되며(card t1423), 스테일 런 처방이 운영자용 `moai factory relaunch` 명령줄을 안내한다(card t1345).
+
+**이전 부분 갱신 — t1443, worktree `.moai/worktrees/t1443`, 브랜치 `WT-codemaps-regen`, base `4bf547bca` (2026-10-02).**
+앵커 `c2703f698` 뒤 창(14카드 착지분 — § `modules.md` t1443 판)을 반영했다. 등록 수치는 이 트리 재측정에서 변동 없었다 — 비테스트 `AddCommand(` 239 · `rootCmd.AddCommand(` 66 · root.go init() 30 · 훅 설정 엔트리 34 · 셸 래퍼 48(창 안의 등록 줄 diff 0 — 새 동사 없음; 창의 cli 신규 6파일은 기존 명령의 내부 동작이다). MCP 도구 45도 등록 파일 diff에서 추가 0으로 확인했다(창의 `mcp_*` 변경은 문언·티어 해석뿐). 내용 갱신은 표면 수치를 움직이지 않는 동작 변화다 — `factory next` 임대가 할당량 게이트를 얹었다(card t1347 — MCP `factory_next` 표면 동일), 세 런처 문에 백엔드 인지 레인 이름 해석 `resolveFactoryLaneName`이 얹혔고(card t1347) `launcher.go`에 관리 세션 divert 게이트가 더해졌으며(card t1375), 리더 SessionStart 합류 공지에 `m.gateSummary` 블록이 더해졌다(card t1344 — `session_start_factory.go`·`session_start_kanban.go` + `_i18n.go` 병행), MCP `jev` 도구 문서가 모든 호출자에 대한 표시 전용을 선언한다(card t1403).
+
+**이전 부분 갱신 — t1297, worktree `.moai/worktrees/t1297`, 브랜치 `WT-codemaps-regen`, base `a9f43a6fc` (2026-10-02, 전면 재생성 카드).**
+앵커 `0a8780201`(t1378 판 스탬프) 뒤 창(card t1379·1338·1373·1381·1383·1385·1386·1388·1389·1387·1339·1394 착지분)을 반영했다. 등록 수치는 이 트리 재측정에서 변동 없었다 — 비테스트 `AddCommand(` 239·`rootCmd.AddCommand(` 66(t1338 판과 동일), MCP 도구 45(카탈로그 `internal/mcp/catalog.go` 동시 확인), 훅 설정 엔트리 34, 훅 이벤트 서브커맨드 26(`hook.go` 창 밖 변경 없음). 내용 갱신: codex 리뷰 게이트가 세션 스코핑을 얹었다(`codex_review_scope.go` 신규 — card t1383, § `modules.md` cli 행), 창의 나머지 CLI 변경(`factory_{adopt,merge,messaging,pickup}.go` 등)은 t1338 판이 이미 서술한 표면의 착지분이다. § 훅의 래퍼 수와 그 밖의 절은 창에서 움직인 등록 표면이 없어 이전 판을 이어받았다.
+
+**이전 갱신 — t1338, worktree `.moai/worktrees/t1338`, 브랜치 `WT-lane-autonomy-umbrella`, base `8ea2febe2` (2026-09-30, sync-phase 부분 갱신).**
+앵커 `8ea2febe2`(흡수한 develop 기점) 뒤 이 카드의 신규 표면을 반영(card t1338, SPEC-FACTORY-LANE-AUTONOMY-001 — 팩토리 레인 자율 완성, 신규 패키지 `internal/factorylane` 위의 cli 배선). `moai factory messaging probe|request|ack` — 채널 가용성 판정(세션msg 레지스트리 읽기 전용, 리더 heartbeat 연령 상한, 활성 무응답 관측 우선; 불가 판정은 exit 0 보고), 지시 요청 기록과 응답 확인. `moai factory fallback [--all]|declare|restore` — fallback 전이 장부의 질의(레인별, `--all`은 전 레인 카운트)와 기록(한 전환 한 사건). `moai factory pickup plan` — 분류 픽업 판정(sequential 그룹 단일 보유·parallel 동시·부재 메타데이터는 fallback 단일 디스패치). `moai factory merge ready|gate` — 조건 삼중(sync-audit·merge-tree 드라이런·트리 동일)을 통합 창 선점 전에 기록하고, gate는 자기 레인의 산 창 기록이 덮지 않는 병합 시점을 거부한다(이 표면은 병합을 수행하지 않는다). `moai factory handoff adopt --card <id>` — stall 판정 뒤 픽업 카드를 기록된 진행·증거(SHA-256)에서 재개하고 `resumption.jsonl`만 덧붙인다. `moai worktree done`은 카드 브랜치(`WT-` 접두)에 origin 착지 기계 검사를 두 판정 경로 모두에 얹었다(fetch + rev-list; 플래그 우회 없음, fetch 실패 fail-closed). 비테스트 `AddCommand(` 등록은 231→239(+8 — 이 카드 diff의 추가 등록 줄과 정확히 일치), 등록 파일 73→76(+3: `factory_messaging`·`factory_merge`·`factory_pickup`), `rootCmd.AddCommand(` 66·root.go init() 30회는 변동 없었다(이 트리 재측정).
+
+**이전 갱신 — t1374, worktree `.claude/worktrees/t1374`, 브랜치 `WT-t1368-ci-repair`, base `ca7191cba` (2026-09-30).**
+스탬프 앵커 `3e6d78f73`(t1351 판) 이후 착지분을 반영. **SPEC-WORKTREE-SWEEP-001(card t1369)**이 `moai worktree sweep`을 놓았다 — 원격 착지(`origin/develop` 대비 fetch + merge-base 판정, `--base`로 재지정)가 확인된 카드 트리를 안전 술어(비보호·비잠금·살아 있는 세션 앵커 없음·트리 안 프로세스 cwd 없음·클린 워킹 트리·대체 불가 무시물 없음)로 훑어 양쪽 티어를 폐기하는 스윕 동사다(`internal/cli/worktree/sweep.go` 본체, cwd 스캔은 플랫폼 분할 `sweep_cwd_posix.go`·`sweep_cwd_windows.go`; 술어가 확증하지 못하는 나무는 전부 보존 — 등록은 기존 `WorktreeCmd.AddCommand(` 호출의 인자 행). **SPEC-MODEL-MATRIX-UPDATE-001(card t1368)**이 감사 모델 핀을 고했다 — `config.audit`이 claude `{claude-opus-5-5, medium}`·codex `{gpt-6.1-sol, high}`를 기본으로 실고 GLM 핀은 빈 채로 배포되며(`internal/config/audit_models.go`·`defaults.go`; 옛 REQ-AMP-005 빈 핀 중립은 운영자 지시 2026-09-30으로 대체), GLM 구형 모델 별칭 필드(`opus`/`sonnet`/`haiku`)는 `internal/config/types.go`에서 타입 필드째 삭제됐다(DR-2 — 낡은 `llm.yaml` 키는 비엄격 섹션 로더가 조용히 무시한다). **SPEC-TODO-CLAIM-LEASE-001(card t1342)**이 `moai todo claim [--lane] [--renew]` 동사와 MCP `todo_claim` 미러를, **SPEC-TODO-SURFACE-POLISH-001(card t1349)**이 `moai todo show <id|n>` 동사와 owner_label 어휘 일회 잠금 이행(`doctor` 진단 포함)과 유형별 1회 유령 스토어 공지를 얹었다 — 신규 동사는 전부 `todo.go`의 기존 `cmd.AddCommand(` 한 줄에 합류해 등록 수치는 움직이지 않았다. card t1330 후속(card t1358)이 레인 합류 플래그를 `--lead`에서 `--leader`로 개명했고, `todo relate`에 순환 방어와 픽업 관계 필터가 더해졌다(card t1343). 등록 수치 재측정 — 비테스트 `AddCommand(` 231·`rootCmd.AddCommand(` 66·`root.go init()` 30, 전부 변동 없었다(신규 동사는 기존 등록 줄의 인자 행 합류). MCP 도구는 in-process tools/list 재측정 45 — 창 안에서 `todo_claim`이 더해졌다(card t1342). 훅 엔트리 34·셸 래퍼 48도 같은 방법으로 재측정해 변동 없었다.
+
+**이전 갱신 — t1351, worktree `.moai/worktrees/t1351`, 브랜치 `WT-codemaps-refresh10`, base `145c3d98c` (2026-09-29).**
+스탬프 앵커 `145c3d98c`(t1333 판) 이후 착지분을 반영. SPEC-FACTORY-SELF-DISPATCH-001 배치가 F1 자가 배차 표면을 놓았다 — CLI 동사 `moai factory next`·`stage`·`complete`(`internal/cli/factory_card.go` 본체, 등록은 `factory_handoff_recover.go` — 기존 assign·status·decide 줄에 이어 붙었다)와 lane 런처의 `--clear-policy`(clear-each·clear-when-full·relaunch — relaunch 는 `internal/cli/factory_lane_relaunch.go` 의 슈퍼바이징 루프로 `cc`·`glm` 런처가 부모로 남아 카드마다 대화형 세션을 하나씩 띄운다), `moai codex` 쪽 공장 진입은 `-f lane` 하나로 좁혔다(`codex_launcher.go` — `codexFactoryEntryClassify`, 나머지 형태는 전부 거부 문장 하나). todo 표면에는 레인 큐 가드가 더했다(`todo.go`의 `PersistentPreRunE` — 읽기 허용 목록 list·history·why·pr·triage 와 맨인자 렌더만 통과). MCP 표면에 여섯 도구가 더했다 — `factory_{next,stage,complete,decide}`(`internal/cli/mcp_factory_card.go`)와 `todo_add`·`todo_list`(`internal/cli/mcp_todo.go`), 총 39→45. 훅에는 보호 브랜치 커밋 거부(card t1337, SPEC-MAIN-COMMIT-BAN-001 — § 훅)와 lane SessionStart 룰(`session_start_factory.go`·`session_start_factory_i18n.go` — backend 변수로 Claude·GLM 레인엔 next-card 룰을, Codex 레인엔 owned-card 룰을 골라 additionalContext 로 싣는다. startup·clear 에만 발화)이 더했다. SPEC-REPORTS-LIFECYCLE-001(card t1320)이 `moai clean --reports-archive`(보존창 지난 증거 디렉터리를 `.moai/reports/archive/<YYYY-MM>/` 으로 이동 전용 — `internal/cli/clean_reports_archive.go`, `--reports-archive-days` 기본 90)와 `moai worktree hoist`(폐기 전 증거 구조 — `internal/cli/worktree/hoist.go`, done 에도 배선 + `--no-hoist`)를 얹었다. SPEC-WEB-SAVE-LOSSLESS-001이 설정 저장을 무손실로 갈았다 — `internal/settings/projectscalars.go`(신규 공유 쓰기 seam), `config/manager.go`의 섹션별 dirty 게이트 6 섹션 확장, `profile/sync.go`의 user·language 행 치환 스플라이스(§ `data-flow.md` G 정정). 런처는 alias 를 그대로 통과시킨다(`launcher.go`의 `resolveMainSessionModel` — Claude 백엔드에서 플래그·설정값을 벗슬하지 않고 넘긴다, SPEC-ALIAS-PASSTHROUGH-001). `AddCommand(` 등록 수치 231·`rootCmd.AddCommand(` 66은 재확인 결과 변동 없었다(hoist 등록은 기존 `WorktreeCmd.AddCommand(` 호출의 인자 행이고 factory 신규 셋은 기존 한 줄에 합류했다).
+
+**이전 갱신 — t1333, worktree `.moai/worktrees/t1333`, 브랜치 `WT-codemaps-refresh9`, base `145c3d98c` (2026-09-29).**
+앵커 `afecf81e9` 이후 착지분을 반영. card t1306가 `moai todo --auto`를 더했다 — 운영자의 명령 1회가 큐를 순서대로 소비하는 상시 발화원이고, 같은 카드가 manager-todo 에이전트 정의를 에이전트 목록에 더하며 mission-governor 에이전트 정의를 은퇴시켰다(template 미러). card t1308가 `moai todo hold <id>`·`unhold <id>` 주차 동사를, card t1307(+t1313)가 유령 스토어 공개를 읽기 5동사와 add 쓰기 경로에, doctor에는 Todo Store 진단을 얹었다. 비테스트 `AddCommand(` 등록은 230→231(t1308의 hold/unhold; `--auto`는 새 커맨드가 아니라 todo 명령의 옵셔다)이고, `rootCmd.AddCommand(` 66·root.go init() 30회·훅 설정 엔트리 34는 재확인 결과 변동 없었다.
+
+**이전 갱신 — t1305, worktree `.claude/worktrees/t1305`, 브랜치 `WT-codemaps-refresh8`, base `afecf81e9e96` (2026-09-29).**
+스탬프 앵커 `a3a9e653e` 이후 착지분을 반영. card t1246이 CLI 표면에서 에이전트 모델을 은퇴시켰다 — `moai model` 명령이 사라지고(`root.go` 등록 목록에서 제외), `cc`·`glm`·`codex` 런처의 per-agent `--model`·`--effort` 플래그가 은퇴 안내로 대체됐다(`agent_model_flags_retired.go`), `moai update`가 설정에 남은 에이전트 모델 키를 걷는다(`update_model_key_strip.go`). card t1240이 codex factory lane 진입을 복원했고(`codex_factory.go` 재추가), card t1294가 codex lane claim을 run slot 상한으로 묶었다. § 훅의 설정 엔트리 수를 다시 쟀다 — 38이 아니라 34였다(앵커 이전부터 스테일).
+
+**이전 갱신 — t1295, `develop` `cee197917` (2026-09-28).**
+`moai worktree new <name>`은 MoAI L1을 `.moai/worktrees`에 만들고,
+`moai codex -w <name>`은 기존 `.moai/worktrees`와 `.claude/worktrees` 중
+한 곳에만 있는 이름을 열며 새 트리를 만들지 않는다. `moai update`는 기존
+Git 등록 트리를 옮길 수 있는지 검사해 안전한 항목만 `git worktree move`로
+이전한다(§ `data-flow.md` M). `moai doctor`의 Factory 런 진단은
+`internal/cli/doctor_factory_run.go`에서 현재 `leader` 기록을 읽는다.
+
+**이전 갱신 — t1286, worktree `.claude/worktrees/t1286`, 브랜치 `WT-codemaps-refresh6`, base `c000a1fcb` (2026-09-28).**
+이 판의 새 표면: CLI 동사 `moai factory assign <card>`·`status`·`decide <card>...`(`internal/cli/factory_card.go`, card t1239 — F1 카드 기록층의 CLI 표면. `decide --gate push` 는 `git fetch` 를 돌리지 않는다), `moai verify sync-gate`·`moai verify codex-review`(card t1099 — 훅 밖 Go 코어로 옮긴 sync-gate 검사와 codex 리뷰 러너, 각자 영수증 생산), doctor 의 Served Model 스윕(card t1282 — 감사자·서브에이전트 자기 신고 표기 모음, explicit-only), 훅의 served-model 삼형제(분류·채택-거부 게이트·SubagentStop 행, card t1282), Codex Stop 체인(`codex_stop_chain.go` — Claude Stop 멤버들을 Codex Stop 핸들러 하나로, card t1099), codex 네 이벤트 적응(PreCompact·PostCompact·PermissionRequest·Interrupt, `internal/codexadapter/events.go`), statusline 착지 깃발 문자(✓→⚑, card t1281).
+
+**이전 갱신 — t1278, worktree `.claude/worktrees/t1278`, 브랜치 `WT-codemaps-refresh5`, base `6d514f9b7` (2026-09-27).**
+이 판의 새 표면: CLI verb `moai ci-verdict`(`internal/cli/ci_verdict.go`, card t1268 — head SHA 의 CI 판정을 `gh` 로 가져오거나 `--from-json` 으로 오프라인 파싱해 `internal/civerdict` 저장소에 기록), doctor 의 Hook Missing Log 진단(card t1251), 훅의 계약 서명 가드(`CONTRACT_SIGN_AGENT_VIOLATION:`)·push-develop 슬롯 임대 직렬화(`PUSH_SERIALIZATION_VIOLATION:`)·Stop 파싱 실패 상한(card t1271), 그리고 PowerShell 가드 형태 분류(card t1255 — 아래 § 훅).
+
+**이전 갱신 — t1187, `origin/develop` `a8a9b9376` (2026-09-25).**
+CLI `moai codex audit <role> [--out <path>]`는 `runCodexAudit`을 호출하고,
+MCP `codex_role_audit`는 같은 런처의 `prepareCodexAudit`·`plan.run`으로
+감사를 시작한다. `codex_role_audit_status`·`codex_role_audit_result`는
+서버에 있는 job을 읽는다(`internal/cli/codex_audit_launch.go`,
+`codex_audit_mcp.go`). 호출자의 등록된 워크트리와 `.moai/reports/` 아래
+목적지를 먼저 검증하고, 허용된 읽기 전용 역할을 별도 `codex exec -s read-only`
+프로세스로 띄운다. MCP 경로는 job ID를 즉시 반환하며 status/result로
+완료를 읽는다. 런처가 결과를 그대로 쓴다. 모델의 읽기 전용 샌드박스가
+프로젝트 훅 명령이나 Codex HOME 기록까지 막는다는 뜻은 아니다.
+
+> `/moai codemaps`로 생성됐습니다.
+
+**최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
+**재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § `main()`, § Cobra 명령 트리의 모든 수치와 등록 목록, § 훅의 개수 네 가지(설정 엔트리 38, 셸 래퍼 48, 이벤트 서브커맨드 26, `Register` 30), § MCP 서버 표면 전체. 훅 절의 부가 `RunE` 목록은 다시 대조하지 않았습니다. § HOME 상태·웹 콘솔·CI 종료 코드 절은 이번 변경과 무관해 앞 판을 이어받았습니다.
+**정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — § Cobra 명령 트리의 등록 수치 세 개(자기 파일 등록 파일 70 불변, `AddCommand` 219→220, `rootCmd.AddCommand` 65→66, `root.go init()` 30→31)와 그 판에서 새로 더해진 숨은 명령 1개(스킬 제안 앵커 — 이후 card t1083이 철수), init 위자드 질문 4→5, § 훅과 § 웹 콘솔의 신규 seam 단락. 훅의 개수 네 가지(38·48·26·30)와 § MCP 서버 표면(도구 30), § HOME 상태 절, § CI 종료 코드 절은 같은 명령으로 재확인해 변동이 없었습니다.
+**부분 재측정**: worktree `.claude/worktrees/t1083`, 브랜치 `WT-jev-guard-green`, sync-phase HEAD `dd19e6b90`, 2026-09-22 — card t1083(SPEC-JEV-GUARD-001)이 Consumer B의 숨은 스킬 제안 명령을 철수하며 § Cobra 명령 트리의 세 수치를 다시 봤습니다(`root.go init()` `rootCmd.AddCommand` 31→30, 비테스트 `AddCommand(` 220→219, `rootCmd.AddCommand(` 66→65, 자기 파일 등록 파일 70 불변 — 수치는 비테스트 파일만 대상으로 센 값: `find internal/cli -name '*.go' -not -name '*_test.go' -print0 | xargs -0 grep -h 'AddCommand(' | wc -l` = 219, 같은 형태에 `rootCmd\.AddCommand(` = 65). § MCP 서버 표면(도구 수)과 § 훅·§ 웹 콘솔 절은 이 카드 변경과 무관해 손대지 않았습니다.
+**부분 재측정**: worktree `.claude/worktrees/t1092`, 브랜치 `WT-codemaps-restamp`, base `08113ff0f`, 2026-09-23 — 카드 t1092, 앵커 `598e8f748` 이후 착지분을 반영. § MCP 서버 표면의 도구 수 30→36(신규 `factory_msg_{send,list,body,receipt,status}` 5개 + `jev_ask` 1개, 목록·신규 절 갱신)과 § Cobra 명령 트리에 `moai worktree new <name>` 신규 서브커맨드 서술을 더했습니다. § Cobra 명령 트리의 등록 수치(`AddCommand` 카운트 등)는 이번 변경에서 움직이지 않아(신규 서브커맨드는 `worktree` 자식 패키지의 `WorktreeCmd.AddCommand`이지 루트 3수치가 세는 자리가 아님) 다시 재지 않았습니다. § `main()`·§ 훅·§ 웹 콘솔·§ HOME 상태·§ CI 종료 코드 절은 이 카드 변경과 무관해 손대지 않았습니다.
+**문장 정정**: 카드 t1144(SPEC-HOOK-DIAG-SINK-001), worktree `.claude/worktrees/t1144`, 브랜치 `WT-hook-diag-channel`, run-phase HEAD `bedc731d6`, 2026-09-25 — § 훅의 「룰 적재 감사 행」 단락이 `moai hook` 의 로깅 목적지를 `io.Discard` 라고 **사실로** 서술하고 있었고, 그 카드가 목적지를 `.moai/logs/hook-runtime.log` 싱크로 바꿨으므로 그 한 문장만 정정했습니다. 이 파일의 어떤 수치도 다시 재지 않았습니다 — 정정 범위는 문장 하나입니다.
+**정기 재측정**: worktree `.claude/worktrees/t1278`, 브랜치 `WT-codemaps-refresh5`, base `6d514f9b7`, 2026-09-27 — 카드 t1278, 스탬프 앵커 `cf4b82755` 이후 착지분을 반영. § Cobra 명령 트리의 등록 수치 둘(비테스트 `AddCommand(` 219→227, `rootCmd.AddCommand(` 65→67 — t1235 계열·t1242 GTD/계약·t1268 ci-verdict 등의 누적)과 신규 verb `moai ci-verdict` 서술, § 훅의 t1278 판 seam 단락(계약 서명 가드·push 직렬화·Stop 상한·PS 가드 형태)을 더했습니다. 훅의 개수 네 가지와 § MCP 서버 표면·§ 웹 콘솔·§ HOME 상태·§ CI 종료 코드 절은 이 카드 변경과 무관해 손대지 않았습니다.
+
+**부분 재측정**: worktree `.claude/worktrees/t1151`, 브랜치 `WT-codemaps-refresh2`, base `60017eb83`, 2026-09-24 — 카드 t1151, 앵커 `ee4e6d22f`(card t1132) 이후 착지분(주로 card t1100 SPEC-DUAL-HARNESS-RECOVERY-001)을 반영. § Cobra 명령 트리에 `moai tool disable codex` 신규 서브커맨드 서술을 더했습니다. § Cobra 명령 트리의 등록 수치(`AddCommand` 카운트 등)는 이번 변경에서 움직이지 않아(신규 서브커맨드는 이미 등록된 `tool` 부모 아래 자식 `AddCommand`이지 세 루트 수치가 세는 자리가 아님) 다시 재지 않았습니다. § MCP 서버 표면·§ `main()`·§ 훅·§ 웹 콘솔·§ HOME 상태·§ CI 종료 코드 절은 이 카드 변경과 무관해 손대지 않았습니다.
 
 ---
 
-## 바이너리 진입점
+## `main()`
 
-### cmd/moai
-```go
-main() → cli.Execute() → cobra rootCmd.Execute()
+배포되는 바이너리는 하나입니다.
+
+- **`cmd/moai/main.go`** — `cli.Execute()`를 호출하고, 에러가 `ExitCoder`를 실으면
+  `cli.ResolveExitCode`로 코드를 꺼내 종료합니다. 래핑된 `*exec.ExitError`는 **의도적으로
+  거부**하므로 서브프로세스의 종료 코드를 그대로 채택하지 않습니다 — 이것이 rc=128 무성 실패를
+  막습니다.
+
+나머지 main 패키지 5개는 배포 대상이 아닌 도구입니다:
+`cmd/t657-merge/main.go`(카드 t657의 일회성 큐 병합 도구 — 사용자 verb가 아니며 실제 저장소를
+명시적 절대 경로 플래그로만 받는다), `internal/template/scripts/gen-catalog-hashes.go`,
+`scripts/i18n-validator/main.go`, `scripts/docs-version-snapshot/main.go`,
+`scripts/convert-nextra-to-hextra/main.go`. 산출: `grep -rl '^package main' cmd scripts internal/template/scripts`
+(i18n-validator는 한 패키지에 파일 셋).
+
+**빌드 타깃으로만 진입하는 방출기 2개**는 `main()`이 아니라 Makefile 타깃과 골든 테스트를
+통해 실행됩니다 — `internal/template/agentemit`(`make agents-emit`, `.md` × 매니페스트 →
+`.codex/agents/*.toml`)와 `internal/template/commandemit`(`make commands-emit`,
+`.claude/commands/moai/*` → `.agents/skills/moai-<command>/SKILL.md`). 둘 다 비테스트
+fan-in이 0인 것은 고아라서가 아니라 이 진입 형태 때문입니다.
+
+---
+
+## Cobra 명령 트리
+
+**루트**: `internal/cli/root.go` — `rootCmd = &cobra.Command{Use: "moai", ...}`
+
+**실행 심**:
+
+```
+root.go Execute()
+  → initConsole()
+  → configureLogging(args)
+  → (비-trivial 명령일 때만) InitDependencies()
+  → reorderRootHelpCommands
+  → executeRoot
+  → fang.go runFang(ctx, cmd)      # charm.land/fang/v2 가 help·에러·--version·completion 렌더링
 ```
 
+**lazy-init 패스**: `root.go`의 `trivialCommands` 맵에 10개가 있습니다 —
+`--version` · `version` · `-v` · `help` · `--help` · `-h` · `completion` · `cc` · `cg` · `glm`.
+이들은 의존성 그래프 조립을 건너뜁니다. `cc` / `glm`이 포함된 이유는 `syscall.Exec`로
+프로세스를 통째 교체하기 때문입니다. **`cg`는 명령이 아니라 은퇴 토큰**입니다 — 맵의 주석이
+"retired token: never initialize launch dependencies"라고 적고, `moai --help`의 LAUNCH COMMANDS
+그룹에는 `cc` · `glm` · `codex`만 렌더됩니다.
+
+**등록 사이트가 두 갈래**입니다.
+
+1. **`root.go`의 `init()`** — 명시적 `rootCmd.AddCommand(...)` **30회**.
+   worktree, agentlint(agent/workflow 2종), statusline, ast-grep, ast-edit, telemetry,
+   constitution, state, tokens, clean, **skills**, navigator 5종(enrich/sync/tiers/route/fix),
+   migration, **chain**, harness-router, tool-policy, tool, mcp-server, mcp, inventory, preference,
+   plan, feedback, inbox. (t1305 판: `model`이 목록에서 빠졌다 — card t1246이 `moai model`을 은퇴시켰다.)
+   - `skills`(`newSkillsCmd()`, `root.go:187`) — `moai skills disable <name> --codex` 형태로
+     **계층을 플래그로 명명**하는 스킬 노출 제어 트리. `--codex`가 필수인 것이 opt-in의
+     기계적 형태이며, 어떤 프로젝트 설정 키도 이 verb를 구동하지 않습니다(사용자 HOME에
+     쓰는 일을 프로젝트 설정이 요청하게 두지 않는다).
+   - `chain`(`newChainCmd()`, `root.go:220`) — 워크트리 세션 origin-trail 원장 조회·정리.
+   - **이 판에서 `worktree` 아래 신규 서브커맨드가 더했다** — `moai worktree new <name>`
+     (`internal/cli/worktree/new.go`)은 기존 `materializeSessionWorktree`(cc.go)를 그대로
+     호출하는 얇은 어댑터로, `.claude/worktrees/<name>` 자리에 harness-neutral L1 워크트리
+     하나만 만들고 진입·base·path·tmux·team·BODP 등 은퇴된 동작은 되살리지 않는다.
+     이름은 traversal·경로 구분자가 없는 단일 leaf 문자열로 검증된다. 생성 뒤 진입은 별도
+     런처(`moai cc -w <name>` / `EnterWorktree`) 몫이다.
+   - (철수) 숨은 스킬 제안 명령 1개 — SPEC-JEV-GUARD-001(card t1083)이 Consumer B를
+     철수하며 등록도 함께 뺐습니다. 측정 게이트 통과 전에는 재등록될 수 없습니다(§ `modules.md` Jev 계열).
+   - **이 판에서 `tool` 아래 신규 서브커맨드가 더했다** — `moai tool disable codex`
+     (`internal/cli/tool.go`, `newToolDisableCodexCmd`)는 MoAI가 이 프로젝트에 실제로
+     기록한 Codex 배선 부분만(자기 훅 핸들러·`hooks.json` 설명, `[mcp_servers.moai]`/
+     `[tui]` 표나 자기가 넣은 `status_line` 줄, 만든 그대로 바뀌지 않은 배선 파일 전체)
+     골라 제거하고, 증명 못 하는 부분은 사유와 함께 그대로 남긴다(`internal/codexwiring/unwire.go`).
+     `--dry-run`은 아무것도 쓰지 않고 계획만 출력한다. `moai update`는 disable 이후
+     다시 wiring하지 않으며, 재활성화는 `moai tool enable codex`(기존 verb) 몫이다.
+   - **t1351 판에서 더해진 등록 세 곳** — ① `factory` 트리에 `next`·`stage`·`complete` 동사가
+     합류했다(`factory_handoff_recover.go`의 기존 `factory.AddCommand(...)` 한 줄에 이어 붙어
+     등록 수치는 그대로다. 본체는 `factory_card.go` — next 는 임대+큐 승격+카드 워크트리
+     보장(`factoryEnsureCardWorktree`)까지, stage 는 F1 엣지 적용+임대 갱신, complete 는 병합
+     기록(`factoryMergeNoFF`·`factoryWriteMergeRecord`)과 clear-policy 별 end-of-card 문장까지
+     진다). ② `worktree` 트리에 `hoist <tree-path>`가 더했다(`worktree/root.go`의 기존
+     `WorktreeCmd.AddCommand(` 인자 목록 — `worktree/hoist.go`. 폐기 전 카드 트리의
+     `.moai/reports/` 증거를 프로젝트 루트로 구조하고, `done` 도 같은 루틴을 폐기 직전에 부른다
+     — `--no-hoist` 로 끌 수 있다). ③ `clean`에 세 번째 스코프 플래그 `--reports-archive`가
+     더했다(`clean.go` — 커맨드가 아니라 스코프 선택 플래그라 등록 수치에 세지 않는다.
+     `clean_reports_archive.go`: 증거 형태 이름(t<숫자>·SPEC-…)이고 mtime 이 보존창
+     (`--reports-archive-days`, 기본 90)보다 오래되고 git 추적 파일이 없는 최상위 항목만
+     `archive/<YYYY-MM>/` 으로 **이동**한다 — 삭제는 없다).
+2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **76개**입니다
+   (t1338 병합 판 재측정 — 이 카드 몫 +3: `factory_messaging.go`·`factory_merge.go`·`factory_pickup.go`; 흡수된 t1369·t1374 배치까지 합산한 이 트리 직접 측정)
+   (`grep -rl "AddCommand" internal/cli --include='*.go' | grep -v _test`).
+   `hook.go`, `todo.go`, `glm.go`, `cc.go`, `update.go`, `doctor.go`, `spec.go`,
+   `gate.go`, `graph.go`, `goal.go`, `integration.go` 등이 이 방식이고, 앞선 판 사이에
+   `gtd.go`(`NewGTDCommand()` — todo 명령 트리를 감싸 `Use`만 `gtd`로 바꾼 두 번째 이름)와
+   `slot.go`(`moai slot` — 무거운 실행용 세션 간 자원 임대)가 더해진 바 있습니다.
+   비테스트 `AddCommand(` 호출은 모두 **239회**, 그중 `rootCmd.AddCommand(`는 **66회**입니다(t1338 판
+   재측정 — 231→239는 card t1338의 factory lane-autonomy 동사 등록 +8이며, 앵커 `8ea2febe2` 대비
+   diff의 추가 `AddCommand(` 줄 수와 정확히 일치한다. 이력: t1305 판
+   병합 트리 재측정 — t1286 판 231/67에서 card t1246의 `moai model` 은퇴가 −1. 이력: t1286 판 같은
+   명령으로 231 — t1286 몫 +3 은 `moai factory assign`·`status`·`decide`, t1237 몫은
+   `contract_report.go` 의 `c.AddCommand(` 등록 — , t1237 판 236 은 테스트 파일까지 선 계수.
+   `verify sync-gate`·`verify codex-review` 는 verify 트리 안의 서브커맨드다)   (card t1083 재측정 2026-09-22 — Consumer B 등록 철수 -1. 카운팅 명령:
+   `find internal/cli -name '*.go' -not -name '*_test.go' -print0 | xargs -0 grep -h 'AddCommand(' | wc -l`;
+   같은 파이프에 `rootCmd\.AddCommand(` 패턴 = 67. 이 판 앞의 238회는 테스트 파일까지 선 값으로 정정).
+
+**`moai init` 위자드는 다섯 질문이 됐습니다.** 앞 판의 네 질문 세트에 다섯 번째 `jev_enabled`
+("Judgment Capability" 그룹, 자기 페이지를 가진다)가 더해졌습니다. 이 질문은 `InitQuestions`에만
+있고 `DefaultQuestions`에는 없어서 `moai update --reconfigure`에는 **도달하지 않습니다** —
+초기화 뒤의 유일한 이후 경로는 `moai web` 설정 화면입니다. 답은 `internal/settings`의 같은
+`ApplySchemaEdits` seam으로 영속화됩니다(§ `data-flow.md` L).
+
+**t1238 판에서 `moai contract` 명령 트리가 더했다** — `internal/cli/contract.go`의 `init()`이
+`rootCmd.AddCommand(newContractCmd())`로 등록하며, 서브커맨드는 `verify <SPEC-ID>`·`show <SPEC-ID>`·
+`sign <SPEC-ID>...` 셋이다. 판정은 전부 `internal/contract`(검증 코어)와 `internal/contract/sign`(서명기)이
+내리고 CLI는 결과를 출력과 종료 코드(0 / 1 / 2)로만 옮긴다. 위 `AddCommand` 수치는 이 판에서 다시 세지 않았다.
+
+**t1237 판에서 `moai contract`에 서브커맨드 셋이 더했다**(card t1237, SPEC-AUTONOMY-CLOSURE-001) —
+`report <card-id>`(카드 마감 보고서 쌍 `closure-report.{md,json}` 을 카드 증거 디렉터리에 원자 쓰기; 모든
+섹션 값은 파일과 git에서 끌오고 빠진 입력은 통과가 아니라 「not observed/not recorded」 로 렌더된다. 거부는
+exit 2), `verdict <card-id> <accept|reject|amend-contract>`(인간 전용 — 에이전트 마커·비TTY·타이핑 확인
+불일치·보고서 없음·git 신원 없음은 전부 기록 없이 exit 1; 훅이 모든 모드에서 에이전트 호출을 거부한다),
+`push-check [<remote> <refspec>]`(훅과 같은 push 준비도 평가의 수동 표면 — 0 ready/inactive, 1 미준비·
+`push_check_undetermined`, 2 사용법). 셋은 `contract_report.go`의 `init()`이 파일명 순 package init 으로
+A1의 `contract` 트리에 붙는다(A1 파일 무변경).
+
+**합성 루트**: `internal/cli/deps.go` — `type Dependencies` + `InitDependencies()`.
+Config · Git(Repository/Branch/Worktree) · HookRegistry · HookProtocol · UpdateChecker/Orchestrator ·
+LoopController · Logger · PerfTiming을 조립하고 전역 변수 `deps *Dependencies`로 노출합니다.
+
+**의도적 미등록 1건**: `root.go`의 주석이 밝히듯 `newHarnessCmd()`는 폐기된 팩토리로
+**의도적으로 트리에 등록되지 않고** 컴파일 가능 상태로만 남아 있습니다. 라이브 등록은
+`newHarnessRouterCmd()` 하나입니다.
+
+### 창(window)을 잡기 전에 도는 선행 조건
+
+`moai integration acquire`는 창을 기록하기 **전에** 호출자 트리를 단정합니다 —
+`internal/cli/integration_settings_drift.go`가 tracked `.claude/settings.json`의 워킹 사본
+드리프트를 재고, 적중이면 사본을 보존한 뒤 원장 한 줄을 남깁니다. 같은 술어를 창 없이
+물을 수 있는 독립 verb가 `moai integration preflight [경로]`이며, **두 표면 중 어느 쪽도
+뺄 수 없습니다** — 선행 조건이 없으면 검사가 사회적 약속이 되고, 독립 verb가 없으면 창을
+잡지 않고는 물을 방법이 없습니다.
+
 ---
 
-## Composition Root
+## HOME 상태와 Factory 복구 진입점
 
-### internal/cli/deps.go
-```go
-InitDependencies() // 모든 서브시스템 와이어링
+- `moai migrate home-state` — 기본은 읽기 전용 점검입니다. `--apply`만으로는 쓸 수 없고
+  `--verified-live`를 함께 줘야 하며, 내부에서 현재 HEAD에 대한 검증 증거와 두 번의
+  zero-active runtime census를 다시 확인합니다.
+- `moai migrate local-instructions` — 이전 세대 산 `.claude` 로컬 지시문 흔적을 조사·이관합니다
+  (card t1259). `doctor`·`update`의 로컬 지시문 advisory(REQ-IFU-012)와 같은 판독기를 공유합니다.
+- `moai handoff save --stdin / show [--json] / clear` — 세션 인계 레코드의 저장·재출력·삭제.
+  `show`는 pending을 소비 없이 verbatim 재출력하고(pending 부재 시 최신 consumed 폴백),
+  하네스 중립 경로입니다(card t1273).
+- `moai migrate home-state recover` — 소유 프로세스가 죽은 migration marker만 복구합니다.
+  소유자 상태가 불명확하거나 살아 있으면 fail-closed입니다.
+- `moai migrate home-state rollback` — 백업 manifest, SHA-256, 프로젝트 키·루트가 일치하는
+  검증된 백업만 복원합니다.
+- `moai factory handoff recover-resume --id <id> --expected-token <token> --decision <fail|requeue>`
+  — v1 레거시 claim이 자동 판정 불가능할 때 쓰는 명시적 운영 복구 표면입니다. 현재 소유자가
+  살아 있거나 상태가 불명확하면 재점유하지 않습니다.
+- `moai factory handoff adopt --card <id>` — t1241의 stall 인터페이스가 멈춤으로 판정한 픽업 카드를
+  이어받는 레인의 재개 표면입니다(card t1338). 이전 소유자의 progress.md와 증거 파일을 SHA-256과
+  함께 일 전에 읽어 브리핑으로 출력하고, 자기 `resumption.jsonl` 한 줄만 덧붙입니다 — 이전 소유자의
+  바이트는 다시 쓰이지 않으며, 기록이 없는 카드는 재개가 아니라 새 픽업으로 거부됩니다.
+- `moai factory messaging probe|request|ack` · `moai factory fallback [--all]|declare|restore` ·
+  `moai factory pickup plan` · `moai factory merge ready|gate` — 레인 자율 표면(card t1338,
+  `internal/factorylane` 위의 배선): 채널 가용성 판정과 무응답 타이머, fallback 전이 장부의
+  질의·기록, 분류 픽업 판정, 통합 창 선점 전 조건 삼중 기록과 창 커버 판정. 판정형 동사는
+  거부도 exit 0의 보고입니다(판정에 대한 레인의 행동은 레인 몫), merge 표면은 병합을 수행하지
+  않습니다.
+
+런타임 쪽 진입점은 별도 명령이 아니라 공통 gate입니다. SessionStart, MCP 서버, Factory가
+`internal/homestate` admission lock을 잡고 migration marker를 검사한 뒤에만 상태를 엽니다.
+프로필 lease는 런처에서 provisional 생성, 자식 PID로 transfer, SessionStart에서 session ID를
+enrich하고 SessionEnd에서 release하는 흐름입니다.
+
+---
+
+## 훅
+
+네 층으로 내려갑니다.
+
+**1. 바깥쪽 배선** — `internal/template/templates/.claude/settings.json.tmpl`.
+훅 엔트리 34개가 모두 같은 모양입니다(t1305 판 재측정 정정 — 앞 판의 38은 스테일이었다):
+
+```
+"command": "bash"
+args: ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; ...missing 로그 후 exit 0",
+       "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-<event>.sh"]
 ```
 
+래퍼 스크립트가 없으면 `.moai/logs/hook-missing.log`에 남기고 **exit 0으로 fail-open** 합니다.
+
+**2. 셸 래퍼** — `internal/template/templates/.claude/hooks/moai/` 아래 48개 `.sh` / `.sh.tmpl`.
+예: `handle-pre-tool.sh.tmpl`이 `printf '%s' "$payload" | moai hook pre-tool`.
+
+**3. CLI 디스패처** — `internal/cli/hook.go`의 `hookCmd`. `init()`에서 26개 이벤트 서브커맨드를
+`hook.EventType`과 함께 일괄 등록하고, `--harness` persistent flag(claude / codex)가 붙습니다.
+그 밖에 `hook list`, `agent-hook`, `harness-observe`(3종), `spec-status`,
+`session-start-compact`, `security-{scan,turn,commit}`, `harness-classify`, `codex-review-gate`,
+`multi-review-gate`가 별도 `RunE`로 붙습니다.
+
+**4. 핸들러 등록과 디스패치** — `internal/cli/deps.go`에서 `deps.HookRegistry.Register(...)`가
+**30회** 호출되고, `internal/hook/registry.go`의 `(*registry).Dispatch`가 체인을 돌립니다.
+부가로 `runAlwaysRunTail`, `defaultOutputForEvent`, 비동기 trace writer 플러시 배리어 `Shutdown`이
+있습니다.
+
+### 감사 영수증 가드 — 세 이벤트에 걸친 하나의 판정
+
+이 판에서 더해진 `internal/hook/audit_receipt_guard.go`는 훅 표면 중 드물게 **세 이벤트를 하나의
+판정으로 엮습니다**. 읽고 쓰는 기록은 전부 `internal/auditreceipt`가 소유합니다.
+
+| 이벤트 | 하는 일 |
+|---|---|
+| `SubagentStart` | 감사자 서브에이전트(`plan-auditor` · `sync-auditor`) 1건당 시작 마커를 쓴다 |
+| `SubagentStop` | 판정 줄을 파싱하고 `CheckCitedReceipts`로 인용된 영수증이 실재하는지 보며, 실패하면 거부 기록을 쓴다 |
+| `PreToolUse` | 거부가 미해소인 동안 페이즈 진입 에이전트(`manager-develop` · `manager-docs` · `manager-git`)의 spawn을 거절한다 |
+
+세 이벤트를 나눠 읽으면 각각 멀쩡해 보이므로 함께 적습니다 — 첫째가 없으면 둘째가 비교할
+기준이 없고, 셋째가 없으면 거부가 아무것도 막지 않습니다. 게이트 자체는 opt-in이며
+`.moai/config/sections/workflow.yaml`이 **문자열 `required`일 때만** 켜집니다(`CodexGateRequired`).
+
+### 이 판에서 더해진 표면 밖의 두 seam
+
+**하트비트 갱신 seam** — `session_heartbeat.go`가 UserPromptSubmit마다 세션 레지스트리의
+`last_heartbeat`를 갱신합니다. `session.Heartbeat`에는 원래 프로덕션 발화자가 없어서 타임스탬프가
+등록 시점에 얼어 있었고(실측: 살아 있는 147항목 중 144가 그 이유로 stale 렌더), 사용자 턴 빈도가
+「이 세션이 굴러가고 있다」의 가장 싼 증거라 이 이벤트에 배선됐습니다. 존재 검사가 앞서므로
+레지스트리가 없는 프로젝트에서 빈 파일을 만들지 않고, 모든 실패 경로는 침묵합니다.
+
+**룰 적재 감사 행** — `internal/hook/instructions_loaded.go`가 이벤트 1건당 `.moai/logs/rule-load-audit.jsonl`에
+JSONL 한 줄을 씁니다. 호스트가 주는 `LoadReason`·`Globs`·`TriggerFilePath` 필드는 전에는 버려져서
+`paths:` 글롭 매칭이 런타임에 관측 불가능했고, 이 자리의 slog 기록도 독자에게 도달하지 않습니다.
+카드 t1144(SPEC-HOOK-DIAG-SINK-001) 이후 `moai hook` 의 로깅은 `io.Discard` 가 아니라
+`.moai/logs/hook-runtime.log` 싱크로 갑니다만, 그 싱크는 기본값에서 warn 이상만 받고 이 기록은
+Info 이므로 여전히 아무 곳에도 쓰이지 않습니다 — 그래서 영구 행이 유일한 관측면입니다. 실패는
+agent-stop-audit 선례대록대로 침묵하고 계속합니다.
+
+**t1278 판에서 더해진 네 seam** — ① 계약 서명 가드(`internal/hook/contract_sign_guard.go`, card t1245): 도구 호출 경로에서 `moai contract sign`·`decide` 를 차단한다(센티넬 `CONTRACT_SIGN_AGENT_VIOLATION:`). 인간 경로는 무조건 거부, `--signer llm|llm+jev` 비대화형 경로와 `decide` 는 `MOAI_FACTORY_ROLE=worker` 세션에서만 거부하며, 판별 불가호출은 fail-closed. ② push-develop 직렬화(`internal/hook/push_serializer.go`, card t1245): 계약 triple(계약 모드 ∧ `push-develop` ∧ `push_requires_lease`)이 활성일 때 develop push 는 `moai slot` 의 `push-develop` 임대를 요구한다(센티넬 `PUSH_SERIALIZATION_VIOLATION:`; PostToolUse 가 실패한 push 의 임대를 돌려준다). ③ Stop 파싱 실패 상한(`internal/cli/hook_stop_parse_cap.go`, card t1271): 셈 키별 8연속 파싱 실패 Stop 의 9번째를 무의견으로 답한다(기록 `.moai/state/stop-parse-cap/`, 60분 만료). ④ PowerShell 가드 형태 분류(card t1255, SPEC-HOOK-GUARD-POWERSHELL-FORMS-001): 브랜치 상태 스캔이 `.exe` 접미·호출연산자 인용 대상·백틱 분리·`pwsh -Command` 페이로드를 정규화해 기존 query-vs-mutate 판정으로 거부하고, 동적 해석(`Get-Command`)·`saps`/`start` 별칭·유니코드 대시 `-EncodedCommand` 철자는 감사선 1행(`unclassifiable`)으로 격하한다. 인용 산문(`Write-Output 'git switch'`)은 데이터로 남아 허용된다.
+
+**t1286 판에서 더해진 seam 들** — ⑤ served-model 삼형체(card t1282, SPEC-SERVED-MODEL-AUDIT-001): `internal/hook/served_model.go` 가 도구 응답의 served-model 표기를 분류하고, `served_model_gate.go` 가 계약 triple 하에서 판정 채택을 served-model 여부로 거부할 수 있는 opt-in 게이트(`workflow.served_model_gate.*` — 거부 시 `internal/auditreceipt` 거부 영수증), `served_model_stop.go` 가 SubagentStop 에 감사자 자기 신고 행과 경고를 싣는다. ⑥ Codex Stop 체인(card t1099, 이중 하네스 패리티): `internal/cli/codex_stop_chain.go` 가 Claude Stop 멤버들을 Codex Stop 핸들러 하나 안에서 차례로 돌린다(멤버별 예산은 `internal/codexwiring/stop_budget.go` 선언, 체인 인벤토리는 `stop_inventory.go`). 같은 카드에서 codex 네 이벤트(PreCompact·PostCompact·PermissionRequest·Interrupt)가 `internal/codexadapter/events.go` 로 적응됐고, `moai verify sync-gate`·`codex-review` 가 훅 밖 검사로 영수증과 함께 남는다.
+
+**t1237 판에서 더해진 둘**(아래 ⑦⑧)(card t1237, SPEC-AUTONOMY-CLOSURE-001, `internal/hook/closure_push.go`) —
+⑦ `checkContractVerdict`: 모든 모드에서 `moai contract verdict` 도구 호출을 문자열 매치로 거부한다(센티넬
+`CLOSURE_VERDICT_HUMAN_ONLY:` — I/O 없는 편의 가드고 집행은 verdict 명령 자체의 대화형 터미널 확인이
+담당한다). ⑧ `checkClosurePush`: 계약 모드에서 통합 브랜치로의 push(혹은 그럴 가능성이 있는 push)를
+평가해 미준비 계약이 하나라도 있으면 거부한다(센티넬 `CLOSURE_PUSH_STOP:` + `SPEC=코드들`). 모드 검사가
+함수의 첫 문장이라 guided 에서는 파일 읽기·서브프로세스 전에 반환해 훅 출력이 바이트 동일하게 유지되고,
+`--all`/`--mirror`·명령 치환·래퍼 셸·변수 피연산자·풀 수 없는 목적지는 전부 `push_check_undetermined` —
+undetermined 는 허용이 아니라 거부다(fail-closed).
+**t1351 판에서 더해진 셋** — ⑨ 보호 브랜치 커밋 거부(card t1337, SPEC-MAIN-COMMIT-BAN-001,
+`branch_guard.go`): BranchGuard 가족의 제2 거부 클래스로, 브랜치 **조건부**다 —
+`git commit`·`revert`·`cherry-pick`(`protectedCommitPattern`)이 매치되고, 호출 에이전트가 면제
+축 밖이며, 명령의 실제 cwd 가 primary 체크아웃(Seam A)이고, 그 cwd 에서 `HEAD` 가 해석한 브랜치가
+`workflow.branch_guard.deny_commits_on` 목록에 있을 때 거부한다. HEAD 해석은 `core/git`의
+`ResolveHeadBranch`(`git branch --show-current` — detached HEAD 는 ("", nil) 로 **의도적 허용**,
+오류는 fail-open + 감사 행), 목록이 비으면 명령 추출 전에 단락한다(REQ-2.5 — 미설정 사용자 비용은
+len() 하나). 정규화 파이프라인은 브랜치 상태 스캔과 **하나의 함수**(`normalizeCommandForScan`)을
+공유해 quoted span·heredoc·PowerShell 형태가 같은 판정을 받는다. ⑩ lane SessionStart 룰
+(SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-019, `session_start_factory.go` + `session_start_factory_i18n.go`):
+lane 라벨을 단 세션의 startup·clear 소스 기동에만 additionalContext 로 룰 한 줄을 싣는다 — backend
+변수가 룰을 고른다(Claude·GLM 레인엔 REQ-SD-014 MCP 도구 여섯과 CLI 등가물을 이름 대는 next-card
+룰, Codex 레인엔 임대 카드 id 만 보간하는 owned-card 룰). leader·레거시 라벨·키 없는 환경은 아무것도
+받지 않고, 산문은 대화 언어별 메시지 표에서 온다. ⑪ 계약 서명 가드의 lane gate 확장
+(`contract_sign_guard.go` — 구 `contractRoleMarker` 하나의 조건이 `contractLaneGate` 세 조항으로:
+역할 마커, lane 라벨 변수, backend 변수가 Codex 하네스를 이름 대는 것. REQ-AP-011 을 거부 방향으로만
+넓힌 것이고 세 변수를 안 단 세션은 전과 같이 허용된다). 같은 카드에서 `CheckContractSignClassify` 가
+export 돼 런처 쪽이 포착한 lane 환경을 같은 판정기로 분류한다. 런처 쪽: `launcher.go`의
+`resolveMainSessionModel` 이 Claude 백엔드에서 모델 alias 를 컴파일 시점 id 로 치환하지 않고 그대로
+통과시킨다(card t1315, SPEC-ALIAS-PASSTHROUGH-001 — Claude Code 가 런치 시점 alias 의미를 결정한다).
+
+
 ---
 
-## CLI 명령 (~40 root verbs, 152 non-test AddCommand 호출)
+## MCP 서버 표면
 
-**프로젝트**: init, update, doctor, config, version, web  
-**SPEC**: plan, run, sync, spec (audit/lint/close)  
-**개발**: loop, clean, mx, fix, goal  
-**인프라**: hook, migration, worktree, session  
-**다중LLM**: cc, glm, cg  
-**기타**: research, constitution, design, project, codemaps, feedback, review, coverage, e2e
+- **명령**: `internal/cli/mcp_server.go`의 `newMCPServerCmd()` — `root.go`에서 등록. stdio
+  JSON-RPC이고 `mark3labs/mcp-go` SDK는 전송만 담당합니다. **기본 off**이며 `.mcp.json`
+  프로비저닝은 opt-in입니다.
+- **도구 수**: `mcp_server.go` 안 `add(...)` 호출 35회 +
+  `registerFactoryCardMCPTools(add)` 4회 + `registerTodoMCPTools(add)` 2회 +
+  `registerJevAskTool(add)` 1회 + `codexRoleAuditTools()` 루프 3회로
+  총 **45개**입니다(t1351 판 재측정). 카탈로그 `internal/mcp/catalog.go`의 `Name:` 선언도
+  **45개**입니다(2026-09-29 재측정).
+- **도구 목록**: `session_list`, `goal_status`, `goal_arm`, `spec_progress`, `verify_snapshot`,
+  `verify_trend`, `spec_audit`, `spec_drift`, `audit_cache`,
+  `codex_{audit,setup,task,job_status,job_result,job_cancel}`,
+  `codex_role_audit{,_status,_result}`, `claude_audit`,
+  `glm_{task,job_status,job_result,job_cancel,audit}`, `audit_multi`,
+  `session_msg_{register,list,send,poll}`,
+  `factory_msg_{send,list,body,receipt,status}`, `jev_ask`,
+  `graph_{file_api,find_code,trace_calls,shortest_path}`,
+  `todo_add`, `todo_list`, `factory_{next,stage,complete,decide}`.
+- **t1351 판에서 신규 6개**: `factory_{next,stage,complete,decide}`(card t1240,
+  SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-014/-024 — `internal/cli/mcp_factory_card.go`. 넷 모두
+  cobra `RunE` 가 부르는 것과 **같은 함수**의 얇은 포장이라 두 표면이 갈릴 수 없고, 레인 거부도
+  CLI 가드가 같이 찍는다. 레인 동사 셋은 호출자 제공 `project_root` 를 요구하며, `factory_next` 의
+  부모 체크아웃 판정도 그 인수로 평가한다)와 `todo_add`·`todo_list`(`internal/cli/mcp_todo.go` —
+  add 는 쓰기 도구로 CLI 레인 가드와 **같은 한 줄 거부 문장**을 공유하고, list 는 읽기 전용
+  허용 목록에 있다).
+- **가드**: `mcp.yaml`에서 도구별 활성화를 읽고, `add()` 헬퍼의 첫 인자가 `mcp.NewTool` 이름 및
+  카탈로그와 일치해야 한다는 계약을 가드 테스트가 강제합니다
+  (`mcp_annotation_guard_test.go`, `mcp_boundary_test.go`).
+- **`claude_audit`은 이 판에서 더해진 도구**입니다(`internal/cli/mcp_claude.go`). 읽기 전용 코드
+  리뷰를 `claude` CLI 서브프로세스로 수행하고, 자식 환경에서 `CLAUDE_CODE_*`·`CLAUDECODE`를
+  지운 뒤 출력 크기에 상한을 둡니다. `audit_multi` 수렴도 같은 수행 함수를 Claude 백엔드로 씁니다.
+- **`codex_audit`과 `audit_multi`는 호출될 때마다 영수증을 남깁니다**(이 판에서 더해진
+  `internal/cli/mcp_audit_receipt.go`). 도구 호출 1건이 `.moai/state/audit-receipts/receipts/`
+  아래 JSON 파일 1개이며, 같은 기록을 훅 쪽 가드가 읽습니다(§ 훅 → 감사 영수증 가드). 이
+  배선이 MCP 표면을 **훅의 판정 근거를 생산하는 자리**로 만듭니다 — 도구 목록만 읽어서는
+  보이지 않는 결합입니다.
+- **엔트리 관리와 서버 실행은 별개 서브트리**입니다 — `newMCPCmd()`(`mcp.go`)가 `.mcp.json`의
+  add/remove/list를, `mcp-server`가 실행을 담당합니다.
 
 ---
 
-## 훅 진입점 (30 이벤트 · 35개 handle-*.sh 스크립트)
+## 웹 콘솔 표면
 
-```bash
-moai hook <event>  # JSON stdin → Handler dispatch → exit 0/2
-```
+`moai web`이 띄우는 루프백 콘솔은 탭 단위 표면이며, 탭 하나는 **편집하지 않습니다**.
+codex 탭(행 모델은 `internal/web/codexmirror.go`, 렌더는 그 짝 `.templ` 소스에서 생성된
+패널)은 Audit·MCP 탭에 사는 codex 설정의 읽기 전용 미러입니다. 이 패널은 `name` 속성을 가진 폼 요소를 하나도 내지 않으며, 그 금지는 숨은 bool
+동반자 `<name>__present`까지 덮습니다 — 모든 패널이 한 폼 안에 살고 탭 전환은 표시 전환일
+뿐이라 **비활성 패널도 함께 제출되기** 때문입니다.
 
-**주요 이벤트**:
-- SessionStart, PostToolUse, Stop, SubagentStop, TaskCompleted
-- PreCompact, PostCompact, WorktreeCreate, WorktreeRemove
-- UserPromptSubmit, Notification, TeammateIdle, TaskCompleted, ... (총 30개 EventType — `internal/hook/types.go`)
-
----
-
-## HTTP 서버
-
-```bash
-moai web  # 127.0.0.1:3041 (loopback only, 기본 포트)
-```
+이 판에서 두 가지가 더해졌습니다. **Jev 패널** — 워크플로 설정의 opt-in 스위치가 자기 패널과
+자격증명 필드(`jevkey.go`)를 얻었는데, 자격증명은 `internal/jevcred`를 통해서만 읽히고 쓰이며
+스키마 `AllFields()` 밖이라 어떤 스키마 순회도 못 만집니다(공개는 설정 여부와 끝 네 글자까지).
+**저장 실패 관측성** — 설정 저장이 실패하면 9개 persistence seam의 실패가 하나의 재렌더로
+나옵니다. 이전에는 500이었는데, 설정 폼은 hx-boosted라 htmx가 2xx가 아닌 응답 본문을 버려서
+인라인 슬롯에 렌더한 실패 이유가 브라우저에 도달하지 않았습니다. 2xx 재렌더와 별도로
+실패한 seam마다 stderr에 `moai web: ` 접두어의 한 줄이 남고, 그 줄은 실패 구문만 실으며
+원시 에러 값은 자격증명 조각을 품을 수 있어 절대 실리지 않습니다(§ `data-flow.md` G).
 
 ---
 
-**생성**: `/moai codemaps --force`로 자동 생성
+## CI가 소비하는 종료 코드 표면
+
+`moai graph check`는 사람보다 기계가 먼저 읽는 진입점입니다. `.github/workflows/graph-freshness.yml`의
+`graph-freshness` 잡과 `moai gate`가 **종료 코드만** 소비하므로, 보고만 하고 항상 0으로 끝나는
+구현은 두 소비자를 조용히 무장해제시킵니다.
+
+| 종료 코드 | 의미 | 대표 원인 |
+|---|---|---|
+| `0` | 모든 층 fresh | — |
+| `1` | 한 층 이상 stale 또는 absent | described-source-diff ≥ 40, codemaps 본문 부재(C1), 인용된 경로 부재 |
+| `2` | system error — 측정 자체가 성립하지 않음 | 스탬프 커밋 미해석, 스탬프가 HEAD의 조상이 아님, `gate.yaml` 파싱 실패 |
+
+exit 2 경로는 층 표를 렌더하지 않습니다. 숫자 행이 없는 것이 계약입니다 — 성립한 적 없는
+비교 창에 대해 값을 내놓지 않기 위해서입니다. 도달 불가 스탬프일 때만
+`internal/cli/graph_check.go`가 복구 안내(본문 재생성 → 도달 가능한 커밋으로 재스탬핑)를 덧붙이고,
+해석 불가 스탬프에는 붙이지 않습니다. 둘의 해법이 다르기 때문입니다. 판정 순서는
+§ `data-flow.md` I를 참조하십시오.
+
+워크플로 쪽 대상 선택은 이벤트별로 셋입니다: `push`는 `HEAD`, 일반 `pull_request`는
+`origin/<base_ref>`, `release/*` head의 `pull_request`는 merge preview `HEAD`입니다.

@@ -1,0 +1,20 @@
+Current version   moai-adk moai_cp/20260925_122548
+·  v2 detected  running clean reinstall · signals: version=false agency=false deprecated=true
+[clean-reinstall] v2 fingerprint detected (signals: version=false agency=false deprecated=true)
+[clean-reinstall] PRESERVE inventory: 4 files
+[clean-reinstall] Backup created at /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/a424fc26-39f5-4b5e-a0f1-a8b767c73688/scratchpad/ifu/ac020/.moai/backups/v2-to-v3-2026-09-27T14-08-16Z
+[clean-reinstall] Deprecated paths backed up at /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/a424fc26-39f5-4b5e-a0f1-a8b767c73688/scratchpad/ifu/ac020/.moai/backup/agency-2026-09-27T14-08-16Z (2 files)
+[clean-reinstall] Removed 4 deprecated paths
+[clean-reinstall]   - .moai/db
+[clean-reinstall]   - .claude/agents/core
+[clean-reinstall]   - .claude/agents/expert
+[clean-reinstall]   - .claude/agents/meta
+[clean-reinstall] Embedded templates reinstalled
+[clean-reinstall] .moai/config/sections/*.yaml merge-restored (user values preserved)
+  ✓ .moai/status_line.sh user content preserved
+  ✓ Merged 1 file(s) with 3-way merge engine
+[clean-reinstall] settings.json / status_line.sh merge-preserved
+[clean-reinstall] .gitignore user patterns preserved
+[clean-reinstall] PRESERVE inventory restored
+[clean-reinstall] Integrity check PASSED (4 PRESERVE-inventory files verified)
+ Clean reinstall complete (4 files preserved, 4 deprecated removed) 

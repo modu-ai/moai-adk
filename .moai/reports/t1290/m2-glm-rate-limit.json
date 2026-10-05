@@ -1,0 +1,7 @@
+{
+  "type": "error",
+  "error": {
+    "type": "rate_limit_error",
+    "message": "[1308][Usage limit reached for 5 hour. Your limit will reset at 2026-09-28 13:17:58][20260928125242e9bc1489e2d44b9d]"
+  }
+}

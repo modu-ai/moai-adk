@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPEC-CHAIN-CORE-001 REQ-CHAIN-012 — chain-event hook wrapper.
+# chain-event hook wrapper — appends completion edge to the chain ledger.
 #
 # Fires on SubagentStop. Reads the hook payload from stdin and passes it to
 # `moai hook chain-event`, which appends a completion-edge event to the chain

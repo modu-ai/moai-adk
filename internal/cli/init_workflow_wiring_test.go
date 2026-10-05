@@ -75,11 +75,9 @@ func TestRunInit_WorkflowToggleFlagsPersist(t *testing.T) {
 
 // TestRunInit_WorkflowToggleFlagsAbsentByteIdentical asserts AC-006: with
 // none of the four flags passed on a NON-INTERACTIVE run (the CI-relevant
-// path — AuditConfigSet stays false, so neither writer fires), the deployed
-// workflow.yaml is byte-identical to the template — no key synthesized, no
-// comment disturbed. (An interactive run legitimately writes the audit block
-// per chain ③ / AC-009; its toggle-key preservation is asserted separately
-// in the precedence test.)
+// path — every *Set tracker stays false, so the toggle writer does not fire),
+// the deployed workflow.yaml is byte-identical to the template — no key
+// synthesized, no comment disturbed.
 func TestRunInit_WorkflowToggleFlagsAbsentByteIdentical(t *testing.T) {
 	_, workflowPath := runInitForWorkflow(t, nil, nil)
 
@@ -94,13 +92,14 @@ func TestRunInit_WorkflowToggleFlagsAbsentByteIdentical(t *testing.T) {
 }
 
 // TestRunInit_WorktreeAutoCreateFlagBeatsWizard asserts AC-007: an explicit
-// --worktree-auto-create=true wins over a wizard advisory answer of false;
-// with the flag absent, the wizard answer applies (false — byte-identical to
-// the template default, REQ-006).
+// --worktree-auto-create=true is persisted on an interactive run; with the
+// flag absent, auto_create stays false (the template default, REQ-006). The
+// wizard no longer asks the worktree question (SPEC-INIT-QUIET-WIZARD-001), so
+// the injected result carries no worktree answer.
 func TestRunInit_WorktreeAutoCreateFlagBeatsWizard(t *testing.T) {
-	wiz := &wizard.WizardResult{WorktreeAutoCreate: false}
+	wiz := &wizard.WizardResult{}
 
-	// Flag present: persisted true despite the wizard's false.
+	// Flag present: persisted true.
 	_, workflowPath := runInitForWorkflow(t, wiz, map[string]string{
 		"worktree-auto-create": "true",
 	})
@@ -112,10 +111,12 @@ func TestRunInit_WorktreeAutoCreateFlagBeatsWizard(t *testing.T) {
 		t.Errorf("flag must beat the wizard answer: auto_create not true; got:\n%s", got)
 	}
 
-	// Flag absent: the wizard answer applies; false equals the template
-	// default. The interactive run legitimately writes the audit block (chain
-	// ③), so assert the VALUE: auto_create stays false and no branch_guard
-	// block is synthesized (no tracker flipped).
+	// Flag absent: false equals the template default. Assert the VALUE:
+	// auto_create stays false. The branch_guard block now SHIPS in the
+	// template (card t1337, inert defaults: enabled false, deny list
+	// empty), so a flag-absent run renders it from the template — the
+	// tracker must still not have flipped it on (no protected list, no
+	// enabled true).
 	_, workflowPath2 := runInitForWorkflow(t, wiz, nil)
 	got2, err := os.ReadFile(workflowPath2)
 	if err != nil {
@@ -124,8 +125,11 @@ func TestRunInit_WorktreeAutoCreateFlagBeatsWizard(t *testing.T) {
 	if !bytes.Contains(got2, []byte("auto_create: false")) {
 		t.Errorf("flag-absent run must keep auto_create false (the wizard answer); got:\n%s", got2)
 	}
-	if bytes.Contains(got2, []byte("branch_guard:")) {
-		t.Errorf("flag-absent run must not synthesize a branch_guard block; got:\n%s", got2)
+	if !bytes.Contains(got2, []byte("enabled: false")) {
+		t.Errorf("flag-absent run must render the shipped-inert branch_guard block (enabled: false, card t1337 template default); got:\n%s", got2)
+	}
+	if bytes.Contains(got2, []byte("deny_commits_on: [main]")) {
+		t.Errorf("flag-absent run must not flip deny_commits_on to a protected list (the tracker stayed off); got:\n%s", got2)
 	}
 }
 

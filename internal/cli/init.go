@@ -11,18 +11,18 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/charmbracelet/huh"
-	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/foundation"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -36,11 +36,18 @@ import (
 // "MOAI_DISTRIBUTE_ALL=1", and "SPEC-V3R4-CATALOG-005" so downstream tooling
 // (moai doctor) can pattern-match on them. See SPEC-V3R4-CATALOG-002 REQ-021
 // and acceptance scenario S1.
+//
+// SPEC-INIT-SHRINK-001 (REQ-021): the notice also names the plugin carrier —
+// on the default path skills and commands deploy no local copies and ride
+// the moai plugin instead; --no-plugin and --all keep a full local deploy.
 func emitSlimModeNotice(out io.Writer) {
 	_, _ = fmt.Fprintln(out,
 		"Deploying core templates only (slim mode). "+
 			"Use --all or MOAI_DISTRIBUTE_ALL=1 for full deploy. "+
 			"Note: builder-harness agent is omitted (see SPEC-V3R4-CATALOG-005 for bootstrap).")
+	_, _ = fmt.Fprintln(out,
+		"Skills and commands ride the moai plugin on the default path (no local copies). "+
+			"Use --no-plugin or --all for a full local deploy.")
 }
 
 var initCmd = &cobra.Command{
@@ -82,13 +89,15 @@ func init() {
 	initCmd.Flags().Bool("non-interactive", false, "Skip interactive wizard; use flags and defaults")
 	initCmd.Flags().Bool("force", false, "Reinitialize an existing project (backs up current .moai/)")
 	initCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
-	initCmd.Flags().Bool("all", false, "Deploy all catalog entries (core + optional packs + harness-generated). Bypasses slim mode (SPEC-V3R4-CATALOG-002).")
+	initCmd.Flags().Bool("no-plugin", false, "Skip the moai plugin and deploy the FULL local payload (skills, commands, .mcp.json moai entry, Codex mirror). Also MOAI_SKIP_PLUGIN_INSTALL=1. Default (plugin mode) deploys no local skills or commands — they ride the moai plugin")
+	initCmd.Flags().Bool("all", false, "Deploy all catalog tiers locally (a full local deploy: the --no-plugin payload plus optional-pack entries). Bypasses slim mode (SPEC-V3R4-CATALOG-002)")
 
 	// The two wizard mode flags are retired (REQ-WIZ-018): the wizard presents
 	// the same three pages to every user, so there is no mode to select.
 
-	// Page-3 non-interactive override flags (REQ-IWE-008)
-	initCmd.Flags().String("project-mode", "", "Project mode: personal or team (default: personal)")
+	// Page-3 non-interactive override flags (REQ-IWE-008).
+	// (--project-mode was removed by SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001:
+	// project.mode had no Go reader.)
 	// Registered false but read with a true default (the LSPEnabled seed in
 	// runInit), so the effective default matches the wizard's lsp_enabled
 	// default; getBoolFlagWithDefault keys off Changed(), so --enable-lsp=false
@@ -97,19 +106,15 @@ func init() {
 	initCmd.Flags().Bool("enforce-quality", true, "Enforce quality gates (default: true)")
 	initCmd.Flags().Bool("enable-design", true, "Enable design workflow (default: true)")
 
-	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): No-Haiku 3-tier performance
-	// tier flag. New canonical name --model-policy max|medium|low; legacy
-	// --high/--medium/--low accepted as deprecated aliases (one-cycle, plan.md D4).
-	initCmd.Flags().String("model-policy", "", "Performance tier: high, medium, or low (legacy max accepted as an alias of high; persists to llm.yaml performance_tier)")
-	initCmd.Flags().Bool("high", false, "Deprecated alias for --model-policy max (one-cycle backward compat)")
-	initCmd.Flags().Bool("medium-alias", false, "Deprecated alias for --model-policy medium (one-cycle backward compat)")
-	initCmd.Flags().Bool("low", false, "Deprecated alias for --model-policy low (one-cycle backward compat)")
-
-	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015): per-agent model+effort profile
-	// selection. Persists to llm.profile; closed-set validated {high, medium, low}
-	// with the superseded top-column name max accepted as a read-time alias.
-	// Takes precedence over the wizard answer. Supersedes the retired --plan-type.
-	initCmd.Flags().String("profile", "", "Model+effort profile: high, medium, or low (legacy max accepted as an alias of high; persists to llm.yaml profile)")
+	// Retired per-agent model flags (SPEC-AGENT-MODEL-INHERIT-001 D10/D13).
+	// Subagents inherit the main session's model and effort, so these flags
+	// are accepted for script compatibility, print a deprecation warning, and
+	// have no effect. The main-session policy lives in `moai profile setup`.
+	initCmd.Flags().String("model-policy", "", deprecatedAgentModelFlagUsage)
+	initCmd.Flags().Bool("high", false, deprecatedAgentModelFlagUsage)
+	initCmd.Flags().Bool("medium-alias", false, deprecatedAgentModelFlagUsage)
+	initCmd.Flags().Bool("low", false, deprecatedAgentModelFlagUsage)
+	initCmd.Flags().String("profile", "", deprecatedAgentModelFlagUsage)
 
 	// SPEC-WT-DOC-001 workflow toggle flags. Each ships default-off and uses an
 	// opt-in tracker (see applyWorkflowBranchGuardFlags) so a flag-absent init
@@ -123,52 +128,100 @@ func init() {
 	// Validates the 3-value closed set fail-loud in validateInitFlags; help
 	// names all 3 tiers so the selector OFFERS them (does not pre-pick
 	// fully-autonomous).
-	initCmd.Flags().String("autonomy-tier", "", "Autonomy tier: semi-auto, automatic, or fully-autonomous (default: semi-auto)")
+	initCmd.Flags().String("autonomy-tier", "", "Session permission mode: accept edits on (semi-auto, default), auto mode (automatic), or bypass permissions (fully-autonomous; requires sandbox proof). Writes user-scope defaultMode: acceptEdits for the default")
 
-	// SPEC-CODEX-WIRING-001 (REQ-CW-001): the agent-harness selector. Closed
+	// SPEC-CODEX-WIRING-001 (REQ-CW-001): the LLM harness selector. Closed
 	// set {claude, codex, both} validated fail-loud in validateInitFlags;
 	// help names all three values. Default claude = flag-absent behavior
 	// byte-identical to today (AC-CW-004).
-	initCmd.Flags().String("agent", "", "Agent harness to wire: claude, codex, or both (default: claude; codex skips .mcp.json provisioning and wires the .codex/ hook layer + MCP config)")
+	// SPEC-INIT-HARNESS-001 (D2): the gpt value means CODEX-ONLY deployment —
+	// AGENTS.md + Codex surfaces, no .claude/ tree, no CLAUDE.md, no .mcp.json
+	// (operator-accepted value redefinition, plan.md §I NC-1; value renamed
+	// codex->gpt per the model-family naming axis, card t858).
+	initCmd.Flags().String("llm", "", "LLM harness to deploy and wire: claude, gpt, or both (default: claude; gpt deploys AGENTS.md + Codex surfaces only — no .claude/ tree; both adds Codex wiring to the claude deployment)")
 }
 
 // agentWiring is the SPEC-CODEX-WIRING-001 harness selection. The D3
 // semantics (claude = today, codex = skip .mcp.json + wire Codex, both = wire
-// both sides; flag beats the wizard answer) are resolved in ONE place —
-// resolveAgentWiring — so the decision stays a one-line reversible delta.
+// both sides) are resolved in ONE place, so the decision stays a one-line
+// reversible delta.
+//
+// SPEC-INIT-HARNESS-PROMPT-001 moved that place: the selection now has TWO
+// input sources — the --llm flag and the wizard's agent_wiring answer — so
+// the resolution point is resolveAgentWiringWithWizard, not resolveAgentWiring
+// (which is now only the flag-reading primitive). The flag still wins over the
+// wizard answer; that precedence is decided there, once, upstream of both
+// consumers.
 type agentWiring string
 
 const (
 	agentWiringClaude agentWiring = "claude"
-	agentWiringCodex  agentWiring = "codex"
+	agentWiringGPT    agentWiring = "gpt"
 	agentWiringBoth   agentWiring = "both"
 )
 
-// resolveAgentWiring resolves the --agent selection, defaulting to claude.
-// An empty or unrecognized value falls back to claude rather than erroring
-// here — invalid values are rejected earlier, fail-loud, by
-// validateInitFlags.
-func resolveAgentWiring(cmd *cobra.Command) agentWiring {
-	switch agentWiring(getStringFlag(cmd, "agent")) {
-	case agentWiringCodex, agentWiringBoth:
-		return agentWiring(getStringFlag(cmd, "agent"))
+// normalizeAgentWiring maps a raw harness value onto the closed set, defaulting
+// to claude. It is the SINGLE definition of that mapping: resolveAgentWiring
+// (the flag-reading primitive) and resolveAgentWiringWithWizard (the
+// SPEC-INIT-HARNESS-PROMPT-001 resolution point, which also reads the wizard's
+// answer) both delegate here, so the two inputs cannot drift apart.
+func normalizeAgentWiring(value string) agentWiring {
+	switch wiring := agentWiring(config.CanonicalAgentHarness(value)); wiring {
+	case agentWiringGPT, agentWiringBoth:
+		return wiring
 	default:
 		return agentWiringClaude
 	}
 }
 
+// resolveAgentWiring resolves the --llm selection, defaulting to claude.
+// An empty or unrecognized value falls back to claude rather than erroring
+// here — invalid values are rejected earlier, fail-loud, by
+// validateInitFlags.
+//
+// It is the flag-reading primitive only. The value the init tail actually acts
+// on is resolved once by resolveAgentWiringWithWizard, which additionally reads
+// the wizard's answer (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-004).
+func resolveAgentWiring(cmd *cobra.Command) agentWiring {
+	return normalizeAgentWiring(getStringFlag(cmd, "llm"))
+}
+
 // wireCodexUnlessClaude wires the Codex side (.codex/hooks.json +
-// .codex/config.toml) for --agent codex|both, adjacent to the .mcp.json
-// provisioning call in the runInit tail. Best-effort (spec §F): a wiring
-// failure — including the REQ-CW-003 validation refusal, whose hard part
+// .codex/config.toml) for a codex|both harness selection, adjacent to the
+// .mcp.json provisioning call in the runInit tail. Best-effort (spec §F): a
+// wiring failure — including the REQ-CW-003 validation refusal, whose hard part
 // (no violating bytes on disk) is already guaranteed by the codexwiring
 // package — warns and init continues.
-func wireCodexUnlessClaude(cmd *cobra.Command, projectRoot string) {
-	if resolveAgentWiring(cmd) == agentWiringClaude {
+//
+// It takes the ALREADY-RESOLVED wiring rather than the command
+// (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-004): re-reading the flag here would
+// put a second resolution behind the resolution point, which is exactly how a
+// wizard answer reaches one consumer and not the other.
+func wireCodexUnlessClaude(cmd *cobra.Command, wiring agentWiring, projectRoot string) {
+	if wiring == agentWiringClaude {
 		return
 	}
 	if _, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: Codex wiring failed: %v\n", err)
+	}
+}
+
+// addCodexReinitGuidance is the redirect note printed when init runs
+// --llm gpt|both against an already-initialized project (the --force
+// reinit path): the preferred additive verb is `moai tool enable codex`,
+// which wires Codex in place without reinitializing and is the only additive
+// command. The reinit itself proceeds as requested.
+const addCodexReinitGuidance = "note: this project is already initialized — use `moai tool enable codex` to add Codex without reinitializing. Proceeding with the requested reinit."
+
+// emitAddCodexReinitGuidance prints the guidance when the selection is
+// codex|both AND the project is already initialized. A claude selection and a
+// fresh project stay silent; a nil writer is safe.
+func emitAddCodexReinitGuidance(errOut io.Writer, wiring agentWiring, alreadyInitialized bool) {
+	if wiring == agentWiringClaude || !alreadyInitialized {
+		return
+	}
+	if errOut != nil {
+		_, _ = fmt.Fprintln(errOut, addCodexReinitGuidance)
 	}
 }
 
@@ -191,12 +244,14 @@ func getBoolFlag(cmd *cobra.Command, name string) bool {
 }
 
 // provisionMCPEntryUnlessDeclined writes the single neutral `moai` entry into
-// the project's .mcp.json unless the user explicitly declined through the
-// wizard's mcp_provision question (default-on per SPEC-MCP-DEFAULT-ON-001).
+// the project's .mcp.json unless the caller declined it (default-on per
+// SPEC-MCP-DEFAULT-ON-001). On `moai init` the decline comes from the harness
+// selection (codex) or from the non-interactive path, never from a wizard
+// question.
 //
 // It is the call site that makes the MCP server reachable at runtime: without
-// it the wizard answer is collected into opts and then dropped, leaving the
-// stdio server registered in code but absent from every host's config.
+// it the provisioning default is collected into opts and then dropped, leaving
+// the stdio server registered in code but absent from every host's config.
 //
 // The write goes through the shared atomic-config seam
 // (provisionMoaiMCPServerEntryAt -> mutateClaudeJSONAtomic), so it inherits the
@@ -216,23 +271,28 @@ func provisionMCPEntryUnlessDeclined(out, errOut io.Writer, projectRoot string, 
 	_, _ = fmt.Fprintln(out, "Provisioned the moai MCP server entry in .mcp.json (default-on).")
 }
 
-// applyWizardPage3ToOpts applies the always-visible Page-3 wizard answers to
+// applyWizardPage3ToOpts applies the wizard result's fixed Page-3 seeds to
 // opts, honouring flag-over-wizard precedence (REQ-WIZ-020).
 //
-// Page 3 is ungated, so without this rule the wizard result would
-// unconditionally overwrite every flag-seeded value — inverting the documented
-// `--profile` precedence above ("the wizard fills opts.Profile only when the
-// flag is absent"). Each of the four overlapping settings therefore yields to
-// the wizard ONLY when its flag was not explicitly supplied.
+// The seeds reach opts on every interactive run, so without this rule the
+// wizard result would unconditionally overwrite every flag-seeded value —
+// inverting the documented `--profile` precedence above ("the wizard fills
+// opts.Profile only when the flag is absent"). Each of the three overlapping
+// settings therefore yields to the wizard ONLY when its flag was not
+// explicitly supplied.
+//
+// The page-3 questions removed by SPEC-INIT-QUIET-WIZARD-001 (project mode,
+// worktree auto-create, todo, feedback, continuation, audit, MCP) carry no
+// result field, so they are not mapped here: their keys resolve to shipped
+// defaults. --worktree-auto-create still reaches opts through the flag path;
+// --project-mode was removed outright by SPEC-INIT-UPDATE-CONSISTENCY-001
+// REQ-ICU-001 (project.mode had no Go reader).
 //
 // Explicitness is probed with cmd.Flags().Changed(name), never by value:
 // getBoolFlag / getBoolFlagWithDefault cannot distinguish "flag absent" from
 // "flag explicitly set to the same value as the default", so a value-only
 // check would silently drop `--enable-lsp=false` and `--enforce-quality=false`.
 func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opts *project.InitOptions) {
-	if !cmd.Flags().Changed("project-mode") && result.ProjectMode != "" {
-		opts.ProjectMode = result.ProjectMode
-	}
 	if !cmd.Flags().Changed("enable-lsp") {
 		opts.LSPEnabled = result.LSPEnabled
 	}
@@ -251,40 +311,6 @@ func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opt
 
 	// claude_design_enabled is wizard-only (no CLI flag), so it always applies.
 	opts.ClaudeDesignEnabled = result.ClaudeDesignEnabled
-
-	// Worktree advisory (Issue 3): wizard-only confirm, applies when the wizard
-	// ran AND --worktree-auto-create was not explicitly supplied (REQ-005
-	// flag-over-wizard precedence, SPEC-INIT-WIZARD-REPAIR-001 — the formerly
-	// unconditional assignment here was the clobber bug). The --non-interactive
-	// path leaves WorktreeAutoCreate false.
-	if !cmd.Flags().Changed("worktree-auto-create") {
-		opts.WorktreeAutoCreate = result.WorktreeAutoCreate
-	}
-
-	// Backlog-queue guidance gate (SPEC-TODO-ENABLE-FLAG-001 REQ-4). Wizard-only
-	// confirm, no CLI flag, so it always applies when the wizard ran. The
-	// pointer carries "was it asked" as well as the answer — --non-interactive
-	// leaves it nil and the writer then touches nothing.
-	opts.TodoEnabled = result.TodoEnabled
-
-	// Feedback pre-submission gate. Wizard-only confirm, no CLI flag, so it
-	// always applies when the wizard ran. The pointer carries "was it asked"
-	// as well as the answer — --non-interactive leaves it nil and the writer
-	// then touches nothing.
-	opts.FeedbackAutoSubmit = result.FeedbackAutoSubmit
-
-	// M4 audit + MCP opt-in (SPEC-MOAI-MCP-SERVER-001 REQ-MCP-015 / AC-MCP-020).
-	// The audit selection reuses the M3 typed-config vocabulary. AuditConfigSet
-	// is the opt-in tracker: it flips true ONLY when the wizard collected a
-	// selection, so writeWorkflowAuditYAML persists the block exclusively on
-	// the interactive path (C6 opt-in-default-off).
-	opts.AuditModel = result.AuditModel
-	opts.AuditGateClaude = result.AuditGateClaude
-	opts.AuditGateCodex = result.AuditGateCodex
-	opts.AuditGateGLM = result.AuditGateGLM
-	opts.CodexAuditEnabled = result.CodexAuditEnabled
-	opts.MCPProvision = result.MCPProvision
-	opts.AuditConfigSet = true
 }
 
 // getBoolFlagWithDefault retrieves a bool flag value, returning defaultVal when
@@ -332,34 +358,9 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): validate --model-policy enum.
-	// Invalid value exits non-zero with a stderr usage error naming the 3-enum.
-	// Shares config.IsValidProfile with --profile below: performance_tier and
-	// profile are the same axis, so one validator keeps the two flags from
-	// drifting apart on the superseded max -> high rename.
-	modelPolicy := getStringFlag(cmd, "model-policy")
-	if modelPolicy != "" && !config.IsValidProfile(modelPolicy) {
-		return fmt.Errorf("invalid --model-policy value %q: must be one of: high, medium, low", modelPolicy)
-	}
-
-	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015): validate --profile enum.
-	// Invalid value exits non-zero with a usage error naming the closed set.
-	profileFlag := getStringFlag(cmd, "profile")
-	if profileFlag != "" && !config.IsValidProfile(profileFlag) {
-		return fmt.Errorf("invalid --profile value %q: must be one of: high, medium, low", profileFlag)
-	}
-
-	// SPEC-CLI-WIZARD-RESTRUCTURE-001 (S1): validate --project-mode enum.
-	// C32 made writeProjectModeYAML reachable from `moai init`, so this value
-	// now reaches patchYAMLKey and is written verbatim into project.yaml; an
-	// unvalidated newline-bearing value injects an arbitrary top-level key.
-	projectMode := getStringFlag(cmd, "project-mode")
-	if projectMode != "" {
-		validProjectModes := []string{"personal", "team"}
-		if !slices.Contains(validProjectModes, projectMode) {
-			return fmt.Errorf("invalid --project-mode value %q: must be one of: personal, team", projectMode)
-		}
-	}
+	// Retired per-agent model flags: any value is accepted and only warned
+	// about (SPEC-AGENT-MODEL-INHERIT-001 D10/D13).
+	warnDeprecatedAgentModelFlags(cmd, "profile", "model-policy", "high", "medium-alias", "low")
 
 	// F3 git-provider identity validation (init-path parity with the
 	// reconfigure path's validateWizardInput). Reuses the in-package helpers
@@ -390,39 +391,18 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// SPEC-CODEX-WIRING-001 (REQ-CW-001): validate the --agent closed set
+	// SPEC-CODEX-WIRING-001 (REQ-CW-001): validate the --llm closed set
 	// fail-loud, naming the valid values (autonomy-tier closed-set pattern).
-	agent := getStringFlag(cmd, "agent")
-	if agent != "" {
-		switch agentWiring(agent) {
-		case agentWiringClaude, agentWiringCodex, agentWiringBoth:
+	llm := getStringFlag(cmd, "llm")
+	if llm != "" {
+		switch agentWiring(config.CanonicalAgentHarness(llm)) {
+		case agentWiringClaude, agentWiringGPT, agentWiringBoth:
 		default:
-			return fmt.Errorf("invalid --agent value %q: must be one of: claude, codex, both", agent)
+			return fmt.Errorf("invalid --llm value %q: must be one of: claude, gpt, both", llm)
 		}
 	}
 
 	return nil
-}
-
-// resolveModelPolicy resolves the effective performance tier from the
-// --model-policy flag and its legacy aliases (--high/--medium-alias/--low).
-// The new canonical flag takes precedence; legacy aliases map high→max,
-// medium→medium, low→low (plan.md D4, one-cycle backward compat). Returns
-// "" when no model-policy flag was set.
-func resolveModelPolicy(cmd *cobra.Command) string {
-	if mp := getStringFlag(cmd, "model-policy"); mp != "" {
-		return mp
-	}
-	if getBoolFlag(cmd, "high") {
-		return "max"
-	}
-	if getBoolFlag(cmd, "medium-alias") {
-		return "medium"
-	}
-	if getBoolFlag(cmd, "low") {
-		return "low"
-	}
-	return ""
 }
 
 // @MX:NOTE: [AUTO] CATALOG-002 REQ-012/013/EC3 — single decision point for slim/full opt-out. Narrow env matching: only "1" exact or case-insensitive "true".
@@ -440,6 +420,40 @@ func shouldDistributeAll(cmd *cobra.Command) bool {
 	}
 	v := os.Getenv("MOAI_DISTRIBUTE_ALL")
 	return v == "1" || strings.EqualFold(v, "true")
+}
+
+// resolveInitDeployMode resolves the run's deploy mode (SPEC-INIT-SHRINK-001
+// REQ-001/REQ-003/REQ-007, OD-5/OD-7 settled (a)): the opt-out surface
+// (--no-plugin flag or MOAI_SKIP_PLUGIN_INSTALL, the t1435 OD-5 pin) and the
+// --all flag (a local full deploy — OD-7 settled (a)) select the local
+// payload; everything else is the default plugin path.
+func resolveInitDeployMode(cmd *cobra.Command) template.DeployMode {
+	if getBoolFlag(cmd, "no-plugin") || pluginOptOutFromEnv() || shouldDistributeAll(cmd) {
+		return template.DeployModeLocal
+	}
+	return template.DeployModePlugin
+}
+
+// emitShrinkInstallGuidance prints the one guidance block of REQ-004: the
+// post-install probe did not demonstrate this run's install, so both
+// recourses are named. Recourse 1 names the flags that actually work — a
+// plain re-run fails "project already initialized", so --force is required
+// alongside --no-plugin, and the block states what force re-initialization
+// moves (card t1438 review finding 6). Fail-open — it never changes the
+// init result.
+func emitShrinkInstallGuidance(errOut io.Writer) {
+	_, _ = fmt.Fprintln(errOut, "note: the moai plugin install could not be demonstrated for this run.")
+	_, _ = fmt.Fprintln(errOut, "      Skills and commands are NOT deployed locally on the plugin path;")
+	_, _ = fmt.Fprintln(errOut, "      pick a recourse to keep them available:")
+	_, _ = fmt.Fprintln(errOut, "        1. re-run with --no-plugin --force for a full local deploy (a plain")
+	_, _ = fmt.Fprintln(errOut, "           re-run fails: the project already counts as initialized). --force")
+	_, _ = fmt.Fprintln(errOut, "           re-initialization moves the existing .moai/ to .moai-backups/<timestamp>/")
+	_, _ = fmt.Fprintln(errOut, "           and redeploys the MoAI-managed template files from scratch; your")
+	_, _ = fmt.Fprintln(errOut, "           manifest is carried forward, so user-modified files keep their")
+	_, _ = fmt.Fprintln(errOut, "           user_modified protection, or")
+	_, _ = fmt.Fprintln(errOut, "        2. install the plugin manually:")
+	_, _ = fmt.Fprintln(errOut, "           claude plugin marketplace add "+pluginMarketplaceSource+" ; claude plugin install "+pluginRef)
+	_, _ = fmt.Fprintln(errOut, "           codex  plugin marketplace add "+pluginMarketplaceSource+" ; codex  plugin add "+pluginRef)
 }
 
 // @MX:ANCHOR: [AUTO] runInit is the main entry point for project initialization
@@ -486,6 +500,11 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 	defer func() {
+		// SPEC-WORKTREE-KEY-WIRING-001 M2: auto-merge runs BEFORE disposal —
+		// the merge consumes only committed state, but disposal deletes the
+		// tree, so merge-then-dispose is the only safe order. Independent of
+		// auto_cleanup (REQ-WKW-013): each toggle gates only its own behavior.
+		sessionExitAutoMerge(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
 		cleanupSessionWorktree(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
 	}()
 
@@ -536,7 +555,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// No positional arg or "." - use current directory
 		rootFlag = cwd
 	}
-
 	nonInteractive := getBoolFlag(cmd, "non-interactive")
 
 	opts := project.InitOptions{
@@ -551,14 +569,9 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		GitLabInstanceURL: getStringFlag(cmd, "gitlab-instance-url"),
 		NonInteractive:    nonInteractive,
 		Force:             getBoolFlag(cmd, "force"),
-		// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/016): --profile flag value
-		// (validated in validateInitFlags). The wizard fills opts.Profile only when
-		// the flag is absent, so the flag takes precedence over the wizard answer.
-		Profile: getStringFlag(cmd, "profile"),
 		// Page-3 non-interactive overrides — defaults match wizard defaults (REQ-IWE-008).
 		// The InitOptions mode field is gone (C33): the Page-3 writes are
 		// unconditional now, so there is no mode to carry into the initializer.
-		ProjectMode:               getStringFlag(cmd, "project-mode"),
 		LSPEnabled:                getBoolFlagWithDefault(cmd, "enable-lsp", true),
 		EnforceQuality:            getBoolFlagWithDefault(cmd, "enforce-quality", true),
 		CoverageExemptionsEnabled: false, // no CLI flag; wizard/default only
@@ -594,24 +607,11 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// "moai profile setup" and stored in ~/.moai/claude-profiles/<name>/preferences.yaml.
 	profileName := profile.GetCurrentName()
 
-	// Auto-prompt profile setup if no profile exists yet
-	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) && !profile.IsSetup(profileName) {
-		var wantSetup bool
-		confirm := huh.NewConfirm().
-			Title("No profile found. Set up profile preferences now?").
-			Description("Configure your name, language, and model preferences.").
-			Value(&wantSetup)
-		// Wrap the standalone confirm in a themed form: field.Run() cannot take a
-		// theme, so the MoAI-branded dark-readable theme is applied at the form
-		// level (parity with the wizard fix for the other huh surfaces).
-		confirmForm := huh.NewForm(huh.NewGroup(confirm)).WithTheme(moaiHuhTheme())
-		if err := confirmForm.Run(); err == nil && wantSetup {
-			if err := runProfileSetup(cmd, nil); err != nil {
-				p.Warn("profile setup failed: %v", err)
-			}
-		}
-	}
-
+	// REQ-ITI-001: `moai init` carries NO profile entry — no confirmation, no
+	// profile wizard, whatever stdin and the flags are. A missing profile just
+	// leaves the preference values empty, and the init wizard asks the
+	// conversation language once as its first question (REQ-ITI-002). The
+	// profile wizard starts only from `moai profile setup` / `--setup`.
 	prefs, err := profile.ReadPreferences(profileName)
 	if err != nil {
 		p.Warn("failed to read profile preferences: %v", err)
@@ -640,6 +640,10 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// call: the flag branch for non-interactive runs and the wizard branch for
 	// interactive ones (it stays empty when the wizard did not run).
 	wizardResult := &wizard.WizardResult{}
+	// wizardRan distinguishes "the user declined" from "nobody was asked".
+	// Both leave the boolean answers at their zero value, and one of them must
+	// not be written over a persisted choice (see applyJevFromWizard).
+	wizardRan := false
 
 	if !nonInteractive && isInteractiveStdin() {
 		// Print banner and welcome message
@@ -660,6 +664,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			return fmt.Errorf("wizard failed: %w", wizErr)
 		}
 		wizardResult = result
+		wizardRan = true
 
 		// Conversation language + user name: the wizard answer wins over the
 		// profile value. Update both opts (drives template deployment of
@@ -675,10 +680,12 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			prefs.UserName = result.UserName
 		}
 
-		// Apply wizard results to opts (wizard values override empty flags)
-		if opts.ProjectName == "" {
-			opts.ProjectName = result.ProjectName
-		}
+		// Apply wizard results to opts (wizard values override empty flags).
+		// Project name, model policy, and report format are no longer asked on
+		// the init path (SPEC-INIT-QUIET-WIZARD-001): the project name falls to
+		// the directory-name default, the model profile to medium, and the
+		// report format to html+md — the same values a user accepting every
+		// former default received.
 		if opts.DevelopmentMode == "" {
 			opts.DevelopmentMode = result.DevelopmentMode
 		}
@@ -686,22 +693,21 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// init path: mode/provider come from remote detection above, and the
 		// remaining Git values stay flag-fed (--github-username,
 		// --gitlab-instance-url). The reconfigure wizard still asks them.
-		if result.ModelPolicy != "" {
-			opts.ModelPolicy = result.ModelPolicy
-		}
-		// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-014/016): the model-routing wizard
-		// answer IS the profile selection; it flows through opts.ModelPolicy and is
-		// normalized to {high, medium, low} at profile persistence (the --profile flag
-		// takes precedence over it).
-		// Report format is wizard-only (no CLI flag); empty resolves to the
-		// html+md default at persistence time (initializer.writeReportConfig).
-		if opts.ReportFormat == "" && result.ReportFormat != "" {
-			opts.ReportFormat = result.ReportFormat
-		}
-		// Apply the Page-3 wizard results. The former mode gate on the wizard
-		// result is removed (REQ-WIZ-001/002): Page 3 is always visible, so its
-		// answers always reach opts.
+
+		// Apply the fixed Page-3 seeds. The former mode gate on the wizard
+		// result is removed (REQ-WIZ-001/002), so they always reach opts.
 		applyWizardPage3ToOpts(cmd, result, &opts)
+
+		// The interactive path provisions the .mcp.json moai entry by default:
+		// the mcp_provision question is gone, so no wizard answer can decline
+		// it. The non-interactive path leaves the zero value false and skips
+		// the ensure-entry call — an intended asymmetry that preserves the
+		// pinned non-interactive behaviour (REQ-IQW-006). The harness switch
+		// below still overrides this default (codex declines, both forces on).
+		// @MX:NOTE: [AUTO] Interactive default-on MCP provisioning with no
+		// wizard question; non-interactive stays false by design.
+		// @MX:SPEC: SPEC-INIT-QUIET-WIZARD-001
+		opts.MCPProvision = true
 	}
 
 	// Chain ① wizard+flag → opts link (SPEC-INIT-WIZARD-REPAIR-001 REQ-001 /
@@ -717,6 +723,31 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		cmd.Flags().Changed("autonomy-tier"), getStringFlag(cmd, "autonomy-tier"),
 		wizardResult, &opts,
 	)
+
+	// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-004): resolve the agent-harness
+	// selection ONCE, here, from the flag or the wizard answer. Both consumers
+	// in the init tail — the .mcp.json provisioning precedence switch and the
+	// Codex wiring call — read this local, so the selection cannot reach one
+	// and miss the other. wizardResult stays empty when the wizard did not run,
+	// which resolves to claude: the flag-absent non-interactive path is
+	// unchanged (REQ-IHP-007).
+	// @MX:SPEC: SPEC-INIT-HARNESS-PROMPT-001
+	agentWiringSelection := resolveAgentWiringWithWizard(
+		cmd.Flags().Changed("llm"), getStringFlag(cmd, "llm"), wizardResult,
+	)
+
+	// SPEC-INIT-SHRINK-001 (REQ-001/REQ-003/REQ-007, OD-5/OD-7): resolve the
+	// deploy mode ONCE, here — the initializer's scaffold (below), the
+	// deployer option, and the mode record all read this local.
+	deployMode := resolveInitDeployMode(cmd)
+
+	// SPEC-INIT-HARNESS-001 (REQ-IH-005): the initializer suppresses every
+	// claude-surface write while the selection is codex — the .claude/ scaffold
+	// and CLAUDE.md never materialize under the project root.
+	opts.Harness = string(agentWiringSelection)
+	// SPEC-INIT-SHRINK-001 (REQ-001): the initializer skips the dropped-root
+	// scaffold shells on the plugin path, matching the deployer's file set.
+	opts.DeployMode = string(deployMode)
 
 	// Default git provider to "github" for backward compatibility
 	if opts.GitProvider == "" {
@@ -755,20 +786,51 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	renderer := template.NewRenderer(embeddedFS)
 
 	var deployer template.Deployer
-	if shouldDistributeAll(cmd) {
-		deployer = template.NewDeployerWithRenderer(embeddedFS, renderer)
-	} else {
-		var slimErr error
-		deployer, slimErr = template.NewSlimDeployerWithRenderer(cat, renderer)
-		if slimErr != nil {
-			return fmt.Errorf("CATALOG_LOAD_FAILED: slim deployer: %w", slimErr)
+	// SPEC-INIT-HARNESS-001 M2 (REQ-IH-005/006, design.md D3): a codex-only
+	// selection reroutes the WHOLE deployment through the harnessFS wrapper —
+	// claude-only surfaces hidden, the skill catalog re-homed to
+	// .agents/skills as real directories, skill mirror off. The harness
+	// contract outranks the distribute-all mode (REQ-IH-005 fixes the codex
+	// file set; the slim/full split lives entirely inside .claude/** which
+	// harnessFS hides). claude and both keep the deployers below untouched
+	// (REQ-IH-003/004).
+	//
+	// SPEC-INIT-SHRINK-001 M2 (REQ-001/REQ-003/REQ-006/REQ-007): the deploy
+	// mode rides through as an option — local (opt-out or --all) is today's
+	// payload; plugin (the default) carries no .claude/skills or
+	// .claude/commands file. The mirror policy stays at its conservative
+	// default (re-home: real directory copies, never dangling links) until
+	// Codex's actual execution of plugin-borne skills is verified (OD-6
+	// settled (a) + condition; the REQ-008 measurement proves listing, not
+	// execution).
+	// deployMode is resolved once above (beside opts.Harness); the deployer
+	// family receives it as an option — the split is an option, not a
+	// constructor axis.
+	modeOpts := []template.DeployerOption{template.WithDeployMode(deployMode)}
+	switch agentWiringSelection {
+	case agentWiringGPT:
+		deployer, err = template.NewCodexOnlyDeployerWithRenderer(cat, renderer, modeOpts...)
+	case agentWiringBoth:
+		if shouldDistributeAll(cmd) {
+			deployer, err = template.NewDualHarnessDeployerWithRenderer(cat, renderer, modeOpts...)
+		} else {
+			deployer, err = template.NewDualHarnessSlimDeployerWithRenderer(cat, renderer, modeOpts...)
+			emitSlimModeNotice(cmd.OutOrStdout())
 		}
-		// REQ-021 informational notice on slim mode (4 substring guarantee).
-		emitSlimModeNotice(cmd.OutOrStdout())
+	default:
+		if shouldDistributeAll(cmd) {
+			deployer, err = template.NewClaudeHarnessDeployerWithRenderer(cat, renderer, modeOpts...)
+		} else {
+			deployer, err = template.NewClaudeHarnessSlimDeployerWithRenderer(cat, renderer, modeOpts...)
+			emitSlimModeNotice(cmd.OutOrStdout())
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("construct %s harness deployer: %w", agentWiringSelection, err)
 	}
 
 	initializer := project.NewInitializer(deployer, mgr, nil)
-	executor := project.NewPhaseExecutor(detector, methDetector, validator, initializer, nil)
+	executor := newInitPhaseExecutorFn(detector, methDetector, validator, initializer)
 
 	ctx := cmd.Context()
 	if ctx == nil {
@@ -783,6 +845,16 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// (REQ-TUX2-010/011).
 	executor.SetReporter(newSpinnerReporter(p))
 
+	// SPEC-UPDATE-ADD-CODEX-001 (REQ-UAC-013, decision D4): redirect-not-block —
+	// on the --force reinit path with a codex|both selection, name the additive
+	// verb BEFORE proceeding; the reinit itself is not blocked. The probe
+	// reuses the same validator the executor consults, so the guidance and the
+	// executor cannot disagree about what "already initialized" means.
+	if getBoolFlag(cmd, "force") && agentWiringSelection != agentWiringClaude {
+		probe, probeErr := validator.Validate(opts.ProjectRoot)
+		emitAddCodexReinitGuidance(cmd.ErrOrStderr(), agentWiringSelection, probeErr == nil && !probe.Valid)
+	}
+
 	p.Info("Initializing MoAI project...")
 
 	// Deferred binary self-update check (REQ-TUX2-001/004): starts strictly
@@ -792,30 +864,96 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// effects (acceptance.md §C).
 	flushUpdateNotice := startDeferredUpdateNotice(cmd)
 
+	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-005): settle a
+	// .claude/settings.json staging copy an interrupted earlier flow left behind
+	// before executor.Execute — init's first step that can rewrite the file.
+	//
+	// @MX:WARN: [AUTO] leftover judgement placement — keep above executor.Execute
+	// @MX:REASON: after the deploy the live file is the new render, so an abort with no revert
+	// would be discarded instead of promoted (plan.md B8)
+	backup.JudgeLeftoverSettingsSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
+	// Card t1029: same judgement for the .mcp.json staging copy.
+	backup.JudgeLeftoverMCPSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
+
+	// SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001 (REQ-TBS-001) as corrected by card
+	// t1139: capture the template snapshot — the NEXT update's merge BASE — at
+	// the one moment the section files hold the pure template render: right
+	// after the deploy, before the initializer's section patches (lsp.enabled
+	// and the other Page-3 answers) and before the post-Execute writers below
+	// (profile sync, Jev, performance tier, profile, harness). Taken later, the
+	// snapshot records those answers as BASE and the first update resets them
+	// to the template default. Best-effort non-blocking (REQ-TBS-014).
+	errOut := cmd.ErrOrStderr()
+	opts.AfterTemplateDeploy = func(root string) {
+		writeTemplateSnapshotBestEffort(root, errOut)
+	}
 	result, err := executor.Execute(ctx, opts)
 	if err != nil {
+		// SPEC-INIT-DEPLOY-EXIT-001 (REQ-IDE-004): warnings the executor
+		// recorded before failing (the skill-mirror notice) still belong in the
+		// exit summary panel — the failure path is not a reason to drop them.
+		// The executor returns a result alongside the error where it has one.
+		if result != nil {
+			for _, w := range result.Warnings {
+				p.Collect(w)
+			}
+		}
 		// REQ-TUX2-015: re-running init on an initialized project without
 		// --force is usually a template-refresh intent — redirect to
 		// `moai update` alongside the existing --force guidance.
 		if !getBoolFlag(cmd, "force") && strings.Contains(err.Error(), "already initialized") {
 			return fmt.Errorf("initialization failed: %w\n  Hint: this directory already contains a MoAI project — did you mean 'moai update' (refresh templates in place)? Re-run with --force only to reinitialize from scratch", err)
 		}
+		// SPEC-INIT-DEPLOY-EXIT-001 (REQ-IDE-003): a deployment failure aborts
+		// the template walk partway, so files after the failing one were never
+		// written. The surface states that fact and does NOT quantify it: the
+		// only number available here is how many files were written before the
+		// abort, while the expected total exists nowhere in the code — a bare
+		// count would read as progress rather than as damage, and a denominator
+		// would have to be invented. The failing template path is already
+		// carried by the wrapped error, so it is preserved rather than restated.
+		if strings.Contains(err.Error(), "template deployment") {
+			return fmt.Errorf("initialization failed: %w\n  The project tree is INCOMPLETE — template deployment stopped at the failing template, so the files after it were never written. Do not use this directory as-is: fix the template error, then re-run 'moai init --force' to reinitialize from scratch", err)
+		}
 		return fmt.Errorf("initialization failed: %w", err)
+	}
+	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-001/003/016): stage the
+	// settings.json render the deploy inside executor.Execute wrote — only when
+	// the manifest proves it wrote it (a skipped existing file records nothing)
+	// — before the autonomy tier bundle below can rewrite the file.
+	backup.StageDeployedSettingsSnapshot(opts.ProjectRoot, mgr, cmd.ErrOrStderr())
+	// Card t1029: the same staging for .mcp.json, before any later provisioning
+	// write (moai mcp add, the mcp-server opt-in) can rewrite the file — a
+	// post-deploy addition belongs to the user and must read as theirs on the
+	// next update, not as template content.
+	backup.StageDeployedMCPSnapshot(opts.ProjectRoot, mgr, cmd.ErrOrStderr())
+
+	if err := homestate.EnsureProjectLayout(opts.ProjectRoot); err != nil {
+		return fmt.Errorf("initialize private MoAI home layout: %w", err)
 	}
 
 	// Chain ① consumer link (SPEC-INIT-WIZARD-REPAIR-001 REQ-003): wire the
 	// persisted tier selection into the deployed settings immediately after
 	// the initializer returns. Paths are resolved here and passed in (no new
 	// global state); the USER-scope write inside the bundle is a key-scoped
-	// splice limited to the permissions block (spec.md §4 lead ruling). The
-	// call is best-effort: semi-auto/unset produces zero delta and a failure
-	// warns without failing the init.
+	// splice limited to the permissions block (spec.md §4 leader ruling). The
+	// call is best-effort: semi-auto/unset produces the bounded delta (the
+	// USER-scope acceptEdits record only, SPEC-AUT-PERMMODES-001 REQ-004) and
+	// a failure warns without failing the init.
 	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
-		if tierErr := project.ApplyAutonomyTierBundle(
+		// SPEC-INIT-HARNESS-001 (REQ-IH-005): a codex-only project carries no
+		// .claude/ surface, so the bundle gets an empty projectSettingsPath —
+		// its contract is USER-scope-only writes in that case, never a
+		// project-root .claude/settings.json.
+		projectSettingsPath := filepath.Join(opts.ProjectRoot, ".claude", "settings.json")
+		if agentWiringSelection == agentWiringGPT {
+			projectSettingsPath = ""
+		}
+		if tierErr := applyAutonomyTierBundleFn(
 			opts.ProjectRoot,
 			filepath.Join(homeDir, ".claude", "settings.json"),
-			filepath.Join(opts.ProjectRoot, ".claude", "settings.json"),
+			projectSettingsPath,
 			opts.AutonomyTier,
 		); tierErr != nil {
 			p.Warn("Failed to apply autonomy tier bundle: %v", tierErr)
@@ -823,6 +961,12 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	} else {
 		p.Warn("Failed to resolve home directory for autonomy tier bundle: %v", homeErr)
 	}
+
+	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-005): init has no merge,
+	// so it never takes a preserve path — the staged render (if any) becomes the
+	// canonical base the first update merges against.
+	backup.SettleSettingsSnapshot(opts.ProjectRoot, false, cmd.ErrOrStderr())
+	backup.SettleMCPSnapshot(opts.ProjectRoot, false, cmd.ErrOrStderr())
 
 	// Route executor result warnings into the collector (they surface once,
 	// in the exit summary panel — REQ-TUX2-013) and display the completion
@@ -837,44 +981,44 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	}
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
-		buildInitSuccessCard(cardName, len(result.CreatedDirs), len(result.CreatedFiles), p.Count()))
+		buildInitSuccessCard(cardName, len(result.CreatedDirs), len(result.CreatedFiles), p.Count(), string(deployMode)))
 
 	// Sync profile preferences to project config (after template deployment)
 	if err := profile.SyncToProjectConfig(opts.ProjectRoot, prefs); err != nil {
 		p.Warn("Failed to sync profile to project config: %v", err)
 	}
 
-	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): persist the resolved
-	// performance tier to llm.yaml. CLI --model-policy takes precedence over
-	// the wizard's ModelPolicy; both resolve to one of {high, medium, low}.
-	perfTier := resolveModelPolicy(cmd)
-	if perfTier == "" && opts.ModelPolicy != "" {
-		perfTier = opts.ModelPolicy
-	}
-	if perfTier != "" && template.IsValidPerformanceTier(perfTier) {
-		if err := template.ApplyPerformanceTier(opts.ProjectRoot, perfTier); err != nil {
-			p.Warn("Failed to apply performance tier: %v", err)
-		}
+	// SPEC-JEV-OPTIN-MEASURE-001 (REQ-JEVO-002): route the wizard's Jev answer
+	// into the SAME internal/settings seam the `moai web` settings screen
+	// drives. Placed after template deployment because the seam patches
+	// .moai/config/sections/workflow.yaml — the file the deploy has just
+	// written. Best-effort, like its autonomy-tier and performance-tier
+	// neighbours: a failure warns rather than failing the init, because the
+	// capability is off by default and a project that could not record an
+	// opt-in is a project with the capability off.
+	if err := applyJevFromWizard(wizardRan, wizardResult, opts.ProjectRoot); err != nil {
+		p.Warn("Failed to persist the Jev opt-in: %v", err)
 	}
 
-	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016): persist the resolved per-agent
-	// profile to llm.profile. Precedence: the --profile flag (opts.Profile, already
-	// validated to {high, medium, low}), else the resolved model-policy tier
-	// (perfTier / opts.ModelPolicy). NormalizeToTier is total (high→max, ""→medium),
-	// so the wizard's legacy {high, medium, low} answer maps correctly.
-	{
-		profile := opts.Profile
-		if profile == "" {
-			profile = perfTier
-		}
-		if profile == "" {
-			profile = opts.ModelPolicy
-		}
-		if resolved := template.NormalizeToTier(profile); resolved != "" {
-			if err := template.ApplyProfile(opts.ProjectRoot, resolved); err != nil {
-				p.Warn("Failed to apply profile: %v", err)
-			}
-		}
+	// SPEC-INIT-HARNESS-001 (REQ-IH-002): persist the RESOLVED harness value to
+	// llm.harness on every init run — all three closed-set values INCLUDING the
+	// claude default. agentWiringSelection is already the single resolution
+	// (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-004: flag > wizard > claude), so the
+	// persisted value can never disagree with what the deployment below did.
+	// Explicit record over implicit absence: doctor (REQ-IH-011) and update
+	// re-deployment (REQ-IH-010) read the key instead of inferring claude.
+	if err := template.ApplyHarness(opts.ProjectRoot, string(agentWiringSelection)); err != nil {
+		p.Warn("Failed to apply harness: %v", err)
+	}
+
+	// SPEC-INIT-SHRINK-001 (REQ-009, OD-5 settled (a)): persist the resolved
+	// deploy mode beside the harness value, on every init run including
+	// re-init — plugin when the default deploy ran, local under the opt-out
+	// or --all. Update reads this key (REQ-016) instead of inferring the
+	// mode; the update flow's restore step re-asserts it from the pre-update
+	// backup so the .moai/config Clean wipe cannot cost it.
+	if err := template.ApplyDeployMode(opts.ProjectRoot, string(deployMode)); err != nil {
+		p.Warn("Failed to apply deploy mode: %v", err)
 	}
 
 	// Scaffold .moai/evolution/ directory structure (R2: Directory Scaffolding).
@@ -902,39 +1046,100 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// alongside the slim-mode notice (informational, not a gate).
 	emitWorktreeAdvisory(cmd.OutOrStdout(), opts.ProjectRoot)
 
-	// SPEC-MCP-DEFAULT-ON-001 (default-on, REQ-A-3): turn the wizard's
-	// mcp_provision answer into the single neutral .mcp.json entry. Default is
-	// provision (true); an explicit decline is honored silently.
-	// SPEC-CODEX-WIRING-001 D3 stacks on top: --agent codex treats the
-	// provisioning as declined (the user declared their harness is Codex —
-	// the flag beats the wizard answer), --agent both forces it on.
+	// SPEC-MCP-DEFAULT-ON-001 (default-on, REQ-A-3): turn opts.MCPProvision
+	// into the single neutral .mcp.json entry. The interactive path sets it
+	// true with no wizard question (SPEC-INIT-QUIET-WIZARD-001 REQ-IQW-005);
+	// the non-interactive path leaves it false and skips the ensure-entry call
+	// (REQ-IQW-006).
+	// SPEC-CODEX-WIRING-001 D3 stacks on top, restated by
+	// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-009/010) now that the harness is
+	// itself a wizard axis: the harness selection is the more specific
+	// declaration about the MCP surface, and it wins WHEREVER IT CAME FROM —
+	// flag or wizard. codex declines provisioning (the user declared their
+	// harness is Codex, and the moai MCP server is registered for them through
+	// .codex/config.toml instead), both forces it on, claude leaves the
+	// opts.MCPProvision default intact. Flag-over-wizard precedence for the
+	// harness itself is a different rule, resolved upstream in
+	// resolveAgentWiringWithWizard rather than here.
+	//
+	// SPEC-PLUGIN-MARKETPLACE-001 REQ-010, wired through the SPEC-INIT-SHRINK-001
+	// probe (design §2.4): install the moai plugin into the tool(s) the
+	// harness selects, after the deployment is complete, and read the
+	// observable outcome from the post-install list-surface probe. Fail-open
+	// (REQ-013/014): guidance and skip lines go to stderr and never change
+	// the init result; --no-plugin and MOAI_SKIP_PLUGIN_INSTALL opt out.
+	installOutcome := runInitPluginInstallProbed(cmd.ErrOrStderr(), agentWiringSelection, opts.ProjectRoot, getBoolFlag(cmd, "no-plugin"))
+
+	// SPEC-INIT-SHRINK-001 REQ-004: on the default path, an install whose
+	// diff does not demonstrate success gets the one guidance block naming
+	// both recourses. The opt-out path is REQ-003's full local deploy and
+	// never triggers guidance; the exit status is unchanged either way.
+	if deployMode == template.DeployModePlugin && installOutcome == probeOutcomeNotDemonstrated {
+		emitShrinkInstallGuidance(cmd.ErrOrStderr())
+	}
+
+	// SPEC-MCP-DEFAULT-ON-001 (default-on, REQ-A-3): turn opts.MCPProvision
+	// into the single neutral .mcp.json entry. The interactive path sets it
+	// true with no wizard question (SPEC-INIT-QUIET-WIZARD-001 REQ-IQW-005);
+	// the non-interactive path leaves it false and skips the ensure-entry call
+	// (REQ-IQW-006).
+	// SPEC-CODEX-WIRING-001 D3 stacks on top, restated by
+	// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-009/010) now that the harness is
+	// itself a wizard axis: the harness selection is the more specific
+	// declaration about the MCP surface, and it wins WHEREVER IT CAME FROM —
+	// flag or wizard. codex declines provisioning (the user declared their
+	// harness is Codex, and the moai MCP server is registered for them through
+	// .codex/config.toml instead), both forces it on, claude leaves the
+	// opts.MCPProvision default intact. Flag-over-wizard precedence for the
+	// harness itself is a different rule, resolved upstream in
+	// resolveAgentWiringWithWizard rather than here.
+	//
+	// SPEC-INIT-SHRINK-001 REQ-005 (OD-1 settled (c), design §2.3): the call
+	// is sequenced AFTER the install step so it can read the probe outcome.
+	// On the plugin path a probe-confirmed install writes no project `moai`
+	// entry (the plugin is the sole carrier); on not-demonstrated — and on
+	// opted-out, i.e. the whole local path — the entry is written as the
+	// fallback carrier. On the init surface the deploy file set and the mode
+	// record never key on the probe (REQ-001/REQ-009).
+	// @MX:SPEC: SPEC-INIT-HARNESS-PROMPT-001
+	// @MX:SPEC: SPEC-INIT-QUIET-WIZARD-001
 	mcpDeclined := !opts.MCPProvision
-	switch resolveAgentWiring(cmd) {
-	case agentWiringCodex:
+	switch agentWiringSelection {
+	case agentWiringGPT:
 		mcpDeclined = true
 	case agentWiringBoth:
 		mcpDeclined = false
 	}
+	if deployMode == template.DeployModePlugin && installOutcome == probeOutcomeConfirmed {
+		mcpDeclined = true
+	}
 	provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), cmd.ErrOrStderr(), opts.ProjectRoot, mcpDeclined)
 
 	// SPEC-CODEX-WIRING-001 (REQ-CW-002/004/008/013): wire the Codex side for
-	// --agent codex|both — hooks.json (EventTable-derived, whitelist-gated),
+	// --llm gpt|both — hooks.json (EventTable-derived, whitelist-gated),
 	// config.toml (mcp_servers.moai + tui.status_line), trust sidecar, and
 	// the Codex trust guidance. Adjacent to the .mcp.json provisioning call
 	// so both harness sides of the init tail read as one unit.
-	wireCodexUnlessClaude(cmd, opts.ProjectRoot)
+	wireCodexUnlessClaude(cmd, agentWiringSelection, opts.ProjectRoot)
 
 	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
 	// with the `moai update` hint; a failed or in-flight check never affects
 	// the init result.
 	flushUpdateNotice(p)
 
-	// SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001 (REQ-TBS-001, Decision D4 trigger
-	// #1): capture the freshly-deployed rendered config as the snapshot baseline
-	// so the NEXT moai update has a rendered BASE for the 3-way merge. Best-effort
-	// non-blocking (REQ-TBS-014): a failure is logged to stderr and swallowed so
-	// init never fails on a snapshot write.
-	writeTemplateSnapshotBestEffort(opts.ProjectRoot, cmd.ErrOrStderr())
+	// card t1277: every post-deploy rewrite above (WritePhase1Configs patching
+	// lsp/quality/design, ApplyHarness
+	// rewriting llm.yaml) happens AFTER the deploy tracked the rendered
+	// sections, so the manifest saves the pre-answer hashes and the next
+	// init --force reads the drifted files as user edits. Re-record the
+	// section hashes here — the LAST writer wins, so one retrack at the tail
+	// covers the whole family. template_managed-only filtering keeps
+	// user-owned entries untouched (two-way invariant).
+	retrackSectionFiles(opts.ProjectRoot, cmd.ErrOrStderr())
+
+	// The template snapshot is written by opts.AfterTemplateDeploy (set before
+	// executor.Execute), not here: by this point the section files carry the
+	// wizard answers, and a snapshot of them is not a template render (t1139).
 
 	return nil
 }

@@ -2,12 +2,12 @@
 title: MCP 服务器
 weight: 12
 draft: false
-description: "梳理 MoAI-ADK 自带的 moai mcp-server（stdio 本地 MCP 服务器）的配置、21-工具目录、认证和延迟加载策略。"
+description: "梳理 MoAI-ADK 自带的 moai mcp-server（stdio 本地 MCP 服务器）的配置、工具目录、认证和延迟加载策略。"
 ---
 
 # MCP 服务器
 
-MoAI-ADK 在 Claude Code 的 MCP 生态之上，又叠加了一个**自有的 MCP 服务器**。一个二进制文件（`moai mcp-server`）以 stdio 本地服务器的方式运行，向 Claude Code 运行时暴露 MoAI-ADK 独有的 21 个工具——SPEC 生命周期审计、验证快照、目标引擎、跨模型审计、codex·GLM 委托等。
+MoAI-ADK 在 Claude Code 的 MCP 生态之上，又叠加了一个**自有的 MCP 服务器**。一个二进制文件（`moai mcp-server`）以 stdio 本地服务器的方式运行，向 Claude Code 运行时暴露 MoAI-ADK 独有的工具——SPEC 生命周期审计、验证快照、目标引擎、跨模型审计、codex·GLM 委托等。
 
 {{< callout type="info" title="两份 MCP 文档的关系" >}}
 [**Claude Code 通用 MCP**](/zh/claude-code/extensibility/mcp) 讲的是平台自身的 MCP（Model Context Protocol）集成——USB 端口比喻、服务器注册、传输类型、`/mcp` 命令、OAuth 认证、延迟加载原理。
@@ -29,14 +29,14 @@ Claude Code 的 MCP 生态与 MoAI 的自有 MCP 服务器是各自独立的服�
 flowchart TD
     CC["Claude Code 运行时<br/>(工具权限 · 延迟加载 · 审批)"]
     CMCP["通用 MCP 服务器<br/>(context7, chrome-devtools, …)"]
-    MMCP["moai mcp-server<br/>(MoAI 自有 · 21 工具)"]
+    MMCP["moai mcp-server<br/>(MoAI 自有工具)"]
     CC --> CMCP
     CC --> MMCP
     MMCP --> TOOLS["SPEC lifecycle · 验证 · 目标 · 审计 · codex/GLM 委托"]
     CMCP --> EXT["外部工具 (库文档 · 浏览器自动化 · …)"]
 ```
 
-关键在于，"MoAI 不配置 MCP"是一个**半真半假的说法**。不默认配置外部 MCP 服务器（context7、playwright 等）是对的。但 MoAI 自有的那个服务器在 `moai init` 时就会以 default-on 装上。这个服务器正是 MoAI 的 21-工具目录触达 Claude Code 的通道。
+关键在于，"MoAI 不配置 MCP"是一个**半真半假的说法**。不默认配置外部 MCP 服务器（context7、playwright 等）是对的。但 MoAI 自有的那个服务器在 `moai init` 时就会以 default-on 装上。这个服务器正是 MoAI 的工具目录触达 Claude Code 的通道。
 
 ## .mcp.json 配置
 
@@ -60,9 +60,9 @@ flowchart TD
 
 `staggeredStartup` 是 Claude Code 运行时字段，用来调节服务器顺序启动。当服务器有多个时，它能防止同时启动的竞争（race）。
 
-### 四个 documented-but-disabled 条目
+### 五个 documented-but-disabled 条目
 
-部署默认值只有 `moai` 一个服务器处于活跃状态。四个外部服务器已写入文档但处于禁用状态，用 `moai mcp add <名称>` 命令来开启。
+部署默认值只有 `moai` 一个服务器处于活跃状态。五个外部服务器已写入文档但处于禁用状态，用 `moai mcp add <名称>` 命令来开启。
 
 | 服务器 | 用途 | 激活方式 |
 |------|------|--------|
@@ -70,6 +70,9 @@ flowchart TD
 | `chrome-devtools` | 无头浏览器自动化 | `moai mcp add chrome-devtools` |
 | `playwright` | 浏览器自动化 + E2E 测试 | `moai mcp add playwright` |
 | `ast-grep` | 结构化代码搜索和重构 | `moai mcp add ast-grep` |
+| `aside` | 在已登录浏览器中工作的可选浏览器代理（exec, repl） | `moai mcp add aside --command aside --args mcp --scope user` |
+
+`aside` 是可选项。它不在默认配置里，任何工作流也不以它为前提。要为所有项目注册，运行 `moai mcp add aside --command aside --args mcp --scope user`；只想注册到当前项目，就去掉 `--scope user`。`aside mcp` 提供两个工具：`exec` 在已登录的网站上运行浏览器代理，`repl` 对已打开的页面执行 Playwright 风格的 JavaScript。由于它在操作者自己已登录的浏览器里工作，MoAI 默认只读使用，且不使用 `--permission full-access`。`aside repl` 没有权限标志，所以 REPL 的只读使用是一条操作规则，而不是工具本身强制执行的限制。任何会改变状态的步骤都需要操作者明确确认，而这一确认只由 MoAI 编排器（绝不是子智能体）发起并执行。MoAI 不会安装 Aside；如需添加 Aside 自带的浏览器技能，由操作者自己运行 `aside skills install`。在 E2E 工作流中，只有明确传入 `/moai e2e --tool aside` 时才会用到 Aside（`CI=true` 时不可用），Aside 不存在时，工作流会不作任何提示地继续使用平台默认工具链。
 
 ### 中立性契约
 
@@ -95,7 +98,7 @@ flowchart TD
 
 ## `project_root` 输入——由调用方指名自己的树
 
-六个工具接受可选的字符串 `project_root`：`spec_progress`、`spec_audit`、`spec_drift`、`codex_audit`、`glm_audit`、`audit_multi`。它指明这次调用应当作用的树，要传的值就是调用方自己的 `git rev-parse --show-toplevel`。
+22 个工具接受可选的字符串 `project_root`：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_review`、`codex_task`、`claude_audit`、`glm_audit`、`glm_review`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`。它指明这次调用应当作用的树，要传的值就是调用方自己的 `git rev-parse --show-toplevel`。不过在 `factory_next`、`factory_stage`、`factory_complete`、`codex_task` 上它不是可选而是必填——不传自己的 toplevel 调用就会被拒绝，也不会默认到任何树。
 
 在 worktree 里工作的智能体必须传它。这不是图方便的功能。服务器没有办法自行推出答案：它是一个长寿的子进程，工作目录跟不上 worktree 的切换，而它退而依赖的环境变量指向的是**项目**根目录——也就是 primary 检出——即便会话正在 worktree 中工作也是如此。在 worktree 里省掉它，调用就会作用到 primary 检出上，于是只存在于卡片分支上的 SPEC 不会进入审计者读取的目录。它也不会被报告为缺失。它只是不存在。
 
@@ -105,17 +108,20 @@ flowchart TD
 |------|--------|------|
 | worktree 中的会话 | `project_root: <git rev-parse --show-toplevel>` | 调用作用于该树 |
 | primary 检出中的会话 | 不传 | 与以往完全一致地解析 |
+| 不用 git 跟踪 `.moai` 的仓库的链接 worktree(worktree 自身没有 `.moai`) | `project_root: <git rev-parse --show-toplevel>` | 若 git 将其登记为某个带 `.moai` 的 primary 检出的 worktree，则予以接受，调用作用于该 worktree |
 | 并非 MoAI 项目根的路径 | — | 调用被**拒绝**，错误信息中写明该路径 |
 
 拒绝是刻意的设计，而不是毛边。若悄悄回退到默认值，就会把打错自己 worktree 路径的调用方送回去审计 primary 检出，还告诉它成功了——正是这个参数要防止的那种失败。
+
+如果仓库把 `.moai` 放在 git 之外，链接 worktree 里就没有 `.moai`，但仍会被接受。条件有两个：路径必须是 `git worktree list` 中登记的 worktree 的顶层目录，且仓库的 primary 检出中有 `.moai`。子目录、未登记或可清理(prunable)的 worktree、独立 git 目录这类结构不明确的布局，以及无法使用 git 的环境，都会被拒绝。这类 worktree 若没有自己的 workflow 配置，显式审计关卡(`workflow.audit.gates`)从 primary 检出读取；无法确定 primary 时，关卡按 `required` 处理，也就是说缺少判定时结果是失败而不是通过。SPEC 目录(`spec_progress`、`spec_drift`、`spec_audit`)基于 worktree 与 primary 检出两边 `.moai/specs` 的并集作答，每条记录和发现项都标明来源(`worktree` 或 `primary`)；同一 SPEC ID 两边都有时，只按 worktree 那份计一次，并在响应中指出被遮蔽的 primary 副本。审计回执、审计者启动标记与拒绝记录、`audit_multi` 收敛判定、`verify_snapshot` 快照等状态保存在 primary 检出的 `.moai/state` 中，并附上 worktree 自己的树标识，因此多棵树共用一个存储也不会互相覆盖记录；实际读取了哪些来源，由 `_root.worktree_warning` 和 `_root.sources` 说明。无法确定 primary 检出时，状态写入不会改写到别处，而是直接报错(尽力而为的写入会被跳过，并以通知说明)；目录只读取 worktree，并在 `_root` 中写明未读取 primary 的原因。此时审计关卡按 `required` 处理，所以即使仓库从未启用该关卡，从这个 worktree 发起的阶段入口派生也会被拒绝；要解除，可让 primary 变得可识别，或在 worktree 中放置它自己的 `.moai/config/sections/workflow.yaml`。
 
 在 `audit_multi` 中，根会到达 fan-out 的**两个**后端：codex 把它作为执行审查的工作目录，GLM 路径则用它从那棵树上取出要发往 z.ai 的 diff。传这个值，才能让两份第二意见针对同一棵树——不传，它们可能看的是不同的树。
 
 版本提醒：已经在运行的服务器，即使替换了其下的二进制，在重启前仍保持旧行为——子进程不会自行重新加载。调用方可以检查的是 `ListTools` 的响应中是否出现 `project_root`。
 
-## 21-工具目录
+## 工具目录
 
-`moai mcp-server` 暴露的 21 个工具分为六组。调用时都带 `mcp__moai__` 前缀。
+下面按类别整理 `moai mcp-server` 暴露的工具。调用时都带 `mcp__moai__` 前缀。本页不写工具数量。工具数量与列表以已安装二进制通过 `tools/list` 返回的列表为准，整理该列表的文档是 `.claude/rules/moai/core/moai-mcp-tools.md`；二者与本页不一致时，以它们为准。
 
 ### SPEC 生命周期
 
@@ -151,34 +157,96 @@ manager-develop 在 run-phase 自验证（接缝 §E）中使用，sync-auditor 
 | 工具 | 目的 | 消费智能体 | CLI 等价物 |
 |------|------|---------------|------------|
 | `mcp__moai__audit_multi` | 多审计者收敛（claude + codex + glm） | plan-auditor, sync-auditor | —（MCP 专用收敛入口） |
+| `mcp__moai__claude_audit` | Claude 订阅后端单独审计（`claude -p`，只读隔离，结构化输出） | plan-auditor, sync-auditor；在 GPT/GLM 会话中由 `audit_multi` 自动调用 | — |
 | `mcp__moai__codex_audit` | codex 后端单一审计（原生/对抗式） | plan-auditor, sync-auditor | — |
 | `mcp__moai__glm_audit` | GLM (z.ai) 后端单一审计 | plan-auditor, sync-auditor | — |
 | `mcp__moai__audit_cache` | plan-audit PASS 缓存（compute_hash / lookup / store，进程间共享） | sync-auditor | `moai audit cache` |
 
 单一后端审计模式由项目的 `audit_model` 设置决定：`codex+glm`（默认值，通过 `audit_multi` 收敛）| `glm` | `codex` | `none`（Claude 独自，无后端调用）。所有后端都是 fail-open——不可用的后端返回 `inconclusive`，而非 Go error。
 
+### 按需自我评审（仅供参考）
+
+| 工具 | 目的 | 消费智能体 | CLI 等价物 |
+|------|------|---------------|------------|
+| `mcp__moai__codex_review` | 让 codex 评审调用方自己的改动——`scope: card`（卡片 diff）或 `scope: uncommitted` | 主会话，以及在自己的 `tools:` 列表中列出该工具的智能体 | `moai verify codex-review`（仅 codex 一侧） |
+| `mcp__moai__glm_review` | 把调用方自己的改动整理成 diff，请 GLM (z.ai) 评审 | 主会话，以及在自己的 `tools:` 列表中列出该工具的智能体 | — |
+
+这两个工具都不是审计工具。结果仅供参考，不具约束力：`advisory` 恒为 true，既不生成也不读取审计回执，也不会被 `workflow.audit.gates.*` 的 required 转换改写（评审方缺席时得到的是 `inconclusive`，而不是 `fail`）。审计模型的固定设置同样不适用，所以 `model` 要么是调用方传入的值，要么是后端的默认值。`scope` 必填，没有默认值。`card` 通过与回合结束评审门相同的范围解析器确定卡片 diff，每次调用都会重新计算合并基线；不是卡片工作树的树会直接返回 `inconclusive`，不会评审任何内容。`uncommitted` 评审指定树中尚未提交的改动；在 primary 检出中，对象是整个共享工作树，且不支持按路径限定。每个结果都带有 `scope`、`base`（`card` 时为合并基线的 SHA，其余情况为空字符串）、`backend` 和 `tree`（实际评审的规范化根目录）。
+
+GLM 没有文件系统，所以请求中携带的是排除了运行时管理路径的 diff。未被跟踪的文件无法放进 diff，会列在 `excluded_untracked` 中；diff 在大小上限处被截断时会置位 `truncated`；diff 为空时两个后端都不会被调用。调用是同步的，在评审预算之内结束，也不发送进度通知。在这些工具出现之前启动的服务器进程看不到它们，请重新连接服务器。在此期间，codex 一侧可以改用 `moai verify codex-review --project-root <树>`，GLM 一侧没有替代办法。
+
 ### codex 委托（后台任务）
 
 | 工具 | 目的 | 消费智能体 | CLI 等价物 |
 |------|------|---------------|------------|
-| `mcp__moai__codex_task` | 将编码/调查任务委托给 codex（同步或后台） | super-advisor | `moai codex task` |
+| `mcp__moai__codex_task` | 将编码/调查任务委托给 codex（同步或后台） | manager-develop, super-advisor | `moai codex task` |
 | `mcp__moai__codex_setup` | 探测本地 codex 安装（LookPath + 版本 + 认证） | super-advisor | `moai codex setup` |
-| `mcp__moai__codex_job_status` | 读取后台 codex 任务的状态/记录 | super-advisor | `moai codex job status` |
-| `mcp__moai__codex_job_result` | 读取后台 codex 任务的输出 | super-advisor | `moai codex job result` |
-| `mcp__moai__codex_job_cancel` | 中断正在运行的后台 codex 任务 | super-advisor | `moai codex job cancel` |
+| `mcp__moai__codex_job_status` | 读取后台 codex 任务的状态/记录 | manager-develop, super-advisor | `moai codex job status` |
+| `mcp__moai__codex_job_result` | 读取后台 codex 任务的输出 | manager-develop, super-advisor | `moai codex job result` |
+| `mcp__moai__codex_job_cancel` | 中断正在运行的后台 codex 任务 | manager-develop, super-advisor | `moai codex job cancel` |
 
-codex 委托工具族连线到 super-advisor——因为按需高推理咨询智能体是后台跨模型委托的自然消费者。用 `codex_task` 委托任务，用 `codex_job_status` / `codex_job_result` 轮询完成情况，用 `codex_job_cancel` 中断。codex 是可选的（optional）——缺失或不可用时返回 fail-open 的 `inconclusive`，而非 hard error。
+codex 委托工具族连线到 super-advisor 和 manager-develop。按需高推理咨询智能体 super-advisor 是后台跨模型委托的自然消费者：用 `codex_task` 委托任务，用 `codex_job_status` / `codex_job_result` 轮询完成情况，用 `codex_job_cancel` 中断。manager-develop 持有除 `codex_setup` 之外的其余工具，仅在 run 工作流的 `External Model Delegation` 一节所允许的范围内，才用 `codex_task` 委托范围有限的机械性子任务；被委托的 codex 轮次保持只读。codex 是可选的（optional）——缺失或不可用时返回 fail-open 的 `inconclusive`，而非 hard error。
+
+### codex 只读角色
+
+| 工具 | 用途 | 使用方 | CLI 等价 |
+|------|------|--------|----------|
+| `mcp__moai__codex_role_audit` | 以顶层 `codex exec` 进程启动一个只读角色（只读沙箱，禁用全部 MCP 服务器），立即返回任务 ID | Codex 会话 | — |
+| `mcp__moai__codex_role_audit_status` | 读取角色任务的状态与时间戳 | Codex 会话 | — |
+| `mcp__moai__codex_role_audit_result` | 读取已结束角色任务的退出码、返回文本或判定书路径，以及启动记录路径 | Codex 会话 | — |
+
+Codex 会话通过这组工具而不是 `spawn_agent` 启动 `plan-auditor`、`sync-auditor` 等只读角色。Codex 会话的 shell 中嵌套的 `codex exec` 无法访问模型，因此没有 CLI 等价物。任务存在于服务器进程中，随进程结束而结束。
 
 ### GLM 委托（后台任务）
 
 | 工具 | 目的 | 消费智能体 | CLI 等价物 |
 |------|------|---------------|------------|
-| `mcp__moai__glm_task` | 把任务（任意提示词）委托给 GLM（z.ai）（同步或后台） | super-advisor | —（无对应 CLI） |
-| `mcp__moai__glm_job_status` | 读取后台 GLM 任务的状态/记录 | super-advisor | — |
-| `mcp__moai__glm_job_result` | 读取后台 GLM 任务的输出 | super-advisor | — |
-| `mcp__moai__glm_job_cancel` | 中断正在运行的后台 GLM 任务 | super-advisor | — |
+| `mcp__moai__glm_task` | 把任务（任意提示词）委托给 GLM（z.ai）（同步或后台） | manager-develop, super-advisor | —（无对应 CLI） |
+| `mcp__moai__glm_job_status` | 读取后台 GLM 任务的状态/记录 | manager-develop, super-advisor | — |
+| `mcp__moai__glm_job_result` | 读取后台 GLM 任务的输出 | manager-develop, super-advisor | — |
+| `mcp__moai__glm_job_cancel` | 中断正在运行的后台 GLM 任务 | manager-develop, super-advisor | — |
 
-GLM 委托工具族与 codex 委托同形，也连线到 super-advisor。`glm_task` 在 `background` 为假时直接返回完成的文本，为真时立即返回任务 ID（此后用 `glm_job_status`·`glm_job_result`·`glm_job_cancel` 观察·中断）。响应 token 上限可用 `max_tokens` 覆盖，默认上限值定在服务器一侧。后台任务活在服务器进程里，进程结束它也一并结束。GLM 同样是可选的——密钥缺失或连不上 z.ai 时，只返回结构化的 fail-open 结果，而不是工具错误。
+GLM 委托工具族与 codex 委托同形，连线到 super-advisor 和 manager-develop。manager-develop 持有整个工具族，仅在 run 工作流的 `External Model Delegation` 一节所允许的范围内，才用 `glm_task` 委托范围有限的机械性子任务；GLM 任务会把提示词发送给外部提供方。`glm_task` 在 `background` 为假时直接返回完成的文本，为真时立即返回任务 ID（此后用 `glm_job_status`·`glm_job_result`·`glm_job_cancel` 观察·中断）。响应 token 上限可用 `max_tokens` 覆盖，默认上限值定在服务器一侧。后台任务活在服务器进程里，进程结束它也一并结束。GLM 同样是可选的——密钥缺失或连不上 z.ai 时，只返回结构化的 fail-open 结果，而不是工具错误。
+
+### 代码查询
+
+| 工具 | 用途 | 使用方 | CLI 等价 |
+|------|------|--------|----------|
+| `mcp__moai__graph_file_api` | 列出单个源文件的导出声明及其签名（不含函数体） | 所有代理 | — |
+| `mcp__moai__graph_find_code` | 在由代码生成的边层中查找符号的调用点与调用者（每条边附带解析置信度） | 所有代理 | — |
+| `mcp__moai__graph_trace_calls` | 从某个符号出发，沿调用者与被调用者方向追踪调用边，直到指定深度 | 所有代理 | — |
+| `mcp__moai__graph_shortest_path` | 两个符号之间的最短调用路径（最多 8 跳，每跳附带行号与置信度） | 所有代理 | — |
+
+每个回答都注明计算所依据的树根与提交。边层即 `moai graph build` 生成的 `edges.jsonl`。
+
+### 判断（受门控，仅供展示）
+
+| 工具 | 用途 | 使用方 | CLI 等价 |
+|------|------|--------|----------|
+| `mcp__moai__jev_ask` | 针对给定的一个状态提出类型化问题，得到带概率的回答 | 发布默认值（`workflow.jev.enabled: false`）下不可用 | —（仅 MCP） |
+
+该工具始终注册，但门控关闭时既不构造请求，也不发起网络调用。回答是供人阅读的参考信号，其本身不会成为完成判定、合并批准或队列变更。即使被自动使用，也只作为信号 — 例如 `moai todo --auto` 查看待办卡片的顺序，或只能确认或移交给人的可选启动交叉验证。
+
+### 工厂消息
+
+| 工具 | 用途 | 使用方 | CLI 等价 |
+|------|------|--------|----------|
+| `mcp__moai__factory_msg_send` | 向逻辑泳道当前端点写入一个幂等信封 | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
+| `mcp__moai__factory_msg_list` | 为自身端点认领最多 16 条元数据记录（创建或续期认领租约，不含正文） | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
+| `mcp__moai__factory_msg_body` | 读取一条已认领消息的正文（正文作为不可信的对等数据返回） | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
+| `mcp__moai__factory_msg_receipt` | 记录认领处置后确认该消息 | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
+| `mcp__moai__factory_msg_status` | 在不认领消息的情况下读取代理计数与泳道运行状态 | 工厂主导或泳道 | —（仅 MCP） |
+
+### 会话消息（Claude ↔ Codex）
+
+| 工具 | 用途 | 使用方 | CLI 等价 |
+|------|------|--------|----------|
+| `mcp__moai__session_msg_register` | 将本会话（类型：claude 或 codex，以及名称）注册到本地消息代理；类型与名称相同时返回相同 ID | 所有 Claude 或 Codex 会话 | — |
+| `mcp__moai__session_msg_list` | 列出已注册的代理（ID、名称、类型、在线状态、待处理数） | 所有 Claude 或 Codex 会话 | — |
+| `mcp__moai__session_msg_send` | 向另一个已注册代理的信箱发送简短、自包含的事实消息 | 所有 Claude 或 Codex 会话 | — |
+| `mcp__moai__session_msg_poll` | 领取自身信箱中的待处理消息（至少投递一次），并确认已处理的 ID | 所有 Claude 或 Codex 会话 | — |
+
+Codex 会话没有原生的对等消息运行时，因此该代理是它唯一的通道；Claude 会话之间推荐使用原生的 `SendMessage`。投递采用轮询方式：发送只是一条记录，并不保证送达。
 
 ### MCP-over-CLI 规则
 
@@ -194,7 +262,7 @@ CLI 仅在 MCP 工具不在 `tools:` 列表中，或在主会话中 CLI 形态�
 
 ### GLM (z.ai)
 
-在 GLM 会话（`moai glm` 或 `moai cg` 的 GLM 面板）中运行时，网络搜索和网络查询会路由到 z.ai MCP 工具，而非内置的 `WebSearch` / `WebFetch`。认证从 `~/.moai/.env.glm` 读取。
+在 GLM 会话（`moai glm`）中运行时，网络搜索和网络查询会路由到 z.ai MCP 工具，而非内置的 `WebSearch` / `WebFetch`。认证从 `~/.moai/.env.glm` 读取。
 
 z.ai MCP 服务器（`zai-mcp-server`、`web_search_prime`、`web_reader`）默认禁用，在 GLM 会话中用 `moai glm tools enable` 开启。GLM 会话中的路由规则请参考[多 LLM 后端](/zh/multi-llm/)。
 

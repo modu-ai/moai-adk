@@ -23,9 +23,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/execerr"
+	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
 
@@ -39,18 +42,34 @@ import (
 // check-ref-format exit evidence.
 const SessionWorktreeBranchPrefix = "WT-"
 
-// sessionWorktreeSubdir is the worktree landing directory relative to the
-// primary checkout's project root, matching the Claude-native L1 convention
-// (`.claude/worktrees/<name>/`) from worktree-integration.md § Terminology
-// Glossary.
-const sessionWorktreeSubdir = ".claude" + string(filepath.Separator) + "worktrees"
+// sessionWorktreeSubdir is MoAI's harness-neutral worktree landing directory
+// relative to the primary checkout's project root.
+const sessionWorktreeSubdir = ".moai" + string(filepath.Separator) + "worktrees"
+
+// Claude's short-name -w flag still resolves inside this native directory.
+const claudeNativeWorktreeSubdir = ".claude" + string(filepath.Separator) + "worktrees"
 
 // Function-variable seams for test injection. Each has a Real counterpart
 // below; tests swap these via swapSessionWorktreeSeams and restore on cleanup.
 var (
-	// sessionWorktreeGitWorktreeAdd runs `git worktree add -b <branch> <dest>`
-	// and returns the absolute worktree path on success.
+	// sessionWorktreeGitWorktreeAdd runs `git worktree add -b <branch> <dest>
+	// [<base>]` and returns the absolute worktree path on success. The base is
+	// the configured git_strategy.worktree_base_branch value
+	// (SPEC-WORKTREE-BASEREF-001 REQ-WBR-010); an empty base reproduces the
+	// pre-SPEC invocation byte-identically.
 	sessionWorktreeGitWorktreeAdd = gitWorktreeAddReal
+
+	// sessionWorktreeBaseResolvable decides whether a configured base value is
+	// usable. It delegates AT CALL TIME to hook.WorktreeBaseBranchResolvable,
+	// which is the SOLE resolvability authority for both consumers of this
+	// setting (REQ-WBR-011). This package deliberately carries no second rule:
+	// a `git rev-parse --verify` or local-branch check of its own would be a
+	// requirement violation even where its runtime behaviour agrees today,
+	// because the two consumers must not be able to drift apart on whether a
+	// value is usable.
+	sessionWorktreeBaseResolvable = func(branch string) bool {
+		return hook.WorktreeBaseBranchResolvable(branch)
+	}
 
 	// sessionWorktreeInGitWorktree reports whether cwd is already inside a git
 	// worktree (git-dir != git-common-dir) — REQ-SW-012.
@@ -116,6 +135,18 @@ var (
 	// --porcelain` and returns its stdout (M4 dirty guard, REQ-SW-010; shared
 	// with the M8 PR-merge path, REQ-SW-024).
 	sessionWorktreeGitStatusPorcelain = gitStatusPorcelainReal
+
+	// sessionWorktreeGitHasUnpushed reports whether HEAD in the worktree at
+	// <wtPath> carries commits the remotes do not have (card t673). Shared by
+	// the M4 session-exit path and the M8 PR-merge path, like the dirty guard
+	// above: one predicate, two call sites, one answer.
+	sessionWorktreeGitHasUnpushed = gitHasUnpushedReal
+
+	// sessionWorktreeBranchLanded reports whether the worktree's branch has
+	// landed on the remote integration branch (SPEC-WEB-SETTINGS-SAVE-001
+	// scope ③ — session-exit disposal only; the M8 PR-merge path is out of
+	// scope by design).
+	sessionWorktreeBranchLanded = gitBranchLandedReal
 )
 
 // SessionExitCleanupNoticePrefix is the literal prefix of the session-exit
@@ -189,7 +220,24 @@ func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
 	// tree, so the parent is correct.
 	projectRoot := filepath.Dir(commonDir)
 	destDir := filepath.Join(projectRoot, sessionWorktreeSubdir, branch)
-	wtPath, err := sessionWorktreeGitWorktreeAdd(destDir, branch)
+	if _, statErr := os.Lstat(destDir); statErr == nil {
+		return "", fmt.Errorf("worktree %q already exists at %s", branch, destDir)
+	} else if !os.IsNotExist(statErr) {
+		return "", fmt.Errorf("inspect worktree destination %s: %w", destDir, statErr)
+	}
+
+	// SPEC-WORKTREE-BASEREF-001 REQ-WBR-010/011: cut the new tree from the
+	// configured base branch. With no operand `git worktree add` branches from
+	// the invoking tree's HEAD, which is how card worktrees ended up on the
+	// wrong base. Empty or unresolvable falls back to that no-operand form
+	// (plan §A D4): a tree on the wrong base is recoverable, a tree that failed
+	// to materialize blocks the lane.
+	base := config.LoadWorktreeBaseBranch(projectRoot)
+	if base != "" && !sessionWorktreeBaseResolvable(base) {
+		base = ""
+	}
+
+	wtPath, err := sessionWorktreeGitWorktreeAdd(destDir, branch, base)
 	if err != nil {
 		return "", fmt.Errorf("git worktree add: %w", err)
 	}
@@ -207,15 +255,36 @@ func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
 	// the M2 direct call above. A helper result is best-effort and never
 	// aborts materialization (the worktree is already on disk and usable).
 	_ = applyWorktreeGitConfig(wtPath, out)
+
+	// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-005: seed .codex/hooks.json (MoAI-owned
+	// entries only) so a Codex session inside the new tree loads the moai
+	// hooks. Fail-open by construction — seeding is additive, never a gate
+	// (REQ-HN-007).
+	sessionWorktreeSeedCodexHooks(wtPath, out)
 	return wtPath, nil
 }
 
 // --- real implementations (overridable in tests via the seams above) ---
 
-// gitWorktreeAddReal runs `git worktree add -b <branch> <dest>` and returns
-// the absolute destination path on success.
-func gitWorktreeAddReal(destDir, branch string) (string, error) {
-	cmd := exec.Command("git", "worktree", "add", "-b", branch, destDir)
+// gitWorktreeAddArgs builds the `git worktree add` argv, appending the base as
+// the FINAL operand only when it is non-empty.
+//
+// The empty-base form must stay byte-identical to the pre-SPEC invocation
+// (AC-WBR-008): a trailing empty-string operand is not the same command, so the
+// append is conditional rather than unconditional.
+func gitWorktreeAddArgs(destDir, branch, base string) []string {
+	args := []string{"git", "worktree", "add", "-b", branch, destDir}
+	if base != "" {
+		args = append(args, base)
+	}
+	return args
+}
+
+// gitWorktreeAddReal runs `git worktree add -b <branch> <dest> [<base>]` and
+// returns the absolute destination path on success.
+func gitWorktreeAddReal(destDir, branch, base string) (string, error) {
+	argv := gitWorktreeAddArgs(destDir, branch, base)
+	cmd := exec.Command(argv[0], argv[1:]...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
 		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
@@ -611,6 +680,39 @@ func cleanupSessionWorktree(cfg *config.Config, wtPath string, cleanExit bool, o
 		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (uncommitted changes): worktree %s preserved (dispose manually via 'moai worktree remove' or 'git worktree remove')\n", wtPath)
 		return
 	}
+	// Card t673: the dirty guard reads uncommitted state only, so a clean
+	// tree holding COMMITTED but UNPUSHED work read as removable — exactly
+	// the state the "an unpushed branch's worktree is the only copy"
+	// discipline protects. Fail-open on the check error, like the dirty
+	// guard above: an unreadable answer preserves.
+	unpushed, uerr := sessionWorktreeGitHasUnpushed(wtPath)
+	if uerr != nil {
+		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (unpushed-check failed: %v): worktree %s preserved\n", uerr, wtPath)
+		return
+	}
+	if unpushed {
+		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (unpushed commits): worktree %s preserved (dispose manually via 'moai worktree remove' after the branch is pushed)\n", wtPath)
+		return
+	}
+	// SPEC-WEB-SETTINGS-SAVE-001 scope ③ (REQ-WSS-301/302/306): pushed is not
+	// landed. A clean tree on a branch the remotes hold is still the only copy
+	// of work until the remote INTEGRATION branch carries it, so the landing
+	// confirmation runs after the dirty and unpushed guards and before any
+	// removal — merge-first order untouched (REQ-WSS-303: sessionExitAutoMerge
+	// has already run by the time this function is reached). Fail-open on an
+	// unreadable answer, like the two guards above. A branch merged into the
+	// LOCAL develop but not yet pushed to origin/develop also preserves here —
+	// the auto-merge-just-ran state preserving is the designed behavior, not
+	// a defect (decision-index Q4, AGENTS.md §3).
+	landed, lerr := sessionWorktreeBranchLanded(wtPath)
+	if lerr != nil {
+		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (landing-check failed: %v): worktree %s preserved\n", lerr, wtPath)
+		return
+	}
+	if !landed {
+		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (remote merge landing unconfirmed): worktree %s preserved (dispose manually via 'moai worktree remove' once %s carries the merge; a locally merged but not-yet-pushed develop lands here too — by design)\n", wtPath, sessionWorktreeIntegrationRef)
+		return
+	}
 	// Clean worktree + clean exit -> remove. A removal failure is non-blocking
 	// (REQ-SW-004 fail-open spirit): the worktree is left on disk and a notice
 	// names the failure.
@@ -642,6 +744,47 @@ func worktreeIsDirty(wtPath string) (bool, error) {
 	return strings.TrimSpace(porcelain) != "", nil
 }
 
+// gitHasUnpushedReal is the committed-work counterpart to worktreeIsDirty
+// (card t673): it reports whether HEAD in the worktree at wtPath carries
+// commits the remotes do not have. `git status --porcelain` cannot see
+// committed work, so a clean tree on an unpushed branch is exactly the state
+// the auto-cleanup paths must not treat as disposable.
+//
+// Resolution order:
+//   - Detached HEAD → true. The committed tip has NO branch name to survive
+//     removal; after `git worktree remove` it is reachable only through
+//     reflogs until GC. Fail closed.
+//   - Branch with an upstream → unpushed when ahead of it
+//     (`rev-list --count @{u}..HEAD` > 0).
+//   - Branch without an upstream → unpushed when any commit is unreachable
+//     from ANY remote (`rev-list --count HEAD --not --remotes` > 0). A repo
+//     with no remotes counts every commit — fail closed: auto-cleanup has no
+//     basis for judging local-only work disposable.
+//
+// An error reading any of this is returned so the caller can fail-open
+// (preserve), matching the dirty guard's contract.
+func gitHasUnpushedReal(wtPath string) (bool, error) {
+	branchOut, err := exec.Command("git", "-C", wtPath, "rev-parse", "--abbrev-ref", "HEAD").Output()
+	if err != nil {
+		return false, err
+	}
+	if branch := strings.TrimSpace(string(branchOut)); branch == "" || branch == "HEAD" {
+		return true, nil // detached HEAD: no branch survives removal
+	}
+	if err := exec.Command("git", "-C", wtPath, "rev-parse", "--verify", "--quiet", "@{u}").Run(); err == nil {
+		out, err := exec.Command("git", "-C", wtPath, "rev-list", "--count", "@{u}..HEAD").Output()
+		if err != nil {
+			return false, err
+		}
+		return strings.TrimSpace(string(out)) != "0", nil
+	}
+	out, err := exec.Command("git", "-C", wtPath, "rev-list", "--count", "HEAD", "--not", "--remotes").Output()
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(string(out)) != "0", nil
+}
+
 // gitWorktreeRemoveReal runs `git worktree remove <wtPath>`.
 func gitWorktreeRemoveReal(wtPath string) error {
 	cmd := exec.Command("git", "worktree", "remove", wtPath)
@@ -649,6 +792,73 @@ func gitWorktreeRemoveReal(wtPath string) error {
 		return fmt.Errorf("%s (%s)", strings.TrimSpace(string(out)), execerr.StatusDetail(err))
 	}
 	return nil
+}
+
+// sessionWorktreeIntegrationRef is the remote-tracking integration branch the
+// landing predicate reads (decision-index Q1 DECIDED — fixed to
+// refs/remotes/origin/develop). A repository whose integration branch is
+// named differently has no ref to confirm against and fails open to
+// preserve; the misjudgment direction of a stale ref is also always
+// "not landed" → preserve (landing is monotonic).
+const sessionWorktreeIntegrationRef = "refs/remotes/origin/develop"
+
+// gitBranchLandedReal reports whether the worktree's branch has landed on
+// the remote integration branch, per the decided fetch-less predicate
+// (decision-index Q1):
+//
+//	 (i) the branch tip is an ancestor of the remote-tracking integration
+//	     ref (`git merge-base --is-ancestor`), or
+//	(ii) every patch the branch carries already exists upstream — `git
+//	     cherry` answers with no "+" line (patch-id equivalence), which
+//	     covers squash merges where no commit ancestry survives (the
+//	     SPEC-WORKTREE-SQUASH-MERGE-001 lesson: reachability alone cannot
+//	     see a squash).
+//
+// No network runs: both checks read the remote-tracking refs the repository
+// already holds, so the shared exit path stays cheap (REQ-WSS-304). Any
+// anomaly — a check error, a missing integration ref, a detached HEAD with
+// no branch to confirm — returns an error so the caller fails open to
+// preserve (REQ-WSS-302), matching the dirty and unpushed guards' contract.
+func gitBranchLandedReal(wtPath string) (bool, error) {
+	if err := exec.Command("git", "-C", wtPath, "rev-parse", "--verify", "--quiet",
+		sessionWorktreeIntegrationRef).Run(); err != nil {
+		return false, fmt.Errorf("remote-tracking integration ref %s not found", sessionWorktreeIntegrationRef)
+	}
+	branchOut, err := exec.Command("git", "-C", wtPath, "rev-parse", "--abbrev-ref", "HEAD").Output()
+	if err != nil {
+		return false, err
+	}
+	if branch := strings.TrimSpace(string(branchOut)); branch == "" || branch == "HEAD" {
+		return false, fmt.Errorf("detached HEAD has no branch to confirm a landing for")
+	}
+	// Arm (i): ancestry. Exit code 1 means "not an ancestor" — a verdict,
+	// not a failure; only other exits are anomalies.
+	ancestor := exec.Command("git", "-C", wtPath, "merge-base", "--is-ancestor",
+		"HEAD", sessionWorktreeIntegrationRef)
+	if err := ancestor.Run(); err == nil {
+		return true, nil
+	} else if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 1 {
+		return false, err
+	}
+	// Arm (ii): patch-id equivalence. `git cherry` lists the head-side
+	// commits, prefixing each with "-" when its patch matches an upstream
+	// commit and "+" when it does not — so empty output only happens when the
+	// head side is empty (the ancestry case above). Landed = every listed
+	// patch is equivalent: no "+" line. Measured against the squash fixture
+	// in session_worktree_landing_test.go: the naive "empty output" reading
+	// never fires on a squash (the equivalent commit still prints as
+	// "- <sha>").
+	cherry, err := exec.Command("git", "-C", wtPath, "cherry",
+		sessionWorktreeIntegrationRef, "HEAD").Output()
+	if err != nil {
+		return false, err
+	}
+	for _, ln := range strings.Split(string(cherry), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(ln), "+") {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // gitStatusPorcelainReal runs `git -C <wtPath> status --porcelain` and returns
@@ -681,4 +891,98 @@ func loadSessionWorktreeConfig(cmd *cobra.Command) *config.Config {
 		return nil
 	}
 	return cfg
+}
+
+// worktreeWriterAnchoredSentinel prefixes every concurrent-writer refusal, so
+// a caller can match the refusal without parsing its prose.
+const worktreeWriterAnchoredSentinel = "WORKTREE_WRITER_ANCHORED"
+
+// readWorktreeLock reads the git worktree lock of tree from git's own
+// porcelain. A tree git does not list has no lock opinion (zero LockInfo); a
+// listing that cannot be read is an error, never "unlocked".
+func readWorktreeLock(tree string) (session.LockInfo, error) {
+	out, err := exec.Command("git", "-C", tree, "worktree", "list", "--porcelain").Output()
+	if err != nil {
+		return session.LockInfo{}, fmt.Errorf("git worktree list --porcelain: %s", execerr.StatusDetail(err))
+	}
+	want := canonicalTreePath(tree)
+	for path, info := range session.ParseWorktreeLocks(string(out)) {
+		if canonicalTreePath(path) == want {
+			return info, nil
+		}
+	}
+	return session.LockInfo{}, nil
+}
+
+// canonicalTreePath resolves symlinks (macOS /var -> /private/var) so a path
+// the caller spelled and the path git reports compare equal.
+func canonicalTreePath(p string) string {
+	if resolved, err := filepath.EvalSymlinks(p); err == nil {
+		return filepath.Clean(resolved)
+	}
+	return filepath.Clean(p)
+}
+
+// @MX:ANCHOR: [AUTO] the concurrent-writer refusal shared by moai codex -w and moai cc -w
+// @MX:REASON: both launchers decide "is someone else writing this tree" here; a
+// second copy would let the two launchers disagree about the same lock.
+// @MX:SPEC: SPEC-DUAL-HARNESS-RECOVERY-001
+//
+// worktreeWriterRefusal returns a refusal when tree is anchored by a live or
+// undetermined session other than this process, and nil otherwise. It only
+// READS: the lock, the branch, and the working files are never touched, so a
+// refused launch leaves the tree exactly as it found it. The decision is the
+// shared lock-and-registry one, fail-closed: an unreadable lock state refuses.
+func worktreeWriterRefusal(tree string) error {
+	lock, err := readWorktreeLock(tree)
+	if err != nil {
+		return fmt.Errorf("%s: cannot read the worktree lock state of %s (source: lock, holder: undetermined): %v; refusing to launch a second writer",
+			worktreeWriterAnchoredSentinel, tree, err)
+	}
+	if pid, ok := session.LockReasonPID(lock.Reason); lock.Locked && ok && pid == os.Getpid() {
+		return nil // this process already holds the tree
+	}
+	now := time.Now()
+	verdict := session.AnchorDecision(tree, lock, now)
+	if !verdict.Anchored {
+		return nil
+	}
+	holder := lock.Reason
+	if verdict.Source == session.AnchorSourceRegistry {
+		var holders []string
+		for _, e := range session.LiveAnchoredSessions(tree, now) {
+			holders = append(holders, fmt.Sprintf("session %s pid %d", e.SessionID, e.PID))
+		}
+		holder = strings.Join(holders, ", ")
+	}
+	if holder == "" {
+		holder = "no reason recorded"
+	}
+	return fmt.Errorf("%s: %s is anchored by another session - %s (source: %s, holder: %s); refusing to launch a second writer. Close that session first, or choose another worktree",
+		worktreeWriterAnchoredSentinel, tree, verdict.Detail, verdict.Source, holder)
+}
+
+// ccWorktreeWriterPrecheck applies the concurrent-writer refusal to `moai cc
+// -w <tree>` when the tree already exists. It never writes a lock: Claude
+// Code writes its own at EnterWorktree, and a lock written here would anchor
+// the tree to a launcher that is about to be replaced.
+func ccWorktreeWriterPrecheck(args []string) error {
+	value, ok := worktreeFlagValue(args)
+	if !ok || value == "" {
+		return nil // bare -w creates a fresh tree; nothing to share yet
+	}
+	tree := value
+	if !filepath.IsAbs(tree) {
+		root, err := findProjectRootFn()
+		if err != nil || root == "" {
+			if root, err = os.Getwd(); err != nil {
+				return nil
+			}
+		}
+		tree = filepath.Join(root, claudeNativeWorktreeSubdir, value)
+	}
+	if info, err := os.Stat(tree); err != nil || !info.IsDir() {
+		return nil // Claude Code creates it; there is no writer to collide with
+	}
+	return worktreeWriterRefusal(tree)
 }

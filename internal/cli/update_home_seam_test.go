@@ -141,4 +141,34 @@ func TestUpdateSubsystem_HomeSeamReach(t *testing.T) {
 		// thing. The seam's reach is proven by the call count above and by the
 		// TemplateContext.HomeDir assertion in the sibling subtest.
 	})
+
+	// Site 3 — runAgencyMigrationAdapter (update.go). Card t813: this site
+	// resolved HOME through paths.Home() directly, which is NOT the seam and
+	// NOT covered by the package-wide TestMain home sandbox (card t661), whose
+	// net wraps userHomeDirFn alone. The home it resolves becomes
+	// migrateAgencyRunner.homeDir, from which checkpointPath derives
+	// <home>/.moai/.migrate-tx-<id>.json — written by the interrupt handler.
+	// The adapter is reached from three update call sites (update.go:435,
+	// update.go:636, update_residue_cleanup.go:85), so a test driving `moai
+	// update` against a fixture still resolved the operator's real home here.
+	//
+	// The assertion is the seam call count, matching the sibling subtests:
+	// with paths.Home() in place the count is 0 and this subtest fails.
+	t.Run("agency_migration_adapter", func(t *testing.T) {
+		_, calls := homeSeamSpy(t)
+
+		root := t.TempDir()
+		setupAgencyFixture(t, root)
+
+		var out bytes.Buffer
+		// dryRun=true: the home resolution happens before Run() either way,
+		// and the dry-run path keeps the fixture free of migration writes.
+		if err := runAgencyMigrationAdapter(root, true, false, &out); err != nil {
+			t.Fatalf("runAgencyMigrationAdapter: %v", err)
+		}
+
+		if got := calls(); got < 1 {
+			t.Errorf("userHomeDirFn calls = %d; want >= 1 (runAgencyMigrationAdapter must route HOME through the seam, not paths.Home())", got)
+		}
+	})
 }

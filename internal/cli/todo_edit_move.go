@@ -5,9 +5,10 @@
 // a correction the operator decided on. Nothing here infers what a card
 // should say or where it belongs — no analysis, no absorption, no silent
 // promotion. Those would collide head-on with the [HARD] clauses in
-// workflows/todo.md and kanban-dispatch.md (the pick is the operator's; the
-// queue is never auto-populated or reordered by inferred priority), and a
-// doctrine change would have to come first.
+// workflows/gtd.md and factory-dispatch.md (the pick is the operator's; the
+// queue is never auto-populated or reordered by inferred priority — the one
+// ranking the board admits is the `--auto` cycle's own selection order, which
+// writes nothing to the queue), and a doctrine change would have to come first.
 //
 // Recoverability is the property that makes a mis-correction survivable, and
 // each verb carries it differently:
@@ -28,7 +29,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // newTodoEditCmd — `moai todo edit <n> <text> [--expect <prefix>]`: rewrite
@@ -63,7 +64,7 @@ untouched.`,
 			}
 			store := newTodoStore()
 			var prior string
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID != id {
 						continue
@@ -96,10 +97,12 @@ untouched.`,
 // newTodoMoveCmd — `moai todo move <n> (--top|--bottom|--before <m>|--after <m>)`:
 // reposition a card within the queue file's order under the lock.
 //
-// Order is the only thing the queue records about priority — there are no
-// priority fields (workflows/todo.md § Boundaries: not a task tracker) — so
-// an operator who wants a card considered sooner previously had to hand-edit
-// the file, the one thing the doctrine tells them not to do.
+// A card may carry a recorded classification (priority high|normal|low,
+// blocked) that the add path sorts by once, when the card is admitted; `move`
+// neither reads nor rewrites it. Stored order is therefore the operator's own
+// statement of priority from then on, so an operator who wants a card
+// considered sooner previously had to hand-edit the file, the one thing the
+// doctrine tells them not to do.
 //
 // Exactly one position flag is required: a move with no destination, or with
 // two, is a malformed invocation rather than a guess the CLI resolves.
@@ -128,7 +131,7 @@ confirmation prints the card's new 1-based position.`,
 			store := newTodoStore()
 			var pos int
 			var text string
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				idx, err := applyTodoMove(rec, id, anchor)
 				if err != nil {
 					// Refused mutation: Mutate writes nothing, so the file
@@ -192,7 +195,7 @@ func todoMoveDestination(top, bottom bool, before, after string) (todoMoveAnchor
 // Relative destinations resolve against the list WITHOUT the moved card, so
 // "--before <m>" lands immediately ahead of m regardless of which side of m
 // the card started on.
-func applyTodoMove(rec *kanban.BacklogRecord, id string, anchor todoMoveAnchor) (int, error) {
+func applyTodoMove(rec *factory.BacklogRecord, id string, anchor todoMoveAnchor) (int, error) {
 	from := todoItemIndex(rec.Items, id)
 	if from < 0 {
 		return 0, fmt.Errorf("no backlog item %s", id)
@@ -202,7 +205,7 @@ func applyTodoMove(rec *kanban.BacklogRecord, id string, anchor todoMoveAnchor) 
 	}
 
 	item := rec.Items[from]
-	rest := make([]kanban.BacklogItem, 0, len(rec.Items)-1)
+	rest := make([]factory.BacklogItem, 0, len(rec.Items)-1)
 	rest = append(rest, rec.Items[:from]...)
 	rest = append(rest, rec.Items[from+1:]...)
 
@@ -223,7 +226,7 @@ func applyTodoMove(rec *kanban.BacklogRecord, id string, anchor todoMoveAnchor) 
 		}
 	}
 
-	moved := make([]kanban.BacklogItem, 0, len(rec.Items))
+	moved := make([]factory.BacklogItem, 0, len(rec.Items))
 	moved = append(moved, rest[:to]...)
 	moved = append(moved, item)
 	moved = append(moved, rest[to:]...)
@@ -232,7 +235,7 @@ func applyTodoMove(rec *kanban.BacklogRecord, id string, anchor todoMoveAnchor) 
 }
 
 // todoItemIndex returns the index of id in items, or -1.
-func todoItemIndex(items []kanban.BacklogItem, id string) int {
+func todoItemIndex(items []factory.BacklogItem, id string) int {
 	for i := range items {
 		if items[i].ID == id {
 			return i

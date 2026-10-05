@@ -9,19 +9,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/constitution"
 )
-
-// constitutionRegistryEnvKey is the environment variable name for registry path.
-const constitutionRegistryEnvKey = "MOAI_CONSTITUTION_REGISTRY"
-
-// constitutionRegistryRelPath is the project-relative path to the default registry file.
-const constitutionRegistryRelPath = ".claude/rules/moai/core/zone-registry.md"
 
 // newConstitutionCmd creates the `moai constitution` root subcommand.
 // Follows research.go pattern.
@@ -141,16 +134,10 @@ func newConstitutionListCmd() *cobra.Command {
 
 // resolveRegistryPath determines registry file path by priority.
 // Priority: MOAI_CONSTITUTION_REGISTRY env var → CLAUDE_PROJECT_DIR based path → cwd based path.
+// The precedence lives in constitution.ResolveRegistryPath, shared with
+// Pipeline.Execute (SPEC-CON-AMEND-APPLY-001 REQ-CAA-019).
 func resolveRegistryPath(cwd string) string {
-	if envPath := os.Getenv(constitutionRegistryEnvKey); envPath != "" {
-		return envPath
-	}
-
-	if projectDir := os.Getenv("CLAUDE_PROJECT_DIR"); projectDir != "" {
-		return filepath.Join(projectDir, constitutionRegistryRelPath)
-	}
-
-	return filepath.Join(cwd, constitutionRegistryRelPath)
+	return constitution.ResolveRegistryPath(cwd)
 }
 
 // runConstitutionList loads registry and outputs to w.
@@ -383,7 +370,10 @@ func renderValidateText(w io.Writer, result constitution.ValidationResult) {
 	}
 
 	if result.Status == constitution.ValidateStatusOK {
-		_, _ = fmt.Fprintf(w, "constitution validate: OK — no drift or violations detected (%d entries checked)\n", 0)
+		// Both counts come from the result: the checked number alone cannot be
+		// reconciled against `constitution list`, which counts retired entries too.
+		_, _ = fmt.Fprintf(w, "constitution validate: OK — no drift or violations detected (%d of %d entries checked)\n",
+			result.CheckedCount, result.TotalCount)
 		renderRetiredNote(w, result)
 		return
 	}
@@ -506,9 +496,10 @@ func newConstitutionAmendCmd() *cobra.Command {
 
 // runConstitutionAmend executes the constitutional amendment pipeline.
 func runConstitutionAmend(w, wWarn io.Writer, projectDir, ruleID, before, after, evidence string, dryRun bool) error {
-	// Load registry
+	// Load registry through the amend path's containment check, the same check
+	// Pipeline.Execute runs (SPEC-CON-AMEND-APPLY-001 REQ-CAA-021).
 	registryPath := resolveRegistryPath(projectDir)
-	registry, err := constitution.LoadRegistry(registryPath, projectDir)
+	registry, err := constitution.LoadAmendRegistry(registryPath, projectDir)
 	if err != nil {
 		return fmt.Errorf("registry load error: %w", err)
 	}

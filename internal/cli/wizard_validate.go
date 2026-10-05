@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 )
@@ -53,8 +55,24 @@ func validateWizardInput(result *wizard.WizardResult) error {
 
 // validateHTTPSURL requires a well-formed absolute https:// URL with a host.
 // A plaintext http:// endpoint is rejected so a captured token or credential
-// is never transmitted over an unencrypted channel.
+// is never transmitted over an unencrypted channel. git-strategy.yaml renders
+// the URL inside a double-quoted YAML scalar without escaping, so every value
+// that scalar cannot carry verbatim is rejected: `"` breaks the file, `\` is
+// stored as a different string, and invalid UTF-8 or a non-printable rune
+// (C1 controls, NEL, U+2028, noncharacters) makes the file unreadable or is
+// folded into a space. url.Parse alone rejects only ASCII control characters.
 func validateHTTPSURL(raw string) error {
+	if strings.ContainsAny(raw, `"\`) {
+		return errors.New(`must not contain '"' or '\'`)
+	}
+	if !utf8.ValidString(raw) {
+		return errors.New("must be valid UTF-8")
+	}
+	for _, r := range raw {
+		if !unicode.IsPrint(r) {
+			return fmt.Errorf("must not contain the non-printable character %U", r)
+		}
+	}
 	u, err := url.Parse(raw)
 	if err != nil {
 		return fmt.Errorf("not a well-formed URL: %w", err)

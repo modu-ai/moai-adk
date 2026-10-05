@@ -27,14 +27,38 @@ workflow:
         failure_pattern_detection: true
         max_iterations: 100
         max_retries_per_operation: 3
+    # project.continuation: how `/moai project` ends its Phase 14 completion.
+    # Values: none | card | pipeline. Absent resolves to card, and an
+    # unrecognized value ALSO resolves to card while naming the offending value
+    # in the completion report — the run is never stopped over it.
+    #   none     — issue no backlog card; present the pre-P1 next-steps options
+    #              with `Create SPEC` recommended.
+    #   card     — issue one derived `[PROJECT] ` card and recommend a branch
+    #              that carries the session as far as `/moai plan`, no further.
+    #   pipeline — issue the same card and recommend a branch that carries the
+    #              session past `/moai plan` to EMITTING the Implementation
+    #              Kickoff Approval gate in that same session.
+    # The key is presentation-scoped: it selects which option is recommended,
+    # how far that option carries the session, and how it is worded. It never
+    # decides whether the next-steps question is asked, never answers it, and
+    # no value pre-authorizes run-phase entry — `pipeline` causes one more gate
+    # to be ASKED, never one to be skipped.
+    project:
+        continuation: card
     # Worktree automation settings (per the canonical worktree contract).
     # Values mirror internal/config/defaults.go (WorkflowWorktreeConfig): all
     # three auto-* toggles default false — the EnterWorktree-first policy.
     # auto_create: read once (internal/cli/worktree_advisory.go) only to select
-    # advisory wording; it does not gate worktree creation.
-    # auto_merge / auto_cleanup: declared but not read — no code path consumes
-    # them (reserved). Kept aligned with defaults.go so the shipped file does
-    # not state the opposite of the recorded policy.
+    # advisory wording; its declared scope is the wording — it does not gate
+    # worktree creation. Set workflow.session_worktree.enabled for real
+    # automatic isolation.
+    # auto_cleanup: read by the two auto-cleanup paths (session-exit disposal
+    # and the PR-merge sweep); gates worktree removal only.
+    # auto_merge: read by the session-exit auto-merge path — when true, a clean
+    # session exit merges the session branch into the configured git-flow
+    # develop branch (a local merge inside the release-integration window,
+    # never a push). Inert unless the project is manual git-flow with
+    # git_strategy.<mode>.develop_branch set.
     worktree:
         auto_create: false
         auto_merge: false
@@ -48,13 +72,52 @@ workflow:
         #     - "src/"
         #     - "tests/"
         #     - "config/"
+    # drift_cache_fill: the out-of-band fill of the SPEC status-drift cache.
+    # When the session-start advisory finds no cached result for the current
+    # commit, it starts one short-lived background process to compute and store
+    # it, and returns without waiting. The next session reads the stored result.
+    #
+    # This key ships ENABLED, unlike the opt-in guards elsewhere in this file.
+    # Those ship inert; this one is not inert when on — it starts a child
+    # process on a cache miss — and the default is an accepted cost rather than
+    # a neutral one, because without the fill the drift advisory never appears
+    # after the commit changes. The child is short-lived, bounded by its own
+    # deadline, limited to one at a time, and silent.
+    #
+    # Set to false to stop the handler starting any fill; the advisory then
+    # resolves from whatever the cache already holds.
+    # The compiled default in internal/config/defaults.go is the source of
+    # truth; this block documents it.
+    drift_cache_fill:
+        enabled: true
     token_budget:
         plan: 30000
         run: 180000
         sync: 40000
+    # agent_tiers: which {model, effort} pair each agent class runs at. Tier
+    # tokens are configuration-key names, NOT effort values — the effort field
+    # keeps its own vocabulary everywhere: max = the accuracy-first pair
+    # (sonnet-5-5 at effort max), medium = the cost-efficiency pair
+    # (sonnet-5-5 at effort high), low = the light-work pair (sonnet-5-5 at
+    # effort medium). The compiled defaults in the Go config are the source of
+    # truth; this block documents them and is where a project overrides per
+    # class — unlisted classes keep the compiled defaults. Audit surfaces
+    # (plan-auditor, sync-auditor, and the audit backends) are excluded from
+    # this table: they resolve through the audit pins above, never a tier.
+    # An unknown tier token fails the config load; an unknown class name is
+    # ignored.
+    agent_tiers:
+        classes:
+            super-advisor: max
+            manager-spec: max
+            manager-develop: medium
+            manager-docs: medium
+            e2e-tester: medium
+            explore: low
+            lane: medium
     # audit: cross-model audit backend model+effort pinning. Applies ONLY at
-    # the audit entry points (codex_audit / glm_audit / audit_multi) — never
-    # to codex_task / glm_task delegation. Precedence: this pin > the llm.yaml
+    # the audit entry points (claude_audit / codex_audit / glm_audit /
+    # audit_multi) — never to task delegation. Precedence: this pin > the llm.yaml
     # sync-auditor SSOT cell > empty (legacy behavior). An EMPTY model is no
     # pin (effort alone pins nothing). On the codex side an unservable model
     # id falls back to the SSOT path; the GLM side sends a non-empty pin
@@ -62,22 +125,34 @@ workflow:
     # never a hard error). codex effort vocabulary: low|medium|high|xhigh|max.
     # glm effort vocabulary (z.ai reasoning states, verbatim): low|high|max —
     # any other non-empty value omits the reasoning directive while the model
-    # pin still applies. Values ship EMPTY; set them per project.
+    # pin still applies. Claude ships at claude-opus-5-5/high and Codex at
+    # gpt-6.1-sol/high (deliberate non-empty pins; an earlier empty-pin
+    # neutrality default was superseded by operator directive); the
+    # GLM pin ships glm-5.3/max and may be set per project.
     audit:
+        claude:
+            model: claude-opus-5-5
+            effort: high
         codex:
-            model: ""
-            effort: ""
+            model: gpt-6.1-sol
+            effort: high
         glm:
-            model: ""
-            effort: ""
+            model: glm-5.3
+            effort: max
     # codex.review_gate: opt-in Stop-hook gate that asks the codex reviewer to
     # look at your uncommitted changes at turn-end and keeps the turn going when
     # the review comes back failing. Requires the optional `codex` binary.
     # Ships OFF: set enabled to true to turn it on. While it is off the hook
     # short-circuits in shell and costs nothing per turn.
+    # tree_scope (optional, shown below as a commented example only): what a
+    # session with no card-branch evidence does while the gate is on. `review`
+    # (the default) reviews the tree's uncommitted changes; `skip` lets such a
+    # session end its turn without a review. A session on a `WT-` card branch
+    # is reviewed either way.
     codex:
         review_gate:
             enabled: false
+            # tree_scope: review  # review | skip
     # multi.review_gate: opt-in Stop-hook gate for the multi-model review path.
     # It reads the most recent convergence result of the configured review
     # backends and keeps the turn going only when a required backend failed;
@@ -87,84 +162,162 @@ workflow:
     multi:
         review_gate:
             enabled: false
-    # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
-    # DEFAULTS. This block is the SSOT for workflow agent() model/effort
-    # defaults; per-script literals in .claude/workflows/*.js override it.
-    # Values are validated against the closed sets: model in
-    # {inherit, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
-    workflow_agents:
-        read-only-extract: { model: sonnet, effort: low }
-        mechanical-transform: { model: opus, effort: low }
-        synthesize: { model: opus, effort: low }
-        research: { model: opus, effort: medium }
-        verify-judge: { model: opus, effort: medium }
-        implement: { model: opus, effort: medium }
-        design-architecture: { model: opus, effort: high }
-    # model_routing: LEGACY flat block (Tier x Phase -> {model, effort}).
-    # DEPRECATED — retained as a `medium` profile alias for one backward-compat
-    # cycle. Values mirror the
-    # `medium` profile below. New code reads `model_routing_profiles` via
-    # RouteModelFor(specTier, phase, perfTier); this flat key is NOT read by
-    # the 3-arg accessor. Existing external readers continue to work.
-    # Key format: <TIER>-<phase> where Tier in {S, M, L} and Phase in
-    # {plan, run, sync, mx}. Closed sets: model in
-    # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
-    model_routing:
-        S-plan: { model: opus, effort: low }
-        S-run: { model: opus, effort: medium }
-        S-sync: { model: opus, effort: low }
-        S-mx: { model: sonnet, effort: low }
-        M-plan: { model: opus, effort: medium }
-        M-run: { model: opus, effort: medium }
-        M-sync: { model: opus, effort: low }
-        M-mx: { model: sonnet, effort: low }
-        L-plan: { model: opus, effort: high }
-        L-run: { model: opus, effort: medium }
-        L-sync: { model: opus, effort: medium }
-        L-mx: { model: sonnet, effort: low }
-    # model_routing_profiles: No-Haiku 3-tier policy — perfTier -> (Tier x Phase) -> {model, effort}.
-    # 3 perfTiers (high/medium/low) × 12 cells (S/M/L × plan/run/sync/mx) = 36
-    # entries. The orchestrator consults RouteModelFor(specTier, phase,
-    # perfTier) at spawn time. `medium` is the default performance tier
-    # (populated by `moai init --model-policy`). Closed sets: model in
-    # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
-    model_routing_profiles:
-        high:
-            S-plan: { model: opus, effort: medium }
-            S-run: { model: opus, effort: high }
-            S-sync: { model: opus, effort: low }
-            S-mx: { model: sonnet, effort: low }
-            M-plan: { model: opus, effort: high }
-            M-run: { model: opus, effort: high }
-            M-sync: { model: opus, effort: medium }
-            M-mx: { model: sonnet, effort: low }
-            L-plan: { model: opus, effort: high }
-            L-run: { model: opus, effort: max }
-            L-sync: { model: opus, effort: medium }
-            L-mx: { model: sonnet, effort: low }
-        medium:
-            S-plan: { model: opus, effort: low }
-            S-run: { model: opus, effort: medium }
-            S-sync: { model: opus, effort: low }
-            S-mx: { model: sonnet, effort: low }
-            M-plan: { model: opus, effort: medium }
-            M-run: { model: opus, effort: medium }
-            M-sync: { model: opus, effort: low }
-            M-mx: { model: sonnet, effort: low }
-            L-plan: { model: opus, effort: high }
-            L-run: { model: opus, effort: medium }
-            L-sync: { model: opus, effort: medium }
-            L-mx: { model: sonnet, effort: low }
-        low:
-            S-plan: { model: opus, effort: low }
-            S-run: { model: opus, effort: low }
-            S-sync: { model: sonnet, effort: low }
-            S-mx: { model: sonnet, effort: low }
-            M-plan: { model: opus, effort: low }
-            M-run: { model: opus, effort: low }
-            M-sync: { model: sonnet, effort: low }
-            M-mx: { model: sonnet, effort: low }
-            L-plan: { model: opus, effort: low }
-            L-run: { model: opus, effort: medium }
-            L-sync: { model: sonnet, effort: low }
-            L-mx: { model: sonnet, effort: low }
+    # slot_lease: leases on named heavy resources, so two sessions sharing one
+    # machine do not start the same heavy work at once. The
+    # `moai slot acquire|status|release` verbs work whatever `enabled` says;
+    # `enabled` gates ONLY the PreToolUse guard that refuses a matching command
+    # while ANOTHER live session holds the resource. Ships OFF, and with no
+    # resources: every pattern below is yours to write, because a shipped one
+    # would name some language's commands.
+    #
+    # default_max_duration is the bound an acquire declares when
+    # --max-duration is omitted. Past it the lease reads expired and another
+    # session may take it over without --force, so size it to the work.
+    #
+    # resources maps a resource name (a-z, 0-9, '-') to the RE2 patterns that
+    # attribute a Bash command to it, matched with quoted spans removed:
+    #     resources:
+    #         <resource-name>:
+    #             commands:
+    #                 - '<command-regex>'
+    slot_lease:
+        enabled: false
+        default_max_duration: 30m
+        resources: {}
+    # quota_gate: steer the NEXT card away from a nearly exhausted Claude
+    # account. The statusline records each Claude session's five-hour and
+    # seven-day usage windows; while the gate is on and a window reads at or
+    # above its hold percentage, a Claude lane's `moai factory next` leases no
+    # NEW card (a card already assigned to the lane is still leased), and
+    # `moai factory status` and `moai todo --auto` recommend non-Claude lanes.
+    # A hold lifts when the window falls below its hold percentage minus the
+    # release margin, or when its reset time passes. Reading no data never
+    # holds a lane. Ships OFF.
+    #
+    # The numeric values below are unmeasured defaults: nobody has measured how
+    # much quota a card consumes, so they are starting points, not
+    # recommendations. Tune them from what the status block shows you:
+    #     five_hour_hold_pct    1-100, hold at or above this five-hour usage
+    #     seven_day_hold_pct    1-100, the same for the seven-day window
+    #     release_margin_pct    0-50, release below hold minus this margin
+    #     max_age               a session reading older than this is unknown
+    #                           (at least 10m, twice the 5m statusline heartbeat)
+    #     max_scan_dirs         1-1024, linked worktrees examined per reading; unmeasured
+    #                           (a project with more worktrees than this needs a larger value)
+    # A value outside its range falls back to the default shown here.
+    quota_gate:
+        enabled: false
+        five_hour_hold_pct: 90
+        seven_day_hold_pct: 95
+        release_margin_pct: 5
+        max_age: 30m
+        max_scan_dirs: 128
+    # served_model_gate: refuse to adopt a plan-auditor or sync-auditor verdict
+    # when the model that actually answered that auditor differs from the
+    # expected one, or cannot be determined. The SubagentStop hook records the
+    # served model and warns on every subagent whatever `enabled` says;
+    # `enabled` gates ONLY the refusal, which keeps the run, docs, and git
+    # phase-entry spawns denied until a later run of the same auditor is
+    # observed on the expected model. The completed audit itself is never
+    # undone, re-run, or rewritten. Ships OFF.
+    served_model_gate:
+        enabled: false
+    # branch_guard: the primary-checkout BranchGuard family. enabled gates both
+    # deny classes: branch-state mutations, and commits on the branches listed
+    # in deny_commits_on (git commit / revert / cherry-pick in the primary
+    # checkout while HEAD names one of them). Both fail open on uncertainty and
+    # both are consulted only while enabled is true. Ships OFF with an empty
+    # list: a single-developer repository has no shared-checkout hazard and no
+    # declared protected branch. The list is yours to write — a workflow that
+    # declares a commit-protected mainline (the git-strategy mode decides
+    # which) names it here.
+    branch_guard:
+        enabled: false
+        deny_commits_on: []
+    # commit_identity_guard: refuse a shell command that would create a commit
+    # under a known test-fixture identity (an email your test suites use for
+    # throwaway repositories). The guard reads the identity the commit would
+    # actually use — configuration layers plus command-level overrides — and
+    # denies only on an exact email match against its built-in fixture list;
+    # uncertainty always allows. Commands aimed at another repository (a
+    # different git common dir, such as a temp fixture repository) are allowed
+    # without probing. While it is off no probe subprocess ever runs.
+    # Ships OFF; deny_emails adds entries to the built-in list, it never
+    # removes from it.
+    commit_identity_guard:
+        enabled: false
+        deny_emails: []
+    # jev: the TypeSafe System One judgment capability. It answers a typed
+    # question about a supplied state and returns a typed answer with a
+    # probability; it generates no text and makes no decision itself. Ships OFF, and
+    # while it is off no request is constructed and no network call is made, so
+    # a project that never opts in pays nothing and reaches no third-party
+    # endpoint.
+    #
+    # Turning it on additionally needs a credential at ~/.moai/.env.typesafe
+    # (file mode 0600, outside the repository). Without one the capability
+    # reports itself unavailable and every consumer continues unchanged — an
+    # absent answer is never read as a negative answer.
+    #
+    # The capability is display-only: an answer is a labelled model-produced
+    # signal a person reads, never an input to a completion verdict, a merge
+    # approval, a queue mutation, or any other decision that is hard to undo.
+    # One exception: the contract-mode Kickoff `llm+jev` cross-check may use
+    # an answer as its second signal, where it can only confirm an LLM
+    # approval or route the Kickoff to a human; it never decides alone.
+    #
+    # A second exception, separate from that cross-check, is the
+    # `moai todo --auto` cycle's own candidate ranking: the
+    # auto-scoped ranking exception. Behind the default-off
+    # workflow.jev.enabled gate, an in-process caller may supply the key
+    # that orders the queued candidates the cycle is about to accept, which
+    # sets selection order only. The candidate set is fixed by
+    # mechanical filters before any answer is read, and an answer that
+    # cannot be used as a whole falls back to recorded priority over the
+    # same set. The answer never adds, removes or edits a card, is never the
+    # basis of a completion verdict, a merge approval or an operator gate,
+    # and no ordering accuracy is claimed.
+    #
+    # Where this setting is changed, and where it is NOT: `moai init` asks
+    # about it once, and after that the `moai web` settings screen is the only
+    # place it can be changed. It is deliberately absent from
+    # `moai update --reconfigure`, so a terminal-only user who declined at init
+    # reaches the switch through `moai web` or by editing this key by hand.
+    jev:
+        enabled: false
+    # autonomy: how a SPEC's autonomous-execution contract is signed and bounded.
+    # An absent key takes the default shown here; an unrecognized value for
+    # mode, second_review, decider, or jev_min_confidence falls back to the
+    # stricter default (guided, required, human, 0.50) with a warning naming
+    # the key.
+    autonomy:
+        mode: guided              # guided | contract
+        contract:
+            batch_sign: false       # sign several SPECs with one confirmation
+            second_review: required # required | advisory | off
+            push_develop: false     # allow the push-develop action in contracts
+        kickoff:
+            # decider: human | llm | llm+jev   (omitted: human in guided, llm in contract)
+            jev_min_confidence: 0.50
+        escalation:
+            budget_default: { turns: 60, operations: 40, audit_retries: 2 }
+            # new_api_detector: how the escalation detector looks for new
+            # packages, exported declarations, CLI verbs, MCP tools, and
+            # configuration keys between the card base and HEAD under
+            # mode: contract. graph compares declarations; off disables that
+            # check only. It runs at an on-demand checkpoint whose invocation
+            # surface is pending, never inside a tool-call hook.
+            new_api_detector: graph   # graph | off
+    # .moai hygiene engine: size-based audit-log rotation and finished-session
+    # state GC. mode governs the SessionStart auto path only — the
+    # `moai clean --audit-logs/--session-state` CLI mutates only with --apply
+    # on that invocation. report (default) never rotates or deletes anything.
+    # audit_log_kept_rotations is pinned to 1; any other value refuses the
+    # run (config-invalid) rather than clamping.
+    hygiene:
+        mode: report              # report | apply (auto path only)
+        audit_log_max_bytes: 10485760
+        audit_log_kept_rotations: 1
+        transcript_activity_window: 48h
+        heartbeat_stale_window: 24h
+        min_age_days: 7

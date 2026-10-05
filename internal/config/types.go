@@ -110,12 +110,38 @@ type ModeProfile struct {
 	PushToRemote      bool   `yaml:"push_to_remote"`
 
 	// Mode-conditional optional fields (zero value when the mode lacks the key).
-	AutoCheckpoint   string `yaml:"auto_checkpoint"`   // manual mode only
-	BranchPrefix     string `yaml:"branch_prefix"`     // personal/team modes only
-	MainBranch       string `yaml:"main_branch"`       // personal/team modes only
-	DraftPR          bool   `yaml:"draft_pr"`          // team mode only
-	RequiredReviews  int    `yaml:"required_reviews"`  // team mode only
-	BranchProtection bool   `yaml:"branch_protection"` // team mode only
+	AutoCheckpoint string `yaml:"auto_checkpoint"` // manual mode only
+	BranchPrefix   string `yaml:"branch_prefix"`   // personal/team modes only
+	MainBranch     string `yaml:"main_branch"`     // personal/team modes only
+	// Manual-mode git-flow keys. ReleaseBranchPrefix and RCVersionFormat have
+	// no Go consumer — they are pass-through fields whose only job is to
+	// survive a typed load-and-save round trip (SPEC-WORKTREE-BASEREF-001
+	// REQ-WBR-013 / AC-WBR-014). DevelopBranch gained one (card t449): the
+	// `moai integration acquire` record resolves its branch default through
+	// LoadGitFlowDevelopBranch.
+	//
+	// Measured before they existed: saving git_strategy through the typed path
+	// re-marshals this struct, so a `worktree_base_branch` edit made from the
+	// web console silently DELETED all three from git-strategy.yaml. Modelling
+	// them does not repair the wider schema divergence — no accessor and no
+	// consumer is added — it only stops the write path this SPEC introduces
+	// from newly exposing it.
+	DevelopBranch       string `yaml:"develop_branch"`        // manual mode, git-flow only
+	ReleaseBranchPrefix string `yaml:"release_branch_prefix"` // manual mode, git-flow only
+	RCVersionFormat     string `yaml:"rc_version_format"`     // manual mode, git-flow only
+
+	// LeadPushThreshold is the manual-mode batch-push trigger (SPEC-MAIN-COMMIT-BAN-001
+	// REQ-3.3): the lead closes the push batch when
+	// `git rev-list --count origin/<develop>..<develop>` reaches this count.
+	// 0 disables the trigger — the neutral default, since manual mode also
+	// ships push_to_remote: false, which makes a push threshold meaningless.
+	// The threshold decides the batch-close timing only; it never authorizes a
+	// lane push and never interrupts an open integration window (REQ-5.2).
+	LeadPushThreshold int `yaml:"lead_push_threshold"` // manual mode only; 0 = disabled
+
+	DraftPR          bool `yaml:"draft_pr"`          // team mode only
+	RequiredReviews  int  `yaml:"required_reviews"`  // team mode only
+	BranchProtection bool `yaml:"branch_protection"` // team mode only
 
 	// MergeMethod selects the PR merge method for this mode.
 	// One of "squash", "merge", "rebase". Empty unmarshals to the Go zero value
@@ -146,6 +172,18 @@ type GitStrategyConfig struct {
 	Provider       string       `yaml:"provider"` // "github", "gitlab"
 	GitHubUsername string       `yaml:"github_username"`
 	GitLab         GitLabConfig `yaml:"gitlab"`
+
+	// WorktreeBaseBranch names the branch card worktrees are cut from
+	// (SPEC-WORKTREE-BASEREF-001 REQ-WBR-001). It is a repository-wide fact,
+	// so it sits at the git_strategy root rather than inside a mode profile.
+	//
+	// The empty string is the neutral default and means "take no action"
+	// (REQ-WBR-002): the SessionStart origin/HEAD alignment step no-ops and
+	// `git worktree add` is invoked with no base operand, byte-identically to
+	// the pre-SPEC behavior. The shipped template ships it empty
+	// (REQ-WBR-003) — naming a branch there would not be neutral across
+	// downstream projects.
+	WorktreeBaseBranch string `yaml:"worktree_base_branch"`
 
 	// Mode profile forward-compat scaffolds.
 	Manual   ModeProfile `yaml:"manual"`
@@ -240,44 +278,60 @@ type LLMConfig struct {
 	// predicate (template.IsGLMBackend, REQ-MTP-026) keeps mode=="glm" only as a
 	// defensive OR for this dormant field.
 	Mode string `yaml:"mode"`
-	// TeamMode selection: "" (`moai cc` / unset), "cg" (`moai cg` — Claude leader +
-	// GLM teammates), or "glm" (`moai glm` — all-GLM). These are the values
-	// persistTeamMode (internal/cli/glm.go) actually writes; "claude"/"hybrid" are
-	// legacy non-GLM values retained for backward-compat parsing. The GLM
-	// backend-detection predicate (template.IsGLMBackend) treats team_mode ∈
-	// {cg, glm} as a GLM backend.
+	// TeamMode stores explicit session intent. "glm" selects GLM; "claude"
+	// and unset select ordinary Claude policy. Historical "cg" remains readable
+	// as data, but launch requires explicit migration and never activates GLM.
 	TeamMode string `yaml:"team_mode"`
+	// Harness records the agent-harness selection resolved at init time
+	// (SPEC-INIT-HARNESS-001 REQ-IH-002): one of {claude, codex, both}. Init
+	// writes the resolved value explicitly on EVERY run — including the claude
+	// default — so doctor/update never have to infer a missing key as claude.
+	// A pre-SPEC project with no key reads as claude (the documented fallback);
+	// the key governs update re-deployment (REQ-IH-010) and doctor check
+	// scoping (REQ-IH-011). Note this is NOT llm.harness_agents — that map
+	// configures /moai:harness specialist generation and is unrelated.
+	Harness string `yaml:"harness"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
-	// Performance tier: "high", "medium", "low" (canonical), plus "max" accepted
-	// as the superseded name of the top tier. Controls model selection for all
-	// sub-agents. Since the top column was renamed max -> high this axis shares the
-	// llm.profile vocabulary exactly; the tag keeps "max" so pre-rename configs
-	// still validate, and NormalizeProfile folds it to "high" on read.
-	PerformanceTier string `yaml:"performance_tier" validate:"omitempty,oneof=max high medium low"`
-	// Profile selects the active per-agent model+effort column, one of
-	// {high, medium, low} (REQ-MPM-001). The superseded top-column name "max" is
-	// accepted as a read-time alias. Absent/empty resolves via EffectiveProfile
-	// (profile → performance_tier alias → default medium). Closed-set validated
-	// by validateProfile.
+	// ClaudeBin pins the Claude Code binary the launcher launches (issue
+	// #1697): when non-empty, launchClaudeDefault launches THIS path instead
+	// of searching PATH for `claude`. Resolution order: the MOAI_CLAUDE_BIN
+	// env var → this key → PATH lookup (unchanged default). The path must
+	// exist and be executable; an invalid pin is a launch error, not a silent
+	// fallback — a pin that silently fell back would re-expose the
+	// broken-release blast radius the pin exists to stop.
+	ClaudeBin string `yaml:"claude_bin,omitempty"`
+	// Profile selects the active per-agent model+effort column for the
+	// console's agent-overrides surface, one of {high, medium, low}
+	// (REQ-AFR-003; restored under SPEC-WEB-AGENTFM-RESTORE-001 M1). The
+	// superseded top-column name "max" is accepted as a read-time alias.
+	// Absent/empty resolves via EffectiveProfile to the default column and
+	// means plain inheritance: an agent without an llm.agent_overrides entry
+	// resolves to the session model/effort (REQ-AFR-002 — the console surface
+	// is an override layer, never a spawn-path behavior change). Closed-set
+	// validated by validateProfile. This is NOT the retired
+	// llm.performance_tier — that key stays retired and stripped.
 	Profile string `yaml:"profile"`
-	// Profiles mirrors the default profile matrix for transparency and user
-	// editability (REQ-MPM-010): profile → agent NAME → {model, effort}. The Go
-	// default (template.DefaultProfileMatrix) is the authoritative fallback for
-	// any cell absent from config. Pre-rename configs keyed by agent GROUP name
-	// simply miss on lookup and fall through to the Go default, so a stale
-	// mirror degrades rather than breaking.
-	Profiles map[string]map[string]ModelEffort `yaml:"profiles"`
-	// HarnessAgents is the profile → harness purpose class → {effort} map read by
-	// template.ResolveHarnessAgentModelEffort when /moai:harness generates a
-	// specialist. Only the Effort field is consumed: harness agents are pinned to
-	// template.HarnessAgentModel, so a Model value here is ignored. Absent
-	// entries fall through to the effort of the class's profile-matrix row.
-	HarnessAgents map[string]map[string]ModelEffort `yaml:"harness_agents"`
-	// AgentOverrides is an optional per-agent {model, effort} override keyed by
-	// canonical agent name, applied on top of the active profile's cell
-	// (REQ-MPM-006). Validated by validateAgentOverrides.
+	// AgentOverrides is an optional per-agent {model, effort} override keyed
+	// by canonical agent name, applied on top of the active profile's cell
+	// (REQ-AFR-004; restored under SPEC-WEB-AGENTFM-RESTORE-001 M1).
+	// Validated by validateAgentOverrides.
 	AgentOverrides map[string]ModelEffort `yaml:"agent_overrides"`
+	// AgentOverridesConsume is the v0.3.0 opt-in switch (REQ-AFR-015,
+	// SPEC-WEB-AGENTFM-RESTORE-001, card t1421): when true, the session's
+	// subagent spawns consume llm.agent_overrides — the orchestrator consults
+	// the resolved overrides before each spawn and passes the configured
+	// model on the Agent() call (template.ResolveAgentOverrideConsumption).
+	// The zero value false keeps today's storage-only behaviour
+	// byte-for-byte: the override map stays a console-stored surface and
+	// every spawn keeps the session-inherit default (REQ-AFR-002). A
+	// non-boolean stored value joins the console's atomic-reject set through
+	// ValidateLLMYAMLSection (the write boundary re-checks the stored section
+	// strictly — a genuine type mismatch errors in the typed pass, and a
+	// string-coercible "yes"/"on"/"1" is rejected by tag strictness, since
+	// the yaml.v3 decoder would otherwise coerce it into an opt-in the
+	// operator never wrote as one).
+	AgentOverridesConsume bool `yaml:"agent_overrides_consume"`
 	// Claude model mapping by tier
 	ClaudeModels ClaudeTierModels `yaml:"claude_models"`
 	// GLM API configuration
@@ -330,15 +384,18 @@ type GLMTierEffort struct {
 }
 
 // GLMModels represents GLM model mappings by performance tier.
+//
+// DELETION RECORD (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004, DR-2): the
+// legacy backward-compat alias fields Opus/Sonnet/Haiku are removed. An
+// existing llm.yaml carrying the alias keys (`opus:`/`sonnet:`/`haiku:`) is
+// read by the non-strict section loader, which silently ignores unknown keys
+// — that silent drop is the accepted, deliberate half of DR-2 (no migration
+// tool, no error transition).
 type GLMModels struct {
 	High   string `yaml:"high"`   // Complex reasoning
 	Medium string `yaml:"medium"` // Balanced performance
 	Low    string `yaml:"low"`    // Fast exploration
 	Fable  string `yaml:"fable"`  // Fable tier (Claude Code ANTHROPIC_DEFAULT_FABLE_MODEL)
-	// Legacy fields for backward compatibility
-	Opus   string `yaml:"opus"`   // Maps to High
-	Sonnet string `yaml:"sonnet"` // Maps to Medium
-	Haiku  string `yaml:"haiku"`  // Maps to Low
 }
 
 // PricingConfig represents the pricing configuration section.
@@ -389,6 +446,42 @@ type WorkflowConfig struct {
 	// directly: the pointer inside distinguishes "key absent" (= enabled)
 	// from "explicitly disabled", which a plain bool cannot express.
 	Todo WorkflowTodoConfig `yaml:"todo"`
+	// DriftCacheFill gates the out-of-band drift-cache fill started from the
+	// SessionStart deferred advisory step. Read through
+	// Config.DriftCacheFillEnabled.
+	//
+	// Default TRUE, and that is a deliberate departure from the workflow.*
+	// guard family (BranchGuard, AgentStopGuard, IntegrationLock, ...). Those
+	// default to false because they ship INERT — the default is grounded on
+	// NEUTRALITY, not on "adds a deny". This feature is not inert when
+	// enabled: on every cache miss it starts an unsolicited child process. The
+	// cost is accepted because the child is short-lived, self-bounded,
+	// single-flight, TTL-suppressed and silent, and because a default-off
+	// setting would leave the measured defect (the cache is never written on
+	// the hook path, so the drift advisory never returns after a HEAD change)
+	// in place for every user who never reads the config.
+	//
+	// A plain bool rather than the *bool WorkflowTodoConfig uses: the loader
+	// unmarshals onto the default-populated struct, so an absent key keeps the
+	// construction-time true and only a literal `enabled: false` turns it off.
+	// The plain bool also makes the defaults.go entry load-bearing — remove it
+	// and the zero value ships the feature permanently OFF, which a test can
+	// see.
+	DriftCacheFill WorkflowDriftCacheFillConfig `yaml:"drift_cache_fill"`
+
+	// Project carries the /moai project Phase 14 completion-continuation key
+	// (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-001). Read through
+	// Config.ProjectContinuation, never directly: the resolver supplies the
+	// absent-key default and reports an unmatched value rather than applying it.
+	Project WorkflowProjectConfig `yaml:"project"`
+	// Hygiene carries the .moai hygiene engine's thresholds and mode
+	// (SPEC-MOAI-HYGIENE-001 REQ-HYG-013/016). The CLI mutates only with
+	// --apply on its own invocation — this config block governs the
+	// SessionStart auto path's mode alone. Defaults live in defaults.go's
+	// Hygiene* constants; hygiene.Settings validation enforces the D30
+	// floors (kept-rotations pinned to 1, positive windows, unknown mode ⇒
+	// report).
+	Hygiene WorkflowHygieneConfig `yaml:"hygiene"`
 	// SessionWorktree gates the automatic worktree isolation for
 	// moai init / moai profile / moai web (SPEC-SESSION-WORKTREE-001 REQ-SW-001 /
 	// REQ-SW-002). Default false: the feature ships INERT (byte-identical
@@ -403,17 +496,15 @@ type WorkflowConfig struct {
 	// exemption logic (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity).
 	BranchGuard BranchGuardConfig `yaml:"branch_guard"`
 
-	// AgentModelGuard gates the blocking layer of the PreToolUse agent-model
-	// guard. Default false: the observation and advisory layers always run,
-	// but no spawn is ever denied until a maintainer opts in via local config.
-	// Sibling of BranchGuard — same opt-in shape, same default-OFF neutrality.
-	AgentModelGuard AgentModelGuardConfig `yaml:"agent_model_guard"`
+	// A leftover workflow.agent_model_guard key is ignored on load: subagents
+	// inherit the main session's model, so no spawn is denied on the basis of
+	// its model (SPEC-AGENT-MODEL-INHERIT-001).
 
 	// AgentStopGuard gates the deny layer of the PreToolUse SendMessage
 	// stop-guard. Default false: TaskStop recording and SendMessage
 	// observation + advisory always run, but no send is ever denied until a
-	// maintainer opts in via local config. Sibling of BranchGuard /
-	// AgentModelGuard — same opt-in shape, same default-OFF neutrality.
+	// maintainer opts in via local config. Sibling of BranchGuard — same
+	// opt-in shape, same default-OFF neutrality.
 	AgentStopGuard AgentStopGuardConfig `yaml:"agent_stop_guard"`
 
 	// IntegrationLock gates the PreToolUse release-integration holder guard
@@ -422,6 +513,89 @@ type WorkflowConfig struct {
 	// maintainer of a multi-lane batch opts in via local config. Sibling of
 	// BranchGuard — same opt-in shape, same default-OFF neutrality.
 	IntegrationLock IntegrationLockConfig `yaml:"integration_lock"`
+
+	// SettingsDriftGate gates the REFUSAL layer of the pre-merge
+	// `.claude/settings.json` drift assertion run by `moai integration
+	// acquire`. Default false: detection, preservation and the ledger row run
+	// on every acquire regardless of this value, and only the refusal is
+	// opt-in. Sibling of BranchGuard — same opt-in shape, same default-OFF
+	// neutrality. Deliberately NOT a sub-key of IntegrationLock: that flag's
+	// own contract scopes it to the PreToolUse deny layer, and one flag gating
+	// two refusals at two different surfaces cannot say which one a maintainer
+	// meant to turn off.
+	SettingsDriftGate SettingsDriftGateConfig `yaml:"settings_drift_gate"`
+
+	// ServedModelGate gates the ADOPTION-REFUSAL layer of the SubagentStop
+	// served-model observer: when the model that actually answered a gate
+	// auditor (plan-auditor / sync-auditor) differs from the expected one, or
+	// cannot be determined, the auditor's verdict is refused adoption and the
+	// phase-entry spawns are denied until a later run of the same auditor is
+	// observed on the expected model. Default false: the observation row and
+	// the warning always run regardless of this value. A bare `enabled` flag
+	// rather than a block, for the SettingsDriftGate
+	// reason — one flag gating two refusals at two surfaces cannot say which
+	// one a maintainer meant to turn off.
+	ServedModelGate ServedModelGateConfig `yaml:"served_model_gate"`
+
+	// SlotLease carries the resource slot lease settings (card t607): the
+	// opt-in PreToolUse guard flag, the default declared maximum duration, and
+	// the per-resource command patterns. Default OFF; the `moai slot` verbs
+	// work regardless of Enabled. Deliberately separate from IntegrationLock.
+	SlotLease SlotLeaseConfig `yaml:"slot_lease"`
+
+	// QuotaGate carries the quota-aware lane gate settings
+	// (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-008): whether the gate runs, the
+	// per-window hold percentages, the release margin, and the freshest-reading
+	// max age. Read through LoadQuotaGate, which owns the default on every
+	// failure and every out-of-range value. Default OFF; the status block, the
+	// hold, and the integration-window warning all consult it. Template
+	// neutrality: no `enabled: true` under internal/template/templates/.
+	QuotaGate QuotaGateConfig `yaml:"quota_gate"`
+
+	// SubagentWriteGuard gates the deny layer of the PreToolUse subagent
+	// destructive-write guard (SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001). Default
+	// false: detection and the audit-log append always run, but no subagent
+	// Write is ever denied until a maintainer opts in via local config.
+	// Sibling of BranchGuard / AgentStopGuard — same opt-in shape, same
+	// default-OFF neutrality.
+	SubagentWriteGuard SubagentWriteGuardConfig `yaml:"subagent_write_guard"`
+
+	// AnchorRelocationGuard gates the refusal layer of the session-anchor
+	// relocation ownership guard (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-005).
+	// Default false: the ownership judgment and its audit row run on every
+	// relocation, but a flagged relocation proceeds (advisory) until a
+	// maintainer opts in via local config. Sibling of BranchGuard /
+	// SubagentWriteGuard — same opt-in shape, same default-OFF neutrality.
+	AnchorRelocationGuard AnchorRelocationGuardConfig `yaml:"anchor_relocation_guard"`
+
+	// CommitIdentityGuard gates the PreToolUse commit identity guard
+	// (SPEC-COMMIT-IDENTITY-GUARD-001). Default false: the guard ships INERT —
+	// when off, no repository-scope or identity probe subprocess ever runs and
+	// every shell call is allowed unchanged. A maintainer whose test suites
+	// have been known to poison the shared git config layer opts in via local
+	// config (deny_emails is ADDITIVE to the guard's built-in fixture list, it
+	// never shrinks it). Sibling of BranchGuard — same opt-in shape, same
+	// default-OFF neutrality.
+	CommitIdentityGuard CommitIdentityGuardConfig `yaml:"commit_identity_guard"`
+
+	// Jev gates the TypeSafe System One judgment capability (internal/jev).
+	// Default false: the capability ships INERT, and while it is off the
+	// package constructs no request and makes no network call at all
+	// (REQ-JEVC-015 / REQ-JEVC-017). Sibling of the opt-in switch family
+	// around it — BranchGuard, SlotLease, Codex.ReviewGate — and a bare
+	// `enabled` flag rather than a block: the pinned model id and the endpoint
+	// are compiled constants, not operator-visible configuration
+	// (CLAUDE.local.md §14 — model names and URLs live in Go consts).
+	// Template neutrality: no `enabled: true` under
+	// internal/template/templates/.
+	Jev WorkflowJevConfig `yaml:"jev"`
+
+	// Autonomy mirrors workflow.autonomy.* — the contract-signing surface
+	// (SPEC-AUTONOMY-CONTRACT-001 REQ-CONTRACT-015). Read through
+	// ResolveAutonomy, never directly: the resolver owns the absent-key
+	// defaults, the fail-safe fallback for out-of-set values, and the
+	// mode-derived kickoff decider.
+	Autonomy AutonomyConfig `yaml:"autonomy"`
 
 	// Codex gates the codex audit backend + the Stop-hook review gate
 	// (SPEC-MOAI-MCP-SERVER-001 M2). The ReviewGate sub-block is the opt-in
@@ -454,70 +628,29 @@ type WorkflowConfig struct {
 	// Deprecated: use TokenBudget.Sync.
 	SyncTokens int `yaml:"-"`
 
-	// WorkflowAgents는 dynamic-workflow purpose 분류(7종) → {model, effort} 기본값
-	// 맵이다 (SPEC-WEB-CONSOLE-011 REQ-WC11-070/071). config 블록이 기본값의
-	// SSOT이고 per-script 리터럴이 override다 (dynamic-workflows.md §Config
-	// surface — JS 스크립트가 yaml 파일을 직접 읽는다).
-	//
-	// 소비 관계 (M5-a B2 정정 — verification-claim-integrity): 이 typed 필드는
-	// 로더가 채우는 스키마 표면이며, production Go 코드는 이 필드를 읽지
-	// 않는다 (grep 실측 — config/workflow_agents_test.go만 접근). 웹 콘솔은
-	// M5-a B1부터 이 블록을 렌더/쓰기하지 않는다. dynamic-workflow JS가
-	// yaml 파일에서 직접 읽는 소비자다. 블록 부재 시 nil (zero-value, 무오류).
-	WorkflowAgents map[string]WorkflowAgentEntry `yaml:"workflow_agents"`
-
-	// ModelRouting is the Tier x Phase -> {model, effort} routing map read by
-	// RouteModelFor(tier, phase). The key format is "<TIER>-<phase>" (e.g.
-	// "S-sync", "L-run"). This is the per-spawn COST axis, orthogonal to the
-	// Phase 4 mode-shape axis (direct / serial / fanout / sweep) — B (this
-	// field) decides model/effort, Phase 4 decides spawn shape; they compose,
-	// never compete.
-	// When the block is absent the map is nil and RouteModelFor falls back to
-	// the documented default entry with FallbackApplied=true.
-	ModelRouting map[string]ModelRoutingEntry `yaml:"model_routing"`
-
-	// ModelRoutingProfiles is the perfTier -> (Tier x Phase) -> {model, effort}
-	// 3-tier routing map read by RouteModelFor(specTier, phase, perfTier). The
-	// outer key is perfTier in {high, medium, low} (the superseded "max" name is
-	// accepted as a read-time alias); the inner key format is
-	// "<TIER>-<phase>" (e.g. "S-sync", "L-run"). This is the No-Haiku 3-tier
-	// cost axis (SPEC-AGENT-ARCH-V2-001 M3, design.md §D.5) — it supersedes the
-	// flat ModelRouting above for spawn-time routing. When the block is absent
-	// the map is nil and RouteModelFor falls back to the documented default
-	// entry with FallbackApplied=true.
-	ModelRoutingProfiles ModelRoutingProfiles `yaml:"model_routing_profiles"`
-
 	// Audit is the workflow.audit block (SPEC-MOAI-MCP-SERVER-001 REQ-MCP-010 /
 	// SPEC-AUDIT-MULTI-MODEL-001): the active audit_model token plus the
 	// per-auditor gates. When the block is absent the field is the zero value
 	// and callers resolve the distributed default profile via
 	// NewDefaultWorkflowConfig (claude required, codex required, glm advisory).
 	Audit AuditConfig `yaml:"audit"`
+
+	// AgentTiers is the workflow.agent_tiers block (SPEC-AGENT-TIER-001 M2,
+	// REQ-TIER-008): the user's agent-class → tier-token assignment table.
+	// When the block is absent (or a class is not listed) the resolver falls
+	// back to DefaultAgentTierClasses per class; an unknown tier token fails
+	// the load (Validate, REQ-TIER-009). Audit surfaces are excluded from the
+	// tier matrix regardless of this table (REQ-TIER-007) — they resolve
+	// exclusively through the workflow.audit pins.
+	AgentTiers AgentTiersConfig `yaml:"agent_tiers"`
 }
 
-// ModelRoutingProfiles is perfTier -> (tier-phase) -> routing entry. perfTier
-// in {high, medium, low}; inner key "<TIER>-<phase>" (Tier in {S,M,L}, Phase in
-// {plan,run,sync,mx}). Loaded from workflow.yaml `model_routing_profiles`.
-type ModelRoutingProfiles map[string]map[string]ModelRoutingEntry
-
-// ModelRoutingEntry is a single Tier x Phase routing recommendation. It is a
-// NEW struct distinct from WorkflowAgentEntry because REQ-TR-002 mandates a
-// FallbackApplied indicator that WorkflowAgentEntry (which carries only
-// {Model, Effort}) does not have.
-type ModelRoutingEntry struct {
-	Model           string `yaml:"model"`
-	Effort          string `yaml:"effort"`
-	FallbackApplied bool   `yaml:"fallback_applied"`
-}
-
-// WorkflowAgentEntry는 dynamic-workflow purpose별 model/effort 기본값이다
-// (REQ-WC11-071 — design.md §C.2). retired된 team role-profile entry와 달리
-// Effort 필드를 가진다: role-profile effort는 Go-invisible opaque node
-// 결정(REQ-WEM-006)이었고, workflow_agents는 신설 typed 표면이라 그 결정의
-// 적용 대상이 아니다.
-type WorkflowAgentEntry struct {
-	Model  string `yaml:"model"`
-	Effort string `yaml:"effort"`
+// AgentTiersConfig mirrors workflow.agent_tiers — the tier-axis assignment
+// table (SPEC-AGENT-TIER-001 REQ-TIER-008/009). Classes maps an agent-class
+// name to a tier token from the closed set {max, medium, low}
+// (ValidAgentTiers); any other token fails the load through Validate.
+type AgentTiersConfig struct {
+	Classes map[string]string `yaml:"classes,omitempty" json:"classes,omitempty"`
 }
 
 // AutoClearConfig mirrors workflow.auto_clear.* — context-window auto-clear policy.
@@ -562,12 +695,18 @@ type TokenBudgetConfig struct {
 // Distinct from GitStrategyConfig.WorktreeRoot (different key domain, no conflict).
 //
 // Reader status (SPEC-CONFIG-KEY-HONESTY-001 M5, updated by
-// SPEC-INIT-WIZARD-REPAIR-001 REQ-009): AutoCreate is read once by
-// internal/cli/worktree_advisory.go only to select advisory wording — it does
-// not gate worktree creation. AutoCleanup is read by the two auto-cleanup
-// paths (internal/cli/session_worktree.go cleanupSessionWorktree and
+// SPEC-INIT-WIZARD-REPAIR-001 REQ-009 and
+// SPEC-WORKTREE-KEY-WIRING-001 REQ-WKW-012): AutoCreate is read once by
+// internal/cli/worktree_advisory.go only to select advisory wording — its
+// declared scope is the wording; it does not gate worktree creation.
+// AutoCleanup is read by the two auto-cleanup paths
+// (internal/cli/session_worktree.go cleanupSessionWorktree and
 // session_worktree_prmerge.go prMergeCleanup), gating worktree removal.
-// AutoMerge has no production reader (declared but not read).
+// AutoMerge is read by the session-exit auto-merge path
+// (internal/cli/session_worktree_automerge.go sessionExitAutoMerge): when
+// true, a clean session exit merges the session worktree's branch into the
+// configured git-flow develop branch — a local merge inside the
+// release-integration window, never a push.
 // SessionNamePattern has no production reader (no code builds a session name
 // from it).
 type WorkflowWorktreeConfig struct {
@@ -589,6 +728,26 @@ type WorkflowTodoConfig struct {
 	Enabled *bool `yaml:"enabled"`
 }
 
+// WorkflowDriftCacheFillConfig mirrors workflow.drift_cache_fill.* — the
+// opt-out for the out-of-band drift-cache fill child. Enabled defaults to true
+// (see the field comment on WorkflowConfig.DriftCacheFill for why this key
+// departs from the default-OFF guard family).
+type WorkflowDriftCacheFillConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// WorkflowProjectConfig mirrors workflow.project.* — the /moai project Phase 14
+// completion-continuation key (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-001).
+//
+// Continuation is a plain string, NOT a *string. The pointer on
+// WorkflowTodoConfig.Enabled buys a distinction this domain does not have: the
+// default here is a NAMED token of the closed set — card — so "absent" and
+// "card" mean exactly the same thing, and no requirement reads a nil case.
+// Read it through Config.ProjectContinuation rather than dereferencing here.
+type WorkflowProjectConfig struct {
+	Continuation string `yaml:"continuation"`
+}
+
 // BranchGuardConfig mirrors workflow.branch_guard.* — the Main-Checkout
 // Branch-State Guard opt-in gate (SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-3).
 // When Enabled is false (the distributed default), the hook returns the allow
@@ -598,6 +757,15 @@ type WorkflowTodoConfig struct {
 // remains unchanged and is consulted only on the enabled path (REQ-6).
 type BranchGuardConfig struct {
 	Enabled bool `yaml:"enabled"`
+
+	// DenyCommitsOn lists the branch names the protected-branch commit deny
+	// refuses commits on (SPEC-MAIN-COMMIT-BAN-001 REQ-3.1): while Enabled is
+	// true, `git commit` / `git revert` / `git cherry-pick` in the PRIMARY
+	// checkout are denied when the resolved HEAD branch is listed here. The
+	// empty list (the distributed default) short-circuits the check before any
+	// subprocess — unconfigured users pay one len() (REQ-2.5). There is no
+	// separate opt-in flag: the deny rides Enabled (REQ-3.4).
+	DenyCommitsOn []string `yaml:"deny_commits_on"`
 }
 
 // IntegrationLockConfig mirrors workflow.integration_lock.* — the opt-in gate
@@ -611,14 +779,63 @@ type IntegrationLockConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
-// AgentModelGuardConfig mirrors workflow.agent_model_guard.* — the opt-in
-// blocking layer of the PreToolUse agent-model guard. When Enabled is false
-// (the distributed default) the guard still observes every Agent spawn and
-// still emits advisories, but it never returns a deny decision. Only the
-// mismatch verdict is blockable even when enabled; the far more common
-// missing verdict stays advisory, because blocking it would refuse nearly
-// every spawn.
-type AgentModelGuardConfig struct {
+// SettingsDriftGateConfig mirrors workflow.settings_drift_gate.* — the opt-in
+// gate for the REFUSAL layer of the pre-merge `.claude/settings.json` drift
+// assertion. When Enabled is false (the distributed default) `moai integration
+// acquire` still runs the predicate, still preserves a drifted working copy,
+// still appends the ledger row and still reports — it simply records the
+// window instead of refusing it. Only the refusal is gated: an implementation
+// that skipped detection while the flag is off would remove the very property
+// the default-OFF posture was chosen for, and would pass every other check.
+type SettingsDriftGateConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// SlotLeaseConfig mirrors workflow.slot_lease.* (card t607). Enabled gates the
+// PreToolUse guard's deny layer only; DefaultMaxDuration is a duration string
+// parsed at use; Resources maps a resource name to its command patterns.
+// Resource entries decode leniently (slot_lease_config.go) so one malformed
+// entry cannot turn the whole workflow section off.
+type SlotLeaseConfig struct {
+	Enabled            bool                               `yaml:"enabled"`
+	DefaultMaxDuration string                             `yaml:"default_max_duration"`
+	Resources          map[string]SlotLeaseResourceConfig `yaml:"resources"`
+}
+
+// QuotaGateConfig mirrors workflow.quota_gate.* (SPEC-QUOTA-AWARE-SCHEDULING-001
+// REQ-QAS-008). Enabled gates every quota surface; the two hold percentages are
+// the used percentage at or above which a window counts as under pressure; a
+// held lane is released once the reading falls below its hold percentage minus
+// ReleaseMarginPct; MaxAge is a duration string — the age beyond which a session
+// record's reading is unknown. The numeric defaults are unmeasured. The raw
+// values may be out of range here; LoadQuotaGate is the resolver that replaces
+// an invalid value with its default.
+type QuotaGateConfig struct {
+	Enabled          bool   `yaml:"enabled"`
+	FiveHourHoldPct  int    `yaml:"five_hour_hold_pct"`
+	SevenDayHoldPct  int    `yaml:"seven_day_hold_pct"`
+	ReleaseMarginPct int    `yaml:"release_margin_pct"`
+	MaxAge           string `yaml:"max_age"`
+	// MaxScanDirs bounds the linked-worktree record directories the quota
+	// reading examines per call (SPEC-QUOTA-RECORD-WORKTREES-001 REQ-QWR-011).
+	MaxScanDirs int `yaml:"max_scan_dirs"`
+}
+
+// SlotLeaseResourceConfig is one resource entry: RE2 command patterns matched
+// against a Bash command with quoted spans scrubbed. Invalid is non-empty when
+// the entry could not be read as a list of pattern strings; such an entry is
+// reported by the guard (fail-open) rather than failing the whole section.
+type SlotLeaseResourceConfig struct {
+	Commands []string `yaml:"commands"`
+	Invalid  string   `yaml:"-"`
+}
+
+// ServedModelGateConfig mirrors workflow.served_model_gate.* — the opt-in
+// adoption-refusal layer of the served-model observer. When Enabled is false
+// (the distributed default) the SubagentStop hook still records the served
+// model and still warns on drift or an undeterminable model; it never
+// persists a served-kind refusal and never causes a spawn to be denied.
+type ServedModelGateConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
@@ -631,6 +848,94 @@ type AgentModelGuardConfig struct {
 // registry already populated.
 type AgentStopGuardConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+// SubagentWriteGuardConfig mirrors workflow.subagent_write_guard.* — the
+// opt-in deny layer of the PreToolUse subagent destructive-write guard
+// (SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001). When Enabled is false (the
+// distributed default) the guard still detects destructively-shaped writes
+// and still appends an audit row per decision (`withheld` when the predicate
+// holds and the layer is off), but it never refuses the write. Detection and
+// the audit append are not gated: only the refusal is (REQ-SWG-006, family
+// contract). Template neutrality: no `enabled: true` anywhere under
+// internal/template/templates/.
+type SubagentWriteGuardConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// AnchorRelocationGuardConfig mirrors workflow.anchor_relocation_guard.*
+// (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-005). Enabled gates the REFUSAL layer
+// of the session-anchor relocation ownership guard: when false (the
+// distributed default) an implausible-target relocation is advisory only —
+// the ownership flag row is recorded and the relocation proceeds. When true,
+// a flagged relocation is refused and the refusal recorded to the relocation
+// audit log. Detection (the ownership judgment and its audit row) is not
+// gated: it runs on every relocation regardless of this flag, mirroring the
+// SubagentWriteGuard family contract. Template neutrality: no `enabled: true`
+// anywhere under internal/template/templates/.
+type AnchorRelocationGuardConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// CommitIdentityGuardConfig mirrors workflow.commit_identity_guard.*
+// (SPEC-COMMIT-IDENTITY-GUARD-001). Enabled gates the whole guard: when false
+// (the distributed default) the pre-tool handler never invokes it, so no
+// `git rev-parse --git-common-dir` or `git var` probe subprocess runs at all.
+// DenyEmails is ADDED to the guard's built-in fixture-email list (REQ-CIG-008
+// — the union, never a replacement).
+type CommitIdentityGuardConfig struct {
+	Enabled    bool     `yaml:"enabled"`
+	DenyEmails []string `yaml:"deny_emails"`
+}
+
+// WorkflowJevConfig mirrors workflow.jev.* — the opt-in gate for the TypeSafe
+// System One judgment capability (REQ-JEVC-015). It carries a bare Enabled flag
+// and nothing else: the pinned model id and the endpoint URL are compiled
+// constants in internal/jev, so there is no operator-visible knob that could
+// move the pin without a release, and no configuration path by which a request
+// could be aimed somewhere else.
+type WorkflowJevConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// AutonomyConfig mirrors workflow.autonomy.* (SPEC-AUTONOMY-CONTRACT-001
+// REQ-CONTRACT-015). String fields treat "" as absent. The numeric fields are
+// pointers so an absent key (nil) is distinguishable from an explicit zero;
+// ResolveAutonomy applies the defaults.go values for nil.
+type AutonomyConfig struct {
+	Mode       string                   `yaml:"mode"`
+	Contract   AutonomyContractConfig   `yaml:"contract"`
+	Kickoff    AutonomyKickoffConfig    `yaml:"kickoff"`
+	Escalation AutonomyEscalationConfig `yaml:"escalation"`
+}
+
+// AutonomyContractConfig mirrors workflow.autonomy.contract.*.
+type AutonomyContractConfig struct {
+	BatchSign    bool   `yaml:"batch_sign"`
+	SecondReview string `yaml:"second_review"`
+	PushDevelop  bool   `yaml:"push_develop"`
+}
+
+// AutonomyKickoffConfig mirrors workflow.autonomy.kickoff.*. Decider has no
+// stored default: absent or empty derives from the effective mode.
+type AutonomyKickoffConfig struct {
+	Decider          string   `yaml:"decider"`
+	JevMinConfidence *float64 `yaml:"jev_min_confidence"`
+}
+
+// AutonomyEscalationConfig mirrors workflow.autonomy.escalation.*.
+type AutonomyEscalationConfig struct {
+	BudgetDefault AutonomyBudgetConfig `yaml:"budget_default"`
+	// NewAPIDetector selects the escalation detector's class-4
+	// (new-architecture-or-api) implementation: graph | off. "" is absent.
+	NewAPIDetector string `yaml:"new_api_detector"`
+}
+
+// AutonomyBudgetConfig mirrors workflow.autonomy.escalation.budget_default.*.
+type AutonomyBudgetConfig struct {
+	Turns        *int `yaml:"turns"`
+	Operations   *int `yaml:"operations"`
+	AuditRetries *int `yaml:"audit_retries"`
 }
 
 // CodexConfig mirrors workflow.codex.* — the codex audit backend + review-gate
@@ -663,6 +968,26 @@ type CodexTaskConfig struct {
 // the HOI opt-in precedent (isHookOptInEnabled), NOT the fail-open learning gate.
 type CodexReviewGateConfig struct {
 	Enabled bool `yaml:"enabled"`
+
+	// TreeScope decides what the gate does for a session whose scope is the
+	// whole uncommitted tree and which carries no WT- branch evidence
+	// (SPEC-CODEX-REVIEW-OWNERSHIP-001 REQ-CRO-001): "review" (default, the
+	// pre-existing behavior) or "skip". Read through
+	// NormalizeCodexReviewGateTreeScope — any other value means review. The
+	// template ships this key only as a commented example.
+	TreeScope string `yaml:"tree_scope"`
+
+	// PrimaryScope decides what the gate does for a tree-scope session whose
+	// tree IS the repository's primary working tree
+	// (SPEC-CODEX-GATE-SCOPING-001 REQ-CGSC-002): "skip" — the distributed
+	// default, since a primary checkout's non-card changes have no card to
+	// attribute them to — or "review", the explicit restore of the pre-SPEC
+	// whole-tree review (REQ-CGSC-004). Read through
+	// NormalizeCodexReviewGatePrimaryScope: the fail direction is REVERSED
+	// from TreeScope — only an explicit review wins; a missing key, an
+	// unknown value, an unreadable file or a YAML error all leave the default
+	// skip in force.
+	PrimaryScope string `yaml:"primary_scope"`
 }
 
 // MultiConfig mirrors workflow.multi.* — the multi-model convergence review-gate
@@ -738,6 +1063,16 @@ type SecuritySandbox struct {
 // coverage, diagnostics) is stored.
 type StateConfig struct {
 	RetentionDays int `yaml:"retention_days"` // SPEC-V3R2-RT-004 REQ-031: retention days for the runs/ directory
+
+	// SessionRecordRetentionDays bounds the age of factory session records
+	// (<state-dir>/<session>.json), pruned at SessionStart (card t1312). It
+	// is a pointer so an explicit 0 ("disable retention") stays
+	// distinguishable from a key the user omitted, which retains the
+	// DefaultSessionRecordRetentionDays shipped default — the same
+	// pointer-for-explicit-zero shape as the home tier's home_retention_days.
+	// Consumed by the SessionStart prune path via a targeted state.yaml read
+	// (the clean.go precedent), not through the full config load.
+	SessionRecordRetentionDays *int `yaml:"session_record_retention_days"`
 }
 
 // SessionConfig holds session state management configuration.
@@ -804,6 +1139,22 @@ type GateConfig struct {
 	DisabledSteps map[string]bool `yaml:"disabled_steps"`
 	// Typecheck configures the type-check axis.
 	Typecheck GateTypecheck `yaml:"typecheck"`
+	// PreCommit scopes the heavy gate's pre-commit context
+	// (SPEC-PRECOMMIT-GATE-SCOPE-001). The runner honors it ONLY when the
+	// invoking hook exports the MOAI_PRECOMMIT=1 marker; a standalone
+	// `moai gate` run never reads it, so its existing gate.enabled contract is
+	// unchanged (operator decision 2).
+	PreCommit GatePreCommitConfig `yaml:"pre_commit"`
+}
+
+// GatePreCommitConfig configures the heavy gate's pre-commit context.
+type GatePreCommitConfig struct {
+	// Enabled opts the git pre-commit hook's heavy gate in. Default false:
+	// under the MOAI_PRECOMMIT=1 marker the runner skips the project-wide
+	// heavy steps (vet/lint/test/typecheck) so a pre-existing failure
+	// unrelated to the staged change cannot block unrelated commits. The
+	// standalone `moai gate` CLI ignores this key entirely.
+	Enabled bool `yaml:"enabled"`
 }
 
 // GateTypecheck configures the gate's type-check axis.
@@ -856,6 +1207,11 @@ type GateTimeouts struct {
 	Lint      int `yaml:"lint"`
 	Test      int `yaml:"test"`
 	Typecheck int `yaml:"typecheck"`
+	// LockWait bounds how long a starting gate run waits for the gate-run
+	// lock — the advisory lock serializing concurrent manual `moai gate` runs
+	// in one project — before degrading to an unserialized run. In seconds,
+	// like its siblings; a policy knob, not a step budget.
+	LockWait int `yaml:"lock_wait"`
 }
 
 // VetTimeoutDuration converts the Vet timeout to time.Duration.
@@ -893,6 +1249,17 @@ func (g *GateConfig) TypecheckTimeoutDuration() time.Duration {
 		return 300 * time.Second
 	}
 	return time.Duration(g.Timeouts.Typecheck) * time.Second
+}
+
+// LockWaitDuration converts the gate-run lock wait budget to time.Duration.
+// Returns 30s when the value is zero or negative — long enough that a
+// concurrent run finishing normally is waited out, short enough that a
+// starting run is not held hostage by one that will not.
+func (g *GateConfig) LockWaitDuration() time.Duration {
+	if g.Timeouts.LockWait <= 0 {
+		return 30 * time.Second
+	}
+	return time.Duration(g.Timeouts.LockWait) * time.Second
 }
 
 // SunsetConfig defines the Build-to-Delete framework configuration.
@@ -988,9 +1355,41 @@ type HarnessConfig struct {
 	ModelUpgradeReview ModelUpgradeReviewConfig `yaml:"model_upgrade_review,omitempty"`
 	// PlanAuditGlobal holds the global plan audit settings.
 	PlanAuditGlobal PlanAuditGlobalConfig `yaml:"plan_audit_global,omitempty"`
+	// PlanAuditTierCeilings is the per-Tier plan-auditor retry ceiling map
+	// (harness.yaml plan_audit_tier_ceilings, keyed {S,M,L}).
+	// SPEC-AUDIT-CEILING-002 REQ-ACR-002: Go-read by the ceiling evaluation;
+	// the former no-Go-reader disposition is retired.
+	PlanAuditTierCeilings map[string]int `yaml:"plan_audit_tier_ceilings,omitempty"`
+	// PlanAuditCeilingPolicy is the ceiling-hit policy block
+	// (harness.yaml plan_audit_ceiling_policy). SPEC-AUDIT-CEILING-002
+	// REQ-ACR-002/003: on_final_hit drives the recorded outcome selection.
+	PlanAuditCeilingPolicy PlanAuditCeilingPolicyConfig `yaml:"plan_audit_ceiling_policy,omitempty"`
 	// Evaluator is the HRN-002 substrate — used for memory_scope FROZEN validation.
 	Evaluator EvaluatorConfig `yaml:"evaluator"`
 }
+
+// PlanAuditCeilingPolicyConfig is the configuration struct for the
+// plan_audit_ceiling_policy block: what happens when a plan audit reaches its
+// tier ceiling without an admitted verdict.
+type PlanAuditCeilingPolicyConfig struct {
+	// AutoDeltaRounds is the count of delta audits that run without asking
+	// when the fix stays inside fix_scope. Parsed and carried here; the
+	// eligibility computation stays prose-consumed (SPEC-AUDIT-CEILING-002 §E).
+	AutoDeltaRounds int `yaml:"auto_delta_rounds"`
+	// OnFinalHit is the policy value applied when the final ceiling hit
+	// reaches no admitted verdict. Shipped value: hold-and-split.
+	OnFinalHit string `yaml:"on_final_hit"`
+}
+
+// The on_final_hit policy values the ceiling evaluation selects on (the closed
+// set; any other value — or an empty/unreadable one — fails closed to `hold`).
+const (
+	// PlanAuditCeilingOnFinalHoldAndSplit is the shipped value: a hold record
+	// carrying the split-proposal reference.
+	PlanAuditCeilingOnFinalHoldAndSplit = "hold-and-split"
+	// PlanAuditCeilingOnFinalSplit records a bare split disposition.
+	PlanAuditCeilingOnFinalSplit = "split"
+)
 
 // AutoDetectionConfig is the configuration struct for the auto_detection block.
 // REQ-HRN-001-007: the rules map priority is minimal → standard → thorough.
@@ -1214,11 +1613,39 @@ type ContextTokenBudget struct {
 // Hot path: SPEC-V3R2-WF-003 discovery mode consumes clarity_threshold, plan.max_rounds,
 // plan.questions_per_round, and skip_conditions to control Socratic interview behavior.
 type InterviewConfig struct {
-	ClarityThreshold int           `yaml:"clarity_threshold"`
-	Enabled          bool          `yaml:"enabled"`
-	Plan             InterviewMode `yaml:"plan"`
-	Project          InterviewMode `yaml:"project"`
-	SkipConditions   []string      `yaml:"skip_conditions"`
+	ClarityThreshold   int           `yaml:"clarity_threshold"`
+	DecisionGate       string        `yaml:"decision_gate"`
+	Enabled            bool          `yaml:"enabled"`
+	Plan               InterviewMode `yaml:"plan"`
+	Project            InterviewMode `yaml:"project"`
+	RecommendationMode string        `yaml:"recommendation_mode"`
+	SkipConditions     []string      `yaml:"skip_conditions"`
+}
+
+// ResolvedRecommendationMode returns the resolved recommendation-mode axis:
+// "pull" only when the key holds exactly "pull"; "push" otherwise — including
+// when the key is absent, empty, or unrecognized (REQ-JFM-002, REQ-JFM-003).
+// The raw value stays on RecommendationMode, so an unrecognized setting is
+// recorded verbatim rather than silently discarded.
+func (c InterviewConfig) ResolvedRecommendationMode() string {
+	if c.RecommendationMode == "pull" {
+		return "pull"
+	}
+	return "push"
+}
+
+// ResolvedDecisionGate returns the resolved decision-gate axis: "on" only
+// when the key holds exactly "on"; "off" otherwise — including when the key
+// is absent, empty, or unrecognized (REQ-DA-002, REQ-DA-003). The raw value
+// stays on DecisionGate, so an unrecognized setting is recorded verbatim
+// rather than silently discarded. This resolver reads its own field only: the
+// decision-gate axis is orthogonal to the recommendation-mode axis above and
+// neither reads, writes, nor conditions on the other (REQ-DA-018).
+func (c InterviewConfig) ResolvedDecisionGate() string {
+	if c.DecisionGate == "on" {
+		return "on"
+	}
+	return "off"
 }
 
 // InterviewMode holds per-mode interview settings.
@@ -1471,17 +1898,53 @@ type gateFileWrapper struct {
 	Gate GateConfig `yaml:"gate"`
 }
 
+// WorkflowHygieneConfig mirrors workflow.hygiene.* — the .moai hygiene
+// engine's thresholds and mode (SPEC-MOAI-HYGIENE-001 REQ-HYG-016). The
+// D30 validation floors live in hygiene.Settings.Validate; this type is
+// the yaml surface only.
+type WorkflowHygieneConfig struct {
+	// Mode governs the SessionStart auto path: "report" (default) or
+	// "apply". An unrecognizable string falls back to report (D30). The
+	// CLI ignores this for its own mutation decision — --apply only.
+	Mode string `yaml:"mode"`
+	// AuditLogMaxBytes is the sink rotation threshold.
+	AuditLogMaxBytes int64 `yaml:"audit_log_max_bytes"`
+	// AuditLogKeptRotations is PINNED to 1 (D30): any other value is a
+	// config-invalid refusal.
+	AuditLogKeptRotations int `yaml:"audit_log_kept_rotations"`
+	// TranscriptActivityWindow bounds transcript recency.
+	TranscriptActivityWindow time.Duration `yaml:"transcript_activity_window"`
+	// HeartbeatStaleWindow bounds registry heartbeat recency.
+	HeartbeatStaleWindow time.Duration `yaml:"heartbeat_stale_window"`
+	// MinAgeDays is the deletion age floor.
+	MinAgeDays int `yaml:"min_age_days"`
+}
+
 // systemFileWrapper handles the system.yaml section file.
 //
 // system.yaml ships four top-level blocks (moai / github / hook /
-// document_management), but only `hook` maps to a SystemConfig sub-struct.
-// The wrapper therefore binds only the Hook field; the other three blocks have
-// no SystemConfig field and are intentionally ignored by the loader (they are
-// classified R in the M1 inventory and read, where read at all, by ad-hoc
-// inline structs elsewhere). Seeding Hook with cfg.System.Hook preserves the
-// partial-override contract parallel to loadGateSection / loadHandoffSection.
+// document_management), and of those only `hook` maps to a SystemConfig
+// sub-struct. The other three have no SystemConfig field and are intentionally
+// ignored by the loader (they are classified R in the M1 inventory and read,
+// where read at all, by ad-hoc inline structs elsewhere).
+//
+// `migrations` is bound too, though the template ships no such block (card
+// t795). It is the fifth key a user can write here, and it is NOT in the
+// intentionally-ignored set above: SystemConfig.Migrations carries a yaml tag
+// AND has a real consumer — internal/hook/session_start.go runMigration reads
+// cfg.System.Migrations.Disabled and logs "migrations disabled via config" on
+// the false branch. Unbound, that branch was unreachable from configuration:
+// a user who wrote `migrations: {disabled: true}` had the edit ignored with no
+// signal (yaml.v3 runs non-strict, so an unbound key is silently dropped), and
+// the migrations ran anyway. The same criterion M4 used to bind `hook` — a
+// genuine SystemConfig consumer — selects this block; it was overlooked rather
+// than excluded.
+//
+// Seeding both fields from cfg preserves the partial-override contract
+// parallel to loadGateSection / loadHandoffSection.
 type systemFileWrapper struct {
-	Hook SystemHookConfig `yaml:"hook"`
+	Hook       SystemHookConfig `yaml:"hook"`
+	Migrations MigrationsConfig `yaml:"migrations"`
 }
 
 // ralphFileWrapper handles the ralph.yaml section file.

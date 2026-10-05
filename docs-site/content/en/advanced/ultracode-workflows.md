@@ -54,7 +54,7 @@ A mode where multiple teammates collaborate via a **shared TaskList**.
 - Collaboration and review between teammates needed
 
 {{< callout type="warning" >}}
-In v3.0, MoAI's Agent Teams **static orchestration layer was retired**. Forcing `--team` falls back to sub-agent mode. The native Claude Code teammate runtime (e.g. the GLM panes of `moai cg`) continues to operate.
+In v3.0, MoAI's Agent Teams **static orchestration layer was retired**. Forcing `--team` falls back to sub-agent mode. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 {{< /callout >}}
 
 ### 3. Dynamic Workflows
@@ -109,9 +109,10 @@ flowchart TD
 Enables **automatic workflow generation** for all substantive work in the current session.
 
 **Effects**:
-- Reasoning effort: set to `xhigh`
 - Automatic workflow generation enabled
 - The optimal orchestration primitive is chosen per task
+
+It is an on/off toggle, and turning it on or off does not change the reasoning effort. Turn it off with `/effort ultracode off`. A toggle made with the command applies to the current session only; to start every session with it on, set `"ultracode": true` in a settings file (since v2.1.284 the key leaves the effort level unchanged).
 
 **When to use**:
 - Very complex multi-phase work

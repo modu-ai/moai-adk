@@ -1,165 +1,144 @@
 package config
 
+// profile_test.go — SPEC-WEB-AGENTFM-RESTORE-001 M1: tests for the re-ported
+// llm.profile closed set, its effective-default resolution, and the
+// llm.agent_overrides validation (SPEC-MODEL-PROFILE-MATRIX-001 machinery,
+// REQ-AFR-002/006 surface). The legacy performance_tier read-time alias leg of
+// the old EffectiveProfile is NOT re-ported (plan §D.4-3 — the alias key stays
+// retired), so the resolution chain here is profile → default medium only.
+
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
 
-// TestLoad_LegacyLLMYaml_Migration covers REQ-MPM-003/004 / AC-MPM-002: a legacy
-// llm.yaml carrying plan_type + claude_models + performance_tier loads without
-// error (unknown keys ignored), and the effective profile resolves via the
-// performance_tier alias. The persisted value here is the superseded top-column
-// name "max", which now folds to the canonical "high".
-func TestLoad_LegacyLLMYaml_Migration(t *testing.T) {
-	root := t.TempDir()
-	dir := filepath.Join(root, "config", "sections")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	body := `llm:
-    plan_type: "subscription"
-    performance_tier: "max"
-    claude_models:
-        high: "opus"
-        medium: "sonnet"
-        low: "sonnet"
-`
-	if err := os.WriteFile(filepath.Join(dir, "llm.yaml"), []byte(body), 0o644); err != nil {
-		t.Fatalf("write: %v", err)
-	}
-	cfg, err := NewLoader().Load(root)
-	if err != nil {
-		t.Fatalf("legacy llm.yaml must load without error, got: %v", err)
-	}
-	if got := cfg.LLM.EffectiveProfile(); got != ProfileHigh {
-		t.Errorf("EffectiveProfile() = %q, want high (performance_tier max alias)", got)
-	}
-	// profile: absent + performance_tier: max → profile resolves high; no error.
-	if cfg.LLM.Profile != "" {
-		t.Errorf("Profile should be empty (absent in legacy config), got %q", cfg.LLM.Profile)
-	}
-}
-
-// TestLoad_NewSchemaLLMYaml covers AC-MPM-001: a new-schema llm.yaml with
-// profile + profiles + agent_overrides loads and resolves correctly.
-func TestLoad_NewSchemaLLMYaml(t *testing.T) {
-	root := t.TempDir()
-	dir := filepath.Join(root, "config", "sections")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	body := `llm:
-    profile: low
-    agent_overrides:
-        manager-develop: { model: opus, effort: xhigh }
-`
-	if err := os.WriteFile(filepath.Join(dir, "llm.yaml"), []byte(body), 0o644); err != nil {
-		t.Fatalf("write: %v", err)
-	}
-	cfg, err := NewLoader().Load(root)
-	if err != nil {
-		t.Fatalf("new-schema llm.yaml must load, got: %v", err)
-	}
-	if cfg.LLM.EffectiveProfile() != "low" {
-		t.Errorf("EffectiveProfile() = %q, want low", cfg.LLM.EffectiveProfile())
-	}
-	ov, ok := cfg.LLM.AgentOverrides["manager-develop"]
-	if !ok || ov.Model != "opus" || ov.Effort != "xhigh" {
-		t.Errorf("agent_overrides not parsed: %+v ok=%v", ov, ok)
-	}
-}
-
-// TestEffectiveProfile covers REQ-MPM-002 / AC-MPM-001 / AC-MPM-002: profile
-// pass-through, the superseded max→high alias on both the profile and the legacy
-// performance_tier axis, the now-identity performance_tier high, and the medium
-// default.
 func TestEffectiveProfile(t *testing.T) {
-	tests := []struct {
+	cases := []struct {
 		name    string
 		profile string
-		perfT   string
 		want    string
 	}{
-		{"explicit low", "low", "", "low"},
-		{"explicit high", "high", "", "high"},
-		{"legacy profile max -> high", "max", "", "high"},
-		{"explicit medium", "medium", "", "medium"},
-		{"profile wins over perf_tier", "low", "max", "low"},
-		{"perf_tier high is identity", "", "high", "high"},
-		{"legacy perf_tier max -> high", "", "max", "high"},
-		{"legacy perf_tier low pass-through", "", "low", "low"},
-		{"both absent -> medium default", "", "", "medium"},
-		{"whitespace profile -> perf_tier", "   ", "high", "high"},
+		{"empty resolves the default", "", DefaultProfile},
+		{"high passes through", "high", "high"},
+		{"medium passes through", "medium", "medium"},
+		{"low passes through", "low", "low"},
+		{"legacy max alias folds to high", "max", "high"},
+		{"surrounding space is trimmed", "  high  ", "high"},
+		{"an out-of-set value is returned verbatim for the caller to reject", "bogus", "bogus"},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			l := LLMConfig{Profile: tt.profile, PerformanceTier: tt.perfT}
-			if got := l.EffectiveProfile(); got != tt.want {
-				t.Fatalf("EffectiveProfile() = %q, want %q", got, tt.want)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := LLMConfig{Profile: tc.profile}.EffectiveProfile()
+			if got != tc.want {
+				t.Errorf("EffectiveProfile(%q) = %q, want %q", tc.profile, got, tc.want)
 			}
 		})
 	}
 }
 
-// TestValidateProfile covers REQ-MPM-008 / AC-MPM-001: closed-set validation
-// with the offending value + set named, and empty being valid.
-func TestValidateProfile(t *testing.T) {
-	if errs := validateProfile(&Config{LLM: LLMConfig{Profile: ""}}); len(errs) != 0 {
-		t.Fatalf("empty profile should be valid, got %v", errs)
+func TestProfileClosedSet(t *testing.T) {
+	if !IsValidProfile("high") || !IsValidProfile("medium") || !IsValidProfile("low") {
+		t.Error("the canonical closed set {high, medium, low} must validate")
 	}
-	// Canonical members plus the accepted legacy top-column alias.
-	for _, v := range []string{"high", "medium", "low", "max"} {
-		if errs := validateProfile(&Config{LLM: LLMConfig{Profile: v}}); len(errs) != 0 {
-			t.Fatalf("profile %q should be valid, got %v", v, errs)
-		}
+	if !IsValidProfile("max") {
+		t.Error("the legacy max alias must stay readable (never offered, never written by this SPEC's selector — but readable)")
+	}
+	if IsValidProfile("") {
+		t.Error("empty is not a member of the closed set")
+	}
+	if IsValidProfile("bogus") {
+		t.Error("an out-of-set value must not validate")
+	}
+	got := ValidProfiles()
+	if len(got) != 3 || got[0] != ProfileHigh || got[1] != ProfileMedium || got[2] != ProfileLow {
+		t.Errorf("ValidProfiles = %v, want [high medium low] (the legacy max alias is never offered)", got)
+	}
+}
+
+func TestValidateProfileRule(t *testing.T) {
+	if errs := validateProfile(&Config{LLM: LLMConfig{Profile: "high"}}); len(errs) != 0 {
+		t.Errorf("a canonical profile must validate: %+v", errs)
+	}
+	if errs := validateProfile(&Config{LLM: LLMConfig{Profile: ""}}); len(errs) != 0 {
+		t.Errorf("empty = the effective default, not an error: %+v", errs)
 	}
 	errs := validateProfile(&Config{LLM: LLMConfig{Profile: "bogus"}})
 	if len(errs) != 1 {
-		t.Fatalf("bogus profile should produce 1 error, got %d", len(errs))
+		t.Fatalf("out-of-set profile errors = %d, want 1: %+v", len(errs), errs)
 	}
-	if errs[0].Field != "llm.profile" || errs[0].Value != "bogus" {
-		t.Fatalf("error should name field+value, got %+v", errs[0])
-	}
-	if !strings.Contains(errs[0].Message, "bogus") || !strings.Contains(errs[0].Message, "high, medium, low") {
-		t.Fatalf("error message should name value + closed set, got %q", errs[0].Message)
+	if errs[0].Field != "llm.profile" {
+		t.Errorf("error field = %q, want llm.profile", errs[0].Field)
 	}
 }
 
-// TestValidateAgentOverrides covers REQ-MPM-007 / AC-MPM-004: valid entry
-// passes; non-catalog agent, out-of-enum model, and out-of-enum effort each
-// error with the offending agent/field named.
-func TestValidateAgentOverrides(t *testing.T) {
-	valid := &Config{LLM: LLMConfig{AgentOverrides: map[string]ModelEffort{
+func TestValidateAgentOverridesRule(t *testing.T) {
+	valid := Config{LLM: LLMConfig{AgentOverrides: map[string]ModelEffort{
 		"manager-develop": {Model: "opus", Effort: "xhigh"},
+		"manager-todo":    {Model: "haiku", Effort: "low"},
+		"Explore":         {Model: "inherit"},
 	}}}
-	if errs := validateAgentOverrides(valid); len(errs) != 0 {
-		t.Fatalf("valid override should pass, got %v", errs)
+	if errs := validateAgentOverrides(&valid); len(errs) != 0 {
+		t.Errorf("valid overrides rejected: %+v", errs)
 	}
 
-	badAgent := &Config{LLM: LLMConfig{AgentOverrides: map[string]ModelEffort{
-		"not-an-agent": {Model: "opus", Effort: "high"},
-	}}}
-	errs := validateAgentOverrides(badAgent)
-	if len(errs) != 1 || errs[0].Value != "not-an-agent" {
-		t.Fatalf("non-catalog agent should error naming the agent, got %v", errs)
-	}
-
-	badModel := &Config{LLM: LLMConfig{AgentOverrides: map[string]ModelEffort{
-		"manager-spec": {Model: "gpt4", Effort: "high"},
-	}}}
-	errs = validateAgentOverrides(badModel)
-	if len(errs) != 1 || errs[0].Field != "llm.agent_overrides.manager-spec.model" {
-		t.Fatalf("out-of-enum model should error on the model field, got %v", errs)
-	}
-
-	badEffort := &Config{LLM: LLMConfig{AgentOverrides: map[string]ModelEffort{
-		"manager-spec": {Model: "opus", Effort: "turbo"},
-	}}}
-	errs = validateAgentOverrides(badEffort)
-	if len(errs) != 1 || errs[0].Field != "llm.agent_overrides.manager-spec.effort" {
-		t.Fatalf("out-of-enum effort should error on the effort field, got %v", errs)
-	}
+	t.Run("unknown agent rejected", func(t *testing.T) {
+		cfg := Config{LLM: LLMConfig{AgentOverrides: map[string]ModelEffort{
+			"mission-governor": {Model: "opus", Effort: "high"},
+		}}}
+		errs := validateAgentOverrides(&cfg)
+		if len(errs) != 1 || !strings.Contains(errs[0].Field, "mission-governor") {
+			t.Errorf("= %+v, want one error naming the agent", errs)
+		}
+	})
+	t.Run("out-of-set model rejected", func(t *testing.T) {
+		cfg := Config{LLM: LLMConfig{AgentOverrides: map[string]ModelEffort{
+			"manager-develop": {Model: "fancy-model", Effort: "high"},
+		}}}
+		errs := validateAgentOverrides(&cfg)
+		if len(errs) != 1 || !strings.Contains(errs[0].Field, ".model") {
+			t.Errorf("= %+v, want one .model error", errs)
+		}
+	})
+	t.Run("out-of-set effort rejected", func(t *testing.T) {
+		cfg := Config{LLM: LLMConfig{AgentOverrides: map[string]ModelEffort{
+			"manager-develop": {Model: "opus", Effort: "absurd"},
+		}}}
+		errs := validateAgentOverrides(&cfg)
+		if len(errs) != 1 || !strings.Contains(errs[0].Field, ".effort") {
+			t.Errorf("= %+v, want one .effort error", errs)
+		}
+	})
+	t.Run("nil and empty maps valid", func(t *testing.T) {
+		if errs := validateAgentOverrides(&Config{}); len(errs) != 0 {
+			t.Errorf("nil map rejected: %+v", errs)
+		}
+		if errs := validateAgentOverrides(&Config{LLM: LLMConfig{AgentOverrides: map[string]ModelEffort{}}}); len(errs) != 0 {
+			t.Errorf("empty map rejected: %+v", errs)
+		}
+	})
 }
 
+// TestValidateWiresProfileRules is the integration half: the top-level
+// Validate flow must route the two new rules, so an invalid llm.profile or a
+// bad llm.agent_overrides entry reaches the console's atomic-reject set.
+func TestValidateWiresProfileRules(t *testing.T) {
+	cfg := NewDefaultConfig()
+	cfg.LLM.Profile = "bogus"
+	err := Validate(cfg, map[string]bool{"llm": true})
+	if err == nil {
+		t.Fatal("Validate accepted an out-of-set llm.profile")
+	}
+	verr, ok := err.(*ValidationErrors)
+	if !ok {
+		t.Fatalf("error type = %T, want *ValidationErrors", err)
+	}
+	found := false
+	for _, e := range verr.Errors {
+		if e.Field == "llm.profile" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("validation errors lack the llm.profile row: %+v", verr.Errors)
+	}
+}

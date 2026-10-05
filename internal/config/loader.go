@@ -67,8 +67,12 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load state section
 	l.loadStateSection(sectionsDir, cfg)
 
-	// Load workflow section (SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001)
-	l.loadWorkflowSection(sectionsDir, cfg)
+	// Load workflow section (SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001). A tier
+	// validation failure fails the load (REQ-TIER-009) — the only workflow
+	// surface that rejects rather than falls back.
+	if err := l.loadWorkflowSection(sectionsDir, cfg); err != nil {
+		return nil, err
+	}
 
 	// Load statusline section
 	l.loadStatuslineSection(sectionsDir, cfg)
@@ -223,17 +227,27 @@ func (l *Loader) loadStateSection(dir string, cfg *Config) {
 // The wrapper is seeded with the populated defaults (cfg.Workflow) so that yaml
 // keys omitted by the user retain their construction-time defaults rather than
 // silently collapsing to zero-values (Edge-WSE-003).
-func (l *Loader) loadWorkflowSection(dir string, cfg *Config) {
+//
+// The read/parse failure path keeps the section-level warn-and-default
+// behavior; a tier-token validation failure (workflow.agent_tiers, REQ-TIER-009)
+// is a REJECTION: it returns an error naming the offending token and this file,
+// and the caller fails the load. Only the tier surface rejects — every other
+// workflow key keeps the fallback semantics above.
+func (l *Loader) loadWorkflowSection(dir string, cfg *Config) error {
 	wrapper := &workflowFileWrapper{Workflow: cfg.Workflow}
 	loaded, err := loadYAMLFile(dir, "workflow.yaml", wrapper)
 	if err != nil {
 		slog.Warn("failed to load workflow config, using defaults", "error", err)
-		return
+		return nil
 	}
 	if loaded {
+		if err := wrapper.Workflow.AgentTiers.Validate(); err != nil {
+			return fmt.Errorf("workflow.yaml: %w", err)
+		}
 		cfg.Workflow = wrapper.Workflow
 		l.loadedSections["workflow"] = true
 	}
+	return nil
 }
 
 // loadStatuslineSection loads the statusline configuration section from statusline.yaml.
@@ -320,16 +334,18 @@ var validHarnessLevels = map[string]bool{
 // knownHarnessTopLevelKeys is the set of recognized top-level keys under harnessFileWrapper.Harness.
 // REQ-HRN-001-019: reference set for detecting unknown keys.
 var knownHarnessTopLevelKeys = map[string]bool{
-	"default_profile":      true,
-	"mode_defaults":        true,
-	"auto_detection":       true,
-	"escalation":           true,
-	"effort_mapping":       true,
-	"levels":               true,
-	"model_upgrade_review": true,
-	"plan_audit_global":    true,
-	"evaluator":            true,
-	"learning":             true, // LIVE: harness learning sub-system, consumed by internal/cli/hook.go
+	"default_profile":           true,
+	"mode_defaults":             true,
+	"auto_detection":            true,
+	"escalation":                true,
+	"effort_mapping":            true,
+	"levels":                    true,
+	"model_upgrade_review":      true,
+	"plan_audit_global":         true,
+	"plan_audit_tier_ceilings":  true, // Go-read since SPEC-AUDIT-CEILING-002 (HarnessConfig.PlanAuditTierCeilings)
+	"plan_audit_ceiling_policy": true, // Go-read since SPEC-AUDIT-CEILING-002 (HarnessConfig.PlanAuditCeilingPolicy)
+	"evaluator":                 true,
+	"learning":                  true, // LIVE: harness learning sub-system, consumed by internal/cli/hook.go
 }
 
 // LoadHarnessConfig reads the harness.yaml file at the given path and returns a HarnessConfig.
@@ -351,9 +367,15 @@ func LoadHarnessConfig(path string) (*HarnessConfig, error) {
 		return nil, fmt.Errorf("LoadHarnessConfig read %s: %w", path, err)
 	}
 
-	// Step 1: unmarshal into the struct
-	var wrapper harnessFileWrapper
-	if err := yaml.Unmarshal(data, &wrapper); err != nil {
+	// Step 1: unmarshal into the struct. The wrapper is seeded with the
+	// plan-audit ceiling defaults so a harness.yaml omitting those keys keeps
+	// the shipped values (partial-override contract, mirroring
+	// loadHandoffSection); SPEC-AUDIT-CEILING-002.
+	wrapper := &harnessFileWrapper{Harness: HarnessConfig{
+		PlanAuditTierCeilings:  DefaultPlanAuditTierCeilings(),
+		PlanAuditCeilingPolicy: DefaultPlanAuditCeilingPolicy(),
+	}}
+	if err := yaml.Unmarshal(data, wrapper); err != nil {
 		return nil, fmt.Errorf("LoadHarnessConfig parse %s: %w", path, ErrInvalidYAML)
 	}
 

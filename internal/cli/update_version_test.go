@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/update"
+	"golang.org/x/term"
 )
 
 // TestNormalizeVersionTag covers REQ-UVF-003 (v-prefix normalization) and the
@@ -135,11 +136,11 @@ func hasSuffix(s, p string) bool {
 // | --force | --yes) is permitted (proceeds).
 func TestValidateUpdateVersionConflicts(t *testing.T) {
 	cases := []struct {
-		name          string
-		version       string
+		name                                  string
+		version                               string
 		check, templatesOnly, restore, dryRun bool
-		wantConflict bool
-		wantFlag     string
+		wantConflict                          bool
+		wantFlag                              string
 	}{
 		{name: "version alone ok", version: "v3.0.0"},
 		{name: "version+check conflict", version: "v3.0.0", check: true, wantConflict: true, wantFlag: "--check"},
@@ -234,9 +235,9 @@ func TestUpdateFlagsNoVersionDefaultIsNoop(t *testing.T) {
 
 // mockAPIConfig configures a mock GitHub API + asset server.
 type mockAPIConfig struct {
-	tagStatusCode int                 // /releases/tags/<tag> status (200 or 404)
-	tagBody       string              // release JSON (when 200)
-	assets        map[string]string   // path → content served from the mock (checksums.txt, archive)
+	tagStatusCode int               // /releases/tags/<tag> status (200 or 404)
+	tagBody       string            // release JSON (when 200)
+	assets        map[string]string // path → content served from the mock (checksums.txt, archive)
 }
 
 // newMockGithubTLS starts a TLS httptest server that routes by URL path and
@@ -585,10 +586,10 @@ func TestIsVersionDowngrade(t *testing.T) {
 		requested, current string
 		want               bool
 	}{
-		{"v3.0.0", "v3.2.0", true},   // older requested → downgrade
-		{"v3.2.0", "v3.0.0", false},  // newer requested → upgrade
-		{"v3.0.0", "v3.0.0", false},  // same → not downgrade
-		{"3.0.0", "v3.2.0", true},    // bare requested, v-prefixed current
+		{"v3.0.0", "v3.2.0", true},      // older requested → downgrade
+		{"v3.2.0", "v3.0.0", false},     // newer requested → upgrade
+		{"v3.0.0", "v3.0.0", false},     // same → not downgrade
+		{"3.0.0", "v3.2.0", true},       // bare requested, v-prefixed current
 		{"v3.1.0-rc1", "v3.0.0", false}, // rc newer than stable
 		{"go-v3.0.0", "v3.2.0", true},   // go-v prefix handled
 	}
@@ -603,7 +604,10 @@ func TestIsVersionDowngrade(t *testing.T) {
 
 // TestCompareVersionLoose covers the version comparison helper.
 func TestCompareVersionLoose(t *testing.T) {
-	cases := []struct{ a, b string; want int }{
+	cases := []struct {
+		a, b string
+		want int
+	}{
 		{"v3.0.0", "v3.0.0", 0},
 		{"v3.1.0", "v3.0.0", 1},
 		{"v3.0.0", "v3.1.0", -1},
@@ -641,6 +645,27 @@ func TestRunVersionBranch_NonTTYProceeds(t *testing.T) {
 	if isTerminalStdin() {
 		t.Skip("test requires non-TTY stdin; run via `go test` (pipe), not an interactive shell")
 	}
+
+	// card t1271: runVersionBranch derives its install timeout from
+	// cmd.Context(); the package-level updateCmd never went through a real
+	// Execute chain, so that context is nil and context.WithTimeout panics
+	// the moment the test actually reaches the install step — previously
+	// masked by the vacuous /dev/null-is-a-TTY skip. Inject a real context
+	// and restore the previous one so the global is untouched.
+	prev := updateCmd.Context()
+	updateCmd.SetContext(t.Context())
+	t.Cleanup(func() { updateCmd.SetContext(prev) })
+
+	// card t1271: without --binary, runVersionBranch re-execs the freshly
+	// installed binary (REQ-UVF-014). versionInstallBinaryPath points at a
+	// copy of the TEST binary, so that re-exec would replace this test
+	// process with another full test run — an unbounded recursion the
+	// vacuous skip used to hide. AC-UVF-013 covers "skips the prompt and
+	// proceeds" through the install; the re-exec step stays out of scope.
+	if err := updateCmd.Flags().Set("binary", "true"); err != nil {
+		t.Fatalf("set --binary: %v", err)
+	}
+	t.Cleanup(func() { _ = updateCmd.Flags().Set("binary", "false") })
 	arch, wantSum := buildMockArchive(t)
 	checksums := fmt.Sprintf("%s  %s\n", wantSum, platformArchiveName("3.0.0"))
 	cfg := mockAPIConfig{
@@ -671,9 +696,13 @@ func TestRunVersionBranch_NonTTYProceeds(t *testing.T) {
 
 // isTerminalStdin is the same check runVersionBranch uses to gate the prompt.
 func isTerminalStdin() bool {
-	// Defer to the same library so the test mirrors production semantics.
-	fi, _ := os.Stdin.Stat()
-	return (fi.Mode() & os.ModeCharDevice) != 0
+	// card t1271: the ModeCharDevice form this helper used returned true for
+	// /dev/null (a char device but not a terminal), so under `go test` stdin
+	// "was a TTY" and TestRunVersionBranch_NonTTYProceeds skipped on every
+	// run — a vacuous green. term.IsTerminal is an ioctl probe (the same
+	// check internal/cli/spec_status.go isTerminalFile and t1254/t1262 use),
+	// so /dev/null reads false and the test actually executes.
+	return term.IsTerminal(int(os.Stdin.Fd()))
 }
 
 // TestRunVersionBranch_VersionTagIndependentOfDevBuild covers REQ-UVF-012 /

@@ -1,6 +1,6 @@
 // loader.go — neutral-layer .md parsing.
 //
-// The .md structure contract (verified against the 11 template files):
+// The .md structure contract (verified against the 12 template files):
 // YAML frontmatter between two "---" lines, in field order name,
 // description (block scalar |), tools (CSV string), model, effort, color,
 // permissionMode, memory, skills (optional YAML array), hooks (optional) —

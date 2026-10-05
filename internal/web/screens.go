@@ -1,4 +1,4 @@
-// 재설계본 화면 핸들러 — 개요 · 칸반 · SPEC · 모니터.
+// 재설계본 화면 핸들러 — 개요 · 팩토리 · SPEC · 모니터.
 //
 // 넷 다 읽기 전용이다. GET 이외 메서드는 405 로 거부하며, 쓰기 경로도 SPEC
 // status 전이도 없다 — 상태 전이의 소유자는 각 phase 의 manager 에이전트이지
@@ -124,35 +124,42 @@ func (a *app) handleOverview(w http.ResponseWriter, r *http.Request) {
 	// The other three screens carry a descriptive crumb; overview carried none,
 	// so it was the one screen that never named the project it was reporting on.
 	vm := a.shellVM(r, "overview", "Overview", filepath.Base(a.cfg.ProjectRoot))
-	a.renderPage(w, Overview(vm, o))
+	// Overview is a summary, not an audit surface: it always shows the
+	// store's order and never opens the detail pane.
+	a.renderPage(w, Overview(vm, o, a.buildTodo(todoSortDefault, "")))
 }
 
-func (a *app) handleKanban(w http.ResponseWriter, r *http.Request) {
+func (a *app) handleFactory(w http.ResponseWriter, r *http.Request) {
 	if !a.readOnly(w, r) {
 		return
 	}
-	k, err := a.buildKanban(time.Now())
+	k, err := a.buildFactory(time.Now())
 	if err != nil {
-		http.Error(w, "kanban unavailable: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "factory unavailable: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	vm := a.shellVM(r, "kanban", "Kanban", "chain + pipeline")
-	a.renderPage(w, Kanban(vm, k))
+	vm := a.shellVM(r, "factory", "Factory", "lanes + pipeline")
+	a.renderPage(w, Factory(vm, k))
 }
 
 // handleTodo serves the read-only backlog queue at its own top-level route
 // (SPEC-WEB-TODO-QUEUE-001 REQ-WTQ-002). The queue is an operator surface in
-// its own right — addressable and shareable as a URL, which a panel on /kanban
+// its own right — addressable and shareable as a URL, which a panel on /factory
 // would not be.
 //
 // Read-only like the other four screens: GET only, no mutation, no lock. The
 // queue's own writes and id issuance belong to `moai todo`.
+//
+// sort and id are view-state, not data: the sort key reorders the audit list
+// and id opens one card in the detail pane, both addressable as a URL the way
+// /specs?id= already is. Unknown values degrade to the default view.
 func (a *app) handleTodo(w http.ResponseWriter, r *http.Request) {
 	if !a.readOnly(w, r) {
 		return
 	}
+	q := r.URL.Query()
 	vm := a.shellVM(r, "todo", "Todo", "backlog queue")
-	a.renderPage(w, Todo(vm, a.buildTodo()))
+	a.renderPage(w, Todo(vm, a.buildTodo(q.Get("sort"), q.Get("id"))))
 }
 
 func (a *app) handleMonitor(w http.ResponseWriter, r *http.Request) {

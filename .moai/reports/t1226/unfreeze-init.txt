@@ -1,0 +1,33 @@
+need = 39690  (T_min 189689 - 149999)
+rank	lines	gain	cum_gain	cum_lines	file	section
+1	1	2281	2281	1	AGENTS.md	5. Core behaviors
+2	1	2150	4431	2	.claude/rules/moai/core/agent-common-protocol.md	Verbatim batch, output contracts, and CLI idioms
+3	1	2089	6520	3	.claude/rules/moai/core/agent-common-protocol.md	Hook Invocation Surface
+4	1	1901	8421	4	.claude/rules/moai/workflow/kanban-dispatch.md	Card classes — not every card needs every column
+5	1	1752	10173	5	CLAUDE.md	Selection Decision Tree
+6	1	1711	11884	6	.claude/rules/moai/core/verification-claim-integrity.md	3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution
+7	1	1631	13515	7	.claude/rules/moai/workflow/session-handoff.md	Output Surface (User-Facing)
+8	1	1617	15132	8	.claude/rules/moai/workflow/cross-session-messaging.md	A send result has three shapes, and none of them says "read"
+9	1	1612	16744	9	.claude/rules/moai/workflow/context-window-management.md	Context Window Targets
+10	1	1523	18267	10	.claude/rules/moai/core/moai-mcp-tools.md	The `project_root` input — name your own tree
+11	1	1500	19767	11	.claude/rules/moai/core/agent-common-protocol.md	Ledger Closure
+12	1	1499	21266	12	CLAUDE.md	14. Parallel Execution Safeguards
+13	2	2828	24094	14	.claude/rules/moai/workflow/session-handoff.md	Field-by-Field Specification
+14	1	1384	25478	15	.claude/rules/moai/workflow/session-handoff.md	Auto-Memory Integration (Mandatory)
+15	1	1377	26855	16	.claude/rules/moai/core/verification-claim-integrity.md	3. The 5-Section Evidence-Bearing Report Format
+16	2	2721	29576	18	.claude/rules/moai/core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation)
+17	1	1359	30935	19	.claude/rules/moai/workflow/session-handoff.md	Canonical Format (Verbatim Spec)
+18	1	1296	32231	20	.claude/rules/moai/workflow/main-checkout-branch-guard.md	Rules
+19	2	2561	34792	22	.claude/rules/moai/core/moai-constitution.md	Lessons Protocol
+20	1	1245	36037	23	.claude/rules/moai/core/verification-claim-integrity.md	2.3 Ordering attribution — the commit graph is the only sequencing witness
+21	1	1225	37262	24	.claude/rules/moai/workflow/kanban-dispatch.md	Kanban Dispatch Protocol
+22	1	1208	38470	25	.claude/rules/moai/workflow/session-handoff.md	When To Generate (5 Triggers)
+23	1	1205	39675	26	.claude/rules/moai/workflow/kanban-dispatch.md	Completion is read, never trusted
+24	1	1163	40838	27	.claude/rules/moai/core/agent-common-protocol.md	Subagent Prohibitions
+greedy_set_rows = 24
+greedy_set_lines = 27
+greedy_set_gain = 40838
+T_min_after = 148851
+all_bind_rows = 99
+all_bind_lines = 170
+all_bind_gain = 131257

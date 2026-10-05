@@ -7,7 +7,6 @@ package web
 import (
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -91,9 +90,7 @@ func TestSpecsScreenSurvivesUnreadableRoot(t *testing.T) {
 	a.cfg.ProjectRoot = "/nonexistent-root-for-board-test"
 	h := a.routes()
 
-	req := httptest.NewRequest(http.MethodGet, "/specs", nil)
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	rec := serveGet(t, h, "/specs")
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /specs status = %d, want 200 (an unreadable root renders empty, not as an error page)", rec.Code)
@@ -129,8 +126,6 @@ func TestNewAppWiresEverySeam(t *testing.T) {
 		"schemaCurrentValues":      a.schemaCurrentValues == nil,
 		"rawBlockValues":           a.rawBlockValues == nil,
 		"applySchemaEdits":         a.applySchemaEdits == nil,
-		"listAgentFMs":             a.listAgentFMs == nil,
-		"patchAgentFM":             a.patchAgentFM == nil,
 		"createProfile":            a.createProfile == nil,
 		"deleteProfile":            a.deleteProfile == nil,
 		"renameProfile":            a.renameProfile == nil,

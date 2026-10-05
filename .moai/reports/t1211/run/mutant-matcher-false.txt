@@ -1,0 +1,10 @@
+--- FAIL: TestSettingsTemplatePowerShellDenyNoOverBlock (0.00s)
+    settings_powershell_deny_test.go:197: destructive command git push --force origin main is not blocked by any PowerShell deny
+    settings_powershell_deny_test.go:197: destructive command git clean -fdx is not blocked by any PowerShell deny
+    settings_powershell_deny_test.go:197: destructive command git -C repo reset --hard HEAD is not blocked by any PowerShell deny
+    settings_powershell_deny_test.go:197: destructive command Format-Volume -DriveLetter D is not blocked by any PowerShell deny
+    settings_powershell_deny_test.go:197: destructive command redis-cli FLUSHALL is not blocked by any PowerShell deny
+    settings_powershell_deny_test.go:197: destructive command psql -c DROP TABLE t is not blocked by any PowerShell deny
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.363s
+FAIL

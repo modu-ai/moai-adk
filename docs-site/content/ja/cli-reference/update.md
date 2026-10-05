@@ -236,6 +236,18 @@ moai update --dry-run
 moai update --yes
 ```
 
+### 既存プロジェクトに Codex を追加
+
+再初期化せずに、claude のみのプロジェクトへ codex ハーネス配線を追加します:
+
+```bash
+moai tool enable codex
+```
+
+- `.codex/hooks.json`(ホワイトリストゲートを通過したフック描画)・`.codex/config.toml`(`[mcp_servers.moai]` + `[tui].status_line` — 自分で追加した項目は保持)・`.moai/state/codex-wiring.json`(信頼サイドカー)を作成または更新します
+- `.mcp.json` には触れず、再実行は冪等です — 配線済みなら何も書かず、再信頼ガイドも表示しません
+- `moai tool enable codex --dry-run` を実行すると、ファイルシステムを変更せずに配線計画だけを先に確認できます
+
 ## アップデート後の手順
 
 ### ステップ 1: バージョン確認
@@ -264,7 +276,8 @@ MoAI-ADK アップデート時に **CLAUDE.md** と `settings.json` は新バー
 |------|------|--------------|
 | `CLAUDE.md` | プロジェクトルート | {{< icon warning warn >}} アップデート時に変更される (MoAI-ADK 管理) |
 | `settings.json` | `.claude/` | {{< icon warning warn >}} アップデート時に変更される (MoAI-ADK 管理) |
-| `CLAUDE.local.md` | プロジェクトルート | {{< icon check ok >}} 影響なし (個人設定) |
+| `AGENTS.local.md` | プロジェクトルート | {{< icon check ok >}} 影響なし (個人の指示) |
+| `CLAUDE.local.md` | プロジェクトルート | {{< icon check ok >}} 影響なし (以前の名前、案内のみ) |
 | `.claude/settings.local.json` | プロジェクト | {{< icon check ok >}} 影響なし (個人設定) |
 
 {{< callout type="info" >}}
@@ -360,6 +373,18 @@ moai update --verbose
 ```bash
 moai update --force
 ```
+
+## ローカル指示ファイルの案内
+
+`moai update` は `AGENTS.local.md` と `CLAUDE.local.md` を移動・改名・削除しません。代わりに、プロジェクトルートに `CLAUDE.local.md` が残っていると、標準出力に案内を 1 行出力します。指示は共通の契約 `AGENTS.md`、Claude 専用の層 `CLAUDE.md`、個人の指示 `AGENTS.local.md` の 3 ファイルに分かれており、`CLAUDE.local.md` は `AGENTS.local.md` の以前の名前です。
+
+| プロジェクトの状態 | `moai update` の出力 |
+|--------------------|----------------------|
+| `CLAUDE.local.md` のみ | `moai migrate local-instructions` で移すよう促す案内 |
+| 両方のファイルがある | 手作業でまとめるよう促す案内 (移行コマンドはこの状態を拒否) |
+| `AGENTS.local.md` のみ、またはどちらもない | 案内なし |
+
+`moai doctor` も同じ条件で同じ案内を出力します。名前の変更は、オペレーターが `moai migrate local-instructions` を自分で実行したときにだけ起こります。
 
 ## 次のステップ
 

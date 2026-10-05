@@ -36,18 +36,18 @@ Frequently used commands by category. The full list is available by typing `/` i
 | Command | Purpose | Version |
 | :--- | :--- | :--- |
 | `/goal <condition>` | Set a completion condition and proceed autonomously across turns (Haiku checks periodically) | v2.1.139+ |
-| `/workflows` | Management UI for dynamic workflow runs | v2.1.139+ |
+| `/workflows` | Management UI for dynamic workflow runs | v2.1.154+ |
 | `/rewind` (aliases: `/checkpoint`, `/undo`) | Revert code and conversation to an earlier checkpoint | v2.1.191+ |
 | `/context [all]` | Analyze current context window usage | Base |
 | `/memory` | List/toggle `CLAUDE.md` + auto-memory loads | v2.1.59+ |
 | `/compact` | Summarize the conversation so far to free context while keeping the same dialogue | Base |
 | `/clear` (aliases: `/reset`, `/new`) | Clear the context and start a new conversation | Base |
-| `/agents` | Manage subagent configuration (v2.1.198 removed the creation wizard — ask Claude or edit `.claude/agents/` directly; official docs still document the tabbed UI as of 2026-07) | v2.1.139+ |
+| `/agents` | Subagent pointer — since v2.1.198 prints a reminder to ask Claude or edit `.claude/agents/` directly instead of opening a wizard; hidden from the command menu and `/help` since v2.1.281 | v1.0.60+ |
 | `/mcp` | Manage MCP server connections and OAuth authentication | v2.1.186+ |
 | `/plugin` | Manage plugins | Base |
 | `/effort [low\|medium\|high\|xhigh\|max\|ultracode\|auto]` | Set the model's reasoning intensity or orchestration | Base |
 | `/model` | Select the AI model | Base |
-| `/background` (alias: `/bg`) | Run in the background | v2.1.139+ |
+| `/background` (alias: `/bg`) | Run in the background | Present by v2.1.141; introduction unconfirmed |
 | `/fork <directive>` | A forked subagent that inherits the conversation | v2.1.161+ |
 | `/recap` | Session recap | Base |
 | `/btw` | Side questions | v2.1.187+ |
@@ -73,9 +73,10 @@ Frequently used commands by category. The full list is available by typing `/` i
 
 ### Notes on Command Availability
 
+- The [v2.1.154 changelog](https://github.com/anthropics/claude-code/blob/v2.1.154/CHANGELOG.md) introduces dynamic workflows and `/workflows`. The [v2.1.141 changelog](https://github.com/anthropics/claude-code/blob/v2.1.141/CHANGELOG.md) describes a `/bg` fix, which confirms the command existed by then but does not date its introduction.
 - The same functionality often goes by multiple names (aliases).
 - Some commands are exposed differently depending on platform, plan, and environment.
-- `ultracode` is currently a workflow trigger keyword (it was `workflow` pre-v2.1.160) and simultaneously an `/effort` level.
+- `ultracode` is currently a workflow trigger keyword (it was `workflow` pre-v2.1.160) and, since v2.1.284, also an independent on/off toggle in `/effort`. It is not an effort level, so turning it on or off leaves the level unchanged.
 
 ## Diving into the Core Commands
 
@@ -88,8 +89,8 @@ The table above is for quick reference. This section covers five commands most c
 | Model | Characteristics |
 | :--- | :--- |
 | Fable 5 (`claude-fable-5`) | Currently top-tier (Mythos-tier). Deepest reasoning |
-| Opus 5 | Next-tier. Complex coding and design |
-| Sonnet 5 | Balanced. Everyday work |
+| Opus 5.5 | Next-tier. Complex coding and design |
+| Sonnet 5.5 | Balanced. Everyday work |
 | Haiku 4.5 | Light, fast, lightweight work |
 
 Each model has a different reasoning depth, speed, and cost. Hand heavy design work to Fable or Opus, and fast repetitive work to Sonnet or Haiku — pick by the weight of the task. The shortcut `Option+P` (macOS) or `Alt+P` also switches quickly.
@@ -120,9 +121,9 @@ flowchart TD
     E --> G["From scratch<br>with a new topic"]
 ```
 
-### /agents — Managing Subagents
+### /agents — Where Subagent Creation Went
 
-`/agents` is a command to inspect the **subagents** you call within a session. As of v2.1.198, the interactive wizard that used to create new subagents has been removed — there are now two ways to create a new subagent.
+`/agents` no longer opens a screen for creating or managing subagents. Since v2.1.198, typing it only prints a reminder to ask Claude or to edit `.claude/agents/` (or `~/.claude/agents/` for personal ones) directly, and since v2.1.281 it is hidden from the command menu and `/help`. There are two ways to create a new subagent.
 
 1. Ask Claude in natural language, like "make me a code-review subagent"
 2. Create a markdown file directly under `.claude/agents/`
@@ -133,7 +134,7 @@ It is also worth touching on how subagents run inside a session. Since v2.1.198 
 
 ### /effort and ultrathink — Adjusting Reasoning Depth
 
-`/effort` sets the model's reasoning intensity. Levels are `low` · `medium` · `high` · `xhigh` · `max`, plus `auto`, and `ultracode`, which turns on workflow orchestration. For thought-heavy work like coding, `xhigh` is generally recommended.
+`/effort` sets the model's reasoning intensity. Levels are `low` · `medium` · `high` · `xhigh` · `max`, plus `auto`. `ultracode`, which turns on workflow orchestration, is a toggle separate from the levels and is turned off with `/effort ultracode off`. For thought-heavy work like coding, `xhigh` is generally recommended.
 
 Writing the keyword `ultrathink` in the chat has the same effect. `ultrathink` raises `effort` to `xhigh` and also turns on **Adaptive Thinking** (where the model itself decides how many tokens to spend on reasoning). The old way of specifying a fixed thinking budget with `budget_tokens` is no longer recommended — Opus 4.7 and above reject fixed budgets.
 

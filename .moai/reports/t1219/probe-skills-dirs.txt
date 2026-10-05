@@ -1,0 +1,1 @@
+Loading skills from: managed=/Library/Application Support/ClaudeCode/.claude/skills, user=/Users/goos/.moai/claude-profiles/moai-adk/skills, project=[/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1219/.claude/skills]

@@ -1,0 +1,2 @@
+Ignoring 111 permissions.allow entries from .claude/settings.json: this workspace has not been trusted. Run Claude Code interactively here once and accept the trust dialog, or set projects["/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/a424fc26-39f5-4b5e-a0f1-a8b767c73688/scratchpad/ifu/ac020"].hasTrustDialogAccepted: true in /Users/goos/.moai/claude-profiles/moai-adk/.claude.json.
+Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer.

@@ -48,7 +48,7 @@ type vetoRecord struct {
 
 // cooldownEntry is persisted in rate-limit-state.json to track per-proposal veto cooldowns.
 type cooldownEntry struct {
-	ProposalID   string    `json:"proposal_id"`
+	ProposalID    string    `json:"proposal_id"`
 	CooldownUntil time.Time `json:"cooldown_until"`
 }
 

@@ -12,17 +12,19 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/google/uuid"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // seedFindings writes findings into the fixture queue directly through the
 // store, so a test can construct a Given state the CLI verbs would need
 // several invocations to reach.
-func seedFindings(t *testing.T, store *kanban.BacklogStore, findings ...kanban.BacklogFinding) {
+func seedFindings(t *testing.T, store *factory.BacklogStore, findings ...factory.BacklogFinding) {
 	t.Helper()
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		rec.Findings = append(rec.Findings, findings...)
 		return nil
 	}); err != nil {
@@ -31,7 +33,7 @@ func seedFindings(t *testing.T, store *kanban.BacklogStore, findings ...kanban.B
 }
 
 // loadFindings returns the fixture queue's current findings.
-func loadFindings(t *testing.T, store *kanban.BacklogStore) []kanban.BacklogFinding {
+func loadFindings(t *testing.T, store *factory.BacklogStore) []factory.BacklogFinding {
 	t.Helper()
 	rec, err := store.Load()
 	if err != nil {
@@ -53,8 +55,8 @@ func TestTodoDoneReclaimsFindings(t *testing.T) {
 		}
 	}
 	seedFindings(t, store,
-		kanban.BacklogFinding{SubjectID: "t1", RelatedID: "t2", Relation: kanban.BacklogRelationContains, Source: kanban.BacklogSourceAgent},
-		kanban.BacklogFinding{SubjectID: "t3", RelatedID: "t4", Relation: kanban.BacklogRelationContains, Source: kanban.BacklogSourceAgent},
+		factory.BacklogFinding{SubjectID: "t1", RelatedID: "t2", Relation: factory.BacklogRelationContains, Source: factory.BacklogSourceAgent},
+		factory.BacklogFinding{SubjectID: "t3", RelatedID: "t4", Relation: factory.BacklogRelationContains, Source: factory.BacklogSourceAgent},
 	)
 
 	if _, _, err := runTodo(t, "done", "t1"); err != nil {
@@ -78,7 +80,7 @@ func TestTodoDoneReclaimsFindings(t *testing.T) {
 // TestTodoLegacyRecordRoundTrips — AC-TA-012 (REQ-TA-006): a queue file
 // written before this feature loads unchanged, `findings` renders as an
 // empty array rather than null or an omitted key, and the per-item contract
-// stays exactly five fields.
+// keeps the original five fields and adds only the identity card_uuid field.
 //
 // The item key set is counted DIRECTLY rather than inferred from a
 // successful decode: encoding/json silently ignores unknown fields, so
@@ -109,7 +111,20 @@ func TestTodoLegacyRecordRoundTrips(t *testing.T) {
 	if string(rendered["findings"]) != "[]" {
 		t.Errorf("findings rendered as %s, want an empty array", rendered["findings"])
 	}
-	var roundTripped []kanban.BacklogItem
+	var legacyItems []map[string]json.RawMessage
+	if err := json.Unmarshal(rendered["items"], &legacyItems); err != nil {
+		t.Fatalf("parse legacy item objects: %v", err)
+	}
+	if len(legacyItems) != 2 {
+		t.Fatalf("legacy item objects = %d, want 2", len(legacyItems))
+	}
+	for i, it := range legacyItems {
+		got, present := it["card_uuid"]
+		if !present || string(got) != "null" {
+			t.Errorf("legacy item %d card_uuid = %s, present=%v; want key-present literal null", i, got, present)
+		}
+	}
+	var roundTripped []factory.BacklogItem
 	if err := json.Unmarshal(rendered["items"], &roundTripped); err != nil {
 		t.Fatalf("parse items: %v", err)
 	}
@@ -122,16 +137,17 @@ func TestTodoLegacyRecordRoundTrips(t *testing.T) {
 		t.Fatalf("add over a legacy file: %v", err)
 	}
 
-	raw, err := os.ReadFile(store.Path())
-	if err != nil {
-		t.Fatalf("read queue file: %v", err)
-	}
+	// The document CONTRACT outlives the storage swap: the record still
+	// serializes to the shape a legacy reader expects, which is what the
+	// downgrade path regenerates. Assert it on the canonical serialization of
+	// the stored record rather than on file bytes that are no longer JSON.
+	raw := queueStateBytes(t, store.Path())
 	var top map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &top); err != nil {
-		t.Fatalf("parse queue file: %v", err)
+		t.Fatalf("parse queue state: %v", err)
 	}
 	if _, ok := top["findings"]; !ok {
-		t.Error("queue file lost the additive top-level findings key")
+		t.Error("queue record lost the additive top-level findings key")
 	}
 	var items []map[string]json.RawMessage
 	if err := json.Unmarshal(top["items"], &items); err != nil {
@@ -140,16 +156,36 @@ func TestTodoLegacyRecordRoundTrips(t *testing.T) {
 	if len(items) != 3 {
 		t.Fatalf("items = %d, want 3", len(items))
 	}
-	want := map[string]bool{"id": true, "text": true, "added_at": true, "spec_id": true, "state": true}
+	// The per-item document contract: the frozen five, the declared additive
+	// keys (card_uuid, picked_at/dropped_at on stamped cards), and — SPEC-
+	// TODO-CLASSIFY-DISPATCH-001 — `classification`, the one additive
+	// nullable judgment field the add path records at creation. Present on
+	// every card the current add path admits; absent (`omitempty`) on cards
+	// recorded before the field existed.
+	want := map[string]bool{"id": true, "text": true, "added_at": true, "spec_id": true, "state": true, "card_uuid": true, "classification": true}
 	for i, it := range items {
-		if len(it) != len(want) {
-			t.Errorf("item %d has %d keys, want exactly %d: %v", i, len(it), len(want), todoJSONKeys(it))
-		}
 		for k := range it {
 			if !want[k] {
 				t.Errorf("item %d carries an out-of-contract key %q", i, k)
 			}
 		}
+		// `classification` is the declared additive key (SPEC-TODO-CLASSIFY-
+		// DISPATCH-001): present on cards the current add path admits, absent
+		// (`omitempty`) on rows recorded before the field existed — so an
+		// item carries the full contract or the contract minus that one key,
+		// never a third shape.
+		if len(it) != len(want) && len(it) != len(want)-1 {
+			t.Errorf("item %d has %d keys, want %d (classified) or %d (a card recorded before classification existed): %v",
+				i, len(it), len(want), len(want)-1, todoJSONKeys(it))
+		}
+	}
+	var addedUUID string
+	if err := json.Unmarshal(items[2]["card_uuid"], &addedUUID); err != nil {
+		t.Fatalf("new item card_uuid is not a JSON string: %s: %v", items[2]["card_uuid"], err)
+	}
+	parsed, err := uuid.Parse(addedUUID)
+	if err != nil || parsed == uuid.Nil || parsed.String() != addedUUID || strings.ToLower(addedUUID) != addedUUID || parsed.Version() != 7 {
+		t.Errorf("new item card_uuid = %q, want canonical lowercase nonzero UUIDv7 (parse err=%v)", addedUUID, err)
 	}
 }
 

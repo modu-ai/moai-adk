@@ -1,0 +1,129 @@
+path	lang	counts
+.claude/rules/local/gitflow-lane-protocol.md	ko	리드=21 레인=35
+CLAUDE.local.md	ko	리드=21 레인=31
+README.ja.md	ja	リード=23 リーダー=8 レーン=6 ワーカー=19 コンパニオン=10 コーディネーター=1
+README.ko.md	ko	리드=20 리더=12 레인=6 워커=20 동반 세션=10 코디네이터=1
+README.zh.md	zh	主导=1 领导=2 主控=22 工作者=17 泳道=6 伴随=10 工头=2 协调者=2
+docs-site/content/ja/_index.md	ja	リード=5 コーディネーター=1
+docs-site/content/ja/advanced/_index.md	ja	リーダー=1
+docs-site/content/ja/advanced/_meta.yaml	ja	リード=1 コーディネーター=1
+docs-site/content/ja/advanced/agent-guide.md	ja	リーダー=1 レーン=1 ワーカー=15 コーディネーター=1
+docs-site/content/ja/advanced/codex-dual-harness.md	ja	コンパニオン=1
+docs-site/content/ja/advanced/config-sections.md	ja	ワーカー=1
+docs-site/content/ja/advanced/factory-mode.md	ja	リード=23 レーン=1 ワーカー=53 フォアマン=2 コーディネーター=1
+docs-site/content/ja/advanced/kanban-mode.md	ja	リード=29 リーダー=1 レーン=6 ワーカー=10 フォアマン=5 コーディネーター=1 代理=2
+docs-site/content/ja/advanced/manager-lead.md	ja	リード=21 リーダー=1 ワーカー=9 コーディネーター=2
+docs-site/content/ja/advanced/moai-web-console.md	ja	レーン=8
+docs-site/content/ja/advanced/no-haiku-3tier.md	ja	リーダー=2
+docs-site/content/ja/advanced/profile-matrix.md	ja	リーダー=1
+docs-site/content/ja/advanced/skill-guide.md	ja	ワーカー=1 フォアマン=1
+docs-site/content/ja/advanced/tokenomics-overview.md	ja	リーダー=3
+docs-site/content/ja/claude-code/agentic/_index.md	ja	ワーカー=3
+docs-site/content/ja/claude-code/agentic/agent-teams.md	ja	リーダー=23 ワーカー=2
+docs-site/content/ja/claude-code/agentic/agent-view.md	ja	ワーカー=1
+docs-site/content/ja/claude-code/agentic/sub-agents.md	ja	ワーカー=3
+docs-site/content/ja/claude-code/agentic/workflows.md	ja	ワーカー=2
+docs-site/content/ja/claude-code/foundations/features-overview.md	ja	ワーカー=2
+docs-site/content/ja/cli-reference/launchers.md	ja	リード=8 リーダー=2 ワーカー=17 コーディネーター=1
+docs-site/content/ja/cli-reference/tokens.md	ja	レーン=1 ワーカー=2
+docs-site/content/ja/core-concepts/book.md	ja	リーダー=1
+docs-site/content/ja/core-concepts/kanban-board-terms.md	ja	リード=9 リーダー=1 レーン=17 コンパニオン=9
+docs-site/content/ja/core-concepts/what-is-moai-adk.md	ja	リード=1 リーダー=2 ワーカー=1
+docs-site/content/ja/cost-optimization/prompt-caching.md	ja	リーダー=2
+docs-site/content/ja/getting-started/introduction.md	ja	リード=1 リーダー=2
+docs-site/content/ja/getting-started/windows-guide.md	ja	リーダー=1
+docs-site/content/ja/guides/mcp-server.md	ja	リード=5 レーン=7 ワーカー=5
+docs-site/content/ja/multi-llm/_index.md	ja	リーダー=3 ワーカー=3
+docs-site/content/ja/multi-llm/cg-mode.md	ja	リーダー=2
+docs-site/content/ja/multi-llm/kanban-mode.md	ja	リード=16 リーダー=1 コンパニオン=20
+docs-site/content/ja/utility-commands/moai-codemaps.md	ja	ワーカー=1
+docs-site/content/ja/utility-commands/moai-e2e.md	ja	レーン=2
+docs-site/content/ja/utility-commands/moai-gtd.md	ja	レーン=1
+docs-site/content/ja/utility-commands/moai-todo.md	ja	リード=8 フォアマン=1
+docs-site/content/ja/workflow-commands/moai-goal.md	ja	リード=1
+docs-site/content/ja/workflow-commands/moai-harness.md	ja	コンパニオン=2
+docs-site/content/ja/worktree/_index.md	ja	リード=1
+docs-site/content/ja/worktree/examples.md	ja	リード=1
+docs-site/content/ja/worktree/faq.md	ja	リーダー=1
+docs-site/content/ko/_index.md	ko	리드=5 동반 세션=4 코디네이터=1
+docs-site/content/ko/advanced/_index.md	ko	리더=1
+docs-site/content/ko/advanced/_meta.yaml	ko	리드=1 코디네이터=1
+docs-site/content/ko/advanced/agent-guide.md	ko	리더=4 레인=1 워커=10
+docs-site/content/ko/advanced/autonomy-tier.md	ko	리더=2
+docs-site/content/ko/advanced/factory-mode.md	ko	리드=23 레인=1 워커=53 동반 세션=4 포어맨=2 코디네이터=1
+docs-site/content/ko/advanced/kanban-mode.md	ko	리드=26 리더=4 레인=6 워커=10 동반 세션=13 포어맨=5 코디네이터=1 대리=1
+docs-site/content/ko/advanced/manager-lead.md	ko	리드=21 리더=1 워커=9 동반 세션=4 코디네이터=2
+docs-site/content/ko/advanced/moai-web-console.md	ko	레인=8
+docs-site/content/ko/advanced/no-haiku-3tier.md	ko	리더=2
+docs-site/content/ko/advanced/profile-matrix.md	ko	리더=1
+docs-site/content/ko/advanced/skill-guide.md	ko	리드=1 워커=1 포어맨=1
+docs-site/content/ko/advanced/statusline.md	ko	동반 세션=1
+docs-site/content/ko/advanced/tokenomics-overview.md	ko	리더=2
+docs-site/content/ko/claude-code/agentic/_index.md	ko	워커=1
+docs-site/content/ko/claude-code/agentic/agent-teams.md	ko	리더=23
+docs-site/content/ko/claude-code/agentic/workflows.md	ko	워커=1
+docs-site/content/ko/cli-reference/launchers.md	ko	리드=8 리더=2 워커=17 동반 세션=2 코디네이터=1
+docs-site/content/ko/cli-reference/tokens.md	ko	레인=1 워커=2
+docs-site/content/ko/core-concepts/book.md	ko	리더=1
+docs-site/content/ko/core-concepts/kanban-board-terms.md	ko	리드=9 리더=1 레인=17 동반 세션=9
+docs-site/content/ko/core-concepts/spec-lifecycle.md	ko	리드=1
+docs-site/content/ko/core-concepts/what-is-moai-adk.md	ko	리드=2 리더=2
+docs-site/content/ko/cost-optimization/prompt-caching.md	ko	리더=2
+docs-site/content/ko/getting-started/faq.md	ko	리드=1
+docs-site/content/ko/getting-started/introduction.md	ko	리드=1 리더=2
+docs-site/content/ko/getting-started/windows-guide.md	ko	리더=1
+docs-site/content/ko/guides/mcp-server.md	ko	리드=5 레인=7 워커=5
+docs-site/content/ko/multi-llm/_index.md	ko	리더=1 워커=1
+docs-site/content/ko/multi-llm/cg-mode.md	ko	리더=2
+docs-site/content/ko/multi-llm/kanban-mode.md	ko	리드=16 리더=1
+docs-site/content/ko/utility-commands/moai-codemaps.md	ko	워커=1
+docs-site/content/ko/utility-commands/moai-e2e.md	ko	레인=2
+docs-site/content/ko/utility-commands/moai-gtd.md	ko	레인=1
+docs-site/content/ko/utility-commands/moai-todo.md	ko	리드=8 동반 세션=1 포어맨=1
+docs-site/content/ko/workflow-commands/moai-goal.md	ko	리드=1
+docs-site/content/ko/workflow-commands/moai-run.md	ko	리드=1
+docs-site/content/ko/worktree/examples.md	ko	리드=1 리더=1
+docs-site/content/ko/worktree/faq.md	ko	리드=1 리더=1
+docs-site/content/zh/_index.md	zh	主导=4 领导=1 伴随=4 协调者=1
+docs-site/content/zh/advanced/_meta.yaml	zh	领导=1 协调者=1
+docs-site/content/zh/advanced/agent-guide.md	zh	负责人=3 工作者=16 泳道=1 通道=2 协调者=1
+docs-site/content/zh/advanced/analyze-first-routing.md	zh	通道=3
+docs-site/content/zh/advanced/codex-dual-harness.md	zh	伴随=1
+docs-site/content/zh/advanced/factory-mode.md	zh	领导=1 主控=22 工作者=52 泳道=1 通道=1 伴随=4 工头=2 协调者=1
+docs-site/content/zh/advanced/kanban-mode.md	zh	领导=1 主控=29 工作者=10 泳道=4 通道=1 伴随=14 工头=5 协调者=1
+docs-site/content/zh/advanced/manager-lead.md	zh	领导=22 工作者=9 通道=2 伴随=4 协调者=2
+docs-site/content/zh/advanced/moai-web-console.md	zh	泳道=8 通道=2
+docs-site/content/zh/advanced/no-haiku-3tier.md	zh	通道=1
+docs-site/content/zh/advanced/security-notes.md	zh	通道=3
+docs-site/content/zh/advanced/settings-json.md	zh	通道=1
+docs-site/content/zh/advanced/skill-guide.md	zh	工作者=1 工头=1
+docs-site/content/zh/advanced/statusline.md	zh	伴随=1
+docs-site/content/zh/claude-code/agentic/_index.md	zh	工作者=3
+docs-site/content/zh/claude-code/agentic/agent-teams.md	zh	领导=1
+docs-site/content/zh/claude-code/agentic/agent-view.md	zh	工作者=1
+docs-site/content/zh/claude-code/agentic/goal.md	zh	主导=1
+docs-site/content/zh/claude-code/agentic/sub-agents.md	zh	工作者=2
+docs-site/content/zh/claude-code/agentic/workflows.md	zh	工作者=2
+docs-site/content/zh/claude-code/context-memory/context-window.md	zh	主导=1
+docs-site/content/zh/claude-code/foundations/features-overview.md	zh	工作者=2
+docs-site/content/zh/cli-reference/launchers.md	zh	领导=1 主控=7 工作者=18 伴随=3 协调者=1
+docs-site/content/zh/cli-reference/tokens.md	zh	泳道=1
+docs-site/content/zh/core-concepts/book.md	zh	领导=1 伴随=1
+docs-site/content/zh/core-concepts/constitution.md	zh	通道=1
+docs-site/content/zh/core-concepts/kanban-board-terms.md	zh	主导=9 泳道=16 伴随=9
+docs-site/content/zh/core-concepts/what-is-moai-adk.md	zh	主导=1 领导=1 负责人=1 工作者=1
+docs-site/content/zh/getting-started/introduction.md	zh	领导=1
+docs-site/content/zh/getting-started/migration.md	zh	主导=1
+docs-site/content/zh/guides/mcp-server.md	zh	负责人=5 工作者=5 泳道=7 通道=3
+docs-site/content/zh/multi-llm/_index.md	zh	工作者=3
+docs-site/content/zh/multi-llm/kanban-mode.md	zh	主导=17 通道=2
+docs-site/content/zh/multi-llm/model-policy.md	zh	协调者=1
+docs-site/content/zh/utility-commands/moai-e2e.md	zh	通道=2
+docs-site/content/zh/utility-commands/moai-fix.md	zh	伴随=1
+docs-site/content/zh/utility-commands/moai-gtd.md	zh	泳道=1
+docs-site/content/zh/utility-commands/moai-mx.md	zh	伴随=1
+docs-site/content/zh/utility-commands/moai-todo.md	zh	主导=1 负责人=1 主控=7 通道=2 伴随=1 工头=1
+docs-site/content/zh/workflow-commands/moai-goal.md	zh	主导=3
+docs-site/content/zh/workflow-commands/moai-harness.md	zh	伴随=2
+docs-site/content/zh/worktree/examples.md	zh	负责人=1
+docs-site/content/zh/worktree/faq.md	zh	领导=1

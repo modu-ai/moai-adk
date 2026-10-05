@@ -3,15 +3,17 @@ package web
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
+	"strings"
 
 	"path/filepath"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/glmcred"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
@@ -69,28 +71,29 @@ type pageView struct {
 	SchemaValues map[string]string
 	RawBlocks    map[string]string
 
-	// M3 agent-settings (REQ-WC11-020/025): sub-agent frontmatter 현재 상태
-	// (7 agents — model/effort, effort 부재는 유효 상태 EC-7).
-	AgentFMs []agentfm.AgentInfo
-
-	// PerfTier is the profile selector (hosted as the performance_tier wire
-	// field) at the TOP of the agentfm panel — one of {max, medium, low}. The
-	// plan_type display was removed (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-019).
-	// PerfTierIsEmpty drives the "(default: ...)" empty-value hint.
+	// Agent-overrides sub-section state (SPEC-WEB-AGENTFM-RESTORE-001 M3).
+	// PerfTier is the profile selector's seeded value — the ACTIVE profile
+	// after EffectiveProfile resolution (a stored "max" folds to "high" for
+	// display; the selector persists its own wire value verbatim).
+	// PerfTierIsEmpty drives the "(default)" empty-value hint.
 	PerfTier        string
 	PerfTierIsEmpty bool
 
 	// LLM carries the loaded llm.yaml config so the agentfm rows resolve each
 	// agent's selected model/effort through the profile matrix
-	// (template.ResolveAgentModelEffort) — G3-1 repoint. On the POST re-render
-	// path a read failure degrades to the zero value (medium-profile defaults).
+	// (template.ResolveAgentModelEffort). On the POST re-render path a read
+	// failure degrades to the zero value (medium-profile defaults).
 	LLM config.LLMConfig
 
 	// PerfTierCustom marks the client "Custom" pseudo-state: true when
-	// llm.agent_overrides is non-empty, so the perf-tier control preselects the
-	// Custom radio instead of a named tier (G3-4). Custom is a derived display
-	// state, NOT a persisted enum value (ValidPerformanceTiers stays {max,medium,low}).
+	// llm.agent_overrides is non-empty, so the perf-tier control preselects
+	// the Custom radio instead of a named tier (G3-4). Custom is a derived
+	// display state, NOT a persisted enum value.
 	PerfTierCustom bool
+
+	// AgentFMs is the scanned agent roster for the sub-section rows (M4
+	// render); a scan failure degrades to nil (empty section, page renders).
+	AgentFMs []agentfm.AgentInfo
 
 	// Banner is an optional status/error message; BannerKind is "ok" or "error".
 	Banner     string
@@ -113,6 +116,14 @@ type pageView struct {
 	// (SPEC-GLM-KEY-INPUT-001 D-2 / REQ-GKI-004-001..004, plan §G AP-2/AP-2b).
 	GLMKeyConfigured bool
 	GLMKeyHint       string
+
+	// JevKeyConfigured / JevKeyHint are the same bounded disclosure for the
+	// Jev credential stored in ~/.moai/.env.typesafe
+	// (SPEC-JEV-OPTIN-MEASURE-001). The full value NEVER reaches the view
+	// model — computeJevKeyHint truncates before this struct is built — and
+	// unlike its GLM sibling there is no reveal route that can cross back.
+	JevKeyConfigured bool
+	JevKeyHint       string
 
 	// ActiveTab is the settings tab the request asked for (`?tab=<id>`). It
 	// selects which panel renders visible; every panel stays in the DOM so the
@@ -159,7 +170,20 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 	// outside the struct literal so the full key never becomes a view-model
 	// field — only the bounded trailing-four disclosure crosses in.
 	view.GLMKeyConfigured, view.GLMKeyHint = populateGLMKeyHint()
+	// SPEC-JEV-OPTIN-MEASURE-001: same treatment for the Jev credential —
+	// computed outside the struct literal so the secret never becomes a
+	// view-model field, only the bounded disclosure.
+	view.JevKeyConfigured, view.JevKeyHint = populateJevKeyHint()
 	return view
+}
+
+// populateJevKeyHint reads the stored Jev credential and returns the bounded
+// disclosure pair for the view model. Thin wrapper, for the same reason as its
+// GLM sibling: the secret never has to be passed through the pageView struct
+// literal.
+func populateJevKeyHint() (bool, string) {
+	h := computeJevKeyHint()
+	return h.Configured, h.Hint
 }
 
 // populateGLMKeyHint reads the stored credential and returns the bounded
@@ -339,15 +363,23 @@ func applyNestedForm(view *pageView, nested projectNestedCurrent, form projectNe
 // re-renders the form with per-field errors and leaves persisted state
 // unchanged.
 //
-// @MX:WARN: [AUTO] 이 함수는 디스크의 사용자/프로젝트 설정을 변경하는 유일한 코드 경로다(쓰기 위험 구역).
+// @MX:WARN: [AUTO] 이 함수는 디스크의 사용자/프로젝트 설정을 변경하는 쓰기 위험 구역이다 — 직접 YAML 쓰기는 없고 전부 시임 경유다.
 // @MX:REASON: [AUTO] 영속화는 반드시 두 경계를 통해서만 수행한다 — (1) WritePreferences(프로필 스토어) +
 // SyncToProjectConfig(user/language/statusline.yaml), (2) writeProjectConfig(config-manager로 quality.development_mode +
 // git_convention.convention만, SPEC-WEB-CONSOLE-003). 웹 레이어에서 YAML을 직접 marshal/write 하는 것은 금지된
 // 안티패턴(REQ-WC-007/REQ-WC3-008). project-config scope는 quality(development_mode) + git_convention(convention)
-// 두 필드로 엄격히 한정되며 workflow/harness/git-strategy/llm은 절대 건드리지 않는다(REQ-WC-012/REQ-WC3-007).
+// 두 필드로 엄격히 한정되며 이 경로는 workflow/harness/git-strategy를 건드리지 않는다(REQ-WC-012/REQ-WC3-007);
+// llm.profile/llm.agent_overrides는 같은 핸들러의 전용 시임(applyPerfTierEdits/patchAgentFM →
+// internal/settings/llmoverrides.go)으로만 쓴다(SPEC-WEB-AGENTFM-RESTORE-001 — 스키마 필드가 아닌
+// schema-external live 키, REQ-AFR-003/004).
 // 두 검증기(validatePrefs + validateProjectConfig)를 모두 실행하고 FieldErrors를 병합한 뒤 하나라도 실패하면 영속 상태를
 // 변경하지 않고 폼을 per-field 에러와 함께 재렌더한다 — atomic reject(REQ-WC-008/REQ-WC3-001/002, EC-2).
 func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
+	// Card t1446 N2: serialize whole save requests — a second save must not
+	// interleave its persistence steps with a first save still mid-handler
+	// (a rollback here could revert another request's successful write).
+	a.saveMu.Lock()
+	defer a.saveMu.Unlock()
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -410,20 +442,34 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	glmKeySubmitted := parseGLMKeyForm(r)
 	glmKeyErrs := validateGLMKey(glmKeySubmitted)
 
-	// goal-to-test (non-SPEC): parse the performance_tier selector hosted at the
-	// top of the agentfm panel. Parsed BEFORE the agentfm edits because it is the
-	// target tier the per-agent default comparison resolves under (G3-2/G3-4). A
-	// "custom" submission (the client pseudo-state) resolves to "" here (preserve).
+	// SPEC-JEV-OPTIN-MEASURE-001: the Jev credential follows the same order
+	// for the same reason — parsed before the validator merge so a malformed
+	// value joins the atomic-reject set, persisted only after that gate passes.
+	jevKeySubmitted := parseJevKeyForm(r)
+	jevKeyErrs := validateJevKey(jevKeySubmitted)
+
+	// SPEC-WEB-AGENTFM-RESTORE-001 M3: parse the performance_tier selector
+	// (wire field at the top of the agent-overrides sub-section) BEFORE the
+	// agentfm edits, because it is the target tier the per-agent default
+	// comparison resolves under. A "custom" submission (the client
+	// pseudo-state) resolves to "" here (preserve).
 	perfTier, perfTierErrs := parsePerfTierForm(r)
 
-	// SPEC-WEB-CONSOLE-011 M3 + G3-2: parse the sub-agent model/effort edits into
-	// the desired llm.agent_overrides state. Resolution is against the loaded
-	// llm.yaml (the read seam SSOT); a load failure degrades to the zero config
+	// Parse the per-agent model/effort edits into the desired
+	// llm.agent_overrides state. Resolution is against the loaded llm.yaml
+	// (the read seam SSOT); a load failure degrades to the zero config
 	// (medium-profile defaults). 목록 실패는 편집 불가로 저하한다. 정렬은
 	// resolved model/effort 기반이므로 llm.yaml 을 먼저 로드해 넘긴다.
 	var llmCfg config.LLMConfig
 	if loaded, err := config.NewConfigManager().LoadRaw(a.cfg.ProjectRoot); err == nil {
 		llmCfg = loaded.LLM
+	}
+	// GitHub #1731 (card t1474): an empty stored profile renders the selector
+	// preselected on agentFMPerfTierDefault, so an untouched form submits that
+	// column. It is what the page showed, not an edit — preserve the empty
+	// profile instead of materializing llm.profile on disk.
+	if strings.TrimSpace(llmCfg.Profile) == "" && perfTier == agentFMPerfTierDefault {
+		perfTier = ""
 	}
 	agents, _ := a.listAllAgentFMs(a.cfg.ProjectRoot, llmCfg)
 	agentPins, agentSubmitted, agentErrs := parseAgentFMForm(r, agents, llmCfg, perfTier)
@@ -450,6 +496,22 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	for k, v := range glmKeyErrs {
 		fieldErrs[k] = v
 	}
+	for k, v := range jevKeyErrs {
+		fieldErrs[k] = v
+	}
+	// SPEC-WEB-AGENTFM-RESTORE-001 v0.3.0 M7 (REQ-AFR-015): a non-boolean
+	// llm.agent_overrides_consume — or any llm.yaml type mismatch — joins the
+	// atomic-reject set. The lenient section loader silently falls back to
+	// defaults on exactly this defect class, so the write boundary re-checks
+	// the stored section strictly before anything is written.
+	if llmTypeErr := config.ValidateLLMYAMLSection(a.cfg.ProjectRoot); llmTypeErr != nil {
+		field := "llm.yaml"
+		var cte *config.ConfigTypeError
+		if errors.As(llmTypeErr, &cte) && cte.Key != "" {
+			field = cte.Key
+		}
+		fieldErrs[field] = llmTypeErr.Error()
+	}
 	if len(fieldErrs) > 0 {
 		view := a.rejectedProjectView(prefs, selected, devMode, convention, nestedForm)
 		overlaySchemaEdits(&view, schemaEdits)
@@ -457,12 +519,22 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		view.ActiveTab = r.PostFormValue("__tab")
 		view.Banner = "Validation failed — no changes were saved."
 		view.BannerKind = "error"
-		a.render(w, http.StatusBadRequest, view)
+		// Card t1105: 2xx, not 400. The page is boosted (root.templ
+		// hx-boost="true"), and the pinned embedded htmx 2.0.4 default
+		// responseHandling table answers 4xx with {swap:false} — so a 400 here
+		// renders the banner and the per-field errors into a body the client
+		// then throws away, and the user sees nothing at all. This is the same
+		// correction SPEC-WEB-CONSOLE-017 already made for the save-failure
+		// seam below (renderErrorPage answers 200, not 500, for this reason).
+		// The reject stays atomic: nothing was persisted, and the status says
+		// only that the client should display what was rendered.
+		a.render(w, http.StatusOK, view)
 		return
 	}
 
 	// REQ-WC-007: persist profile fields ONLY through the existing profile/sync functions.
 	if err := a.writePreferences(selected, prefs); err != nil {
+		logSaveFailure("writePreferences", "could not save profile preferences")
 		a.renderErrorPage(w, prefs, selected, devMode, convention, "could not save profile preferences: "+err.Error())
 		return
 	}
@@ -484,6 +556,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		// WritePreferences surfaces a readable error rather than a silent
 		// partial-state. The profile store was written; the project config was
 		// not — the message says so explicitly.
+		logSaveFailure("syncToProject", "profile preferences saved, but project config sync failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but project config sync failed: "+err.Error())
 		return
@@ -492,6 +565,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// REQ-WC3-005: persist the two project-config scalars via the dedicated write
 	// seam (config-manager only; empty values keep existing).
 	if err := a.writeProjectConfig(a.cfg.ProjectRoot, devMode, convention); err != nil {
+		logSaveFailure("writeProjectConfig", "profile preferences saved, but project config write failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but project config write failed: "+err.Error())
 		return
@@ -501,6 +575,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// seam (HARD-4 nested isolation; runs after the scalar write so both converge on
 	// the same on-disk sections).
 	if err := a.writeProjectNestedConfig(a.cfg.ProjectRoot, nestedForm); err != nil {
+		logSaveFailure("writeProjectNestedConfig", "profile preferences saved, but project nested config write failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but project nested config write failed: "+err.Error())
 		return
@@ -511,28 +586,53 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// quality 확장 키는 typed 경로(REQ-WC11-010/012). 마지막에 실행되므로 앞선
 	// typed 쓰기 결과를 재로드해 수렴한다.
 	if err := a.applySchemaEdits(a.cfg.ProjectRoot, schemaEdits); err != nil {
+		logSaveFailure("applySchemaEdits", "profile preferences saved, but section config write failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but section config write failed: "+err.Error())
 		return
 	}
 
-	// goal-to-test (non-SPEC): persist performance_tier (only when changed) and
-	// re-apply the tier profile to the shipped agent files. Runs BEFORE
-	// patchAgentFM so an explicit per-agent override submitted in the same
-	// request still wins over the re-applied tier-profile baseline.
-	if err := applyPerfTierEdits(a.cfg.ProjectRoot, perfTier); err != nil {
+	// SPEC-WEB-AGENTFM-RESTORE-001 M3: persist the profile selector to
+	// llm.profile (only when changed; the retired performance_tier alias is
+	// never written). Runs BEFORE patchAgentFM so an explicit per-agent
+	// override submitted in the same request still wins over the newly-applied
+	// tier's baseline (its comparison already ran against this tier).
+	//
+	// F3 (sync-audit, card t1411): steps 7 and 8 both write llm.yaml — one
+	// logical persistence unit under REQ-AFR-007. Card t1446 N1 narrowed the
+	// requirement's persistence-atomicity guarantee to exactly THIS pair (the
+	// snapshot cannot cover step-6 schema edits, which persist): snapshot
+	// before step 7; a step-8 failure rolls step 7's write back (best-effort)
+	// before the error re-render. Step 7 itself is a single atomic splice
+	// (temp+rename), so a step-7 failure needs no restore — nothing landed.
+	llmSnapshot, llmExisted, snapErr := settings.SnapshotLLMYAML(a.cfg.ProjectRoot)
+	if snapErr != nil {
+		logSaveFailure("snapshotLLMYAML", "could not snapshot llm.yaml before the agent-overrides writes")
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
+			"profile preferences saved, but llm.yaml could not be snapshotted: "+snapErr.Error())
+		return
+	}
+	if err := a.applyPerfTierEdits(a.cfg.ProjectRoot, perfTier); err != nil {
+		logSaveFailure("applyPerfTierEdits", "profile preferences saved, but performance_tier apply failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but performance_tier apply failed: "+err.Error())
 		return
 	}
 
-	// G3-2: persist sub-agent model/effort edits to llm.agent_overrides (config
-	// manager round-trip). Runs AFTER applyPerfTierEdits so an explicit per-agent
-	// override submitted in the same request is computed against the newly-applied
-	// tier. Agent .md frontmatter is NO LONGER mutated by the console.
+	// Persist per-agent model/effort edits to llm.agent_overrides (settings
+	// block-splice seam). Agent .md frontmatter is NEVER mutated by the
+	// console (REQ-AFR-005).
 	if err := a.patchAgentFM(a.cfg.ProjectRoot, agentPins, agentSubmitted); err != nil {
+		if rerr := settings.RestoreLLMYAML(a.cfg.ProjectRoot, llmSnapshot, llmExisted); rerr != nil {
+			err = fmt.Errorf("%v (llm.yaml ROLLBACK FAILED — the profile write may remain without the overrides: %v)", err, rerr)
+		}
+		// Card t1446 N1: the rollback restores the PRE-PAIR snapshot, so the
+		// message names the pair (llm.profile + llm.agent_overrides) — a
+		// whole-file "llm.yaml rolled back" would overstate: section-schema
+		// edits persisted earlier in this request remain.
+		logSaveFailure("patchAgentFM", "settings saved, but agent override write failed — the llm.yaml agent-overrides write pair rolled back")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
-			"settings saved, but agent override write failed: "+err.Error())
+			"settings saved, but agent override write failed (the llm.yaml agent-overrides write pair rolled back): "+err.Error())
 		return
 	}
 
@@ -543,9 +643,24 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// failure is surfaced as a failure, never as success (REQ-GKI-002-005), and
 	// the error message carries no key material (REQ-GKI-004-003).
 	if normalized := normalizeGLMKey(glmKeySubmitted); normalized != "" {
-		if err := glmcred.Save(normalized); err != nil {
+		if err := a.glmcredSave(normalized); err != nil {
+			logSaveFailure("glmcred.Save", "settings saved, but GLM credential write failed")
 			a.renderErrorPage(w, prefs, selected, devMode, convention,
 				"settings saved, but GLM credential write failed: "+err.Error())
+			return
+		}
+	}
+
+	// SPEC-JEV-OPTIN-MEASURE-001: persist the Jev credential through the
+	// reader the core capability already uses (jevcred.Save) — there is no
+	// second writer. An empty/whitespace-only submission means preserve, so no
+	// write happens and the existing file is left untouched. A failure is
+	// surfaced as a failure, and the message carries no credential material.
+	if normalized := normalizeJevKey(jevKeySubmitted); normalized != "" {
+		if err := a.jevcredSave(normalized); err != nil {
+			logSaveFailure("jevcred.Save", "settings saved, but Jev credential write failed")
+			a.renderErrorPage(w, prefs, selected, devMode, convention,
+				"settings saved, but Jev credential write failed: "+err.Error())
 			return
 		}
 	}
@@ -597,11 +712,37 @@ func (a *app) projectView(prefs profile.ProfilePreferences, selected, devMode, c
 // renderErrorPage re-renders the form with a persistence-error banner while
 // keeping the submitted values visible (REQ-WC-010 — readable inline error,
 // never blank), including the two project-config selections.
+//
+// SPEC-WEB-CONSOLE-017 REQ-WC-017-001: the response is a 2xx re-render, not
+// a 500. The settings form is hx-boosted (root.templ), and htmx discards the
+// body of a non-2xx boosted response — a 500 here meant the failure reason
+// rendered into the inline save__msg--error slot never reached the browser.
+// The page body was already correct (the slot carries view.Banner via
+// settings_shell.go); the defect was the transport. A 2xx re-render is the
+// same shape the success path already uses, so the boosted swap handles
+// failure and success identically without any client-side handler.
+//
+// @MX:ANCHOR: [AUTO] the save-failure render seam — all 9 persistence seams of handleSave funnel their failure through this one re-render
+// @MX:REASON: fan_in 9 (every seam's error path); since SPEC-WEB-CONSOLE-017 it answers 2xx, not 500, so the boosted htmx swap delivers the reason to the inline slot
 func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePreferences, selected, devMode, convention, msg string) {
 	view := a.projectView(prefs, selected, devMode, convention)
 	view.Banner = msg
 	view.BannerKind = "error"
-	a.render(w, http.StatusInternalServerError, view)
+	a.render(w, http.StatusOK, view)
+}
+
+// logSaveFailure writes exactly one stderr line for a failed persistence
+// seam (SPEC-WEB-CONSOLE-017 REQ-WC-017-003/004/005). It reuses the
+// established fmt.Fprintf(os.Stderr, ...) idiom (server.go) with the single
+// `moai web: ` prefix so every save-failure line greps uniformly. The line
+// names the failed seam and the stable failure phrase ONLY — it never
+// carries the raw error value (err.Error()), which may embed credential
+// fragments (HARD-3); the user-facing banner carries the full reason instead.
+//
+// @MX:ANCHOR: [AUTO] the single save-failure stderr emitter — all 9 persistence seams funnel through this one line; grep surface is the `moai web: ` prefix
+// @MX:REASON: fan_in 9 (one call per seam in handleSave); the one-prefix rule (REQ-WC-017-004) lives here, and raw error values must never reach this line (REQ-WC-017-005)
+func logSaveFailure(seam, phrase string) {
+	fmt.Fprintf(os.Stderr, "moai web: save failed at %s: %s\n", seam, phrase)
 }
 
 // bindForm maps submitted form values onto a ProfilePreferences.
@@ -614,9 +755,10 @@ func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePrefer
 // statusline config, so syncStatusline preserves the on-disk values.
 //
 // model_policy is likewise NOT bound here (G3-5 — removed from the UI as a
-// duplicate of the agentfm performance tier). Its ProfilePreferences field is
-// preserved by an explicit carry-forward in handleSave so a web save never blanks
-// the resolveLaunchEffort fallback (launcher.go).
+// duplicate of the restored agent-overrides profile selector). Its
+// ProfilePreferences field is preserved by an explicit carry-forward in
+// handleSave so a web save never blanks the resolveLaunchEffort fallback
+// (launcher.go).
 func bindForm(r *http.Request) profile.ProfilePreferences {
 	prefs := profile.ProfilePreferences{
 		UserName:         r.PostFormValue("user_name"),

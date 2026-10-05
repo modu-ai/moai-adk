@@ -15,6 +15,10 @@ const (
 	mcpServerCommandValue = "moai"
 	// mcpServerArgValue is the single fixed server arg.
 	mcpServerArgValue = "mcp-server"
+	// mcpServerEnvVarsValue is the fixed allowlist of launcher/session facts
+	// inherited by the MoAI MCP subprocess. Codex otherwise starts the server
+	// without the factory attribution needed to resolve the active broker.
+	mcpServerEnvVarsValue = `["MOAI_HOME", "MOAI_KANBAN_ID", "MOAI_SESSION_PID", "MOAI_KANBAN_BACKEND", "MOAI_FACTORY_WORKER", "MOAI_FACTORY_WORKERS", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_SESSION_ID"]`
 	// mcpApprovalMode is the capability-based approval mode: `writes` prompts
 	// for tools NOT marked read-only (MCP ReadOnlyHint annotation) — the
 	// approval set therefore rides on server annotations, never on tool-name
@@ -40,11 +44,13 @@ var StatusLineAllowlist = []string{
 }
 
 // defaultStatusLine is the fixed default configuration (operator directive
-// 2026-09-10): the 8 canonical tokens covering model, context, repository,
-// rate-limit, and thread-title status.
+// 2026-09-22): the 14 canonical tokens covering model, version, context,
+// rate limits, repository/PR, run progress, permissions, and thread title.
 var defaultStatusLine = []string{
-	"model-with-reasoning", "context-remaining", "git-branch", "current-dir",
-	"branch-changes", "five-hour-limit", "weekly-limit", "thread-title",
+	"model-with-reasoning", "codex-version", "context-remaining",
+	"five-hour-limit", "weekly-limit", "current-dir", "git-branch",
+	"branch-changes", "pull-request-number", "run-state", "task-progress",
+	"approval-mode", "fast-mode", "thread-title",
 }
 
 // DefaultStatusLine returns a copy of the default status_line configuration.
@@ -91,6 +97,7 @@ func EnsureMCPTable(content []byte) []byte {
 	table := mcpServerTableHeader + "\n" +
 		"command = \"" + mcpServerCommandValue + "\"\n" +
 		"args = [\"" + mcpServerArgValue + "\"]\n" +
+		"env_vars = " + mcpServerEnvVarsValue + "\n" +
 		"default_tools_approval_mode = \"" + mcpApprovalMode + "\"\n"
 	return []byte(appendSection(body, table))
 }
@@ -161,10 +168,11 @@ type MCPTableStatus struct {
 	Canonical bool
 }
 
-// canonicalMCPAssignments are the three assignments EnsureMCPTable writes.
+// canonicalMCPAssignments are the four assignments EnsureMCPTable writes.
 var canonicalMCPAssignments = []string{
 	"command = \"" + mcpServerCommandValue + "\"",
 	"args = [\"" + mcpServerArgValue + "\"]",
+	"env_vars = " + mcpServerEnvVarsValue,
 	"default_tools_approval_mode = \"" + mcpApprovalMode + "\"",
 }
 
@@ -198,6 +206,37 @@ func InspectMCPTable(content []byte) MCPTableStatus {
 		return status
 	}
 	return status
+}
+
+// StaleApprovalOverride reports a project-global MoAI MCP approval override
+// left by an older Factory generation: a default_tools_approval_mode other
+// than the canonical "writes" inside [mcp_servers.moai], or an approve
+// approval_mode inside a [mcp_servers.moai.tools.*] table. The managed
+// launcher now scopes approval to the processes it owns, so such a setting
+// is stale. It READS only (REQ-MS-010); the user-owned file is never
+// rewritten. The returned text is the offending assignment line.
+func StaleApprovalOverride(content []byte) (line string, found bool) {
+	inMoai, inTool := false, false
+	for _, l := range splitLines(string(content)) {
+		trimmed := strings.TrimSpace(l)
+		if anyTableRe.MatchString(l) {
+			inMoai = mcpMoaiTableRe.MatchString(l)
+			inTool = strings.HasPrefix(trimmed, "[mcp_servers.moai.tools.")
+			continue
+		}
+		key, val, ok := strings.Cut(trimmed, "=")
+		if !ok {
+			continue
+		}
+		key, val = strings.TrimSpace(key), strings.Trim(strings.TrimSpace(val), `"`)
+		switch {
+		case inMoai && key == "default_tools_approval_mode" && val != mcpApprovalMode:
+			return trimmed, true
+		case inTool && key == "approval_mode" && val == "approve":
+			return trimmed, true
+		}
+	}
+	return "", false
 }
 
 // splitLines splits body into trimmed-of-newline lines. A trailing newline

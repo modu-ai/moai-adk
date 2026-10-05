@@ -2,7 +2,7 @@
 title: 提示缓存 —— 成本节约与盈亏平衡
 weight: 30
 draft: false
-description: "梳理提示缓存如何降低代币成本：读取 0.1 倍 · 写入 1.25 倍的盈亏平衡、5 分钟寿命、自主级别 (MOAI_AUTONOMY_TIER) 与 CG 模式对成本·速度的影响，以入门水准逐一讲解。"
+description: "梳理提示缓存如何降低代币成本：读取 0.1 倍 · 写入 1.25 倍的盈亏平衡、5 分钟寿命、自主级别 (MOAI_AUTONOMY_TIER)对成本·速度的影响，以入门水准逐一讲解。"
 ---
 
 # 提示缓存 —— 成本节约与盈亏平衡
@@ -141,18 +141,16 @@ semi-auto 下，等待任务开工批准或回答问题很容易停超过 5 分�
 
 ## 模型选择对缓存成本的影响
 
-模型是缓存键的一部分。内容相同，模型一换就整体重算。所以保持模型一致本身就是省缓存成本的事。MoAI-ADK 用两道装置守住这份一致性。
-
-- **配置矩阵** (profile matrix)： max · medium · low 三档配置为每个智能体定下 `{模型, effort 档位}` 格子。用 `moai model profile --json` 查询。每个智能体的模型固定后，即使同时启动多个智能体，缓存也不会被搅动。
-- **逐智能体的模型注入** (model-policy)： 每次 `Agent()` 启动都明确写出模型。智能体定义的默认值是 `model: inherit`，漏写模型就会悄悄回落到父会话的模型——这是搅动缓存的常见原因。声明的模型与实际解析出的模型不一致时，按漂移捕获。
+模型是缓存键的一部分。内容相同，模型一换就整体重算。所以保持模型一致本身就是省缓存成本的事。v3.2 起这份一致性由结构保证 —— 子代理沿用主会话的模型与推理深度，一个会话里的所有生成都在同一个模型上运行，自然共享同一份缓存。曾经的两个装置（为每个智能体固定格子的配置矩阵、每次生成都注入模型的 model-policy）已经退役，剩下的规则只有一条：会话中途不换模型（`/model`）。
 
 每个模型能进入缓存的**最小代币数**也不同。比这更短的前缀不会入缓存（不报错，按普通方式处理）。
 
 | 模型 | 上下文 | 最小缓存代币 |
 |------|----------|----------------|
-| Claude Fable 5 | 256K | 512 |
+| Claude Fable 5 | 1M | 512 |
+| Claude Opus 5.5 | 1M | 512 |
 | Claude Opus 5 | 1M | 1,024 |
-| Claude Sonnet 5 | 200K | 1,024 |
+| Claude Sonnet 5.5 | 1M | 1,024 |
 | Claude Opus 4.7 | 1M | 2,048 |
 | Claude Haiku 4.5 | 200K | 4,096 |
 
@@ -168,11 +166,13 @@ semi-auto 下，等待任务开工批准或回答问题很容易停超过 5 分�
 4. **`/compact` 放在自然的关口**： 在工作与工作之间有意义的边界执行。若走错了路，能回退到已缓存回合的 **`/rewind`** 比整体重新摘要的 `/compact` 更便宜。
 5. **`/clear` 只在真正需要时用**： `/clear` 会把温热的缓存整个丢掉。剩下的收尾工作不长的话，保持缓存直接收尾，比背着旧上下文开始大工作更便宜。
 
-## 用 CG 模式再省一步
+## CG 停用与配置迁移
 
-如果说缓存是"把同样的内容便宜地再用一遍"这一轴，**CG 模式** (CG Mode) 就是"少用贵模型"这一轴。它把 tmux 会话切分开，领队用 Claude、实现工作者用便宜的 GLM（z.ai 后端），在实现为主的工作上**把成本降低约 60-70%**。两条轴互不重叠 —— CG 模式下各后端的缓存由各后端自行处理（Claude 用提示缓存，GLM 用基于内容相似度的隐式缓存）。
+`moai cg` 已停用。它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。 [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
 
-详细结构与切换命令请看[CG 模式](/zh/multi-llm/cg-mode)。
+迁移会写入 `llm.team_mode: claude`、`llm.gateway.teammate_mode: in-process` 和 `llm.gateway.teammate_provider: inherit`。这会取消原有混合角色分配，并不会保留 Claude 领队与 GLM 队友窗格的分工。
+
+`claude-glm` 表示 Claude 领队搭配 tmux 中的 GLM 队友。目前 TEAMMATE 集成验证尚未通过，因此不能应用或启动该方案，只能预览。安装 tmux 或设置 `verified: true` 都不能解除限制。
 
 ## 成本监控
 
@@ -197,8 +197,8 @@ semi-auto 下，等待任务开工批准或回答问题很容易停超过 5 分�
 
 - [提示缓存](/zh/claude-code/context-memory/prompt-caching) —— 运作原理、前缀匹配、上下文管理（上下文管理视角）
 - [上下文窗口](/zh/claude-code/context-memory/context-window) —— 上下文窗口大小与各模型差异
-- [CG 模式](/zh/multi-llm/cg-mode) —— Claude + GLM 混合，成本降低 60-70%
-- [模型策略](/zh/multi-llm/model-policy) —— 逐智能体的模型注入与漂移防范
+- [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
+- [模型策略](/zh/multi-llm/model-policy) —— 子代理沿用的会话模型策略与 effort 回退
 
 ## 来源（官方文档）
 

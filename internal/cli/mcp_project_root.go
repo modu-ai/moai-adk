@@ -44,7 +44,11 @@ const projectRootDescCommon = "Optional project or worktree root to act on. Supp
 	"`git rev-parse --show-toplevel`. In a worktree session you MUST pass it: the server's own resolution names " +
 	"the PRIMARY checkout, so omitting it acts on the wrong tree. An unusable path is rejected, never silently " +
 	"replaced by a default, and an accepted path is canonicalized — symlinks resolved — so the call acts on the " +
-	"real directory rather than on the spelling that reached it. "
+	"real directory rather than on the spelling that reached it. A linked worktree of a repository that does not " +
+	"track .moai is accepted too, when git registers it as a worktree of a primary checkout that has .moai. On such " +
+	"a worktree without its own workflow config, the audit gate (workflow.audit.gates) is read from the primary " +
+	"checkout; its SPEC catalogue is the union of the worktree's and the primary checkout's .moai/specs, and its " +
+	"state is kept in the primary checkout's .moai/state under the worktree's own tree identity. "
 
 // projectRootDesc describes the parameter on a tool whose absent case falls back
 // to resolveProjectDir() — the tools that already resolved a root before this
@@ -69,6 +73,11 @@ func projectRootPassthroughOption() mcp.ToolOption {
 	return mcp.WithString(projectRootArg, mcp.Description(projectRootPassthroughDesc))
 }
 
+// rootSourceParam names the provenance source of an explicit project_root
+// argument. The fallback tier names ("env:CLAUDE_PROJECT_DIR", "server-cwd",
+// "unresolved") come from resolveProjectDirWithSource (session.go).
+const rootSourceParam = "param"
+
 // resolveToolProjectRoot returns the project root a tool call should act on.
 //
 // An absent or empty project_root resolves exactly as the tool resolved it
@@ -81,11 +90,52 @@ func projectRootPassthroughOption() mcp.ToolOption {
 // parameter exists to fix: a caller who mistyped its own worktree path would be
 // silently returned to acting on the primary checkout, and told it succeeded.
 func resolveToolProjectRoot(req mcp.CallToolRequest) (string, error) {
+	root, _, err := resolveToolProjectRootWithSource(req)
+	return root, err
+}
+
+// resolveToolProjectRootWithSource is resolveToolProjectRoot plus the
+// provenance tier that produced the root (t236 / issue #1640): "param" for an
+// explicit argument, otherwise the fallback tier from
+// resolveProjectDirWithSource. Validation and reject-not-fallback semantics
+// are identical to resolveToolProjectRoot — this is the same resolver with
+// the source made observable, so catalog responses can carry it as "_root"
+// and warn when resolution did NOT come from the caller.
+func resolveToolProjectRootWithSource(req mcp.CallToolRequest) (string, string, error) {
 	raw := strings.TrimSpace(req.GetString(projectRootArg, ""))
 	if raw == "" {
-		return resolveProjectDir(), nil
+		dir, source := resolveProjectDirWithSource()
+		return dir, source, nil
 	}
-	return validateProjectRoot(raw)
+	root, err := validateProjectRoot(raw)
+	if err != nil {
+		return "", "", err
+	}
+	return root, rootSourceParam, nil
+}
+
+// rootProvenanceMap builds the "_root" block a catalog response carries:
+// which tree was read and where the resolution came from. A warning is
+// attached ONLY when the source is not "param" — a fallback resolution froze
+// at server spawn, and the caller must be told rather than left reading
+// another tree in silence (live gap L2 of the t236 reproduction).
+func rootProvenanceMap(root, source string) map[string]any {
+	prov := map[string]any{
+		"source": source,
+		"dir":    root,
+	}
+	if source != rootSourceParam {
+		prov["warning"] = "project_root not passed — resolved from " + source +
+			", which froze at server spawn; a session that moved worktrees is reading another tree; " +
+			"pass project_root = git rev-parse --show-toplevel"
+	}
+	// A separate key, never folded into "warning": a config-orphaned worktree
+	// answers from a tree whose .moai is not tracked, so an empty catalogue there
+	// is not "no SPECs" (SPEC-MCP-WORKTREE-UNTRACKED-001 REQ-MWU-013).
+	if isConfigOrphanedRoot(root) {
+		prov["worktree_warning"] = worktreeWarning
+	}
+	return prov
 }
 
 // resolveOptionalToolProjectRoot is the pass-through variant, for a surface that
@@ -141,11 +191,14 @@ func validateProjectRoot(raw string) (string, error) {
 		return "", fmt.Errorf("project_root %q cannot be canonicalized: %w", raw, err)
 	}
 
+	// Branch 1 (unchanged, no subprocess): a tree with its own .moai directory.
 	moaiDir := filepath.Join(canonical, ".moai")
-	moaiInfo, err := os.Stat(moaiDir)
-	if err != nil || !moaiInfo.IsDir() {
-		return "", fmt.Errorf("project_root %q has no .moai directory, so it is not a MoAI project root", raw)
+	if moaiInfo, err := os.Stat(moaiDir); err == nil && moaiInfo.IsDir() {
+		return canonical, nil
 	}
 
-	return canonical, nil
+	// Branch 2 (SPEC-MCP-WORKTREE-UNTRACKED-001): a linked worktree of a
+	// repository that keeps .moai untracked has none of its own; accept it only
+	// when git lists it as a worktree of a primary checkout that has .moai.
+	return validateLinkedWorktreeRoot(raw, canonical)
 }

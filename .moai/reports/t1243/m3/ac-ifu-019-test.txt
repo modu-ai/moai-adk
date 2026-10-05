@@ -1,0 +1,10 @@
+=== RUN   TestClaudeImportResolution_AgentsLocalSentinel
+=== RUN   TestClaudeImportResolution_AgentsLocalSentinel/resolved
+    claude_import_resolution_live_test.go:105: sentinel IFU019-D2F92053B2E1 resolved; response: IFU019-D2F92053B2E1
+=== RUN   TestClaudeImportResolution_AgentsLocalSentinel/control_without_import
+    claude_import_resolution_live_test.go:118: control: sentinel absent without the import; response: NOT_PRESENT
+--- PASS: TestClaudeImportResolution_AgentsLocalSentinel (13.13s)
+    --- PASS: TestClaudeImportResolution_AgentsLocalSentinel/resolved (5.99s)
+    --- PASS: TestClaudeImportResolution_AgentsLocalSentinel/control_without_import (7.15s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	13.769s

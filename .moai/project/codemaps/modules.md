@@ -1,250 +1,542 @@
-# 패키지 모듈 상세 설명
+# 패키지 모듈 상세
 
-> 이 문서는 `/moai codemaps --force`로 자동 생성된 패키지 목록입니다.
+**현재 부분 갱신 — t1524, worktree `.claude/worktrees/develop`, 브랜치 `develop`, base `d0378d37c`(develop 팁 — 재생성 전 팁) (2026-10-05).**
+앵커 `f4c483a5a`(t1485 판 스탬프) 뒤 비테스트 Go 소스 변경 50개(`IsDescribedWorthy` 술어 — 검사기 값과 같은 술어로 독립 재현, 신규 23 · 수정 27 · 삭제 0)를 대조했다. 창은 40커밋, 여섯 카드 몫이다. ① **`.moai` 위생**(card t1518, SPEC-MOAI-HYGIENE-001) — 신규 패키지 `internal/hygiene`(비테스트 12, 아래 infrastructure 표 신규 행): 감사 로그 회전기(`auditlog.go`·`rotate.go` — 10 MiB keep-1, lockfile로 직렬화한 단일 통과, 스테일 판정 건너뜀, Windows LockFileEx 사이드카 `rotate_lock_unix.go`·`rotate_lock_windows.go`)와 닫힌 20항목 싱크 레지스트리의 완전성 가드(`sinks.go`의 ScanSourceSinks — 미등록 append-only 쓰기면 적색), 끝난 세션 상태 GC(`gc.go`·`targets.go` — 세 신호 fail-closed 생존 판정 `liveness.go`: pid 프로브(`probe_pid_unix.go`·`probe_pid_windows.go` — 지문을 못 읽는 플랫폼 한계는 유보)·48시간 전사본 활동·24시간 심박, 긍정 하나면 LIVE, 전부 음성이면 DEAD, 미측정이 하나라도 있으면 INDETERMINATE=KEEP; mtime은 삭제 데이터가 아니고 클래스별 내용 연대표를 쓰며 연대 불능 클래스(codex-stop-cap)는 아낀다; 해석된 `.moai` 루트 아래의 심볼릭 링크 성분은 거부, 삭제는 디렉터리 fd 고정 루트로 실행, D28 실행 시각 재판정, SPEC 종결 락 클래스 제외), 기본은 report(자기 `hygiene-audit.jsonl` 요약 행 외 바이트 동일), apply는 표면별 옵트인. 훅 SessionStart 배선은 `session_start_hygiene.go` — best-effort로 기동을 막지 않는다(자동 경로의 apply는 `workflow.hygiene.mode`). 설정 6키(`types.go`·`defaults.go` — mode 기본 report, audit_log_max_bytes 10 MiB, audit_log_kept_rotations 1, transcript_activity_window 48h, heartbeat_stale_window 24h, min_age_days 7). ② **실행 바이너리 신선도**(card t1465, SPEC-SESSION-CC-VERSION-001) — `internal/session`의 ccversion 4파일(`ccversion.go` + `ccversion_darwin.go`·`ccversion_linux.go`·`ccversion_other.go` — ResolveCCVersions가 플랫폼 seam으로 실행 중 프로세스 자신의 매핑을 읽고(lsof·/proc/pid/exe, 미지원은 unknown), PATH의 claude 경로 버전 세그먼트와 대조; UnknownCCVersion은 에러가 아니라 열등 모드)와 `session.go`의 `moai session list --cc-version`(기본 경로는 프로브가 없다), doctor의 Session CC Version 권고 진단(`doctor_ccversion.go`, `doctor.go` 배선), M4 비상 재개 경로(`lane_resume.go` — 자식 argv 조립, 값 없는 `--resume` 거부, carriesResumeToken fail-closed 검출; `cc.go`·`factory_lane_relaunch.go` 배선). ③ **감사 상한**(card t1500, SPEC-AUDIT-CEILING-002) — `internal/runtime/audit_ceiling.go`(plan-audit 반복 상한의 구성·계수·판정), `internal/auditverdict/verdict.go`의 확장(상한 소비가 쓰는 필드·파서·admit과 required-backend 거부), 새 동사 `moai spec ceiling <SPEC-ID> [--record]`(`spec_ceiling.go`, 등록은 `spec.go` — 기록은 --record 한 길), 감사 핀 로더의 fail-closed화(`audit_pin.go` — t1485 창 신규, workflow.audit 핀 로더 · REQ-ACR-006: 읽기·파스 오류는 핀 부재와 끝까지 구별되고 0 설정으로 접히지 않는다), 세 감사 리졸버의 required-backend 거부와 fail-closed 해석(`mcp_audit_multi.go`·`mcp_claude.go`·`mcp_codex.go`·`mcp_glm.go`·`mcp_convergence.go`·`mcp_worktree_root.go`·`codex_audit_launch.go`), 설정 workflow.audit 상한 키(`defaults.go`·`loader.go`·`types.go`). ④ **훅 수리 배치**(card t1499) — `config_change.go`가 live payload 필드 이름에서 경로·출처를 읽고, `subagent_write_guard.go`가 누락된 쓰기 대상을 fail-open 대신 "new file" allow로 기록하며 스캔 경로를 입력 cwd·심볼릭 링크 우선 해석으로 고치고, `user_prompt_submit.go`의 워크플로 키워드가 단어 단위 매치와 세션당 1회 주입으로 갈렸다(같은 창에서 만들어진 PostToolUse 스캔 스코프 변경은 같은 창의 revert로 소멸 — 엔드포인트 잔여 0). ⑤ **하네스 보존 수리**(card t1463·t1467) — `retention.go`의 프루너가 잠긴 prune 상태 경로의 FIFO를 스탬프 사전 검사와 잠금 열기 양쪽에서 거부하고(`retention_open_unix.go`·`retention_open_windows.go`), 아카이브 append를 temp+rename 원자 쓰기로 갈았다. ⑥ **문언·라벨**(card t1504·t1517) — `profile_setup_translations.go`의 git 전략 모드 설명 4개국어와 GLM 노트 재초점, `glm.go`의 merge_method 수동 기본 merge, `template/model_policy.go`의 fable alias가 claude-fable-5-1을 겨냥(web Fable 라벨은 테스트 전용 — described 0). 파일 수가 움직인 행: `internal/cli` 406→427(루트 325→345 — 이 트리 find 직접 측정; 이번 창 +3, 나머지 18은 t1485 창 흡수분), `internal/hook` 157→158(`session_start_hygiene.go`), `internal/session` 29→33(ccversion 4파일), `internal/runtime` 11→12(`audit_ceiling.go`), `internal/harness` 86→92(t1485 창의 retention_owner_*·retention_heal_* 흡수분 +4에 이번 창 retention_open 쌍 +2), `internal/template` 37→48(t1485 창 흡수분 +11 — pluginemit·agent_overrides_consume·deployer_mode 등), `internal/config` 62→64(t1485 창 흡수분 +2 — deploy_mode.go·llm_strict_validate.go), `internal/web` 33→35(t1485 창의 legacy_routes.go·speccache.go 흡수분), `internal/homestate` 31→32(t1485 창의 card_audit_kickoff.go 흡수분). 이번 창에서 움직이지 않은 행: `internal/settings` 13 · `internal/auditverdict` 1 · `internal/factory` 61 · `internal/statusline` 24 · `internal/sessionmsg` 7 · `internal/mcp` 1 · `internal/auditreceipt` 3 · `internal/decision` 3 · `internal/verify` 9. 클러스터 표: doctor* 24→28(+1 이번 창, +3 흡수분), spec* 8→9(`spec_ceiling.go`), 신규 lane* 1(`lane_resume.go`), update* 30→31 · mcp* 26→27 · todo* 17→24 · codex* 25→28 · migrate* 12→13 · factory*/handoff*/profile* 17(11+1+5)→18(12+1+5) · 나머지 68→80 — 여섯 행의 흡수분은 전부 t1485 창 몫이다(`audit_pin.go` 포함). 등록 수치는 이 트리 재측정에서 비테스트 `AddCommand(` 246→**247**(+1 — `moai spec ceiling`, `spec.go`의 기존 specCmd 등록 줄 옆 한 줄), `rootCmd.AddCommand(` 68 불변(§ `entry-points.md` t1524 판). 규모 표 일곱 값은 § `overview.md` t1524 판이 운반한다.
 
-**모듈**: `github.com/modu-ai/moai-adk`  
-**Go 버전**: go 1.26.4
+**이전 부분 갱신 — t1485, 카드 워크트리, 브랜치 `WT-codemaps-regen3`, base `83086bec5`(로컬 develop 팁) (2026-10-04).**
+앵커 `27aa8e282`(t1456 판 본문) 뒤 `moai graph check`가 described-source-diff 294(임계 40)와 인용 부재 12를 보고한 창을 소진한다. 비테스트 Go 소스 변경은 신규 48 · 수정 178 · 삭제 11 · 이름 변경 57(`git diff --name-status -M 27aa8e282 83086bec5 -- internal cmd pkg`에서 `*.go`만, 테스트·testdata 제외)이다. 창의 본체: ① **칸반 모드 은퇴와 패키지 개명**(card t1399, SPEC-LAUNCHER-ENTRY-FLAGS-001) — 큐 도메인 패키지가 `internal/factory`로 옮겨지고 보드·컬럼·정합성 조정·보드 CLI·칸반 세션 시작 파일이 지워졌다; 이 판은 모든 문서의 옛 경로 인용을 새 경로로 다시 적었다(이력 문단 포함 — 서술 내용은 그대로, 경로 철자만). ② **원자 임대**(card t1458) — 상태 락과 워크트리 단계 락. ③ **결정 자동화**(card t1481) — 신규 `internal/decision`(결정 보드)·`internal/auditverdict`(판정 admission 술어)와 `internal/homestate/card_audit_kickoff.go`, 훅의 바인드 캐시 `internal/hook/factory_bind_cache.go`. ④ **플러그인 마켓플레이스**(card t1435) — 신규 `internal/template/pluginemit`과 cli `plugin_*` 3파일. ⑤ **init 축소**(SPEC-INIT-SHRINK-001) — 배포 모드 기록(`internal/config/deploy_mode.go`, `internal/template/deployer_mode.go`·`apply_deploy_mode.go`)과 분류된 update 마이그레이션(`internal/cli/update_migrate.go`·`update/migrate_classify.go`·`migrate_render.go`). ⑥ **관리 Codex TUI**(card t1408·t1440 — `managed_codex_tui.go`·`managed_operator_input.go`), **`moai verify run`**(card t1452), **LLM decider**(card t1352 — `todo_classify_llm.go`·`todo_decider_select.go`), **codex 게이트 스코핑**(card t1404), **에이전트 오버라이드 소비**(card t1421 — `internal/template/agent_overrides_consume.go`), **엄격 LLM 설정 검증**(`internal/config/llm_strict_validate.go`), 웹 레거시 경로·SPEC 캐시(`internal/web/legacy_routes.go`·`speccache.go`), 하네스 보존 소유자·치유(`internal/harness`의 `retention_owner_*`·`retention_heal_*` 4파일). 패키지 수는 165→168이다(−1 개명 전 이름, +1 `internal/factory`, +`internal/decision`·`internal/auditverdict`·`internal/template/pluginemit`).
 
----
+**이전 부분 갱신 — t1456, worktree `.moai/worktrees/t1456`, 브랜치 `WT-codemaps-regen2`, base `5501c06af`(develop 흡수 후) (2026-10-03).**
+앵커 `a2e03d8e0`(t1443 판 본문) 뒤 비테스트 Go 소스 변경 50개(`IsDescribedWorthy` 술어 — 검사기 값과 같은 술어로 독립 재현, 신규 8 · 수정 42)를 대조했다. 창은 아홉 Go 카드와 두 수리·템플릿 카드의 착지분이다. **card t1442 할당량 게이트의 워크트리 기록 판독**(SPEC-QUOTA-RECORD-WORKTREES-001 — t1347 부채 F1): 신규 `internal/statusline/quota_dirs.go`(`QuotaStateDirs` — primary와 링크된 워크트리 상태 디렉터리를 git 메타데이터 파일 읽기만으로 열거, `AggregateQuotaDirs`가 기존 단일 디렉터리 규칙을 전부에 적용), config `loader_quota_gate.go`의 `LoadQuotaScanBound`(`workflow.quota_gate.max_scan_dirs` — 1~1024 클램프), `factory_quota.go`의 판독 seam이 다중 디렉터리 집계로 재지향(다른 형태의 상태 디렉터리는 단독 판독 — fail-open). **card t1423 감사 모델 소비화**(SPEC-AUDIT-MODEL-CONVERGE-001): 신규 `internal/config/audit_plan.go`(`ResolveAuditPlan` — 백엔드별 네 단 선위: 인자 > config 게이트 > `audit.model` 토큰 셀 > 분산 기본, 소스 라벨 동행, 미지 모델·집합 밖 게이트는 하드 에러; `AuditModelMulti`가 선언 전용 토큰에서 소비되는 값이 됐다), 신규 `internal/cli/audit_plan_cmd.go`(읽기 전용 동사 `moai verify audit-plan` — 트리 하나의 해석 플랜을 JSON으로, `--result-file` 대조 검사기는 순수; `verifyExtraCommands` 레지스트리로 합류), `mcp_audit_multi.go`의 콜스타트 강제 고정(팬아웃 뒤 재판독 없음), `mcp_worktree_root.go`의 `resolveAuditGates`(명시 게이트만 — 기본값 대입 없음), `mcp_convergence.go`의 `PlanSource`·`EnforcementGates`, auditreceipt의 `recordAuditReceiptAt`·`CodexGateRequired`(트리가 명시했을 때만 codex required), `mcp_codex.go` 콜스타트 게이트, 설정 `schema_sections.go`·`closed_sets.go`의 토큰 문언. **card t1345 스테일 런 자가 치유**(SPEC-FACTORY-STALE-RUN-HEAL-001): 신규 `internal/cli/factory_relaunch.go`(동사 `moai factory relaunch` — 죽은·교체된 런의 실행 가능한 복귀; provider cc|glm|codex 검증, 구형 역할 토큰은 감지만 하고 매핑하지 않음, codex 핀 거부), 신규 `internal/factory/factory_relaunch_cmd.go`(공유 그래머 + 공지 상태 기계 — 명령줄은 로케일 불변 프로토콜 토큰), 신규 `internal/hook/factory_rebind.go`(env 네임 런이 비활성일 때 프롬프트마다 레인 리바인딩 — 활성 하나면 재결합 공지, 0이면 비결합 공지, 여럿이면 후보 전부 나열, 슬롯에 살아 있는 소유자면 거부; fail-open, 런을 은퇴·부활·생성하지 않는다), `session_stale_run.go`의 운영자용 실행 명령줄 안내(4개국 — 에이전트 지시가 아님을 명시), `stale_run_gate.go`·`user_prompt_submit.go`의 접속(감시 예산 200ms), `cc.go`·`glm.go`의 relaunch 루프, `factorymsg/run_state.go`의 `ValidRunID`·`ActiveRunIDsAt`. **card t1422 codex 리뷰 소유권**(SPEC-CODEX-REVIEW-OWNERSHIP-001): 신규 `internal/cli/codex_review_tree_scope.go`(TREE 스코프 세션의 WT- 카드 증거 없을 때 스킵 정책 — `workflow.codex.review_gate.tree_scope`, 파스 실패·모름은 항상 review 방향, 두 게이트 경로가 같은 술어를 써서 어긋날 수 없다), 신규 `internal/cli/mcp_selfreview.go`(어드바이저리 MCP 도구 `codex_review`·`glm_review` — 영수증을 남기지 않고 required 승격도 없다; `codex_audit`·`glm_audit`과의 대비가 요점), `codex_review_gate.go` 배선과 `DefaultCodexAuditLegTimeout` 분리, `codex_stop_chain.go` 제6구성원, `internal/mcp/catalog.go`에 두 도구 등록(**MCP 도구 45→47**), config `defaults.go`·`types.go`의 tree_scope 키. **card t1444 다중 런 합류 선택 해제**: `factorymsg/store.go`의 `AmbiguousRunsError`(후보 런을 소유자·lead-pid·시작 사실과 함께 전부 나열)+`IsLiveOwnerRefusal`, `factory.go`의 `ambiguousJoinGuidance`(`-f lane --factory-run <run-id>` 합류·`--leader <이름>`·`moai factory runs --retire` 3종 안내)와 `leaderNamesByPID`, `codex_launcher.go`의 `enterCodexRelaunchJoin`·`runCodexFactoryLane`(codex 합류도 같은 런 해석 게이트로), 합류 도움말의 플래그 문서화. **card t1451 레인 재점검 룰**: `hook/session_start_factory.go`의 두 레인 룰이 `m.laneRecheckRule`을 덧붙였다(clear를 survive하는 룰에만 — API 오류 종료턴엔 뒤에서 arm할 수 없다), `_i18n.go` 4개국 산문. **card t1433 파싱 실패 줄 보존**: `harness/retention.go`의 `partitionEvents`가 `[]logLine`으로 — JSON 파스에 실패한 줄을 파일 순서대로 원문 그대로 보존해 되돌려 쓴다(종전엔 조용히 버려졌다). **card t1420·t1412 잔여**: `codex_sync_gate.go`가 go roots의 모듈 전체 삭제를 생존하고 hpp/hxx 트리를 감지한다(t1420 몫 `.cxx` 추가 포함). **card t1455 CI 수리 배치**: gofmt(`mcp_claude.go`·`slice.go`), binlag 스윕(`mcp_selfreview.go`·`mcp_server.go`), 어휘·거부 목록(`factorymsg/store.go`·`hook/commit_identity_guard.go`), windows vet — 서술할 신규 표면 없음. **card t1439 Aside 브라우저**: Go 소스 0 — 임베드 템플릿·스킬·카탈로그 몫(임베드 602→604). 파일 수가 움직인 행: `internal/cli` 402→406(루트 321→325 — 이 트리 find 직접 측정; `audit_plan_cmd.go`·`codex_review_tree_scope.go`·`factory_relaunch.go`·`mcp_selfreview.go`), `internal/hook` 156→157(`factory_rebind.go`), `internal/config` 61→62(`audit_plan.go`), `internal/factory` 63→64(`factory_relaunch_cmd.go`), `internal/statusline` 23→24(`quota_dirs.go`). 같은 명령으로 재확인해 변동 없음: `internal/session` 29 · `internal/homestate` 31 · `internal/web` 33 · `internal/settings` 13 · `internal/template` 37 · `internal/harness` 86 · `internal/factorymsg` 9 · `internal/mcp` 1 · `internal/auditreceipt` 3 · `internal/factorylane` 5 · `internal/jev` 1 · `internal/codexwiring` 14. 등록 수치(`AddCommand` 호출 줄 239·`rootCmd.AddCommand(` 66)는 변동 없음 — `factory relaunch`는 기존 등록 줄에, `verify audit-plan`은 `verifyExtraCommands` 레지스트리로 합류했다(§ `entry-points.md` t1456 판). 규모 표 일곱 값은 § `overview.md` t1456 판이 운반한다.
 
-## 프레젠테이션 계층
+**이전 부분 갱신 — t1443, worktree `.moai/worktrees/t1443`, 브랜치 `WT-codemaps-regen`, base `4bf547bca` (2026-10-02).**
+앵커 `c2703f698`(t1297 병합 판) 뒤 비테스트 Go 소스 변경 71개(`IsDescribedWorthy` 술어 — 검사기 값과 같은 술어로 독립 재현, 신규 15 · 수정 56 · 삭제 0)를 대조했다. 창은 14카드 착지분이다. **card t1375 관리 세션 계층**(SPEC-FACTORY-MANAGED-SESSION-001): 신규 `managed_factory_session.go`(`managedTurnQueue`·`managedStreamSession` — 런처가 소유하는 stream-json Claude 자식)·`managed_codex_factory.go`(`managedCodexSession`·`runManagedFactoryCodex` — websocket Codex App-Server 자식), `launcher.go`·`codex_launcher.go`의 divert 게이트(`MOAI_FACTORY_MANAGED` 명시 옵트인 — 기본 꺼짐; `--continue`는 게이트 아래에서 거부), `factory_launch_pending.go`의 `factoryManagedRequested`, `doctor_codex.go`의 배선 진단, `codexwiring/configtoml.go`의 `StaleApprovalOverride`, config `envkeys.go`의 `EnvMoaiFactoryManaged`. **card t1347 quota-aware 임대**(SPEC-QUOTA-AWARE-SCHEDULING-001): 신규 `factory_quota.go`(`HeldWindows`·`Pressure`)·`factory_quota_lanes.go`(할당량 상태의 배차 스티어링 행), 신규 `internal/statusline/quota.go`(`AggregateQuota`)와 `context_usage.go`의 rate-limit 창 원장(스키마 v3), 신규 config `loader_quota_gate.go`(`workflow.quota_gate.*` — 모든 실패에서 꺼짐 기본; `cache.go`는 설정 캐시 스키마 v11로), `factory.go`의 게이트 걸린 임대(`factoryNextLeaseOnceGated`·`factoryNextSelectAndLease`), `internal/factory/factory_slots.go`의 백엔드별 레인 클레임(`ClaimFactoryLaneWithBackend` — `laneBackendToken`), 세 런처 문의 `resolveFactoryLaneName`, `integration.go` acquire의 보유 창 경고, `todo.go`·`todo_auto.go`의 사이클 안내 줄. **card t1411 web 에이전트 설정 부활**(SPEC-WEB-AGENTFM-RESTORE-001): 신규 패키지 `internal/settings/agentfm`(에이전트 정의 나열자 `List` — t1305 판이 지운 하위 패키지의 복귀), 신규 `internal/settings/llmoverrides.go`(llm.yaml 원자 쓰기·스냅샷/복원 — `WriteLLMProfile`·`SnapshotLLMYAML`), 신규 `internal/config/profile.go`(닫힌 프로파일 집합 high/medium/low, `max`→`high` 구형 별칭 — `NormalizeProfile`·`EffectiveProfile`), 신규 `internal/template/profile_matrix.go`(t1305 판이 지운 매트릭스의 등급판 복귀 — `ResolveAgentModelEffort`), 신규 `internal/web/agentfm.go`와 `fieldsets_templ.go` 재생성(`fieldsetAgentFM` 패널), `template/retired_model_keys.go`가 재출하 키를 스트립에서 뺌(신규 `update_model_key_strip.go`가 미러), `harness/rosterguard/registry.go` 행 복원. **card t1391 에이전트 3층 등급**(SPEC-AGENT-TIER-001): 신규 `config/agent_tiers.go`(`ValidAgentTiers`·`AgentTierPair`·`AgentTierChartTable` — 감사 표면 클래스는 감사 핀 기본), `glm_task.go`·`mcp_claude.go`·`mcp_codex.go`·`mcp_glm.go`의 스폰 시 등급 해석, 신규 `web/agenttierpanel.go`·`web/jevkey.go` 위젯 키. **card t1441 런치 모델 6단 선위**: 신규 `launcher_model_source.go`(명시 `--model` → 프로파일 → `ANTHROPIC_MODEL` → 프로젝트 settings.local → 사용자 스코프 `/model` 값 → 없음 — CC가 프로젝트 핀을 사용자 스코프 위에 두는 갭의 봉합; GLM 백엔드에서 3~5단은 건너뛴다), `launcher.go`·`envkeys.go` 배선. **card t1427 보고서 아티팩트 전달**(SPEC-REPORT-ARTIFACT-DELIVERY-001): settings의 `schema_sections.go`가 `reportFormatValues` 닫힘 집합에 `artifact`를 더했다(Artefact가 아니라 Claude Artifact 도구 부재 시 html+md 자동 폴백 — 기본 불변), `wizard/questions.go` 세 번째 선택지, `core/project/initializer.go`의 `ReportFormat` 수용, 임베드 신규 `references/artifact-contract.md`. **card t1400 우선순위 --auto 픽**: `kanban/classification.go` 신규 `PriorityRank` — `todo_auto.go`가 Jev 순서 앞에서 우선순위로 정렬한다(`todo_edit_move.go`·`todo.go` 배선). **card t1428 Jev 근접중복 비신호화**: 신규 `todo_auto_rank.go`의 `autoRankNearDuplicate`가 `Source == factory.BacklogSourceJev` 판정을 건너뛴다 — 입구에서 낸 Jev 답은 사람이 읽는 기록이지 준비도 신호가 아니다. **card t1384 CI 수리**: `codex_sync_gate.go`의 `detectSyncGateLanguages`가 Java를 Kotlin과 독립 판정(혼합 Gradle 싱크 커밋의 영델타 통과 결함), `hook/commit_identity_guard.go` 거부 목록에 `t1395@example.invalid` 합류. **card t1414 acceptEdits 수리**: `profile_setup.go`가 acceptEdits→"" 정규화를 떼었다 — 템플릿이 `permissions.defaultMode`를 출하하지 않게 된 뒤 CC 기본으로 떨어지던 무음 폐기의 봉합(`acceptEditsConfirmationLine` 4개국 문안 포함). **card t1425 보존 단일 작성자**: `harness/retention.go`의 `PruneStaleEntries`에 `<log>.prune-state` flock 상태 파일 — 훅 프로세스 전체에서 1시간 간격 프루너 하나(죽은 프루너는 구간이 끝나야 반복). **card t1393 세션 종료 착지 가드**(SPEC-WEB-SETTINGS-SAVE-001 ③): `session_worktree.go` 신규 `gitBranchLandedReal`(fetch-less merge-base·`git cherry` 패치-id 동치 — 스쿼시 포함) — 원격 착지가 확인될 때만 워크트리를 지우고 이상은 보존으로 실패 연다. **card t1344 리더 합류 공지의 게이트 요약**: `hook/session_start_factory.go`·`session_start_kanban.go`(및 `_i18n.go` 병행)가 `m.gateSummary` 블록을 더한다. **card t1403 Jev 표시 전용 문언**: `jev/jev.go` 패키지 문서가 두 정당한 프로세스 내 소비자(Kickoff 교차점검·todo --auto 후보 순위)를 이름 붙이고 `mcp_jev.go` 도구 문서가 MCP 표면의 표시 전용을 선언한다. 파일 수가 움직인 행: `internal/cli` 396→402(루트 315→321 — 이 트리 find 직접 측정), `internal/config` 58→61, `internal/web` 31→33, `internal/settings` 11→13(`agentfm` 복귀 — 패키지 총수 164→165), `internal/template` 36→37, `internal/statusline` 22→23, `internal/session` 26→29 재측정(이번 창의 세션 파일은 없다 — t1297 측정 트리와 앵커 사이 흡수분, t1338 판 선례의 표기). 같은 명령으로 재확인해 변동 없음: `internal/hook` 156 · `internal/factory` 63 · `internal/codexwiring` 14 · `internal/jev` 1 · `internal/core/project` 11 · `internal/harness` 86(하위 `rosterguard`는 창 내 수정 1 — 기존 패키지) · `internal/homestate` 31 · `internal/factorymsg` 9 · `internal/factorylane` 5 · `internal/cli/wizard` 10. 등록 수치(`AddCommand`)는 창 내 변동 0 — 루트 동사 조성 불변(§ `entry-points.md` t1443 판; `docs-truth.md` §4.1 Source 수치는 이 판이 재측정했다). 이 판은 이전 판 산문의 fold 단위 전체 경로 표기 두 곳도 벌거벗은 파일명 형태로 고쳤다(t1297 판의 `cwd_changed_relocate.go` · t1380 판의 `envkeys.go` — 내용 불변, 표기 형태만; fold 보존 가드 2건의 초록 복귀 측정은 카드 판정서가 실는다). 규모 표 일곱 값은 § `overview.md` t1443 판이 운반한다.
 
-### cmd/moai
-진입점: `main()` → `cli.Execute()`  
-의존성: `internal/cli`
+**이전 부분 갱신 — t1380, worktree `.claude/worktrees/t1380`, 브랜치 `WT-codex-debug-mode`, base `3a32a654b` (2026-10-02).**
+스탬프 앵커 `3a32a654b`(이 카드 런 팁) 뒤 비테스트 Go 소스 변경을 대조했다(`git diff 152adf3bb..3a32a654b` — 신규 1 + 수정 6, 비테스트 기준). 이번 배치의 본체는 하나다 — **SPEC-CODEX-DEBUG-MODE-001(card t1380)**: 세 런처(cc/glm/codex)의 디버그 표면. 신규 `internal/cli/launcher_debug_trace.go` — 디버그 토큰 철자 상수(`-d`/`--debug`), 세 런처 공용 줄 접두어 `moai-launcher-debug:`, 디버그 전용 단계 어휘, `launcherDebugRequested`(pre-`--` 스코핑 토큰 스캔), `stripCodexDebugFlag`(codex 헤드에서 토큰 제거 — codex CLI는 `-d`를 거부하므로 자식에 절대 전달하지 않는다), `codexApplyDebugEnv`(연산자 `RUST_LOG` 부재 시에만 `RUST_LOG=debug` 덧붙임 — 연산자 값 불변), `codexDebugEnvDetail`(env 키 이름·존재 여부만 렌더 — 값은 절대 출력하지 않는다), `hasEnvKey`. 수정: `internal/cli/codex_launcher.go`(토큰 스캔 배선, 읽기 동사의 이름 있는 거부 진단, 추적 단계 기록, 봉합 직전 덤프), `internal/cli/cc.go`·`glm.go`(관찰 전용 — 토큰을 자식에 그대로 남기고 공용 접두어로 자기 추적), `internal/cli/codex_factory.go`(레인 클레임 단계 상세), `internal/cli/factory_launch_timing.go`(공용 수집기의 디버그 확장 — `beginDebug`·`annotateDetail`·`debugDump`; t1378 REQ-012 임계값 보고는 디버그 오프에서 동결), `internal/config`의 `envkeys.go`(`EnvRustLog` 상수). 파일 수가 움직인 행: `internal/cli` 395→396(루트 314→315 — `launcher_debug_trace.go`). 같은 명령으로 재확인해 변동 없음: `internal/config` 58 · `internal/factory` 63. 테스트 4파일(`codex_debug_{flag,trace,uniformity,composition}_test.go`)은 집계 밖이다. `provenance.json`은 이번 부분 갱신에서 이 트리로 재스탬프했다.
 
-### internal/cli (109 non-test 파일)
-**역할**: Cobra 커맨드 트리, composition root  
-**팬-아웃**: ~48개 internal 패키지  
-**핵심**: `Execute()`, `InitDependencies()`, ~40 root verbs (152 non-test `.AddCommand()` 호출)
+**이전 부분 갱신 — t1297, worktree `.moai/worktrees/t1297`, 브랜치 `WT-codemaps-regen`, base `a9f43a6fc` (2026-10-02, 전면 재생성 카드).**
+앵커 `0a8780201`(t1378 판 스탬프) 뒤 비테스트 Go 소스 변경 48개(`IsDescribedWorthy` 술어)를 대조했다. 파일 수가 움직인 행: `internal/hook` 155→156(`stale_run_gate.go` — stale factory run 게이트, card t1373), `internal/session` 24→26(`anchor_trace.go`·`anchor_relocate_audit.go` — 앵커 추적 스위치와 리로케이션 감사, card t1339), `internal/factorymsg` 8→9(`run_state.go` — 런 상태 판독, card t1373). business/domain 표의 `internal/factorylane` 행은 t1338 판이 착지에 맞춰 이미 갖춘 것으로 이 판에서 재확인만 했다(비테스트 5). 같은 명령으로 재확인해 변동 없음: `internal/web` 31 · `internal/factory` 63 · `internal/config` 58 · `internal/settings` 11 · `internal/homestate` 31 · `internal/harness` 86 · `internal/statusline` 22. 내용 갱신: `internal/config`가 card t1339의 앵커 추적 스위치·리로케이션 감사 설정을 받았다(`envkeys.go`·`types.go`·`defaults.go`·`closed_sets.go` — 신규 파일 없음), `internal/web`는 `*_templ.go` 재생성(card t1381)을 파일 수 불변으로 받았다. 팬 인·팬 아웃·순환 수치는 § `dependencies.md` t1297 판이 운반한다.
 
-### internal/tui (19 non-test 파일)
-**역할**: Bubbletea TUI 요소, 28개 색상 토큰  
-**기본**: Box, Pill, Table, Status, ProgressLine  
-**의존성**: lipgloss
+**이전 갱신 — t1378, worktree `.claude/worktrees/t1378`, 브랜치 `WT-codex-lane-slots`, base `0a8780201` (2026-10-01).**
+스탬프 앵커 `b8f437bae`(카드 t1378 런 베이스) 뒤 비테스트 Go 소스 변경 19개(`IsDescribedWorthy` 술어)를 대조했다. 이번 배치의 본체는 하나다 — **SPEC-CODEX-LANE-SLOTS-001(card t1378)**. 신규 파일 셋이 더했다 — `internal/cli/factory_launch_timing.go`(codex 레인 런치의 사전 실행 단계별 타이밍 수집기 — 단계 상수 다섯, nil-안전 `factoryLaunchTiming`, 임계값 판독은 `config.DefaultFactorySlowLaunchThreshold`와 `MOAI_FACTORY_SLOW_LAUNCH_MS`; `codex_launcher.go`가 레인 런치에만 타이밍을 심고 exec 봉합 직전에 보고하며, `codex_factory.go`·`factory.go`가 조인 게이트·활성 런 해석·레인 클레임 단계를 기록한다), `internal/homestate/run_capacity.go`(런의 기록 레인 용량 판독 — `RunLaneCapacity`와 파생 용량 마커 `LaneCapacityDerived`), `internal/homestate/process_identity_batch.go`(배치 프로세스 지문 프로브 — `BatchProbeProcessIdentity`와 행별 판정기 `ClassifyOwnerFromResult`; darwin/unix/windows 배치 쌍이 `process_fingerprint_{darwin,unix,windows}.go`에 갈라졌다). 파일 수가 움직인 행: `internal/cli` 389→390(루트 308→309 — `factory_launch_timing.go`), `internal/homestate` 29→31(`run_capacity.go`·`process_identity_batch.go`). 같은 명령으로 재확인해 변동 없음: `internal/factory` 63 · `internal/config` 58. 신규 파일 없는 의미 변경도 이 배치의 몫이다 — `internal/factory/factory_slots.go`가 클레임 트랜잭션 안에서 런의 기록 선언 용량을 읽어 자동 스캔의 권위로 삼는다(파생 마커는 용량 개방 성장, 선언 카운트는 기록값이 런처 측 바운드를 이기고 가득 찬 런을 거부(t1294 계약), 기록 없는 런은 런처 측 바운드 유지); `internal/homestate/factory.go`가 `runs.lane_capacity` 열의 스키마 v4→v5 이행을 얹었다(기존 행은 보수적으로 1 기본값 — 이전 바이너리가 실제로 적용하던 바운드); `internal/cli/factory.go`의 `recordFactoryRunStart`가 선언 용량을 기록하고(`-f N`/`-k N` 선언과 값 없음 파생의 구분은 `kanban.go`의 `FactoryLanesDeclared` 파스 플래그가 운반), `internal/cli/codex_factory.go`의 조인 바운드가 런처 상수에서 기록 판독으로 갈았으며, `internal/homestate/factory_run_retire.go`가 `moai factory runs` 소유자 판별을 목록 단위 배치 프로브로 바꿨다. `internal/cli/cc.go`·`glm.go`는 리더 기록 호출에 선언 용량을 심는 것 외 변화가 없다.
 
-### internal/statusline (15 non-test 파일)
-**역할**: Claude Code 상태 렌더러, 3/5L 레이아웃  
-**기능**: GitDataProvider, UpdateProvider, UsageProvider  
-**의존성**: internal/core/git, internal/config
+**이전 갱신 — t1338, worktree `.moai/worktrees/t1338`, 브랜치 `WT-lane-autonomy-umbrella`, base `8ea2febe2` (2026-09-30, sync-phase 부분 갱신).**
+앵커 `8ea2febe2`(흡수한 develop 기점) 뒤 이 카드의 비테스트 Go 소스 변경을 대조했다(`git diff --diff-filter=A/M` — 신규 9 + 수정 3). 새 경계는 **신규 패키지 `internal/factorylane`**(비테스트 5 — card t1338, SPEC-FACTORY-LANE-AUTONOMY-001, 팩토리 레인 자율 완성: 메시징 가용성 판정기 `EvaluateAvailability`(sessionmsg 레지스트리 읽기 전용 소비 — 브로커 상태는 여기서 쓰지 않는다; 활성 무응답 관측이 레지스트리보다 우선한다), 지시 요청 무응답 타이머 스윕 `SweepNoResponse`, fallback 전이 사건 장부(한 모드 전환 한 사건 — restore은 활성을 지우지 않고 덧붙인다), 분류 픽업 소비 `PlanPickup`(`Classifier` 선언적 최소 소비 인터페이스 — 생산자 스키마는 t1332 몫; 메타데이터 부재·미지 축은 오류가 아니라 fallback 분류로 허용), lane 직접 병합 조건 삼중 `EvaluateMergeTriple`(sync-audit·merge-tree 드라이런 충돌 없음·트리 동일 — 병합 전 merge-tree 형태와 merge-commit 리터럴 `HEAD^{tree} == HEAD^2^{tree}` 형태 모두; `WindowCoversMerge`는 기존 통합 창의 검사된 속성일 뿐이다) — 아래 business/domain 표 신규 행), cli 루트 신규 4(`factory_messaging.go` — `moai factory messaging probe|request|ack`·`moai factory fallback [--all]|declare|restore`, `factory_pickup.go` — `moai factory pickup plan`, `factory_merge.go` — `moai factory merge ready|gate`(기존 `moai integration` 창만 소비하고 병합 자체는 수행하지 않는다), `factory_adopt.go` — `moai factory handoff adopt`(이전 소유자의 progress.md·증거를 SHA-256과 함께 일 전에 읽고 자기 `resumption.jsonl`만 덧붙인다))와 수정 3(`factory_handoff_recover.go` — 새 명령 그룹의 등록 자리, `worktree/done.go` — 카드 브랜치(`WT-` 접두)의 origin 착지 기계 검사 `originLandingRefusal`(`git fetch origin develop` + `rev-list --count --left-right`; fetch 실패 fail-closed, 플래그 우회 없음, L1·앵커 세션 가드 뒤에 순서 고정), `config/defaults.go` — `DefaultFactoryNoResponseMinutes` 10·`DefaultFactoryFallbackBoundMinutes` 30). 파일 수가 움직인 행: `internal/cli` 375→384(루트 298→306 — 이 카드 몫 +4, 나머지 차이는 t1333 측정 트리와 앵커 사이의 흡수분; 이 트리에서 find로 직접 센 값), 클러스터 표 `factory*`/`handoff*`/`profile*` 11(6+1+5)→17(11+1+5 — 이 카드 몫 factory* +4). 같은 명령으로 재확인해 변동 없음: `internal/cli/worktree` 12·`internal/config` 58(양쪽 다 수정만 있고 파일 수 동일). `provenance.json`은 `codemaps-gen` 재생성 전용 스탬프라 손대지 않았다. 등록 수치(`AddCommand`)는 `entry-points.md` 판 몫이다.
 
-### internal/web (18 non-test 파일)
-**역할**: loopback HTTP 콘솔, Templ + HTMX  
-**기능**: host-header validation, graceful shutdown (5s 드레인)  
-**의존성**: internal/profile, internal/config
+**이전 갱신 — t1374, worktree `.claude/worktrees/t1374`, 브랜치 `WT-t1368-ci-repair`, base `ca7191cba` (2026-09-30).**
+스탬프 앵커 `3e6d78f73`(t1351 판) 뒤 비테스트 Go 소스 변경 50개(`IsDescribedWorthy` 술어)를 대조했다. 이번 배치의 본체는 셋이다 — ① **SPEC-WORKTREE-SWEEP-001(card t1369)**: `internal/cli/worktree/sweep.go`가 원격 착지가 확인된 착지 트리의 일괄 폐기 동사 `moai worktree sweep`이 됐다(원격착지 3-way 판정 · 안전 술어 합성 · 티어 라우팅 · 적용 경로; cwd 스캔은 `sweep_cwd_{posix,windows}.go`로 갈라졌다. 술어가 확증하지 못하는 나무는 전부 보존 — 수리 round cf301b967이 미완 수습 증거 열람의 폐기를 막았다). ② **SPEC-MODEL-MATRIX-UPDATE-001(card t1368)**: `internal/config/audit_models.go`가 감사 백엔드 핀 기본을 claude `{claude-opus-5-5, medium}`·codex `{gpt-6.1-sol, high}`로 옮기고 GLM 핀은 빈 채로 두며(빈 핀 중립 REQ-AMP-005는 운영자 지시로 대체), `types.go`의 GLM 구형 별칭 필드는 삭제됐다(DR-2 · `glm.go`가 티어 기본 폴백과 경고 한 줄을 맡는다). ③ **todo 표면 연쇄(card t1342·t1349·t1332·t1343)**: `moai todo claim`(CAS+임대 — `internal/factory/backlog_store.go`의 `Claim`·`RenewLease`·`ReclaimExpired`)·`moai todo show`·분류 모델(`internal/factory/classification.go` + `todo_classify.go` add 경로 배선·팩토리 `-f` 레인 자동 배차)·owner_label 어휘 이행과 유령 스토어 유형별 공지(`todo_owner_label.go`·`doctor_owner_label.go`·`doctor_todo_ghost.go`·`todo_ghost_notice.go`)·`todo relate` 순환 방어와 픽업 관계 필터가 더해졌다. 그 밖: 레인 합류 플래그 `--lead`→`--leader` 개명(card t1330 후속)과 `internal/discovery` 리더 판독기의 darwin 파일 정리(card t1366 — `readerDeadline`·`readerContext`가 darwin 리더 파일로 이동, 동작 변화 없음), `internal/hook/lane_spawn_authority.go`의 core 형태 압축(card t1335), `internal/homestate/factory_run_resume.go`(런 재개 기록 writer, card t1330). 파일 수가 움직인 행: `internal/cli` 380→389(루트 302→308 — `doctor_owner_label.go`·`doctor_todo_ghost.go`·`todo_claim.go`·`todo_classify.go`·`todo_ghost_notice.go`·`todo_show.go`; `worktree` 12→15 — `sweep.go`·`sweep_cwd_posix.go`·`sweep_cwd_windows.go`), `internal/factory` 61→63(`classification.go`·`todo_owner_label.go`), `internal/homestate` 28→29(`factory_run_resume.go`). 같은 명령으로 재확인해 변동 없음: `internal/hook` 155 · `internal/config` 58 · `internal/discovery` 4 · `internal/statusline` 22 · `internal/settings` 11.
 
-### pkg/version
-**역할**: 빌드타임 버전 (ldflags 주입)  
-**팬-인 (High)**: 30+개 패키지
+**이전 갱신 — t1351, worktree `.moai/worktrees/t1351`, 브랜치 `WT-codemaps-refresh10`, base `145c3d98c` (2026-09-29).**
+스탬프 앵커 `145c3d98c`(t1333 판의 트리) 뒤 비테스트 Go 소스 변경 54개(cmd·internal·pkg, 비테스트 기준)를 대조했다. 이번 배치의 본체는 네 SPEC 몫이다 — ① **SPEC-FACTORY-SELF-DISPATCH-001(card t1240)**: `internal/cli/factory_card.go`가 F1 카드 기록층 위의 실행 표면이 됐다(next 는 `factoryNextLeaseOnce` 임대 + 큐 승격 + `factoryEnsureCardWorktree` 카드 워크트리 보장, stage 는 엣지 적용+임대 갱신, complete 는 `factoryMergeNoFF` 병합 + `factoryWriteMergeRecord` 기록 + clear-policy 별 종료 문장; lane 승인·거부 술어 `factoryLaneAdmission`·`factoryLaneRefusal`이 모든 표면의 관문)이고, 신규 `factory_lane_relaunch.go`가 relaunch 정책의 슈퍼바이징 루프, 신규 `mcp_factory_card.go`·`mcp_todo.go`가 여섯 MCP 도구의 CLI-동일 포장, `todo.go`에 레인 큐 가드(읽기 허용 목록 list·history·why·pr·triage), `codex_launcher.go`는 Codex 공장 진입을 `-f lane` 하나로 좁혔다. 훅은 `session_start_factory.go`가 lane SessionStart 룰(`_i18n.go` 산문 표 — REQ-SD-019)을 additionalContext 로 싣고 `contract_sign_guard.go`의 게이트가 `contractLaneGate` 세 조항으로 넓어졌다. ② **SPEC-MAIN-COMMIT-BAN-001(card t1337)**: `branch_guard.go`의 제2 거부 클래스 — `git commit`·`revert`·`cherry-pick` 보호 커밋 패턴 + `deny_commits_on` 브랜치 목록 + `normalizeCommandForScan` 공유 정규화, HEAD 해석은 `core/git/checkout.go`의 `ResolveHeadBranch`(신규 함수 — detached HEAD 의도적 허용). ③ **SPEC-REPORTS-LIFECYCLE-001(card t1320)**: 신규 `cli/clean_reports_archive.go`(증거 디렉터리 이동 전용 아카이브)와 신규 `cli/worktree/hoist.go`(폐기 전 증거 구조 — done 배선 포함). ④ **SPEC-WEB-SAVE-LOSSLESS-001**: 신규 `settings/projectscalars.go`(웹·TUI 공유 스칼라 쓰기 seam — yamlpatch 라인 스플라이스), `config/manager.go`의 섹션별 dirty 게이트가 6 섹션으로 확장(Save() 가 미변형 섹션 파일을 재마샬하지 않는다 — GitHub #1731 후속), `profile/sync.go`가 user·language 쓰기를 행 치환 스플라이스로, `web/projectconfig.go`·`cli/profile_setup.go`가 그 seam 쪽으로 갈았다. 파일 수가 움직인 행: `internal/cli` 375→380(루트 298→302 — `clean_reports_archive.go`·`factory_lane_relaunch.go`·`mcp_factory_card.go`·`mcp_todo.go`; `worktree` 11→12 — `hoist.go`), `internal/settings` 10→11(`projectscalars.go`), `internal/homestate` 27→28(`card_worktree.go` — F1 카드 워크트리 스키마·생성 계약). 같은 명령으로 재확인해 변동 없음: `internal/hook` 155(`session_start_factory_i18n.go`는 앵커 이전에 이미 있었고 이번에 산문 행 확장) · `internal/config` 58 · `internal/web` 31 · `internal/profile` 3 · `internal/mcp` 1 · `internal/core` 23.
 
----
+**이전 갱신 — t1333, worktree `.moai/worktrees/t1333`, 브랜치 `WT-codemaps-refresh9`, base `145c3d98c` (2026-09-29).**
+앵커 `afecf81e9`(t1257 문서층 병합판) 뒤 비테스트 Go 소스 변경 44개(`IsDescribedWorthy` 술어)를 대조했다. 이번 배치의 본체는 todo 큐의 세 SPEC 연쇄다 — card t1307이 홈 DB 전환 뒤에 남는 프로젝트 로컬 유령 스토어 detector(`todo_stale_store.go`)와 읽기 5동사 공개·doctor Todo Store 진단(`doctor_todo_store.go`)을 놓았고, card t1313이 같은 공개를 add 쓰기 경로에 확장했으며(GitHub #1732), card t1308이 hold/unhold 주차 동사와 상태 enum 확장의 v1→v2 테이블 재건(`backlog_rebuild.go`·`backlog_migrate.go` 확장)을, card t1310이 전이 stamp 열과 done-시점 착지 판정 기록(`landing_verdict.go` — LandingEvidence 옆에 공존하는 별개 레코드)을 얹었다. card t1306가 `moai todo --auto`(운영자 배치 승인 1회의 직렬 소비, `todo_auto.go`)와 manager-todo 에이전트를 에이전트 목록에 더하고 mission-governor 에이전트를 은퇴시켰다(template 미러 — Go 아님). card t1312가 세션 기록의 연령 기반 보존(`record_prune.go` — SessionStart prune-on-write)을 얹었다. 수리 계열: card t1323가 served-model 거부의 SPEC 귀속(transcript 폴백+spawn-tree 매칭 — `served_model_gate.go`·`codex_task.go`·`auditreceipt/store.go`), card t1324가 codex 역할 감사 근원 수리(`codex_audit_launch.go` 재편), card t1325가 zone-registry 조항 동기화와 보드 락 대기 headroom 2배, card t1331가 `newTodoCmd` 구축 경합 뮤텍스(pflag 전역 등록 경합)와 delegationmap 정돈, card t1327가 lifecycle 열거 멤버십 린트(`spec/lint.go` 확장), card t1322가 sonnet-5.5 id 반영, card t1319가 세 의도적 룰 미러 포크의 선언 가드를 놓았다. 파일 수가 움직인 행: `internal/cli` 372→375(루트 295→298, `todo*` 15→17 — `todo_auto.go`·`todo_hold.go`, `doctor*` 23→24 — `doctor_todo_store.go`), `internal/factory` 57→61. 같은 명령으로 재확인해 변동 없음: `internal/hook` 155(t1312 훅 절반 `session_start_record.go`는 앵커 이전에 이미 있었고 범위 내 소폭 수정) · `internal/web` 31 · `internal/config` 58 · `internal/template` 36 · `internal/harness` 86 · `internal/statusline` 22 · `internal/mission` 15 · `internal/spec` 44 · `internal/auditreceipt` 3 · `internal/homestate` 27 · `internal/graph` 16.
 
-## 비즈니스/도메인 계층
+**이전 갱신 — t1305, worktree `.claude/worktrees/t1305`, 브랜치 `WT-codemaps-refresh8`, base `afecf81e9e96` (2026-09-29).**
+스탬프 앵커 `a3a9e653e`(t1295 판) 뒤 비테스트 Go 소스 변경 75개(`IsDescribedWorthy` 술어)를 대조했다. 이번 배치의 본체는 에이전트 모델 표면의 은퇴다 — card t1246이 `moai model` 명령과 런처의 per-agent 모델·effort 플래그, 설정의 모델 라우팅·프로파일, template의 profile-matrix, 웹 에이전트 설정 탭을 지웠고, 남는 표면은 `retired_model_keys.go`·`retained_agents.go`·`apply_harness.go`(template)와 은퇴 안내 런처(`agent_model_flags_retired.go`, cli)가 소유한다. card t1289가 훅에 커밋 신원 가드(`commit_identity_guard.go`)를 더했고, card t1240이 codex factory lane 진입을 복원했으며(`codex_factory.go` 재추가), card t1294가 codex lane claim에 run slot 상한을 얹었다. 표의 파일 수가 움직인 행: `internal/cli` 370→372, `internal/hook` 154→155, `internal/web` 32→31, `internal/config` 60→58, `internal/template` 34→36, `internal/harness` 87→86, `internal/settings` 11→10. 같은 명령으로 재확인해 변동 없음: `internal/statusline` 22 · `internal/spec` 44 · `internal/mission` 15 · `internal/homestate` 27 · `internal/factory` 57 · `internal/navigator` 53 · `internal/codexwiring` 14 · `internal/graph` 16 · `internal/session` 24.
 
-### pkg/models
-**역할**: 공유 config 타입 (매우 높은 팬-인)  
-**타입**: ProjectType, DevelopmentMode, ProjectConfig, LanguageConfig, QualityConfig  
-**팬-인 (Very High)**: 45+개 패키지
+**이전 갱신 — t1295, worktree `.moai/worktrees/t1295`, base `cee197917` (2026-09-28).**
+앵커 `fdc5361c3` 뒤 변경된 비테스트 Go 소스 81개를 대조했다. 패키지 경계는
+추가되지 않았고, 표의 파일 수 변경 세 곳을 다시 셌다. `internal/cli/worktree`와
+`internal/cli/update_worktree_migration.go`가 MoAI L1을 `.moai/worktrees`로 만들고
+기존 등록 트리를 옮긴다. Factory 런은 `leader/lane` 역할을 쓰며
+`internal/hook/session_stale_run.go`가 이전 역할의 세션 재등록을 막는다.
+과거 판의 `lead/worker/agent` 설명은 당시 동작의 이력이다.
 
-### internal/foundation
-**역할**: 언어 레지스트리, TRUST 5, EARS  
-**기능**: `LanguageRegistry`, 16개 언어 지원  
-**팬-인 (High)**: 32+개 패키지
+**이전 갱신 — t1286, worktree `.claude/worktrees/t1286`, 브랜치 `WT-codemaps-refresh6`, base `c000a1fcb` (2026-09-28).**
+스탬프 앵커 `6d514f9b7`(t1278 판) 뒤 비테스트 Go 소스 변경 46개(`git diff --name-only 6d514f9b7..HEAD -- internal cmd pkg`에
+같은 `IsDescribedWorthy` 술어)를 대조했다. 여섯 카드의 몫이다. ① **t1239(SPEC-FACTORY-RECORD-001)** — `internal/homestate` 의
+F1 카드 기록층(신규 6파일 `card_record.go`·`card_transition.go`·`card_evidence.go`·`card_evidence_readers.go`·
+`card_picked.go`·`card_unavailable.go` + `factory.go` 스키마 v4 이행 + `runtime.go` RecordCard 은퇴)과 cli 의 factory 동사
+셋(`factory_card.go` — `moai factory assign|status|decide`, `factory_mirror.go` — gtd·goal 양쪽 리드 디스패치의
+factory.db 미러링이 `gtd.go`·`goal.go`에 배선)이다. ② **t1282(SPEC-SERVED-MODEL-AUDIT-001)** — 훅의 served-model
+삼형제(신규 `served_model.go` 분류 코어·`served_model_gate.go` 채택-거부 게이트·`served_model_stop.go` SubagentStop 행)와
+`subagent_stop.go`·`pre_tool.go`·`agent_model_guard.go`·`audit_receipt_guard.go` 가드 확장, doctor 의 Served Model
+스윕(신규 `doctor_served_model.go` — 이후 explicit-only 로 수정), `config` 의 `workflow.served_model_gate.*` 키
+(`types.go`·`defaults.go`·`cache.go`), `escalation/roots.go` 신규, `auditreceipt/store.go` 거부 영수증 종류 확장. ③
+**t1099(이중 하네스 패리티)** — `moai verify sync-gate`·`moai verify codex-review`(신규 `codex_sync_gate.go`·
+`codex_review_receipt.go`·`verify_receipts.go`), Claude Stop 체인을 Codex Stop 핸들러 하나로 묶는 `codex_stop_chain.go`,
+Stop 멤버의 공유 Go 진입 추출(`hook_stop_goal.go`), codex 네 이벤트 적응(`codexadapter/events.go` — PreCompact·
+PostCompact·PermissionRequest·Interrupt, `hook_codex_interrupt.go`·`hook_harness_codex.go`), `codexwiring` 의 Stop 체인
+인벤토리(신규 `stop_inventory.go`)와 멤버별 예산 재조정. template 행(`parity_verdict.go` 포함 34)은 t1099 자기 sync
+(fa0f5714e)가 이미 갱신해 이 판은 그대로 둔다. ④ **t1281** — `statusline/landed.go` 착지 카드 집계를 주제 귀속으로 바꾸고
+✓→⚑ 깃발 문자. ⑤ **t1175** — `rosterguard/registry.go` always-loaded 다이어트 뒤 레지스트리 조항 복원·가드 재지시(문서
+주석). ⑥ **t1064** — `hook/branch_guard.go` 면제 도달성 주장 정정(코드·거부 사유). 움직인 파일 수: `internal/cli`
+350→358(루트 273→281), `internal/hook` 149→152, `internal/homestate` 21→27, `internal/codexwiring` 12→13,
+`internal/escalation` 15→16. 같은 명령으로 재확인해 변동 없음: `internal/config` 60 · `internal/statusline` 22 ·
+`internal/codexadapter` 8 · `internal/auditreceipt` 3 · `internal/template` 34(t1099 sync 판) · `internal/verify` 8 ·
+`internal/harness/rosterguard` 4. card t1265(homestate 커버리지)·t1261(판단자 모드 측정)·t1279 는 비테스트 Go 소스를
+움직이지 않았다(테스트·문서 전용).
 
-### internal/spec (24 non-test 파일)
-**역할**: SPEC 라이프사이클 엔진  
-**핵심**: Linter (13+3 규칙), ClassifyEra(), Audit(), DetectDrift(), ClassifyPRTitle()
+**이전 갱신 — t1237, worktree `.claude/worktrees/t1237`, 브랜치 `WT-completion-report`, base `feb37a338` (2026-09-27, sync-phase 부분 갱신).**
+앵커 `5bc8a0296`(런 분기점 — 이 카드의 12커밋 범위) 뒤 이 카드의 비테스트 Go 소스 변경을 대조했다. 새 경계는
+**신규 패키지 `internal/closure`**(비테스트 13 — 본체 11 + `gitio` 1 + 테스트 전용 `closuretest` 1, card t1237
+SPEC-AUTONOMY-CLOSURE-001 — 계약 자율 에픽의 마지막 단계 A4: 카드 마감 보고서·세컨드 리뷰 기록 판독·인간 판정
+기록·push 준비도 판정. 모든 상태는 파일과 git에서 끌어오고 에이전트가 준 플래그는 입력이 아니며, git
+서브프로세스는 하위 `gitio`의 기본 5초 상한 뒤에 있다 — 아래 business/domain 표 신규 행), `internal/cli`
+350→354·루트 273→277(`contract_report`·`contract_verdict`·`contract_pushcheck` — `moai contract`에 붙는
+셋 — 과 `mcp_audit_multi_record`), `internal/hook` 149→150(`closure_push` — verdict 인간 전용 거부와 push
+준비도 검사)이다. 같은 명령으로 재측정해 이 카드와 무관하게 움직인 행도 이 트리에서 센 값으로 정정한다:
+`internal/contract` 20→21(t1245 `projection_mission.go` 흡수분), `internal/escalation` 15→16(t1268
+sync-audit 수리 흡수분). `provenance.json`은 `codemaps-gen` 재생성 전용 스탬프라 손대지 않았다. 이번 갱신의
+범위는 packages·entry-points 둘이고 `data-flow.md`·`dependencies.md`는 다음 전체 재생성 몫으로 남긴다.
 
-### internal/constitution (13 non-test 파일)
-**역할**: 동결/진화 구역 모델, 5단계 병합 안전  
-**기능**: FrozenGuard, Canary, ContradictionDetector, RateLimiter, HumanOversight
+**이전 갱신 — t1278, worktree `.claude/worktrees/t1278`, 브랜치 `WT-codemaps-refresh5`, base `6d514f9b7` (2026-09-27).**
+스탬프 앵커 `cf4b82755`(card t1274 판) 뒤 비테스트 Go 소스 변경 44개(`git diff --name-only cf4b82755..HEAD -- internal cmd pkg`에
+같은 `IsDescribedWorthy` 술어)를 대조했다. 새 경계는 **신규 패키지 `internal/civerdict`**(head SHA별 원격 CI 판정의 온디스크
+증거 저장, card t1268 SPEC-CI-VERDICT-PRODUCER-001 — `internal/escalation`의 CI limb가 이 기록을 소비한다), 훅의
+PowerShell 가드 형태 분류(card t1255 — `.exe` 접미·인용 호출·백틱·`pwsh -Command` 페이로드는 기존 query-vs-mutate 판정으로
+**거부**하고, 동적 해석(`Get-Command`)·`saps` 별칭·유니코드 대시 철자는 감사선 1행으로 격하), update 매니페스트 치유 계열
+(`update_manifest_{heal,retrack}.go`, card t1275/76/77), Claude Stop 파싱 실패 상한(`hook_stop_parse_cap.go`·
+`internal/session`의 `ProcessView`, card t1271), doctor의 Hook Missing Log 진단(card t1251), spec 린트의
+공허 단언 룰(`lint_vacuous_assertion.go`, card t1269), 계약→미션 단방향 투영(`internal/contract/projection_mission.go`,
+card t1245 REQ-AP-008)이다. 움직인 파일 수: `internal/cli` 345→350(t1242 판 수가 흡수 전 가지에서 잰 것 — 병합 트리 실측:
+루트 273, `ci_verdict`·`hook_stop_parse_cap`·`update_manifest_{heal,retrack}`·`doctor_hook_missing` +5가 t1242의
+lane-handoff 6파일 삭제분과 맞물려 순 −1), `internal/hook` 147→149(`contract_sign_guard`·`push_serializer`),
+`internal/session` 23→24(`session_pid_view`), `internal/spec` 43→44(`lint_vacuous_assertion`),
+`internal/verify` 7→8(`localpass`). 같은 명령으로 재확인해 변동 없음: `internal/config` 60 · `internal/codexadapter` 8 ·
+`internal/escalation` 15 · `internal/contract` 20(내용 변경만).
 
-### internal/workflow
-**역할**: Plan-Run-Sync 워크트리 오케스트레이션  
-**기능**: `WorktreeOrchestrator`, `PhaseExecutor`, 품질 게이트
+**이전 갱신 — t1274, worktree `.claude/worktrees/t1274`, 브랜치 `WT-codemaps-refresh4`, base `cf4b82755` (2026-09-26).**
+앵커 `4a05fd3d6`(card t1238) 뒤 비테스트 Go 소스 변경 52개(`git diff --name-only 4a05fd3d6..HEAD -- internal cmd pkg` 후
+`IsDescribedWorthy` 술어 — `.go`, 비테스트, `testdata` 제외 — 를 그대로 적용해 카운트)를 대조했다. 새 경계는
+**신규 패키지 `internal/escalation`**(+테스트 전용 하위 `internal/escalation/escalationtest`, card t1235
+SPEC-AUTONOMY-ESCALATION-001 — 계약 모드 이탈 감지기, 아래 business/domain 표 신규 행), `moai doctor`의
+`Settings DefaultMode` 진단(`internal/cli/doctor_settings_defaultmode.go`, card t1247 — project/local settings 의
+무시되는 `bypassPermissions` 를 경고), `internal/cli/deps.go`의 Composition Root(`Dependencies` 구조체로 도메인
+모듈 의존성 주입 배선, card t1235), `internal/auditreceipt/storeroot.go`(SPEC-WORKTREE-STATE-ROOT-001 —
+config-orphaned 링크드 워크트리의 단일 store-root 답, card t1213), 그리고 `internal/config`의
+`workflow.autonomy.escalation.*` 설정 구조(`AutonomyEscalationConfig`, `types.go`)다. 움직인 파일 수:
+`internal/cli` 350→351(루트 273→274, `doctor*` 클러스터 19→20), `internal/hook` 146→147(신규
+`escalation_observe.go` — 감지기의 유일한 비테스트 소비자), `internal/config` 59→60(재측정; 이번 범위에
+비테스트 신규 파일은 없다), `internal/auditreceipt` 2→3. 같은 명령으로 재확인했으나 변동이 없어 손대지 않은
+행: `internal/spec` 43 · `internal/homestate` 21 · `internal/gitenv` 1 · `internal/harness/rosterguard` 4
+(`registry.go`는 card t1260의 문서 주석 정정만 담았다).
 
-### internal/loop (6 non-test 파일)
-**역할**: 진단 피드백 루프 컨트롤러  
-**핵심**: `LoopController`, `DecisionEngine`, `GoFeedbackGenerator`
+**이전 갱신 — t1238, worktree `.claude/worktrees/t1238`, 브랜치 `WT-codemaps-refresh3`, base `38148d891` (2026-09-26).**
+앵커 `65cc8df48` 뒤 비테스트 Go 소스 변경(`cmd` · `internal` · `pkg` 아래 name-status diff)을
+대조했다. 새 경계는 **신규 패키지 계열 `internal/contract`**(SPEC 자율 계약의 순수 검증 코어 +
+서명기 `internal/contract/sign` + 테스트 픽스처 `internal/contract/sign/signtest`, 진입은
+`moai contract verify|show|sign` — `internal/cli/contract.go`), 훅의 셸 도구 판정 단일화
+(`internal/hook/shell_tool.go`의 `IsShellTool` — Bash와 PowerShell), 훅 stdin 파싱 실패의
+fail-closed 응답(`internal/cli/hook_stdin_failclosed.go`), Codex 결정 정규화·Stop 캡 예외
+(`internal/codexadapter/decision.go` · `translate.go` · `stop_cap.go`), 링크된 워크트리의
+MCP `project_root` 수용(`internal/cli/mcp_worktree_root.go`)이다. 움직인 파일 수: `internal/cli`
+344→350(루트 267→273), `internal/hook` 144→146, `internal/codexadapter` 5→8,
+`internal/codexwiring` 11→12, `internal/verify` 6→7, `internal/template` 31→33.
 
-### internal/ralph
-**역할**: Ralph 의사결정 엔진  
-**기능**: `Decide()` (max_iter > perfect_gate > stagnation > human_review)
+**이전 갱신 — t1187, `origin/develop` `a8a9b9376` (2026-09-25).** 앵커
+`bd71c59e4` 뒤 비테스트 Go 소스 41개의 끝점 변경을 대조했다. 새 경계는
+`internal/cli/codex_audit_launch.go`와 `codex_audit_mcp.go`의 읽기 전용 Codex 감사,
+`internal/homestate/factory_run_retire.go`의 부팅 시각 증거를 포함한 런 은퇴,
+`internal/spec/lint_tier_artifacts.go`의 Tier 산출물 표 기반 린트다. 아래 패키지·클러스터
+파일 수는 이 트리에서 `find ... -name '*.go' -not -name '*_test.go'`로 다시 셌다.
 
-### internal/harness (80 non-test 파일)
-**역할**: 하네스 학습 서브시스템  
-**기능**: Observer, Learner (4-tier), Applier, 5단계 safety  
-**하위 패키지**: `routing` — 위임 관측 원장(routing ledger), 훅 입력에서 기계적으로 기록 · `delegationmap` — 관측된 원장 행을 집계해 위임 맵 개정안을 제안(읽기 전용, 적용은 Tier-4 승인 게이트)
+> `/moai codemaps`로 생성된 패키지 목록입니다. 존재 여부는 작업 트리만을 근거로 판정했고,
+> 이전 codemaps 문서를 존재의 근거로 쓰지 않았습니다.
+> **Go** 버전은 재측정 트리의 `go.mod`에서 직접 읽었습니다(`go 1.26.8`).
 
-### internal/permission (18파일)
-**역할**: 8-tier 권한 스택  
-**모드**: default, acceptEdits, bypassPermissions, plan, bubble  
-**계층**: policy → project → user → team → builtin → systemDefault → hookOverride → deny
+**모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.8
+**최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
+**재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — 모든 표의 비테스트 파일 수, `internal/cli` 클러스터 표, fan-in 칸, 신규·누락 패키지 행(`internal/mission` · `internal/codextools` · `internal/gitenv` · `cmd/t657-merge`), § 네거티브 스페이스의 목록과 파일 크기. 책임 칸의 서술형 판단 중 이번 변경과 무관한 것은 앞 판을 이어받았습니다.
+**정정 재측정**: worktree `.claude/worktrees/t872`, 브랜치 `WT-codemaps-citations`, HEAD `9a8cc4277`, 2026-09-18 — cross-cutting 표에서 삭제된 패키지 행 하나를 빼고, § 프로덕션 코드 없이 테스트만 있는 자리를 다시 셌습니다. 다른 표의 파일 수는 같은 명령으로 재확인해 변동이 없었습니다.
+**정기 재측정**: worktree `.claude/worktrees/t999`, 브랜치 `WT-codemaps-remediation`, HEAD `56c64891a`, 2026-09-20 — 파일 수가 움직인 여섯 행(`internal/cli` 315→318, `internal/hook` 137→140, `internal/harness` 82→87, `internal/config` 56→57, `internal/spec` 36→41, `internal/statusline` 21→22)과 `internal/cli` 클러스터 표의 루트 파일 수(241→244), 그리고 신규 패키지 3개의 행 — `internal/auditreceipt`는 data/persistence 표에, 하네스의 `rosterguard` · `cellguard`는 § 네거티브 스페이스에 들어갔습니다. 변동이 없어 손대지 않은 행도 같은 명령으로 확인했습니다(`internal/factory` 57 · `internal/navigator` 53 · `internal/web` 31 · `internal/session` 22 · `internal/homestate` 14 · `internal/mission` 15 · `internal/mcp` 1). 책임 칸의 서술형 판단은 이번에 건드린 행을 빼고 앞 판을 이어받았습니다.
 
-### internal/evolution
-**역할**: 반사 학습 Write Phase  
-**기능**: LearningEntry (LEARN-YYYYMMDD-NNN), 졸업 신뢰도 (3→5→10)
+**부분 재측정**: worktree `.claude/worktrees/t1083`, 브랜치 `WT-jev-guard-green`, sync-phase HEAD `dd19e6b90`, 2026-09-22 — sync-phase 부분 갱신(card t1083, SPEC-JEV-GUARD-001). Consumer B(스킬 제안 앵커 파일 + 그 테스트 — 파일명은 저장소 이력 참조)를 철수했다 — 측정 게이트 미실행 상태에서 배송된 게이트-언런 컨슈머로, consumer-guard 계약(소비자는 측정 이후에 배송) 위반이 확정됐다. `internal/cli` 총 326·루트 249로 재측정(철수 -1과 흡수된 develop 커밋의 `mcp_jev.go` 등 +분이 겹쳐 이전 판 수치와 선형으로 대응하지 않는다 — `find`/`grep`으로 이 트리에서 직접 센 값이다). 남은 `jev*` 루트 파일 넷은 `doctor_jev.go`·`init_jev_wizard.go`·`mcp_jev.go`(게이트된 `jev_ask` MCP 도구)·`todo_jev_finding.go`(Consumer C)다. `provenance.json`은 `codemaps-gen` 재생성 전용 스탬프라 손대지 않았다.
 
-### internal/merge
-**역할**: 3-way 파일 병합 (ADR-008)  
-**전략**: LineMerge, YAMLDeep, JSONMerge, SectionMerge, EvolvableZoneMerge, Overwrite
+**부분 재측정(이력)**: worktree `.claude/worktrees/t1066`, 브랜치 `WT-jev-consumers`, run-phase HEAD `8c0e5dc9b`, 2026-09-22 — sync-phase 부분 갱신(card t1066). `internal/cli` 총 318→325, 루트 244→249. 루트 +5 중 이 카드 몫은 2개(`todo_jev_finding.go` — Consumer C 게이트 미실행 admission 훅, Consumer B 게이트 미실행 앵커 — 당시 파일, 이후 card t1083이 철수)이고, 나머지 3개(`doctor_jev.go`·`init_jev_wizard.go` — t1020 CORE-001 sync, `integration_codemaps_card.go` — t1018)는 흡수된 develop 커밋으로 들어와 각 카드의 sync가 codemap을 갱신하지 않아 누적된 몫이다. 하위 패키지 +2(`update/backup/file_snapshot.go`·`mcp_snapshot.go`)도 흡수 몫이다. `provenance.json`은 `codemaps-gen` 재생성 전용 스탬프라 손대지 않았다 — 다음 전체 재생성이 다시 찍는다.
 
-> **`internal/design`** — v3.0 코드베이스에 독립 패키지로 존재하지 않음 (이전 문서 드리프트). design 관련 로직은 `internal/harness` 등에 분산.
+**정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — 움직인 행 여섯(`internal/hook` 140→141, `internal/web` 31→32, `internal/homestate` 14→15, 신규 `internal/jev` 1 · `internal/jevcred` 1 · `internal/jevmeasure` 2)과 cross-cutting 표의 fan-in 칸 다섯(`internal/defs` 11→12, `internal/paths` 11→12, `internal/atomicfile` 10→11, `internal/lockfile` 1→2, `internal/stateanchor` 2→3), 그리고 §네거티브 스페이스의 큰 파일 표와 여기서 갱신한 행의 책임 칸. 변동이 없어 손대지 않은 행도 같은 명령으로 확인했습니다(`internal/cli` 325·루트 249, `internal/factory` 57, `internal/navigator` 53, `internal/session` 22, `internal/mission` 15, `internal/harness` 87, `internal/config` 57, `internal/spec` 41, `internal/statusline` 22, `internal/mcp` 1).
 
-### internal/bodp
-**역할**: Branch Origin Decision Protocol  
-**기능**: 3-signal 검사 → 8-row 의사결정 매트릭스 → main/stacked/continue
+**부분 재측정**: worktree `.claude/worktrees/t1092`, 브랜치 `WT-codemaps-restamp`, base `08113ff0f`, 2026-09-23 — 카드 t1092, 앵커 `598e8f748`(card t1069) 이후 착지분(주로 card t1071·t1057·t1083·t1077 등 factory/jev/가드 계열 흡수)을 본문에 반영. `internal/cli` 총 325→334, 루트 249→257, `codex*` 클러스터 12→18(신규 `codex_direct_posix.go`/`codex_direct_windows.go` — factory 실행과 대화형 Codex 세션 사이에 프로세스 identity를 보존하는 launch 래퍼, `codex_local_file*.go` 4개 — symlink race를 배제하는 플랫폼별 로컬 지시문 오픈), `mcp*` 클러스터 20→22(신규 `mcp_factory_msg.go`·`mcp_jev.go`), `internal/cli/worktree` 하위 신규 `new.go`(`moai worktree new <name>` — L1 워크트리를 기존 materializer로 생성만 하고 진입은 하지 않는 명령). `internal/hook` 141→143(신규 `subagent_write_guard.go` — SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001, 서브에이전트가 추적 파일을 큰 폭으로 줄여 쓰는 PreToolUse를 거부; `factory_messages.go` — SessionStart/UserPromptSubmit에서 factory peer를 등록). `internal/homestate` 15→16(신규 `process_fingerprint_darwin.go` — `unix.SysctlKinfoProc`로 PID 재사용을 가르는 프로세스 시작시각 지문). **신규 패키지** `internal/factorymsg`(비테스트 1, `store.go`) — SQLite 기반 factory 전용 런-스코프 메시지 브로커, 레거시 `internal/sessionmsg`를 읽거나 이관하지 않는다고 패키지 주석이 명시. moai MCP 도구 총수 30→36(신규 `factory_msg_{send,list,body,receipt,status}` 5개 + `jev_ask` 1개, `internal/mcp/catalog.go` 카운트로 확인). 삭제된 Consumer B 스킬 제안 앵커 파일(파일명은 저장소 이력 참조)은 card t1083의 Consumer B 철수 몫으로 앞 판(t1083)에 이미 반영돼 있다. `provenance.json`은 `codemaps-gen` 재생성 전용 스탬프라 손대지 않았다.
 
-### internal/git
-**역할**: label → branch-prefix 컨벤션  
-**기능**: `DetectBranchPrefix()`, `FormatIssueBranch()`
+**부분 재측정**: worktree `.claude/worktrees/t1132`, 브랜치 `WT-codemaps-refresh`, base `40bb5bb08`, 2026-09-23 — 카드 t1132, 앵커 `40bb5bb08`(card t1092) 이후 착지분(card t1104·t1111·t1122·t1126 의 `internal/spec` 정합성 계열, factory lane→worker 개명, `internal/jev` 벤더 실제 스키마 정합, Opus 5.5 모델 id 개명)을 본문에 반영. `internal/spec` 41→42(신규 `lint_req_bare.go` — 마크다운 마커 없는 REQ 정의 줄 수집; 아래 행 참조). `internal/factory`·`internal/cli`는 파일 수 변동 없이(57·334 그대로) factory `-f agent`/`lane-<n>` 어휘가 `-f worker`/`worker-<n>`으로 개명됐다(레거시 스펠링은 읽기 전용으로 남아 별칭 처리). `internal/jev`(1)는 벤더가 실제로 문서화한 스키마(`questions`가 id로 키잉된 객체, `choice`/`score` 질문의 `criteria`, noul 은 확률값)에 맞춰 재작성됐다 — 파일 수는 그대로다. `internal/template`(31)은 `ModelIDOpus5`→`ModelIDOpus55`(`claude-opus-5-5`)로 개명하고 구 id 를 deprecated 목록에 얹었으며, `skill_mirror.go`에 배포 중 자기 미러 심볼릭 링크를 해제하는 `releaseOwnMirrorLink`가 더해졌다(파일 수는 그대로). `provenance.json`은 `codemaps-gen` 재생성 전용 스탬프라 손대지 않았다.
 
----
+**부분 재측정**: worktree `.claude/worktrees/t1151`, 브랜치 `WT-codemaps-refresh2`, base `60017eb83`, 2026-09-24 — 카드 t1151, 앵커 `ee4e6d22f`(card t1132) 이후 착지분(주로 card t1100 SPEC-DUAL-HARNESS-RECOVERY-001·card t1082 SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001·card t1107 SPEC-FACTORY-RUN-RETIRE-001)을 본문에 반영. `internal/cli` 총 334→341, 루트 257→264. **신규 명령** `moai tool disable codex`(`tool.go`) — MoAI가 실제로 기록한 부분만(자기 훅 핸들러·설명, `[mcp_servers.moai]`/`[tui]` 표나 자기가 넣은 `status_line` 줄, 만든 그대로 바뀌지 않은 배선 파일 전체) 골라 제거하고, 증명 못 하는 부분은 손대지 않은 채 사유와 함께 나열한다(`internal/codexwiring/unwire.go`). `codex*` 클러스터 18→19(신규 `codex_kanban.go` — `moai codex -k`, `moai cc -k`와 같은 파서·이름 레지스트리를 그대로 공유하는 Kanban Mode 진입), `update*` 클러스터 24→25(신규 `update_identity.go` — update 렌더가 `project.yaml`/`user.yaml`을 프로젝트가 이미 가진 이름으로 렌더해 이름 없는 재배포를 막는다, card t1139), `factory*` 하위 클러스터 2→8(신규 `factory_lane_handoff.go`·`_bind.go`·`_recover.go`·`_switch.go`·`factory_run_owner.go` — 안정된 lane을 카드 전용 L1 워크트리로 옮기는 M1(예약·로컬 develop pin·브로커 예약)→M2(SWITCH_PENDING 릴로케이션, 대화형은 `/cd` 안내만, headless는 `thread/fork`)→M3(원자적 rebind, BOUND)→재시작 복구(M4, 저널·파일시스템·Git 사실을 다시 읽어 resume/idempotent finalize/NACK/ABANDONED 중 하나만 고른다) 수명주기). `internal/codexwiring` 5→11(신규 `journal.go`·`lock.go`·`ownership.go`·`recover.go`·`unwire.go`·`write.go` — 아래 행 재작성 참조). `internal/factorymsg` 1→8(신규 `dispatch.go`·`handoff.go`·`handoff_abandon.go`·`handoff_bind.go`·`handoff_relocation.go`·`factory_run_retire.go`·`schema_migrate.go` — 아래 행 재작성 참조). `internal/homestate` 16→17(신규 `factory_run_retire.go` — 런 소유자가 살았는지 판별하는 `OwnerClassification`, 닫힌 집합이 아니라 `OwnerDead` 양성에만 은퇴를 허용). `internal/config` 57→58(신규 `loader_identity.go` — `project.name`/`user.name` 단일 키 판독기, update 렌더 경로가 managed cleanup 전에 값을 읽으려고 씀). `internal/hook` 143→144(신규 `factory_handoff_bind.go` — 헤드리스 rebind의 훅 쪽 절반). `internal/session`(22→23, 신규 `anchor_lock_holder.go` — 어느 세션이 잠금을 쥐고 있는지 판별하는 읽기 전용 accessor. `moai worktree remove`가 이를 소비해, 등록된 앵커 세션이 없어도 git worktree lock 자체가 앵커라면 git의 자체 에러 대신 이름 붙은 사유로 거절한다). `internal/harness/rosterguard/registry.go`는 파일 수 변동 없이 model-policy 프로필-매트릭스 행 두 개의 스테일 선언 세 개를 카드 t1141이 일괄 제거했다(문서 쪽이 옳아졌다 — 13행×3열=39셀로 정정). `internal/web`(32, 변동 없음)의 WAL 워처가 kqueue 생성-이벤트 경합(디렉터리 스캔이 파일 생성을 보고하기 전에 SQLite가 첫 프레임을 이미 쓰는 경우) 재확인 프로브(`walProbe`)를 얻었다(card t1136). `provenance.json`은 `codemaps-gen` 재생성 전용 스탬프라 손대지 않았다.
 
-## 인프라 계층
-
-### internal/core/git
-**역할**: exec 기반 Git 추상화  
-**인터페이스**: Repository, BranchManager, WorktreeManager  
-**팬-인 (High)**: 35+개 패키지
-
-### internal/core/project
-**역할**: 프로젝트 루트 발견  
-**ANCHOR**: `FindProjectRoot()` — `.moai/` 발견 (everywhere)
-
-### internal/core/quality
-**역할**: TRUST 5 gate enforcement  
-**기능**: phase-aware 임계값, DDD/TDD 변형
-
-### internal/runtime
-**역할**: 토큰 circuit-breaker, 예산 추적  
-**기능**: soft 75% / hard 90%, stall 감지, progress.md auto-save
-
-### internal/template
-**역할**: go:embed Template-First 시스템
-**소스**: internal/template/templates/ (단일 진실 공급원)
-**임베드**: `embed.go`가 직접 `//go:embed all:templates` 사용 (별도 `embedded.go` 자동 생성 없음)
-**기능**: Deployer (원자적), Renderer (strict mode), Manifest.Track(), profile_matrix (11 agents × 3 profiles = 33 cells)
-
-### internal/config (35 non-test 파일)
-**역할**: 계층화 YAML config SSOT  
-**우선순위**: env > yaml > defaults  
-**팬-인 (Very High)**: 48+개 패키지
-
-### internal/manifest
-**역할**: 파일 출처 3-way 추적  
-**기능**: 3중 해시 (template/deployed/current), 손상 복구
-
-### internal/defs
-**역할**: 디렉토리 레이아웃 상수  
-**기능**: `.moai/`, `.claude/` 구조, DeprecatedPaths
-
-### internal/migration
-**역할**: 버전 기반 마이그레이션 실행기  
-**기능**: Apply, Status, Rollback, 멱등성
-
-> **`internal/migrate`** — v3.0에 없음. 마이그레이션은 `internal/migration` (단수형) 사용.
-
-### internal/update
-**역할**: self-update  
-**기능**: Checker, Updater, Rollback, 체크섬 gate, 원자적 replace
-
-### internal/goal
-**역할**: 목표 엔진 — 조건 선언형 에이전틱 루프 (`/moai goal`)
-**핵심**: `moai goal arm|status|clear`, Condition {Mechanical,Model}, Stop-hook 평가 계약
-**상태**: `.moai/state/goal/<session-id>.json` (세션별)
-
-### internal/factory
-**역할**: Factory 모드 상태 — `moai cc -f` / `moai glm -f`가 여는 plan→run→verify→sync 체인의 세션 기록과 중복 억제
-**핵심**: `record.go` (세션 레코드 기록, `validateSessionID`가 경로 조작 차단, 파일 0600), `revision.go` (`Matches`/`RevisionMatch`/`SuppressStep0551` — 모든 실패 모드가 "검사 수행"으로 수렴하는 fail-safe, rung은 allow-list)
-**상태**: 세션 ID 파생 경로의 레코드 파일 + `revision.json`
-**진입점**: `internal/cli/factory.go` (플래그 파싱, env 진입/복원), `internal/cli/launcher_blockcap_infinite.go` (Stop-hook block cap 상향)
-
-### internal/hook
-**역할**: 컴파일된 훅 시스템 + main-checkout branch-state guard
-**이벤트**: 30개 EventType (SessionStart, PostToolUse, Stop, etc), 35개 `handle-*.sh` 래퍼
-**기능**: Registry.Dispatch(), Stop은 stdout JSON `decision:"block"` (exit 0), 순차 + short-circuit
-**서브**: trace, memo, quality, security, mx, handoff, lifecycle, dbsync, branch_guard
-
-### internal/sandbox (19파일)
-**역할**: OS 샌드박스 (seatbelt, bubblewrap, docker)  
-**기능**: Launcher.Launch(), GenerateSBPL(), deny-by-default
-
-### internal/shell
-**역할**: shell 감지 및 config 변경  
-**기능**: Configurator, AddEnvVar, AddPathEntry (멱등성)
-
-### internal/astgrep (5 non-test 파일)
-**역할**: ast-grep CLI 래퍼  
-**기능**: Scanner.Scan(), Finding 타입, SARIF
-
-### internal/lsp (8 sub-packages: aggregator, cache, config, core, gopls, hook, subprocess, transport)
-**역할**: 다중언어 LSP 클라이언트  
-**sub**: core, aggregator, gopls, cache, config, hook, subprocess, transport
-
-### internal/mx (12 non-test 파일)
-**역할**: @MX 태그 스캐너/리졸버  
-**기능**: Scanner, Resolver, FanInCounter, Sidecar JSON
-
-### internal/ciwatch
-**역할**: CI 체크 분류  
-**기능**: Classifier.IsRequired(), Handoff/WatchState
-
-### internal/resilience
-**역할**: circuit breaker FSM  
-**상태**: closed, open, half-open
-
-### internal/telemetry
-**역할**: 비동기 사용량 기록  
-**기능**: AsyncRecorder, bounded channel, 배치 disk I/O
-
-### internal/github (26파일)
-**역할**: gh CLI 통합  
-**기능**: GHClient 인터페이스, SpecLinker, SecretManager
-
-### internal/session (12 non-test 파일)
-**역할**: 다중 세션 조율 레지스트리  
-**기능**: Registry, FileSessionStore, PhaseState, advisory lock
-
-> **`internal/state`** — v3.0에 독립 패키지 없음. 세션/상태 관리는 `internal/session` (registry, checkpoint, phase).
-
-### internal/tmux (4 non-test 파일)
-**역할**: tmux 감지, CG/GLM 모드  
-**기능**: IsCGMode(), SessionManager
-
-### internal/worktree
-**역할**: 작업 트리 상태 가드  
-**기능**: Capture(), Diff(), DivergenceLog
-
-### internal/profile
-**역할**: 사용자 프로필 관리  
-**기능**: ProfilePreferences, GetCurrentName(), Sync
-
-> **`internal/research`** — v3.0에 독립 패키지 없음 (이전 문서 드리프트).
-
-### internal/measure
-**역할**: zero-dependency 리프 파서  
-**기능**: ParseGoTestJSON(), ParseCoverageFile(), CountNonEmptyLines()
+파일 수는 전부 `find <dir> -name '*.go' -not -name '*_test.go' | wc -l`로 센 **비테스트 파일**이며
+하위 패키지를 포함합니다.
 
 ---
 
-## 테스트 전용 패키지 (런타임 카탈로그 제외)
+## presentation
 
-다음 패키지는 테스트 전용이므로 runtime 모듈 카탈로그에서 제외됩니다:
+| 패키지 | 비테스트 | 책임 | 주요 하위 패키지 |
+|---|---|---|---|
+| `cmd/moai` | 1 | 배포 바이너리 유일 진입점. `cli.Execute()` 호출 후 `cli.ResolveExitCode`로 종료 코드만 매핑 | — |
+| `cmd/t657-merge` | 1 | **배포되지 않는 일회성 큐 병합 도구**(카드 t657). 파일 머리 주석이 사용자 verb가 아님을 밝히고, `internal/factory` 저장소 API를 재사용하며 실제 저장소를 명시적 절대 경로 플래그로만 받는다 | — |
+| `internal/cli` | 427 | 아래 클러스터 표 참조. **t1351 판에서 넷이 더했다** — `clean_reports_archive.go`(`clean` 의 이동 전용 아카이브 스코프), `factory_lane_relaunch.go`(relaunch 정책의 슈퍼바이징 루프), `mcp_factory_card.go`·`mcp_todo.go`(여섯 MCP 도구의 CLI-동일 포장) **t1374 판에서 아홉이 더했다**(380→389) — `todo_claim.go`(`moai todo claim` · card t1342), `todo_show.go`(`moai todo show` · card t1349), `todo_classify.go`(분류 모델과 add 경로·팩토리 `-f` 레인 자동 배차 배선 · card t1332), `todo_ghost_notice.go`(유형별 1회 유령 스토어 공지 · card t1349), `doctor_owner_label.go`·`doctor_todo_ghost.go`(owner_label 어휘 이행·유형별 유령 스토어의 doctor 진단 · card t1349), 그리고 `worktree` 클러스터의 셋 — `sweep.go`+`sweep_cwd_{posix,windows}.go`(`moai worktree sweep` · card t1369) **t1378 판에서 하나가 더했다**(389→390) — `factory_launch_timing.go`(codex 레인 런치의 사전 실행 단계별 타이밍 수집기 · card t1378) **t1338 병합 판에서 넷이 더했다**(393→394) — `factory_messaging.go`·`factory_pickup.go`·`factory_merge.go`·`factory_adopt.go`(card t1338) **t1383 판에서 하나가 더했다**(394→395, 루트 313→314 — 병합 트리 find 직접 측정) — `codex_review_scope.go`(codex 리뷰 게이트 세션 스코핑 · card t1383) **t1380 판에서 하나가 더했다**(395→396, 루트 314→315 — 이 트리 find 직접 측정) — `launcher_debug_trace.go`(세 런처 디버그 표면 · card t1380) **t1443 판에서 여섯이 더했다**(396→402, 루트 315→321 — 이 트리 find 직접 측정) — `factory_quota.go`·`factory_quota_lanes.go`(할당량 게이트 걸린 임대와 배차 스티어링 · card t1347), `managed_factory_session.go`·`managed_codex_factory.go`(관리 세션 계층 — `MOAI_FACTORY_MANAGED` 명시 옵트인 · card t1375), `launcher_model_source.go`(런치 모델 6단 선위 · card t1441), `todo_auto_rank.go`(--auto 후보 순위 — Jev 근접중복 비신호화 · card t1400·t1428) **t1456 판에서 넷이 더했다**(402→406, 루트 321→325 — 이 트리 find 직접 측정) — `factory_relaunch.go`(동사 `moai factory relaunch` — 스테일 런의 실행 가능한 복귀 · card t1345), `audit_plan_cmd.go`(읽기 전용 `moai verify audit-plan` — `verifyExtraCommands` 레지스트리 합류 · card t1423), `codex_review_tree_scope.go`(TREE 스코프 스킵 정책 · card t1422), `mcp_selfreview.go`(어드바이저리 MCP 도구 `codex_review`·`glm_review` · card t1422) **t1524 판에서 셋이 더했다**(406→427, 루트 325→345 — 이 트리 find 직접 측정; 406→424 구간은 t1485 창 흡수분 — `audit_pin.go`(workflow.audit {model,effort} 핀 로더 · SPEC-V3R6-AUDIT-MODEL-PIN-001 — codex·GLM 감사 리졸버만 소비하고 태스크 경로는 부르지 않는다), `update_migrate.go`, plugin_*·verify_run_*·decision 등) — `spec_ceiling.go`(새 동사 `moai spec ceiling <SPEC-ID> [--evidence <dir>]... [--record]` — plan-audit 반복 상한의 평가와 기록 · card t1500), `doctor_ccversion.go`(doctor Session CC Version 권고 진단 — 실행 중 바이너리와 설치 바이너리의 버전 대조 · card t1465), `lane_resume.go`(세션 비상 재개 경로 — 자식 argv 조립, 값 없는 `--resume` 거부, resume 토큰의 fail-closed 검출 · card t1465) | `update`(+`plan`/`deploy`/`merge`/`backup`/`report`), `harness`, `worktree`, `agentlint`, `preference`, `wizard`, `uikit`, `printer`, `specid`, `taskledger`, `pr`, `ptycaptest`, `jev` |
+| `internal/hook` | 158 | Claude Code 26종 훅 이벤트의 핸들러 레지스트리와 개별 핸들러. `registry.Dispatch`가 이벤트별 체인을 돌려 `HookOutput`을 만든다. **t1286 판에서 served-model 삼형제가 더했다**(card t1282, SPEC-SERVED-MODEL-AUDIT-001) — `served_model.go`가 도구 응답의 served-model 표기 분류 코어, `served_model_gate.go`가 계약 triple 하에서 판정 채택을 served-model 여부로 거부할 수 있는 opt-in 게이트(`workflow.served_model_gate.*`), `served_model_stop.go`가 SubagentStop 에 감사자 served-model 자기 신고 행·경고·설정 provider 를 싣는다. `pre_tool.go`·`agent_model_guard.go`·`audit_receipt_guard.go`는 이 게이트와 영수증 종류의 배선을 받았다. **t1274 판에서 `escalation_observe.go`가 더했다** — `internal/escalation` 감지기의 유일한 비테스트 소비자. `Active` 게이트를 지나 계약 이벤트를 조립해 `Observe` 로 넘기며, 감지기가 관측 전용이라 이 파일도 결정에 개입하지 않는다(card t1235, SPEC-AUTONOMY-ESCALATION-001). **t1238 판: 명령 텍스트를 읽는 모든 가드·증거 분기가 `IsShellTool`(`internal/hook/shell_tool.go` — 닫힌 집합 Bash·PowerShell)을 거친다.** Bash용으로 쓴 가드가 PowerShell 도구로 보낸 같은 명령에서 조용히 빠지지 않게 하려는 것이다. 브랜치 가드와 통합 락이 POSIX식 스캔으로 볼 수 없는 PowerShell 우회 형태는 card t1255(SPEC-HOOK-GUARD-POWERSHELL-FORMS-001)부터 둘로 갈린다 — **스캔이 읽을 수 있는 형태(`.exe` 접미 실행 파일, 호출연산자 뒤의 인용 대상, 백틱 분리 서브커맨드, `pwsh -Command` 페이로드 내부)는 정규화되어 기존 query-vs-mutate 판정 그대로 거부**되고, **정적으로 결정할 수 없는 형태(동적 해석 `& (Get-Command git)`, `Invoke-Expression`·`Start-Process`·`saps`/`start` 별칭 안의 git, `-EncodedCommand` 페이로드 — 유니코드 대시 철자 포함)만 허용하되 가드 감사 로그에 `unclassifiable` 한 줄을 남긴다**(`internal/hook/powershell_indirection.go` — 파서 추가 없음, 인코딩 페이로드는 디코드하지 않음; 인용 산문 `Write-Output 'git switch'` 는 데이터로 남아 허용). **t1242 판에서 `factory_handoff_bind.go`가 더했다** — SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001 M3 원자적 rebind의 훅 쪽 절반(대화형 lane의 다음 턴 증거를 통한 bind). **헤드리스 절반(cli 쪽 lane-handoff 4형제)은 card t1242(SPEC-CODEX-FACTORY-RETIRE-001 M3)에서 사라졌다** — codex 스레드 릴로케이션이 없어져 rebind할 헤드리스 codex 세션이 남지 않았기 때문이며, 훅 쪽 파일은 대화형 경로 전용으로 그대로 남는다(소멸 전체 경로는 아래 인용 노트). **t1278 판에서 가드 둘이 더 났다** — `contract_sign_guard.go`(계약 서명·결정 동사의 도구 호출 경로 차단, 센티넬 `CONTRACT_SIGN_AGENT_VIOLATION:`)와 `push_serializer.go`(계약 triple 활성 시 develop push 의 `moai slot` 임대 직렬화, 센티넬 `PUSH_SERIALIZATION_VIOLATION:`). **t1237 판에서 A4 검사 둘이 더했다** — `closure_push.go`(card t1237, SPEC-AUTONOMY-CLOSURE-001): `checkContractVerdict`는 모든 모드에서 `moai contract verdict` 도구 호출을 문자열 매치로 거부한다(센티넬 `CLOSURE_VERDICT_HUMAN_ONLY:` — I/O 없는 편의 가드고 집행은 대화형 터미널 확인이 담당한다). `checkClosurePush`는 계약 모드에서 통합 브랜치로의 push(혹은 그럴 가능성이 있는 push)를 평가해 미준비 계약이 하나라도 있으면 거부한다(센티넬 `CLOSURE_PUSH_STOP:` + `SPEC=코드들`). 모드 검사가 함수의 첫 문장이라 guided 에서는 파일 읽기·서브프로세스 전에 반환해 훅 출력이 바이트 동일하게 유지되고(REQ-CLOSURE-023), `--all`/`--mirror`·명령 치환·래퍼 셸·변수 피연산자·풀 수 없는 목적지는 전부 `push_check_undetermined` 이며 undetermined 는 허용이 아니라 거부다(fail-closed).  이전 판에서 `subagent_write_guard.go`(SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001, PreToolUse: 서브에이전트의 `Write`가 추적 중인 기존 파일을 바이트 기준 큰 폭으로 축소하면 거부. 판별은 경로 범위가 아니라 파괴성 자체 — 2000바이트 이상(SWG-T1)이던 파일을 25% 이하(SWG-T2)로 줄이는 전체 덮어쓰기. 거부 계층만 `workflow.subagent_write_guard.enabled`에 게이트되고 감지·감사는 무조건 돈다)와 `factory_messages.go`(SessionStart·UserPromptSubmit에서 `internal/factorymsg` peer를 등록하는 훅 쪽 배선)가 더했다. 그 앞 판에서 `internal/hook/session_heartbeat.go`가 더했다 — UserPromptSubmit마다 세션 레지스트리의 `last_heartbeat`를 갱신하는 seam(등록된 세션에만, 모든 실패는 침묵. 실측 근거는 § `entry-points.md` 훅 절). **t1295 판**: `served_model.go`의 선언 정규화가 오탐 drift를 걷었다 — `normalizeModelDeclaration`이 `inherit`(부모 세션 모델을 가리키는 선언으로, 훅이 볼 수 없으므로 무선언과 동급 취급)과 `[1m]` 같은 괄호 컨텍스트창 접미(`opus[1m]` ≡ `opus`)를 떨어뜨려, 접미가 붙은 spawn이 전부 drift로 보고되던 것을 막는다. **t1305 판에서 `commit_identity_guard.go`가 더했다**(card t1289, SPEC-COMMIT-IDENTITY-GUARD-001 — 커밋 직전 신원 가드: 커밋 작성자가 등록된 세션 신원과 어긋나면 거부하고 올바른 id를 안내한다. 배선은 모든 선행 셸 가드 뒤의 pre-tool 체인 마지막이다) **t1351 판에서 셋이 변했다** — `branch_guard.go`가 BranchGuard 가족의 **제2 거부 클래스**를 얹었다(card t1337, SPEC-MAIN-COMMIT-BAN-001 — 브랜치 조건부: `protectedCommitPattern`(`git commit`·`revert`·`cherry-pick`, `\b` 어근 고정이라 precommit 산문은 안 걸린다)이 매치하고 cwd 가 primary 체크아웃이며 `ResolveHeadBranch`가 해석한 브랜치가 `deny_commits_on` 목록에 있을 때 거부. detached HEAD 는 오류가 아니라 ("", nil) 로 의도적 허용, 목록이 비으면 명령 추출 전 단락, HEAD 해석 실패는 fail-open + 감사 행. 정규화는 브랜치 상태 스캔과 `normalizeCommandForScan` 하나를 공유 — hand-copied 파이프라인의 드리프트를 원천 봉쇄). `session_start_factory.go`+`session_start_factory_i18n.go`가 lane SessionStart 룰을 얹었다(SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-019 — lane 라벨 세션의 startup·clear 기동에만 additionalContext 로: Claude·GLM 레인엔 MCP 도구 여섯을 이름 대는 next-card 룰, Codex 레인엔 임대 카드 id 만 보간하는 owned-card 룰. leader·레거시 라벨·카드 id 없는 gpt 레인은 아무것도 못 받는다). `contract_sign_guard.go`의 게이트가 `contractRoleMarker`(역할 마커 단일 조건)에서 `contractLaneGate` 세 조항(역할 마커 ∨ lane 라벨 변수 ∨ backend 변수=Codex)으로 넓어졌고 — 거부 방향만 넓힌 확장이다 — `CheckContractSignClassify` 가 export 돼 런처가 포착한 lane 환경을 같은 판정기로 분류한다. `pre_tool.go`는 이 보호 커밋 거부의 배선을 받았다 **t1297 판에서 `stale_run_gate.go`가 더했다**(155→156, card t1373) — stale factory run 라벨 게이트(`session_stale_run.go`·`internal/factorymsg/run_state.go`와 한 세트 — run-state 게이트 처방·`/clear` 언바인드·삼태 접근자) **t1456 판에서 `factory_rebind.go`가 더했다**(156→157, card t1345) — env 네임 런이 비활성으로 측정될 때 프롬프트마다 레인 리바인딩(활성 하나면 재결합 공지, 0이면 비결합 공지, 여럿이면 후보 전부 나열+합류 명령, 슬롯에 살아 있는 소유자면 거부; fail-open — 런을 은퇴·부활·생성하지 않는다); `session_stale_run.go`의 처방이 운영자용 실행 명령줄을 4개국으로 안내한다(에이전트 지시 아님을 문면이 명시), `stale_run_gate.go`·`user_prompt_submit.go`에 200ms 감시 예산 접속, `session_start_factory.go` 두 레인 룰이 `m.laneRecheckRule`을 덧붙였다(card t1451 — Codex 소유카드 룰 제외) **t1524 판에서 `session_start_hygiene.go`가 더했다**(157→158, card t1518) — SessionStart에서 `.moai` 위생 엔진을 best-effort로 돌리는 배선(기동을 절대 막지 않는다; 자동 경로의 apply 여부는 `workflow.hygiene.mode`가 정하고 기본 report다). 같은 창의 수리 배치(card t1499): `config_change.go`가 live payload 필드 이름에서 경로·출처를 읽고, `subagent_write_guard.go`가 누락된 쓰기 대상을 "new file" allow로 기록하며(fail-open 제거) 스캔 경로를 입력 cwd·심볼릭 링크 우선 해석으로 고치고, `user_prompt_submit.go`의 워크플로 키워드가 단어 단위 매치와 세션당 1회 주입으로 갈렸다 | `quality`, `security`, `mx`(+`complexity`), `memo`(+`taxonomy`), `handoff`, `perf`, `trace`, `testutil`
+| `internal/web` | 33 | 루프백 전용 브라우저 콘솔. `a-h/templ` 컴파일 뷰(`*_templ.go`) + htmx + SSE(fsnotify)로 프로파일·설정·todo 큐를 편집하고, **codex 탭 하나는 편집이 아니라 읽기 전용 미러**다(§ codex 미러 탭). 이 판에서 저장 실패 관측성(handleSave의 9개 persistence seam이 실패를 2xx 재렌더와 stderr 한 줄로 내보낸다 — § `data-flow.md` G)과 워크플로 설정의 Jev 패널·자격증명 필드(`internal/web/jevkey.go` — `internal/jevcred`를 통해서만 읽고 쓴다)가 더했다. **t1305 판에서 에이전트 설정 탭이 사라졌다**(card t1246 — `agentfm.go`와 그 API·테스트를 삭제; per-agent 모델 표면 은퇴의 웹 쪽 절반) **t1351 판**: `projectconfig.go`의 devMode·convention 저장이 전체 재마샬에서 `internal/settings`의 `WriteProjectScalars` yamlpatch seam 으로 갈렸다(SPEC-WEB-SAVE-LOSSLESS-001 — quality.yaml 의 미모델링 키와 주석이 편집 한 번에 소실되던 GitHub #1731 결함의 웹 쪽 수리). 같은 배치에서 `assets/i18n.js`가 확장됐다 **t1443 판에서 탭이 돌아오고 패널이 하나 더했다**(31→33 — 이 트리 find 직접 측정) — `agentfm.go`가 에이전트 설정 탭째 부활했다(card t1411 — t1305 판이 지운 것의 복귀; `fieldsets_templ.go` 재생성이 `fieldsetAgentFM`·`fieldsetAgentTiers` 패널과 `agentFMRow`를 얹고 `app.go`·`handlers.go`·`schemaform.go`·`settings_shell.go`가 프로파일·에이전트별 model/effort 저장 경로를 배선), 신규 `agenttierpanel.go`(등급×프로파일 위젯 키 · card t1391); `agent_settings_removed_test.go` 플레이스홀더는 표면 복귀와 함께 철수했다 | `assets` |
+| `internal/statusline` | 24 | Claude Code statusLine 렌더러. git·github·model·backlog·goal·usage 세그먼트 조립. 렌더가 읽고 쓰는 상태의 **앵커는 세션의 현재 디렉터리가 아니라** `internal/stateanchor` seam이 정한 프로젝트 루트이며, 그 어댑터가 `internal/statusline/state_anchor.go`다. **t1286 판(card t1281)**: `landed.go`가 착지 카드 집계를 커밋 주제 귀속으로 바꾸고 표시 문자를 ✓에서 ⚑로 갈았으며, 갱신 실패 뒤 옛 기준 캐시 위의 stampede 가드가 테스트로 고정됐다 **t1443 판에서 하나가 더했다**(22→23) — `quota.go`(`QuotaState`·`QuotaReading`·`AggregateQuota` — 상태 디렉터리의 사용량 창 원장을 읽어 상태선 할당량 세그먼트를 렌더 · card t1347); `context_usage.go`가 rate-limit 창을 스키마 v3 원장에 기록한다 **t1456 판에서 `quota_dirs.go`가 더했다**(23→24, card t1442 — t1347 부채 F1) — `QuotaStateDirs`가 primary와 링크된 워크트리 상태 디렉터리를 git 메타데이터 파일 읽기만으로 열거하고 `AggregateQuotaDirs`가 기존 규칙을 전부에 적용한다(다른 형태의 상태 디렉터리는 단독 판독 — fail-open) | — |
+| `internal/tui` | 19 | 터미널 UI 디자인 시스템 — 박스·필·테이블·테마(Catppuccin)·i18n 메시지(`//go:embed messages/*.yaml`) | `golden`, `internal` |
+| `internal/mcp` | 1 | self-hosted MCP 도구 카탈로그(도구명 + write 여부) 단일 선언 — 현재 45개(`codex_role_audit{,_status,_result}`, t1351 판의 `todo_add`·`todo_list`·`factory_{next,stage,complete,decide}` 포함) | — |
 
-- **internal/skills** — audit-only test fixture (LOC-ceiling / template-mirror-parity test suite, 프로덕션 코드 없음)
+### `internal/cli` 기능 클러스터
 
-> `internal/evaluator`는 방치된 TDD RED 스캐폴드(SPEC-EVAL-001, sync-auditor 에이전트로 대체)로 SPEC-CLEANUP-EVALUATOR-001에서 제거되었습니다.
+`codex*` 클러스터에는 이번 판의 `codex_audit_launch.go`와
+`codex_audit_mcp.go`가 들어갔다. 셸과 MCP가 같은 `runCodexAudit` 코어를
+쓰며, `codex exec -s read-only`를 최상위 프로세스로 실행한다. `-c`로
+MCP 서버를 끄고 역할 파일의 지시문 크기·워크트리·목적지를 제한하며,
+`--out` 또는 MCP `out`을 지정하면 결과를 `.moai/reports/`에 기록한다. 생략하면
+CLI는 stdout으로, MCP는 job output으로 반환한다. MCP job 상태는
+서버 프로세스의 메모리에만 있으므로 서버 재시작 후 같은 job ID 조회는
+지원하지 않는다. 파일 수 19→21은 이 두 신규 파일에서 발생했다.
+
+루트 345개 비테스트 파일(`find internal/cli -maxdepth 1 -name '*.go' -not -name '*_test.go'`, t1524 판 재측정)을
+파일명 접두어로 묶은 것입니다. 파일 수는 같은 명령에 `-name '<접두어>*.go'`를 붙여 셌습니다.
+
+| 클러스터 | 파일 | 담당 |
+|---|---|---|
+| `update*` | 31 | 템플릿 재배포 — 계획/분류/네임스페이스 보호, 3-way 머지, 백업·롤백, 클린 인스톨, dry-run. 단계 로직은 `cli/update/{plan,deploy,merge,backup,report}` 하위로 분해돼 있다. **재배포가 일어나지 않는 경로에도 복구 하나가 붙는다** — `internal/cli/update_mirror_heal.go`는 버전 일치 update가 Deploy 앞에서 조기 반환하는 자리 옆에서 `.agents/skills` 미러를 복구하며, 존재 게이트는 프로젝트의 기록된 배포 버전이다. 백업 쪽에 `.mcp.json`이 settings.json과 같은 스냅샷 처리를 얻었다(`backup/mcp_snapshot.go` — 배포가 실제로 쓴 렌더를 staging→promote로 기억해, 다음 update의 3-way 머지가 템플릿이 바꾼 값을 사용자가 못 건 키에서 보이게 한다. 생명주기 기계는 `file_snapshot.go`로 추출돼 두 파일이 공유한다). **이 판에서 `update_identity.go`가 더했다**(card t1139) — update가 `project.yaml`/`user.yaml`을 렌더할 때 프로젝트가 이미 가진 `project.name`/`user.name`을 읽어 실어, 바뀌지 않은 이름이 빈 값으로 렌더되지 않게 한다(managed cleanup이 `.moai/config`를 지우기 전에 값을 미리 읽음, `internal/config/loader_identity.go` 소비). **t1278 판에서 매니페스트 치유 둘이 더했다**(card t1275/76/77) — `update_manifest_retrack.go`는 update 가 매니페스트를 다시 쓸 때 이월 항목의 provenance 를 추적하고, `update_manifest_heal.go`는 매니페스트가 비어 있는 프로젝트를 `.moai-backups/` 백업에서 치유하는 경로다(소비 재원은 `internal/core/project` 의 `HealManifestFromBackups`). **t1295 판**: `update.go`가 로컬 지시문 advisory를 건네받았다(card t1259, REQ-IFU-012 — 재배포 후 남는 로컬 지시문 흔적 안내). **t1305 판에서 `update_model_key_strip.go`가 더했다**(card t1246 — 재배포 렌더에서 설정에 남은 에이전트 모델 키를 걷어낸다) **t1524 판 재측정 31**(30→31 — t1485 창의 `update_migrate.go` 흡수분) |
+| `doctor*` | 28 | 진단 — **t1286 판에서 `doctor_served_model.go`가 더했다**(card t1282 — "Served Model" 스윕: 감사자·서브에이전트가 스스로 밝힌 served-model 표기를 모아 보고한다. 이후 explicit-only 로 수정돼 늘 뜨는 행이 아니라 표기가 있는 세션만 잡는다). **t1278 판에서 `doctor_hook_missing.go`가 더했다**(card t1251 — `.moai/logs/hook-missing.log` 를 읽는 Hook Missing Log 진단, advisory·fail-open). **t1274 판에서 `doctor_settings_defaultmode.go`("Settings DefaultMode" — project/local settings 의 `permissions.defaultMode="bypassPermissions"` 는 CC v2.1.142+ scope 규칙(경고는 2.1.283+)에서 무시되는 죽은 키다. warn 으로 잡고 런처 플래그(`--permission-mode`)나 user-scope settings 를 안내한다. codex-only 프로젝트에서는 claude-surface 체크로 INFO 강등)가 더했다**, config, disk, harness, hook wiring, mcp version, permission, sandbox, skills, worktree base, agentemit embed, codex, jev(게이트·credential·도달성을 읽기 전용으로 확인 — 판정 요청을 보내지 않는다; 도달성은 TCP 접속·종료만 한다), git-strategy workflow 판정(`doctor_git_strategy_workflow.go`). t1238 판에서 `doctor_mcp_provider.go`("MCP Provider Duplicates" — 로컬 MCP 서버와 claude.ai 커넥터의 이름이 달라 둘 다 로드되는 중복; 비공개 내부 파일을 읽으므로 권고 전용·fail-open)가 더했다. binary-lag 판정은 비교 ref가 바이너리보다 오래된 경우(`StatusAhead`)를 OK 대신 WARN으로 보고한다 — 그 비교는 바이너리의 신선도에 대해 아무 말도 하지 못한다. **t1295 판**: `doctor.go`가 로컬 지시문 advisory를 얻었다(card t1259, REQ-IFU-012) — `moai update`가 내는 것과 같은 안내를 진단 출력에도 싣는다(`emitLocalInstructionsAdvisory`) **t1333 판에서 `doctor_todo_store.go`가 더했다**(card t1307 M2 — 홈 DB 전환 뒤에 남는 유령 프로젝트 로콜 큐 스토어 divergence의 doctor 진단; 읽기 공개과 같은 검출기를 공유한다) **t1524 판 재측정 28**(24→28 — 이번 창의 `doctor_ccversion.go`(Session CC Version 권고 진단 · card t1465) +1과 t1485 창 흡수분 +3) |
+| `mcp*` | 27 | 세 갈래. **t1351 판에서 둘이 더했다**(24→26) — `mcp_factory_card.go`(SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-014/-024: `factory_{next,stage,complete,decide}` 넷 — cobra `RunE` 가 부르는 같은 함수의 얇은 포장이라 두 표면이 갈릴 수 없고, 레인 동사는 호출자 제공 `project_root` 를 요구하며 lane 술어는 서버 프로세스 환경을 읽어 CLI 와 한 규칙으로 거절한다)와 `mcp_todo.go`(`todo_add` — CLI 레인 가드와 같은 한 줄 거부 문장 공유, `todo_list` — 읽기 전용). **t1238 판에서 `mcp_worktree_root.go`가 더했다** — `.moai/`를 추적하지 않는 저장소의 링크된 워크트리는 자기 `.moai`가 없어 `project_root` 검증이 거부했는데, git 기반 두 번째 수용 분기(스크럽된 git 검사, 종료 상태·출력 형태로만 판정, 실패 시 거부)와 "config-orphaned" 판정, 그리고 그런 트리에서도 primary의 `workflow.audit.gates`가 구속력을 유지하게 하는 감사 게이트 라우팅을 둔다. `mcp_server.go`(51KB)는 stdio JSON-RPC 서버, `mcp.go`/`mcp_codex.go`(t1242 에서 codex 스레드 릴로케이션 계열 97줄이 빠졌다 — `runCodexThreadRelocation`과 thread/fork·thread/started 상수 소멸)/`mcp_glm.go`/`mcp_convergence.go`는 codex·GLM 위임과 다중 모델 감사 수렴, 그리고 `mcp_claude*.go` 5개(`_runner` · `_protocol` · `_process_unix` · `_process_windows` 포함)는 `claude` CLI를 서브프로세스로 띄우는 읽기 전용 `claude_audit` 도구다. 서브프로세스 환경에서 `CLAUDE_CODE_*`·`CLAUDECODE`를 지우고 출력 상한을 둔다. `audit_multi` 수렴도 `mcp_convergence.go`에서 같은 함수를 부른다. **이 판에서 둘이 더했다** — `mcp_factory_msg.go`(`internal/factorymsg` 위의 5개 도구 `factory_msg_{send,list,body,receipt,status}` — 발신자는 현재 세션·프로세스로 귀속되고 본문은 `factory_msg_body`로만 신뢰되지 않는 데이터로 읽힌다)와 `mcp_jev.go`(게이트된 `jev_ask` 1개 — `workflow.jev.enabled` 기본 꺼짐이면 요청 자체를 조립하지 않는다). **t1237 판에서 `mcp_audit_multi_record.go`가 더했다** — `audit_multi` 의 옵션 `card_id` 가 쓰는 세컨드 리뷰 기록기(card t1237): 팬아웃 한 번이 카드 증거 디렉터리의 `second-review.jsonl` 에 카드·계약 카드+digest·심사 커밋·심사 범위(해석된 base 브랜치·변경 파일 수·diff 해시)·백엔드 판정을 묶는 한 줄을 덧붙인다. 기록 실패는 결과의 `second_review_record_error` 로만 타고 감사 결과 자체는 바뀌지 않으며, `card_id` 없이는 변경 전 출력과 바이트 동일하다(golden 고정) **t1524 판 재측정 27**(26→27 — t1485 창의 `mcp_selfreview.go` 흡수분)과 t1500 배선: 세 감사 리졸버(`mcp_audit_multi.go`·`mcp_claude.go`·`mcp_codex.go`·`mcp_glm.go`·`mcp_convergence.go`·`mcp_worktree_root.go`)가 required-backend 거부와 fail-closed 해석을 얹었다(card t1500 — `audit_pin.go`의 읽기·파스 오류는 핀 부재로 접히지 않는다) |
+| `todo*` | 24 | 백로그 큐 CLI. 파일 헤더가 스스로를 `factory.BacklogStore`에 대한 얇은 cobra 배선이라고 밝힌다. 이 판에서 Jev near-duplicate admission 훅(`todo_jev_finding.go` — 카드 admission 경로에서만 불리는 게이트 미실행 Consumer C 훅)이 더했다 **t1333 판에서 둘이 더했다** — `todo_auto.go`(`moai todo --auto` — 운영자 배치 승인 1회의 직렬 소비)와 `todo_hold.go`(`moai todo hold|unhold` — 텤스트를 만지지 않는 주차 상태, 그 스키마 v1→v2 재건은 `internal/factory` 몪); 같은 범위에서 상태 전이에 stamp 열이 찍히고(card t1310) add 경로가 유령 스토어 공개를 얹었다(card t1313, GitHub #1732) **t1351 판**: todo 트리 전체에 레인 큐 가드가 얹혔다(SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-015 — `PersistentPreRunE` 하나가 모든 서브커맨드 앞에서 lane 거부를 평가하고, 읽기 허용 목록(list·history·why·pr·triage)과 맨인자 렌더만 통과시킨다. 거부 문장은 MCP `todo_add` 와 한 곳에서 난다. lane 의 유일한 큐 쓰기는 `moai factory next` 내부의 승격이다) `todo_pr.go`는 같은 범위에서 보조 정리를 받았다 **t1524 판 재측정 24**(17→24 — 전부 t1485 창 흡수분: 칸반 모드 은퇴 창의 큐 표면 이동분) |
+| `gtd*` | 2 | **이 판에서 새로 생긴 클러스터.** `gtd.go`의 `NewGTDCommand()`는 `newTodoCmd()`를 감싸 `Use`만 `gtd`로 바꾸고 `capture`·`clarify`·`organize`·`reflect`·`engage`를 더한다 — 같은 SQLite 큐 위의 두 번째 이름이지 별도 저장소가 아니다. `gtd_answer.go`의 `answer`는 게이트에서 멈춘 카드에 대한 운영자 답을 파일로 남기며 큐 항목을 바꾸지 않는다 |
+| `codex*` | 28 | **t1286 판에서 셋이 더했다**(card t1099, 이중 하네스 패리티) — `codex_sync_gate.go`(`moai verify sync-gate` — 훅 타임아웃 안에 못 끝낸 sync-gate 검사를 훅 밖 Go 코어로 옮기고 영수증을 남긴다), `codex_review_receipt.go`(`moai verify codex-review` — 훅 밖 codex 리뷰 러너와 그 영수증), `codex_stop_chain.go`(Claude Stop 체인 멤버들을 Codex Stop 핸들러 하나 안에서 차례로 돌리는 체인 러너 — 멤버별 예산은 `internal/codexwiring` 선언). `hook.go`·`hook_stop_goal.go`도 같은 카드에서 Stop 멤버의 공유 Go 진입으로 재편됐다. **t1238 판에서 `codex_role_fingerprint.go`가 더했다** — Codex 역할 로드 판정을 nonce 에코에서 계약 중립 판정으로 바꿨다: 역할의 rollout JSONL에 기록된 "developer" 본문의 sha256을 역할 TOML의 `developer_instructions`(정규식이 아니라 TOML 파싱으로 추출)와 비교한다. 외부 에이전트 백엔드 런처, 잡 제어, 준비 상태 점검, 리뷰 게이트. **이 판에서 `codex_factory.go`·`codex_kanban.go`가 사라졌다**(card t1242, SPEC-CODEX-FACTORY-RETIRE-001 M2) — `moai codex -k`/`-f` 진입 전체가 거부로 대체돼(M1) 두 파일이 도달 불가능해졌다. **여기에 사용자 HOME 계층에 대한 스킬 노출 제어 두 개가 함께 산다** — `internal/cli/codex_skills_disable.go`는 `~/.codex/config.toml`에 `enabled = false`를 실은 `[[skills.config]]` 항목을 발행하고, `internal/cli/codex_skills_prune.go`는 가리키는 파일이 사라진 유령 등록을 제거한다(부재를 증명할 수 있는 것만 지우는 allowlist 형 판정, 기본 dry-run). `codex_direct_{posix,windows}.go`(대화형 Codex 세션을 여는 `exec.Cmd` 래퍼. card t1242(M1)에서 factory launch-pending peer 등록과 run owner stamp/clear 호출이 제거돼, 지금은 프로세스를 여는 것뿐 factory 상태에는 관여하지 않는다)와 `codex_local_file{,_unix,_windows,_unsupported}.go`(로컬 지시문 파일을 심볼릭 링크 재대상·FIFO 블로킹 같은 경합 없이 여는 플랫폼별 오픈 — unix는 `O_NOFOLLOW`·`O_NONBLOCK`, windows는 `CreateFile`의 reparse-point 플래그, 그 외 플랫폼은 미지원을 명시적으로 에러 반환). **t1295 판** — `codex_hooks_seed.go`가 더했다(card t1273 감사 F0): 워크트리 `.codex/hooks.json` 백필 시딩을 런처 입장(admission) 성공 **뒤로만** 실행해, 거부된 launch가 남의 트리에 쓰지 않게 한다(생성 경로 시딩은 materializer·`moai worktree new`로 일원화 — `codex_launcher.go`의 `-w`는 이 판에서 기존 트리 진입 전용으로 재정의됐다). `codex_stop_chain.go`는 마감 권위화를 얻었다(card t1293): 체인 멤버의 "in time" 여부를 채널 준비가 아니라 **마감 시각**이 결정하고 송신 시각을 verdict 옆에 실어, 만료된 멤버의 판정이 블로킹 select의 무작위 선택에 실려 새는 것을 막는다. **t1305 판에서 `codex_factory.go`가 돌아왔다**(card t1240 — codex factory lane 진입 복원; card t1294가 lane claim에 run slot 상한을 얹었다) **t1351 판**: `codex_launcher.go`가 Codex 공장 진입을 `-f lane` **하나**로 좁혔다(SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-003/-004 — `codexFactoryEntryClassify` 가 진입을 다른 것보다 먼저 분류하고, lane 은 `runCodexFactoryLane` 카드별 재기동 루프로 가며(`--spawn`·`-w`·verb·passthrough 조합은 닫힌 집합으로 거부), 나머지 공장 형태는 전부 `codexFactoryRefusalDiag` 한 문장. 레거시 역할 철자(`worker-<n>` 등)는 REQ-RNC 생산자 형태의 거부로 정규형을 안내한다). `cc.go`·`glm.go`도 같은 카드에서 clear-policy 를 받았다 — `relaunch` 정책이면 `runFactoryLaneRelaunch` 가 런처를 부모로 남긴 채 카드마다 대화형 세션을 하나씩 띄운다(`factory_lane_relaunch.go`; exec 모델인 clear-each·clear-when-full 경로는 그대로다) **t1524 판 재측정 28**(25→28 — t1485 창의 `managed_codex_tui.go`·`managed_operator_input.go` 등 흡수분)과 t1500 배선: `codex_audit_launch.go` 리졸버가 required-backend 거부와 fail-closed 해석을 얹었다(card t1500) |
+| `migrate*` | 13 | 프로파일·에이전시·스킬 복원과 HOME SQLite 상태의 점검·이전·복구·롤백 verb. `migrate_home_state.go`는 기본 dry-run이며 실제 쓰기는 `--apply --verified-live` 이중 승인과 두 번의 zero-active census를 요구한다. **t1295 판에서 `migrate_local_instructions.go`가 더했다**(card t1259, SPEC-LOCAL-INSTR-RECEPTION 부모 이관) — `moai migrate local-instructions`: 이전 세대 산 `.claude` 로컬 지시문 흔적을 조사·이관하는 verb, `doctor`·`update`가 내는 로컬 지시문 advisory(REQ-IFU-012)와 같은 판독기를 공유한다 **t1524 판 재측정 13**(12→13 — t1485 창의 `migrate_render.go` 흡수분) |
+| `factory*` / `handoff*` / `profile*` | 18 (12 + 1 + 5) | Factory 인계 v2 lease·만료 재점유·token CAS, 레거시 claim의 명시적 `recover-resume`, 전역 프로필 lease의 provisional→transfer→enrich→release 수명주기. **`factory*`가 이 판에서 8→4로 줄었다**(card t1242, SPEC-CODEX-FACTORY-RETIRE-001 M3) — `factory_lane_handoff.go`·`_switch.go`·`_bind.go`·`_recover.go` 4개와 그 production 대상(codex 스레드 릴로케이션 클라이언트)이 삭제됐다: 릴로케이션이 옮기던 codex 세션 자체가 더 이상 factory에 참여하지 않으므로 그 왕복 경로가 없어졌다. 남은 것은 `factory.go`(factory 진입/조회), `factory_launch_pending.go`(공유 launch-pending 등록, codex 경로와 무관하게 cc/glm 런치가 계속 부른다), `factory_run_owner.go`(`stampFactoryRunOwner`, REQ-002b), `factory_handoff_recover.go`(`abandon-lane`이 브로커의 종결 트랜잭션에 건네는 소스-소유자 생존 프로브 — factorymsg/homestate 저장 스키마는 이 SPEC에서 바이트 단위로 보존됐다). **t1286 판에서 둘이 더했다**(card t1239, SPEC-FACTORY-RECORD-001 M5/M6) — `factory_card.go`(`moai factory assign <card>`·`status`·`decide <card>...`: 대기열에서 뽑은 카드의 기록·레인 배정, 읽기 전용 상태 보고, 운영자 결정 기록. F1 상태 기계의 유일한 CLI 표면)와 `factory_mirror.go`(gtd·goal 양쪽 리드 디스패치 경로를 factory.db 에 미러링 — `gtd.go`·`goal.go`에 배선). **t1295 판**: `handoff.go`가 `moai handoff show [--json]` 을 얻었다(card t1273) — pending 레코드를 소비 없이 verbatim 재출력(출처·SPEC·단계·언어 헤더, `--json` 은 source·spec_id·phase·body), pending 부재 시 `ReadLatestConsumedResume` 폴백. 하네스 중립 재출력 경로다. **t1338 판에서 넷이 더했다**(card t1338, SPEC-FACTORY-LANE-AUTONOMY-001) — `factory_messaging.go`(`moai factory messaging probe|request|ack` — 세션 메시징 가용성 판정·지시 요청 기록·응답 확인, `moai factory fallback [--all]|declare|restore` — fallback 전이 장부 질의와 기록), `factory_pickup.go`(`moai factory pickup plan` — 분류 픽업 판정), `factory_merge.go`(`moai factory merge ready|gate` — 조건 삼중 기록과 통합 창 선점, 기존 `moai integration` 창만 소비), `factory_adopt.go`(`moai factory handoff adopt` — stall 판정 뒤 카드 재개 브리핑)이며, `factory_handoff_recover.go`가 새 명령 그룹의 등록 자리가 됐다 **t1524 판 재측정 18**(17→18 — factory* 11→12는 t1485 창 흡수분); 같은 창에서 `factory_lane_relaunch.go`가 세션 비상 재개 경로의 배선을 받았다(card t1465 — relaunch 루프가 `lane_resume.go`의 argv 조립·검출을 건넨다) |
+| `spec*` | 9 | SPEC 문서 lifecycle CLI (view/close/audit/drift). **t1524 판에서 하나가 더했다**(8→9, card t1500) — `spec_ceiling.go`: `moai spec ceiling <SPEC-ID> [--evidence <dir>]... [--record]` — plan-audit 반복 상한을 평가해 읽기 전용으로 출력하고, `--record`가 붙을 때만 `runtime.RecordCeilingOutcome`으로 상한 정책 결과 레코드 하나를 쓴다(질문·대화형 입력 없음) |
+| `hook*` | 12 | **t1286 판(card t1099)**: `hook_stop_goal.go`가 Stop 멤버(stop-goal·harness-observe)의 공유 Go 진입으로 추출돼 Claude 훅과 Codex Stop 체인이 같은 코어를 부른다. 훅 디스패처 진입점(`hook.go`, 62KB)과 pre-commit/pre-push 설치. **t1278 판에서 `hook_stop_parse_cap.go`가 더했다**(card t1271) — Claude 쪽 Stop 파싱 실패 루프의 상한: 셈 키(세션 id 또는 소유자 PID)별 8연속 파싱 실패의 9번째 Stop 을 무의견으로 답하고(기록 `.moai/state/stop-parse-cap/`, 60분 만료), 파싱된 Stop 은 셈을 되돌린다. **t1238 판에서 fail-closed seam 둘이 CLI 층에 더했다**(`internal/hook`은 건드리지 않는다) — `hook_stdin_failclosed.go`는 stdin을 JSON으로 파싱하지 못한 결정성 이벤트에 no-opinion 객체 대신 deny를 내고(사유는 고정 원인 + 운영자 문서 경로 `.moai/docs/hook-stdin-fail-closed.md` — 템플릿 원본은 `internal/template/templates/.moai/docs/hook-stdin-fail-closed.md`), 관측 이벤트는 기본 출력을 유지한다. 예외는 Stop 블록 캡이 없는 호스트(Codex)의 Stop 하나로, `codexadapter.HostLacksStopBlockCap`이 단일 판정처다. `hook_codex_failclosed.go`는 `--harness codex`에서 핸들러 타임아웃·오류·파싱 불가 출력을 결정성 이벤트에 한해 fail-closed deny로 답한다 |
+| `harness*` | 7 | harness route/validate/ledger/mute/delegation/clusters |
+| `init*` | 9 | 프로젝트 초기화(`init.go`) — 템플릿 배포 + settings 생성 + MCP 프로비저닝. **이 판에서 `init.go`가 `InitOptions.AfterTemplateDeploy` 훅을 쓰게 됐다**(card t1139) — `internal/core/project/initializer.go`의 `InitOptions`에 더해진 콜백으로, 배포 직후·섹션 패치(report format, Page-3 위자드 답, workflow 토글) **전에** 순수 템플릿 렌더를 다음 update의 3-way 머지 BASE로 기록한다(패치 뒤에 스냅샷을 찍으면 위자드 답이 BASE가 돼, 다음 update가 그 답을 템플릿 기본값으로 되돌려 버린다). 이전 판에서 init wizard의 Jev 답을 `moai web` settings 화면과 같은 공유 persistence seam 으로 돌리는 bridge(`init_jev_wizard.go`)가 더했다 |
+| `glm*` | 5 | GLM 백엔드 런처·잡 제어 |
+| `navigator*` | 5 | BAS 파이프라인 CLI 단계 (enrich/sync/tiers/route/fix) |
+| `graph*` / `gate*` / `web*` / `mx*` | 4 각 | 신선도·인용 게이트, 품질 게이트, 콘솔 기동, MX 태그 스캔 |
+| `session*` | 4 | 세션 레지스트리 조회·메시징 CLI. **t1524 판**: `session.go`의 `moai session list`가 `--cc-version`을 얹었다(card t1465 — 실행 중 바이너리와 설치 바이너리의 버전 대조 열; 기본 경로는 프로브가 없다) |
+| `lane*` | 1 | **t1524 판 신규.** `lane_resume.go` — 세션 비상 재개 경로의 조립기와 가드(card t1465, SPEC-SESSION-CC-VERSION-001 M4): 자식 argv 조립, 값 없는 `--resume` 거부, `carriesResumeToken` fail-closed 검출 — `cc.go`·`factory_lane_relaunch.go`가 소비한다 |
+| `integration*` | 3 | 병합 창(acquire/status/release)과 **그 선행 조건인 설정 드리프트 단정**. `integration_settings_drift.go`가 `acquire`의 precondition 이자 독립 verb `moai integration preflight`이며, 창을 잡지 않고도 같은 질문을 물을 수 있게 두 표면을 함께 둔다. 이 판에서 codemaps 부채의 상시 발화원(`integration_codemaps_card.go` — `release` 시점에 부채 문턱을 넘으면 큐에 카드를 쌓는다, 발화만 하고 고르지는 않는다)이 더했다 |
+| `jev*` | 4 | 게이트 뒤의 표시 전용 소비자 넷: `doctor_jev.go`(읽기 전용 Jev check), `init_jev_wizard.go`(init 질문), `mcp_jev.go`(게이트된 `jev_ask` MCP 도구 — `workflow.jev.enabled` 기본 꺼짐), `todo_jev_finding.go`(Consumer C admission 훅). Consumer B 앵커(당시 Hidden CLI 스킬 제안 명령을 포함)는 측정 게이트 미실행 위반으로 SPEC-JEV-GUARD-001이 철수했다 — 재편입은 측정 게이트(`SPEC-JEV-OPTIN-MEASURE-001`) 통과 이후다 |
+| `contract*` | 7 | **t1238 판에서 새로 생긴 클러스터.** `moai contract verify|show|sign`(`internal/cli/contract.go`) — 프로젝트 루트·`workflow.autonomy` 설정·constitution 레지스트리·spec.md status를 읽어 평범한 값으로 `internal/contract`(검증)와 `internal/contract/sign`(서명)에 넘기는 얇은 어댑터. 종료 코드: verify 0 유효 / 1 무효, sign 0 서명 / 1 거부, 둘 다 2 사용법·I/O 오류. **t1305 판 재측정 정정: 앞 판 행의 4는 t1237의 셋(`report`·`verdict`·`push-check`)이 반영되지 않은 값이었고, 이 판에서 7로 다시 셌다.** **t1237 판에서 셋이 더했다**(card t1237) — `contract_report.go`(카드 마감 보고서 쌍 md+json 원자 쓰기: 큐 lookup→증거 홈 해석→A1 검증→`internal/closure` 패키지의 `Build`; 거부는 exit 2로 사유를 이름짓고 아무 파일도 만들지 않는다), `contract_verdict.go`(인간 전용 판정 기록 — 에이전트 마커·비TTY·타이핑 확인 불일치·보고서 없음·git 신원 없음은 전부 기록 없이 exit 1), `contract_pushcheck.go`(훅과 같은 평가의 수동 표면 — 0 ready/inactive, 1 미준비·undetermined, 2 사용법). 셋은 `contract_report.go`의 `init()`이 파일명 순 package init 을 이용해 A1의 `contract` 트리에 붙는다(A1 파일 무변경) |
+| `goal*` | 2 | goal 조건 arm/status/clear (보드 CLI `kanban.go`는 t1485 판 창에서 칸반 모드와 함께 은퇴했다 — card t1399) |
+| `decision*` | 1 | **t1485 판 신규.** `moai decision record|read` — `internal/decision` 결정 보드의 얇은 CLI 어댑터(card t1481) |
+| `plugin*` | 3 | **t1485 판 신규.** `plugin_install.go`·`plugin_install_cmd.go`·`plugin_probe.go` — 플러그인 마켓플레이스 설치 단계·동사·프로브(card t1435) |
+| `verify_run*` | 3 | **t1485 판 신규.** `moai verify run` — 작업 트리 상태당 한 번 실행하고 TTL 안에서 통과 결과를 재사용(POSIX·Windows 프로세스 분기 포함, card t1452) |
+| `skills*` | 1 | `moai skills` 명령 트리(`internal/cli/skills.go`). 스킬 노출을 **계층별** 관심사로 두고 계층을 verb 가 아니라 플래그로 명명하며, `--codex`를 필수로 만들어 사용자 HOME 쓰기를 호출 시점 opt-in으로 고정한다 |
+| 나머지 | 80 | `launcher.go`(54KB, cc/glm 런처 — `cg`는 `root.go`의 `trivialCommands`에 은퇴 토큰으로만 남았다. t1351 판: `resolveMainSessionModel` 이 Claude 백엔드에서 모델 alias·`[1m]` 접미를 컴파일 시점 스냅숏 id 로 치환하지 않고 그대로 통과시킨다 — card t1315, SPEC-ALIAS-PASSTHROUGH-001), `clean.go`+`clean_reports_archive.go`(세 번째 스코프 — 보존창 지난 증거 디렉터리의 이동 전용 아카이브, SPEC-REPORTS-LIFECYCLE-001), `slot.go`(자원 슬롯 임대 `moai slot`), `deps.go`(합성 루트), `root.go`, `profile*` 등과 플랫폼 분기(`*_windows.go` / `*_unix.go`). t1351 판 재측정: 루트 302 − 명명 클러스터 합 234 = 68 — t1333 판 67 에 clean_reports_archive(+1)가 더해진 산수다(factory·mcp 신규 셋은 명명 클러스터 쪽 소속). 각 클러스터를 같은 find 명령으로 이 트리에서 센 값 **t1524 판 재측정 80**(68→80 — t1485 창 흡수분 12: `audit_pin.go`·관리 Codex TUI 둘·런처·마이그레이션 인접분 등; 이번 창의 세 신규는 doctor*·spec*·lane* 클러스터 쪽 소속) |
 
 ---
 
-## 검증
+## business / domain
 
-**순환 의존성**: 0개 (검증됨)  
-**패키지 수**: 49 internal 디렉터리 (323 중첩 디렉터리) + 2 pkg (`models`, `version`) + 1 cmd = 52개 경로
+| 패키지 | 비테스트 | 책임 | 주요 하위 패키지 |
+|---|---|---|---|
+| `internal/harness` | 92 | GAN 루프 harness — Socratic 인터뷰 버퍼, 계층적 수락 스코어링, 패턴 학습·티어 분류, FROZEN 가드, lineage 매니페스트, 회귀 게이트. **문서 드리프트 가드 `rosterguard`는 런타임 경로가 없어 이 줄의 책임 서술에 들어가지 않는다** — 아래 § 네거티브 스페이스가 소유한다(형제 `cellguard`는 t1246 배치에서 profile-matrix 표면 은퇴와 함께 소멸했다) **t1524 판 재측정 92**(86→92 — t1485 창의 retention_owner_*·retention_heal_* 4파일 흡수분 +4에 이번 창 +2): `retention.go`의 프루너가 잠긴 prune 상태 경로의 FIFO를 스탬프 사전 검사와 잠금 열기 양쪽에서 거부하고(`retention_open_unix.go`·`retention_open_windows.go` — card t1463), 아카이브 append를 temp+rename 원자 쓰기로 갈았다(card t1467) | `curator`, `cluster`, `proposalgen`, `router`, `routing`, `safety`, `seeds`, `throttle`, `tier`, `capture`, `delegationmap`, `v4manifest`, `harnessrun`, `rosterguard` |
+| `internal/navigator` | 53 | BAS(Blueprint-Anchored Synchronization) 파이프라인. 루트에 Go 파일이 없고 전부 단계별 하위 패키지 | `astx`(tree-sitter 16개 언어), `detect`, `sync`, `tiers`, `route`, `fix` |
+| `internal/factory` | 61 | **t1485 판: 패키지 이름이 바뀌었다** — 칸반 모드 은퇴(card t1399, SPEC-LAUNCHER-ENTRY-FLAGS-001)와 함께 이전 판들이 다른 이름으로 서술한 이 패키지가 `internal/factory`로 옮겨졌고, 보드·컬럼·정합성 조정 파일이 지워졌다. 보드 락은 상태 락(`state_lock.go` + `_unix`/`_windows`/`_wait`/`_clear_*`)이 되었고, 같은 창에서 원자 임대가 붙었다(card t1458, SPEC-FACTORY-ATOMIC-LEASE-001 — `WithLock`/`LockedBacklog` 락 범위 프리미티브, 유한 클레임, 워크트리 단계 락 `factory_step_lock.go`). 이 판의 문서 전반은 옛 경로 인용을 새 경로로 다시 적었다. 백로그 큐의 상태 레코드·역할 모델(`role.go`), SQLite 저장 엔진, 상태 락, PR 링크. **이 판에서 GTD 계층 10개 파일이 같은 `backlog.db` 위에 올라왔다** — `gtd_capture/clarify/organize/reflect/engage.go`가 다섯 단계를, `gtd_relation.go`가 항목 관계를, `gtd_operation.go`가 준비 후 실행하는 operation을, `gtd_persistence.go`가 export/import/backup/restore를, `backlog_gtd_schema.go`가 스키마 마이그레이션을 맡는다. 비테스트 소비자는 `internal/cli/gtd.go`, `internal/cli/goal.go`, `internal/graph/gtd_private.go`다. finding 출처도 이 판에서 셋이 됐다 — model-produced 답을 위한 세 번째 상수(`jev`)가 기존 둘(`mechanical` · `agent`) 옆에 더해졌는데, 재사용이 아니라 셋째인 이유는 둘이 **누가 관찰했는가**로 공간을 나누고 모델 답은 어느 쪽도 아니기 때문이다(§ `data-flow.md` L). 저장소 해석은 `internal/homestate`의 프로젝트 키 경로를 사용하고 Factory 런타임 진입은 migration admission gate를 통과한다. **여기에 워킹 트리 검사 하나가 더 있다** — `settings_drift.go`가 병합 전 tracked `.claude/settings.json`의 워킹 사본 드리프트를 단정하고 사본을 보존하며 원장에 남긴다(`--no-optional-locks` 강제 — 평범한 status가 인덱스 쓰기 락을 잡아 병합 직전 경합을 스스로 만들기 때문). **이 판에서 factory 워커 어휘가 `lane-<n>`/`agent-<n>`에서 `worker-<n>`으로 정식 개명됐다** — `factoryLaneRole` 상수 자체가 `"worker"`를 담고(레코드에 쓰이는 role 키는 하위호환을 위해 여전히 `"lane"`), 두 레거시 스펠링(`lane-<n>`·`agent-<n>`)은 `SplitFactoryLaneLabel`/`IsLegacyFactoryLabel`/`CanonicalFactoryLabel`로 계속 읽히되 이 패키지가 새로 만드는 라벨은 전부 `worker-<n>`이다. 클레임 경로도 `ClaimFactoryWorkerName`(구) 대신 `ClaimFactoryWorker`(신, `auto`/레거시 충돌 보고를 갖는 `FactoryClaim`/`FactoryLegacyCollisionError` 반환)로 갈렸다 **t1333 판에서 넷이 더했다**(57→61) — 유령 큐 스토어 검출기(`todo_stale_store.go`), 상태 enum 확장의 v1→v2 테이블 재건(`backlog_rebuild.go`), done-시점 착지 판정 기록(`landing_verdict.go` — LandingEvidence와 공존하는 별개 레코드), 세션 기록 연령 보존(`record_prune.go`) **t1374 판에서 둘이 더했다**(61→63) — 분류 모델과 분류 정렬(`classification.go` — add 경로 분류·팩토리 자동 배차의 데이터 절반, card t1332)과 owner_label 어휘 사전(`todo_owner_label.go` — canonical 라벨 사전·일회 잠금 이행, card t1349). 같은 범위에서 `backlog_store.go`가 CAS 클레임+임대(`Claim`·`RenewLease`·`ReclaimExpired`)와 픽업 관계 필터를 얹었고(card t1342·t1343 — 신규 파일 없음), `backlog_migrate.go`·`backlog_sqlite.go`가 임대 열의 스키마 이행을 받았다 **t1378 판** — `factory_slots.go`가 클레임 트랜잭션 안에서 런의 기록 선언 용량(`runs.lane_capacity`)을 읽어 자동 스캔의 권위로 삼는다 — 파생 용량 런은 살아 있는 최고 클레임+1까지 성장하고, 선언 카운트 런은 기록값이 런처 측 바운드를 이겨 가득 찬 런을 거부하며(t1294 계약), 기록 없는 런은 런처 측 바운드를 유지한다. 신규 파일 없음 (card t1378) **t1456 판에서 `factory_relaunch_cmd.go`가 더했다**(63→64, card t1345) — relaunch의 공유 명령 그래머와 공지 상태 기계(`RelaunchProviderForBackend`·`RelaunchCommand`·`RelaunchNoticeFor`) — 명령줄은 로케일 불변 프로토콜 토큰으로 보간된다(REQ-SRH-002) | — |
+| `internal/spec` | 44 | SPEC 문서 파싱/린트/감사, era 분류, per-SPEC 파일 락, atomic close 오케스트레이터. 이 판에서 close·audit의 §E.4 leg가 표지 존재가 아니라 **본문 내용**을 읽게 바뀌었다 — 플랜 페이즈가 §E.N 헤더를 자리표시자와 함께 먼저 심으므로, 한 줄 강조문뿐인 본문은 비어 있는 것으로 판정한다(판별은 철자가 아니라 구조로 한다). **이 판에서 셋이 더했다** — ① `NormalizeStatusValue`(`audit.go`)가 frontmatter `status:` 값의 앞뒤 공백과 YAML 따옴표 한 겹을 벗기는 공유 정규화 함수로 신설돼, 이 패키지와 `internal/factory`의 모든 status 판독기(`checkV3R6Drift`·`loadSpecCloseState`·`parseStatusDiffLine`·`parseStatusFromYAML`·`factory.parseFrontmatterStatus`)가 이 함수 하나로 수렴했다(fan_in 5, `@MX:ANCHOR`). ② `isValidInPlaceAmendment`(`audit.go`)가 `completed → in-progress (amendment)` 정당한 상태(`amendment_of` 선언 + 본문 Amendments 기록 + 그 기록이 이전 §E.4 `sync_commit_sha`를 인용)를 판별해, 이 조건을 만족하면 `SyncStatusDrift` finding 을 내지 않는다. ③ 신규 파일 `lint_req_bare.go`가 마크다운 마커(리스트 불릿·표 행·헤딩) 없이 줄 맨 앞에서 바로 시작하는 REQ 정의(`**REQ-X-001** — …`)를 네 번째 수집 소스(`REQSourceBare`)로 잡는다 — 기존 세 소스는 각자의 마커 문자로 서로 겹치지 않는데, 이 소스는 마커가 없는 대신 앵커를 **줄 맨 앞 칸**으로 고정해(들여쓰기·리스트 불릿 오인 방지) 같은 배타성을 지킨다. 구분자(`—`/`:`) 없이 ID(와 분류 괄호)만 담은 굵은 헤더 줄 다음 줄에 서술이 오는 **두 줄 형태**도 같은 소스로 잡는다(card t1120) — 헤더는 여는 `**`가 필수이고(줄바꿈된 산문 문단의 오인 방지), 다음 줄이 리스트·표·헤딩·인용·코드 펜스가 아닌 평문 문단일 때만 서술로 채택하며, 아니면 추측하지 않고 건너뛴다. **t1278 판: `lint_vacuous_assertion.go`가 넷째 룰로 더했다**(card t1269) — `VacuousTestAssertionRule` 은 SPEC 산출물의 공허 테스트 단언(앵커 없는 `-run` 패턴, 구분자 없는 `--- PASS:` 단언)을 경고로 잡는다(2026-09-27 이후 생성 SPEC 에만 게이트) **t1333 판에서 `lint.go`가 lifecycle 열거 멤버십 린트를 얹었다**(card t1327 — frontmatter status 값이 닫힌 집합 밖면 경고) | — |
+| `internal/mission` | 15 | **이 판에서 새로 생긴 패키지.** 자율 미션의 권한 계층 — 봉인된 계약(`contract.go`)과 미션 상태(`auto_state.go`)를 저장하고, 거버넌스·완료 receipt를 읽어(`governance_receipt.go` · `completion_receipt.go`) 결정을 정책(`policy.go`)에 대조한 뒤, 증거 적재→정책 검증→실행→readback의 감독 루프(`supervisor.go`)를 돈다. git·전달 소유자(`git_owner.go` · `delivery_owner.go`)는 결과를 상태 재판독으로 확인한다. 비테스트 import는 `internal/atomicfile`·`internal/goal`이고, 비테스트 소비자는 `internal/cli/goal.go` 하나다 | — |
+| `internal/template` | 37 | `//go:embed all:templates` + `catalog.yaml`. **t1238 판에서 `obligations.go`가 더했다** — 이중 하네스 의무 레지스트리(`Obligation` 행: 요구 동작, Claude·Codex 각각의 적용 경로 또는 `UNSUPPORTED:`/`blocked:`/`unverified:` 표식, 검증 테스트 함수, 대응 AC). **t1099 판에서 `parity_verdict.go`가 더했다**(card t1099, SPEC-DUAL-HARNESS-HOOK-PARITY-001) — 의무 레지스트리 위의 집계 판정기로, go-test 액션과 판정 기록 중 **약한 쪽**을 취한다(테스트가 통과해도 효과-검증된 판정 기록이 없으면 그 행은 PASS가 아니다). 루트 비테스트 .go 24 + agentemit·commandemit 9 + scripts 1(`gen-catalog-hashes.go`) = 34(2026-09-27 본 트리 ccd8f4f87에서 `find internal/template -name '*.go' ! -name '*_test.go' | wc -l`로 재측정). 배포기, 렌더러, settings 생성, 스킬 미러, 카탈로그 트리 해시, 모델 정책·프로파일 매트릭스. **배포 뒤편에 두 개의 기계 방출기와 두 개의 미러 보호·복구 seam이 붙어 있다**(§ 템플릿 방출·미러 계열). 임베드 트리는 602개 파일이다(t1443 판 재측정 — `moai-domain-html-report/references/artifact-contract.md` 신규, card t1427). **이 판에서 모델 정책의 `opus` alias 타깃이 `ModelIDOpus5`(`claude-opus-5`)에서 `ModelIDOpus55`(`claude-opus-5-5`, Claude Code v2.1.280+ 필요)로 갈렸다** — 구 id 는 `ModelDeprecatedCanonicalIDs`에 얹혀 여전히 `opus` alias 로 역정규화된다. **미러 보호 seam이 셋째를 얻었다** — `skill_mirror.go`의 `releaseOwnMirrorLink`가 배포기가 `.agents/skills/<skill>/` 아래로 실제 파일을 쓰기 직전, 이전 배포가 같은 경로에 남긴 자기 미러 심볼릭 링크(대상이 `MirrorLinkTarget(skill)`과 정확히 일치하는 것만)를 지운다 — 그러지 않으면 managed clean 이 링크 타깃을 지운 뒤 `MkdirAll`이 "file exists"로 실패한다. **t1305 판에서 셋이 더하고 하나가 사라졌다**(card t1246) — `retired_model_keys.go`·`retained_agents.go`·`apply_harness.go`가 더해지고(은퇴 모델 키 정리 표·유지 에이전트 레지스트리·하네스 적용) profile-matrix 파일은 지워졌다(34→36) **t1443 판에서 `profile_matrix.go`가 돌아왔다**(36→37 — 이 트리 find 직접 측정; t1305 판이 지운 것을 card t1391·t1411이 등급×프로파일 매트릭스로 되살림 — `AgentGroup`·`DefaultProfileMatrix`·`ResolveAgentModelEffort`; `glm_effort_overlay.go`의 GLM 코딩 max 오버라이드 판정기도 같은 배치 몫) **t1524 판 재측정 48**(37→48 — t1485 창 흡수분 +11: `pluginemit`·`agent_overrides_consume.go`·deployer_mode 등; 이번 창은 `model_policy.go`의 fable alias가 claude-fable-5-1을 겨냥한 수정만 — 파일 수를 움직이지 않았다) | `agentemit`, `commandemit`, `scripts` |
+| `internal/core` | 23 | 응집 없는 우산 패키지 (§ `overview.md` 참조). **t1351 판**: `core/git/checkout.go`가 `ResolveHeadBranch`를 얹었다(`git branch --show-current` 래퍼 — detached HEAD 는 ("", nil), hook 쪽 보호 브랜치 커밋 거부가 소비한다. GIT_DIR 환경 격리는 같은 파일의 `runGitRevParse` 과 같은 `gitenv.Env()` 경로) | `git`, `project`, `quality` |
+| `internal/mx` | 16 | `@MX:` 코드 주석 태그 스캐너·리졸버 (16개 언어) | — |
+| `internal/graph` | 16 | 코드베이스 엣지 리스트를 git-diffable JSONL로 영속화하고 fan-in·최단경로·인용 검증·아키텍처 리포트를 생성. `gtd_private.go`는 GTD 항목의 비공개 그래프 투영을 만들고 권한을 검사한다(`internal/factory` import). **freshness 게이트도 여기 있다** — codemaps 층은 값을 재기 전에 비교 가능성부터 판정한다(§ `data-flow.md` I) | `symbol` |
+| `internal/constitution` | 18 | 규칙 트리의 FROZEN/EVOLVABLE 존 모델과 개정 절차 | — |
+| `internal/migration` | 8 | 버전 간 마이그레이션 스텝 레지스트리 | `migrations` |
+| `internal/feedback` | 7 | 피드백 리포트 스크러빙(민감정보 제거)과 재시도 큐 | — |
+| `internal/goal` | 6 | goal 엔진 — 세션별 조건 선언형 완료 조건 | — |
+| `internal/loop` | 6 | Ralph 피드백 루프 상태 기계 | — |
+| `internal/decision` | 3 | **t1485 판 신규**(card t1481, SPEC-FACTORY-DECISION-AUTO-001). 결정 보드 — 프로젝트마다 HOME 상태 디렉터리 아래 한 줄 한 레코드의 추가 전용 저장소(`board.go`, 크로스 프로세스 락 `lock_unix.go`·`lock_windows.go`). 리더가 판정을 기록하고 레인은 채팅 회신을 기다리는 대신 보드를 읽는다. scope·kind 어휘는 닫혀 있어 밖의 값은 거부된다. 내부 import는 `internal/homestate` 하나, 소비자는 `internal/cli`(`moai decision record|read`) |
+| `internal/auditverdict` | 1 | **t1485 판 신규**(card t1481). 감사 판정 파일의 단일 admission 술어(`verdict.go`) — 계약 규칙·킥오프 평가기·카드 전이 가드가 모두 여기서 판정하므로 한 자리에서 통과하고 다른 자리에서 떨어지는 판정이 생기지 않는다. `PhasePlan`/`PhaseSync` 두 규칙 집합. **t1524 판**: `verdict.go`가 상한 소비가 쓰는 필드·파서·admit과 required-backend 거부로 확장됐다(card t1500 — `internal/runtime/audit_ceiling.go`와 `moai spec ceiling`이 소비); 소비자는 `internal/contract`·`internal/contract/kickoff`·`internal/homestate`(`card_audit_kickoff.go`)에 `internal/cli`·`internal/runtime`이 더해졌다(최상위 fan-in 2→4) |
+| `internal/verify` | 9 | **t1485 판: `run.go`가 더했다**(card t1452, SPEC-VERIFY-RUN-REUSE-001) — `moai verify run`의 판정 함수(작업 트리 상태·바인딩한 환경 변수·도구 버전으로 키를 만들고 TTL 안의 통과 결과를 재사용). 공유 진단 스냅샷 계약. **t1278 판에서 `localpass.go`가 더했다** — `HasLocalPass(projectRoot, head)`: 해당 head 의 스냅샷 키 아래 exit-0 로컬 통과가 있었는지 읽는 술어. `internal/escalation` ciLimb 의 모순 판정(CI 실패 vs 로컬 통과)이 소비한다. **t1238 판에서 `receipt.go`가 더했다** — 훅 타임아웃 안에 끝나지 않아 훅 밖에서 돈 검사가 남기는 `Receipt`. 훅은 검사를 다시 돌리지 않고 다섯 결속 필드(Head·TreeDigest·ConfigDigest·Command·ToolVersion)가 모두 현재 상태와 같을 때만 기록된 결과를 받아들인다. 별도 저장소 없이 기존 스냅샷 저장소에 `CheckEntry`로 들어간다 | — |
+| **`internal/contract`** | **21** | **t1238 판에서 새로 생겼다.** SPEC 자율 계약(`.moai/specs/<SPEC-ID>/contract.yaml`, schema_version 1)의 **순수 검증 코어**. 엄격 YAML 디코드(`Decode`), 서명을 뺀 정규 본문 digest(`Digest`), 에러를 내지 않는 평가 `Verify(Inputs) Report`(닫힌 reason code 집합), AC 카운터(`CountAC` — awk 카운터의 Go 이식)·acceptance 해시, 소유권 glob, 서명 seal, kickoff receipt 검증을 담는다. 표준 라이브러리와 `gopkg.in/yaml.v3`만 import 하며 `os/exec`·`net`을 쓰지 않고 `internal/config`·`internal/constitution`·`internal/spec`·`internal/hook`도 import 하지 않는다 — 정책 값·레지스트리 규칙 ID·Frozen 파일은 호출자가 `Inputs`로 넘긴다. 그래서 훅에서 불러도 안전하다. 부수효과는 전부 `internal/contract/sign`(TTY 확인·확인 입력 읽기·git 서브프로세스·`internal/atomicfile` 원자 쓰기, `Sign(Options, Seams)`)이 지며 코어는 sign을 import 하지 않는다. **t1278 판: `projection_mission.go`가 더했다**(card t1245, REQ-AP-008) — 서명 유효 계약을 `mission.MissionContract` 로 옮기는 단방향 투영 `ProjectToMission`(명시적 `DeliberatelyNotProjected` 목록, 끝이 `/**` 인 쓰기 glob 의 접두 번역, 내부 와일드카드·매핑 안 된 필드는 fail-closed). 이 판에서 계약 코어가 처음으로 `internal/mission` 을 import 한다. `internal/contract/sign/signtest`는 테스트 전용 픽스처 빌더다. **t1237 판: 파일 수 21**(t1245 `projection_mission.go` 흡수분 — 이 판 트리에서 센 값)이고 비테스트 소비자가 늘었다 — `internal/cli/contract.go` 하나였는데, `internal/closure`(마감 보고서·push 평가가 `Verify`·`Decode`·`CountAC`·`MatchGlob`·`KickoffReceipt` 를 재구현 없이 소비)와 `internal/cli/contract_report.go`·`internal/cli/contract_verdict.go`·`internal/cli/contract_pushcheck.go`, `internal/hook/closure_push.go`(`verifyAt` 경유)까지 계열 셋이 됐다. 설정 쪽 짝은 `internal/config/autonomy_contract.go` — `workflow.autonomy.*`의 단일 읽기 지점이며(`MOAI_AUTONOMY_TIER`를 읽는 `autonomy.go`와는 무관), `jev` 단독 decider는 설정 오류로 보고한다 | `sign`, `sign/signtest` |
+| **`internal/escalation`** | **16** | **t1286 판에서 `roots.go`가 더했다**(card t1282) — 에스컬레이션 루트(클래스→기록 대상)의 선언 표면. **t1274 판에서 새로 생겼다.** (card t1235, SPEC-AUTONOMY-ESCALATION-001) **계약 모드 이탈 감지기** — 서명된 계약이 armed 된 실행이 계약을 벗어날 때마다 큐 옆에 에스컬레이션 기록을 남긴다. 도구 호출을 거부·변경·질문하지 않는다(관측 전용). `Active`(REQ-AE-001)가 모든 경로의 첫 검사 — contract 모드가 아니면 읽지도 쓰지도 않고 훅 출력은 바이트 동일. 파이프라인: 훅 이벤트 → 변조 검사(해시 체인 JSONL 카드 로그의 `prev` SHA-256 연쇄·digest·증거) → 계약 해석(워크트리 이름→카드 id, claimant 계약, in-process verify) → armed 클래스 1-6(경로·명령 불변식·신규 API 등) + 상시 운영 클래스 7-9(되돌릴 수 없는 행위·감사 상한·같은 진단 반복). arming 의 단일 사실원은 카드 로그이고 상태 파일은 캐시다. 기록은 YAML 머리말 + 관측/선택지/미관측 본문이며 재발생은 새 ordinal 파일(해결된 기록을 덮어쓰지 않는다). 명령 텍스트는 기록·해시 전에 `MaskCommand` 로 자격증을 마스킹한다. 저장: 기록 `<worktree>/.moai/reports/<card>/escalation/<class>-<fingerprint>.md`, 스토어 `$MOAI_HOME/db/<project-key>/contract/escalation/<card>.{log.jsonl,json,lock}`. 카드별 3초 상한 flock. 비테스트 소비자는 `internal/hook/escalation_observe.go`와(t1237 판부터) `internal/closure` 둘이고 — closure 는 `ParseRecord`·`RecordDir`·`NeedsDecision` 을 읽는다. 온디맨드 `Checkpoint`(`newapi.go`)는 CLI 동사가 아직 없고(운영자 결정 대기) 비교 함수 `newAPIAdditions` 도 미export 라서, 같은 이유로 closure 의 New APIs 섹션은 생산 경로에서 「not observed」 로 렌더한다(R2 처분 — 비교를 export 하는 후속 카드가 빚져 있다). **t1278 판: 클래스 5의 CI limb 가 상시 미관측 뿌리에서 실제 판정으로 바뀌었다**(card t1268) — `operational.go` 의 `ciLimb` 가 체크포인트 head 의 `internal/civerdict` 기록을 `internal/verify` 의 `HasLocalPass` 와 대조한다(CI 실패 vs 로컬 통과 = 모순 = 클래스 5). 완료 못한 limb(기록 없음·타 head 판정·로컬 통과 부재·읽기 불가)는 옛 무조건 상수 대신 `not_observed` 에 이름 붙여 나열되고, 성공·중립 판정은 완료된 관측이다 | `escalationtest`(테스트 전용 — git·서명 seam 을 스텁해 서브프로세스 없이 카드 워크트리 픽스처를 짓는 빌더. 프로덕션 import 없음) |
+| **`internal/closure`** | **13** | **이 판에서 새로 생겼다.** (card t1237, SPEC-AUTONOMY-CLOSURE-001 — 계약 자율 에픽의 마지막 단계 A4) 카드 마감의 증거 계층. 마감 보고서는 단일 조립 지점 `Build`(`@MX:ANCHOR` — 12 섹션을 REQ-CLOSURE-002 고정 순서로 채운다; Markdown 렌더러는 JSON 구조체만 읽어 두 형태가 어긋날 수 없고 `generated_at` 하나만 제외하면 결정적이라 canonical 해시는 generated-at 마스크 SHA-256 — 바이트 동일 재빌드 위에서도 인간 판정이 current 로 유지된다)에서 조립되고 `atomicfile` 쌍 원자 쓰기로 내려간다. 빠진 입력은 통과가 아니라 「not observed」/「not recorded」 로 렌더되고 닫힌 15토큰 not-performed 목록에 이름이 남는다. 준비도 판정기는 닫힌 9-코드 집합(`EvaluateReadiness`)과 세컨드 리뷰 5-필터 선정 + 통화 룰(`SelectSecondReview` — 심사 커밋 뒤 지배 경로를 고친 비머지 커밋이 있으면 stale, git 실패는 침묵 current 가 아니라 undetermined)이다. push 평가(`EvaluatePush`)는 REQ-CLOSURE-015 own-card 후보성을 심사대에 올린다 — 푸시 범위 커밋이 자기 SPEC 디렉터리를 고치거나, 원격에서 종단이 아닌 계약의 지배 경로가 범위에 걸릴 때만 후보다. 기록 판독기(`LoadSecondReviews`·`LoadVerdictRecords`)는 schema_version 미지·불량 줄을 건너뛰되 목록화해 증거가 조용히 사라지지 않게 한다. 증거 홈 해석(`ResolveEvidenceHome`)은 서명된 카드 이름의 링크드 워크트리(symlink 정규화), 없으면 primary — 워크트리 목록을 못 읽으면 침묵 폴백이 아니라 오류(undetermined)다. 모든 상태는 파일과 git에서 끌어오고 에이전트가 준 플래그는 입력이 아니다(spec.md §C.5). git 서브프로세스는 전부 하위 `gitio`(기본 5초 상한 — 타임아웃은 오류) 뒤에 있다. 비테스트 소비자는 `internal/cli/contract_report.go`·`internal/cli/contract_verdict.go`·`internal/cli/contract_pushcheck.go`·`internal/cli/mcp_audit_multi_record.go`·`internal/hook/closure_push.go` | `gitio`, `closuretest`(테스트 전용 — acceptance.md §A 픽스처 빌더를 closure·cli·hook 스위트가 공유. 프로덕션 import 없음) |
+| **`internal/civerdict`** | **1** | **t1278 판에서 새로 생겼다.**(card t1268, SPEC-CI-VERDICT-PRODUCER-001) head SHA별 원격 CI 판정을 온디스크 증거로 남기는 순수 저장 패키지. 다섯 필드 레코드(`head_sha`·`conclusion`(success/failure/neutral)·`run_id`·`observed_at` RFC 3339·`producer`)를 설계하고, 생산자 트리 `.moai/state/ci-verdicts/<head>.json` 에 임시 파일+이름변경으로 원자 저장한다. head 는 경로 조작 방지겸 전 소문자 40-hex 로 고정(파일명 줄기). 증거만 쓰고 다른 아무것도 하지 않는다(REQ-CV-005 — 감지기·체크포인트·훅 호출 없음). 없거나 head 가 다른 기록의 `Load` 는 `(nil, nil)` — 부재는 에러가 아니고, `LoadAll` 은 읽기 불가 파일을 건너뛰고 이름으로 보고한다. 내부 import 는 의도적으로 0. 비테스트 소비자는 `internal/cli/ci_verdict.go`(`moai ci-verdict`)와 `internal/escalation`(ciLimb) 둘 | — |
+| **`internal/factorylane`** | **5** | **이 판에서 새로 생겼다.**(card t1338, SPEC-FACTORY-LANE-AUTONOMY-001) 팩토리 레인 자율 표면의 순수 코어. `probe.go`의 `EvaluateAvailability`는 sessionmsg 레지스트리를 읽기 전용으로 소비해 채널 가용성을 판정한다(지명 리더의 heartbeat 연령이 설정 상한을 넘으면 불가, 활성 무응답 관측이 모든 판정에 우선 — 판정은 보고지 오류가 아니다). `store.go`는 지시 요청 관측을 관찰 순서 파일로, `transitions.go`는 fallback 전이를 사건당 한 파일 장부에 남긴다(`DeclareFallback`은 한 전환 한 사건을 보장하고, restore은 활성을 지우지 않는다; `TransitionCountsByLane`가 레인별 카운트 질의를 답한다). `pickup.go`는 `Classifier` 선언적 최소 소비 인터페이스(`NormalizeClassification`이 유일한 허용점 — 부재·미지 메타데이터는 fallback 단일 디스패치로 허용, 오류 아님)와 `PlanPickup` 규칙(sequential 그룹 단일 보유는 기존 임대 기록 위에서 판정 — 새 잠금 없음, parallel은 동시 픽업)을 둔다. `merge.go`는 lane 직접 병합의 조건 삼중(`EvaluateMergeTriple` — sync-audit 폐쇄·`git merge-tree` 드라이런 충돌 없음·트리 동일, GitRunner seam 뒤 전부 읽기 전용)과 `WindowCoversMerge`(기존 통합 창의 검사된 속성)를 기록한다 — 이 패키지는 병합을 수행하지 않는다 | — |
+| `internal/merge` | 6 | 템플릿 3-way 머지 엔진 | — |
+| `internal/permission` | 6 | 8-tier 권한 스택 (`mvdan.cc/sh`로 셸 명령 파싱) | — |
+| `internal/evolution` | 5 | Reflective Learning write phase | — |
+| `internal/epic` | 5 | 디스크 기반 epic 진행률 산출 | — |
+| `internal/codexwiring` | 14 | Codex 측 배선 파일 생성·갱신. **t1286 판에서 `stop_inventory.go`가 더했다**(card t1099) — 두 템플릿 렌더 위에서 Claude Stop 체인 멤버 목록을 재는 인벤토리. `stop_budget.go`는 같은 카드에서 멤버별 예산을 재조정·확정했다(측정이 아니라 선언). **t1238 판에서 `stop_budget.go`가 더했다** — Codex에서는 Claude Stop 멤버 여덟이 하나의 Stop 핸들러 안에서 차례로 돌아 그 타임아웃을 나누므로, 멤버별 내부 예산과 배치(훅 안 / 훅 밖 + receipt)를 선언한다. 수치는 전부 측정이 아닌 **선언**이다. **이 판에서 5→11로 늘며 SPEC-DUAL-HARNESS-RECOVERY-001의 저널드 쓰기·소유권 인식 unwire를 얻었다.** `write.go`가 한 배선 변경의 중단 지점 4개(P1 저널됨→P2 스테이징됨→P3 재확인됨→완료)를 정의하고, `journal.go`(`.moai/state/codex-wiring-journal.json`)가 임시 파일이 생기기 **전에** 모든 변경을 append해 중단된 변경이 저널만으로 항상 복구 가능하게 한다. `lock.go`(`.moai/state/codex-wiring.lock`)는 이 패키지 전용 락으로, `moai update` 락과 순서가 고정돼(wiring 락 다음에 update 락은 가능해도 역순은 쓰지 않음) 교착을 배제한다. `recover.go`가 중단된 변경을 4개 `RecoveryClass`(completed/not-applied/diverged/orphan-temp) 중 하나로 분류한다. `ownership.go`가 파트 키(`description`·`mcp_servers.moai`·`tui`·`tui.status_line`)별로 MoAI가 실제로 쓴 부분만 추적한다. `unwire.go`가 `moai tool disable codex`의 엔진 — 소유가 증명되고 그 이후 안 바뀐 부분만 제거하고, 증명 못 하는 부분은 사유와 함께 그대로 남긴다. **t1295 판에서 `seed.go`가 더했다**(card t1273, REQ-HN-005) — `SeedHooksIfMissing`: 부재하는 워크트리 `.codex/hooks.json`을 `RenderHooks` 산출물로 시드하는 멱등·fail-open 진입점(존재 파일은 바이트 불변, stat 오류는 진단으로 내보내고 시딩은 건너뛴다). LIVE leg2 실측: codex-cli 0.157.0은 **프로젝트 trust 전에는 project-local hooks를 끈다** — 시딩은 신뢰된 프로젝트에서 유효하다 | — |
+| `internal/guardliveness` | 4 | 가드 발화 생존성 표면 | — |
+| `internal/workflow` | 4 | worktree 전반 워크플로 오케스트레이션 | — |
+| `internal/foundation` | 4 | TRUST 등 방법론 타입 정의 | `trust`(빈 디렉터리) |
+| `internal/profile` | 3 | 사용자 프로파일·선호 동기화. **t1351 판**: `sync.go`의 user 이름·언어 설정 쓰기가 `SetSection`+`Save()` 재마샬에서 **행 치환 스플라이스**로 갈렸다(SPEC-WEB-SAVE-LOSSLESS-001 — `internal/settings/yamlpatch`의 `KeyEdit` 로 바뀐 행만 다시 쓰고 user.yaml·language.yaml 의 나머지 바이트는 그대로 둔다. settings 가 profile 을 import 하는 사이클 회피로 yamlpatch 를 직접 부른다) | — |
+| `internal/ciwatch` | 3 | CI watch 루프 분류기 | — |
+| `internal/jevmeasure` | 2 | **이 판에서 새로 생긴 패키지.** Jev 소비자를 위한 측정 장치 — 한국어 원문·영역 번역 두 언어 팔(arm)로 라벨 붙은 표본을 돌리고, 상수 응답 baseline과의 대조로 소비자가 존재해도 되는지를 판정하는 보고서를 낸다. 이 패키지는 접점에 연락하지 않는다 — `Answerer`를 주입받고, 살아 있는 구현은 `internal/jev` 클라이언트다. 비테스트 소비자 0 — 아래 §네거티브 스페이스 | — |
+| `internal/ralph` | 1 | Ralph 결정 엔진 (`engine.go` 단일 파일) | — |
 
-> 실측 명령: `ls -d internal/*/ | wc -l` → 49, `find internal -type d -mindepth 2 | wc -l` → 323. 종전 표기(46 / 318)는 갱신이 밀린 값이며, 세 패키지 차이 중 `internal/factory` 하나만 SPEC-FACTORY-MODE-001이 추가한 것이고 나머지 둘은 그 이전부터 있었다. `structure.md` 71행의 같은 수치도 함께 갱신했다.
+### 템플릿 방출·미러 계열 — 앵커 이후 자란 하위 계층
+
+`internal/template`의 책임 칸 한 줄로는 담기지 않는 네 단위가 하위에 있습니다. 넷 다
+"배포기·렌더러"와 다른 축의 일을 합니다.
+
+| 단위 | 비테스트 | 책임 |
+|---|---|---|
+| `internal/template/agentemit` | 6 | 보존된 에이전트 정의(`.md`)와 임베드 매니페스트(`agents-codex.yaml`)의 쌍을 **중립 원본**으로 삼아 `.codex/agents/` TOML을 결정적으로 이중 발행한다. `.md`의 발행은 항등(identity)이라 재렌더·재정렬이 없고, Codex 쪽은 (`.md` × 매니페스트)의 결정적 변환이다. **fail-closed** — 알 수 없는 tool 토큰·미매핑 effort·유효하지 않은 sandbox 값이면 어느 파일의 어느 토큰인지 지목하며 실패하고 부분 산출물을 남기지 않는다(codex-cli가 알 수 없는 설정을 조용히 무시하므로 생성기 쪽이 자기 출력을 검증해야 한다). **이 판에서 `permission.go`가 더했다** — 역할 권한 계약: 발행되는 모든 Codex 역할이 고정된 축 집합 위의 계약을 진다. 역할의 Claude 도구 목록과 contract sandbox에서 파생된 요구 제약은 매니페스트 축 표의 정확히 한 행에 매핑돼야 하고, 그 행은 `enforced`(이 생성기가 쓰는 Codex 필드)이거나 `UNSUPPORTED`(호스트가 표현 못 함)여야 한다 — 매핑되는 행이 없는 요구 제약은 발행을 실패시켜, 제약이 조용히 빠지지 않고 `UNSUPPORTED` 행이 통과로 잘못 세어지지 않는다 |
+| `internal/template/commandemit` | 3 | `/moai` 명령 소스를 codex 스킬 아티팩트(`.agents/skills/moai-<command>/SKILL.md`)로 발행한다. 명령 소스는 읽기 전용으로 소비하며 **본문은 바이트 동일 verbatim** — 본문에 남은 Claude 전용 도구 참조는 여기서 고치지 않고 경계 플래그로만 기록한다(그 수리는 명령 본문 계층 소관). fail-closed: 프론트매터 구분자 누락, 설명 누락, 무조건 분기 없는 로케일 조건부 설명, 기존 정본 스킬 디렉터리와 충돌하는 파생 이름 |
+| `internal/template/published_skills.go` | (파일) | 위 발행 스킬 경로에 대한 **배포측 보호**. 발행 스킬은 보통의 템플릿 파일처럼 배포되지만 경로 네임스페이스가 스킬 미러가 쓰는 `.agents/skills` 루트와 겹치고, update 모드(forceUpdate)는 다른 곳에서 provenance 검사를 건너뛴다. 이 검사가 그 경로들에 한해 init 모드의 provenance 동작을 살려 사용자 소유 파일이 update를 살아남게 하고, 건너뜀을 침묵이 아니라 보고로 남긴다 |
+| `internal/template/skill_mirror_repair.go` | (파일) | `.agents/skills`의 두 생산자(심볼릭 링크 미러, 발행 SKILL.md) 결과를 **Deploy 없이** 복구하는 패키지 수준 패스. DeployerOption이 아닌 형상을 의도적으로 골랐다 — 옵션이었다면 배포 경로에서도 살아나 수리 기능의 부작용으로 배포 동작이 바뀐다. 항목별 의미는 미러 생산자의 것을 재사용하므로 생산자와 갈라질 수 없다 |
+
+| `internal/template/pluginemit` | 5 | **t1485 판 신규**(card t1435, SPEC-PLUGIN-MARKETPLACE-001). 임베드 템플릿 트리와 버전 SSOT(`pkg/version`)를 읽어 Claude·Codex 마켓플레이스 매니페스트, 플러그인 매니페스트, 코어 티어 플러그인 페이로드(스킬·평탄화한 명령·`.mcp.json` 하나)를 결정적으로 생성한다(`pluginemit.go`·`manifest.go`·`payload.go`·`mcp.go`). 버전은 SSOT 값에서 `v`만 벗기고 MCP 항목은 템플릿 `.mcp.json`에서 복사하므로 원천과 갈라질 수 없다. `drift.go`는 커밋된 산출물과 재생성 결과를 비교하는 드리프트 게이트다 |
+
+세 방출기(위 두 개와 `pluginemit`)는 **비테스트 코드에서 아무도 import 하지 않습니다**(`internal/template/agentemit`,
+`internal/template/commandemit` 둘 다 패키지 단위 fan-in 0). 소비자는 빌드 타깃
+(`make agents-emit` / `make commands-emit`)과 골든 테스트이며, 이는 고아가 아니라
+**빌드타임 도구**라는 뜻입니다 — 아래 §네거티브 스페이스의 "호출자 0"과 구별해야 합니다.
+
+### codex 미러 탭 — `internal/web`의 편집하지 않는 표면
+
+`internal/web/codexmirror.go`는 codex 탭의 **행 모델**이며, Audit·MCP 탭에 사는 codex 설정의
+**읽기 전용 미러**입니다. 어떤 필드도 옮기지 않습니다 — 미러된 필드는 각자의 소유 탭에서
+그대로 선언·렌더·편집되고, 이 파일은 미러가 무엇을 보여주고 어디를 가리키는지만 정합니다.
+행은 `settings.AllFields()`와 공유 MCP 도구 카탈로그에 대한 **술어로 파생**되며 손으로
+열거하지 않습니다(손 열거는 codex 필드가 하나 늘어나는 순간 조용히 어긋납니다).
+
+렌더 쪽 패널은 `a-h/templ`이 짝 `.templ` 소스에서 생성한 산물입니다.
+이 패널은 `name` 속성을 가진 폼 요소를 하나도 내지 않으며, 그 금지는 숨은 bool 동반자
+`<name>__present`에도 그대로 걸립니다 — 모든 패널이 한 폼 안에 살고 탭은 표시 전환일 뿐이라
+비활성 패널도 함께 제출되기 때문입니다.
 
 ---
 
-**생성**: `/moai codemaps --force`로 자동 생성
+## data / persistence
+
+| 패키지 | 비테스트 | 책임 | 주요 하위 패키지 |
+|---|---|---|---|
+| `internal/config` | 64 | 프로젝트 설정의 SSOT. 섹션별 YAML 로딩·캐시·검증(`go-playground/validator`), `envkeys.go`의 환경변수 상수 카탈로그, 기본값. **t1286 판**: `workflow.served_model_gate.*` 구조가 더했다(card t1282, `types.go`의 `ServedModelGateConfig` — SubagentStop 판정 채택-거부 층의 opt-in 게이트. `cache.go`·`defaults.go`가 그 배선을 받았다). **t1274 판에서 `workflow.autonomy.escalation.*` 설정 구조(`AutonomyEscalationConfig`, `types.go`)가 더해졌다** — `internal/escalation` 감지기가 읽는 예산·감지 클래스 토글의 스키마(card t1235). 재측정 결과 60(전 판 표 59). **트리 최대 fan-in (27)** 이며 `types.go`(82KB)·`defaults.go`(59KB)가 트리에서 가장 큰 손 저작 파일 축에 든다. **이 판에서 `loader_identity.go`가 더했다**(card t1139) — `project.name`/`user.name` 단일 키 판독기, `LoadGitMode`를 본떴다. 소비자는 update 렌더 경로다: update가 Loader 생명주기 밖에서 템플릿 컨텍스트를 만들고, template-sync 경로에서 managed cleanup이 `.moai/config`를 지우기 전에 값을 읽어야 하기 때문이다. 이전 판에서 두 판정 파일이 더해졌다 — `harness.go`(`llm.harness` 허용 값의 닫힌 집합, 기본 claude)와 `loader_workflow_disposition.go`(git-strategy workflow 허용 4값, 3방향 disposition, flow별 통합 대상 표). workflow에 `jev.enabled`가 더해지며 설정 캐시 스키마 버전도 5로 올랐다. **t1278 판 변경**: `envkeys.go`에 factory 역할 마커 쌍(`EnvFactoryRole`·`FactoryRoleWorker` — 훅의 계약 서명 가드가 소비)이 더했고, `defaults.go`에 Stop 파싱 실패 상한 상수 둘(`DefaultStopParseCapLimit` 8 · `DefaultStopParseCapExpiry` 60분, card t1271 — 설정 키가 아닌 상수로만 존재)이 들어왔으며, codex 핸드오프 릴로케이션 타임아웃 상수는 t1242 와 함께 사라졌다. **t1305 판**: `model_routing.go`·`profile.go`가 지워졌다(card t1246 — 에이전트 모델 라우팅·프로파일의 설정 절반 소멸. 커밋 신원 가드의 `commit_identity_guard` 설정 키는 card t1289가 기존 `types.go`·`defaults.go`에 더했다 — 신규 파일 없음) **t1351 판**: `envkeys.go`에 `EnvFactoryClearPolicy`와 정책 값 셋(`FactoryClearPolicyEach`·`WhenFull`·`Relaunch` — 기본은 Each, Codex MCP env_vars 허용 목록에는 의도적으로 안 들어간다)이, `defaults.go`에는 셋이 더했다(`DefaultReportsArchiveRetentionDays` 90·`DefaultReportsArchiveWarnBytes` 1GiB — 보존창이 유일한 정책 축, `DenyCommitsOn` **빈 목록** + `LeadPushThreshold: 0` — 템플릿 중립 기본값으로 main 커밋 금지·배치 push 는 프로젝트가 선언할 때만 켜진다), `manager.go`에는 섹션별 dirty 게이트의 6 섹션 확장이 들어왔다(user·language·quality·llm — git-strategy 선례의 뒷받침. `Save()` 는 SetSection 으로 변형된 섹션 파일만 다시 쓴다 — SPEC-WEB-SAVE-LOSSLESS-001, GitHub #1731). `testdata/shipped_key_inventory.yaml`이 출하 키 목록 고정의 픽스처로 더했다 **t1374 판**(card t1368, SPEC-MODEL-MATRIX-UPDATE-001 — 신규 파일 없음): `audit_models.go`가 감사 백엔드 핀의 기본을 claude `{claude-opus-5-5, medium}`·codex `{gpt-6.1-sol, high}`로 옮겼다(호출자 명시 모델이 여전히 핀보다 우위이고, 빈 핀 중립 REQ-AMP-005는 운영자 지시 2026-09-30으로 대체됐다). `types.go`의 GLM 구형 별칭 필드(`Opus`/`Sonnet`/`Haiku`)는 타입 필드째 삭제됐다(DR-2 — 낡은 `llm.yaml` 키는 비엄격 섹션 로더가 조용히 무시하는 것이 받아들여진 절반이다), `defaults.go`·`closed_sets.go`가 그 기본값·어휘 집합을 따라갔다 **t1443 판에서 셋이 더했다**(58→61 — 이 트리 find 직접 측정) — `agent_tiers.go`(에이전트 3층 등급 — `ValidAgentTiers`·`AgentTierPair`·감사 표면 클래스 판정 `IsAuditSurfaceClass` · card t1391), `profile.go`(닫힌 프로파일 집합 high/medium/low와 `max`→`high` 구형 별칭 — `NormalizeProfile`·`EffectiveProfile` · card t1411), `loader_quota_gate.go`(`workflow.quota_gate.*` 판독 — 모든 실패에서 꺼짐 기본 · card t1347); `cache.go`는 설정 캐시 스키마 v11로, `envkeys.go`에는 `EnvMoaiFactoryManaged`가 더해졌다(둘 다 card t1347·t1375 몫) **t1456 판에서 `audit_plan.go`가 더했다**(61→62, card t1423) — 감사 백엔드 플랜의 순수 리졸버(`ResolveAuditPlan` — 인자 > config 게이트 > `audit.model` 토큰 셀 > 분산 기본의 네 단 선위, 소스 라벨 동행, 미지 모델·집합 밖 게이트는 하드 에러; `AuditModelMulti` 소비화); `loader_quota_gate.go`에 `LoadQuotaScanBound`(`workflow.quota_gate.max_scan_dirs` 1~1024)와 `types.go`·`defaults.go`의 `MaxScanDirs`(card t1442), `cache.go`는 캐시 스키마 v12로, `schema_sections.go`·`closed_sets.go`는 소비된 토큰 문언을 받았다(card t1423) **t1524 판 재측정 64**(62→64 — t1485 창의 `deploy_mode.go`·`llm_strict_validate.go` 흡수분). 이번 창의 설정 변화는 신규 파일 없이 키 확장이다 — `workflow.hygiene` 6키(`types.go`·`defaults.go` — mode 기본 report · card t1518)와 workflow.audit 상한 키(`defaults.go`·`loader.go`·`types.go` · card t1500), merge_method 수동 기본 merge(`defaults.go` · card t1504) | `atomicfile`, `toolpolicy` |
+| `internal/session` | 33 | 세션 레지스트리·체크포인트·페이즈·앵커·태스크 원장. PID 조회를 OS별 파일로 분기. **t1278 판에서 `session_pid_view.go`가 더했다**(card t1271) — PID/조상 사슬 해석을 주입 가능한 `ProcessView`(구현체 `LiveProcessView`)로 추출한 테스트 용접(seam). Stop 파싱 실패 상한의 셈 키(세션 id 또는 해석된 소유자 PID)가 이 판에서 왔다. **이 판에서 `anchor_lock_holder.go`가 더했다** — 잠금이 있는지뿐 아니라 **누가** 그 잠금을 쥐고 있는지 알아야 하는 호출자를 위한 읽기 전용 accessor 모음(자기 락을 쓰는 런처가 자기 pid를 알아보거나, 락 보유자가 확실히 죽었을 때만 대체하려는 경우). 아무것도 새로 판정하지 않고 `AnchorDecision`이 쓰는 것과 같은 `parseLockPID`/`lockAnchorVerdict` 쌍에 위임해, `AnchorDecision`의 세 호출자와 이 런처가 잠금의 의미에서 갈릴 수 없게 한다. `internal/cli/worktree/remove.go`가 이를 소비 — 등록된 앵커 세션이 없어도 git worktree lock 자체가 앵커라면(`moai codex -w` 세션은 그 외 아무 데도 등록하지 않는다) git 자신의 에러 대신 앵커 출처를 이름 붙여 거절한다. 이전 판에서 레지스트리 경로 해석이 앵커를 얻었다 — `RegistryPathFor`가 `internal/stateanchor` seam으로 리포지터리의 primary checkout을 가리켜 워크트리마다 레지스트리가 갈라지지 않는다(`DefaultRegistryPath`는 프로젝트 상대라, 전에는 워크트리에서 쓴 등록이 primary의 파일에 보이지 않았다). PID 스탬프는 물려받은 `MOAI_SESSION_PID`를 무조건 존중하지 않고 조상 사슬 검사를 통과할 때만 받는다 **t1297 판에서 둘이 더했다**(24→26, card t1339) — `anchor_trace.go`(앵커 추적 스위치)와 `anchor_relocate_audit.go`(리로케이션 감사·소유 개연성 판정) — 세션 앵커의 교차 레인 귀속 수리 몫이다 **t1443 판 재측정 29**(26→29 — 이번 창의 세션 파일은 없다; t1297 측정 트리와 앵커 `c2703f698` 사이 흡수분, t1338 판 선례의 표기) **t1524 판에서 넷이 더했다**(29→33, card t1465, SPEC-SESSION-CC-VERSION-001) — `ccversion.go`의 `ResolveCCVersions`(실행 중 프로세스 자신의 매핑을 플랫폼 seam으로 읽고 PATH의 claude 경로 버전 세그먼트와 대조하는 실행 바이너리 신선도 seam)와 플랫폼 쌍 `ccversion_darwin.go`(lsof)·`ccversion_linux.go`(/proc/pid/exe)·`ccversion_other.go`(미지원 — unknown); `UnknownCCVersion`은 에러가 아니라 열등 모드로 소비자(`moai session list --cc-version`, doctor Session CC Version)에 흘러든다 | —
+| `internal/settings` | 13 | `moai web` 콘솔과 `moai profile setup` TUI 두 표면이 공유하는 설정 스키마. 이 판에서 Jev opt-in(`workflow.jev.enabled`)이 같은 `ApplySchemaEdits` seam 위의 네이밍 진입(`jev.go`의 `SetJevEnabled` — `moai init` 위자드가 쓴다)을 얻었다. 두 번째 쓰기 경로가 아니라 같은 경로의 두 번째 이름이다. **t1305 판**: 하위 `agentfm`(웹 에이전트 설정 탭의 스키마 절반)이 card t1246의 탭 삭제와 함께 소멸했다(11→10). **t1351 판에서 `projectscalars.go`가 더했다**(SPEC-WEB-SAVE-LOSSLESS-001 — 10→11): development_mode·git_convention.convention 스칼라 편집의 **공유 쓰기 seam** — 웹(`web/projectconfig.go`)과 TUI(`cli/profile_setup.go`)가 각자 `LoadRaw→SetSection→Save` 전체 재마샬을 하던 구경로(GitHub #1731: quality.yaml 의 미모델링 키와 주석 전량 소실)를 닫고 `yamlpatch` 라인 스플라이스 한 곳으로 모은다. 빈 제출값은 기존 영속값을 덮지 않는다. `sectionapply.go`·`sectionwrite.go`·`nested.go`도 같은 SPEC 의 seam 정리를 받았다 **t1443 판에서 `llmoverrides.go`가 더해지고 하위 `agentfm`이 돌아왔다**(11→13 — 이 트리 find 직접 측정; card t1411, t1305 판이 지운 것의 복귀): `llmoverrides.go`는 llm.yaml 프로파일·에이전트별 model/effort의 원자 쓰기와 스냅샷/복원(`WriteLLMProfile`·`SnapshotLLMYAML`·`WriteLLMAgentOverrides`), `agentfm`은 에이전트 정의 나열자 `List`(순수 leaf — 표준 라이브러리와 yaml.v3만 import). `llm.profile`·`llm.agent_overrides`는 스키마 필드 정의 밖의 살아있는 키로 돌아왔다(`schema.go`·`schema_sections.go` — agentfm 은 스키마 상주 필드를 갖지 않는다; `schema_sections.go`의 `reportFormatValues` 닫힘 집합은 card t1427이 `artifact`를 더했다) **t1524 판**: `schema_sections.go`가 git 전략 모드 문언을 받았다(card t1504 — merge_method 수동 기본 merge; 파일 수 13 불변) | `yamlpatch`, `agentfm` |
+| `internal/sessionmsg` | 7 | 단일 머신 세션 간 메시징 브로커 (envelope 스키마) | — |
+| `internal/chain` | 4 | **워크트리 세션 origin-trail 체인** — `.moai/state/chain/events.jsonl`에 spawn 경계·`session_id` 백필·완료 엣지를 append-only JSONL 계보 트리로 적는다. 쓰기는 매번 `O_APPEND`로 열어 커널이 동시 append를 직렬화하게 두며, 읽고-고치고-쓰는 주기가 없다(전체 파일을 올려 변형하지 않는다). 깨진 줄은 스트림을 중단시키지 않고 건너뛴다. 목적은 depth-N 워크트리에 `/clear` 이후 재진입한 사람이 grep·스크롤백 고고학 없이 origin·완료·재개 지점을 바로 복원하는 것이다 | — |
+| `internal/homestate` | 31 | HOME 상태의 경로·SQLite 스키마·동시성 계약. **t1286 판에서 F1 카드 기록층 6파일이 더했다**(card t1239, SPEC-FACTORY-RECORD-001) — `factory.db` 스키마 v4 가 `cards` 테이블에 카드 상태 기계·임대·결정·증거 열을 올리고(마이그레이션 v1→v2 claimed-backfill 포함 전 방향 이행), `card_record.go`(기록 읽기·목록), `card_transition.go`(버전 검사 CAS 전이 테이블·임대 만료 복귀·실패 상태), `card_evidence.go`·`card_evidence_readers.go`(전이 게이트가 증거를 주장이 아니라 Go 로 읽는다 — `readBoundedFile` 4MiB 상한·`verdict:`/`audited_sha:` 판정 줄 파싱), `card_picked.go`(대기열 픽 기록), `card_unavailable.go`(쓰기 실패의 `record-unavailable.jsonl` 옆걸이 로그 — 배타 flock 으로 재작성과 직렬, 찢어진 줄은 건너뛰고 경고). CLI 표면은 `internal/cli/factory_card.go`, 디스패치 미러링은 `factory_mirror.go`. 프로젝트별 `todo/backlog.db`, `factory/factory.db`, 전역 `run/profile-leases.db`, migration marker·admission lock, PID 지문과 runtime census를 소유한다. Unix `flock`과 Windows `LockFileEx`를 같은 계약으로 제공한다. **이 판에서 `factory_run_retire.go`가 더했다**(SPEC-FACTORY-RUN-RETIRE-001) — "이 런의 소유자가 아직 살아 있는가?"의 답인 `OwnerClassification`(`live`/그 외). 집합은 의도적으로 열려 있다 — 은퇴는 양성 `OwnerDead`에만 걸리게 게이트돼 있어서(`retirable`), 나중에 추가되는 값은 기본으로 은퇴를 거절한다(폴스루가 아니다). 이전 판에서 비정준 트리 게이트(`internal/homestate/noncanonical_tree_guard.go`)가 admission lock 획득과 marker 설치 두 변이 진입점 앞에 배선됐다 — 고립된 HOME을 가진 워크트리에서 호출하면 실제로는 canonical 루트의 살아 있는 상태를 건드리게 되므로, 락 파일을 만들기 **전에** 거절한다. **이 판에서 darwin 전용 프로세스 지문(`process_fingerprint_darwin.go`)이 더했다** — `golang.org/x/sys/unix.SysctlKinfoProc("kern.proc.pid", pid)`로 프로세스 시작시각을 읽어 PID 재사용을 가른다(`unix`/`windows` 빌드 태그 형제와 나란히 플랫폼 분기 완성). **t1295 판**: `handoff.go`가 `ReadLatestConsumedResume` 질의를 얻었다(card t1273) — `resume_handoffs`에서 소비 완료 레코드를 `consumed_at` 최신순으로 읽어 `moai handoff show`의 폴백 출처가 된다(동시각 정렬 모호성은 열 순서로만 가른다 — 알려진 한계). **t1351 판에서 `card_worktree.go`가 더했다**(SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-011, 27→28) — `RecordCardWorktree`: 임대자가 카드에 워크트리 경로를 기록하는 단계. 다른 기록 쓰기와 같은 버전 검사를 받고, 이미 기록된 트리와 다른 트리로의 이동을 거절하며(카드가 남의 트리를 쓰지 않는다), 변화를 `card.fields` 이벤트로 카드 자기 로그에 남긴다. 같은 경로 재기록은 멱등이다 **t1374 판에서 `factory_run_resume.go`가 더했다**(card t1330, SPEC-FACTORY-LANE-JOIN-SOCKET-001 REQ-004, 28→29) — `ResumeRun`은 레인 합류 리더 발견 경로의 유일한 쓰기로, 은퇴했거나 기록이 없던 살아 있는 리더의 런을 다시 합류 가능하게 만든다. `RecordRun`의 재사용이 아니라 의도적 형제다 — RecordRun 은 호출 프로세스를 스탬프하므로 합류 레인의 런처가 부르면 레인이 run 소유자로 기록돼 리더의 런이 레인 종료 때 은퇴될 수 있기 때문이다. ResumeRun 은 발견 측정이 검증한 **공급된** 소유자 신원을 스탬프해 쓰는 시점부터 은퇴 등급으로 올바르고, 하나의 트랜잭션에서 처리한다 **t1378 판에서 둘이 더했다**(t1374판 29에서 →31) — `run_capacity.go`(런의 기록 레인 용량 판독 — `RunLaneCapacity`·파생 마커 `LaneCapacityDerived`)와 `process_identity_batch.go`(배치 프로세스 지문 프로브 — `moai factory runs` 소유자 판별의 목록 단위 바운드), `factory.go`는 `runs.lane_capacity` 열의 스키마 v4→v5 이행(기존 행은 보수적으로 1 기본값)을 받았다 (card t1378) | — |
+| `internal/factorymsg` | 9 | SQLite(`modernc.org/sqlite`) 기반 factory 전용 런-스코프 메시지 브로커. 패키지 주석이 레거시 `internal/sessionmsg`를 읽거나 이관하지 않는다고 명시한다. `store.go`의 `Peer`(project/run/backend/role/slot/session/generation/PID/process-start)로 발신·수신자를 식별하고, `Send`/`Claim`/`ReadBody`/`RecordDisposition`/`Receipt`로 클레임 기반 at-least-once 전달을 구현한다. `RegisterLaunchPending`/`BindLaunchPending`/`RollbackLaunchPending`은 프로세스만 살아 있고 세션 UUID가 아직 없는 factory launch 창을 `launch-pending:` 접두 provisional 키로 담아, SessionStart 훅이 실제 세션 UUID로 치환한다(owner-preserving upsert). `internal/cli/mcp_factory_msg.go`(5개 MCP 도구)와 `internal/hook/factory_messages.go`가 비테스트 소비자다. **이 판에서 1→8로 늘며 lane worktree handoff의 브로커 절반을 얻었다**(SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001) — `dispatch.go`(전달 기록·펜스드 결과 적용·재배정·regrant), `handoff.go`(핸드오프 상태 기계 본체), `handoff_abandon.go`(소스-소유자 생존 프로브를 건네받는 종결 트랜잭션), `handoff_bind.go`(M3 rebind 사유 상수, STALE_* 리다이렉트 메타데이터 포함), `handoff_relocation.go`(`HeadlessRelocation` — 공식 app-server 결과와 컨트롤러의 대상 재판독을 M3로 실어 나르는 증거 타입), `schema_migrate.go`(메시지 테이블을 스키마 버전 2 — 발신자 세션 UUID·세대와 무관하게 `(project_key, run_id, sender_slot, idem_key)`로 idempotency를 스코프하는 lane-scope 마이그레이션). `factory_run_retire.go`는 별개로 SPEC-FACTORY-RUN-RETIRE-001의 `LeadPeerIdentity`(런의 이전 런에서 등록된 role='lead' peer가 실어 나르는 프로세스 identity, REQ-006 fallback 소스) **t1297 판에서 `run_state.go`가 더했다**(8→9, card t1373) — stale-run 라벨 판정이 읽는 런 상태 판독 | —
+| `internal/guardstate` | 4 | 가드 생존성의 상태 모델·매니페스트 | — |
+| `internal/manifest` | 3 | 파일 provenance 추적과 변경 감지. **이 판에서 `types.go`가 더했다**(card t1100) — 다섯 번째 provenance 값 `GeneratedManaged`(템플릿 배포자가 아니라 MoAI 생성기가 쓰는 파일 하나에 사용자 소유 부분과 MoAI 소유 부분이 공존할 수 있음을 표시, 소유권은 파일 전체가 아니라 `FileEntry.Parts` 단위로 결정)와 그 파트 스키마(`PartKind` — whole-file/hook-handler/json-key/toml-table/toml-key, `PartOrigin` — created/preexisting)가 더해졌다. `internal/codexwiring/ownership.go`가 소비한다 | — |
+| `internal/tokenusage` | 3 | Claude Code 트랜스크립트 JSONL을 파싱해 토큰 사용량을 귀속·기록. **호출자 0 — 아래 §네거티브 스페이스** | — |
+| **`internal/auditreceipt`** | **3** | **t999 판에서 새로 생겼다.** `.moai/state/audit-receipts/` 아래 세 종류의 런타임 기록을 소유한다 — 감사 도구 호출 1건당 영수증, 감사자 서브에이전트 1건당 시작 마커, 거부된 PASS 1건당 거부 기록. **t1286 판(card t1282)**: `store.go`가 served-model 채택 거부를 위한 거부 종류를 확장했다. 존재 이유를 패키지 주석이 직접 적는다: **PASS 판정은 에이전트가 쓴 텍스트이고, 텍스트는 도구가 실제로 불렸음을 보일 수 없다** — 그것을 기록할 수 있는 것은 런타임뿐이다. 쓰기는 임시 파일 + rename 원자 교체이고, 기록 1건이 파일 1개다(JSONL 아님). 트리 루트 판정은 `git rev-parse --show-toplevel`(2초 타임아웃) + 심볼릭 링크 해석이며 `CLAUDE_PROJECT_DIR`를 **의도적으로 무시**한다 — 워크트리 세션에서 그 변수는 primary 체크아웃을 가리키기 때문이다. **t1274 판에서 `storeroot.go`가 더했다**(card t1213, SPEC-WORKTREE-STATE-ROOT-001) — `.moai/`를 추적하지 않는 저장소의 링크드 워크트리는 자기 `.moai`가 없으므로, MCP 서버·훅 프로세스·`moai verify` CLI 세 쓰기 주체가 저마다의 루트에 상태를 두면 서로를 못 보게 된다. 이 파일이 그 세 주체에 내리는 **단일 store-root 답**이다 **t1333 판에서 거부 영수증에 SPEC 귀속이 더해졌다**(card t1323 — transcript 폴백 귀속+spawn-tree 매칭) | — |
+
+### `internal/homestate` — 프로젝트 로컬 파일과 HOME DB 사이의 안전 경계
+
+정본 경로는 `~/.moai/db/<project-key>/todo/backlog.db`와
+`~/.moai/db/<project-key>/factory/factory.db`이며, 프로필 점유는 프로젝트와 무관한
+`~/.moai/run/profile-leases.db`에 둡니다. `project-key`는 정규화한 프로젝트 루트에서
+결정되므로 여러 워크트리가 같은 프로젝트 DB를 공유합니다.
+
+이 패키지는 경로만 계산하지 않습니다. migration marker가 있는 동안 SessionStart, MCP 서버,
+Factory 런타임 진입을 동일한 admission lock 아래에서 거절하고, 실제 이전은 두 번의 런타임
+census가 모두 0일 때만 허용합니다. Factory 인계는 v2 lease와 token CAS로 만료 재점유와 ABA를
+막고, 주입 뒤 crash는 at-least-once 경계로 남깁니다. 이 설명은 구현된 계약이며, 운영 DB에
+`--apply`가 실행됐다는 뜻은 아닙니다.
+
+**F1 카드 기록층(card t1239, t1286 판 서술)** — 스키마 v4 부터 `factory.db` 는 카드 하나에
+대응하는 기록 행(`cards`)과 버전 검사 상태 기계를 가진다. 모든 전이는 하나의 트랜잭션에서
+버전 CAS 로 갱신하고(경합 작성자는 정확히 하나만 이긴다), 임대 만료 카드는 `merging` 중이면
+`blocked`·그 외면 `assigned` 로 돌아가며, 사람 결정 대기 상태는 임대를 잡지 않는다. 증거
+게이트가 붙은 전이는 증거 파일을 Go 로 직접 읽어 판정 줄(`verdict:`·`audited_sha:`)과
+커밋 인용을 대조한다. 디스패치 쓰기가 실패하면 `record-unavailable.jsonl` 옆걸이 로그에 남고
+(배타 flock 이 재작성과 직렬, 찢어진 줄은 건너뛰고 경고 보고), 다음 성공 쓰기가 `record.drift`
+이벤트로 조정한다. F1 은 `pushed` 에서 멈춘다 — `decide --gate push` 는 `git fetch` 를 절대
+돌리지 않고 CI 구동 전이는 F3 몫이다.
+
+### `internal/settings/yamlpatch` — 보존 쓰기 경로
+
+`internal/settings`의 책임은 "두 표면이 공유하는 **스키마**"지만, `yamlpatch`가 지는 것은
+스키마가 아니라 **쓰기 방식**입니다. `ConfigManager.Save()`의 typed struct 재직렬화는
+YAML 주석 전량과 미모델링 키(예: `workflow.yaml`의 `team.patterns`, role-profile의 `effort`)를
+파괴합니다. `yamlpatch`는 `gopkg.in/yaml.v3` 노드 트리를 수술해 대상 스칼라만 upsert 하고
+나머지 문서 구조를 보존하며, **`Save()` 경로가 없는 8개 섹션**(workflow, harness, ralph,
+research, feedback, observability, security, db)의 **유일한 쓰기 경로**입니다.
+
+한계도 요건의 일부입니다 — yaml.v3 Encoder는 재직렬화 시 일부 포매팅(빈 줄, 긴 스칼라
+줄바꿈)을 정규화할 수 있어 byte-stability는 보증이 아니라 **검증 대상**이고, 섹션별 골든
+round-trip 테스트가 그 범위를 고정합니다. 노드 삭제는 지원하지 않습니다.
+
+---
+
+## infrastructure / platform
+
+| 패키지 | 비테스트 | 책임 | 주요 하위 패키지 |
+|---|---|---|---|
+| `internal/lsp` | 35 | LSP 클라이언트 스택. `charmbracelet/x/powernap` 전송 위에 gopls 브릿지, 서브프로세스 수명 관리, TTL 진단 캐시, 다중 서버 집계 | `core`, `gopls`, `transport`, `subprocess`, `cache`, `config`, `aggregator`, `hook` |
+| `internal/astgrep` | 13 | ast-grep(`sg`) CLI 래핑 기반 AST 분석·룰 시드 | — |
+| `internal/github` | 10 | `gh` CLI 기반 PR/이슈 오퍼레이션 | `workflow` |
+| `internal/hygiene` | 12 | **t1524 판 신규**(card t1518, SPEC-MOAI-HYGIENE-001) — `.moai` 위생 엔진. 두 단위가 있다. ① 감사 로그 회전기: 크기 기반(`audit_log_max_bytes` 기본 10 MiB, keep-1 — `auditlog.go`·`rotate.go`), lockfile로 직렬화한 단일 통과, 스테일 판정 건너뜀, Windows는 LockFileEx 사이드카(`rotate_lock_unix.go`·`rotate_lock_windows.go`). 대상은 닫힌 20항목 싱크 레지스트리(`sinks.go`)이고 완전성 가드 `ScanSourceSinks`가 미등록 append-only 쓰기를 적색으로 낸다(레지스트리 밖의 신규 로거는 회전기가 아니라 레지스트리 갱신으로 수용된다). ② 끝난 세션 상태 GC: 세 신호 fail-closed 생존 판정(`liveness.go` — pid 프로브 `probe_pid_unix.go`·`probe_pid_windows.go`, 48시간 전사본 활동, 24시간 심박; 긍정=LIVE·전부 음성=DEAD·미측정=INDETERMINATE=KEEP), mtime은 삭제 데이터가 아니고 클래스별 내용 연대표를 따르며(`targets.go` — 연대 불능 클래스 codex-stop-cap은 보존), 해석된 루트 아래 심볼릭 링크 성분 거부, 디렉터리 fd 고정 삭제, 실행 시각 재판정, SPEC 종결 락 클래스 제외(`gc.go`·`engine.go`·`settings.go`). report가 출하 기본이고 apply는 표면별 옵트인이다. 내부 import는 `internal/config` 하나, 비테스트 소비자는 `internal/cli`(`clean.go`)와 `internal/hook`(`session_start_hygiene.go`) | — |
+| `internal/runtime` | 12 | 토큰 서킷 브레이커, 감사 캐시/게이트/리포트, 클록. **t1524 판에서 하나가 더했다**(11→12, card t1500, SPEC-AUDIT-CEILING-002) — `audit_ceiling.go`: plan-audit 반복 상한의 구성 읽기·계수·판정(`internal/auditverdict`의 확장된 필드·파서·admit을 소비하고 `internal/config`의 workflow.audit 상한 키를 읽는다 — 이 패키지 최초의 config import) | `gobin` |
+| `internal/sandbox` | 8 | 명령 실행을 감싸는 임시 샌드박스 실행 계층 | — |
+| `internal/git` | 8 | `core/git` 위에 얹은 상위 유틸리티. **루트 패키지 자체의 비테스트 import 는 0이고, 최상위 집계 fan-in 1은 전부 하위 `convention`이 받은 것**이다 — 아래 §네거티브 스페이스 | `convention` |
+| `internal/update` | 7 | 바이너리 셀프 업데이트 (체커 + 오케스트레이터) | — |
+| `internal/shell` | 6 | 셸 탐지와 환경 구성 | — |
+| `internal/telemetry` | 5 | 텔레메트리 수집·전송 | — |
+| `internal/codexadapter` | 8 | Codex 훅 표면 ↔ MoAI 훅 스키마 번역. **t1238 판에서 셋이 더했다** — `decision.go`가 결정성 핸들러 결과를 하네스 번역 전에 다섯 값(`allow`·`deny`·`needs_input`·`retryable_error`·`fatal_error`)으로 정규화하고, `translate.go`가 이를 Codex 출력으로 옮긴다(`needs_input`은 Codex deny로 바뀌며 사유에 `user approval`을 싣는다; `IsDecisionBearing`·`HostResolvesAsAllow`). `stop_cap.go`의 `HostLacksStopBlockCap`은 (Codex, Stop) 파싱 실패 면제가 사는 유일한 자리다(t1278 판 주석 정정 — Claude Code 호스트의 상한은 2.1.283 에서 실측됐고 이제 구현되어 있으므로(`internal/cli/hook_stop_parse_cap.go` 의 `applyStopParseCap`), 이 면제는 Codex 호스트에만 남는다). **t1295 판**: `output.go`의 `additionalContextEvents`가 SessionStart 를 얻었다(card t1273, M1.5 P1 — codex-cli 0.157.0 양팔 실측으로 SessionStart 채널 도달 확인): SessionStart `systemMessage`가 `hookSpecificOutput.additionalContext`로 매핑되며, 이미 context가 있으면 **대체가 아니라 덧붙임**(`existing + "\n\n" + msg`, 다른 키 보존 — 감사 F1 수리)이다. 채널이 없는 이벤트의 discard 관측은 종전 그대로 | — |
+| `internal/tmux` | 4 | 병렬 SPEC용 tmux 세션 관리 | — |
+| `internal/worktree` | 4 | 워킹 트리 상태 가드 프리미티브 | — |
+| `internal/resilience` | 3 | 외부 서비스 연동용 서킷 브레이커 | — |
+| `internal/glmcred` | 1 | GLM API 자격증명 단일 구현 | — |
+| `internal/jev` | 1 | TypeSafe System One 호출 경로의 유일 구현 — 요청 조립, HTTP 전송, 응답 해석, 사용량 산출. 표준 라이브러리만 import 하므로(순환에 끼지 못하고 `internal/cli`·`internal/web` 양쪽이 쓸 수 있다) 모델 id·엔드포인트는 컴파일 상수 핀이다. 불가능한 답은 에러가 아니라 **값**이다(`no-credential` 등 Availability — 에러 반환이 퍼지면 어딘가에서 비종료가 되기 때문)이고, 비활성 게이트는 호출자 위가 아니라 **패키지 안쪽**에 있다(끈 상태에서는 요청 자체를 조립하지 않는다). 표시 전용 — 파일·큐·git에 쓰는 의존성이 하나도 없다. **이 판에서 와이어 스키마가 벤더가 실제 문서화한 형태로 다시 쓰였다** — `questions`는 리스트가 아니라 호출자 id로 키잉된 객체(값은 `type`/`instructions`/`criteria`)이고, `noul`은 불리언이 아니라 확률값(`Answer.Probability`가 곧 참 확률이며 참/거짓 컷은 호출자 몫), choice/score 질문은 `Levels`/`Probabilities`/`Legend`까지 왕복한다(`toWire`/`fromWire`가 변환을 맡는다). `UserAgent` 상수도 이 판에서 더해졌다 — 벤더 엣지가 일부 기본 User-Agent(예: Python urllib 기본값)를 403으로 거부한 관측 때문에 클라이언트가 자기 이름을 명시한다 | — |
+| `internal/jevcred` | 1 | **이 판에서 새로 생긴 패키지.** `~/.moai/.env.typesafe` 자격증명의 쓰기·읽기 단일 구현 — `internal/glmcred`를 의도적으로 모델 삼았다(쓰기 시 chmod 조임, 네 글자 미만 공개 하한까지). 스키마 `AllFields()`에 **일부러 없는** 필드라 어떤 스키마 순회 루프도 그 값을 읽거나 렌더하지 못한다. 최상위 fan-in 2(`internal/cli`, `internal/web`) | — |
+| `internal/gitenv` | 1 | 자식 프로세스가 **어느 리포지터리에** 작용할지를 정하는 git 환경변수(`GIT_DIR`, 커밋 경로의 `GIT_INDEX_FILE`)를 지운다. 훅이 내보낸 이 변수들은 작업 디렉터리보다 우선하므로 `cmd.Dir`만으로는 격리가 되지 않는다(GH #1691). 한 패키지의 수리가 형제에게 닿지 않았던 결함을 막으려고 독립 패키지로 둔 것을 패키지 주석이 밝힌다. 최상위 fan-in 2(`internal/cli`, `internal/hook`) | — |
+| `internal/binlag` | 1 | 설치된 바이너리 지연 판정. 이 판에서 판정이 하나 더 갈라졌다 — 바이너리 커밋이 비교 ref의 **엄격 자손**인 경우(`StatusAhead`)는 무관 계열에서 떼어져 자기 문장을 얻었다. 스테일이 아니라 비교가 무의미한 경우이며, notice는 재빌드가 아니라 비교 대상을 가리킨다 | — |
+| `internal/mirrornotice` | 1 | 스킬 미러 결과를 사용자 알림으로 전환 | — |
+| `internal/report` | 1 | 루트에 Go 파일 없음 — 하위 `planhtml`만 존재 | `planhtml` |
+
+---
+
+## cross-cutting
+
+| 패키지 | 비테스트 | fan-in | 책임 |
+|---|---|---|---|
+| `internal/defs` | 5 | 12 | 디렉터리명·파일명 등 프로젝트 전역 상수 |
+| `internal/atomicfile` | 5 | 11 | 크로스 플랫폼 원자적 파일 교체 (unix/windows 분기) |
+| `pkg/models` | 4 | 8 | 공유 데이터 모델. 외부 공개 2개 패키지 중 하나 |
+| `pkg/version` | 2 | 5 | 빌드타임 버전 정보 (ldflags 주입) |
+| `internal/lockfile` | 2 | 2 | 크로스 플랫폼 advisory 파일 락 |
+| `internal/paths` | 1 | 12 | `~/.moai` 디렉터리 해석의 단일 지점 |
+| `internal/execerr` | 1 | 7 | 서브프로세스 종료 실패를 안전하게 출력 가능한 형태로 유지 |
+| `internal/stateanchor` | 1 | 3 | **상태 앵커 seam** — 아래 상세 |
+| `internal/measure` | 1 | 2 | 의존성 없는 순수 leaf — 프로젝트 헬스 지표 |
+| `internal/timing` | 1 | 0 | 테스트용 보정된 지연 상한 (비테스트 fan-in 0) |
+| `internal/codextools` | 2 | 0 | 네이티브·지연 디스패처 도구 레지스트리를 인증된 대화 하나에 묶는다(패키지 주석: 도구나 RPC를 실행하지 않는다). `github.com/santhosh-tekuri/jsonschema/v6`를 직접 쓰는 유일한 패키지다. **비테스트 fan-in 0 — 아래 §네거티브 스페이스** |
+| `internal/skills` | 0 | 0 | 프로덕션 코드 없음 |
+
+### `internal/stateanchor` — 상태를 어디에 쓸지 정하는 단일 seam
+
+`.moai/state/`를 읽고 쓰는 **모든** 표면이 앵커(프로젝트 루트)를 여기서 받습니다. 이 seam
+이전에는 각 표면이 세션이 서 있던 자리에서 제 앵커를 유도했고, statusline의 텔레메트리
+쓰기가 `workspace.current_dir`에 앵커돼 **cd 한 디렉터리마다 `.moai` 디렉터리가 하나씩
+남았습니다**(GH #1694). 지금 이 seam을 통과하는 소비자는 statusline 텔레메트리 쓰기,
+보드 루트와 그 landed·github-counts 소비자, goal 상태 읽기, CLI 설정 캐시 사슬입니다.
+
+우선순위 사슬은 요건으로 **고정**돼 있습니다(단계 삽입·재정렬은 요건 변경입니다):
+
+1. stdin `workspace.project_dir`
+2. `worktree.original_cwd`
+3. 세션 디렉터리에 대한 리포지터리 해석 — `core/git`의 공통 디렉터리 해석을 재사용하며,
+   그 부모는 리포지터리의 모든 체크아웃과 워크트리에 대해 하나다
+
+셋 다 실패하면 앵커는 빈 문자열이고, 호출자는 상태 쓰기·읽기를 건너뛴 채 렌더를 정상
+완료합니다(프로젝트가 없으면 상태도 없다). **세션의 현재 디렉터리는 앵커가 아니며**
+리포지터리 walk-up의 입력으로만 쓰입니다. 표시 이름 유도는 별개 관심사로
+statusline의 `extractProjectDirectory`에 남아 있습니다. statusline 쪽 어댑터가
+`internal/statusline/state_anchor.go`입니다.
+
+---
+
+## 네거티브 스페이스
+
+결정적 도구가 만들 수 없는 관찰입니다. 이 절이 이 문서에서 가장 값이 나가는 부분입니다.
+
+### 테스트가 없는 패키지 — 6개
+
+`go list -f '{{.ImportPath}} {{len .TestGoFiles}} {{len .XTestGoFiles}}' ./...` 기준입니다.
+
+| 패키지 | 판단 |
+|---|---|
+| `cmd/moai` | 정당. 20줄 위임 로직이고 `internal/cli`에 통합 테스트가 있다 |
+| `cmd/t657-merge` | 일회성 큐 병합 도구(카드 t657). 로직은 테스트가 있는 `internal/factory` 저장소 API를 재사용한다 |
+| `internal/template/scripts` | 정당. 빌드타임 생성 도구 main |
+| `scripts/convert-nextra-to-hextra` | 일회성 문서 변환 스크립트 |
+| `internal/closure/closuretest` | 다른 패키지의 테스트가 쓰는 픽스처 |
+| `internal/escalation/escalationtest` | 다른 패키지의 테스트가 쓰는 픽스처 |
+
+테스트 대 비테스트 파일 비율은 1.79:1입니다. 이 수치만으로 테스트의 충분성은 판정하지 않습니다.
+
+### 프로덕션 코드 없이 테스트만 있는 자리 — 2개
+
+- **`internal/skills`** — `workflow_split_test.go` 하나뿐, 비테스트 파일 0개.
+- **`internal/tui/golden`** — `doc.go`와 `index_test.go`뿐.
+
+둘 다 "테스트가 다른 곳(템플릿 트리, 골든 파일)을 검증하는데 담을 자리가 없어 만들어진 빈
+패키지"로 보입니다. 필요한 것은 패키지가 아니라 테스트 파일을 둘 자리입니다.
+
+> **이 자리에 있던 세 번째 항목이 사라진 경위.** 앞 판은 `internal/orchestration`을 같은 계열로
+> 적었지만, 그 디렉터리와 유일한 파일(`naming_manifest_contract_test.go`)은 커밋 `ae3075280`에서
+> 삭제됐습니다. 그 테스트가 고정하던 매니페스트 JSON은 어느 커밋에도 존재한 적이 없고
+> (`git log --all` 출력 없음), 준비 대상이던 코드 경로는 이미 철회된 상태였습니다. 즉 "테스트만
+> 있는 빈 패키지"가 아니라 **한 번도 생성되지 않은 산출물을 검증하던 테스트**였습니다.
+> 삭제는 테스트를 지워 초록을 만들지 않는다는 규칙에 대한 운영자 승인 예외로, 그 파일 하나에만
+> 적용됐습니다.
+
+### 비테스트 코드에서 아무도 import 하지 않는 패키지
+
+`.Imports`(테스트 import 제외) 기준입니다. **넷으로 갈립니다** — 빌드타임 도구, 테스트 시점
+가드, 의도된 고아, 그리고 새로 생긴 것.
+
+네 갈래를 나누는 것은 fan-in 0이라는 수치가 아니라 **그 0이 정상인 이유**입니다. 빌드타임
+도구는 `make` 타깃이 부르고, 테스트 시점 가드는 `go test`가 부르며, 고아는 아무도 부르지
+않습니다. 세 경우 모두 `.Imports` 집계에서는 구별되지 않으므로, 이 표의 「상태」 칸이
+판별식입니다.
+
+| 패키지 | 상태 |
+|---|---|
+| `internal/template/agentemit` · `internal/template/commandemit` | **고아가 아니다.** 소비자가 `make agents-emit` / `make commands-emit` 빌드 타깃과 골든 테스트다. 방출기는 빌드타임 도구이므로 런타임 fan-in 0이 정상 상태다 |
+| **`internal/git`** (루트 패키지) | **이 판에서 새로 잡혔다.** `core/git` 위의 상위 유틸리티 8 파일인데 루트 패키지를 import 하는 비테스트 코드가 0이다. 실제로 import 되는 것은 하위 `internal/git/convention` 하나뿐이며(`internal/cli` → `internal/git/convention`), 최상위 집계 fan-in 1은 그것이다. 소비자가 `core/git`로 직접 내려가면서 중간 계층만 남은 모양으로 읽힌다 — 확인이 필요한 관찰이며, 이 문서가 답을 주지는 않는다 |
+| **`internal/tokenusage`** | 완전 고아. 유일한 언급이 `internal/spec/audit.go`의 주석인데, 상수를 공유할 수 있지만 파서를 self-contained로 두려고 로컬 상수를 쓴다는 내용이다 — **공유 의도가 있었으나 거부된 뒤 아무도 쓰지 않게 된** 패키지다. `moai tokens` 서브커맨드조차 이것을 쓰지 않는다 |
+| `internal/github/workflow` | GitHub Actions 워크플로 검증기. import 하는 코드가 없다 |
+| `internal/harness/harnessrun` · `seeds` · `throttle` | harness 하위인데 형제 패키지 어느 것도 참조하지 않는다 |
+| **`internal/harness/rosterguard`**(4 파일, 비테스트 — t1305 판 재측정) | **t999 판에서 새로 잡혔고, 위 고아들과 종류가 다르다.** **런타임 경로가 아예 없는 테스트 시점 가드**다 — CLI·훅·MCP 어디에도 배선돼 있지 않고, 자기 테스트가 살아 있는 저장소 트리를 직접 읽어 드리프트를 찾으면 `go test`를 빨갛게 만드는 것이 유일한 발화 경로다. `rosterguard`는 에이전트 로스터 목록이 사이트마다 어긋나는 것을 본다. (형제였던 `cellguard`는 docs-site profile-matrix 셀 감시 가드였으나, SPEC-AGENT-MODEL-INHERIT-001(card t1246)이 profile-matrix 표면을 지우면서 함께 폐기됐다 — commit `41cf11c4d`.) **fan-in 0이 결함이 아니라 설계**이며, 그 점에서 `agentemit`·`commandemit`과 같은 부류이고 `tokenusage`와는 반대다 |
+| `internal/migration/migrations` | `internal/cli/migration_m3_test.go`가 명시한다 — `internal/cli`가 이 패키지를 import 하지 않으므로 m001/m002는 `Register()`를 호출하지 않는다. blank import로 등록되는 패턴인데 그 blank import가 어디에도 없다. 테스트가 이 사실을 *기술*할 뿐 *거부*하지 않는 것이 문제다 |
+| **`internal/jevmeasure`** | **이 판에서 새로 잡혔다.** 측정 장치인데 소비자가 0이다 — 자기 테스트조차 이 패키지를 import 하는 밖의 코드가 없다. 이것이 설계다: 측정 게이트가 아직 실행되지 않았고(게이트 미실행 상태), 소비자는 게이트가 통과해야 존재 허가를 받는다. `rosterguard`·`cellguard`의 「테스트 시점 가드」와 다른 이유의 0이다 — 이쪽은 **아직 시간이 안 온** 0이다 |
+| **`internal/codextools`** | **이 판에서 새로 잡혔다.** 도구 레지스트리를 대화에 묶는 2 파일 패키지인데 비테스트 소비자가 0이다. 트리에서 `jsonschema/v6`를 쓰는 유일한 자리이기도 해서, `go.mod`는 그 모듈을 `// indirect`로 적고 있다(§ `dependencies.md` 이례적인 것 7). 이전 측정 트리 이후 삭제된 gateway 계열 패키지들과 같은 시기의 산물로 보이지만, 그 인과는 이 문서가 확인하지 않았다 |
+| `internal/cli/taskledger` · `internal/cli/ptycaptest` · `internal/lsp/aggregator` · `internal/hook/testutil` · `internal/timing` · `internal/tui/golden` | 테스트 전용 소비자만 갖는 leaf. `ptycaptest`는 PTY 렌더 캡처 테스트 드라이버다. `timing`은 이름이 그 의도를 말한다 |
+
+### 빈 디렉터리 — 3개
+
+`.gitkeep`만 있고 Go 코드가 없습니다.
+
+- `internal/core/integration/`
+- `internal/core/migration/` — 실제 마이그레이션은 `internal/migration`에 있습니다
+- `internal/foundation/trust/` — TRUST 5 구현은 `internal/core/quality/trust.go`에 있습니다
+
+뒤의 둘이 특히 위험합니다. **실제 구현이 다른 곳에 있는데 자리표시 디렉터리가 그 이름을
+선점**하고 있어서, 다음 사람이 여기에 코드를 넣으면 두 벌이 생깁니다.
+
+### 중복된 능력
+
+- **`internal/atomicfile`(18개 파일에서 사용) vs `internal/config/atomicfile`(10개 파일에서 사용).**
+  둘 다 살아 있고 둘 다 원자적 파일 쓰기를 합니다. 전자는 `Replace` + unix/windows 분기 + 읽기
+  헬퍼, 후자는 `Write` + guard입니다. **한 프로세스 안에서 서로 다른 fsync/rename 전략의 두
+  구현이 같은 디렉터리를 건드릴 수 있습니다.**
+- `internal/merge`(3-way 머지 엔진) vs `internal/cli/update/merge`(업데이트 오케스트레이션 머지) —
+  층위가 다르지만 grep 시 매번 함께 걸립니다. `internal/report/planhtml` vs
+  `internal/cli/update/report`도 같은 모양입니다.
+- **설정 드리프트 판정이 두 곳에 있습니다** — `internal/factory/settings_drift.go`(도메인 절반)와
+  `internal/cli/integration_settings_drift.go`(CLI 절반). 이것은 중복이 아니라 의도된 분할이며,
+  두 표면(`acquire` precondition / `preflight` 독립 verb) 중 어느 쪽도 뺄 수 없다는 것이 그
+  파일들의 주석이 적어 둔 설계입니다.
+
+### 경계가 잘못 그어진 것
+
+- **`internal/cli/preference`와 `internal/cli/specid`는 CLI 표면이 아닙니다.** `preference`는
+  AskUserQuestion 결정 메모리 레이어, `specid`는 SPEC-ID sanitizer leaf입니다. 둘 다
+  `internal/cli` 밖에서 import 당하고, 그것이 `dependencies.md`의 집계 상호 참조 두 쌍을
+  만듭니다. 최상위로 승격하면 두 쌍이 사라집니다.
+- **`internal/hook/session_start.go`가 67KB**입니다. 옆에
+  `session_start_compact.go` · `_factory.go` · `_lang.go` · `_guard_liveness.go` ·
+  `_binary_lag.go` 등이 이미 따로 있는데도 그렇습니다. 세션 시작은 이미 자기 패키지가 되기에
+  충분한 크기입니다.
+- **`internal/cli/mcp_codex.go`가 97KB**로 CLI 최대 파일입니다. `internal/codexadapter`와
+  `internal/codexwiring`이 이미 있는데도 로직 대부분이 CLI 파일에 남아 있습니다.
+- **`internal/goal` / `loop` / `ralph`** — 6 / 6 / 1 파일이며 셋이 한 루프 서브시스템입니다.
+  SPEC이 셋이었다는 것 외에 경계가 셋인 근거가 보이지 않습니다.
+  **`guardliveness`(4) / `guardstate`(4)** 도 8개 파일을 둘로 나눌 분량이 아닙니다.
+  **`internal/stateanchor`(1)** 도 같은 계열이지만 이쪽은 정당화가 있습니다 — 여러 표면이
+  공유해야 하는 단일 결정 규칙이라 어느 소비자 밑에도 둘 수 없습니다.
+
+### 트리에서 가장 큰 비테스트 파일은 손으로 쓴 것이 아닙니다
+
+```
+$ find internal cmd pkg -name '*.go' -not -name '*_test.go' -exec ls -l {} + | sort -k5 -rn | head -6
+182575 internal/web/fieldsets_templ.go     (생성, 178KB)
+126699 internal/web/screens_templ.go       (생성, 124KB)
+ 99355 internal/cli/mcp_codex.go           (손 저작 — CLI 최대, 97KB)
+ 83999 internal/config/types.go            (손 저작, 82KB)
+ 68985 internal/hook/quality/gate.go       (손 저작, 67KB)
+ 68523 internal/hook/session_start.go      (손 저작, 67KB)
+```
+
+앞선 판은 `internal/hook/session_start.go`(당시 67KB)를 "트리 최대 비테스트 Go 파일"이라고
+적었습니다. **지금은 사실이 아닙니다** — 상위 둘이 `a-h/templ` 생성 산물이고, `session_start.go`는
+67KB로 6위입니다. 크기 순위를 읽을 때는 생성 파일과 손 저작 파일을 갈라 세어야 합니다.
+
+### 폐기 표식이 코드로 남은 것
+
+- `internal/cli/root.go` — `newHarnessCmd()`가 은퇴 마커로서 컴파일 가능 상태로만 남아 있고,
+  트리에 등록되지 않습니다. `TestHarnessFactoryStillCompiles`가 이를 고정합니다.
+  죽은 코드를 테스트가 살려두는 구조입니다.
+- `internal/hook/retired_events.go` — 은퇴한 훅 이벤트 목록. 소비자가 테스트 스위트와
+  (등록되지 않는) `migration/migrations` m002뿐입니다.
+
+> **t1278 판에서 확정한 소멸 경위(card t1242, SPEC-CODEX-FACTORY-RETIRE-001 — 전체 경로는 음성 인용으로 이 줄에만 남긴다).**
+> `internal/cli/factory_lane_handoff.go` · `internal/cli/factory_lane_handoff_bind.go` · `internal/cli/factory_lane_handoff_recover.go` · `internal/cli/factory_lane_handoff_switch.go` 4형제와 `internal/cli/codex_factory.go` · `internal/cli/codex_kanban.go` 가 트리에서 사라졌다. 릴로케이션이 옮기던 헤드리스 codex 세션 자체가 factory 에 참여하지 않게 되면서 그 왕복 경로가 없어졌기 때문이며, `_bind.go` 의 책임(헤드리스 rebind)은 계승되지 않고 기능과 함께 은퇴했다 — 핸드오프 상태는 이제 `internal/factorymsg` Store API 와 훅 쪽 대화형 bind(`internal/hook/factory_handoff_bind.go`, 생존)로만 움직인다.

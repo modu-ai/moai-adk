@@ -3,7 +3,6 @@ package web
 import (
 	"io/fs"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"os"
 	"regexp"
@@ -57,29 +56,33 @@ func readEmbeddedAsset(t *testing.T, path string) string {
 
 // --- M1: token + font layer (offline-safe foundation) ---
 
-// TestConsoleCSSEmbedded verifies AC-WC4-001: the 모두의AI token layer is
-// embedded and carries the brand tokens, and that there is NO Google-Fonts
+// TestConsoleCSSEmbedded verifies AC-WC4-001: the docs-site frozen token layer
+// is embedded and carries the brand tokens, and that there is NO Google-Fonts
 // @import / external font-style URL anywhere in the embedded CSS.
 func TestConsoleCSSEmbedded(t *testing.T) {
 	css := readEmbeddedAsset(t, "console.css")
 
-	// 토큰 체계 교체 (콘솔 재설계): 브랜드 녹색 + 시그니처 그라디언트를 쓰던
-	// 이전 체계는 무채색 단일 체계로 대체됐다. 주 액션은 --ink, 판은 --bg,
-	// 유일한 유채색은 --danger 다. 이전 이름(--color-primary 등)은 미이행
-	// 마크업이 남아 있는 동안만 별칭으로 유지되므로, 값이 아니라 새 토큰의
-	// 존재를 검증한다.
+	// 토큰 권위는 docs-site/static/moai-brand.css 의 frozen v2-renewal 값이다.
+	// 콘솔 별칭(--bg, --primary 등)은 컴포넌트 호환을 위해 남기되, 원본 토큰
+	// 이름과 값도 함께 방출되어야 한다.
 	for _, want := range []string{
-		"--ink:#1d1d1f",
-		"--bg:#ffffff",
-		"--danger:#c5261d",
+		"--color-primary:var(--neutral-700)",
+		"--color-primary-hover:var(--neutral-800)",
+		"--color-primary-active:var(--neutral-900)",
+		"--color-ink:#060606",
+		"--color-bg:#f4f4f4",
+		"--color-surface:#ffffff",
+		"--color-danger:#c44a3a",
+		"--border-focus-ring:rgba(6,6,6,.14)",
+		"--color-primary:var(--neutral-700)",
 	} {
 		if !strings.Contains(css, want) {
-			t.Errorf("console.css missing achromatic token %q", want)
+			t.Errorf("console.css missing frozen docs-site token %q", want)
 		}
 	}
 	// 폐기된 시그니처 그라디언트가 되살아나지 않았는지 확인한다.
 	if strings.Contains(css, "--gradient-signature") {
-		t.Error("console.css reintroduced --gradient-signature (retired by the achromatic system)")
+		t.Error("console.css reintroduced --gradient-signature (not part of the frozen token set)")
 	}
 
 	// No external font/style fetch (offline invariant, AC-WC4-001).
@@ -140,10 +143,12 @@ func TestFontServedFromStatic(t *testing.T) {
 	a := newTestApp(t)
 	h := a.routes()
 
-	req := httptest.NewRequest(http.MethodGet, "/static/fonts/Pretendard-Regular.subset.woff2", nil)
-	req.Host = "evil.example.com" // GET static asset is not Host-gated
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	const path = "/static/fonts/Pretendard-Regular.subset.woff2"
+	// Static assets are Host-gated like every other route (AC-WC-009 as amended).
+	if foreign := serveWithHost(t, h, http.MethodGet, path, "evil.example.com"); foreign.Code != http.StatusForbidden {
+		t.Errorf("GET woff2 from a foreign Host: status = %d, want 403", foreign.Code)
+	}
+	rec := serveGet(t, h, path)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET woff2 status = %d, want 200", rec.Code)
@@ -402,8 +407,9 @@ func TestBannerKindMapping(t *testing.T) {
 		if !strings.Contains(body, `class="banner" role="status"`) {
 			t.Errorf("success banner not rendered with the neutral banner chrome:\n%s", body)
 		}
-		// agentfm 패널이 자체 주의 배너를 들고 있으므로 페이지 전역 검색으로는
-		// 갈라낼 수 없다. 상태 배너(role="status")만 좁혀서 본다.
+		// 성공 판정은 상태 배너(role="status")로 좁혀 본다 — 페이지 어느 패널이
+		// warn 변형을 들고 있더라도(구 agentfm 주의 배너가 그랬다) 성공 배너
+		// 판정이 오염되지 않도록 하는 좁힘이다.
 		if strings.Contains(body, `class="banner banner--warn" role="status"`) {
 			t.Error("a successful save rendered the warning banner variant")
 		}
@@ -572,31 +578,18 @@ func TestAccessibilityCues(t *testing.T) {
 // baseline (L37-40), and the contrast-failing status-TEXT usages consume the
 // usage-scoped color-mix darkening toward --color-ink — the token bytes
 // themselves never darken (token-vs-usage separation, REQ-MWA-005/006).
-func TestAchromaticSingleColourSystem(t *testing.T) {
+func TestDocsSiteColourSystem(t *testing.T) {
 	css := readEmbeddedAsset(t, "console.css")
 
-	// 목적 교체 (콘솔 재설계 — 무채색 단일 체계 채택):
-	// 이전 테스트는 docs-site 와 같은 4색 상태 토큰(success/warning/info/danger)을
-	// 고정했다. 재설계는 "색으로 상태를 나르지 않는다"를 채택했으므로, 그 4색
-	// 체계 자체가 사라졌다. 이제 검증할 불변식은 "유채색은 --danger 하나뿐"이다.
-	//
-	// 상태는 색이 아니라 모양(점 채움/테두리, 파선, 글리프)으로 구분한다 —
-	// 색각 이상이나 흑백 인쇄에서도 읽히게 하기 위한 선택이다.
-	for _, retired := range []string{
-		"--color-success",
-		"--color-warning",
-		"--color-info",
-		"--status-text-success",
-		"--status-text-danger",
+	for _, want := range []string{
+		"--color-success:#2e8a63",
+		"--color-warning:#c47b2a",
+		"--color-danger:#c44a3a",
+		"--color-info:#2a8a8c",
 	} {
-		if strings.Contains(css, retired) {
-			t.Errorf("console.css still declares retired status token %q (the achromatic system carries --danger only)", retired)
+		if !strings.Contains(css, want) {
+			t.Errorf("console.css missing frozen status token %q", want)
 		}
-	}
-
-	// 유일한 유채색은 --danger 다.
-	if !strings.Contains(css, "--danger:#c5261d") {
-		t.Error("console.css missing the single chromatic token --danger")
 	}
 
 	// 상태 어휘가 모양으로 구분되는지 — 점 채움 대 테두리, 파선 추정 표시.
@@ -656,9 +649,7 @@ func TestGoormSansCodeSelfHosted(t *testing.T) {
 
 	// (4) Served offline from the embed (200, non-empty).
 	a := newTestApp(t)
-	req := httptest.NewRequest(http.MethodGet, "/static/fonts/GoormSansCode-Regular.subset.woff2", nil)
-	rec := httptest.NewRecorder()
-	a.routes().ServeHTTP(rec, req)
+	rec := serveGet(t, a.routes(), "/static/fonts/GoormSansCode-Regular.subset.woff2")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET GoormSansCode subset status = %d, want 200", rec.Code)
 	}

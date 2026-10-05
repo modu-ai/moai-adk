@@ -15,7 +15,7 @@ SPEC 은 하네스(harness) 가 작업을 위임받는 단위이자, 관리자 �
 | `moai spec status` | SPEC 상태 갱신 또는 나열 |
 | `moai spec drift` | frontmatter status와 git log 간 드리프트 감지 |
 | `moai spec view <SPEC-ID>` | 수용 기준을 트리 구조로 조회 |
-| `moai spec lint [spec.md...]` | EARS 준수 및 구조 유효성 린트 |
+| `moai spec lint [SPEC-ID | path/to/spec.md | SPEC directory ...]` | EARS 준수 및 구조 유효성 린트 |
 | `moai spec close <SPEC-ID>` | 원자적 4-phase 종료 (status: completed + progress.md backfill) |
 | `moai spec audit` | SPEC era 분류 및 modern-era 상태 드리프트 감사 |
 | `moai spec archive` | 종료된 SPEC을 `.moai/specs/` 밖으로 아카이브 |
@@ -51,7 +51,7 @@ moai spec drift
 ## moai spec lint
 
 ```bash
-moai spec lint [spec.md...]
+moai spec lint [SPEC-ID | path/to/spec.md | SPEC directory ...]
 ```
 
 | 플래그 | 설명 |
@@ -60,6 +60,19 @@ moai spec lint [spec.md...]
 | `--sarif` | SARIF 2.1.0 형식 출력 |
 | `--strict` | 경고를 오류로 처리 |
 | `--format <fmt>` | 출력 형식 (table) |
+| `--baseline <path>` | `--strict` 대신 저장소에 체크인된 규칙별 기준선으로 게이트한다 — 오류는 항상 실패, 규칙의 비-advisory 경고 수는 기록된 값보다 늘어났을 때만 차단하며, 남아 있는 경고 총수는 출력에 그대로 표시된다 |
+| `--update-baseline` | `--baseline` 파일을 재계산해 다시 쓴다(`--reason` 필수) |
+| `--reason "<text>"` | `--update-baseline` 이 기록하는 비어 있지 않은 필수 사유 — 없거나 빈 사유는 거절된다 |
+
+| 인자 형태 | 예 |
+|--------|------|
+| SPEC-ID | `SPEC-SPC-001` — 프로젝트 루트 아래 `.moai/specs/SPEC-SPC-001/spec.md` 로 해석 (`moai spec view` 와 같은 규칙) |
+| 파일 경로 | `.moai/specs/SPEC-SPC-001/spec.md` |
+| SPEC 디렉터리 | `.moai/specs/SPEC-SPC-001` — 그 안의 `spec.md` 를 읽습니다 |
+
+세 형태는 한 번의 호출에서 섞어 쓸 수 있고, 인자가 없으면 종전처럼 코퍼스 전체를 훑습니다. SPEC-ID 처럼 보이는데 해석되는 파일이 없으면 문서에 대한 지적이 아니라 **인자 오류(종료 코드 3)** 이며, 시도한 경로를 함께 알립니다.
+
+자문 등급 경고 두 가지가 여기서 나옵니다. `ModalityUnjudged` 는 린터가 판정할 수 없는 요구사항을 조용히 넘기지 않고 그 사실을 알립니다. `REQTableRowsRejected` 는 정의 표로 읽히지 않은 표 행을 알립니다. 둘 다 자문이라 `--strict` 로도 오류로 승격되지 않고 종료 코드를 바꾸지 않습니다.
 
 ## moai spec close
 

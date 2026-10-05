@@ -8,11 +8,16 @@
 // cannot happen by accident, which is the property the doctrine's
 // prohibition needs in order to be more than a promise.
 //
-// The four semantic relations (contains / absorbs / replaces / conflicts)
-// are the judgements a text analyser cannot reach. Recording one causes
-// nothing: the operator reads it and decides. That asymmetry is deliberate —
-// a wrong mechanical refusal costs a card, a wrong record costs a line of
-// output.
+// The semantic relations are the judgements a text analyser cannot reach.
+// contains / absorbs / replaces / conflicts came first; blocks / depends
+// joined them (card t1309) so card sequencing stops living in prose alone —
+// `A blocks B` reads "A must land before B proceeds", `A depends B` reads
+// "A waits on B". Since SPEC-RELATION-PICKUP-FILTER-001 the sequencing pair
+// is no longer purely observational: the todo --auto pickup selection reads
+// it (a relation-blocked card is skipped with a labelled non-finding), and
+// the write path below refuses a relation that would close a waits-on
+// cycle. The other four relations stay record-only — the operator decides,
+// exactly as before.
 //
 // SUBAGENT BOUNDARY (REQ-TA-015): nothing here prompts.
 package cli
@@ -25,7 +30,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // newTodoRelateCmd — `moai todo relate <a> <b> --relation <r> [--note <text>]`
@@ -33,7 +38,7 @@ import (
 func newTodoRelateCmd() *cobra.Command {
 	var relation, note string
 	cmd := &cobra.Command{
-		Use:   "relate <a> <b> --relation <contains|absorbs|replaces|conflicts>",
+		Use:   "relate <a> <b> --relation <contains|absorbs|replaces|conflicts|blocks|depends>",
 		Short: "Record a relation between two cards (records only — changes no card)",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -46,7 +51,7 @@ func newTodoRelateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&relation, "relation", "",
-		"One of: "+strings.Join(kanban.BacklogSemanticRelations, ", "))
+		"One of: "+strings.Join(factory.BacklogSemanticRelations, ", "))
 	cmd.Flags().StringVar(&note, "note", "",
 		"Free text recorded with the finding")
 	return cmd
@@ -57,23 +62,39 @@ func newTodoRelateCmd() *cobra.Command {
 func runTodoRelate(cmd *cobra.Command, subject, related, relation, note string) error {
 	if !isSemanticRelation(relation) {
 		return fmt.Errorf("todo relate: --relation must be one of %s (got %q)",
-			strings.Join(kanban.BacklogSemanticRelations, ", "), relation)
+			strings.Join(factory.BacklogSemanticRelations, ", "), relation)
 	}
 	if subject == related {
 		return fmt.Errorf("todo relate: a card cannot be related to itself (%s)", subject)
 	}
 	var index int
-	err := newTodoStore().Mutate(func(rec *kanban.BacklogRecord) error {
+	err := newTodoStore().Mutate(func(rec *factory.BacklogRecord) error {
 		for _, id := range []string{subject, related} {
 			if !todoCardExists(rec, id) {
 				return fmt.Errorf("todo relate: no card %s in the queue", id)
 			}
 		}
-		finding := kanban.BacklogFinding{
+		// SPEC-RELATION-PICKUP-FILTER-001 (REQ-RPF-005): a candidate
+		// sequencing relation is refused BEFORE the write when it would
+		// close a directed cycle in the waits-on graph formed by the
+		// recorded findings — the record stays unchanged, and the error
+		// names both endpoints (waiter and target are exactly the two
+		// argument ids, whichever spelling the caller used).
+		if waiter, target, ok := factory.WaitsOnOf(factory.BacklogFinding{
 			SubjectID: subject,
 			RelatedID: related,
 			Relation:  relation,
-			Source:    kanban.BacklogSourceAgent,
+		}); ok {
+			if rec.WaitsOnClosesCycle(waiter, target) {
+				return fmt.Errorf("todo relate: %s %s %s would close a dependency cycle (%s already waits on %s through recorded relations)",
+					subject, relation, related, waiter, target)
+			}
+		}
+		finding := factory.BacklogFinding{
+			SubjectID: subject,
+			RelatedID: related,
+			Relation:  relation,
+			Source:    factory.BacklogSourceAgent,
 			Note:      note,
 			At:        time.Now().UTC().Format(time.RFC3339),
 		}
@@ -108,8 +129,8 @@ func newTodoUnrelateCmd() *cobra.Command {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
 			}
-			var removed kanban.BacklogFinding
-			mutErr := newTodoStore().Mutate(func(rec *kanban.BacklogRecord) error {
+			var removed factory.BacklogFinding
+			mutErr := newTodoStore().Mutate(func(rec *factory.BacklogRecord) error {
 				if index > len(rec.Findings) {
 					return fmt.Errorf("todo unrelate: no finding %d (the queue has %d)",
 						index, len(rec.Findings))
@@ -133,7 +154,7 @@ func newTodoUnrelateCmd() *cobra.Command {
 // accepts. The mechanical relations are deliberately excluded: a hand-written
 // `near-duplicate` would claim a measurement nobody measured.
 func isSemanticRelation(r string) bool {
-	for _, allowed := range kanban.BacklogSemanticRelations {
+	for _, allowed := range factory.BacklogSemanticRelations {
 		if r == allowed {
 			return true
 		}
@@ -142,7 +163,7 @@ func isSemanticRelation(r string) bool {
 }
 
 // todoCardExists reports whether the queue holds a card with id.
-func todoCardExists(rec *kanban.BacklogRecord, id string) bool {
+func todoCardExists(rec *factory.BacklogRecord, id string) bool {
 	for _, it := range rec.Items {
 		if it.ID == id {
 			return true

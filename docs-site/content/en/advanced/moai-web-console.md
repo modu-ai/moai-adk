@@ -2,11 +2,11 @@
 title: MoAI Web Console
 weight: 85
 draft: false
-description: "The local operations console — six areas (Overview, Kanban, Specs, Monitor, Settings, Todo), live updates, read-only observation, settings editing."
+description: "The local operations console — six areas (Overview, Factory, Specs, Monitor, Settings, Todo), live updates, read-only observation, settings editing."
 ---
 # MoAI Web Console
 
-**MoAI Web Console** is the local operations screen you open with `moai web`. It shows the project's SPEC catalog, the Kanban chain, sessions and goals, and verification history in one place, and lets you edit settings from the same screen. The browser connects to `127.0.0.1` only, and there is no database and no login.
+**MoAI Web Console** is the local operations screen you open with `moai web`. It shows the project's SPEC catalog, the factory lanes, sessions and goals, and verification history in one place, and lets you edit settings from the same screen. The browser connects to `127.0.0.1` only, and there is no database and no login.
 
 {{< callout type="info" >}}
 **In one line:** the console is an operations shell that groups five observation areas and one settings area behind a left rail. The observation areas only read; the settings area uses the same validation and persistence layer as the terminal wizard.
@@ -18,11 +18,11 @@ The screen has three parts. The **rail** on the left stacks the six areas vertic
 
 | Area | Route | What it does |
 |------|-------|--------------|
-| Overview | `/` | Whole-project summary — stat tiles, Kanban chain, in-progress SPECs, attention list, sessions |
-| Kanban | `/kanban` | Chain session board plus the four-column SPEC pipeline |
+| Overview | `/` | Whole-project summary — stat tiles, in-progress SPECs, attention list, sessions |
+| Factory | `/factory` | Factory lane list plus the four-column SPEC pipeline |
 | Specs | `/specs` | SPEC catalog search, filters and detail, close debt and MUST-FIX drift |
 | Monitor | `/monitor` | Sessions, goals, verification and epics in four panels |
-| Settings | `/settings` | Profile preferences and project sections (11 tabs) |
+| Settings | `/settings` | Profile preferences and project sections |
 | Todo | `/todo` | The backlog queue, read-only — every card in all three states |
 
 What sits at the right of the appbar depends on the area. The five observation areas show a **live indicator**; the settings area shows a **save cluster** (the change count and the save button). The context chips (`lang` · `model` · `effort` · `dev`) render in the settings area only — they exist so you can confirm the key values of the profile you are editing before you save.
@@ -31,10 +31,10 @@ The foot of the rail gathers the profile button, the project name, the interface
 
 ```mermaid
 flowchart TD
-    Rail["Left rail<br/>Overview · Kanban · Specs · Monitor · Settings · Todo"]
+    Rail["Left rail<br/>Overview · Factory · Specs · Monitor · Settings · Todo"]
     Top["Appbar<br/>title · live indicator / save cluster"]
     Body["Body<br/>per-area screen"]
-    Read["Read-only areas<br/>Overview · Kanban · Specs · Monitor · Todo"]
+    Read["Read-only areas<br/>Overview · Factory · Specs · Monitor · Todo"]
     Write["Settings area<br/>through the validation · persistence layer"]
     Files["Project files<br/>state and settings under .moai/"]
 
@@ -53,17 +53,15 @@ flowchart TD
 
 Overview opens with four stat tiles: **SPEC** (total count and how many are in progress), **drift** (MUST-FIX count), **session** (PID-confirmed count / registry count), and **verify** (the last verification result and the number of keys).
 
-Below them, the **Kanban chain bar** shows in one line how far the current card has travelled through the four roles `lead → plan → run → sync`. If a role has no session, that point is marked as where the chain stops. Then come the **in-progress SPECs** list, the **Needs attention** panel (which collects only MUST-FIX drift, failed verification, stalled goals and idle roles), and the **Sessions** panel on the right.
+Below them come the **in-progress SPECs** list, the **Needs attention** panel (which collects only MUST-FIX drift, failed verification and stalled goals), and the **Sessions** panel on the right.
 
-## Kanban — two boards
+## Factory — lanes and pipeline
 
-The Kanban area stacks two boards of different character.
+The Factory area stacks two lists of different character.
 
-The **chain session board** lays the five roles out as cards and records each one's session id, backend, model, effort level, context usage and last heartbeat. The stage state is **estimated** from the heartbeat, so it carries an estimation mark; model, effort and context come from that session's own telemetry record, and a cell left blank means the session has no record carrying that value yet — not filling it in is the discipline.
+The **factory lanes** list gives one row per registered lane, with its session, card, SPEC and backend. The stage state is **estimated** from the heartbeat, so it carries an estimation mark; model, effort and context come from that session's own telemetry record, and a cell left blank means the session has no record carrying that value yet — not filling it in is the discipline. A lane whose process id resolves to no session — or to more than one, on either registry — is marked **unresolved** and carries no values at all: a lookup that completes on the wrong session renders another lane's record as if it were this one's, which is worse than an empty row. When no lane is registered, the list says so.
 
-Beside the chain board, the **factory lanes** list gives one row per registered lane, with its session, card, SPEC and backend. A lane whose process id resolves to no session — or to more than one, on either registry — is marked **unresolved** and carries no values at all: a lookup that completes on the wrong session renders another lane's record as if it were this one's, which is worse than an empty row. When no lane is registered, the list says so.
-
-The **SPEC pipeline** lays SPECs out in four columns by status (`draft` · `in-progress` · `implemented` · `completed`). `superseded`, `archived` and `rejected` never reach this board; you see them through the filter in the Specs area.
+The **SPEC pipeline** lays SPECs out in four columns by status (`draft` · `in-progress` · `implemented` · `completed`). `superseded`, `archived` and `rejected` never reach this list; you see them through the filter in the Specs area.
 
 ## Specs — the catalog and two warning panels
 
@@ -91,11 +89,11 @@ The backlog queue `moai todo` writes gets its own address. The screen lists **ev
 
 It only reads. Adding, picking and dropping stay with `moai todo`; the console never writes to the queue and never takes its lock. Opening the page in a linked worktree shows the **primary checkout's** queue, not an empty one — the queue is one channel per repository, and the header carries the directory it resolved to so you can see which file you are looking at.
 
-An absent, empty or unreadable queue file renders an empty-state line at 200, not an error page.
+A missing queue or a valid queue with no cards renders an empty-state line at HTTP 200. An unreadable queue also returns HTTP 200, but displays an unavailable notice without zero counts. Raw storage errors are not displayed.
 
 ## Live updates — send a signal, then re-fetch
 
-The observation areas refresh themselves when files change. The server holds an SSE (Server-Sent Events — the standard for streaming one-way events from server to browser) stream open at `GET /events`, watches under `.moai/`, and emits changes coalesced into 250-millisecond batches.
+The observation areas refresh when watched files change. The server holds an SSE stream open at `GET /events`, watches the project paths and resolved home directories listed below, and coalesces file events into 250-millisecond batches.
 
 The key property is that **the event carries no data**. The server sends only the name of the area that changed; the browser takes that signal, re-fetches the current page and swaps the body. The truth about rendering stays in exactly one place — the server — so the screen and the files can never tell different stories.
 
@@ -105,12 +103,12 @@ The key property is that **the event carries no data**. The server sends only th
 | `session` | `.moai/state` |
 | `goal` | `.moai/state/goal` |
 | `verify` | `.moai/state/verify` |
-| `kanban` | `.moai/state/kanban` |
+| `factory` | `.moai/state/todo`, the resolved home Todo directory (`~/.moai/db/<project-key>/todo`), and the resolved Factory directory |
 | `config` | `.moai/config/sections` |
 
 Only the `config` event is handled differently. If the screen changed underneath you while you were editing settings, the values you were typing would disappear — so instead of refreshing, it raises a banner saying the config files changed.
 
-A lost connection does not fail silently. The appbar indicator flips to the disconnected state, and if the browser's reconnection attempts fail three times it falls back to polling every 30 seconds. The indicator keeps showing that polling is what is happening.
+Directories absent at startup are retried every second. Registering a newly created directory sends a refresh signal, including when the SSE connection is healthy. A lost connection changes the appbar indicator to disconnected; after three failed reconnection attempts, the browser falls back to polling every 30 seconds.
 
 ## Never write down what it does not know
 
@@ -125,21 +123,35 @@ One discipline shows up all over the screen.
 
 The settings area is the only place in the console that writes files. It defines no validation rules of its own and calls the **same validation and persistence layer** as the terminal wizard (`moai profile`, `moai update -c`). That is why editing from either side produces the same result.
 
-Choosing Settings in the rail unfolds eleven tabs below it as a vertical list.
+Choosing Settings in the rail unfolds the tabs below as a vertical list.
 
 1. **Identity** — display name and project-level identity fields
 2. **Language** — conversation, commit message, code comment and documentation language
-3. **LLM** — permission mode, model, effort level
-4. **3rd Party LLM** — per-tier GLM models, per-tier effort, GLM API key
-5. **Workflow** — execution mode, default mode, agentic-loop, loop-prevention
-6. **Git & Worktree** — `git_strategy.mode`, per-profile `merge_method`, worktree and branch-guard toggles
-7. **Audit** — the audit model and the per-backend gates
-8. **Agents** — per-agent profile and model assignment
+3. **Claude settings** — permission mode, model, effort level
+4. **GLM Settings** — per-tier GLM models, per-tier effort, GLM API key
+5. **Codex settings** — a **read-only mirror** gathering the scattered codex settings onto one screen: the audit backend and the codex pins, the codex opt-ins, and the detected binary. Nothing is edited here; each row links to the tab that actually owns the value
+6. **Workflow** — execution mode, default mode, agentic-loop, loop-prevention
+7. **Git & Worktree** — `git_strategy.mode`, per-profile `merge_method`, worktree and branch-guard toggles
+8. **Audit** — the audit model and the per-backend gates
 9. **Report** — report format and output preferences
 10. **MCP** — per-tool activation toggles for `moai mcp-server`. Write-capable tools carry a distinguishing mark
-11. **Cross-Session** — the inbound posture for cross-session messaging: how inbound messages are handled (`accept` · `hold` · `refuse`), cross-machine sending isolation, and held-dialog expiry. It edits `crosssession.yaml`, and the launcher injects this value into sessions from the next `moai cc`/`glm`/`cg` run — sessions already running keep the posture they were launched with
+11. **Cross-Session** — the inbound posture for cross-session messaging: how inbound messages are handled (`accept` · `hold` · `refuse`), cross-machine sending isolation, and held-dialog expiry. It edits `crosssession.yaml`, and the launcher injects this value into sessions from the next `moai cc`/`glm` run — sessions already running keep the posture they were launched with
+12. **Feedback** — the repository the feedback workflow files against, and the pre-submission confirmation toggle
+13. **Quality Gate** — whether the commit-time heavy gate runs. The runner honors this value only under `MOAI_PRECOMMIT=1`
 
 The number beside each tab is how many fields that tab renders. A tab with errors carries a warning mark instead of the number, so the list itself tells you which tab to open.
+
+### Why the Codex settings tab is read-only
+
+The codex settings were split between the Audit tab and the MCP tab. Answering "how does this project use codex?" meant visiting two tabs and reading values that never appeared together. The Codex settings tab puts them on one screen.
+
+**Showing without editing is a chosen trade-off, not an unfinished state.** Every panel in the settings area lives inside a single `<form>`, and the save path reads only the **first** value submitted under a given name. Render the same setting as a control in two panels and the edit made in the later panel is **discarded with no warning**. A bool setting is worse still: its hidden companion field, standing alone, is read as an *explicit false*, so merely opening this page and saving would switch six MCP tool toggles off.
+
+So the Codex settings tab renders values and links, and creates no input element carrying a name. Every setting stays declared, rendered and editable on its owning tab. "Fixing" this page into editable inputs later would reintroduce exactly that loss.
+
+**Nothing new was configured.** No new configuration key, no new persistence route, no new file under `.moai/config`. The settings already existed; only the place to see them together is new.
+
+The MCP tool toggles are often empty on disk, and the console reads an empty value as **on**. Rather than interpreting that emptiness itself — which would make this page a second classifier — the tab prints `(unset)` and states the fact in the group heading: an unset value reads as enabled, and only an explicit `false` turns a tool off.
 
 ### Widget honesty
 
@@ -147,7 +159,7 @@ Fields render with the widget that matches the value's real domain. A bool field
 
 ### GLM honesty badge
 
-The only runtime delivery channel for effort is a single session-level environment variable, so per-tier effort values are **stored only**. They persist in the config, but the runtime reads only the session-level value. The 3rd Party LLM tab carries a badge naming the source that actually applies, so this is stated rather than implied.
+The only runtime delivery channel for effort is a single session-level environment variable, so per-tier effort values are **stored only**. They persist in the config, but the runtime reads only the session-level value. The GLM Settings tab carries a badge naming the source that actually applies, so this is stated rather than implied.
 
 ### Editing scope
 
@@ -155,16 +167,18 @@ What can be edited is fixed by a single source of truth, and the console writes 
 
 ## Security model
 
-**Loopback only.** The console binds to `127.0.0.1` alone. Another account on the same machine, or a remote host, cannot reach it.
+**Loopback only.** The console binds to `127.0.0.1` alone, so a remote host cannot reach it. Loopback is not divided by account, though: another account logged in to the same machine can connect to the port.
 
 **No database.** Nothing extra is started. Everything it reads and writes lives in files under the current project's `.moai/`.
 
-**No authentication.** Loopback-only is the premise, so there is no login or token layer.
+**No authentication.** There is no login or token layer. Binding to loopback keeps remote hosts out, but not other accounts on the same machine. On a shared machine, those accounts can reach the console while it is running.
 
 **No command execution.** The observation areas refuse any method other than GET, and no screen runs a command on the server. The console does not perform SPEC status transitions either — those belong to each phase's manager agent.
 
+**Host check on every request.** Every route, static files included, refuses any request — regardless of method — whose `Host` header is not a loopback name (`localhost`, `127.0.0.1`, `[::1]`, with or without a port) or has no `Host` header at all; the response is 403. Loopback binding alone does not stop DNS rebinding — a page on another site can make the browser connect to `127.0.0.1` while carrying the attacker's domain as `Host`, and the browser then lets that page read the response. The same-origin (`Sec-Fetch-Site`) check still applies only to state-changing requests.
+
 {{< callout type="info" >}}
-Loopback-only is what makes no-authentication acceptable. Exposing the console externally through a reverse proxy or a `0.0.0.0` bind is not supported. If you need to view it remotely, forward the local port over an SSH tunnel.
+Loopback-only is what makes no-authentication acceptable. Exposing the console externally through a reverse proxy or a `0.0.0.0` bind is not supported. If you need to view it remotely, forward the local port over an SSH tunnel. An SSH tunnel still works with this check, since the browser still opens the console at a `localhost` address. That said, this was confirmed in a test setup that simulates port forwarding rather than a real SSH server, so treat it as expected behavior rather than a verified guarantee.
 {{< /callout >}}
 
 ## Four-locale interface
@@ -186,6 +200,6 @@ To stop it, press `Ctrl+C` in the terminal or use the shutdown button at the foo
 ## Related documents
 
 - [CLI reference — moai web](/en/cli-reference/web/) — flags and route detail
-- [Kanban Mode](/en/advanced/kanban-mode/) — the source contract for the chain the console draws
+- [Factory Mode](/en/advanced/factory-mode/) — the source contract for the chain the console draws
 - [Configuration sections reference](/en/advanced/config-sections/) — the keys the settings area handles
 - [moai epic status](/en/cli-reference/epic/) — the producer behind Monitor's epic panel

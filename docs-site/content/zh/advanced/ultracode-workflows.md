@@ -49,7 +49,7 @@ MoAI 的默认模式 — 每个回合依次委派一个智能体。
 | **上下文成本** | 每名成员独立上下文 |
 
 {{< callout type="warning" >}}
-在 v3.0 中，MoAI 的 Agent Teams **静态编排层已退役**。强制 `--team` 时会回退到 sub-agent 模式。多名成员并行工作、跨层依赖（后端 ↔ 前端）等场景改由并行子智能体扇出处理。原生 Claude Code teammate 运行时（`moai cg` 的 GLM pane 等）继续正常工作。
+在 v3.0 中，MoAI 的 Agent Teams **静态编排层已退役**。 强制 `--team` 时会回退到 sub-agent 模式。 多名成员并行工作、跨层依赖（后端 ↔ 前端）等场景改由并行子智能体扇出处理。 CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 {{< /callout >}}
 
 ### 3. Dynamic Workflows（动态工作流）
@@ -93,7 +93,7 @@ flowchart TD
     WORKFLOW --> DONE
 ```
 
-> MoAI 的静态 Agent Teams 编排层已退役（见上方警告），并行执行改由 **并行子智能体扇出**（单回合多个 `Agent()`、只读调查范围）承担。原生 Claude Code teammate 运行时（`moai cg` 的 tmux pane）继续独立运行。
+> MoAI 的静态 Agent Teams 编排层已退役（见上方警告），并行执行改由 **并行子智能体扇出**（单回合多个 `Agent()`、只读调查范围）承担。 CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 
 ## Ultracode 与 Dynamic Workflows
 
@@ -106,9 +106,10 @@ flowchart TD
 对当前会话中的所有实质性任务启用 **自动工作流生成**。
 
 **效果**：
-- Reasoning effort：设置为 `xhigh`
 - 启用自动工作流生成
 - 为每个任务选择最优编排原语
+
+这是一个可独立开启和关闭的开关，开启或关闭都不会改变推理强度（reasoning effort）。用 `/effort ultracode off` 关闭。用该命令开启的状态仅作用于当前会话；若想让每个会话都默认开启，在设置文件中写入 `"ultracode": true`（从 v2.1.284 起该设置不会改变推理强度）。
 
 **使用时机**：
 - 非常复杂的多阶段任务

@@ -93,7 +93,8 @@ type EraSignals struct {
 //	H-override: FrontmatterEra non-empty + valid → returned verbatim
 //	H-1:        ProgressMDExists == false → V2.x
 //	H-2:        progress.md present but no §E.{2,3,4,5} markers → V3R2-R4
-//	H-3:        §E.2 run-evidence start marker present but sync_commit_sha empty/missing → V3R5
+//	H-3:        §E.2 run-evidence start marker present, sync_commit_sha empty/missing,
+//	            AND no modern-era signal (phase ~ v3.0|v3R6, created >= 2026-04-01) → V3R5
 //	H-4:        §E.2 + §E.4 present AND sync_commit_sha non-empty → V3R6 (new H-4, REQ-LR-005)
 //	H-4-legacy: §E.2 + §E.5 present AND sync_commit_sha + mx_commit_sha non-empty → V3R6
 //	            (REQ-LR-006 dual-predicate migration window — legacy 5-section layout)
@@ -147,7 +148,17 @@ func ClassifyEra(signals EraSignals) (Era, string) {
 	// H-3: §E.2 run-evidence start marker present but sync_commit_sha empty/missing → V3R5
 	// (hasSyncSection tests literal §E.2 string presence — the run-evidence start
 	// marker — not the sync phase, which lives at §E.4.)
-	if hasSyncSection && syncSHA == "" {
+	//
+	// H-3 is DEFERRED when the SPEC carries a modern-era signal. The plan-phase
+	// skeleton writes §E.1..§E.4 in one go, and sync_commit_sha stays empty until
+	// sync closes, so on its own this predicate measures "not yet closed" rather
+	// than "written in the V3R5 era" — every in-flight modern SPEC matches it and
+	// returns before H-5 ever reads its created date. Gating the deferral on a
+	// POSITIVE signal (never on the absence of one) means a SPEC with no readable
+	// era evidence still falls to V3R5 and keeps its grandfather protection, so
+	// this narrowing cannot create a new H-6 unclassified drop.
+	// SPEC-ERA-H3-NARROWING-001 REQ-EH3-001/002.
+	if hasSyncSection && syncSHA == "" && !hasModernEraSignal(signals) {
 		return EraV3R5, "H-3 (§E.2 present, sync_commit_sha missing)"
 	}
 
@@ -168,8 +179,7 @@ func ClassifyEra(signals EraSignals) (Era, string) {
 	}
 
 	// H-5: tie-breaker via phase or created date
-	if matchesModernPhase(signals.FrontmatterPhase) ||
-		isAfterModernThreshold(signals.FrontmatterCreated) {
+	if hasModernEraSignal(signals) {
 		return EraV3R6, "H-5 (modern phase or created date)"
 	}
 
@@ -199,6 +209,81 @@ func normalizeEra(raw string) (Era, bool) {
 // Match is heading-style: "## §E.2" or "### §E.2" etc.
 func hasProgressMarker(content, marker string) bool {
 	return strings.Contains(content, marker)
+}
+
+// hasPopulatedProgressSection reports whether the named §E.N section exists AND
+// carries evidence, as opposed to existing as a plan-phase placeholder.
+//
+// hasProgressMarker answers "does this heading exist"; that is the right
+// question for era classification, where the heading set IS the schema
+// fingerprint. It is the wrong question wherever the caller means "did this
+// phase actually happen", because the plan-phase scaffold emits every §E.N
+// heading up front with a one-line placeholder body.
+//
+// THE PLACEHOLDER IS RECOGNIZED BY STRUCTURE, NOT BY SPELLING, and that choice
+// is load-bearing. needsSHABackfill (closer.go) carries the record of what the
+// other approach costs: it used to enumerate the four spellings a placeholder
+// might take, so whether a SPEC got repaired depended on how its placeholder
+// happened to be written, and the sanctioned `pending-backfill-*` family fell
+// straight through the gap. An enumeration of placeholder wordings provably
+// needs maintenance -- this one would also have to cover the Korean-annotated
+// variants the corpus already contains. A body that is a single
+// emphasis-wrapped line carries no evidence whatever it says inside, in any
+// language, so the structural test needs none.
+//
+// The converse is what keeps the predicate honest: everything else counts as
+// populated, including the bold markdown list form
+// (`- **sync_commit_sha**: ...`) that 18 corpus SPECs use. A tempting "body
+// contains a key: value line" rule would read those as pending and bury their
+// real drift -- the failure direction that matters more, because a suppressed
+// finding produces no signal at all.
+func hasPopulatedProgressSection(content, marker string) bool {
+	if !hasProgressMarker(content, marker) {
+		return false
+	}
+	body := progressSectionBody(content, marker)
+	if len(body) == 0 {
+		return false
+	}
+	if len(body) == 1 && isEmphasisWrappedLine(body[0]) {
+		return false
+	}
+	return true
+}
+
+// progressSectionBody returns the non-blank body lines of the named §E.N
+// section: the lines after its heading, up to the next top-level (`## `)
+// heading or EOF. The span contract mirrors parseTokensSpentFromSectionI so the
+// two section readers agree on where a section ends.
+func progressSectionBody(content, marker string) []string {
+	var body []string
+	inside := false
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "## ") {
+			if inside {
+				break
+			}
+			inside = strings.Contains(trimmed, marker)
+			continue
+		}
+		if inside && trimmed != "" {
+			body = append(body, trimmed)
+		}
+	}
+	return body
+}
+
+// isEmphasisWrappedLine reports whether a line is wholly wrapped in markdown
+// emphasis (`_..._` or `*...*`), the shape the plan-phase scaffold uses for
+// every pending-section note. The check is on the delimiters only; what the
+// note says between them is deliberately not inspected.
+func isEmphasisWrappedLine(line string) bool {
+	if len(line) < 2 {
+		return false
+	}
+	first, last := line[0], line[len(line)-1]
+	return (first == '_' && last == '_') || (first == '*' && last == '*')
 }
 
 // hasAnyProgressMarker reports whether any §E.{2,3,4,5} section header appears.
@@ -247,7 +332,7 @@ func extractProgressField(content, field string) string {
 	return ""
 }
 
-// cleanFieldValue strips empty placeholders (null, none, "", ``) and returns
+// cleanFieldValue strips empty placeholders (null, none, "", “) and returns
 // only non-trivial values (typically a git SHA or quoted string).
 func cleanFieldValue(raw string) string {
 	v := strings.TrimSpace(raw)
@@ -259,6 +344,19 @@ func cleanFieldValue(raw string) string {
 		return ""
 	}
 	return v
+}
+
+// hasModernEraSignal reports whether the SPEC carries positive evidence of the
+// modern era: a V3R6-flavoured `phase:` label, or a `created:` date on/after
+// modernEraThreshold.
+//
+// This is the single definition of "modern-era signal" — H-5 decides with it, and
+// H-3 defers on it. Keeping both call sites on one helper is what makes the
+// invariant "no SPEC is both H-3-eligible and modern by H-5" hold by construction
+// rather than by coincidence. SPEC-ERA-H3-NARROWING-001 REQ-EH3-001.
+func hasModernEraSignal(signals EraSignals) bool {
+	return matchesModernPhase(signals.FrontmatterPhase) ||
+		isAfterModernThreshold(signals.FrontmatterCreated)
 }
 
 // matchesModernPhase reports whether phase string indicates V3R6 era.

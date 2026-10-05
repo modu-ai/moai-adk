@@ -143,7 +143,7 @@ MCP 서버를 연결하거나 해제하면 컨텍스트 앞부분(프리픽스)�
 
 MoAI-ADK는 MCP 서버를 **기본으로 프로비저닝하지 않습니다**. 대신 외부 자료가 필요하면 내장 `WebSearch` / `WebFetch`로 공식 문서와 모범 사례를 찾아보는 폴백 전략을 씁니다(`.claude/rules/moai/core/agent-common-protocol.md` § MCP Fallback Strategy). 아키텍처와 분석 품질이 MCP 가용성에 매이지 않게 하려는 설계입니다.
 
-한 가지 예외는 백엔드 라우팅입니다. `moai glm`이나 `moai cg`의 GLM 패널에서 실행하면 웹 검색과 웹 조회가 내장 도구 대신 z.ai MCP 도구로 넘어갑니다(`.claude/rules/moai/core/glm-web-tooling.md`). 어느 백엔드든 검색·조회 능력 자체는 그대로이고 경로만 바뀝니다.
+한 가지 예외는 백엔드 라우팅입니다. `moai glm` 세션에서 실행하면 웹 검색과 웹 조회가 내장 도구 대신 z.ai MCP 도구로 넘어갑니다(`.claude/rules/moai/core/glm-web-tooling.md`). 어느 백엔드든 검색·조회 능력 자체는 그대로이고 경로만 바뀝니다.
 
 ## 관련 문서
 

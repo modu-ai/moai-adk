@@ -50,6 +50,8 @@ flowchart TD
 
 每 MTok 原价（输入/输出）： Opus 5 $5/$25 · Sonnet 5 $2/$10（导入价，至 2026-08-31，此后 $3/$15） · Fable 5 $10/$50。
 
+本表数值均在 Opus 5 上测得。`opus` 别名目前指向的 Opus 5.5 尚未重新测量。
+
 {{< icon warning warn >}} **单价倒挂**： Sonnet 的代币单价*低于* Opus，但在所有可比位置上每任务成本反而更高 —— Opus 5 `low` 花 $1.66 拿 58%，Sonnet 5 `max` 花 $26.40 只拿 54%。"改用便宜模型就能省额度"的通念在长周期智能体工作中不成立，因为决定账单的不是单价而是完赛效率。
 
 从数据里读出的结论有四条。
@@ -63,39 +65,64 @@ flowchart TD
 
 连 Sonnet 在长周期任务上都比 Opus 贵，Haiku 比 Sonnet 更弱。把 Haiku 放进路由，能力不会增加，只是步数浪费增加 —— Sonnet 上已经观测到的完赛失败模式，在 Haiku 上只会更陡峭。
 
-所以 MoAI 把 Haiku 从路由模型集合中完全排除（No-Haiku 策略，SPEC-AGENT-ARCH-V2-001 §D）。Haiku 在模型 enum 中仍是合法值，因此会出现在文档 · 示例 YAML 里，但不会进入实际智能体分配矩阵的任何一格。移除 Haiku 之后，降低成本的轴仍在 —— 不改模型等级，而是按档调节 effort（推理深度）。这就是三层结构的起点。
+所以 MoAI 把 Haiku 从路由模型集合中完全排除（No-Haiku 策略，SPEC-AGENT-ARCH-V2-001 §D）。Haiku 在模型 enum 中仍是合法值，因此会出现在文档 · 示例 YAML 里，但不会进入会话模型组合的任何默认搭配。移除 Haiku 之后，降低成本的轴仍在 —— 不改模型等级，而是按档调节 effort（推理深度）。这就是三层结构的起点。
 
 ## 三档分配规则
 
 把剩下的模型（Opus、Sonnet）与 effort 按任务性质分成三档。这里的"级别"指*按任务种类分配模型 · effort 的档位*。
 
+> 本节之后的分配表是**设计意图，同时也是 v3.1 之前的实际规则**（按智能体逐一分配的配置矩阵时代）。v3.2 起已实现的行为是会话继承，所以这份分配表要当作模型选择标准的记录来读，而不是当前行为。两者的区分见下文"把设计意图与已实现行为分开读"一节。
+
 ```mermaid
 flowchart TD
-    START["任务进入智能体"] --> Q{"任务的性质是?"}
-    Q -- "一次结束<br/>输入左右成本" --> T1
-    Q -- "要跨多个回合<br/>才能结束的多轮行" --> T2
-    Q -- "一次决定大幅左右<br/>后续成本的位置" --> T3
+    START["任务进入智能体"] --> Q{"这一行做的是什么?"}
+    Q -- "机械处理<br/>或只读探索" --> T1
+    Q -- "生产出某种东西" --> T2
+    Q -- "判断别人产出的东西<br/>或协调多个行" --> T3
 
-    T1["Tier 1 — 单发 Single-shot<br/>Sonnet low<br/>git mechanics · read-only search"]
-    T2["Tier 2 — 智能体式 Agentic<br/>Opus low / medium / high<br/>spec · develop · audit · design · harness"]
-    T3["Tier 3 — 峰值 Peak<br/>Opus max<br/>develop · advisor (仅 high 配置)"]
+    T1["Tier 1 — 机械 · 探索<br/>Sonnet low<br/>manager-docs · manager-git · Explore"]
+    T2["Tier 2 — 生产<br/>Opus，逐行档位不同<br/>manager-spec · manager-develop<br/>builder-harness · e2e-tester"]
+    T3["Tier 3 — 判断 · 协调<br/>Opus，以 high 为主<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · manager-todo"]
 
-    T1 --> NOTE["三个配置 (经济·默认·质量) 下全部固定"]
-    T2 --> NOTE2["配置选择 Opus effort 档位<br/>经济=low · 默认=medium · 质量=high"]
-    T3 --> NOTE3["仅限调用频率最低的两行<br/>xhigh 不进任何一格"]
+    T1 --> NOTE["三个配置下全部固定"]
+    T2 --> NOTE2["两行在三列都固定在 medium<br/>只有两行随配置下降"]
+    T3 --> NOTE3["super-advisor · manager-todo<br/>在经济列也保持 high"]
 ```
 
-### Tier 1 — 单发 (Single-shot)
+### Tier 1 — 机械 · 探索
 
-{{< icon database >}} 一次就能结束、成本由输入而非迭代左右的工作。让弱模型变贵的原因——多步完赛失败——在这里不出现，Sonnet 更低的输入单价成为实质变量。用 Sonnet `low` effort 把步数压到最少。负责的智能体是 `manager-git`、`Explore`，这两行在三个配置（经济 · 默认 · 质量）下全部固定。
+{{< icon database >}} 按既定步骤照做，或者只读取就结束的工作。成本由输入而非迭代左右，让弱模型变贵的原因——多步完赛失败——在这里不出现。于是 Sonnet 更低的输入单价成为实质变量，用 `low` effort 把步数压到最少。负责的智能体是 `manager-docs`（文档整理）、`manager-git`（提交与 PR 的机械作业）、`Explore`（只读探索）三个，三行在三个配置（经济 · 默认 · 质量）下都固定为 `sonnet / low` —— 提高配置也不会提高它们的模型级别。
 
-### Tier 2 — 智能体式 (Agentic)
+### Tier 2 — 生产
 
-{{< icon flash >}} 计划、实现、审计、设计、线束生成、文档化、E2E —— 多轮行的全部。Opus `low` 的得分已经高于任何 effort 的 Sonnet、每任务成本更低，所以这些行全部由 Opus 承担。配置决定每行落在 Opus effort 梯队的哪一级 —— 经济列 `low`、默认列 `medium`、质量列 `high`。负责的智能体： `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`builder-harness`、`manager-docs`、`e2e-tester`。
+{{< icon flash >}} 写规格、实现代码、生成线束、跑 E2E 场景 —— **产出东西**的行。它们是多轮的，完赛效率决定账单；Opus `low` 的得分已经高于任何 effort 的 Sonnet、每任务成本更低，所以默认由 Opus 承担。
 
-### Tier 3 — 峰值 (Peak)
+配置**并不以同样方式**移动这四行。逐行不同。
 
-{{< icon sparkles >}} `max` effort 只用在 `high` 配置下调用频率最低的两行，即 `manager-develop` 与 `super-advisor`。因为越过 `medium` 之后每得 1 分的边际成本陡峭上升（`low` → `medium` 每分 $0.15，`medium` → `high` 每分 $0.70）。所以峰值 effort 只分配给一次决定会大幅左右后续成本的位置。`xhigh` 哪里都不用 —— 在 Opus 上得分与 `high` 相同，成本却多 49%。
+| 行 | 质量列 | 默认列 | 经济列 |
+|---|---|---|---|
+| `manager-spec` | `opus / medium` | `opus / medium` | `opus / medium` |
+| `manager-develop` | `opus / medium` | `opus / medium` | `opus / medium` |
+| `builder-harness` | `opus / high` | `opus / medium` | `opus / low` |
+| `e2e-tester` | `opus / medium` | `opus / low` | `sonnet / low` |
+
+撰写与实现的行 `manager-spec` 和 `manager-develop` **在三列都停在 `medium`** —— 不把开支进一步推向生产端，正是这张矩阵的决定。完整走完三级的只有 `builder-harness` 一行，而 `e2e-tester` 在经济列连模型都降到 Sonnet。
+
+### Tier 3 — 判断 · 协调
+
+{{< icon sparkles >}} **判断**别人产出的东西，或**协调**多个行的位置。这张矩阵的原理一句话就在这里 —— **开支给判断的行，而不是生产的行**，因为一次判断会大幅左右后续成本。
+
+| 行 | 质量列 | 默认列 | 经济列 |
+|---|---|---|---|
+| `plan-auditor` · `sync-auditor` | `opus / high` | `opus / high` | `opus / medium` |
+| `manager-design` · `manager-lead` | `opus / high` | `opus / high` | `opus / medium` |
+| `super-advisor` · `manager-todo` | `opus / high` | `opus / high` | `opus / high` |
+
+只有 `super-advisor`（升级通道）与 `manager-todo`（密封任务的判定）**在经济列也保持 `high`**。因为最值得在便宜的一列里保持稳健的，恰恰是这两个位置。
+
+`manager-todo` 说明了这条轴为什么好过"是不是多轮"。它读一次、返回一个决定，是**单发**的行，按多轮标准本该落在 Sonnet 一侧；实际上它三列都是 `opus / high`。**因为它是判断的行。**
+
+`max` **没有任何一行拿到**。它作为 `high` 之上唯一的档位留在词汇里，但当前持有它的格子是 0 个。`xhigh` 也哪里都不用 —— 在 Opus 上得分与 `high` 相同，成本却多 49%。
 
 ## 模型级别与自主级别是两回事
 
@@ -115,13 +142,13 @@ flowchart TD
 
 **设计阶段** (`.moai/reports/agent-architecture-redesign-v2-20260709.html`) —— v2 架构的设计意图。提出三层模型策略的原则与 DeepSWE 依据。
 
-**已实现的行为** —— 实际路由由单一配置矩阵执行。活动配置（`high` / `medium` / `low`）选出矩阵的一列，解析器定下各智能体的 `{model, effort}`，在 spawn 时把 model 作为运行时参数注入。详细矩阵请看[配置矩阵](/zh/advanced/profile-matrix/)页面。
+**已实现的行为** —— v3.2 起的实际行为是**会话继承**。子代理沿用主会话的模型与推理深度 —— 生成子代理时不传 `model` 也不传 `effort`，MoAI 智能体定义对两者都不作声明。曾经的配置矩阵（13 个智能体 × 3 个配置 = 39 格的分配表）和把矩阵值注入 spawn 的解析器都已退役。会话模型策略今天要做的事，只剩在 `moai profile setup` 里决定会话的默认推理强度回退。当前行为的详情请看[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 阅读侧同样要把设计意图（本页的 DeepSWE 依据）与已实现的行为（单一配置矩阵）分开看。
 
 ## 这个基准测不到的东西
 
-{{< icon info >}} **局限声明**： 这个基准测量的是**编码**智能体。文档撰写、审计判断、SPEC（需求规格书）撰写质量未被直接测量，这些行的安排不是观测，而是建立在"与多轮智能体工作相似"的推断上。置信区间也要一起看 —— `medium`（69%±1）与 `high`（73%±2）不重叠，但 `max`（74%±4）与 `high` 重叠。这正是把 `max` 收在几乎不被调用的两格里的原因。所有默认值都可以用 `llm.agent_overrides` 按智能体逐个回退。
+{{< icon info >}} **局限声明**： 这个基准测量的是**编码**智能体。文档撰写、审计判断、SPEC（需求规格书）撰写质量未被直接测量，这些行的安排不是观测，而是建立在"与多轮智能体工作相似"的推断上。置信区间也要一起看 —— `medium`（69%±1）与 `high`（73%±2）不重叠，但 `max`（74%±4）与 `high` 重叠。这正是不把 `max` 分配给任何一格的原因 —— 那等于为重叠的区间多付钱。所有默认值都可以在会话层面调整 —— 模型由 Claude Code 的模型选择决定，effort 由 `/effort` 或配置向导的会话模型策略决定。
 
 {{< icon info >}} **关于 Fable 5**： Fable 在编码工作上被全面压制。Fable `high`（69%，$9.18）与 Opus `medium`（69%，$3.29）得分相同，成本近 3 倍。所以没有放进任何矩阵格。它在模型 enum 中仍是合法值，GLM 后端的 Fable 槽位接线也原样保留 —— 变的只是默认值。
 
@@ -131,6 +158,6 @@ flowchart TD
 
 ## 下一步
 
-- [配置矩阵](/zh/advanced/profile-matrix/) —— 单一 3 列 per-agent 配置矩阵（11 个智能体 × 3 个配置 = 33 格）
+- [配置矩阵](/zh/advanced/profile-matrix/) —— 39 格矩阵退役后的位置，以及现在的会话继承规则
 - [自主级别](/zh/advanced/autonomy-tier/) —— 与模型级别正交、以权限 · 控制为对象的自主等级
 - [代币经济学概述](/zh/advanced/tokenomics-overview/) —— 四层代币经济学结构的路由层

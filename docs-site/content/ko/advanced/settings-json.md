@@ -73,11 +73,11 @@ flowchart TD
 | 값                    | 의미                                                       |
 | --------------------- | ---------------------------------------------------------- |
 | `"default"`           | 매 작업마다 사용자에게 확인                                |
-| `"acceptEdits"`       | 파일 편집은 자동 허용, 그 외 명령은 확인 (MoAI 기본값)     |
+| `"acceptEdits"`       | 파일 편집은 자동 허용, 그 외 명령은 확인 (moai 프로필 마법사의 기본 선택)     |
 | `"plan"`              | 읽기 전용 — 파일 수정 자체를 안 함                         |
 | `"bypassPermissions"` | 모든 권한 자동 허용 (위험, 설정에서 끌 수 있음)            |
 
-MoAI-ADK 템플릿은 `"acceptEdits"`를 기본으로 깔아 줍니다. 파일 편집 창을 줄이면서도 위험한 셸 명령은 그대로 확인받는 절충 지점입니다.
+MoAI-ADK 템플릿은 `defaultMode`를 기본으로 깔아 주지 않습니다. 대신 `moai profile` 마법사에서 선택한 권한 모드가 `.claude/settings.local.json`의 `defaultMode`로 기록되고, `moai cc`·`moai glm`으로 시작할 때도 `--permission-mode` 플래그로 전달됩니다. 어디에도 지정하지 않으면 Claude Code의 내장 기본값이 적용됩니다. 파일 편집 창을 줄이면서도 위험한 셸 명령은 그대로 확인받는 절충 지점을 원한다면 마법사에서 `"acceptEdits"`를 선택해 두면 됩니다.
 
 ### 세 상자의 의미
 
@@ -127,6 +127,22 @@ flowchart TD
 ```
 
 Bash 규칙에서 `*`는 와일드카드입니다. `Bash(npm run *)`는 `npm run build`, `npm run test` 모두에 매칭됩니다. 주의할 점은 `*` **앞의 공백**입니다. `Bash(ls *)`는 `ls -la`에는 매칭되지만 `lsof`에는 매칭되지 않습니다. 반면 `Bash(ls*)`는 둘 다 매칭됩니다. 의도를 정확히 적으려면 공백을 신경 써야 합니다.
+
+### PowerShell 도구용 deny 규칙
+
+Claude Code는 셸 명령을 별도의 PowerShell 도구로 실행하기도 합니다(대부분의 Windows 환경에서는 기본으로 켜져 있고, macOS와 Linux에서는 직접 켜야 합니다). 이 도구의 규칙은 `PowerShell(...)`이라는 별도 이름공간을 씁니다. 그래서 `Bash(...)` deny 규칙은 같은 명령이 PowerShell 도구로 실행될 때는 막지 못합니다. 이 때문에 MoAI-ADK 템플릿은 파괴적인 deny 규칙을 두 도구 모두에 적어 둡니다. `Bash(git push --force:*)`와 `PowerShell(git push --force:*)`를 함께 두는 식입니다. 위험한 Git, 디스크 포맷, 시스템 명령, DB 삭제 규칙이 여기에 해당합니다.
+
+다음 세 가지 Bash deny 규칙에는 일부러 PowerShell 짝을 두지 않았습니다.
+
+| 규칙 | PowerShell 짝을 두지 않는 이유 |
+|------|------|
+| 파일시스템 루트 삭제(`rm -rf /`, `rm -rf ~`, `C:/` 삭제) | Claude Code의 내장 보호 장치가 PowerShell 도구를 거친 `Remove-Item`과 `cmd`의 시스템 경로 삭제를 모든 권한 모드에서 이미 거부합니다 |
+| `kill -9` | Windows의 PowerShell에서 `kill`은 `Stop-Process`의 별칭이라, `kill -9`로 적은 규칙이 아예 매칭되지 않을 수 있습니다 |
+| `TRUNCATE` | PowerShell 규칙은 대소문자를 가리지 않고 매칭하므로, 평범한 파일 유틸리티 `truncate`까지 막아 버립니다 |
+
+내장 보호 장치 가운데 `cmd`로 실행한 `rd`·`del`이 루트, 홈 디렉터리, 와일드카드 대상을 지우지 못하게 막는 검사는 Claude Code v2.1.283 이상에서만 동작하며, Claude Code를 실행하는 환경에 `CLAUDE_CODE_DISABLE_POWERSHELL_CMD_RM_DENY=1`을 설정하면 꺼집니다(`Remove-Item`의 시스템 경로 거부는 그대로 유지됩니다). macOS나 Linux에서 `pwsh`로 네이티브 `rm`을 실행하는 경우는 문서화된 내장 보호 범위에 들어 있지 않습니다.
+
+팀에서 PowerShell 도구를 쓴다면, 셸 명령용 deny 규칙을 직접 추가할 때 짝이 되는 `PowerShell(...)` 규칙도 함께 넣어 두세요.
 
 ## Step 3: settings.json과 settings.local.json 나누기
 

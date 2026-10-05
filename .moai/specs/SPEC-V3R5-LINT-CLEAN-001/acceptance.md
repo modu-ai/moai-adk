@@ -241,11 +241,11 @@ FROZEN_PATTERNS=(
   "CLAUDE.md"
 )
 
-CHANGED=$(git diff --name-only main..HEAD)
+git diff --name-only main..HEAD > /tmp/lcln-changed.txt
 
 VIOLATIONS=0
 for pattern in "${FROZEN_PATTERNS[@]}"; do
-  if echo "$CHANGED" | grep -F "$pattern" > /dev/null; then
+  if grep -F "$pattern" /tmp/lcln-changed.txt > /dev/null; then
     echo "BLOCK: FROZEN-zone violation: $pattern modified"
     VIOLATIONS=$((VIOLATIONS + 1))
   fi
@@ -428,13 +428,13 @@ echo "OK: W2-deferred set size $W2_DEFER in expected range [11, 16]"
 ```bash
 PHASE=P1
 # (a) Verify template-side file edits mirror live-side file edits (by filename match)
-TEMPLATE_EDITS=$(git diff --name-only main..HEAD | grep -E '^internal/template/templates/\.claude/agents/moai/.*\.md$' | sed 's|internal/template/templates/||' | sort)
-LIVE_EDITS=$(git diff --name-only main..HEAD | grep -E '^\.claude/agents/moai/.*\.md$' | sort)
+git diff --name-only main..HEAD | grep -E '^internal/template/templates/\.claude/agents/moai/.*\.md$' | sed 's|internal/template/templates/||' | sort > /tmp/lcln-tmpl.txt
+git diff --name-only main..HEAD | grep -E '^\.claude/agents/moai/.*\.md$' | sort > /tmp/lcln-live.txt
 
-if [ "$TEMPLATE_EDITS" != "$LIVE_EDITS" ]; then
+if ! diff /tmp/lcln-tmpl.txt /tmp/lcln-live.txt > /dev/null; then
   echo "BLOCK: template/live edits do not mirror:"
-  echo "  Template-side edited files: $TEMPLATE_EDITS"
-  echo "  Live-side edited files: $LIVE_EDITS"
+  echo "  Template-side edited files:"; cat /tmp/lcln-tmpl.txt
+  echo "  Live-side edited files:"; cat /tmp/lcln-live.txt
   exit 1
 fi
 

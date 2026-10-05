@@ -18,25 +18,33 @@ type sectionLoaderFunc func(l *Loader, dir string, cfg *Config)
 // sectionLoaders maps a section name to its loader method. Used by LoadSlice
 // to load only the named sections.
 var sectionLoaders = map[string]sectionLoaderFunc{
-	"user":          (*Loader).loadUserSection,
-	"language":      (*Loader).loadLanguageSection,
-	"quality":       (*Loader).loadQualitySection,
+	"user":           (*Loader).loadUserSection,
+	"language":       (*Loader).loadLanguageSection,
+	"quality":        (*Loader).loadQualitySection,
 	"git_convention": (*Loader).loadGitConventionSection,
-	"git_strategy":  (*Loader).loadGitStrategySection,
-	"llm":           (*Loader).loadLLMSection,
-	"ralph":         (*Loader).loadRalphSection,
-	"state":         (*Loader).loadStateSection,
-	"workflow":      (*Loader).loadWorkflowSection,
-	"statusline":    (*Loader).loadStatuslineSection,
-	"feedback":      (*Loader).loadFeedbackSection,
-	"handoff":       (*Loader).loadHandoffSection,
-	"archive":       (*Loader).loadArchiveSection,
-	"gate":          (*Loader).loadGateSection,
-	"system":        (*Loader).loadSystemSection,
-	"constitution":  (*Loader).loadConstitutionSection,
-	"context":       (*Loader).loadContextSection,
-	"interview":     (*Loader).loadInterviewSection,
-	"design":        (*Loader).loadDesignSection,
+	"git_strategy":   (*Loader).loadGitStrategySection,
+	"llm":            (*Loader).loadLLMSection,
+	"ralph":          (*Loader).loadRalphSection,
+	"state":          (*Loader).loadStateSection,
+	"workflow": func(l *Loader, dir string, cfg *Config) {
+		// The slice path fails OPEN (cache-miss latency contract — a hook
+		// must never hard-fail on config): a tier-token rejection logs and
+		// continues on the defaults loadWorkflowSection left in place. The
+		// full Load() path rejects instead (REQ-TIER-009).
+		if err := l.loadWorkflowSection(dir, cfg); err != nil {
+			slog.Warn("workflow config rejected, using defaults", "error", err)
+		}
+	},
+	"statusline":   (*Loader).loadStatuslineSection,
+	"feedback":     (*Loader).loadFeedbackSection,
+	"handoff":      (*Loader).loadHandoffSection,
+	"archive":      (*Loader).loadArchiveSection,
+	"gate":         (*Loader).loadGateSection,
+	"system":       (*Loader).loadSystemSection,
+	"constitution": (*Loader).loadConstitutionSection,
+	"context":      (*Loader).loadContextSection,
+	"interview":    (*Loader).loadInterviewSection,
+	"design":       (*Loader).loadDesignSection,
 }
 
 // LoadSlice reads ONLY the named configuration sections from disk, applying

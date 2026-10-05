@@ -202,6 +202,45 @@ func TestACPN001_ThreeFilesNoExtras(t *testing.T) {
 	}
 }
 
+// TestNavigatorNextTaskPrefersInProgressOverEarlierImplemented verifies that
+// Next task uses the documented active-status tiers instead of taking the first
+// alphabetically sorted non-terminal row.
+func TestNavigatorNextTaskPrefersInProgressOverEarlierImplemented(t *testing.T) {
+	dir := t.TempDir()
+	initFixtureRepo(t, dir)
+	writeSPEC(t, dir, "SPEC-A-IMPLEMENTED-001", "Earlier implemented", "implemented", "v1.0.0", "internal/earlier")
+	writeSPEC(t, dir, "SPEC-Z-IN-PROGRESS-002", "Later in progress", "in-progress", "v1.0.0", "internal/later")
+	if err := gitRun(dir, "add", ".moai/specs"); err != nil {
+		t.Fatal(err)
+	}
+	if err := gitRun(dir, "commit", "-m", "feat: add status-priority fixtures"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runRegen(t, dir); err != nil {
+		t.Fatalf("regen: %v", err)
+	}
+
+	nav, _, _ := navigatorFiles(dir)
+	data, err := os.ReadFile(nav)
+	if err != nil {
+		t.Fatalf("read navigator.md: %v", err)
+	}
+	_, afterHeading, found := strings.Cut(string(data), "## Next task\n\n")
+	if !found {
+		t.Fatal("navigator.md missing Next task section")
+	}
+	nextTask, _, found := strings.Cut(afterHeading, "Full entry brief:")
+	if !found {
+		t.Fatal("navigator.md missing end of Next task section")
+	}
+	if !strings.Contains(nextTask, "SPEC-Z-IN-PROGRESS-002") {
+		t.Errorf("Next task did not select later in-progress SPEC; section:\n%s", nextTask)
+	}
+	if strings.Contains(nextTask, "SPEC-A-IMPLEMENTED-001") {
+		t.Errorf("Next task selected earlier implemented SPEC; section:\n%s", nextTask)
+	}
+}
+
 // TestACPN002_EveryRowCarriesProvenance verifies AC-PN-002: every row in
 // capability-map.md and progress-map.md carries a 40-char commit-sha and an
 // ISO-8601 captured-at.

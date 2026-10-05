@@ -2,7 +2,9 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"testing"
@@ -661,5 +663,81 @@ func TestCodexJobCancel_TerminalJobSendsNothing(t *testing.T) {
 	missing := callCodexJobTool(t, handleCodexJobCancel, map[string]any{})
 	if !missing.IsError {
 		t.Error("a missing job_id argument must return a structured error result")
+	}
+}
+
+// ─── SPEC-CODEX-TEST-GAPS-001 M1 (REQ-CTG-001 / AC-CTG-001) ───────────────
+
+// t501TerminateHelperEnv is the re-exec sentinel: when it is set, a re-entered
+// test binary running TestTerminateCodexProcessHelper is the killable CHILD
+// spawned by TestTerminateCodexProcess, never an ordinary test run.
+const t501TerminateHelperEnv = "T501_TERMINATE_HELPER_CHILD"
+
+// TestTerminateCodexProcessHelper is the helper-process body (the standard
+// TestHelperProcess re-exec pattern, plan.md §F M1's locked cross-platform
+// decision). Under the sentinel it blocks until its parent terminates it —
+// sleeping, not busy-waiting, so the child burns nothing while it waits.
+// A run WITHOUT the sentinel returns immediately, so normal suite runs,
+// including this one, are unaffected.
+func TestTerminateCodexProcessHelper(t *testing.T) {
+	if os.Getenv(t501TerminateHelperEnv) != "1" {
+		return
+	}
+	time.Sleep(10 * time.Minute)
+}
+
+// TestTerminateCodexProcess drives the REAL terminateCodexProcess body
+// directly — the job-control tests above swap the codexTerminateProcess seam
+// and record pids instead of signalling; this one exercises the production
+// Kill path itself, which no existing test observes.
+//
+// Two arms:
+//
+//   - refusal: pid <= 0 (-1, 0) returns an error naming the refusal, with no
+//     process ever found or signalled.
+//   - success: a genuinely spawned re-exec child is terminated and observed
+//     to exit. The child kill is registered via t.Cleanup BEFORE the first
+//     assertion, so a failed assertion can never leak the child (plan.md §B).
+func TestTerminateCodexProcess(t *testing.T) {
+	for _, pid := range []int{-1, 0} {
+		err := terminateCodexProcess(pid)
+		if err == nil {
+			t.Errorf("terminateCodexProcess(%d) = nil error, want the ownership refusal", pid)
+			continue
+		}
+		if !strings.Contains(err.Error(), "refusing") {
+			t.Errorf("terminateCodexProcess(%d) = %q, want the refusal wording", pid, err)
+		}
+	}
+
+	child := exec.Command(os.Args[0], "-test.run=^TestTerminateCodexProcessHelper$")
+	child.Env = append(os.Environ(), t501TerminateHelperEnv+"=1")
+	if err := child.Start(); err != nil {
+		t.Fatalf("spawn re-exec helper child: %v", err)
+	}
+	waited := false
+	// Cleanup BEFORE the first assertion: a failed assertion must not leak the
+	// child (plan.md §B — cleanup ordering is a HARD requirement here).
+	t.Cleanup(func() {
+		if waited {
+			return
+		}
+		_ = child.Process.Kill()
+		_ = child.Wait()
+	})
+
+	if err := terminateCodexProcess(child.Process.Pid); err != nil {
+		t.Fatalf("terminateCodexProcess(%d) = %v, want nil", child.Process.Pid, err)
+	}
+	err := child.Wait()
+	waited = true
+	// The exit is observed as an ExitError: on darwin/linux the child
+	// terminates by signal (so ProcessState.Exited() is false there), on
+	// windows by the kill exit code — either way the child is gone, which is
+	// the contract the acceptance pins (§D.1: the test asserts the call
+	// contract, not the child's liveness timing).
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("child did not exit from the termination: err=%v (process state %+v)", err, child.ProcessState)
 	}
 }

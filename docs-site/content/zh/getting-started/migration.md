@@ -113,13 +113,13 @@ go install github.com/modu-ai/moai-adk/cmd/moai@latest
 
 升级到 3.0 后,代理目录·自律循环·成本控制重新设计。整理迁移中最常遇到的变化。
 
-#### 代理目录整合为 11 个
+#### 代理目录整合为 13 个
 
-archived 代理名称(`manager-strategy`、`expert-backend`、`researcher` 等)在 spawn 时**被拒绝**。替代方案:(a) 使用 11 个保留代理之一,或 (b) 改为在每个位置 spawn 带域允许列表的 `Agent(general-purpose)` 模式。
+archived 代理名称(`manager-strategy`、`expert-backend`、`researcher` 等)在 spawn 时**被拒绝**。替代方案:(a) 使用 13 个保留代理之一,或 (b) 改为在每个位置 spawn 带域允许列表的 `Agent(general-purpose)` 模式。
 
 #### Agent Teams 静态编组层退休
 
-强制 `--team` / `--mode team` 输出 `MODE_TEAM_UNAVAILABLE` 并回退到子代理模式。原生 Claude Code 队友运行时(`moai cg` GLM 面、`worktree --team`)不受影响。
+强制 `--team` / `--mode team` 输出 `MODE_TEAM_UNAVAILABLE` 并回退到子代理模式。 CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 
 #### Context7 MCP 依赖退休
 

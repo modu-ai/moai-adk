@@ -1,7 +1,7 @@
 // Package curator — tier→surface dispatch (SPEC-HARNESS-EVOLVE-003 M2).
 //
 // REQ-HEV3-001: registers auto_detection as a Tier-4 Evolvable surface.
-// REQ-HEV3-003: tier→surface dispatch (Tier 3 → CLAUDE.local.md, Tier 4 → CLAUDE.md).
+// REQ-HEV3-003: tier→surface dispatch (Tier 3 → AGENTS.local.md, Tier 4 → CLAUDE.md).
 // REQ-HEV3-004: cross-surface leak guard.
 //
 // H-4 resolved: this is a separate Dispatch surface in curator/dispatch.go; the
@@ -17,7 +17,7 @@ import (
 
 // ErrCrossSurfaceLeak is returned when a tier-qualified proposal targets the
 // wrong surface (REQ-HEV3-004 — no cross-surface leak). A Tier-3 proposal must
-// land in CLAUDE.local.md; a Tier-4 proposal must land in CLAUDE.md. Forcing the
+// land in AGENTS.local.md; a Tier-4 proposal must land in CLAUDE.md. Forcing the
 // wrong pairing is a reward-hacking shape (REQ-HEV2-027 extended to the dispatch layer).
 var ErrCrossSurfaceLeak = errors.New("curator: cross-surface leak blocked")
 
@@ -38,9 +38,10 @@ type SurfaceTarget struct {
 }
 
 // TierSurfaceMap is the canonical tier → SurfaceTarget mapping (REQ-HEV3-003,
-// design.md §B.1). Tier 3 → CLAUDE.local.md append-only; Tier 4 → CLAUDE.md digest.
+// design.md §B.1). Tier 3 → AGENTS.local.md append-only (retargeted by
+// SPEC-INSTRUCTION-FILES-UNIFY-001 REQ-IFU-014); Tier 4 → CLAUDE.md digest.
 var TierSurfaceMap = map[int]SurfaceTarget{
-	3: {Path: "CLAUDE.local.md", BlockType: BlockTypeLearnedLocal, Tier: 3},
+	3: {Path: "AGENTS.local.md", BlockType: BlockTypeLearnedLocal, Tier: 3},
 	4: {Path: "CLAUDE.md", BlockType: BlockTypeLearnedWorkflow, Tier: 4},
 }
 

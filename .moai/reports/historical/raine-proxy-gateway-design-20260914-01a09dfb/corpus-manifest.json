@@ -1,0 +1,186 @@
+{
+  "source_sha": "bcfa0a401a6bfe0eea278c65edecfcedaad919c4",
+  "documents": [
+    {
+      "url": "https://claude-code-proxy.raine.dev/",
+      "source": "docs/src/content/docs/index.md",
+      "sha256": "5d8444b1cc5155229fccca03ab3d3bdc118bdf53a5217796ab4006837a1b9a01",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/getting-started/",
+      "source": "docs/src/content/docs/getting-started.md",
+      "sha256": "14c887c60cd91a385bf672cbb78f00302fca64542c5497d8e71fe48c64e9382d",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/how-it-works/",
+      "source": "docs/src/content/docs/how-it-works.md",
+      "sha256": "c8cf8ab12944b3297d613b09bed67b68f614faa6432477d2d376b26744823215",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/providers/choosing-a-provider/",
+      "source": "docs/src/content/docs/providers/choosing-a-provider.md",
+      "sha256": "3601555efa10ed38eb04274ab74fd93a2e1b513467d8f8f87ce2093bd41d4275",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/providers/codex/",
+      "source": "docs/src/content/docs/providers/codex.md",
+      "sha256": "725b1c32b8b0813cdbe4221d74ad4127ab0c69517237312cdbc124545e37d3ae",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/providers/cursor-agent/",
+      "source": "docs/src/content/docs/providers/cursor-agent.md",
+      "sha256": "88387e68dd89e865f31d8c1a072fa1f95cd5b948ba1b5a86284ece9ea1ca1ecd",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/providers/grok/",
+      "source": "docs/src/content/docs/providers/grok.md",
+      "sha256": "669dcf3bf456f67c3f4e5549bf250657ae10ee4b51236e51bd64301da6d9c6ed",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/providers/kimi/",
+      "source": "docs/src/content/docs/providers/kimi.md",
+      "sha256": "9e2806700266f9cad2c0423224e5754df48eb1030d1f0d6d013076248e28bd79",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/providers/opencode-go/",
+      "source": "docs/src/content/docs/providers/opencode-go.md",
+      "sha256": "f0614dd67145181e5c723802079a6b70fb473381afad85c16a26a38cf1433a72",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/reference/changelog/",
+      "source": "docs/src/content/docs/reference/changelog.md",
+      "sha256": "3b98927fe04df3805dfa404c7d9c8680bc6781dc6abe448fdfdcb54e66322eee",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/reference/command-reference/",
+      "source": "docs/src/content/docs/reference/command-reference.md",
+      "sha256": "68e572dc55e478cddfab0713fd0a594f0149289eefda99253e10ff2864287309",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/reference/compatibility-and-limitations/",
+      "source": "docs/src/content/docs/reference/compatibility-and-limitations.md",
+      "sha256": "06ff30d1daebd4c83aa8f964ad74b488c280fba5ae96d3a63d993be2ba787592",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/reference/configuration/",
+      "source": "docs/src/content/docs/reference/configuration.md",
+      "sha256": "1d0cd341db705347fd33bd0b88f69ffa9c1ffa6ad5b583e7232d4669e0b7063d",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/reference/files-and-storage/",
+      "source": "docs/src/content/docs/reference/files-and-storage.md",
+      "sha256": "0268e9c4a90203c439b1a3a428c4fdd4912c5cbc3e65a2d0f51b16d3f03c4506",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/reference/http-api/",
+      "source": "docs/src/content/docs/reference/http-api.md",
+      "sha256": "d2f496c635cafe98508c732d6e28c3fd79b71b81cff7f8a991bf51178d67b15f",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/using/configure-claude-code/",
+      "source": "docs/src/content/docs/using/configure-claude-code.md",
+      "sha256": "7f51b281ea6c8a8e95db0786d2d9786f417e03402a491da150290e42a72b5b60",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/using/for-coding-agents/",
+      "source": "docs/src/content/docs/using/for-coding-agents.md",
+      "sha256": "457e1af9ef8be88a3065db02de0ce3f3231b9e3d03de1f199128da322bd379d7",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/using/models-and-routing/",
+      "source": "docs/src/content/docs/using/models-and-routing.md",
+      "sha256": "de44cc2cd95b718199082f61b0eeb3acee20e309d2605026785e17e1b07b038a",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/using/monitor-tui/",
+      "source": "docs/src/content/docs/using/monitor-tui.md",
+      "sha256": "2e011e324597b523089b6b0ddd8b2e304da794b69d5accef514704eaeb73820e",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/using/switching-models-and-backends/",
+      "source": "docs/src/content/docs/using/switching-models-and-backends.md",
+      "sha256": "d6dd1e2bc3f94a269912bf54ec635c8b35012c856c06466e70a0b4348bbe2fed",
+      "review": "assembled documentation body read"
+    },
+    {
+      "url": "https://claude-code-proxy.raine.dev/using/troubleshooting/",
+      "source": "docs/src/content/docs/using/troubleshooting.md",
+      "sha256": "094dfdb4a4cdba38514e22faed4ac2ec3a29c2cf4d496712a78115dcba63c64a",
+      "review": "assembled documentation body read"
+    }
+  ],
+  "assembled_body": {
+    "file": "llms.txt",
+    "bytes": 135367,
+    "sha256": "5f9178a0c79c35b0b681215a8fef038ad0de1cef5e8dbc8a88a0901f16db8782"
+  },
+  "source_files": [
+    {
+      "path": "src/registry.rs",
+      "sha256": "dd8cd6acabf25232832aa2ece234e10caccc5d5fa2eb23a699b3e7e3b5415a01"
+    },
+    {
+      "path": "src/provider.rs",
+      "sha256": "0aa36b3d7220fa60c4681cb243c9ec0f2b7d44a46ccd2928d45788331d058b7f"
+    },
+    {
+      "path": "src/server.rs",
+      "sha256": "834b65b24eddcb4c031bc43e51206e5a4c01c484cc47040b3e3e46c66c69bc0c"
+    },
+    {
+      "path": "src/providers/codex/auth/constants.rs",
+      "sha256": "5dd55a8cd790437231dff1406eb8518fbe90e27c8c0f2c5386545d72be4ab616"
+    },
+    {
+      "path": "src/providers/codex/auth/pkce.rs",
+      "sha256": "9819c6d2eafd86fdf806edd56d0c8ab4fdb280cc830005921212736fef953c75"
+    },
+    {
+      "path": "src/providers/codex/client.rs",
+      "sha256": "37c94a8a239261c40fbdb06b1d09d2581f3ac956045e3a5b117111dc630edbd0"
+    },
+    {
+      "path": "src/providers/codex/mod.rs",
+      "sha256": "1c1e2098d4ef3ec7b9ba47ecfa7da39b836c863db8cf340b6ae6c88cb51e25c0"
+    },
+    {
+      "path": "src/providers/codex/translate/model_allowlist.rs",
+      "sha256": "f1eb4f5f74d98a98cccc3d0c0fcd3de8d3b31288e264b214ba927bd8806265a6"
+    },
+    {
+      "path": "src/providers/opencode/model.rs",
+      "sha256": "7c24063be418293c3b20ba22825f4b21d96f5f2d8fdef2baa3de110ba321401f"
+    },
+    {
+      "path": "src/providers/kimi/translate/model_allowlist.rs",
+      "sha256": "80ed7926c12bb8348dd4d4b9772cde6b79fd3f5ad9e75985a4a6b41d40a86f35"
+    },
+    {
+      "path": "src/providers/cursor/model.rs",
+      "sha256": "76f6713a055cb1585890965377e5d53b8bf08f6c491f148642e608ab7449270c"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "dfc0be306ac621b63914bf0f4854538a2e0a8d09ad24f20e7edd9a80ece241b2"
+    }
+  ]
+}

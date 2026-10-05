@@ -3,7 +3,9 @@
 //
 // The store is keyed by (domain, decision_key) and upserts REPLACE rather than
 // append (REQ-ADM-001). It lives under
-//   ~/.claude/projects/{slug}/memory/user_decisions/
+//
+//	~/.claude/projects/{slug}/memory/user_decisions/
+//
 // physically separate from the technical-lesson feedback namespace
 // (memory/feedback_*.md + MEMORY.md) so user-decision facts and engineering
 // lessons remain independently queryable (REQ-ADM-002).
@@ -13,6 +15,7 @@
 //     (NFR-ADM-002). Frequent stable facts live here.
 //   - recall (recall.jsonl): recent-session facts.
 //   - archival (archival/): full-search targets.
+//
 // On a core hit the cascade MUST NOT access recall or archival.
 //
 // All writes are atomic: recall/core writes go through a temp file in the same
@@ -28,10 +31,10 @@ import (
 
 // Scope classifies how stable a preference is. REQ-ADM-003 schema field.
 //
-// - ScopeStable: durable user trait (e.g. "prefers Go backend"). Exempt from
-//   pure time-decay in the M4 decay policy (REQ-ADM-011).
-// - ScopeTransient: situational preference (e.g. "verbose logs this session").
-//   Subject to power-law decay + 28-day TTL (REQ-ADM-011, REQ-ADM-012).
+//   - ScopeStable: durable user trait (e.g. "prefers Go backend"). Exempt from
+//     pure time-decay in the M4 decay policy (REQ-ADM-011).
+//   - ScopeTransient: situational preference (e.g. "verbose logs this session").
+//     Subject to power-law decay + 28-day TTL (REQ-ADM-011, REQ-ADM-012).
 type Scope string
 
 const (
@@ -79,14 +82,14 @@ var validConfidence = map[Confidence]bool{
 //   - Scope: ScopeStable | ScopeTransient.
 //   - Confidence: ConfidenceObserved | ConfidenceInferred.
 type Entry struct {
-	Fact           string      `yaml:"fact"           json:"fact"`
-	SourceCitation string      `yaml:"source_citation" json:"source_citation"`
-	ValidTime      time.Time   `yaml:"valid_time"     json:"valid_time"`
-	LastUsed       time.Time   `yaml:"last_used"      json:"last_used"`
-	Scope          Scope       `yaml:"scope"          json:"scope"`
-	Domain         string      `yaml:"domain"         json:"domain"`
-	DecisionKey    string      `yaml:"decision_key"   json:"decision_key"`
-	Confidence     Confidence  `yaml:"confidence"     json:"confidence"`
+	Fact           string     `yaml:"fact"           json:"fact"`
+	SourceCitation string     `yaml:"source_citation" json:"source_citation"`
+	ValidTime      time.Time  `yaml:"valid_time"     json:"valid_time"`
+	LastUsed       time.Time  `yaml:"last_used"      json:"last_used"`
+	Scope          Scope      `yaml:"scope"          json:"scope"`
+	Domain         string     `yaml:"domain"         json:"domain"`
+	DecisionKey    string     `yaml:"decision_key"   json:"decision_key"`
+	Confidence     Confidence `yaml:"confidence"     json:"confidence"`
 
 	// Weight is an internal ranking score derived from recency + confidence.
 	// It is not part of the REQ-ADM-003 schema surfaced to callers, but it

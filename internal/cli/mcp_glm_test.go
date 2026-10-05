@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // SPEC-MOAI-MCP-SERVER-001 M3 — glm_audit backend (REQ-MCP-009/011/012/013/014,
@@ -322,28 +324,31 @@ type boomErr struct{}
 
 func (boomErr) Error() string { return "boom: simulated transport failure" }
 
-func TestResolveGLMAuditModel_SSOT(t *testing.T) {
-	// AC-MCP-015: model resolution MUST go through template.ResolveAgentModelEffort
-	// (the SSOT), never read agent frontmatter / llm.agent_overrides directly.
-	// With no llm.yaml, the resolver returns the documented GLM default.
-	// (SPEC-V3R6-AUDIT-MODEL-PIN-001 M3: the resolver now returns the
-	// {model, effort} pair; without a pin the model is the legacy SSOT
-	// resolution and the effort is EMPTY — the pre-SPEC body carried no
-	// reasoning field.)
+func TestResolveGLMAuditModel_BackendDefault(t *testing.T) {
+	// AC-MCP-015: model resolution never reads agent frontmatter /
+	// llm.agent_overrides. Without a pin the resolver returns the documented
+	// GLM backend default pair (SPEC-V3R6-AUDIT-MODEL-PIN-001 M3;
+	// SPEC-AGENT-MODEL-INHERIT-001 design D5). SPEC-AGENT-TIER-001 flipped
+	// that pair to {glm-5.3, max} — the operator pin effort rides the
+	// fallback, forwarded verbatim (REQ-AMP-006); updated in the same commit
+	// as the default.
 	t.Setenv("CLAUDE_PROJECT_DIR", "")
 	old := projectDirResolver
 	projectDirResolver = func() string { return "" } // no sections dir available
 	t.Cleanup(func() { projectDirResolver = old })
 
-	me := resolveGLMAuditModelEffort("") // "": fall back to the projectDirResolver seam (the fallback path under test)
+	me, meErr := resolveGLMAuditModelEffort("") // "": fall back to the projectDirResolver seam (the fallback path under test)
+	if meErr != nil {
+		t.Fatalf("resolveGLMAuditModelEffort: %v", meErr)
+	}
 	if me.Model == "" {
 		t.Fatal("resolveGLMAuditModelEffort returned an empty model for a missing llm.yaml (want the GLM default)")
 	}
-	if me.Model == "opus" || strings.HasPrefix(me.Model, "claude") {
-		t.Errorf("resolveGLMAuditModelEffort model = %q; a Claude id cannot be a GLM default", me.Model)
+	if me.Model != config.DefaultGLM53 {
+		t.Errorf("resolveGLMAuditModelEffort model = %q, want %q (full glm-5.3, not the flash slot default)", me.Model, config.DefaultGLM53)
 	}
-	if me.Effort != "" {
-		t.Errorf("resolveGLMAuditModelEffort effort = %q, want empty (the legacy resolution carries no reasoning directive)", me.Effort)
+	if me.Effort != "max" {
+		t.Errorf("resolveGLMAuditModelEffort effort = %q, want %q (the pin effort forwarded verbatim)", me.Effort, "max")
 	}
 }
 

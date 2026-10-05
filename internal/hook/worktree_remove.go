@@ -41,8 +41,12 @@ func (h *worktreeRemoveHandler) Handle(ctx context.Context, input *HookInput) (*
 	)
 
 	// Remove the registry entry for the cleaned-up worktree.
-	if input.CWD != "" && input.WorktreePath != "" {
-		unregisterWorktree(input.CWD, input.WorktreePath)
+	// Write-side resolver, never input.CWD: a subdirectory cwd would otherwise
+	// grow a stray <subdir>/.moai/state/worktrees.json (card t1165).
+	if input.WorktreePath != "" {
+		if root := resolveProjectRoot(input); root != "" {
+			unregisterWorktree(root, input.WorktreePath)
+		}
 	}
 
 	return &HookOutput{}, nil

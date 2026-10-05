@@ -15,6 +15,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -514,31 +515,44 @@ func TestPRMergeCleanup_OnTouchFiresAtSessionRegister(t *testing.T) {
 	}
 }
 
-// TestPRMergeCleanup_OnTouchFiresAtSessionList proves the list RunE invokes
-// prMergeCleanup (gated by the toggle).
-func TestPRMergeCleanup_OnTouchFiresAtSessionList(t *testing.T) {
-	listCalled := false
-	swapPRMergeSeams(t, prMergeSeams{
-		wtList: func() (string, error) { listCalled = true; return "", errFakeNotGitRepo },
-	})
-	tmp := t.TempDir()
-	writeAutoCleanupConfig(t, tmp)
-	chdirTemp(t, tmp)
-	cmd := newSessionListCmd()
-	cmd.SetArgs([]string{})
-	var stderr bytes.Buffer
-	cmd.SetErr(&stderr)
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("list RunE: unexpected error: %v", err)
-	}
-	if !listCalled {
-		t.Fatal("on-touch list: prMergeCleanup MUST be invoked (git worktree list called)")
+// Listing is a read path: neither cleanup nor its external git/gh probes may
+// delay the response, regardless of the mutation-only AutoCleanup preference.
+func TestSessionListNeverRunsPRCleanup(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		t.Run(map[bool]string{false: "cleanup-off", true: "cleanup-on"}[enabled], func(t *testing.T) {
+			calls := 0
+			swapPRMergeSeams(t, prMergeSeams{
+				wtList:       func() (string, error) { calls++; return "", errFakeNotGitRepo },
+				ghLookPath:   func() bool { calls++; return false },
+				ghPRState:    func(string) (string, bool) { calls++; return "", false },
+				branchMerged: func() ([]string, error) { calls++; return nil, errFakeNotGitRepo },
+			})
+			tmp := t.TempDir()
+			if enabled {
+				writeAutoCleanupConfig(t, tmp)
+			}
+			chdirTemp(t, tmp)
+			cmd := newSessionListCmd()
+			cmd.SetArgs([]string{"--json"})
+			var stdout, stderr bytes.Buffer
+			cmd.SetOut(&stdout)
+			cmd.SetErr(&stderr)
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("list RunE: %v", err)
+			}
+			if calls != 0 {
+				t.Fatalf("read-only list invoked cleanup/external probes %d times", calls)
+			}
+			if !json.Valid(stdout.Bytes()) || stderr.Len() != 0 {
+				t.Fatalf("list output: stdout=%q stderr=%q", stdout.String(), stderr.String())
+			}
+		})
 	}
 }
 
 // TestPRMergeCleanup_OnTouchToggleOffSkipsAtSessionRegister proves the negative
 // control (AC-SW-022): with AutoCleanup OFF, the on-touch invocation is a
-// no-op even at the two trigger sites.
+// no-op at the registration trigger site.
 func TestPRMergeCleanup_OnTouchToggleOffSkipsAtSessionRegister(t *testing.T) {
 	listCalled := false
 	swapPRMergeSeams(t, prMergeSeams{
@@ -558,8 +572,8 @@ func TestPRMergeCleanup_OnTouchToggleOffSkipsAtSessionRegister(t *testing.T) {
 }
 
 // TestPRMergeCleanup_TriggerInvariant_OtherSubcommandsDoNotFire is AC-SW-022
-// trigger invariant: prMergeCleanup MUST be referenced ONLY at the register +
-// list RunE sites, NOT at cc/cg/glm/init/profile/web or any other subcommand.
+// trigger invariant: prMergeCleanup MUST be referenced ONLY at register,
+// not at the read-only list command or another subcommand.
 // This is a static source assertion (falsifiable: adding a stray reference
 // anywhere else fails the test).
 func TestPRMergeCleanup_TriggerInvariant_OtherSubcommandsDoNotFire(t *testing.T) {
@@ -569,20 +583,11 @@ func TestPRMergeCleanup_TriggerInvariant_OtherSubcommandsDoNotFire(t *testing.T)
 		t.Fatalf("read session.go: %v", err)
 	}
 	src := string(data)
-	// Must contain exactly the two on-touch call sites.
-	registerHasIt := strings.Contains(src, "prMergeCleanup(") &&
-		strings.Contains(src, "register")
-	listHasIt := strings.Contains(src, "prMergeCleanup(") &&
-		strings.Contains(src, "list")
-	if !registerHasIt || !listHasIt {
-		t.Fatalf("trigger wiring: session.go must reference prMergeCleanup at both register and list sites")
-	}
-	// Count occurrences of the call in session.go — must be exactly 2
-	// (register RunE + list RunE). The function definition lives in
-	// session_worktree_prmerge.go, not session.go.
+	// The behavioral tests above locate the register and list wiring. This
+	// count guards against an additional call in another session subcommand.
 	callCount := strings.Count(src, "prMergeCleanup(")
-	if callCount != 2 {
-		t.Fatalf("trigger invariant: session.go must call prMergeCleanup exactly twice (register+list), got %d", callCount)
+	if callCount != 1 {
+		t.Fatalf("trigger invariant: session.go must call prMergeCleanup exactly once (register), got %d", callCount)
 	}
 }
 

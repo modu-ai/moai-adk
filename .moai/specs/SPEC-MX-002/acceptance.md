@@ -1,7 +1,6 @@
 ---
 id: SPEC-MX-002
 version: 1.0.0
-status: draft
 created: 2026-03-11
 updated: 2026-03-11
 author: GOOS

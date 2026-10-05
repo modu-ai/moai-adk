@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/settings"
-	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // schemaBackedSelects lists the wizard selects whose option lists are derived
@@ -69,7 +68,7 @@ func TestSchemaSelectOptions_EmptyLabelFromSchema(t *testing.T) {
 		if !sel.withEmpty {
 			for _, o := range opts {
 				if o.Value == "" {
-					t.Errorf("field %q: unexpected empty option %q", sel.field, o.Key)
+					t.Errorf("field %q: unexpected empty option %q", sel.field, o.Label)
 				}
 			}
 			continue
@@ -78,8 +77,8 @@ func TestSchemaSelectOptions_EmptyLabelFromSchema(t *testing.T) {
 		if want == "" {
 			t.Fatalf("field %q declares no empty label but the wizard requests one", sel.field)
 		}
-		if opts[0].Value != "" || opts[0].Key != want {
-			t.Errorf("field %q: first option = {%q, %q}, want {%q, \"\"}", sel.field, opts[0].Key, opts[0].Value, want)
+		if opts[0].Value != "" || opts[0].Label != want {
+			t.Errorf("field %q: first option = {%q, %q}, want {%q, \"\"}", sel.field, opts[0].Label, opts[0].Value, want)
 		}
 	}
 }
@@ -106,10 +105,10 @@ func TestSchemaSelectOptions_Localized(t *testing.T) {
 		txt := getProfileText(lang)
 		for _, field := range []string{"model", "effort_level", "permission_mode", "development_mode"} {
 			for _, o := range schemaSelectOptions(txt, field, false) {
-				if strings.TrimSpace(o.Key) == "" {
+				if strings.TrimSpace(o.Label) == "" {
 					t.Errorf("lang=%q field=%q value=%q: empty label", lang, field, o.Value)
 				}
-				if o.Key == o.Value {
+				if o.Label == o.Value {
 					t.Errorf("lang=%q field=%q value=%q: label fell back to the wire value (missing schemaOptionBridge entry)", lang, field, o.Value)
 				}
 			}
@@ -117,92 +116,11 @@ func TestSchemaSelectOptions_Localized(t *testing.T) {
 	}
 }
 
-// effortRank orders the effort vocabulary so the model-policy prose can be checked
-// against the matrix's actual span.
-var effortRank = map[string]int{
-	template.EffortLevelLow:    0,
-	template.EffortLevelMedium: 1,
-	template.EffortLevelHigh:   2,
-	template.EffortLevelXHigh:  3,
-	template.EffortLevelMax:    4,
-}
-
-// TestModelPolicyLabels_AgreeWithProfileMatrix keeps the three hand-written
-// "Agent model policy" tier lines honest against template.defaultProfileMatrix,
-// which is the authoritative per-agent {model, effort} SSOT.
-//
-// The prose is kept hand-written rather than generated: a generated line would
-// have to spell out the sonnet agent names (4 of them in the low column), which is
-// longer than the huh option line usefully holds, and the editorial grouping
-// ("single-shot rows", "docs/e2e") is a human summary, not a matrix fact. This test
-// is the rot guard instead — it derives the opus effort SPAN, the sonnet effort,
-// and the sonnet row membership from the matrix and fails when the prose disagrees.
-func TestModelPolicyLabels_AgreeWithProfileMatrix(t *testing.T) {
-	matrix := template.DefaultProfileMatrix()
-	opusDisplay := "Opus " + strings.TrimPrefix(template.ModelAliasCanonicalID("opus"), "claude-opus-")
-
-	for _, tc := range []struct {
-		profile string
-		label   func(profileSetupText) string
-	}{
-		{template.PerformanceTierHigh, func(p profileSetupText) string { return p.ModelPolicyHigh }},
-		{template.PerformanceTierMedium, func(p profileSetupText) string { return p.ModelPolicyMedium }},
-		{template.PerformanceTierLow, func(p profileSetupText) string { return p.ModelPolicyLow }},
-	} {
-		t.Run(tc.profile, func(t *testing.T) {
-			cells, ok := matrix[tc.profile]
-			if !ok {
-				t.Fatalf("profile %q absent from the matrix", tc.profile)
-			}
-
-			hi, lo := "", ""
-			sonnetEffort := ""
-			sonnetRows := map[string]bool{}
-			for agent, cell := range cells {
-				switch cell.Model {
-				case "opus":
-					if hi == "" || effortRank[cell.Effort] > effortRank[hi] {
-						hi = cell.Effort
-					}
-					if lo == "" || effortRank[cell.Effort] < effortRank[lo] {
-						lo = cell.Effort
-					}
-				case "sonnet":
-					sonnetRows[agent] = true
-					sonnetEffort = cell.Effort
-				default:
-					t.Fatalf("unexpected model %q for agent %q — the tier prose only describes opus/sonnet", cell.Model, agent)
-				}
-			}
-
-			wantSpan := "(" + hi + "~" + lo + ")"
-			wantSonnet := "Sonnet (" + sonnetEffort
-
-			for _, lang := range fourLocales {
-				label := tc.label(getProfileText(lang))
-				if !strings.Contains(label, opusDisplay) {
-					t.Errorf("lang=%q label %q should name %q", lang, label, opusDisplay)
-				}
-				if !strings.Contains(label, wantSpan) {
-					t.Errorf("lang=%q label %q should state the matrix opus effort span %s", lang, label, wantSpan)
-				}
-				if !strings.Contains(label, wantSonnet) {
-					t.Errorf("lang=%q label %q should state %q...", lang, label, wantSonnet)
-				}
-				// The editorial row grouping must track which agents are actually on
-				// sonnet in this column.
-				if got, want := strings.Contains(label, "docs"), sonnetRows["manager-docs"]; got != want {
-					t.Errorf("lang=%q label %q mentions docs=%v but manager-docs on sonnet=%v", lang, label, got, want)
-				}
-				if got, want := strings.Contains(label, "e2e"), sonnetRows["e2e-tester"]; got != want {
-					t.Errorf("lang=%q label %q mentions e2e=%v but e2e-tester on sonnet=%v", lang, label, got, want)
-				}
-				for _, retired := range []string{"haiku", "Haiku", "fable", "Fable"} {
-					if strings.Contains(label, retired) {
-						t.Errorf("lang=%q label %q names %q, which has no cell in the matrix", lang, label, retired)
-					}
-				}
-			}
-		})
-	}
-}
+// TestModelPolicyLabels_AgreeWithProfileMatrix was removed with the per-agent
+// profile matrix (SPEC-AGENT-MODEL-INHERIT-001 M5) and STAYS removed under
+// SPEC-WEB-AGENTFM-RESTORE-001: the re-ported template matrix
+// (internal/template/profile_matrix.go) now carries config-tier-paired cells
+// for the agent-overrides console surface, but the "Agent model policy" tier
+// lines these tests assert are main-session launch prose on a different axis —
+// they are hand-written by design (H24, doctrine-text surface) and derive from
+// no matrix.

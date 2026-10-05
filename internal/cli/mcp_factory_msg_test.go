@@ -1,0 +1,427 @@
+package cli
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"os"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/mark3labs/mcp-go/client"
+	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factorymsg"
+	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/hook"
+)
+
+func TestFactoryMCPIdentityAttribution(t *testing.T) {
+	root := t.TempDir()
+	s, err := factorymsg.Open(root, "run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	pid := os.Getpid()
+	fingerprint := "test-process-start"
+	oldProbe := factoryProbeProcessIdentity
+	factoryProbeProcessIdentity = func(gotPID int) (string, homestate.ProcessIdentityState) {
+		if gotPID == pid {
+			return fingerprint, homestate.ProcessIdentityLive
+		}
+		return "", homestate.ProcessIdentityDead
+	}
+	t.Cleanup(func() { factoryProbeProcessIdentity = oldProbe })
+	peer, err := s.RegisterPeer(context.Background(), factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: "run", Backend: "codex", Role: "lane", Slot: "lane-1", SessionUUID: "owner-session", Generation: 1, PID: pid, ProcessStart: fingerprint})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(config.EnvMoaiSessionPID, strconv.Itoa(pid))
+	t.Setenv(config.EnvClaudeCodeSessionID, "foreign-authoritative-session")
+	if got, err := currentFactoryPeer(context.Background(), s); err == nil {
+		t.Fatalf("authoritative lookup failure fell back to PID peer: %+v", got)
+	}
+	t.Setenv(config.EnvClaudeCodeSessionID, "")
+	t.Setenv(config.EnvClaudeProjectDir, t.TempDir()) // no shared side-channel attribution
+	got, err := currentFactoryPeer(context.Background(), s)
+	if err != nil || got.SessionUUID != peer.SessionUUID || got.Generation != peer.Generation {
+		t.Fatalf("owner attribution=%+v err=%v", got, err)
+	}
+}
+
+func operationalStatusClient(t *testing.T, root, run string) *client.Client {
+	t.Helper()
+	t.Setenv(config.EnvClaudeProjectDir, root)
+	r, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.RecordRun(context.Background(), homestate.FactoryRun{RunID: run, LeadSessionID: "leader", Backend: "codex", ManifestJSON: "{}"}); err != nil {
+		t.Fatal(err)
+	}
+	_ = r.Close()
+	c, err := client.NewInProcessClient(newMoaiMCPServer())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { closeInProcessClient(c) })
+	if _, err := c.Initialize(context.Background(), mcp.InitializeRequest{}); err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
+
+func factoryBrokerSnapshot(t *testing.T, root, run string) string {
+	t.Helper()
+	path, err := factorymsg.BrokerPath(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", "file:"+path+"?mode=ro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	var snapshot []any
+	for _, query := range []string{"SELECT * FROM peers ORDER BY slot", "SELECT * FROM messages ORDER BY id", "SELECT * FROM dead_letters ORDER BY id"} {
+		rows, err := db.Query(query)
+		if err != nil {
+			t.Fatal(err)
+		}
+		columns, err := rows.Columns()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for rows.Next() {
+			values := make([]any, len(columns))
+			ptrs := make([]any, len(values))
+			for i := range values {
+				ptrs[i] = &values[i]
+			}
+			if err := rows.Scan(ptrs...); err != nil {
+				t.Fatal(err)
+			}
+			snapshot = append(snapshot, values)
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatal(err)
+		}
+		_ = rows.Close()
+	}
+	data, err := json.Marshal(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
+}
+
+func TestFactoryMsgStatusReadOnlyRoster(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root, run := t.TempDir(), "ops-readonly"
+	c := operationalStatusClient(t, root, run)
+	request := mcp.CallToolRequest{Params: mcp.CallToolParams{Name: "factory_msg_status", Arguments: map[string]any{"run_id": run}}}
+	// An active run without a broker must not be silently initialized by a read.
+	res, err := c.CallTool(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.IsError {
+		t.Fatal("status initialized absent broker instead of preserving query failure")
+	}
+	path, err := factorymsg.BrokerPath(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatal("status created broker state")
+	}
+	s, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	p := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex", Role: "leader", Slot: "leader", SessionUUID: "own-session", Generation: 1, PID: os.Getpid(), ProcessStart: homestate.CurrentProcessFingerprint()}
+	p, err = s.RegisterPeer(context.Background(), p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := p
+	w.Slot = "lane-1"
+	w.Role = "worker"
+	w.SessionUUID = "worker-session"
+	w, err = s.RegisterPeer(context.Background(), w)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Send(context.Background(), factorymsg.SendRequest{From: p, To: w, Kind: factorymsg.KindStatusRequest, IdempotencyKey: "status-read", TaskRef: "t1074", CorrelationID: "status", TTL: time.Hour, Payload: []byte("private-message")}); err != nil {
+		t.Fatal(err)
+	}
+	foreign, err := factorymsg.Open(t.TempDir(), run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = foreign.Close() })
+	foreignPeer := p
+	foreignPeer.SessionUUID = "foreign-sentinel"
+	foreignPeer.ProjectKey = "project"
+	if _, err := foreign.RegisterPeer(context.Background(), foreignPeer); err != nil {
+		t.Fatal(err)
+	}
+	before := factoryBrokerSnapshot(t, root, run)
+	for range 2 {
+		res, err = c.CallTool(context.Background(), request)
+		if err != nil || res.IsError {
+			t.Fatalf("status=%+v err=%v", res, err)
+		}
+		body, err := json.Marshal(res.StructuredContent)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), "own-session") || !strings.Contains(string(body), "\"lanes\"") || strings.Contains(string(body), "foreign-sentinel") || strings.Contains(string(body), "private-message") {
+			t.Fatalf("roster response=%s", body)
+		}
+		if after := factoryBrokerSnapshot(t, root, run); after != before {
+			t.Fatal("read-only status changed persisted rows")
+		}
+	}
+	request.Params.Arguments = map[string]any{"run_id": "not-active"}
+	res, err = c.CallTool(context.Background(), request)
+	if err != nil || !res.IsError {
+		t.Fatalf("inactive run accepted: %v", err)
+	}
+}
+
+func TestFactoryLeadNoticeUsesOperationalStatus(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	t.Setenv("CLAUDE_CONFIG_DIR", t.TempDir())
+	root, run := t.TempDir(), "ops-notice"
+	c := operationalStatusClient(t, root, run)
+	t.Setenv(config.EnvFactoryRunID, run)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
+	t.Setenv(config.EnvMoaiFactoryWorker, "")
+	t.Setenv(config.EnvFactoryBackend, "codex")
+	t.Setenv(config.EnvMoaiSessionPID, strconv.Itoa(os.Getpid()))
+	start, state := homestate.ProbeProcessIdentity(os.Getpid())
+	if state != homestate.ProcessIdentityLive || start == "" {
+		t.Fatal("test process identity unavailable")
+	}
+	s, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	if _, err := s.RegisterLaunchPending(context.Background(), factorymsg.Peer{
+		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex",
+		Role: "leader", Slot: "leader", PID: os.Getpid(), ProcessStart: start,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	output, err := hook.NewSessionStartHandler(nil, hook.WithSynchronousDeferredScans()).Handle(context.Background(), &hook.HookInput{SessionID: "notice-lead", ProjectDir: root, CWD: root, Source: "startup"})
+	if err != nil || output.HookSpecificOutput == nil {
+		t.Fatalf("SessionStart: %v", err)
+	}
+	text := output.HookSpecificOutput.AdditionalContext
+	if !strings.Contains(text, `factory_msg_status({"run_id":"`+run+`"})`) || strings.Contains(text, "factory_msg_list") {
+		t.Fatalf("notice has no read-only operational call: %s", text)
+	}
+	registered, err := c.ListTools(context.Background(), mcp.ListToolsRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, tool := range registered.Tools {
+		if tool.Name == "factory_msg_status" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("notice names an unregistered tool")
+	}
+	res, err := c.CallTool(context.Background(), mcp.CallToolRequest{Params: mcp.CallToolParams{Name: "factory_msg_status", Arguments: map[string]any{"run_id": run}}})
+	if err != nil || res.IsError {
+		t.Fatalf("notice handler=%+v err=%v", res, err)
+	}
+	encoded, err := json.Marshal(res.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(encoded), "notice-lead") {
+		t.Fatalf("SessionStart peer missing: %s", encoded)
+	}
+}
+
+func TestFactoryMCPIdentityFallsBackToDirectParent(t *testing.T) {
+	root := t.TempDir()
+	s, err := factorymsg.Open(root, "run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	pid := os.Getppid()
+	fingerprint := "parent-process-start"
+	oldProbe := factoryProbeProcessIdentity
+	factoryProbeProcessIdentity = func(gotPID int) (string, homestate.ProcessIdentityState) {
+		if gotPID == pid {
+			return fingerprint, homestate.ProcessIdentityLive
+		}
+		return "", homestate.ProcessIdentityDead
+	}
+	t.Cleanup(func() { factoryProbeProcessIdentity = oldProbe })
+	peer, err := s.RegisterPeer(context.Background(), factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: "run", Backend: "codex", Role: "lane", Slot: "lane-1", SessionUUID: "parent-owned-session", Generation: 1, PID: pid, ProcessStart: fingerprint})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(config.EnvMoaiSessionPID, "")
+	t.Setenv(config.EnvClaudeCodeSessionID, "")
+	t.Setenv(config.EnvClaudeProjectDir, t.TempDir())
+	got, err := currentFactoryPeer(context.Background(), s)
+	if err != nil || got.SessionUUID != peer.SessionUUID {
+		t.Fatalf("parent attribution=%+v err=%v", got, err)
+	}
+}
+
+// TestFactoryMsgSendRejectsClaudeOnlyRun is SPEC-FACTORY-MANAGED-SESSION-001
+// AC-MS-011 (REQ-MS-011): a Claude-only run keeps its native SendMessage
+// policy, so factory_msg_send from a process owning no broker endpoint is
+// refused. The success arm — the same call once the caller owns a registered
+// endpoint — kills the refuse-everything mutant: the refusal is attribution,
+// not broken plumbing.
+func TestFactoryMsgSendRejectsClaudeOnlyRun(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root, run := t.TempDir(), "claude-only-run"
+	activateManagedRun(t, root, run)
+	t.Setenv(config.EnvClaudeProjectDir, root)
+	// No authoritative session id: this harness's ambient value would route
+	// attribution through s.Peer and mask the PID path both arms exercise
+	// (the TestFactoryMCPIdentityAttribution precedent clears it too).
+	t.Setenv(config.EnvClaudeCodeSessionID, "")
+
+	arguments := map[string]any{
+		"run_id": run, "to_slot": "leader", "kind": "status_request",
+		"idempotency_key": "claude-only-once", "body": "must never deliver",
+		"task_ref": "t1375", "correlation_id": "claude-only-c1",
+	}
+	request := mcp.CallToolRequest{Params: mcp.CallToolParams{Name: "factory_msg_send", Arguments: arguments}}
+	result, err := handleFactoryMsgSend(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.IsError {
+		t.Fatalf("factory_msg_send on a Claude-only run = %v, want a refusal", result)
+	}
+
+	// Success arm: the same send from a registered endpoint owner delivers.
+	store, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	start := homestate.CurrentProcessFingerprint()
+	if start == "" {
+		t.Fatal("test process identity unavailable")
+	}
+	leader := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "claude",
+		Role: "leader", Slot: "leader", SessionUUID: "claude-only-leader", Generation: 1,
+		PID: os.Getpid(), ProcessStart: start}
+	leader, err = store.RegisterPeer(context.Background(), leader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lane := leader
+	lane.Role, lane.Slot, lane.SessionUUID = "lane", "lane-1", "claude-only-lane"
+	if _, err := store.RegisterPeer(context.Background(), lane); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(config.EnvMoaiSessionPID, strconv.Itoa(os.Getpid()))
+	arguments["to_slot"] = "lane-1"
+	result, err = handleFactoryMsgSend(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.IsError {
+		t.Fatalf("factory_msg_send from a registered endpoint owner = %v, want delivery", result)
+	}
+}
+
+// TestFactoryMsgSendOptionalIDsDefault pins GitHub #1737 (card t1473): the
+// tool schema registers correlation_id and task_ref as optional, so a send
+// that omits them must deliver instead of failing "invalid correlation id".
+// An omitted value defaults to the idempotency key, so a same-key retry
+// without the fields resolves to the original message rather than tripping
+// the idempotency collision check. The explicit-value arm guards against a
+// mutant that overwrites caller-supplied identifiers.
+func TestFactoryMsgSendOptionalIDsDefault(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root, run := t.TempDir(), "optional-ids-run"
+	activateManagedRun(t, root, run)
+	t.Setenv(config.EnvClaudeProjectDir, root)
+	t.Setenv(config.EnvClaudeCodeSessionID, "")
+
+	store, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	start := homestate.CurrentProcessFingerprint()
+	if start == "" {
+		t.Fatal("test process identity unavailable")
+	}
+	leader := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "claude",
+		Role: "leader", Slot: "leader", SessionUUID: "optional-ids-leader", Generation: 1,
+		PID: os.Getpid(), ProcessStart: start}
+	if _, err := store.RegisterPeer(context.Background(), leader); err != nil {
+		t.Fatal(err)
+	}
+	lane := leader
+	lane.Role, lane.Slot, lane.SessionUUID = "lane", "lane-1", "optional-ids-lane"
+	if _, err := store.RegisterPeer(context.Background(), lane); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(config.EnvMoaiSessionPID, strconv.Itoa(os.Getpid()))
+
+	send := func(arguments map[string]any) factorymsg.Envelope {
+		t.Helper()
+		result, err := handleFactoryMsgSend(context.Background(), mcp.CallToolRequest{Params: mcp.CallToolParams{Name: "factory_msg_send", Arguments: arguments}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.IsError {
+			t.Fatalf("factory_msg_send(%v) = %+v, want delivery", arguments, result.Content)
+		}
+		env, ok := result.StructuredContent.(factorymsg.Envelope)
+		if !ok {
+			t.Fatalf("structured content = %T, want factorymsg.Envelope", result.StructuredContent)
+		}
+		return env
+	}
+	omitted := func() map[string]any {
+		return map[string]any{"run_id": run, "to_slot": "lane-1", "kind": "status_request",
+			"idempotency_key": "optional-ids-once", "body": "ids omitted"}
+	}
+
+	first := send(omitted())
+	if first.CorrelationID != "optional-ids-once" || first.TaskRef != "optional-ids-once" {
+		t.Fatalf("defaults = correlation %q task_ref %q, want the idempotency key", first.CorrelationID, first.TaskRef)
+	}
+	retry := send(omitted())
+	if retry.ID != first.ID {
+		t.Fatalf("same-key retry returned message %q, want the original %q", retry.ID, first.ID)
+	}
+
+	empty := send(map[string]any{"run_id": run, "to_slot": "lane-1", "kind": "status_request",
+		"idempotency_key": "optional-ids-empty", "body": "ids empty",
+		"task_ref": "", "correlation_id": ""})
+	if empty.CorrelationID != "optional-ids-empty" || empty.TaskRef != "optional-ids-empty" {
+		t.Fatalf("empty ids = correlation %q task_ref %q, want the idempotency key", empty.CorrelationID, empty.TaskRef)
+	}
+
+	explicit := send(map[string]any{"run_id": run, "to_slot": "lane-1", "kind": "status_request",
+		"idempotency_key": "optional-ids-explicit", "body": "ids given",
+		"task_ref": "t1473", "correlation_id": "corr-1"})
+	if explicit.CorrelationID != "corr-1" || explicit.TaskRef != "t1473" {
+		t.Fatalf("explicit ids = correlation %q task_ref %q, want corr-1/t1473", explicit.CorrelationID, explicit.TaskRef)
+	}
+}

@@ -1,0 +1,51 @@
+import json, os, re
+R = "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1458"
+S = "/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go--claude-worktrees-t1458/7d4e885f-da08-4e41-929b-fed94cc2ab02/scratchpad/mu"
+FC = "internal/cli/factory_card.go"
+
+
+def emit(name, edits):
+    d = os.path.join(S, name)
+    os.makedirs(d, exist_ok=True)
+    rep = {}
+    for rel, txt in edits.items():
+        out = os.path.join(d, rel.replace("/", "__"))
+        open(out, "w").write(txt)
+        rep[os.path.join(R, rel)] = out
+    json.dump({"Replace": rep}, open(os.path.join(d, "overlay.json"), "w"), indent=1)
+
+
+def sub(text, old, new, count=1):
+    n = text.count(old)
+    assert n == count, "expected %d of %r, found %d" % (count, old[:90], n)
+    return text.replace(old, new)
+
+
+# ---- MU2' : MU2 with the claim-point seam moving WITH the claim (the seam is defined as "immediately before its claim")
+t = open(S + "/MU2/internal__cli__factory_card.go").read()
+pat = re.compile(r'(\t+)if err := factoryLeaseBeforeClaim\("(\w+)", ([\w.]+)\); err != nil \{\n\t+return homestate\.Card\{\}, false, false, err\n\t+\}\n\t+(?:it := it\n\t+)?return mu2Defer\(ctx, func\(\) \(homestate\.Card, bool, bool, error\) \{ (return [^\n]*?) \}\)\n')
+def repl(m):
+    ind, arm, cid, call = m.groups()
+    return ('%sreturn mu2Defer(ctx, func() (homestate.Card, bool, bool, error) {\n%s\tif err := factoryLeaseBeforeClaim("%s", %s); err != nil {\n%s\t\treturn homestate.Card{}, false, false, err\n%s\t}\n%s\t%s\n%s})\n'
+            % (ind, ind, arm, cid, ind, ind, ind, call, ind))
+t2, n = pat.subn(repl, t)
+assert n == 4, n
+emit("MU2p", {FC: t2})
+
+# ---- MU1q: MU1 plus the queue read taken before the lock (the pin's shape)
+t = open(S + "/MU1/internal__cli__factory_card.go").read()
+t = sub(t, "type mu1Snap struct {\n\tnow   time.Time\n\tcards []homestate.Card\n}", "type mu1Snap struct {\n\tnow   time.Time\n\tcards []homestate.Card\n\tqueue *kanban.BacklogRecord\n}")
+t = sub(t, "\t\tpre.cards, _ = db.ListCards(ctx, runID)\n\t\tctx1 :=", "\t\tpre.cards, _ = db.ListCards(ctx, runID)\n\t\tpre.queue, _ = store.LoadPure()\n\t\tctx1 :=")
+t = sub(t, "\tqueueRec, err := l.LoadPure()\n\tif err != nil {\n\t\treturn homestate.Card{}, false, false, fmt.Errorf(\"read the queue for classification: %w\", err)\n\t}\n",
+        "\tqueueRec, err := l.LoadPure()\n\tif err != nil {\n\t\treturn homestate.Card{}, false, false, fmt.Errorf(\"read the queue for classification: %w\", err)\n\t}\n\tif v, ok := ctx.Value(mu1Key{}).(mu1Snap); ok && v.queue != nil {\n\t\tqueueRec = v.queue\n\t}\n")
+emit("MU1q", {FC: t})
+print("ok")
+
+# ---- MU12p: the creator (and the card-worktree record write) MOVED inside the section, not duplicated
+t = open(R + "/" + FC).read()
+t = sub(t, "\t\t\tcard, leased, raced, passErr = factoryNextSelectAndLease(ctx, l, db, root, runID, lane, skip, noNewCards)\n\t\t})\n",
+        "\t\t\tcard, leased, raced, passErr = factoryNextSelectAndLease(ctx, l, db, root, runID, lane, skip, noNewCards)\n\t\t\tif leased && passErr == nil {\n\t\t\t\tif wt, _, werr := factoryEnsureCardWorktree(ctx, root, runID, card, lane, io.Discard); werr == nil {\n\t\t\t\t\tcard.WorktreePath = wt\n\t\t\t\t}\n\t\t\t}\n\t\t})\n")
+t = sub(t, "\t\tcard, outcome = factoryNominateInSection(ctx, l, db, root, runID, lane, cardID, quotaHold)\n\t})\n",
+        "\t\tcard, outcome = factoryNominateInSection(ctx, l, db, root, runID, lane, cardID, quotaHold)\n\t\tif outcome == nil {\n\t\t\tif wt, _, werr := factoryEnsureCardWorktree(ctx, root, runID, card, lane, io.Discard); werr == nil {\n\t\t\t\tcard.WorktreePath = wt\n\t\t\t}\n\t\t}\n\t})\n")
+emit("MU12p", {FC: t})
+print("ok2")

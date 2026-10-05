@@ -2,7 +2,6 @@
 id: SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001
 title: "Plan — Retire statusline preset system + remove web-console statusline panel"
 version: "0.2.0"
-status: draft
 created: 2026-06-17
 updated: 2026-06-17
 author: manager-spec

@@ -1,0 +1,145 @@
+package spec
+
+import (
+	"regexp"
+	"strings"
+)
+
+// reqLineWidePattern is the widened REQ definition-line pattern.
+//
+// The live parser (parseREQs / reqLinePattern) accepts only the four-segment
+// shape REQ-<2..5 uppercase letters>-<3 digits>-<3 digits>. Corpus measurement
+// showed that shape covers 15 of 702 spec.md files; six further shapes appear in
+// practice and are silently dropped:
+//
+//	REQ-HOOK-001          three-segment
+//	REQ-WF001-001         digits inside the domain segment
+//	REQ-VNRN-RT-001-001   five-segment
+//	REQ-HRN-FND-001       two-part domain
+//	REQ-TUX1-001          domain ending in a digit
+//	REQ-WC01-001          alphanumeric domain
+//
+// The pattern below accepts all six plus the current narrow shape.
+//
+// Two deliberate differences from reqLinePattern:
+//
+//  1. It is ANCHORED to a markdown list item (`^\s*[-*]\s+`), where
+//     reqLinePattern is unanchored and therefore also matches a mid-prose
+//     hyphen. Anchoring is what keeps a prose mention from being read as a
+//     definition; the containment consequence is measured by the corpus harness
+//     rather than assumed.
+//  2. It tolerates the bold marker (`**REQ-...**:`) commonly used in the corpus.
+//
+// Separator/classifier widening (card t385). The corpus census (line-anchored
+// over .moai/specs/*/spec.md, 744 files) measured three separator shapes on
+// definition lines:
+//
+//	Form A — `**REQ-X:** …`         colon only   (accepted before)
+//	Form B — `**REQ-X** — …`        em-dash      (689 lines, dropped)
+//	Form C — `**REQ-X** (Cls) — …`  paren classifier then em-dash or colon
+//
+// Form C was dropped in BOTH variants — including paren+colon, so the old
+// defect was wider than "em-dash only". The separator group is therefore
+// `(?:—|:)` and an optional classifier group `(?:\([^)]*\)\s*\**\s*)?` sits
+// between the bold closer and the separator. Both are non-capturing and the
+// classifier is optional, so the pattern stays a strict superset of its
+// pre-t385 self: every line it matched before it still matches with the same
+// ID and the same Text capture.
+//
+// Known residual forms, deliberately OUT of scope for this widening (a
+// line-based parser must not chase them): lowercase-token suffixes
+// (`REQ-BDR-005b`), dotted sub-numbers (`REQ-CI-001.1`), and multi-line paren
+// classifiers (the `(` is not closed on the definition line; such a line
+// half-matches only when it also carries a later `—` or `:` outside any closed
+// paren, and the resulting entry is widened-only advisory — it never gates).
+//
+// M3 wired this into parseSPECDoc via parseREQsWithProvenance. The corpus
+// behavior change it carries is absorbed by the widened-only advisory treatment
+// documented on REQEntry.Widened and at each affected emission site.
+var reqLineWidePattern = regexp.MustCompile(`^\s*[-*]\s+\**\s*(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+)\s*\**\s*(?:\([^)]*\)\s*\**\s*)?(?:—|:)\s*(.*)$`)
+
+// parseREQsWide mirrors parseREQs but uses reqLineWidePattern. It returns one
+// REQEntry per recognized REQ definition line, in document order, with Line as a
+// 1-based index into body. Unlike parseREQs, its Text joins the wrapped
+// continuation lines of the list item (card t1138); parseREQsWithProvenance
+// restores the single-line Text on entries the narrow pattern also collects.
+func parseREQsWide(body string) []REQEntry {
+	var reqs []REQEntry
+	lines := strings.Split(body, "\n")
+	for i, line := range lines {
+		matches := reqLineWidePattern.FindStringSubmatch(line)
+		if len(matches) >= 3 {
+			reqs = append(reqs, REQEntry{
+				ID:   matches[1],
+				Text: joinStatementContinuation(matches[2], lines, i+1, true),
+				Line: i + 1,
+			})
+		}
+	}
+	return reqs
+}
+
+// parseREQsWithProvenance is the live-path collector. It returns the WIDE REQ
+// set with each entry marked according to whether the NARROW reqLinePattern
+// would also have collected it at the same line.
+//
+// The provenance is what lets the widening land without reddening the corpus.
+// doc.REQs feeds SIX findings today — ModalityMalformed, ModalityUnjudged,
+// LegacyEARSKeyword, InvalidREQID, DuplicateREQID, CoverageIncomplete — emitted
+// by three loops (EARSModalityRule, REQIDUniquenessRule, CoverageRule). Four of
+// them are error-severity (ModalityMalformed, InvalidREQID, DuplicateREQID, and
+// CoverageIncomplete at its rule's base severity) and none of those codes is
+// in eraDemotableCodes, so widening the collector turns them on across a corpus
+// that was never linted against them. (This comment said "four findings" until
+// SPEC-HEADING-REQ-COLLECT-001 REQ-HRC-011 corrected it: it predates the axis
+// that added ModalityUnjudged and LegacyEARSKeyword.) Measured live before the wiring: 25
+// ModalityMalformed and 6 InvalidREQID errors appear that CoverageRule's own
+// severity treatment does not touch. Marking the newly-reachable entries lets
+// each emission site report the finding while declining to gate on it, and
+// leaves every pre-existing narrow entry byte-identical in behavior.
+//
+// SPEC-SPEC-LINT-BLIND-AXES-001 axis 1 added a SECOND source to this entry
+// point: table-form definitions (lint_req_table.go). The two are merged by line
+// so the result stays in document order. The list branch below is untouched by
+// that addition — every entry it produces keeps its ID, Text, Line, Widened
+// value and its (zero-value) list Source, which is what AC-SLB-001a and
+// AC-SLB-003 assert.
+//
+// SPEC-HEADING-REQ-COLLECT-001 (card t894) added a THIRD source: heading-form
+// definitions (lint_req_heading.go). mergeREQsByLine is two-way, so the third
+// input is folded in by COMPOSITION rather than by rewriting the helper — sound
+// because each input is line-sorted and the helper's output is line-sorted too.
+// The same no-perturbation guarantee holds for the list and table branches:
+// AC-HRC-007 asserts that every pre-existing entry keeps its ID, Text, Line,
+// Widened and Source, and the result differs only by ADDED heading entries.
+//
+// Card t1104 added a FOURTH source: bare definitions carrying no markdown
+// marker at all (lint_req_bare.go), folded in by the same composition. The four
+// anchors are mutually exclusive by their opening character, so no line reaches
+// two collectors, and every pre-existing entry keeps its ID, Text, Line,
+// Widened and Source unchanged.
+func parseREQsWithProvenance(body string) []REQEntry {
+	narrow := parseREQs(body)
+	narrowAt := make(map[int]string, len(narrow))
+	for _, r := range narrow {
+		narrowAt[r.Line] = r.ID
+	}
+
+	wide := parseREQsWide(body)
+	lines := strings.Split(body, "\n")
+	for i := range wide {
+		wide[i].Widened = narrowAt[wide[i].Line] != wide[i].ID
+		// Card t1138 (sync-audit F1): an entry the narrow pattern also collects
+		// gates, so it keeps its pre-t1138 single-line Text. Joining continuation
+		// lines onto it could turn an advisory ModalityUnjudged into a gating
+		// ModalityMalformed, or introduce a non-advisory LegacyEARSKeyword, which
+		// would break the byte-identical guarantee stated above. Only widened entries,
+		// which never gate, receive the joined paragraph.
+		if !wide[i].Widened {
+			m := reqLineWidePattern.FindStringSubmatch(lines[wide[i].Line-1])
+			wide[i].Text = strings.TrimSpace(m[2])
+		}
+	}
+	merged := mergeREQsByLine(mergeREQsByLine(wide, parseREQsTable(body)), parseREQsHeadingForm(body))
+	return mergeREQsByLine(merged, parseREQsBareForm(body))
+}

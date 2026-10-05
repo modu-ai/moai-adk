@@ -1,0 +1,14 @@
+# Test pair for the channel-send-without-select-default rule. The valid sample
+# receives through a select statement and performs no channel send.
+id: go-channel-send-no-select
+valid:
+  - |
+    for {
+        select {
+        case v := <-inbound:
+            consume(v)
+        }
+    }
+invalid:
+  - |
+    outbound <- struct{}{}

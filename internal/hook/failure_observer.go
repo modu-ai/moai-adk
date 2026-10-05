@@ -35,6 +35,14 @@ import (
 // signal rather than degenerate lifecycle noise.
 const unknownToolSubject = "unknown-tool"
 
+// unknownAttribution is the explicit marker written into the session_id /
+// cwd / worktree_path fields of a WorktreeGuardRefusal row when the value
+// cannot be resolved at record time (SPEC-SESSION-ANCHOR-ATTR-001
+// REQ-SAA-002). A distinct marker — not an absent field — is the point: an
+// absent field is indistinguishable from a pre-SPEC row, and the row must
+// remain attributable-by-shape.
+const unknownAttribution = "unknown"
+
 // recordToolFailureEvent records a tool_failure:<tool>:<signature> event to
 // usage-log.jsonl via the harness observer. The signature (ContextHash slot)
 // is the low-cardinality error-class token (D1 resolution) — NOT a hash of the
@@ -58,10 +66,25 @@ func recordToolFailureEvent(input *HookInput, category ErrorCategory) {
 	obs := harness.NewObserver(logPath)
 
 	evt := harness.Event{
-		EventType:  harness.EventTypeToolFailure,
-		Subject:    tool,
+		EventType:   harness.EventTypeToolFailure,
+		Subject:     tool,
 		ContextHash: string(category), // low-cardinality error-class token (D1)
 	}
+
+	// SPEC-SESSION-ANCHOR-ATTR-001 W1 (REQ-SAA-001/002): WorktreeGuardRefusal
+	// rows carry session_id, the resolved cwd, and the rejection-quoted
+	// worktree path so the daily refusal volume becomes attributable (the
+	// t1064 defect class). Unresolvable values carry the explicit "unknown"
+	// marker and the row is still written — never dropped. The requirement is
+	// scoped to guard refusals; other failure rows keep the pre-existing shape.
+	if category == WorktreeGuardRefusal {
+		evt.SessionID, evt.Cwd, evt.WorktreePath = guardRefusalAttribution(
+			input.SessionID,
+			resolveAttributionCwd(input),
+			classificationText(input),
+		)
+	}
+
 	if err := obs.RecordExtendedEvent(evt); err != nil {
 		slog.Warn("failure observer: failed to record tool_failure event",
 			"tool", tool,
@@ -114,12 +137,23 @@ func recordTestFailEvent(input *HookInput, pkg string) {
 // lessonsInboxStub is the JSONL schema for .moai/lessons-inbox.jsonl entries
 // (REQ-HRR-006 / D3: append-only JSONL, minimum fields). The orchestrator's
 // Lessons Protocol drains these stubs into auto-memory lesson entries.
+//
+// Version carries the stub schema version (REQ-IBX-008, SPEC-INBOX-DRAIN-GAP-001):
+// introduced at 1 simultaneously with the first consumer (the rotation / CLI
+// lifecycle code). Readers tolerate the field's absence — a pre-upgrade line
+// parses as version 1 (see InboxStubVersion).
 type lessonsInboxStub struct {
 	Timestamp string `json:"timestamp"`
 	EventKey  string `json:"event_key"`
 	Summary   string `json:"summary"`
 	Source    string `json:"source"`
+	Version   int    `json:"v"`
 }
+
+// lessonsInboxSchemaVersion is the stub schema version this binary marshals
+// (REQ-IBX-008). Bumped only when the stub schema itself changes shape; absence
+// in an existing line reads as 1, so the initial value must stay 1.
+const lessonsInboxSchemaVersion = 1
 
 // appendLessonsInboxStub appends one structured stub to
 // .moai/lessons-inbox.jsonl (REQ-HRR-006). The file is append-only JSONL
@@ -128,11 +162,15 @@ type lessonsInboxStub struct {
 // are logged and swallowed (a learning-loop write must never block the session).
 func appendLessonsInboxStub(root, eventKey, summary, source string) {
 	inboxPath := filepath.Join(root, ".moai", "lessons-inbox.jsonl")
+	// Write-time size cap + bounded rotation (SPEC-INBOX-DRAIN-GAP-001
+	// REQ-IBX-001..004) — fails open; see enforceInboxCap.
+	enforceInboxCap(root, inboxPath)
 	stub := lessonsInboxStub{
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 		EventKey:  eventKey,
 		Summary:   summary,
 		Source:    source,
+		Version:   lessonsInboxSchemaVersion,
 	}
 	data, err := json.Marshal(stub)
 	if err != nil {
@@ -168,4 +206,76 @@ func truncateSummary(errorText, fallback string) string {
 		return string(runes[:200]) + "…"
 	}
 	return errorText
+}
+
+// InboxStubVersion resolves the stub schema version carried by a parsed
+// lessons-inbox line (REQ-IBX-008). A pre-upgrade line without the field reads
+// as version 1 — the field was introduced simultaneously with the first
+// consumer, so absence can only mean the original schema. Explicit versions
+// pass through unchanged; a non-numeric value is treated as absent.
+func InboxStubVersion(stub map[string]any) int {
+	if v, ok := stub["v"].(float64); ok {
+		return int(v)
+	}
+	return lessonsInboxSchemaVersion
+}
+
+// ─── WorktreeGuardRefusal attribution (SPEC-SESSION-ANCHOR-ATTR-001 W1) ───
+
+// resolveAttributionCwd resolves the cwd recorded on a guard-refusal row:
+// input.CWD first (the cwd the session reports), os.Getwd() fallback (the hook
+// process inherits the session's cwd). Empty on failure — the caller
+// substitutes the explicit unknown marker (REQ-SAA-002).
+func resolveAttributionCwd(input *HookInput) string {
+	if input != nil && input.CWD != "" {
+		return input.CWD
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		slog.Warn("failure observer: cwd resolution failed for guard-refusal attribution", "error", err)
+		return ""
+	}
+	return cwd
+}
+
+// guardRefusalWorktreePath extracts the tree path the guard's refusal text
+// quotes: the segment immediately after the worktreeGuardAnchor token, up to
+// the ", " separator or end of line. The path is returned as quoted — never
+// absolutized (the card-quoted refusal variant carries a relative path).
+// Empty when the anchor is absent or quotes no path.
+func guardRefusalWorktreePath(errorText string) string {
+	idx := strings.Index(errorText, worktreeGuardAnchor)
+	if idx < 0 {
+		return ""
+	}
+	rest := strings.TrimLeft(errorText[idx+len(worktreeGuardAnchor):], " ")
+	if rest == "" {
+		return ""
+	}
+	end := strings.Index(rest, ", ")
+	if end < 0 {
+		end = strings.IndexByte(rest, '\n')
+	}
+	if end < 0 {
+		end = len(rest)
+	}
+	return strings.TrimRight(rest[:end], " ")
+}
+
+// guardRefusalAttribution resolves the three attribution fields
+// (REQ-SAA-001/002) for a WorktreeGuardRefusal row. Any unresolvable value is
+// substituted with the explicit "unknown" marker — the caller never drops the
+// row for lack of attribution.
+func guardRefusalAttribution(sessionID, cwd, errorText string) (resolvedSID, resolvedCwd, treePath string) {
+	resolvedSID, resolvedCwd, treePath = sessionID, cwd, guardRefusalWorktreePath(errorText)
+	if resolvedSID == "" {
+		resolvedSID = unknownAttribution
+	}
+	if resolvedCwd == "" {
+		resolvedCwd = unknownAttribution
+	}
+	if treePath == "" {
+		treePath = unknownAttribution
+	}
+	return resolvedSID, resolvedCwd, treePath
 }

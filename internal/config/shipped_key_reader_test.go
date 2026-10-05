@@ -49,8 +49,12 @@ var shippedKeyInventoryYAML []byte
 // collapses), not a pin on the exact surface size. It was lowered from 900 to
 // 875 when the dead research section (24 keys) and the dead state.state_dir key
 // were removed from the shipped template, taking the real surface from 914 to
-// 889; a 900 floor would have failed on a deliberate, complete removal.
-const minimumShippedKeys = 875
+// 889; a 900 floor would have failed on a deliberate, complete removal. Lowered
+// again from 875 to 700 when the per-agent model/effort keys (llm.profile(s),
+// llm.performance_tier, llm.harness_agents, llm.agent_overrides,
+// workflow.model_routing*, workflow.workflow_agents) left the template under
+// SPEC-AGENT-MODEL-INHERIT-001 M5, taking the real surface from 889 to 730.
+const minimumShippedKeys = 700
 
 // minimumStructFields is the NFR-CKH-002 non-vacuity floor for struct fields.
 const minimumStructFields = 250
@@ -806,12 +810,16 @@ func testCollisionResolution(t *testing.T, sectionRoots map[string]reflect.Type,
 	}
 
 	// workflow.worktree.auto_merge resolves to WorkflowWorktreeConfig.AutoMerge,
-	// which has ZERO production reads. A bare-name lookup would falsely match
-	// internal/github.MergeOptions.AutoMerge selectors (the collision AP-3 warns
-	// about); path resolution must NOT.
+	// which gained a production reader with SPEC-WORKTREE-KEY-WIRING-001
+	// (internal/cli/session_worktree_automerge.go sessionExitAutoMerge reads
+	// cfg.Workflow.Worktree.AutoMerge) — direct-live since then. The AP-3
+	// collision property still holds by path resolution: the classification
+	// consults only WorkflowWorktreeConfig readers, never the
+	// internal/github.MergeOptions.AutoMerge selectors that share the field
+	// name.
 	autoMerge := classifyKey("workflow.worktree.auto_merge", sectionRoots, configTypes, readerIdx, accessorIdx, methodCallers)
-	if autoMerge == classDirectLive {
-		t.Errorf("collision_resolution: workflow.worktree.auto_merge classified %s — bare-name collision leak (MergeOptions.AutoMerge is a different struct)", autoMerge)
+	if autoMerge != classDirectLive {
+		t.Errorf("collision_resolution: workflow.worktree.auto_merge = %s, want %s (reader at session_worktree_automerge.go since SPEC-WORKTREE-KEY-WIRING-001)", autoMerge, classDirectLive)
 	}
 }
 

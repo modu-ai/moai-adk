@@ -67,11 +67,19 @@ const (
 	// 필드 ≥1 불변식 위반 방지), 웹의 schemaSectionMetas()가 raw-only 섹션으로
 	// 렌더한다. RawBlockRef.Section 그룹핑 태그로만 사용된다.
 	SectionMx SectionID = "mx"
+
+	// gate 섹션 — pre-commit heavy gate opt-in (SPEC-PRECOMMIT-GATE-SCOPE-001
+	// REQ-009, seam 전용). gate.pre_commit.enabled bool 하나를 편집하며,
+	// yamlpatch seam으로 gate.yaml에 기록된다. 런너는 MOAI_PRECOMMIT=1 마커
+	// 하에서만 이 키를 존중한다 (단독 `moai gate` 불변).
+	SectionGate SectionID = "gate"
 )
 
 // NOTE: agent-settings 섹션(workflow.yaml team.role_profiles 렌더 표면)은 Agent
 // Teams 정적 레이어와 함께 제거되었다 (SPEC-AGENT-TEAM-RETIRE-001). sub-agent
-// frontmatter 편집(agentfm)은 별도 표면(agentfm.go)으로 유지된다.
+// model/effort 편집 표면(agentfm)은 llm.agent_overrides 저장 경로로 복원되었다
+// (SPEC-WEB-AGENTFM-RESTORE-001) — 이 패키지의 agentfm 전용 필드는 없다
+// (llm.profile/llm.agent_overrides는 스키마 외부 live 키 — plan §B-6).
 
 // AllSections는 정규 섹션을 렌더 순서대로 반환한다.
 func AllSections() []SectionID {
@@ -96,6 +104,7 @@ func AllSections() []SectionID {
 		SectionReport,
 		SectionMCP,
 		SectionCrossSession,
+		SectionGate,
 	}
 }
 
@@ -172,6 +181,7 @@ type FieldDef struct {
 	Default       string            // 디스크 값 부재 시 위젯이 선택할 값 (빈 문자열이면 기존 동작 — 선택 없음)
 	StoreOnly     bool              // 값이 저장만 되고 런타임에 적용되지 않음 — 위젯이 저장 전용 배지를 렌더한다
 	EmptySubmits  bool              // select가 "" 제출을 실제 값으로 취급한다 (empty=preserve 예외 — 키를 중립 ""로 되돌리는 경로)
+	AbsentDefault string            // bool 전용: 부재 키의 런타임 유효 기본값 ("true" = default-ON/fail-open, 빈 문자열 = default-off). 값-불변 게이트가 absent 분기의 극성을 판정하는 단일 원천 (sync-audit F1, SPEC-WEB-WRITE-SAFETY-001)
 	I18nKey       string            // 두 스토어가 해석하는 공유 i18n 키 prefix (예: "f.model")
 	Description   string            // REQ-WC-015 field-level description i18n key (fieldDesc.<sectionID>.<fieldID> convention, design.md §H.1); empty = no description rendered
 	Persist       PersistTarget     // 값 영속화 대상
@@ -297,7 +307,27 @@ func statuslineThemeOptions() []OptionDef {
 const (
 	emptyLabelUnset          = "(unset)"
 	emptyLabelProjectDefault = "(project default)"
-	emptyLabelRuntimeDefault = "(runtime default)"
+	// emptyLabelRuntimeDefault is the effort_level empty option. An empty effort
+	// is not a bare runtime default: resolveLaunchEffort falls back to the
+	// model-policy-derived effort, and only with no policy does Claude Code's own
+	// default apply. It is the en wizard label; the ko/ja/zh wizard renders a
+	// localized label resolved through the opt.runtime_default key (the console
+	// localizes the same key), so it names the same two fallbacks as that key's
+	// en text in a shorter form that fits the wizard row
+	// (TestEffortEmptyLabelNamesBothFallbacks).
+	emptyLabelRuntimeDefault = "(model policy, else Claude Code default: " + RuntimeDefaultEffort + " on " + RuntimeDefaultEffortModel + ")"
+)
+
+// Claude Code's own default effort and the model it applies to — the fact the
+// effort_level empty-option labels state. Defined once here; the labels that
+// cannot be built from these constants (the ko/ja/zh wizard texts in
+// internal/cli and every opt.runtime_default entry in internal/web/assets/i18n.js)
+// are pinned to them by TestEffortEmptyLabelCarriesRuntimeDefaultFact and
+// TestRuntimeDefaultI18nCarriesEffortFact, so a model change is one edit here
+// plus the strings those tests name.
+const (
+	RuntimeDefaultEffort      = "medium"
+	RuntimeDefaultEffortModel = "Opus 5.5"
 )
 
 // allFields는 6개 섹션의 34개 정규 필드를 렌더 순서대로 구성하여 반환한다.
@@ -349,7 +379,7 @@ func allFields() []FieldDef {
 		FieldDef{
 			Name:          "model",
 			Section:       SectionLaunch,
-			Type:          TypeSelect,
+			Type:          TypeRadio,
 			Options:       modelOpts,
 			EmptyLabel:    emptyLabelProjectDefault,
 			EmptyLabelKey: "opt.project_default",
@@ -360,7 +390,7 @@ func allFields() []FieldDef {
 		FieldDef{
 			Name:          "effort_level",
 			Section:       SectionLaunch,
-			Type:          TypeSelect,
+			Type:          TypeRadio,
 			Options:       effortOpts,
 			EmptyLabel:    emptyLabelRuntimeDefault,
 			EmptyLabelKey: "opt.runtime_default",
@@ -371,7 +401,7 @@ func allFields() []FieldDef {
 		FieldDef{
 			Name:          "permission_mode",
 			Section:       SectionLaunch,
-			Type:          TypeSelect,
+			Type:          TypeRadio,
 			Options:       permOpts,
 			EmptyLabel:    emptyLabelProjectDefault,
 			EmptyLabelKey: "opt.project_default",
@@ -390,7 +420,7 @@ func allFields() []FieldDef {
 	fields = append(fields, FieldDef{
 		Name:          "statusline_theme",
 		Section:       SectionStatusline,
-		Type:          TypeSelect,
+		Type:          TypeRadio,
 		Options:       themeOpts,
 		EmptyLabel:    "",
 		EmptyLabelKey: "",
@@ -414,7 +444,7 @@ func allFields() []FieldDef {
 		FieldDef{
 			Name:          "development_mode",
 			Section:       SectionQuality,
-			Type:          TypeSelect,
+			Type:          TypeRadio,
 			Options:       devOpts,
 			EmptyLabel:    emptyLabelProjectDefault,
 			EmptyLabelKey: "opt.project_default",

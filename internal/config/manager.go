@@ -42,6 +42,34 @@ type ConfigManager struct {
 	// 덮어쓰지 않도록 한다. m.mu 잠금 하에서만 변경된다.
 	// 참조: SPEC-GITSTRATEGY-SAVE-ISOLATION-001.
 	gitStrategyDirty bool
+
+	// gitConventionDirty tracks whether the git_convention section was
+	// mutated through SetSection since the last full-config replacement
+	// (Load/LoadRaw/Reload) or successful Save(). Save() rewrites
+	// git-convention.yaml only when this flag is true or the file does not
+	// exist yet (greenfield creation), the same section isolation the
+	// git-strategy section got from SPEC-GITSTRATEGY-SAVE-ISOLATION-001:
+	// without it, an unrelated scoped write (e.g. the profile wizard's
+	// development_mode persist or the profile sync) round-tripped
+	// git-convention.yaml through the loader's partial-override expansion and
+	// reformatted the hand-edited file on every Save, dropping unmodeled keys
+	// (SPEC-INIT-TUX-I18N-001 AC-ITI-006 (7) byte-identity). Changed only
+	// under m.mu.
+	gitConventionDirty bool
+
+	// user/language/quality/llmDirty carry the same dirty-or-absent gate the
+	// git-strategy/git-convention sections got from
+	// SPEC-GITSTRATEGY-SAVE-ISOLATION-001, extended to the remaining four
+	// Save()-persisted sections by SPEC-WEB-SAVE-LOSSLESS-001 (plan.md §A
+	// layer 3 — the backstop): Save() rewrites each file only when its
+	// section was SetSection-mutated this session or the file does not exist
+	// yet. Without the gate, ANY Save() call re-marshaled all four files and
+	// dropped their unmodeled keys and comments (the D1 collateral-rewrite
+	// defect, GitHub issue #1731). Changed only under m.mu.
+	userDirty     bool
+	languageDirty bool
+	qualityDirty  bool
+	llmDirty      bool
 }
 
 // NewConfigManager creates a new ConfigManager instance in uninitialized state.
@@ -50,6 +78,20 @@ func NewConfigManager() *ConfigManager {
 		loader: NewLoader(),
 		state:  stateUninitialized,
 	}
+}
+
+// resetSectionDirtyLocked clears every section dirty flag. A full-config
+// replacement (Load/LoadRaw/Reload) or a successful Save() resets the
+// mutation tracking — the EC-3 reset contract the git-strategy precedent
+// established, extended to all six sections (SPEC-WEB-SAVE-LOSSLESS-001).
+// Caller must hold m.mu (write).
+func (m *ConfigManager) resetSectionDirtyLocked() {
+	m.gitStrategyDirty = false
+	m.gitConventionDirty = false
+	m.userDirty = false
+	m.languageDirty = false
+	m.qualityDirty = false
+	m.llmDirty = false
 }
 
 // @MX:NOTE: [AUTO] Merges file values, compiled defaults, and environment variable priorities. MOAI_CONFIG_DIR env var can override config directory. Uses disk cache (SPEC-HOOK-PRETOOL-PERF-001) to skip ~20 per-section reads on cache hit.
@@ -90,7 +132,7 @@ func (m *ConfigManager) Load(projectRoot string) (*Config, error) {
 	m.config = cfg
 	m.root = projectRoot
 	m.state = stateInitialized
-	m.gitStrategyDirty = false // 전체-설정 교체: 이전 dirty 상태 초기화
+	m.resetSectionDirtyLocked() // 전체-설정 교체: 이전 dirty 상태 전면 초기화
 
 	return cfg, nil
 }
@@ -118,7 +160,7 @@ func (m *ConfigManager) LoadRaw(projectRoot string) (*Config, error) {
 	m.config = cfg
 	m.root = projectRoot
 	m.state = stateInitialized
-	m.gitStrategyDirty = false // 전체-설정 교체: 이전 dirty 상태 초기화
+	m.resetSectionDirtyLocked() // 전체-설정 교체: 이전 dirty 상태 전면 초기화
 
 	return cfg, nil
 }
@@ -164,7 +206,19 @@ func (m *ConfigManager) SetSection(name string, value any) error {
 
 // @MX:ANCHOR: [AUTO] Save is the config persistence path — atomic multi-section write to disk
 // @MX:REASON: fan_in=12 across 4 files (profile sync, project initializer, CLI); atomic write via temp+rename is critical for data integrity — do not replace with direct os.WriteFile
+// @MX:DEBT: [AUTO] Save persists SIX sections only — user, language, quality, git-convention, git-strategy, llm (SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-007, record-only disposition)
+// @MX:CEILING: the remaining sections persist through the yamlpatch seam or typed dedicated writers (init/web write paths); Save's scope is a structural fact, not an oversight
+// @MX:UPGRADE: extend Save only when a new section joins the SetSection flow with a typed FileWrapper AND a byte-preservation disposition (dirty-gate or equivalent) — extending it to all 32 sections would re-break the hand-edit preservation that SPEC-GITSTRATEGY-SAVE-ISOLATION-001 fixed (REQ-GSI-001/002)
 // Save persists the current configuration to disk atomically.
+//
+// Scope: Save writes exactly six section files — user.yaml, language.yaml,
+// quality.yaml, git-convention.yaml, git-strategy.yaml, and llm.yaml. No
+// other section reaches disk through this path: the remaining sections
+// persist through the yamlpatch seam or dedicated typed writers (the init and
+// web-console write paths). git-convention and git-strategy carry a dirty
+// gate (rewritten only when SetSection-mutated this session or absent) so
+// hand-edited content survives byte-for-byte (SPEC-GITSTRATEGY-SAVE-ISOLATION-001).
+//
 // Each section is saved to its corresponding YAML file using
 // temp file + os.Rename for atomic writes.
 // Returns ErrNotInitialized if Load() has not been called.
@@ -183,24 +237,38 @@ func (m *ConfigManager) Save() error {
 		return fmt.Errorf("create config directory: %w", err)
 	}
 
-	// Save user section
-	if err := saveSection(sectionsDir, "user.yaml", userFileWrapper{User: m.config.User}); err != nil {
+	// Save user section — dirty-or-absent gate (SPEC-WEB-SAVE-LOSSLESS-001
+	// backstop): rewritten only when SetSection-mutated this session or the
+	// file does not exist yet. Otherwise the hand-edited user.yaml (unmodeled
+	// keys, comments) is preserved byte-for-byte.
+	if err := m.saveGated(sectionsDir, "user.yaml", m.userDirty, userFileWrapper{User: m.config.User}); err != nil {
 		return fmt.Errorf("save user config: %w", err)
 	}
 
-	// Save language section
-	if err := saveSection(sectionsDir, "language.yaml", languageFileWrapper{Language: m.config.Language}); err != nil {
+	// Save language section — same dirty-or-absent gate.
+	if err := m.saveGated(sectionsDir, "language.yaml", m.languageDirty, languageFileWrapper{Language: m.config.Language}); err != nil {
 		return fmt.Errorf("save language config: %w", err)
 	}
 
-	// Save quality section
-	if err := saveSection(sectionsDir, "quality.yaml", qualityFileWrapper{Constitution: m.config.Quality}); err != nil {
+	// Save quality section — same dirty-or-absent gate.
+	if err := m.saveGated(sectionsDir, "quality.yaml", m.qualityDirty, qualityFileWrapper{Constitution: m.config.Quality}); err != nil {
 		return fmt.Errorf("save quality config: %w", err)
 	}
 
-	// Save git convention section
-	if err := saveSection(sectionsDir, "git-convention.yaml", gitConventionFileWrapper{GitConvention: m.config.GitConvention}); err != nil {
-		return fmt.Errorf("save git convention config: %w", err)
+	// Save git convention section — section isolation mirroring git-strategy
+	// (SPEC-GITSTRATEGY-SAVE-ISOLATION-001 precedent, AC-ITI-006 (7)): rewrite
+	// only when the git_convention section was SetSection-mutated this session
+	// or the file does not exist yet. Otherwise the hand-edited
+	// git-convention.yaml is preserved byte-for-byte.
+	gitConventionPath := filepath.Join(sectionsDir, "git-convention.yaml")
+	gitConventionAbsent := false
+	if _, statErr := os.Stat(gitConventionPath); os.IsNotExist(statErr) {
+		gitConventionAbsent = true
+	}
+	if m.gitConventionDirty || gitConventionAbsent {
+		if err := saveSection(sectionsDir, "git-convention.yaml", gitConventionFileWrapper{GitConvention: m.config.GitConvention}); err != nil {
+			return fmt.Errorf("save git convention config: %w", err)
+		}
 	}
 
 	// Save git strategy section — 섹션 격리(SPEC-GITSTRATEGY-SAVE-ISOLATION-001).
@@ -220,16 +288,32 @@ func (m *ConfigManager) Save() error {
 		}
 	}
 
-	// Save LLM section
-	if err := saveSection(sectionsDir, "llm.yaml", llmFileWrapper{LLM: m.config.LLM}); err != nil {
+	// Save LLM section — same dirty-or-absent gate.
+	if err := m.saveGated(sectionsDir, "llm.yaml", m.llmDirty, llmFileWrapper{LLM: m.config.LLM}); err != nil {
 		return fmt.Errorf("save LLM config: %w", err)
 	}
 
-	// 성공적인 Save() 이후 dirty 플래그 초기화(EC-3): 이후 SetSection(git_strategy) 없이
-	// 다시 Save()하면 git-strategy.yaml을 재작성하지 않는다.
-	m.gitStrategyDirty = false
+	// 성공적인 Save() 이후 dirty 플래그 초기화(EC-3): 이후 SetSection 없이
+	// 다시 Save()하면 어떤 섹션 파일도 재작성하지 않는다
+	// (SPEC-WEB-SAVE-LOSSLESS-001 — 6섹션 전면 확장).
+	m.resetSectionDirtyLocked()
 
 	return nil
+}
+
+// saveGated writes a section file only when the section is dirty (SetSection-
+// mutated this session) or the file does not exist yet (greenfield creation) —
+// the git-strategy precedent's dirty-or-absent gate, shared by the user/
+// language/quality/llm sections since SPEC-WEB-SAVE-LOSSLESS-001.
+func (m *ConfigManager) saveGated(sectionsDir, filename string, dirty bool, data any) error {
+	path := filepath.Join(sectionsDir, filename)
+	if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
+		dirty = true // greenfield creation
+	}
+	if !dirty {
+		return nil
+	}
+	return saveSection(sectionsDir, filename, data)
 }
 
 // Reload forces a re-read from disk, replacing the in-memory configuration.
@@ -260,7 +344,7 @@ func (m *ConfigManager) Reload() error {
 	}
 
 	m.config = cfg
-	m.gitStrategyDirty = false // 전체-설정 교체: 이전 dirty 상태 초기화
+	m.resetSectionDirtyLocked() // 전체-설정 교체: 이전 dirty 상태 전면 초기화
 
 	// Notify registered callbacks
 	for _, cb := range m.callbacks {
@@ -324,18 +408,21 @@ func (m *ConfigManager) setSectionLocked(name string, value any) error {
 			return fmt.Errorf("%w: expected UserConfig for section %q", ErrSectionTypeMismatch, name)
 		}
 		m.config.User = v
+		m.userDirty = true
 	case "language":
 		v, ok := value.(models.LanguageConfig)
 		if !ok {
 			return fmt.Errorf("%w: expected LanguageConfig for section %q", ErrSectionTypeMismatch, name)
 		}
 		m.config.Language = v
+		m.languageDirty = true
 	case "quality":
 		v, ok := value.(models.QualityConfig)
 		if !ok {
 			return fmt.Errorf("%w: expected QualityConfig for section %q", ErrSectionTypeMismatch, name)
 		}
 		m.config.Quality = v
+		m.qualityDirty = true
 	case "project":
 		v, ok := value.(models.ProjectConfig)
 		if !ok {
@@ -357,6 +444,9 @@ func (m *ConfigManager) setSectionLocked(name string, value any) error {
 			return fmt.Errorf("%w: expected GitConventionConfig for section %q", ErrSectionTypeMismatch, name)
 		}
 		m.config.GitConvention = v
+		// The section was explicitly mutated; Save() consults this flag to
+		// decide whether git-convention.yaml may be rewritten (AC-ITI-006 (7)).
+		m.gitConventionDirty = true
 	case "system":
 		v, ok := value.(SystemConfig)
 		if !ok {
@@ -369,6 +459,7 @@ func (m *ConfigManager) setSectionLocked(name string, value any) error {
 			return fmt.Errorf("%w: expected LLMConfig for section %q", ErrSectionTypeMismatch, name)
 		}
 		m.config.LLM = v
+		m.llmDirty = true
 	case "pricing":
 		v, ok := value.(PricingConfig)
 		if !ok {

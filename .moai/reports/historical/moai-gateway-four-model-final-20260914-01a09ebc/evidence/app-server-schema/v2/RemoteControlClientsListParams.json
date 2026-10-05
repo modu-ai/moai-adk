@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "RemoteControlClientsListOrder": {
+      "enum": [
+        "asc",
+        "desc"
+      ],
+      "type": "string"
+    }
+  },
+  "properties": {
+    "cursor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "environmentId": {
+      "type": "string"
+    },
+    "limit": {
+      "format": "uint32",
+      "minimum": 0.0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "order": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/RemoteControlClientsListOrder"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "environmentId"
+  ],
+  "title": "RemoteControlClientsListParams",
+  "type": "object"
+}

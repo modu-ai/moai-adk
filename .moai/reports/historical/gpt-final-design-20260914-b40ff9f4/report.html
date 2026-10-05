@@ -1,0 +1,1298 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>moai gpt 재설계 v3 — Gateway × Codex App Server</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@600;700&display=swap">
+<style>
+:root{--ivory:#FAF9F5;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;--olive:#788C5D;--pale:#F0EEE6;--line:#D1CFC5;--muted:#626157}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:24px}body{margin:0;background:var(--ivory);color:var(--slate);font:16px/1.85 'Noto Sans KR',sans-serif;word-break:keep-all;overflow-wrap:anywhere}a{color:var(--clay-d);text-decoration-thickness:1px;text-underline-offset:4px}a:hover{color:var(--slate)}a:focus-visible{outline:3px solid var(--clay);outline-offset:4px}.wrap{max-width:1240px;margin:auto;padding:44px 40px 70px}.eyebrow{font:500 12px/1.6 'JetBrains Mono',monospace;letter-spacing:.12em;color:var(--clay-d);text-transform:uppercase}.masthead{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid var(--line);padding-bottom:18px;font-size:12px;color:var(--muted)}.hero{padding:45px 0 34px}.hero h1{font:700 clamp(32px,4.5vw,54px)/1.35 'Noto Serif KR',serif;letter-spacing:-.045em;max-width:880px;margin:14px 0 24px}.hero .lead{font-size:20px;max-width:900px;line-height:1.8;margin:0}.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}.chip{border:1px solid var(--line);border-radius:4px;padding:5px 11px;font-size:12px}.chip.good{background:#edf0e8;border-color:#b8c3a7}.chip.warn{background:#f6e9df;border-color:#dec2b1}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:0 0 30px}.card{border-top:3px solid var(--clay);padding:20px 22px;background:var(--pale);border-radius:0 0 6px 6px}.card .n{font:12px 'JetBrains Mono',monospace;color:var(--muted)}.card h2{font-size:19px;line-height:1.5;margin:9px 0}.card p{font-size:14px;line-height:1.8;margin:0}.architecture{padding:24px;background:#fff;border:1px solid var(--line);border-radius:8px;margin-bottom:42px}.architecture h2{font-size:20px;margin:0 0 6px}.architecture .caption{font-size:13px;color:var(--muted);margin:0 0 20px}.diagram-scroll{overflow-x:auto}.mermaid{min-width:680px;text-align:center;display:none}.flow-fallback{border-left:3px solid var(--olive);padding:10px 20px;background:var(--pale);font-size:14px}.layout{display:grid;grid-template-columns:205px minmax(0,1fr);gap:45px}.toc{position:sticky;top:24px;align-self:start;font-size:12px;line-height:1.65;border-left:1px solid var(--line);padding-left:18px}.toc strong{display:block;margin-bottom:12px;letter-spacing:.04em}.toc a{display:block;text-decoration:none;color:var(--muted);margin:0 0 11px}.toc a:hover{color:var(--clay-d)}article{min-width:0}article h2{font:700 27px/1.5 'Noto Serif KR',serif;letter-spacing:-.03em;margin:52px 0 22px;padding-top:24px;border-top:1px solid var(--line)}article h2:first-child{margin-top:0}article h3{font-size:19px;line-height:1.6;margin:32px 0 14px}article p{margin:14px 0}article li{margin:8px 0}article ul,article ol{padding-left:25px}article strong{font-weight:700}code{font:13px/1.7 'JetBrains Mono',monospace;background:var(--pale);padding:2px 4px;border-radius:3px;word-break:break-word}pre{background:#21211f;color:#f1eee6;border-radius:6px;padding:18px;overflow:auto;line-height:1.7;white-space:pre}pre code{background:none;padding:0;color:inherit;word-break:normal}.table-wrap{overflow-x:auto;max-width:100%;margin:22px 0;border:1px solid var(--line);border-radius:5px}table{border-collapse:collapse;font-size:13px;line-height:1.75;width:100%;min-width:620px;margin:0}th{text-align:left;background:var(--oat);font-weight:600}th,td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}tr:last-child td{border-bottom:0}tbody tr:nth-child(even){background:#f4f2ec}td:first-child{min-width:120px}blockquote{border-left:3px solid var(--clay);margin:20px 0;padding:8px 20px;background:var(--pale)}.foot{margin-top:50px;padding-top:22px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}.foot a{margin-right:20px}
+@media(max-width:900px){.layout{grid-template-columns:minmax(0,1fr);gap:20px}.toc{position:static;display:flex;gap:8px 18px;flex-wrap:wrap}.toc strong{width:100%}.toc a{margin-bottom:4px}.wrap{padding:26px 24px 50px}.summary{gap:10px}.card{padding:16px}}
+@media(max-width:600px){body{font-size:15px}.wrap{padding:22px 18px 40px}.masthead{font-size:10px}.hero{padding:30px 0}.hero .lead{font-size:17px}.summary{grid-template-columns:1fr}.card{padding:16px 20px}.card h2{margin:6px 0}.architecture{padding:18px}article h2{font-size:24px;margin-top:36px}.toc{font-size:11px}pre{padding:14px}code{font-size:12px}.chip{font-size:11px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+@media print{.wrap{max-width:none;padding:0}.toc{display:none}.layout{display:block}.summary,.architecture{break-inside:avoid}article h2{break-after:avoid}a{color:inherit}.table-wrap{overflow:visible}table{min-width:0}pre{white-space:pre-wrap}body{font-size:10pt}.hero h1{font-size:28pt}}
+.summary{grid-template-columns:repeat(4,1fr)}pre.mermaid{background:white;color:#141413;padding:0;overflow:visible}@media(max-width:900px){.summary{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.summary{grid-template-columns:1fr}}.example{padding:18px 22px;background:#F0EEE6;border-left:3px solid #788C5D;margin-bottom:30px;font-size:14px}</style>
+</head><body><div class="wrap">
+<header class="masthead"><span>MoAI · DESIGN REVIEW v3 · 모델 계약 확정</span><span>조사 15f3eacd7 · 문서 수정 develop 4056f69e1</span></header>
+<section class="hero"><div class="eyebrow">공식 문서 재조사 · 구현 승인 대기</div><h1 id="title">moai gpt, 실행부를 다시 설계하다.<br>Gateway 입구와 Codex 실행의 분리.</h1>
+<p class="lead">지정 문서 5개와 페이지 내 하위 목차 전체를 검토했다. <strong>일반 Messages Gateway → Codex App Server</strong>를 연결하고, Claude의 도구 승인과 Factory 실행 흐름을 유지하는 조건부 설계안이다.</p>
+<div class="chips"><span class="chip good">추적 파일 18,834개 조사</span><span class="chip good">적중 파일 1,733개 목록화</span><span class="chip warn">제품 코드 미변경</span><span class="chip warn">실계정 실행 미검증</span></div></section>
+<p><strong>확정된 모델 선택:</strong> 별도 티어 없이 <code>fable / opus / sonnet / haiku</code>를 아래 GPT 모델에 직접 매핑한다. <code>effort</code>는 독립 설정이며 모델 별칭으로 추론 강도를 강제하지 않는다.</p>
+<section class="summary" aria-label="사용자 확정 모델 매핑">
+<div class="card"><span class="n">FABLE</span><h2>Astra</h2><p><code>gpt-6-astra</code><br>Fable 슬롯</p></div>
+<div class="card"><span class="n">OPUS</span><h2>Sol</h2><p><code>gpt-5.6-sol</code><br>Opus 슬롯</p></div>
+<div class="card"><span class="n">SONNET</span><h2>Terra</h2><p><code>gpt-5.6-terra</code><br>Sonnet 슬롯</p></div>
+<div class="card"><span class="n">HAIKU</span><h2>Luna</h2><p><code>gpt-5.6-luna</code><br>Haiku 슬롯</p></div></section>
+<div class="example"><strong>동작 예시</strong> — <code>moai gpt -f 4 --model fable</code>로 시작하면 lead의 메인 모델은 Astra다. 이후 <code>model: sonnet</code>인 Agent는 Terra를 사용하고, <code>inherit</code>인 Agent는 부모의 실제 선택 모델을 이어받는다. 메인 모델 선택 때문에 네 슬롯 전체가 Astra로 바뀌면 안 된다. <strong>이것은 구현할 계약이지 현재 제품의 실측 결과가 아니다.</strong></div>
+<section class="architecture"><h2>역할을 나눈 하나의 실행 경로</h2><p class="caption">Factory는 실행 모드, Todo는 작업 목록, Orchestration은 배정·세션·소유권을 조정하는 내부 코드다. 그림은 제안 구조다.</p>
+<div class="diagram-scroll"><pre class="mermaid" id="architecture-mermaid">flowchart LR
+ T["Todo 작업 목록"] --> O["Orchestration<br/>Factory lead → lane"]
+ O --> C["Claude Code<br/>Agent · 승인 · hooks"]
+ C --> G["Messages gateway<br/>네 슬롯 모델 매핑"]
+ G --> A["Codex App Server<br/>thread · turn"]
+ A --> M["Astra / Sol<br/>Terra / Luna"]
+ A -->|tool call| G
+ G -->|tool_use| C
+ C -->|tool_result| G
+</pre></div>
+<div class="flow-fallback" id="flow-fallback">Todo 작업을 Factory lead가 lane에 배정한다. 각 Claude Code 세션은 Messages gateway를 통해 Codex App Server의 GPT를 호출한다. 실제 도구 실행과 승인은 Claude가 담당하고, 결과를 대기 중인 Codex 호출에 반환한다.</div>
+<noscript><p>흐름: Todo → Orchestration의 Factory lead·lane → Claude Code → 모델 매핑 gateway → Codex App Server → GPT. 도구 실행은 Claude로 되돌아온다.</p></noscript></section>
+<div class="layout"><nav class="toc" aria-label="목차"><strong>최종 설계와 근거</strong><div id="toc-items"></div><a href="inventory.md">전체 적중 파일·줄 번호 ↗</a><a href="inventory.json">기계 판독 목록 JSON ↗</a><a href="evidence.md">실행 근거 ↗</a></nav><article id="report-body"><h2
+id="지정-문서-재조사-최종-검토안-v3">0. 지정 문서 재조사 — 최종 검토안
+v3</h2>
+<p><strong>권고: 외부 명령은 <code>moai gpt</code>로 통일하고, 기존
+gateway·codexbridge를 재사용하여 일반 Anthropic Messages 입구와 Codex
+App Server 실행부를 연결한다.</strong> 새 프록시 제품을 추가하거나
+Claude Apps Gateway를 GPT 공급자로 개조하는 안이 아니다. 문서상 가능한
+통합 표면과 현재 제품의 동작 증거를 분리했다.</p>
+<h3 id="읽은-범위와-남은-범위">읽은 범위와 남은 범위</h3>
+<p>사용자가 지정한 아래 <strong>5개 페이지의 본문 및 페이지 내 모든 하위
+목차를 끝까지 읽었다.</strong> 한국어 HTML 페이지를 가져오지 못한 경우
+같은 공식 경로의 <code>.md</code> 원문을 사용했다. gateway의
+연결·배포·프로토콜 3개 하위 페이지도 포함한다.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>지정 문서</th>
+<th>읽기 상태</th>
+<th>설계에 반영한 주제</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://learn.chatgpt.com/ko-KR/docs/app-server">Codex App
+Server</a></td>
+<td>전체</td>
+<td>인증·초기화·모델·thread/turn·동적 도구·취소·복구·실험 API</td>
+</tr>
+<tr>
+<td><a href="https://code.claude.com/docs/ko/llm-gateway">LLM
+Gateway</a></td>
+<td>전체</td>
+<td>일반 게이트웨이의 범위, 구독과 인증, 비-Claude 비지원</td>
+</tr>
+<tr>
+<td><a
+href="https://code.claude.com/docs/ko/llm-gateway-connect">연결</a></td>
+<td>전체</td>
+<td>인증 변수·설정 우선순위·실행 표면별 차이·오류 점검</td>
+</tr>
+<tr>
+<td><a
+href="https://code.claude.com/docs/ko/llm-gateway-rollout">배포</a></td>
+<td>전체</td>
+<td>사용자별 인증·설정 배포·모델 제한·네트워크·점진 검증</td>
+</tr>
+<tr>
+<td><a
+href="https://code.claude.com/docs/ko/llm-gateway-protocol">프로토콜</a></td>
+<td>전체</td>
+<td>Messages·SSE·기능 변환·오류 복구·모델 검색</td>
+</tr>
+</tbody>
+</table>
+<p>추가로 SDK 본문 전체, 모델 설정의 gateway 관련 절, agent-view의
+설정·모델·gateway·백그라운드 전환 절을 읽었다. prompt-caching은
+이력·모델·도구 변경 관련 절을 읽었다. <strong>전체 사이트의 모든 교차
+링크를 재귀적으로 읽었다는 뜻은 아니다.</strong> 전체 하위 목차와 직접
+링크 목록 및 미독 범위는 <a href="documentation-review.md">문서 조사
+장부</a>에 있다. 한국어 settings-reference는 curl 두 번과 웹 열기에
+실패했지만 공식 영어 원문의 modelPicker 절을 끝까지 읽어 보완했다. 오류
+토큰 상세 앵커는 내려받은 대상 원문에 없어 해당 목록이 미확정이다.</p>
+<h3 id="지원약관-판단">지원·약관 판단</h3>
+<p><strong>“약관 문제가 전혀 없고 양사가 지원하는 Claude Code 안의
+GPT”라고 보증할 수 없다.</strong> 공식 일반 게이트웨이 문서는 비-Claude
+모델 라우팅을 지원하지 않는다고 명시한다. 비지원과 약관 위반 확정은 다른
+판단이며, 이번 조사로 위반 또는 무위험 어느 쪽도 확정하지 않는다. <a
+href="https://code.claude.com/docs/ko/llm-gateway">Anthropic 지원
+범위</a></p>
+<p>OpenAI 쪽은 문서화된 App Server의 관리형 로그인을 사용하고, 기존
+토큰을 추출해 별도 비공개 endpoint로 보내거나 다른 클라이언트를 사칭하지
+않는 통합을 제안한다. 계정 공유·한도 우회·보호 조치 우회는 배제한다.
+이용 계정의 계약과 조직 정책 확인은 별도 승인 조건이다. <a
+href="https://openai.com/policies/terms-of-use/">OpenAI 이용약관</a>, <a
+href="https://www.anthropic.com/legal/commercial-terms">Anthropic 상업용
+약관</a></p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>대안</th>
+<th>이번 판단</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude Code + MoAI Messages + App Server</td>
+<td>요청한 UX에 맞는 <strong>조건부 구현 후보</strong>. 양사 공식 지원을
+모두 받는 경로는 아님</td>
+</tr>
+<tr>
+<td>Codex 자체 CLI/App Server/SDK로 Factory 실행</td>
+<td>Claude Code 내부라는 조건을 포기할 때 지원 경계가 더 명확한 대안.
+자동으로 이 방식으로 바꾸지 않음</td>
+</tr>
+<tr>
+<td>Claude Apps Gateway</td>
+<td>Claude 공급자·SSO용 제품. GPT bridge 해결책으로 채택하지 않음</td>
+</tr>
+<tr>
+<td>LiteLLM 등 추가 API 프록시</td>
+<td>이 프로젝트의 App Server 세션·동적 도구 소유권 문제를 대신
+해결한다는 증거가 없어 새 의존성으로 추가하지 않음</td>
+</tr>
+<tr>
+<td>구독 토큰 추출·비공개 HTTP 재사용</td>
+<td>새 제품 경로의 기준으로 채택하지 않음. 공식 인증 수명주기를 실행부에
+맡김</td>
+</tr>
+</tbody>
+</table>
+<p><a href="https://learn.chatgpt.com/codex/codex-sdk">Codex SDK
+문서</a>는 자동화 작업과 풍부한 클라이언트 통합을 구분한다. TypeScript
+SDK와 안정 릴리스 Python SDK도 후보지만, 이미 Go
+<code>internal/codexbridge</code>가 있는 프로젝트에 Node/Python 실행층을
+추가할 이유는 아직 없다. 인증·도구 요청 응답·이벤트를 직접 연결해야 하는
+이번 설계에는 기존 Go bridge + App Server를 우선한다. SDK의 안정
+릴리스가 동적 도구 계약 전체의 안정성을 보증하지는 않는다.</p>
+<h2 id="결정-요약-구현-승인-전-최종안">1. 결정 요약 — 구현 승인 전
+최종안</h2>
+<p><strong>사용자가 확정한 모델 매핑은 Fable→Astra, Opus→Sol,
+Sonnet→Terra, Haiku→Luna다. 이전 보고서의 예시 매핑을
+폐기한다.</strong></p>
+<p><strong>칸반은 별도 실행 모드와 현행 제품 용어에서 제거한다.</strong>
+이를 다른 이름의 별도 모드로 되살리지 않는다. 자동화 실행은 Factory,
+작업 목록은 Todo, 작업 배정은 Dispatch, 단계는 Plan→Run→Sync로
+구분한다.</p>
+<p>이 문서는 구현 전 설계 보고다. 제품 코드·저장된 작업 상태·기존 세션은
+변경하지 않는다. 새 명칭, 기존 입력의 폐기 방식, 이력 보존 정책은 아래
+권고안을 승인받은 뒤 적용한다.</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>구분</th>
+<th>최종안</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>사용자 실행</td>
+<td><code>moai gpt</code>, <code>moai gpt -f</code>,
+<code>moai gpt -f N</code>, <code>moai gpt -f lane-N</code></td>
+</tr>
+<tr>
+<td>별도 모드 제거</td>
+<td><code>-k/--kanban</code> 실행 분기 폐기. 다른 이름의 대체 모드 신설
+없음</td>
+</tr>
+<tr>
+<td>실행 제어 패키지</td>
+<td><code>internal/kanban</code> →
+<code>internal/orchestration</code></td>
+</tr>
+<tr>
+<td>GPT 식별자</td>
+<td><code>kanban.BackendGPT</code> →
+<code>orchestration.BackendGPT</code>, 저장 값 <code>"gpt"</code>
+유지</td>
+</tr>
+<tr>
+<td>모델 역할</td>
+<td>Fable=Astra / Opus=Sol / Sonnet=Terra / Haiku=Luna</td>
+</tr>
+<tr>
+<td>GPT 실행</td>
+<td>Messages gateway + 공식 Codex App Server</td>
+</tr>
+<tr>
+<td>실제 도구 실행</td>
+<td>Claude Code의 승인·hooks·도구 실행 경로 유지</td>
+</tr>
+<tr>
+<td>보존</td>
+<td>Todo 작업·UUID·소유권·DB·완료 근거·과거 커밋과 보고서</td>
+</tr>
+</tbody>
+</table>
+<p><code>orchestration</code>은 실행을 조정하는 공통 계층이라는 뜻이다.
+코드가 실제로 담고 있는 세션·배정·상태·잠금·작업 큐 지원을 포괄한다.
+이미 존재하는 <code>internal/workflow</code>에 억지로 합치지 않는다. 첫
+변경에서 새 패키지를 여러 개로 분할하는 별도 리팩터링도 하지 않는다.</p>
+<h2 id="baseline-attribution-이전-보고서와-달라진-기준">2.
+Baseline-attribution — 이전 보고서와 달라진 기준</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>항목</th>
+<th>이번 확인</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>작업 트리</td>
+<td>기존 <code>.claude/worktrees/develop</code></td>
+</tr>
+<tr>
+<td>브랜치·HEAD</td>
+<td><code>develop</code> · <code>15f3eacd7</code></td>
+</tr>
+<tr>
+<td>최신 병합</td>
+<td><code>15f3eacd7 Merge branch 'WT-gateway-launchers' into develop (t654)</code></td>
+</tr>
+<tr>
+<td>이전 보고서</td>
+<td><code>c9ceff175</code> 기준이므로 t654 미병합 진술은 현재 기준으로
+대체</td>
+</tr>
+<tr>
+<td>이번 세션</td>
+<td>source session <code>01a09c3b-3734-7c30-b65d-650e3c63d0aa</code>;
+디렉터리의 기존 조사 식별자는 유지</td>
+</tr>
+<tr>
+<td>tracked 파일</td>
+<td>18,834개</td>
+</tr>
+<tr>
+<td>텍스트 검사</td>
+<td>18,565개, 바이너리 269개 제외, 누락·symlink 0개</td>
+</tr>
+<tr>
+<td>검색식</td>
+<td>대소문자 무시 <code>kanban|칸반</code>, 내용과 경로를 별도 검사</td>
+</tr>
+<tr>
+<td>내용 적중</td>
+<td>1,728개 파일 / 13,901개 적중 줄</td>
+</tr>
+<tr>
+<td>경로 적중</td>
+<td>262개 경로</td>
+</tr>
+<tr>
+<td>내용 또는 경로 적중</td>
+<td>1,733개 파일, 중복 제거</td>
+</tr>
+<tr>
+<td>스캔 범위</td>
+<td>해당 develop의 git tracked working-tree 파일 전체. ignore 규칙에
+가려진 tracked 파일도 포함</td>
+</tr>
+<tr>
+<td>제외 범위</td>
+<td>다른 worktree, git 역사 전체 blob, untracked/ignored runtime 데이터,
+외부 홈 디렉터리, 바이너리 내용</td>
+</tr>
+</tbody>
+</table>
+<p>최초 <code>rg --json</code> 출력은 대형 보고서 때문에 잘렸다. 그
+수치를 전수 결과로 사용하지 않았다. 이어 <code>git ls-files -z</code>
+목록 전체를 Node로 검사하고 적중 파일·줄 번호만 추출해 완전한 JSON을
+판독했다. <a href="inventory.json">전수 목록 JSON</a>, <a
+href="inventory.md">목록 MD</a>, <a href="scan-names.js">재현
+스캐너</a>.</p>
+<p>분류표는 <strong>내용 또는 경로 적중 1,733개</strong> 기준이다. 적중
+수는 변경할 파일 수와 같지 않다. 특히 역사 보고서·SPEC 식별자는 보존
+또는 검토 대상으로 분류한다.</p>
+<table>
+<thead>
+<tr>
+<th>분류</th>
+<th style="text-align: right;">파일 수</th>
+<th style="text-align: right;">내용 적중 줄</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>기타</td>
+<td style="text-align: right;">21</td>
+<td style="text-align: right;">187</td>
+</tr>
+<tr>
+<td>에이전트·스킬·규칙</td>
+<td style="text-align: right;">17</td>
+<td style="text-align: right;">90</td>
+</tr>
+<tr>
+<td>기존 보고서</td>
+<td style="text-align: right;">937</td>
+<td style="text-align: right;">6952</td>
+</tr>
+<tr>
+<td>SPEC</td>
+<td style="text-align: right;">334</td>
+<td style="text-align: right;">3384</td>
+</tr>
+<tr>
+<td>문서 사이트</td>
+<td style="text-align: right;">93</td>
+<td style="text-align: right;">435</td>
+</tr>
+<tr>
+<td>구현·테스트·템플릿</td>
+<td style="text-align: right;">331</td>
+<td style="text-align: right;">2853</td>
+</tr>
+</tbody>
+</table>
+<h2 id="명칭-사전-역할에-따라-하나의-이름만-사용">3. 명칭 사전 — 역할에
+따라 하나의 이름만 사용</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>현재 명칭·표면</th>
+<th>제안 명칭</th>
+<th>의미와 처리</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kanban Mode / 칸반 모드</td>
+<td>제거</td>
+<td>자동화 모드는 Factory만 유지</td>
+</tr>
+<tr>
+<td><code>-k</code>, <code>--kanban</code></td>
+<td>폐기 입력</td>
+<td>명확한 종료 오류와 <code>-f</code> 안내, 실행하지 않음</td>
+</tr>
+<tr>
+<td><code>internal/kanban</code>, <code>package kanban</code></td>
+<td><code>internal/orchestration</code>,
+<code>package orchestration</code></td>
+<td>첫 단계는 패키지 이동과 import 변경, 동작 보존</td>
+</tr>
+<tr>
+<td><code>kanban.BackendGPT/Claude/GLM</code></td>
+<td><code>orchestration.BackendGPT/Claude/GLM</code></td>
+<td>Backend는 런처의 초기 백엔드. 요청별 model과 별개</td>
+</tr>
+<tr>
+<td><code>kanbanEntryParse</code></td>
+<td><code>launcherEntry</code></td>
+<td><code>Mode: interactive\|factory</code>, SPEC·lane·worker 수를
+분리</td>
+</tr>
+<tr>
+<td><code>KanbanEnabled</code>, <code>kanbanBranch*</code></td>
+<td>제거</td>
+<td>Factory 여부를 거짓 Kanban 플래그로 표현하지 않음</td>
+</tr>
+<tr>
+<td><code>prepareKanbanSettings</code></td>
+<td><code>prepareDispatchSettings</code></td>
+<td>세션 간 작업 전달 설정이라는 실제 역할</td>
+</tr>
+<tr>
+<td><code>moai-kanban</code> 임시 파일 접두어</td>
+<td><code>moai-dispatch</code></td>
+<td>생성 파일 이름</td>
+</tr>
+<tr>
+<td><code>kanban-dispatch.md</code>, <code>-detail.md</code></td>
+<td><code>factory-dispatch.md</code>, <code>-detail.md</code></td>
+<td>Factory 배정 규칙. 단일 세션 milestone 지침은 orchestration
+용어</td>
+</tr>
+<tr>
+<td><code>moai-kanban-foreman</code> 참조·경로</td>
+<td><code>moai-factory-foreman</code></td>
+<td>실제 존재 표면을 목록으로 확정 후 스킬 metadata·호출자 동시
+갱신</td>
+</tr>
+<tr>
+<td>Kanban 화면·<code>KanbanVM</code>·<code>buildKanban</code></td>
+<td>작업 현황 / <code>TasksVM</code> / <code>buildTasks</code></td>
+<td>Todo와 Factory의 조회 화면</td>
+</tr>
+<tr>
+<td><code>/kanban</code></td>
+<td><code>/tasks</code></td>
+<td>새 canonical route, 구 GET route는 명시적 redirect</td>
+</tr>
+<tr>
+<td><code>nav.kanban</code> 등 i18n key</td>
+<td><code>nav.tasks</code> 및 <code>tasks.*</code></td>
+<td>한국어·영어·일본어·중국어 등 실제 locale 모두 동기화</td>
+</tr>
+<tr>
+<td>SSE <code>kanban</code> / <code>data-live="kanban"</code></td>
+<td><code>tasks</code></td>
+<td>서버·브라우저·watcher·테스트 동시 갱신</td>
+</tr>
+<tr>
+<td><code>kanban-board</code> 저장 경로</td>
+<td><code>task-board</code></td>
+<td>사용 중인 board consumer가 필요로 하는 범위만 명시적 migration. 단순
+rename 아님</td>
+</tr>
+<tr>
+<td>기존 queue의 legacy <code>kanban</code> 경로</td>
+<td>migration reader의 legacy 상수만 보존</td>
+<td>현재 canonical Todo DB 경로를 다시 옮기지 않음</td>
+</tr>
+<tr>
+<td>새 milestone 보고 경로 <code>.moai/reports/kanban</code></td>
+<td><code>.moai/reports/orchestration</code></td>
+<td>새 출력만 변경. 기존 근거 링크는 보존</td>
+</tr>
+<tr>
+<td><code>SPEC-KANBAN-*</code>, 과거 commit·verdict</td>
+<td>역사 식별자 유지</td>
+<td>새 문서에 대응표 추가. 기존 증거를 새 이름으로 위장하지 않음</td>
+</tr>
+</tbody>
+</table>
+<p><code>board</code>라는 일반 자료구조 이름까지 무조건
+<code>factory</code>로 바꾸지 않는다. 작업 큐는 Todo, 실행은 Factory,
+읽기 화면은 Tasks, 내부 실행 조정은 Orchestration이라는 사전을 적용한다.
+저장소 전체의 <code>kanban</code> 문자열 0건 대신 <strong>현행 계약 0건
++ 승인된 역사·호환 예외 목록</strong>을 완료 기준으로 삼는다.</p>
+<h3 id="환경변수-계약">환경변수 계약</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>현재</th>
+<th>새 canonical 변수</th>
+<th>원칙</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MOAI_KANBAN</code></td>
+<td><code>MOAI_RUN_MODE=factory</code></td>
+<td>old-mode enabled 비트 제거, interactive는 명시 모델 또는 미설정</td>
+</tr>
+<tr>
+<td><code>MOAI_KANBAN_ID</code></td>
+<td><code>MOAI_RUN_ID</code></td>
+<td>Factory·세션 연결의 동일 run ID</td>
+</tr>
+<tr>
+<td><code>MOAI_KANBAN_SPEC</code></td>
+<td><code>MOAI_SPEC_ID</code></td>
+<td>실행 모드와 독립인 SPEC</td>
+</tr>
+<tr>
+<td><code>MOAI_KANBAN_BACKEND</code></td>
+<td><code>MOAI_BACKEND</code></td>
+<td>값 <code>gpt/claude/glm</code> 유지</td>
+</tr>
+<tr>
+<td><code>MOAI_KANBAN_CARD</code></td>
+<td><code>MOAI_CARD_ID</code></td>
+<td>기존 카드 식별값 보존</td>
+</tr>
+<tr>
+<td><code>MOAI_KANBAN_LABEL</code></td>
+<td><code>MOAI_SESSION_ROLE</code> +
+<code>MOAI_SESSION_LABEL</code></td>
+<td>역할과 표시 이름을 분리; 문자열 단순 복사 금지</td>
+</tr>
+<tr>
+<td><code>MOAI_KANBAN_LEAD_ADDR</code></td>
+<td><code>MOAI_LEAD_ADDR</code></td>
+<td>동일 leader 연결 계약</td>
+</tr>
+<tr>
+<td><code>MOAI_KANBAN_LEAD_NAME</code></td>
+<td><code>MOAI_LEAD_NAME</code></td>
+<td>resolved 이름 유지</td>
+</tr>
+<tr>
+<td><code>MOAI_KANBAN_SETTINGS_INJECTED</code></td>
+<td><code>MOAI_DISPATCH_SETTINGS_INJECTED</code></td>
+<td>설정 주입 확인</td>
+</tr>
+<tr>
+<td><code>MOAI_FACTORY_WORKERS/WORKER</code></td>
+<td>이름 유지</td>
+<td>기존 Factory 전용 변수 재사용</td>
+</tr>
+</tbody>
+</table>
+<p>새 생산자는 새 변수만 쓴다. 과도기 입력 해석기는 구·신 값이 모두 있고
+다르면 오류로 멈춘다. 호환성이 확인된 run ID·backend·card metadata만
+정규화하며, 구 mode 비트나 plan/run/sync companion을 Factory lane으로
+자동 해석하지 않는다. 이미 실행 중인 세션은 강제로 환경을 바꾸거나
+종료하지 않는다. 혼합 버전 join은 프로토콜 버전 검사로 거절한다.</p>
+<h2 id="모델-매핑-사용자-지정-계약">4. 모델 매핑 — 사용자 지정 계약</h2>
+<p><strong>확정: 별도 MoAI 모델 티어를 만들지 않는다. 기존 네 모델
+별칭을 실제 GPT 모델에 직접 1:1 매핑한다.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Claude Code 모델 별칭</th>
+<th>실제 GPT ID</th>
+<th>child 환경</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fable</code></td>
+<td><code>gpt-6-astra</code></td>
+<td><code>ANTHROPIC_DEFAULT_FABLE_MODEL</code></td>
+</tr>
+<tr>
+<td><code>opus</code></td>
+<td><code>gpt-5.6-sol</code></td>
+<td><code>ANTHROPIC_DEFAULT_OPUS_MODEL</code></td>
+</tr>
+<tr>
+<td><code>sonnet</code></td>
+<td><code>gpt-5.6-terra</code></td>
+<td><code>ANTHROPIC_DEFAULT_SONNET_MODEL</code></td>
+</tr>
+<tr>
+<td><code>haiku</code></td>
+<td><code>gpt-5.6-luna</code></td>
+<td><code>ANTHROPIC_DEFAULT_HAIKU_MODEL</code></td>
+</tr>
+</tbody>
+</table>
+<p>이는 사용자 지정 역할 매핑이다. 모델 간 품질·가격을 이번에 벤치마크한
+결과가 아니다.</p>
+<p><strong>모델 매핑은 승인됐으며 아래 설정 문법은 구현 전
+제안이다.</strong> GPT 모델 설정의 키는
+<code>fable / opus / sonnet / haiku</code>만 사용한다. 모델 선택을 위한
+중간 티어, 별도의 등급명, 티어 변환 테이블은 추가하지 않는다.</p>
+<h3 id="모델-선택과-추론-강도-분리">모델 선택과 추론 강도 분리</h3>
+<ul>
+<li>모델 별칭은 사용할 모델을 선택한다. <code>--model opus</code>와
+Agent의 <code>model: opus</code>는 GPT 모드에서 Sol을 선택한다.</li>
+<li><code>effort</code>는 선택한 모델의 추론 강도다. 모델 별칭에서 값을
+추정하거나 자동으로 강제하지 않는다. 예를 들어 <code>opus</code>를
+선택했다는 이유로 effort를 <code>high</code>로 설정하지 않는다.</li>
+<li>effort를 지정하면 해당 모델의 지원 범위로 검증한다. 미지정 시에는
+실행부의 기본 동작을 사용하며 MoAI가 임의 기본값을 새로 만들지
+않는다.</li>
+<li>모델 변경 후 기존 effort가 지원되지 않으면 명시 오류 또는 사용자
+선택이 필요하다. 다른 값으로 조용히 바꾸지 않는다.</li>
+<li><code>inherit</code>는 추가 모델 별칭이나 등급이 아니라 부모의 모델
+선택을 상속하는 방식이다. 부모 effort의 상속 정책까지 함께 확정됐다고
+해석하지 않는다.</li>
+</ul>
+<h3 id="gpt-모델-설정">GPT 모델 설정</h3>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">llm</span><span class="kw">:</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">gpt</span><span class="kw">:</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">transport</span><span class="kw">:</span><span class="at"> codex-app-server</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">models</span><span class="kw">:</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">fable</span><span class="kw">:</span><span class="at"> gpt-6-astra</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">opus</span><span class="kw">:</span><span class="at"> gpt-5.6-sol</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">sonnet</span><span class="kw">:</span><span class="at"> gpt-5.6-terra</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">haiku</span><span class="kw">:</span><span class="at"> gpt-5.6-luna</span></span></code></pre></div>
+<p><code>gateway_prepare.go:104–116</code>의 현재 non-GLM 공통 모델
+반복을 GPT 전용 매핑 분기로 교체한다. GLM과 Claude의 기존 설정 동작은
+유지한다. child 환경은 다음 네 값으로 조립한다.</p>
+<pre class="text"><code>ANTHROPIC_DEFAULT_FABLE_MODEL=gpt-6-astra
+ANTHROPIC_DEFAULT_OPUS_MODEL=gpt-5.6-sol
+ANTHROPIC_DEFAULT_SONNET_MODEL=gpt-5.6-terra
+ANTHROPIC_DEFAULT_HAIKU_MODEL=gpt-5.6-luna</code></pre>
+<h3 id="모델-선택-로직">모델 선택 로직</h3>
+<ol type="1">
+<li>시작 시 계정에 허용된 model catalog와 네 ID를 검증한다. 모델이
+없으면 명확히 실패하고 다른 모델·계정·API 과금으로 자동 대체하지
+않는다.</li>
+<li>네 슬롯의 map은 실행 시작 때 고정하고 모든 lane과 child에게
+전달한다. 각 lane이 다른 계정의 map을 덮어쓸 수 없다.</li>
+<li>main 모델은 명시 <code>--model</code> → 새 대화가 아닌 resume의 저장
+선택 → 기존 사용자 설정·picker 순으로 보존한다. 모두 없을 때만
+<strong>권고 기본값 Opus→Sol</strong>을 사용한다. 이 기본값은 이번 승인
+대상이며 사용자 지정 네 매핑과는 별개다.</li>
+<li><code>--model fable</code>은 main만 Astra로 선택한다. 네 슬롯 전체를
+Astra로 덮어쓰지 않는다.</li>
+<li>Agent의 <code>model: opus/sonnet/haiku/fable</code>은 해당 슬롯으로,
+<code>inherit</code>는 부모의 <strong>그 시점 실제 선택 모델</strong>로
+처리한다.</li>
+<li>직접 입력한 허용 GPT ID는 그 ID를 쓴다. 의미가 다른 Claude 전체 버전
+ID를 문자열 추측으로 GPT에 매핑하지 않는다.</li>
+<li><code>opusplan</code>, <code>best</code>, <code>default</code>,
+<code>[1m]</code> 등 복합 alias·접미사는 별도 계약 테스트를 만든다.
+검증되지 않은 조합을 임의 해석하거나 지원한다고 광고하지 않는다.
+<code>opusplan</code>의 목표는 plan=Sol / 그 외=Terra다.</li>
+<li>모델 변경은 thread idle에서 허용하고 pending tool 왕복 중에는
+적용하지 않는다. 요청·선택·실제 turn 모델을 구분해서 기록한다.</li>
+<li>reasoning effort는 모델 이름에서 추정하지 않는다. 모델별 허용
+목록으로 검증하고, 알 수 없는 effort는 명시 오류로 처리한다.</li>
+<li>startup env뿐 아니라 picker allowlist·custom model 표시·agent
+frontmatter·summary 경로까지 같은 resolver 계약을 확인한다.</li>
+</ol>
+<p>네 alias 환경변수는 Claude Code 공식 설정 표면이다. 다만 그 표면이
+존재한다는 사실과 비-Claude 모델 조합을 Anthropic이 지원한다는 것은
+다르다. <a href="https://code.claude.com/docs/en/model-config">모델 설정
+문서</a></p>
+<h2 id="factory-실행-계약-별도-칸반-체인-제거">5. Factory 실행 계약 —
+별도 칸반 체인 제거</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>입력</th>
+<th>목표 동작</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>moai gpt</code></td>
+<td>대화형 GPT 세션, Factory 자동 시작 없음</td>
+</tr>
+<tr>
+<td><code>moai gpt -f</code></td>
+<td>기존 의미대로 1 lane 구성의 lead 진입</td>
+</tr>
+<tr>
+<td><code>moai gpt -f 4</code></td>
+<td>4 lane 구성의 lead 진입</td>
+</tr>
+<tr>
+<td><code>moai gpt -f lane-2</code></td>
+<td>lane-2에 해당하는 worker 세션 진입</td>
+</tr>
+<tr>
+<td><code>moai gpt -f 4 --model fable</code></td>
+<td>lead main=Astra, 네 역할 슬롯은 지정 매핑 유지</td>
+</tr>
+<tr>
+<td><code>moai gpt -k ...</code></td>
+<td>부작용 없이 폐기 안내 오류. <code>-f</code> 실행으로 몰래 전환하지
+않음</td>
+</tr>
+</tbody>
+</table>
+<p>이 표는 <strong>런처 진입 의미</strong>다. <code>-f N</code>만으로
+N개의 창이 모두 즉시 열리거나 작업이 자동 승인된다고 확대하지 않는다.
+기존 spawn·소유권·작업 배정 규칙을 유지한다.</p>
+<p>이전 <code>-k SPEC-ID</code>의 대상 지정은 <strong>제안
+<code>-f --spec SPEC-ID</code></strong>로 흡수한다. 새 flag라서 기존
+parser, pass-through <code>--</code>, 오류 문구, 테스트가 필요하다. bare
+<code>-k</code> 및 <code>-k --name plan/run/sync</code>는 자동변환할
+동등 경로가 없으므로 종료 후 명시 재시작을 안내한다. 이미 진행 중인 구
+체인의 상태를 새 Factory 상태로 추측해 재개하지 않는다.</p>
+<p>Plan→Run→Sync는 작업의 단계로 남는다. 세 개의 별도 companion 세션을
+의미하는 구 topology는 신규 실행에서 폐기한다. Factory lead가 Todo에서
+허용된 작업을 lane에 배정하고, lane이 기존 단계별 전문 역할과 승인
+경계를 지킨다. 완료는 메시지의 주장만으로 처리하지 않고 소유
+token·generation·근거·저장 결과로 확인한다.</p>
+<p><code>launcherEntry</code>는 <code>Mode</code>, <code>SpecID</code>,
+<code>Workers</code>, <code>WorkerNumber</code>, <code>Rest</code>를
+담는 중립 구조로 바꾼다. role/label은 별도 resolver에서 검증한다. 단순
+package rename과 모드 폐기를 하나의 무차별 문자열 변경으로 섞지
+않는다.</p>
+<h2 id="gpt-실행부-gateway와-app-server를-결합">6. GPT 실행부 —
+gateway와 App Server를 결합</h2>
+<p>목표 경로는 다음과 같다.</p>
+<ol type="1">
+<li>Factory 런처가 run·lane·session·agent identity와 네 슬롯 map을
+만든다.</li>
+<li>Messages gateway는 인증·요청 한도·모델 권한·소유권을 검사한다.</li>
+<li>공식 Codex App Server의 thread/turn으로 GPT 실행을 이어 간다.</li>
+<li>dynamic tool call은 Claude의 <code>tool_use</code>로 돌려준다.</li>
+<li>Claude가 승인·hooks·실제 도구를 실행한다.</li>
+<li>다음 Messages의 <code>tool_result</code>를 저장된 pending RPC에
+정확히 한 번 연결한다.</li>
+<li>텍스트 delta·heartbeat를 전달하고 durable completion 후 성공
+terminal event를 보낸다.</li>
+</ol>
+<p>thread binding에는 계정 scope·프로젝트·run·lane·Claude
+session·agent를 포함한다. backend는 <code>gpt</code>, transport는
+<code>codex-app-server</code>, model은 네 ID 중 실제 선택값이다. 세
+개념을 같은 필드로 합치지 않는다. thread ID와 tool call ID는 재개할 때도
+유지한다.</p>
+<p>Codex native shell·patch·MCP를 초기 bridge에서 비활성화해 도구 실행
+주체가 둘이 되지 않게 한다. <code>dynamicTools</code>와
+<code>item/tool/call</code>은 experimental이므로 버전·스키마를 고정하고
+capability 확인 후 사용한다. <a
+href="https://developers.openai.com/codex/app-server/">공식 OpenAI App
+Server 문서</a></p>
+<p>프로세스는 계정 profile lock 소유자를 하나로 명확히 하고 lane별
+thread를 격리한다. 프로세스 하나에서 여러 lane을 multiplex할지, 독립
+profile로 분리할지는 lock·재시작 실측으로 결정한다. <strong>한 profile을
+lane 수만큼 동시에 독점 lock할 수 있다고 가정하지 않는다.</strong> 이
+항목은 구현 전 spike 통과 조건이다.</p>
+<h3 id="현재-t654-병합을-반영한-판단">현재 t654 병합을 반영한 판단</h3>
+<p>t654는 현재 develop에 병합됐다. 그러나
+<code>productionGatewayHandlerFactory</code>는 현재도
+<code>installedGPTBrokerForGateway()</code> →
+<code>auth.CodexBroker</code>와 <code>translate.PolicyGPTNative</code> →
+HTTP handler 조립 경로를 사용한다. <code>internal/cli</code> non-test
+source 검색에서 <code>NewAppServerAdapter</code> 호출은 찾지 못했다.</p>
+<p>따라서 “t654 미병합”은 철회하지만, “실제 App Server transport 연결과
+라이브 인수가 끝났다”는 판단으로 바꾸지는 않는다.
+<code>as5-verdict.md</code>도 gate-open, PTY, 실계정 이중 모드, Windows
+CI, 배포, appliedEpoch 생산 호출자 연결을 6개 Gap으로 기록한다.
+<code>as5-launcher-integration.md</code>의
+<code>authMethod/outputPolicy</code> overlay는 표시 계약이며 실제
+transport 연결의 대체 증거가 아니다.</p>
+<h3 id="일반-게이트웨이-설정-계약-apps-gateway-로그인과-분리">일반
+게이트웨이 설정 계약 — Apps Gateway 로그인과 분리</h3>
+<p>아래는 <strong>MoAI의 제안 정책</strong>이다. 공식 연결·배포 문서를
+적용하되 조직 관리 정책을 덮어쓰는 방식은 쓰지 않는다. <a
+href="https://code.claude.com/docs/ko/llm-gateway-connect">연결
+문서</a>, <a
+href="https://code.claude.com/docs/ko/llm-gateway-rollout">배포
+문서</a></p>
+<ol type="1">
+<li>loopback 주소와 실행별 로컬 gateway token을 함께 전달한다.
+<code>ANTHROPIC_BASE_URL</code>만 바꾸지 않는다. Claude의 구독 토큰은
+MoAI 실행부로 전달하지 않는다.</li>
+<li>일반 gateway에 <code>forceLoginMethod: "gateway"</code>를 주입하지
+않는다. 저장된 Claude 로그인도 지우지 않는다. 관리 로그인 강제 정책과
+충돌하면 이유를 표시하고 중단한다.</li>
+<li>최종 설정의 base URL·인증 종류·네 모델·허용 목록을 실행 전에
+검사한다. 설정 파일의 <code>env</code>가 셸보다 우선하므로 “export했으니
+적용됐다”는 판정을 하지 않는다. 비밀값은 로그에 남기지 않는다.</li>
+<li>Factory lane마다 소유권이 확인된 scoped 설정을 전달한다. background
+supervisor가 셸 env를 항상 상속한다고 가정하지 않는다.
+<code>--settings</code> 전달 및 supervisor 재개 시 실제 endpoint
+readback을 필수 검사한다. <a
+href="https://code.claude.com/docs/ko/agent-view#llm-gateway">백그라운드
+gateway</a></li>
+<li>현재 <code>gateway_session.go</code>의
+<code>modelPicker</code>·<code>availableModels</code> 조립을 재사용해 네
+항목의 역할 표시를 추가한다. 순수 GPT ID는 gateway 자동 검색의 필터를
+통과하지 않으므로 <code>/v1/models</code> 검색에만 기대지 않는다.
+<code>claude-</code>를 붙여 GPT를 Claude 모델처럼 속이지 않는다.
+<strong>modelPicker는 project/local 설정에서는 무시되므로 소유된
+<code>--settings</code> overlay를 쓴다.</strong> 관리 설정이 우선하며
+모든 custom row가 탈락하면 기본 목록이 다시 보일 수 있어 allowlist·실제
+picker readback을 함께 검사한다. <a
+href="https://code.claude.com/docs/en/settings-reference#modelpicker">공식
+modelPicker 계약</a></li>
+<li><code>*_SUPPORTED_CAPABILITIES</code>는 일반 BASE_URL gateway에서
+효력이 없으므로 이를 기능 협상 수단으로 쓰지 않는다. 표시명 변수와 기능
+변수는 다르다. 모델별 실제 지원·변환 가능 여부는 MoAI resolver가
+판단한다. <a
+href="https://code.claude.com/docs/ko/llm-gateway-protocol">프로토콜</a>,
+<a href="https://code.claude.com/docs/ko/model-config">모델
+설정</a></li>
+<li>시스템 블록 재구성이 필요하면 문서화된
+<code>CLAUDE_CODE_ATTRIBUTION_HEADER=0</code> 설정을 scoped profile에
+적용한다. system-reminder나 시스템 지침을 정규식으로 지우는 수리는 하지
+않는다.</li>
+<li>베타 헤더만 지우지 않는다.
+<code>CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1</code>도 adaptive
+thinking과 모든 도구 검색을 꺼 주는 만능 설정이 아니다. 각 필드를
+변환·로컬 처리·명시 거부 중 하나로 분류한다.</li>
+<li>Remote Control·voice·hosted web/Slack·Desktop까지 지원한다고
+확대하지 않는다. 초기 인수 표면은 CLI의 대화형 세션·Agent·Factory
+lane이다. /fast와 자동 모델 fallback은 GPT 정책으로 검증되기 전
+활성화하지 않는다.</li>
+<li><code>CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC</code>만으로 외부
+트래픽 0을 주장하지 않는다. WebFetch 안전 검사 등의 별도 통신과
+인증·업데이트 범위를 점검하며 안전 검사를 편의상 끄지 않는다.</li>
+</ol>
+<h3 id="요청-변환-계약-필드별로-의미를-보존">요청 변환 계약 — 필드별로
+의미를 보존</h3>
+<p>아래 표는 문서 복사가 아니라 <strong>MoAI 구현 요구사항</strong>이다.
+Anthropic 형식 그대로 전달하는 proxy와 다른 스키마로 바꾸는 adapter를
+구분한다. <a
+href="https://code.claude.com/docs/ko/llm-gateway-protocol">프로토콜
+기준</a></p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>입력·상황</th>
+<th>새 bridge의 처리</th>
+<th>필수 음성 검사</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/v1/messages?beta=true</code></td>
+<td>query를 허용하고 body를 독립 검증</td>
+<td>query 유무로 경로가 달라지지 않음</td>
+</tr>
+<tr>
+<td>최초 system 지침</td>
+<td>base/developer instructions로 승인된 의미 변환</td>
+<td>MoAI가 프로젝트 지침을 중복 import하지 않음</td>
+</tr>
+<tr>
+<td>대화 중 <code>role: system</code></td>
+<td>해당 위치·권한의 context event로 처리</td>
+<td>임의 user 입력을 system 권한으로 승격하지 않음</td>
+</tr>
+<tr>
+<td><code>thinking</code>, <code>output_config.effort</code></td>
+<td>모델이 허용한 effort·summary에만 명시 대응</td>
+<td>Anthropic signature를 Codex reasoning처럼 재사용하지 않음</td>
+</tr>
+<tr>
+<td><code>cache_control</code></td>
+<td>지원 차이를 명시; 캐시 성공·절감량을 만들지 않음</td>
+<td>마커 제거를 실제 provider cache 성공으로 표시하지 않음</td>
+</tr>
+<tr>
+<td><code>context_management</code></td>
+<td>client context epoch 변경을 감지·검증</td>
+<td>삭제된 이미지나 이전 도구 결과를 몰래 다시 넣지 않음</td>
+</tr>
+<tr>
+<td><code>tools</code>, <code>strict</code>, <code>defer_loading</code>,
+<code>tool_reference</code></td>
+<td>인증된 현재 도구 snapshot에만 연결</td>
+<td>존재하지 않는 참조·schema 의미 손실은 명시 거부</td>
+</tr>
+<tr>
+<td><code>tool_use</code> / <code>tool_result</code></td>
+<td>RPC ID·call ID·owner·turn·digest ledger</td>
+<td>다른 lane 결과, 변형된 재전달, 중복 실행 차단</td>
+</tr>
+<tr>
+<td><code>max_tokens</code>, stop 조건</td>
+<td>App Server와 동등한 계약이 아닌 부분을 표시</td>
+<td>byte limit을 token cap으로 광고하지 않음</td>
+</tr>
+<tr>
+<td>이미지·구조화 출력</td>
+<td>지원되는 입력과 outputSchema의 교집합만 허용</td>
+<td>불지원 콘텐츠를 조용히 삭제하지 않음</td>
+</tr>
+<tr>
+<td>SSE 응답</td>
+<td>delta·ping을 흘리고 terminal만 durable 경계 뒤에 전송</td>
+<td>전체 segment 완료 전 무응답·가짜 성공 금지</td>
+</tr>
+<tr>
+<td><code>/count_tokens</code></td>
+<td>정확한 계산 가능 여부를 표시</td>
+<td>문자 추정을 실제 provider token 계측으로 표시하지 않음</td>
+</tr>
+</tbody>
+</table>
+<p><strong>현재 어댑터 관찰:</strong> <code>appserver.go</code>는
+<code>Engine.Step</code> 이후 segment를 받아 메모리 buffer로 SSE를
+만든다. 이는 소스에서 명시한 구간 buffering 정책이다. 라이브 지연을
+측정한 것은 아니다. 새 설계에서는 결과 완료 판정의 안전성은 유지하면서
+heartbeat/delta 전달 경로를 추가해야 한다. 현재 usage 0도 실제 무료
+사용이나 실제 토큰 사용량 0의 근거가 아니다.</p>
+<h3 id="app-server-실행-상태와-안전-경계">App Server 실행 상태와 안전
+경계</h3>
+<p><code>New → Initialized → ThreadBound → Running → ToolPending → Running → Completed</code>를
+기본 상태로 두고, 어느 단계에서든
+<code>Cancelling / RecoveryRequired / Failed</code>로 갈 수 있게 한다.
+HTTP 응답 완료와 Codex turn 완료를 같은 상태로 취급하지 않는다.</p>
+<ul>
+<li><code>initialize</code>와 <code>initialized</code>는 연결당 한
+번이다. 로컬 stdio가 기본이며, 외부 websocket listener를 열지 않는다.
+클라이언트 식별자는 MoAI 자신의 이름을 쓴다.</li>
+<li>인증은 Codex 관리형 account 수명주기에 맡긴다. login 요청 발행과
+login 완료를 구분하고, 세션 종료 때 공유 계정을 logout하지 않는다. API
+key 모드로 바꾸거나 크레딧을 소비하는 동작은 별도 승인이다.</li>
+<li><code>model/list</code>의 계정별 결과와 effort·입력 종류를 확인한다.
+<code>modelProvider/capabilities/read</code>는 설치 schema에서
+imageGeneration/namespaceTools/webSearch를 반환하며, 모든 기능을
+망라하는 manifest로 과장하지 않는다.</li>
+<li><code>dynamicTools</code>로 등록된 Claude 도구만 요청한다. Codex
+native shell·patch·MCP·자체 Agent는 초기 범위에서 차단하고, 예상하지
+않은 native 승인 요청은 거절한다. <code>process/*</code>,
+<code>thread/shellCommand</code>, 임의 파일 API를 gateway 공개 API로
+노출하지 않는다.</li>
+<li><code>item/tool/call</code>에 대한 pending 응답은 같은 JSON-RPC
+request ID로 반환한다. 별도 <code>turn/start.toolOutput</code>을 그
+응답의 대체물로 사용하지 않는다. 성공·실패 모두 durable ledger를
+확인하고 반환한다.</li>
+<li>HTTP 연결이 tool_use에서 끝나도 Codex turn은 도구 응답을 기다릴 수
+있다. 따라서 프로세스·RPC 연결·pending state는 해당 HTTP request
+context보다 오래 살아야 한다. 사용자 취소만 명시적 turn interrupt로
+전달하고, 단순 HTTP 종료가 모든 lane을 종료하지 않게 한다.</li>
+<li>child와 summary는 identity·요청 목적이 검증된 독립 thread로
+관리한다. 헤더의 agent ID 자체는 인증 증거가 아니다. 부모가 실행 중인
+native fork를 기본 경로로 삼지 않는다.</li>
+<li><code>model/rerouted</code>를 감지해 요청 모델과 실제 모델을 별도로
+표시한다. 시작 시 <code>allowProviderModelFallback=false</code>만으로
+모든 서비스 측 재라우팅을 막는다고 주장하지 않는다. 매핑 보장 모드에서는
+예상과 다른 모델이 확인되면 성공으로 조용히 처리하지 않고 명시 정책에
+따라 중단·보고한다. 안전 판정을 다른 모델로 우회하지 않는다.</li>
+<li>compact 요청의 즉시 응답은 완료가 아니다. contextCompaction 이벤트와
+저장 상태를 확인하고, Claude와 Codex의 압축을 중복 수행하지 않도록
+epoch을 분리한다.</li>
+<li>목록 조회 시 appServer source 포함 여부를 확인한다. 조회·종료 편의를
+위해 thread archive/delete나 externalAgentConfig/import를 자동 실행하지
+않는다.</li>
+<li>계정 한도와 lane별 대기열로 backpressure를 건다.
+<code>rateLimitsByLimitId</code>의 알 수 없는 값은 0으로 추정하지 않고,
+한도 재설정 크레딧 소비·계정 교체를 자동 복구 수단으로 쓰지 않는다.</li>
+</ul>
+<p><strong>버전 차이 확인:</strong> 설치 버전은 Codex 0.154.0 / Claude
+Code 2.1.270이다. 이전 단계에서 생성한 0.154.0 schema를 이번에 다시
+검사했을 때 <code>ThreadStartParams</code>에는
+<code>instructionSources</code>가 없고
+<code>ThreadResumeParams</code>에는 <code>dynamicTools</code>가 없었다.
+또한 <code>multiAgentMode</code>는 deprecated/ignored로 설명된다. 최신
+문서의 예제를 그대로 전송하거나 이 무시되는 플래그로 native Agent를
+껐다고 판단하면 안 된다. 실행 바이너리에서 schema를 새로 생성하고 필요한
+필드·차단 설정을 검증하는 것을 구현 진입 조건으로 둔다. 이 schema 관찰은
+실제 서버가 임의 필드를 어떻게 처리하는지에 대한 런타임 검증이
+아니다.</p>
+<h3 id="이력-조정의-결정표">이력 조정의 결정표</h3>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>비교 결과</th>
+<th>제안 동작</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>같은 owner·epoch, 기존 부분 불변 + 새 user 입력</td>
+<td>기존 thread에 새 입력 한 번 추가</td>
+</tr>
+<tr>
+<td>pending tool 결과</td>
+<td>원 RPC에 결과 연결; 완료된 결과의 중복은 저장 응답 재사용</td>
+</tr>
+<tr>
+<td>정상 system/context 추가</td>
+<td>위치와 변경 근거를 검증한 context delta</td>
+</tr>
+<tr>
+<td>요약·rewind·이미지 제거·도구 registry 변경</td>
+<td>검증된 전환 종류를 판별하여 새 epoch/thread 또는 지원되는 native
+절차 사용</td>
+</tr>
+<tr>
+<td>기존 tool 결과 본문 변경</td>
+<td>같은 결과로 묵인하지 않음; 변경 원인과 증거를 표시하고 복구 필요
+상태</td>
+</tr>
+<tr>
+<td>account·family·권한 불일치</td>
+<td>실패 폐쇄. 같은 요청을 재시도하거나 다른 계정으로 보내지 않음</td>
+</tr>
+<tr>
+<td>변경 이유를 식별할 수 없음</td>
+<td>원문 보호·bounded 진단·사용자 복구 안내. 무조건 strip/replay
+금지</td>
+</tr>
+</tbody>
+</table>
+<p>Claude의 요청 이력은 항상 append-only인 API 계약이 아니다.
+압축·이미지 제거·도구 정의 변경은 따로 고려해야 한다. 다만 일반 파일
+편집은 과거 Read 결과를 소급 변경한다는 근거가 아니며, 문서는 알림을
+추가한다고 설명한다. 이 구분을 t851의 성공/실패 wire에 대조해야 한다. <a
+href="https://code.claude.com/docs/ko/prompt-caching">이력·캐시
+동작</a></p>
+<p>오류는
+<code>origin = client | gateway | codex-runtime | provider</code>, 내부
+code, upstream HTTP status를 별도 기록한다. 실제 context 초과만 문서에
+나온 <code>capability_rejected: prompt_too_long</code> 복구 표식 후보로
+사용하고, receipt 불일치를 prompt-too-long으로 위장하지 않는다. 다른
+token 이름은 참조 앵커 누락 때문에 아직 승인하지 않는다. SSE 시작 후에는
+HTTP status를 뒤늦게 바꾸는 대신 규격에 맞는 error event와 중단을
+사용하며, 부분 완료 뒤에는 자동 replay하지 않는다.</p>
+<h2 id="이력재개-로직">7. 400·이력·재개 로직</h2>
+<p>명칭 정리는 400 오류를 고치지 않는다. 네 모델 map만 분리해도 전체
+transcript의 불변 prefix 가정이 남으면 오류가 재발할 수 있다. 이 작업은
+이름 변경과 실행 경로·이력 수리를 각각 검증해야 한다.</p>
+<ul>
+<li><strong>새 입력:</strong> 사용자 메시지·새 tool 결과·검증된 context
+변경을 한 번만 반영한다.</li>
+<li><strong>기존 tool event:</strong> owner·call ID·digest를 검증한다.
+재전달이 곧 재실행을 뜻하지 않는다.</li>
+<li><strong>과거 context 변경:</strong> 무조건 strip하지 않는다. 전달
+가능한 새 context event로 정규화하거나 명시 새 thread로 분기한다.</li>
+<li><strong>자식 Agent:</strong> 독립 child thread, 부모는 결과를
+기다린다. 실행 중인 부모 turn의 native fork를 필수 전제로 삼지
+않는다.</li>
+<li><strong>compact/resume:</strong> 실제 Claude 동작과 epoch·binding
+복구를 연결한다. 성공 메시지만으로 회상 성공을 판정하지 않는다.</li>
+<li><strong>400:</strong> malformed request, receipt chain, reasoning,
+scope 오류를 구분한다. 같은 잘못된 이력을 무한 재시도하지 않는다.</li>
+<li><strong>429/5xx:</strong> 제한된 backoff. 스트리밍 시작 후나 도구
+실행 여부가 불명확하면 자동 replay하지 않는다.</li>
+<li><strong>crash:</strong> pending RPC의 완료가 불명확하면 복구 상태를
+노출한다. 파일을 바꾸는 tool을 추측해서 다시 실행하지 않는다.</li>
+</ul>
+<p>이전 보고서의 synthetic 이력 실험은 이전 HEAD에서 수행한 증거로만
+인용한다. 이번 새 HEAD에서 현장 wire 원인을 추가 확정했다고 주장하지
+않는다. 실제 오류의 최초 변형 위치·값은 성공/실패 wire의 구조·digest
+계측으로 확인해야 한다.</p>
+<h2 id="데이터역사호환성-처리">8. 데이터·역사·호환성 처리</h2>
+<ol type="1">
+<li>현재 Todo DB는
+<code>~/.moai/db/&lt;project-key&gt;/todo/backlog.db</code> 경로를 이미
+사용한다. 패키지 이름 변경 때문에 DB를 새로 만들거나 기존 큐를
+초기화하지 않는다.</li>
+<li>세션 JSON의 <code>backend: "gpt"</code>, UUID, run/card ID,
+generation, claim token, 완료 근거는 보존한다. <code>BackendGPT</code>의
+import 경로를 바꾼다고 저장값을 바꾸지 않는다.</li>
+<li><code>kanban-board</code>나 legacy queue 경로는 사용 여부와 실제
+writer를 확인한 후 migration 목록으로 분리한다. read endpoint와
+<code>LoadPure</code>는 migration을 실행하지 않는다.</li>
+<li>migration은 dry-run 목록 → 세션 drain·writer admission →
+backup/manifest → 트랜잭션 또는 원자 이동 → readback → 새 canonical 확정
+순서다. 충돌하는 두 원본은 합치거나 덮어쓰지 않는다.</li>
+<li>새 web route는 <code>/tasks</code>. 구 <code>/kanban</code> GET은 새
+route로 redirect하고, 상태 변경 메서드를 새로 허용하지 않는다.</li>
+<li>SSE 새 서버는 <code>tasks</code>를 한 번 emit한다. 전환기 새
+client가 구 <code>kanban</code> event도 수용할 수 있으나, 같은 이벤트를
+두 이름으로 중복 발행하지 않는다. endpoint/version 교체 범위를
+테스트한다.</li>
+<li><code>.templ</code> 원본을 고친 뒤 생성 Go를 재생성한다.
+규칙·스킬·agent와 <code>internal/template</code> mirror, catalog
+hash·문서 nav를 함께 갱신한다.</li>
+<li>과거 SPEC ID·보고·로그·commit history는 보존한다. 활동 중인 SPEC의
+현행 설명과 참조는 소유권을 확인해 변경하되 원래 acceptance 의미를
+지우지 않는다.</li>
+<li>예외 목록은 정확한 path·literal·유형·이유·제거 조건을 갖는다. 단순히
+<code>.moai/**</code> 전체를 제외하는 방식은 금지한다.</li>
+<li>롤백은 새 작업이 쓰인 DB를 과거 backup으로 덮는 행위가 아니다. 쓰기
+정지·새 변경 식별·호환 reader 또는 별도 복구 절차를 통해 처리한다.</li>
+</ol>
+<h2 id="구현-순서와-인수-조건">9. 구현 순서와 인수 조건</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>단계</th>
+<th>변경</th>
+<th>완료 증거</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A — 명칭·mapping 계약 승인</td>
+<td>이 문서의 명칭 사전, -k 폐기, default main, 역사·호환 정책 확정</td>
+<td>운영자 승인</td>
+</tr>
+<tr>
+<td>A-1 — 핵심 연결 사전 검증</td>
+<td>지원 경계 수용, 실행 버전 schema, native 도구 차단, pending RPC,
+profile lock</td>
+<td>파일 쓰기 없는 1개 dynamic tool 왕복, 독립 child, 모델 4슬롯 실제
+관찰; 실패하면 대규모 rename 전에 재설계</td>
+</tr>
+<tr>
+<td>B — 동작 보존 rename</td>
+<td>패키지/import/중립 타입·출력 명칭, rule/template 동기화</td>
+<td>관련 package tests·build·생성물 일치, 저장 JSON 불변</td>
+</tr>
+<tr>
+<td>C — Factory 단일 실행 모드</td>
+<td>구 분기 제거, 새 env·launcherEntry, SPEC 지정</td>
+<td>-f positive, -k no-side-effect negative, pass-through·mixed-version
+tests</td>
+</tr>
+<tr>
+<td>D — GPT 네 슬롯</td>
+<td>config·env·picker·Agent·summary resolver</td>
+<td>아래 네 모델 matrix, main override가 map을 바꾸지 않음</td>
+</tr>
+<tr>
+<td>E — App Server 수직 연결</td>
+<td>runtime·identity·pending tools·stream·reconciliation</td>
+<td>1 lane + child + Read/Edit/후속 turn 양성·음성 쌍대</td>
+</tr>
+<tr>
+<td>F — 상태·다중 lane 인수</td>
+<td>migration·resume·compact·cancel·429·crash·N lane</td>
+<td>실계정 증거와 상태 readback, 계정별 한도 준수</td>
+</tr>
+<tr>
+<td>G — 배포 판정</td>
+<td>바이너리 provenance·Windows CI·사용자 UI</td>
+<td>실제 실행 경로·모델·완료 결과가 일치</td>
+</tr>
+</tbody>
+</table>
+<h3 id="필수-모델-인수-matrix">필수 모델 인수 matrix</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>요청</th>
+<th>예상 실제 모델</th>
+<th>검사 위치</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>main <code>--model fable</code></td>
+<td><code>gpt-6-astra</code></td>
+<td>launch env + gateway request + Codex turn</td>
+</tr>
+<tr>
+<td>Agent <code>model: opus</code></td>
+<td><code>gpt-5.6-sol</code></td>
+<td>child request + child thread</td>
+</tr>
+<tr>
+<td>Agent <code>model: sonnet</code></td>
+<td><code>gpt-5.6-terra</code></td>
+<td>child request + child thread</td>
+</tr>
+<tr>
+<td>Agent <code>model: haiku</code></td>
+<td><code>gpt-5.6-luna</code></td>
+<td>child request + child thread</td>
+</tr>
+<tr>
+<td>Agent <code>model: fable</code></td>
+<td><code>gpt-6-astra</code></td>
+<td>child request + child thread</td>
+</tr>
+<tr>
+<td>main Sol 상태에서 <code>inherit</code></td>
+<td><code>gpt-5.6-sol</code></td>
+<td>부모 선택 snapshot + child</td>
+</tr>
+<tr>
+<td>main Astra로 변경 후 <code>inherit</code></td>
+<td><code>gpt-6-astra</code></td>
+<td>변경 완료 경계 + child</td>
+</tr>
+<tr>
+<td>main override Astra 뒤 다른 Agent의 <code>sonnet</code></td>
+<td><code>gpt-5.6-terra</code></td>
+<td>슬롯 map이 오염되지 않음</td>
+</tr>
+<tr>
+<td>lane-1 Sol / lane-2 Terra</td>
+<td>각각 지정 모델</td>
+<td>독립 binding·tool result 오배달 0</td>
+</tr>
+<tr>
+<td>없는 model / 잘못된 effort</td>
+<td>명시 실패</td>
+<td>silent fallback·billing 전환 0</td>
+</tr>
+</tbody>
+</table>
+<p>이름 변경 완료는 활성 CLI/help/런타임 식별자/화면/새 규칙·템플릿에서
+구 명칭이 0건이고, 모든 나머지 적중이 승인된 역사·migration 예외로
+분류됐을 때다. 제품 완료는 실제 Factory 작업이 끝나고 저장 상태와 결과를
+확인한 뒤 별도로 판정한다.</p>
+<h2 id="evidence-이번-검사">10. Evidence — 이번 검사</h2>
+<p>명령과 결과의 전체 범위는 <a href="evidence.md">evidence.md</a>에
+기록한다.</p>
+<pre class="text"><code>git branch --show-current
+develop
+
+git rev-parse --short HEAD
+15f3eacd7
+
+선택 테스트 package 결과:
+ok  github.com/modu-ai/moai-adk/internal/cli 1.000s</code></pre>
+<p>선택자는 <code>TestGPTLaunchPreservesCommonEntry</code>,
+<code>TestGatewayProviderContractPickerAndSlots</code>,
+<code>TestGatewayLaunchAssemblyCarriesAuthDisplay</code>,
+<code>TestGatewayLaunchTransportGateControl</code>,
+<code>TestParseFactoryFlag</code>다.</p>
+<p>이 결과는 <strong>현재 old mapping과 gate 대조군 계약</strong>의
+통과다. 새 이름·새 네 슬롯 map·실제 App Server 팩토리는 아직 구현되지
+않았으므로 새 설계 PASS라고 표현하지 않는다.</p>
+<h2 id="gapsresidual-risk승인-항목">11. Gaps·Residual-risk·승인
+항목</h2>
+<ul>
+<li>이름 적중 전체 목록은 확보했지만 1,733개 파일의 모든
+의미·writer·외부 소비자를 전부 추적한 것은 아니다. migration·삭제 전에
+각 소비자 graph를 검증한다.</li>
+<li>바이너리 이미지 안의 글자, git history, 다른 worktree, 설치된 사용자
+홈의 배포 복사본은 이번 텍스트 전수 범위 밖이다. 배포 검증 때 해당
+표면을 별도로 검사한다.</li>
+<li>새 HEAD에서 실제 400 실패 wire, 유료 모델 호출, 다중 lane, Windows
+CI, DB migration을 실행하지 않았다.</li>
+<li>App Server dynamic tool API의 실험 상태·profile lock 전략·기존
+session resume는 운영 위험으로 남는다.</li>
+<li>비-Claude gateway 라우팅에 대한 Anthropic 비지원 경계는 명칭이나
+모델 map을 바꿔도 사라지지 않는다. 공식 OpenAI 통합 경로를 쓰는 것과
+양사 지원·약관 무위험 보증은 별개다. <a
+href="https://code.claude.com/docs/en/llm-gateway">Anthropic 지원
+범위</a></li>
+<li>이번 설계는 계정 공유·제한 우회·토큰 전달·API 자동 과금 전환을
+허용하지 않는다.</li>
+</ul>
+<p><strong>확정된 모델 계약:</strong> 별도 티어 없이
+<code>fable→Astra</code>, <code>opus→Sol</code>,
+<code>sonnet→Terra</code>, <code>haiku→Luna</code>를 직접 매핑한다.
+effort는 독립 설정이다. 이번 승인을 제품 전체의 인수 완료로 표시하지
+않는다.</p>
+<p><strong>나머지 설계 승인 범위:</strong> Factory 단일 모드,
+<code>orchestration</code> 공통 패키지, Todo/Tasks/Dispatch 역할 사전,
+구 <code>-k</code>의 자동변환 없는 폐기, 역사·데이터 보존이다. 기존 main
+설정이 없을 때 Opus→Sol을 기본값으로 제안한다. 모델 매핑 확인만으로
+나머지 선택과 실계정 실행까지 승인된 것으로 확대하지 않는다.</p>
+<p><strong>이번 문서 수정 기준:</strong> <code>develop</code> /
+<code>4056f69e1</code>. 앞선 코드 조사·테스트·전수 목록의 기준은
+<code>15f3eacd7</code>로 보존하며, 새 HEAD에서 재측정한 결과로 취급하지
+않는다.</p>
+<h2 id="주요-근거">12. 주요 근거</h2>
+<ul>
+<li><a href="../../internal/cli/gpt.go">현재 GPT entry</a>, <a
+href="../../internal/cli/gateway_prepare.go">모델 env 조립</a></li>
+<li><a href="../../internal/cli/gateway_product_binding.go">현재 GPT
+handler</a>: 198–257행</li>
+<li><a href="../../internal/cli/factory.go">현재 mode parser</a>, <a
+href="../../internal/cli/kanban.go">구 mode parser</a></li>
+<li><a href="../../internal/kanban/record.go">backend 저장 계약</a>, <a
+href="../../internal/kanban/state_dir.go">현재 Todo 경로</a></li>
+<li><a href="../../internal/config/envkeys.go">환경변수</a>, <a
+href="../../internal/web/app.go">웹 route</a>, <a
+href="../../internal/web/events.go">SSE 계약</a></li>
+<li><a href="../../.moai/reports/t654/as5-verdict.md">t654 App Server
+최종 판정</a>, <a
+href="../../.moai/reports/t654/as5-launcher-integration.md">조립
+증거</a></li>
+<li><a href="../gpt-factory-20260914-01a09c3b/report.md">이전 연구 보고
+— 해당 baseline의 오류 실험과 라이브러리 비교</a></li>
+</ul></article></div>
+<footer class="foot"><p>Plan / basic · MoAI-Easy 기준. 명칭 전수 목록과 의미 검토, 설계 완료와 제품 완료를 구분한다. 승인 전에는 제품 구현·상태 이관·배포를 실행하지 않는다.</p><a href="report.md">설계 MD</a><a href="inventory.md">전수 목록</a><a href="evidence.md">검증 근거</a><a href="#title">맨 위로</a></footer></div>
+<script>
+document.querySelectorAll('article table').forEach(function(t){var w=document.createElement('div');w.className='table-wrap';w.tabIndex=0;w.setAttribute('role','region');w.setAttribute('aria-label','가로로 스크롤 가능한 비교 표');t.parentNode.insertBefore(w,t);w.appendChild(t)});
+document.querySelectorAll('article h2').forEach(function(h,i){if(!h.id)h.id='section-'+i;var a=document.createElement('a');a.href='#'+h.id;a.textContent=h.textContent;document.getElementById('toc-items').appendChild(a)});
+</script>
+<script type="module">
+try{const {default:mermaid}=await import('https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs');mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:'base',themeVariables:{fontFamily:'Noto Sans KR, sans-serif',primaryColor:'#F0EEE6',primaryTextColor:'#141413',primaryBorderColor:'#D1CFC5',lineColor:'#788C5D',secondaryColor:'#E3DACC',tertiaryColor:'#FAF9F5'}});const node=document.getElementById('architecture-mermaid');node.style.display='block';await mermaid.run({nodes:[node]});document.getElementById('flow-fallback').hidden=true;}catch(e){document.getElementById('architecture-mermaid').style.display='none';}
+</script>
+</body></html>

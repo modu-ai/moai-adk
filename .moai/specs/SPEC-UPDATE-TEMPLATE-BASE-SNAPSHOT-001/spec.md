@@ -4,7 +4,7 @@ title: "Rendered template snapshot as the 3-way merge BASE for moai update"
 version: "0.1.0"
 status: completed
 created: 2026-08-03
-updated: 2026-08-03
+updated: 2026-09-24
 author: manager-spec
 priority: P1
 phase: "v3.1.0 target"
@@ -23,6 +23,7 @@ tier: L
 
 - 2026-08-03 — plan-phase artifacts authored (Tier L, 6 artifacts: spec.md + plan.md + acceptance.md + design.md + research.md + progress.md). This SPEC is the deferred follow-up explicitly named by `SPEC-UPDATE-YAML-PRESERVE-001` plan.md §E "Decision D5" and audit.md finding D9.
 - 2026-08-03 — iter-1 plan-audit revision (FAIL 0.68 → targeted PASS ≥ 0.85). D1 authored design.md + research.md; D2 repaired AC-TBS-010 inverted intermediate assertion; D3 corrected quality.yaml AC cross-ref (AC-TBS-006 → AC-TBS-013); D4 dispositioned the `runUpdateRestore` third restore-completion site; D5 corrected basePath line citation (restore.go:107-108 → restore.go:118); D6 rephrased REQ-TBS-001/002 subject to "the moai snapshot subsystem". The prior SPEC merged as commit `3ced5b152` (PR #1313) implementing node-tree YAML merge to preserve comments/order/quoting, and explicitly deferred this provenance defect because (1) it is a different defect class (provenance, not representation), (2) it requires a new persisted artifact, (3) it carries its own backward-compatibility design surface, and (4) the harm ordering made representation-defect-first strictly safer. The prior SPEC's audit finding D9 explicitly warned that the prior SPEC **enlarges D5's blast radius for `quality.yaml`** — making this follow-up the owner of that enlarged blast radius.
+- 2026-09-24 — Decision D4 amended (card t1139, lead-approved defect). The original D4 wrote the snapshot at the end of `moai init` (after the wizard section patches) and after the config restore at every update site plus `runUpdateRestore`, so the snapshot recorded user values as BASE and the next update replaced them (measured: after `moai update --force` on a fresh init, `project.name` / `user.name` → `""` and `lsp.enabled` true → false). Amended: the snapshot is written right after each template deploy and before any user value is written over it — init via `InitOptions.AfterTemplateDeploy`, template-sync and clean-install before the restore; `runUpdateRestore` writes none (3 triggers, was 4). REQ-TBS-001 / REQ-TBS-002 / REQ-TBS-013 wording amended in place with the superseded text kept; acceptance.md AC-TBS-002 rewritten and AC-TBS-023..026 added. Residual risk: installs with an already-poisoned snapshot lose `lsp.enabled` (and earlier customizations) once on the first update after upgrading; a follow-up card is proposed. Lifecycle status unchanged.
 
 ## §A Context and Blast Radius
 
@@ -56,9 +57,9 @@ The merge *mechanism* is settled by the prior SPEC: `MergeYAML3Way` operates on 
 
 ## §C Requirements (GEARS)
 
-**REQ-TBS-001** — At the end of a successful `moai init`, the moai snapshot subsystem shall persist a rendered-template snapshot of the `.moai/config/sections/*.yaml` files.
+**REQ-TBS-001** — When `moai init` completes a successful template deploy, the moai snapshot subsystem shall persist a rendered-template snapshot of the `.moai/config/sections/*.yaml` files before any init wizard section patch writes over the deployed files. *(Amended 2026-09-24, card t1139 — superseded wording: ~~"At the end of a successful `moai init`, the moai snapshot subsystem shall persist a rendered-template snapshot of the `.moai/config/sections/*.yaml` files."~~ See plan.md Decision D4.)*
 
-**REQ-TBS-002** — At the end of a successful `moai update` restore phase (after NEW templates are deployed and the 3-way/2-way merge has run), the moai snapshot subsystem shall persist a rendered-template snapshot of the `.moai/config/sections/*.yaml` files. This obligation covers every restore-completion site: the template-sync path, the clean-install path, AND the user-invocable `runUpdateRestore` path (`update_restore.go`).
+**REQ-TBS-002** — When a `moai update` template deploy completes successfully on the template-sync path or the clean-install path, the moai snapshot subsystem shall persist a rendered-template snapshot of the `.moai/config/sections/*.yaml` files before the config restore writes the user's values over them. The snapshot subsystem shall not write the snapshot from the user-invocable `runUpdateRestore` path (`update_restore.go`), which deploys no template. *(Amended 2026-09-24, card t1139 — superseded wording: ~~"At the end of a successful `moai update` restore phase (after NEW templates are deployed and the 3-way/2-way merge has run), the moai snapshot subsystem shall persist a rendered-template snapshot of the `.moai/config/sections/*.yaml` files. This obligation covers every restore-completion site: the template-sync path, the clean-install path, AND the user-invocable `runUpdateRestore` path (`update_restore.go`)."~~ See plan.md Decision D4.)*
 
 **REQ-TBS-003** — When persisting the snapshot, the `moai update` subsystem shall copy the on-disk rendered bytes from `.moai/config/sections/<name>` verbatim into the snapshot directory, preserving the values produced by Go-template rendering (e.g. `version: 3.0.1`, not `version: {{.Version}}`).
 
@@ -80,7 +81,7 @@ The merge *mechanism* is settled by the prior SPEC: `MergeYAML3Way` operates on 
 
 **REQ-TBS-012** — `quality.yaml` (the file the prior SPEC promoted from always-2-way to real-3-way) shall, when a snapshot is present, complete a real-3-way merge whose BASE is the rendered `quality.yaml` (with `{{.EnforceQuality}}` / `{{.TestCoverageTarget}}` resolved), and the placeholder-bearing keys shall NOT be misread as user edits.
 
-**REQ-TBS-013** — When the snapshot is absent on the first `moai update` after this feature ships, the update shall complete cleanly via the REQ-TBS-007 fallback, and SHALL write the snapshot at the end of that update so subsequent updates get the correct BASE.
+**REQ-TBS-013** — When the snapshot is absent on the first `moai update` after this feature ships, the update shall complete cleanly via the REQ-TBS-007 fallback, and SHALL write the snapshot during that update, right after its template deploy (originally "at the end of that update"; amended 2026-09-24, card t1139), so subsequent updates get the correct BASE.
 
 **REQ-TBS-014** — The snapshot write SHALL be best-effort and non-blocking: a snapshot write failure (disk full, permission denied) SHALL NOT fail the `moai init` or `moai update` that triggered it; the next update falls back per REQ-TBS-007.
 
@@ -139,7 +140,7 @@ Each requirement maps to one or more acceptance criteria in `acceptance.md` (§D
 - `internal/cli/update/backup/backup.go:114-118` — per-backup `.template-defaults/` write site
 - `internal/cli/update/backup/restore.go:118-121` — BASE read (`basePath` at `:118`) + `MergeYAML3Way` call site (`:121`)
 - `internal/cli/update/backup/restore.go:139` — 2-way fallback (`MergeYAMLDeep`), unchanged
-- `internal/cli/update_restore.go:53` — `runUpdateRestore` distinct restore-completion site (the lockout-escape entry); dispositioned in plan.md §B + Decision D4
+- `internal/cli/update_restore.go:53` — `runUpdateRestore` distinct restore-completion site (the lockout-escape entry); dispositioned in plan.md §B + Decision D4 (amended 2026-09-24, card t1139: writes no snapshot)
 - `internal/cli/update/backup/merge.go:25` — `MergeYAML3Way` signature (frozen by REQ-TBS-008)
 - `internal/defs/dirs.go` — `MoAIDir`, `ConfigSubdir`, `SectionsSubdir` path constants
 - `CLAUDE.local.md` §2 (`.moai/cache/` gitignored), §16 Rule 5 (scope discipline), §6 (test isolation)

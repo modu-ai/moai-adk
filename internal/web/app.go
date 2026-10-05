@@ -7,8 +7,11 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/glmcred"
+	"github.com/modu-ai/moai-adk/internal/jevcred"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
@@ -24,10 +27,23 @@ import (
 type app struct {
 	cfg Config
 
+	// saveMu serializes POST /save requests end to end (card t1446 N2, from
+	// the t1411 sync-audit round-2 finding N2). server.go's mutex guards only
+	// the listener field; without this lock a second save's persistence steps
+	// interleave with a first save still mid-handler, and a rolling-back
+	// request can revert another request's successful write. One app serves
+	// one project, so an app-level lock IS the per-project save lock. GET
+	// paths never take it — reads stay concurrent.
+	saveMu sync.Mutex
+
 	// hub fans SSE change-signals out to open browser connections. It carries no
 	// payload — the browser re-fetches the affected screen itself, so rendering
 	// truth stays on the server.
 	hub *Hub
+
+	// specs caches the full SPEC scan (rows + drift findings) that /, /factory
+	// and /specs all read. It is dropped when hub publishes "spec" (card t1460).
+	specs *specCache
 
 	// bindAddr returns the real bound loopback address (127.0.0.1:<port>) for
 	// the appbar loopback indicator (REQ-WC4-005). NewServer wires it to the
@@ -75,10 +91,23 @@ type app struct {
 	rawBlockValues      func(projectRoot string) (map[string]string, error)
 	applySchemaEdits    func(projectRoot string, edits map[string]string) error
 
-	// Injectable seams over the M3 sub-agent frontmatter surface
-	// (SPEC-WEB-CONSOLE-011 REQ-WC11-025/027..029 — internal/settings/agentfm).
+	// Injectable seams over the restored agent-overrides surface
+	// (SPEC-WEB-AGENTFM-RESTORE-001 M3): listAgentFMs scans an agent directory
+	// (internal/settings/agentfm — read-only), patchAgentFM persists
+	// llm.agent_overrides, applyPerfTierEdits persists llm.profile. Promoting
+	// the CALLS to fields keeps save-failure instrumentation able to reach
+	// them (the recordingSeams contract — steps 7/8 of the save inventory).
 	listAgentFMs func(agentsDir string) ([]agentfm.AgentInfo, error)
 	patchAgentFM func(projectRoot string, pins map[string]config.ModelEffort, submitted []string) error
+
+	// Injectable seams over the remaining persistence steps of handleSave
+	// (SPEC-WEB-CONSOLE-017 HARD-2: recordingSeams is extended, not rewritten).
+	// glmcred.Save / jevcred.Save are the single shared credential writers;
+	// promoting the CALLS (not the implementations) to fields keeps the default
+	// wiring byte-identical to the old behavior.
+	applyPerfTierEdits func(projectRoot, perfTier string) error
+	glmcredSave        func(key string) error
+	jevcredSave        func(key string) error
 
 	// Injectable seams over the M4 profile CRUD surface (SPEC-WEB-CONSOLE-011
 	// REQ-WC11-032/033/034). createProfile creates the profile directory (no
@@ -110,9 +139,10 @@ type app struct {
 // The page is rendered by the compiled-in Templ root component (no runtime
 // template parse), so newApp no longer carries a template-parse step.
 func newApp(cfg Config) *app {
-	return &app{
+	a := &app{
 		cfg:              cfg,
 		hub:              NewHub(),
+		specs:            newSpecCache(loadSpecRows, specCacheMaxAge),
 		readPreferences:  profile.ReadPreferences,
 		writePreferences: profile.WritePreferences,
 		syncToProject:    profile.SyncToProjectConfig,
@@ -141,21 +171,34 @@ func newApp(cfg Config) *app {
 		listAgentFMs: agentfm.List,
 		patchAgentFM: applyAgentOverrides,
 
+		applyPerfTierEdits: applyPerfTierEdits,
+		glmcredSave:        glmcred.Save,
+		jevcredSave:        jevcred.Save,
+
 		createProfile: createProfileDir,
 		renameProfile: renameProfileDir,
 		deleteProfile: profile.Delete,
 	}
+	a.hub.Subscribe(func(event string) {
+		if event == "spec" {
+			a.specs.invalidate()
+		}
+	})
+	return a
 }
 
 // routes builds the HTTP handler tree with Host-check middleware applied to the
-// whole mux (the middleware itself only gates mutating methods — REQ-WC-009).
+// whole mux: every request, on every route and under every method, must carry a
+// loopback Host (REQ-WC-009 as amended); state-changing methods additionally
+// pass the Sec-Fetch-Site same-origin check (REQ-SEC-002).
 func (a *app) routes() http.Handler {
 	mux := http.NewServeMux()
 	// 재설계본 라우트. "/" 는 개요로 올라가고, 설정 편집기는 /settings 로 내려간다
 	// — 세션을 열었을 때 먼저 보고 싶은 것은 설정값이 아니라 현재 상태이기 때문이다.
-	// 모니터링 라우트(개요·칸반·모니터·SPEC)는 GET 외 메서드를 405 로 거부한다.
+	// 모니터링 라우트(개요·팩토리·모니터·SPEC)는 GET 외 메서드를 405 로 거부한다.
 	mux.HandleFunc("/", a.handleOverview)
-	mux.HandleFunc("/kanban", a.handleKanban)
+	mux.HandleFunc("/factory", a.handleFactory)
+	registerLegacyRoutes(mux)
 	mux.HandleFunc("/monitor", a.handleMonitor)
 	// SPEC-WEB-TODO-QUEUE-001 M2 (REQ-WTQ-002): /todo renders the backlog queue
 	// read-only. Writes and id issuance belong to `moai todo`; this route only
@@ -167,8 +210,8 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("/save", a.handleSave)
 	// SPEC-WEB-CONSOLE-011 M5: /specs 는 READ-ONLY SPEC 보드다. handleBoard 가
 	// GET 이외 메서드를 405 로 거부하며 쓰기 경로·명령 실행·status 전이가 전혀 없다
-	// (REQ-WC11-044/045/046). hostCheckMiddleware 는 GET 을 게이트하지 않으므로
-	// 보드 읽기는 다른 읽기 라우트와 동일하게 통과한다.
+	// (REQ-WC11-044/045/046). hostCheckMiddleware 는 다른 라우트와 똑같이 보드
+	// 읽기에도 loopback Host 를 요구한다(REQ-WC-009 개정).
 	// 종료 부채 목록과 MUST-FIX 조치 명령은 이 화면 안의 패널이다. 예전에는
 	// /specs/board 라는 별도 라우트였는데, 어느 화면도 링크하지 않아 주소를 직접
 	// 쳐야만 닿았다.
@@ -181,41 +224,42 @@ func (a *app) routes() http.Handler {
 	// SPEC-WEB-CONSOLE-REDESIGN-001 M5 (REQ-WCR-042): profile rename.
 	mux.HandleFunc(profileRenameAction(), a.handleProfileRename)
 	// SPEC-WEB-CONSOLE-REDESIGN-001 M4 (REQ-WCR-034): explicit GLM key reveal.
-	// POST-only so it inherits the loopback-Host + same-origin gates that
-	// hostCheckMiddleware applies to mutating methods; the handler re-checks
-	// loopback itself.
+	// POST-only so it inherits the same-origin gate hostCheckMiddleware applies to
+	// mutating methods, on top of the loopback-Host gate every route carries; the
+	// handler re-checks loopback itself.
 	mux.HandleFunc(glmKeyRevealPath, a.handleGLMKeyReveal)
 	// SPEC-WEB-CONSOLE-REDESIGN-001 M6: the /autonomy/tiers route is removed.
 	// It served a GET-only fragment with no form and no action, so no selection
 	// it offered could be persisted. config.TierToggleOptions and the init-time
 	// ApplyAutonomyTierBundle path are untouched — only the web surface is gone.
 	// /__shutdown__ 은 페이지 내 종료 버튼이 POST 하는 루트다. hostCheckMiddleware
-	// 가 전체 mux 를 감싸 non-loopback Host(REQ-WC-009) 및 cross-site(REQ-SEC-002)
+	// 가 전체 mux 를 감싸 non-loopback Host(REQ-WC-009) 요청과 cross-site(REQ-SEC-002)
 	// POST 를 403 차단한다. 추가 CSRF 토큰 인프라는 없다(Goal Anti + @MX:NOTE 참조).
 	mux.HandleFunc("/__shutdown__", a.handleShutdown)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS()))))
 	return hostCheckMiddleware(mux)
 }
 
-// @MX:NOTE: [AUTO] Host-check 미들웨어는 2-layer 쓰기-안전 모델이다 — (1) Host 헤더 검사로 DNS-rebinding 차단(REQ-WC-009),
-// (2) Sec-Fetch-Site same-origin 강제로 drive-by CSRF 차단(REQ-SEC-002). per-process CSRF 토큰은 사용하지 않는다(Goal Anti).
-// GET(읽기)은 게이트하지 않는다 — 읽기는 안전하므로 foreign Host여도 통과시킨다.
+// @MX:NOTE: [AUTO] Host-check 미들웨어는 2-layer 안전 모델이다 — (1) Host 헤더 검사로 DNS-rebinding 차단(REQ-WC-009 개정: 모든 메서드·모든 라우트, /static/ 포함),
+// (2) Sec-Fetch-Site same-origin 강제로 drive-by CSRF 차단(REQ-SEC-002, 상태 변경 메서드만). per-process CSRF 토큰은 사용하지 않는다(Goal Anti).
+// 읽기도 게이트한다 — rebinding 공격에서 브라우저는 127.0.0.1 에 접속하면서 공격자 도메인을 Host 로 보내므로, 읽기를 막는 서버 측 수단은 Host 검사뿐이다.
 //
-// hostCheckMiddleware rejects mutating requests (POST/PUT/PATCH) whose Host
-// header does not resolve to a loopback origin (127.0.0.1 / localhost / ::1),
-// returning HTTP 403 (REQ-WC-009 DNS-rebinding gate). It additionally requires
-// Sec-Fetch-Site: same-origin on mutating requests (REQ-SEC-002 CSRF gate) — a
-// drive-by auto-submit carries an honest loopback Host but a cross-site/absent
-// Sec-Fetch-Site value, so the Host check alone cannot stop CSRF. GET and other
-// safe methods are never gated by either check.
+// hostCheckMiddleware rejects every request whose Host header does not resolve
+// to a loopback origin (see isLoopbackHost for the exact set), whatever its method or
+// route, returning HTTP 403 before any handler runs (REQ-WC-009 as amended — the
+// DNS-rebinding gate covers reads as well as writes). On mutating requests
+// (POST/PUT/PATCH) it additionally requires Sec-Fetch-Site: same-origin
+// (REQ-SEC-002 CSRF gate) — a drive-by auto-submit carries an honest loopback
+// Host but a cross-site/absent Sec-Fetch-Site value, so the Host check alone
+// cannot stop CSRF. Safe methods are not subject to the Sec-Fetch-Site check.
 func hostCheckMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !isLoopbackHost(r.Host) {
+			http.Error(w, "forbidden: non-loopback Host header", http.StatusForbidden)
+			return
+		}
 		switch r.Method {
 		case http.MethodPost, http.MethodPut, http.MethodPatch:
-			if !isLoopbackHost(r.Host) {
-				http.Error(w, "forbidden: non-loopback Host header", http.StatusForbidden)
-				return
-			}
 			// REQ-SEC-002: same-origin enforcement via Sec-Fetch-Site.
 			// Conservative policy: only "same-origin" is allowed; cross-site,
 			// same-site, none, and absent headers are all rejected. A modern
@@ -231,7 +275,15 @@ func hostCheckMiddleware(next http.Handler) http.Handler {
 }
 
 // isLoopbackHost reports whether a request Host header (host or host:port)
-// resolves to a loopback origin. Accepts 127.0.0.1, localhost, and ::1.
+// names a loopback origin. It accepts exactly:
+//   - localhost with its ASCII letters in any case (host-name case
+//     insensitivity is ASCII-only, RFC 4343), with or without a port.
+//     Non-ASCII case-fold equivalents are rejected;
+//   - any IP address in 127.0.0.0/8;
+//   - ::1, with or without brackets;
+//   - IPv4-mapped loopback (::ffff:127.x.y.z), with or without brackets.
+//
+// Everything else is rejected, including an empty Host.
 func isLoopbackHost(host string) bool {
 	if host == "" {
 		return false
@@ -241,7 +293,10 @@ func isLoopbackHost(host string) bool {
 		hostname = h
 	}
 	hostname = strings.TrimSuffix(strings.TrimPrefix(hostname, "["), "]")
-	if hostname == "localhost" {
+	// strings.EqualFold alone applies Unicode folding (U+017F would match "s").
+	// Every non-ASCII rune takes at least two bytes in UTF-8, so requiring the
+	// same byte length as "localhost" limits the match to ASCII case changes.
+	if len(hostname) == len("localhost") && strings.EqualFold(hostname, "localhost") {
 		return true
 	}
 	if ip := net.ParseIP(hostname); ip != nil {

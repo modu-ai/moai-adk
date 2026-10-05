@@ -19,7 +19,7 @@ moai --help
 
 | グループ | コマンド | 説明 |
 |------|--------|------|
-| **Launch** | `moai cc` · `moai cg` · `moai glm` | Claude Code セッションの開始 (バックエンド選択) |
+| **Launch** | `moai cc` · `moai glm` | Claude Code セッションの開始 (バックエンド選択) |
 | **Project** | `moai init` · `moai update` · `moai doctor` · `moai status` | プロジェクトの初期化、アップデート、診断、状態照会 |
 | **Tools** | `moai profile` · `moai inventory` · `moai hook` · `moai worktree` · `moai spec` · `moai harness` · ... | 設定、インベントリ、フック、ワークツリーなどのツール |
 
@@ -66,13 +66,12 @@ moai init [project-name] [OPTIONS]
 | `--root <path>` | プロジェクトルートディレクトリ (デフォルト値: 現在のディレクトリ) |
 | `--git-mode <manual\|personal\|team>` | Git ワークフローモード (デフォルト値: manual) |
 | `--git-provider <github\|gitlab>` | Git プロバイダー |
-| `--project-mode <personal\|team>` | プロジェクトモード (デフォルト値: personal) |
 | `--enable-lsp` | LSP 連携の有効化 (デフォルト値: true) |
 | `--enforce-quality` | 品質ゲートの強制 (デフォルト値: true) |
 | `--enable-design` | デザインワークフローの有効化 (デフォルト値: true) |
-| `--profile <high\|medium\|low>` | モデル+effort プロファイル — `llm.yaml` `profile` に保存 (プロファイルマトリクス列の選択)。legacy 値 `max` も入力として受け付け `high` に正規化 |
-| `--model-policy <high\|medium\|low>` | legacy パフォーマンスティア — `llm.yaml` `performance_tier` に保存 (`profile` 不在時にエイリアス) |
-| `--high` | **削除予定** `--model-policy high` の別名 |
+| `--profile <high\|medium\|low>` | **廃止済みスタブ** — スクリプト互換のため値だけ受け付け、効果はなく、`moai profile setup` を案内する廃止警告を出します |
+| `--model-policy <high\|medium\|low>` | **廃止済みスタブ** — スクリプト互換のため値だけ受け付け、効果はなく、`moai profile setup` を案内する廃止警告を出します |
+| `--high` | **廃止済みスタブ** — 退いた `--model-policy high` の別名。同じ廃止警告を出します |
 
 ### 例
 
@@ -85,7 +84,7 @@ cd my-existing-project
 moai init
 
 # 非対話型 (CI/CD)
-moai init --non-interactive --project-mode personal --model-policy medium
+moai init --non-interactive
 ```
 
 詳しいウィザードステップは [初期設定](./init-wizard) ページを参照してください。
@@ -114,7 +113,7 @@ moai update [OPTIONS]
 | `--no-hooks` | Git フックのインストールをスキップ |
 | `--verbose` | すべての警告を表示 (診断モード) |
 | `--shell-env` | Claude Code 用のシェル環境変数を構成 |
-| `--profile <high\|medium\|low>` | モデル+effort プロファイルの上書き (`llm.yaml` `profile` に保存) |
+| `--profile <high\|medium\|low>` | **廃止済みスタブ** — スクリプト互換のため値だけ受け付け、効果はなく、`moai profile setup` を案内する廃止警告を出します |
 
 ### 例
 
@@ -231,7 +230,6 @@ moai profile [COMMAND]
 ```bash
 moai cc -p work       # work プロファイルで Claude 実行
 moai glm -p cost-save # cost-save プロファイルで GLM 実行
-moai cg -p team       # team プロファイルで CG モード実行
 ```
 
 詳しい内容は [プロファイル管理](./profile) ページを参照してください。
@@ -326,33 +324,16 @@ git worktree list               # ワークツリーの一覧
 
 ---
 
-## moai cc / moai cg / moai glm
+## moai cc / moai glm
 
-Claude Code を開始しながらバックエンドを選択するランチコマンドです。3 つのコマンドすべて `-p <profile>` フラグでプロファイルを指定できます。`--` 以降の引数を Claude Code にそのまま渡すのは `moai cc` と `moai glm` のみ対応します (`moai cg` は非対応)。
+`moai cc` と `moai glm` は選択したバックエンドで Claude Code を起動します。旧 CG 設定は起動前に移行が必要です。
 
 ```bash
 moai cc [-p profile] [-- claude-args...]
 moai glm [-p profile] [-- claude-args...]
-moai cg [-p profile]
 ```
 
-| コマンド | リーダー | ワーカー | tmux 必須 | 用途 |
-|--------|------|------|-----------|------|
-| `moai cc` | Claude | Claude | いいえ | 最高品質 (単一バックエンド) |
-| `moai glm` | GLM | GLM | いいえ | コスト最適化 (GLM 単独) |
-| `moai cg` | Claude | GLM | 必須 | 品質 + コストのバランス (ハイブリッド) |
-
-`moai cg` は CG モード (Claude リーダー + GLM チームメイト) を有効化します。tmux セッション内で実行する必要があり、GLM 環境変数を tmux セッションに注入してリーダー画面は Claude API を使います。`moai cg` は設定後、現在の画面ですぐに Claude Code を実行するので、別途 `claude` を実行するステップは不要です。
-
-```bash
-# 1. GLM API キーの保存 (最初の 1 回)
-moai glm setup sk-your-glm-api-key
-
-# 2. CG モードの有効化 (tmux 内で実行 — Claude Code が現在の画面ですぐに開始される)
-moai cg
-```
-
-詳しい CG モードの案内は [紹介 — GLM でトークン節約](./introduction#glm-でトークン節約-5070) を参照してください。
+`moai cg` は廃止されました。Claude や GLM を起動せず、移行案内を表示して終了します。`moai cc` の別名ではありません。`llm.team_mode: cg` が残るプロジェクトでは、セッションを起動する前に移行先を明示的に選ぶ必要があります。 [CG の廃止と設定の移行](/ja/multi-llm/cg-mode/)
 
 ### ランチフラグ
 
@@ -370,9 +351,22 @@ moai cg
 |--------|------|
 | `-c, --continue` | 以前のセッションを継続 |
 | `-m, --model <model>` | モデル選択の上書き |
-| `--chrome` / `--no-chrome` | Chrome MCP のトグル |
+| `--chrome` / `--no-chrome` | Claude Code にそのまま渡します。ランチャーはどちらも自動では付けないため、`--no-chrome` を指定しない限り `/chrome` で接続できます |
 
-> `auto` 権限モードは GLM (サードパーティプロバイダー) では使えません — `moai cc` または `moai cg` でのみ対応します。
+> `auto` 権限モードは GLM (サードパーティプロバイダー) では使えません — `moai cc` でのみ対応します。
+
+### セッションモデルの決まり方 (`moai cc`)
+
+`moai cc` は次の順にセッションモデルを探し、最初に見つかった値を `--model` として Claude Code に渡します。
+
+1. 明示した `--model` 引数
+2. プロファイルのモデル (`moai profile setup` で選んだ値)
+3. 環境変数 `ANTHROPIC_MODEL` (今回の起動のみ)
+4. プロジェクトの `.claude/settings.local.json` の `model` (このプロジェクトのみ)
+5. そのプロファイルのユーザースコープ `settings.json` に `/model` で保存した値 — 起動時に `model: opus (user /model)` のような 1 行で知らせます
+6. 上記がすべて空なら何も渡しません。このときはプロジェクトの `.claude/settings.json` の `model` ピンがセッションモデルになり、ランチャーがその値と変更方法を表示します
+
+より具体的で、より新しく直接指定したものが優先されます。3 番と 4 番は Claude Code 自身が適用するため、ランチャーは `--model` を渡さずに任せます。プロジェクト設定はユーザースコープ設定より優先されるため、5 番がないと `/model` で選んだモデルがプロジェクトのピンに隠れてしまいます。`moai glm` はこの規則に従いません。GLM ではモデルをスロットエイリアスで渡す必要があり、Anthropic アカウントで `/model` により選んだ値は別のモデル系列で、誤ったスロットにつながるためです。
 
 ### moai glm 下位コマンド
 
@@ -464,23 +458,23 @@ moai --version    # 同じ
 
 ## モデルポリシー (パフォーマンスティア)
 
-MoAI-ADK はエージェントに最適な AI モデルを割り当てるパフォーマンスティアシステムを提供します — トークノミクスの出発点です。`llm.yaml` の `performance_tier` フィールドで設定し、`--model-policy` フラグまたは初期化ウィザードで選択します。
+エージェントごとにモデルを割り当てていたかつてのパフォーマンスティアシステムは退きました。v3.2 からは**サブエージェントがメインセッションのモデルと推論深度をそのまま引き継ぎます** — spawn するとき `model` も `effort` も渡さず、MoAI のエージェント定義はどちらも宣言しません。モデルポリシーの席に残ったのはセッションレベルの選択 1 つです。`moai profile setup` の**セッションモデルポリシー**の質問は、このプロファイルで起動する Claude セッションの既定の推論強度(推論強度を別に選ばなかったときのフォールバック)を決めます。
 
-| ティア | 特徴 |
+| 旧値 | 現在の意味 |
 |------|------|
-| **high** | 最高品質 — 呼び出し頻度が最も低い2つのエージェントに `max` の推論深度 |
-| **medium** (デフォルト値) | 品質とコストのバランス — コスト/スコア曲線の膝 |
-| **low** | 作業あたり最低コスト — エージェンティックなエージェントは Opus `low` effort に下がり、Sonnet は単発の行のみ |
+| **high** | セッション effort フォールバック `high` |
+| **medium** | セッション effort フォールバック `medium` |
+| **low** | セッション effort フォールバック `low` |
 
 ```bash
-# 初期化時に設定
-moai init my-project --model-policy high
+# セッションモデルポリシーを含むプロファイル全体の設定
+moai profile setup
 
-# 既存プロジェクトで再設定
-moai update -c
+# 退いたエージェント別フラグは廃止警告を出すだけで効果はありません
+moai init my-project --model-policy high
 ```
 
-プロファイル (`profile`: high/medium/low) はプロファイルマトリクスのアクティブ列を選択し、各エージェントの model+effort を決定します。詳しいエージェント別マッピングは [プロファイルマトリクス](/ja/advanced/profile-matrix/) ページを参照してください。
+かつての `--model-policy`、`--profile`、`--high`、`--medium-alias`、`--low` フラグは廃止済みスタブです。値はスクリプト互換のために受け付けますが効果はなく、`moai profile setup` を案内する警告を出します。セッションレベルのモデル·effort 調節は[モデルポリシー](/ja/multi-llm/model-policy/)ページ、マトリクスの退場は[プロファイルマトリクス](/ja/advanced/profile-matrix/)ページを参照してください。
 
 ---
 

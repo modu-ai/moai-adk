@@ -187,9 +187,9 @@ func TestSubAccessors_OverrideAndFallback(t *testing.T) {
 	overrideRoot := filepath.Join(os.TempDir(), "moai-home-override")
 
 	cases := []struct {
-		name     string
-		call     func() (string, error)
-		segment  string
+		name    string
+		call    func() (string, error)
+		segment string
 	}{
 		{"StateDir", StateDir, "state"},
 		{"CacheDir", CacheDir, "cache"},
@@ -237,13 +237,13 @@ func TestSubAccessors_ErrorPassthrough(t *testing.T) {
 	t.Setenv("MOAI_HOME", "")
 
 	calls := map[string]func() (string, error){
-		"StateDir":             StateDir,
-		"CacheDir":             CacheDir,
-		"ReleasesDir":          ReleasesDir,
-		"WorktreesDir":         WorktreesDir,
-		"ProfilesDir":          ProfilesDir,
-		"GlmEnvFile":           GlmEnvFile,
-		"UserSettingsFile":     UserSettingsFile,
+		"StateDir":              StateDir,
+		"CacheDir":              CacheDir,
+		"ReleasesDir":           ReleasesDir,
+		"WorktreesDir":          WorktreesDir,
+		"ProfilesDir":           ProfilesDir,
+		"GlmEnvFile":            GlmEnvFile,
+		"UserSettingsFile":      UserSettingsFile,
 		"UserConfigSectionsDir": UserConfigSectionsDir,
 	}
 

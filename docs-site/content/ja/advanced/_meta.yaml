@@ -51,12 +51,12 @@ index:
   title: "ハーネス学習表面"
 "autonomy-tier":
   title: "自律性ティア (MOAI_AUTONOMY_TIER)"
-"kanban-mode":
-  title: "カンバンモード"
 "factory-mode":
   title: "ファクトリーモード"
+"origin-trail-chain":
+  title: "セッション系譜チェーン"
 "manager-lead":
-  title: "manager-lead リードコーディネーター"
+  title: "manager-lead リーダーコーディネーター"
 "multi-model-audit":
   title: "マルチモデル監査収束"
 "bas-navigator":
@@ -72,7 +72,6 @@ index:
   weight: 96
 # v3.1 NEW-badge section-level list (SPEC-DESIGN-DOCS-V31-001 M3).
 new_items:
-  - kanban-mode
   - bas-navigator
   - manager-lead
   - multi-model-audit

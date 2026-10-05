@@ -106,6 +106,32 @@ PR을 만들지 말지는 SPEC tier를 보고 알아서 정해집니다 (Hybrid 
 
 Tier S/M은 CI 4 status checks와 pre-push hook이 안전을 받쳐 주므로 main에 바로 push합니다. Tier L은 건드리는 범위가 넓어서 PR 리뷰 기간과 전체 CI 매트릭스 검증을 거쳐야 합니다.
 
+이 표의 "main 직접 push"는 main 브랜치에서 실행할 때 기준입니다. main이 아닌 브랜치에서의 동작은 바로 아래 절을 참고하세요.
+
+### 브랜치별 전달 동작 (git strategy)
+
+`/moai sync`의 마지막 단계인 push와 PR 전달은 활성 모드의 전략 키가 결정합니다. `.moai/config/sections/git-strategy.yaml`의 `git_strategy.{mode}.workflow`를 읽으며, 값은 `github-flow`와 `git-flow` 둘 중 하나입니다. 세 모드(manual/personal/team) 모두 기본값은 `github-flow`입니다. 이 키가 두 값 어느 쪽도 아니면 전달 단계는 추측하지 않고 문제의 값을 보고하며 멈춥니다.
+
+`github-flow`에서는 현재 브랜치가 무엇인지에 따라 전달 결과가 갈립니다:
+
+| 브랜치 컨텍스트 | 전달 동작 |
+| ---- | ------- |
+| **main 브랜치** (Tier S/M, `--pr` 없음) | main으로 직접 push, PR 없음 |
+| **main이 아닌 브랜치** | 그 브랜치를 push하고 main을 대상으로 PR 생성 (이미 있으면 갱신) |
+| **워크트리 브랜치** | 워크트리 브랜치를 push하고 PR 생성 |
+| **어느 경로에도 맞지 않는 상태** (detached HEAD 등) | push와 PR 없이 브랜치 상태를 보고하고 중단 |
+
+표의 "main"은 모드 설정의 `main_branch` 값을 가리키며, 설정이 없으면 `main`으로 동작합니다.
+
+main 브랜치에서 Tier S/M SPEC을 처리한다면 이 동작은 v3.1.2까지와 동일합니다 — main 직접 push, PR 없음. 달라진 것은 나머지 브랜치 컨텍스트 두 가지입니다:
+
+- **main이 아닌 브랜치에서는 PR이 생깁니다.** v3.1.2까지는 브랜치 이름과 무관하게 main으로 push했고 PR을 만들지 않았습니다.
+- **어느 경로에도 맞지 않는 브랜치 상태에서는 sync가 멈춥니다.** 종전에는 브랜치 상태와 무관하게 main으로 push해 완주했지만, 이제는 아무것도 push하지 않고 상태를 보고합니다. 되던 sync가 갑자기 멈춘다면 이 지점부터 확인하세요.
+
+`git-flow`를 선택하면 브랜치 이름으로 경로가 갈립니다 — `feature/*`는 develop을 대상으로 PR을 만들고, `release/*`와 `hotfix/*`는 main을 대상으로 PR을 만듭니다 (hotfix는 머지 뒤 develop 백머지 PR이 하나 더 생깁니다). `WT-*` 브랜치는 PR 없이 통합 워크트리에서 머지합니다.
+
+이전 버전의 설정 키 `github.spec_git_workflow` (system.yaml)는 폐기 예정이며 v3.3.0에서 제거됩니다. 앞으로는 위의 `git_strategy.{mode}.workflow`가 정본입니다.
+
 **토큰을 아끼는 방법:**
 
 - SPEC 문서에서 메타데이터와 요약만 읽습니다
@@ -566,7 +592,7 @@ $ gh pr view 42
 
 ### Q: PR을 자동으로 만들고 싶지 않으면?
 
-Hybrid Trunk 운영에서 Tier S/M SPEC은 기본적으로 main에 바로 push하므로 PR 자체가 생기지 않습니다. Tier L에서도 PR 없이 커밋만 남기고 싶다면, sync가 끝난 뒤 `git push` 시점을 직접 잡으면 됩니다.
+Hybrid Trunk 운영에서 Tier S/M SPEC은 기본적으로 main에 바로 push하므로 PR 자체가 생기지 않습니다. Tier L에서도 PR 없이 커밋만 남기고 싶다면, sync가 끝난 뒤 `git push` 시점을 직접 잡으면 됩니다. 단, main이 아닌 브랜치에서 sync를 실행하면 브랜치 push와 함께 PR이 생성됩니다 (브랜치별 전달 동작 참고).
 
 ### Q: CHANGELOG 형식을 바꿀 수 있나요?
 

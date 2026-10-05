@@ -400,6 +400,9 @@ const (
 	// GlmEnvFileName is the GLM API credential file (glmcred SSOT).
 	GlmEnvFileName = ".env.glm"
 
+	// TypeSafeEnvFileName is the TypeSafe API credential file (jevcred SSOT).
+	TypeSafeEnvFileName = ".env.typesafe"
+
 	// UserSettingsFileName is the user-tier settings override.
 	UserSettingsFileName = "settings.json"
 )

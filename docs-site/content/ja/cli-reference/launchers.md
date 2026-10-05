@@ -1,18 +1,17 @@
 ---
-title: moai cc / cg / glm ランチャー
+title: moai cc / glm ランチャー
 weight: 15
 draft: false
 ---
 
-`moai cc`、`moai cg`、`moai glm` は Claude Code を異なるバックエンド構成で起動する 3 つのランチャーです。3 コマンドとも設定を調整したうえで `exec` で現在のプロセスを Claude Code に置き換えます。どのモデルがどの仕事を担うかがそのままコストを決めるため、ランチャー選択はコスト削減の最初の一手です。
+`moai cc` と `moai glm` は選択したバックエンドで Claude Code を起動します。旧 CG 設定は起動前に移行が必要です。
 
-## 3 ランチャーの比較
+## 対応ランチャーの比較
 
 | ランチャー | バックエンド | 用途 |
 |------------|--------------|------|
 | `moai cc` | Claude 専用 | 標準実行 — すべてのエージェントが Claude モデルを使用 |
 | `moai glm` | GLM 専用 | すべてのエージェントが Z.AI プロキシ経由で GLM モデルを使用 |
-| `moai cg` | Claude + GLM ハイブリッド | リーダーは Claude、チームメイトは GLM (60-70% のコスト削減) |
 
 ## moai cc — Claude バックエンド
 
@@ -30,22 +29,21 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-c, --continue` | 前回のセッションを継続 |
 | `-m, --model <model>` | モデル選択をオーバーライド |
 | `-w, --worktree [name]` | 隔離された git worktree (`.claude/worktrees/<name>/`) で起動 — 名前を省略すると自動生成 |
-| `--chrome` / `--no-chrome` | Chrome MCP のトグル |
-| `-k, --kanban [SPEC-ID]` | カンバンリードとして進入 — `plan → run → sync` チェーンをこのセッションにシード。SPEC-ID を付けるとその SPEC を目標に |
-| `-k --name <role>` | 開いているカンバンランに同伴セッションとして合流。ロールは `plan` · `run` · `sync`。同じロール名の生存セッションがあれば次の番号が付く (`plan-1`, `plan-2`, …) |
-| `-f, --factory [N]` | **ファクトリーリード**として進入 — レーン N 本(`lane-1`…`lane-N`)を開くファクトリーラン。N を省略するとレーン1本(`lane-1`)で始まり、下の増分形式で増やします。リードは運営者が選んだカードをセッション間メッセージで空きレーンに配分 |
-| `-f lane-<n>` | レーン1本(`lane-<n>`)だけを追加で立ち上げ、実行中のファクトリーのリードソケットに接続。番号が生存セッションと重なれば次の空き番号に。`moai glm -f lane-<n>` も GLM バックエンドで同じように動作 |
-| `-k <N>` / `-k <N> --name lane-<i>` | v1.2.0 の統一形式で現在も有効 — `-k <N>` はレーン N 本のランのリード、`-k <N> --name lane-<i>` はそのうちのレーン `<i>`。N なしで `-k --name lane-<i>` だけなら既定 8 レーン |
+| `--chrome` / `--no-chrome` | Claude Code にそのまま渡します。ランチャーはどちらも自動では付けないため、`--no-chrome` を指定しない限り `/chrome` で接続できます |
+| `-f, --factory` | **ファクトリーリーダー**として進入します。引数は取りません。リーダーは運用者が選んだカードをクロスセッションメッセージで空きレーンに丸ごと割り当て、レーンは `-l` で合流させます |
+| `-l, --lane` | 稼働中のファクトリーに**レーン**として合流し、次の `lane-<n>` 番号（生きているレーンの最大番号の次）を自動で受け取ります。引数は取らず、稼働中のファクトリーがなければ拒否されます。`moai glm -l` と `moai codex -l` も同じ動作です |
+| `--leader <name>` | `-l` または `--lane` とだけ併用します。合流先のリーダーセッションを指定します (既定値 `leader`、旧綴り `lead` は拒否)。実行の記録が欠けているか退役済みでも、生きているリーダーがいれば、合流はそのリーダーを検証 (pid + プロセス開始) してその実行を復元します |
+| `--factory-run <run-id>` | `-l` と併用: 合流する実行を id で指定します。`--leader` とは併用できません |
+| `--clear-policy <value>` | `moai cc -l` · `moai glm -l` と併用: カードを終えたあとコンテキストを空ける方法です (`clear-each` が既定、`clear-when-full`、`relaunch`) |
+| `--no-auto-dispatch` | `moai cc -l` · `moai glm -l` と併用: レーンを手動モードで起動します。既定は、キューの次のカードを自分で借り受ける自己配車レーンです |
 
-{{< callout type="info" >}}
-`-k` はカンバンチェーンのトークン、`-f` は**ファクトリーモード** (Factory Mode) 専用の進入トークンです。`-k` ひとつが 3 つの形に解釈されるのはそのまま — 引数なし・SPEC-ID はカンバンリード、`--name <ロール>` はカンバン同伴、数値はレーンランです。1 回の実行に付けられる進入トークンはひとつだけなので、`-k` と `-f` を一緒に使うとエラーになります。混合バックエンドランチャーの `moai cg` は両モードとも拒否します(ファクトリー側の拒否シグナルは `FACTORY_MODE_UNSUPPORTED_BACKEND`)。詳細な契約は[カンバンモード](/ja/advanced/kanban-mode)と[manager-lead リードコーディネーター](/ja/advanced/manager-lead)を参照してください。
-{{< /callout >}}
+{{< callout type="info" >}} 進入トークンは `-f` (リーダー) と `-l` (レーン) の2つだけで、どちらも引数を取りません。1回の起動に付けられるトークンは1つなので、`-f` と `-l` を同時に付けるとエラーです。`-f <値>`、`-l lane-2` のように値を付ける形や、Codex でリーダーを求める `moai codex` の `-f` は、すべて1行のエラーで拒否されます。廃止された `-k` 進入も同じ扱いで、`-f` と `-l` を案内して拒否されます。詳しい契約は[ファクトリーモード](/ja/advanced/factory-mode)と [manager-lead リーダーコーディネーター](/ja/advanced/manager-lead)を参照してください。 {{< /callout >}}
 
-カードの回り方はカンバンとは違います。カンバンでは1枚のカードが `plan → run → sync` の列を移っていきますが、ファクトリーでは1枚のカードが丸ごと1本のレーンに入り、そのレーンの中で3段階を順に通過します。段階ごとにそのセッションが `Agent()` サブエージェントを立ち上げ、書き込みを担うスポーンは `isolation: "worktree"` で隔離します。1本のレーンが同時に立ち上げられるサブエージェントは最大10個で、ランチャーがレーン・同伴セッションに `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` としてこの値を仕込むため、レーン N 本がマシンの容量を分け合う構造は運営者の自制ではなく設定で保証されます。レーンは一度に全部を立ち上げないでください — まず最初のレーンを上げ、実際に出力が出始めたのを確認してから残りを立ち上げます。
+カードは丸ごと1つのレーンに入り、そのレーンの中で `plan → run → sync` の3段階を順番に通ります。段階ごとにそのセッションが `Agent()` サブエージェントを起動し、書き込みを担当する起動は `isolation: "worktree"` で分離します。レーン1つが同時に動かせるサブエージェントは最大10個で、ランチャーがレーンのセッションに `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` としてこの値を設定します。そのため、N 個のレーンがマシンの容量を分け合う構造は、運用者の自制ではなく設定で保証されます。レーンは一斉に立ち上げないでください。最初のレーンを先に起動し、実際に出力が出始めたのを確かめてから残りを立ち上げます。
 
-バックエンドの組み合わせは、トークンの空きをまず見て決めます。ひとつの出発点は、リードは GLM、plan は Claude(Opus)、run は GLM、sync は Claude(Opus)と置き、判断の重い段階にだけ Opus を配置するやり方です。別の組み合わせを使うのも、片方のバックエンドに統一するのも同じように問題ありません。
+リーダーとレーンは別々のバックエンドで起動できます。バックエンドの組み合わせは、トークンの空きをまず見て決めます。判断が重い場所にだけ Opus を置き、実装中心のレーンは GLM で動かすのがひとつの出発点です。別の組み合わせでも、ひとつのバックエンドにそろえても、同じように問題ありません。
 
-権限モードは `default`、`acceptEdits`(プロジェクトデフォルト)、`plan`、`auto`、`bypassPermissions`、`dontAsk` のいずれかです。`auto` モードはバックグラウンド分類器が動作を検査するもので、Team プラン + Sonnet/Opus 4.6 以上が必要です。
+権限モードは `default`、`acceptEdits`(`moai init` の既定値)、`plan`、`auto`、`bypassPermissions`、`dontAsk` のいずれかです。`auto` モードではバックグラウンドの分類器が操作を審査します。対応するプランとモデルは [Claude Code の権限モードのドキュメント](https://code.claude.com/docs/en/permission-modes) を参照してください。
 
 ## moai glm — GLM バックエンド
 
@@ -64,40 +62,34 @@ moai glm status            # 資格情報の状態を確認
 | `moai glm status` | 現在の GLM 資格情報の状態を表示 |
 
 {{< callout type="warning" >}}
-GLM は `auto` 権限モードをサポートしません (サードパーティプロバイダ)。`auto` が必要な場合は `moai cc` または `moai cg` を使用してください。また Z.AI は同時リクエスト上限が低い (有料ティアで 1-3 in-flight) ため、複数エージェントの並列実行は `moai cg` ハイブリッドモードのほうが安定します。
+GLM は `auto` 権限モードに対応しません。このモードは利用条件を満たす Claude セッションで選んでください。廃止された CG は並列実行の代替手段ではありません。
 {{< /callout >}}
 
-## moai cg — Claude + GLM ハイブリッド
+## CG の廃止と設定の移行
+
+Claude や GLM を起動せず、移行案内を表示して終了します。 `moai cc` の別名ではありません。 `llm.team_mode: cg` が残るプロジェクトでは、セッションを起動する前に移行先を明示的に選ぶ必要があります。 [CG の廃止と設定の移行](/ja/multi-llm/cg-mode/) CG は廃止されました。`moai migrate cg` で移行先を確認してください。
 
 ```bash
-moai cg [-p profile]
+moai migrate cg
+moai migrate cg --target claude-only --apply --accept-role-change
 ```
 
-CG は "Claude + GLM" の略で、コスト最適化のチーム構成です。
+`llm.team_mode: claude`、`llm.gateway.teammate_mode: in-process`、`llm.gateway.teammate_provider: inherit` を保存します。従来の混合構成の役割分担を解除する変更です。Claude リーダーと GLM チームメイトのペインを維持する移行ではありません。
 
-- **リーダー** (現在の tmux ペイン): Claude モデルを使用 (opus/sonnet)
-- **チームメイト** (新しい tmux ペイン): Z.AI プロキシ経由で GLM モデルを使用
-
-実行時に tmux セッションを検証し、リーダーペインでは GLM 環境を取り除き (Claude)、tmux セッションには GLM 環境を注入し (チームメイト)、`teammateMode=tmux` と `team_mode: cg` を設定します。
-
-**前提条件**:
-
-1. `moai glm setup <api-key>` で GLM API キーを設定
-2. ペイン単位の環境隔離のため tmux セッション内部で実行
+`claude-glm` は Claude リーダーと tmux 内の GLM チームメイトを表します。現在は TEAMMATE の統合検証を通過していないため、適用と起動は利用できず、プレビューのみ可能です。tmux のインストールや `verified: true` の設定では、この制限は解除されません。
 
 ## プロファイル (`-p` フラグ)
 
-3 ランチャーとも `-p <name>` で名前付きプロファイルを指定すると `CLAUDE_CONFIG_DIR` が `~/.moai/claude-profiles/<name>/` に設定されます。複数のアカウント・設定セットを分離して運用するときに使用します。
+対応ランチャーとも `-p <name>` で名前付きプロファイルを指定すると `CLAUDE_CONFIG_DIR` が `~/.moai/claude-profiles/<name>/` に設定されます。複数のアカウント・設定セットを分離して運用するときに使用します。
 
 ## 隔離 worktree (`-w` フラグ)
 
-3 ランチャーとも `-w [name]` で隔離された git worktree の中からセッションを開始できます。`cd` でディレクトリを移動してから起動する 2 ステップを 1 コマンドにまとめます。
+対応ランチャーとも `-w [name]` で隔離された git worktree の中からセッションを開始できます。`cd` でディレクトリを移動してから起動する 2 ステップを 1 コマンドにまとめます。
 
 ```bash
 moai cc -w feat-login    # .claude/worktrees/feat-login/ で開始
 moai cc -w               # 名前を自動生成
 moai glm -w feat-login   # GLM バックエンドでも同様
-moai cg -w feat-login    # ハイブリッドでも同様
 ```
 
 動作ルール:
@@ -114,7 +106,7 @@ moai cg -w feat-login    # ハイブリッドでも同様
 
 ## 関連ドキュメント
 
-- [CG モード (Claude + GLM)](/ja/multi-llm/cg-mode)
+- [CG の廃止と設定の移行](/ja/multi-llm/cg-mode/)
 - [プロファイル管理](/ja/cli-reference/profile)
 - [セキュリティノート](/ja/advanced/security-notes) — GLM 資格情報パスのセキュリティモデル
 - [CLI 概要](/ja/getting-started/cli)

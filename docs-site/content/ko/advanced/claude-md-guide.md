@@ -76,9 +76,9 @@ MoAI-ADK가 배포하는 `CLAUDE.md`는 열일곱 개 섹션으로 이루어져 
 
 `/moai`가 모든 MoAI 개발 워크플로의 단일 진입점입니다. `/moai plan`, `/moai run`, `/moai sync`로 이어지는 SPEC 파이프라인부터, `/moai goal`, `/moai loop`, `/moai fix` 같은 에이전틱 루프, `/moai project`, `/moai harness` 같은 프로젝트 관리, `/moai review`, `/moai gate`, `/moai clean`, `/moai mx`, `/moai codemaps` 같은 품질·유틸리티 명령이 모두 여기서 정의됩니다. 명령어를 단일 진입점으로 묶은 이유는 사용자가 "어떤 명령을 써야 하나"를 검색하지 않게 하기 위해서입니다.
 
-### 4. 에이전트 카탈로그 — 12개 전문가 팀
+### 4. 에이전트 카탈로그 — 13개 전문가 팀
 
-MoAI-ADK는 12개의 보존 에이전트 (11개 MoAI 커스텀 + 1개 Anthropic 빌트인 `Explore`) 로 구성됩니다. `manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `manager-design`, `manager-lead` 같은 관리자 에이전트가 라이프사이클 단계를 맡고, `plan-auditor`, `sync-auditor`가 독립 평가를, `builder-harness`가 동적 하네스 생성을, `super-advisor`가 고추론 자문을 담당합니다. 과거 `manager-strategy`, `manager-quality`, `manager-brain`, `manager-project` 등 12개 에이전트는 archived 됐고 그 자리는 도메인별 per-spawn 위임이 대신합니다. 카탈로그가 명시적인 이유는 오케스트레이터가 "어떤 전문가에게 맡길 것인가"를 매번 같은 기준으로 판단하게 하기 위해서입니다.
+MoAI-ADK는 13개의 보존 에이전트 (12개 MoAI 커스텀 + 1개 Anthropic 빌트인 `Explore`) 로 구성됩니다. `manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `manager-design`, `manager-lead` 같은 관리자 에이전트가 라이프사이클 단계를 맡고, `plan-auditor`, `sync-auditor`가 독립 평가를, `builder-harness`가 동적 하네스 생성을, `super-advisor`가 고추론 자문을 담당합니다. 과거 `manager-strategy`, `manager-quality`, `manager-brain`, `manager-project` 등 12개 에이전트는 archived 됐고 그 자리는 도메인별 per-spawn 위임이 대신합니다. 카탈로그가 명시적인 이유는 오케스트레이터가 "어떤 전문가에게 맡길 것인가"를 매번 같은 기준으로 판단하게 하기 위해서입니다.
 
 ### 5. SPEC 워크플로우 — 3단계 개발 파이프라인
 
@@ -229,6 +229,34 @@ flowchart TD
 - 가끔씩만 필요한 전문 지식 — 스킬로
 - 긴 예시와 설명 — 참조나 링크로
 {{< /callout >}}
+
+## 세 파일 구조 — `AGENTS.md`·`CLAUDE.md`·`AGENTS.local.md`
+
+MoAI-ADK는 지침을 세 파일로 나눕니다. 어느 하네스가 작업을 구동하든 같은 계약을 읽게 하고, 개인 지침은 한 파일에만 두기 위해서입니다.
+
+| 파일 | 담는 내용 | Git 추적 | 읽는 쪽 |
+|------|-----------|----------|---------|
+| `AGENTS.md` | 하네스 공통 계약 | 예 | Claude Code(`@AGENTS.md` 가져오기)와 Codex |
+| `CLAUDE.md` | Claude 전용 메커니즘을 얹는 얇은 층 | 예 | Claude Code |
+| `AGENTS.local.md` | 개인 지침 | 아니오 (`.gitignore`) | Claude Code(`CLAUDE.md` 마지막의 `@AGENTS.local.md`)와 `moai codex` |
+
+```mermaid
+flowchart TD
+    A["AGENTS.md<br/>공통 계약"] --> C["CLAUDE.md<br/>Claude 전용 층"]
+    L["AGENTS.local.md<br/>개인 지침"] --> C
+    C --> CC["Claude Code"]
+    A --> X["Codex"]
+    L --> R["moai codex 런처"]
+    R --> X
+```
+
+`CLAUDE.local.md`는 `AGENTS.local.md`의 이전 이름입니다. 기존 파일은 `moai migrate local-instructions`로 옮깁니다. 이 명령은 내용을 바이트 그대로 `AGENTS.local.md`에 쓰고, 원본을 `.moai/backups/local-instructions/` 아래에 백업한 뒤 프로젝트 루트에서 지웁니다. 이름 변경은 이 명령으로만 일어나며, `moai update`·`moai init`·훅은 두 파일을 옮기거나 지우지 않습니다.
+
+{{< callout type="warning" >}}
+{{< icon warning warn >}} 두 파일이 함께 있으면 Claude Code가 둘 다 읽어 비슷한 지침이 두 번 실립니다. 이 상태에서 `moai migrate local-instructions`는 어느 파일도 건드리지 않고 거부합니다 — 어느 쪽 내용을 남길지는 도구가 판단할 수 없기 때문입니다. `CLAUDE.local.md`의 내용을 손으로 `AGENTS.local.md`에 합친 뒤 `CLAUDE.local.md`를 지우세요.
+{{< /callout >}}
+
+링크된 워크트리에서 연 세션은 `AGENTS.local.md`가 그 워크트리 체크아웃 안에 있을 때만 받습니다. 이 파일은 기본적으로 gitignore돼 있고 보통 프로젝트 루트에만 있으므로, 추적하지 않은 사본이면 워크트리 세션은 이 파일 없이 돌아갑니다 — `@AGENTS.local.md` 가져오기는 아무것도 찾지 못하고 Claude Code가 조용히 건너뜁니다. 파일을 커밋하면(ignore 규칙을 우회해 force-add) git이 모든 워크트리 체크아웃에 파일을 배달하고, 가져오기가 프로젝트 안에서 풀려 세션이 로컬 지침을 불러옵니다.
 
 ## 관련 문서
 

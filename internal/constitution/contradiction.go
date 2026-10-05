@@ -28,6 +28,24 @@ func (d *contradictionDetector) Scan(proposal *AmendmentProposal, registry *Regi
 		Conflicts: []ConflictDetail{},
 	}
 
+	// Constraint relaxation is a property of the proposal alone: the verdict
+	// reads proposal.Before and proposal.After and nothing from any registry
+	// entry. Running it inside the per-rule loop below therefore produced the
+	// same verdict once per rule — one relaxation was reported as len(registry)-1
+	// conflicts, each claiming that OTHER rule's clause had been relaxed, which
+	// is false for every one of them. Card t992 measured it live: one amendment
+	// to CONST-V3R2-008 emitted exactly 100 `Constraint relaxation` conflicts
+	// against a 101-entry registry, 43 of them naming Evolvable rules.
+	//
+	// The check is hoisted out of the loop and attributed to the rule the
+	// proposal actually changes.
+	if conflict := d.detectRelaxation(proposal); conflict != nil {
+		result.Conflicts = append(result.Conflicts, *conflict)
+		if conflict.IsBlocking {
+			result.HasBlockingContradiction = true
+		}
+	}
+
 	// Compare with all rules in the registry
 	for _, rule := range registry.Entries {
 		// Skip self
@@ -37,14 +55,6 @@ func (d *contradictionDetector) Scan(proposal *AmendmentProposal, registry *Regi
 
 		// ID conflict (different rule using the same ID - not allowed)
 		// This is already blocked in the loader, so no additional check here
-
-		// Zone contradiction detection
-		if conflict := d.detectZoneContradiction(proposal, &rule); conflict != nil {
-			result.Conflicts = append(result.Conflicts, *conflict)
-			if conflict.IsBlocking {
-				result.HasBlockingContradiction = true
-			}
-		}
 
 		// Clause contradiction detection
 		if conflict := d.detectClauseContradiction(proposal, &rule); conflict != nil {
@@ -73,8 +83,26 @@ func (d *contradictionDetector) Scan(proposal *AmendmentProposal, registry *Regi
 	return result, nil
 }
 
-// detectZoneContradiction detects zone change contradictions.
-func (d *contradictionDetector) detectZoneContradiction(proposal *AmendmentProposal, rule *Rule) *ConflictDetail {
+// detectRelaxation reports a constraint relaxation in the proposal itself:
+// a Before clause carrying an obligation modal whose After clause has dropped
+// every modal and gained a permissive one.
+//
+// It takes no rule argument because it reads none. The former signature
+// accepted a *Rule and used only rule.ID, for the conflict message — which is
+// what let one verdict be attributed to every rule in the registry.
+//
+// SCOPE — what this does NOT detect (measured, card t992 E4): the trigger is
+// the SHAPE OF THE BEFORE TEXT, not the effect of the amendment. A clause that
+// states an obligation without a modal ("Execute all independent tool calls in
+// parallel when no dependencies exist.") can be rewritten to "Agents MAY …; it
+// is OPTIONAL." and this returns nil — measured as EXIT 0, zero conflicts,
+// dry-run success. Closing that gap needs an effect judgment rather than a
+// string comparison and is NOT attempted here; card t997's verdict records why.
+//
+// The zone axis lives in Layer 1 (frozenGuard), which reads the subject rule's
+// zone and passes Evolvable. This function does not read zone and never did —
+// the previous comment on IsBlocking claimed otherwise.
+func (d *contradictionDetector) detectRelaxation(proposal *AmendmentProposal) *ConflictDetail {
 	// Extract zone hints from proposal's After clause
 	afterUpper := strings.ToUpper(proposal.After)
 
@@ -86,9 +114,17 @@ func (d *contradictionDetector) detectZoneContradiction(proposal *AmendmentPropo
 
 	if lostMust && addedMay {
 		return &ConflictDetail{
-			ConflictingRuleID: rule.ID,
-			Description:       fmt.Sprintf("Constraint relaxation: %s's mandatory clause changed to recommendation", rule.ID),
-			IsBlocking:        true, // Frozen zone blocks constraint relaxation
+			ConflictingRuleID: proposal.RuleID,
+			Description: fmt.Sprintf(
+				"Constraint relaxation: %s's mandatory clause changed to recommendation",
+				proposal.RuleID,
+			),
+			// Blocking regardless of zone. Layer 1 (frozenGuard) is the zone
+			// gate and lets Evolvable through; this layer does not read zone,
+			// so an Evolvable relaxation blocks here after passing there.
+			// Whether that is the intended policy is not decided in this
+			// function — card t997's verdict records the divergence.
+			IsBlocking: true,
 		}
 	}
 

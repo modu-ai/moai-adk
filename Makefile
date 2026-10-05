@@ -6,26 +6,88 @@ MODULE := github.com/modu-ai/moai-adk
 VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo "dev")
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-LDFLAGS := -ldflags "-s -w -X $(MODULE)/pkg/version.Version=$(VERSION) -X $(MODULE)/pkg/version.Commit=$(COMMIT) -X $(MODULE)/pkg/version.Date=$(DATE)"
+# BUILD_ID is the MONOTONE build identity, and it is deliberately separate from
+# VERSION. VERSION derives with --abbrev=0, which drops the commit-distance
+# suffix and so collapses every commit since the last tag onto one string — it
+# is a tag floor, not a build identity, and two builds in an ancestor relation
+# read as identical through it. Worse, an explicit release-candidate VERSION
+# reads HIGHER than a later default build, so comparing version strings reaches
+# the opposite conclusion about which binary is newer.
+# VERSION stays as it is because it reaches outward (RELEASE_BINARY below,
+# version.json, internal/update/local.go); the identity that has to be monotone
+# goes here instead, where nothing else consumes it.
+BUILD_ID := $(shell git describe --tags --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo "dev")
+LDFLAGS := -ldflags "-s -w -X $(MODULE)/pkg/version.Version=$(VERSION) -X $(MODULE)/pkg/version.Commit=$(COMMIT) -X $(MODULE)/pkg/version.Date=$(DATE) -X $(MODULE)/pkg/version.BuildID=$(BUILD_ID)"
 
 # Local release configuration
 LOCAL_RELEASE_DIR ?= $(HOME)/.moai/releases
 PLATFORM := $(shell go env GOOS)-$(shell go env GOARCH)
 RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)
 
-.PHONY: all build test lint fix clean install generate templ-generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short
+.PHONY: all build test lint fix clean install verify-local-install generate templ-generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short agents-emit agents-emit-check commands-emit commands-emit-check plugin-emit plugin-emit-check embed-check fmt-check tool-policy-drift-check
 
 all: lint test build ## Run lint, test, and build
 
 templ-generate: ## Generate *_templ.go from *.templ sources (pure-Go codegen, no Node)
 	go run github.com/a-h/templ/cmd/templ generate -path ./internal/web
 
-build: templ-generate ## Build the binary
+build: agents-emit-check commands-emit-check plugin-emit-check tool-policy-drift-check templ-generate ## Build the binary
 	@go run ./internal/template/scripts/gen-catalog-hashes.go --all
 	go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/moai
 
 agents-emit: ## Regenerate the .codex/agents/moai TOMLs from the neutral .md layer
 	AGENTEMIT_UPDATE=1 go test ./internal/template/agentemit/... -run TestGoldenCommittedArtifactsMatchEmission
+
+# Read-only source-layer drift check, wired ahead of `build` so a missed
+# regeneration turns red locally instead of waiting for CI. It NEVER writes:
+# regeneration stays behind the explicit `agents-emit` verb, because a build
+# that silently overwrote a hand edit would erase the evidence CI needs to see.
+# AGENTEMIT_UPDATE is scrubbed so an inherited value cannot flip this into the
+# regeneration branch.
+agents-emit-check: ## Verify the committed .codex TOMLs match the .md source layer (read-only; never regenerates)
+	@AGENTEMIT_UPDATE= go test ./internal/template/agentemit/... -run TestGoldenCommittedArtifactsMatchEmission -count=1 \
+		|| { printf 'agent-emit drift: committed .codex/agents/moai/*.toml differ from the .md source layer — run `make agents-emit`\n' >&2; exit 1; }
+
+commands-emit: ## Regenerate the .agents/skills/moai-<command> SKILL.md artifacts from the command sources
+	COMMAND_EMIT_UPDATE=1 go test ./internal/template/commandemit/... -run TestGoldenCommittedArtifactsMatchEmission
+
+# Read-only drift check for the published command skills, in the same
+# position as agents-emit-check. It NEVER writes: regeneration stays behind
+# the explicit `commands-emit` verb, and COMMAND_EMIT_UPDATE is scrubbed so
+# an inherited value cannot flip this into the regeneration branch.
+commands-emit-check: ## Verify the committed published command skills match the command source layer (read-only; never regenerates)
+	@COMMAND_EMIT_UPDATE= go test ./internal/template/commandemit/... -run TestGoldenCommittedArtifactsMatchEmission -count=1 \
+		|| { printf 'command-skill drift: committed .agents/skills/moai-*/SKILL.md differ from the command source layer — run `make commands-emit`\n' >&2; exit 1; }
+
+plugin-emit: ## Regenerate the moai marketplace, plugin manifests and plugin payload from the template tree and the version SSOT
+	PLUGIN_EMIT_UPDATE=1 go test ./internal/template/pluginemit/... -run 'Test(ManifestsGolden|GoldenCommittedArtifactsMatchEmission)$$'
+
+# Read-only drift check for the generated marketplace, plugin manifests and
+# plugin payload (byte, mode, missing-file and extra-file differences), wired
+# ahead of `build` like commands-emit-check. It NEVER writes: regeneration stays
+# behind the explicit `plugin-emit` verb, and PLUGIN_EMIT_UPDATE is scrubbed so
+# an inherited value cannot flip this into the regeneration branch.
+plugin-emit-check: ## Verify the committed marketplace, plugin manifests and payload match the generator (read-only; never regenerates)
+	@PLUGIN_EMIT_UPDATE= go test ./internal/template/pluginemit/... -run 'Test(GoldenCommittedArtifactsMatchEmission|CommittedVersionMatchesSSOT)$$' -count=1 \
+		|| { printf 'plugin-emit drift: committed marketplace, plugin manifests or plugin payload differ from the generator — run `make plugin-emit`\n' >&2; exit 1; }
+
+# Read-only drift check between tool-policy.yaml and the permissions block of
+# the working-tree .claude/settings.json, in the same position as
+# agents-emit-check. It compares the two as sets and NEVER writes:
+# regeneration stays behind the explicit `moai tool-policy build` verb.
+tool-policy-drift-check: ## Verify tool-policy.yaml and the .claude/settings.json permissions block declare the same sets (read-only; never regenerates)
+	@go test ./internal/config/toolpolicy/... -run 'TestToolPolicyDrift_(CommittedSettingsMatchYAML|NoDuplicatesOrOverlap)$$' -count=1 \
+		|| { printf 'tool-policy drift: .claude/settings.json permissions differ from .moai/config/sections/tool-policy.yaml — reconcile tool-policy.yaml, then regenerate with `moai tool-policy build --local-only`\n' >&2; exit 1; }
+
+# Embed-axis judgment point: compares the .codex artifacts carried by an
+# ALREADY-BUILT binary against the committed ones. It deliberately has no
+# `build` prerequisite — a freshly built binary matches the committed set by
+# construction, so a check that could only run right after a build would be
+# the same tautology it exists to close. Same reason it is not attached to a
+# CI build job: CI builds from the commit it checks.
+# The runner is built from source; the JUDGMENT TARGET is $(BIN), never rebuilt.
+embed-check: ## Verify a built binary's embedded .codex TOMLs match the committed set (BIN=<path>, default bin/moai)
+	@MOAI_EMBED_CHECK_BIN=$(or $(BIN),bin/$(BINARY_NAME)) go run ./cmd/moai doctor --check "Agent Emit Embed"
 
 release-local: build ## Create a local release for development updates
 	@echo "Creating local release: $(VERSION)"
@@ -40,11 +102,24 @@ release-local: build ## Create a local release for development updates
 install: ## Install the binary
 	go install $(LDFLAGS) ./cmd/moai
 
+# Prove that the installed executable is the exact file just built, then prove
+# that it can report its injected provenance. Byte identity is stronger than
+# scanning printable strings and avoids macOS /usr/bin/strings, which is gated
+# behind the system-wide Xcode licence on some developer machines.
+verify-local-install: ## Verify installed binary identity and version (BIN=<built>, LOCAL_INSTALL_BIN=<installed>)
+	@sh ./scripts/verify-local-install.sh \
+		"$(or $(BIN),bin/$(BINARY_NAME))" \
+		"$(or $(LOCAL_INSTALL_BIN),$(HOME)/go/bin/$(BINARY_NAME))" \
+		"$(COMMIT)"
+
 test: templ-generate ## Run tests with race detection
-	go test -race -coverprofile=coverage.out -covermode=atomic ./...
+	go test -race -coverprofile=coverage.out -covermode=atomic -timeout 60m ./... # -timeout 60m = D1 derivation (SPEC-CLI-TEST-TIMEOUT-001; baseline .moai/reports/t1253/measure-meta.txt)
 
 test-verbose: templ-generate ## Run tests with verbose output
-	go test -race -v -coverprofile=coverage.out -covermode=atomic ./...
+	go test -race -v -coverprofile=coverage.out -covermode=atomic -timeout 60m ./... # -timeout 60m = D1 derivation (SPEC-CLI-TEST-TIMEOUT-001; baseline .moai/reports/t1253/measure-meta.txt)
+
+test-codex-live: ## Observe the codex live axis (opt-in; needs a codex binary and spends real codex/z.ai quota — CI never runs this; see internal/cli/codex_live_axis_declaration_test.go)
+	MOAI_CODEX_LIVE_PROBE=1 MOAI_AUDIT_PIN_LIVE=1 go test -timeout 10m ./internal/cli/ -run 'Live' -v -count=1 # -timeout 10m = D3 explicit pin (SPEC-CLI-TEST-TIMEOUT-001; baseline .moai/reports/t1253/measure-meta.txt)
 
 coverage: test ## Show test coverage report
 	go tool cover -html=coverage.out -o coverage.html
@@ -62,6 +137,17 @@ vet: ## Run go vet
 
 fmt: ## Format code
 	gofumpt -l -w .
+
+# Format gate (SPEC-FMT-GATE-001): tracked-files variant of `gofmt -l .` —
+# untracked scratch .go files must not flip the local verdict. Silent on a
+# clean tree; lists offending files and exits non-zero otherwise. gofumpt
+# output (`make fmt`) is gofmt-clean, so the existing fix path still applies.
+fmt-check: ## Verify tracked .go files are gofmt-clean (gate predicate; silent on success)
+	@files="$$(git ls-files -z '*.go' | xargs -0 gofmt -l)"; \
+	if [ -n "$$files" ]; then \
+		printf 'gofmt violations found (run gofmt -w or make fmt):\n%s\n' "$$files" >&2; \
+		exit 1; \
+	fi
 
 generate: ## Run go generate
 	go generate ./...
@@ -117,6 +203,6 @@ lint-fast: ## Run golangci-lint --fast (preflight gate)
 	@golangci-lint run --fast || (echo "preflight: lint-fast FAIL"; exit 1)
 
 test-race-short: ## Run go test -race -short (preflight gate)
-	@go test -race -short ./... || (echo "preflight: test-race-short FAIL"; exit 1)
+	@go test -race -short -timeout 60m ./... || (echo "preflight: test-race-short FAIL"; exit 1) # -timeout 60m = D1 derivation (SPEC-CLI-TEST-TIMEOUT-001; baseline .moai/reports/t1253/measure-meta.txt; -short subset unmeasured — spec.md §C.3)
 
 .DEFAULT_GOAL := help

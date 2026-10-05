@@ -17,6 +17,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/modu-ai/moai-adk/internal/verify"
 )
 
 // projectRootTools are the in-scope tools of REQ-1 that are registered on the
@@ -347,5 +348,159 @@ func TestValidateProjectRoot_RejectsBrokenSymlink(t *testing.T) {
 	}
 	if got != "" {
 		t.Errorf("rejected root must be empty, got %q", got)
+	}
+}
+
+// --- t236 / issue #1640 residuals (M2): fallback visibility + verify tools ---
+
+// The fallback's silent misdirection (live gap L2) is only fixable if the
+// response SAYS which tree it read. spec_progress must carry an "_root"
+// provenance block: "param" (no warning) when the caller named a tree, and a
+// non-empty warning when resolution fell back to spawn-frozen state.
+func TestSpecProgress_ResponseCarriesRootProvenance(t *testing.T) {
+	root := newProbeProject(t, "SPEC-PROBEPROV-908")
+
+	withParam := callSpecToolJSON(t, handleSpecProgress, map[string]any{"project_root": root})
+	if !strings.Contains(withParam, "SPEC-PROBEPROV-908") {
+		t.Errorf("spec_progress rooted at the named tree did not list its only SPEC; got=%s", withParam)
+	}
+	if !strings.Contains(withParam, "_root") || !strings.Contains(withParam, `"source":"param"`) {
+		t.Errorf("spec_progress response lacks param provenance; got=%s", withParam)
+	}
+
+	without := callSpecToolJSON(t, handleSpecProgress, map[string]any{})
+	if strings.Contains(without, "SPEC-PROBEPROV-908") {
+		t.Errorf("spec_progress without project_root listed a SPEC that exists only in the probe tree; got=%s", without)
+	}
+	if !strings.Contains(without, `"warning"`) {
+		t.Errorf("spec_progress fallback resolution carried no warning; got=%s", without)
+	}
+}
+
+// verify_snapshot ignored project_root entirely (live gap L3): a record made
+// with a named root must land under THAT tree, and the fallback tree must stay
+// clean. CLAUDE_PROJECT_DIR is pinned to a scratch dir so the pre-fix
+// behaviour (fallback write) cannot leak into a real checkout.
+func TestVerifySnapshot_HonorsProjectRoot(t *testing.T) {
+	root := newProbeProject(t, "SPEC-PROBEVERIFY-909")
+	fallback := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", fallback)
+
+	key := "t236red00000000:verify-probe"
+	cmd := "go test -run TestVerifySnapshot_HonorsProjectRoot"
+
+	res, err := handleVerifySnapshot(context.Background(), newToolRequest(map[string]any{
+		"project_root": root,
+		"key":          key,
+		"command":      cmd,
+		"exit_code":    0,
+	}))
+	if err != nil {
+		t.Fatalf("handleVerifySnapshot (record): %v", err)
+	}
+	recBlob, marshalErr := json.Marshal(res)
+	if marshalErr != nil {
+		t.Fatalf("marshal record result: %v", marshalErr)
+	}
+	if !strings.Contains(string(recBlob), `"action":"record"`) {
+		t.Fatalf("expected record action; got=%s", recBlob)
+	}
+
+	snap, loadErr := verify.Load(root, key)
+	if loadErr != nil {
+		t.Fatalf("verify.Load(param root): %v", loadErr)
+	}
+	if snap == nil {
+		t.Fatalf("snapshot missing under the named project_root — the parameter was ignored and the record landed on the fallback tree")
+	}
+	if snap.FindCommand(cmd) == nil {
+		t.Fatalf("recorded snapshot under the named root lacks the check %q; snap=%+v", cmd, snap)
+	}
+
+	fallbackSnap, fallbackErr := verify.Load(fallback, key)
+	if fallbackErr != nil {
+		t.Fatalf("verify.Load(fallback): %v", fallbackErr)
+	}
+	if fallbackSnap != nil {
+		t.Fatalf("record leaked into the fallback tree — project_root was not what redirected it")
+	}
+
+	// The read path must honor the parameter too, and both paths carry the
+	// provenance block.
+	loaded := callSpecToolJSON(t, handleVerifySnapshot, map[string]any{"project_root": root, "key": key})
+	if !strings.Contains(loaded, `"action":"load"`) || !strings.Contains(loaded, cmd) {
+		t.Errorf("verify_snapshot load from the named root lost the recorded check; got=%s", loaded)
+	}
+	if !strings.Contains(loaded, `"source":"param"`) {
+		t.Errorf("verify_snapshot response lacks param provenance; got=%s", loaded)
+	}
+}
+
+// verify_trend read the same frozen fallback (live gap L3): the trend of a
+// key recorded under a named root is visible only when that root is passed.
+func TestVerifyTrend_HonorsProjectRoot(t *testing.T) {
+	root := newProbeProject(t, "SPEC-PROBETREND-910")
+	fallback := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", fallback)
+
+	key := "t236red00000000:trend-probe"
+	cmd := "go test -run TestVerifyTrend_HonorsProjectRoot"
+
+	if _, err := handleVerifySnapshot(context.Background(), newToolRequest(map[string]any{
+		"project_root": root,
+		"key":          key,
+		"command":      cmd,
+		"exit_code":    0,
+	})); err != nil {
+		t.Fatalf("handleVerifySnapshot (record): %v", err)
+	}
+
+	withParam := callSpecToolJSON(t, handleVerifyTrend, map[string]any{"project_root": root, "key": key})
+	if !strings.Contains(withParam, cmd) {
+		t.Errorf("verify_trend rooted at the named tree lost the recorded check; got=%s", withParam)
+	}
+	if !strings.Contains(withParam, `"source":"param"`) {
+		t.Errorf("verify_trend response lacks param provenance; got=%s", withParam)
+	}
+
+	without := callSpecToolJSON(t, handleVerifyTrend, map[string]any{"key": key})
+	if strings.Contains(without, cmd) {
+		t.Errorf("verify_trend without project_root saw a check that exists only in the probe tree; got=%s", without)
+	}
+}
+
+// The resolver reports which tier produced the root, so a response can say so:
+// an explicit parameter resolves as source "param" with NO warning; an empty
+// request resolves from a fallback tier and MUST carry the warning that makes
+// the fallback visible instead of silent (live gap L2).
+func TestResolveToolProjectRootWithSource_ParamAndFallback(t *testing.T) {
+	root := newProbeProject(t, "SPEC-PROBESRC-911")
+
+	withParam := newToolRequest(map[string]any{"project_root": root})
+	gotParam, paramSource, paramErr := resolveToolProjectRootWithSource(withParam)
+	if paramErr != nil {
+		t.Fatalf("param resolution errored: %v", paramErr)
+	}
+	if gotParam != root {
+		t.Fatalf("param root = %q, want %q", gotParam, root)
+	}
+	prov := rootProvenanceMap(gotParam, paramSource)
+	if prov["source"] != "param" {
+		t.Fatalf("param provenance = %+v", prov)
+	}
+	if _, has := prov["warning"]; has {
+		t.Fatalf("param resolution must not warn: %+v", prov)
+	}
+
+	fallbackRoot, fallbackSource, fallbackErr := resolveToolProjectRootWithSource(newToolRequest(map[string]any{}))
+	if fallbackErr != nil {
+		t.Fatalf("fallback resolution errored: %v", fallbackErr)
+	}
+	if fallbackSource == "param" {
+		t.Fatalf("empty request must not resolve as param: source=%q root=%q", fallbackSource, fallbackRoot)
+	}
+	provFallback := rootProvenanceMap(fallbackRoot, fallbackSource)
+	if w, ok := provFallback["warning"].(string); !ok || w == "" {
+		t.Fatalf("fallback must carry a non-empty warning: %+v", provFallback)
 	}
 }

@@ -1,0 +1,117 @@
+# Fold and omission judgments from the last codemaps refresh.
+# fold <unit>: folded into a parent's description; the unit stays unnamed.
+# omission <unit>: left out earlier; the documents owe it a description.
+fold internal/core/git
+fold internal/cli/doctor_hook_delivery.go
+fold internal/hook/quality/step_git_env.go
+fold internal/kanban/prlink_landedref.go
+fold internal/factory/prlink_landedref.go
+fold internal/web/fieldsets_codex_templ.go
+
+omission internal/chain
+omission internal/stateanchor
+omission internal/settings/yamlpatch
+omission internal/template/agentemit
+omission internal/template/commandemit
+omission internal/template/published_skills.go
+omission internal/template/skill_mirror_repair.go
+omission internal/cli/skills.go
+omission internal/cli/codex_skills_disable.go
+omission internal/cli/codex_skills_prune.go
+omission internal/cli/integration_settings_drift.go
+omission internal/cli/update_mirror_heal.go
+omission internal/factory/settings_drift.go
+omission internal/statusline/state_anchor.go
+omission internal/web/codexmirror.go
+
+# --- 2026-09-20 refresh (worktree t999, HEAD 56c64891a) ---
+# 위 항목들은 이 refresh 에서도 문서 본문과 대조해 그대로 성립함을 확인했으므로 남겨 둡니다.
+# 아래는 이번 refresh 가 새로 내린 판정입니다.
+
+fold internal/cli/init_executor_seam.go
+fold internal/cli/todo_triage.go
+fold internal/config/drift_cache_fill.go
+fold internal/hook/session_start_drift_fill.go
+fold internal/spec/drift_fill_lock.go
+fold internal/spec/lint_coverage_sibling_maps.go
+fold internal/spec/lint_req_heading.go
+fold internal/statusline/config_root.go
+
+omission internal/auditreceipt
+omission internal/harness/rosterguard
+omission internal/harness/cellguard
+
+# --- 2026-09-22 refresh (worktree t1069, HEAD 0314801c2) ---
+# 위 항목들은 이 refresh 에서도 문서 본문과 대조해 그대로 성립함을 확인했으므로 남겨 둡니다.
+# 아래는 이번 refresh 가 새로 내린 판정입니다.
+
+fold internal/cli/update/backup/settings_snapshot.go
+fold internal/spec/closer.go
+fold internal/spec/era.go
+fold internal/constitution/contradiction.go
+fold internal/session/session_pid.go
+fold internal/session/registry.go
+fold internal/merge/strategies.go
+fold internal/merge/types.go
+fold internal/binlag/binlag.go
+fold internal/hook/branch_guard.go
+fold internal/hook/cwd_changed_relocate.go
+fold internal/hook/memo/taxonomy/linkage.go
+fold internal/cli/session.go
+fold internal/cli/home_state_coverage.go
+fold internal/cli/hook_install.go
+fold internal/cli/hook_install_precommit.go
+fold internal/migration/migrations/m001_hardcoded_path.go
+fold internal/settings/yamlpatch/yamlpatch.go
+fold internal/settings/schema_sections.go
+fold internal/defs/dirs.go
+fold internal/homestate/admission.go
+fold internal/config/cache.go
+fold internal/config/envkeys.go
+fold internal/template/catalog.yaml
+
+omission internal/jev
+omission internal/jevcred
+omission internal/jevmeasure
+omission internal/homestate/noncanonical_tree_guard.go
+omission internal/hook/session_heartbeat.go
+omission internal/hook/instructions_loaded.go
+omission internal/web/jevkey.go
+omission internal/settings/jev.go
+omission internal/cli/update/backup/file_snapshot.go
+omission internal/cli/update/backup/mcp_snapshot.go
+omission internal/cli/wizard/questions.go
+
+# 이번 refresh 에서 fold 로 기록하지 않은 이유가 있는 파일들:
+# internal/spec/audit.go · internal/cli/init.go · internal/config/defaults.go ·
+# internal/config/types.go · internal/template/profile_matrix.go — 다섯 모두 이번 판 이전의
+# 본문에 이미 이름이 있는 파일이라 「이름 없이 접힌다」는 fold 판정이 성립하지 않고,
+# 이번 변경분은 그 기존 서술의 수치·문장을 갱신한 것입니다. 새 판정을 내리지 않습니다.
+
+# --- 2026-09-26 refresh (worktree t1274, base cf4b82755, card t1274) ---
+# 이번 판은 새 fold/omission 판정이 없다. internal/escalation 과 그 하위 escalationtest 는
+# modules.md 의 business/domain 표에 신규 행으로 서술됐고(이름이 문서에 있으므로 fold 성립 안 함),
+# 나머지 앵커(4a05fd3d6) 이후 변경 52개는 기존 행(cli·hook·config·auditreceipt·doctor* 클러스터)의
+# 수치·문장 갱신이다. 위 판정들은 이번 판에서 문서 본문과 대조해 그대로 성립함을 확인했다.
+
+# --- 2026-09-30 refresh (worktree t1374, base ca7191cba, card t1374) ---
+# 이번 판은 새 fold/omission 판정이 없다. 창 안 신규 파일 전부(sweep.go·sweep_cwd_*·
+# todo_claim/show/classify/ghost_notice·doctor_owner_label/todo_ghost·classification.go·
+# todo_owner_label.go·factory_run_resume.go)는 modules.md·entry-points.md 의 기존 행
+# (cli·todo*·doctor*·kanban·config·homestate)에 이름과 함께 서술됐다 — 이름이 문서에
+# 있으므로 fold 성립 안 한다. 위 기존 판정들은 이번 판에서 문서 본문과 대조해 그대로
+# 성립함을 확인했다.
+
+# --- 2026-10-05 refresh (worktree develop, base d0378d37c, card t1524) ---
+# 이번 판도 새 fold/omission 판정이 없다. 창 안 신규 23파일 전부(internal/hygiene 12 ·
+# internal/session ccversion 4 · internal/cli 3 · internal/harness retention_open 쌍 ·
+# internal/hook session_start_hygiene · internal/runtime audit_ceiling)는 modules.md 의
+# 패키지·클러스터 행과 entry-points.md·data-flow.md 의 표면·흐름 절에 이름과 함께
+# 서술됐다 — 이름이 문서에 있으므로 fold 성립 안 한다.
+# 판정 — 플랫폼 쌍은 부모 설명에 접지 않고 개별 이름으로 적는 기존 선례를 따랐다:
+# probe_pid_unix.go·probe_pid_windows.go, rotate_lock_unix.go·rotate_lock_windows.go,
+# ccversion_darwin.go·ccversion_linux.go·ccversion_other.go,
+# retention_open_unix.go·retention_open_windows.go — 전부 named row(codex_local_file_* ·
+# process_fingerprint_* · sweep_cwd_* 선례). fold 로 적으면 검사기의 창에서
+# 이름 없는 변경으로 남는 것이 이유다.
+# 위 기존 fold/omission 판정들은 이번 판에서 문서 본문과 대조해 그대로 성립함을 확인했다.

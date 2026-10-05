@@ -114,7 +114,7 @@ func TestBlockTypeEnum_IncludesHarnessGenerated(t *testing.T) {
 	startAttrs := ` id="SPEC-PROJ-INIT-001" generated="2026-07-12T00:00:00Z"`
 
 	err := WriteManagedBlock(path, BlockTypeHarnessGenerated, BlockContent{
-		RawBody:   body,
+		RawBody:    body,
 		StartAttrs: startAttrs,
 	})
 	if err != nil {

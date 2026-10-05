@@ -1,0 +1,24 @@
+rerun kanban '## Scope — when this rule is live' = 1309 (b=0, L2)
+rerun per-file bind-0 section pool (L1 excluded):
+    7240  .claude/rules/moai/core/agent-common-protocol.md
+    8777  .claude/rules/moai/core/askuser-protocol.md
+    4628  .claude/rules/moai/core/moai-constitution.md
+    4529  .claude/rules/moai/core/moai-mcp-tools.md
+    2436  .claude/rules/moai/core/native-idiom-and-register.md
+    1270  .claude/rules/moai/workflow/cache-aware-execution.md
+    7200  .claude/rules/moai/workflow/context-window-management.md
+    7857  .claude/rules/moai/workflow/cross-session-messaging.md
+    6291  .claude/rules/moai/workflow/goal-directive.md
+    7724  .claude/rules/moai/workflow/kanban-dispatch.md
+    3945  .claude/rules/moai/workflow/main-checkout-branch-guard.md
+    6925  .claude/rules/moai/workflow/session-handoff.md
+    1471  .claude/rules/moai/workflow/skill-routing.md
+    8489  AGENTS.md
+   14859  CLAUDE.md
+rerun P절 = 93641
+design.md §4.0 pool column: rows=16 sum=92332
+design.md §4.0 kanban cell = 6415
+design.md §4.3 J = 12026 over 13 rows with a char count; includes kanban Scope row: yes
+M1 cap = 93641 - 12026 - 8489 = 73126
+M2 base = 77206 + 12026 + 8489 = 97721 ; M2 cap = round(97721 x 3092/28717) = 10522
+F(172ef22eb) = 246943 - 73126 - 10522 + 8400 = 171695

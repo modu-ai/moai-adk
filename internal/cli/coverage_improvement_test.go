@@ -304,6 +304,7 @@ func TestBuildAutoUpdateFunc_NilDeps(t *testing.T) {
 }
 
 func TestBuildAutoUpdateFunc_NoUpdateAvailable(t *testing.T) {
+	t.Setenv(config.EnvSkipBinaryUpdate, "")
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
@@ -330,6 +331,7 @@ func TestBuildAutoUpdateFunc_NoUpdateAvailable(t *testing.T) {
 }
 
 func TestBuildAutoUpdateFunc_UpdateAvailableButNoOrchestrator(t *testing.T) {
+	t.Setenv(config.EnvSkipBinaryUpdate, "")
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
@@ -357,6 +359,7 @@ func TestBuildAutoUpdateFunc_UpdateAvailableButNoOrchestrator(t *testing.T) {
 }
 
 func TestBuildAutoUpdateFunc_UpdateCheckError(t *testing.T) {
+	t.Setenv(config.EnvSkipBinaryUpdate, "")
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
@@ -389,6 +392,7 @@ func TestBuildAutoUpdateFunc_UpdateCheckError(t *testing.T) {
 }
 
 func TestBuildAutoUpdateFunc_SuccessfulUpdate(t *testing.T) {
+	t.Setenv(config.EnvSkipBinaryUpdate, "")
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
@@ -697,6 +701,7 @@ func TestExportDiagnostics_Success(t *testing.T) {
 // =============================================================================
 
 func TestRunDoctor_WithExport(t *testing.T) {
+	t.Chdir(t.TempDir())
 	tmpDir := t.TempDir()
 	exportPath := filepath.Join(tmpDir, "export.json")
 
@@ -722,6 +727,7 @@ func TestRunDoctor_WithExport(t *testing.T) {
 }
 
 func TestRunDoctor_WithFix(t *testing.T) {
+	t.Chdir(t.TempDir())
 	cmd := &cobra.Command{Use: "doctor-test"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -762,6 +768,7 @@ func TestRunDoctor_WithCheckFilter(t *testing.T) {
 }
 
 func TestRunDoctor_Verbose(t *testing.T) {
+	t.Chdir(t.TempDir())
 	cmd := &cobra.Command{Use: "doctor-test"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -1191,11 +1198,10 @@ func TestEscapeDotenvValue(t *testing.T) {
 // loadSegmentConfig tests removed (SPEC-WEB-CONSOLE-008 M5): the dead
 // loadSegmentConfig production function had zero callers and was deleted (SLR-7).
 
-// =============================================================================
-// injectGLMEnv — glm.go:602 (previously 86.4%)
-// =============================================================================
-
-// TestInjectGLMEnv_NoAPIKey removed - exists in glm_new_test.go
+// injectGLMEnv tests removed (card t802): the dead production function had zero
+// non-test callers and was deleted in the same commit that moved its only live
+// behaviour — deleting the stale CLAUDE_CODE_MAX_CONTEXT_TOKENS value — into the
+// settings-axis cleanup paths.
 
 // =============================================================================
 // runCG — cg.go
@@ -1553,6 +1559,9 @@ func TestFindProjectRoot_FromNestedDir(t *testing.T) {
 
 // getGLMEnvPath — test with valid HOME
 func TestGetGLMEnvPath_Valid(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 
@@ -1777,9 +1786,9 @@ func TestLoadGLMConfig_WithConfig(t *testing.T) {
   glm:
     base_url: "https://custom.api.com"
     models:
-      high: "custom-high"
-      medium: "custom-med"
-      low: "custom-low"
+      high: "glm-5.3"
+      medium: "glm-5.3-flash"
+      low: "glm-5.3-flash"
 `
 	if err := os.WriteFile(filepath.Join(sectionsDir, "llm.yaml"), []byte(llmYAML), 0o644); err != nil {
 		t.Fatal(err)
@@ -1804,8 +1813,8 @@ func TestLoadGLMConfig_WithConfig(t *testing.T) {
 	if cfg.BaseURL != "https://custom.api.com" {
 		t.Errorf("BaseURL = %q, want %q", cfg.BaseURL, "https://custom.api.com")
 	}
-	if cfg.Models.High != "custom-high" {
-		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "custom-high")
+	if cfg.Models.High != "glm-5.3" {
+		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "glm-5.3")
 	}
 	if cfg.EnvVar != "CUSTOM_KEY" {
 		t.Errorf("EnvVar = %q, want %q", cfg.EnvVar, "CUSTOM_KEY")
@@ -1894,7 +1903,7 @@ func TestRunCG_NoProjectRoot(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when no project root")
 	}
-	if !strings.Contains(err.Error(), "find project root") {
+	if !strings.Contains(err.Error(), "is retired") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -1934,7 +1943,7 @@ func TestRunCG_NoAPIKey(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when no API key")
 	}
-	if !strings.Contains(err.Error(), "GLM API key not found") {
+	if !strings.Contains(err.Error(), "is retired") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -2072,6 +2081,9 @@ func TestSaveLLMSection_Success(t *testing.T) {
 
 // saveGLMKey — test saving key to file
 func TestSaveGLMKey_WritesFile(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -2872,6 +2884,9 @@ func TestSaveTemplateDefaults_VerifyContent(t *testing.T) {
 
 // runGLM — test with "setup" subcommand for API key saving
 func TestRunGLM_SavesKey(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -3715,6 +3730,9 @@ func TestSaveLLMSection_WritesConfig(t *testing.T) {
 // --- getGLMEnvPath: with HOME ---
 
 func TestGetGLMEnvPath_WithHOME(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	t.Setenv("HOME", "/test/home")
 	path := getGLMEnvPath()
 	if !strings.Contains(path, ".moai") || !strings.Contains(path, ".env.glm") {
@@ -4110,6 +4128,9 @@ func TestEnsureGlobalSettingsEnv_NoFile(t *testing.T) {
 // --- saveGLMKey: permissions check ---
 
 func TestSaveGLMKey_Permissions(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("USERPROFILE", tmpDir)
@@ -4146,54 +4167,6 @@ func TestPersistTeamMode_LoadError(t *testing.T) {
 	}
 }
 
-// --- injectGLMEnv: covers more branches ---
-
-func TestInjectGLMEnv_NewFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	// Override HOME so loadGLMKey won't find a real key file
-	t.Setenv("HOME", tmpDir)
-	claudeDir := filepath.Join(tmpDir, ".claude")
-	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	settingsPath := filepath.Join(claudeDir, "settings.local.json")
-	// Don't create the file - let injectGLMEnv create it
-
-	t.Setenv("MOAI_TEST_MODE", "1")
-	// Set the env var so getGLMAPIKey can find the API key
-	t.Setenv("TEST_GLM_API_KEY", "test-api-key-12345")
-
-	glmConfig := &GLMConfigFromYAML{
-		BaseURL: "https://api.test.com",
-		EnvVar:  "TEST_GLM_API_KEY",
-	}
-	glmConfig.Models.High = "high-model"
-	glmConfig.Models.Medium = "med-model"
-	glmConfig.Models.Low = "low-model"
-
-	err := injectGLMEnv(settingsPath, glmConfig)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Verify file was created with expected env vars
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		t.Fatalf("settings.local.json not created: %v", err)
-	}
-	content := string(data)
-	if !strings.Contains(content, "test-api-key-12345") {
-		t.Error("expected settings to contain API key")
-	}
-	if !strings.Contains(content, "ANTHROPIC_BASE_URL") {
-		t.Error("expected settings to contain ANTHROPIC_BASE_URL")
-	}
-	if !strings.Contains(content, "high-model") {
-		t.Error("expected settings to contain high model name")
-	}
-}
-
 // --- runCC with team mode and worktree messages ---
 
 func TestRunCC_WithTeamModeMessage(t *testing.T) {
@@ -4209,7 +4182,9 @@ func TestRunCC_WithTeamModeMessage(t *testing.T) {
 	}
 
 	// Create LLM config with team_mode
-	llmYAML := "llm:\n  team_mode: cg\n"
+	// CG is retired and is rejected before launch. This characterization covers
+	// the still-supported GLM team-mode cleanup performed by `moai cc`.
+	llmYAML := "llm:\n  team_mode: glm\n"
 	if err := os.WriteFile(filepath.Join(moaiDir, "llm.yaml"), []byte(llmYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -4884,6 +4859,9 @@ func TestCleanMoaiManagedPaths_NonExistentPaths(t *testing.T) {
 // --- saveGLMKey: more path coverage ---
 
 func TestSaveGLMKey_CreatesDirectory(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("USERPROFILE", tmpDir)
@@ -4907,6 +4885,7 @@ func TestSaveGLMKey_CreatesDirectory(t *testing.T) {
 // --- runDoctor: verbose + fix + export combined ---
 
 func TestRunDoctor_AllFlags(t *testing.T) {
+	t.Chdir(t.TempDir())
 	tmpDir := t.TempDir()
 	exportPath := filepath.Join(tmpDir, "diagnostics.json")
 
@@ -5057,26 +5036,6 @@ func TestShouldSkipBinaryUpdate_DevBuild_Phase5_V2(t *testing.T) {
 
 	if !shouldSkipBinaryUpdate(cmd) {
 		t.Error("expected shouldSkipBinaryUpdate to return true for dev build")
-	}
-}
-
-// --- injectGLMEnv: error when no API key ---
-
-func TestInjectGLMEnv_NoAPIKey_Phase5(t *testing.T) {
-	tmpDir := t.TempDir()
-	t.Setenv("HOME", tmpDir)
-
-	glmConfig := &GLMConfigFromYAML{
-		BaseURL: "https://api.test.com",
-		EnvVar:  "NONEXISTENT_ENV_VAR",
-	}
-
-	err := injectGLMEnv(filepath.Join(tmpDir, "settings.json"), glmConfig)
-	if err == nil {
-		t.Fatal("expected error when no API key available")
-	}
-	if !strings.Contains(err.Error(), "API key not found") {
-		t.Errorf("expected 'API key not found' error, got: %v", err)
 	}
 }
 
@@ -5283,56 +5242,6 @@ func TestRunPrePush_EnforceDisabled(t *testing.T) {
 	if err != nil {
 		// May fail because of stdin reading from /dev/stdin - that's ok
 		t.Logf("runPrePush error (may be expected): %v", err)
-	}
-}
-
-// --- injectGLMEnv: with existing file ---
-
-func TestInjectGLMEnv_MergesWithExisting(t *testing.T) {
-	tmpDir := t.TempDir()
-	t.Setenv("HOME", tmpDir)
-	t.Setenv("TEST_MERGE_GLM_KEY", "merge-api-key")
-
-	claudeDir := filepath.Join(tmpDir, ".claude")
-	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	settingsPath := filepath.Join(claudeDir, "settings.local.json")
-
-	// Write existing settings
-	existing := `{"env": {"CUSTOM_KEY": "custom_value"}}`
-	if err := os.WriteFile(settingsPath, []byte(existing), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	glmConfig := &GLMConfigFromYAML{
-		BaseURL: "https://api.merge.com",
-		EnvVar:  "TEST_MERGE_GLM_KEY",
-	}
-	glmConfig.Models.High = "merge-high"
-	glmConfig.Models.Medium = "merge-med"
-	glmConfig.Models.Low = "merge-low"
-
-	err := injectGLMEnv(settingsPath, glmConfig)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	content := string(data)
-
-	if !strings.Contains(content, "custom_value") {
-		t.Error("expected existing env to be preserved")
-	}
-	if !strings.Contains(content, "merge-api-key") {
-		t.Error("expected API key to be injected")
-	}
-	if !strings.Contains(content, "merge-high") {
-		t.Error("expected high model to be injected")
 	}
 }
 
@@ -5736,6 +5645,7 @@ func TestRestoreMoaiConfigLegacy_MergeWithExistingTarget(t *testing.T) {
 // --- runDoctor with verbose, fix, and export ---
 
 func TestRunDoctor_VerboseAndDetail(t *testing.T) {
+	t.Chdir(t.TempDir())
 	cmd := &cobra.Command{Use: "doctor"}
 	cmd.Flags().Bool("verbose", false, "")
 	cmd.Flags().Bool("fix", false, "")
@@ -5783,6 +5693,7 @@ func TestRunDoctor_FixMode(t *testing.T) {
 }
 
 func TestRunDoctor_ExportMode(t *testing.T) {
+	t.Chdir(t.TempDir())
 	tmpDir := t.TempDir()
 	exportPath := filepath.Join(tmpDir, "diagnostics.json")
 
@@ -6219,6 +6130,9 @@ func TestPersistTeamMode_Phase6(t *testing.T) {
 // --- saveGLMKey ---
 
 func TestSaveGLMKey_Phase6(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("USERPROFILE", tmpDir)
@@ -6241,6 +6155,9 @@ func TestSaveGLMKey_Phase6(t *testing.T) {
 // --- loadGLMKey ---
 
 func TestLoadGLMKey_Phase6(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
@@ -6260,6 +6177,9 @@ func TestLoadGLMKey_Phase6(t *testing.T) {
 }
 
 func TestLoadGLMKey_NoFile(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
@@ -6282,6 +6202,9 @@ func TestDetectGoBinPathForUpdate_Phase6(t *testing.T) {
 // --- getGLMAPIKey ---
 
 func TestGetGLMAPIKey_FromEnv(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("TEST_GLM_KEY_PHASE6", "env-api-key")
@@ -6293,6 +6216,9 @@ func TestGetGLMAPIKey_FromEnv(t *testing.T) {
 }
 
 func TestGetGLMAPIKey_FromFile(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 

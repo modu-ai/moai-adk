@@ -1,7 +1,6 @@
 ---
 spec_id: SPEC-V3R2-MIG-002
 phase: acceptance
-status: draft
 ---
 
 # Acceptance Criteria — SPEC-V3R2-MIG-002

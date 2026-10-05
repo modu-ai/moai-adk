@@ -38,6 +38,12 @@ func plantSnapshot(t *testing.T, projectRoot, sectionName string, sectionBytes [
 	if err := os.WriteFile(filepath.Join(snapDir, sectionName), sectionBytes, defs.FilePerm); err != nil {
 		t.Fatalf("write snapshot %s: %v", sectionName, err)
 	}
+	// Card t1216: WriteSnapshot attests the tree it writes, and SaveTemplateBase
+	// uses only an attested snapshot. Attest the planted one the same way so it
+	// still stands for a deploy-time snapshot.
+	if err := AttestSnapshot(projectRoot); err != nil {
+		t.Fatalf("attest planted snapshot: %v", err)
+	}
 }
 
 // assertTopLevelScalar extracts a top-level scalar value for a key from a YAML

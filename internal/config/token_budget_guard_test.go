@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -157,7 +158,13 @@ func TestAlwaysLoadedTokenBudget_OverBudgetFails(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte(strings.Repeat("a", tt.agentsSize)), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(mirrorDir, "AGENTS.md"), []byte(strings.Repeat("m", tt.mirrorSize)), 0o644); err != nil {
+			// The mirror ships as `AGENTS.md.tmpl` — the `.tmpl` suffix keeps it
+			// out of Codex's filename-keyed discovery in THIS repo while the
+			// deployer strips the suffix so a user project still receives
+			// `AGENTS.md` (card t925). The ceiling binds the deployed bytes, so
+			// the fixture must use the shipped name or this dimension silently
+			// measures nothing.
+			if err := os.WriteFile(filepath.Join(mirrorDir, "AGENTS.md.tmpl"), []byte(strings.Repeat("m", tt.mirrorSize)), 0o644); err != nil {
 				t.Fatal(err)
 			}
 			breaches, err := MeasureContractBytes(root)
@@ -200,6 +207,90 @@ func TestAlwaysLoadedTokenBudget_OverBudgetFails(t *testing.T) {
 	}
 }
 
+// TestCodexNestedTemplateDiscoveryBudget bounds every `AGENTS.md` Codex can
+// discover in this tree against `CodexContractByteCeiling` — the SAME ceiling
+// the per-file guard applies, not the raw 32,768 B budget.
+// Codex merges the root contract with any nested one it finds below the
+// invocation directory, consumed root-first, and drops the overflow from the
+// TAIL — silently, exit 0, stderr empty. The per-file ceiling cannot see this:
+// two files can each sit under 24,576 B and still truncate when merged.
+//
+// Why the chain sum takes the ceiling rather than the budget: the 8,192 B the
+// ceiling holds back is not root-specific headroom. It absorbs the personal
+// `~/.codex/AGENTS.md` layer, which joins the same merged chain and is consumed
+// BEFORE anything in this repository (`spec.md` §D.1 table, §D.3). Spending the
+// whole 32,768 B on project-side files leaves that layer zero and truncates the
+// contract's tail on exactly the users who invested in a personal one.
+// `REQ-AMC-006` states the rule directly: a nested `AGENTS.md` requires "the
+// root's 24,576 B ceiling lowered by at least the nested document's size, since
+// the budget is shared" — which is this assertion. `design.md` §5 names this
+// guard `codex chain guard` at 24,576 and says the threshold is "not a literal
+// at the call site"; an earlier revision carried one anyway, and that literal is
+// how the two thresholds diverged (card t927).
+//
+// The paths are DISCOVERED, not declared. An earlier revision named the
+// template mirror literally, which made the guard die the moment card t925
+// renamed that file to `AGENTS.md.tmpl` to take it out of Codex's discovery —
+// and a guard repaired by pointing it at a path that no longer exists passes
+// vacuously forever. Walking for the filename Codex itself keys on means a
+// nested contract re-added anywhere is counted without anyone remembering to
+// update this list.
+//
+// Excluded: `.git`, and `.claude/worktrees` — each worktree is a full checkout
+// of this same repository, so counting them would multiply the root contract by
+// the number of live worktrees and measure the developer's checkout layout
+// rather than the shipped tree.
+func TestCodexNestedTemplateDiscoveryBudget(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, ok := findRepoRoot(cwd)
+	if !ok {
+		t.Fatal("repository root not found")
+	}
+
+	var found []string
+	total := 0
+	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if d.Name() == ".git" || path == filepath.Join(root, ".claude", "worktrees") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.Name() != "AGENTS.md" {
+			return nil
+		}
+		info, statErr := d.Info()
+		if statErr != nil {
+			return statErr
+		}
+		found = append(found, path)
+		total += int(info.Size())
+		return nil
+	})
+	if walkErr != nil {
+		t.Fatalf("walk %s: %v", root, walkErr)
+	}
+
+	// Non-vacuity: the root contract MUST be among the discovered files. Without
+	// this the walk finding nothing would pass the budget assertion trivially,
+	// and a guard that cannot fail is not a guard.
+	rootAgents := filepath.Join(root, "AGENTS.md")
+	if !slices.Contains(found, rootAgents) {
+		t.Fatalf("root contract %s was not discovered by the walk (found %v) — the guard would pass vacuously", rootAgents, found)
+	}
+
+	if total > CodexContractByteCeiling {
+		t.Fatalf("discoverable Codex instruction chain = %d bytes across %v, exceeds %d by %d",
+			total, found, CodexContractByteCeiling, total-CodexContractByteCeiling)
+	}
+}
+
 // TestAlwaysLoadedSurfaceEnumeration asserts the enumerated surface equals
 // (count of no-`paths:` rule files) + 3 fixed slots, and that a known
 // paths:-scoped rule is excluded — the load-bearing enumeration-correctness proof
@@ -217,9 +308,9 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 	}
 
 	wantRuleCount := countNoPathsRuleFiles(t, root)
-	wantTotal := wantRuleCount + 4 // + CLAUDE.md + AGENTS.md + moai.md + MEMORY.md fixed slots
+	wantTotal := wantRuleCount + 3 // + CLAUDE.md + AGENTS.md + moai.md fixed slots
 	if len(surface) != wantTotal {
-		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 4 fixed surfaces)", len(surface), wantTotal, wantRuleCount)
+		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 3 fixed surfaces)", len(surface), wantTotal, wantRuleCount)
 	}
 
 	// AC-TEF-004: a known paths:-scoped rule (languages/go.md carries a paths:
@@ -282,16 +373,14 @@ func TestHasPathsRestriction(t *testing.T) {
 	}
 }
 
-// TestMeasureAlwaysLoaded_WithMemory verifies measureAlwaysLoaded sums the
-// no-paths: rule + fixed surfaces, applies the MEMORY.md head cap, and treats a
-// paths:-scoped rule as excluded — on a synthetic hermetic repo.
-func TestMeasureAlwaysLoaded_WithMemory(t *testing.T) {
+// TestMeasureAlwaysLoaded verifies measureAlwaysLoaded sums the no-paths: rule +
+// fixed surfaces and treats a paths:-scoped rule as excluded — on a synthetic
+// hermetic repo.
+func TestMeasureAlwaysLoaded(t *testing.T) {
 	root := t.TempDir()
 	// Fixed surfaces.
 	writeFile(t, filepath.Join(root, "CLAUDE.md"), strings.Repeat("a", 400))                                   // 100 tokens
 	writeFile(t, filepath.Join(root, ".claude", "output-styles", "moai", "moai.md"), strings.Repeat("b", 800)) // 200 tokens
-	// MEMORY.md with a body far exceeding the 25KB byte cap → head-capped.
-	writeFile(t, filepath.Join(root, "MEMORY.md"), strings.Repeat("m", 40*1024))
 	// One no-paths: rule (counted) + one paths:-scoped rule (excluded).
 	writeFile(t, filepath.Join(root, ".claude", "rules", "moai", "core", "keep.md"), "---\ntitle: x\n---\n"+strings.Repeat("c", 400)) // ~100+ tokens
 	writeFile(t, filepath.Join(root, ".claude", "rules", "moai", "languages", "scoped.md"), "---\npaths: \"**/*.go\"\n---\n"+strings.Repeat("d", 4000))
@@ -300,20 +389,18 @@ func TestMeasureAlwaysLoaded_WithMemory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("measureAlwaysLoaded: %v", err)
 	}
-	// Enumeration: 1 no-paths: rule + 4 fixed slots = 5. AGENTS.md is absent from this
+	// Enumeration: 1 no-paths: rule + 3 fixed slots = 4. AGENTS.md is absent from this
 	// temp tree and contributes 0 tokens (hermetic), but is still enumerated.
-	if len(surface) != 5 {
-		t.Errorf("surface len = %d, want 5 (1 no-paths: rule + 4 fixed)", len(surface))
+	if len(surface) != 4 {
+		t.Errorf("surface len = %d, want 4 (1 no-paths: rule + 3 fixed)", len(surface))
 	}
-	// MEMORY.md contributes head-capped tokens (25KB/4 = 6400), NOT the full 40KB.
-	memHeadTokens := memoryHeadByteCap / 4
-	// Lower bound: CLAUDE(100) + moai(200) + memHead(6400) = 6700, plus the rule.
-	if total < 100+200+memHeadTokens {
-		t.Errorf("total = %d, want ≥ %d (MEMORY.md head cap applied)", total, 100+200+memHeadTokens)
+	// Lower bound: CLAUDE(100) + moai(200), plus the rule.
+	if total < 100+200 {
+		t.Errorf("total = %d, want ≥ %d", total, 100+200)
 	}
-	// Upper bound guard: total must NOT include the full 40KB MEMORY.md (10240 tokens).
-	if total >= 100+200+(40*1024/4) {
-		t.Errorf("total = %d includes uncapped MEMORY.md; head cap not applied", total)
+	// Upper bound guard: the paths:-scoped rule (1000 tokens) must NOT be counted.
+	if total >= 100+200+1000 {
+		t.Errorf("total = %d includes the paths:-scoped rule; exclusion not applied", total)
 	}
 }
 
@@ -342,24 +429,48 @@ func TestEstimateTokens(t *testing.T) {
 	}
 }
 
-// TestMemoryHead verifies the MEMORY.md head cap (200 lines OR 25KB, whichever
-// first) matching the Claude Code auto-memory loader.
-func TestMemoryHead(t *testing.T) {
-	// 300 short lines → capped at 200 lines.
-	var b strings.Builder
-	for i := 0; i < 300; i++ {
-		b.WriteString("line\n")
+// TestFixedSlotsExistInRepoTree asserts that every FIXED surface slot names a path
+// that is PRESENT in this repository tree (REQ-MSR-006).
+//
+// Why this test exists. A fixed slot naming a path absent from this repository
+// measures nothing here, forever — it contributes 0 tokens on every run while
+// appearing in the enumeration as though it were being watched. That is what the
+// removed MEMORY.md slot did, and the reason it went unnoticed for so long is that
+// the hermetic temp-tree tests supplied their own fixture, so the vacuity was
+// invisible to the suite.
+//
+// Enumeration vs measurement. The guard's own doc comment says fixed slots are
+// enumerated even when absent, and that stays true — it is a statement about
+// MEASUREMENT, and a slot may legitimately be absent from a *user's* tree. This
+// test is about ENUMERATION, and it therefore asserts ONLY against the real
+// repository tree: run against a t.TempDir() fixture all three fixed slots would be
+// absent and the test would fail for a reason unrelated to the defect.
+func TestFixedSlotsExistInRepoTree(t *testing.T) {
+	root, ok := findRepoRoot(mustGetwd(t))
+	if !ok {
+		t.Skip("repo root (go.mod) not found; skipping fixed-slot existence check")
 	}
-	head := memoryHead([]byte(b.String()))
-	if got := strings.Count(string(head), "\n"); got != memoryHeadLineCap {
-		t.Errorf("memoryHead line count = %d, want %d (line cap)", got, memoryHeadLineCap)
+	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); err != nil {
+		t.Skip("CLAUDE.md not found at repo root; skipping (not the real repo tree)")
 	}
 
-	// A single 30KB line (no newline before cap) → capped at 25KB bytes.
-	big := strings.Repeat("y", 30*1024)
-	head = memoryHead([]byte(big))
-	if len(head) != memoryHeadByteCap {
-		t.Errorf("memoryHead byte length = %d, want %d (byte cap)", len(head), memoryHeadByteCap)
+	surface, err := alwaysLoadedSurface(root)
+	if err != nil {
+		t.Fatalf("alwaysLoadedSurface: %v", err)
+	}
+
+	// The fixed slots are the tail of the surface: everything not under
+	// .claude/rules/moai/ is a fixed slot.
+	rulesPrefix := filepath.Join(root, ".claude", "rules", "moai") + string(filepath.Separator)
+	for _, p := range surface {
+		if strings.HasPrefix(p, rulesPrefix) {
+			continue // rule files are discovered by walking the tree, so they exist by construction
+		}
+		if _, err := os.Stat(p); err != nil {
+			t.Errorf("fixed surface slot %q names a path absent from the repository tree: %v\n"+
+				"A slot that names an absent path measures nothing here and always will. "+
+				"Remove the slot, or point it at a path this repository actually contains.", p, err)
+		}
 	}
 }
 

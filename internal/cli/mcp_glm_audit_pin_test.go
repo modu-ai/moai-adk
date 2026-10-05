@@ -24,10 +24,11 @@ func auditGLMPinYAML(model, effort string) string {
 }
 
 // glmGLMSessionLLMYAML is an llm.yaml marking the session GLM-backed and
-// pinning the task-family agent (super-advisor) to a NON-pin model, so the
-// task-path isolation test can distinguish pin reads from SSOT reads.
+// carrying a leftover per-agent cell for the former task-family agent
+// (super-advisor) on a NON-pin model, so the task-path isolation test can tell a
+// pin read and a per-agent read apart from the backend default.
 func glmGLMSessionLLMYAML() string {
-	return "llm:\n  team_mode: glm\n  agent_overrides:\n    " + glmTaskAgentKey + ":\n      model: glm-4.6\n      effort: low\n"
+	return "llm:\n  team_mode: glm\n  agent_overrides:\n    super-advisor:\n      model: glm-4.6\n      effort: low\n"
 }
 
 // writeRawSectionYAML writes a raw body as a section file under root.
@@ -123,10 +124,13 @@ func TestGLMAuditPin_RequestBody(t *testing.T) {
 			wantEffort: "",
 		},
 		{
-			name:       "absent pin leaves body unchanged (legacy default model, no reasoning)",
+			// SPEC-AGENT-TIER-001: the absent-pin state runs the backend
+			// default pair {glm-5.3, max} — the operator pin effort rides the
+			// fallback (updated in the same commit as the default).
+			name:       "absent pin runs the backend default pair (glm-5.3, max)",
 			pinYAML:    "",
 			wantModel:  glmAuditDefaultModel,
-			wantEffort: "",
+			wantEffort: glmAuditDefaultEffort,
 		},
 	}
 
@@ -166,24 +170,27 @@ func TestGLMAuditPin_RequestBody(t *testing.T) {
 }
 
 // REQ-AMP-008 — glm_task resolution ignores a populated audit.glm pin: the
-// task family resolves through its llm SSOT cell (glm-4.6 on super-advisor),
-// not the pin (glm-5.3), under the SAME config.
+// task family resolves to the backend default, neither the pin (glm-5.3) nor
+// the leftover per-agent cell (glm-4.6, design D5), under the SAME config.
 func TestGLMAuditPin_TaskResolutionUnaffected(t *testing.T) {
 	root := t.TempDir()
 	writeCodexWorkflowYAML(t, root, auditGLMPinYAML("glm-5.3", template.GLMStateMax))
 	writeRawSectionYAML(t, root, "llm.yaml", glmGLMSessionLLMYAML())
 	withCodexProjectDir(t, root)
 
-	if got := resolveGLMTaskModel(); got != "glm-4.6" {
-		t.Errorf("resolveGLMTaskModel = %q, want the SSOT cell glm-4.6 (the audit pin must not leak into glm_task)", got)
+	if got := resolveGLMTaskModel(); got != glmTaskDefaultModel {
+		t.Errorf("resolveGLMTaskModel = %q, want the task default %q (neither the audit pin nor a per-agent cell reaches glm_task; the task default is unchanged by SPEC-AGENT-TIER-001)", got, glmTaskDefaultModel)
 	}
 
 	// The pin DOES apply on the audit resolver under the same config. CR #8:
 	// the caller names the reviewed tree explicitly; the same root resolves
 	// the pin the audit reads.
-	me := resolveGLMAuditModelEffort(root)
+	me, meErr := resolveGLMAuditModelEffort(root)
+	if meErr != nil {
+		t.Fatalf("resolveGLMAuditModelEffort(root): %v", meErr)
+	}
 	if me.Model != "glm-5.3" || me.Effort != template.GLMStateMax {
-		t.Errorf("resolveGLMAuditModelEffort(root) = %+v, want {glm-5.3 max} (the pin outranks the SSOT cell on the audit path)", me)
+		t.Errorf("resolveGLMAuditModelEffort(root) = %+v, want {glm-5.3 max} (the pin outranks the backend default on the audit path)", me)
 	}
 }
 
@@ -196,7 +203,10 @@ func TestGLMAuditPin_BypassesSessionBackendCheck(t *testing.T) {
 	writeCodexWorkflowYAML(t, root, auditGLMPinYAML("glm-4.6", template.GLMStateLow))
 	withCodexProjectDir(t, root)
 
-	me := resolveGLMAuditModelEffort(root)
+	me, meErr := resolveGLMAuditModelEffort(root)
+	if meErr != nil {
+		t.Fatalf("resolveGLMAuditModelEffort(root): %v", meErr)
+	}
 	if me.Model != "glm-4.6" || me.Effort != template.GLMStateLow {
 		t.Errorf("resolveGLMAuditModelEffort(root) = %+v, want {glm-4.6 low} (a pin resolves without a GLM session marker)", me)
 	}

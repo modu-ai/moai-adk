@@ -1,20 +1,73 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/spec"
 	"github.com/spf13/cobra"
 )
+
+// driftFillComputeFn is the fill child's actual work, as a seam so the
+// deadline enforcement can be observed against a computation that ignores
+// cancellation — which is what the real one does.
+//
+// It takes the cross-process fill lock first: whatever reaches the compute, at
+// most one process performs it. A loser computes nothing and returns, which is
+// a normal outcome and not an error.
+var driftFillComputeFn = func(projectRoot string) {
+	_, _ = spec.WithDriftFillLock(projectRoot, func() {
+		// Fresh by construction: this process exists BECAUSE the cache missed,
+		// so a cache read would only re-observe the miss. DetectDriftFresh
+		// persists the result keyed on the HEAD it computed against.
+		_, _ = spec.DetectDriftFresh(projectRoot)
+	})
+}
+
+// runDriftCacheFill is the out-of-band fill child's entry point: recompute
+// drift for the current HEAD, persist it to the HEAD-SHA-keyed cache, and exit
+// at the carried deadline whether or not the computation finished.
+//
+// The deadline is enforced HERE rather than cooperatively, because the drift
+// computation is a synchronous git + in-memory pass with no context awareness.
+// Returning at the deadline ends the process, which is the bound: the child
+// bounds ITSELF, with no external supervisor and no trailing kill.
+//
+// The channel is buffered so an abandoned worker never blocks on send.
+// Everything is best-effort: the fill has no user, so it has nothing to report.
+func runDriftCacheFill(projectRoot string, timeout time.Duration) error {
+	if timeout <= 0 {
+		timeout = config.DefaultDriftCacheFillTimeout
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	done := make(chan struct{}, 1)
+	work := driftFillComputeFn
+	go func() {
+		work(projectRoot)
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-done:
+	case <-ctx.Done():
+	}
+	return nil
+}
 
 func newSpecDriftCmd() *cobra.Command {
 	var jsonOutput bool
 	var exitCodeOnDrift bool
 	var countOnly bool
 	var noCache bool
+	var fillCache bool
+	var fillTimeout time.Duration
 
 	cmd := &cobra.Command{
 		Use:   "drift",
@@ -37,6 +90,10 @@ Examples:
 			projectRoot, err := findProjectRootFn()
 			if err != nil {
 				return fmt.Errorf("failed to find project root: %w", err)
+			}
+
+			if fillCache {
+				return runDriftCacheFill(projectRoot, fillTimeout)
 			}
 
 			if countOnly {
@@ -88,6 +145,18 @@ Examples:
 	cmd.Flags().BoolVar(&exitCodeOnDrift, "exit-code-on-drift", false, "Exit with code 1 if drift detected")
 	cmd.Flags().BoolVar(&countOnly, "count", false, "Only print the drift count")
 	cmd.Flags().BoolVar(&noCache, "no-cache", false, "Bypass the HEAD-SHA result cache and recompute freshly")
+
+	// The fill pair is a machine-to-machine channel between the SessionStart
+	// handler and the detached child it starts, not a user-facing verb — hence
+	// hidden. The plain verb already fills the cache; what the flag adds, and
+	// the only reason it exists, is the two properties that must live INSIDE
+	// the child because an external supervisor is not cleanup: the self-imposed
+	// deadline, and the cross-process fill lock.
+	cmd.Flags().BoolVar(&fillCache, "fill-cache", false, "Out-of-band cache fill (internal)")
+	cmd.Flags().DurationVar(&fillTimeout, "fill-timeout", config.DefaultDriftCacheFillTimeout,
+		"Deadline the out-of-band fill exits at (internal)")
+	_ = cmd.Flags().MarkHidden("fill-cache")
+	_ = cmd.Flags().MarkHidden("fill-timeout")
 
 	return cmd
 }

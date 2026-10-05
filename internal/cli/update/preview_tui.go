@@ -2,6 +2,7 @@ package update
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"charm.land/bubbles/v2/table"
@@ -75,6 +76,17 @@ const (
 	previewDiffView
 )
 
+// Vertical space the two sub-views spend on chrome other than the scrolled
+// content. previewTableInset accounts for the class-count card, the blank
+// separator lines, and the key-hint bar above/below the table (the same
+// accounting the constructor's WithHeight applies); previewViewportInset
+// accounts for the diff view's hint line. One source of truth for both the
+// constructor and the WindowSizeMsg resize (t694).
+const (
+	previewTableInset    = 8
+	previewViewportInset = 4
+)
+
 // previewResolveTheme is the preview's theme-resolution entry point. It defaults
 // to tui.ResolveOS so the preview INHERITS the canonical precedence chain
 // (NO_COLOR > MOAI_THEME light/dark > DetectDark > dark-default; internal/tui
@@ -82,7 +94,7 @@ const (
 // (REQ-TUIM-015).
 //
 // It is a package-level var so tests can force a specific axis without mutating
-// the process environment, mirroring cli.huhThemeIsDark and wizard.wizardIsDark.
+// the process environment, mirroring wizard.wizardIsDark.
 // Forcing it BYPASSES the precedence chain, so a test that verifies the chain
 // itself must leave this var at its default and drive the environment instead.
 var previewResolveTheme = tui.ResolveOS
@@ -114,6 +126,16 @@ func newPreviewModel(in []FilePreviewInput, isUserOwned UserOwnedPredicate, opts
 
 	classes := classifyAll(in, isUserOwned)
 	counts := countByClass(classes)
+
+	// Display order puts conflicts FIRST (t694): the class the user most
+	// needs to see before confirming must not sit below the fold of a
+	// height-capped table — the observed "conflict 2 not shown" came from
+	// conflict rows sorting last behind 60 add/update rows. The summary card
+	// above the table is unaffected: it iterates classOrder counts, not row
+	// order. Stable sort keeps file order within a class.
+	sort.SliceStable(classes, func(i, j int) bool {
+		return displayRank(classes[i].Class) < displayRank(classes[j].Class)
+	})
 
 	// Build a card summarizing per-class counts. This surfaces every class
 	// label (including `preserved (user-owned)`) above the table — AC-TUX3-008
@@ -155,13 +177,13 @@ func newPreviewModel(in []FilePreviewInput, isUserOwned UserOwnedPredicate, opts
 		table.WithRows(rows),
 		table.WithStyles(previewTableStyles(th)),
 		table.WithFocused(true),
-		table.WithHeight(height-8),
+		table.WithHeight(height-previewTableInset),
 		table.WithWidth(width),
 	)
 
 	vp := viewport.New(
 		viewport.WithWidth(width),
-		viewport.WithHeight(height-4),
+		viewport.WithHeight(height-previewViewportInset),
 	)
 
 	return &previewModel{
@@ -196,6 +218,21 @@ func paint(token, s string) string {
 		return s
 	}
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(token)).Render(s)
+}
+
+// displayRank orders the table rows by decision urgency (t694): conflicts
+// first, then adds, updates, and preserved user-owned files last.
+func displayRank(c ChangeClass) int {
+	switch c {
+	case ClassConflict:
+		return 0
+	case ClassAdd:
+		return 1
+	case ClassUpdate:
+		return 2
+	default:
+		return 3
+	}
 }
 
 // classRoleToken maps each ChangeClass to its semantic colour role in the
@@ -434,6 +471,19 @@ func (m *previewModel) quit(confirmed bool) (tea.Model, tea.Cmd) {
 // viewport's own Update.
 func (m *previewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		// t694: the constructor's 80×24 is a PRE-RUN fallback (opts.Width /
+		// Height may be unset at the call site); the runtime terminal size
+		// arrives here. Without this case the table stayed capped at
+		// 24-8=16 lines (~14 file rows) on every terminal — the observed
+		// "classification table breaks off at 14 rows".
+		m.width = msg.Width
+		m.height = msg.Height
+		m.table.SetWidth(msg.Width)
+		m.table.SetHeight(max(msg.Height-previewTableInset, 1))
+		m.viewport.SetWidth(msg.Width)
+		m.viewport.SetHeight(max(msg.Height-previewViewportInset, 1))
+		return m, nil
 	case tea.KeyPressMsg:
 		switch msg.Keystroke() {
 		case "ctrl+c", "q":

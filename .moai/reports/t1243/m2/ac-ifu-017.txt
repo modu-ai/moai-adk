@@ -1,0 +1,10 @@
+=== RUN   TestSurfaceForTier_Tier3
+=== PAUSE TestSurfaceForTier_Tier3
+=== RUN   TestPrepareTierDispatch_Tier3
+=== PAUSE TestPrepareTierDispatch_Tier3
+=== CONT  TestSurfaceForTier_Tier3
+--- PASS: TestSurfaceForTier_Tier3 (0.00s)
+=== CONT  TestPrepareTierDispatch_Tier3
+--- PASS: TestPrepareTierDispatch_Tier3 (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/harness/curator	0.284s

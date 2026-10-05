@@ -100,15 +100,15 @@ MoAI は Claude Code の戦略的オーケストレーターです。
 
 ### 4. エージェントカタログ
 
-MoAI-ADK は **11 個の保存エージェント** (10 個 MoAI-custom + 1 個 Anthropic built-in) で構成されます。アーキテクチャの単純化により manager-strategy, manager-quality, manager-brain, manager-project など 12 個の archived エージェントは特定ドメインに対する per-spawn `Agent(general-purpose)` delegation に置き換えられました。
+MoAI-ADK は **13 個の保存エージェント** (12 個 MoAI-custom + 1 個 Anthropic built-in) で構成されます。アーキテクチャの単純化により manager-strategy, manager-quality, manager-brain, manager-project など 12 個の archived エージェントは特定ドメインに対する per-spawn `Agent(general-purpose)` delegation に置き換えられました。
 
 | 分類 | エージェント | 役割 |
 |------|----------|------|
-| Manager (5) | manager-spec, manager-develop, manager-docs, manager-git, manager-design | 核心ライフサイクルのステップ別専門家 |
+| Manager (6) | manager-spec, manager-develop, manager-docs, manager-git, manager-design, manager-lead | 核心ライフサイクルのステップ別専門家 |
 | Evaluator (2) | plan-auditor, sync-auditor | 計画/完了ステップの独立した品質評価 |
 | Builder (1) | builder-harness | 動的なプロジェクト別ハーネス生成 |
 | Advisor (1) | super-advisor | 高推論の助言 (E1-E4 エスカレーション) |
-| Specialist (1) | e2e-specialist | Web/モバイル/デスクトップの E2E テスト実行 (`/moai e2e`) |
+| Specialist (2) | e2e-tester, manager-todo | Web/モバイル/デスクトップの E2E テスト実行 (`/moai e2e`)、タスクキュー管理 — 承認済み GTD 自動ミッションに対する読み取り専用の封印スナップショット判定はそのサブロール |
 | Built-in (1) | Explore (Anthropic) | 読み取り専用のコードベース探索 |
 
 ### 5. SPEC ワークフロー
@@ -352,6 +352,34 @@ flowchart TD
 | 2. Rules | `.claude/rules/*.md` | ファイルパターンのマッチ時 | 条件付き詳細ルール |
 | 3. Skills | `.claude/skills/*/skill.md` | トリガーマッチ時 | 専門知識、パターン |
 | 4. Agents | `.claude/agents/*.md` | 委任時 | 専門家の役割定義 |
+
+## 3 ファイル構成 — `AGENTS.md`・`CLAUDE.md`・`AGENTS.local.md`
+
+MoAI-ADK は指示を 3 つのファイルに分けています。どのハーネスが作業を動かしても同じ契約を読めるようにし、個人の指示は 1 つのファイルだけに置くためです。
+
+| ファイル | 内容 | Git 追跡 | 読む側 |
+|----------|------|----------|--------|
+| `AGENTS.md` | ハーネス共通の契約 | あり | Claude Code(`@AGENTS.md` の取り込み)と Codex |
+| `CLAUDE.md` | Claude 専用の仕組みを載せる薄い層 | あり | Claude Code |
+| `AGENTS.local.md` | 個人の指示 | なし (`.gitignore`) | Claude Code(`CLAUDE.md` 末尾の `@AGENTS.local.md`)と `moai codex` |
+
+```mermaid
+flowchart TD
+    A["AGENTS.md<br/>共通の契約"] --> C["CLAUDE.md<br/>Claude 専用の層"]
+    L["AGENTS.local.md<br/>個人の指示"] --> C
+    C --> CC["Claude Code"]
+    A --> X["Codex"]
+    L --> R["moai codex ランチャー"]
+    R --> X
+```
+
+`CLAUDE.local.md` は `AGENTS.local.md` の以前の名前です。既存のファイルは `moai migrate local-instructions` で移します。このコマンドは内容をバイト単位でそのまま `AGENTS.local.md` に書き込み、元のファイルを `.moai/backups/local-instructions/` の下にバックアップしてから、プロジェクトルートから削除します。名前の変更が起きるのはこのコマンドだけで、`moai update`・`moai init`・フックはどちらのファイルも移動・削除しません。
+
+{{< callout type="warning" >}}
+{{< icon warning warn >}} 2 つのファイルが両方あると、Claude Code は両方を読み、似た指示が二重に読み込まれます。この状態では `moai migrate local-instructions` はどちらのファイルにも触れずに拒否します。どちらの内容を残すかはツールには判断できないためです。`CLAUDE.local.md` の内容を手作業で `AGENTS.local.md` にまとめてから、`CLAUDE.local.md` を削除してください。
+{{< /callout >}}
+
+リンクされたワークツリーで開いたセッションは、`AGENTS.local.md` がそのワークツリーのチェックアウト内にあるときにだけ受け取ります。このファイルは既定で gitignore されており、通常はプロジェクトルートにしかないため、追跡していないコピーではワークツリーのセッションに届きません — `@AGENTS.local.md` の取り込みは何も見つけられず、Claude Code は何も言わずにスキップします。ファイルをコミットすれば（ignore 規則を force-add で迂回して）、git がすべてのワークツリーのチェックアウトにファイルを届け、取り込みはプロジェクト内で解決されてセッションがローカル指示を読み込みます。
 
 ## 関連ドキュメント
 

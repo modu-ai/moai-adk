@@ -14,6 +14,8 @@ package cli
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -26,14 +28,26 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/spf13/cobra"
 )
 
 // runTodo executes the todo cobra command against args and returns
 // (stdout, stderr, error). Exit-code semantics: a non-nil error is the
 // command's failure (cobra maps it to exit 1).
+//
+// t422 fail-loud guard: without todoFixture(t) the queue root resolves
+// through the live checkout — CLAUDE_PROJECT_DIR falls back to the process
+// cwd, which is this repository — and the command would read or mutate the
+// operator's real backlog (the t394 incident: seven fixture cards landed in
+// the live queue through exactly this). The guard fails the test before
+// Execute touches any file.
 func runTodo(t *testing.T, args ...string) (string, string, error) {
 	t.Helper()
+	if reason := liveTodoQueueRootReason(); reason != "" {
+		t.Fatalf("todo queue isolation guard: %s", reason)
+	}
 	cmd := newTodoCmd()
 	var out, errBuf bytes.Buffer
 	cmd.SetOut(&out)
@@ -48,12 +62,15 @@ func runTodo(t *testing.T, args ...string) (string, string, error) {
 // The dir is a committed git repository (t106): queue-root resolution goes
 // through git, so the fixture must look like a real primary checkout for
 // the command's file and the verification store to be the same file.
-func todoFixture(t *testing.T) (root string, store *kanban.BacklogStore) {
+func todoFixture(t *testing.T) (root string, store *factory.BacklogStore) {
 	t.Helper()
 	root = t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
+	// root is a temp dir; drop the TestMain MOAI_HOME sandbox so queue state
+	// stays project-local under it, where these tests read it (card t1229).
+	t.Setenv(config.EnvHome, "")
 	initGitRepo(t, root)
-	store = kanban.NewBacklogStore(todoBacklogPath(root))
+	store = factory.NewBacklogStore(todoBacklogPath(root))
 	return root, store
 }
 
@@ -82,6 +99,175 @@ func TestTodoAdd_PrintsIDAndPosition(t *testing.T) {
 	}
 	if rec.Version != 1 || len(rec.Items) != 2 {
 		t.Errorf("record = version %d, %d items; want version 1, 2 items", rec.Version, len(rec.Items))
+	}
+}
+
+func todoRuntimeAssignment(t *testing.T, root, runID, cardID string) factory.TodoRuntimeAssignment {
+	t.Helper()
+	record, err := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, assignment := range record.Runtime.Assignments {
+		if assignment.RunID == runID && assignment.CardID == cardID {
+			return assignment
+		}
+	}
+	t.Fatalf("todo runtime assignment missing: run=%q card=%q", runID, cardID)
+	return factory.TodoRuntimeAssignment{}
+}
+
+func TestTodoPickInFactoryRecordsCardAndEvent(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root, store := todoFixture(t)
+	if _, _, err := store.Add("factory card"); err != nil {
+		t.Fatal(err)
+	}
+	specPath := filepath.Join(root, ".moai", "specs", "SPEC-CARD-001", "spec.md")
+	if err := os.MkdirAll(filepath.Dir(specPath), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	specBody := []byte("# card spec\n")
+	if err := os.WriteFile(specPath, specBody, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"add", ".moai/specs/SPEC-CARD-001/spec.md"}, {"commit", "-qm", "add card spec"}} {
+		if out, err := exec.Command("git", append([]string{"-C", root}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+	commitRaw, err := exec.Command("git", "-C", root, "rev-parse", "HEAD").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantCommit := strings.TrimSpace(string(commitRaw))
+	wantSpecPath, err := filepath.EvalSymlinks(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// REQ-SD-015: lane sessions pick through `moai factory next`; this test
+	// exercises the operator surface, so the environment is lane-neutral
+	// (no role, no label, no backend marker) and the mirror owner records as
+	// the REQ-RNC-010 `leader` spelling.
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
+	t.Setenv(config.EnvFactoryRunID, "run-card-test")
+	t.Setenv(config.EnvFactoryRole, "")
+	t.Setenv(config.EnvMoaiFactoryWorker, "")
+	t.Setenv(config.EnvFactoryBackend, "")
+	if _, _, err := runTodo(t, "next", "--spec", "SPEC-CARD-001", "1"); err != nil {
+		t.Fatal(err)
+	}
+	assignment := todoRuntimeAssignment(t, root, "run-card-test", "t1")
+	if assignment.OwnerLabel != factory.RoleLeader || assignment.ReportedState != "picked" || assignment.EventKind != "card.assigned" {
+		t.Fatalf("assignment=(%q,%q,%q), want (leader,picked,card.assigned)", assignment.OwnerLabel, assignment.ReportedState, assignment.EventKind)
+	}
+	payloadRaw := assignment.ProvenanceJSON
+	var payload map[string]string
+	if err := json.Unmarshal([]byte(payloadRaw), &payload); err != nil {
+		t.Fatal(err)
+	}
+	wantSum := sha256.Sum256(specBody)
+	if payload["spec_id"] != "SPEC-CARD-001" || payload["spec_path"] != wantSpecPath ||
+		payload["spec_sha256"] != hex.EncodeToString(wantSum[:]) || payload["git_commit"] != wantCommit || payload["captured_at"] == "" {
+		t.Fatalf("assignment provenance=%v", payload)
+	}
+	if _, _, err := runTodo(t, "unpick", "1"); err != nil {
+		t.Fatal(err)
+	}
+	assignment = todoRuntimeAssignment(t, root, "run-card-test", "t1")
+	if assignment.OwnerLabel != factory.RoleLeader || assignment.ReportedState != "queued" || assignment.EventKind != "card.unpicked" {
+		t.Fatalf("updated assignment=(%q,%q,%q), want (leader,queued,card.unpicked)", assignment.OwnerLabel, assignment.ReportedState, assignment.EventKind)
+	}
+}
+
+func TestTodoPickInFactoryProvenanceFailsOpenWithoutSpecOrGit(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
+	t.Setenv("MOAI_HOME", t.TempDir())
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	t.Setenv(config.EnvFactoryRunID, "run-fail-open")
+	if _, _, err := runTodo(t, "add", "unscoped card"); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(root, "outside", "spec.md")
+	if err := os.MkdirAll(filepath.Dir(outside), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(outside, []byte("must not be captured\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := runTodo(t, "next", "--spec", "../../../outside", "1"); err != nil {
+		t.Fatal(err)
+	}
+	assignment := todoRuntimeAssignment(t, root, "run-fail-open", "t1")
+	payloadRaw := assignment.ProvenanceJSON
+	var payload map[string]string
+	if err := json.Unmarshal([]byte(payloadRaw), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["spec_id"] != "../../../outside" || payload["spec_path"] != "" || payload["spec_sha256"] != "" || payload["git_commit"] != "" || payload["captured_at"] == "" {
+		t.Fatalf("fail-open provenance=%v", payload)
+	}
+}
+
+func TestTodoPickInFactoryCapturesLinkedWorktreeSpecAndHEAD(t *testing.T) {
+	primary := t.TempDir()
+	initGitRepo(t, primary)
+	gitRun := func(dir string, args ...string) string {
+		t.Helper()
+		out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("git -C %s %v: %v: %s", dir, args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	specRel := filepath.Join(".moai", "specs", "SPEC-LANE-001", "spec.md")
+	primarySpec := filepath.Join(primary, specRel)
+	if err := os.MkdirAll(filepath.Dir(primarySpec), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(primarySpec, []byte("# primary\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(primary, "add", specRel)
+	gitRun(primary, "commit", "-qm", "primary spec")
+	lane := filepath.Join(t.TempDir(), "lane")
+	gitRun(primary, "worktree", "add", "-q", "-b", "lane-test", lane)
+	laneBody := []byte("# lane revision\n")
+	laneSpec := filepath.Join(lane, specRel)
+	if err := os.WriteFile(laneSpec, laneBody, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(lane, "add", specRel)
+	gitRun(lane, "commit", "-qm", "lane spec")
+	laneCommit := gitRun(lane, "rev-parse", "HEAD")
+
+	t.Setenv("MOAI_HOME", t.TempDir())
+	t.Setenv("CLAUDE_PROJECT_DIR", primary)
+	if _, _, err := runTodo(t, "add", "lane card"); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CLAUDE_PROJECT_DIR", lane)
+	// REQ-SD-015: lane sessions pick through `moai factory next`; the pick
+	// here runs on the operator surface in a lane-neutral environment.
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	t.Setenv(config.EnvFactoryRunID, "run-linked-lane")
+	t.Setenv(config.EnvFactoryRole, "")
+	t.Setenv(config.EnvMoaiFactoryWorker, "")
+	t.Setenv(config.EnvFactoryBackend, "")
+	if _, _, err := runTodo(t, "next", "--spec", "SPEC-LANE-001", "1"); err != nil {
+		t.Fatal(err)
+	}
+	assignment := todoRuntimeAssignment(t, primary, "run-linked-lane", "t1")
+	raw := assignment.ProvenanceJSON
+	var payload map[string]string
+	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+		t.Fatal(err)
+	}
+	wantPath, _ := filepath.EvalSymlinks(laneSpec)
+	wantHash := sha256.Sum256(laneBody)
+	if payload["spec_path"] != wantPath || payload["spec_sha256"] != hex.EncodeToString(wantHash[:]) || payload["git_commit"] != laneCommit {
+		t.Fatalf("linked-lane provenance=%v, want path=%s commit=%s", payload, wantPath, laneCommit)
 	}
 }
 
@@ -128,11 +314,11 @@ func TestTodoList_JSONStructured(t *testing.T) {
 	if !json.Valid([]byte(out)) {
 		t.Fatalf("list --json output is not valid JSON: %q", out)
 	}
-	var rec kanban.BacklogRecord
+	var rec factory.BacklogRecord
 	if err := json.Unmarshal([]byte(out), &rec); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(rec.Items) != 2 || rec.Items[0].State != kanban.BacklogStatePicked {
+	if len(rec.Items) != 2 || rec.Items[0].State != factory.BacklogStatePicked {
 		t.Errorf("json items = %+v; want 2 items with t1 picked", rec.Items)
 	}
 }
@@ -152,7 +338,7 @@ func TestTodoList_LockFreeWhileForeignProcessHoldsLock(t *testing.T) {
 	helper := exec.Command(os.Args[0], "-test.run=TestTodoHelperProcess", "--")
 	helper.Env = append(os.Environ(),
 		"MOAI_TODO_HELPER=hold-lock",
-		"CLAUDE_PROJECT_DIR="+root,
+		todoHelperRootEnv+"="+root,
 	)
 	if err := helper.Start(); err != nil {
 		t.Fatalf("start lock-holder: %v", err)
@@ -206,21 +392,15 @@ func TestTodoDone_MissReportedFileUntouched(t *testing.T) {
 	}
 	root := os.Getenv("CLAUDE_PROJECT_DIR")
 	real := todoBacklogPath(root)
-	before, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read before: %v", err)
-	}
+	before := queueStateBytes(t, real)
 
-	_, _, err = runTodo(t, "done", "t3")
+	_, _, err := runTodo(t, "done", "t3")
 	if err == nil {
 		t.Fatal("done on a missing id must fail")
 	}
-	after, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after: %v", err)
-	}
+	after := queueStateBytes(t, real)
 	if !bytes.Equal(before, after) {
-		t.Error("file changed on a missed done; must be byte-identical")
+		t.Error("file changed on a missed done; must be record-identical")
 	}
 }
 
@@ -232,10 +412,7 @@ func TestTodoNextBare_ReadOnlyOldestFirst(t *testing.T) {
 		}
 	}
 	real := todoBacklogPath(root)
-	before, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read before: %v", err)
-	}
+	before := queueStateBytes(t, real)
 
 	out, _, err := runTodo(t, "next")
 	if err != nil {
@@ -249,10 +426,7 @@ func TestTodoNextBare_ReadOnlyOldestFirst(t *testing.T) {
 		t.Errorf("bare next order wrong: %q", lines)
 	}
 
-	after, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after: %v", err)
-	}
+	after := queueStateBytes(t, real)
 	if !bytes.Equal(before, after) {
 		t.Error("bare next must leave the backlog byte-identical")
 	}
@@ -275,7 +449,7 @@ func TestTodoNextPick_OneLockedWrite(t *testing.T) {
 	}
 	picked := 0
 	for _, it := range rec.Items {
-		if it.State == kanban.BacklogStatePicked {
+		if it.State == factory.BacklogStatePicked {
 			picked++
 			if it.ID != "t2" {
 				t.Errorf("picked item = %s, want t2", it.ID)
@@ -283,7 +457,7 @@ func TestTodoNextPick_OneLockedWrite(t *testing.T) {
 			if it.SpecID == nil || *it.SpecID != "SPEC-X-001" {
 				t.Errorf("picked spec_id = %v, want SPEC-X-001", it.SpecID)
 			}
-		} else if it.State != kanban.BacklogStateQueued {
+		} else if it.State != factory.BacklogStateQueued {
 			t.Errorf("item %s state = %s, want untouched queued", it.ID, it.State)
 		}
 	}
@@ -298,21 +472,15 @@ func TestTodoNext_OutOfRangeFileUntouched(t *testing.T) {
 		t.Fatalf("seed add: %v", err)
 	}
 	real := todoBacklogPath(root)
-	before, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read before: %v", err)
-	}
+	before := queueStateBytes(t, real)
 
-	_, _, err = runTodo(t, "next", "99")
+	_, _, err := runTodo(t, "next", "99")
 	if err == nil {
 		t.Fatal("next on a missing id must fail")
 	}
-	after, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after: %v", err)
-	}
+	after := queueStateBytes(t, real)
 	if !bytes.Equal(before, after) {
-		t.Error("file changed on a missed next; must be byte-identical")
+		t.Error("file changed on a missed next; must be record-identical")
 	}
 }
 
@@ -328,6 +496,7 @@ func TestTodoConcurrentAdd_8Processes(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make([]error, n)
 	outputs := make([]string, n)
+	stderrs := make([]string, n)
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func(i int) {
@@ -335,12 +504,18 @@ func TestTodoConcurrentAdd_8Processes(t *testing.T) {
 			cmd := exec.Command(os.Args[0], "-test.run=TestTodoHelperProcess", "--")
 			cmd.Env = append(os.Environ(),
 				"MOAI_TODO_HELPER=add",
-				"CLAUDE_PROJECT_DIR="+root,
+				todoHelperRootEnv+"="+root,
 				"MOAI_TODO_HELPER_TEXT=card "+string(rune('A'+i)),
 			)
-			out, err := cmd.CombinedOutput()
+			// Parse stdout only: the temporary-origin advisory (t705) goes to
+			// stderr, and its prose words would otherwise be counted as ids.
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			err := cmd.Run()
 			errs[i] = err
-			outputs[i] = string(out)
+			outputs[i] = stdout.String()
+			stderrs[i] = stderr.String()
 		}(i)
 	}
 	wg.Wait()
@@ -348,7 +523,7 @@ func TestTodoConcurrentAdd_8Processes(t *testing.T) {
 	seen := make(map[string]bool)
 	for i := 0; i < n; i++ {
 		if errs[i] != nil {
-			t.Fatalf("concurrent add %d failed: %v: %s", i, errs[i], outputs[i])
+			t.Fatalf("concurrent add %d failed: %v: stdout %s stderr %s", i, errs[i], outputs[i], stderrs[i])
 		}
 	}
 	for i := 0; i < n; i++ {
@@ -366,7 +541,7 @@ func TestTodoConcurrentAdd_8Processes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list --json: %v", err)
 	}
-	var rec kanban.BacklogRecord
+	var rec factory.BacklogRecord
 	if err := json.Unmarshal([]byte(stdout), &rec); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -385,18 +560,29 @@ func TestTodoConcurrentAdd_8Processes(t *testing.T) {
 	}
 }
 
+// todoHelperRootEnv carries the project root a parent test composed for a
+// re-exec helper. It is not CLAUDE_PROJECT_DIR: this package's TestMain scrubs
+// that variable at startup (REQ-ACV-019), and the helper child runs TestMain
+// too, so a root passed under the scrubbed name would arrive empty.
+const todoHelperRootEnv = "MOAI_TODO_HELPER_ROOT"
+
 // TestTodoHelperProcess is the re-exec helper backing the cross-process
-// tests above (same idiom as internal/kanban/board_lock_cross_test.go).
+// tests above (same idiom as internal/factory/board_lock_cross_test.go).
 func TestTodoHelperProcess(t *testing.T) {
 	mode := os.Getenv("MOAI_TODO_HELPER")
 	if mode == "" {
 		return // normal test run, not a helper invocation
 	}
-	root := os.Getenv("CLAUDE_PROJECT_DIR")
+	root := os.Getenv(todoHelperRootEnv)
 	if root == "" {
 		os.Exit(4)
 	}
-	store := kanban.NewBacklogStore(todoBacklogPath(root))
+	// The todo verbs resolve their project root from CLAUDE_PROJECT_DIR, which
+	// TestMain cleared; restore the value the parent composed for this child.
+	if err := os.Setenv(config.EnvClaudeProjectDir, root); err != nil {
+		os.Exit(4)
+	}
+	store := factory.NewBacklogStore(todoBacklogPath(root))
 	_ = store
 
 	switch mode {
@@ -416,7 +602,7 @@ func TestTodoHelperProcess(t *testing.T) {
 		// when the helper runs without -v, and the parent parses this line.
 		fmt.Print(out.String())
 	case "hold-lock":
-		err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+		err := store.Mutate(func(rec *factory.BacklogRecord) error {
 			time.Sleep(1200 * time.Millisecond)
 			return nil
 		})
@@ -501,15 +687,17 @@ func todoPromptGuard(source string) (reason string, bad bool) {
 
 // TestTodoBareInvocationLists pins the documented contract that a bare
 // `moai todo` renders the queue. The skill surface (.claude/skills/moai)
-// and workflows/todo.md both describe the bare form as the list surface;
+// and workflows/gtd.md both describe the bare form as the list surface;
 // the command used to answer it with cobra's help text instead, so the
 // documented entry point never reached the backlog it names.
 //
 // The subcommand `moai todo list` stays valid — this widens the surface
 // rather than moving it.
 func TestTodoBareInvocationLists(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+	// t422: todoFixture, not a bare CLAUDE_PROJECT_DIR — without the
+	// committed git repo the resolution falls through to the home-based
+	// queue, and this test's seed add would write there.
+	todoFixture(t)
 
 	if _, _, err := runTodo(t, "add", "first card"); err != nil {
 		t.Fatalf("seed add: %v", err)
@@ -538,8 +726,9 @@ func TestTodoBareInvocationLists(t *testing.T) {
 // TestTodoUnknownSubcommandStillErrors guards the widening above: making
 // the bare form do work must not turn a mistyped verb into a silent list.
 func TestTodoUnknownSubcommandStillErrors(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+	// t422: todoFixture — same fallthrough-to-home shape as
+	// TestTodoSingleWordNaturalLanguageStillErrors.
+	todoFixture(t)
 
 	if _, _, err := runTodo(t, "lsit"); err == nil {
 		t.Error("mistyped subcommand was accepted, want an error")
@@ -584,8 +773,11 @@ func TestTodoMultiWordFallthroughAdds(t *testing.T) {
 // card, or a mistyped verb) stays an error, so a mistyped verb can never
 // silently become a card. One-word cards need the explicit add verb.
 func TestTodoSingleWordNaturalLanguageStillErrors(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+	// t422: todoFixture, not a bare CLAUDE_PROJECT_DIR — without the
+	// committed git repo the resolution falls through to the home-based
+	// queue, which is exactly the unisolated shape the fail-loud guard
+	// rejects.
+	todoFixture(t)
 
 	if _, _, err := runTodo(t, "버그"); err == nil {
 		t.Error("single-word natural language was accepted, want an error")
@@ -665,6 +857,73 @@ func TestTodoNaturalLanguageCardsSurviveVerbGuard(t *testing.T) {
 	}
 }
 
+// TestMistypedVerbGuardSpeaksInTheInvokedSurfacesName — t939: the refusal is
+// produced at one site shared by both surfaces, and it used to name the
+// compatibility spelling whichever way it was called: `moai gtd peek t855`
+// answered "todo: ... moai todo add ...". REQ-GTD-003 makes gtd the canonical
+// surface and todo the thin compatibility one, so an operator working the
+// canonical surface was handed the compatibility name — and the recovery line
+// told them to run a command on a surface they had not called.
+//
+// Both directions are asserted together, because a fix that merely swaps the
+// literal would break the compatibility surface in the mirror image. The
+// verb-name list is already derived from the command tree
+// (TestTodoVerbNamesDerivedFromCommandTree); this asserts the surface name is
+// derived the same way rather than hard-coded.
+func TestMistypedVerbGuardSpeaksInTheInvokedSurfacesName(t *testing.T) {
+	for _, tc := range []struct {
+		surface string
+		build   func() *cobra.Command
+		foreign string
+	}{
+		{surface: "gtd", build: NewGTDCommand, foreign: "todo"},
+		{surface: "todo", build: newTodoCmd, foreign: "gtd"},
+	} {
+		t.Run(tc.surface, func(t *testing.T) {
+			_, store := todoFixture(t)
+
+			cmd := tc.build()
+			var out, errBuf bytes.Buffer
+			cmd.SetOut(&out)
+			cmd.SetErr(&errBuf)
+			// "peek" is a deliberately unregistered stand-in (the t555
+			// leak-matrix convention): `show` became a registered verb
+			// (card t1349 REQ-TSP-001), so the mistyped-verb example moved
+			// to a token that is still verb-shaped but not real.
+			cmd.SetArgs([]string{"peek", "t855"})
+			err := cmd.Execute()
+			if err == nil {
+				t.Fatalf("%s: `peek t855` was accepted, want a refusal", tc.surface)
+			}
+			combined := err.Error() + errBuf.String()
+
+			// The diagnostic names the surface actually invoked …
+			if !strings.Contains(combined, tc.surface+": ") {
+				t.Errorf("refusal should be prefixed %q; got %q", tc.surface+": ", combined)
+			}
+			if !strings.Contains(combined, "is not a "+tc.surface+" verb") {
+				t.Errorf("refusal should say %q; got %q", "is not a "+tc.surface+" verb", combined)
+			}
+			// … and the recovery line stays on that same surface, so the
+			// operator can paste it without switching commands.
+			if !strings.Contains(combined, "moai "+tc.surface+" add") {
+				t.Errorf("recovery hint should read %q; got %q", "moai "+tc.surface+" add", combined)
+			}
+			if strings.Contains(combined, "moai "+tc.foreign+" add") {
+				t.Errorf("recovery hint leaked the %s surface: %q", tc.foreign, combined)
+			}
+
+			rec, loadErr := store.Load()
+			if loadErr != nil {
+				t.Fatalf("load: %v", loadErr)
+			}
+			if len(rec.Items) != 0 {
+				t.Errorf("refused invocation still mutated the queue: %+v", rec.Items)
+			}
+		})
+	}
+}
+
 // TestTodoVerbNamesDerivedFromCommandTree — the guard's message lists the
 // registered verbs rather than a hand-maintained copy, so a verb added later
 // appears without a second edit.
@@ -725,7 +984,7 @@ func TestTodoAddPick_OneLockedWrite(t *testing.T) {
 		t.Fatalf("items = %d, want 1", len(rec.Items))
 	}
 	it := rec.Items[0]
-	if it.ID != "t1" || it.State != kanban.BacklogStatePicked {
+	if it.ID != "t1" || it.State != factory.BacklogStatePicked {
 		t.Errorf("item = %s/%s, want t1/picked from the same write", it.ID, it.State)
 	}
 
@@ -754,6 +1013,7 @@ func TestTodoAddPick_ConcurrentProcesses(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make([]error, n)
 	outputs := make([]string, n)
+	stderrs := make([]string, n)
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func(i int) {
@@ -761,12 +1021,18 @@ func TestTodoAddPick_ConcurrentProcesses(t *testing.T) {
 			cmd := exec.Command(os.Args[0], "-test.run=TestTodoHelperProcess", "--")
 			cmd.Env = append(os.Environ(),
 				"MOAI_TODO_HELPER=add-pick",
-				"CLAUDE_PROJECT_DIR="+root,
+				todoHelperRootEnv+"="+root,
 				"MOAI_TODO_HELPER_TEXT=card "+string(rune('A'+i)),
 			)
-			out, err := cmd.CombinedOutput()
+			// Parse stdout only: the temporary-origin advisory (t705) goes to
+			// stderr, and its prose words would otherwise be counted as ids.
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			err := cmd.Run()
 			errs[i] = err
-			outputs[i] = string(out)
+			outputs[i] = stdout.String()
+			stderrs[i] = stderr.String()
 		}(i)
 	}
 	wg.Wait()
@@ -774,7 +1040,7 @@ func TestTodoAddPick_ConcurrentProcesses(t *testing.T) {
 	seen := make(map[string]bool)
 	for i := 0; i < n; i++ {
 		if errs[i] != nil {
-			t.Fatalf("concurrent add --pick %d failed: %v: %s", i, errs[i], outputs[i])
+			t.Fatalf("concurrent add --pick %d failed: %v: stdout %s stderr %s", i, errs[i], outputs[i], stderrs[i])
 		}
 		for _, field := range strings.Fields(outputs[i]) {
 			if strings.HasPrefix(field, "t") && !seen[field] {
@@ -790,7 +1056,7 @@ func TestTodoAddPick_ConcurrentProcesses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list --json: %v", err)
 	}
-	var rec kanban.BacklogRecord
+	var rec factory.BacklogRecord
 	if err := json.Unmarshal([]byte(stdout), &rec); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -798,7 +1064,7 @@ func TestTodoAddPick_ConcurrentProcesses(t *testing.T) {
 		t.Fatalf("items after %d concurrent add --pick = %d, want %d", n, len(rec.Items), n)
 	}
 	for _, it := range rec.Items {
-		if it.State != kanban.BacklogStatePicked {
+		if it.State != factory.BacklogStatePicked {
 			t.Errorf("item %s state = %s, want picked (add+pick is one write; no queued window)", it.ID, it.State)
 		}
 	}
@@ -839,7 +1105,7 @@ func TestTodoUnpick_RevertsPickedToQueued(t *testing.T) {
 		t.Fatalf("items after unpick = %d, want 1 (no re-add churn)", len(rec.Items))
 	}
 	it := rec.Items[0]
-	if it.ID != "t1" || it.State != kanban.BacklogStateQueued {
+	if it.ID != "t1" || it.State != factory.BacklogStateQueued {
 		t.Errorf("item = %s/%s, want t1/queued", it.ID, it.State)
 	}
 	if it.SpecID != nil {
@@ -859,31 +1125,22 @@ func TestTodoUnpick_RefusalsLeaveFileUntouched(t *testing.T) {
 		t.Fatalf("seed add: %v", err)
 	}
 	real := todoBacklogPath(root)
-	before, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read before: %v", err)
-	}
+	before := queueStateBytes(t, real)
 
 	if _, _, err := runTodo(t, "unpick", "1"); err == nil {
 		t.Error("unpick on a queued (not picked) card must fail")
 	}
-	after, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after refused unpick: %v", err)
-	}
+	after := queueStateBytes(t, real)
 	if !bytes.Equal(before, after) {
-		t.Error("file changed on a refused unpick; must be byte-identical")
+		t.Error("file changed on a refused unpick; must be record-identical")
 	}
 
 	if _, _, err := runTodo(t, "unpick", "t9"); err == nil {
 		t.Error("unpick on a missing id must fail")
 	}
-	after2, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after missed unpick: %v", err)
-	}
+	after2 := queueStateBytes(t, real)
 	if !bytes.Equal(before, after2) {
-		t.Error("file changed on a missed unpick; must be byte-identical")
+		t.Error("file changed on a missed unpick; must be record-identical")
 	}
 }
 
@@ -925,20 +1182,14 @@ func TestTodoNextPick_ExpectGuard(t *testing.T) {
 		}
 	}
 	real := todoBacklogPath(root)
-	before, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read before: %v", err)
-	}
+	before := queueStateBytes(t, real)
 
 	if _, _, err := runTodo(t, "next", "2", "--expect", "alpha"); err == nil {
 		t.Fatal("next --expect must refuse when the card text does not match")
 	}
-	after, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after refused pick: %v", err)
-	}
+	after := queueStateBytes(t, real)
 	if !bytes.Equal(before, after) {
-		t.Error("file changed on a refused --expect pick; must be byte-identical")
+		t.Error("file changed on a refused --expect pick; must be record-identical")
 	}
 
 	out, _, err := runTodo(t, "next", "2", "--expect", "beta")

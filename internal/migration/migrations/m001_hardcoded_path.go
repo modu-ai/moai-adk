@@ -83,11 +83,17 @@ func m001Apply(projectRoot string) error {
 		rewrittenCount++
 	}
 
-	// Log message (for the details field).
-	if rewrittenCount > 0 {
-		return fmt.Errorf("m001 적용 완료: %d 파일 재작성됨 (scanned %d 파일)", rewrittenCount, scannedCount)
-	}
-
-	// No-op (already clean).
-	return fmt.Errorf("이미 migrated됨 (scanned %d 파일, 0 재작성됨)", scannedCount)
+	// Both remaining outcomes are success: the literal was substituted, or it
+	// was never present (REQ-V3R2-RT-007-023 calls that already-migrated). A
+	// migration reports success as nil, the way m002 does.
+	//
+	// These two lines used to return fmt.Errorf carrying the scanned and
+	// rewritten counts, under a comment describing them as the details field.
+	// They never reached the details field: the runner owns that field and
+	// fills it itself — "적용 완료" on success, err.Error() only on FAILURE. So
+	// a completed rewrite was written to the log as a failure and surfaced to
+	// the user as "마이그레이션 1 적용 실패: m001 적용 완료". Dropping the counts
+	// loses no working signal, because the only channel they ever reached was
+	// the failure one.
+	return nil
 }

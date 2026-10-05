@@ -58,7 +58,7 @@ func TestClose_ThreePhasePreconditionPass(t *testing.T) {
 ## §E.4 Sync-phase Audit-Ready Signal
 sync_commit_sha: abc123def4567
 `,
-			// intentionally NO §E.5 Mx section — the 3-phase relaxation must accept this
+		// intentionally NO §E.5 Mx section — the 3-phase relaxation must accept this
 	}
 	baseDir := buildCloseFixture(t, fixture)
 
@@ -100,7 +100,7 @@ func TestClose_LegacyMxSectionStillAccepted(t *testing.T) {
 ## §E.5 Mx-phase Audit-Ready Signal
 mx_commit_sha: abc123def4567
 `,
-			// legacy §E.5 present — the §E.5 path must still be accepted
+		// legacy §E.5 present — the §E.5 path must still be accepted
 	}
 	baseDir := buildCloseFixture(t, fixture)
 
@@ -574,13 +574,13 @@ mx_commit_sha: def5678
 
 // lifecycleLogEntry mirrors the on-disk NFR-LSG-004 log schema for assertions.
 type lifecycleLogEntry struct {
-	Timestamp  string            `json:"timestamp"`
-	SpecID     string            `json:"spec_id"`
-	Mode       string            `json:"mode"`
+	Timestamp   string            `json:"timestamp"`
+	SpecID      string            `json:"spec_id"`
+	Mode        string            `json:"mode"`
 	Transitions map[string]string `json:"transitions"`
-	CommitSHA  string            `json:"commit_sha"`
-	Result     string            `json:"result"`
-	DurationMs int64             `json:"duration_ms"`
+	CommitSHA   string            `json:"commit_sha"`
+	Result      string            `json:"result"`
+	DurationMs  int64             `json:"duration_ms"`
 }
 
 func readLifecycleLog(t *testing.T, path string) []lifecycleLogEntry {
@@ -1243,6 +1243,7 @@ func resultPreconditions(r *CloseResult) []string {
 //     (a BACKWARD reference) — this is exactly the dogfood SPEC's §E.2 state
 //   - backfill mx_commit_sha with the L60 placeholder
 //   - commit the result
+//
 // This exercises resolveRecentSpecCommitSHA + backfillProgressField, which the
 // real self-close depends on (progress.md §E.2 sync_commit_sha: "(this commit)").
 func TestClose_FullClose_BackfillsPlaceholderSHAs(t *testing.T) {

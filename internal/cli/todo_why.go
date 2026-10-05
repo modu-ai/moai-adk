@@ -24,6 +24,8 @@ func newTodoWhyCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := normalizeTodoRef(args[0])
+			// REQ-BJD-002 — probed before the read (todo_disclosure.go).
+			_ = discloseQueueLayout(cmd, "why")
 			rec, err := newTodoStore().Load()
 			if err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)

@@ -3,6 +3,7 @@ package hook
 import (
 	"context"
 	"encoding/json"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"os"
 	"path/filepath"
 	"testing"
@@ -313,7 +314,7 @@ func TestMoaiTmuxSessionPrefix(t *testing.T) {
 // TestCleanupGLMSettingsLocal verifies that SessionEnd removes GLM env vars
 // from settings.local.json and restores the backed-up OAuth token.
 func TestCleanupGLMSettingsLocal(t *testing.T) {
-	t.Parallel()
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 
 	tests := []struct {
 		name             string
@@ -324,7 +325,18 @@ func TestCleanupGLMSettingsLocal(t *testing.T) {
 		wantSonnet       bool
 		wantOpus         bool
 		wantBackupToken  bool // true means MOAI_BACKUP_AUTH_TOKEN should still be present
-		wantOtherPresent bool // true means non-GLM key should still be present
+		wantOtherPresent bool // true means the user's own key (CUSTOM_VAR) should still be present
+		// wantTeammateDisplay is true when CLAUDE_CODE_TEAMMATE_DISPLAY should
+		// still be present. It used to double as the user-owned-key stand-in
+		// above, which was the wrong choice of key: envkeys.go declares it as
+		// "the legacy GLM activation indicator env var … still cleared to
+		// deactivate legacy GLM mode", removeGLMEnv deletes it, and the
+		// canonical cleanup view now makes SessionEnd delete it too. It stays
+		// seeded here as a GLM-owned key with its own expectation — deleted
+		// where the gate admits the file, surviving where the gate declines —
+		// while CUSTOM_VAR, which is in no cleanup list, carries the
+		// user-owned-key assertion it was standing in for.
+		wantTeammateDisplay bool
 	}{
 		{
 			name: "GLM active with backup OAuth token: restore OAuth token and remove GLM vars",
@@ -336,14 +348,16 @@ func TestCleanupGLMSettingsLocal(t *testing.T) {
 				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5.1",
 				"MOAI_BACKUP_AUTH_TOKEN":         "oauth-token-from-claude",
 				"CLAUDE_CODE_TEAMMATE_DISPLAY":   "compact",
+				"CUSTOM_VAR":                     "keep_me",
 			},
-			wantAuthToken:    "oauth-token-from-claude",
-			wantBaseURL:      false,
-			wantHaiku:        false,
-			wantSonnet:       false,
-			wantOpus:         false,
-			wantBackupToken:  false,
-			wantOtherPresent: true,
+			wantAuthToken:       "oauth-token-from-claude",
+			wantBaseURL:         false,
+			wantHaiku:           false,
+			wantSonnet:          false,
+			wantOpus:            false,
+			wantBackupToken:     false,
+			wantOtherPresent:    true,
+			wantTeammateDisplay: false, // GLM-owned: the gate admitted this file
 		},
 		{
 			name: "GLM active without backup OAuth token: remove GLM vars, delete auth token",
@@ -354,26 +368,32 @@ func TestCleanupGLMSettingsLocal(t *testing.T) {
 				"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
 				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5.1",
 			},
-			wantAuthToken:    "",
-			wantBaseURL:      false,
-			wantHaiku:        false,
-			wantSonnet:       false,
-			wantOpus:         false,
-			wantBackupToken:  false,
-			wantOtherPresent: false,
+			// This case never seeded a stand-in key, so its wantOtherPresent
+			// false means "never seeded", NOT "deleted" — CUSTOM_VAR is
+			// deliberately not seeded here, and the expectation is unchanged.
+			wantAuthToken:       "",
+			wantBaseURL:         false,
+			wantHaiku:           false,
+			wantSonnet:          false,
+			wantOpus:            false,
+			wantBackupToken:     false,
+			wantOtherPresent:    false,
+			wantTeammateDisplay: false, // never seeded in this case either
 		},
 		{
 			name: "no GLM vars present: file unchanged",
 			initialEnv: map[string]string{
 				"CLAUDE_CODE_TEAMMATE_DISPLAY": "compact",
+				"CUSTOM_VAR":                   "keep_me",
 			},
-			wantAuthToken:    "",
-			wantBaseURL:      false,
-			wantHaiku:        false,
-			wantSonnet:       false,
-			wantOpus:         false,
-			wantBackupToken:  false,
-			wantOtherPresent: true,
+			wantAuthToken:       "",
+			wantBaseURL:         false,
+			wantHaiku:           false,
+			wantSonnet:          false,
+			wantOpus:            false,
+			wantBackupToken:     false,
+			wantOtherPresent:    true,
+			wantTeammateDisplay: true, // no indicator: the gate declines, file untouched
 		},
 	}
 
@@ -445,9 +465,18 @@ func TestCleanupGLMSettingsLocal(t *testing.T) {
 				t.Errorf("MOAI_BACKUP_AUTH_TOKEN present=%v, want present=%v", ok, tt.wantBackupToken)
 			}
 
-			// Check non-GLM var preservation
-			if _, ok := env["CLAUDE_CODE_TEAMMATE_DISPLAY"]; ok != tt.wantOtherPresent {
-				t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY present=%v, want present=%v", ok, tt.wantOtherPresent)
+			// Check non-GLM var preservation. CUSTOM_VAR is in no cleanup list,
+			// so it is a genuine user-owned key and must survive wherever it
+			// was seeded.
+			if _, ok := env["CUSTOM_VAR"]; ok != tt.wantOtherPresent {
+				t.Errorf("CUSTOM_VAR present=%v, want present=%v", ok, tt.wantOtherPresent)
+			}
+
+			// Check the legacy GLM activation indicator. It is GLM-owned, so it
+			// is cleaned where the gate admits the file and left alone where the
+			// gate declines — the opposite obligation from CUSTOM_VAR above.
+			if _, ok := env["CLAUDE_CODE_TEAMMATE_DISPLAY"]; ok != tt.wantTeammateDisplay {
+				t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY present=%v, want present=%v", ok, tt.wantTeammateDisplay)
 			}
 		})
 	}
@@ -484,7 +513,7 @@ func TestCleanupGLMSettingsLocal_EmptyFile(t *testing.T) {
 // TestSessionEndHandler_Handle_CleansGLMFromSettingsLocal verifies that the
 // Handle method triggers settings.local.json cleanup when ProjectDir is set.
 func TestSessionEndHandler_Handle_CleansGLMFromSettingsLocal(t *testing.T) {
-	t.Parallel()
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 
 	projectDir := t.TempDir()
 	claudeDir := filepath.Join(projectDir, ".claude")
@@ -555,7 +584,7 @@ func TestSessionEndHandler_Handle_CleansGLMFromSettingsLocal(t *testing.T) {
 // TestSessionEndHandler_Handle_CWDFallbackToProjectDir verifies that Handle
 // uses CWD for GLM settings cleanup, falling back to ProjectDir for legacy.
 func TestSessionEndHandler_Handle_CWDFallbackToProjectDir(t *testing.T) {
-	t.Parallel()
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 
 	tests := []struct {
 		name       string
@@ -821,6 +850,12 @@ func TestGarbageCollectStaleTeams_AlsoRemovesTaskDir(t *testing.T) {
 	if err := os.MkdirAll(staleTaskDir, 0o755); err != nil {
 		t.Fatalf("failed to create stale task directory: %v", err)
 	}
+	// The task list must be stale too. A task directory written moments ago is
+	// evidence the team is still working, and the collector now keeps such a
+	// team — so leaving this fresh would describe a live team, not a stale one.
+	if err := os.Chtimes(staleTaskDir, staleTime, staleTime); err != nil {
+		t.Fatalf("failed to set stale task time: %v", err)
+	}
 
 	// Create fresh team/task directories
 	freshTeamDir := filepath.Join(teamsDir, "fresh-team")
@@ -920,11 +955,19 @@ func TestGarbageCollectOrphanedTasks(t *testing.T) {
 				}
 			}
 
-			// Create task directories
+			// Create task directories. Age every one of them past the
+			// collector's staleness threshold so this table measures the
+			// team-directory discriminant alone; the age threshold itself is
+			// covered by TestGarbageCollectOrphanedTasks_KeepsFreshStandaloneTask
+			// and _CollectsStaleStandaloneTask.
+			aged := time.Now().Add(-48 * time.Hour)
 			for _, name := range tt.taskNames {
 				taskDir := filepath.Join(tasksDir, name)
 				if err := os.MkdirAll(taskDir, 0o755); err != nil {
 					t.Fatalf("failed to create task directory %s: %v", name, err)
+				}
+				if err := os.Chtimes(taskDir, aged, aged); err != nil {
+					t.Fatalf("failed to age task directory %s: %v", name, err)
 				}
 			}
 
@@ -1009,6 +1052,119 @@ func TestCleanupBogusRootDir_IgnoresFile(t *testing.T) {
 	// The file should remain untouched.
 	if _, err := os.Stat(bogusFile); os.IsNotExist(err) {
 		t.Error("regular file named {} should not have been removed")
+	}
+}
+
+// TestCleanupBogusRootDir_PreservesUnmarkedUserDir verifies that a "{}"
+// directory holding only user data (no .claude/agent-memory marker) is
+// preserved: without the MoAI-generated evidence, provenance is unknown and
+// the whole directory must NOT be deleted.
+func TestCleanupBogusRootDir_PreservesUnmarkedUserDir(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	bogusDir := filepath.Join(projectDir, "{}")
+	userFile := filepath.Join(bogusDir, "user-data.txt")
+	if err := os.MkdirAll(bogusDir, 0o755); err != nil {
+		t.Fatalf("setup: create bogus dir: %v", err)
+	}
+	if err := os.WriteFile(userFile, []byte("user data"), 0o644); err != nil {
+		t.Fatalf("setup: create user file: %v", err)
+	}
+
+	cleanupBogusRootDir(projectDir)
+
+	if _, err := os.Stat(bogusDir); os.IsNotExist(err) {
+		t.Error("unmarked {} directory should have been preserved")
+	}
+	if _, err := os.Stat(userFile); os.IsNotExist(err) {
+		t.Error("user file inside unmarked {} directory should have been preserved")
+	}
+}
+
+// TestCleanupBogusRootDir_RemovesMarkedResidue verifies that a "{}" directory
+// carrying the MoAI agent-memory evidence signature is cleaned: the residue
+// subtree is removed and, once empty, the "{}" and "{}"/.claude shells go too.
+func TestCleanupBogusRootDir_RemovesMarkedResidue(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	bogusDir := filepath.Join(projectDir, "{}")
+	residueFile := filepath.Join(bogusDir, ".claude", "agent-memory", "expert-backend", "memory.md")
+	if err := os.MkdirAll(filepath.Dir(residueFile), 0o755); err != nil {
+		t.Fatalf("setup: create residue dirs: %v", err)
+	}
+	if err := os.WriteFile(residueFile, []byte("data"), 0o644); err != nil {
+		t.Fatalf("setup: create residue file: %v", err)
+	}
+
+	cleanupBogusRootDir(projectDir)
+
+	if _, err := os.Stat(bogusDir); !os.IsNotExist(err) {
+		t.Error("fully-residue {} directory (and its empty shells) should have been removed")
+	}
+}
+
+// TestCleanupBogusRootDir_MixedContentRemovesResidueOnly verifies the critical
+// preservation case: a "{}" directory holding BOTH the MoAI residue marker AND
+// user content gets only its residue subtree removed — user files and
+// unrelated directories survive, and "{}" itself stays.
+func TestCleanupBogusRootDir_MixedContentRemovesResidueOnly(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	bogusDir := filepath.Join(projectDir, "{}")
+	residueFile := filepath.Join(bogusDir, ".claude", "agent-memory", "expert-backend", "memory.md")
+	userFile := filepath.Join(bogusDir, "user-data.txt")
+	notesDir := filepath.Join(bogusDir, "notes")
+	if err := os.MkdirAll(filepath.Dir(residueFile), 0o755); err != nil {
+		t.Fatalf("setup: create residue dirs: %v", err)
+	}
+	if err := os.MkdirAll(notesDir, 0o755); err != nil {
+		t.Fatalf("setup: create notes dir: %v", err)
+	}
+	if err := os.WriteFile(residueFile, []byte("data"), 0o644); err != nil {
+		t.Fatalf("setup: create residue file: %v", err)
+	}
+	if err := os.WriteFile(userFile, []byte("user data"), 0o644); err != nil {
+		t.Fatalf("setup: create user file: %v", err)
+	}
+	notesFile := filepath.Join(notesDir, "todo.md")
+	if err := os.WriteFile(notesFile, []byte("note"), 0o644); err != nil {
+		t.Fatalf("setup: create notes file: %v", err)
+	}
+
+	cleanupBogusRootDir(projectDir)
+
+	if _, err := os.Stat(filepath.Join(bogusDir, ".claude", "agent-memory")); !os.IsNotExist(err) {
+		t.Error("marked residue subtree (.claude/agent-memory) should have been removed")
+	}
+	if _, err := os.Stat(userFile); os.IsNotExist(err) {
+		t.Error("user-data.txt should have been preserved")
+	}
+	if _, err := os.Stat(notesFile); os.IsNotExist(err) {
+		t.Error("notes/ directory content should have been preserved")
+	}
+	if _, err := os.Stat(bogusDir); os.IsNotExist(err) {
+		t.Error("{} directory with non-residue content should have been preserved")
+	}
+}
+
+// TestCleanupBogusRootDir_EmptyDirPreserved verifies that an empty "{}"
+// directory carries no MoAI evidence, fails the residue gate, and is preserved.
+func TestCleanupBogusRootDir_EmptyDirPreserved(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	bogusDir := filepath.Join(projectDir, "{}")
+	if err := os.MkdirAll(bogusDir, 0o755); err != nil {
+		t.Fatalf("setup: create bogus dir: %v", err)
+	}
+
+	cleanupBogusRootDir(projectDir)
+
+	if _, err := os.Stat(bogusDir); os.IsNotExist(err) {
+		t.Error("empty {} directory without residue evidence should have been preserved")
 	}
 }
 

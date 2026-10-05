@@ -31,8 +31,8 @@ $ moai tokens record --transcript <path> --json
 |--------|------|
 | `--transcript <path>` | The Claude Code transcript file to account |
 | `--session <id>` | Point at the transcript by session identifier |
-| `--card <card>` | The kanban card to book this usage against (e.g. `t12`) |
-| `--role <role>` | The session's role (e.g. `run`, `sync`, `worker-3`) |
+| `--card <card>` | The queue card to book this usage against (e.g. `t12`) |
+| `--role <role>` | The session's role (e.g. `run`, `sync`, `lane-3`) |
 | `--json` | Also emit the record as JSON on standard output |
 
 ## What the record looks like
@@ -45,10 +45,10 @@ Records accumulate **append-only** in `.moai/state/token-accounting.jsonl` — a
 
 ## When to record
 
-By design, this is a record taken when a card or session **closes**. In kanban runs, leave one line per finished card; in a single session, one per finished chunk of work — that is what makes per-card cost comparison hold. The command itself consumes no tokens — it is accounting that re-counts usage already incurred, from the transcript.
+By design, this is a record taken when a card or session **closes**. In factory runs, leave one line per finished card; in a single session, one per finished chunk of work — that is what makes per-card cost comparison hold. The command itself consumes no tokens — it is accounting that re-counts usage already incurred, from the transcript.
 
 ## Related docs
 
 - [Tokenomics overview](/en/advanced/tokenomics-overview) — why assignment matters more than unit price
 - [Statusline](/en/advanced/statusline) — where usage is watched while the session runs
-- [Kanban Mode](/en/advanced/kanban-mode) — the run shape that books cost by card and lane
+- [Factory Mode](/en/advanced/factory-mode) — the run shape that books cost by card and lane

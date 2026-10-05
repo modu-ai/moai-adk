@@ -6,34 +6,52 @@ metadata:
   phase: "Phase 13~14: Git Delivery, Completion, and Auxiliary"
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
-<!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 ### Phase 13: Git Operations and Delivery
 
 #### Step 3.0: Detect Git Workflow Strategy
 
-Read `github.spec_git_workflow` from `.moai/config/sections/system.yaml`. This determines how changes are delivered.
+Resolve the delivery strategy from `.moai/config/sections/git-strategy.yaml`:
+
+1. Read `git_strategy.mode` — the name of the active profile.
+2. Read `git_strategy.{mode}.workflow` — this value, and only this value, selects the delivery strategy.
+
+The canonical value domain is exactly `github-flow` and `git-flow`.
 
 | Strategy | Branch Model | PR Behavior | Best For |
 |----------|-------------|-------------|----------|
-| github_flow | Feature branches off main | Auto-create PR to main | Team/OSS projects |
-| main_direct | Direct commits to main | No PR created | Solo development |
-| gitflow | develop/release/hotfix branches | PR to appropriate base | Enterprise projects |
+| github-flow | Feature branches off the main branch | Auto-create PR to the main branch | Team/OSS projects |
+| git-flow | develop/release/hotfix/worktree branches | PR to the appropriate base, or integration-worktree merge | Enterprise and multi-lane projects |
 
-Default strategy (if not configured): `github_flow`
+**Unmatched value stops delivery.** When the resolved `git_strategy.{mode}.workflow` value is neither `github-flow` nor `git-flow`, stop the delivery step and report the offending value together with the canonical domain `{github-flow, git-flow}`. Do not create a pull request and do not push. A missing `workflow` subkey under the active mode is an unmatched value, not a default — there is no fallback strategy.
 
-The same `github.spec_git_workflow` key also determines SPEC branch handling:
-- `feature_branch`: Each SPEC gets its own branch (recommended for github_flow/gitflow)
-- `main_direct`: SPEC changes committed to current branch (only when spec_git_workflow is main_direct)
+Branch handling is a separate axis and is not read from this key: whether each SPEC gets its own branch is governed by `git_strategy.{mode}.automation.auto_branch` and the `branch_creation` settings.
+
+**Legacy key fallback (deprecated, removed in v3.3.0).** The retired `github.spec_git_workflow` key in `.moai/config/sections/system.yaml` is read ONLY when `git_strategy.{mode}.workflow` is absent AND that legacy key is present — a stale, hand-edited configuration. In that case apply the mapping below and emit a deprecation warning naming the canonical key `git_strategy.{mode}.workflow` and the removal version v3.3.0.
+
+| Legacy value | Mapped behavior |
+|----------|-------------|
+| `github_flow` | `github-flow` route |
+| `gitflow` | `git-flow` route |
+| `feature_branch` | `github-flow` route (branch handling belongs to the `automation.auto_branch` axis, never the strategy axis) |
+| `main_direct` | Direct push to the base branch, no PR |
+| any other value | Stop and report, naming the canonical key and its domain |
+
+When both the canonical key and the legacy key are present, the canonical key wins and the legacy key is ignored without a warning.
 
 #### Step 3.1: Commit Changes
 
 **Tier-based Route gate** (per `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline): read the SPEC's `tier` field (S/M/L) and whether `--pr` was passed.
 
-- **Route A (Tier S/M default, no `--pr`)**: Agent: manager-docs subagent. manager-docs creates the single sync commit directly on `main` — no `manager-git` spawn, no feature branch, no PR.
-- **Route B (Tier L OR explicit `--pr`)**: Agent: manager-git subagent. manager-git creates the same single sync commit on the sync feature branch (`sync/SPEC-XXX` or `chore/SPEC-XXX-sync`), delivered via PR in Step 3.2.
+- **Route A (Tier S/M default, no `--pr`)**: manager-docs creates the sync
+  commit in the assigned worktree; `manager-git` owns the configured PR or
+  `WT-*` integration delivery. No phase agent pushes directly.
+- **Route B (Tier L OR explicit `--pr`)**: manager-git creates the same single
+  sync commit on the sync feature branch (`sync/SPEC-XXX` or
+  `chore/SPEC-XXX-sync`) and delivers it via PR in Step 3.2.
 
 Both routes:
 - Stage all changed document files, reports, README, docs/
@@ -101,7 +119,7 @@ Timestamp: ISO-8601 timestamp
 
 Purpose: Replicate CI checks locally before pushing and creating a PR to catch failures fast, without waiting for slow remote CI. Windows-specific tests are skipped (cannot run locally).
 
-**Trigger condition**: Only run when a PR is about to be created (github_flow feature branch, gitflow feature/release/hotfix). Skip for `main_direct` strategy and direct pushes to main/develop.
+**Trigger condition**: Only run when a PR is about to be created (github-flow feature branch, git-flow feature/release/hotfix). Skip for direct pushes to the main branch or to develop, and for a git-flow `WT-*` integration-worktree merge.
 
 ##### Step 3.1.5.1: Discover CI Configuration
 
@@ -133,20 +151,41 @@ go vet ./...
 go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
 # Check 3: golangci-lint (mirrors CI lint job)
-# Auto-detect if golangci-lint is available
-which golangci-lint && golangci-lint run --timeout=5m \
-  || echo "SKIP: golangci-lint not installed (install via your project's pinned version)"
+# Tool absence is SKIPPED; an installed tool's non-zero status is FAIL.
+if ! command -v golangci-lint >/dev/null 2>&1; then
+  echo "SKIP: golangci-lint not installed (install via your project's pinned version)"
+elif golangci-lint run --timeout=5m; then
+  echo "PASS: golangci-lint"
+else
+  lint_status=$?
+  echo "FAIL: golangci-lint (exit ${lint_status})" >&2
+  exit "$lint_status"
+fi
 
 # Check 4: Cross-compile all CI targets (mirrors CI build job)
 # Replace <your-module> with your main package path (e.g. ./cmd/<your-binary>/).
 # Replicate whatever GOOS/GOARCH targets your CI build matrix declares; the
 # example below shows the common 5-target matrix — run them in parallel, CGO_ENABLED=0 for all.
-GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-amd64     ./<your-module>/ &
-GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-arm64     ./<your-module>/ &
-GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-amd64    ./<your-module>/ &
-GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-arm64    ./<your-module>/ &
-GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-windows-amd64.exe ./<your-module>/ &
-wait
+declare -A build_pids=()
+GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-amd64       ./<your-module>/ & build_pids[linux-amd64]=$!
+GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-arm64       ./<your-module>/ & build_pids[linux-arm64]=$!
+GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-amd64      ./<your-module>/ & build_pids[darwin-amd64]=$!
+GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-arm64      ./<your-module>/ & build_pids[darwin-arm64]=$!
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-windows-amd64.exe ./<your-module>/ & build_pids[windows-amd64]=$!
+
+build_failed=0
+for target in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64; do
+  if wait "${build_pids[$target]}"; then
+    echo "PASS: cross-build ${target}"
+  else
+    status=$?
+    echo "FAIL: cross-build ${target} (exit ${status})" >&2
+    build_failed=1
+  fi
+done
+if (( build_failed != 0 )); then
+  exit 1
+fi
 ```
 
 **Python project** (detected via `pyproject.toml`):
@@ -212,7 +251,7 @@ Pass CI mirror results to Step 3.2 for inclusion in the PR body:
 
 #### Step 3.2: Push and Deliver (Strategy-Aware)
 
-Behavior varies based on `github.spec_git_workflow` setting and current branch context.
+Behavior varies based on the strategy resolved in Step 3.0 from `git_strategy.{mode}.workflow`, and on the current branch context.
 
 **Base Branch Resolution** (applies to all strategies below):
 1. Read `git_strategy.mode` from `.moai/config/sections/git-strategy.yaml`
@@ -221,7 +260,7 @@ Behavior varies based on `github.spec_git_workflow` setting and current branch c
    - If missing (e.g., `manual` mode): default to `main`
 3. Use `{main_branch}` in all branch checkout and PR creation commands below
 
-##### Strategy: github_flow
+##### Strategy: github-flow
 
 Detect current branch:
 
@@ -247,16 +286,23 @@ Detect current branch:
 - Create PR if not exists (same as feature branch flow)
 - Display PR URL and worktree context
 
-##### Strategy: main_direct
+**Any other branch state** → stop and report:
+- When the current branch matches no route above — no branch name is resolvable, for example a detached HEAD — the branch matches no defined route for this strategy
+- Report the branch state together with the defined routes above; create no pull request and push nothing
 
-All commits go directly to main, no PRs:
-1. Push to main: `git push origin main`
-2. Display push confirmation
-3. No PR created regardless of branch name
+##### Strategy: git-flow
 
-##### Strategy: gitflow
+Detect current branch type and route accordingly. The route list is normative and evaluated in the order given, so a branch matching more than one pattern takes the first match.
 
-Detect current branch type and route accordingly:
+**WT-* branch** (checked FIRST) → integration-worktree merge, no PR:
+1. Create no pull request for this branch
+2. Coordinate the merge window with the coordinating session before entering the integration worktree, so exactly one session integrates at a time
+3. Enter the designated develop integration worktree (the integration branch is checked out in exactly one worktree; never check it out in the current worktree)
+4. Merge the branch there: `git merge --no-ff <branch>`
+5. Resolve any conflicts the merge raises; an unresolvable conflict is reported back to the coordinating session rather than forced
+6. Push the integration branch: `git push origin develop` — never force-push. On a rejected push, fetch, integrate the fetched integration branch, and push again
+7. Exit the integration worktree and report the branch name, merge commit, and evidence path
+8. Precondition: when the designated integration worktree does not exist, stop and report — provisioning it is the coordinating session's act
 
 **feature/* branch** → PR to `develop`:
 1. Push branch: `git push -u origin <branch>`
@@ -279,8 +325,13 @@ Detect current branch type and route accordingly:
 2. Display push confirmation
 
 **main branch** → Error:
-- Direct commits to main are not allowed in gitflow
+- Direct commits to the main branch are not allowed in git-flow
 - Suggest creating a hotfix or release branch instead
+
+**Any other branch** → stop and report:
+- A branch matching none of `WT-*`, `feature/*`, `release/*`, `hotfix/*`, `develop`, or the main branch matches no defined route for this strategy
+- Report the branch name together with that route list; create no pull request and push nothing
+- Do not improvise a route and do not fall back to another strategy's behavior
 
 #### Step 3.3: PR Ready Transition (Team Mode)
 
@@ -294,9 +345,8 @@ Only applies when a PR was created in Step 3.2:
 
 After PR/MR creation (Step 3.2) and optional ready transition (Step 3.3), return to the base branch to leave the working directory in a clean state:
 
-**github_flow**: `git checkout {main_branch} && git pull origin {main_branch}`
-**gitflow**: `git checkout develop && git pull origin develop` (for feature branches), `git checkout main && git pull origin main` (for release/hotfix)
-**main_direct**: No branch switch needed (already on main)
+**github-flow**: `git checkout {main_branch} && git pull origin {main_branch}`
+**git-flow**: `git checkout develop && git pull origin develop` (for feature branches), `git checkout main && git pull origin main` (for release/hotfix). A `WT-*` branch needs no switch — its route already exits the integration worktree and returns the session to its own tree.
 
 This ensures the developer's working directory is on the base branch, ready for the next task. The feature branch remains on the remote for review.
 
@@ -308,34 +358,21 @@ Only applies when a PR was created in Step 3.2.
 
 ##### Auto-Merge Trigger Conditions
 
-Auto-merge trigger conditions:
-- `is_worktree_context == true` AND `--no-merge` flag NOT set
-- OR `--merge` flag explicitly set (deprecated, logged as warning)
+Merging is opt-in. The single criterion is the `--auto-merge` opt-in defined in `manager-git.md` § PR Auto-Merge; worktree context alone never triggers a merge.
 
-When auto-merge is triggered:
-1. Verify all CI/CD checks pass (gh pr checks)
-2. Verify zero merge conflicts (gh pr view --json mergeable)
-3. If all checks pass: Execute `gh pr merge --squash --delete-branch`
-4. If checks fail: Report error with recovery command, do NOT merge
+Auto-merge trigger conditions:
+- `--auto-merge` flag set
+- OR `--merge` flag set (deprecated alias of `--auto-merge`, logged as warning)
+
+Mode conditions (per team/personal/manual mode), the execution recipe, and failure handling are owned by `manager-git.md` § PR Auto-Merge; this step does not restate them — it only frames when the behavior applies and what the flags do.
+
+`<merge_method>` is resolved from `git_strategy.<mode>.merge_method` for the active mode (`squash` | `merge` | `rebase`; default `squash`).
 
 ##### Flag Behavior
 
-- `--no-merge`: Skip auto-merge even in worktree context. PR is created but not merged.
-- `--merge`: Deprecated. Logs warning: "The --merge flag is deprecated. Auto-merge is now the default for worktree contexts."
-
-##### Auto-Merge Execution
-
-1. Check CI/CD status via `gh pr checks --watch` (wait for completion)
-2. Check merge conflicts via `gh pr view --json mergeable`
-3. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
-4. Checkout target branch, fetch latest
-5. Verify local is synchronized with remote
-
-##### Auto-Merge Failures
-
-- If CI/CD fails: Report failure, display error details, do NOT merge
-- If merge conflicts: Report conflicts, provide manual resolution guidance, do NOT merge
-- If approvals missing (Team mode): Report pending approvals, do NOT merge
+- `--auto-merge`: Opt in to merging the PR after sync, under the mode conditions in `manager-git.md` § PR Auto-Merge.
+- `--merge`: deprecated alias of `--auto-merge` (logs a warning).
+- `--no-merge`: Deprecated no-op kept for compatibility (logs a warning); not merging is already the default.
 
 ##### Post-Merge Automatic Cleanup
 
@@ -359,7 +396,7 @@ Error handling:
 #### Completion Report
 
 Display summary including:
-- Git workflow strategy used (github_flow, main_direct, or gitflow)
+- Git workflow strategy used (`github-flow` or `git-flow`), as resolved from `git_strategy.{mode}.workflow`
 - Sync mode and scope
 - Files updated and created
 - Project improvements made
@@ -374,13 +411,13 @@ Full-pipeline completion close: when this sync phase completed as the tail of a 
 
 Tool: AskUserQuestion with options tailored to delivery result (single-phase contract):
 
-**If PR was created (github_flow feature branch, or gitflow):**
+**If PR was created (github-flow feature branch, or a git-flow PR route):**
 - Review PR on GitHub (Recommended)
-- Auto-Merge PR (/moai sync --merge)
+- Auto-Merge PR (/moai sync --auto-merge)
 - Create Next SPEC (/moai plan)
 - Start New Session (/clear)
 
-**If direct push (main_direct, or github_flow main branch):**
+**If direct push (github-flow main branch, git-flow develop, or a git-flow `WT-*` integration merge):**
 - Create Next SPEC (/moai plan) (Recommended)
 - Continue Development
 - Start New Session (/clear)
@@ -390,16 +427,26 @@ Tool: AskUserQuestion with options tailored to delivery result (single-phase con
 - Return to Main Directory
 - Remove This Worktree
 
+<!-- moai:contract-mode-start id="contract-next-steps" -->
+Where `workflow.autonomy.mode: contract` — no next-step question is asked; close with the completion report. A Phase 13 local CI mirror failure (Step 3.1.5) is an escalation report, not a question. See `.claude/rules/moai/workflow/contract-autonomy.md` § Escalation routing.
+
+<!-- moai:contract-mode-end -->
 ---
 
 ## Graceful Exit
 
-When user aborts at any decision point:
+When the user aborts at any decision point, follow
+`.claude/rules/moai/workflow/graceful-exit-mutation-contract.md`:
 
-- No changes made to documents, Git history, or branch state
-- Project remains in current state
-- Display retry command: /moai sync [mode]
-- Exit with code 0
+- Capture `before_tree_key` and `after_tree_key`, then list changed paths and
+  applied/unapplied operations.
+- Say “no changes” only when the keys are equal and no mutation was observed.
+- If a writer ran, report partial changes and rollback status; claim restored
+  paths only after the post-rollback key is verified.
+- Always display the abort reason, evidence gaps, and retry command:
+  `/moai sync [mode]`.
+- Exit with code 0 only as the workflow's control-flow result; it never erases
+  a mutation report.
 
 ---
 
@@ -413,7 +460,7 @@ All of the following must be verified:
 - Phase 10: Coverage analysis completed (measurement, gap analysis, test generation, verification)
 - Phase 11: Prerequisites verified, project analyzed, divergence analysis completed, sync plan approved by user
 - Phase 12: Safety backup created and verified, documents synchronized, SPEC documents updated per lifecycle level, project documents updated (if applicable), quality verified, SPEC status updated
-- Phase 13: Changes committed, local CI mirror validated (Step 3.1.5: vet + test-race + lint + cross-compile — Windows skipped), delivered per spec_git_workflow strategy (PR created for github_flow/gitflow, direct push for main_direct), auto-merge executed (if flagged and PR exists)
+- Phase 13: Changes committed, local CI mirror validated (Step 3.1.5: vet + test-race + lint + cross-compile — Windows skipped), delivered per the `git_strategy.{mode}.workflow` strategy (PR created for github-flow and for the PR routes of git-flow; integration-worktree merge for a git-flow `WT-*` branch), auto-merge executed (if flagged and PR exists)
 - Phase 14: Completion report displayed with delivery result, appropriate next steps presented based on strategy and context
 
 ---
@@ -448,6 +495,10 @@ All of the following must be verified:
 - If user confirms, syncs based on git diff
 - If no changes found, reports "Nothing to sync"
 
+<!-- moai:contract-mode-start id="contract-error-flow" -->
+Where `workflow.autonomy.mode: contract` — the current-branch confirmation is not asked: sync only the signed SPEC's changes, and escalate when uncommitted changes fall outside the contract's ownership. See `.claude/rules/moai/workflow/contract-autonomy.md` § Escalation routing.
+
+<!-- moai:contract-mode-end -->
 ---
 
 Version: 4.0.0

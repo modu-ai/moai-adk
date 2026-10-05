@@ -6,8 +6,9 @@ metadata:
   phase: "Phase 2 / Phase 3: Context Discovery and Clarity Evaluation"
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 ## Phase Sequence
 
@@ -39,11 +40,18 @@ Tasks for the Explore subagent:
 
 Purpose: Evaluate how clearly the user's request is specified before beginning deep research. A vague request produces a weaker SPEC; this phase detects vagueness early and gathers missing context through a structured interview.
 
-**Skip conditions (any one is sufficient):**
+**Skip conditions (any one is sufficient, after completeness check):**
 - `--skip-interview` flag is present in $ARGUMENTS
 - Input matches `resume SPEC-XXX` pattern (resuming an existing draft)
-- Input contains 5 or more distinct technical keywords (e.g., framework names, file paths, function names, domain terms)
 - `interview.enabled: false` in `.moai/config/sections/interview.yaml`
+
+Five technical keywords alone are NOT a skip condition. Before skipping the
+interview on a clear request, evaluate the intent-completeness record: concrete
+scope, constraints/non-goals, acceptance or stopping condition, and
+authorization/ownership must each be present (or an explicit empty value must
+be recorded). A request with many framework names but no goal or stopping
+condition enters the interview; a short request that fills all four fields may
+skip it. Record the fields and the skip reason in the clarity evidence.
 
 **Clarity Scoring (1-10):**
 
@@ -70,3 +78,26 @@ If score is 1-3: Preload `ToolSearch(query: "select:AskUserQuestion")`, then use
 ---
 
 **Next phase:** Read `workflows/plan/clarity-interview.md` to continue with Phase 4 Deep Interview Loop.
+
+## spec-compact.md Auto-Generation (moved from spec-assembly.md, verbatim)
+
+### spec-compact.md Auto-Generation
+
+After all SPEC files are created, auto-generate `.moai/specs/SPEC-{ID}/spec-compact.md`:
+
+Extract from spec.md:
+- All REQ-XXX requirements (GEARS-notation entries — EARS legacy form accepted for pre-v3 SPECs until 2026-11-22)
+- All acceptance criteria (Given/When/Then scenarios)
+- Files to modify list
+- Exclusions (What NOT to Build) section
+
+Exclude: Overview, technical approach, research references, annotation history.
+
+Purpose: Run phase loads spec-compact.md (~30% token savings) instead of full spec.md.
+Fallback: If generation fails, Run phase uses full spec.md.
+
+Quality constraints:
+- Requirement modules limited to 5 or fewer per SPEC
+- Acceptance criteria minimum 2 Given/When/Then scenarios
+- Technical terms and function names remain in English
+- Exclusions section MUST contain at least 1 entry

@@ -1,0 +1,329 @@
+# M2 in-place compression attempts — SPEC-ALWAYS-LOADED-HEADROOM-001 (card t1226)
+#
+# One block per attempted row: '@@ <surf> | <file> | <section>' ... '@@END'.
+# The block text replaces the row's text on a scratch copy of the surface (build.py);
+# trailing blank lines of a section row are kept. An empty block deletes the row.
+# A block identical to the original records an attempt that found no
+# meaning-preserving reduction (chars = 0).
+# Rule applied to every block (REQ-ALD2-012): no obligation, condition, exception,
+# number, path, identifier or command is dropped; no keyword line is touched.
+# Lines outside blocks (like these) are ignored.
+
+@@ * | CLAUDE.md | 2. Request Processing Pipeline
+## 2. Request Processing Pipeline
+
+**Analyze-First** (default main-session behavior): every request — any input language, with or without a `/moai` subcommand — runs one ordered pipeline, starting from intent classified by meaning (language-independent, never keyword-gated). Intent Router: `.claude/skills/moai/SKILL.md`.
+
+① intent analysis → ② context-sufficiency check (insufficient → Rule 5 Discovery rounds, §7) → ③ execution-plan composition (`orchestration-mode-selection.md`; surfaced before execution, §7 Rule 1) → ④ **approval gates**, incl. the **Implementation Kickoff Approval** human gate at plan→run (§8; the progression axis is post-approval, never a bypass) → ⑤ execute → verify → iterate against acceptance criteria (an armed `/moai goal` judges termination). Report agent results in the user's `conversation_language`.
+@@END
+@@ * | CLAUDE.md | Unified Skill: /moai
+### Unified Skill: /moai
+
+Single entry point for all MoAI workflows; natural language runs the autonomous plan -> run -> sync pipeline. Subcommands and routing: `.claude/skills/moai/SKILL.md`.
+@@END
+@@ * | CLAUDE.md | Selection Decision Tree ¶1
+1. Read-only exploration / external docs → `Explore` / WebSearch+Context7
+2. SPEC plan / run / sync → `manager-spec` / `manager-develop` / `manager-docs`
+3. PR creation (Tier L OR `--pr`) → `manager-git`
+4. Audit: plan-phase / sync-quality → `plan-auditor` / `sync-auditor`
+5. Harness specialist → `builder-harness`; high-reasoning consult (E1-E4) → `super-advisor`
+6. Design → `manager-design`; E2E tests → `e2e-tester`
+7. Multi-milestone Tier L (≥3 milestones AND ≥10 files) → `manager-lead` (sole Agent-carrier, depth-2 sealed; also the -k kanban / -f factory lead session)
+@@END
+@@ * | CLAUDE.md | Selection Decision Tree ¶3
+@@END
+@@ * | CLAUDE.md | 5. SPEC-Based Workflow
+## 5. SPEC-Based Workflow
+
+`/moai plan "desc"` → manager-spec · `/moai run SPEC-XXX` → manager-develop · `/moai sync SPEC-XXX` → manager-docs. Chain: plan (manager-spec) → plan-audit (plan-auditor) → run (manager-develop, cycle_type ∈ {ddd, tdd, autofix}) → sync (manager-docs) → sync-audit (sync-auditor) → [Tier L OR `--pr`] PR (manager-git). Methodology (DDD/TDD via quality.yaml), phase specs, Late-Branch closure: `.claude/rules/moai/workflow/spec-workflow.md`; @MX annotations: `.claude/rules/moai/workflow/mx-tag-protocol.md`.
+@@END
+@@ * | CLAUDE.md | 6. Quality Gates
+## 6. Quality Gates
+
+3-level harness, TRUST 5, sync-auditor scoring and phase LSP thresholds: `.moai/config/sections/{harness,quality,lsp}.yaml` + `.moai/config/evaluator-profiles/` (pointer, not a copy).
+@@END
+@@ * | CLAUDE.md | 7. Safe Development Protocol
+## 7. Safe Development Protocol
+
+The five safeguards (HARD Rules, §1) expanded:
+
+- **Rule 1 — Approach-First Development**: before non-trivial code, explain the approach + files changed + why; get user approval. Exceptions: typo/single-line/obvious bug fixes. Present the likeliest-to-change decisions first (data-model, new type interfaces, user-facing/UX flows), mechanical/refactoring steps last.
+  - **Proportionality — "can the diff be stated in one sentence?"** Plan only when the approach is uncertain, the change spans files, or the code is unfamiliar; otherwise the exception list applies — gating obvious changes trains approval without reading, and the gate then fails where it was needed.
+  - **The plan is editable.** In Plan Mode `Ctrl+G` opens it in an editor for wording, scope trims and reordering; genuine either/or decisions go through `AskUserQuestion` (§8).
+- **Rule 2 — Multi-File Change Decomposition**: at 3+ files, split into logical units (TodoList), go file-by-file, analyze dependencies before parallel execution, report progress per unit.
+- **Rule 3 — Post-Implementation Review**: after coding, list potential issues (edge cases, error/concurrency scenarios), suggested tests, known limitations/assumptions, further-validation recommendations.
+- **Rule 4 — Reproduction-First Bug Fixing**: write a failing reproduction test; confirm it fails; challenge the root cause once ("How do we know this is the cause, not a symptom?"); fix minimally; verify it passes.
+- **Rule 5 — Context-First Discovery**: when intent is unclear, run a Socratic interview before execution. Triggers, process, exceptions and the 4-quadrant Unknowns lens: `.claude/rules/moai/core/askuser-protocol.md` § Ambiguity Triggers and Exceptions + § Socratic Interview Structure (+ optional Blind Spot Pass).
+
+Rule 5 (WHAT) runs BEFORE Rule 1 (HOW). The quality gate auto-detects the project language and runs its lint/format/test toolchain (Go: `go vet`→`golangci-lint`→`go test`; illustrative — all 16 supported languages detected equally via project markers; missing tools skipped).
+@@END
+@@ * | CLAUDE.md | 8. User Interaction Architecture ¶3
+Native-UTF-8 tool-call payloads (AskUserQuestion included): bound by `AGENTS.md` §6; mechanism and recovery: `askuser-protocol.md` § Non-ASCII Tool-Call Encoding.
+@@END
+@@ * | CLAUDE.md | 8. User Interaction Architecture ¶4
+Channel rules (interview limits, recommended label, anti-patterns, pre-response self-check): SSOT `.claude/rules/moai/core/askuser-protocol.md`. Subagents return blocker reports instead of prompting: `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary.
+@@END
+@@ * | CLAUDE.md | 8. User Interaction Architecture ¶5
+@@END
+@@ * | CLAUDE.md | 9. Configuration Reference
+## 9. Configuration Reference
+
+User and language configuration:
+
+@.moai/config/sections/user.yaml
+@.moai/config/sections/language.yaml
+
+Rules: `.claude/rules/moai/` (core / workflow / development / language / design). User responses in `conversation_language`; agent comms and Commands/Agents/Skills instructions in English; code comments per `code_comments` (default English); memory files in English (`moai-memory.md` § Rules). Design-system config: `.moai/config/sections/{design,constitution,harness}.yaml` · `.moai/project/brand/` · `.moai/config/evaluator-profiles/`.
+@@END
+@@ * | CLAUDE.md | 10. Web Search Protocol
+## 10. Web Search Protocol
+
+Never generate URLs absent from WebSearch results, present uncertain info as fact, or omit "Sources:" after WebSearch.
+@@END
+@@ * | CLAUDE.md | 13. Progressive Disclosure System
+## 13. Progressive Disclosure System
+
+Retired bodies, loaded on the named trigger — anti-hallucination and GLM web tools: `moai-constitution.md` § URL Verification · `glm-web-tooling.md` · `dynamic-workflows.md` (`/deep-research`); error recovery, archived agents, token-limit resume: `agent-common-protocol-reference.md` § Error Recovery Pattern · `archived-agent-rejection.md` §C · `session-handoff.md`; thinking modes, MCP config, dynamic workflows: `moai-constitution.md` § Opus 5.5 Prompt Philosophy · `settings-management.md` · `dynamic-workflows.md` · Skill("moai-foundation-thinking"); token budget: `skill-authoring.md` § Progressive Disclosure.
+@@END
+@@ * | CLAUDE.md | 14. Parallel Execution Safeguards ¶2
+@@END
+@@ * | CLAUDE.md | 15. Agent Teams (Re-allowed, experimental)
+## 15. Agent Teams (Re-allowed, experimental)
+
+**Agent Teams ALLOWED (experimental)** — operator decision; `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled. `--team` selects the layer; the Phase 4 tree still routes Tier L coordination to `manager-lead`. **Legacy CG**: `moai cg` is retired — `moai migrate cg` previews an explicit role migration; native Agent Teams and independent audits are unaffected. Flags: `model-policy.md` § Legacy CG Configuration.
+@@END
+@@ * | CLAUDE.md | 16. Context Search Protocol
+## 16. Context Search Protocol
+
+When compacting, always preserve modified/created files, verification commands + exit codes + evidence paths, active SPEC ID/phase, unresolved blockers, and any armed goal condition (load-bearing per `verification-claim-integrity.md` §2).
+
+Retired bodies — Agent Teams constraints, `--team`, CG-role migration: `orchestration-mode-selection.md` §C.1 · `spec-workflow.md` § Agent Teams Variant · `glm-web-tooling.md`; previous-session search, thresholds, reduction ladder: `context-window-management.md` · `session-handoff.md`.
+@@END
+@@ * | CLAUDE.md | 17. Troubleshooting
+## 17. Troubleshooting
+
+Debug: `claude --debug "hooks"` / `"api,hooks"` / `"mcp"`, or `/debug` in-session (session state, hook logs, tool traces).
+
+| Symptom | Cause | Solution |
+|---|---|---|
+| `moai hook subagent-stop` fails | Binary not in PATH | `which moai` |
+| settings.json unchanged after `moai update` | Conflict with user modifications | `moai update -t` (template-only) |
+
+Version: 14.3.0 | Language: English | Core Rule: MoAI orchestrates complex work; simple bounded operations may run directly
+Detailed patterns (plugins, sandboxing, headless mode, version management): Skill("moai-foundation-cc").
+@@END
+@@ * | AGENTS.md | 1. Evidence and verification claims ¶3
+**Evidence-bearing report format.** Verification and completion reports SHOULD carry: **Claim**,
+**Evidence** (command + verbatim output), **Baseline-attribution** (tree measured in this run),
+**Gaps** (explicitly unobserved), **Residual-risk**. An empty Gaps section is valid only when true.
+@@END
+@@ * | AGENTS.md | 1. Evidence and verification claims ¶4
+@@END
+@@ * | AGENTS.md | 2. Git, branches, and the shared checkout
+## 2. Git, branches, and the shared checkout
+
+The primary checkout is shared by concurrent sessions; its branch state is global.
+
+**Never change branch state in the primary checkout.** Forbidden there: `git checkout <branch>` /
+`git switch` (relocates every session's tree); `git checkout -b` / `git switch -c` / `git branch`
+(same, plus an unexpected branch); `git reset --hard` / `git checkout -- <path>` (discards work of
+unknown provenance); `git stash` (repository-global — absorbs other sessions' uncommitted changes);
+`git rebase` / `git merge` onto the checked-out branch (rewrites or advances shared history).
+Permitted: read-only inspection, `git fetch`, commits to the checked-out branch, pushing it.
+
+**Re-read branch and commit state immediately before any commit or push** — never an earlier
+value or the session-start branch:
+
+```bash
+git rev-parse --short HEAD
+git branch --show-current
+```
+
+A difference means another actor writes the same tree: stop and report the divergence.
+
+**Never sweep-stage.** In the primary checkout, never `git add -A`, `git add .`, or
+`git commit -a`. Stage by explicit pathspec after re-reading `git status --short`, so foreign
+files stay excluded — **even when no foreign session was detected** (one can arrive after the check).
+
+**Detect parallel sessions before a non-trivial direct edit** to a shared path (`.claude/`,
+`.moai/`, `internal/`, `pkg/`, `cmd/`, repo-root config), and surface any divergence:
+
+```bash
+default_ref="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD)"
+test -n "$default_ref"
+git fetch origin "${default_ref#origin/}" 2>&1
+git rev-list --count --left-right "$default_ref"...HEAD
+```
+
+`0 0` or `0 N` proceeds; `N 0` or `N M` means resolve before editing. With another live session in
+the checkout, isolate into a worktree. Re-run the check before any commit and after a long pause.
+If `origin/HEAD` is unresolved, stop and resolve the default branch instead of assuming `main`.
+@@END
+@@ * | AGENTS.md | 3. Worktrees
+## 3. Worktrees
+
+**Work inside a worktree entered through the launcher** (`moai cc -w <name>`, `moai cc -w <name>
+--spawn` for a new window, `EnterWorktree(<path>)` to re-enter); never create one with a bare
+`git worktree add`. Leave with `ExitWorktree`. Drive a worktree with `git -C <path>`, not `cd`.
+
+**From inside a worktree session, `<path>` is that worktree's absolute path.** Measured on Claude
+Code 2.1.275: the guard refuses `-C .`, a relative or runtime-computed path, and any path outside
+this worktree; plain git,
+`git -C <own absolute path>` and `--git-dir=<own .git>` pass. `cd <own worktree> && git …` passes
+too but stays inadvisable. A refusal here is the guard reading the command, not a runtime defect.
+
+**`moai worktree done` closes L2 trees only.** A tree under `.claude/worktrees/` is L1, absent from
+the registry, disposed by the session-end prompt or `git worktree unlock` + `git worktree remove`.
+
+**A card's unpushed branch makes its worktree the only copy.** Dispose of no worktree — L1 or L2 —
+until the branch is integrated and the remote merge has landed.
+
+**Start a new card in a new worktree.** Exit any previous worktree to the primary checkout first,
+or the work lands on the old card's branch. Create the tree from the remote default branch; never
+reuse the previous card's tree; merge a prior card's unmerged branch inside the new one if needed.
+
+**Card worktree branches carry `WT-` plus a descriptive slug, never the card id.** Rename right after
+creating the tree: `git branch -m WT-<slug>` (re-entry resolves by tree name; the directory keeps
+the card id).
+
+**Three traceability carriers are then mandatory**: the dispatch's `card:` field, the card id in
+every commit message on the branch, and the card id in the evidence path
+(`.moai/reports/<card-id>/verdict.md`).
+@@END
+@@ * | AGENTS.md | 4. How verification is run
+## 4. How verification is run
+
+**Scope verification to the change**: run the tests it can affect, then push and let CI run the
+full suite (a full suite on a loaded machine measures the machine).
+
+**Never spawn background load.** Contention load must be cleanup-guaranteed — kills registered with
+the test framework's cleanup hook, or a `timeout` wrapper; a trailing `kill` is not cleanup.
+
+**Scrub the environment in one compound invocation**: inside a worktree, `unset <VARS> && <command>`
+as a single call — a separate `unset` does not reach the next command (fresh process each call).
+
+**Batch independent read-only verifications** instead of serializing across turns; serialize only
+for a genuine dependency (output feeding input, writes to the same path, shared-state mutation).
+
+**A CodeRabbit row in `gh pr checks` is not evidence a review ran** — it reads `success`/`pass`
+either way. Count it only when BOTH hold: (1) `gh api "repos/$repo/commits/$head_sha/status"`
+reports the `CodeRabbit` context with `state == "success"` and description `Review completed`;
+(2) a `Merge Risk:` line exists whose commit prefix matches the current `headRefOid`. Anything else
+is a gap; `Review rate limited` means the review never started.
+@@END
+@@ * | AGENTS.md | 5. Core behaviors ¶1
+**1. Surface assumptions.** Before non-trivial work, list assumptions as a short list, invite
+correction, and wait for confirmation.
+@@END
+@@ * | AGENTS.md | 5. Core behaviors ¶2
+**2. Manage confusion actively.** On an inconsistency, conflicting requirement, or unclear spec:
+STOP — do not guess; name the confusion, present the tradeoff or question, wait.
+@@END
+@@ * | AGENTS.md | 5. Core behaviors ¶3
+**3. Push back when warranted.** Say so directly when an approach has a concrete downside,
+contradicts a convention without justification, or breaks a tested invariant: state the issue,
+quantify it ("adds ~200 ms latency", not "might be slower"), propose an alternative, and accept an
+override once the user has full information.
+@@END
+@@ * | AGENTS.md | 5. Core behaviors ¶5
+**5. Maintain scope discipline.** Touch only what was asked. Do NOT remove comments you do not
+understand, clean up orthogonal code, refactor adjacent systems, delete seemingly-unused code
+without explicit approval, or add unrequested features. Match the file's existing style (naming,
+error handling, imports); in-file consistency outranks preference.
+@@END
+@@ * | AGENTS.md | 5. Core behaviors ¶6
+**6. Verify, don't assume.** Every task needs evidence of completion; "seems right" never suffices:
+test output for tests, build output for builds, a read-back for a created file, runtime evidence
+for behavior. Without a spec, first define the goal as a testable assertion ("done when X produces
+Y"), then verify it.
+@@END
+@@ * | AGENTS.md | 5. Core behaviors ¶7
+@@END
+@@ * | AGENTS.md | 6. Output, language, and format ¶1
+**Respond in the user's `conversation_language`**; code, identifiers, paths, commands and flags stay
+verbatim.
+@@END
+@@ * | AGENTS.md | 6. Output, language, and format ¶4
+**User-facing output is Markdown**; never display XML tags to users.
+@@END
+@@ * | AGENTS.md | 6. Output, language, and format ¶5
+**XML is for agent-to-agent structured data only** (semantic sections); never surface it to users.
+@@END
+@@ * | AGENTS.md | 6. Output, language, and format ¶6
+**No time predictions in plans or reports** — use priority labels (High / Medium / Low) and phase
+ordering ("complete A, then start B"), never "2-3 days", "1 week", "as soon as possible".
+@@END
+@@ * | AGENTS.md | 6. Output, language, and format ¶7
+@@END
+@@ * | AGENTS.md | 7. Tools and command output
+## 7. Tools and command output
+
+**Use tools for accuracy and efficiency.** Read a file before editing it. Locate before reading
+(file by pattern, line by content, then read that region). Use absolute paths verified to exist.
+Prefer a targeted edit over a rewrite and a dedicated tool over a shell equivalent. Retries:
+read-only/idempotent calls may be retried; a side-effecting one (write, commit, push, PR, deploy,
+external mutation) that fails ambiguously is retried only after observing current state and
+confirming the effect absent — no success signal does not prove it did not land. After three
+failures on one operation, report the blocker.
+
+**Work without MCP servers**: fall back to web search and fetch for docs and patterns; analysis
+quality must not depend on MCP availability.
+
+**Bound command output**: quiet flags, targeted queries, or redirect-to-file with exit code and a
+bounded tail; the runtime output limit is a backstop, not the target.
+
+**Prefer quiet forms** (`--no-progress`, `-q`, machine-readable output plus a filter) over
+spinners, banners, tables, or color noise — same decision bytes, less context.
+
+**Weigh session length as a cost.** Prefer one warm session for the same work; a new or cold one
+re-pays the always-loaded prefix. Split only when the benefit justifies it.
+@@END
+@@ * | AGENTS.md | 8. Harness-local instructions
+## 8. Harness-local instructions
+
+`moai codex` reads non-empty common local guidance, then Codex-specific local guidance, from the
+project root, keeping each body and adding source headers in one session `developer_instructions`
+override. Shared instruction documents never import these inputs; other harness-local settings and
+memory stay owned by their harness.
+
+Codex Web sessions read `AGENTS.md`, but `.codex/hooks.json`, the status line and the MoAI launcher
+injection do not run there — treat Web sessions as read-and-review first.
+@@END
+@@ * | AGENTS.md | 9. Hook Event Coverage
+## 9. Hook Event Coverage
+
+Codex wires SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, Stop,
+SubagentStart, SubagentStop — not PreCompact, PostCompact, PermissionRequest, Interrupt; Claude-only
+Notification, PostToolUseFailure, TeammateIdle, TaskCompleted never fire under Codex. Verify
+coverage before relying on a hook.
+@@END
+@@ * | AGENTS.md | 10. Configuration Map
+## 10. Configuration Map
+
+Config: `.moai/config/sections/*.yaml`. Harness, TRUST 5 and phase LSP thresholds come from
+`harness.yaml`, `quality.yaml`, `lsp.yaml` and evaluator profiles; never duplicate them inline.
+@@END
+@@ * | AGENTS.md | 11. moai CLI Verbs
+## 11. moai CLI Verbs
+
+| Verb | Purpose |
+|---|---|
+| `moai init <project> --llm claude\|codex\|both` | Scaffold a project, select its LLM harness |
+| `moai update` | Sync templates, refresh enabled wiring |
+| `moai tool enable codex` | Add or refresh Codex wiring in an existing project |
+| `moai hook <event>` | Hook dispatcher (drives hooks.json / settings.json) |
+| `moai doctor` | Diagnose installation and wiring health |
+| `moai worktree` | Worktree lifecycle (sync / remove / clean / recover / done / snapshot / verify / restore) |
+| `moai cc` / `moai glm` / `moai gpt` | Claude, GLM, or GPT session launchers |
+| `moai migrate cg` | Preview legacy CG migration; role changes need explicit acceptance |
+| `moai version` | Build version and provenance |
+| `moai codex` | Codex launcher — `cli`, `status`, `app` web; `-w <worktree>` enters an existing tree, never creates one |
+
+`moai --help` gives the current command surface.
+@@END
+@@ * | AGENTS.md | 12. Status Line Tokens
+## 12. Status Line Tokens
+
+`moai statusline` reads `.moai/state/` and honors `MOAI_STATUSLINE_CONTEXT_SIZE`; the token set
+lives in `internal/statusline` — do not duplicate it here.
+@@END

@@ -2,7 +2,6 @@
 id: SPEC-MEMORY-DIET-001
 title: "Safe always-loaded context diet — acceptance criteria"
 version: "1.0.0"
-status: completed
 created: 2026-07-10
 updated: 2026-07-10
 author: GOOS행님

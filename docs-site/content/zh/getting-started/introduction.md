@@ -6,7 +6,7 @@ draft: false
 
 MoAI-ADK 是用 **成本**（代币经济学）· **自我改进**（智能体循环工程）· **质量把控**（智能体线束）这三件事把 Claude Code 包起来的 Agentic Development Kit。同等质量的代码用更少的代币产出。只要声明完成条件，循环就会自行工作，过程中积累的观察则成为线束学习的原料。"完成"由 SPEC 三阶段与 TRUST 5 闸门以证据判定。模型选择、推理深度、上下文用量都由系统管理。它用 Go 写成单一二进制，无依赖即可直接运行。
 
-本页把 MoAI-ADK 是什么、为什么长成这个样子放在一条线上介绍：三个核心各自回答什么问题，SPEC · TRUST 5 · CG 模式这些术语在其中站在哪里，以及第一次上手该往哪走。安装步骤与第一个项目的运行交给[安装](/zh/getting-started/installation)和[快速开始](/zh/getting-started/quickstart)页面，这里专注于"为什么"。
+本页把 MoAI-ADK 是什么、为什么长成这个样子放在一条线上介绍：三个核心各自回答什么问题，SPEC · TRUST 5这些术语在其中站在哪里，以及第一次上手该往哪走。安装步骤与第一个项目的运行交给[安装](/zh/getting-started/installation)和[快速开始](/zh/getting-started/quickstart)页面，这里专注于"为什么"。
 
 
 ## 记法说明
@@ -29,7 +29,7 @@ MoAI-ADK 是用**三根轴**包住 Claude Code 的 Agentic Development Kit —�
 
 ### 成本 —— 代币经济学
 
-同样的质量，更少的代币。决定成本的不是单价而是**模型分配** —— DeepSWE 基准测试中，Opus 最低推理的得分高于 Sonnet 最高推理，成本却是其十六分之一。三档模型策略 · CG 模式 · 提示缓存 · Token Circuit Breaker 让预算由系统管理。
+同样的质量，更少的代币。决定成本的不是单价而是**模型的选择** —— DeepSWE 基准测试中，Opus 最低推理的得分高于 Sonnet 最高推理，成本却是其十六分之一。会话模型策略 · 提示缓存 · Token Circuit Breaker 让预算由系统管理。
 
 ### 自我改进 —— 智能体循环工程
 
@@ -44,12 +44,12 @@ MoAI-ADK 是用**三根轴**包住 Claude Code 的 Agentic Development Kit —�
 ## v3.1 更方便了的地方
 
 - **`/moai goal`** —— 一行声明完成条件，会话自主推进。
-- **看板模式** —— 同时运行多个会话。
+- **工厂模式** —— 同时运行多个会话。
 - **BAS Navigator** —— 自动同步三段代码地图。
-- **manager-lead** —— 协调大规模工作：SPEC 内的 Tier L 里程碑扇出，加上看板与工厂领导会话调度。
+- **manager-lead** —— 协调大规模工作：SPEC 内的 Tier L 里程碑扇出，加上工厂主导会话调度。
 - **multi-model audit** —— 用多模型交叉验证抓偏差。
 - **autonomy tier** —— 调节自主档位，安全地跑。
-- **profile matrix** —— 以 12 个智能体 × 3 个配置文件分配模型。
+- **会话模型策略** —— 一次选择即可决定会话的默认推理强度。子代理沿用会话的模型与推理深度。
 
 ## 核心概念
 
@@ -104,7 +104,7 @@ MoAI-ADK 把 Python Edition 用 Go 完全重写，把性能与效率拉到最高
 
 ### 核心数字（以 v3.0 为准）
 
-- **11 个**智能体目录（10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`）
+- **13 个**智能体目录（12 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`）
 - **31 个**技能 (template-managed)
 - **36 个**终端 CLI 命令 · **16 种** `/moai` 斜杠子命令
 - **16 种**编程语言支持
@@ -124,31 +124,31 @@ MoAI-ADK 把 Python Edition 用 Go 完全重写，把性能与效率拉到最高
 
 ## 主要功能
 
-### 智能体目录（11 个）
+### 智能体目录（13 个）
 
-MoAI 编排器不亲自实现，而是把工作委派给 11 个专业智能体。计划与审计是分开的，制作的人不自己检查。
+MoAI 编排器不亲自实现，而是把工作委派给 13 个专业智能体。计划与审计是分开的，制作的人不自己检查。
 
 | 类别 | 数量 | 主要智能体 |
 |----------|------|--------------|
-| **Manager** | 5 个 | manager-spec, manager-develop, manager-docs, manager-git, manager-design |
+| **Manager** | 6 个 | manager-spec, manager-develop, manager-docs, manager-git, manager-design, manager-lead |
 | **Evaluator** | 2 个 | plan-auditor, sync-auditor |
 | **Builder** | 1 个 | builder-harness |
 | **Advisor** | 1 个 | super-advisor（高推理咨询） |
-| **Specialist** | 1 个 | e2e-tester（执行 Web/移动/桌面 E2E 测试） |
+| **Specialist** | 2 个 | e2e-tester（执行 Web/移动/桌面 E2E 测试）、manager-todo（任务队列管理；GTD 自动任务判定为其只读子角色） |
 | **内置** | 1 个 | Explore（Anthropic 内置，只读代码分析） |
 
 ### 模型策略（代币经济学）
 
-MoAI-ADK 为每个智能体分配最优的模型与推理深度。目标是在套餐的用量额度内把质量尽量拉高。因此不去换更弱的模型等级，而是在同一个 Opus 内部只调节各智能体的推理深度。因为在长周期的智能体工作里，弱模型会消耗更多步数，每任务成本反而更高。
+目标是在套餐的用量额度内把质量尽量拉高。在长周期的智能体工作里，弱模型会消耗更多步数、每任务成本反而更高，所以不去换更弱的模型等级，而是在同一个模型内部只调节推理深度。v3.2 起这个调节以**会话**为单位：子代理沿用主会话的模型与推理深度，智能体定义对两者都不作声明，配置文件的**会话模型策略**（`moai profile setup`）决定未单独选择推理强度时的默认值。
 
-| 档位 | 特点 |
+| 会话模型策略 | 含义 |
 |------|------|
-| **high** | 最高质量 —— 调用频率最低的两个智能体使用 `max` 推理深度 |
-| **medium**（默认） | 质量与成本的平衡 |
-| **low** | 每任务成本最低 —— 智能体行降到 Opus `low` effort，Sonnet 只用于单发行 |
+| **high** | 会话 effort 回退 `high` |
+| **medium**（默认） | 会话 effort 回退 `medium` —— 成本/评分曲线的拐点 |
+| **low** | 会话 effort 回退 `low` —— 同一个模型内部的节省用法 |
 
 {{< callout type="info" >}}
-默认档位是 **medium**。调整档位也不会换模型等级，只改变各智能体的 Opus 推理深度。`low` 让所有智能体行保持 Opus `low` effort，只在单发行上用 Sonnet；`high` 把调用频率最低的两个智能体提升到 `max` effort。通过 `--model-policy` 标志或初始化向导设置。
+已退役的 `--model-policy` / `--profile` 旗标是弃用桩：只打印指向 `moai profile setup` 的警告，没有任何效果。会话 effort 可随时用 `/effort` 或 `ultrathink` 调节，模型用 `/model`。详情见[模型策略](/zh/multi-llm/model-policy/)页面。
 {{< /callout >}}
 
 ### 执行模式与编排
@@ -160,9 +160,7 @@ MoAI-ADK 为每个智能体分配最优的模型与推理深度。目标是在�
 /moai run SPEC-AUTH-001 --solo    # 强制顺序子智能体
 ```
 
-{{< callout type="info" >}}
-**v3.0 变更**： 过去的 Agent Teams 静态编排层已废止。强制 `--team` 也会回退到子智能体模式。Claude Code 的原生 teammate 运行时（`moai cg` 的 tmux 分屏）保留不变。
-{{< /callout >}}
+{{< callout type="info" >}} **v3.0 变更**： 过去的 Agent Teams 静态编排层已废止。 强制 `--team` 也会回退到子智能体模式。 {{< /callout >}} CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 
 ### SPEC-First 工作流
 
@@ -244,19 +242,13 @@ MoAI-ADK 的 Ralph-Loop Style LSP 集成按如下方式工作：
 Ralph-Loop Style LSP 集成把开发工作流的质量闸门自动化，让人不亲手介入也能保持高代码质量。
 {{< /callout >}}
 
-## 用 CG 模式省代币（50~70%）
+## CG 停用与配置迁移
 
-{{< callout type="info" >}}
-**成本（代币经济学）的实战工具**： z.ai GLM 是与 Claude Code 完全兼容的 AI 后端。在 **CG 模式**（`moai cg`，需 tmux）下，Claude 领队负责编排 · 架构决策 · 代码审查，GLM 工作者并行处理实现 · 测试 · 文档化，在实现为主的工作上**节省 50~70% 代币**。架构设计或安全审查这类需要深度推理的场合，则使用 Claude 专用（`moai cc`）。
+它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。 项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。 [CG 停用与配置迁移](/zh/multi-llm/cg-mode/) CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 
-```bash
-moai cc            # Claude 专用
-moai glm           # GLM 专用
-moai cg            # CG 混合 (Claude 领队 + GLM 工作者, 需 tmux)
-```
+迁移会写入 `llm.team_mode: claude`、`llm.gateway.teammate_mode: in-process` 和 `llm.gateway.teammate_provider: inherit`。这会取消原有混合角色分配，并不会保留 Claude 领队与 GLM 队友窗格的分工。
 
-没有 GLM 账户的话，请到 [z.ai 注册（额外 10% 折扣）](https://z.ai/subscribe?ic=1NDV03BGWU)注册。通过注册链接获得的奖励用于 **MoAI 开源开发**。详细架构与模型策略请参阅[多 LLM](/zh/multi-llm/)一节。
-{{< /callout >}}
+`claude-glm` 表示 Claude 领队搭配 tmux 中的 GLM 队友。目前 TEAMMATE 集成验证尚未通过，因此不能应用或启动该方案，只能预览。安装 tmux 或设置 `verified: true` 都不能解除限制。
 
 ## 自我改进 —— 循环自行工作，线束从中学习
 
@@ -278,7 +270,7 @@ moai cg            # CG 混合 (Claude 领队 + GLM 工作者, 需 tmux)
 | 优势 | 说明 |
 |------|------|
 | **质量保障** | 用 TRUST 5 框架保持一致的质量 |
-| **代币效率** | 模型策略 + CG 模式 + Token Circuit Breaker 让系统管理成本 |
+| **代币效率** | 会话模型策略 + Token Circuit Breaker 让系统管理成本 |
 | **生产力提升** | AI 智能体自动化缩短开发时间 |
 | **可扩展** | 模块化架构与线束构建器灵活扩展 |
 | **多语言** | 支持 4 种语言 |

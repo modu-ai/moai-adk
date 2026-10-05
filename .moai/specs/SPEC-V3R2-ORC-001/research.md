@@ -3,7 +3,6 @@ spec_id: SPEC-V3R2-ORC-001
 phase: "0.5 — Codebase Research"
 created_at: 2026-05-09
 author: manager-spec
-status: research-complete
 ---
 
 # Research: Agent roster consolidation (22 → 17)

@@ -1,0 +1,94 @@
+=== RUN   TestRunDoctor_WithExport
+    coverage_improvement_test.go:715: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_WithExport (9.24s)
+=== RUN   TestRunDoctor_WithFix
+    coverage_improvement_test.go:737: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_WithFix (14.20s)
+=== RUN   TestRunDoctor_Verbose
+    coverage_improvement_test.go:777: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_Verbose (28.56s)
+=== RUN   TestRunDoctor_AllFlags
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ Shared Flag Slot
+  ✓ Shared Flag Slot
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✗ Error: could not extract embedded artifacts from /usr/bin/false: false init: exit status 1 ()
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ Git Strategy Workflow
+  ✓ Git Strategy Workflow
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+    coverage_improvement_test.go:4930: unexpected error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_AllFlags (20.15s)
+=== RUN   TestRunDoctor_VerboseAndDetail
+    coverage_improvement_test.go:5754: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_VerboseAndDetail (14.08s)
+=== RUN   TestRunDoctor_ExportMode
+    coverage_improvement_test.go:5804: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_ExportMode (13.49s)
+=== RUN   TestDoctorCmd_Execution
+    doctor_test.go:76: doctor command RunE error: doctor: 1 check(s) failed
+--- FAIL: TestDoctorCmd_Execution (16.10s)
+=== RUN   TestDoctorCmd_ExportFlag
+    integration_test.go:176: doctor --export error: doctor: 1 check(s) failed
+--- FAIL: TestDoctorCmd_ExportFlag (11.99s)
+=== RUN   TestDoctorCmd_VerboseExecution
+    integration_test.go:202: doctor --verbose error: doctor: 1 check(s) failed
+--- FAIL: TestDoctorCmd_VerboseExecution (12.50s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	140.953s
+FAIL

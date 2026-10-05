@@ -4,11 +4,34 @@ on:
   pull_request:
     paths:
       - '.moai/specs/**'
+      - 'internal/spec/**'
+      - '.github/workflows/spec-lint.yml'
+      # The baseline file is this gate's own control surface (t525
+      # REQ-SLGS-010). Without this path a rebaseline commit that touched
+      # nothing else would change the verdict with no run to check it.
+      - '.moai/spec-lint-baseline.json'
+  # develop is the integration branch under git-flow: lane work merges into it
+  # directly, with no card PR to carry the pull_request trigger above. Without a
+  # push trigger this lint never runs on the branch where SPECs actually land.
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - '.moai/specs/**'
+      - 'internal/spec/**'
+      - '.github/workflows/spec-lint.yml'
+      - '.moai/spec-lint-baseline.json'
 
 permissions:
   contents: read
 
-# Cancel in-progress runs for the same PR (lint is fast and idempotent).
+# One slot per ref, for pushes as well as pull requests: on a push to develop
+# `github.ref` is `refs/heads/develop`, so every develop push shares a slot and
+# a newer push cancels an older run. The comment previously said "for the same
+# PR", which is what the group meant before the push trigger existed — and a
+# reading of this file went looking for that PR when diagnosing cancellations
+# that were in fact job timeouts (t874).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -16,16 +39,110 @@ concurrency:
 jobs:
   spec-lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # The lint step alone runs 527-571s (measured across runs 34775055880 and
+    # 35260236027), so a 10-minute cap raced the job: every cancelled run sat at
+    # 617-622s and every success at 502-601s, split exactly on the 600s line.
+    # A cancelled run is neither success nor failure, so the gate stopped
+    # producing a verdict at all — two real failures were read past that way.
+    # Raising the cap does not weaken the lint; it lets the lint finish and say
+    # what it found (t874).
+    timeout-minutes: 25
     steps:
       # Version alignment with ci.yml: actions/checkout@v7, actions/setup-go@v7.
       - uses: actions/checkout@v7
+        with:
+          # SPEC-SPECLINT-GITBLIND-001 (t371) REQ-SLGB-008: full history so
+          # StatusGitConsistency and OwnershipTransition walk the real log
+          # windows instead of a depth-1 truncation that silently blinds them.
+          fetch-depth: 0
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
-      - name: Run SPEC lint
+      # Explicit integration-ref fetch (REQ-SLGB-008). Whether actions/checkout at
+      # fetch-depth: 0 populates refs/remotes/origin/* is NOT a verified
+      # assumption (SPEC-SPECLINT-GITBLIND-001 §2.3) — this repo integrates
+      # through develop, so a checkout of a develop push holds no local main
+      # either way, and the lint's base-ref chain needs one. Redundant when
+      # checkout already fetched it, the fetch costs one command; missing, it
+      # costs the lint its eyes again.
+      - name: Fetch integration refs
+        run: git fetch origin main:refs/remotes/origin/main develop:refs/remotes/origin/develop
+      - name: Select SPEC lint policy
+        id: policy
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
+          REF_NAME: ${{ github.ref_name }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          strict=true
+          reason="default gate for main pushes and ordinary pull requests"
+
+          if [[ "$EVENT_NAME" == "pull_request" && "$HEAD_REF" == release/* ]]; then
+            if [[ "$BASE_REF" != "main" ]]; then
+              echo "::error::release snapshot PR must target main (got ${BASE_REF:-<empty>})"
+              exit 1
+            fi
+            develop_sha=$(git rev-parse origin/develop)
+            if [[ "$PR_HEAD_SHA" != "$develop_sha" ]]; then
+              echo "::error::release snapshot head $PR_HEAD_SHA does not match origin/develop $develop_sha"
+              exit 1
+            fi
+            strict=false
+            reason="release snapshot matches develop; report inherited warnings while blocking errors"
+          elif [[ "$EVENT_NAME" == "push" && "$REF_NAME" == "develop" ]]; then
+            if [[ -z "$EVENT_BEFORE" || "$EVENT_BEFORE" =~ ^0+$ ]]; then
+              reason="develop comparison base is unavailable; fail closed with strict lint"
+            else
+              changed_paths=$(git diff --name-only --no-renames "$EVENT_BEFORE" "$EVENT_SHA")
+              spec_changed=false
+              while IFS= read -r path; do
+                case "$path" in
+                  .moai/specs/*|internal/spec/*|.moai/spec-lint-baseline.json) spec_changed=true ;;
+                esac
+              done <<< "$changed_paths"
+              if [[ "$spec_changed" == "true" ]]; then
+                strict=true
+                reason="develop push changes SPEC inputs or the spec linter"
+              else
+                strict=false
+                reason="develop push leaves SPEC inputs and the spec linter unchanged"
+              fi
+            fi
+          fi
+
+          echo "strict=$strict" >> "$GITHUB_OUTPUT"
+          echo "SPEC lint policy: strict=$strict ($reason)"
+      - name: Run baseline-gated SPEC lint
+        if: steps.policy.outputs.strict == 'true'
         # Invoke the freshly built binary directly via go run instead of
         # `make install` (which pollutes $GOPATH/bin and is unnecessary for
         # a one-shot lint invocation).
-        run: go run ./cmd/moai spec lint --strict
+        #
+        # SPEC-SPECLINT-GATE-SIGNAL-001 (t525) REQ-SLGS-010: gate on the CHANGE,
+        # not on the standing inventory. `--strict` escalates every non-advisory
+        # warning, so a single standing one makes this gate permanently red and
+        # the person who broke something sees the same red as the person who
+        # changed nothing. `--baseline` fails only a rule that rose above its
+        # recorded count (naming the rule and its delta), always fails an error
+        # regardless of the baseline, and prints the warning inventory even
+        # while green — so the standing debt stays observable.
+        #
+        # The path is repo-root-relative: this job sets no working-directory, so
+        # it resolves against the checkout root. `--strict` is NOT passed here —
+        # the two flags gate the same dimension and the CLI rejects the pair
+        # with exit 3; the flag itself is retained for non-CI callers.
+        run: go run ./cmd/moai spec lint --baseline .moai/spec-lint-baseline.json
+      - name: Run error-only SPEC lint
+        if: steps.policy.outputs.strict == 'false'
+        # Existing corpus warnings remain visible, while any error still makes
+        # the command fail. The baseline gate remains mandatory whenever the
+        # inputs, the baseline file, or the implementation of the SPEC linter
+        # changed.
+        run: go run ./cmd/moai spec lint

@@ -50,3 +50,18 @@ _(pending run-phase — manager-develop populates this section when all M1-M6 MU
   - c (file path verification): every claimed file path verified via `ls` / `git ls-files` before commit
 
 `sync_commit_sha: a83934d554fe79e2d7d0cdfad66c91ecdb7bef48`
+
+## Retrofit record (t390)
+
+**What was revised (in place, card t390 — lane-10)**: the citation requirement of REQ-FOLD-002 / AC-FOLD-002 was split into a two-part form across the SPEC set — (1) the local-scratch recording step is KEPT (verification commands still redirect verbatim output to `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}`), and (2) what is citable changed: any cited evidence path MUST name a tracked file under `.moai/reports/<card-id>/` (export before citing). Touched surfaces: spec.md §C.3 mechanism step 1, spec.md REQ-FOLD-002 body, spec.md §H AC-FOLD-002 matrix row, acceptance.md §A evidence-persistence bullet, acceptance.md AC-FOLD-002 Given-When-Then + Verify, plan.md M3 self-verify line.
+
+**False premise replaced** — one-line quote of the pre-revision wording (acceptance.md §A bullet): "Cited paths MUST resolve at audit time." attached to citations of `.moai/state/verify/<session>/`. The premise was false in one sentence: `.moai/state/` is gitignored, so a path under it survives to no clone, no CI runner, and no other machine — a criterion demanding audit-time resolvability cannot point citations there.
+
+**Disproof basis**: card t375 measured the accepted criterion against reality — 231 citations of that path family across SPEC artifacts, 0 resolvable from a fresh worktree. The corrected principle is now encoded in the rule tree (landed after this SPEC closed): `.claude/rules/moai/core/agent-common-protocol.md` § Evidence export obligation — `.moai/state/verify/<session>/` is machine-local scratch; the citation target is a tracked path, in this repository `.moai/reports/<card-id>/`.
+
+**Census (measured by card t390's lead run; recorded verbatim as the baseline for follow-up cards)**:
+- 132 files under `.moai/specs/` cite `state/verify`.
+- 37 files match the requirement-form (resolve/audit co-occurrence).
+- The requirement-form appears in AC/REQ bodies of at least 4 SPECs — SPEC-HIERARCHICAL-TEAM-001 (this card), SPEC-TOKEN-BUDGET-STOP-001 (spec+acceptance), SPEC-GITFLOW-DOCTRINE-ALIGN-001 (acceptance), plus progress-file-level hits to be triaged as follow-ups.
+
+Scope note: only THIS SPEC was revised. The sibling SPECs named in the census are follow-up cards, not this card's scope.

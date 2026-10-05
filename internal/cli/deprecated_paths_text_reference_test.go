@@ -69,8 +69,10 @@ type deprecatedTextReference struct {
 
 // scanDeprecatedTextReferences walks the embedded template filesystem and
 // returns every (deprecated path, template file) pair where the file's text
-// contains the deprecated path as a literal substring, excluding allowlisted
-// pairs.
+// contains the deprecated project-relative path, excluding allowlisted pairs.
+// A home-scoped spelling such as `~/.moai/db` is a different target from the
+// deprecated project-local `.moai/db` and must not be collapsed by substring
+// matching.
 func scanDeprecatedTextReferences(t *testing.T, entries []defs.DeprecatedPathEntry) []deprecatedTextReference {
 	t.Helper()
 	embedded, err := template.EmbeddedTemplates()
@@ -96,7 +98,7 @@ func scanDeprecatedTextReferences(t *testing.T, entries []defs.DeprecatedPathEnt
 		content := string(data)
 		for _, entry := range entries {
 			dep := strings.TrimSuffix(entry.Path, "/")
-			if dep == "" || !strings.Contains(content, dep) {
+			if dep == "" || !referencesDeprecatedProjectPath(content, dep) {
 				continue
 			}
 			if _, ok := textReferenceAllowlist[dep][p]; ok {
@@ -110,6 +112,20 @@ func scanDeprecatedTextReferences(t *testing.T, entries []defs.DeprecatedPathEnt
 		t.Fatalf("walk embedded templates: %v", walkErr)
 	}
 	return refs
+}
+
+func referencesDeprecatedProjectPath(content, deprecated string) bool {
+	for {
+		i := strings.Index(content, deprecated)
+		if i < 0 {
+			return false
+		}
+		if i >= 2 && content[i-2:i] == "~/" {
+			content = content[i+len(deprecated):]
+			continue
+		}
+		return true
+	}
 }
 
 // TestDeprecatedPaths_NoTemplateTextReference asserts that no shipped template
@@ -158,5 +174,15 @@ func TestDeprecatedPaths_TextReferenceGuardDetectsReinsertion(t *testing.T) {
 		t.Errorf("text-reference guard reported nothing for the synthetic deprecated "+
 			"path %q, which the shipped template documents extensively; the guard is vacuous",
 			synthetic)
+	}
+}
+
+func TestDeprecatedPaths_TextReferenceGuardDistinguishesHomeScope(t *testing.T) {
+	const deprecated = ".moai/db"
+	if referencesDeprecatedProjectPath("state: ~/.moai/db/<project-key>", deprecated) {
+		t.Fatal("home-scoped ~/.moai/db was mistaken for deprecated project-local .moai/db")
+	}
+	if !referencesDeprecatedProjectPath("state: <project>/.moai/db", deprecated) {
+		t.Fatal("project-local .moai/db reference was not detected")
 	}
 }

@@ -100,15 +100,15 @@ Every request goes through a single ordered pipeline, regardless of input langua
 
 ### 4. Agent Catalog
 
-MoAI-ADK consists of **11 retained agents** (10 MoAI-custom + 1 Anthropic built-in). Through architecture simplification, 12 archived agents such as manager-strategy, manager-quality, manager-brain, and manager-project were replaced by per-spawn `Agent(general-purpose)` delegation for specific domains.
+MoAI-ADK consists of **13 retained agents** (12 MoAI-custom + 1 Anthropic built-in). Through architecture simplification, 12 archived agents such as manager-strategy, manager-quality, manager-brain, and manager-project were replaced by per-spawn `Agent(general-purpose)` delegation for specific domains.
 
 | Category | Agents | Role |
 |------|----------|------|
-| Manager (5) | manager-spec, manager-develop, manager-docs, manager-git, manager-design | Specialists per core lifecycle phase |
+| Manager (6) | manager-spec, manager-develop, manager-docs, manager-git, manager-design, manager-lead | Specialists per core lifecycle phase |
 | Evaluator (2) | plan-auditor, sync-auditor | Independent quality assessment at plan/completion stages |
 | Builder (1) | builder-harness | Dynamic per-project harness generation |
 | Advisor (1) | super-advisor | High-reasoning consultation (E1-E4 escalation) |
-| Specialist (1) | e2e-tester | E2E test execution across web/mobile/desktop (`/moai e2e`) |
+| Specialist (2) | e2e-tester, manager-todo | E2E test execution across web/mobile/desktop (`/moai e2e`); todo-queue management, with the read-only sealed-snapshot judgment for approved GTD auto missions as its sub-role |
 | Built-in (1) | Explore (Anthropic) | Read-only codebase exploration |
 
 ### 5. SPEC Workflow
@@ -352,6 +352,34 @@ flowchart TD
 | 2. Rules | `.claude/rules/*.md` | On file-pattern match | Conditional detailed rules |
 | 3. Skills | `.claude/skills/*/skill.md` | On trigger match | Expertise, patterns |
 | 4. Agents | `.claude/agents/*.md` | On delegation | Specialist role definitions |
+
+## The three-file structure — `AGENTS.md`, `CLAUDE.md`, `AGENTS.local.md`
+
+MoAI-ADK splits instructions across three files, so that every harness reads the same contract and personal instructions live in exactly one place.
+
+| File | Holds | Tracked by Git | Read by |
+|------|-------|----------------|---------|
+| `AGENTS.md` | The cross-harness contract | Yes | Claude Code (via `@AGENTS.md`) and Codex |
+| `CLAUDE.md` | A thin layer of Claude-only mechanisms | Yes | Claude Code |
+| `AGENTS.local.md` | Personal instructions | No (`.gitignore`) | Claude Code (via the final `@AGENTS.local.md` in `CLAUDE.md`) and `moai codex` |
+
+```mermaid
+flowchart TD
+    A["AGENTS.md<br/>shared contract"] --> C["CLAUDE.md<br/>Claude-only layer"]
+    L["AGENTS.local.md<br/>personal instructions"] --> C
+    C --> CC["Claude Code"]
+    A --> X["Codex"]
+    L --> R["moai codex launcher"]
+    R --> X
+```
+
+`CLAUDE.local.md` is the former name of `AGENTS.local.md`. Move an existing file with `moai migrate local-instructions`: it writes the content byte-for-byte to `AGENTS.local.md`, backs the original up under `.moai/backups/local-instructions/`, and removes it from the project root. That command is the only thing that renames the file — `moai update`, `moai init`, and hooks never move or delete either one.
+
+{{< callout type="warning" >}}
+{{< icon warning warn >}} When both files exist, Claude Code reads both and similar instructions load twice. In that state `moai migrate local-instructions` refuses and touches neither file, because a tool cannot know which content you mean to keep. Merge the content of `CLAUDE.local.md` into `AGENTS.local.md` by hand, then delete `CLAUDE.local.md`.
+{{< /callout >}}
+
+Inside a linked worktree, a session receives `AGENTS.local.md` only when the file exists inside that worktree's checkout. As shipped the file is gitignored and normally lives only at the project root, so an untracked copy leaves worktree sessions without it — the `@AGENTS.local.md` import finds nothing and Claude Code skips it silently. Commit the file (force-add it past the ignore rule) and git delivers it into every worktree checkout; the import then resolves in-project and the session loads your local instructions.
 
 ## Related Documents
 

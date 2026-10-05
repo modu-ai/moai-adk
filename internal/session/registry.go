@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
+	"github.com/modu-ai/moai-adk/internal/stateanchor"
 )
 
 // DefaultRegistryPath is the canonical project-relative path for the
@@ -37,6 +38,36 @@ import (
 // blanket rule. Tests pass an explicit path via NewRegistry; package-level
 // helpers default to this constant.
 const DefaultRegistryPath = ".moai/state/active-sessions.json"
+
+// RegistryPathFor resolves the registry file for a directory, anchored to the
+// repository's PRIMARY checkout so every linked worktree reads and writes ONE
+// registry.
+//
+// DefaultRegistryPath is project-RELATIVE, so joining it to whatever root a
+// caller happened to hold gave each linked worktree a registry of its own: a
+// lane registering from .claude/worktrees/<card> wrote there, while a reader
+// anchored to the primary checkout never saw that entry. Measured on this
+// repository (2026-09-20, GH #1711): 65 registry files across 498 worktrees,
+// with 6 live sessions stranded outside the primary checkout's file.
+//
+// The anchor is the git common directory's parent — one root for every
+// checkout and worktree of a repository — resolved through the same seam the
+// other .moai/state/ surfaces use (stateanchor, SPEC-STATE-ANCHOR-001) rather
+// than a second private copy of that walk.
+//
+// Fallback is deliberate and total: when dir names no git repository, or git
+// cannot answer, the result is dir joined to DefaultRegistryPath — identical
+// to the pre-anchoring behavior, so a non-repository project is untouched. An
+// empty dir yields the bare relative constant, as before.
+func RegistryPathFor(dir string) string {
+	if root := stateanchor.FromDirectory(dir); root != "" {
+		return filepath.Join(root, DefaultRegistryPath)
+	}
+	if dir == "" {
+		return DefaultRegistryPath
+	}
+	return filepath.Join(dir, DefaultRegistryPath)
+}
 
 // CurrentSideChannelFile is the project-relative path of the side-channel
 // file the SessionStart hook writes (SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001
@@ -60,8 +91,11 @@ const PhaseNone = "(none)"
 const SpecIDNone = "(none)"
 
 // DefaultStaleMinutes is the default heartbeat threshold for PurgeStale.
-// Sessions whose last_heartbeat is older than this are considered zombie
-// and removed on the next PurgeStale call.
+// Entries whose last_heartbeat is older than this become purge candidates;
+// an entry is actually removed only when its recorded session process is
+// positively gone (see staleEntryDead) — heartbeat age alone is not
+// removal, because nothing sends heartbeats automatically and a live
+// session's heartbeat freezes at registration.
 const DefaultStaleMinutes = 30
 
 // LockTimeout is the default maximum wait for advisory lock acquisition.
@@ -149,7 +183,12 @@ func (r *Registry) WithLockTimeout(d time.Duration) *Registry {
 // defaultRegistry returns a Registry bound to DefaultRegistryPath with the
 // real clock. Used by package-level RegisterSession/Heartbeat/etc. helpers.
 func defaultRegistry() *Registry {
-	return NewRegistry(DefaultRegistryPath, realClock{})
+	// The working directory only SEEDS the resolution; RegistryPathFor turns it
+	// into the repository's primary checkout, so a package helper called from
+	// inside a worktree reaches the same registry as one called from the
+	// primary checkout.
+	wd, _ := os.Getwd()
+	return NewRegistry(RegistryPathFor(wd), realClock{})
 }
 
 // RegisterSession atomically appends a new entry with started_at and
@@ -168,7 +207,10 @@ func (r *Registry) Register(sessionID, specID, phase string) error {
 		return errors.New("session registry: sessionID cannot be empty")
 	}
 	host, _ := os.Hostname()
-	cwd, _ := os.Getwd()
+	cwd, err := canonicalCWDFromProcess()
+	if err != nil {
+		return fmt.Errorf("session registry: resolve cwd: %w", err)
+	}
 	now := r.clock.Now().UTC()
 	return r.withLock(func(entries []Entry) ([]Entry, error) {
 		// Idempotent: update in place if sessionID exists; else append.
@@ -192,9 +234,9 @@ func (r *Registry) Register(sessionID, specID, phase string) error {
 			// subprocess that exits immediately, so its own PID would be dead
 			// before any liveness probe reads the registry back. See
 			// session_pid.go.
-			PID:           resolveSessionPID(),
-			Host:          host,
-			CWD:           cwd,
+			PID:  resolveSessionPID(),
+			Host: host,
+			CWD:  cwd,
 		})
 		return entries, nil
 	})
@@ -278,7 +320,13 @@ func (r *Registry) Query(optSpecID string) ([]Entry, error) {
 }
 
 // PurgeStale removes entries whose LastHeartbeat is older than
-// thresholdMinutes. Returns the count of removed entries.
+// thresholdMinutes AND whose recorded session process is positively gone.
+// Live sessions survive the heartbeat floor: no component sends heartbeats
+// automatically, so a long-lived session's LastHeartbeat freezes at
+// registration and heartbeat age alone would purge every session still
+// running past 30 minutes — dropping it from `moai session list --json`
+// exactly when another session's pre-spawn sync check needs the entry.
+// Returns the count of removed entries.
 //
 // REQ-COORD-007.
 func PurgeStale(thresholdMinutes int) (int, error) {
@@ -286,6 +334,9 @@ func PurgeStale(thresholdMinutes int) (int, error) {
 }
 
 // Purge is the method form.
+//
+// @MX:ANCHOR: [AUTO] registry purge — liveness-aware zombie removal consumed by SessionStart protocol + CLI purge verb
+// @MX:REASON: fan_in >= 3 (internal/hook/session_start.go runMultiSessionProtocol, internal/cli/session.go purge verb, registry tests). Keeps live sessions past the heartbeat floor; changing removal semantics silently breaks the pre-spawn race check.
 func (r *Registry) Purge(thresholdMinutes int) (int, error) {
 	if thresholdMinutes <= 0 {
 		thresholdMinutes = DefaultStaleMinutes
@@ -295,7 +346,7 @@ func (r *Registry) Purge(thresholdMinutes int) (int, error) {
 	err := r.withLock(func(entries []Entry) ([]Entry, error) {
 		filtered := entries[:0]
 		for _, e := range entries {
-			if e.LastHeartbeat.Before(cutoff) {
+			if e.LastHeartbeat.Before(cutoff) && staleEntryDead(e.PID) {
 				purged++
 				continue
 			}

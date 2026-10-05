@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "ThreadSearchOccurrence": {
+      "description": "One visible message occurrence returned by [`ThreadSearchOccurrencesResponse`].",
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "snippet": {
+          "type": "string"
+        },
+        "snippetMatchRange": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/ThreadSearchTextRange"
+            }
+          ],
+          "description": "Match range within `snippet`, in UTF-16 code units."
+        },
+        "turnCursor": {
+          "description": "Opaque inclusive cursor accepted by `thread/turns/list` for this turn.",
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "itemId",
+        "snippet",
+        "snippetMatchRange",
+        "turnCursor",
+        "turnId"
+      ],
+      "type": "object"
+    },
+    "ThreadSearchTextRange": {
+      "description": "UTF-16 code-unit range within `snippet`.",
+      "properties": {
+        "end": {
+          "description": "Exclusive UTF-16 code-unit offset.",
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "start": {
+          "description": "Inclusive UTF-16 code-unit offset.",
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "end",
+        "start"
+      ],
+      "type": "object"
+    }
+  },
+  "properties": {
+    "data": {
+      "description": "Occurrences in chronological message order.",
+      "items": {
+        "$ref": "#/definitions/ThreadSearchOccurrence"
+      },
+      "type": "array"
+    },
+    "nextCursor": {
+      "description": "Opaque cursor to continue after the last returned occurrence.",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ],
+  "title": "ThreadSearchOccurrencesResponse",
+  "type": "object"
+}

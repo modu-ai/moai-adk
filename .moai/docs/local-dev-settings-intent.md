@@ -6,11 +6,15 @@
 
 Workflow audit 2026-05-16 finding M2 후속. 로컬 `.claude/settings.json`의 몇 가지 키는 template baseline과 의도적으로 다르게 운용되며, 본 섹션은 그 의도를 명문화한다.
 
-### §22.1 defaultMode
+### §22.1 defaultMode — 로컬 project settings.json에서 의도적 미탑재 (t1247, 2026-09-26)
 
-- **로컬값**: `"bypassPermissions"` 또는 `"acceptEdits"` (개발자 선호)
-- **Template 기본값**: 미지정 (Claude Code 기본 `"default"` 사용)
-- **의도**: 메인테이너는 빠른 실험 + bypass 모드 빈번 사용. 사용자 프로젝트는 안전한 prompt-each-time 기본값을 따른다.
+- **로컬값**: 로컬 `.claude/settings.json`에 `permissions.defaultMode` 키 **없음** (의도적 제거). 종전 `"bypassPermissions"` (유입 커밋 `10981e072`, 2026-03-30)은 죽은 키였다.
+- **왜 제거했나 (근원)**: Claude Code는 project/local scope settings의 `defaultMode: "bypassPermissions"`를 **무시**한다 — scope 규칙 자체는 v2.1.142+부터 (`internal/config/toolpolicy/tier_render.go` AP-6: "auto/bypassPermissions are USER-scope-only … writing them to PROJECT would silently fail"), v2.1.283부터는 세션 시작마다 `[WARN] settings defaultMode "bypassPermissions" ignored — only policy/user/flag settings may grant bypass mode (projectSettings and localSettings are repo-controllable)` 경고를 낸다. 메인테이너 세션의 bypass는 애초에 이 키가 아니라 moai 런처의 `--permission-mode` 플래그로 들어온다 (`internal/cli/launcher.go` — profile/flag가 병합된 `permMode`를 claude 실행 인자로 전달).
+- **유효한 bypass 경로**: (1) 런처 플래그 `moai cc -b` / `--permission-mode bypassPermissions`, (2) USER scope (`~/.claude/settings.json`)의 `permissions.defaultMode` — toolpolicy가 autonomy tier를 렌더할 때 쓰는 것과 같은 규칙.
+- **재발 근원 (잔여 — 운영자 결정 대기)**: `syncPermissionModeToSettingsLocal` (`internal/cli/launcher.go`)이 fresh launch 때마다 프로필의 `permission_mode`를 `.claude/settings.local.json`의 `permissions.defaultMode`로 **다시 쓴다**. `~/.moai/claude-profiles/{moai-adk,mo.ai.kr,moai-cowork,moai-code}/preferences.yaml`이 모두 `permission_mode: bypassPermissions`라서 local 파일의 죽은 키는 파일에서 지워도 재발한다. 런처가 local scope에 bypass를 쓰지 않도록 고치는 것은 사용자 설정 동작 변경이므로 별도 운영자 결정 사항.
+- **검출**: `moai doctor --check "Settings DefaultMode"`가 project(`.claude/settings.json`)/local(`.claude/settings.local.json`)의 이 값을 warn으로 잡는다 (card t1247, `internal/cli/doctor_settings_defaultmode.go`).
+- **Template 기본값**: 미지정 (Claude Code 기본 `"default"` 사용) — 이 제거는 템플릿 변경이 아니라 로컬 정리다.
+- [HARD] 이 미탑재는 죽은 키 제거이지 bypass 사용 중단이 아니다 — bypass는 유효 경로(런처 플래그/USER scope)로 그대로 쓴다.
 
 ### §22.2 enableAllProjectMcpServers
 

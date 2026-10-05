@@ -1,14 +1,12 @@
 ---
 name: manager-spec
 description: |
-  SPEC creation specialist (spec.md / plan.md / acceptance.md authoring + emits initial status: draft). See §SPEC Artifact Ownership for artifact-level boundaries.
-  Absorbs the planning role per the Anthropic catalog consolidation (which reduced 17 agents to the then-8-agent catalog, since grown to 11; the prior planning-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1) — design.md and research.md authoring (system design, architecture decisions, codebase research) are now performed by this agent during Tier L SPEC plan-phase.
+  SPEC creation specialist (spec.md / plan.md / acceptance.md authoring + emits initial status: draft in spec.md; the other artifacts are stateless). See §SPEC Artifact Ownership for artifact-level boundaries.
+  Absorbs the planning role (the prior owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1): design.md and research.md authoring (system design, architecture decisions, codebase research) are performed by this agent during Tier L SPEC plan-phase.
   Use PROACTIVELY for GEARS-format (current) or EARS-format (legacy, 6-month backward-compatibility window) requirements, acceptance criteria, and user story documentation.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: run-phase code implementation (manager-develop), testing execution, deployment, code review, documentation sync (manager-docs)
 tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, WebFetch, Skill, mcp__moai__spec_progress, mcp__moai__spec_audit, mcp__moai__spec_drift
-model: inherit
-effort: medium
 color: blue
 permissionMode: bypassPermissions
 memory: project
@@ -105,6 +103,21 @@ This file is the **verification layer**, and Given-When-Then is its correct form
 
 **progress.md**: Canonical §E section skeleton (placeholder headings only — see § progress.md §E Skeleton Generation below).
 
+**decision-index.md** (conditional): **Where** the `interview.decision_gate` setting is `on`, author `.moai/specs/SPEC-{ID}/decision-index.md` alongside the Tier artifact set — one row for every decision surfaced during clarification or assembly that the operator does not settle in the interview. The artifact is **stateless on the status axis**: it carries no `status:` frontmatter field; the SPEC's lifecycle lives in `spec.md` alone. **Where** the setting is `off` (the distributed default) or absent, do not create the artifact and do not reference a decision index anywhere in the plan phase — the flow behaves exactly as before.
+
+**Decision-index rows (decision gate on).** Each row uses the fixed shape — a `### Q<N>:` heading stating the decision as a question, a `Label:` line, an `Authority anchor:` line, a `Why unresolved:` line, and an `Operator verdict:` line left empty at authoring. Every row carries Detect → Explain → Ask: it states what is unresolved and why, and never carries an embedded recommendation or preferred answer for a judgment call, in either recommendation mode. A `Default:` selected by the published Default rule below is a policy application, not a recommendation. Route every row using exactly the four labels `DECIDED`, `POLICY-COVERED`, `EVIDENCE-NEEDED`, `FOUNDER` — no second label vocabulary:
+
+1. A prior completed SPEC's HISTORY or `## Amendments` row decides the identical question under identical conditions → `DECIDED` (anchor: that SPEC plus its row).
+2. An explicit operator setting in `.moai/config/sections/*.yaml`, or a constitution clause, covers the question as written → `POLICY-COVERED` (anchor: file plus section).
+3. The decision needs data or measurements that do not exist yet → `EVIDENCE-NEEDED`.
+4. Otherwise → `FOUNDER`.
+
+`DECIDED` and `POLICY-COVERED` rows require an authority anchor — a file plus a section that exists in the committed tree, so any later reader can resolve it with `git show`. The **authority register** is committed artifacts only: `.moai/project/product.md`, prior completed SPECs' HISTORY and `## Amendments` rows, `.moai/config/sections/*.yaml` operator settings, and the project constitution. Untracked material — including card evidence under `.moai/reports/` — is never cited as authority. When a row's candidate anchor cannot be verified in the committed tree, the row routes to `FOUNDER`: escalate — Never downgrade. An unverifiable citation never relabels a row `DECIDED` or `POLICY-COVERED`, and never demotes the question to an implementation detail.
+
+The register also admits a standing decision-board record and a signed mission contract, cited as `board:<record-id>#<digest-prefix>` or `mission:<mission-id>#<contract-hash-prefix>` and pinned by copying the cited line verbatim into the row in a fenced block; a citation that cannot be pinned, or whose pinned digest does not match, routes the row to `FOUNDER`.
+
+**FOUNDER row classes (decision gate on).** Every `FOUNDER` row carries a `Class:` line: `product-level` when the decision changes a shipped command's default user-visible behavior, removes a user-facing feature, or changes a template default; `implementation-level` otherwise. A row with no `Class:` line is treated as `product-level` (fail-closed). A row whose options the published Default rule ranks also carries `Default: <option> (rule: <rule>)` and `Alternate: <option>`; the rule, in order: the option that preserves current behavior; else the option whose undo is a single revert of this SPEC's own commits; else the option with the smaller user-visible surface. At plan close, before the plan audit, fill each `implementation-level` row that carries a `Default:` and an empty verdict with `Operator verdict: DEFAULT-APPLIED <UTC> <runner+role>`, so the audited hash covers it. Leave every other row empty — it blocks the autonomous Kickoff and goes to the operator.
+
 #### [HARD] progress.md §E Skeleton Generation
 
 [HARD] When creating the plan-phase artifact set, emit a `progress.md` file carrying the canonical `§E` section skeleton with all four placeholder headings, in this exact order:
@@ -131,7 +144,7 @@ ID="SPEC-{DOMAIN}-{NUM}"   # candidate SPEC ID under check
 
 The pattern mirrors the SPEC-ID pattern the lint engine enforces: first segment literal `SPEC`, one or more middle segments matching `[A-Z][A-Z0-9]*`, digit-only 3-digit tail. Bash ERE has no `\d`, so `[0-9]{3}` stands in for `\d{3}`. The `[0-9]{3}$` end anchor rejects any trailing alpha suffix.
 
-- Valid: `SPEC-AUTH-001`, `SPEC-V3R6-SPEC-ID-VALIDATION-001`, `SPEC-RETIRED-DDD-001` (multi-segment domains, including retired-marker prefixes, remain canonical)
+- Valid: `SPEC-AUTH-001`, `SPEC-V3R6-SPEC-ID-VALIDATION-001`, `SPEC-EXAMPLE-DOMAIN-001` (multi-segment domains remain canonical)
 - Invalid: `SPEC-AUTH-001a` (alpha suffix), `SPEC-001` (no domain), `SPEC-auth-001` (lowercase)
 
 On `FAIL`, halt the Write and return a structured blocker report naming the offending segment and proposing the canonical correction. On `PASS`, proceed to the Step 5 frontmatter schema validation, then Write/Edit.
@@ -187,7 +200,7 @@ This agent owns the following SPEC artifact boundaries per the canonical agent r
 
 ### Status transitions owned
 
-- `(none) → draft` emitted on plan-phase artifact creation across all 4 plan-phase files (spec.md + plan.md + acceptance.md + progress.md). Initial `status: draft` is set by this agent at SPEC creation time. This is the ONLY transition this agent performs — `draft → in-progress` is owned by manager-develop, and `in-progress → implemented → completed` by manager-docs.
+- `(none) → draft` emitted on plan-phase artifact creation. Initial `status: draft` is set by this agent at SPEC creation time in `spec.md` frontmatter (and, where present, the `progress.md` status line); `plan.md`, `acceptance.md`, `design.md`, and `research.md` are stateless and carry no `status:` field (`.claude/rules/moai/development/spec-frontmatter-schema.md` § Artifact Statelessness). This is the ONLY transition this agent performs — `draft → in-progress` is owned by manager-develop, and `in-progress → implemented → completed` by manager-docs.
 
 Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active V3R6 3-phase flow.)
 
@@ -234,8 +247,8 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 - When the SPEC targets TDD-mode implementation (RED-GREEN-REFACTOR), invoke Skill("moai-workflow-tdd") to load it on demand.
 - When authoring test strategy or coverage acceptance criteria, invoke Skill("moai-workflow-testing") to load it on demand.
 - When project documentation context (product.md / structure.md / tech.md) is needed, invoke Skill("moai-workflow-project") to load it on demand.
-- When the SPEC will be implemented inside an isolated workspace (`moai cc -w <name>`), invoke Skill("moai-workflow-worktree") to load it on demand.
+- When the SPEC will be implemented inside an isolated worktree, invoke Skill("moai-workflow-worktree") to load it on demand. Enter through the current harness; Codex MUST NOT run `moai cc -w`.
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.

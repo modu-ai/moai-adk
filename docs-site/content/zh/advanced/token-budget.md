@@ -22,13 +22,13 @@ Anthropic SSE 流在上下文窗口天花板附近会间歇性停顿(`stream_idl
 
 | 模型类别 | 窗口 | 交接阈值 | 绝对天花板 |
 |---------|------|---------|-----------|
-| Opus 5 (1M) | 1,000,000 代币 | 50% | ~500,000 代币 |
+| Opus 5.5 (1M) | 1,000,000 代币 | 50% | ~500,000 代币 |
 | GLM-5.3 (1M) | 1,000,000 代币 | 50% | ~500,000 代币 |
-| Opus / Fable (256K) | 256,000 代币 | 90% | ~230,000 代币 |
-| Sonnet / Opus 标准 (200K) | 200,000 代币 | 90% | ~180,000 代币 |
+| Fable / Sonnet 5.5 (1M) | 1,000,000 代币 | 50% | ~500,000 代币 |
+| Sonnet 4.5 及更早 (200K) | 200,000 代币 | 90% | ~180,000 代币 |
 | Haiku (200K) | 200,000 代币 | 90% | ~180,000 代币 |
 
-GLM-5.3(通过 `moai glm` / `moai cg` GLM 面板)是 1M 上下文模型，以 50% 阈值运作。Claude Code 根据 Claude 插槽(Opus=1M, Sonnet/Haiku=200K)报告 `context_window_size`，因此 GLM 会话中原始 telemetry 可能显示 ~180K；MoAI 将其校正为 1M。请信任 statusline 的 CW% 表盘。
+GLM-5.3(通过 `moai glm`)是 1M 上下文模型，以 50% 阈值运作。Claude Code 根据 Claude 插槽(Opus=1M, Sonnet/Haiku=200K)报告 `context_window_size`，因此 GLM 会话中原始 telemetry 可能显示 ~180K；MoAI 将其校正为 1M。请信任 statusline 的 CW% 表盘。
 
 ## 两阶段交接标记
 
@@ -47,7 +47,7 @@ statusline 分两阶段在上下文栏中追加 `/clear` 提示。
 2. **状态保存** — 将进行中的工作状态持久化到 `progress.md`
 3. **发出交接** — 生成可粘贴的 resume 消息(6 块结构)
 4. **建议回合结束** — 向用户建议 `/clear`(HARD: 绝不自动 `/clear`)
-5. **证据持久化** — 将验证证据持久化到 `.moai/state/verify/`
+5. **证据写入** — 将要引用的验证证据中决定判定的那几行，写进受版本跟踪的判定书 `.moai/reports/<card-id>/verdict.md`
 
 `/clear` 绝不会被自动执行。系统只建议用户运行 `/clear`；由用户决定。
 
@@ -93,13 +93,13 @@ go test ./... > /tmp/moai-verify/1-go-test.log 2>&1; echo "exit=$?"; tail -50 /t
 
 此契约"将 verbatim 证据留在磁盘上，上下文只携带 exit code + bounded tail"。它去除的是双重消耗(内联输出 + 横幅再引用)，不是证据本身。
 
-## 验证证据持久化义务
+## 验证证据导出义务
 
 文件重定向契约写入 `/tmp` 的证据会被操作系统定期清除(macOS 重启、Linux tmpfs 重挂载、systemd-tmpfiles)。当引用的路径不再解析为文件时，审计时无法到达证据。
 
-持久化义务解决这个问题。验证证据必须持久化到 `.moai/state/verify/<session>/` 下。此目录是与 `context-usage/` 和 `active-sessions.json` 相同的 gitignored 运行时状态区域。
+因此验证输出先落到 `.moai/state/verify/<session>/` 下。这个目录只是**本机暂存区**: 它熬得过 `/tmp` 的清理，但它在 gitignore 之列——与 `context-usage/`、`active-sessions.json` 同属运行时状态区域——所以既进不了 clone，也到不了 CI 运行器，更到不了别的机器。熬过 `/tmp` 的清理，和审计时够得着，是两回事。
 
-确切的持久化机制(直接写入或 `/tmp` 写入后复制)是实现细节。契约陈述义务: 证据必须在 `/tmp` 清除后仍然存在于可引用、审计时可到达的路径上。
+所以契约真正钉死的是**把决定判定的那几行写进判定书**这项义务: 要立一个主张，就得先把那几行写进受版本跟踪的判定书 `.moai/reports/<card-id>/verdict.md`，而且引用点名的是那单个**文件**，绝不是目录。卡片目录里受跟踪的名字只有这份判定书，旁边另写的文件照旧被忽略，引用它在写它的那棵树之外就打不开。只写决定判定的那几行——退出码、失败摘要、被引用的那个数字——因为把暂存目录整个搬走，无非是把从上下文里削掉的体积原样挪进仓库。留在原地的那部分，作为已知损失写进残余风险一栏；留在暂存区的材料，绝不拿来当判定依据。
 
 ## 下一步
 

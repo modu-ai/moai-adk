@@ -19,13 +19,26 @@ type ToolDef struct {
 	// console's per-tool enablement key is derived from
 	// (mcp.tools.<name>.enabled).
 	Name string
-	// WriteCapable is true for the nine tools whose handler may mutate state
-	// (goal_arm, verify_snapshot, codex_task, codex_job_cancel, glm_task,
-	// glm_job_cancel, plus the session-messaging broker's three mutating
-	// tools at the catalog tail) and false for the nineteen read-only tools
-	// (including the three graph code-query additions, SPEC-V3R6-GRAPH-
-	// FRESHNESS-001 M5). The console renders this distinction (REQ-C-3 /
-	// AC-C-003); M1 carries it so the declaration is complete.
+	// WriteCapable is true for the tools whose handler may mutate state
+	// (goal_arm, verify_snapshot, codex_task, codex_job_cancel,
+	// codex_role_audit, glm_task, glm_job_cancel, codex_audit, audit_multi,
+	// the session-messaging broker's three mutating tools, and the factory
+	// message family's three) and false for the read-only tools (including the
+	// graph code-query additions, SPEC-V3R6-GRAPH-FRESHNESS-001 M5). The exact
+	// split is pinned by internal/mcp TestMoaiMCPTools_WriteCapableSet. The console renders this
+	// distinction (REQ-C-3 / AC-C-003); M1 carries it so the declaration is
+	// complete.
+	//
+	// The line this field draws is a write to the audited tree, not a write to
+	// its source: verify_snapshot is write-capable because it records under
+	// .moai/state/verify/, and codex_audit / audit_multi are write-capable on
+	// the same terms — every call files an audit receipt under
+	// .moai/state/audit-receipts/, and audit_multi additionally persists its
+	// convergence result under .moai/state/audit-multi/ when a session_id is
+	// supplied. Both were catalog-READ until the receipt store landed
+	// (SPEC-CODEX-AUDIT-GATE-AXES-001); the writes arrived without the catalog
+	// following, and nothing compared the catalog against actual handler
+	// behavior, so the drift stayed silent (card t904).
 	WriteCapable bool
 }
 
@@ -47,27 +60,63 @@ var moaiMCPTools = []ToolDef{
 	{Name: "spec_audit", WriteCapable: false},
 	{Name: "spec_drift", WriteCapable: false},
 	{Name: "audit_cache", WriteCapable: false},
-	{Name: "codex_audit", WriteCapable: false},
+	{Name: "claude_audit", WriteCapable: false},
+	{Name: "codex_audit", WriteCapable: true},
 	{Name: "codex_setup", WriteCapable: false},
 	{Name: "codex_task", WriteCapable: true},
 	{Name: "codex_job_status", WriteCapable: false},
 	{Name: "codex_job_result", WriteCapable: false},
 	{Name: "codex_job_cancel", WriteCapable: true},
+	// Codex read-only role launcher: start writes a verdict and a launch
+	// record under the caller's .moai/reports/; status and result only read.
+	{Name: "codex_role_audit", WriteCapable: true},
+	{Name: "codex_role_audit_status", WriteCapable: false},
+	{Name: "codex_role_audit_result", WriteCapable: false},
 	{Name: "glm_task", WriteCapable: true},
 	{Name: "glm_job_status", WriteCapable: false},
 	{Name: "glm_job_result", WriteCapable: false},
 	{Name: "glm_job_cancel", WriteCapable: true},
 	{Name: "glm_audit", WriteCapable: false},
-	{Name: "audit_multi", WriteCapable: false},
+	// On-demand self-review (advisory, no audit receipt): read-only by design,
+	// unlike the receipt-filing audit tools above.
+	{Name: "codex_review", WriteCapable: false},
+	{Name: "glm_review", WriteCapable: false},
+	{Name: "audit_multi", WriteCapable: true},
 	{Name: "session_msg_register", WriteCapable: true},
 	{Name: "session_msg_list", WriteCapable: false},
 	{Name: "session_msg_send", WriteCapable: true},
 	{Name: "session_msg_poll", WriteCapable: true},
+	{Name: "factory_msg_send", WriteCapable: true},
+	{Name: "factory_msg_list", WriteCapable: true},
+	{Name: "factory_msg_body", WriteCapable: false},
+	{Name: "factory_msg_receipt", WriteCapable: true},
+	{Name: "factory_msg_status", WriteCapable: false},
 	// Graph code-query family (SPEC-V3R6-GRAPH-FRESHNESS-001 M5): all
-	// read-only surfaces over the per-tree graph artifacts.
+	// read-only surfaces over the per-tree graph artifacts. The shortest-
+	// path addition rides SPEC-GRAPH-REPORT-001 REQ-GR-001.
 	{Name: "graph_file_api", WriteCapable: false},
 	{Name: "graph_find_code", WriteCapable: false},
 	{Name: "graph_trace_calls", WriteCapable: false},
+	{Name: "graph_shortest_path", WriteCapable: false},
+	// Gated judgment wrapper (display-only): registered unconditionally so its
+	// gate-off contract is invocable and countable, but inert behind
+	// workflow.jev.enabled — the shipped default is false, and while the
+	// chain's fitness gate stands unrun no surface may present it as available.
+	{Name: "jev_ask", WriteCapable: false},
+	// Factory card + queue tools (SPEC-FACTORY-SELF-DISPATCH-001
+	// REQ-SD-014): the MCP forms of `moai factory next/stage/complete/decide`
+	// and `moai todo add/list`, each the same implementation its CLI
+	// counterpart calls. todo_add mutates the queue; factory_next leases,
+	// promotes the queue, and creates a card worktree; factory_stage applies
+	// an F1 edge and renews the lease; factory_complete records the merge;
+	// factory_decide records an operator decision. todo_list is a read-only
+	// render (on the lane read-only allowlist, like its CLI verb).
+	{Name: "todo_add", WriteCapable: true},
+	{Name: "todo_list", WriteCapable: false},
+	{Name: "factory_next", WriteCapable: true},
+	{Name: "factory_stage", WriteCapable: true},
+	{Name: "factory_complete", WriteCapable: true},
+	{Name: "factory_decide", WriteCapable: true},
 }
 
 // MoaiMCPTools returns the single shared declaration of the moai MCP server's

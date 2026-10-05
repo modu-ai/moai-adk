@@ -85,7 +85,8 @@ func TestSpecStatusConfirm(t *testing.T) {
 		cmd.SetErr(&errBuf)
 
 		// autoConfirm=false in a non-TTY test context → must abort, not hang.
-		err := syncGitSpecStatuses(cmd, false)
+		// dryRun=false (SPEC-STATUS-DRYRUN-001 added the third parameter).
+		err := syncGitSpecStatuses(cmd, false, false)
 		if err == nil {
 			t.Fatalf("syncGitSpecStatuses(autoConfirm=false) in non-TTY should abort with an error, got nil")
 		}

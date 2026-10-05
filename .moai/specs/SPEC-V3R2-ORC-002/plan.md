@@ -3,7 +3,6 @@ spec_id: SPEC-V3R2-ORC-002
 phase: "1B — Implementation Plan"
 created_at: 2026-05-10
 author: manager-spec
-status: audit-ready
 base_commit: "ab0fc4dda"
 branch: feature/SPEC-V3R2-ORC-002-agent-lint
 ---

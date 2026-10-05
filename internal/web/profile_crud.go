@@ -35,7 +35,10 @@ func createProfileDir(name string) error {
 	if dir == "" {
 		return fmt.Errorf("invalid or reserved profile name %q", name)
 	}
-	return os.MkdirAll(dir, 0o755)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	return os.Chmod(dir, 0o700)
 }
 
 // renameProfileDir is the default renameProfile seam. It moves a profile

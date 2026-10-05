@@ -2,7 +2,9 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -37,8 +39,8 @@ func newGraphCheckCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "check",
-		Short: "Report per-layer staleness (codemaps / mx-index / edges) numerically",
-		Long: `Check the freshness of the three gated graph layers and exit accordingly.
+		Short: "Report per-layer staleness (codemaps / mx-index / edges / citations) numerically",
+		Long: `Check the freshness of the gated graph layers and exit accordingly.
 
 Per layer the report names the layer, the metric kind used, the measured
 integer value, the configured threshold, and a verdict (fresh | stale |
@@ -48,13 +50,24 @@ for untracked layers (fresh-worktree state); the bootstrap a CI job performs
 (moai mx scan + moai graph build) refreshes those layers to head first.
 
 Metrics (per layer, by tracking status):
-  codemaps  described-source-diff        files whose content differs from the
-                                         stamped generation commit (endpoint
-                                         diff; reverted churn counts zero)
-  mx-index  inventory-content-diff       scanner-read files whose content hash
-                                         differs from the stamped inventory
-  edges     source-fingerprint-mismatch  source sets whose fingerprint moved
-                                         since the stamped build
+  codemaps   described-source-diff         files whose content differs from
+                                          the content anchor — the point the
+                                          codemaps body last actually changed,
+                                          not the stamped commit (endpoint
+                                          diff; reverted churn counts zero).
+                                          A re-stamp over an untouched body
+                                          therefore does not reset the window.
+  mx-index   inventory-content-diff        scanner-read files whose content
+                                          hash differs from the stamped
+                                          inventory
+  edges      source-fingerprint-mismatch   source sets whose fingerprint
+                                          moved since the stamped build
+  citations  positive-cited-path-absence   source paths positively cited in
+                                          .moai/project/codemaps/*.md that do
+                                          not exist in the working tree
+                                          (accuracy, not freshness — paths on
+                                          blockquote lines are negative
+                                          citations and exempt)
 
 No filesystem mtime is read anywhere — a fresh worktree checkout resets every
 mtime, which an mtime metric would misread as freshly regenerated.
@@ -85,6 +98,7 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 				// suppressed by the fang error handler, so without this the
 				// process would exit 2 silently.
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "graph check: system error: %v\n", err)
+				writeUnreachableStampRecovery(cmd.ErrOrStderr(), err)
 				return &exitCodeError{code: exitSystemError, msg: fmt.Sprintf("graph check: %v", err)}
 			}
 
@@ -113,6 +127,7 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 			for _, l := range res.OffendingLayers() {
 				_, _ = fmt.Fprintf(errs, "graph check: layer %s verdict=%s value=%d threshold=%d — %s\n",
 					l.Layer, l.Verdict, l.Value, l.Threshold, l.Reason)
+				writeLayerAttribution(errs, l)
 			}
 			// REQ-GF-004: stale or absent exits 1, naming the offending layer.
 			return &exitCodeError{code: exitStaleOrAbsent, msg: "graph freshness check failed (stale or absent layer)"}
@@ -123,6 +138,77 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 	cmd.Flags().BoolVar(&asJSON, "json", false, "machine-readable JSON report on stdout")
 
 	return cmd
+}
+
+// writeUnreachableStampRecovery names the recovery for the one system error
+// whose fix is a WORKFLOW step rather than a git one: the codemaps stamp
+// resolves as an object but is not an ancestor of HEAD, so the two trees share
+// no comparison window and freshness was never measured.
+//
+// The block is specific to that state on purpose. A stamp git cannot resolve at
+// all needs history (a deeper fetch), not a regenerated body, and printing the
+// regenerate-and-restamp advice there would send the reader down a path that
+// cannot work. Both halves of the recovery are stated because the half that is
+// easy to reach for — re-stamping alone — is the one the freshness contract
+// exists to defeat: a stamp rewritten over an untouched body would turn a stale
+// tree green without regenerating anything.
+func writeUnreachableStampRecovery(errs io.Writer, err error) {
+	if !errors.Is(err, graph.ErrStampUnreachable) {
+		return
+	}
+	_, _ = fmt.Fprint(errs,
+		"graph check: unreachable stamp — the codemaps provenance names a commit that exists here\n"+
+			"  but is not an ancestor of this checkout's HEAD, so freshness unmeasured (no value is reported).\n"+
+			"  recovery: regenerate the codemaps body (/moai codemaps), then stamp it at a commit reachable\n"+
+			"  from HEAD (moai graph stamp codemaps). A bare re-stamp over an unchanged body is NOT a fix.\n")
+}
+
+// writeLayerAttribution renders a failing layer's attribution beneath its
+// verdict line: the change's own described-worthy contribution (REQ-GFC-007)
+// and the paths driving the cumulative count (REQ-GFC-008).
+//
+// This is the surface that matters operationally. CI runs `moai graph check`
+// and the lane reads its stderr, so a report that carries the attribution in
+// the struct but renders only the count leaves the reader exactly where this
+// SPEC found them: unable to tell an inherited red from one they caused.
+//
+// The contribution is REPORTED here, never gated on — the exit code is still
+// decided by the cumulative count alone.
+func writeLayerAttribution(errs io.Writer, l graph.LayerReport) {
+	// The measurement window comes first: without it a reader cannot tell
+	// which two points the count spans, and the codemaps layer no longer
+	// measures from the stamped commit (SPEC-GRAPH-GATE-RESTAMP-001).
+	// Reported only — the exit code is still decided by the count alone.
+	if l.ContentAnchor != "" {
+		anchor := l.ContentAnchor
+		if len(anchor) > 9 {
+			anchor = anchor[:9]
+		}
+		_, _ = fmt.Fprintf(errs, "  measured from: %s (%s)\n", anchor, l.ContentAnchorSource)
+	}
+	switch {
+	case l.Contribution != nil:
+		base := l.ContributionBase
+		if len(base) > 9 {
+			base = base[:9]
+		}
+		verb := "originated by this change"
+		if *l.Contribution == 0 {
+			verb = "inherited — this change contributed none of it"
+		}
+		_, _ = fmt.Fprintf(errs, "  contribution: %d described-worthy file(s) vs first parent %s (%s)\n",
+			*l.Contribution, base, verb)
+	case l.ContributionAbsentReason != "":
+		// Absent, and said so. A fabricated 0 would read as the inheriting
+		// signature on every checkout that has no comparison base.
+		_, _ = fmt.Fprintf(errs, "  contribution: unmeasured — %s\n", l.ContributionAbsentReason)
+	}
+	for _, path := range l.DrivingPaths {
+		_, _ = fmt.Fprintf(errs, "    %s\n", path)
+	}
+	if l.DrivingPathsOmitted > 0 {
+		_, _ = fmt.Fprintf(errs, "    ... and %d more (listing bounded)\n", l.DrivingPathsOmitted)
+	}
 }
 
 // graphCheckThresholds resolves thresholds from gate.yaml graph_freshness.

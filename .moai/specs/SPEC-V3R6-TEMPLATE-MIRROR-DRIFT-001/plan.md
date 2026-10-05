@@ -2,7 +2,6 @@
 id: SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001
 title: "Template mirror drift cleanup: 4-file mechanical mirror parity — Implementation Plan"
 version: "0.1.0"
-status: implemented
 created: 2026-05-24
 updated: 2026-05-24
 author: GOOS행님

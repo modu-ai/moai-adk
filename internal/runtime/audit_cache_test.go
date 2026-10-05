@@ -7,8 +7,11 @@ import (
 	"time"
 )
 
-// TestPlanArtifactHashStableAcrossWhitespace verifies whitespace normalization. AC-WAG-09
-func TestPlanArtifactHashStableAcrossWhitespace(t *testing.T) {
+// TestPlanArtifactHashChangesAcrossWhitespace verifies that executable
+// whitespace is part of cache identity. AC-WAG-09 requires invalidation when a
+// plan artifact's bytes change; normalization would make distinct shell/YAML
+// commands collide.
+func TestPlanArtifactHashChangesAcrossWhitespace(t *testing.T) {
 	t.Parallel()
 
 	dir1 := t.TempDir()
@@ -36,8 +39,36 @@ func TestPlanArtifactHashStableAcrossWhitespace(t *testing.T) {
 		t.Fatalf("ComputeHash(dir2): %v", err)
 	}
 
-	if hash1 != hash2 {
-		t.Errorf("hashes differ despite semantically equivalent content:\n  hash1=%q\n  hash2=%q", hash1, hash2)
+	if hash1 == hash2 {
+		t.Errorf("hashes must differ when artifact bytes differ:\n  hash1=%q\n  hash2=%q", hash1, hash2)
+	}
+}
+
+func TestPlanArtifactHashDistinguishesExecutableBlockWhitespace(t *testing.T) {
+	t.Parallel()
+	cache := NewInMemoryCache()
+	first := t.TempDir()
+	second := t.TempDir()
+
+	// In YAML, the block scalar indentation is execution semantics, not prose
+	// formatting. The two fixtures must never share an audit result.
+	if err := os.WriteFile(filepath.Join(first, "spec.md"), []byte("```yaml\nrun: |\n  echo one\n  echo two\n```\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(second, "spec.md"), []byte("```yaml\nrun: |\n echo one\n echo two\n```\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	hash1, err := cache.ComputeHash(first)
+	if err != nil {
+		t.Fatalf("ComputeHash(first): %v", err)
+	}
+	hash2, err := cache.ComputeHash(second)
+	if err != nil {
+		t.Fatalf("ComputeHash(second): %v", err)
+	}
+	if hash1 == hash2 {
+		t.Fatalf("different executable block indentation collided: %q", hash1)
 	}
 }
 

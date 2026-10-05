@@ -135,48 +135,76 @@ func TestCheckHomeDisk_DuplicateClusterReported(t *testing.T) {
 	}
 }
 
-// TestFindDuplicateClusters_ByteEqualAndEqualEntryCount is the AC-MCH-002
-// unit test on the detector function: same category name + byte-equal total
-// size + equal entry count across >= 2 profiles forms a cluster; a differing
-// entry count on an otherwise byte-equal category must NOT cluster.
-func TestFindDuplicateClusters_ByteEqualAndEqualEntryCount(t *testing.T) {
-	perProfile := map[string]map[string]profileCategoryStat{
-		"alpha": {
-			"plugins": {Size: 169869312, Files: 10},
-			"debug":   {Size: 4096, Files: 2},
-		},
-		"beta": {
-			"plugins": {Size: 169869312, Files: 10},
-			"debug":   {Size: 4096, Files: 2},
-		},
-		"gamma": {
-			"plugins": {Size: 169869312, Files: 11}, // entry count differs
-			"debug":   {Size: 8192, Files: 2},        // size differs
-		},
+func TestPluginHashDoesNotEquateSameSizeDifferentContent(t *testing.T) {
+	home := hermeticHomeEnv(t)
+	root := filepath.Join(home, ".moai", "claude-profiles")
+	a := filepath.Join(root, "alpha", "plugins", "same.bin")
+	b := filepath.Join(root, "beta", "plugins", "same.bin")
+	if err := os.MkdirAll(filepath.Dir(a), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(b), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(a, []byte("AAAA"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(b, []byte("BBBB"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stats := map[string]map[string]profileCategoryStat{
+		"alpha": {"plugins": {Size: 4, Files: 1}},
+		"beta":  {"plugins": {Size: 4, Files: 1}},
+	}
+	if got := findPluginHashClusters(root, stats); len(got) != 0 {
+		t.Fatalf("same-size different-content trees must not cluster: %+v", got)
+	}
+	if err := os.WriteFile(b, []byte("AAAA"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := findPluginHashClusters(root, stats)
+	if len(got) != 1 || len(got[0].Profiles) != 2 || !strings.HasPrefix(got[0].Category, "plugins sha256=") {
+		t.Fatalf("byte-identical plugin trees must form one SHA-256 cluster: %+v", got)
+	}
+}
+
+func TestHomeDiskReportDetectsInactiveOversizeAndInsecureProfiles(t *testing.T) {
+	home := hermeticHomeEnv(t)
+	profiles := filepath.Join(home, ".moai", "claude-profiles")
+	stale := filepath.Join(profiles, "stale-empty")
+	fresh := filepath.Join(profiles, "fresh-empty")
+	oversize := filepath.Join(profiles, "oversize", "projects", "session.jsonl")
+	if err := os.MkdirAll(stale, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(fresh, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeHomeFixtureFile(t, oversize, config.DefaultProfileMaxBytes+1, time.Now())
+	old := time.Now().AddDate(0, 0, -(config.DefaultProfileUnusedDays + 1))
+	if err := os.Chtimes(stale, old, old); err != nil {
+		t.Fatal(err)
 	}
 
-	clusters := findDuplicateClusters(perProfile)
-	if len(clusters) != 2 {
-		t.Fatalf("cluster count = %d, want 2 (plugins + debug); got %+v", len(clusters), clusters)
+	report := gatherHomeDiskReport(filepath.Join(home, ".moai"))
+	if !containsDiskProfile(report.InactiveProfiles, "stale-empty") || containsDiskProfile(report.InactiveProfiles, "fresh-empty") {
+		t.Fatalf("inactive profiles = %v, want stale-empty only from empty-profile pair", report.InactiveProfiles)
 	}
-	byCat := map[string]homeDuplicateCluster{}
-	for _, c := range clusters {
-		byCat[c.Category] = c
+	if !containsDiskProfile(report.OversizeProfiles, "oversize") {
+		t.Fatalf("oversize profiles = %v, want oversize", report.OversizeProfiles)
 	}
-	plugins, ok := byCat["plugins"]
-	if !ok {
-		t.Fatalf("expected a plugins cluster, got %+v", clusters)
+	if report.InsecureHomeDirs == 0 {
+		t.Fatal("insecure profile directory count = 0, want stale mode 0755 detected")
 	}
-	gotProfiles := map[string]bool{}
-	for _, p := range plugins.Profiles {
-		gotProfiles[p] = true
+}
+
+func containsDiskProfile(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
 	}
-	if !gotProfiles["alpha"] || !gotProfiles["beta"] || gotProfiles["gamma"] {
-		t.Errorf("plugins cluster should name exactly alpha+beta, got %v", plugins.Profiles)
-	}
-	if plugins.Size != 169869312 || plugins.Files != 10 {
-		t.Errorf("cluster stat = (%d bytes, %d files), want (169869312, 10)", plugins.Size, plugins.Files)
-	}
+	return false
 }
 
 // TestCheckHomeDisk_WarnsWhenCleanableExceedsDefaultThreshold covers
@@ -233,5 +261,66 @@ func TestCheckHomeDisk_RegisteredInMoaiADKGroup(t *testing.T) {
 	}
 	if !found {
 		t.Error("Home Disk Usage check is not registered in the MoAI-ADK group of runGroupedChecks")
+	}
+}
+
+// SPEC-DOCTOR-PLUGIN-DIGEST-PREFILTER-001 AC-DPP-001 — negative control. A
+// profile alone in its (Size, Files) group can never be a member of a
+// byte-identical cluster, so nothing here is a hashing candidate.
+func TestPluginDigestCandidatesAllDistinctYieldsNone(t *testing.T) {
+	stats := map[string]map[string]profileCategoryStat{
+		"alpha":   {"plugins": {Size: 10, Files: 1}},
+		"beta":    {"plugins": {Size: 20, Files: 1}},
+		"gamma":   {"plugins": {Size: 10, Files: 2}},
+		"delta":   {"plugins": {Size: 0, Files: 0}},
+		"epsilon": {"projects": {Size: 10, Files: 1}},
+	}
+	if got := pluginDigestCandidates(stats); len(got) != 0 {
+		t.Fatalf("no profile shares a (Size, Files) pair, so none may be a candidate: %+v", got)
+	}
+}
+
+// SPEC-DOCTOR-PLUGIN-DIGEST-PREFILTER-001 AC-DPP-002 — positive control. Two
+// profiles sharing one pair both survive the prefilter, so the hashing and
+// cluster-confirmation path still runs for them.
+func TestPluginDigestCandidatesSharedPairSurvives(t *testing.T) {
+	stats := map[string]map[string]profileCategoryStat{
+		"alpha": {"plugins": {Size: 4, Files: 1}},
+		"beta":  {"plugins": {Size: 4, Files: 1}},
+	}
+	got := pluginDigestCandidates(stats)
+	want := []string{"alpha", "beta"}
+	if len(got) != len(want) {
+		t.Fatalf("both sharing profiles must be candidates, got %+v want %+v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("candidates mismatch at %d: got %+v want %+v", i, got, want)
+		}
+	}
+}
+
+// SPEC-DOCTOR-PLUGIN-DIGEST-PREFILTER-001 AC-DPP-003 — mixed input plus
+// determinism: exactly the sharing pair, sorted, and stable across repeated
+// calls on the same input (map iteration order must not reach the result).
+func TestPluginDigestCandidatesMixedIsSortedAndDeterministic(t *testing.T) {
+	stats := map[string]map[string]profileCategoryStat{
+		"zulu":    {"plugins": {Size: 7, Files: 3}},
+		"mike":    {"plugins": {Size: 7, Files: 3}},
+		"alpha":   {"plugins": {Size: 9, Files: 3}},
+		"bravo":   {"plugins": {Size: 7, Files: 4}},
+		"charlie": {"plugins": {Size: 0, Files: 0}},
+	}
+	want := []string{"mike", "zulu"}
+	for call := 0; call < 3; call++ {
+		got := pluginDigestCandidates(stats)
+		if len(got) != len(want) {
+			t.Fatalf("call %d: got %+v want %+v", call, got, want)
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Fatalf("call %d: candidates mismatch at %d: got %+v want %+v", call, i, got, want)
+			}
+		}
 	}
 }

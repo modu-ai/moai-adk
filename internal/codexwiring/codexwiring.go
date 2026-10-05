@@ -29,6 +29,12 @@ const (
 	HooksRelPath = ".codex/hooks.json"
 	// ConfigRelPath is the project-layer Codex config file.
 	ConfigRelPath = ".codex/config.toml"
+	// AgentsRelPath is the project-layer Codex agent-definition directory.
+	// It is NOT a wiring file: `moai init` deploys agent definitions here
+	// with or without the --agent codex opt-in, so its contents are read as
+	// a diagnostic signal only and never as the standing opt-in marker that
+	// wiringFilesExist evaluates (REQ-CW-009 / REQ-CPW-010).
+	AgentsRelPath = ".codex/agents"
 	// SidecarPath is the trust sidecar recording the sha256 of the last
 	// generated wiring content, relative to the project root.
 	SidecarPath = ".moai/state/codex-wiring.json"
@@ -83,6 +89,13 @@ type Result struct {
 	HooksSkipped bool
 	// ConfigWritten reports config.toml bytes were written this run.
 	ConfigWritten bool
+	// Conflicts lists files that changed under the write (REQ-DHR-003).
+	Conflicts []Conflict
+	// Refusals lists files left untouched, with the reason (REQ-DHR-006).
+	Refusals []Refusal
+	// Recovered lists the interrupted changes recovery resolved before this
+	// pass wrote anything (REQ-DHR-004).
+	Recovered []RecoveryOutcome
 }
 
 // wiringFilesExist reports whether either wiring artifact exists — the opt-in

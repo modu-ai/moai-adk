@@ -148,12 +148,12 @@ func TestCuratorDispatch_Prepare_A7EarlyBlock(t *testing.T) {
 	// Pre-populate the registry with a suppressed entry for the pattern key.
 	now := time.Now()
 	_ = AppendNegativeEvidence(registryPath, NegativeEvidence{
-		PatternKey:           "feature+plan+autopilot+success",
-		Outcome:              NegativeEvidenceRejected,
-		Timestamp:            now,
-		CooldownUntil:        now.Add(48 * time.Hour), // not elapsed
-		NewEvidenceSinceEvent: 0,                      // < N=3
-		GateOrigin:           GateOriginL3,
+		PatternKey:            "feature+plan+autopilot+success",
+		Outcome:               NegativeEvidenceRejected,
+		Timestamp:             now,
+		CooldownUntil:         now.Add(48 * time.Hour), // not elapsed
+		NewEvidenceSinceEvent: 0,                       // < N=3
+		GateOrigin:            GateOriginL3,
 	})
 
 	dispatch := NewCuratorDispatch(CuratorDispatchConfig{RegistryPath: registryPath, ModelClass: "claude"})

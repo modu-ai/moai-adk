@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK는 **비용 · 자기 개선 · 품질 통제** 세 가지로 Claude Code를 감싸는 **Agentic Development Kit**입니다. 같은 품질의 코드를 더 적은 토큰으로 뽑아내고 (비용, 토크노믹스), 세션이 한 번 돌 때마다 관찰을 규칙으로 쌓아 하네스가 점점 나아지게 하며 (자기 개선, 에이전틱 루프 엔지니어링), SPEC 3단계와 TRUST 5 게이트로 재작업을 막아 '끝'을 증거로 판정합니다 (품질 통제, 에이전틱 하네스). 모델 선택과 추론 깊이, 컨텍스트 사용량은 시스템이 바깥에서 강제합니다. 12개의 전문 AI 에이전트와 31개의 스킬이 함께 일하고, 새 프로젝트에는 TDD (기본값) 를, 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동으로 적용합니다.
+MoAI-ADK는 **비용 · 자기 개선 · 품질 통제** 세 가지로 Claude Code를 감싸는 **Agentic Development Kit**입니다. 같은 품질의 코드를 더 적은 토큰으로 뽑아내고 (비용, 토크노믹스), 세션이 한 번 돌 때마다 관찰을 규칙으로 쌓아 하네스가 점점 나아지게 하며 (자기 개선, 에이전틱 루프 엔지니어링), SPEC 3단계와 TRUST 5 게이트로 재작업을 막아 '끝'을 증거로 판정합니다 (품질 통제, 에이전틱 하네스). 모델 선택과 추론 깊이, 컨텍스트 사용량은 시스템이 바깥에서 강제합니다. 13개의 전문 AI 에이전트와 31개의 스킬이 함께 일하고, 새 프로젝트에는 TDD (기본값) 를, 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동으로 적용합니다.
 
 Go로 작성된 단일 바이너리 — 의존성 없이 모든 플랫폼에서 즉시 실행됩니다.
 
@@ -22,7 +22,7 @@ MoAI-ADK는 **Claude Code 안에서 에이전트들이 서로 협력하며 에�
 | AI 개발팀 | MoAI-ADK | 역할 |
 |----------|----------|------|
 | 프로덕트 오너 | 사용자 (개발자) | 무엇을 만들지 결정합니다 |
-| 팀 리드 / Tech Lead | MoAI 오케스트레이터 | 전체 작업을 조율하고 12개 에이전트에게 위임합니다 |
+| 팀 리더 / Tech Lead | MoAI 오케스트레이터 | 전체 작업을 조율하고 13개 에이전트에게 위임합니다 |
 | 기획자 / Spec Writer | manager-spec | 요구사항을 SPEC 문서로 정리합니다 |
 | 개발자 / Engineers | manager-develop (도메인 컨텍스트 주입) | 실제 코드를 DDD/TDD로 구현합니다 |
 | QA / 코드 리뷰어 | plan-auditor · sync-auditor | 계획과 결과물을 독립적으로 감사합니다 |
@@ -33,7 +33,7 @@ v3.0의 가치는 세 가지 핵심으로 요약됩니다.
 
 ### 토크노믹스 (Token Economics)
 
-쓴 비용만큼의 품질을 최대로 뽑아내도록 자원을 똑똑하게 나눠 쓰는 방식입니다. 작업 단계와 SPEC 크기에 따라 모델과 추론 깊이를 선언적으로 배정하는 **3-계층 모델 정책**, Claude 리더와 GLM 워커를 조합해 구현 비용을 60-70% 줄이는 **CG 모드**, 예산 초과 전에 안전하게 멈추는 **Token Circuit Breaker**, 그리고 항시 로드 컨텍스트를 줄이는 **컨텍스트 다이어트**가 이 핵심을 이룹니다.
+쓴 비용만큼의 품질을 최대로 뽑아내도록 자원을 똑똑하게 나눠 쓰는 방식입니다. 세션의 모델과 추론 깊이를 정하는 **세션 모델 정책** (서브에이전트는 세션의 모델과 추론 깊이를 그대로 따릅니다), 예산 초과 전에 안전하게 멈추는 **Token Circuit Breaker**, 그리고 항시 로드 컨텍스트를 줄이는 **컨텍스트 다이어트**가 이 핵심을 이룹니다.
 
 ### 에이전틱 루프 엔지니어링 (Agentic Loop Engineering)
 
@@ -41,7 +41,7 @@ v3.0의 가치는 세 가지 핵심으로 요약됩니다.
 
 ### 에이전틱 하네스 (Agentic Harness)
 
-코드를 직접 쓰는 대신 에이전트가 잘 일할 환경을 설계합니다. 12개 에이전트 카탈로그, SPEC 기반 3-phase 워크플로우 (plan → run → sync), TRUST 5 품질 게이트, 자연어 요청으로 프로젝트 전용 하네스를 생성하는 Harness v4 Builder가 이 핵심입니다. 자세한 개념은 [하네스 엔지니어링](/ko/core-concepts/harness-engineering) 문서를 참조하세요.
+코드를 직접 쓰는 대신 에이전트가 잘 일할 환경을 설계합니다. 13개 에이전트 카탈로그, SPEC 기반 3-phase 워크플로우 (plan → run → sync), TRUST 5 품질 게이트, 자연어 요청으로 프로젝트 전용 하네스를 생성하는 Harness v4 Builder가 이 핵심입니다. 자세한 개념은 [하네스 엔지니어링](/ko/core-concepts/harness-engineering) 문서를 참조하세요.
 
 ## 왜 이 세 가지인가
 
@@ -63,7 +63,7 @@ v3.0의 가치는 세 가지 핵심으로 요약됩니다.
 
 ### 품질 통제 — 에이전틱 하네스
 
-코드를 직접 쓰는 대신 에이전트가 일할 환경을 설계합니다. 12개 에이전트 카탈로그는 계획과 감사를 설계 단계부터 분리해 작성한 쪽이 자기 작업에 점수를 매기지 않게 하고, SPEC 3단계 (plan → run → sync) 와 TRUST 5 게이트, worktree 격리가 '된 것 같다'가 아니라 증거로 완료를 판정합니다.
+코드를 직접 쓰는 대신 에이전트가 일할 환경을 설계합니다. 13개 에이전트 카탈로그는 계획과 감사를 설계 단계부터 분리해 작성한 쪽이 자기 작업에 점수를 매기지 않게 하고, SPEC 3단계 (plan → run → sync) 와 TRUST 5 게이트, worktree 격리가 '된 것 같다'가 아니라 증거로 완료를 판정합니다.
 
 ## 왜 MoAI-ADK인가?
 
@@ -82,7 +82,7 @@ Python 기반 MoAI-ADK (~73,000줄)를 Go로 완전히 재작성했습니다.
 
 ### 핵심 수치 (v3.0 기준)
 
-- **12개** 에이전트 카탈로그 (11 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`)
+- **13개** 에이전트 카탈로그 (12 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`)
 - **31개** 스킬 (template-managed)
 - **36개** CLI 명령 · **16종** `/moai` 서브커맨드
 - **16개** 프로그래밍 언어 지원
@@ -122,7 +122,7 @@ flowchart TD
 | 기존 코드 파괴 | **DDD/TDD** 로 테스트를 먼저 작성하여 기존 기능 보호 |
 | 반복 설명 | **CLAUDE.md와 스킬 시스템** 으로 프로젝트 컨텍스트 자동 로드 |
 | 검증 부재 | **LSP 품질 게이트** 로 코드 품질 자동 검증 |
-| 토큰 낭비 | **모델 정책 + Token Circuit Breaker** 로 비용을 시스템이 관리 |
+| 토큰 낭비 | **세션 모델 정책 + Token Circuit Breaker** 로 비용을 시스템이 관리 |
 
 ## 시스템 요구사항
 
@@ -241,9 +241,9 @@ MoAI-ADK는 **하네스 엔지니어링** (Harness Engineering) 패러다임을 
 
 ## AI 에이전트 오케스트레이션
 
-MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 쓰지 않고 12개 에이전트 (11 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`) 에 작업을 넘깁니다. 핵심 설계 원칙은 **계획과 감사의 분리** — 만든 쪽이 검사하지 않습니다.
+MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 쓰지 않고 13개 에이전트 (12 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`) 에 작업을 넘깁니다. 핵심 설계 원칙은 **계획과 감사의 분리** — 만든 쪽이 검사하지 않습니다.
 
-### 12개 에이전트 카탈로그
+### 13개 에이전트 카탈로그
 
 | 분류 | 에이전트 | 비용 | 역할 |
 |------|---------|------|------|
@@ -252,15 +252,16 @@ MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 쓰지 �
 | | manager-docs | 🔵 | Sync 단계: 문서화 및 PR 생성 |
 | | manager-git | 🩵 | Git 워크플로우 및 Tier 기반 PR 라우팅 |
 | | manager-design | 🟠 | Design 단계: Claude Design 협업 |
-| | manager-lead | ⚪ | Tier L 다중 마일스톤 조율 (worktree 격리 leaf-worker 팬아웃 · 카탈로그 유일 Agent-carrier) |
+| | manager-lead | 🔴 | Tier L 다중 마일스톤 조율 (worktree 격리 leaf-worker 팬아웃 · 카탈로그 유일 Agent-carrier) |
 | **Evaluator** | plan-auditor | 🔴 | SPEC 계획의 독립적 감사 (편향 방지) |
 | | sync-auditor | 🔴 | 4차원 품질 평가 (기능 40 · 보안 25 · 장인정신 20 · 일관성 15) |
 | **Builder** | builder-harness | 🟠 | 프로젝트 전용 하네스 (에이전트/스킬/커맨드) 생성 |
 | **Advisor** | super-advisor | 🔵 | 고추론 자문 (E1-E4 에스컬레이션) |
 | **Specialist** | e2e-tester | 🟠 | 웹/모바일/데스크탑 E2E 테스트 실행 |
+| | manager-todo | 🔴 | 승인된 GTD 자동 미션의 봉인된 스냅샷을 읽고 판정 하나만 반환 (읽기 전용, 실행은 결정론적 실행기가 담당) |
 | **빌트인** | Explore | ⚪ | 읽기 전용 코드베이스 탐색 |
 
-비용 색상은 기본 `medium` 프로파일의 model×effort 셀 기준입니다 (`moai model profile`로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 세션 모델 상속 (`manager-lead` `model: inherit`, 사용자 추가 에이전트). 프로파일 (`high`/`low`) 전환 시 배정이 달라집니다.
+비용 색상은 각 에이전트가 일하는 모델의 깊이를 반영합니다: 🔴 Opus 깊은 추론 · 🟠 Opus 표준 추론 · 🔵 얕은 추론 · ⚪ 읽기 전용 탐색. v3.2부터 모든 에이전트는 **세션의 모델과 추론 깊이**로 돕니다 — 서브에이전트는 메인 세션의 모델과 추론 깊이를 그대로 따르므로, 보이는 색은 에이전트별 배정표(물러남)가 아니라 그때 시작한 세션을 따라갑니다.
 
 ```mermaid
 flowchart TD
@@ -285,8 +286,9 @@ flowchart TD
         B2["super-advisor\n고추론 자문"]
     end
 
-    subgraph Specialist["Specialist (1개)"]
+    subgraph Specialist["Specialist (2개)"]
         S1["e2e-tester\nE2E 테스트 실행"]
+        S2["manager-todo\nGTD 자동 미션 판정"]
     end
 
     subgraph Explore["빌트인 (1개)"]
@@ -365,7 +367,7 @@ Plan 단계 산출물은 **plan-auditor**가 독립 감사하고, Run 단계 진
 
 #### 실행 모드 선택 게이트
 
-Plan 단계에서 Run 단계로 전환할 때, MoAI는 자동으로 현재 실행 환경 (cc/glm/cg) 을 감지하고 사용자가 확인하거나 변경할 수 있는 선택 UI를 표시합니다.
+Plan 단계에서 Run 단계로 전환할 때, MoAI는 자동으로 현재 실행 환경 (cc/glm) 을 감지하고 사용자가 확인하거나 변경할 수 있는 선택 UI를 표시합니다.
 
 ```mermaid
 flowchart TD
@@ -373,7 +375,6 @@ flowchart TD
     B --> C{"모드 선택 UI"}
     C -->|"CC"| D["Claude 전용 실행"]
     C -->|"GLM"| E["GLM 전용 실행"]
-    C -->|"CG"| F["Claude Leader + GLM Workers"]
 ```
 
 이 게이트 덕분에 환경 상태와 관계없이 언제나 올바른 실행 모드로 시작하게 되고, 구현 도중 모드가 어긋나는 일도 막을 수 있습니다.
@@ -433,47 +434,15 @@ MoAI 오케스트레이터는 작업 복잡도를 분석해 실행 형태를 선
 | **병렬 서브에이전트** | 3-5개 읽기 전용 에이전트 동시 팬아웃 | 조사·리뷰·감사 등 병렬 분석 |
 | **동적 워크플로우** | 스크립트가 다수 에이전트를 오케스트레이션 | 대규모 스윕, 교차 검증 리서치 |
 
-{{< callout type="info" >}}
-**v3.0 변경**: 과거의 Agent Teams 정적 오케스트레이션 계층은 폐지됐습니다. `--team`을 강제해도 서브에이전트 모드로 폴백합니다. 다만 Claude Code의 네이티브 teammate 런타임(`moai cg`의 tmux 분할 창)은 그대로 유지됩니다. 팀 모드 품질 훅 (TeammateIdle의 LSP 게이트 검증, TaskCompleted의 SPEC 참조 확인) 도 native teammate 런타임과 함께 보존됩니다.
-{{< /callout >}}
+{{< callout type="info" >}} **v3.0 변경**: 과거의 Agent Teams 정적 오케스트레이션 계층은 폐지됐습니다. `--team`을 강제해도 서브에이전트 모드로 폴백합니다. 팀 모드 품질 훅 (TeammateIdle의 LSP 게이트 검증, TaskCompleted의 SPEC 참조 확인) 도 native teammate 런타임과 함께 보존됩니다. {{< /callout >}} CG는 폐기되었습니다. `moai migrate cg`로 이전 선택지를 먼저 확인하세요.
 
-### CG 모드 (Claude + GLM 하이브리드)
+### CG 폐기와 설정 이전
 
-토크노믹스(비용) 핵심의 실전 도구입니다. Leader가 **Claude API**를, Workers가 **GLM API**를 사용하는 하이브리드 모드로, tmux 세션 수준 환경 변수 격리로 구현됩니다. 전략·계획·감사는 Claude가, 대량 구현은 GLM이 맡아 구현 중심 작업에서 60-70% 비용을 절감합니다.
+`moai cg`는 폐기되었습니다. Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  LEADER (현재 tmux 패인, Claude API)                         │
-│  - moai cg 활성화 후 /moai 명령으로 오케스트레이션            │
-│  - plan, quality, sync 단계 처리                             │
-│  - GLM 환경 없음 → Claude API 사용                           │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ Agent Teams (새 tmux 패인)
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│  TEAMMATES (새 tmux 패인, GLM API)                           │
-│  - tmux 세션 환경 상속 → GLM API 사용                        │
-│  - run 단계에서 구현 작업 실행                                │
-│  - SendMessage로 리더와 통신                                  │
-└─────────────────────────────────────────────────────────────┘
-```
+`llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, `llm.gateway.teammate_provider: inherit`을 저장합니다. 기존 혼합 역할 배정을 없애는 변경이며, Claude 리더와 GLM 팀원 창의 분업을 보존하는 이전이 아닙니다.
 
-```bash
-# 1. GLM API 키 저장 (한 번만)
-moai glm setup sk-your-glm-api-key
-
-# 2. CG 모드 활성화 (tmux 세션 안에서 실행 — Claude Code가 자동 시작)
-moai cg
-
-# 3. 워크플로우 실행
-/moai "작업 설명"
-```
-
-| 명령어 | Leader | Workers | tmux 필요 | 비용 절감 | 사용 사례 |
-|--------|--------|---------|----------|----------|----------|
-| `moai cc` | Claude | Claude | 아니요 | - | 복잡한 작업, 최고 품질 |
-| `moai glm` | GLM | GLM | 권장 | ~70% | 비용 최적화 |
-| `moai cg` | Claude | GLM | **필수** | **~60%** | 품질 + 비용 균형 |
+`claude-glm` 대상은 Claude 리더와 tmux의 GLM 팀원 구성을 뜻합니다. 현재 TEAMMATE 통합 검증을 통과하지 않아 적용과 실행은 사용할 수 없으며 미리보기만 가능합니다. tmux를 설치하거나 `verified: true`를 적어도 이 제한은 해제되지 않습니다.
 
 ### 자율 개발 루프 (Ralph Engine)
 
@@ -552,26 +521,26 @@ MoAI-ADK는 AI 에이전트 간 컨텍스트, 불변량, 위험 영역을 전달
 
 ## 모델 정책 (토크노믹스의 핵심)
 
-MoAI-ADK는 에이전트마다 가장 알맞은 모델과 추론 깊이를 배정합니다. 요금제의 사용량 제한 안에서 품질을 최대로 끌어올리는 것이 목표입니다. 그래서 더 약한 모델 클래스로 갈아타는 대신, 각 에이전트를 Opus 추론 깊이 래더 안에서 위아래로 옮깁니다 — 장기 에이전틱 작업에서는 약한 모델이 스텝을 더 많이 소모해 작업당 비용이 오히려 올라가기 때문입니다.
+요금제의 사용량 제한 안에서 품질을 최대로 끌어올리는 것이 목표입니다. 장기 에이전틱 작업에서는 약한 모델이 스텝을 더 많이 소모해 작업당 비용이 오히려 올라가기 때문에, 모델 클래스를 바꾸는 대신 같은 모델 안에서 추론 깊이만 조절합니다. v3.2부터 이 조절은 **세션** 단위입니다. 서브에이전트는 메인 세션의 모델과 추론 깊이를 그대로 따르고, 에이전트 정의는 어느 쪽도 선언하지 않으며, 예전 버전의 에이전트별 배정표는 물러났습니다.
 
-| 정책 | 특징 |
+| 세션 모델 정책 | 특징 |
 |------|------|
-| **high** | 최고 품질 — 호출 빈도가 가장 낮은 두 에이전트에 `max` 추론 깊이 |
-| **medium** (기본) | 품질과 비용의 균형 |
-| **low** | 작업당 최저 비용 — 에이전틱 에이전트는 Opus `low` effort로 내려가고, Sonnet은 단발 행에만 |
+| **high** | 세션 effort 폴백 `high` |
+| **medium** (기본) | 세션 effort 폴백 `medium` — 비용/점수 곡선의 무릎 |
+| **low** | 세션 effort 폴백 `low` — 같은 모델 안에서의 경제 운용 |
 
 ### 설정 방법
 
 ```bash
-# 프로젝트 초기화 시
-moai init my-project          # 대화형 마법사에서 모델 정책 선택
+# 세션 모델 정책 설정 (세션 모델 정책 질문)
+moai profile setup
 
-# 기존 프로젝트 재설정
-moai update                   # 각 설정 단계에 대한 대화형 프롬프트
+# 세션 effort를 그때그때 조절
+# /effort low|medium|high|xhigh|max  ·  ultrathink
 ```
 
 {{< callout type="info" >}}
-기본 정책은 `medium`입니다. GLM 설정은 `settings.local.json`에 격리됩니다 (Git에 커밋되지 않음). 설정 키는 `llm.yaml`의 `profile: high | medium | low`(프로필 매트릭스 열)이며, legacy `performance_tier` 필드가 `profile` 부재 시 별칭으로 읽힙니다 (`--high`/`--low`는 각각 `--model-policy high`/`low`의 deprecated 별칭). `--profile high|medium|low` 플래그로 직접 지정할 수 있으며, legacy `max` 값도 입력으로 받아 `high`로 정규화됩니다.
+기본 effort 폴백은 `medium`입니다. GLM 설정은 `settings.local.json`에 격리됩니다 (Git에 커밋되지 않음). 사라진 `--model-policy` / `--profile` / `--high` / `--medium-alias` / `--low` 플래그는 지원 종료 스텁입니다 — `moai profile setup`을 안내하는 경고를 낼 뿐 아무 효과가 없습니다.
 {{< /callout >}}
 
 ## Task 메트릭 로깅
@@ -592,7 +561,7 @@ MoAI-ADK를 설치하면 프로젝트에 다음과 같은 구조가 생성됩니
 my-project/
 ├── CLAUDE.md                  # MoAI의 실행 지침서
 ├── .claude/
-│   ├── agents/moai/           # 10개 MoAI 커스텀 에이전트 정의 (+ Explore 빌트인)
+│   ├── agents/moai/           # 12개 MoAI 커스텀 에이전트 정의 (+ Explore 빌트인)
 │   ├── skills/moai-*/         # 31개 스킬 모듈
 │   ├── hooks/moai/            # 자동화 훅 스크립트
 │   └── rules/moai/            # 코딩 규칙 및 표준

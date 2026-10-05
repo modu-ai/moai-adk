@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/pkg/models"
@@ -16,6 +17,11 @@ const (
 	DefaultDocumentation            = "en"
 	DefaultErrorMessages            = "en"
 
+	// DefaultCodexInstructionArgBytes bounds the final direct token and,
+	// independently, the final shell-quoted spawn command. Linux's 131072-byte
+	// per-argument limit minus 4096 bytes leaves headroom for execution framing.
+	DefaultCodexInstructionArgBytes = 126976
+
 	// Graph-freshness gate thresholds (graph layer drift): reasoned defaults,
 	// recalibratable via gate.yaml. The codemaps line reflects how many
 	// described-source files must drift before the curated docs are judged
@@ -23,10 +29,118 @@ const (
 	// content drift (the index is cheap to rescan).
 	DefaultGraphFreshnessCodemapsChangedFiles = 40
 	DefaultGraphFreshnessMXIndexChangedFiles  = 1
+
+	// DefaultGateMarkerScanDepth bounds the quality gate's recursive
+	// language-marker scan below the project root (GH #1680): how many
+	// directory levels beneath the project directory the scan examines for
+	// module markers (go.mod, package.json, ...) when none exists at the top.
+	// The value covers the common monorepo shapes — apps/<svc>,
+	// packages/<pkg>, services/<name> at depth 2, apps/services/<svc> at
+	// depth 3 — with one spare level, while keeping the walk bounded on large
+	// trees. This is the single source of truth for the literal 4; the scan
+	// and its tests reference this constant, never an inline literal
+	// (CLAUDE.local.md §14 — no hardcoding).
+	DefaultGateMarkerScanDepth = 4
 	// DefaultGraphFreshnessUpdateBudgetMS bounds a query-time refresh's
 	// measured cost before a warning fires. A hypothesis until measured on
 	// this repository (never a foreign figure); overrun warns, never blocks.
 	DefaultGraphFreshnessUpdateBudgetMS = 2000
+	// DefaultSlotLeaseMaxDuration is the declared maximum duration a slot
+	// lease takes when the caller omits --max-duration. A chosen value, not a
+	// measured one (plan.md §B3, OQ-3); this is the one place it is defined.
+	DefaultSlotLeaseMaxDuration = "30m"
+	// DefaultFactoryNoResponseMinutes is how long a directed lead request may
+	// go unacknowledged before a lane records a no-response observation
+	// (SPEC-FACTORY-LANE-AUTONOMY-001 REQ-FLA-002).
+	DefaultFactoryNoResponseMinutes = 10
+	// DefaultFactoryFallbackBoundMinutes is the bound period of one directed
+	// lead request, measured from its send time: once the request records a
+	// no-response observation, the messaging channel is treated unavailable
+	// for the remainder of this period (REQ-FLA-002).
+	DefaultFactoryFallbackBoundMinutes = 30
+	// DefaultFactoryLeaseDuration is how long a factory worker's card lease
+	// lasts past its last heartbeat. It bounds worker liveness only: the
+	// decision-pending card states hold no lease, so a human decision is never
+	// raced by it. A chosen value, not a measured one; no config key reads it.
+	DefaultFactoryLeaseDuration = 15 * time.Minute
+	// QuotaHeartbeatInterval is how old a window-carrying session telemetry
+	// record may grow, with an unchanged reading, before the statusline writer
+	// rewrites it to refresh its capture time (SPEC-QUOTA-AWARE-SCHEDULING-001
+	// REQ-QAS-003). It keeps a live session's reading from aging toward stale
+	// behind the write-if-changed throttle. A compiled, unmeasured value; a
+	// window-less record never heartbeats.
+	QuotaHeartbeatInterval = 5 * time.Minute
+	// QuotaExhaustionPct is the used percentage at or above which a rate-limit
+	// window counts as exhausted, so the record stamps its first-observed-
+	// exhausted time (REQ-QAS-004). A compiled, unmeasured value.
+	QuotaExhaustionPct = 100
+	// QuotaClockSkewTolerance is how far in the future a session record's capture
+	// time may lie, relative to the reader's clock, before the quota aggregator
+	// treats the record as unknown rather than as the freshest one
+	// (REQ-QAS-005): a record from another machine or a skewed clock must not win
+	// by being "newest". A compiled, unmeasured value.
+	QuotaClockSkewTolerance = 5 * time.Minute
+
+	// workflow.quota_gate defaults (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-008).
+	// All four numeric values are UNMEASURED defaults: no data on the quota a
+	// card consumes exists, so they are chosen, not measured, and are
+	// configuration keys precisely so the first real measurement changes a
+	// config value and no code. The shipped template block mirrors them and says
+	// so; this is the one place they are defined.
+	DefaultQuotaGateFiveHourHoldPct  = 90
+	DefaultQuotaGateSevenDayHoldPct  = 95
+	DefaultQuotaGateReleaseMarginPct = 5
+	DefaultQuotaGateMaxAge           = "30m"
+
+	// workflow.quota_gate.max_scan_dirs default (SPEC-QUOTA-RECORD-WORKTREES-001
+	// REQ-QWR-011): the bound on linked-worktree record directories examined per
+	// quota reading. UNMEASURED, like the values above; read through
+	// LoadQuotaScanBound, never carried by QuotaGateSettings.
+	DefaultQuotaGateMaxScanDirs = 128
+
+	// DefaultManagedSessionPollInterval is how often an idle managed factory
+	// session polls the broker for claimable inbox messages
+	// (SPEC-FACTORY-MANAGED-SESSION-001 REQ-MS-003).
+	DefaultManagedSessionPollInterval = 500 * time.Millisecond
+	// DefaultManagedSessionClaimTimeout bounds one broker claim round so a
+	// busy SQLite lock delays the poll loop instead of stalling the session
+	// owner.
+	DefaultManagedSessionClaimTimeout = 300 * time.Millisecond
+	// DefaultManagedSessionClaimLease is the claim lease a managed session
+	// hands the store: the message stays claim-locked for one turn's worth of
+	// processing before the store's own lease policy may reclaim it.
+	DefaultManagedSessionClaimLease = 2 * time.Minute
+	// DefaultManagedCodexReadyTimeout bounds one Codex App Server handshake —
+	// process spawn, /readyz wait, loopback WS dial, initialize, thread start
+	// (SPEC-FACTORY-MANAGED-SESSION-001 AC-MS-001). It also bounds the WS
+	// handshake itself. UNMEASURED: the 30 s value is a relaxation of the
+	// former 10 s with no cold-start data behind it (card t1410, F9).
+	DefaultManagedCodexReadyTimeout = 30 * time.Second
+	// DefaultManagedCodexTurnTimeout bounds one injected turn: a turn that
+	// never completes fails the delivery instead of holding the serial queue
+	// forever; the store's claim lease owns redelivery afterwards.
+	DefaultManagedCodexTurnTimeout = 10 * time.Minute
+	// DefaultManagedSessionMaxConsecutiveTurnFailures bounds how many turn-scoped
+	// failures in a row the managed delivery driver tolerates before it returns
+	// the last failure and ends the session; a successful turn resets the count
+	// (SPEC-FACTORY-MANAGED-HARDEN-001 REQ-MH-008). UNMEASURED: there is no
+	// failure-rate data behind 3 — it is the repo's "maximum 3 retries per
+	// operation" convention (moai-constitution Error Handling Protocol), in the
+	// same spirit as the DefaultQuotaGate* defaults. Correct it here when
+	// evidence says otherwise.
+	DefaultManagedSessionMaxConsecutiveTurnFailures = 3
+	// DefaultManagedCodexProbeTimeout bounds the `codex resume --help` capability
+	// probe that decides whether the operator TUI can attach
+	// (SPEC-FACTORY-MANAGED-TUI-001 REQ-MT-003). UNMEASURED: one run of the probe
+	// took 0.040 s on codex-cli 0.160.0; the bound is set orders of magnitude
+	// above that and is not derived from a latency distribution.
+	DefaultManagedCodexProbeTimeout = 5 * time.Second
+	// DefaultManagedCodexTUIStopGrace is how long the owner waits for an
+	// interrupted operator TUI to exit before it kills the child
+	// (SPEC-FACTORY-MANAGED-TUI-001 REQ-MT-011). UNMEASURED: no TUI shutdown
+	// timing was observed; the value only has to be long enough for a TUI that
+	// handles the interrupt to restore the terminal.
+	DefaultManagedCodexTUIStopGrace = 5 * time.Second
 
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
@@ -52,6 +166,21 @@ const (
 	// references MUST use this const (CLAUDE.local.md §14 — no hardcoding).
 	DefaultAgenticLoopMaxIterations = 10
 
+	// workflow.autonomy.* defaults (SPEC-AUTONOMY-CONTRACT-001
+	// REQ-CONTRACT-015). ResolveAutonomy is the only reader; the kickoff
+	// decider has no stored default (it derives from the effective mode).
+	DefaultAutonomyMode               = AutonomyModeGuided
+	DefaultAutonomySecondReview       = AutonomySecondReviewRequired
+	DefaultAutonomyBatchSign          = false
+	DefaultAutonomyPushDevelop        = false
+	DefaultAutonomyJevMinConfidence   = 0.50
+	DefaultAutonomyBudgetTurns        = 60
+	DefaultAutonomyBudgetOperations   = 40
+	DefaultAutonomyBudgetAuditRetries = 2
+	// DefaultAutonomyNewAPIDetector is workflow.autonomy.escalation.new_api_detector
+	// when absent (SPEC-AUTONOMY-ESCALATION-001).
+	DefaultAutonomyNewAPIDetector = AutonomyNewAPIDetectorGraph
+
 	DefaultPlanTokens = 30000
 	DefaultRunTokens  = 180000
 	DefaultSyncTokens = 40000
@@ -70,6 +199,38 @@ const (
 	// literal at two dispatcher call sites in internal/cli/hook.go; this is the
 	// single source of truth.
 	DefaultHookDispatcherTimeout = 30 * time.Second
+
+	// Per-command bound of the plugin install step: it limits ONE `claude
+	// plugin` / `codex plugin` command (SPEC-PLUGIN-MARKETPLACE-001 REQ-013).
+	// Four commands in the worst case make RK-15's 240-second ceiling a visible
+	// number rather than a literal in a call. A chosen value, not a measured one.
+	DefaultPluginInstallCommandTimeout = 60 * time.Second
+
+	// DefaultPluginCommandWaitDelay is how long a plugin command's output pipes
+	// may stay open after its context ends before the runner stops waiting for
+	// them (a grandchild holding the pipe must not outlive the bound).
+	DefaultPluginCommandWaitDelay = 2 * time.Second
+
+	// DefaultPluginVersionProbeTimeout bounds the one `codex plugin list --json`
+	// the "Plugin Version" doctor check starts (SPEC-PLUGIN-MARKETPLACE-001
+	// REQ-021). The command measured 0.02 s; the bound only stops a hang from
+	// stalling an on-demand `moai doctor`. A chosen value, not a measured one.
+	DefaultPluginVersionProbeTimeout = 3 * time.Second
+
+	// DefaultStopParseCapLimit is N, the number of consecutive stdin-parse-
+	// failure Stops under the Claude harness that keep the fail-closed deny;
+	// the next one is answered with no opinion (SPEC-HOOK-STOP-PARSE-CAP-001
+	// REQ-SPC-002/003). It is deliberately not a config key or an environment
+	// variable: no runtime switch may move the deny/release boundary
+	// (REQ-SPC-004).
+	DefaultStopParseCapLimit = 8
+
+	// DefaultStopParseCapExpiry is how long a stop-parse count record stays
+	// live after its last update; an older record counts as absent and is
+	// swept (SPEC-HOOK-STOP-PARSE-CAP-001 REQ-SPC-007). It exceeds the working
+	// time of one long turn, so an expiry between two parse-failure Stops does
+	// not keep resetting the count.
+	DefaultStopParseCapExpiry = 60 * time.Minute
 
 	// DefaultTraceFlushTimeout bounds how long a hook process waits at teardown
 	// for the async trace writer to drain to disk before abandoning the wait
@@ -100,6 +261,32 @@ const (
 	// slow — the signal path returns in microseconds on a healthy filesystem.
 	DefaultTraceFlushTimeout = 2 * time.Second
 
+	// DefaultHookAsyncJoinTimeout bounds how long a hook process waits at
+	// teardown for a handler's own background side-effect goroutine to finish
+	// before abandoning the wait. It is the sibling of
+	// DefaultTraceFlushTimeout on the other async axis: that one drains the
+	// registry's trace writer, this one joins the handlers themselves.
+	//
+	// The budget exists because a `moai hook <event>` process is one-shot. A
+	// handler that hands its real work to a goroutine and returns immediately
+	// (REQ-HAE-002) has no one left to finish that work once Dispatch returns —
+	// the process exits and the goroutine is abandoned mid-flight, so the
+	// result it would have recorded is simply never produced. Measured on the
+	// ConfigChange path: the async validation was reached 0 times out of 5 CLI
+	// runs, while the in-process control that joins the handler's WaitGroup
+	// reached it every time.
+	//
+	// Like the flush budget this is a ceiling, not a cost: the join is
+	// signal-confirmed (it blocks on the handler's WaitGroup, not on the
+	// timer), so the normal path returns as soon as the goroutine finishes.
+	// The timer only fires on a genuinely slow or hung side effect, which must
+	// never stall the user's session. 2s mirrors the flush budget rather than
+	// inventing a second calibration: both bound the same thing — how long a
+	// one-shot hook process may linger at exit — and the bounded work here
+	// (a 20ms debounce, a file read, a YAML parse) sits orders of magnitude
+	// below it.
+	DefaultHookAsyncJoinTimeout = 2 * time.Second
+
 	DefaultBranchPrefix = "moai/"
 	DefaultCommitStyle  = "conventional"
 
@@ -129,8 +316,10 @@ const (
 	// agent spawned into a Sonnet or Haiku slot inherits that window. Give those
 	// slots smaller models and the window overstates what they can actually hold:
 	// the spawn runs past its real limit with compaction still waiting for a
-	// ceiling it will never reach. Pointing every slot at the same 1M model is
-	// what makes the single window true for all of them.
+	// ceiling it will never reach. Pointing every slot at a 1M model is what
+	// makes the single window true for all of them — the Fable slot holds
+	// glm-5.3 rather than glm-5.3-flash, and the invariant is the 1M context
+	// both carry, not model identity.
 	//
 	// Tier differentiation does not disappear — it moves to the effort axis,
 	// which is where z.ai actually implements it. See glm_effort_overlay.go: the
@@ -142,10 +331,11 @@ const (
 	// suffixed id as unknown, so the window comes from the resolved context
 	// window (glmAutoCompactWindow) instead.
 	//
-	// The default is glm-5.3-flash. glm-5.3 (DefaultGLM53) stays a named
-	// constant and a ValidGLMModels() member so an explicit selection keeps
-	// loading — the offered set is derived from these constants, so the
-	// non-default ids need their own declarations to survive a default switch.
+	// The default is glm-5.3-flash for the High, Medium, and Low slots and
+	// glm-5.3 for the Fable slot. Both stay named constants and ValidGLMModels()
+	// members so an explicit selection keeps loading — the offered set is derived
+	// from these constants, so the non-default ids need their own declarations to
+	// survive a default switch.
 	//
 	// glm-5.3 is reachable on the Anthropic-compatible endpoint this client uses.
 	// It is not granted on the native paas surface for every account, so a key
@@ -156,30 +346,63 @@ const (
 	DefaultGLMHigh    = DefaultGLM53Flash
 	DefaultGLMMedium  = DefaultGLM53Flash
 	DefaultGLMLow     = DefaultGLM53Flash
-	DefaultGLMFable   = DefaultGLM53Flash
-	// Additional GLM models — those exposed by ValidGLMModels() (glm-5.3,
-	// glm-5.1, glm-4.7, glm-4.5-air) are selectable in the tier slots; glm-4.5,
-	// glm-4.6, glm-5.2, and glm-5-turbo are named constants with no config
-	// surface. glm-5.2 left the offered set when a single model became every
-	// tier's default, but stays declared so an existing llm.yaml naming it still
-	// loads and still resolves a context window.
-	DefaultGLM45     = "glm-4.5"
-	DefaultGLM46     = "glm-4.6"
-	DefaultGLM47     = "glm-4.7"
-	DefaultGLM45Air  = "glm-4.5-air"
-	DefaultGLM51     = "glm-5.1"
-	DefaultGLM52     = "glm-5.2"
-	DefaultGLM5Turbo = "glm-5-turbo"
+	DefaultGLMFable   = DefaultGLM53
+	// DefaultGLM53Flash is the sparse-attention GLM-5.3-Flash variant (1M
+	// context). Unlike glm-5.3 it accepts reasoning_effort "max" only — the
+	// web console locks the tier effort select to max when a tier slot holds
+	// it, and the effort overlay branches per-model.
+	//
+	// DELETION RECORD (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004, DR-2 —
+	// operator override 2026-09-30): the seven old-model name constants —
+	// "glm-4.5", "glm-4.6", "glm-4.7", "glm-4.5-air", "glm-5.1", "glm-5.2",
+	// "glm-5-turbo" — are DELETED, not merely withdrawn from
+	// ValidGLMModels(). glm-5.2 had left the offered set earlier while its
+	// constant stayed loadable; the operator chose full deletion over that
+	// preservation precedent. A stored tier-slot value naming a removed id
+	// falls back to the tier default with a one-line warning (fail-open), and
+	// the statusline context-window table no longer carries the removed ids —
+	// llm.glm.context_windows is the user override path that keeps working.
 	// Legacy GLM model names (map to tiers)
 	DefaultGLMHaiku  = DefaultGLM53Flash
 	DefaultGLMSonnet = DefaultGLM53Flash
 	DefaultGLMOpus   = DefaultGLM53Flash
+
+	// Claude agent-tier pair components (SPEC-AGENT-TIER-001 REQ-TIER-002).
+	// The tier tokens max/medium/low are CONFIGURATION-KEY names, not effort
+	// values (REQ-TIER-001, the Q2 decision): each names one {model, effort}
+	// pair, and the constant is keyed by the TIER token rather than the effort
+	// slot — an effort-keyed suffix would alias tier-medium to a
+	// "...TierHigh" constant and recreate exactly the tier/effort ambiguity
+	// Q2 exists to prevent. The {model, effort} aggregates live in the
+	// DefaultClaudeTier* vars below the const block (Go const rules:
+	// ModelEffort is a struct). No other file may restate these model ids or
+	// effort values as inline literals (REQ-TIER-013); the pin_literal_sweep
+	// test guards the boundary.
+	//
+	// Chart grounding (Terminal-Bench 4.0, spec.md §E): max = Sonnet 5.5 @ max
+	// (70.6% @ ~$11 — accuracy-first), medium = Sonnet 5.5 @ high (45% @ ~$2.3
+	// — cost-efficiency sweet spot), low = Sonnet 5.5 @ medium (29% @ ~$0.8).
+	DefaultClaudeTierMaxModel     = "sonnet-5-5"
+	DefaultClaudeTierMaxEffort    = "max"
+	DefaultClaudeTierMediumModel  = DefaultClaudeTierMaxModel
+	DefaultClaudeTierMediumEffort = "high"
+	DefaultClaudeTierLowModel     = DefaultClaudeTierMaxModel
+	DefaultClaudeTierLowEffort    = "medium"
+
+	// DefaultClaudeTierMaxFallbackModel carries the max-tier fallback's model
+	// id. It spells the same string the claude audit pin carries today, but is
+	// a SEPARATE declaration: the fallback and the audit pin are independent
+	// concepts that may move on different schedules.
+	DefaultClaudeTierMaxFallbackModel = "claude-opus-5-5"
 	// Default1MContextTokens is the token count for Claude Code's 1M context
 	// mode. Used to populate CLAUDE_CODE_AUTO_COMPACT_WINDOW when the High slot
 	// model resolves to the 1M context tier.
 	Default1MContextTokens = 1_000_000
-	// Default performance tier
-	DefaultPerformanceTier = "medium"
+
+	// DefaultHarness is the closed-set default of llm.harness (SPEC-INIT-HARNESS-001
+	// REQ-IH-001/002). Init seeds this value explicitly so an absent key never
+	// has to be inferred as claude; the closed set is {claude, codex, both}.
+	DefaultHarness = "claude"
 
 	DefaultCacheTTLSeconds = 5
 	DefaultTimeoutSeconds  = 3
@@ -202,6 +425,19 @@ const (
 	// always preserved (EC-3).
 	DefaultTraceRetentionDays = 30
 
+	// DefaultHookRuntimeLogRetentionDays is the age threshold (in days) past
+	// which the `moai hook` path's log sink (.moai/logs/hook-runtime.log,
+	// written by internal/cli/hook_sink.go) is pruned at SessionEnd
+	// (SPEC-HOOK-DIAG-SINK-001 REQ-HDS-009 / REQ-HDS-010). The sink is an
+	// append-only file with no rotation of its own, so this threshold is the
+	// only thing bounding its growth.
+	//
+	// It is a SEPARATE constant from DefaultTraceRetentionDays rather than a
+	// reuse of it: the two artifacts age for different reasons (a trace is one
+	// session's record, the sink is a rolling diagnostic tail), so REQ-HDS-010
+	// gives the sink its own named knob. They happen to share a value today.
+	DefaultHookRuntimeLogRetentionDays = 30
+
 	// Home disk/clean defaults (SPEC-V3R6-MOAI-CLEAN-HOME-001). These are the
 	// compiled-in configuration surface for the `moai doctor` Home Disk Usage
 	// check and `moai clean --home`: DefaultHomeDiskWarnBytes is the cleanable-
@@ -210,9 +446,63 @@ const (
 	// `state.home_retention_days` key read from ~/.moai/config/sections/state.yaml;
 	// DefaultReleaseKeep is how many non-current release binaries beyond the
 	// current version survive `clean --home`.
-	DefaultHomeDiskWarnBytes      = 500 * 1024 * 1024
-	DefaultHomeCleanRetentionDays = 30
-	DefaultReleaseKeep            = 3
+	DefaultHomeDiskWarnBytes            = 500 * 1024 * 1024
+	DefaultHomeCleanRetentionDays       = 30
+	DefaultReleaseKeep                  = 3
+	DefaultProfileProjectsRetentionDays = 180
+	DefaultProfileDebugRetentionDays    = 30
+	DefaultProfileUnusedDays            = 90
+	DefaultProfileMaxBytes              = 5 * 1024 * 1024 * 1024
+
+	// Reports-archive defaults (SPEC-REPORTS-LIFECYCLE-001 REQ-RLC-007) for
+	// `moai clean --reports-archive`. Age-based, not volume-based: machine-
+	// local accumulation under .moai/reports/ differs per checkout, so the
+	// retention window is the only policy axis. The window is a conservatively
+	// adopted documented default (card card-evidence reopen cycle), adjustable
+	// per invocation via --reports-archive-days; no new config file is
+	// introduced.
+	DefaultReportsArchiveRetentionDays = 90
+
+	// DefaultReportsArchiveWarnBytes is the candidate byte total above which
+	// the reports-archive action warns before moving.
+	DefaultReportsArchiveWarnBytes int64 = 1 << 30 // 1 GiB
+
+	// Hygiene thresholds (SPEC-MOAI-HYGIENE-001 REQ-HYG-016). Every size,
+	// count, age, window, and mode default of the hygiene engine lives
+	// here — no call site carries a magic number. KeptRotations is PINNED
+	// to 1 (D30): the REQ-HYG-002 chunk sequence is keep-1 by construction,
+	// and the hygiene engine validates the override (any other value is a
+	// config-invalid refusal, never a silent clamp).
+	HygieneAuditLogMaxBytes         = 10 * 1024 * 1024
+	HygieneAuditLogKeptRotations    = 1
+	HygieneTranscriptActivityWindow = 48 * time.Hour
+	HygieneHeartbeatStaleWindow     = 24 * time.Hour
+	HygieneMinAgeDays               = 7
+	HygieneModeDefault              = "report"
+
+	// DefaultSessionRecordRetentionDays is the shipped default for the
+	// project-tier `state.session_record_retention_days` key (card t1312):
+	// the age bound past which SessionStart prunes factory session records.
+	// It mirrors DefaultHomeCleanRetentionDays — the same 30-day window the
+	// home tier already ships — because the consumers (doctor Factory Run,
+	// the web ops console, the stale-run hook) need liveness only and no
+	// reader needs history older than any live run could be. An explicit 0
+	// in state.yaml disables the sweep.
+	DefaultSessionRecordRetentionDays = 30
+
+	// Lessons-inbox lifecycle defaults (SPEC-INBOX-DRAIN-GAP-001 REQ-IBX-001 /
+	// REQ-IBX-004 — single source of truth; CLAUDE.local.md §14 — no duplicate
+	// literals). DefaultInboxMaxBytes is the collector-side write-time size cap
+	// for .moai/lessons-inbox.jsonl: an append observing the live file at or
+	// over this size rotates it into a bounded archive (marker-absent installs
+	// only — the LSEL curator owns the inbox lifecycle on its own machine).
+	// 1 MiB sits just under the measured t259 drain-stall scale (~1.1 MB), so
+	// a stalled drain no longer grows the inbox past roughly one generation.
+	// DefaultInboxArchiveGenerations is the retained rotated-generation count
+	// (lessons-inbox.jsonl.1, lessons-inbox.jsonl.2); the rotation chain is
+	// derived from it, never restated at the call site.
+	DefaultInboxMaxBytes           = 1 << 20
+	DefaultInboxArchiveGenerations = 2
 
 	// Memory taxonomy defaults (SPEC-V3R2-EXT-001)
 	// @MX:NOTE: [AUTO] 메모리 감사 서브시스템의 실제 배선(wiring)은 아래 패키지 레벨 상수 +
@@ -269,6 +559,40 @@ const (
 	// unboundedly — an advisory computation on the critical path must never block.
 	DefaultSessionStartDriftTimeout = 2 * time.Second
 
+	// Out-of-band drift-cache fill (SessionStart miss path). The three values
+	// below are ONE relationship, not three unrelated numbers, and they live
+	// here rather than inline so no threshold is hardcoded in business logic.
+
+	// DefaultDriftCacheFillTimeout is the deadline the fill child carries on
+	// its own invocation and exits at, computed or not. It is generous
+	// relative to a cold drift compute (sub-second on typical repositories,
+	// ~1s on a large one) because the child is detached, silent and
+	// single-flight — the deadline is a wedge guard, not a latency budget.
+	DefaultDriftCacheFillTimeout = 30 * time.Second
+
+	// DriftCacheFillTTLSlack is the headroom between the child deadline and the
+	// suppression TTL. It exists so the inequality below is a stated
+	// relationship a test can assert over resolved values.
+	DriftCacheFillTTLSlack = 30 * time.Second
+
+	// DefaultDriftCacheFillTTL bounds respawn to at most one attempt per TTL
+	// per HEAD, so a persistently broken child cannot produce a per-session
+	// spawn loop.
+	//
+	// INVARIANT: DefaultDriftCacheFillTTL >= DefaultDriftCacheFillTimeout +
+	// DriftCacheFillTTLSlack. A TTL shorter than the child's deadline lets a
+	// second session reclaim a record whose child is still legitimately
+	// computing, reintroducing the burst one TTL later.
+	DefaultDriftCacheFillTTL = 5 * time.Minute
+
+	// DriftCacheFillLockStaleness is the age at which the suppression lock —
+	// the companion `<record>.lock` the handler claims around its critical
+	// section — is considered abandoned by a handler that died inside it and
+	// may be reclaimed. Far longer than the section itself (a read, a judgement
+	// and one small write), so a lock older than this is certainly stale rather
+	// than merely contended.
+	DriftCacheFillLockStaleness = 2 * time.Minute
+
 	// DefaultDriftPerfFixtureSpecs is the synthetic SPEC-directory count the
 	// perf-regression fixture builds (REQ-SSP-014, N=500). It is the SSOT for the
 	// literal 500 so the fixture size is not an inline magic number.
@@ -294,6 +618,23 @@ const (
 	HandoffHardCeilingMarginPct = 10      // margin above auto-compact threshold for the hard ceiling
 )
 
+// Claude agent-tier {model, effort} pairs (SPEC-AGENT-TIER-001 REQ-TIER-002),
+// aggregating the DefaultClaudeTier* const components above. The values are
+// operator-fixed; the chart grounding is documented on the components.
+var (
+	DefaultClaudeTierMax    = ModelEffort{Model: DefaultClaudeTierMaxModel, Effort: DefaultClaudeTierMaxEffort}
+	DefaultClaudeTierMedium = ModelEffort{Model: DefaultClaudeTierMediumModel, Effort: DefaultClaudeTierMediumEffort}
+	DefaultClaudeTierLow    = ModelEffort{Model: DefaultClaudeTierLowModel, Effort: DefaultClaudeTierLowEffort}
+)
+
+// DefaultClaudeTierMaxFallback RECORDS — and only records — the max-tier
+// fallback pair {claude-opus-5-5, xhigh}: 65% @ ~$5 on the Terminal-Bench 4.0
+// chart, the availability/dispersion alternative to the max tier (−5.6 points
+// vs the max tier's 70.6% at roughly 55% of the cost). NO automatic failover
+// reads this value: activation is operator-invokable and is revisited only
+// when an availability signal exists (SPEC-AGENT-TIER-001 §C / REQ-TIER-003).
+var DefaultClaudeTierMaxFallback = ModelEffort{Model: DefaultClaudeTierMaxFallbackModel, Effort: "xhigh"}
+
 // SandboxProofKinds is the allowlist of recognized sandbox/container isolation
 // kinds for the MOAI_SANDBOX_PROOF env marker (SPEC-AUTONOMY-TIERS-001 REQ-002
 // S3 hardening — sandbox-proof spoofing). A proof whose kind is not in this
@@ -307,7 +648,7 @@ var SandboxProofKinds = []string{
 	"docker", "podman", "gvisor", "firecracker", "e2b", "devcontainer", "kata", "sandbox-runtime",
 }
 
-// DefaultHandoffStaleTTL is the age past which a handoff/pending.json is
+// DefaultHandoffStaleTTL is the age past which a pending resume handoff row is
 // considered stale and silently removed by the SessionStart handler — auto-mode
 // ONLY (SPEC-HANDOFF-AUTORESUME-001 REQ-019). Manual mode never removes a stale
 // pending record (REQ-009 pure no-op). Single source of truth consumed by the
@@ -323,6 +664,57 @@ var DefaultHandoffStaleTTL = 7 * 24 * time.Hour
 // Not a compile-time const because time.Duration multiplication is not a
 // constant expression.
 var DefaultCodexReviewGateTimeout = 900 * time.Second
+
+// Values of workflow.codex.review_gate.tree_scope
+// (SPEC-CODEX-REVIEW-OWNERSHIP-001 REQ-CRO-001): what the codex review gate
+// does for a tree-scope session that carries no WT- branch evidence. Review is
+// today's whole-uncommitted-tree review and the distributed default; Skip lets
+// the turn through without a review. Single source of truth for both names.
+const (
+	CodexReviewGateTreeScopeReview = "review"
+	CodexReviewGateTreeScopeSkip   = "skip"
+)
+
+// Values of workflow.codex.review_gate.primary_scope
+// (SPEC-CODEX-GATE-SCOPING-001 REQ-CGSC-004): what the codex review gate does
+// for a tree-scope session whose tree is the repository's primary working
+// tree. Skip is the distributed default — a primary checkout's non-card
+// changes have no card to attribute them to (REQ-CGSC-002); Review is the
+// explicit restore axis that keeps the pre-SPEC whole-tree review. Single
+// source of truth for both names.
+const (
+	CodexReviewGatePrimaryScopeSkip   = "skip"
+	CodexReviewGatePrimaryScopeReview = "review"
+)
+
+// NormalizeCodexReviewGateTreeScope maps a raw tree_scope value onto the policy:
+// only "skip", compared without regard to case or surrounding whitespace, reads
+// as skip; an empty, unknown or misspelled value reads as review, so a mistyped
+// key never silently reviews less (REQ-CRO-001). The config loader and the
+// gate's hand-rolled reader both go through this one function.
+func NormalizeCodexReviewGateTreeScope(value string) string {
+	if strings.EqualFold(strings.TrimSpace(value), CodexReviewGateTreeScopeSkip) {
+		return CodexReviewGateTreeScopeSkip
+	}
+	return CodexReviewGateTreeScopeReview
+}
+
+// NormalizeCodexReviewGatePrimaryScope maps a raw primary_scope value onto the
+// policy (the §F.2 disposition table): only an explicit "review", compared
+// without regard to case or surrounding whitespace, restores the pre-SPEC
+// whole-tree review; every other read outcome — an empty, unknown or
+// misspelled value, a missing key — leaves the default skip in force, because
+// the gate does not review a primary checkout's unattributable changes
+// (REQ-CGSC-002). The fail direction is deliberately REVERSED from
+// NormalizeCodexReviewGateTreeScope: there the default reviews, here it skips.
+// The config loader and the gate's hand-rolled reader both go through this one
+// function.
+func NormalizeCodexReviewGatePrimaryScope(value string) string {
+	if strings.EqualFold(strings.TrimSpace(value), CodexReviewGatePrimaryScopeReview) {
+		return CodexReviewGatePrimaryScopeReview
+	}
+	return CodexReviewGatePrimaryScopeSkip
+}
 
 // DefaultMultiReviewGateTimeout is the per-call timeout for the multi-model
 // convergence read performed by the multi-review-gate Stop hook
@@ -353,6 +745,25 @@ var DefaultMultiReviewGateTimeout = 900 * time.Second
 // is not — and so a test can shorten it, which is what keeps the criterion that
 // verifies the bound cheap to run instead of a ten-minute test.
 var DefaultCodexTaskTimeout = 600 * time.Second
+
+// DefaultCodexAuditTimeout bounds ONE read-only audit process started by the
+// Codex audit launcher (`moai codex audit`). An audit reads a SPEC and its
+// tree and can take minutes; past this bound the launcher terminates the
+// process group and writes no verdict. Not a const so a test can shorten it.
+var DefaultCodexAuditTimeout = 20 * time.Minute
+
+// DefaultCodexAuditLegTimeout bounds the codex leg of one `audit_multi` call.
+// The leg is the same kind of work DefaultCodexAuditTimeout bounds — a read-only
+// review of a SPEC or diff — so it takes that value instead of restating it, and
+// stays distinct from DefaultCodexTaskTimeout (delegated work) and
+// DefaultCodexReviewGateTimeout (a Stop hook) so tuning one cannot move another.
+// Not a const so a test can shorten it.
+var DefaultCodexAuditLegTimeout = DefaultCodexAuditTimeout
+
+// DefaultCodexAuditListTimeout bounds the `codex mcp list --json` lookup the
+// audit launcher runs before the audit to learn which MCP servers to disable.
+// The lookup makes no model call, so its bound is short.
+var DefaultCodexAuditListTimeout = 30 * time.Second
 
 // DefaultCodexJobSummaryMaxLen bounds the request summary a codex job record
 // carries (SPEC-CODEX-PHASE2-001 REQ-CX2-003 / REQ-CX2-015). A job record is a
@@ -431,31 +842,67 @@ var (
 	// most 2 parts (text + optional data); the headroom tolerates future
 	// part kinds without a schema change.
 	DefaultSessionMsgMaxParts = 8
+	// DefaultSessionMsgMaxPending is the depth ceiling on one agent's
+	// pending mailbox: Store.Send rejects a send that would push the
+	// recipient's pending count to it (card t253, PR #1606 review). Without
+	// a ceiling a looping or malfunctioning sender fills a mailbox until the
+	// 24h message TTL, and every subsequent Poll pays read-and-unmarshal
+	// cost for the whole backlog. Four polls' worth of headroom above
+	// DefaultSessionMsgPollBatch — a full mailbox therefore means a receiver
+	// that stopped polling, never ordinary traffic.
+	DefaultSessionMsgMaxPending = 64
 )
 
-// DefaultFactoryWorkers is the fan-out size the count-less `-k --name
-// lane-<n>` form takes when the operator supplies no count
-// (SPEC-FACTORY-WORKER-FANOUT-001 REQ-FF-001, t85 lead loop). The value 8 is
+// DefaultFactoryLanes is the fan-out size the legacy count-less `-k` lane
+// entry takes when the operator supplies no count
+// (SPEC-FACTORY-WORKER-FANOUT-001 REQ-FF-001, t85 leader loop). The value 8 is
 // the operator-decided factory default for that legacy entry — large enough to
 // keep a card queue draining, small enough to sit under the session-count a
 // single operator hand-launches comfortably. The t118 `-f` entry has its own,
-// smaller default (DefaultFactoryLeadWorkers).
-const DefaultFactoryWorkers = 8
+// smaller default (DefaultFactoryLeaderLanes).
+const DefaultFactoryLanes = 8
 
-// DefaultFactoryLeadWorkers is the fan-out a bare `-f` / `--factory` (no
-// count) resolves to (t118 launcher axis, v3.1.1): one lane. The revived -f
-// entry starts the minimal factory — lead plus lane-1 — which the operator
-// then grows one lane at a time with `-f lane-<n>`, so the count-less
-// default is 1, not the legacy form's 8 (DefaultFactoryWorkers).
-const DefaultFactoryLeadWorkers = 1
+// DefaultFactoryLeaderLanes is the leader fan-out a bare `-f` / `--factory`
+// (no count) resolves to (t118 launcher axis, v3.1.1): one lane. The revived
+// -f entry starts the minimal factory — leader plus lane-1 — which the
+// operator then grows one lane at a time with `-l`, so the
+// count-less default is 1, not the legacy form's 8 (DefaultFactoryLanes).
+//
+// Its role is the LEADER FAN-OUT DEFAULT only (SPEC-CODEX-LANE-SLOTS-001,
+// plan §E.3): it is no longer a run's join bound. A run's declared lane
+// capacity is run state — runs.lane_capacity, recorded at leader start
+// (REQ-004) — and the claim engine reads the record; this constant is the
+// fallback where a run carries no record or a capacity-open one.
+const DefaultFactoryLeaderLanes = 1
+
+// DefaultFactorySlowLaunchThreshold is the slow-launch threshold of the
+// codex lane launch's pre-exec phase (SPEC-CODEX-LANE-SLOTS-001 REQ-012):
+// when the phase exceeds it, the launcher prints one timing line per
+// pre-exec step. Two seconds sits far above a healthy join+init sequence
+// (sub-second) yet well under the operator-visible stall the diagnosis
+// chased, so the report fires only on a genuinely slow launch. The operator
+// override rides MOAI_FACTORY_SLOW_LAUNCH_MS (EnvMoaiFactorySlowLaunchMS).
+const DefaultFactorySlowLaunchThreshold = 2 * time.Second
 
 // DefaultLaneMaxConcurrentSubagents is the per-lane concurrent-subagent cap
-// the launcher seeds on kanban companion and factory lane sessions (t118,
+// the launcher seeds on factory lane sessions (t118,
 // operator-confirmed architecture: each lane runs up to 10 agents in
 // parallel). It rides CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS (runtime default
 // 20) so N lanes fanning out simultaneously divide the machine's capacity by
 // construction rather than by operator restraint.
 const DefaultLaneMaxConcurrentSubagents = 10
+
+// DefaultTodoClassifyLLMTimeout is the HTTP timeout ceiling of the LLM
+// classification decider (SPEC-TCD-LLM-DECIDER-001 REQ-TLD-006). An
+// interactive add cannot wait out the audit path's 120s ceiling
+// (glmAuditHTTPTimeout): past this bound the judgment fails and the add
+// degrades to the fail-safe default with the one-line notice (REQ-TLD-003).
+const DefaultTodoClassifyLLMTimeout = 10 * time.Second
+
+// DefaultTodoClassifyLLMMaxTokens bounds a single LLM classification
+// response (SPEC-TCD-LLM-DECIDER-001): the judgment is a three-field JSON
+// object plus a one-line reason — far below the audit pass's 4096 cap.
+const DefaultTodoClassifyLLMMaxTokens = 512
 
 // DefaultGLMJobCancelGrace is how long glm_job_cancel waits for a cancelled
 // job's in-flight HTTP call to end on its own. Derived from
@@ -505,6 +952,23 @@ func NewDefaultConfig() *Config {
 		ContextSearch: defaultContextConfig(),
 		Interview:     defaultInterviewConfig(),
 		Design:        defaultDesignConfig(),
+	}
+}
+
+// DefaultPlanAuditTierCeilings returns the shipped plan_audit_tier_ceilings
+// values ({S:1, M:2, L:3}), mirroring the template harness.yaml verbatim
+// (SPEC-AUDIT-CEILING-002: a project without the keys resolves these).
+func DefaultPlanAuditTierCeilings() map[string]int {
+	return map[string]int{"S": 1, "M": 2, "L": 3}
+}
+
+// DefaultPlanAuditCeilingPolicy returns the shipped plan_audit_ceiling_policy
+// values {AutoDeltaRounds: 1, OnFinalHit: hold-and-split}, mirroring the
+// template harness.yaml verbatim.
+func DefaultPlanAuditCeilingPolicy() PlanAuditCeilingPolicyConfig {
+	return PlanAuditCeilingPolicyConfig{
+		AutoDeltaRounds: 1,
+		OnFinalHit:      PlanAuditCeilingOnFinalHoldAndSplit,
 	}
 }
 
@@ -561,6 +1025,10 @@ func NewDefaultGateConfig() GateConfig {
 			Lint:      60,
 			Test:      120,
 			Typecheck: 300,
+			// The gate-run lock's wait budget: a policy knob, not a step
+			// budget. 30s waits out a concurrently finishing run while never
+			// holding a starting run without bound.
+			LockWait: 30,
 		},
 		// The typecheck axis is ON by default. A project with no type-check
 		// surface reports the skip and passes, so enabling it costs nothing
@@ -585,6 +1053,15 @@ func NewDefaultGateConfig() GateConfig {
 			CodemapsChangedFiles: DefaultGraphFreshnessCodemapsChangedFiles,
 			MXIndexChangedFiles:  DefaultGraphFreshnessMXIndexChangedFiles,
 			UpdateBudgetMS:       DefaultGraphFreshnessUpdateBudgetMS,
+		},
+		// The pre-commit context's heavy gate is default-OFF (the BranchGuard /
+		// agent_stop_guard opt-in pattern): a project-wide failure unrelated to
+		// the staged change must not block unrelated commits. Opt in via
+		// gate.yaml pre_commit.enabled (editable from `moai web`). A standalone
+		// `moai gate` run ignores this key (operator decision 2,
+		// SPEC-PRECOMMIT-GATE-SCOPE-001).
+		PreCommit: GatePreCommitConfig{
+			Enabled: false,
 		},
 	}
 }
@@ -676,7 +1153,15 @@ func NewDefaultGitStrategyConfig() GitStrategyConfig {
 			GitHubIntegration: false,
 			PushToRemote:      false,
 			AutoCheckpoint:    "disabled",
-			MergeMethod:       "squash",
+			// card t1504 (re-lands PR #1738 / t1281 intent): manual-mode cards
+			// land as plain merges into the local integration branch (WT-*
+			// --no-ff house practice), so the seeded default follows the
+			// practice instead of contradicting it.
+			MergeMethod: "merge",
+			// SPEC-MAIN-COMMIT-BAN-001 REQ-3.3: 0 disables the batch-push
+			// trigger (template-neutral — manual mode ships push_to_remote:
+			// false, so a nonzero default would push a workflow choice).
+			LeadPushThreshold: 0,
 			BranchCreation:    BranchCreationConfig{AutoEnabled: false, PromptAlways: true},
 			Automation:        AutomationConfig{AutoBranch: false, AutoCommit: true, AutoPR: false, AutoPush: false},
 			CommitStyle:       CommitStyleConfig{Format: "conventional", ScopeRequired: false},
@@ -734,8 +1219,8 @@ func NewDefaultSystemConfig() SystemConfig {
 // NewDefaultLLMConfig returns a LLMConfig with default values.
 func NewDefaultLLMConfig() LLMConfig {
 	return LLMConfig{
-		GLMEnvVar:       DefaultGLMEnvVar,
-		PerformanceTier: DefaultPerformanceTier,
+		GLMEnvVar: DefaultGLMEnvVar,
+		Harness:   DefaultHarness,
 		ClaudeModels: ClaudeTierModels{
 			High:   "opus",
 			Medium: "sonnet",
@@ -751,10 +1236,6 @@ func NewDefaultLLMConfig() LLMConfig {
 				Medium: DefaultGLMMedium,
 				Low:    DefaultGLMLow,
 				Fable:  DefaultGLMFable,
-				// Legacy fields for backward compatibility
-				Opus:   DefaultGLMOpus,
-				Sonnet: DefaultGLMSonnet,
-				Haiku:  DefaultGLMHaiku,
 			},
 		},
 	}
@@ -789,8 +1270,16 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			AfterRun:       false,
 			TokenThreshold: 150000,
 		},
-		DefaultMode:   "",
-		ExecutionMode: "team",
+		DefaultMode: "",
+		// "auto" (not "team") aligns with the template SSOT
+		// workflow.yaml (execution_mode: auto) per SPEC-INIT-UPDATE-CONSISTENCY-001
+		// REQ-ICU-002: the loader's partial-override contract seeds this default
+		// when the file key is absent, so a split between the two sources would
+		// invert the template-declared meaning. "auto" is the aligned value —
+		// ExecutionModeAuto (closed_sets.go) defers the choice to harness
+		// auto-selection; "team" predates the auto value's introduction.
+		// TestExecutionModeDefaultMatchesTemplate pins the parity.
+		ExecutionMode: "auto",
 		AgenticLoop: AgenticLoopConfig{
 			MaxIterations: DefaultAgenticLoopMaxIterations,
 		},
@@ -808,6 +1297,9 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			// SPEC-WORKTREE-ENTRY-STRATEGY-001 M1: web auto-toggles default OFF.
 			// AutoCleanup and AutoMerge mutated true→false (sprawl mitigation,
 			// EnterWorktree-first policy). AutoCreate unchanged (already false).
+			// AutoMerge now has a reader (session-exit auto-merge,
+			// SPEC-WORKTREE-KEY-WIRING-001 REQ-WKW-001) but stays default-OFF:
+			// the local dev repo's auto_merge: true is the operator's opt-in.
 			AutoCleanup:        false,
 			AutoCreate:         false,
 			AutoMerge:          false,
@@ -819,6 +1311,30 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// fact that ABSENT and TRUE are the same answer, and that only a
 		// literal `enabled: false` turns the guidance off.
 		Todo: WorkflowTodoConfig{},
+		// SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-002: the construction-time
+		// default is the named token, not the empty string. Absent and `card`
+		// resolve identically either way (ProjectContinuation maps "" to card),
+		// so this line is belt-and-braces: it makes the default readable from
+		// the struct rather than only from the resolver.
+		Project: WorkflowProjectConfig{Continuation: ProjectContinuationCard},
+		// SPEC-MOAI-HYGIENE-001 REQ-HYG-016: the hygiene engine's defaults
+		// mirror the Hygiene* constants above. Mode ships "report" — the
+		// non-mutating default (REQ-HYG-013).
+		Hygiene: WorkflowHygieneConfig{
+			Mode:                     HygieneModeDefault,
+			AuditLogMaxBytes:         HygieneAuditLogMaxBytes,
+			AuditLogKeptRotations:    HygieneAuditLogKeptRotations,
+			TranscriptActivityWindow: HygieneTranscriptActivityWindow,
+			HeartbeatStaleWindow:     HygieneHeartbeatStaleWindow,
+			MinAgeDays:               HygieneMinAgeDays,
+		},
+		// The out-of-band drift-cache fill ships ENABLED. Unlike the guard
+		// family below it, this feature is not inert when on — it starts a
+		// child process on a cache miss — so the default is an accepted cost
+		// rather than a neutrality choice. See the WorkflowConfig.DriftCacheFill
+		// field comment. This entry is load-bearing: without it the zero value
+		// would ship the feature permanently off.
+		DriftCacheFill: WorkflowDriftCacheFillConfig{Enabled: true},
 		// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-4: the guard ships
 		// default-OFF (opt-in). Distributed users get an inert guard; the
 		// maintainer of a shared multi-session checkout opts in via local
@@ -826,6 +1342,12 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// anywhere under internal/template/templates/.
 		BranchGuard: BranchGuardConfig{
 			Enabled: false,
+			// SPEC-MAIN-COMMIT-BAN-001 REQ-3.1: the protected-branch commit
+			// deny ships with an EMPTY list (template-neutral, the sibling of
+			// Enabled: false above). A project that declares a
+			// commit-protected mainline names it in its local config; the
+			// empty list also short-circuits the check before any subprocess.
+			DenyCommitsOn: []string{},
 		},
 		// The release-integration holder guard ships inert for the same
 		// reason: a single-developer repository has no integration window to
@@ -834,18 +1356,97 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		IntegrationLock: IntegrationLockConfig{
 			Enabled: false,
 		},
-		// The agent-model guard ships with its BLOCKING layer off. Observation
-		// and advisory always run; a maintainer opts into denial via local
-		// config. Template neutrality: no `enabled: true` anywhere under
-		// internal/template/templates/.
-		AgentModelGuard: AgentModelGuardConfig{
+		// The pre-merge settings.json drift gate ships with its REFUSAL layer
+		// off, and only that layer: detection, preservation and the ledger row
+		// run on every acquire regardless. Template neutrality: no
+		// `enabled: true` anywhere under internal/template/templates/.
+		SettingsDriftGate: SettingsDriftGateConfig{
 			Enabled: false,
 		},
+		// The slot-lease guard ships inert: a project that never runs several
+		// sessions against one machine has nothing to serialize. The `moai
+		// slot` verbs work regardless. No resources ship by default — any
+		// shipped pattern would name some programming language's commands.
+		// Template neutrality: no `enabled: true` under
+		// internal/template/templates/.
+		SlotLease: SlotLeaseConfig{
+			Enabled:            false,
+			DefaultMaxDuration: DefaultSlotLeaseMaxDuration,
+		},
+		// The quota-aware lane gate ships inert, with unmeasured numeric
+		// defaults (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-008). Template
+		// neutrality: no `enabled: true` under internal/template/templates/.
+		QuotaGate: QuotaGateConfig{
+			Enabled:          false,
+			FiveHourHoldPct:  DefaultQuotaGateFiveHourHoldPct,
+			SevenDayHoldPct:  DefaultQuotaGateSevenDayHoldPct,
+			ReleaseMarginPct: DefaultQuotaGateReleaseMarginPct,
+			MaxAge:           DefaultQuotaGateMaxAge,
+			MaxScanDirs:      DefaultQuotaGateMaxScanDirs,
+		},
+		// The commit identity guard ships inert (SPEC-COMMIT-IDENTITY-GUARD-001
+		// REQ-CIG-006): when off, the pre-tool handler never invokes it, so no
+		// repository-scope or identity probe subprocess runs. Maintainers opt
+		// in via local config after their own test suites have been known to
+		// poison the shared git config layer. Template neutrality: no
+		// `enabled: true` under internal/template/templates/.
+		CommitIdentityGuard: CommitIdentityGuardConfig{
+			Enabled: false,
+		},
+		// The TypeSafe System One judgment capability ships inert
+		// (REQ-JEVC-016). While off, internal/jev constructs no request and
+		// makes no network call, so a project that never opts in pays nothing
+		// and reaches no third-party endpoint. This code default is the source
+		// of truth; the template block documents it. Template neutrality: no
+		// `enabled: true` under internal/template/templates/.
+		Jev: WorkflowJevConfig{
+			Enabled: false,
+		},
+		// workflow.autonomy ships in guided mode with a required second review
+		// (REQ-CONTRACT-015). The numeric keys stay nil here on purpose: nil
+		// means "absent", and ResolveAutonomy applies the DefaultAutonomy*
+		// constants above, so an explicit zero stays distinguishable. A
+		// pointer seeded here would also be shared with the loader's decode
+		// target and written through.
+		Autonomy: AutonomyConfig{
+			Mode: DefaultAutonomyMode,
+			Contract: AutonomyContractConfig{
+				BatchSign:    DefaultAutonomyBatchSign,
+				SecondReview: DefaultAutonomySecondReview,
+				PushDevelop:  DefaultAutonomyPushDevelop,
+			},
+		},
+		// The served-model gate ships with its ADOPTION-REFUSAL layer off. The
+		// SubagentStop observation row and its warning always run; a
+		// maintainer opts into refusing a gate auditor's verdict via local
+		// config. Template neutrality: no `enabled: true` anywhere under
+		// internal/template/templates/.
+		ServedModelGate: ServedModelGateConfig{
+			Enabled: false,
+		},
+
 		// The SendMessage stop-guard deny layer ships OFF the same way: stop
 		// recording and send observation + advisory always run; a maintainer
 		// opts into denial via local config. Template neutrality: no
 		// `enabled: true` anywhere under internal/template/templates/.
 		AgentStopGuard: AgentStopGuardConfig{
+			Enabled: false,
+		},
+		// The subagent destructive-write guard ships OFF the same way
+		// (SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001): detection and the audit-log
+		// append always run; only the refusal of a destructively-shaped
+		// subagent Write is opt-in via local config. Template neutrality: no
+		// `enabled: true` anywhere under internal/template/templates/.
+		SubagentWriteGuard: SubagentWriteGuardConfig{
+			Enabled: false,
+		},
+		// The session-anchor relocation ownership guard ships inert like its
+		// siblings (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-005): the ownership
+		// judgment and audit row run on every relocation, and only the
+		// refusal of a flagged relocation is opt-in via local config.
+		// Template neutrality: no `enabled: true` anywhere under
+		// internal/template/templates/.
+		AnchorRelocationGuard: AnchorRelocationGuardConfig{
 			Enabled: false,
 		},
 		// SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / C6): the codex review gate
@@ -854,7 +1455,9 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// `enabled: true` under internal/template/templates/.
 		Codex: CodexConfig{
 			ReviewGate: CodexReviewGateConfig{
-				Enabled: false,
+				Enabled:      false,
+				TreeScope:    CodexReviewGateTreeScopeReview,
+				PrimaryScope: CodexReviewGatePrimaryScopeSkip,
 			},
 			// SPEC-CODEX-PHASE2-001 (REQ-CX2-007 / REQ-CX2-015): the codex_task
 			// write mode ships default-OFF. A local opt-in belongs in local
@@ -892,6 +1495,35 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// fallback when workflow.yaml omits the block.
 		Audit: AuditConfig{
 			Model: AuditModelClaude,
+			// Claude pin {claude-opus-5-5, high}: SUPERSEDES the t1368
+			// {claude-opus-5-5, medium} pin per operator directive
+			// (SPEC-AGENT-TIER-001 REQ-TIER-004). Derived from the
+			// closed-set constants — no inline pin literals here.
+			Claude: ModelEffort{
+				Model:  DefaultClaudeAuditModel,
+				Effort: DefaultClaudeAuditEffort,
+			},
+			// Codex pin {gpt-6.1-sol, high} (SPEC-MODEL-MATRIX-UPDATE-001
+			// REQ-MMU-001). SUPERSEDES REQ-AMP-005 (keep-the-Go-default-EMPTY
+			// neutrality) per operator directive 2026-09-30 — the supersession
+			// is also recorded at the AuditConfig.Codex doc comment
+			// (internal/config/audit_models.go). Unchanged by
+			// SPEC-AGENT-TIER-001.
+			Codex: ModelEffort{
+				Model:  DefaultCodexAuditModel,
+				Effort: "high",
+			},
+			// GLM pin {glm-5.3, max} (SPEC-AGENT-TIER-001 REQ-TIER-004/006,
+			// operator directive — SUPERSEDES the t1368 EMPTY GLM pin). The
+			// model is the FULL glm-5.3 (DefaultGLM53), NOT the flash slot
+			// default (DefaultGLMHigh); the effort rides the z.ai
+			// reasoning-state vocabulary verbatim (REQ-AMP-006). The pin is
+			// audit-only — the glm_task delegation default is unchanged
+			// (REQ-AMP-008).
+			GLM: ModelEffort{
+				Model:  DefaultGLMAuditModel,
+				Effort: DefaultGLMAuditEffort,
+			},
 			Gates: AuditGates{
 				Claude: AuditGateRequired,
 				Codex:  AuditGateRequired,
@@ -905,7 +1537,8 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 // The state directory itself is not configurable: the hardcoded ".moai/state"
 // literal in internal/cli/state.go and internal/worktree/state_guard.go is the SSOT.
 func NewDefaultStateConfig() StateConfig {
-	return StateConfig{}
+	days := DefaultSessionRecordRetentionDays
+	return StateConfig{SessionRecordRetentionDays: &days}
 }
 
 // NewDefaultSessionConfig returns a SessionConfig with default values.
@@ -1035,6 +1668,7 @@ func defaultContextConfig() ContextConfig {
 func defaultInterviewConfig() InterviewConfig {
 	return InterviewConfig{
 		ClarityThreshold: 4,
+		DecisionGate:     "off",
 		Enabled:          true,
 		Plan: InterviewMode{
 			MaxRounds:         5,
@@ -1044,6 +1678,7 @@ func defaultInterviewConfig() InterviewConfig {
 			MaxRounds:         3,
 			QuestionsPerRound: 3,
 		},
+		RecommendationMode: "push",
 		SkipConditions: []string{
 			"resume_spec_id_present",
 			"skip_interview_flag",

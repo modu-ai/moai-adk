@@ -290,7 +290,7 @@ $ moai worktree done feature/SPEC-BE-001 --delete-branch
 #### PR 合并与集成
 
 ```bash
-# 在团队负责人或 CI 系统上
+# 在团队队长或 CI 系统上
 gh pr list
 # FE-001  Login UI Component          Ready
 # BE-001  Authentication API Service  Ready
@@ -473,7 +473,7 @@ $ moai worktree done feature/SPEC-NOTIF-001 --delete-branch
 # - 使用 GLM 节省成本
 ```
 
-把实现阶段的会话交给 GLM 后，成本明显下降。节省幅度及其依据整理在 [CG 模式](/zh/multi-llm/cg-mode)中。
+[CG 停用与配置迁移](/zh/multi-llm/cg-mode/) — CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 
 ---
 

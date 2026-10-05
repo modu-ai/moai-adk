@@ -77,7 +77,7 @@ type StdinData struct {
 
 // WorktreeInfo describes a worktree session, from the statusline stdin
 // `worktree` object. OriginalCwd is the load-bearing field: it names the
-// primary checkout, which is where gitignored project state such as the kanban
+// primary checkout, which is where gitignored project state such as the todo
 // backlog actually lives. Without it a worktree session would have to shell out
 // to git to find that directory, on every render.
 type WorktreeInfo struct {
@@ -249,7 +249,8 @@ type StatusData struct {
 	ClaudeCodeVersion string         // Claude Code version from JSON input (e.g., "1.0.80")
 	SessionName       string         // Explicit session name (e.g., "Team-A-Lead"); empty when unnamed
 	AgentName         string         // Agent identity the session runs as (e.g., "manager-lead"); empty when none
-	Backlog           BacklogCounts  // Kanban backlog in-flight/waiting counts (Available=false when unreadable)
+	Backlog           BacklogCounts  // Backlog in-flight/waiting counts (Available=false when unreadable)
+	Landed            LandedCounts   // Picked cards the integration branch already names (Known()==false when unmeasured)
 	GitHub            GitHubCounts   // Cached open issue/PR counts (Available=false when never fetched)
 	Directory         string         // Project directory name (e.g., "modu-saju")
 	OutputStyle       string         // Output style name (e.g., "Mr.Alfred", "R2-D2")
@@ -346,7 +347,7 @@ const (
 	SegmentMoaiVersion   = "moai_version"
 	SegmentGitBranch     = "git_branch"
 	SegmentSession       = "session" // Session name + agent identity (session line head)
-	SegmentBacklog       = "backlog" // Kanban backlog in-flight/waiting counts
+	SegmentBacklog       = "backlog" // Backlog in-flight/waiting counts
 	SegmentGitHub        = "github"  // Cached open issue / PR counts
 
 	// v3 new segment constants (REQ-V3-TIME-003, enabled in Phase 4)

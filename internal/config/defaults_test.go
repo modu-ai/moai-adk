@@ -294,10 +294,12 @@ func TestNewDefaultGitStrategyConfig(t *testing.T) {
 		t.Error("Personal.PushToRemote: expected true")
 	}
 
-	// AC-MMC-001 — merge_method defaults to "squash" in all 3 mode profiles
-	// (REQ-MMC-001/002), preserving current behavior when the field is absent.
-	if cfg.Manual.MergeMethod != "squash" {
-		t.Errorf("Manual.MergeMethod: got %q, want %q", cfg.Manual.MergeMethod, "squash")
+	// AC-MMC-001 — merge_method defaults: manual lands as "merge" since PR
+	// #1738 (re-landed by card t1504; manual-mode practice is plain merges
+	// into the local integration branch); personal/team keep "squash"
+	// (REQ-MMC-001/002) for PR-flow repos.
+	if cfg.Manual.MergeMethod != "merge" {
+		t.Errorf("Manual.MergeMethod: got %q, want %q", cfg.Manual.MergeMethod, "merge")
 	}
 	if cfg.Personal.MergeMethod != "squash" {
 		t.Errorf("Personal.MergeMethod: got %q, want %q", cfg.Personal.MergeMethod, "squash")
@@ -346,11 +348,12 @@ func TestNewDefaultLLMConfig(t *testing.T) {
 }
 
 // TestNewDefaultLLMConfig_GLMTierMapping verifies the GLM model tier mapping.
-// The High slot (Opus equivalent) and the legacy Opus field both map to
-// glm-5.3-flash (the z.ai-accepted flash id, the default coding model); 1M
-// context activation is driven by the resolved context window, not a model-id
-// suffix. Every Claude slot defaults to the same model so auto-compact window
-// sizing stays coherent.
+// The High slot (Opus equivalent) maps to glm-5.3-flash (the z.ai-accepted
+// flash id, the default coding model); 1M context activation is driven by the
+// resolved context window, not a model-id suffix. Every Claude slot defaults
+// to the same model so auto-compact window sizing stays coherent. The legacy
+// Opus/Sonnet/Haiku alias fields are DELETED (SPEC-MODEL-MATRIX-UPDATE-001
+// REQ-MMU-004, DR-2) — only the four real tier fields exist now.
 func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
 	t.Parallel()
 
@@ -358,9 +361,6 @@ func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
 
 	if cfg.GLM.Models.High != "glm-5.3-flash" {
 		t.Errorf("GLM.Models.High: got %q, want %q", cfg.GLM.Models.High, "glm-5.3-flash")
-	}
-	if cfg.GLM.Models.Opus != "glm-5.3-flash" {
-		t.Errorf("GLM.Models.Opus: got %q, want %q", cfg.GLM.Models.Opus, "glm-5.3-flash")
 	}
 	// Every slot resolves to the same model. Claude Code sizes the auto-compact
 	// window once from the High slot; a smaller model in any other slot would
@@ -372,19 +372,16 @@ func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
 	if cfg.GLM.Models.Low != "glm-5.3-flash" {
 		t.Errorf("GLM.Models.Low: got %q, want %q (unified)", cfg.GLM.Models.Low, "glm-5.3-flash")
 	}
-	if cfg.GLM.Models.Sonnet != "glm-5.3-flash" {
-		t.Errorf("GLM.Models.Sonnet: got %q, want %q (unified)", cfg.GLM.Models.Sonnet, "glm-5.3-flash")
-	}
-	if cfg.GLM.Models.Haiku != "glm-5.3-flash" {
-		t.Errorf("GLM.Models.Haiku: got %q, want %q (unified)", cfg.GLM.Models.Haiku, "glm-5.3-flash")
-	}
-	if cfg.GLM.Models.Fable != "glm-5.3-flash" {
-		t.Errorf("GLM.Models.Fable: got %q, want %q (unified)", cfg.GLM.Models.Fable, "glm-5.3-flash")
+	if cfg.GLM.Models.Fable != "glm-5.3" {
+		t.Errorf("GLM.Models.Fable: got %q, want %q (Fable slot is the one non-flash slot)", cfg.GLM.Models.Fable, "glm-5.3")
 	}
 }
 
 // TestDefaultGLMConstants verifies the GLM model tier constants and the
-// 1M context token constant used by the AUTO_COMPACT_WINDOW wiring.
+// 1M context token constant used by the AUTO_COMPACT_WINDOW wiring. The
+// old-model name constants ("glm-4.5" through "glm-5-turbo") are DELETED
+// (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004, DR-2): referencing any of them
+// here would no longer compile — that is the deletion proof.
 func TestDefaultGLMConstants(t *testing.T) {
 	t.Parallel()
 
@@ -410,24 +407,13 @@ func TestDefaultGLMConstants(t *testing.T) {
 	if DefaultGLM53Flash != "glm-5.3-flash" {
 		t.Errorf("DefaultGLM53Flash: got %q, want %q", DefaultGLM53Flash, "glm-5.3-flash")
 	}
-	// The smaller models stay reachable as tier-slot choices even though no
-	// slot defaults to them — the closed set, not the default, is their home.
-	if DefaultGLM47 != "glm-4.7" {
-		t.Errorf("DefaultGLM47: got %q, want %q", DefaultGLM47, "glm-4.7")
-	}
-	if DefaultGLM45Air != "glm-4.5-air" {
-		t.Errorf("DefaultGLM45Air: got %q, want %q", DefaultGLM45Air, "glm-4.5-air")
-	}
-	// glm-5.1 preserved as a still-available model (not orphaned).
-	if DefaultGLM51 != "glm-5.1" {
-		t.Errorf("DefaultGLM51: got %q, want %q", DefaultGLM51, "glm-5.1")
-	}
 	if Default1MContextTokens != 1_000_000 {
 		t.Errorf("Default1MContextTokens: got %d, want %d", Default1MContextTokens, 1_000_000)
 	}
-	// The offered closed set: flash first (the default), glm-5.3 retained as an
-	// explicit member. Logged for the SPEC acceptance evidence.
-	wantSet := []string{DefaultGLM53Flash, DefaultGLM53, DefaultGLM51, DefaultGLM47, DefaultGLM45Air}
+	// The offered closed set is exactly the two 5.3 models now (DR-2 full
+	// deletion): flash first (the default), glm-5.3 retained as an explicit
+	// member. Logged for the SPEC acceptance evidence.
+	wantSet := []string{DefaultGLM53Flash, DefaultGLM53}
 	gotSet := ValidGLMModels()
 	t.Logf("ValidGLMModels() = %v", gotSet)
 	if !slices.Equal(gotSet, wantSet) {
@@ -694,19 +680,5 @@ func TestNewDefaultConfigContainsGitConvention(t *testing.T) {
 	if cfg.GitConvention.Convention != DefaultGitConvention {
 		t.Errorf("GitConvention.Convention: got %q, want %q",
 			cfg.GitConvention.Convention, DefaultGitConvention)
-	}
-}
-
-// TestDefaultAgentModelGuardDisabled pins the distributed default of the
-// agent-model guard's BLOCKING layer to false. The observation and advisory
-// layers always run; denial is opt-in. Flipping this default would make an
-// upgrade suddenly start refusing spawns, so the default is load-bearing.
-func TestDefaultAgentModelGuardDisabled(t *testing.T) {
-	t.Parallel()
-
-	cfg := NewDefaultConfig()
-
-	if cfg.Workflow.AgentModelGuard.Enabled {
-		t.Errorf("Workflow.AgentModelGuard.Enabled: got true, want false (default-off / template neutrality)")
 	}
 }

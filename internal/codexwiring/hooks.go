@@ -11,7 +11,7 @@ import (
 
 // moaiHooksDescription is the top-level description set ONLY on first creation;
 // an existing (user) description is preserved verbatim (plan D1).
-const moaiHooksDescription = "MoAI-managed hook layer. MoAI refreshes only its own handlers (command prefix 'moai hook '); every other entry is user-owned and preserved."
+const moaiHooksDescription = "MoAI-managed hook layer. MoAI refreshes only its own handlers (command prefix 'moai hook ', or a command inside the .codex/hooks/moai/ namespace); every other entry is user-owned and preserved."
 
 // handlerJSON is one emitted handler, restricted to the measured-whitelist
 // hook-level keys {type, command, timeout} (spec §A.5 — the t83 whitelist's
@@ -126,9 +126,24 @@ func RenderHooks(existing []byte) ([]byte, error) {
 	return append(out, '\n'), nil
 }
 
-// stripMoAIHandlers removes every handler whose command carries the MoAI
-// prefix from a list of raw entries, returning the surviving entries. Entries
-// with no MoAI handlers pass through byte-identical; entries that lost
+// isMoaiNamespaceCommand reports whether a hook command lives inside the
+// MoAI-managed .codex/hooks/moai/ namespace. Legacy deployments registered
+// wrapper scripts there (for example .codex/hooks/moai/handle-pre-tool.sh)
+// before the direct `moai hook <event> --harness codex` invocation became the
+// sanctioned path; such an entry is MoAI-owned by namespace even though its
+// command lacks the "moai hook " prefix, and leaving it in place accumulates a
+// duplicate handler beside the current table (card t590 — the duplicate
+// observed in a user project). Both separators are matched: hooks.json on
+// Windows carries backslash paths.
+func isMoaiNamespaceCommand(command string) bool {
+	return strings.Contains(command, "/.codex/hooks/moai/") ||
+		strings.Contains(command, `\.codex\hooks\moai\`)
+}
+
+// stripMoAIHandlers removes every handler whose command is MoAI-managed — the
+// "moai hook " prefix, or a command inside the MoAI-managed .codex/hooks/moai/
+// namespace — from a list of raw entries, returning the surviving entries.
+// Entries with no MoAI handlers pass through byte-identical; entries that lost
 // handlers (but kept user ones) are re-marshalled.
 func stripMoAIHandlers(entries []json.RawMessage) ([]json.RawMessage, error) {
 	var kept []json.RawMessage
@@ -149,7 +164,7 @@ func stripMoAIHandlers(entries []json.RawMessage) ([]json.RawMessage, error) {
 			if err := json.Unmarshal(h, &cmd); err != nil {
 				return nil, fmt.Errorf("unparseable handler: %w", err)
 			}
-			if strings.HasPrefix(cmd.Command, moaiHandlerPrefix) {
+			if strings.HasPrefix(cmd.Command, moaiHandlerPrefix) || isMoaiNamespaceCommand(cmd.Command) {
 				continue // stale MoAI handler — replaced by the current table
 			}
 			userHandlers = append(userHandlers, h)

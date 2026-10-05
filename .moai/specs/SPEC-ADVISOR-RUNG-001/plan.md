@@ -2,7 +2,6 @@
 id: SPEC-ADVISOR-RUNG-001
 title: "Executor-Advisor Escalation Rung + GLM Judgment Carve-Out — Implementation Plan"
 version: "0.1.0"
-status: draft
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec

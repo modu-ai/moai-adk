@@ -6,19 +6,26 @@
 package cli
 
 import (
+	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/hook/handoff"
+	"github.com/modu-ai/moai-adk/internal/mission"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -28,19 +35,70 @@ import (
 // literal words "exits 0" as command arguments.
 var trailingExitClause = regexp.MustCompile(`(?i)^(.*\S)\s+exits?\s+(\d+)\s*$`)
 
+// modelConditionReferents are the literal tokens (case-insensitive) that mark a
+// condition string as a claim about the conversation transcript, per REQ-GLE-032
+// ("a natural-language claim that references the conversation transcript").
+// BOTH referents in that phrase count: the canonical CLI form says "in the
+// transcript", while the canonical ac_converge condition in run.md § Run-phase
+// Autonomy says "surfaced in the conversation". Keying on "transcript" alone
+// routed the whole ac_converge paragraph into the mechanical path, where it ran
+// as a shell command, exited 2, and blocked every turn-end to the ceiling
+// (issue #1660). Both the CLI arm path and the MCP goal_arm wrapper classify
+// through this one function, so the miss was shared by both.
+var modelConditionReferents = []string{"transcript", "conversation"}
+
+// conditionDeclarationPrefix matches a leading `model:` / `cmd:` declaration
+// prefix (case-insensitive, surrounding whitespace tolerated) on a condition
+// string. Only those two exact words followed by a colon count — "modelling:"
+// and "cmdline:" are ordinary text, not prefixes.
+var conditionDeclarationPrefix = regexp.MustCompile(`(?is)^\s*(model|cmd)\s*:\s*(.*)$`)
+
 // parseCondition classifies a single condition string by the EXPLICIT rule of
 // REQ-GLE-032: a claim that references the conversation transcript becomes a
 // model condition; any other string is a runnable shell command (mechanical).
 //
-// The discriminator is the literal token "transcript" (case-insensitive) — the
-// canonical model form is "all AC rows show PASS in the transcript". A mechanical
-// condition may carry a trailing "exits <N>" clause setting the expected exit
-// code; absent it, expect_exit defaults to 0.
+// Classification runs in two stages, most explicit first:
+//
+//  1. An explicit `model:` / `cmd:` declaration prefix wins outright. REQ-GLE-032
+//     asks for classification by an EXPLICIT rule rather than an implicit
+//     heuristic, and only the prefix actually delivers that: the author says
+//     which tier they meant instead of hoping the discriminator guesses it.
+//  2. Absent a prefix, the modelConditionReferents substring fallback applies
+//     unchanged (back-compat for every already-armed and already-documented
+//     condition).
+//
+// The fallback is retained but demoted deliberately. Its discriminator is an
+// ENGLISH substring allowlist, and an allowlist fails silently on what it omits:
+// prose in any other language — and English prose phrased without those two
+// words — classifies mechanical, reaches `sh -c`, and exits 127 on every turn
+// until the ceiling. The prefix is the escape hatch that does not depend on the
+// allowlist being complete.
+//
+// A mechanical condition may carry a trailing "exits <N>" clause setting the
+// expected exit code; absent it, expect_exit defaults to 0. The clause is parsed
+// on the prefixed form too, so `cmd: grep -q X f exits 1` behaves as expected.
 func parseCondition(s string) goal.Condition {
 	s = strings.TrimSpace(s)
-	if strings.Contains(strings.ToLower(s), "transcript") {
-		return goal.Condition{Type: goal.ConditionModel, Claim: s}
+	if m := conditionDeclarationPrefix.FindStringSubmatch(s); m != nil {
+		body := strings.TrimSpace(m[2])
+		if strings.EqualFold(m[1], "model") {
+			return goal.Condition{Type: goal.ConditionModel, Claim: body}
+		}
+		return mechanicalCondition(body)
 	}
+	lower := strings.ToLower(s)
+	for _, referent := range modelConditionReferents {
+		if strings.Contains(lower, referent) {
+			return goal.Condition{Type: goal.ConditionModel, Claim: s}
+		}
+	}
+	return mechanicalCondition(s)
+}
+
+// mechanicalCondition builds a Tier-1 condition from a command string, peeling
+// the optional trailing "exits <N>" clause so the shell never runs those literal
+// words as arguments.
+func mechanicalCondition(s string) goal.Condition {
 	cmd := s
 	expect := 0
 	if m := trailingExitClause.FindStringSubmatch(s); m != nil {
@@ -50,18 +108,26 @@ func parseCondition(s string) goal.Condition {
 	return goal.Condition{Type: goal.ConditionMechanical, Cmd: cmd, ExpectExit: expect}
 }
 
-// newGoalCmd builds the `moai goal` cobra command tree: arm / status / clear.
-// It REUSES the internal/goal engine (NewGoal / SaveGoal / LoadGoal / ClearGoal)
-// and does NOT reimplement state / schema / prune logic. The `resume` verb is
-// out of scope for this amendment (§D.6) and is deliberately NOT registered.
+// NewAutoMissionCommand builds both preserved condition-goal commands and the
+// separately persisted auto-mission lifecycle: approve, run, revoke, and resume.
+// Condition goals still reuse the internal/goal engine without changing its
+// state, schema, pruning, or clear semantics.
 //
 // IMPORTANT: this CLI surface MUST NOT invoke AskUserQuestion (subagent boundary,
 // C-HRA-008). It returns exit codes + structured stdout only; the orchestrator
 // owns all user interaction.
-func newGoalCmd() *cobra.Command {
+func NewAutoMissionCommand() *cobra.Command {
 	var sessionFlag string
 	var jsonOutput bool
 	var showAll bool
+	var autoMission bool
+	var approvalScope, approvalActions, approvalEvidence []string
+	var approvalMaxOperations int
+	var runAction, runTarget string
+	var governorRecommend, supervise bool
+	var runRepo, runCardWorktree, runDevelopWorktree, runBranch, runMessage, runCardSHA, runBaseSHA, runLease, runTestsReceipt, runCompletionReceipt string
+	var runGovernorReceipt, runAuditReceipt, runLane, runID string
+	var runPaths []string
 
 	cmd := &cobra.Command{
 		Use:   "goal",
@@ -79,21 +145,53 @@ Verbs:
   goal clear               clear the active session's goal
   goal render              render the live goal's dashboard to a self-contained HTML file
 
+Auto missions:
+  goal --auto "<mission>"  create a natural-language autonomous mission draft
+  goal approve             seal explicit scope, actions, evidence, and limits
+  goal run                 validate one receipt-backed owner operation
+  goal run --supervise     run the bounded sealed action plan until complete or blocked
+  goal revoke              stop new effects and retain reconciliation state
+  goal resume              resume only a persisted blocked approved mission
+
+Approval required before effects. After approval, deterministic validators and
+authoritative readback gate every operation. Runtime mode remains
+active-session-only unless durable provider capabilities are mechanically proven.
+
 Condition parsing: a runnable shell command (optionally suffixed "exits <N>")
 becomes a mechanical condition; a claim that references the conversation
 transcript becomes a model condition the orchestrator evaluates.`,
 		Args:         cobra.ArbitraryArgs,
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, args []string) error {
+			if autoMission {
+				return runGoalAutoMission(c, args, sessionFlag, jsonOutput)
+			}
 			// Bare form: `goal "<condition>"` aliases `goal arm "<condition>"`.
 			if len(args) == 0 {
 				return c.Help()
+			}
+			// A single word a user would type as a verb is not a condition.
+			// Only the bare form is checked: `goal arm <word>` states the
+			// intent explicitly, and a multi-word or prefixed condition never
+			// matches a listed word.
+			if len(args) == 1 {
+				word := strings.TrimSpace(args[0])
+				if strings.EqualFold(word, "help") {
+					return c.Help()
+				}
+				if verb, ok := misreadGoalVerb(c, word); ok {
+					return misreadGoalVerbError(word, verb)
+				}
+				if bareWordNeedsDeclaration(word) {
+					return bareWordDeclarationError(word)
+				}
 			}
 			return runGoalArm(c, args, sessionFlag, jsonOutput)
 		},
 	}
 	cmd.PersistentFlags().StringVar(&sessionFlag, "session", "", "override the session id (default: resolve via 'moai session current')")
 	cmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "emit machine-readable JSON output")
+	cmd.PersistentFlags().BoolVar(&autoMission, "auto", false, "create a natural-language autonomous mission without condition or shell parsing")
 	// SPEC-INFINITE-GOAL-001 REQ-1/REQ-4 arm-time bound flags. --max-turns N
 	// (0 = infinite, the C2 finding's entry point); --max-duration <seconds> and
 	// --cost-cap <N> are the REAL bounds required when --max-turns 0 is supplied
@@ -109,12 +207,16 @@ transcript becomes a model condition the orchestrator evaluates.`,
 		Args:         cobra.MinimumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, args []string) error {
+			if autoMission {
+				return runGoalAutoMission(c, args, sessionFlag, jsonOutput)
+			}
 			return runGoalArm(c, args, sessionFlag, jsonOutput)
 		},
 	}
 	statusCmd := &cobra.Command{
 		Use:          "status",
 		Short:        "Print the active session's goal state",
+		SuggestFor:   []string{"show", "list", "info", "stat"},
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, _ []string) error {
@@ -126,6 +228,7 @@ transcript becomes a model condition the orchestrator evaluates.`,
 	clearCmd := &cobra.Command{
 		Use:          "clear",
 		Short:        "Clear the active session's goal",
+		SuggestFor:   []string{"cancel", "reset", "stop", "done"},
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, _ []string) error {
@@ -147,9 +250,803 @@ transcript becomes a model condition the orchestrator evaluates.`,
 			return runGoalRender(c, sessionFlag, jsonOutput)
 		},
 	}
+	approveCmd := &cobra.Command{Use: "approve", Short: "Approve and seal an autonomous mission", Args: cobra.NoArgs, RunE: func(c *cobra.Command, _ []string) error {
+		return runGoalMissionApprove(c, sessionFlag, jsonOutput, approvalScope, approvalActions, approvalEvidence, approvalMaxOperations)
+	}}
+	approveCmd.Flags().StringSliceVar(&approvalScope, "scope", nil, "approved target scope")
+	approveCmd.Flags().StringSliceVar(&approvalActions, "action", nil, "approved autonomous action")
+	approveCmd.Flags().StringSliceVar(&approvalEvidence, "completion-evidence", nil, "mission completion evidence")
+	approveCmd.Flags().IntVar(&approvalMaxOperations, "max-operations", 20, "maximum autonomous operations")
+	runCmd := &cobra.Command{Use: "run", Short: "Advance one validated autonomous mission operation", Args: cobra.NoArgs, RunE: func(c *cobra.Command, _ []string) error {
+		opts := missionGitRunOptions{Repository: runRepo, CardWorktree: runCardWorktree, DevelopWorktree: runDevelopWorktree, Branch: runBranch, Message: runMessage, Paths: runPaths, CardSHA: runCardSHA, BaseSHA: runBaseSHA, LeasePath: runLease, TestsReceipt: runTestsReceipt, CompletionReceipt: runCompletionReceipt, GovernorReceipt: runGovernorReceipt, AuditReceipt: runAuditReceipt, Lane: runLane, RunID: runID}
+		if supervise {
+			return runGoalMissionSupervisor(c, sessionFlag, jsonOutput, runTarget, opts)
+		}
+		if runAction == "" || runTarget == "" {
+			return errors.New("auto mission run: --action and --target are required unless --supervise is set")
+		}
+		return runGoalMissionOperation(c, sessionFlag, jsonOutput, runAction, runTarget, governorRecommend, opts)
+	}}
+	runCmd.Flags().StringVar(&runAction, "action", "", "proposed action")
+	runCmd.Flags().StringVar(&runTarget, "target", "", "proposed target")
+	runCmd.Flags().BoolVar(&governorRecommend, "recommend", false, "compatibility flag only; never grants authority")
+	runCmd.Flags().StringVar(&runGovernorReceipt, "governor-receipt", "", "0600 manager-todo decision receipt")
+	runCmd.Flags().StringVar(&runAuditReceipt, "audit-receipt", "", "0600 independent audit receipt")
+	runCmd.Flags().StringVar(&runLane, "lane", "", "leased lane for dispatch")
+	runCmd.Flags().StringVar(&runID, "run-id", "", "stable disk dispatch run identity")
+	runCmd.Flags().BoolVar(&supervise, "supervise", false, "run the bounded sealed action plan until complete or durably blocked")
+	runCmd.Flags().StringVar(&runRepo, "repo", "", "absolute repository path for a Git owner action")
+	runCmd.Flags().StringVar(&runCardWorktree, "card-worktree", "", "absolute WT-* card worktree path")
+	runCmd.Flags().StringVar(&runDevelopWorktree, "develop-worktree", "", "absolute integration develop worktree path")
+	runCmd.Flags().StringVar(&runBranch, "worktree-branch", "", "WT-* card branch")
+	runCmd.Flags().StringVar(&runMessage, "message", "", "commit message")
+	runCmd.Flags().StringSliceVar(&runPaths, "path", nil, "explicit path to stage")
+	runCmd.Flags().StringVar(&runCardSHA, "card-sha", "", "card commit SHA for local merge")
+	runCmd.Flags().StringVar(&runBaseSHA, "base-sha", "", "leased local develop base SHA")
+	runCmd.Flags().StringVar(&runLease, "integration-lease", "", "0600 integration lease receipt under .git")
+	runCmd.Flags().StringVar(&runTestsReceipt, "tests-receipt", "", "0600 JSON test receipt inside the repository")
+	runCmd.Flags().StringVar(&runCompletionReceipt, "completion-receipt", "", "0600 sealed authoritative completion receipt")
+	revokeCmd := &cobra.Command{Use: "revoke", Short: "Revoke an autonomous mission", Args: cobra.NoArgs, RunE: func(c *cobra.Command, _ []string) error { return runGoalMissionRevoke(c, sessionFlag, jsonOutput) }}
+	resumeCmd := &cobra.Command{Use: "resume", Short: "Resume a policy-blocked autonomous mission", Args: cobra.NoArgs, RunE: func(c *cobra.Command, _ []string) error { return runGoalMissionResume(c, sessionFlag, jsonOutput) }}
 
-	cmd.AddCommand(armCmd, statusCmd, clearCmd, renderCmd)
+	cmd.AddCommand(armCmd, statusCmd, clearCmd, renderCmd, approveCmd, runCmd, revokeCmd, resumeCmd)
 	return cmd
+}
+
+func loadRequiredAutoMission(root, sessionID string) (*mission.AutoMission, error) {
+	if err := mission.ValidateMissionSessionID(sessionID); err != nil {
+		return nil, err
+	}
+	state, err := mission.LoadAutoMission(root, sessionID)
+	if err != nil {
+		if state != nil {
+			state.State = mission.StateBlocked
+			state.LastBlocker = err.Error()
+			_ = mission.SaveAutoMission(root, *state)
+		}
+		return nil, err
+	}
+	if state == nil {
+		return nil, fmt.Errorf("auto mission not found")
+	}
+	return state, nil
+}
+
+func runGoalMissionApprove(cmd *cobra.Command, sessionID string, jsonOutput bool, scope, actions, evidence []string, maxOperations int) error {
+	root := goalProjectRoot()
+	sessionID = statusSessionID(sessionID)
+	state, err := loadRequiredAutoMission(root, sessionID)
+	if err != nil {
+		return err
+	}
+	allowed := make([]mission.Action, 0, len(actions))
+	for _, a := range actions {
+		allowed = append(allowed, mission.Action(a))
+	}
+	contract := mission.MissionContract{MissionID: sessionID, Goal: state.Text, CompletionEvidence: evidence, Scope: scope, AllowedActions: allowed, MergeTarget: "develop", ResourceLimits: mission.ResourceLimits{MaxOperations: maxOperations, MaxRetries: 2}, ProhibitedActions: []mission.Action{mission.ActionForcePush}, StopConditions: []string{"revoked", "policy_denied"}, RecoveryConditions: []string{"authoritative_readback"}, RevocationBehavior: "stop_new_and_reconcile", PolicyVersion: "gtd-auto-v1", Approved: true}
+	sealed, err := mission.SealMissionContract(contract)
+	if err != nil {
+		return err
+	}
+	state.Contract = &sealed.Contract
+	state.ContractHash = sealed.Hash
+	state.State = mission.StateApproved
+	state.LastBlocker = ""
+	if err := mission.SaveAutoMission(root, *state); err != nil {
+		return err
+	}
+	if jsonOutput {
+		return printGTD(cmd, state, true)
+	}
+	_, err = fmt.Fprintf(cmd.OutOrStdout(), "approved auto mission %s contract %s\n", sessionID, sealed.Hash)
+	return err
+}
+
+func autoSnapshotHash(contractHash, target string, revision int64) string {
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%s\x00%s\x00%d", contractHash, target, revision)))
+	return fmt.Sprintf("%x", sum[:])
+}
+
+func autoGitSnapshotHash(contractHash, target string, action mission.Action, repository, head, cardSHA string) string {
+	resolved, _ := filepath.EvalSymlinks(repository)
+	sum := sha256.Sum256([]byte(strings.Join([]string{contractHash, target, string(action), resolved, head, cardSHA}, "\x00")))
+	return fmt.Sprintf("%x", sum[:])
+}
+
+func actionRepository(opts missionGitRunOptions, action mission.Action) string {
+	if action == mission.ActionCommit && opts.CardWorktree != "" {
+		return opts.CardWorktree
+	}
+	if action == mission.ActionLocalMerge && opts.DevelopWorktree != "" {
+		return opts.DevelopWorktree
+	}
+	return opts.Repository
+}
+
+func persistMissionBlock(root string, state *mission.AutoMission, reason string) error {
+	state.State = mission.StateBlocked
+	state.LastBlocker = reason
+	return mission.SaveAutoMission(root, *state)
+}
+
+type missionGitRunOptions struct {
+	Repository, CardWorktree, DevelopWorktree                  string
+	Branch, Message, CardSHA, BaseSHA, LeasePath, TestsReceipt string
+	CompletionReceipt                                          string
+	GovernorReceipt, AuditReceipt, Lane, RunID                 string
+	Paths                                                      []string
+}
+
+type cliSupervisorStore struct {
+	root, session string
+}
+
+func (s cliSupervisorStore) Load(_ context.Context, _ string) (mission.SupervisorState, error) {
+	state, err := loadRequiredAutoMission(s.root, s.session)
+	if err != nil {
+		return mission.SupervisorState{}, err
+	}
+	return mission.SupervisorState{MissionID: state.SessionID, ContractHash: state.ContractHash, State: state.State, NextStep: len(state.OperationIDs), OperationIDs: append([]string(nil), state.OperationIDs...), Blocker: state.LastBlocker}, nil
+}
+
+func (s cliSupervisorStore) Save(_ context.Context, value mission.SupervisorState) error {
+	state, err := mission.LoadAutoMission(s.root, s.session)
+	if err != nil || state == nil {
+		return err
+	}
+	state.State = value.State
+	state.LastBlocker = value.Blocker
+	state.OperationIDs = append([]string(nil), value.OperationIDs...)
+	return mission.SaveAutoMission(s.root, *state)
+}
+
+type cliSupervisorEngine struct {
+	cmd                *cobra.Command
+	root, session      string
+	jsonOutput         bool
+	governor, audit    string
+	gitOpts            missionGitRunOptions
+	latestSnapshotHash string
+	latestHeadSHA      string
+}
+
+func receiptPathForAction(pattern string, action mission.Action) string {
+	return strings.ReplaceAll(pattern, "{action}", string(action))
+}
+
+func (e *cliSupervisorEngine) Snapshot(ctx context.Context, step mission.SupervisionStep) (mission.SupervisionSnapshot, error) {
+	state, err := loadRequiredAutoMission(e.root, e.session)
+	if err != nil {
+		return mission.SupervisionSnapshot{}, err
+	}
+	revision := int64(1)
+	if strings.HasPrefix(step.Target, "gtd:") {
+		item, err := factory.LoadGTDItem(ctx, newTodoStore(), strings.TrimPrefix(step.Target, "gtd:"))
+		if err != nil {
+			return mission.SupervisionSnapshot{}, err
+		}
+		revision = item.SourceRevision
+	}
+	if step.Action == mission.ActionCommit || step.Action == mission.ActionLocalMerge {
+		repo := actionRepository(e.gitOpts, step.Action)
+		head, err := currentMissionHead(repo)
+		if err != nil {
+			return mission.SupervisionSnapshot{}, err
+		}
+		cardSHA := ""
+		if step.Action == mission.ActionLocalMerge {
+			cardSHA, err = currentMissionHead(e.gitOpts.CardWorktree)
+			if err != nil || (e.gitOpts.CardSHA != "" && cardSHA != e.gitOpts.CardSHA) {
+				return mission.SupervisionSnapshot{}, errors.New("auto mission supervisor: card_sha_mismatch")
+			}
+			e.gitOpts.CardSHA = cardSHA
+		}
+		e.latestHeadSHA = head
+		e.latestSnapshotHash = autoGitSnapshotHash(state.ContractHash, step.Target, step.Action, repo, head, cardSHA)
+	} else {
+		e.latestHeadSHA, err = currentMissionHead(e.root)
+		if err != nil {
+			return mission.SupervisionSnapshot{}, err
+		}
+		e.latestSnapshotHash = autoSnapshotHash(state.ContractHash, step.Target, revision)
+	}
+	return mission.SupervisionSnapshot{Hash: e.latestSnapshotHash}, nil
+}
+
+func (e *cliSupervisorEngine) Governance(_ context.Context, step mission.SupervisionStep, snapshot mission.SupervisionSnapshot) error {
+	state, err := loadRequiredAutoMission(e.root, e.session)
+	if err != nil {
+		return err
+	}
+	_, err = mission.LoadGovernanceReceipts(e.root, receiptPathForAction(e.governor, step.Action), receiptPathForAction(e.audit, step.Action), mission.GovernanceExpectation{MissionID: e.session, ContractHash: state.ContractHash, SnapshotHash: snapshot.Hash, Action: step.Action, Targets: []string{step.Target}, HeadSHA: e.latestHeadSHA, Now: time.Now()})
+	return err
+}
+
+func (e *cliSupervisorEngine) Validate(_ context.Context, step mission.SupervisionStep, snapshot mission.SupervisionSnapshot) error {
+	state, err := loadRequiredAutoMission(e.root, e.session)
+	if err != nil {
+		return err
+	}
+	if snapshot.Hash != e.latestSnapshotHash || state.Contract == nil || !slices.Contains(state.Contract.AllowedActions, step.Action) {
+		return errors.New("auto mission supervisor: validation_failed")
+	}
+	return nil
+}
+
+func (e *cliSupervisorEngine) Execute(ctx context.Context, step mission.SupervisionStep, _ mission.SupervisionSnapshot) (mission.OperationReceipt, error) {
+	opts := e.gitOpts
+	opts.GovernorReceipt = receiptPathForAction(e.governor, step.Action)
+	opts.AuditReceipt = receiptPathForAction(e.audit, step.Action)
+	if err := runGoalMissionOperation(e.cmd, e.session, e.jsonOutput, string(step.Action), step.Target, false, opts); err != nil {
+		return mission.OperationReceipt{}, err
+	}
+	state, err := loadRequiredAutoMission(e.root, e.session)
+	if err != nil || len(state.OperationIDs) == 0 {
+		return mission.OperationReceipt{}, errors.New("auto mission supervisor: operation_receipt_missing")
+	}
+	op, err := factory.LoadGTDOperation(ctx, newTodoStore(), state.OperationIDs[len(state.OperationIDs)-1])
+	if err != nil {
+		return mission.OperationReceipt{}, err
+	}
+	return mission.OperationReceipt{OperationID: op.OperationID, MissionID: op.MissionID, Action: mission.Action(op.Action), SnapshotHash: op.SnapshotHash, State: mission.ReceiptReconciled}, nil
+}
+
+func (e *cliSupervisorEngine) Readback(ctx context.Context, _ mission.SupervisionStep, receipt mission.OperationReceipt) error {
+	op, err := factory.LoadGTDOperation(ctx, newTodoStore(), receipt.OperationID)
+	if err != nil {
+		return err
+	}
+	if op.State != factory.GTDOperationReconciled || op.SnapshotHash != receipt.SnapshotHash {
+		return errors.New("auto mission supervisor: authoritative_readback_missing")
+	}
+	return nil
+}
+
+func (e *cliSupervisorEngine) Finalize(ctx context.Context, plan mission.SupervisionPlan, state mission.SupervisorState) error {
+	auto, err := loadRequiredAutoMission(e.root, e.session)
+	if err != nil || auto.Snapshot == nil {
+		return errors.New("auto mission supervisor: completion_snapshot_missing")
+	}
+	if len(state.OperationIDs) != len(plan.Steps) {
+		return errors.New("auto mission supervisor: completion_operations_missing")
+	}
+	store := newTodoStore()
+	for i, id := range state.OperationIDs {
+		op, loadErr := factory.LoadGTDOperation(ctx, store, id)
+		if loadErr != nil || op.State != factory.GTDOperationReconciled || op.MissionID != plan.MissionID || op.Action != string(plan.Steps[i].Action) || op.Target != plan.Steps[i].Target {
+			return errors.New("auto mission supervisor: completion_operation_lineage")
+		}
+	}
+	headRoot := e.root
+	if plan.RequireLandedAncestry {
+		headRoot = e.gitOpts.DevelopWorktree
+	} else if e.gitOpts.CardWorktree != "" {
+		headRoot = e.gitOpts.CardWorktree
+	}
+	head, err := currentMissionHead(headRoot)
+	if err != nil {
+		return err
+	}
+	_, err = mission.LoadCompletionReceipt(e.root, e.gitOpts.CompletionReceipt, mission.CompletionExpectation{MissionID: plan.MissionID, ContractHash: plan.ContractHash, SnapshotHash: auto.Snapshot.SnapshotHash, HeadSHA: head, RequiredEvidence: plan.CompletionEvidence, RequireLandedAncestry: plan.RequireLandedAncestry, Now: time.Now()})
+	return err
+}
+
+func runGoalMissionSupervisor(cmd *cobra.Command, sessionID string, jsonOutput bool, target string, opts missionGitRunOptions) error {
+	root := goalProjectRoot()
+	sessionID = statusSessionID(sessionID)
+	state, err := loadRequiredAutoMission(root, sessionID)
+	if err != nil {
+		return err
+	}
+	if state.Contract == nil || state.ContractHash == "" {
+		return errors.New("auto mission supervisor: sealed contract required")
+	}
+	if target == "" {
+		for _, candidate := range state.Contract.Scope {
+			if strings.HasPrefix(candidate, "gtd:") {
+				target = candidate
+				break
+			}
+		}
+	}
+	if target == "" {
+		return errors.New("auto mission supervisor: target required")
+	}
+	gitCommit := slices.Contains(state.Contract.AllowedActions, mission.ActionCommit)
+	gitMerge := slices.Contains(state.Contract.AllowedActions, mission.ActionLocalMerge)
+	if (gitCommit || gitMerge) && (opts.Repository != "" || !filepath.IsAbs(opts.CardWorktree) || (gitMerge && !filepath.IsAbs(opts.DevelopWorktree)) || opts.CardWorktree == opts.DevelopWorktree) {
+		return errors.New("auto mission supervisor: split_worktree_required")
+	}
+	steps := make([]mission.SupervisionStep, 0, len(state.Contract.AllowedActions))
+	ordered := []mission.Action{mission.ActionPublish, mission.ActionPick, mission.ActionDispatch, mission.ActionCommit, mission.ActionLocalMerge, mission.ActionBatchPush, mission.ActionReleaseBranch, mission.ActionReleasePR, mission.ActionMainMerge}
+	for _, action := range ordered {
+		if slices.Contains(state.Contract.AllowedActions, action) {
+			steps = append(steps, mission.SupervisionStep{Action: action, Target: target})
+		}
+	}
+	engine := &cliSupervisorEngine{cmd: cmd, root: root, session: sessionID, jsonOutput: jsonOutput, governor: opts.GovernorReceipt, audit: opts.AuditReceipt, gitOpts: opts}
+	result, err := mission.SuperviseAutoMission(cmd.Context(), mission.SupervisionPlan{MissionID: sessionID, ContractHash: state.ContractHash, MaxOperations: state.Contract.ResourceLimits.MaxOperations, Steps: steps, CompletionEvidence: state.Contract.CompletionEvidence, RequireLandedAncestry: gitMerge}, cliSupervisorStore{root: root, session: sessionID}, engine)
+	if err != nil {
+		return err
+	}
+	return printGTD(cmd, result, jsonOutput)
+}
+
+type missionTestsReceipt struct {
+	HeadSHA string `json:"head_sha"`
+	Status  string `json:"status"`
+}
+
+func validateMissionTestsReceipt(repository, receiptPath, headSHA string) error {
+	if receiptPath == "" || !filepath.IsAbs(receiptPath) {
+		return fmt.Errorf("auto mission blocked: tests_receipt_required")
+	}
+	repo, err := filepath.EvalSymlinks(repository)
+	if err != nil {
+		return err
+	}
+	info, err := os.Lstat(receiptPath)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 {
+		return fmt.Errorf("auto mission blocked: tests_receipt_unsafe")
+	}
+	resolved, err := filepath.EvalSymlinks(receiptPath)
+	if err != nil {
+		return err
+	}
+	rel, err := filepath.Rel(repo, resolved)
+	if err != nil || rel == ".." || strings.HasPrefix(filepath.ToSlash(rel), "../") {
+		return fmt.Errorf("auto mission blocked: tests_receipt_outside_scope")
+	}
+	raw, err := os.ReadFile(resolved)
+	if err != nil {
+		return err
+	}
+	var receipt missionTestsReceipt
+	if json.Unmarshal(raw, &receipt) != nil || receipt.Status != "passed" || receipt.HeadSHA == "" || receipt.HeadSHA != headSHA {
+		return fmt.Errorf("auto mission blocked: tests_receipt_stale_or_failed")
+	}
+	return nil
+}
+
+func currentMissionHead(root string) (string, error) {
+	out, err := exec.Command("git", "-C", root, "rev-parse", "HEAD").CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("auto mission blocked: head_readback_failed: %s", strings.TrimSpace(string(out)))
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+func publishDependenciesReady(ctx context.Context, store *factory.BacklogStore, itemID string) (bool, error) {
+	reflection, err := factory.ReflectGTDStore(ctx, store)
+	if err != nil {
+		return false, err
+	}
+	return !reflection.Result.Blocked[itemID] && !reflection.Result.Stale[itemID], nil
+}
+
+func authoritativeDispatchEvidence(ctx context.Context, store *factory.BacklogStore, root, sessionID, itemID, cardID, lane, runID string, expectedRevision int64) (map[string]string, error) {
+	// card t1349 integration repair: stored assignments carry the canonical
+	// vocabulary only (REQ-TSP-052 write normalization), so the ASSIGNMENT
+	// comparison maps the caller's lane label onto the same canonical form —
+	// a legacy-spelled lane keeps its dispatch authority. The slot-lease
+	// lookup keeps the caller's spelling: the lease registry keys on the
+	// label the caller acquired with, which the vocabulary migration does
+	// not touch.
+	canonicalLane := factory.NormalizeOwnerLabel(lane)
+	item, err := factory.LoadGTDItem(ctx, store, itemID)
+	if err != nil {
+		return nil, err
+	}
+	if item.SourceRevision != expectedRevision || item.CardID != cardID || cardID == "" || strings.TrimSpace(lane) == "" || strings.TrimSpace(runID) == "" {
+		return nil, errors.New("auto mission blocked: stale_dispatch_snapshot")
+	}
+	record, err := store.LoadPure()
+	if err != nil {
+		return nil, err
+	}
+	picked, laneOwnerFree := false, true
+	for _, card := range record.Items {
+		if card.ID == cardID {
+			picked = card.State == factory.BacklogStatePicked
+		}
+	}
+	for _, assignment := range record.Runtime.Assignments {
+		if assignment.CardID == cardID && (assignment.RunID != runID || assignment.OwnerLabel != canonicalLane) {
+			laneOwnerFree = false
+		}
+		if assignment.OwnerLabel == canonicalLane && assignment.CardID != cardID {
+			laneOwnerFree = false
+		}
+	}
+	lease, leaseErr := factory.ReadSlotLease(root, lane)
+	leaseHeld := leaseErr == nil && lease.Held() && lease.SessionID == sessionID && !lease.Expired(time.Now())
+	values := map[string]string{
+		"fresh_snapshot":  strconv.FormatInt(expectedRevision, 10),
+		"lane_available":  strconv.FormatBool(laneOwnerFree),
+		"lane_owner_free": strconv.FormatBool(laneOwnerFree),
+		"lease":           strconv.FormatBool(leaseHeld),
+		"picked":          strconv.FormatBool(picked),
+	}
+	if !picked || !laneOwnerFree || !leaseHeld {
+		return values, errors.New("auto mission blocked: dispatch_authority_missing")
+	}
+	return values, nil
+}
+
+func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bool, actionText, target string, recommend bool, gitOpts missionGitRunOptions) error {
+	_ = recommend // compatibility-only: authority comes exclusively from receipts below.
+	root := goalProjectRoot()
+	sessionID = statusSessionID(sessionID)
+	state, err := loadRequiredAutoMission(root, sessionID)
+	if err != nil {
+		return err
+	}
+	if state.State != mission.StateApproved && state.State != mission.StateRunning {
+		return fmt.Errorf("auto mission is not approved")
+	}
+	if state.Contract == nil || state.ContractHash == "" {
+		return fmt.Errorf("auto mission contract missing")
+	}
+	sealed := mission.SealedContract{Contract: *state.Contract, Version: state.Contract.PolicyVersion, Hash: state.ContractHash}
+	action := mission.Action(actionText)
+	evidence := map[string]string{}
+	var revision int64
+	store := newTodoStore()
+	itemID := strings.TrimPrefix(target, "gtd:")
+	var linkedCardID string
+	dependenciesReady := true
+	if (action == mission.ActionPublish || action == mission.ActionPick || action == mission.ActionDispatch) && strings.HasPrefix(target, "gtd:") {
+		item, loadErr := factory.LoadGTDItem(cmd.Context(), store, itemID)
+		if loadErr != nil {
+			return loadErr
+		}
+		revision = item.SourceRevision
+		linkedCardID = item.CardID
+		switch action {
+		case mission.ActionPublish:
+			dependenciesReady, err = publishDependenciesReady(cmd.Context(), store, itemID)
+			if err != nil {
+				return err
+			}
+			if !dependenciesReady {
+				_ = persistMissionBlock(root, state, "dependencies_blocked")
+				return errors.New("auto mission blocked: dependencies_blocked")
+			}
+			evidence = map[string]string{"approval": "explicit", "clarified": strconv.FormatBool(item.Disposition == factory.DispositionAction && item.SourceTrusted), "fresh_snapshot": strconv.FormatInt(revision, 10), "organized": strconv.FormatBool(item.Status == factory.GTDStatusOrganized)}
+		case mission.ActionPick:
+			if linkedCardID == "" {
+				_ = persistMissionBlock(root, state, "published_card_missing")
+				return fmt.Errorf("auto mission blocked: published_card_missing")
+			}
+			evidence = map[string]string{"approval": "explicit", "fresh_snapshot": strconv.FormatInt(revision, 10), "published": linkedCardID}
+		case mission.ActionDispatch:
+			if linkedCardID == "" || strings.TrimSpace(gitOpts.Lane) == "" || strings.TrimSpace(gitOpts.RunID) == "" {
+				_ = persistMissionBlock(root, state, "dispatch_input_missing")
+				return fmt.Errorf("auto mission blocked: dispatch_input_missing")
+			}
+			evidence, err = authoritativeDispatchEvidence(cmd.Context(), store, root, sessionID, itemID, linkedCardID, gitOpts.Lane, gitOpts.RunID, revision)
+			if err != nil {
+				_ = persistMissionBlock(root, state, err.Error())
+				return err
+			}
+		}
+	}
+	var gitOwner mission.GitOwnerAdapter
+	var gitHead string
+	if action == mission.ActionCommit || action == mission.ActionLocalMerge {
+		repository := actionRepository(gitOpts, action)
+		integration := ""
+		if action == mission.ActionLocalMerge {
+			integration = repository
+			if gitOpts.CardWorktree != "" {
+				actualCardSHA, cardErr := currentMissionHead(gitOpts.CardWorktree)
+				if cardErr != nil || gitOpts.CardSHA == "" || actualCardSHA != gitOpts.CardSHA {
+					_ = persistMissionBlock(root, state, "card_sha_mismatch")
+					return errors.New("auto mission blocked: card_sha_mismatch")
+				}
+			}
+		}
+		gitOwner = mission.GitOwnerAdapter{Effect: mission.GitEffect{Action: action, Repository: repository, IntegrationWorktree: integration, WorktreeBranch: gitOpts.Branch, ExplicitPaths: gitOpts.Paths, CommitMessage: gitOpts.Message, CardSHA: gitOpts.CardSHA, BaseSHA: gitOpts.BaseSHA, LeasePath: gitOpts.LeasePath, SessionID: sessionID}}
+		head, branch, snapErr := gitOwner.Snapshot(cmd.Context())
+		if snapErr != nil {
+			return snapErr
+		}
+		revision = 1
+		gitHead = head
+		if action == mission.ActionCommit {
+			if branch != gitOpts.Branch || len(gitOpts.Paths) == 0 {
+				_ = persistMissionBlock(root, state, "git_scope_invalid")
+				return fmt.Errorf("auto mission blocked: git_scope_invalid")
+			}
+			if err := validateMissionTestsReceipt(repository, gitOpts.TestsReceipt, head); err != nil {
+				_ = persistMissionBlock(root, state, err.Error())
+				return err
+			}
+			evidence = map[string]string{"fresh_snapshot": head, "scope": strings.Join(gitOpts.Paths, ","), "tests": head}
+		}
+		if action == mission.ActionLocalMerge {
+			if err := gitOwner.ValidateIntegrationLease(); err != nil {
+				_ = persistMissionBlock(root, state, err.Error())
+				return err
+			}
+			evidence = map[string]string{"commit": gitOpts.CardSHA, "fresh_snapshot": head, "integration_lease": gitOpts.LeasePath}
+		}
+	}
+	if action == mission.ActionBatchPush || action == mission.ActionReleaseBranch || action == mission.ActionReleasePR || action == mission.ActionMainMerge {
+		delivery := mission.CapabilityDeliveryOwner{Provider: mission.UnsupportedDeliveryProvider{}, Action: action, Target: target}
+		if _, deliveryErr := delivery.Snapshot(cmd.Context()); deliveryErr != nil {
+			_ = persistMissionBlock(root, state, deliveryErr.Error())
+			return deliveryErr
+		}
+	}
+	snapshotHash := autoSnapshotHash(sealed.Hash, target, revision)
+	if (action == mission.ActionCommit || action == mission.ActionLocalMerge) && (gitOpts.CardWorktree != "" || gitOpts.DevelopWorktree != "") {
+		cardSHA := ""
+		if action == mission.ActionLocalMerge {
+			cardSHA = gitOpts.CardSHA
+		}
+		snapshotHash = autoGitSnapshotHash(sealed.Hash, target, action, actionRepository(gitOpts, action), gitHead, cardSHA)
+	}
+	snapshot := mission.MissionSnapshot{MissionID: sessionID, ContractHash: sealed.Hash, PolicyVersion: sealed.Version, SnapshotHash: snapshotHash, EvidenceRevision: revision, Evidence: evidence, State: mission.StateRunning, OperationsUsed: len(state.OperationIDs)}
+	decision := mission.Decision{DecisionID: fmt.Sprintf("%s:%s:%d", action, target, revision), MissionID: sessionID, ContractHash: sealed.Hash, PolicyVersion: sealed.Version, SnapshotHash: snapshot.SnapshotHash, EvidenceRevision: revision, Action: action, Targets: []string{target}, RequiredEvidence: mission.RequiredEvidenceForAction(action), Evidence: evidence, ExpiresAt: time.Now().Add(time.Minute)}
+	headRoot := root
+	if action == mission.ActionCommit || action == mission.ActionLocalMerge {
+		headRoot = actionRepository(gitOpts, action)
+	}
+	headSHA, err := currentMissionHead(headRoot)
+	if err != nil {
+		_ = persistMissionBlock(root, state, err.Error())
+		return err
+	}
+	_, err = mission.LoadGovernanceReceipts(root, gitOpts.GovernorReceipt, gitOpts.AuditReceipt, mission.GovernanceExpectation{MissionID: sessionID, ContractHash: sealed.Hash, SnapshotHash: snapshot.SnapshotHash, Action: action, Targets: []string{target}, HeadSHA: headSHA, Now: time.Now()})
+	if err != nil {
+		_ = persistMissionBlock(root, state, err.Error())
+		return err
+	}
+	receipt, err := mission.ValidateMissionDecision(sealed, snapshot, decision, time.Now())
+	if err != nil {
+		_ = persistMissionBlock(root, state, err.Error())
+		return err
+	}
+	var owner gtdCLIOwner
+	if action == mission.ActionPublish && strings.HasPrefix(target, "gtd:") {
+		owner = gtdCLIOwner{readback: func() (bool, error) {
+			item, err := factory.LoadGTDItem(cmd.Context(), store, itemID)
+			return item.CardID != "", err
+		}, apply: func() error {
+			ready, readyErr := publishDependenciesReady(cmd.Context(), store, itemID)
+			if readyErr != nil || !ready {
+				if readyErr != nil {
+					return readyErr
+				}
+				return errors.New("auto mission blocked: dependencies_blocked")
+			}
+			result, err := factory.EngageGTDItem(cmd.Context(), store, factory.EngageInput{ItemID: itemID, Authorized: true, EvidenceFresh: true, DependenciesReady: dependenciesReady && ready, LaneAvailable: true, ResourcesAvailable: true})
+			if err == nil && result.CardID == "" {
+				return fmt.Errorf("publish blocked: %s", strings.Join(result.Reasons, ","))
+			}
+			return err
+		}}
+	} else if action == mission.ActionPick && linkedCardID != "" {
+		owner = gtdCLIOwner{readback: func() (bool, error) {
+			record, err := store.LoadPure()
+			if err != nil {
+				return false, err
+			}
+			for _, card := range record.Items {
+				if card.ID == linkedCardID {
+					return card.State == factory.BacklogStatePicked, nil
+				}
+			}
+			return false, nil
+		}, apply: func() error {
+			return store.Mutate(func(record *factory.BacklogRecord) error {
+				for i := range record.Items {
+					if record.Items[i].ID == linkedCardID {
+						// POSITIVE enumeration (SPEC-TODO-HOLD-STATE-001
+						// REQ-THS-011): the --auto admission pick names the
+						// one state it admits.
+						switch record.Items[i].State {
+						case factory.BacklogStateQueued:
+							record.Items[i].State = factory.BacklogStatePicked
+							// REQ-TST-004: the mission pick is a picked
+							// transition — stamp it in the same locked write.
+							record.Items[i].PickedAt = todoStampNow()
+							return nil
+						default:
+							return errors.New("auto mission: card_not_queued")
+						}
+					}
+				}
+				return errors.New("auto mission: card_not_live")
+			})
+		}}
+	} else if action == mission.ActionDispatch && linkedCardID != "" {
+		owner = gtdCLIOwner{readback: func() (bool, error) {
+			record, err := store.LoadPure()
+			if err != nil {
+				return false, err
+			}
+			// card t1349 integration repair: assignments are stored through
+			// the REQ-TSP-052 canonical write normalization, so the readback
+			// maps the caller's lane label onto the same canonical form
+			// before comparing — a legacy-spelled lane keeps its authority.
+			want := factory.NormalizeOwnerLabel(gitOpts.Lane)
+			for _, a := range record.Runtime.Assignments {
+				if a.RunID == gitOpts.RunID && a.CardID == linkedCardID && a.OwnerLabel == want {
+					return true, nil
+				}
+			}
+			return false, nil
+		}, apply: func() error {
+			if _, err := authoritativeDispatchEvidence(cmd.Context(), store, root, sessionID, itemID, linkedCardID, gitOpts.Lane, gitOpts.RunID, revision); err != nil {
+				return err
+			}
+			if err := factory.RecordFactoryCardAssignment(root, gitOpts.RunID, linkedCardID, gitOpts.Lane, ""); err != nil {
+				return err
+			}
+			mirrorFactoryAssignment(cmd.Context(), cmd.ErrOrStderr(), root, store, gitOpts.RunID, linkedCardID, gitOpts.Lane)
+			return nil
+		}}
+	} else if action == mission.ActionCommit || action == mission.ActionLocalMerge {
+		owner = gtdCLIOwner{readback: func() (bool, error) { return gitOwner.Readback(cmd.Context(), receipt.OperationID) }, apply: func() error { return gitOwner.Apply(cmd.Context(), receipt.OperationID) }}
+	} else {
+		_ = persistMissionBlock(root, state, "owner_adapter_unsupported")
+		return fmt.Errorf("auto mission blocked: owner_adapter_unsupported")
+	}
+	receiptJSON, _ := json.Marshal(receipt)
+	op := factory.GTDOperation{OperationID: receipt.OperationID, MissionID: sessionID, Action: string(action), Target: target, SnapshotHash: snapshot.SnapshotHash, ReceiptJSON: receiptJSON}
+	stored, err := factory.ExecuteGTDOperation(cmd.Context(), store, op, owner)
+	if err != nil {
+		_ = persistMissionBlock(root, state, err.Error())
+		return err
+	}
+	state.State = mission.StateRunning
+	state.Snapshot = &snapshot
+	state.LastBlocker = ""
+	if !slices.Contains(state.OperationIDs, stored.OperationID) {
+		state.OperationIDs = append(state.OperationIDs, stored.OperationID)
+	}
+	if err := mission.SaveAutoMission(root, *state); err != nil {
+		return err
+	}
+	return printGTD(cmd, stored, jsonOutput)
+}
+
+func runGoalMissionRevoke(cmd *cobra.Command, sessionID string, jsonOutput bool) error {
+	root := goalProjectRoot()
+	state, err := loadRequiredAutoMission(root, statusSessionID(sessionID))
+	if err != nil {
+		return err
+	}
+	state.State = mission.StateRevoking
+	state.LastBlocker = "revoked"
+	if err := mission.SaveAutoMission(root, *state); err != nil {
+		return err
+	}
+	return printGTD(cmd, state, jsonOutput)
+}
+func runGoalMissionResume(cmd *cobra.Command, sessionID string, jsonOutput bool) error {
+	root := goalProjectRoot()
+	state, err := loadRequiredAutoMission(root, statusSessionID(sessionID))
+	if err != nil {
+		return err
+	}
+	if state.State != mission.StateBlocked || state.Contract == nil {
+		return fmt.Errorf("auto mission is not resumable")
+	}
+	state.State = mission.StateApproved
+	state.LastBlocker = ""
+	if err := mission.SaveAutoMission(root, *state); err != nil {
+		return err
+	}
+	return printGTD(cmd, state, jsonOutput)
+}
+
+func newGoalCmd() *cobra.Command { return NewAutoMissionCommand() }
+
+func runGoalAutoMission(cmd *cobra.Command, args []string, sessionFlag string, jsonOutput bool) error {
+	root := goalProjectRoot()
+	if root == "" {
+		return fmt.Errorf("goal --auto: cannot resolve project root")
+	}
+	text := strings.TrimSpace(strings.Join(args, " "))
+	if text == "" {
+		return fmt.Errorf("goal --auto: mission must not be empty")
+	}
+	sessionID, warn := resolveArmSessionID(sessionFlag)
+	if warn != "" {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: %s\n", warn)
+	}
+	state := mission.AutoMission{SessionID: sessionID, Text: text, MissionMode: mission.ModeAuto, ProgressionMode: goal.DefaultProgressionMode, State: mission.StateDraft}
+	if err := mission.SaveAutoMission(root, state); err != nil {
+		return fmt.Errorf("goal --auto: %w", err)
+	}
+	if jsonOutput {
+		return emitOK(cmd, true, map[string]any{"action": "mission-create", "session_id": sessionID, "mission_mode": mission.ModeAuto, "state": mission.StateDraft, "mission": text})
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "created auto mission for session %s (approval required): %s\n", sessionID, text)
+	return nil
+}
+
+// misreadGoalVerb reports the registered goal verb a single word was most
+// likely meant as, using each subcommand's SuggestFor list. The list is
+// explicit on purpose: it names the word the refusal should SUGGEST, which a
+// verb-shape rule could not.
+//
+// It no longer carries the whole burden of the single-word form. Card t890
+// measured what the list alone lets through — `false`, `date`, `ls` — and
+// bareWordNeedsDeclaration now demands a declaration for every undeclared bare
+// word. A one-word condition such as `true` or `make` is not thrown away by
+// that: it is written `cmd: true`, and the refusal says so.
+//
+// What that leaves on the `goal arm <word>` path, measured on this merged tree
+// (card t948): `arm` skips the bare-form gates above by design, so a word that
+// resolves as a command still arms there — `stat` and `reset` measured, as
+// well as `false` and `date`, which the bare form now refuses. armTimeCondition
+// Gate still covers the genuinely broken case on that path (`goal arm show` is
+// refused, its first word resolving to nothing). The remaining asymmetry is
+// therefore intended rather than a gap: `goal arm <word>` states the arming
+// intent explicitly, which is the ambiguity the bare form lacks.
+func misreadGoalVerb(goalCmd *cobra.Command, word string) (string, bool) {
+	for _, sub := range goalCmd.Commands() {
+		for _, alias := range sub.SuggestFor {
+			if strings.EqualFold(word, alias) {
+				return sub.Name(), true
+			}
+		}
+	}
+	return "", false
+}
+
+// misreadGoalVerbError renders the refusal for a word read as a verb. It names
+// the verb that was probably meant and the cmd: prefix for the rare case where
+// the word really is the intended condition.
+func misreadGoalVerbError(word, verb string) error {
+	return fmt.Errorf(
+		"goal: %q is not a goal verb, so it would be armed as a condition. "+
+			"Did you mean \"moai goal %s\"? If %q really is the condition, "+
+			"declare it: moai goal \"cmd: %s\"",
+		word, verb, word, word)
+}
+
+// bareWordNeedsDeclaration reports whether a single bare argument must carry a
+// `cmd:` / `model:` declaration before it can be armed as a condition.
+//
+// The two existing gates leave a gap between them (card t890). misreadGoalVerb
+// only knows the SuggestFor aliases, and unrunnableCommandToken only refuses a
+// first word that resolves to NOTHING — so a bare word that IS a real command
+// passes both and arms silently. `false` then blocks every turn-end to the
+// ceiling; `date` is satisfied at once and the goal ends without having meant
+// anything. Neither is what one typed word intends.
+//
+// The rule is a declaration requirement, not a ban: the word still arms as
+// `cmd: <word>`. That keeps it consistent with the adjacent refusal, which
+// already demands the same prefix rather than guessing.
+//
+// It reads the bare single-word form ONLY — `goal arm <word>` states the intent
+// explicitly, a prefixed word is already declared, and a multi-word condition
+// was never the ambiguous shape. An empty argument falls through to the
+// existing empty-condition refusal, which owns that case.
+func bareWordNeedsDeclaration(word string) bool {
+	if word == "" || len(strings.Fields(word)) != 1 {
+		return false
+	}
+	return !conditionDeclarationPrefix.MatchString(word)
+}
+
+// bareWordDeclarationError renders the refusal for an undeclared bare word. It
+// names both escapes because the word alone does not say which tier was meant:
+// a command belongs behind cmd:, a claim about the conversation behind model:.
+func bareWordDeclarationError(word string) error {
+	return fmt.Errorf(
+		"goal: %q is a single bare word, so it is ambiguous — it would be armed "+
+			"as a shell command whether or not that is what you meant, and a "+
+			"one-word command is as likely to be satisfied instantly as it is "+
+			"to never exit 0. Declare which you mean: moai goal \"cmd: %s\" to "+
+			"run it as a command, or moai goal \"model: %s\" for a claim about "+
+			"the conversation",
+		word, word, word)
 }
 
 // goalProjectRoot resolves the project root for goal state I/O (CLAUDE_PROJECT_DIR
@@ -282,6 +1179,16 @@ func runGoalArm(cmd *cobra.Command, args []string, sessionFlag string, jsonOutpu
 	}
 
 	cond := parseCondition(conditionText)
+	// Arm-time gate: a mechanical condition that can only ever fail buys a goal
+	// that blocks every turn-end to the ceiling. Refuse on positive evidence
+	// only (both probes fail open) and write NO state file on refusal. The gate
+	// is shared with the goal_arm MCP wrapper — see armTimeConditionGate.
+	//
+	// Returned, not also printed: the root command renders the error, and
+	// printing it here too would show the user the same paragraph twice.
+	if err := armTimeConditionGate(cmd.Context(), "goal arm", conditionText, cond); err != nil {
+		return err
+	}
 	g := goal.NewGoal(sessionID, conditionText, []goal.Condition{cond})
 	if maxTurns >= 0 {
 		g.Ceiling.MaxTurns = maxTurns // 0 = infinite entry point (AC-001)
@@ -318,6 +1225,27 @@ func runGoalStatus(cmd *cobra.Command, sessionFlag string, jsonOutput, showAll b
 	}
 
 	sessionID := statusSessionID(sessionFlag)
+	if filepath.IsAbs(sessionID) || sessionID == "." || sessionID == ".." || strings.ContainsAny(sessionID, `/\`) {
+		return fmt.Errorf("goal status: unsafe session id")
+	}
+	if mission.ValidateMissionSessionID(sessionID) == nil {
+		auto, autoErr := mission.LoadAutoMission(root, sessionID)
+		if autoErr != nil {
+			return fmt.Errorf("goal status: %w", autoErr)
+		}
+		if auto != nil {
+			if jsonOutput {
+				out, err := json.Marshal(auto)
+				if err != nil {
+					return err
+				}
+				_, err = fmt.Fprintln(cmd.OutOrStdout(), string(out))
+				return err
+			}
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "session: %s\nmission_mode: auto\nstate: %s\nmission: %s\n", auto.SessionID, auto.State, auto.Text)
+			return err
+		}
+	}
 	g, err := goal.LoadGoal(root, sessionID)
 	if err != nil {
 		return fmt.Errorf("goal status: %w", err)
@@ -387,6 +1315,21 @@ func runGoalClear(cmd *cobra.Command, sessionFlag string, jsonOutput bool) error
 		return fmt.Errorf("goal clear: cannot resolve project root")
 	}
 	sessionID := statusSessionID(sessionFlag)
+	if filepath.IsAbs(sessionID) || sessionID == "." || sessionID == ".." || strings.ContainsAny(sessionID, `/\`) {
+		return fmt.Errorf("goal clear: unsafe session id")
+	}
+	if mission.ValidateMissionSessionID(sessionID) == nil {
+		if auto, _ := mission.LoadAutoMission(root, sessionID); auto != nil {
+			if err := mission.ClearAutoMission(root, sessionID); err != nil {
+				return fmt.Errorf("goal clear: %w", err)
+			}
+			if jsonOutput {
+				return emitOK(cmd, true, map[string]any{"action": "clear", "session_id": sessionID, "cleared": true, "mission_mode": "auto"})
+			}
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "cleared auto mission for session %s\n", sessionID)
+			return err
+		}
+	}
 
 	existed := false
 	if g, _ := goal.LoadGoal(root, sessionID); g != nil {
@@ -458,7 +1401,7 @@ func runGoalRender(cmd *cobra.Command, sessionFlag string, jsonOutput bool) erro
 	v, _ := goal.LoadVerdict(root, sessionID)
 	// SPEC-GOAL-HTML-WIRING-001 REQ-WIRE-009 / AC-WIRE-007: construct the
 	// render-only ReArmContext from the already-landed SPEC-INFINITE-GOAL-001
-	// state (pending.json EmbeddedGoal + post-/clear new-session goal file).
+	// state (factory.db resume row + post-/clear new-session goal file).
 	// nil reArm → byte-identical base view per AC-GHF-007 / AC-WIRE-009.
 	reArm := buildReArmContext(root, sessionID)
 	raw, err := goal.RenderDashboardReArm(g, v, reArm)
@@ -494,13 +1437,13 @@ func init() {
 
 // buildReArmContext constructs the render-only re-arm UI context from the
 // already-landed SPEC-INFINITE-GOAL-001 state (SPEC-GOAL-HTML-WIRING-001
-// REQ-WIRE-009 / AC-WIRE-007). It reads `.moai/state/handoff/pending.json`
+// REQ-WIRE-009 / AC-WIRE-007). It reads the pending resume row in factory.db
 // (consume-only — the SPEC-INFINITE-GOAL-001 shape is untouched) and, when an
 // EmbeddedGoal is present, scans the per-session goal files for a post-/clear
 // new-session goal whose `Goal` text matches the embedded condition (the
 // `rearmEmbeddedGoal` write signature). Returns nil when no EmbeddedGoal is
 // present → the base view renders byte-identically (AC-WIRE-009). All steps are
-// best-effort / fail-open: a missing/corrupt pending.json or a scan miss leaves
+// best-effort / fail-open: a missing/corrupt database or a scan miss leaves
 // the corresponding ReArmContext field empty.
 func buildReArmContext(root, sessionID string) *goal.ReArmContext {
 	rec, present, _ := handoff.ReadPending(root)

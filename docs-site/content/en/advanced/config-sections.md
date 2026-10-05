@@ -55,25 +55,21 @@ delegation:
 | Block | Description |
 |-------|-------------|
 | `learning` | Manages routing usage as an append-only ledger (`.moai/state/routing-ledger.jsonl`, opt-in·fail-open), and the harness learning subsystem proposes updates via a 4-tier ladder. `auto_apply: false` — Tier-4 changes require `AskUserQuestion` user approval |
-| `subcommands` | Per-subcommand `agents` (11 retained agents to spawn) + `skills` (workflow skills to inject at spawn). 0 assignments is valid (orchestrator executes directly) |
+| `subcommands` | Per-subcommand `agents` (13 retained agents to spawn) + `skills` (workflow skills to inject at spawn). 0 assignments is valid (orchestrator executes directly) |
 | `domain_skills` | Skills to inject per mission domain (0-3 per spawn). Matched against domain signals |
 | `agents` | Per-agent conditional skills (loaded on-demand when trigger fires) |
 
 Related: [Agent Guide](/en/advanced/agent-guide), [Skill Guide](/en/advanced/skill-guide).
 
-## llm.yaml — backend·profile matrix
+## llm.yaml — backend·GLM mappings
 
-Defines the profile, the profile matrix, per-agent overrides, and GLM model mappings.
+Defines the harness backend, the GLM environment, and GLM model mappings. The model and effort that agents run on are decided at the **session** level — subagents inherit the main session's model and effort — so this file no longer carries a per-agent model assignment. The former per-agent profile-matrix keys (`profile`, `profiles`, `performance_tier`, `harness_agents`, `agent_overrides`) are retired; `moai update` strips them from user files on the next run. Main-session reasoning effort comes from the preference profile (`moai profile setup`), never from this file.
 
 ```yaml
 llm:
-  profile: "medium"            # high | medium | low (active matrix column; max read as high)
-  performance_tier: "medium"   # legacy alias (read when profile absent; same vocabulary)
-  profiles:                    # profile column → 11 agents → {model, effort}
-    high: { ... }              # detailed table: Profile Matrix page
-    medium: { ... }
-    low: { ... }
-  agent_overrides: {}          # per-agent {model, effort} override (optional)
+  harness: "claude"            # claude | gpt | both — agent harness selected at init time
+  team_mode: ""                # glm switches the backend to z.ai
+  glm_env_var: "GLM_API_KEY"
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
@@ -85,10 +81,9 @@ llm:
 
 | Key | Description |
 |-----|-------------|
-| `profile` | Active profile matrix column (`high`/`medium`/`low`; the former `max` is read as an alias of `high`). An empty value is interpreted as `medium`. The model+effort source for every subagent spawn |
-| `performance_tier` | Legacy alias field. Read only when `profile` is absent; shares the same `high`/`medium`/`low` vocabulary, so no normalization step is needed |
-| `profiles` | The per-agent → `{model, effort}` matrix per profile column (11 agents × 3 columns = 33 cells). The Go default (`template.DefaultProfileMatrix`) is the authoritative fallback for missing cells |
-| `agent_overrides` | Per-canonical-agent-name `{model, effort}` override. Takes precedence over the active profile's agent cell (catalog+enum validated) |
+| `harness` | The agent harness deployed at init (`claude` default; `gpt` means Codex-only deployment) |
+| `team_mode` | Empty runs Claude; `glm` routes the session to the z.ai backend |
+| `claude_bin` | Optional explicit Claude Code binary pin (environment variable `MOAI_CLAUDE_BIN` overrides per launch) |
 | `glm.base_url` | Z.AI Anthropic-compatible proxy endpoint |
 | `glm.models` | Per-slot GLM model mapping. GLM collapses Claude's 5-step effort into 3 reasoning states (thinking-off / reasoning-high / reasoning-max) |
 
@@ -128,7 +123,6 @@ Additional security settings that **extend** (not replace) the built-in `Default
 security:
   extra_dangerous_bash_patterns:
     - 'curl\s+.*\|\s*(ba)?sh'
-    - 'rm\s+-rf\s+/[^.]'
   extra_deny_patterns: []
   extra_ask_patterns: []
   permission:
@@ -176,6 +170,27 @@ workflow:
 
 Work that needs a different branch belongs in a worktree rather than behind a refusal. For the procedure see [moai worktree](/en/cli-reference/worktree/).
 
+## workflow.yaml — drift_cache_fill
+
+At session start MoAI shows an advisory about SPEC lifecycle drift. Computing it takes about a second — far longer than a session start can wait — so the result is cached against the current commit. Once the commit changes, the cached result no longer matches and the advisory has nothing to show.
+
+With this key enabled, the session-start handler starts one short-lived background process on that miss, computes the drift there, and returns immediately without waiting for it. The next session reads the stored result and shows the advisory again.
+
+```yaml
+workflow:
+    drift_cache_fill:
+        enabled: true   # distributed default
+```
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `enabled` | `true` (default) | On a cache miss the handler starts one background fill and returns without waiting. The advisory reappears on the following session |
+| `enabled` | `false` | No fill process is ever started. The advisory resolves from whatever the cache already holds, so after a commit it stays absent until something else fills the cache |
+
+**Why this one ships on.** The other guards on this page ship off because they are inert until a maintainer needs them. This key is not inert when on — it starts a child process — so its default is an accepted cost rather than a neutral one: without the fill, the drift advisory never returns after a commit. The child is short-lived, bounded by its own deadline, limited to one at a time by a lock, and silent.
+
+**Failure direction.** Every failure path leaves the session untouched. If the child cannot start, cannot finish, or writes nothing, the handler has already returned and the advisory simply stays as it was — a failed fill never delays or breaks a session start.
+
 ## workflow.yaml — audit
 
 Pins which model and effort the cross-model audit backends (`codex_audit`, `glm_audit`, `audit_multi`) actually run on. Each backend takes one `{model, effort}` pair, and the distributed defaults are empty.
@@ -218,9 +233,40 @@ workflow:
 
 Reach for this key when the per-session backlog summary reads as noise on a small, one-off project. How to operate the queue itself is on the [moai todo](/en/utility-commands/moai-todo/) page.
 
+## workflow.yaml — autonomy
+
+Sets how a SPEC's autonomy contract (`contract.yaml`) is signed and bounded. The command that works with contracts is [moai contract](/en/cli-reference/contract/). Despite the similar name, this is unrelated to the [autonomy tier (`MOAI_AUTONOMY_TIER`)](/en/advanced/autonomy-tier/).
+
+```yaml
+workflow:
+    autonomy:
+        mode: guided              # guided | contract
+        contract:
+            batch_sign: false       # sign several SPECs with one confirmation
+            second_review: required # required | advisory | off
+            push_develop: false     # allow the push-develop action in contracts
+        kickoff:
+            # decider: human | llm | llm+jev   (omitted: human in guided, llm in contract)
+            jev_min_confidence: 0.50
+        escalation:
+            budget_default: { turns: 60, operations: 40, audit_retries: 2 }
+```
+
+| Key | Description |
+|-----|-------------|
+| `mode` | `guided` (default) or `contract`. Receipt-based signing (`--signer llm`) is open only in `contract` |
+| `contract.batch_sign` | When `true`, several SPECs are signed with one confirmation. Default `false` |
+| `contract.second_review` | `required` makes a contract invalid when its `review.second_model` is `none` or empty. `advisory` and `off` skip this check |
+| `contract.push_develop` | When `false` (default), a contract containing the `push-develop` action is invalid |
+| `kickoff.decider` | Who makes the kickoff decision: `human`, `llm`, or `llm+jev`. Derived from the mode when omitted. `jev` alone is a configuration error, and receipt signing is refused |
+| `kickoff.jev_min_confidence` | Reserved for the kickoff receipt issuer as the minimum confidence at which it accepts a Jev judgment. In this release the value is only read and validated; it does not affect signing or verification. Default `0.50` |
+| `escalation.budget_default` | Default budget filled in at signing time when a contract has no `budget` |
+
+**Invalid values.** An absent key takes the default above. An unrecognized value for `mode`, `second_review`, `decider`, or `jev_min_confidence` falls back to the stricter default (`guided`, `required`, `human`, `0.50`), with a warning naming the key.
+
 ## crosssession.yaml — cross-session messaging
 
-Decides how this session treats messages from your other Claude Code sessions. The `moai cc` · `moai glm` · `moai cg` launchers translate these values into a transient `--settings` file at launch, and the web console edits this file through the settings seam. A session launched without the launcher — a bare `claude` command — does not read this file.
+Decides how this session treats messages from your other Claude Code sessions. The `moai cc` · `moai glm` launchers translate these values into a transient `--settings` file at launch, and the web console edits this file through the settings seam. A session launched without the launcher — a bare `claude` command — does not read this file.
 
 ```yaml
 crosssession:

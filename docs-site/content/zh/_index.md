@@ -12,28 +12,26 @@ MoAI-ADK (Agentic Development Kit) 是 Claude Code 的战略编排框架。
 
 ![文档结构图](/images/sections/doc-map-zh.png)
 
-## v3.1 新功能 —— 看板模式 {{< new-badge v3.1 >}}
+## v3.2 新功能 —— 工厂模式 {{< new-badge v3.2 >}}
 
-一个会话只有一个上下文窗口，长 SPEC 会把它填满 —— 之后的每一步都背着前面的全部内容前进。看板模式把一项工作拆到**4 个终端**：主导会话推动整条链，3 个伴随会话各自负责 `plan`、`run`、`sync` 中的一列，只背自己那一列的上下文。评审不是单独的列 —— 由 sync 关卡吸收。上限并没有消失，但没有任何一个会话再扛三个阶段的历史，因此同样的预算能走得远得多。
+一个会话只有一个上下文窗口，长 SPEC 会把它填满，之后的每一步都背着前面的全部内容前进。工厂模式把工作分到**多个终端**：主导会话负责分配选定的卡片，每条 lane 是各自独立的会话，把一张卡片从 `plan`、`run` 到 `sync` 整张接下来。评审判定不是单独的阶段，由 sync 关卡吸收。上限并没有消失，但没有任何会话需要背负超过一张卡片的历史，因此同样的预算能走得远得多。
 
-![看板模式的一次 run —— 五列看板与主导、三个伴随会话各自在自己的终端中，使用各自的模型与推理强度运行](/images/profile/kanban-five-sessions.png)
+每条 lane 都可以用不同的后端。主导会话和各条 lane 可以分别在 `cc`、`glm`、`codex` 中选择。
 
-每一列都可以用不同的后端和推理强度。上图中 Plan 跑在 Opus 5 high，Run 跑在 GLM 5.2 xhigh，Sync 跑在 GLM 5.2。
-
-{{< terminal title="kanban mode" raw="true" >}}
-moai cc -k                    # 主导 —— announce run-id 并铺好链
-moai cc -k --name plan        # 伴随会话，各开一个终端
-moai cc -k --name run
-moai cc -k --name sync
+{{< terminal title="factory mode" raw="true" >}}
+moai cc -f                    # 主导：开启工厂运行
+moai cc -l                    # lane，各开一个终端：作为下一条空闲 lane 加入
+moai glm -l                   # GLM 后端的 lane
+moai codex -l                 # Codex 的 lane
 {{< /terminal >}}
 
-看板有 `backlog → plan → run → sync → done` 五列，`backlog` 刻意不设归属会话 —— 只有用 [`/moai todo`](/zh/utility-commands/moai-todo) 主动放入时，工作才会进入看板。review 列并不存在 —— 评审判定由 sync 关卡吸收。主导只依据自己从卡片 `progress.md` 中读到的证据推进卡片，不依据伴随会话的回复。
+委派通道是队列。`backlog` 刻意不设归属会话，只有用 [`/moai todo`](/zh/utility-commands/moai-todo) 主动放入时，工作才会进来。主导只依据自己从卡片 `progress.md` 中读到的证据推进卡片，不依据 lane 的回复。
 
-启动 `moai web`，即可在看板页面并排查看看板链与 SPEC 流水线。
+启动 `moai web`，即可在工厂页面并排查看工厂 lane 与 SPEC 流水线。
 
 ![moai web 控制台 Overview 页面 —— SPEC 统计、进行中 SPEC 列表、会话注册表](/images/profile/web-console-v31-overview.png)
 
-详见：[看板模式](/zh/advanced/kanban-mode) · [manager-lead 领导协调者](/zh/advanced/manager-lead) · [`/moai todo`](/zh/utility-commands/moai-todo) · [moai web 控制台](/zh/advanced/moai-web-console)
+详见：[工厂模式](/zh/advanced/factory-mode) · [manager-lead 主导协调者](/zh/advanced/manager-lead) · [`/moai todo`](/zh/utility-commands/moai-todo) · [moai web 控制台](/zh/advanced/moai-web-console)
 
 ## MoAI 3.1 的三大核心价值
 

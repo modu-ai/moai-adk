@@ -1,0 +1,160 @@
+package codexwiring
+
+import "time"
+
+// Codex Stop-chain budget declarations (SPEC-DUAL-HARNESS-HOOK-PARITY-001
+// design §D3.3, §D3.5, §D3.8; REQ-HPR-018, REQ-HPR-019).
+//
+// On Codex the eight Claude Stop members run one after another inside the
+// single rendered Stop handler, so they share its timeout T_stop. Each member
+// gets an internal budget — the deadline the chain runner sets for it, not a
+// host timeout. A member whose real work cannot fit (the sync gate, the codex
+// review) runs outside the hook and leaves a receipt (internal/verify
+// receipt.go); in the hook it only evaluates its self-gates and compares the
+// receipt, so its budget here is that compare budget.
+//
+// Every figure below is a DECLARATION, not a measurement. The per-member
+// budgets were rebalanced in M2d after the AC-HPR-016 timing leg
+// (TestStopChainMemberCostWithinBudget, internal/cli) observed the receipt
+// members' in-hook compare — which pays the tree-key computation — above
+// 0.5 s on a loaded machine; the observed figures are recorded in the SPEC's
+// progress record, not here. StopUnmeasuredCap and StopCapStateDir are final
+// as of M2d. Nothing here is evidence that a member fits its budget; the
+// timing leg is.
+
+// StopPlacement says where a Stop member's work runs on Codex.
+type StopPlacement string
+
+const (
+	// StopPlacementInHook: the member runs inside the Codex Stop handler.
+	StopPlacementInHook StopPlacement = "in-hook"
+	// StopPlacementReceipt: the member's check runs out of hook and the
+	// handler compares its receipt (design §D3.2 receipt option).
+	StopPlacementReceipt StopPlacement = "receipt"
+)
+
+// StopClass is the member's decision class (design §D3.3, last column).
+type StopClass string
+
+const (
+	// StopClassAdvisory: a failure is recorded and the chain continues; never
+	// recorded as passed (REQ-HPR-004).
+	StopClassAdvisory StopClass = "advisory"
+	// StopClassRequiredGate: once its self-gates hold, a missing or stale
+	// receipt continues the turn (unmeasured) and never allows below the
+	// StopUnmeasuredCap.
+	StopClassRequiredGate StopClass = "required-gate"
+	// StopClassGoal: lookup-only goal evaluation; a receipt miss is unmeasured.
+	StopClassGoal StopClass = "goal"
+	// StopClassFailOpenOnMissing: a missing persisted result allows, with a
+	// discard record (member 7 only).
+	StopClassFailOpenOnMissing StopClass = "fail-open-on-missing"
+)
+
+// StopMember is one declared member of the Codex Stop chain.
+type StopMember struct {
+	// Number is the member's position in the Claude Stop array (1-based).
+	Number int
+	// Name is the Claude handler the member corresponds to.
+	Name      string
+	Placement StopPlacement
+	Class     StopClass
+	// Budget is the member's internal deadline. For a receipt member it is
+	// the self-gate + compare budget only; its out-of-hook cost is not here.
+	Budget time.Duration
+	// UncutBudget is a bounded step exempt from the Budget cut-off but still
+	// counted in the aggregate: member 1's factory-continuation step, bounded
+	// by its own 200 ms inspection deadline (design §D3.3).
+	UncutBudget time.Duration
+	// ClaudeScript is the handler script the Claude Stop array registers for
+	// this member (AC-HPR-001 matches the rendered template against it).
+	ClaudeScript string
+	// Conditional marks a member the template registers only when the hook
+	// opt-in is enabled (member 8, inside {{ if .HookOptIn.Enabled }}).
+	Conditional bool
+	// ReceiptProducer is the out-of-hook command that writes the receipt this
+	// member compares; empty for a member with nothing to compare.
+	ReceiptProducer string
+}
+
+// Receipt producers (design §D3.3; the M2d Q4 and R1 decisions). Each runs out
+// of hook, during the turn, and writes a verify-snapshot receipt the Codex
+// Stop chain compares. None of them writes the §D3.8 cap counter.
+const (
+	// SyncGateReceiptCommand runs the sync gate's decision core (compile/vet
+	// for the detected language) and records its outcome.
+	SyncGateReceiptCommand = "moai verify sync-gate"
+	// CodexReviewReceiptCommand makes the same codex review call the Claude
+	// gate makes in-hook and records its verdict.
+	CodexReviewReceiptCommand = "moai verify codex-review"
+	// GoalReceiptCommand records a goal condition's result after the working
+	// agent ran it; the evaluator's existing snapshot source reads it.
+	GoalReceiptCommand = "moai verify record"
+)
+
+// @MX:ANCHOR: [AUTO] Codex Stop-chain budget table — the aggregate the single Codex Stop handler must fit (design §D3.5)
+// @MX:REASON: read by the AC-HPR-016 sum leg here and by the M2d chain runner and timing leg in internal/cli; raising one budget without lowering another breaks Σ + chain_overhead ≤ T_stop
+
+// StopChainMembers declares all eight Claude Stop members in Claude order.
+// Budgets (design §D3.5, rebalanced in M2d): (2 + 0.2) + 1 + 1 + 0.5 + 0.5 +
+// 1 + 0.5 + 0.5 = 7.2 s — members 2 and 6 took 0.5 s each from member 3, so
+// the sum and StopChainOverhead are unchanged. Member 8 runs only when the
+// hook opt-in is enabled; it is counted anyway so the aggregate holds for
+// either render.
+var StopChainMembers = []StopMember{
+	{Number: 1, Name: "moai hook stop", Placement: StopPlacementInHook, Class: StopClassAdvisory,
+		Budget: 2 * time.Second, UncutBudget: 200 * time.Millisecond,
+		ClaudeScript: "handle-stop.sh"},
+	{Number: 2, Name: "sync-phase quality gate", Placement: StopPlacementReceipt, Class: StopClassRequiredGate,
+		Budget:       time.Second,
+		ClaudeScript: "sync-phase-quality-gate.sh", ReceiptProducer: SyncGateReceiptCommand},
+	{Number: 3, Name: "moai hook stop-goal", Placement: StopPlacementInHook, Class: StopClassGoal,
+		Budget:       time.Second,
+		ClaudeScript: "handle-stop-goal.sh", ReceiptProducer: GoalReceiptCommand},
+	{Number: 4, Name: "moai hook security-turn", Placement: StopPlacementInHook, Class: StopClassAdvisory,
+		Budget:       500 * time.Millisecond,
+		ClaudeScript: "handle-security-turn.sh"},
+	{Number: 5, Name: "moai hook security-commit", Placement: StopPlacementInHook, Class: StopClassAdvisory,
+		Budget:       500 * time.Millisecond,
+		ClaudeScript: "handle-security-commit.sh"},
+	{Number: 6, Name: "moai hook codex-review-gate", Placement: StopPlacementReceipt, Class: StopClassRequiredGate,
+		Budget:       time.Second,
+		ClaudeScript: "handle-codex-review-gate.sh", ReceiptProducer: CodexReviewReceiptCommand},
+	{Number: 7, Name: "moai hook multi-review-gate", Placement: StopPlacementInHook, Class: StopClassFailOpenOnMissing,
+		Budget:       500 * time.Millisecond,
+		ClaudeScript: "handle-multi-review-gate.sh"},
+	{Number: 8, Name: "moai hook harness-observe-stop", Placement: StopPlacementInHook, Class: StopClassAdvisory,
+		Budget:       500 * time.Millisecond,
+		ClaudeScript: "handle-harness-observe-stop.sh", Conditional: true},
+}
+
+const (
+	// StopChainOverhead is chain_overhead (design §D3.5): input parsing,
+	// attribution, dedup, and output write for the whole chain. Proposal:
+	// the full 2.8 s left under T_stop = 10 s by the 7.2 s of member budgets,
+	// so the runner deadline T_stop − StopChainOverhead equals the member sum
+	// and any budget raise must be traded against another member.
+	StopChainOverhead = 2800 * time.Millisecond
+
+	// StopTimeoutCodexMax is T_codex_max, the largest Stop timeout Codex has
+	// been measured to honour (AC-HPR-021). Zero means NOT_RUN: the probe has
+	// not run (operator decision Q5), so T_stop stays at the render constant.
+	StopTimeoutCodexMax = time.Duration(0)
+
+	// StopUnmeasuredCap is N of design §D3.8: after N consecutive unmeasured
+	// continuations for the same gate, HEAD, and working-tree digest, the
+	// Codex Stop chain allows the stop and records the gate unverified.
+	// Final (M2d): 3. N ≥ 2 keeps the first continuation meaningful; 3 gives
+	// the agent a second continuation to retry a producer run that left a
+	// stale receipt (the tree moved while it ran), and every further
+	// continuation would repeat the same instruction without new
+	// information. It matches the goal evaluator's stagnation threshold
+	// (goal.DefaultStagnationThreshold), the other "N identical turns" bound.
+	StopUnmeasuredCap = 3
+
+	// StopCapStateDir holds the per-session counter file
+	// (<StopCapStateDir>/<session-id>.json). Final (M2d). Under .moai/state/,
+	// which the distributed .gitignore excludes, so writing it never moves
+	// the working-tree digest the counter is keyed by.
+	StopCapStateDir = ".moai/state/codex-stop-cap"
+)

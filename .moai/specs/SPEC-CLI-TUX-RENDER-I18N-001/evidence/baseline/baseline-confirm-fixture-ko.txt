@@ -1,0 +1,30 @@
+=== RUN   TestPtyCaptureChild
+  ● 1 / 1
+┃ Fixture confirm title
+┃ Fixture confirm description text
+┃
+┃ 예   아니오
+
+←/→ 전환 • enter 제출 • y 예 • n 아니오
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

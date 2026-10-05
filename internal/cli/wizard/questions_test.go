@@ -1,6 +1,9 @@
 package wizard
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // TestReportFormatQuestion verifies the report_format question is present and valid.
 func TestReportFormatQuestion(t *testing.T) {
@@ -16,15 +19,21 @@ func TestReportFormatQuestion(t *testing.T) {
 		t.Errorf("report_format should be QuestionTypeSelect, got %v", q.Type)
 	}
 
-	if len(q.Options) != 2 {
-		t.Fatalf("report_format should have 2 options, got %d", len(q.Options))
+	if len(q.Options) != 3 {
+		t.Fatalf("report_format should have 3 options, got %d", len(q.Options))
 	}
 
-	// The closed value set mirrors internal/settings reportFormatValues.
-	expectedValues := []string{"html+md", "md"}
+	// The closed value set mirrors internal/settings reportFormatValues
+	// (SPEC-REPORT-ARTIFACT-DELIVERY-001 REQ-001 — artifact appended, order preserved).
+	expectedValues := []string{"html+md", "md", "artifact"}
 	for i, expected := range expectedValues {
 		if q.Options[i].Value != expected {
 			t.Errorf("option %d value = %q, want %q", i, q.Options[i].Value, expected)
+		}
+	}
+	for _, opt := range q.Options {
+		if strings.TrimSpace(opt.Desc) == "" {
+			t.Errorf("report_format option %q carries an empty Desc", opt.Value)
 		}
 	}
 
@@ -99,7 +108,6 @@ func TestQuestionOrder(t *testing.T) {
 		"conversation_language",
 		"user_name",
 		"project_name",
-		"model_policy",
 		"report_format",
 	}
 
@@ -188,7 +196,6 @@ func TestReconfigureQuestionsOrder(t *testing.T) {
 		"conversation_language",
 		"user_name",
 		"project_name",
-		"model_policy",
 		"report_format",
 		"git_mode",
 		"git_provider",
@@ -250,33 +257,10 @@ func TestSaveAnswerDevelopmentMode(t *testing.T) {
 	}
 }
 
-// TestDevelopmentModeTranslationsExist verifies translations exist for the new question.
-func TestDevelopmentModeTranslationsExist(t *testing.T) {
-	locales := []string{"ko", "ja", "zh"}
-
-	for _, locale := range locales {
-		langTrans, ok := translations[locale]
-		if !ok {
-			t.Fatalf("translations for locale %q not found", locale)
-		}
-
-		trans, ok := langTrans["development_mode"]
-		if !ok {
-			t.Errorf("translation for 'development_mode' in locale %q not found", locale)
-			continue
-		}
-
-		if trans.Title == "" {
-			t.Errorf("translation for 'development_mode' in locale %q has empty title", locale)
-		}
-		if trans.Description == "" {
-			t.Errorf("translation for 'development_mode' in locale %q has empty description", locale)
-		}
-		if len(trans.Options) != 2 {
-			t.Errorf("locale %q: development_mode should have 2 option translations, got %d", locale, len(trans.Options))
-		}
-	}
-}
+// TestDevelopmentModeTranslationsExist was removed in the M8 key cleanup
+// (REQ-ITI-013): the init/reconfigure sets no longer ask development_mode
+// (the absorbed profile wizard owns it, via profileQuestionTexts), so the
+// init-table entries were orphans and are gone.
 
 // TestRemovedQuestionsAbsent verifies that removed user-level questions are no longer present.
 func TestRemovedQuestionsAbsent(t *testing.T) {
@@ -290,7 +274,9 @@ func TestRemovedQuestionsAbsent(t *testing.T) {
 		"git_commit_lang",
 		"code_comment_lang",
 		"doc_lang",
-		// model_policy intentionally NOT listed here: it was re-added as a project-level question
+		// model_policy: the agent model-policy question was retired
+		// (subagents inherit the main session's model and effort).
+		"model_policy",
 		// plan_type and development_mode were removed as interactive questions; they
 		// now default silently (subscription / tdd) and are flag-only overrides.
 		"plan_type",
@@ -320,7 +306,6 @@ func TestQuestionsAllPresent(t *testing.T) {
 		"conversation_language",
 		"user_name",
 		"project_name",
-		"model_policy",
 		"report_format",
 	}
 
@@ -519,21 +504,5 @@ func TestPrefillLocaleDefault(t *testing.T) {
 	prefillLocaleDefault(questions2, "")
 	if q := QuestionByID(questions2, "conversation_language"); q == nil || q.Default != "en" {
 		t.Errorf("empty locale should keep the static 'en' default, got %+v", q)
-	}
-}
-
-// TestSaveAnswerModelPolicy verifies saveAnswer routes the model_policy answer
-// (the profile selection) into WizardResult.ModelPolicy.
-func TestSaveAnswerModelPolicy(t *testing.T) {
-	result := &WizardResult{}
-	locale := ""
-
-	saveAnswer("model_policy", "high", result, &locale)
-	if result.ModelPolicy != "high" {
-		t.Errorf("expected ModelPolicy 'high', got %q", result.ModelPolicy)
-	}
-	saveAnswer("model_policy", "low", result, &locale)
-	if result.ModelPolicy != "low" {
-		t.Errorf("expected ModelPolicy 'low', got %q", result.ModelPolicy)
 	}
 }

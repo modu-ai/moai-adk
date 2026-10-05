@@ -70,7 +70,7 @@ func TestValidatePrefs_ModelPolicyField(t *testing.T) {
 }
 
 // TestSaveInvalidModelRejected verifies AC-WC2-002a: a POST /save with an
-// out-of-list model is rejected (400), no persistence occurs, and the form
+// out-of-list model is rejected (swappable status + banner), no persistence occurs, and the form
 // re-renders with a per-field model error.
 func TestSaveInvalidModelRejected(t *testing.T) {
 	a := newTestApp(t)
@@ -85,9 +85,10 @@ func TestSaveInvalidModelRejected(t *testing.T) {
 		"model":           {"gpt-4"},
 	}
 	rec := servePost(t, h, "/save", form)
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("invalid model status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("invalid model status = %d, want 200", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	if wrote || synced {
 		t.Error("persistence functions called despite invalid model (state must be unchanged)")
 	}
@@ -123,7 +124,7 @@ func TestSaveValidModelPersisted(t *testing.T) {
 }
 
 // TestSaveInvalidEffortLevelRejected verifies AC-WC2-003: an out-of-list
-// effort_level is rejected (400), state unchanged.
+// effort_level is rejected (swappable status + banner), state unchanged.
 func TestSaveInvalidEffortLevelRejected(t *testing.T) {
 	a := newTestApp(t)
 	var wrote bool
@@ -137,9 +138,10 @@ func TestSaveInvalidEffortLevelRejected(t *testing.T) {
 		"effort_level":    {"ultra"},
 	}
 	rec := servePost(t, h, "/save", form)
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("invalid effort_level status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("invalid effort_level status = %d, want 200", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	if wrote {
 		t.Error("WritePreferences called despite invalid effort_level")
 	}
@@ -208,11 +210,12 @@ func TestSaveModelPolicyFormIgnored(t *testing.T) {
 	}
 }
 
-// TestRenderModelEffortPolicyAreSelects verifies AC-WC2-005 / REQ-WC2-005: the
-// model and effort_level fields render as <select> dropdowns with their canonical
-// option sets plus the empty-default option, and NO <input type="text"> remains.
-// model_policy was removed from the console (G3-5), so it is no longer asserted.
-func TestRenderModelEffortPolicyAreSelects(t *testing.T) {
+// TestRenderModelEffortPolicyAreSegmented verifies AC-WC2-005 / REQ-WC2-005
+// (t1278 re-widgeting): the model and effort_level fields render as segmented
+// radio groups with their canonical option sets plus the empty-default option,
+// and NO <input type="text"> remains. model_policy was removed from the console
+// (G3-5), so it is no longer asserted.
+func TestRenderModelEffortPolicyAreSegmented(t *testing.T) {
 	a := newTestApp(t)
 	a.readPreferences = func(string) (profile.ProfilePreferences, error) {
 		return profile.ProfilePreferences{
@@ -238,7 +241,8 @@ func TestRenderModelEffortPolicyAreSelects(t *testing.T) {
 		}
 	}
 
-	// Positive: each field is a <select> carrying its name attribute.
+	// Positive: each field is a radio group — the name attribute sits on an
+	// <input type="radio"> (t1278; was <select>).
 	for _, name := range []string{"model", "effort_level"} {
 		needle := `name="` + name + `"`
 		idx := strings.Index(body, needle)
@@ -247,31 +251,31 @@ func TestRenderModelEffortPolicyAreSelects(t *testing.T) {
 			continue
 		}
 		open := strings.LastIndex(body[:idx], "<")
-		if open < 0 || !strings.HasPrefix(body[open:], "<select") {
-			t.Errorf("field %q name attribute is not on a <select> element", name)
+		if open < 0 || !strings.HasPrefix(body[open:], `<input type="radio"`) {
+			t.Errorf("field %q name attribute is not on a radio input", name)
 		}
 	}
 
-	// Each canonical option must be present as an <option value="...">.
+	// Each canonical option must be present as a radio value.
 	// 1M unification: opus/sonnet/fable exposed only as [1m]; haiku has no 1M variant.
 	for _, opt := range []string{"fable[1m]", "opus[1m]", "sonnet[1m]", "haiku"} {
-		if !strings.Contains(body, `<option value="`+opt+`"`) {
-			t.Errorf("model option %q missing from rendered selects", opt)
+		if !strings.Contains(body, `name="model" value="`+opt+`"`) {
+			t.Errorf("model option %q missing from rendered radio group", opt)
 		}
 	}
 	for _, opt := range []string{"low", "medium", "high", "xhigh", "max"} {
-		if !strings.Contains(body, `<option value="`+opt+`"`) {
-			t.Errorf("effort option %q missing from rendered selects", opt)
+		if !strings.Contains(body, `name="effort_level" value="`+opt+`"`) {
+			t.Errorf("effort option %q missing from rendered radio group", opt)
 		}
 	}
 
-	// The currently-selected values must be marked selected.
+	// The currently-selected values must be marked checked.
 	for _, want := range []string{
-		`<option value="sonnet[1m]" selected`,
-		`<option value="xhigh" selected`,
+		`name="model" value="sonnet[1m]" checked`,
+		`name="effort_level" value="xhigh" checked`,
 	} {
 		if !strings.Contains(body, want) {
-			t.Errorf("expected current value marked selected: %q\nbody:\n%s", want, body)
+			t.Errorf("expected current value marked checked: %q\nbody:\n%s", want, body)
 		}
 	}
 }

@@ -108,6 +108,10 @@ func runWeb(cmd *cobra.Command, _ []string) (err error) {
 		}
 	}
 	defer func() {
+		// SPEC-WORKTREE-KEY-WIRING-001 M2: auto-merge runs BEFORE disposal —
+		// merge-then-dispose is the only safe order, and independent of
+		// auto_cleanup (REQ-WKW-013).
+		sessionExitAutoMerge(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
 		cleanupSessionWorktree(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
 	}()
 
@@ -115,7 +119,6 @@ func runWeb(cmd *cobra.Command, _ []string) (err error) {
 	if perr != nil {
 		return fmt.Errorf("moai web must run inside a MoAI project: %w", perr)
 	}
-
 
 	// web.Run 위임 전 대상 포트를 확보한다: stale moai 인스턴스는 회수하고
 	// 외부 프로세스는 보호(에러). --no-reuse면 회수를 건너뛴다.

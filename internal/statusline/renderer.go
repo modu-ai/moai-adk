@@ -214,7 +214,25 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 	// data would blur into the Backlog.Available == false path and make an
 	// intentionally-hidden segment indistinguishable from an unreadable queue.
 	if r.isSegmentEnabled(SegmentBacklog) && r.isTodoEnabled() && data.Backlog.Available {
-		segs = append(segs, fmt.Sprintf("🔄 TODO: %d/%d", data.Backlog.Picked, data.Backlog.Queued))
+		seg := fmt.Sprintf("🔄 TODO: %d/%d", data.Backlog.Picked, data.Backlog.Queued)
+		// The landed annotation ADDS a third number; it never subtracts from
+		// the first. A card stays picked until auto-done or `moai todo done`
+		// actually closes it, and a landing is not a close: the count is
+		// the factory's subject attribution, which also credits a plan-only landing
+		// and skips the auto-done close guards. Subtracting would report work
+		// as finished that nobody closed. "N of the picked have a landing
+		// commit — verify before done" is a prompt to reconcile, which is why
+		// the glyph is a flag (landedGlyph) and never a check mark: a check
+		// mark reads "done" and was repeatedly read as "safe to close".
+		//
+		// An unavailable judgment renders NOTHING, leaving the pair
+		// byte-identical to what it was before this annotation existed: a
+		// zero for a measurement nobody took would assert a fact nobody
+		// observed. An OBSERVED zero is a fact, and does render.
+		if data.Landed.Known() {
+			seg += fmt.Sprintf(" %s%d", landedGlyph, data.Landed.Landed)
+		}
+		segs = append(segs, seg)
 	}
 
 	// The GitHub counts do not belong on this line: the 2026-08-18 layout merge

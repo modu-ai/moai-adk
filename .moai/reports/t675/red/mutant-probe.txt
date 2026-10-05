@@ -1,0 +1,30 @@
+Mutant probe for AC-DTC-004 / AC-DTC-005 (plan-phase, 2026-09-18, tree dd235a66b).
+No worktree file was modified. Copies of internal/cli/doctor_test.go at dd235a66b were
+mutated under the session scratchpad and diffed with plain `diff -U0 base.go <variant>.go`
+(file headers dropped). `diff -U0` and `git diff -U0` use the same +/- content-line form.
+
+good  = base + one added line `t.Chdir(t.TempDir())` at the top of TestDoctorCmd_Execution
+mutA  = good with the "System Diagnostics" assertion (3 lines) deleted
+mutB  = base + one added line `_ = os.Chdir(t.TempDir())` (no restoration)
+
+== good
+@@ -69,0 +70 @@
++	t.Chdir(t.TempDir())
+== mutA
+@@ -69,0 +70 @@
++	t.Chdir(t.TempDir())
+@@ -80,3 +80,0 @@
+-	if !strings.Contains(output, "System Diagnostics") {
+-		t.Errorf("doctor output should contain 'System Diagnostics', got %q", output)
+-	}
+== mutB
+@@ -69,0 +70 @@
++	_ = os.Chdir(t.TempDir())
+
+Reading against the criteria:
+- AC-DTC-004 (no removed content line; every non-blank added line is exactly the isolation
+  statement): good -> satisfied; mutA -> rejected (3 removed lines); mutB -> rejected
+  (added line is not the isolation statement).
+- AC-DTC-005 (zero added lines containing `os.Chdir(`; nine added `t.Chdir(t.TempDir())`):
+  good -> satisfied for this one test; mutA -> not rejected by AC-DTC-005 (rejected by
+  AC-DTC-004); mutB -> rejected (os.Chdir present, t.Chdir absent).

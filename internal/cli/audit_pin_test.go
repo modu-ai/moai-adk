@@ -33,7 +33,7 @@ func TestLoadWorkflowAuditSection(t *testing.T) {
 			"    audit:\n"+
 			"        model: multi\n"+
 			"        codex:\n"+
-			"            model: gpt-5.6-sol\n"+
+			"            model: gpt-6.1-sol\n"+
 			"            effort: high\n"+
 			"        glm:\n"+
 			"            model: glm-5.3\n"+
@@ -45,8 +45,8 @@ func TestLoadWorkflowAuditSection(t *testing.T) {
 		if got.Model != "multi" {
 			t.Errorf("Model: got %q, want multi", got.Model)
 		}
-		if got.Codex.Model != "gpt-5.6-sol" || got.Codex.Effort != "high" {
-			t.Errorf("Codex pin: got %+v, want {gpt-5.6-sol high}", got.Codex)
+		if got.Codex.Model != "gpt-6.1-sol" || got.Codex.Effort != "high" {
+			t.Errorf("Codex pin: got %+v, want {gpt-6.1-sol high}", got.Codex)
 		}
 		if got.GLM.Model != "glm-5.3" || got.GLM.Effort != "max" {
 			t.Errorf("GLM pin: got %+v, want {glm-5.3 max}", got.GLM)

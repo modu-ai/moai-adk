@@ -7,8 +7,6 @@ skills:
   - hns-moaiadk-patterns
   - hns-moaiadk-best-practices
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: opus
-effort: high
 ---
 
 # CLI / Template Specialist (moai-adk-go)
@@ -47,7 +45,7 @@ user-interaction contract where the question channel is orchestrator-exclusive).
 
 Do NOT reference archived domain-expert agents. Per
 `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row #7, the
-former backend-expert path is now `Agent(general-purpose, model: opus,
+former backend-expert path is now `Agent(general-purpose,
 tools: <backend whitelist>, prompt: ...)` at delegation time — but the
 default moai-adk-go path is `manager-develop`, not a per-spawn specialist.
 

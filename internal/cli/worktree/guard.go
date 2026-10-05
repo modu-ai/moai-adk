@@ -22,12 +22,19 @@ import (
 
 // ExitCodeError carries a structured exit code so cmd/moai/main.go can propagate
 // 0/1/2/3 instead of cobra's default 1-on-any-error behavior. Bit 1 = divergence
-// detected, bit 2 = suspect (empty worktreePath).
+// detected, bit 2 = suspect (empty worktreePath). Detail optionally names the
+// condition the code stands for; without it the guard wording renders unchanged.
 type ExitCodeError struct {
-	Code int
+	Code   int
+	Detail string
 }
 
-func (e *ExitCodeError) Error() string { return fmt.Sprintf("worktree guard exit code %d", e.Code) }
+func (e *ExitCodeError) Error() string {
+	if e.Detail != "" {
+		return fmt.Sprintf("worktree exit code %d: %s", e.Code, e.Detail)
+	}
+	return fmt.Sprintf("worktree guard exit code %d", e.Code)
+}
 
 // ExitCode satisfies the ExitCoder interface in cmd/moai/main.go.
 func (e *ExitCodeError) ExitCode() int { return e.Code }

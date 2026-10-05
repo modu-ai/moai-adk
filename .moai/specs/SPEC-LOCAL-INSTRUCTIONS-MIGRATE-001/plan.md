@@ -1,0 +1,203 @@
+# SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001 — implementation plan
+
+> **Plan phase completed by card t1259 (v0.2.0).** The milestone list below is re-sequenced for
+> this SPEC's own dependency order and is no longer the transferred one. The Tier is raised to
+> **L** on measured file count, so `design.md` and `research.md` join the artifact set.
+>
+> **v0.3.0 — M3 transferred to card t1290.** After plan-audit iter4 (FAIL 0.84, D2), the lead split
+> milestone M3 (this repository's own migration, `REQ-IFU-021`/`REQ-IFU-022`) out of this SPEC.
+> The remaining milestones keep their ids — **M1, M2, M4** — so every existing citation still
+> resolves; the M3 gap is the transfer's footprint (spec.md §D).
+
+## §A Context
+
+Carved from `SPEC-INSTRUCTION-FILES-UNIFY-001` at commit `1140bcd1d` by operator decision
+(2026-09-26). Scope at v0.3.0: 7 requirements (9 clauses, `REQ-IFU-010` carrying two) and 8
+acceptance criteria — the user-owned-file half of the instruction-file unification, minus this
+repository's own migration (transferred to card t1290; it carried 2 requirements and 2 criteria).
+
+**Tier L, confirmed at v0.2.0 against the measured file count.** The carve's provisional `M`
+rested on the requirement count; the binding axis is files affected, and the Tier L threshold is
+`> 15`. Measured in this worktree 2026-09-26: the docs-site milestone alone touches **24** files
+(6 pages × 4 locales, each resolved by `find docs-site/content -name '<page>.md'`), before
+`internal/cli` (launcher, contract, the new verb and its tests, `update`, `doctor`),
+`CLAUDE.local.md` → `AGENTS.local.md`, and the `.moai/docs/` relocations — roughly 35 in total.
+The LOC axis agrees: the verb is modelled on `migrate_agency.go`, which is 25,790 bytes with a
+30,580-byte test file beside it.
+
+**Tier L unchanged at v0.3.0.** The transfer removes M3's files (`CLAUDE.local.md` →
+`AGENTS.local.md` and its `.moai/docs/` relocations) from the count. What remains still exceeds the
+`> 15` threshold on the docs-site milestone alone: the 24 page × locale files, re-measured at v0.3.0
+(all 24 exist), plus the `internal/cli` files of M1 and M2 — roughly 31 in total.
+
+Two consequences follow and are not optional: the artifact set becomes **5 files** (`design.md`
+and `research.md` added, authored at v0.2.0 and deliberately thin — they carry this SPEC's own
+decisions and cross-reference the parent for shared context rather than duplicating it), and the
+plan-auditor PASS threshold rises from 0.80 to **0.85**.
+
+Work location is card t1259's own worktree, created from `develop` per the lane protocol. The
+parent SPEC's card is t1243.
+
+## §B Blocking dependencies
+
+**[HARD] `SPEC-INSTRUCTION-FILES-UNIFY-001` M2 must land before this SPEC's M2 (the
+fallback-advisory work) starts.** M1 is unblocked by it, which is why M1 now runs first. Both SPECs edit the same function — the local-instruction loop in
+`internal/cli/codex_launcher.go`. That SPEC changes its **iteration order** (REQ-IFU-006); this
+one adds the **deprecation advisory on its fallback branch** (REQ-IFU-007). The two edits are
+compatible but not independent: this SPEC's advisory work builds on the reordered loop.
+Concurrent lanes against that one function is the case to avoid, and the lead's dispatch
+decision is what prevents it.
+
+**[HARD] t1175 (rules diet) must land on develop before the run phase starts** — inherited from
+the parent SPEC, because the docs-site milestone and the `CLAUDE.local.md` relocation both touch
+surfaces t1175 is rewriting.
+
+**Status, 2026-09-28 — both dependencies are met** (`.moai/reports/t1259/premise-20260928.md` §1, read on
+`origin/develop`): `SPEC-INSTRUCTION-FILES-UNIFY-001` → `status: completed`, and
+`SPEC-ALWAYS-LOADED-DIET-002` (t1175) → `status: completed`. The parent's M2 reorder is in this
+branch's base (`git merge-base --is-ancestor 108be044f HEAD` → exit 0), and the loop at
+`internal/cli/codex_launcher.go:126` now iterates `codexLocalInstructionName` before
+`codexClaudeLocalName`. The two gates above no longer hold M2 or the run phase; they stay written
+as the reason for the order. The earlier unmet reading (`.moai/reports/t1259/blocking-dependencies.md`,
+2026-09-26) is superseded, not deleted.
+
+**Source locations are cited by symbol, not by line.** `origin/develop` is roughly 93 commits
+ahead of the carve base and has already moved one location the parent SPEC cited (card t1224
+shifted `frozenInstructionFiles` while leaving the symbol intact). Every figure in the parent's
+`research.md` §B is attributed to base develop `553e224f3` on 2026-09-26 and is re-measured
+before any milestone begins.
+
+## §C Constraints
+
+- **Migration is never implicit.** No hook, no `moai update`, no `moai init` may perform the
+  rename. This is REQ-IFU-011's substance, not a style preference.
+- **The repository's own migration is no longer in this SPEC** (transferred to card t1290 at
+  v0.3.0, spec.md §D); so is the operator gate it carried.
+- **Template-First.** `internal/template/templates/` changes first, then `make build`, then the
+  root copies. Never the reverse.
+- **Two mirrors, two commands.** Every deployed-file check runs against both paths with separate
+  exit codes.
+- **Every `go test` assertion carries `-v` and a `--- PASS:` read.** Exit `0` alone is not
+  evidence a test ran.
+- **The lane does not push.** Integration is a lead-granted window; push is the lead's batch.
+
+## §D Milestones (re-sequenced at v0.2.0)
+
+Ordered by decision-reversibility and by dependency, not by the parent SPEC's numbering. The
+mapping from the carve's transferred list, so nothing is lost by the renumber:
+
+| New | Was | Moved because |
+|---|---|---|
+| **M1** — migration verb + advisories | M2 | Nothing depends on it; `M2` (and the transferred `M3`) depend on it. It was second only because the parent authored it second. |
+| **M2** — Codex fallback advisory | M1 | Blocked on the parent SPEC's M2 landing (§B). Sequencing it first would have stalled the whole card behind another card's merge. |
+| ~~**M3** — this repository's own migration~~ | M4 | **Transferred to card t1290 at v0.3.0** (spec.md §D; iter4 D2 — worktree sessions do not receive `AGENTS.local.md`, `AGENTS.md:262`). The id is left unused rather than renumbered, so M4 keeps every existing citation. |
+| **M4** — docs-site, four locales | M3 | Moved last. It documents the verb's name, its refusal behaviour, and the advisory text — all of which M1 and M2 settle. Writing 24 files against a design that has not landed is the expensive way to discover a rename. |
+
+### M1 — the migration verb and the advisories
+
+`moai migrate local-instructions` (`REQ-IFU-009`, `REQ-IFU-010a`, `REQ-IFU-010b`), the
+`moai update` advisory (`REQ-IFU-011`), and the `moai doctor` advisory (`REQ-IFU-012`).
+Criteria: `AC-IFU-013`, `AC-IFU-014`, `AC-IFU-015`, `AC-IFU-030`.
+
+The no-coexistence invariant is the load-bearing part: Claude reads `CLAUDE.local.md` on its own,
+so leaving the original in place double-loads the same content. **The refusal branch
+(`REQ-IFU-010b`) is written first**, before the happy path — it is the clause that protects a
+user-authored file, and writing it second is how it ends up as an afterthought on a verb that
+already works.
+
+Model the verb on `migrate_agency_*`: `internal/cli/migrate_agency.go` is the existing
+move-plus-backup precedent, with a separate idempotency test file
+(`migrate_agency_idempotent_test.go`) worth mirroring — re-running the verb after a successful
+migration must be a clean no-op, not a second backup.
+
+### M2 — the Codex fallback branch and its advisory
+
+`codex_launcher.go`'s local-instruction loop emits the fallback advisory naming
+`moai migrate local-instructions`, and the provenance preamble is asserted to carry the literal
+filename actually read (`REQ-IFU-007`, `REQ-IFU-008`; `AC-IFU-011`, `AC-IFU-029`).
+
+**Blocked on the parent SPEC's M2 iteration-order change (§B)** — this is the one hard ordering
+constraint the card carries across SPEC boundaries. It depends on M1 only for the advisory's
+wording: the advisory names the verb, so the verb's final spelling must be settled first.
+
+The parent's `research.md` Q4 — whether the fallback branch has a diagnostic surface — **is
+answered** (`research.md` §A, `design.md` §B). It is no longer this milestone's first task.
+
+### M3 — transferred to card t1290 (v0.3.0)
+
+No work here. The milestone — `REQ-IFU-021`, `REQ-IFU-022`, the two criteria that verified only
+them, and its operator gate — moved to card t1290, whose prerequisite is a design guaranteeing
+that worktree sessions receive `AGENTS.local.md`. Its full plan text (before-value re-measurement,
+procedure relocation, the §0 rewrite, dogfooding the M1 verb) is preserved at `4441cf1a6`
+(`plan.md` M3), and iter4's D1 predicate for it is in `.moai/reports/t1259/d1-mutant.md`.
+
+### M4 — docs-site, four locales
+
+Six page **paths** × four locales = 24 files (`REQ-IFU-020`; `AC-IFU-023`). Korean is the
+canonical source per the project's i18n rules; en/ja/zh derive. Same-PR obligation: all four
+locales or none.
+
+**[HARD] The `memory` page is `claude-code/context-memory/memory.md`, not
+`cli-reference/memory.md`.** Both exist in all four locales and the requirement previously named
+only the stem. The former carries the CLAUDE.md discussion (28 matches in the ko copy); the
+latter is the `moai memory` CLI reference and carries none. Editing the wrong one would satisfy a
+stem-based grep while leaving the documented structure untouched.
+
+### Close
+
+`AC-IFU-031` (whole-change CI on the `origin/develop` head carrying this lane's merge SHA) is read
+after the three in-scope milestones (M1, M2, M4) land. It is a close gate, not a milestone gate. **This lane opens no PR**
+— §C's "the lane does not push" and the git-flow lane protocol together mean the only PR in this
+regime is `release/vX.Y.Z` → `main`, whose head carries many cards and cannot attribute a verdict to
+this one.
+## §E Self-verification
+
+Per-milestone: the affected packages only (`go test ./internal/<pkg>/...`), never
+`go test ./...` locally. The full-suite verdict is CI's, in a clean environment, on the
+`origin/develop` head carrying this lane's merge — the `test` job of `.github/workflows/ci.yml`,
+which runs `go test ./...`.
+
+[HARD] Every test-invoking verification is read on **two** signals: its `--- PASS: <TestName> ` line
+AND the absence of `no tests to run` from the same output. `go test` exits `0` and prints `PASS` on
+a selector matching nothing, so neither the exit code nor the PASS line alone distinguishes a
+passing run from one that tested nothing.
+
+At close: the `acceptance.md` §D.2 traceability diff command, plus a separate re-run of every
+two-mirror criterion.
+
+Closed at v0.2.0: this SPEC carries its own whole-change assertion, `AC-IFU-031`. Its evidence
+source was re-sited at v0.2.1 onto the `origin/develop` run carrying this lane's merge SHA, after
+the original "PR head" wording proved to name something this regime never produces. The parent's
+`AC-IFU-025` stayed with the parent because it asserts that SPEC's always-loaded budget clause,
+which this SPEC does not own.
+
+## §F Anti-patterns
+
+- Letting `moai update` do the migration "since it is already touching the tree".
+- Editing `cli-reference/memory.md` in M4 because the stem matched.
+- Performing this repository's own `CLAUDE.local.md` migration under this SPEC. It left for card
+  t1290 at v0.3.0 together with its anti-patterns (hand-editing instead of dogfooding the verb,
+  measuring the working copy, citing a stale before-value, mixing bytes and characters) — see
+  `4441cf1a6` `plan.md` §F for their text.
+- Reading a `go test` exit code as evidence the test ran. `-run` on a pattern matching nothing
+  exits `0` and prints `no tests to run`.
+- Writing the advisory into the launcher loop before the parent SPEC's M2 order change has
+  landed (§B).
+- Emitting the deprecation advisory into the `developer_instructions` payload. It is operator
+  diagnostics, not model context (design.md §B).
+- Restoring or repairing a user's modified local instruction file automatically. It may carry
+  runtime-written values, so the restore is itself destructive.
+- Resolving the worktree duplicate-load here. It is card t1219's; this SPEC's obligation is only
+  not to make it worse (REQ-IFU-010).
+
+## §G Cross-references
+
+- `.moai/specs/SPEC-INSTRUCTION-FILES-UNIFY-001/` — the parent SPEC; its `design.md` §C
+  (read-order analysis) and `research.md` §B (source survey) are shared context this SPEC reads
+  rather than duplicates.
+- `.moai/reports/t1243/plan-audit-iter1.md` — the audit whose D2 arithmetic forced the carve and
+  whose D3 finding was repaired in `REQ-IFU-021` / `AC-IFU-007` (both transferred to card t1290 at
+  v0.3.0).
+- `.moai/reports/t1243/m0/verdict.md` — the M0 measurement the parent SPEC's design rests on.
+- `CLAUDE.local.md` §0 — the canonical-copy discriminant the transferred M3 obeys (card t1290).
+- `.claude/rules/local/gitflow-lane-protocol.md` — the lane and integration-window discipline.

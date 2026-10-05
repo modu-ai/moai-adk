@@ -2,7 +2,6 @@
 id: SPEC-KANBAN-WORKTREE-001
 title: "Implementation plan — per-card worktree lifecycle with holder liveness and mutual exclusion"
 version: "0.3.0"
-status: draft
 created: 2026-08-10
 updated: 2026-08-11
 author: manager-spec

@@ -1,11 +1,11 @@
 package cli
 
 import (
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
@@ -96,16 +96,18 @@ func TestBridgeFieldDefResolver(t *testing.T) {
 }
 
 // TestTUIRendersSchemaFieldSet asserts (a) the bridge has a label entry for every
-// non-web-only schema field, and (b) the wizard source binds a value variable for
-// every field the wizard STILL asks about.
+// non-web-only schema field, and (b) the ABSORBED profile question set covers
+// the ten profile question ids in design.md §2.2 order.
 //
 // The original AC-WC10-010 claim — that the TUI renders a widget for the full
-// 34-field schema set — no longer holds and is deliberately not restated here: the
-// wizard now covers a curated SUBSET. The statusline theme + 16 segments, the
-// git_convention select, the 3 nested quality fields and the 4 nested git
+// 34-field schema set — no longer holds and is deliberately not restated here:
+// the wizard now covers a curated SUBSET. The statusline theme + 16 segments,
+// the git_convention select, the 3 nested quality fields and the 4 nested git
 // auto-detection fields were removed from the wizard and are asserted ABSENT by
 // profile_setup_removed_questions_test.go. Part (a) is unaffected — the bridge is a
 // label registry shared with the web console, not a statement about TUI rendering.
+// Part (b) is the AC-ITI-010 S6 re-aim (design.md §10): a behavior assertion
+// over the question-id set instead of a source grep for value-variable names.
 func TestTUIRendersSchemaFieldSet(t *testing.T) {
 	// (a) Every schema field name resolves through the bridge.
 	for _, f := range settings.AllFields() {
@@ -117,22 +119,26 @@ func TestTUIRendersSchemaFieldSet(t *testing.T) {
 		}
 	}
 
-	// (b) The wizard source binds value variables for every question it still asks.
-	data, err := os.ReadFile("profile_setup.go")
-	if err != nil {
-		t.Fatalf("read profile_setup.go: %v", err)
+	// (b) The absorbed profile question set covers the ten profile ids.
+	wantIDs := []string{
+		"conversation_language",
+		"user_name",
+		"git_commit_lang",
+		"code_comment_lang",
+		"doc_lang",
+		"model",
+		"model_policy",
+		"effort_level",
+		"permission_mode",
+		"development_mode",
 	}
-	src := string(data)
-	bindings := []string{
-		// Identity / Language / Launch
-		"&userName", "&gitCommitLang", "&codeCommentLang", "&docLang",
-		"&model", "&modelPolicy", "&effortLevel", "&permissionMode",
-		// Project config
-		"&developmentMode",
+	gotIDs := wizard.ProfileQuestionIDs()
+	if len(gotIDs) != len(wantIDs) {
+		t.Fatalf("profile question ids:\n got  %v\n want %v", gotIDs, wantIDs)
 	}
-	for _, b := range bindings {
-		if !strings.Contains(src, b) {
-			t.Errorf("profile_setup.go must bind a widget to %s (TUI field coverage)", b)
+	for i, want := range wantIDs {
+		if gotIDs[i] != want {
+			t.Errorf("profile question id at position %d = %q, want %q (full set: got %v, want %v)", i, gotIDs[i], want, gotIDs, wantIDs)
 		}
 	}
 }

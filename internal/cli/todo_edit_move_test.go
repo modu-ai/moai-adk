@@ -9,11 +9,11 @@
 package cli
 
 import (
-	"os"
+	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // seedTodo appends cards through the CLI and fails the test on any error.
@@ -27,7 +27,7 @@ func seedTodo(t *testing.T, texts ...string) {
 }
 
 // todoOrder returns the item ids in queue-file order.
-func todoOrder(t *testing.T, store *kanban.BacklogStore) []string {
+func todoOrder(t *testing.T, store *factory.BacklogStore) []string {
 	t.Helper()
 	rec, err := store.Load()
 	if err != nil {
@@ -40,15 +40,11 @@ func todoOrder(t *testing.T, store *kanban.BacklogStore) []string {
 	return ids
 }
 
-// readBacklogBytes returns the raw queue file, for byte-identity assertions
-// on refused mutations.
+// readBacklogBytes returns the queue's stored record in canonical document
+// form, for invariance assertions on refused mutations.
 func readBacklogBytes(t *testing.T, root string) []byte {
 	t.Helper()
-	raw, err := os.ReadFile(todoBacklogPath(root))
-	if err != nil {
-		t.Fatalf("read backlog: %v", err)
-	}
-	return raw
+	return queueStateBytes(t, todoBacklogPath(root))
 }
 
 func TestTodoEdit_RewritesTextPreservingIdentity(t *testing.T) {
@@ -210,7 +206,7 @@ func TestTodoMove_PreservesEveryItem(t *testing.T) {
 		t.Fatalf("item count = %d, want %d — a move must neither drop nor duplicate a card",
 			len(after.Items), len(before.Items))
 	}
-	byID := map[string]kanban.BacklogItem{}
+	byID := map[string]factory.BacklogItem{}
 	for _, it := range after.Items {
 		byID[it.ID] = it
 	}
@@ -219,7 +215,7 @@ func TestTodoMove_PreservesEveryItem(t *testing.T) {
 		if !ok {
 			t.Fatalf("item %s lost by the move", want.ID)
 		}
-		if got != want {
+		if !reflect.DeepEqual(got, want) {
 			t.Errorf("item %s changed by the move: %+v, want %+v", want.ID, got, want)
 		}
 	}

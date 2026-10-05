@@ -51,10 +51,10 @@ type transitionLogEntry struct {
 
 // transitionLogParseStats summarizes a parse run for observability.
 type transitionLogParseStats struct {
-	LogAbsent         bool // true when the log file does not exist (graceful no-op)
-	ReadError         bool // true when the log exists but could not be read (graceful no-op)
-	Parsed            int  // count of successfully parsed lines
-	SkippedUnparseable int // count of lines that did not match the expected shape (EC-1)
+	LogAbsent          bool // true when the log file does not exist (graceful no-op)
+	ReadError          bool // true when the log exists but could not be read (graceful no-op)
+	Parsed             int  // count of successfully parsed lines
+	SkippedUnparseable int  // count of lines that did not match the expected shape (EC-1)
 }
 
 // transitionLogLinePattern captures the fixed prefix of each log line:

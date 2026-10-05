@@ -162,6 +162,123 @@ func TestAuditMulti_ClaudeVerdictNeverInSecondaryPayload_AC_AMM_003(t *testing.T
 	}
 }
 
+func TestAuditMulti_GPTAndGLMOriginsRunActualClaude_AC_CLA_009_010(t *testing.T) {
+	for _, origin := range []string{"gpt", "glm"} {
+		t.Run(origin, func(t *testing.T) {
+			t.Setenv(config.EnvMoaiLaunchProvider, origin)
+			rc := &recordingCallerMulti{verdictBy: map[string]ReviewOutput{
+				BackendClaude: {Verdict: "pass", Summary: "actual Claude pass", Findings: []Finding{}, NextSteps: []string{}},
+				BackendCodex:  {Verdict: "pass", Summary: "codex pass", Findings: []Finding{}, NextSteps: []string{}},
+				BackendGLM:    {Verdict: "pass", Summary: "glm pass", Findings: []Finding{}, NextSteps: []string{}},
+			}}
+			orig := backendCall
+			backendCall = rc.call
+			t.Cleanup(func() { backendCall = orig })
+
+			callerAnchor := map[string]any{"verdict": "fail", "summary": "caller supplied — must be ignored", "findings": []any{}, "next_steps": []any{}}
+			res, err := callToolAuditMulti(t, callerAnchor, map[string]any{
+				"gates": map[string]any{"claude": config.AuditGateRequired, "codex": config.AuditGateOff, "glm": config.AuditGateOff},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			body := toolResultText(res)
+			if strings.Contains(body, "caller supplied") || !strings.Contains(body, "actual Claude pass") {
+				t.Fatalf("%s origin used caller anchor instead of actual Claude: %s", origin, body)
+			}
+			if !strings.Contains(body, `"source":"mcp_claude_audit"`) {
+				t.Fatalf("%s origin missing actual-Claude source: %s", origin, body)
+			}
+			rc.mu.Lock()
+			defer rc.mu.Unlock()
+			if len(rc.calls) != 1 || rc.calls[0].backend != BackendClaude {
+				t.Fatalf("%s origin backend calls = %+v, want exactly [claude]", origin, rc.calls)
+			}
+		})
+	}
+}
+
+func TestAuditMulti_ClaudeOriginUsesValidInSessionAnchor_AC_CLA_011(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, BackendClaude)
+	rc := &recordingCallerMulti{}
+	orig := backendCall
+	backendCall = rc.call
+	t.Cleanup(func() { backendCall = orig })
+
+	anchor := map[string]any{"verdict": "pass", "summary": "in-session Claude pass", "findings": []any{}, "next_steps": []any{}}
+	res, err := callToolAuditMulti(t, anchor, map[string]any{
+		"gates": map[string]any{"claude": config.AuditGateRequired, "codex": config.AuditGateOff, "glm": config.AuditGateOff},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := toolResultText(res)
+	if !strings.Contains(body, `"source":"in_session_anchor"`) || !strings.Contains(body, "in-session Claude pass") {
+		t.Fatalf("Claude origin did not preserve labelled anchor: %s", body)
+	}
+	rc.mu.Lock()
+	defer rc.mu.Unlock()
+	if len(rc.calls) != 0 {
+		t.Fatalf("Claude origin invoked backends with secondaries off: %+v", rc.calls)
+	}
+}
+
+func TestAuditMulti_ClaudeOriginRejectsInvalidInSessionAnchor_AC_CLA_011(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, BackendClaude)
+	rc := &recordingCallerMulti{verdictBy: map[string]ReviewOutput{
+		BackendClaude: {Verdict: "pass", Summary: "fresh Claude audit", Findings: []Finding{}, NextSteps: []string{}},
+	}}
+	orig := backendCall
+	backendCall = rc.call
+	t.Cleanup(func() { backendCall = orig })
+
+	invalidAnchor := map[string]any{"verdict": "banana", "summary": "must not become overall verdict", "findings": []any{}, "next_steps": []any{}}
+	res, err := callToolAuditMulti(t, invalidAnchor, map[string]any{
+		"gates": map[string]any{"claude": config.AuditGateRequired, "codex": config.AuditGateOff, "glm": config.AuditGateOff},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := toolResultText(res)
+	if strings.Contains(body, "banana") || strings.Contains(body, "must not become overall verdict") {
+		t.Fatalf("invalid Claude anchor reached convergence: %s", body)
+	}
+	if !strings.Contains(body, `"overall_verdict":"pass"`) || !strings.Contains(body, `"source":"mcp_claude_audit"`) {
+		t.Fatalf("invalid Claude anchor did not fall back to fresh audit: %s", body)
+	}
+	rc.mu.Lock()
+	defer rc.mu.Unlock()
+	if len(rc.calls) != 1 || rc.calls[0].backend != BackendClaude {
+		t.Fatalf("invalid Claude anchor backend calls = %+v, want exactly [claude]", rc.calls)
+	}
+}
+
+func TestAuditMulti_UnknownOriginWithoutAnchorRunsClaudeAndRequiredFailureBlocks_AC_CLA_012(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
+	rc := &recordingCallerMulti{verdictBy: map[string]ReviewOutput{
+		BackendClaude: {Verdict: VerdictInconclusive, Summary: "Claude auth unavailable", Findings: []Finding{}, NextSteps: []string{}},
+	}}
+	orig := backendCall
+	backendCall = rc.call
+	t.Cleanup(func() { backendCall = orig })
+
+	res, err := callToolAuditMulti(t, nil, map[string]any{
+		"gates": map[string]any{"claude": config.AuditGateRequired, "codex": config.AuditGateOff, "glm": config.AuditGateOff},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := toolResultText(res)
+	if !strings.Contains(body, `"overall_verdict":"fail"`) || !strings.Contains(body, "required gate unmet") {
+		t.Fatalf("required Claude failure did not block: %s", body)
+	}
+	rc.mu.Lock()
+	defer rc.mu.Unlock()
+	if len(rc.calls) != 1 || rc.calls[0].backend != BackendClaude {
+		t.Fatalf("unknown origin calls = %+v, want exactly [claude]", rc.calls)
+	}
+}
+
 // AC-AMM-014: per-auditor audit_gate respected. With codex gate == off, the
 // codex backend is NOT invoked and per_backend_verdicts carries no codex entry.
 func TestAuditMulti_RespectsCodexGateOff_AC_AMM_014(t *testing.T) {
@@ -200,17 +317,20 @@ func TestAuditMulti_RespectsCodexGateOff_AC_AMM_014(t *testing.T) {
 	}
 }
 
-// DQ-2 surfacing: a missing claude_verdict anchor produces a structured result
-// (overall = fail + a residual_risk_note explaining the missing anchor), NEVER
-// a hard error. The tool-handler surface must preserve the fail-open direction.
-func TestAuditMulti_MissingClaudeAnchor_StructuredRefusal(t *testing.T) {
+// A missing Claude anchor now selects the actual subscription-backed backend.
+// It never synthesizes a caller-free refusal before trying the independent
+// reviewer (AC-CLA-009/010).
+func TestAuditMulti_MissingClaudeAnchor_RunsActualClaude(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "gpt")
 	rc := &recordingCallerMulti{}
 	orig := backendCall
 	backendCall = rc.call
 	t.Cleanup(func() { backendCall = orig })
 
 	// No claude_verdict supplied (empty verdict token).
-	res, err := callToolAuditMulti(t, map[string]any{"verdict": ""}, nil)
+	res, err := callToolAuditMulti(t, map[string]any{"verdict": ""}, map[string]any{
+		"gates": map[string]any{"claude": config.AuditGateRequired, "codex": config.AuditGateOff, "glm": config.AuditGateOff},
+	})
 	if err != nil {
 		t.Fatalf("handler returned Go error on missing anchor: %v (must be a structured result)", err)
 	}
@@ -218,11 +338,11 @@ func TestAuditMulti_MissingClaudeAnchor_StructuredRefusal(t *testing.T) {
 		t.Fatal("nil / empty result for missing-anchor case")
 	}
 	body := toolResultText(res)
-	if !strings.Contains(body, `"overall_verdict":"fail"`) {
-		t.Errorf("missing-anchor case: expected overall_verdict=fail in result; body=%s", body)
+	if !strings.Contains(body, `"overall_verdict":"pass"`) || !strings.Contains(body, `"source":"mcp_claude_audit"`) {
+		t.Errorf("missing-anchor case did not use actual Claude result; body=%s", body)
 	}
-	if len(rc.calls) != 0 {
-		t.Errorf("missing-anchor case: secondary backend invoked %d time(s); want 0 (refuse BEFORE fan-out)", len(rc.calls))
+	if len(rc.calls) != 1 || rc.calls[0].backend != BackendClaude {
+		t.Errorf("missing-anchor case calls = %+v, want exactly [claude]", rc.calls)
 	}
 }
 

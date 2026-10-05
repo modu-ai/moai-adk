@@ -1,5 +1,5 @@
-// 개요 · 칸반 · SPEC · 모니터 뷰모델.
-// internal/spec · session · goal · verify · kanban 을 읽기만 한다 — 쓰기 없음.
+// 개요 · 팩토리 · SPEC · 모니터 뷰모델.
+// internal/spec · session · goal · verify · factory 을 읽기만 한다 — 쓰기 없음.
 //
 // 이 파일의 규율: 모르는 것을 아는 것처럼 쓰지 않는다.
 //   - 세션 활성은 PID 생존을 확인한 것만 StateLive 로 올린다.
@@ -19,8 +19,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/goal"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/spec"
 	"github.com/modu-ai/moai-adk/internal/statusline"
@@ -30,7 +30,7 @@ import (
 const (
 	StateLive  = "live"  // PID 생존 확인
 	StateStale = "stale" // 기록은 있으나 하트비트가 낡음 / PID 미확인
-	StateIdle  = "idle"  // 세션 자체가 없음 = 체인 결함
+	StateIdle  = "idle"  // 세션 자체가 없음
 
 	StageDone    = "done"
 	StageActive  = "active"
@@ -43,11 +43,8 @@ const (
 	maxVerifyRows   = 10
 )
 
-// ChainRoles 는 kanban-dispatch.md 의 역할 순서를 그대로 따른다.
-var ChainRoles = []string{"lead", "plan", "run", "sync"}
-
-// KanbanRecord 는 디스크에 있는 칸반 세션 기록이다.
-type KanbanRecord = kanban.Record
+// FactoryRecord 는 디스크에 있는 팩토리 세션 기록이다.
+type FactoryRecord = factory.Record
 
 // StatVM 의 Note 는 영어 baseline("4 in-progress")이고 NoteKey 가 실제 표시
 // 언어를 바꾼다. 개수가 문장 안에 박힌 부제는 평평한 키 하나로 담을 수 없어
@@ -62,11 +59,6 @@ type AttentionVM struct {
 	Icon      string // alert | clock
 	Source    string
 	Text      string
-	// Role 는 이 행이 칸반 미기동 역할 알림일 때 그 역할 이름이다. 비어 있으면
-	// Text 를 그대로 렌더하고, 차 있으면 Text 대신 Role + i18n 키 조각으로
-	// 렌더한다 — 같은 안내가 체인 띠와 여기 두 경로로 나오는데 번역 키를
-	// 공유해야 한쪽만 한국어가 되는 일이 없다.
-	Role      string
 	Badge     string
 	BadgeKind string // danger | outline
 	Href      string
@@ -87,26 +79,6 @@ type SessionVM struct {
 	PID int
 }
 
-type RoleVM struct {
-	Role           string
-	Session        string
-	Backend        string
-	Model          string // from the session's telemetry record; "" = not recorded
-	Effort         string // as above
-	ContextPct     int    // -1 = not recorded; 0 means "recorded as 0%", a different fact
-	State          string
-	Stage          string
-	StageEstimated bool
-	Heartbeat      string
-}
-
-type ChainVM struct {
-	Present  bool
-	CardID   string
-	IdleRole string // 가장 앞선 미기동 역할 — 체인이 멈춘 지점
-	Roles    []RoleVM
-}
-
 type SpecRowVM struct {
 	ID, Title, Status, Tier, Era, Updated, Drift, Session string
 }
@@ -119,23 +91,17 @@ type PipeColumnVM struct {
 
 type OverviewVM struct {
 	Stats      []StatVM
-	Chain      ChainVM
 	InProgress []SpecRowVM
 	Attention  []AttentionVM
 	Sessions   []SessionVM
 }
 
-type KanbanVM struct {
-	CardID   string
-	IdleRole string
-	Roles    []RoleVM
-	Columns  []PipeColumnVM
-	Total    int
+type FactoryVM struct {
+	Columns []PipeColumnVM
+	Total   int
 
-	// Lanes are the factory lanes. They stand beside Roles rather than inside it:
-	// a lane is not a chain role, and widening ChainRoles would make every chain
-	// consumer defend against a variable-length role list. No registered lane
-	// yields an empty list, and the view draws that fact.
+	// Lanes are the factory lanes. No registered lane yields an empty list, and
+	// the view draws that fact.
 	Lanes []LaneVM
 }
 
@@ -217,61 +183,26 @@ type MonitorVM struct {
 // sessionState 는 하트비트와 PID 생존으로만 판정한다.
 // 레지스트리에 항목이 있다는 사실만으로 활성이라고 쓰지 않는다 — 레지스트리에는
 // 종료된 프로세스의 항목이 남는다.
+//
+// 두 신호는 OR 로 묶는다. session.LiveAnchoredSessions(anchor.go) 가 같은 판단을
+// 이미 OR 로 하고 있고, 두 신호가 서로를 보강하는 관계이지 둘 다 있어야 하는
+// 관계가 아니기 때문이다. 살아있는 PID 는 그 자체로 세션이 살아있다는 직접
+// 증거이고, 신선한 하트비트는 PID 프로브가 죽음을 증명하지 못하는 플랫폼을 위한
+// 보수적 대비책이다. AND 로 묶으면 살아있는 PID 가 늙은 하트비트에 덮인다 —
+// 이 저장소 실측(2026-09-20, GH #1711): 살아있는 항목 147건 중 144건이 그 이유로
+// STALE 로 렌더됐다.
+//
+// 반대 방향은 그대로다. 죽은 PID 에 늙은 하트비트면 여전히 STALE 이다.
 func sessionState(lastHeartbeat time.Time, pid int, now time.Time) string {
-	if pid > 0 && processAlive(pid) && now.Sub(lastHeartbeat) <= staleAfter {
+	alive := pid > 0 && processAlive(pid)
+	if alive || now.Sub(lastHeartbeat) <= staleAfter {
 		return StateLive
 	}
 	return StateStale
 }
 
 func processAlive(pid int) bool {
-	p, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	return p.Signal(syscallZero) == nil
-}
-
-// roleOf 는 칸반 기록에서 역할을 읽는다. 기록이 없으면 빈 문자열을 돌려주고,
-// 화면은 그 칸을 미기동으로 정직하게 그린다 — 그럴듯한 값을 채우지 않는다.
-func roleOf(r KanbanRecord) string { return strings.ToLower(strings.TrimSpace(r.Role)) }
-
-// chainRoleRecords keeps only the records whose role is one of the four fixed
-// chain roles. A factory lane's record carries role "lane", which is not a chain
-// role: buildChain treats any record as proof the chain is present but renders
-// only ChainRoles, so passing one through makes a lanes-only project render an
-// idle chain it does not have.
-func chainRoleRecords(records []KanbanRecord) []KanbanRecord {
-	isChainRole := make(map[string]bool, len(ChainRoles))
-	for _, role := range ChainRoles {
-		isChainRole[role] = true
-	}
-	out := make([]KanbanRecord, 0, len(records))
-	for _, r := range records {
-		if isChainRole[roleOf(r)] {
-			out = append(out, r)
-		}
-	}
-	return out
-}
-
-// readTelemetry reads one session's telemetry record through the single reader
-// SPEC-SESSION-TELEMETRY-001 exports, and builds the path with that SPEC's own
-// helper: this package restates neither the record's location nor its schema,
-// because one on-disk format declared in two places is a format that forks.
-//
-// Unreadable yields nil. "No record" and "the value is zero" are different
-// facts, and the view draws the difference.
-func readTelemetry(root, sessionID string) *statusline.SessionTelemetryRecord {
-	path := statusline.SessionTelemetryPath(filepath.Join(root, ".moai", "state"), sessionID)
-	if path == "" {
-		return nil
-	}
-	rec, err := statusline.ReadSessionTelemetry(path)
-	if err != nil {
-		return nil
-	}
-	return rec
+	return session.IsProcessAlive(pid)
 }
 
 // telemetryCells returns one session's model, effort and context percentage.
@@ -287,47 +218,6 @@ func telemetryCells(rec *statusline.SessionTelemetryRecord) (model, effort strin
 		pct = clampPct(int(rec.RawPct))
 	}
 	return rec.Model, rec.Effort, pct
-}
-
-// buildChain 은 칸반 세션 기록과 활성 세션을 역할 5칸에 배치한다.
-// root 는 세션별 텔레메트리 기록을 찾는 데만 쓴다.
-func buildChain(root string, records []KanbanRecord, sessions map[string]SessionVM, cardID string) ChainVM {
-	byRole := map[string]KanbanRecord{}
-	for _, r := range records {
-		if role := roleOf(r); role != "" {
-			byRole[role] = r
-		}
-	}
-	out := ChainVM{Present: len(records) > 0, CardID: cardID}
-	for _, role := range ChainRoles {
-		rec, ok := byRole[role]
-		if !ok {
-			out.Roles = append(out.Roles, RoleVM{Role: role, State: StateIdle, Stage: StageBlocked, ContextPct: -1})
-			if out.IdleRole == "" {
-				out.IdleRole = role
-			}
-			continue
-		}
-		s := sessions[rec.SessionID]
-		if s.State == "" {
-			s.State = StateStale
-		}
-		stage, estimated := estimateStage(s)
-		model, effort, pct := telemetryCells(readTelemetry(root, rec.SessionID))
-		out.Roles = append(out.Roles, RoleVM{
-			Role:           role,
-			Session:        rec.SessionID,
-			Backend:        rec.Backend,
-			Model:          model,
-			Effort:         effort,
-			ContextPct:     pct,
-			State:          s.State,
-			Stage:          stage,
-			StageEstimated: estimated,
-			Heartbeat:      s.Heartbeat,
-		})
-	}
-	return out
 }
 
 // estimateStage — 하트비트 추정. 전이 기록이 생기면 estimated=false 로 바뀐다.
@@ -476,7 +366,9 @@ func loadSpecRows(root string) ([]SpecRowVM, map[string][]FindingVM, error) {
 
 // loadSessions 는 활성 세션 레지스트리를 프로젝트 루트 아래에서 직접 읽는다.
 func loadSessions(root string, now time.Time) ([]SessionVM, map[string]SessionVM) {
-	path := filepath.Join(root, ".moai", "state", "active-sessions.json")
+	// 경로는 primary 체크아웃에 앵커링해서 푼다 — 레인이 워크트리에서 등록해도
+	// 같은 레지스트리를 읽는다(GH #1711).
+	path := session.RegistryPathFor(root)
 	data, err := os.ReadFile(path) // #nosec G304 — 프로젝트 루트 하위 고정 경로
 	if err != nil {
 		return nil, map[string]SessionVM{}
@@ -504,14 +396,16 @@ func loadSessions(root string, now time.Time) ([]SessionVM, map[string]SessionVM
 	return out, byID
 }
 
-// loadKanbanRecords 는 .moai/state/kanban/*.json 을 읽는다.
-func loadKanbanRecords(root string) []KanbanRecord {
-	dir := filepath.Join(root, ".moai", "state", "kanban")
+// loadFactoryRecords 는 프로젝트 상태 디렉터리의 세션 레코드(*.json)를 읽는다.
+// 디렉터리 이름은 factory.RecordPath 로 해석한다 — 이름을 여기에 적어 두면
+// 이름이 바뀐 뒤에도 조용히 옛 경로를 읽는다.
+func loadFactoryRecords(root string) []FactoryRecord {
+	dir := filepath.Dir(factory.RecordPath(root, "probe"))
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil
 	}
-	var out []KanbanRecord
+	var out []FactoryRecord
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
@@ -520,7 +414,7 @@ func loadKanbanRecords(root string) []KanbanRecord {
 		if err != nil {
 			continue
 		}
-		var rec KanbanRecord
+		var rec FactoryRecord
 		if err := json.Unmarshal(data, &rec); err != nil {
 			continue
 		}
@@ -629,12 +523,11 @@ func shortID(id string) string {
 
 func (a *app) buildOverview(now time.Time) (OverviewVM, error) {
 	root := a.cfg.ProjectRoot
-	rows, findings, err := loadSpecRows(root)
+	rows, findings, err := a.specs.get(root)
 	if err != nil {
 		return OverviewVM{}, err
 	}
-	sessions, byID := loadSessions(root, now)
-	records := loadKanbanRecords(root)
+	sessions, _ := loadSessions(root, now)
 
 	var inProgress []SpecRowVM
 	mustFix := 0
@@ -668,37 +561,25 @@ func (a *app) buildOverview(now time.Time) (OverviewVM, error) {
 
 	vm := OverviewVM{
 		Stats: []StatVM{
-			{Label: "SPEC", Value: itoa(len(rows)), Note: itoa(len(inProgress)) + " in-progress", NoteKey: "statNote.in-progress", NoteParams: itoa(len(inProgress))},
-			{Label: "drift", Value: itoa(mustFix), Note: "MUST-FIX", NoteKey: "statNote.must-fix"},
+			{Label: "work tracked", Value: itoa(len(rows)), Note: itoa(len(inProgress)) + " in-progress", NoteKey: "statNote.in-progress", NoteParams: itoa(len(inProgress))},
+			{Label: "review", Value: itoa(mustFix), Note: "needs review", NoteKey: "statNote.needs-review"},
 			{Label: "session", Value: itoa(live) + "/" + itoa(len(sessions)), Note: "PID confirmed / registry", NoteKey: "statNote.pid-confirmed-registry"},
 			{Label: "verify", Value: lastVerify, Note: itoa(verifyKeys) + " keys", NoteKey: "statNote.keys", NoteParams: itoa(verifyKeys)},
 		},
-		Chain:    buildChain(root, records, byID, chainCardID(records)),
 		Sessions: sessions,
 	}
 	if len(inProgress) > maxOverviewRows {
 		inProgress = inProgress[:maxOverviewRows]
 	}
 	vm.InProgress = inProgress
-	vm.Attention = buildAttention(rows, findings, vm.Chain)
+	vm.Attention = buildAttention(rows, findings)
 	return vm, nil
 }
 
 // buildAttention 은 사람이 손대야 하는 것만 모은다 — MUST-FIX 드리프트와
 // 미기동 역할. 정상 상태를 나열하지 않는다.
-func buildAttention(rows []SpecRowVM, findings map[string][]FindingVM, chain ChainVM) []AttentionVM {
+func buildAttention(rows []SpecRowVM, findings map[string][]FindingVM) []AttentionVM {
 	var out []AttentionVM
-	if chain.Present && chain.IdleRole != "" {
-		out = append(out, AttentionVM{
-			Icon:      "alert",
-			Source:    "kanban",
-			Text:      chain.IdleRole + " session not started — the chain stops here",
-			Role:      chain.IdleRole,
-			Badge:     "idle",
-			BadgeKind: "danger",
-			Href:      "/kanban",
-		})
-	}
 	for _, r := range rows {
 		for _, f := range findings[r.ID] {
 			if !strings.HasPrefix(f.Severity, "MUST") {
@@ -720,41 +601,19 @@ func buildAttention(rows []SpecRowVM, findings map[string][]FindingVM, chain Cha
 	return out
 }
 
-// chainCardID 는 기록된 SPEC 이 있으면 그것을 카드로 본다. 없으면 빈 문자열 —
-// plan 단계부터 시작한 체인은 아직 카드 식별자가 없다.
-func chainCardID(records []KanbanRecord) string {
-	for _, r := range records {
-		if r.SpecID != "" {
-			return r.SpecID
-		}
-	}
-	return ""
-}
-
-func (a *app) buildKanban(now time.Time) (KanbanVM, error) {
+func (a *app) buildFactory(now time.Time) (FactoryVM, error) {
 	root := a.cfg.ProjectRoot
-	rows, _, err := loadSpecRows(root)
+	rows, _, err := a.specs.get(root)
 	if err != nil {
-		return KanbanVM{}, err
+		return FactoryVM{}, err
 	}
 	_, byID := loadSessions(root, now)
-	records := loadKanbanRecords(root)
-	// The chain is built from chain-role records only. buildChain reads
-	// `len(records) > 0` as proof a chain exists but renders only ChainRoles, so
-	// feeding it a factory lane's record makes a project that runs lanes and no
-	// chain report a present chain stopped at an idle `lead` — a confident wrong
-	// answer on a supported configuration. loadFactoryLanes still receives the
-	// complete set; it is the half that needs the lane records.
-	chainRecords := chainRoleRecords(records)
-	chain := buildChain(root, chainRecords, byID, chainCardID(chainRecords))
+	records := loadFactoryRecords(root)
 
-	return KanbanVM{
-		CardID:   chain.CardID,
-		IdleRole: chain.IdleRole,
-		Roles:    chain.Roles,
-		Columns:  pipelineColumns(rows),
-		Total:    len(rows),
-		Lanes:    loadFactoryLanes(root, byID, records),
+	return FactoryVM{
+		Columns: pipelineColumns(rows),
+		Total:   len(rows),
+		Lanes:   loadFactoryLanes(root, byID, records),
 	}, nil
 }
 
@@ -773,7 +632,7 @@ func (a *app) buildMonitor(now time.Time) (MonitorVM, error) {
 
 // buildSpecList 는 검색어·상태 필터·선택 항목을 반영한 SPEC 목록을 만든다.
 func (a *app) buildSpecList(query, status, selected string) (SpecListVM, error) {
-	rows, findings, err := loadSpecRows(a.cfg.ProjectRoot)
+	rows, findings, err := a.specs.get(a.cfg.ProjectRoot)
 	if err != nil {
 		return SpecListVM{}, err
 	}

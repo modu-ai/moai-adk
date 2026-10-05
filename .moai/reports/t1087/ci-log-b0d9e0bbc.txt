@@ -1,0 +1,305 @@
+Test (browser fire guard)	Set up job	﻿2026-09-22T13:47:53.4505036Z Current runner version: '2.337.0'
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4523092Z ##[group]Runner Image Provisioner
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4523642Z Hosted Compute Agent
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4523985Z Version: 20260828.587
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4524651Z Commit: abac92662cab4cc7352de4f9f9d2e2419aad9c29
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4525088Z Build Date: 2026-08-28T16:44:25Z
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4525556Z Worker ID: {7300c8b0-aefd-41d3-be5a-761338e670be}
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4525995Z Azure Region: centralus
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4526362Z ##[endgroup]
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4527423Z ##[group]Operating System
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4527793Z Ubuntu
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4528179Z 24.04.5
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4528504Z LTS
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4528818Z ##[endgroup]
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4529191Z ##[group]Runner Image
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4529540Z Image: ubuntu-24.04
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4529903Z Version: 20260907.300.1
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4530586Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260907.300/images/ubuntu/Ubuntu2404-Readme.md
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4531645Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260907.300
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4532217Z ##[endgroup]
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4532943Z ##[group]GITHUB_TOKEN Permissions
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4534463Z Contents: read
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4534891Z Metadata: read
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4535235Z ##[endgroup]
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4536581Z Secret source: Actions
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4537165Z Cache mode: write
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4537592Z Prepare workflow directory
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4785748Z Prepare all required actions
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.4817283Z Getting action download info
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.7334046Z Download action repository 'actions/checkout@v7' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+Test (browser fire guard)	Set up job	2026-09-22T13:47:53.9513784Z Download action repository 'actions/setup-go@v7' (SHA:b7ad1dad31e06c5925ef5d2fc7ad053ef454303e)
+Test (browser fire guard)	Set up job	2026-09-22T13:47:54.5412520Z Complete job name: Test (browser fire guard)
+Test (browser fire guard)	Check out repository	﻿2026-09-22T13:47:54.5875780Z ##[group]Run actions/checkout@v7
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5876225Z with:
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5876468Z   repository: modu-ai/moai-adk
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5878686Z   token: ***
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5878926Z   ssh-strict: true
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5879165Z   ssh-user: git
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5879412Z   persist-credentials: true
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5879683Z   clean: true
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5879933Z   sparse-checkout-cone-mode: true
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5880218Z   fetch-depth: 1
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5880459Z   fetch-tags: false
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5880705Z   show-progress: true
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5880952Z   lfs: false
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5881181Z   submodules: false
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5881430Z   set-safe-directory: true
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5881715Z   allow-unsafe-pr-checkout: false
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.5882071Z ##[endgroup]
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.6573914Z Syncing repository: modu-ai/moai-adk
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.6575647Z ##[group]Getting Git version info
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.6576232Z Working directory is '/home/runner/work/moai-adk/moai-adk'
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.6577206Z [command]/usr/bin/git version
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.6681943Z git version 2.55.0
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.6695527Z ##[endgroup]
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.6704354Z Temporarily overriding HOME='/home/runner/work/_temp/9392e61e-1c6c-46e5-ae55-334e4d4052e1' before making global git config changes
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.6705627Z Adding repository directory to the temporary git global config as a safe directory
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.6708607Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/moai-adk/moai-adk
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.7454539Z Deleting the contents of '/home/runner/work/moai-adk/moai-adk'
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.7457375Z ##[group]Determining repository object format
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.7458776Z ##[endgroup]
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.7459175Z ##[group]Initializing the repository
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.7462140Z [command]/usr/bin/git init /home/runner/work/moai-adk/moai-adk
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8240308Z hint: Using 'master' as the name for the initial branch. This default branch name
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8241121Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8241860Z hint: to use in all of your new repositories, which will suppress this warning,
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8242262Z hint: call:
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8242487Z hint:
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8242786Z hint: 	git config --global init.defaultBranch <name>
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8243150Z hint:
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8243465Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8244149Z hint: 'development'. The just-created branch can be renamed via this command:
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8244939Z hint:
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8245271Z hint: 	git branch -m <name>
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8245662Z hint:
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8246181Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8247048Z Initialized empty Git repository in /home/runner/work/moai-adk/moai-adk/.git/
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8256346Z [command]/usr/bin/git remote add origin https://github.com/modu-ai/moai-adk
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8514512Z ##[endgroup]
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8515210Z ##[group]Disabling automatic garbage collection
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8517112Z [command]/usr/bin/git config --local gc.auto 0
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8935234Z ##[endgroup]
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8935869Z ##[group]Setting up auth
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8936342Z Removing SSH command configuration
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8940641Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.8972906Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.9264003Z Removing HTTP extra header
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.9273069Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.9327176Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.9532507Z Removing includeIf entries pointing to credentials config files
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.9536537Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.9565887Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:54.9741319Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-4b7b9d08-a870-4b53-a45e-50e53f883892.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:55.0125111Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/moai-adk/moai-adk/.git.path /home/runner/work/_temp/git-credentials-4b7b9d08-a870-4b53-a45e-50e53f883892.config
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:55.0681222Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/moai-adk/moai-adk/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-4b7b9d08-a870-4b53-a45e-50e53f883892.config
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:55.1331304Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-4b7b9d08-a870-4b53-a45e-50e53f883892.config
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:55.1951792Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-4b7b9d08-a870-4b53-a45e-50e53f883892.config
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:55.1981809Z ##[endgroup]
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:55.1983017Z ##[group]Fetching the repository
+Test (browser fire guard)	Check out repository	2026-09-22T13:47:55.1988526Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +b0d9e0bbc592b3c7160f49938ca7531a16b605e0:refs/remotes/origin/develop
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:06.1285981Z From https://github.com/modu-ai/moai-adk
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:06.1287482Z  * [new ref]         b0d9e0bbc592b3c7160f49938ca7531a16b605e0 -> origin/develop
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:06.1294623Z [command]/usr/bin/git branch --list --remote origin/develop
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:06.1321122Z   origin/develop
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:06.1327426Z [command]/usr/bin/git rev-parse refs/remotes/origin/develop
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:06.1350873Z b0d9e0bbc592b3c7160f49938ca7531a16b605e0
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:06.1354511Z ##[endgroup]
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:06.1355145Z ##[group]Determining the checkout info
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:06.1355756Z ##[endgroup]
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:06.1359404Z [command]/usr/bin/git sparse-checkout disable
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:06.1403891Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:06.1431945Z ##[group]Checking out the ref
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:06.1435188Z [command]/usr/bin/git checkout --progress --force -B develop refs/remotes/origin/develop
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:07.1636299Z Switched to a new branch 'develop'
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:07.1644387Z branch 'develop' set up to track 'origin/develop'.
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:07.1692356Z ##[endgroup]
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:07.1735068Z [command]/usr/bin/git log -1 --format=%H
+Test (browser fire guard)	Check out repository	2026-09-22T13:48:07.1759983Z b0d9e0bbc592b3c7160f49938ca7531a16b605e0
+Test (browser fire guard)	Set up Go	﻿2026-09-22T13:48:07.1947016Z ##[group]Run actions/setup-go@v7
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:07.1947193Z with:
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:07.1947317Z   go-version-file: go.mod
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:07.1947444Z   cache: true
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:07.1947563Z   check-latest: false
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:07.1949012Z   token: ***
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:07.1949148Z ##[endgroup]
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:07.2687993Z Setup go version spec 1.26.8
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:07.2697445Z Found in cache @ /opt/hostedtoolcache/go/1.26.8/x64
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:07.2698142Z Added go to the path
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:07.2699901Z Successfully set up Go version 1.26.8
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:08.0398931Z [command]/opt/hostedtoolcache/go/1.26.8/x64/bin/go env GOMODCACHE
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:08.0424747Z [command]/opt/hostedtoolcache/go/1.26.8/x64/bin/go env GOCACHE
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:08.0446945Z /home/runner/go/pkg/mod
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:08.0458021Z /home/runner/.cache/go-build
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:08.2390966Z Cache hit for: setup-go-Linux-x64-ubuntu24-go-1.26.8-c4dc600a14d0a75915e79ef1f52dab1af6099fb7629fa5cd4b421f943ff8a4b8
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.3043699Z Received 58311762 of 58311762 (100.0%), 61.5 MBs/sec
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.3044886Z Cache Size: ~56 MB (58311762 B)
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.3072426Z [command]/usr/bin/tar -xf /home/runner/work/_temp/86f26032-ae44-4238-86d0-97ee05d71d81/cache.tzst -P -C /home/runner/work/moai-adk/moai-adk --use-compress-program unzstd
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.6561839Z Cache restored successfully
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.6590900Z Cache restored from key: setup-go-Linux-x64-ubuntu24-go-1.26.8-c4dc600a14d0a75915e79ef1f52dab1af6099fb7629fa5cd4b421f943ff8a4b8
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.6619296Z go version go1.26.8 linux/amd64
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.6619479Z 
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.6619705Z ##[group]go env
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7040859Z AR='ar'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7041170Z CC='gcc'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7041414Z CGO_CFLAGS='-O2 -g'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7041637Z CGO_CPPFLAGS=''
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7041864Z CGO_CXXFLAGS='-O2 -g'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7042084Z CGO_ENABLED='1'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7042303Z CGO_FFLAGS='-O2 -g'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7042489Z CGO_LDFLAGS='-O2 -g'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7042682Z CXX='g++'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7042851Z GCCGO='gccgo'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7043039Z GO111MODULE=''
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7043206Z GOAMD64='v1'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7043389Z GOARCH='amd64'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7043559Z GOAUTH='netrc'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7043725Z GOBIN=''
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7043917Z GOCACHE='/home/runner/.cache/go-build'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7044308Z GOCACHEPROG=''
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7044490Z GODEBUG=''
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7044718Z GOENV='/home/runner/.config/go/env'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7044942Z GOEXE=''
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7045105Z GOEXPERIMENT=''
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7045280Z GOFIPS140='off'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7045453Z GOFLAGS=''
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7046001Z GOGCCFLAGS='-fPIC -m64 -pthread -Wl,--no-gc-sections -fmessage-length=0 -ffile-prefix-map=/tmp/go-build2782888890=/tmp/go-build -gno-record-gcc-switches'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7046581Z GOHOSTARCH='amd64'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7047062Z GOHOSTOS='linux'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7047242Z GOINSECURE=''
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7047467Z GOMOD='/home/runner/work/moai-adk/moai-adk/go.mod'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7047750Z GOMODCACHE='/home/runner/go/pkg/mod'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7047976Z GONOPROXY=''
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7048147Z GONOSUMDB=''
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7048312Z GOOS='linux'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7048495Z GOPATH='/home/runner/go'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7048736Z GOPRIVATE=''
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7049031Z GOPROXY='https://proxy.golang.org,direct'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7049318Z GOROOT='/opt/hostedtoolcache/go/1.26.8/x64'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7049577Z GOSUMDB='sum.golang.org'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7049786Z GOTELEMETRY='local'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7050018Z GOTELEMETRYDIR='/home/runner/.config/go/telemetry'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7050282Z GOTMPDIR=''
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7050459Z GOTOOLCHAIN='local'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7050741Z GOTOOLDIR='/opt/hostedtoolcache/go/1.26.8/x64/pkg/tool/linux_amd64'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7051052Z GOVCS=''
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7051225Z GOVERSION='go1.26.8'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7051416Z GOWORK=''
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7051594Z PKG_CONFIG='pkg-config'
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7051934Z 
+Test (browser fire guard)	Set up Go	2026-09-22T13:48:09.7052216Z ##[endgroup]
+Test (browser fire guard)	Install pinned websockets (probe dependency — never a Go module)	﻿2026-09-22T13:48:09.7184594Z ##[group]Run python3 -m pip --version >/dev/null 2>&1 || python3 -m ensurepip --upgrade
+Test (browser fire guard)	Install pinned websockets (probe dependency — never a Go module)	2026-09-22T13:48:09.7185023Z ^[[36;1mpython3 -m pip --version >/dev/null 2>&1 || python3 -m ensurepip --upgrade^[[0m
+Test (browser fire guard)	Install pinned websockets (probe dependency — never a Go module)	2026-09-22T13:48:09.7185358Z ^[[36;1mpython3 -m pip install --user --disable-pip-version-check --quiet "websockets==15.0.1"^[[0m
+Test (browser fire guard)	Install pinned websockets (probe dependency — never a Go module)	2026-09-22T13:48:09.7185691Z ^[[36;1mpython3 -c "import websockets; print('websockets', websockets.__version__)"^[[0m
+Test (browser fire guard)	Install pinned websockets (probe dependency — never a Go module)	2026-09-22T13:48:09.7220119Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Test (browser fire guard)	Install pinned websockets (probe dependency — never a Go module)	2026-09-22T13:48:09.7220332Z env:
+Test (browser fire guard)	Install pinned websockets (probe dependency — never a Go module)	2026-09-22T13:48:09.7220452Z   GOTOOLCHAIN: local
+Test (browser fire guard)	Install pinned websockets (probe dependency — never a Go module)	2026-09-22T13:48:09.7220582Z ##[endgroup]
+Test (browser fire guard)	Install pinned websockets (probe dependency — never a Go module)	2026-09-22T13:48:12.5595823Z websockets 15.0.1
+Test (browser fire guard)	Provision pinned Chrome for Testing (sha256-verified download)	﻿2026-09-22T13:48:12.5686123Z ##[group]Run CFT_VERSION="153.0.8010.52"
+Test (browser fire guard)	Provision pinned Chrome for Testing (sha256-verified download)	2026-09-22T13:48:12.5686339Z ^[[36;1mCFT_VERSION="153.0.8010.52"^[[0m
+Test (browser fire guard)	Provision pinned Chrome for Testing (sha256-verified download)	2026-09-22T13:48:12.5686593Z ^[[36;1mCFT_SHA256="e66f66d4802a46d4a022667e668aa950e277cadbfbed4b3777915b47413a0ef9"^[[0m
+Test (browser fire guard)	Provision pinned Chrome for Testing (sha256-verified download)	2026-09-22T13:48:12.5686999Z ^[[36;1mCFT_URL="https://storage.googleapis.com/chrome-for-testing-public/${CFT_VERSION}/linux64/chrome-linux64.zip"^[[0m
+Test (browser fire guard)	Provision pinned Chrome for Testing (sha256-verified download)	2026-09-22T13:48:12.5687386Z ^[[36;1mcurl --fail --silent --show-error --location -o chrome-linux64.zip "$CFT_URL"^[[0m
+Test (browser fire guard)	Provision pinned Chrome for Testing (sha256-verified download)	2026-09-22T13:48:12.5687686Z ^[[36;1mecho "${CFT_SHA256}  chrome-linux64.zip" | sha256sum --check --strict -^[[0m
+Test (browser fire guard)	Provision pinned Chrome for Testing (sha256-verified download)	2026-09-22T13:48:12.5687912Z ^[[36;1mmkdir -p "$RUNNER_TEMP/cft"^[[0m
+Test (browser fire guard)	Provision pinned Chrome for Testing (sha256-verified download)	2026-09-22T13:48:12.5688100Z ^[[36;1munzip -q chrome-linux64.zip -d "$RUNNER_TEMP/cft"^[[0m
+Test (browser fire guard)	Provision pinned Chrome for Testing (sha256-verified download)	2026-09-22T13:48:12.5688375Z ^[[36;1mecho "MOAI_BROWSER_GUARD_CHROME=$RUNNER_TEMP/cft/chrome-linux64/chrome" >> "$GITHUB_ENV"^[[0m
+Test (browser fire guard)	Provision pinned Chrome for Testing (sha256-verified download)	2026-09-22T13:48:12.5721329Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Test (browser fire guard)	Provision pinned Chrome for Testing (sha256-verified download)	2026-09-22T13:48:12.5721520Z env:
+Test (browser fire guard)	Provision pinned Chrome for Testing (sha256-verified download)	2026-09-22T13:48:12.5721674Z   GOTOOLCHAIN: local
+Test (browser fire guard)	Provision pinned Chrome for Testing (sha256-verified download)	2026-09-22T13:48:12.5721802Z ##[endgroup]
+Test (browser fire guard)	Provision pinned Chrome for Testing (sha256-verified download)	2026-09-22T13:48:14.0130013Z chrome-linux64.zip: OK
+Test (browser fire guard)	Lint the probe manifest (AC-AFG-009)	﻿2026-09-22T13:48:16.5089043Z ##[group]Run python3 internal/web/testdata/appjs_fire_probe.py --lint-manifest
+Test (browser fire guard)	Lint the probe manifest (AC-AFG-009)	2026-09-22T13:48:16.5089394Z ^[[36;1mpython3 internal/web/testdata/appjs_fire_probe.py --lint-manifest^[[0m
+Test (browser fire guard)	Lint the probe manifest (AC-AFG-009)	2026-09-22T13:48:16.5120306Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Test (browser fire guard)	Lint the probe manifest (AC-AFG-009)	2026-09-22T13:48:16.5120508Z env:
+Test (browser fire guard)	Lint the probe manifest (AC-AFG-009)	2026-09-22T13:48:16.5120627Z   GOTOOLCHAIN: local
+Test (browser fire guard)	Lint the probe manifest (AC-AFG-009)	2026-09-22T13:48:16.5120827Z   MOAI_BROWSER_GUARD_CHROME: /home/runner/work/_temp/cft/chrome-linux64/chrome
+Test (browser fire guard)	Lint the probe manifest (AC-AFG-009)	2026-09-22T13:48:16.5121049Z ##[endgroup]
+Test (browser fire guard)	Lint the probe manifest (AC-AFG-009)	2026-09-22T13:48:16.5745912Z LINT OK: 8 entries + 7 exclusions cover 13 inventory groups; all effects within ['clipboard', 'label', 'swap', 'tab', 'visibility']; post-swap entry present
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	﻿2026-09-22T13:48:16.5896301Z ##[group]Run go test ./internal/web/ -run 'AppJsHandlersFire' -v -count=1 -timeout 10m
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:16.5896664Z ^[[36;1mgo test ./internal/web/ -run 'AppJsHandlersFire' -v -count=1 -timeout 10m^[[0m
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:16.5928499Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:16.5928694Z env:
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:16.5928810Z   GOTOOLCHAIN: local
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:16.5929010Z   MOAI_BROWSER_GUARD_CHROME: /home/runner/work/_temp/cft/chrome-linux64/chrome
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:16.5929230Z   MOAI_BROWSER_GUARD: 1
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:16.5929360Z ##[endgroup]
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:16.7836154Z go: downloading github.com/a-h/templ v0.3.1020
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:16.7836738Z go: downloading github.com/fsnotify/fsnotify v1.10.1
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:17.2192814Z go: downloading golang.org/x/net v0.58.0
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:17.2543622Z go: downloading modernc.org/sqlite v1.57.0
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:17.2555068Z go: downloading github.com/google/uuid v1.6.0
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:17.3502134Z go: downloading github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:17.5942196Z go: downloading golang.org/x/sync v0.22.0
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:17.7988038Z go: downloading github.com/charmbracelet/x/ansi v0.11.8
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:17.8619170Z go: downloading github.com/charmbracelet/x/cellbuf v0.0.15
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:17.8927191Z go: downloading github.com/muesli/termenv v0.16.0
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:17.9336060Z go: downloading github.com/rivo/uniseg v0.4.7
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:17.9901472Z go: downloading charm.land/lipgloss/v2 v2.0.6
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:18.0268532Z go: downloading github.com/charmbracelet/colorprofile v0.4.3
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:18.0583417Z go: downloading github.com/mattn/go-isatty v0.0.24
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:18.2516527Z go: downloading github.com/spf13/cobra v1.10.2
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:18.3158141Z go: downloading github.com/clipperhouse/displaywidth v0.11.0
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:18.3182367Z go: downloading github.com/clipperhouse/uax29/v2 v2.7.0
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:18.3656303Z go: downloading github.com/lucasb-eyer/go-colorful v1.4.1
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:18.3829239Z go: downloading github.com/mattn/go-runewidth v0.0.29
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:18.4332125Z go: downloading github.com/charmbracelet/x/term v0.2.2
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:18.4786928Z go: downloading github.com/aymanbagabas/go-osc52/v2 v2.0.1
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:18.4863964Z go: downloading github.com/charmbracelet/ultraviolet v0.0.0-20260811164956-006e29f97886
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:18.5317147Z go: downloading github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:18.6778015Z go: downloading github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:19.4943484Z go: downloading github.com/spf13/pflag v1.0.10
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:19.4947188Z go: downloading github.com/charmbracelet/x/windows v0.2.2
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:19.4947869Z go: downloading github.com/charmbracelet/x/termios v0.1.1
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:19.4948575Z go: downloading github.com/muesli/cancelreader v0.2.2
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:19.5551637Z go: downloading modernc.org/libc v1.74.4
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:20.6022248Z go: downloading modernc.org/memory v1.11.0
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:20.6023196Z go: downloading github.com/dustin/go-humanize v1.0.1
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:20.6023493Z go: downloading modernc.org/mathutil v1.7.1
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:20.6678224Z go: downloading github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:49.7859189Z === RUN   TestAppJsHandlersFireRuntime
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:50.0603515Z     appjs_fire_guard_test.go:301: headless Chrome exited before exposing a CDP port
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:50.0608581Z --- FAIL: TestAppJsHandlersFireRuntime (0.27s)
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:50.0608898Z === RUN   TestAppJsHandlersFireSelectorMiss
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:50.2686293Z     appjs_fire_guard_test.go:352: headless Chrome exited before exposing a CDP port
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:50.2696568Z --- FAIL: TestAppJsHandlersFireSelectorMiss (0.21s)
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:50.2696940Z FAIL
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:50.2697927Z FAIL	github.com/modu-ai/moai-adk/internal/web	0.488s
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:50.2730032Z FAIL
+Test (browser fire guard)	Green phase — gated driver tests (in-process surface)	2026-09-22T13:48:50.3782301Z ##[error]Process completed with exit code 1.
+Test (browser fire guard)	Post Check out repository	﻿2026-09-22T13:48:50.3898639Z Post job cleanup.
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.4487097Z [command]/usr/bin/git version
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.4520825Z git version 2.55.0
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.4545164Z Temporarily overriding HOME='/home/runner/work/_temp/34714fd5-51d7-452d-abee-42086a607a32' before making global git config changes
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.4545942Z Adding repository directory to the temporary git global config as a safe directory
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.4548702Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/moai-adk/moai-adk
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.4577492Z Removing SSH command configuration
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.4582206Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.4619622Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.4836236Z Removing HTTP extra header
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.4841864Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.4878399Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5102131Z Removing includeIf entries pointing to credentials config files
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5102532Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5130424Z includeif.gitdir:/home/runner/work/moai-adk/moai-adk/.git.path
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5130919Z includeif.gitdir:/home/runner/work/moai-adk/moai-adk/.git/worktrees/*.path
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5131187Z includeif.gitdir:/github/workspace/.git.path
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5131404Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5145230Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/moai-adk/moai-adk/.git.path
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5160638Z /home/runner/work/_temp/git-credentials-4b7b9d08-a870-4b53-a45e-50e53f883892.config
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5168407Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/moai-adk/moai-adk/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-4b7b9d08\-a870\-4b53\-a45e\-50e53f883892\.config
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5199490Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/moai-adk/moai-adk/.git/worktrees/*.path
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5228292Z /home/runner/work/_temp/git-credentials-4b7b9d08-a870-4b53-a45e-50e53f883892.config
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5235176Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/moai-adk/moai-adk/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-4b7b9d08\-a870\-4b53\-a45e\-50e53f883892\.config
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5264544Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5286264Z /github/runner_temp/git-credentials-4b7b9d08-a870-4b53-a45e-50e53f883892.config
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5291182Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-4b7b9d08\-a870\-4b53\-a45e\-50e53f883892\.config
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5320803Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5342949Z /github/runner_temp/git-credentials-4b7b9d08-a870-4b53-a45e-50e53f883892.config
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5349382Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-4b7b9d08\-a870\-4b53\-a45e\-50e53f883892\.config
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5380082Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Test (browser fire guard)	Post Check out repository	2026-09-22T13:48:50.5572518Z Removing credentials config '/home/runner/work/_temp/git-credentials-4b7b9d08-a870-4b53-a45e-50e53f883892.config'
+Test (browser fire guard)	Complete job	﻿2026-09-22T13:48:50.5699432Z Cleaning up orphan processes

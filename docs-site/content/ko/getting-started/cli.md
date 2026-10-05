@@ -21,7 +21,7 @@ moai --help
 
 | 그룹 | 명령어 | 설명 |
 |------|--------|------|
-| **Launch** | `moai cc` · `moai cg` · `moai glm` | Claude Code 세션 시작 (백엔드 선택) |
+| **Launch** | `moai cc` · `moai glm` | Claude Code 세션 시작 (백엔드 선택) |
 | **Project** | `moai init` · `moai update` · `moai doctor` · `moai status` | 프로젝트 초기화, 업데이트, 진단, 상태 조회 |
 | **Tools** | `moai profile` · `moai inventory` · `moai hook` · `moai worktree` · `moai spec` · `moai harness` · ... | 설정, 인벤토리, 훅, 워크트리 등 도구 |
 
@@ -68,13 +68,12 @@ moai init [project-name] [OPTIONS]
 | `--root <path>` | 프로젝트 루트 디렉터리 (기본값: 현재 디렉터리) |
 | `--git-mode <manual\|personal\|team>` | Git 워크플로우 모드 (기본값: manual) |
 | `--git-provider <github\|gitlab>` | Git 제공자 |
-| `--project-mode <personal\|team>` | 프로젝트 모드 (기본값: personal) |
 | `--enable-lsp` | LSP 연동 활성화 (기본값: true) |
 | `--enforce-quality` | 품질 게이트 강제 (기본값: true) |
 | `--enable-design` | 디자인 워크플로우 활성화 (기본값: true) |
-| `--profile <high\|medium\|low>` | 모델+effort 프로필 — `llm.yaml` `profile` 에 저장 (프로필 매트릭스 열 선택). legacy 값 `max` 도 입력으로 받아 `high` 로 정규화 |
-| `--model-policy <high\|medium\|low>` | legacy 성능 티어 — `llm.yaml` `performance_tier` 에 저장 (`profile` 부재 시 별칭) |
-| `--high` | **삭제 예정** `--model-policy high` 의 별칭 |
+| `--profile <high\|medium\|low>` | **지원 종료 스텁** — 스크립트 호환을 위해 값만 받고 아무 효과가 없으며, `moai profile setup`을 가리키는 지원 종료 경고를 냅니다 |
+| `--model-policy <high\|medium\|low>` | **지원 종료 스텁** — 스크립트 호환을 위해 값만 받고 아무 효과가 없으며, `moai profile setup`을 가리키는 지원 종료 경고를 냅니다 |
+| `--high` | **지원 종료 스텁** — 사라진 `--model-policy high`의 별칭. 같은 지원 종료 경고를 냅니다 |
 
 ### 예시
 
@@ -87,7 +86,7 @@ cd my-existing-project
 moai init
 
 # 비대화형 (CI/CD)
-moai init --non-interactive --project-mode personal --model-policy medium
+moai init --non-interactive
 ```
 
 자세한 마법사 단계는 [초기 설정](/ko/getting-started/init-wizard) 페이지를 참조하세요.
@@ -116,7 +115,7 @@ moai update [OPTIONS]
 | `--no-hooks` | Git 훅 설치 건너뛰기 |
 | `--verbose` | 모든 경고 표시 (진단 모드) |
 | `--shell-env` | Claude Code 용 셸 환경변수 구성 |
-| `--profile <high\|medium\|low>` | 모델+effort 프로필 덮어쓰기 (`llm.yaml` `profile` 에 저장) |
+| `--profile <high\|medium\|low>` | **지원 종료 스텁** — 스크립트 호환을 위해 값만 받고 아무 효과가 없으며, `moai profile setup`을 가리키는 지원 종료 경고를 냅니다 |
 
 ### 예시
 
@@ -233,7 +232,6 @@ moai profile [COMMAND]
 ```bash
 moai cc -p work       # work 프로필로 Claude 실행
 moai glm -p cost-save # cost-save 프로필로 GLM 실행
-moai cg -p team       # team 프로필로 CG 모드 실행
 ```
 
 자세한 내용은 [프로필 관리](/ko/cli-reference/profile) 페이지를 참조하세요.
@@ -328,33 +326,16 @@ git worktree list               # 워크트리 목록
 
 ---
 
-## moai cc / moai cg / moai glm
+## moai cc / moai glm
 
-Claude Code를 시작하면서 백엔드를 선택하는 런치 명령어입니다. 세 명령어 모두 `-p <profile>` 플래그로 프로필을 지정할 수 있습니다. `--` 이후의 인자를 Claude Code에 그대로 전달하는 것은 `moai cc` 와 `moai glm` 만 지원합니다 (`moai cg` 는 미지원).
+`moai cc`와 `moai glm`은 선택한 백엔드로 Claude Code를 실행합니다. 기존 CG 설정은 실행 전에 이전해야 합니다.
 
 ```bash
 moai cc [-p profile] [-- claude-args...]
 moai glm [-p profile] [-- claude-args...]
-moai cg [-p profile]
 ```
 
-| 명령어 | 리더 | 워커 | tmux 필수 | 용도 |
-|--------|------|------|-----------|------|
-| `moai cc` | Claude | Claude | 아니오 | 최고 품질 (단일 백엔드) |
-| `moai glm` | GLM | GLM | 아니오 | 비용 최적화 (GLM 단독) |
-| `moai cg` | Claude | GLM | 필수 | 품질 + 비용 균형 (하이브리드) |
-
-`moai cg` 는 CG 모드 (Claude 리더 + GLM 팀원) 를 활성화합니다. 반드시 tmux 세션 안에서 실행해야 하며, GLM 환경변수를 tmux 세션에 주입하고 리더 창은 Claude API를 씁니다. 설정을 마치면 현재 창에서 곧바로 Claude Code가 뜨므로, `claude` 를 따로 실행할 필요가 없습니다.
-
-```bash
-# 1. GLM API 키 저장 (최초 1회)
-moai glm setup sk-your-glm-api-key
-
-# 2. CG 모드 활성화 (tmux 내에서 실행 — Claude Code가 현재 창에서 바로 시작됨)
-moai cg
-```
-
-자세한 CG 모드 안내는 [소개 — CG 모드로 토큰 절약](/ko/getting-started/introduction#cg-모드로-토큰-절약-5070) 을 참조하세요.
+`moai cg`는 폐기되었습니다. Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다. [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)
 
 ### 런치 플래그
 
@@ -372,9 +353,22 @@ moai cg
 |--------|------|
 | `-c, --continue` | 이전 세션 이어가기 |
 | `-m, --model <model>` | 모델 선택 덮어쓰기 |
-| `--chrome` / `--no-chrome` | Chrome MCP 토글 |
+| `--chrome` / `--no-chrome` | Claude Code 에 그대로 전달합니다. 런처가 스스로 붙이지 않으므로 `--no-chrome` 을 넘기지 않는 한 `/chrome` 으로 연결할 수 있습니다 |
 
-> `auto` 권한 모드는 GLM(제3자 제공자)에서는 사용할 수 없습니다 — `moai cc` 또는 `moai cg` 에서만 지원됩니다.
+> `auto` 권한 모드는 GLM(제3자 제공자)에서는 사용할 수 없습니다 — `moai cc` 에서만 지원됩니다.
+
+### 세션 모델 결정 순서 (`moai cc`)
+
+`moai cc`는 세션 모델을 위에서부터 차례로 찾고, 처음 나온 값을 `--model`로 Claude Code에 넘깁니다.
+
+1. 명시한 `--model` 인자
+2. 프로필의 모델(`moai profile setup`에서 고른 값)
+3. 환경변수 `ANTHROPIC_MODEL` (이번 실행에만 적용)
+4. 프로젝트 `.claude/settings.local.json`의 `model` (이 프로젝트에만 적용)
+5. 그 프로필의 사용자 범위 `settings.json`에 `/model`로 저장해 둔 값 — 실행 때 `model: opus (user /model)` 한 줄로 알려 줍니다
+6. 위가 모두 비어 있으면 아무것도 넘기지 않습니다. 이때는 프로젝트 `.claude/settings.json`의 `model` 핀이 세션 모델이 되고, 런처가 그 값과 바꾸는 방법을 알려 줍니다
+
+더 구체적이고 더 최근에 직접 지정한 쪽이 이깁니다. 3번과 4번은 Claude Code가 직접 적용하므로 런처는 `--model`을 넘기지 않고 비켜 줍니다. 프로젝트 설정은 사용자 범위 설정보다 우선하므로, 5번 단계가 없으면 `/model`로 고른 모델이 프로젝트 핀에 가려집니다. `moai glm`은 이 규칙을 따르지 않습니다. GLM은 모델을 슬롯 별칭으로 넘겨야 하고, Anthropic 계정에서 `/model`로 고른 값은 다른 모델 계열이라 엉뚱한 슬롯으로 연결되기 때문입니다.
 
 ### moai glm 하위 명령어
 
@@ -466,23 +460,23 @@ moai --version    # 동일
 
 ## 모델 정책 (성능 티어)
 
-MoAI-ADK에는 에이전트마다 최적의 AI 모델을 배정하는 성능 티어 시스템이 있습니다. 토크노믹스의 출발점입니다. `llm.yaml` 의 `performance_tier` 필드로 설정하며, `--model-policy` 플래그나 초기화 마법사에서 선택합니다.
+에이전트마다 모델을 배정하던 예전의 성능 티어 시스템은 물러났습니다. v3.2부터 **서브에이전트는 메인 세션의 모델과 추론 깊이를 그대로 따릅니다** — 서브에이전트를 부를 때 `model`도 `effort`도 넘기지 않으며, MoAI 에이전트 정의는 어느 쪽도 선언하지 않습니다. 모델 정책의 자리에 남은 것은 세션 수준 선택 하나입니다. `moai profile setup`의 **세션 모델 정책** 질문은 이 프로필로 실행하는 Claude 세션의 기본 추론 강도(추론 강도를 따로 고르지 않았을 때의 폴백)를 정합니다.
 
-| 티어 | 특징 |
+| 예전 값 | 지금의 의미 |
 |------|------|
-| **high** | 최고 품질 — 호출 빈도가 가장 낮은 두 에이전트에 `max` 추론 깊이 |
-| **medium** (기본값) | 품질과 비용의 균형 |
-| **low** | 작업당 최저 비용 — 에이전틱 에이전트는 Opus `low` effort로 내려가고, Sonnet은 단발성 행에만 |
+| **high** | 세션 effort 폴백 `high` |
+| **medium** | 세션 effort 폴백 `medium` |
+| **low** | 세션 effort 폴백 `low` |
 
 ```bash
-# 초기화 시 설정
-moai init my-project --model-policy high
+# 세션 모델 정책을 포함한 프로필 전체 설정
+moai profile setup
 
-# 기존 프로젝트에서 재설정
-moai update -c
+# 사라진 에이전트별 플래그는 지원 종료 경고만 내고 아무 효과가 없습니다
+moai init my-project --model-policy high
 ```
 
-프로필(`profile`: high/medium/low)은 프로필 매트릭스에서 활성 열을 골라 각 에이전트의 model+effort를 결정합니다. 자세한 에이전트별 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
+예전의 `--model-policy`, `--profile`, `--high`, `--medium-alias`, `--low` 플래그는 지원 종료 스텁입니다. 값은 스크립트 호환을 위해 받아들이지만 아무 효과가 없고 `moai profile setup`을 안내하는 경고를 냅니다. 세션 수준의 모델·effort 조절은 [모델 정책](/ko/multi-llm/model-policy/) 페이지, 매트릭스의 물러남은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
 ---
 

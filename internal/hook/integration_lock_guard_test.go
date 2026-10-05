@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 func lockGuardInput(t *testing.T, sessionID, command string) *HookInput {
@@ -31,7 +31,7 @@ func lockGuardInput(t *testing.T, sessionID, command string) *HookInput {
 	}
 }
 
-func seedLock(t *testing.T, root string, lock kanban.IntegrationLock) {
+func seedLock(t *testing.T, root string, lock factory.IntegrationLock) {
 	t.Helper()
 	dir := filepath.Join(root, ".moai", "state")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -41,7 +41,7 @@ func seedLock(t *testing.T, root string, lock kanban.IntegrationLock) {
 	if err != nil {
 		t.Fatalf("marshal lock: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, kanban.IntegrationLockFileName), data, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, factory.IntegrationLockFileName), data, 0o644); err != nil {
 		t.Fatalf("write lock: %v", err)
 	}
 }
@@ -50,7 +50,7 @@ func seedLock(t *testing.T, root string, lock kanban.IntegrationLock) {
 // plus enough identity for the operator to go ask that lane.
 func TestCheckIntegrationLock_DeniesAForeignLiveHolder(t *testing.T) {
 	root := t.TempDir()
-	seedLock(t, root, kanban.IntegrationLock{
+	seedLock(t, root, factory.IntegrationLock{
 		SessionID:   "sess-holder",
 		SessionName: "lane-5",
 		PID:         os.Getpid(),
@@ -76,7 +76,7 @@ func TestCheckIntegrationLock_DeniesAForeignLiveHolder(t *testing.T) {
 // The holder's own merge is not denied — the window is its to use.
 func TestCheckIntegrationLock_AllowsTheHolder(t *testing.T) {
 	root := t.TempDir()
-	seedLock(t, root, kanban.IntegrationLock{SessionID: "sess-holder", PID: os.Getpid()})
+	seedLock(t, root, factory.IntegrationLock{SessionID: "sess-holder", PID: os.Getpid()})
 
 	if decision, _ := checkIntegrationLock(lockGuardInput(t, "sess-holder", "git merge --no-ff WT-thing"), root); decision != "" {
 		t.Errorf("holder was denied its own window: %q", decision)
@@ -99,7 +99,7 @@ func TestCheckIntegrationLock_FailsOpen(t *testing.T) {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatalf("mkdir: %v", err)
 		}
-		if err := os.WriteFile(filepath.Join(dir, kanban.IntegrationLockFileName), []byte("{nope"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, factory.IntegrationLockFileName), []byte("{nope"), 0o644); err != nil {
 			t.Fatalf("write: %v", err)
 		}
 		if d, _ := checkIntegrationLock(lockGuardInput(t, "sess-a", "git merge x"), root); d != "" {
@@ -109,7 +109,7 @@ func TestCheckIntegrationLock_FailsOpen(t *testing.T) {
 
 	t.Run("caller has no session id", func(t *testing.T) {
 		root := t.TempDir()
-		seedLock(t, root, kanban.IntegrationLock{SessionID: "sess-holder", PID: os.Getpid()})
+		seedLock(t, root, factory.IntegrationLock{SessionID: "sess-holder", PID: os.Getpid()})
 		if d, _ := checkIntegrationLock(lockGuardInput(t, "", "git merge x"), root); d != "" {
 			t.Errorf("denied an unidentified caller: %q", d)
 		}
@@ -117,7 +117,7 @@ func TestCheckIntegrationLock_FailsOpen(t *testing.T) {
 
 	t.Run("holder is gone", func(t *testing.T) {
 		root := t.TempDir()
-		dead := kanban.IntegrationLock{SessionID: "sess-dead", PID: 0x7FFFFFF0}
+		dead := factory.IntegrationLock{SessionID: "sess-dead", PID: 0x7FFFFFF0}
 		if !dead.Stale() {
 			t.Skip("seeded pid is live on this machine")
 		}
@@ -145,7 +145,7 @@ func TestCheckIntegrationLock_FailsOpen(t *testing.T) {
 // below must pass through even while a foreign holder is recorded.
 func TestCheckIntegrationLock_OnlyGuardsMerge(t *testing.T) {
 	root := t.TempDir()
-	seedLock(t, root, kanban.IntegrationLock{SessionID: "sess-holder", PID: os.Getpid()})
+	seedLock(t, root, factory.IntegrationLock{SessionID: "sess-holder", PID: os.Getpid()})
 
 	for _, command := range []string{
 		"git status",
@@ -159,4 +159,71 @@ func TestCheckIntegrationLock_OnlyGuardsMerge(t *testing.T) {
 			t.Errorf("denied a non-merge command: %q", command)
 		}
 	}
+}
+
+// AC-INL-008 — the guard follows the ANCHORED liveness (card t298).
+//
+// Before the owner-pid anchor, every record carried the acquire CLI's own
+// (dead) pid, so a genuinely live holder took the stale branch and the guard
+// ALLOWED exactly the merge it exists to refuse. These three legs pin the
+// three anchored record shapes on one run; the legacy shape is covered by the
+// pre-existing rows above, unchanged.
+func TestCheckIntegrationLock_FollowsAnchoredLiveness(t *testing.T) {
+	const merge = "git merge --no-ff WT-some-lane"
+
+	t.Run("anchored live holder denies", func(t *testing.T) {
+		root := t.TempDir()
+		seedLock(t, root, factory.IntegrationLock{
+			SessionID:   "sess-holder",
+			SessionName: "lane-5",
+			PID:         os.Getpid(), // the owning session, alive
+			PIDSource:   factory.PIDSourceSessionOwner,
+			Branch:      "release/v9.9.9",
+			AcquiredAt:  "2026-08-27T00:00:00Z",
+		})
+		decision, reason := checkIntegrationLock(lockGuardInput(t, "sess-other", merge), root)
+		if decision != DecisionDeny {
+			t.Fatalf("decision = %q, want deny for a live anchored holder", decision)
+		}
+		if !strings.Contains(reason, integrationLockViolationPrefix) {
+			t.Errorf("reason lacks the sentinel: %s", reason)
+		}
+		if !strings.Contains(reason, "lane-5") {
+			t.Errorf("reason does not name the holder: %s", reason)
+		}
+	})
+
+	t.Run("anchored dead holder allows", func(t *testing.T) {
+		root := t.TempDir()
+		dead := factory.IntegrationLock{
+			SessionID:  "sess-holder",
+			PID:        0x7FFFFFF0, // almost certainly not running
+			PIDSource:  factory.PIDSourceSessionOwner,
+			Branch:     "release/v9.9.9",
+			AcquiredAt: "2026-08-27T00:00:00Z",
+		}
+		if !dead.Stale() {
+			t.Skip("the seeded pid is live on this machine; the reclaim path is not exercisable here")
+		}
+		seedLock(t, root, dead)
+		decision, _ := checkIntegrationLock(lockGuardInput(t, "sess-other", merge), root)
+		if decision != "" {
+			t.Errorf("decision = %q, want allow (the anchored owner is gone)", decision)
+		}
+	})
+
+	t.Run("anchored pid-0 holder denies conservatively", func(t *testing.T) {
+		root := t.TempDir()
+		seedLock(t, root, factory.IntegrationLock{
+			SessionID:  "sess-holder",
+			PID:        0, // owner unresolvable at acquire time
+			PIDSource:  factory.PIDSourceSessionOwner,
+			Branch:     "release/v9.9.9",
+			AcquiredAt: "2026-08-27T00:00:00Z",
+		})
+		decision, _ := checkIntegrationLock(lockGuardInput(t, "sess-other", merge), root)
+		if decision != DecisionDeny {
+			t.Errorf("decision = %q, want deny; an unresolvable owner reads live, and the cheap failure is an operator asking the holder to release", decision)
+		}
+	})
 }

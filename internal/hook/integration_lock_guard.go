@@ -21,7 +21,7 @@
 //     guard that blocked on uncertainty would wedge the batch it protects.
 //
 // One asymmetry with the branch guard is deliberate: an UNREADABLE record
-// allows here, while `kanban.ReadIntegrationLock` treats the same record as a
+// allows here, while `factory.ReadIntegrationLock` treats the same record as a
 // hard error for its CLI callers. The CLI is a lane asking "may I enter?",
 // where refusing to answer is the safe reply; the guard is on a hot tool path,
 // where the same refusal would deny every git merge in the repository until
@@ -35,7 +35,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // integrationLockViolationPrefix is the deny sentinel. The orchestrator
@@ -67,11 +67,21 @@ func checkIntegrationLock(input *HookInput, projectRoot string) (decision string
 	// `echo 'git merge ...'` names the command without running it, and denying
 	// it would be a false positive on a string. Measured — the first cut of
 	// this guard did deny exactly that.
+	// unclassified names a PowerShell indirection construct the merge pattern
+	// cannot see through (D2, SPEC-HOOK-MATCHER-POWERSHELL-001 REQ-HMP-010).
+	// Such a call is never denied; where a classified merge would have been
+	// denied, it is recorded in the integration-lock audit log instead.
+	unclassified := ""
 	if !integrationMergePattern.MatchString(substituteQuotedArguments(command)) {
-		return "", ""
+		if !isPowerShellTool(input.ToolName) {
+			return "", ""
+		}
+		if unclassified = powerShellIndirection(command); unclassified == "" {
+			return "", ""
+		}
 	}
 
-	lock, err := kanban.ReadIntegrationLock(projectRoot)
+	lock, err := factory.ReadIntegrationLock(projectRoot)
 	if err != nil {
 		// Fail open, loudly. See the package comment: refusing every merge in
 		// the repository because one JSON file is malformed is a worse
@@ -96,6 +106,10 @@ func checkIntegrationLock(input *HookInput, projectRoot string) (decision string
 		fmt.Fprintf(os.Stderr, "[moai:integration-lock] advisory: holder %s (pid %d) is gone; allowing — reclaim with `moai integration acquire`\n", lock.SessionID, lock.PID)
 		return "", ""
 	}
+	if unclassified != "" {
+		appendUnclassifiedAudit(projectRoot, integrationLockAuditRelPath, input, unclassified, command, input.CWD)
+		return "", ""
+	}
 
 	reason = fmt.Sprintf("%s: the release integration window is held by %s (pid %d) since %s on %s. Wait for its completion report, or take it over deliberately with `moai integration acquire --force`.",
 		integrationLockViolationPrefix, holderLabelOf(lock), lock.PID, lock.AcquiredAt, lock.Branch)
@@ -104,7 +118,7 @@ func checkIntegrationLock(input *HookInput, projectRoot string) (decision string
 
 // holderLabelOf prefers the human-facing session name over the id, so a deny
 // names the lane an operator would address in a dispatch.
-func holderLabelOf(lock *kanban.IntegrationLock) string {
+func holderLabelOf(lock *factory.IntegrationLock) string {
 	if lock == nil {
 		return "unknown"
 	}
@@ -117,7 +131,7 @@ func holderLabelOf(lock *kanban.IntegrationLock) string {
 	return "unknown"
 }
 
-// extractIntegrationCommand pulls the command string out of Bash tool input.
+// extractIntegrationCommand pulls the command string out of shell tool input.
 // Returns "" when the payload is not parseable or carries no command.
 func extractIntegrationCommand(toolInput json.RawMessage) string {
 	var parsed map[string]any

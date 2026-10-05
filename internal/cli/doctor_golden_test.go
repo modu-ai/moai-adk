@@ -9,6 +9,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // updateDoctorGolden controls golden snapshot regeneration. Set via UPDATE_GOLDEN=1.
@@ -32,8 +33,10 @@ func doctorGoldenPath(name string) string {
 }
 
 // checkDoctorGolden compares got to a golden file, regenerating it if UPDATE_GOLDEN=1.
+// Both sides pass through normalizeAgentEmitRow first.
 func checkDoctorGolden(t *testing.T, name, got string) {
 	t.Helper()
+	got = normalizeAgentEmitRow(got)
 	path := doctorGoldenPath(name)
 	if updateDoctorGolden {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -49,9 +52,39 @@ func checkDoctorGolden(t *testing.T, name, got string) {
 	if err != nil {
 		t.Fatalf("read golden %s: %v (run with UPDATE_GOLDEN=1 to generate)", path, err)
 	}
-	if got != string(want) {
+	if got != normalizeAgentEmitRow(string(want)) {
 		t.Errorf("doctor output mismatch for %s\ngot:\n%s\nwant:\n%s", name, got, string(want))
 	}
+}
+
+// normalizeAgentEmitRow pins the agent-emit applicability row, whose message
+// legitimately varies with the machine's home layout: nearestProjectRoot walks
+// the working directory's ancestors looking for a .moai marker, and a home
+// that owns the global ~/.moai (runner machines and real users alike) reads
+// as "in project". The golden tests the render, not the runner's home
+// directory, so both variants collapse onto one canonical row padded to the
+// box width (t426 windows census axis 3).
+func normalizeAgentEmitRow(out string) string {
+	lines := strings.Split(out, "\n")
+	boxWidth := 0
+	for _, ln := range lines {
+		if strings.HasSuffix(ln, "│") && len(ln) > boxWidth {
+			boxWidth = len(ln)
+		}
+	}
+	const marker = "Agent Emit Embed"
+	for i, ln := range lines {
+		if !strings.Contains(ln, marker) || !strings.Contains(ln, "not applicable: no committed") {
+			continue
+		}
+		head := ln[:strings.Index(ln, marker)+len(marker)]
+		row := head + "   not applicable: no committed agent-emit artifacts"
+		if pad := boxWidth - len(row) - len("│"); pad > 0 {
+			row += strings.Repeat(" ", pad)
+		}
+		lines[i] = row + "│"
+	}
+	return strings.Join(lines, "\n")
 }
 
 // captureDoctorCmd executes doctorCmd and returns (stdout, stderr) as
@@ -77,6 +110,37 @@ func captureDoctorCmd(t *testing.T) (string, string) {
 	// (SPEC-V3R6-MOAI-CLEAN-HOME-001 REQ-MCH-008 hermeticity discipline).
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("MOAI_HOME", "")
+	// Scrub CLAUDE_CONFIG_DIR so the MCP Provider Duplicates check (card
+	// t1250) resolves its state file under the pinned empty HOME instead of
+	// a real Claude Code profile directory.
+	t.Setenv(config.EnvClaudeConfigDir, "")
+	// Scrub CODEX_HOME for the same reason: HOME already moves the default
+	// ~/.codex, so a CODEX_HOME in the caller's environment (a Codex lane) is
+	// the one way a real Codex home could still reach the Plugin Version check
+	// (SPEC-PLUGIN-MARKETPLACE-001 AC-023 (d)).
+	t.Setenv(codexHomeEnvVar, "")
+	// Scrub the backend env so the Shared Flag Slot check (card t702) reports
+	// its first-party baseline on every machine. A development shell running
+	// under a third-party backend (moai glm injects ANTHROPIC_BASE_URL) would
+	// otherwise steer the check into the slot-reading branch, whose output
+	// depends on the machine's real ~/.claude.json — the snapshots encode the
+	// env-scrubbed first-party baseline instead.
+	t.Setenv(config.EnvAnthropicBaseURL, "")
+	t.Setenv(config.EnvClaudeCodeHarborKite, "")
+	// Pin the codex PATH lookup absent for the same hermeticity reason: the
+	// Codex Wiring check reports an unwired project differently depending on
+	// whether codex is installed, so the machine's real PATH would otherwise
+	// decide the snapshot. Absent is the snapshot's encoded baseline (the
+	// claude-only skip). The "moai" lookup is left to the real resolver — the
+	// skip branch never reaches it.
+	origLookPath := codexWiringLookPath
+	codexWiringLookPath = func(name string) (string, error) {
+		if name == "codex" {
+			return "", os.ErrNotExist
+		}
+		return origLookPath(name)
+	}
+	t.Cleanup(func() { codexWiringLookPath = origLookPath })
 	// Run the doctor command from an empty temp dir so every workspace
 	// filesystem check sees a clean baseline matching the golden snapshots.
 	t.Chdir(t.TempDir())
@@ -122,6 +186,13 @@ func TestDoctorGolden_Light(t *testing.T) {
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
+	// Pin the version the snapshot renders (SPEC-VERSION-STAMP-PREDICATE-001
+	// REQ-VSP-008): the golden must not carry the build-time version token,
+	// or every bump breaks the suite through a fixture no bump owns.
+	origVersion := version.Version
+	version.Version = "v0.0.0-test"
+	defer func() { version.Version = origVersion }()
+
 	got, _ := captureDoctorCmd(t)
 	if len(got) == 0 {
 		t.Fatal("doctorCmd produced no output")
@@ -142,6 +213,13 @@ func TestDoctorGolden_Dark(t *testing.T) {
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
+	// Pin the version the snapshot renders (SPEC-VERSION-STAMP-PREDICATE-001
+	// REQ-VSP-008): the golden must not carry the build-time version token,
+	// or every bump breaks the suite through a fixture no bump owns.
+	origVersion := version.Version
+	version.Version = "v0.0.0-test"
+	defer func() { version.Version = origVersion }()
+
 	got, _ := captureDoctorCmd(t)
 	if len(got) == 0 {
 		t.Fatal("doctorCmd produced no output")
@@ -160,6 +238,13 @@ func TestDoctorGolden_NoColor(t *testing.T) {
 	t.Setenv("MOAI_SG_VERSION_OVERRIDE", "ast-grep 9.99.99")
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
+
+	// Pin the version the snapshot renders (SPEC-VERSION-STAMP-PREDICATE-001
+	// REQ-VSP-008): the golden must not carry the build-time version token,
+	// or every bump breaks the suite through a fixture no bump owns.
+	origVersion := version.Version
+	version.Version = "v0.0.0-test"
+	defer func() { version.Version = origVersion }()
 
 	got, gotErr := captureDoctorCmd(t)
 	if len(got) == 0 {
@@ -364,4 +449,41 @@ func TestRunGroupedChecks_Structure(t *testing.T) {
 			t.Errorf("groups[%d].title = %q, want %q", i, g.title, names[i])
 		}
 	}
+}
+
+// TestDoctorGolden_IgnoresCallerCodexHome pins AC-023 (d): a CODEX_HOME in the
+// caller's environment that names a home with a registered moai plugin must not
+// change the golden output, so captureDoctorCmd scrubs it. It also requires the
+// "Plugin Version" row, so a check that is never registered fails here too.
+func TestDoctorGolden_IgnoresCallerCodexHome(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
+	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
+	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
+	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_SG_VERSION_OVERRIDE", "ast-grep 9.99.99")
+	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
+	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
+
+	origVersion := version.Version
+	version.Version = "v0.0.0-test"
+	defer func() { version.Version = origVersion }()
+
+	callerHome := t.TempDir()
+	if err := os.WriteFile(filepath.Join(callerHome, "config.toml"),
+		[]byte("[plugins.\"moai@moai-adk\"]\nenabled = true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(codexHomeEnvVar, callerHome)
+
+	got, _ := captureDoctorCmd(t)
+	// No check renders CODEX_HOME while the harness stubs codex absent, so the
+	// output comparison alone cannot see the scrub; pin the scrub itself.
+	if v := os.Getenv(codexHomeEnvVar); v != "" {
+		t.Errorf("captureDoctorCmd left CODEX_HOME = %q, want it scrubbed", v)
+	}
+	if !strings.Contains(got, pluginVersionCheckName) {
+		t.Fatalf("doctor output has no %q row", pluginVersionCheckName)
+	}
+	checkDoctorGolden(t, "doctor-nocolor", got)
 }

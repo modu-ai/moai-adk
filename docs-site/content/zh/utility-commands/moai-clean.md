@@ -248,6 +248,41 @@ $ moai clean --home --force
 
 完整的说明见 [主目录卫生](/zh/advanced/home-hygiene)。
 
+## 另一个表面 — `moai clean --codex-skills`(清理幽灵技能注册)
+
+{{< callout type="warning" >}}
+这个范围会**修改 `~/.codex/config.toml`** —— 是 `moai clean` 各个范围里唯一写到 `~/.moai` 之外的一个。默认是 dry-run，即便加了 `--force`，也会先备份再写入。
+{{< /callout >}}
+
+Codex 把每个已注册的技能记在 `~/.codex/config.toml`(或 `$CODEX_HOME/config.toml`)的 `[[skills.config]]` 数组表条目里。哪怕条目指向的文件被删掉，Codex 既不会清掉这条记录，也不会吭声 —— 注册就这样留成了**幽灵**。`moai doctor` 只是数出有多少个，真正动手删的是这个范围。
+
+```bash
+# 默认 dry-run —— 只列出会删掉什么，以及什么留下、为什么留下
+$ moai clean --codex-skills
+
+# 真正删除 —— 先备份，再报告备份路径和它的 sha256
+$ moai clean --codex-skills --force
+```
+
+- **只删能证明不存在的条目。** 条目声明了非空的 `path`，该路径是绝对路径(或者是 home 能解析出来的 home-relative 路径)，并且对解析后的路径做 `stat` 得到「文件不存在」，才会成为删除对象。
+- **`enabled` 不是判定条件。** `enabled = true` 而路径已经消失的条目同样是幽灵：关掉它并不能保护它，开着它也不会因此被删。
+- **被删条目之外一个字节都不会变。** 其他表、注释、多行字面量、空白以及行尾形式原样保留 —— 不会把整个文件重新序列化。
+- `--home` 和 `--codex-skills` 针对的文件不同，不能同时使用。
+
+### 绝不删除的七类
+
+| 类别 | 留下的理由 |
+|---|---|
+| 相对路径(`skills/x/SKILL.md`) | 这里没有约定以什么为基准来解析，因此无法判定是否不存在 |
+| 形态怪异的路径(`~other/x`) | 无法解析 |
+| home 解析不出来的 home-relative 路径 | 无法判定是否存在 |
+| 没能走完的 `stat` —— 权限被拒、符号链接成环、I/O 错误 | 这是判定不能，不是不存在 |
+| 没有 `path` 键，或 `path = ""` | 根本没有可检查的对象 |
+| 能解析成功的路径 —— **目录也算解析成功** | 并非不存在 |
+| 行范围内含有解析器未能识别的行的条目 | 该范围可能裹着一条被多行字面量吞掉的正常注册 |
+
+留下的条目都会连同理由一并报告。只报告删掉的部分，会让人误以为幽灵已经清干净了。
+
 ## 相关文档
 
 - [/moai fix - 一次性自动修复](/zh/utility-commands/moai-fix)

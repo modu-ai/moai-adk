@@ -2,7 +2,6 @@
 spec_id: SPEC-V3R3-DEF-007
 title: Implementation Plan — Convention Compliance Sweep
 version: "1.0.0"
-status: draft
 created: 2026-04-25
 updated: 2026-04-25
 author: manager-spec

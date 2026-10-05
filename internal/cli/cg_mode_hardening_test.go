@@ -6,7 +6,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"testing"
 
@@ -103,102 +102,23 @@ func readSettingsForTest(t *testing.T, path string) SettingsLocal {
 	return s
 }
 
-// TestApplyCGMode_StripsCredsBeforeInjection verifies AC-CGH-002 Scenario 2a:
-// when the tmux session-env injection fails, the leader's stale GLM credentials
-// have ALREADY been stripped (the cleanup RMW runs BEFORE injection).
-func TestApplyCGMode_StripsCredsBeforeInjection(t *testing.T) {
-	root, settingsPath := cgTestProject(t, map[string]string{
-		"ANTHROPIC_AUTH_TOKEN": "stale-glm-token",
-		"ANTHROPIC_BASE_URL":   "https://api.z.ai/api/anthropic",
-		"CUSTOM_VAR":           "keep_me",
-	})
-
-	t.Setenv("GLM_API_KEY", "test-key")
-	t.Setenv("MOAI_TEST_MODE", "1")
-
-	origDetector := newDetectorFn
-	defer func() { newDetectorFn = origDetector }()
-	newDetectorFn = func() tmux.Detector { return fakeCGDetector{inSession: true, available: true} }
-
-	origInject := injectTmuxSessionEnvFn
-	defer func() { injectTmuxSessionEnvFn = origInject }()
-	injectTmuxSessionEnvFn = func(_ *GLMConfigFromYAML, _ string) error {
-		return errors.New("forced tmux injection failure")
-	}
-
-	err := applyCGMode(root, "")
-	if err == nil {
-		t.Fatal("expected applyCGMode to return the injection failure error")
-	}
-	if !strings.Contains(err.Error(), "inject GLM env into tmux session") {
-		t.Errorf("expected tmux-injection error, got: %v", err)
-	}
-
-	// Despite the injection failure, the leader settings MUST already be stripped.
-	s := readSettingsForTest(t, settingsPath)
-	if _, ok := s.Env["ANTHROPIC_AUTH_TOKEN"]; ok {
-		t.Errorf("ANTHROPIC_AUTH_TOKEN must be stripped before injection failure, got env: %v", s.Env)
-	}
-	if _, ok := s.Env["ANTHROPIC_BASE_URL"]; ok {
-		t.Errorf("ANTHROPIC_BASE_URL must be stripped before injection failure, got env: %v", s.Env)
-	}
-	if s.Env["CUSTOM_VAR"] != "keep_me" {
-		t.Errorf("user-only key CUSTOM_VAR must be preserved, got env: %v", s.Env)
-	}
-}
-
-// TestApplyCGMode_SingleTeammateModeWrite verifies AC-CGH-003 Scenario 3a:
-// after applyCGMode, teammateMode == "tmux" is established. The single-RMW
-// invariant is verified structurally by TestApplyCGMode_NoDoubleWriteOnCGPath
-// (no removeGLMEnv/ensureSettingsLocalJSON double-write on the CG path).
-func TestApplyCGMode_SingleTeammateModeWrite(t *testing.T) {
-	root, settingsPath := cgTestProject(t, nil)
-
-	t.Setenv("GLM_API_KEY", "test-key")
-	t.Setenv("MOAI_TEST_MODE", "1")
-
-	origDetector := newDetectorFn
-	defer func() { newDetectorFn = origDetector }()
-	newDetectorFn = func() tmux.Detector { return fakeCGDetector{inSession: true, available: true} }
-
-	if err := applyCGMode(root, ""); err != nil {
-		t.Fatalf("applyCGMode should succeed, got: %v", err)
-	}
-
-	s := readSettingsForTest(t, settingsPath)
-	if s.TeammateMode != "tmux" {
-		t.Errorf("teammateMode must be %q after CG launch, got %q", "tmux", s.TeammateMode)
-	}
-}
-
-// TestApplyCGMode_NoDoubleWriteOnCGPath verifies REQ-CGH-003: the CG path does NOT
-// perform a clear-then-set double write. The CG cleanup is a single mutate closure
-// (stripGLMCredsAndSetTeammateMode) routed through mutateSettingsLocal; the legacy
-// removeGLMEnv(set "")→ensureSettingsLocalJSON(set "tmux") double-write must not
-// appear on the applyCGMode path. Source-structure regression guard.
-func TestApplyCGMode_NoDoubleWriteOnCGPath(t *testing.T) {
-	src, err := os.ReadFile("launcher.go")
+// SPEC-MOAI-CG-RETIRE-001 replaces former injection-order/write-count tests:
+// the retired boundary must preserve the entire existing settings file.
+func TestApplyCGModeRetiredPreservesSettings(t *testing.T) {
+	root, settingsPath := cgTestProject(t, map[string]string{"ANTHROPIC_AUTH_TOKEN": "retained-until-explicit-migration", "CUSTOM_VAR": "keep"})
+	before, err := os.ReadFile(settingsPath)
 	if err != nil {
-		t.Fatalf("read launcher.go: %v", err)
+		t.Fatal(err)
 	}
-	body := string(src)
-	start := strings.Index(body, "func applyCGMode(")
-	if start < 0 {
-		t.Fatal("applyCGMode not found in launcher.go")
+	if err := applyCGMode(root, ""); !errors.Is(err, errCGRetired) {
+		t.Fatalf("retired boundary: %v", err)
 	}
-	end := strings.Index(body[start:], "\n}\n")
-	if end < 0 {
-		t.Fatal("applyCGMode body terminator not found")
+	after, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatal(err)
 	}
-	fnBody := body[start : start+end]
-	if strings.Contains(fnBody, "removeGLMEnv(") {
-		t.Error("applyCGMode must NOT call removeGLMEnv (collapses double-write into single RMW, REQ-CGH-003)")
-	}
-	if strings.Contains(fnBody, "ensureSettingsLocalJSON(") {
-		t.Error("applyCGMode must NOT call ensureSettingsLocalJSON (collapses double-write into single RMW, REQ-CGH-003)")
-	}
-	if !strings.Contains(fnBody, "mutateSettingsLocal(") {
-		t.Error("applyCGMode must route its settings cleanup through mutateSettingsLocal (REQ-CGH-005)")
+	if string(before) != string(after) {
+		t.Fatal("retired CG mutated settings")
 	}
 }
 
@@ -244,36 +164,6 @@ func TestSettingsLocal_ConcurrentAtomicWrite(t *testing.T) {
 	}
 }
 
-// TestApplyCGMode_TmuxUnavailableMessage verifies AC-CGH-008 Scenario 8a:
-// when InTmuxSession() is true but the tmux binary is unavailable, applyCGMode
-// fails with a "tmux not installed" message including install guidance, NOT the
-// "restart your tmux session" injection-failure message.
-func TestApplyCGMode_TmuxUnavailableMessage(t *testing.T) {
-	root, _ := cgTestProject(t, nil)
-
-	t.Setenv("GLM_API_KEY", "test-key")
-	t.Setenv("MOAI_TEST_MODE", "1")
-
-	origDetector := newDetectorFn
-	defer func() { newDetectorFn = origDetector }()
-	newDetectorFn = func() tmux.Detector { return fakeCGDetector{inSession: true, available: false} }
-
-	err := applyCGMode(root, "")
-	if err == nil {
-		t.Fatal("expected applyCGMode to fail when tmux is unavailable")
-	}
-	msg := err.Error()
-	if !strings.Contains(msg, "tmux is not installed") {
-		t.Errorf("expected 'tmux is not installed' message, got: %v", err)
-	}
-	if !strings.Contains(msg, "brew install tmux") {
-		t.Errorf("expected install guidance in error, got: %v", err)
-	}
-	if strings.Contains(msg, "restart your tmux session") {
-		t.Errorf("must NOT emit the misleading 'restart your tmux session' message, got: %v", err)
-	}
-}
-
 // TestApplyCGMode_CredentialRoutingInvariant verifies AC-CGH-009 Scenario 9a:
 // the production credential-routing path strips GLM creds from the leader settings
 // AND routes the teammate-facing GLM credential set through the session manager.
@@ -301,9 +191,9 @@ func TestApplyCGMode_CredentialRoutingInvariant(t *testing.T) {
 	}
 
 	glmConfig := &GLMConfigFromYAML{BaseURL: "https://api.z.ai/api/anthropic"}
-	glmConfig.Models.High = "glm-5.2"
-	glmConfig.Models.Medium = "glm-4.7"
-	glmConfig.Models.Low = "glm-4.5-air"
+	glmConfig.Models.High = "glm-5.3"
+	glmConfig.Models.Medium = "glm-5.3-flash"
+	glmConfig.Models.Low = "glm-5.3-flash"
 
 	rec := newRecordingSessionManager()
 	if err := injectTmuxSessionEnvVia(rec, glmConfig, "teammate-glm-token"); err != nil {
@@ -316,7 +206,7 @@ func TestApplyCGMode_CredentialRoutingInvariant(t *testing.T) {
 	if rec.bulk["ANTHROPIC_BASE_URL"] != "https://api.z.ai/api/anthropic" {
 		t.Errorf("teammate ANTHROPIC_BASE_URL must be injected, got bulk: %v", rec.bulk)
 	}
-	if rec.bulk["ANTHROPIC_DEFAULT_OPUS_MODEL"] != "glm-5.2" {
+	if rec.bulk["ANTHROPIC_DEFAULT_OPUS_MODEL"] != "glm-5.3" {
 		t.Errorf("teammate High-slot model must be injected, got bulk: %v", rec.bulk)
 	}
 	if _, ok := rec.bulk["ANTHROPIC_AUTH_TOKEN"]; ok {
@@ -330,13 +220,17 @@ func TestApplyCGMode_CredentialRoutingInvariant(t *testing.T) {
 // mode switches, documented in buildTmuxClearVars).
 func TestTmuxEnv_InjectClearParity(t *testing.T) {
 	// Clean cwd so the built-in glmContextWindows table (not a stray project
-	// llm.yaml) is consulted when glm-5.2 resolves to the 1M tier.
+	// llm.yaml) is consulted when glm-5.3 resolves to the 1M tier. (The High
+	// slot was glm-5.2 until REQ-MMU-004 deleted it; the 1M-resolution premise
+	// now rests on the offered set — glm-5.3 still resolves to 1M, so the
+	// auto-compact-window var still enters the inject set and the parity check
+	// keeps covering it.)
 	t.Chdir(t.TempDir())
 
 	glmConfig := &GLMConfigFromYAML{BaseURL: "https://api.z.ai/api/anthropic"}
-	glmConfig.Models.High = "glm-5.2" // resolves to the 1M tier → triggers the auto-compact-window var
-	glmConfig.Models.Medium = "glm-4.7"
-	glmConfig.Models.Low = "glm-4.5-air"
+	glmConfig.Models.High = "glm-5.3" // resolves to the 1M tier → triggers the auto-compact-window var
+	glmConfig.Models.Medium = "glm-5.3-flash"
+	glmConfig.Models.Low = "glm-5.3-flash"
 
 	injectVars := buildTmuxInjectVars(glmConfig, "some-token")
 	clearVars := buildTmuxClearVars()

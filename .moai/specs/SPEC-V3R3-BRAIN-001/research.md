@@ -4,7 +4,6 @@ artifact: research
 version: "0.1.0"
 created_at: 2026-05-04
 author: MoAI Plan Workflow
-status: pre-spec research
 ---
 
 # Research: SPEC-V3R3-BRAIN-001 — `/moai brain` Idea-to-Item Workflow

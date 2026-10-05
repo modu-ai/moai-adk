@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "updated_at": "2026-09-26",
+  "tree_sha": "d1d19bc17",
+  "reason": "fixture baseline for the VacuousTestAssertion end-to-end proof; records no count for the code",
+  "rules": {}
+}

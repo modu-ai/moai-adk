@@ -6,8 +6,9 @@ metadata:
   phase: "Phase 15: Harness Generation Entry (v4 Builder redirect); Phase 16: 5-Layer Activation"
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 ## Phase 15: Project-Specific Harness Generation (v4 Builder Redirect)
 
@@ -32,11 +33,11 @@ On acceptance, proceed to § 5.1 (Entry — hand off to the v4 Builder entry wor
 
 ### 5.1 Entry — Hand off to the v4 Builder entry workflow
 
-Compose a natural-language harness-creation request from `.moai/project/harness-spec.yaml` (the machine-readable interview output written by `project/doc-generation.md` Phase 8) together with the completed project documentation (`product.md` / `structure.md` / `tech.md`) and the user's stated intent from Phase 14, then hand off to `${CLAUDE_SKILL_DIR}/workflows/harness-build-entry.md` (the same entry point the `/moai:harness <request>` invocation uses). Carrying `harness-spec.yaml` forward means the interview data is no longer discarded — its recorded `domain` / `goal` / `constraints` / `scope` (plus the extended `verification` / `external_systems` / `ui_surface` / `team_sharing` axes) reach harness generation as pre-satisfied context. That workflow runs its own Context-First Discovery, harness `<name>` derivation, and orchestrator-issued approval gate — none of which are duplicated here.
+Compose a natural-language harness-creation request from `.moai/project/harness-spec.yaml` (the machine-readable interview output written by `project/doc-generation.md` Phase 8) together with the completed project documentation (`product.md` / `structure.md` / `tech.md`) and the user's stated intent from Phase 14, then hand off to `.claude/skills/moai/workflows/harness-build-entry.md` (the same entry point the `/moai:harness <request>` invocation uses). Carrying `harness-spec.yaml` forward means the interview data is no longer discarded — its recorded `domain` / `goal` / `constraints` / `scope` (plus the extended `verification` / `external_systems` / `ui_surface` / `team_sharing` axes) reach harness generation as pre-satisfied context. That workflow runs its own Context-First Discovery, harness `<name>` derivation, and orchestrator-issued approval gate — none of which are duplicated here.
 
 ### 5.2 Generation — Orchestrator-direct Builder
 
-On approval, the entry workflow transitions directly into the orchestrator-direct Builder (`${CLAUDE_SKILL_DIR}/workflows/harness-builder.md`), which runs the 4 signal-driven phases (ANALYZE / PLAN / GENERATE / ACTIVATE) and emits the 5 canonical artifact types (thin-wrapper entry command, Runner Workflow, specialist sub-agent definitions, companion Progressive-Disclosure skills, `manifest.json`).
+On approval, the entry workflow transitions directly into the orchestrator-direct Builder (`.claude/skills/moai/workflows/harness-builder.md`), which runs the 4 signal-driven phases (ANALYZE / PLAN / GENERATE / ACTIVATE) and emits the 5 canonical artifact types (thin-wrapper entry command, Runner Workflow, specialist sub-agent definitions, companion Progressive-Disclosure skills, `manifest.json`).
 
 [HARD] The GENERATE phase MUST run the FROZEN guard (`EnsureAllowed`) as the **first check**
 before any write attempt. Paths in `.claude/agents/moai/`, `.claude/skills/moai-*/`,

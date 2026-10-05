@@ -61,7 +61,6 @@ moai glm YOUR_API_KEY
 - **🌐 Multilingual Routing**: Automatic support for Korean/English/Japanese/Chinese
 - **🌳 Worktree Parallel Development**: Unlimited parallel work in completely isolated environments
 - **🔗 Ralph-Style LSP Integration**: Real-time code quality validation
-- **🏆 MoAI Rank**: Motivation through vibe coding leaderboard
 
 ---
 
@@ -1174,177 +1173,7 @@ moai-wt clean --merged-only
 
 ---
 
-## 10. MoAI Rank Introduction
-
-**A new dimension of agentic coding**: Track your coding journey and compete with global developers!
-
-### Why MoAI Rank?
-
-| Feature                      | Description                               |
-| ---------------------------- | ----------------------------------------- |
-| **📊 Token Tracking**        | Automatic AI usage tracking per session   |
-| **🏆 Global Leaderboard**    | Daily/Weekly/Monthly/All-time rankings    |
-| **🎭 Coding Style Analysis** | Discover your unique development patterns |
-| **📈 Dashboard**             | Visualized statistics and insights        |
-
----
-
-### 🚀 CLI Commands
-
-```bash
-❯ moai rank
-Usage: moai rank [OPTIONS] COMMAND [ARGS]...
-
-  MoAI Rank - Token usage leaderboard.
-
-  Track your Claude Code token usage and compete on the leaderboard.
-  Visit https://rank.mo.ai.kr for the web dashboard.
-
-Commands:
-  register   Register with MoAI Rank via GitHub OAuth.
-  status     Show your current rank and statistics.
-  exclude    Exclude a project from session tracking.
-  include    Re-include a previously excluded project.
-  logout     Remove stored MoAI Rank credentials.
-```
-
----
-
-### Step 1: GitHub OAuth Registration
-
-```bash
-❯ moai rank register
-
-╭──────────────────────────── Registration ────────────────────────────╮
-│ MoAI Rank Registration                                               │
-│                                                                      │
-│ This will open your browser to authorize with GitHub.                │
-│ After authorization, your API key will be stored securely.           │
-╰──────────────────────────────────────────────────────────────────────╯
-
-Opening browser for GitHub authorization...
-Waiting for authorization (timeout: 5 minutes)...
-
-╭───────────────────────── Registration Complete ──────────────────────╮
-│ Successfully registered as your-github-id                            │
-│                                                                      │
-│ API Key: moai_rank_a9011fac_c...                                     │
-│ Stored in: ~/.moai/rank/credentials.json                             │
-╰──────────────────────────────────────────────────────────────────────╯
-
-╭───────────────────────── Global Hook Installed ──────────────────────╮
-│ Session tracking hook installed globally.                            │
-│                                                                      │
-│ Your Claude Code sessions will be automatically tracked.             │
-│ Hook location: ~/.claude/hooks/moai/session_end__rank_submit.py      │
-│                                                                      │
-│ To exclude specific projects:                                        │
-│   moai rank exclude /path/to/project                                 │
-╰──────────────────────────────────────────────────────────────────────╯
-```
-
----
-
-### Step 2: Sync Session Data
-
-Sync your existing Claude Code session data to MoAI Rank.
-
-```bash
-❯ moai rank sync
-
-Syncing 2577 session(s) to MoAI Rank
-Phase 1: Parsing transcripts (parallel: 20 workers)
-
-  Parsing transcripts ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% (2577/2577)
-
-Phase 2: Submitting 1873 session(s) (batch mode)
-Batch size: 100 | Batches: 19
-
-  Submitting batches ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% (19/19)
-
-Sync Complete
-  ✓ Submitted: 1169
-  ○ Skipped:   704 (no usage or duplicate)
-  ✗ Failed:    0
-```
-
----
-
-### Step 3: Check Your Rank
-
-```bash
-❯ moai rank status
-
-╭────────────────────────────── MoAI Rank ─────────────────────────────╮
-│ your-github-id                                                       │
-│                                                                      │
-│ 🏆 Global Rank: #42                                                  │
-╰──────────────────────────────────────────────────────────────────────╯
-╭───── Daily ──────╮  ╭───── Weekly ─────╮  ╭──── Monthly ─────╮  ╭──── All Time ────╮
-│ #12              │  │ #28              │  │ #42              │  │ #156             │
-╰──────────────────╯  ╰──────────────────╯  ╰──────────────────╯  ╰──────────────────╯
-╭─────────────────────────── Token Usage ──────────────────────────────╮
-│ 1,247,832 total tokens                                               │
-│                                                                      │
-│ Input  ██████████████░░░░░░ 847,291 (68%)                            │
-│ Output ██████░░░░░░░░░░░░░░ 400,541 (32%)                            │
-│                                                                      │
-│ Sessions: 47                                                         │
-╰──────────────────────────────────────────────────────────────────────╯
-
-● Hook: Installed  |  https://rank.mo.ai.kr
-```
-
----
-
-### Step 3: Web Dashboard
-
-![MoAI Rank Dashboard](./assets/images/readme/moai-rank-dashboard.png)
-
-**[https://rank.mo.ai.kr](https://rank.mo.ai.kr)**
-
-On the dashboard:
-
-- Token usage trends
-- Tool usage statistics
-- Model-specific usage analysis
-- Weekly/monthly reports
-
-📖 **Details**: Refer to [modu-ai/moai-rank](https://github.com/modu-ai/moai-rank) repository.
-
----
-
-### Step 4: Collected Metrics
-
-| Metric           | Description                         |
-| ---------------- | ----------------------------------- |
-| **Token Usage**  | Input/output tokens, cache tokens   |
-| **Tool Usage**   | Read, Edit, Bash usage counts       |
-| **Model Usage**  | Opus, Sonnet, Haiku breakdown       |
-| **Code Metrics** | Added/deleted lines, modified files |
-| **Session Info** | Duration, turn count, timestamps    |
-
-### 🔒 Privacy Protection
-
-```bash
-# Exclude current project
-moai rank exclude
-
-# Exclude specific path
-moai rank exclude /path/to/private
-
-# Wildcard pattern
-moai rank exclude "*/confidential/*"
-
-# List excluded
-moai rank list-excluded
-```
-
-**Guarantee**: Collected data is **numeric metrics only** (code content, file paths not transmitted)
-
----
-
-## 11. FAQ 5 Questions
+## 10. FAQ 4 Questions
 
 ### Q1: Is SPEC Always Required?
 
@@ -1368,21 +1197,17 @@ moai rank list-excluded
 - Playwright: Web automation testing
 - Figma: Design system
 
-### Q3: Does MoAI Rank Cost Money?
-
-It's free. Only automatically collects session data.
-
-### Q4: Is GLM Configuration Required?
+### Q3: Is GLM Configuration Required?
 
 No. You can use Claude only. However, it's recommended for cost savings.
 
-### Q5: Can It Be Applied to Existing Projects?
+### Q4: Can It Be Applied to Existing Projects?
 
 Yes. `moai init .` preserves existing files.
 
 ---
 
-## 12. Community & Support
+## 11. Community & Support
 
 ### 🌐 Participate
 

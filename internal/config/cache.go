@@ -21,8 +21,33 @@ import (
 // serving binary's json.Unmarshal leaves the field at its zero value, so a
 // fingerprint-valid cache silently masks the file value (observed when
 // Workflow gained AgentStopGuard: an old-binary cache served enabled=false
-// over an enabled:true workflow.yaml).
-const configCacheSchemaVersion = 2
+// over an enabled:true workflow.yaml). Bumped to 3 when Workflow gained
+// SettingsDriftGate, to 4 when Workflow gained SlotLease, and to 5 when
+// Workflow gained Jev — for exactly that reason. SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001
+// M4 independently bumped its own parent to 5 when WorkflowConfig gained
+// SubagentWriteGuard, the same hazard the family records each time.
+// Bumped to 6 by the t1057 develop-absorption merge: both parents carried
+// schema 5 over DIFFERENT struct shapes (the Jev field vs the
+// SubagentWriteGuard field), so a cache written under either parent's struct
+// must not be served as valid for the merged struct.
+// Bumped to 7 when WorkflowConfig gained Autonomy (workflow.autonomy.*): an
+// older cache would serve a zero Autonomy block over a workflow.yaml that sets
+// batch_sign or push_develop.
+// Bumped to 8 when the autonomy escalation block gained new_api_detector
+// (SPEC-AUTONOMY-ESCALATION-001), for the same field-addition reason.
+// Bumped to 9 when WorkflowConfig gained ServedModelGate
+// (workflow.served_model_gate.*): an older cache would serve enabled=false
+// over a workflow.yaml that opts the served-model gate in.
+// Bumped to 10 when WorkflowConfig gained CommitIdentityGuard
+// (workflow.commit_identity_guard.*, SPEC-COMMIT-IDENTITY-GUARD-001): an older
+// cache would serve enabled=false over a workflow.yaml that opts the guard in.
+// Bumped to 11 when WorkflowConfig gained QuotaGate (workflow.quota_gate.*,
+// SPEC-QUOTA-AWARE-SCHEDULING-001): an older cache would serve a zero QuotaGate
+// over a workflow.yaml that enables the gate or tunes its thresholds.
+// Bumped to 12 when QuotaGateConfig gained MaxScanDirs
+// (workflow.quota_gate.max_scan_dirs, SPEC-QUOTA-RECORD-WORKTREES-001): an older
+// cache would serve a zero bound over a workflow.yaml that sets or relies on it.
+const configCacheSchemaVersion = 12
 
 // cacheFileName is the fixed cache file name under the state directory.
 // Fixed name ensures predictable gitignore and cleanup (REQ-PERF-009).

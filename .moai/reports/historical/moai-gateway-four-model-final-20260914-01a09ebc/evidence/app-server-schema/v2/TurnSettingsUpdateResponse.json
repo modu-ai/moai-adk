@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "TurnSettingsUpdateStatus": {
+      "oneOf": [
+        {
+          "description": "Published for subsequent captures, even if the values were unchanged. Already captured steps are unchanged; a later inference is not guaranteed.",
+          "enum": [
+            "applied"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "No matching live task remained available for publication.",
+          "enum": [
+            "targetUnavailable"
+          ],
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "properties": {
+    "status": {
+      "$ref": "#/definitions/TurnSettingsUpdateStatus"
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "title": "TurnSettingsUpdateResponse",
+  "type": "object"
+}

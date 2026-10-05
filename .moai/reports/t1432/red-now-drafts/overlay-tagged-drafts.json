@@ -1,0 +1,7 @@
+{
+  "Replace": {
+    "/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1432/internal/harness/zz_statepath_test.go": "/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1432/.moai/reports/t1432/red-now-drafts/zz_statepath_test.go",
+    "/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1432/internal/harness/zz_tail_test.go": "/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1432/.moai/reports/t1432/red-now-drafts/zz_tail_test.go",
+    "/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1432/internal/harness/zz_stampbytes_test.go": "/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1432/.moai/reports/t1432/red-now-drafts/zz_stampbytes_test.go"
+  }
+}

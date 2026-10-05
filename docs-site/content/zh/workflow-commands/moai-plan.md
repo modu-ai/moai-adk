@@ -348,7 +348,7 @@ flowchart TD
 
 **检测项目:**
 1. tmux 可用性 (`$TMUX` 环境变量)
-2. 当前 LLM 模式 (`llm.yaml` 的 `team_mode`: cc/glm/cg)
+2. 当前 LLM 模式 (`llm.yaml` 的 `team_mode`: cc/glm)
 
 **tmux 可用时:**
 - Worktree + \{当前模式\} (Recommended)

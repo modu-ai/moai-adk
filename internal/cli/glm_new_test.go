@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -98,14 +97,18 @@ func writeProjectLLMYAML(t *testing.T, llmYAML string) string {
 // (its root parameter) so user-configured models take effect.
 func TestLoadGLMConfig_ReadsDiskModelsWhenConfigUnloaded(t *testing.T) {
 	// Custom models, NO base_url set (the issue #1065 scenario): base_url
-	// should default but models must still be honored.
+	// should default but models must still be honored. The probe ids are
+	// offered-set values (glm-5.3 differs from the flash default) so the
+	// honor-disk assertion is distinguishable from a default fallback — an
+	// out-of-set value would fall back per REQ-MMU-004, which this test is
+	// not the home of.
 	root := writeProjectLLMYAML(t, `
 llm:
   glm:
     models:
-      high: "glm-PROBE-HIGH"
-      medium: "glm-PROBE-MEDIUM"
-      low: "glm-PROBE-LOW"
+      high: "glm-5.3"
+      medium: "glm-5.3-flash"
+      low: "glm-5.3-flash"
 `)
 
 	// Realistic runtime state: ConfigManager constructed but never Load()ed,
@@ -118,14 +121,14 @@ llm:
 	if err != nil {
 		t.Fatalf("loadGLMConfig should not error, got: %v", err)
 	}
-	if cfg.Models.High != "glm-PROBE-HIGH" {
-		t.Errorf("Models.High = %q, want %q (user llm.yaml ignored — issue #1065)", cfg.Models.High, "glm-PROBE-HIGH")
+	if cfg.Models.High != "glm-5.3" {
+		t.Errorf("Models.High = %q, want %q (user llm.yaml ignored — issue #1065)", cfg.Models.High, "glm-5.3")
 	}
-	if cfg.Models.Medium != "glm-PROBE-MEDIUM" {
-		t.Errorf("Models.Medium = %q, want %q (user llm.yaml ignored)", cfg.Models.Medium, "glm-PROBE-MEDIUM")
+	if cfg.Models.Medium != "glm-5.3-flash" {
+		t.Errorf("Models.Medium = %q, want %q (user llm.yaml ignored)", cfg.Models.Medium, "glm-5.3-flash")
 	}
-	if cfg.Models.Low != "glm-PROBE-LOW" {
-		t.Errorf("Models.Low = %q, want %q (user llm.yaml ignored)", cfg.Models.Low, "glm-PROBE-LOW")
+	if cfg.Models.Low != "glm-5.3-flash" {
+		t.Errorf("Models.Low = %q, want %q (user llm.yaml ignored)", cfg.Models.Low, "glm-5.3-flash")
 	}
 	// base_url was omitted in llm.yaml, so the default must fill in.
 	if cfg.BaseURL != "https://api.z.ai/api/anthropic" {
@@ -140,7 +143,7 @@ func TestLoadGLMConfig_ReadsDiskModelsWithNilDeps(t *testing.T) {
 llm:
   glm:
     models:
-      high: "glm-PROBE-HIGH"
+      high: "glm-5.3"
 `)
 
 	origDeps := deps
@@ -151,8 +154,8 @@ llm:
 	if err != nil {
 		t.Fatalf("loadGLMConfig should not error, got: %v", err)
 	}
-	if cfg.Models.High != "glm-PROBE-HIGH" {
-		t.Errorf("Models.High = %q, want %q (disk models ignored with nil deps)", cfg.Models.High, "glm-PROBE-HIGH")
+	if cfg.Models.High != "glm-5.3" {
+		t.Errorf("Models.High = %q, want %q (disk models ignored with nil deps)", cfg.Models.High, "glm-5.3")
 	}
 	// medium/low omitted → defaults fill in.
 	if cfg.Models.Medium != "glm-5.3-flash" {
@@ -168,7 +171,7 @@ llm:
   glm:
     base_url: "https://custom.example.test/anthropic"
     models:
-      high: "glm-PROBE-HIGH"
+      high: "glm-5.3"
 `)
 
 	origDeps := deps
@@ -182,8 +185,8 @@ llm:
 	if cfg.BaseURL != "https://custom.example.test/anthropic" {
 		t.Errorf("BaseURL = %q, want explicit disk value", cfg.BaseURL)
 	}
-	if cfg.Models.High != "glm-PROBE-HIGH" {
-		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "glm-PROBE-HIGH")
+	if cfg.Models.High != "glm-5.3" {
+		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "glm-5.3")
 	}
 }
 
@@ -208,253 +211,12 @@ func TestLoadGLMConfig_AbsentLLMYAMLFallsToDefaults(t *testing.T) {
 	}
 }
 
-// --- Tests for injectGLMEnv ---
-
-func TestInjectGLMEnv_Success(t *testing.T) {
-	tmpDir := t.TempDir()
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-	t.Setenv("USERPROFILE", tmpHome)
-
-	// Save a test API key so getGLMAPIKey finds it.
-	moaiDir := filepath.Join(tmpHome, ".moai")
-	if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(
-		filepath.Join(moaiDir, ".env.glm"),
-		[]byte("GLM_API_KEY=\"my-test-key\"\n"),
-		0o600,
-	); err != nil {
-		t.Fatal(err)
-	}
-
-	settingsPath := filepath.Join(tmpDir, ".claude", "settings.local.json")
-	glmConfig := &GLMConfigFromYAML{
-		BaseURL: "https://api.z.ai/api/anthropic",
-		Models: struct {
-			High   string
-			Medium string
-			Low    string
-			Fable  string
-		}{
-			High:   "glm-5.1",
-			Medium: "glm-4.7",
-			Low:    "glm-4.5-air",
-		},
-		EnvVar: "GLM_API_KEY",
-	}
-
-	err := injectGLMEnv(settingsPath, glmConfig)
-	if err != nil {
-		t.Fatalf("injectGLMEnv should succeed, got: %v", err)
-	}
-
-	// Verify file was created and contains expected env vars.
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		t.Fatalf("failed to read settings file: %v", err)
-	}
-
-	var settings SettingsLocal
-	if err := json.Unmarshal(data, &settings); err != nil {
-		t.Fatalf("failed to unmarshal settings: %v", err)
-	}
-
-	expectedVars := map[string]string{
-		"ANTHROPIC_AUTH_TOKEN":           "my-test-key",
-		"ANTHROPIC_BASE_URL":             "https://api.z.ai/api/anthropic",
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.5-air",
-		"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
-		"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5.1",
-	}
-	for k, v := range expectedVars {
-		got, ok := settings.Env[k]
-		if !ok {
-			t.Errorf("settings.Env missing key %q", k)
-		} else if got != v {
-			t.Errorf("settings.Env[%q] = %q, want %q", k, got, v)
-		}
-	}
-}
-
-func TestInjectGLMEnv_NoAPIKey(t *testing.T) {
-	tmpDir := t.TempDir()
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-	t.Setenv("USERPROFILE", tmpHome)
-	// Clear GLM_API_KEY env var.
-	t.Setenv("GLM_API_KEY", "")
-
-	settingsPath := filepath.Join(tmpDir, ".claude", "settings.local.json")
-	glmConfig := &GLMConfigFromYAML{
-		BaseURL: "https://api.z.ai/api/anthropic",
-		EnvVar:  "GLM_API_KEY",
-	}
-
-	err := injectGLMEnv(settingsPath, glmConfig)
-	if err == nil {
-		t.Fatal("injectGLMEnv should error when no API key is available")
-	}
-	if !strings.Contains(err.Error(), "GLM API key not found") {
-		t.Errorf("error should mention API key not found, got: %v", err)
-	}
-}
-
-func TestInjectGLMEnv_MergesExistingSettings(t *testing.T) {
-	tmpDir := t.TempDir()
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-	t.Setenv("USERPROFILE", tmpHome)
-
-	// Save a test API key.
-	moaiDir := filepath.Join(tmpHome, ".moai")
-	if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(
-		filepath.Join(moaiDir, ".env.glm"),
-		[]byte("GLM_API_KEY=\"merge-key\"\n"),
-		0o600,
-	); err != nil {
-		t.Fatal(err)
-	}
-
-	// Create existing settings file with some env vars.
-	claudeDir := filepath.Join(tmpDir, ".claude")
-	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	existing := SettingsLocal{
-		Env: map[string]string{
-			"EXISTING_VAR": "keep-me",
-		},
-	}
-	data, _ := json.MarshalIndent(existing, "", "  ")
-	settingsPath := filepath.Join(claudeDir, "settings.local.json")
-	if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	glmConfig := &GLMConfigFromYAML{
-		BaseURL: "https://api.z.ai/api/anthropic",
-		Models: struct {
-			High   string
-			Medium string
-			Low    string
-			Fable  string
-		}{
-			High:   "o",
-			Medium: "s",
-			Low:    "h",
-		},
-		EnvVar: "GLM_API_KEY",
-	}
-
-	err := injectGLMEnv(settingsPath, glmConfig)
-	if err != nil {
-		t.Fatalf("injectGLMEnv should succeed, got: %v", err)
-	}
-
-	// Verify existing vars are preserved.
-	data, _ = os.ReadFile(settingsPath)
-	var result SettingsLocal
-	if err := json.Unmarshal(data, &result); err != nil {
-		t.Fatalf("failed to unmarshal result: %v", err)
-	}
-	if result.Env["EXISTING_VAR"] != "keep-me" {
-		t.Error("existing EXISTING_VAR should be preserved after inject")
-	}
-	if result.Env["ANTHROPIC_AUTH_TOKEN"] != "merge-key" {
-		t.Error("ANTHROPIC_AUTH_TOKEN should be set")
-	}
-}
-
-func TestInjectGLMEnv_InvalidExistingJSON(t *testing.T) {
-	tmpDir := t.TempDir()
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-	t.Setenv("USERPROFILE", tmpHome)
-
-	// Save a test API key.
-	moaiDir := filepath.Join(tmpHome, ".moai")
-	if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(
-		filepath.Join(moaiDir, ".env.glm"),
-		[]byte("GLM_API_KEY=\"test\"\n"),
-		0o600,
-	); err != nil {
-		t.Fatal(err)
-	}
-
-	// Create invalid JSON file.
-	claudeDir := filepath.Join(tmpDir, ".claude")
-	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	settingsPath := filepath.Join(claudeDir, "settings.local.json")
-	if err := os.WriteFile(settingsPath, []byte("{invalid json"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	glmConfig := &GLMConfigFromYAML{
-		BaseURL: "https://api.z.ai/api/anthropic",
-		EnvVar:  "GLM_API_KEY",
-	}
-
-	err := injectGLMEnv(settingsPath, glmConfig)
-	if err == nil {
-		t.Fatal("injectGLMEnv should error on invalid existing JSON")
-	}
-	if !strings.Contains(err.Error(), "parse settings.local.json") {
-		t.Errorf("error should mention parsing, got: %v", err)
-	}
-}
-
-func TestInjectGLMEnv_FromEnvironmentVariable(t *testing.T) {
-	tmpDir := t.TempDir()
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-	t.Setenv("USERPROFILE", tmpHome)
-	// Set API key via environment variable (no .env.glm file).
-	t.Setenv("MY_GLM_KEY", "env-api-key")
-
-	settingsPath := filepath.Join(tmpDir, ".claude", "settings.local.json")
-	glmConfig := &GLMConfigFromYAML{
-		BaseURL: "https://api.z.ai/api/anthropic",
-		Models: struct {
-			High   string
-			Medium string
-			Low    string
-			Fable  string
-		}{
-			High:   "o",
-			Medium: "s",
-			Low:    "h",
-		},
-		EnvVar: "MY_GLM_KEY",
-	}
-
-	err := injectGLMEnv(settingsPath, glmConfig)
-	if err != nil {
-		t.Fatalf("injectGLMEnv should succeed with env var, got: %v", err)
-	}
-
-	data, _ := os.ReadFile(settingsPath)
-	var settings SettingsLocal
-	if err := json.Unmarshal(data, &settings); err != nil {
-		t.Fatalf("failed to unmarshal: %v", err)
-	}
-	if settings.Env["ANTHROPIC_AUTH_TOKEN"] != "env-api-key" {
-		t.Errorf("ANTHROPIC_AUTH_TOKEN = %q, want %q", settings.Env["ANTHROPIC_AUTH_TOKEN"], "env-api-key")
-	}
-}
-
 // --- Tests for getGLMEnvPath ---
 
 func TestGetGLMEnvPath_ReturnsExpectedPath(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -467,6 +229,10 @@ func TestGetGLMEnvPath_ReturnsExpectedPath(t *testing.T) {
 }
 
 func TestGetGLMEnvPath_ContainsMoaiDir(t *testing.T) {
+	// Resolve under a temp HOME rather than the TestMain MOAI_HOME sandbox,
+	// whose path carries no .moai segment (card t1229).
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv(config.EnvHome, "")
 	path := getGLMEnvPath()
 	if path == "" {
 		t.Skip("cannot determine home directory")
@@ -482,6 +248,9 @@ func TestGetGLMEnvPath_ContainsMoaiDir(t *testing.T) {
 // --- Tests for saveGLMKey (additional coverage for edge cases) ---
 
 func TestSaveGLMKey_DirectoryCreation(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -507,6 +276,9 @@ func TestSaveGLMKey_DirectoryCreation(t *testing.T) {
 }
 
 func TestSaveGLMKey_FileContainsHeader(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -560,6 +332,9 @@ func TestIsTestEnvironment_WithEnvVarNotSet(t *testing.T) {
 // --- Tests for loadGLMKey ---
 
 func TestLoadGLMKey_ValidFile(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -583,6 +358,9 @@ func TestLoadGLMKey_ValidFile(t *testing.T) {
 }
 
 func TestLoadGLMKey_MissingFile(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -594,6 +372,9 @@ func TestLoadGLMKey_MissingFile(t *testing.T) {
 }
 
 func TestLoadGLMKey_SingleQuoted(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -617,6 +398,9 @@ func TestLoadGLMKey_SingleQuoted(t *testing.T) {
 }
 
 func TestLoadGLMKey_Unquoted(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -640,6 +424,9 @@ func TestLoadGLMKey_Unquoted(t *testing.T) {
 }
 
 func TestLoadGLMKey_EmptyFile(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -663,6 +450,9 @@ func TestLoadGLMKey_EmptyFile(t *testing.T) {
 }
 
 func TestLoadGLMKey_OnlyComments(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -688,6 +478,9 @@ func TestLoadGLMKey_OnlyComments(t *testing.T) {
 // --- Tests for getGLMAPIKey ---
 
 func TestGetGLMAPIKey_FromSavedFile(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -713,6 +506,9 @@ func TestGetGLMAPIKey_FromSavedFile(t *testing.T) {
 }
 
 func TestGetGLMAPIKey_FromEnvFallback(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -726,6 +522,9 @@ func TestGetGLMAPIKey_FromEnvFallback(t *testing.T) {
 }
 
 func TestGetGLMAPIKey_NoSource(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -842,6 +641,12 @@ func TestCharacterize_GLM_AutoModeRejected(t *testing.T) {
 	if !strings.Contains(err.Error(), "auto mode is not available with GLM") {
 		t.Errorf("error message should mention auto mode limitation, got: %v", err)
 	}
+	if !strings.Contains(buf.String(), "supported Claude model") || strings.Contains(buf.String(), "4.6") {
+		t.Errorf("stderr should describe current eligibility without a model version, got: %s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "use 'moai cc --permission-mode auto' instead") {
+		t.Errorf("stderr should preserve the moai cc hint, got: %s", buf.String())
+	}
 }
 
 // TestCharacterize_GLM_AutoModeEqualsSyntaxRejected verifies the --permission-mode=auto
@@ -868,6 +673,9 @@ func TestCharacterize_GLM_AutoModeEqualsSyntaxRejected(t *testing.T) {
 	}
 	if called {
 		t.Error("unifiedLaunchFunc must NOT be called when --permission-mode=auto is requested")
+	}
+	if !strings.Contains(buf.String(), "supported Claude model") || strings.Contains(buf.String(), "4.6") {
+		t.Errorf("stderr should describe current eligibility without a model version, got: %s", buf.String())
 	}
 }
 
@@ -950,8 +758,8 @@ func TestCharacterize_GLM_WarningPrintedToStderr(t *testing.T) {
 	if !strings.Contains(got, "WARNING") {
 		t.Errorf("stderr should contain WARNING about GLM limitations, got: %q", got)
 	}
-	if !strings.Contains(got, "moai cg") {
-		t.Errorf("stderr should mention 'moai cg' as alternative, got: %q", got)
+	if !strings.Contains(got, "Mixed Claude/GLM teammate roles") {
+		t.Errorf("stderr should mention the mixed Claude/GLM teammate-routing constraint, got: %q", got)
 	}
 }
 

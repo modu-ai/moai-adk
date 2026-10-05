@@ -12,28 +12,26 @@ MoAI-ADK (Agentic Development Kit) は、Claude Code 用の戦略的オーケス
 
 ![ドキュメント構造マップ](/images/sections/doc-map-ja.png)
 
-## v3.1 の新機能 — カンバンモード {{< new-badge v3.1 >}}
+## v3.2 の新機能 — ファクトリーモード {{< new-badge v3.2 >}}
 
-セッションはコンテキストウィンドウを1つしか持たず、長いSPECはそれを埋め尽くす — 後に続く作業は先行したすべてを背負ったまま進む。カンバンモードは1つの作業を**4つのターミナル**に分ける。リードセッションがチェーンを進め、3つの同伴セッションが`plan`・`run`・`sync`を1列ずつ受け持ち、自分の列の文脈だけを背負う。レビュー判定は独立した列ではなく、syncゲートが吸収する。上限が消えるわけではないが、どのセッションも3フェーズ分の履歴を抱え込まないため、同じ予算がはるかに遠くまで届く。
+セッションはコンテキストウィンドウを1つしか持たず、長いSPECはそれを埋め尽くす。後に続く作業は先行したすべてを背負ったまま進む。ファクトリーモードは作業を**複数のターミナル**に分ける。リーダーセッションが選ばれたカードを割り当て、レーンごとに立ち上げた別のセッションが、カード1枚を`plan`・`run`・`sync`まで丸ごと受け持つ。レビュー判定は独立した段階ではなく、syncゲートが吸収する。上限が消えるわけではないが、どのセッションもカード1枚分を超える履歴を抱え込まないため、同じ予算がはるかに遠くまで届く。
 
-![カンバンモードのひとつのラン — 5列ボードとリード・3つの同伴セッションが、それぞれのターミナルで、それぞれのモデルとeffortで動いている](/images/profile/kanban-five-sessions.png)
+レーンごとにバックエンドを変えられる。リーダーと各レーンは、`cc`・`glm`・`codex`の中からそれぞれ選べる。
 
-列ごとにバックエンドとeffortを変えられる。上の画面ではPlanをOpus 5のhighで、RunをGLM 5.2のxhighで、SyncをGLM 5.2で動かしている。
-
-{{< terminal title="kanban mode" raw="true" >}}
-moai cc -k                    # リード — run-id を知らせ、チェーンを敷く
-moai cc -k --name plan        # 同伴セッション、それぞれ別のターミナルで
-moai cc -k --name run
-moai cc -k --name sync
+{{< terminal title="factory mode" raw="true" >}}
+moai cc -f                    # リーダー: ファクトリーのランを開く
+moai cc -l                    # レーン、それぞれ別のターミナルで: 次の空きレーンとして合流する
+moai glm -l                   # GLMバックエンドのレーン
+moai codex -l                 # Codexのレーン
 {{< /terminal >}}
 
-ボードは`backlog → plan → run → sync → done`の5列で、`backlog`には意図的に担当セッションを置いていない — 作業は[`/moai todo`](/ja/utility-commands/moai-todo)で人が入れたときにだけボードに入る。review列は存在しない — レビュー判定はsyncゲートが吸収する。リードはカードの`progress.md`から自分で読んだ証拠だけでカードを進め、同伴セッションの返信では進めない。
+委任のチャネルはキューである。`backlog`には意図的に担当セッションを置いておらず、作業は[`/moai todo`](/ja/utility-commands/moai-todo)で人が入れたときにだけ入る。リーダーはカードの`progress.md`から自分で読んだ証拠だけでカードを進め、レーンの返信では進めない。
 
-`moai web`を立ち上げると、カンバン画面でカンバン・チェーンとSPECパイプラインを並べて見られる。
+`moai web`を立ち上げると、ファクトリー画面でファクトリーのレーンとSPECパイプラインを並べて見られる。
 
 ![moai web コンソールのOverview画面 — SPEC集計、進行中SPEC一覧、セッションレジストリ](/images/profile/web-console-v31-overview.png)
 
-詳しくは: [カンバンモード](/ja/advanced/kanban-mode) · [manager-lead リードコーディネーター](/ja/advanced/manager-lead) · [`/moai todo`](/ja/utility-commands/moai-todo) · [moai web コンソール](/ja/advanced/moai-web-console)
+詳しくは: [ファクトリーモード](/ja/advanced/factory-mode) · [manager-lead リーダーコーディネーター](/ja/advanced/manager-lead) · [`/moai todo`](/ja/utility-commands/moai-todo) · [moai web コンソール](/ja/advanced/moai-web-console)
 
 ## MoAI 3.1の3つのコアバリュー
 

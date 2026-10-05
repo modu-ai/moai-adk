@@ -18,7 +18,7 @@ import (
 // guidance off, and isolates BOTH the project root and the home directory.
 //
 // t.TempDir() alone is NOT sufficient isolation here. resolveTodoQueueRoot
-// falls back to ~/.moai/todo/<project-key>/ for any launch context git cannot
+// falls back to ~/.moai/db/<project-key>/todo/ for any launch context git cannot
 // resolve to a primary checkout, so a test that only pins the project root
 // writes into the developer's real home. userHomeDirFn is the package's
 // existing injection seam for exactly this (precedent:

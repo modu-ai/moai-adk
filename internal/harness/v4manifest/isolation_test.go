@@ -10,11 +10,11 @@ import (
 // zero worktrees are created for read-only analysis.
 func TestDecideIsolation_ReadOnlySpecialistReturnsNone(t *testing.T) {
 	input := IsolationInput{
-		Role:          "codebase-explorer",
-		TargetPaths:   []string{"internal/cli/", "internal/harness/"},
-		Parallel:      true,
-		ReadOnly:      true,
-		Risky:         false,
+		Role:        "codebase-explorer",
+		TargetPaths: []string{"internal/cli/", "internal/harness/"},
+		Parallel:    true,
+		ReadOnly:    true,
+		Risky:       false,
 	}
 	got := DecideIsolation(input)
 	if got.Isolation != IsolationNone {
@@ -30,12 +30,12 @@ func TestDecideIsolation_ReadOnlySpecialistReturnsNone(t *testing.T) {
 // MUST get isolation=worktree (>= 1 worktree for conflict-prone GENERATE).
 func TestDecideIsolation_ConflictProneOverlappingPathsReturnsWorktree(t *testing.T) {
 	input := IsolationInput{
-		Role:          "template-neutrality-auditor",
-		TargetPaths:   []string{"internal/template/templates/.claude/", "internal/template/templates/.claude/skills/"},
-		Parallel:      true,
-		ReadOnly:      false,
-		Risky:         false,
-		OverlapsPeer:  true,
+		Role:         "template-neutrality-auditor",
+		TargetPaths:  []string{"internal/template/templates/.claude/", "internal/template/templates/.claude/skills/"},
+		Parallel:     true,
+		ReadOnly:     false,
+		Risky:        false,
+		OverlapsPeer: true,
 	}
 	got := DecideIsolation(input)
 	if got.Isolation != IsolationWorktree {
@@ -51,12 +51,12 @@ func TestDecideIsolation_ConflictProneOverlappingPathsReturnsWorktree(t *testing
 // targets a single path gets isolation=none — no write conflict is possible.
 func TestDecideIsolation_SequentialSinglePathReturnsNone(t *testing.T) {
 	input := IsolationInput{
-		Role:          "manifest-writer",
-		TargetPaths:   []string{".claude/commands/harness/dev/manifest.json"},
-		Parallel:      false,
-		ReadOnly:      false,
-		Risky:         false,
-		OverlapsPeer:  false,
+		Role:         "manifest-writer",
+		TargetPaths:  []string{".claude/commands/harness/dev/manifest.json"},
+		Parallel:     false,
+		ReadOnly:     false,
+		Risky:        false,
+		OverlapsPeer: false,
 	}
 	got := DecideIsolation(input)
 	if got.Isolation != IsolationNone {
@@ -72,12 +72,12 @@ func TestDecideIsolation_SequentialSinglePathReturnsNone(t *testing.T) {
 // shared infrastructure) gets isolation=worktree per REQ-HV4-007 "risky changes".
 func TestDecideIsolation_RiskyChangeReturnsWorktree(t *testing.T) {
 	input := IsolationInput{
-		Role:          "shared-config-refactorer",
-		TargetPaths:   []string{".moai/config/sections/workflow.yaml"},
-		Parallel:      false,
-		ReadOnly:      false,
-		Risky:         true,
-		OverlapsPeer:  false,
+		Role:         "shared-config-refactorer",
+		TargetPaths:  []string{".moai/config/sections/workflow.yaml"},
+		Parallel:     false,
+		ReadOnly:     false,
+		Risky:        true,
+		OverlapsPeer: false,
 	}
 	got := DecideIsolation(input)
 	if got.Isolation != IsolationWorktree {
@@ -93,12 +93,12 @@ func TestDecideIsolation_RiskyChangeReturnsWorktree(t *testing.T) {
 // isolation=none — parallelism alone does not trigger worktree; overlap does.
 func TestDecideIsolation_ParallelNoOverlapReturnsNone(t *testing.T) {
 	input := IsolationInput{
-		Role:          "backend-specialist",
-		TargetPaths:   []string{"internal/backend/"},
-		Parallel:      true,
-		ReadOnly:      false,
-		Risky:         false,
-		OverlapsPeer:  false,
+		Role:         "backend-specialist",
+		TargetPaths:  []string{"internal/backend/"},
+		Parallel:     true,
+		ReadOnly:     false,
+		Risky:        false,
+		OverlapsPeer: false,
 	}
 	got := DecideIsolation(input)
 	if got.Isolation != IsolationNone {

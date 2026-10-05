@@ -296,18 +296,21 @@ func TestCollectMemory_GLMContextOverride(t *testing.T) {
 		wantBudget   int // expected TokenBudget (contextSize * 85 / 100)
 	}{
 		{
-			name:         "glm-5.1 opus slot overrides 1M to 200K",
+			name:         "glm-5.3-flash sonnet slot overrides reported 200K to 1M",
+			envSlot:      "ANTHROPIC_DEFAULT_SONNET_MODEL",
+			modelName:    "glm-5.3-flash",
+			reportedSize: 200_000,
+			wantBudget:   1_000_000 * 85 / 100,
+		},
+		{
+			// DR-2 (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004): glm-5.1's
+			// built-in entry is deleted, so the model no longer resolves and
+			// the reported Claude-slot size is kept.
+			name:         "removed glm-5.1 opus slot falls back to reported",
 			envSlot:      "ANTHROPIC_DEFAULT_OPUS_MODEL",
 			modelName:    "glm-5.1",
 			reportedSize: 1_000_000,
-			wantBudget:   200_000 * 85 / 100,
-		},
-		{
-			name:         "glm-4.5-air haiku slot",
-			envSlot:      "ANTHROPIC_DEFAULT_HAIKU_MODEL",
-			modelName:    "glm-4.5-air",
-			reportedSize: 200_000,
-			wantBudget:   128_000 * 85 / 100,
+			wantBudget:   1_000_000 * 85 / 100,
 		},
 		{
 			name:         "claude model preserves reported size",
@@ -485,21 +488,26 @@ func TestResolveGLMContextWindow(t *testing.T) {
 			model    string
 			wantSize int
 		}{
-			{"glm-5.2 1M context", "glm-5.2", 1_000_000},
-			{"glm-5.2[1m] suffix resolves via substring match", "glm-5.2[1m]", 1_000_000},
+			// The built-in table is exactly {glm-5.3-flash, glm-5.3} since
+			// SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004 (DR-2 full deletion):
+			// removed ids return 0 here — the llm.glm.context_windows override
+			// is the path that still maps them.
 			{"glm-5.3-flash direct table entry (divergence guard)", "glm-5.3-flash", 1_000_000},
 			{"glm-5.3 retained entry", "glm-5.3", 1_000_000},
 			{"unregistered glm-5.3-* variant inherits 1M via substring", "glm-5.3-flash-lite", 1_000_000},
-			{"glm-5.1 substring match (longest wins)", "glm-5.1", 200_000},
-			{"glm-4.5-air longest match wins over glm-4.5", "glm-4.5-air", 128_000},
-			{"glm-4.5 fallback when no -air suffix", "glm-4.5", 128_000},
-			{"glm-4.6 known model", "glm-4.6", 128_000},
+			{"removed glm-5.2 1M entry deleted", "glm-5.2", 0},
+			{"removed glm-5.2[1m] no longer resolves", "glm-5.2[1m]", 0},
+			{"removed glm-5.1 entry deleted", "glm-5.1", 0},
+			{"removed glm-4.5-air entry deleted (longest match now moot)", "glm-4.5-air", 0},
+			{"removed glm-4.5 entry deleted", "glm-4.5", 0},
+			{"removed glm-4.6 entry deleted", "glm-4.6", 0},
+			{"removed glm-5 entry deleted", "glm-5", 0},
 			{"empty input returns 0", "", 0},
 			{"claude prefix returns 0 (not GLM)", "claude-sonnet-4.6", 0},
 			{"unknown model returns 0", "completely-unknown", 0},
-			{"case insensitive", "GLM-5.1", 200_000},
-			{"case insensitive glm-5.2[1m]", "GLM-5.2[1M]", 1_000_000},
-			{"trims whitespace", "  glm-5.1  ", 200_000},
+			{"case insensitive", "GLM-5.3-FLASH", 1_000_000},
+			{"case insensitive glm-5.3", "GLM-5.3", 1_000_000},
+			{"trims whitespace", "  glm-5.3  ", 1_000_000},
 		}
 
 		for _, tc := range cases {
@@ -535,9 +543,10 @@ func TestResolveGLMContextWindow(t *testing.T) {
 		if got := ResolveGLMContextWindow("custom-private"); got != 96_000 {
 			t.Errorf("ResolveGLMContextWindow(custom-private) = %d, want 96000", got)
 		}
-		// Models not in override but in built-in table still resolve.
-		if got := ResolveGLMContextWindow("glm-4.5"); got != 128_000 {
-			t.Errorf("ResolveGLMContextWindow(glm-4.5) = %d, want 128000 (built-in fallback)", got)
+		// Models not in the override but in the built-in table still resolve
+		// (the offered pair survives the DR-2 deletion).
+		if got := ResolveGLMContextWindow("glm-5.3"); got != 1_000_000 {
+			t.Errorf("ResolveGLMContextWindow(glm-5.3) = %d, want 1000000 (built-in fallback)", got)
 		}
 	})
 }

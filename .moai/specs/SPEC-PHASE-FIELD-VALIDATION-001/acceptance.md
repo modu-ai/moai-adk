@@ -2,7 +2,6 @@
 id: SPEC-PHASE-FIELD-VALIDATION-001
 title: "phase 프론트매터 필드의 값-형태 검증과 오염 코퍼스 교정 — 수용 기준"
 version: "0.2.0"
-status: completed
 created: 2026-08-02
 updated: 2026-08-02
 author: Goos Kim
@@ -286,13 +285,14 @@ echo "all-artifact violations = $all"
 
 ```bash
 git log -1 --format='%ci' v3.0.1
-for d in SPEC-ENVKEY-ANTHROPIC-SSOT-001 SPEC-WORKTREE-BRANCH-GUARD-001 \
-         SPEC-CI-LOOP-DEVONLY-001 SPEC-PIPELINE-FANOUT-ACTIVATION-001 \
-         SPEC-UPDATE-GUARD-EFFICACY-001 SPEC-UPDATE-REINSTALL-LOOP-002 \
-         SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 SPEC-REF-SEO-ABSORB-001 \
-         SPEC-UPDATE-YAML-PRESERVE-001; do
-  echo "$d first=$(git log --reverse --format='%ci' -- ".moai/specs/$d/" | head -1)"
-done
+# 아홉 디렉터리 각각 D 에 대해 다음 한 줄을 별도 호출로 실행한다 (루프 안의 git 은
+# 워크트리 가드가 거부한다):
+#   git log --reverse --format='%ci' -- ".moai/specs/<D>/" | head -1
+# D = SPEC-ENVKEY-ANTHROPIC-SSOT-001, SPEC-WORKTREE-BRANCH-GUARD-001,
+#     SPEC-CI-LOOP-DEVONLY-001, SPEC-PIPELINE-FANOUT-ACTIVATION-001,
+#     SPEC-UPDATE-GUARD-EFFICACY-001, SPEC-UPDATE-REINSTALL-LOOP-002,
+#     SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001, SPEC-REF-SEO-ABSORB-001,
+#     SPEC-UPDATE-YAML-PRESERVE-001
 ```
 
 - 관측 baseline: 태그 `2026-07-24 01:37:05 +0900`. 최초 커밋은 `2026-07-27 19:50`부터

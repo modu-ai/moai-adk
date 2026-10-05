@@ -83,8 +83,8 @@ func TestPreserveClassSource(t *testing.T) {
 // classifications for the same path, proving no parallel heuristic.
 func TestPredicateShared(t *testing.T) {
 	rel := ".claude/agents/harness/my-specialist.md"
-	conservative := func(r string) bool { return true }  // protect everything
-	standard := func(r string) bool { return false }      // protect nothing
+	conservative := func(r string) bool { return true } // protect everything
+	standard := func(r string) bool { return false }    // protect nothing
 	if got := Classify(rel, true, false, conservative); got != ClassPreserveUserOwned {
 		t.Errorf("conservative predicate: got %v, want ClassPreserveUserOwned", got)
 	}

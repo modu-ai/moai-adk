@@ -5,8 +5,6 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md content — manager-spec only), code implementation, testing, documentation writing, git operations, production deployment
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
-model: inherit
-effort: medium
 color: purple
 permissionMode: bypassPermissions
 memory: user
@@ -20,7 +18,7 @@ skills:
 
 Create standards-compliant Claude Code artifacts (agents, skills, plugins, commands, hooks, MCP servers, LSP servers) with optimal configuration and single responsibility design.
 
-<!-- @MX:NOTE: [AUTO] retirement-pattern — matches SPEC-V3R3-RETIRED-DDD-001 stub migration; all three builder-* agents consolidated here -->
+<!-- @MX:NOTE: [AUTO] retirement-pattern — all three builder-* agents consolidated here -->
 
 ## Required Input Parameter
 
@@ -28,14 +26,14 @@ Create standards-compliant Claude Code artifacts (agents, skills, plugins, comma
 <!-- @MX:REASON: Every artifact creation request (agent/skill/plugin/command/hook/mcp-server/lsp-server) resolves to this dispatch table -->
 **artifact_type**: Must be one of: `agent | skill | plugin | command | hook | mcp-server | lsp-server`
 
-<!-- @MX:WARN: [AUTO] trigger-union coverage — REQ-ORC-001-017 forbids trigger drops from builder-agent + builder-skill + builder-plugin union -->
-<!-- @MX:REASON: CI test in SPEC-V3R2-ORC-002 will enforce no trigger keyword is dropped vs the three source agents; any rewrite of this description row must preserve all tokens -->
+<!-- @MX:WARN: [AUTO] trigger-union coverage — forbids trigger drops from builder-agent + builder-skill + builder-plugin union -->
+<!-- @MX:REASON: a CI test enforces no trigger keyword is dropped vs the three source agents; any rewrite of this description row must preserve all tokens -->
 
 ## Artifact Type Dispatch Table
 
 | artifact_type | Output Location | Key Standards |
 |---------------|----------------|---------------|
-| `agent` | `.claude/agents/` or `.claude/agents/moai/` (with `--moai`) | Frontmatter: name, description, tools, model, permissionMode, memory, skills |
+| `agent` | `.claude/agents/` or `.claude/agents/moai/` (with `--moai`) | Frontmatter: name, description, tools, permissionMode, memory, skills (no `model` / `effort`) |
 | `skill` | `.claude/skills/{skill-name}/SKILL.md` | 500-line limit, progressive disclosure, YAML frontmatter schema |
 | `plugin` | `{plugin-name}/.claude-plugin/plugin.json` + components at root | manifest + component directories at plugin root |
 | `command` | `.claude/commands/{name}.md` | Frontmatter: allowed-tools, argument-hint, description |
@@ -112,7 +110,7 @@ The checks below are independent and read-only: issue them as ONE single-turn mu
 **Agents**:
 - Frontmatter fields per the Dispatch Table row; `description` is required and carries concise semantic scope prose + language-independent trigger intent; `tools` is CSV and follows the least-privilege principle; `skills` is a YAML array
 - Sub-agents cannot spawn other sub-agents unless `Agent` is listed in their `tools`. Nested spawning arrived in Claude Code v2.1.172 and is **enabled by default** as of v2.1.219 (changelog: depth 3; `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` disables), so omitting `Agent` from the `tools` list is now the SOLE flat-hierarchy guarantee — MoAI agents omit it deliberately, and a generated agent should too unless nesting is genuinely required
-- Sub-agents run in the background by default as of Claude Code v2.1.198, and a background sub-agent still surfaces every permission prompt in the main session (naming the asking sub-agent since v2.1.186). Do NOT set the `background:` frontmatter field and do NOT force write-capable agents to the foreground — the runtime chooses. The retained safeguard is concurrency, not backgrounding: never run two write-capable agents at once. See `.claude/rules/moai/core/agent-common-protocol.md` § Background Agent Execution
+- Sub-agents run in the background by default as of Claude Code v2.1.198, and a background sub-agent still surfaces every permission prompt in the main session (naming the asking sub-agent since v2.1.186). Do NOT set the `background:` frontmatter field and do NOT force write-capable agents to the foreground — the runtime chooses. The retained safeguard is concurrency, not backgrounding, scoped to the working tree: one writer per tree, so two write-capable agents run at once only in independent worktrees. See `.claude/rules/moai/core/agent-common-protocol.md` § Background Agent Execution
 
 **Skills**:
 - All frontmatter metadata values must be quoted strings
@@ -139,22 +137,16 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
 
 ## Harness Generation Model Policy
 
 When generating new agents (slash command, sub-agent, harness specialist),
 apply the canonical MoAI agent model policy per
-`.claude/rules/moai/development/model-policy.md` — that rule is the SSOT for the
-`model:` / `effort:` defaults (inherit-by-default and its 1M-context-entitlement
-rationale, the mechanical-agent speed slot, and effort tiering), so do not restate
-its tiers in generated bodies. Two builder-side constraints apply on top of it:
-`permissionMode:` follows the agent's role (`default` for read-mostly agents,
-`bypassPermissions` for trusted write-agents), and generated agents MUST NOT
-declare an explicit `model: sonnet` or `model: opus` unless the user explicitly
-opts into the 1M-context-incompatible path (accepting that the agent will fail to
-spawn from `[1m]` parent sessions until the upstream issues are resolved OR the
-user disables `[1m]` context).
+`.claude/rules/moai/development/model-policy.md`: generated agents declare no
+`model:` and no `effort:`, so they inherit the main session's model and effort
+(and its 1M-context entitlement). `permissionMode:` follows the agent's role
+(`default` for read-mostly agents, `bypassPermissions` for trusted write-agents).
 
 Additionally, every generated agent body MUST include the canonical
 one-line "Model/effort escalation" cross-reference at body tail — see
@@ -163,6 +155,6 @@ one-line "Model/effort escalation" cross-reference at body tail — see
 ```text
 ## Model/effort escalation
 
-> **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
 ```
 

@@ -191,8 +191,8 @@ func TestDeployerListTemplates(t *testing.T) {
 		expected := map[string]bool{
 			".claude/settings.json":                   true,
 			".claude/agents/expert/expert-backend.md": true,
-			"CLAUDE.md":                               true,
-			".gitignore":                              true,
+			"CLAUDE.md":  true,
+			".gitignore": true,
 		}
 		for _, item := range list {
 			if !expected[item] {

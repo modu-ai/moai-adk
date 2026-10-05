@@ -181,18 +181,18 @@ Agent teams are experimental; use them with these limitations in mind.
 
 Team cleanup always goes through the lead. Ask the lead to clean up when work is done — but cleanup fails while running teammates remain, so shut them down first.
 
-## The Link to MoAI CG Mode — Team Structure as Tokenomics
+## CG retirement and migration
 
-MoAI-ADK layers **CG mode** (`moai cg`, a Claude + GLM hybrid) on top of this native team runtime to optimize cost. The lead uses Claude to coordinate strategy, planning, and audits, while teammates inherit a GLM environment through tmux session-level environment isolation and perform bulk implementation work. It couples the team-structure question of "who does what" with the tokenomics answer of "which model does work at what price," yielding **60-70% cost savings** on token-heavy work like implementation-centric SPECs, code generation, and test writing.
+Claude Code’s native teammate runtime and MoAI’s retired static Agent Teams orchestration are separate features. The native API description on this page does not establish that the retired CG launcher is available. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
-One distinction worth keeping: MoAI-ADK retired its static agent-team layer in its own workflow orchestration, defaulting to sequential subagents and dynamic workflows — but the native Claude Code team runtime covered on this page (tmux panes, shared task list) is used as-is by CG mode. In other words, the "team" execution form lives on, with its purpose shifted from collaboration coordination to cost routing.
+This writes `llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, and `llm.gateway.teammate_provider: inherit`. It removes the old hybrid role assignment; it does not preserve a Claude leader with GLM teammate panes.
 
-CG mode setup and operations are covered in detail in a separate document — see the link below.
+The `claude-glm` target describes a Claude leader with GLM teammates in tmux. Its apply and launch paths are currently unavailable because the TEAMMATE integration gate has not passed. Preview is available. Installing tmux or setting `verified: true` does not open this gate.
 
 ## Related Documents
 
 - [Dynamic Workflows](/en/claude-code/agentic/workflows)
-- [CG Mode (Claude + GLM)](/en/multi-llm/cg-mode)
+- [CG retirement and migration](/en/multi-llm/cg-mode/)
 
 ## References
 

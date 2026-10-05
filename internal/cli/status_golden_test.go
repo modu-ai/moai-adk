@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // updateStatusGolden controls golden snapshot regeneration. Set via UPDATE_GOLDEN=1.
@@ -135,6 +137,13 @@ func TestStatus_Current_Light(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "light")
 
+	// Pin the version the snapshot renders (SPEC-VERSION-STAMP-PREDICATE-001
+	// REQ-VSP-008): the golden must not carry the build-time version token,
+	// or every bump breaks the suite through a fixture no bump owns.
+	origVersion := version.Version
+	version.Version = "v0.0.0-test"
+	defer func() { version.Version = origVersion }()
+
 	got, pkgDir := captureStatusCmdWithPkgDir(t)
 	if len(got) == 0 {
 		t.Fatal("statusCmd produced no output")
@@ -148,6 +157,13 @@ func TestStatus_Current_Dark(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "dark")
 
+	// Pin the version the snapshot renders (SPEC-VERSION-STAMP-PREDICATE-001
+	// REQ-VSP-008): the golden must not carry the build-time version token,
+	// or every bump breaks the suite through a fixture no bump owns.
+	origVersion := version.Version
+	version.Version = "v0.0.0-test"
+	defer func() { version.Version = origVersion }()
+
 	got, pkgDir := captureStatusCmdWithPkgDir(t)
 	if len(got) == 0 {
 		t.Fatal("statusCmd produced no output")
@@ -159,6 +175,13 @@ func TestStatus_Current_Dark(t *testing.T) {
 // Applies tui.MonochromeTheme(): all ANSI colors stripped; Pill degrades to the [label] form.
 func TestStatus_NoColor(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
+
+	// Pin the version the snapshot renders (SPEC-VERSION-STAMP-PREDICATE-001
+	// REQ-VSP-008): the golden must not carry the build-time version token,
+	// or every bump breaks the suite through a fixture no bump owns.
+	origVersion := version.Version
+	version.Version = "v0.0.0-test"
+	defer func() { version.Version = origVersion }()
 
 	got, pkgDir := captureStatusCmdWithPkgDir(t)
 	if len(got) == 0 {

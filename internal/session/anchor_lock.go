@@ -106,15 +106,26 @@ func LockRefusesRemoval(lock LockInfo) bool { return lock.Locked }
 // including the no-opinion case where the tree carries no lock at all.
 func AnchorDecision(treePath string, lock LockInfo, now time.Time) AnchorVerdict {
 	if anchored, detail := lockAnchorVerdict(lock); anchored {
-		return AnchorVerdict{Anchored: true, Source: AnchorSourceLock, Detail: detail}
+		verdict := AnchorVerdict{Anchored: true, Source: AnchorSourceLock, Detail: detail}
+		// W3 (REQ-SAA-007): the disposal-side anchor decision is traced. The
+		// deciding process has no session identity — the row carries the
+		// "unknown" session marker, the judge's pid, and the judged tree.
+		TraceAnchorDecision(treePath, "anchor_decision", "", treePath,
+			fmt.Sprintf("source=%s detail=%s", verdict.Source, verdict.Detail))
+		return verdict
 	}
 	if entries := LiveAnchoredSessions(treePath, now); len(entries) > 0 {
-		return AnchorVerdict{
+		verdict := AnchorVerdict{
 			Anchored: true,
 			Source:   AnchorSourceRegistry,
 			Detail:   fmt.Sprintf("%d live registry entr%s", len(entries), plural(len(entries))),
 		}
+		TraceAnchorDecision(treePath, "anchor_decision", "", treePath,
+			fmt.Sprintf("source=%s detail=%s", verdict.Source, verdict.Detail))
+		return verdict
 	}
+	TraceAnchorDecision(treePath, "anchor_decision", "", treePath,
+		fmt.Sprintf("source=%s detail=%s", AnchorSourceNone, "no anchor claim"))
 	return AnchorVerdict{Anchored: false, Source: AnchorSourceNone}
 }
 

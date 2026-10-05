@@ -200,7 +200,7 @@ Reserve it for genuinely-parallel high-volume work. Coding-heavy, multi-domain, 
 
 The rationale is coordination cost: fan-out plus sequential covers the practical surface at lower token and latency cost than peer-coordinating teammates, which is why the auto-routes stay with fanout/serial/sweep and agent-team requires the explicit request.
 
-**Native runtime sanctioned**: the Claude Code teammate runtime itself (`moai cg` GLM panes, `moai cc -w <name> --spawn` teammate windows, the teammate registry) works and is a sanctioned surface under the enabled flag — the retired era withdrew only MoAI's static orchestration layer, never the runtime primitive.
+**Native runtime sanctioned**: the Claude Code teammate runtime itself (the teammate registry and explicitly requested native Agent Teams) works and is a sanctioned surface under the enabled flag — the retired era withdrew only MoAI's static orchestration layer, never the runtime primitive.
 
 ---
 

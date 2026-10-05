@@ -150,7 +150,8 @@
 
 - **AC-WC9-018** (REQ-WC9-014, HARD-4) — **GCR-5 wiring 무변경**: .git_hooks/pre-push / hook_install.go prePushHookContent / git-strategy.yaml hooks.pre_push 변경 0.
   ```bash
-  test "$(git diff origin/main -- .git_hooks/pre-push internal/cli/hook_install.go .moai/config/sections/git-strategy.yaml | grep -cE '^[+-][^+-]')" -eq 0
+  git diff origin/main -- .git_hooks/pre-push internal/cli/hook_install.go .moai/config/sections/git-strategy.yaml | grep -cE '^[+-][^+-]'
+  # 기대: 0
   ```
   단언: GCR-5 deferred 경계의 세 파일에 diff 0줄(§F 침범 0). [MUST remain green] (audit-2 fix: 세 번째 경로를 실 tracked `.moai/config/sections/git-strategy.yaml`로 교정 — `internal/template/templates/.moai/config/sections/git-strategy.yaml`는 untracked/부재라 git diff vacuous no-op이었음.)
 

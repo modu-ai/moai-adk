@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "EnvironmentShellInfo": {
+      "properties": {
+        "name": {
+          "description": "Stable shell name, for example `zsh`, `bash`, `powershell`, `sh`, or `cmd`.",
+          "type": "string"
+        },
+        "path": {
+          "description": "Target-native shell executable path or command name.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "path"
+      ],
+      "type": "object"
+    },
+    "PathUri": {
+      "type": "string"
+    }
+  },
+  "properties": {
+    "cwd": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/PathUri"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Default working directory reported by the environment, as a canonical file URI."
+    },
+    "shell": {
+      "$ref": "#/definitions/EnvironmentShellInfo"
+    }
+  },
+  "required": [
+    "shell"
+  ],
+  "title": "EnvironmentInfoResponse",
+  "type": "object"
+}

@@ -1,0 +1,8 @@
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/init_headroom_export_test.go:161:13: undefined: clearHeadroomExportDir
+internal/cli/init_headroom_export_test.go:170:13: undefined: clearHeadroomExportDir
+internal/cli/init_headroom_export_test.go:176:13: undefined: clearHeadroomExportDir
+internal/cli/init_headroom_export_test.go:185:13: undefined: writeHeadroomExportMarker
+internal/cli/init_headroom_export_test.go:191:13: undefined: clearHeadroomExportDir
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL

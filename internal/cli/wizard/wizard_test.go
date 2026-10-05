@@ -278,25 +278,16 @@ func TestGetLocalizedQuestion(t *testing.T) {
 }
 
 func TestGetUIStrings(t *testing.T) {
-	// Test English
-	enStrings := GetUIStrings("en")
-	if enStrings.HelpSelect == "" {
-		t.Error("English HelpSelect should not be empty")
-	}
-
 	// Test Korean
 	koStrings := GetUIStrings("ko")
-	if koStrings.HelpSelect == enStrings.HelpSelect {
-		t.Error("Korean HelpSelect should be different from English")
-	}
 	if koStrings.ErrorRequired != "필수 입력 항목입니다" {
 		t.Errorf("expected Korean error '필수 입력 항목입니다', got %q", koStrings.ErrorRequired)
 	}
 
 	// Test unknown locale (should return English)
 	unknownStrings := GetUIStrings("xx")
-	if unknownStrings.HelpSelect != enStrings.HelpSelect {
-		t.Error("unknown locale should return English strings")
+	if unknownStrings.ErrorRequired != "This field is required" {
+		t.Errorf("unknown locale should return the English ErrorRequired, got %q", unknownStrings.ErrorRequired)
 	}
 }
 
@@ -631,16 +622,17 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 		result *WizardResult
 		want   int
 	}{
-		// Git manual: 6 unconditional questions (conversation_language,
-		// user_name, project_name, model_policy, report_format, git_mode) = 6.
-		// The advanced_bridge gate is retired by C1, so it no longer contributes.
-		{"manual", &WizardResult{GitMode: "manual"}, 6},
+		// Git manual: 5 unconditional questions (conversation_language,
+		// user_name, project_name, report_format, git_mode) = 5.
+		// The advanced_bridge gate is retired by C1, and the agent model-policy
+		// question is retired, so neither contributes.
+		{"manual", &WizardResult{GitMode: "manual"}, 5},
 		// personal+github reveals git_provider + github_username + github_token
-		// (6 base + 3 = 9).
-		{"personal-github", &WizardResult{GitMode: "personal", GitProvider: "github"}, 9},
+		// (5 base + 3 = 8).
+		{"personal-github", &WizardResult{GitMode: "personal", GitProvider: "github"}, 8},
 		// personal+gitlab reveals git_provider + gitlab_instance_url +
-		// gitlab_username + gitlab_token (6 base + 4 = 10).
-		{"personal-gitlab", &WizardResult{GitMode: "personal", GitProvider: "gitlab"}, 10},
+		// gitlab_username + gitlab_token (5 base + 4 = 9).
+		{"personal-gitlab", &WizardResult{GitMode: "personal", GitProvider: "gitlab"}, 9},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -651,12 +643,15 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 		})
 	}
 
-	// Adding page 3 expands the denominator further: 6 unconditional defaults
-	// (git conditionals hidden for manual) + 11 page-3 questions = 17.
+	// Adding page 3 expands the denominator further: 5 unconditional defaults
+	// (git conditionals hidden for manual) + 3 page-3 questions = 8.
+	// SPEC-INIT-QUIET-WIZARD-001 left page 3 with agent_wiring and
+	// autonomy_tier only (13 -> 2); SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005
+	// added jev_enabled (2 -> 3).
 	all := append(ReconfigureQuestions("/tmp/steppertotal"), Page3Questions("/tmp/steppertotal")...)
 	std := &WizardResult{GitMode: "manual", DesignEnabled: true}
-	if got := stepperDenominator(all, std); got != 17 {
-		t.Errorf("page-3 denominator: expected 17 (6 + 11 page-3), got %d", got)
+	if got := stepperDenominator(all, std); got != 8 {
+		t.Errorf("page-3 denominator: expected 8 (5 + 3 page-3), got %d", got)
 	}
 	// Single dynamic source invariant: stepperDenominator == TotalVisibleQuestions.
 	if stepperDenominator(all, std) != TotalVisibleQuestions(all, std) {
@@ -1251,12 +1246,6 @@ func TestGetUIStrings_AllLocales(t *testing.T) {
 	locales := []string{"en", "ko", "ja", "zh"}
 	for _, locale := range locales {
 		str := GetUIStrings(locale)
-		if str.HelpSelect == "" {
-			t.Errorf("locale %q: HelpSelect should not be empty", locale)
-		}
-		if str.HelpInput == "" {
-			t.Errorf("locale %q: HelpInput should not be empty", locale)
-		}
 		if str.ErrorRequired == "" {
 			t.Errorf("locale %q: ErrorRequired should not be empty", locale)
 		}

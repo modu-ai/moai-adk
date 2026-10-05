@@ -1,0 +1,226 @@
+{
+  "source_sha": "bcfa0a401a6bfe0eea278c65edecfcedaad919c4",
+  "opencode": [
+    {
+      "provider": "opencode-go",
+      "model": "grok-4.6",
+      "protocol": "Responses"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "grok-4.5",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "gpt-5.6-luna",
+      "protocol": "Responses"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "glm-5.2",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "glm-5.3-flash",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "glm-5.3",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "glm-5.1",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "glm-5",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "kimi-k3",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "kimi-k2.7-code",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "kimi-k2.6",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "kimi-k2.5",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "longcat-2.0",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-pro",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-flash",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-flash",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-flash-vision-exp",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "mimo-v2-pro",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "mimo-v2-omni",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "mimo-v2.5",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "mimo-v2.5-pro",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "minimax-m3",
+      "protocol": "Messages"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "minimax-m2.7",
+      "protocol": "Messages"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "minimax-m2.5",
+      "protocol": "Messages"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.8-max",
+      "protocol": "Messages"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.8-flash",
+      "protocol": "Messages"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.7-max",
+      "protocol": "Messages"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.7-plus",
+      "protocol": "Messages"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.6-plus",
+      "protocol": "Messages"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.5-plus",
+      "protocol": "Messages"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "hy3",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "hy4-preview",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "hy3-preview",
+      "protocol": "ChatCompletions"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "muse-spark-1.3-contributor",
+      "protocol": "Responses"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "muse-spark-1.2-contributor",
+      "protocol": "Responses"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "omen-alpha",
+      "protocol": "ChatCompletions"
+    }
+  ],
+  "codex": [
+    "gpt-5.2",
+    "gpt-5.3-codex",
+    "gpt-5.3-codex-spark",
+    "gpt-5.4",
+    "gpt-5.4-mini",
+    "gpt-5.5",
+    "gpt-5.6-luna",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-6-astra"
+  ],
+  "kimi_aliases": [
+    "kimi-for-coding",
+    "kimi-k2.6",
+    "kimi-k3",
+    "k2.6",
+    "k3"
+  ],
+  "grok": [
+    "grok-composer-2.5-fast",
+    "grok-4.5",
+    "grok-4.6"
+  ],
+  "cursor_prefixes": [
+    "cursor:",
+    "cursor-plan:",
+    "cursor-ask:"
+  ],
+  "cursor_legacy": [
+    "cursor",
+    "cursor-agent",
+    "cursor-composer",
+    "cursor-composer-fast",
+    "cursor-plan",
+    "cursor-ask",
+    "composer-2.5",
+    "composer-2.5-fast"
+  ],
+  "cursor_dynamic": "NOT_QUERIED: no account login",
+  "account_entitlements": "NOT_TESTED"
+}

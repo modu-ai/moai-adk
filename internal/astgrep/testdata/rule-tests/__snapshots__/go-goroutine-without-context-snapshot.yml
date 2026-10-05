@@ -1,0 +1,14 @@
+id: go-goroutine-without-context
+snapshots:
+  ? |
+    go func() {
+        log.Println("started")
+    }()
+  : labels:
+    - source: |-
+        go func() {
+            log.Println("started")
+        }()
+      style: primary
+      start: 0
+      end: 42

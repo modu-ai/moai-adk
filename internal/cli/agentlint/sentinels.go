@@ -6,7 +6,7 @@ package agentlint
 // by CI systems, pre-commit hooks, and downstream tooling.
 //
 // @MX:ANCHOR: [AUTO] agentlint sentinel keys — invariant contract for lint enforcement
-// @MX:REASON: High fan_in: agent_lint.go (LR-05/LR-09) + workflow_lint.go + workflow_lint_test.go + agent_lint_test.go all reference these constants.
+// @MX:REASON: High fan_in: agent_lint.go (LR-05/LR-09) + agent_lint_test.go reference these constants.
 const (
 	// SentinelWorktreeMissing is emitted by LR-05 when a write-heavy agent
 	// lacks 'isolation: worktree' in its frontmatter.
@@ -16,9 +16,6 @@ const (
 	// (permissionMode: plan) has 'isolation: worktree' set — prohibited overhead.
 	SentinelWorktreeOnReadonly = "ORC_WORKTREE_ON_READONLY"
 
-	// SentinelModelRoutingInvalid is emitted by 'moai workflow lint' when a
-	// workflow.model_routing_profiles entry violates the closed sets
-	// (SPEC-AGENT-TEAM-RETIRE-001 REQ-ATR-009 — replaces the retired
-	// Agent Teams role_profiles isolation check ORC_WORKTREE_REQUIRED).
-	SentinelModelRoutingInvalid = "MODEL_ROUTING_INVALID"
+	// The workflow-lint sentinel MODEL_ROUTING_INVALID was retired with the
+	// model_routing_profiles check (SPEC-AGENT-MODEL-INHERIT-001 D12).
 )

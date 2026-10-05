@@ -4,8 +4,6 @@ description: >
   (dev-only) github harness specialist — GitHub issue-fix and PR-review for moai-adk-go maintainers. NOT distributed to user projects. Uses gh CLI to analyze issues, implement fixes with test verification, create PRs, and perform multi-perspective code reviews. Ported with structural fidelity from .claude/agents/local/github-specialist.md per SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
 
 tools: Read, Write, Edit, Bash, Grep, Glob
-effort: high
-model: opus
 ---
 
 # Specialist: harness-github — Issue Fix and PR Review
@@ -59,6 +57,14 @@ gh issue list --state open --limit 30 --json number,title,labels,body,assignees
 - Otherwise: return a blocker report; the orchestrator surfaces the user-decision prompt to select.
 
 Classify by title/labels/body → branch prefix: bug=`fix/issue-{n}`, feature=`feat/issue-{n}`, enhancement=`improve/issue-{n}`, docs=`docs/issue-{n}`.
+
+[HARD] Before proposing work on an issue, read whether a SPEC covering it is already
+`completed` (`moai spec audit`, or the issue number against `.moai/specs/*/spec.md`
+frontmatter) and report what that read returned. An issue's own `OPEN` state is not
+evidence that the work is outstanding: the delivering SPEC closes under its own id, so
+nothing about the fix updates the issue. Report the read; it never vetoes — and it is
+not conclusive either, because a fix can land under another card or SPEC entirely. The
+final discriminator is reproduction.
 
 ### Phase 2: Analysis and Implementation
 

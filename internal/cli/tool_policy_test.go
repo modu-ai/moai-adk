@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -39,27 +40,34 @@ func TestToolPolicyCmd_Registered(t *testing.T) {
 // (the schemas are disjoint — see REQ-TPS-006 / D9). This test asserts the
 // query works end-to-end against a fixture YAML and that the filters narrow
 // the output correctly.
+//
+// The fixture is test-owned rather than the project's committed
+// tool-policy.yaml: which decisions the product policy uses is an operator
+// choice (it may carry no ask entries at all), while the filter must be
+// exercised for every decision value. Audit, owner, and args strings avoid
+// every filter token, so a row can only match through its own column.
 func TestToolPolicyList_QueryFilters(t *testing.T) {
 	t.Parallel()
 
-	// Use the project's own tool-policy.yaml as the fixture — it is a real
-	// SSOT artifact and a meaningful end-to-end smoke test of the query path.
-	policyPath := "../../.moai/config/sections/tool-policy.yaml"
+	policyPath := filepath.Join(t.TempDir(), "tool-policy.yaml")
+	if err := os.WriteFile(policyPath, []byte(queryFilterFixture), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
 
 	tests := []struct {
 		name       string
 		riskTier   string
 		decision   string
 		tool       string
-		wantSubstr string // at least one output line must contain this
-		wantCount  int    // 0 = don't check count; >0 = expect exactly this many entries
+		wantSubstr string // every listed entry row must contain this
+		wantCount  int    // exact number of entry rows expected
 	}{
-		{name: "all entries", wantCount: 0},
-		{name: "filter irreversible", riskTier: "irreversible", wantSubstr: "irreversible"},
-		{name: "filter allow", decision: "allow", wantSubstr: "allow"},
-		{name: "filter deny", decision: "deny", wantSubstr: "deny"},
-		{name: "filter ask", decision: "ask", wantSubstr: "ask"},
-		{name: "filter tool Bash", tool: "Bash", wantSubstr: "Bash"},
+		{name: "all entries", wantCount: 5},
+		{name: "filter irreversible", riskTier: "irreversible", wantSubstr: "irreversible", wantCount: 2},
+		{name: "filter allow", decision: "allow", wantSubstr: "allow", wantCount: 2},
+		{name: "filter deny", decision: "deny", wantSubstr: "deny", wantCount: 1},
+		{name: "filter ask", decision: "ask", wantSubstr: "ask", wantCount: 2},
+		{name: "filter tool Bash", tool: "Bash", wantSubstr: "Bash", wantCount: 3},
 	}
 
 	for _, tt := range tests {
@@ -93,12 +101,57 @@ func TestToolPolicyList_QueryFilters(t *testing.T) {
 				t.Fatalf("Execute: %v", err)
 			}
 			got := out.String()
-			if tt.wantSubstr != "" && !strings.Contains(got, tt.wantSubstr) {
-				t.Errorf("output missing substring %q;\ngot:\n%s", tt.wantSubstr, got)
+			lines := strings.Split(strings.TrimRight(got, "\n"), "\n")
+			if !strings.HasPrefix(lines[0], "TOOL") {
+				t.Fatalf("missing header line;\ngot:\n%s", got)
+			}
+			rows := lines[1:]
+			if len(rows) != tt.wantCount {
+				t.Errorf("entry rows = %d; want %d;\ngot:\n%s", len(rows), tt.wantCount, got)
+			}
+			for _, row := range rows {
+				if !strings.Contains(row, tt.wantSubstr) {
+					t.Errorf("row %q missing substring %q", row, tt.wantSubstr)
+				}
 			}
 		})
 	}
 }
+
+// queryFilterFixture is a valid 6-field policy covering every decision value
+// (allow, deny, ask) plus the risk tier and tool the filters are asked about.
+const queryFilterFixture = `entries:
+  - tool: "Bash"
+    args_pattern: "git push --force:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "rewrites shared history"
+  - tool: "Bash"
+    args_pattern: "go test:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "runs unit checks"
+  - tool: "Read"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "reads files"
+  - tool: "Write"
+    args_pattern: ""
+    risk_tier: write
+    decision: ask
+    owner_agent: manager-develop
+    audit: "confirm before editing files"
+  - tool: "Bash"
+    args_pattern: "rm -rf:*"
+    risk_tier: irreversible
+    decision: ask
+    owner_agent: orchestrator
+    audit: "removes directories recursively"
+`
 
 // TestToolPolicyList_InvalidFlagValues verifies the query rejects invalid
 // --risk-tier and --decision values with a clear error (acceptance.md EC-5

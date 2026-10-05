@@ -12,7 +12,7 @@ added_in: "v3.1"
 
 ## 学习面是什么
 
-学习面指的是从线束每回合自动留下的**观察**（observation，以隐私保留摘要记录路由决策、关卡证据、收敛轨迹的一行）出发，观察汇成**模式**，再晋升为**指令**抵达用户可见的文件——这条完整路径。用户直接动手的面只有三个——临时累积的 auto-memory（会话单位记忆）、留在项目里的 CLAUDE.local.md（本地开发指南）的 Learned 段，以及全团队共同遵循的 CLAUDE.md（项目指令文件）的管理块。观察经由这三张面浮上来，用户决定其中哪些当作规则接受。
+学习面指的是从线束每回合自动留下的**观察**（observation，以隐私保留摘要记录路由决策、关卡证据、收敛轨迹的一行）出发，观察汇成**模式**，再晋升为**指令**抵达用户可见的文件——这条完整路径。用户直接动手的面只有三个——临时累积的 auto-memory（会话单位记忆）、留在项目里的 AGENTS.local.md（个人指令文件）的 Learned 段，以及全团队共同遵循的 CLAUDE.md（项目指令文件）的管理块。观察经由这三张面浮上来，用户决定其中哪些当作规则接受。
 
 这个接面之所以重要，是因为线束的自我改进终究必须只发生在"用户可审查的文件"上。在看不见的地方改了指令就没法调试，昨天还奏手的例程悄悄变了会让人难以找到原因。所以 MoAI-ADK 把发生晋升的面固定为三个，并机械地界定每张面何时、如何被使用。无论 SPEC（需求规格书）工作流有多深，学习结果始终出现在这三个文件里。
 
@@ -24,7 +24,7 @@ added_in: "v3.1"
 flowchart TD
     O["每回合记录观察<br/>路由 · 关卡 · 收敛轨迹"]
     T1["Tier 1-2 — auto-memory<br/>(临时，会话单位)"]
-    T3["Tier 3 — CLAUDE.local.md Learned<br/>(append-only)"]
+    T3["Tier 3 — AGENTS.local.md Learned<br/>(append-only)"]
     T4["Tier 4 — CLAUDE.md 管理块<br/>(≤3K 字，条目 ≤20)"]
     T5["Tier 5 — CLAUDE.md / rules / agents<br/>(必须用户审批)"]
 
@@ -34,16 +34,22 @@ flowchart TD
     T4 -->|≥10 观察 + 用户审批| T5
 ```
 
-这条阶梯的核心是**阈值**。观察到一次的事可能只是例外，但重复五次的模式就是规则。所以在低档只放进临时记忆吸收噪声，越过阈值的观察才升到更持久的面。用户感受到的变化大多发生在 Tier 3 与 Tier 4——某天 CLAUDE.local.md 的 Learned 段多出一行，模式固化后 CLAUDE.md 的管理块会冒出一个条目。
+这条阶梯的核心是**阈值**。观察到一次的事可能只是例外，但重复五次的模式就是规则。所以在低档只放进临时记忆吸收噪声，越过阈值的观察才升到更持久的面。用户感受到的变化大多发生在 Tier 3 与 Tier 4——某天 AGENTS.local.md 的 Learned 段多出一行，模式固化后 CLAUDE.md 的管理块会冒出一个条目。
 
 | 档 | 阈值 | 抵达的面 | 谁来写 |
 |------|--------|---------------|-------------|
 | Tier 1-2 | ≥1 观察 | auto-memory（临时） | 自动 |
-| Tier 3 | ≥3 观察 | CLAUDE.local.md（append-only） | 自动 |
+| Tier 3 | ≥3 观察 | AGENTS.local.md（append-only） | 自动 |
 | Tier 4 | ≥5 观察 | CLAUDE.md 管理块（≤3K 字，条目 ≤20） | Curator |
 | Tier 5 | ≥10 观察 + 用户审批 | CLAUDE.md / rules / agents | 必须用户审批 |
 
 管理块有字数与条目数上限。这道上限是为了阻止线束以学习为借口无限膨胀指令——每次会话开始都要读的文件变大就会击穿提示缓存命中，最终成本与响应时间双双上涨。Curator（更新指令的角色）在这道上限内、不以整条重写既有条目而以条目为单位增减。
+
+## Tier 3 记录写入的文件
+
+Tier 3 记录会追加到 `AGENTS.local.md` 的 Learned 段。在三文件结构中——通用契约 `AGENTS.md`、Claude 专属层 `CLAUDE.md`、个人指令 `AGENTS.local.md`——这个文件负责个人指令，Claude Code 和 `moai codex` 都会读取它。因此一旦晋升，观察在任何 harness 中都会生效。该文件被 Git 忽略，`moai update` 也不会改动它，记录不会因更新而丢失。
+
+如果项目仍在使用 `CLAUDE.local.md`，请先用 `moai migrate local-instructions` 迁移。`moai update` 和 `moai doctor` 一旦发现 `CLAUDE.local.md`，都会输出同样的提示。
 
 ## 3-Zone 编辑面
 

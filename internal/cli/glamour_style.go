@@ -131,19 +131,15 @@ func markdownRichEnabled(noColor, isTerminal bool) bool {
 	return !noColor && isTerminal
 }
 
-// writerIsTerminal reports whether w is a character-device-backed *os.File
-// (mirrors spec_status.go stdinIsTerminal; buffers, pipes and redirected
-// files are non-TTY, so golden-test captures stay deterministic).
+// writerIsTerminal reports whether w is a terminal-backed *os.File
+// (mirrors spec_status.go stdinIsTerminal; buffers, pipes, redirected
+// files and /dev/null are non-TTY, so golden-test captures stay deterministic).
 func writerIsTerminal(w io.Writer) bool {
 	f, ok := w.(*os.File)
 	if !ok {
 		return false
 	}
-	fi, err := f.Stat()
-	if err != nil {
-		return false
-	}
-	return (fi.Mode() & os.ModeCharDevice) != 0
+	return isTerminalFile(f)
 }
 
 // glamourRender always renders through glamour with the token-derived style

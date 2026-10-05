@@ -4,7 +4,6 @@ package web
 import (
 	"strconv"
 	"strings"
-	"syscall"
 )
 
 // i18nSlug turns a rendered English string into the dictionary key suffix used
@@ -36,9 +35,6 @@ func i18nSlug(s string) string {
 	}
 	return strings.TrimSuffix(b.String(), "-")
 }
-
-// processAlive 가 쓰는 시그널 0 (프로세스를 건드리지 않고 존재만 확인).
-const syscallZero = syscall.Signal(0)
 
 func itoa(n int) string { return strconv.Itoa(n) }
 

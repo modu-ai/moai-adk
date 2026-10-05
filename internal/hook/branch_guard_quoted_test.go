@@ -93,10 +93,11 @@ func TestBranchStatePatterns_RealCommandsStillDenyAroundQuotes(t *testing.T) {
 // observed in production is attributable to the value not arriving rather than
 // to the axis being unimplemented.
 //
-// The axes are read from different places and a tool-spawned subagent can supply
-// neither: agent_type arrives in the payload only for a main-thread
-// `claude --agent` launch, and the env var is read from the hook process's own
-// environment, which an `export` inside the guarded command cannot reach.
+// The axes are read from different places and differ in reachability: agent_type
+// DOES arrive in the payload for an agent spawned through the Agent tool
+// (measured under SPEC-BRANCHGUARD-EXEMPT-REACH-001), whereas the env var is
+// read from the hook process's own environment, which an `export` inside the
+// guarded command cannot reach.
 func TestCheckBranchState_ExemptionAxesAreIndependent(t *testing.T) {
 	command := `{"command":"git branch -D feature/x"}`
 

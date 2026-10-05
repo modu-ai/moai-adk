@@ -189,33 +189,38 @@ type HumanOversight interface {
 
 // AmendmentLog represents an evolution-log.md entry.
 // Direct implementation of SPEC-V3R2-CON-002 REQ-CON-002-003.
+//
+// The yaml tags fix the snake_case keys the writer emits
+// (SPEC-CON-AMEND-APPLY-001 REQ-CAA-005). The reader does not decode through
+// these tags: LoadEvolutionLogs resolves each field from its snake_case key,
+// the legacy concatenated key, and the human-format key (REQ-CAA-006/008).
 type AmendmentLog struct {
 	// ID is the unique identifier in LEARN-YYYYMMDD-NNN format.
-	ID string
+	ID string `yaml:"id"`
 	// RuleID is the modified rule ID (CONST-V3R2-NNN).
-	RuleID string
+	RuleID string `yaml:"rule_id"`
 	// ZoneBefore is the zone before modification.
-	ZoneBefore Zone
+	ZoneBefore Zone `yaml:"zone_before"`
 	// ZoneAfter is the zone after modification.
-	ZoneAfter Zone
+	ZoneAfter Zone `yaml:"zone_after"`
 	// ClauseBefore is the clause text before modification.
-	ClauseBefore string
+	ClauseBefore string `yaml:"clause_before"`
 	// ClauseAfter is the clause text after modification.
-	ClauseAfter string
+	ClauseAfter string `yaml:"clause_after"`
 	// CanaryVerdict is the canary evaluation result.
-	CanaryVerdict string // "passed", "skipped", "rejected", "unavailable"
+	CanaryVerdict string `yaml:"canary_verdict"` // "passed", "skipped", "rejected", "unavailable"
 	// Contradictions are the contradiction detection results.
-	Contradictions []string
+	Contradictions []string `yaml:"contradictions"`
 	// ApprovedBy is the approver ("human" or system ID).
-	ApprovedBy string
+	ApprovedBy string `yaml:"approved_by"`
 	// ApprovedAt is the approval timestamp.
-	ApprovedAt time.Time
+	ApprovedAt time.Time `yaml:"approved_at"`
 	// RolledBack indicates whether it has been rolled back.
-	RolledBack bool
+	RolledBack bool `yaml:"rolled_back"`
 	// RollbackReason is the rollback reason (optional).
-	RollbackReason string
+	RollbackReason string `yaml:"rollback_reason"`
 	// RollbackAt is the rollback timestamp (optional).
-	RollbackAt *time.Time
+	RollbackAt *time.Time `yaml:"rollback_at"`
 }
 
 // Validate validates the required fields of AmendmentLog.

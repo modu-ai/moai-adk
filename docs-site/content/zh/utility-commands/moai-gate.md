@@ -110,6 +110,23 @@ Total: 18.5s
 
 `/moai gate` 是只验证、不修改文件的 **轻量级检查站** (仅在给出 `--fix` 时修正 lint、格式化)。若需更深的解决,可转向 `/moai fix`(单次)或 `/moai loop`(反复);PR 前的综合评审使用 `/moai review`。`--fresh` 模式用于 `/moai loop` 的独立最终验证 pass 调用本门禁以获取无自引用的证据时。
 
+## pre-commit 钩子与 `gate.pre_commit.enabled`
+
+git pre-commit 钩子也会调用本门禁。钩子以 `MOAI_PRECOMMIT=1` 标记运行 `moai gate`，运行器**只对带有该标记的调用**读取新配置键 `gate.pre_commit.enabled`(默认 `false`)。由于默认关闭，项目范围的重型检查(vet、lint、test、typecheck)在 pre-commit 上下文中默认跳过 — 避免一条与暂存改动无关的既有失败挡住每一次提交。钩子仍会在每次提交时运行快速的暂存文件子集(gofmt + `go vet`)。
+
+```yaml
+# .moai/config/sections/gate.yaml
+gate:
+  pre_commit:
+    enabled: true   # 默认 false — 想用项目范围检查拦截提交时再开启
+```
+
+{{< callout type="info" >}}
+同一个键也可以在 `moai web` 的 **Gate** 设置面板中编辑，保存时精确写入 `.moai/config/sections/gate.yaml`。
+{{< /callout >}}
+
+单独执行的 `moai gate` 会忽略这个键，继续遵循既有的 `gate.enabled` 设置。需要紧急提交时，可用 `SKIP_MOAI_PRECOMMIT=1 git commit` 跳过钩子本身。
+
 ## 相关文档
 
 - [/moai fix - 一次性自动修复](/zh/utility-commands/moai-fix)

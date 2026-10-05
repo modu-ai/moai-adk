@@ -176,7 +176,7 @@ See [requirement clarification detailed workflow](references/requirement-clarifi
 
 **Format**: 
 - `[NEEDS CLARIFICATION: <specific topic>]` — inline marker for open questions
-- Each marker MUST be addressable via orchestrator AskUserQuestion before run-phase entry
+- Each marker MUST be addressable via the orchestrator's `question-channel` capability before run-phase entry
 - plan-auditor detects unclarified markers and flags as "clarification gate" finding
 
 **3-Layer Distinction**:
@@ -187,7 +187,7 @@ See [requirement clarification detailed workflow](references/requirement-clarifi
 **Processing**:
 - plan-auditor scans for `[NEEDS CLARIFICATION]` markers during audit
 - If any remain, plan-auditor recommends resolution before Implementation Kickoff Approval
-- Orchestrator runs AskUserQuestion rounds to resolve each marked topic
+- Orchestrator runs `question-channel` rounds to resolve each marked topic (where the harness lacks it, carry the unresolved marker into the blocker report rather than letting the gate pass silently)
 - Implementation Kickoff Approval (mandatory human gate) proceeds only after all clarifications are resolved
 
 ### Plan-Run-Sync Workflow Integration
@@ -210,13 +210,14 @@ See [worktree workflow patterns](references/worktree-workflow.md) for creation c
 
 ### SPEC File Organization
 
-Standard 3-File Format:
+The artifact set is not fixed — it is determined by the SPEC's Tier, classified in the plan phase before authoring begins. Read the tier off the canonical table (`.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier) rather than counting files here.
 
-- `.moai/specs/SPEC-{ID}/spec.md` — EARS format specification
-- `.moai/specs/SPEC-{ID}/plan.md` — implementation plan, milestones, technical approach
-- `.moai/specs/SPEC-{ID}/acceptance.md` — acceptance criteria, Given-When-Then scenarios
+- `.moai/specs/SPEC-{ID}/spec.md` — GEARS specification (EARS accepted during the legacy window). Every tier.
+- `.moai/specs/SPEC-{ID}/plan.md` — implementation plan, milestones, technical approach. Every tier.
+- `.moai/specs/SPEC-{ID}/acceptance.md` — acceptance criteria, Given-When-Then scenarios. Tier M and above; at Tier S the criteria live inline in `spec.md` §3.
+- `.moai/specs/SPEC-{ID}/design.md` and `.moai/specs/SPEC-{ID}/research.md` — system design and codebase research. Tier L only.
 
-[HARD] Every SPEC directory MUST contain all 3 files. Missing files create incomplete requirements.
+[HARD] A SPEC directory MUST contain every artifact its own tier names — and MUST NOT be judged incomplete for omitting one its tier does not name. A Tier S directory holding `spec.md` and `plan.md` alone is complete; adding `acceptance.md` there duplicates criteria that already live in `spec.md` §3, which is the drift this clause exists to prevent.
 
 State files: `.moai/state/last-session-state.json`. Generated docs: `.moai/docs/api-documentation.md`.
 
@@ -341,6 +342,7 @@ Integration Status: Complete - Plan-Run-Sync workflow with SDD 2025 features
 - [ ] SPEC file exists at `.moai/specs/SPEC-XXX/spec.md` with unique ID
 - [ ] Every requirement uses EARS keywords (WHEN, WHILE, WHERE, IF, SHALL)
 - [ ] Every acceptance criterion is observable (test output, file existence, metric threshold)
+- [ ] AC verification commands follow the plain-command form — see `worktree-integration.md` § Refused Commands in a Worktree-Isolated Session (measured guard boundary + authoring rule)
 - [ ] research.md exists when the SPEC touches existing code
 - [ ] Annotation cycle completed with explicit user approval marker
 - [ ] SPEC references existing SPEC-IDs it depends on or supersedes

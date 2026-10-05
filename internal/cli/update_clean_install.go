@@ -36,6 +36,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	updatemerge "github.com/modu-ai/moai-adk/internal/cli/update/merge"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -390,10 +391,12 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	if cfgBackupErr != nil {
 		return result, recovery.fail("step 4.5: backup .moai/config for merge-preservation", cfgBackupErr)
 	}
-	// Mergeable root files handled by the normal path's 3-way engine (identical
-	// set to update.go collectMergeableFiles). settings.json base is unavailable
-	// in the embedded FS (it ships as settings.json.tmpl), so MergeUserFiles
-	// preserves the user's file wholesale — matching the normal path exactly.
+	// Mergeable root files handled by the normal path's 3-way engine (the
+	// template-sync collectMergeableFiles set minus .mcp.json). MergeUserFiles
+	// merges settings.json against the canonical snapshot of the previously
+	// deployed render when one exists, and against a base derived from the new
+	// render otherwise (SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001) — the same
+	// machinery the normal path uses.
 	var mergeableBackups []updatemerge.FileBackup
 	for _, mf := range []string{".claude/settings.json", ".moai/status_line.sh"} {
 		if data, readErr := os.ReadFile(filepath.Join(projectRoot, filepath.FromSlash(mf))); readErr == nil {
@@ -442,6 +445,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// handling is deliberately unchanged.
 	homeDir, _ := userHomeDirFn()
 	goBinPath := detectGoBinPathForUpdate(homeDir)
+	userValues := loadUpdateUserValues(projectRoot)
 	tmplCtx := template.NewTemplateContext(
 		template.WithGoBinPath(goBinPath),
 		template.WithResolvedMoaiPath(resolveMoaiExecutable()),
@@ -450,11 +454,37 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		template.WithPlatform(runtime.GOOS),
 		template.WithVersion(version.GetVersion()),
 		template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
+		// Step 4 removes only deprecated paths, so git-strategy.yaml is still on
+		// disk here; without the mode the reinstall renders the template default.
+		template.WithGitMode(config.LoadGitMode(projectRoot)),
+		// Cards t1139 / t1147: render the section files with the user-owned
+		// values the project already carries, for the same reason as the mode.
+		userValues,
 	)
 
 	if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {
 		return result, recovery.fail("step 5: reinstall templates", deployErr)
 	}
+	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-001): stage the
+	// settings.json render this deploy wrote, before the Step 5.5 merge and the
+	// deny-rule strip rewrite the file. Best-effort: it only warns.
+	backup.StageDeployedSettingsSnapshot(projectRoot, mgr, errOut)
+	// Card t1029: the same staging for .mcp.json — but for a different reason
+	// than settings.json, because this flow does NOT merge .mcp.json (see the
+	// mergeable set above). The force deploy just overwrote the file, so the
+	// live copy IS the render byte-for-byte and recording it records a TRUE
+	// base. Staging nothing here would leave the canonical copy holding an
+	// older render while the live file holds a newer one, and the next update
+	// would read the difference between the two renders as a user edit —
+	// re-applying a stale value the user never chose.
+	backup.StageDeployedMCPSnapshot(projectRoot, mgr, errOut)
+	// Card t1139: record the section render this deploy wrote as the next
+	// update's merge BASE, before Step 5.5 restores the user's values over it
+	// (a post-restore snapshot records user values as BASE and the next merge
+	// drops every carried customization). Best-effort non-blocking; a failure
+	// is a warning, so it goes to errOut (out carries stdout in production),
+	// matching the template-sync path.
+	writeTemplateSnapshotBestEffort(projectRoot, errOut)
 	_, _ = fmt.Fprintln(out, "[clean-reinstall] Embedded templates reinstalled")
 
 	// ---------------------------------------------------------------
@@ -478,16 +508,21 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		// `--verbose` "3-way merge fallback notices" structurally unreachable on
 		// the clean-reinstall path: a 3-way merge could fall back to the 2-way
 		// merge and the user was never told, on any verbosity level.
-		if restoreErr := backup.RestoreMoaiConfig(projectRoot, configBackupPath, func(pr, relPath string, success bool, errOut io.Writer) {
+		// The Retained variant returns the retained-key refs instead of printing
+		// them, so the retired per-agent model/effort keys can be stripped first
+		// and then left out of the advisory — each is reported once, as removed.
+		retainedKeys, restoreErr := backup.RestoreMoaiConfigRetained(projectRoot, configBackupPath, func(pr, relPath string, success bool, errOut io.Writer) {
 			recordMergeFallback(pr, relPath, success, updateVerboseMode, errOut)
-		}); restoreErr != nil {
+		})
+		if restoreErr != nil {
 			return result, recovery.fail("step 5.5: restore .moai/config sections", restoreErr)
 		}
+		removedModelKeys, stripErr := stripRetiredModelConfig(out, projectRoot, configBackupPath)
+		if stripErr != nil {
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] retired model key removal warning: %v\n", stripErr)
+		}
+		writeRetainedKeyAdvisoryLines(errOut, withoutStrippedKeys(retainedKeys, removedModelKeys))
 		_, _ = fmt.Fprintln(out, "[clean-reinstall] .moai/config/sections/*.yaml merge-restored (user values preserved)")
-		// SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001 (REQ-TBS-002, Decision D4
-		// trigger #3): capture the post-restore on-disk config so the next
-		// update has a rendered BASE. Best-effort non-blocking (REQ-TBS-014).
-		writeTemplateSnapshotBestEffort(projectRoot, out)
 		// Backup-dir accumulation cap — the same pruning the normal path
 		// performs after its restore step (backup.CleanupOldBackups). Only
 		// timestamped config-backup dirs under .moai-backups/ are candidates;
@@ -497,14 +532,15 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 			_, _ = fmt.Fprintf(out, "[clean-reinstall] Cleaned up %d old config backup(s)\n", deleted)
 		}
 	}
-	if len(mergeableBackups) > 0 {
-		// MergeUserFiles preserves the user's version on any merge failure, so a
-		// warning (not a hard error) matches the normal path's tolerance.
-		if mergeErr := updatemerge.MergeUserFiles(projectRoot, mergeableBackups, out); mergeErr != nil {
-			_, _ = fmt.Fprintf(out, "[clean-reinstall] settings merge warning: %v\n", mergeErr)
-		} else {
-			_, _ = fmt.Fprintln(out, "[clean-reinstall] settings.json / status_line.sh merge-preserved")
-		}
+	// MergeUserFiles preserves the user's version on any merge failure, so a
+	// warning (not a hard error) matches the normal path's tolerance. The call
+	// runs even with no backups: it also settles the staged settings.json render
+	// (SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 REQ-USB-005), which must happen
+	// before the deny-rule strip below and regardless of what was backed up.
+	if mergeErr := mergeUserFilesSettlingSnapshot(projectRoot, mergeableBackups, out, errOut); mergeErr != nil {
+		_, _ = fmt.Fprintf(out, "[clean-reinstall] settings merge warning: %v\n", mergeErr)
+	} else if len(mergeableBackups) > 0 {
+		_, _ = fmt.Fprintln(out, "[clean-reinstall] settings.json / status_line.sh merge-preserved")
 	}
 	// Merge .gitignore: preserve user-added patterns via EntryMerge (issues
 	// #1131/#1094) — the same updatemerge.MergeGitignoreFile call the normal

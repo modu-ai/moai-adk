@@ -129,7 +129,7 @@ go test ./internal/template/ -run TestTemplateNeutralityAudit 2>&1 | tail -5
 # Optional informational delta (NOT the gate): only NEW forbidden tokens vs the pre-diet baseline matter.
 # Baseline is captured pre-diet (plan.md §C.1); the diet must not ADD any match beyond the baseline set
 # (e.g. the pre-existing L459 feedback_worktree_autonomous line is in the baseline and is NOT a regression).
-git diff --no-index <(git show HEAD:internal/template/templates/CLAUDE.md) internal/template/templates/CLAUDE.md \
+git diff HEAD -- internal/template/templates/CLAUDE.md \
   | grep '^+' | grep -nE 'SPEC-[A-Z]+-[0-9]{3}|feedback_|/Users/|Audit [0-9]+ Finding' \
   || echo "no NEW internal-artifact token added by the diet"
 ```

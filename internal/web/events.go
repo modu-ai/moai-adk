@@ -12,11 +12,14 @@ package web
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 const debounce = 250 * time.Millisecond
@@ -27,7 +30,10 @@ var watchMap = map[string][]string{
 	"session": {".moai/state"},
 	"goal":    {".moai/state/goal"},
 	"verify":  {".moai/state/verify"},
-	"kanban":  {".moai/state/kanban"},
+	// The SSE event KEY is a frontend-visible contract: assets/app.js lists it in
+	// EVENTS and the screens carry it as data-live, so the three move together
+	// (TestWebLiveKeyContract). The watched path is the todo queue.
+	"factory": {".moai/state/todo"},
 	"config":  {".moai/config/sections"},
 }
 
@@ -35,6 +41,17 @@ var watchMap = map[string][]string{
 type Hub struct {
 	mu      sync.Mutex
 	clients map[chan string]struct{}
+	// subs are in-process listeners told every published event name — the SPEC
+	// scan cache drops itself on "spec" through this, reusing this watcher
+	// rather than running a second one. Listeners must be quick and non-blocking.
+	subs []func(event string)
+}
+
+// Subscribe registers an in-process listener for every published event name.
+func (h *Hub) Subscribe(fn func(event string)) {
+	h.mu.Lock()
+	h.subs = append(h.subs, fn)
+	h.mu.Unlock()
 }
 
 func NewHub() *Hub { return &Hub{clients: map[chan string]struct{}{}} }
@@ -56,6 +73,15 @@ func (h *Hub) remove(ch chan string) {
 
 // Publish 는 열린 모든 연결에 이벤트 이름을 흘린다.
 func (h *Hub) Publish(event string) {
+	h.mu.Lock()
+	// Listeners run before the browsers are signalled, so a re-fetch triggered
+	// by this event never reads a cache this event was meant to drop.
+	subs := append(([]func(string))(nil), h.subs...)
+	h.mu.Unlock()
+	for _, fn := range subs {
+		fn(event)
+	}
+
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for ch := range h.clients {
@@ -121,18 +147,18 @@ func (h *Hub) Watch(root string, stop <-chan struct{}) error {
 	}
 	defer func() { _ = w.Close() }()
 
-	pathEvent := map[string]string{}
-	for event, dirs := range watchMap {
-		for _, d := range dirs {
-			abs := filepath.Join(root, d)
-			if err := w.Add(abs); err != nil {
-				continue // 아직 없는 디렉터리는 건너뛴다 (프로젝트 초기 상태)
-			}
-			pathEvent[abs] = event
-		}
+	pathEvent := resolvedWatchPaths(root)
+	for abs := range pathEvent {
+		_ = w.Add(abs) // A first todo write may create this directory later.
 	}
+	// Retry only missing registrations. A healthy SSE connection does not
+	// poll, so recovering a directory also invalidates its rendered snapshot.
+	retry := time.NewTicker(time.Second)
+	defer retry.Stop()
 
 	pending := map[string]bool{}
+	// WAL files whose creation must be re-checked when the debounce fires.
+	walProbe := map[string]bool{}
 	timer := time.NewTimer(time.Hour)
 	if !timer.Stop() {
 		<-timer.C
@@ -143,15 +169,57 @@ func (h *Hub) Watch(root string, stop <-chan struct{}) error {
 		select {
 		case <-stop:
 			return nil
+		case <-retry.C:
+			watched := make(map[string]bool)
+			for _, path := range w.WatchList() {
+				watched[path] = true
+			}
+			for path, name := range pathEvent {
+				if !watched[path] && w.Add(path) == nil {
+					h.Publish(name)
+				}
+			}
 		case ev, ok := <-w.Events:
 			if !ok {
 				return nil
+			}
+			// SQLite readers create/remove transient sidecars too. SHM is an
+			// index, not committed card data; an empty WAL's lifecycle is not
+			// a change either. WAL writes remain observable while a writer
+			// holds its connection and the main database has not checkpointed.
+			//
+			// kqueue (darwin) attaches a watch to a new file only after the
+			// directory scan that reports its creation, while SQLite writes a
+			// fresh WAL's frames microseconds after creating it. A writer that
+			// then keeps its connection open never writes again, so its only
+			// Write can land before the watch exists. A WAL creation is
+			// therefore re-checked at debounce: a reader leaves it empty, a
+			// committed write does not.
+			switch filepath.Base(ev.Name) {
+			case "backlog.db-shm":
+				continue
+			case "backlog.db-wal":
+				if !ev.Has(fsnotify.Write) {
+					if ev.Has(fsnotify.Create) {
+						walProbe[ev.Name] = true
+						timer.Reset(debounce)
+					}
+					continue
+				}
 			}
 			if name := eventFor(pathEvent, ev.Name); name != "" {
 				pending[name] = true
 				timer.Reset(debounce)
 			}
 		case <-timer.C:
+			for wal := range walProbe {
+				if info, err := os.Stat(wal); err == nil && info.Size() > 0 {
+					if name := eventFor(pathEvent, wal); name != "" {
+						pending[name] = true
+					}
+				}
+				delete(walProbe, wal)
+			}
 			for name := range pending {
 				h.Publish(name)
 				delete(pending, name)
@@ -163,6 +231,21 @@ func (h *Hub) Watch(root string, stop <-chan struct{}) error {
 			// 감시 실패는 치명적이지 않다. 브라우저가 폴백 폴링으로 내려간다.
 		}
 	}
+}
+
+func resolvedWatchPaths(root string) map[string]string {
+	pathEvent := map[string]string{}
+	for event, dirs := range watchMap {
+		for _, d := range dirs {
+			abs := filepath.Join(root, d)
+			pathEvent[abs] = event
+		}
+	}
+	pathEvent[factory.StateDirForRoot(root)] = "factory"
+	if factoryDir, err := homestate.FactoryDir(root); err == nil {
+		pathEvent[factoryDir] = "factory"
+	}
+	return pathEvent
 }
 
 // eventFor 는 변경된 경로를 가장 구체적인 감시 경로에 귀속시킨다.

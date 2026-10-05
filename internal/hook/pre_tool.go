@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
@@ -196,13 +197,10 @@ func DefaultSecurityPolicy() *SecurityPolicy {
 		`DROP\s+DATABASE`,
 		`DROP\s+SCHEMA`,
 		`TRUNCATE\s+TABLE`,
-		// Unix dangerous file operations
-		`rm\s+-rf\s+/`,
-		`rm\s+-rf\s+~`,
-		`rm\s+-rf\s+\*`,
-		`rm\s+-rf\s+\.\*`,
-		`rm\s+-rf\s+\.git\b`,
-		`rm\s+-rf\s+node_modules\s*$`,
+		// Unix file removal is checked structurally by dangerousRemovalTarget
+		// rather than by pattern, because a literal flag cluster is bypassed by
+		// reordering it and a trailing slash makes every absolute path a target
+		// (issue #1658). See dangerous_removal.go.
 		// Windows dangerous file operations (CMD)
 		`rd\s+/s\s+/q\s+[A-Za-z]:\\`,
 		`rmdir\s+/s\s+/q\s+[A-Za-z]:\\`,
@@ -414,6 +412,22 @@ func (h *preToolHandler) EventType() EventType {
 // "deny" with a reason if the tool is denied, "ask" if user confirmation is
 // needed, or "allow" otherwise.
 func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	// Contract-mode escalation detector (SPEC-AUTONOMY-ESCALATION-001). It
+	// records only and returns nothing, so it introduces no conditional return
+	// above the destructive-command denylist; it is inert (no file read)
+	// unless workflow.autonomy.mode is contract.
+	observeEscalationWith(h.cfg, string(EventPreToolUse), input, escalationOptions{
+		// Class 6 records a denylisted command before the denylist below
+		// denies it; the denylist is consulted, never copied (design.md §C.3).
+		denylisted: func() bool {
+			if h.policy == nil || !IsShellTool(input.ToolName) {
+				return false
+			}
+			decision, _ := h.checkBashCommand(input.ToolInput)
+			return decision == DecisionDeny
+		},
+	})
+
 	// No policy means allow everything (subject to the same permission-mode
 	// awareness as the "no dangerous pattern found" path below — a nil
 	// policy trivially finds nothing dangerous).
@@ -441,12 +455,18 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	// gateNotice carries a passing quality gate's non-blocking notice (for
 	// example an ast-grep step that skipped because sg is absent) to this
 	// handler's response. It rides the hook's structured output rather than
-	// slog: the `moai hook` path installs a discarding handler, so a log
-	// record here would be silent by construction.
+	// slog because the notice is FOR THE CALLER: the `moai hook` path routes
+	// slog to a file sink (.moai/logs/hook-runtime.log) that never reaches
+	// stdout or stderr, so a log record here would still not arrive with the
+	// response. The notice is also below the sink's warn level gate — a passing
+	// gate is not an anomaly — so at default configuration slog would carry it
+	// nowhere at all.
 	var gateNotice string
 
-	// Handle Bash commands
-	if input.ToolName == "Bash" && len(input.ToolInput) > 0 {
+	// Handle shell commands (Bash and PowerShell — IsShellTool). The deny/ask
+	// lists stay deny-on-positive-match for both tools: PowerShell text that
+	// the POSIX quote collapse misreads can under-match, never newly deny.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
 		command := h.extractBashCommand(input.ToolInput)
 
 		// F5 mechanical: --no-verify bypass defense (SPEC-PRETOOL-GATE-MOVE-001
@@ -529,7 +549,7 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	// any git-context uncertainty (REQ-WBG-012). The exemption logic
 	// (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity) is unchanged and is
 	// consulted only on the enabled path (REQ-6 backward compat).
-	if input.ToolName == "Bash" && len(input.ToolInput) > 0 && h.branchGuardEnabled() {
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 && h.branchGuardEnabled() {
 		if decision, reason := checkBranchState(input, h.projectRoot()); decision == DecisionDeny {
 			slog.Warn("branch guard denied",
 				"tool_name", input.ToolName,
@@ -537,6 +557,24 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 				"reason", reason,
 			)
 			return NewDenyOutput(reason), nil
+		}
+		// Protected-branch commit deny (SPEC-MAIN-COMMIT-BAN-001): the second,
+		// branch-CONDITIONAL deny class of the same BranchGuard family
+		// (REQ-2.4), riding the SAME Workflow.BranchGuard.Enabled gate
+		// (REQ-3.4 — no new opt-in flag). Sits after the branch-state check
+		// and before the allow fall-through. An empty deny_commits_on list
+		// short-circuits here before any command scan or subprocess runs
+		// (REQ-2.5); checkProtectedCommit re-asserts the same guard
+		// internally.
+		if denyList := h.protectedCommitDenyList(); len(denyList) > 0 {
+			if decision, reason := checkProtectedCommit(input, h.projectRoot(), denyList); decision == DecisionDeny {
+				slog.Warn("branch guard denied protected-branch commit",
+					"tool_name", input.ToolName,
+					"session_id", input.SessionID,
+					"reason", reason,
+				)
+				return NewDenyOutput(reason), nil
+			}
 		}
 	}
 
@@ -547,9 +585,127 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	// Workflow.IntegrationLock.Enabled (default false): on the disabled path
 	// the lock record is never read. Fails OPEN on every uncertainty; a deny
 	// requires positive evidence that a DIFFERENT, LIVE session holds it.
-	if input.ToolName == "Bash" && len(input.ToolInput) > 0 && h.integrationLockEnabled() {
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 && h.integrationLockEnabled() {
 		if decision, reason := checkIntegrationLock(input, h.projectRoot()); decision == DecisionDeny {
 			slog.Warn("integration lock denied",
+				"tool_name", input.ToolName,
+				"session_id", input.SessionID,
+				"reason", reason,
+			)
+			return NewDenyOutput(reason), nil
+		}
+	}
+
+	// Resource slot-lease guard (card t607). Sits after the integration guard:
+	// that one serializes `git merge` in the release tree, this one refuses a
+	// configured heavy command while ANOTHER live session holds its resource.
+	// Gated by Workflow.SlotLease.Enabled (default false): on the disabled
+	// path neither the project root, the patterns, nor any lease record is
+	// touched. Fails OPEN on every uncertainty.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
+		if slotCfg, enabled := h.slotLeaseConfig(); enabled {
+			if decision, reason := checkSlotLease(input, h.projectRoot(), slotCfg, os.Stderr); decision == DecisionDeny {
+				slog.Warn("slot lease denied",
+					"tool_name", input.ToolName,
+					"session_id", input.SessionID,
+					"reason", reason,
+				)
+				return NewDenyOutput(reason), nil
+			}
+		}
+	}
+
+	// Push serializer (SPEC-AUTONOMY-PRECONDITION-001 REQ-AP-001/002/007,
+	// design.md §B). Sits after the generic slot-lease guard: that one refuses
+	// any configured heavy command under an opt-in flag, this one serializes
+	// pushes of `develop` behind the push-develop slot lease when a signed
+	// contract carries the action with push_requires_lease — reading the
+	// activation triple from the `moai contract show --json` document, NOT
+	// from workflow.slot_lease.enabled. Inactive until the contract resolver
+	// (SPEC-AUTONOMY-ESCALATION-001 REQ-AE-002) is wired into
+	// pushShowJSONLoader; on the inactive path no record is read and no audit
+	// line is written. Fails OPEN on every uncertainty; a deny requires a
+	// live, unexpired foreign holder, and writes no escalation record.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
+		if show := pushSerializerShow(h.projectRoot()); show != nil {
+			if decision, reason := checkPushSerializer(input, h.projectRoot(), show, pushSerializerBound(h.projectRoot()), os.Stderr); decision == DecisionDeny {
+				slog.Warn("push serializer denied",
+					"tool_name", input.ToolName,
+					"session_id", input.SessionID,
+					"reason", reason,
+				)
+				return NewDenyOutput(reason), nil
+			}
+		}
+	}
+
+	// Contract-sign and contract-decide guard (SPEC-AUTONOMY-PRECONDITION-001
+	// REQ-AP-003/004/005/009/011/012, design.md §C). Independent of
+	// workflow.autonomy.mode: the human-path `moai contract sign` deny is
+	// unconditional in every session (signing happens at an operator
+	// terminal); the non-interactive sign path and `moai contract decide`
+	// are gated on the session's MOAI_FACTORY_ROLE role marker. Fails
+	// CLOSED: a wrongly allowed signature voids the contract model, while a
+	// wrongly denied sign costs the operator one terminal command. Reads no
+	// project state and no record; an allowed call leaves the hook output
+	// byte-identical to the no-guard baseline and writes no audit line.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
+		if decision, reason := checkContractSign(input); decision == DecisionDeny {
+			slog.Warn("contract sign guard denied",
+				"tool_name", input.ToolName,
+				"session_id", input.SessionID,
+				"reason", reason,
+			)
+			return NewDenyOutput(reason), nil
+		}
+	}
+
+	// A4 verdict-command deny (SPEC-AUTONOMY-CLOSURE-001 REQ-CLOSURE-021).
+	// Every mode, a string match on the command text, no I/O. Sits after
+	// checkBashCommand (its @MX:ANCHOR forbids a conditional return above)
+	// and beside the other opt-in guards, before the Write/Edit block.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
+		if decision, reason := checkContractVerdict(input); decision == DecisionDeny {
+			slog.Warn("closure verdict deny",
+				"tool_name", input.ToolName,
+				"session_id", input.SessionID,
+				"reason", reason,
+			)
+			return NewDenyOutput(reason), nil
+		}
+	}
+
+	// A4 push readiness (SPEC-AUTONOMY-CLOSURE-001 REQ-CLOSURE-015..018).
+	// The mode check is the first statement inside: under guided — or any
+	// mode other than contract — it returns before any file read or
+	// subprocess, leaving the hook output byte-identical (REQ-CLOSURE-023).
+	// Fail-closed: an unprovable push destination is undetermined, and
+	// undetermined denies.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
+		if r := checkClosurePush(h.cfg, input); r.decision == DecisionDeny {
+			slog.Warn("closure push stop",
+				"tool_name", input.ToolName,
+				"session_id", input.SessionID,
+				"reason", r.reason,
+			)
+			return NewDenyOutput(r.reason), nil
+		}
+	}
+
+	// Commit identity guard (SPEC-COMMIT-IDENTITY-GUARD-001). Sits after the
+	// destructive-command check and EVERY existing shell-tool guard — the
+	// branch guard, the integration lock, the slot lease, the push serializer,
+	// the contract sign/verdict guards, and the closure push readiness — so an
+	// earlier deny is preserved and this layer never displaces one (REQ-CIG-
+	// 009), and before the Write/Edit block. Gated by
+	// Workflow.CommitIdentityGuard.Enabled (default false) at the call site:
+	// when disabled, NO repository-scope or identity probe subprocess runs and
+	// every shell call is allowed unchanged (REQ-CIG-006). Denies a shell
+	// command whose resolved commit identity exactly matches a known
+	// test-fixture email; fails OPEN on every uncertainty.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 && h.commitIdentityGuardEnabled() {
+		if decision, reason := checkCommitIdentity(input, h.projectRoot(), h.commitIdentityDenyEmails()); decision == DecisionDeny {
+			slog.Warn("commit identity guard denied",
 				"tool_name", input.ToolName,
 				"session_id", input.SessionID,
 				"reason", reason,
@@ -570,6 +726,19 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 				"tool_name", input.ToolName,
 			)
 			return NewDenyOutput(reason), nil
+		}
+
+		// Subagent destructive-write guard (SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001).
+		// Sits directly after the FROZEN-zone check so it cannot displace an
+		// established deny, and gates to Write alone: Edit carries the prior
+		// text, so a large deletion through it is not a blind overwrite
+		// (spec.md §B.3). Detection and the audit row run on every decision;
+		// only the refusal is gated by Workflow.SubagentWriteGuard.Enabled
+		// (default false, family contract).
+		if input.ToolName == "Write" {
+			if reason := h.checkSubagentDestructiveWrite(input); reason != "" {
+				return NewDenyOutput(reason), nil
+			}
 		}
 
 		decision, reason := h.checkFileAccess(input.ToolInput, input.ToolName)
@@ -607,17 +776,32 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	// Agent/Task spawn model observation. Placed LAST — after every existing
 	// deny path — so inserting it cannot displace an established decision
 	// (the Bash dangerous-pattern deny, the branch guard, the file-access
-	// deny all still win). The observation and advisory layers always run;
-	// the deny below is opt-in via Workflow.AgentModelGuard.Enabled and fires
-	// only on the mismatch verdict. Since v2.1.63 Claude Code renamed
-	// Task → Agent; accept both.
+	// deny all still win). It observes and advises only; no spawn is denied on
+	// the basis of its model (SPEC-AGENT-MODEL-INHERIT-001). Since v2.1.63
+	// Claude Code renamed Task → Agent; accept both.
 	var agentAdvisory string
 	if input.ToolName == "Agent" || input.ToolName == "Task" {
-		decision, reason, advisory := h.checkAgentModel(input)
-		if decision == DecisionDeny {
-			return NewDenyOutput(reason), nil
+		agentAdvisory = h.checkAgentModel(input)
+
+		// Audit-receipt consumer (SPEC-CODEX-AUDIT-GATE-AXES-001 REQ-CAG-014).
+		// Sibling of the model guard: a phase-entry spawn is denied while an
+		// auditor PASS stands unproven in this tree. Activation is the raw
+		// workflow.audit.gates.codex == required value itself — writing that
+		// value IS the opt-in, so there is no separate flag.
+		// Served-model consumer (SPEC-SERVED-MODEL-AUDIT-001 REQ-SMA-010).
+		// Evaluated alongside the receipt consumer so that, when both kinds of
+		// refusal are outstanding, one deny carries both sentinels, each
+		// followed by its own records.
+		receiptDecision, receiptReason := checkAuditReceiptSpawn(input)
+		servedDecision, servedReason := checkServedModelSpawn(input)
+		switch {
+		case receiptDecision == DecisionDeny && servedDecision == DecisionDeny:
+			return NewDenyOutput(receiptReason + "; " + servedReason), nil
+		case receiptDecision == DecisionDeny:
+			return NewDenyOutput(receiptReason), nil
+		case servedDecision == DecisionDeny:
+			return NewDenyOutput(servedReason), nil
 		}
-		agentAdvisory = advisory
 
 		// Deliberate-revival escape hatch (stop-guard, REQ-TRG-005): a fresh
 		// spawn carrying a stopped teammate's name clears the registry entry
@@ -639,6 +823,16 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 			return NewDenyOutput(reason), nil
 		}
 		stopAdvisory = advisory
+	}
+
+	// AskUserQuestion observation. The third branch of the same kind as the two
+	// above, and the only one with no enforcement layer at all: it returns
+	// nothing, so there is no deny path to reach in either recommendation mode,
+	// on any input, malformed included. An observer that can block the question
+	// channel can deadlock the only path to the user, which is why the
+	// never-denies property is structural here rather than a runtime check.
+	if input.ToolName == "AskUserQuestion" {
+		h.observeQuestionChannel(input)
 	}
 
 	out := NewSafeDefaultOutput(permissionModeOf(input))
@@ -822,6 +1016,70 @@ func (h *preToolHandler) integrationLockEnabled() bool {
 	return cfg.Workflow.IntegrationLock.Enabled
 }
 
+// protectedCommitDenyList returns the branch names the protected-branch commit
+// deny refuses commits on (SPEC-MAIN-COMMIT-BAN-001 REQ-3.1). Defensive in the
+// same shape as branchGuardEnabled: a nil ConfigProvider or nil Config yields
+// nil — the shipped empty default — keeping the deny inert for unconfigured
+// users. Read at the call site so the empty list costs nothing beyond the len
+// check (REQ-2.5).
+func (h *preToolHandler) protectedCommitDenyList() []string {
+	if h.cfg == nil {
+		return nil
+	}
+	cfg := h.cfg.Get()
+	if cfg == nil {
+		return nil
+	}
+	return cfg.Workflow.BranchGuard.DenyCommitsOn
+}
+
+// slotLeaseConfig returns the slot-lease section and whether its guard is
+// enabled (card t607). A nil ConfigProvider or nil Config reads as disabled,
+// silently — REQ-RSL-012: unknowable configuration is the quiet off path, not
+// a fail-open uncertainty.
+func (h *preToolHandler) slotLeaseConfig() (config.SlotLeaseConfig, bool) {
+	if h.cfg == nil {
+		return config.SlotLeaseConfig{}, false
+	}
+	cfg := h.cfg.Get()
+	if cfg == nil {
+		return config.SlotLeaseConfig{}, false
+	}
+	return cfg.Workflow.SlotLease, cfg.Workflow.SlotLease.Enabled
+}
+
+// commitIdentityGuardEnabled reports whether the commit identity guard
+// (SPEC-COMMIT-IDENTITY-GUARD-001 REQ-CIG-006) is opted in via
+// Workflow.CommitIdentityGuard.Enabled. Defensive in the same shape as
+// branchGuardEnabled: a nil ConfigProvider or nil Config returns false, so a
+// misconfigured hook is inert rather than accidentally probing — when
+// disabled, NO repository-scope or identity probe subprocess runs. Read at
+// the call site so the probe cost stays entirely off the disabled path.
+func (h *preToolHandler) commitIdentityGuardEnabled() bool {
+	if h.cfg == nil {
+		return false
+	}
+	cfg := h.cfg.Get()
+	if cfg == nil {
+		return false
+	}
+	return cfg.Workflow.CommitIdentityGuard.Enabled
+}
+
+// commitIdentityDenyEmails returns the guard's effective deny list: the
+// built-in fixture enumeration plus the configured deny_emails (the config
+// list ADDS, it never shrinks the built-in list — REQ-CIG-008).
+func (h *preToolHandler) commitIdentityDenyEmails() []string {
+	if h.cfg == nil {
+		return effectiveDenyEmails(nil)
+	}
+	cfg := h.cfg.Get()
+	if cfg == nil {
+		return effectiveDenyEmails(nil)
+	}
+	return effectiveDenyEmails(cfg.Workflow.CommitIdentityGuard.DenyEmails)
+}
+
 // loadGateConfig reads gate configuration from the config provider.
 // Falls back to DefaultGateConfig when the config is not available.
 func (h *preToolHandler) loadGateConfig() *quality.GateConfig {
@@ -935,21 +1193,176 @@ func (h *preToolHandler) checkBashCommand(toolInput json.RawMessage) (string, st
 		return "", ""
 	}
 
+	// File removal is decided on the resolved target, before the pattern scan,
+	// so that quoting a target cannot hide it (issue #1658).
+	if target := dangerousRemovalTarget(command); target != "" {
+		return DecisionDeny, fmt.Sprintf("Dangerous command blocked: removal of protected path %q", target)
+	}
+
+	// REQ-HGF-007 (SPEC-HOOK-GUARD-POWERSHELL-FORMS-001): a LITERAL quoted
+	// operand of an indirection construct — Bash eval, PowerShell
+	// iex/Invoke-Expression, or the joined program-and-argument text of
+	// Start-Process … -ArgumentList — is positive evidence the deny-list
+	// pattern will execute through the indirection, so the same compiled
+	// patterns run over the operand before the quoted-span collapse blanks
+	// it. A non-literal operand (variable, subexpression) is found-but-empty:
+	// the scan skips it and the fail-open path with its audit line stands.
+	if operand, found := extractLiteralIndirectionOperand(command); found {
+		for _, pattern := range h.policy.DangerousBashPatterns {
+			if pattern.MatchString(operand) {
+				return DecisionDeny, fmt.Sprintf("Dangerous command blocked: %s", pattern.String())
+			}
+		}
+	}
+
+	// Collapse quoted spans to a placeholder before the pattern scan, matching
+	// what the branch guard already does (substituteQuotedArguments). Without
+	// this, a command that merely PRINTS or STORES a dangerous form — a commit
+	// message, a backlog card, a report about this very guard — is refused for
+	// text it never executes.
+	scanned := substituteQuotedArguments(command)
+
 	// Check dangerous patterns (deny)
 	for _, pattern := range h.policy.DangerousBashPatterns {
-		if pattern.MatchString(command) {
+		if pattern.MatchString(scanned) {
 			return DecisionDeny, fmt.Sprintf("Dangerous command blocked: %s", pattern.String())
 		}
 	}
 
 	// Check ask patterns (require confirmation)
 	for _, pattern := range h.policy.AskBashPatterns {
-		if pattern.MatchString(command) {
+		if pattern.MatchString(scanned) {
 			return DecisionAsk, "This command may have significant effects. Please confirm."
 		}
 	}
 
 	return "", ""
+}
+
+// --- literal indirection-operand extraction (SPEC-HOOK-GUARD-POWERSHELL-FORMS-001 REQ-HGF-007) ---
+
+// extractLiteralIndirectionOperand returns the literal quoted operand text of
+// an indirection construct with its outer quoting stripped, and whether an
+// operand was found at all. Covered constructs: Bash eval, PowerShell
+// iex/Invoke-Expression, and Start-Process (including the saps/start
+// aliases). A found-but-empty return marks a NON-literal operand — a
+// variable reference or subexpression, where the deny scan fails open and
+// the unclassifiable audit line (where applicable) is the only record.
+func extractLiteralIndirectionOperand(command string) (string, bool) {
+	tokens := splitPSTokens(command)
+	for i, tok := range tokens {
+		switch strings.ToLower(strings.TrimLeft(tok, "({&")) {
+		case "eval", "iex", "invoke-expression":
+			return firstLiteralOperand(tokens[i+1:])
+		case "start-process", "saps", "start":
+			return startProcessOperand(tokens[i+1:])
+		}
+	}
+	return "", false
+}
+
+// firstLiteralOperand returns the first quoted operand after the construct
+// with its outer quotes stripped. An operand whose content carries a `$` is
+// a variable reference or substitution, not a literal — found-but-empty.
+func firstLiteralOperand(rest []string) (string, bool) {
+	for _, tok := range rest {
+		if len(tok) >= 2 && (tok[0] == '"' || tok[0] == '\'') && tok[len(tok)-1] == tok[0] {
+			content := tok[1 : len(tok)-1]
+			if strings.ContainsRune(content, '$') {
+				return "", true // non-literal: fail open
+			}
+			return content, true
+		}
+	}
+	return "", false
+}
+
+// startProcessOperand joins the Start-Process program with its -ArgumentList
+// values into one text the deny scan runs over (REQ-HGF-007: the joined
+// program-and-argument text). `-FilePath <prog>` supplies the program when
+// the positional form is not used.
+func startProcessOperand(rest []string) (string, bool) {
+	program := ""
+	var args []string
+	sawOperand := false
+	for j := 0; j < len(rest); j++ {
+		tok := rest[j]
+		low := strings.ToLower(tok)
+		switch {
+		case low == "-argumentlist":
+			sawOperand = true
+		case strings.HasPrefix(low, "-argumentlist="):
+			sawOperand = true
+			args = append(args, argumentListItems(tok[len("-argumentlist="):])...)
+		case strings.HasPrefix(low, "-"):
+			if low == "-filepath" && j+1 < len(rest) {
+				program = rest[j+1]
+				j++
+			}
+		default:
+			if program == "" {
+				program = tok
+			} else {
+				args = append(args, argumentListItems(tok)...)
+			}
+		}
+	}
+	if program == "" && len(args) == 0 {
+		return "", sawOperand
+	}
+	return strings.Join(append([]string{program}, args...), " "), true
+}
+
+// argumentListItems extracts the array items of an -ArgumentList value —
+// quoted spans stripped, bare words kept, commas dropped
+// (`'switch','probe'` yields switch, probe).
+var argumentListItemPattern = regexp.MustCompile(`'([^']*)'|"([^"]*)"|[^,\s]+`)
+
+func argumentListItems(value string) []string {
+	var out []string
+	for _, m := range argumentListItemPattern.FindAllStringSubmatch(value, -1) {
+		switch {
+		case m[1] != "":
+			out = append(out, m[1])
+		case m[2] != "":
+			out = append(out, m[2])
+		default:
+			out = append(out, m[0])
+		}
+	}
+	return out
+}
+
+// resolveThroughExistingParent resolves the symlinks of the nearest EXISTING
+// ancestor of absPath and rejoins the not-yet-existing remainder onto it.
+//
+// It exists for the new-file case that plain EvalSymlinks cannot serve: a Write
+// to a path whose leaf does not exist yet fails EvalSymlinks outright, which
+// hides a directory symlink in the path's parents. Resolving the deepest
+// ancestor that DOES exist makes such an escape visible without denying a
+// legitimate new file (the resolved ancestor of an in-project new file is still
+// in-project).
+//
+// absPath must already be absolute. The second return is false when no ancestor
+// could be resolved, in which case the caller keeps its unresolved fallback.
+func resolveThroughExistingParent(absPath string) (string, bool) {
+	remainder := ""
+	dir := absPath
+	for {
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			// Reached the filesystem root without resolving anything.
+			return "", false
+		}
+		remainder = filepath.Join(filepath.Base(dir), remainder)
+		dir = parent
+
+		realDir, err := filepath.EvalSymlinks(dir)
+		if err != nil {
+			continue
+		}
+		return filepath.Join(realDir, remainder), true
+	}
 }
 
 // checkFileAccess checks file path and content against security patterns.
@@ -985,8 +1398,21 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 	// still succeed. When EvalSymlinks returns an error (not-exist for a
 	// new-file Write, or otherwise unresolvable), fall back to the unresolved
 	// path and do NOT deny (NFR-SEC-003 behavior preservation, AC-SEC-007c).
+	//
+	// Falling back to the FULL unresolved path, however, loses the boundary
+	// check for a new file whose PARENT escapes: with `linked -> /outside`, the
+	// path `<project>/linked/new.txt` has no existing leaf to resolve, so the
+	// lexical check sees the in-project relative form `linked/new.txt` and
+	// allows a Write that lands outside the project (CWE-61 on the parent
+	// rather than on the leaf). resolveThroughExistingParent narrows the
+	// fallback: it resolves the nearest EXISTING ancestor and rejoins the
+	// not-yet-existing remainder, so the escape is visible while a plain new
+	// file still resolves to an in-project path.
 	resolvedSymlink := false
 	if realPath, evalErr := filepath.EvalSymlinks(resolvedPath); evalErr == nil {
+		resolvedPath = realPath
+		resolvedSymlink = true
+	} else if realPath, ok := resolveThroughExistingParent(resolvedPath); ok {
 		resolvedPath = realPath
 		resolvedSymlink = true
 	}
@@ -1101,8 +1527,9 @@ var frozenZonePrefixes = []struct {
 	{".claude/output-styles/", SentinelHarnessFrozenOutputStyle},
 }
 
-// frozenInstructionFiles lists CLAUDE.md variants guarded by HARNESS_FROZEN_INSTRUCTION_VIOLATION.
-var frozenInstructionFiles = []string{"CLAUDE.md", "CLAUDE.local.md"}
+// frozenInstructionFiles lists the instruction-file basenames (CLAUDE.md and
+// AGENTS.md variants) guarded by HARNESS_FROZEN_INSTRUCTION_VIOLATION.
+var frozenInstructionFiles = []string{"CLAUDE.md", "CLAUDE.local.md", "AGENTS.md", "AGENTS.local.md"}
 
 // checkHarnessFrozenZone returns (sentinel, deny-reason) when the file path falls inside
 // a FROZEN zone. Returns ("", "") when the path is not frozen.
@@ -1142,13 +1569,25 @@ func (h *preToolHandler) isAllowedExternalPath(resolvedPath string) bool {
 		if err != nil {
 			continue
 		}
-		nfcAllowed := norm.NFC.String(absAllowed)
-		rel, err := filepath.Rel(nfcAllowed, resolvedPath)
-		if err != nil {
-			continue
+		// Compare against BOTH the lexical and the symlink-resolved form of the
+		// allowed directory: the caller's path may have arrived either way.
+		// An allowlist entry is routinely a symlink (macOS /tmp -> /private/tmp),
+		// so comparing only the lexical form rejects a resolved path that is in
+		// fact inside the allowed directory. Both sides of an identity
+		// comparison need the same normalization.
+		candidates := []string{absAllowed}
+		if realAllowed, evalErr := filepath.EvalSymlinks(absAllowed); evalErr == nil && realAllowed != absAllowed {
+			candidates = append(candidates, realAllowed)
 		}
-		if !strings.HasPrefix(rel, "..") {
-			return true
+		for _, candidate := range candidates {
+			nfcAllowed := norm.NFC.String(candidate)
+			rel, relErr := filepath.Rel(nfcAllowed, resolvedPath)
+			if relErr != nil {
+				continue
+			}
+			if !strings.HasPrefix(rel, "..") {
+				return true
+			}
 		}
 	}
 	return false

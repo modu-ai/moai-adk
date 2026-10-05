@@ -1,0 +1,27 @@
+constitution validate: FAILED — 9 error(s) found
+
+  [DRIFT] CONST-V3R2-013 @ CLAUDE.md #7-safe-development-protocol
+    detail: clause "When intent is unclear, conduct a Socratic interview before execution" not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-014 @ CLAUDE.md #7-safe-development-protocol
+    detail: clause "Before non-trivial code, explain the approach + which files change + why; get us..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-015 @ CLAUDE.md #7-safe-development-protocol
+    detail: clause "When modifying 3+ files, split into logical units (TodoList), execute file-by-fi..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-016 @ CLAUDE.md #7-safe-development-protocol
+    detail: clause "After coding, provide potential-issue list (edge cases, error/concurrency scenar..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-017 @ CLAUDE.md #7-safe-development-protocol
+    detail: clause "Write a failing reproduction test first; confirm it fails; challenge the diagnos..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-033 @ .claude/rules/moai/core/moai-constitution.md #agent-core-behaviors
+    detail: clause "Actively resist overcomplexity. The natural tendency of code generation is towar..." not found in source ".claude/rules/moai/core/moai-constitution.md"
+  [DRIFT] CONST-V3R2-049 @ .claude/rules/moai/core/agent-common-protocol.md #skeptical-evaluation-stance
+    detail: clause "The reviewer mode operates as a fresh-judgment auditor" not found in source ".claude/rules/moai/core/agent-common-protocol.md"
+  [DRIFT] CONST-V3R2-152 @ .claude/rules/moai/workflow/session-handoff.md #auto-memory-integration-mandatory
+    detail: clause "Save the message to a memory project entry. Filename pattern: `project_<epic>_<s..." not found in source ".claude/rules/moai/workflow/session-handoff.md"
+  [DRIFT] CONST-V3R2-153 @ .claude/rules/moai/workflow/session-handoff.md #canonical-format-verbatim-spec
+    detail: clause "`✂` symbol (U+2702 BLACK SCISSORS) is **preserved verbatim across all locales*..." not found in source ".claude/rules/moai/workflow/session-handoff.md"
+
+  4 retired entry/entries skipped ([SUPERSEDED …] marker); re-check them with --strict
+          
+   ERROR  
+          
+  Constitution validate: found 9 error(s).                                                                            
+

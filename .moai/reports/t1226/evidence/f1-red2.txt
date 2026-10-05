@@ -1,0 +1,17 @@
+=== RUN   TestHeadroomInitSurfaceExport
+    init_headroom_export_test.go:112: -headroom-export not set; measurement harness only
+--- SKIP: TestHeadroomInitSurfaceExport (0.00s)
+=== RUN   TestHeadroomExportDirGuard
+=== RUN   TestHeadroomExportDirGuard/refuses_non-empty_unmarked_dir
+    init_headroom_export_test.go:172: guard deleted a non-empty unmarked dir; want refusal
+=== RUN   TestHeadroomExportDirGuard/allows_absent_path
+=== RUN   TestHeadroomExportDirGuard/clears_empty_dir
+=== RUN   TestHeadroomExportDirGuard/clears_dir_carrying_the_harness_marker
+--- FAIL: TestHeadroomExportDirGuard (0.00s)
+    --- FAIL: TestHeadroomExportDirGuard/refuses_non-empty_unmarked_dir (0.00s)
+    --- PASS: TestHeadroomExportDirGuard/allows_absent_path (0.00s)
+    --- PASS: TestHeadroomExportDirGuard/clears_empty_dir (0.00s)
+    --- PASS: TestHeadroomExportDirGuard/clears_dir_carrying_the_harness_marker (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.760s
+FAIL

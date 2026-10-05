@@ -37,15 +37,15 @@ func TestBuildSessionTitle_LeadNameWinsOverSPEC(t *testing.T) {
 
 	// Negative control FIRST: with the variable unset, the SPEC title is what a
 	// session gets. Without this the positive case below could pass for the
-	// wrong reason — a leadSessionTitle that returned its argument on every
+	// wrong reason — a leaderSessionTitle that returned its argument on every
 	// session would look identical on the lead alone.
 	t.Run("not a lead -> SPEC title (unchanged default)", func(t *testing.T) {
 		// t.Setenv first so the prior value is restored on cleanup; the unset
 		// that follows is what the negative control actually needs, because
 		// presence — not emptiness — is the signal downstream readers use.
-		t.Setenv(config.EnvMoaiKanbanLeadName, "")
-		if err := os.Unsetenv(config.EnvMoaiKanbanLeadName); err != nil {
-			t.Fatalf("failed to unset %s: %v", config.EnvMoaiKanbanLeadName, err)
+		t.Setenv(config.EnvFactoryLeadName, "")
+		if err := os.Unsetenv(config.EnvFactoryLeadName); err != nil {
+			t.Fatalf("failed to unset %s: %v", config.EnvFactoryLeadName, err)
 		}
 
 		if got := h.buildSessionTitle(context.Background(), cwd, ""); got != specTitle {
@@ -54,11 +54,11 @@ func TestBuildSessionTitle_LeadNameWinsOverSPEC(t *testing.T) {
 	})
 
 	t.Run("lead -> the session's own name, not the SPEC", func(t *testing.T) {
-		t.Setenv(config.EnvMoaiKanbanLeadName, "lead")
+		t.Setenv(config.EnvFactoryLeadName, "leader")
 
 		got := h.buildSessionTitle(context.Background(), cwd, "")
-		if got != "lead" {
-			t.Errorf("buildSessionTitle() = %q, want the lead's own name %q", got, "lead")
+		if got != "leader" {
+			t.Errorf("buildSessionTitle() = %q, want the lead's own name %q", got, "leader")
 		}
 		if got == specTitle {
 			t.Error("the lead was titled by an unrelated SPEC — issue #1596 regressed")
@@ -69,7 +69,7 @@ func TestBuildSessionTitle_LeadNameWinsOverSPEC(t *testing.T) {
 	// bumped name in argv, so the title must carry it too — a title guessing the
 	// bare role would disagree with the address peers actually dispatch to.
 	t.Run("bumped lead -> the bumped name", func(t *testing.T) {
-		t.Setenv(config.EnvMoaiKanbanLeadName, "lead-1")
+		t.Setenv(config.EnvFactoryLeadName, "lead-1")
 
 		if got := h.buildSessionTitle(context.Background(), cwd, "lead-1"); got != "lead-1" {
 			t.Errorf("buildSessionTitle() = %q, want the bumped name %q", got, "lead-1")
@@ -79,7 +79,7 @@ func TestBuildSessionTitle_LeadNameWinsOverSPEC(t *testing.T) {
 	// The first-wins guard is ABOVE this branch: a /rename (recorded as a
 	// custom-title) still wins, exactly as it does over the SPEC branch.
 	t.Run("existing title wins over the lead name", func(t *testing.T) {
-		t.Setenv(config.EnvMoaiKanbanLeadName, "lead")
+		t.Setenv(config.EnvFactoryLeadName, "leader")
 
 		path := writeTranscript(t, `{"type":"custom-title","customTitle":"운영자가 고른 이름","sessionId":"s1"}`)
 		if got := h.buildSessionTitle(context.Background(), cwd, path); got != "" {
@@ -90,7 +90,7 @@ func TestBuildSessionTitle_LeadNameWinsOverSPEC(t *testing.T) {
 	// A whitespace-only value is not a name. Trimming to empty falls through to
 	// the SPEC branch rather than registering a blank title.
 	t.Run("whitespace-only value -> falls through to the SPEC title", func(t *testing.T) {
-		t.Setenv(config.EnvMoaiKanbanLeadName, "   ")
+		t.Setenv(config.EnvFactoryLeadName, "   ")
 
 		if got := h.buildSessionTitle(context.Background(), cwd, ""); got != specTitle {
 			t.Errorf("buildSessionTitle() = %q, want the SPEC title %q", got, specTitle)

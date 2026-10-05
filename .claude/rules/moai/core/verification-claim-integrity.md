@@ -1,8 +1,10 @@
 # Verification-Claim Integrity
 
+<!-- mirror-fork: intentional — local retains [ZONE:Evolvable] governance tags and internal provenance (SPEC-IDs, concrete per-instance examples) the neutral template omits; sync requires a deliberate allowlist change (card t1319) -->
+
 Doctrine establishing the **"no unobserved-verification-claim" invariant** for all MoAI actors. This rule is automatically loaded for the orchestrator and all agents. It is a policy-layer (codification) doctrine — it defines the norm; it does not itself run a runtime detector.
 
-> Provenance: SPEC-EVIDENCE-CLAIM-INVARIANT-001.
+> Provenance: SPEC-EVIDENCE-CLAIM-INVARIANT-001. §2.2 from SPEC-BINLAG-INVOCATION-001.
 
 ## 1. The Invariant — no unobserved-claim (verification, defect, OR premise)
 
@@ -12,11 +14,11 @@ Doctrine establishing the **"no unobserved-verification-claim" invariant** for a
 
 The absence of a failure signal is not, by itself, evidence that a check passed. A claim of "tests pass", "coverage 87%", "lint clean", or "0 0 sync" is only valid when the actor actually ran the command and observed its output. An unran command, a skipped step, or a silent assumption is a gap — never a pass.
 
-Symmetrically, inferring a defect, a technical-debt item, a lifecycle drift, or an anomalous state from frontmatter text, grep matches, or file absence alone — without running the domain's dedicated verification tool — is not evidence that the defect exists. A text-pattern inference is a hypothesis, never a verified defect. The invariant binds both directions: an actor may not claim success it did not observe, and may not claim a defect it did not verify with the appropriate tool.
+Symmetrically, inferring a defect, a debt item, a lifecycle drift, or an anomalous state from frontmatter text, grep matches, or file absence alone — without the domain's dedicated verification tool — is not evidence the defect exists: a text-pattern inference is a hypothesis, never a verified defect. The invariant binds both directions.
 
 The binding extends to the premise beneath a recommendation. A recommendation to KEEP, retain, or preserve something rests on a premise — that the thing is still live, still reachable, still depended upon. Observing that an artifact is *referenced* establishes only that a reference exists; it does not establish that the referenced capability is still live. **Reachability is not justification.** Before recommending retention, the actor MUST verify the referenced capability's lifecycle status — whether its producer still exists, and whether a completed retirement already covers it. An unverified premise dressed as a reason is an unobserved claim.
 
-This direction is the more dangerous one, because its failure is silent. A wrong "remove it" claim is contradicted by the next build or test run; a wrong "keep it" claim preserves dead code and is never contradicted by any signal at all.
+This direction is the more dangerous one because its failure is silent: a wrong "remove it" claim is contradicted by the next run, but a wrong "keep it" claim is never contradicted by any signal at all.
 
 This is a policy-layer norm, not a mechanical guarantee. For the complementary mechanical-detection layer that surfaces one shape of this violation at runtime, cross-reference SPEC-STOP-EVIDENCE-GATE-001 (the cross-reference table lives in the detail companion, `verification-claim-integrity-detail.md`).
 
@@ -30,7 +32,7 @@ The invariant binds **all four** of the following surfaces. Each is named explic
 
 3. **Defect / debt / drift identification claim** — any actor's assertion that a defect, technical-debt item, lifecycle drift, or anomalous state EXISTS and warrants action. A claim that "SPEC X is a close debt", "package Y has a coverage gap", or "N SPECs need Mx-close" is only valid when the actor ran the domain's dedicated verification tool (`moai spec audit`, `go test -cover`, `golangci-lint`, etc.) and observed its output. Inferring a defect from frontmatter text, grep matches, or file absence alone — without the dedicated tool — is an unobserved defect claim, and acting on it as if it were verified violates §2's attribution requirement. When a dedicated tool exists for a domain, text-only reasoning MUST NOT be the sole basis for a defect claim; the tool's output is the Evidence (§3.2).
 
-4. **Recommendation-premise claim** — any actor's assertion of the REASON a proposed action should, or should NOT, be taken. A recommendation such as "removing this withdraws a live feature", "this is still in use", or "another consumer depends on it" is only valid when the actor verified the named premise — the producer's existence, the consumer's reachability, the owning task's lifecycle status — and observed the result. Two inferences are specifically forbidden as premise evidence: a reference existing is NOT evidence the referent is live (§1), and an originating task still reading as in-service is NOT evidence the feature it delivered survived, because a later task may have retired it. When an actor recommends AGAINST a user's stated instruction, the premise for that objection carries the same evidence burden as a defect claim (surface 3).
+4. **Recommendation-premise claim** — any actor's assertion of the REASON a proposed action should, or should NOT, be taken. A recommendation such as "removing this withdraws a live feature" or "another consumer depends on it" is only valid when the actor verified the named premise — the producer's existence, the consumer's reachability, the owning task's lifecycle status — and observed the result. Two inferences are specifically forbidden as premise evidence: a reference existing is NOT evidence the referent is live (§1), and an originating task still reading as in-service is NOT evidence the feature it delivered survived, because a later task may have retired it. Recommending AGAINST a user's stated instruction carries the same evidence burden as a defect claim (surface 3).
 
 ## 2. Baseline-Integrity Attribution / baseline 무결성 귀속
 
@@ -44,6 +46,43 @@ Concretely, an attributed claim names:
 - **The observed output** — the verbatim result of that invocation in this run.
 
 Anything else (an inferred value, a stale figure, a "should be" estimate) is unattributed and MUST be reported as a Gap (§3.4), not as a Claim.
+
+### 2.1 Moving-ref attribution — the anchor-or-subject predicate
+
+[ZONE:Evolvable] [HARD] A claim decided against a **moving ref** — `origin/main`, `origin/develop`, `origin/HEAD`, or any other name that resolves to a different commit as work lands — carries no baseline in the sense §2 requires. The ref is an address that moves; the sentence containing it does not. What was measured against the tip on Monday is re-served as current on Friday, unchanged in text and false in fact. The same hazard rides any moving coordinate, a source line number included, so the predicate is written for coordinates generally and merely detected on the git-ref form.
+
+The corrective is **not** "pin every ref". Some claims are *about* the moving thing — what mainline currently carries, which tip a reader is to start from, a coordinate that is itself the subject of a correction — and pinning those destroys exactly the information they exist to record. Indiscriminate pinning is therefore the dominant failure mode of this clause, not its compliant outcome. The predicate decides, per claim, which case is at hand.
+
+[HARD] The predicate is applied, not recalled. Before remediating any moving-ref or moving-coordinate claim, read `verification-claim-integrity-detail.md` § Moving-ref predicate and run its four tests in order; they return one of two classes — **ANCHOR** (an address at which a measurement was taken) or **SUBJECT** (the claim is *about* the moving thing) — and that companion also carries the four remediation branches themselves, the five adjudicated instances, and the detection limits L1-L7 a mechanism enforcing this clause cannot see. Reaching a remedy without having run the tests is indiscriminate pinning by another name.
+
+#### Classification and remedy are two separate steps
+
+[HARD] The tests return a **class**; the class does not name the remedy. There are **two classes and four remedies** — ANCHOR selects between R1 and R2, SUBJECT between R3 and R4. Collapsing the two steps is the second, subtler route to indiscriminate pinning: a reader who believes the class *is* the remedy has only as many remedies as there are classes, and reaches for the first one that fits.
+
+#### The four remediation branches
+
+The branch table, its cost table, and the exemption-marker syntax live in `verification-claim-integrity-detail.md` § The four remediation branches and § The exemption marker — the same section the [HARD] pointer above already obliges you to open before remediating. **R1**/**R2** resolve ANCHOR (pin the SHA / freeze at pre-flight); **R3**/**R4** resolve SUBJECT (authored exemption with a reason / measuring command + dated reference). Every branch costs the author something — that cost is the full text's subject, and the [HARD] pointer above obliges you to open it before remediating.
+
+### 2.2 Tool-provenance attribution — which build judged the tree
+
+[ZONE:Evolvable] [HARD] A measurement produced by the project's own tooling is attributed to **two** coordinates, not one: the tree it read, and the build that judged it. §2 binds the first. This clause binds the second, because a tool invoked through a shell path resolves to an *installed* build, which need not be the build the tree describes.
+
+The silence is **symmetric**: a stale build and a current build produce the same clean pass signals, so a green result is evidence only that whatever checks the invoked build carries reported nothing.
+
+**The obligation.** A tool measurement cited as evidence MUST have been produced by a build made from the tree under measurement. Concretely, either:
+
+- build the tool from the tree and invoke that build **by its path**, rather than letting a shell path resolve to an installed one; or
+- verify — and state alongside the citation — that the installed build's commit is not a strict ancestor of the tree's HEAD.
+
+**What the citation carries.** A cited tool measurement names the judging build's commit next to the tree's HEAD. A measurement citing only the tree is unattributed under §2: a Gap, not a Claim.
+
+**Where it does not bind.** A build with no repository to compare against — a released artifact inside a user's project, a checkout without history — has no lag to state, and this clause requires nothing of it. A missing second coordinate is a defect only where the coordinate exists.
+
+**Not a substitute for the tooling's own verdict.** Where the tooling already computes a freshness verdict, that verdict is the mechanism; this clause governs the **citation**, and holds whether or not the invoked build is one that reports it. A build old enough to predate the freshness check is exactly the build that cannot warn you about itself.
+
+### 2.3 Ordering attribution — the commit graph is the only sequencing witness
+
+[ZONE:Evolvable] [HARD] When a claim's validity depends on a measurement having been taken BEFORE the change it measures (a baseline-first acceptance criterion), the baseline artifact MUST land in its own commit that precedes the change's commit. Git snapshots the tree per commit and cannot witness authoring order inside one commit, so a baseline committed together with the implementation it measured leaves the ordering claim permanently unverifiable — however truthfully the commit message asserts the sequence. A commit message and a session record ASSERT ordering; only the commit graph witnesses it. Where committing the baseline ahead is impossible (measurement and change are inherently one atomic act), the acceptance criterion's ordering clause is rewritten to what the commit graph can verify — never silently left to rest on a same-commit pair. (Motivating instance, recorded as a permanent deviation: SPEC-V3R6-GRAPH-FRESHNESS-001 AC-GF-022 — its baseline artifact `.moai/reports/t250/m5-baseline.md` shared commit `7f2e9e77d` with the implementation it measured, and the audit could not re-witness the asserted ordering from git history; recurrence prevention is this clause, tracked as backlog card t300.)
 
 ## 3. The 5-Section Evidence-Bearing Report Format
 
@@ -65,7 +104,22 @@ live in the detail companion `verification-claim-integrity-detail.md`. Load it w
 evidence-bearing report for the first time, or when tracing a clause back to its originating
 failure.
 
+### 3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution
+
+[ZONE:Evolvable] [HARD] Where a command a verification rested on was **refused rather than executed** — the worktree-isolation guard, a permission deny, a policy gate — the report names that refusal in its **Gaps** section, together with what the actor did instead.
+
+Falling back to reading the source is a legitimate response to a refusal. Presenting the result of that fallback as the measurement is not: the report then reads as measured where it was inferred, and no reader can tell.
+
+The hazard is quiet in a specific way: a refusal is loud to the actor when it happens and invisible in the artifact afterwards. An auditor whose command was refused can still reach a PASS by reading source — "confirmed by measurement" becomes "inferred by reading" with nothing in the verdict recording the change. §1 already forbids the resulting claim; this clause fixes WHERE the difference is written down.
+
+Two consequences, and the first is the one actors get wrong:
+
+- **A refusal does not block the verdict.** The actor may proceed on the fallback and may still conclude PASS. What it may not do is let the substitution go unnamed.
+- **The refusal is recorded mechanically as well**, so the Gaps entry is checkable against a record the actor does not write: the failure-event hook writes a refused tool call as a `tool_failure:<tool>:<category>` row in `.moai/lessons-inbox.jsonl`. A Gaps section silent about a refusal the record carries is a divergence a reviewer can find without taking the actor's word for it.
+
+(Provenance: card t529. The premise that motivated the clause — that such a blockage leaves no trace — was measured false; what was missing was not the record but its route into the verdict.)
+
 ---
 
-Version: 1.2.0
+Version: 1.3.0
 Classification: Canonical Reference (policy-layer codification) — do not duplicate cross-referenced content; cross-reference this file instead.

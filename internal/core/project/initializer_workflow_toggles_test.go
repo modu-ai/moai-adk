@@ -100,8 +100,8 @@ func TestWriteWorkflowTogglesYAML_InsertsBranchGuardWhenAbsent(t *testing.T) {
 
 	root := filepath.Dir(filepath.Dir(sectionsDir))
 	opts := InitOptions{
-		ProjectRoot:       root,
-		BranchGuardSet:    true,
+		ProjectRoot:        root,
+		BranchGuardSet:     true,
 		BranchGuardEnabled: true,
 	}
 	if err := WriteWorkflowTogglesYAML(sectionsDir, opts, &InitResult{}); err != nil {
@@ -204,8 +204,8 @@ func TestWriteWorkflowTogglesYAML_FreshFileFallback(t *testing.T) {
 	}
 
 	opts := InitOptions{
-		ProjectRoot:       root,
-		BranchGuardSet:    true,
+		ProjectRoot:        root,
+		BranchGuardSet:     true,
 		BranchGuardEnabled: true,
 	}
 	result := &InitResult{}

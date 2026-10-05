@@ -110,7 +110,7 @@ Run a workflow to audit every API endpoint under src/routes/ for missing auth ch
 | 항목 | 설명 |
 |------|------|
 | `/deep-research <질문>` | 번들 워크플로우. 여러 각도로 웹 검색을 팬아웃하고 출처를 교차검증·투표한 뒤, 검증에서 탈락한 주장을 걸러낸 인용 보고서를 반환합니다. WebSearch 도구가 필요합니다 |
-| `/effort ultracode` | `xhigh` 추론 강도와 자동 워크플로우 오케스트레이션을 합친 모드입니다. 켜 두면 Claude가 모든 실질 작업에 대해 워크플로우를 계획합니다. 현재 세션에만 적용되고 새 세션에서는 초기화됩니다. `/effort high`로 일상 작업으로 돌아옵니다 |
+| `/effort ultracode` | effort 레벨과 별개로 켜고 끄는 토글입니다. 켜고 꺼도 추론 강도(effort 레벨)는 바뀌지 않으며, 켜 두면 Claude가 모든 실질 작업에 대해 워크플로우를 계획합니다. 끄려면 `/effort ultracode off`를 입력합니다. 명령으로 켠 상태는 현재 세션에만 적용되고 새 세션에서는 다시 켜야 합니다. 세션마다 켠 채로 시작하려면 설정 파일에 `"ultracode": true`를 지정합니다(v2.1.284부터 이 설정은 effort 레벨을 바꾸지 않습니다). 단, `--effort ultracode` 실행 플래그는 세션을 `xhigh`로 함께 시작합니다 |
 
 ### 끄는 방법
 

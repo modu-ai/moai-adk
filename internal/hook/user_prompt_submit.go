@@ -6,18 +6,62 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/workflow"
 )
+
+// factoryBindBudget is the wall-clock the factory peer BIND gets on a user
+// prompt. It is deliberately its own budget and not the shared
+// factoryHookInspectionDeadline (200ms) the inbox inspection uses, because the
+// two do different amounts of work and only one of them has a consequence when
+// it is cut short.
+//
+// WHY THE SHARED 200ms WAS WRONG HERE. Card t1109 measured the bind missing
+// that deadline repeatedly under load: at loadavg ~32, four consecutive turns
+// all exceeded it, so the lane never bound at all. The work does not fit:
+// ValidateActiveRun alone measured 38.45ms and factorymsg.Open 36.74ms —
+// 75.45ms, 37.7% of the whole 200ms, consumed before RegisterPeer starts, on an
+// unloaded machine. Under load those two scale together and the remainder does
+// not fit in what is left.
+//
+// WHAT THIS BUDGET ACTUALLY COVERS — it is NOT the bind's upper bound.
+// It bounds only the context-aware part of the path: ValidateActiveRun, Peer
+// and RegisterPeer. factorymsg.Open takes no context — it carries its own 5s
+// deadline built on context.Background() — and session.ResolveOwnerPID and
+// homestate.ProbeProcessIdentity take none either, so none of them can be cut
+// short by this value. That was equally true when the bind ran on the 200ms
+// inspection deadline, so it is not a regression this change introduces; it is
+// a limit on what this change can promise.
+//
+// The real outer bound is the hook's own timeout: the UserPromptSubmit hook is
+// configured with 5s in settings.json, and internal/cli/hook.go wraps Handle in
+// a 5s context of its own. A hook that can hang is worse than a hook that gives
+// up, and every millisecond spent here is a millisecond the user waits — so
+// this budget is sized to fit inside that, alongside the inbox inspection (a
+// further 200ms) and the session-title work, rather than to be the thing that
+// stops a runaway. Card t1109 measured the miss rate at candidate budgets and
+// recorded the result in .moai/reports/t1109/verdict.md.
+//
+// MISSING IT IS STILL NOT AN ERROR. When the bind does not finish inside this
+// budget the hook reports a degraded notice and the next turn retries, exactly
+// as before — this changes how often that path is taken, never what it does.
+//
+// It is a var rather than a const solely so a test can shrink it and observe
+// the exhausted-budget path deterministically, without depending on machine
+// load. Production never assigns to it.
+var factoryBindBudget = 2 * time.Second
 
 // specFilePattern is the glob pattern for finding spec.md files in SPEC directories.
 const specFilePattern = ".moai/specs/*/spec.md"
@@ -61,16 +105,60 @@ func (h *userPromptSubmitHandler) EventType() EventType {
 // workflowKeywords are prompt keywords that indicate an active MoAI workflow context.
 var workflowKeywords = []string{"loop", "run", "plan"}
 
+// workflowKeywordPatterns holds one case-insensitive whole-word matcher per
+// entry of workflowKeywords (same order). A keyword matches only as a whole
+// word, so "running", "planning", "prune" and "run_tests" never fire; the
+// slash-command forms ("/moai run", "/moai plan", "/moai loop") match because
+// the keyword is a whole word there.
+var workflowKeywordPatterns = func() []*regexp.Regexp {
+	pats := make([]*regexp.Regexp, len(workflowKeywords))
+	for i, kw := range workflowKeywords {
+		pats[i] = regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(kw) + `\b`)
+	}
+	return pats
+}()
+
 // detectWorkflowContext checks whether the prompt contains any workflow keywords
-// and returns a non-empty additionalContext string if a match is found.
+// as whole words and returns a non-empty additionalContext string if a match is
+// found.
 func detectWorkflowContext(prompt string) string {
-	lower := strings.ToLower(prompt)
-	for _, kw := range workflowKeywords {
-		if strings.Contains(lower, kw) {
+	for i, kw := range workflowKeywords {
+		if workflowKeywordPatterns[i].MatchString(prompt) {
 			return "workflow keyword '" + kw + "' detected — MoAI workflow context may be active"
 		}
 	}
 	return ""
+}
+
+// workflowContextStateRelDir holds one empty marker file per session that has
+// already received the workflow-context line, relative to the project root.
+const workflowContextStateRelDir = ".moai/state/workflow-context"
+
+// claimWorkflowContextOnce reports whether the workflow-context line may be
+// injected for this session, and records that it was. It returns true exactly
+// once per session id: the marker is created with O_EXCL, so the claim is
+// atomic across concurrent hook processes. It fails open — an unknown project
+// root or session id, or any filesystem error, returns true so the line is
+// injected as before rather than silently dropped.
+func claimWorkflowContextOnce(input *HookInput) bool {
+	sessionID := input.SessionID
+	if sessionID == "" || strings.ContainsAny(sessionID, `/\`) || strings.Contains(sessionID, "..") {
+		return true
+	}
+	root := resolveProjectRoot(input)
+	if root == "" {
+		return true
+	}
+	dir := filepath.Join(root, workflowContextStateRelDir)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return true
+	}
+	f, err := os.OpenFile(filepath.Join(dir, sessionID), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		return !errors.Is(err, fs.ErrExist)
+	}
+	_ = f.Close()
+	return true
 }
 
 // Handle processes a UserPromptSubmit event.
@@ -97,11 +185,52 @@ func (h *userPromptSubmitHandler) Handle(ctx context.Context, input *HookInput) 
 	// output below.
 	RoutingSeamUserPromptSubmit(input)
 
+	// Heartbeat seam (GH #1711 defect 1). The registry's last_heartbeat froze
+	// at registration because nothing in production ever called Heartbeat; this
+	// is the per-turn driver. Fail-open and never affects the output below.
+	HeartbeatSeamUserPromptSubmit(input)
+
 	// Build session title (errors are silently ignored, falls back to empty title)
 	title := h.buildSessionTitle(ctx, input.CWD, input.TranscriptPath)
 
 	// Detect workflow context
 	additionalCtx := detectWorkflowContext(prompt)
+	// The line is injected at most once per session: it carries no per-prompt
+	// information, so repeating it only adds context noise. A non-matching
+	// prompt never reaches the claim, so it cannot spend the session's one
+	// injection.
+	if additionalCtx != "" && !claimWorkflowContextOnce(input) {
+		additionalCtx = ""
+	}
+	// reboundRun is the run the registration just rebound this session into
+	// (SPEC-FACTORY-STALE-RUN-HEAL-001 REQ-SRH-004); the claim below reads it
+	// and not the environment run. Empty for every non-rebound session.
+	var reboundRun string
+	if strings.TrimSpace(prompt) != "" {
+		bindCtx, cancel := context.WithTimeout(ctx, factoryBindBudget)
+		var bindNotice string
+		bindNotice, reboundRun = registerFactoryHookPeerRun(bindCtx, input, factoryPeerBindUserPrompt)
+		cancel()
+		if bindNotice != "" {
+			if additionalCtx != "" {
+				additionalCtx += "\n\n"
+			}
+			additionalCtx += bindNotice
+		}
+	}
+	factoryCtx, _, inboxState := factoryHookBatchForRun(ctx, input, EventUserPromptSubmit, reboundRun)
+	if notice := surfaceFactoryInboxState(factoryHookRoot(input), input.SessionID, inboxState); notice != "" {
+		if factoryCtx != "" {
+			factoryCtx += "\n\n"
+		}
+		factoryCtx += notice
+	}
+	if factoryCtx != "" {
+		if additionalCtx != "" {
+			additionalCtx += "\n\n"
+		}
+		additionalCtx += factoryCtx
+	}
 
 	// Return empty output if no context to report
 	if title == "" && additionalCtx == "" {
@@ -142,14 +271,14 @@ func (h *userPromptSubmitHandler) buildSessionTitle(ctx context.Context, cwd, tr
 		return ""
 	}
 
-	// No title yet, and this is a kanban or factory LEAD: the session's own name
+	// No title yet, and this is a factory LEADER: the session's own name
 	// is the title, so the operator finds it in the session list under the name
 	// they and every peer already address it by (issue #1596). This branch sits
-	// ABOVE the SPEC branch deliberately — a lead session sitting in a project
+	// ABOVE the SPEC branch deliberately — a leader session sitting in a project
 	// with SPECs is exactly the case that produced an unrelated SPEC heading as
-	// a lead's title. It sits BELOW the first-wins guard just as deliberately:
+	// a leader's title. It sits BELOW the first-wins guard just as deliberately:
 	// a /rename still wins, as it does for every other source.
-	if name := leadSessionTitle(); name != "" {
+	if name := leaderSessionTitle(); name != "" {
 		return name
 	}
 
@@ -175,17 +304,17 @@ func (h *userPromptSubmitHandler) buildSessionTitle(ctx context.Context, cwd, tr
 	return ""
 }
 
-// leadSessionTitle returns the lead session's resolved name, or "" when this
-// session is not a kanban or factory lead.
+// leaderSessionTitle returns the leader session's resolved name, or "" when this
+// session is not a factory leader.
 //
-// The value is published by the launcher (exportLeadSessionName) because the
+// The value is published by the launcher (exportLeaderSessionName) because the
 // launcher is the only actor that knows which name actually reached the backend
 // argv — the operator's own when they supplied one, the bare-or-bumped role
 // otherwise. Reading it here rather than re-deriving the role is what keeps the
 // title and the messaging address the same string; a title that guessed the role
-// would disagree with the session's real name on every bumped lead.
-func leadSessionTitle() string {
-	return strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLeadName))
+// would disagree with the session's real name on every bumped leader.
+func leaderSessionTitle() string {
+	return strings.TrimSpace(os.Getenv(config.EnvFactoryLeadName))
 }
 
 // conversationLanguage returns the configured conversation_language, or "" when

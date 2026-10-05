@@ -110,6 +110,23 @@ Total: 18.5s
 
 `/moai gate` は検証のみを行いファイルを修正しない **軽量検問所** です (`--fix` を与えたときのみリント・フォーマットを修正)。より深い解決が必要なら `/moai fix` (単発) や `/moai loop` (反復) に進み、PR 前の総合レビューは `/moai review` を使います。`--fresh` モードは `/moai loop` の独立した最終検証パスが自己参照のない証拠を得るためにこのゲートを呼び出すときに使われます。
 
+## pre-commit フックと `gate.pre_commit.enabled`
+
+git pre-commit フックもこのゲートを呼び出します。フックは `MOAI_PRECOMMIT=1` マーカー付きで `moai gate` を実行し、ランナーは**このマーカーが付いた呼び出しでのみ**新しい設定キー `gate.pre_commit.enabled`(既定値 `false`)を読みます。既定値がオフのため、プロジェクト全体の重い検査(vet・lint・test・typecheck)は pre-commit コンテキストでは既定でスキップされます — コミットと無関係な既存の失敗 1 件がすべてのコミットを塞ぐことを防ぎます。フックは引き続き毎コミットで高速なステージ済みファイル検査(gofmt + `go vet`)を実行します。
+
+```yaml
+# .moai/config/sections/gate.yaml
+gate:
+  pre_commit:
+    enabled: true   # 既定値 false — プロジェクト全体の検査でコミットを止めたいときに有効化
+```
+
+{{< callout type="info" >}}
+同じキーは `moai web` の **Gate** 設定パネルからも編集でき、保存は正確に `.moai/config/sections/gate.yaml` に書き込まれます。
+{{< /callout >}}
+
+単独で実行した `moai gate` はこのキーを無視し、従来どおり既存の `gate.enabled` 設定に従います。急いでコミットしたいときは `SKIP_MOAI_PRECOMMIT=1 git commit` でフック自体をスキップできます。
+
 ## 関連ドキュメント
 
 - [/moai fix - 一回限りの自動修正](/ja/utility-commands/moai-fix)

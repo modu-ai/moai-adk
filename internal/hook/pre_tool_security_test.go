@@ -131,6 +131,122 @@ func TestCheckFileAccess_NewFileWriteFallback(t *testing.T) {
 	}
 }
 
+// TestCheckFileAccess_NewFileUnderSymlinkedParentBlocked is the failure-repro
+// arm of the new-file boundary pair (card t596). A project-internal directory
+// symlink points OUTSIDE the project; the requested file does not yet exist, so
+// EvalSymlinks fails on the full path and the guard falls back to the
+// unresolved form. The lexical boundary check then sees an in-project relative
+// path and allows the Write, which the Write tool performs on the external
+// target (CWE-61 on the parent rather than on the leaf).
+//
+// The fix resolves the nearest EXISTING parent and rejoins the not-yet-existing
+// remainder before the boundary check, so the escape is visible.
+func TestCheckFileAccess_NewFileUnderSymlinkedParentBlocked(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	outsideDir := t.TempDir() // distinct temp dir = outside project
+	link := filepath.Join(projectDir, "linked")
+	if err := os.Symlink(outsideDir, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	// The leaf does NOT exist: this is the new-file case.
+	newFile := filepath.Join(link, "new.txt")
+
+	h := &preToolHandler{
+		cfg:        &mockConfigProvider{cfg: newTestConfig()},
+		policy:     DefaultSecurityPolicy(),
+		projectDir: projectDir,
+	}
+
+	toolInput, err := json.Marshal(map[string]string{"file_path": newFile})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	decision, reason := h.checkFileAccess(toolInput, "Write")
+	if decision != DecisionDeny {
+		t.Errorf("new file under escaping symlinked parent: decision=%q reason=%q, want %q",
+			decision, reason, DecisionDeny)
+	}
+}
+
+// TestCheckFileAccess_NewFileUnderInProjectSymlinkedParentAllowed is the
+// positive control for the pair above: the same not-yet-existing-leaf shape,
+// but the directory symlink points to a target INSIDE the project. Resolving
+// the nearest existing parent must not turn a legitimate in-project new file
+// into a false deny (NFR-SEC-003 behavior preservation).
+func TestCheckFileAccess_NewFileUnderInProjectSymlinkedParentAllowed(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	realDir := filepath.Join(projectDir, "real")
+	if err := os.MkdirAll(realDir, 0o755); err != nil {
+		t.Fatalf("mkdir real: %v", err)
+	}
+	link := filepath.Join(projectDir, "linked")
+	if err := os.Symlink(realDir, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	newFile := filepath.Join(link, "new.txt")
+
+	h := &preToolHandler{
+		cfg:        &mockConfigProvider{cfg: newTestConfig()},
+		policy:     DefaultSecurityPolicy(),
+		projectDir: projectDir,
+	}
+
+	toolInput, err := json.Marshal(map[string]string{"file_path": newFile})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	decision, reason := h.checkFileAccess(toolInput, "Write")
+	if decision != "" {
+		t.Errorf("new file under in-project symlinked parent: decision=%q reason=%q, want empty (allow)",
+			decision, reason)
+	}
+}
+
+// TestCheckFileAccess_NewFileUnderSymlinkedAllowedExternalDirAllowed guards the
+// regression direction opened by resolving through the nearest existing parent:
+// once a new file's path resolves, the allowlist comparison must resolve its own
+// entries too, or a path inside an allowlisted directory that is itself a
+// symlink (macOS /tmp -> /private/tmp) reads as an escape. Both sides of the
+// comparison carry the same normalization.
+func TestCheckFileAccess_NewFileUnderSymlinkedAllowedExternalDirAllowed(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	realExternal := t.TempDir()
+	// linkedExternal is the allowlist ENTRY and is a symlink, mirroring /tmp.
+	linkedExternal := filepath.Join(t.TempDir(), "allowed-link")
+	if err := os.Symlink(realExternal, linkedExternal); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	policy := DefaultSecurityPolicy()
+	policy.AllowedExternalPaths = append(policy.AllowedExternalPaths, linkedExternal)
+
+	h := &preToolHandler{
+		cfg:        &mockConfigProvider{cfg: newTestConfig()},
+		policy:     policy,
+		projectDir: projectDir,
+	}
+
+	newFile := filepath.Join(linkedExternal, "new.txt")
+	toolInput, err := json.Marshal(map[string]string{"file_path": newFile})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	decision, reason := h.checkFileAccess(toolInput, "Write")
+	if decision != "" {
+		t.Errorf("new file under symlinked allowed external dir: decision=%q reason=%q, want empty (allow)",
+			decision, reason)
+	}
+}
+
 // TestCheckFileAccess_EditNewStringSecretDenied (AC-SEC-008a) verifies that an
 // Edit carrying a private key in new_string is denied with the same action
 // applied to Write content. Without REQ-SEC-008 the Write-only scan gate lets

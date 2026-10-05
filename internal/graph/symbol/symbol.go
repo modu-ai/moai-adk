@@ -31,6 +31,25 @@ type CallEdge struct {
 	Grade string
 }
 
+// FileDecls is one file's declared function/method names, retained from the
+// same Extract walk that produces the call/import edges (REQ-GEC-001: the
+// confidence join consumes only data the walk already visits — no second
+// parse pass). Names are deduplicated and sorted for deterministic
+// consumption.
+//
+// @MX:NOTE: [AUTO] declares-side of the confidence join — names stay dedup+sorted so the callee→declaring-file match is deterministic (SPEC-GRAPH-EDGE-CONFIDENCE-001)
+type FileDecls struct {
+	// File is the repo-relative source file.
+	File string
+	// Names are the function/method names declared in File, sorted.
+	Names []string
+	// Ranges retains the same walk's declaration ranges (StartLine/EndLine
+	// inclusive, sorted by StartLine then Name for deterministic
+	// consumption). Retention only (REQ-MTE-002): the graph's tag-edge
+	// enclosing-symbol join consumes them without a second parse pass.
+	Ranges []astx.FuncRange
+}
+
 // ImportEdge is one extracted import: file → module.
 type ImportEdge struct {
 	// File is the repo-relative source file.
@@ -80,19 +99,29 @@ func ValidateGradeMatrix(matrix map[string]string) []string {
 
 // Extract walks the described source trees (the codemaps described roots —
 // the same universe the freshness gate judges) and returns code-derived
-// call/import edges plus the grade matrix. Languages without call captures
-// (grade none) contribute nothing; per-file failures fail open, never fatal.
+// call/import edges, per-file declared-name records, the scanned-file list,
+// and the grade matrix. Languages without call captures (grade none)
+// contribute nothing; per-file failures fail open, never fatal.
 //
 // Import modules are normalized to repository-local paths when the project's
 // module path prefixes them (go.mod `module` line), so code-imports and the
 // doc import layer speak the same package domain.
 //
 // Resolution is name-based: callee names are matched without scope; the
-// matrix publishes exactly this.
+// matrix publishes exactly this. The returned declarations carry the same
+// walk's function/method names so the mapper one package up can join callee
+// names to declaring files (REQ-GEC-002..004) without a second parse pass.
+//
+// scanned is the file list the walk actually PROCESSED (extractable-language
+// regular files the extractor accepted) — the shrink guard's scanned set
+// (REQ-GR-008): a file skipped by extraction (unsupported, unreadable,
+// unparseable) is NOT in scanned, so its edges vanishing from a rebuild is
+// flagged as unexplained when the file still exists on disk. The capture
+// rides the walk's own file iteration — no second scan.
 //
 // @MX:NOTE: [AUTO] symbol.Extract — REQ-GF-013 seam: astx consumed outside the navigator with no navigator-tier dep (tiers stays a graph-level concern)
 // @MX:SPEC:SPEC-V3R6-GRAPH-FRESHNESS-001
-func Extract(projectRoot string) (calls []CallEdge, imports []ImportEdge, matrix map[string]string, err error) {
+func Extract(projectRoot string) (calls []CallEdge, imports []ImportEdge, decls []FileDecls, scanned []string, matrix map[string]string, err error) {
 	matrix = GradeMatrix()
 	modulePrefix := modulePath(projectRoot)
 
@@ -129,6 +158,7 @@ func Extract(projectRoot string) (calls []CallEdge, imports []ImportEdge, matrix
 				return nil
 			}
 			rel = filepath.ToSlash(rel)
+			scanned = append(scanned, rel) // the shrink guard's scanned set (REQ-GR-008)
 			grade := astx.GradeFor(lang)
 
 			for _, call := range set.Calls {
@@ -150,10 +180,34 @@ func Extract(projectRoot string) (calls []CallEdge, imports []ImportEdge, matrix
 					Grade:  grade,
 				})
 			}
+			if len(set.Functions) > 0 {
+				seenNames := map[string]bool{}
+				var names []string
+				ranges := make([]astx.FuncRange, 0, len(set.Functions))
+				for _, fn := range set.Functions {
+					if fn.Name != "" && !seenNames[fn.Name] {
+						seenNames[fn.Name] = true
+						names = append(names, fn.Name)
+					}
+					ranges = append(ranges, fn)
+				}
+				if len(names) > 0 {
+					sort.Strings(names)
+					// Retention (REQ-MTE-002): ranges ride the SAME walk
+					// output; sorted so the seam output stays deterministic.
+					sort.Slice(ranges, func(i, j int) bool {
+						if ranges[i].StartLine != ranges[j].StartLine {
+							return ranges[i].StartLine < ranges[j].StartLine
+						}
+						return ranges[i].Name < ranges[j].Name
+					})
+					decls = append(decls, FileDecls{File: rel, Names: names, Ranges: ranges})
+				}
+			}
 			return nil
 		})
 		if walkErr != nil {
-			return nil, nil, nil, fmt.Errorf("symbol: walk %s: %w", root, walkErr)
+			return nil, nil, nil, nil, nil, fmt.Errorf("symbol: walk %s: %w", root, walkErr)
 		}
 	}
 
@@ -169,7 +223,9 @@ func Extract(projectRoot string) (calls []CallEdge, imports []ImportEdge, matrix
 		}
 		return imports[i].Line < imports[j].Line
 	})
-	return calls, imports, matrix, nil
+	sort.Slice(decls, func(i, j int) bool { return decls[i].File < decls[j].File })
+	sort.Strings(scanned)
+	return calls, imports, decls, scanned, matrix, nil
 }
 
 // enclosingFunction returns the name of the innermost range containing line,

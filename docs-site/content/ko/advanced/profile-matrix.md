@@ -2,135 +2,114 @@
 title: 프로필 매트릭스
 weight: 4
 draft: false
+description: 예전 프로필 매트릭스(에이전트별 모델 배정표)가 물러난 자리를 설명하는 페이지 — 지금의 모델·추론 깊이는 세션 상속으로 결정됩니다.
 ---
 
-MoAI-ADK가 에이전트(스스로 일하는 AI 도우미)를 부를 때마다 "이 에이전트는 어느 모델로, 얼마나 깊이 생각하게 할 것인가"를 한 칸 한 칸 정해 둔 표가 **프로필 매트릭스**입니다. 가로로는 유지되는 12개 에이전트가, 세로로는 세 가지 품질 열(`high` / `medium` / `low`)이 놓이고, 그 교차점 36칸(에이전트 12개 × 프로필 3개)마다 `{model, effort}` 한 쌍 — 곧 '어느 모델로, 얼마나 깊이 생각할지' — 이 들어 있습니다. 활성 프로필이 한 열을 통째로 고르면, 그 열의 값이 그날 모든 에이전트 부름에 쓰입니다.
+MoAI-ADK는 예전에 **프로필 매트릭스**로 에이전트 하나하나에 `{model, effort}`를
+배정했습니다. 유지되는 13개 에이전트를 행으로, 세 가지 품질 열(`high` / `medium` /
+`low`)을 열로 놓은 39칸짜리 표(에이전트 13개 × 프로필 3개)가 모델·추론 깊이 배정의
+단일 원천이었고, 활성 프로필이 한 열을 고르면 그 열의 값이 모든 서브에이전트
+부름에 적용됐습니다.
 
-이 매트릭스는 이전의 그룹 추상화와 `plan_type × tier` 축을 모두 대체한, 모델·추론 깊이 배정의 단일 원천입니다. 토크노믹스(비용 대비 품질을 따져 토큰을 나눠 쓰는 방식)의 뼈대이자, 하네스(품질 검증 자동 장치)가 싼 작업에 비싼 모델을, 중요한 작업에 싼 모델을 섞지 않도록 지키는 가드 레일입니다.
+이 표는 **v3.2에서 물러났습니다.** 이 페이지는 매트릭스가 지워낸 자리에 무엇이
+왔는지, 그리고 지금의 모델·추론 깊이가 어떻게 결정되는지를 설명합니다.
 
 {{< callout type="info" >}}
-**한 줄 요약:** 프로필 매트릭스는 "지금 활성 프로필이 고른 한 열의 값이, 12개 에이전트 각각의 모델과 추론 깊이를 한 번에 결정한다"는 단일 규칙입니다. 사용자가 매 작업마다 모델을 고르지 않아도 되는 까닭이 이 표 한 장에 있습니다.
+**한 줄 요약:** 에이전트별 배정표는 사라졌고, 그 자리는 **세션 상속**이 채웠습니다.
+메인 세션이 쓰는 모델과 추론 깊이가 모든 서브에이전트의 모델과 추론 깊이입니다.
+에이전트 정의는 어느 쪽도 선언하지 않고, 부를 때도 넘기지 않습니다.
 {{< /callout >}}
 
-## 매트릭스가 푸는 문제
+## 매트릭스가 풀던 문제와, 그보다 나은 답
 
-에이전트가 많아지면 "어떤 에이전트는 어떤 모델로 돌릴까"가 금세 감당이 안 됩니다. 에이전트마다 일의 성격이 다르고, 같은 에이전트라도 오늘 품질을 높일 때와 비용을 아낄 때 쓸 모델이 달라야 합니다. 이걸 에이전트 파일에 하나하나 적어 두면 둘째 날에는 이미 어긋나 있습니다 — 모델 세대가 바뀌고, 비용 곡선이 움직이고, 어제 좋았던 조합이 오늘은 너무 비싸집니다.
+매트릭스는 이 문제를 풀려고 만들어졌습니다. 에이전트가 많아지면 "어떤 에이전트는
+어떤 모델로 돌릴까"가 금세 감당이 안 되고, 이걸 에이전트 파일에 하나하나 적어 두면
+둘째 날 이미 어긋납니다. 그래서 에이전트 13개를 행으로, 프로필 세 개를 열로 모은
+한 장의 표에 배정을 모으고, 곧 프로필 하나 고르기로 줄였습니다.
 
-매트릭스는 이 문제를 두 축으로 모읍니다. **에이전트 행**은 "이 에이전트는 원래 어떤 일을 하는가"를 묻고, **프로필 열**은 "오늘 전체를 품질 우선으로 갈 것인가, 균형으로 갈 것인가, 비용 절감으로 갈 것인가"를 묻습니다. 교차점의 셀(cell, 매트릭스의 한 칸)만 보면 답이 나옵니다. 모델을 고르는 부담이 열한 곳 이상에서 한 곳(프로필 선택)으로 줄어듭니다.
+그런데 실제 운용에서 문제가 드러났습니다. 오케스트레이터가 에이전트를 부를 때
+model 인자를 붙이는 부름이 1%에도 못 미친다는 실측이 나왔습니다. 매트릭스는 값을
+계산해 두고도 정작 부름에는 아무것도 적용되지 않는 상태 — "적용되지 않았다"고
+알려 주는 장치도 없는 상태 — 가 계속됐습니다. 표 한 장으로 모으기는 했지만,
+정작 적용 지점이 비어 있으면 모은다는 것 자체가 무의미했습니다.
 
-## 프로필 매트릭스
+그래서 배정을 더 정교하게 만드는 대신, 배정이라는 행위 자체를 없애기로 했습니다.
+서브에이전트가 메인 세션의 모델과 추론 깊이를 그대로 따르면, 적용 지점이 비어
+있을 수가 없습니다. 세션이 무엇으로 돌고 있느냐가 곧 배정이기 때문입니다.
 
-유지되는 에이전트 12개는 아래 매트릭스에서 각자의 `{model, effort}`를 직접 받습니다. 사용자가 추가한 에이전트만 `inherit`(부모 세션의 모델을 그대로 이어받기)으로 읽혀 모델 주입 대상에서 빠집니다. 매트릭스 어디에도 Haiku는 없습니다.
+## 지금의 규칙 — 세션 상속
 
-| 에이전트 | high | medium (기본) | low |
-|---|---|---|---|
-| manager-spec | opus / medium | opus / medium | opus / medium |
-| plan-auditor | opus / high | opus / high | opus / medium |
-| sync-auditor | opus / high | opus / high | opus / medium |
-| manager-develop | opus / medium | opus / medium | opus / medium |
-| super-advisor | opus / high | opus / high | opus / high |
-| manager-design | opus / high | opus / high | opus / medium |
-| manager-lead | opus / high | opus / high | opus / medium |
-| builder-harness | opus / high | opus / medium | opus / low |
-| e2e-tester | opus / medium | opus / low | sonnet / low |
-| manager-docs | sonnet / low | sonnet / low | sonnet / low |
-| manager-git | sonnet / low | sonnet / low | sonnet / low |
-| Explore | sonnet / low | sonnet / low | sonnet / low |
+> 서브에이전트는 메인 세션의 모델과 추론 깊이를 그대로 따릅니다 — 서브에이전트를
+> 부를 때 `model`도 `effort`도 넘기지 않으며, MoAI 에이전트 정의는 어느 쪽도
+> 선언하지 않습니다.
 
-36개 셀의 모델 분포는 Opus 26 / Sonnet 10입니다. Fable은 어떤 셀에도 없으며, `xhigh`(가장 깊은 추론 단계)를 쓰는 셀도, `max`를 쓰는 셀도 없습니다.
-
-`manager-docs`·`manager-git`·`Explore` 행은 프로필과 무관하게 `sonnet / low`로 고정됩니다 — 문서 정리, 기계적인 커밋·PR 작업, 읽기 전용 탐색은 프로필이 올라가도 모델 클래스를 올리지 않습니다. 각 행은 단조입니다: `high` ≥ `medium` ≥ `low`. 프로필을 낮추면 어떤 에이전트도 이전보다 강한 조합을 받지 않습니다.
-
-## 세 프로필 열의 성격
-
-프로필 값은 세 가지이며, 하나를 고르면 그 열 전체가 활성화됩니다.
-
-- `high` — 품질 우선 열. 지출은 "생산하는 행"이 아니라 "판단하는 행"에 몰립니다: 감사·자문 행(`plan-auditor`, `sync-auditor`, `super-advisor`)과 조율 행(`manager-design`, `manager-lead`)이 `high`를 유지하고, 저작·구현 행(`manager-spec`, `manager-develop`)은 세 열 모두 `medium`에 머릅니다. 어느 행도 `max`를 받지 않습니다. `xhigh`는 어떤 셀에도 없습니다 — Opus에서는 `high`와 같은 점수를 내면서 비용만 뚜렷하게 더 들기 때문입니다.
-- `medium`(기본값) — 균형 열. `high` 열과 정확히 두 행에서만 다릅니다: `builder-harness`가 `medium`으로, `e2e-tester`가 `low`로 내려갑니다. 값이 없거나 비어 있으면 `medium`으로 해석됩니다.
-- `low` — 경제 열. Opus의 `low`가 Sonnet의 어떤 effort보다도 점수가 높으면서 동시에 과제당 비용이 낮으므로, 모든 에이전틱 행에 Opus를 유지합니다. 대부분의 Opus 행은 `medium`에 내려앉지만 `super-advisor`만은 `high`를 지킵니다 — 에스컬레이션 경로야말로 싼 열에서 가장 건전하게 유지할 가치가 있는 자리이기 때문입니다. Sonnet은 단발성·입력 지배 행에만 등장합니다.
-
-`max`는 `high`의 **읽기 전용 별칭**입니다. 예전 설정의 `profile: max`는 그대로 `high`로 읽히고, 저장할 때는 언제나 정규 이름 `high`로 기록됩니다. 따로 옮길 일이 없습니다. `profile`과 `performance_tier`는 별개 필드가 아니라 같은 설정을 가리킵니다 — `llm.profile`이 우선이고, 없으면 legacy `performance_tier`를 별칭으로 읽습니다. 두 필드 모두 `high` / `medium` / `low` 어휘를 그대로 씁니다.
+- **에이전트 정의 파일**(`.claude/agents/moai/*.md`)은 frontmatter에 model도
+  effort도 적지 않습니다. 예전에 배포되던 `model: inherit` 필드와 effort 기본값은
+  물러났습니다.
+- **부름(spawn)**에는 model·effort 인자를 넣지 않는 것이 정상입니다. 명시적으로
+  넣은 model이 세션과 다르면 그것은 드리프트이며, "부름을 고치는" 게 아니라
+  "세션을 바꾸는" 쪽이 정답입니다.
+- **세션**의 모델은 Claude Code의 모델 선택이 정하고, 세션의 effort는 `/effort`
+  슬래시 명령, `ultrathink` 키워드, 프로필 위자드의 기본값이 정합니다.
 
 ```mermaid
 flowchart TD
-    A["llm.yaml 의 profile 설정"] --> B{"high / medium / low?"}
-    B -->|high 열| C["품질 우선"]
-    B -->|medium 열 — 기본| D["균형, 곡선의 변곡점"]
-    B -->|low 열| E["경제"]
-    C --> F["12개 에이전트<br/>각자의 셀을 적용"]
-    D --> F
-    E --> F
-    F --> G["에이전트를 부를 때<br/>model 을 런타임으로 주입"]
+    M["세션 모델<br/>Claude Code 모델 선택"] --> S["메인 세션<br/>모델 + effort"]
+    E["세션 effort<br/>/effort · ultrathink · 프로필 기본값"] --> S
+    S --> W["모든 서브에이전트<br/>세션과 같은 모델·effort"]
 ```
 
-## 왜 하필 이 셀 배치인가
+## 세션 effort는 어디서 오는가
 
-이 셀들은 비용·점수 곡선에서 도출한 값이 아니라 **확정된 운영자 판단(settled operator input)**입니다. 배치의 원리는 하나입니다: 지출은 "생산하는 행"이 아니라 "판단하는 행"에 몰아준다. 감사·자문 행(`plan-auditor`, `sync-auditor`, `super-advisor`)과 조율 행(`manager-design`, `manager-lead`)이 `high`를 유지하는 동안, 저작·구현 행(`manager-spec`, `manager-develop`)은 세 열 모두 `medium`에 머물고 `manager-docs`는 `sonnet / low`로 내려가며, 어느 행도 `max`를 받지 않습니다. 이 셀들을 비용 곡선에서 다시 끌어내리려는 시도는 매트릭스의 의도를 되돌리는 일이므로, 값을 바꿀 필요가 생기면 곡선 재계산이 아니라 운영자 판단의 갱신으로 다뤄야 합니다.
+세션의 추론 깊이가 결정되는 길은 세 가지이고, 먼저 온 것이 이깁니다.
 
-모델 클래스를 정하는 두 규칙은 실측에 뿌리를 둡니다.
+1. **세션 안에서의 조절** — `/effort low|medium|high|xhigh|max` 슬래시 명령이나
+   `ultrathink` 키워드. 세션 effort를 바꾸면 이후의 서브에이전트 부름 전부가
+   따라갑니다.
+2. **프로필 위자드의 세션 모델 정책** — `moai profile setup`의 "세션 모델 정책"
+   질문은 이 프로필로 실행하는 Claude 세션의 **기본 추론 강도 폴백**을 정합니다.
+   `high` / `medium` / `low` 세 값이 그대로 effort로 옮겨지고, 추론 강도를 따로
+   고르지 않았을 때만 적용됩니다. 값이 없으면 오버라이드 없이 Claude Code의
+   기본 동작을 따릅니다.
+3. **모델 자체의 기본값** — 위 어느 쪽도 개입하지 않으면 모델의 기본 effort를
+   따릅니다. Opus 5.5의 기본은 `medium`이고, effort를 지원하는 다른 모델은
+   대부분 `high`가 기본입니다.
 
-첫째, **Opus는 모든 effort에서 Sonnet을 앞섭니다.** Opus 5 `low`(58%, 과제당 $1.66, 36스텝)는 어떤 단계의 Sonnet 5보다도 점수가 높고 과제당 비용이 낮습니다. Sonnet 5 `max`(54%, 과제당 $26.40, 268스텝)도 예외가 아닙니다. 과제당 비용을 가르는 것은 토큰당 단가가 아니라 완주 효율, 즉 과제를 끝내는 데 쓴 스텝과 출력 토큰입니다. 그래서 Sonnet은 멀티스텝 완주가 걸리지 않는 자리, 즉 단발·입력 지배 행(`Explore` 검색, `manager-git` 기계 작업)에만 남습니다. 그곳에서는 낮은 입력 단가가 실질적인 변수이기 때문입니다. 모든 멀티턴 에이전틱 행이 Opus인 이유입니다.
+## 스폰 시점의 관측
 
-둘째, **`xhigh`는 Opus에서 완전히 열등합니다.** `high`는 $6.08에 73%를, `xhigh`는 같은 73%를 $9.07에 냅니다 — 이득 없이 비용 +49%, 스텝 +22%. 매트릭스에서 퇴출했습니다(6셀 → 0). `max`는 `high` 위의 유일한 단계로 어휘에 남아 있지만, 현재 그것을 받는 행은 없습니다.
+상속이 기본이 된 뒤에도 부름 시점에 model 인자를 명시하는 일은 드물게 남을 수
+있습니다. 이를 지켜보는 관측 계층이 있습니다. PreToolUse 훅이 부름마다 선언된
+model을 읽어 `.moai/logs/agent-model-audit.jsonl`에 한 줄씩 남기고, 선언이 세션
+값과 다르면 권고를 냅니다. 차단은 옵트인(`workflow.agent_model_guard.enabled`,
+기본값 `false`)이며, 평소에는 신경 쓰지 않아도 되는 관측 계층입니다.
 
-{{< icon warning warn >}} **근거의 적용 범위**: 이 벤치마크가 측정하는 대상은 코딩 에이전트입니다. 문서 저작, 감사 판단, SPEC(요구사항 명세서) 저작 품질은 직접 측정하지 않았고, 해당 행 배치는 멀티턴 에이전틱 작업과 비슷하리라는 추론에 기댑니다. 어떤 행이든 `llm.agent_overrides`로 에이전트마다 되돌릴 수 있습니다.
+## 예전 매트릭스의 판단 기준은 어디에 남아 있나
 
-## 리졸버는 어떻게 값을 정하나
+39칸 표와 리졸버와 `moai model profile` 접근자는 물러났지만, 매트릭스가 실측으로
+확립했던 **모델을 고르는 판단 기준**은 사라지지 않았습니다. 오히려 세션 단위 모델
+선택에서 그대로 쓰이는 기준입니다.
 
-에이전트 하나를 부를 때마다, 그 에이전트가 쓸 `{model, effort}`를 정하는 결정기를 **리졸버(resolver)**라고 부릅니다. 리졸버는 정해진 우선순위를 따라 첫 번째로 발견한 값을 씁니다.
+- **지출은 판단하는 자리에**: 감사·자문·조율처럼 판단이 무거운 단계에 깊은 추론을
+  몰아 주는 것이 비용 대비 품질에서 유리합니다.
+- **에이전틱 작업은 Opus**: 긴 호흡의 멀티턴 작업에서는 Opus의 `low`가 어떤
+  effort의 Sonnet보다도 점수가 높으면서 과제당 비용은 낮습니다.
+- **No-Haiku**: 긴 호흡의 에이전틱 작업에서 Haiku를 끼워 넣으면 완주 실패로
+  스텝 낭비가 커져 과제당 비용이 오히려 늘어납니다.
 
-1. `llm.agent_overrides[에이전트 이름]`이 있으면 그 값이 우선합니다.
-2. 없으면 활성 프로필의 에이전트 셀(config의 `llm.profiles`)을 씁니다.
-3. config에 셀이 없으면 Go 기본 매트릭스(`template.DefaultProfileMatrix`)의 에이전트 셀을 씁니다.
-4. 매트릭스에 없는 에이전트(사용자가 추가한 에이전트)는 `inherit`입니다 — 모델을 주입하지 않고 부모 세션을 그대로 따릅니다.
+근거가 된 DeepSWE 실측 데이터와 3-티어 설계 의도는
+[3-티어 에이전트 아키텍처](/ko/advanced/no-haiku-3tier/) 페이지에,
+비용·점수 곡선의 원문 수치는 그 페이지의 리더보드 절에 정리돼 있습니다.
 
-`agent_overrides`는 정규 에이전트 이름을 키로 쓰며, 카탈로그와 enum으로 검증합니다. 그래서 알 수 없는 이름은 거부됩니다. 한편 모델 enum은 여전히 `fable`을, effort enum은 `xhigh`를 받습니다 — 기본 매트릭스에서 빠졌을 뿐 어휘에서 지운 것은 아니므로, override로는 지금도 둘 중 어느 쪽이든 고를 수 있습니다.
+## 하네스 스페셜리스트
 
-```mermaid
-flowchart TD
-    A["에이전트를 부름 spawn"] --> B{"agent_overrides 있음?"}
-    B -->|있음| C["그 값 사용"]
-    B -->|없음| D{"config profile 셀 있음?"}
-    D -->|있음| E["config 셀 사용"]
-    D -->|없음| F{"Go 기본 매트릭스 셀 있음?"}
-    F -->|있음| G["기본 매트릭스 사용"]
-    F -->|없음| H["inherit — model 주입 안 함"]
-```
-
-**model**과 **effort**는 소비되는 경로가 다릅니다. 리졸브된 **model**은 오케스트레이터(전체 작업을 조율하는 주 에이전트)가 에이전트를 부를 때 `Agent(model: <alias>)` 런타임 인자로 넣는 값입니다(`[1m]`-safe, 에이전트 파일의 `model:` 필드와는 별개). 에이전트 파일의 frontmatter는 `model: inherit`으로 그대로 두며, 초기화·갱신·저장 어느 단계에서도 이 값을 건드리지 않습니다. 리졸브된 **effort**는 에이전트가 추론 깊이를 정하는 기준이 되는 *문서화된 의도*입니다 — 에이전트를 부르는 도구가 per-spawn effort 인자를 받지 않으므로, effort는 (a) 에이전트 파일의 effort 기본값, (b) GLM effort 오버레이, (c) 워크플로나 프롬프트 수준 steering을 거쳐서만 반영됩니다.
-
-## 어떻게 읽고 어떻게 바꾸나
-
-활성 프로필로 리졸브된 에이전트별 model+effort는 `moai model profile` 명령으로 확인합니다. 사람이 읽기 좋은 표는 인자 없이, 기계 판독용은 `--json`을 붙입니다. 이 명령은 아무것도 바꾸지 않습니다 — 오케스트레이터가 에이전트를 부를 때 넣을 값을 그대로 보여줄 뿐입니다. 현재 프로필 값은 `.moai/config/sections/llm.yaml`의 `llm.profile` 필드에서 확인할 수 있습니다.
-
-프로필 자체를 바꾸려면 `moai init . --profile high`로 초기화 시점에 정하거나, `moai update --profile low`로 사후 전환합니다. 허용 값은 `high` / `medium` / `low`이며, legacy `max`도 입력으로 받아 `high`로 정규화합니다. 에이전트 하나만 따로 덮어쓰려면 `llm.agent_overrides`에 에이전트 이름을 키로 값을 적습니다 — 모델 enum과 에이전트 카탈로그로 검증하므로, 알 수 없는 이름은 거부됩니다.
-
-## 하네스 스페셜리스트의 model + effort
-
-`/moai:harness`가 만드는 스페셜리스트는 **모델을 `opus`로 통일**하고 **effort로만 차이**를 둡니다. 하네스 에이전트는 사용자가 소유하는 상시 스페셜리스트이고, 이들을 가르는 기준은 모델 티어가 아니라 추론 깊이이기 때문입니다. Haiku를 제외한 모든 모델이 1M 컨텍스트를 쓰므로 모델을 고정해도 컨텍스트가 줄지 않습니다.
-
-effort는 목적 클래스마다 대응하는 유지 에이전트 행에서 빌려옵니다. 예컨대 `implement` 클래스는 `manager-develop` 행의 effort를, `research` 클래스는 `plan-auditor` 행의 effort를 가져옵니다. 클래스별 effort는 `llm.harness_agents[프로필][클래스].effort`로 덮어쓸 수 있지만 모델은 어떤 경로로도 바뀌지 않으며, 알 수 없는 클래스는 `implement`로 폴백합니다.
-
-| 목적 클래스 | effort 출처 행 | high | medium | low |
-|---|---|---|---|---|
-| `read-only-extract` | Explore | opus / low | opus / low | opus / low |
-| `mechanical-transform` | manager-git | opus / low | opus / low | opus / low |
-| `synthesize` | manager-docs | opus / low | opus / low | opus / low |
-| `research` | plan-auditor | opus / high | opus / high | opus / medium |
-| `verify-judge` | sync-auditor | opus / high | opus / high | opus / medium |
-| `implement` | manager-develop | opus / medium | opus / medium | opus / medium |
-| `design-architecture` | manager-design | opus / high | opus / high | opus / medium |
-
-## GLM 백엔드에서의 오버레이
-
-{{< icon warning warn >}} **정직성 고지**: GLM 백엔드 effort 오버레이는 구현과 배선은 끝났지만, 실제 GLM 세션에서의 유효성은 검증 예정입니다 — "동작 보장"으로 서술하지 않습니다.
-
-GLM 백엔드(`moai glm` 전환, 또는 `moai cg`의 GLM 패널)에서는 프로필 매트릭스 위에 오버레이가 얹힙니다. Fable 슬롯이 `glm-5.3-flash`에 묶이고(z.ai가 도달 가능한 모델), Claude의 5단 effort가 z.ai의 reasoning 상한 체계로 모아집니다. GLM-5.3은 **항상 추론합니다** — reasoning을 끄는 것은 지원되지 않으므로, 조절 축은 세 단계 `reasoning_effort`(low / high / max) 하나입니다. 모아짐은: Claude `low`는 reasoning-low로, 그 위의 모든 단계(`medium`·`high`·`xhigh`·`max`)는 reasoning-max로. 인식하지 못하는 값도 reasoning-max로 빠집니다(전체성 조항 — 절대 과소 추론하지 않음). reasoning-high는 여전히 유효한 wire 값이지만 어떤 Claude effort도 그리로 모아지지는 않습니다. 명시적 오버라이드가 없는 GLM 세션은 기본으로 reasoning-max로 실행됩니다. 단, `glm-5.3-flash`(기본 모델)에서는 이 모아짐이 적용되지 않고 `low`를 포함한 모든 Claude effort가 reasoning-max로 고정됩니다 — flash는 `reasoning_effort: max`만 받아들이기 때문입니다. low/high/max 세 단계는 glm-5.3 이하 모델의 체계입니다.
-
-구현 에이전트인 `manager-develop`은 이 모아짐 결과와 무관하게 reasoning-max로 강제하고(z.ai의 "코딩 과제는 reasoning max" 권고), `manager-git`은 세 프로필 모두 `low` effort여서 reasoning-low 자리를 차지합니다. 런타임의 단일 원천은 `internal/template/glm_effort_overlay.go`입니다.
+`/moai:harness`가 만드는 스페셜리스트도 같은 규칙을 따릅니다. 하네스 에이전트
+정의는 model과 effort를 선언하지 않으며, 세션의 모델과 추론 깊이를 그대로
+따릅니다. 목적 클래스(읽기 전용 추출, 기계 변환, 구현, 감사 판정 등)에 따른
+effort 출처 행 표는 예전 매트릭스의 것으로, 지금은 판단 기준의 기록으로만
+남아 있습니다.
 
 ## 다음 단계
 
-- [3-티어 에이전트 아키텍처](/ko/advanced/no-haiku-3tier/) — DeepSWE 리더보드 근거와 3-티어 정의
+- [모델 정책](/ko/multi-llm/model-policy/) — 세션 모델 정책과 effort 폴백, GLM reasoning 상한
+- [3-티어 에이전트 아키텍처](/ko/advanced/no-haiku-3tier/) — DeepSWE 리더보드 근거와 모델 선택 기준
 - [토크노믹스 개요](/ko/advanced/tokenomics-overview/) — 4-층 토크노믹스 구조의 B층 라우팅
-- [모델 정책](/ko/multi-llm/model-policy/) — performance_tier 별칭과 GLM 백엔드 상세

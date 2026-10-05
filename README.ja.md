@@ -37,110 +37,90 @@
 
 ---
 
-## v3.1 の新機能 — カンバンモード
-
-> v3.1 は 8 月 15 日、光復節に合わせてリリースする。単一セッションがコンテキスト上限に縛られたまま作業する従来の形からの解放を意図した。ただし上限そのものが消えるわけではない — 実際に変わる点は下記のとおりだ。
+## v3.2 の新機能 — ファクトリーモード
 
 セッションはコンテキスト・ウィンドウをひとつ消費する。長い SPEC がその窓を埋め、後続の作業は先行するすべてを背負って進む。もう不要になった計画はレビュー中も窓に残り、そのレビューはドキュメント執筆中もまた残っている。よくある脱出口である `/clear` は、荷物と一緒に文脈ごと捨ててしまう。
 
-カンバンモードは作業ひとつを**ターミナル 1 台ではなく 4 台に**分割する。リード・セッションがチェーンを運転し、3 つのコンパニオン・セッションが `plan`・`run`・`sync` の 1 列ずつを担い、**自分の列の文脈だけ**を背負う。レビューは独立した列ではなく、sync ゲートが吸収する — sync 段階がレビュー・レンズを自ら回して判定を下す。無制限になるわけではない — セッションごとの上限はそのままある。変わるのは、どのセッションも 3 フェーズ分の履歴を背負わなくなる点であり、だから同じ予算ではるかに遠くまで届き、終わったフェーズはカードを失わずに空にできる。
-
-<p align="center">
-  <img src="./assets/images/kanban-five-sessions.png" alt="カンバンモードの 1 ラン — 5 列ボードとリード・3 コンパニオン・セッションが、それぞれのターミナルで、それぞれのモデルと推論強度で動いている" width="100%">
-</p>
-
-列ごとにバックエンドと推論強度を変えられる。上の画面では Plan を Opus 5 high、Run を GLM 5.2 xhigh、Sync を GLM 5.2 で動かしている。列ごとに必要な推論の深さは同じではないからだ。
+ファクトリーモードは作業を**リーダー・セッション 1 つと、番号付きのレーン・セッション複数**に分ける。リーダーはキューを見張り、空いているレーンにカードを運ぶ。カードは段階ごとにセッションを乗り換えず、**丸ごと 1 本のレーン**へ入る。そのレーンが自分のセッションの中で `plan → run → sync` を順に最後まで受け持つ。各段階は `Agent()` サブエージェントとしてスポーンし、レーン自身はオーケストレーションだけを行う。無制限になるわけではない。セッションごとの上限はそのままある。変わるのは、カード 1 枚の履歴がそのカードを担当するレーンにしか積もらない点だ。だから同じ予算ではるかに遠くまで届き、レーンはカードが 1 枚終わるたびに文脈を空にして次のカードを受け取る。
 
 ### 始め方
 
 ```bash
-moai cc -k                    # リード — run-id を告知し、チェーンを敷く
-moai cc -k --name plan        # コンパニオン、各自別ターミナルで
-moai cc -k --name run
-moai cc -k --name sync
+moai cc -f                    # リーダー — ファクトリーを開く
+moai cc -l                    # レーン、各自別ターミナルで — 次の空き番号で合流
+moai cc -l                    # lane-1、lane-2 … の順に付く
+moai glm -l                   # GLM バックエンドのレーン
+moai codex -l                 # Codex のレーン
 ```
 
-コンパニオン・セッションは**ターミナルを 1 つずつ新しく開いて手動で**立ち上げる。名前は役割名だけで付ける — run-id はリード・セッションの識別子であり、コンパニオンはそれを背負わない。同じ役割名がすでに生きていれば次の番号が付く。セッションが別のセッションの代わりに立つことはない。どの列でも `moai cc` の代わりに `moai glm` を使えば、その列だけ GLM バックエンドで動く。
+`-f`（長い形 `--factory`）がリーダーを開き、`-l`（長い形 `--lane`）が稼働中のファクトリーにレーンとして合流する。どちらも引数を取らない。レーン番号はオペレーターが選ぶものではなく、自動で割り当てられる。レーンは**ターミナルを 1 つずつ新しく開いて手動で**立ち上げる。セッションが別のセッションの代わりに立つことはない。`moai codex` にリーダーの進入はなく、レーンとしてしか合流できない。
 
-### どのバックエンドをどの列に
+1 回の起動に進入トークンは 1 つだけなので、`-f` と `-l` の併用はエラーになる。値を付けた形（`moai cc -f <値>`、`moai cc -l lane-2`）も 1 行のエラーで拒否され、エラー文が正しい形を教えてくれる。かつてのマルチセッション・ボードモードの `-k` は削除済みで、`moai cg` は移行案内を表示して終了する（`moai migrate cg` で先に確認できる）。`moai gpt` は存在せず、GPT モデルは `moai codex` で動かす。
 
-カンバンを開くとき、ブートストラップ案内が既定の推奨も一緒に知らせます — トークンの空きを優先するなら、リードは `moai glm -k`、plan は `moai cc -k --name plan`、run は `moai glm -k --name run`、sync は `moai cc -k --name sync`。理由はレーンごとに必要な推論の種類です。plan と sync は判断とレビューを回す列なので Claude に置き、run は実装中心なので GLM でコストを下げます。リードは判定を下す席ではなく、キューを見張ってカードを運ぶ席なので、待ち続けても安い GLM が合います。GLM リードの下で Claude の判定が必要になったら、`judge` という名前のセッションから抜け道を作ります — GLM リードが Claude を使う唯一の経路です。あるアカウントが 429 で詰まり始めたら、レーンをアカウントに分散して置く運用が効きます。この組み合わせはあくまで既定の推奨 — 別の組み合わせも、全セッションをひとつのバックエンドに統一しても構いません。
+### どのバックエンドで動かすか
 
-### ファクトリーモード — レーン N 本で複数のカードを同時に
+バックエンドはレーンごとに選ぶ。`moai cc -l` は Claude、`moai glm -l` は GLM、`moai codex -l` は Codex のレーンだ。リーダーは判定を下す席ではなく、キューを見張ってカードを運ぶ席なので、待たせ続けても安い GLM（`moai glm -f`）が合う。あるアカウントが 429 で詰まり始めたら、レーンをアカウントに分散して置く運用が効く。この組み合わせはあくまで一例で、全セッションをひとつのバックエンドに統一しても構わない。
 
-`-f` はファクトリーリードを開く。これがカンバンの 2 つ目の形態だ。カンバンのカードが列を渡り歩くのに対し、ファクトリーのカードは**丸ごと 1 本のレーン**へ入り、そのレーンがセッション内で `plan → run → sync` を直列に運ぶ。各段階は `Agent()` サブエージェントとしてスポーンされる。レーンのラベルは `lane-1` … `lane-N`。
+### レーン N 本で複数のカードを同時に
 
-```bash
-moai cc -f                    # リード — 既定はレーン 1 本 (lane-1)
-moai cc -f 4                  # リード — レーン 4 本
-moai cc -f lane-1             # レーン 1 本、各自別ターミナルで
-moai glm -f lane-3            # …GLM バックエンドのレーンも同じ形
-```
+レーンは `-l` をもう一度打って 1 本ずつ増やす。番号は自動割り当てなので、`--name`/`-n` を併せて渡すとエラーになる。番号は生きているセッションが握っているものだけを飛ばす。死んだレーンの claim はその番号をもう塞がないが、自動割り当ては常に生存中の最高番号+1を取るだけで、途中の空き番号は埋めない。レーンの所有権は `~/.moai/db/<project-key>/factory/factory.db` に記録される。起点ディレクトリが一時ディレクトリなら（絶対 `MOAI_HOME` オーバーライドなし）プロジェクトローカルの `<base>/.moai/db/<project-key>/factory/` の下に記録される。バックログキューと同じ例外だ。従来の `.moai/state/factory/workers.json` は一度だけ取り込まれ、ロールバック用の証跡として残る。
 
-レーンは `moai cc -f lane-<n>` で 1 本ずつ増やす。この形はレーン名を既に決めているので、`--name`/`-n` を併せて渡すとエラーになる。番号は生きているセッションが握っているものだけを飛ばす — 死んだレーンの番号は解放され、また使われる。どの番号を誰が握っているかは `.moai/state/factory/workers.json` に記録され、残った claim もそこで片づける。1 本のレーンは最大 10 個の `Agent()` サブエージェントを同時に走らせ、書き込みを担うスポーンはそれぞれの worktree に隔離される。レーンを一度に全部立ち上げてはいけない — まず最初の 1 本を上げ、実際に出力が出ているのを確かめてから残りを活性化する。カードがレーンをまたいで分割されることはない。`-k` は 3 役割のカンバンチェーンを回すトークンのままで、1 回の起動に進入トークンは 1 つだけだから `-k` と `-f` の併用はエラーになる。`moai cg` はファクトリーモードを拒否する。
+1 本のレーンは最大 10 個の `Agent()` サブエージェントを同時に走らせ、書き込みを担うスポーンはそれぞれの worktree に隔離される。レーンを一度に全部立ち上げてはいけない。まず最初の 1 本を上げ、実際に出力が出ているのを確かめてから残りを立ち上げる。カードがレーンをまたいで分割されることはない。
 
-> 詳しくは: [カンバンモード — ファクトリーモード](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
+ファクトリー run は、自分を所有するセッションのプロセス識別を記録する。リーダーが死んだ run は、次にレーンが合流した時点で自動的に retire されるので、その合流が `AMBIGUOUS_FACTORY` で止まることはない。逆も防がれている。レーンが合流するとき run の記録が欠落または退役済みで、リーダー・セッションが生きていれば、合流はそのリーダーを検証し（pid とプロセス開始フィンガープリント、対象は長い形の `--leader <名前>` で指定、既定値は `leader`）、run の記録を復元してそのまま合流する。検証済みリーダーが二人以上なら、候補を全員名指してフェイルクローズする。`--leader` は `-l`/`--lane` とだけ組み合わせるセレクターで、進入トークンの短縮形ではない。`moai factory runs` は全 run を所有者の生死とともに一覧し、`moai factory runs --retire <run-id>` は指定した run を手で retire する。所有者が実際に死んでいなければ拒否される。
 
-ボードは `backlog → plan → run → sync → done` の 5 列である。`backlog` には意図的に担当セッションを置かない。だから仕事は人が入れたときだけボードに入る。
+run が死んだり入れ替わったりしても、レーンのセッションは環境に固定された古い run を指し続ける。そのレーンは `moai factory relaunch` で生きている run に付け直す。このコマンドはプロバイダー自身のレーン合流行（`moai cc -l`、`moai glm -l`、Codex は `moai codex -l` のみ）をそのまま再実行し、オプションは `--provider`・`--lane`・`--run`・`--from-run <run-id>`・`--dry-run` だ。`-l` は引数を取らないので、`--lane` を渡しても合流行には載らない。コマンドが stderr でそう知らせ、レーンは次の空き番号で合流する。`--from-run` はその run が有効で所有者が死んでいる場合に限って先に retire し、`--dry-run` は実行行を表示するだけで何も変えない。1 つの run の中でカードを順に回す `--clear-policy relaunch` ループとは別の、1 回限りのコマンドである。stale-run の案内文も、文章の代わりにこのコマンドを埋めた行を表示する。
+
+> 詳しくは: [ファクトリーモード](https://adk.mo.ai.kr/ja/advanced/factory-mode)
+
+カードはキューから出発する。`backlog` には意図的に担当セッションを置かない。だから仕事は人が入れたときだけキューに入る。
 
 ```text
-/moai todo "rename のヒントが古い"   # カード追加
-/moai todo                          # キュー確認
+/moai gtd "rename のヒントが古い"   # カード追加
+/moai gtd                          # キュー確認
 ```
 
-ボードを正直に保つルールが 2 つある。リードはカードの `progress.md` を**自分で読んだ証拠だけで**カードを進める — コンパニオンの返信では進めない。返信は観測ではなく主張であり、セッション間の配信は保証されないからだ。そしてフェーズが終わると、リードは当該セッションの `/clear` を依頼する。`/clear` は人が直接打つコマンドなので、指示としては送れない。
+`/moai gtd` が正式なタスク管理入口です。`/moai todo` は同じ SQLite キュー、カード ID、並び順、アーカイブ・復元動作を使う互換名として残ります。`moai gtd capture|clarify|organize|reflect|engage` は、承認済みの仕事が従来の `backlog → plan → run → sync → done` 開発フローへ入る前に Capture → Clarify → Organize → Reflect → Engage を実際の SQLite 状態として引き継ぎます。操作 receipt と実状態の再確認が、中断後の発行・選択・配車の重複を防ぎます。
 
-### 4 つのセッションが共有する言葉
+ファクトリーを正直に保つルールが 2 つある。リーダーはカードの `progress.md` を**自分で読んだ証拠だけで**カードを進める。レーンの返信では進めない。返信は観測ではなく主張であり、セッション間の配信は保証されないからだ。そしてカードが終わると、レーンが `/clear` を依頼する。`/clear` は人が直接打つコマンドなので、指示としては送れない（`--clear-policy` で変えられる）。
 
-カンバン文書が繰り返す語彙を 1 枚の絵にまとめるとこうなる。**列** (column) はボードの段階であり、**レーン** (lane) はカード 1 枚をその段階の間を最後まで運ぶセッションとワークツリーの組である — 停留所と路線の違いだ。
+### ファクトリーが使う言葉
 
-```text
-オペレーター ── /moai todo ──▶ backlog ─▶ plan ─▶ run ─▶ sync ─▶ done
-                          (リードが読んだ証拠だけでカードを次の列へ)
-
-レーン — カード t0:  run セッション + ワークツリー t0      ┐ 2 つの流れは同じボードを
-レーン — カード t1:  run セッション + ワークツリー t1      ┘ 並んで流れ、混ざらない
-```
+ファクトリーの文書が繰り返す語彙を 1 か所にまとめるとこうなる。**リーダー** (leader) はキューを見張ってカードを運ぶセッションで、**レーン** (lane) はカード 1 枚を最後まで運ぶセッションとワークツリーの組である。
 
 | 語 | 一行定義 |
 |---|---|
-| カード (card) | 作業単位 1 つ。`/moai todo` で入り、短い ID で呼ばれる |
-| 列 (column) | ボードの段階 1 つ — 5 列は固定順序 |
+| カード (card) | 作業単位 1 つ。`/moai gtd` で入り、短い ID で呼ばれる |
 | バックログ (backlog) | 入口の待ち列。担当セッションがなく、人だけが投入できる |
-| レーン (lane) | カード 1 枚を最後まで運ぶセッション＋ワークツリーの組。並行作業の流れ 1 つ |
-| リード (lead) | 調整するセッション。読んだ証拠だけでカードを進め、コードは自分で書かない |
-| コンパニオン (companion) | 列ごとに座って作業するセッション。ターミナル 1 つずつ人が手で立ち上げる |
-| ラン ID (run-id) | リードが開始時に告知する短い識別子。リード・セッションの名前であり、コンパニオンはそれを背負わない |
-| ワークツリー (worktree) | カード専用の隔離チェックアウト。ディレクトリがカード ID、ブランチは何をしたかを表す `WT-<スラッグ>`。run から sync まで 1 本が貫く |
-| ディスパッチ (dispatch) | リードがコンパニオンに送る指示 — 仕事へのポインタであって複製ではない |
+| リーダー (leader) | 調整するセッション。読んだ証拠だけでカードを進め、コードは自分で書かない |
+| レーン (lane) | カード 1 枚を最後まで運ぶセッション＋ワークツリーの組。並行作業の流れ 1 つで、`lane-1`、`lane-2` … の番号が自動で付く |
+| ラン ID (run-id) | ファクトリーの実行 1 つを指す短い識別子。実行が複数生きているときは `--factory-run <run-id>` で合流先を選ぶ |
+| ワークツリー (worktree) | カード専用の隔離チェックアウト。ディレクトリがカード ID、ブランチは何をしたかを表す `WT-<スラッグ>` |
+| ディスパッチ (dispatch) | リーダーがレーンに送る指示。仕事へのポインタであって複製ではない |
 
-定義と例を備えた正式な用語集: [カンバンボード用語](https://adk.mo.ai.kr/ja/core-concepts/kanban-board-terms)
-
-カードも形によって、通る列が変わる。リードはカードが `backlog` を離れるとき、3 つのクラスに分類してディスパッチに名前を付ける。
+カードも形によって、レーンが通る段階が変わる。リーダーはカードがキューを離れるとき、3 つのクラスに分類してディスパッチに名前を付ける。
 
 | クラス | 形 | 近道 |
 |---|---|---|
-| A — 即時クローズ | 1 ファイル・1 行、設計判断なし、回帰は CI が捕まえる | 1 つのセッションが PR まで丸ごと (`plan` を飛ばす) |
+| A — 即時クローズ | 1 ファイル・1 行、設計判断なし、回帰は CI が捕まえる | 1 本のレーンが PR まで丸ごと (`plan` を飛ばす) |
 | B — 原因未確認の欠陥 | 壊れているのは明確なのに、原因がまだ立っていない | `run → sync` (`plan` なし、SPEC なし) |
-| C — 設計変更 | 決定を含むか、サブシステムにまたがる | 3 列すべて |
+| C — 設計変更 | 決定を含むか、サブシステムにまたがる | 3 段階すべて |
 
-クラス A は主張ではなく、確認された証拠だけで認める — 1 ファイルに測定された diff と、マージされる HEAD のグリーンの CI を引用できなければクラス A ではない。クラス B は `plan` だけを飛ばし、sync ゲートのレビューはそのまま回り、原因確立の証拠 (再現コマンドと出力) をカードの進行記録に残す。
+クラス A は主張ではなく、確認された証拠だけで認める。1 ファイルに測定された diff と、マージされる HEAD のグリーンの CI を引用できなければクラス A ではない。クラス B は `plan` だけを飛ばし、sync ゲートのレビューはそのまま回り、原因確立の証拠 (再現コマンドと出力) をカードの進行記録に残す。
 
-詳しく: [カンバンモード — カードクラス](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
+### ファクトリーを目で見る
 
-### ボードを目で見る
-
-`moai web` はローカル・コンソールを立ち上げる。カンバン画面でカンバン・チェーンと SPEC パイプラインを一緒に眺め、Overview・Specs・Monitor・Settings・Todo 画面も併せ持つ。
+`moai web` はローカル・コンソールを立ち上げる。Factory 画面でファクトリーのレーンと SPEC パイプラインを一緒に眺め、Overview・Specs・Monitor・Settings・Todo 画面も併せ持つ。
 
 <p align="center">
   <img src="./assets/images/moai-web-overview.png" alt="moai web コンソール Overview 画面 — SPEC 集計、進行中 SPEC 一覧、セッション・レジストリ" width="90%">
 </p>
 
-詳しくは: [カンバンモード](https://adk.mo.ai.kr/ja/advanced/kanban-mode) · [manager-lead リードコーディネーター](https://adk.mo.ai.kr/ja/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/ja/utility-commands/moai-todo)
+詳しくは: [ファクトリーモード](https://adk.mo.ai.kr/ja/advanced/factory-mode) · [manager-lead リーダーコーディネーター](https://adk.mo.ai.kr/ja/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/ja/utility-commands/moai-todo)
 
 ### v3.1.1 で加わったもの
 
-カンバンモードのほかに v3.1.1 へ入ったものを挙げる。それぞれは後段の該当節で詳しく扱う。
+先に v3.1.1 へ入ったものを挙げる。それぞれは後段の該当節で詳しく扱う。
 
 **ホーム・ディレクトリの整理。** 長く使うほど `~/.moai` には過去の実行成果物が積もる。`moai clean --home` が、許可リストの範囲に限ってそれを片付ける — 既定は dry-run なので何が消えるかを先に見せ、実際の削除には `--force` が要る。何日経ったものから片付けるかは `state.home_retention_days` (既定 30 日、`0` なら無効) で決める。いまどれだけ膨らんでいるかは `moai doctor` の Home Disk Usage 項目が知らせる。ホームのパス自体は `MOAI_HOME` 環境変数で移せる — 絶対パスしか受け取らない。ただしこの変数を読むのは Go のプロセスだけで、パスを移してもステータスラインとシェル・フックは相変わらず `$HOME/.moai` を見る。`.env.glm` のようなシェル側の資格情報とステータスラインのデータだけが元の場所に残り、状態が黙って二つに割れる。
 
@@ -156,7 +136,7 @@ moai glm -f lane-3            # …GLM バックエンドのレーンも同じ�
 
 **ステータスラインの GitLab 対応。** `statusline.forge` で、開いている作業を GitHub と GitLab のどちらで数えるかを選ぶ。空のままなら origin リモートのホストを見て判断する。
 
-**素の `/loop` がカンバンの職長になる。** 引数なしで `/loop` だけを打つと、バックログ・キューを見張ってオペレーターがすでに `picked` にした次のカードを隔離されたワーカーへ配車し、完了は主張ではなく読んだ証拠で確かめてから報告する、というサイクルが回る。人が見ていない席なので、キューにカードを入れることも選ぶこともオペレーターの仕事であり、職長は選ばず運ぶだけだ。
+**素の `/loop` がファクトリーの職長になる。** 引数なしで `/loop` だけを打つと、バックログ・キューを見張ってオペレーターがすでに `picked` にした次のカードを隔離されたワーカーへ配車し、完了は主張ではなく読んだ証拠で確かめてから報告する、というサイクルが回る。人が見ていない席なので、キューにカードを入れることも選ぶこともオペレーターの仕事であり、職長は選ばず運ぶだけだ。
 
 ---
 
@@ -180,7 +160,7 @@ moai-adk は Claude Code を外から包むハーネスである。Claude Code �
 | **自律 + 本物の境界** | `/moai goal` が完了条件を宣言すると、セッションは条件が満たされるまで自力で作業する。ただしターン上限（デフォルト 30）、停滞ガード、実時間予算、事前承認ゲートという 4 つのハードな境界が付いており、無限ループに陥らない。 |
 | **並行安全** | SPEC ごとに独立した作業ツリーを与え、ブランチ状態ガードがプライマリ・チェックアウトでの誤ったブランチ切替を防ぎ、書き込みエージェントの起動前にリモートとの乖離を検査する。書き込み可能なエージェント 2 つが同時に動くことはない。 |
 | **長期の継続** | `/clear` を越えて作業は続く。進行状況は `progress.md` に、ハンドオフ・メッセージはメモリに、ルーティング決定は決定メモリに残る。次のセッションは更地からではなく、前のセッションが学んだ地点から始める。 |
-| **コスト効率** | モデルと推論の深さを作業段階と SPEC サイズに合わせて宣言的に割り当てる。Claude リーダー + GLM ワーカーの CG モードは実装中心の作業でコストを 60–70% 減らす。プロンプト・キャッシュを再利用し、長い出力はディスクに流してコンテキストを軽く保つ。 |
+| **コスト効率** | セッションのモデルと推論強度を一度選べば、すべてのエージェントがそれをそのまま引き継ぐ。プロンプト・キャッシュを再利用し、長い出力はディスクに流してコンテキストを軽く保つ。 |
 | **16 プログラミング言語の同等サポート** | Go、Python、TypeScript、JavaScript、Rust、Java、Kotlin、C#、Ruby、PHP、Elixir、C++、Scala、R、Flutter、Swift — 16 のプログラミング言語をマーカー・ベースの自動検出でひとつの集合として扱う。どれか 1 つが優遇されることはない。 |
 | **自己改善** | 繰り返される失敗パターンを観測すると、ルール変更提案として上げる。黙って適用せず、承認を受けて反映する。ルーティング決定とゲート証拠が決定メモリに蓄積され、次の実行の材料になる。 |
 | **母語への配慮** | 韓国語・日本語・中国語・英語の 4 ロケールを同じ PRで扱い、翻訳調を禁じ、母語の文を別に持つ。母語を使うユーザーに英語を強要しない。 |
@@ -237,9 +217,11 @@ DeepSWE リーダーボード（課題 113、努力度別ビュー）がこれ�
 | opus-5 [xhigh] | 73%±3 | $9.07 | 純損 — high と同点、コストだけ +49% |
 | opus-5 [max] | 74%±4 | $11.84 | |
 | glm-5.2 [max] | 44%±2 | $3.92 | API 課金では不利 · z.ai 定額制では有用 |
-| sonnet-5 [max] | 54%±4 | $26.40 | opus-5 [low] に支配される |
+| sonnet-5 [max] (Sonnet 5) | 54%±4 | $26.40 | opus-5 [low] に支配される |
 
 Opus 5 を最も低い努力度で回した方が、Sonnet 5 を最も高い努力度で回したよりスコアが高く (58% vs 54%)、課題コストは 16 分の 1 だ ($1.66 vs $26.40) — Sonnet のトークン単価が安いという事実には勝てない点に注意。原因は 268 ステップ対 36 ステップである。請求書を書くのはトークン単価ではなく、再試行ループだ。コストは**課題ごとに正しいモデルと推論の深さを割り当てる**ことで決まる。
+
+上の表は Opus 5 で測定した値だ。MoAI の `opus` エイリアスは現在 Opus 5.5 を指しており (Claude Code v2.1.280 以上が必要、デフォルト effort は `medium`)、`sonnet` エイリアスは現在 Sonnet 5.5 を指している(公式ドキュメント基準で 1M コンテキスト)。どちらもまだ再測定していない。
 
 <p align="center">
   <img src="./assets/images/why-tokenomics-infographic-ja.png" alt="トークノミクスの逆説 — 価格 98% 下落、支出 320% 上昇。答えは 測定→割当→ダイエット→停止 の 4 段階" width="80%">
@@ -285,7 +267,32 @@ moai init my-project
 cd my-project
 ```
 
-対話式ウィザードが言語・フレームワーク・方法論を自動検出し、モデル方針を選んだうえで Claude Code 統合ファイルまで生成する。
+対話式ウィザードが言語・フレームワーク・方法論を自動検出し、Claude Code 統合ファイルまで生成する。
+
+#### エージェントハーネスの選択
+
+ウィザードは、プロジェクトにデプロイして接続するエージェントハーネスを尋ねます。`--llm` フラグで非対話的に同じ選択ができます:
+
+| 選択 | プロジェクトルートに生成されるもの |
+|---|---|
+| `claude` (デフォルト) | `.claude/` サーフェス全体と `AGENTS.md` — 従来のデフォルト動作 |
+| `gpt` | Codex のみのデプロイ: `AGENTS.md` と Codex サーフェス（`.codex/`、`.agents/skills/`、`.moai/`）のみ。`.claude/` ツリー、`CLAUDE.md`、`.mcp.json` は生成されません。Claude 専用ランタイム機能（AskUserQuestion、サブエージェント、output style、スラッシュコマンド、Workflow スクリプト）は利用できません |
+| `both` | `claude` デプロイに `.codex/` 接続を追加。`.mcp.json` のプロビジョニングは強制有効化されます |
+
+#### デプロイモード: プラグイン既定とフルローカルデプロイ
+
+既定の経路（プラグインモード）では、スキルとコマンドをプロジェクトにコピーしません — moai プラグインが運びます。`.claude/` サーフェスの残り（エージェント、ルール、フック登録、設定）は従来どおりデプロイされます。スキルとコマンドをローカルファイルに残したいときは `--no-plugin`（フルローカルデプロイ — `.mcp.json` の moai エントリと Codex ミラーを含む）を、オプションパックのカタログまでローカルに展開するなら `--all` を使います。デプロイモードは `.moai/config/sections/llm.yaml` の `deployment_mode` に記録され、`moai update` はその記録に従って同じ範囲を保ちます。プラグインのインストールが確認できなかったプロジェクトは、安全側の `local` として記録されます。
+
+
+> **GPT ゲートウェイの撤回（2026-09-16）。** 内蔵トランスレーションゲートウェイで GPT モデルを
+> Claude Code に載せていた旧 `moai gpt` ランチャーは削除されました。GPT モデルはネイティブハーネスの
+> `moai codex`（Codex CLI）から利用してください。上記の `--llm gpt` init 値には影響しません —
+> 撤回されたランチャーではなく、Codex 専用デプロイを選ぶ値です。
+```bash
+moai init my-project --llm gpt   # Codex のみのプロジェクト
+```
+
+この選択が存在する前に初期化されたプロジェクトには `llm.harness` キーがなく、update でも claude の動作を保ちます — 移行作業は不要です。
 
 ### 最初のワークフロー
 
@@ -311,7 +318,7 @@ claude        # または moai cc — プロジェクト内で Claude Code を�
 
 - **Git** — 全プラットフォームで必須
 - **Claude Code** — moai-adk は Claude Code のためのハーネスである
-- **推奨**: `gh` CLI（PR 自動化）、`tmux`（CG モード）、使用言語のリント/テスト・ツールチェーン（例: `golangci-lint`）
+- **推奨**: `gh` CLI（PR 自動化）、`tmux`（worktree ウィンドウ）、使用言語のリント/テスト・ツールチェーン（例: `golangci-lint`）
 
 ---
 
@@ -325,20 +332,20 @@ claude        # または moai cc — プロジェクト内で Claude Code を�
 
 ### MCP サーバー
 
-`moai init` はデフォルトで**ちょうど 1 つ**の有効な MCP エントリを用意する — 自前の `moai mcp-server`（ローカル stdio サーバー）だ。このサーバーが 6 グループにまとめた 21 個の MoAI ツールを Claude Code に公開する。ドキュメントに記載された非活性の 4 エントリ（`context7`・`chrome-devtools`・`playwright`・`ast-grep`）は `moai mcp add <名前>` で有効化する。`moai mcp add|remove|list` CLI が atomic-RWM seam でエントリを管理するため、ユーザーが `.mcp.json` を手で編集する必要はない。
+`moai init` はデフォルトで**ちょうど 1 つ**の有効な MCP エントリを用意する — 自前の `moai mcp-server`（ローカル stdio サーバー）だ。このサーバーが MoAI のツール群を Claude Code に公開する。下の表は主要なグループだけを載せる — 全一覧は [MCP サーバーガイド](https://adk.mo.ai.kr/ja/guides/mcp-server) にあり、ツール数と一覧の基準はインストールされたバイナリが `tools/list` で返す一覧だ。ドキュメントに記載された非活性の 4 エントリ（`context7`・`chrome-devtools`・`playwright`・`ast-grep`）は `moai mcp add <名前>` で有効化する。`moai mcp add|remove|list` CLI が atomic-RWM seam でエントリを管理するため、ユーザーが `.mcp.json` を手で編集する必要はない。
 
 | グループ | ツール | 目的 |
 |------|------|------|
 | SPEC ライフサイクル | `spec_progress`, `spec_audit`, `spec_drift` | 時代分類 + ドリフト検出 |
 | 検証 | `verify_snapshot`, `verify_trend` | キー別証拠スナップショット |
 | ゴール + セッション | `goal_arm`, `goal_status`, `session_list` | 自律ループ + マルチセッション調整 |
-| クロスモデル監査 | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | 多監査者収束 |
+| クロスモデル監査 | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | 多監査者収束 |
 | codex 委譲 | `codex_task`, `codex_setup`, `codex_job_*` | バックグラウンド・クロスモデル作業 |
 | GLM 委譲 | `glm_task`, `glm_job_status`, `glm_job_result`, `glm_job_cancel` | GLM(z.ai)へのバックグラウンド作業委譲 |
 
 すべてのバックエンドは fail-open だ — GLM（`~/.moai/.env.glm`）と codex（`~/.codex/auth.json`）はオプションであり、利用不能なバックエンドは `inconclusive` を返すだけで hard error ではない。
 
-デュアルハーネス（`moai init --agent codex|both`）では、Codexのステータスラインは組み込み識別子配列（`tui.status_line`）のみをサポートするため、goal・todo・SPEC状態のような MoAI 固有の項目は表示できない — コマンドベースのステータスラインをサポートする openai/codex#17827 が解決されるまでの制限である。
+Codex を有効にしたハーネス（`moai init --llm gpt|both`）では、Codexのステータスラインは組み込み識別子配列（`tui.status_line`）のみをサポートするため、goal・todo・SPEC状態のような MoAI 固有の項目は表示できない — コマンドベースのステータスラインをサポートする openai/codex#17827 が解決されるまでの制限である。
 
 > 詳しくは: [MCP サーバー・ガイド](https://adk.mo.ai.kr/ja/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/ja/claude-code/extensibility/mcp)
 
@@ -346,13 +353,19 @@ claude        # または moai cc — プロジェクト内で Claude Code を�
 
 完了条件を宣言すると、セッションは条件が満たされるまで自力で作業する。ターン上限、停滞ガード、実時間予算、事前承認ゲートが付いており、無限ループに陥らない。機械的条件（コマンドの終了コード）とモデル条件（対話記録の主張）を併用できる。`--max-turns 0` で auto-compact 駆動の無限ゴールを武装することもできる — その場合は `--max-duration` と停滞ガードが境界を作る。
 
+`moai goal --auto "<ミッション>"` は別の `mission_mode=auto` 草案を作り、`approve` が範囲・行為・根拠・上限を一度封印します。その後は `run`、`status`、`revoke`、ポリシー制約付き `resume` が保存契約を使います。`super-advisor` は非拘束の助言者で、`manager-todo` の読み取り専用判定サブロールが構造化判断を作り、決定論的 owner adapter が receipt 付きキュー・配車、明示パスのコミット、lease 付き local develop `--no-ff` マージを実行します。持続実行能力が実プロバイダーで確認されなければ `active-session-only` に下がり、リモート push・PR・マージ完了はまだ実証されていません。[GTD と auto ミッションの案内](https://adk.mo.ai.kr/ja/utility-commands/moai-gtd)
+
+最終実行境界はさらに厳格です。`run --supervise` は publish→pick→lease 付きディスク配車→commit→local develop `--no-ff` を有限実行します。監督下の Git 効果には分離した `--card-worktree` と `--develop-worktree` が必要で、従来の `--repo` だけでは効果は 0 件です。完了には true と判定された typed evidence とマージ ancestry を封印した `0600` `--completion-receipt` も必要で、行為リストの消化だけでは完了しません。完了状態の再実行も効果 0 件です。`--recommend` は権限を与えず、各効果にはリポジトリ内 `0600` governor receipt と独立監査 PASS receipt の両方が必要です。未構成の remote/release provider は成功を装わず `provider_unsupported` を返します。
+
 ### 並行 worktree
 
 SPEC ごとに独立した作業ツリーを与える。`moai cc -w <名前>` で入り、`--spawn` を付けると現在のセッションを保ったまま新しいウィンドウで開く。ブランチ状態ガードがプライマリ・チェックアウトでの誤ったブランチ切替を防ぐ。
 
-### カンバンモード
+### ファクトリーモード
 
-`--kanban`（短縮 `-k`）はセッション・ランチャーのスイッチで、リード・セッションの指揮のもと単一の SPEC を `plan → run → sync` で押し進め、マルチセッション・ボードで調整する。ボードの背骨が** Origin-Trail Chain**だ — append-only の JSONL 系譜ツリーでワークツリーの祖先を追跡し、深さの健忘（`/clear` 後のルートからリーフへのチェーン復元）を解決し、ハートビートの鈍りから死んだリーダー・セッションを検出する。
+`-f`（`--factory`）がファクトリーリーダーを、`-l`（`--lane`）がレーンを開く。どちらも引数を取らない。リーダー 1 つがキューのカードを番号付きのレーンへ運び、レーンはカード 1 枚を `plan → run → sync` で最後まで受け持つ。起動手順は上の「v3.2 の新機能 — ファクトリーモード」節にある。
+
+セッションの系譜は **Origin-Trail Chain** が別に担う。ファクトリーモードとは独立で、リーダーもレーンも要らない。`moai cc -w <名前>` のようにワークツリーを指定して立ち上げたセッションは、すべてチェーンに載る。append-only の JSONL 系譜ツリーでワークツリーの祖先を追跡し、深さの健忘（`/clear` 後のルートからリーフへのチェーン復元）を解決し、ハートビートが途絶えたセッションを `stale` と判定する。
 
 | 概念 | 機能 |
 |------|--------|
@@ -361,17 +374,22 @@ SPEC ごとに独立した作業ツリーを与える。`moai cc -w <名前>` �
 | CWD 衝突の解決 | `(worktree_path, session_id)` の組で再利用パスを区別 |
 | 深さの上限 | 入れ子の複雑さを制限 |
 
-> **今すぐ使える**: `moai cc -k`（または `moai glm -k`）でリードを立ち上げ、`-k --name <role>` でコンパニオンを 1 つずつ接続する — ターミナル 1 台に 1 つ、手で立ち上げる。`moai chain <status|lineage|back|list|prune>` で系譜を読み、`moai todo`（引数なしでキュー表示、`add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`·`analyze`、2 語以上はそのままカード追加）で `backlog` 列を運用する。起動手順は上の「v3.1 の新機能 — カンバンモード」節にある。
+> **今すぐ使える**: `moai chain <status|lineage|back|list|prune>` で系譜を読み、`moai todo`（引数なしでキュー表示、`add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`·`analyze`、2 語以上はそのままカード追加）で `backlog` キューを運用する。
 
-> 詳しくは: [カンバンモード・ガイド](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
+> 詳しくは: [ファクトリーモード](https://adk.mo.ai.kr/ja/advanced/factory-mode) · [セッション系譜チェーン](https://adk.mo.ai.kr/ja/advanced/origin-trail-chain)
 
-### CG モード — Claude リーダー + GLM ワーカー
+### CG の廃止と設定の移行
 
-Claude が戦略・計画・監査を担い、GLM が大量実装を担う。tmux セッション単位の環境分離で両者をつなぎ、実装中心の作業でコストを 60–70% 減らす。
+`moai cg` は廃止されました。Claude や GLM を起動せず、移行案内を表示して終了します。`moai cc` の別名ではありません。`llm.team_mode: cg` が残るプロジェクトでは、セッションを起動する前に移行先を明示的に選ぶ必要があります。
 
-<p align="center">
-  <img src="./assets/images/cg-mode-infographic-ja.png" alt="CG モード — Claude リーダー + GLM ワーカーのハイブリッド" width="85%">
-</p>
+```bash
+moai migrate cg
+moai migrate cg --target claude-only --apply --accept-role-change
+```
+
+`llm.team_mode: claude`、`llm.gateway.teammate_mode: in-process`、`llm.gateway.teammate_provider: inherit` を保存します。従来の混合構成の役割分担を解除する変更です。Claude リーダーと GLM チームメイトのペインを維持する移行ではありません。
+
+`claude-glm` は Claude リーダーと tmux 内の GLM チームメイトを表します。現在は TEAMMATE の統合検証を通過していないため、適用と起動は利用できず、プレビューのみ可能です。tmux のインストールや `verified: true` の設定では、この制限は解除されません。
 
 ### 16 プログラミング言語の同等サポート
 
@@ -408,10 +426,10 @@ AI エージェント同士がコンテキスト・不変条件・危険区域�
 ### moai web コンソール
 
 <p align="center">
-  <img src="./assets/images/moai-web-settings.png" alt="moai web コンソール設定画面 — プロファイルバーと 11 個の設定タブ" width="90%">
+  <img src="./assets/images/moai-web-settings.png" alt="moai web コンソール設定画面 — プロファイルバーと設定タブ" width="90%">
 </p>
 
-`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings・Todo の 6 つで、設定画面は Identity・Language・LLM・3rd Party LLM・Workflow・Git & Worktree・Audit・Agents・Report・MCP・Cross-Session の 11 タブに分かれる。プロファイルの作成・改名・削除も同じ画面で行う。
+`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Factory・Specs・Monitor・Settings・Todo の 6 つで、設定画面は Identity・Language・Claude settings・GLM Settings・Codex settings・Workflow・Git & Worktree・Audit・Report・MCP・Cross-Session・Feedback・Quality Gate のタブに分かれる。Codex タブは散らばった codex 設定を 1 画面にまとめて見せる読み取り専用の画面で、値の編集は元のタブで行う。プロファイルの作成・改名・削除も同じ画面で行う。
 
 ### ref / domain スキル
 
@@ -464,26 +482,27 @@ flowchart TD
 | **TDD** (デフォルト) | RED → GREEN → REFACTOR | 新規プロジェクト・機能作業 |
 | **DDD** | ANALYZE → PRESERVE → IMPROVE | カバレッジ 10% 未満の既存コード |
 
-### 12 エージェント・カタログ
+### 13 エージェント・カタログ
 
-| 分類 | エージェント | コスト | 役割 |
-|------|------|------|------|
-| **マネージャー** | manager-spec | 🔴 | plan 段階の SPEC 作成 |
-| | manager-develop | 🔴 | run 段階の TDD/DDD/autofix 実装 |
-| | manager-docs | 🔵 | sync 段階のドキュメント化 |
-| | manager-git | 🩵 | PR 作成・ルーティング |
-| | manager-design | 🟠 | デザイン段階の協業 (Claude Design) |
-| | manager-lead | 🔴 | 階層チーム Tier L 調整 + カンバン・ファクトリーのリードセッション配車（唯一の Agent 保持、深さ 2 封印） |
-| **評価者** | plan-auditor | 🔴 | 独立 plan 監査（偏り防止） |
-| | sync-auditor | 🔴 | 4 次元品質採点（機能性 40 · セキュリティ 25 · 制作 20 · 一貫性 15） |
-| **ビルダー** | builder-harness | 🟠 | プロジェクト専用エージェント・スキル・コマンド・フックのスキャフォールド |
-| **アドバイザー** | super-advisor | 🔵 | 高推論コンサル（E1-E4 エスカレーション） |
-| **スペシャリスト** | e2e-tester | 🟠 | Web/モバイル/デスクトップ E2E テスト実行（CLI ファースト） |
-| **内蔵** | Explore | ⚪ | 読み取り専用のコードベース探査 |
+| 分類 | エージェント | 役割 |
+|------|------|------|
+| **マネージャー** | manager-spec | plan 段階の SPEC 作成 |
+| | manager-develop | run 段階の TDD/DDD/autofix 実装 |
+| | manager-docs | sync 段階のドキュメント化 |
+| | manager-git | PR 作成・ルーティング |
+| | manager-design | デザイン段階の協業 (Claude Design) |
+| | manager-lead | 階層チーム Tier L 調整 + ファクトリーのリーダーセッション配車（唯一の Agent 保持、深さ 2 封印） |
+| **評価者** | plan-auditor | 独立 plan 監査（偏り防止） |
+| | sync-auditor | 4 次元品質採点（機能性 40 · セキュリティ 25 · 制作 20 · 一貫性 15） |
+| **ビルダー** | builder-harness | プロジェクト専用エージェント・スキル・コマンド・フックのスキャフォールド |
+| **アドバイザー** | super-advisor | 高推論コンサル（E1-E4 エスカレーション） |
+| **スペシャリスト** | e2e-tester | Web/モバイル/デスクトップ E2E テスト実行（CLI ファースト） |
+| | manager-todo | タスクキュー管理（キュー ライフサイクル、`/moai:todo --auto` 直列サイクル、ディスパッチ支援）— 封印スナップショットに対する読み取り専用判定サブロールは判定を 1 つ返すだけで自ら適用しない（GTD ワークフローが呼ぶため、選択の決定木に行を持たない） |
+| **内蔵** | Explore | 読み取り専用のコードベース探査 |
 
-コスト色はデフォルト `medium` プロファイルのモデル×推論セルに従う (`moai model profile` で確認): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ セッション・モデル継承（ユーザー追加エージェント）。プロファイル (`high`/`low`) を切り替えると配属が変わる。執筆と監査を最初から分けて担わせるので、自分の仕事を自分で採点する事態が起こらない。
+すべてのエージェントはセッションのモデルと推論強度をそのまま引き継ぐ — セッションをどのモデルと effort で起こしたかが、そのまま全員の配属になる。執筆と監査を最初から分けて担わせるので、自分の仕事を自分で採点する事態が起こらない。
 
-12 個のうち 11 個が moai-adk の作ったエージェントで、`Explore` は Claude Code に元からある内蔵エージェントだ。`Explore` は自前のモデルを持たずセッション・モデルをそのまま継承するので、プロファイルのセルを持たない。だからカタログは 12 個であり、後段のモデル・プロファイル節のセル数は 11 × 3 = 33 になる — 二つの数字は食い違っているのではなく、数えている対象が違う。
+13 個のうち 12 個が moai-adk の作ったエージェントで、`Explore` は Claude Code に元からある内蔵エージェントだ。
 
 ### trust-but-verify — 完了主張に証拠を結び付ける
 
@@ -564,18 +583,18 @@ moai cc -w feature-billing --spawn   # billing は新しいウィンドウで、
 
 SPEC ごとに独立した作業ツリーを与え、2 つのエージェントが互いを踏まないようにする。ブランチ状態ガードがプライマリ・チェックアウトでの誤ったブランチ切替を防ぐ。
 
-### コストを減らす (CG モード)
+### CG の廃止と設定の移行
+
+`moai cg` は廃止されました。Claude や GLM を起動せず、移行案内を表示して終了します。`moai cc` の別名ではありません。`llm.team_mode: cg` が残るプロジェクトでは、セッションを起動する前に移行先を明示的に選ぶ必要があります。
 
 ```bash
-moai glm sk-your-glm-api-key   # キーを一度保存
-moai cg                        # Claude リーダー + GLM ワーカーのハイブリッドへ
+moai migrate cg
+moai migrate cg --target claude-only --apply --accept-role-change
 ```
 
-```text
-/moai run SPEC-DATA-001        # 実装中心の作業 → GLM ワーカーが大量実装を担当
-```
+`llm.team_mode: claude`、`llm.gateway.teammate_mode: in-process`、`llm.gateway.teammate_provider: inherit` を保存します。従来の混合構成の役割分担を解除する変更です。Claude リーダーと GLM チームメイトのペインを維持する移行ではありません。
 
-CG モードは Claude リーダーが戦略・計画・監査を担い、GLM ワーカーが大量実装を担う。実装中心の作業でコストを 60–70% 減らす。ハーネス・SPEC ワークフロー・品質ゲートは 3 モードすべてで同一に動く。
+`claude-glm` は Claude リーダーと tmux 内の GLM チームメイトを表します。現在は TEAMMATE の統合検証を通過していないため、適用と起動は利用できず、プレビューのみ可能です。tmux のインストールや `verified: true` の設定では、この制限は解除されません。
 
 ### バグを自動で直す (loop)
 
@@ -591,7 +610,7 @@ LSP 診断・AST-grep・リンターを並行でさらって拾った問題を�
 
 ### `.moai/config/sections/`
 
-プロジェクト設定は YAML のセクション・ファイルに分かれる。`moai init` が敷くセクションは全部で 33 個あり、そのうちよく手を入れるのは下の 6 つだ。
+プロジェクト設定は YAML のセクション・ファイルに分かれる。`moai init` が敷くセクション・ファイルは全部で 30 個あり、そのうちよく手を入れるのは下の 6 つだ。
 
 | セクション | 役割 |
 |---|---|
@@ -615,22 +634,6 @@ v3.1.1 で手を入れる価値のあるセクションが 4 つ増えた。
 
 環境変数がファイルの値を上書きする。優先順位の詳細と全セクション一覧は [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference)を参照のこと。
 
-### モデル・プロファイル — high / medium / low
-
-`moai model profile` が 11 エージェント × 3 プロファイル = 33 セルの `{model, effort}` 組を解決する。
-
-<p align="center">
-  <img src="./assets/images/model-routing-infographic-ja.png" alt="エージェント・モデル・ルーティング — エージェントごとに適切なモデルと推論強度が割り当てられる" width="85%">
-</p>
-
-| プロファイル | 性格 | いつ |
-|---|---|---|
-| **high** | Opus 中心、高い推論 | 複雑な計画 · セキュリティ監査 · 難しいデバッグ |
-| **medium** (デフォルト) | バランス | 通常の SPEC |
-| **low** | Sonnet + 低い推論 | 機械的反復 · ドキュメント · 単発作業 |
-
-配属は作業段階 (plan / run / sync) と SPEC サイズ (Tier S / M / L) に従う — 深い推論が必要な計画段階に推論の強いモデルを、機械的反復が続く実装段階に軽いモデルを。No-Haiku 3 層ポリシーにより、単発・入力支配の作業は Sonnet low、マルチターンのエージェンティック作業はすべて Opus が担う。
-
 ### settings.json / settings.local.json の分離
 
 | ファイル | 役割 | テンプレート |
@@ -638,7 +641,7 @@ v3.1.1 で手を入れる価値のあるセクションが 4 つ増えた。
 | `.claude/settings.json` | テンプレートからレンダリング — プロジェクト共有設定 | 含む |
 | `.claude/settings.local.json` | ランタイム管理 — マシンごとの値 (tmux pane ID · API トークン · 絶対パス) | **絶対に含めない** |
 
-`settings.local.json` は `moai glm`・`moai cc`・`moai cg` がランタイムに書き換え、SessionStart フックが環境を満たす。誤ってコミットしたら `git rm --cached .claude/settings.local.json` で除外する。
+`settings.local.json` は `moai glm`・`moai cc` がランタイムに書き換え、SessionStart フックが環境を満たす。誤ってコミットしたら `git rm --cached .claude/settings.local.json` で除外する。
 
 ---
 
@@ -676,13 +679,12 @@ v3.1.1 で手を入れる価値のあるセクションが 4 つ増えた。
 
 ### Claude + GLM
 
-z.ai GLM を Claude Code の代替バックエンドとして使う。環境変数を変えるだけでコードはそのままだ。3 つの実行モードがある。
+z.ai GLM を Claude Code の代替バックエンドとして使う。環境変数を変えるだけでコードはそのままだ。
 
 | コマンド | リーダー | ワーカー | tmux | コスト削減 |
 |---|---|---|---|---|
 | `moai cc` | Claude | Claude | 不要 | — |
 | `moai glm` | GLM | GLM | 推奨 | 約 70% |
-| `moai cg` | Claude | GLM | **必須** | 約 60% |
 
 GLM Coding Plan は月 $10 から。glm-5.3-flash（デフォルト）、glm-5.3、glm-4.7、glm-4.5-air と無料モデル (GLM-4.7-Flash, GLM-4.5-Flash) が使える。
 
@@ -712,10 +714,10 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | [はじめに](https://adk.mo.ai.kr/ja/getting-started) | 紹介 · インストール · Windows ガイド · init ウィザード · クイックスタート · CLI 概要 · FAQ |
 | [基本概念](https://adk.mo.ai.kr/ja/core-concepts) | アイデンティティ · 憲法 · ハーネス・エンジニアリング · SPEC ベース開発 · DDD · TRUST 5 |
 | [ワークフロー・コマンド](https://adk.mo.ai.kr/ja/workflow-commands) | `plan` · `run` · `sync` — SPEC パイプラインの主軸 |
-| [ユーティリティ・コマンド](https://adk.mo.ai.kr/ja/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
+| [ユーティリティ・コマンド](https://adk.mo.ai.kr/ja/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `gtd` (`todo` 互換) |
 | [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference) | ターミナル `moai` バイナリのすべてのコマンド (全 49 個) |
 | [Claude Code ガイド](https://adk.mo.ai.kr/ja/claude-code) | Claude Code 統合 — 基礎 · コンテキスト/メモリ · エージェンティック · 拡張性 |
-| [Multi-LLM](https://adk.mo.ai.kr/ja/multi-llm) | CG モードとモデル方針 |
+| [Multi-LLM](https://adk.mo.ai.kr/ja/multi-llm) | CG の移行とモデル方針 |
 | [コスト最適化](https://adk.mo.ai.kr/ja/cost-optimization) | プロンプト・キャッシュ戦略とトークン費用の削減 |
 | [ガイド](https://adk.mo.ai.kr/ja/guides) | CI 自動化 · マルチ LLM CI などの実運用レシピ |
 | [Git Worktree](https://adk.mo.ai.kr/ja/worktree) | 並行 SPEC 開発のための worktree ガイド |
@@ -735,18 +737,19 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai status` | プロジェクト状態の要約 (Git ブランチ、品質指標) |
 | `moai update` | 最新版へ更新 (削除前バックアップ · 自動ロールバック対応) |
 | `moai graph <build\|query>` | コードベースグラフ (edges.jsonl) の生成・照会 — 呼び出し元の検索、影響半径、マイルストーンの交差検査 |
-| `moai cc` / `moai glm` / `moai cg` | Claude 専用 / GLM 専用 / ハイブリッドのセッション |
-| `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守 (ワークツリーへの出入りはランチャーの仕事) |
+| `moai cc` / `moai glm` | Claude 専用 / GLM 専用のセッション |
+| `moai codex [cli\|status\|app]` | Codex ランチャー — 引数なしで呼ぶと Codex CLI を起動する。`status` は準備状態を表示するだけで何も起動しない |
+| `moai worktree <sync\|done\|sweep\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守 (ワークツリーへの出入りはランチャーの仕事) |
 | `moai session <list\|register\|current>` | マルチセッション調整 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC ライフサイクル・ツール |
 | `moai goal <arm\|status\|clear>` | ゴール・エンジン CLI |
 | `moai harness <status\|apply\|rollback\|disable>` | ハーネス学習ライフサイクル |
-| `moai handoff <save\|list>` | セッション・ハンドオフ記録 |
+| `moai handoff <save\|show\|clear>` | セッション・ハンドオフ記録 |
 | `moai preference <list\|decay-scan\|toggle>` | 決定メモリ管理 |
 | `moai memory <doctor\|archive>` | エージェント・メモリの点検と古い項目の保管 |
 | `moai tokens record` | プール別トークン使用の台帳記録 |
-| `moai clean [--home]` | 古い実行成果物の整理。`--home` を付けると `~/.moai` を許可リストの範囲で片付ける。既定は dry-run で、`--force` を与えて初めて実際に消す |
-| `moai web` | Web コンソール — 6 画面 (Overview · Kanban · Specs · Monitor · Settings · Todo)、11 タブ設定 |
+| `moai clean [--home] [--codex-skills] [--reports-archive]` | 古い実行成果物の整理。`--home` を付けると `~/.moai` を許可リストの範囲で片付け、`--codex-skills` を付けると `~/.codex/config.toml` から、宣言されたパスが不在と証明された `[[skills.config]]` 登録を削除する。`--reports-archive` を付けると `.moai/reports/` の古い証跡ディレクトリを `archive/<YYYY-MM>/` へ移す — 削除はせず移動のみ(既定保持 90 日、`--reports-archive-days`)。スコープは一度に一つだけ。既定は dry-run で、`--force` を与えて初めて実際に消す |
+| `moai web` | Web コンソール — 6 画面 (Overview · Factory · Specs · Monitor · Settings · Todo)、設定タブ |
 
 > 全 49 コマンド: [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference)
 
@@ -784,7 +787,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 
 ### GLM なしで Claude だけ使える?
 
-使える。`moai cc` が Claude 専用セッションを立ち上げる。CG モード (`moai cg`、Claude リーダー + GLM ワーカー) と GLM 専用 (`moai glm`) はコスト削減オプションであり、ハーネス·SPEC ワークフロー·品質ゲートは 3 モードすべてで同一に動く。
+使えます。`moai cc` で GLM なしの Claude セッションを起動できます。旧 CG 設定が残るプロジェクトに限り、先に移行が必要です。
 
 ### 既存プロジェクトでも使える?
 

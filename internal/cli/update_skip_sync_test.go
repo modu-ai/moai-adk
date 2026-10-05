@@ -150,6 +150,15 @@ func TestSkipSyncNoArchive(t *testing.T) {
 			t.Fatalf("set --force: %v", err)
 		}
 
+		// Card t661: with --force the sync is not short-circuited, so a future
+		// path change could let it reach ensureGlobalSettingsEnv, which rewrites
+		// <home>/.claude. Refuse to drive it if the resolved home is the real one.
+		home, homeErr := userHomeDirFn()
+		if homeErr != nil {
+			t.Fatalf("userHomeDirFn(): %v", homeErr)
+		}
+		requireNotRealHome(t, home)
+
 		// Contract: version match + --force → skipped=false (sync runs).
 		skipped, _ := runTemplateSyncWithProgress(cmd)
 		// We do not assert on err: when running outside the dev project tree,

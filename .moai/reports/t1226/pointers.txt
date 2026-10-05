@@ -1,0 +1,24 @@
+# Pointer text per (stub file, destination) pair of ADMIT M1 rows (card t1226).
+# Each block is the exact text appended to the stub's existing lazy-companion
+# pointer line (bundled per destination, design.md §4.4 estimate A); it names the
+# moved items and adds no normative content (REQ-ALD2-018). pointer_chars is its
+# character count (no trailing newline: the text joins an existing line).
+
+@@ * | core/agent-common-protocol.md | core/agent-common-protocol-reference.md
+ · § Subagent Prohibitions rationale · § Per-Spawn audit hook · § Pre-Edit ambient signal
+@@END
+@@ * | core/askuser-protocol.md | core/askuser-protocol-reference.md
+ · § Channel Monopoly anti-pattern · § The Other option and correct pattern · § Pre-emit self-check (completion report) · § Non-ASCII failure mode
+@@END
+@@ * | core/moai-mcp-tools.md | core/moai-mcp-tools-catalogue.md
+ · § project_root rationale, canonicalization, audit_multi reach
+@@END
+@@ * | workflow/cross-session-messaging.md | workflow/cross-session-messaging-detail.md
+ · § The held-message shape · § Why the idle notice replaces polling
+@@END
+@@ * | workflow/kanban-dispatch.md | workflow/kanban-dispatch-mechanics.md
+ · § Why the subshell form breaks (measured) · § Why a lane enters the release worktree
+@@END
+@@ * | workflow/skill-routing.md | workflow/skill-routing-detail.md
+ · § Injection examples
+@@END

@@ -140,6 +140,8 @@ CLAUDE.md 在每次会话都加载进上下文窗口，与对话一起消耗令�
 
 `MEMORY.md` 扮演记忆目录的索引。它**仅前 200 行或 25KB**（先到者为准）在每次对话开始时加载，超出部分在启动时不加载。因此 Claude 会把详细笔记移到单独的主题文件，保持 `MEMORY.md` 简洁。
 
+来源：Claude Code CHANGELOG 2.1.83 — "Memory: MEMORY.md index now truncates at 25KB as well as 200 lines".
+
 ```mermaid
 flowchart TD
     A["会话开始"] --> B["加载 MEMORY.md 索引<br>前 200 行或 25KB"]
@@ -180,6 +182,12 @@ flowchart TD
 MoAI-ADK 运行在上述 Claude Code 记忆基础之上。它把项目根的 CLAUDE.md 用作编排器执行指引，并把自动记忆的 `MEMORY.md` 索引与主题文件用于 SPEC 工作的会话交接和教训 (lessons) 积累。
 
 基于文件的持久记忆也是 MoAI-ADK **递归式自我学习**的原料。循环运转中留下的观察 —— 用户纠正、失败模式、路由决策 —— 累积在记忆文件里，挽具再基于这些积累改进技能与智能体指引。"循环积累观察，挽具学习进化指引"这句话的第一环，正是本页的记忆机制。MoAI 特有的记忆运营规则与索引管理方式在单独文档中详述。
+
+## MoAI-ADK 项目中的本地指令 —— `AGENTS.local.md`
+
+Claude Code 本身读取 `CLAUDE.local.md`，但 MoAI-ADK 项目把个人指令放在 `AGENTS.local.md`。`CLAUDE.md` 末尾的 `@AGENTS.local.md` 导入把它加载进 Claude Code，`moai codex` 则把同一个文件交给 Codex。通用契约是 `AGENTS.md`，Claude 专属层是 `CLAUDE.md`，个人指令是 `AGENTS.local.md`——这就是三文件结构。
+
+同时保留 `CLAUDE.local.md` 和 `AGENTS.local.md` 会让 Claude Code 两者都读，相似的指令被加载两次。已有的 `CLAUDE.local.md` 请用 `moai migrate local-instructions` 迁移。两个文件都存在时该命令会拒绝执行，此时请手动合并。
 
 ## 相关文档
 

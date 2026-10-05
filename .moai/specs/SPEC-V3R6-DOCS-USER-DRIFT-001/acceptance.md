@@ -33,12 +33,11 @@ zh_count=$(grep -c "^## PR 创建后的 CI 监控" docs-site/content/zh/workflow
 
 ```bash
 # Verification command
-pr_files=$(gh pr diff 1045 --name-only | sort -u)
-my_files=$(git diff origin/main..HEAD --name-only | sort -u)
-overlap=$(comm -12 <(echo "$pr_files") <(echo "$my_files") | wc -l | tr -d ' ')
+gh pr diff 1045 --name-only | sort -u > /tmp/dud-pr.txt
+git diff origin/main..HEAD --name-only | sort -u > /tmp/dud-mine.txt
+comm -12 /tmp/dud-pr.txt /tmp/dud-mine.txt | wc -l | tr -d ' '   # Expected: 0 — nonzero → FAIL (exit 1)
 
 # Expected: 0
-[ "$overlap" = "0" ] || exit 1
 ```
 
 **Maps to**: REQ-DUD-006.

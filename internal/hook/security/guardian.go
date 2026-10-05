@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // skipHookArg is the first-argument bypass token (REQ-SG-043).
@@ -247,6 +248,10 @@ func runGit(root string, gitArgs ...string) (string, bool) {
 	if root != "" {
 		cmd.Dir = root
 	}
+	// cmd.Dir is not, on its own, the repository scoping: a GIT_DIR inherited
+	// from a hook outranks it, so the guardian would scan the caller's
+	// repository rather than the project root it was given.
+	cmd.Env = gitenv.Env()
 	out, err := cmd.Output()
 	if err != nil {
 		return "", false

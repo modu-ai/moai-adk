@@ -146,12 +146,12 @@ Code analysis via structural AST (Abstract Syntax Tree) pattern matching.
 
 ### 11. Multi-Model Architecture
 
-Support for multiple LLM providers, a 33-cell profile matrix, and hybrid cost-optimization modes.
+Support for multiple LLM providers, session-inherited sub-agent models, and hybrid cost-optimization modes.
 
-- **Claude Mode** (`moai cc`): Full Claude model stack anchored on Opus 5 (1M-context) with a 5-level effort scale (`low` / `medium` / `high` / `xhigh` / `max`). Per-agent effort calibration is driven by the 33-cell profile matrix (11 retained agents x 3 model tiers) materialized by `internal/template/profile_matrix`
+- **Claude Mode** (`moai cc`): Full Claude model stack anchored on Opus 5.5 (1M-context) with a 5-level effort scale (`low` / `medium` / `high` / `xhigh` / `max`). Sub-agents inherit the main session's model and effort (SPEC-AGENT-MODEL-INHERIT-001) — no per-agent profile matrix
 - **GLM Mode** (`moai glm`): Route the session through Z.AI's GLM-5.2 (1M-context, `DefaultGLMHigh = "glm-5.2"` without the `[1m]` suffix -- the `[1m]` is expanded at the launcher layer in `internal/cli/launcher.go` only when the 1M-context variant is requested)
 - **Hybrid CG Mode** (`moai cg`): Claude leader with GLM teammates via tmux panes for 60-70% cost reduction on implementation-heavy tasks
-- **Model Profile Matrix** (`.moai/config/sections/llm.yaml`): 3-tier model profiles (`low` / `medium` / `high`) composing the 33-cell agent-by-tier matrix rendered into template deployment
+- **Main-Session Model Policy** (preference profile): sub-agents inherit the main session's model and effort; the former per-agent profile matrix and its `llm.yaml` keys are retired
 
 ### 12. Goal Engine (Autonomous Continuation)
 
@@ -241,14 +241,14 @@ The official user documentation is served at `https://adk.mo.ai.kr` and maintain
 
 ## Implementation Status
 
-The v3.0 Go codebase is approximately **148k non-test LOC** across **~730 non-test Go source files** and **~1000 test files**, organized into **46 internal/ top-level packages** (318 subpackages) + **2 pkg/ packages** (`models`, `version`) + **1 cmd** binary. The single binary embeds all Claude Code templates via `//go:embed all:templates` in `internal/template/embed.go` (no separate `embedded.go` is generated). Module path: `github.com/modu-ai/moai-adk` (Go 1.26.4).
+The v3.0 Go codebase is approximately **148k non-test LOC** across **~730 non-test Go source files** and **~1000 test files**, organized into **46 internal/ top-level packages** (318 subpackages) + **2 pkg/ packages** (`models`, `version`) + **1 cmd** binary. The single binary embeds all Claude Code templates via `//go:embed all:templates` in `internal/template/embed.go` (no separate `embedded.go` is generated). Module path: `github.com/modu-ai/moai-adk` (Go 1.26.8).
 
 ### Feature Completion
 
 | Feature | Status | Notes |
 |---------|--------|-------|
 | CLI Tool | Complete | ~40 root verbs / 152 non-test `.AddCommand()` calls across 109 non-test files in `internal/cli/` |
-| Configuration Management | Complete | 14 `loader_*.go` files composing 32 YAML files; env > yaml > defaults |
+| Configuration Management | Complete | 13 `loader_*.go` files composing 32 YAML files; env > yaml > defaults |
 | LSP Integration | Complete | 8 sub-packages under `internal/lsp/` powernap-based, 16-language auto-detection |
 | Git Operations | Complete | System Git via exec; BODP branch-origin decision; main-checkout branch-state guard |
 | Quality Gates (TRUST 5) | Complete | All five principles validated |
@@ -295,9 +295,9 @@ The v3.0 Go codebase is approximately **148k non-test LOC** across **~730 non-te
 Several planned dependencies were replaced with simpler, purpose-built solutions:
 
 - **No go-git**: Git operations use `exec.Command("git", ...)` for reliability and full feature coverage
-- **No Viper**: Custom YAML loader with 14 `loader_*.go` files provides simpler, type-safe configuration
+- **No Viper**: Custom YAML loader with 13 `loader_*.go` files provides simpler, type-safe configuration
 - **No go.lsp.dev packages**: Multi-language LSP client built on `github.com/charmbracelet/x/powernap` in `internal/lsp/` (8 sub-packages)
-- **Go 1.26.4**: Final Go toolchain version; Green Tea GC for 10-40% GC overhead reduction, range-over-int iterators, enhanced `log/slog`
+- **Go 1.26.8**: Final Go toolchain version; Green Tea GC for 10-40% GC overhead reduction, range-over-int iterators, enhanced `log/slog`
 
 ---
 

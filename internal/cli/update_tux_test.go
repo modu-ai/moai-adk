@@ -178,9 +178,12 @@ func TestRenderDeployProgress_Bar(t *testing.T) {
 	if !strings.Contains(got, "3/5") {
 		t.Errorf("progress line must show 3/5 step count, got:\n%q", got)
 	}
-	// Running (3<5) → leading ● from StatusIcon("run").
-	if !strings.ContainsRune(got, tui.GlyphRun) {
-		t.Errorf("in-progress deploy line must lead with ● (running), got:\n%q", got)
+	// t694: the line renders AFTER its step completed, so even an
+	// intermediate snapshot leads with ✓ — the former ● left completed steps
+	// looking like in-flight processes that never advanced (the observed
+	// "accumulated progress bar lines" breakage).
+	if !strings.ContainsRune(got, tui.GlyphDone) {
+		t.Errorf("a completed-step snapshot must lead with ✓ (done), got:\n%q", got)
 	}
 }
 
@@ -207,7 +210,7 @@ func TestRenderUpdateOutcome(t *testing.T) {
 	if !strings.Contains(out, "Backup: .moai-backups/20260725_020747") {
 		t.Errorf("outcome dim note must carry the backup path, got:\n%q", out)
 	}
-	if !strings.Contains(out, "Recover: moai update --restore-config .moai-backups/20260725_020747") {
+	if !strings.Contains(out, "Recover: moai update --restore .moai-backups/20260725_020747") {
 		t.Errorf("outcome dim note must carry the recover command, got:\n%q", out)
 	}
 }

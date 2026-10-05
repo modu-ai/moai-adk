@@ -2,14 +2,19 @@
 // pre-resolution step (SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a, REQ-WES-010).
 //
 // AC-WES-010a: an absolute path under ~/.moai/worktrees/<project>/... resolves
-//   to the L2 worktree (accepted; passes through unchanged so claude uses the
-//   absolute path directly rather than treating it as a .claude/worktrees/
-//   short name).
+//
+//	to the L2 worktree (accepted; passes through unchanged so claude uses the
+//	absolute path directly rather than treating it as a .claude/worktrees/
+//	short name).
+//
 // AC-WES-010b: legacy short-name token-normalization behavior preserved
-//   (covered by the existing TestNormalizeWorktreeFlag; this file asserts the
-//   pre-resolution step does not interfere with short-name inputs).
+//
+//	(covered by the existing TestNormalizeWorktreeFlag; this file asserts the
+//	pre-resolution step does not interfere with short-name inputs).
+//
 // AC-WES-010c: an absolute path NOT under ~/.moai/worktrees/ or
-//   .claude/worktrees/ is rejected with a clear error.
+//
+//	.claude/worktrees/ is rejected with a clear error.
 //
 // NOTE: does not call t.Parallel() because it sets HOME and USERPROFILE via
 // t.Setenv (process-global state on Windows where os.UserHomeDir reads
@@ -17,9 +22,12 @@
 package cli
 
 import (
+	"io"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // runResolveWorktreeL2Path sets HOME and USERPROFILE to homeDir via t.Setenv
@@ -35,7 +43,7 @@ func runResolveWorktreeL2Path(t *testing.T, homeDir string, args []string) error
 	t.Helper()
 	t.Setenv("HOME", homeDir)
 	t.Setenv("USERPROFILE", homeDir)
-	return resolveWorktreeL2Path(args)
+	return resolveWorktreeL2Path(args, io.Discard)
 }
 
 // TestLauncherWorktreeL2AbsPath covers AC-WES-010a: absolute paths under
@@ -44,6 +52,9 @@ func runResolveWorktreeL2Path(t *testing.T, homeDir string, args []string) error
 // and claude then receives the absolute path via the canonical --worktree
 // <abs-path> two-token form).
 func TestLauncherWorktreeL2AbsPath(t *testing.T) {
+	// L2 worktrees live under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the L2 root derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	l2Base := filepath.Join(tmpHome, ".moai", "worktrees")
 	// Synthesize a representative L2 absolute path matching the auto-isolation
@@ -69,6 +80,17 @@ func TestLauncherWorktreeL2AbsPath(t *testing.T) {
 				t.Fatalf("resolveWorktreeL2Path(%v) returned error for L2 absolute path: %v", tt.args, err)
 			}
 		})
+	}
+}
+
+func TestLauncherWorktreeMoAIAbsPath(t *testing.T) {
+	root, err := findProjectRoot()
+	if err != nil {
+		t.Fatalf("project root: %v", err)
+	}
+	path := filepath.Join(root, ".moai", "worktrees", "existing")
+	if err := resolveWorktreeL2Path([]string{"-w", path}, io.Discard); err != nil {
+		t.Fatalf("MoAI worktree absolute path rejected: %v", err)
 	}
 }
 

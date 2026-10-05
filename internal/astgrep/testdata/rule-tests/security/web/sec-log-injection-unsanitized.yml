@@ -1,0 +1,9 @@
+# Test pair for the unsanitized log-injection rule. The valid sample reports
+# the event without forwarding raw external input into log.Printf.
+id: sec-log-injection-unsanitized
+valid:
+  - |
+    slog.Info("action completed")
+invalid:
+  - |
+    log.Printf("user %s action %s", name, rawLine)

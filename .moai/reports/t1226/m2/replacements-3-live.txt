@@ -1,0 +1,203 @@
+# M2 attempts, part 3 — live-surface rows whose text differs from the init surface
+# (format: see replacements.txt). Same rule: nothing normative, numeric or
+# identifying is dropped; keyword lines are untouched.
+
+@@ live | AGENTS.md | 2. Git, branches, and the shared checkout
+## 2. Git, branches, and the shared checkout
+
+The primary checkout is shared by concurrent sessions; its branch state is global.
+
+**Never change branch state in the primary checkout.** Forbidden there: `git checkout <branch>` /
+`git switch` (relocates every session's tree); `git checkout -b` / `git switch -c` / `git branch`
+(same, plus an unexpected branch); `git reset --hard` / `git checkout -- <path>` (discards work of
+unknown provenance); `git stash` (repository-global — absorbs other sessions' uncommitted changes);
+`git rebase` / `git merge` onto the checked-out branch (rewrites or advances shared history).
+Permitted: read-only inspection, `git fetch`, commits to the checked-out branch, pushing it.
+
+**Re-read branch and commit state immediately before any commit or push** — never an earlier
+value or the session-start branch:
+
+```bash
+git rev-parse --short HEAD
+git branch --show-current
+```
+
+A difference means another actor writes the same tree: stop and report the divergence.
+
+**Never sweep-stage.** In the primary checkout, never `git add -A`, `git add .`, or
+`git commit -a`. Stage by explicit pathspec after re-reading `git status --short`, so foreign
+files stay excluded — **even when no foreign session was detected** (one can arrive after the check).
+
+**Detect parallel sessions before a non-trivial direct edit** to a shared path (`.claude/`,
+`.moai/`, `internal/`, `pkg/`, `cmd/`, repo-root config), and surface any divergence:
+
+```bash
+default_ref="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD)"
+test -n "$default_ref"
+git fetch origin "${default_ref#origin/}" 2>&1
+git rev-list --count --left-right "$default_ref"...HEAD
+```
+
+`0 0` or `0 N` proceeds; `N 0` or `N M` means resolve before editing. With another live session in
+the checkout, isolate into a worktree. Re-run the check before any commit and after a long pause.
+If `origin/HEAD` is unresolved, stop and resolve the default branch instead of assuming `main`.
+@@END
+@@ live | AGENTS.md | 3. Worktrees
+## 3. Worktrees
+
+**Work inside a worktree entered through the launcher** (`moai cc -w <name>`, `moai cc -w <name>
+--spawn` for a new window, `EnterWorktree(<path>)` to re-enter); never create one with a bare
+`git worktree add`. Leave with `ExitWorktree`. Drive a worktree with `git -C <path>`, not `cd`.
+
+**From inside a worktree session, `<path>` is that worktree's absolute path.** Measured on Claude
+Code 2.1.275: the guard refuses `-C .`, a relative or runtime-computed path, and any path outside
+this worktree; plain git, `git -C <own absolute path>` and `--git-dir=<own .git>` pass.
+`cd <own worktree> && git …` passes too but stays inadvisable. A refusal here is the guard reading
+the command, not a runtime defect.
+
+**`moai worktree done` closes L2 trees only.** A tree under `.claude/worktrees/` is L1, absent from
+the registry, disposed by the session-end prompt or `git worktree unlock` + `git worktree remove`.
+
+**A card's unpushed branch makes its worktree the only copy.** Dispose of no worktree — L1 or L2 —
+until the branch is integrated and the remote merge has landed.
+
+**Start a new card in a new worktree.** Exit any previous worktree to the primary checkout first,
+or the work lands on the old card's branch. Create the tree from the remote default branch; never
+reuse the previous card's tree; merge a prior card's unmerged branch inside the new one if needed.
+
+**Card worktree branches carry `WT-` plus a descriptive slug, never the card id.** Rename right after
+creating the tree: `git branch -m WT-<slug>` (re-entry resolves by tree name; the directory keeps
+the card id).
+
+**Three traceability carriers are then mandatory**: the dispatch's `card:` field, the card id in
+every commit message on the branch, and the card id in the evidence path
+(`.moai/reports/<card-id>/verdict.md`).
+@@END
+@@ live | AGENTS.md | 4. How verification is run
+## 4. How verification is run
+
+**Scope verification to the change**: run the tests it can affect, then push and let CI run the
+full suite (a full suite on a loaded machine measures the machine).
+
+**Never spawn background load.** Contention load must be cleanup-guaranteed — kills registered with
+the test framework's cleanup hook, or a `timeout` wrapper; a trailing `kill` is not cleanup.
+
+**Scrub the environment in one compound invocation**: inside a worktree, `unset <VARS> && <command>`
+as a single call — a separate `unset` does not reach the next command (fresh process each call).
+
+**Batch independent read-only verifications** instead of serializing across turns; serialize only
+for a genuine dependency (output feeding input, writes to the same path, shared-state mutation).
+
+**A CodeRabbit row in `gh pr checks` is not evidence a review ran** — it reads `success`/`pass`
+either way. Count it only when BOTH hold: (1) `gh api "repos/$repo/commits/$head_sha/status"`
+reports the `CodeRabbit` context with `state == "success"` and description `Review completed`;
+(2) a `Merge Risk:` line exists whose commit prefix matches the current `headRefOid`. Anything else
+is a gap; `Review rate limited` means the review never started.
+@@END
+@@ live | AGENTS.md | 5. Core behaviors ¶1
+**1. Surface assumptions.** Before non-trivial work, list assumptions as a short list, invite
+correction, and wait for confirmation.
+@@END
+@@ live | AGENTS.md | 5. Core behaviors ¶3
+**3. Push back when warranted.** Say so directly when an approach has a concrete downside,
+contradicts a convention without justification, or breaks a tested invariant: state the issue,
+quantify it ("adds ~200 ms latency", not "might be slower"), propose an alternative, and accept an
+override once the user has full information.
+@@END
+@@ live | AGENTS.md | 5. Core behaviors ¶5
+**5. Maintain scope discipline.** Touch only what was asked. Do NOT remove comments you do not
+understand, clean up orthogonal code, refactor adjacent systems, delete seemingly-unused code
+without explicit approval, or add unrequested features. Match the file's existing style (naming,
+error handling, imports); in-file consistency outranks preference.
+@@END
+@@ live | AGENTS.md | 6. Output, language, and format ¶4
+**User-facing output is Markdown**; never display XML tags to users. **XML is for agent-to-agent
+structured data only** (semantic sections), never user-facing output.
+@@END
+@@ live | AGENTS.md | 6. Output, language, and format ¶5
+**No time predictions in plans or reports** — use priority labels (High / Medium / Low) and phase
+ordering ("complete A, then start B"), never "2-3 days", "1 week", "as soon as possible".
+@@END
+@@ live | AGENTS.md | 6. Output, language, and format ¶6
+@@END
+@@ live | AGENTS.md | 7. Tools and command output
+## 7. Tools and command output
+
+**Use tools for accuracy and efficiency.** Read a file before editing it. Locate before reading
+(file by pattern, line by content, then read that region). Use absolute paths verified to exist.
+Prefer a targeted edit over a rewrite and a dedicated tool over a shell equivalent. Retries:
+read-only/idempotent calls may be retried; a side-effecting one (write, commit, push, PR, deploy,
+external mutation) that fails ambiguously is retried only after observing current state and
+confirming the effect absent — no success signal does not prove it did not land. After three
+failures on one operation, report the blocker.
+
+**Work without MCP servers**: fall back to web search and fetch for docs and patterns; analysis
+quality must not depend on MCP availability.
+
+**Bound command output**: quiet flags, targeted queries, or redirect-to-file with exit code and a
+bounded tail; the runtime output limit is a backstop, not the target. **Prefer quiet forms**
+(`--no-progress`, `-q`, machine-readable output plus a filter) over spinners, banners, tables, or
+color noise.
+
+**Weigh session length as a cost.** Prefer one warm session for the same work; a new or cold one
+re-pays the always-loaded prefix. Split only when the benefit justifies it.
+@@END
+@@ live | AGENTS.md | 8. Harness-local instructions
+## 8. Harness-local instructions
+
+`CLAUDE.local.md` (common, shared with Claude workflows) and `AGENTS.local.md` (Codex-specific) are
+the local inputs. For every local launch shape (bare, `cli`, `app`, `--spawn`, `-w`), `moai codex`
+reads the non-empty regular files from the project root in that order, prefixes each body with its
+provenance header, and passes the combined text as one session `developer_instructions` override;
+a `-w` child still reads the original project root.
+
+Shared `AGENTS.md` and `CLAUDE.md` never import or link either local file. The launcher refuses
+links and non-regular inputs, reads through the descriptor it inspected, and fails before launch on
+an operator-supplied `developer_instructions` collision or an oversized direct/spawn argument.
+Codex Web sessions do not run the local launcher, so this injection is local-CLI-only.
+@@END
+@@ live | core/moai-constitution.md | URL Verification
+## URL Verification
+
+Verify every URL before including it: WebFetch the URLs WebSearch returned, mark unverified information as uncertain, include a Sources section when WebSearch was used. Under a GLM backend (`moai glm` / `moai cg` GLM panes) verification uses `mcp__web_reader__webReader` and search `mcp__web_search_prime__webSearchPrime` instead of `WebFetch` / `WebSearch` (`.claude/rules/moai/core/glm-web-tooling.md`).
+@@END
+@@ live | core/verification-claim-integrity.md | 3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶6
+(Provenance: card t529 — the premise that such a blockage leaves no trace was measured false; what was missing was the record's route into the verdict, not the record.)
+@@END
+@@ live | core/verification-claim-integrity.md | 3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶7
+@@END
+@@ live | core/verification-claim-integrity.md | 3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶8
+Version: 1.3.0
+Classification: Canonical Reference (policy-layer codification) — do not duplicate cross-referenced content; cross-reference this file instead.
+@@END
+@@ live | workflow/cache-aware-execution.md | Directives ¶4
+4. **Consider `/clear` before large batches** [ZONE:Evolvable] `/clear` discards the warm cache but shrinks the prefix. Per `.claude/rules/moai/workflow/context-clear-policy.md`: persist a paste-ready handoff and clear before a large multi-spawn batch when unrelated context is bloated, an audit needs independence, or a prefix/model/effort change invalidates the warm state; with only short follow-up work and unchanged plan/tree identity, keep the warm cache.
+@@END
+@@ live | workflow/main-checkout-branch-guard.md | Mechanical Enforcement
+## Mechanical Enforcement
+
+A PreToolUse hook applies this doctrine conditionally (a static `settings.json` deny cannot scope to
+the primary checkout and would lock out worktree flows):
+
+- **Opt-in, inert by default.** `Workflow.BranchGuard.Enabled` gates it; distributed default
+  `false` (the hazard does not apply to single-developer repos). Disabled, no `git rev-parse` runs.
+- **Deny sentinel.** Every deny is prefixed `BRANCH_GUARD_VIOLATION:`, matchable without parsing
+  the reason.
+- **Query-vs-mutate.** The `git branch` matcher denies every mutating form and passes read-only
+  queries; an unclassifiable form under-matches and passes (the accepted fail-open direction).
+- **Fail-open.** Deny only on positive evidence — primary checkout confirmed, a branch-state pattern
+  matched, agent not exempt; any uncertainty allows and appends to `.moai/logs/branch-guard-audit.log`.
+- **The identity exemption IS reachable from a spawned agent** — measured, not inferred
+  (SPEC-BRANCHGUARD-EXEMPT-REACH-001, 2026-09-27): Claude Code populates `agent_type` on PreToolUse
+  for an Agent-tool spawn, in the snake_case spelling `HookInput` decodes, with the spawn name
+  verbatim — so an agent spawned as `manager-git` passes the guard in the primary checkout.
+  Deliberately left un-narrowed (narrowing may withdraw a live path): the bypass **exists** — never
+  route around the guard through it; use a worktree.
+- **The sentinel axis is separate and was not re-tested.** `MOAI_BRANCH_GUARD_EXEMPT=1` is read from
+  the hook process's own environment, spawned before the guarded command, so exporting it inside the
+  command is a no-op; reading a `BRANCH_GUARD_VIOLATION` as "the exemption is broken" remains a
+  misdiagnosis — use a worktree.
+
+Flag classification, pattern set, primary-vs-worktree discriminant, quoted-span scan scope,
+originating SPEC IDs: `main-checkout-branch-guard-detail.md` § Mechanical enforcement.
+@@END

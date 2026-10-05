@@ -1,0 +1,30 @@
+=== RUN   TestPtyCaptureChild
+● ○ ○ ○ ○ ○ ○ ○ ○ ○ 1 / 10
+┃ Select your language
+┃ Language for this wizard and Claude's responses.
+┃ ▸ English           - English
+┃   Korean (한국어)   - 한국어
+┃   Japanese (日本語) - 日本語
+┃   Chinese (中文)    - 中文
+
+
+
+
+
+
+
+
+
+
+
+
+
+↑ up • ↓ down • / filter • enter select
+
+
+
+
+
+
+
+

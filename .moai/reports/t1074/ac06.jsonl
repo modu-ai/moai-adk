@@ -1,0 +1,13 @@
+{"Time":"2026-09-22T15:53:53.282668+09:00","Action":"start","Package":"github.com/modu-ai/moai-adk/internal/factorymsg"}
+{"Time":"2026-09-22T15:53:53.282975+09:00","Action":"start","Package":"github.com/modu-ai/moai-adk/internal/sessionmsg"}
+{"Time":"2026-09-22T15:53:53.397086+09:00","Action":"run","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryDeadLetterAndLegacyIsolation"}
+{"Time":"2026-09-22T15:53:53.397179+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryDeadLetterAndLegacyIsolation","Output":"=== RUN   TestFactoryDeadLetterAndLegacyIsolation\n"}
+{"Time":"2026-09-22T15:53:53.491001+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryDeadLetterAndLegacyIsolation","Output":"--- PASS: TestFactoryDeadLetterAndLegacyIsolation (0.09s)\n"}
+{"Time":"2026-09-22T15:53:53.491023+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryDeadLetterAndLegacyIsolation","Elapsed":0.09}
+{"Time":"2026-09-22T15:53:53.491052+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Output":"PASS\n"}
+{"Time":"2026-09-22T15:53:53.491609+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Output":"ok  \tgithub.com/modu-ai/moai-adk/internal/factorymsg\t0.209s\n"}
+{"Time":"2026-09-22T15:53:53.491649+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Elapsed":0.209}
+{"Time":"2026-09-22T15:53:53.53562+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/sessionmsg","Output":"testing: warning: no tests to run\n"}
+{"Time":"2026-09-22T15:53:53.535656+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/sessionmsg","Output":"PASS\n"}
+{"Time":"2026-09-22T15:53:53.53606+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/sessionmsg","Output":"ok  \tgithub.com/modu-ai/moai-adk/internal/sessionmsg\t0.253s [no tests to run]\n"}
+{"Time":"2026-09-22T15:53:53.536076+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/sessionmsg","Elapsed":0.253}

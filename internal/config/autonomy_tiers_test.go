@@ -87,14 +87,15 @@ func TestResolveEffectiveTier_Preserved(t *testing.T) {
 }
 
 func TestTierDefaultMode_Mapping(t *testing.T) {
-	// The mode-token → knob mapping (spec.md §C). Each tier maps to a single
-	// canonical defaultMode value; deny/ask are tier-INVARIANT (REQ-004) and
-	// are NOT part of this mapping.
+	// The mode-token → knob mapping (SPEC-AUT-PERMMODES-001 REQ-003). Each
+	// tier maps to a single canonical defaultMode value; deny/ask are
+	// tier-INVARIANT (REQ-004 of the owning SPEC) and are NOT part of this
+	// mapping. semi-auto maps to "acceptEdits" (the new wizard default).
 	cases := []struct {
 		tier string
 		want string
 	}{
-		{AutonomyTierSemiAuto, "default"},
+		{AutonomyTierSemiAuto, "acceptEdits"},
 		{AutonomyTierAutomatic, "auto"},
 		{AutonomyTierFullyAutonomous, "bypassPermissions"},
 	}
@@ -106,8 +107,9 @@ func TestTierDefaultMode_Mapping(t *testing.T) {
 }
 
 func TestTierDefaultMode_InvalidTierSemiAutoDefault(t *testing.T) {
-	// Defensive: an unknown tier maps to the semi-auto defaultMode, not
-	// bypassPermissions — a never-silently-enable guarantee.
+	// Defensive: an unknown tier maps to "default" (the MOST restrictive
+	// mode), never to the new acceptEdits default nor to bypassPermissions —
+	// a never-silently-enable guarantee (SPEC-AUT-PERMMODES-001 REQ-003).
 	if got := TierDefaultMode("bogus"); got != "default" {
 		t.Errorf("TierDefaultMode(%q) = %q, want %q (fail-safe)", "bogus", got, "default")
 	}

@@ -1,7 +1,7 @@
 // Package worktree provides Git worktree management subcommands.
 // @MX:NOTE: [AUTO] Worktree management for parallel SPEC development with isolated working directories
 // @MX:NOTE: [AUTO] Dependency injection pattern: WorktreeProvider set from parent CLI package
-// @MX:NOTE: [AUTO] Supports sync, remove, clean, recover, done, and the guard subcommands
+// @MX:NOTE: [AUTO] Supports new, sync, remove, clean, recover, done, and the guard subcommands
 
 package worktree
 
@@ -21,22 +21,32 @@ var WorktreeCmd = &cobra.Command{
 	Aliases: []string{"wt"},
 	Short:   "Git worktree management",
 	GroupID: "tools",
-	Long: `Manage Git worktrees for parallel SPEC development. Supports creating, syncing, removing, and cleaning worktrees.
+	Long: `Manage Git worktrees for parallel SPEC development: new, sync, remove, clean, sweep, recover, done, hoist, plus the guard verbs snapshot, verify and restore.
 
-Entering a worktree is the launchers' job, not this command's:
-  moai cc -w <name>            work inside the worktree
-  moai cc -w <name> --spawn    open it in a new tmux window, keep this session
+Create a harness-neutral L1 worktree through MoAI's shared materializer:
+  moai worktree new <name>     create .moai/worktrees/<name>
+
+Entering an existing worktree remains the launchers' job:
+  moai cc -w <absolute-path>  work inside an existing MoAI worktree
+  moai codex -w <name>         start Codex inside the worktree
+  moai cc -w <absolute-path> --spawn  open it in a new tmux window
+
+Before disposing a tree, rescue its evidence:
+  moai worktree hoist <tree-path>   copy .moai/reports/ into the project root
 
 For inspection, use git directly: git worktree list`,
 }
 
 func init() {
 	WorktreeCmd.AddCommand(
+		newNewCmd(),
 		newSyncCmd(),
 		newRemoveCmd(),
 		newCleanCmd(),
+		newSweepCmd(),
 		newRecoverCmd(),
 		newDoneCmd(),
+		newHoistCmd(),
 		newGuardSnapshotCmd(),
 		newGuardVerifyCmd(),
 		newGuardRestoreCmd(),

@@ -10,10 +10,15 @@ import (
 // TestEmbeddedTemplatesNoRuntimeLogs closes a blind-spot between .gitignore
 // and Go's //go:embed directive.
 //
-// .gitignore in templates/ has a "logs/" rule that prevents git from tracking
-// runtime trace files under .moai/logs/. But Go's `//go:embed all:templates`
-// directive in embed.go does NOT read .gitignore — it embeds every file on
-// disk under templates/. Any trace-*.jsonl that lands in templates/.moai/logs/
+// .gitignore in templates/ has a ".moai/logs/*" rule that prevents git from
+// tracking runtime trace files under .moai/logs/. (The older "logs/*" rule does
+// NOT reach that directory: a pattern with a mid-slash is relative to its own
+// .gitignore directory, so it matches <root>/logs/ only. That rule is asserted
+// by TestTemplateGitignoreIgnoresLocalArtifacts, which measures the patterns
+// against a real git repository rather than assuming them.) But Go's
+// `//go:embed all:templates` directive in embed.go does NOT read .gitignore —
+// it embeds every file on disk under templates/. Any trace-*.jsonl that lands
+// in templates/.moai/logs/
 // (or anywhere else under templates/) at build time is therefore compiled into
 // the moai binary and shipped to every user via `moai init` / `moai update`.
 //

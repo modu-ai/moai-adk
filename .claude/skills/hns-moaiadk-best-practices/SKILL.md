@@ -111,8 +111,8 @@ plan-auditor, sync-auditor, builder-harness, Explore (Anthropic built-in)
 ```
 
 For domain expertise formerly provided by the archived domain-expert agents,
-use the per-spawn pattern: `Agent(subagent_type: "general-purpose", model:
-"opus", tools: "<whitelist>", prompt: "...<domain> specialist:
+use the per-spawn pattern: `Agent(subagent_type: "general-purpose",
+tools: "<whitelist>", prompt: "...<domain> specialist:
 <conventions>...")` at delegation time. See
 `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full
 migration table (rows #1-#12), which maps each archived agent to its

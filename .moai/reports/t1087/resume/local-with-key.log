@@ -1,0 +1,96 @@
+=== RUN   TestAppJsHandlersFireRuntime
+2026/09/23 08:32:13 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1087/.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+    appjs_fire_guard_test.go:313: probe t1060-driver-runtime stdout:
+        {
+          "label": "t1060-driver-runtime",
+          "port": "63883",
+          "base_url": "http://127.0.0.1:63883",
+          "cdp_port": "63926",
+          "p1_load_referenceerrors": [],
+          "p1_has_glm_btn": true,
+          "p2_revealed_hidden_before": true,
+          "p2_revealed_hidden_after": false,
+          "p2_glm_handler_fired": true,
+          "p3_panel_hidden_before": true,
+          "p3_panel_hidden_after_open": false,
+          "p3_popover_open_fired": true,
+          "p3_has_close_btn": true,
+          "p3_panel_hidden_after_close": true,
+          "p3_popover_close_btn_fired": true,
+          "p3_panel_hidden_after_outside": true,
+          "p3_popover_outside_close_fired": true,
+          "p4_tab_count": 14,
+          "p4_tab_selected_before": 0,
+          "p4_tab_clicked": 1,
+          "p4_tab_selected_after": 1,
+          "p4_settings_tabs_fired": true,
+          "p5_swap_clicked": true,
+          "p5_url_after_swap": "/todo",
+          "p5_swap_referenceerrors": [],
+          "p6_panel_hidden_before": true,
+          "p6_panel_hidden_after": false,
+          "p6_popover_after_swap_fired": true,
+          "p7_load_referenceerrors": [],
+          "p7_has_copy_btn": true,
+          "p7_label_before_click": "Copy",
+          "p7_label_after_click": "✓",
+          "p7_copy_handler_fired": true,
+          "failures": [],
+          "missing_selectors": [],
+          "exit": 0
+        }
+--- PASS: TestAppJsHandlersFireRuntime (22.15s)
+=== RUN   TestAppJsHandlersFireSelectorMiss
+    appjs_fire_guard_test.go:369: probe t1060-driver-selector-miss stdout:
+        {
+          "label": "t1060-driver-selector-miss",
+          "port": "64070",
+          "base_url": "http://127.0.0.1:64070",
+          "cdp_port": "64071",
+          "p1_load_referenceerrors": [],
+          "p1_has_glm_btn": true,
+          "p2_revealed_hidden_before": true,
+          "p2_revealed_hidden_after": false,
+          "p2_glm_handler_fired": true,
+          "p3_panel_hidden_before": true,
+          "p3_panel_hidden_after_open": false,
+          "p3_popover_open_fired": true,
+          "p3_has_close_btn": true,
+          "p3_panel_hidden_after_close": true,
+          "p3_popover_close_btn_fired": true,
+          "p3_panel_hidden_after_outside": true,
+          "p3_popover_outside_close_fired": true,
+          "p4_tab_count": 14,
+          "p4_tab_selected_before": 0,
+          "p4_tab_clicked": 1,
+          "p4_tab_selected_after": 1,
+          "p4_settings_tabs_fired": true,
+          "p5_swap_clicked": true,
+          "p5_url_after_swap": "/todo",
+          "p5_swap_referenceerrors": [],
+          "p6_panel_hidden_before": true,
+          "p6_panel_hidden_after": false,
+          "p6_popover_after_swap_fired": true,
+          "p7_load_referenceerrors": [],
+          "p7_has_copy_btn": false,
+          "p7_label_before_click": null,
+          "p7_label_after_click": null,
+          "p7_copy_handler_fired": false,
+          "failures": [
+            {
+              "entry": "copy_button",
+              "reason": "selector matched nothing",
+              "selector": "[data-copy-nonexistent]"
+            }
+          ],
+          "missing_selectors": [
+            {
+              "entry": "copy_button",
+              "selector": "[data-copy-nonexistent]"
+            }
+          ],
+          "exit": 1
+        }
+--- PASS: TestAppJsHandlersFireSelectorMiss (16.78s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/web	39.470s

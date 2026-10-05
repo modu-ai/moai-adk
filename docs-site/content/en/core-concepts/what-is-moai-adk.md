@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK is an **Agentic Development Kit** that wraps Claude Code around three core concerns — **cost, self-improvement, and quality control**. Same quality of code for fewer tokens (cost, Tokenomics); every turn the session runs, observations accumulate as rules so the harness gets better (self-improvement, Agentic Loop Engineering); and SPEC 3-phase + TRUST 5 gates keep rework out so 'done' is judged by evidence (quality control, Agentic Harness) — model selection, reasoning depth, and context usage are enforced from the outside by the system. 11 specialist AI agents and 31 skills work together, applying TDD (the default) to new projects and DDD to existing projects with low test coverage, automatically.
+MoAI-ADK is an **Agentic Development Kit** that wraps Claude Code around three core concerns — **cost, self-improvement, and quality control**. Same quality of code for fewer tokens (cost, Tokenomics); every turn the session runs, observations accumulate as rules so the harness gets better (self-improvement, Agentic Loop Engineering); and SPEC 3-phase + TRUST 5 gates keep rework out so 'done' is judged by evidence (quality control, Agentic Harness) — model selection, reasoning depth, and context usage are enforced from the outside by the system. 13 specialist AI agents and 31 skills work together, applying TDD (the default) to new projects and DDD to existing projects with low test coverage, automatically.
 
 A single binary written in Go -- runs immediately on every platform with zero dependencies.
 
@@ -22,7 +22,7 @@ MoAI-ADK is **a development kit that has agents collaborate on agentic coding in
 | AI development team | MoAI-ADK | Role |
 |----------|----------|------|
 | Product owner | The user (developer) | Decides what to build |
-| Team lead / Tech Lead | The MoAI orchestrator | Coordinates all work and delegates to the 11 agents |
+| Team lead / Tech Lead | The MoAI orchestrator | Coordinates all work and delegates to the 13 agents |
 | Planner / Spec Writer | manager-spec | Organizes requirements into SPEC documents |
 | Developers / Engineers | manager-develop (with domain context injected) | Implements the actual code with DDD/TDD |
 | QA / Code reviewers | plan-auditor · sync-auditor | Independently audit plans and deliverables |
@@ -33,7 +33,7 @@ The value of v3.0 comes down to three core concerns.
 
 ### Tokenomics (Token Economics)
 
-Intelligent resource allocation that maximizes quality per cost. This core concern consists of the **3-tier model policy** that declaratively assigns model and reasoning depth by work phase and SPEC size, **CG mode** that combines a Claude leader with GLM workers to cut implementation cost by 60-70%, the **Token Circuit Breaker** that stops gracefully before the budget is exceeded, and the **context diet** that shrinks always-loaded context.
+Intelligent resource allocation that maximizes quality per cost. This core concern consists of the **3-tier model policy** that declaratively assigns model and reasoning depth by work phase and SPEC size, the **Token Circuit Breaker** that stops gracefully before the budget is exceeded, and the **context diet** that shrinks always-loaded context.
 
 ### Agentic Loop Engineering
 
@@ -41,7 +41,7 @@ The loop works on its own, and observations accumulate along the way. This core 
 
 ### Agentic Harness
 
-Instead of writing code yourself, you design an environment where agents work well. This core concern is the 11-agent catalog, the SPEC-based 3-phase workflow (plan → run → sync), the TRUST 5 quality gates, and the Harness v4 Builder that creates project-specific harnesses from natural-language requests. For the full concept, see the [Harness Engineering](/en/core-concepts/harness-engineering) document.
+Instead of writing code yourself, you design an environment where agents work well. This core concern is the 13-agent catalog, the SPEC-based 3-phase workflow (plan → run → sync), the TRUST 5 quality gates, and the Harness v4 Builder that creates project-specific harnesses from natural-language requests. For the full concept, see the [Harness Engineering](/en/core-concepts/harness-engineering) document.
 
 ## Why These Three
 
@@ -63,7 +63,7 @@ Declare a completion condition and the session works on its own until the condit
 
 ### Quality Control — Agentic Harness
 
-Instead of writing code yourself, you design an environment where agents work well. The 11-agent catalog separates planning from auditing at design time so the author never scores its own work, and the SPEC 3-phase (plan → run → sync) plus TRUST 5 gates and worktree isolation judge completion by evidence, not by "it seems done".
+Instead of writing code yourself, you design an environment where agents work well. The 13-agent catalog separates planning from auditing at design time so the author never scores its own work, and the SPEC 3-phase (plan → run → sync) plus TRUST 5 gates and worktree isolation judge completion by evidence, not by "it seems done".
 
 ## Why MoAI-ADK?
 
@@ -82,7 +82,7 @@ The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 
 ### Key Numbers (as of v3.0)
 
-- **11** agents in the catalog (10 MoAI custom + 1 Anthropic built-in `Explore`)
+- **13** agents in the catalog (12 MoAI custom + 1 Anthropic built-in `Explore`)
 - **31** skills (template-managed)
 - **36** CLI commands · **16** `/moai` subcommands
 - **16** programming languages supported
@@ -240,9 +240,9 @@ MoAI-ADK implements the **Harness Engineering** paradigm — designing the envir
 
 ## AI Agent Orchestration
 
-MoAI is the **strategic orchestrator**. It does not write code directly — it delegates work to the 11 retained agents (10 MoAI custom + 1 Anthropic built-in `Explore`). The core design principle is **separating planning from auditing** — the one who builds it does not inspect it.
+MoAI is the **strategic orchestrator**. It does not write code directly — it delegates work to the 13 retained agents (12 MoAI custom + 1 Anthropic built-in `Explore`). The core design principle is **separating planning from auditing** — the one who builds it does not inspect it.
 
-### The 11-Agent Catalog
+### The 13-Agent Catalog
 
 | Category | Agent | Cost | Role |
 |------|---------|------|------|
@@ -251,25 +251,28 @@ MoAI is the **strategic orchestrator**. It does not write code directly — it d
 | | manager-docs | 🔵 | Sync phase: documentation and PR creation |
 | | manager-git | 🩵 | Git workflow and tier-based PR routing |
 | | manager-design | 🟠 | Design phase: Claude Design collaboration |
+| | manager-lead | 🔴 | Tier L multi-milestone coordination (worktree-isolated leaf-worker fan-out · the catalog's only Agent-carrier) |
 | **Evaluator** | plan-auditor | 🔴 | Independent audit of SPEC plans (bias prevention) |
 | | sync-auditor | 🔴 | 4-dimension quality assessment (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | 🟠 | Project-specific harness (agents/skills/commands) generation |
 | **Advisor** | super-advisor | 🔵 | High-reasoning consultation (E1-E4 escalation) |
 | **Specialist** | e2e-tester | 🟠 | E2E test execution across web/mobile/desktop |
+| | manager-todo | 🔴 | Manages the todo queue; its read-only judgment sub-role reads the sealed snapshot of an approved GTD auto mission and returns one decision (a deterministic executor performs any action) |
 | **Built-in** | Explore | ⚪ | Read-only codebase exploration |
 
-Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ session-model inherit (user-added agents). Assignments shift when switching profiles (`high`/`low`).
+Cost colors reflect the model behind each agent's work: 🔴 deep reasoning on Opus · 🟠 standard reasoning on Opus · 🔵 light reasoning · ⚪ read-only exploration. Since v3.2 every agent runs on the **session's model and effort** — subagents inherit the main session's model and effort, so the color you see follows the session you launched, not a per-agent assignment table (retired).
 
 ```mermaid
 flowchart TD
     MoAI["MoAI orchestrator\nAnalyzes user requests and delegates"]
 
-    subgraph Managers["Manager agents (5)"]
+    subgraph Managers["Manager agents (6)"]
         M1["manager-spec\nPlan phase: SPEC creation"]
         M2["manager-develop\nRun phase: DDD/TDD implementation"]
         M3["manager-docs\nSync phase: documentation"]
         M4["manager-git\nPR creation, Git operations"]
         M5["manager-design\nDesign collaboration"]
+        M6["manager-lead\nTier L multi-milestone coordination"]
     end
 
     subgraph Evaluators["Evaluator agents (2)"]
@@ -282,8 +285,9 @@ flowchart TD
         B2["super-advisor\nHigh-reasoning consultation"]
     end
 
-    subgraph Specialist["Specialist (1)"]
+    subgraph Specialist["Specialist (2)"]
         S1["e2e-tester\nE2E test execution"]
+        S2["manager-todo\nGTD auto-mission decision"]
     end
 
     subgraph Explore["Built-in (1)"]
@@ -362,7 +366,7 @@ The Plan-phase artifacts are independently audited by the **plan-auditor**, and 
 
 #### The Execution-Mode Selection Gate
 
-At the transition from Plan to Run, MoAI automatically detects the current execution environment (cc/glm/cg) and shows a selection UI the user can confirm or change.
+At the transition from Plan to Run, MoAI automatically detects the current execution environment (cc/glm) and shows a selection UI the user can confirm or change.
 
 ```mermaid
 flowchart TD
@@ -370,7 +374,6 @@ flowchart TD
     B --> C{"Mode selection UI"}
     C -->|"CC"| D["Claude-only execution"]
     C -->|"GLM"| E["GLM-only execution"]
-    C -->|"CG"| F["Claude Leader + GLM Workers"]
 ```
 
 This gate ensures the correct execution mode is used regardless of environment state, preventing mode mismatches during implementation.
@@ -429,47 +432,15 @@ The MoAI orchestrator analyzes task complexity and selects the execution shape.
 | **Parallel sub-agents** | 3-5 read-only agents fanned out concurrently | Parallel analysis: research, review, audits |
 | **Dynamic workflows** | A script orchestrates many agents | Large-scale sweeps, cross-checked research |
 
-{{< callout type="info" >}}
-**Changed in v3.0**: The old Agent Teams static-orchestration layer has been retired. Forcing `--team` falls back to sub-agent mode. However, Claude Code's native teammate runtime — the tmux split panes of `moai cg` — is unaffected. The team-mode quality hooks (TeammateIdle's LSP gate verification, TaskCompleted's SPEC-reference checks) are also preserved along with the native teammate runtime.
-{{< /callout >}}
+{{< callout type="info" >}} **Changed in v3.0**: The old Agent Teams static-orchestration layer has been retired. Forcing `--team` falls back to sub-agent mode. The team-mode quality hooks (TeammateIdle's LSP gate verification, TaskCompleted's SPEC-reference checks) are also preserved along with the native teammate runtime. {{< /callout >}} CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
-### CG Mode (Claude + GLM Hybrid)
+### CG retirement and migration
 
-The practical tool of the Tokenomics core concern. A hybrid mode where the Leader uses the **Claude API** and the Workers use the **GLM API**, implemented via tmux session-level environment-variable isolation. Claude handles strategy, planning, and audits; GLM handles bulk implementation — cutting costs 60-70% on implementation-heavy work.
+`moai cg` has been retired. It exits with a migration diagnostic without starting Claude or GLM. It is not an alias for `moai cc`. Projects with `llm.team_mode: cg` must make an explicit migration choice before launching a session.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  LEADER (current tmux pane, Claude API)                      │
-│  - Orchestrates with /moai commands after activating moai cg │
-│  - Handles the plan, quality, and sync phases                │
-│  - No GLM env → uses the Claude API                          │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ Agent Teams (new tmux panes)
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│  TEAMMATES (new tmux panes, GLM API)                         │
-│  - Inherit the tmux session env → use the GLM API            │
-│  - Execute implementation work in the run phase              │
-│  - Communicate with the leader via SendMessage               │
-└─────────────────────────────────────────────────────────────┘
-```
+This writes `llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, and `llm.gateway.teammate_provider: inherit`. It removes the old hybrid role assignment; it does not preserve a Claude leader with GLM teammate panes.
 
-```bash
-# 1. Save the GLM API key (once)
-moai glm setup sk-your-glm-api-key
-
-# 2. Activate CG mode (run inside a tmux session — Claude Code starts automatically)
-moai cg
-
-# 3. Run the workflow
-/moai "task description"
-```
-
-| Command | Leader | Workers | tmux required | Cost savings | Use case |
-|--------|--------|---------|----------|----------|----------|
-| `moai cc` | Claude | Claude | No | - | Complex work, highest quality |
-| `moai glm` | GLM | GLM | Recommended | ~70% | Cost optimization |
-| `moai cg` | Claude | GLM | **Required** | **~60%** | Quality + cost balance |
+The `claude-glm` target describes a Claude leader with GLM teammates in tmux. Its apply and launch paths are currently unavailable because the TEAMMATE integration gate has not passed. Preview is available. Installing tmux or setting `verified: true` does not open this gate.
 
 ### The Autonomous Development Loop (Ralph Engine)
 
@@ -548,26 +519,26 @@ The @MX tag system is designed to **mark only the most dangerous and important c
 
 ## Model Policy (the Heart of Tokenomics)
 
-MoAI-ADK assigns the optimal model and reasoning depth to each agent. The goal is maximizing quality within the plan's usage limits — the policy moves each agent along the Opus effort ladder rather than swapping in a weaker model class, because on long-horizon agentic work a weaker model spends more steps and costs more per task.
+The goal is maximizing quality within the plan's usage limits. On long-horizon agentic work a weaker model spends more steps and costs more per task — so the lever is reasoning depth inside the same model, not a weaker model class. Since v3.2 this lever lives at the **session** level: subagents inherit the main session's model and effort, agent definitions declare neither, and the per-agent assignment table of earlier versions is retired.
 
-| Policy | Characteristics |
+| Session model policy | Characteristics |
 |------|------|
-| **high** | Highest quality — `max` reasoning depth on the two rarest-invocation agents |
-| **medium** (default) | Balance of quality and cost — the knee of the cost/score curve |
-| **low** | Lowest cost per task — agentic agents drop to Opus `low` effort; Sonnet only on single-shot rows |
+| **high** | Session effort fallback `high` |
+| **medium** (default) | Session effort fallback `medium` — the knee of the cost/score curve |
+| **low** | Session effort fallback `low` — economical within the same model |
 
 ### How to Configure
 
 ```bash
-# During project initialization
-moai init my-project          # Select the model policy in the interactive wizard
+# Configure the session model policy (Session model policy question)
+moai profile setup
 
-# Reconfigure an existing project
-moai update                   # Interactive prompts for each setup step
+# Adjust the session effort as you go
+# /effort low|medium|high|xhigh|max  ·  ultrathink
 ```
 
 {{< callout type="info" >}}
-The default policy is `medium`. GLM settings are isolated in `settings.local.json` (never committed to Git). The config key is `profile: high | medium | low` (the profile matrix column) in `llm.yaml`, and the legacy `performance_tier` field is read as an alias when `profile` is absent (`--high`/`--low` are deprecated aliases of `--model-policy high`/`low`). You can set it directly with the `--profile high|medium|low` flag; the legacy `max` value is also accepted as input and normalized to `high`.
+The default effort fallback is `medium`. GLM settings are isolated in `settings.local.json` (never committed to Git). The retired `--model-policy` / `--profile` / `--high` / `--medium-alias` / `--low` flags are deprecated stubs: they print a warning pointing at `moai profile setup` and have no effect.
 {{< /callout >}}
 
 ## Task Metrics Logging
@@ -588,7 +559,7 @@ Installing MoAI-ADK creates the following structure in your project.
 my-project/
 ├── CLAUDE.md                  # MoAI's execution directive
 ├── .claude/
-│   ├── agents/moai/           # 10 MoAI custom agent definitions (+ the Explore built-in)
+│   ├── agents/moai/           # 12 MoAI custom agent definitions (+ the Explore built-in)
 │   ├── skills/moai-*/         # 31 skill modules
 │   ├── hooks/moai/            # Automation hook scripts
 │   └── rules/moai/            # Coding rules and standards

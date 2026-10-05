@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "terminated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "terminated"
+  ],
+  "title": "ThreadBackgroundTerminalsTerminateResponse",
+  "type": "object"
+}

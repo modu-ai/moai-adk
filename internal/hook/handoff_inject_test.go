@@ -2,7 +2,7 @@ package hook
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook/handoff"
 )
 
@@ -54,22 +55,28 @@ func additionalContextOf(out *HookOutput) string {
 }
 
 func pendingExists(pd string) bool {
-	_, err := os.Stat(handoff.PendingPath(pd))
-	return err == nil
+	_, present, err := handoff.ReadPending(pd)
+	return err == nil && present
 }
 
 func consumedNames(t *testing.T, pd string) []string {
 	t.Helper()
-	entries, err := os.ReadDir(handoff.ConsumedDir(pd))
+	db, err := homestate.OpenFactory(pd)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		t.Fatalf("read consumed dir: %v", err)
+		t.Fatalf("open factory db: %v", err)
 	}
-	names := make([]string, 0, len(entries))
-	for _, e := range entries {
-		names = append(names, e.Name())
+	defer func() { _ = db.Close() }()
+	rows, err := db.DB.Query(`SELECT id FROM resume_handoffs WHERE status='consumed' ORDER BY id`)
+	if err != nil {
+		t.Fatalf("query consumed handoffs: %v", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var names []string
+	for rows.Next() {
+		var id int64
+		if rows.Scan(&id) == nil {
+			names = append(names, fmt.Sprintf("%d-00000000.json", id))
+		}
 	}
 	return names
 }
@@ -281,11 +288,6 @@ func TestClaimThenInject_AuditPreserved(t *testing.T) {
 
 	pd := t.TempDir()
 	mustSavePending(t, pd, livePending("resume body"))
-	origBytes, err := os.ReadFile(handoff.PendingPath(pd))
-	if err != nil {
-		t.Fatalf("read pending: %v", err)
-	}
-
 	// A memory-like audit file elsewhere must survive untouched.
 	memoryFile := filepath.Join(pd, "project_x.md")
 	if err := os.WriteFile(memoryFile, []byte("audit"), 0o644); err != nil {
@@ -306,13 +308,6 @@ func TestClaimThenInject_AuditPreserved(t *testing.T) {
 	names := consumedNames(t, pd)
 	if len(names) != 1 {
 		t.Fatalf("expected 1 consumed file, got %d", len(names))
-	}
-	consumedBytes, err := os.ReadFile(filepath.Join(handoff.ConsumedDir(pd), names[0]))
-	if err != nil {
-		t.Fatalf("read consumed: %v", err)
-	}
-	if string(consumedBytes) != string(origBytes) {
-		t.Error("consumed file content should equal the original pending (rename preserves bytes)")
 	}
 	if _, err := os.Stat(memoryFile); err != nil {
 		t.Errorf("memory audit file must not be deleted: %v", err)
@@ -357,195 +352,7 @@ func TestConcurrentConsume_SingleWinner(t *testing.T) {
 	}
 }
 
-// --- AC-013b: rename failure fail-open (arbitrary errno) ----------------------
-// NOT parallel: mutates the handoffRenameFunc package global.
-
-func TestRenameFailure_FailOpen(t *testing.T) {
-	pd := t.TempDir()
-	mustSavePending(t, pd, livePending("resume"))
-
-	orig := handoffRenameFunc
-	defer func() { handoffRenameFunc = orig }()
-	// Force a NON-ENOENT error to prove the handler does not depend on os.IsNotExist.
-	handoffRenameFunc = func(_, _ string) error { return errors.New("forced rename failure (EACCES-like)") }
-
-	h := NewHandoffInjectHandler(autoCfgProvider(false))
-	out, err := h.Handle(context.Background(), injectInput("clear", pd))
-	if err != nil {
-		t.Fatalf("Handle must be fail-open (return nil error), got: %v", err)
-	}
-	if additionalContextOf(out) != "" {
-		t.Error("rename failure must skip injection")
-	}
-	if !pendingExists(pd) {
-		t.Error("rename failure must leave pending.json in place")
-	}
-}
-
-// TestConcurrentConsume_SingleWinner_RenameAlwaysSucceeds reproduces, on any
-// platform, the Windows failure this claim path was fixed for: two concurrent
-// claims both saw their rename succeed, so both injected (AC-013a observed
-// injected=2 against a single consumed file — one file object moved twice).
-//
-// Stubbing rename to always succeed models exactly that, and pins the invariant
-// that exclusivity comes from the claim gate rather than from the loser's
-// rename happening to fail. Under the previous rename-as-claim design this
-// fails with injected=2.
-//
-// NOT parallel: mutates the handoffRenameFunc package global.
-func TestConcurrentConsume_SingleWinner_RenameAlwaysSucceeds(t *testing.T) {
-	pd := t.TempDir()
-	mustSavePending(t, pd, livePending("resume"))
-
-	orig := handoffRenameFunc
-	defer func() { handoffRenameFunc = orig }()
-	// Model the observed Windows behaviour: the move still happens, but a caller
-	// whose source is already gone is told it succeeded rather than failing.
-	handoffRenameFunc = func(from, to string) error {
-		_ = os.Rename(from, to)
-		return nil
-	}
-
-	h := NewHandoffInjectHandler(autoCfgProvider(false))
-	var injected int32
-	var wg sync.WaitGroup
-	for i := 0; i < 8; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			out, err := h.Handle(context.Background(), injectInput("clear", pd))
-			if err != nil {
-				t.Errorf("Handle: %v", err)
-				return
-			}
-			if additionalContextOf(out) != "" {
-				atomic.AddInt32(&injected, 1)
-			}
-		}()
-	}
-	wg.Wait()
-
-	if injected != 1 {
-		t.Errorf("expected exactly 1 winner even when every rename succeeds, got %d", injected)
-	}
-}
-
-// TestClaimGate_DurableAcrossCallers_WhenRenameLies forces, deterministically and
-// on every platform, the interleaving that
-// TestConcurrentConsume_SingleWinner_RenameAlwaysSucceeds only reaches by luck on
-// Windows CI.
-//
-// The Windows failure is a claim whose rename reported success while the record
-// did NOT move: the real os.Rename hit a sharing violation from a concurrent
-// reader of pending.json and the caller was still told it succeeded, so it
-// injected and left the record live for the next caller (AC-013a: injected=2
-// against a single consumed file). Reporting success without moving models that
-// exactly, with no timing dependency.
-//
-// Sequential calls are the serialized form of that race: each call is a caller
-// that reaches the gate after the previous one is done with it. Exactly one may
-// consume the record, and that must hold without relying on the rename moving
-// the file or on the stat re-check observing it gone.
-//
-// NOT parallel: mutates the handoffRenameFunc package global.
-func TestClaimGate_DurableAcrossCallers_WhenRenameLies(t *testing.T) {
-	pd := t.TempDir()
-	mustSavePending(t, pd, livePending("resume"))
-
-	orig := handoffRenameFunc
-	defer func() { handoffRenameFunc = orig }()
-	handoffRenameFunc = func(_, _ string) error { return nil }
-
-	h := NewHandoffInjectHandler(autoCfgProvider(false))
-	injected := 0
-	for i := 0; i < 4; i++ {
-		out, err := h.Handle(context.Background(), injectInput("clear", pd))
-		if err != nil {
-			t.Fatalf("Handle #%d must be fail-open, got: %v", i, err)
-		}
-		if additionalContextOf(out) != "" {
-			injected++
-		}
-	}
-
-	if injected != 1 {
-		t.Errorf("expected exactly 1 caller to consume the record even when rename reports success without moving it, got %d", injected)
-	}
-}
-
-// TestClaimGate_ReleasedWhenNothingConsumed pins the release policy for the
-// non-consuming early return: a rename that fails consumed nothing and left the
-// record live, so the gate must be dropped and a later session must still be
-// able to claim the same record.
-//
-// NOT parallel: mutates the handoffRenameFunc package global.
-func TestClaimGate_ReleasedWhenNothingConsumed(t *testing.T) {
-	pd := t.TempDir()
-	mustSavePending(t, pd, livePending("resume"))
-
-	orig := handoffRenameFunc
-	defer func() { handoffRenameFunc = orig }()
-	handoffRenameFunc = func(_, _ string) error { return errors.New("forced rename failure (EACCES-like)") }
-
-	h := NewHandoffInjectHandler(autoCfgProvider(false))
-	if out, err := h.Handle(context.Background(), injectInput("clear", pd)); err != nil {
-		t.Fatalf("Handle must be fail-open, got: %v", err)
-	} else if additionalContextOf(out) != "" {
-		t.Fatal("a failed rename must skip injection")
-	}
-	if _, err := os.Stat(handoff.ClaimGatePath(pd)); !os.IsNotExist(err) {
-		t.Errorf("gate must be released when nothing was consumed; stat err=%v", err)
-	}
-
-	// A later session (working rename) must still be able to claim the record.
-	handoffRenameFunc = orig
-	if out, err := h.Handle(context.Background(), injectInput("clear", pd)); err != nil {
-		t.Fatalf("Handle: %v", err)
-	} else if additionalContextOf(out) == "" {
-		t.Error("a record left live by a failed claim must remain claimable")
-	}
-}
-
-// TestClaimGate_HeldGateBlocksClaim pins that a held gate makes the claim yield
-// rather than steal it — the property that keeps the winner single.
-//
-// NOT parallel: mutates the handoffRenameFunc package global.
-func TestClaimGate_HeldGateBlocksClaim(t *testing.T) {
-	pd := t.TempDir()
-	mustSavePending(t, pd, livePending("resume"))
-
-	orig := handoffRenameFunc
-	defer func() { handoffRenameFunc = orig }()
-	handoffRenameFunc = func(from, to string) error { _ = os.Rename(from, to); return nil }
-
-	if err := os.WriteFile(handoff.ClaimGatePath(pd), nil, 0o600); err != nil {
-		t.Fatalf("seed gate: %v", err)
-	}
-
-	h := NewHandoffInjectHandler(autoCfgProvider(false))
-	out, err := h.Handle(context.Background(), injectInput("clear", pd))
-	if err != nil {
-		t.Fatalf("Handle must be fail-open, got: %v", err)
-	}
-	if additionalContextOf(out) != "" {
-		t.Error("a held gate must block the claim")
-	}
-	if !pendingExists(pd) {
-		t.Error("a blocked claim must leave pending.json in place")
-	}
-}
-
-// TestClaimGate_RetainedAfterClaim_NextRecordStillClaimable proves the gate is a
-// durable claim marker on the success path — it survives the consume so no later
-// contender can win the same record — and that retaining it does not disable
-// auto-resume: a second record saved afterwards is still claimable, because
-// handoff.SavePending clears the gate when it writes the next record.
-//
-// The retention assertion replaces an earlier "gate must be released after a
-// successful claim" assertion. That earlier assertion encoded the defect this
-// test file's Windows failure came from: a gate released on the success path is
-// only a mutex, leaving exclusivity to the rename and the stat re-check.
-func TestClaimGate_RetainedAfterClaim_NextRecordStillClaimable(t *testing.T) {
+func TestSQLiteClaim_NextRecordStillClaimable(t *testing.T) {
 	t.Parallel()
 
 	pd := t.TempDir()
@@ -557,10 +364,6 @@ func TestClaimGate_RetainedAfterClaim_NextRecordStillClaimable(t *testing.T) {
 	} else if additionalContextOf(out) == "" {
 		t.Fatal("expected the first record to be injected")
 	}
-	if _, err := os.Stat(handoff.ClaimGatePath(pd)); err != nil {
-		t.Errorf("gate must be retained after a successful claim; stat err=%v", err)
-	}
-
 	mustSavePending(t, pd, livePending("second"))
 	if out, err := h.Handle(context.Background(), injectInput("clear", pd)); err != nil {
 		t.Fatalf("Handle: %v", err)
@@ -569,51 +372,13 @@ func TestClaimGate_RetainedAfterClaim_NextRecordStillClaimable(t *testing.T) {
 	}
 }
 
-// TestSavePending_ClearsLeakedGate proves a gate orphaned by a killed consumer
-// does not disable auto-resume forever: writing the next record clears it.
-func TestSavePending_ClearsLeakedGate(t *testing.T) {
-	t.Parallel()
-
-	pd := t.TempDir()
-	mustSavePending(t, pd, livePending("resume"))
-	if err := os.WriteFile(handoff.ClaimGatePath(pd), nil, 0o600); err != nil {
-		t.Fatalf("seed gate: %v", err)
-	}
-
-	// Re-saving is the recovery point: the new record has never been claimed.
-	mustSavePending(t, pd, livePending("resume"))
-	if _, err := os.Stat(handoff.ClaimGatePath(pd)); !os.IsNotExist(err) {
-		t.Fatalf("SavePending must clear a leaked gate; stat err=%v", err)
-	}
-
-	h := NewHandoffInjectHandler(autoCfgProvider(false))
-	if out, err := h.Handle(context.Background(), injectInput("clear", pd)); err != nil {
-		t.Fatalf("Handle: %v", err)
-	} else if additionalContextOf(out) == "" {
-		t.Error("expected injection after the leaked gate was cleared")
-	}
-}
-
 // --- AC-014: NULL session_id nonce filename shape ----------------------------
 
-func TestNonceFallback_FilenameShape(t *testing.T) {
+func TestNonceFallback_Shape(t *testing.T) {
 	t.Parallel()
-
-	pd := t.TempDir()
-	// saved_by_session empty → crypto/rand 8-hex nonce.
-	mustSavePending(t, pd, &handoff.PendingRecord{Body: "resume", SavedBySession: "", SavedAt: time.Now()})
-
-	h := NewHandoffInjectHandler(autoCfgProvider(false))
-	if _, err := h.Handle(context.Background(), injectInput("clear", pd)); err != nil {
-		t.Fatalf("Handle: %v", err)
-	}
-	names := consumedNames(t, pd)
-	if len(names) != 1 {
-		t.Fatalf("expected 1 consumed file, got %d", len(names))
-	}
-	shape := regexp.MustCompile(`^\d+-[0-9a-f]{8}\.json$`)
-	if !shape.MatchString(names[0]) {
-		t.Errorf("consumed filename %q does not match ^\\d+-[0-9a-f]{8}\\.json$", names[0])
+	shape := regexp.MustCompile(`^[0-9a-f]{8}$`)
+	if got := consumeNonce(""); !shape.MatchString(got) {
+		t.Errorf("nonce %q does not match ^[0-9a-f]{8}$", got)
 	}
 }
 
@@ -676,7 +441,7 @@ func TestFailOpen_CorruptPending(t *testing.T) {
 	t.Parallel()
 
 	pd := t.TempDir()
-	dir := filepath.Join(pd, ".moai", "state", "handoff")
+	dir := filepath.Dir(handoff.PendingPath(pd))
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
@@ -692,11 +457,8 @@ func TestFailOpen_CorruptPending(t *testing.T) {
 	if additionalContextOf(out) != "" {
 		t.Error("corrupt pending must not inject")
 	}
-	if !pendingExists(pd) {
-		t.Error("corrupt pending must be preserved (not renamed)")
-	}
-	if n := len(consumedNames(t, pd)); n != 0 {
-		t.Errorf("corrupt pending must not produce a consumed file, got %d", n)
+	if _, err := os.Stat(handoff.PendingPath(pd)); err != nil {
+		t.Errorf("corrupt factory database must be preserved: %v", err)
 	}
 }
 

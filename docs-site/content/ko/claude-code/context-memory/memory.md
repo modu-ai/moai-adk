@@ -144,6 +144,8 @@ CLAUDE.md는 매 세션 컨텍스트 윈도우에 로드되어 대화와 함께 
 
 `MEMORY.md`는 메모리 디렉터리의 인덱스 역할을 합니다. **앞 200줄 또는 25KB 중 먼저 닿는 지점까지만** 매 대화 시작에 로드되고, 그 이상은 시작 시점에 로드되지 않습니다. 그래서 Claude는 상세 노트를 별도 주제 파일로 옮겨 `MEMORY.md`를 간결하게 유지합니다.
 
+출처: Claude Code CHANGELOG 2.1.83 — "Memory: MEMORY.md index now truncates at 25KB as well as 200 lines".
+
 ```mermaid
 flowchart TD
     A["세션 시작"] --> B["MEMORY.md 인덱스 로드<br>앞 200줄 또는 25KB"]
@@ -188,6 +190,12 @@ CLAUDE.md와 `MEMORY.md`는 **세션이 시작될 때 한 번** 읽혀 컨텍스
 MoAI-ADK는 위의 Claude Code 메모리 기반 위에서 동작합니다. 프로젝트 루트의 CLAUDE.md를 오케스트레이터 실행 지침으로 사용하고, 자동 메모리의 `MEMORY.md` 인덱스와 주제 파일을 SPEC 작업의 세션 핸드오프와 교훈(lessons) 누적에 활용합니다.
 
 파일 기반 영속 메모리는 MoAI-ADK **에이전틱 루프 엔지니어링**의 원료이기도 합니다. 루프가 돌며 남긴 관찰 (사용자 교정, 실패 패턴, 라우팅 결정)이 메모리 파일에 쌓이고, 하네스가 그 축적을 바탕으로 스킬과 에이전트 지침을 개선합니다. "루프가 관찰을 축적하고, 하네스가 학습하여 지침이 진화한다"는 문장의 첫 번째 고리가 바로 이 페이지의 메모리 메커니즘입니다. MoAI 고유의 메모리 운영 규칙과 인덱스 관리 방식은 별도 문서에서 자세히 다룹니다.
+
+## MoAI-ADK 프로젝트의 로컬 지침 — `AGENTS.local.md`
+
+Claude Code 자체는 `CLAUDE.local.md`를 읽지만, MoAI-ADK 프로젝트는 개인 지침을 `AGENTS.local.md`에 둡니다. `CLAUDE.md` 마지막의 `@AGENTS.local.md` 가져오기가 이 파일을 Claude Code에 싣고, 같은 파일을 `moai codex`가 Codex에 전달합니다. 공통 계약은 `AGENTS.md`, Claude 전용 층은 `CLAUDE.md`, 개인 지침은 `AGENTS.local.md` — 세 파일 구조입니다.
+
+`CLAUDE.local.md`와 `AGENTS.local.md`를 함께 두면 Claude Code가 두 파일을 모두 읽어 비슷한 지침이 두 번 실립니다. 기존 `CLAUDE.local.md`는 `moai migrate local-instructions`로 옮기세요. 두 파일이 모두 있으면 이 명령은 거부하므로, 그때는 손으로 합칩니다.
 
 ## 관련 문서
 

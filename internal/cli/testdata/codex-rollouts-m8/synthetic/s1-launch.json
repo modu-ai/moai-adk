@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "role": "manager-docs",
+  "route": "direct",
+  "started_at": "2030-01-01T00:00:00Z",
+  "ended_at": "2030-01-01T00:00:10Z",
+  "argv": [
+    "exec",
+    "-s",
+    "read-only"
+  ],
+  "sandbox": "read-only",
+  "mcp_servers": "disabled",
+  "covers": "synthetic fixture",
+  "unsupported": [
+    "codex-home-session-files",
+    "project-hook-commands"
+  ],
+  "exit_code": 0,
+  "failure_reason": null,
+  "verdict_path": ".moai/reports/v.md",
+  "verdict_sha256": "c58c7a67c421264c5ab781d220d82607734db38d815ade5fe61ba6cb713cc8e3"
+}

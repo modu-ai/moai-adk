@@ -47,6 +47,10 @@ type postToolHandler struct {
 	// REQ-LL-003: PostTool hook emits diagnostics to both systemMessage and this channel.
 	// If nil, channel emission is skipped (no-op).
 	feedbackCh *loop.FeedbackChannel
+	// escalationCfg is the configuration the escalation detector reads; when
+	// nil the detector reads cfg. Kept separate from cfg so wiring the
+	// detector does not change lint_as_instruction's nil-cfg default.
+	escalationCfg ConfigProvider
 }
 
 // NewPostToolHandler creates a new PostToolUse event handler.
@@ -143,6 +147,14 @@ func (h *postToolHandler) EventType() EventType {
 // injects a systemMessage when lint_as_instruction is enabled (REQ-LAI-001).
 // Always returns Decision "allow" (observation only).
 func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	// Contract-mode escalation detector: records only, returns nothing, and
+	// is inert (no file read) unless workflow.autonomy.mode is contract.
+	escCfg := h.escalationCfg
+	if escCfg == nil {
+		escCfg = h.cfg
+	}
+	observeEscalation(escCfg, string(EventPostToolUse), input)
+
 	slog.Debug("collecting post-tool metrics",
 		"tool_name", input.ToolName,
 		"session_id", input.SessionID,
@@ -163,6 +175,17 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		metrics["input_size"] = len(input.ToolInput)
 	}
 
+	// Push serializer release (SPEC-AUTONOMY-PRECONDITION-001 REQ-AP-002,
+	// design.md §B Release). A failed admitted push of `develop` releases the
+	// push-develop lease immediately — nothing is in flight. Inactive until
+	// the contract resolver is wired into pushShowJSONLoader (the activation
+	// document does not resolve, so nothing else here runs); every other
+	// uncertainty keeps the record and lets its declared bound expire it.
+	if IsShellTool(input.ToolName) {
+		root := resolveProjectRootFromEnvAt("post-tool push-serializer release", slog.LevelDebug)
+		releasePushLeaseOnFailure(input, root, pushSerializerShow(root), os.Stderr)
+	}
+
 	// Collect Agent (formerly Task) subagent metrics.
 	// Best-effort: errors are logged internally and never propagated.
 	// Since v2.1.63 Claude Code renamed Task → Agent; accept both for backward compatibility.
@@ -174,6 +197,14 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 	// Best-effort: errors are logged and never propagated.
 	if input.ToolName == "Skill" {
 		logSkillUsage(input)
+	}
+
+	// t236 / issue #1640: Claude Code emits no CwdChanged for EnterWorktree/
+	// ExitWorktree, so the env-file MOAI_PROJECT_DIR stamp and the session
+	// registry relocation ride this event instead. Early return — none of the
+	// Write/Edit machinery below applies to a tree move.
+	if input.ToolName == "EnterWorktree" || input.ToolName == "ExitWorktree" {
+		return handleWorktreeMove(input, h.cfg), nil
 	}
 
 	var systemMessage string
@@ -216,12 +247,29 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		runMemoryAudit(input)
 	}
 
+	// Mirror worktree agent-memory writes into the primary store
+	// (SPEC-AGENT-MEMORY-DRAIN-001 M2). Fail-open like the audit above:
+	// every failure is a stderr notice; the write is never blocked.
+	if input.ToolName == "Write" || input.ToolName == "Edit" {
+		mirrorAgentMemory(input)
+	}
+
 	// Record evidence-bearing tool events for the Stop evidence gate
 	// (SPEC-STOP-EVIDENCE-WRITER-001). Bash test results + Edit/Write path-kind
 	// feed the session ledger that GATE-001's runEvidenceGate already consumes.
 	// Best-effort, additive — never blocks, never alters HookOutput.
-	if input.ToolName == "Bash" || input.ToolName == "Edit" || input.ToolName == "Write" {
+	if IsShellTool(input.ToolName) || input.ToolName == "Edit" || input.ToolName == "Write" {
 		logEvidence(input)
+	}
+
+	// Surface a test call that executed nothing (SPEC-SELECTOR-CENSUS-001
+	// REQ-SEC-004). Silence is the disease this guard treats: a zero-execution
+	// run is already withheld from the ledger's pass column, but withholding
+	// alone leaves the author believing the suite ran. Advisory-only and
+	// fail-open — appends to systemMessage, never sets Decision, and returns the
+	// message untouched for every non-Bash or non-test event.
+	if IsShellTool(input.ToolName) {
+		systemMessage = maybeZeroExecutionAdvisory(input, systemMessage)
 	}
 
 	// Navigator Detect branch (SPEC-NAVIGATOR-SYNC-002 REQ-NS2-009b / AC-NS2-001b).

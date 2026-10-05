@@ -15,11 +15,22 @@ import (
 // Fired when the working directory changes during a session.
 // Supports CLAUDE_ENV_FILE for persisting environment variables.
 // Available since Claude Code v2.1.83+.
-type cwdChangedHandler struct{}
+type cwdChangedHandler struct {
+	// cfg provides the workflow.anchor_relocation_guard.enabled flag for the
+	// relocation path (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-005). Nil keeps
+	// the guard disabled — the distributed default.
+	cfg ConfigProvider
+}
 
 // NewCwdChangedHandler creates a new CwdChanged event handler.
 func NewCwdChangedHandler() Handler {
 	return &cwdChangedHandler{}
+}
+
+// NewCwdChangedHandlerWithConfig creates a new CwdChanged event handler with
+// the config provider the relocation guard flag reads.
+func NewCwdChangedHandlerWithConfig(cfg ConfigProvider) Handler {
+	return &cwdChangedHandler{cfg: cfg}
 }
 
 // EventType returns EventCwdChanged.
@@ -43,7 +54,7 @@ func (h *cwdChangedHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 
 	// t74: keep the registry entry's CWD in step with the session, so anchor
 	// detection sees sessions that entered a worktree mid-session.
-	relocateSessionCwd(input, newCwd)
+	relocateSessionCwd(input, newCwd, "CwdChanged", anchorRelocationGuardEnabled(h.cfg))
 
 	// Write project-specific environment to CLAUDE_ENV_FILE if available.
 	// This persists env vars into subsequent Bash tool calls.
@@ -55,11 +66,26 @@ func (h *cwdChangedHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 }
 
 // writeEnvFile appends project-specific environment variables to CLAUDE_ENV_FILE.
-// CLAUDE_ENV_FILE may already hold user/session content, so the write MUST be
-// an append (O_APPEND|O_CREATE), never a truncating os.WriteFile that would
-// clobber it. Idempotent: an export line already present in the file is not
-// appended again. Non-blocking: errors are logged but never propagated.
+//
+// t236 / issue #1640 (2026-09-02): the body lives in the package-level
+// stampProjectDirEnv so the PostToolUse EnterWorktree/ExitWorktree branch can
+// reuse the same stamp — Claude Code emits no CwdChanged for those tool-based
+// tree moves, so this handler is no longer the only legitimate caller.
 func (h *cwdChangedHandler) writeEnvFile(envFile, cwd string) {
+	stampProjectDirEnv(envFile, cwd)
+}
+
+// @MX:NOTE: [AUTO] t236/#1640 — sole producer of the MOAI_PROJECT_DIR export;
+// now called from BOTH CwdChanged and the PostToolUse worktree-move branch,
+// because Claude Code emits no CwdChanged for EnterWorktree/ExitWorktree.
+// No Go code consumes MOAI_PROJECT_DIR yet (verified 2026-09-02) — the stamp
+// serves user scripts and future consumers only.
+// stampProjectDirEnv appends `export MOAI_PROJECT_DIR="<cwd>"` to envFile when
+// cwd holds a .moai/config directory. Append-only (CLAUDE_ENV_FILE may already
+// hold user/session content — never a truncating write), idempotent (an export
+// line already present is not appended again), non-blocking (errors are logged
+// but never propagated).
+func stampProjectDirEnv(envFile, cwd string) {
 	// Check if the new directory has a .envrc or .env file
 	var exports []string
 

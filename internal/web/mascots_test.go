@@ -2,7 +2,6 @@ package web
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -32,13 +31,14 @@ func TestMascotPosesEmbeddedAndServed(t *testing.T) {
 		if len(data) == 0 {
 			t.Errorf("embedded mascot %q is empty", name)
 		}
-		// Served from /static/mascots/mascot-<pose>.png (200, offline — a static GET
-		// is not Host-gated, so a foreign host still reaches it).
+		// Served from /static/mascots/mascot-<pose>.png (200, offline) to a
+		// loopback Host; a static GET from a foreign Host is refused like any
+		// other route (AC-WC-009 as amended).
 		path := "/static/" + name
-		req := httptest.NewRequest(http.MethodGet, path, nil)
-		req.Host = "evil.example.com"
-		rec := httptest.NewRecorder()
-		a.routes().ServeHTTP(rec, req)
+		if foreign := serveWithHost(t, a.routes(), http.MethodGet, path, "evil.example.com"); foreign.Code != http.StatusForbidden {
+			t.Errorf("GET %s from a foreign Host: status = %d, want 403", path, foreign.Code)
+		}
+		rec := serveGet(t, a.routes(), path)
 		if rec.Code != http.StatusOK {
 			t.Errorf("GET %s status = %d, want 200", path, rec.Code)
 		}
@@ -55,9 +55,7 @@ func TestMascotRetiredAssetsRemoved(t *testing.T) {
 	a := newTestApp(t)
 	for _, retired := range []string{"mascot-coding.png", "mascot-talking.png"} {
 		path := "/static/mascots/" + retired
-		req := httptest.NewRequest(http.MethodGet, path, nil)
-		rec := httptest.NewRecorder()
-		a.routes().ServeHTTP(rec, req)
+		rec := serveGet(t, a.routes(), path)
 		if rec.Code == http.StatusOK {
 			t.Errorf("retired asset %s still served (status 200) — must be removed", path)
 		}

@@ -109,6 +109,122 @@ func TestCleanStale_JSONIgnoresYes(t *testing.T) {
 	}
 }
 
+// TestClean_JSONAloneIsPureRead is the issue #1704 regression. `clean --json`
+// WITHOUT --stale used to fall through to the default path — a prune plus a
+// "Cleaned stale worktree references" banner, zero JSON. The flag the help
+// calls read-only mutated state precisely because someone trusted it enough
+// to look. The inventory must be reachable on its own, prune nothing, remove
+// nothing, and print a valid JSON array covering every non-protected tree.
+func TestClean_JSONAloneIsPureRead(t *testing.T) {
+	prunes, removed := cleanJSONTestEnv(t,
+		[]git.Worktree{
+			{Path: "/wt/merged", Branch: "feat/merged"},
+			{Path: "/wt/unmerged", Branch: "feat/unmerged"},
+		},
+		map[string]bool{"feat/merged": true, "feat/unmerged": false},
+	)
+
+	out, err := runStaleClean(t, map[string]string{"json": "true"})
+	if err != nil {
+		t.Fatalf("runClean error: %v", err)
+	}
+	if *prunes != 0 {
+		t.Fatalf("--json must not prune; pruned %d time(s)", *prunes)
+	}
+	if len(*removed) != 0 {
+		t.Fatalf("--json must remove nothing; removed %v", *removed)
+	}
+
+	var got []staleCandidate
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("stdout must be valid JSON, got a human banner instead:\n%s", out)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected one object per non-protected tree (2), got %d:\n%s", len(got), out)
+	}
+	byPath := map[string]staleCandidate{}
+	for _, c := range got {
+		byPath[c.Path] = c
+	}
+	if c := byPath["/wt/unmerged"]; c.Merged != staleStateNo || c.KeepReason == "" {
+		t.Errorf("an unmerged tree must report merged=%q with a keep_reason, got %+v", staleStateNo, c)
+	}
+}
+
+// TestClean_JSONPathNeverPrunes pins the same contract on the --stale --json
+// combination: the inventory path used to prune first ("so dangling entries
+// drop out of the listing"), which is exactly the mutation issue #1704
+// reports. A report that changes what it reports on is not a report; a
+// dangling entry now surfaces with its unreadable-tree keep reason instead.
+func TestClean_JSONPathNeverPrunes(t *testing.T) {
+	prunes, removed := cleanJSONTestEnv(t,
+		[]git.Worktree{{Path: "/wt/removable", Branch: "feat/removable"}},
+		map[string]bool{"feat/removable": true},
+	)
+
+	out, err := runStaleClean(t, map[string]string{"stale": "true", "json": "true"})
+	if err != nil {
+		t.Fatalf("runClean error: %v", err)
+	}
+	if *prunes != 0 {
+		t.Fatalf("the --json reporting path must not prune; pruned %d time(s)", *prunes)
+	}
+	if len(*removed) != 0 {
+		t.Fatalf("the --json reporting path must remove nothing; removed %v", *removed)
+	}
+	var got []staleCandidate
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("stdout must be valid JSON:\n%s", out)
+	}
+}
+
+// cleanJSONTestEnv is staleTestEnv with a counted Prune: the issue #1704
+// regression is about the prune the reporting path was never supposed to run,
+// so the test must be able to observe one. Returns the prune count and the
+// removed-path list.
+func cleanJSONTestEnv(t *testing.T, worktrees []git.Worktree, merged map[string]bool) (*int, *[]string) {
+	t.Helper()
+
+	origProvider := WorktreeProvider
+	origGitCmd := gitWorktreeCmd
+	origRepoRoot := gitRepoRootFunc
+	origMerged := mockIsBranchMergedFunc
+	t.Cleanup(func() {
+		WorktreeProvider = origProvider
+		gitWorktreeCmd = origGitCmd
+		gitRepoRootFunc = origRepoRoot
+		mockIsBranchMergedFunc = origMerged
+	})
+
+	prunes := 0
+	removedPaths := []string{}
+
+	WorktreeProvider = &mockWorktreeManager{
+		rootPath: "/repo",
+		listFunc: func() ([]git.Worktree, error) { return worktrees, nil },
+		pruneFunc: func() error {
+			prunes++
+			return nil
+		},
+		removeFunc: func(path string, force bool) error {
+			removedPaths = append(removedPaths, path)
+			return nil
+		},
+	}
+	mockIsBranchMergedFunc = func(branch, _ string) (bool, error) {
+		return merged[branch], nil
+	}
+	gitWorktreeCmd = func(args ...string) (string, error) {
+		if len(args) >= 2 && args[0] == "-C" {
+			return "", nil // clean working tree everywhere
+		}
+		return "", nil
+	}
+	gitRepoRootFunc = func() (string, error) { return "/repo", nil }
+
+	return &prunes, &removedPaths
+}
+
 // TestCleanStale_BaseDefaultsToOriginMain is AC-WR-019 / REQ-WR-022. The old
 // default compared against the LOCAL main, which lags the remote — so the two
 // sweeps in this repository could reach opposite conclusions about the same

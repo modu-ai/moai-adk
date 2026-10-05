@@ -2,7 +2,6 @@
 id: SPEC-GOAL-STOPFAILURE-CLEAR-001
 artifact: plan
 version: "0.1.0"
-status: implemented
 created: 2026-08-19
 updated: 2026-08-19
 ---

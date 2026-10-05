@@ -141,8 +141,8 @@ func TestGoalArmResolvesSessionId(t *testing.T) {
 	}
 }
 
-// TestGoalCmdListsDeliveredVerbs pins AC-GLE-035 (arm/status/clear present, each
-// an independent check) + AC-GLE-039a (resume NOT a delivered subcommand).
+// TestGoalCmdListsDeliveredVerbs pins the legacy verbs plus the auto-mission
+// lifecycle surface introduced by SPEC-GTD-AUTONOMY-001.
 func TestGoalCmdListsDeliveredVerbs(t *testing.T) {
 	rc, buf := newGoalTestRoot()
 	rc.SetArgs([]string{"goal", "--help"})
@@ -160,9 +160,16 @@ func TestGoalCmdListsDeliveredVerbs(t *testing.T) {
 	if !strings.Contains(help, "clear") {
 		t.Error("goal --help missing verb: clear")
 	}
-	// AC-GLE-039a: resume is deliberately NOT registered (§D.6).
-	if strings.Contains(strings.ToLower(help), "resume") {
-		t.Error("goal --help must NOT list resume (out of scope §D.6)")
+	if !strings.Contains(strings.ToLower(help), "resume") {
+		t.Error("goal --help missing auto-mission verb: resume")
+	}
+	for _, phrase := range []string{"natural-language autonomous mission", "approval required before effects", "active-session-only"} {
+		if !strings.Contains(strings.ToLower(help), phrase) {
+			t.Errorf("goal --help missing auto contract phrase %q", phrase)
+		}
+	}
+	if strings.Contains(strings.ToLower(help), "resume verb is deferred") {
+		t.Error("goal --help still claims resume is deferred")
 	}
 }
 

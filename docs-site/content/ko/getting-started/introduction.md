@@ -6,7 +6,7 @@ draft: false
 
 MoAI-ADK는 **비용 (토크노믹스) · 자기 개선 (에이전틱 루프 엔지니어링) · 품질 통제 (에이전틱 하네스)** 세 가지로 Claude Code를 감싸는 Agentic Development Kit입니다. 같은 품질의 코드를 더 적은 토큰으로 만듭니다. 완료 조건만 선언하면 루프가 알아서 일하고, 그 과정에서 쌓인 관찰은 하네스 학습의 원료가 됩니다. '끝'은 SPEC 3단계와 TRUST 5 게이트가 증거로 판정합니다. 모델 선택도, 추론 깊이도, 컨텍스트 사용량도 시스템이 관리합니다. Go로 작성된 단일 바이너리라 의존성 없이 바로 실행됩니다.
 
-이 페이지는 MoAI-ADK 가 무엇이고, 왜 이런 모양을 하고 있는지를 한 흐름에 소개합니다. 세 가지 핵심이 각각 어떤 문제에 대답하는지, SPEC · TRUST 5 · CG 모드 같은 용어가 이 안에서 어디에 서 있는지, 그리고 처음 시작할 때 어디로 가면 되는지까지를 다룹니다. 설치 절차와 첫 프로젝트 실행은 [설치](/ko/getting-started/installation) 와 [빠른 시작](/ko/getting-started/quickstart) 페이지에 맡기고, 여기서는 "왜" 에 집중합니다.
+이 페이지는 MoAI-ADK 가 무엇이고, 왜 이런 모양을 하고 있는지를 한 흐름에 소개합니다. 세 가지 핵심이 각각 어떤 문제에 대답하는지, SPEC · TRUST 5 같은 용어가 이 안에서 어디에 서 있는지, 그리고 처음 시작할 때 어디로 가면 되는지까지를 다룹니다. 설치 절차와 첫 프로젝트 실행은 [설치](/ko/getting-started/installation) 와 [빠른 시작](/ko/getting-started/quickstart) 페이지에 맡기고, 여기서는 "왜" 에 집중합니다.
 
 
 ## 표기법 안내
@@ -29,7 +29,7 @@ MoAI-ADK는 Claude Code를 **세 축**으로 감싸는 Agentic Development Kit�
 
 ### 비용 — 토크노믹스
 
-같은 품질을 더 적은 토큰으로. 비용은 단가가 아니라 **모델 배정**이 정합니다 — DeepSWE 벤치마크에서 Opus 최저 추론이 Sonnet 최고 추론보다 점수가 높으면서 16분의 1 비용이었습니다. 3-계층 모델 정책 · CG 모드 · 프롬프트 캐싱 · Token Circuit Breaker가 예산을 시스템이 관리합니다.
+같은 품질을 더 적은 토큰으로. 비용은 단가가 아니라 **모델 선택**이 정합니다 — DeepSWE 벤치마크에서 Opus 최저 추론이 Sonnet 최고 추론보다 점수가 높으면서 16분의 1 비용이었습니다. 세션 모델 정책 · 프롬프트 캐싱 · Token Circuit Breaker가 예산을 시스템이 관리합니다.
 
 ### 자기 개선 — 에이전틱 루프 엔지니어링
 
@@ -44,12 +44,12 @@ MoAI-ADK는 Claude Code를 **세 축**으로 감싸는 Agentic Development Kit�
 ## v3.1에서 더 편리해진 점
 
 - **`/moai goal`** — 완료 조건 선언 한 줄로 세션이 자율 진행합니다.
-- **칸반 모드** — 여러 세션을 동시에 실행합니다.
+- **팩토리 모드** — 여러 세션을 동시에 실행합니다.
 - **BAS Navigator** — 3단계 코드맵을 자동 동기화합니다.
-- **manager-lead** — SPEC 안의 Tier L 마일스톤 팬아웃은 물론, 칸반·팩토리 리드 세션 디스패치까지 아우르는 조율 에이전트입니다.
+- **manager-lead** — SPEC 안의 Tier L 마일스톤 팬아웃은 물론, 팩토리 리더 세션 디스패치까지 아우르는 조율 에이전트입니다.
 - **multi-model audit** — 다중 모델 교차 검증으로 편향을 잡습니다.
 - **autonomy tier** — 자율성 단계를 조절해 안전하게 돌립니다.
-- **profile matrix** — 12 에이전트 × 3 프로필로 모델을 배정합니다.
+- **세션 모델 정책** — 한 번의 선택으로 세션 기본 추론 강도를 정합니다. 서브에이전트는 세션의 모델과 추론 깊이를 그대로 따릅니다.
 
 ## 핵심 개념
 
@@ -104,7 +104,7 @@ MoAI-ADK는 Python Edition을 Go로 완전히 재작성하여 성능과 효율�
 
 ### 핵심 수치 (v3.0 기준)
 
-- **11개** 에이전트 카탈로그 (10 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`)
+- **13개** 에이전트 카탈로그 (12 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`)
 - **31개** 스킬 (template-managed)
 - **36개** 터미널 CLI 명령 · **16종** `/moai` 슬래시 서브커맨드
 - **16개** 프로그래밍 언어 지원
@@ -124,31 +124,31 @@ MoAI-ADK는 Python Edition을 Go로 완전히 재작성하여 성능과 효율�
 
 ## 주요 기능
 
-### 에이전트 카탈로그 (11개)
+### 에이전트 카탈로그 (13개)
 
-MoAI 오케스트레이터는 직접 구현하지 않고 11개의 전문 에이전트에게 작업을 위임합니다. 계획과 감사는 분리되어 있습니다. 만든 사람이 검사하지 않습니다.
+MoAI 오케스트레이터는 직접 구현하지 않고 13개의 전문 에이전트에게 작업을 위임합니다. 계획과 감사는 분리되어 있습니다. 만든 사람이 검사하지 않습니다.
 
 | 카테고리 | 수량 | 주요 에이전트 |
 |----------|------|--------------|
-| **Manager** | 5개 | manager-spec, manager-develop, manager-docs, manager-git, manager-design |
+| **Manager** | 6개 | manager-spec, manager-develop, manager-docs, manager-git, manager-design, manager-lead |
 | **Evaluator** | 2개 | plan-auditor, sync-auditor |
 | **Builder** | 1개 | builder-harness |
 | **Advisor** | 1개 | super-advisor (고추론 자문) |
-| **Specialist** | 1개 | e2e-tester (웹/모바일/데스크탑 E2E 테스트 실행) |
+| **Specialist** | 2개 | e2e-tester (웹/모바일/데스크탑 E2E 테스트 실행), manager-todo (GTD 자동 미션 판정, 읽기 전용) |
 | **빌트인** | 1개 | Explore (Anthropic 내장, 읽기 전용 코드 분석) |
 
 ### 모델 정책 (토크노믹스)
 
-MoAI-ADK는 각 에이전트에 최적의 모델과 추론 깊이를 할당합니다. 목표는 요금제의 사용량 한도 안에서 품질을 최대한 끌어올리는 것입니다. 그래서 모델 클래스를 더 약한 쪽으로 바꾸는 대신, 같은 Opus 안에서 각 에이전트의 추론 깊이만 조절합니다. 오래 이어지는 에이전틱 작업에서는 약한 모델이 스텝을 더 많이 소모해 작업당 비용이 오히려 올라가기 때문입니다.
+목표는 요금제의 사용량 한도 안에서 품질을 최대한 끌어올리는 것입니다. 오래 이어지는 에이전틱 작업에서는 약한 모델이 스텝을 더 많이 소모해 작업당 비용이 오히려 올라가기 때문에, 모델 클래스를 바꾸는 대신 같은 모델 안에서 추론 깊이만 조절합니다. v3.2부터 이 조절은 **세션** 단위입니다. 서브에이전트는 메인 세션의 모델과 추론 깊이를 그대로 따르고, 에이전트 정의는 어느 쪽도 선언하지 않으며, 프로필의 **세션 모델 정책** (`moai profile setup`)이 추론 강도를 따로 고르지 않았을 때의 기본값을 정합니다.
 
-| 티어 | 특징 |
+| 세션 모델 정책 | 의미 |
 |------|------|
-| **high** | 최고 품질 — 호출 빈도가 가장 낮은 두 에이전트에 `max` 추론 깊이 |
-| **medium** (기본값) | 품질과 비용의 균형 |
-| **low** | 작업당 최저 비용 — 에이전틱 에이전트는 Opus `low` effort로 내려가고, Sonnet은 단발성 행에만 |
+| **high** | 세션 effort 폴백 `high` |
+| **medium** (기본값) | 세션 effort 폴백 `medium` — 비용/점수 곡선의 무릎 |
+| **low** | 세션 effort 폴백 `low` — 같은 모델 안에서의 경제 운용 |
 
 {{< callout type="info" >}}
-기본 티어는 **medium** 입니다. 티어를 조절해도 모델 클래스는 그대로이고, 각 에이전트의 Opus 추론 깊이만 달라집니다. `low`는 에이전틱 행을 모두 Opus `low` effort로 두고 단발성 행에서만 Sonnet을 쓰며, `high`는 호출 빈도가 가장 낮은 두 에이전트를 `max` effort로 올립니다. `--model-policy` 플래그 또는 초기화 마법사에서 설정합니다.
+사라진 `--model-policy` / `--profile` 플래그는 지원 종료 스텁입니다. `moai profile setup`을 안내하는 경고를 낼 뿐 아무 효과가 없습니다. 세션의 effort는 `/effort`나 `ultrathink`로, 모델은 `/model`로 그때그때 바꿀 수 있습니다. 자세한 내용은 [모델 정책](/ko/multi-llm/model-policy/) 페이지를 참조하세요.
 {{< /callout >}}
 
 ### 실행 모드와 오케스트레이션
@@ -160,8 +160,7 @@ MoAI-ADK는 각 에이전트에 최적의 모델과 추론 깊이를 할당합�
 /moai run SPEC-AUTH-001 --solo    # 순차 서브에이전트 강제
 ```
 
-{{< callout type="info" >}}
-**v3.0 변경**: 과거의 Agent Teams 정적 오케스트레이션 계층은 폐지되었습니다. `--team`을 강제해도 서브에이전트 모드로 폴백합니다. Claude Code의 네이티브 teammate 런타임(`moai cg`의 tmux 분할 창)은 그대로 유지됩니다.
+{{< callout type="info" >}} **v3.0 변경**: 과거의 Agent Teams 정적 오케스트레이션 계층은 폐지되었습니다. `--team`을 강제해도 서브에이전트 모드로 폴백합니다. CG는 폐기되었습니다. `moai migrate cg`로 이전 선택지를 먼저 확인하세요.
 {{< /callout >}}
 
 ### SPEC-First 워크플로우
@@ -244,19 +243,13 @@ MoAI-ADK의 Ralph-Loop Style LSP 통합은 다음과 같이 동작합니다:
 Ralph-Loop Style LSP 통합은 개발 워크플로우의 품질 게이트를 자동화해, 사람이 일일이 손대지 않아도 코드 품질을 높게 유지해 줍니다.
 {{< /callout >}}
 
-## CG 모드로 토큰 절약 (50~70%)
+## CG 폐기와 설정 이전
 
-{{< callout type="info" >}}
-**비용 (토크노믹스) 의 실전 도구:** z.ai GLM은 Claude Code와 완전 호환되는 AI 백엔드입니다. **CG 모드** (`moai cg`, tmux 필수) 에서 Claude 리더가 오케스트레이션·아키텍처 결정·코드 리뷰를 맡고, GLM 팀원이 구현·테스트·문서화를 병렬로 처리해 구현 중심 작업에서 **50~70% 토큰을 절약**합니다. 아키텍처 설계나 보안 리뷰처럼 깊은 추론이 필요할 때는 Claude 전용 (`moai cc`) 을 씁니다.
+Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다. [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/) CG는 폐기되었습니다. `moai migrate cg`로 이전 선택지를 먼저 확인하세요.
 
-```bash
-moai cc            # Claude 전용
-moai glm           # GLM 전용
-moai cg            # CG 하이브리드 (Claude 리더 + GLM 팀원, tmux 필수)
-```
+`llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, `llm.gateway.teammate_provider: inherit`을 저장합니다. 기존 혼합 역할 배정을 없애는 변경이며, Claude 리더와 GLM 팀원 창의 분업을 보존하는 이전이 아닙니다.
 
-GLM 계정이 없다면 [z.ai 가입하기 (추가 10% 할인)](https://z.ai/subscribe?ic=1NDV03BGWU)에서 가입하세요. 가입 링크를 통한 보상은 **MoAI 오픈소스 개발**에 사용됩니다. 상세 아키텍처와 모델 정책은 [멀티 LLM](/ko/multi-llm/) 섹션을 참조하세요.
-{{< /callout >}}
+`claude-glm` 대상은 Claude 리더와 tmux의 GLM 팀원 구성을 뜻합니다. 현재 TEAMMATE 통합 검증을 통과하지 않아 적용과 실행은 사용할 수 없으며 미리보기만 가능합니다. tmux를 설치하거나 `verified: true`를 적어도 이 제한은 해제되지 않습니다.
 
 ## 자기 개선 — 루프가 스스로 일하고 하네스가 학습합니다
 
@@ -278,7 +271,7 @@ MoAI-ADK를 시작하려면 다음 순서로 진행하세요:
 | 장점 | 설명 |
 |------|------|
 | **품질 보장** | TRUST 5 프레임워크로 일관된 품질 유지 |
-| **토큰 효율** | 모델 정책 + CG 모드 + Token Circuit Breaker로 비용을 시스템이 관리 |
+| **토큰 효율** | 세션 모델 정책 + Token Circuit Breaker로 비용을 시스템이 관리 |
 | **생산성 향상** | AI 에이전트 자동화로 개발 시간 단축 |
 | **확장 가능** | 모듈형 아키텍처와 하네스 빌더로 유연하게 확장 |
 | **다국어** | 4개 언어 지원 |

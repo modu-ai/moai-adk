@@ -35,8 +35,19 @@ func consoleTabs() []consoleTab {
 	return []consoleTab{
 		{ID: "identity", LabelKey: "sec.identity.title", Baseline: "Identity"},
 		{ID: "language", LabelKey: "sec.language.title", Baseline: "Language"},
-		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "LLM"},
+		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "Claude settings"},
 		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "GLM Settings"},
+		// codex (SPEC-WEB-CODEX-PANEL-001): a READ-ONLY MIRROR of the codex
+		// settings on the audit and workflow panels. It owns no field and removes
+		// none — every mirrored field stays declared, rendered and editable on
+		// its owning tab. t1278 placed it here to group the three backend tabs
+		// (CLAUDE 설정 · GLM 설정 · Codex 설정) and to separate it from the MCP
+		// tab, whose tool toggles it no longer mirrors. Still deliberately NOT
+		// last: panelHTML slices a panel from its marker to the NEXT one and
+		// falls back to end-of-document for the final panel, so a codex panel
+		// placed last would silently widen every panel-scoped assertion into a
+		// whole-page one.
+		{ID: "codex", LabelKey: "tab.codex.title", Baseline: "Codex settings"},
 		// workflow restored (Issue 3): the worktree auto-create toggle lives here.
 		// Original ordering placed it after llm (pre-cca120c70).
 		{ID: "workflow", LabelKey: "sec.workflow.title", Baseline: "Workflow"},
@@ -50,7 +61,6 @@ func consoleTabs() []consoleTab {
 		// The move is a RENDER placement only — the fields keep SectionWorkflow
 		// and the workflow.yaml seam persist target (AP-4).
 		{ID: "audit", LabelKey: "tab.audit.title", Baseline: "Audit"},
-		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Agents"},
 		{ID: "report", LabelKey: "sec.report.title", Baseline: "Report"},
 		// SPEC-MCP-CONSOLE-001 M2: the per-tool MCP enablement panel. Each of the
 		// 17 tools renders as an individually-toggleable bool; the 4 write-capable
@@ -68,7 +78,24 @@ func consoleTabs() []consoleTab {
 		// The panel carries the target repository and the auto-submit consent
 		// toggle; both persist through the yamlpatch seam into feedback.yaml.
 		{ID: "feedback", LabelKey: "sec.feedback.title", Baseline: "Feedback"},
+		// gate — SPEC-PRECOMMIT-GATE-SCOPE-001 M2: the pre-commit heavy-gate
+		// opt-in panel. The single bool persists through the yamlpatch seam
+		// into gate.yaml; the runner honors it only under MOAI_PRECOMMIT=1.
+		{ID: "gate", LabelKey: "sec.gate.title", Baseline: "Quality Gate"},
 	}
+}
+
+// radioEffectiveValue resolves the value a radio row should preselect: the
+// stored value, or — when nothing is on disk — the field's declared Default.
+// t1278: the select widget preselected defaults through its own path; the
+// radio conversion would have silently lost that affordance (and with it the
+// GLM tier effort default) without this bridge. templ cannot reassign a
+// parameter mid-markup, so the fallback lives here.
+func radioEffectiveValue(f settings.FieldDef, value string) string {
+	if value == "" && f.Default != "" {
+		return f.Default
+	}
+	return value
 }
 
 // mcpToolNameFromField extracts the tool identifier from an MCP enablement
@@ -143,12 +170,17 @@ type schemaSectionMeta struct {
 	Title    string
 	Desc     string
 	Fields   []settings.FieldDef
+	// Advanced는 고급 접기 영역(<details class="panel__advanced">)으로 내려가는
+	// 필드다 (t1280). 기본값 유지가 정답인 운영 한도(루프 방지·완성 루프 반복)만
+	// 놓는다 — 화면에서 접혀도 폼 제출에는 그대로 포함된다(atomic Save 계약 유지).
+	Advanced []settings.FieldDef
 	// Extras가 true인 패널만 ID 섹션의 read-only 표시 키와 raw view 블록을
 	// 렌더한다. 한 섹션이 여러 패널로 갈라질 때(workflow → 워크플로우/감사) 그
 	// 부수 표면이 중복 렌더되는 것을 막는 primary-panel 표식이다.
 	Extras bool
 	// NoteKey/Note는 패널 헤더에 1회 렌더되는 주의 문구다 (빈 값이면 미렌더).
-	// 필드마다 반복되는 힌트를 헤더로 승격하는 기존 관례(agentfm-gridnote)와
+	// 필드마다 반복되는 힌트를 헤더로 승격하는 관례(원래 삭제 전 agentfm 표면의
+	// grid-note에서 왔다 — SPEC-WEB-AGENTFM-RESTORE-001이 그 자리를 이어받는다)와
 	// 동일한 자리다 — 한 패널의 모든 필드에 공통으로 걸리는 사실은 필드마다
 	// 되풀이하지 않는다.
 	NoteKey string
@@ -166,6 +198,15 @@ func isAuditFieldName(name string) bool {
 	return strings.HasPrefix(name, "workflow.audit.")
 }
 
+// isAgentTierFieldName judges whether a workflow section field belongs to the
+// agent-tier sub-section of the workflow panel (the tier axis): the per-class
+// tier radios. They render in the dedicated tier sub-section (fieldsetAgentTiers)
+// with the chart grounding, not in the generic loop — the chart table and the
+// controls travel together.
+func isAgentTierFieldName(name string) bool {
+	return strings.HasPrefix(name, "workflow.agent_tiers.classes.")
+}
+
 // isCodexToggleFieldName은 workflow 섹션 필드 중 MCP 콘솔의 codex 인증 서피스로
 // 배치되는 것을 판정한다 (SPEC-MCP-CONSOLE-001 M3). 이 필드들은 workflow 탭이
 // 아닌 MCP 탭의 codexAuthBlock 에서 렌더되므로 workflow 파티션에서 제외한다 —
@@ -175,10 +216,15 @@ func isCodexToggleFieldName(name string) bool {
 		name == "workflow.codex.task.allow_write"
 }
 
-// partitionWorkflowFields는 workflow 섹션 필드를 3개 탭으로 가른다: 워크플로우
-// 잔여 / Git·워크트리 / 감사. codex 토글 필드는 MCP 탭에서 렌더되므로 어느
+// partitionWorkflowFields는 workflow 섹션 필드를 5개 탭 버킷으로 가른다: 워크플로우
+// 잔여 / Git·워크트리 / 감사 / Jev / 에이전트 티어. codex 토글 필드는 MCP 탭에서 렌더되므로 어느
 // workflow 탭에도 배치하지 않는다. 섹션 필드 순서를 보존한다.
-func partitionWorkflowFields() (rest, worktree, audit []settings.FieldDef) {
+//
+// SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-001: jev 는 render placement 분기일 뿐
+// 섹션 재분류가 아니다 — 영속화 경로는 audit 탭과 동일하게 SectionWorkflow seam 이다.
+// The tier bucket is the same shape: render placement inside the workflow
+// panel's dedicated tier sub-section, persistence through the SectionWorkflow seam.
+func partitionWorkflowFields() (rest, worktree, audit, jev, tiers []settings.FieldDef) {
 	for _, f := range settings.SectionFields(settings.SectionWorkflow) {
 		if isCodexToggleFieldName(f.Name) {
 			continue // MCP 탭의 codexAuthBlock 에서 렌더 — workflow 탭 제외
@@ -188,16 +234,43 @@ func partitionWorkflowFields() (rest, worktree, audit []settings.FieldDef) {
 			worktree = append(worktree, f)
 		case isAuditFieldName(f.Name):
 			audit = append(audit, f)
+		case jevFieldBelongsToPanel(f.Name):
+			jev = append(jev, f)
+		case isAgentTierFieldName(f.Name):
+			tiers = append(tiers, f)
 		default:
 			rest = append(rest, f)
 		}
 	}
-	return rest, worktree, audit
+	return rest, worktree, audit, jev, tiers
+}
+
+// isAdvancedWorkflowField는 workflow 탭에서 고급 접기 영역으로 내려갈 필드를
+// 판정한다 (t1280 — 구스 지시 "나머진 기본 설정을 그대로 사용하면 되지 않나").
+// 루프 방지 3종과 완성 루프 반복 한도는 값 변경 없이 기본값 유지가 운영 정답인
+// 항목이라, 화면에서는 접되 저장 경로는 그대로 둔다.
+func isAdvancedWorkflowField(name string) bool {
+	return name == "workflow.agentic_loop.max_iterations" ||
+		strings.HasPrefix(name, "workflow.loop_prevention.")
+}
+
+// splitWorkflowAdvanced는 workflow 잔여 필드를 (보임, 고급 접기) 둘로 가른다.
+// 입력 순서를 보존한다 — 스키마 순서가 곧 렌더 순서다.
+func splitWorkflowAdvanced(fields []settings.FieldDef) (visible, advanced []settings.FieldDef) {
+	for _, f := range fields {
+		if isAdvancedWorkflowField(f.Name) {
+			advanced = append(advanced, f)
+		} else {
+			visible = append(visible, f)
+		}
+	}
+	return visible, advanced
 }
 
 // schemaSectionMetas는 제네릭 렌더 대상 패널의 표시 메타를 렌더 순서대로 반환한다.
 func schemaSectionMetas() []schemaSectionMeta {
-	workflowRest, worktreeFields, auditFields := partitionWorkflowFields()
+	workflowRest, worktreeFields, auditFields, _, _ := partitionWorkflowFields()
+	workflowVisible, workflowAdvanced := splitWorkflowAdvanced(workflowRest)
 	return []schemaSectionMeta{
 		{
 			ID: settings.SectionLLM, PanelID: "llm", Icon: "rocket",
@@ -220,7 +293,7 @@ func schemaSectionMetas() []schemaSectionMeta {
 			ID: settings.SectionWorkflow, PanelID: "workflow", Icon: "panel-bottom",
 			TitleKey: "sec.workflow.title", DescKey: "sec.workflow.desc",
 			Title: "Workflow", Desc: "Workflow execution mode and loop-prevention settings.",
-			Fields: workflowRest, Extras: true,
+			Fields: workflowVisible, Advanced: workflowAdvanced, Extras: true,
 		},
 		{
 			ID: settings.SectionGitStrategy, PanelID: "git-worktree", Icon: "folder-git",
@@ -259,6 +332,14 @@ func schemaSectionMetas() []schemaSectionMeta {
 			TitleKey: "sec.feedback.title", DescKey: "sec.feedback.desc",
 			Title: "Feedback", Desc: "Target repository for the feedback workflow, and whether it may submit without asking each time.",
 			Fields: settings.SectionFields(settings.SectionFeedback), Extras: true,
+		},
+		{
+			// SPEC-PRECOMMIT-GATE-SCOPE-001 M2 (REQ-009): the pre-commit heavy
+			// gate opt-in, persisted through the yamlpatch seam into gate.yaml.
+			ID: settings.SectionGate, PanelID: "gate", Icon: "shield-check",
+			TitleKey: "sec.gate.title", DescKey: "sec.gate.desc",
+			Title: "Quality Gate", Desc: "Commit-time quality gate posture (gate.pre_commit.enabled).",
+			Fields: settings.SectionFields(settings.SectionGate), Extras: true,
 		},
 	}
 }
@@ -301,6 +382,21 @@ func parseSchemaForm(r *http.Request, current map[string]string) (map[string]str
 
 	for _, f := range settings.AllFields() {
 		if !schemaEditableField(f) {
+			continue
+		}
+		// REQ-WWS-006 (SPEC-WEB-WRITE-SAFETY-001): a form name submitted more
+		// than once must not be silently resolved to its first value — the
+		// first value can belong to a hidden duplicate tab while the user's
+		// actual value sits in a later submission (observed: unedited workflow
+		// scalars zeroed by a value-invariant full-form save). Detect the
+		// duplicate and join the atomic-reject error set (EC-2). The hidden
+		// bool companion follows the same rule.
+		if vals := r.PostForm[f.Name]; len(vals) > 1 {
+			errs[f.Name] = "duplicate form values submitted"
+			continue
+		}
+		if vals := r.PostForm[f.Name+"__present"]; len(vals) > 1 {
+			errs[f.Name] = "duplicate form values submitted"
 			continue
 		}
 		switch f.Type {
@@ -364,7 +460,8 @@ func parseSchemaForm(r *http.Request, current map[string]string) (map[string]str
 }
 
 // applySchemaCurrent는 확장 필드 + read-only 표시 키 + raw view 블록의 디스크
-// 현재 값을 뷰모델에 시드한다.
+// 현재 값과 에이전트 오버라이드 표면의 현재 상태를 뷰모델에 시드한다
+// (SPEC-WEB-AGENTFM-RESTORE-001 M3).
 func (a *app) applySchemaCurrent(view *pageView) error {
 	values, err := a.schemaCurrentValues(a.cfg.ProjectRoot)
 	if err != nil {
@@ -377,30 +474,28 @@ func (a *app) applySchemaCurrent(view *pageView) error {
 	view.SchemaValues = values
 	view.RawBlocks = blocks
 
-	// goal-to-test (non-SPEC): seed the profile selector (hosted as the
-	// performance_tier wire field) rendered at the top of the agentfm panel.
-	// llm.yaml is read directly — this field is deliberately NOT part of the
-	// generic schema. The plan_type display was removed
-	// (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-019); the save persists to
-	// llm.profile only and no longer mutates agent frontmatter (REQ-MPM-040).
+	// Seed the profile selector rendered at the top of the agent-overrides
+	// sub-section. llm.yaml is read directly — this field is deliberately NOT
+	// part of the generic schema (plan §B-6); the save persists to llm.profile
+	// only and never mutates agent frontmatter (REQ-AFR-005).
 	cfg, err := config.NewConfigManager().LoadRaw(a.cfg.ProjectRoot)
 	if err != nil {
 		return err
 	}
-	// Prefer the new llm.profile; fall back to the legacy performance_tier alias.
-	activeProfile := cfg.LLM.EffectiveProfile()
-	view.PerfTier = activeProfile
-	view.PerfTierIsEmpty = strings.TrimSpace(cfg.LLM.Profile) == "" && strings.TrimSpace(cfg.LLM.PerformanceTier) == ""
+	// Seed the selector with the value the radio set can re-select: the
+	// stored profile mapped onto the selector wire set (F2 — a stored "max"
+	// folded to "high" matched no option). Cell resolution still reads the
+	// folded profile through view.LLM.
+	view.PerfTier, view.PerfTierIsEmpty = agentFMPerfTierSeed(cfg.LLM)
 
-	// M3: sub-agent frontmatter 현재 상태 시딩 (REQ-WC11-020/025). 목록 실패는
-	// 빈 목록으로 저하 — 페이지 전체 실패 금지 (design.md §C.1 견고성). 정렬은
-	// profile-matrix-resolved model/effort를 기준으로 하므로 cfg.LLM 을 같이 넘긴다.
+	// Agent roster seeding: a list failure degrades to an empty section — the
+	// page itself must not fail (design §C.1 robustness).
 	if agents, err := a.listAllAgentFMs(a.cfg.ProjectRoot, cfg.LLM); err == nil {
 		view.AgentFMs = agents
 	}
 
-	// G3-1/G3-4: seed the loaded LLM config so the agentfm rows resolve each
-	// agent's model/effort through the profile matrix, and preselect the Custom
+	// Seed the loaded LLM config so the rows resolve each agent's
+	// model/effort through the profile matrix, and preselect the Custom
 	// pseudo-tier when any per-agent override is present.
 	view.LLM = cfg.LLM
 	view.PerfTierCustom = len(cfg.LLM.AgentOverrides) > 0

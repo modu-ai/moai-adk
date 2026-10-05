@@ -20,7 +20,14 @@ concurrency:
   cancel-in-progress: false
 
 # Least-privilege: this workflow runs the Go test matrix and does not exercise
-# any GITHUB_TOKEN write surface (no artifact upload, no PR mutation).
+# any GITHUB_TOKEN write surface — no PR mutation, no `gh` call.
+#
+# It DOES upload a test-stream artifact (the "Upload test event stream" step
+# below); an earlier revision of this comment said otherwise. That step needs no
+# GITHUB_TOKEN permission, because actions/upload-artifact authenticates with the
+# Actions runtime token rather than GITHUB_TOKEN. `contents: read` is therefore
+# still the correct least privilege and MUST NOT be widened on its account
+# (card t803).
 permissions:
   contents: read
 
@@ -84,7 +91,7 @@ jobs:
     name: Release Verify (${{ matrix.os }})
     needs: detect-release
     if: needs.detect-release.outputs.proceed == 'true' && (github.event_name == 'workflow_dispatch' || needs.detect-release.outputs.go_code != 'false')
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -184,9 +191,47 @@ jobs:
           }
       # ---------------------------------------------------------------------
 
+      # `-json` writes a per-test event stream to a FILE, keeping the console
+      # log at its pre-change size while making a skipped or never-selected
+      # test identifiable after the fact.
+      #
+      # `|| rc=$?` is load-bearing and MUST NOT be "simplified" to `; rc=$?`:
+      # GitHub Actions runs this body under `bash --noprofile --norc -e -o
+      # pipefail`, and under `-e` the shell exits AT a failing `go test`, so
+      # the census would never print on exactly the run where it is wanted.
+      # The two forms are indistinguishable on a green run.
+      #
+      # stdout ONLY — `2>&1` would corrupt the stream.
+      # 3-OS matrix: the artifact name carries matrix.os or the legs collide.
       - name: Run tests with race detector
         shell: bash
-        run: go test -race -timeout 25m ./...
+        run: |
+          rc=0
+          # -timeout is per test binary, not per job. internal/cli under -race
+          # was 1128s on the last green develop run (37135148076) and hit a 20m
+          # cap on run 37161322193 (the same 3883 tests took 716s then 1024s,
+          # +43%, on the same hosted runner class). This leg runs the same
+          # `go test -race ./...`, so it gets the same ceiling as ci.yml: 35m,
+          # inside this job's timeout-minutes: 40 budget. Applies to every
+          # matrix leg; the value is only an upper bound.
+          go test -json -race -timeout 35m ./... > test-stream.json || rc=$?
+          bash scripts/ci-census/test-census.sh test-stream.json
+          exit $rc
+
+      - name: Compress test event stream
+        if: always()
+        shell: bash
+        run: |
+          if [ -f test-stream.json ]; then gzip -f test-stream.json; fi
+
+      - name: Upload test event stream
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-stream-release-verify-${{ matrix.os }}
+          path: test-stream.json.gz
+          retention-days: 7
+          if-no-files-found: ${{ runner.os == 'Windows' && 'error' || 'warn' }}
 
       # --- t169 diagnostic (windows only, temporary) ------------------------
       # always(): the failing run is the one worth reading, so this must not be

@@ -236,6 +236,18 @@ moai update --dry-run
 moai update --yes
 ```
 
+### 기존 프로젝트에 Codex 추가
+
+재초기화 없이 claude-only 프로젝트에 codex 하네스 배선을 추가합니다:
+
+```bash
+moai tool enable codex
+```
+
+- `.codex/hooks.json`(화이트리스트 게이트를 통과한 훅 렌더)·`.codex/config.toml`(`[mcp_servers.moai]` + `[tui].status_line` — 사용자가 추가한 항목은 보존)·`.moai/state/codex-wiring.json`(신뢰 사이드카)을 만들거나 갱신합니다
+- `.mcp.json`은 건드리지 않으며, 재실행은 멱등입니다 — 이미 배선돼 있으면 아무것도 기록하지 않고 재신뢰 안내도 출력하지 않습니다
+- `moai tool enable codex --dry-run`을 실행하면 파일시스템을 바꾸지 않고 배선 계획만 미리 보여 줍니다
+
 ## 업데이트 후 절차
 
 ### 1단계: 버전 확인
@@ -264,7 +276,8 @@ MoAI-ADK 업데이트 시 **CLAUDE.md**와 `settings.json`은 새 버전으로 �
 |------|------|--------------|
 | `CLAUDE.md` | 프로젝트 루트 | {{< icon warning warn >}} 업데이트 시 변경됨 (MoAI-ADK 관리) |
 | `settings.json` | `.claude/` | {{< icon warning warn >}} 업데이트 시 변경됨 (MoAI-ADK 관리) |
-| `CLAUDE.local.md` | 프로젝트 루트 | {{< icon check ok >}} 영향 없음 (개인 설정) |
+| `AGENTS.local.md` | 프로젝트 루트 | {{< icon check ok >}} 영향 없음 (개인 지침) |
+| `CLAUDE.local.md` | 프로젝트 루트 | {{< icon check ok >}} 영향 없음 (이전 이름, 안내만 출력) |
 | `.claude/settings.local.json` | 프로젝트 | {{< icon check ok >}} 영향 없음 (개인 설정) |
 
 {{< callout type="info" >}}
@@ -360,6 +373,18 @@ moai update --verbose
 ```bash
 moai update --force
 ```
+
+## 로컬 지침 파일 안내
+
+`moai update`는 `AGENTS.local.md`와 `CLAUDE.local.md`를 옮기거나 이름을 바꾸거나 지우지 않습니다. 대신 프로젝트 루트에 `CLAUDE.local.md`가 남아 있으면 표준 출력에 안내를 한 줄 남깁니다. 지침은 공통 계약 `AGENTS.md`, Claude 전용 층 `CLAUDE.md`, 개인 지침 `AGENTS.local.md`의 세 파일로 나뉘며, `CLAUDE.local.md`는 `AGENTS.local.md`의 이전 이름입니다.
+
+| 프로젝트 상태 | `moai update` 출력 |
+|---------------|--------------------|
+| `CLAUDE.local.md`만 있음 | `moai migrate local-instructions`로 옮기라는 안내 |
+| 두 파일이 모두 있음 | 손으로 합치라는 안내 (이관 명령은 이 상태를 거부) |
+| `AGENTS.local.md`만 있거나 둘 다 없음 | 안내 없음 |
+
+`moai doctor`도 같은 조건에서 같은 안내를 출력합니다. 이름 변경은 운영자가 `moai migrate local-instructions`를 직접 실행할 때만 일어납니다.
 
 ## 다음 단계
 

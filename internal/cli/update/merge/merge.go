@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
@@ -165,24 +166,91 @@ func writeUserMarkerBlock(gitignorePath, templateContent string, block []string,
 	return os.WriteFile(gitignorePath, []byte(result), defs.FilePerm)
 }
 
+// The mergeable files whose base may come from a canonical snapshot rather
+// than being derived (REQ-USB-015, extended to .mcp.json by card t1029).
+const (
+	settingsJSONPath = ".claude/settings.json"
+	mcpJSONPath      = ".mcp.json"
+)
+
+// snapshotBases maps a mergeable path to the loader of its canonical base. A
+// path absent from the map keeps the derived base, and a loader reporting
+// false does the same, so the fallback is byte-for-byte the pre-snapshot
+// behaviour on every path (REQ-USB-009).
+//
+// The map is the discriminator: it is keyed by the exact slash-form path, so
+// one file's snapshot can never stand in as another's base.
+var snapshotBases = map[string]func(string) ([]byte, bool){
+	settingsJSONPath: backup.LoadSettingsSnapshot,
+	mcpJSONPath:      backup.LoadMCPSnapshot,
+}
+
+// FileResolution names how the post-deploy merge resolved one backed-up file.
+type FileResolution int
+
+const (
+	// ResolutionUnchanged — the user's file equals the deployed file; nothing
+	// was written.
+	ResolutionUnchanged FileResolution = iota + 1
+	// ResolutionPreserved — the pre-flow user file was written back wholesale
+	// (the deployed file is gone, no base could be formed, or the merge
+	// failed). The live file no longer reflects the deployed render.
+	ResolutionPreserved
+	// ResolutionMerged — the 3-way merge result was written.
+	ResolutionMerged
+)
+
+// MergeOutcome maps each backed-up path (slash form) to how
+// MergeUserFilesWithOutcome resolved it. A path absent from the map was not
+// processed.
+type MergeOutcome map[string]FileResolution
+
+// Preserved reports whether path was resolved by writing the user's file back
+// wholesale. It is the signal the settings.json snapshot promotion reads
+// (SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 REQ-USB-005, plan.md D5 N-10).
+func (o MergeOutcome) Preserved(path string) bool {
+	return o[filepath.ToSlash(path)] == ResolutionPreserved
+}
+
 // MergeUserFiles performs 3-way merge for user-customized files after template
 // deployment: the user's backed-up content is the current side, the freshly
-// deployed template is the updated side, and the base is derived per file by
-// deriveTemplateBase. This preserves user customizations while letting keys the
-// template newly introduces actually reach an existing project.
+// deployed template is the updated side, and the base is chosen per file (see
+// MergeUserFilesWithOutcome). This preserves user customizations while letting
+// keys the template newly introduces actually reach an existing project.
 func MergeUserFiles(projectRoot string, backups []FileBackup, out io.Writer) error {
+	_, err := MergeUserFilesWithOutcome(projectRoot, backups, out)
+	return err
+}
+
+// MergeUserFilesWithOutcome is MergeUserFiles that also reports how each file
+// was resolved, so a caller can tell a merge that wrote a result from one that
+// fell back to preserving the user's file.
+//
+// The base is derived per file by deriveTemplateBase, except for the paths in
+// snapshotBases when a valid canonical snapshot of the previously deployed
+// render exists: that snapshot is the genuine base, so a template value change
+// to a key the user never touched is delivered (REQ-USB-004/006). An absent or
+// unusable snapshot keeps the derived base, byte-for-byte the pre-snapshot
+// behaviour (REQ-USB-009).
+//
+// @MX:NOTE: [AUTO] base selection boundary — canonical snapshot for snapshotBases paths, derived base otherwise
+// @MX:NOTE: [AUTO] preserve paths (ResolutionPreserved): deployed file unreadable, no base derivable, merge error
+// @MX:SPEC: SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001
+func MergeUserFilesWithOutcome(projectRoot string, backups []FileBackup, out io.Writer) (MergeOutcome, error) {
+	outcome := make(MergeOutcome, len(backups))
+
 	// The embedded templates answer one question here — whether a path is one
 	// the template ships — so a file the user created themselves is never merged
 	// against template content it was not deployed from.
 	embedded, err := template.EmbeddedTemplates()
 	if err != nil {
-		return fmt.Errorf("load embedded templates: %w", err)
+		return outcome, fmt.Errorf("load embedded templates: %w", err)
 	}
 
 	// Load manifest to get template hashes for base version
 	mgr := manifest.NewManager()
 	if _, loadErr := mgr.Load(projectRoot); loadErr != nil {
-		return fmt.Errorf("load manifest: %w", loadErr)
+		return outcome, fmt.Errorf("load manifest: %w", loadErr)
 	}
 
 	// Create merge engine
@@ -191,20 +259,23 @@ func MergeUserFiles(projectRoot string, backups []FileBackup, out io.Writer) err
 	var mergedCount int
 	for _, fb := range backups {
 		destPath := filepath.Join(projectRoot, fb.Path)
+		key := filepath.ToSlash(fb.Path)
 
 		// Read newly deployed file (updated version)
 		updatedContent, err := os.ReadFile(destPath)
 		if err != nil {
 			// File might not exist in new template version - keep user's version
 			if writeErr := os.WriteFile(destPath, fb.Data, defs.FilePerm); writeErr != nil {
-				return fmt.Errorf("restore removed file %s: %w", fb.Path, writeErr)
+				return outcome, fmt.Errorf("restore removed file %s: %w", fb.Path, writeErr)
 			}
+			outcome[key] = ResolutionPreserved
 			_, _ = fmt.Fprintf(out, "  %s %s preserved (removed in new template)\n", uikit.SymSuccess(), fb.Path)
 			mergedCount++
 			continue
 		}
 
 		if string(fb.Data) == string(updatedContent) {
+			outcome[key] = ResolutionUnchanged
 			continue // No change needed
 		}
 
@@ -217,11 +288,19 @@ func MergeUserFiles(projectRoot string, backups []FileBackup, out io.Writer) err
 		if !derived || !templateManaged(embedded, fb.Path) {
 			// Keep user's version as-is
 			if err := os.WriteFile(destPath, fb.Data, defs.FilePerm); err != nil {
-				return fmt.Errorf("restore user file %s: %w", fb.Path, err)
+				return outcome, fmt.Errorf("restore user file %s: %w", fb.Path, err)
 			}
+			outcome[key] = ResolutionPreserved
 			_, _ = fmt.Fprintf(out, "  %s %s user content preserved\n", uikit.SymSuccess(), fb.Path)
 			mergedCount++
 			continue
+		}
+		// Both sides parsed, so a canonical snapshot of the render the user's
+		// file was last merged against can stand in for the derived base.
+		if load, hasSnapshot := snapshotBases[key]; hasSnapshot {
+			if snapshot, ok := load(projectRoot); ok {
+				baseContent = snapshot
+			}
 		}
 
 		// Use merge engine for proper 3-way merge
@@ -230,22 +309,34 @@ func MergeUserFiles(projectRoot string, backups []FileBackup, out io.Writer) err
 			// Merge failed - preserve user's version
 			_, _ = fmt.Fprintf(out, "  %s %s merge failed, preserving user version: %v\n", uikit.SymWarning(), fb.Path, mergeErr)
 			if err := os.WriteFile(destPath, fb.Data, defs.FilePerm); err != nil {
-				return fmt.Errorf("preserve user file %s: %w", fb.Path, err)
+				return outcome, fmt.Errorf("preserve user file %s: %w", fb.Path, err)
 			}
+			outcome[key] = ResolutionPreserved
 			mergedCount++
 			continue
 		}
 
 		// Write merged result
 		if err := os.WriteFile(destPath, result.Content, defs.FilePerm); err != nil {
-			return fmt.Errorf("write merged file %s: %w", fb.Path, err)
+			return outcome, fmt.Errorf("write merged file %s: %w", fb.Path, err)
 		}
+		outcome[key] = ResolutionMerged
 
 		// Report merge status
 		if result.HasConflict {
 			_, _ = fmt.Fprintf(out, "  %s %s merged with conflicts (user version preferred)\n", uikit.SymWarning(), fb.Path)
 		} else {
 			_, _ = fmt.Fprintf(out, "  %s %s user customizations preserved\n", uikit.SymSuccess(), fb.Path)
+		}
+		// A key the merge kept because the new template no longer carries it is
+		// indistinguishable, in the merged file, from one the user added. Name
+		// it here — wording shared with the sibling YAML restore path — so the
+		// retirement is visible rather than silent. Scoped to .mcp.json: the
+		// other merged paths' output stays as it was.
+		if key == mcpJSONPath {
+			for _, retained := range result.RetainedKeys {
+				_, _ = fmt.Fprintf(out, "  advisory: retained key %q absent from new template (preserved from user config)\n", retained)
+			}
 		}
 		mergedCount++
 	}
@@ -254,7 +345,7 @@ func MergeUserFiles(projectRoot string, backups []FileBackup, out io.Writer) err
 		_, _ = fmt.Fprintf(out, "  %s Merged %d file(s) with 3-way merge engine\n", uikit.SymSuccess(), mergedCount)
 	}
 
-	return nil
+	return outcome, nil
 }
 
 // BuildMergeAnalysis creates a summary from individual file analysis results.

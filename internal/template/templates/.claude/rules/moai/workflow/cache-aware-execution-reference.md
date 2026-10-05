@@ -1,6 +1,6 @@
 ---
 description: "Reference companion for cache-aware-execution.md — cited cache-cost numbers, per-directive rationale, and worked examples for directives 6-10"
-paths: "**/cache-aware-execution.md"
+paths: "**/cache-aware-execution.md,**/.claude/agents/moai/*.md,**/.claude/rules/moai/workflow/*.md"
 ---
 
 # Cache-Aware Execution — Reference Companion
@@ -43,7 +43,7 @@ Every fresh session re-pays the always-loaded prefix at write price; a continuin
 
 ### Directive 10 — mid-session model or effort switch
 
-Caches are model-scoped, and an effort or thinking-budget change (`MAX_THINKING_TOKENS`) keys a fresh cache as well: the request after the switch re-writes the prefix at full price. The apparent conflict with `agent-common-protocol.md` § Per-Spawn Model Injection is an axis difference, stated in the directive itself: Per-Spawn Model Injection governs which model a *subagent context* runs on (most agent definitions declare `model: inherit`, and an unspecified spawn silently falls back to the parent model); directives 5 and 10 govern the *main session's* accumulated cache. Neither SSOT revises the other.
+Caches are model-scoped, and an effort or thinking-budget change (`MAX_THINKING_TOKENS`) keys a fresh cache as well: the request after the switch re-writes the prefix at full price. Subagents inherit the session's model and effort, so a switch reaches them as well.
 
 ---
 

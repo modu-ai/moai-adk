@@ -74,7 +74,7 @@ moai-adk-go/
 │   ├── bodp/                         # Branch Origin Decision Protocol (3-signal / 8-row matrix)
 │   ├── ciwatch/                      # CI check classification (gh pr checks consumer)
 │   ├── cli/                          # Cobra command tree, composition root (109 non-test files, 152 non-test AddCommand calls)
-│   ├── config/                       # Layered YAML config SSOT (35 non-test files, 14 loader_*.go, 32 YAML files)
+│   ├── config/                       # Layered YAML config SSOT (57 non-test `.go` files incl. sub-packages, 13 loader_*.go, 23 YAML files)
 │   ├── constitution/                 # Frozen/Evolvable zone model, 5-stage merge safety (13 non-test files)
 │   ├── core/                         # Core domain packages
 │   │   ├── git/                      #   System Git via exec (Repository / BranchManager / WorktreeManager)
@@ -129,7 +129,9 @@ moai-adk-go/
 ├── pkg/
 │   ├── models/                       # Shared config types (Very High fan-in, 45+): ProjectType, DevelopmentMode, ProjectConfig
 │   └── version/                      # Build-time version / commit / date (ldflags)
-├── go.mod                            # module github.com/modu-ai/moai-adk, go 1.26.4
+├── mods/                             # Claude Code mods (early-access prototypes; not embedded in the binary, not deployed by init/update)
+│   └── moai-board/                   # Read-only queue / lanes / SPEC side panel (TypeScript, loaded via `claude --plugin-dir`)
+├── go.mod                            # module github.com/modu-ai/moai-adk, go 1.26.8
 ├── go.sum
 ├── Makefile
 ├── CHANGELOG.md

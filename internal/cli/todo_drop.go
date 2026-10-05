@@ -13,7 +13,7 @@
 // card is still worth keeping — no staleness heuristic, no duplicate
 // detection, no absorption of one card into another. An agent that drops
 // cards on its own initiative collides head-on with the [HARD] clauses in
-// workflows/todo.md and kanban-dispatch.md, and a doctrine change would have
+// workflows/gtd.md and the Factory Dispatch Protocol, and a doctrine change would have
 // to come first.
 //
 // EXACT REVERSAL is the property that makes a wrong drop survivable, and it
@@ -40,7 +40,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // The drop marker follows the convention the hand-written dropped cards
@@ -57,9 +57,11 @@ const (
 // move a queued card to the dropped state, recording why in its text.
 //
 // The card STAYS in the file. `done` removes a finished card; `drop` keeps a
-// discarded one visible with the reason attached, so a later reader can see
-// what was decided and reverse it if the judgement was wrong. A dropped card
-// is not a pick candidate — bare `next` lists queued cards only.
+// discarded one with the reason attached, so a later reader can see what was
+// decided and reverse it if the judgement was wrong — `moai todo list
+// --dropped` renders the discarded set (the default view hides it behind a
+// count line, card t384). A dropped card is not a pick candidate — bare
+// `next` lists queued cards only.
 func newTodoDropCmd() *cobra.Command {
 	var expect string
 	cmd := &cobra.Command{
@@ -70,8 +72,9 @@ write, prefixing its text with ` + "`[DROPPED — <reason>] `" + ` — the conve
 already in use on hand-written dropped cards.
 
 The card stays in the file: ` + "`done`" + ` removes a finished card, ` + "`drop`" + ` keeps a
-discarded one visible with its reason, and ` + "`undrop <n>`" + ` reverses it exactly.
-A dropped card is not a pick candidate.
+discarded one with its reason, and ` + "`undrop <n>`" + ` reverses it exactly.
+The default list hides dropped cards behind a count line; ` + "`moai todo list --dropped`" + `
+renders the discarded set. A dropped card is not a pick candidate.
 
 Only a queued card may be dropped — a picked card is unpicked first, so
 nothing that undrop cannot restore is ever taken. ` + "`--expect <prefix>`" + `
@@ -94,7 +97,7 @@ leaving the file untouched.`,
 
 			store := newTodoStore()
 			var original string
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID != id {
 						continue
@@ -106,9 +109,9 @@ leaving the file untouched.`,
 							id, todoTextPrefix(rec.Items[i].Text), expect)
 					}
 					switch rec.Items[i].State {
-					case kanban.BacklogStateDropped:
+					case factory.BacklogStateDropped:
 						return fmt.Errorf("backlog item %s is already dropped", id)
-					case kanban.BacklogStateQueued:
+					case factory.BacklogStateQueued:
 						// the only droppable state
 					default:
 						return fmt.Errorf(
@@ -117,7 +120,9 @@ leaving the file untouched.`,
 					}
 					original = rec.Items[i].Text
 					rec.Items[i].Text = todoDropMarkerOpen + reason + todoDropMarkerClose + original
-					rec.Items[i].State = kanban.BacklogStateDropped
+					rec.Items[i].State = factory.BacklogStateDropped
+					// REQ-TST-006: the drop is stamped at the transition.
+					rec.Items[i].DroppedAt = todoStampNow()
 					return nil
 				}
 				return fmt.Errorf("no backlog item %s", id)
@@ -126,7 +131,7 @@ leaving the file untouched.`,
 				return err
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "dropped %s %s (reason: %s)\n",
-				id, todoTextPrefix(original), reason)
+				id, todoTextPrefix(original), todoPRCell(reason))
 			return nil
 		},
 	}
@@ -161,7 +166,7 @@ form a listing shows, marker included) and refuses the undrop on a mismatch.`,
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
 			var restored string
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID != id {
 						continue
@@ -170,12 +175,21 @@ form a listing shows, marker included) and refuses the undrop on a mismatch.`,
 						return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
 							id, todoTextPrefix(rec.Items[i].Text), expect)
 					}
-					if rec.Items[i].State != kanban.BacklogStateDropped {
+					// POSITIVE enumeration (SPEC-TODO-HOLD-STATE-001
+					// REQ-THS-012): the gate names the state it reverts.
+					switch rec.Items[i].State {
+					case factory.BacklogStateDropped:
+						// the only undroppable-into-queued state
+					default:
 						return fmt.Errorf("backlog item %s is %s, not dropped", id, rec.Items[i].State)
 					}
 					restored = stripTodoDropMarker(rec.Items[i].Text)
 					rec.Items[i].Text = restored
-					rec.Items[i].State = kanban.BacklogStateQueued
+					rec.Items[i].State = factory.BacklogStateQueued
+					// REQ-TST-006: undrop clears the stamp — a queued card
+					// carries no dropped stamp, and a later re-drop stamps
+					// afresh.
+					rec.Items[i].DroppedAt = nil
 					return nil
 				}
 				return fmt.Errorf("no backlog item %s", id)

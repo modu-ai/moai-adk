@@ -1,7 +1,6 @@
 ---
 id: SPEC-V3R3-STATUSLINE-FALLBACK-001
 version: "0.2.0"
-status: draft
 created_at: 2026-05-10
 updated_at: 2026-05-10
 author: GOOS행님

@@ -19,6 +19,7 @@ func TestEnsureMCPTableCreatesWhenAbsent(t *testing.T) {
 		"[mcp_servers.moai]",
 		`command = "moai"`,
 		`args = ["mcp-server"]`,
+		`env_vars = ["MOAI_HOME", "MOAI_KANBAN_ID", "MOAI_SESSION_PID", "MOAI_KANBAN_BACKEND", "MOAI_FACTORY_WORKER", "MOAI_FACTORY_WORKERS", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_SESSION_ID"]`,
 		`default_tools_approval_mode = "writes"`,
 	} {
 		if !strings.Contains(body, want) {
@@ -79,5 +80,27 @@ func TestEnsureMCPTableIdempotent(t *testing.T) {
 	twice := EnsureMCPTable(once)
 	if string(once) != string(twice) {
 		t.Errorf("mcp table merge not idempotent:\nonce:  %q\ntwice: %q", once, twice)
+	}
+}
+
+// TestStaleApprovalOverride covers REQ-MS-010 detection: the canonical table
+// is quiet, a global approve default or a per-tool approve is stale, and an
+// override under another server is not ours to report.
+func TestStaleApprovalOverride(t *testing.T) {
+	cases := []struct {
+		name  string
+		body  string
+		stale bool
+	}{
+		{"canonical", string(EnsureMCPTable(nil)), false},
+		{"global approve", "[mcp_servers.moai]\ndefault_tools_approval_mode = \"approve\"\n", true},
+		{"per-tool approve", "[mcp_servers.moai]\ndefault_tools_approval_mode = \"writes\"\n[mcp_servers.moai.tools.factory_msg_send]\napproval_mode = \"approve\"\n", true},
+		{"other server", "[mcp_servers.other]\ndefault_tools_approval_mode = \"approve\"\n", false},
+		{"empty", "", false},
+	}
+	for _, tc := range cases {
+		if _, got := StaleApprovalOverride([]byte(tc.body)); got != tc.stale {
+			t.Errorf("%s: stale=%v, want %v", tc.name, got, tc.stale)
+		}
 	}
 }

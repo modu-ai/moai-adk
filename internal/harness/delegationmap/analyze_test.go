@@ -108,6 +108,41 @@ func TestAnalyze_OversizedLedgerRefused(t *testing.T) {
 	}
 }
 
+// TestAnalyze_MissionGovernorIsCatalogMember pins the whole retained catalog
+// against the consumer that reads it, rather than against the declaration alone.
+//
+// manager-todo joined the retained catalog after this analyzer was written
+// (CLAUDE.md §4, agent-authoring.md § catalog, agent-patterns.md § static-agent
+// criterion all name it). While it is missing from retainedCatalog the failure
+// is SILENT in both directions: the aggregate records it under
+// non_catalog_agents — a false statement about a real catalog agent — and the
+// undesignated_agent finding it qualifies for is never emitted. Neither shows up
+// as an error, an odd count, or an empty result, which is why the assertion is
+// made at the analyzer boundary and not on IsRetainedAgent in isolation.
+func TestAnalyze_MissionGovernorIsCatalogMember(t *testing.T) {
+	t.Parallel()
+
+	res, err := Analyze(opts("manager_todo_undesignated.jsonl"))
+	if err != nil {
+		t.Fatalf("Analyze: %v", err)
+	}
+
+	got := findingsOfKind(res, KindUndesignatedAgent)
+	if len(got) != 1 || got[0].Agent != "manager-todo" || got[0].Subcommand != "run" {
+		t.Errorf("undesignated_agent findings = %+v, want exactly one for manager-todo on run", got)
+	}
+
+	run := statFor(t, res, "run")
+	for _, nc := range run.NonCatalogAgents {
+		if nc == "manager-todo" {
+			t.Errorf("manager-todo was classified non-catalog: %v", run.NonCatalogAgents)
+		}
+	}
+	if run.AgentCounts["manager-todo"] != 9 {
+		t.Errorf("manager-todo count = %d, want 9", run.AgentCounts["manager-todo"])
+	}
+}
+
 // TestAnalyze_NonCatalogNeverUndesignated is AC-HLA-005.
 func TestAnalyze_NonCatalogNeverUndesignated(t *testing.T) {
 	t.Parallel()

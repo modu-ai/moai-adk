@@ -1,0 +1,7 @@
+{
+  "name": "moai-board",
+  "version": "0.1.0",
+  "description": "Read-only side panel for the MoAI kanban queue, factory lanes and SPEC documents. Actions: refresh, open, pick (confirmed).",
+  "author": { "name": "MoAI-ADK" },
+  "types": "./types/index.d.ts"
+}

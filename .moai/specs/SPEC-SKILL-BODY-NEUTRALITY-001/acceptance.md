@@ -2,7 +2,6 @@
 id: SPEC-SKILL-BODY-NEUTRALITY-001
 title: "Skill-Body Neutrality — acceptance criteria"
 version: "0.1.1"
-status: in-progress
 created: 2026-06-04
 updated: 2026-06-23
 author: manager-spec

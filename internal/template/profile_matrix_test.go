@@ -1,380 +1,203 @@
 package template
 
+// profile_matrix_test.go — SPEC-WEB-AGENTFM-RESTORE-001 M1: tests for the
+// re-ported per-agent profile matrix (SPEC-MODEL-PROFILE-MATRIX-001 machinery,
+// restored with cells RE-DERIVED from the CURRENT config defaults per plan
+// §B-1(b)/§F M1). The blueprint cells (opus/sonnet, 2026-09-27 snapshot) are
+// stale; these tests pin the cells to config.DefaultClaudeTier* as the single
+// source so a future tier bump flows through without a cell edit.
+
 import (
-	"os"
-	"path/filepath"
-	"strings"
+	"slices"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// writeProfileLLM writes a llm.yaml under root and returns its path.
-func writeProfileLLM(t *testing.T, root, body string) string {
-	t.Helper()
-	dir := filepath.Join(root, ".moai", "config", "sections")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
+// effortRank orders the effort levels by reasoning depth so the monotonicity
+// assertion (high >= medium >= low per row) is a number compare.
+func effortRank(effort string) int {
+	switch effort {
+	case EffortLevelHigh:
+		return 2
+	case EffortLevelMedium:
+		return 1
+	case EffortLevelLow:
+		return 0
 	}
-	p := filepath.Join(dir, "llm.yaml")
-	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
-		t.Fatalf("write: %v", err)
-	}
-	return p
+	return -1
 }
 
-// TestApplyProfile_RoundTripStripsRetiredKeys covers REQ-MPM-005 / AC-MPM-003: a
-// write updating the llm section removes plan_type + the claude_models block and
-// writes profile:.
-func TestApplyProfile_RoundTripStripsRetiredKeys(t *testing.T) {
-	root := t.TempDir()
-	p := writeProfileLLM(t, root, `llm:
-    plan_type: "subscription"
-    performance_tier: "max"
-    profile: "medium"
-    claude_models:
-        high: "opus"
-        medium: "sonnet"
-        low: "sonnet"
-    glm:
-        base_url: "https://api.z.ai/api/anthropic"
-`)
-	// "max" is the superseded top-column name: readable, but normalized to "high"
-	// on write so it is never persisted again.
-	if err := ApplyProfile(root, "max"); err != nil {
-		t.Fatalf("ApplyProfile: %v", err)
-	}
-	got, _ := os.ReadFile(p)
-	s := string(got)
-	if strings.Contains(s, "plan_type") {
-		t.Errorf("plan_type not stripped:\n%s", s)
-	}
-	if strings.Contains(s, "claude_models") || strings.Contains(s, `high: "opus"`) {
-		t.Errorf("claude_models block not stripped:\n%s", s)
-	}
-	if !strings.Contains(s, "profile: high") {
-		t.Errorf("profile: high (normalized from max) not written:\n%s", s)
-	}
-	// The glm block (a sibling AFTER claude_models) must survive the strip.
-	if !strings.Contains(s, "base_url:") {
-		t.Errorf("glm block was over-stripped:\n%s", s)
-	}
+// profileColumns are the three canonical profile keys in display order.
+var profileColumns = []string{config.ProfileHigh, config.ProfileMedium, config.ProfileLow}
+
+// matrixModels are the only model aliases a default cell may carry — the
+// CURRENT config claude_models defaults (High/Medium columns). ClaudeModels.Low
+// (haiku) is deliberately absent: the No-Haiku policy keeps it out of the
+// matrix (available only as an explicit override).
+var matrixModels = map[string]bool{
+	defaultMatrixModelHigh:   true,
+	defaultMatrixModelMedium: true,
 }
 
-// TestApplyProfile_InsertsProfileWhenAbsent covers the migration insert path — a
-// legacy config with no profile: key gains one.
-func TestApplyProfile_InsertsProfileWhenAbsent(t *testing.T) {
-	root := t.TempDir()
-	p := writeProfileLLM(t, root, "llm:\n    performance_tier: \"low\"\n")
-	if err := ApplyProfile(root, "low"); err != nil {
-		t.Fatalf("ApplyProfile: %v", err)
-	}
-	got, _ := os.ReadFile(p)
-	if !strings.Contains(string(got), "profile: low") {
-		t.Errorf("profile not inserted:\n%s", got)
-	}
-}
-
-// TestResolveAgentModelEffort_MatrixAFidelity covers REQ-MPM-009/010/011/012 /
-// AC-MPM-005: profile:high with no overrides resolves every one of the 12 mapped
-// agents to the high column exactly.
-func TestResolveAgentModelEffort_MatrixAFidelity(t *testing.T) {
-	cfg := config.LLMConfig{Profile: "high"}
-	want := map[string]config.ModelEffort{
-		"manager-spec":    {Model: "opus", Effort: "medium"},
-		"plan-auditor":    {Model: "opus", Effort: "high"},
-		"sync-auditor":    {Model: "opus", Effort: "high"},
-		"manager-develop": {Model: "opus", Effort: "medium"},
-		"super-advisor":   {Model: "opus", Effort: "high"},
-		"manager-design":  {Model: "opus", Effort: "high"},
-		"manager-lead":    {Model: "opus", Effort: "high"},
-		"builder-harness": {Model: "opus", Effort: "high"},
-		"e2e-tester":      {Model: "opus", Effort: "medium"},
-		"manager-docs":    {Model: "sonnet", Effort: "low"},
-		"manager-git":     {Model: "sonnet", Effort: "low"},
-		"Explore":         {Model: "sonnet", Effort: "low"},
-	}
-	for agent, exp := range want {
-		got, mapped := ResolveAgentModelEffort(cfg, agent)
-		if !mapped {
-			t.Errorf("%s: expected matrix membership", agent)
+// TestProfileMatrixAgents_CurrentRoster pins the display roster's derivation
+// contract: ProfileMatrixAgents is the CANONICAL retained roster
+// (template.RetainedAgents — the single roster literal, rosterguard-asserted)
+// filtered to the console rows, so the names here are never restated as a
+// second literal. Semantic pins: mission-governor absent, Explore off-console,
+// every definition-file agent present.
+func TestProfileMatrixAgents_CurrentRoster(t *testing.T) {
+	agents := ProfileMatrixAgents()
+	var want []string
+	for _, name := range RetainedAgents() {
+		if name == "Explore" {
 			continue
 		}
-		if got != exp {
-			t.Errorf("%s high: got %+v, want %+v", agent, got, exp)
-		}
+		want = append(want, name)
+	}
+	if !slices.Equal(agents, want) {
+		t.Errorf("ProfileMatrixAgents = %v, want the canonical roster minus Explore: %v", agents, want)
+	}
+	if slices.Contains(agents, "mission-governor") {
+		t.Error("mission-governor must not appear (retired from the catalog)")
+	}
+	if slices.Contains(agents, "Explore") {
+		t.Error("Explore must not appear (no definition file — off the console surface)")
+	}
+	if !slices.Contains(agents, "manager-todo") {
+		t.Error("manager-todo must appear (current catalog)")
 	}
 }
 
-// TestResolveAgentModelEffort_LowColumn covers AC-MPM-013 spot-checks on the low
-// column, including super-advisor whose former low>medium inversion is fixed.
-func TestResolveAgentModelEffort_LowColumn(t *testing.T) {
-	cfg := config.LLMConfig{Profile: "low"}
-	cases := map[string]config.ModelEffort{
-		"manager-spec":    {Model: "opus", Effort: "medium"},
-		"super-advisor":   {Model: "opus", Effort: "high"},
-		"manager-develop": {Model: "opus", Effort: "medium"},
-		"manager-lead":    {Model: "opus", Effort: "medium"},
-		"manager-docs":    {Model: "sonnet", Effort: "low"},
-		"manager-git":     {Model: "sonnet", Effort: "low"},
+// TestDefaultProfileMatrix_CellsAreCurrentConfigDefaults asserts every cell's
+// MODEL is one of the current config claude_models defaults (High/Medium —
+// the named re-derivation source, plan §B-1(b)) and its EFFORT is one of the
+// 5-level vocabulary's policy levels the matrix uses. A cell carrying any
+// other value is a stale restatement.
+func TestDefaultProfileMatrix_CellsAreCurrentConfigDefaults(t *testing.T) {
+	matrix := DefaultProfileMatrix()
+	if len(matrix) == 0 {
+		t.Fatal("DefaultProfileMatrix is empty — the matrix machine did not re-port")
 	}
-	for agent, exp := range cases {
-		got, _ := ResolveAgentModelEffort(cfg, agent)
-		if got != exp {
-			t.Errorf("%s low: got %+v, want %+v", agent, got, exp)
-		}
-	}
-}
-
-// TestDefaultProfileMatrix_Shape asserts the structural invariants of the
-// per-agent matrix: 3 profiles x 12 agents = 36 cells, models restricted to
-// {opus, sonnet} (fable is retired from the matrix — it is dominated by Opus 5
-// on the coding axis at every effort), efforts restricted to
-// {low, medium, high, max} (no `xhigh` cell — on Opus 5 xhigh scores the same
-// as high at materially higher cost), and no `inherit` inside the matrix.
-func TestDefaultProfileMatrix_Shape(t *testing.T) {
-	m := DefaultProfileMatrix()
-	wantProfiles := []string{PerformanceTierHigh, PerformanceTierMedium, PerformanceTierLow}
-	if len(m) != len(wantProfiles) {
-		t.Fatalf("profile count = %d, want %d", len(m), len(wantProfiles))
-	}
-	okModel := map[string]bool{"opus": true, "sonnet": true}
-	okEffort := map[string]bool{
-		EffortLevelLow: true, EffortLevelMedium: true,
-		EffortLevelHigh: true, EffortLevelMax: true,
-	}
-	total := 0
-	for _, profile := range wantProfiles {
-		agents, ok := m[profile]
+	validEfforts := map[string]bool{EffortLevelLow: true, EffortLevelMedium: true, EffortLevelHigh: true}
+	for _, col := range profileColumns {
+		agents, ok := matrix[col]
 		if !ok {
-			t.Fatalf("profile %q missing from matrix", profile)
+			t.Fatalf("matrix has no %q column", col)
 		}
-		if len(agents) != len(ProfileMatrixAgents()) {
-			t.Errorf("profile %q has %d cells, want %d", profile, len(agents), len(ProfileMatrixAgents()))
+		if len(agents) == 0 {
+			t.Fatalf("column %q is empty", col)
 		}
-		for _, agent := range ProfileMatrixAgents() {
-			cell, ok := agents[agent]
+		for agent, cell := range agents {
+			if !matrixModels[cell.Model] {
+				t.Errorf("matrix[%s][%s].model = %q — not a current config claude_models default (and haiku/fable/inherit never enter the matrix)", col, agent, cell.Model)
+			}
+			if !validEfforts[cell.Effort] {
+				t.Errorf("matrix[%s][%s].effort = %q — outside the matrix policy levels {low, medium, high}", col, agent, cell.Effort)
+			}
+		}
+	}
+}
+
+// TestDefaultProfileMatrix_RowMonotonicityAndNoSentinels asserts the old
+// matrix's invariants hold under the re-derived cells: per-agent depth never
+// increases as the profile column descends, and no haiku / fable / inherit
+// model ever appears inside the matrix (inherit survives only as the
+// unmapped-agent fallback).
+func TestDefaultProfileMatrix_RowMonotonicityAndNoSentinels(t *testing.T) {
+	matrix := DefaultProfileMatrix()
+	agents := ProfileMatrixAgents()
+	for _, agent := range agents {
+		prev := 3
+		for _, col := range profileColumns {
+			cell, ok := matrix[col][agent]
 			if !ok {
-				t.Errorf("profile %q missing agent %q", profile, agent)
-				continue
+				t.Fatalf("matrix[%s] lacks agent %q — every display agent needs a cell in every column", col, agent)
 			}
-			total++
-			if !okModel[cell.Model] {
-				t.Errorf("%s/%s model %q outside {opus, sonnet}", profile, agent, cell.Model)
+			if rank := effortRank(cell.Effort); rank > prev {
+				t.Errorf("row %q breaks monotonicity at column %s: %+v deeper than the column above", agent, col, cell)
+			} else {
+				prev = rank
 			}
-			if !okEffort[cell.Effort] {
-				t.Errorf("%s/%s effort %q outside {low, medium, high, max}", profile, agent, cell.Effort)
-			}
-		}
-	}
-	if total != 36 {
-		t.Errorf("matrix cell count = %d, want 36", total)
-	}
-}
-
-// TestDefaultProfileMatrix_Monotone asserts every agent row is non-increasing
-// across high >= medium >= low on a combined (model rank, effort rank) ordering.
-// This is the invariant the former super-advisor low>medium cell violated.
-func TestDefaultProfileMatrix_Monotone(t *testing.T) {
-	modelRank := map[string]int{"sonnet": 0, "opus": 1}
-	effortRank := map[string]int{
-		EffortLevelLow: 0, EffortLevelMedium: 1,
-		EffortLevelHigh: 2, EffortLevelXHigh: 3, EffortLevelMax: 4,
-	}
-	m := DefaultProfileMatrix()
-	rank := func(profile, agent string) int {
-		c := m[profile][agent]
-		return modelRank[c.Model]*10 + effortRank[c.Effort]
-	}
-	for _, agent := range ProfileMatrixAgents() {
-		hi, med, lo := rank(PerformanceTierHigh, agent), rank(PerformanceTierMedium, agent), rank(PerformanceTierLow, agent)
-		if hi < med {
-			t.Errorf("%s: high rank %d < medium rank %d — non-monotone", agent, hi, med)
-		}
-		if med < lo {
-			t.Errorf("%s: medium rank %d < low rank %d — non-monotone", agent, med, lo)
-		}
-	}
-}
-
-// TestResolveHarnessAgentModelEffort covers the /moai:harness generation path:
-// every purpose class resolves to HarnessAgentModel with the effort of its
-// profile-matrix row, an unknown class falls back to the implement class, and a
-// config harness_agents cell overrides the derived effort while the model stays
-// pinned.
-func TestResolveHarnessAgentModelEffort(t *testing.T) {
-	// Derived: effort borrowed from the class row, model always pinned.
-	want := map[string]string{
-		HarnessClassReadOnlyExtract:     EffortLevelLow,    // Explore row
-		HarnessClassMechanicalTransform: EffortLevelLow,    // manager-git row
-		HarnessClassSynthesize:          EffortLevelLow,    // manager-docs row
-		HarnessClassResearch:            EffortLevelHigh,   // plan-auditor row
-		HarnessClassVerifyJudge:         EffortLevelHigh,   // sync-auditor row
-		HarnessClassImplement:           EffortLevelMedium, // manager-develop row
-		HarnessClassDesignArchitecture:  EffortLevelHigh,   // manager-design row
-	}
-	cfg := config.LLMConfig{Profile: "high"}
-	for class, exp := range want {
-		got, known := ResolveHarnessAgentModelEffort(cfg, class)
-		if !known {
-			t.Errorf("%s: should be a known class", class)
-		}
-		if got.Model != HarnessAgentModel {
-			t.Errorf("%s: model = %q, want %q (harness agents are model-uniform)", class, got.Model, HarnessAgentModel)
-		}
-		if got.Effort != exp {
-			t.Errorf("%s: effort = %q, want %q", class, got.Effort, exp)
-		}
-	}
-
-	// Unknown class → implement fallback, reported as unknown.
-	got, known := ResolveHarnessAgentModelEffort(cfg, "not-a-class")
-	if known {
-		t.Errorf("unknown class should report known=false")
-	}
-	if got.Effort != EffortLevelMedium || got.Model != HarnessAgentModel {
-		t.Errorf("unknown class should fall back to implement: got %+v", got)
-	}
-
-	// Config override wins on effort; model stays pinned even if config says otherwise.
-	override := config.LLMConfig{
-		Profile: "high",
-		HarnessAgents: map[string]map[string]config.ModelEffort{
-			"high": {HarnessClassSynthesize: {Model: "sonnet", Effort: EffortLevelMedium}},
-		},
-	}
-	got, _ = ResolveHarnessAgentModelEffort(override, HarnessClassSynthesize)
-	if got.Effort != EffortLevelMedium {
-		t.Errorf("config effort should win: got %+v", got)
-	}
-	if got.Model != HarnessAgentModel {
-		t.Errorf("config model must be ignored (pinned): got %+v", got)
-	}
-}
-
-// TestResolveAgentModelEffort_OverridePrecedence covers REQ-MPM-012 / AC-MPM-006:
-// an override wins for its agent and does not affect a sibling in the same group.
-func TestResolveAgentModelEffort_OverridePrecedence(t *testing.T) {
-	cfg := config.LLMConfig{
-		Profile: "medium",
-		AgentOverrides: map[string]config.ModelEffort{
-			"manager-spec": {Model: "opus", Effort: "xhigh"},
-		},
-	}
-	got, _ := ResolveAgentModelEffort(cfg, "manager-spec")
-	if (got != config.ModelEffort{Model: "opus", Effort: "xhigh"}) {
-		t.Errorf("override should win: got %+v", got)
-	}
-	// plan-auditor shares spec_auditors but is unaffected → its own medium cell,
-	// which the phase-weighted policy sets to high (distinct from the xhigh
-	// override above, so the assertion still discriminates).
-	got, _ = ResolveAgentModelEffort(cfg, "plan-auditor")
-	if (got != config.ModelEffort{Model: "opus", Effort: "high"}) {
-		t.Errorf("plan-auditor medium cell should be unaffected: got %+v", got)
-	}
-}
-
-// TestResolveAgentModelEffort_Inherit covers REQ-MPM-013 / AC-MPM-007: only
-// user-added / unknown agents resolve to inherit with hasGroup=false. The
-// built-in Explore now has an explicit group (see
-// TestResolveAgentModelEffort_ExploreProfileInvariant) and is no longer in this
-// inherit set.
-func TestResolveAgentModelEffort_Inherit(t *testing.T) {
-	cfg := config.LLMConfig{Profile: "max"}
-	for _, agent := range []string{"some-user-agent", "another-custom-agent"} {
-		got, hasGroup := ResolveAgentModelEffort(cfg, agent)
-		if hasGroup {
-			t.Errorf("%s should have no group", agent)
-		}
-		if got.Model != ModelInherit {
-			t.Errorf("%s should resolve to inherit, got %q", agent, got.Model)
-		}
-	}
-}
-
-// TestResolveAgentModelEffort_ExploreProfileInvariant covers the product
-// decision that the built-in Explore agent resolves to sonnet/low with
-// hasGroup=true across all three profile columns (profile-invariant, like
-// docs/git).
-func TestResolveAgentModelEffort_ExploreProfileInvariant(t *testing.T) {
-	for _, profile := range []string{"high", "medium", "low"} {
-		cfg := config.LLMConfig{Profile: profile}
-		got, hasGroup := ResolveAgentModelEffort(cfg, "Explore")
-		if !hasGroup {
-			t.Errorf("profile %q: Explore should now have a group", profile)
-		}
-		if (got != config.ModelEffort{Model: "sonnet", Effort: "low"}) {
-			t.Errorf("profile %q: Explore got %+v, want sonnet/low", profile, got)
-		}
-	}
-}
-
-// TestResolveAgentModelEffort_ConfigProfilesOverrideDefault covers REQ-MPM-010:
-// a config llm.profiles cell overrides the Go default fallback.
-func TestResolveAgentModelEffort_ConfigProfilesOverrideDefault(t *testing.T) {
-	cfg := config.LLMConfig{
-		Profile: "high",
-		Profiles: map[string]map[string]config.ModelEffort{
-			// Keyed by agent NAME now, not by group.
-			"high": {"manager-docs": {Model: "opus", Effort: "high"}},
-		},
-	}
-	got, _ := ResolveAgentModelEffort(cfg, "manager-docs")
-	if (got != config.ModelEffort{Model: "opus", Effort: "high"}) {
-		t.Errorf("config profiles cell should override Go default: got %+v", got)
-	}
-	// manager-git absent from config profiles → Go default high cell.
-	got, _ = ResolveAgentModelEffort(cfg, "manager-git")
-	if (got != config.ModelEffort{Model: "sonnet", Effort: "low"}) {
-		t.Errorf("absent cell should fall back to Go default: got %+v", got)
-	}
-}
-
-// TestResolveAgentModelEffort_StaleGroupKeyedMirror asserts a pre-rename config
-// whose profiles mirror is keyed by GROUP name degrades gracefully: the lookup
-// misses and the Go default per-agent cell is used instead of erroring.
-func TestResolveAgentModelEffort_StaleGroupKeyedMirror(t *testing.T) {
-	cfg := config.LLMConfig{
-		Profile: "high",
-		Profiles: map[string]map[string]config.ModelEffort{
-			// Deliberately unequal to the Go default high cell for manager-docs
-			// (sonnet/low) so honoring the stale group key would be observable.
-			// The planted value has to be re-picked whenever that cell moves,
-			// or the assertion passes without observing anything.
-			"high": {GroupDocs: {Model: "opus", Effort: "max"}},
-		},
-	}
-	got, mapped := ResolveAgentModelEffort(cfg, "manager-docs")
-	if !mapped {
-		t.Fatalf("manager-docs should still resolve")
-	}
-	if (got != config.ModelEffort{Model: "sonnet", Effort: "low"}) {
-		t.Errorf("stale group-keyed cell should be ignored, Go default used: got %+v", got)
-	}
-}
-
-// TestResolveAgentModelEffort_LegacyAlias covers AC-MPM-002: a legacy config with
-// performance_tier and no profile resolves through the alias. performance_tier
-// "max" folds to the high column.
-func TestResolveAgentModelEffort_LegacyAlias(t *testing.T) {
-	cfg := config.LLMConfig{PerformanceTier: "max"} // no profile
-	// builder-harness is the probe because its cells still differ across all
-	// three columns (high/medium/low), so landing on the high column is
-	// observable. manager-develop no longer works here — it is `medium` in
-	// every column, which would pass for any column the alias resolved to.
-	got, _ := ResolveAgentModelEffort(cfg, "builder-harness")
-	if (got != config.ModelEffort{Model: "opus", Effort: "high"}) {
-		t.Errorf("legacy perf_tier max should resolve to the high column: got %+v", got)
-	}
-}
-
-// TestDefaultProfileMatrix_NoHaiku covers AC-MPM-024: the matrix has zero haiku.
-func TestDefaultProfileMatrix_NoHaiku(t *testing.T) {
-	for profile, groups := range DefaultProfileMatrix() {
-		for group, me := range groups {
-			if me.Model == "haiku" {
-				t.Errorf("haiku found at %s/%s — HaikuResidualRule violation", profile, group)
+			switch cell.Model {
+			case ModelInherit, "fable", "haiku":
+				t.Errorf("matrix[%s][%s].model = %q — sentinel/fable/haiku must not appear inside the matrix", col, agent, cell.Model)
 			}
 		}
+	}
+}
+
+// TestResolveAgentModelEffort_Precedence asserts the D2 precedence on the
+// re-ported resolver: an llm.agent_overrides entry wins; else the Go-default
+// cell under the effective profile; an unknown profile resolves the medium
+// column; an unmapped agent resolves the inherit sentinel unmapped.
+func TestResolveAgentModelEffort_Precedence(t *testing.T) {
+	t.Run("override wins", func(t *testing.T) {
+		ov := config.ModelEffort{Model: "haiku", Effort: "low"}
+		cfg := config.LLMConfig{Profile: config.ProfileHigh, AgentOverrides: map[string]config.ModelEffort{"manager-develop": ov}}
+		me, mapped := ResolveAgentModelEffort(cfg, "manager-develop")
+		if me != ov || !mapped {
+			t.Errorf("override resolution = %+v,%v; want %+v,true", me, mapped, ov)
+		}
+	})
+	t.Run("default cell under each profile", func(t *testing.T) {
+		for _, col := range profileColumns {
+			cfg := config.LLMConfig{Profile: col}
+			me, mapped := ResolveAgentModelEffort(cfg, "super-advisor")
+			want := DefaultProfileMatrix()[col]["super-advisor"]
+			if me != want || !mapped {
+				t.Errorf("profile %s: = %+v,%v; want %+v,true", col, me, mapped, want)
+			}
+		}
+	})
+	t.Run("unrecognized profile falls to the medium column", func(t *testing.T) {
+		cfg := config.LLMConfig{Profile: "bogus"}
+		me, mapped := ResolveAgentModelEffort(cfg, "manager-git")
+		want := DefaultProfileMatrix()[config.ProfileMedium]["manager-git"]
+		if me != want || !mapped {
+			t.Errorf("= %+v,%v; want medium-column %+v,true", me, mapped, want)
+		}
+	})
+	t.Run("unmapped agent inherits", func(t *testing.T) {
+		me, mapped := ResolveAgentModelEffort(config.LLMConfig{}, "totally-user-agent")
+		if mapped || me.Model != ModelInherit || me.Effort != "" {
+			t.Errorf("= %+v,%v; want {inherit \"\"},false", me, mapped)
+		}
+	})
+}
+
+// TestValidPerformanceTiers_SelectorVocabulary pins the restored console
+// selector's wire vocabulary to {max, medium, low} (REQ-AFR-003 closed set;
+// AC-AFR-002 persists a max submission verbatim to llm.profile). The client-only
+// "custom" pseudo-state is NOT a member.
+func TestValidPerformanceTiers_SelectorVocabulary(t *testing.T) {
+	want := []string{PerformanceTierMax, PerformanceTierMedium, PerformanceTierLow}
+	if !slices.Equal(ValidPerformanceTiers(), want) {
+		t.Errorf("ValidPerformanceTiers = %v, want %v", ValidPerformanceTiers(), want)
+	}
+	for _, v := range want {
+		if !IsValidPerformanceTier(v) {
+			t.Errorf("IsValidPerformanceTier(%q) = false, want true", v)
+		}
+	}
+	for _, v := range []string{"custom", "", "bogus", "high"} {
+		if IsValidPerformanceTier(v) {
+			t.Errorf("IsValidPerformanceTier(%q) = true, want false — outside the selector wire set", v)
+		}
+	}
+}
+
+// TestAgentGroup_CurrentMembership pins the group layer to the current roster:
+// manager-todo is mapped, mission-governor is not, Explore keeps its mapped
+// cell (old-config overrides for it stay resolvable).
+func TestAgentGroup_CurrentMembership(t *testing.T) {
+	if g, ok := AgentGroup("manager-todo"); !ok || g == "" {
+		t.Errorf("AgentGroup(manager-todo) = %q,%v; want a mapped group", g, ok)
+	}
+	if _, ok := AgentGroup("mission-governor"); ok {
+		t.Error("AgentGroup(mission-governor) mapped — the retired agent must not be a member")
+	}
+	if g, ok := AgentGroup("Explore"); !ok || g != GroupExplore {
+		t.Errorf("AgentGroup(Explore) = %q,%v; want %q,true", g, ok, GroupExplore)
 	}
 }

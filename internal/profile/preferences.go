@@ -168,8 +168,11 @@ func WritePreferences(profileName string, prefs ProfilePreferences) error {
 		return fmt.Errorf("invalid profile name %q: must not contain path separators or start with '.'", profileName)
 	}
 	path := GetPreferencesPath(profileName)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("create directory: %w", err)
+	}
+	if err := os.Chmod(filepath.Dir(path), 0o700); err != nil {
+		return fmt.Errorf("secure profile directory: %w", err)
 	}
 	data, err := yaml.Marshal(prefs)
 	if err != nil {

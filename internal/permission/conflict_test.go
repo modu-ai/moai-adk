@@ -13,7 +13,7 @@ func TestResolveConflict_SpecificityWins(t *testing.T) {
 
 	rules := []*PermissionRule{
 		{
-			Pattern: "Bash(git push:*)",      // less specific -> deny.
+			Pattern: "Bash(git push:*)", // less specific -> deny.
 			Action:  DecisionDeny,
 			Source:  config.SrcLocal,
 			Origin:  "a-settings.json",

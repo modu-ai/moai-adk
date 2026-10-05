@@ -1,0 +1,132 @@
+● ● ○ ○ ○ ○ ○ ○ ○ ○ 2 / 10
+┃ ユーザー名                                                                    
+┃ 設定ファイルに表示される名前です。Enterでスキップできます。                   
+┃ >                                                                             
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+
+shift+tab 戻る • enter 次へ
+● ● ● ○ ○ ○ ○ ○ ○ ○ 3 / 10
+┃ Gitコミットメッセージ言語                                                     
+┃ コミットメッセージに使用する言語です。                                        
+┃ ▸ English           - English                                                 
+┃   Korean (한국어)   - 한국어                                                  
+┃   Japanese (日本語) - 日本語                                                  
+┃   Chinese (中文)    - 中文                                                    
+  コードコメント言語                                                            
+  コードコメントに使用する言語です。                                            
+  ▸ English           - English                                                 
+    Korean (한국어)   - 한국어                                                  
+    Japanese (日本語) - 日本語                                                  
+    Chinese (中文)    - 中文                                                    
+  ドキュメント言語                                                              
+  ドキュメントファイルに使用する言語です。                                      
+  ▸ English           - English                                                 
+    Korean (한국어)   - 한국어                                                  
+    Japanese (日本語) - 日本語                                                  
+    Chinese (中文)    - 中文                                                    
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+
+↑ 上 • ↓ 下 • / 絞り込み • shift+tab 戻る • enter 選択
+● ● ● ● ● ● ○ ○ ○ ○ 6 / 10
+┃ デフォルトモデルオーバーライド                                                
+┃ このプロファイルで起動する際のモデルをオーバーライドします。                  
+┃   (project default)                                                           
+┃   fable[1m] (Fable 5.1 + 1Mコンテキスト)                                      
+┃ ▸ opus[1m] (Opus 5.5 + 1Mコンテキスト、推奨)                                  
+┃   sonnet[1m] (Sonnet 5.5 + 1Mコンテキスト)                                    
+┃   haiku (Haiku 4.5、最速)                                                     
+  セッションモデルポリシー                                                      
+  推論強度を個別に選ばなかったとき、このプロファイルで起動する Claude           
+  セッションの既定の推論強度を決めます。サブエージェントはセッションのモデルと推
+  論強度をそのまま引き継ぎます。                                                
+                                                                                
+  ▸ High - Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows)         
+    Medium - Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows)          
+    Low - Opus 5.5 (high~low) + Sonnet (low, docs/e2e/single-shot rows)         
+  セッション推論レベル                                                          
+  このプロファイルで起動する Claude セッションの推論深度です。xhigh/max         
+  は対応モデル（Opus 5.5、Sonnet 5、Opus 4.7                                    
+  以降）が必要です。サブエージェントはこのセッションの推論強度を引き継ぎます。  
+    (モデルポリシー、未設定なら Claude Code 既定値: Opus 5.5 は medium)         
+    low - 最速、簡易推論                                                        
+    medium - バランス (推奨)                                                    
+  ▸ high - 深い推論                                                             
+    xhigh - 拡張推論                                                            
+    max - 最大推論                                                              
+  権限モード                                                                    
+  Claudeがアクション実行前に権限を要求する方法を制御します。                    
+  ▸ 編集を自動承認 (acceptEdits) - ファイル編集を自動承認、コマンドのみ確認     
+    オートモード (auto) - 分類器による自動承認。Max/Team/Enterprise/APIプラン + 
+    Sonnet 5.5+ 必須。未対応環境では実行時エラーが発生します。                  
+
+↑ 上 • ↓ 下 • / 絞り込み • shift+tab 戻る • enter 選択
+● ● ● ● ● ● ● ● ● ● 10 / 10
+┃ 開発方法論                                                                    
+┃ quality.yaml                                                                  
+┃ に記録されるプロジェクトの開発方法論。空欄の場合はプロジェクトのデフォルトを維
+┃ 持します。                                                                    
+┃   (project default)                                                           
+┃   ddd - ドメイン駆動開発 (ANALYZE-PRESERVE-IMPROVE)                           
+┃ ▸ tdd - テスト駆動開発 (RED-GREEN-REFACTOR)                                   
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+
+↑ 上 • ↓ 下 • / 絞り込み • shift+tab 戻る • enter 送信

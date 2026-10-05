@@ -335,10 +335,11 @@ func TestValidateInitFlags_EmptyFlags(t *testing.T) {
 // TestInitCmd_HasPage3OverrideFlags verifies the Page-3 non-interactive override
 // flags are registered (REQ-IWE-008). The two wizard mode flags that used to
 // head this list are retired (REQ-WIZ-018) and are asserted absent by
-// AC-WIZ-015's retirement grep, not here.
+// AC-WIZ-015's retirement grep, not here; --project-mode joined the retired
+// set (SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001) and is asserted absent by
+// TestInitCmd_ProjectModeFlagRetired below.
 func TestInitCmd_HasPage3OverrideFlags(t *testing.T) {
 	page3Flags := []string{
-		"project-mode",
 		"enable-lsp",
 		"enforce-quality",
 		"enable-design",
@@ -412,41 +413,33 @@ func TestValidateInitFlags_ValidProfile(t *testing.T) {
 	resetInitFlagsForProfile(t)
 }
 
-// TestValidateInitFlags_InvalidProfile (REQ-MPM-015) — an out-of-set value
-// errors, and the message names the closed set {high, medium, low}. Note "high"
-// is now the canonical top column and is therefore VALID.
+// TestValidateInitFlags_InvalidProfile — --profile is retired
+// (SPEC-AGENT-MODEL-INHERIT-001 D10): a value outside the former closed set is
+// accepted like any other, and only a deprecation warning is printed.
 func TestValidateInitFlags_InvalidProfile(t *testing.T) {
 	for _, p := range []string{"bogus", "subscription", "xhigh"} {
 		t.Run(p, func(t *testing.T) {
 			resetInitFlagsForProfile(t)
+			var errBuf bytes.Buffer
+			initCmd.SetErr(&errBuf)
+			t.Cleanup(func() { initCmd.SetErr(nil) })
 			if err := initCmd.Flags().Set("profile", p); err != nil {
 				t.Fatal(err)
 			}
-			err := validateInitFlags(initCmd, []string{})
-			if err == nil {
-				t.Fatalf("validateInitFlags with profile=%q should error, got nil", p)
+			if err := validateInitFlags(initCmd, []string{}); err != nil {
+				t.Fatalf("validateInitFlags with profile=%q must succeed (flag retired), got: %v", p, err)
 			}
-			msg := err.Error()
-			if !strings.Contains(msg, "invalid --profile") {
-				t.Errorf("error should mention 'invalid --profile', got: %v", err)
-			}
-			if !strings.Contains(msg, "high, medium, low") {
-				t.Errorf("error should name the canonical closed set, got: %v", err)
-			}
-			if strings.Contains(msg, "max, medium, low") {
-				t.Errorf("error must not name the superseded top-column set, got: %v", err)
+			if !strings.Contains(errBuf.String(), "--profile is deprecated") || !strings.Contains(errBuf.String(), "moai profile setup") {
+				t.Errorf("expected the --profile deprecation warning, got: %q", errBuf.String())
 			}
 		})
 	}
 	resetInitFlagsForProfile(t)
 }
 
-// TestValidateInitFlags_ModelPolicyVocabulary — --model-policy and --profile are
-// the same axis, so they MUST share one closed set. "high" is the canonical top
-// column and must be accepted; the superseded "max" stays valid as a read-time
-// alias; out-of-set values error with a message naming the canonical set. This
-// pins the regression where --model-policy kept the pre-rename {max, medium,
-// low} set after --profile had already moved to {high, medium, low}.
+// TestValidateInitFlags_ModelPolicyVocabulary — --model-policy is retired
+// (SPEC-AGENT-MODEL-INHERIT-001 D13): every value, in or out of the former
+// {high, medium, low, max} set, is accepted and only warned about.
 func TestValidateInitFlags_ModelPolicyVocabulary(t *testing.T) {
 	valid := []string{"high", "medium", "low", "max"}
 	for _, v := range valid {
@@ -461,31 +454,32 @@ func TestValidateInitFlags_ModelPolicyVocabulary(t *testing.T) {
 		})
 	}
 
+	// Formerly-invalid values are accepted too: the flag is retired and only
+	// warns (SPEC-AGENT-MODEL-INHERIT-001 D13).
 	for _, v := range []string{"bogus", "xhigh", "subscription"} {
-		t.Run("invalid/"+v, func(t *testing.T) {
+		t.Run("former-invalid/"+v, func(t *testing.T) {
 			resetInitFlagsForProfile(t)
+			var errBuf bytes.Buffer
+			initCmd.SetErr(&errBuf)
+			t.Cleanup(func() { initCmd.SetErr(nil) })
 			if err := initCmd.Flags().Set("model-policy", v); err != nil {
 				t.Fatal(err)
 			}
-			err := validateInitFlags(initCmd, []string{})
-			if err == nil {
-				t.Fatalf("--model-policy=%q should error, got nil", v)
+			if err := validateInitFlags(initCmd, []string{}); err != nil {
+				t.Fatalf("--model-policy=%q must be accepted (flag retired), got: %v", v, err)
 			}
-			msg := err.Error()
-			if !strings.Contains(msg, "invalid --model-policy") {
-				t.Errorf("error should mention 'invalid --model-policy', got: %v", err)
-			}
-			if !strings.Contains(msg, "high, medium, low") {
-				t.Errorf("error should name the canonical closed set, got: %v", err)
+			if !strings.Contains(errBuf.String(), "--model-policy is deprecated") {
+				t.Errorf("expected the --model-policy deprecation warning, got: %q", errBuf.String())
 			}
 		})
 	}
 	resetInitFlagsForProfile(t)
 }
 
-// TestInitCmd_ProfilePersistence (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-016,
-// AC-MPM-010) — `moai init --profile max` persists profile: max to the deployed
-// llm.yaml and writes no plan_type key (REQ-MPM-017/032, AC-MPM-011).
+// TestInitCmd_ProfilePersistence — `moai init --profile max` no longer writes
+// the profile (the flag is retired, SPEC-AGENT-MODEL-INHERIT-001 D10): the
+// deployed llm.yaml keeps the template's own profile line, and no plan_type
+// key is written (REQ-MPM-017/032, AC-MPM-011).
 func TestInitCmd_ProfilePersistence(t *testing.T) {
 	root := t.TempDir()
 
@@ -516,8 +510,8 @@ func TestInitCmd_ProfilePersistence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read deployed llm.yaml: %v", err)
 	}
-	if !strings.Contains(string(content), "profile: high") {
-		t.Errorf("deployed llm.yaml should contain 'profile: high', got:\n%s", content)
+	if strings.Contains(string(content), "profile: high") {
+		t.Errorf("the retired --profile flag was written to llm.yaml:\n%s", content)
 	}
 	if strings.Contains(string(content), "plan_type") {
 		t.Errorf("deployed llm.yaml must NOT contain a plan_type key (retired), got:\n%s", content)
@@ -618,78 +612,20 @@ func TestValidateInitFlags_EmptyGitIdentity(t *testing.T) {
 	}
 }
 
-// --- S1 --project-mode enum validation ---
+// --- S1 --project-mode enum validation: RETIRED ---
 //
-// Every sibling enum flag on `moai init` (--mode, --git-mode, --git-provider,
-// --model-policy, --profile) is closed-set validated, but --project-mode was
-// not. C32 made writeProjectModeYAML reachable from `moai init`, so the
-// unvalidated value now reaches patchYAMLKey and is written verbatim into
-// .moai/config/sections/project.yaml. A value carrying a newline therefore
-// injects an arbitrary key at column 0 of that file — the discriminating row
-// below, which passes only once the enum check rejects out-of-set values.
+// The --project-mode flag and its S1 enum-validation tests were removed by
+// SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001: project.mode is a ghost key
+// with no Go reader, so the flag had no consumer to validate for. The removal
+// itself (no half-removal: registration gone, not merely unwired) is asserted
+// by TestInitCmd_ProjectModeFlagRetired below.
 
-// resetInitFlagsForProjectMode clears every flag validateInitFlags reads so a
-// prior test's leftover value on the shared global initCmd cannot bleed into
-// the project-mode validation under test.
-func resetInitFlagsForProjectMode(t *testing.T) {
-	t.Helper()
-	for _, f := range []string{
-		"mode", "git-mode", "git-provider", "model-policy", "profile",
-		"github-username", "gitlab-instance-url", "project-mode",
-	} {
-		if initCmd.Flags().Lookup(f) != nil {
-			_ = initCmd.Flags().Set(f, "")
-		}
+// TestInitCmd_ProjectModeFlagRetired pins REQ-ICU-001's no-half-removal clause:
+// the flag registration itself must be gone, not merely unwired — a residual
+// registration is exactly the half-removed ghost shape the E4 grep cannot
+// reach (it greps readers, not the cobra registration).
+func TestInitCmd_ProjectModeFlagRetired(t *testing.T) {
+	if initCmd.Flags().Lookup("project-mode") != nil {
+		t.Error("--project-mode flag is still registered; project.mode had no Go reader (SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001)")
 	}
-}
-
-// TestValidateInitFlags_InvalidProjectMode (S1) — an out-of-set --project-mode
-// errors, and the message names the closed set {personal, team}. The
-// newline-bearing rows are the YAML-injection reproduction: unvalidated, they
-// reach project.yaml verbatim and plant a top-level key.
-func TestValidateInitFlags_InvalidProjectMode(t *testing.T) {
-	for _, mode := range []string{
-		"personal\ninjected_key: true",
-		"team\nmoai:\n  version: pwned",
-		"bogus",
-		"Personal",
-	} {
-		t.Run(mode, func(t *testing.T) {
-			resetInitFlagsForProjectMode(t)
-			if err := initCmd.Flags().Set("project-mode", mode); err != nil {
-				t.Fatal(err)
-			}
-			err := validateInitFlags(initCmd, []string{})
-			if err == nil {
-				t.Fatalf("validateInitFlags with project-mode=%q should error, got nil", mode)
-			}
-			msg := err.Error()
-			if !strings.Contains(msg, "invalid --project-mode") {
-				t.Errorf("error should mention 'invalid --project-mode', got: %v", err)
-			}
-			if !strings.Contains(msg, "personal, team") {
-				t.Errorf("error should name the closed set, got: %v", err)
-			}
-		})
-	}
-	resetInitFlagsForProjectMode(t)
-}
-
-// TestValidateInitFlags_ValidProjectMode (S1) — both enum members pass, and so
-// does the empty value: empty means "flag not supplied, leave the field unset",
-// matching every sibling validator (writeProjectModeYAML then defaults to
-// "personal").
-func TestValidateInitFlags_ValidProjectMode(t *testing.T) {
-	for _, mode := range []string{"personal", "team", ""} {
-		t.Run("mode="+mode, func(t *testing.T) {
-			resetInitFlagsForProjectMode(t)
-			if err := initCmd.Flags().Set("project-mode", mode); err != nil {
-				t.Fatal(err)
-			}
-			if err := validateInitFlags(initCmd, []string{}); err != nil {
-				t.Errorf("validateInitFlags with project-mode=%q should not error, got: %v", mode, err)
-			}
-		})
-	}
-	resetInitFlagsForProjectMode(t)
 }

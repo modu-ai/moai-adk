@@ -67,6 +67,7 @@ func TestDoctorCmd_VerboseShortFlag(t *testing.T) {
 }
 
 func TestDoctorCmd_Execution(t *testing.T) {
+	t.Chdir(t.TempDir())
 	buf := new(bytes.Buffer)
 	doctorCmd.SetOut(buf)
 	doctorCmd.SetErr(buf)

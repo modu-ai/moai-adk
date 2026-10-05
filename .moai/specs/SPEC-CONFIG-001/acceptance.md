@@ -1,7 +1,6 @@
 ---
 id: SPEC-CONFIG-001
 version: "1.0.0"
-status: planned
 created: "2026-02-03"
 updated: "2026-02-03"
 author: GOOS

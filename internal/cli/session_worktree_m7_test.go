@@ -26,11 +26,11 @@ import (
 // BOTH the M2/M4 seams (to no-op defaults via swapSessionWorktreeSeams) AND the
 // M7 git-config seams carried here.
 type m7Seams struct {
-	safeDirAdd     func(path string) error
-	safeDirUnset   func(path string) error
-	safeDirGetAll  func() ([]string, error)
-	globalGet      func(key string) string
-	gitVersion     func() gitVersionInfo
+	safeDirAdd    func(path string) error
+	safeDirUnset  func(path string) error
+	safeDirGetAll func() ([]string, error)
+	globalGet     func(key string) string
+	gitVersion    func() gitVersionInfo
 }
 
 // swapM7Seams replaces ONLY the M7 git-config seams and registers restoration.
@@ -466,7 +466,7 @@ func TestEnterSessionWorktree_M7WiringInvokesHelper(t *testing.T) {
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
 		commonDir: func() (string, error) { return "/repo/.git", nil },
-		add:       func(dest, branch string) (string, error) { return dest, nil },
+		add:       func(dest, branch, base string) (string, error) { return dest, nil },
 		configSet: func(string, string, string) error { return nil },
 	})
 	swapM7Seams(t, m7Seams{

@@ -37,6 +37,8 @@ description: "整理 Claude Code 上下文窗口的令牌概念、自动压缩�
 | Claude 读取的文件 | 仅一行摘要 | 文件正文只有 Claude 看到 |
 | Claude 的分析·修改·回应 | 可见 | 原样输出到终端 |
 
+来源（`MEMORY.md` 加载上限）：Claude Code CHANGELOG 2.1.83 — "Memory: MEMORY.md index now truncates at 25KB as well as 200 lines".
+
 令牌 (token) 是度量这些信息的单位。大致上一个英文单词占 1~2 个令牌，中文等语言每个字符占用更多令牌。一个反直觉的事实是：**会话还没开始，窗口就已经被填进了相当的量** —— 因为 CLAUDE.md、记忆、技能列表、MCP 工具名称比第一条提示词更早加载。
 
 ### 文件读取最消耗上下文

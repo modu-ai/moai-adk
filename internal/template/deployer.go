@@ -91,6 +91,15 @@ type deployer struct {
 	// value keeps mirroring ON; WithSkillMirror(false) is the seam that lets a
 	// test deploy the same tree with and without the mirror in one process.
 	skillMirrorDisabled bool
+	// deployMode selects the deploy file set (SPEC-INIT-SHRINK-001): the
+	// zero value is DeployModeLocal (today's full payload); DeployModePlugin
+	// excludes .claude/skills/** and .claude/commands/** from the walk and
+	// from ListTemplates. See deployer_mode.go.
+	deployMode DeployMode
+	// pluginMirrorPolicy selects what plugin mode does with the
+	// .agents/skills mirror. The zero value is MirrorPolicyRehome (the
+	// conservative OD-6 fallback: real copies, never dangling links).
+	pluginMirrorPolicy PluginMirrorPolicy
 	// symlinkFn and mirrorCopyFn are test seams for the two mirror syscalls.
 	// nil means "use the real one" (see skill_mirror.go).
 	symlinkFn    func(oldname, newname string) error
@@ -185,6 +194,16 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 			return err
 		}
 
+		// SPEC-INIT-SHRINK-001 REQ-001: on the plugin path the walk skips
+		// the dropped component roots entirely — before any content read or
+		// render, so an excluded file costs only the walk step. destRelPath
+		// is the path minus its .tmpl suffix for rendered files; both
+		// spellings share the same prefix decision, so testing the walk path
+		// is enough.
+		if d.pluginModeExcluded(path) {
+			return nil
+		}
+
 		// Determine if this is a template file that needs rendering
 		isTemplate := strings.HasSuffix(path, ".tmpl")
 		var content []byte
@@ -214,6 +233,16 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 			destRelPath = path
 		}
 
+		// SPEC-INIT-SHRINK-001 REQ-005 (OD-1 settled (c)): on the plugin
+		// path the project .mcp.json render never carries the `moai` entry —
+		// the plugin is its carrier — and the post-install provision call
+		// writes the entry back when the probe reads not-demonstrated. The
+		// filter runs at render time because the deploy precedes the probe;
+		// design §2.3's sequencing note names exactly this split.
+		if d.deployMode == DeployModePlugin && destRelPath == ".mcp.json" {
+			content = stripMoaiFromMcpJSON(content)
+		}
+
 		// Record the skill this file belongs to, before any skip branch: a
 		// re-deploy whose files all already exist still owes its mirror.
 		if skill, ok := skillNameFromDeployPath(destRelPath); ok {
@@ -226,17 +255,30 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 		// Compute destination path
 		destPath := filepath.Join(projectRoot, filepath.FromSlash(destRelPath))
 
+		// Release MoAI's own mirror link before the existence check below:
+		// stat would otherwise follow it to the canonical file and record the
+		// mirror path user_created, leaving the link in place.
+		if err := releaseOwnMirrorLink(projectRoot, destRelPath); err != nil {
+			return fmt.Errorf("template deploy release mirror link %q: %w", destRelPath, err)
+		}
+
 		// Existing file protection: skip files that already exist at the
 		// destination. This prevents overwriting user-created or
 		// programmatically-generated files (e.g., config YAMLs from Step 2
 		// of init, or pre-existing CLAUDE.md).
-		// Skip this check in forceUpdate mode (used for template updates).
-		if !d.forceUpdate {
+		// Skip this check in forceUpdate mode (used for template updates) —
+		// EXCEPT on published-skill paths (R-011): update mode exists to
+		// refresh template-managed content, not to overwrite a user-owned
+		// file that happens to sit at a published-skill path. There the
+		// provenance check survives forceUpdate, and a skip is reported.
+		protectedScope := isPublishedSkillPath(destRelPath)
+		if !d.forceUpdate || protectedScope {
 			if _, statErr := os.Stat(destPath); statErr == nil {
 				// File exists — check manifest for provenance
 				if entry, found := m.GetEntry(destRelPath); found {
 					if entry.Provenance == manifest.UserModified || entry.Provenance == manifest.UserCreated {
 						// Respect user files
+						result.recordProtectedSkip(destRelPath)
 						return nil
 					}
 					// template_managed files are safe to overwrite (re-init / update)
@@ -244,6 +286,7 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 					// Existing file not tracked in manifest — record as user_created and skip
 					templateHash := manifest.HashBytes(content)
 					_ = m.Track(destRelPath, manifest.UserCreated, templateHash)
+					result.recordProtectedSkip(destRelPath)
 					return nil
 				}
 			}
@@ -287,7 +330,22 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 	// the result, never in the returned error. Mirror entries are deliberately
 	// NOT registered with the manifest manager (hashing a directory symlink
 	// fails EISDIR, and the canonical files are already tracked).
-	if !d.skillMirrorDisabled {
+	//
+	// SPEC-INIT-SHRINK-001 REQ-006: plugin mode replaces the walk-derived
+	// mirror with the mirror policy — MirrorPolicyNone deploys no mirror at
+	// all; MirrorPolicyRehome (the conservative default) writes real
+	// directory copies straight from the embedded tree, because the walk
+	// deployed no .claude/skills for links to point at. Local mode keeps the
+	// existing behavior unchanged.
+	if d.deployMode == DeployModePlugin {
+		policy := d.pluginMirrorPolicy
+		if policy == "" {
+			policy = MirrorPolicyRehome
+		}
+		if policy == MirrorPolicyRehome {
+			result.SkillMirrors = d.pluginRehomedMirror(projectRoot, tmplCtx)
+		}
+	} else if !d.skillMirrorDisabled {
 		result.SkillMirrors = d.mirrorSkills(projectRoot, deployedSkills)
 	}
 
@@ -304,6 +362,10 @@ func (d *deployer) ExtractTemplate(name string) ([]byte, error) {
 }
 
 // ListTemplates returns sorted relative paths of all files in the embedded FS.
+// The deploy-mode exclusion (SPEC-INIT-SHRINK-001 REQ-001) applies here too:
+// a plugin-mode deployer lists no .claude/skills/** or .claude/commands/**
+// entry, so every consumer that derives the deploy scope from the listing
+// (merge analysis, outcome accounting) sees exactly what the run writes.
 func (d *deployer) ListTemplates() []string {
 	var list []string
 
@@ -312,6 +374,9 @@ func (d *deployer) ListTemplates() []string {
 			return nil // skip errors during listing
 		}
 		if path == "." || entry.IsDir() {
+			return nil
+		}
+		if d.pluginModeExcluded(path) {
 			return nil
 		}
 		// Strip .tmpl suffix to return deployment target paths

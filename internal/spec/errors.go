@@ -5,6 +5,9 @@ import "fmt"
 type DuplicateAcceptanceID struct {
 	ID    string
 	Depth int
+	// Line is the 1-based line, within the markdown handed to the parser, of
+	// the repeated occurrence (card t564).
+	Line int
 }
 
 func (e *DuplicateAcceptanceID) Error() string {

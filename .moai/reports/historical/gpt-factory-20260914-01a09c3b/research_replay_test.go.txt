@@ -1,0 +1,30 @@
+package translate
+
+import (
+ "context"
+ "encoding/json"
+ "errors"
+ "testing"
+)
+
+// Research-only synthetic control. Does not claim to reproduce Claude's wire request.
+func TestResearchReminderPlacement(t *testing.T) {
+ h, raw := newClassifyFixture(t)
+ ctx := context.Background()
+ if err := h.Check(ctx, "gpt-5.6-sol", "owner", raw(3)); err != nil { t.Fatal(err) }
+ var messages []map[string]any
+ if err := json.Unmarshal(raw(3), &messages); err != nil { t.Fatal(err) }
+ reminder := map[string]any{"role":"user", "content":"<system-reminder>Previously read file changed.</system-reminder>"}
+ tail := append(append([]map[string]any{}, messages...), reminder)
+ b, _ := json.Marshal(tail)
+ if err := h.Check(ctx,"gpt-5.6-sol","owner",b); err != nil { t.Fatalf("tail control: %v",err) }
+ t.Log("unchanged=accepted tail_reminder=accepted")
+ middle := append([]map[string]any{}, messages[:2]...)
+ middle = append(middle, reminder)
+ middle = append(middle, messages[2:]...)
+ b, _ = json.Marshal(middle)
+ err := h.Check(ctx,"gpt-5.6-sol","owner",b)
+ var replay HistoryReplayError
+ if !errors.As(err,&replay) || replay.Cause != CauseChain { t.Fatalf("expected CauseChain, got %v",err) }
+ t.Log("mid_history_reminder=CauseChain; opaque envelopes unchanged")
+}

@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/profile"
 )
 
@@ -48,6 +49,10 @@ func sandboxProfileBaseDir() func() {
 }
 
 func TestMain(m *testing.M) {
+	// Git fixtures must not inherit a hook's or lane's repository (GH #1691).
+	if err := gitenv.ScrubProcess(); err != nil {
+		panic(err)
+	}
 	restore := sandboxProfileBaseDir()
 	code := m.Run()
 	restore()

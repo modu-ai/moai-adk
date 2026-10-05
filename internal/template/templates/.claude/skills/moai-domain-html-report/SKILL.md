@@ -62,16 +62,20 @@ The two artifacts this skill produces serve **different readers and therefore ca
 | `mode` | yes | — | `status` \| `incident` \| `plan` \| `explainer` \| `financial` \| `pr` |
 | `audience` | no | derived from the active output style | `expert` \| `basic` \| `learn` — see § Audience Tiers |
 | `slug` | no | auto-derived from the title | Output filename prefix |
-| `output_path` | no | `<cwd>/reports/<slug>-<YYYYMMDD>.html` | Output path |
+| `output_path` | no | `.moai/reports/<slug>-<YYYYMMDD>.html` | Output path |
 | `font_stack` | no | per-mode default | Font mapping override |
 
 `mode` and `audience` are **orthogonal**: `mode` picks the report's *structure* (which sections exist), `audience` picks its *depth* (how much explanation each section carries). Every mode renders at every tier.
+
+### Reading `report.format` (delivery format)
+
+Before delivering, read `report.format` from the settings chain (`.moai/config/sections/report.yaml`; the skill-routing doctrine couples on it). Closed set: `html+md` (default) \| `md` \| `artifact` — `html+md` renders the classic browser path below; `md` leaves the skill idle (markdown is the native output); `artifact` renders the HTML conformed to the artifact page contract ([`references/artifact-contract.md`](references/artifact-contract.md)) and publishes it as a Claude Artifact, falling back to `html+md` automatically when the Artifact tool is absent (no error — § After rendering (b)).
 
 ---
 
 ## Output
 
-Two files at `<cwd>/reports/<slug>-<YYYYMMDD>.{html,md}`:
+Two files at `.moai/reports/<slug>-<YYYYMMDD>.{html,md}`. If the `.moai/reports/` directory does not exist yet, create it before writing either file:
 
 **The `.html` file** — the human-facing artifact:
 
@@ -108,10 +112,16 @@ Alongside every `.html` file, write a **markdown twin** at the same path with th
 
 ## After rendering — report back to the user
 
-Once the `.html` file and its `.md` twin are written, the response MUST do two things:
+Once the `.html` file and its `.md` twin are written to `.moai/reports/`, the pair files always exist on disk — the delivery step chooses how the user reaches them, driven by `report.format` (§ Input). The response MUST do two things:
 
 1. **Summary** — print a concise summary of what was rendered: the mode, the **audience tier** (and what it was derived from — the active output style, or an explicit `audience` argument), the report title, and the key sections or figures the file contains (a short paragraph or a few bullets). Do not paste the full HTML into the response.
-2. **Auto-open** — immediately open the rendered file in the user's default browser by running the platform-appropriate opener via the Bash tool. Do NOT ask the user to type `! open` themselves; run the opener directly so the report appears in one step on macOS, Windows, and Linux alike:
+2. **Deliver** — exactly one of the following, by `report.format`:
+
+   **(a) `format: artifact` and the Artifact tool is available** — conform the document to the artifact page contract (standalone skeleton, 2-4-word `<title>`, `:root` tokens + dual dark-mode blocks, explicit body background, 16px phone gutter, Google-Fonts-only stylesheets, `pre.mermaid` diagrams, no external script — full contract: [`references/artifact-contract.md`](references/artifact-contract.md)), publish the HTML as a Claude Artifact, and present the **artifact link** in the summary instead of the browser auto-open. Loading `artifact-design` for the publication contract in this step is correct routing — content and rendering stay owned here (skill-routing).
+
+   **(b) `format: artifact` and the Artifact tool is NOT available** (Codex, GLM, API-key sessions) — deliver through the existing html+md path (opener below) **without treating it as an error**, and state the fallback and reason in one summary sentence ("Artifact tool unavailable in this session — delivered as html+md instead"). The `.moai/reports/` pair is written exactly as in (a).
+
+   **(c) `format: html+md`** — immediately open the rendered file in the user's default browser by running the platform-appropriate opener via the Bash tool. Do NOT ask the user to type `! open` themselves; run the opener directly so the report appears in one step on macOS, Windows, and Linux alike:
 
    ```bash
    case "$(uname -s)" in
@@ -124,7 +134,9 @@ Once the `.html` file and its `.md` twin are written, the response MUST do two t
 
    macOS uses `open`, Linux uses `xdg-open` (fall back to printing the absolute path when no opener/display is available — headless or WSL environments), Windows Git-Bash/MSYS uses `start`. If the opener command fails or the permission is denied, print the absolute path so the user can open the file manually.
 
-Always auto-open the report (or, failing that, print its absolute path) — a rendered report the user cannot locate or open has no value.
+   In path (c) always auto-open the report (or, failing that, print its absolute path) — a rendered report the user cannot locate or open has no value.
+
+3. **Republishing keeps the artifact URL** — regenerating an artifact-delivered report at the same output path and republishing the same file path preserves the artifact URL (same path → same link). The `.moai/reports/<slug>-<YYYYMMDD>.{html,md}` pair is written on every regeneration regardless of format.
 
 ---
 
@@ -232,6 +244,10 @@ flowchart TD
 
 The `expert` tier's strict zero-JS guarantee is **untouched** — the mermaid exception is tier-gated and never fires there.
 
+### Mermaid in artifact delivery (`format: artifact`)
+
+When the delivery format is `artifact`, structural diagrams are emitted as **`pre.mermaid` code blocks** and the document carries **no external mermaid `<script>`** — the artifact viewer pre-renders `pre.mermaid` blocks, replacing both the CDN and the `<noscript>` fallback. The CDN exception and `<noscript>` pairing above are html-file-format rules and never apply to artifact output. Inline SVG charts and diagram selection are unchanged.
+
 ### Diagram selection
 
 | Content shape | Diagram |
@@ -323,7 +339,7 @@ Every mode declares the same 8 CSS variables at `:root`.
 
 Greyscale: `--g100: #F0EEE6`, `--g300: #D1CFC5`, `--g500: #87867F`, `--g700: #3D3D3A`
 
-Full contrast verification and print tokens: [`references/design-tokens.md`](references/design-tokens.md)
+The token block above is the full CSS variable contract. Print rules (`@media print`) live in each mode template under [`references/templates/`](references/templates/).
 
 ---
 
@@ -382,6 +398,7 @@ The explicit `audience: expert` wins over the derived tier, so no primers or dia
 ## Non-goals
 
 - Does not replace the markdown default output — HTML is an additional rendering branch.
+- Artifact delivery (`report.format=artifact`) is an additional **delivery format for the same HTML**, never a replacement of the skill or the html+md default: modes, audience tiers, and the lean `.md` twin stay owned here; only the publication contract moves to the artifact page contract (§ Diagram Policy — artifact output forbids every external script).
 - Does not pull in external libraries such as React, Vue, a Tailwind CDN, Chart.js, or D3. The only sanctioned external dependencies are the font CDN (all tiers) and the mermaid CDN (`basic` / `learn` tiers, always with a `<noscript>` fallback — § Diagram Policy). Charting stays inline SVG at every tier; mermaid never replaces a chart.
 - Does not introduce a build step (webpack, vite, esbuild).
 - Does not split the human artifact across multiple files — the report is a single `.html`. The `.md` twin is a *different artifact for a different reader*, not a second half of the report.
@@ -393,7 +410,7 @@ The explicit `audience: expert` wins over the derived tier, so no primers or dia
 ## References
 
 ### Design documents
-- [`references/design-tokens.md`](references/design-tokens.md) — CSS variable contract, palette, accessibility
+- [`references/artifact-contract.md`](references/artifact-contract.md) — the Claude Artifact page contract (delivery format `artifact`): document skeleton, title rule, dark-mode blocks, layout gutter, resource-host limits, font decision
 - [`references/fonts.md`](references/fonts.md) — font mapping, CDN URLs, preconnect pattern
 
 ### Templates

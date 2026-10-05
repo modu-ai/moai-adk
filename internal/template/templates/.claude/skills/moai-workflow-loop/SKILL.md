@@ -37,8 +37,8 @@ Core Capabilities:
 
 Key Components:
 
-- post_tool__lsp_diagnostic: LSP diagnostics after Write/Edit operations
-- stop__loop_controller: Loop iteration control
+- .claude/hooks/moai/handle-post-tool.sh (PostToolUse): LSP diagnostics after Write/Edit operations
+- .claude/hooks/moai/handle-stop.sh (Stop): Loop iteration control
 - ralph.yaml: Configuration settings
 
 Commands:

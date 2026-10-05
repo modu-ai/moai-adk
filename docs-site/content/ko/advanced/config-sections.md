@@ -55,25 +55,27 @@ delegation:
 | 블록 | 설명 |
 |------|------|
 | `learning` | 라우팅 사용 내역을 append-only 원장(`.moai/state/routing-ledger.jsonl`, opt-in·fail-open)에 남기고, 하네스 학습 서브시스템이 4-tier 제안 사다리로 갱신을 제안. `auto_apply: false` — Tier-4 변경은 `AskUserQuestion` 사용자 승인 필요 |
-| `subcommands` | 서브커맨드마다 `agents`(spawn할 11개 retained 에이전트) + `skills`(spawn 시 주입할 workflow 스킬). 하나도 배정하지 않아도 유효 (오케스트레이터가 직접 실행) |
+| `subcommands` | 서브커맨드마다 `agents`(spawn할 13개 retained 에이전트) + `skills`(spawn 시 주입할 workflow 스킬). 하나도 배정하지 않아도 유효 (오케스트레이터가 직접 실행) |
 | `domain_skills` | 미션 도메인에 맞춰 주입할 스킬 (spawn당 0-3개). 도메인 신호와 매칭 |
 | `agents` | 에이전트마다 두는 conditional 스킬 (트리거가 발생하면 on-demand 로드) |
 
 관련: [에이전트 가이드](/ko/advanced/agent-guide), [스킬 가이드](/ko/advanced/skill-guide).
 
-## llm.yaml — 백엔드·프로필 매트릭스
+## llm.yaml — 백엔드·GLM 매핑
 
-프로필, 프로필 매트릭스, 에이전트별 override, GLM 모델 매핑을 정의합니다.
+하네스 백엔드, GLM 환경, GLM 모델 매핑을 정의합니다. 에이전트가 실행되는 모델과
+effort는 **세션** 수준에서 정해집니다 — 서브에이전트는 메인 세션의 모델과 추론
+깊이를 그대로 따르므로, 이 파일이 에이전트별 모델 배정을 담는 일은 없어졌습니다.
+예전의 프로필 매트릭스 키들(`profile`, `profiles`, `performance_tier`,
+`harness_agents`, `agent_overrides`)은 물러났으며, `moai update`가 다음 실행 때
+사용자 파일에서 이 키들을 걷어 냅니다. 메인 세션의 추론 강도는 선호 프로필
+(`moai profile setup`)에서 옵니다 — 이 파일에서 오지 않습니다.
 
 ```yaml
 llm:
-  profile: "medium"            # high | medium | low (활성 매트릭스 열, max는 high로 읽힘)
-  performance_tier: "medium"   # legacy 별칭 (profile 부재 시 읽힘, 동일 어휘)
-  profiles:                    # 프로필 열 → 11개 에이전트 → {model, effort}
-    high: { ... }              # 상세 표: 프로필 매트릭스 페이지
-    medium: { ... }
-    low: { ... }
-  agent_overrides: {}          # 에이전트별 {model, effort} override (선택)
+  harness: "claude"            # claude | gpt | both — 초기화 때 고른 에이전트 하네스
+  team_mode: ""                # glm이면 z.ai 백엔드로 전환
+  glm_env_var: "GLM_API_KEY"
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
@@ -85,10 +87,9 @@ llm:
 
 | 키 | 설명 |
 |----|------|
-| `profile` | 활성 프로필 매트릭스 열 (`high`/`medium`/`low`, 과거 `max`는 `high`의 별칭으로 읽힘). 비어 있으면 `medium`으로 해석. 모든 서브에이전트 spawn의 model+effort 출처 |
-| `performance_tier` | legacy 별칭 필드. `profile`이 없을 때만 읽히며, `high`/`medium`/`low` 어휘를 그대로 쓰므로 별도 정규화가 필요 없음 |
-| `profiles` | 프로필 열마다 에이전트 → `{model, effort}`를 적은 매트릭스 (에이전트 11개 × 열 3개 = 33셀). 빠진 셀은 Go 기본값(`template.DefaultProfileMatrix`)이 최종 fallback |
-| `agent_overrides` | 정규 에이전트 이름을 키로 하는 `{model, effort}` override. 활성 프로필의 에이전트 셀보다 우선 (카탈로그+enum 검증) |
+| `harness` | 초기화 때 배포한 에이전트 하네스 (`claude` 기본값, `gpt`는 Codex 전용 배포) |
+| `team_mode` | 비어 있으면 Claude, `glm`이면 세션을 z.ai 백엔드로 보냅니다 |
+| `claude_bin` | Claude Code 바이너리 고정 핀 (선택; 환경변수 `MOAI_CLAUDE_BIN`이 실행별로 우선) |
 | `glm.base_url` | Z.AI Anthropic 호환 프록시 엔드포인트 |
 | `glm.models` | 슬롯별 GLM 모델 매핑. GLM은 Claude의 5단계 effort를 3개 reasoning 상태(thinking-off / reasoning-high / reasoning-max)로 collapse |
 
@@ -128,7 +129,6 @@ statusline:
 security:
   extra_dangerous_bash_patterns:
     - 'curl\s+.*\|\s*(ba)?sh'
-    - 'rm\s+-rf\s+/[^.]'
   extra_deny_patterns: []
   extra_ask_patterns: []
   permission:
@@ -176,6 +176,27 @@ workflow:
 
 브랜치를 바꿔야 하는 작업은 막는 대신 워크트리로 옮기는 것이 정석입니다. 자세한 절차는 [moai worktree](/ko/cli-reference/worktree/) 를 참조하세요.
 
+## workflow.yaml — drift_cache_fill
+
+MoAI는 세션을 시작할 때 SPEC 생명주기 드리프트 알림을 보여줍니다. 이 계산에는 1초 남짓이 걸려서 세션 시작이 기다릴 수 있는 시간을 한참 넘기기 때문에, 결과를 현재 커밋에 묶어 캐시에 저장해 둡니다. 커밋이 바뀌면 캐시가 더 이상 맞지 않고, 알림은 보여줄 것이 없어집니다.
+
+이 키가 켜져 있으면 세션 시작 처리기는 캐시가 맞지 않을 때 짧게 사는 백그라운드 프로세스를 하나 띄워 거기서 드리프트를 계산하게 하고, 기다리지 않고 바로 돌아옵니다. 저장된 결과는 다음 세션이 읽어서 알림을 다시 보여줍니다.
+
+```yaml
+workflow:
+    drift_cache_fill:
+        enabled: true   # 배포 기본값
+```
+
+| 키 | 값 | 설명 |
+|----|-----|------|
+| `enabled` | `true`(기본) | 캐시가 맞지 않으면 채우기 프로세스를 하나 띄우고 기다리지 않고 돌아옵니다. 알림은 다음 세션에서 다시 나타납니다 |
+| `enabled` | `false` | 채우기 프로세스를 전혀 띄우지 않습니다. 알림은 캐시에 이미 들어 있는 것만으로 판단하므로, 커밋 이후에는 다른 무언가가 캐시를 채우기 전까지 계속 나타나지 않습니다 |
+
+**이 키만 켜진 채로 나가는 이유.** 이 문서의 다른 가드들은 관리자가 필요로 하기 전까지 아무 일도 하지 않기 때문에 꺼진 채로 나갑니다. 이 키는 켜져 있으면 실제로 자식 프로세스를 띄우므로 아무 일도 하지 않는 기본값이 아니며, 그 비용을 감수하는 쪽을 택한 것입니다 — 채우지 않으면 커밋 이후 드리프트 알림이 영영 돌아오지 않기 때문입니다. 자식 프로세스는 짧게 살고, 자체 기한이 있고, 락으로 한 번에 하나만 돌며, 아무것도 출력하지 않습니다.
+
+**실패했을 때의 방향.** 어떤 실패 경로도 세션에 영향을 주지 않습니다. 자식이 뜨지 못하거나, 끝내지 못하거나, 아무것도 쓰지 못해도 처리기는 이미 돌아온 뒤이고 알림은 그대로 유지될 뿐입니다 — 실패한 채우기가 세션 시작을 지연시키거나 망가뜨리지 않습니다.
+
 ## workflow.yaml — audit
 
 크로스모델 감사 백엔드(`codex_audit` · `glm_audit` · `audit_multi`)가 실제로 어떤 모델과 effort로 돌지 지정합니다. 백엔드마다 `{model, effort}` 쌍 하나이고, 배포 기본값은 전부 비어 있습니다.
@@ -218,9 +239,40 @@ workflow:
 
 크기가 크지 않은 일회성 프로젝트에서 세션마다 뜨는 백로그 요약이 소음으로 느껴질 때 이 키를 씁니다. 큐 자체의 운영법은 [moai todo](/ko/utility-commands/moai-todo/) 페이지에 있습니다.
 
+## workflow.yaml — autonomy
+
+SPEC 자율 실행 계약(`contract.yaml`)을 어떻게 서명하고 어디까지 묶을지 정합니다. 계약을 다루는 명령은 [moai contract](/ko/cli-reference/contract/) 입니다. 이름이 비슷한 [자율성 티어(`MOAI_AUTONOMY_TIER`)](/ko/advanced/autonomy-tier/)와는 서로 무관한 설정입니다.
+
+```yaml
+workflow:
+    autonomy:
+        mode: guided              # guided | contract
+        contract:
+            batch_sign: false       # 여러 SPEC 을 확인 한 번으로 서명
+            second_review: required # required | advisory | off
+            push_develop: false     # 계약에서 push-develop 작업 허용
+        kickoff:
+            # decider: human | llm | llm+jev   (생략 시 guided 는 human, contract 는 llm)
+            jev_min_confidence: 0.50
+        escalation:
+            budget_default: { turns: 60, operations: 40, audit_retries: 2 }
+```
+
+| 키 | 설명 |
+|----|------|
+| `mode` | `guided`(기본) 또는 `contract`. 영수증 기반 서명(`--signer llm`)은 `contract` 에서만 열립니다 |
+| `contract.batch_sign` | `true` 이면 여러 SPEC 을 확인 한 번으로 서명합니다. 기본 `false` |
+| `contract.second_review` | `required` 이면 계약의 `review.second_model` 이 `none` 이거나 비어 있을 때 무효로 판정합니다. `advisory` · `off` 는 이 검사를 하지 않습니다 |
+| `contract.push_develop` | `false`(기본)이면 계약의 `push-develop` 작업을 무효로 판정합니다 |
+| `kickoff.decider` | 착수 결정 주체. `human` · `llm` · `llm+jev`. 생략하면 모드에서 파생됩니다. `jev` 단독은 설정 오류이며 영수증 서명이 거부됩니다 |
+| `kickoff.jev_min_confidence` | 착수 영수증을 발급하는 쪽이 Jev 판단을 받아들일 최소 신뢰도로 쓰도록 예약된 값. 이번 릴리스에서는 값을 읽어 형식만 검사하며, 서명과 검증에는 영향을 주지 않습니다. 기본 `0.50` |
+| `escalation.budget_default` | 계약에 `budget` 이 없을 때 서명 시점에 채워 넣는 기본 예산 |
+
+**값이 틀렸을 때.** 키가 없으면 위 기본값을 씁니다. `mode` · `second_review` · `decider` · `jev_min_confidence` 에 허용되지 않은 값을 적으면 더 엄격한 기본값(`guided` · `required` · `human` · `0.50`)으로 되돌리고, 어느 키를 바꿨는지 경고로 알립니다.
+
 ## crosssession.yaml — 세션 간 메시지
 
-내 다른 Claude Code 세션이 보내는 메시지를 이 세션이 어떻게 다룰지 정합니다. `moai cc` · `moai glm` · `moai cg` 런처가 실행 시점에 이 값을 임시 `--settings` 파일로 옮겨 담고, 웹 콘솔은 설정 seam을 통해 이 파일을 편집합니다. 런처를 거치지 않고 맨손으로 `claude`를 실행한 세션은 이 파일을 읽지 않습니다.
+내 다른 Claude Code 세션이 보내는 메시지를 이 세션이 어떻게 다룰지 정합니다. `moai cc` · `moai glm` 런처가 실행 시점에 이 값을 임시 `--settings` 파일로 옮겨 담고, 웹 콘솔은 설정 seam을 통해 이 파일을 편집합니다. 런처를 거치지 않고 맨손으로 `claude`를 실행한 세션은 이 파일을 읽지 않습니다.
 
 ```yaml
 crosssession:

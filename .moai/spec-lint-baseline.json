@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "updated_at": "2026-09-24",
+  "tree_sha": "d5638ba81",
+  "reason": "t1121: TierArtifactMissing surfaces pre-existing Tier artifact-set gaps",
+  "rules": {
+    "TierArtifactMissing": 4
+  }
+}

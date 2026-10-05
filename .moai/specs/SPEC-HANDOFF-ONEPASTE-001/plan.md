@@ -2,7 +2,6 @@
 id: SPEC-HANDOFF-ONEPASTE-001
 title: "Session Handoff 1-Paste — implementation plan"
 version: "0.1.2"
-status: completed
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec

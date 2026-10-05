@@ -262,10 +262,17 @@ func TestPreCommitLegacyNoRecord(t *testing.T) {
 
 		installer := installWithContent(t, root, preCommitHookContent)
 
-		assertAttribution(t, installer.lastAttribution, hookUnmodified, hookBasisUndecidableLegacy)
-		assertNoBackup(t, root)
-		if got, want := readRecord(t, root), digestOf(preCommitHookContent); got != want {
-			t.Errorf("record = %q, want %q", got, want)
+		// SPEC-PRECOMMIT-GATE-SCOPE-001 window (hook-body change in flight):
+		// no released tag carries the marker-exporting body yet, so a
+		// v3.1.2-era hook is genuinely user-different from the incoming body —
+		// the shape of sub-case (a): backup AND notice
+		// (SPEC-PRECOMMIT-PRESERVE-001 acceptance.md §D.4 point 2). When the
+		// first release carrying this body is cut, re-pin
+		// pinnedReleasedHookTag to it and restore the hookUnmodified +
+		// assertNoBackup + record-digest assertions.
+		assertAttribution(t, installer.lastAttribution, hookUserModified, hookBasisUndecidableLegacy)
+		if got := readHook(t, root); got != preCommitHookContent {
+			t.Errorf("hook was not replaced with the incoming content")
 		}
 	})
 }

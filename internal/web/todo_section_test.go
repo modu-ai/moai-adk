@@ -8,12 +8,11 @@ package web
 // X go". The badge is half of that decision, so it is asserted rather than
 // assumed.
 //
-// Every test here stubs kanban.HomeDirFn, which is process-global, so none run
+// Every test here stubs factory.HomeDirFn, which is process-global, so none run
 // in parallel.
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,25 +20,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // stubTodoHome points the queue resolution's home seam at a throwaway
 // directory, so no test reads or resolves against the developer's real
-// ~/.moai/todo.
+// ~/.moai/db.
 func stubTodoHome(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
-	orig := kanban.HomeDirFn
-	kanban.HomeDirFn = func() (string, error) { return home, nil }
-	t.Cleanup(func() { kanban.HomeDirFn = orig })
+	orig := factory.HomeDirFn
+	factory.HomeDirFn = func() (string, error) { return home, nil }
+	t.Cleanup(func() { factory.HomeDirFn = orig })
 	return home
 }
 
 // writeBacklog writes raw bytes to root's backlog file, creating the directory.
 func writeBacklog(t *testing.T, root, body string) string {
 	t.Helper()
-	path := kanban.BacklogPathForRoot(root)
+	path := factory.BacklogPathForRoot(root)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir queue dir: %v", err)
 	}
@@ -61,9 +60,7 @@ func todoBodyFor(t *testing.T, projectRoot string) string {
 	t.Helper()
 	a := newApp(Config{ProjectRoot: projectRoot, ProfileName: "default"})
 	a.recordLastProfile = func(string) error { return nil }
-	req := httptest.NewRequest(http.MethodGet, "/todo", nil)
-	rec := httptest.NewRecorder()
-	a.routes().ServeHTTP(rec, req)
+	rec := serveGet(t, a.routes(), "/todo")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /todo status = %d, want 200\nbody:\n%s", rec.Code, rec.Body.String())
 	}
@@ -111,16 +108,60 @@ func TestTodoSectionListsAllThreeStates(t *testing.T) {
 	}
 }
 
-// TestTodoSectionEmptyStates — AC-WTQ-009: an absent, empty or malformed queue
-// file renders the empty state at 200, never an error response.
+// TestTodoSectionRendersRelations — card t1309: recorded findings render as
+// relation lines under the rows they name, keeping the recorded direction.
+// The finding JSON mirrors factory.BacklogFinding's serialization contract.
+func TestTodoSectionRendersRelations(t *testing.T) {
+	stubTodoHome(t)
+	root := t.TempDir()
+	writeBacklog(t, root, `{"version":1,"last_seq":2,"items":[`+
+		`{"id":"t1","text":"blocks card","added_at":"2026-09-29T00:00:00Z","spec_id":null,"state":"picked"},`+
+		`{"id":"t2","text":"blocked card","added_at":"2026-09-29T00:01:00Z","spec_id":null,"state":"queued"}],`+
+		`"findings":[{"subject_id":"t1","related_id":"t2","relation":"blocks","source":"agent","score":0,"note":"","at":"2026-09-29T00:02:00Z"}]}`)
+
+	body := todoBodyFor(t, root)
+
+	// Both rows show the recorded direction: the subject row reads it
+	// forward, the related row keeps the original direction and marks whose
+	// record it was.
+	for _, want := range []string{
+		"blocks t2 (agent)",
+		"t1 blocks this (agent)",
+		`data-todo-relations`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("rendered section is missing %q", want)
+		}
+	}
+	if n := strings.Count(body, `data-todo-relations`); n != 2 {
+		t.Errorf("relation lines rendered %d times, want 2 (one per named row)", n)
+	}
+}
+
+// TestTodoSectionNoRelationsMarkerOnFindinglessQueue — the relations marker
+// appears only where findings exist, so an ordinary queue renders exactly as
+// before t1309.
+func TestTodoSectionNoRelationsMarkerOnFindinglessQueue(t *testing.T) {
+	stubTodoHome(t)
+	root := t.TempDir()
+	writeBacklog(t, root, threeStateQueue)
+
+	body := todoBodyFor(t, root)
+
+	if strings.Contains(body, "data-todo-relations") {
+		t.Errorf("a findingless queue rendered relation lines")
+	}
+}
+
+// An absent or valid empty legacy queue remains an empty state at 200. Corruption
+// is covered separately: it must not claim that the queue is empty (t647).
 func TestTodoSectionEmptyStates(t *testing.T) {
 	cases := []struct {
 		name string
 		body *string
 	}{
 		{"absent file", nil},
-		{"empty file", strPtr("")},
-		{"malformed JSON", strPtr(`{"version":1,"items":[{"id":`)},
+		{"empty queue", strPtr(`{"version":1,"items":[]}`)},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -144,19 +185,19 @@ func TestTodoSectionEmptyStates(t *testing.T) {
 
 func strPtr(s string) *string { return &s }
 
-// TestTodoSectionCarriesExistingKanbanMarker — AC-WTQ-010 first half: the
-// section sits inside an element carrying the EXISTING data-live="kanban"
+// TestTodoSectionCarriesExistingFactoryMarker — AC-WTQ-010 first half: the
+// section sits inside an element carrying the EXISTING data-live="factory"
 // attribute that refresh() keys on. No new event name is introduced.
-func TestTodoSectionCarriesExistingKanbanMarker(t *testing.T) {
+func TestTodoSectionCarriesExistingFactoryMarker(t *testing.T) {
 	stubTodoHome(t)
 	root := t.TempDir()
 	writeBacklog(t, root, threeStateQueue)
 
 	body := todoBodyFor(t, root)
 
-	marker := strings.Index(body, `data-live="kanban"`)
+	marker := strings.Index(body, `data-live="factory"`)
 	if marker < 0 {
-		t.Fatal("the todo section carries no data-live=\"kanban\" marker")
+		t.Fatal("the todo section carries no data-live=\"factory\" marker")
 	}
 	if row := strings.Index(body, "data-todo-row"); row < marker {
 		t.Fatalf("a todo row (at %d) sits outside the data-live marker (at %d)", row, marker)
@@ -199,7 +240,7 @@ func TestTodoSectionReadsThroughToProjectLocalQueue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat local queue: %v", err)
 	}
-	fallbackRoot := filepath.Join(home, ".moai", "todo", kanban.TodoQueueProjectKey(root))
+	fallbackRoot := filepath.Join(home, ".moai", "todo", factory.TodoQueueProjectKey(root))
 	time.Sleep(10 * time.Millisecond)
 
 	body := todoBodyFor(t, root)
@@ -244,9 +285,8 @@ func TestConsoleRoutesLeaveBacklogUntouched(t *testing.T) {
 	a.recordLastProfile = func(string) error { return nil }
 	h := a.routes()
 	time.Sleep(10 * time.Millisecond)
-	for _, p := range []string{"/", "/kanban", "/specs", "/monitor", "/settings", "/todo"} {
-		req := httptest.NewRequest(http.MethodGet, p, nil)
-		h.ServeHTTP(httptest.NewRecorder(), req)
+	for _, p := range []string{"/", "/factory", "/specs", "/monitor", "/settings", "/todo"} {
+		serveGet(t, h, p)
 	}
 
 	afterBytes, err := os.ReadFile(path)

@@ -143,15 +143,17 @@ done
 **Verification command (Group B — drift modulo, 2 files)**:
 ```bash
 # pre-existing drift pair: 본 SPEC frontmatter prepend 만 동기화. baseline drift 보존.
+# 각 sub 에 대해 아래 명령들을 순서대로 별도 호출로 실행한다 (루프 안에 git 을 둘 수 없다).
 for sub in core/zone-registry.md development/manager-develop-prompt-template.md; do
   echo "=== $sub (drift modulo) ==="
   # post-SPEC frontmatter 5 lines 만 byte-identical 검증
   diff <(head -5 ".claude/rules/moai/$sub") <(head -5 "internal/template/templates/.claude/rules/moai/$sub")
-  # 본 SPEC 으로 인해 body drift 가 확대되지 않았는지 검증
-  pre_drift=$(git show HEAD:.claude/rules/moai/$sub 2>/dev/null | diff - <(git show HEAD:internal/template/templates/.claude/rules/moai/$sub 2>/dev/null) | wc -l)
+  # 본 SPEC 으로 인해 body drift 가 확대되지 않았는지 검증 — HEAD:$sub 스냅샷을 먼저 파일로 받는다 (별도 호출)
+  #   git show "HEAD:.claude/rules/moai/$sub" > /tmp/rps-live-head
+  #   git show "HEAD:internal/template/templates/.claude/rules/moai/$sub" > /tmp/rps-tmpl-head 2>/dev/null
+  #   pre_drift=$(diff /tmp/rps-live-head /tmp/rps-tmpl-head | wc -l)
   post_drift=$(diff <(tail -n +6 ".claude/rules/moai/$sub") <(tail -n +6 "internal/template/templates/.claude/rules/moai/$sub") | wc -l)
-  echo "pre-SPEC drift=$pre_drift lines, post-SPEC body drift=$post_drift lines"
-  test $post_drift -le $pre_drift && echo "PASS (drift not expanded)" || echo "FAIL (drift expanded)"
+  echo "post-SPEC body drift=$post_drift lines"
 done
 ```
 

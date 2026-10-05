@@ -46,7 +46,7 @@ func TestCleanHomeCarveOut_PathPredicate(t *testing.T) {
 		{"credentials-prod.yaml", true, "credentials* prefix"},
 		{"launch.yaml", true, "launch.yaml"},
 		{"preferences.yaml", true, "preferences.yaml"},
-		{"claude-profiles/p/projects/x", true, "per-profile projects/"},
+		{"claude-profiles/p/projects/x", true, "raw carve-out remains conservative; scanner has a scoped projects exception"},
 		{"claude-profiles/p/config/x", true, "per-profile config/"},
 		{"claude-profiles/p/state/x", true, "per-profile state/"},
 		{"claude-profiles/p/credentials.yaml", true, "per-profile credentials"},

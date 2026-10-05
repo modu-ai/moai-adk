@@ -154,6 +154,7 @@ func TestStatuslineCmd_WithDeps(t *testing.T) {
 }
 
 func TestDoctorCmd_ExportFlag(t *testing.T) {
+	t.Chdir(t.TempDir())
 	tmpDir := t.TempDir()
 	exportPath := tmpDir + "/diag.json"
 
@@ -183,6 +184,7 @@ func TestDoctorCmd_ExportFlag(t *testing.T) {
 }
 
 func TestDoctorCmd_VerboseExecution(t *testing.T) {
+	t.Chdir(t.TempDir())
 	buf := new(bytes.Buffer)
 	doctorCmd.SetOut(buf)
 	doctorCmd.SetErr(buf)

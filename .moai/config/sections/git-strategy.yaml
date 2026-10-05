@@ -2,20 +2,28 @@ git_strategy:
     mode: manual
     provider: github
     github_username: ""
+    worktree_base_branch: develop
     gitlab:
         instance_url: ""
     manual:
-        workflow: github-flow
+        workflow: git-flow
         environment: local
         github_integration: false
         push_to_remote: false
         auto_checkpoint: disabled
         branch_prefix: ""
         main_branch: ""
+        develop_branch: develop
+        release_branch_prefix: release/
+        rc_version_format: vX.Y.Z-rc.N
         draft_pr: false
         required_reviews: 0
         branch_protection: false
         merge_method: squash
+        # SPEC-MAIN-COMMIT-BAN-001 (card t1337): lead closes the develop push
+        # batch when `git rev-list --count origin/develop..develop` reaches
+        # this count. Operator-given initial value 20 — recorded, not derived.
+        lead_push_threshold: 20
         automation:
             auto_branch: false
             auto_commit: true

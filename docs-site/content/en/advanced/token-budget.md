@@ -22,13 +22,13 @@ The operational threshold is model-specific. Larger windows tolerate higher perc
 
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |-------------|--------|-------------------|------------------|
-| Opus 5 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
+| Opus 5.5 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
 | GLM-5.3 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
-| Opus / Fable (256K) | 256,000 tokens | 90% | ~230,000 tokens |
-| Sonnet / Opus standard (200K) | 200,000 tokens | 90% | ~180,000 tokens |
+| Fable / Sonnet 5.5 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
+| Sonnet 4.5 and earlier (200K) | 200,000 tokens | 90% | ~180,000 tokens |
 | Haiku (200K) | 200,000 tokens | 90% | ~180,000 tokens |
 
-GLM-5.3 (via `moai glm` / `moai cg` GLM panels) is a 1M-context model and is operated at the 50% threshold. Claude Code reports `context_window_size` based on the Claude slot (Opus=1M, Sonnet/Haiku=200K), so raw telemetry may show ~180K under GLM; MoAI corrects this to 1M. Trust the statusline CW% gauge.
+GLM-5.3 (via `moai glm`) is a 1M-context model and is operated at the 50% threshold. Claude Code reports `context_window_size` based on the Claude slot (Opus=1M, Sonnet/Haiku=200K), so raw telemetry may show ~180K under GLM; MoAI corrects this to 1M. Trust the statusline CW% gauge.
 
 ## Two-Stage Handoff Marker
 
@@ -47,7 +47,7 @@ The graceful-abort mechanism implemented by SPEC-TOKEN-BUDGET-STOP-001 works as 
 2. **Persist state** — in-flight work state is persisted to `progress.md`
 3. **Emit handoff** — a paste-ready resume message is generated (6-block structure)
 4. **Recommend turn end** — the user is advised to `/clear` (HARD: auto-`/clear` is NEVER performed)
-5. **Persist evidence** — verification evidence is persisted under `.moai/state/verify/`
+5. **Carry the evidence into the verdict** — the lines of verification evidence that will be cited are written into the tracked verdict file `.moai/reports/<card-id>/verdict.md`
 
 `/clear` is never executed automatically. The system only recommends that the user run `/clear`; the user decides.
 
@@ -93,13 +93,13 @@ go test ./... > /tmp/moai-verify/1-go-test.log 2>&1; echo "exit=$?"; tail -50 /t
 
 This contract keeps verbatim evidence on disk while the context carries only exit code + bounded tail. It removes the double-burn (inline output + banner re-quote), not the evidence itself.
 
-## Evidence Persistence Obligation
+## Evidence Export Obligation
 
 Evidence written by the file-redirect contract to `/tmp` is periodically cleared by the OS (macOS reboot, Linux tmpfs remount, systemd-tmpfiles). When the cited path no longer resolves to a file, the evidence is unreachable at audit time.
 
-The persistence obligation solves this. Verification evidence MUST be persisted under `.moai/state/verify/<session>/`. This directory is a gitignored runtime-state area, the same family as `context-usage/` and `active-sessions.json`.
+Verification output is therefore captured under `.moai/state/verify/<session>/` first. That directory is **machine-local scratch**: it outlives `/tmp` clearance, but it is gitignored — the same runtime-state family as `context-usage/` and `active-sessions.json` — so it reaches no clone, no CI runner, and no other machine. Surviving `/tmp` and being reachable at audit time are not the same thing.
 
-The exact persistence mechanism (direct write or `/tmp` write followed by a copy) is an implementation detail. The contract states the obligation: evidence MUST survive `/tmp` clearance and remain at a citable, audit-time-reachable path.
+What the contract states is therefore the **carry-the-deciding-evidence-into-the-verdict** obligation: the lines that decided a claim are written into the tracked verdict file `.moai/reports/<card-id>/verdict.md` before the claim is made, and the citation names that single **file**, never a directory. That file is the only tracked name under a card directory, so a sibling artifact written beside it stays ignored and a citation naming it resolves nowhere off this machine. Only the lines that decided the verdict move — the exit code, the failure summary, the figure being quoted — because relocating the scratch directory wholesale merely moves the bulk trimmed from the context into the repository. Whatever stays behind is named under Residual-risk as a known loss, and material left in scratch is never offered as a verdict basis.
 
 ## Next Steps
 

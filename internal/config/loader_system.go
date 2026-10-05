@@ -29,7 +29,7 @@ import (
 // retains the construction-time defaults instead of collapsing them to zero
 // (partial-override contract, parallel to loadGateSection / loadHandoffSection).
 func (l *Loader) loadSystemSection(dir string, cfg *Config) {
-	wrapper := &systemFileWrapper{Hook: cfg.System.Hook}
+	wrapper := &systemFileWrapper{Hook: cfg.System.Hook, Migrations: cfg.System.Migrations}
 	loaded, err := loadYAMLFile(dir, "system.yaml", wrapper)
 	if err != nil {
 		slog.Warn("failed to load system config, using defaults", "error", err)
@@ -37,6 +37,10 @@ func (l *Loader) loadSystemSection(dir string, cfg *Config) {
 	}
 	if loaded {
 		cfg.System.Hook = wrapper.Hook
+		// migrations.disabled reaches runMigration through this assignment
+		// (card t795). The default is untouched: nothing seeds Migrations, so
+		// an absent block leaves the zero value — migrations stay enabled.
+		cfg.System.Migrations = wrapper.Migrations
 		l.loadedSections["system"] = true
 	}
 }

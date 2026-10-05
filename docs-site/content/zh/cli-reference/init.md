@@ -26,9 +26,13 @@ moai init [project-name]
 
 | 标志 | 说明 |
 |--------|------|
-| `--all` | 部署完整目录(core + 可选包 + 生成的 harness)。默认是 core-only slim 模式 |
+| `--all` | 完整本地部署：目录所有层级都本地安装(`--no-plugin` 载荷 + 可选包)。不带该标志时默认是 core-only slim 模式 |
+| `--no-plugin` | 跳过 moai 插件，部署完整本地载荷(技能、命令、`.mcp.json` 的 moai 条目、Codex 镜像)。`MOAI_SKIP_PLUGIN_INSTALL=1` 效果相同。默认路径(插件模式)不本地安装技能与命令 —— 由 moai 插件承载 |
 | `--force` | 重新初始化既有项目(会备份当前 `.moai/`) |
 | `--no-hooks` | 跳过 git 钩子安装 |
+| `--llm <claude\|codex\|both>` | 选择要接入的 LLM harness (默认: `claude`) |
+
+确定的部署模式记录在 `.moai/config/sections/llm.yaml` 的 `deployment_mode`（`plugin` 或 `local`），`moai update` 按该记录保持同样的范围。插件安装未能得到确认的项目会记录在安全的一侧，即 `local`。
 
 ### 项目默认值
 
@@ -45,7 +49,6 @@ moai init [project-name]
 
 | 标志 | 说明 |
 |--------|------|
-| `--project-mode <personal\|team>` | 项目模式(默认:personal) |
 | `--enable-lsp` | 启用 LSP 集成(默认:true) |
 | `--enforce-quality` | 强制质量门禁(默认:true) |
 | `--enable-design` | 启用设计工作流(默认:true) |

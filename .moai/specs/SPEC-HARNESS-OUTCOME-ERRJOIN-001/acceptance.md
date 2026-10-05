@@ -2,7 +2,6 @@
 id: SPEC-HARNESS-OUTCOME-ERRJOIN-001
 title: "Apply rolled-back branch errors.Join — acceptance criteria"
 version: "0.1.0"
-status: draft
 created: 2026-06-14
 updated: 2026-06-14
 author: manager-spec

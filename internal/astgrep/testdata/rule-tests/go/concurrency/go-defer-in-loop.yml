@@ -1,0 +1,14 @@
+# Test pair for the defer-in-loop rule. The valid sample closes the resource
+# explicitly inside the loop body.
+id: go-defer-in-loop
+valid:
+  - |
+    for _, n := range names {
+        f := openIt(n)
+        f.Close()
+    }
+invalid:
+  - |
+    for idx := range items {
+        defer release(idx)
+    }

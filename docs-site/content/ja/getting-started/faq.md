@@ -79,58 +79,36 @@ statusline:
 
 ## Q: モデルポリシーをどう選びますか?
 
-MoAI-ADK は Claude Code のサブスクリプション料金プランに合わせてエージェントに最適な AI モデルを割り当てます。料金プランの使用量制限内で品質を最大化するトークノミクス装置です。
+v3.2 から、エージェントごとのモデルポリシーにはもう選ぶものがありません。**サブエージェントはメインセッションのモデルと推論深度をそのまま引き継ぎます** — spawn するとき `model` も `effort` も渡さず、MoAI のエージェント定義はどちらも宣言しません。残ったのはセッションレベルの選択 1 つです。`moai profile setup` の**セッションモデルポリシー**は、このプロファイルで起動する Claude セッションの既定の推論強度(推論強度を別に選ばなかったときに適用)を決めます。
 
-### ティア比較
+### セッションモデルポリシーの比較
 
-| ティア | 特徴 |
+| 値 | 意味 |
 |------|------|
-| **high** | 最高品質 — 呼び出し頻度が最も低い2つのエージェントに `max` の推論深度 |
-| **medium** (デフォルト値) | 品質とコストのバランス — コスト/スコア曲線の膝 |
-| **low** | 作業あたり最低コスト — エージェンティックなエージェントは Opus `low` effort に下がる |
+| **high** | セッション effort フォールバック `high` |
+| **medium** (デフォルト値) | セッション effort フォールバック `medium` — コスト/スコア曲線の膝 |
+| **low** | セッション effort フォールバック `low` — 同じモデルの中での経済運用 |
 
 {{< callout type="warning" >}}
-**なぜ重要ですか?** ティアを下げることはモデルクラスではなく *推論深度* を下げることです。長期にわたるエージェンティックな作業では、Opus の `low` effort が `max` を含むあらゆる effort の Sonnet よりもスコアが高く、作業あたりのコストも低くなります — 請求額を決めるのはトークン単価ではなく、モデルが完了までに費やしたステップ数です。したがって `low` は Opus の中で節約し、複数ステップを踏んでから失敗するおそれのない単発の行 (`manager-git`、`Explore`) でのみ Sonnet を使います。
+**なぜ重要ですか?** effort を下げて変わるのは、モデルクラスではなく主に *推論深度* です。長期にわたるエージェンティックな作業では、Opus の `low` effort が `max` を含むあらゆる effort の Sonnet よりもスコアが高く、作業あたりのコストも低くなります — 請求額を決めるのはトークン単価ではなく、モデルが完了までに費やしたステップ数です。この経済運用の座が今はセッション effort にあり、かつてのエージェント別割り当て表は退きました。
 {{< /callout >}}
 
-### ティア別エージェントモデル割り当て
+### エージェント別割り当ての時代から変わったこと
 
-**11 個のエージェントカタログ** (10 MoAI カスタム + 1 Anthropic ビルトイン `Explore`) のうち MoAI カスタムエージェントはティアに応じてモデルが割り当てられます。かつての 12 個の保管エージェント (archived agents) は利用できません。
-
-#### Manager Agents (5 個)
-
-| エージェント | high | medium | low |
-|---------|------|--------|-----|
-| manager-spec | opus / high | opus / medium | opus / low |
-| manager-develop | opus / max | opus / medium | opus / low |
-| manager-docs | opus / medium | opus / low | sonnet / low |
-| manager-git | sonnet / low | sonnet / low | sonnet / low |
-| manager-design | opus / high | opus / medium | opus / low |
-
-#### Evaluator · Builder · Advisor · Specialist Agents (5 個)
-
-| エージェント | high | medium | low |
-|---------|------|--------|-----|
-| plan-auditor | opus / high | opus / medium | opus / low |
-| sync-auditor | opus / high | opus / medium | opus / low |
-| builder-harness | opus / high | opus / medium | opus / low |
-| super-advisor | opus / max | opus / high | opus / medium |
-| e2e-tester | opus / medium | opus / low | sonnet / low |
-
-ビルトインの `Explore` はすべての列で `sonnet / low` に解決されます — ディスク上にピン留めするエージェントファイルがないため、呼び出し時のデフォルト値です。
+v3.1 まで MoAI-ADK はプロファイルマトリクスで 13 個のカタログエージェントそれぞれに `{model, effort}` を割り当て、ティアがその列を選んでいました。この仕組みは SPEC-AGENT-MODEL-INHERIT-001 で退きました — 呼び出しに model 引数が付いたケースが 1% にも満たないという実測が出て、割り当ての席はセッション自身へ移ったからです。かつての `--model-policy`、`--profile`、`--high`、`--medium-alias`、`--low` フラグは警告だけを出して効果のない廃止済みスタブとして残っています。
 
 ### 設定方法
 
 ```bash
-# プロジェクト初期化時
-moai init my-project          # 対話型ウィザードでモデルポリシー選択
+# セッションモデルポリシーの設定 (セッションモデルポリシーの質問)
+moai profile setup
 
 # 既存プロジェクトの再設定
 moai update -c                # 設定ウィザードの再実行
 ```
 
 {{< callout type="info" >}}
-デフォルトティアは `medium` です。`moai update -c` で設定ウィザードを再実行して変更できます。
+既定の effort フォールバックは `medium` です。`moai profile setup` で変えるか、`/effort` や `ultrathink` でセッション effort をその都度調整してください — 以降のサブエージェント呼び出しはすべてその値に従います。
 {{< /callout >}}
 
 ---

@@ -55,25 +55,21 @@ delegation:
 | ブロック | 説明 |
 |----------|------|
 | `learning` | ルーティング使用をappend-only元帳 (`.moai/state/routing-ledger.jsonl`, opt-in·fail-open) で管理し、ハーネス学習サブシステムが4-tier提案ラダーで更新提案。`auto_apply: false` — Tier-4変更は `AskUserQuestion` ユーザー承認が必要 |
-| `subcommands` | サブコマンド別 `agents` (spawnする11個retainedエージェント) + `skills` (spawn時注入するworkflowスキル)。0個割り当ても有効 (オーケストレータが直接実行) |
+| `subcommands` | サブコマンド別 `agents` (spawnする13個retainedエージェント) + `skills` (spawn時注入するworkflowスキル)。0個割り当ても有効 (オーケストレータが直接実行) |
 | `domain_skills` | ミッションドメイン別注入スキル (spawn当たり0-3個)。ドメイン信号とマッチング |
 | `agents` | エージェント別conditionalスキル (トリガー発生時on-demandロード) |
 
 関連: [エージェントガイド](/ja/advanced/agent-guide), [スキルガイド](/ja/advanced/skill-guide).
 
-## llm.yaml — バックエンド・プロファイルマトリクス
+## llm.yaml — バックエンド·GLM マッピング
 
-プロファイル、プロファイルマトリクス、エージェント別 override、GLM モデルマッピングを定義します。
+ハーネスバックエンド、GLM 環境、GLM モデルマッピングを定義します。エージェントが動くモデルと effort は**セッション**レベルで決まります — サブエージェントはメインセッションのモデルと推論深度をそのまま引き継ぐため、このファイルがエージェント別モデル割り当てを担うことはなくなりました。かつてのプロファイルマトリクス系キー (`profile`、`profiles`、`performance_tier`、`harness_agents`、`agent_overrides`) は退いており、`moai update` が次回実行時にユーザーファイルからこれらのキーを取り除きます。メインセッションの推論強度は設定プロファイル (`moai profile setup`) から来ます — このファイルからではありません。
 
 ```yaml
 llm:
-  profile: "medium"            # high | medium | low (アクティブマトリクス列、max は high として読み込み)
-  performance_tier: "medium"   # legacy エイリアス (profile 不在時に読み込み、同じ語彙)
-  profiles:                    # プロファイル列 → 11 エージェント → {model, effort}
-    high: { ... }              # 詳細表: プロファイルマトリクスページ
-    medium: { ... }
-    low: { ... }
-  agent_overrides: {}          # エージェント別 {model, effort} override (任意)
+  harness: "claude"            # claude | gpt | both — 初期化時に選んだエージェントハーネス
+  team_mode: ""                # glm なら z.ai バックエンドへ切替
+  glm_env_var: "GLM_API_KEY"
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
@@ -85,10 +81,9 @@ llm:
 
 | キー | 説明 |
 |------|------|
-| `profile` | アクティブなプロファイルマトリクス列 (`high`/`medium`/`low`。旧 `max` は `high` のエイリアスとして読み込まれる)。空なら `medium` として解釈。全サブエージェント spawn の model+effort のソース |
-| `performance_tier` | legacy エイリアスフィールド。`profile` がない場合のみ読み込まれ、`high`/`medium`/`low` の同じ語彙を共有するため正規化ステップは不要 |
-| `profiles` | プロファイル列別のエージェント単位 → `{model, effort}` マトリクス (11 エージェント × 3 列 = 33 セル)。Go デフォルト値 (`template.DefaultProfileMatrix`) が欠落セルの権威ある fallback |
-| `agent_overrides` | 正規エージェント名別 `{model, effort}` override。アクティブプロファイルのエージェントセルより優先 (カタログ+enum 検証) |
+| `harness` | 初期化時にデプロイしたエージェントハーネス (`claude` がデフォルト、`gpt` は Codex 専用デプロイ) |
+| `team_mode` | 空なら Claude、`glm` ならセッションを z.ai バックエンドへ送ります |
+| `claude_bin` | Claude Code バイナリの明示ピン (任意; 環境変数 `MOAI_CLAUDE_BIN` が起動ごとに優先) |
 | `glm.base_url` | Z.AI Anthropic互換プロキシエンドポイント |
 | `glm.models` | スロット別GLMモデルマッピング。GLMはClaudeの5段階effortを3個reasoning状態 (thinking-off / reasoning-high / reasoning-max) にcollapse |
 
@@ -128,7 +123,6 @@ statusline:
 security:
   extra_dangerous_bash_patterns:
     - 'curl\s+.*\|\s*(ba)?sh'
-    - 'rm\s+-rf\s+/[^.]'
   extra_deny_patterns: []
   extra_ask_patterns: []
   permission:
@@ -176,6 +170,27 @@ workflow:
 
 ブランチを変える必要のある作業は、拒否させるのではなくワークツリーに移すのが定石です。手順は [moai worktree](/ja/cli-reference/worktree/) を参照してください。
 
+## workflow.yaml — drift_cache_fill
+
+MoAI はセッション開始時に SPEC ライフサイクルのドリフト通知を表示します。この計算には 1 秒ほどかかり、セッション開始が待てる時間をはるかに超えるため、結果は現在のコミットに紐づけてキャッシュされます。コミットが変わるとキャッシュは合わなくなり、通知は表示するものを失います。
+
+このキーが有効なとき、セッション開始ハンドラはキャッシュが合わない場合に短命なバックグラウンドプロセスを 1 つ起動してそこでドリフトを計算させ、待たずにすぐ戻ります。保存された結果は次のセッションが読み取り、通知が再び表示されます。
+
+```yaml
+workflow:
+    drift_cache_fill:
+        enabled: true   # 配布時の既定
+```
+
+| キー | 値 | 説明 |
+|------|-----|------|
+| `enabled` | `true` (既定) | キャッシュが合わないとき、補充プロセスを 1 つ起動して待たずに戻ります。通知は次のセッションで再び現れます |
+| `enabled` | `false` | 補充プロセスを一切起動しません。通知はキャッシュに既にある内容だけで判断するため、コミット後は他の何かがキャッシュを埋めるまで現れないままになります |
+
+**このキーだけが有効で出荷される理由。** このページの他のガードは、管理者が必要とするまで何もしないため無効で出荷されます。このキーは有効なとき実際に子プロセスを起動するので、何もしない既定ではなく、その費用を受け入れた既定です — 補充しなければコミット後にドリフト通知が二度と戻らないからです。子プロセスは短命で、自身の期限で区切られ、ロックにより同時に 1 つだけ動き、何も出力しません。
+
+**失敗したときの向き。** どの失敗経路もセッションに影響しません。子プロセスが起動できなくても、終われなくても、何も書けなくても、ハンドラはすでに戻っており通知はそのまま保たれます — 失敗した補充がセッション開始を遅らせたり壊したりすることはありません。
+
 ## workflow.yaml — audit
 
 クロスモデル監査バックエンド（`codex_audit` · `glm_audit` · `audit_multi`）が実際にどのモデルと effort で動くかを指定します。バックエンドごとに `{model, effort}` の 1 組で、配布時の既定値はすべて空です。
@@ -218,9 +233,40 @@ workflow:
 
 小さな一回きりのプロジェクトで、セッションごとに出るバックログ要約がノイズに感じられるときにこのキーを使います。キュー自体の運用方法は [moai todo](/ja/utility-commands/moai-todo/) のページにあります。
 
+## workflow.yaml — autonomy
+
+SPEC の自律実行契約（`contract.yaml`）をどのように署名し、どこまで縛るかを決めます。契約を扱うコマンドは [moai contract](/ja/cli-reference/contract/) です。名前は似ていますが、[自律性ティア（`MOAI_AUTONOMY_TIER`）](/ja/advanced/autonomy-tier/)とは無関係の設定です。
+
+```yaml
+workflow:
+    autonomy:
+        mode: guided              # guided | contract
+        contract:
+            batch_sign: false       # 複数の SPEC を一度の確認で署名
+            second_review: required # required | advisory | off
+            push_develop: false     # 契約で push-develop 作業を許可
+        kickoff:
+            # decider: human | llm | llm+jev   (省略時: guided は human、contract は llm)
+            jev_min_confidence: 0.50
+        escalation:
+            budget_default: { turns: 60, operations: 40, audit_retries: 2 }
+```
+
+| キー | 説明 |
+|------|------|
+| `mode` | `guided`（既定）または `contract`。レシートによる署名（`--signer llm`）は `contract` でのみ使えます |
+| `contract.batch_sign` | `true` の場合、複数の SPEC を一度の確認で署名します。既定は `false` |
+| `contract.second_review` | `required` の場合、契約の `review.second_model` が `none` または空だと無効と判定します。`advisory`・`off` ではこの検査を行いません |
+| `contract.push_develop` | `false`（既定）の場合、`push-develop` 作業を含む契約は無効と判定されます |
+| `kickoff.decider` | 着手を決める主体。`human`・`llm`・`llm+jev`。省略時はモードから導出されます。`jev` 単独は設定エラーで、レシート署名は拒否されます |
+| `kickoff.jev_min_confidence` | 着手レシートの発行側が Jev の判断を受け入れる最小信頼度として使うために予約された値。このリリースでは値を読み込んで形式を検査するだけで、署名と検証には影響しません。既定は `0.50` |
+| `escalation.budget_default` | 契約に `budget` がない場合に、署名時に補われる既定の予算 |
+
+**値が不正な場合。** キーがなければ上記の既定値を使います。`mode`・`second_review`・`decider`・`jev_min_confidence` に許可されていない値を書くと、より厳しい既定値（`guided`・`required`・`human`・`0.50`）に戻し、どのキーを置き換えたかを警告で示します。
+
 ## crosssession.yaml — セッション間メッセージ
 
-自分の他の Claude Code セッションから届くメッセージを、このセッションがどう扱うかを決めます。`moai cc` · `moai glm` · `moai cg` のランチャーが起動時にこれらの値を一時的な `--settings` ファイルへ移し、ウェブコンソールは設定 seam を通じてこのファイルを編集します。ランチャーを経由せず素の `claude` で起動したセッションは、このファイルを読みません。
+自分の他の Claude Code セッションから届くメッセージを、このセッションがどう扱うかを決めます。`moai cc` · `moai glm` のランチャーが起動時にこれらの値を一時的な `--settings` ファイルへ移し、ウェブコンソールは設定 seam を通じてこのファイルを編集します。ランチャーを経由せず素の `claude` で起動したセッションは、このファイルを読みません。
 
 ```yaml
 crosssession:

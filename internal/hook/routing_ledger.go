@@ -158,7 +158,48 @@ func literalSubcommand(prompt string) string {
 	if strings.HasPrefix(sub, "-") {
 		return ""
 	}
-	return sub
+	return subcommandToken(sub)
+}
+
+// subcommandToken keeps the leading subcommand-shaped run of field and drops
+// whatever follows it.
+//
+// strings.Fields splits on whitespace, which is the wrong boundary for this
+// project's own conversation_language: a Korean particle attaches to the
+// preceding word WITHOUT a space, so "/moai todo를 확인해줘" yielded the token
+// "todo를". That value matches no key in the delegation map, so the row was
+// orphaned from every designation comparison downstream rather than merely
+// mislabelled. Two such rows exist in the live ledger ("todo를", "project에").
+//
+// This is a PROPERTY test, not a membership test: it asserts the shape a
+// subcommand token has, and deliberately does not consult a list of known
+// subcommands. A list here would have to be maintained by hand in this package,
+// would make the delegation map an input to the hook layer, and would reject
+// `todo` and `gtd` — both real, both absent from that map.
+func subcommandToken(field string) string {
+	end := 0
+	for end < len(field) && isSubcommandByte(field[end]) {
+		end++
+	}
+	// A trailing hyphen is legal inside a token and meaningless at its end.
+	return strings.TrimRight(field[:end], "-")
+}
+
+// isSubcommandByte reports whether b may appear in a subcommand token:
+// lowercase ASCII, a DIGIT, or a hyphen.
+//
+// The digit is load-bearing and is the reason this is spelled out rather than
+// written as a terse [a-z-] class: `e2e` is a real subcommand, and an alphabet
+// omitting 0-9 truncates it to "e" — measured by mutating this function and
+// running the table beside it, not assumed. "e" is the dangerous outcome
+// precisely because it is not empty: it is a plausible-looking label that
+// matches nothing downstream, so the row is orphaned rather than absent.
+//
+// Byte-wise rather than rune-wise on purpose: every byte of a multi-byte UTF-8
+// rune is >= 0x80 and so fails this test, which makes the first non-ASCII byte
+// the boundary — exactly the cut this function exists to make.
+func isSubcommandByte(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= '0' && b <= '9') || b == '-'
 }
 
 // RoutingSeamUserPromptSubmit is seam A (REQ-HLE-001/002/003/006/016).

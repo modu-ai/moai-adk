@@ -37,6 +37,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/navigator/detect"
 	navsync "github.com/modu-ai/moai-adk/internal/navigator/sync"
 )
@@ -498,6 +499,9 @@ func changedAtForProject(projectRoot string) string {
 		return changedAtNoGit
 	}
 	cmd := exec.Command("git", "-C", projectRoot, "log", "-1", "--format=%cI")
+	// `git -C projectRoot` does not confine the read: a GIT_DIR inherited from
+	// a hook outranks it, and the stamp would then name another repository's HEAD.
+	cmd.Env = gitenv.Env()
 	out, err := cmd.Output()
 	if err != nil {
 		slog.Debug("navigator-detect: changed_at git lookup failed (fail-open)",

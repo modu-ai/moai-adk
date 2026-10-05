@@ -1,7 +1,6 @@
 ---
 id: SPEC-OPUS47-COMPAT-001
 version: 0.1.1
-status: draft
 created: 2026-04-17
 updated: 2026-04-17
 author: GOOS행님

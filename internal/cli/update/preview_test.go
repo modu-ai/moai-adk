@@ -94,10 +94,10 @@ func TestPreviewTableClassificationMatchesClassify(t *testing.T) {
 	classes := classifyAll(in, pred)
 
 	wantByPath := map[string]ChangeClass{
-		"templates/new_file.yaml":            ClassAdd,
-		".claude/settings.json":              ClassUpdate,
-		".claude/skills/hns-my/SKILL.md":     ClassPreserveUserOwned,
-		".moai/config/config.yaml":           ClassConflict,
+		"templates/new_file.yaml":        ClassAdd,
+		".claude/settings.json":          ClassUpdate,
+		".claude/skills/hns-my/SKILL.md": ClassPreserveUserOwned,
+		".moai/config/config.yaml":       ClassConflict,
 	}
 	for _, c := range classes {
 		want, ok := wantByPath[c.RelPath]
@@ -125,7 +125,20 @@ func TestPreviewSelectRowReachesDiffViewport(t *testing.T) {
 		t.Fatalf("initial view = %v; want %v", model.currentView(), previewTableView)
 	}
 
-	// Select the first row (templates/new_file.yaml with diff "+name: new").
+	// Select the templates/new_file.yaml row (diff "+name: new"). Row order is
+	// display order (t694: conflicts sort first), so locate the row by path
+	// rather than assuming fixture index 0.
+	idx := -1
+	for i, p := range model.paths {
+		if p == "templates/new_file.yaml" {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		t.Fatalf("fixture path templates/new_file.yaml not in table rows: %v", model.paths)
+	}
+	model.table.SetCursor(idx)
 	model = model.selectRow()
 
 	if model.currentView() != previewDiffView {

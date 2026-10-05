@@ -14,15 +14,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/charmbracelet/huh"
-	"github.com/mattn/go-isatty"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/cli/update/report"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/execerr"
-	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/runtime/gobin"
 	"github.com/modu-ai/moai-adk/internal/shell"
@@ -48,15 +46,12 @@ var updateCmd = &cobra.Command{
 }
 
 // validateUpdateFlags validates update flag values before execution.
-// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/017): an out-of-set --profile value
-// exits non-zero with a usage error naming the closed set {high, medium, low}.
+// --profile is retired (SPEC-AGENT-MODEL-INHERIT-001 D10): any value is
+// accepted and only warned about.
 // SPEC-UPDATE-VERSION-FLAG-001 (REQ-UVF-007 / AC-UVF-007): the --version flag's
 // mutual-exclusion matrix is enforced before any network call.
 func validateUpdateFlags(cmd *cobra.Command, _ []string) error {
-	profileFlag := getStringFlag(cmd, "profile")
-	if profileFlag != "" && !config.IsValidProfile(profileFlag) {
-		return fmt.Errorf("invalid --profile value %q: must be one of: high, medium, low", profileFlag)
-	}
+	warnDeprecatedAgentModelFlags(cmd, "profile")
 	// SPEC-UPDATE-VERSION-FLAG-001 REQ-UVF-007: --version mutual-exclusion matrix.
 	if err := validateUpdateVersionConflicts(
 		getStringFlag(cmd, "version"),
@@ -80,15 +75,16 @@ func init() {
 	updateCmd.Flags().Bool("yes", false, "Auto-confirm all prompts (CI/CD mode)")
 	updateCmd.Flags().Bool("templates-only", false, "Skip binary update, sync templates only")
 	updateCmd.Flags().Bool("binary", false, "Update binary only, skip template sync")
+
 	updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
 	updateCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
+	updateCmd.Flags().Bool("no-plugin", false, "Skip the moai plugin install step during a record-less project's migration and record deployment_mode: local (also MOAI_SKIP_PLUGIN_INSTALL=1; SPEC-INIT-SHRINK-001 REQ-015)")
 	updateCmd.Flags().String("restore", "", "Restore .moai/config from a backup directory left by a previous update (works on a tree whose .moai/config/sections/system.yaml was destroyed)")
 	updateCmd.Flags().Bool("verbose", false, "Show all warnings including acknowledged reserved-name and 3-way merge fallback notices (diagnostic mode; SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010)")
 
-	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/017): --profile override. When
-	// provided, persists the value to llm.profile (no agent frontmatter mutation).
-	// The retired --plan-type flag is no longer exposed.
-	updateCmd.Flags().String("profile", "", "Override the model+effort profile: high, medium, or low (persists to llm.yaml profile)")
+	// Retired --profile (SPEC-AGENT-MODEL-INHERIT-001 D10): accepted for script
+	// compatibility, warns, and has no effect.
+	updateCmd.Flags().String("profile", "", deprecatedAgentModelFlagUsage)
 
 	// SPEC-UPDATE-VERSION-FLAG-001 (REQ-UVF-001): --version <tag> installs a
 	// specific GitHub release tag (stable / rc / previous version) of the moai
@@ -168,27 +164,9 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--binary and --templates-only are mutually exclusive")
 	}
 
-	// Auto-prompt profile setup if no profile exists yet
-	nonInteractive := getBoolFlag(cmd, "yes")
-	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) {
-		profileName := profile.GetCurrentName()
-		if !profile.IsSetup(profileName) {
-			var wantSetup bool
-			confirm := huh.NewConfirm().
-				Title("No profile found. Set up profile preferences now?").
-				Description("Configure your name, language, and model preferences.").
-				Value(&wantSetup)
-			// Wrap the standalone confirm in a themed form: field.Run() cannot take
-			// a theme, so the MoAI-branded dark-readable theme is applied at the
-			// form level (parity with the wizard fix for the other huh surfaces).
-			confirmForm := huh.NewForm(huh.NewGroup(confirm)).WithTheme(moaiHuhTheme())
-			if err := confirmForm.Run(); err == nil && wantSetup {
-				if err := runProfileSetup(cmd, nil); err != nil {
-					_, _ = fmt.Fprintf(out, "Warning: profile setup failed: %v\n", err)
-				}
-			}
-		}
-	}
+	// REQ-ITI-001: `moai update` carries NO profile entry — no confirmation, no
+	// profile wizard, whatever stdin and the flags are. The profile wizard
+	// starts only from `moai profile setup` / `--setup`.
 
 	// Handle --config / -c mode (edit configuration only, no template updates)
 	// This takes priority over all other flags
@@ -281,6 +259,10 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if err := checkProjectMarker(cwd); err != nil {
 			return err
 		}
+		// Advisory only: update never moves, renames, or deletes either local
+		// instruction file (REQ-IFU-011). The rename is `moai migrate
+		// local-instructions`, run by the operator.
+		emitLocalInstructionsAdvisory(out, cwd)
 	}
 
 	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-005: acquire update lock before any
@@ -336,6 +318,9 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("get working directory: %w", err)
 		}
+		if migrationErr := runUpdateWorktreeMigration(lockRoot, true, out); migrationErr != nil {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Worktree migration preview", "failed", migrationErr.Error(), &th))
+		}
 		// SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-009): surface the worktree
 		// advisory on the dry-run path too, so `moai update --dry-run` smoke
 		// runs (AC-WBG-009) observe it without mutating the filesystem.
@@ -345,7 +330,8 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 		// t40 defect 3: preview the managed-cleanup deletion list. A preview
 		// failure degrades to a warning — a dry run must not fail the command.
-		if previewErr := previewManagedCleanup(cwd, out); previewErr != nil {
+		previewMode := resolveUpdateDeployMode(cwd, getBoolFlag(cmd, "no-plugin") || pluginOptOutFromEnv())
+		if previewErr := previewManagedCleanup(cwd, previewMode, out); previewErr != nil {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Cleanup preview", "failed", previewErr.Error(), &th))
 		}
 		// SPEC-UPDATE-REINSTALL-LOOP-002 REQ-RIL2-024/025 (M4): the v2
@@ -359,7 +345,39 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		//
 		// The early return itself does NOT move (REQ-RIL2-026): it stays
 		// ABOVE stripRetiredV2DenyEntries, which rewrites settings.json.
+		//
 		return emitDryRunReinstallPlan(cmd, cwd, getBoolFlag(cmd, "force"), th)
+	}
+
+	// This is after the dry-run return and under the update lock. It also runs
+	// when template sync is version-matched, so a later update can retry trees
+	// that were locked or active on an earlier pass.
+	if migrationErr := runUpdateWorktreeMigration(lockRoot, false, out); migrationErr != nil {
+		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Worktree migration", "failed", migrationErr.Error(), &th))
+	}
+
+	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-005): settle a
+	// .claude/settings.json staging copy an interrupted earlier flow left
+	// behind, comparing it with the live file BEFORE any step below can remove
+	// or rewrite that file. The deny-rule strip just below is the first such
+	// step; the clean-reinstall branch and both version-match skips come later,
+	// so this one point covers every update flow. After the --dry-run return,
+	// because a dry run must not change anything. Best-effort: it only warns.
+	//
+	// @MX:WARN: [AUTO] leftover judgement placement — keep above stripRetiredV2DenyEntries
+	// @MX:REASON: below the strip, the deploy, or the backup step the live file may already be rewritten,
+	// so an abort with no revert would be discarded instead of promoted (plan.md B8, M-D5g-w)
+	{
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory for settings snapshot: %w", err)
+		}
+		backup.JudgeLeftoverSettingsSnapshot(cwd, cmd.ErrOrStderr())
+		// Card t1029: same judgement for the .mcp.json staging copy. Unlike
+		// settings.json nothing between here and the deploy rewrites .mcp.json,
+		// but the judgement is placed alongside its sibling so one point covers
+		// every flow rather than two points drifting apart.
+		backup.JudgeLeftoverMCPSnapshot(cwd, cmd.ErrOrStderr())
 	}
 
 	// Retired-deny-rule migration on the v3 path (issue #1101 follow-up). The
@@ -481,16 +499,14 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// t40 defect 1: snapshot (read-only) which legacy skills exist BEFORE the
-	// template sync — the sync's managed cleanup removes .claude/skills/moai*
-	// before the archive step runs, and without this snapshot the resulting
-	// "total: 0 skills archived" is indistinguishable from "nothing to
-	// archive".
-	var preSyncLegacySkills []string
-	if cwd, err := os.Getwd(); err == nil {
-		preSyncLegacySkills = presentLegacySkillIDs(cwd)
-	}
+	// Restore provenance an earlier `init --force` recorded as user_created
+	// (t1214). Before the sync so the deploy sees the healed entries, and
+	// before its version-match early return so an up-to-date project heals too.
+	healManifestBestEffort(".", out, cmd.ErrOrStderr())
 
+	// Legacy skills are archived inside the template sync, before its managed
+	// cleanup removes .claude/skills/moai*; a skipped sync archives nothing,
+	// which keeps REQ-UAC-004.
 	syncSkipped, err := runTemplateSyncWithProgress(cmd)
 	if err != nil {
 		return err
@@ -506,18 +522,30 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// inside the helper.
 	refreshCodexWiringBestEffort(out, cmd.ErrOrStderr())
 
+	// SPEC-UPDATE-MIRROR-HEAL-001 (REQ-UMH-001): restore a deleted
+	// .agents/skills mirror. Both of its producers live inside Deploy, which
+	// the version-match branch of runTemplateSyncWithProgress returns before
+	// reaching — so without this call a deleted mirror is permanent for a
+	// version-matched project. Deliberately BESIDE the early return, at the
+	// same position as the wiring refresh above and for the same reason: the
+	// repair does not depend on a template redeploy, and the optimization
+	// stays exactly where it is (C-2). Existence-gated on the project's
+	// recorded template_version, so a pre-mirror project gets nothing created
+	// (C-1).
+	repairSkillMirrorBestEffort(out, cmd.ErrOrStderr())
+
 	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-004: when the template sync
 	// branch short-circuits (version match + !forceUpdate, or user cancelled
 	// merge), the legacy-skill archive check MUST also be short-circuited.
 	// Pre-fix UX leaked a "Skipping sync" line immediately followed by
 	// "Legacy skill archive failed" because the archive ran unconditionally.
 	if syncSkipped {
-		// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016): an explicit --profile override
-		// must still persist to llm.profile even when the template sync short-circuits.
-		if p := getStringFlag(cmd, "profile"); p != "" {
-			if err := applyUpdateProfile(".", p); err != nil {
-				return err
-			}
+		// A version-matched update runs no sync and no merge, so the retired
+		// per-agent model/effort keys are stripped here, after its own backup.
+		// A user-cancelled merge returns the same skipped=true; the helper
+		// re-evaluates the version predicate and leaves that case untouched.
+		if err := stripRetiredModelConfigOnVersionMatch(cmd, out, "."); err != nil {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Retired model keys", "removal failed", err.Error(), &th))
 		}
 		return nil
 	}
@@ -541,26 +569,6 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Archive legacy skills (BC-V3R3-007): move 16 removed static skills to
-	// .moai/archive/skills/v2.16/ before they are cleaned from .claude/skills/.
-	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-002: --force is propagated
-	// so that drift-detection routes through the overwrite + backup path
-	// instead of returning ARCHIVE_DRIFT.
-	{
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("get working directory for archive: %w", err)
-		}
-		archived, archiveErr := archiveLegacySkills(cwd, out, getBoolFlag(cmd, "force"))
-		if archiveErr != nil {
-			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Legacy skill archive", "failed", archiveErr.Error(), &th))
-		}
-		// t40 defect 1: make the shortfall loud — skills that existed before
-		// the sync but were not archived (their sources were removed by the
-		// managed cleanup before this step) are reported as a loss.
-		reportArchiveShortfall(preSyncLegacySkills, archived, out)
-	}
-
 	// Ensure .moai/evolution/ directory tree exists for existing projects
 	// that predate the evolution infrastructure (R2: Directory Scaffolding).
 	if err := deploy.ScaffoldEvolutionDir("."); err != nil {
@@ -576,14 +584,12 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if err := profile.SyncToProjectConfig(".", prefs); err != nil {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Profile sync", "failed", err.Error(), &th))
 		}
-	}
-
-	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016): when --profile is given,
-	// persist the override to llm.profile (no agent frontmatter mutation).
-	if p := getStringFlag(cmd, "profile"); p != "" {
-		if err := applyUpdateProfile(".", p); err != nil {
-			return err
-		}
+		// card t1275: the profile sync rewrites .moai/config/sections/*.yaml
+		// after the template sync already tracked its render — re-record the
+		// section hashes so the manifest matches the disk this update leaves
+		// behind (a stale hash here is what froze four files user_modified on
+		// the next `init --force`).
+		retrackSectionFiles(".", cmd.ErrOrStderr())
 	}
 
 	return nil
@@ -653,30 +659,6 @@ func emitDryRunReinstallPlan(cmd *cobra.Command, cwd string, force bool, th tui.
 	return nil
 }
 
-// applyUpdateProfile persists a --profile override to llm.profile during
-// `moai update` (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-016/024). The former
-// plan_type × tier agent-frontmatter re-mutation (ApplyTierProfile) is RETIRED —
-// this path writes to llm.yaml only, leaving agent frontmatter at model: inherit.
-// An out-of-set profileFlag returns an error naming the closed set (defensive —
-// the CLI flag is validated by validateUpdateFlags before this is reached).
-func applyUpdateProfile(projectRoot, profileFlag string) error {
-	if profileFlag == "" {
-		return nil
-	}
-	if !config.IsValidProfile(profileFlag) {
-		return fmt.Errorf("invalid --profile value %q: must be one of: high, medium, low", profileFlag)
-	}
-	if err := template.ApplyProfile(projectRoot, profileFlag); err != nil {
-		return fmt.Errorf("persist profile: %w", err)
-	}
-	// Keep the legacy performance_tier alias in sync so the separate Tier x Phase
-	// axis reads a consistent tier.
-	if err := template.ApplyPerformanceTier(projectRoot, profileFlag); err != nil {
-		return fmt.Errorf("persist performance_tier: %w", err)
-	}
-	return nil
-}
-
 // shouldSkipBinaryUpdate returns true when the binary update step should
 // be skipped. This happens in three cases:
 //  1. The --templates-only flag is set (update command only).
@@ -695,13 +677,9 @@ func shouldSkipBinaryUpdate(cmd *cobra.Command) bool {
 		return true
 	}
 
-	// Dev build detection (reuse pattern from buildAutoUpdateFunc in deps.go)
-	v := version.GetVersion()
-	if strings.Contains(v, "dirty") || v == "dev" || strings.Contains(v, "none") {
-		return true
-	}
-
-	return false
+	// Dev build detection (shared discriminator in pkg/version — also rejects
+	// build codenames like "moai_cp/..." that a substring check let through, card t678)
+	return version.IsDevBuild(version.GetVersion())
 }
 
 // @MX:NOTE: [AUTO] runBinaryUpdateStep — M4-S4d-1 DDD migration. New-version notice uses
@@ -869,7 +847,12 @@ func runShellEnvConfig(cmd *cobra.Command) error {
 //     flag never reached. Treating it as already-migrated lets Step 4
 //     clear the residue and the fingerprint converge.
 func runAgencyMigrationAdapter(projectRoot string, dryRun, force bool, out io.Writer) error {
-	homeDir, err := paths.Home()
+	// Resolve through the userHomeDirFn seam, not paths.Home() directly: the
+	// home lands in migrateAgencyRunner.homeDir, whose checkpointPath writes
+	// <home>/.moai/.migrate-tx-<id>.json on interrupt. paths.Home() is outside
+	// the package-wide test home sandbox (main_test.go, card t661), so a test
+	// driving `moai update` resolved the operator's real home here (card t813).
+	homeDir, err := userHomeDirFn()
 	if err != nil {
 		return fmt.Errorf("agency migration adapter: home dir: %w", err)
 	}

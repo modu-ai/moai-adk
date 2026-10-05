@@ -1,5 +1,8 @@
 package cli
 
+// Provider entry is covered by gateway_provider_contract_test.go. These tests
+// exercise shared profile/mode plumbing with its legacy execution test seam.
+
 import (
 	"encoding/json"
 	"os"
@@ -7,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
-	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // TestCleanupMoaiWorktrees_GlobalPath verifies that cleanupMoaiWorktrees
@@ -17,6 +20,9 @@ import (
 //
 // NOTE: does not call t.Parallel() because it sets HOME via t.Setenv.
 func TestCleanupMoaiWorktrees_GlobalPath(t *testing.T) {
+	// L2 worktrees live under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the L2 root derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tests := []struct {
 		name         string
 		createLocal  bool // create a worktree under .claude/worktrees/
@@ -351,7 +357,7 @@ func TestUnifiedLaunch_Claude(t *testing.T) {
 		return nil
 	}
 
-	err := unifiedLaunch("myprofile", "claude", []string{"--bypass"})
+	err := runUnifiedLaunch("myprofile", "claude", []string{"--bypass"})
 	if err != nil {
 		t.Fatalf("unifiedLaunch error: %v", err)
 	}
@@ -386,7 +392,7 @@ func TestUnifiedLaunch_GLM(t *testing.T) {
 	defer func() { launchClaudeFunc = origLaunch }()
 	launchClaudeFunc = func(p string, args []string) error { return nil }
 
-	err := unifiedLaunch("", "glm", nil)
+	err := runUnifiedLaunch("", "glm", nil)
 	if err != nil {
 		t.Fatalf("unifiedLaunch(glm) error: %v", err)
 	}
@@ -416,8 +422,8 @@ func TestUnifiedLaunch_CG_NoTmux(t *testing.T) {
 	if err == nil {
 		t.Fatal("CG mode without tmux should error")
 	}
-	if !strings.Contains(err.Error(), "tmux session") {
-		t.Errorf("error should mention tmux, got: %v", err)
+	if !strings.Contains(err.Error(), "is retired") {
+		t.Errorf("error should mention retirement, got: %v", err)
 	}
 }
 
@@ -444,8 +450,55 @@ func TestUnifiedLaunch_CG_WithTestMode(t *testing.T) {
 	launchClaudeFunc = func(p string, args []string) error { return nil }
 
 	err := unifiedLaunch("", "claude_glm", nil)
-	if err != nil {
-		t.Fatalf("CG mode with MOAI_TEST_MODE=1 should not error, got: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "is retired") {
+		t.Fatalf("test mode must not reactivate retired CG, got: %v", err)
+	}
+}
+
+// TestLaunchClaudeDefault_ForwardsPermissionModes pins the t1414 repair:
+// every non-empty permission mode MUST reach the child argv, acceptEdits
+// included. CC 2.1.283+ falls back to its built-in default when no
+// --permission-mode arrives and the template ships no settings.json
+// defaultMode (removed in 20b4ff0f6), so the former "acceptEdits matches the
+// project default" omission silently started sessions in the CC built-in
+// mode (auto; Manual under a GLM backend) instead of acceptEdits. The
+// bypassPermissions call is the live-measured positive control: it was
+// forwarded all along, so the differential isolates the acceptEdits premise.
+func TestLaunchClaudeDefault_ForwardsPermissionModes(t *testing.T) {
+	fakeMoaiProject(t)
+	// Pin a stub binary: the launch resolves claude before the exec seam runs,
+	// and a CI runner has no claude on PATH.
+	t.Setenv(config.EnvClaudeBin, writeExecutable(t, filepath.Join(t.TempDir(), "claude-stub")))
+
+	origExec := execOrSpawnClaudeFunc
+	defer func() { execOrSpawnClaudeFunc = origExec }()
+
+	for _, tc := range []struct {
+		mode string
+	}{
+		{mode: "acceptEdits"},
+		{mode: "bypassPermissions"},
+	} {
+		var capturedArgs []string
+		execOrSpawnClaudeFunc = func(bin string, args, env []string) error {
+			capturedArgs = args
+			return nil
+		}
+
+		if err := launchClaudeDefault("", []string{"--permission-mode", tc.mode}); err != nil {
+			t.Fatalf("launch with --permission-mode %s: %v", tc.mode, err)
+		}
+
+		found := false
+		for i, a := range capturedArgs {
+			if a == "--permission-mode" && i+1 < len(capturedArgs) && capturedArgs[i+1] == tc.mode {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("child args %v: --permission-mode %s not forwarded — the omission silently falls back to the CC built-in default (card t1414)", capturedArgs, tc.mode)
+		}
 	}
 }
 
@@ -505,10 +558,10 @@ func TestSyncPermissionModeToSettingsLocal(t *testing.T) {
 			wantEnvValue: "bar",
 		},
 		{
-			name:     "acceptEdits removes defaultMode (matches project default)",
+			name:     "acceptEdits writes defaultMode (no template default since 20b4ff0f6)",
 			existing: `{"permissions":{"defaultMode":"auto"}}`,
 			mode:     "acceptEdits",
-			wantMode: "",
+			wantMode: "acceptEdits",
 		},
 		{
 			name:         "empty mode with no permissions is no-op",
@@ -664,102 +717,10 @@ func TestContainsPermissionMode(t *testing.T) {
 	}
 }
 
-func TestExpandModelString(t *testing.T) {
-	// The test exercises the central ModelAliasTable via expandModelString.
-	// Short aliases (opus/sonnet/haiku) MUST resolve to their canonical CC ids;
-	// the [1m] suffix MUST be preserved across resolution; full ids and unknown
-	// values pass through unchanged. opusplan is a CC-native routing alias with
-	// no full-id expansion, so it resolves to itself.
-	tests := []struct {
-		name  string
-		model string
-		want  string
-	}{
-		{"empty string", "", ""},
-		// Short alias → canonical id resolution (forward map via central table)
-		{"opus alias resolves", "opus", template.ModelIDOpus5},
-		{"sonnet alias resolves", "sonnet", template.ModelAliasCanonicalID("sonnet")},
-		{"haiku alias resolves", "haiku", template.ModelAliasCanonicalID("haiku")},
-		// [1m] suffix preserved across resolution
-		{"opus alias 1m resolves", "opus[1m]", template.ModelIDOpus5 + "[1m]"},
-		{"sonnet alias 1m resolves", "sonnet[1m]", template.ModelAliasCanonicalID("sonnet") + "[1m]"},
-		// opusplan is its own canonical form (CC-native routing alias, no full-id)
-		{"opusplan resolves to self", "opusplan", "opusplan"},
-		// Full canonical ids pass through unchanged
-		{"full opus 4-7 passthrough", "claude-opus-4-7", "claude-opus-4-7"},
-		{"full opus 4-6 passthrough", "claude-opus-4-6", "claude-opus-4-6"},
-		{"full sonnet passthrough", "claude-sonnet-4-6", "claude-sonnet-4-6"},
-		{"full haiku passthrough", "claude-haiku-4-5", "claude-haiku-4-5"},
-		{"full opus 1m passthrough", "claude-opus-4-6[1m]", "claude-opus-4-6[1m]"},
-		// Unknown values pass through unchanged
-		{"arbitrary model passthrough", "some-model", "some-model"},
-		{"arbitrary 1m passthrough", "future-model[1m]", "future-model[1m]"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := expandModelString(tt.model)
-			if got != tt.want {
-				t.Errorf("expandModelString(%q) = %q, want %q", tt.model, got, tt.want)
-			}
-		})
-	}
-}
-
-// TestBuildEnvForLaunch verifies that CLAUDE_CODE_EFFORT_LEVEL is injected
-// when EffortLevel is set and absent when empty.
-func TestBuildEnvForLaunch(t *testing.T) {
-	const effortKey = "CLAUDE_CODE_EFFORT_LEVEL"
-
-	t.Run("effort xhigh injected", func(t *testing.T) {
-		env := buildEnvForLaunch("xhigh", os.Environ())
-		found := ""
-		for _, e := range env {
-			if strings.HasPrefix(e, effortKey+"=") {
-				found = strings.TrimPrefix(e, effortKey+"=")
-				break
-			}
-		}
-		if found != "xhigh" {
-			t.Errorf("buildEnvForLaunch: %s not set to xhigh (got %q)", effortKey, found)
-		}
-	})
-
-	t.Run("empty effort leaves env unchanged", func(t *testing.T) {
-		base := []string{"PATH=/usr/bin", "HOME=/root"}
-		env := buildEnvForLaunch("", base)
-		for _, e := range env {
-			if strings.HasPrefix(e, effortKey+"=") {
-				t.Errorf("buildEnvForLaunch with empty effort injected %s", e)
-			}
-		}
-		if len(env) != len(base) {
-			t.Errorf("buildEnvForLaunch with empty effort changed env length: %d -> %d", len(base), len(env))
-		}
-	})
-
-	t.Run("existing effort overridden", func(t *testing.T) {
-		base := []string{"PATH=/usr/bin", effortKey + "=low"}
-		env := buildEnvForLaunch("xhigh", base)
-		count := 0
-		val := ""
-		for _, e := range env {
-			if strings.HasPrefix(e, effortKey+"=") {
-				count++
-				val = strings.TrimPrefix(e, effortKey+"=")
-			}
-		}
-		if count != 1 {
-			t.Errorf("buildEnvForLaunch: expected 1 %s entry, got %d", effortKey, count)
-		}
-		if val != "xhigh" {
-			t.Errorf("buildEnvForLaunch: %s = %q, want xhigh", effortKey, val)
-		}
-	})
-}
-
 func TestUnifiedLaunch_NotInProject(t *testing.T) {
 	tmpDir := t.TempDir()
 	// No .moai directory
+	t.Setenv("HOME", tmpDir)
 
 	origDir, _ := os.Getwd()
 	defer func() { _ = os.Chdir(origDir) }()
@@ -771,7 +732,7 @@ func TestUnifiedLaunch_NotInProject(t *testing.T) {
 	defer func() { launchClaudeFunc = origLaunch }()
 	launchClaudeFunc = func(p string, args []string) error { return nil }
 
-	err := unifiedLaunch("", "claude", nil)
+	err := runUnifiedLaunch("", "claude", nil)
 	if err == nil {
 		t.Fatal("unifiedLaunch should error when not in a MoAI project")
 	}
@@ -936,12 +897,88 @@ func TestUnifiedLaunch_GlobalLedgerDoesNotBleed(t *testing.T) {
 		return nil
 	}
 
-	if err := unifiedLaunch("", "claude", nil); err != nil {
+	if err := runUnifiedLaunch("", "claude", nil); err != nil {
 		t.Fatalf("unifiedLaunch error: %v", err)
 	}
 
 	if launchedProfile != "" {
 		t.Errorf("launched profile = %q, want \"\" (global last_profile must not bleed into a project with no projects[] entry)", launchedProfile)
+	}
+}
+
+// TestLaunchModelAliasPassthrough (SPEC-ALIAS-PASSTHROUGH-001 AC-ALP-001)
+// verifies that a stored profile alias reaches `claude --model` VERBATIM on
+// the Claude-backend launch path. The harness drives the real
+// runUnifiedLaunch flow with the launch captured at the execOrSpawnClaudeFunc
+// seam (its doc comment names exactly this test use — the default would
+// syscall.Exec and replace the test process). The expectation is a literal:
+// no compile-time model-table reference, so the next upstream alias move
+// cannot re-break this regression proof (REQ-ALP-006).
+//
+// NOTE: does not call t.Parallel() — it chdirs, overrides findProjectRootFn
+// and profile.BaseDirOverride, and replaces execOrSpawnClaudeFunc.
+func TestLaunchModelAliasPassthrough(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Isolated profile base: bare-launch preferences carry the alias literal.
+	profileBase := t.TempDir()
+	origBase := profile.BaseDirOverride
+	defer func() { profile.BaseDirOverride = origBase }()
+	profile.BaseDirOverride = profileBase
+	if err := os.WriteFile(filepath.Join(profileBase, "preferences.yaml"), []byte("model: opus[1m]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("CLAUDE_CONFIG_DIR", "")
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	origRoot := findProjectRootFn
+	defer func() { findProjectRootFn = origRoot }()
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+
+	// Stub claude binary pinned via MOAI_CLAUDE_BIN (precedent:
+	// launcher_chrome_test.go). The launcher never execs for real — the exec
+	// seam below swallows the handoff — the pin only has to pass the
+	// executable validation in resolveLaunchClaudeBinary.
+	t.Setenv(config.EnvClaudeBin, writeExecutable(t, filepath.Join(t.TempDir(), "claude-stub")))
+
+	var capturedBin string
+	var capturedArgs []string
+	origExec := execOrSpawnClaudeFunc
+	defer func() { execOrSpawnClaudeFunc = origExec }()
+	execOrSpawnClaudeFunc = func(bin string, args []string, env []string) error {
+		capturedBin = bin
+		capturedArgs = args
+		return nil
+	}
+
+	if err := runUnifiedLaunch("", "claude", nil); err != nil {
+		t.Fatalf("unifiedLaunch error: %v", err)
+	}
+
+	found := false
+	for i, a := range capturedArgs {
+		if a == "--model" && i+1 < len(capturedArgs) {
+			if capturedArgs[i+1] != "opus[1m]" {
+				t.Fatalf("captured argv carries --model %q, want the stored alias literal \"opus[1m]\" (full argv: %q)",
+					capturedArgs[i+1], capturedArgs)
+			}
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("captured argv carries no --model flag (bin=%q, argv=%q)", capturedBin, capturedArgs)
 	}
 }
 
@@ -967,6 +1004,46 @@ func TestResolveLaunchEffort(t *testing.T) {
 	}
 }
 
+// TestResolveMainSessionModel_ClaudePassthrough (SPEC-ALIAS-PASSTHROUGH-001
+// AC-ALP-002) verifies that the Claude-backend branch of resolveMainSessionModel
+// is a TOTAL passthrough: the resolved string is the input, byte-identical,
+// for every stored or flagged form — base aliases, their [1m] variants (the
+// picker surface), the opusplan CC-native routing alias, full canonical ids
+// (current and legacy), unknown values, and the empty string. Expectations
+// are literals only: no compile-time table or id-constant reference, so the
+// next upstream alias move cannot flip these rows (REQ-ALP-006). The
+// empty-stays-empty no-flag behavior of buildArgs is pinned by the existing
+// launch tests; this table pins the resolution identity itself.
+func TestResolveMainSessionModel_ClaudePassthrough(t *testing.T) {
+	cases := []struct {
+		name  string
+		model string
+	}{
+		{"base alias opus", "opus"},
+		{"alias opus with 1m", "opus[1m]"},
+		{"base alias sonnet", "sonnet"},
+		{"alias sonnet with 1m", "sonnet[1m]"},
+		{"base alias fable", "fable"},
+		{"alias fable with 1m", "fable[1m]"},
+		{"base alias haiku", "haiku"},
+		{"opusplan routing alias", "opusplan"},
+		{"opusplan with 1m", "opusplan[1m]"},
+		{"full current id", "claude-opus-5-5"},
+		{"full current id with 1m", "claude-opus-5-5[1m]"},
+		{"full legacy id", "claude-opus-4-8"},
+		{"unknown value", "custom-xyz"},
+		{"empty string", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := resolveMainSessionModel(tc.model, false)
+			if got != tc.model {
+				t.Errorf("resolveMainSessionModel(%q, false) = %q, want the input verbatim", tc.model, got)
+			}
+		})
+	}
+}
+
 func TestResolveMainSessionModel_GLMAvoidsCanonicalID(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -979,7 +1056,7 @@ func TestResolveMainSessionModel_GLMAvoidsCanonicalID(t *testing.T) {
 		{"glm alias with 1m suffix preserved", "opus[1m]", true, "opus[1m]"},
 		{"glm canonical id reverse-mapped to alias", "claude-opus-4-8", true, "opus"},
 		{"glm deprecated canonical id reverse-mapped", "claude-opus-4-7", true, "opus"},
-		{"claude backend alias expands to canonical id", "opus", false, template.ModelIDOpus5},
+		{"claude backend alias passes through verbatim", "opus", false, "opus"},
 		{"claude backend canonical passes through", "claude-opus-4-8", false, "claude-opus-4-8"},
 		{"glm empty stays empty", "", true, ""},
 		{"glm unknown value passes through", "custom-xyz", true, "custom-xyz"},

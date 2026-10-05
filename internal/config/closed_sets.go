@@ -60,33 +60,85 @@ func ValidWorkflowDefaultModes() []string {
 // slots, default-first: glm-5.3-flash (the default) leads, and no capability
 // ordering between flash and glm-5.3 is claimed beyond that placement.
 //
+// DELETION + WITHDRAWAL RECORD (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004,
+// DR-2 — operator override 2026-09-30): the set is exactly
+// {glm-5.3-flash, glm-5.3}. The former extras glm-5.1, glm-4.7, and
+// glm-4.5-air are withdrawn from the offered set, and ALL old-model id
+// surfaces — the named "glm-4.5"-through-"glm-5-turbo" constants, the
+// statusline context-window entries, the legacy opus/sonnet/haiku alias
+// fields — are deleted outright, superseding the glm-5.2 precedent of
+// withdrawing the offered value while keeping its constant loadable. A
+// stored tier-slot value naming a removed id resolves to the tier default
+// with a one-line warning (fail-open); the llm.glm.context_windows user
+// override key stays the path that still maps a custom window for any id.
+//
 // The members are DERIVED from the DefaultGLM* constants rather than restated:
 // a second literal list would drift from the defaults the launcher actually
 // injects, and the widget would keep offering a model id the runtime no longer
-// maps. Note that these constants are not the only occurrences of these ids in
-// the tree — the statusline context-window table keys on some of them too — but
-// they are the SSOT for "which model may a tier slot hold", which is what this
-// set answers.
-//
-// glm-5.3 is listed EXPLICITLY (DefaultGLM53) even though no tier slot
+// maps. glm-5.3 is listed EXPLICITLY (DefaultGLM53) even though no tier slot
 // defaults to it anymore: the set derives from constants, so a default
 // retarget without the explicit member would silently drop glm-5.3 from the
 // offered set and break an existing explicit selection.
-//
-// glm-5.2 was withdrawn from this set once a single model became the default
-// for every tier: offering the immediate predecessor of the default buys
-// nothing a user wants and costs a widget row. DefaultGLM52 itself is
-// DELIBERATELY retained as a constant — an existing llm.yaml may still name
-// glm-5.2 in a tier slot, and the statusline context-window table still
-// resolves it, so the id stays loadable even though it is no longer offered.
 func ValidGLMModels() []string {
-	return []string{DefaultGLM53Flash, DefaultGLM53, DefaultGLM51, DefaultGLM47, DefaultGLM45Air}
+	return []string{DefaultGLM53Flash, DefaultGLM53}
 }
 
 // ValidAuditModels returns the closed set for workflow.audit.model, derived
-// from the AuditModel* constants that activeAuditBackend validates against.
+// from the AuditModel* constants that ResolveAuditPlan validates against.
 func ValidAuditModels() []string {
 	return []string{AuditModelClaude, AuditModelCodex, AuditModelGLM, AuditModelMulti}
+}
+
+// DefaultCodexAuditModel is the codex audit pin default — the same id the
+// DefaultAuditConfig Codex cell writes (SPEC-MODEL-MATRIX-UPDATE-001
+// REQ-MMU-001/002). Declared here so the web closed set derives from the
+// constant the resolver writes instead of restating the literal.
+const DefaultCodexAuditModel = "gpt-6.1-sol"
+
+// DefaultClaudeAuditModel / DefaultClaudeAuditEffort are the claude audit pin
+// default — {claude-opus-5-5, high} (SPEC-AGENT-TIER-001 REQ-TIER-004,
+// operator directive: SUPERSEDES the t1368 {claude-opus-5-5, medium} pin).
+// Declared beside DefaultCodexAuditModel per the same precedent: the Go
+// default (NewDefaultWorkflowConfig) and the resolver terminal fallback
+// (resolveClaudeAuditModelEffort) both derive from these constants instead of
+// restating the literals (REQ-TIER-013 single-sourcing).
+const (
+	DefaultClaudeAuditModel  = "claude-opus-5-5"
+	DefaultClaudeAuditEffort = "high"
+)
+
+// DefaultGLMAuditModel / DefaultGLMAuditEffort are the GLM audit pin default —
+// {glm-5.3, max} (SPEC-AGENT-TIER-001 REQ-TIER-004/006). The model is the FULL
+// glm-5.3 (DefaultGLM53), deliberately NOT the flash slot default
+// (DefaultGLMHigh): the audit pin targets full glm-5.3 while the glm_task
+// delegation default stays on the flash variant (REQ-AMP-008). The effort
+// value is a z.ai reasoning-state name — the {low, high, max} vocabulary,
+// stored and transmitted verbatim (REQ-AMP-006). internal/template owns the
+// GLMState* name constants and internal/config cannot import it, so the state
+// is declared here once and glmAuditReasoningEffort (internal/cli) validates
+// against the same set.
+const (
+	DefaultGLMAuditModel  = DefaultGLM53
+	DefaultGLMAuditEffort = "max"
+)
+
+// ValidCodexAuditModels returns the closed set for workflow.audit.codex.model
+// (card t1278): the runtime default first, then the two ids with real
+// stored-value evidence (gpt-5.6-sol — operator screenshot 2026-09-30 ·
+// primary-checkout workflow.yaml; gpt-5.6 — the schema example). A stored
+// foreign id keeps round-tripping through the RC2 passthrough-preserve in
+// parseSchemaForm; widening is a one-line change here.
+func ValidCodexAuditModels() []string {
+	return []string{DefaultCodexAuditModel, "gpt-5.6-sol", "gpt-5.6"}
+}
+
+// ValidProjectContinuations returns the closed set for
+// workflow.project.continuation, derived from the ProjectContinuation*
+// constants the resolver validates against
+// (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-001). Order is domain order, not
+// alphabetical: none does least, pipeline does most.
+func ValidProjectContinuations() []string {
+	return []string{ProjectContinuationNone, ProjectContinuationCard, ProjectContinuationPipeline}
 }
 
 // ValidAuditGates returns the closed set for workflow.audit.gates.*, derived
