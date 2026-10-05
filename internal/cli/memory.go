@@ -120,7 +120,9 @@ func memoryCandidateStores(projectRoot string) ([]memoryStore, error) {
 		return nil, fmt.Errorf("memory: resolve project root: %w", err)
 	}
 
-	home, homeErr := userHomeDir()
+	// Resolved through the userHomeDirFn seam (not userHomeDir directly) so the
+	// package-wide test home sandbox covers every store lookup.
+	home, homeErr := userHomeDirFn()
 
 	var stores []memoryStore
 	add := func(dir, origin string) {
