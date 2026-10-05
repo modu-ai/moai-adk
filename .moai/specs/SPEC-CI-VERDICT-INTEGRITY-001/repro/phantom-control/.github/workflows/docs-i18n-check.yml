@@ -1,7 +1,8 @@
-# Minimal stand-in so the validator's Dimension A file-existence fallback
-# resolves `docs-i18n-check` inside this isolated fixture cwd (identical to the
-# phantom fixture's copy; the control differs from phantom ONLY in the SSoT
-# context value).
+# Minimal stand-in workflow shared BYTE-IDENTICALLY by the phantom and
+# phantom-control fixture trees (micro-card t1543 D1): lets the validator's
+# Dimension A file-existence fallback resolve `docs-i18n-check` inside each
+# isolated fixture cwd. The probe varies ONLY the required-checks.yml content;
+# everything else must mirror a healthy repository shape.
 name: docs-i18n-check
 on:
   push:

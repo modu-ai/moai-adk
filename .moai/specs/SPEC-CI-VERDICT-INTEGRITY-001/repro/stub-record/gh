@@ -1,0 +1,6 @@
+#!/bin/sh
+# t1534 recording gh stub (P2-M) — appends the full argv of EVERY invocation to
+# $MOCK_CALL_LOG and exits 0 (merge success). The E26 probe counts `pr merge`
+# lines in that log as the observable "did the merge happen" decision.
+printf 'gh %s\n' "$*" >> "${MOCK_CALL_LOG:?MOCK_CALL_LOG not set}"
+exit 0

@@ -65,11 +65,11 @@ run_variant() {
   echo "variant $label: exit $rc"
 }
 
-echo "E7 input matrix (Actions default shell: bash -e -o pipefail; 1 control + 18 single-failure cases):"
+echo "E7 input matrix (Actions default shell: bash -e -o pipefail; 1 control + 24 single-failure cases):"
 run_variant "A-full-success" "" ""
 
 for j in $JOBS; do
-  for c in cancelled timed_out skipped; do
+  for c in failure cancelled timed_out skipped; do
     run_variant "$j-$c" "$j" "$c"
   done
 done
