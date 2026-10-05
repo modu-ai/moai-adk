@@ -110,12 +110,12 @@ worktree_note: >
 
 ```yaml
 sync_complete_at: 2026-10-05T13:02:00+09:00
-sync_commit_sha: pending-backfill-sync   # D3 backfill window — a commit cannot cite its own hash; the real SHA is backfilled in the following commit
+sync_commit_sha: de8faee98   # backfilled in this commit; the placeholder rode the sync close itself (D3 window — a commit cannot cite its own hash)
 sync_status: complete
 spec_version_at_close: "0.4.1"
 frontmatter_status_transitions:
   draft_to_in_progress: e7c564b38        # manager-develop, run STEP 0
-  in_progress_to_implemented_to_completed: pending-backfill-sync   # this sync commit, manager-docs (allowed scope: spec.md status + updated only — no body change; updated already 2026-10-05, unchanged)
+  in_progress_to_implemented_to_completed: de8faee98   # sync commit, manager-docs (allowed scope: spec.md status + updated only — no body change; updated already 2026-10-05, unchanged)
 sync_phase_changes:
   - spec.md frontmatter status in-progress -> completed (status only; no spec/plan/acceptance body modification)
   - progress.md §E.4 authored (this section)
