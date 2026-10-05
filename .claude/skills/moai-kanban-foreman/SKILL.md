@@ -14,7 +14,7 @@ when_to_use: >
 
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Grep, Glob, Bash(moai todo:*), Bash(git status:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git diff:*), Bash(git show:*)
+allowed-tools: Read, Grep, Glob, Bash(moai gtd:*), Bash(git status:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git diff:*), Bash(git show:*)
 disallowed-tools: AskUserQuestion
 user-invocable: false
 metadata:
@@ -32,8 +32,9 @@ progressive_disclosure:
 
 One unattended pass of the kanban foreman: watch the backlog queue, dispatch
 the next operator-picked card to an isolated worker, collect completion
-evidence, report. The queue surface is `moai todo`; the dispatch protocol and
+evidence, report. The queue surface is `moai gtd`; the dispatch protocol and
 card classes live in the kanban dispatch rule (`.claude/rules/moai/workflow/kanban-dispatch.md`).
+`foreman` — an auxiliary role of the leader: the unattended watcher that dispatches the already-picked card to an isolated worker when no leader session holds the board.
 
 ## Running unattended
 
@@ -59,17 +60,25 @@ not something this loop can do for itself.
 ## Boundaries (hard)
 
 1. **The operator admits and picks work.** Only backlog items whose state is
-   already `picked` are dispatchable. Never run `moai todo add`; never run
-   `moai todo next <n>` — that mutation is the operator's pick. Never invent,
+   already `picked` are dispatchable. Never run `moai gtd add`; never run
+   `moai gtd next <n>` — that mutation is the operator's pick. Never invent,
    reword, or reorder cards. An empty queue is a legitimate state: say so and
-   idle.
+   idle. A batch authorization (`/moai:todo --auto` — the operator's typed
+   invocation-as-approval) is the card-pick gate's autonomous form
+   (`.claude/rules/moai/workflow/auto-semantics.md` §9): within it, serial
+   consumption in queue order is authorized; queue ADMISSION stays the
+   operator's.
 2. **No approval gate is answered on the operator's behalf.** When a card's
    next step needs a human decision that is not already recorded as made
    (plan-to-run kickoff approval, a review severity call, a scope choice),
    do not proceed. Leave the card `picked`, name it blocked-for-operator in
    the report together with the decision it waits on, and move on.
 3. **One write-capable worker at a time.** While a worker is in flight the
-   iteration only reads. Never run two write-capable agents concurrently.
+   iteration only reads. This is the foreman's own serialization, stricter than
+   the doctrine it sits under — `one writer per tree`, owned by
+   `.claude/rules/moai/core/agent-common-protocol.md` § Background Agent
+   Execution. The foreman keeps one worker in flight so a failed iteration has
+   exactly one author to read.
 4. **Every worker runs in its own worktree** (`isolation: "worktree"` on the
    spawn; relative paths in the prompt — the worker's CWD is its worktree
    root). Nothing writes to the shared checkout.
@@ -87,15 +96,27 @@ not something this loop can do for itself.
 ## The iteration
 
 1. **Queue watch.** If no backlog monitor is live (first iteration, or after
-   a resume), arm one persistent Monitor on the queue file:
+   a resume), arm one Monitor on the queue file, re-arming it at each expiry:
 
    - `command`:
 
      ```sh
-     f=.moai/state/kanban/backlog.json
+     # The queue directory, resolved the way kanban.StateDirForRoot does for a
+     # standard git-repository project: <moai-home>/db/<project-key>/todo,
+     # keyed by the repository's canonical (primary-checkout) root.
+     mh=${MOAI_HOME:-$HOME/.moai}
+     root=$(git rev-parse --show-toplevel 2>/dev/null) || root=$PWD
+     top=$(git worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | head -n 1)
+     [ -n "$top" ] && root=$top
+     root=$(cd "$root" && pwd -P)
+     key=$(basename "$root"); key=$(printf '%s' "$key" | tr -c 'A-Za-z0-9._-' '-')
+     sum=$(printf '%s' "$root" | sha256sum 2>/dev/null | cut -c1-8)
+     [ -n "$sum" ] || sum=$(printf '%s' "$root" | shasum -a 256 | cut -c1-8)
+     d=$mh/db/$key-$sum/todo
      last=init
      while true; do
-       if [ -f "$f" ]; then cur=$(cksum "$f"); else cur=missing; fi
+       cur=$(cksum "$d"/backlog.db "$d"/backlog.db-wal 2>/dev/null)
+       [ -n "$cur" ] || cur=missing
        if [ "$cur" != "$last" ]; then
          [ "$last" != init ] && echo "backlog changed"
          last=$cur
@@ -104,17 +125,38 @@ not something this loop can do for itself.
      done
      ```
 
-   - `persistent: true`
+   - `timeout_ms: 1800000`
    - `description: backlog queue watch`
 
-   The queue file is replaced atomically on every mutation, so tools that
-   follow a single file handle are the wrong shape here; the checksum poll
-   emits one line per change and costs one tiny read every five seconds. Do
-   not tighten the interval, and do not arm a second watcher. Each emitted
+   The `persistent` option no longer exists — every Monitor now carries a
+   deadline, `timeout_ms` is a required input, and the watch above is an
+   unbounded loop that never ends on its own. `1800000` is the longest
+   deadline the tool documents accepting; a larger value is capped rather
+   than honoured. At expiry the loop is killed and one notice arrives with
+   the event count, so an iteration that still needs the watch re-arms it.
+   A non-interactive (`-p`) session is reported to cap the deadline lower
+   than an interactive one; that lower cap is not observable from the tool
+   input schema, so treat a shorter-than-requested expiry there as expected
+   rather than as a fault.
+
+   The watch resolves the queue directory the way `kanban.StateDirForRoot`
+   does for a standard git-repository project — a project-keyed directory
+   under the moai home (`MOAI_HOME` when that is set to an absolute path,
+   otherwise `~/.moai`), keyed by the primary checkout's root — so a linked
+   worktree watches the primary checkout's queue, not a directory local to
+   its own tree. The queue is the database, and a `backlog.json` beside it is an export or
+   a legacy leftover — never the queue — so a watch pointed at the JSON on a
+   migrated project polls a file that never changes and reports nothing,
+   forever. The write-ahead log is watched alongside the database because a
+   committed write can sit in `backlog.db-wal` with the database image
+   byte-identical until a checkpoint folds it back; watching the database
+   alone misses exactly those mutations. The checksum poll emits one line
+   per change and costs two tiny reads every five seconds. Do not tighten
+   the interval, and do not arm a second watcher. Each emitted
    line, like each scheduled wakeup, is a prompt to run this same idempotent
    iteration — an iteration that finds nothing to do ends quickly.
 
-2. **Read the queue.** `moai todo list --json` (lock-free). A missing queue
+2. **Read the queue.** `moai gtd list --json` (lock-free). A missing queue
    file is an empty queue, never an error. Records carry `id`, `text`,
    `spec_id`, and `state` (`queued` | `picked` | `dropped`).
 
@@ -146,7 +188,7 @@ not something this loop can do for itself.
    residual risk; commit by explicit pathspec; never push.
 
 6. **Collect on evidence.** When the worker returns, read the evidence file
-   it names. Advance the card — `moai todo done <t-id>` — only when the
+   it names. Advance the card — `moai gtd done <t-id>` — only when the
    evidence shows the work complete: verbatim passing output present, gaps
    named. A missing, unreadable, or stale evidence file is a gap: the card
    stays `picked`, the report says why, and the card is not re-dispatched
@@ -160,7 +202,7 @@ not something this loop can do for itself.
 ## Factory seam (reserved, not implemented)
 
 The single-worker dispatch above is the only mode. Fanning a card out to
-numbered factory worker lanes — the multi-lane launcher surface — is
+numbered factory lanes — the multi-lane launcher surface — is
 separate work; when the foreman grows that routing, it lands here as a
 second dispatch mode chosen per card. Until then this loop spawns one
 subagent per card, reads no factory state, and launches no lanes.

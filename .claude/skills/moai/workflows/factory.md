@@ -109,7 +109,7 @@ Two behaviors govern the preset and are **defined elsewhere**; they are cited he
 
 ## Backend exclusion
 
-Factory Mode is rejected on the mixed-backend launcher (`moai cg`) with the sentinel `FACTORY_MODE_UNSUPPORTED_BACKEND`, and no session is launched. That launcher runs a leader on one backend and teammates on another, which contradicts the one-session / one-backend / one-chain premise the chain rests on — the verify stage would run under an indeterminate backend. The rejection is deliberate, not a gap to be adapted around.
+`moai cg` is retired for every input, including factory flags. It emits a migration diagnostic without launching a session. Run `moai migrate cg` to preview explicit role changes; do not reinterpret the retired command as another provider or bypass the mixed-role capability gate.
 
 ## State record
 

@@ -235,6 +235,5 @@ When contributing to modules:
 
 ---
 
-Last Updated: 2026-01-06
 Module Count: 11 root-level modules + 6 thematic subdirectories
 Maintained by: MoAI-ADK Development Workflow Team

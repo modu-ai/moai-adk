@@ -22,7 +22,7 @@ metadata:
 #### Step 1.2: Analyze Project Status
 
 - Analyze Git changes: git status, git diff, categorize changed files
-- Read project configuration: git_strategy.mode, conversation_language, spec_git_workflow
+- Read project configuration: git_strategy.mode, git_strategy.{mode}.workflow, conversation_language
 - Determine synchronization mode from $ARGUMENTS
 - Detect branch context: Check current branch name
 
@@ -31,9 +31,9 @@ metadata:
 Detect if the current session is running within a MoAI worktree:
 - Check if current git directory path contains `/.moai/worktrees/` component
 - OR check if `.moai/worktrees/registry.json` has an active entry for current SPEC-ID
-- Store result as `is_worktree_context` boolean for use in Phase 13
+- Store result as `is_worktree_context` boolean; it selects the worktree delivery route (Phase 13 Step 3.2) and the worktree next-step options (Phase 14), but it never decides auto-merge
 
-This affects auto-merge behavior: worktree contexts default to auto-merge.
+This does not decide auto-merge: the PR merges only on the `--auto-merge` opt-in defined in `manager-git.md` § PR Auto-Merge, never on worktree context alone.
 
 #### Step 1.3: Project Status Verification
 
@@ -95,6 +95,10 @@ For each SPEC associated with the current sync:
 - [ ] User has confirmed PR description draft
 <!-- moai:evolvable-end -->
 
+<!-- moai:contract-mode-start id="contract-doc-scope" -->
+Where `workflow.autonomy.mode: contract` — the documentation scope approval (`gate-sync-2`) is not asked: regenerate the documents the divergence report names within the contract's ownership, and escalate when the scope would reach outside it. See `.claude/rules/moai/workflow/contract-autonomy.md` § Gate disposition.
+
+<!-- moai:contract-mode-end -->
 Tool: AskUserQuestion
 
 Display sync plan report and present options:
@@ -135,11 +139,11 @@ Input: Approved sync plan, project verification results, changed files list, div
 
 Each drafter reads the changeset and **returns draft text; it writes no final artifact**. A large draft (4-locale docs-site content, for example) MAY instead be staged under `.moai/state/` with only the path returned — that staging path is runtime state, not a sync deliverable, so it does not make the drafter a writer of the output set. `manager-docs` then applies the five drafts **sequentially** and is the single writer of every final artifact (CHANGELOG, README, docs-site, project docs, SPEC frontmatter, codemaps).
 
-**Concurrent scheduling with the Phase 7-10 audit (A5 — SPEC-SYNC-PARALLEL-DOCS-001).** The `FO-SYNC-4` drafter fan-out launches CONCURRENTLY with the Phase 7 audit fan-out, in the same turn Phase 7 is entered — NOT serially after the audit completes (the prior scheduling read the Phase Routing Table top-to-bottom and serialized the docs draft behind the full quality pipeline). The orchestrator spawns the drafter fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7; the drafts are ready when the audit returns.
+**Concurrent scheduling with the Phase 7-10 audit.** The `FO-SYNC-4` drafter fan-out launches CONCURRENTLY with the Phase 7 audit fan-out, in the same turn Phase 7 is entered — NOT serially after the audit completes (reading the Phase Routing Table top-to-bottom would serialize the docs draft behind the full quality pipeline). The orchestrator spawns the drafter fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7; the drafts are ready when the audit returns.
 
-**Drafter input independence (SPEC-SYNC-PARALLEL-DOCS-001 A5).** Each D1-D5 drafter reads its input from SPEC artifacts + git diff + the Phase 11 Step 1.5 divergence report. A drafter does NOT read the concurrent audit's quality report, verdict, or per-dimension scores. The docs draft and the audit are input-independent; a drafter that consumed "the audit's functionality score" to decide CHANGELOG tone would create a hidden serial dependency that defeats the A5 concurrency.
+**Drafter input independence.** Each D1-D5 drafter reads SPEC artifacts + git diff + the Step 1.5 divergence report. A drafter does NOT read the concurrent audit's quality report, verdict, or per-dimension scores, and it does not require a future Phase 11 output. The docs draft and the audit are input-independent; a drafter that consumed "the audit's functionality score" to decide CHANGELOG tone would create a hidden serial dependency that defeats the concurrency.
 
-**Single-writer applier sequencing at gate-sync-2 (SPEC-SYNC-PARALLEL-DOCS-001 A5).** The A5 concurrency is bought entirely by making the D1-D5 drafters read-only. `manager-docs` is the sole write-capable agent and applies the five drafts sequentially AFTER both the docs-drafter fan-out AND the audit fan-out return — the single-writer applier pass runs at the existing `gate-sync-2` HUMAN GATE 2 (Documentation Scope). The `[HARD]` concurrency guard (`agent-common-protocol.md` § Background Agent Execution — no two write-capable agents run concurrently) holds throughout the concurrent fan-out; the audit verdict is surfaced to the user at the same gate-sync-2 round, with NO extra human round-trip introduced by A5.
+**Single-writer applier sequencing at gate-sync-2.** The concurrency is bought entirely by making the D1-D5 drafters read-only. `manager-docs` is the sole write-capable agent and applies the five drafts sequentially AFTER both the docs-drafter fan-out AND the audit fan-out return — the single-writer applier pass runs at the existing `gate-sync-2` HUMAN GATE 2 (Documentation Scope). The `[HARD]` concurrency guard (`agent-common-protocol.md` § Background Agent Execution — no two write-capable agents run concurrently) holds throughout the concurrent fan-out; the audit verdict is surfaced to the user at the same gate-sync-2 round, with NO extra human round-trip introduced.
 
 **Independent of the write-concurrency rule.** This structure holds under the current `[HARD]` prohibition on running two write-capable agents concurrently, exactly as that rule stands today: the drafters are read-only, so at no point does more than one write-capable agent run. Nothing here waits on, presumes, or requires any change to that rule — the parallelism is bought entirely by making the drafters read-only, not by loosening the writer constraint.
 

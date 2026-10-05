@@ -45,7 +45,7 @@ This skill is invocable via two equivalent routes:
 Both routes invoke this skill body unchanged. Behavioral equivalence is enforced by a CI audit
 that verifies this skill documents the `/moai run --mode loop` cross-reference.
 
-See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent + mode-axis contract.
+See [Subcommand Classification matrix](../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent) for the full pipeline-vs-multi-agent + mode-axis contract.
 
 ## Relationship to the Pipeline-Level Agentic Completion Loop
 
@@ -274,10 +274,12 @@ When the loop exits unsuccessfully (ceiling reached with conditions unmet), prop
 
 Iteration-ceiling precedence: CLI `--max` flag > ralph.yaml `loop.max_iterations` > workflow.yaml `loop_prevention.max_iterations`. The memory-safe 50-iteration checkpoint (Step 2) is an orthogonal memory-pressure safeguard, not a fourth ceiling.
 
-Pre-exit clean sweep (when exiting with success):
-- Before final report, run clean workflow (workflows/clean.md) scan on all modified files
-- Remove dead code exposed by fixes (unused imports, orphaned functions)
-- Skip if no dead code detected or if --errors flag was set
+Pre-exit dead-code check (when exiting with success):
+- Before the final report, run the clean workflow (workflows/clean.md) scan over the files this sweep modified.
+- **Report only — this stage deletes nothing.** A finding here was never a scanned queue item, and the no-invented-improvements boundary above admits no work outside that queue.
+- When `--lens clean` was selected, a finding is enqueued as an ordinary queue item and the loop re-runs the verification cycle over it before exiting — the removal then happens on the approved path, not at exit.
+- When `--lens clean` was NOT selected, the finding is named in the final report and nothing is removed.
+- Skip the scan when `--errors` was set or no file was modified.
 
 ## MX Tag Integration
 
@@ -377,4 +379,4 @@ All fixes within the loop follow CLAUDE.md Section 7 Safe Development Protocol:
 ---
 
 Version: 2.6.0
-Updated: 2026-07-12. Redefined `/moai loop` as a **goal preset** — a project-wide improvement sweep built ON the goal engine. Added the Goal-Preset Composition section (delegates the iterate-until-done decision to the goal engine via `stop-goal`), the Scan Stage finite-issue-queue section (default LSP + lint + test + review lenses [security, @MX], opt-in `--lens clean|simplify|coverage`, no-invented-improvements HARD boundary, empty-queue immediate exit), the /moai review + /moai fix layering section, and the additive `sweep-residue` exit_kind value. PRESERVED: the mechanical predicate + independent final pass (Step 1/1.5), the ceiling-exit 5-section verdict contract with `.moai/state/loop-verdict-<id>.json` persistence, the iteration-ceiling precedence rule, and the memory-pressure guard. Previous: 2.3.0 (2026-07-09) replaced sentinel-string success-exit with mechanical predicate; 2.2.0 (2026-03-02) expanded Language-Specific Commands to 16 languages.
+Changes: Redefined `/moai loop` as a **goal preset** — a project-wide improvement sweep built ON the goal engine. Added the Goal-Preset Composition section (delegates the iterate-until-done decision to the goal engine via `stop-goal`), the Scan Stage finite-issue-queue section (default LSP + lint + test + review lenses [security, @MX], opt-in `--lens clean|simplify|coverage`, no-invented-improvements HARD boundary, empty-queue immediate exit), the /moai review + /moai fix layering section, and the additive `sweep-residue` exit_kind value. PRESERVED: the mechanical predicate + independent final pass (Step 1/1.5), the ceiling-exit 5-section verdict contract with `.moai/state/loop-verdict-<id>.json` persistence, the iteration-ceiling precedence rule, and the memory-pressure guard. Previous: 2.3.0 replaced sentinel-string success-exit with mechanical predicate; 2.2.0 expanded Language-Specific Commands to 16 languages.

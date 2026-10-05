@@ -12,7 +12,7 @@ component; the rules themselves live in `SKILL.md`.
 
 Every pattern below is a regex plus a file scope. Two ways to run them:
 
-- **Preferred inside a MoAI agent**: the `Grep` tool, per `agent-common-protocol.md`
+- **Preferred inside a MoAI agent**: the `Grep` tool, per `agent-common-protocol-reference.md`
   § Tool Selection by Task. Pass the pattern, set `glob` to the file scope, use
   `output_mode: "files_with_matches"` first and only then re-run for content.
 - **Bash form** (shown here for exactness): the commands below are literal. Replace

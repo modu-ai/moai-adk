@@ -11,10 +11,10 @@ user-invocable: false
 
 # moai-harness-learner
 
-<!-- @MX:NOTE: [AUTO] V3R4 contract — this skill body is preserved unchanged per the harness foundation policy §10 exclusion #10 (text annotation only, no behavioral change). The 4-tier observation/heuristic/rule/auto_update ladder defined here is preserved verbatim under REQ-HRN-FND-011. The orchestrator-only AskUserQuestion contract is asserted by REQ-HRN-FND-015 (cross-reference: .claude/rules/moai/core/agent-common-protocol.md § User Interaction Boundary). The downstream replacement of the frequency-count classifier with an embedding-cluster algorithm is deferred to the harness classifier-upgrade policy. -->
+<!-- @MX:NOTE: [AUTO] this skill body is preserved unchanged per the harness foundation policy §10 exclusion #10 (text annotation only, no behavioral change). The 4-tier observation/heuristic/rule/auto_update ladder defined here is preserved verbatim. The orchestrator-only AskUserQuestion contract is asserted by the harness foundation policy (cross-reference: .claude/rules/moai/core/agent-common-protocol.md § User Interaction Boundary). The downstream replacement of the frequency-count classifier with an embedding-cluster algorithm is deferred to the harness classifier-upgrade policy. -->
 
-Coordinator skill for the Harness Learning Subsystem (the harness-learning policy, superseded by the harness foundation policy as the active V3R4 foundation; this V3R3 SPEC's 4-tier ladder is preserved unchanged).
-Produces Tier 4 auto-update proposal payloads consumed by the MoAI orchestrator; the orchestrator surfaces them to the user via AskUserQuestion and orchestrates Apply/Rollback flows. Canonical contract: `.claude/rules/moai/core/askuser-protocol.md § Orchestrator-Subagent Boundary` (the constitutional rule/002/003).
+Coordinator skill for the Harness Learning Subsystem. The harness foundation policy is the active contract; the 4-tier ladder from the earlier harness-learning policy is preserved unchanged.
+Produces Tier 4 auto-update proposal payloads consumed by the MoAI orchestrator; the orchestrator surfaces them to the user via AskUserQuestion and orchestrates Apply/Rollback flows. Canonical contract: `.claude/rules/moai/core/askuser-protocol.md § Orchestrator-Subagent Boundary`.
 
 ## Quick Reference
 
@@ -84,12 +84,18 @@ The skill emits this payload as its tool output. The orchestrator reads the payl
 
 ### Step 4: On Approve
 
-The skill applies the change by invoking the safety pipeline directly. Since the CLI `apply` only surfaces the payload (not executes), the actual write happens via the harness package's `Apply()` function, gated by the 5-Layer Safety Pipeline.
+Without `--execute`, `moai harness apply` only surfaces the payload. The write happens on the opt-in execute path (`Applier.Apply()`), gated by the 5-Layer Safety Pipeline, and `--execute` requires `--id` — the proposal it applies is named explicitly, never inferred from "the next pending one".
 
 For the coordinator skill, the simplest flow is:
 1. User selects "approve"
 2. Write `approved: true` to `.moai/harness/proposals/<id>.decision`
-3. Run `moai harness apply --execute` (if the CLI supports it) or call the harness API directly.
+3. Run the execute path, naming the approved proposal id and the project root the write targets:
+
+```bash
+moai harness apply --execute --id <proposal-id> --project-root <project_root>
+```
+
+`--project-root` defaults to the current directory. Pass it explicitly when the session is working inside a worktree — its value is that worktree's own `git rev-parse --show-toplevel`, so the write lands in the tree the proposal was raised against rather than in the primary checkout.
 
 ### Step 5: On Reject
 

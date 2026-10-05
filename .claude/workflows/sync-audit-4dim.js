@@ -1,8 +1,8 @@
 // sync-audit-4dim.js — 4-dimension sync-phase quality verdict (Context → Judge → Verdict)
 //
 // VERDICT SCOPING (what this workflow IS and is NOT):
-//   This is an EXECUTION VEHICLE for a skeptical 4-dimension quality read. SPEC-AUDIT-SNAPSHOT-001
-//   (A3) PROMOTED its verdict to BINDING on the happy path: where the verdict is PASS with all
+//   This is an EXECUTION VEHICLE for a skeptical 4-dimension quality read. The audit-snapshot
+//   policy PROMOTED its verdict to BINDING on the happy path: where the verdict is PASS with all
 //   four dims above their floor, not INCOMPLETE, and no contested finding, the orchestrator treats
 //   this workflow's harmonic-mean verdict as the binding sync-phase verdict and does NOT spawn the
 //   cold `sync-auditor` subagent. The cold auditor remains the FALLBACK verdict owner for the
@@ -50,7 +50,7 @@
 
 export const meta = {
   name: 'sync-audit-4dim',
-  description: 'Sync-phase 4-dimension quality read (Functionality/Security/Craft/Consistency) — parallel read-only judges + in-script harmonic-mean verdict; execution vehicle, NOT the binding sync-auditor verdict owner',
+  description: 'Sync-phase 4-dimension quality read (Functionality/Security/Craft/Consistency) — parallel read-only judges + in-script harmonic-mean verdict; BINDING sync-phase verdict owner on the happy path (PASS, no dim 0, not INCOMPLETE, no contested finding — IsBinding), cold sync-auditor subagent is the fallback verdict owner otherwise',
   phases: [
     { title: 'Context', detail: 'one read-only Explore agent extracts the SPEC audit surface (id, acceptance criteria, changed files, test command)' },
     { title: 'Judge', detail: 'four parallel read-only Explore judges, one per dimension, each scoring 0-1 with command+verbatim-output evidence under a skeptical-auditor stance' },
@@ -152,7 +152,7 @@ Return the audit surface as an object with EXACTLY these fields:
 Report only what you can VERIFY from the artifacts. If a field cannot be determined, return it empty
 rather than guessing.`
 
-const context = await agent(CONTEXT_PROMPT, { label: `context:${SPEC_ID}`, phase: 'Context', agentType: 'Explore', effort: 'medium', schema: CONTEXT_SCHEMA })
+const context = await agent(CONTEXT_PROMPT, { label: `context:${SPEC_ID}`, phase: 'Context', agentType: 'Explore', schema: CONTEXT_SCHEMA })
 
 // ---------------------------------------------------------------------------
 phase('Judge')
@@ -181,14 +181,15 @@ Dimension focus for "${dimension}":
 Return an object with EXACTLY: dimension, score (0..1), findings[{severity,summary,file,evidence}],
 evidence_gaps[]. If you cannot evaluate this dimension at all, return score as null (do NOT fabricate a score).`
 
-// Four judge agent calls in parallel — ALL read-only (agentType 'Explore'), effort 'xhigh'. Each
+// Four judge agent calls in parallel — ALL read-only (agentType 'Explore'), no model/effort option
+// (they inherit the main session's). Each
 // call site inlines the read-only opts so the read-only contract is pinned to the JUDGE site itself.
 // Thunk order MUST match DIMENSIONS so judges[i] aligns with DIMENSIONS[i] in the Verdict phase.
 const judges = await parallel([
-  () => agent(JUDGE_PROMPT('Functionality'), { label: 'judge:Functionality', phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),
-  () => agent(JUDGE_PROMPT('Security'),      { label: 'judge:Security',      phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),
-  () => agent(JUDGE_PROMPT('Craft'),         { label: 'judge:Craft',         phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),
-  () => agent(JUDGE_PROMPT('Consistency'),   { label: 'judge:Consistency',   phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Functionality'), { label: 'judge:Functionality', phase: 'Judge', agentType: 'Explore', schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Security'),      { label: 'judge:Security',      phase: 'Judge', agentType: 'Explore', schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Craft'),         { label: 'judge:Craft',         phase: 'Judge', agentType: 'Explore', schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Consistency'),   { label: 'judge:Consistency',   phase: 'Judge', agentType: 'Explore', schema: JUDGE_SCHEMA }),
 ])
 
 // ---------------------------------------------------------------------------

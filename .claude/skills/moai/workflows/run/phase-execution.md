@@ -35,7 +35,7 @@ Store hash as `plan_artifact_hash` for Step 2 cache lookup.
 
 The cache is **sticky (hash-keyed)**: a cached PASS verdict whose
 `plan_artifact_hash` matches the current hash is valid regardless of elapsed
-time. SPEC-AUDIT-SNAPSHOT-001 (A1) retired the prior 24h age condition; the
+time. The audit-snapshot policy retired the prior 24h age condition; the
 single authoritative skip contract (the three conditions: verdict PASS, score
 ≥ per-tier threshold, artifact-hash unchanged) lives in
 `.claude/rules/moai/workflow/spec-workflow.md` § Phase Transitions / Plan Audit
@@ -242,7 +242,7 @@ Mode Selection Rules:
 | Multi-domain feature | SPEC scope ≥ 10 files OR ≥ 3 domains | **Full Pipeline** (serial full envelope) | manager-spec → manager-develop (per-spawn `Agent(general-purpose)` domain specialists) → sync-auditor → manager-docs |
 | Large cross-cutting change | complexity score at/above the auto-select threshold (`orchestration-mode-selection.md` §B.1) | **Parallel research → Sub-agent implement** (fanout + serial) | 3-5 concurrent read-only `Agent()` for research; sequential manager-develop for implementation. (`agent-team` retired.) |
 
-Large-change note: agent-team is retired with the Agent Teams static layer. Multi-domain research fans out via fanout (3-5 concurrent read-only `Agent()` in one turn); coding-heavy implementation stays serial (sequential sub-agent) per the Anthropic coding-task parallelism caveat.
+Large-change note: agent-team is experimental and explicit-request-only (`--team` / `--mode team`, per `orchestration-mode-selection.md` §C.1) — it is never auto-selected here. Multi-domain research fans out via fanout (3-5 concurrent read-only `Agent()` in one turn); coding-heavy implementation stays serial (sequential sub-agent) per the Anthropic coding-task parallelism caveat.
 
 Detection Steps:
 1. Count files referenced in SPEC requirements and plan
@@ -443,9 +443,7 @@ Steps:
 4. Record agreed contract in `.moai/specs/SPEC-{ID}/contract.md`
 5. Maximum 2 negotiation rounds. If no agreement after 2 rounds, proceed with evaluator's recommendations as the contract.
 
-Mode-specific deployment:
-- Sub-agent mode: Agent(subagent_type="sync-auditor")
-- CG mode: Leader performs contract negotiation inline
+Independent contract review: Agent(subagent_type="sync-auditor"). A retired CG configuration never authorizes leader-inline review.
 
 **Output**: `.moai/specs/SPEC-{ID}/contract.md`
 
@@ -473,3 +471,15 @@ Before routing to Phase 11 or 2B, scan the loaded SPEC for `[DELTA]` section mar
 4. Process all `[REMOVE]` items — dependency analysis → safe deletion
 
 If no delta markers are present in the SPEC, delta processing is silently skipped and the standard implementation flow proceeds unchanged (backward compatible with greenfield SPECs).
+
+## Run-phase Autonomy invariants (moved from run.md, verbatim)
+
+### 3. Autonomy invariants (cite, do not restate — full doctrine in canonical rules)
+
+The following HARD invariants govern the `ac_converge` loop. Each is the canonical rule's render surface here; the rule is the SSOT.
+
+- **Transcript-measurability**: the `acceptance.md` reference NAMES where the AC list lives — it is NOT a path the evaluator opens. Because every predicate above is a model condition, the `stop-goal` evaluator judges only what the orchestrator SURFACES into the transcript (per-AC PASS line, `go test ./...` exit 0, `git status`).
+- **Semantic-failure escalation (HARD)**: on a data race / deadlock / panic / test assertion failure surfaced during the loop, clear the goal (`/moai goal clear`) and escalate via `AskUserQuestion` — NEVER auto-fix a semantic failure (per `ci-autofix-protocol.md` semantic-failure-handling).
+- **Non-substitution (HARD)**: the goal removes per-turn STOP prompts only. It does NOT authorize bypassing Implementation Kickoff Approval (already cleared), PR creation, or any destructive operation — those remain separately-surfaced explicit gates.
+- **Blocker reports, never user prompts**: a goal-loop turn or sweep Workflow agent lacking input returns a structured blocker report; the orchestrator runs `AskUserQuestion` and re-delegates (asymmetric boundary per `agent-common-protocol.md` § User Interaction Boundary).
+- **Graceful degradation**: the goal engine's evaluator IS a Stop hook (`moai hook stop-goal`), so `/moai goal` is unavailable when hooks are disabled (`disableAllHooks`, or `allowManagedHooksOnly` permitting only managed hooks). It carries no runtime-version floor of its own. When the engine is unavailable, run-phase autonomy degrades to the standard manual per-turn flow rather than failing.

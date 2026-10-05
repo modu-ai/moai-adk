@@ -68,7 +68,7 @@ Collect:
 
 If --lean flag: SHORT-CIRCUIT this phase entirely. Skip the comprehensive 4-perspective analysis (Perspectives 1-4 below) and jump directly to the "--lean Mode — Over-Engineering-Only Lean Audit" section. The narrowness IS the feature: correctness, security, and performance findings stay in the default (non-`--lean`) comprehensive review.
 
-[HARD] The 4 perspectives execute as a Mode-4 parallel read-only fan-out: up to 4 concurrent read-only judges — one per perspective (Security / Performance / Quality / UX) — spawned in a single turn, within the 3-5 concurrent `Agent()` ceiling (`orchestration-mode-selection.md` §C.2). The sync-auditor subagent remains the binding synthesis and verdict owner (independent skeptical quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2): the parallel judges' findings feed the sync-auditor synthesis, which renders the consolidated assessment. The fan-out changes execution shape only — never verdict ownership. (The `--team` parallel-review mode remains retired with the Agent Teams static layer; this is fanout subagent fan-out, not a team.)
+[HARD] The 4 perspectives execute as a Mode-4 parallel read-only fan-out: up to 4 concurrent read-only judges — one per perspective (Security / Performance / Quality / UX) — spawned in a single turn, within the 3-5 concurrent `Agent()` ceiling (`orchestration-mode-selection.md` §C.2). The sync-auditor subagent remains the binding synthesis and verdict owner (independent skeptical quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2): the parallel judges' findings feed the sync-auditor synthesis, which renders the consolidated assessment. The fan-out changes execution shape only — never verdict ownership. (The former team-mode review workflow file stays retired with the Agent Teams static layer; the `--team` flag itself is experimental and re-allowed per `orchestration-mode-selection.md` §C.1. These 4 judges are fanout subagent fan-out, not a team.)
 
 Per-perspective skill injection (skill-routing.md §1): each read-only judge is a `Agent(general-purpose)` spawned with the perspective's skill injected — Security → `At start, invoke Skill("moai-ref-owasp-checklist")`; Quality → `Skill("moai-foundation-quality")`; UX → `Skill("moai-ref-react-patterns")` (per `.moai/config/sections/delegation.yaml`).
 
@@ -92,22 +92,63 @@ Full OWASP checklist: load the retained `moai-ref-owasp-checklist` skill (OWASP 
 
 #### Secrets Scan (Incremental with Checkpoint)
 
-Scan git history for credential leaks incrementally. A last-scanned-SHA checkpoint is recorded under `.moai/state/` (`.moai/state/secrets-scan-checkpoint.txt` — the HEAD SHA of the last completed scan).
+Scan git history for credential leaks incrementally. The checkpoint is a tip store, `.moai/state/secrets-scan-tips.txt`: the tip of every ref at the last completed scan, one caret-prefixed object name per line. Each line reaches git as a negated revision, so a scan that reads the store leaves out every commit a recorded tip reaches.
 
-Where a checkpoint SHA exists, scan only the new commit range plus the working tree, then update the checkpoint to the current HEAD:
+Tip recording: before the scan starts, record the tip of every ref with `git for-each-ref --format='^%(objectname)' > .moai/state/secrets-scan-tips.next`, and replace `.moai/state/secrets-scan-tips.txt` with that file only after the scan that carries the final result exits 0.
 
-```bash
-git log -p <last-sha>..HEAD -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})'
-```
-
-Where no checkpoint exists (first run) OR an explicit full-scan flag is passed, run the full-history scan covering all commits reachable via `--all`, then record the checkpoint:
+Where the tip store does not exist (first run), or an explicit full-scan flag is passed, run the full-history scan. It scans every commit reachable from any ref or from HEAD:
 
 ```bash
-git log -p --all -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})'
+git log -p --all -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})' > .moai/state/secrets-scan-output.txt
 ```
+
+Otherwise run the scan command. It scans every commit reachable from any ref or from HEAD that no recorded tip reaches — the commits that became reachable since the last completed scan — and does not scan a commit a recorded tip reaches:
+
+```bash
+git log -p --all -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})' --stdin < .moai/state/secrets-scan-tips.txt > .moai/state/secrets-scan-output.txt 2> .moai/state/secrets-scan-error.txt
+```
+
+Missing-tip handling: when the scan exits non-zero and its error output reports `bad object` for a tip whose line in `.moai/state/secrets-scan-tips.txt`, without its leading caret, names that object, report that tip as missing and run the full-history scan in its place; any other non-zero exit is a scan failure that is reported and leaves `.moai/state/secrets-scan-tips.txt` unchanged.
+
+To find the tip the error output names, strip the caret from every store line and search the error output for those object names; a printed line that contains `bad object` names a missing tip:
+
+```bash
+sed 's/^\^//' .moai/state/secrets-scan-tips.txt > .moai/state/secrets-scan-tips-plain.txt
+grep -F -f .moai/state/secrets-scan-tips-plain.txt .moai/state/secrets-scan-error.txt
+```
+
+Because the tips are recorded before the scan starts, a commit that lands while the scan runs is outside the recorded tips and falls to the next review instead of being skipped; a commit that lands between the recording and the scan's own read of the refs is scanned twice.
+
+Merge commits show no patch in the scan output, so a line that only a merge commit's own changes introduce, such as a conflict resolution, is reported by neither scan.
+
+Uncovered commits: Commits that no ref and no HEAD reaches, such as commits reachable only through a reflog, are outside every scan step in this procedure, and no step scans them.
+
+Each review also scans the working tree; the checkpoint does not govern that step, and the example-value rule below applies to its matches as well.
+
+**Known example values.** A match is suppressed only when the text the regex matched equals a listed value exactly, character for character. The list holds only publicly published example values; it has one entry, the example access key ID that AWS publishes in its documentation. No path is excluded from any scan step, and a value that differs from every listed value, even by one character, is still reported wherever it sits. Each listed value is written here as a digest rather than as the value, so this document holds no line the scan's regex matches. The digest is the full-length git blob object name of the value followed by one newline, as `git hash-object --no-filters` computes it in a repository that uses the default SHA-1 object format; in a repository that uses the SHA-256 object format no digest matches, so nothing is suppressed.
+
+Run the following over the output of the scan that carried the final result. Each digest is paired with the value on the same line of `.moai/state/secrets-scan-distinct.txt`, so `mkdir` must create a new, empty directory; if it fails, a previous run left the directory behind: remove it and start again. A `grep` exit status of 1 means no line matched and leaves an empty file; it is not an error.
+
+```bash
+printf '%s\n' 05c61e935c693e4244743a05a1ba4ae33bd71d64 > .moai/state/secrets-scan-allowlist.txt
+grep -oE -- '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})' .moai/state/secrets-scan-output.txt > .moai/state/secrets-scan-matches.txt
+sort -u .moai/state/secrets-scan-matches.txt > .moai/state/secrets-scan-distinct.txt
+mkdir .moai/state/secrets-scan-split
+split -a 6 -l 1 .moai/state/secrets-scan-distinct.txt .moai/state/secrets-scan-split/v.
+find .moai/state/secrets-scan-split -type f > .moai/state/secrets-scan-found.txt
+sort .moai/state/secrets-scan-found.txt > .moai/state/secrets-scan-paths.txt
+git hash-object --no-filters --stdin-paths < .moai/state/secrets-scan-paths.txt > .moai/state/secrets-scan-digests.txt
+paste .moai/state/secrets-scan-digests.txt .moai/state/secrets-scan-distinct.txt > .moai/state/secrets-scan-table.txt
+grep -vwF -f .moai/state/secrets-scan-allowlist.txt .moai/state/secrets-scan-table.txt > .moai/state/secrets-scan-kept.txt
+cut -f2 .moai/state/secrets-scan-kept.txt > .moai/state/secrets-scan-unsuppressed.txt
+grep -F -f .moai/state/secrets-scan-unsuppressed.txt .moai/state/secrets-scan-output.txt > .moai/state/secrets-scan-findings.txt
+rm -r .moai/state/secrets-scan-split
+```
+
+Each line of `.moai/state/secrets-scan-findings.txt` is a finding: a source line of the scan output that carries a matched text no listed value equals, written as the scan printed it. The scan output also prints context lines and every hunk of a matching file; a line printed beside a finding is not a finding, and a line whose only matches are listed values is not reported.
 
 Cross-reference findings against `.gitignore` to distinguish historical leaks from working-tree exposure.
-This scan is separate from working-tree-only scanners. The incremental range plus checkpoint update produces the same coverage over time as the former every-review full scan — no finding class is dropped; only redundant re-scanning of already-covered history is removed.
+This scan is separate from working-tree-only scanners.
 
 #### Data Isolation Check
 
@@ -184,6 +225,7 @@ Folding the convergence result into the review verdict:
 
 - `overall_verdict: fail` (a required backend failed, or the required gate split) → the review verdict FAILs, naming the failing required backend(s) from `per_backend_verdicts`.
 - `disagreement_flag: true` with overall pass → an advisory residual-risk row; the disagreement never blocks on its own.
+- `disagreement_flag: null` → undetermined, not agreement: `participant_count` reports fewer than 2 comparable verdicts and no divergence was observed (a single participant's observed divergence keeps the flag `true`). Standard pass, no disagreement row.
 - Surface `residual_risk_note` verbatim; name any `fail_open_backends` in the report.
 
 Fail-open fallback: unavailable, unauthenticated, or erroring backends return `inconclusive` and never block — when ALL non-Claude backends are inconclusive, convergence falls open to the in-session Claude verdict, which IS the pre-existing single-model path. When the `moai` MCP server or the `audit_multi` tool itself is absent, skip this phase and label the report single-model. This fail-open contract adds no hard dependency.

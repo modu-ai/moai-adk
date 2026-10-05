@@ -372,5 +372,4 @@ class ReviewTrendAnalyzer(storage_path):
 ---
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 Module: `modules/automated-code-review/review-workflows.md`

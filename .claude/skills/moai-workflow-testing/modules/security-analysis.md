@@ -305,5 +305,4 @@ security_fix_suggestion(vulnerability_type):
 ---
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 Module: `modules/security-analysis.md`

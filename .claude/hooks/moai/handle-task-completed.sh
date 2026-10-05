@@ -21,7 +21,7 @@ if [ -f "$MOAI_HOOK_STDERR_LOG" ]; then
     fi
 fi
 
-# SPEC-STOPCHAIN-TRIM-001 REQ-006 (A11 / AC-006b): at MOAI_AUTONOMY_TIER=
+# Stop-chain trim guard (tier gating): at MOAI_AUTONOMY_TIER=
 # fully-autonomous the subagent-lifecycle hooks are DORMANT (observe-only —
 # audit-log written, NO block/reject/AskUserQuestion translation). Runs BEFORE
 # any moai-binary resolution so the dormant path pays zero cold-starts. Shell-

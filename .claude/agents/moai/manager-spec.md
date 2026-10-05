@@ -2,13 +2,11 @@
 name: manager-spec
 description: |
   SPEC creation specialist (spec.md / plan.md / acceptance.md authoring + emits initial status: draft). See §SPEC Artifact Ownership for artifact-level boundaries.
-  Absorbs the planning role per the 2026-05-25 Anthropic catalog consolidation (which reduced 17 agents to the then-8-agent catalog, since grown to 11; the prior planning-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1) — design.md and research.md authoring (system design, architecture decisions, codebase research) are now performed by this agent during Tier L SPEC plan-phase.
+  Absorbs the planning role per the Anthropic catalog consolidation (which reduced 17 agents to the then-8-agent catalog, since grown to 11; the prior planning-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1) — design.md and research.md authoring (system design, architecture decisions, codebase research) are now performed by this agent during Tier L SPEC plan-phase.
   Use PROACTIVELY for GEARS-format (current) or EARS-format (legacy, 6-month backward-compatibility window) requirements, acceptance criteria, and user story documentation.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: run-phase code implementation (manager-develop), testing execution, deployment, code review, documentation sync (manager-docs)
 tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, WebFetch, Skill, mcp__moai__spec_progress, mcp__moai__spec_audit, mcp__moai__spec_drift
-model: inherit
-effort: medium
 color: blue
 permissionMode: bypassPermissions
 memory: project
@@ -105,6 +103,17 @@ This file is the **verification layer**, and Given-When-Then is its correct form
 
 **progress.md**: Canonical §E section skeleton (placeholder headings only — see § progress.md §E Skeleton Generation below).
 
+**decision-index.md** (conditional): **Where** the `interview.decision_gate` setting is `on`, author `.moai/specs/SPEC-{ID}/decision-index.md` alongside the Tier artifact set — one row for every decision surfaced during clarification or assembly that the operator does not settle in the interview. The artifact is **stateless on the status axis**: it carries no `status:` frontmatter field; the SPEC's lifecycle lives in `spec.md` alone. **Where** the setting is `off` (the distributed default) or absent, do not create the artifact and do not reference a decision index anywhere in the plan phase — the flow behaves exactly as before.
+
+**Decision-index rows (decision gate on).** Each row uses the fixed shape — a `### Q<N>:` heading stating the decision as a question, a `Label:` line, an `Authority anchor:` line, a `Why unresolved:` line, and an `Operator verdict:` line left empty at authoring. Every row carries Detect → Explain → Ask: it states what is unresolved and why, and never carries an embedded recommendation or preferred answer, in either recommendation mode. Route every row using exactly the four labels `DECIDED`, `POLICY-COVERED`, `EVIDENCE-NEEDED`, `FOUNDER` — no second label vocabulary:
+
+1. A prior completed SPEC's HISTORY or `## Amendments` row decides the identical question under identical conditions → `DECIDED` (anchor: that SPEC plus its row).
+2. An explicit operator setting in `.moai/config/sections/*.yaml`, or a constitution clause, covers the question as written → `POLICY-COVERED` (anchor: file plus section).
+3. The decision needs data or measurements that do not exist yet → `EVIDENCE-NEEDED`.
+4. Otherwise → `FOUNDER`.
+
+`DECIDED` and `POLICY-COVERED` rows require an authority anchor — a file plus a section that exists in the committed tree, so any later reader can resolve it with `git show`. The **authority register** is committed artifacts only: `.moai/project/product.md`, prior completed SPECs' HISTORY and `## Amendments` rows, `.moai/config/sections/*.yaml` operator settings, and the project constitution. Untracked material — including card evidence under `.moai/reports/` — is never cited as authority. When a row's candidate anchor cannot be verified in the committed tree, the row routes to `FOUNDER`: escalate — Never downgrade. An unverifiable citation never relabels a row `DECIDED` or `POLICY-COVERED`, and never demotes the question to an implementation detail.
+
 #### [HARD] progress.md §E Skeleton Generation
 
 [HARD] When creating the plan-phase artifact set, emit a `progress.md` file carrying the canonical `§E` section skeleton with all four placeholder headings, in this exact order:
@@ -114,7 +123,7 @@ This file is the **verification layer**, and Given-When-Then is its correct form
 3. `## §E.3 Run-phase Audit-Ready Signal`
 4. `## §E.4 Sync-phase Audit-Ready Signal`
 
-Why these markers: the era-classification engine (`internal/spec/era.go` `hasAnyProgressMarker`) greps for the literal `§E.2`/`§E.3`/`§E.4`/`§E.5` substrings — NOT `§E.1` (`§E.5` is the retired Mx-phase marker, still recognized so pre-3-phase SPECs classify correctly; do NOT emit it in new skeletons) — so emitting the literal `§E.2`-`§E.4` headings at plan-phase is what prevents the SPEC from drifting into ad-hoc `§F.*` markers that the engine misclassifies (an H-2 era misclassification). The `§E.1` heading is emitted for human/audit readability. The `§E.2` heading specifically is the §E-section run-evidence start marker, not the sync phase (which lives at `§E.4`). The former `§E.5 Mx-phase` section is retired per SPEC-V3R6-LIFECYCLE-REDESIGN-001 (3-phase lifecycle: plan→run→sync; MX Tag is a cross-cutting sync concern, NOT a separate phase); its content is folded into §E.4.
+Why these markers: the SPEC era-classification engine greps for the literal `§E.2`/`§E.3`/`§E.4`/`§E.5` substrings — NOT `§E.1` (`§E.5` is the retired Mx-phase marker, still recognized so pre-3-phase SPECs classify correctly; do NOT emit it in new skeletons) — so emitting the literal `§E.2`-`§E.4` headings at plan-phase is what prevents the SPEC from drifting into ad-hoc `§F.*` markers that the engine misclassifies (an H-2 era misclassification). The `§E.1` heading is emitted for human/audit readability. The `§E.2` heading specifically is the §E-section run-evidence start marker, not the sync phase (which lives at `§E.4`). The former `§E.5 Mx-phase` section is retired (3-phase lifecycle: plan→run→sync; MX Tag is a cross-cutting sync concern, NOT a separate phase); its content is folded into §E.4.
 
 Keep the skeleton minimal: each section is a heading plus a one-line placeholder note (e.g. `_<pending run-phase>_`). Emit NO populated evidence tables, commit SHAs, or audit-ready YAML blocks at plan-phase.
 
@@ -129,9 +138,9 @@ ID="SPEC-{DOMAIN}-{NUM}"   # candidate SPEC ID under check
 [[ "$ID" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]] && echo PASS || echo FAIL
 ```
 
-The pattern mirrors the Go `specIDPattern` in `internal/spec/lint.go` (content-token anchor; line numbers drift): first segment literal `SPEC`, one or more middle segments matching `[A-Z][A-Z0-9]*`, digit-only 3-digit tail. Bash ERE has no `\d`, so `[0-9]{3}` stands in for `\d{3}`. The `[0-9]{3}$` end anchor rejects any trailing alpha suffix.
+The pattern mirrors the SPEC-ID pattern the lint engine enforces: first segment literal `SPEC`, one or more middle segments matching `[A-Z][A-Z0-9]*`, digit-only 3-digit tail. Bash ERE has no `\d`, so `[0-9]{3}` stands in for `\d{3}`. The `[0-9]{3}$` end anchor rejects any trailing alpha suffix.
 
-- Valid: `SPEC-AUTH-001`, `SPEC-V3R6-SPEC-ID-VALIDATION-001`, `SPEC-RETIRED-DDD-001` (multi-segment domains, including retired-marker prefixes, remain canonical)
+- Valid: `SPEC-AUTH-001`, `SPEC-V3R6-SPEC-ID-VALIDATION-001`, `SPEC-EXAMPLE-DOMAIN-001` (multi-segment domains remain canonical)
 - Invalid: `SPEC-AUTH-001a` (alpha suffix), `SPEC-001` (no domain), `SPEC-auth-001` (lowercase)
 
 On `FAIL`, halt the Write and return a structured blocker report naming the offending segment and proposing the canonical correction. On `PASS`, proceed to the Step 5 frontmatter schema validation, then Write/Edit.
@@ -142,7 +151,7 @@ On `FAIL`, halt the Write and return a structured blocker report naming the offe
 
 [HARD] Every `spec.md` YAML frontmatter MUST contain ALL 12 canonical fields. Missing any one is a schema violation and blocks creation.
 
-The canonical field list, the per-field types, the 8-value `status` enum, the `priority` format, the ISO-date requirement, and the REJECTED snake_case aliases (`created_at` / `updated_at` / `labels` / `spec_id` — silently dropped by the YAML decoder, producing empty-value `FrontmatterInvalid` findings) all live in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields, § Field Reference, § Status Enum, and § Rejected Snake_Case Aliases — the SSOT, aligned with `internal/spec/lint.go` `FrontmatterSchemaRule`. Read the schema there; do not work from a copy.
+The canonical field list, the per-field types, the 8-value `status` enum, the `priority` format, the ISO-date requirement, and the REJECTED snake_case aliases (`created_at` / `updated_at` / `labels` / `spec_id` — silently dropped by the YAML decoder, producing empty-value `FrontmatterInvalid` findings) all live in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields, § Field Reference, § Status Enum, and § Rejected Snake_Case Aliases — the SSOT, aligned with the lint engine's frontmatter-schema rule. Read the schema there; do not work from a copy.
 
 [HARD] The `phase` field names the **release target** — the version this SPEC is aimed at, quoted, in the shape the schema template shows (`phase: "vX.Y.Z target"`; the SSOT § Canonical 12 Required Fields template line and the § Field Reference row for `phase` are authoritative). It is **not a lifecycle field**: the workflow stage a SPEC currently occupies is carried by `status`, so writing a bare workflow-stage token — `plan`, `run`, `sync`, or `mx` — into `phase` is an authoring error, and the linter rejects it at error severity on every SPEC, grandfather-era ones included. When the target release is undecided, use the next unreleased version rather than a stage name.
 
@@ -234,8 +243,8 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 - When the SPEC targets TDD-mode implementation (RED-GREEN-REFACTOR), invoke Skill("moai-workflow-tdd") to load it on demand.
 - When authoring test strategy or coverage acceptance criteria, invoke Skill("moai-workflow-testing") to load it on demand.
 - When project documentation context (product.md / structure.md / tech.md) is needed, invoke Skill("moai-workflow-project") to load it on demand.
-- When the SPEC will be implemented inside an isolated workspace (`moai cc -w <name>`), invoke Skill("moai-workflow-worktree") to load it on demand.
+- When the SPEC will be implemented inside an isolated worktree, invoke Skill("moai-workflow-worktree") to load it on demand. Enter through the current harness; Codex MUST NOT run `moai cc -w`.
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.

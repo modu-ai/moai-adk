@@ -4,7 +4,7 @@
 # Trigger: PostToolUse event when tool ∈ {Write, Edit, MultiEdit} on SPEC artifact files
 # Cross-reference: .claude/rules/moai/development/spec-frontmatter-schema.md (Status Transition Ownership Matrix)
 #
-# Audit-log consumer contract (SPEC-OBSERVE-HYGIENE-001 M1): each line appended
+# Audit-log consumer contract (observability hygiene policy): each line appended
 # to .moai/logs/status-transition-audit.log has the shape:
 #   <ISO-8601-UTC> [status-transition-ownership] <Tool> <FilePath> status=<Status>
 # where <Tool> ∈ {Write, Edit, MultiEdit}, <FilePath> is the absolute SPEC

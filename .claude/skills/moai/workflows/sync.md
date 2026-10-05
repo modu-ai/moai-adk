@@ -38,7 +38,7 @@ triggers:
 
 Skill injection: at each `manager-docs` spawn the orchestrator injects `At start, invoke Skill("moai-workflow-project") for the sync-phase documentation cycle.` (per `.claude/rules/moai/workflow/skill-routing.md` §1 and the delegation map `.moai/config/sections/delegation.yaml`).
 
-Phase Owners: `manager-docs` (sync-phase artifact authoring — CHANGELOG.md + README.md + docs-site + progress.md §F.3 + frontmatter `in-progress → implemented` transition for all SPEC artifacts; MUST NOT modify spec.md/plan.md/acceptance.md body content per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix) + `manager-git` (PR creation per branching strategy when Tier L OR `--pr` flag per the canonical Tier-based PR routing policy).
+Phase Owners: `manager-docs` (sync-phase artifact authoring — CHANGELOG.md + README.md + docs-site + progress.md §E.4 (lettered per `spec-frontmatter-schema.md` § progress.md Section Map) + the frontmatter status transition that rides the sync commit for all SPEC artifacts, states per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix; MUST NOT modify spec.md/plan.md/acceptance.md body content per the same matrix) + `manager-git` (PR creation per branching strategy when Tier L OR `--pr` flag per the canonical Tier-based PR routing policy).
 
 Sync-phase quality gate (per the canonical sync-phase quality gate policy) is enforced by the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook — lint + test + coverage delta verification + dependency manifest audit. The hook exits 0 always; in blocking mode (MOAI_SYNC_GATE_BLOCKING=1) it emits stdout JSON {"decision":"block"} on lint/test failure or coverage regression > 5pp. Per Claude Code hook semantics, stdout JSON is honored only on exit 0. The hook replaces the prior pattern of spawning an inline quality agent for coverage and security analysis during sync (that agent is archived per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2; the Stop hook is its canonical replacement).
 
@@ -62,15 +62,15 @@ Every sync-phase fan-out site, listed here rather than only at the site itself. 
 | `FO-SYNC-3` | the coverage gaps span several independent packages | `workflows/sync/quality-gates-quality.md` | Phase 10 test drafting — one read-only drafter per package |
 | `FO-SYNC-4` | the sync scope spans several independent document families | `workflows/sync/doc-execution.md` | Phase 12 document drafting — five read-only drafters, one applier |
 
-## Docs ∥ Audit Concurrent Scheduling (A5 — SPEC-SYNC-PARALLEL-DOCS-001)
+## Docs ∥ Audit Concurrent Scheduling
 
-The docs drafter fan-out (`FO-SYNC-4`, five read-only drafters D1-D5) launches CONCURRENTLY with the Phase 7-10 audit fan-out — in the SAME turn Phase 7 is entered, NOT serially after the audit completes. The former scheduling read the Phase Routing Table strictly top-to-bottom (Phase 7 → Phase 11 → Phase 12), which serialized the docs draft behind the full quality / security / MX / coverage pipeline. A5 lifts that serialization for the docs draft: the orchestrator spawns the `FO-SYNC-4` drafter fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7, so the docs draft is ready by the time the audit returns.
+The docs drafter fan-out (`FO-SYNC-4`, five read-only drafters D1-D5) launches CONCURRENTLY with the Phase 7-10 audit fan-out — in the SAME turn Phase 7 is entered, NOT serially after the audit completes. Reading the Phase Routing Table strictly top-to-bottom (Phase 7 → Phase 11 → Phase 12) would serialize the docs draft behind the full quality / security / MX / coverage pipeline. The orchestrator instead spawns the `FO-SYNC-4` drafter fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7, so the docs draft is ready by the time the audit returns.
 
-**Input independence (SPEC-SYNC-PARALLEL-DOCS-001 A5).** Each docs drafter (D1-D5) reads its input from SPEC artifacts + git diff + the Phase 11 Step 1.5 divergence report — NOT from the concurrent audit's quality report, verdict, or per-dimension scores. The docs draft and the audit are input-independent; a drafter that read "the audit's functionality score" to decide CHANGELOG tone would create a hidden serial dependency that defeats the concurrency.
+**Input independence.** Each docs drafter (D1-D5) reads its input from SPEC artifacts + git diff + the Phase 11 Step 1.5 divergence report — NOT from the concurrent audit's quality report, verdict, or per-dimension scores. The docs draft and the audit are input-independent; a drafter that read "the audit's functionality score" to decide CHANGELOG tone would create a hidden serial dependency that defeats the concurrency.
 
-**Single-writer applier at gate-sync-2 (SPEC-SYNC-PARALLEL-DOCS-001 A5).** The concurrency is bought entirely by making the D1-D5 drafters read-only. `manager-docs` remains the sole write-capable agent: it applies the five drafts sequentially AFTER both fan-outs return, at the existing `gate-sync-2` HUMAN GATE 2 (Documentation Scope). The `[HARD]` concurrency guard (`agent-common-protocol.md` § Background Agent Execution — no two write-capable agents run concurrently) holds throughout; at no point during the concurrent fan-out do two write-capable agents run simultaneously. The audit verdict is surfaced to the user at the same gate-sync-2 round, with no extra human round-trip introduced.
+**Single-writer applier at gate-sync-2.** The concurrency is bought entirely by making the D1-D5 drafters read-only. `manager-docs` remains the sole write-capable agent: it applies the five drafts sequentially AFTER both fan-outs return, at the existing `gate-sync-2` HUMAN GATE 2 (Documentation Scope). The `[HARD]` concurrency guard (`agent-common-protocol.md` § Background Agent Execution — no two write-capable agents run concurrently) holds throughout; at no point during the concurrent fan-out do two write-capable agents run simultaneously. The audit verdict is surfaced to the user at the same gate-sync-2 round, with no extra human round-trip introduced.
 
-**Concurrency guard codification (SPEC-SYNC-PARALLEL-DOCS-001 A5/A7 concurrency guard).** The A5 docs-drafter fan-out, the A7 MX shard fan-out, the FO-SYNC-1 4-dim judges, and any sync-auditor fallback are ALL read-only. The single write-capable pass (`manager-docs` applying the docs drafts at gate-sync-2) runs AFTER both fan-outs return. This is the A5/A7 concurrency invariant: every concurrent agent is read-only (drafters return draft text; shards return findings; judges return structured verdicts; auditors read tree state), and the sole writer is sequential. The `[HARD]` concurrency guard (`agent-common-protocol.md` § Background Agent Execution) holds throughout every A5/A7 fan-out path — verified by inspection of every concurrent agent's read-only contract.
+**Concurrency guard codification.** The docs-drafter fan-out, the MX shard fan-out, the FO-SYNC-1 4-dim judges, and any sync-auditor fallback are ALL read-only. The single write-capable pass (`manager-docs` applying the docs drafts at gate-sync-2) runs AFTER both fan-outs return. This is the concurrency invariant: every concurrent agent is read-only (drafters return draft text; shards return findings; judges return structured verdicts; auditors read tree state), and the sole writer is sequential. The `[HARD]` concurrency guard (`agent-common-protocol.md` § Background Agent Execution) holds throughout every fan-out path — verified by inspection of every concurrent agent's read-only contract.
 
 ## Parallel Quality-Evidence Fan-Out (capability-gated)
 
@@ -78,7 +78,7 @@ The docs drafter fan-out (`FO-SYNC-4`, five read-only drafters D1-D5) launches C
 
 The orchestrator launches the script itself; this is scaling, not subagent nesting, so the flat agent hierarchy is preserved. Every judge is read-only and reports an `evidence_gaps` entry or a structured blocker report rather than prompting the user.
 
-**Binding promotion (SPEC-AUDIT-SNAPSHOT-001 A3, REQ-AUDIT-SNAPSHOT-003).** On the **happy path** — the workflow verdict is `PASS`, no dimension scored 0, the verdict is not `INCOMPLETE`, and no contested finding is present — the orchestrator SHALL treat the workflow's harmonic-mean verdict as **BINDING** for the sync-phase quality decision and SHALL NOT spawn the cold `sync-auditor` subagent. The four parallel xhigh judges subsume the one serial judge on the clean path (attributable diff-check, not a deletion of the auditor role). The mechanical binding predicate is codified in `internal/runtime.FourDimVerdict.IsBinding()`; the orchestrator constructs a `FourDimVerdict` from the workflow run output and consults `IsBinding()`. On any of the fallback triggers — (a) verdict `INCOMPLETE`, (b) any must-pass dimension scoring 0 (`zero_scored` array non-empty), or (c) a **contested finding** (any one judge reports `critical` severity, OR two or more judges return conflicting severity classifications for the same dimension) — the orchestrator SHALL spawn the cold `sync-auditor` subagent as the fallback binding-verdict owner, and the auditor's PASS/FAIL is treated as binding for that cycle. Neither `gate-sync-1` nor `gate-sync-2` is bypassed or auto-passed by either path; the cold auditor remains the fallback verdict owner under trigger (a)/(b)/(c).
+**Binding promotion.** On the **happy path** — the workflow verdict is `PASS`, no dimension scored 0, the verdict is not `INCOMPLETE`, and no contested finding is present — the orchestrator SHALL treat the workflow's harmonic-mean verdict as **BINDING** for the sync-phase quality decision and SHALL NOT spawn the cold `sync-auditor` subagent. The four parallel xhigh judges subsume the one serial judge on the clean path (attributable diff-check, not a deletion of the auditor role). The mechanical binding predicate is codified in `internal/runtime.FourDimVerdict.IsBinding()`; the orchestrator constructs a `FourDimVerdict` from the workflow run output and consults `IsBinding()`. On any of the fallback triggers — (a) verdict `INCOMPLETE`, (b) any must-pass dimension scoring 0 (`zero_scored` array non-empty), or (c) a **contested finding** (any one judge reports `critical` severity, OR two or more judges return conflicting severity classifications for the same dimension) — the orchestrator SHALL spawn the cold `sync-auditor` subagent as the fallback binding-verdict owner, and the auditor's PASS/FAIL is treated as binding for that cycle. Neither `gate-sync-1` nor `gate-sync-2` is bypassed or auto-passed by either path; the cold auditor remains the fallback verdict owner under trigger (a)/(b)/(c).
 
 ## HUMAN GATE Map
 
@@ -89,10 +89,14 @@ The orchestrator launches the script itself; this is scaling, not subagent nesti
 
 > Note: Additional AskUserQuestion decision points exist in Phase 1 (gate failure), Phase 3 (test failure), Phase 6 (breaking changes), Phase 7 (test failure), Phase 8 (security critical), Phase 13 (CI mirror failure), and Phase 14 (next steps). These are inline decision gates, not named evolvable GATEs.
 
+<!-- moai:contract-mode-start id="contract-sync-gates" -->
+Where `workflow.autonomy.mode: contract` — the sync phase carries the last three lifecycle stages: Closure (status transition and verdict), Integration (re-measure on the merged tree), Push (inactive until the stop-before-push on a missing second review exists). No documentation-scope approval (`gate-sync-2`), next-step, or current-branch question is asked, and the failure decision points — Phase 1 gate failure, Phase 3 and Phase 7 test failure, Phase 6 compatibility break, Phase 8 critical security finding, Phase 13 local CI mirror failure — are routed to an escalation report instead of a question. The CI auto-fix loop after a pull request is unchanged. See `.claude/rules/moai/workflow/contract-autonomy.md` § Gate disposition.
+
+<!-- moai:contract-mode-end -->
 ## Invocation Flow
 
 ```
-/moai sync [mode] [--pr] [--merge] [--skip-mx]
+/moai sync [mode] [--pr] [--auto-merge] [--skip-mx]
   ├── [trace] /moai sync Phase 1 enter
   │   Read workflows/sync/quality-gates-context.md  → HUMAN GATE 1 + Deployment Readiness
   ├── [trace] /moai sync Phase 7 enter
@@ -111,7 +115,7 @@ The orchestrator launches the script itself; this is scaling, not subagent nesti
 
 **Modes**: `auto` (기본) | `force` | `status` | `project`
 
-**Flags**: `--pr` (PR 생성) | `--merge` (deprecated, auto-merge) | `--skip-mx` (MX 검증 스킵)
+**Flags**: `--pr` (PR 생성) | `--auto-merge` (auto-merge 옵트인) | `--merge` (deprecated alias of `--auto-merge`) | `--skip-mx` (MX 검증 스킵)
 
 **HUMAN GATEs**: GATE 1 (quality-gates-context.md §Phase 1) → GATE 2 (doc-execution.md §Step 1.6)
 

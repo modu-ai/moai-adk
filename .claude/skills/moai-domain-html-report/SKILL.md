@@ -62,7 +62,7 @@ The two artifacts this skill produces serve **different readers and therefore ca
 | `mode` | yes | — | `status` \| `incident` \| `plan` \| `explainer` \| `financial` \| `pr` |
 | `audience` | no | derived from the active output style | `expert` \| `basic` \| `learn` — see § Audience Tiers |
 | `slug` | no | auto-derived from the title | Output filename prefix |
-| `output_path` | no | `<cwd>/reports/<slug>-<YYYYMMDD>.html` | Output path |
+| `output_path` | no | `.moai/reports/<slug>-<YYYYMMDD>.html` | Output path |
 | `font_stack` | no | per-mode default | Font mapping override |
 
 `mode` and `audience` are **orthogonal**: `mode` picks the report's *structure* (which sections exist), `audience` picks its *depth* (how much explanation each section carries). Every mode renders at every tier.
@@ -71,7 +71,7 @@ The two artifacts this skill produces serve **different readers and therefore ca
 
 ## Output
 
-Two files at `<cwd>/reports/<slug>-<YYYYMMDD>.{html,md}`:
+Two files at `.moai/reports/<slug>-<YYYYMMDD>.{html,md}`. If the `.moai/reports/` directory does not exist yet, create it before writing either file:
 
 **The `.html` file** — the human-facing artifact:
 
@@ -323,7 +323,7 @@ Every mode declares the same 8 CSS variables at `:root`.
 
 Greyscale: `--g100: #F0EEE6`, `--g300: #D1CFC5`, `--g500: #87867F`, `--g700: #3D3D3A`
 
-Full contrast verification and print tokens: [`references/design-tokens.md`](references/design-tokens.md)
+The token block above is the full CSS variable contract. Print rules (`@media print`) live in each mode template under [`references/templates/`](references/templates/).
 
 ---
 
@@ -393,7 +393,6 @@ The explicit `audience: expert` wins over the derived tier, so no primers or dia
 ## References
 
 ### Design documents
-- [`references/design-tokens.md`](references/design-tokens.md) — CSS variable contract, palette, accessibility
 - [`references/fonts.md`](references/fonts.md) — font mapping, CDN URLs, preconnect pattern
 
 ### Templates

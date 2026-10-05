@@ -158,7 +158,7 @@ Propagation Method:
 ### Sync Flags
 
 - Modes (positional): auto (default), force, status, project
-- --merge: Auto-merge PR and clean up branch after sync
+- --auto-merge: Opt in to auto-merge the PR and clean up the branch after sync
 - --skip-mx: Skip MX tag validation during sync
 
 ### Fix Flags
@@ -226,4 +226,3 @@ Previous /moai:X-Y command format mapped to new /moai subcommand format:
 ---
 
 Version: 2.5.0
-Last Updated: 2026-02-22

@@ -44,7 +44,7 @@ For phase overview, token budgets, and phase transitions, see: .claude/rules/moa
 - --sequential: Run Phase 1 exploration agents sequentially instead of in parallel
 - --issue: Opt-in GitHub Issue creation after SPEC generation (plan phase); absence skips Issue creation per the late-branch opt-in policy
 
-**Default Behavior (no flag)**: The orchestrator auto-selects the execution mode from the Phase 4 4-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A — trivial / background / agent-team / parallel / sub-agent / workflow). The complexity auto-select thresholds are stated once in that rule's §B.1 (machine source: `workflow.yaml` `auto_selection`) — not restated here.
+**Default Behavior (no flag)**: The orchestrator auto-selects the execution mode from the Phase 4 4-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A — direct / serial / fanout / sweep). The complexity auto-select thresholds are stated once in that rule's §B.1 (machine source: `workflow.yaml` `auto_selection`) — not restated here.
 
 ## Configuration Files
 
@@ -145,6 +145,10 @@ The default pipeline declares these gates explicitly. Each is implemented by its
 3. **Phase 4 Mode Selection (4-mode catalog)** — autonomous selection per `orchestration-mode-selection.md` §A, logged to progress.md; strictly downstream of Implementation Kickoff Approval. **sweep (workflow fan-out) operational entry**: selectable ONLY when the §C.3 capability gate holds — Implementation Kickoff Approval passed + all preferences collected + scope ≥ ~30 files with one uniform mechanical transform and no inter-file dependency + runtime ≥ v2.1.154 with workflows not disabled. Before launch, record the selection + gate confirmations in `progress.md` §F Phase 4 Mode Selection; then launch the fan-out from the orchestrator (scaling, not nesting) — workflow agents cannot prompt the user, so every needed decision must already be drained.
 4. **Sync-audit gate (sync-auditor)** — after Phase 5: the sync-auditor subagent scores the sync output in a fresh context (4-dimension). FAIL/INCONCLUSIVE halts the chain — the pipeline never auto-completes past a failing gate. On FAIL, the sync-auditor verdict carries a structured defect-list (finding id / file+location / severity / required fix); the orchestrator routes fixes directly (orchestrator-direct edit or a single re-delegation) and the confirming re-audit is scoped to the enumerated defect delta rather than a from-scratch full re-audit — within the existing iteration ceilings. Verdict authority stays with the sync-auditor: the delta scope reduces re-audit cost, and it never substitutes an orchestrator self-assessment for an auditor verdict.
 
+<!-- moai:contract-mode-start id="contract-pipeline-gates" -->
+Where `workflow.autonomy.mode: contract` — gate 2 is the contract signature: `moai contract kickoff-check <SPEC-ID> --card <card>` must exit 0 and no Kickoff question is emitted; a plan-audit FAIL is repaired automatically up to `budget.audit_retries` and then escalated. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
+
+<!-- moai:contract-mode-end -->
 ## Phase 4: Implementation (TDD or DDD based on development_mode)
 
 [HARD] Agent delegation mandate: ALL implementation tasks MUST be delegated to specialized agents. NEVER execute implementation directly, even after auto compact.
@@ -208,7 +212,7 @@ When the router recorded a completion condition (router Step 2.8) and the pipeli
 
 ## Mode Selection (team experimental)
 
-The `--team` flag and `agent-team` are experimental (re-allowed, operator decision; flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships on). A `--team` request selects the Agent Teams layer subject to the §C.1 constraints; the native `moai cg` GLM teammate runtime is unaffected. Historical: the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode — the sentinel is retained as documented history.
+The `--team` flag and `agent-team` are experimental (re-allowed, operator decision; flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships on). A `--team` request selects the Agent Teams layer subject to the §C.1 constraints; retired CG routing does not verify mixed-provider teammate capability. Historical: the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode — the sentinel is retained as documented history.
 
 Mode selection:
 - `--team`: experimental — selects agent-team (Agent Teams; constraints per `orchestration-mode-selection.md` §C.1).
@@ -238,7 +242,7 @@ Mode selection:
    - If `--team` flag: experimental — select execution_mode="agent-team" (Agent Teams layer; constraints per `orchestration-mode-selection.md` §C.1)
    - If `--solo` flag: Skip the execution-shape question (auto-select execution_mode="sub-agent"); the Kickoff question still rides its own round
    - Otherwise (no flag):
-     - Read .moai/config/sections/llm.yaml → team_mode ("" = cc, "glm" = glm, "cg" = cg)
+     - Read .moai/config/sections/llm.yaml → team_mode (""/"claude" = cc, "glm" = glm); "cg" halts execution and requires explicit `moai migrate cg`
      - Bash: test -n "$TMUX" && echo "tmux" || echo "no-tmux"
      - Merged AskUserQuestion (single call, with Step 11.3): Q1 Kickoff — run-phase entry (Recommended) / additional review / abort; Q2 execution shape — worktree+{mode} (Recommended if tmux available) | sub-agent
    - Worktree selected: Launch new tmux session in worktree dir, terminate current pipeline
@@ -246,7 +250,6 @@ Mode selection:
    - See plan.md Decision Point 3.5 for full option details
 12. **Phase 3 (Harness Level Auto-Detection)**: Determine pipeline depth before Run
    - Load `.moai/config/sections/harness.yaml` (if not found, default to standard)
-   - CG mode: Always thorough (natural Generator-Evaluator split)
    - Solo/Team: Run Complexity Estimator:
      - Count distinct domains in SPEC requirements (domain_count)
      - Count total files to modify (file_count, from plan.md)
@@ -269,8 +272,11 @@ Mode selection:
    - Full-pipeline completion close: when a `full-pipeline` contract completes successfully with no genuine pending decision, close with a clean completion statement and NO manufactured next-step question — the askuser-protocol § Completion-Report Next-Step Discipline "close with NO question" clause is the full-pipeline default. A genuine next-step decision, when one actually exists, still rides AskUserQuestion.
    - `single-phase` contract completions keep the existing "(Recommended)" next-step chain question unchanged (Step 14 — the chain never fires silently)
 
+<!-- moai:contract-mode-start id="contract-merged-round" -->
+Where `workflow.autonomy.mode: contract` — Step 11.3 carries no Kickoff question: the merged round asks only the execution-shape question, and run-phase entry waits for `moai contract kickoff-check` to exit 0. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
+
+<!-- moai:contract-mode-end -->
 ---
 
 Version: 3.0.1
-Updated: 2026-07-09
-Source: SPEC-MOAI-001. Named pipeline gates + agentic completion loop + chaining policy (v3.0.0). Added the iteration-ceiling verdict protocol for Agentic Completion Loop termination cause 2, closing its parity gap with causes 3/4 (v3.0.1). Previous: --team/--solo flag Gate auto-skip (v2.9.0), Harness auto-detection (v2.8.0).
+Named pipeline gates + agentic completion loop + chaining policy (v3.0.0). Added the iteration-ceiling verdict protocol for Agentic Completion Loop termination cause 2, closing its parity gap with causes 3/4 (v3.0.1). Previous: --team/--solo flag Gate auto-skip (v2.9.0), Harness auto-detection (v2.8.0).

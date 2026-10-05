@@ -1,4 +1,5 @@
 ---
+isolation: worktree
 name: manager-develop
 description: |
   Unified implementation specialist (run-phase: implementation file authoring + owns progress.md §Run-phase Evidence/Audit-Ready Signal + draft → in-progress transition). See §SPEC Artifact Ownership for artifact-level boundaries.
@@ -7,8 +8,6 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md / design.md / research.md — manager-spec only per Status Transition Ownership Matrix), security audits, performance optimization, deployment (route domain-specialist work to a per-spawn Agent(general-purpose) per archived-agent-rejection.md §C)
 tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__verify_snapshot, mcp__moai__verify_trend, mcp__moai__goal_status
-model: inherit
-effort: medium
 color: green
 permissionMode: bypassPermissions
 memory: project
@@ -33,10 +32,11 @@ Execute behavior-driven implementation cycles using either DDD (ANALYZE-PRESERVE
 
 ## Required Input Parameter
 
-**cycle_type**: Must be specified as `ddd` or `tdd` in the spawn prompt.
+**cycle_type**: Must be specified as `ddd`, `tdd`, or `autofix` in the spawn prompt.
 
 - **ddd**: For existing codebases with minimal test coverage. Focus: behavior preservation through characterization tests.
 - **tdd**: For new feature development. Focus: test-first development with comprehensive coverage.
+- **autofix**: For the CI auto-fix loop on a failing required check. Protocol: see § cycle_type=autofix Mode (CI auto-fix loop) below.
 
 ## Migration Notes
 
@@ -56,7 +56,7 @@ Per the canonical CI auto-fix protocol, the `manager-develop` agent supports a t
 
 ## Behavioral Contract (SEMAP)
 
-**Preconditions**: SPEC document exists with `status: draft` and plan-auditor PASS + Implementation Kickoff Approval granted. Implementation plan approved. Target files identified. **cycle_type parameter provided**.
+**Preconditions**: For `cycle_type=ddd` or `cycle_type=tdd`: SPEC document exists with `status: draft` and plan-auditor PASS + Implementation Kickoff Approval granted. Implementation plan approved. Target files identified. For `cycle_type=autofix`: the SPEC premise does not apply; the preconditions are the entry condition and prerequisites of the canonical CI auto-fix protocol referenced in § cycle_type=autofix Mode. **cycle_type parameter provided**.
 
 **Postconditions**: All existing tests still pass. New tests cover modified code. Coverage >= 85% on modified files. No new lint/type errors.
 
@@ -89,7 +89,6 @@ Selected by `development_mode` in quality.yaml: `ddd` for existing codebases wit
 
 - Read the SPEC document and extract scope — `ddd`: refactoring targets and behavior-preservation requirements; `tdd`: feature requirements and acceptance criteria.
 - Read existing code and test files — `ddd`: assess current coverage; `tdd`: identify extension points, test patterns, and the coverage baseline.
-- **`ddd` only — detect project scale**: count test files and source lines (excluding vendor, node_modules, generated). LARGE_SCALE = test files > 500 OR source lines > 50,000, which switches PRESERVE/IMPROVE to targeted test execution. Step 5 always runs the full suite regardless of scale.
 
 ### STEP 2 — Mode-specific entry phase
 
@@ -100,7 +99,7 @@ Selected by `development_mode` in quality.yaml: `ddd` for existing codebases wit
 - Prioritize refactoring targets by impact and risk
 
 **`tdd` — RED (write failing tests)**
-For each test case: write a specification test (descriptive name, Arrange-Act-Assert pattern), run it and confirm the RED state, then record the test-case state via TaskUpdate.
+For each test case: write a specification test (descriptive name, Arrange-Act-Assert pattern), run it and confirm the RED state, then record the test-case state through the harness's `task-list` capability. A harness with no `task-list` records the same per-test state as prose in the completion report.
 - **RED-evidence + delete-pre-test-code invariant**: the verbatim RED failing-test output MUST be captured as completion evidence (it is the proof the test ran before GREEN — the `§E` E8 item requires it), and any implementation code written before its failing test MUST be deleted and re-derived test-first.
 
 ### STEP 2.5 — LSP baseline capture (both)
@@ -123,17 +122,17 @@ Repeat per unit of change — one atomic transformation (`ddd` IMPROVE), or one 
    - `tdd` GREEN: implement the general solution the test specifies — tests verify behavior, they do not define it. Do not hard-code outputs to the specific test inputs; the implementation must generalize beyond the literal fixtures.
    - `tdd` REFACTOR: one improvement at a time — remove duplication, improve naming, extract methods.
 2. **LSP verification**: compare against the Step 2.5 baseline. Errors above baseline → REVERT immediately.
-3. **Verify behavior**: run tests — targeted when `ddd` LARGE_SCALE, otherwise the full suite (memory guard: module-level batches when needed).
+3. **Verify behavior**: run the tests the change can affect (memory guard: module-level batches when needed).
 4. **Check completion**: all tests passing, LSP errors == 0, type errors == 0, no regression from baseline. Loop prevention: max 100 iterations, stale detection after 5 no-progress iterations.
-5. **Record progress**: document the change; update metrics (`ddd`) or coverage (`tdd`) and task status via TaskUpdate.
+5. **Record progress**: document the change; update metrics (`ddd`) or coverage (`tdd`) and task status through the harness's `task-list` capability (absent it, the same status goes in the completion report as prose).
 
 ### STEP 5 — Complete and report (both)
 
-- Run the COMPLETE test suite (always full, regardless of LARGE_SCALE; memory guard: batches when needed)
+- Run the tests the change can affect (memory guard: batches when needed)
 - `ddd`: verify all behavior snapshots match, and compare before/after coupling metrics
 - `tdd`: verify coverage targets met (85% minimum per the quality.yaml SSOT — `.moai/config/sections/quality.yaml`)
-- Issue the independent read-only verifications (full suite, coverage, lint, boundary greps) as ONE single-turn parallel batch — see `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution and `.claude/rules/moai/workflow/verification-batch-pattern.md`.
-- Generate the completion report — `ddd`: transformations and metric deltas; `tdd`: all tests and design decisions
+- Issue the independent read-only verifications (change-scoped tests, coverage, lint, boundary greps) as ONE single-turn parallel batch — see `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution and `.claude/rules/moai/workflow/verification-batch-pattern.md`.
+- Generate the completion report — `ddd`: transformations and metric deltas; `tdd`: all tests and design decisions. The report MUST name the CI run on the project's integration branch as the owner of the repository-wide test verdict and state that this verdict is PENDING at report time.
 - Commit changes, update SPEC status
 
 ### Checkpoint and resume (both)
@@ -161,7 +160,7 @@ Respect per-file limits: max 3 ANCHOR, 5 WARN, 10 NOTE, 5 TODO.
 
 ## Status Responsibility Matrix
 
-This agent performs exactly ONE status transition, on the first run-phase commit (M1), for the `progress.md` artifact only. See §SPEC Artifact Ownership for the full artifact-level boundary.
+This agent performs exactly ONE status transition: `draft → in-progress`, on the first run-phase commit (M1). Which SPEC artifacts that transition covers is decided by `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix, the one authoritative reference. See §SPEC Artifact Ownership for the full artifact-level boundary.
 
 | Transition | Trigger | Agent Role |
 |---|---|---|
@@ -234,4 +233,4 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.

@@ -12,29 +12,27 @@
 > **The hard-coded "200K token budget" / "Phase 2: DDD 180K" /
 > `clear_threshold = 150000` figures below are ILLUSTRATIVE DEFAULTS for a
 > 200K-context model class.** Real budgets are **model-specific**: 1M-context
-> models (Opus 5, Opus 4.8, GLM-5.2) hand off at **50%** (~500K tokens);
+> models (Opus 5.5, Opus 4.8, GLM-5.3) hand off at **50%** (~500K tokens);
 > 200K/256K models (Sonnet/Haiku/Fable) hand off at **90%** (~180K/~230K).
 > The authoritative per-model threshold table is
 > `.claude/rules/moai/workflow/context-window-management.md` § Context
 > Window Targets — consult it before applying any figure below. The
 > `sonnet-4.5` / `haiku-4.5` `model_selection` config shown later in this
 > file is RETIRED in favor of **effort-routing** (`effortLevel`:
-> low/medium/high/xhigh/max per agent role — see
-> `.claude/rules/moai/development/agent-authoring.md` § Effort-Level
-> Calibration Matrix); the cost-lever is now effort, not a hardcoded
-> sonnet/haiku model swap.
+> low/medium/high/xhigh/max for the session; subagents inherit it — see
+> `.claude/rules/moai/development/model-policy.md`); the cost-lever is now
+> effort, not a hardcoded sonnet/haiku model swap.
 
 Purpose: Efficient token-budget management through strategic context loading, phase separation, and effort-routing for cost-effective AI development.
 
 Version: 1.0.0
-Last Updated: 2025-11-25
 
 ---
 
 ## Quick Reference (30 seconds)
 
 > The figures below assume a 200K-context model class. For 1M-context
-> models (Opus 5 / Opus 4.8 / GLM-5.2) the handoff threshold is 50%
+> models (Opus 5.5 / Opus 4.8 / GLM-5.3) the handoff threshold is 50%
 > (~500K tokens), NOT 90% — see context-window-management.md § Context
 > Window Targets for the authoritative per-model table.
 
@@ -54,7 +52,7 @@ Effort Routing (replaces the retired sonnet/haiku model_selection):
 - xhigh / max: Quality-critical (SPEC authoring, security review, Opus-tier reasoning)
 - high: Default for run-phase implementation
 - medium / low: Speed/cost (simple edits, tests, mechanical sweeps)
-- See agent-authoring.md § Effort-Level Calibration Matrix for the per-agent default
+- Subagents inherit the session's effort; MoAI sets no per-agent default (model-policy.md)
 
 Context Optimization:
 - Target: 20-30K tokens per agent
@@ -732,5 +730,4 @@ Memory:
 ---
 
 Version: 1.0.0
-Last Updated: 2025-11-25
 Status: Production Ready
