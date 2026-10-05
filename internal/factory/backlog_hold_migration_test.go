@@ -573,8 +573,8 @@ func TestBacklogLeaseRetrofitConvergesAfterRebuild(t *testing.T) {
 	// pair — so a fresh and an upgraded database converge on the exact
 	// physical order.
 	wantTails := map[string]string{
-		"items":          "picked_at:TEXT:0:NULL dropped_at:TEXT:0:NULL classification:TEXT:0:NULL picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL",
-		"archived_items": "archived_at:TEXT:0:NULL landing_verdict:TEXT:0:NULL classification:TEXT:0:NULL picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL",
+		"items":          "picked_at:TEXT:0:NULL dropped_at:TEXT:0:NULL classification:TEXT:0:NULL picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL issuance:TEXT:0:NULL",
+		"archived_items": "archived_at:TEXT:0:NULL landing_verdict:TEXT:0:NULL classification:TEXT:0:NULL picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL issuance:TEXT:0:NULL",
 	}
 	for table, wantTail := range wantTails {
 		got := columnTupleSequence(t, eng, table)
@@ -602,7 +602,7 @@ func TestBacklogLeaseRetrofitConvergesAfterRebuild(t *testing.T) {
 	}
 	defer func() { _ = eng2.close() }()
 	if got := columnTupleSequence(t, eng2, "items"); !strings.HasSuffix(got, wantTails["items"]) {
-		t.Errorf("items column tuples after reopen = %q, want the same 11-column convergence", got)
+		t.Errorf("items column tuples after reopen = %q, want the same 12-column convergence (SPEC-TODO-CARD-ISSUANCE-001 appended issuance, card t1454)", got)
 	}
 }
 

@@ -477,8 +477,8 @@ func TestQAS_AC023_ClaimRecordsBackend(t *testing.T) {
 		if err := db.DB.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil {
 			t.Fatal(err)
 		}
-		if version != "5" {
-			t.Errorf("meta.schema_version = %q after a backend claim, want 5", version)
+		if version != "6" {
+			t.Errorf("meta.schema_version = %q after a backend claim, want 6 (current schema stamp; the claim itself changes nothing)", version)
 		}
 		raw, err := os.ReadFile(filepath.Join("..", "homestate", "factory.go"))
 		if err != nil {

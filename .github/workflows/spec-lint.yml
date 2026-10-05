@@ -61,17 +61,14 @@ jobs:
           cache: true
       # Explicit integration-ref fetch (REQ-SLGB-008). Whether actions/checkout at
       # fetch-depth: 0 populates refs/remotes/origin/* is NOT a verified
-      # assumption (SPEC-SPECLINT-GITBLIND-001 §2.3) — the lint's base-ref chain
-      # needs origin/main. develop is fetched best-effort since the github-flow
-      # cutover (card t1510; the remote branch is deleted): ordinary PRs must
-      # not lose the lint to it, while the release-snapshot policy below still
-      # fails closed with its own message when it needs the ref and it is gone.
-      # The workflow's remaining develop coupling (push trigger, release
-      # snapshot) belongs to the cutover completion, not this repair.
+      # assumption (SPEC-SPECLINT-GITBLIND-001 §2.3) — under GitHub Flow the
+      # integration branch is main, and naming the deleted develop ref here
+      # fails the whole fetch with "couldn't find remote ref develop" (exit
+      # 128), so only main is fetched. Redundant when checkout already
+      # fetched it, the fetch costs one command; missing, it costs the lint
+      # its eyes again.
       - name: Fetch integration refs
-        run: |
-          git fetch origin main:refs/remotes/origin/main
-          git fetch origin develop:refs/remotes/origin/develop || echo "::warning::develop ref absent (github-flow cutover) — release-snapshot PRs will fail closed until the cutover completion lands"
+        run: git fetch origin main:refs/remotes/origin/main
       - name: Select SPEC lint policy
         id: policy
         shell: bash
@@ -93,13 +90,27 @@ jobs:
               echo "::error::release snapshot PR must target main (got ${BASE_REF:-<empty>})"
               exit 1
             fi
-            develop_sha=$(git rev-parse origin/develop)
-            if [[ "$PR_HEAD_SHA" != "$develop_sha" ]]; then
-              echo "::error::release snapshot head $PR_HEAD_SHA does not match origin/develop $develop_sha"
-              exit 1
+            # The develop-tip snapshot match died with the develop ref (GitHub
+            # Flow cutover): a release/* PR now targets main directly, and the
+            # release discipline's own re-design belongs to the cutover card,
+            # not to this lint gate. The relaxation is NOT a branch-name
+            # bypass: a release PR that changes SPEC inputs or the linter gets
+            # the full baseline gate; one that does not keeps the
+            # inherited-warning reporting (same case list as the push branch).
+            base_sha=$(git rev-parse origin/main)
+            spec_changed=false
+            while IFS= read -r path; do
+              case "$path" in
+                .moai/specs/*|internal/spec/*|.moai/spec-lint-baseline.json) spec_changed=true ;;
+              esac
+            done <<< "$(git diff --name-only --no-renames "$base_sha" "$PR_HEAD_SHA")"
+            if [[ "$spec_changed" == "true" ]]; then
+              strict=true
+              reason="release PR changes SPEC inputs or the spec linter; baseline gate applies"
+            else
+              strict=false
+              reason="release PR leaves SPEC inputs and the spec linter unchanged; report inherited warnings while blocking errors"
             fi
-            strict=false
-            reason="release snapshot matches develop; report inherited warnings while blocking errors"
           elif [[ "$EVENT_NAME" == "push" && "$REF_NAME" == "develop" ]]; then
             if [[ -z "$EVENT_BEFORE" || "$EVENT_BEFORE" =~ ^0+$ ]]; then
               reason="develop comparison base is unavailable; fail closed with strict lint"

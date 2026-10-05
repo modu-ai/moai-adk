@@ -851,7 +851,7 @@ func TestFactoryNextNominatePromoteThenLose(t *testing.T) {
 			return err
 		}
 		defer func() { _ = db.Close() }()
-		_, leased, _, err := factoryNextRecordAndClaim(context.Background(), db, root, fcRun, cardID, "lane-2")
+		_, leased, _, err := factoryNextRecordAndClaim(context.Background(), db, root, fcRun, cardID, "lane-2", homestate.CardFields{})
 		if err != nil {
 			return err
 		}
