@@ -366,7 +366,7 @@ Examples:
 				counts[e.Kind]++
 			}
 			_, _ = fmt.Fprintf(out, "OK: wrote %d edges to %s\n", len(edges), target)
-			for _, kind := range []string{graph.KindImport, graph.KindMXSpec, graph.KindSpecDepends, graph.KindReportMilestone, graph.KindMilestoneCard, graph.KindCodeCall, graph.KindCodeImport} {
+			for _, kind := range []string{graph.KindImport, graph.KindMXSpec, graph.KindSpecDepends, graph.KindReportMilestone, graph.KindMilestoneCard, graph.KindCodeCall, graph.KindCodeImport, graph.KindCardFile} {
 				if c := counts[kind]; c > 0 {
 					_, _ = fmt.Fprintf(out, "  %s: %d\n", kind, c)
 				}

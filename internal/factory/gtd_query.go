@@ -3,10 +3,60 @@ package factory
 import (
 	"context"
 	"database/sql"
+	"os"
 	"strconv"
 )
 
 type GTDProjectionRelation struct{ From, To, Kind, Sensitivity string }
+
+// ListGTDCardRelations resolves every GTD relation's endpoints onto the todo
+// card ids its GTD items link to; a relation whose either endpoint names no
+// card is dropped. Read-only and best-effort: a project with no GTD store
+// yields nil, and the read never fails the caller — trace and why degrade
+// to the findings-only view (card t1454 card-review r2 finding 11).
+func ListGTDCardRelations(ctx context.Context, store *BacklogStore) []GTDCardRelation {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if _, err := os.Lstat(store.EnginePath()); err != nil {
+		return nil
+	}
+	// The read path opens through the pure reader, never openGTDDB: the
+	// migration openGTDDB runs on open is a write, and a queue read must
+	// leave the database byte- and mtime-identical (AC-TSS-003 read-path
+	// purity, card t1454 repair). A database without the GTD tables fails
+	// the query below and degrades to the findings-only view — the same
+	// best-effort contract as before.
+	eng, err := openBacklogReader(store.EnginePath())
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = eng.close() }()
+	rows, err := eng.db.QueryContext(ctx, `SELECT COALESCE(s.card_id,''),COALESCE(o.card_id,''),r.kind,r.source `+
+		`FROM gtd_relations r `+
+		`JOIN gtd_items s ON s.item_id=r.subject_id `+
+		`JOIN gtd_items o ON o.item_id=r.object_id `+
+		`ORDER BY r.subject_id,r.object_id,r.kind`)
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = rows.Close() }()
+	var out []GTDCardRelation
+	for rows.Next() {
+		var g GTDCardRelation
+		if err := rows.Scan(&g.From, &g.To, &g.Kind, &g.Source); err != nil {
+			return nil
+		}
+		if g.From == "" || g.To == "" {
+			continue
+		}
+		out = append(out, g)
+	}
+	if rows.Err() != nil {
+		return nil
+	}
+	return out
+}
 
 func GTDProjectionSource(ctx context.Context, store *BacklogStore) (int64, []GTDProjectionRelation, error) {
 	db, err := openGTDDB(store)

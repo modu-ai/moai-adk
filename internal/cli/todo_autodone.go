@@ -255,6 +255,9 @@ func runTodoAutoDone(cmd *cobra.Command, fetch, dryRun, jsonOut bool) error {
 	for _, o := range applied {
 		if o.closed {
 			recordFactoryCardState(o.id, o.specID, "completed", "card.completed")
+			// One gated, bounded, fail-open fold per closed card
+			// (AC-MFB-008; the bound is per card, plan.md §G).
+			foldClosedCardMemoryFn(o.id)
 		}
 	}
 	appendAutoDoneRows(autoDoneLogPathFor(root), autoDoneLogRowsFor(ref, refHead, applied))

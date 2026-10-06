@@ -254,13 +254,24 @@ func factorySerialSlotFree(state string) bool {
 }
 
 // factorySerialSlotHeld reports whether a recorded card holds the serial slot
-// at now: its state is not one of the releasing states, and — for a card in a
-// lease-holding state — its lease has not expired. An expired lease is only
-// collected lazily, by the next transition on that same card, so the row keeps
-// its lease-holding state after the lane that held it is gone; reading the
-// state alone would hold the slot for that lane indefinitely (card t1407).
+// at now. Three conditions hold together: the state is not one of the
+// releasing states; — for a card in a lease-holding state — its lease has not
+// expired; and a driver is recorded. An expired lease is only collected
+// lazily, by the next transition on that same card, so the row keeps its
+// lease-holding state after the lane that held it is gone; reading the state
+// alone would hold the slot for that lane indefinitely (card t1407).
+//
+// The driver condition (card t1513): a row whose OwnerLabel is empty holds
+// nothing. A picked row recorded without a lane (`factory assign` with no
+// --lane) names a nomination nobody is driving, and the lease-expiry net
+// above never applies to it because it carries no lease — the slot would
+// hold for as long as the row exists. Measured 2026-10-05: run tmf011's
+// t1453 sat picked, ownerless, and lease-less for a day while every lane
+// lease in the run was refused `serial-slot`. A later `factory assign
+// --lane` or the nominate arm sets the owner and the row holds again, so
+// only genuinely driverless rows release.
 func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
-	return !factorySerialSlotFree(c.State) && !c.LeaseExpired(now)
+	return !factorySerialSlotFree(c.State) && !c.LeaseExpired(now) && c.OwnerLabel != ""
 }
 
 // factorySerialInFlightExcluding reports whether a serial card OTHER than
@@ -274,12 +285,21 @@ func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
 // are merely `assigned`, which would otherwise wedge every leader-assigned
 // serial card against the others with nothing in flight. Every path that takes
 // a NEW card, the nominated lease included, passes false.
+//
+// A `picked` row carrying a bundle identity is excluded the same way (card
+// t1454 card-review r2 P1-2): it is a chain member waiting on its head, not
+// an independently picked serial card — its bundle orders it, and selection
+// skips it until the predecessor merges. A standalone picked row keeps
+// holding the slot, exactly as the t1407 ruling's tests pin.
 func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string) factory.CardClassification, cardID string, now time.Time, ignoreAssigned bool) bool {
 	for _, c := range cards {
 		if c.CardID == cardID {
 			continue
 		}
 		if ignoreAssigned && c.State == homestate.CardAssigned {
+			continue
+		}
+		if c.State == homestate.CardPicked && c.BundleID != "" {
 			continue
 		}
 		if factorySerialSlotHeld(c, now) && classOf(c.CardID).Mode == factory.ClassModeSerial {
@@ -664,12 +684,66 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		}
 		return !serialInFlightExcluding(cardID, false)
 	}
+	// Bundle attributes of the recorded rows (REQ-TCI-018): the bundle's
+	// lane is the owner recorded on any of its members (the loader assigns
+	// the head), and a member whose after predecessor has not reached the
+	// local merge is SKIPPED by selection rather than handed to the claim to
+	// fail — the skip-not-error hook of design §7.2. The same skip covers a
+	// hub-chained card (REQ-TCI-020): its hint waits the same way, so no
+	// lane wedges on a lease its predecessor has not earned yet.
+	//
+	// mergedLocal reads every run (card t1454 card-review r2 finding 5):
+	// predecessorMerged — the T2 guard the hint claims against — reads every
+	// run, so the selection's skip must read the same set; a predecessor
+	// merged under a previous run id would otherwise wedge its successor
+	// forever.
+	bundleLane := make(map[string]string, len(cards))
+	rowByID := make(map[string]homestate.Card, len(cards))
+	for _, c := range cards {
+		rowByID[c.CardID] = c
+		if c.BundleID != "" && strings.TrimSpace(c.OwnerLabel) != "" {
+			if _, seen := bundleLane[c.BundleID]; !seen {
+				bundleLane[c.BundleID] = strings.TrimSpace(c.OwnerLabel)
+			}
+		}
+	}
+	allRuns, err := db.ListCards(ctx, "")
+	if err != nil {
+		return homestate.Card{}, false, false, err
+	}
+	mergedLocal := make(map[string]bool, len(allRuns))
+	for _, c := range allRuns {
+		switch c.State {
+		case homestate.CardMergedLocal, homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone:
+			mergedLocal[c.CardID] = true
+		}
+	}
+	// selectionSkips reports why a recorded candidate must not lease on this
+	// pass: it is another lane's bundle member, or its predecessor is
+	// unmerged. The direct nominated path keeps the T2 error — the skip is
+	// the un-nominated selection's shape alone.
+	selectionSkips := func(c homestate.Card) bool {
+		if c.BundleID != "" {
+			if owner, ok := bundleLane[c.BundleID]; ok && owner != lane {
+				return true
+			}
+		}
+		return c.HintAfter != "" && !mergedLocal[c.HintAfter]
+	}
+	// hubFields computes the hub-chain hint a record CREATION carries for
+	// cardID, from the same one queue read every arm sees (REQ-TCI-020).
+	hubFields := func(cardID string) homestate.CardFields {
+		return factoryHubChainFields(queueRec, cards, cardID)
+	}
 	// (a) a card assigned to this lane — the lease edge alone (T3).
 	for _, c := range cards {
 		if c.State != homestate.CardAssigned || c.OwnerLabel != lane {
 			continue
 		}
 		if skip(c) {
+			continue
+		}
+		if selectionSkips(c) {
 			continue
 		}
 		// The queue item's CURRENT state gates the row's lease edge (card
@@ -694,6 +768,29 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	if noNewCards {
 		return homestate.Card{}, false, false, nil
 	}
+	// (b-priority) this lane's own bundle's next member outranks unowned
+	// picked cards (REQ-TCI-018): the bundle lane serves its chain before
+	// anything else an unowned picked row could offer. The conditions are
+	// arm (b)'s, tightened by the bundle ownership.
+	for _, c := range cards {
+		if c.State != homestate.CardPicked || strings.TrimSpace(c.OwnerLabel) != "" || c.BundleID == "" {
+			continue
+		}
+		if owner, ok := bundleLane[c.BundleID]; !ok || owner != lane {
+			continue
+		}
+		if skip(c) || !modeEligible(c.CardID) || selectionSkips(c) {
+			continue
+		}
+		state, inQueue := queueItemStateIn(queueRec, c.CardID)
+		if !inQueue || state != factory.BacklogStatePicked {
+			continue
+		}
+		if err := factoryLeaseBeforeClaim("b-priority", c.CardID); err != nil {
+			return homestate.Card{}, false, false, err
+		}
+		return factoryNextClaim(ctx, db, root, runID, c, lane)
+	}
 	// (b) an operator-picked card assigned to no lane. The record row sits at
 	// `picked` with no owner; the queue item must still be picked, so an
 	// unpicked queue item disqualifies the row rather than failing the verb.
@@ -705,6 +802,9 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 			continue
 		}
 		if !modeEligible(c.CardID) {
+			continue
+		}
+		if selectionSkips(c) {
 			continue
 		}
 		state, inQueue := queueItemStateIn(queueRec, c.CardID)
@@ -729,7 +829,7 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 			if err := factoryLeaseBeforeClaim("b2", it.ID); err != nil {
 				return homestate.Card{}, false, false, err
 			}
-			return factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane)
+			return factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane, hubFields(it.ID))
 		}
 	}
 	// (c) the highest-ranked eligible queued card (REQ-TCD-007/-008). The
@@ -759,6 +859,22 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 				if cls.Blocked {
 					continue
 				}
+				// Another lane's bundle member, or a candidate whose after
+				// predecessor is unmerged, is never auto-promoted
+				// (REQ-TCI-018/-020): the record row, when one exists, says
+				// which. A rowless candidate's hub hint is computed at
+				// promotion, so its predecessor condition is checked HERE —
+				// the same predicate selectionSkips applies to rows
+				// (card t1454 card-review r2 finding 4). Promoting a
+				// candidate whose hint names an unmerged predecessor failed
+				// the claim and errored the whole verb.
+				if row, ok := rowByID[it.ID]; ok {
+					if selectionSkips(row) {
+						continue
+					}
+				} else if hf := hubFields(it.ID); hf.HintAfter != nil && !mergedLocal[*hf.HintAfter] {
+					continue
+				}
 				if cls.Mode == factory.ClassModeSerial && serialInFlightExcluding(it.ID, false) {
 					continue
 				}
@@ -776,7 +892,7 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		if err := factoryLeaseBeforeClaim("c", promoted); err != nil {
 			return homestate.Card{}, false, false, err
 		}
-		return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane)
+		return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane, hubFields(promoted))
 	case sawQueued > 0:
 		// Queued cards existed but none was eligible (blocked, or serial with
 		// the slot held). That is the no-card answer, not a race: re-selecting
@@ -790,10 +906,13 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 }
 
 // factoryNextRecordAndClaim records a queue-picked card (T1) and claims it.
-func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID, lane string) (homestate.Card, bool, bool, error) {
+// fields carries the record-creation attributes the caller computed — the
+// hub-chain after hint (REQ-TCI-020); the unnominated arms pass the hub
+// read's answer, the nominated path the one computed inside its section.
+func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID, lane string, fields homestate.CardFields) (homestate.Card, bool, bool, error) {
 	ctx, cancel := factoryClaimContext(ctx)
 	defer cancel()
-	fresh, err := db.RecordPicked(ctx, runID, cardID, homestate.CardFields{}, "factory-next", factoryCardNow())
+	fresh, err := db.RecordPicked(ctx, runID, cardID, fields, "factory-next", factoryCardNow())
 	if err != nil {
 		return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
 	}
@@ -1055,6 +1174,25 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld); r != nil {
 		return nom, r, nil
 	}
+	// Another lane's bundle member is never a nominee (card t1454
+	// card-review r2c finding C2). The unnominated selection skips it; the
+	// nominated path refused nothing once the head had merged — the member's
+	// own after guard passed and lane-2 leased lane-1's member outright. The
+	// bundle's lane is the owner recorded on any of its members, the same
+	// read the selection's bundleLane map makes.
+	if nom.row != nil && nom.row.BundleID != "" {
+		for i := range cards {
+			c := cards[i]
+			owner := strings.TrimSpace(c.OwnerLabel)
+			if c.BundleID != nom.row.BundleID || owner == "" {
+				continue
+			}
+			if owner != lane {
+				return nom, factoryRefusal(factoryRefuseOwned, "the card is %s's bundle member", owner), nil
+			}
+			break
+		}
+	}
 	// The claim would refuse a foreign tree only after the promotion; deciding
 	// it here keeps the refusal write-free. The carry-over read runs first: a
 	// landing directory the card's own previous run recorded is that card's
@@ -1177,9 +1315,23 @@ func factoryNominateInSection(ctx context.Context, l *factory.LockedBacklog, db 
 		}
 	}
 
+	// Hub-chain hint (REQ-TCI-020): computed inside the section from the
+	// same locked queue the validation read — a read failing under a held
+	// lock is infrastructural and fails the lease loudly, never silently
+	// hint-less.
+	queueRec, err := l.LoadPure()
+	if err != nil {
+		return homestate.Card{}, fmt.Errorf("read the queue for the hub chain: %w", err)
+	}
+	hubRows, err := db.ListCards(ctx, runID)
+	if err != nil {
+		return homestate.Card{}, fmt.Errorf("read the records for the hub chain: %w", err)
+	}
+	hubHint := factoryHubChainFields(queueRec, hubRows, cardID)
+
 	// A claim that neither leased nor errored lost a race (the same signal the
 	// unnominated arms re-select on); an error is a failure of the claim.
-	card, leased, _, claimErr := factoryNextNominatedClaim(ctx, db, root, runID, lane, nom)
+	card, leased, _, claimErr := factoryNextNominatedClaim(ctx, db, root, runID, lane, nom, hubHint)
 	if claimErr == nil && leased {
 		return card, nil
 	}
@@ -1200,14 +1352,14 @@ func factoryNominateInSection(ctx context.Context, l *factory.LockedBacklog, db 
 // already `assigned` to this lane is arm (a)'s lease edge; every other leasable
 // shape (no row, or an unowned `picked` row) records the card and claims it,
 // which re-reads the row fresh.
-func factoryNextNominatedClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, nom factoryNominee) (homestate.Card, bool, bool, error) {
+func factoryNextNominatedClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, nom factoryNominee, fields homestate.CardFields) (homestate.Card, bool, bool, error) {
 	if err := factoryNominateBeforeRecord(nom.item.ID); err != nil {
 		return homestate.Card{}, false, false, err
 	}
 	if nom.row != nil && nom.row.State == homestate.CardAssigned {
 		return factoryNextClaim(ctx, db, root, runID, *nom.row, lane)
 	}
-	return factoryNextRecordAndClaim(ctx, db, root, runID, nom.item.ID, lane)
+	return factoryNextRecordAndClaim(ctx, db, root, runID, nom.item.ID, lane, fields)
 }
 
 // factoryNominateCompensate is step 4. It acts only on a promotion this
@@ -1996,6 +2148,32 @@ func newFactoryAssignCommand() *cobra.Command {
 				return fmt.Errorf("factory assign: %w", err)
 			}
 			defer func() { _ = db.Close() }()
+			// Hub-chain hint (REQ-TCI-020): filled ONLY on record creation,
+			// and ONLY when the operator gave no --after of their own — an
+			// explicit input outranks the computed one, and a card that
+			// already has a record keeps whatever hint it carries.
+			if fields.HintAfter == nil {
+				if _, cerr := db.LoadCard(ctx, runID, cardID); errors.Is(cerr, homestate.ErrCardNotFound) {
+					if rec, qerr := newTodoStore().LoadPure(); qerr == nil {
+						if rows, rerr := db.ListCards(ctx, runID); rerr == nil {
+							// Merge ONLY the computed after hint — the operator's
+							// own fields (prefer, spec, worktree, contract) were
+							// set above and must survive the fill (AC-TCI-020's
+							// explicit-input-outranks clause cuts the other way
+							// for --after alone, never for the whole struct).
+							if hub := factoryHubChainFields(rec, rows, cardID); hub.HintAfter != nil {
+								fields.HintAfter = hub.HintAfter
+							}
+						} else {
+							return fmt.Errorf("factory assign: read the records for the hub chain: %w", rerr)
+						}
+					} else {
+						return fmt.Errorf("factory assign: read the queue for the hub chain: %w", qerr)
+					}
+				} else if cerr != nil {
+					return fmt.Errorf("factory assign: %w", cerr)
+				}
+			}
 			now := factoryCardNow()
 			card, err := db.RecordPicked(ctx, runID, cardID, fields, "assign", now)
 			if err != nil {

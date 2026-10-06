@@ -336,6 +336,15 @@ const (
 	// operator-authored misconfiguration fails loud, never silently reverts
 	// to the default. --classification-file outranks it.
 	EnvTodoDecider = "MOAI_TODO_DECIDER"
+
+	// EnvMemoryFoldOnDone gates the card-close memory fold
+	// (SPEC-MEMORY-FOLD-BUDGET-001 REQ-MFB-007). Accepted enabling values are
+	// "1" and "true" (case-insensitive, surrounding whitespace ignored) — the
+	// repository's existing environment-flag vocabulary — and every other
+	// value, including unset and empty, keeps the fold off. The compiled
+	// default is off (config.DefaultMemoryFoldOnDone); wiring every queue
+	// close to a shared-store mutation is opt-in (plan.md OD-1/OD-2).
+	EnvMemoryFoldOnDone = "MOAI_MEMORY_FOLD_ON_DONE"
 )
 
 // Factory-role marker constants (SPEC-AUTONOMY-PRECONDITION-001

@@ -120,7 +120,9 @@ func memoryCandidateStores(projectRoot string) ([]memoryStore, error) {
 		return nil, fmt.Errorf("memory: resolve project root: %w", err)
 	}
 
-	home, homeErr := userHomeDir()
+	// Resolved through the userHomeDirFn seam (not userHomeDir directly) so the
+	// package-wide test home sandbox covers every store lookup.
+	home, homeErr := userHomeDirFn()
 
 	var stores []memoryStore
 	add := func(dir, origin string) {
@@ -157,12 +159,51 @@ func memoryCandidateStores(projectRoot string) ([]memoryStore, error) {
 
 // memoryReport is the doctor result for one store.
 type memoryReport struct {
-	Store      memoryStore             `json:"store"`
-	Exists     bool                    `json:"exists"`
-	TopicFiles int                     `json:"topic_files"`
-	Cap        int                     `json:"cap"`
-	IndexLines int                     `json:"index_lines"`
-	Findings   []taxonomy.AuditFinding `json:"findings"`
+	Store      memoryStore `json:"store"`
+	Exists     bool        `json:"exists"`
+	TopicFiles int         `json:"topic_files"`
+	Cap        int         `json:"cap"`
+	IndexLines int         `json:"index_lines"`
+	// The four measures of MEMORY.md (REQ-MFB-008) and the count of its
+	// distinct link targets by full text (REQ-MFB-011). Zero when the store
+	// or the index is absent.
+	IndexBytes       int `json:"index_bytes"`
+	IndexChars       int `json:"index_chars"`
+	IndexLoadedChars int `json:"index_loaded_chars"`
+	IndexLinkTargets int `json:"index_link_targets"`
+	// The budget configuration this invocation resolved to (REQ-MFB-009),
+	// reported so a consumer can read the findings against the caps that
+	// produced them.
+	ByteCap     int                     `json:"byte_cap"`
+	WarnPercent int                     `json:"warn_percent"`
+	LineCap     int                     `json:"line_cap"`
+	Findings    []taxonomy.AuditFinding `json:"findings"`
+}
+
+// memoryBudget is one doctor invocation's budget configuration (REQ-MFB-009):
+// the byte cap, the warn percentage and the line cap. Zero or out-of-range
+// values fall back to the configuration constants, so no threshold appears
+// as a literal in the check.
+type memoryBudget struct {
+	byteCap     int
+	warnPercent int
+	lineCap     int
+}
+
+// resolve applies the configuration defaults. The conditions mirror
+// AuditIndexBudget's own fallback so one invocation never carries two
+// different fallback rules; the resolved values are what the report carries.
+func (b memoryBudget) resolve() memoryBudget {
+	if b.byteCap <= 0 {
+		b.byteCap = config.DefaultMemoryIndexByteCap
+	}
+	if b.warnPercent <= 0 || b.warnPercent > 100 {
+		b.warnPercent = config.DefaultMemoryIndexWarnPercent
+	}
+	if b.lineCap <= 0 {
+		b.lineCap = config.DefaultMemoryIndexLineCap
+	}
+	return b
 }
 
 // newMemoryCmd builds `moai memory`.
@@ -187,22 +228,30 @@ selected automatically.`,
 			return cmd.Help()
 		},
 	}
-	cmd.AddCommand(newMemoryDoctorCmd(), newMemoryArchiveCmd(), newMemoryDrainCmd())
+	cmd.AddCommand(newMemoryDoctorCmd(), newMemoryArchiveCmd(), newMemoryDrainCmd(), newMemoryFoldCmd())
 	return cmd
 }
 
-// newMemoryDoctorCmd — `moai memory doctor [--json] [--dir PATH]`.
+// newMemoryDoctorCmd — `moai memory doctor [--json] [--dir PATH] [--cap N]
+// [--byte-cap N] [--line-cap N] [--warn-percent N]`.
 func newMemoryDoctorCmd() *cobra.Command {
 	var jsonOutput bool
 	var dirOverride string
 	var capOverride int
+	var byteCapOverride int
+	var warnPercentOverride int
+	var lineCapOverride int
 
 	cmd := &cobra.Command{
 		Use:   "doctor",
-		Short: "Report memory-store health (orphans, dangling links, topic-file count)",
+		Short: "Report memory-store health (index size budget, link classes, orphans, topic-file count)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			reports, err := collectMemoryReports(dirOverride, capOverride)
+			reports, err := collectMemoryReports(dirOverride, capOverride, memoryBudget{
+				byteCap:     byteCapOverride,
+				warnPercent: warnPercentOverride,
+				lineCap:     lineCapOverride,
+			})
 			if err != nil {
 				return err
 			}
@@ -213,11 +262,25 @@ func newMemoryDoctorCmd() *cobra.Command {
 	cmd.Flags().StringVar(&dirOverride, "dir", "", "Audit this memory directory instead of the resolved store")
 	cmd.Flags().IntVar(&capOverride, "cap", 0,
 		fmt.Sprintf("Topic-file ceiling (default %d)", config.DefaultMemoryTopicFileCap))
+	cmd.Flags().IntVar(&byteCapOverride, "byte-cap", 0,
+		fmt.Sprintf("Index byte cap for the budget warning (default %d)", config.DefaultMemoryIndexByteCap))
+	cmd.Flags().IntVar(&warnPercentOverride, "warn-percent", 0,
+		fmt.Sprintf("Budget warn percentage (default %d)", config.DefaultMemoryIndexWarnPercent))
+	cmd.Flags().IntVar(&lineCapOverride, "line-cap", 0,
+		fmt.Sprintf("Index line cap — governs the budget axis and MEMORY_INDEX_OVERFLOW (default %d)", config.DefaultMemoryIndexLineCap))
 	return cmd
 }
 
 // collectMemoryReports audits every candidate store, or just the override.
-func collectMemoryReports(dirOverride string, capOverride int) ([]memoryReport, error) {
+// The budget configuration is optional: a call without one resolves every
+// value from the configuration constants, exactly as a zero-valued
+// memoryBudget would.
+func collectMemoryReports(dirOverride string, capOverride int, budget ...memoryBudget) ([]memoryReport, error) {
+	b := memoryBudget{}.resolve()
+	if len(budget) > 0 {
+		b = budget[0].resolve()
+	}
+
 	var stores []memoryStore
 	if dirOverride != "" {
 		abs, err := filepath.Abs(dirOverride)
@@ -240,7 +303,13 @@ func collectMemoryReports(dirOverride string, capOverride int) ([]memoryReport, 
 
 	reports := make([]memoryReport, 0, len(stores))
 	for _, s := range stores {
-		rep := memoryReport{Store: s, Cap: capValue}
+		rep := memoryReport{
+			Store:       s,
+			Cap:         capValue,
+			ByteCap:     b.byteCap,
+			WarnPercent: b.warnPercent,
+			LineCap:     b.lineCap,
+		}
 		info, err := os.Stat(s.Dir)
 		if err != nil || !info.IsDir() {
 			reports = append(reports, rep)
@@ -259,9 +328,21 @@ func collectMemoryReports(dirOverride string, capOverride int) ([]memoryReport, 
 		}
 
 		indexPath := filepath.Join(s.Dir, memoryIndexName)
+		var measures taxonomy.IndexMeasurements
 		if data, err := os.ReadFile(indexPath); err == nil {
-			rep.IndexLines = len(strings.Split(strings.TrimRight(string(data), "\n"), "\n"))
+			measures = taxonomy.MeasureIndex(data)
+			seenTargets := map[string]bool{}
+			for _, t := range taxonomy.ExtractLinkTargets(string(data)) {
+				if !seenTargets[t] {
+					seenTargets[t] = true
+					rep.IndexLinkTargets++
+				}
+			}
 		}
+		rep.IndexLines = measures.Lines
+		rep.IndexBytes = measures.Bytes
+		rep.IndexChars = measures.Chars
+		rep.IndexLoadedChars = measures.LoadedChars
 
 		linkage, err := taxonomy.AuditLinkage(s.Dir)
 		if err != nil {
@@ -271,13 +352,15 @@ func collectMemoryReports(dirOverride string, capOverride int) ([]memoryReport, 
 		if err != nil {
 			return nil, err
 		}
-		index, err := taxonomy.AuditIndex(indexPath, 0)
+		index, err := taxonomy.AuditIndex(indexPath, b.lineCap)
 		if err != nil {
 			return nil, err
 		}
+		budgetFindings := taxonomy.AuditIndexBudget(indexPath, measures, b.byteCap, b.warnPercent, b.lineCap)
 		rep.Findings = append(rep.Findings, linkage...)
 		rep.Findings = append(rep.Findings, count...)
 		rep.Findings = append(rep.Findings, index...)
+		rep.Findings = append(rep.Findings, budgetFindings...)
 		reports = append(reports, rep)
 	}
 	return reports, nil
@@ -307,6 +390,9 @@ func renderMemoryReports(out io.Writer, reports []memoryReport, jsonOutput bool)
 		}
 		_, _ = fmt.Fprintf(out, "  topic files : %d (cap %d)\n", rep.TopicFiles, rep.Cap)
 		_, _ = fmt.Fprintf(out, "  index lines : %d\n", rep.IndexLines)
+		_, _ = fmt.Fprintf(out, "  index bytes : %d (chars %d, loaded %d)\n", rep.IndexBytes, rep.IndexChars, rep.IndexLoadedChars)
+		_, _ = fmt.Fprintf(out, "  link targets: %d distinct\n", rep.IndexLinkTargets)
+		_, _ = fmt.Fprintf(out, "  budget      : byte cap %d, warn %d%%, line cap %d\n", rep.ByteCap, rep.WarnPercent, rep.LineCap)
 
 		if len(rep.Findings) == 0 {
 			_, _ = fmt.Fprintln(out, "  findings    : none")
@@ -325,7 +411,15 @@ func renderMemoryReports(out io.Writer, reports []memoryReport, jsonOutput bool)
 			_, _ = fmt.Fprintf(out, "    %-30s %d\n", code, counts[code])
 		}
 		for _, f := range rep.Findings {
-			if f.Code == taxonomy.WarnTopicCountOverCap || f.Code == taxonomy.WarnIndexOverflow {
+			// Details are rendered for the codes whose findings are
+			// unreadable as a bare count: the caps and overflow name the
+			// remedy, the budget findings name axis/cap/percentage/basis
+			// (REQ-MFB-009), and repo-relative findings name each full link
+			// path (REQ-MFB-011).
+			switch f.Code {
+			case taxonomy.WarnTopicCountOverCap, taxonomy.WarnIndexOverflow,
+				taxonomy.WarnIndexBudgetWarn, taxonomy.WarnIndexBudgetAtCap,
+				taxonomy.WarnRepoRelativeLink:
 				_, _ = fmt.Fprintf(out, "    → %s\n", f.Detail)
 			}
 		}
