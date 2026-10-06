@@ -298,6 +298,18 @@ jobs:
             exit 0
           fi
 
+          # AC-CI-005 re-evaluation (post-head-query): the head query itself
+          # takes wall-clock time — the deadline can cross BETWEEN the check
+          # above and the merge call. Re-read the clock here; merging with a
+          # stale pre-query evaluation is the defect this second check
+          # closes (E26's served-time observation targets exactly this
+          # window).
+          now="$(date +%s)"
+          if [ "$now" -gt "${merge_deadline:-9999999999}" ]; then
+            echo "::notice::Overall deadline passed during head verification (now=$now deadline=${merge_deadline:-unset}) - leaving PR #$PR_NUMBER open for review"
+            exit 0
+          fi
+
           # Release/hotfix PRs preserve individual SPEC history via --merge.
           # All other branches use --squash (Enhanced GitHub Flow §18.3).
           if [[ "$PR_BRANCH" == release/* || "$PR_BRANCH" == hotfix/* ]]; then
