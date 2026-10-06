@@ -201,3 +201,18 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   mapping test now requires a space (or EOL) after the colon.
   Regression: phantom=1 control=0 malformed=1 matrix-exclude=1
   repo-root=0. CI publication still platform-blocked.
+- gate_round_11 (codex review gate findings, lane-direct): 3 repairs,
+  RED observed on the committed ba824499f code then GREEN on this tree
+  (commit `a6677a782`) — (1) include out-of-matrix fields feed ONLY the
+  expression substitution; the auto suffix keeps the original matrix
+  axes alone (os:[ubuntu]+include[extra:smoke] is `Test (ubuntu-latest)`);
+  (2) a QUOTED block item is a scalar by node type — the quoted value's
+  inner colon+space is literal text, not a mapping separator; (3) matrix
+  values enter substitution as literal data — all three sites use
+  split-based subst_literal() because the gsub escape dance is a
+  self-referential trap on BSD awk (unit probe measured the escaped
+  replacement recovered as a bare ampersand). Two in-round comment
+  hazards (apostrophes; an inline quoted example) were caught by the
+  syntax/probe checks before commit. Regression: phantom=1 control=0
+  malformed=1 matrix-exclude=1 repo-root=0; round-6/7/10 probes green;
+  harness 12 pass / 0 fail. CI publication still platform-blocked.
