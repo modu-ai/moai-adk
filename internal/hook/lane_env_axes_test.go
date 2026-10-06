@@ -79,10 +79,28 @@ var laneEnvAxisExemptions []laneEnvAxisExemption
 // laneEnvScrubAxes is the factory/kanban axis set TestMain strips at
 // start-up. It is declared here so the coverage test reads the declared set
 // from the same file that names the family rule; TestMain (main_test.go)
-// applies it before the first test runs. Fill it only with axes production
-// code references, and only after the whole-package scrubbed arm shows no
-// test relies on the ambient value (spec.md §D precondition (i)).
-var laneEnvScrubAxes []string
+// applies it before the first test runs. Filled at M3 (SPEC-TEST-ENV-
+// HERMETIC-001) with the ten axes production code references (spec.md
+// §A.6): the c1 whole-package scrubbed arm ran all sixteen family axes
+// unset and exited 0 with zero failing rows, so no test in this package
+// relies on any ambient family value (spec.md §D precondition (i)); the
+// single-axis arms re-observed at M3 confirmed MOAI_KANBAN_ID and
+// MOAI_FACTORY_WORKERS alone flip the two StaleRunNotice tests. A row in
+// laneEnvAxisExemptions below, added only after a whole-package scrubbed
+// arm shows a test going red because the axis was stripped, is the escape
+// hatch.
+var laneEnvScrubAxes = []string{
+	config.EnvFactoryRunID,
+	config.EnvMoaiFactoryWorkers,
+	config.EnvFactorySettingsInjected,
+	config.EnvFactoryLeadAddr,
+	config.EnvFactoryBackend,
+	config.EnvFactoryCard,
+	config.EnvFactoryLeadName,
+	config.EnvFactoryRole,
+	config.EnvMoaiFactoryWorker,
+	config.EnvFactoryAutoDispatch,
+}
 
 // scrubLaneEnvAxes clears the declared lane axis set for this process.
 // TestMain calls it before any test runs, so tests that never compose a lane
