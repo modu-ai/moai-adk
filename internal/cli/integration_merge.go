@@ -60,9 +60,9 @@ func newIntegrationMergeCmd() *cobra.Command {
 			// the lock root (the primary checkout), never the process cwd: a
 			// verb invoked from a card worktree would otherwise read that
 			// worktree's own repository and find a different develop.
-			integ := factoryWorktreeForBranchIn(root, integBranch)
-			if integ == "" {
-				return fmt.Errorf("integration merge: no worktree holds the integration branch %q — the leader provisions the integration worktree", integBranch)
+			integ, integErr := integrationMergeWorktree(root, integBranch)
+			if integErr != nil {
+				return integErr
 			}
 			lane, laneErr := factoryLaneLabelFromEnv("merge")
 			if laneErr != nil {
@@ -111,6 +111,29 @@ func newIntegrationMergeCmd() *cobra.Command {
 	cmd.Flags().StringVar(&cardFlag, "card", "", "The card id whose merge the step runs")
 	cmd.Flags().StringVar(&runFlag, "run", "", "Factory run id (default: the single active run) — read for the card record")
 	return cmd
+}
+
+// integrationMergeWorktree resolves the worktree the merge step merges INTO,
+// and refuses the PRIMARY checkout (card t1479 r3 F3): the resolver below
+// returns ANY tree holding the branch — the primary included, with no
+// primary exclusion on the path — and a merge whose target is the shared
+// primary checkout is exactly what the branch-guard doctrine forbids (the
+// primary never changes branch for anyone). complete's own resolution
+// refuses the same shape; the verb owns the identical test, by the same
+// identity helper factorySameTree.
+func integrationMergeWorktree(root, integBranch string) (string, error) {
+	integ := factoryWorktreeForBranchIn(root, integBranch)
+	if integ == "" {
+		return "", fmt.Errorf("integration merge: no worktree holds the integration branch %q — the leader provisions the integration worktree", integBranch)
+	}
+	primary, _, err := identifyPrimaryCheckout(root)
+	if err != nil {
+		return "", fmt.Errorf("integration merge: cannot identify the primary checkout of %s: %w", root, err)
+	}
+	if factorySameTree(integ, primary) {
+		return "", fmt.Errorf("integration merge: refused — the only tree holding %q is the primary checkout %s (the primary never changes branch; the leader provisions the integration worktree)", integBranch, primary)
+	}
+	return integ, nil
 }
 
 // integrationReadMergeCardForRun is the card-gate read O4 pins: one
