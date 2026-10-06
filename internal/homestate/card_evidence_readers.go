@@ -191,7 +191,7 @@ func admitVerdictFile(cur Card, path string, phase auditverdict.Phase) (bool, st
 	// SPEC-AUDIT-CEILING-001 REQ-ACE-009/010 (D21): the same error-vs-empty
 	// gate-set resolution the kickoff evaluator performs — an unreadable or
 	// unresolvable audit configuration refuses, never folds into empty.
-	gates, err := auditverdict.ResolveRequiredBackends(cur.WorktreePath)
+	gates, err := runtime.ResolveRequiredBackends(cur.WorktreePath)
 	if err != nil {
 		return false, fmt.Sprintf("audit configuration error: %v", err)
 	}

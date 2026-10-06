@@ -1348,6 +1348,13 @@ type HarnessConfig struct {
 	ModelUpgradeReview ModelUpgradeReviewConfig `yaml:"model_upgrade_review,omitempty"`
 	// PlanAuditGlobal holds the global plan audit settings.
 	PlanAuditGlobal PlanAuditGlobalConfig `yaml:"plan_audit_global,omitempty"`
+	// PlanAuditTierCeilings holds the per-Tier plan-auditor retry ceiling SSOT
+	// (SPEC-AUDIT-CEILING-001 REQ-ACE-002 — the former prose-consumed orphan
+	// key now has its Go reader).
+	PlanAuditTierCeilings PlanAuditTierCeilingsConfig `yaml:"plan_audit_tier_ceilings,omitempty"`
+	// PlanAuditCeilingPolicy holds the keys deciding what happens when a plan
+	// audit reaches its tier ceiling without an admitted verdict.
+	PlanAuditCeilingPolicy PlanAuditCeilingPolicyConfig `yaml:"plan_audit_ceiling_policy,omitempty"`
 	// Evaluator is the HRN-002 substrate — used for memory_scope FROZEN validation.
 	Evaluator EvaluatorConfig `yaml:"evaluator"`
 }
@@ -1456,6 +1463,46 @@ type PlanAuditGlobalConfig struct {
 	EnforceGateOnSpecCreation bool `yaml:"enforce_gate_on_spec_creation"`
 	// Rationale describes the reason for these settings.
 	Rationale string `yaml:"rationale,omitempty"`
+}
+
+// PlanAuditTierCeilingsConfig is the configuration struct for the
+// plan_audit_tier_ceilings block — the per-Tier plan-auditor retry ceiling
+// SSOT (SPEC-AUDIT-CEILING-001 REQ-ACE-002).
+type PlanAuditTierCeilingsConfig struct {
+	// S is the Tier S ceiling (single-pass audit, no iteration 2+).
+	S int `yaml:"S"`
+	// M is the Tier M ceiling (up to two spawns).
+	M int `yaml:"M"`
+	// L is the Tier L ceiling and the backward-compatible default when a
+	// SPEC's frontmatter carries no tier: field.
+	L int `yaml:"L"`
+}
+
+// PlanAuditCeilingPolicyConfig is the configuration struct for the
+// plan_audit_ceiling_policy block — what happens when a plan audit reaches
+// its tier ceiling without an admitted verdict (REQ-ACE-002).
+type PlanAuditCeilingPolicyConfig struct {
+	// AutoDeltaRounds is the count of delta audits that run without asking,
+	// when the fix stays inside the verdict's fix_scope anchors.
+	AutoDeltaRounds int `yaml:"auto_delta_rounds"`
+	// OnFinalHit names the final-hit policy. The documented value — the only
+	// one the prose policy and the CLI ladder implement — is hold-and-split;
+	// any other explicitly-set value is a config error, because a reader that
+	// silently accepts a policy name it does not enforce would read the key
+	// while ignoring its meaning.
+	OnFinalHit string `yaml:"on_final_hit"`
+}
+
+// Defaults returns the canonical ceiling defaults, matching the template
+// harness.yaml SSOT map.
+func (c PlanAuditTierCeilingsConfig) Defaults() PlanAuditTierCeilingsConfig {
+	return PlanAuditTierCeilingsConfig{S: 1, M: 2, L: 3}
+}
+
+// Defaults returns the canonical ceiling-policy defaults, matching the
+// template harness.yaml.
+func (c PlanAuditCeilingPolicyConfig) Defaults() PlanAuditCeilingPolicyConfig {
+	return PlanAuditCeilingPolicyConfig{AutoDeltaRounds: 1, OnFinalHit: "hold-and-split"}
 }
 
 // EvaluatorConfig is the sub-configuration struct for the evaluator.

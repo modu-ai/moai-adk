@@ -342,8 +342,8 @@ var knownHarnessTopLevelKeys = map[string]bool{
 	"levels":                    true,
 	"model_upgrade_review":      true,
 	"plan_audit_global":         true,
-	"plan_audit_tier_ceilings":  true, // prose-consumed by the plan-auditor agent body; no Go reader
-	"plan_audit_ceiling_policy": true, // prose-consumed by the plan-auditor agent body; no Go reader
+	"plan_audit_tier_ceilings":  true, // LIVE: PlanAuditTierCeilingsConfig (SPEC-AUDIT-CEILING-001 REQ-ACE-002)
+	"plan_audit_ceiling_policy": true, // LIVE: PlanAuditCeilingPolicyConfig, on_final_hit validated below
 	"evaluator":                 true,
 	"learning":                  true, // LIVE: harness learning sub-system, consumed by internal/cli/hook.go
 }
@@ -409,6 +409,23 @@ func LoadHarnessConfig(path string) (*HarnessConfig, error) {
 				Value:   levelName,
 				Wrapped: ErrUnknownLevel,
 			}
+		}
+	}
+
+	// Step 5: validate the ceiling policy value (SPEC-AUDIT-CEILING-001
+	// REQ-ACE-002). The documented value — the only one the prose policy and
+	// the CLI ladder implement — is hold-and-split; any other explicitly-set
+	// value is a config error, because a reader that silently accepts a
+	// policy name it does not enforce would read the key while ignoring its
+	// meaning. An absent value stays loadable for legacy harness.yaml files
+	// that predate the key; the enforcing engine treats an unnamed policy as
+	// a final hit (fail-closed, never a granted delta round).
+	if v := cfg.PlanAuditCeilingPolicy.OnFinalHit; v != "" && v != "hold-and-split" {
+		return nil, &ValidationError{
+			Field:   "plan_audit_ceiling_policy.on_final_hit",
+			Message: fmt.Sprintf("value %q is not a documented ceiling policy (only hold-and-split is implemented)", v),
+			Value:   v,
+			Wrapped: ErrInvalidYAML,
 		}
 	}
 

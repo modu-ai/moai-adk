@@ -377,7 +377,7 @@ func planAuditCheck(in DecideInput, dir string) (*contract.ReceiptFileRef, strin
 	// required-backend set with the error-vs-empty contract — an audit
 	// configuration that exists but cannot be read or parsed refuses, never
 	// folds into the empty set.
-	gates, err := auditverdict.ResolveRequiredBackends(in.Root)
+	gates, err := runtime.ResolveRequiredBackends(in.Root)
 	if err != nil {
 		return ref, fmt.Sprintf("audit configuration error: %v", err)
 	}

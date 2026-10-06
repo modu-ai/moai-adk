@@ -1,15 +1,15 @@
-package auditverdict
+package runtime
 
-// gates.go — the tree's required-backend gate set, resolved for the admission
-// seams (SPEC-AUDIT-CEILING-001 REQ-ACE-008/010). The two LIVE admission
-// seams (the kickoff evaluator and the card-transition guard) resolve the
-// gate set here and pass it to Admit. The resolution keeps the same routing
-// internal/cli's resolveAuditGates performs for MCP audits — a config-orphaned
-// worktree reads its primary checkout's section — but with the opposite
-// failure disposition (D21): a configuration that exists but cannot be read
-// or parsed returns an error and refuses, never the empty set. Only a
-// genuinely-absent configuration resolves empty, and an empty set admits a
-// receipt-less verdict (C4).
+// audit_gates.go — the tree's required-backend gate set, resolved for the
+// admission seams (SPEC-AUDIT-CEILING-001 REQ-ACE-008/010). The two LIVE
+// admission seams (the kickoff evaluator and the card-transition guard)
+// resolve the gate set here and pass it to auditverdict.Admit. The resolution
+// keeps the same routing internal/cli's resolveAuditGates performs for MCP
+// audits — a config-orphaned worktree reads its primary checkout's section —
+// but with the opposite failure disposition (D21): a configuration that
+// exists but cannot be read or parsed returns an error and refuses, never the
+// empty set. Only a genuinely-absent configuration resolves empty, and an
+// empty set admits a receipt-less verdict (C4).
 
 import (
 	"fmt"
