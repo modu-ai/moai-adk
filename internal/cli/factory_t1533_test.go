@@ -159,6 +159,92 @@ func TestReviewNominatedBundlePreservesHint(t *testing.T) {
 	}
 }
 
+// TestFactoryBundleHeadCarriesHubCondition — gate r2 finding (a): only the
+// second and later bundle members carried an after condition; the head was
+// recorded hint-less and was assigned on the spot, so a head whose files
+// cross a hub path leased beside another lane's in-flight work on the same
+// path with no conflict check at all. The head carries the same generated
+// hub condition every record path applies (a stored hint still wins): an
+// unmerged sharer refuses the load through the assignment's T2 guard, a
+// merged one chains the head.
+func TestFactoryBundleHeadCarriesHubCondition(t *testing.T) {
+	t.Run("unmerged-sharer-refuses-the-load", func(t *testing.T) {
+		root, store := fcFixture(t)
+		fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+		for _, id := range []string{"t1", "t2"} {
+			fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		}
+		fbSeedFiles(t, store, "t1", t1533HubA)
+		fbSeedFiles(t, store, "t2", t1533HubA)
+		live := fcNow.Add(time.Hour).Format(time.RFC3339Nano)
+		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", LeaseExpiresAt: live})
+		sdRegisterLane(t, root, "lane-1")
+		t.Chdir(root)
+
+		sdClearLaneEnv(t)
+		_, _, err := runFactory(t, "bundle", "lane-1", "t2", "--run", fcRun)
+		if err == nil {
+			t.Fatal("the bundle head leased with no hub conflict check while t1 — a sharer of its hub path — is in flight")
+		}
+		if fcHasCard(t, root, "t2") {
+			t.Fatalf("t2 = %s — the refused load left a record row behind", fcCard(t, root, "t2").State)
+		}
+	})
+
+	t.Run("merged-sharer-chains-the-head", func(t *testing.T) {
+		root, store := fcFixture(t)
+		fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+		for _, id := range []string{"t1", "t2"} {
+			fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		}
+		fbSeedFiles(t, store, "t1", t1533HubA)
+		fbSeedFiles(t, store, "t2", t1533HubA)
+		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardMergedLocal, OwnerLabel: "lane-2"})
+		sdRegisterLane(t, root, "lane-1")
+		t.Chdir(root)
+
+		sdClearLaneEnv(t)
+		if _, _, err := runFactory(t, "bundle", "lane-1", "t2", "--run", fcRun); err != nil {
+			t.Fatalf("bundle with a merged hub sharer: %v", err)
+		}
+		c := fcCard(t, root, "t2")
+		if c.HintAfter != "t1" {
+			t.Fatalf("t2's after = %q, want t1 — the head carries the hub condition too", c.HintAfter)
+		}
+		if c.State != homestate.CardAssigned || c.OwnerLabel != "lane-1" {
+			t.Fatalf("t2 = %s owner=%q, want assigned to lane-1", c.State, c.OwnerLabel)
+		}
+	})
+}
+
+// TestFactoryNextMergedPRPredecessorReleasesFollower — gate r2 finding (b):
+// the selector's completion set omitted merged-pr, so under github-flow a
+// predecessor that reached merged-pr never released its follower — the T2
+// guard accepts merged-pr, the selection did not, and the follower answered
+// no card forever.
+func TestFactoryNextMergedPRPredecessorReleasesFollower(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	for _, id := range []string{"t1", "t2"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	}
+	fcPlace(t, root,
+		homestate.Card{CardID: "t1", State: homestate.CardMergedPR, OwnerLabel: "lane-1"},
+		homestate.Card{CardID: "t2", State: homestate.CardPicked, HintAfter: "t1"},
+	)
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	sdLaneEnv(t, "lane-1", "")
+	if _, _, err := runFactory(t, "next", "--run", fcRun); err != nil {
+		t.Fatalf("lane-1 next: %v — a merged-pr predecessor must release its follower", err)
+	}
+	c := fcCard(t, root, "t2")
+	if c.State != homestate.CardLeased || c.LeaseHolder != "lane-1" {
+		t.Fatalf("t2 = %s holder=%q, want leased to lane-1 past the merged-pr predecessor", c.State, c.LeaseHolder)
+	}
+}
+
 // TestReviewPickedHubSkip — t1533-4: the hub skip waited on the ONE
 // predecessor the (generated or stored) hint names, but a candidate whose
 // files cross several hub paths has a predecessor per hub path. With t2
@@ -238,4 +324,36 @@ func TestReviewPickedHubSkip(t *testing.T) {
 			t.Fatalf("lane-3's lease = %q, want t3 once every hub predecessor merged", got)
 		}
 	})
+}
+
+// TestFactoryCompleteMergingRetryRefusesForeignLane — gate r2 finding (c):
+// the merge-ready entry takes the T14 lease-holder edge, but a card already
+// at merging (a crashed delivery's retry shape) entered the mutating path
+// with no owner check at all — the gate observed the foreign lane's push,
+// pull-request create, and auto-merge request land BEFORE any refusal. A
+// merging card is a delivery retry: only the recorded lease holder re-enters
+// it, and the refusal precedes the push.
+func TestFactoryCompleteMergingRetryRefusesForeignLane(t *testing.T) {
+	f := ghfNew(t, ghfOpts{syncStatus: "complete", state: homestate.CardMerging})
+	d := newGHDouble(t, f)
+
+	sdLaneEnv(t, "lane-2", "")
+	if _, err := ghfComplete(t); err == nil {
+		t.Fatal("a foreign lane's merging retry was accepted")
+	}
+	if d.created {
+		t.Fatalf("the foreign retry created the pull request before any refusal; calls: %v", d.calls)
+	}
+	if tip := f.remoteBranchTip(t); tip != "" {
+		t.Fatalf("the foreign retry pushed %s before any refusal", tip)
+	}
+
+	// The recorded lease holder's own retry still delivers.
+	sdLaneEnv(t, ghfLane, "")
+	if _, err := ghfComplete(t); err != nil {
+		t.Fatalf("the lease holder's own retry: %v", err)
+	}
+	if c := fcCard(t, f.root, "t1"); c.State != homestate.CardPROpen {
+		t.Fatalf("card = %s, want pr-open after the holder's retry", c.State)
+	}
 }

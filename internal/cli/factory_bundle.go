@@ -110,7 +110,11 @@ func runFactoryBundleLocked(cmd *cobra.Command, l *factory.LockedBacklog, root, 
 		return err
 	}
 	defer func() { _ = db.Close() }()
-	if err := factoryRefuseForeignChain(db, ctx, runID, lane, cards); err != nil {
+	rows, err := db.ListCards(ctx, runID)
+	if err != nil {
+		return fmt.Errorf("read the records for the chain check: %w", err)
+	}
+	if err := factoryRefuseForeignChain(rows, lane, cards); err != nil {
 		return err
 	}
 	now := factoryCardNow()
@@ -125,6 +129,24 @@ func runFactoryBundleLocked(cmd *cobra.Command, l *factory.LockedBacklog, root, 
 		if i > 0 {
 			members[i].HintAfter = cards[i-1]
 		}
+	}
+	// The head carries the hub-chain condition too (card t1533, review-gate
+	// r2 finding a): only the second and later members carried an after, so
+	// a head whose files cross a hub path was assigned with no conflict check
+	// against another lane's same-hub work. The generated hint follows the
+	// one record rule — a stored hint wins, a creation fills — and an
+	// unmerged sharer refuses the load through the head assignment's T2
+	// guard, so the conflict check runs before anything is recorded.
+	var headRow *homestate.Card
+	for i := range rows {
+		if rows[i].CardID != cards[0] {
+			continue
+		}
+		headRow = &rows[i]
+		break
+	}
+	if hf := factoryGeneratedHubFields(factoryHubChainFields(rec, rows, cards[0]), headRow); hf.HintAfter != nil {
+		members[0].HintAfter = *hf.HintAfter
 	}
 	head, err := factoryBundleRecord(ctx, db, runID, members, lane, now)
 	if err != nil {
@@ -151,11 +173,7 @@ var factoryBundleRecord = func(ctx context.Context, db *homestate.FactoryDB, run
 // and a member owned outright by another lane is refused the same way. The
 // read runs inside the load's lock-held section, so the check and the record
 // share one exclusion.
-func factoryRefuseForeignChain(db *homestate.FactoryDB, ctx context.Context, runID, lane string, cards []string) error {
-	rows, err := db.ListCards(ctx, runID)
-	if err != nil {
-		return fmt.Errorf("read the records for the chain check: %w", err)
-	}
+func factoryRefuseForeignChain(rows []homestate.Card, lane string, cards []string) error {
 	rowOf := make(map[string]homestate.Card, len(rows))
 	chainOwner := make(map[string]string, len(rows))
 	for _, c := range rows {

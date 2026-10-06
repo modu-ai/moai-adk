@@ -722,7 +722,11 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	mergedLocal := make(map[string]bool, len(allRuns))
 	for _, c := range allRuns {
 		switch c.State {
-		case homestate.CardMergedLocal, homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone:
+		// merged-pr belongs here beside merged-local: the T2 guard
+		// (predecessorMerged) accepts it, and a selector that did not made a
+		// github-flow predecessor release nothing — the follower answered no
+		// card forever (card t1533, review-gate r2 finding b).
+		case homestate.CardMergedLocal, homestate.CardMergedPR, homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone:
 			mergedLocal[c.CardID] = true
 		}
 	}

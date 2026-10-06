@@ -223,6 +223,17 @@ func factoryPRReadiness(out io.Writer, root string, card homestate.Card, lane, c
 // for auto-merge, record pr-open. Everything that can refuse without changing a
 // record runs before the first record change.
 func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.FactoryDB, root, runID string, card homestate.Card, cardBranch, target, method, lane string) error {
+	// A card already at merging is a delivery RETRY: the merge-ready entry
+	// took the T14 lease-holder edge, but this path ran the push, the pull
+	// request, and the auto-merge request with no owner check at all — a
+	// foreign lane's work landed before the record refused it (card t1533,
+	// review-gate r2 finding c). Only the recorded lease holder re-enters a
+	// mutating path, and the refusal precedes the push.
+	if card.State == homestate.CardMerging {
+		if holder := strings.TrimSpace(card.LeaseHolder); holder == "" || holder != lane {
+			return fmt.Errorf("factory complete: refused — card %s is merging under lease holder %s; %s cannot retry the delivery", card.CardID, dash(holder), dash(lane))
+		}
+	}
 	wt := card.WorktreePath
 	if _, err := factoryGitRead(wt, "config", "--get", "remote.origin.url"); err != nil {
 		return fmt.Errorf("factory complete: refused — the repository has no remote named origin to push %s to", cardBranch)
