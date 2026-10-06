@@ -186,10 +186,12 @@ func EvaluateCeiling(in VerdictCeilingInput, fields auditverdict.Fields, hashOK 
 // loadCeilings reads the SPEC's tier ceiling and the delta-round count from
 // the tree's harness config. A genuinely ABSENT config reads fail-closed on
 // the template defaults (the same posture the loader's absence path takes);
-// a config that exists but cannot be read, parsed, or validated — an invalid
-// on_final_hit included — is an ERROR the seam refuses on, never a silent
-// fallback to the defaults (card-review F1: a policy name the CLI cannot
-// enforce must not be swallowed).
+// a config that exists but cannot be read or parsed is an ERROR the seam
+// refuses on, never a silent fallback to the defaults (card-review F1). An
+// on_final_hit NAME the engine does not implement passes the load without
+// an error (SPEC-AUDIT-CEILING-002 matrix M2/M12 pass-through) and reads
+// fail-closed here: policyNamed=false, deltaRounds forced to zero — the
+// delta ladder is unreachable for a policy the CLI cannot enforce.
 func loadCeilings(projectRoot, tier string) (tierCeiling int, deltaRounds int, policyNamed bool, err error) {
 	def := config.PlanAuditTierCeilingsConfig{}.Defaults()
 	tierCeiling = def.L

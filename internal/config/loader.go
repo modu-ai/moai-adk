@@ -418,22 +418,15 @@ func LoadHarnessConfig(path string) (*HarnessConfig, error) {
 		}
 	}
 
-	// Step 5: validate the ceiling policy value (SPEC-AUDIT-CEILING-001
-	// REQ-ACE-002). The documented value — the only one the prose policy and
-	// the CLI ladder implement — is hold-and-split; any other explicitly-set
-	// value is a config error, because a reader that silently accepts a
-	// policy name it does not enforce would read the key while ignoring its
-	// meaning. An absent value stays loadable for legacy harness.yaml files
-	// that predate the key; the enforcing engine treats an unnamed policy as
-	// a final hit (fail-closed, never a granted delta round).
-	if v := cfg.PlanAuditCeilingPolicy.OnFinalHit; v != "" && v != "hold-and-split" {
-		return nil, &ValidationError{
-			Field:   "plan_audit_ceiling_policy.on_final_hit",
-			Message: fmt.Sprintf("value %q is not a documented ceiling policy (only hold-and-split is implemented)", v),
-			Value:   v,
-			Wrapped: ErrInvalidYAML,
-		}
-	}
+	// Step 5 (retired): the ceiling policy value is NOT validated here.
+	// The SPEC-AUDIT-CEILING-002 config matrix (TestSpecCeilingConfigMatrix
+	// M2/M12) pins pass-through: an unknown on_final_hit NAME is not a
+	// config error — the string loads verbatim and the enforcing engine
+	// reads it at evaluation level, where any name other than
+	// hold-and-split fails closed (never a granted delta round). The
+	// load-time rejection this spot once carried (SPEC-AUDIT-CEILING-001
+	// REQ-ACE-002's strict reading) broke that pinned convention and is
+	// removed, not weakened.
 
 	return cfg, nil
 }

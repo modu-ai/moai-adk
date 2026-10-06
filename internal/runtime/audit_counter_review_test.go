@@ -13,21 +13,32 @@ import (
 // test reproduced its finding on the pre-repair tree before its fix, in
 // package (the reviewer's temporary-overlay probes promoted to real tests).
 
-// F1 — audit_ceiling.go loadCeilings: an INVALID on_final_hit is a config
-// error, not a missing-file default. The harness config's own load
-// validation rejects the value; the engine must surface that refusal, not
-// silently proceed on the default ceilings.
-func TestEvaluateCeilingInvalidPolicyRefused(t *testing.T) {
+// F1 — audit_ceiling.go loadCeilings: an UNKNOWN on_final_hit NAME passes
+// the config load without an error (SPEC-AUDIT-CEILING-002 config matrix
+// M2/M12 pass-through; the load-time rejection F1 originally surfaced was
+// retired with that convention) but never activates the delta ladder — the
+// engine reads the name at evaluation level and grants no delta round for a
+// policy it does not implement (fail-closed: deltaRounds forced to zero
+// even when auto_delta_rounds is configured), while the configured tier
+// ceiling itself is still honored.
+func TestEvaluateCeilingUnknownPolicyFailClosed(t *testing.T) {
 	f := newCeilingFixture(t)
-	harness := "harness:\n  evaluator:\n    memory_scope: per_iteration\n  plan_audit_tier_ceilings:\n    S: 1\n    M: 2\n    L: 1\n  plan_audit_ceiling_policy:\n    auto_delta_rounds: 0\n    on_final_hit: admit\n"
+	harness := "harness:\n  evaluator:\n    memory_scope: per_iteration\n  plan_audit_tier_ceilings:\n    S: 1\n    M: 2\n    L: 1\n  plan_audit_ceiling_policy:\n    auto_delta_rounds: 3\n    on_final_hit: admit\n"
 	if err := os.WriteFile(filepath.Join(f.root, ".moai", "config", "sections", "harness.yaml"), []byte(harness), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	path := f.writeIter(t, 1, "PASS")
-	fields, hashOK := f.fieldsFromHash(t, path)
-	_, _, err := EvaluateCeiling(f.input(), fields, hashOK, nil)
-	if err == nil {
-		t.Fatal("an invalid on_final_hit policy was swallowed; want a config error")
+	tierCeiling, deltaRounds, policyNamed, err := loadCeilings(f.root, "L")
+	if err != nil {
+		t.Fatalf("an unknown on_final_hit NAME is load pass-through, not a config error: %v", err)
+	}
+	if policyNamed {
+		t.Fatal("an unimplemented policy name was treated as an enforcing hold-and-split")
+	}
+	if deltaRounds != 0 {
+		t.Fatalf("deltaRounds %d, want 0 — an unknown policy name never grants the delta ladder", deltaRounds)
+	}
+	if tierCeiling != 1 {
+		t.Fatalf("tierCeiling %d, want 1 (the configured L ceiling is honored)", tierCeiling)
 	}
 }
 

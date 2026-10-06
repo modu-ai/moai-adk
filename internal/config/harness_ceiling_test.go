@@ -107,11 +107,15 @@ func TestStructYAMLSymmetry(t *testing.T) {
 	}
 }
 
-// TestOnFinalHitValidated asserts BOTH polarities of the on_final_hit
-// validation (REQ-ACE-002, B2): the documented hold-and-split loads, and an
-// undocumented value fails the harness config load — a validator that
-// accepted any value would silently read the key while ignoring its meaning.
-func TestOnFinalHitValidated(t *testing.T) {
+// TestOnFinalHitPassThrough asserts BOTH polarities of the on_final_hit
+// pass-through convention (SPEC-AUDIT-CEILING-002 config matrix, M2/M12):
+// the documented hold-and-split loads verbatim, and an undocumented NAME
+// also loads without error — the string passes through and the enforcing
+// engine reads it at evaluation level, where anything but hold-and-split
+// fails closed (never a granted delta round). The load-time rejection this
+// test once pinned (SPEC-AUDIT-CEILING-001's strict reading) is retired
+// with it.
+func TestOnFinalHitPassThrough(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "harness.yaml")
 	base := `harness:
@@ -143,14 +147,20 @@ func TestOnFinalHitValidated(t *testing.T) {
 		t.Fatalf("auto_delta_rounds %d, want 1", cfg.PlanAuditCeilingPolicy.AutoDeltaRounds)
 	}
 
-	// Any undocumented value is a config error — the CLI refuses to enforce a
-	// policy it cannot name.
-	for _, bad := range []string{"split-and-hold", "admit", "hold-and-ask"} {
-		if err := os.WriteFile(path, []byte(fmt.Sprintf(base, bad)), 0o600); err != nil {
+	// Any undocumented NAME loads verbatim — the config layer passes the
+	// string through; enforcement is evaluation-level (the engine grants no
+	// delta round for a policy it does not implement).
+	for _, unknown := range []string{"split-and-hold", "admit", "hold-and-ask", "hold", "split-only"} {
+		if err := os.WriteFile(path, []byte(fmt.Sprintf(base, unknown)), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := LoadHarnessConfig(path); err == nil {
-			t.Errorf("on_final_hit %q loaded; want a config error", bad)
+		cfg, err := LoadHarnessConfig(path)
+		if err != nil {
+			t.Errorf("on_final_hit %q failed to load: %v", unknown, err)
+			continue
+		}
+		if cfg.PlanAuditCeilingPolicy.OnFinalHit != unknown {
+			t.Errorf("on_final_hit = %q, want the verbatim %q", cfg.PlanAuditCeilingPolicy.OnFinalHit, unknown)
 		}
 	}
 }
