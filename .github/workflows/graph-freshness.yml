@@ -13,8 +13,12 @@ on:
   # the guard job alone consumes this event (job-level if: below).
   pull_request_target:
     branches: [main, develop]
+  # card t1535 (REQ-GFC-013): the push trigger is main-only under GitHub
+  # Flow. The pull_request/pull_request_target blocks above keep their
+  # develop entries — PR events on a deleted ref can no longer fire, and
+  # that residue's cleanup belongs to the cutover card (design D-4).
   push:
-    branches: [main, develop]
+    branches: [main]
 
 permissions:
   contents: read

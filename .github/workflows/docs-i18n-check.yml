@@ -24,13 +24,13 @@ on:
       - 'docs-site/content/**'
       - 'scripts/docs-i18n-check.sh'
       - '.github/workflows/docs-i18n-check.yml'
-  # develop is the integration branch under git-flow: lane work merges into it
-  # directly, with no card PR to carry the pull_request trigger. Without develop
-  # here the check never runs on the branch where the content actually lands.
+  # main is the integration branch under GitHub Flow: docs-site content
+  # lands on main through card PRs (covered by the pull_request trigger
+  # above), and the push trigger keeps the check running on main itself
+  # (card t1535 REQ-GFC-013 — the git-flow develop rationale is gone).
   push:
     branches:
       - main
-      - develop
     paths:
       - 'docs-site/content/**'
       - 'scripts/docs-i18n-check.sh'
