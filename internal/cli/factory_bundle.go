@@ -145,7 +145,15 @@ func runFactoryBundleLocked(cmd *cobra.Command, l *factory.LockedBacklog, root, 
 		headRow = &rows[i]
 		break
 	}
-	if hf := factoryGeneratedHubFields(factoryHubChainFields(rec, rows, cards[0]), headRow); hf.HintAfter != nil {
+	// The head's hub candidates exclude the bundle's own members (card
+	// t1533, review-gate r8): a member is ordered by the bundle, and a head
+	// waiting on its own follower refused the load with a dependency
+	// opposite to the explicit order.
+	memberSet := make(map[string]bool, len(cards))
+	for _, id := range cards {
+		memberSet[id] = true
+	}
+	if hf := factoryGeneratedHubFields(factoryHubChainFields(rec, rows, cards[0], memberSet), headRow); hf.HintAfter != nil {
 		members[0].HintAfter = *hf.HintAfter
 	}
 	head, err := factoryBundleRecord(ctx, db, runID, members, lane, now)
@@ -216,7 +224,11 @@ func factoryRefuseForeignChain(rows []homestate.Card, lane string, cards []strin
 // this is the one place that sees both (design §7.2). A card with no files,
 // no crossing, or no chainable predecessor carries no hint. Keep-set and
 // selection read no file overlap: the hint is a RECORD-CREATION input only.
-func factoryHubChainFields(queueRec *factory.BacklogRecord, cards []homestate.Card, cardID string) homestate.CardFields {
+// exclude names cards that are never candidates — the bundle load passes its
+// own member set, because a member is ordered by the bundle and a head made
+// to wait on its follower refused the load with a dependency opposite to the
+// explicit order (card t1533, review-gate r8).
+func factoryHubChainFields(queueRec *factory.BacklogRecord, cards []homestate.Card, cardID string, exclude map[string]bool) homestate.CardFields {
 	hub := make(map[string]bool)
 	for _, p := range homestate.HubFiles() {
 		hub[p] = true
@@ -247,7 +259,7 @@ func factoryHubChainFields(queueRec *factory.BacklogRecord, cards []homestate.Ca
 	var tail *string
 	for i := range queueRec.Items {
 		it := &queueRec.Items[i]
-		if it.ID == cardID || it.Issuance == nil {
+		if it.ID == cardID || it.Issuance == nil || exclude[it.ID] {
 			continue
 		}
 		shares := false
@@ -289,15 +301,15 @@ func factoryHubChainFields(queueRec *factory.BacklogRecord, cards []homestate.Ca
 // factoryGeneratedHubFields merges the computed hub hint into the
 // record-creation fields for a card that may already carry a factory row
 // (card t1533, card-review r2f ledger): a GENERATED hint is a
-// record-creation input only — the recomputed tail drifts from the stored
-// one as soon as a later queue card shares the hub path, and overwriting
-// with it re-chained members against their own bundle order until two cards
-// pointed at each other and ordered in a circle. The stored hint survives
-// every subsequent write; an explicit input (--after, a bundle member hint)
-// lands through its own path and outranks the fill. A row in any other
-// state, and a row with no stored hint, leave the computed hint standing.
+// record-CREATION input only — written ONLY when the card has no row at
+// all, NEVER into an existing row, whether that row holds a hint or an
+// empty one (review-gate r6: filling an empty row recomputed the tail
+// across the chain and minted a t1→t2→t1 cycle that outlived the failed
+// lease). The stored hint survives every subsequent write; an explicit
+// input (--after, a bundle member hint) lands through its own path and
+// outranks the fill.
 func factoryGeneratedHubFields(fields homestate.CardFields, row *homestate.Card) homestate.CardFields {
-	if row != nil && row.State == homestate.CardPicked && row.HintAfter != "" {
+	if row != nil {
 		fields.HintAfter = nil
 	}
 	return fields
@@ -364,8 +376,10 @@ func factoryHubWaitUnmerged(queueRec *factory.BacklogRecord, cards []homestate.C
 		return "", false
 	}
 	recorded := make(map[string]bool, len(cards))
+	rowOf := make(map[string]homestate.Card, len(cards))
 	for _, c := range cards {
 		recorded[c.CardID] = true
+		rowOf[c.CardID] = c
 	}
 	for i := 0; i < candIdx; i++ {
 		it := &queueRec.Items[i]
@@ -379,6 +393,18 @@ func factoryHubWaitUnmerged(queueRec *factory.BacklogRecord, cards []homestate.C
 		case factory.BacklogStateQueued, factory.BacklogStatePicked, factory.BacklogStateHold:
 		default:
 			continue
+		}
+		// Same-bundle members wait by the RECORDED BUNDLE ORDER, not the
+		// queue order (card t1533, review-gate r9): a bundle loaded in
+		// reverse queue order made the head wait on its own follower by the
+		// queue-position rule while the follower waited on the head by the
+		// bundle rule, and not even the bundle's first card leased. The
+		// bundle orders its members; only a member EARLIER in the bundle
+		// holds the candidate.
+		if candRow, ok := rowOf[cardID]; ok && candRow.BundleID != "" {
+			if predRow, ok := rowOf[it.ID]; ok && predRow.BundleID == candRow.BundleID && candRow.BundleOrder < predRow.BundleOrder {
+				continue
+			}
 		}
 		for _, f := range it.Issuance.Files {
 			if candHub[f] {

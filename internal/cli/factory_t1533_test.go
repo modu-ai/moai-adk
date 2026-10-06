@@ -427,3 +427,184 @@ func TestReviewNominatedWaitsOnAllHubPredecessors(t *testing.T) {
 		t.Fatalf("t3 = %s holder=%q, want leased to lane-3", c.State, c.LeaseHolder)
 	}
 }
+
+// TestReviewNominatedLeaseDoesNotFillAnEmptyHint — gate r6: the generated
+// hint skipped rows that HELD a hint but still filled rows whose hint was
+// empty, and the fill minted a cycle in the record: t1's empty row gained
+// after=t2 while t2 waits after=t1, the lease failed at the T2 guard, and
+// the cycle stayed behind. Generated hints are record-CREATION inputs —
+// never written into an existing row, empty or not.
+func TestReviewNominatedLeaseDoesNotFillAnEmptyHint(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	for _, id := range []string{"t1", "t2"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	}
+	fbSeedFiles(t, store, "t1", t1533HubA)
+	fbSeedFiles(t, store, "t2", t1533HubA)
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	// t1's row is created with no hint: no sharer is recorded yet.
+	if _, _, err := runFactory(t, "assign", "t1", "--run", fcRun); err != nil {
+		t.Fatalf("assign t1: %v", err)
+	}
+	if c := fcCard(t, root, "t1"); c.HintAfter != "" || c.State != homestate.CardPicked {
+		t.Fatalf("fixture: t1 = %s after=%q, want the hint-less picked row", c.State, c.HintAfter)
+	}
+	// t2 waits on t1 — the row the cycle repro places.
+	fcPlace(t, root, homestate.Card{CardID: "t2", State: homestate.CardPicked, HintAfter: "t1"})
+
+	sdLaneEnv(t, "lane-1", "")
+	if _, _, err := runFactory(t, "next", "--card", "t1", "--run", fcRun); err != nil {
+		t.Fatalf("next --card t1: %v — an empty hint must not be filled on an existing row", err)
+	}
+	c := fcCard(t, root, "t1")
+	if c.HintAfter != "" {
+		t.Fatalf("t1's after = %q, want empty — the generated tail (t2) must never be written into the existing row", c.HintAfter)
+	}
+	if c.State != homestate.CardLeased || c.LeaseHolder != "lane-1" {
+		t.Fatalf("t1 = %s holder=%q, want leased to lane-1 (no hint, no guard)", c.State, c.LeaseHolder)
+	}
+	if c := fcCard(t, root, "t2"); c.State != homestate.CardPicked || c.HintAfter != "t1" {
+		t.Fatalf("t2 = %s after=%q, want untouched", c.State, c.HintAfter)
+	}
+}
+
+// TestReviewUnrecordedPickedHubWait — gate r6/r7: the b2 arm (queue-picked,
+// no record row) recorded the card and attempted the lease even when a hub
+// predecessor was unmerged, and the refused claim errored the whole `next`
+// call while an unrelated ready card waited behind it. The no-record arms
+// wait like every other path: b2 skips before recording, and selection
+// reaches the ready card.
+func TestReviewUnrecordedPickedHubWait(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked, factory.BacklogStateQueued)
+	for _, id := range []string{"t1", "t2", "t3"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	}
+	fbSeedFiles(t, store, "t1", t1533HubA)
+	fbSeedFiles(t, store, "t2", t1533HubA)
+	live := fcNow.Add(time.Hour).Format(time.RFC3339Nano)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", LeaseExpiresAt: live})
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	sdLaneEnv(t, "lane-1", "")
+	if _, _, err := runFactory(t, "next", "--run", fcRun); err != nil {
+		t.Fatalf("lane-1 next: %v — the unrecorded hub-waiting card must be skipped, not errored on", err)
+	}
+	if fcHasCard(t, root, "t2") {
+		t.Fatalf("t2 = %s — the waiting card must not be recorded before its predecessor merges", fcCard(t, root, "t2").State)
+	}
+	c := fcCard(t, root, "t3")
+	if c.State != homestate.CardLeased || c.LeaseHolder != "lane-1" {
+		t.Fatalf("t3 = %s holder=%q, want the unrelated ready card leased to lane-1", c.State, c.LeaseHolder)
+	}
+}
+
+// TestFactoryCompletePRMergePinnedToCardTip — gate r7: the auto-merge
+// request was not bound to the verified card commit — a pull request whose
+// head moved off the card's tip (a concurrent push) still had auto-merge
+// requested and pr-open recorded. The delivery verifies the PR head equals
+// the card tip and pins the merge request with --match-head-commit, so a
+// concurrent change cannot merge unverified code.
+func TestFactoryCompletePRMergePinnedToCardTip(t *testing.T) {
+	t.Run("moved-head-refuses-before-the-merge", func(t *testing.T) {
+		f := ghfNew(t, ghfOpts{syncStatus: "complete"})
+		d := newGHDouble(t, f)
+		d.headOid = "1111111111111111111111111111111111111111"
+		if _, err := ghfComplete(t); err == nil {
+			t.Fatal("the delivery merged a pull request whose head moved off the card tip")
+		}
+		if d.count("pr", "merge") != 0 {
+			t.Fatalf("the merge request ran despite the moved head; calls: %v", d.calls)
+		}
+	})
+
+	t.Run("matching-head-pins-the-merge", func(t *testing.T) {
+		f := ghfNew(t, ghfOpts{syncStatus: "complete"})
+		d := newGHDouble(t, f)
+		if _, err := ghfComplete(t); err != nil {
+			t.Fatalf("complete: %v", err)
+		}
+		want := "pr merge 7 --auto --squash --match-head-commit " + f.tip
+		if got := strings.Join(d.last("pr", "merge"), " "); got != want {
+			t.Fatalf("merge request = %q, want %q (pinned to the verified card tip)", got, want)
+		}
+		if c := fcCard(t, f.root, "t1"); c.State != homestate.CardPROpen {
+			t.Fatalf("card = %s, want pr-open", c.State)
+		}
+	})
+}
+
+// TestFactoryBundleHeadIgnoresOwnMembers — gate r8: the bundle head's
+// hub-candidate set included the bundle's OWN members, so loading t1 with
+// recorded t2 (same hub) made the head wait on its own follower and refused
+// the load — a dependency opposite to the explicit bundle order. Members
+// are ordered by the bundle; only NON-member sharers chain the head.
+func TestFactoryBundleHeadIgnoresOwnMembers(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	for _, id := range []string{"t1", "t2"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	}
+	fbSeedFiles(t, store, "t1", t1533HubA)
+	fbSeedFiles(t, store, "t2", t1533HubA)
+	fcPlace(t, root, homestate.Card{CardID: "t2", State: homestate.CardPicked})
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	sdClearLaneEnv(t)
+	if _, _, err := runFactory(t, "bundle", "lane-1", "t1", "t2", "--run", fcRun); err != nil {
+		t.Fatalf("bundle: %v — the head must not wait on its own member", err)
+	}
+	head := fcCard(t, root, "t1")
+	if head.State != homestate.CardAssigned || head.OwnerLabel != "lane-1" || head.HintAfter != "" {
+		t.Fatalf("t1 = %s owner=%q after=%q, want the assigned hint-less head", head.State, head.OwnerLabel, head.HintAfter)
+	}
+	member := fcCard(t, root, "t2")
+	if member.HintAfter != "t1" || member.BundleID == "" || member.BundleID != head.BundleID {
+		t.Fatalf("t2 = after=%q bundle=%q, want the member chained after its head %q", member.HintAfter, member.BundleID, head.BundleID)
+	}
+}
+
+// TestReviewReversedBundleLeasesInBundleOrder — gate r9: a bundle loaded in
+// REVERSE queue order (`bundle lane-1 t2 t1`, queue t1→t2, same hub) loads
+// fine — the head carries no hub hint — and then the selection deadlocked:
+// the head t2 was skipped by the queue-order hub wait on its OWN follower
+// t1, while t1 waited on t2 by the bundle rule, so not even the bundle's
+// first card leased. Same-bundle members wait by the RECORDED BUNDLE ORDER,
+// not the queue order — on every path that consults the wait, the
+// un-nominated arms and the nominated validation alike.
+func TestReviewReversedBundleLeasesInBundleOrder(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	for _, id := range []string{"t1", "t2"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	}
+	fbSeedFiles(t, store, "t1", t1533HubA)
+	fbSeedFiles(t, store, "t2", t1533HubA)
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	// Queue order is t1→t2; the bundle loads t2 FIRST.
+	fbBundle(t, root, "lane-1", "t2", "t1")
+	if head := fcCard(t, root, "t2"); head.State != homestate.CardAssigned || head.OwnerLabel != "lane-1" || head.HintAfter != "" {
+		t.Fatalf("fixture: head t2 = %s owner=%q after=%q, want the assigned hint-less head", head.State, head.OwnerLabel, head.HintAfter)
+	}
+	if member := fcCard(t, root, "t1"); member.HintAfter != "t2" || member.BundleID == "" {
+		t.Fatalf("fixture: member t1 = after=%q bundle=%q, want the member chained after t2", member.HintAfter, member.BundleID)
+	}
+
+	// The head leads its own bundle: the queue-earlier follower must not
+	// hold it back.
+	if got := fbLeasedCard(t, root, "lane-1"); got != "t2" {
+		t.Fatalf("lane-1's lease = %q, want t2 — the bundle head is not waited back on its own follower", got)
+	}
+	// The head merges; the follower follows.
+	fcSetCardState(t, root, "t2", homestate.CardMergedLocal)
+	if got := fbLeasedCard(t, root, "lane-1"); got != "t1" {
+		t.Fatalf("lane-1's lease = %q, want t1 (the follower follows its merged head)", got)
+	}
+}

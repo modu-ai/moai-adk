@@ -289,9 +289,23 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 	if pr.BaseRefName != target {
 		return fmt.Errorf("factory complete: %s; pull request #%d targets %q, not the integration target %q", stays, pr.Number, pr.BaseRefName, target)
 	}
+	// The merge request is pinned to the verified card tip (card t1533,
+	// review-gate r7): a pull request whose head moved off the card's commit
+	// — a concurrent push, a re-target — must not merge unverified code. The
+	// head is verified against the worktree's tip AND the request carries
+	// --match-head-commit, so a change landing between the check and the
+	// merge is refused by gh itself.
+	tip, err := factoryGitRead(wt, "rev-parse", "HEAD")
+	if err != nil {
+		return fmt.Errorf("factory complete: %s; read the card tip: %w", stays, err)
+	}
+	tip = strings.TrimSpace(tip)
+	if pr.HeadRefOid != tip {
+		return fmt.Errorf("factory complete: %s; pull request #%d heads %s, not the verified card tip %s", stays, pr.Number, dash(pr.HeadRefOid), tip)
+	}
 	mergeFlag := factoryPRMergeFlag(method)
 	if !strings.EqualFold(pr.State, "MERGED") {
-		if _, err := factoryGHCall(wt, "pr", "merge", strconv.Itoa(pr.Number), "--auto", mergeFlag); err != nil {
+		if _, err := factoryGHCall(wt, "pr", "merge", strconv.Itoa(pr.Number), "--auto", mergeFlag, "--match-head-commit", tip); err != nil {
 			return fmt.Errorf("factory complete: %s; pull request #%d is open but the auto-merge request failed: %w", stays, pr.Number, err)
 		}
 	}

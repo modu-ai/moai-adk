@@ -745,7 +745,7 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	// hubFields computes the hub-chain hint a record CREATION carries for
 	// cardID, from the same one queue read every arm sees (REQ-TCI-020).
 	hubFields := func(cardID string) homestate.CardFields {
-		return factoryHubChainFields(queueRec, cards, cardID)
+		return factoryHubChainFields(queueRec, cards, cardID, nil)
 	}
 	// (a) a card assigned to this lane — the lease edge alone (T3).
 	for _, c := range cards {
@@ -825,6 +825,14 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		// state this arm claims is named; every other state falls through.
 		if it.State == factory.BacklogStatePicked && !recorded[it.ID] {
 			if !modeEligible(it.ID) {
+				continue
+			}
+			// The no-record arm waits like every other path (card t1533,
+			// review-gate r6/r7): recording first and refusing at the claim
+			// errored the whole next call while unrelated ready cards waited
+			// behind it. Skipped here, the card is neither recorded nor
+			// claimed, and selection reaches the ready cards.
+			if _, wait := hubWaitUnmerged(it.ID); wait {
 				continue
 			}
 			if err := factoryLeaseBeforeClaim("b2", it.ID); err != nil {
@@ -1348,7 +1356,7 @@ func factoryNominateInSection(ctx context.Context, l *factory.LockedBacklog, db 
 	// hint is a record-creation input, never an overwrite — the recomputed
 	// tail drifts as the chain moves, and overwriting with it re-ordered a
 	// bundle member against its own stored chain.
-	hubHint := factoryGeneratedHubFields(factoryHubChainFields(queueRec, hubRows, cardID), nom.row)
+	hubHint := factoryGeneratedHubFields(factoryHubChainFields(queueRec, hubRows, cardID, nil), nom.row)
 
 	// A claim that neither leased nor errored lost a race (the same signal the
 	// unnominated arms re-select on); an error is a failure of the claim.
@@ -2194,7 +2202,7 @@ func newFactoryAssignCommand() *cobra.Command {
 							// set above and must survive the fill (AC-TCI-020's
 							// explicit-input-outranks clause cuts the other way
 							// for --after alone, never for the whole struct).
-							if hub := factoryHubChainFields(rec, rows, cardID); hub.HintAfter != nil {
+							if hub := factoryHubChainFields(rec, rows, cardID, nil); hub.HintAfter != nil {
 								fields.HintAfter = hub.HintAfter
 							}
 						} else {

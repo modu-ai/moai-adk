@@ -309,8 +309,8 @@ func TestFactoryCompleteGitHubFlowPR(t *testing.T) {
 			t.Errorf("PR body does not end with the line 🗿 MoAI:\n%s", body)
 		}
 		merge := d.last("pr", "merge")
-		if merge == nil || strings.Join(merge, " ") != "pr merge 7 --auto --squash" {
-			t.Errorf("auto-merge request = %v, want `pr merge 7 --auto --squash`", merge)
+		if merge == nil || strings.Join(merge, " ") != "pr merge 7 --auto --squash --match-head-commit "+f.tip {
+			t.Errorf("auto-merge request = %v, want `pr merge 7 --auto --squash --match-head-commit <card tip>`", merge)
 		}
 		c := fcCard(t, f.root, "t1")
 		if c.State != homestate.CardPROpen {
@@ -448,8 +448,9 @@ func TestFactoryCompleteGitHubFlowMergeMethod(t *testing.T) {
 			if _, err := ghfComplete(t); err != nil {
 				t.Fatalf("complete: %v", err)
 			}
-			if got := strings.Join(d.last("pr", "merge"), " "); got != "pr merge 7 --auto "+want {
-				t.Errorf("merge request = %q, want %q", got, "pr merge 7 --auto "+want)
+			want := "pr merge 7 --auto " + want + " --match-head-commit " + f.tip
+			if got := strings.Join(d.last("pr", "merge"), " "); got != want {
+				t.Errorf("merge request = %q, want %q", got, want)
 			}
 		})
 	}
