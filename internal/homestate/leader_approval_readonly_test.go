@@ -2,8 +2,12 @@ package homestate
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -156,5 +160,67 @@ func TestOpenFactoryReadonly(t *testing.T) {
 	}
 	if _, err := ro.DB.ExecContext(ctx, `CREATE TABLE sneaky(x)`); err == nil {
 		t.Fatal("the read-only handle accepted a write")
+	}
+}
+
+// Review round-8 P2 (card t1538): the read-only handle must not CHECKPOINT
+// or otherwise physically modify the database WHILE IT IS OPEN — the scan's
+// queries run against a hot WAL without merging it — and in the steady
+// state (clean store, no WAL) its whole life is byte-for-byte inert. The
+// -shm file is excluded from the hashes: it is SQLite's transient
+// coordination metadata, recreated by every opener and carrying no durable
+// content. Residual: modernc's driver checkpoints a hot WAL when the
+// read-only handle CLOSES while it is the able closer — a content-preserving
+// merge recorded as §E.2 residual risk, not a content change.
+func TestOpenFactoryReadonlyNeverCheckpointsWAL(t *testing.T) {
+	db := openSandboxFactory(t)
+	path := db.Path
+	frPlaceRun(t, db, frRun, "active", "2026-09-25T00:00:00Z")
+	frPlace(t, db, Card{RunID: frRun, CardID: "hot", State: CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-hot"})
+	frBindDispatch(t, db, "hot", frRun)
+
+	hash := func() string {
+		var b strings.Builder
+		for _, suffix := range []string{"", "-wal"} {
+			raw, err := os.ReadFile(path + suffix)
+			if err != nil {
+				b.WriteString("absent;")
+				continue
+			}
+			sum := sha256.Sum256(raw)
+			b.WriteString(hex.EncodeToString(sum[:8]) + ";")
+		}
+		return b.String()
+	}
+
+	// Hot-WAL arm: a live writer keeps the WAL; the read-only handle's open
+	// and queries leave db and wal untouched.
+	before := hash()
+	ro, err := OpenFactoryReadonly(path)
+	if err != nil {
+		t.Fatalf("open read-only beside a live writer: %v", err)
+	}
+	if _, linked, err := ro.RecordedCardRowReadonly(context.Background(), "hot"); err != nil || !linked {
+		t.Fatalf("read-only read: linked=%v err=%v", linked, err)
+	}
+	if during := hash(); during != before {
+		ro.Close()
+		t.Fatalf("the read-only handle modified the store during its life: before %s during %s", before, during)
+	}
+
+	// Steady-state arm: after the writer closes cleanly, the read-only
+	// handle's whole life on the clean store is byte-for-byte inert.
+	_ = db.Close()
+	db2, err := OpenFactoryReadonly(path)
+	if err != nil {
+		t.Fatalf("open read-only on the clean store: %v", err)
+	}
+	if _, _, err := db2.RecordedCardRowReadonly(context.Background(), "hot"); err != nil {
+		t.Fatalf("clean-store read: %v", err)
+	}
+	steadyBefore := hash()
+	_ = db2.Close()
+	if steadyAfter := hash(); steadyAfter != steadyBefore {
+		t.Fatalf("the read-only handle modified the clean store: before %s after %s", steadyBefore, steadyAfter)
 	}
 }

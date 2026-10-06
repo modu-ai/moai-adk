@@ -215,12 +215,15 @@ func OpenFactoryReadonly(path string) (*FactoryDB, error) {
 		return nil, fmt.Errorf("open factory database read-only: %w", statErr)
 	}
 	values := url.Values{}
-	// query_only refuses every SQL write — DDL included — at the pragma
-	// layer, so no schema statement can ever run through this handle.
-	// mode=ro is deliberately NOT set: a WAL database cannot be opened
-	// through a plain read-only connection when its -shm is absent, and the
-	// scan must read a live store. The no-migration guarantee comes from
-	// never executing the schema DDL on this handle at all.
+	// mode=ro makes the CONNECTION read-only at the SQLite layer: a
+	// read-write connection opened with query_only alone still CHECKPOINTS
+	// the WAL on query or close when a crashed writer left WAL behind, so a
+	// dry-run could physically modify factory.db (review round-8 P2). A
+	// live writer's WAL makes this open fail explicitly (SQLITE_CANTOPEN
+	// when the -shm cannot be created read-only) — that failure surfaces
+	// as-is and the scan degrades to unknown; there is no read-write
+	// fallback. The no-migration guarantee is the missing schema DDL.
+	values.Add("mode", "ro")
 	values.Add("_pragma", "query_only(ON)")
 	values.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", factoryBusyTimeoutDefault.Milliseconds()))
 	p := filepath.ToSlash(path)
