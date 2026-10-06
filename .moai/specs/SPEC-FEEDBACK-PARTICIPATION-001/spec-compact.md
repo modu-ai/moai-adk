@@ -1,4 +1,4 @@
-# spec-compact — SPEC-FEEDBACK-PARTICIPATION-001 (version 0.5.0)
+# spec-compact — SPEC-FEEDBACK-PARTICIPATION-001 (version 0.5.1)
 
 Run-phase digest: requirements, acceptance map, files, exclusions. Full text in `spec.md` and `acceptance.md`.
 
@@ -14,7 +14,7 @@ Module A — consent
 Module B — detection and attribution
 - REQ-ANON-006 Closed kind enum (6) with verdict, derivation mode, registered sites; every recover site reports or is allowlisted; coverage is the main goroutine plus registered sites, other goroutines are a recorded gap.
 - REQ-ANON-007 Discard user-code, tool-failure, and user-config signals.
-- REQ-ANON-008 Capture is fail-open, bounded, network-free, model-free.
+- REQ-ANON-008 Capture is fail-open, bounded, network-free, model-free; the spool lives under the user's moai home, never under the project tree (D36).
 - REQ-ANON-009 Ordered first-match attribution, environment then user, evaluated at capture while the error chain is alive; `moai` only for a panic, an internal marker, or an enumerated moai sentinel; everything else (including an unmarked hook handler error) is user, environment, or ambiguous; only `moai` continues; ambiguous is retained locally — no model call, nothing queued (out of scope: the former adjudication variant, DEC-7).
 - REQ-ANON-010 Fingerprint from version, commit, os/arch, kind, moai-internal frame names (module-prefix filter, no paths or lines).
 
@@ -27,7 +27,7 @@ Module C — local pipeline
 Module D — publication
 - REQ-ANON-015 Go sender over the user's own `gh`; consent re-read per item; target is the compiled default repository unless the user-scoped file names another; never in a hook dispatch; time-boxed; quiet when `gh` is absent.
 - REQ-ANON-016 Existing fingerprint issue: one occurrence comment, none at the per-issue cap (advisory count from `gh` JSON); no model call.
-- REQ-ANON-017 New moai issue: one model call through the seam at most per queue item, a durable `summary_requested` marker persisted before the call (recovery with a marker but no summary takes the template text), validated summary persisted before create and reused on retry, template fallback.
+- REQ-ANON-017 New moai issue: one model call through the seam at most per queue item, a durable `summary_requested` marker persisted before the call (recovery with a marker but no summary takes the template text; the queue lock is owner-verified and stale-breakable, so a crash cannot wedge the queue, D37), validated summary persisted before create and reused on retry, template fallback.
 - REQ-ANON-018 No model call in any excluded case (including `ambiguous`) or at the daily cap; across retries at most one summary call per queue item.
 - REQ-ANON-019 Issue contract: title `[auto-report] <kind> <fingerprint>`, body marker block, occurrence marker, count = 1 + comments (advisory), markers untrusted (consumers re-derive from the title key), no body edit, no labels.
 
@@ -47,7 +47,7 @@ AC-001 R1+R24, AC-002 R2 (capture)+R8, AC-003 R2 (drain, sender)+R24, AC-004 R3,
 
 ## Files (by milestone)
 
-M1 `internal/bugreport/{kind,verdict,payload,validate,detail,fingerprint,frames,marker}.go`; M2 user-scoped reader in `internal/config`, writer and `PersistUserScoped` in `internal/settings`, web predicate and i18n, wizard, init and update files per `plan.md` §C (no template key, no inventory row); M3 capture (with capture-time attribution), spool, attribution, register, `cmd/moai/main.go`, the recover sites the design walk enumerates (non-exhaustive list; the walk is authoritative), hook registry and handler-name registration, preference cmd, update sync and clean-install; M4 `internal/feedback/outbox/`, `internal/cli/feedback_participation.go`; M5 `internal/feedback/publish/` and golden; M6 model seam, `summary_requested` marker, budget, CLI production implementation, static guards; M7 three `feedback.md` copies, four docs pages, `internal/template/auto_repair_guard_test.go`, wizard coexistence guard.
+M1 `internal/bugreport/{kind,verdict,payload,validate,detail,fingerprint,frames,marker}.go`; M2 user-scoped reader in `internal/config`, writer and `PersistUserScoped` in `internal/settings`, web predicate and i18n, wizard, init and update files per `plan.md` §C (no template key, no inventory row); M3 capture (with capture-time attribution), spool (user-scoped store under `<moai home>/state/bugreport/`, D36), attribution, register, `cmd/moai/main.go`, the recover sites the design walk enumerates (non-exhaustive list; the walk is authoritative), hook registry and handler-name registration, preference cmd, update sync and clean-install; M4 `internal/feedback/outbox/`, the owner-verified stale-lock break in `queue.go` `Mutate` (D37), `internal/cli/feedback_participation.go`; M5 `internal/feedback/publish/` and golden; M6 model seam, `summary_requested` marker, budget, CLI production implementation, static guards; M7 three `feedback.md` copies, four docs pages, `internal/template/auto_repair_guard_test.go`, wizard coexistence guard.
 
 ## Exclusions
 

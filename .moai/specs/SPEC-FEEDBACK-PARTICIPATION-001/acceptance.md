@@ -14,7 +14,7 @@
 |---|---|---|---|---|
 | AC-001 | REQ-001, REQ-024 | M2 | User-scoped store: defaults false, tracked file ignored, repository default, no key shipped | E1, E2 |
 | AC-002 | REQ-002 (capture half), REQ-008 | M3 | Participation off: capture is a no-op; capture is fail-open and bounded | E3 |
-| AC-003 | REQ-002 (drain and sender half), REQ-024 | M5 | Off or tracked-only: no drain, no `gh` call, zero model calls, default repository | E4 |
+| AC-003 | REQ-002 (drain and sender half), REQ-024 | M5 | Off or tracked-only: no drain, no `gh` call, zero model calls, default repository; a forged project-path spool is never read | E4 |
 | AC-004 | REQ-003 | M2 | Init question: one, default no, own group after Jev, absent from shared sets, persistence gate, pins amended | E5, E6 |
 | AC-005 | REQ-004 | M2 | Update asks once on a plain template-sync run only; default no; flag inventory classified | E7a, E7b |
 | AC-006 | REQ-005 | M2 | Consent text in four locales states every required fact | E5 |
@@ -29,7 +29,7 @@
 | AC-015 | REQ-015 | M5 | Sender re-checks consent per item, off the hook path, time-boxed, quiet when `gh` is absent | E11 |
 | AC-016 | REQ-016 | M5 | Existing fingerprint issue gets one occurrence comment, none at the cap; zero model calls | E11 |
 | AC-017 | REQ-017 | M6 | New moai issue: one model call, validated output, template fallback | E11 |
-| AC-018 | REQ-017, REQ-018 | M6 | Summary persisted before create; retries reuse it; per-item call bound across retries and crash windows | E11 |
+| AC-018 | REQ-017, REQ-018 | M6 | Summary persisted before create; retries reuse it; per-item call bound across retries, crash windows, and orphaned locks | E11 |
 | AC-019 | REQ-018 | M6 | Model-call budget: zero calls in every excluded case, one in the positive control | E11 |
 | AC-020 | REQ-019, REQ-014 | M5 | Issue title and marker contract round-trips; markers are untrusted; no body edit, no labels; preview equals the create bytes | E11, E23 |
 | AC-021 | REQ-020 | M2 | Web toggle: existing radio pair, present-companion, user-scoped read and write, marker key not rendered, full disclosure carried | E14, E15 |
@@ -87,12 +87,12 @@ internal/template/templates/.moai/config/sections/feedback.yaml:0
 note: an absence guard, green by design at both pins (no consent key may ship); its mutant is a template that ships the key. The local copy's `auto_submit` value changed at commit `82677fd27` (D29), but it carries no participation key — re-measured at `28a4a16bd`, same two `:0` lines, exit 1. Positive control E2p shows the instrument can fire.
 
 E2p
-tree: working tree atop HEAD `28a4a16bd` — the v0.5.0 revision, uncommitted at observation time (re-measured in this pass)
+tree: `c957ecc9d` (committed; re-measured in this pass)
 command: grep -c participation .moai/specs/SPEC-FEEDBACK-PARTICIPATION-001/spec.md
 exit: 0
 stdout:
-21
-note: re-measured on the renamed path at the post-rebase tree; earlier observations of the same instrument: 16 on the committed v0.2.0 spec.md at the pre-rename path, 21 on the v0.4.0 working tree. A non-zero count proves the same grep reports a hit when the word is present.
+22
+note: measured on the committed tree; the historical series of the same instrument is 16 (committed v0.2.0 spec.md at the pre-rename path), 21 (the v0.4.0 working tree), 21 (the uncommitted v0.5.0 draft the earlier entry named — D39 corrects the record to this committed-tree count). A non-zero count proves the same grep reports a hit when the word is present.
 ```
 
 ```
@@ -371,13 +371,13 @@ Maps REQ-ANON-002, REQ-ANON-008 (the capture half of REQ-ANON-002; the drain and
 - **Verify (new-test line)**: `go test ./internal/bugreport/ -run '^TestCaptureNeverPanicsOrBlocks$' -race -count=3 -v` — expect exit 0 and a PASS line for the name.
 - **RED-now**: E3. **Green path**: M3.
 
-### AC-003 — Off means no drain, no gh, no model, and the default repository
+### AC-003 — Off means no drain, no gh, no model; the default repository; no project-path store is read
 Maps REQ-ANON-002, REQ-ANON-024 (the drain and sender half of REQ-ANON-002; the capture half is AC-002)
-- **Given** a queued item, a recording `gh` stub, a counting model stub, and a spool, with (a) no user-scoped file and a tracked project file saying `participation: true` and `repository: attacker/x`, (b) a user file saying false, and (c) a user file saying true with no repository key and the same tracked file,
+- **Given** a queued item, a recording `gh` stub, a counting model stub, and a spool, with (a) no user-scoped file and a tracked project file saying `participation: true` and `repository: attacker/x`, (b) a user file saying false, and (c) a user file saying true with no repository key and the same tracked file; and (d) a consenting user whose user-scoped spool is empty while the project tree ships a well-formed forged spool at its project `bugreport` path whose entries carry `verdict: moai` (D36),
 - **When** the drain and the sender run,
-- **Then** in (a) and (b) the drain reads and writes nothing, the `gh` stub records zero calls, and the model stub records zero calls; in (c) the `gh` stub's `--repo` argument is `modu-ai/moai-adk`, never `attacker/x`. Mutants that must die: a sender that trusts the tracked key; a sender that targets the project-tier repository; a drain that runs when off.
-- **Verify (new-test line)**: `go test ./internal/feedback/outbox/ ./internal/feedback/publish/ -run '^(TestDrainNoopWhenParticipationOff|TestSenderNoopWhenParticipationOff|TestSenderIgnoresTrackedFileConsentAndRepository)$' -count=1 -v` — expect exit 0 and a PASS line for each of the three names.
-- **RED-now**: E4. **Green path**: M5 (the drain test lands in M4; the criterion closes when the sender exists).
+- **Then** in (a) and (b) the drain reads and writes nothing, the `gh` stub records zero calls, and the model stub records zero calls; in (c) the `gh` stub's `--repo` argument is `modu-ai/moai-adk`, never `attacker/x`; and in (d) the project-path spool is never read — zero capture-to-publication progression, zero `gh` calls, zero model calls, no queue entries, and only the user-scoped spool is consulted. Mutants that must die: a sender that trusts the tracked key; a sender that targets the project-tier repository; a drain that runs when off; a drain that trusts a project-path spool's persisted verdict.
+- **Verify (new-test line)**: `go test ./internal/feedback/outbox/ ./internal/feedback/publish/ -run '^(TestDrainNoopWhenParticipationOff|TestSenderNoopWhenParticipationOff|TestSenderIgnoresTrackedFileConsentAndRepository|TestDrainIgnoresForgedProjectSpool)$' -count=1 -v` — expect exit 0 and a PASS line for each of the four names.
+- **RED-now**: E4. **Green path**: M5 (the drain tests land in M4; the criterion closes when the sender exists).
 
 ### AC-004 — Init question slot, persistence gate, pins
 Maps REQ-ANON-003
@@ -496,13 +496,13 @@ Maps REQ-ANON-017
 - **Verify (new-test line)**: `go test ./internal/feedback/publish/ -run '^(TestPublishCallsModelOnceAndValidates|TestPublishFallsBackToTemplate|TestModelInputIsPayloadFieldsOnly)$' -count=1 -v` — expect exit 0 and a PASS line for each of the three names.
 - **RED-now**: E11. **Green path**: M6.
 
-### AC-018 — Summary persisted; retries and crash windows stay inside the bound
+### AC-018 — Summary persisted; retries, crash windows, and orphaned locks stay inside the bound
 Maps REQ-ANON-017, REQ-ANON-018
-- **Given** a moai-verdict item with no existing issue, a counting model stub, and a `gh` stub whose `create` fails twice and then succeeds; and separately a fault case in which the process is interrupted (or the queue-store write fails) after the durable `summary_requested` marker is persisted but before the summary is stored,
-- **When** the sender processes the retry item across the three attempts, and the fault-case item is recovered and processed again,
-- **Then** in the retry case the model stub records exactly one summary call in total (the second and third attempts read the stored summary from the queue item); in the fault case the marker makes the recovered item take the template text with zero additional model calls, so the per-item total stays at 1 across retries and crash windows; and when the remote lookup on a retry finds that an issue now exists, a comment is added and the stored summary is unused with no new model call. Mutants that must die: a sender that calls the model on every attempt; a sender that stores the summary after create instead of before; a sender that calls again after recovering an item whose marker exists without a stored summary.
-- **Verify (new-test line)**: `go test ./internal/feedback/publish/ -run '^(TestSummaryPersistedBeforeCreateAndReusedOnRetry|TestModelCallBoundPerQueueItem|TestMarkerBoundsCrashWindowRecall)$' -count=1 -v` — expect exit 0 and a PASS line for each of the three names.
-- **RED-now**: E11. **Green path**: M6.
+- **Given** a moai-verdict item with no existing issue, a counting model stub, and a `gh` stub whose `create` fails twice and then succeeds; separately a fault case in which the process is interrupted (or the queue-store write fails) after the durable `summary_requested` marker is persisted but before the summary is stored; and separately a kill-mid-Mutate case in which the process is killed between the queue store's lock acquisition and its deferred release, leaving the lock file orphaned (D37),
+- **When** the sender processes the retry item across the three attempts, the fault-case item is recovered and processed again, and a later flush runs after the kill-mid-Mutate case,
+- **Then** in the retry case the model stub records exactly one summary call in total (the second and third attempts read the stored summary from the queue item); in the fault case the marker makes the recovered item take the template text with zero additional model calls, so the per-item total stays at 1 across retries and crash windows; in the kill-mid-Mutate case the next flush acquires the queue (the owner-verified stale-lock break removes the orphan, a live owner still blocks) and the queue remains writable, with the recovered item taking the template text and zero additional model calls; and when the remote lookup on a retry finds that an issue now exists, a comment is added and the stored summary is unused with no new model call. Mutants that must die: a sender that calls the model on every attempt; a sender that stores the summary after create instead of before; a sender that calls again after recovering an item whose marker exists without a stored summary; a queue store whose lock acquire cannot break an owner-dead lock.
+- **Verify (new-test line)**: `go test ./internal/feedback/publish/ -run '^(TestSummaryPersistedBeforeCreateAndReusedOnRetry|TestModelCallBoundPerQueueItem|TestMarkerBoundsCrashWindowRecall|TestKillMidMutateLeavesQueueWritable)$' -count=1 -v` — expect exit 0 and a PASS line for each of the four names.
+- **RED-now**: E11. **Green path**: M6 (the stale-lock break itself lands in M4 with the queue wiring).
 
 ### AC-019 — Model-call budget
 Maps REQ-ANON-018
