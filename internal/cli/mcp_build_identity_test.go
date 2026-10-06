@@ -692,7 +692,12 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// Re-measured again at the card-review round-2 repair: N4's
 		// reviewScopeEvalPath insertion above cardMergeBase moved the same
 		// single comparison from 182. Same one comparison, same count.
-		"codex_review_scope.go:197": true,
+		// Card t1555: configured review-base measurements (remote common
+		// ancestor and ancestor ordering), plus the moved legacy measurement.
+		// All three select the code-review diff; none judges binary freshness.
+		"codex_review_scope.go:201": true,
+		"codex_review_scope.go:204": true,
+		"codex_review_scope.go:211": true,
 		// SPEC-WEB-SETTINGS-SAVE-001 scope ③ (card t1393): the session-worktree
 		// disposal landing check — arm (i) of the decided predicate asks
 		// whether the branch tip is an ancestor of refs/remotes/origin/develop

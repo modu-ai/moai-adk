@@ -48,9 +48,9 @@ const (
 	reviewScopeTree = "tree"
 )
 
-// cardBaseBranch is the gitflow integration branch the card diff is measured
-// against; cardBranchPrefix is the committed lane-protocol invariant the
-// discriminator's primary signal rides (REQ-CGS-004).
+// cardBaseBranch preserves the legacy unconfigured gitflow behavior.
+// Configured projects use the shared review base resolver instead.
+// cardBranchPrefix is the discriminator's committed invariant (REQ-CGS-004).
 const (
 	cardBaseBranch   = "develop"
 	cardBranchPrefix = "WT-"
@@ -191,9 +191,23 @@ func reviewScopeGit(dir string, args ...string) (string, error) {
 // pinned SHA (REQ-CGS-002, gitflow-lane-protocol §8: an absorption must move
 // the base, and only a recompute follows it).
 func cardMergeBase(dir string) (string, error) {
-	// The ONE ancestry read in this file — the card-diff base measurement, not
-	// a binary-lag comparison (REQ-ABI-006: binlag.Evaluate stays the only
-	// binary-lag judge; the sweep allowlist pins this coordinate).
+	if name := config.LoadWorktreeBaseBranch(dir); name != "" {
+		base, err := resolveReviewMergeBase(dir)
+		if err != nil {
+			return "", err
+		}
+		// A stale local base must not include already-landed remote changes.
+		// Choose the newer common ancestor; an unpushed newer local base stays.
+		remote, remoteErr := runReviewGit(dir, "merge-base", "refs/remotes/origin/"+name, "HEAD")
+		remote = strings.TrimSpace(remote)
+		if remoteErr == nil && remote != "" {
+			if _, err := runReviewGit(dir, "merge-base", "--is-ancestor", base, remote); err == nil {
+				base = remote
+			}
+		}
+		return base, nil
+	}
+	// Legacy ancestry read, not a binary-lag comparison (REQ-ABI-006).
 	base, err := reviewScopeGit(dir, "merge-base", cardBaseBranch, "HEAD")
 	if err != nil {
 		return "", fmt.Errorf("card merge base: %s", execerr.StatusDetail(err))
