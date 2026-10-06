@@ -176,3 +176,19 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   had_ref. Regression: phantom=1 control=0 malformed=1 matrix-exclude=1
   repo-root=0, harness 12 pass / 0 fail. CI publication still
   platform-blocked.
+- gate_round_9 (codex review gate findings, lane-direct): 3 repairs,
+  RED observed on the committed d98812e39 code then GREEN on this tree
+  (commit `891f18932`) — (1) validator parses YAML STRUCTURE: the
+  workflow is re-rendered to canonical block form by yq before the line
+  parser (flow-form matrices expand; yq failure fails the dimension),
+  dim keys accept hyphens (`go-version`), and matrix values keep spaces
+  (the value store joins on SUBSEP — the block-path strip and the
+  space-joined store were both caught by the GREEN probe before
+  commit); (2) every RED observer extracts its baseline from the
+  committed tree inside the script (git show <round-commit>:<path> +
+  lib; prep failure exits 9) — six observers rewritten and re-run to
+  identical results; (3) observation logs moved to mktemp paths with
+  cleanup traps (fixed /tmp paths let a planted symlink rewrite an
+  outside sentinel at exit 0). Regression: phantom=1 control=0
+  malformed=1 matrix-exclude=1 repo-root=0, harness 12 pass / 0 fail.
+  CI publication still platform-blocked.
