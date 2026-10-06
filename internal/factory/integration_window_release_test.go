@@ -228,3 +228,35 @@ func TestLeaseDisabledByZeroConfig(t *testing.T) {
 		t.Fatalf("a disabled lease never reads expired")
 	}
 }
+
+func TestAcquireWaitUnderHoldOnEmptyWindowMustEnqueueNotGrant(t *testing.T) {
+	// REQ-MWQ-012 (card-review r3 F2): under hold, a --wait acquire on an
+	// unheld window must come back with the hold sentinel — the verb
+	// enqueues on it — never take the window. The hold's purpose is to
+	// freeze the window for the leader after causes 7/8; granting it
+	// through the empty-window path voids the freeze exactly where nothing
+	// else stands guard.
+	root := t.TempDir()
+	_, now := opsClock()
+	at := now()
+	pinWindowClock(t, at)
+	if err := WriteIntegrationWindowPolicy(root, IntegrationWindowPolicy{Policy: PolicyHold, Reason: "cause-8 hold"}); err != nil {
+		t.Fatal(err)
+	}
+	_, err := AcquireIntegrationWindow(root, IntegrationLock{
+		SessionID: "sess-waiter", PID: os.Getpid(), PIDSource: PIDSourceSessionOwner, Branch: "develop",
+	}, false, &AcquireWindowOptions{ViaWait: true})
+	if err == nil || !IsIntegrationWindowHold(err) {
+		t.Fatalf("a --wait acquire on an empty window under hold must refuse with the hold sentinel (the verb enqueues on it): %v", err)
+	}
+	lock, readErr := ReadIntegrationLock(root)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if lock.Held() {
+		t.Fatalf("the refused acquire must not be written as holder: %+v", lock)
+	}
+	if len(lock.Queue) != 0 {
+		t.Fatalf("the record layer must not enqueue — the verb does: %+v", lock.Queue)
+	}
+}

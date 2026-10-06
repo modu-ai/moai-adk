@@ -393,10 +393,13 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 			replaced = current.Displaced
 		}
 
-		// REQ-MWQ-012: under hold, a no-wait acquire refuses naming the
-		// reason; a --wait acquire is the enqueuing path and comes back to
-		// the verb for its queue entry.
-		if policy.Policy == PolicyHold && !viaWait && (!current.Held() || current.SessionID != want.SessionID) {
+		// REQ-MWQ-012 (card-review r3 F2): under hold, EVERY acquire of a
+		// window the caller does not already hold refuses naming the reason.
+		// The former viaWait carve-out let a --wait acquire on an EMPTY
+		// window through to the grant path, voiding the hold exactly where
+		// nothing else stands guard. The verb enqueues on this sentinel, so
+		// a --wait caller comes back to the queue through it either way.
+		if policy.Policy == PolicyHold && (!current.Held() || current.SessionID != want.SessionID) {
 			return fmt.Errorf("%w: held by policy (%s)", ErrIntegrationWindowHold, policy.Reason)
 		}
 		// REQ-MWQ-011: the window is not granted to a no-wait acquire while
