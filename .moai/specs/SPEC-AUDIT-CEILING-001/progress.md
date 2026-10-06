@@ -9,6 +9,41 @@ plan_phase_branch: WT-audit-ceiling-counter
 plan_phase_worktree: .moai/worktrees/t1500
 plan_phase_artifacts: 7 (spec.md, plan.md, acceptance.md, design.md, research.md, progress.md, decision-index.md — Tier L set of 5 + progress + decision-index per interview.decision_gate: on)
 
+### Final plan repair (leader ruling) — v0.6.1 (2026-10-06, this change)
+
+- Leader final judgment: conditional kickoff — B1/B2 small repairs, NO
+  further audit rounds; after this repair only a presence check (grep
+  level) remains before run entry. Patch version 0.6.1 (hunk-scoped, same
+  scale class as v0.5.1), recorded in §H.
+- B1 (plan-completeness) closed — plan.md M1 now carries two explicit
+  steps for the plan-auditor.md mirror edit: (1) `make agents-emit`
+  REQUIRED in the same change (AGENTS.local.md §2.0 [HARD] — C3 .toml is
+  machine-emitted from C2, never hand-edited; skipped emit → stale .toml +
+  agents-emit-check red + stale binary embed); (2) the Retry Loop Contract
+  prose correction per C1 — the final-hit sentences (deployed
+  plan-auditor.md:708, :714, located this round) state hold+split as the
+  only final-hit outcome, superseded at admission time by the CLI ladder;
+  M1 corrects the prose to name pass-through / debt-admit / split / hold
+  in body + mirror + emitted .toml. design §2 carries the cross-layer
+  note.
+- B2 (ac-wording) closed — AC-ACE-002's verification column gains the
+  `on_final_hit` validation command: `TestOnFinalHitValidated`
+  (internal/config, M2) asserting BOTH polarities (undocumented value →
+  config load error — the REQ-ACE-002 fail-closed core; `hold-and-split` →
+  loads), with the mutant-probe rationale (a happy-only test passes a
+  validator accepting any value). RED-now cell measured this tree before
+  this change: `go test -list '^TestOnFinalHitValidated$' ./internal/config`
+  → `ok github.com/modu-ai/moai-adk/internal/config 0.330s`, exit 0, no
+  test listed, @3dffd2462 — plus the E8 new-test declaration. plan M2
+  names the test and its polarities.
+- Cross-layer sweep: plan M1 (B1 steps) + M2 (B2 test) + design §2 (B1
+  note); AC-ACE-002 extended (not added — AC count stays 22). REQ 15,
+  AC 22 — unchanged counts.
+- Plan-phase state at close: audit budget exhausted through the leader's
+  exception round; this v0.6.1 is the last plan-phase repair. Run entry
+  follows the leader's conditional-kickoff ruling (presence check, then
+  run).
+
 ### Plan-audit iter4 repair — v0.6.0 (2026-10-06, this change)
 
 - iter4 verdict: FAIL 0.81 + STOP (the delta round beyond the Tier L

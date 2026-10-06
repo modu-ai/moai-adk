@@ -134,6 +134,14 @@ ceiling-reached outcome (AC-ACE-013, `TestCeilingPolicyPassThrough`).
 3. `hold` — otherwise (hash mismatch, no findings, unanchored blocking
    findings, missing fields): hold record; blocked.
 
+Prose correction (B1 — C1): the plan-auditor agent body's Retry Loop
+Contract states hold+split as the only final-hit outcome (deployed
+plan-auditor.md:708, :714) — superseded at admission time by this ladder,
+whose pass-through and debt-admit rungs admit at the final hit. M1
+corrects that prose to name the ladder outcomes in the same change
+(deployed body + template mirror + the `make agents-emit` emission), so
+one policy keeps one wording with the CLI as its machine consumer.
+
 Refusal point (D4): `GateConfig.Invoke` is production-dead — 0 non-test
 references, 17 test-only (measured at 2f492df19 and re-measured at
 69a085b2d, research.md §2) — so a refusal wired only there refuses nothing.

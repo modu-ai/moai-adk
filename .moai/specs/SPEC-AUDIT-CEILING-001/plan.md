@@ -140,6 +140,27 @@ Data-model first: the receipt schema is the least reversible decision.
   same change (research.md §3 edit target; the pre-existing whole-file drift
   keeps it on AC-ACE-014's known-FAIL carve-out list for the untouched
   regions).
+- Mirror emission (B1 — [HARD], AGENTS.local.md §2.0): editing the
+  plan-auditor.md mirror REQUIRES running `make agents-emit` in the same
+  change — the `.codex/agents/moai/*.toml` layer (C3) is machine-emitted
+  from the markdown mirror (C2) and is never hand-edited (a manual edit is
+  silently overwritten at the next emit); a skipped emit leaves the .toml
+  stale, turns `agents-emit-check` red (`make build` and the CI
+  `go test ./internal/template/agentemit/...` guard), and ships binaries
+  that embed the stale agent definition.
+- Retry Loop Contract prose correction (B1 — C1's own requirement, in the
+  same change): the contract's final-hit sentences (deployed
+  plan-auditor.md:708 "a hold record plus a split proposal"; :714 "writes
+  a hold record and a split proposal") state hold+split as the ONLY
+  final-hit outcome, which the CLI ladder (design.md §2: pass-through,
+  debt-admit, split, hold) supersedes at admission time. The prose is
+  corrected to name the ladder outcomes — a final hit whose verdict is
+  admission-clean admits (REQ-ACE-013 pass-through), a label-only failure
+  debt-admits (REQ-ACE-004), anchored blocking findings split
+  (REQ-ACE-005), the rest holds (REQ-ACE-006) — keeping one policy with
+  the CLI as its machine consumer, per C1. The correction lands in the
+  deployed body, its template mirror, and the emitted .toml via the
+  `make agents-emit` step above.
 - Config-error disposition (D21): the M1 call sites resolve the gate set
   with the opposite of today's `resolveAuditGates` fail-open path — the
   resolution result distinguishes an error from a genuinely-empty
@@ -177,6 +198,11 @@ Data-model first: the receipt schema is the least reversible decision.
   AC-ACE-002's selector runs (only `_`-suffixed variants exist today;
   §C baseline 0 matches) — covering `harness.yaml` with a symmetry case for
   the new structs.
+- Add `TestOnFinalHitValidated` (internal/config) — the exact name
+  AC-ACE-002's B2 cell runs (measured absent package-wide @3dffd2462) —
+  asserting BOTH polarities of the `on_final_hit` validation: an
+  undocumented value fails the harness config load (config error), and
+  `hold-and-split` loads (B2; design.md §6's validation contract).
 - No `harness.yaml` edit: the config content is unchanged (design.md §6), so
   no mirror sync belongs to this milestone; the measured pre-existing
   `plan-auditor.md` mirror drift stays untouched (Out of Scope).
