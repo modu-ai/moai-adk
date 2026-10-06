@@ -172,7 +172,7 @@ checkFileAccess                91.1%
 
 ```yaml
 run_complete_at: "2026-10-07"
-run_commit_sha: "pending-backfill-run"   # backfilled after the run-phase commit lands
+run_commit_sha: "51481f355"
 run_status: audit-ready
 ac_pass_count: 7
 ac_fail_count: 0
