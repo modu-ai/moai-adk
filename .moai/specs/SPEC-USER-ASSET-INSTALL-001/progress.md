@@ -465,6 +465,34 @@ author: manager-spec
   repository-wide test verdict is owned by the CI run on origin/develop —
   PENDING at report time.
 
+### M3 — `moai update` user-asset phase (2026-10-06)
+
+- runUserAssetUpdatePhase (user_asset_phase.go): refresh (REQ-008 — the
+  installer's manifest-match arm), the SELECTION-BASED prune (REQ-009 —
+  PruneUnselected: every manifest-tracked file whose owning entry left
+  L0 ∪ the recorded selection, under the one removal rule incl. the
+  missing-file entry-drop arm and REQ-023 preserve+backup; the recorded
+  selection is passed back to Install so it is honored, never reset),
+  REQ-011 summary, all under the user lock, placed BEFORE the project
+  phase (REQ-024 upgrade-arm ordering). Journal reconciliation at run
+  start is the installer's own first act. ensureGlobalSettingsEnv
+  untouched.
+- RED (E8): `go test ./internal/userassets/ -run TestPrune` →
+  "in.PruneUnselected undefined" (absent surface); cli
+  TestUpdatePhase* authored red at the same surface.
+- GREEN: prune tests 3/3 (D28 flip arm over the deselect artifact,
+  L0-never-a-candidate + REQ-023 preserve, missing-file entry drop);
+  update-phase tests 2/2 (AC-005 verdict basis — current==manifest≠
+  shipped → rewritten to shipped bytes + hash re-recorded; REQ-004
+  update-honors + the deselect prune). R-b Route B precheck: the guard
+  test RED observed ("ROUTEB_PRECHECK_MISSING ... does not carry the
+  `moai bundle add delivery` remediation") → both entry points wired
+  (sync/delivery.md Route B row + run/task-decomposition.md Route B /
+  Phase 19): verify user-side role body + refuse with the named
+  remediation, C4.
+- Verification: TestRouteBPrecheck ok; userassets full ok; cli
+  M3-scoped families ok; lint 0 issues (this run, this tree).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

@@ -302,6 +302,8 @@ Tasks:
 
 Agent: manager-git subagent
 
+ENTRY PRECONDITION (SPEC-USER-ASSET-INSTALL-001, directed repair R-b): manager-git's role body ships in the opt-in `delivery` bundle, not L0 — verify it is installed (`~/.claude/agents/manager-git.md` for Claude, `~/.codex/agents/manager-git.toml` for Codex) BEFORE Phase 19 delegates; when it is absent, refuse with the named remediation `moai bundle add delivery` (C4: actionable report — never a missing-file error mid-flow).
+
 Tasks:
 - Create feature branch `feat/SPEC-{ID}`
 - Stage all relevant implementation and test files

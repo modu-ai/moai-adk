@@ -20,6 +20,129 @@ import (
 	"github.com/modu-ai/moai-adk/internal/template"
 )
 
+// PruneUnselected applies the selection-based criterion (REQ-009): every
+// manifest-tracked file whose owning entry is no longer in (L0 ∪ the
+// manifest's recorded selection) is removed under the one removal rule —
+// manifest-hash match, or shipped-bytes match where a shipped source exists;
+// a file matching neither is REQ-023 divergence (preserved + backed up +
+// reported); a file missing on disk drops its entry and counts removed.
+// `moai update` runs this against the manifest's recorded selection so a
+// `moai bundle remove`d bundle's artifact files are pruned (AC-018's D28
+// flip-criterion arm).
+func (in *Installer) PruneUnselected(manifest *Manifest) (*Result, error) {
+	res := &Result{}
+	if err := manifest.CanRemove(); err != nil {
+		return nil, err
+	}
+	roots := make(map[RootSlug]resolvedRoot, 4)
+	for _, r := range ResolveRoots(in.Home) {
+		rr, err := resolveRoot(in.Home, r)
+		if err != nil {
+			return nil, fmt.Errorf("resolve root %s: %w", r.Slug, err)
+		}
+		roots[r.Slug] = rr
+	}
+	allowed := map[string]bool{}
+	for _, e := range in.preservedEntries(manifest.Bundles) {
+		allowed[e.Name] = true
+	}
+
+	// Snapshot the keys: removal mutates the map.
+	keys := make([]string, 0, len(manifest.Files))
+	for k := range manifest.Files {
+		keys = append(keys, k)
+	}
+	for _, k := range keys {
+		slug, rel, ok := splitManifestKey(k)
+		if !ok {
+			continue
+		}
+		name, ok := owningEntryName(rel)
+		if !ok || allowed[name] {
+			continue
+		}
+		entry, found := in.lookupEntry(name)
+		if !found {
+			// No shipped source anywhere (the entry left the catalog too):
+			// only the manifest-hash alternative applies (REQ-009 iter4 D25).
+			entry = template.Entry{Name: name}
+		}
+		if err := in.removeManifestKey(entry, k, slug, rel, roots[slug], manifest, res); err != nil {
+			res.Failures = append(res.Failures, FileOutcome{Path: k, Reason: err.Error()})
+		}
+	}
+	return res, nil
+}
+
+// owningEntryName derives the catalog entry name from a manifest key's
+// relpath: skills are directory-rooted ("<name>/..."), agents are flat
+// files ("<name>.md" / "<name>.toml").
+func owningEntryName(rel string) (string, bool) {
+	if i := strings.Index(rel, "/"); i > 0 {
+		return rel[:i], true
+	}
+	name := rel
+	for _, suffix := range []string{".md", ".toml"} {
+		if trimmed, ok := strings.CutSuffix(name, suffix); ok {
+			return trimmed, true
+		}
+	}
+	return "", false
+}
+
+// lookupEntry finds a catalog entry by name across all sections.
+func (in *Installer) lookupEntry(name string) (template.Entry, bool) {
+	for _, e := range in.Catalog.AllEntries() {
+		if e.Name == name {
+			return e, true
+		}
+	}
+	return template.Entry{}, false
+}
+
+// removeManifestKey applies the one removal rule to a single manifest key.
+func (in *Installer) removeManifestKey(entry template.Entry, k string, slug RootSlug, rel string, root resolvedRoot, manifest *Manifest, res *Result) error {
+	record, tracked := manifest.Files[k]
+	if !tracked {
+		return nil
+	}
+	abs := filepath.Join(root.dir, filepath.FromSlash(rel))
+	current, readErr := os.ReadFile(abs)
+	if readErr != nil {
+		if os.IsNotExist(readErr) {
+			delete(manifest.Files, k)
+			res.Removed++
+			return nil
+		}
+		return fmt.Errorf("read %s: %w", abs, readErr)
+	}
+	currentSHA := sha256Hex(current)
+	shipped, shippedErr := in.readShippedForKey(entry, k)
+	switch {
+	case currentSHA == record.SHA256:
+		// Manifest-hash match: remove.
+	case shippedErr == nil && currentSHA == sha256Hex(shipped):
+		// Shipped-bytes alternative (REQ-009 iter4 D25).
+	default:
+		// REQ-023 divergence: preserve + backup + report.
+		if shippedErr == nil {
+			if err := in.backupShipped(root, rel, shipped); err != nil {
+				return fmt.Errorf("backup shipped bytes: %w", err)
+			}
+		}
+		res.DivergencePreserved++
+		res.Divergences = append(res.Divergences, k)
+		return nil
+	}
+	if err := os.Remove(abs); err != nil {
+		return err
+	}
+	delete(manifest.Files, k)
+	res.Removed++
+	in.pruneEmptyDirs(root, rel)
+	return nil
+}
+
 // RemoveBundle removes the entries of the named bundle that are NOT in
 // (L0 ∪ the remaining selection) — the E3 complement. Shared entries survive
 // with a report note; an entry that is a declared dependency of a PRESERVED

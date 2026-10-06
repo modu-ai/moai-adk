@@ -504,6 +504,20 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// before its version-match early return so an up-to-date project heals too.
 	healManifestBestEffort(".", out, cmd.ErrOrStderr())
 
+	// SPEC-USER-ASSET-INSTALL-001 (M3): the user-asset phase — refresh
+	// (REQ-008), the selection-based prune (REQ-009), REQ-023 divergence
+	// handling, the REQ-011 summary. It runs BEFORE the project phase so the
+	// upgrade first-install precedes the migration removal (REQ-024's
+	// upgrade-arm ordering; design §2.4). Placement beside the mirror repair
+	// below follows the same not-behind-the-early-return reasoning the
+	// wiring refresh carries: an up-to-date project still owes its user
+	// folders the refresh.
+	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+		if err := runUserAssetUpdatePhase(homeDir, out); err != nil {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: user-asset phase failed (continuing with the project phase): %v\n", err)
+		}
+	}
+
 	// Legacy skills are archived inside the template sync, before its managed
 	// cleanup removes .claude/skills/moai*; a skipped sync archives nothing,
 	// which keeps REQ-UAC-004.
