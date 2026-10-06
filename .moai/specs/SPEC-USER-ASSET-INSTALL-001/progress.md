@@ -620,6 +620,43 @@ author: manager-spec
   docs item handed to /moai sync.
 - CHANGELOG: manager-docs-owned (B12); the sync phase owns the entry.
 
+### Review-fix round — 9 codex-gate findings (2026-10-06, commit b53661a16)
+
+- RF1 [P1]: the deletion path re-validates the destination parent
+  immediately before os.Remove (the C2 posture the writes carry) — the
+  external-sentinel fixture survives a swapped parent symlink.
+- RF2 [P2]: the PRUNE applies the R-f-② dependency-deferral rule (kept +
+  reported) — previously only RemoveBundle deferred.
+- RF3 [P2]: bundle removal enumerates targets from the MANIFEST (keys
+  whose recorded bundle names the removed bundle) — older-deployment
+  artifacts absent from the current source tree are removed with their
+  records.
+- RF4 [P2]: a corrupt journal is preserved (renamed aside) and the run
+  ABORTS — never overwritten and lost.
+- RF5 [P2]: the collision determination runs FIRST; untracked targets
+  (content-identical included) are REQ-010 collisions, excluded from
+  the journal's ownership targets; the reconciliation records its
+  classifications in a set the pre-pass consults (no double-count).
+- RF6 [P2]: REQ-008 refresh + manifest-stale repair update only KNOWN
+  fields — unknown per-file fields survive every write (REQ-021).
+- RF7 [P2]: unknown bundle names in the install selection error out
+  before anything saves.
+- RF8 [P2]: the lock carries an owner identity token; Release refuses
+  to delete a lock another owner reclaimed.
+- RF9 [P2]: the init ensure path UNIONs the recorded selection
+  (InstallPreserveSelection) — a second project's default-selection run
+  never wipes the shared manifest's bundle list.
+- Evidence: RF tests 9/9 GREEN (RED first on the pre-fix code);
+  internal/userassets full suite ok; cli Bundle/UpdatePhase/InitEnsure
+  families ok; lint 0 issues; GOOS=windows exit 0.
+- Follow-up commit 22d730df3: the E5 flag-complete divergence arm now
+  writes the REQ-023 backup ITSELF (the RF5 classified set excludes the
+  path from the per-asset pass), the reconciliation/RF5 classification
+  set wiring, and coverage-gap tests.
+- Follow-up commit f564aaa49: the three doctor goldens regenerated
+  (M5 row additions + M6 carrier-row removal had left them stale);
+  the read-only pass is green.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
