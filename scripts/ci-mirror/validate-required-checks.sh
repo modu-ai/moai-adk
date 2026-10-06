@@ -319,7 +319,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	}
 	function reset_job_mem() {
 		nk = 0; inc_n = 0; had_ref = 0; ex_n = 0; mmode = "inc"; bdim_key = ""
-		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord; delete merged; delete objsub; delete incset
+		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord; delete merged; delete objsub; delete incset; delete mcnt
 	}
 	BEGIN { in_jobs = 0; has_name = 0; nk = 0; inc_n = 0; in_steps = 0; in_strategy = 0; in_matrix = 0; mmode = "inc"; ex_n = 0; bdim_key = "" }
 	{
@@ -415,14 +415,19 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		# over-inclusive, never under).
 		parts_n = split(v, parts, ",")
 		mvals[k] = ""
+		mcnt[k] = 0
 		for (pp = 1; pp <= parts_n; pp++) {
 			pv = parts[pp]
 			gsub(/^[[:space:]]+/, "", pv)
 			gsub(/[[:space:]]+$/, "", pv)
-			if (pv == "") continue
+			pv = strip_quotes(pv)
+			# GATE-16: an EMPTY value is a real combination (`option:
+			# ["", race]` publishes `Test ()` first) — count-tracked, not
+			# dropped for being falsy.
+			mcnt[k]++
 			# GATE-9: the value store joins on SUBSEP — a space now stays
 			# INSIDE a value; split and print convert it back.
-			mvals[k] = (mvals[k] == "") ? pv : mvals[k] SUBSEP pv
+			mvals[k] = (mcnt[k] == 1) ? pv : mvals[k] SUBSEP pv
 		}
 		nk++
 		dims[nk] = k
@@ -459,8 +464,12 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			gsub(/^[[:space:]]+/, "", line)
 			gsub(/[[:space:]]+$/, "", line)
 			line = strip_quotes(line)
-			if (!(bdim_key in mvals)) { nk++; dims[nk] = bdim_key; mvals[bdim_key] = "" }
-			if (mvals[bdim_key] == "") mvals[bdim_key] = line
+			if (!(bdim_key in mvals)) { nk++; dims[nk] = bdim_key; mvals[bdim_key] = ""; mcnt[bdim_key] = 0 }
+			# GATE-16: the value COUNT tracks membership — an EMPTY first
+			# value (`option: ["", race]`) is a real combination, not an
+			# uninitialized slot.
+			mcnt[bdim_key]++
+			if (mcnt[bdim_key] == 1) mvals[bdim_key] = line
 			else mvals[bdim_key] = mvals[bdim_key] SUBSEP line
 			next
 		}
@@ -490,14 +499,18 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	in_matrix && ind == 12 && mmode == "excl" && ex_n > 0 && $0 ~ /^[[:space:]]*[A-Za-z_]/ {
 		line = strip_comment($0); sub(/^[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
-		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^["\047]|["\047]$/, "", v)
+		# GATE-16: strip_quotes, not a trailing-quote strip — a value
+		# ending in an apostrophe keeps it, or the exclude never matches
+		# the real matrix value and an EXCLUDED combination passes as a
+		# required check.
+		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); v = strip_quotes(v)
 		exval[ex_n, k] = v
 		next
 	}
 	in_matrix && ind == 12 && inc_n > 0 && $0 ~ /^[[:space:]]*[A-Za-z_]/ {
 		line = strip_comment($0); sub(/^[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
-		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^["\047]|["\047]$/, "", v)
+		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); v = strip_quotes(v)
 		incval[inc_n, k] = v
 		incset[inc_n, k] = 1
 		ikt[inc_n]++
