@@ -129,6 +129,12 @@ func (a LeaderApproval) VerifyBinding(cardUUID, runID string, version int64, evi
 	if a.FactoryVersion != version {
 		return fmt.Errorf("%w: receipt binds version %d, the card is at version %d", ErrApprovalStale, a.FactoryVersion, version)
 	}
+	// An empty hash is NOT a valid evidence binding (review round-10 P2-1):
+	// a card with no recorded evidence cannot satisfy the evidence axis, on
+	// the card side or on the receipt side.
+	if evidenceHash == "" || a.EvidenceHash == "" {
+		return fmt.Errorf("%w: empty evidence hash — the receipt binds %q, the card carries %q", ErrApprovalHashMismatch, a.EvidenceHash, evidenceHash)
+	}
 	if a.EvidenceHash != evidenceHash {
 		return fmt.Errorf("%w: receipt binds evidence %q, the card carries %q", ErrApprovalHashMismatch, a.EvidenceHash, evidenceHash)
 	}
@@ -153,6 +159,12 @@ func (f *FactoryDB) IssueLeaderApproval(ctx context.Context, a LeaderApproval) (
 	}
 	if a.Issuer == "" {
 		return LeaderApproval{}, fmt.Errorf("%w: issuance requires an issuer name", ErrInvalidCardInput)
+	}
+	// An empty evidence hash is not an evidence binding (review round-10
+	// P2-1): the leader reviewed SOMETHING, and the hash is what the gate
+	// re-checks at close time.
+	if strings.TrimSpace(a.EvidenceHash) == "" {
+		return LeaderApproval{}, fmt.Errorf("%w: issuance requires the reviewed evidence hash", ErrApprovalHashMismatch)
 	}
 	if a.IssuedAt == "" {
 		a.IssuedAt = time.Now().UTC().Format(time.RFC3339Nano)

@@ -506,14 +506,46 @@ func TestFR_AC018_DecidePushGate(t *testing.T) {
 	if _, _, err := runTodo(t, "done", p2); err != nil {
 		t.Fatalf("follow-up backlog done after the chained approval: %v", err)
 	}
+}
+
+// Review round-8 P2-2 continuation (card t1538): on the WITH-remote branch
+// the decide targets pushed (T17), and the validated receipt is re-stamped
+// to the post-transition version in the decide transaction — approve →
+// decide-push → todo-done accepts the same receipt.
+func TestFactoryDecidePushChainsApprovalVersion(t *testing.T) {
+	root, store := fcFixture(t)
+	fcGitFlowConfig(t, root)
+	dir, merge := fcRepo(t, true)
+	cardID := addShapeCard(t, "push chain card")
+	// The push gate reads the remote-tracking ref as it stands: land the
+	// local merge on origin before deciding.
+	fcGit(t, dir, "push", "-q", "origin", "integration")
+	fcLinkRuntime(t, root, cardID)
+	fcBindDispatch(t, root, cardID, fcRun)
+	fcPlace(t, root, homestate.Card{CardID: cardID, RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, MergeSHA: merge, WorktreePath: dir, EvidenceSHA: merge})
+	uuid := recheckUUID(t, root, store, cardID)
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: uuid, RunID: fcRun, CardID: cardID, FactoryVersion: 1,
+		EvidenceHash: merge, Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+
+	if _, _, err := runFactory(t, "decide", cardID, "--gate", "push", "--run", fcRun); err != nil {
+		t.Fatalf("decide push: %v", err)
+	}
+	if c := fcCard(t, root, cardID); c.State != homestate.CardPushed || c.Version != 2 {
+		t.Fatalf("card = %s v%d, want pushed v2", c.State, c.Version)
+	}
 	db := fcOpen(t, root)
-	var payload string
-	if err := db.DB.QueryRow(`SELECT payload_json FROM events WHERE kind='card.transition' ORDER BY seq DESC LIMIT 1`).Scan(&payload); err != nil {
+	a, err := db.FindLeaderApproval(context.Background(), uuid)
+	if err != nil {
 		t.Fatal(err)
 	}
 	_ = db.Close()
-	if !strings.Contains(payload, "no remote — leader approval verified") {
-		t.Fatalf("no-remote event payload = %s", payload)
+	if a.FactoryVersion != 2 {
+		t.Fatalf("receipt version = %d, want 2 (chained across T17)", a.FactoryVersion)
+	}
+	if _, _, err := runTodo(t, "done", cardID); err != nil {
+		t.Fatalf("backlog done with the chained receipt: %v", err)
 	}
 }
 

@@ -306,6 +306,33 @@ func TestLeaderReceiptGatePerformerAliasRefused(t *testing.T) {
 	}
 }
 
+// Review round-10 P2-1 (card t1538): an empty evidence hash is not an
+// evidence binding — issuance refuses it, and the verification refuses it
+// on either side of the comparison.
+func TestLeaderReceiptGateEmptyEvidenceRefused(t *testing.T) {
+	db := frOpen(t)
+	bare := frNewRepo(t, false)
+	ctx := context.Background()
+	if _, err := db.IssueLeaderApproval(ctx, LeaderApproval{
+		CardUUID: "uuid-empty", RunID: frRun, CardID: "t-empty", FactoryVersion: 1,
+		EvidenceHash: "", Issuer: "lead", IssuerRole: ApprovalIssuerLeader,
+	}); !errors.Is(err, ErrApprovalHashMismatch) {
+		t.Fatalf("empty-hash issuance err = %v, want ErrApprovalHashMismatch", err)
+	}
+	// A card whose row carries no evidence hash cannot satisfy the gate
+	// even against a receipt that claims a hash.
+	c := Card{RunID: frRun, CardID: "noev", State: CardMergedLocal, Version: 1, OwnerLabel: "worker-1", WorktreePath: bare.Dir, MergeSHA: bare.Merge}
+	frPlace(t, db, c)
+	frApprove(t, db, LeaderApproval{
+		CardUUID: "uuid-noev", RunID: frRun, CardID: c.CardID, FactoryVersion: 1,
+		EvidenceHash: "sha-claimed", Issuer: "lead", IssuerRole: ApprovalIssuerLeader,
+	})
+	req := TransitionRequest{RunID: frRun, CardID: c.CardID, To: CardDone, ExpectedVersion: c.Version, Actor: "lead", Decider: DeciderHuman, Now: frNow, ApprovalUUID: "uuid-noev"}
+	if _, err := db.Transition(ctx, req); !errors.Is(err, ErrApprovalHashMismatch) {
+		t.Fatalf("empty-evidence done err = %v, want ErrApprovalHashMismatch", err)
+	}
+}
+
 // T20 (ci-green → done) is the reserved edge M1 admits — not by a CI reader
 // (that opens T19 only, and is M2's), but by the receipt gate inside
 // FactoryDB.Transition (REQ-FCR-002b, REQ-FCR-010). T19 stays reserved.

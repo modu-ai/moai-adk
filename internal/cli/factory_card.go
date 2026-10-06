@@ -2339,13 +2339,18 @@ func decideOne(ctx context.Context, db *homestate.FactoryDB, projectRoot, runID,
 	case choice == "abandon":
 		to = homestate.CardAbandoned
 	}
-	// Receipt-gated done edges bind the backlog identity, so a receipt
-	// minted for a different card cannot complete this one (review round-6
-	// P1-2). The uuid is identity knowledge read from the queue record at
-	// the SAME project root the factory DB was opened at (review round-6
-	// P2): a server-cwd queue is never substituted for the target project.
+	// Receipt-relevant edges bind the backlog identity: the done edges for
+	// the close check (review round-6 P1-2) and T17 for the push chain's
+	// re-stamp (review round-8 P2-2). Other decisions — abandon, block,
+	// unblock, resume, kickoff — are factory-only recovery paths and never
+	// touch the queue record, so a corrupt or unreadable queue cannot block
+	// them (review round-10 P2-2). The uuid is identity knowledge read from
+	// the queue record at the SAME project root the factory DB was opened
+	// at (review round-6 P2): a server-cwd queue is never substituted for
+	// the target project.
+	needsUUID := to == homestate.CardDone || to == homestate.CardPushed
 	approvalUUID := ""
-	if to == homestate.CardDone {
+	if needsUUID {
 		queueStore := factory.NewBacklogStore(todoBacklogPath(projectRoot))
 		rec, err := queueStore.LoadPure()
 		if err != nil {
@@ -2365,7 +2370,7 @@ func decideOne(ctx context.Context, db *homestate.FactoryDB, projectRoot, runID,
 				}
 			}
 		}
-		if approvalUUID == "" {
+		if to == homestate.CardDone && approvalUUID == "" {
 			return cur, fmt.Errorf("factory decide: card %s has no backlog identity for the approval check", cardID)
 		}
 	}

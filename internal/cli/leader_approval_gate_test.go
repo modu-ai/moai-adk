@@ -101,8 +101,12 @@ func TestFactoryAssignUpdatesDispatchBinding(t *testing.T) {
 	if !fcLiveItem(t, store, "t1") {
 		t.Fatal("the refused done archived the card")
 	}
-	// The assigned row's evidence is empty until a commit lands; approve
-	// binds the current row as it stands.
+	// The assigned row's evidence lands with the commit; approve binds it.
+	db = fcOpen(t, root)
+	if _, err := db.DB.Exec(`UPDATE cards SET evidence_sha='sha-final' WHERE card_id='t1' AND run_id=?`, fcRun); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Close()
 	if _, _, err := runFactory(t, "approve", "t1", "--run", fcRun, "--issuer", "lead"); err != nil {
 		t.Fatalf("approve the recorded run: %v", err)
 	}
@@ -166,7 +170,7 @@ func TestDispatchBindingCoversAssignmentShapes(t *testing.T) {
 	// Shape 4 — legacy row at assigned+ with no binding recovers through
 	// the idempotent path, then completes with a matching receipt.
 	shapeLegacy := addShapeCard(t, "shape legacy recovery")
-	fcPlace(t, root, homestate.Card{CardID: shapeLegacy, RunID: "run-old", State: homestate.CardAssigned, OwnerLabel: "worker-1", Version: 1, UpdatedAt: "2026-09-26T01:00:00Z"})
+	fcPlace(t, root, homestate.Card{CardID: shapeLegacy, RunID: "run-old", State: homestate.CardAssigned, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-legacy", UpdatedAt: "2026-09-26T01:00:00Z"})
 	pick(shapeLegacy)
 	if err := assign(shapeLegacy, "run-old", "worker-1"); err != nil {
 		t.Fatalf("legacy recovery assign: %v", err)
@@ -399,6 +403,29 @@ func TestFactoryDecideUsesTargetProjectRoot(t *testing.T) {
 	}
 	if card.State != homestate.CardDone {
 		t.Fatalf("decide = %s, want done", card.State)
+	}
+}
+
+// Regression pin for round-10 P2-2 (card t1538): factory-only recovery
+// decisions never touch the queue record — a corrupt backlog database
+// cannot block an abandon.
+func TestDecideAbandonWorksWithCorruptQueue(t *testing.T) {
+	root, _ := fcFixture(t)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "worker-1", Version: 1})
+	// Materialize the queue, then corrupt it.
+	if _, _, err := runTodo(t, "add", "queue materializer"); err != nil {
+		t.Fatal(err)
+	}
+	// Corrupt the queue database: the decide path must not read it.
+	dbPath := filepath.Join(filepath.Dir(todoBacklogPath(root)), "backlog.db")
+	if err := os.WriteFile(dbPath, []byte("this is not a database"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := runFactory(t, "decide", "t1", "--choice", "abandon", "--run", fcRun); err != nil {
+		t.Fatalf("abandon with a corrupt queue: %v", err)
+	}
+	if c := fcCard(t, root, "t1"); c.State != homestate.CardAbandoned {
+		t.Fatalf("card = %s, want abandoned", c.State)
 	}
 }
 
