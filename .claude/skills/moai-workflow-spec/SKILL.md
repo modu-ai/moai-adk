@@ -95,10 +95,10 @@ When to Use:
 Quick Commands:
 
 ```bash
-/moai:1-plan "user authentication system"                   # Create new SPEC
-/moai:1-plan "login" "signup"                              # Parallel SPECs
-/moai:1-plan "payment processing" --branch                  # New branch
-/moai:1-plan SPEC-001 "add OAuth support"                   # Update existing
+/moai plan "user authentication system"                   # Create new SPEC
+/moai plan "login" "signup"                              # Parallel SPECs
+/moai plan "payment processing" --branch                  # New branch
+/moai plan SPEC-001 "add OAuth support"                   # Update existing
 ```
 
 ---
@@ -192,11 +192,11 @@ See [requirement clarification detailed workflow](references/requirement-clarifi
 
 ### Plan-Run-Sync Workflow Integration
 
-PLAN (/moai:1-plan): manager-spec analyzes input → EARS requirements → clarification → SPEC creation in `.moai/specs/` → optional `--branch`.
+PLAN (/moai plan): manager-spec analyzes input → EARS requirements → clarification → SPEC creation in `.moai/specs/` → optional `--branch`.
 
-RUN (/moai:2-run): manager-develop loads SPEC → ANALYZE-PRESERVE-IMPROVE (DDD) or RED-GREEN-REFACTOR (TDD) per `quality.yaml` `constitution.development_mode` → moai-workflow-testing reference → per-spawn Agent(general-purpose) domain delegation → quality-gate validation (Stop hook / /moai gate).
+RUN (/moai run): manager-develop loads SPEC → ANALYZE-PRESERVE-IMPROVE (DDD) or RED-GREEN-REFACTOR (TDD) per `quality.yaml` `constitution.development_mode` → moai-workflow-testing reference → per-spawn Agent(general-purpose) domain delegation → quality-gate validation (Stop hook / /moai gate).
 
-SYNC (/moai:3-sync): manager-docs synchronizes documentation → API docs from SPEC → README and architecture updates → CHANGELOG → version control commit.
+SYNC (/moai sync): manager-docs synchronizes documentation → API docs from SPEC → README and architecture updates → CHANGELOG → version control commit.
 
 ### Parallel Development with Git Worktree
 
@@ -308,7 +308,6 @@ For migration scenarios and validation scripts: [references/migration-guide.md](
 ---
 
 Version: 1.3.1 (skill body compression pass)
-Last Updated: 2026-05-23
 Integration Status: Complete - Plan-Run-Sync workflow with SDD 2025 features
 
 <!-- moai:evolvable-start id="rationalizations" -->

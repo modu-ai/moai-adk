@@ -1,0 +1,205 @@
+diff --git a/internal/cli/codex_stop_fixture_test.go b/internal/cli/codex_stop_fixture_test.go
+index b6fe262d0..403b86777 100644
+--- a/internal/cli/codex_stop_fixture_test.go
++++ b/internal/cli/codex_stop_fixture_test.go
+@@ -98,7 +98,10 @@ func (f *stopFixture) commit(t *testing.T, subject string) {
+ // setFakeGo installs a `go` whose vet exits vetExit; build always passes.
+ func (f *stopFixture) setFakeGo(t *testing.T, vetExit int) {
+ 	t.Helper()
+-	script := "#!/bin/sh\ncase \"$1\" in vet) echo 'fake vet'; exit " + strconv.Itoa(vetExit) + " ;; build) exit 0 ;; *) exit 0 ;; esac\n"
++	// The sync-gate hook invokes go as `go -C <module-root> vet|build ./...`
++	// (card t1389 multi-module vetting); the stub strips that prefix so the
++	// case keys on the subcommand like the real go binary.
++	script := "#!/bin/sh\nif [ \"$1\" = \"-C\" ]; then shift 2; fi\ncase \"$1\" in vet) echo 'fake vet'; exit " + strconv.Itoa(vetExit) + " ;; build) exit 0 ;; *) exit 0 ;; esac\n"
+ 	if err := os.WriteFile(filepath.Join(f.bin, "go"), []byte(script), 0o755); err != nil {
+ 		t.Fatal(err)
+ 	}
+diff --git a/internal/cli/codex_sync_gate.go b/internal/cli/codex_sync_gate.go
+index c570e7986..1276dbf1b 100644
+--- a/internal/cli/codex_sync_gate.go
++++ b/internal/cli/codex_sync_gate.go
+@@ -164,10 +164,14 @@ func detectSyncGateLanguages(root string) []string {
+ 		add("rust")
+ 	}
+ 	kts, _ := os.ReadFile(filepath.Join(root, "build.gradle.kts"))
+-	switch {
+-	case (len(kts) > 0 && kotlinBuildMarker.Match(kts)) || has(".kt"):
++	if (len(kts) > 0 && kotlinBuildMarker.Match(kts)) || has(".kt") {
+ 		add("kotlin")
+-	case exists("pom.xml") || exists("build.gradle") || exists("build.gradle.kts") || has(".java"):
++	}
++	// Java is detected independently of Kotlin, matching the script's two ifs:
++	// an elif/switch here let a Kotlin hit suppress the Java candidate, so in a
++	// mixed Gradle project a sync commit that touched only .java files summed
++	// to a zero code delta and passed without any checker running.
++	if exists("pom.xml") || exists("build.gradle") || exists("build.gradle.kts") || has(".java") {
+ 		add("java")
+ 	}
+ 	if exists("Gemfile") || has(".rb") {
+diff --git a/internal/hook/commit_identity_guard.go b/internal/hook/commit_identity_guard.go
+index 8c38601ed..7ed899eb3 100644
+--- a/internal/hook/commit_identity_guard.go
++++ b/internal/hook/commit_identity_guard.go
+@@ -71,7 +71,8 @@ var commitVerbs = map[string]bool{
+ // 51 literals). internal/hook/commit_identity_guard*_test.go files are
+ // EXCLUDED from the enumeration because they carry out-of-list control
+ // values; commit_identity_guard_list_test.go re-runs the same predicate and
+-// fails when a literal is missing from this list (AC-CIG-010).
++// fails when a literal is missing from this list (AC-CIG-010) — 54 literals
++// after the landing/sweep/t1379 fixture emails joined the enumeration.
+ var builtinCommitIdentityDenyEmails = []string{
+ 	"a@e.invalid",
+ 	"anchor-test@example.com",
+@@ -91,6 +92,7 @@ var builtinCommitIdentityDenyEmails = []string{
+ 	"fx@example.com",
+ 	"guard-test@example.invalid",
+ 	"guard@test",
++	"landing-test@example.com",
+ 	"m2-test@example.com",
+ 	"migration-test@example.com",
+ 	"o@e.x",
+@@ -100,6 +102,7 @@ var builtinCommitIdentityDenyEmails = []string{
+ 	"someone@example.invalid",
+ 	"stopchain-test@example.com",
+ 	"sub@e.x",
++	"sweep-test@example.com",
+ 	"sync-gate-test@example.com",
+ 	"t@example.com",
+ 	"t@example.invalid",
+@@ -111,6 +114,7 @@ var builtinCommitIdentityDenyEmails = []string{
+ 	"t@t.test",
+ 	"t1074@example.invalid",
+ 	"t1204@example.invalid",
++	"t1379@example.invalid",
+ 	"t371@example.com",
+ 	"t461@example.test",
+ 	"t488@example.invalid",
+diff --git a/internal/hook/session_start_test.go b/internal/hook/session_start_test.go
+index 23c623b72..fd9601bba 100644
+--- a/internal/hook/session_start_test.go
++++ b/internal/hook/session_start_test.go
+@@ -16,6 +16,11 @@ import (
+ // testFixedNow is a stable reference time for staleness tests.
+ var testFixedNow = time.Date(2026, 4, 25, 12, 0, 0, 0, time.UTC)
+ 
++// Model-id expectations follow SPEC-MODEL-MATRIX-UPDATE-001 DR-2: the built-in
++// glmContextWindows table dropped the seven retired ids (glm-5.2,
++// glm-4.5-air, …), so a retired id now resolves to 0 and both hooks leave the
++// env keys unset; llm.yaml glm.context_windows is the override path for any
++// custom id.
+ func TestMaybeSet1MAutoCompactWindow(t *testing.T) {
+ 	t.Parallel()
+ 
+@@ -24,8 +29,8 @@ func TestMaybeSet1MAutoCompactWindow(t *testing.T) {
+ 		env        map[string]string
+ 		wantWindow string // "" means expect the key unset
+ 	}{
+-		{name: "glm-5.2 resolves to 1M, no window → sets 1M", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.2"}, wantWindow: "1000000"},
+-		{name: "glm-4.5-air resolves to 128K (< 1M tier), no window → unset", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air"}, wantWindow: ""},
++		{name: "glm-5.3 resolves to 1M, no window → sets 1M", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3"}, wantWindow: "1000000"},
++		{name: "glm-4.5-air (removed id) resolves to 0, no window → unset", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air"}, wantWindow: ""},
+ 		{name: "claude model → unset (ResolveGLMContextWindow returns 0 for claude-prefixed)", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8"}, wantWindow: ""},
+ 		{name: "window already set → preserved, not overwritten", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.2", config.EnvClaudeCodeAutoCompactWindow: "500000"}, wantWindow: "500000"},
+ 		{name: "empty opus model → unset", env: map[string]string{}, wantWindow: ""},
+@@ -50,7 +55,7 @@ func TestMaybeDeclareGLMContextWindow(t *testing.T) {
+ 		wantDecl string // "" means expect the key unset
+ 	}{
+ 		{name: "glm-5.3 resolves to 1M → declares 1000000", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3"}, wantDecl: "1000000"},
+-		{name: "glm-4.5-air resolves to 128K (non-1M tier still declared)", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air"}, wantDecl: "128000"},
++		{name: "glm-4.5-air (removed id) resolves to 0, no declaration → unset", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air"}, wantDecl: ""},
+ 		{name: "claude model → unset (ResolveGLMContextWindow returns 0 for claude-prefixed)", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8"}, wantDecl: ""},
+ 		{name: "declaration already set → preserved, not overwritten", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3", config.EnvClaudeCodeMaxContextTokens: "500000"}, wantDecl: "500000"},
+ 		{name: "empty opus model → unset", env: map[string]string{}, wantDecl: ""},
+diff --git a/internal/hook/sync_gate_failstate_test.go b/internal/hook/sync_gate_failstate_test.go
+index 99ed995e0..ea263b61b 100644
+--- a/internal/hook/sync_gate_failstate_test.go
++++ b/internal/hook/sync_gate_failstate_test.go
+@@ -179,6 +179,10 @@ func (f *sgfFixture) setStub(s sgfStubSpec) {
+ 		keys = append(keys, k)
+ 	}
+ 	sort.Strings(keys)
++	// The sync-gate hook invokes go as `go -C <module-root> vet|build ./...`
++	// (card t1389 multi-module vetting); strip the prefix so the exits map
++	// keeps keying on the subcommand like the real go binary.
++	b.WriteString("if [ \"$1\" = \"-C\" ]; then shift 2; fi\n")
+ 	b.WriteString("case \"$1\" in\n")
+ 	for _, k := range keys {
+ 		fmt.Fprintf(&b, "  %s) exit %d ;;\n", k, s.exits[k])
+@@ -686,16 +690,17 @@ func TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution(t *testing.T) {
+ 		vet, build      int
+ 		redeliver       bool // true: call 2 byte-identical to call 1's block
+ 		call1NoDecision bool
++		flipBlock       bool // true: a stored advisory under a blocking call 2 re-delivers as a synthesized block — the advisory→blocking flip must not read as a pass (card t1385/t1388)
+ 	}{
+-		{"A1", rgClass, []string{full}, []string{full}, 0, 1, false, true},
+-		{"A2", rgClass, []string{auto}, []string{auto}, 1, 0, false, true},
+-		{"A3", rgClass, []string{off}, []string{off}, 1, 0, false, true},
+-		{"A4", rbClass, []string{auto}, []string{auto}, 0, 1, true, false},
+-		{"A5", rgClass, nil, []string{full}, 1, 0, false, false},
+-		{"A6", rgClass, []string{full}, nil, 1, 0, false, false},
+-		{"A7", rgClass, nil, []string{off}, 1, 0, false, false},
+-		{"A8", rgClass, nil, []string{auto}, 1, 0, false, false},
+-		{"A9", rbClass, []string{auto}, []string{auto}, 1, 1, true, false},
++		{"A1", rgClass, []string{full}, []string{full}, 0, 1, false, true, false},
++		{"A2", rgClass, []string{auto}, []string{auto}, 1, 0, false, true, false},
++		{"A3", rgClass, []string{off}, []string{off}, 1, 0, false, true, false},
++		{"A4", rbClass, []string{auto}, []string{auto}, 0, 1, true, false, false},
++		{"A5", rgClass, nil, []string{full}, 1, 0, false, false, false},
++		{"A6", rgClass, []string{full}, nil, 1, 0, false, false, true},
++		{"A7", rgClass, nil, []string{off}, 1, 0, false, false, false},
++		{"A8", rgClass, nil, []string{auto}, 1, 0, false, false, false},
++		{"A9", rbClass, []string{auto}, []string{auto}, 1, 1, true, false, false},
+ 	}
+ 	for _, r := range rows {
+ 		t.Run(r.id, func(t *testing.T) {
+@@ -718,6 +723,19 @@ func TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution(t *testing.T) {
+ 				}
+ 				return
+ 			}
++			if r.flipBlock {
++				// Card t1385 flip semantics: the stored advisory (call 1 ran
++				// advisory, call 2 resolves blocking) re-delivers as a
++				// synthesized block — not byte-identical, the stored advisory
++				// body carries no decision — and without re-running checks.
++				if !sgfHasBlock(out2) {
++					t.Errorf("%s: call 2 is not a block; stdout=%q", tag, out2)
++				}
++				if n2 != n1 {
++					t.Errorf("%s: call 2 re-ran the checks (stub %d -> %d)", tag, n1, n2)
++				}
++				return
++			}
+ 			if out2 != "" {
+ 				t.Errorf("%s: call 2 stdout = %q; want empty", tag, out2)
+ 			}
+@@ -759,10 +777,15 @@ func TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState(t *testing.T) {
+ 		if sgfHasDecision(out2) {
+ 			t.Errorf("%s: call 2 carries \"decision\"; stdout=%q", tag, out2)
+ 		}
++		// Call 3: the payload on disk is now call 2's stored ADVISORY (call 2
++		// replaced call 1's block payload), and the blocking default resolves
++		// the card t1385 flip: re-deliver as a synthesized block, no check
++		// re-run. The call-1 block body still never re-delivers — what
++		// re-delivers is the advisory.
+ 		before3 := f.count()
+ 		out3, _ := f.run("{}")
+-		if out3 != "" {
+-			t.Errorf("%s: call 3 stdout = %q; want empty (call-1 block must not be re-delivered)", tag, out3)
++		if !sgfHasBlock(out3) {
++			t.Errorf("%s: call 3 is not a block; stdout=%q", tag, out3)
+ 		}
+ 		if n := f.count(); n != before3 {
+ 			t.Errorf("%s: call 3 ran the checks (stub %d -> %d)", tag, before3, n)
+diff --git a/internal/template/templates/.moai/config/sections/workflow.yaml b/internal/template/templates/.moai/config/sections/workflow.yaml
+index 39998d570..ba3bd1009 100644
+--- a/internal/template/templates/.moai/config/sections/workflow.yaml
++++ b/internal/template/templates/.moai/config/sections/workflow.yaml
+@@ -107,7 +107,7 @@ workflow:
+     # any other non-empty value omits the reasoning directive while the model
+     # pin still applies. Claude ships at claude-opus-5-5/medium and Codex at
+     # gpt-6.1-sol/high (deliberate non-empty pins; an earlier empty-pin
+-    # neutrality default was superseded by operator directive 2026-09-30); the
++    # neutrality default was superseded by operator directive); the
+     # GLM pin ships EMPTY and may be set per project.
+     audit:
+         claude:

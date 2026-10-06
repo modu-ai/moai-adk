@@ -220,7 +220,10 @@ func TestSchemaFreezeCarriesClassificationColumn(t *testing.T) {
 	wantItems := "seq:INTEGER:0:NULL id:TEXT:1:NULL text:TEXT:1:NULL added_at:TEXT:1:NULL " +
 		"spec_id:TEXT:0:NULL state:TEXT:1:NULL landing:TEXT:0:NULL " +
 		"picked_at:TEXT:0:NULL dropped_at:TEXT:0:NULL classification:TEXT:0:NULL " +
-		"picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL"
+		"picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL " +
+		// SPEC-TODO-CARD-ISSUANCE-001: the issuance attributes are the next
+		// additive pair on the same ensure path (card t1454).
+		"issuance:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "items"); got != wantItems {
 		t.Errorf("items column tuples =\n %s\nwant\n %s", got, wantItems)
 	}
@@ -228,7 +231,7 @@ func TestSchemaFreezeCarriesClassificationColumn(t *testing.T) {
 		"spec_id:TEXT:0:NULL state:TEXT:1:NULL position:INTEGER:1:NULL landing:TEXT:0:NULL " +
 		"picked_at:TEXT:0:NULL dropped_at:TEXT:0:NULL archived_at:TEXT:0:NULL " +
 		"landing_verdict:TEXT:0:NULL classification:TEXT:0:NULL " +
-		"picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL"
+		"picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL issuance:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "archived_items"); got != wantArchived {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, wantArchived)
 	}

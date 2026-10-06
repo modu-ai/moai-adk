@@ -124,6 +124,45 @@ type BacklogItem struct {
 	// operations are their only writers.
 	PickedBy       *string `json:"picked_by,omitempty"`
 	LeaseExpiresAt *string `json:"lease_expires_at,omitempty"`
+	// Issuance is ADDITIVE (SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-007): the
+	// creation-time issuance attributes — spawn parent, closed-set origin,
+	// size estimate, expected files, drop reason — in ONE nullable JSON
+	// field after the lease precedent, so a card carrying none marshals
+	// byte-identically to before. Absence is a nil pointer here and SQL NULL
+	// in the column — never {} and never "" (REQ-TLE-006). Legacy cards are
+	// never retrofitted.
+	Issuance *BacklogIssuance `json:"issuance,omitempty"`
+}
+
+// BacklogIssuance is the issuance attribute record one card carries. Every
+// key is optional; a card with no keys stores SQL NULL and serializes as
+// absent (omitempty). Origin draws from the closed set the add path
+// validates (IssuanceOrigins); Files are the explicitly recorded expected
+// files — the hub chain (REQ-TCI-020) and the in-flight overlap read THEM,
+// never a body-derived inference (D13).
+type BacklogIssuance struct {
+	SpawnedBy  string   `json:"spawned_by,omitempty"`
+	Origin     string   `json:"origin,omitempty"`
+	SizeLines  *int     `json:"size_lines,omitempty"`
+	Files      []string `json:"files,omitempty"`
+	DropReason string   `json:"drop_reason,omitempty"`
+}
+
+// IssuanceOrigins is the closed origin set (design §4.1). The add path
+// refuses an --origin outside it; the list is the single home of the set.
+var IssuanceOrigins = []string{
+	"operator", "leader", "audit-finding", "follow-up",
+	"ci-repair", "standing", "external", "split", "debt",
+}
+
+// IssuanceOriginValid reports whether origin is inside the closed set.
+func IssuanceOriginValid(origin string) bool {
+	for _, o := range IssuanceOrigins {
+		if o == origin {
+			return true
+		}
+	}
+	return false
 }
 
 // Relation values a finding may carry. The first two are MECHANICAL — the
@@ -213,6 +252,12 @@ type BacklogFinding struct {
 	Score     float64 `json:"score"`
 	Note      string  `json:"note"`
 	At        string  `json:"at"`
+	// Disposition is ADDITIVE (SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-010):
+	// the operator's recorded disposition of a finding — accept/merge/reject.
+	// Recording-only (D11): it never changes the card, the order, or the
+	// pickup filter. Absence is a nil pointer here and SQL NULL in the
+	// disposition column — never {} and never "" (REQ-TLE-006).
+	Disposition *string `json:"disposition,omitempty"`
 }
 
 // Names reports whether the finding refers to id in either position.

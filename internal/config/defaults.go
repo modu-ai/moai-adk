@@ -467,6 +467,19 @@ const (
 	// the reports-archive action warns before moving.
 	DefaultReportsArchiveWarnBytes int64 = 1 << 30 // 1 GiB
 
+	// Hygiene thresholds (SPEC-MOAI-HYGIENE-001 REQ-HYG-016). Every size,
+	// count, age, window, and mode default of the hygiene engine lives
+	// here — no call site carries a magic number. KeptRotations is PINNED
+	// to 1 (D30): the REQ-HYG-002 chunk sequence is keep-1 by construction,
+	// and the hygiene engine validates the override (any other value is a
+	// config-invalid refusal, never a silent clamp).
+	HygieneAuditLogMaxBytes         = 10 * 1024 * 1024
+	HygieneAuditLogKeptRotations    = 1
+	HygieneTranscriptActivityWindow = 48 * time.Hour
+	HygieneHeartbeatStaleWindow     = 24 * time.Hour
+	HygieneMinAgeDays               = 7
+	HygieneModeDefault              = "report"
+
 	// DefaultSessionRecordRetentionDays is the shipped default for the
 	// project-tier `state.session_record_retention_days` key (card t1312):
 	// the age bound past which SessionStart prunes factory session records.
@@ -500,6 +513,32 @@ const (
 	DefaultMemoryIndexLineCap            = 200 // MEMORY.md lines beyond this trigger MEMORY_INDEX_OVERFLOW
 	DefaultMemoryStaleAggregateThreshold = 10  // stale files >= this count emit one aggregated warning
 	DefaultMemoryTopicFileCap            = 50  // topic files beyond this trigger MEMORY_TOPIC_COUNT_OVER_CAP
+
+	// Memory index budget and card-close fold defaults
+	// (SPEC-MEMORY-FOLD-BUDGET-001, plan.md M1).
+	//
+	// DefaultMemoryIndexByteCap is the doctor's advisory byte cap for
+	// MEMORY.md: the smaller reading of the host's announced "25KB"
+	// (25,000 vs 25,600). The loader's actual cut is unconfirmed
+	// (spec.md §1.4) — the cap is a conservative proxy that decides only
+	// when a warning appears, never what is lost. DefaultMemoryIndexWarnPercent
+	// is the warn percentage both budget axes share, applied with the integer
+	// test value*100 >= warnPercent*cap.
+	//
+	// DefaultMemoryFoldOnDone is the compiled default of the card-close fold
+	// gate: off. Wiring every queue close to a shared-store mutation is
+	// opt-in (plan.md OD-1); the gate reads config.EnvMemoryFoldOnDone.
+	//
+	// DefaultMemoryFoldOnDoneBound bounds one card's fold-on-done step. 2s
+	// mirrors DefaultHookAsyncJoinTimeout rather than inventing a second
+	// calibration (plan.md OD-11): the bounded work — a file read, one
+	// append, one rename — sits orders of magnitude below it. The 5s ceiling
+	// is asserted by the test (AC-MFB-008 (x)), not carried as a second
+	// constant. Consumed by the close paths (plan.md M4).
+	DefaultMemoryIndexByteCap     = 25000
+	DefaultMemoryIndexWarnPercent = 80
+	DefaultMemoryFoldOnDone       = false
+	DefaultMemoryFoldOnDoneBound  = 2 * time.Second
 
 	// DefaultFeedbackRepository is the default target repository for the /moai
 	// feedback workflow (SPEC-INVOCATION-MODEL-001). Feedback targets the remote
@@ -942,6 +981,23 @@ func NewDefaultConfig() *Config {
 	}
 }
 
+// DefaultPlanAuditTierCeilings returns the shipped plan_audit_tier_ceilings
+// values ({S:1, M:2, L:3}), mirroring the template harness.yaml verbatim
+// (SPEC-AUDIT-CEILING-002: a project without the keys resolves these).
+func DefaultPlanAuditTierCeilings() map[string]int {
+	return map[string]int{"S": 1, "M": 2, "L": 3}
+}
+
+// DefaultPlanAuditCeilingPolicy returns the shipped plan_audit_ceiling_policy
+// values {AutoDeltaRounds: 1, OnFinalHit: hold-and-split}, mirroring the
+// template harness.yaml verbatim.
+func DefaultPlanAuditCeilingPolicy() PlanAuditCeilingPolicyConfig {
+	return PlanAuditCeilingPolicyConfig{
+		AutoDeltaRounds: 1,
+		OnFinalHit:      PlanAuditCeilingOnFinalHoldAndSplit,
+	}
+}
+
 // NewDefaultFeedbackConfig returns a FeedbackConfig whose target repository is
 // the default tool feedback channel (DefaultFeedbackRepository). An absent
 // feedback.yaml therefore still resolves to the tool channel.
@@ -1123,7 +1179,11 @@ func NewDefaultGitStrategyConfig() GitStrategyConfig {
 			GitHubIntegration: false,
 			PushToRemote:      false,
 			AutoCheckpoint:    "disabled",
-			MergeMethod:       "squash",
+			// card t1504 (re-lands PR #1738 / t1281 intent): manual-mode cards
+			// land as plain merges into the local integration branch (WT-*
+			// --no-ff house practice), so the seeded default follows the
+			// practice instead of contradicting it.
+			MergeMethod: "merge",
 			// SPEC-MAIN-COMMIT-BAN-001 REQ-3.3: 0 disables the batch-push
 			// trigger (template-neutral — manual mode ships push_to_remote:
 			// false, so a nonzero default would push a workflow choice).
@@ -1270,7 +1330,6 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			AutoCreate:         false,
 			AutoMerge:          false,
 			SessionNamePattern: "moai-{ProjectName}-{SPEC-ID}",
-			TmuxPreferred:      true,
 		},
 		// SPEC-TODO-ENABLE-FLAG-001 REQ-1: Todo is left at its zero value on
 		// purpose — Enabled stays nil, which TodoEnabled reads as ENABLED.
@@ -1284,6 +1343,17 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// so this line is belt-and-braces: it makes the default readable from
 		// the struct rather than only from the resolver.
 		Project: WorkflowProjectConfig{Continuation: ProjectContinuationCard},
+		// SPEC-MOAI-HYGIENE-001 REQ-HYG-016: the hygiene engine's defaults
+		// mirror the Hygiene* constants above. Mode ships "report" — the
+		// non-mutating default (REQ-HYG-013).
+		Hygiene: WorkflowHygieneConfig{
+			Mode:                     HygieneModeDefault,
+			AuditLogMaxBytes:         HygieneAuditLogMaxBytes,
+			AuditLogKeptRotations:    HygieneAuditLogKeptRotations,
+			TranscriptActivityWindow: HygieneTranscriptActivityWindow,
+			HeartbeatStaleWindow:     HygieneHeartbeatStaleWindow,
+			MinAgeDays:               HygieneMinAgeDays,
+		},
 		// The out-of-band drift-cache fill ships ENABLED. Unlike the guard
 		// family below it, this feature is not inert when on — it starts a
 		// child process on a cache miss — so the default is an accepted cost

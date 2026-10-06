@@ -539,7 +539,7 @@ Configure settings at appropriate levels:
 ```json
 // .claude/settings.json (Project-level)
 {
-  "model": "claude-sonnet-4-5-20250929",
+  "model": "claude-sonnet-5",
   "permissions": {
     "allow": ["Read", "Write", "Edit"],
     "deny": ["Bash dangerous commands"]

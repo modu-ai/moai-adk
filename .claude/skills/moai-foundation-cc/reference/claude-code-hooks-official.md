@@ -291,7 +291,7 @@ Prompt Generation and Execution:
 {
  "type": "prompt",
  "prompt": "Review this command for security risks: $COMMAND\n\nProvide a risk assessment and recommendations.",
- "model": "claude-3-5-sonnet-20241022",
+ "model": "claude-sonnet-5",
  "max_tokens": 500
 }
 ```

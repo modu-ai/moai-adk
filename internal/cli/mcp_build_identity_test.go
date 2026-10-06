@@ -673,7 +673,11 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// review-diff base measurement, same count — only the coordinate moved.
 		"mcp_review_material.go:175": true,
 		"todo_landed.go:231":         true,
-		"todo_autodone.go:349":       true,
+		// Re-measured at card t1502: M4's card-close wiring added three lines
+		// above this comparison, moving it from :349. Same single ancestry
+		// comparison (the auto-done scan's merge-base --is-ancestor), same
+		// count — only the coordinate moved.
+		"todo_autodone.go:352": true,
 		// SPEC-CODEX-GATE-SCOPE-001 (card t1383): the card-diff BASE
 		// measurement — gitflow-lane-protocol §8 requires the gate to recompute
 		// `git merge-base develop HEAD` per evaluation. It selects which
@@ -700,6 +704,21 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// owner (REQ-WSS-302's fail-open preserve is the safety net there).
 		"session_worktree.go:810": true,
 		"session_worktree.go:836": true,
+		// SPEC-TODO-CARD-ISSUANCE-001 (card t1454): the in-flight lane
+		// changed-files probe — productionLaneFilesProbe resolves the fork
+		// point between the integration branch and the card's lane branch
+		// before diffing the lane's changed files. :165 is the doc comment
+		// naming the primitive, :173 the probe itself. A reachability
+		// precondition about two repo refs (which changes belong to the
+		// lane), the same family as the todo_landed/todo_autodone
+		// coordinates — not a binary-vs-source freshness comparison, so
+		// binlag.Evaluate is not its owner.
+		// Re-measured at the card-review r2 closure: the issuance probe's
+		// repairs moved the same two hits from 165/173 to 204/212. Same
+		// probe, same count — only the coordinates moved (the t948
+		// precedent).
+		"todo_issuance.go:204": true,
+		"todo_issuance.go:212": true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")

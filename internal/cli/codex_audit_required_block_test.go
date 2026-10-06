@@ -70,7 +70,10 @@ func TestCodexAudit_RequiredGateBlocksOnBlankOutput(t *testing.T) {
 // absent) is not an explicit opt-in.
 func TestCodexAudit_EngineDefaultRequiredIsNotOptIn(t *testing.T) {
 	root := newProbeProject(t, "SPEC-CAGDEFAULT-004")
-	cfg := workflowAuditPins(root)
+	cfg, pinErr := workflowAuditPins(root)
+	if pinErr != nil {
+		t.Fatalf("workflowAuditPins on an absent workflow.yaml: %v", pinErr)
+	}
 	if got := gateOr(cfg.Gates.Codex, config.AuditGateRequired); got != config.AuditGateRequired {
 		t.Fatalf("premise: engine-defaulted codex gate = %q, want required", got)
 	}

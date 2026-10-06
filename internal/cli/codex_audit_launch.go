@@ -198,8 +198,15 @@ func prepareCodexAudit(ctx context.Context, req codexAuditRequest) *codexAuditPl
 	}
 
 	// Effort rides the audit pin or nothing: pin > absent (codex applies its
-	// own default). No per-agent source remains to fall back to.
-	effort := workflowAuditPins(root).Codex.Effort
+	// own default). No per-agent source remains to fall back to. A workflow.yaml
+	// that cannot be read or parsed refuses the launch — the error is surfaced
+	// on stderr, never folded into an absent pin (SPEC-AUDIT-CEILING-002
+	// REQ-ACR-006).
+	pins, pinErr := workflowAuditPins(root)
+	if pinErr != nil {
+		return fail("workflow.audit pins unreadable: %v", pinErr)
+	}
+	effort := pins.Codex.Effort
 	if effort != "" && !codexAuditServerName.MatchString(effort) {
 		return fail("workflow.audit.codex effort %q is not a launchable value", effort)
 	}

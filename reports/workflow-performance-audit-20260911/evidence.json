@@ -1,0 +1,2107 @@
+{
+  "baseline": {
+    "root": "/Users/goos/MoAI/moai-adk-go",
+    "head": "2213871afb7d655f411c46a34fd38bb8153278fc",
+    "branch": "main",
+    "captured_at": "2026-09-11T03:20:30.465Z",
+    "files": [
+      {
+        "path": ".claude/rules/moai/NOTICE.md",
+        "sha256": "db4f80de4b2613fb5d1ad19b6cd548f80baabe1b199fb97333b776c90b6ec430"
+      },
+      {
+        "path": ".claude/rules/moai/core/agent-common-protocol-reference.md",
+        "sha256": "9356a262b7e5258ced70ff2814aab99bfa6184ad198f01619a0994eea088a0b8"
+      },
+      {
+        "path": ".claude/rules/moai/core/agent-common-protocol.md",
+        "sha256": "b619cccd4ce7d7651bd050e544d2c09091498157d185600cbdb3689003e0ad47"
+      },
+      {
+        "path": ".claude/rules/moai/core/agent-hooks.md",
+        "sha256": "76685ab984d62066d74639780ceb2335cc6a806eb710e78c382109021e85154e"
+      },
+      {
+        "path": ".claude/rules/moai/core/askuser-protocol-reference.md",
+        "sha256": "f2f821fa4c7dbec6145e8bd443b3f0e5cd6779ed46c3eb156e8210359ba9c7be"
+      },
+      {
+        "path": ".claude/rules/moai/core/askuser-protocol.md",
+        "sha256": "13e10618054799d17a348b3c36335781e276eef70cdc0699218fecb96d427cbb"
+      },
+      {
+        "path": ".claude/rules/moai/core/glm-web-tooling.md",
+        "sha256": "4898aa4eb959642510b501e232759a0ed2141ec0eb27d3bca073085314b24ccc"
+      },
+      {
+        "path": ".claude/rules/moai/core/hooks-system.md",
+        "sha256": "cd6f1a4cc78957862aab94a3e694c0fde2677434954f8c0ea052ee32187e7408"
+      },
+      {
+        "path": ".claude/rules/moai/core/moai-constitution-detail.md",
+        "sha256": "fb64256eee8a7906edf9bae5903c36990eefa4e234bd40bac9c6566c0639d61e"
+      },
+      {
+        "path": ".claude/rules/moai/core/moai-constitution.md",
+        "sha256": "2d88e85b4996721b1b55f9daa13101774a5e4ac4ed75c791af10d2f093a91577"
+      },
+      {
+        "path": ".claude/rules/moai/core/moai-mcp-tools-catalogue.md",
+        "sha256": "aa9663c0303e143b9913369dacc2d583fd2138d82273c3264edb63b23b3f5316"
+      },
+      {
+        "path": ".claude/rules/moai/core/moai-mcp-tools.md",
+        "sha256": "a7fa407e9902d3944532706982b636a0c64d7925e460411df973e6e61057f848"
+      },
+      {
+        "path": ".claude/rules/moai/core/native-idiom-and-register-detail.md",
+        "sha256": "7a04a6291c4383187e7da98c96fa8ea461e88868ed10f37f229b2acd8db1fb37"
+      },
+      {
+        "path": ".claude/rules/moai/core/native-idiom-and-register.md",
+        "sha256": "f0979ed218592f3f29e5711a23ad98c706f50214234e006a69f9cb6680426cfd"
+      },
+      {
+        "path": ".claude/rules/moai/core/output-style-localization-catalogue.md",
+        "sha256": "b03383e9373155e8250da545774875a78f933b82484e38d3eb813ab5dedb9b8b"
+      },
+      {
+        "path": ".claude/rules/moai/core/settings-management.md",
+        "sha256": "a55bd0495f7a5834d1d1ef297401277f0a9bdda34ced6a06a2df860e76c4de1c"
+      },
+      {
+        "path": ".claude/rules/moai/core/verification-claim-integrity-detail.md",
+        "sha256": "1e5b08dd002d7cd25a667de84ab4f9ad2cd75459b95de9b5060b77cf6090b82c"
+      },
+      {
+        "path": ".claude/rules/moai/core/verification-claim-integrity.md",
+        "sha256": "f40ec8b4622357c096b705bc60a03b71fb1fdf093dd36e5ee5a671b6da16cb18"
+      },
+      {
+        "path": ".claude/rules/moai/core/zone-registry.md",
+        "sha256": "d4bc43f7dfd3b222db63cc4e0adab3d00df26dfcc27b163b89e85659ac548b4a"
+      },
+      {
+        "path": ".claude/rules/moai/design/constitution.md",
+        "sha256": "e9eed00903845786eb906f9bc601e1ca0b1d5f80d3dbdb5f5a42a5b3af9434f2"
+      },
+      {
+        "path": ".claude/rules/moai/development/agent-authoring.md",
+        "sha256": "f03ae5c8f0eef5e6f6a68a252f6da87f4b0709ecb46eeaedb3cf12f6ba0e5af7"
+      },
+      {
+        "path": ".claude/rules/moai/development/agent-patterns.md",
+        "sha256": "b2a1dd31d88776926845697fd5802332b3c253bbfa92c97b4d54bbfec8902919"
+      },
+      {
+        "path": ".claude/rules/moai/development/branch-origin-protocol.md",
+        "sha256": "4d54ed76beed7e14b6af9d96458ecb1987eaf231ac3c1fb581623d6d40ca6f8f"
+      },
+      {
+        "path": ".claude/rules/moai/development/coding-standards.md",
+        "sha256": "ed0bd8f6beb8ce8ea944289112cc2648933632998ad2bde3c7456f38210bb1a0"
+      },
+      {
+        "path": ".claude/rules/moai/development/hook-independence.md",
+        "sha256": "f1f3fc13590ac50ffd298f02ec731efc60d6e222042cf8575294abd1f67d7e3b"
+      },
+      {
+        "path": ".claude/rules/moai/development/karpathy-quickref.md",
+        "sha256": "f201b96de8889a21ac6f267897c42a6a1d234cc88168dc189f2d261a1105310c"
+      },
+      {
+        "path": ".claude/rules/moai/development/manager-develop-prompt-template.md",
+        "sha256": "e0056f83e059efaa8ea4e618923679f5c919683896190a7026863fe818416fc0"
+      },
+      {
+        "path": ".claude/rules/moai/development/model-policy.md",
+        "sha256": "9eb822ef7213fc7c74252404099343d39193b15b0192431b360a905837cc4804"
+      },
+      {
+        "path": ".claude/rules/moai/development/orchestrator-templates.md",
+        "sha256": "2044c3a28e8887602df2e1f3383679b5fa2eb9783618f23cf0c5aa494617df1c"
+      },
+      {
+        "path": ".claude/rules/moai/development/prompting-best-practices.md",
+        "sha256": "bebc77f53781427104ecae5d0690040210ff37685753f7e0e4be2243e704d159"
+      },
+      {
+        "path": ".claude/rules/moai/development/rule-authoring.md",
+        "sha256": "835526d852d7fb18139355900f4111701044c01265e0301e1a99f66c2f0be554"
+      },
+      {
+        "path": ".claude/rules/moai/development/skill-ab-testing.md",
+        "sha256": "51ef408e2579f77897ba0cbf932cd23cd3396ca13464966c7288d21efb94a3f1"
+      },
+      {
+        "path": ".claude/rules/moai/development/skill-authoring.md",
+        "sha256": "eae68b7432578461bc47da5ae7277a9ccf12007dfa997065d2595a853a7352fb"
+      },
+      {
+        "path": ".claude/rules/moai/development/skill-writing-craft.md",
+        "sha256": "b89a4c0a0fe254a5735328bea186bda91f7d2e9f21e9ac6dec74c39adb21da3b"
+      },
+      {
+        "path": ".claude/rules/moai/development/spec-frontmatter-schema.md",
+        "sha256": "edb3b86648b4e39c2617dd17ff6c95f0011b4b11f588692968d9f86b99615500"
+      },
+      {
+        "path": ".claude/rules/moai/development/sprint-round-naming.md",
+        "sha256": "095aa9b63419e758c48f22090f5202c4de66409c88b7475762ae8a78eb78b431"
+      },
+      {
+        "path": ".claude/rules/moai/development/verification-completeness.md",
+        "sha256": "f9d419da845f8f5bed226665f8ca3455cb07d6395bdf211d189a856bfeea2d0a"
+      },
+      {
+        "path": ".claude/rules/moai/languages/cpp.md",
+        "sha256": "ad22cb0a4ee3706b282d9fbefb31396925c30a8e282e76486386757e79bbaa3f"
+      },
+      {
+        "path": ".claude/rules/moai/languages/csharp.md",
+        "sha256": "7f6e84718ad9cbd91177a4367de3e7fc34d179365669a5d06894a8905eb0bfcc"
+      },
+      {
+        "path": ".claude/rules/moai/languages/elixir.md",
+        "sha256": "1589ce99bd9ae5b762036ae545f1bd0c6537357377f31762bb351f7866802a62"
+      },
+      {
+        "path": ".claude/rules/moai/languages/flutter.md",
+        "sha256": "1dc9d5cd01dfa789f53f8051b7a1f3a8feb703005d8fd438d3520d458e5c3523"
+      },
+      {
+        "path": ".claude/rules/moai/languages/go.md",
+        "sha256": "0e01d180f3a9827dc1aec847f862b192576aeb02d9f348d5d3c62dbdcd0e0a1a"
+      },
+      {
+        "path": ".claude/rules/moai/languages/java.md",
+        "sha256": "2444a0e702f5fff4f744cdc5ca4dd75ab2807167fa3211357f6c29c6f6cb3a95"
+      },
+      {
+        "path": ".claude/rules/moai/languages/javascript.md",
+        "sha256": "0672754a9b73d3714871a5e75e38c15cb265e7beb61c7eae3643b9ccd18de6b6"
+      },
+      {
+        "path": ".claude/rules/moai/languages/kotlin.md",
+        "sha256": "b216658397f67010c8060e39ea142a9509ef47c0b759bdf57ceeab6f3bf26c65"
+      },
+      {
+        "path": ".claude/rules/moai/languages/php.md",
+        "sha256": "9a77509bb13827e5a0ef89065d6f4a13884751ae120fc6697882398e320122ff"
+      },
+      {
+        "path": ".claude/rules/moai/languages/python.md",
+        "sha256": "b94957d57e99b9fa33357aa2ceebd05c2859078f35b21b6cf9c05fec618b1713"
+      },
+      {
+        "path": ".claude/rules/moai/languages/r.md",
+        "sha256": "9af0e878f3e5010f3f7e618c35e45777f3d55a21951b4d899f747bfab7f50c5a"
+      },
+      {
+        "path": ".claude/rules/moai/languages/ruby.md",
+        "sha256": "b089a2328cc8c5e8a81ac182722aa96a2c921d1e220fba5c3268c182ca659e01"
+      },
+      {
+        "path": ".claude/rules/moai/languages/rust.md",
+        "sha256": "3b11352f73dc5fb19f5b9b28409722c1a19d0079f593658ebbdc54e2e39c326c"
+      },
+      {
+        "path": ".claude/rules/moai/languages/scala.md",
+        "sha256": "7bd6116f2032965d19f93c3e6eeffa0cc7ad5f3b82918f84803d30f9f1d173ac"
+      },
+      {
+        "path": ".claude/rules/moai/languages/swift.md",
+        "sha256": "def2f54bc8250e1c41e8170b54dfdd1a4f8f8c1e7598a65e08df5827cca8756c"
+      },
+      {
+        "path": ".claude/rules/moai/languages/typescript.md",
+        "sha256": "c8a24dff5885f7e3be9e60b56af2f5ecc3220b9424a9cbb35c31a8f18e1c8970"
+      },
+      {
+        "path": ".claude/rules/moai/quality/boundary-verification.md",
+        "sha256": "a56ad464f832b1ed1e40d0390edf73284207f1b6da8a8a48e2d0c95e18d1f3c3"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/archived-agent-rejection.md",
+        "sha256": "6360111133857452222eef58567ef98de4a53d4d9b9177ebfaccc48e7a66ac89"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/cache-aware-execution-reference.md",
+        "sha256": "e7263e41e1b30c860ada333d9350c6b35fddef7c95322b7d2dcbe04664d6d4ac"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/cache-aware-execution.md",
+        "sha256": "ced31605288676b2ecaa2726bef3f8f69fa31937dd00e9e2761d75531e85d661"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/cadence-bridge.md",
+        "sha256": "1fc6a99fe5ffebea3a156f41adc85d1d739d11cd35e4f5f6abe04514cfd472d5"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/ci-autofix-protocol.md",
+        "sha256": "5c0f640a52fe48b103f4cf8cfa678a44418046798104bda6f1df0dd6e903f151"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/context-window-management-detail.md",
+        "sha256": "79d27a4fbd80146e58400fc28dd856841063308c2ffc8ea10547486055c6faf3"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/context-window-management.md",
+        "sha256": "d51ee9f1c66bb6f7885d9d5855342d5d07d717c924cb34bf1d3f9862eb5949f8"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/cross-session-messaging-detail.md",
+        "sha256": "4953d3723cc8e1fe5f1b8a9c63d7128fe9abb97bb4a7a2714094a3d3dae0e927"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/cross-session-messaging.md",
+        "sha256": "46708b2a0162cfd034db6d8addc31deee3f0ea0052379f77cfb361fe3bd5ed31"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/dynamic-workflows.md",
+        "sha256": "198e74cf3236ba08cf88057512c7322d1f02ee068e984d1b418b88c4d75e36ad"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/goal-directive-detail.md",
+        "sha256": "11f9b76405a1d737d40350b3650fb3ed036a68e3789b1cf0a6ac94827a42e8b1"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/goal-directive.md",
+        "sha256": "02e2feae82c85a97c01f74eb862fd963ff402fd6b9562a0a47961168f61730f4"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/kanban-dispatch-detail.md",
+        "sha256": "9ea2a436fd9541f4fb3a1bd789095fa3cba3a66a6441b330d818972b08f2ea5d"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/kanban-dispatch.md",
+        "sha256": "fa23ae44fd465e5c822da6d3713ea6379aed712ccb7bf4b0e4bfb802488cace3"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/main-checkout-branch-guard-detail.md",
+        "sha256": "7568ea4b1e41887f9e64091d419ddb7c0bdec0ab367d69b57ef4c6088b8127df"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/main-checkout-branch-guard.md",
+        "sha256": "6b7a03603e4105521755fb36e796618318e39bc3a9c0370390abe488b92f4039"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/moai-memory.md",
+        "sha256": "4536193fe9b8a3eaf386a16ccbc687f9575ae4de4c374510d22bd9d3c0b519f0"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/mx-tag-protocol.md",
+        "sha256": "e900736c677a5a69a004cefc798f59509e335a0f7712c4f2dc1d9bae5cb8e13f"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/native-invocation-model.md",
+        "sha256": "c4321425399220999432bc10829f8f795ec308d53daf39d74364e5aa804e341f"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/nav-tokens.md",
+        "sha256": "50756b1b0408c7b7bff04bc2e6be3c1bf259274e50c8129fbdf8fc72879a1ba6"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/orchestration-mode-selection.md",
+        "sha256": "e2121b8dbeb2014cd7773ea1673b8811f900f7e93922350d33705cda176baf4b"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/runtime-recovery-doctrine.md",
+        "sha256": "16a6f35375e4a5700b7e8f5d72df300bbeec06905803d19c15fd15c2d6ffb03d"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/session-handoff-examples.md",
+        "sha256": "c2b21eee0b32602cab9a06cea287c8461de9e6aaed9668a061e7e04a58c57dc8"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/session-handoff.md",
+        "sha256": "426731f3b1a66a7c8e5aa9cdee341af7055da6565cce2e649b2b01d2a247b8b7"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/skill-routing-detail.md",
+        "sha256": "e3153cabdedd519e211fa909cdecbace2d9422772d3e889cb82ff2436974c0f5"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/skill-routing.md",
+        "sha256": "85685e4da3d9c1644e43479728122861ee33baee7f56094b409b8aef9d64aa73"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/spec-workflow.md",
+        "sha256": "53ab9ace3512b9e7740e02c45fdb9e033173348e96baa08e220fed09bcd0aa8e"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/verification-batch-pattern.md",
+        "sha256": "4a46cdaa164b1dbff5de77446d8f69e069149313cc5a8887488278edb1163496"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/worktree-integration.md",
+        "sha256": "b778455623f59b6a674d4eeea205e853efc68c44ed302ae3382ea1a5b45aa67c"
+      },
+      {
+        "path": ".claude/rules/moai/workflow/worktree-state-guard.md",
+        "sha256": "13a1820a60576b29a0b6b3561c0d53001d79c0b64af0f4b882527a32d18399bb"
+      },
+      {
+        "path": ".claude/agents/moai/builder-harness.md",
+        "sha256": "967a68e92fd7a05475be309ee233a82ddafb2ff7e5b0a27379c63260e20190ec"
+      },
+      {
+        "path": ".claude/agents/moai/e2e-tester.md",
+        "sha256": "61bbd26d61b3d0fda4c9776fd64edae3247c7c9ee08380110aaba039b1928809"
+      },
+      {
+        "path": ".claude/agents/moai/manager-design.md",
+        "sha256": "fb7af236dc3ed0e95bd439f888c30e29318493dcd25e3dd5d12ac58db12a2a6a"
+      },
+      {
+        "path": ".claude/agents/moai/manager-develop.md",
+        "sha256": "11691af5cb3cce7a94b25b7ab7066910ee9ea07fa26775f10dfdc68d0f111c1c"
+      },
+      {
+        "path": ".claude/agents/moai/manager-docs.md",
+        "sha256": "27d6252a33131be637294ddced274213bb817012747731d08844becd7a3b7954"
+      },
+      {
+        "path": ".claude/agents/moai/manager-git.md",
+        "sha256": "56eb72557ec24c8907c8b260f1d829c2e0300c5f6eea352f898196db6a00e132"
+      },
+      {
+        "path": ".claude/agents/moai/manager-lead.md",
+        "sha256": "c3e79338127c35d0a8d92888b25b7658b1e81d2776de172ceab8684c6c5f6009"
+      },
+      {
+        "path": ".claude/agents/moai/manager-spec.md",
+        "sha256": "ab260f27afc8481c2802836e032594e3eddfe1bce54d66f8a83b201b3fcfede9"
+      },
+      {
+        "path": ".claude/agents/moai/plan-auditor.md",
+        "sha256": "abe27edee7566452720fdd2d1c3a71f86320d7906dbbb5e7e4e8f35a0f77c2cb"
+      },
+      {
+        "path": ".claude/agents/moai/super-advisor.md",
+        "sha256": "4d194ca2bab711e1587019f2d6b4be82577f0a62598a48d7f567c10a94323d94"
+      },
+      {
+        "path": ".claude/agents/moai/sync-auditor.md",
+        "sha256": "f1b4487f7351e0da165545a152c4122b15ff5e1426772171b8fa70df196c55d0"
+      },
+      {
+        "path": ".claude/skills/moai/SKILL.md",
+        "sha256": "89c81faedacdac280ca70c65a79b895d43381c57bbe11353b5a0c57458eb15f5"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/plan/.gitkeep",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/plan/clarity-interview.md",
+        "sha256": "885d23fab3b5d74ed951ad424e821efd8d82a701fc99c8c15cc9bc0844fbaffe"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/plan/context-discovery.md",
+        "sha256": "eb7e8deb8f20d755f541488807620e0d231816b0a8d56a9cf972b068a558f2b8"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/plan/spec-assembly.md",
+        "sha256": "bcdeec9d92c9f0b9835e69e327e7aef3c8779bf0f3a287150185c039b8ede4b7"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/plan.md",
+        "sha256": "dccb01073da3a76b10d37ba968b90368644dac82f032233cb4b4b6f886de835a"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/project/.gitkeep",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/project/codebase-analysis.md",
+        "sha256": "e4aaf9dbb49b79eb31171265742e837e7e9a6b6332e2bb5f3e0a3746b648320b"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/project/doc-generation.md",
+        "sha256": "46aed9100d7edb0657c6941104d55e5c642c232825e9ce1ec17b147722e65a81"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/project/meta-harness.md",
+        "sha256": "065617558fa491d203dfc892f21c10886d67a4fc8c383d64e381d766d8f6846e"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/project/mode-detection.md",
+        "sha256": "35b4a00d715744f91d08390cfffc2b73be7898692499f22331dacbe4ad971871"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/project.md",
+        "sha256": "21262947d7e1d5e15fb56803c64c4677293c9f4c8db7d476916f1b1dec3baef0"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/run/.gitkeep",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/run/context-loading.md",
+        "sha256": "c98e3aafbf8c7364777246b0241b816bd713f7ddcee540e9c8af1bce406aee33"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/run/mode-orchestration.md",
+        "sha256": "4a8b97748501efb45d00e22d1287f40cdbd3f14c14765a46b10d2726ea84ed5c"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/run/phase-execution.md",
+        "sha256": "30c269281e633a79f1d9998073a45ff27127abfd1db4e1b549aed018e7c57994"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/run/task-decomposition.md",
+        "sha256": "92100c38e30b190bac3b35efbdf895d2bc50fc3a14f47fd683c7b14d6b87f913"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/run.md",
+        "sha256": "95291e95efa45f21a247c99461163b8e791361210b135f57797689f68b2cd36d"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/sync/.gitkeep",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/sync/delivery.md",
+        "sha256": "e0e56eda95686f503f49d9fd581646615eda308df8632d6e4417618f8368fe99"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/sync/doc-execution.md",
+        "sha256": "689ef00de7ae03ba58f3aee4f001158490d46499c90cae81a63425de4efbc4d3"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/sync/quality-gates-context.md",
+        "sha256": "714436022609c3449e9a3166673d843757b536f6917ed66af0beb3fb0227c93f"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/sync/quality-gates-quality.md",
+        "sha256": "a6f673919c17388a9dedc59fb8fbba871c2743c28d20fb5bf9a0da81f8f44041"
+      },
+      {
+        "path": ".claude/skills/moai/workflows/sync.md",
+        "sha256": "272bfdadb9fdc93669297837aae1880a41688b39d0ab97ce938505bd3454ebb8"
+      },
+      {
+        "path": ".moai/config/sections/archive.yaml",
+        "sha256": "03331310a7d97a0bdbb5c3cca26f516982739c8d2799649ed6c5af34db22cff3"
+      },
+      {
+        "path": ".moai/config/sections/cache.yaml",
+        "sha256": "60884b6ccdd8b4535d4033aba9104ffde7158375597c686b614af44cde62ce9a"
+      },
+      {
+        "path": ".moai/config/sections/constitution.yaml",
+        "sha256": "ec3624da9fd878f8ccc21700b46a19617f23cf0eeb691c94cfa3321138643e6c"
+      },
+      {
+        "path": ".moai/config/sections/context.yaml",
+        "sha256": "ca6ec1e6e61832cf54ef05244f9f1fea7908a7393e98447662012d6c0e94fe75"
+      },
+      {
+        "path": ".moai/config/sections/crosssession.yaml",
+        "sha256": "4083020fb12704fd08d2c20640403466832942dcb392ae0120324ee1f187cee1"
+      },
+      {
+        "path": ".moai/config/sections/delegation.yaml",
+        "sha256": "585467872a732e7ad75446934dcf74b6fb8ab8c280840f77c917c4eaf6159f28"
+      },
+      {
+        "path": ".moai/config/sections/design.yaml",
+        "sha256": "28731d635ea2c6e7589c6c2034ee373fab960a81de1c66f37ebf19da18fb6eb8"
+      },
+      {
+        "path": ".moai/config/sections/feedback.yaml",
+        "sha256": "823d17f2485cc347e9983de54b32b09467540d36eb3d67198aa6cc822c128f19"
+      },
+      {
+        "path": ".moai/config/sections/gate.yaml",
+        "sha256": "bfb329457ed7bff52bd1e4233693d81f5cc65f116808fff8eeb28fc65528b02a"
+      },
+      {
+        "path": ".moai/config/sections/git-convention.yaml",
+        "sha256": "80a26284c5743446bf6a81013503a444017cf351c9aaaa3ec4f67adad3d39e3f"
+      },
+      {
+        "path": ".moai/config/sections/git-strategy.yaml",
+        "sha256": "876321afb593a53b10f3b82ef3bee28a14a356c0dc0a8e47ff556ee26ed49414"
+      },
+      {
+        "path": ".moai/config/sections/handoff.yaml",
+        "sha256": "5134428ad3db8b75100c3c4b656627071f759b575fb25a2976cdeb01b0b1636e"
+      },
+      {
+        "path": ".moai/config/sections/harness.yaml",
+        "sha256": "7164f6c4a1bd1ec6e358f2e37b3e05eba03a6fcaab5063c461e8972bad05e847"
+      },
+      {
+        "path": ".moai/config/sections/interview.yaml",
+        "sha256": "6e518c920088cdb7b2c50f33cba5fb98dd410a9a7cb97dbbd9a312a6525d293f"
+      },
+      {
+        "path": ".moai/config/sections/language.yaml",
+        "sha256": "ef1ac0e3ac7d49a4e4f9637d2da4037fb9bfc73ab8c816d76707da2edb737bd4"
+      },
+      {
+        "path": ".moai/config/sections/llm.yaml",
+        "sha256": "d87dd8feb0177db10b46ef749d110bfd07298ef0f358096be870fcdb0ef6639a"
+      },
+      {
+        "path": ".moai/config/sections/lsp.yaml",
+        "sha256": "e45f7e6d555dab06aef6f93ae7fbc481ba0ad831a8ea1880e3a109f8012c28f9"
+      },
+      {
+        "path": ".moai/config/sections/mcp-matrix.yaml",
+        "sha256": "a1e22b966d18263b1d7f35e189630126f7a1ed2dfd5143affaab4268b5c75f68"
+      },
+      {
+        "path": ".moai/config/sections/mx.yaml",
+        "sha256": "ad261346c621c7c236d543321ce605a8e9b2aef2c85321a15cf349b9a47033eb"
+      },
+      {
+        "path": ".moai/config/sections/observability.yaml",
+        "sha256": "4e8ce8c66fb8bd750e2bcb6182120ccb6222fb328adcfd00bf23e403d7b6806e"
+      },
+      {
+        "path": ".moai/config/sections/project.yaml",
+        "sha256": "af3e0fe26cedbcefeacb09630e1539ad7c62135f0d65e93322bc0f9e6e69ab71"
+      },
+      {
+        "path": ".moai/config/sections/quality.yaml",
+        "sha256": "4902f23fa8a5f1c4a5a6cd8cb3fe844e88a95384a51f104a0e7509b303b1675b"
+      },
+      {
+        "path": ".moai/config/sections/ralph.yaml",
+        "sha256": "6f8632c473f5f6d521deb1a23df1ab070e86b603560facbc07495a12ffb4d3aa"
+      },
+      {
+        "path": ".moai/config/sections/report.yaml",
+        "sha256": "c7dedc5631fcd6d4e849d6e4309ce05f8170f27212b88289cc9d0f27f3347300"
+      },
+      {
+        "path": ".moai/config/sections/security.yaml",
+        "sha256": "bc315946c498e0a9769be9cc9270ea2d934ce218da382d42607ccc20909a85fc"
+      },
+      {
+        "path": ".moai/config/sections/state.yaml",
+        "sha256": "47114a04e18436eb81645260650df03769f6410bd8a411c53e23dcdd246310ae"
+      },
+      {
+        "path": ".moai/config/sections/statusline.yaml",
+        "sha256": "6bf856d32a2048882c8c68fadc54eebbf88fa4506cef05f50269e07d9845fc4b"
+      },
+      {
+        "path": ".moai/config/sections/sunset.yaml",
+        "sha256": "7c7d68059f2e5d7073d2a4d8a04fb205380cf55732a6ef04828d198e088321cb"
+      },
+      {
+        "path": ".moai/config/sections/system.yaml",
+        "sha256": "d4e70b022c969de2480837e2e13612a91c212793428bbcc339787c3d673aad26"
+      },
+      {
+        "path": ".moai/config/sections/tool-policy.yaml",
+        "sha256": "08db6ecf92b2731cdb627ac8f779e41a75cb9591ea73a26a54b08657e397c63e"
+      },
+      {
+        "path": ".moai/config/sections/user.yaml",
+        "sha256": "20e0234ea61d9accce5db6644d6cd1576787b11ee3a1d5f09fc62ec146195dde"
+      },
+      {
+        "path": ".moai/config/sections/workflow.yaml",
+        "sha256": "fc9accbb5ac383d04af9c9f14b21e3e4248771c372cbc829bce30ead2c21efdf"
+      },
+      {
+        "path": "CLAUDE.md",
+        "sha256": "94bdb46e750f478f6e0fe4de422b516257da08d182f994d98f040df604a041cf"
+      },
+      {
+        "path": "CLAUDE.local.md",
+        "sha256": "5ed5f724765eaa8fee11c0c876921ae7edf8293ec7e2f002b626146528cd6dcc"
+      },
+      {
+        "path": ".claude/settings.json",
+        "sha256": "bddb867650c7b96adab29e0d53d6e3e6d02e66137c402fc1e96df4707bfaf420"
+      },
+      {
+        "path": ".claude/settings.local.json",
+        "sha256": "97ffedb61ad29d2712871c28c870ec43d0f0602c5b1fc551eb5d0ab094cfe9cf"
+      },
+      {
+        "path": ".claude/hooks/moai/sync-phase-quality-gate.sh",
+        "sha256": "38ccf70ebe6968782356d490e5462c84bd13b897a27aa5b4d12bc41ebe0f7d15"
+      },
+      {
+        "path": ".claude/workflows/sync-audit-4dim.js",
+        "sha256": "476f3cd86d663c6c41196fcd7a82672b7f820adc74c1e3aa761268759f3b6cbd"
+      }
+    ]
+  },
+  "source_recheck": {
+    "head": "2213871afb7d655f411c46a34fd38bb8153278fc",
+    "changed": [],
+    "files": 157
+  },
+  "findings": [
+    {
+      "id": "F01",
+      "priority": "High",
+      "phase": "plan → run",
+      "title": "감사 캐시는 sticky라지만 조회는 오늘 날짜 파일을 지시한다",
+      "kind": "문서 충돌",
+      "claim": "run 진입 지침은 시간과 무관한 해시 캐시를 선언하면서 오늘 날짜의 보고서를 읽는다. plan-auditor는 최종 review-N 스트림을 재사용 입력으로, 날짜 파일을 기록 전용으로 규정한다. 어제 PASS와 오늘 첫 run을 연결하는 소비 경로가 문서상 일치하지 않는다.",
+      "action": "최종 review-N 보고서의 해시·점수·버전을 단일 조회 함수로 해결하고 날짜 보고서는 이력으로만 사용한다. 날짜가 바뀌고 파일 내용이 같은 fixture에서 새 감사 호출 0회를 확인한다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/run/phase-execution.md",
+          "needle": "(today's date)",
+          "line": 45,
+          "quote": "Read `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md` (today's date) and",
+          "command": "rg \"-n\" \"-F\" \"--\" \"(today's date)\" \".claude/skills/moai/workflows/run/phase-execution.md\"",
+          "exit": 0,
+          "stdout": "45:Read `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md` (today's date) and\n",
+          "sha256": "30c269281e633a79f1d9998073a45ff27127abfd1db4e1b549aed018e7c57994"
+        },
+        {
+          "path": ".claude/agents/moai/plan-auditor.md",
+          "needle": "date-file is a verdict record surface only",
+          "line": 369,
+          "quote": "This report belongs to the **plan-phase review stream** (`{SPEC-ID}-review-{N}.md`, iteration-based) — deliberately distinct from the **run-gate stream** (`<SPEC-ID>-<YYYY-MM-DD>.md`, date-based) that the Phase 1 Plan Audit Gate writes into the same directory (see `.claude/rules/moai/workflow/spec-workflow.md` § Report Persistence for the two-stream contract). The review stream's final-iteration verdict is the input the run-gate consults for skip-eligibility; the run-gate's date-file is a verdict record surface only.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"date-file is a verdict record surface only\" \".claude/agents/moai/plan-auditor.md\"",
+          "exit": 0,
+          "stdout": "369:This report belongs to the **plan-phase review stream** (`{SPEC-ID}-review-{N}.md`, iteration-based) — deliberately distinct from the **run-gate stream** (`<SPEC-ID>-<YYYY-MM-DD>.md`, date-based) that the Phase 1 Plan Audit Gate writes into the same directory (see `.claude/rules/moai/workflow/spec-workflow.md` § Report Persistence for the two-stream contract). The review stream's final-iteration verdict is the input the run-gate consults for skip-eligibility; the run-gate's date-file is a verdict record surface only.\n",
+          "sha256": "abe27edee7566452720fdd2d1c3a71f86320d7906dbbb5e7e4e8f35a0f77c2cb"
+        }
+      ]
+    },
+    {
+      "id": "F02",
+      "priority": "High",
+      "phase": "공통 검증 캐시",
+      "title": "추적되지 않은 파일의 내용 변경이 검증 키를 무효화하지 않는다",
+      "kind": "동작 재현",
+      "claim": "현재 Key는 HEAD, porcelain-v2, tracked diff만 결합한다. 같은 untracked 경로의 내용을 A에서 B로 바꾼 fixture에서 키가 동일했다. 신규 파일 구현·테스트를 staging 전에 수정하는 경로에서는 오래된 검사 결과가 fresh로 해석될 수 있다.",
+      "action": "검사 대상 untracked 파일의 내용 해시를 포함하고 생성 산출물 제외 규칙을 명시한다. 파일 내용·이름·삭제·ignored 산출물·tracked 변경 각각의 키 불변/변경 시험을 둔다. TTL 단축으로 이 결함을 대체하지 않는다.",
+      "probe": "P07",
+      "refs": [
+        {
+          "path": "internal/verify/key.go",
+          "needle": "porcelain, err :=",
+          "line": 39,
+          "quote": "\tporcelain, err := gitOutput(ctx, repoDir, \"status\", \"--porcelain=v2\")",
+          "command": "rg \"-n\" \"-F\" \"--\" \"porcelain, err :=\" \"internal/verify/key.go\"",
+          "exit": 0,
+          "stdout": "39:\tporcelain, err := gitOutput(ctx, repoDir, \"status\", \"--porcelain=v2\")\n",
+          "sha256": "be7c366627ceb3672b2b6b46015577aca3e658479d0c04a83a82c73121a1d308"
+        },
+        {
+          "path": "internal/verify/key.go",
+          "needle": "diff, err :=",
+          "line": 43,
+          "quote": "\tdiff, err := gitOutput(ctx, repoDir, \"diff\", \"HEAD\")",
+          "command": "rg \"-n\" \"-F\" \"--\" \"diff, err :=\" \"internal/verify/key.go\"",
+          "exit": 0,
+          "stdout": "43:\tdiff, err := gitOutput(ctx, repoDir, \"diff\", \"HEAD\")\n",
+          "sha256": "be7c366627ceb3672b2b6b46015577aca3e658479d0c04a83a82c73121a1d308"
+        }
+      ]
+    },
+    {
+      "id": "F03",
+      "priority": "High",
+      "phase": "plan 감사 캐시",
+      "title": "공백 정규화가 실행 의미가 다른 문서까지 같은 키로 만든다",
+      "kind": "동작 재현",
+      "claim": "normalizeWhitespace는 모든 공백을 합친다. YAML block의 두 줄 명령과 한 줄 명령이 같은 문자열이 되는 것을 실제 Go 함수로 재현했다. acceptance의 shell·Python·YAML 예제에서는 줄바꿈과 들여쓰기가 의미이므로 단순 서식 변경으로 볼 수 없다.",
+      "action": "원본 바이트 해시를 기본으로 사용한다. 서식 정규화가 꼭 필요하면 코드 블록을 보존하는 Markdown parser를 사용하되 복잡도와 이득을 먼저 측정한다. 서로 다른 실행 의미의 fixture는 반드시 다른 키여야 한다.",
+      "probe": "P06",
+      "refs": [
+        {
+          "path": "internal/runtime/audit_cache.go",
+          "needle": "fields := strings.Fields(s)",
+          "line": 134,
+          "quote": "\tfields := strings.Fields(s)",
+          "command": "rg \"-n\" \"-F\" \"--\" \"fields := strings.Fields(s)\" \"internal/runtime/audit_cache.go\"",
+          "exit": 0,
+          "stdout": "134:\tfields := strings.Fields(s)\n",
+          "sha256": "9c0c52b2dacc19a984edc2eb84de32618b1e24dca8c9d239d7ad182f1547b890"
+        }
+      ]
+    },
+    {
+      "id": "F04",
+      "priority": "High",
+      "phase": "sync Stop 훅",
+      "title": "실패한 검사도 once-per-commit 표식으로 다음 호출에서 사라진다",
+      "kind": "동작 재현",
+      "claim": "훅은 검사 시작 전에 HEAD를 기록한다. go vet/build가 7로 실패한 첫 호출은 block JSON을 냈으나, 같은 HEAD의 두 번째 호출은 검사 없이 빈 stdout으로 종료했다. 현재 fixture에서 확인한 것은 훅 출력이며 실제 호스트의 Stop 처리까지 재현한 것은 아니다.",
+      "action": "running·passed·failed 상태와 tree key를 분리한다. 같은 실패 상태는 기존 block을 재표시하고, 중단된 running 상태는 회수 후 재검사한다. 성공 캐시만 조용히 재사용한다.",
+      "probe": "P04",
+      "refs": [
+        {
+          "path": ".claude/hooks/moai/sync-phase-quality-gate.sh",
+          "needle": "The SHA is recorded BEFORE",
+          "line": 174,
+          "quote": "# it is unchanged. The SHA is recorded BEFORE the checks run, so a slow/killed run",
+          "command": "rg \"-n\" \"-F\" \"--\" \"The SHA is recorded BEFORE\" \".claude/hooks/moai/sync-phase-quality-gate.sh\"",
+          "exit": 0,
+          "stdout": "174:# it is unchanged. The SHA is recorded BEFORE the checks run, so a slow/killed run\n",
+          "sha256": "38ccf70ebe6968782356d490e5462c84bd13b897a27aa5b4d12bc41ebe0f7d15"
+        },
+        {
+          "path": ".claude/hooks/moai/sync-phase-quality-gate.sh",
+          "needle": "echo \"$HEAD_SHA\" >",
+          "line": 185,
+          "quote": "    echo \"$HEAD_SHA\" > \"$SENTINEL_FILE\"",
+          "command": "rg \"-n\" \"-F\" \"--\" \"echo \\\"$HEAD_SHA\\\" >\" \".claude/hooks/moai/sync-phase-quality-gate.sh\"",
+          "exit": 0,
+          "stdout": "185:    echo \"$HEAD_SHA\" > \"$SENTINEL_FILE\"\n",
+          "sha256": "38ccf70ebe6968782356d490e5462c84bd13b897a27aa5b4d12bc41ebe0f7d15"
+        }
+      ]
+    },
+    {
+      "id": "F05",
+      "priority": "High",
+      "phase": "sync 보안",
+      "title": "의존성 취약점 검사 지시와 실제 훅의 manifest diff가 다르다",
+      "kind": "구현 대조",
+      "claim": "sync 지침은 manifest 변경 여부와 무관한 취약점 검사를 Stop 훅이 수행한다고 선언한다. 실제 스크립트는 마지막 커밋의 manifest diff 유무만 기록하며, 소스 파일 변화가 없으면 그 전에 종료한다. 설치된 취약점 데이터베이스를 조회한 증거는 이 스크립트에 없다.",
+      "action": "manifest 변경 확인과 취약점 스캔을 서로 다른 검사로 명명한다. lockfile hash·scanner/version·advisory freshness로 스캔을 재사용하고, 실제 실행 명령·출력·누락 언어를 기록한다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/sync/quality-gates-quality.md",
+          "needle": "Dependency manifest audit (always runs",
+          "line": 140,
+          "quote": "**Dependency manifest audit (always runs, regardless of whether manifest files changed in this SPEC)** — a SEPARATE, automatic mechanism distinct from the agent-invoked security analysis above:",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Dependency manifest audit (always runs\" \".claude/skills/moai/workflows/sync/quality-gates-quality.md\"",
+          "exit": 0,
+          "stdout": "140:**Dependency manifest audit (always runs, regardless of whether manifest files changed in this SPEC)** — a SEPARATE, automatic mechanism distinct from the agent-invoked security analysis above:\n",
+          "sha256": "a6f673919c17388a9dedc59fb8fbba871c2743c28d20fb5bf9a0da81f8f44041"
+        },
+        {
+          "path": ".claude/hooks/moai/sync-phase-quality-gate.sh",
+          "needle": "git diff \"$DIFF_RANGE\" -- $DEPS_MANIFESTS",
+          "line": 310,
+          "quote": "git diff \"$DIFF_RANGE\" -- $DEPS_MANIFESTS > \"$GATE_TMPDIR/deps.diff\" 2>&1 || true",
+          "command": "rg \"-n\" \"-F\" \"--\" \"git diff \\\"$DIFF_RANGE\\\" -- $DEPS_MANIFESTS\" \".claude/hooks/moai/sync-phase-quality-gate.sh\"",
+          "exit": 0,
+          "stdout": "310:git diff \"$DIFF_RANGE\" -- $DEPS_MANIFESTS > \"$GATE_TMPDIR/deps.diff\" 2>&1 || true\n",
+          "sha256": "38ccf70ebe6968782356d490e5462c84bd13b897a27aa5b4d12bc41ebe0f7d15"
+        }
+      ]
+    },
+    {
+      "id": "F06",
+      "priority": "High",
+      "phase": "sync 판정",
+      "title": "Critical/High 실패와 High 경고, 실패 후 계속 선택이 공존한다",
+      "kind": "문서 충돌",
+      "claim": "Phase 7과 sync-auditor는 Critical/High 보안 문제를 FAIL로 정한다. Phase 8은 CRITICAL만 차단하고 HIGH는 경고로 처리한다. CRITICAL에서도 Continue with warning을 제시한다. 같은 취약점이 어느 단계에서 발견되는지에 따라 판정이 달라진다.",
+      "action": "severity와 blocking, 사용자가 승인한 예외를 하나의 판정 계약으로 정의한다. High fixture를 Phase 7·8·auditor에 각각 넣어 동일한 중단 결과와 예외 기록을 검증한다.",
+      "refs": [
+        {
+          "path": ".claude/agents/moai/sync-auditor.md",
+          "needle": "Any Critical/High finding",
+          "line": 38,
+          "quote": "| Security | 25% | OWASP Top 10 compliance | Any Critical/High finding |",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Any Critical/High finding\" \".claude/agents/moai/sync-auditor.md\"",
+          "exit": 0,
+          "stdout": "38:| Security | 25% | OWASP Top 10 compliance | Any Critical/High finding |\n",
+          "sha256": "f1b4487f7351e0da165545a152c4122b15ff5e1426772171b8fa70df196c55d0"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/sync/quality-gates-quality.md",
+          "needle": "HIGH findings are reported as warnings",
+          "line": 137,
+          "quote": "- HIGH findings are reported as warnings in PR description",
+          "command": "rg \"-n\" \"-F\" \"--\" \"HIGH findings are reported as warnings\" \".claude/skills/moai/workflows/sync/quality-gates-quality.md\"",
+          "exit": 0,
+          "stdout": "137:- HIGH findings are reported as warnings in PR description\n",
+          "sha256": "a6f673919c17388a9dedc59fb8fbba871c2743c28d20fb5bf9a0da81f8f44041"
+        }
+      ]
+    },
+    {
+      "id": "F07",
+      "priority": "High",
+      "phase": "sync 문서 소유권",
+      "title": "manager-docs에 SPEC 본문 수정을 맡기면서 금지한다",
+      "kind": "문서 충돌",
+      "claim": "sync Step 2.2.1은 requirements·plan·acceptance 본문을 구현에 맞춰 갱신하도록 한다. 실제 수행 주체 manager-docs는 해당 본문을 수정할 수 없고 manager-spec으로 되돌려야 한다. 이 지시쌍은 거절·재위임을 유발하거나 승인된 기준을 사후 변경하게 한다.",
+      "action": "divergence를 먼저 분류하고 필요한 SPEC 본문 변경만 manager-spec에 넘긴다. 변경된 AC는 독립 재검토 후 구현과 연결하며 docs는 승인된 차이와 frontmatter만 반영한다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/sync/doc-execution.md",
+          "needle": "Update spec.md requirements to reflect actual implementation",
+          "line": 166,
+          "quote": "- Update spec.md requirements to reflect actual implementation",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Update spec.md requirements to reflect actual implementation\" \".claude/skills/moai/workflows/sync/doc-execution.md\"",
+          "exit": 0,
+          "stdout": "166:- Update spec.md requirements to reflect actual implementation\n",
+          "sha256": "689ef00de7ae03ba58f3aee4f001158490d46499c90cae81a63425de4efbc4d3"
+        },
+        {
+          "path": ".claude/agents/moai/manager-docs.md",
+          "needle": "this agent **MUST** return a structured blocker report",
+          "line": 107,
+          "quote": "When sync-phase reveals a need to modify SPEC body content — for example: a scope expansion discovered post-run where a cascade follow-up needs a body update, a missed REQ that was actually implemented, a last-minute AC clarification — this agent **MUST** return a structured blocker report (per `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) and the orchestrator re-delegates to manager-spec for the body edit BEFORE re-invoking this agent for CHANGELOG emission. This boundary is the core principle of the canonical responsibility realignment — silently editing spec.md/plan.md/acceptance.md body is **prohibited** under the ownership policy.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"this agent **MUST** return a structured blocker report\" \".claude/agents/moai/manager-docs.md\"",
+          "exit": 0,
+          "stdout": "107:When sync-phase reveals a need to modify SPEC body content — for example: a scope expansion discovered post-run where a cascade follow-up needs a body update, a missed REQ that was actually implemented, a last-minute AC clarification — this agent **MUST** return a structured blocker report (per `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) and the orchestrator re-delegates to manager-spec for the body edit BEFORE re-invoking this agent for CHANGELOG emission. This boundary is the core principle of the canonical responsibility realignment — silently editing spec.md/plan.md/acceptance.md body is **prohibited** under the ownership policy.\n",
+          "sha256": "27d6252a33131be637294ddced274213bb817012747731d08844becd7a3b7954"
+        }
+      ]
+    },
+    {
+      "id": "F08",
+      "priority": "High",
+      "phase": "run · sync Git",
+      "title": "작은 Tier의 직접 push와 모든 Tier의 PR 의무가 충돌한다",
+      "kind": "문서 충돌",
+      "claim": "spec-workflow, run, sync는 Tier S/M에서 main 직접 push를 기본으로 명시한다. manager-git은 모든 Tier에서 push와 PR을 자신에게 위임하도록 한다. 현재 원격 보호 설정은 조회하지 않았으므로 서버에서 거절된다고 단정하지 않는다. 로컬 지침 간 경로 불일치는 확인됐다.",
+      "action": "한 개의 delivery policy를 owner·tier·branch·approval 조건으로 정의하고 모든 호출부가 참조하도록 한다. S/M/L 및 명시적 --pr 조합의 실행계획을 표 기반 시험으로 대조한다.",
+      "refs": [
+        {
+          "path": ".claude/rules/moai/workflow/spec-workflow.md",
+          "needle": "Route A — Hybrid Trunk main-direct",
+          "line": 25,
+          "quote": "- **Route A — Hybrid Trunk main-direct (default; Tier S / Tier M):** manager-develop commits and pushes directly to `main`; there is NO per-phase PR and NO per-phase branch. Phase transitions are triggered by commit / push events (Conventional-Commit subjects pushed to `main` + green CI), NOT by PR merges. This is the 1-person-OSS Hybrid Trunk policy (CLAUDE.md §5 + `manager-develop-prompt-template.md` §B9).",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Route A — Hybrid Trunk main-direct\" \".claude/rules/moai/workflow/spec-workflow.md\"",
+          "exit": 0,
+          "stdout": "25:- **Route A — Hybrid Trunk main-direct (default; Tier S / Tier M):** manager-develop commits and pushes directly to `main`; there is NO per-phase PR and NO per-phase branch. Phase transitions are triggered by commit / push events (Conventional-Commit subjects pushed to `main` + green CI), NOT by PR merges. This is the 1-person-OSS Hybrid Trunk policy (CLAUDE.md §5 + `manager-develop-prompt-template.md` §B9).\n30:**Route A — Hybrid Trunk main-direct (default, Tier S / M):**\n",
+          "sha256": "53ab9ace3512b9e7740e02c45fdb9e033173348e96baa08e220fed09bcd0aa8e"
+        },
+        {
+          "path": ".claude/agents/moai/manager-git.md",
+          "needle": "PR creation across ALL tiers",
+          "line": 5,
+          "quote": "  Invocation gate: invoked for PR creation across ALL tiers (S/M/L) per the PR-mandatory policy (enforce_admins: true). Tier L uses heavy ceremony (long-lived branch + full CI matrix); Tier S/M uses light ceremony (short-lived branch + self-merge) — both route PR creation through manager-git. manager-develop/manager-docs perform commits only; push + PR is always delegated to manager-git.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"PR creation across ALL tiers\" \".claude/agents/moai/manager-git.md\"",
+          "exit": 0,
+          "stdout": "5:  Invocation gate: invoked for PR creation across ALL tiers (S/M/L) per the PR-mandatory policy (enforce_admins: true). Tier L uses heavy ceremony (long-lived branch + full CI matrix); Tier S/M uses light ceremony (short-lived branch + self-merge) — both route PR creation through manager-git. manager-develop/manager-docs perform commits only; push + PR is always delegated to manager-git.\n",
+          "sha256": "56eb72557ec24c8907c8b260f1d829c2e0300c5f6eea352f898196db6a00e132"
+        }
+      ]
+    },
+    {
+      "id": "F09",
+      "priority": "High",
+      "phase": "공유 checkout",
+      "title": "plan 위치·branch switch·reset 지시가 공유 checkout 보호와 충돌한다",
+      "kind": "문서 충돌",
+      "claim": "spec-workflow는 plan을 main checkout에서 실행하도록 하고 cleanup에 reset --hard를 제시한다. sync는 PR 직후 checkout을 지시한다. main-checkout guard와 이번 AGENTS 계약은 공유 트리의 branch 전환을 금지한다. 지침 실행을 위해 보호를 무시할 근거가 없다.",
+      "action": "launcher로 진입한 worktree에서 전 단계를 유지하고 별도 integration owner가 원격을 처리한다. 공유 checkout에서는 read-only probe와 허용된 명시 경로 commit만 가능하도록 경로 시험을 만든다.",
+      "refs": [
+        {
+          "path": ".claude/rules/moai/workflow/spec-workflow.md",
+          "needle": "Step 1 (plan) MUST execute in main checkout",
+          "line": 50,
+          "quote": "- Step 1 (plan) MUST execute in main checkout on BOTH routes. NO L2/L3 worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping. On **Route A** the plan-phase artifacts are committed + pushed directly to `main` (no branch). On **Route B**, the **Late-branch precondition (the Late-Branch closure contract)** applies: when `team.branch_creation.auto_enabled == false` in `git-strategy.yaml`, Step 1 entry requires `git rev-parse --abbrev-ref HEAD == main` (or the user's chosen `main_branch` if it differs). No `plan/SPEC-XXX` branch is created at Step 1; plan-phase commits land directly on `main` and are pushed only after Phase C `git switch -c plan/SPEC-XXX` at PR creation time.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Step 1 (plan) MUST execute in main checkout\" \".claude/rules/moai/workflow/spec-workflow.md\"",
+          "exit": 0,
+          "stdout": "50:- Step 1 (plan) MUST execute in main checkout on BOTH routes. NO L2/L3 worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping. On **Route A** the plan-phase artifacts are committed + pushed directly to `main` (no branch). On **Route B**, the **Late-branch precondition (the Late-Branch closure contract)** applies: when `team.branch_creation.auto_enabled == false` in `git-strategy.yaml`, Step 1 entry requires `git rev-parse --abbrev-ref HEAD == main` (or the user's chosen `main_branch` if it differs). No `plan/SPEC-XXX` branch is created at Step 1; plan-phase commits land directly on `main` and are pushed only after Phase C `git switch -c plan/SPEC-XXX` at PR creation time.\n",
+          "sha256": "53ab9ace3512b9e7740e02c45fdb9e033173348e96baa08e220fed09bcd0aa8e"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/sync/delivery.md",
+          "needle": "git checkout {main_branch}",
+          "line": 297,
+          "quote": "**github_flow**: `git checkout {main_branch} && git pull origin {main_branch}`",
+          "command": "rg \"-n\" \"-F\" \"--\" \"git checkout {main_branch}\" \".claude/skills/moai/workflows/sync/delivery.md\"",
+          "exit": 0,
+          "stdout": "297:**github_flow**: `git checkout {main_branch} && git pull origin {main_branch}`\n",
+          "sha256": "e0e56eda95686f503f49d9fd581646615eda308df8632d6e4417618f8368fe99"
+        },
+        {
+          "path": ".claude/rules/moai/workflow/main-checkout-branch-guard.md",
+          "needle": "MUST NOT change branch state",
+          "line": 16,
+          "quote": "[ZONE:Evolvable] [HARD] The orchestrator MUST NOT change branch state in the primary project checkout. Specifically forbidden there:",
+          "command": "rg \"-n\" \"-F\" \"--\" \"MUST NOT change branch state\" \".claude/rules/moai/workflow/main-checkout-branch-guard.md\"",
+          "exit": 0,
+          "stdout": "16:[ZONE:Evolvable] [HARD] The orchestrator MUST NOT change branch state in the primary project checkout. Specifically forbidden there:\n",
+          "sha256": "6b7a03603e4105521755fb36e796618318e39bc3a9c0370390abe488b92f4039"
+        }
+      ]
+    },
+    {
+      "id": "F10",
+      "priority": "High",
+      "phase": "sync CI 예제",
+      "title": "lint 실패를 도구 미설치로 바꾸고 성공 종료한다",
+      "kind": "동작 재현",
+      "claim": "which && golangci-lint || echo SKIP 구조에서 lint가 존재해도 nonzero이면 SKIP이 출력된다. lint=7 fixture는 미설치 문구와 exit 0을 반환했다. 이런 결과를 CI mirror PASS로 소비하면 실패를 숨긴다.",
+      "action": "도구 존재 검사와 실행을 if/else로 분리하고 lint exit code를 보존한다. absent·pass·fail 세 fixture에서 각각 SKIPPED·PASS·FAIL을 확인한다.",
+      "probe": "P02",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/sync/delivery.md",
+          "needle": "which golangci-lint && golangci-lint",
+          "line": 137,
+          "quote": "which golangci-lint && golangci-lint run --timeout=5m \\",
+          "command": "rg \"-n\" \"-F\" \"--\" \"which golangci-lint && golangci-lint\" \".claude/skills/moai/workflows/sync/delivery.md\"",
+          "exit": 0,
+          "stdout": "137:which golangci-lint && golangci-lint run --timeout=5m \\\n",
+          "sha256": "e0e56eda95686f503f49d9fd581646615eda308df8632d6e4417618f8368fe99"
+        }
+      ]
+    },
+    {
+      "id": "F11",
+      "priority": "High",
+      "phase": "sync CI 병렬화",
+      "title": "cross-build의 인자 없는 wait가 실패를 전달하지 않는다",
+      "kind": "동작 재현",
+      "claim": "예제는 여러 build를 &로 시작하고 인자 없는 wait로 끝난다. 자식 하나가 7로 종료해도 wait_status=0을 반환했다. 출력 파일의 존재만으로 각 target 성공을 대신할 수도 없다.",
+      "action": "각 PID와 target을 묶어 개별 wait status를 수집하거나 도구 수준의 독립 호출을 사용한다. 한 target 실패와 여러 target 실패 fixture 모두 전체 FAIL이어야 한다.",
+      "probe": "P03",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/sync/delivery.md",
+          "needle": "-o /tmp/ci-build-linux-amd64",
+          "line": 144,
+          "quote": "GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags=\"-s -w\" -o /tmp/ci-build-linux-amd64     ./<your-module>/ &",
+          "command": "rg \"-n\" \"-F\" \"--\" \"-o /tmp/ci-build-linux-amd64\" \".claude/skills/moai/workflows/sync/delivery.md\"",
+          "exit": 0,
+          "stdout": "144:GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags=\"-s -w\" -o /tmp/ci-build-linux-amd64     ./<your-module>/ &\n",
+          "sha256": "e0e56eda95686f503f49d9fd581646615eda308df8632d6e4417618f8368fe99"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/sync/delivery.md",
+          "needle": "wait",
+          "line": 149,
+          "quote": "wait",
+          "command": "rg \"-n\" \"-F\" \"-x\" \"--\" \"wait\" \".claude/skills/moai/workflows/sync/delivery.md\"",
+          "exit": 0,
+          "stdout": "149:wait\n",
+          "sha256": "e0e56eda95686f503f49d9fd581646615eda308df8632d6e4417618f8368fe99"
+        }
+      ]
+    },
+    {
+      "id": "F12",
+      "priority": "High",
+      "phase": "plan-auditor D7",
+      "title": "reconciliation이 명시된 SPEC도 검증 예제가 BLOCKING으로 만든다",
+      "kind": "동작 재현",
+      "claim": "D7 규칙은 retired/superseded 참조에 명시적 reconciliation이 없을 때 차단한다. 제공된 shell은 상태만 읽고 reconciliation 존재를 검사하지 않는다. explicit reconciliation 문장을 넣은 fixture에서도 BLOCKING이 출력됐다.",
+      "action": "참조 ID별 reconciliation 근거를 문서 구조로 파싱한다. 조정 문구 있음/없음, 다른 ID의 문구, 역사 예시를 구분한 fixture로 오탐과 누락을 검증한다.",
+      "probe": "P10",
+      "refs": [
+        {
+          "path": ".claude/agents/moai/plan-auditor.md",
+          "needle": "referenced without reconciliation",
+          "line": 328,
+          "quote": "        echo \"BLOCKING: $SID has status=$STATUS but is referenced without reconciliation\"",
+          "command": "rg \"-n\" \"-F\" \"--\" \"referenced without reconciliation\" \".claude/agents/moai/plan-auditor.md\"",
+          "exit": 0,
+          "stdout": "328:        echo \"BLOCKING: $SID has status=$STATUS but is referenced without reconciliation\"\n",
+          "sha256": "abe27edee7566452720fdd2d1c3a71f86320d7906dbbb5e7e4e8f35a0f77c2cb"
+        },
+        {
+          "path": ".claude/agents/moai/plan-auditor.md",
+          "needle": "otherwise BLOCKING",
+          "line": 315,
+          "quote": "  \"reversal\", \"supersede\", \"absorb\", \"carve-out\") — otherwise BLOCKING",
+          "command": "rg \"-n\" \"-F\" \"--\" \"otherwise BLOCKING\" \".claude/agents/moai/plan-auditor.md\"",
+          "exit": 0,
+          "stdout": "315:  \"reversal\", \"supersede\", \"absorb\", \"carve-out\") — otherwise BLOCKING\n",
+          "sha256": "abe27edee7566452720fdd2d1c3a71f86320d7906dbbb5e7e4e8f35a0f77c2cb"
+        }
+      ]
+    },
+    {
+      "id": "F13",
+      "priority": "High",
+      "phase": "plan-auditor D8",
+      "title": "다른 절의 build tag가 syscall 검증을 통과시킨다",
+      "kind": "동작 재현",
+      "claim": "규칙은 같은 절이나 문단의 build 제약을 요구하나 shell은 문서 전체에서 한 번만 찾는다. syscall 절에는 제약이 없고 다른 절에 //go:build가 있는 fixture가 아무 차단 출력 없이 끝났다.",
+      "action": "각 syscall 사용과 해당 module의 build 제약을 연결한다. 문서에서는 같은 구조 노드의 명시적 연결을 검사하고, 코드가 생기면 해당 target의 cross-build를 별도로 검증한다.",
+      "probe": "P11",
+      "refs": [
+        {
+          "path": ".claude/agents/moai/plan-auditor.md",
+          "needle": "within the same section or paragraph",
+          "line": 343,
+          "quote": "  AC verification), verify nearby (within the same section or paragraph) the",
+          "command": "rg \"-n\" \"-F\" \"--\" \"within the same section or paragraph\" \".claude/agents/moai/plan-auditor.md\"",
+          "exit": 0,
+          "stdout": "343:  AC verification), verify nearby (within the same section or paragraph) the\n",
+          "sha256": "abe27edee7566452720fdd2d1c3a71f86320d7906dbbb5e7e4e8f35a0f77c2cb"
+        },
+        {
+          "path": ".claude/agents/moai/plan-auditor.md",
+          "needle": "grep -qE '//go:build",
+          "line": 357,
+          "quote": "  if ! grep -qE '//go:build|cross-platform exemption|EXCL.*syscall' <new-spec.md>; then",
+          "command": "rg \"-n\" \"-F\" \"--\" \"grep -qE '//go:build\" \".claude/agents/moai/plan-auditor.md\"",
+          "exit": 0,
+          "stdout": "357:  if ! grep -qE '//go:build|cross-platform exemption|EXCL.*syscall' <new-spec.md>; then\n",
+          "sha256": "abe27edee7566452720fdd2d1c3a71f86320d7906dbbb5e7e4e8f35a0f77c2cb"
+        }
+      ]
+    },
+    {
+      "id": "F14",
+      "priority": "High",
+      "phase": "project 감사",
+      "title": "project 문서 감사 호출과 auditor의 spec.md 필수 입력이 맞지 않는다",
+      "kind": "문서 충돌",
+      "claim": "project는 product·structure·tech를 만든 뒤 plan-auditor에 project 디렉터리를 넘긴다. agent의 입력 계약은 spec.md가 없으면 보고서 없이 AUDIT BLOCKED를 반환한다. project 전용 rubric을 선택하는 분기와 파일 계약이 agent 본문에 제시되지 않았다.",
+      "action": "문서 유형을 typed input으로 전달하고 project용 필수 입력·평가항목·출력 경로를 정의한다. SPEC을 만들지 않은 정상 project fixture로 실제 감사 완료를 확인한다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/project/doc-generation.md",
+          "needle": "document type: project",
+          "line": 49,
+          "quote": "Delegation pattern: \"Use the plan-auditor subagent to audit project documents at .moai/project/ — document type: project, iteration 1.\"",
+          "command": "rg \"-n\" \"-F\" \"--\" \"document type: project\" \".claude/skills/moai/workflows/project/doc-generation.md\"",
+          "exit": 0,
+          "stdout": "49:Delegation pattern: \"Use the plan-auditor subagent to audit project documents at .moai/project/ — document type: project, iteration 1.\"\n69:2. After manager-docs revision, re-invoke plan-auditor: \"Use the plan-auditor subagent to audit project documents at .moai/project/ — document type: project, iteration 2. Previous review report: .moai/reports/plan-audit/PROJECT-review-1.md\"\n",
+          "sha256": "46aed9100d7edb0657c6941104d55e5c642c232825e9ce1ec17b147722e65a81"
+        },
+        {
+          "path": ".claude/agents/moai/plan-auditor.md",
+          "needle": "AUDIT BLOCKED: spec.md not found",
+          "line": 460,
+          "quote": "If the SPEC directory does not exist or spec.md is not found, the agent returns a single-line error: \"AUDIT BLOCKED: spec.md not found at {path}\" and exits without producing a report.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"AUDIT BLOCKED: spec.md not found\" \".claude/agents/moai/plan-auditor.md\"",
+          "exit": 0,
+          "stdout": "460:If the SPEC directory does not exist or spec.md is not found, the agent returns a single-line error: \"AUDIT BLOCKED: spec.md not found at {path}\" and exits without producing a report.\n",
+          "sha256": "abe27edee7566452720fdd2d1c3a71f86320d7906dbbb5e7e4e8f35a0f77c2cb"
+        }
+      ]
+    },
+    {
+      "id": "F15",
+      "priority": "Medium",
+      "phase": "project · plan thorough",
+      "title": "구현 전 sync-auditor 호출이 agent의 역할 제한과 겹친다",
+      "kind": "문서 충돌",
+      "claim": "project thorough cross-validation, plan thorough SPEC-review, run의 구현 전 계약 협상은 sync-auditor를 사용한다. agent는 post-implementation only와 pre-implementation 금지를 명시하면서 자기 본문에는 계약 협상도 남아 있다.",
+      "action": "계약 제안은 plan-auditor 또는 비판정 자문으로 이동하고 sync-auditor는 구현 증거 판정에 집중한다. 각 호출이 어떤 입력과 권한으로 실행되는지 계약 시험을 둔다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/plan/spec-assembly.md",
+          "needle": "sync-auditor in SPEC-review mode",
+          "line": 252,
+          "quote": "For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke sync-auditor in SPEC-review mode to cross-validate must-pass criteria. If sync-auditor disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"sync-auditor in SPEC-review mode\" \".claude/skills/moai/workflows/plan/spec-assembly.md\"",
+          "exit": 0,
+          "stdout": "252:For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke sync-auditor in SPEC-review mode to cross-validate must-pass criteria. If sync-auditor disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.\n",
+          "sha256": "bcdeec9d92c9f0b9835e69e327e7aef3c8779bf0f3a287150185c039b8ede4b7"
+        },
+        {
+          "path": ".claude/agents/moai/sync-auditor.md",
+          "needle": "Operates post-implementation only",
+          "line": 6,
+          "quote": "  Operates post-implementation only — once code exists and acceptance criteria are testable. Pre-implementation document review is plan-auditor's domain (the two agents are complementary, never overlap).",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Operates post-implementation only\" \".claude/agents/moai/sync-auditor.md\"",
+          "exit": 0,
+          "stdout": "6:  Operates post-implementation only — once code exists and acceptance criteria are testable. Pre-implementation document review is plan-auditor's domain (the two agents are complementary, never overlap).\n",
+          "sha256": "f1b4487f7351e0da165545a152c4122b15ff5e1426772171b8fa70df196c55d0"
+        },
+        {
+          "path": ".claude/agents/moai/sync-auditor.md",
+          "needle": "Negotiated before implementation",
+          "line": 122,
+          "quote": "Negotiated before implementation in the thorough harness (Phase 10), then carried across iterations:",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Negotiated before implementation\" \".claude/agents/moai/sync-auditor.md\"",
+          "exit": 0,
+          "stdout": "122:Negotiated before implementation in the thorough harness (Phase 10), then carried across iterations:\n",
+          "sha256": "f1b4487f7351e0da165545a152c4122b15ff5e1426772171b8fa70df196c55d0"
+        }
+      ]
+    },
+    {
+      "id": "F16",
+      "priority": "Medium",
+      "phase": "plan 비용",
+      "title": "Tier를 연구·계획·사용자 검토 뒤에 결정한다",
+      "kind": "절차 개선",
+      "claim": "연구를 선택한 경로에서는 Phase 6이 research.md를 만들고 Phase 8이 상세 계획을 작성한 뒤 Phase 9에서 Tier를 묻는다. Tier S는 research.md 생략 대상이다. 연구는 권장 단계이므로 항상 발생하는 낭비가 아니라 최종 S인 작업에서의 중복 후보이다.",
+      "action": "요청의 scope와 위험으로 임시 Tier를 먼저 정하고 사용자가 이미 정한 Tier를 재사용한다. 연구 중 근거가 생기면 상향한다. S fixture에서 불필요한 연구 artifact 생성 0회를 측정한다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/plan/clarity-interview.md",
+          "needle": "Phase 6: Deep Research",
+          "line": 87,
+          "quote": "### Phase 6: Deep Research (Recommended)",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Phase 6: Deep Research\" \".claude/skills/moai/workflows/plan/clarity-interview.md\"",
+          "exit": 0,
+          "stdout": "87:### Phase 6: Deep Research (Recommended)\n",
+          "sha256": "885d23fab3b5d74ed951ad424e821efd8d82a701fc99c8c15cc9bc0844fbaffe"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/plan/spec-assembly.md",
+          "needle": "Tier Judgment Socratic Question",
+          "line": 29,
+          "quote": "### Phase 9: Tier Judgment Socratic Question (LEAN Workflow)",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Tier Judgment Socratic Question\" \".claude/skills/moai/workflows/plan/spec-assembly.md\"",
+          "exit": 0,
+          "stdout": "29:### Phase 9: Tier Judgment Socratic Question (LEAN Workflow)\n",
+          "sha256": "bcdeec9d92c9f0b9835e69e327e7aef3c8779bf0f3a287150185c039b8ede4b7"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/plan/spec-assembly.md",
+          "needle": "No `acceptance.md`, no `design.md`, no `research.md`",
+          "line": 55,
+          "quote": "- **Tier S** → Phase 10 creates only `spec.md` + `plan.md`; AC is inline in `spec.md §3`. No `acceptance.md`, no `design.md`, no `research.md`. Phase 11 plan-auditor uses 0.75 PASS threshold.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"No `acceptance.md`, no `design.md`, no `research.md`\" \".claude/skills/moai/workflows/plan/spec-assembly.md\"",
+          "exit": 0,
+          "stdout": "55:- **Tier S** → Phase 10 creates only `spec.md` + `plan.md`; AC is inline in `spec.md §3`. No `acceptance.md`, no `design.md`, no `research.md`. Phase 11 plan-auditor uses 0.75 PASS threshold.\n",
+          "sha256": "bcdeec9d92c9f0b9835e69e327e7aef3c8779bf0f3a287150185c039b8ede4b7"
+        }
+      ]
+    },
+    {
+      "id": "F17",
+      "priority": "High",
+      "phase": "Tier S 하류 소비",
+      "title": "작은 Tier가 생략한 acceptance.md를 하류가 여전히 요구한다",
+      "kind": "문서 충돌",
+      "claim": "Tier S는 AC를 spec.md에 둔다. 반면 manager-docs의 필수 CHANGELOG self-test는 acceptance.md만 읽으며, plan 완료 목록도 acceptance.md를 일률적으로 요구한다. S의 비용 절감 경로가 하류의 파일 누락 처리와 연결되지 않았다.",
+      "action": "resolveArtifacts(tier)와 resolveACSource(tier)를 단일 계약으로 사용한다. S는 spec inline, M/L은 acceptance를 읽고 누락과 빈 결과를 구분한다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/plan/spec-assembly.md",
+          "needle": "**Tier S**",
+          "line": 55,
+          "quote": "- **Tier S** → Phase 10 creates only `spec.md` + `plan.md`; AC is inline in `spec.md §3`. No `acceptance.md`, no `design.md`, no `research.md`. Phase 11 plan-auditor uses 0.75 PASS threshold.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"**Tier S**\" \".claude/skills/moai/workflows/plan/spec-assembly.md\"",
+          "exit": 0,
+          "stdout": "55:- **Tier S** → Phase 10 creates only `spec.md` + `plan.md`; AC is inline in `spec.md §3`. No `acceptance.md`, no `design.md`, no `research.md`. Phase 11 plan-auditor uses 0.75 PASS threshold.\n",
+          "sha256": "bcdeec9d92c9f0b9835e69e327e7aef3c8779bf0f3a287150185c039b8ede4b7"
+        },
+        {
+          "path": ".claude/agents/moai/manager-docs.md",
+          "needle": "grep -oE 'AC-",
+          "line": 89,
+          "quote": "   grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/<SPEC-ID>/acceptance.md | sort -u | wc -l",
+          "command": "rg \"-n\" \"-F\" \"--\" \"grep -oE 'AC-\" \".claude/agents/moai/manager-docs.md\"",
+          "exit": 0,
+          "stdout": "89:   grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/<SPEC-ID>/acceptance.md | sort -u | wc -l\n",
+          "sha256": "27d6252a33131be637294ddced274213bb817012747731d08844becd7a3b7954"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/plan/spec-assembly.md",
+          "needle": "Phase 10: All SPEC files created",
+          "line": 517,
+          "quote": "- Phase 10: All SPEC files created (spec.md, plan.md, acceptance.md, spec-compact.md)",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Phase 10: All SPEC files created\" \".claude/skills/moai/workflows/plan/spec-assembly.md\"",
+          "exit": 0,
+          "stdout": "517:- Phase 10: All SPEC files created (spec.md, plan.md, acceptance.md, spec-compact.md)\n",
+          "sha256": "bcdeec9d92c9f0b9835e69e327e7aef3c8779bf0f3a287150185c039b8ede4b7"
+        }
+      ]
+    },
+    {
+      "id": "F18",
+      "priority": "Medium",
+      "phase": "AC 추적",
+      "title": "허용된 AC 하위 ID a/b를 CHANGELOG 검사에서 하나로 센다",
+      "kind": "동작 재현",
+      "claim": "manager-spec은 AC-V3R6-001a/001b를 서로 다른 하위 기준으로 허용한다. manager-docs의 grep은 숫자까지만 추출하여 두 ID를 1개로 계산했다. 통과한 AC 개수를 부정확하게 보고하거나 불필요한 재확인을 유발한다.",
+      "action": "AC 식별자 parser 또는 공용 정규식을 사용한다. suffix·domain-less·digit domain·table/headings의 중복을 구분하여 distinct count를 확인한다.",
+      "probe": "P12",
+      "refs": [
+        {
+          "path": ".claude/agents/moai/manager-spec.md",
+          "needle": "AC-V3R6-001a",
+          "line": 139,
+          "quote": "[HARD] AC sub-ID convention (distinct from SPEC ID): acceptance-criteria sub-IDs MAY carry a trailing lowercase suffix to pair sub-criteria within one logical AC (`AC-V3R6-001a` / `AC-V3R6-001b`). That convention applies ONLY inside `acceptance.md` body and is not validated by spec-lint. SPEC IDs themselves MUST NEVER carry an alphabetic suffix.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"AC-V3R6-001a\" \".claude/agents/moai/manager-spec.md\"",
+          "exit": 0,
+          "stdout": "139:[HARD] AC sub-ID convention (distinct from SPEC ID): acceptance-criteria sub-IDs MAY carry a trailing lowercase suffix to pair sub-criteria within one logical AC (`AC-V3R6-001a` / `AC-V3R6-001b`). That convention applies ONLY inside `acceptance.md` body and is not validated by spec-lint. SPEC IDs themselves MUST NEVER carry an alphabetic suffix.\n",
+          "sha256": "ab260f27afc8481c2802836e032594e3eddfe1bce54d66f8a83b201b3fcfede9"
+        },
+        {
+          "path": ".claude/agents/moai/manager-docs.md",
+          "needle": "grep -oE 'AC-",
+          "line": 89,
+          "quote": "   grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/<SPEC-ID>/acceptance.md | sort -u | wc -l",
+          "command": "rg \"-n\" \"-F\" \"--\" \"grep -oE 'AC-\" \".claude/agents/moai/manager-docs.md\"",
+          "exit": 0,
+          "stdout": "89:   grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/<SPEC-ID>/acceptance.md | sort -u | wc -l\n",
+          "sha256": "27d6252a33131be637294ddced274213bb817012747731d08844becd7a3b7954"
+        }
+      ]
+    },
+    {
+      "id": "F19",
+      "priority": "Medium",
+      "phase": "감사 반복 상한",
+      "title": "Tier 상한과 workflow 반복 지시가 다르다",
+      "kind": "문서 충돌",
+      "claim": "harness와 auditor는 S=1/M=2/L=3으로 반복 수를 정한다. plan workflow는 standard/thorough에서 3회, cross-validation 불일치에는 추가 1회를 제시한다. 상한을 어느 계층에서 집행하는지 따라 호출 수가 달라진다.",
+      "action": "remaining_attempts를 orchestrator가 소유하고 모든 reviewer 호출이 같은 예산을 소비하도록 한다. timeout 재시도와 내용 수정 재감사는 별도 원인으로 기록하되 총 상한을 명시한다.",
+      "refs": [
+        {
+          "path": ".moai/config/sections/harness.yaml",
+          "needle": "plan_audit_tier_ceilings:",
+          "line": 75,
+          "quote": "  plan_audit_tier_ceilings:",
+          "command": "rg \"-n\" \"-F\" \"--\" \"plan_audit_tier_ceilings:\" \".moai/config/sections/harness.yaml\"",
+          "exit": 0,
+          "stdout": "75:  plan_audit_tier_ceilings:\n",
+          "sha256": "7164f6c4a1bd1ec6e358f2e37b3e05eba03a6fcaab5063c461e8972bad05e847"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/plan/spec-assembly.md",
+          "needle": "trigger one additional iteration",
+          "line": 252,
+          "quote": "For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke sync-auditor in SPEC-review mode to cross-validate must-pass criteria. If sync-auditor disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"trigger one additional iteration\" \".claude/skills/moai/workflows/plan/spec-assembly.md\"",
+          "exit": 0,
+          "stdout": "252:For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke sync-auditor in SPEC-review mode to cross-validate must-pass criteria. If sync-auditor disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.\n",
+          "sha256": "bcdeec9d92c9f0b9835e69e327e7aef3c8779bf0f3a287150185c039b8ede4b7"
+        },
+        {
+          "path": ".claude/agents/moai/plan-auditor.md",
+          "needle": "ceiling is the SSOT",
+          "line": 412,
+          "quote": "This agent is invoked by the orchestrator up to a Tier-resolved number of times per SPEC. The Tier-resolved ceiling is the SSOT at `.moai/config/sections/harness.yaml` → `harness.plan_audit_tier_ceilings` (S=1, M=2, L=3; SPEC-SYNC-PARALLEL-DOCS-001 A6). The agent consults the SPEC's `tier:` frontmatter field, reads the matching ceiling from `plan_audit_tier_ceilings`, and bounds its iteration count accordingly. Where `tier:` is absent, the Tier L value (3) is used — pre-A6 SPECs see no behavior change. The former `max_iterations: 3` literal below is now a consumer-side reference value (the Tier L ceiling), NOT the SSOT; the SSOT is the `plan_audit_tier_ceilings` map.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"ceiling is the SSOT\" \".claude/agents/moai/plan-auditor.md\"",
+          "exit": 0,
+          "stdout": "412:This agent is invoked by the orchestrator up to a Tier-resolved number of times per SPEC. The Tier-resolved ceiling is the SSOT at `.moai/config/sections/harness.yaml` → `harness.plan_audit_tier_ceilings` (S=1, M=2, L=3; SPEC-SYNC-PARALLEL-DOCS-001 A6). The agent consults the SPEC's `tier:` frontmatter field, reads the matching ceiling from `plan_audit_tier_ceilings`, and bounds its iteration count accordingly. Where `tier:` is absent, the Tier L value (3) is used — pre-A6 SPECs see no behavior change. The former `max_iterations: 3` literal below is now a consumer-side reference value (the Tier L ceiling), NOT the SSOT; the SSOT is the `plan_audit_tier_ceilings` map.\n",
+          "sha256": "abe27edee7566452720fdd2d1c3a71f86320d7906dbbb5e7e4e8f35a0f77c2cb"
+        }
+      ]
+    },
+    {
+      "id": "F20",
+      "priority": "Medium",
+      "phase": "run 단계 분기",
+      "title": "현재 phase 번호와 skip/resume 번호가 혼재한다",
+      "kind": "문서 충돌",
+      "claim": "minimal skip 목록은 0.5·2.75·2.8a 등을 쓰지만 본문은 1~20으로 실행한다. Phase 1 cache hit 후 Phase 1로 진행, coverage 완료 후 Phase 1로 진행 같은 문구도 남아 있다. resume는 완료 phase를 건너뛰므로 숫자 혼용은 재실행·누락의 원인이 될 수 있다.",
+      "action": "정수 순서와 별개로 안정적인 phase_id를 두고 skip/resume를 ID로 해석한다. 모든 jump 대상 존재, DAG 순환 없음, deprecated ID 매핑을 기계적으로 검사한다.",
+      "refs": [
+        {
+          "path": ".moai/config/sections/harness.yaml",
+          "needle": "skip_phases: [0,",
+          "line": 84,
+          "quote": "      skip_phases: [0, 0.5, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10]",
+          "command": "rg \"-n\" \"-F\" \"--\" \"skip_phases: [0,\" \".moai/config/sections/harness.yaml\"",
+          "exit": 0,
+          "stdout": "84:      skip_phases: [0, 0.5, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10]\n",
+          "sha256": "7164f6c4a1bd1ec6e358f2e37b3e05eba03a6fcaab5063c461e8972bad05e847"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/run/phase-execution.md",
+          "needle": "Skip Step 3 and proceed to Phase 1",
+          "line": 54,
+          "quote": "- Skip Step 3 and proceed to Phase 1.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Skip Step 3 and proceed to Phase 1\" \".claude/skills/moai/workflows/run/phase-execution.md\"",
+          "exit": 0,
+          "stdout": "54:- Skip Step 3 and proceed to Phase 1.\n",
+          "sha256": "30c269281e633a79f1d9998073a45ff27127abfd1db4e1b549aed018e7c57994"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/sync/quality-gates-quality.md",
+          "needle": "If coverage target met: Proceed to Phase 1",
+          "line": 317,
+          "quote": "- If coverage target met: Proceed to Phase 1",
+          "command": "rg \"-n\" \"-F\" \"--\" \"If coverage target met: Proceed to Phase 1\" \".claude/skills/moai/workflows/sync/quality-gates-quality.md\"",
+          "exit": 0,
+          "stdout": "317:- If coverage target met: Proceed to Phase 1\n",
+          "sha256": "a6f673919c17388a9dedc59fb8fbba871c2743c28d20fb5bf9a0da81f8f44041"
+        }
+      ]
+    },
+    {
+      "id": "F21",
+      "priority": "High",
+      "phase": "sync 병렬 초안",
+      "title": "Phase 7에서 시작할 초안이 Phase 11 결과를 요구한다",
+      "kind": "의존관계 충돌",
+      "claim": "docs drafters는 audit와 같은 Phase 7 turn에 출발해야 한다. 입력은 Phase 11 Step 1.5 divergence report다. entry router는 그 문서를 Phase 11에 on-demand로 읽도록 한다. 입력을 먼저 계산하는 명시적 preflight가 없으면 동시 실행 지시를 그대로 만족할 수 없다.",
+      "action": "diff·SPEC·divergence를 공통 immutable snapshot으로 먼저 만든 뒤 audit와 draft를 함께 시작한다. missing input으로 재위임한 횟수와 draft 폐기율을 기록한다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/sync.md",
+          "needle": "SAME turn Phase 7 is entered",
+          "line": 67,
+          "quote": "The docs drafter fan-out (`FO-SYNC-4`, five read-only drafters D1-D5) launches CONCURRENTLY with the Phase 7-10 audit fan-out — in the SAME turn Phase 7 is entered, NOT serially after the audit completes. The former scheduling read the Phase Routing Table strictly top-to-bottom (Phase 7 → Phase 11 → Phase 12), which serialized the docs draft behind the full quality / security / MX / coverage pipeline. A5 lifts that serialization for the docs draft: the orchestrator spawns the `FO-SYNC-4` drafter fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7, so the docs draft is ready by the time the audit returns.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"SAME turn Phase 7 is entered\" \".claude/skills/moai/workflows/sync.md\"",
+          "exit": 0,
+          "stdout": "67:The docs drafter fan-out (`FO-SYNC-4`, five read-only drafters D1-D5) launches CONCURRENTLY with the Phase 7-10 audit fan-out — in the SAME turn Phase 7 is entered, NOT serially after the audit completes. The former scheduling read the Phase Routing Table strictly top-to-bottom (Phase 7 → Phase 11 → Phase 12), which serialized the docs draft behind the full quality / security / MX / coverage pipeline. A5 lifts that serialization for the docs draft: the orchestrator spawns the `FO-SYNC-4` drafter fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7, so the docs draft is ready by the time the audit returns.\n",
+          "sha256": "272bfdadb9fdc93669297837aae1880a41688b39d0ab97ce938505bd3454ebb8"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/sync/doc-execution.md",
+          "needle": "Phase 11 Step 1.5 divergence report",
+          "line": 140,
+          "quote": "**Drafter input independence (SPEC-SYNC-PARALLEL-DOCS-001 A5).** Each D1-D5 drafter reads its input from SPEC artifacts + git diff + the Phase 11 Step 1.5 divergence report. A drafter does NOT read the concurrent audit's quality report, verdict, or per-dimension scores. The docs draft and the audit are input-independent; a drafter that consumed \"the audit's functionality score\" to decide CHANGELOG tone would create a hidden serial dependency that defeats the A5 concurrency.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Phase 11 Step 1.5 divergence report\" \".claude/skills/moai/workflows/sync/doc-execution.md\"",
+          "exit": 0,
+          "stdout": "140:**Drafter input independence (SPEC-SYNC-PARALLEL-DOCS-001 A5).** Each D1-D5 drafter reads its input from SPEC artifacts + git diff + the Phase 11 Step 1.5 divergence report. A drafter does NOT read the concurrent audit's quality report, verdict, or per-dimension scores. The docs draft and the audit are input-independent; a drafter that consumed \"the audit's functionality score\" to decide CHANGELOG tone would create a hidden serial dependency that defeats the A5 concurrency.\n",
+          "sha256": "689ef00de7ae03ba58f3aee4f001158490d46499c90cae81a63425de4efbc4d3"
+        }
+      ]
+    },
+    {
+      "id": "F22",
+      "priority": "Medium",
+      "phase": "sync 병렬 수",
+      "title": "5개 docs·4개 judge·MX shard를 동일 turn에 요구한다",
+      "kind": "자원 계획 공백",
+      "claim": "문서 초안 5개, 품질 judge 4개, MX shard 3~5개를 동시 시작하도록 한다. 합계 12~14개는 사이트마다 인용하는 3~5 범위와 다르다. 최신 규칙은 3~5를 권고로 바꿨으므로 이를 런타임 hard-cap 위반으로 단정할 수 없지만 전체 배치 예산은 없다.",
+      "action": "한 scheduler가 실제 잔여 슬롯을 읽고 전체 동시 수를 제한한다. MX와 구조 검증을 먼저, 이후 가능한 슬롯에 judge/draft를 넣고 queue 대기와 peak concurrency를 측정한다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/sync/doc-execution.md",
+          "needle": "Five read-only drafters",
+          "line": 126,
+          "quote": "**`FO-SYNC-4`.** **Where** the sync scope spans several independent document families, the orchestrator shall draft them in parallel before any final artifact is written. Five read-only drafters launch in a single turn — five is the top of the fanout concurrency ceiling of 3-5 concurrent `Agent()` calls (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2), so a sixth output family is folded into one of the five rather than added as a sixth drafter:",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Five read-only drafters\" \".claude/skills/moai/workflows/sync/doc-execution.md\"",
+          "exit": 0,
+          "stdout": "126:**`FO-SYNC-4`.** **Where** the sync scope spans several independent document families, the orchestrator shall draft them in parallel before any final artifact is written. Five read-only drafters launch in a single turn — five is the top of the fanout concurrency ceiling of 3-5 concurrent `Agent()` calls (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2), so a sixth output family is folded into one of the five rather than added as a sixth drafter:\n",
+          "sha256": "689ef00de7ae03ba58f3aee4f001158490d46499c90cae81a63425de4efbc4d3"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/sync/quality-gates-quality.md",
+          "needle": "same single-turn multi-`Agent()` batch",
+          "line": 162,
+          "quote": "**Concurrent scheduling with the Phase 7-10 audit (A7 — SPEC-SYNC-PARALLEL-DOCS-001).** The Phase 9 MX Tag scan (existing `FO-SYNC-2` sharded structure, Step 0.6.2 below) launches CONCURRENTLY with the Phase 7 audit fan-out — in the SAME turn Phase 7 is entered, NOT serially after Phase 8 (Security) completes. The prior scheduling ran Phase 7 → Phase 8 → Phase 9 → Phase 10 strictly in sequence, which serialized the MX scan behind the full quality + security pipeline. A7 lifts that serialization for the MX scan: the orchestrator spawns the `FO-SYNC-2` MX shard fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7, so the MX findings are ready by the time the audit returns. The MX scan is input-independent (SPEC-SYNC-PARALLEL-DOCS-001 A7): it reads git diff + source, NOT the concurrent audit's output; a shard that read \"the audit's functionality score\" to gate itself would create a hidden serial dependency that defeats the A7 concurrency.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"same single-turn multi-`Agent()` batch\" \".claude/skills/moai/workflows/sync/quality-gates-quality.md\"",
+          "exit": 0,
+          "stdout": "162:**Concurrent scheduling with the Phase 7-10 audit (A7 — SPEC-SYNC-PARALLEL-DOCS-001).** The Phase 9 MX Tag scan (existing `FO-SYNC-2` sharded structure, Step 0.6.2 below) launches CONCURRENTLY with the Phase 7 audit fan-out — in the SAME turn Phase 7 is entered, NOT serially after Phase 8 (Security) completes. The prior scheduling ran Phase 7 → Phase 8 → Phase 9 → Phase 10 strictly in sequence, which serialized the MX scan behind the full quality + security pipeline. A7 lifts that serialization for the MX scan: the orchestrator spawns the `FO-SYNC-2` MX shard fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7, so the MX findings are ready by the time the audit returns. The MX scan is input-independent (SPEC-SYNC-PARALLEL-DOCS-001 A7): it reads git diff + source, NOT the concurrent audit's output; a shard that read \"the audit's functionality score\" to gate itself would create a hidden serial dependency that defeats the A7 concurrency.\n",
+          "sha256": "a6f673919c17388a9dedc59fb8fbba871c2743c28d20fb5bf9a0da81f8f44041"
+        },
+        {
+          "path": ".claude/rules/moai/workflow/orchestration-mode-selection.md",
+          "needle": "3-5 ADVISORY",
+          "line": 32,
+          "quote": "| `fanout` | N concurrent (3-5 ADVISORY band; hard bound: runtime subagent cap, default 20 — §C.2) | Multiple `Agent()` invocations in one assistant turn | Multi-domain research that does NOT meet Agent Teams prerequisites; or any case where Agent Teams session overhead exceeds benefit |",
+          "command": "rg \"-n\" \"-F\" \"--\" \"3-5 ADVISORY\" \".claude/rules/moai/workflow/orchestration-mode-selection.md\"",
+          "exit": 0,
+          "stdout": "32:| `fanout` | N concurrent (3-5 ADVISORY band; hard bound: runtime subagent cap, default 20 — §C.2) | Multiple `Agent()` invocations in one assistant turn | Multi-domain research that does NOT meet Agent Teams prerequisites; or any case where Agent Teams session overhead exceeds benefit |\n",
+          "sha256": "e2121b8dbeb2014cd7773ea1673b8811f900f7e93922350d33705cda176baf4b"
+        }
+      ]
+    },
+    {
+      "id": "F23",
+      "priority": "Medium",
+      "phase": "run · sync 감사 비용",
+      "title": "run의 4차원 결과와 sync의 판정 소유자가 서로 다르다",
+      "kind": "정책 차이",
+      "claim": "run은 같은 fan-out script의 결과를 evidence로만 인정하고 cold sync-auditor 판정을 추가한다. sync는 happy path에서 4dim 결과를 binding으로 승격하며 cold auditor를 생략한다. 서로 다른 목적일 수 있으나 전환 조건과 재사용 계약이 분리되어 있다.",
+      "action": "증거 수집과 판정을 독립 계약으로 정의한다. 동일 tree·AC·rubric에서 재사용 가능한 범위를 명시하고, contested/INCOMPLETE에만 추가 검토한다. 실제 호출 감소는 trace로 확인한다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/run/task-decomposition.md",
+          "needle": "evidence, not a verdict",
+          "line": 110,
+          "quote": "The orchestrator launches the script itself; this is scaling, not subagent nesting, so the flat agent hierarchy is preserved. All four judges are read-only: a judge that cannot run a check records an `evidence_gaps` entry, and one missing required input returns a structured blocker report — neither prompts the user. The script's harmonic-mean aggregate is **evidence, not a verdict**: the binding PASS/FAIL remains owned by `sync-auditor`, which may cite the aggregate but is never replaced by it. Implementation Kickoff Approval is likewise unaffected — it is decided before any workflow launches.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"evidence, not a verdict\" \".claude/skills/moai/workflows/run/task-decomposition.md\"",
+          "exit": 0,
+          "stdout": "110:The orchestrator launches the script itself; this is scaling, not subagent nesting, so the flat agent hierarchy is preserved. All four judges are read-only: a judge that cannot run a check records an `evidence_gaps` entry, and one missing required input returns a structured blocker report — neither prompts the user. The script's harmonic-mean aggregate is **evidence, not a verdict**: the binding PASS/FAIL remains owned by `sync-auditor`, which may cite the aggregate but is never replaced by it. Implementation Kickoff Approval is likewise unaffected — it is decided before any workflow launches.\n",
+          "sha256": "92100c38e30b190bac3b35efbdf895d2bc50fc3a14f47fd683c7b14d6b87f913"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/sync.md",
+          "needle": "SHALL NOT spawn the cold",
+          "line": 81,
+          "quote": "**Binding promotion (SPEC-AUDIT-SNAPSHOT-001 A3, REQ-AUDIT-SNAPSHOT-003).** On the **happy path** — the workflow verdict is `PASS`, no dimension scored 0, the verdict is not `INCOMPLETE`, and no contested finding is present — the orchestrator SHALL treat the workflow's harmonic-mean verdict as **BINDING** for the sync-phase quality decision and SHALL NOT spawn the cold `sync-auditor` subagent. The four parallel xhigh judges subsume the one serial judge on the clean path (attributable diff-check, not a deletion of the auditor role). The mechanical binding predicate is codified in `internal/runtime.FourDimVerdict.IsBinding()`; the orchestrator constructs a `FourDimVerdict` from the workflow run output and consults `IsBinding()`. On any of the fallback triggers — (a) verdict `INCOMPLETE`, (b) any must-pass dimension scoring 0 (`zero_scored` array non-empty), or (c) a **contested finding** (any one judge reports `critical` severity, OR two or more judges return conflicting severity classifications for the same dimension) — the orchestrator SHALL spawn the cold `sync-auditor` subagent as the fallback binding-verdict owner, and the auditor's PASS/FAIL is treated as binding for that cycle. Neither `gate-sync-1` nor `gate-sync-2` is bypassed or auto-passed by either path; the cold auditor remains the fallback verdict owner under trigger (a)/(b)/(c).",
+          "command": "rg \"-n\" \"-F\" \"--\" \"SHALL NOT spawn the cold\" \".claude/skills/moai/workflows/sync.md\"",
+          "exit": 0,
+          "stdout": "81:**Binding promotion (SPEC-AUDIT-SNAPSHOT-001 A3, REQ-AUDIT-SNAPSHOT-003).** On the **happy path** — the workflow verdict is `PASS`, no dimension scored 0, the verdict is not `INCOMPLETE`, and no contested finding is present — the orchestrator SHALL treat the workflow's harmonic-mean verdict as **BINDING** for the sync-phase quality decision and SHALL NOT spawn the cold `sync-auditor` subagent. The four parallel xhigh judges subsume the one serial judge on the clean path (attributable diff-check, not a deletion of the auditor role). The mechanical binding predicate is codified in `internal/runtime.FourDimVerdict.IsBinding()`; the orchestrator constructs a `FourDimVerdict` from the workflow run output and consults `IsBinding()`. On any of the fallback triggers — (a) verdict `INCOMPLETE`, (b) any must-pass dimension scoring 0 (`zero_scored` array non-empty), or (c) a **contested finding** (any one judge reports `critical` severity, OR two or more judges return conflicting severity classifications for the same dimension) — the orchestrator SHALL spawn the cold `sync-auditor` subagent as the fallback binding-verdict owner, and the auditor's PASS/FAIL is treated as binding for that cycle. Neither `gate-sync-1` nor `gate-sync-2` is bypassed or auto-passed by either path; the cold auditor remains the fallback verdict owner under trigger (a)/(b)/(c).\n",
+          "sha256": "272bfdadb9fdc93669297837aae1880a41688b39d0ab97ce938505bd3454ebb8"
+        }
+      ]
+    },
+    {
+      "id": "F24",
+      "priority": "Medium",
+      "phase": "model · effort",
+      "title": "4차원 judge는 xhigh를 고정하고 model 정책은 xhigh를 배제한다",
+      "kind": "설정 불일치",
+      "claim": "sync-audit-4dim은 네 judge에 xhigh를 직접 지정한다. model-policy는 profile matrix에서 xhigh를 의도적으로 제외하고 목적별 resolver를 정의한다. 비용 차이는 이번에 측정하지 않았지만 선택 정책이 한 경로에 적용되지 않는 것은 확인된다.",
+      "action": "purpose=verify-judge의 resolved model/effort를 실행 입력으로 전달한다. 동일 fixture에서 profile별 유효 effort와 품질·출력 토큰·호출 횟수를 비교한 뒤 기준을 선택한다.",
+      "refs": [
+        {
+          "path": ".claude/workflows/sync-audit-4dim.js",
+          "needle": "effort: 'xhigh'",
+          "line": 188,
+          "quote": "  () => agent(JUDGE_PROMPT('Functionality'), { label: 'judge:Functionality', phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),",
+          "command": "rg \"-n\" \"-F\" \"--\" \"effort: 'xhigh'\" \".claude/workflows/sync-audit-4dim.js\"",
+          "exit": 0,
+          "stdout": "188:  () => agent(JUDGE_PROMPT('Functionality'), { label: 'judge:Functionality', phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),\n189:  () => agent(JUDGE_PROMPT('Security'),      { label: 'judge:Security',      phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),\n190:  () => agent(JUDGE_PROMPT('Craft'),         { label: 'judge:Craft',         phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),\n191:  () => agent(JUDGE_PROMPT('Consistency'),   { label: 'judge:Consistency',   phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),\n",
+          "sha256": "476f3cd86d663c6c41196fcd7a82672b7f820adc74c1e3aa761268759f3b6cbd"
+        },
+        {
+          "path": ".claude/rules/moai/development/model-policy.md",
+          "needle": "`xhigh` is absent from the matrix",
+          "line": 157,
+          "quote": "`xhigh` is absent from the matrix on purpose: on Opus it scores the same as `high` at materially higher cost, so it is strictly dominated. `max` is reserved for the two rows whose invocation is rare AND whose marginal quality is decision-critical (`manager-develop`, `super-advisor` — high column only).",
+          "command": "rg \"-n\" \"-F\" \"--\" \"`xhigh` is absent from the matrix\" \".claude/rules/moai/development/model-policy.md\"",
+          "exit": 0,
+          "stdout": "157:`xhigh` is absent from the matrix on purpose: on Opus it scores the same as `high` at materially higher cost, so it is strictly dominated. `max` is reserved for the two rows whose invocation is rare AND whose marginal quality is decision-critical (`manager-develop`, `super-advisor` — high column only).\n",
+          "sha256": "9eb822ef7213fc7c74252404099343d39193b15b0192431b360a905837cc4804"
+        }
+      ]
+    },
+    {
+      "id": "F25",
+      "priority": "Medium",
+      "phase": "plan → run 문맥",
+      "title": "승인된 계획을 run에서 manager-spec이 다시 분석하고 승인받는다",
+      "kind": "절차 개선",
+      "claim": "plan Phase 8과 10이 계획을 확정한 뒤 run Phase 5는 다시 요구·전략을 추출하고 gate-run-1 승인을 받는다. 이어 Phase 6이 task를 분해한다. 변경 없는 재개에서도 어떤 계획 부분을 재사용하는지 명시된 차이 기반 조건이 없다.",
+      "action": "승인된 plan hash와 execution task graph를 전달한다. 불변이면 입력 검증만 하고, 코드·scope 변화가 있는 부분만 재계획한다. 승인 의미를 유지하되 동일 질문 반복은 합친다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/run/phase-execution.md",
+          "needle": "Phase 5: Analysis and Planning",
+          "line": 263,
+          "quote": "## Phase 5: Analysis and Planning",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Phase 5: Analysis and Planning\" \".claude/skills/moai/workflows/run/phase-execution.md\"",
+          "exit": 0,
+          "stdout": "263:## Phase 5: Analysis and Planning\n",
+          "sha256": "30c269281e633a79f1d9998073a45ff27127abfd1db4e1b549aed018e7c57994"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/run/phase-execution.md",
+          "needle": "Decision Point 1: Plan Approval",
+          "line": 282,
+          "quote": "## Decision Point 1: Plan Approval",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Decision Point 1: Plan Approval\" \".claude/skills/moai/workflows/run/phase-execution.md\"",
+          "exit": 0,
+          "stdout": "282:## Decision Point 1: Plan Approval\n",
+          "sha256": "30c269281e633a79f1d9998073a45ff27127abfd1db4e1b549aed018e7c57994"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/plan/clarity-interview.md",
+          "needle": "Phase 8: SPEC Planning",
+          "line": 157,
+          "quote": "### Phase 8: SPEC Planning (Required)",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Phase 8: SPEC Planning\" \".claude/skills/moai/workflows/plan/clarity-interview.md\"",
+          "exit": 0,
+          "stdout": "157:### Phase 8: SPEC Planning (Required)\n",
+          "sha256": "885d23fab3b5d74ed951ad424e821efd8d82a701fc99c8c15cc9bc0844fbaffe"
+        }
+      ]
+    },
+    {
+      "id": "F26",
+      "priority": "Medium",
+      "phase": "project 인터뷰",
+      "title": "신규 프로젝트의 네 extended 질문을 별도 호출한다",
+      "kind": "절차 개선",
+      "claim": "기존 프로젝트 Stage B는 남은 축을 한 호출에 묶는다. 신규 프로젝트는 네 축 각각을 별도 AskUserQuestion으로 요구한다. 같은 정보 구조에서 호출 수가 최대 4 대 1로 달라진다. 사용자의 실제 대기 시간은 측정하지 않았다.",
+      "action": "신규·기존 모두 미확정 축만 한 batch로 묻는다. 축별 답변 품질과 명시적 empty 처리는 유지한다. 완성된 입력 fixture에서 재질문 수를 세어 확인한다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/project/mode-detection.md",
+          "needle": "Present each as a separate AskUserQuestion",
+          "line": 216,
+          "quote": "Topic: How is the project verified, what does it surface, what does it integrate with, and who runs it? Elicit these four axes (later recorded into `harness-spec.yaml` — see `doc-generation.md`). Present each as a separate AskUserQuestion with up to 4 options:",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Present each as a separate AskUserQuestion\" \".claude/skills/moai/workflows/project/mode-detection.md\"",
+          "exit": 0,
+          "stdout": "216:Topic: How is the project verified, what does it surface, what does it integrate with, and who runs it? Elicit these four axes (later recorded into `harness-spec.yaml` — see `doc-generation.md`). Present each as a separate AskUserQuestion with up to 4 options:\n",
+          "sha256": "35b4a00d715744f91d08390cfffc2b73be7898692499f22331dacbe4ad971871"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/project/codebase-analysis.md",
+          "needle": "single AskUserQuestion call carrying up to 4 questions",
+          "line": 173,
+          "quote": "Topic: How is the project verified, what does it surface, what does it integrate with, and who runs it? Elicit these four axes (later recorded into `harness-spec.yaml` — see `doc-generation.md`). For existing projects, PRE-FILL each axis from the Phase 3 codebase analysis where it can be inferred (e.g., detected test command → `verification`; a detected web framework → `has-ui`; detected DB/API dependencies → `external_systems`); an axis confidently inferred from analysis counts as answered and is NOT re-asked. Collect ALL remaining (un-inferred or ambiguous) axes in a single AskUserQuestion call carrying up to 4 questions — one question per remaining axis, each question with up to 4 options — replacing the former per-axis separate calls. Merging changes the number of blocking round-trips only: each axis keeps its own question, options, and description quality unchanged:",
+          "command": "rg \"-n\" \"-F\" \"--\" \"single AskUserQuestion call carrying up to 4 questions\" \".claude/skills/moai/workflows/project/codebase-analysis.md\"",
+          "exit": 0,
+          "stdout": "173:Topic: How is the project verified, what does it surface, what does it integrate with, and who runs it? Elicit these four axes (later recorded into `harness-spec.yaml` — see `doc-generation.md`). For existing projects, PRE-FILL each axis from the Phase 3 codebase analysis where it can be inferred (e.g., detected test command → `verification`; a detected web framework → `has-ui`; detected DB/API dependencies → `external_systems`); an axis confidently inferred from analysis counts as answered and is NOT re-asked. Collect ALL remaining (un-inferred or ambiguous) axes in a single AskUserQuestion call carrying up to 4 questions — one question per remaining axis, each question with up to 4 options — replacing the former per-axis separate calls. Merging changes the number of blocking round-trips only: each axis keeps its own question, options, and description quality unchanged:\n",
+          "sha256": "e4aaf9dbb49b79eb31171265742e837e7e9a6b6332e2bb5f3e0a3746b648320b"
+        }
+      ]
+    },
+    {
+      "id": "F27",
+      "priority": "Medium",
+      "phase": "plan 명확성 평가",
+      "title": "5개 기술 키워드면 인터뷰를 건너뛰지만 공통 규칙은 의도 완결을 요구한다",
+      "kind": "문서 충돌",
+      "claim": "plan의 skip 조건은 기술 키워드 5개만으로 성립한다. 범위·성공 조건 없이 기술명만 나열한 요청도 해당될 수 있다. 공통 질문 규칙은 의도 명확성을 조건으로 한다. 키워드 개수는 의미 완결의 기계적 증거가 아니다.",
+      "action": "scope·constraints·acceptance·authorization의 필드 완결도를 검사한다. 기술명이 많고 목표가 없는 fixture와 짧지만 완전한 요청을 함께 검증한다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/plan/context-discovery.md",
+          "needle": "5 or more distinct technical keywords",
+          "line": 45,
+          "quote": "- Input contains 5 or more distinct technical keywords (e.g., framework names, file paths, function names, domain terms)",
+          "command": "rg \"-n\" \"-F\" \"--\" \"5 or more distinct technical keywords\" \".claude/skills/moai/workflows/plan/context-discovery.md\"",
+          "exit": 0,
+          "stdout": "45:- Input contains 5 or more distinct technical keywords (e.g., framework names, file paths, function names, domain terms)\n",
+          "sha256": "eb7e8deb8f20d755f541488807620e0d231816b0a8d56a9cf972b068a558f2b8"
+        },
+        {
+          "path": ".claude/rules/moai/core/askuser-protocol.md",
+          "needle": "intent clarity reaches 100%",
+          "line": 67,
+          "quote": "6. **Termination condition**: Rounds continue until intent clarity reaches 100%; the interview MUST NOT end prematurely",
+          "command": "rg \"-n\" \"-F\" \"--\" \"intent clarity reaches 100%\" \".claude/rules/moai/core/askuser-protocol.md\"",
+          "exit": 0,
+          "stdout": "67:6. **Termination condition**: Rounds continue until intent clarity reaches 100%; the interview MUST NOT end prematurely\n",
+          "sha256": "13e10618054799d17a348b3c36335781e276eef70cdc0699218fecb96d427cbb"
+        }
+      ]
+    },
+    {
+      "id": "F28",
+      "priority": "Medium",
+      "phase": "모든 단계 문맥",
+      "title": "paths 없는 규칙 14개가 185,368바이트다",
+      "kind": "규모 측정",
+      "claim": "84개 규칙 전체를 읽어 frontmatter를 검사했다. paths 없는 파일은 14개이며 총 185,368바이트다. 이 값은 디스크의 잠재 상시 로딩 표면이며 실제 주입 토큰·캐시 요금은 아니다. kanban·cross-session·handoff 상세가 단일 작업에도 후보로 남는다.",
+      "action": "상시 규칙은 짧은 dispatch 계약만 남기고 상세를 task-triggered companion으로 옮기는 방안을 우선 평가한다. runtime InstructionsLoaded 목록과 token usage로 실제 절감 여부를 검증한다.",
+      "probe": "P08",
+      "refs": [
+        {
+          "path": ".claude/rules/moai/development/rule-authoring.md",
+          "needle": "Rule files under `.claude/rules/` that lack",
+          "line": 14,
+          "quote": "1. Rule files under `.claude/rules/` that lack a top-level `paths:` frontmatter key",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Rule files under `.claude/rules/` that lack\" \".claude/rules/moai/development/rule-authoring.md\"",
+          "exit": 0,
+          "stdout": "14:1. Rule files under `.claude/rules/` that lack a top-level `paths:` frontmatter key\n",
+          "sha256": "835526d852d7fb18139355900f4111701044c01265e0301e1a99f66c2f0be554"
+        },
+        {
+          "path": ".claude/rules/moai/workflow/kanban-dispatch.md",
+          "needle": "Scope — when this rule is live",
+          "line": 9,
+          "quote": "## Scope — when this rule is live",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Scope — when this rule is live\" \".claude/rules/moai/workflow/kanban-dispatch.md\"",
+          "exit": 0,
+          "stdout": "9:## Scope — when this rule is live\n",
+          "sha256": "fa23ae44fd465e5c822da6d3713ea6379aed712ccb7bf4b0e4bfb802488cace3"
+        }
+      ]
+    },
+    {
+      "id": "F29",
+      "priority": "High",
+      "phase": "pre-spawn 검증",
+      "title": "fetch와 그 결과를 읽는 rev-list를 독립 병렬 검사로 묶는다",
+      "kind": "의존관계 충돌",
+      "claim": "공통 pre-spawn 지시는 git fetch와 origin/main...HEAD 비교를 parallel batch에 넣는다. rev-list는 fetch가 갱신하는 ref를 소비하므로 둘은 독립이 아니다. 실제 경합을 재현하지 않았으며, 소스상 데이터 의존을 확인한 항목이다.",
+      "action": "fetch 완료 뒤 rev-list를 수행한다. 세션 목록 조회만 fetch와 병렬화한다. 지연된 fetch fixture에서 최신 remote ref를 읽는지 확인한다.",
+      "refs": [
+        {
+          "path": ".claude/rules/moai/core/agent-common-protocol.md",
+          "needle": "following parallel batch",
+          "line": 289,
+          "quote": "[ZONE:Evolvable] [HARD] Before spawning any implementation `Agent()` (manager-develop / manager-docs / per-spawn `Agent(general-purpose)` with a domain whitelist) that will commit or modify shared working-tree files, the orchestrator MUST execute the following parallel batch and surface any divergence to the user.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"following parallel batch\" \".claude/rules/moai/core/agent-common-protocol.md\"",
+          "exit": 0,
+          "stdout": "289:[ZONE:Evolvable] [HARD] Before spawning any implementation `Agent()` (manager-develop / manager-docs / per-spawn `Agent(general-purpose)` with a domain whitelist) that will commit or modify shared working-tree files, the orchestrator MUST execute the following parallel batch and surface any divergence to the user.\n",
+          "sha256": "b619cccd4ce7d7651bd050e544d2c09091498157d185600cbdb3689003e0ad47"
+        },
+        {
+          "path": ".claude/rules/moai/core/agent-common-protocol.md",
+          "needle": "git rev-list --count --left-right origin/main...HEAD",
+          "line": 296,
+          "quote": "git rev-list --count --left-right origin/main...HEAD",
+          "command": "rg \"-n\" \"-F\" \"--\" \"git rev-list --count --left-right origin/main...HEAD\" \".claude/rules/moai/core/agent-common-protocol.md\"",
+          "exit": 0,
+          "stdout": "296:git rev-list --count --left-right origin/main...HEAD\n344:git fetch origin main 2>&1; git rev-list --count --left-right origin/main...HEAD\n",
+          "sha256": "b619cccd4ce7d7651bd050e544d2c09091498157d185600cbdb3689003e0ad47"
+        }
+      ]
+    },
+    {
+      "id": "F30",
+      "priority": "High",
+      "phase": "sync status",
+      "title": "읽기 전용 status가 auto-fix·tag 추가보다 뒤에서 종료한다",
+      "kind": "문서 충돌",
+      "claim": "status는 read-only health check로 정의되지만 Phase 1 auto-fix, Phase 7 critical auto-fix, Phase 9 Add Missing Tags 뒤에 early exit가 위치한다. mode별 mutation guard가 각 단계에 일관되게 제시되지 않아 status의 안전 계약이 불명확하다.",
+      "action": "entry에서 readOnly=true를 전달하고 모든 writer 경로를 차단한다. lint/tag 결함이 있는 fixture의 status 전후 파일 해시와 git diff가 같아야 한다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/sync/quality-gates-context.md",
+          "needle": "status: Read-only health check",
+          "line": 50,
+          "quote": "- status: Read-only health check. Quick project health report with no changes.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"status: Read-only health check\" \".claude/skills/moai/workflows/sync/quality-gates-context.md\"",
+          "exit": 0,
+          "stdout": "50:- status: Read-only health check. Quick project health report with no changes.\n",
+          "sha256": "714436022609c3449e9a3166673d843757b536f6917ed66af0beb3fb0227c93f"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/sync/quality-gates-quality.md",
+          "needle": "Step 0.6.3: Add Missing Tags",
+          "line": 211,
+          "quote": "#### Step 0.6.3: Add Missing Tags (Language-Aware)",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Step 0.6.3: Add Missing Tags\" \".claude/skills/moai/workflows/sync/quality-gates-quality.md\"",
+          "exit": 0,
+          "stdout": "211:#### Step 0.6.3: Add Missing Tags (Language-Aware)\n",
+          "sha256": "a6f673919c17388a9dedc59fb8fbba871c2743c28d20fb5bf9a0da81f8f44041"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/sync/quality-gates-quality.md",
+          "needle": "Status mode early exit",
+          "line": 267,
+          "quote": "Status mode early exit: If mode is \"status\", display quality report and exit. No further phases execute.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Status mode early exit\" \".claude/skills/moai/workflows/sync/quality-gates-quality.md\"",
+          "exit": 0,
+          "stdout": "267:Status mode early exit: If mode is \"status\", display quality report and exit. No further phases execute.\n",
+          "sha256": "a6f673919c17388a9dedc59fb8fbba871c2743c28d20fb5bf9a0da81f8f44041"
+        }
+      ]
+    },
+    {
+      "id": "F31",
+      "priority": "Medium",
+      "phase": "sync 범위",
+      "title": "auto sync도 전체 소스 스캔과 coverage test 생성을 요구한다",
+      "kind": "범위 확대",
+      "claim": "auto는 changed files only로 정의되지만 Phase 11은 ALL source files를 스캔한다. Phase 10은 전체 coverage에서 P1/P2 gap의 테스트를 생성한다. 기존에 낮았던 unrelated package의 coverage까지 문서 동기화 작업으로 들어올 수 있다.",
+      "action": "auto는 diff와 영향받는 API·문서만, project는 전체로 분리한다. 기존 coverage debt는 따로 보고하고 변경 때문에 생긴 gap만 동일 scope에서 처리한다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/sync/quality-gates-context.md",
+          "needle": "Smart selective sync of changed files only",
+          "line": 48,
+          "quote": "- auto (default): Smart selective sync of changed files only. PR Ready conversion. Daily development workflow.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Smart selective sync of changed files only\" \".claude/skills/moai/workflows/sync/quality-gates-context.md\"",
+          "exit": 0,
+          "stdout": "48:- auto (default): Smart selective sync of changed files only. PR Ready conversion. Daily development workflow.\n",
+          "sha256": "714436022609c3449e9a3166673d843757b536f6917ed66af0beb3fb0227c93f"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/sync/doc-execution.md",
+          "needle": "Scan ALL source files",
+          "line": 40,
+          "quote": "Scan ALL source files (not just changed files) for:",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Scan ALL source files\" \".claude/skills/moai/workflows/sync/doc-execution.md\"",
+          "exit": 0,
+          "stdout": "40:Scan ALL source files (not just changed files) for:\n",
+          "sha256": "689ef00de7ae03ba58f3aee4f001158490d46499c90cae81a63425de4efbc4d3"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/sync/quality-gates-quality.md",
+          "needle": "Generate missing tests for P1 and P2 gaps",
+          "line": 301,
+          "quote": "Generate missing tests for P1 and P2 gaps:",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Generate missing tests for P1 and P2 gaps\" \".claude/skills/moai/workflows/sync/quality-gates-quality.md\"",
+          "exit": 0,
+          "stdout": "301:Generate missing tests for P1 and P2 gaps:\n",
+          "sha256": "a6f673919c17388a9dedc59fb8fbba871c2743c28d20fb5bf9a0da81f8f44041"
+        }
+      ]
+    },
+    {
+      "id": "F32",
+      "priority": "Medium",
+      "phase": "검증 자원",
+      "title": "full suite·coverage·lint·cross-build를 여러 계층이 다시 요청한다",
+      "kind": "절차 개선",
+      "claim": "manager-develop의 최종 full suite, sync Phase 1·3, coverage 전후, local CI mirror가 별도 실행을 명시한다. 일부는 snapshot 소비를 도입했지만 Phase 3·coverage에는 같은 계약이 없다. 동일 run 횟수나 비용을 측정한 수치는 아니다.",
+      "action": "tree·command·toolchain·environment·scope를 키로 한 검증 계획을 공유한다. test+coverage를 가능할 때 한 실행으로 묶고, 부하에 민감한 benchmark는 단독 실행한다. 전체 suite는 위험과 CI 정책에 따라 배치한다.",
+      "refs": [
+        {
+          "path": ".claude/agents/moai/manager-develop.md",
+          "needle": "Run the COMPLETE test suite",
+          "line": 132,
+          "quote": "- Run the COMPLETE test suite (always full, regardless of LARGE_SCALE; memory guard: batches when needed)",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Run the COMPLETE test suite\" \".claude/agents/moai/manager-develop.md\"",
+          "exit": 0,
+          "stdout": "132:- Run the COMPLETE test suite (always full, regardless of LARGE_SCALE; memory guard: batches when needed)\n",
+          "sha256": "11691af5cb3cce7a94b25b7ab7066910ee9ea07fa26775f10dfdc68d0f111c1c"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/sync/quality-gates-context.md",
+          "needle": "Run full test suite for detected project language",
+          "line": 158,
+          "quote": "- Run full test suite for detected project language",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Run full test suite for detected project language\" \".claude/skills/moai/workflows/sync/quality-gates-context.md\"",
+          "exit": 0,
+          "stdout": "158:- Run full test suite for detected project language\n",
+          "sha256": "714436022609c3449e9a3166673d843757b536f6917ed66af0beb3fb0227c93f"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/sync/delivery.md",
+          "needle": "go test -race -coverprofile=coverage.out",
+          "line": 133,
+          "quote": "go test -race -coverprofile=coverage.out -covermode=atomic ./...",
+          "command": "rg \"-n\" \"-F\" \"--\" \"go test -race -coverprofile=coverage.out\" \".claude/skills/moai/workflows/sync/delivery.md\"",
+          "exit": 0,
+          "stdout": "133:go test -race -coverprofile=coverage.out -covermode=atomic ./...\n",
+          "sha256": "e0e56eda95686f503f49d9fd581646615eda308df8632d6e4417618f8368fe99"
+        }
+      ]
+    },
+    {
+      "id": "F33",
+      "priority": "Medium",
+      "phase": "검증 snapshot 연결",
+      "title": "문서는 훅·judge의 공유 snapshot 소비를 선언하나 직접 호출 경로가 없다",
+      "kind": "구현 대조",
+      "claim": "sync 지침은 Stop hook과 4dim judge가 동일 snapshot을 소비한다고 한다. 훅 전문에는 moai verify 호출이 없고 실제 vet/build를 실행한다. 4dim prompt도 명령 실행을 직접 요구한다. 런타임이 외부에서 증거를 주입하는지는 관찰하지 않았다.",
+      "action": "실제 consumer entry에 조회·miss 실행·record를 연결하고 reuse/reexecute 사유를 출력한다. fresh fixture에서 test 도구 호출 0회, dirty fixture에서 1회인 spy 검증을 수행한다.",
+      "probe": "P09",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/sync/quality-gates-quality.md",
+          "needle": "all consume this single snapshot",
+          "line": 43,
+          "quote": "**Shared-snapshot wiring.** The snapshot is keyed by HEAD SHA (HEAD + porcelain-v2 + diff hash); a new commit invalidates the prior snapshot. Three sync-phase consumers — the `sync-auditor` Evidence cells, the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook, and the `.claude/workflows/sync-audit-4dim.js` 4-dimension judges — all consume this single snapshot keyed by HEAD SHA rather than each independently re-executing `go test` / `golangci-lint` / `go vet` / `go test -cover`. Concurrent recording requests for the SAME HEAD SHA are serialized via the per-key claim/lock mechanism (in-process mutex + cross-process `O_EXCL` claim-stamp with staleness reclaim), so exactly one consumer's recording per dimension lands and the rest read — last-writer-wins never silently drops a dimension.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"all consume this single snapshot\" \".claude/skills/moai/workflows/sync/quality-gates-quality.md\"",
+          "exit": 0,
+          "stdout": "43:**Shared-snapshot wiring.** The snapshot is keyed by HEAD SHA (HEAD + porcelain-v2 + diff hash); a new commit invalidates the prior snapshot. Three sync-phase consumers — the `sync-auditor` Evidence cells, the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook, and the `.claude/workflows/sync-audit-4dim.js` 4-dimension judges — all consume this single snapshot keyed by HEAD SHA rather than each independently re-executing `go test` / `golangci-lint` / `go vet` / `go test -cover`. Concurrent recording requests for the SAME HEAD SHA are serialized via the per-key claim/lock mechanism (in-process mutex + cross-process `O_EXCL` claim-stamp with staleness reclaim), so exactly one consumer's recording per dimension lands and the rest read — last-writer-wins never silently drops a dimension.\n",
+          "sha256": "a6f673919c17388a9dedc59fb8fbba871c2743c28d20fb5bf9a0da81f8f44041"
+        },
+        {
+          "path": ".claude/hooks/moai/sync-phase-quality-gate.sh",
+          "needle": "run_step go c1 go vet",
+          "line": 225,
+          "quote": "        run_step go c1 go vet ./...",
+          "command": "rg \"-n\" \"-F\" \"--\" \"run_step go c1 go vet\" \".claude/hooks/moai/sync-phase-quality-gate.sh\"",
+          "exit": 0,
+          "stdout": "225:        run_step go c1 go vet ./...\n",
+          "sha256": "38ccf70ebe6968782356d490e5462c84bd13b897a27aa5b4d12bc41ebe0f7d15"
+        },
+        {
+          "path": ".claude/workflows/sync-audit-4dim.js",
+          "needle": "Run the test_command",
+          "line": 176,
+          "quote": "  - Functionality: do the acceptance criteria actually hold? Run the test_command; read the ACs; verify behavior.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Run the test_command\" \".claude/workflows/sync-audit-4dim.js\"",
+          "exit": 0,
+          "stdout": "176:  - Functionality: do the acceptance criteria actually hold? Run the test_command; read the ACs; verify behavior.\n",
+          "sha256": "476f3cd86d663c6c41196fcd7a82672b7f820adc74c1e3aa761268759f3b6cbd"
+        }
+      ]
+    },
+    {
+      "id": "F34",
+      "priority": "Medium",
+      "phase": "언어 라우팅",
+      "title": "Kotlin Gradle 파일이 Java로 분류되고 monorepo는 첫 언어만 선택한다",
+      "kind": "동작 재현",
+      "claim": "sync diagnostics는 first match wins이고 Java가 build.gradle.kts를 먼저 소비한다. 훅의 detect_language도 같은 파일을 Java로 반환했다. run은 여러 언어를 모두 준비하도록 하므로 단계별 검사 범위가 달라질 수 있다.",
+      "action": "marker별 후보를 수집해 실제 plugin/source suffix로 구분하고 여러 언어를 반환한다. Kotlin-only, Java-only, Go+Node fixture의 검사 목록을 비교한다.",
+      "probe": "P05",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/sync/quality-gates-quality.md",
+          "needle": "first match wins",
+          "line": 19,
+          "quote": "Check indicator files in priority order (first match wins):",
+          "command": "rg \"-n\" \"-F\" \"--\" \"first match wins\" \".claude/skills/moai/workflows/sync/quality-gates-quality.md\"",
+          "exit": 0,
+          "stdout": "19:Check indicator files in priority order (first match wins):\n",
+          "sha256": "a6f673919c17388a9dedc59fb8fbba871c2743c28d20fb5bf9a0da81f8f44041"
+        },
+        {
+          "path": ".claude/hooks/moai/sync-phase-quality-gate.sh",
+          "needle": "elif [ -f \"$root/pom.xml\" ]",
+          "line": 62,
+          "quote": "    elif [ -f \"$root/pom.xml\" ] || [ -f \"$root/build.gradle\" ] || [ -f \"$root/build.gradle.kts\" ]; then",
+          "command": "rg \"-n\" \"-F\" \"--\" \"elif [ -f \\\"$root/pom.xml\\\" ]\" \".claude/hooks/moai/sync-phase-quality-gate.sh\"",
+          "exit": 0,
+          "stdout": "62:    elif [ -f \"$root/pom.xml\" ] || [ -f \"$root/build.gradle\" ] || [ -f \"$root/build.gradle.kts\" ]; then\n",
+          "sha256": "38ccf70ebe6968782356d490e5462c84bd13b897a27aa5b4d12bc41ebe0f7d15"
+        }
+      ]
+    },
+    {
+      "id": "F35",
+      "priority": "Medium",
+      "phase": "중단·복구",
+      "title": "sync의 아무 변경도 없다는 종료 설명이 선행 mutation과 맞지 않는다",
+      "kind": "문서 충돌",
+      "claim": "Graceful Exit는 어느 decision point에서 취소해도 문서·Git·branch 변화가 없다고 한다. 하지만 앞 단계에서 auto-fix, tag 추가, coverage test 생성, commit을 수행할 수 있다. 백업도 Phase 12에서야 생긴다.",
+      "action": "각 단계에 적용된 변경과 미적용 변경을 기록하고 취소 시 실제 보존 상태를 보고한다. 자동 rollback은 별도 승인·정확한 범위를 요구하며, 읽기 전용 preview와 apply 경계를 앞에 둔다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/sync/delivery.md",
+          "needle": "No changes made to documents, Git history, or branch state",
+          "line": 399,
+          "quote": "- No changes made to documents, Git history, or branch state",
+          "command": "rg \"-n\" \"-F\" \"--\" \"No changes made to documents, Git history, or branch state\" \".claude/skills/moai/workflows/sync/delivery.md\"",
+          "exit": 0,
+          "stdout": "399:- No changes made to documents, Git history, or branch state\n",
+          "sha256": "e0e56eda95686f503f49d9fd581646615eda308df8632d6e4417618f8368fe99"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/sync/doc-execution.md",
+          "needle": "Step 2.1: Create Safety Backup",
+          "line": 109,
+          "quote": "#### Step 2.1: Create Safety Backup",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Step 2.1: Create Safety Backup\" \".claude/skills/moai/workflows/sync/doc-execution.md\"",
+          "exit": 0,
+          "stdout": "109:#### Step 2.1: Create Safety Backup\n",
+          "sha256": "689ef00de7ae03ba58f3aee4f001158490d46499c90cae81a63425de4efbc4d3"
+        }
+      ]
+    },
+    {
+      "id": "F36",
+      "priority": "Medium",
+      "phase": "sync 백업",
+      "title": "전체 docs·SPEC 복사와 non-empty 검사는 비용과 무결성을 혼동한다",
+      "kind": "절차 개선",
+      "claim": "sync는 README·docs 전체·SPEC 전체를 매번 복사하고 non-empty directory check를 무결성 검사라 부른다. 파일 하나만 존재해도 디렉터리가 비어 있지 않으므로 원본 전체의 복구 가능성을 증명하지 못한다.",
+      "action": "승인된 변경 대상만 content hash와 상대 경로 목록으로 백업한다. 기존 Git 객체로 복구 가능한 내용은 중복 복사를 줄이고 uncommitted 원본은 별도 보존한다. 파일별 round-trip 복구 시험을 둔다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/sync/doc-execution.md",
+          "needle": "Copy critical files: README.md, docs/, .moai/specs/",
+          "line": 115,
+          "quote": "- Copy critical files: README.md, docs/, .moai/specs/",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Copy critical files: README.md, docs/, .moai/specs/\" \".claude/skills/moai/workflows/sync/doc-execution.md\"",
+          "exit": 0,
+          "stdout": "115:- Copy critical files: README.md, docs/, .moai/specs/\n",
+          "sha256": "689ef00de7ae03ba58f3aee4f001158490d46499c90cae81a63425de4efbc4d3"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/sync/doc-execution.md",
+          "needle": "non-empty directory check",
+          "line": 116,
+          "quote": "- Verify backup integrity (non-empty directory check)",
+          "command": "rg \"-n\" \"-F\" \"--\" \"non-empty directory check\" \".claude/skills/moai/workflows/sync/doc-execution.md\"",
+          "exit": 0,
+          "stdout": "116:- Verify backup integrity (non-empty directory check)\n",
+          "sha256": "689ef00de7ae03ba58f3aee4f001158490d46499c90cae81a63425de4efbc4d3"
+        }
+      ]
+    },
+    {
+      "id": "F37",
+      "priority": "Medium",
+      "phase": "TDD 오류 처리",
+      "title": "정상 RED와 semantic failure 즉시 중단의 구분이 없다",
+      "kind": "문서 충돌",
+      "claim": "manager-develop은 실패하는 테스트를 먼저 실행해야 한다. run의 자가진단 지침은 test assertion failure를 즉시 human escalation 대상으로 적는다. expected RED가 예외라는 명시적 상태 조건이 없어 정상 개발 사이클도 중단 대상으로 읽힌다.",
+      "action": "expected_RED, regression, tool_failure를 구분하고 RED 허용은 새 AC 테스트와 해당 cycle에만 한정한다. 기존 테스트 regression은 계속 차단한다.",
+      "refs": [
+        {
+          "path": ".claude/agents/moai/manager-develop.md",
+          "needle": "run it and confirm the RED state",
+          "line": 103,
+          "quote": "For each test case: write a specification test (descriptive name, Arrange-Act-Assert pattern), run it and confirm the RED state, then record the test-case state via TaskUpdate.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"run it and confirm the RED state\" \".claude/agents/moai/manager-develop.md\"",
+          "exit": 0,
+          "stdout": "103:For each test case: write a specification test (descriptive name, Arrange-Act-Assert pattern), run it and confirm the RED state, then record the test-case state via TaskUpdate.\n",
+          "sha256": "11691af5cb3cce7a94b25b7ab7066910ee9ea07fa26775f10dfdc68d0f111c1c"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/run.md",
+          "needle": "test assertion failure**) → IMMEDIATE escalate",
+          "line": 187,
+          "quote": "| Classification | Mechanical (lint / type / build / import / format) → DIAGNOSE-PATCH-VERIFY; Semantic (data race / deadlock / panic / **test assertion failure**) → IMMEDIATE escalate | `runtime-recovery-doctrine.md` §3 + `ci-autofix-protocol.md` |",
+          "command": "rg \"-n\" \"-F\" \"--\" \"test assertion failure**) → IMMEDIATE escalate\" \".claude/skills/moai/workflows/run.md\"",
+          "exit": 0,
+          "stdout": "187:| Classification | Mechanical (lint / type / build / import / format) → DIAGNOSE-PATCH-VERIFY; Semantic (data race / deadlock / panic / **test assertion failure**) → IMMEDIATE escalate | `runtime-recovery-doctrine.md` §3 + `ci-autofix-protocol.md` |\n",
+          "sha256": "95291e95efa45f21a247c99461163b8e791361210b135f57797689f68b2cd36d"
+        }
+      ]
+    },
+    {
+      "id": "F38",
+      "priority": "Medium",
+      "phase": "문맥 압축",
+      "title": "phase마다 clear하라는 지시와 warm context 유지 지시가 공존한다",
+      "kind": "문서 충돌",
+      "claim": "spec-workflow Plan token strategy는 완료 후 /clear를 지시한다. context-window와 cache-aware 규칙은 같은 작업의 문맥 축약·resume와 warm context 유지를 우선한다. handoff의 고정 문구와 증거 재로딩은 별도의 비용이며 실제 세션 비용은 이번에 측정하지 않았다.",
+      "action": "작업 전환·실제 문맥 한계·감사 독립성 필요 여부로 clear를 결정한다. plan→run이 같은 승인 범위이면 간결한 handoff record를 유지하고 중복 로드를 측정한다.",
+      "refs": [
+        {
+          "path": ".claude/rules/moai/workflow/spec-workflow.md",
+          "needle": "Execute /clear after completion",
+          "line": 180,
+          "quote": "- Execute /clear after completion",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Execute /clear after completion\" \".claude/rules/moai/workflow/spec-workflow.md\"",
+          "exit": 0,
+          "stdout": "180:- Execute /clear after completion\n",
+          "sha256": "53ab9ace3512b9e7740e02c45fdb9e033173348e96baa08e220fed09bcd0aa8e"
+        },
+        {
+          "path": ".claude/rules/moai/workflow/context-window-management.md",
+          "needle": "Four cheaper moves come first",
+          "line": 41,
+          "quote": "Four cheaper moves come first. Each targets a different cause of context growth, so pick by cause rather than working down the list:",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Four cheaper moves come first\" \".claude/rules/moai/workflow/context-window-management.md\"",
+          "exit": 0,
+          "stdout": "41:Four cheaper moves come first. Each targets a different cause of context growth, so pick by cause rather than working down the list:\n",
+          "sha256": "d51ee9f1c66bb6f7885d9d5855342d5d07d717c924cb34bf1d3f9862eb5949f8"
+        },
+        {
+          "path": ".claude/rules/moai/workflow/cache-aware-execution.md",
+          "needle": "Weigh session length as a cost axis",
+          "line": 25,
+          "quote": "9. **Weigh session length as a cost axis** [ZONE:Evolvable] [HARD] One long session is cheaper than several short ones for the same work — every fresh session re-pays the always-loaded prefix at write price, a continuing one reads it from cache — if it stays warm: a >5-min idle gap or prefix edit reverts it to write price. Treat session splitting as directive 4 treats `/clear`: a cost to justify, not a default.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Weigh session length as a cost axis\" \".claude/rules/moai/workflow/cache-aware-execution.md\"",
+          "exit": 0,
+          "stdout": "25:9. **Weigh session length as a cost axis** [ZONE:Evolvable] [HARD] One long session is cheaper than several short ones for the same work — every fresh session re-pays the always-loaded prefix at write price, a continuing one reads it from cache — if it stays warm: a >5-min idle gap or prefix edit reverts it to write price. Treat session splitting as directive 4 treats `/clear`: a cost to justify, not a default.\n",
+          "sha256": "ced31605288676b2ecaa2726bef3f8f69fa31937dd00e9e2761d75531e85d661"
+        }
+      ]
+    },
+    {
+      "id": "F39",
+      "priority": "Medium",
+      "phase": "agent 호출 가능성",
+      "title": "team을 허용한 entry와 retired로 서술한 하위 경로가 섞여 있다",
+      "kind": "문서 충돌",
+      "claim": "run entry와 최신 orchestration rule은 명시적 team을 허용한다. run phase-execution의 scale 설명과 router SKILL Step 3는 agent-team retired/fallback으로 적는다. 같은 요청이 로딩된 문서 위치에 따라 다르게 해석될 수 있다.",
+      "action": "현재 capability와 역사 설명을 분리한다. 하나의 resolver를 두고 explicit team·unsupported runtime·no flag를 fixture로 검증한다. 지원을 단정하기 전에 현재 도구를 확인한다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/run/context-loading.md",
+          "needle": "current resolver honors `team`",
+          "line": 83,
+          "quote": "- **`MODE_TEAM_UNAVAILABLE`** (historical sentinel — retained for the CI audit and genealogy): emitted by the retired-era resolver when an EXPLICIT `--mode team` request was made (the then-retired `team` dispatch value could not be honored; the message suggested `--mode autopilot`; a config/harness auto-selection silently downgraded with an info log). The current resolver honors `team` as the experimental Agent Teams mode; this key is no longer emitted at runtime and exists as the documented retired-era fallback marker.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"current resolver honors `team`\" \".claude/skills/moai/workflows/run/context-loading.md\"",
+          "exit": 0,
+          "stdout": "83:- **`MODE_TEAM_UNAVAILABLE`** (historical sentinel — retained for the CI audit and genealogy): emitted by the retired-era resolver when an EXPLICIT `--mode team` request was made (the then-retired `team` dispatch value could not be honored; the message suggested `--mode autopilot`; a config/harness auto-selection silently downgraded with an info log). The current resolver honors `team` as the experimental Agent Teams mode; this key is no longer emitted at runtime and exists as the documented retired-era fallback marker.\n",
+          "sha256": "c98e3aafbf8c7364777246b0241b816bd713f7ddcee540e9c8af1bce406aee33"
+        },
+        {
+          "path": ".claude/skills/moai/workflows/run/phase-execution.md",
+          "needle": "Large-change note: agent-team is retired",
+          "line": 245,
+          "quote": "Large-change note: agent-team is retired with the Agent Teams static layer. Multi-domain research fans out via fanout (3-5 concurrent read-only `Agent()` in one turn); coding-heavy implementation stays serial (sequential sub-agent) per the Anthropic coding-task parallelism caveat.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Large-change note: agent-team is retired\" \".claude/skills/moai/workflows/run/phase-execution.md\"",
+          "exit": 0,
+          "stdout": "245:Large-change note: agent-team is retired with the Agent Teams static layer. Multi-domain research fans out via fanout (3-5 concurrent read-only `Agent()` in one turn); coding-heavy implementation stays serial (sequential sub-agent) per the Anthropic coding-task parallelism caveat.\n",
+          "sha256": "30c269281e633a79f1d9998073a45ff27127abfd1db4e1b549aed018e7c57994"
+        },
+        {
+          "path": ".claude/skills/moai/SKILL.md",
+          "needle": "Agent Teams static layer is retired",
+          "line": 366,
+          "quote": "Read `workflows/<name>.md` for the target subcommand. (The Agent Teams static layer is retired; a `--team` flag falls back to sub-agent mode per `.claude/rules/moai/workflow/orchestration-mode-selection.md` — there is no separate `team/<name>.md` workflow file.)",
+          "command": "rg \"-n\" \"-F\" \"--\" \"Agent Teams static layer is retired\" \".claude/skills/moai/SKILL.md\"",
+          "exit": 0,
+          "stdout": "366:Read `workflows/<name>.md` for the target subcommand. (The Agent Teams static layer is retired; a `--team` flag falls back to sub-agent mode per `.claude/rules/moai/workflow/orchestration-mode-selection.md` — there is no separate `team/<name>.md` workflow file.)\n",
+          "sha256": "89c81faedacdac280ca70c65a79b895d43381c57bbe11353b5a0c57458eb15f5"
+        }
+      ]
+    },
+    {
+      "id": "F40",
+      "priority": "Medium",
+      "phase": "관측 · 성능 기준",
+      "title": "문서의 TRACE PROBE 설명 자체는 실행 trace가 아니다",
+      "kind": "측정 공백",
+      "claim": "워크플로우 파일의 MOAI_TRACE_PHASES와 enter/exit는 주석·의사 흐름에 있다. 이번에 실제 project→sync를 실행하거나 토큰·agent 대기·재시도 로그를 수집하지 않았다. 따라서 병목의 발생 가능성과 이미 재현한 결함을 실제 시간 절감률로 환산할 수 없다.",
+      "action": "현재 routing ledger와 verification 기록을 먼저 활용해 stage_start/end, agent parent, input hash, cache hit, retry cause, tool duration을 묶는다. S/M/L·cold/warm·실패 주입별 p50/p95와 호출 수로 개선을 비교한다.",
+      "refs": [
+        {
+          "path": ".claude/skills/moai/workflows/project.md",
+          "needle": "MOAI_TRACE_PHASES=1",
+          "line": 30,
+          "quote": "<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->",
+          "command": "rg \"-n\" \"-F\" \"--\" \"MOAI_TRACE_PHASES=1\" \".claude/skills/moai/workflows/project.md\"",
+          "exit": 0,
+          "stdout": "30:<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->\n",
+          "sha256": "21262947d7e1d5e15fb56803c64c4677293c9f4c8db7d476916f1b1dec3baef0"
+        },
+        {
+          "path": ".claude/skills/moai/SKILL.md",
+          "needle": "an un-recorded dispatch, NOT an opt-in-off",
+          "line": 38,
+          "quote": "When dispatching a subcommand or workflow, the orchestrator records the routing decision to the append-only routing-ledger (`.moai/state/routing-ledger.jsonl`) via `moai harness ledger record` at dispatch time — the request text is piped via stdin and only a privacy-preserving digest is stored, never verbatim user text. As the routed pipeline reaches gate points, machine evidence is appended via `moai harness ledger evidence` (gate exits, audit verdicts, verify-log paths). Outcome is never supplied as an input; it is finalized from machine evidence only. This observation is opt-in and fail-open — it never blocks routing. NOTE: recording depends on the orchestrator actually invoking `moai harness ledger record` at dispatch; when the observability opt-in is ON but that record call is not emitted, the ledger stays empty — an un-recorded dispatch, NOT an opt-in-off no-op. Do not read an empty routing-ledger as 'opt-in disabled'.",
+          "command": "rg \"-n\" \"-F\" \"--\" \"an un-recorded dispatch, NOT an opt-in-off\" \".claude/skills/moai/SKILL.md\"",
+          "exit": 0,
+          "stdout": "38:When dispatching a subcommand or workflow, the orchestrator records the routing decision to the append-only routing-ledger (`.moai/state/routing-ledger.jsonl`) via `moai harness ledger record` at dispatch time — the request text is piped via stdin and only a privacy-preserving digest is stored, never verbatim user text. As the routed pipeline reaches gate points, machine evidence is appended via `moai harness ledger evidence` (gate exits, audit verdicts, verify-log paths). Outcome is never supplied as an input; it is finalized from machine evidence only. This observation is opt-in and fail-open — it never blocks routing. NOTE: recording depends on the orchestrator actually invoking `moai harness ledger record` at dispatch; when the observability opt-in is ON but that record call is not emitted, the ledger stays empty — an un-recorded dispatch, NOT an opt-in-off no-op. Do not read an empty routing-ledger as 'opt-in disabled'.\n",
+          "sha256": "89c81faedacdac280ca70c65a79b895d43381c57bbe11353b5a0c57458eb15f5"
+        }
+      ]
+    }
+  ],
+  "probes": [
+    {
+      "id": "P01",
+      "command": "git status --porcelain=v2; git diff HEAD — untracked new.go content A → B in isolated fixture",
+      "output": "porcelain_before=? new.go\nporcelain_after=? new.go\ndiff_before=\"\"\ndiff_after=\"\"\nkey_inputs_equal=true\ncomputed_digest_equal=true",
+      "meaning": "Key 함수의 세 입력 중 HEAD 고정, 나머지 두 입력 동일. 실제 Key 함수 직접 호출은 별도 소스 추출 probe에서 확인."
+    },
+    {
+      "id": "P02",
+      "command": "bash -c: which() { return 0; }; golangci-lint() { return 7; }; which golangci-lint && golangci-lint run --timeout=5m || echo \"SKIP: golangci-lint not installed\"",
+      "exit": 0,
+      "stdout": "SKIP: golangci-lint not installed",
+      "stderr": ""
+    },
+    {
+      "id": "P03",
+      "command": "bash -c: (exit 7) & (exit 0) & wait; printf \"wait_status=%s\" \"$?\"",
+      "exit": 0,
+      "stdout": "wait_status=0",
+      "stderr": ""
+    },
+    {
+      "id": "P04",
+      "command": "bash <source>/sync-phase-quality-gate.sh, twice at identical fixture HEAD; fake go exits 7",
+      "output": "{\n  \"first\": {\n    \"exit\": 0,\n    \"stdout\": \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"Stop\\\",\\\"decision\\\":\\\"block\\\",\\\"reason\\\":\\\"go vet failed\\\"},\\\"systemMessage\\\":\\\"sync-phase quality gate BLOCKED: go vet failed (go vet=7 go build=7 deps_modified=1). Detail: .moai/logs/sync-quality-gate.log\\\"}\",\n    \"stderr\": \"\"\n  },\n  \"second\": {\n    \"exit\": 0,\n    \"stdout\": \"\",\n    \"stderr\": \"\"\n  },\n  \"tool_calls\": [\n    \"vet ./...\",\n    \"build ./...\"\n  ]\n}"
+    },
+    {
+      "id": "P05",
+      "command": "source sync-phase-quality-gate.sh; detect_language <fixture with build.gradle.kts>",
+      "exit": 0,
+      "stdout": "java",
+      "stderr": ""
+    },
+    {
+      "id": "P06",
+      "command": "go run normalize.go — normalizeWhitespace function extracted verbatim from internal/runtime/audit_cache.go",
+      "exit": 0,
+      "stdout": "different_source=true\nnormalized_equal=true\nnormalized=\"command: | echo first echo second\"",
+      "stderr": ""
+    },
+    {
+      "id": "P07",
+      "command": "go run key.go <fixture> — Key unchanged; only package/import and error-format adapter for standalone execution",
+      "exit": 0,
+      "stdout": "key_before=1c2af144e463ac5df7c9afc57cd82e847352f26c:a0de81d7346c1cb9\nkey_after=1c2af144e463ac5df7c9afc57cd82e847352f26c:a0de81d7346c1cb9\nkey_equal=true errors=<nil>,<nil>",
+      "stderr": ""
+    },
+    {
+      "id": "P08",
+      "command": "Read every rule file; count paths frontmatter absence and UTF-8 bytes",
+      "output": "{\n  \"files\": 84,\n  \"lines\": 15288,\n  \"bytes\": 1131068,\n  \"no_paths_files\": 14,\n  \"no_paths_bytes\": 185368\n}"
+    },
+    {
+      "id": "P09",
+      "command": "Check literal snapshot consumer symbols in full hook and workflow source",
+      "output": "{\".claude/hooks/moai/sync-phase-quality-gate.sh\":{\"verify_cli\":false,\"snapshot_term\":false},\".claude/workflows/sync-audit-4dim.js\":{\"verify_cli\":false,\"snapshot_term\":true}}",
+      "meaning": "직접 연결 구문 부재 확인. 런타임 외부 주입까지 부재라고 단정하지 않음."
+    },
+    {
+      "id": "P10",
+      "command": "D7 verification verb extracted verbatim; fixture explicitly reconciles superseded SPEC-OLD-001",
+      "exit": 0,
+      "stdout": "BLOCKING: SPEC-OLD-001 has status=superseded but is referenced without reconciliation",
+      "stderr": ""
+    },
+    {
+      "id": "P11",
+      "command": "D8 verification verb; syscall and build-tag occur in different sections",
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "id": "P12",
+      "command": "grep -oE AC-([A-Z0-9]+-)*[0-9]+ ac.txt | sort -u | wc -l; two suffix-distinct AC IDs",
+      "exit": 0,
+      "stdout": "1",
+      "stderr": ""
+    }
+  ],
+  "test": {
+    "command": "unset CLAUDE_PROJECT_DIR CLAUDE_SESSION_ID MOAI_SKIP_PLAN_AUDIT MOAI_AUDIT_GATE_T0 && go test ./internal/runtime ./internal/verify -run 'Test.*(Cache|Hash|Snapshot|Key|Fresh|Skip|RecordCheckConcurrent)' -count=1",
+    "exit": 0,
+    "stdout": "ok  \tgithub.com/modu-ai/moai-adk/internal/runtime\t0.476s\nok  \tgithub.com/modu-ai/moai-adk/internal/verify\t4.992s",
+    "attribution": "이번 세션에서 직접 실행한 선택 테스트 출력. 이 문서 생성기는 테스트를 재실행하지 않음."
+  },
+  "groups": {
+    "High": 18,
+    "Medium": 22,
+    "reproduced": 9
+  }
+}

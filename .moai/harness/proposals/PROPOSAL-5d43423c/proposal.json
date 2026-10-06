@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-5d43423c",
+  "generated_at": "2026-07-28T16:55:44Z",
+  "generator_version": "0.1.0",
+  "observation_count": 6,
+  "pattern_key": "user_prompt:SPEC-AUTH-001:",
+  "source_ts": "2026-09-13T00:18:48Z",
+  "tier": "rule"
+}

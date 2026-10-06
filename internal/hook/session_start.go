@@ -814,6 +814,17 @@ func (h *sessionStartHandler) computeDeferredAdvisory(
 ) map[string]any {
 	res := make(map[string]any)
 
+	// SPEC-MOAI-HYGIENE-001 REQ-HYG-014: the hygiene engine runs here, in
+	// the deferred advisory pass — best-effort, bounded scans, every error
+	// logged and swallowed; the session launch is never blocked or delayed
+	// by it. Mode: workflow.hygiene.mode (report default; apply is the
+	// operator's explicit config opt-in on this auto surface, REQ-HYG-013).
+	if err := hygieneRunFn(projectDir); err != nil {
+		slog.Warn("session start (deferred): hygiene pass failed (non-blocking)",
+			"error", err.Error(),
+		)
+	}
+
 	// SPEC-TELEMETRY-001 R4: prune files older than 90 days. Durable side effect.
 	if err := pruneTelemetry(projectDir); err != nil {
 		slog.Warn("session start (deferred): telemetry pruning failed",

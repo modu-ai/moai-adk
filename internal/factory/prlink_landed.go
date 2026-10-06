@@ -250,6 +250,16 @@ func subjectAttribution(subject, landedBranch string) string {
 	return ""
 }
 
+// AttributeSubject is the exported form of subjectAttribution, for the graph
+// card-file layer (SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-016), which attributes
+// merge subjects through the engine's single attribution point. A second
+// matcher in the caller would be a second chance for the two readings of
+// "which card does this merge deliver" to diverge — the same reason
+// LandedBranchFromRef exists for the branch derivation.
+func AttributeSubject(subject, landedBranch string) string {
+	return subjectAttribution(subject, landedBranch)
+}
+
 // landedBranchFromRef derives the branch name the resolved landed ref names
 // (REQ-TLA-013): `origin/develop` → `develop`, `origin/release/v9` →
 // `release/v9`. The branch is never spelled anywhere in the predicate.

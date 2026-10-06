@@ -21,6 +21,8 @@ import (
 // is recorded when the strategy is "none", even when learning.enabled=true.
 // REQ-HRN-OBS-014: Strategy None = full no-op (no recording).
 func TestRunHarnessObserveUserPromptSubmit_StrategyNone_NoOp(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n  user_prompt_content: none\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -44,6 +46,8 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyNone_NoOp(t *testing.T) {
 // without the raw prompt.
 // REQ-HRN-OBS-014: Strategy A = SHA-256 hash + length + language (minimal PII).
 func TestRunHarnessObserveUserPromptSubmit_StrategyA_HashLenLang(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n  user_prompt_content: hash\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -107,6 +111,8 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyA_HashLenLang(t *testing.T) {
 // REQ-HRN-OBS-013: prompt_preview = the first 64 bytes of the prompt.
 // AC-HRN-OBS-008.a: prompt_preview is the first 64 bytes (full prompt if shorter).
 func TestRunHarnessObserveUserPromptSubmit_StrategyB_Preview(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	cases := []struct {
 		name        string
 		prompt      string
@@ -208,6 +214,8 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyB_Preview(t *testing.T) {
 // records the full raw prompt in prompt_content.
 // REQ-HRN-OBS-014: Strategy C = Strategy A + full-text recording (explicit opt-in).
 func TestRunHarnessObserveUserPromptSubmit_StrategyC_Full(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n  user_prompt_content: full\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -250,6 +258,8 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyC_Full(t *testing.T) {
 // inside a prompt is extracted as the subject.
 // REQ-HRN-OBS-007: detect SPEC-ID patterns (SPEC-[A-Z][A-Z0-9]+-[0-9]+).
 func TestRunHarnessObserveUserPromptSubmit_SpecIDExtraction(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -288,6 +298,8 @@ func TestRunHarnessObserveUserPromptSubmit_SpecIDExtraction(t *testing.T) {
 // an invalid strategy value falls back to Strategy A (hash) and the event is recorded.
 // REQ-HRN-OBS-014: fail-open to Strategy A.
 func TestRunHarnessObserveUserPromptSubmit_FailOpenOnInvalidStrategy(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n  user_prompt_content: INVALID_VALUE\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -324,6 +336,8 @@ func TestRunHarnessObserveUserPromptSubmit_FailOpenOnInvalidStrategy(t *testing.
 // language-detection result from detectPromptLang is reflected correctly in the
 // JSONL entry (integration check).
 func TestRunHarnessObserveUserPromptSubmit_LangHeuristic(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	cases := []struct {
 		name     string
 		prompt   string

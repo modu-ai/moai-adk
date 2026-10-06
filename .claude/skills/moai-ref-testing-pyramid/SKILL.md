@@ -31,8 +31,7 @@ progressive_disclosure:
 
 ## Target Agents
 
-- `manager-develop` - Primary: applies patterns during test creation and coverage analysis
-- `manager-develop` - Secondary: applies during RED-GREEN-REFACTOR cycles
+- `manager-develop` - applies patterns during test creation, coverage analysis, and RED-GREEN-REFACTOR cycles
 
 ## Test Pyramid Ratios
 

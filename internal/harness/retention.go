@@ -43,6 +43,10 @@ const pruneHealPoll = 10 * time.Millisecond
 // sweep matches the same pattern so the two cannot drift apart.
 const tmpPattern = "usage-log-*.tmp"
 
+// archiveTmpPattern names the temp file the archive append creates inside archiveDir; the
+// orphan sweep matches the same pattern so the two cannot drift apart.
+const archiveTmpPattern = "archive-*.jsonl.gz.tmp"
+
 // orphanTmpMinAge is how old a tmpPattern file must be before the sweep deletes it. A live
 // rewrite takes seconds and a hook is killed at 5 s, so a file this old has no writer.
 const orphanTmpMinAge = 10 * time.Minute
@@ -53,10 +57,12 @@ const orphanTmpMinAge = 10 * time.Minute
 const maxStampBytes = 128
 
 // Retention archives and cleans up old entries in usage-log.jsonl.
-// REQ-HL-011: Lazy pruning on every RecordEvent call, skip if within 1 hour of last prune.
+// REQ-HL-011 (amended by SPEC-HARNESS-DETACHED-PRUNE-001 REQ-DP-008): the prune
+// runs off the observer record path, on the gated detached child; skip if within
+// 1 hour of last prune.
 //
-// @MX:ANCHOR: [AUTO] PruneStaleEntries is called by observer and tests.
-// @MX:REASON: [AUTO] fan_in >= 3: observer.go, observer_test.go, integration_test.go
+// @MX:ANCHOR: [AUTO] PruneStaleEntries is the prune entry: the retention-prune child verb and the tests call it.
+// @MX:REASON: [AUTO] fan_in >= 3: internal/cli hook.go (child verb, SPEC-HARNESS-DETACHED-PRUNE-001), observer_test.go, integration_test.go
 type Retention struct {
 	// logPath is the usage-log.jsonl file path.
 	logPath string
@@ -157,8 +163,8 @@ func (r *Retention) PruneStaleEntries(retentionDays int) error {
 // clock reading, because the previous holder may have stamped while this process waited.
 // @MX:NOTE: [AUTO] Stamp-before-work: a pruner killed after archiving and before the rename leaves the
 // stamp, so the same events are archived again at most once per interval, not by every later hook.
-// A kill mid-rewrite leaves an orphan usage-log-*.tmp; the lock holder sweeps the old ones
-// on the next cycle (sweepOrphanTmp).
+// A kill mid-rewrite leaves an orphan usage-log-*.tmp and a kill mid-archive-copy an orphan
+// archive-*.jsonl.gz.tmp; the lock holder sweeps the old ones on the next cycle (sweepOrphanTmp).
 func (r *Retention) pruneExclusive(statePath string, retentionDays int) error {
 	sf, err := r.openStateFile(statePath)
 	if err != nil {
@@ -250,6 +256,9 @@ func (r *Retention) openStateFile(statePath string) (*os.File, error) {
 			if err := r.healStateEntry(statePath, fi, "file"); err != nil {
 				return nil, err
 			}
+		case fi.Mode()&(os.ModeNamedPipe|os.ModeSocket|os.ModeDevice|os.ModeCharDevice) != 0:
+			// A FIFO opened read-write does not block on Linux, and the locked stamp read would then wait forever.
+			return nil, fmt.Errorf("retention: prune state entry %s is not a regular file; prune skipped", statePath)
 		default:
 			f, oerr := os.OpenFile(statePath, os.O_RDWR|os.O_CREATE, 0o644)
 			if oerr != nil {
@@ -312,22 +321,30 @@ func removeStateEntryIfUnchanged(path string, inspected os.FileInfo) (bool, erro
 	return true, nil
 }
 
-// sweepOrphanTmp deletes usage-log-*.tmp files next to the log that are older than
-// orphanTmpMinAge: leftovers of a rewrite whose process was killed before the rename.
-// The caller holds the state-file lock, so no other pruner on this machine is rewriting.
+// sweepOrphanTmp deletes the prunes' temp files that are older than orphanTmpMinAge: the
+// usage-log-*.tmp files next to the log, leftovers of a rewrite whose process was killed
+// before the rename, and the archive-*.jsonl.gz.tmp files under the archive directory,
+// leftovers of a killed archive copy. The caller holds the state-file lock, so no other
+// pruner on this machine is rewriting or copying.
 //
 // Best effort: nothing here fails the prune. Only regular files qualify (a directory or
 // symlink with a matching name is not ours). It runs after the prune, so a slow sweep (many
 // large leftovers) cannot spend the hook's 5 s budget before the log itself is pruned; a sweep
 // cut short by the kill resumes at the next cycle.
 func (r *Retention) sweepOrphanTmp(now time.Time) {
-	dir := filepath.Dir(r.logPath)
+	sweepTmpFiles(filepath.Dir(r.logPath), tmpPattern, now)
+	sweepTmpFiles(r.archiveDir, archiveTmpPattern, now)
+}
+
+// sweepTmpFiles deletes the regular files matching pattern in dir that are older than
+// orphanTmpMinAge. Best effort: an unreadable directory or entry is skipped silently.
+func sweepTmpFiles(dir, pattern string, now time.Time) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return
 	}
 	for _, e := range entries {
-		if ok, _ := filepath.Match(tmpPattern, e.Name()); !ok || !e.Type().IsRegular() {
+		if ok, _ := filepath.Match(pattern, e.Name()); !ok || !e.Type().IsRegular() {
 			continue
 		}
 		info, err := e.Info()
@@ -349,7 +366,7 @@ func readStamp(rd io.Reader) []byte {
 
 // readStampFile reads the state file without locking; a missing or unreadable file is "no stamp".
 func readStampFile(path string) []byte {
-	f, err := os.Open(path)
+	f, err := openStampReadOnly(path)
 	if err != nil {
 		return nil
 	}
@@ -508,31 +525,74 @@ func (r *Retention) archiveEvents(events []Event) error {
 	return nil
 }
 
-// appendToGzip appends events to gzip-compressed JSONL file.
-// Creates new file if it does not exist.
+// appendToGzip replaces the archive at archivePath with its existing bytes followed by a new
+// gzip stream of events. The replacement is built in a temp file inside archiveDir and lands
+// with one rename, so a kill mid-copy or mid-write leaves the previous archive byte-identical
+// and at most an orphan temp, which a later prune's sweep reaps (archiveTmpPattern). A missing
+// archive is created. Standard gzip readers read the concatenated streams sequentially.
 //
-// @MX:WARN: [AUTO] Gzip files are not append-safe, so use read-and-rewrite method.
-// @MX:REASON: [AUTO] Gzip format supports concatenated streams so append is actually possible,
-// but use read-modify-write pattern for compatibility with standard readers.
+// @MX:WARN: [AUTO] The write is atomic per prune, but a kill after the rename and before the
+// log rewrite makes the next interval's prune archive the same events again (duplicated
+// members, once per interval — the accepted stamp-before-work cost).
+// @MX:REASON: [AUTO] The previous direct O_APPEND write left a truncated gzip member on a
+// kill and the next append made the archive unreadable end to end (card t1467 probe: 0/35802
+// events reachable); tmp+rename bounds a kill's damage to an orphan temp.
 func appendToGzip(archivePath string, events []Event) error {
-	// gzip concatenation: append by adding new gzip stream to existing file.
-	// Standard gzip reader can read concatenated streams sequentially.
-	f, err := os.OpenFile(archivePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	tmp, err := os.CreateTemp(filepath.Dir(archivePath), archiveTmpPattern)
 	if err != nil {
-		return fmt.Errorf("아카이브 파일 열기: %w", err)
+		return fmt.Errorf("아카이브 임시 파일 생성: %w", err)
 	}
-	defer func() { _ = f.Close() }()
+	tmpPath := tmp.Name()
 
-	gw := gzip.NewWriter(f)
+	if err := copyExistingArchive(tmp, archivePath); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
+		return err
+	}
+
+	gw := gzip.NewWriter(tmp)
 	enc := json.NewEncoder(gw)
 	for _, evt := range events {
 		if err := enc.Encode(evt); err != nil {
 			_ = gw.Close()
+			_ = tmp.Close()
+			_ = os.Remove(tmpPath)
 			return fmt.Errorf("gzip 인코딩: %w", err)
 		}
 	}
 	if err := gw.Close(); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("gzip 닫기: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("임시 파일 닫기: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, archivePath); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("아카이브 교체: %w", err)
+	}
+	return nil
+}
+
+// copyExistingArchive writes the current bytes of the archive at path into dst, so the
+// replacement archive carries the old streams plus the new one. A missing archive
+// contributes no bytes (the archive is then created by the rename). Any other read failure
+// is returned: replacing the archive without the old bytes would silently drop archived
+// events.
+func copyExistingArchive(dst io.Writer, path string) error {
+	src, err := os.Open(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		return fmt.Errorf("아카이브 파일 열기: %w", err)
+	}
+	defer func() { _ = src.Close() }()
+	if _, err := io.Copy(dst, src); err != nil {
+		return fmt.Errorf("아카이브 복사: %w", err)
 	}
 	return nil
 }

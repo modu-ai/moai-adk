@@ -5,11 +5,11 @@ paths: "**/factory-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.moai/
 
 # Factory Dispatch — Lane and Lens Mechanics
 
-> Owns: the review-lens pointer, heavy-run lease, Factory Mode mechanics, the remaining boundaries and cross-references — and, relocated from the stub by the always-loaded diet, § Isolation (launcher table, worktree tiers, `WT-` branch naming, the traceability carriers, the worktree-guard refusal shapes), § Verification load is lane-local (the env-isolated variants and measurements), and § Integration into the release branch is self-served (the full window procedure). `factory-dispatch.md` is the SSOT and keeps every binding clause as a one-liner; sibling companion `factory-dispatch-detail.md` keeps the long tables and narratives.
+> Owns: the review-lens pointer, heavy-run lease, Factory Mode mechanics, the remaining boundaries and cross-references — and, relocated from the stub by the always-loaded diet, § Isolation (launcher table, worktree tiers, `WT-` branch naming, the traceability carriers, the worktree-guard refusal shapes), § Verification load is lane-local (the env-isolated variants and measurements), and § Integration into the release branch is self-served (the full window procedure). `factory-dispatch.md` is the SSOT and keeps every binding clause as a one-liner; sibling companions keep the long tables and narratives: `factory-dispatch-detail.md` (dispatch cycle and coordination), `factory-dispatch-cards.md` (card lifecycle and traceability), and `factory-dispatch-gates.md` (gate measurements).
 
 ## Review lens selection
 
-`review` is not one thing. The factory leader picks the lenses from what the card actually changed and states the choice in the dispatch, so the gate runs that review rather than re-deriving it. Lens table: `factory-dispatch-detail.md` § Review lens selection.
+`review` is not one thing. The factory leader picks the lenses from what the card actually changed and states the choice in the dispatch, so the gate runs that review rather than re-deriving it. Lens table: `factory-dispatch-gates.md` § Review lens selection.
 
 `--deep --patch` is opt-in twice over: `--patch` drafts a fix and is absent unless the operator asked for it. Do not add it on the leader's own initiative.
 
@@ -64,9 +64,9 @@ The **worktree directory keeps the card id** (`.moai/worktrees/<card-id>` for ne
 
 A lane reporting a branch name without its card id has not reported the card. Merges reference the `WT-` name; the lead maps it back through the dispatched `card:` field.
 
-[HARD] **A card-delivering pull request's PR title MUST carry the delivering card id** — the branch name is read by a human scanning `git branch` and wants a slug; the PR title is read by a machine and wants the id. Traceability rests on **four** carriers — the dispatch `card:` field, the commit message, the evidence path, and the PR title. It binds card-delivering pull requests only, and only those opened after it landed; nothing is retitled. Rationale and carrier measurements: `factory-dispatch-detail.md` § The PR-title carrier.
+[HARD] **A card-delivering pull request's PR title MUST carry the delivering card id** — the branch name is read by a human scanning `git branch` and wants a slug; the PR title is read by a machine and wants the id. Traceability rests on **four** carriers — the dispatch `card:` field, the commit message, the evidence path, and the PR title. It binds card-delivering pull requests only, and only those opened after it landed; nothing is retitled. Rationale and carrier measurements: `factory-dispatch-cards.md` § The PR-title carrier.
 
-The lead dispatches this rather than assuming it: each instruction names the worktree and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command lasts for that invocation only, so the next command silently reads the wrong tree. A lane reporting it worked in the shared checkout is a fault to report (rationale: `factory-dispatch-detail.md` § Isolation rationale).
+The lead dispatches this rather than assuming it: each instruction names the worktree and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command lasts for that invocation only, so the next command silently reads the wrong tree. A lane reporting it worked in the shared checkout is a fault to report (rationale: `factory-dispatch-cards.md` § Isolation rationale).
 
 [HARD] **Inside a worktree session that `<path>` is the worktree's own absolute path**, and the dispatch writes it that way. Measured on Claude Code 2.1.275: the guard refuses `-C .`, a relative path, a path computed at runtime, and a path outside this worktree — three distinct refusal messages, none of them a runtime defect. Plain git (pipes and `&&` chains included), `git -C <own absolute path>`, and `--git-dir=<own .git>` pass; so does `cd <own worktree> && git …`, which the rule above still advises against for the reason it gives. The refusal is git-scoped: a command carrying no git passes with substitution, loops, redirects, or a heredoc body naming a git command.
 
@@ -109,7 +109,7 @@ Two measured constraints make the lane enter the release worktree rather than dr
 
     [HARD] **Serialize by the recorded hold and the announcement, not by probe.** `moai integration acquire` records the hold, `moai integration status` says who has it, `moai integration release` gives it back when the completion report is sent. Taking a live holder's window needs `--force`, which records what it displaced — deliberate, never quiet. The recorded hold is what the PreToolUse guard reads to refuse a second lane's `git merge`; the deny layer is opt-in (`workflow.integration_lock.enabled`, default off), the record works either way. The announcement to the lead rides alongside it. The probe stays — but it is the last check, never the first.
 
-    [HARD] **`acquire` asserts the caller's tree first.** Detail: `factory-dispatch-detail.md` § The pre-merge settings-drift assertion.
+    [HARD] **`acquire` asserts the caller's tree first.** Detail: `factory-dispatch-gates.md` § The pre-merge settings-drift assertion.
 
     [HARD] **Re-read `HEAD` immediately before the commit and again before the push.** `AGENTS.md` §2 binds this everywhere; the release worktree is where it has already earned its keep.
 

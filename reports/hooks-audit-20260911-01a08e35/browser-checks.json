@@ -1,0 +1,41 @@
+{
+  "measurements": [
+    {
+      "width": 1440,
+      "documentWidth": 1440,
+      "findings": 11,
+      "duplicateIds": [],
+      "brokenAnchors": [],
+      "title": "Hooks 전수 조사 및 개선 보고서 · 2026-09-11",
+      "offline": false
+    },
+    {
+      "width": 768,
+      "documentWidth": 768,
+      "findings": 11,
+      "duplicateIds": [],
+      "brokenAnchors": [],
+      "title": "Hooks 전수 조사 및 개선 보고서 · 2026-09-11",
+      "offline": false
+    },
+    {
+      "width": 390,
+      "documentWidth": 390,
+      "findings": 11,
+      "duplicateIds": [],
+      "brokenAnchors": [],
+      "title": "Hooks 전수 조사 및 개선 보고서 · 2026-09-11",
+      "offline": false
+    },
+    {
+      "width": 390,
+      "documentWidth": 390,
+      "findings": 11,
+      "duplicateIds": [],
+      "brokenAnchors": [],
+      "title": "Hooks 전수 조사 및 개선 보고서 · 2026-09-11",
+      "offline": true
+    }
+  ],
+  "page_errors": ""
+}
