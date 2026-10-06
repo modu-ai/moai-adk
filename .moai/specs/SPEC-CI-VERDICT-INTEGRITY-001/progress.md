@@ -160,3 +160,19 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   the raw grep). Regression: phantom=1 control=0 malformed=1
   matrix-exclude=1 repo-root=0, test harness 12 pass / 0 fail. CI
   publication still platform-blocked.
+- gate_round_8 (codex review gate findings, lane-direct): 4 repairs, RED
+  observed on the committed 8d1b66b51 code before each GREEN on this tree
+  (commit `922557958`) — (1) yq is REQUIRED and the awk fallback retired
+  (the fallback ignored flow-form `contexts: [Lint]` and an injected
+  Lint=fail scored all-passed exit 0 under a yq-less PATH; GREEN aborts 1
+  without yq, scores exit 2 with it; the raw-grep key check is yq-only
+  too — yq-less aborts surface via the key-precheck first); (2) the T3
+  handoff logUrl points at the worst-verdict run (RED pointed at the
+  passing run's log; GREEN at the failing one); (3) a trailing unquoted
+  comment on a job name is stripped quote-aware AND rtrims (the first
+  cut left `Lint ` with a trailing space — the GREEN probe caught it
+  before commit); (4) matrix expression whitespace is optional
+  (`${{matrix.os}}`), applied to all three substitution sites and
+  had_ref. Regression: phantom=1 control=0 malformed=1 matrix-exclude=1
+  repo-root=0, harness 12 pass / 0 fail. CI publication still
+  platform-blocked.
