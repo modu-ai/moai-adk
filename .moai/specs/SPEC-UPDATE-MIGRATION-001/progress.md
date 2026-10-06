@@ -54,12 +54,68 @@ before M4, or both criteria auto-demote to regression-guard (binding, not discre
 
 ### Milestone log
 
-- **M1 — characterization pin (GREEN-BASE, no behavior change)** — commit _pending_.
+- **M1 — characterization pin (GREEN-BASE, no behavior change)** — commit `e9ed0ef0f`.
   `internal/cli/update/deploy/deploy_characterization_test.go` (new): 4 tests pinning
   current `CleanMoaiManagedPaths` behavior — local-only file backed-up-then-deleted;
   user-modified template file deleted WITHOUT backup (silent-overwrite hazard);
   `.moai/config` wiped wholesale; managed roots fully emptied (wipe-first end state).
   Exit: green on the UNMODIFIED tree (HEAD 80cfe7c0b).
+- **M2 — RED hazard tests** — commit `c244fcdaf` (tests + M4-shaped reconciliation
+  seam whose bodies delegate to the current wipe-first flow). 6 tests RED:
+  `TestUpdate_LocalOnlyFileSurvives`, `TestUpdate_GitStrategyValuesSurvive`,
+  `TestUpdate_NoGitDeletionsForLocalOnlyFiles`, `TestUpdate_ConflictPreservesFileAndWritesSidecar`,
+  `TestUpdate_ConflictSidecarCollisionUsesFirstUnusedNumber`, `TestUpdate_StaleFileArchivedAndRemoved`.
+  Fixtures are in-code (`t.TempDir()` per the package's `newClassifyFixture` convention)
+  rather than `testdata/` files — the plan's testdata note is satisfied in spirit; no
+  golden files are involved.
+
+### RED evidence — AC-UPM-020 / AC-UPM-021 (§2.1 four elements, MP8-RED-M2)
+
+Captured BEFORE M4 (this evidence commit precedes any pipeline-change commit).
+Both measurements ran on the M2 commit; the code paths exercised are committed
+there (`c244fcdaf`), not an uncommitted working copy.
+
+**LEDGER-RED-UPM-020** (cited by acceptance.md:31):
+
+- command: `go test -run TestUpdate_LocalOnlyFileSurvives -count=1 ./internal/cli/update/`
+- stdout (verbatim):
+
+```
+--- FAIL: TestUpdate_LocalOnlyFileSurvives (0.01s)
+    reconcile_test.go:107: local-only file did not survive update: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUpdate_LocalOnlyFileSurvives3579795044/001/.claude/rules/moai/dev-only-rule.md: no such file or directory
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update	0.116s
+FAIL
+```
+
+- executed-test count: 1 (`--- FAIL` names the executed test; this is NOT `ok ... [no tests to run]`)
+- exit code: `1`
+- tree: `c244fcdaf` (this run, this tree)
+
+**LEDGER-RED-UPM-021** (cited by acceptance.md:37):
+
+- command: `go test -run TestUpdate_GitStrategyValuesSurvive -count=1 ./internal/cli/update/`
+- stdout (verbatim):
+
+```
+--- FAIL: TestUpdate_GitStrategyValuesSurvive (0.00s)
+    reconcile_test.go:174: worktree_base_branch = "", want "develop" (VALUE reversion — the 2026-09-24 hazard)
+    reconcile_test.go:177: manual.workflow = "github-flow", want "git-flow" (VALUE reversion — the 2026-09-24 hazard)
+    reconcile_test.go:180: summary neither preserved nor merged .moai/config/sections/git-strategy.yaml: {Refreshed:[] Merged:[] Conflicts:[] Preserved:[] ArchivedRemoved:[]}
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update	0.116s
+FAIL
+```
+
+- executed-test count: 1 (`--- FAIL` names the executed test; this is NOT `ok ... [no tests to run]`)
+- exit code: `1`
+- tree: `c244fcdaf` (this run, this tree)
+
+**Debt disposition:** MP8-RED-M2 is DISPOSED — both release-blocking criteria keep
+their RED-now cells with all four §2.1 elements; the auto-demotion clause did NOT
+execute. The RED-for-the-right-reason check: both failures name the exact hazard
+the criterion asserts (file destroyed / operator VALUES reverted), not an unrelated
+pre-existing breakage.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
