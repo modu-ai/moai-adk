@@ -19,6 +19,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/cli/update"
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/report"
 	"github.com/modu-ai/moai-adk/internal/merge"
@@ -169,13 +170,40 @@ type updateOutcomeDetail struct {
 	ArchiveDriftRoots []string
 }
 
+// renderReconciliationOutcome emits the reconciliation outcome lines
+// (SPEC-UPDATE-MIGRATION-001 REQ-UPM-030/031/032) through the existing
+// report renderer — plain counts plus the conflict, preserved, and
+// archived-removed path lists. Silent when the run reconciled nothing (the
+// zero-total boundary; REQ-UPM-031 binds only runs that actually removed).
+func renderReconciliationOutcome(w io.Writer, s update.ReconciliationSummary, th tui.Theme) {
+	counts := report.ReconciliationCounts{
+		Refreshed:       len(s.Refreshed),
+		Merged:          len(s.Merged),
+		Conflicts:       len(s.Conflicts),
+		Preserved:       len(s.Preserved),
+		ArchivedRemoved: len(s.ArchivedRemoved),
+	}
+	conflicted := make([]string, 0, len(s.Conflicts))
+	for _, c := range s.Conflicts {
+		conflicted = append(conflicted, c.Path+" (sidecar: "+c.Sidecar+")")
+	}
+	if text := report.RenderReconciliation(counts, conflicted, s.Preserved, s.ArchivedRemoved); text != "" {
+		_, _ = fmt.Fprintln(w, paintToken(text, th.Dim, false))
+	}
+}
+
 func renderUpdateOutcome(w io.Writer, fileCount int, detail updateOutcomeDetail, backupPath string, th tui.Theme) {
-	header := report.RenderOutcome(report.OutcomeUpdatedFiles, fileCount+detail.ManagedRedeployed, "")
+	// SPEC-UPDATE-MIGRATION-001 (card t1547, REQ-UPM-032): the caller's
+	// fileCount ALREADY includes the managed-root files (the plan.AnalyzeFiles
+	// exclusion is gone), so the pill no longer adds detail.ManagedRedeployed
+	// — that would double-count. The field survives as the breakdown's
+	// inclusion note.
+	header := report.RenderOutcome(report.OutcomeUpdatedFiles, fileCount, "")
 	_, _ = fmt.Fprintln(w, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: true, Label: header, Theme: &th}))
 	if detail.ManagedRedeployed > 0 || detail.RemovedManaged > 0 {
 		var breakdown string
 		if detail.ManagedRedeployed > 0 {
-			breakdown = fmt.Sprintf("%d merged/added + %d managed re-deployed", fileCount, detail.ManagedRedeployed)
+			breakdown = fmt.Sprintf("%d total (includes %d managed re-deployed)", fileCount, detail.ManagedRedeployed)
 		}
 		if detail.RemovedManaged > 0 {
 			sep := " · "

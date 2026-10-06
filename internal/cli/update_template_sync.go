@@ -977,6 +977,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		// definition, and preserved files were never removed.
 	}
 	renderUpdateOutcome(out, len(analysis.Files), detail, configBackupPath, th)
+	// SPEC-UPDATE-MIGRATION-001 (card t1547, REQ-UPM-030/031): the
+	// reconciliation outcome rides the existing report structures — plain
+	// counts and per-path lists, every deletion named.
+	renderReconciliationOutcome(out, reconSummary, th)
 	// REQ-DHR-007: a .codex/ template the target harness profile (or this
 	// version) no longer ships is reported and left in place, never deleted.
 	reportUndeployedCodexTemplates(errOut, projectRoot, mgr.Manifest().Files, restoredSet)

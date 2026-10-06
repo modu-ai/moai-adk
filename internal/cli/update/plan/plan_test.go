@@ -378,10 +378,10 @@ func TestAnalyzeFiles(t *testing.T) {
 			wantCount: 2,
 		},
 		{
-			name:         "excludes MoAI-managed files",
+			name:         "includes MoAI-managed files (SPEC-UPDATE-MIGRATION-001 REQ-UPM-032)",
 			templates:    []string{".claude/skills/moai-core/SKILL.md", "user-file.md"},
-			wantCount:    1, // Only user-file.md should be analyzed
-			excludedPath: ".claude/skills/moai-core/SKILL.md",
+			wantCount:    2, // managed files join the counted total — the wipe-premise exclusion is gone
+			excludedPath: "",
 		},
 		{
 			name:      "handles .tmpl suffix removal",

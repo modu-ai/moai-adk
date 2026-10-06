@@ -28,6 +28,7 @@ import (
 	"testing/fstest"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
+	"github.com/modu-ai/moai-adk/internal/cli/update/report"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"gopkg.in/yaml.v3"
 )
@@ -650,5 +651,103 @@ func TestUpdate_ExcludedPathsNotPending(t *testing.T) {
 		if p.RelPath == rel {
 			t.Errorf("restore-handled path %s captured for reprocessing: %+v", rel, pending)
 		}
+	}
+}
+
+// TestUpdate_SummaryHonesty — AC-UPM-032. One fixture run that refreshes,
+// merges, conflicts, preserves, and archive-removes at least one file each:
+// the summary reports all five categories with per-path lists (including
+// every deletion), and the report renderer surfaces every archived removal.
+// Structure assertions only — no output-format vocabulary that pre-commits
+// t1527.
+func TestUpdate_SummaryHonesty(t *testing.T) {
+	root := newClassifyFixture(t, map[string]string{
+		// refreshed: healthy tracked record, content == render.
+		".claude/rules/moai/note.md": "render\n",
+		// merged: user changed one key, template changed another → clean.
+		".claude/rules/moai/tuning.json": "{\"a\": \"user\", \"b\": \"base\"}\n",
+		// conflicted: both sides changed the same key.
+		".claude/rules/moai/policy.json": "{\"shared\": \"user-value\"}\n",
+		// preserved: local-only.
+		".claude/rules/moai/local-note.md": "operator note\n",
+		// archived-removed: prior template carried it, current does not.
+		".claude/rules/moai/old-rule.md": "stale\n",
+	})
+	carried := map[string]string{
+		".claude/rules/moai/note.md":     "render\n",
+		".claude/rules/moai/tuning.json": "{\"a\": \"user\", \"b\": \"template\"}\n",
+		".claude/rules/moai/policy.json": "{\"shared\": \"template-value\"}\n",
+	}
+	tmplFS := recTmplFS(carried)
+
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	for rel, content := range map[string]string{
+		".claude/rules/moai/note.md":     "render\n",
+		".claude/rules/moai/old-rule.md": "stale\n",
+	} {
+		if err := mgr.Track(rel, manifest.TemplateManaged, ""); err != nil {
+			t.Fatalf("track %s: %v", rel, err)
+		}
+		entry := mgr.Manifest().Files[rel]
+		entry.CurrentHash = manifest.HashBytes([]byte(content))
+		mgr.Manifest().Files[rel] = entry
+	}
+
+	base := func(rel string) ([]byte, bool) {
+		if rel == ".claude/rules/moai/tuning.json" {
+			return []byte("{\"a\": \"user\", \"b\": \"base\"}\n"), true
+		}
+		if rel == ".claude/rules/moai/policy.json" {
+			return []byte("{\"shared\": \"base-value\"}\n"), true
+		}
+		return nil, false
+	}
+
+	summary, pending, err := ReconcileManagedPaths(root, io.Discard, tmplFS, renderWith(carried), mgr.Manifest(), ReconcileOptions{})
+	if err != nil {
+		t.Fatalf("ReconcileManagedPaths: %v", err)
+	}
+	recSimulateDeploy(t, root, carried)
+	summary, err = ReconcileMerges(root, io.Discard, renderWith(carried), mgr.Manifest(), ReconcileMergeOptions{Base: base}, pending, summary)
+	if err != nil {
+		t.Fatalf("ReconcileMerges: %v", err)
+	}
+
+	// All five categories carry at least one path.
+	if !containsPath(summary.Refreshed, ".claude/rules/moai/note.md") {
+		t.Errorf("refreshed set missing the healthy file: %+v", summary)
+	}
+	if !containsPath(summary.Merged, ".claude/rules/moai/tuning.json") {
+		t.Errorf("merged set missing the clean merge: %+v", summary)
+	}
+	if len(summary.Conflicts) != 1 || summary.Conflicts[0].Path != ".claude/rules/moai/policy.json" {
+		t.Errorf("conflicts = %+v, want exactly the policy.json conflict", summary.Conflicts)
+	}
+	if !containsPath(summary.Preserved, ".claude/rules/moai/local-note.md") {
+		t.Errorf("preserved set missing the local-only file: %+v", summary)
+	}
+	if !containsPath(summary.ArchivedRemoved, ".claude/rules/moai/old-rule.md") {
+		t.Errorf("archived-removed set missing the stale file: %+v", summary)
+	}
+
+	// The renderer names every deletion (REQ-UPM-031) and lists the
+	// preserved set — structure only, no t1527 vocabulary.
+	counts := report.ReconciliationCounts{
+		Refreshed:       len(summary.Refreshed),
+		Merged:          len(summary.Merged),
+		Conflicts:       len(summary.Conflicts),
+		Preserved:       len(summary.Preserved),
+		ArchivedRemoved: len(summary.ArchivedRemoved),
+	}
+	rendered := report.RenderReconciliation(counts,
+		[]string{summary.Conflicts[0].Path}, summary.Preserved, summary.ArchivedRemoved)
+	if !strings.Contains(rendered, ".claude/rules/moai/old-rule.md") {
+		t.Errorf("rendered summary must name every archived removal, got:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, ".claude/rules/moai/local-note.md") {
+		t.Errorf("rendered summary must list the preserved set, got:\n%s", rendered)
 	}
 }

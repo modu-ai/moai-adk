@@ -328,11 +328,12 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if archiveErr := dryRunArchiveLegacySkills(cwd, out); archiveErr != nil {
 			return archiveErr
 		}
-		// t40 defect 3: preview the managed-cleanup deletion list. A preview
-		// failure degrades to a warning — a dry run must not fail the command.
+		// t40 defect 3 → SPEC-UPDATE-MIGRATION-001 (card t1547): preview the
+		// reconciliation plan. A preview failure degrades to a warning — a
+		// dry run must not fail the command.
 		previewMode := resolveUpdateDeployMode(cwd, getBoolFlag(cmd, "no-plugin") || pluginOptOutFromEnv())
-		if previewErr := previewManagedCleanup(cwd, previewMode, out); previewErr != nil {
-			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Cleanup preview", "failed", previewErr.Error(), &th))
+		if previewErr := previewReconciliation(cwd, previewMode, out); previewErr != nil {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Reconciliation preview", "failed", previewErr.Error(), &th))
 		}
 		// SPEC-UPDATE-REINSTALL-LOOP-002 REQ-RIL2-024/025 (M4): the v2
 		// fingerprint is computed HERE — inside the dry-run branch, above the

@@ -165,6 +165,25 @@ factory env; from this lane session it false-reds on `MOAI_FACTORY_WORKER=lane-1
 (the t1350 class). With the env scrubbed the test passes — the red is session
 environment, not code.
 
+### Milestone log (continued)
+
+- **M4 — reconciliation pipeline + wiring + guard** — commit `59fc3be1e` (with the
+  six review findings repaired in the same milestone, per the leader relay; the
+  per-finding reproduction record is above). The six M2 hazard tests GREEN:
+  `go test -count=1 ./internal/cli/update/...` all packages ok (this run, tree
+  59fc3be1e). Broad cli update-flow suite (env-scrubbed, ~30 test-name families):
+  `ok github.com/modu-ai/moai-adk/internal/cli 118.005s`.
+- **M5 — summary + counting** — `plan.AnalyzeFiles` managed exclusion removed
+  (REQ-UPM-032; the wipe premise is gone), `report.RenderReconciliation` added on
+  the existing plain-text outcome structure, cli outcome gains the reconciliation
+  rows (counts + conflict/preserved/archived path lists; pill no longer adds
+  `ManagedRedeployed` — the caller's count already includes managed files, and the
+  breakdown states the inclusion), `--dry-run` previews the reconciliation plan via
+  the read-only classifier (`previewReconciliation`; the cleanup-deletion preview's
+  subject no longer exists). Tests: `TestUpdate_SummaryHonesty` (AC-UPM-032, all
+  five categories per-path), preview + outcome test families updated to the new
+  contracts.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_

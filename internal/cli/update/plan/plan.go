@@ -69,10 +69,12 @@ func AnalyzeFiles(templates []string, projectRoot string) []merge.FileAnalysis {
 			displayPath = before
 		}
 
-		// Filter out MoAI-managed files - they are automatically installed
-		if IsMoaiManaged(displayPath) {
-			continue
-		}
+		// SPEC-UPDATE-MIGRATION-001 (card t1547, REQ-UPM-032): MoAI-managed
+		// files join the analysis and the counted total. The exclusion here
+		// premised the wholesale wipe — the summary under-counted the run's
+		// real footprint ("reported 32, actual 175", 2026-08-15) and hid the
+		// managed set entirely. The pipeline no longer wipes, so managed
+		// files are ordinary counted participants.
 
 		// Use rendered target path for existence check
 		targetPath := filepath.Join(projectRoot, displayPath)
