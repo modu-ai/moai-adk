@@ -1037,6 +1037,50 @@ This extension is a progress.md-only commit: the §D.8 step 1 subject grep keeps
 one line, step 4's c1 shape (progress.md only) is preserved, and the c1 → c2 ancestry holds
 from the seal commit.
 
+### c2 guard-red record (the designed red state, tree `ef18813fc`)
+
+- c2 commit `ef18813fc` lands EXACTLY the two persisted guard drafts, byte-identical to
+  `.moai/state/verify/t1356/factory_env_axes_test.go` and `lane_env_axes_test.go` (`cmp` clean
+  both), gofmt-clean, with both package test binaries compiling (`go test -c -o /dev/null`,
+  exit 0 both). The hook scrub list `laneEnvScrubAxes` is declared EMPTY at c2 (D5) with no
+  `TestMain` call yet — the guards are designed red on this tree.
+- The eight guard reds — four guard tests × two env forms, every run exit **1**, each a single
+  `go test -run '^<name>$' -count=1 -v` invocation on the c2 tree (`ef18813fc`). The verbatim
+  `-v` verdict lines:
+
+  Form A — plain-scrubbed (the 16-axis unset compound of §D.3):
+
+```
+--- FAIL: TestFactoryEnvAxesCovered (0.12s)
+--- FAIL: TestFactoryEnvAxesScrubApplied (0.28s)
+--- FAIL: TestLaneEnvAxesCovered (0.03s)
+--- FAIL: TestLaneEnvAxesScrubApplied (0.09s)
+```
+
+  Form B — explicit-lane (the recorded c1 lane env replayed verbatim):
+
+```
+--- FAIL: TestFactoryEnvAxesCovered (0.19s)
+--- FAIL: TestFactoryEnvAxesScrubApplied (0.41s)
+--- FAIL: TestLaneEnvAxesCovered (0.03s)
+--- FAIL: TestLaneEnvAxesScrubApplied (0.12s)
+```
+
+  Both forms red: the guards' redness is form-independent by construction (the coverage guard
+  is static analysis over referenced-vs-scrubbed axes; the applied guard composes its own
+  sentinel child env) and the eight runs confirm it on the c2 tree.
+- Why each guard is red (representative `t.Errorf` lines, scrubbed form, verbatim):
+  - TestFactoryEnvAxesCovered — referenced axes uncovered: `family axis MOAI_AUTONOMY_TIER is
+    referenced by production (codex_sync_gate.go, factory_launch_helpers.go) but is in neither
+    the TestMain scrub set nor the exemption table`
+  - TestFactoryEnvAxesScrubApplied — sentinel survives: `family axis MOAI_AUTONOMY_TIER is
+    still present in the child after TestMain: the start-up scrub is declared but not applied`
+  - TestLaneEnvAxesCovered — `declared scrub set is empty: TestMain would strip no family axis`
+  - TestLaneEnvAxesScrubApplied — `family axis MOAI_FACTORY_AUTO_DISPATCH is still present in
+    the child after TestMain: the start-up scrub is declared but not applied`
+- Machine-local run logs (never a citation target): `/tmp/t1356-c2r-<pkg>-<test>-<form>.txt`,
+  eight files; the verdict lines above are the committed carrier.
+
 ### Discovery narrow pair re-record (plan.md M1 c1; both arms COMPLETE)
 
 - Discovery lane arm (the compound lane form of this session) — exit **0**: 14 `--- PASS`,
