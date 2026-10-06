@@ -34,10 +34,14 @@ fi
 PR_NUMBER="$1"
 BRANCH="${2:-main}"
 
+GH="${MOAI_CIWATCH_GH:-gh}"
+POLL_INTERVAL="${CIWATCH_POLL_INTERVAL:-30}"
+
 # t1534 gate round: the SSoT keys are BASE-branch patterns (main,
 # release/*) — the caller's $2 is the HEAD branch. Resolve the PR's actual
 # base branch from gh for the SSoT lookup; the handoff keeps reporting the
-# HEAD branch.
+# HEAD branch. (GH/POLL must be initialized BEFORE this block — the gate
+# caught $GH used-when-unset here.)
 SSOT_BRANCH="$BRANCH"
 PR_BASE="$("$GH" pr view "$PR_NUMBER" --json baseRefName --jq '.baseRefName' 2>/dev/null)" || PR_BASE=""
 [ -n "$PR_BASE" ] || PR_BASE="$BRANCH"
@@ -45,9 +49,6 @@ if [ "$PR_BASE" != "$BRANCH" ]; then
     SSOT_BRANCH="$PR_BASE"
     log_step "PR base branch '${PR_BASE}' differs from head '${BRANCH}' — classifying against SSoT key '${SSOT_BRANCH}'"
 fi
-
-GH="${MOAI_CIWATCH_GH:-gh}"
-POLL_INTERVAL="${CIWATCH_POLL_INTERVAL:-30}"
 
 # Verify gh is available.
 if ! command -v "$GH" >/dev/null 2>&1; then
@@ -92,7 +93,10 @@ _check_bucket() {
         '.[] | select(.name==$n) | .bucket // "pending"' "$json_file" \
         | awk '
             function worse(cur, cand) {
-                if (cur == "fail" || cand == "fail") return "fail"
+                # cancel aggregates as FAIL — a cancelled required check is
+                # never a pass regardless of entry order (gate repro:
+                # [pass, cancel] scored exit 0 with the pass-keeping order).
+                if (cur == "fail" || cand == "fail" || cur == "cancel" || cand == "cancel") return "fail"
                 if (cur == "pending" || cand == "pending") return "pending"
                 if (cur == "") return cand
                 return cur

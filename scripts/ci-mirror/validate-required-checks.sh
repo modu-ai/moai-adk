@@ -87,6 +87,29 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			for (j = 1; j <= n; j++) { lines[j] = newlines[j]; sufs[j] = newsufs[j] }
 		}
 		for (j = 1; j <= n; j++) {
+			# GATE-4 P2: matrix.exclude subtraction — GitHub does NOT publish
+			# a combination when SOME exclude entry matches it on EVERY
+			# key:value pair (partial matches do not remove). Pre-repair the
+			# validator counted excluded combinations as publishable and a
+			# required context GitHub can never run passed Dimension D
+			# silently (run-matrix-exclude.sh repro: false-green exit 0).
+			excluded = 0
+			nsuf = split(sufs[j], svals, " ")
+			if (nsuf == nk) {
+				for (e = 1; e <= ex_n && !excluded; e++) {
+					matches = 1
+					for (pk in exval) {
+						split(pk, pr, SUBSEP)
+						if (pr[1] + 0 != e) continue
+						hit = 0
+						for (d = 1; d <= nk; d++)
+							if (dims[d] == pr[2] && svals[d] == exval[pk]) { hit = 1; break }
+						if (!hit) { matches = 0; break }
+					}
+					if (matches) excluded = 1
+				}
+			}
+			if (excluded) continue
 			# P2-B: the bare-name suffix applies ONLY when the job HAS a
 			# matrix but its name never carried a ${{ matrix.* }} expression
 			# (CodeQL `Analyze (Go)` + language: [go] → `Analyze (Go) (go)`).
@@ -101,6 +124,19 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		}
 		}
 		for (t = 1; t <= inc_n; t++) {
+			# GATE-4 P2: exclude also removes include tuples — a tuple whose
+			# every pair matches an exclude entry is not published.
+			skipped = 0
+			for (e = 1; e <= ex_n && !skipped; e++) {
+				matches = 1
+				for (pk in exval) {
+					split(pk, pr, SUBSEP)
+					if (pr[1] + 0 != e) continue
+					if (incval[t, pr[2]] != exval[pk]) { matches = 0; break }
+				}
+				if (matches) skipped = 1
+			}
+			if (skipped) continue
 			line = name
 			fully = 1
 			for (kk in incval) {
@@ -114,10 +150,10 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		has_name = 0
 	}
 	function reset_job_mem() {
-		nk = 0; inc_n = 0; had_ref = 0
-		delete dims; delete mvals; delete incval
+		nk = 0; inc_n = 0; had_ref = 0; ex_n = 0; mmode = "inc"
+		delete dims; delete mvals; delete incval; delete exval
 	}
-	BEGIN { in_jobs = 0; has_name = 0; nk = 0; inc_n = 0; in_steps = 0; in_strategy = 0; in_matrix = 0 }
+	BEGIN { in_jobs = 0; has_name = 0; nk = 0; inc_n = 0; in_steps = 0; in_strategy = 0; in_matrix = 0; mmode = "inc"; ex_n = 0 }
 	{
 		ind = 0
 		while (substr($0, ind + 1, 1) == " ") ind++
@@ -152,7 +188,12 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	ind == 4 && $0 ~ /^[[:space:]]*steps:/ { in_steps = 1; next }
 	ind == 4 && $0 ~ /^[[:space:]]*strategy:/ { in_strategy = 1; in_matrix = 0; next }
 	ind == 4 { in_matrix = 0; next }
-	in_strategy && ind == 6 && $0 ~ /^[[:space:]]*matrix:/ { in_matrix = 1; next }
+	in_strategy && ind == 6 && $0 ~ /^[[:space:]]*matrix:/ { in_matrix = 1; mmode = "inc"; next }
+	# GATE-4 P2: `include:` / `exclude:` section markers under matrix: set the
+	# tuple mode — without this an exclude entry was parsed as an include
+	# tuple and the excluded combination stayed in the publishable set.
+	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*include:/ { mmode = "inc"; next }
+	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*exclude:/ { mmode = "excl"; next }
 	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*[A-Za-z_][A-Za-z_0-9]*:[[:space:]]*\[/ {
 		line = $0; sub(/^[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
@@ -165,11 +206,18 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		next
 	}
 	in_matrix && ind == 10 && $0 ~ /^[[:space:]]*- / {
-		inc_n++
 		line = $0; sub(/^[[:space:]]*-[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
 		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^"|"$/, "", v)
-		incval[inc_n, k] = v
+		if (mmode == "excl") { ex_n++; exval[ex_n, k] = v }
+		else { inc_n++; incval[inc_n, k] = v }
+		next
+	}
+	in_matrix && ind == 12 && mmode == "excl" && ex_n > 0 && $0 ~ /^[[:space:]]*[A-Za-z_]/ {
+		line = $0; sub(/^[[:space:]]*/, "", line)
+		k = line; sub(/:.*/, "", k)
+		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^"|"$/, "", v)
+		exval[ex_n, k] = v
 		next
 	}
 	in_matrix && ind == 12 && inc_n > 0 && $0 ~ /^[[:space:]]*[A-Za-z_]/ {

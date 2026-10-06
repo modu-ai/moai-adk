@@ -35,6 +35,7 @@ func TestBranchProtectionDetectFilterCoversParityInput(t *testing.T) {
 		t.Fatalf("read %s: %v", ciYml, err)
 	}
 	content := string(raw)
+	lines := strings.Split(content, "\n")
 
 	// Same literal the parity test reads (branchProtectionRelPath) — kept
 	// inline to avoid coupling this guard to the other test file's symbols.
@@ -44,7 +45,34 @@ func TestBranchProtectionDetectFilterCoversParityInput(t *testing.T) {
 	// LIST-ENTRY line: optional indent, a `- ` dash, then the quoted path —
 	// a commented entry (`# - '...'`) starts with # and cannot match.
 	entryRe := regexp.MustCompile(`(?m)^\s*-\s*['"]` + regexp.QuoteMeta(parityInput) + `['"]\s*$`)
-	if !entryRe.MatchString(content) {
+	// GATE P2 (round 4): the entry must live INSIDE the go_code filter
+	// block — an entry moved under another filter (or to file top level)
+	// routes the edit to the wrong job set while a whole-file match still
+	// passes. Extract the go_code block by indent scan and match the entry
+	// against that block only. The block's `go_code:` key carries no value
+	// (the `go_code: ${{ ... }}` output mapping is a different line shape).
+	goStart, goIndent := -1, -1
+	for i, ln := range lines {
+		trimmed := strings.TrimLeft(ln, " ")
+		if strings.HasPrefix(trimmed, "go_code:") && strings.TrimSpace(strings.TrimPrefix(trimmed, "go_code:")) == "" {
+			goStart, goIndent = i, len(ln)-len(trimmed)
+			break
+		}
+	}
+	if goStart < 0 {
+		t.Fatalf("go_code filter not found in %s — the detect filter is renamed or moved; re-derive this guard", ciYml)
+	}
+	var goBlock []string
+	for _, ln := range lines[goStart+1:] {
+		if strings.TrimSpace(ln) == "" {
+			continue // blank lines do not end a YAML block
+		}
+		if len(ln)-len(strings.TrimLeft(ln, " ")) <= goIndent {
+			break
+		}
+		goBlock = append(goBlock, ln)
+	}
+	if !entryRe.MatchString(strings.Join(goBlock, "\n")) {
 		t.Fatalf("detect-filter correspondence violated: %s go_code filter does not cover %s — a PR editing it alone would skip the branch-protection parity guard (AC-CI-012)",
 			ciYml, parityInput)
 	}
