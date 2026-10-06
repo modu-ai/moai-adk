@@ -68,7 +68,6 @@ import "embed"
 //go:embed templates/.claude/commands/moai/sync.md.tmpl
 //go:embed templates/.claude/commands/moai/todo.md
 //go:embed templates/.claude/hooks/moai/chain-event.sh
-//go:embed templates/.claude/hooks/moai/handle-agent-hook.sh
 //go:embed templates/.claude/hooks/moai/handle-agent-hook.sh.tmpl
 //go:embed templates/.claude/hooks/moai/handle-codex-review-gate.sh
 //go:embed templates/.claude/hooks/moai/handle-compact.sh.tmpl
@@ -98,15 +97,12 @@ import "embed"
 //go:embed templates/.claude/hooks/moai/handle-session-start-navigator.sh
 //go:embed templates/.claude/hooks/moai/handle-session-start.sh.tmpl
 //go:embed templates/.claude/hooks/moai/handle-stop-failure.sh.tmpl
-//go:embed templates/.claude/hooks/moai/handle-stop-goal.sh
 //go:embed templates/.claude/hooks/moai/handle-stop-goal.sh.tmpl
 //go:embed templates/.claude/hooks/moai/handle-stop.sh.tmpl
 //go:embed templates/.claude/hooks/moai/handle-subagent-start.sh.tmpl
 //go:embed templates/.claude/hooks/moai/handle-subagent-stop.sh.tmpl
-//go:embed templates/.claude/hooks/moai/handle-task-completed.sh
 //go:embed templates/.claude/hooks/moai/handle-task-completed.sh.tmpl
 //go:embed templates/.claude/hooks/moai/handle-task-created.sh.tmpl
-//go:embed templates/.claude/hooks/moai/handle-teammate-idle.sh
 //go:embed templates/.claude/hooks/moai/handle-teammate-idle.sh.tmpl
 //go:embed templates/.claude/hooks/moai/handle-user-prompt-submit.sh.tmpl
 //go:embed templates/.claude/hooks/moai/handle-worktree-create.sh.tmpl
@@ -224,6 +220,7 @@ import "embed"
 //go:embed templates/.claude/skills/moai-domain-html-report/SKILL.md
 //go:embed templates/.claude/skills/moai-domain-html-report/references/artifact-contract.md
 //go:embed templates/.claude/skills/moai-domain-html-report/references/craft-fundamentals.md
+//go:embed templates/.claude/skills/moai-domain-html-report/references/design-tokens.md
 //go:embed templates/.claude/skills/moai-domain-html-report/references/fonts.md
 //go:embed templates/.claude/skills/moai-domain-html-report/references/templates/explainer.html.mustache
 //go:embed templates/.claude/skills/moai-domain-html-report/references/templates/financial.html.mustache
