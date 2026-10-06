@@ -41,6 +41,12 @@ type stepFixture struct {
 func newMergeFixture(t *testing.T) *stepFixture {
 	t.Helper()
 	root := t.TempDir()
+	// F1 (card-review r3): the production refresh paths the step calls read
+	// WindowClock, and the fixture's C ticket carries a fixed-past heartbeat
+	// — pin the production clock to the same instant the Now seam returns so
+	// the heartbeat is 30s old (inside WaiterHeartbeatWindow) at every
+	// refresh, not dropped the moment wall time passes the stamp.
+	pinWindowClock(t, time.Date(2026, 10, 5, 9, 1, 0, 0, time.UTC))
 	integ := filepath.Join(root, "integ")
 	cardTree := filepath.Join(root, "card")
 	for _, dir := range []string{integ, cardTree} {

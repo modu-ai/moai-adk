@@ -23,6 +23,21 @@ func opsClock() (func(time.Time), func() time.Time) {
 	return set, read
 }
 
+// pinWindowClock pins the PRODUCTION clock — WindowClock, the clock the
+// production paths (release, acquire, the merge step's refresh) read — at
+// the fixture instant for the test's duration (card t1479 r3 F1). A fixture
+// that stamps heartbeats from opsClock while the production path reads the
+// real clock went red the moment wall time passed the stamp plus
+// WaiterHeartbeatWindow; pinning the production clock to the same instant
+// the stamps come from is what makes the test's liveness arrangement the
+// one the production probe actually sees.
+func pinWindowClock(t *testing.T, at time.Time) {
+	t.Helper()
+	prev := WindowClock
+	WindowClock = func() time.Time { return at }
+	t.Cleanup(func() { WindowClock = prev })
+}
+
 // liveProbe builds a probe from explicit liveness maps.
 func liveProbe(owners map[int]bool, waiters map[string]bool) WindowProcProbe {
 	return WindowProcProbe{

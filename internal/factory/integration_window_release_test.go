@@ -57,6 +57,7 @@ func TestReleasePromotesFirstTicket(t *testing.T) {
 	root := t.TempDir()
 	setNow, now := opsClock()
 	at := now()
+	pinWindowClock(t, at) // F1: the production release path reads WindowClock
 	holder := baseHolder(4001, at)
 	holder.Queue = []IntegrationTicket{realTicket(at)}
 	writeWindowRecord(t, root, holder)
@@ -98,6 +99,7 @@ func TestReleaseUnderHoldKeepsQueue(t *testing.T) {
 	root := t.TempDir()
 	_, now := opsClock()
 	at := now()
+	pinWindowClock(t, at) // F1: the production release path reads WindowClock
 	holder := baseHolder(os.Getpid(), at)
 	holder.Queue = []IntegrationTicket{realTicket(at)}
 	if err := WriteIntegrationWindowPolicy(root, IntegrationWindowPolicy{Policy: PolicyHold, Reason: "release-cut"}); err != nil {
@@ -127,6 +129,7 @@ func TestNoWaitAcquireRefusedBehindQueue(t *testing.T) {
 	root := t.TempDir()
 	_, now := opsClock()
 	at := now()
+	pinWindowClock(t, at) // F1: the production acquire refresh reads WindowClock
 	pid := os.Getpid()
 	lock := baseHolder(pid, at)
 	ticket := realTicket(at)
@@ -171,6 +174,7 @@ func TestForceWithQueuePreservesOrder(t *testing.T) {
 	root := t.TempDir()
 	_, now := opsClock()
 	at := now()
+	pinWindowClock(t, at) // F1: the force acquire's refresh reads WindowClock
 	holder := baseHolder(4001, at)
 	ticket := realTicket(at)
 	holder.Queue = []IntegrationTicket{ticket}
