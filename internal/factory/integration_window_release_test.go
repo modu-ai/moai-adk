@@ -8,6 +8,7 @@ package factory
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -226,6 +227,56 @@ func TestLeaseDisabledByZeroConfig(t *testing.T) {
 	setNow(at.Add(90 * 24 * time.Hour))
 	if holder.LeaseExpired(now()) {
 		t.Fatalf("a disabled lease never reads expired")
+	}
+}
+
+// f8DeadOwnerPID returns a pid that positively reads dead — a process this
+// test spawned and waited — so the refresh's owner-gone drop rule fires
+// deterministically (an arbitrary unprobeable pid would read LIVE, the
+// window's documented asymmetry).
+func f8DeadOwnerPID(t *testing.T) int {
+	t.Helper()
+	cmd := exec.Command("true")
+	if err := cmd.Start(); err != nil {
+		t.Skipf("cannot spawn the probe process: %v", err)
+	}
+	pid := cmd.Process.Pid
+	_ = cmd.Wait()
+	return pid
+}
+
+func TestRefusedAcquirePersistsTheRefreshedRecord(t *testing.T) {
+	// F8 (card-review r3): a refused acquire used to discard the refresh's
+	// changes — the error named the refreshed state while the disk kept the
+	// pre-refresh record (first's expired hold with the ticket still
+	// queued). REQ-MWQ-010's invariant ("a record the refresh changes is
+	// already written back before the refusal formats") is made true: the
+	// changed record persists before the refusal returns, so the operator
+	// reading the disk reads the same state the refusal names.
+	root := t.TempDir()
+	_, now := opsClock()
+	at := now()
+	pinWindowClock(t, at)
+	first := baseHolder(f8DeadOwnerPID(t), at)
+	first.SessionID = "sess-first"
+	first.Queue = []IntegrationTicket{realTicket(at)}
+	writeWindowRecord(t, root, first)
+
+	_, err := AcquireIntegrationWindow(root, IntegrationLock{
+		SessionID: "sess-c", PID: os.Getpid(), PIDSource: PIDSourceSessionOwner, Branch: "develop",
+	}, false, nil)
+	if err == nil || !IsIntegrationLockHeld(err) {
+		t.Fatalf("the acquire must be refused by the promoted ticket's hold: %v", err)
+	}
+	lock, readErr := ReadIntegrationLock(root)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if lock.SessionID != "sess-b" {
+		t.Fatalf("the disk must carry the refreshed record (the promoted ticket holds), got %q", lock.SessionID)
+	}
+	if len(lock.Queue) != 0 {
+		t.Fatalf("the promotion must not linger on the disk record: %+v", lock.Queue)
 	}
 }
 

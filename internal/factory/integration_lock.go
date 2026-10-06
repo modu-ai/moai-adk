@@ -385,12 +385,26 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 		// REQ-MWQ-006/007 promotion) — the same serialized mutation the
 		// decision below runs in, which is the ordering REQ-MWQ-002 asks
 		// the enqueue to decide inside.
-		RefreshWindow(current, policy, probe, WindowClock(), lease)
+		report := RefreshWindow(current, policy, probe, WindowClock(), lease)
 		// P2-9: a stale holder the refresh cleared is recorded ON the
 		// record now — surface it as this acquire's takeover so the
 		// "never silent" promise of the pre-queue takeover holds.
 		if replaced == nil && !current.Held() && current.Displaced != nil {
 			replaced = current.Displaced
+		}
+		// F8 (card-review r3): a refusal return used to abort BEFORE the
+		// write, so a record the refresh just changed stayed stale on disk
+		// while the refusal named the refreshed state (first's expired hold
+		// with the ticket still queued, under an error that promoted that
+		// ticket). REQ-MWQ-010's invariant — a record the refresh changes is
+		// written back before the refusal formats — is made true here,
+		// conditionally: a record the refresh did NOT change is not
+		// rewritten, and its refusal formats exactly as before.
+		persistRefreshed := func() error {
+			if len(report.Dropped) == 0 && report.Promoted == nil && !report.Displaced {
+				return nil
+			}
+			return writeIntegrationLock(path, current)
 		}
 
 		// REQ-MWQ-012 (card-review r3 F2): under hold, EVERY acquire of a
@@ -400,6 +414,9 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 		// nothing else stands guard. The verb enqueues on this sentinel, so
 		// a --wait caller comes back to the queue through it either way.
 		if policy.Policy == PolicyHold && (!current.Held() || current.SessionID != want.SessionID) {
+			if err := persistRefreshed(); err != nil {
+				return err
+			}
 			return fmt.Errorf("%w: held by policy (%s)", ErrIntegrationWindowHold, policy.Reason)
 		}
 		// REQ-MWQ-011: the window is not granted to a no-wait acquire while
@@ -407,6 +424,9 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 		// is the recorded exception: the forcer takes the window and the
 		// queue order survives it.
 		if !viaWait && !force && len(current.Queue) > 0 && (!current.Held() || current.SessionID != want.SessionID) {
+			if err := persistRefreshed(); err != nil {
+				return err
+			}
 			return fmt.Errorf("%w: %s (pid %d) since %s on %s — %d live ticket(s) queued; acquire --wait enqueues behind them",
 				ErrIntegrationLockHeld, current.holderLabel(), current.PID, current.AcquiredAt, current.Branch, len(current.Queue))
 		}
@@ -429,6 +449,9 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 				// queue-less shape — the pre-queue takeover, unchanged.
 				replaced = current
 			default:
+				if err := persistRefreshed(); err != nil {
+					return err
+				}
 				return fmt.Errorf("%w: %s (pid %d) since %s on %s",
 					ErrIntegrationLockHeld, current.holderLabel(), current.PID, current.AcquiredAt, current.Branch)
 			}
