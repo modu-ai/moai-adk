@@ -199,27 +199,61 @@ func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTi
 		// REQ-MWQ-004: the bound elapsed before promotion — withdraw and
 		// name the holder, the last queue position, and the bound.
 		if now.After(deadline) {
-			// F6 (card-review r3): the heartbeat renewal above may have
-			// PROMOTED this waiter (the holder's lease lapsing mid-poll) —
-			// re-read holdership before declaring the timeout, or the
-			// caller exits believing it failed while the record says it
-			// holds the window (stranded until liveness reaps it).
-			if latest, readErr := mustReadWindowErr(root); readErr == nil && latest.Held() && latest.SessionID == sessionID {
-				if out != nil {
-					_, _ = fmt.Fprintln(out, "integration window acquired from the queue")
+			// F6 (card-review r3) + N4 (card-review r4): the heartbeat
+			// renewal above may have PROMOTED this waiter (the holder's
+			// lease lapsing mid-poll), so the deadline outcome is decided
+			// in ONE mutation — read, decide, write (N2) — the same-mutation
+			// shape REQ-MWQ-005 requires of the promotion check. A holder
+			// observation here is that same past-bound promotion event,
+			// judged by the promotion instant the promoting mutation
+			// stamped (AcquiredAt) against the bound: past it — the
+			// renewal case, whose stamp IS this iteration's now — the
+			// window releases onward (the next ticket promotes) and the
+			// waiter exits non-zero naming the release, the promotion
+			// check's own outcome for the same event; an unparseable stamp
+			// reads past-bound the same way, since an indeterminate
+			// promotion must not pin the window. Within it — a promotion
+			// by another lane that landed just before the bound — the
+			// acquire is legitimate and stands.
+			var releasedOnward bool
+			var promotedWithinBound bool
+			deadlineErr := factory.UpdateIntegrationWindow(root, func(w *factory.IntegrationLock) error {
+				policy, policyErr := factory.ReadIntegrationWindowPolicy(root)
+				if policyErr != nil {
+					return policyErr
 				}
+				if w.Held() && w.SessionID == sessionID {
+					if acquired, parseErr := time.Parse(time.RFC3339, w.AcquiredAt); parseErr == nil && !acquired.After(deadline) {
+						promotedWithinBound = true
+						return nil
+					}
+					outcome, pErr := factory.PromotedAfterBound(w, sessionID, deadline, factory.DefaultWindowProcProbe(), now, factory.WindowLeaseDuration, policy)
+					if pErr != nil {
+						return pErr
+					}
+					releasedOnward = outcome.Released
+					return nil
+				}
+				factory.WithdrawTicket(w, sessionID)
 				return nil
-			}
+			})
 			holder := "nobody"
 			if lock.Held() {
 				holder = holderLabel(lock)
 			}
 			position := factory.TicketPosition(lock, sessionID)
-			if withdrawErr := factory.UpdateIntegrationWindow(root, func(w *factory.IntegrationLock) error {
-				factory.WithdrawTicket(w, sessionID)
+			if deadlineErr != nil {
+				return fmt.Errorf("integration window: your ticket timed out after %s at queue position %d behind %s, and the deadline mutation failed (%v) — moai integration status reads it", bound, position, holder, deadlineErr)
+			}
+			if releasedOnward {
+				// REQ-MWQ-005: promoted past the bound, released onward.
+				return fmt.Errorf("integration window: promoted past your %s bound and released onward — re-acquire with --wait to re-enter the queue", bound)
+			}
+			if promotedWithinBound {
+				if out != nil {
+					_, _ = fmt.Fprintln(out, "integration window acquired from the queue")
+				}
 				return nil
-			}); withdrawErr != nil {
-				return fmt.Errorf("integration window: your ticket timed out after %s at queue position %d behind %s, and the withdrawal failed (%v) — moai integration status reads it", bound, position, holder, withdrawErr)
 			}
 			return fmt.Errorf("integration window: your ticket timed out after %s at queue position %d behind %s — re-acquire with --wait re-enters at the tail", bound, position, holder)
 		}

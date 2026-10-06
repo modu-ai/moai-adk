@@ -201,16 +201,17 @@ func TestWaitLoopExitsWhenTicketDropped(t *testing.T) {
 	}
 }
 
-func TestWaitTimeoutAfterRenewalPromotionAcquiresNotStrands(t *testing.T) {
-	// F6 (card-review r3): within one loop iteration the heartbeat-renewal
-	// mutation runs AFTER the promotion check and BEFORE the deadline
-	// check, and the renewal's RefreshWindow may PROMOTE the caller there —
-	// the holder's lease lapsing mid-poll. The timeout branch then withdrew
-	// a ticket that was no longer queued and exited non-zero without
-	// re-checking holdership: the waiter exited believing it had failed
-	// while the record said it held the window — stranded until liveness
-	// reaped it. The deadline branch re-reads holdership after the renewal,
-	// before the timeout return.
+func TestWaitTimeoutAfterRenewalPromotionReleasesOnward(t *testing.T) {
+	// F6 (card-review r3) + N4 (card-review r4): within one loop iteration
+	// the heartbeat-renewal mutation runs AFTER the promotion check and
+	// BEFORE the deadline check, and the renewal's RefreshWindow may PROMOTE
+	// the caller there — the holder's lease lapsing mid-poll. The renewal's
+	// promotion instant is this iteration's now, already past the deadline,
+	// so REQ-MWQ-005 governs the observation: the same event the promotion
+	// check releases onward must not keep the window through the deadline
+	// branch — the waiter releases onward (promoting the next ticket; none
+	// is queued here) and exits non-zero naming the release. Exit and
+	// record agree, which is F6's stranding property.
 	root := waitTestRoot(t)
 	oldInterval := integrationWaitPollInterval
 	integrationWaitPollInterval = time.Millisecond
@@ -235,7 +236,9 @@ func TestWaitTimeoutAfterRenewalPromotionAcquiresNotStrands(t *testing.T) {
 	// The holder A: LIVE (this process), lease lapsing at base+30s — valid
 	// at the enqueue's refresh (base+18s), lapsed at the renewal's refresh
 	// (base+54s). A live-but-expired holder is exactly what the renewal's
-	// refresh promotes the queued caller past.
+	// refresh promotes the queued caller past — at base+54s, 8s PAST the
+	// base+46s deadline the 10s bound sets from the base+36s enqueue
+	// instant.
 	holder := factory.IntegrationLock{
 		SessionID: "sess-a", SessionName: "lane-a",
 		PID: os.Getpid(), PIDSource: factory.PIDSourceSessionOwner,
@@ -252,15 +255,23 @@ func TestWaitTimeoutAfterRenewalPromotionAcquiresNotStrands(t *testing.T) {
 	err := integrationWaitInQueue(root, "sess-b", factory.IntegrationTicket{
 		SessionID: "sess-b", SessionName: "lane-b", OwnerPID: os.Getpid(), WaiterPID: os.Getpid(),
 	}, 10*time.Second, nil)
-	if err != nil {
-		t.Fatalf("the renewal's promotion landed before the deadline: the waiter must return acquired, got %v", err)
+	if err == nil {
+		t.Fatalf("REQ-MWQ-005: the renewal's promotion landed 8s past the deadline — the waiter must exit non-zero, not keep the window")
+	}
+	for _, want := range []string{"released onward", "10s"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("the release must name %q: %v", want, err)
+		}
 	}
 	held, readErr := factory.ReadIntegrationLock(root)
 	if readErr != nil {
 		t.Fatal(readErr)
 	}
-	if held.SessionID != "sess-b" {
-		t.Fatalf("the waiter must hold the window: %+v", held)
+	if held.Held() {
+		t.Fatalf("REQ-MWQ-005: the past-bound promotion must release onward, not keep the window: %+v", held)
+	}
+	if factory.TicketPosition(held, "sess-b") != 0 {
+		t.Fatalf("the released waiter must not sit in the queue: %+v", held.Queue)
 	}
 }
 

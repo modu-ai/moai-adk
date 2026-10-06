@@ -423,3 +423,25 @@ GOOS=windows exit 0.
   convergence check on the MCP surface is explicitly the NEXT-GENERATION leader's step.
 - F10: `.moai/config/sections/workflow.yaml` uncommitted drift (audit.gates) — untouched,
   leader-owned disposition before integration.
+
+### r4 N4 micro-repair (2026-10-07, next-generation worker)
+
+- The sealed N4 [P1] landed per the prescription: the deadline branch decides in ONE record
+  mutation (read-decide-write, closing N2) — a holder observation is judged by the promotion
+  instant the promoting mutation stamped (`AcquiredAt`) against the bound; past it,
+  `PromotedAfterBound` releases onward and the waiter exits non-zero naming the release
+  (REQ-MWQ-005, the promotion check's own outcome for the same event); within it the acquire
+  stands; not holding, the same mutation performs the REQ-MWQ-004 withdrawal. The F6 probe was
+  rewritten to the 005 shape (`TestWaitTimeoutAfterRenewalPromotionReleasesOnward`) — RED exit 1
+  observed on the pre-fix tree (`002608763`), GREEN after. The withdrawal-mutation test
+  (`TestWaitLoopTimesOutNamingHolderAndPosition`) untouched, per the seal order.
+- Verification battery (this run, this tree, env-scrubbed, serial, slot-leased): cli family
+  (r4 evidence #2 regex, `-count=1`) `ok 212.957s` exit 0; cli `-race` (r4's race set + the
+  rewritten probe) `ok 4.694s` exit 0; `go vet ./internal/cli/...` exit 0; `golangci-lint run
+  internal/cli/...` 0 issues.
+- Repair evidence (keep-local per the 2026-09-14 directive):
+  `.moai/reports/t1479/card-review-r4-repair-evidence.md` (RED/GREEN verbatims + battery).
+- Gaps: the within-bound arm (AcquiredAt ≤ deadline → return acquired) has no dedicated probe —
+  reachable only via another lane promoting between the loop's promotion check and the deadline
+  mutation; the factory package suite was not re-run (diff is cli-only, reuses the exported
+  `PromotedAfterBound` unchanged).
