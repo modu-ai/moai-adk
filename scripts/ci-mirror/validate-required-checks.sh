@@ -66,7 +66,10 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	# line parser below reads one canonical shape. A yq failure aborts:
 	# an unparseable workflow must not silently contribute no names
 	# (the same vacuous-pass class as an unreadable SSoT).
-	if ! yq -P '.' "$wf" > "$normalized" 2>/dev/null; then
+	# GATE-13: expand YAML aliases BEFORE parsing — yq preserves `os: *oses`
+	# verbatim and the line parser then misses the axis and judges a real
+	# check phantom; explode(.) resolves every alias to its anchor value.
+	if ! yq -P 'explode(.)' "$wf" > "$normalized" 2>/dev/null; then
 		fail "workflow $wf failed to parse as YAML (yq) — its checks cannot be verified publishable"
 		continue
 	fi
@@ -323,7 +326,20 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		# previously read as the literal string WITH the quotes still on it and a
 		# perfectly valid job name judged phantom (octal \047 = single
 		# quote; the awk program itself is single-quote-wrapped).
-		gsub(/^["\047]|["\047]$/, "", name)
+		# GATE-13: decode the single-quote ESCAPE before comparing —
+		# YAML writes an inner apostrophe as two apostrophes
+		# (Lint-double-apostrophe-strict-double resolves to Lint-quote-strict).
+		# Quote stripping is PAIRED — the trailing-quote strip alone bit
+		# the trailing apostrophe off an UNquoted value like
+		# Lint-quote-strict (yq renders the escaped name unquoted).
+		sq_quoted = 0
+		if (name ~ /^\047/ && name ~ /\047$/) {
+			sq_quoted = 1
+			name = substr(name, 2, length(name) - 2)
+		} else if (name ~ /^"/ && name ~ /"$/) {
+			name = substr(name, 2, length(name) - 2)
+		}
+		if (sq_quoted) gsub(/\047\047/, "\047", name)
 		has_name = 1
 		had_ref = (name ~ /\$\{\{[[:space:]]*matrix\./) ? 1 : 0
 		next
