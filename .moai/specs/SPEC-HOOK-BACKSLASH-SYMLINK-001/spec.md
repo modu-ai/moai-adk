@@ -2,7 +2,7 @@
 id: SPEC-HOOK-BACKSLASH-SYMLINK-001
 title: "POSIX path-boundary check preserves literal backslashes — the physical walk must not invent separators"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-07
 updated: 2026-10-07
 author: manager-spec

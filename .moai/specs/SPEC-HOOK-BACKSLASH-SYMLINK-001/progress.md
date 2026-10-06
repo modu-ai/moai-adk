@@ -1,6 +1,6 @@
 # SPEC-HOOK-BACKSLASH-SYMLINK-001 — Progress Record
 
-status: draft (plan phase)
+status: completed (sync phase)
 card: t1556 (factory lane-12)
 worktree: /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1556 (branch WT-backslash-symlink, HEAD cad44a751, clean at authoring)
 
@@ -188,4 +188,35 @@ env_notes: "DEBT-HBS-BASELINE-ENV: all measurements taken with lane env scrubbed
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: "2026-10-07"
+sync_commit_sha: "pending-backfill-sync"   # backfilled with the real SHA by a following commit (D3 exemption)
+status_transition: "in-progress -> implemented -> completed, spec.md frontmatter `status:` only, riding the single sync commit"
+changelog_entry_position: "CHANGELOG.md [Unreleased] / Fixed, first entry"
+b12_self_test_a: pre_emission_grep_0   # grep -c SPEC-HOOK-BACKSLASH-SYMLINK-001 CHANGELOG.md returned 0 before emission
+b12_self_test_b: "live AC count 7 of 7 (acceptance.md: AC-HBS-001..007, no [RETIRED]/[REF] markers), matching the entry's declared count"
+b12_self_test_c: all_entry_paths_ls_verified
+canary_compliance_check: "n/a — this SPEC defines no forward-looking policy with own sync tests"
+```
+
+What sync changed: (1) `CHANGELOG.md` — one `[Unreleased]`/`Fixed` entry describing the
+POSIX backslash/symlink boundary bypass fix (internally neutral; card id + SPEC link per
+the file's existing convention, no lane/session detail). (2) `spec.md` frontmatter —
+`status: in-progress → completed` on this single sync commit; `updated:` already carried
+today's date (2026-10-07), so `status:` is the only changed line. (3) This file — §E.4 and
+the header status line. `plan.md` / `acceptance.md` carry no frontmatter (stateless
+artifacts), so there is no `updated:` to refresh. NO README or docs-site changes: the fix
+lives entirely inside the pre-tool-use hook's path interpretation — no user-facing surface
+moved. Codemap regeneration not run (owned by the periodic codemaps cards).
+
+Verification run at sync phase (this tree, HEAD `939e39cf4`): working tree clean before the
+sync edits; B12 pre-emission grep returned 0 (no duplicate entry from a parallel sync); the
+B12 AC counter (canonical grammar, prefix `AC`) counted exactly 7 live identifiers
+(`AC-HBS-001..007`), 0 excluded, 0 ambiguous — reconciled by hand grep against
+`acceptance.md` and matching §E.3 `ac_pass_count: 7`; every file path named in the
+CHANGELOG entry (`internal/hook/pre_tool.go`, the SPEC directory) exists in this tree. No
+Go files touched by sync — gofmt not applicable.
+
+Declared evidence (local, gitignored, cited by name only): `.moai/reports/t1556/card-review.md`,
+`.moai/reports/t1556/plan-audit-3.md`, `.moai/reports/t1556/decision-record.md`.
