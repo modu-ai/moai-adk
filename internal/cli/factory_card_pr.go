@@ -264,6 +264,17 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 		return fmt.Errorf("factory complete: refused — merge-readiness failed on %s against %s; no branch was pushed and no pull request was opened", run.FailedCondition, target)
 	}
 
+	stays := fmt.Sprintf("card %s stays in merging", card.CardID)
+
+	// The readiness triple judged THIS tip; anything that moves the branch
+	// afterwards (a concurrent push) must not ride the auto-merge request
+	// (card-review r6, the AGENTS.md stop-on-change rule). The pin travels
+	// to `gh pr merge --match-head-commit` below.
+	verifiedTip, err := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
+	if err != nil {
+		return fmt.Errorf("factory complete: %s; cannot read the branch tip the readiness triple judged: %w", stays, err)
+	}
+
 	cur := card
 	if card.State == homestate.CardMergeReady {
 		// T14 — the lease holder's edge, refused by F1 verbatim for any other lane.
@@ -275,10 +286,31 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 			return fmt.Errorf("factory complete: %w", err)
 		}
 	}
-	stays := fmt.Sprintf("card %s stays in merging", card.CardID)
 
+	// Re-validate the lease immediately before each external mutation (card
+	// review r6): a lease that lapses between the entry check and the gh
+	// calls is no authority to touch the remote. The re-load also catches a
+	// version bump from a concurrent transition.
+	revalidateLease := func(where string) error {
+		fresh, err := db.LoadCard(ctx, runID, card.CardID)
+		if err != nil {
+			return fmt.Errorf("factory complete: %s; %s: cannot re-read the card: %w", stays, where, err)
+		}
+		if fresh.LeaseHolder != lane || fresh.LeaseExpired(factoryCardNow()) {
+			return fmt.Errorf("factory complete: %s; %s: card %s's lease is no longer live for %s (holder %s) — the remote was left untouched",
+				stays, where, card.CardID, lane, dash(fresh.LeaseHolder))
+		}
+		return nil
+	}
+
+	if err := revalidateLease("before the push"); err != nil {
+		return err
+	}
 	if _, err := factoryGitRead(wt, "push", "origin", cardBranch); err != nil {
 		return fmt.Errorf("factory complete: %s; the push of %s failed: %w", stays, cardBranch, err)
+	}
+	if err := revalidateLease("before the pull request"); err != nil {
+		return err
 	}
 	pr, found, err := factoryReadPR(wt, cardBranch)
 	if err != nil {
@@ -301,7 +333,13 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 	}
 	mergeFlag := factoryPRMergeFlag(method)
 	if !strings.EqualFold(pr.State, "MERGED") {
-		if _, err := factoryGHCall(wt, "pr", "merge", strconv.Itoa(pr.Number), "--auto", mergeFlag); err != nil {
+		if err := revalidateLease("before the auto-merge request"); err != nil {
+			return err
+		}
+		// --match-head-commit pins the auto-merge to the tip the readiness
+		// triple judged: a commit pushed to the branch in the meantime makes
+		// GitHub hold (not silently merge) the request.
+		if _, err := factoryGHCall(wt, "pr", "merge", strconv.Itoa(pr.Number), "--auto", mergeFlag, "--match-head-commit", verifiedTip); err != nil {
 			return fmt.Errorf("factory complete: %s; pull request #%d is open but the auto-merge request failed: %w", stays, pr.Number, err)
 		}
 	}
