@@ -51,13 +51,22 @@ func TestCheckFileAccessPosixBackslashSymlinkEscape(t *testing.T) {
 	if decision != DecisionDeny {
 		// Simulate exactly what the Write tool would do when the guard allows:
 		// write through the literal path the tool received, following the
-		// symlink the way the OS walks it.
+		// symlink the way the OS walks it. The write is load-bearing evidence:
+		// its failure is fatal, and the file is read back so the recorded
+		// landing claims observed content, not an assumed one.
 		simulated := filepath.Join(projectDir, `innocent\dir`, "escaped.txt")
 		if werr := os.WriteFile(simulated, []byte("escaped"), 0o644); werr != nil {
-			t.Logf("simulated tool write failed: %v", werr)
+			t.Fatalf("guard allowed the escape AND the simulated write failed: decision=%q writeErr=%v", decision, werr)
 		}
-		t.Fatalf("guard allowed the backslash-symlink escape: decision=%q reason=%q (external write landed at %s)",
-			decision, reason, filepath.Join(outsideDir, "escaped.txt"))
+		data, rerr := os.ReadFile(filepath.Join(outsideDir, "escaped.txt"))
+		if rerr != nil {
+			t.Fatalf("guard allowed the escape AND the written external file is unreadable: decision=%q readErr=%v", decision, rerr)
+		}
+		if string(data) != "escaped" {
+			t.Fatalf("external file content %q, want %q", string(data), "escaped")
+		}
+		t.Fatalf("guard allowed the backslash-symlink escape: decision=%q reason=%q (external write VERIFIED at %s, content %q)",
+			decision, reason, filepath.Join(outsideDir, "escaped.txt"), string(data))
 	}
 
 	// Guard denied: no byte may have reached the external destination.

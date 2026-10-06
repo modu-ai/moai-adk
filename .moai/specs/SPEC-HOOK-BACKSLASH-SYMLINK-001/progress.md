@@ -73,6 +73,31 @@ audited SHA 785cfaaff). Revision applied same day, addressing D1–D6:
 
 Plan artifacts revised; awaiting plan-audit iteration 2.
 
+Iteration 2 verdict: **FAIL**, score 0.94 (D1–D6 cores verified fixed) — verdict
+`.moai/reports/t1556/plan-audit-2.md` (receipts rcpt-422f7db791a4653a98efb415 + r1).
+Three mechanical residues revised same day:
+
+- **D1-r** — AC-HBS-003's cell now records the SOLO run of exactly its one cited
+  command: raw stdout unelided, own exit code 1, tree `785cfaaff`. AC-HBS-001's cell
+  was re-observed the same way after the test edit below.
+- **D2-r** — `pre_tool_backslash_repro_test.go` non-deny branch: the WriteFile error
+  is now fatal (`t.Fatalf`), and the external file is read back asserting content
+  `"escaped"` before the failure message — the landing claim carries observed
+  content (`external write VERIFIED …, content "escaped"`), closing the
+  claimed-landing-that-did-not-happen (ENOENT) hole codex demonstrated.
+- **D3-r** — AC-HBS-007's fixtures respec'd from the walk code so they ENGAGE the
+  two named branches: depth bound via a chain of > `zoneSymlinkDepthBound` symlinks
+  with a NON-EXISTENT terminal target (forces hop-by-hop recursion; an
+  existing-terminal chain resolves wholesale at the first EvalSymlinks and never
+  reaches the bound), and the `..` pop via `<project>/linked/../leaf` with `linked`
+  an EXISTING outside-pointing symlink (the `<missing>/../leaf` form returns at the
+  unresolved-tail branch `pre_tool.go:1435` and never reaches `pre_tool.go:1413`).
+  plan.md M3's write-down matches; §C.2/§C.3 baseline text updated to the observed
+  state (repro RED + pre-existing StaleRunNotice trio; depth bound uncovered by
+  existing tests).
+
+Awaiting plan-audit iteration 3.
+
 Additional baseline observation (recorded for the run phase): the pre-fix package
 run of `go test -count=1 ./internal/hook/` fails on THREE tests unrelated to this
 SPEC — `TestStaleRunNoticeLegacyLeaderSpelling`, `TestStaleRunNoticeLegacySessionRecord`,

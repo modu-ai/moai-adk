@@ -44,10 +44,19 @@
 
 1. `git rev-parse --short HEAD` in the card worktree — confirm the tree the RED
    measurement is pinned to.
-2. Confirm baseline green: `go test -timeout 30m -count=1 ./internal/hook/` passes on
-   the pre-fix tree except for the new reproduction test once added.
-3. Confirm the t1530-era tests that pin the walk's guarantees (new-file rejoin, `..`
-   physical pop, depth bound) are located and will act as the regression net.
+2. Baseline (OBSERVED, per plan-audit iteration-2 correction): on the pre-fix tree
+   `go test -timeout 30m -count=1 ./internal/hook/` fails on exactly (a) the two
+   plan-phase repro tests (`TestCheckFileAccessPosixBackslashSymlinkEscape`,
+   `TestResolveThroughExistingParentPosixBackslashSymlinkDivergence` — the RED
+   adoption) and (b) the pre-existing, unrelated
+   `TestStaleRunNoticeLegacyLeaderSpelling` / `TestStaleRunNoticeLegacySessionRecord` /
+   `TestStaleRunNoticeFactoryLegacyLabel` trio, recorded as PRE-EXISTING BASELINE in
+   progress.md §E.1 and scoped into AC-HBS-006's verdict. The run-phase baseline
+   check is therefore "no failure beyond the recorded (a)+(b) set", not a bare green.
+3. The t1530-era tests pinning the walk's new-file rejoin and `..`-physical-pop
+   guarantees are located and act as the regression net (AC-HBS-006); the depth-bound
+   branch has NO existing coverage (audit iteration-1 measured 0 executions) and is
+   covered instead by AC-HBS-007's engaging fixtures authored in M3.
 
 ## D. Constraints
 
@@ -100,7 +109,13 @@ hardening trails.
     AC-HBS-004) — platform-independent, runs everywhere.
   - Add/keep a Windows-shape unit proving `\`-segmentation on the Windows path
     (string-level, no Windows FS required, AC-HBS-005).
-  - Keep the t1530 guarantee tests green (new-file rejoin, `..` pop, depth bound).
+  - Author AC-HBS-007's engaging fixtures (`TestResolvePhysicalWalkBranchPreservation`):
+    the depth-bound branch via a chain of > `zoneSymlinkDepthBound` symlinks with a
+    NON-EXISTENT terminal target (hop-by-hop recursion), and the `..` pop branch via
+    `<project>/linked/../leaf` with `linked` an EXISTING outside-pointing symlink
+    (physical pop onto the resolved outside prefix) — see acceptance.md AC-HBS-007
+    for the branch-engagement rationale.
+  - Keep the t1530 guarantee tests green (new-file rejoin, `..` pop).
 - **M4 — Package re-measurement + evidence** [Priority Medium]
   `go test -timeout 30m -count=1 ./internal/hook/`, `GOOS=windows go build ./...`,
   vet + lint; write the measured evidence into `progress.md` §E.2/§E.3 for the

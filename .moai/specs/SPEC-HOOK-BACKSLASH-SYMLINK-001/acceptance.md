@@ -23,22 +23,25 @@ before failing, so a vulnerable tree demonstrably writes outside — AC-HBS-002)
 
 Two-cell adoption (verification-completeness.md §2):
 
-- **RED-now cell** — OBSERVED at plan phase. Evidence ledger `RED-HBS-001`:
+- **RED-now cell** — OBSERVED at plan phase (re-observed after the D2-r test
+  hardening: the write error is fatal and the file is read back, so the recorded
+  landing claims verified content, not an assumed one). Evidence ledger `RED-HBS-001`:
   - **Command**: `go test -count=1 ./internal/hook/ -run 'TestCheckFileAccessPosixBackslashSymlinkEscape'`
-  - **Observed stdout (verbatim, raw bytes)**:
+  - **Observed stdout (verbatim, raw bytes of this solo run)**:
     ```text
-    --- FAIL: TestCheckFileAccessPosixBackslashSymlinkEscape (0.01s)
-        pre_tool_backslash_repro_test.go:59: guard allowed the backslash-symlink escape: decision="" reason="" (external write landed at /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCheckFileAccessPosixBackslashSymlinkEscape2624617744/002/escaped.txt)
+    --- FAIL: TestCheckFileAccessPosixBackslashSymlinkEscape (0.00s)
+        pre_tool_backslash_repro_test.go:68: guard allowed the backslash-symlink escape: decision="" reason="" (external write VERIFIED at /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCheckFileAccessPosixBackslashSymlinkEscape1532492918/002/escaped.txt, content "escaped")
     FAIL
-    FAIL	github.com/modu-ai/moai-adk/internal/hook	0.880s
+    FAIL	github.com/modu-ai/moai-adk/internal/hook	0.486s
     FAIL
     ```
-  - **Exit code**: `1` (observed, own field — `echo EXIT_CODE=$?` on the unredirected-target run printed `EXIT_CODE=1`)
-  - **Tree SHA**: `785cfaaff` (branch `WT-backslash-symlink`, working tree carrying only this SPEC's artifacts + the two repro test files; code identical to the pinned `cad44a751` — the auditor's own read confirmed only SPEC docs differ).
+  - **Exit code**: `1` (observed, own field)
+  - **Tree SHA**: `785cfaaff` (branch `WT-backslash-symlink`, working tree carrying only this SPEC's artifacts + the repro test file; code identical to the pinned `cad44a751` — the auditor's own read confirmed only SPEC docs differ).
   - **RED reason (stated)**: the pre-fix walk converts `innocent\dir` into
     `innocent/dir`, validates the fictional in-project rejoined path, and returns
     decision `""` (allow); the fixture's simulated tool write then landed at the
-    EXTERNAL destination recorded verbatim above.
+    EXTERNAL destination recorded verbatim above, read back with content
+    `"escaped"` — the reproduction's observable.
 - **Green path cell** — M2 (platform-appropriate segmentation) flips this criterion;
   the passing output is exit 0 with the deny observed and the external file absent.
 
@@ -55,10 +58,11 @@ does not exist.
 
 Two-cell adoption:
 
-- **RED-now cell** — OBSERVED at plan phase, same run as `RED-HBS-001`: the verbatim
-  failure line above IS the external-write observation (`external write landed at
-  /var/.../002/escaped.txt` — the `002` directory is the OUTSIDE temp root, distinct
-  from the project root `001`). Command and exit code as in `RED-HBS-001`.
+- **RED-now cell** — OBSERVED at plan phase, same solo run as `RED-HBS-001`: the
+  verbatim failure line IS the external-write observation, now with the read-back
+  proof (`external write VERIFIED at /var/.../002/escaped.txt, content "escaped"`
+  — the `002` directory is the OUTSIDE temp root, distinct from the project root
+  `001`). Command and exit code as in `RED-HBS-001` (same cited command, exit 1).
 - **Green path cell** — M2: the deny branch runs, the non-deny write branch is
   skipped, and the `os.Stat` assert inside the test verifies external absence.
 
@@ -74,14 +78,20 @@ the symlink it is) — never a fictional in-project rejoined spelling such as
 
 Two-cell adoption:
 
-- **RED-now cell** — OBSERVED at plan phase. Evidence ledger `RED-HBS-003`:
+- **RED-now cell** — OBSERVED at plan phase as a SOLO run of exactly the one command
+  cited below (no joint-run attribution; raw stdout recorded unelided). Evidence
+  ledger `RED-HBS-003`:
   - **Command**: `go test -count=1 ./internal/hook/ -run 'TestResolveThroughExistingParentPosixBackslashSymlinkDivergence'`
-  - **Observed stdout (verbatim excerpt)**:
+  - **Observed stdout (verbatim, raw bytes of this solo run)**:
     ```text
     --- FAIL: TestResolveThroughExistingParentPosixBackslashSymlinkDivergence (0.00s)
-        pre_tool_backslash_repro_test.go:106: walk validated a fictional IN-PROJECT path "/private/var/.../001/innocent/dir/escaped.txt" while the literal component `innocent\dir` is a symlink to "/var/.../002" — validated path diverges from the path the OS walks
+        pre_tool_backslash_repro_test.go:104: resolved="/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResolveThroughExistingParentPosixBackslashSymlinkDivergence1044403189/001/innocent/dir/escaped.txt" ok=true projectDir="/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResolveThroughExistingParentPosixBackslashSymlinkDivergence1044403189/001" abs="/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResolveThroughExistingParentPosixBackslashSymlinkDivergence1044403189/001/innocent\\dir/escaped.txt"
+        pre_tool_backslash_repro_test.go:115: walk validated a fictional IN-PROJECT path "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResolveThroughExistingParentPosixBackslashSymlinkDivergence1044403189/001/innocent/dir/escaped.txt" while the literal component `innocent\dir` is a symlink to "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResolveThroughExistingParentPosixBackslashSymlinkDivergence1044403189/002" — validated path diverges from the path the OS walks
+    FAIL
+    FAIL	github.com/modu-ai/moai-adk/internal/hook	0.604s
+    FAIL
     ```
-  - **Exit code**: `1` (observed; joint run with AC-HBS-001 printed `EXIT_CODE=1`)
+  - **Exit code**: `1` (observed, own field — this solo run's own exit code)
   - **Tree SHA**: `785cfaaff` (code identical to `cad44a751`).
   - **RED reason (stated)**: the pre-fix split invents the `innocent` component, the
     Lstat probe fails, and the walk rejoins the in-project tail with `ok=true`.
@@ -137,26 +147,36 @@ unreachable absolute.
   `RED-HBS-001`/`RED-HBS-003`); post-fix must be fully GREEN.
 - **Green path**: M4 (full package re-measurement).
 
-### AC-HBS-007 — Fail-closed semantics preserved, with explicit fixtures (regression-guard)
+### AC-HBS-007 — Depth-bound and physical-`..` walk branches preserved, with engaging fixtures (regression-guard)
 
-**Given** two fail-closed fixtures, authored in M3 alongside the M2 mechanism:
+**Given** two fixtures whose SHAPES actually engage the two walk branches named below
+(respecified per plan-audit iteration-2 D3-r from the walk code — the iteration-1
+shapes did not reach these branches: an existing-terminal chain resolves wholesale
+at the first component's EvalSymlinks, and a `<missing>/../leaf` form returns at the
+unresolved-tail branch `pre_tool.go:1435` before the `..` branch `pre_tool.go:1413`),
+authored in M3 alongside the M2 mechanism:
 
-1. **Depth-bound-exceeded**: a chain of directory symlinks longer than
-   `zoneSymlinkDepthBound` (each link pointing at the next, terminal target an
-   existing directory), resolved through a path that traverses the whole chain;
-2. **Unresolvable `..`**: a path of the form `<project>/<missing-prefix>/../leaf`
-   where `<missing-prefix>` does not exist, so `..` pops over a prefix the walk
-   never resolved;
+1. **Depth-bound branch (`pre_tool.go:1444`)**: a chain of N > `zoneSymlinkDepthBound`
+   directory symlinks `l1 → l2 → … → lN` whose TERMINAL target does NOT exist, path
+   `<project>/l1/leaf`. The missing destination makes every component's EvalSymlinks
+   fail while Lstat/Readlink succeed, forcing the hop-by-hop recursion that
+   increments `depth` per link — engaging the bound.
+2. **`..` pop branch (`pre_tool.go:1413`)**: `<project>/linked/../leaf` where
+   `linked` is an EXISTING directory symlink to an outside directory. The component
+   resolves (`skipped++`), then `..` pops against the RESOLVED outside prefix — the
+   physical-pop semantics that make `linked/../leaf` escapes VISIBLE.
 
 **When** `resolveThroughExistingParent` resolves each fixture path,
-**Then** for fixture 1 it returns `ok=false` (chain past the depth bound), and for
-fixture 2 it returns `ok=false` (`..` over an unresolved prefix) — the same
-fail-closed second returns the pre-fix walk produces; a companion decision-level
-assert applies the existing `checkFileAccess` fallback semantics unchanged.
+**Then** fixture 1 returns `ok=false` (chain past the depth bound — fail-closed), and
+fixture 2 returns `ok=true` with the resolved path OUTSIDE the project (the physical
+pop, not a lexical pop onto an in-project prefix) — the exact second-returns the
+pre-fix walk produces; a companion decision-level assert applies the existing
+`checkFileAccess` fallback/boundary semantics unchanged.
 
-- **Verification command form**: `go test -count=1 ./internal/hook/ -run 'TestResolvePhysicalWalkFailClosed'` (test authored in M3; command recorded here as its specified form).
+- **Verification command form**: `go test -count=1 ./internal/hook/ -run 'TestResolvePhysicalWalkBranchPreservation'` (test authored in M3; command recorded here as its specified form).
 - **RED-now**: expected GREEN pre-fix (preservation criterion — these fixtures
-  characterize current behavior); guards the repair from opening a fail-open path.
+  characterize current branch behavior); guards the repair from changing either
+  branch's outcome.
 - **Green path**: M3.
 
 ## D.1 Severity
