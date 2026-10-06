@@ -312,59 +312,115 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		seams.AfterPrecheck()
 	}
 
-	// Class C (card-review r2): OWNERSHIP RE-VERIFICATION in a serialized
-	// mutation immediately before the merge. Ownership can change after the
-	// initial holder check (a --force takeover is a legitimate, recorded
-	// path), and a merge that proceeds on stolen ownership merges OUTSIDE
-	// the window's whole purpose. The re-verification refuses with the
-	// holder codes (14/15) — and leaves the takeover's window untouched.
-	var recheckErr error
-	if err := UpdateIntegrationWindow(in.Root, func(w *IntegrationLock) error {
+	// Class C (card-review r2) + r3 F4/F5/F9: the OWNERSHIP RE-VERIFICATION,
+	// the late collision re-probe, and the `git merge` subprocess run inside
+	// ONE mutation critical section. The former shape re-verified ownership
+	// in a mutation that RELEASED the lock before the merge ran as an
+	// unserialized subprocess — a --force takeover landing in between still
+	// produced the previous holder's merge commit (F4, reproduced: "merge
+	// commit ... left in place for the leader"). Nothing re-examined the
+	// worktree between the collision check above and the merge, so an
+	// ignored file at an added path created in that window was silently
+	// overwritten (F5; git refuses untracked clobber, overwrites ignored
+	// bytes). The section holds the mutation lock across the merge: a
+	// takeover waits for it and then refuses on holdership, and the
+	// re-probe closes the check→merge gap. The clock is read INSIDE the
+	// section (F9) — the recheck's own purpose is "expired mid-step".
+	mergeMsg := fmt.Sprintf("Merge %s into %s (card %s, integration merge)", cardBranch, in.IntegrationBranch, in.CardID)
+	var recheckErr *MergeStepError
+	var mergeErr error
+	var headReadErr error
+	var mergeDirtyAfterAbort bool
+	var mergeSHA string
+	sectionErr := withIntegrationLockMutation(in.Root, func() error {
+		w, readErr := ReadIntegrationLock(in.Root)
+		if readErr != nil {
+			recheckErr = mergeStepErr(MergeExitOther, "integration merge: re-read the window record: %v", readErr)
+			return nil
+		}
 		if !w.Held() || w.SessionID != in.CallerSessionID {
 			recheckErr = mergeStepErr(MergeExitNotHolder, "integration merge: refused — the window was taken mid-step; the merge will not proceed on ownership it does not hold")
 			return nil
 		}
-		if w.LeaseExpired(now) {
+		recheckNow := seams.now()
+		if w.LeaseExpired(recheckNow) {
 			recheckErr = mergeStepErr(MergeExitExpiredLease, "integration merge: refused — your lease expired mid-step; re-acquire with --wait")
 			return nil
 		}
-		StampLease(w, now, lease)
+		StampLease(w, recheckNow, lease)
+		if writeErr := writeIntegrationLock(integrationLockPath(in.Root), w); writeErr != nil {
+			return writeErr
+		}
+		// F5: the collision probe re-runs immediately before the merge, in
+		// the same serialized section — an ignored byte at an added path
+		// created after the first check is caught here, with every colliding
+		// byte still untouched.
+		colliding, err := FindAddedPathCollisions(in.IntegrationWorktree, tip, pinned)
+		if err != nil {
+			recheckErr = mergeStepErr(MergeExitOther, "integration merge: the collision check errored: %v", err)
+			return nil
+		}
+		if len(colliding) > 0 {
+			recheckErr = mergeStepErr(MergeExitCollision, "integration merge: refused — the candidate would overwrite ignored/untracked bytes at %s; remove or commit them, then re-measure", strings.Join(colliding, ", "))
+			return nil
+		}
+		// The merge, of the PINNED SHA never the branch name (REQ-MWQ-017),
+		// inside the section (F4).
+		if _, err := git("merge", "--no-ff", "-q", "-m", mergeMsg, pinned); err != nil {
+			mergeErr = err
+			// (6)/(7): abort, then decide by the worktree the abort left —
+			// inside the section, so no acquisition can interleave between
+			// our failed merge and its cleanup.
+			_, _ = git("merge", "--abort")
+			clean, _, cleanErr := gitIntegrationWorktreeClean(in.IntegrationWorktree)
+			mergeDirtyAfterAbort = cleanErr != nil || !clean
+			return nil
+		}
+		sha, shaErr := git("rev-parse", "HEAD")
+		if shaErr != nil {
+			// The commit exists — only the in-section read failed. The
+			// cause-8 class (post-merge) names no SHA it cannot read.
+			headReadErr = shaErr
+			return nil
+		}
+		mergeSHA = strings.TrimSpace(sha)
 		return nil
-	}); err != nil {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: the pre-merge holdership re-verification failed: %v", err))
+	})
+	if sectionErr != nil {
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: the pre-merge serialized section failed: %v", sectionErr))
 	}
 	if recheckErr != nil {
-		// Our hold is gone — release OUR nothing and refuse. The takeover's
-		// window record is untouched (the release refuses on a foreign
-		// holder and the refusal path surfaces it).
-		if err := releaseHeldWindow(in, seams); err != nil && !IsIntegrationLockNotHeld(err) && !IsIntegrationLockForeign(err) {
-			return "", fmt.Errorf("%w (the post-takeover release also failed: %v)", recheckErr, err)
+		switch recheckErr.Code {
+		case MergeExitNotHolder, MergeExitExpiredLease:
+			// Our hold is gone (or lapsed) — release OUR nothing and refuse.
+			// The takeover's window record is untouched (the release refuses
+			// on a foreign holder and the refusal path surfaces it).
+			if err := releaseHeldWindow(in, seams); err != nil && !IsIntegrationLockNotHeld(err) && !IsIntegrationLockForeign(err) {
+				return "", fmt.Errorf("%w (the post-takeover release also failed: %v)", recheckErr, err)
+			}
+			return "", recheckErr
+		default:
+			// The re-probe's cause-13 refusal (and any record-read failure)
+			// is a pre-merge cause: release so the next live ticket is
+			// promoted (REQ-MWQ-018).
+			return "", releaseWindow(in, seams, recheckErr)
 		}
-		return "", recheckErr
 	}
-
-	// The merge, of the PINNED SHA never the branch name (REQ-MWQ-017).
-	mergeMsg := fmt.Sprintf("Merge %s into %s (card %s, integration merge)", cardBranch, in.IntegrationBranch, in.CardID)
-	if _, err := git("merge", "--no-ff", "-q", "-m", mergeMsg, pinned); err != nil {
-		// (6)/(7): abort, then decide by the worktree the abort left.
-		_, _ = git("merge", "--abort")
-		clean, _, cleanErr := gitIntegrationWorktreeClean(in.IntegrationWorktree)
-		if cleanErr != nil || !clean {
+	if headReadErr != nil {
+		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: read the merge HEAD: %v", headReadErr), "")
+	}
+	if mergeErr != nil {
+		if mergeDirtyAfterAbort {
 			// (7): still dirty after the abort — hold FIRST, then release
 			// (REQ-MWQ-018: no later holder is promoted onto this state).
 			holdErr := writeMergeHold(in, seams, fmt.Sprintf("merge failed and the worktree is still dirty after abort (card %s)", in.CardID))
 			if holdErr != nil {
-				return "", mergeStepErr(MergeExitMergeDirty, "integration merge: merge failed, the abort left the worktree dirty, and writing the hold failed: %v (merge error: %v)", holdErr, err)
+				return "", mergeStepErr(MergeExitMergeDirty, "integration merge: merge failed, the abort left the worktree dirty, and writing the hold failed: %v (merge error: %v)", holdErr, mergeErr)
 			}
-			return "", releaseWindow(in, seams, mergeStepErr(MergeExitMergeDirty, "integration merge: merge failed and the worktree is still dirty after abort; the window policy is held for the leader: %v", err))
+			return "", releaseWindow(in, seams, mergeStepErr(MergeExitMergeDirty, "integration merge: merge failed and the worktree is still dirty after abort; the window policy is held for the leader: %v", mergeErr))
 		}
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitMergeFailed, "integration merge: merge failed: %v", err))
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitMergeFailed, "integration merge: merge failed: %v", mergeErr))
 	}
-	mergeSHA, err := git("rev-parse", "HEAD")
-	if err != nil {
-		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: read the merge HEAD: %v", err), "")
-	}
-	mergeSHA = strings.TrimSpace(mergeSHA)
 
 	// The post-merge checks (cause 8): the merge commit's tree must equal
 	// the record's tree and the worktree must be clean again — including

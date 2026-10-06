@@ -74,7 +74,14 @@ func newMergeFixture(t *testing.T) *stepFixture {
 	if err := os.WriteFile(filepath.Join(integ, "base.txt"), []byte("base"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	git(integ, "add", "base.txt")
+	// The base ignores card.txt (the candidate's added path): the F5
+	// late-file probe writes an IGNORED byte there after the first collision
+	// check — the shape cause 13 exists for (git refuses untracked clobber,
+	// silently overwrites ignored bytes).
+	if err := os.WriteFile(filepath.Join(integ, ".gitignore"), []byte("card.txt\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git(integ, "add", "base.txt", ".gitignore")
 	git(integ, "commit", "-q", "-m", "base")
 	baseSHA := git(integ, "rev-parse", "HEAD")
 
@@ -87,7 +94,9 @@ func newMergeFixture(t *testing.T) *stepFixture {
 	if err := os.WriteFile(filepath.Join(cardTree, "card.txt"), []byte("card work"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	git(cardTree, "add", "card.txt")
+	// -f: the base .gitignore (the F5 late-file probe's subject) also
+	// reaches the card branch — a tracked candidate file overrides it.
+	git(cardTree, "add", "-f", "card.txt")
 	git(cardTree, "commit", "-q", "-m", "card work")
 	f.cardSHA = git(cardTree, "rev-parse", "HEAD")
 
@@ -599,5 +608,99 @@ func TestMergeStepPinnedSHAOverBranchName(t *testing.T) {
 		if arg == stepCardBranch {
 			t.Fatalf("the merge must never name the branch: %v", mergeArgs)
 		}
+	}
+}
+
+func TestMergeStepTakeoverAtMergeCannotMergeOnStolenOwnership(t *testing.T) {
+	// F4 (card-review r3): the ownership re-verification released the
+	// mutation lock BEFORE `git merge` ran as an unserialized subprocess,
+	// so a --force takeover landing in between still produced the previous
+	// holder's merge commit — and the later release refusal could not
+	// un-merge. The probe attempts the takeover AT the merge call — after
+	// every pre-merge check and the recheck itself have passed (r2-C's
+	// AfterPrecheck seam fires before the recheck; that gap was the
+	// finding). With the merge serialized inside the mutation section the
+	// takeover is refused busy and the merge completes on ownership the
+	// step still holds.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	seams := f.seams(card)
+	var takeoverErr error
+	seams.Git = func(args ...string) (string, error) {
+		if len(args) >= 1 && args[0] == "merge" && !containsArg(args, "--abort") {
+			_, takeoverErr = AcquireIntegrationWindow(f.root, IntegrationLock{
+				SessionID: "sess-attacker", SessionName: "lane-attacker",
+				PID: os.Getpid(), PIDSource: PIDSourceSessionOwner,
+				Branch: "develop", BranchSource: BranchSourceConfig,
+				Worktree: f.integ,
+			}, true, nil)
+		}
+		runner := exec.Command("git", args...)
+		runner.Dir = f.integ
+		out, err := runner.CombinedOutput()
+		return string(out), err
+	}
+	_, err := RunMergeStep(f.input(), seams)
+	if err != nil {
+		t.Fatalf("the merge must complete on ownership the step holds through the merge: %v", err)
+	}
+	if !IsIntegrationLockBusy(takeoverErr) {
+		t.Fatalf("a takeover at the merge call must be refused busy (the mutation section spans the merge): %v", takeoverErr)
+	}
+	requireWindowReleasedAndCPromoted(t, f)
+}
+
+func TestMergeStepLateIgnoredFileCollisionRefusesMerge(t *testing.T) {
+	// F5 (card-review r3): the collision check and `git merge` were separate
+	// subprocesses with no re-examination between them — an ignored file at
+	// an ADDED path created in that window was silently overwritten by the
+	// merge (git refuses untracked clobber, overwrites ignored bytes), the
+	// loss class cause 13 exists for. The late file must be caught: the
+	// collision probe re-runs immediately before the merge inside the
+	// serialized section, and the refusal leaves the byte untouched.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	seams := f.seams(card)
+	seams.AfterPrecheck = func() {
+		// The late byte: after the FIRST collision check passed, before the
+		// merge — the race window the re-probe closes.
+		if err := os.WriteFile(filepath.Join(f.integ, "card.txt"), []byte("late ignored byte"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, err := RunMergeStep(f.input(), seams)
+	requireCode(t, err, MergeExitCollision)
+	byte, readErr := os.ReadFile(filepath.Join(f.integ, "card.txt"))
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if string(byte) != "late ignored byte" {
+		t.Fatalf("the merge must not overwrite a late ignored byte, got %q", string(byte))
+	}
+}
+
+func TestMergeStepRecheckReadsTheClockInsideTheSection(t *testing.T) {
+	// F9 (card-review r3): the re-verification decided lease expiry against
+	// the ENTRY-time clock — a lease lapsing between the entry read and the
+	// merge was invisible to the recheck whose whole purpose is "expired
+	// mid-step". The clock is read INSIDE the serialized section: the second
+	// Now call lands past the expiry and the step refuses with the
+	// expired-lease code.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	entry := time.Date(2026, 10, 5, 9, 1, 0, 0, time.UTC)
+	calls := 0
+	seams := f.seams(card)
+	seams.Now = func() time.Time {
+		calls++
+		if calls == 1 {
+			return entry // the entry read: the lease is still young
+		}
+		return entry.Add(31 * time.Minute) // the section's read: past the 30m lease
+	}
+	_, err := RunMergeStep(f.input(), seams)
+	requireCode(t, err, MergeExitExpiredLease)
+	if calls < 2 {
+		t.Fatalf("the section must read the clock itself, got %d Now calls", calls)
 	}
 }
