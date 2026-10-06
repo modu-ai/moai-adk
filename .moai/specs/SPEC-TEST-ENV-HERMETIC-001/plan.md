@@ -8,8 +8,10 @@ Priorities are High / Medium / Low; no time estimates.
 
 - **Worktree**: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1356`, branch
   `WT-test-env-hermetic-sweep`, plan-phase measurement tree `2de0a2cb6` (re-measured at HEAD
-  `a5a63a0bc`, Go sources identical; re-read `git rev-parse --short HEAD` and `git branch
-  --show-current` before any commit).
+  `a5a63a0bc`, Go sources identical; the branch has since absorbed local `develop` twice —
+  merges `960ea3012` and `26fbe130d` — so current HEAD `c5260970e` (2026-10-06) carries develop's
+  Go changes too, and the range checks use the re-derived base, plan.md B10; re-read `git
+  rev-parse --short HEAD` and `git branch --show-current` before any commit).
 - **Card**: t1356, Class C (plan → plan-audit → run → sync). Git-flow lane protocol: no card PR;
   integration into local `develop` via the integration window; CI on `origin/develop` is the
   full-suite verdict surface. The card id `t1356` appears in every commit message.
@@ -77,17 +79,19 @@ Then, one command per call:
 1. Re-establish the five observed reds with the RED-now commands of acceptance.md §D.0 (E-1, E-2)
    and the green arm E-1b — same commands, same tree lineage; record verbatim output and the tree SHA.
 2. List the family from `internal/config/envkeys.go` (constants whose value starts `MOAI_FACTORY_`
-   or `MOAI_KANBAN`, plus `MOAI_AUTONOMY_TIER`; 16 at the absorbed HEAD `8cb2444e7`, 17 at
-   `a5a63a0bc` before the develop absorption — re-derive it here and again after any further
-   absorption, spec.md §A.6) — this list builds both arms'
+   or `MOAI_KANBAN`, plus `MOAI_AUTONOMY_TIER`; 16 at the absorbed HEAD `8cb2444e7` and again at
+   HEAD `c5260970e` — re-derived 2026-10-06 after the `26fbe130d` absorption of develop
+   `985bd43da`, the dated record in spec.md §A.6 — 17 at `a5a63a0bc` before the develop
+   absorption; re-derive it here and again after any further absorption, spec.md §A.6) — this list builds both arms'
    env; do not copy it from this plan. Read the session's own family env, once, before any arm,
    with `env | grep -E '^(MOAI_FACTORY_|MOAI_KANBAN|MOAI_AUTONOMY_TIER)'` (a form the worktree guard
    accepts; it printed the nine axes at plan time, exit `0`, acceptance.md E-9): the lane arm
    reproduces it verbatim (nine axes at plan time: eight non-empty plus `MOAI_FACTORY_CLEAR_POLICY`
    set empty) and unsets the other seven. Record the output as the arm env lines of progress.md
    §E.2, passed through the §A.6 redaction first — a non-empty secret-valued axis written
-   `NAME=<redacted>`, the variable name kept — so a credential the measuring session carries never
-   lands verbatim in the committed record. The read must show at least `MOAI_FACTORY_ROLE=lane` and
+   `NAME=<redacted>` in the §A.6 recording form (an execution writes it quoted, `NAME='<redacted>'`
+   — bare, the angle brackets parse as redirects), the variable name kept — so a credential the
+   measuring session carries never lands verbatim in the committed record. The read must show at least `MOAI_FACTORY_ROLE=lane` and
    non-empty `MOAI_FACTORY_WORKER`,
    `MOAI_FACTORY_WORKERS` and `MOAI_KANBAN_ID`; a session without them cannot measure the lane arm,
    so the run returns a blocker report and AC-THE-003 stays failed (acceptance.md §D.3 clause (f)).

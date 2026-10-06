@@ -1,10 +1,10 @@
 ---
 id: SPEC-TEST-ENV-HERMETIC-001
 title: "Test env hermeticity sweep — tests that read the factory/kanban lane gate axes must not change verdict with the ambient env of the session that runs them"
-version: "0.7.0"
+version: "0.8.0"
 status: draft
 created: 2026-10-03
-updated: 2026-10-05
+updated: 2026-10-06
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"
@@ -111,7 +111,13 @@ ledger carries every fact the committed record relies on, including the cli scru
    `a5a63a0bc`, the plan-time tree, before the absorption). The census command and its counts:
    `grep -oE '"MOAI_(FACTORY_|KANBAN)[A-Z_]*"|"MOAI_AUTONOMY_TIER"' internal/config/envkeys.go`
    redirected to a file, then `sort -u` and `wc -l` on the sorted file — **16** at `8cb2444e7`;
-   the same commands on `git show 646a7860d:internal/config/envkeys.go` — **17**. The sixteen,
+   the same commands on `git show 646a7860d:internal/config/envkeys.go` — **17**.
+   Re-derivation record (2026-10-06, after the branch absorbed local `develop` a second time —
+   merge `26fbe130d` absorbing develop `985bd43da`): the same command run at HEAD `c5260970e` on
+   `internal/config/envkeys.go` prints **16** again — the sorted list identical member-for-member
+   with the sixteen named below — and the `646a7860d` control still prints **17**, so that
+   absorption moved no axis and the counts above stand as measured history; the next absorption
+   re-derives it again. The sixteen,
    with the family identifiers: `MOAI_AUTONOMY_TIER` (`EnvAutonomyTier`), `MOAI_KANBAN_ID`
    (`EnvFactoryRunID`), `MOAI_KANBAN_SETTINGS_INJECTED` (`EnvFactorySettingsInjected`),
    `MOAI_KANBAN_LEAD_ADDR` (`EnvFactoryLeadAddr`), `MOAI_KANBAN_BACKEND` (`EnvFactoryBackend`),
@@ -128,7 +134,12 @@ ledger carries every fact the committed record relies on, including the cli scru
    `MOAI_FACTORY_APP_SERVER_TOKEN`, the owned Codex App Server's capability token, passed to the
    operator TUI child at `internal/cli/managed_codex_tui.go:338-345`). Every recording surface of
    this SPEC writes a secret-valued axis as `NAME=<redacted>` — the value masked, the variable
-   name kept, so the family axes stay provable as present or absent. The surfaces are every form
+   name kept, so the family axes stay provable as present or absent. That masked form is a
+   **recording** form — the notation the committed record carries, never a shell command to paste
+   (bare, `<redacted>` parses as redirects). Any execution that actually sets a redacted axis (the
+   §D.3 replay included) writes the value single-quoted, `NAME='<redacted>'`; the quotes are shell
+   syntax and are not part of the recorded value, so the mask string and every byte-identity
+   comparison over the recorded redacted forms are unchanged. The surfaces are every form
    progress.md carries: the recorded arm env line, the child-visible env file, and the recorded
    lane-arm commands of acceptance.md §D.3, plus the pre-flight family read's recorded output
    (plan.md §C step 2, committed at M1 c1) — each passed through the same redaction before
@@ -445,13 +456,16 @@ in one place, AC-THE-005.
 - **R7 — machine load flips verdicts.** The lease serializes heavy runs; a verdict present in the
   initial run and absent from an identical repeat is reported as load noise, not attributed to
   env. A name printed
-  by §D.3 command 8 (the `final − c1` difference) or command 9 (the arm difference) is repeated
-  once as a whole-package arm — for command 9, both arms of the pair — and every name printed in
+  by §D.3 command 8 (the `final − c1` difference), command 9 (the arm difference) or command 11
+  (the cross-arm skip-set difference) is repeated
+  once as a whole-package arm — for commands 9 and 11, both arms of the pair, the repeat
+  comparison running between the two repeat files — and every name printed in
   either run is recorded with both outputs: a name printed in **both** runs counts as a hit
   against the clause it was printed for, a name printed only in the repeat — absent from the
   initial run — **also** counts as a hit and is never load noise, and load noise is the reverse
   case, a name printed in the initial run and absent from the repeat; the comparison stays by full
-  test path (the rule §D.3 states and commands 8 and 9 operate under).
+  test path (the rule §D.3 states and commands 8, 9 and 11 operate under — for command 11 the
+  name is a skip name and the clause it counts against is the skipped-set equality).
 - **R8 — the lane arm models the measuring session, not every possible lane.** The lane arm sets
   the nine family axes the measuring session exported and unsets the other seven; a real lane with
   a different subset is not reproduced by it. The coverage test, the applied-behaviour test, and
@@ -515,8 +529,10 @@ in one place, AC-THE-005.
   `.claude/rules/local/gitflow-lane-protocol.md` §8.
 - `.moai/reports/t1356/baseline.md` — local-only on-disk measurement (gitignored; not committed);
   `.moai/reports/t1356/plan-audit.md`, `plan-audit-iter2.md`, `plan-audit-iter3.md`,
-  `plan-audit-iter4.md` and `plan-audit-iter5.md` — the iteration-1 through iteration-5
-  plan-audit reports (local, gitignored, cited by path only).
+  `plan-audit-iter4.md`, `plan-audit-iter5.md`, `plan-audit-iter6.md`, `plan-audit-iter7.md`,
+  `plan-audit-iter8.md`, `plan-audit-iter9.md`, `plan-audit-iter10.md` and
+  `plan-audit-iter11.md` — the iteration-1 through iteration-11 plan-audit reports (local,
+  gitignored, cited by path only).
 
 ## §J HISTORY
 
@@ -529,3 +545,4 @@ in one place, AC-THE-005.
 | 2026-10-04 | manager-spec | v0.5.0 iteration-4 residue revision (leader-authorized delta re-audit round; findings MF-3, SF-1..SF-6, N1 from `plan-audit-iter4.md`). The failing-name extraction regex is escape-aware (`"Test":"([^"\\]|\\.)+"`) in acceptance.md §D.3 commands 2, 3 and 6 and in the new command 11, so a quote inside a subtest name no longer truncates it and two quote-bearing names cannot collapse (E-9 control: the old form truncates to `TestParent/q\` and its `comm -13` prints nothing across `q"uote` → `q"uoted`; the new form prints both names whole and its `comm -13` prints the new failing name); skipped-set equality gains a command form (§D.3 command 11, `comm -3` over escape-aware skip-rows names files, must print nothing); REQ-THE-001/002 state the scrubbed arm leaves an axis carrying a reasoned, cited exemption at its lane value, aligning the requirement layer with the AC/plan mechanism (SF-1); the c2r cell obligations gain the `git status --short` read and the DoD re-execution claim is scoped to the sampled cell, the one-of-four sampling unchanged (SF-2); the repeat rule states a name printed in either run is recorded and a repeat-only name counts as a hit, and command 9 repeats both arms, with R7 citing commands 8 and 9 (SF-3); §D.3 command 10 is scoped to the c1 lane arms and the final-tree lane arm records its child-visible env beside the arm, identical to the c1 line (SF-4); the AC-THE-004 residual names the weakened-condition hollowing (SF-6); the acceptance.md c2r row is reworded without an ordering keyword — the iteration-4 CN-4 `CONFLICT:` line was a verb cross-cell false positive, disposition recorded in progress.md §E.1 (SF-5). develop `30ce3a02d` absorbed at merge `960ea3012` (551 commits); the five observed reds re-verified intact on `960ea3012`. No REQ or AC added. |
 | 2026-10-04 | manager-spec | v0.6.0 iteration-5 residue revision (leader-authorized second delta round; findings I5-D1..I5-D4 from `plan-audit-iter5.md`). R7's tail restored to the polarity the §D.3 repeat rule defines — a name printed in both runs counts as a hit, a repeat-only name also counts as a hit and is never load noise, load noise is the initial-run-only case — the v0.5.0 wording had inverted the both-runs case (I5-D1); §D.3 command 11 re-wired to the clause it serves — skipped-set equality is the lane arm's skip set against the scrubbed arm's skip set of the same tree stage, the pairing command 9 uses for the failing sets, with the c1-vs-final form kept as a labelled no-new-skip extra and the c1-side skip names files carried in §E.2 (I5-D2); the family census re-derived at the absorbed HEAD `8cb2444e7` — **16** axes (17 at `a5a63a0bc`; −`MOAI_KANBAN`, −`MOAI_KANBAN_SPEC`, −`MOAI_KANBAN_LABEL`, +`MOAI_FACTORY_APP_SERVER_TOKEN`, +`MOAI_FACTORY_MANAGED_TUI`) — with the census command recorded in §A.6 and the floor, the per-package referenced/covered/uncovered sets, the expected guard reds (eight cli axes, ten hook axes), R8's remainder (seven), §H O2, decision-index Q4 and plan.md's census-carrying lines restated against it (I5-D3); secret-valued axes marked in the census (`MOAI_FACTORY_APP_SERVER_TOKEN`) with one redaction rule — `NAME=<redacted>` in the recorded arm env line and in the child-visible env file before recording, the byte-identity comparisons run over the redacted forms (I5-D4). Incidental: the four stale references the audit listed as I5-D5 refreshed (E-1..E-9, the §I report paths, the §E.1 plan_status and audit-ready lines). No REQ or AC added. |
 | 2026-10-05 | manager-spec | v0.7.0 iteration-6 residue revision (leader-authorized repair round; findings I5-D4 residual/I6-D2, I6-D1, I6-D3, I6-D4 from `plan-audit-iter6.md`). The §A.6 redaction rule's scope widened from the §D.3 recording surfaces to every recording surface of this SPEC — the pre-flight family read's recorded output (plan.md §C step 2, committed at M1 c1) and the recorded lane-arm commands included — masking the value and keeping the variable name, with the set-empty written form stated (`NAME=`; masking applies to non-empty values only), applied in plan.md §C step 2 and M1 c1 and in §D.3's lane-arm command and family-read recording clauses (I5-D4 residual); R7's opening sentence narrowed to the initial-run-only case its own repaired tail and §D.3 define, removing the self-contradiction (I6-D1); replay semantics defined for a redacted axis — the replay reproduces the recorded masked state (the variable present, its value the literal mask string), never the then-current session value — stated in §D.3's replay clause, AC-THE-003 clause (f) and plan.md M4 step 1 (I6-D3); the c1-commit enumerations now name the set the DoD requires — the sorted c1 skip names files of all four arms and the c1-stage command 11 output added to plan.md M1 c1 and §D.3's baseline-record paragraph, command 11 added to plan.md M4 step 1 (I6-D4). No REQ or AC added. |
+| 2026-10-06 | manager-spec | v0.8.0 iteration-11 residue revision (leader gate ruling 2026-10-06, one pass; findings C1..C6 from `plan-audit-iter11.md`, all from the required Claude backend, all non-blocking). The §A.6 masked form declared a recording form with the shell-executed quoted form `NAME='<redacted>'` stated beside it — quotes are shell syntax, not part of the mask string, so the redaction contract and byte-identity subject are unchanged — applied at every surface showing the form (§A.6, §D.3 arm-env line, env-line format, replay clause, clause (f), the DoD list, plan.md §C step 2) (C1); the family census re-derived at HEAD `c5260970e` after the `26fbe130d` absorption of develop `985bd43da` — still **16**, identical member set, recorded as a new dated re-derivation beside the standing `8cb2444e7` figures in §A.6 and plan.md §C step 2, decision-index Q4's anchor refreshed (C2); the E-5 cell area gained the dated `<BASE>` re-derivation — `985bd43da` at HEAD `c5260970e`, the four E-5 forms empty under it, the literal `2de0a2cb6..HEAD` form printing 232 lines — without rewriting the dated rows (C3); the §D.3 child-visible env witness now states the recorded line is family-filtered and redacted while the raw full-environment dump is machine-local scratch deleted after extraction (C4); the §D.3 repeat rule and R7 extended to command 11 with the same whole-arm repeat semantics as command 9, polarity unchanged (C5); the stale references refreshed (progress.md §E.1 plan_status/audit-ready to the v0.8.0 iteration-11 state, §I report list through iter11, progress gaps item (2) to seven unmeasured cli axes, plan.md §A measurement-tree note) (C6). No REQ or AC added. |

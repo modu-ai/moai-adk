@@ -31,7 +31,7 @@ Operator verdict:
 
 Label: EVIDENCE-NEEDED
 Authority anchor: n/a (no anchor for this label)
-Why unresolved: these seven and `MOAI_FACTORY_ROLE` (whose need is measured, acceptance.md E-1 / E-1b) are the eight family axes `internal/cli` production code references and the test binary's start-up scrub does not cover (spec.md §A.6, re-derived at `8cb2444e7` after the develop absorption). Every test site that touches the five pre-absorption axes sets or clears the axis itself; the two absorption-added axes have no static read; whether any test depends on an ambient value is unmeasured, and the whole-package scrubbed arm at plan.md M4 decides it (spec.md §H O2).
+Why unresolved: these seven and `MOAI_FACTORY_ROLE` (whose need is measured, acceptance.md E-1 / E-1b) are the eight family axes `internal/cli` production code references and the test binary's start-up scrub does not cover (spec.md §A.6, re-derived at `8cb2444e7` after the develop absorption and again at `c5260970e` after the `26fbe130d` absorption, 2026-10-06 — still 16, identical member set). Every test site that touches the five pre-absorption axes sets or clears the axis itself; the two absorption-added axes have no static read; whether any test depends on an ambient value is unmeasured, and the whole-package scrubbed arm at plan.md M4 decides it (spec.md §H O2).
 Operator verdict:
 
 ### Q5: Does the sweep extend to a cross-package registry check covering `internal/discovery` and any future package?
