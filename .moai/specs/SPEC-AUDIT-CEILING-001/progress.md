@@ -475,6 +475,25 @@ None. All 22 AC criteria PASS with evidence; the two coverage debts and the
 pre-existing plan-auditor.md whole-file mirror drift are recorded with
 dispositions above and in AC-ACE-014's carve-out.
 
+### Card-review repair round (additive, 2026-10-06)
+
+The advisory codex card-review (`.moai/reports/t1500/card-review.md`, 7 × P2,
+7/7 reproduced by the reviewer's overlay probes) was repaired RED-first: each
+finding reproduced by an in-package test before its fix. Affected packages
+re-measured after the repair (`-count=1`, the runtime suite also `-race` with
+24 test functions passing; builds darwin+windows exit 0; golangci-lint 0
+issues; spec lint --strict 0/0).
+
+| # | Finding | RED observed (pre-fix) | Fix | GREEN |
+|---|---|---|---|---|
+| F1 | Invalid `on_final_hit` swallowed → default ceilings | `TestEvaluateCeilingInvalidPolicyRefused`: "an invalid on_final_hit policy was swallowed; want a config error" | loadCeilings distinguishes ErrConfigNotFound (absent → template defaults) from any other load/validation error → EvaluateCeiling returns the config error, the seam refuses | PASS |
+| F2 | `plan-audit-N.md` (numbered, kickoff-reader-supported) not counted | `TestCountAuditRoundsLegacyPlanAuditNumbered`: "count 0, want 2" | conventionFile regex accepts the numbered shape (shared iterationOf); counter and reader agree on what an iteration file is | PASS |
+| F3 | Delta scope filename-only; `#anchor` discarded | `TestDiffInsideAnchorsHunkScope`: "an out-of-anchor hunk in the anchored file verified" | per-hunk anchor-token check (diffHunkBodies; the @@ header's trailing funcname context is excluded — git can carry an anchor line from far outside the hunk); out-of-anchor hunks refuse | PASS |
+| F4 | Previous-round SHA picked across duplicated rounds, legacy skipped | `TestPreviousAuditedSHALegacyPriorRound`: 'previous audited SHA "", want sha-rev2' | largest N strictly below the latest after dedupe, legacy stream included | PASS |
+| F5 | SPEC attribution by body substring | `TestCountAuditRoundsExactHeaderAttribution`: "count 1, want 0 (the report belongs to SPEC-ACE-FOREIGN-001)" | exact comparison on the FIRST SPEC-ID token in the body (the report header's attribution) | PASS |
+| F6 | Legacy-only evidence dirs missed by directory discovery | `TestRoundReportDirsLegacyOnlyDir`: "legacy-only evidence directory missing" | cardDirNamesSpec accepts `<SPEC-ID>-review-N.md` filenames | PASS |
+| F7 | Below-ceiling required-backend refusal returned without progress.md §G record or trail | `TestKickoffEvaluatorReceiptRefusalRecorded` + homestate arm: "required-backend refusal not recorded: ... no such file" | auditverdict.ReceiptRefusal (exported receipt-cause check) + runtime.RecordRequiredBackendRefusal; both LIVE seams record the refusal independent of ceiling state (only below-ceiling — ladder outcomes already persist) | PASS |
+
 ### Gaps and residual risk (5-section close)
 
 - Gaps: the debt-admit eligibility interpretation (findings = the verdict's
