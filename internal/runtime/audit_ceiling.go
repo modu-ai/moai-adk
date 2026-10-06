@@ -72,6 +72,10 @@ var (
 // PASS-WITH-DEBT for the raw verdict label in the label check alone (D20).
 // A counter or evidence-read error is returned for the seam to refuse on —
 // an unverifiable count must not silently read as below the ceiling.
+//
+// @MX:ANCHOR: [AUTO] the ceiling-policy outcome ladder every LIVE run-entry admission seam evaluates before admitting a verdict
+// @MX:REASON: fan_in 3 measured — kickoff planAuditCheck, homestate admitVerdictFile, and GateConfig.attachCeiling all resolve through it; a second copy of the ladder is the drift this SPEC exists to close
+// @MX:SPEC: SPEC-AUDIT-CEILING-001
 func EvaluateCeiling(in CeilingInput, fields auditverdict.Fields, hashOK bool, required []string) (*CeilingOutcome, bool, error) {
 	tier := auditverdict.SpecTier(in.SpecDir)
 	threshold := auditverdict.PlanThreshold(in.SpecDir)
@@ -420,6 +424,9 @@ func appendAuditTrail(in CeilingInput, kind, outcome, reason string) error {
 // note, written to the SPEC's progress.md §G record and the audit trail.
 // An empty note is refused (acceptance.md §C edge 8); there is no
 // silent-skip path.
+//
+// @MX:NOTE: [AUTO] operator-override record path for a required-backend refusal — the acknowledgement note is mandatory, there is no silent-skip form
+// @MX:SPEC: SPEC-AUDIT-CEILING-001
 func AcknowledgeRequiredBackend(in CeilingInput, backend, note string) error {
 	if strings.TrimSpace(note) == "" {
 		return fmt.Errorf("override of required backend %s refused: the acknowledgement note is mandatory", backend)

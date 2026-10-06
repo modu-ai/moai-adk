@@ -509,4 +509,15 @@ m1_to_mN_commit_strategy: one commit per milestone (M1-M4), Conventional Commits
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase — owned by manager-docs_
+sync_complete_at: 2026-10-06
+sync_commit_sha: pending-backfill-sync (canonical placeholder — a sync commit cannot cite its own hash; the real SHA is backfilled in the immediately following commit, per spec-frontmatter-schema.md § SHA placeholder backfill exemption D3)
+sync_status: complete
+b12_self_test_a: pass — `grep -c 'SPEC-AUDIT-CEILING-001' CHANGELOG.md` → `0` (exit 1) before emission; no duplicate entry from a parallel BATCH-SYNC session
+b12_self_test_b: pass — AC counter over acceptance.md → live=22 excluded=0 ambiguous=0 (22 live criteria); the CHANGELOG entry references 22 acceptance criteria (AC-ACE-001..022), matching
+b12_self_test_c: pass — all 12 file paths named in the CHANGELOG entry verified present via ls before commit
+changelog_entry_position: [Unreleased] → ### Added (appended at the tail of the Unreleased section, before ## [3.1.3], matching the file's accumulated close-entry convention)
+frontmatter_status_transitions: in-progress → implemented → completed merged into the single sync commit (3-phase close); plan.md / acceptance.md carry no frontmatter block at all (stateless per spec-frontmatter-schema.md § Artifact Statelessness, author omitted the block) — no updated: refresh possible, and no body edits performed
+mx_tag_validation: 4 added, 0 updated, 0 removed — @MX:ANCHOR ×2 (runtime.EvaluateCeiling, runtime.ResolveRequiredBackends; fan_in 3 measured each — kickoff planAuditCheck, homestate admitVerdictFile, GateConfig.attachCeiling) each with @MX:REASON, @MX:NOTE ×2 (runtime.CountAuditRounds, runtime.AcknowledgeRequiredBackend); all carry @MX:SPEC: SPEC-AUDIT-CEILING-001; comment-only edits, gofmt clean, go vet 0, targeted runtime ceiling tests green after the edit
+codemaps: no codemaps/ directory exists in this tree — no regeneration owed
+docs_surfaces: plan.md names no README/docs-site sync obligation for this SPEC — CHANGELOG is the only docs surface
+debt_dispositions: internal/runtime 82.0% / internal/config 83.8% package coverage (§E.2 E3) — the shortfalls sit in pre-existing untested code (budget, persist, handoff, snapshot paths) outside this SPEC's scope; this SPEC's new files measure 71-100% per function. Disposition at sync: the debt is RECORDED and routed to the follow-up card queue, not disposed in this close — raising pre-existing package coverage is implementation work outside sync-phase scope; carried alongside the D33 / doc-reconciliation deferrals

@@ -50,6 +50,9 @@ var (
 // directories (see RoundReportDirs). A directory that does not exist is
 // skipped; an unreadable directory is an error — a count the caller cannot
 // verify must not silently read as zero.
+//
+// @MX:NOTE: [AUTO] the round count derives from durable disk evidence only — dedupe identity is the (SPEC id, iteration number) pair; in-process memory is never consulted
+// @MX:SPEC: SPEC-AUDIT-CEILING-001
 func CountAuditRounds(specID string, reportDirs []string) (RoundEvidence, error) {
 	var ev RoundEvidence
 	seen := map[int]bool{}

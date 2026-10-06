@@ -36,6 +36,10 @@ type GateSet struct {
 // resolves empty with no error (C4); a section that exists but cannot be
 // read, parsed, or resolved returns an error the caller must refuse on
 // (REQ-ACE-010, D21).
+//
+// @MX:ANCHOR: [AUTO] the required-backend gate-set resolver both LIVE admission seams share
+// @MX:REASON: fan_in 3 measured — kickoff planAuditCheck, homestate admitVerdictFile, and GateConfig.attachCeiling; an unreadable configuration must refuse (D21), never fold into the empty set
+// @MX:SPEC: SPEC-AUDIT-CEILING-001
 func ResolveRequiredBackends(treeRoot string) (GateSet, error) {
 	if auditreceipt.IsConfigOrphanedRoot(treeRoot) {
 		primary, _, err := auditreceipt.IdentifyPrimaryCheckout(treeRoot)
