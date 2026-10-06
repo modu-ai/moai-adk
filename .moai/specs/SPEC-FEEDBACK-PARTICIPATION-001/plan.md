@@ -4,7 +4,7 @@
 
 - Card t1498 (operator scope as corrected 2026-10-04): opt-in, real-name participation; automatic issue filing from the user's own `gh` account only for moai-adk-attributed tool errors; zero-token deterministic path with a model reached only when a new issue is about to be published; no auto-repair artifact in deployed templates.
 - Standalone SPEC, Tier L (new packages, more than 15 files touched across `internal/bugreport`, `internal/feedback`, `internal/cli`, `internal/config`, `internal/settings`, `internal/web`, three skill-body copies, four docs pages). Frontmatter `depends_on: SPEC-FEEDBACK-AUTO-SUBMIT-001`.
-- Branch and worktree: the card worktree branches from `develop`; the commit trail carries the card id.
+- Branch and worktree: the card worktree branches from `main` (GitHub Flow cutover 2026-10-05; `develop` is legacy); the commit trail carries the card id.
 - Methodology: TDD per `quality.yaml`; every named test in `acceptance.md` is written first (RED) and its failure observed before the milestone is called done.
 - Version 0.3.0 is the revision after plan-audit iteration 1 (FAIL, 0.62). The consent store moved from the tracked project file to a user-scoped file; attribution became an allowlist; the milestone set (M1 to M7) and the 25-requirement and 25-criterion counts are unchanged in shape, and the old-to-new criterion map is in `acceptance.md`.
 - Version 0.4.0 records the operator decisions that resolved the last two clarifications (DEC-7 ambiguous local-only; DEC-8 harness-defect narrowing accepted), renames the SPEC identifier (the design is real-name; the branch name is unchanged), and moves the respecified AC-009 from M6 to M4.
