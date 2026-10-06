@@ -534,6 +534,78 @@ func TestTodoPickUpdatesDispatchBinding(t *testing.T) {
 	}
 }
 
+// Regression pin for round-14 P1-1 (card t1538): a FAILED binding update
+// refuses the pick — the old run's approval is never left armed on a card
+// that just moved runs. The factory database path is turned into a
+// directory so the record open fails while the existence probe succeeds.
+func TestPickRefusedWhenBindingUpdateFails(t *testing.T) {
+	root, store := fcFixture(t)
+	cardID := addShapeCard(t, "binding failure card")
+	fcPlaceRun(t, root, fcRun, "active", "2026-09-25T00:00:00Z")
+	// A row already exists in the target run: the pick's binding write has
+	// real work to do.
+	fcPlace(t, root, homestate.Card{CardID: cardID, RunID: fcRun, State: homestate.CardPicked, OwnerLabel: "worker-1", Version: 1})
+
+	factoryDB, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(factoryDB); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(factoryDB, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(factoryDB) })
+
+	t.Setenv(config.EnvFactoryRunID, fcRun)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	if _, _, err := runTodo(t, "next", cardID); err == nil {
+		t.Fatal("pick succeeded although the binding update could not run")
+	}
+	// The pick is refused: the card stays queued, nothing archived.
+	if _, ok := liveItemOK(t, store, cardID); !ok {
+		t.Fatal("the refused pick removed the card")
+	}
+}
+
+// Regression pin for round-14 P1-2 (card t1538): the binding write lands at
+// the CALLER-SPECIFIED project root — never a server-cwd/env fallback. The
+// environment points at a decoy project; the explicit root still receives
+// the binding.
+func TestRecordDispatchBindingAtExplicitRoot(t *testing.T) {
+	target := t.TempDir()
+	fcPlaceRun(t, target, fcRun, "active", "2026-09-25T00:00:00Z")
+	fcPlace(t, target, homestate.Card{CardID: "t9", RunID: fcRun, State: homestate.CardPicked, OwnerLabel: "worker-1", Version: 1})
+
+	decoy := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", decoy)
+
+	if err := recordDispatchBindingAtRoot("t9", fcRun, target); err != nil {
+		t.Fatalf("binding at explicit root: %v", err)
+	}
+	db := fcOpen(t, target)
+	defer func() { _ = db.Close() }()
+	row, linked, err := db.RecordedCardRowReadonly(context.Background(), "t9")
+	if err != nil || !linked {
+		t.Fatalf("binding read: linked=%v err=%v", linked, err)
+	}
+	if row.RunID != fcRun {
+		t.Fatalf("binding run = %s, want %s", row.RunID, fcRun)
+	}
+}
+
+// fcPlaceRun records a run row — the runs-table metadata some fixtures
+// need beside their card rows. Idempotent.
+func fcPlaceRun(t *testing.T, root, runID, status, created string) {
+	t.Helper()
+	db := fcOpen(t, root)
+	defer func() { _ = db.Close() }()
+	if _, err := db.DB.Exec(`INSERT INTO runs(run_id,status,manifest_json,created_at,updated_at) VALUES(?,?,'{}',?,?) ON CONFLICT(run_id) DO NOTHING`, runID, status, created, created); err != nil {
+		t.Fatalf("place run %s: %v", runID, err)
+	}
+}
+
 // fcBindDispatch records the card's dispatch binding — the current-run
 // authority the completion gate and scan resolve through. Idempotent.
 func fcBindDispatch(t *testing.T, root, cardID, runID string) {

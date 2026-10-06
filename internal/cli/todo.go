@@ -1350,7 +1350,14 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 
 			id := normalizeTodoRef(args[0])
 			var pickedText string
-			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+			// Selection-through-binding runs under the SAME queue lock the
+			// completion path holds (review round-14 P1-1): the dispatch
+			// binding re-point and the pick persist atomically with respect
+			// to any concurrent done, and a binding-update failure refuses
+			// the pick instead of leaving the old approval armed.
+			queueRoot := resolveTodoQueueRoot()
+			if err := store.WithLock(func(l *factory.LockedBacklog) error {
+				mutErr := l.Mutate(func(rec *factory.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID == id {
 						// The pick gate enumerates POSITIVELY
@@ -1395,6 +1402,18 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 					}
 				}
 				return fmt.Errorf("no backlog item %s", id)
+				})
+				// The dispatch binding re-point runs INSIDE the queue lock
+				// (review round-14 P1-1): a binding-update failure refuses
+				// the pick, so the old run's approval is never left armed on
+				// a card that just moved runs. Non-factory selections (no
+				// run env) skip the axis.
+				if runID := os.Getenv(config.EnvFactoryRunID); runID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+					if err := recordDispatchBindingAtRoot(id, runID, queueRoot); err != nil {
+						return err
+					}
+				}
+				return mutErr
 			}); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
@@ -1474,25 +1493,14 @@ func recordFactoryCardState(cardID, specID, state, eventKind string) {
 	// describe the lane checkout that actually selected and executed the card.
 	// OpenFactory canonicalizes only the DB routing after capture.
 	_ = factory.RecordFactoryCardState(resolveProjectDir(), runID, cardID, owner, specID, state, eventKind)
-	// The dispatch binding follows every claimed/released assignment record
-	// (review round-13 P1): a re-selection into a new run re-points the
-	// binding here, so the completion gate resolves the run the work now
-	// lives in — never the previous run whose approval would otherwise
-	// revive. A missing factory database is fine (a later first dispatch
-	// records the binding); any other failure surfaces on stderr — the
-	// completion gate fails closed on the stale binding either way.
-	if state == "picked" || state == "assigned" {
-		if err := recordDispatchBindingFromEnv(cardID, runID); err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "note: dispatch binding update for %s failed (%v) — completion will fail closed\n", cardID, err)
-		}
-	}
 }
 
-// recordDispatchBindingFromEnv records the dispatch binding for the env run
-// when a factory database already exists. A missing database is a no-op: the
-// first real dispatch (assign/mirror/next) records the binding itself.
-func recordDispatchBindingFromEnv(cardID, runID string) error {
-	root := resolveProjectDir()
+// recordDispatchBindingAtRoot records the card's dispatch binding — THIS run
+// is the card's current factory engagement — against the named project root.
+// A missing factory database is a no-op: the first real dispatch records the
+// binding itself. The caller decides the root (the selection's own queue
+// root, never a server-cwd fallback — review round-14 P1-2).
+func recordDispatchBindingAtRoot(cardID, runID, root string) error {
 	path, err := homestate.FactoryDBPath(root)
 	if err != nil {
 		return err

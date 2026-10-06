@@ -17,10 +17,12 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
@@ -200,5 +202,14 @@ func runTodoClaimRoot(root string, cmd *cobra.Command, lane, renew string) error
 		claimStrOr(result.Item.LeaseExpiresAt, "unknown"), claimStrOr(result.Item.PickedBy, "unknown"))
 	_, _ = fmt.Fprint(cmd.OutOrStdout(), out.String())
 	recordFactoryCardState(result.Item.ID, "", "picked", "card.assigned")
+	// The dispatch binding follows the claim, at the SAME explicit root the
+	// claim's queue came from (review round-14 P1-2) — never a server-cwd
+	// fallback. A failure surfaces loudly: the completion gate fails closed
+	// on the stale binding.
+	if runID := os.Getenv(config.EnvFactoryRunID); runID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+		if err := recordDispatchBindingAtRoot(result.Item.ID, runID, root); err != nil {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "note: dispatch binding update for %s failed (%v) — completion will fail closed\n", result.Item.ID, err)
+		}
+	}
 	return nil
 }
