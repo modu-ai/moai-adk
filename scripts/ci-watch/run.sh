@@ -56,32 +56,34 @@ log_step "Watching PR #${PR_NUMBER} on branch '${BRANCH}'"
 
 # ─── classify helpers ─────────────────────────────────────────────────────────
 
-# _check_conclusion extracts the conclusion for a named check from JSON array.
-# Uses jq if available, falls back to grep+sed.
-_check_conclusion() {
+# _check_bucket extracts the gh pr checks bucket for a named check.
+# t1534 M3: `gh pr checks --json` supports ONLY name/state/bucket/link —
+# the pre-M3 field list (status/conclusion/detailsUrl) made every poll abort
+# with "Unknown JSON field: 'status'" (card repro). The bucket is the
+# authoritative classification: pass|fail|pending|skipping|cancel.
+_check_bucket() {
     check_name="$1"
     json_file="$2"
     if command -v jq >/dev/null 2>&1; then
-        jq -r --arg n "$check_name" '.[] | select(.name==$n) | .conclusion // "unknown"' "$json_file"
+        jq -r --arg n "$check_name" '.[] | select(.name==$n) | .bucket // "pending"' "$json_file"
     else
-        # Rough grep fallback.
-        awk "
-            /\"name\": *\"$check_name\"/ { found=1 }
-            found && /\"conclusion\"/ { gsub(/.*\"conclusion\": *\"|\".*/, \"\"); print; exit }
-        " "$json_file"
+        awk -v n="$check_name" '
+            index($0, "\"name\": *\"" n "\"") { found=1 }
+            found && /"bucket"/ { gsub(/.*"bucket": *"|"".*/, ""); print; exit }
+        ' "$json_file"
     fi
 }
 
-# _check_details_url extracts the detailsUrl for a named check.
-_check_details_url() {
+# _check_link extracts the link for a named check from JSON array.
+_check_link() {
     check_name="$1"
     json_file="$2"
     if command -v jq >/dev/null 2>&1; then
-        jq -r --arg n "$check_name" '.[] | select(.name==$n) | .detailsUrl // ""' "$json_file"
+        jq -r --arg n "$check_name" '.[] | select(.name==$n) | .link // ""' "$json_file"
     else
         awk "
             /\"name\": *\"$check_name\"/ { found=1 }
-            found && /\"detailsUrl\"/ { gsub(/.*\"detailsUrl\": *\"|\".*/, \"\"); print; exit }
+            found && /\"link\"/ { gsub(/.*\"link\": *\"|\".*/, \"\"); print; exit }
         " "$json_file"
     fi
 }
@@ -96,74 +98,101 @@ _all_check_names() {
     fi
 }
 
-# _check_status extracts the status for a named check.
-_check_status() {
-    check_name="$1"
-    json_file="$2"
-    if command -v jq >/dev/null 2>&1; then
-        jq -r --arg n "$check_name" '.[] | select(.name==$n) | .status // "unknown"' "$json_file"
-    else
-        awk "
-            /\"name\": *\"$check_name\"/ { found=1 }
-            found && /\"status\"/ { gsub(/.*\"status\": *\"|\".*/, \"\"); print; exit }
-        " "$json_file"
-    fi
-}
+# (_check_status removed — t1534 M3: `gh pr checks --json` has no `status`
+# field; classification runs on the bucket via _check_bucket.)
 
 # ─── main poll loop ───────────────────────────────────────────────────────────
 
 TMP_JSON="$(mktemp /tmp/ciwatch_checks_XXXXXX.json)"
-trap 'rm -f "$TMP_JSON"' EXIT
+TMP_SSOT="$(mktemp /tmp/ciwatch_ssot_XXXXXX.txt)"
+TMP_ALL="$(mktemp /tmp/ciwatch_all_XXXXXX.txt)"
+TMP_FN="$(mktemp /tmp/ciwatch_fn_XXXXXX.txt)"
+TMP_FL="$(mktemp /tmp/ciwatch_fl_XXXXXX.txt)"
+TMP_PAIR="$(mktemp /tmp/ciwatch_pair_XXXXXX.txt)"
+trap 'rm -f "$TMP_JSON" "$TMP_SSOT" "$TMP_ALL" "$TMP_FN" "$TMP_FL" "$TMP_PAIR"' EXIT
+
+# t1534 M3: load the SSoT required contexts for this branch — yq when
+# available, otherwise an awk scan over the branches.<key>.contexts block.
+_load_required_contexts() {
+    branch_key="$1"
+    if command -v yq >/dev/null 2>&1; then
+        yq -r ".branches[\"$branch_key\"].contexts // [] | .[]" "$REQUIRED_CHECKS_FILE" 2>/dev/null || true
+    else
+        awk -v key="\"$branch_key\"" '
+            $0 ~ "^  " key ":" { inb = 1; next }
+            inb && /^  [A-Za-z_*]/ && index($0, key) == 0 { inb = 0 }
+            inb && /^    - / {
+                line = $0
+                sub(/^ *- */, "", line)
+                gsub(/"/, "", line)
+                print line
+            }
+        ' "$REQUIRED_CHECKS_FILE"
+    fi
+}
 
 while true; do
     ciwatch_check_timeout
 
-    # Fetch current checks state.
-    if ! "$GH" pr checks "$PR_NUMBER" --json "name,status,conclusion,detailsUrl" >"$TMP_JSON" 2>/dev/null; then
+    # Fetch current checks state. t1534 M3: `gh pr checks --json` supports
+    # ONLY name/state/bucket/link — the pre-M3 field list asked for
+    # status/conclusion/detailsUrl, which made every poll abort instantly
+    # with "Unknown JSON field: 'status'" (the card's repro).
+    if ! "$GH" pr checks "$PR_NUMBER" --json "name,state,bucket,link" >"$TMP_JSON" 2>/dev/null; then
         abort "gh pr checks failed for PR #${PR_NUMBER} — check gh auth and PR number" 1
     fi
 
-    # Classify each check.
+    _load_required_contexts "$BRANCH" > "$TMP_SSOT"
+
+    # Classify SSoT required checks. t1534 M3: iterate the SSoT list
+    # newline-safely (the pre-M3 loop word-split $(_all_check_names),
+    # shredding contexts containing spaces) and treat a required check
+    # ABSENT from the response as pending — pre-M3, iterating only the
+    # returned names made a not-yet-published required check silently
+    # count as passed.
     required_pass=0
     required_fail=0
     required_pending=0
+    total_required=0
     aux_fail=0
     failed_names=""
-    failed_urls=""
+    failed_links=""
 
-    for check_name in $(_all_check_names "$TMP_JSON"); do
-        status="$(_check_status "$check_name" "$TMP_JSON")"
-        conclusion="$(_check_conclusion "$check_name" "$TMP_JSON")"
-
-        if is_auxiliary "$check_name"; then
-            # Auxiliary check.
-            if [ "$conclusion" = "failure" ] || [ "$conclusion" = "cancelled" ]; then
-                aux_fail=$((aux_fail + 1))
-                log_step "ADVISORY: '${check_name}' ${conclusion} (non-blocking)"
-            fi
-            continue
-        fi
-
-        # Required check.
-        case "$status" in
-            "completed")
-                case "$conclusion" in
-                    "success"|"skipped"|"neutral")
-                        required_pass=$((required_pass + 1))
-                        ;;
-                    "failure"|"cancelled"|"timed_out"|"action_required")
-                        required_fail=$((required_fail + 1))
-                        url="$(_check_details_url "$check_name" "$TMP_JSON")"
-                        failed_names="${failed_names}${check_name}|"
-                        failed_urls="${failed_urls}${url}|"
-                        ;;
-                esac
+    while IFS= read -r check_name; do
+        [ -n "$check_name" ] || continue
+        total_required=$((total_required + 1))
+        bucket="$(_check_bucket "$check_name" "$TMP_JSON")"
+        case "$bucket" in
+            pass)
+                required_pass=$((required_pass + 1))
+                ;;
+            fail|cancel)
+                required_fail=$((required_fail + 1))
+                link="$(_check_link "$check_name" "$TMP_JSON")"
+                failed_names="${failed_names}${check_name}|"
+                failed_links="${failed_links}${link}|"
                 ;;
             *)
+                # pending, skipping, or absent from the response ("") — the
+                # check has not published a verdict yet: still pending.
                 required_pending=$((required_pending + 1))
                 ;;
         esac
-    done
+    done < "$TMP_SSOT"
+
+    # Auxiliary checks: every RESPONDED check the SSoT does not require on
+    # this branch — is_required (classify.sh) was unused pre-M3 and now
+    # governs the required/auxiliary split.
+    _all_check_names "$TMP_JSON" > "$TMP_ALL"
+    while IFS= read -r check_name; do
+        [ -n "$check_name" ] || continue
+        is_required "$check_name" "$BRANCH" && continue
+        bucket="$(_check_bucket "$check_name" "$TMP_JSON")"
+        if [ "$bucket" = "fail" ] || [ "$bucket" = "cancel" ]; then
+            aux_fail=$((aux_fail + 1))
+            log_step "ADVISORY: '${check_name}' failed (non-blocking)"
+        fi
+    done < "$TMP_ALL"
 
     # Compute total required (sum of known states — note: we re-count from scratch each tick).
     total_required=$((required_pass + required_fail + required_pending))
@@ -176,24 +205,24 @@ while true; do
         # Required check failed — emit JSON handoff to stdout for orchestrator.
         log_step "Required failure detected — emitting T3 handoff JSON"
 
-        # Build a minimal JSON handoff. Avoid external deps where possible.
-        printf '{"prNumber":%s,"branch":"%s","failedChecks":[' "$PR_NUMBER" "$BRANCH"
+        # Build the T3 handoff JSON (ci-watch-protocol schema: failedChecks
+        # name/link pairs + auxiliaryFailCount + totalRequired). t1534 M3:
+        # the name/link pairs travel via tr + paste + while-read — the
+        # pre-M3 `set -- $failed_names` word-split re-shredded required
+        # contexts containing spaces ("Build (linux/amd64)" → "Build" +
+        # "(linux/amd64)").
+        printf '%s' "$failed_names" | tr '|' '\n' | sed '/^$/d' > "$TMP_FN"
+        printf '%s' "$failed_links" | tr '|' '\n' | sed '/^$/d' > "$TMP_FL"
+        paste "$TMP_FN" "$TMP_FL" > "$TMP_PAIR"
+
+        printf '{"prNumber":%s,"branch":"%s","totalRequired":%s,"failedChecks":[' \
+            "$PR_NUMBER" "$BRANCH" "$total_required"
         first=1
-        IFS="|"
-        set -- $failed_names
-        idx=1
-        for name in "$@"; do
-            [ -z "$name" ] && continue
-            url_idx=0
-            for u in $(printf '%s' "$failed_urls" | tr '|' '\n'); do
-                url_idx=$((url_idx + 1))
-                [ "$url_idx" = "$idx" ] && break
-            done
+        while IFS="$(printf '\t')" read -r name link; do
+            [ -n "$name" ] || continue
             if [ "$first" = "1" ]; then first=0; else printf ','; fi
-            printf '{"name":"%s","logUrl":"%s"}' "$name" "$u"
-            idx=$((idx + 1))
-        done
-        unset IFS
+            printf '{"name":"%s","logUrl":"%s"}' "$name" "$link"
+        done < "$TMP_PAIR"
         printf '],"auxiliaryFailCount":%s}\n' "$aux_fail"
         exit 2
     fi
