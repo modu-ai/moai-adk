@@ -280,3 +280,19 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   control=0 malformed=1 matrix-exclude=1 repo-root=0; round-15 probes
   green; harness 12 pass / 0 fail. CI publication still
   platform-blocked.
+- gate_round_17 (codex review gate findings, lane-direct): 2 repairs,
+  RED observed on the committed 284c7d1dd code then GREEN on this tree
+  (commit `8a05d1af9`) — (1) an object matrix axis expands PER ITEM
+  (the sub-field-keyed store mixed fields across items and approved
+  the mixed `Test (windows-latest/amd64)`; the sole-object-axis path
+  builds one combination per item and resolves every REFERENCED
+  sub-field on GitHub semantics — a field an item lacks evaluates as
+  empty, so windows publishes `Test (windows-latest/)`; inverted
+  probe rejects the mixed combination); (2) a whole-empty value list
+  and a stored empty value each split to zero parts and dropped their
+  combination — both preserve the empty combination now
+  (`option: [""]` publishes `Test ()`). Combined object axes resolve
+  the first item (documented approximation). Regression: phantom=1
+  control=0 malformed=1 matrix-exclude=1 repo-root=0; round-14/15/16
+  probes green; harness 12 pass / 0 fail. CI publication still
+  platform-blocked.
