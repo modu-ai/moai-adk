@@ -291,6 +291,15 @@ func Admit(f Fields, phase Phase, threshold float64, hashOK bool, requiredBacken
 	return true, ""
 }
 
+// ReceiptRefusal reports whether the verdict carries a required-backend
+// receipt refusal (REQ-ACE-009/010) independent of Admit's other checks —
+// the admission seams use it to persist the refusal record REQ-ACE-007/012
+// requires for every required-backend refusal, including the below-ceiling
+// ones the ceiling ladder never sees (card-review F7).
+func ReceiptRefusal(f Fields, required []string) (string, bool) {
+	return admitReceipt(f, required)
+}
+
 // admitReceipt applies the required-backend receipt checks of
 // SPEC-AUDIT-CEILING-001 (design.md §4): a required backend recorded fail or
 // inconclusive refuses (REQ-ACE-009); a configured required backend with no

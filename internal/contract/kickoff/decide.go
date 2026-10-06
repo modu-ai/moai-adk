@@ -400,6 +400,17 @@ func planAuditCheck(in DecideInput, dir string) (*contract.ReceiptFileRef, strin
 		}
 	}
 	if ok, reason := auditverdict.Admit(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(dir), hashOK, gates.Required); !ok {
+		// REQ-ACE-007/012 (card-review F7): a required-backend refusal is
+		// recorded regardless of the ceiling state — the ladder persists its
+		// own outcomes, so only a below-ceiling receipt refusal is recorded
+		// here.
+		if oc == nil {
+			if _, receiptRefused := auditverdict.ReceiptRefusal(fields, gates.Required); receiptRefused {
+				runtime.RecordRequiredBackendRefusal(runtime.CeilingInput{
+					SpecID: in.SpecID, SpecDir: dir, ProjectRoot: in.Root, CardID: in.Card,
+				}, reason)
+			}
+		}
 		return ref, reason
 	}
 	return ref, ""

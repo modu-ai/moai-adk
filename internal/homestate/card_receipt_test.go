@@ -65,4 +65,61 @@ func TestCardTransitionRequiredBackendRefusal(t *testing.T) {
 			t.Fatalf("control arm refused: %s", reason)
 		}
 	})
+
+	// Card-review F7: a BELOW-ceiling required-backend refusal is still
+	// recorded to the audit trail (REQ-ACE-007/012 — recording is
+	// independent of the ceiling state).
+	t.Run("below_ceiling_refusal_recorded", func(t *testing.T) {
+		root2 := t.TempDir()
+		specDir2 := filepath.Join(root2, ".moai", "specs", specID)
+		if err := os.MkdirAll(specDir2, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(specDir2, "spec.md"), []byte("---\ntier: L\n---\n# spec\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(specDir2, "plan.md"), []byte("# plan\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		cfgDir2 := filepath.Join(root2, ".moai", "config", "sections")
+		if err := os.MkdirAll(cfgDir2, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		harness := "harness:\n  evaluator:\n    memory_scope: per_iteration\n  plan_audit_tier_ceilings:\n    S: 1\n    M: 2\n    L: 3\n  plan_audit_ceiling_policy:\n    auto_delta_rounds: 0\n    on_final_hit: hold-and-split\n"
+		if err := os.WriteFile(filepath.Join(cfgDir2, "harness.yaml"), []byte(harness), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		wf := "workflow:\n  audit:\n    gates:\n      claude: required\n"
+		if err := os.WriteFile(filepath.Join(cfgDir2, "workflow.yaml"), []byte(wf), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		reportsDir := filepath.Join(root2, ".moai", "reports", "t9003")
+		if err := os.MkdirAll(reportsDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		hash2, err := runtime.NewInMemoryCache().ComputeHash(specDir2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body := "# SPEC Review Report: " + specID + "\nverdict: PASS\nOverall Score: 0.90\nmust_pass_failed: 0\nblocking_count: 0\nplan_artifact_hash: " + hash2 + "\nconvergence_overall: pass\nrequired_backend: claude fail\n"
+		path := filepath.Join(reportsDir, "plan-audit-iter1.md")
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		card2 := Card{State: CardPlanAudit, SpecID: specID, CardID: "t9003", WorktreePath: root2}
+		ok, reason := admitCardVerdict(card2, path)
+		if ok {
+			t.Fatal("below-ceiling receipt refusal admitted")
+		}
+		if !strings.Contains(reason, "claude") {
+			t.Fatalf("reason %q does not name the backend", reason)
+		}
+		trail, err := os.ReadFile(filepath.Join(root2, ".moai", "state", "audit-enforcement.log"))
+		if err != nil {
+			t.Fatalf("required-backend refusal not recorded: %v", err)
+		}
+		if !strings.Contains(string(trail), "required-backend-refusal") || !strings.Contains(string(trail), specID) {
+			t.Fatalf("trail line incomplete: %s", trail)
+		}
+	})
 }

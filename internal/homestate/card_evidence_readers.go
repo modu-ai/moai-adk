@@ -213,7 +213,19 @@ func admitVerdictFile(cur Card, path string, phase auditverdict.Phase) (bool, st
 			fields.Label = auditverdict.LabelPassWithDebt
 		}
 	}
-	return auditverdict.Admit(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(specDir), hashOK, gates.Required)
+	if ok, reason := auditverdict.Admit(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(specDir), hashOK, gates.Required); !ok {
+		// REQ-ACE-007/012 (card-review F7): the same below-ceiling recording
+		// duty the kickoff seam performs.
+		if oc == nil {
+			if _, receiptRefused := auditverdict.ReceiptRefusal(fields, gates.Required); receiptRefused {
+				runtime.RecordRequiredBackendRefusal(runtime.CeilingInput{
+					SpecID: cur.SpecID, SpecDir: specDir, ProjectRoot: cur.WorktreePath, CardID: cur.CardID,
+				}, reason)
+			}
+		}
+		return false, reason
+	}
+	return true, ""
 }
 
 func readBoundedFile(path string) ([]byte, error) {
