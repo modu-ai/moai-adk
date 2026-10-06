@@ -74,7 +74,7 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   spec.md frontmatter `in-progress → implemented → completed` + this §E.4;
   `sync_commit_sha` backfilled in the follow-up commit)
 - sync_complete_at: 2026-10-06
-- sync_commit_sha: pending-backfill-sync
+- sync_commit_sha: eaf2e34f4
 - b12_self_test_a: pre-emission grep `grep -c 'SPEC-CI-VERDICT-INTEGRITY-001'
   CHANGELOG.md` → 0 (exit 1) — no duplicate entry from a parallel sync
 - b12_self_test_b: AC count match — the counter on acceptance.md (tier M AC
