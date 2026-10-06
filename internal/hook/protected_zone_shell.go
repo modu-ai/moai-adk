@@ -428,16 +428,23 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 	}
 	if bodies, declared := w.funcs[name]; declared {
 		// a call to a function declared in this command runs every body the
-		// name may have, in the caller's directory state (round 10 P2; the
-		// possible-bodies union is round 14 P1); a recursive declaration
-		// breaks the walk here, the documented under-match
+		// name may have (round 10 P2). Each body is a separate WORLD, not a
+		// sequence: one body's inner declarations must not replace another's
+		// (round 16 P1 — the alternatives of `f` each define `g`, and the
+		// second walk was overwriting the first's registration). The
+		// directory set needs no such isolation — a candidate is judged
+		// against the whole accumulated set anyway.
 		if w.calling[name] {
 			return
 		}
 		w.calling[name] = true
+		acc := cloneZoneFuncs(w.funcs)
 		for _, body := range bodies {
+			w.funcs = cloneZoneFuncs(acc)
 			w.zoneWalkStmt(body)
+			acc = mergeZoneFuncs(acc, w.funcs)
 		}
+		w.funcs = acc
 		delete(w.calling, name)
 		return
 	}
@@ -664,6 +671,7 @@ func zoneCwdsEqual(a, b []string) bool {
 func (w *zoneWalker) walkBodyFixedPoint(cond []*syntax.Stmt, stmts []*syntax.Stmt) {
 	for i := 0; i < zoneLoopFixedPoint; i++ {
 		before := append([]string(nil), w.cwds...)
+		beforeFuncs := cloneZoneFuncs(w.funcs)
 		// the condition runs EVERY iteration, so it walks with the body —
 		// each pass is one loop round (round 11 P1)
 		for _, s := range cond {
@@ -672,11 +680,39 @@ func (w *zoneWalker) walkBodyFixedPoint(cond []*syntax.Stmt, stmts []*syntax.Stm
 		for _, s := range stmts {
 			w.zoneWalkStmt(s)
 		}
-		if zoneCwdsEqual(before, w.cwds) {
+		// convergence is reached only when the directory set AND the
+		// function registry both stopped changing — a body that redefines a
+		// function every round makes iteration 2 call a different body than
+		// iteration 1 (round 16 P1)
+		if zoneCwdsEqual(before, w.cwds) && zoneFuncsEqual(beforeFuncs, w.funcs) {
 			return
 		}
 	}
 	w.unbounded = true
+}
+
+// zoneFuncsEqual compares two function registries as body-pointer sets per
+// name.
+func zoneFuncsEqual(a, b map[string][]*syntax.Stmt) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for name, bodies := range a {
+		other, ok := b[name]
+		if !ok || len(other) != len(bodies) {
+			return false
+		}
+		seen := make(map[*syntax.Stmt]bool, len(other))
+		for _, s := range other {
+			seen[s] = true
+		}
+		for _, s := range bodies {
+			if !seen[s] {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // cloneZoneFuncs copies the function registry — a subshell's redefinitions

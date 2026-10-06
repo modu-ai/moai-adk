@@ -283,6 +283,16 @@ The graph-freshness required check failed on the round-15 head (`codemaps metric
 - 커밋 2벌(t1485 패턴): `docs(t1510): codemaps regenerate…`(`faa179e7e`) → `chore(t1510): stamp codemaps provenance at the refresh commit`(`f63af2034`, provenance가 갱신 커밋을 가리킴 + generated_at 실측시각).
 - 검증: `go run ./cmd/moai mx scan --quiet && go run ./cmd/moai graph check` — codemaps fresh(value=0) · mx-index fresh · citations fresh · exit 0(CI 작업과 동일 순서 미러링). 첫 검사에서 citations가 적색로 전환됐는데 원인은 내가 쓴 중괄호 축약 `protected_zone_{guard,shell,path}.go`가 실존하지 않는 인용 경로로 읽힌 것 — 실경로 나열로 수리. 하나의 교훈: `$?`를 파이프 뒤에서 읽으면 head의 종료코드를 읽는다 — 검증 판정은 파이프 없이.
 
+### Repair round 16 — function bodies are worlds, and the fixed point must see the registry (2026-10-06)
+
+The gate's verdict on the rotation head failed with 2×P1 (this card) + 4×P2 (foreign). Both P1s are holes in the round-14 possible-bodies model, diagnosed with a throwaway AST+registry probe (deleted after use):
+
+- **P1 nested definitions across alternatives** — `if true; then f(){ g(){ rm …; }; }; else f(){ g(){ :; }; }; fi; f; g` was ALLOWED: the call site walked f's two possible bodies SEQUENTIALLY, so the second walk's `g` declaration REPLACED the first's (straight-line replaces — but these are alternatives, not a sequence). The probe showed `registry g -> 1 body`. The call site now isolates each body: clone the registry per body, walk, merge back — bodies are worlds, exactly like branch joins. (The parse shape was verified correct first — the model, not the parser, was wrong.)
+- **P1 loop fixed point ignored the registry** — the fixed point converged when the DIRECTORY set stopped changing; `while test -e x; do f; f(){ rm x; }; done` redefines f every round while the directory set stands still, so iteration 2's call walked a different body than the analysis saw. Convergence now requires the registry to be unchanged too (`zoneFuncsEqual`, body-pointer sets per name); non-convergence still lands in the `loop-unbounded` fail-closed.
+- **P2 4건 — 외부 소관, 라우팅 누적**: `factory_card.go:821`(재지적)·`todo_issuance.go:109`(재지적 — 읽기 전용 조회의 스키마 마이그레이션)·`backlog_issuance.go:511`(신규 파일 — --files 겹침의 factory 측 절반)·`backlog_relation.go:215`(재지적 — archived 관계 투영). 전부 이 카드 diff에 없는 main 착지 코드.
+
+RED rows observed first (both allow, matching the verdict verbatim). GREEN: `TestProtectedZone` hook+config (ShellMutation swept 99 — 2 new deny rows), `go build ./...` exit 0, GOOS=linux+windows OK, `golangci-lint` 0 issues, gofmt clean, `TestHMPSourceGuard` ok, live judge `JUDGE swept=67 expected=67 fail=0` exit 0.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready

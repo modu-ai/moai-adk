@@ -1099,9 +1099,11 @@ func testZoneShellMutation(t *testing.T) {
 	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n"), "")
 	h = zoneTestHandler(t, root)
 	for _, cmd := range []string{
-		"f(){ rm zone_dir/guard.go; }; if false; then f(){ true; }; fi; f",        // the skipped branch's redefinition must not win (r14)
-		"case x in x) f(){ rm zone_dir/guard.go; } ;; y) f(){ true; } ;; esac; f", // arm worlds union too (r14)
-		"f(){ echo changed > zone_dir/a.md; }; false && f(){ :; }; f",             // the short-circuited right side must not win (r15)
+		"f(){ rm zone_dir/guard.go; }; if false; then f(){ true; }; fi; f",              // the skipped branch's redefinition must not win (r14)
+		"case x in x) f(){ rm zone_dir/guard.go; } ;; y) f(){ true; } ;; esac; f",       // arm worlds union too (r14)
+		"f(){ echo changed > zone_dir/a.md; }; false && f(){ :; }; f",                   // the short-circuited right side must not win (r15)
+		"if true; then f(){ g(){ rm zone_dir/x; }; }; else f(){ g(){ :; }; }; fi; f; g", // nested definitions across alternatives (r16)
+		"f(){ :; }; while test -e zone_dir/x; do f; f(){ rm zone_dir/x; }; done",        // the loop's fixed point must include the registry (r16)
 	} {
 		swept++
 		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
