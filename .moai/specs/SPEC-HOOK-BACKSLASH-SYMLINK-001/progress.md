@@ -109,11 +109,82 @@ rather than a bare exit 0.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run executed 2026-10-07 in the card worktree (branch `WT-backslash-symlink`),
+starting at HEAD `9d78421a4`. All commands run with the lane env scrubbed in ONE
+compound `unset` invocation per DEBT-HBS-BASELINE-ENV (scrubbed vars:
+`MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_NAME
+MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_BACKEND MOAI_KANBAN_SETTINGS_INJECTED
+MOAI_FACTORY_ROLE MOAI_FACTORY_LANE`).
+
+**Mechanism decision (M2).** Platform-appropriate segmentation via a
+platform-parameterized helper, NOT a runtime.GOOS read inside the split body:
+`pathSegments(p string, windows bool)` in `internal/hook/pre_tool.go` — the
+single production caller passes `runtime.GOOS == "windows"`. The parameter
+form (over a global flag) was chosen because AC-HBS-005 requires the Windows
+branch unit-tested at the string level on every platform; a test-overridable
+global would be mutable state. The walker body (probe / rejoin / `..` pop /
+depth bound) is unchanged, per plan §B.
+
+**AC matrix** (command + observed output verbatim, this run, this tree):
+
+| AC | Status | Verification command | Actual output (verbatim) |
+|----|--------|---------------------|--------------------------|
+| AC-HBS-001 | PASS | `go test -count=1 ./internal/hook/ -run 'TestCheckFileAccessPosixBackslashSymlinkEscape'` (env scrubbed) | `--- PASS: TestCheckFileAccessPosixBackslashSymlinkEscape (0.01s)` … `ok github.com/modu-ai/moai-adk/internal/hook 0.968s`, EXIT=0 (joint run with AC-HBS-003's test, log `/tmp/t1556_green.log`) |
+| AC-HBS-002 | PASS | same command (the test's deny branch runs the `os.Stat` external-absence assert) | PASS with EXIT=0 — the non-deny write branch did not execute; the external-file assert inside the test is the file-existence observation |
+| AC-HBS-003 | PASS | `go test -count=1 ./internal/hook/ -run 'TestResolveThroughExistingParentPosixBackslashSymlinkDivergence'` (joint run with AC-HBS-001's test) | resolver log line: `resolved="/private/var/.../1369638387/002/escaped.txt" ok=true` — resolution lands OUTSIDE (the symlink's destination), test PASS |
+| AC-HBS-004 | PASS | `go test -count=1 ./internal/hook/ -run 'TestCheckFileAccessPosixBackslashLegitNameAllowed'` | `--- PASS: TestCheckFileAccessPosixBackslashLegitNameAllowed (0.00s)` |
+| AC-HBS-005 | PASS | `go test -count=1 ./internal/hook/ -run 'TestPathSegmentsPlatformSeparatorSemantics'` | both subtests PASS; subtest caught the ToSlash-is-a-noop-on-POSIX hazard (first windows-branch draft failed: `pathSegments(windows) = ["C:\\proj\\linked\\..\\x"]`) and forced the explicit `ReplaceAll` |
+| AC-HBS-006 | PASS | `go test -timeout 30m -count=1 ./internal/hook/` (env scrubbed) | `ok github.com/modu-ai/moai-adk/internal/hook 572.539s`, EXIT=0 — ZERO failures, stronger than the allowed delta (the StaleRunNotice trio passed with the scrubbed env, confirming DEBT-HBS-BASELINE-ENV: env-dependent, not regressions; a CI trio failure remains a regression signal) |
+| AC-HBS-007 | PASS | `go test -count=1 ./internal/hook/ -run 'TestResolvePhysicalWalkBranchPreservation'` | `--- PASS: TestResolvePhysicalWalkBranchPreservation (0.02s)` — depth-bound fixture (33 links, non-existent terminal) returns ok=false fail-closed + decision-level fallback NOT a deny; `..`-pop fixture (`projectDir + "/linked/../leaf"`, concatenated) resolves OUTSIDE with ok=true + checkFileAccess deny |
+
+**RED re-observation** (E8, pre-fix tree HEAD `9d78421a4`, this run, before the
+fix — matching the plan-phase cells `RED-HBS-001`/`RED-HBS-003`):
+
+```text
+--- FAIL: TestCheckFileAccessPosixBackslashSymlinkEscape (0.01s)
+    pre_tool_backslash_repro_test.go:68: guard allowed the backslash-symlink escape: decision="" reason="" (external write VERIFIED at /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCheckFileAccessPosixBackslashSymlinkEscape2670212849/002/escaped.txt, content "escaped")
+--- FAIL: TestResolveThroughExistingParentPosixBackslashSymlinkDivergence (0.01s)
+    pre_tool_backslash_repro_test.go:115: walk validated a fictional IN-PROJECT path ... — validated path diverges from the path the OS walks
+FAIL
+```
+
+**Coverage (focused run, the modified resolution surface)** — command:
+`go test -count=1 -coverprofile=/tmp/t1556_cover.out ./internal/hook/ -run
+'Backslash|PathSegments|ResolvePhysicalWalkBranchPreservation|ResolveThroughExistingParent|CheckFileAccess'`,
+EXIT=0:
+
+```text
+resolveThroughExistingParent  100.0%
+resolvePhysicalWalk            82.1%
+pathSegments                  100.0%
+pathHasDotDotSegment          100.0%
+absoluteUncleaned              33.3%   (untouched function; its relative-input branch is outside this test scope)
+checkFileAccess                91.1%
+```
+
+**Quality gates**: `GOOS=windows GOARCH=amd64 go build ./...` EXIT=0 ·
+`go vet ./internal/hook/` EXIT=0 · `gofmt -l internal/hook/` empty ·
+`golangci-lint run internal/hook/...` EXIT=0, `0 issues.` · scope check
+`git diff --stat` vs `9d78421a4`: ONLY `internal/hook/pre_tool.go` (+25/-1) and
+`internal/hook/pre_tool_backslash_repro_test.go` (+170) — no `zoneSlash` touch.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: "2026-10-07"
+run_commit_sha: "pending-backfill-run"   # backfilled after the run-phase commit lands
+run_status: audit-ready
+ac_pass_count: 7
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # spec.md §F surfaces untouched: zoneSlash, file_changed.go, agentmemory ToSlash uses
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  goos_windows_build_exit: 0
+  command: "GOOS=windows GOARCH=amd64 go build ./..."
+total_run_phase_files: 2   # internal/hook/pre_tool.go + internal/hook/pre_tool_backslash_repro_test.go
+m1_to_mN_commit_strategy: "single run-phase commit (M2+M3+M4 land together; M1 repro pre-existed at plan phase)"
+env_notes: "DEBT-HBS-BASELINE-ENV: all measurements taken with lane env scrubbed (MOAI_KANBAN* / MOAI_FACTORY_* unset in one compound invocation); the StaleRunNotice legacy trio is env-dependent and PASSES scrubbed — treat CI trio failures as regressions, not baseline"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
