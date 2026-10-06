@@ -110,6 +110,9 @@ func runFactoryBundleLocked(cmd *cobra.Command, l *factory.LockedBacklog, root, 
 		return err
 	}
 	defer func() { _ = db.Close() }()
+	if err := factoryRefuseForeignChain(db, ctx, runID, lane, cards); err != nil {
+		return err
+	}
 	now := factoryCardNow()
 	bundleID := fmt.Sprintf("bundle-%s-%s", cards[0], now.UTC().Format("20060102T150405"))
 	// The chain records and the head's assignment land inside ONE record
@@ -135,6 +138,54 @@ func runFactoryBundleLocked(cmd *cobra.Command, l *factory.LockedBacklog, root, 
 // lock-hold test drives. The default is one RecordBundleChain transaction.
 var factoryBundleRecord = func(ctx context.Context, db *homestate.FactoryDB, runID string, members []homestate.BundleMemberSpec, lane string, now time.Time) (homestate.Card, error) {
 	return db.RecordBundleChain(ctx, runID, members, lane, "bundle", now)
+}
+
+// factoryRefuseForeignChain refuses loading a card whose factory record
+// already belongs to another lane's work (card t1533, card-review r2f
+// finding 1): a bundle follow-up member sits at `picked` with no owner while
+// it waits for its chain head, so the picked-state check alone admitted a
+// re-bundle that re-chained the member under the loading lane and assigned
+// it away from its own chain. A lane never mutates another lane's assignment
+// or bundle (the lane-obligation axis): a member already carrying a bundle
+// identity is refused unless the chain's recorded owner IS the loading lane,
+// and a member owned outright by another lane is refused the same way. The
+// read runs inside the load's lock-held section, so the check and the record
+// share one exclusion.
+func factoryRefuseForeignChain(db *homestate.FactoryDB, ctx context.Context, runID, lane string, cards []string) error {
+	rows, err := db.ListCards(ctx, runID)
+	if err != nil {
+		return fmt.Errorf("read the records for the chain check: %w", err)
+	}
+	rowOf := make(map[string]homestate.Card, len(rows))
+	chainOwner := make(map[string]string, len(rows))
+	for _, c := range rows {
+		rowOf[c.CardID] = c
+		if owner := strings.TrimSpace(c.OwnerLabel); c.BundleID != "" && owner != "" {
+			if _, seen := chainOwner[c.BundleID]; !seen {
+				chainOwner[c.BundleID] = owner
+			}
+		}
+	}
+	for _, id := range cards {
+		row, ok := rowOf[id]
+		if !ok {
+			continue // no record yet: the load creates it, nothing to steal
+		}
+		if row.BundleID != "" {
+			owner := chainOwner[row.BundleID]
+			if owner == lane {
+				continue // the lane re-loads its own chain
+			}
+			if owner == "" {
+				return fmt.Errorf("%s is already a member of bundle %s", id, row.BundleID)
+			}
+			return fmt.Errorf("%s is already %s's bundle member", id, owner)
+		}
+		if owner := strings.TrimSpace(row.OwnerLabel); owner != "" && owner != lane {
+			return fmt.Errorf("%s is assigned to %s; a lane never takes another lane's card", id, owner)
+		}
+	}
+	return nil
 }
 
 // factoryHubChainFields computes the hub-chain hint for a card about to be
@@ -215,4 +266,87 @@ func factoryHubChainFields(queueRec *factory.BacklogRecord, cards []homestate.Ca
 		return homestate.CardFields{}
 	}
 	return homestate.CardFields{HintAfter: tail}
+}
+
+// factoryGeneratedHubFields merges the computed hub hint into the
+// record-creation fields for a card that may already carry a factory row
+// (card t1533, card-review r2f ledger): a GENERATED hint is a
+// record-creation input only — the recomputed tail drifts from the stored
+// one as soon as a later queue card shares the hub path, and overwriting
+// with it re-chained members against their own bundle order until two cards
+// pointed at each other and ordered in a circle. The stored hint survives
+// every subsequent write; an explicit input (--after, a bundle member hint)
+// lands through its own path and outranks the fill. A row in any other
+// state, and a row with no stored hint, leave the computed hint standing.
+func factoryGeneratedHubFields(fields homestate.CardFields, row *homestate.Card) homestate.CardFields {
+	if row != nil && row.State == homestate.CardPicked && row.HintAfter != "" {
+		fields.HintAfter = nil
+	}
+	return fields
+}
+
+// factoryHubWaitUnmerged reports whether cardID still waits behind an
+// unmerged hub-chain predecessor: any recorded, open queue card EARLIER in
+// queue order whose files share a hub path with the candidate and whose
+// record has not reached the merge (card t1533, card-review r2f finding 4).
+// The stored hint names one predecessor — the tail at the card's own record
+// creation — but a candidate whose files cross several hub paths has a
+// predecessor per hub path, and waiting on the named one alone leased the
+// candidate beside the still-in-flight sharer of its other hub path. The
+// queue read supplies the files attributes, the recorded rows the wait
+// candidates, mergedLocal the merge states — the same inputs
+// factoryHubChainFields reads, and like it a read-only predicate: selection
+// consults it on every pass, it writes nothing.
+func factoryHubWaitUnmerged(queueRec *factory.BacklogRecord, cards []homestate.Card, mergedLocal map[string]bool, cardID string) bool {
+	if queueRec == nil {
+		return false
+	}
+	hub := make(map[string]bool)
+	for _, p := range homestate.HubFiles() {
+		hub[p] = true
+	}
+	candIdx := -1
+	var candHub map[string]bool
+	for i := range queueRec.Items {
+		if queueRec.Items[i].ID != cardID {
+			continue
+		}
+		candIdx = i
+		if it := &queueRec.Items[i]; it.Issuance != nil {
+			candHub = make(map[string]bool)
+			for _, f := range it.Issuance.Files {
+				if hub[f] {
+					candHub[f] = true
+				}
+			}
+		}
+		break
+	}
+	if candIdx < 0 || len(candHub) == 0 {
+		return false
+	}
+	recorded := make(map[string]bool, len(cards))
+	for _, c := range cards {
+		recorded[c.CardID] = true
+	}
+	for i := 0; i < candIdx; i++ {
+		it := &queueRec.Items[i]
+		if it.Issuance == nil || !recorded[it.ID] || mergedLocal[it.ID] {
+			continue
+		}
+		// POSITIVE enumeration (REQ-THS-012): the open states a wait can
+		// order behind; every other state — a state added later included —
+		// falls through.
+		switch it.State {
+		case factory.BacklogStateQueued, factory.BacklogStatePicked, factory.BacklogStateHold:
+		default:
+			continue
+		}
+		for _, f := range it.Issuance.Files {
+			if candHub[f] {
+				return true
+			}
+		}
+	}
+	return false
 }
