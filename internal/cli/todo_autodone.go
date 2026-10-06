@@ -451,7 +451,7 @@ func applyAutoDoneCloses(ctx context.Context, root string, store *factory.Backlo
 					outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
 					continue
 				}
-				if verr := gate.verifyForClose(ctx, outcomes[k].id, outcomes[k].snapUUID); verr != nil {
+				if verr := gate.verifyForClose(ctx, outcomes[k].id, outcomes[k].snapUUID, cardAssignedRuns(rec, outcomes[k].id)); verr != nil {
 					outcomes[k].downgrade(autoDoneReceiptDowngradeReason(verr))
 					continue
 				}

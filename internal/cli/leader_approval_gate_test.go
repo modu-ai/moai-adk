@@ -424,3 +424,66 @@ func TestLeaderReceiptGateRefusesUnstatableFactoryDB(t *testing.T) {
 		t.Fatal("the refused done archived the card")
 	}
 }
+
+// Regression pin for round-2 review P1 (card t1538): the completion gate
+// keys on the card's RECORDED dispatch run, never on a row's modification
+// time. The old run's row carries the newest updated_at (a worktree
+// re-record bumped it) and holds a matching receipt; the card's recorded
+// run is run-cli. The gate must resolve run-cli's row and refuse the old
+// run's receipt — pre-fix it resolved the bumped old row and succeeded.
+func TestLeaderReceiptGateKeysOnAssignedRun(t *testing.T) {
+	root, store := fcFixture(t)
+	uuid := fcLinkedCard(t, root, store, "t1", "factory-linked card")
+	// run-old: the most recently MODIFIED row, with a matching receipt.
+	fcPlace(t, root, homestate.Card{CardID: "t1", RunID: "run-old", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-old", UpdatedAt: "2026-09-26T03:00:00Z"})
+	// run-cli: the recorded run — older updated_at.
+	fcPlace(t, root, homestate.Card{CardID: "t1", RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-cur", UpdatedAt: "2026-09-26T01:00:00Z"})
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: uuid, RunID: "run-old", CardID: "t1", FactoryVersion: 1,
+		EvidenceHash: "sha-old", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+
+	_, stderr, err := runTodo(t, "done", "t1")
+	if err == nil {
+		t.Fatal("done closed on the old run's receipt — the gate keyed on modification time")
+	}
+	if !strings.Contains(stderr, "leader approval") {
+		t.Errorf("stderr %q does not name the leader approval reason", stderr)
+	}
+	if !fcLiveItem(t, store, "t1") {
+		t.Fatal("the refused done archived the card")
+	}
+
+	// The recorded run's own receipt closes.
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: uuid, RunID: fcRun, CardID: "t1", FactoryVersion: 1,
+		EvidenceHash: "sha-cur", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+	if _, _, err := runTodo(t, "done", "t1"); err != nil {
+		t.Fatalf("done with the recorded run's receipt: %v", err)
+	}
+}
+
+// Regression pin for round-2 review P2-1 (card t1538): `factory approve
+// --run <run>` reads THE NAMED RUN's row — never the most recently modified
+// row of any run — and refuses a run that has no row for the card.
+func TestFactoryApproveBindsNamedRun(t *testing.T) {
+	root, store := fcFixture(t)
+	_ = fcLinkedCard(t, root, store, "t1", "factory-linked card")
+	fcPlace(t, root, homestate.Card{CardID: "t1", RunID: "run-old", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-old", UpdatedAt: "2026-09-26T01:00:00Z"})
+	fcPlace(t, root, homestate.Card{CardID: "t1", RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 4, EvidenceSHA: "sha-new", UpdatedAt: "2026-09-26T02:00:00Z"})
+
+	// A run with no row for the card is refused outright.
+	if _, _, err := runFactory(t, "approve", "t1", "--run", "run-ghost"); err == nil {
+		t.Fatal("approve accepted a run with no factory row for the card")
+	}
+	// The named run's OWN row is what the receipt binds (version 1 and
+	// sha-old — not the latest row's version 4 / sha-new).
+	out, _, err := runFactory(t, "approve", "t1", "--run", "run-old")
+	if err != nil {
+		t.Fatalf("approve run-old: %v", err)
+	}
+	if !strings.Contains(out, "version=1") || !strings.Contains(out, "sha-old") {
+		t.Errorf("approve output = %q, want run-old's own version and evidence", out)
+	}
+}

@@ -200,6 +200,53 @@ func recheckUUID(t *testing.T, root string, store *factory.BacklogStore, id stri
 	return ""
 }
 
+// Regression pin for round-2 review P2-2 (card t1538): the scan — dry-run
+// included — opens the factory database strictly read-only. On a store
+// whose leader_approvals table is absent (an older schema), the scan reads
+// factory-linked cards as unverified and migrates NOTHING: reopening the
+// database afterwards must still find no leader_approvals table.
+func TestAutoDoneScanDoesNotMigrateOldSchema(t *testing.T) {
+	root, store := autoDoneFixture(t)
+	seedCard(t, store, "t960", "old-schema store", factory.BacklogStateQueued)
+	fcLinkRuntime(t, root, "t960")
+	fcPlaceFactoryCard(t, root, "t960", 1, "sha-ev", "2026-09-26T00:00:00Z")
+	commitOnRef(t, root, "Merge branch 'WT-r' into develop (card t960)")
+	materializeOriginDevelop(t, root)
+
+	db := fcOpen(t, root)
+	if _, err := db.DB.Exec(`DROP TABLE leader_approvals`); err != nil {
+		t.Fatalf("drop approvals table: %v", err)
+	}
+	_ = db.Close()
+
+	stdout, _, err := runTodo(t, "auto-done", "--dry-run")
+	if err != nil {
+		t.Fatalf("auto-done dry-run: %v", err)
+	}
+	if !strings.Contains(stdout, "skip t960 reason=leader-unapproved") {
+		t.Errorf("stdout %q lacks skip t960 reason=leader-unapproved (missing-table read)", stdout)
+	}
+
+	// Reopen STRICTLY READ-ONLY for the check — a write-mode open runs the
+	// schema DDL and would recreate the table itself, masking the defect.
+	path, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ro, err := homestate.OpenFactoryReadonly(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ro.Close() }()
+	present, err := ro.FactoryTablePresent(context.Background(), "leader_approvals")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if present {
+		t.Fatal("the scan migrated the store: leader_approvals was recreated")
+	}
+}
+
 // fcApprovalsRow bumps a card's factory row version directly — the
 // archive-moment state after a concurrent factory transition.
 func fcBumpRowVersion(t *testing.T, root, cardID string, version int64) {

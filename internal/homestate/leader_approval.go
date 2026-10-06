@@ -26,6 +26,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -186,31 +187,136 @@ func findLeaderApprovalPreferringRun(ctx context.Context, q queryRower, cardUUID
 	return a, err
 }
 
-// LatestCardByID reads a card's most recently updated factory row across all
-// runs — the card's current factory engagement. Read-only. ErrCardNotFound
-// when the card has no factory row (not factory-linked).
-func (f *FactoryDB) LatestCardByID(ctx context.Context, cardID string) (Card, error) {
-	c, err := scanCard(f.DB.QueryRowContext(ctx,
-		`SELECT run_id,card_id,owner_label,state,version,evidence_path,updated_at,stage,lease_holder,lease_expires_at,heartbeat_at,decision_gate,decision_question,decision_resume,decider,decided_at,failure_reason,hint_prefer,hint_after,spec_id,worktree_path,evidence_sha,merge_sha,merge_tree,remeasure_path,contract_spec_id,contract_sha256,contract_signed_at,contract_event FROM cards WHERE card_id=? ORDER BY updated_at DESC LIMIT 1`, cardID))
-	if errors.Is(err, sql.ErrNoRows) {
-		return Card{}, ErrCardNotFound
+// RecordedCardRun resolves the factory row a backlog card's verification
+// binds against: the card's row in its ACTUALLY-ASSIGNED run, never the
+// most-recently-modified row. The candidate runs are the card's recorded
+// dispatch assignments (the backlog record's runtime rows); when the record
+// names none, every row is a candidate — a legacy store predating the
+// runtime records. Among candidates an active run wins, then the
+// newest-created run. A card row's updated_at is never the key: any write to
+// an old run's row (a worktree re-record, a legacy touch) would otherwise
+// resurrect that run as the card's current engagement.
+// queryRowerEx is the read surface recordedCardRow needs: single-row and
+// multi-row queries inside the caller's transaction or on the bare handle.
+// *sql.DB and *sql.Tx both satisfy it.
+type queryRowerEx interface {
+	queryRower
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}
+
+func recordedCardRow(ctx context.Context, q queryRowerEx, cardID string, assignedRuns []string) (Card, bool, error) {
+	rows, err := queryCardRowsByID(ctx, q, cardID)
+	if err != nil || len(rows) == 0 {
+		return Card{}, false, err
 	}
-	return c, err
+	if len(assignedRuns) > 0 {
+		var filtered []Card
+		for _, c := range rows {
+			for _, run := range assignedRuns {
+				if c.RunID == run {
+					filtered = append(filtered, c)
+					break
+				}
+			}
+		}
+		if len(filtered) > 0 {
+			rows = filtered
+		}
+	}
+	if len(rows) == 1 {
+		return rows[0], true, nil
+	}
+	type runMeta struct {
+		known   bool
+		active  bool
+		created string
+	}
+	byRun := make(map[string]runMeta, len(rows))
+	for _, c := range rows {
+		if _, seen := byRun[c.RunID]; seen {
+			continue
+		}
+		var status, created string
+		err := q.QueryRowContext(ctx, `SELECT status,created_at FROM runs WHERE run_id=?`, c.RunID).Scan(&status, &created)
+		if errors.Is(err, sql.ErrNoRows) {
+			byRun[c.RunID] = runMeta{}
+			continue
+		}
+		if err != nil {
+			return Card{}, false, err
+		}
+		// SQL: "active" is the runs table's status literal (factory_run_retire.go
+		// classifies on the same literal); the value comes from the row, never input.
+		byRun[c.RunID] = runMeta{known: true, active: status == "active", created: created}
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		mi, mj := byRun[rows[i].RunID], byRun[rows[j].RunID]
+		if mi.active != mj.active {
+			return mi.active
+		}
+		ci, cj := "", ""
+		if mi.known {
+			ci = mi.created
+		}
+		if mj.known {
+			cj = mj.created
+		}
+		if ci != cj {
+			return ci > cj
+		}
+		// Runs with no metadata (a legacy store whose runs table lost the
+		// row): the row's own modification time is the final, deterministic
+		// tie-break — subordinate to run identity, never the primary key.
+		return rows[i].UpdatedAt > rows[j].UpdatedAt
+	})
+	return rows[0], true, nil
+}
+
+func queryCardRowsByID(ctx context.Context, q interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}, cardID string) ([]Card, error) {
+	rows, err := q.QueryContext(ctx,
+		`SELECT run_id,card_id,owner_label,state,version,evidence_path,updated_at,stage,lease_holder,lease_expires_at,heartbeat_at,decision_gate,decision_question,decision_resume,decider,decided_at,failure_reason,hint_prefer,hint_after,spec_id,worktree_path,evidence_sha,merge_sha,merge_tree,remeasure_path,contract_spec_id,contract_sha256,contract_signed_at,contract_event FROM cards WHERE card_id=?`, cardID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []Card
+	for rows.Next() {
+		c, err := scanCard(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
 }
 
 // VerifyApprovalReadonly is the scan-time counterpart of the gate: the same
-// row read and the same receipt selection as the archive-moment gate, outside
-// any transaction. Its verdict is advisory — the gate is authoritative.
-func (f *FactoryDB) VerifyApprovalReadonly(ctx context.Context, cardID, cardUUID string) error {
-	row, err := f.LatestCardByID(ctx, cardID)
+// row resolution and the same receipt selection as the archive-moment gate,
+// outside any transaction. Its verdict is advisory — the gate is
+// authoritative. ErrCardNotFound when the card has no factory row.
+func (f *FactoryDB) VerifyApprovalReadonly(ctx context.Context, cardID, cardUUID string, assignedRuns []string) error {
+	row, linked, err := recordedCardRow(ctx, f.DB, cardID, assignedRuns)
 	if err != nil {
 		return err
+	}
+	if !linked {
+		return ErrCardNotFound
 	}
 	a, err := findLeaderApprovalPreferringRun(ctx, f.DB, cardUUID, row.RunID)
 	if err != nil {
 		return err
 	}
 	return a.VerifyBinding(cardUUID, row.RunID, row.Version, row.EvidenceSHA, row.OwnerLabel)
+}
+
+// RecordedCardRowReadonly resolves the card's recorded-run factory row for
+// read-only consumers that must not touch the receipt table (an
+// older-schema store may not have one). linked=false when the card has no
+// factory row.
+func (f *FactoryDB) RecordedCardRowReadonly(ctx context.Context, cardID string, assignedRuns []string) (Card, bool, error) {
+	return recordedCardRow(ctx, f.DB, cardID, assignedRuns)
 }
 
 // ApprovalGate is the serialization point a backlog close verifies its
@@ -243,15 +349,13 @@ func (f *FactoryDB) HoldApprovalGate(ctx context.Context) (*ApprovalGate, error)
 }
 
 // Row reads the archive-moment factory row for cardID inside the gate's
-// transaction. linked=false when the card has no factory row — the card is
-// not factory-linked and the receipt gate does not apply (REQ-FCR-002's
+// transaction, resolved against the card's recorded dispatch runs (see
+// recordedCardRow). linked=false when the card has no factory row — the card
+// is not factory-linked and the receipt gate does not apply (REQ-FCR-002's
 // scope sentence).
-func (g *ApprovalGate) Row(ctx context.Context, cardID string) (card Card, linked bool, err error) {
-	c, err := loadLatestCardByIDTx(ctx, g.tx, cardID)
-	if errors.Is(err, ErrCardNotFound) {
-		return Card{}, false, nil
-	}
-	if err != nil {
+func (g *ApprovalGate) Row(ctx context.Context, cardID string, assignedRuns []string) (card Card, linked bool, err error) {
+	c, linked, err := recordedCardRow(ctx, g.tx, cardID, assignedRuns)
+	if err != nil || !linked {
 		return Card{}, false, err
 	}
 	return c, true, nil
@@ -291,15 +395,6 @@ func (g *ApprovalGate) Rollback() error {
 	}
 	g.done = true
 	return g.tx.Rollback()
-}
-
-func loadLatestCardByIDTx(ctx context.Context, q queryRower, cardID string) (Card, error) {
-	c, err := scanCard(q.QueryRowContext(ctx,
-		`SELECT run_id,card_id,owner_label,state,version,evidence_path,updated_at,stage,lease_holder,lease_expires_at,heartbeat_at,decision_gate,decision_question,decision_resume,decider,decided_at,failure_reason,hint_prefer,hint_after,spec_id,worktree_path,evidence_sha,merge_sha,merge_tree,remeasure_path,contract_spec_id,contract_sha256,contract_signed_at,contract_event FROM cards WHERE card_id=? ORDER BY updated_at DESC LIMIT 1`, cardID))
-	if errors.Is(err, sql.ErrNoRows) {
-		return Card{}, ErrCardNotFound
-	}
-	return c, err
 }
 
 // verifyTransitionApproval is the done transitions' receipt gate

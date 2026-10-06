@@ -196,6 +196,54 @@ func OpenFactoryPath(path string) (*FactoryDB, error) {
 	return openFactoryPathBusy(path, factoryBusyTimeoutDefault)
 }
 
+// OpenFactoryReadonly opens a factory database strictly for reading: no DDL
+// runs, no migration fires, nothing is created. A reader that cannot write
+// must never migrate a store as a side effect (SPEC-FACTORY-COMPLETION-RECOVERY-001
+// review P2-2): a database on an older schema is read as it stands, and
+// tables a later schema added are simply absent — callers treat a missing
+// table as empty data, never as a reason to migrate. The path must already
+// exist; a missing file is an error here, so callers stat before they call.
+func OpenFactoryReadonly(path string) (*FactoryDB, error) {
+	values := url.Values{}
+	values.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", factoryBusyTimeoutDefault.Milliseconds()))
+	values.Add("_pragma", "query_only(ON)")
+	values.Add("_txlock", "immediate")
+	p := filepath.ToSlash(path)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	dsn := (&url.URL{Scheme: "file", Path: p, RawQuery: values.Encode()}).String()
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		return nil, err
+	}
+	db.SetMaxOpenConns(1)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("open factory database read-only: %w", err)
+	}
+	return &FactoryDB{DB: db, Path: path}, nil
+}
+
+// FactoryTablePresent reports whether the named table exists in the factory
+// database — the missing-table check read-only consumers run instead of
+// migrating. Read-only safe.
+func (f *FactoryDB) FactoryTablePresent(ctx context.Context, table string) (bool, error) {
+	switch table {
+	case "meta", "workers", "runs", "cards", "events", "dead_letters",
+		"resume_handoffs", "memory_handoffs", "handoff_events", "leader_approvals":
+		// SQL: the allowlist pins table to a known identifier; the value never
+		// reaches the query from input.
+	default:
+		return false, fmt.Errorf("%w: unknown factory table %q", ErrInvalidCardInput, table)
+	}
+	var present int
+	err := f.DB.QueryRowContext(ctx, `SELECT count(*) FROM sqlite_master WHERE type='table' AND name=?`, table).Scan(&present)
+	return present > 0, err
+}
+
 func openFactoryPathBusy(path string, busy time.Duration) (*FactoryDB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, err

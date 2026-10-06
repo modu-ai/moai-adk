@@ -340,7 +340,7 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 							// admits exactly `picked`, refuses everything else
 							// by name.
 							if r.Items[i].State == factory.BacklogStatePicked {
-								if err := gate.verifyForClose(context.Background(), card.ID, todoCardUUID(&r.Items[i])); err != nil {
+								if err := gate.verifyForClose(context.Background(), card.ID, todoCardUUID(&r.Items[i]), cardAssignedRuns(r, card.ID)); err != nil {
 									return err
 								}
 								return r.ArchiveCard(card.ID)

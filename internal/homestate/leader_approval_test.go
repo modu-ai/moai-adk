@@ -132,7 +132,7 @@ func TestApprovalGateLinkedAndUnlinked(t *testing.T) {
 	// A card with no factory row reads as not linked — the caller skips
 	// verification entirely and the close proceeds (the gate does not
 	// apply; the CLI wrapper encodes exactly this branch).
-	card, linked, err := gate.Row(ctx, "absent")
+	card, linked, err := gate.Row(ctx, "absent", nil)
 	if err != nil || linked {
 		t.Fatalf("absent card: linked=%v err=%v, want not linked", linked, err)
 	}
@@ -161,7 +161,7 @@ func TestApprovalGateLinkedAndUnlinked(t *testing.T) {
 			t.Fatalf("rollback: %v", err)
 		}
 	}()
-	card, linked, rowErr := gate.Row(ctx, "gated")
+	card, linked, rowErr := gate.Row(ctx, "gated", nil)
 	if rowErr != nil || !linked {
 		t.Fatalf("gated card: linked=%v err=%v, want linked", linked, rowErr)
 	}

@@ -73,13 +73,14 @@ func holdDoneApprovalGate(ctx context.Context, root string) (*backlogApprovalGat
 }
 
 // verifyForClose loads the archive-moment factory row inside the gate's
-// transaction and verifies the receipt bound to the card's backlog uuid. A
-// card with no factory row passes — not factory-linked.
-func (g *backlogApprovalGate) verifyForClose(ctx context.Context, cardID, cardUUID string) error {
+// transaction — resolved against the card's recorded dispatch runs — and
+// verifies the receipt bound to the card's backlog uuid. A card with no
+// factory row passes — not factory-linked.
+func (g *backlogApprovalGate) verifyForClose(ctx context.Context, cardID, cardUUID string, assignedRuns []string) error {
 	if g == nil {
 		return nil
 	}
-	card, linked, err := g.gate.Row(ctx, cardID)
+	card, linked, err := g.gate.Row(ctx, cardID, assignedRuns)
 	if err != nil {
 		return fmt.Errorf("leader approval gate: %w", err)
 	}
@@ -87,6 +88,23 @@ func (g *backlogApprovalGate) verifyForClose(ctx context.Context, cardID, cardUU
 		return nil
 	}
 	return g.gate.Verify(ctx, card, cardUUID)
+}
+
+// cardAssignedRuns collects the factory runs a backlog card's dispatch was
+// recorded under — the card's recorded run, which the completion gate and
+// the scan key on instead of a card row's modification time.
+func cardAssignedRuns(rec *factory.BacklogRecord, cardID string) []string {
+	if rec == nil {
+		return nil
+	}
+	var runs []string
+	for i := range rec.Runtime.Assignments {
+		a := rec.Runtime.Assignments[i]
+		if a.CardID == cardID && strings.TrimSpace(a.RunID) != "" {
+			runs = append(runs, a.RunID)
+		}
+	}
+	return runs
 }
 
 // release settles the gate. The gate's transaction never writes, so
@@ -116,13 +134,15 @@ func todoCardUUID(item *factory.BacklogItem) string {
 // scanApprovalStates reads, once per scan, the leader-approval receipt state
 // of every live queued/picked candidate (REQ-FCR-003). A card with no
 // factory row is not factory-linked and assembles ReceiptGateNone; a card
-// whose receipt verifies against its current factory row assembles
+// whose receipt verifies against its recorded-run factory row assembles
 // ReceiptGateVerified; an absent or non-binding receipt is
 // ReceiptGateUnverified; an unreadable factory state is ReceiptGateUnknown —
-// an unanswerable question, never a close. Read-only and advisory: the
-// archive-moment gate re-verifies inside the lock. The receipt selection is
-// the gate's own (VerifyApprovalReadonly shares findLeaderApprovalPreferringRun),
-// so the scan can never disagree with the close about which receipt judges.
+// an unanswerable question, never a close.
+//
+// The scan opens the factory database STRICTLY READ-ONLY (review P2-2): no
+// DDL, no migration, nothing created — a dry-run against an older-schema
+// store reads it as it stands, and a missing leader_approvals table reads as
+// "no receipts" (unverified), never as a reason to migrate.
 func scanApprovalStates(ctx context.Context, root string, snapshot *factory.BacklogRecord) map[string]factory.ReceiptGateState {
 	states := make(map[string]factory.ReceiptGateState)
 	ids := make([]string, 0, len(snapshot.Items))
@@ -155,7 +175,7 @@ func scanApprovalStates(ctx context.Context, root string, snapshot *factory.Back
 		}
 		return states
 	}
-	db, err := homestate.OpenFactory(root)
+	db, err := homestate.OpenFactoryReadonly(path)
 	if err != nil {
 		for _, id := range ids {
 			states[id] = factory.ReceiptGateUnknown
@@ -163,6 +183,13 @@ func scanApprovalStates(ctx context.Context, root string, snapshot *factory.Back
 		return states
 	}
 	defer func() { _ = db.Close() }()
+	hasApprovals, err := db.FactoryTablePresent(ctx, "leader_approvals")
+	if err != nil {
+		for _, id := range ids {
+			states[id] = factory.ReceiptGateUnknown
+		}
+		return states
+	}
 	for _, id := range ids {
 		var cardUUID string
 		for i := range snapshot.Items {
@@ -171,28 +198,44 @@ func scanApprovalStates(ctx context.Context, root string, snapshot *factory.Back
 				break
 			}
 		}
-		if _, err := db.LatestCardByID(ctx, id); errors.Is(err, homestate.ErrCardNotFound) {
-			// Not factory-linked: the axis does not apply (ReceiptGateNone).
-			continue
-		} else if err != nil {
-			states[id] = factory.ReceiptGateUnknown
+		assignedRuns := cardAssignedRuns(snapshot, id)
+		if !hasApprovals {
+			// An older-schema store: no receipts exist anywhere. A
+			// factory-linked card reads as unverified — never as a
+			// migration trigger.
+			if _, linked, rerr := db.RecordedCardRowReadonly(ctx, id, assignedRuns); rerr != nil {
+				states[id] = factory.ReceiptGateUnknown
+			} else if !linked {
+				continue // not factory-linked: the axis does not apply
+			} else {
+				states[id] = factory.ReceiptGateUnverified
+			}
 			continue
 		}
-		switch err := db.VerifyApprovalReadonly(ctx, id, cardUUID); {
+		switch err := db.VerifyApprovalReadonly(ctx, id, cardUUID, assignedRuns); {
 		case err == nil:
 			states[id] = factory.ReceiptGateVerified
-		case errors.Is(err, homestate.ErrApprovalMissing),
-			errors.Is(err, homestate.ErrApprovalIssuer),
-			errors.Is(err, homestate.ErrApprovalCardMismatch),
-			errors.Is(err, homestate.ErrApprovalRunMismatch),
-			errors.Is(err, homestate.ErrApprovalStale),
-			errors.Is(err, homestate.ErrApprovalHashMismatch):
+		case isApprovalRefusal(err):
 			states[id] = factory.ReceiptGateUnverified
+		case errors.Is(err, homestate.ErrCardNotFound):
+			// Not factory-linked: the axis does not apply (ReceiptGateNone).
+			continue
 		default:
 			states[id] = factory.ReceiptGateUnknown
 		}
 	}
 	return states
+}
+
+// isApprovalRefusal reports whether err is one of the receipt-gate refusal
+// sentinels — an answer about the receipt, not about the database.
+func isApprovalRefusal(err error) bool {
+	return errors.Is(err, homestate.ErrApprovalMissing) ||
+		errors.Is(err, homestate.ErrApprovalIssuer) ||
+		errors.Is(err, homestate.ErrApprovalCardMismatch) ||
+		errors.Is(err, homestate.ErrApprovalRunMismatch) ||
+		errors.Is(err, homestate.ErrApprovalStale) ||
+		errors.Is(err, homestate.ErrApprovalHashMismatch)
 }
 
 // newFactoryApproveCommand is `moai factory approve` — the leader path's
@@ -252,9 +295,14 @@ func newFactoryApproveCommand() *cobra.Command {
 				return err
 			}
 			defer func() { _ = db.Close() }()
-			row, err := db.LatestCardByID(ctx, cardID)
+			// The receipt binds THE NAMED RUN's row — the version and
+			// evidence the leader actually reviewed in that run, never
+			// whichever row happens to be the most recently modified
+			// (review P2-1): approving --run run-old must read run-old's
+			// row or refuse.
+			row, err := db.LoadCard(ctx, runID, cardID)
 			if errors.Is(err, homestate.ErrCardNotFound) {
-				return fmt.Errorf("factory approve: card %s has no factory card row — not factory-linked, nothing to approve", cardID)
+				return fmt.Errorf("factory approve: card %s has no factory card row in run %s — nothing to approve", cardID, runID)
 			}
 			if err != nil {
 				return err
