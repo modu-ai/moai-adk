@@ -393,3 +393,33 @@ GOOS=windows exit 0.
   (the v0.5.0 scope reduction removed the re-entry machinery) and was dropped from
   the entry. Also re-verified: thirteen merge causes (codes 1-13),
   `IntegrationLeaseDefault` 30 min, `merge --no-ff` of the pinned SHA.
+
+### r3 repair round + r4 boundary seal (2026-10-07, leader drain-seal order)
+
+- Operator judged the r3 repair round via AskUserQuestion (2026-10-06); leader endorsed. Repair
+  delegate closed F1–F9 in 8 commits (`a64d899a9`, `da4b801ff`, `7d965da66`, `ee175dfa6`,
+  `965f71190`, `0c1999363`, `40888c431`, `ffeaa3237`) with per-finding RED/GREEN verbatims sealed
+  in `.moai/reports/t1479/card-review-r3-repair-evidence.md` (local-only per the 2026-09-14
+  operator directive; lane ruled keep-local over `-f`). Verification battery all green (factory
+  selectors 185.7s, cli family 579.5s, factory -race 73.8s, cli -race 7.2s after fixing a
+  PRE-EXISTING test-data race in `TestWaitLoopTimesOutNamingHolderAndPosition`, vet/lint/builds 0).
+- r4 independent re-review (sync-auditor): **FAIL @ `ffeaa3237`** — F1/F2/F3/F9 HOLDS (attacked;
+  F1 decisively re-run AFTER the 2026-10-05T09:01Z bomb deadline: full package `ok 347.348s`),
+  F4/F5/F7/F8 hold per their r3 required-fix contracts. **N4 [P1] NEW: the F6 repair's outcome
+  shape violates REQ-MWQ-005** — a renewal-promotion observed past the bound returns SUCCESS
+  keeping the window; SPEC requires release-onward + release naming + non-zero exit (the sibling
+  path implements 005 correctly; the repair's own probe codifies the violating shape).
+- **Leader drain-seal order (2026-10-07): seal at this boundary WITHOUT a repair round.** N4 is
+  recorded as the NEXT-GENERATION MICRO-REPAIR TASK — required shape: the deadline branch judges
+  `AcquiredAt` vs bound, releases onward + exits non-zero when past-bound, the whole judgment
+  lives inside the withdrawal mutation; then rewrite and re-run the F6 probe. Same pattern as
+  t1356/t1500 (repair mints a same-class defect in its own new text — boundary seal prescribed).
+- Non-blocking findings preserved for follow-up cards: N1 [P2] wait-loop busy eviction (budget
+  3.3s at HEAD), N5 [P2] orphan git child outlives a killed holder (bounded by the base-moved
+  gate), N2/N3/N6 [P3], plus the F4 mutation-lock-hold extension (stateLockWaitBudget exposure)
+  and the post-merge check outside the section (pre-existing class).
+- **Receipt gap recorded**: the r4 codex advisory ran via direct read-only `codex exec` (the
+  auditor session had no `mcp__moai__*` surface), `receipts=none` — the codex-required
+  convergence check on the MCP surface is explicitly the NEXT-GENERATION leader's step.
+- F10: `.moai/config/sections/workflow.yaml` uncommitted drift (audit.gates) — untouched,
+  leader-owned disposition before integration.
