@@ -73,6 +73,10 @@ var yamlAuditExceptions = map[string]string{
 	// reason. `harness` stays: LoadHarnessConfig is a dedicated entry point outside
 	// the Loader.Load chain by design, so the registry's loader contract cannot bind it.
 	"harness": "dedicated loader (LoadHarnessConfig, outside Loader.Load by design)",
+	// The protected-zone manifest has strict-decode semantics (unknown key, wrong version
+	// or a malformed entry invalidates the file) that the non-strict Loader.Load chain
+	// cannot express; LoadProtectedZone is its dedicated entry point.
+	"protected-zone": "dedicated loader (LoadProtectedZone, outside Loader.Load by design — strict validation, fail-closed)",
 	// Delegation map is consumed by the orchestrator (CLAUDE.md), not by Go code.
 	"delegation": "orchestrator-consumed delegation map — yaml-only artifact, no Go loader",
 	// Local-tree sections without a Loader.Load struct mapping (real-tree

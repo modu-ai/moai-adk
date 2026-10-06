@@ -38,6 +38,12 @@ var hmpGoLiteralExclusions = map[string]string{
 	// takes the same parse. REQ-HMP-013 targets tool_name branches; this hit
 	// is command-text parsing.
 	"internal/hook/contract_sign_guard.go:bash": "sh|bash|zsh -c indirection parses command TEXT, not tool_name; IsShellTool governs the call site (pre_tool.go)",
+	// The protected-zone shell rule is Bash-only by design (SPEC-SELF-IMPROVE-
+	// PROTECTED-ZONE-001 spec §C.6): PowerShell is a separate matcher block with
+	// a different command syntax, so the rule's tool_name branch parses Bash
+	// command text only and its audit rows record that scope.
+	"internal/hook/pre_tool.go:Bash":             "SPEC-SIPZ §C.6: the protected-zone shell rule is Bash-only by design — PowerShell is a separate matcher, so the branch must not widen to IsShellTool",
+	"internal/hook/protected_zone_shell.go:Bash": "SPEC-SIPZ §C.6: the audit rows record the Bash-only rule's tool; PowerShell never reaches this code",
 }
 
 // hmpWrapperExclusions lists wrapper lines that match tool_name "Bash" without
