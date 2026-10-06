@@ -34,6 +34,18 @@ fi
 PR_NUMBER="$1"
 BRANCH="${2:-main}"
 
+# t1534 gate round: the SSoT keys are BASE-branch patterns (main,
+# release/*) — the caller's $2 is the HEAD branch. Resolve the PR's actual
+# base branch from gh for the SSoT lookup; the handoff keeps reporting the
+# HEAD branch.
+SSOT_BRANCH="$BRANCH"
+PR_BASE="$("$GH" pr view "$PR_NUMBER" --json baseRefName --jq '.baseRefName' 2>/dev/null)" || PR_BASE=""
+[ -n "$PR_BASE" ] || PR_BASE="$BRANCH"
+if [ "$PR_BASE" != "$BRANCH" ]; then
+    SSOT_BRANCH="$PR_BASE"
+    log_step "PR base branch '${PR_BASE}' differs from head '${BRANCH}' — classifying against SSoT key '${SSOT_BRANCH}'"
+fi
+
 GH="${MOAI_CIWATCH_GH:-gh}"
 POLL_INTERVAL="${CIWATCH_POLL_INTERVAL:-30}"
 
@@ -71,16 +83,23 @@ log_step "Watching PR #${PR_NUMBER} on branch '${BRANCH}'"
 _check_bucket() {
     check_name="$1"
     json_file="$2"
-    # t1534 gate round: aggregate EVERY bucket entry for the name — real PR
-    # JSON carries duplicate names (push + PR runs both publish). Worst-case
-    # wins: fail/cancel > pending/absent > pass. Prints ONE verdict per name.
+    # t1534 gate round: aggregate EVERY bucket entry for the name (real PR
+    # JSON carries duplicate names — push + PR runs both publish) and emit
+    # exactly ONE worst-case verdict: fail/cancel > pending/skipping > pass.
+    # The pre-fix awk emitted per-line verdicts AND an END verdict (a
+    # pass+fail pair scored exit 3 = timeout in the reviewer's repro).
     jq -r --arg n "$check_name" \
         '.[] | select(.name==$n) | .bucket // "pending"' "$json_file" \
-        | sort | uniq -c | sort -rn \
-        | awk '$2 == "fail" || $2 == "cancel" { print "fail"; exit }
-               $2 == "pending" { print "pending"; exit }
-               { kept = $2 }
-               END { if (kept != "") print kept }'
+        | awk '
+            function worse(cur, cand) {
+                if (cur == "fail" || cand == "fail") return "fail"
+                if (cur == "pending" || cand == "pending") return "pending"
+                if (cur == "") return cand
+                return cur
+            }
+            { verdict = worse(verdict, $0) }
+            END { print (verdict == "" ? "pending" : verdict) }
+        '
 }
 
 # _check_link extracts the link for a named check from JSON array.
@@ -161,7 +180,7 @@ while true; do
         abort "gh pr checks failed for PR #${PR_NUMBER} — check gh auth and PR number" 1
     fi
 
-    _load_required_contexts "$BRANCH" > "$TMP_SSOT"
+    _load_required_contexts "$SSOT_BRANCH" > "$TMP_SSOT"
 
     # Classify SSoT required checks. t1534 M3: iterate the SSoT list
     # newline-safely (the pre-M3 loop word-split $(_all_check_names),
@@ -205,7 +224,7 @@ while true; do
     _all_check_names "$TMP_JSON" > "$TMP_ALL"
     while IFS= read -r check_name; do
         [ -n "$check_name" ] || continue
-        is_required "$check_name" "$BRANCH" && continue
+        is_required "$check_name" "$SSOT_BRANCH" && continue
         bucket="$(_check_bucket "$check_name" "$TMP_JSON")"
         if [ "$bucket" = "fail" ] || [ "$bucket" = "cancel" ]; then
             aux_fail=$((aux_fail + 1))

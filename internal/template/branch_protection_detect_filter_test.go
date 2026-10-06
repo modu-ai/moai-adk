@@ -3,6 +3,7 @@ package template
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -38,7 +39,12 @@ func TestBranchProtectionDetectFilterCoversParityInput(t *testing.T) {
 	// Same literal the parity test reads (branchProtectionRelPath) — kept
 	// inline to avoid coupling this guard to the other test file's symbols.
 	const parityInput = ".github/branch-protection.json.gtmpl"
-	if !strings.Contains(content, parityInput) {
+	// GATE fix: bare strings.Contains passes even when the filter ENTRY is
+	// commented out (the path string survives in the comment). Assert a
+	// LIST-ENTRY line: optional indent, a `- ` dash, then the quoted path —
+	// a commented entry (`# - '...'`) starts with # and cannot match.
+	entryRe := regexp.MustCompile(`(?m)^\s*-\s*['"]` + regexp.QuoteMeta(parityInput) + `['"]\s*$`)
+	if !entryRe.MatchString(content) {
 		t.Fatalf("detect-filter correspondence violated: %s go_code filter does not cover %s — a PR editing it alone would skip the branch-protection parity guard (AC-CI-012)",
 			ciYml, parityInput)
 	}
