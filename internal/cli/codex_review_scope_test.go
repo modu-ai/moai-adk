@@ -135,6 +135,9 @@ func newCardScopeFixture(t *testing.T) *cardScopeFixture {
 	primary := t.TempDir()
 	cardScopeGit(t, primary, "init", "-q", "-b", "develop")
 	writeCardFile(t, primary, "go.mod", "module example.com/card\n\ngo 1.22\n")
+	// Precondition under test (card t1453): the card diff base is the configured
+	// integration target, so this fixture models a git-flow project (develop).
+	writeGitStrategyFixture(t, primary, "git-flow", "develop")
 	cardScopeGit(t, primary, "add", "-A")
 	cardScopeGit(t, primary, "commit", "-q", "-m", "base")
 	// file F: foreign WIP sitting in the primary-role tree (uncommitted).
@@ -173,7 +176,7 @@ func TestCardMergeBaseConfiguredMain(t *testing.T) {
 			}
 			cardScopeGit(t, f.card, "branch", "main", local)
 			cardScopeGit(t, f.card, "update-ref", "refs/remotes/origin/main", remote)
-			writeWorktreeBaseBranchConfig(t, f.card, "main")
+			writeGitStrategyFixture(t, f.card, "git-flow", "main")
 			got, err := cardMergeBase(f.card)
 			if err != nil || got != f.head {
 				t.Fatalf("configured main base = %q, %v; want newest ancestor %s", got, err, f.head)

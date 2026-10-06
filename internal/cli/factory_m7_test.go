@@ -384,7 +384,9 @@ func TestSD_AC018_ParentCheckoutUntouched(t *testing.T) {
 	// a tracked config file), so the fixture commits it rather than leaving
 	// it as parent dirt.
 	sdGitFlowDevelop(t, root)
-	fcGit(t, root, "add", filepath.Join(".moai", "config", "sections", "git-strategy.yaml"))
+	// -f: todoFixture's git-flow precondition seed keeps .moai/config/ out of
+	// git status through .git/info/exclude (card t1453).
+	fcGit(t, root, "add", "-f", filepath.Join(".moai", "config", "sections", "git-strategy.yaml"))
 	fcGit(t, root, "commit", "-q", "-m", "git-flow config")
 	// The gitignore mirrors the real checkout's treatment of the paths the
 	// cycle touches: .moai/state/ and .moai/reports/* are ignored there

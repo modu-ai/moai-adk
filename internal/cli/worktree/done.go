@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
@@ -25,7 +26,8 @@ This command performs the completion workflow:
 1. Refuse while a live session is anchored in the worktree (tree-local
    session registry check; --force overrides with a warning)
 2. Card worktrees (WT- branches): refuse until the card's merge commit is
-   confirmed on origin/develop (git fetch + rev-list machine check)
+   confirmed on the remote integration branch, origin/<integration target>
+   (origin/develop under git-flow; git fetch + rev-list machine check)
 3. Remove the worktree at the specified branch
 4. Optionally delete the feature branch (with --delete-branch)
 
@@ -275,10 +277,25 @@ func refuseL1SessionWorktree(path string) error {
 // package imports this one).
 const cardBranchPrefix = "WT-"
 
-// landingBaseBranch is the integration branch the origin-landing machine
-// check fetches and compares against (git-flow: develop; see
-// .claude/rules/local/gitflow-lane-protocol.md §2/§4).
-const landingBaseBranch = "develop"
+// landingBase resolves the integration branch the origin-landing machine
+// check fetches and compares against: the configured integration target (the
+// interpretation table behind config.LoadGitFlowIntegrationConfig — develop
+// under git-flow, main under github-flow), read from the project root of the
+// tree being disposed. An unresolvable root or an empty target is an error:
+// the caller refuses, it never substitutes a branch. The second result names
+// the config value the base came from, for the MERGE_NOT_ON_ORIGIN refusal.
+func landingBase(targetPath string) (base, provenance string, err error) {
+	root, err := gitMainRootFromTargetFunc(targetPath)
+	if err != nil {
+		return "", "", fmt.Errorf("cannot resolve the project root: %w", err)
+	}
+	cfg := config.LoadGitFlowIntegrationConfig(root)
+	base = strings.TrimSpace(cfg.IntegrationTarget)
+	if base == "" {
+		return "", "", fmt.Errorf("no integration target configured under %s: %s", root, cfg.EmptyTargetGuidance(root, ""))
+	}
+	return base, cfg.TargetProvenance(), nil
+}
 
 // landingGitCmd is the git execution seam for the origin-landing machine
 // check, anchored on the TARGET worktree path — CWD-independent, like
@@ -319,9 +336,9 @@ func parseLeftRightCounts(out string) (left, right int, err error) {
 
 // originLandingRefusal runs the origin-landing machine check of
 // REQ-FLA-012 on a card branch and returns nil only when the branch's
-// commits are confirmed reachable from origin/<landingBaseBranch>: it
-// fetches origin develop, then counts `git rev-list --count --left-right
-// origin/develop...<branch>` — right count 0 means every commit of the
+// commits are confirmed reachable from origin/<integration target>: it
+// fetches that branch, then counts `git rev-list --count --left-right
+// origin/<target>...<branch>` — right count 0 means every commit of the
 // card branch side is on the remote. Under the gitflow --no-ff merge
 // discipline the branch tip is a parent of the card's merge commit, so the
 // tip's reachability IS the merge commit's landing. A fetch failure
@@ -329,6 +346,11 @@ func parseLeftRightCounts(out string) (left, right int, err error) {
 // is not a confirmed one. No flag bypasses the refusal (REQ-FLA-015), and
 // no CI status is consulted: CI judgment stays leader-side (design D4).
 func originLandingRefusal(branchName, targetPath string) error {
+	landingBaseBranch, baseProvenance, err := landingBase(targetPath)
+	if err != nil {
+		return landingRefusalError("ORIGIN_LANDING_UNCONFIRMED",
+			fmt.Sprintf("%v — the landing cannot be confirmed; disposal refused fail-closed", err))
+	}
 	if _, err := landingGitCmd(targetPath, "fetch", "origin", landingBaseBranch); err != nil {
 		return landingRefusalError("ORIGIN_LANDING_UNCONFIRMED",
 			fmt.Sprintf("git fetch origin %s failed — the landing cannot be confirmed; disposal refused fail-closed\n  git error: %v",
@@ -346,10 +368,17 @@ func originLandingRefusal(branchName, targetPath string) error {
 		return landingRefusalError("ORIGIN_LANDING_UNCONFIRMED", parseErr.Error()+" — disposal refused fail-closed")
 	}
 	if right > 0 {
+		// Layer 1 (ancestry) says the tip is not on the remote base. A
+		// squash-merged card never is, so layers 2 (cumulative patch-id) and 3
+		// (merged PR via gh pr) decide before the refusal stands — the shared
+		// predicate in landing_predicate.go (SPEC-GITHUB-FLOW-DEFAULT-001 D-5).
+		if landed, _ := landedBeyondAncestry(targetPath, branchName, "origin/"+landingBaseBranch); landed {
+			return nil
+		}
 		return landingRefusalError("MERGE_NOT_ON_ORIGIN",
-			fmt.Sprintf("%s carries %d commit(s) not on origin/%s — disposal refused until the card merge lands on the remote\n"+
+			fmt.Sprintf("%s carries %d commit(s) not on origin/%s (landing base origin/%s from %s) — disposal refused until the card merge lands on the remote\n"+
 				"  git rev-list --count --left-right origin/%s...%s => %q (%d left-only / %d right-only commits)",
-				branchName, right, landingBaseBranch, landingBaseBranch, branchName, strings.TrimSpace(out), left, right))
+				branchName, right, landingBaseBranch, landingBaseBranch, baseProvenance, landingBaseBranch, branchName, strings.TrimSpace(out), left, right))
 	}
 	return nil
 }

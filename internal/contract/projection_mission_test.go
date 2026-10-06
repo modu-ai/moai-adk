@@ -62,7 +62,7 @@ func signedValidMissionFixture() *Contract {
 // return is the proof limb 1 asks for.
 func projectFixture(t *testing.T, c *Contract) mission.SealedContract {
 	t.Helper()
-	mc, err := ProjectToMission(c)
+	mc, err := ProjectToMission(c, "develop")
 	if err != nil {
 		t.Fatalf("ProjectToMission: unexpected error: %v", err)
 	}
@@ -113,7 +113,7 @@ func validDecisionInputs(sealed mission.SealedContract, now time.Time) (mission.
 // subtests are the criterion's five limbs, in order.
 func TestContractProjectsOntoMissionValidator(t *testing.T) {
 	fixture := signedValidMissionFixture()
-	projected, err := ProjectToMission(fixture)
+	projected, err := ProjectToMission(fixture, "develop")
 
 	t.Run("limb 1 signed-valid contract is not refused incomplete_contract", func(t *testing.T) {
 		if err != nil {
@@ -195,7 +195,7 @@ func TestContractProjectsOntoMissionValidator(t *testing.T) {
 	t.Run("limb 4 inner wildcard and unmapped fields fail closed naming the field; card does not trigger", func(t *testing.T) {
 		inner := signedValidMissionFixture()
 		inner.Ownership.Write = []string{"internal/*/x.go"}
-		_, err := ProjectToMission(inner)
+		_, err := ProjectToMission(inner, "develop")
 		if err == nil {
 			t.Fatalf("inner-wildcard glob internal/*/x.go: expected a fail-closed error")
 		}
@@ -228,7 +228,7 @@ func TestContractProjectsOntoMissionValidator(t *testing.T) {
 		if !slices.Contains(DeliberatelyNotProjected, "card") {
 			t.Fatalf("card is missing from the deliberately-not-projected list %v", DeliberatelyNotProjected)
 		}
-		if _, err := ProjectToMission(fixture); err != nil {
+		if _, err := ProjectToMission(fixture, "develop"); err != nil {
 			t.Fatalf("contract carrying card: unexpected error: %v", err)
 		}
 	})

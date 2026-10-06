@@ -90,17 +90,18 @@ func TestDoctorGitStrategyWorkflow(t *testing.T) {
 		}
 	})
 
-	// AC-GWS-007: an empty environment key under gitlab-flow resolves the
-	// empty caller-fallback neutral; the check still reports OK with the
-	// fallback named.
-	t.Run("gitlab-flow empty environment names the fallback", func(t *testing.T) {
+	// AC-GWS-007: an empty environment key under gitlab-flow resolves no
+	// target. Card t1453 M1b: the base-branch consumers refuse that instead of
+	// falling back to the caller's branch, so the check now WARNs (was OK with
+	// the fallback named) and names the key to set.
+	t.Run("gitlab-flow empty environment warns naming the key", func(t *testing.T) {
 		root := t.TempDir()
 		writeGitStrategyBody(t, root,
 			"git_strategy:\n    mode: manual\n    manual:\n        workflow: gitlab-flow\n        environment: \"\"\n")
 
 		check := checkGitStrategyWorkflow(root, false)
-		if check.Status != uikit.CheckOK {
-			t.Errorf("status = %v, want OK on gitlab-flow with an empty environment key", check.Status)
+		if check.Status != uikit.CheckWarn {
+			t.Errorf("status = %v, want WARN on gitlab-flow with an empty environment key", check.Status)
 		}
 		if !strings.Contains(check.Message, "gitlab-flow") {
 			t.Errorf("message %q does not name the flow", check.Message)
