@@ -10,11 +10,15 @@
 package cli
 
 import (
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/factorylane"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -607,4 +611,160 @@ func TestReviewReversedBundleLeasesInBundleOrder(t *testing.T) {
 	if got := fbLeasedCard(t, root, "lane-1"); got != "t1" {
 		t.Fatalf("lane-1's lease = %q, want t1 (the follower follows its merged head)", got)
 	}
+}
+
+// TestFactoryCompletePRMergePinnedToCheckTimeTip — gate r10: the merge
+// request re-read the card tip at merge time, so a commit landing AFTER the
+// readiness check was read as "the verified tip" and auto-merged unverified.
+// The tip is captured AT the check; a tip or PR head that moved afterwards
+// refuses, and the request pins to the captured SHA.
+func TestFactoryCompletePRMergePinnedToCheckTimeTip(t *testing.T) {
+	f := ghfNew(t, ghfOpts{syncStatus: "complete"})
+	d := newGHDouble(t, f)
+	// The pull request's head follows the real remote branch tip.
+	d.headOidFn = func() string { return f.remoteBranchTip(t) }
+	prev := factoryPRReadiness
+	factoryPRReadiness = func(out io.Writer, root string, card homestate.Card, lane, cardBranch, target string) (factorylane.MergeCheckRun, error) {
+		run, err := prev(out, root, card, lane, cardBranch, target)
+		if err == nil {
+			// A commit lands after the check, moving the card tip.
+			if werr := os.WriteFile(filepath.Join(f.wt, "late.txt"), []byte("late\n"), 0o600); werr != nil {
+				t.Fatal(werr)
+			}
+			fcGit(t, f.wt, "add", "-A")
+			fcGit(t, f.wt, "commit", "-q", "-m", "post-check commit")
+		}
+		return run, err
+	}
+	t.Cleanup(func() { factoryPRReadiness = prev })
+
+	if _, err := ghfComplete(t); err == nil {
+		t.Fatal("the delivery auto-merged a commit that landed after the readiness check")
+	}
+	if d.count("pr", "merge") != 0 {
+		t.Fatalf("the merge request ran for the post-check commit; calls: %v", d.calls)
+	}
+	if c := fcCard(t, f.root, "t1"); c.State == homestate.CardPROpen {
+		t.Fatal("pr-open was recorded for a post-check tip")
+	}
+}
+
+// TestReviewHubWaitCoversLaterSharers — gate r10: the hub wait scanned only
+// queue-EARLIER entries, so a queue-LATER card already working a shared hub
+// did not hold the candidate and both lanes edited the same hub files. An
+// active (lease-holding) sharer holds the candidate regardless of queue
+// direction; a later card still waiting its turn holds nothing.
+func TestReviewHubWaitCoversLaterSharers(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	for _, id := range []string{"t1", "t2"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	}
+	fbSeedFiles(t, store, "t1", t1533HubA, t1533HubB)
+	fbSeedFiles(t, store, "t2", t1533HubB)
+	live := fcNow.Add(time.Hour).Format(time.RFC3339Nano)
+	// t1 holds the row its earlier creation left (hint-less); t2 jumped
+	// ahead and is in flight on the shared hub.
+	fcPlace(t, root,
+		homestate.Card{CardID: "t1", State: homestate.CardPicked},
+		homestate.Card{CardID: "t2", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", LeaseExpiresAt: live},
+	)
+	t.Chdir(root)
+
+	queueRec, err := store.Load()
+	if err != nil {
+		t.Fatalf("load the queue: %v", err)
+	}
+	db := fcOpen(t, root)
+	rows, err := db.ListCards(t.Context(), fcRun)
+	if err != nil {
+		t.Fatalf("list the records: %v", err)
+	}
+	_ = db.Close()
+	merged := factoryMergedCards(rows)
+
+	blocker, wait := factoryHubWaitUnmerged(queueRec, rows, merged, "t1")
+	if !wait || blocker != "t2" {
+		t.Fatalf("wait(t1) = (%q, %v), want (t2, true) — the later in-flight sharer of hub B holds the candidate", blocker, wait)
+	}
+
+	// The control: a later sharer still waiting its turn holds nothing.
+	fcSetCardState(t, root, "t2", homestate.CardPicked)
+	rows, err = fcOpen(t, root).ListCards(t.Context(), fcRun)
+	if err != nil {
+		t.Fatalf("re-list the records: %v", err)
+	}
+	merged = factoryMergedCards(rows)
+	if blocker, wait = factoryHubWaitUnmerged(queueRec, rows, merged, "t1"); wait {
+		t.Fatalf("wait(t1) = (%q, true), want false — a queue-later unstarted sharer must not invert the queue", blocker)
+	}
+}
+
+// TestReviewWaitFollowsTheAfterRelation — gate r11/r12: the hub wait judged
+// queue positions alone, and against a stored or generated AFTER relation it
+// ordered the pair BACKWARDS — t1.after=t2 (explicit or generated) with both
+// picked left t1 waiting on t2's merge while t2 was skipped by the
+// queue-order wait on t1, and no card ever leased again. A sharer whose own
+// hint names the candidate is ordered BEHIND it by that relation: the
+// candidate leads, and the wait never flips it.
+func TestReviewWaitFollowsTheAfterRelation(t *testing.T) {
+	t.Run("explicit-after", func(t *testing.T) {
+		root, store := fcFixture(t)
+		fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+		for _, id := range []string{"t1", "t2"} {
+			fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		}
+		fbSeedFiles(t, store, "t1", t1533HubA)
+		fbSeedFiles(t, store, "t2", t1533HubA)
+		sdRegisterLane(t, root, "lane-1")
+		t.Chdir(root)
+
+		// t1's EXPLICIT after names t2; t2 carries no hint.
+		if _, _, err := runFactory(t, "assign", "t1", "--after", "t2", "--run", fcRun); err != nil {
+			t.Fatalf("assign t1: %v", err)
+		}
+		fcPlace(t, root, homestate.Card{CardID: "t2", State: homestate.CardPicked})
+
+		sdLaneEnv(t, "lane-1", "")
+		if got := fbLeasedCard(t, root, "lane-1"); got != "t2" {
+			t.Fatalf("lane-1's lease = %q, want t2 — the after relation puts t2 first", got)
+		}
+		fcSetCardState(t, root, "t2", homestate.CardMergedLocal)
+		if got := fbLeasedCard(t, root, "lane-1"); got != "t1" {
+			t.Fatalf("lane-1's lease = %q, want t1 (the follower follows its merged predecessor)", got)
+		}
+	})
+
+	t.Run("generated-after", func(t *testing.T) {
+		root, store := fcFixture(t)
+		fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+		for _, id := range []string{"t1", "t2"} {
+			fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		}
+		fbSeedFiles(t, store, "t1", t1533HubA)
+		fbSeedFiles(t, store, "t2", t1533HubA)
+		sdRegisterLane(t, root, "lane-1")
+		t.Chdir(root)
+
+		// t2 is recorded first (no recorded sharer, no hint); t1's record
+		// lands later and the generation chains it after t2.
+		if _, _, err := runFactory(t, "assign", "t2", "--run", fcRun); err != nil {
+			t.Fatalf("assign t2: %v", err)
+		}
+		if _, _, err := runFactory(t, "assign", "t1", "--run", fcRun); err != nil {
+			t.Fatalf("assign t1: %v", err)
+		}
+		if c := fcCard(t, root, "t1"); c.HintAfter != "t2" {
+			t.Fatalf("fixture: t1 = after=%q, want the generated t2", c.HintAfter)
+		}
+
+		sdLaneEnv(t, "lane-1", "")
+		if got := fbLeasedCard(t, root, "lane-1"); got != "t2" {
+			t.Fatalf("lane-1's lease = %q, want t2 — the generated relation puts t2 first", got)
+		}
+		fcSetCardState(t, root, "t2", homestate.CardMergedLocal)
+		if got := fbLeasedCard(t, root, "lane-1"); got != "t1" {
+			t.Fatalf("lane-1's lease = %q, want t1 (the follower follows its merged predecessor)", got)
+		}
+	})
 }

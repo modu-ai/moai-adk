@@ -166,7 +166,8 @@ type ghDouble struct {
 	created   bool
 	state     string // OPEN | MERGED | CLOSED
 	mergeOid  string
-	headOid   string // the head the PR reports; default the card tip
+	headOid   string        // the head the PR reports; default the card tip
+	headOidFn func() string // when set, re-read per view (a moving remote head)
 	viewErr   error
 	viewJunk  string
 	mergeErr  error
@@ -217,6 +218,9 @@ func ghFlag(args []string, name string) string {
 
 func (d *ghDouble) run(ctx context.Context, _ string, args ...string) ([]byte, error) {
 	d.calls = append(d.calls, append([]string(nil), args...))
+	if d.headOidFn != nil {
+		d.headOid = d.headOidFn()
+	}
 	if lock, err := factory.ReadIntegrationLock(d.f.root); err == nil && lock.Held() {
 		d.windowSeenHeld = true
 	}

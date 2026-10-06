@@ -336,9 +336,9 @@ func factoryMergedCards(rows []homestate.Card) map[string]bool {
 
 // factoryHubWaitUnmerged reports whether cardID still waits behind an
 // unmerged hub-chain predecessor, naming the blocking card: any recorded,
-// open queue card EARLIER in queue order whose files share a hub path with
-// the candidate and whose record has not reached the merge (card t1533,
-// card-review r2f finding 4).
+// open queue card whose files share a hub path with the candidate and whose
+// record has not reached the merge — queue-earlier sharers in any open
+// state, queue-LATER sharers while actually in flight (review-gate r10).
 // The stored hint names one predecessor — the tail at the card's own record
 // creation — but a candidate whose files cross several hub paths has a
 // predecessor per hub path, and waiting on the named one alone leased the
@@ -381,7 +381,11 @@ func factoryHubWaitUnmerged(queueRec *factory.BacklogRecord, cards []homestate.C
 		recorded[c.CardID] = true
 		rowOf[c.CardID] = c
 	}
-	for i := 0; i < candIdx; i++ {
+	candRow := rowOf[cardID]
+	for i := range queueRec.Items {
+		if i == candIdx {
+			continue
+		}
 		it := &queueRec.Items[i]
 		if it.Issuance == nil || !recorded[it.ID] || mergedLocal[it.ID] {
 			continue
@@ -399,10 +403,28 @@ func factoryHubWaitUnmerged(queueRec *factory.BacklogRecord, cards []homestate.C
 		// reverse queue order made the head wait on its own follower by the
 		// queue-position rule while the follower waited on the head by the
 		// bundle rule, and not even the bundle's first card leased. The
-		// bundle orders its members; only a member EARLIER in the bundle
-		// holds the candidate.
-		if candRow, ok := rowOf[cardID]; ok && candRow.BundleID != "" {
+		// bundle orders its members; a member EARLIER in the bundle holds
+		// the candidate, a later one never does — in either queue direction.
+		if candRow.BundleID != "" {
 			if predRow, ok := rowOf[it.ID]; ok && predRow.BundleID == candRow.BundleID && candRow.BundleOrder < predRow.BundleOrder {
+				continue
+			}
+		}
+		// The wait never flips an EXISTING after relation (card t1533,
+		// review-gate r11/r12): a sharer whose own stored hint names the
+		// candidate — an explicit --after or a generated chain edge — is
+		// ordered BEHIND it by that relation. The candidate leads, whatever
+		// the queue positions say; otherwise the pair waited on each other
+		// and no card ever leased again.
+		if predRow, ok := rowOf[it.ID]; ok && predRow.HintAfter == cardID {
+			continue
+		}
+		// A queue-LATER sharer holds the candidate only while it is actually
+		// in flight (card t1533, review-gate r10): the wait no longer scans
+		// queue-earlier entries alone, and a later card still waiting its
+		// turn must not invert the queue's priority.
+		if i > candIdx {
+			if predRow, ok := rowOf[it.ID]; !ok || !homestate.IsLeaseHoldingState(predRow.State) {
 				continue
 			}
 		}

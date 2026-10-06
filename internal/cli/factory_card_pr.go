@@ -191,8 +191,10 @@ func factoryCompleteGitHubFlow(ctx context.Context, out io.Writer, root, cardID,
 // factoryPRReadiness runs the condition triple (sync audit PASS record,
 // conflict-free merge-tree, tree identity) against the integration target's
 // remote ref — the ref the PR will merge into — and records the run. It never
-// merges and takes no window.
-func factoryPRReadiness(out io.Writer, root string, card homestate.Card, lane, cardBranch, target string) (factorylane.MergeCheckRun, error) {
+// merges and takes no window. A seam var so tests can act at the check
+// moment (card t1533, review-gate r10: the merge pins to the tip THIS check
+// verified).
+var factoryPRReadiness = func(out io.Writer, root string, card homestate.Card, lane, cardBranch, target string) (factorylane.MergeCheckRun, error) {
 	wt := card.WorktreePath
 	ref := target
 	if _, err := factoryGitRead(wt, "fetch", "origin", target); err != nil {
@@ -244,6 +246,14 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 		return fmt.Errorf("factory complete: refused — the repository has no remote named origin to push %s to", cardBranch)
 	}
 	// REQ-GFD-005: the readiness check precedes the PR; a failing check opens nothing.
+	// The card tip is captured AT the check (card t1533, review-gate r10):
+	// the merge request pins to the commit the triple verified, and a
+	// commit that lands afterwards is refused, never auto-merged.
+	checkedTip, err := factoryGitRead(wt, "rev-parse", "HEAD")
+	if err != nil {
+		return fmt.Errorf("factory complete: read the card tip: %w", err)
+	}
+	checkedTip = strings.TrimSpace(checkedTip)
 	run, err := factoryPRReadiness(out, root, card, lane, cardBranch, target)
 	if err != nil {
 		return fmt.Errorf("factory complete: the merge-readiness check could not run: %w", err)
@@ -289,23 +299,25 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 	if pr.BaseRefName != target {
 		return fmt.Errorf("factory complete: %s; pull request #%d targets %q, not the integration target %q", stays, pr.Number, pr.BaseRefName, target)
 	}
-	// The merge request is pinned to the verified card tip (card t1533,
-	// review-gate r7): a pull request whose head moved off the card's commit
-	// — a concurrent push, a re-target — must not merge unverified code. The
-	// head is verified against the worktree's tip AND the request carries
-	// --match-head-commit, so a change landing between the check and the
-	// merge is refused by gh itself.
-	tip, err := factoryGitRead(wt, "rev-parse", "HEAD")
+	// The merge request is pinned to the tip the readiness check verified
+	// (card t1533, review-gate r7/r10): a pull request whose head moved off
+	// that commit, or a card tip that moved after the check, is refused —
+	// never merged — and the request itself carries --match-head-commit so a
+	// change landing between the check and the merge is refused by gh too.
+	nowTip, err := factoryGitRead(wt, "rev-parse", "HEAD")
 	if err != nil {
 		return fmt.Errorf("factory complete: %s; read the card tip: %w", stays, err)
 	}
-	tip = strings.TrimSpace(tip)
-	if pr.HeadRefOid != tip {
-		return fmt.Errorf("factory complete: %s; pull request #%d heads %s, not the verified card tip %s", stays, pr.Number, dash(pr.HeadRefOid), tip)
+	nowTip = strings.TrimSpace(nowTip)
+	if nowTip != checkedTip {
+		return fmt.Errorf("factory complete: %s; the card tip moved to %s after the readiness check verified %s — re-run complete", stays, dash(nowTip), checkedTip)
+	}
+	if pr.HeadRefOid != checkedTip {
+		return fmt.Errorf("factory complete: %s; pull request #%d heads %s, not the verified card tip %s", stays, pr.Number, dash(pr.HeadRefOid), checkedTip)
 	}
 	mergeFlag := factoryPRMergeFlag(method)
 	if !strings.EqualFold(pr.State, "MERGED") {
-		if _, err := factoryGHCall(wt, "pr", "merge", strconv.Itoa(pr.Number), "--auto", mergeFlag, "--match-head-commit", tip); err != nil {
+		if _, err := factoryGHCall(wt, "pr", "merge", strconv.Itoa(pr.Number), "--auto", mergeFlag, "--match-head-commit", checkedTip); err != nil {
 			return fmt.Errorf("factory complete: %s; pull request #%d is open but the auto-merge request failed: %w", stays, pr.Number, err)
 		}
 	}
