@@ -227,7 +227,9 @@ func factoryRefuseForeignChain(rows []homestate.Card, lane string, cards []strin
 // exclude names cards that are never candidates — the bundle load passes its
 // own member set, because a member is ordered by the bundle and a head made
 // to wait on its follower refused the load with a dependency opposite to the
-// explicit order (card t1533, review-gate r8).
+// explicit order (card t1533, review-gate r8) — and, by the same rule's
+// general form (review-gate r16), a sharer the candidate's stored relations
+// order BEHIND the candidate is never a candidate either.
 func factoryHubChainFields(queueRec *factory.BacklogRecord, cards []homestate.Card, cardID string, exclude map[string]bool) homestate.CardFields {
 	hub := make(map[string]bool)
 	for _, p := range homestate.HubFiles() {
@@ -253,13 +255,24 @@ func factoryHubChainFields(queueRec *factory.BacklogRecord, cards []homestate.Ca
 		return homestate.CardFields{}
 	}
 	recorded := make(map[string]bool, len(cards))
+	rowOf := make(map[string]homestate.Card, len(cards))
 	for _, c := range cards {
 		recorded[c.CardID] = true
+		rowOf[c.CardID] = c
 	}
 	var tail *string
 	for i := range queueRec.Items {
 		it := &queueRec.Items[i]
 		if it.ID == cardID || it.Issuance == nil || exclude[it.ID] {
+			continue
+		}
+		// The generated edge never reverses or closes an existing after
+		// relation (card t1533, review-gate r16 — the generation side of the
+		// r14 rule): a sharer whose own hint chain reaches the candidate is
+		// ordered BEHIND it, so naming it as the candidate's predecessor
+		// stored the exact reversal and the cycle went into the record with
+		// the row.
+		if predRow, ok := rowOf[it.ID]; ok && factoryAfterChainReaches(rowOf, predRow.CardID, cardID) {
 			continue
 		}
 		shares := false
@@ -332,6 +345,23 @@ func factoryMergedCards(rows []homestate.Card) map[string]bool {
 		}
 	}
 	return merged
+}
+
+// factoryAfterChainReaches reports whether the stored after chain that
+// opens at start reaches cardID — start is ordered behind cardID, directly
+// or through the chain its hint opens. The walk is bounded by a visited set,
+// so a cycle already present in the stored rows cannot spin it.
+func factoryAfterChainReaches(rowOf map[string]homestate.Card, start, cardID string) bool {
+	seen := make(map[string]bool, len(rowOf))
+	cur, ok := rowOf[start]
+	for ok && !seen[cur.CardID] {
+		if cur.HintAfter == cardID {
+			return true
+		}
+		seen[cur.CardID] = true
+		cur, ok = rowOf[cur.HintAfter]
+	}
+	return false
 }
 
 // factoryHubWaitUnmerged reports whether cardID still waits behind an
@@ -410,13 +440,14 @@ func factoryHubWaitUnmerged(queueRec *factory.BacklogRecord, cards []homestate.C
 				continue
 			}
 		}
-		// The wait never flips an EXISTING after relation (card t1533,
-		// review-gate r11/r12): a sharer whose own stored hint names the
-		// candidate — an explicit --after or a generated chain edge — is
-		// ordered BEHIND it by that relation. The candidate leads, whatever
-		// the queue positions say; otherwise the pair waited on each other
-		// and no card ever leased again.
-		if predRow, ok := rowOf[it.ID]; ok && predRow.HintAfter == cardID {
+		// The wait never contradicts an EXISTING after relation (card
+		// t1533, review-gate r11-r15): a sharer whose own hint chain opens
+		// at the candidate — an explicit --after, a generated chain edge, or
+		// a hop further down the chain — is ordered BEHIND the candidate by
+		// that relation, directly or transitively. The candidate leads;
+		// adding the wait on its behalf would only close a cycle into an
+		// acyclic chain, and no card ever leased again when it did.
+		if predRow, ok := rowOf[it.ID]; ok && factoryAfterChainReaches(rowOf, predRow.CardID, cardID) {
 			continue
 		}
 		// A queue-LATER sharer holds the candidate only while it is actually

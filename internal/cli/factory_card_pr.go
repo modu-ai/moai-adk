@@ -277,7 +277,48 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 	}
 	stays := fmt.Sprintf("card %s stays in merging", card.CardID)
 
-	if _, err := factoryGitRead(wt, "push", "origin", cardBranch); err != nil {
+	// The lease is re-verified IMMEDIATELY BEFORE every remote mutation
+	// (card t1533, review-gate r13): the entry check guarded only the
+	// readiness stage, and a lease that expired mid-delivery still ran the
+	// push, the pull-request create, and the auto-merge request before the
+	// state write refused. Owner, version, and expiry must hold at the
+	// moment of each mutation.
+	baseline := cur.Version
+	verifyLease := func(stage string) error {
+		now, err := db.LoadCard(ctx, runID, card.CardID)
+		if err != nil {
+			return fmt.Errorf("factory complete: %s; re-read the card: %w", stage, err)
+		}
+		if now.Version != baseline {
+			return fmt.Errorf("factory complete: %s; card %s moved to v%d under another writer — re-run complete", stage, card.CardID, now.Version)
+		}
+		if holder := strings.TrimSpace(now.LeaseHolder); holder == "" || holder != lane {
+			return fmt.Errorf("factory complete: %s; card %s is merging under lease holder %s; %s cannot retry the delivery", stage, card.CardID, dash(holder), dash(lane))
+		}
+		if now.LeaseExpired(factoryCardNow()) {
+			return fmt.Errorf("factory complete: %s; card %s's merging lease held by %s expired at %s; the expiry must be collected before the delivery is retried", stage, card.CardID, dash(now.LeaseHolder), now.LeaseExpiresAt)
+		}
+		return nil
+	}
+	if err := verifyLease("the push"); err != nil {
+		return err
+	}
+
+	// Every remote mutation re-checks the tip first AND is pinned to the
+	// verified commit (card t1533, review-gate r17): a commit landing after
+	// the readiness check was pushed and opened as a pull request before the
+	// late merge check refused it. The push re-reads the tip, refuses a
+	// moved one, and sends exactly checkedTip — a newer local commit stays
+	// local.
+	nowTip, err := factoryGitRead(wt, "rev-parse", "HEAD")
+	if err != nil {
+		return fmt.Errorf("factory complete: %s; read the card tip: %w", stays, err)
+	}
+	nowTip = strings.TrimSpace(nowTip)
+	if nowTip != checkedTip {
+		return fmt.Errorf("factory complete: %s; the card tip moved to %s after the readiness check verified %s — re-run complete", stays, dash(nowTip), checkedTip)
+	}
+	if _, err := factoryGitRead(wt, "push", "origin", checkedTip+":refs/heads/"+cardBranch); err != nil {
 		return fmt.Errorf("factory complete: %s; the push of %s failed: %w", stays, cardBranch, err)
 	}
 	pr, found, err := factoryReadPR(wt, cardBranch)
@@ -285,6 +326,9 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 		return fmt.Errorf("factory complete: %s; the pull request could not be read, so none is opened: %w", stays, err)
 	}
 	if !found {
+		if err := verifyLease("the pull request"); err != nil {
+			return err
+		}
 		title, body := factoryPRText(wt, card, target)
 		if _, err := factoryGHCall(wt, "pr", "create", "--base", target, "--head", cardBranch, "--title", title, "--body", body); err != nil {
 			return fmt.Errorf("factory complete: %s; opening the pull request failed: %w", stays, err)
@@ -304,7 +348,7 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 	// that commit, or a card tip that moved after the check, is refused —
 	// never merged — and the request itself carries --match-head-commit so a
 	// change landing between the check and the merge is refused by gh too.
-	nowTip, err := factoryGitRead(wt, "rev-parse", "HEAD")
+	nowTip, err = factoryGitRead(wt, "rev-parse", "HEAD")
 	if err != nil {
 		return fmt.Errorf("factory complete: %s; read the card tip: %w", stays, err)
 	}
@@ -314,6 +358,9 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 	}
 	if pr.HeadRefOid != checkedTip {
 		return fmt.Errorf("factory complete: %s; pull request #%d heads %s, not the verified card tip %s", stays, pr.Number, dash(pr.HeadRefOid), checkedTip)
+	}
+	if err := verifyLease("the auto-merge request"); err != nil {
+		return err
 	}
 	mergeFlag := factoryPRMergeFlag(method)
 	if !strings.EqualFold(pr.State, "MERGED") {

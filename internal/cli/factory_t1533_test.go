@@ -641,11 +641,180 @@ func TestFactoryCompletePRMergePinnedToCheckTimeTip(t *testing.T) {
 	if _, err := ghfComplete(t); err == nil {
 		t.Fatal("the delivery auto-merged a commit that landed after the readiness check")
 	}
+	// The moved commit must not leave the machine either: no push, no
+	// pull request (review-gate r17 — the push is pinned to the verified
+	// tip like every other remote mutation).
+	if tip := f.remoteBranchTip(t); tip != "" {
+		t.Fatalf("the post-check commit was pushed to the remote before any refusal: %s", tip)
+	}
+	if d.created {
+		t.Fatalf("the post-check commit opened a pull request before any refusal; calls: %v", d.calls)
+	}
 	if d.count("pr", "merge") != 0 {
 		t.Fatalf("the merge request ran for the post-check commit; calls: %v", d.calls)
 	}
 	if c := fcCard(t, f.root, "t1"); c.State == homestate.CardPROpen {
 		t.Fatal("pr-open was recorded for a post-check tip")
+	}
+}
+
+// TestFactoryCompleteRechecksLeaseBeforeRemoteMutations — gate r13: the
+// lease-expiry check guarded only the readiness stage, so a lease that
+// expired DURING the delivery still ran the push, the pull-request create,
+// and the auto-merge request before the state write refused (the gate's
+// repro: merge calls=1). Owner, version, and expiry are re-verified
+// immediately before every remote mutation.
+func TestFactoryCompleteRechecksLeaseBeforeRemoteMutations(t *testing.T) {
+	f := ghfNew(t, ghfOpts{syncStatus: "complete", state: homestate.CardMerging})
+	d := newGHDouble(t, f)
+	prev := factoryPRReadiness
+	factoryPRReadiness = func(out io.Writer, root string, card homestate.Card, lane, cardBranch, target string) (factorylane.MergeCheckRun, error) {
+		run, err := prev(out, root, card, lane, cardBranch, target)
+		if err == nil {
+			// The lease expires mid-delivery, after the readiness check.
+			expired := fcNow.Add(-time.Minute).Format(time.RFC3339Nano)
+			db := fcOpen(t, f.root)
+			if _, uerr := db.DB.Exec(`UPDATE cards SET lease_expires_at = ? WHERE card_id = 't1'`, expired); uerr != nil {
+				t.Fatalf("expire the lease mid-delivery: %v", uerr)
+			}
+			_ = db.Close()
+		}
+		return run, err
+	}
+	t.Cleanup(func() { factoryPRReadiness = prev })
+
+	if _, err := ghfComplete(t); err == nil {
+		t.Fatal("the delivery completed although the lease expired mid-flight")
+	}
+	if tip := f.remoteBranchTip(t); tip != "" {
+		t.Fatalf("the expired delivery pushed %s before any refusal", tip)
+	}
+	if d.created {
+		t.Fatalf("the expired delivery created the pull request before any refusal; calls: %v", d.calls)
+	}
+	if d.count("pr", "merge") != 0 {
+		t.Fatalf("the expired delivery requested auto-merge before any refusal; calls: %v", d.calls)
+	}
+	if c := fcCard(t, f.root, "t1"); c.State != homestate.CardMerging {
+		t.Fatalf("card = %s, want still merging (the refusal changed nothing)", c.State)
+	}
+}
+
+// TestReviewHubWaitNeverClosesACycle — gate r14/r15: in an INDIRECT after
+// chain (t1→t2→t3 waits, t1 and t3 sharing a hub) the queue-order hub wait
+// added t3→t1 and closed a cycle into an existing ACYCLIC relation — no
+// card ever leased again. A sharer ordered behind the candidate THROUGH THE
+// CHAIN its hint opens never holds the candidate either: the wait follows
+// the stored relations instead of contradicting them, directly or
+// transitively.
+func TestReviewHubWaitNeverClosesACycle(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	for _, id := range []string{"t1", "t2", "t3"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	}
+	fbSeedFiles(t, store, "t1", t1533HubA)
+	fbSeedFiles(t, store, "t2", t1533HubA)
+	fbSeedFiles(t, store, "t3", t1533HubA)
+	// The explicit acyclic chain: t1 waits on t2 waits on t3.
+	fcPlace(t, root,
+		homestate.Card{CardID: "t1", State: homestate.CardPicked, HintAfter: "t2"},
+		homestate.Card{CardID: "t2", State: homestate.CardPicked, HintAfter: "t3"},
+		homestate.Card{CardID: "t3", State: homestate.CardPicked},
+	)
+	t.Chdir(root)
+
+	queueRec, err := store.Load()
+	if err != nil {
+		t.Fatalf("load the queue: %v", err)
+	}
+	db := fcOpen(t, root)
+	rows, err := db.ListCards(t.Context(), fcRun)
+	if err != nil {
+		t.Fatalf("list the records: %v", err)
+	}
+	_ = db.Close()
+	merged := factoryMergedCards(rows)
+
+	if blocker, wait := factoryHubWaitUnmerged(queueRec, rows, merged, "t3"); wait {
+		t.Fatalf("wait(t3) = (%q, true), want false — t1 and t2 are ordered behind t3 by the chain; the wait must not close t3 back onto them", blocker)
+	}
+}
+
+// TestReviewGenerationNeverReversesAnAfterChain — gate r16: the GENERATION
+// side of the same rule. With t1.after=t2 recorded and t2 not yet recorded,
+// the generated hint named t1 as t2's predecessor — the exact reversal of
+// the stored relation — and the cycle went into the record with the row.
+// Generation excludes the candidate's after-successors, direct and
+// transitive, exactly like the wait does.
+func TestReviewGenerationNeverReversesAnAfterChain(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	for _, id := range []string{"t1", "t2"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	}
+	fbSeedFiles(t, store, "t1", t1533HubA)
+	fbSeedFiles(t, store, "t2", t1533HubA)
+	// t1's EXPLICIT after names t2, which has no record row yet.
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked, HintAfter: "t2"})
+	t.Chdir(root)
+
+	queueRec, err := store.Load()
+	if err != nil {
+		t.Fatalf("load the queue: %v", err)
+	}
+	db := fcOpen(t, root)
+	rows, err := db.ListCards(t.Context(), fcRun)
+	if err != nil {
+		t.Fatalf("list the records: %v", err)
+	}
+	_ = db.Close()
+
+	if hf := factoryHubChainFields(queueRec, rows, "t2", nil); hf.HintAfter != nil {
+		t.Fatalf("generation for t2 = after %q, want none — t1 is ordered behind t2; naming t1 as t2's predecessor stores the reversal", *hf.HintAfter)
+	}
+}
+
+// TestReviewNominatedCreationFollowsTheAfterRelation — gate r16, the CLI
+// half: the nominated creation of the unrecorded successor leased it
+// straight through, while the recorded predecessor waited on ITS merge —
+// the pair ordered in a circle at the record. The creation's generated
+// hint follows the stored relation (t1 waits on t2, so t2 leads with no
+// hint), and the follower comes after the merge.
+func TestReviewNominatedCreationFollowsTheAfterRelation(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	for _, id := range []string{"t1", "t2"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	}
+	fbSeedFiles(t, store, "t1", t1533HubA)
+	fbSeedFiles(t, store, "t2", t1533HubA)
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	// t1's EXPLICIT after names t2; t2 has no record row yet.
+	if _, _, err := runFactory(t, "assign", "t1", "--after", "t2", "--run", fcRun); err != nil {
+		t.Fatalf("assign t1: %v", err)
+	}
+
+	sdLaneEnv(t, "lane-1", "")
+	if _, _, err := runFactory(t, "next", "--card", "t2", "--run", fcRun); err != nil {
+		t.Fatalf("next --card t2: %v — the successor leads its own predecessor", err)
+	}
+	c := fcCard(t, root, "t2")
+	if c.HintAfter != "" {
+		t.Fatalf("t2's after = %q, want empty — the generated tail must not reverse the stored relation", c.HintAfter)
+	}
+	if c.State != homestate.CardLeased || c.LeaseHolder != "lane-1" {
+		t.Fatalf("t2 = %s holder=%q, want leased to lane-1", c.State, c.LeaseHolder)
+	}
+	if c := fcCard(t, root, "t1"); c.HintAfter != "t2" || c.State != homestate.CardPicked {
+		t.Fatalf("t1 = %s after=%q, want the untouched follower", c.State, c.HintAfter)
+	}
+	// The successor merges; the follower follows.
+	fcSetCardState(t, root, "t2", homestate.CardMergedLocal)
+	if got := fbLeasedCard(t, root, "lane-1"); got != "t1" {
+		t.Fatalf("lane-1's lease = %q, want t1 (the follower follows its merged predecessor)", got)
 	}
 }
 
