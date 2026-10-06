@@ -204,10 +204,20 @@ func OpenFactoryPath(path string) (*FactoryDB, error) {
 // table as empty data, never as a reason to migrate. The path must already
 // exist; a missing file is an error here, so callers stat before they call.
 func OpenFactoryReadonly(path string) (*FactoryDB, error) {
+	// A missing file is refused here rather than created: the read-only
+	// surface observes a store that exists, it never bootstraps one.
+	if _, statErr := os.Stat(path); statErr != nil {
+		return nil, fmt.Errorf("open factory database read-only: %w", statErr)
+	}
 	values := url.Values{}
-	values.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", factoryBusyTimeoutDefault.Milliseconds()))
+	// query_only refuses every SQL write — DDL included — at the pragma
+	// layer, so no schema statement can ever run through this handle.
+	// mode=ro is deliberately NOT set: a WAL database cannot be opened
+	// through a plain read-only connection when its -shm is absent, and the
+	// scan must read a live store. The no-migration guarantee comes from
+	// never executing the schema DDL on this handle at all.
 	values.Add("_pragma", "query_only(ON)")
-	values.Add("_txlock", "immediate")
+	values.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", factoryBusyTimeoutDefault.Milliseconds()))
 	p := filepath.ToSlash(path)
 	if !strings.HasPrefix(p, "/") {
 		p = "/" + p
