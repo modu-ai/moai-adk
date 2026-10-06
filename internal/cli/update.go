@@ -513,30 +513,27 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// before its version-match early return so an up-to-date project heals too.
 	healManifestBestEffort(".", out, cmd.ErrOrStderr())
 
-// REQ-020 migration: remove project-side common skills/agents now that
-	// the user-asset phase above confirmed their counterparts (the ordering
-	// IS the per-asset gate — removal never precedes the install it
-	// replaces). Runs beside the (terminated) mirror repair's old position,
-	// before the archive contract below.
+	// SPEC-USER-ASSET-INSTALL-001 (M3): the user-asset phase — refresh
+	// (REQ-008), the selection-based prune (REQ-009), REQ-023 divergence
+	// handling, the REQ-011 summary. It runs BEFORE the project phase so the
+	// upgrade first-install precedes the migration removal (REQ-024's
+	// upgrade-arm ordering; design §2.4).
+	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+		if err := runUserAssetUpdatePhase(homeDir, out); err != nil {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: user-asset phase failed (continuing with the project phase): %v\n", err)
+		}
+	}
+
+	// Item 5 (fix round 3): the migration runs AFTER the user-asset phase —
+	// on a first update the counterpart cannot be verified until the install
+	// has landed, so install + verification MUST precede the per-file
+	// removal (the gate's real-runUpdate repro: old project skills survived
+	// because the migration ran first and saw no counterparts).
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
 		if err := migrateProjectCommonAssets(".", homeDir, nil, func(format string, args ...interface{}) {
 			_, _ = fmt.Fprintf(out, format+"\n", args...)
 		}); err != nil {
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: migration warning: %v\n", err)
-		}
-	}
-
-	// SPEC-USER-ASSET-INSTALL-001 (M3): the user-asset phase — refresh
-	// (REQ-008), the selection-based prune (REQ-009), REQ-023 divergence
-	// handling, the REQ-011 summary. It runs BEFORE the project phase so the
-	// upgrade first-install precedes the migration removal (REQ-024's
-	// upgrade-arm ordering; design §2.4). Placement beside the mirror repair
-	// below follows the same not-behind-the-early-return reasoning the
-	// wiring refresh carries: an up-to-date project still owes its user
-	// folders the refresh.
-	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
-		if err := runUserAssetUpdatePhase(homeDir, out); err != nil {
-			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: user-asset phase failed (continuing with the project phase): %v\n", err)
 		}
 	}
 

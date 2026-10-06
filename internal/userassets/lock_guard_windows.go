@@ -12,30 +12,26 @@ import (
 // marker file whose removal the next acquirer retries around. The O_EXCL
 // create of the lock itself is already atomic on Windows, so the guard only
 // needs to bound the reclaim window, which the retry loop tolerates.
-var guardFd *os.File
+// Item 3 (fix round 3): the handle is returned to its own call (no package
+// global); item 4: the marker acquisition respects the same deadline.
 
-func acquireGuard(path string) error {
-	fd, err := os.OpenFile(path+".guard", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
-	if err != nil {
-		// Held by another acquirer: poll briefly rather than fail.
-		deadline := time.Now().Add(2 * time.Second)
-		for time.Now().Before(deadline) {
-			time.Sleep(10 * time.Millisecond)
-			if fd, err = os.OpenFile(path+".guard", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644); err == nil {
-				guardFd = fd
-				return nil
-			}
+func acquireGuard(path string, timeout time.Duration) (func(), error) {
+	deadline := time.Now().Add(timeout)
+	var fd *os.File
+	var err error
+	for {
+		fd, err = os.OpenFile(path+".guard", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		if err == nil {
+			break
 		}
-		return err
+		if time.Now().After(deadline) {
+			return nil, err
+		}
+		time.Sleep(5 * time.Millisecond)
 	}
-	guardFd = fd
-	return nil
-}
-
-func releaseGuard() {
-	if guardFd != nil {
-		_ = guardFd.Close()
-		_ = os.Remove(guardFd.Name() + ".guard")
-		guardFd = nil
+	release := func() {
+		_ = fd.Close()
+		_ = os.Remove(path + ".guard")
 	}
+	return release, nil
 }

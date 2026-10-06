@@ -52,8 +52,9 @@ func acquireUserLockStale(path string, timeout, staleAfter time.Duration) (*User
 	// manifest-mutation mutual exclusion (21-32 concurrent owners
 	// reproduced by the gate).
 	guardPath := strings.TrimSuffix(path, ".lock") + ".acquire-guard"
-	if err := acquireGuard(guardPath); err != nil {
-		return nil, fmt.Errorf("userassets: acquire guard: %w", err)
+	releaseGuard, guardErr := acquireGuard(guardPath, timeout)
+	if guardErr != nil {
+		return nil, fmt.Errorf("userassets: acquire guard: %w", guardErr)
 	}
 	defer releaseGuard()
 	deadline := time.Now().Add(timeout)

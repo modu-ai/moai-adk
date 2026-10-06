@@ -87,8 +87,19 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, out fmt.Stringer, r
 				untouched++
 				return nil
 			}
-			if currentBytes, hashErr := os.ReadFile(p); hashErr == nil &&
-				entry.TemplateHash != "" && manifest.HashBytes(currentBytes) != entry.TemplateHash {
+			// Item 1 (fix round 3): the deletion preconditions are
+			// MANDATORY — a failed read or an empty recorded template hash
+			// PRESERVES the file (never falls through to deletion). Deletion
+			// requires: bytes readable AND template hash recorded AND
+			// current bytes matching it AND the user counterpart confirmed.
+			currentBytes, readErr := os.ReadFile(p)
+			if readErr != nil || entry.TemplateHash == "" {
+				preserved++
+				migrationPreservedProjectFiles[p] = true
+				report("  migration: preserved (cannot verify against the template — read failed or no template hash): %s", relSlash)
+				return nil
+			}
+			if manifest.HashBytes(currentBytes) != entry.TemplateHash {
 				preserved++
 				migrationPreservedProjectFiles[p] = true
 				report("  migration: preserved (bytes differ from the template — treated as user-modified): %s", relSlash)

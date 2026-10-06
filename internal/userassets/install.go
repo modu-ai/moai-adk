@@ -147,8 +147,26 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 					differs = true
 				}
 			}
-			if differs && len(selection) == 0 {
-				selection = journal.BundlesSelection
+			// Item 6 (fix round 3): distinguish the STORED selection from
+			// the user's EXPLICIT new request. When the caller passed no
+			// selection, or passed exactly the manifest's recorded list
+			// (moai update passes it verbatim), the caller expressed no new
+			// intent — the journal's differing delta IS the interrupted
+			// request and is restored. A caller selection that DIFFERS from
+			// the stored list is a new request and supersedes the journal.
+			if differs {
+				callerIsStored := len(selection) == len(manifest.Bundles)
+				if callerIsStored {
+					for _, b := range selection {
+						if !current[b] {
+							callerIsStored = false
+							break
+						}
+					}
+				}
+				if callerIsStored || len(selection) == 0 {
+					selection = journal.BundlesSelection
+				}
 			}
 		}
 	}
@@ -496,6 +514,18 @@ func (in *Installer) reconcileJournal(j *PendingJournal, manifest *Manifest, roo
 					res.Failures = append(res.Failures, FileOutcome{Path: e.Path, Reason: backupErr.Error()})
 				}
 			}
+			// Item 7 (fix round 3): KEEP the manifest record carrying the
+			// journal's original hash + install source — the user's edit is
+			// preserved on disk AND the file stays tracked, so future runs
+			// classify it as REQ-023 divergence (with backup) instead of
+			// flipping to a collision after the journal cleanup. B6 merge:
+			// unknown fields survive.
+			fe := manifest.Files[e.Path]
+			fe.SHA256 = e.ExpectedSHA256
+			fe.Bundle = e.Bundle
+			fe.InstalledAt = e.InstalledAt
+			fe.MoaiVersion = e.MoaiVersion
+			manifest.Files[e.Path] = fe
 			res.DivergencePreserved++
 			res.Divergences = append(res.Divergences, e.Path)
 		} else {
