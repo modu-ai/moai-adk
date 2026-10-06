@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -327,5 +328,99 @@ func TestFactoryApproveIssuance(t *testing.T) {
 	}
 	if !strings.Contains(doneOut, "done t1") {
 		t.Errorf("done output = %q", doneOut)
+	}
+}
+
+// Regression pin for review P1-1 (card t1538): the close's verification must
+// read the archive-moment row even when a factory transition commits while
+// the done command is in flight. A concurrent writer holds the factory write
+// lock, bumps the card to version 2, and commits mid-command; the done's
+// gate blocks on the lock, then reads the bumped row and refuses the
+// version-1 receipt as stale.
+func TestLeaderReceiptGateReadsArchiveMomentRow(t *testing.T) {
+	root, store := fcFixture(t)
+	uuid := fcLinkedCard(t, root, store, "t1", "factory-linked card")
+	fcPlaceFactoryCard(t, root, "t1", 1, "sha-t1", "2026-09-26T00:00:00Z")
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: uuid, RunID: fcRun, CardID: "t1", FactoryVersion: 1,
+		EvidenceHash: "sha-t1", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+
+	path, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocker, err := homestate.OpenFactoryPath(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = blocker.Close() }()
+	ctx := context.Background()
+	tx, err := blocker.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	committed := make(chan error, 1)
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		if _, err := tx.ExecContext(ctx, `UPDATE cards SET version=2, state='needs-decision', updated_at='2026-09-26T09:00:00Z' WHERE card_id='t1'`); err != nil {
+			committed <- err
+			_ = tx.Rollback()
+			return
+		}
+		committed <- tx.Commit()
+	}()
+	// Let the blocker take the write lock before the done starts, so the
+	// done's gate is the one that waits.
+	time.Sleep(50 * time.Millisecond)
+
+	_, stderr, err := runTodo(t, "done", "t1")
+	if err == nil {
+		t.Fatal("done closed on a version-1 receipt while the row was bumped mid-flight")
+	}
+	if !strings.Contains(stderr, "leader approval") {
+		t.Errorf("stderr %q does not name the leader approval reason", stderr)
+	}
+	if !fcLiveItem(t, store, "t1") {
+		t.Fatal("the refused done archived the card")
+	}
+	if err := <-committed; err != nil {
+		t.Fatalf("concurrent bump: %v", err)
+	}
+	if c := fcCard(t, root, "t1"); c.Version != 2 {
+		t.Fatalf("bump did not land: version=%d", c.Version)
+	}
+}
+
+// Regression pin for review P1-2 (card t1538): only a MISSING factory
+// database exempts the gate. A database that cannot even be stat'ed (here:
+// permission denied on its directory) is a database the close cannot verify
+// against — the close is refused, never silently completed unchecked.
+func TestLeaderReceiptGateRefusesUnstatableFactoryDB(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("permission bits do not bind root")
+	}
+	root, store := fcFixture(t)
+	_ = fcLinkedCard(t, root, store, "t1", "factory-linked card")
+	fcPlaceFactoryCard(t, root, "t1", 1, "sha-t1", "2026-09-26T00:00:00Z")
+
+	factoryDir, err := homestate.FactoryDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(factoryDir, 0o000); err != nil {
+		t.Fatalf("chmod factory dir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(factoryDir, 0o700) })
+
+	_, stderr, err := runTodo(t, "done", "t1")
+	if err == nil {
+		t.Fatal("done completed while the factory database could not be read")
+	}
+	if !strings.Contains(stderr, "leader approval") {
+		t.Errorf("stderr %q does not name the leader approval reason", stderr)
+	}
+	if !fcLiveItem(t, store, "t1") {
+		t.Fatal("the refused done archived the card")
 	}
 }

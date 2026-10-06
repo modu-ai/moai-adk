@@ -389,18 +389,23 @@ func todoAutoDoneSHAReachable(sha, ref string) factory.AutoDoneTri {
 	return factory.AutoDoneUnknown
 }
 
-// applyAutoDoneCloses archives the planned closes in one locked Mutate. A
+// applyAutoDoneCloses archives the planned closes in one locked write. A
 // planned close whose card moved or vanished between snapshot and lock is
 // downgraded to a skip (query-inconclusive) rather than refusing the whole
-// scan; a store-level failure (lock, unreadable engine) refuses everything
-// and is the scan-cannot-run case.
+// scan; a store-level failure (lock, unreadable engine, unreadable factory
+// state) refuses everything and is the scan-cannot-run case.
 //
 // Two re-verification layers run inside the lock (SPEC-FACTORY-COMPLETION-RECOVERY-001
 // REQ-FCR-004): the snapshot comparison (UUID, body, state, SPEC, landing)
 // and — for factory-linked cards, only when all five match — the receipt's
-// four bindings re-verified against the archive-moment factory row inside a
-// factory write transaction held across the archive, serialized with
-// concurrent factory transitions.
+// four bindings re-verified against the archive-moment factory row. The
+// gate's factory write transaction is held across verification AND the queue
+// write's persistence (LockedBacklog.Mutate saves before it returns; the
+// gate releases after), so a concurrent factory transition cannot interleave
+// between the recheck and the record landing. There is no per-card commit:
+// the transaction never writes, so a close can never persist while being
+// reported as skipped — a close either persists under the gate and is
+// reported closed, or the whole mutation is discarded.
 func applyAutoDoneCloses(ctx context.Context, root string, store *factory.BacklogStore, outcomes []autoDoneOutcome) ([]autoDoneOutcome, error) {
 	hasCloses := false
 	for _, o := range outcomes {
@@ -412,57 +417,51 @@ func applyAutoDoneCloses(ctx context.Context, root string, store *factory.Backlo
 	if !hasCloses {
 		return outcomes, nil
 	}
-	err := store.Mutate(func(rec *factory.BacklogRecord) error {
-		for k := range outcomes {
-			if !outcomes[k].closed {
-				continue
-			}
-			at := -1
-			for i := range rec.Items {
-				if rec.Items[i].ID == outcomes[k].id {
-					at = i
-					break
+	err := store.WithLock(func(l *factory.LockedBacklog) error {
+		gate, gateErr := holdDoneApprovalGate(ctx, root)
+		if gateErr != nil {
+			// The factory state cannot be verified against: fail the scan
+			// rather than closing factory-linked cards unchecked.
+			return gateErr
+		}
+		defer gate.release()
+		return l.Mutate(func(rec *factory.BacklogRecord) error {
+			for k := range outcomes {
+				if !outcomes[k].closed {
+					continue
+				}
+				at := -1
+				for i := range rec.Items {
+					if rec.Items[i].ID == outcomes[k].id {
+						at = i
+						break
+					}
+				}
+				if at < 0 {
+					// The queue changed between snapshot and lock; this scan's
+					// facts for the card are stale.
+					outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
+					continue
+				}
+				cur := rec.Items[at]
+				if !autoDoneSnapshotMatches(&outcomes[k], &cur) {
+					// REQ-FCR-004: the row was held, edited, re-identified,
+					// re-stated, or re-landed between snapshot and lock — the
+					// downgrade carries the existing inconclusive reason.
+					outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
+					continue
+				}
+				if verr := gate.verifyForClose(ctx, outcomes[k].id, outcomes[k].snapUUID); verr != nil {
+					outcomes[k].downgrade(autoDoneReceiptDowngradeReason(verr))
+					continue
+				}
+				if err := rec.ArchiveCard(outcomes[k].id); err != nil {
+					outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
+					continue
 				}
 			}
-			if at < 0 {
-				// The queue changed between snapshot and lock; this scan's
-				// facts for the card are stale.
-				outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
-				continue
-			}
-			cur := rec.Items[at]
-			if !autoDoneSnapshotMatches(&outcomes[k], &cur) {
-				// REQ-FCR-004: the row was held, edited, re-identified,
-				// re-stated, or re-landed between snapshot and lock — the
-				// downgrade carries the existing inconclusive reason.
-				outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
-				continue
-			}
-			gate, gateErr := holdDoneApprovalGate(ctx, root, outcomes[k].id)
-			if gateErr != nil {
-				// The factory state could not be read: an unanswerable
-				// question is a skip, never a close.
-				outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
-				continue
-			}
-			if verr := gate.verify(ctx, outcomes[k].snapUUID); verr != nil {
-				gate.refuse()
-				outcomes[k].downgrade(autoDoneReceiptDowngradeReason(verr))
-				continue
-			}
-			if err := rec.ArchiveCard(outcomes[k].id); err != nil {
-				gate.refuse()
-				outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
-				continue
-			}
-			// Settle the factory transaction only after the archive it
-			// guarded landed in the record.
-			if cerr := gate.commit(); cerr != nil {
-				outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
-				continue
-			}
-		}
-		return nil
+			return nil
+		})
 	})
 	if err != nil {
 		return nil, fmt.Errorf("todo auto-done: %w", err)

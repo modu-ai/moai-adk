@@ -80,7 +80,7 @@ type LeaderApproval struct {
 // is the backlog identity; a verifier that cannot know it (the factory row
 // carries no uuid) passes "" and the uuid axis is skipped rather than failed
 // — the CLI surfaces, which do know it, always pass it. ownerLabel is the
-// factory row's performing owner: a receipt IssuerED by that owner is
+// factory row's performing owner: a receipt issued by that owner is
 // refused wherever it is presented (REQ-FCR-005 — performer ≠ approver; the
 // role marker is data, and this comparison is the gate's own), skipped only
 // when the row names no owner.
@@ -105,20 +105,6 @@ func (a LeaderApproval) VerifyBinding(cardUUID, runID string, version int64, evi
 	}
 	return nil
 }
-
-const leaderApprovalsDDL = `
-CREATE TABLE IF NOT EXISTS leader_approvals (
-  card_uuid TEXT NOT NULL,
-  run_id TEXT NOT NULL,
-  card_id TEXT NOT NULL,
-  factory_version INTEGER NOT NULL,
-  evidence_hash TEXT NOT NULL,
-  issuer TEXT NOT NULL,
-  issuer_role TEXT NOT NULL,
-  issued_at TEXT NOT NULL,
-  PRIMARY KEY(card_uuid, run_id)
-);
-`
 
 // IssueLeaderApproval records the leader's evidence-review receipt. The
 // leader path is the only caller (REQ-FCR-014): a receipt carrying the
@@ -161,7 +147,8 @@ func scanLeaderApproval(row rowScanner) (LeaderApproval, error) {
 }
 
 // FindLeaderApproval reads the most recent receipt issued for a card uuid,
-// across every run. Read-only.
+// across every run and with no run preference. Read-only; the verification
+// paths use findLeaderApprovalPreferringRun instead.
 func (f *FactoryDB) FindLeaderApproval(ctx context.Context, cardUUID string) (LeaderApproval, error) {
 	a, err := scanLeaderApproval(f.DB.QueryRowContext(ctx,
 		`SELECT card_uuid,run_id,card_id,factory_version,evidence_hash,issuer,issuer_role,issued_at FROM leader_approvals WHERE card_uuid=? ORDER BY issued_at DESC LIMIT 1`, cardUUID))
@@ -185,6 +172,20 @@ func findLeaderApprovalForCardTx(ctx context.Context, q queryRower, runID, cardI
 	return a, err
 }
 
+// findLeaderApprovalPreferringRun selects the receipt a verification judges:
+// the one bound to the named current run wins over a newer receipt minted
+// against an older run, and among same-run receipts the latest issued_at
+// wins. Shared by the gate and the read-only scan path, so the two can never
+// disagree about which receipt they are looking at.
+func findLeaderApprovalPreferringRun(ctx context.Context, q queryRower, cardUUID, runID string) (LeaderApproval, error) {
+	a, err := scanLeaderApproval(q.QueryRowContext(ctx,
+		`SELECT card_uuid,run_id,card_id,factory_version,evidence_hash,issuer,issuer_role,issued_at FROM leader_approvals WHERE card_uuid=? ORDER BY (run_id=?) DESC, issued_at DESC LIMIT 1`, cardUUID, runID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return LeaderApproval{}, ErrApprovalMissing
+	}
+	return a, err
+}
+
 // LatestCardByID reads a card's most recently updated factory row across all
 // runs — the card's current factory engagement. Read-only. ErrCardNotFound
 // when the card has no factory row (not factory-linked).
@@ -197,26 +198,39 @@ func (f *FactoryDB) LatestCardByID(ctx context.Context, cardID string) (Card, er
 	return c, err
 }
 
-// ApprovalGate is the serialization point a backlog close verifies its
-// receipt at: a factory write transaction (the DSN opens transactions
-// IMMEDIATE) held across the close, so a concurrent factory transition
-// cannot interleave between the archive-moment verification and the close —
-// it waits on the write lock, and the close's verification reads the row
-// only after the transition has settled. Hold → Verify → settle (Commit
-// after the guarded close lands, Rollback on any refusal or close failure).
-type ApprovalGate struct {
-	tx     *sql.Tx
-	card   Card
-	linked bool
-	done   bool
+// VerifyApprovalReadonly is the scan-time counterpart of the gate: the same
+// row read and the same receipt selection as the archive-moment gate, outside
+// any transaction. Its verdict is advisory — the gate is authoritative.
+func (f *FactoryDB) VerifyApprovalReadonly(ctx context.Context, cardID, cardUUID string) error {
+	row, err := f.LatestCardByID(ctx, cardID)
+	if err != nil {
+		return err
+	}
+	a, err := findLeaderApprovalPreferringRun(ctx, f.DB, cardUUID, row.RunID)
+	if err != nil {
+		return err
+	}
+	return a.VerifyBinding(cardUUID, row.RunID, row.Version, row.EvidenceSHA, row.OwnerLabel)
 }
 
-// HoldApprovalGate opens the gate for a queue card. A card with no factory
-// row is not factory-linked; the gate returns unlinked and Verify is a
-// no-op — the completion surface behaves exactly as before (REQ-FCR-002's
-// scope sentence). The caller MUST settle the gate (Commit or Rollback) in
-// every path.
-func (f *FactoryDB) HoldApprovalGate(ctx context.Context, cardID string) (*ApprovalGate, error) {
+// ApprovalGate is the serialization point a backlog close verifies its
+// receipt at: a factory write transaction (the DSN opens transactions
+// IMMEDIATE) held across the close's PERSISTENCE, so a concurrent factory
+// transition cannot interleave between the archive-moment verification and
+// the queue write — it waits on the write lock, and the close's
+// verification reads rows only after the transition has settled. The
+// transaction never writes, so the gate settles with Rollback on every path
+// (after a refusal, after a failure, and after the guarded mutation has
+// persisted — for a read-only transaction rollback and commit are
+// equivalent, and rollback cannot fail the close it guarded).
+type ApprovalGate struct {
+	tx   *sql.Tx
+	done bool
+}
+
+// HoldApprovalGate opens the gate. The caller MUST settle it (Commit or
+// Rollback) on every path.
+func (f *FactoryDB) HoldApprovalGate(ctx context.Context) (*ApprovalGate, error) {
 	var tx *sql.Tx
 	if err := retryFactoryBusy(ctx, func() error {
 		var err error
@@ -225,51 +239,41 @@ func (f *FactoryDB) HoldApprovalGate(ctx context.Context, cardID string) (*Appro
 	}); err != nil {
 		return nil, err
 	}
-	gate := &ApprovalGate{tx: tx}
-	c, err := loadLatestCardByIDTx(ctx, tx, cardID)
-	if errors.Is(err, ErrCardNotFound) {
-		return gate, nil
-	}
-	if err != nil {
-		_ = tx.Rollback()
-		return nil, err
-	}
-	gate.card, gate.linked = c, true
-	return gate, nil
+	return &ApprovalGate{tx: tx}, nil
 }
 
-// Linked reports whether the gated card has a factory row.
-func (g *ApprovalGate) Linked() bool { return g.linked }
-
-// Card is the factory row the gate read inside its transaction — the
-// archive-moment state the verification binds against.
-func (g *ApprovalGate) Card() Card { return g.card }
-
-// Verify checks the receipt for a factory-linked card against the row the
-// gate's transaction read. The full quadruple binding is checked: the card
-// uuid the backlog close knows, the run, the factory version, and the
-// evidence hash — all read from the archive-moment row (REQ-FCR-002a,
-// REQ-FCR-004).
-func (g *ApprovalGate) Verify(ctx context.Context, cardUUID string) error {
-	if !g.linked {
-		return nil
+// Row reads the archive-moment factory row for cardID inside the gate's
+// transaction. linked=false when the card has no factory row — the card is
+// not factory-linked and the receipt gate does not apply (REQ-FCR-002's
+// scope sentence).
+func (g *ApprovalGate) Row(ctx context.Context, cardID string) (card Card, linked bool, err error) {
+	c, err := loadLatestCardByIDTx(ctx, g.tx, cardID)
+	if errors.Is(err, ErrCardNotFound) {
+		return Card{}, false, nil
 	}
-	// A card can carry receipts for several runs (it was re-dispatched after
-	// an earlier run). The receipt bound to the card's CURRENT run is the
-	// one that matters: it wins over a newer receipt minted against an old
-	// run, and among same-run receipts the latest issued_at wins.
-	a, err := scanLeaderApproval(g.tx.QueryRowContext(ctx,
-		`SELECT card_uuid,run_id,card_id,factory_version,evidence_hash,issuer,issuer_role,issued_at FROM leader_approvals WHERE card_uuid=? ORDER BY (run_id=?) DESC, issued_at DESC LIMIT 1`, cardUUID, g.card.RunID))
-	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("%w: card %s needs a leader approval receipt to complete", ErrApprovalMissing, g.card.CardID)
+	if err != nil {
+		return Card{}, false, err
+	}
+	return c, true, nil
+}
+
+// Verify checks the receipt bound to cardUUID against the archive-moment
+// row. The receipt bound to the row's CURRENT run is preferred — a newer
+// receipt minted against an older run never shadows it — and the full
+// quadruple binding plus the performer check run here (REQ-FCR-002a,
+// REQ-FCR-004, REQ-FCR-005).
+func (g *ApprovalGate) Verify(ctx context.Context, card Card, cardUUID string) error {
+	a, err := findLeaderApprovalPreferringRun(ctx, g.tx, cardUUID, card.RunID)
+	if errors.Is(err, ErrApprovalMissing) {
+		return fmt.Errorf("%w: card %s needs a leader approval receipt to complete", ErrApprovalMissing, card.CardID)
 	}
 	if err != nil {
 		return err
 	}
-	return a.VerifyBinding(cardUUID, g.card.RunID, g.card.Version, g.card.EvidenceSHA, g.card.OwnerLabel)
+	return a.VerifyBinding(cardUUID, card.RunID, card.Version, card.EvidenceSHA, card.OwnerLabel)
 }
 
-// Commit settles the gate after the close it guards has landed.
+// Commit settles the gate by committing its (read-only) transaction.
 func (g *ApprovalGate) Commit() error {
 	if g.done {
 		return nil
@@ -278,9 +282,9 @@ func (g *ApprovalGate) Commit() error {
 	return g.tx.Commit()
 }
 
-// Rollback settles the gate without committing — every refusal and every
-// close failure takes this path, and the transaction wrote nothing either
-// way.
+// Rollback settles the gate without committing. Because the transaction
+// never writes, this is the settle path on EVERY exit: refusal, failure,
+// and after the guarded mutation has persisted alike.
 func (g *ApprovalGate) Rollback() error {
 	if g.done {
 		return nil

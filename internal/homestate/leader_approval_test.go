@@ -115,9 +115,9 @@ func TestLeaderApprovalIssuanceLeaderOnly(t *testing.T) {
 }
 
 // HoldApprovalGate is the serialization point: a factory write transaction
-// held across a backlog close, so the archive-moment verification cannot
-// interleave with a factory transition. A card with no factory row is not
-// factory-linked — the gate does not apply.
+// held across a backlog close's persistence, so the archive-moment
+// verification cannot interleave with a factory transition. A card with no
+// factory row is not factory-linked — the gate does not apply.
 func TestApprovalGateLinkedAndUnlinked(t *testing.T) {
 	db := frOpen(t)
 	repo := frNewRepo(t, false)
@@ -125,15 +125,19 @@ func TestApprovalGateLinkedAndUnlinked(t *testing.T) {
 	c := Card{RunID: frRun, CardID: "gated", State: CardMergedLocal, Version: 1, OwnerLabel: "worker-1", WorktreePath: repo.Dir, MergeSHA: repo.Merge, EvidenceSHA: repo.Commit}
 	frPlace(t, db, c)
 
-	gate, err := db.HoldApprovalGate(ctx, "absent")
+	gate, err := db.HoldApprovalGate(ctx)
 	if err != nil {
-		t.Fatalf("hold for absent card: %v", err)
+		t.Fatalf("hold: %v", err)
 	}
-	if gate.Linked() {
-		t.Fatal("a card with no factory row read as factory-linked")
+	// A card with no factory row reads as not linked — the caller skips
+	// verification entirely and the close proceeds (the gate does not
+	// apply; the CLI wrapper encodes exactly this branch).
+	card, linked, err := gate.Row(ctx, "absent")
+	if err != nil || linked {
+		t.Fatalf("absent card: linked=%v err=%v, want not linked", linked, err)
 	}
-	if err := gate.Verify(ctx, "uuid-1"); err != nil {
-		t.Fatalf("unlinked gate verified a receipt: %v", err)
+	if card.CardID != "" {
+		t.Fatalf("absent card returned a row: %+v", card)
 	}
 	if err := gate.Rollback(); err != nil {
 		t.Fatalf("rollback unlinked gate: %v", err)
@@ -148,7 +152,7 @@ func TestApprovalGateLinkedAndUnlinked(t *testing.T) {
 		CardUUID: "uuid-other", RunID: frRun, CardID: "gated", FactoryVersion: 1,
 		EvidenceHash: repo.Commit, Issuer: "lead", IssuerRole: ApprovalIssuerLeader,
 	})
-	gate, err = db.HoldApprovalGate(ctx, "gated")
+	gate, err = db.HoldApprovalGate(ctx)
 	if err != nil {
 		t.Fatalf("hold: %v", err)
 	}
@@ -157,20 +161,28 @@ func TestApprovalGateLinkedAndUnlinked(t *testing.T) {
 			t.Fatalf("rollback: %v", err)
 		}
 	}()
-	if !gate.Linked() {
-		t.Fatal("a card with a factory row read as not linked")
+	card, linked, rowErr := gate.Row(ctx, "gated")
+	if rowErr != nil || !linked {
+		t.Fatalf("gated card: linked=%v err=%v, want linked", linked, rowErr)
 	}
-	if got := gate.Card(); got.CardID != "gated" || got.Version != 1 || got.EvidenceSHA != repo.Commit {
-		t.Fatalf("gate card = %+v", got)
+	if card.CardID != "gated" || card.Version != 1 || card.EvidenceSHA != repo.Commit {
+		t.Fatalf("gate card = %+v", card)
 	}
 	// No receipt for THIS card's uuid: the missing sentinel.
-	if err := gate.Verify(ctx, "uuid-1"); !errors.Is(err, ErrApprovalMissing) {
+	if err := gate.Verify(ctx, card, "uuid-1"); !errors.Is(err, ErrApprovalMissing) {
 		t.Fatalf("verify without receipt err = %v, want ErrApprovalMissing", err)
 	}
 	// The receipt bound to the card's own uuid verifies — the gate's
 	// positive control.
-	if err := gate.Verify(ctx, "uuid-other"); err != nil {
+	if err := gate.Verify(ctx, card, "uuid-other"); err != nil {
 		t.Fatalf("verify with the matching receipt: %v", err)
+	}
+	// The archive-moment row is what verification binds: a row read at
+	// version 2 against the version-1 receipt is stale.
+	bumped := card
+	bumped.Version = 2
+	if err := gate.Verify(ctx, bumped, "uuid-other"); !errors.Is(err, ErrApprovalStale) {
+		t.Fatalf("verify against bumped row err = %v, want ErrApprovalStale", err)
 	}
 }
 

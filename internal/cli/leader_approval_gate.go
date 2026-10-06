@@ -2,11 +2,12 @@
 // approval receipt (SPEC-FACTORY-COMPLETION-RECOVERY-001 M1, REQ-FCR-001/002/005):
 //
 //   - the close-time gate every backlog completion surface (manual `todo
-//     done`, the `todo --auto` cycle) wraps its archive in. The gate holds a
-//     factory write transaction across verification and archive, so the
-//     archive-moment recheck is serialized with concurrent factory
-//     transitions (REQ-FCR-002a/004) and binds the row as it stands at the
-//     close, never as it stood at scan time.
+//     done`, the `todo --auto` cycle, the auto-done scan) wraps its archive
+//     in. The gate holds a factory write transaction across verification AND
+//     the queue write's persistence, so the archive-moment recheck is
+//     serialized with concurrent factory transitions (REQ-FCR-002a/004) and
+//     binds the row as it stands at the close, never as it stood at scan
+//     time.
 //
 //   - `moai factory approve` — the leader path's receipt mint. Issuance is
 //     reachable only here: lane sessions are refused at the boundary
@@ -31,35 +32,39 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// backlogApprovalGate couples an open ApprovalGate with its factory DB
-// handle so the caller can verify, then settle (commit after the guarded
-// archive, rollback on any refusal or failure), then release the
-// connection — in that order, every time. All methods are safe on the nil
-// receiver and on an unlinked card: the gate simply does not apply
-// (REQ-FCR-002's scope sentence — a non-factory card keeps its receipt-less
-// completion).
+// backlogApprovalGate couples an open homestate.ApprovalGate with its factory
+// DB handle so a close can verify, persist under the factory write lock, and
+// then release — in that order, every time. All methods are safe on the nil
+// receiver: a nil gate means the project carries no factory database at all,
+// so no factory-linked card exists and the gate does not apply (REQ-FCR-002's
+// scope sentence — a non-factory card keeps its receipt-less completion).
 type backlogApprovalGate struct {
 	db   *homestate.FactoryDB
 	gate *homestate.ApprovalGate
 }
 
-// holdDoneApprovalGate opens the gate for a queue card's close. A missing
-// factory database means the project carries no factory state at all — no
-// factory-linked cards exist, so it returns a nil gate without creating the
-// database as a side effect.
-func holdDoneApprovalGate(ctx context.Context, root, cardID string) (*backlogApprovalGate, error) {
+// holdDoneApprovalGate opens the gate. A MISSING factory database (the path
+// does not exist) means the project carries no factory state — the gate
+// returns nil without creating the database as a side effect. Every other
+// stat failure (permission denied, a symlink loop, ...) is a database we
+// cannot verify against: fail closed and refuse the close rather than
+// silently completing without the receipt check.
+func holdDoneApprovalGate(ctx context.Context, root string) (*backlogApprovalGate, error) {
 	path, err := homestate.FactoryDBPath(root)
 	if err != nil {
 		return nil, fmt.Errorf("leader approval gate: %w", err)
 	}
 	if _, statErr := os.Stat(path); statErr != nil {
-		return nil, nil
+		if os.IsNotExist(statErr) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("leader approval gate: %w", statErr)
 	}
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
 		return nil, fmt.Errorf("leader approval gate: %w", err)
 	}
-	gate, err := db.HoldApprovalGate(ctx, cardID)
+	gate, err := db.HoldApprovalGate(ctx)
 	if err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("leader approval gate: %w", err)
@@ -67,34 +72,29 @@ func holdDoneApprovalGate(ctx context.Context, root, cardID string) (*backlogApp
 	return &backlogApprovalGate{db: db, gate: gate}, nil
 }
 
-// verify checks the receipt bound to the card's backlog uuid against the
-// archive-moment factory row.
-func (g *backlogApprovalGate) verify(ctx context.Context, cardUUID string) error {
+// verifyForClose loads the archive-moment factory row inside the gate's
+// transaction and verifies the receipt bound to the card's backlog uuid. A
+// card with no factory row passes — not factory-linked.
+func (g *backlogApprovalGate) verifyForClose(ctx context.Context, cardID, cardUUID string) error {
 	if g == nil {
 		return nil
 	}
-	return g.gate.Verify(ctx, cardUUID)
-}
-
-// commit settles the gate after the archive it guarded has landed inside the
-// callback. A commit failure rolls the transaction back: the caller's
-// Mutate callback then returns the error and the backlog write is discarded
-// too, leaving both stores untouched.
-func (g *backlogApprovalGate) commit() error {
-	if g == nil {
-		return nil
-	}
-	err := g.gate.Commit()
-	_ = g.db.Close()
+	card, linked, err := g.gate.Row(ctx, cardID)
 	if err != nil {
 		return fmt.Errorf("leader approval gate: %w", err)
 	}
-	return nil
+	if !linked {
+		return nil
+	}
+	return g.gate.Verify(ctx, card, cardUUID)
 }
 
-// refuse settles the gate on any refusal or archive failure — the
-// transaction wrote nothing either way.
-func (g *backlogApprovalGate) refuse() {
+// release settles the gate. The gate's transaction never writes, so
+// rollback is the settle path on every exit — after a refusal, after the
+// guarded mutation failed, and after the guarded mutation has PERSISTED (the
+// caller releases only once the queue write is done, keeping the factory
+// write lock across the whole persistence window).
+func (g *backlogApprovalGate) release() {
 	if g == nil {
 		return
 	}
@@ -119,8 +119,10 @@ func todoCardUUID(item *factory.BacklogItem) string {
 // whose receipt verifies against its current factory row assembles
 // ReceiptGateVerified; an absent or non-binding receipt is
 // ReceiptGateUnverified; an unreadable factory state is ReceiptGateUnknown —
-// an unanswerable question, never a close. Read-only: the authoritative
-// check is the archive-moment gate, which re-verifies inside the lock.
+// an unanswerable question, never a close. Read-only and advisory: the
+// archive-moment gate re-verifies inside the lock. The receipt selection is
+// the gate's own (VerifyApprovalReadonly shares findLeaderApprovalPreferringRun),
+// so the scan can never disagree with the close about which receipt judges.
 func scanApprovalStates(ctx context.Context, root string, snapshot *factory.BacklogRecord) map[string]factory.ReceiptGateState {
 	states := make(map[string]factory.ReceiptGateState)
 	ids := make([]string, 0, len(snapshot.Items))
@@ -135,11 +137,22 @@ func scanApprovalStates(ctx context.Context, root string, snapshot *factory.Back
 	}
 	path, err := homestate.FactoryDBPath(root)
 	if err != nil {
+		// The factory state cannot even be located: an unanswerable
+		// question for every candidate — never a silent pass.
+		for _, id := range ids {
+			states[id] = factory.ReceiptGateUnknown
+		}
 		return states
 	}
 	if _, statErr := os.Stat(path); statErr != nil {
-		// No factory database: no factory-linked cards exist; every state
-		// stays the zero value (ReceiptGateNone).
+		if os.IsNotExist(statErr) {
+			// No factory database: no factory-linked cards exist; every
+			// state stays the zero value (ReceiptGateNone).
+			return states
+		}
+		for _, id := range ids {
+			states[id] = factory.ReceiptGateUnknown
+		}
 		return states
 	}
 	db, err := homestate.OpenFactory(root)
@@ -151,32 +164,33 @@ func scanApprovalStates(ctx context.Context, root string, snapshot *factory.Back
 	}
 	defer func() { _ = db.Close() }()
 	for _, id := range ids {
-		var uuid string
+		var cardUUID string
 		for i := range snapshot.Items {
 			if snapshot.Items[i].ID == id {
-				uuid = todoCardUUID(&snapshot.Items[i])
+				cardUUID = todoCardUUID(&snapshot.Items[i])
 				break
 			}
 		}
-		row, err := db.LatestCardByID(ctx, id)
-		if errors.Is(err, homestate.ErrCardNotFound) {
+		if _, err := db.LatestCardByID(ctx, id); errors.Is(err, homestate.ErrCardNotFound) {
 			// Not factory-linked: the axis does not apply (ReceiptGateNone).
 			continue
-		}
-		if err != nil {
+		} else if err != nil {
 			states[id] = factory.ReceiptGateUnknown
 			continue
 		}
-		approval, err := db.FindLeaderApproval(ctx, uuid)
-		if err != nil {
+		switch err := db.VerifyApprovalReadonly(ctx, id, cardUUID); {
+		case err == nil:
+			states[id] = factory.ReceiptGateVerified
+		case errors.Is(err, homestate.ErrApprovalMissing),
+			errors.Is(err, homestate.ErrApprovalIssuer),
+			errors.Is(err, homestate.ErrApprovalCardMismatch),
+			errors.Is(err, homestate.ErrApprovalRunMismatch),
+			errors.Is(err, homestate.ErrApprovalStale),
+			errors.Is(err, homestate.ErrApprovalHashMismatch):
 			states[id] = factory.ReceiptGateUnverified
-			continue
+		default:
+			states[id] = factory.ReceiptGateUnknown
 		}
-		if approval.VerifyBinding(uuid, row.RunID, row.Version, row.EvidenceSHA, row.OwnerLabel) != nil {
-			states[id] = factory.ReceiptGateUnverified
-			continue
-		}
-		states[id] = factory.ReceiptGateVerified
 	}
 	return states
 }

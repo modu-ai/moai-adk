@@ -322,38 +322,34 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 
 		if collected {
 			_, _ = fmt.Fprintf(out, "evidence collected: %s\n", evidence)
-			err := store.Mutate(func(r *factory.BacklogRecord) error {
-				for i := range r.Items {
-					if r.Items[i].ID == card.ID {
-						// REQ-THS-012: positive enumeration — the done
-						// admits exactly `picked`, refuses everything else
-						// by name.
-						if r.Items[i].State == factory.BacklogStatePicked {
-							// The leader-approval gate (SPEC-FACTORY-COMPLETION-RECOVERY-001
-							// REQ-FCR-002a): the third completion surface
-							// verifies the receipt at the archive moment,
-							// serialized exactly like the manual done path.
-							gate, gateErr := holdDoneApprovalGate(context.Background(), root, card.ID)
-							if gateErr != nil {
-								return gateErr
-							}
-							if err := gate.verify(context.Background(), todoCardUUID(&r.Items[i])); err != nil {
-								gate.refuse()
-								return err
-							}
-							if err := r.ArchiveCard(card.ID); err != nil {
-								gate.refuse()
-								return err
-							}
-							if err := gate.commit(); err != nil {
-								return err
-							}
-							return nil
-						}
-						return fmt.Errorf("auto: card %s is %s, not picked — changed hands mid-flight", card.ID, r.Items[i].State)
-					}
+			err := store.WithLock(func(l *factory.LockedBacklog) error {
+				// The leader-approval gate (SPEC-FACTORY-COMPLETION-RECOVERY-001
+				// REQ-FCR-002a): the third completion surface verifies the
+				// receipt at the archive moment, and the factory write
+				// transaction is held across the queue write's persistence —
+				// serialized exactly like the manual done path.
+				gate, gateErr := holdDoneApprovalGate(context.Background(), root)
+				if gateErr != nil {
+					return gateErr
 				}
-				return fmt.Errorf("auto: card %s vanished", card.ID)
+				defer gate.release()
+				return l.Mutate(func(r *factory.BacklogRecord) error {
+					for i := range r.Items {
+						if r.Items[i].ID == card.ID {
+							// REQ-THS-012: positive enumeration — the done
+							// admits exactly `picked`, refuses everything else
+							// by name.
+							if r.Items[i].State == factory.BacklogStatePicked {
+								if err := gate.verifyForClose(context.Background(), card.ID, todoCardUUID(&r.Items[i])); err != nil {
+									return err
+								}
+								return r.ArchiveCard(card.ID)
+							}
+							return fmt.Errorf("auto: card %s is %s, not picked — changed hands mid-flight", card.ID, r.Items[i].State)
+						}
+					}
+					return fmt.Errorf("auto: card %s vanished", card.ID)
+				})
 			})
 			if err != nil {
 				// The card changed hands mid-flight: this cycle's claim is

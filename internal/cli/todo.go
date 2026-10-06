@@ -1069,82 +1069,80 @@ func newTodoDoneCmd() *cobra.Command {
 			// nothing were known.
 			verdict := factory.LandingUnknown
 			var landing *factory.LandingEvidence
-			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
-				// Refused mutations below: Mutate writes nothing, so the
-				// record stays byte-identical on every one of them.
-				at := -1
-				for i := range rec.Items {
-					if rec.Items[i].ID == id {
-						at = i
-						break
-					}
-				}
-				if at < 0 {
-					return fmt.Errorf("no backlog item %s", id)
-				}
-				if rec.Items[at].SpecID != nil {
-					specID = *rec.Items[at].SpecID
-				}
-				// Read BEFORE ArchiveCard moves the row: the archive copies
-				// the item, so the record survives either way, but reading it
-				// here keeps the verdict and the line derived from the same
-				// row the mutation addressed.
-				landing = rec.Items[at].Landing
-				if expect != "" && !strings.HasPrefix(rec.Items[at].Text, expect) {
-					return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
-						id, todoTextPrefix(rec.Items[at].Text), expect)
-				}
-				if requireLanded {
-					answer, err := todoRequireLanded(cmd, id, ref, refLevel)
-					if err != nil {
-						return err
-					}
-					verdict = answer
-				}
+			if err := store.WithLock(func(l *factory.LockedBacklog) error {
 				// The leader-approval gate (SPEC-FACTORY-COMPLETION-RECOVERY-001
 				// REQ-FCR-002a): a factory-linked card's manual done verifies
-				// the receipt at the close moment, inside a factory write
-				// transaction held across the archive, serialized with
-				// concurrent factory transitions. A non-factory card (no
-				// factory database, no factory row) keeps its receipt-less
+				// the receipt at the close moment. The gate's factory write
+				// transaction is held across verification AND the queue
+				// write's persistence — LockedBacklog.Mutate saves before it
+				// returns, and the gate releases only after — so no factory
+				// transition can interleave between the archive-moment
+				// recheck and the record landing. A card with no factory
+				// database and no factory row keeps its receipt-less
 				// completion — the gate does not apply.
-				gate, gateErr := holdDoneApprovalGate(cmd.Context(), resolveProjectDir(), id)
+				gate, gateErr := holdDoneApprovalGate(cmd.Context(), resolveProjectDir())
 				if gateErr != nil {
 					return gateErr
 				}
-				if err := gate.verify(cmd.Context(), todoCardUUID(&rec.Items[at])); err != nil {
-					gate.refuse()
-					return err
-				}
-				if err := rec.ArchiveCard(id); err != nil {
-					gate.refuse()
-					return err
-				}
-				if requireLanded {
-					// REQ-TST-008: the answering path persists what the query
-					// said — verdict, answering ref, verdict time — onto the
-					// entry ArchiveCard just appended, alongside (never
-					// instead of) any operator-recorded evidence the row
-					// already carried (REQ-TST-009). Without the flag nothing
-					// is persisted here: no query ran, so no invented answer
-					// and no fabricated record. The record carries no SHA —
-					// a query-derived SHA is outside the evidence store's
-					// write authority, and the delivering SHA is re-derived
-					// at re-adjudication by re-running the predicate against
-					// the recorded ref (REQ-TST-013).
-					rec.Archived[len(rec.Archived)-1].LandingVerdict = &factory.LandingVerdict{
-						Verdict: verdict,
-						Ref:     ref,
-						At:      time.Now().UTC().Format(time.RFC3339),
+				defer gate.release()
+				return l.Mutate(func(rec *factory.BacklogRecord) error {
+					// Refused mutations below: the write is discarded, so the
+					// record stays byte-identical on every one of them.
+					at := -1
+					for i := range rec.Items {
+						if rec.Items[i].ID == id {
+							at = i
+							break
+						}
 					}
-				}
-				// Release the factory write transaction only after the archive
-				// it guarded has landed in the record; a commit failure rolls
-				// it back and the error aborts the whole backlog write.
-				if err := gate.commit(); err != nil {
-					return err
-				}
-				return nil
+					if at < 0 {
+						return fmt.Errorf("no backlog item %s", id)
+					}
+					if rec.Items[at].SpecID != nil {
+						specID = *rec.Items[at].SpecID
+					}
+					// Read BEFORE ArchiveCard moves the row: the archive copies
+					// the item, so the record survives either way, but reading it
+					// here keeps the verdict and the line derived from the same
+					// row the mutation addressed.
+					landing = rec.Items[at].Landing
+					if expect != "" && !strings.HasPrefix(rec.Items[at].Text, expect) {
+						return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
+							id, todoTextPrefix(rec.Items[at].Text), expect)
+					}
+					if requireLanded {
+						answer, err := todoRequireLanded(cmd, id, ref, refLevel)
+						if err != nil {
+							return err
+						}
+						verdict = answer
+					}
+					if err := gate.verifyForClose(cmd.Context(), id, todoCardUUID(&rec.Items[at])); err != nil {
+						return err
+					}
+					if err := rec.ArchiveCard(id); err != nil {
+						return err
+					}
+					if requireLanded {
+						// REQ-TST-008: the answering path persists what the query
+						// said — verdict, answering ref, verdict time — onto the
+						// entry ArchiveCard just appended, alongside (never
+						// instead of) any operator-recorded evidence the row
+						// already carried (REQ-TST-009). Without the flag nothing
+						// is persisted here: no query ran, so no invented answer
+						// and no fabricated record. The record carries no SHA —
+						// a query-derived SHA is outside the evidence store's
+						// write authority, and the delivering SHA is re-derived
+						// at re-adjudication by re-running the predicate against
+						// the recorded ref (REQ-TST-013).
+						rec.Archived[len(rec.Archived)-1].LandingVerdict = &factory.LandingVerdict{
+							Verdict: verdict,
+							Ref:     ref,
+							At:      time.Now().UTC().Format(time.RFC3339),
+						}
+					}
+					return nil
+				})
 			}); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err

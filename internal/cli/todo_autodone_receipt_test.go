@@ -118,6 +118,88 @@ func TestAutoDoneReceiptSkip(t *testing.T) {
 	}
 }
 
+// Regression pin for review P2-4 (card t1538): the scan's receipt selection
+// matches the archive gate's — the receipt bound to the card's CURRENT run
+// wins over a NEWER receipt minted against an older run. A re-dispatched
+// card whose leader re-approved the current run early must close even if a
+// stale approval for the previous run was recorded later; and with only the
+// previous run's receipt the card skips leader-unapproved.
+func TestAutoDoneReceiptCurrentRunPreferred(t *testing.T) {
+	root, store := autoDoneFixture(t)
+	seedCard(t, store, "t950", "current run approved first", factory.BacklogStateQueued)
+	seedCard(t, store, "t951", "only old run approved", factory.BacklogStateQueued)
+	fcLinkRuntime(t, root, "t950")
+	fcLinkRuntime(t, root, "t951")
+
+	// Both cards' current factory engagement is run B (newer updated_at);
+	// run A rows are the previous engagement with identical bindings.
+	fcPlace(t, root, homestate.Card{CardID: "t950", RunID: "run-a", State: homestate.CardDone, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-ev", UpdatedAt: "2026-09-26T01:00:00Z"})
+	fcPlace(t, root, homestate.Card{CardID: "t950", RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-ev", UpdatedAt: "2026-09-26T02:00:00Z"})
+	fcPlace(t, root, homestate.Card{CardID: "t951", RunID: "run-a", State: homestate.CardDone, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-ev", UpdatedAt: "2026-09-26T01:00:00Z"})
+	fcPlace(t, root, homestate.Card{CardID: "t951", RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-ev", UpdatedAt: "2026-09-26T02:00:00Z"})
+
+	commitOnRef(t, root, "Merge branch 'WT-p' into develop (card t950)")
+	commitOnRef(t, root, "Merge branch 'WT-q' into develop (card t951)")
+	materializeOriginDevelop(t, root)
+
+	// t950: the current-run receipt is the OLDER one; the old run's receipt
+	// was recorded LATER. The current-run receipt must win.
+	uuid950 := recheckUUID(t, root, store, "t950")
+	uuid951 := recheckUUID(t, root, store, "t951")
+	db := fcOpen(t, root)
+	if _, err := db.IssueLeaderApproval(context.Background(), homestate.LeaderApproval{
+		CardUUID: uuid950, RunID: fcRun, CardID: "t950", FactoryVersion: 1,
+		EvidenceHash: "sha-ev", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+		IssuedAt: "2026-09-26T00:30:00Z",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.IssueLeaderApproval(context.Background(), homestate.LeaderApproval{
+		CardUUID: uuid950, RunID: "run-a", CardID: "t950", FactoryVersion: 1,
+		EvidenceHash: "sha-ev", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+		IssuedAt: "2026-09-26T03:00:00Z",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Close()
+	// t951: only the old run's (latest) receipt.
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: uuid951, RunID: "run-a", CardID: "t951", FactoryVersion: 1,
+		EvidenceHash: "sha-ev", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+		IssuedAt: "2026-09-26T03:00:00Z",
+	})
+
+	stdout, _, err := runTodo(t, "auto-done")
+	if err != nil {
+		t.Fatalf("auto-done: %v", err)
+	}
+	if !strings.Contains(stdout, "done t950 landing=landed") {
+		t.Errorf("stdout %q lacks the current-run close — the old run's newer receipt shadowed it", stdout)
+	}
+	if !strings.Contains(stdout, "skip t951 reason=leader-unapproved") {
+		t.Errorf("stdout %q lacks skip t951 reason=leader-unapproved", stdout)
+	}
+}
+
+// recheckUUID reads a card's projected identity.
+func recheckUUID(t *testing.T, root string, store *factory.BacklogStore, id string) string {
+	t.Helper()
+	rec, err := store.LoadPure()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	for i := range rec.Items {
+		if rec.Items[i].ID == id {
+			if rec.Items[i].CardUUID == nil {
+				t.Fatalf("card %s has no projected identity", id)
+			}
+			return *rec.Items[i].CardUUID
+		}
+	}
+	t.Fatalf("card %s not found", id)
+	return ""
+}
+
 // fcApprovalsRow bumps a card's factory row version directly — the
 // archive-moment state after a concurrent factory transition.
 func fcBumpRowVersion(t *testing.T, root, cardID string, version int64) {
