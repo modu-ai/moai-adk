@@ -223,6 +223,11 @@ type transitionPlan struct {
 	// keepColumns leaves every column but state and version as they were
 	// (the operator abandon, which records nothing else about the card).
 	keepColumns bool
+	// approvalRebindTo, when non-zero, re-stamps the leader approval
+	// receipt's factory_version to this value inside the commit transaction
+	// (review round-8 P2-2): a validated approval that a state advance
+	// (T17) would otherwise stale stays bound to the post-transition row.
+	approvalRebindTo int64
 }
 
 // Transition applies one requested card transition as a single transaction:
@@ -477,6 +482,17 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		if label == "" || registered == 0 || label != cur.OwnerLabel {
 			return plan, fmt.Errorf("%w: %q is not the registered owner %q of card %s", ErrLeaseHolder, label, cur.OwnerLabel, cur.CardID)
 		}
+		// The dispatch binding follows the lease (review round-9 P1): the
+		// assigned-candidate path leases through T3, so the binding write
+		// rides the same transaction — a card leased from a run other than
+		// the one its binding names re-points the binding here, atomically
+		// with the state change.
+		if err := ensureRunRowTx(ctx, tx, cur.RunID, nowText); err != nil {
+			return plan, err
+		}
+		if err := upsertDispatchBindingTx(ctx, tx, cur.CardID, cur.RunID, nowText); err != nil {
+			return plan, err
+		}
 		plan.next.LeaseHolder = label
 		plan.next.HeartbeatAt = nowText
 		plan.next.LeaseExpiresAt = now.Add(FactoryLeaseDuration).Format(time.RFC3339Nano)
@@ -607,6 +623,10 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 			if err := verifyTransitionApproval(ctx, tx, cur, req.ApprovalUUID); err != nil {
 				return plan, err
 			}
+			// Approval chain (review round-8 P2-2): the validated receipt is
+			// re-stamped to the post-transition version in this same
+			// transaction, so the follow-up backlog archive accepts it.
+			plan.approvalRebindTo = cur.Version + 1
 			plan.note = "no remote — leader approval verified"
 		} else {
 			if !remote {
@@ -617,6 +637,23 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 				return plan, err
 			}
 			plan.evidence["merge_sha"], plan.evidence["remote_ref"] = cur.MergeSHA, ref
+			// Approval chain (review round-8 P2-2): when the caller's uuid
+			// validates the receipt at the PRE-transition version, the T17
+			// version bump would stale it before the follow-up backlog
+			// archive can run. Re-stamp the receipt to the post-transition
+			// version inside this same transaction, so the approved final
+			// state survives the two-surface completion. A receipt that does
+			// not validate here is left untouched — the later done edge
+			// refuses it as usual.
+			if uuid := strings.TrimSpace(req.ApprovalUUID); uuid != "" {
+				if a, err := findLeaderApprovalForCardTx(ctx, tx, cur.RunID, cur.CardID); err == nil {
+					if a.VerifyBinding(uuid, cur.RunID, cur.Version, cur.EvidenceSHA, cur.OwnerLabel) == nil {
+						plan.approvalRebindTo = cur.Version + 1
+					}
+				} else if !errors.Is(err, ErrApprovalMissing) {
+					return plan, err
+				}
+			}
 		}
 		plan.next.Decider, plan.next.DecidedAt = DeciderHuman, nowText
 	case guardApprovalDone:
@@ -629,6 +666,7 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		if err := verifyTransitionApproval(ctx, tx, cur, req.ApprovalUUID); err != nil {
 			return plan, err
 		}
+		plan.approvalRebindTo = cur.Version + 1
 		plan.note = "leader approval verified"
 	case guardQuestion:
 		q := strings.TrimSpace(req.Question)
@@ -680,6 +718,14 @@ func commitTransition(ctx context.Context, tx *sql.Tx, cur Card, plan transition
 	next.UpdatedAt = now.Format(time.RFC3339Nano)
 	if err := updateCardRow(ctx, tx, next, cur.Version); err != nil {
 		return Card{}, err
+	}
+	// The approval chain planned by guardPush: the receipt stays bound to
+	// the post-transition version, committed in this same transaction.
+	if plan.approvalRebindTo != 0 {
+		if _, err := tx.ExecContext(ctx, `UPDATE leader_approvals SET factory_version=? WHERE run_id=? AND card_id=?`,
+			plan.approvalRebindTo, cur.RunID, cur.CardID); err != nil {
+			return Card{}, err
+		}
 	}
 	if err := injectFault("before-event"); err != nil {
 		return Card{}, err

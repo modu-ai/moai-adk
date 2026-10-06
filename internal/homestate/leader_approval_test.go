@@ -239,6 +239,73 @@ func TestFR_FCR_T18DoneRequiresReceipt(t *testing.T) {
 	}
 }
 
+// Review round-9 P1 (card t1538): the lease edge (T3) re-points the
+// dispatch binding in the same transaction — a card leased from a run other
+// than the one its stale binding names re-binds here, and the stale run's
+// approval can no longer close the in-flight work.
+func TestFR_FCR_LeaseUpdatesDispatchBinding(t *testing.T) {
+	db := frOpen(t)
+	repo := frNewRepo(t, true)
+	ctx := context.Background()
+	frRegisterWorker(t, db, "worker-1")
+	frPlaceRun(t, db, "run-a", "active", "2026-09-25T00:00:00Z")
+	frPlaceRun(t, db, "run-b", "active", "2026-09-25T01:00:00Z")
+	c := Card{RunID: "run-a", CardID: "leased", State: CardAssigned, OwnerLabel: "worker-1", Version: 1, WorktreePath: repo.Dir, EvidenceSHA: repo.Commit}
+	frPlace(t, db, c)
+	// Stale binding: the card's work is recorded under run-b.
+	frApprove(t, db, LeaderApproval{
+		CardUUID: "uuid-leased", RunID: "run-b", CardID: "leased", FactoryVersion: 1,
+		EvidenceHash: repo.Commit, Issuer: "lead", IssuerRole: ApprovalIssuerLeader,
+	})
+	frBindDispatch(t, db, "leased", "run-b")
+
+	got, err := db.Transition(ctx, TransitionRequest{RunID: "run-a", CardID: "leased", To: CardLeased, ExpectedVersion: 1, Actor: "worker-1", Now: frNow})
+	if err != nil {
+		t.Fatalf("lease: %v", err)
+	}
+	if got.State != CardLeased {
+		t.Fatalf("lease = %s, want leased", got.State)
+	}
+	// The binding followed the lease.
+	row, linked, err := db.RecordedCardRowReadonly(ctx, "leased")
+	if err != nil || !linked {
+		t.Fatalf("binding read: linked=%v err=%v", linked, err)
+	}
+	if row.RunID != "run-a" {
+		t.Fatalf("binding run = %s, want run-a", row.RunID)
+	}
+	// The stale run's approval can no longer close; the lease run's does.
+	if err := db.VerifyApprovalReadonly(ctx, "leased", "uuid-leased"); !errors.Is(err, ErrApprovalRunMismatch) {
+		t.Fatalf("stale-run approval err = %v, want ErrApprovalRunMismatch", err)
+	}
+	frApprove(t, db, LeaderApproval{
+		CardUUID: "uuid-leased", RunID: "run-a", CardID: "leased", FactoryVersion: 2,
+		EvidenceHash: repo.Commit, Issuer: "lead", IssuerRole: ApprovalIssuerLeader,
+	})
+	if err := db.VerifyApprovalReadonly(ctx, "leased", "uuid-leased"); err != nil {
+		t.Fatalf("lease-run approval refused: %v", err)
+	}
+}
+
+// Review round-9 P2-1 (card t1538): the performer check compares CANONICAL
+// owner labels — a lane-1-issued receipt cannot self-approve a worker-1-
+// owned card through the name alias.
+func TestLeaderReceiptGatePerformerAliasRefused(t *testing.T) {
+	db := frOpen(t)
+	bare := frNewRepo(t, false)
+	ctx := context.Background()
+	c := Card{RunID: frRun, CardID: "alias", State: CardMergedLocal, Version: 1, OwnerLabel: "worker-1", WorktreePath: bare.Dir, MergeSHA: bare.Merge, EvidenceSHA: bare.Commit}
+	frPlace(t, db, c)
+	frApprove(t, db, LeaderApproval{
+		CardUUID: "uuid-alias", RunID: frRun, CardID: c.CardID, FactoryVersion: 1,
+		EvidenceHash: bare.Commit, Issuer: "lane-1", IssuerRole: ApprovalIssuerLeader,
+	})
+	req := TransitionRequest{RunID: frRun, CardID: c.CardID, To: CardDone, ExpectedVersion: c.Version, Actor: "lead", Decider: DeciderHuman, Now: frNow, ApprovalUUID: "uuid-alias"}
+	if _, err := db.Transition(ctx, req); !errors.Is(err, ErrApprovalIssuer) {
+		t.Fatalf("alias self-approval err = %v, want ErrApprovalIssuer", err)
+	}
+}
+
 // T20 (ci-green → done) is the reserved edge M1 admits — not by a CI reader
 // (that opens T19 only, and is M2's), but by the receipt gate inside
 // FactoryDB.Transition (REQ-FCR-002b, REQ-FCR-010). T19 stays reserved.

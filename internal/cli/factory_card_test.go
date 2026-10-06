@@ -497,6 +497,15 @@ func TestFR_AC018_DecidePushGate(t *testing.T) {
 	if c := fcCard(t, root, p2); c.State != homestate.CardDone {
 		t.Fatalf("p2 = %s, want done", c.State)
 	}
+	// The approval chain (review round-8 P2-2): the T17 version bump re-
+	// stamps the validated receipt inside the decide transaction, so the
+	// follow-up backlog archive accepts the SAME receipt instead of
+	// demanding a re-approval. This arms the queue card's done; a factory
+	// card in this fixture is terminal, so the archive check rides a twin
+	// card below.
+	if _, _, err := runTodo(t, "done", p2); err != nil {
+		t.Fatalf("follow-up backlog done after the chained approval: %v", err)
+	}
 	db := fcOpen(t, root)
 	var payload string
 	if err := db.DB.QueryRow(`SELECT payload_json FROM events WHERE kind='card.transition' ORDER BY seq DESC LIMIT 1`).Scan(&payload); err != nil {

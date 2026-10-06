@@ -26,6 +26,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -80,6 +81,29 @@ type LeaderApproval struct {
 	IssuedAt   string `json:"issued_at"`
 }
 
+// canonicalApprovalOwnerLabel mirrors internal/factory's canonical
+// owner-label mapper (REQ-TSP-051): legacy leader spellings map to
+// `leader[-suffix]`, and `worker`/`agent`[/`-<n>`] map to
+// `lane[|-<n>]`. homestate cannot import factory (the layering guard,
+// TestHomestateDoesNotImportFactory), so the mapping is duplicated here and
+// pinned equal by TestOwnerLabelNormalizationMatchesFactory in the external
+// test package. Idempotent: a canonical label returns unchanged.
+func CanonicalApprovalOwnerLabel(label string) string {
+	switch {
+	case label == "lead" || strings.HasPrefix(label, "lead-"):
+		return "leader" + strings.TrimPrefix(label, "lead")
+	case label == "worker" || label == "agent":
+		return "lane"
+	case strings.HasPrefix(label, "worker-"), strings.HasPrefix(label, "agent-"):
+		role, suffix, found := strings.Cut(label, "-")
+		if n, err := strconv.Atoi(suffix); found && err == nil && n >= 1 {
+			_ = role
+			return "lane-" + suffix
+		}
+	}
+	return label
+}
+
 // VerifyBinding checks the receipt against the named binding values — the
 // verifier's own identity knowledge, not a caller-supplied verdict. cardUUID
 // is the backlog identity; a verifier that cannot know it (the factory row
@@ -93,7 +117,7 @@ func (a LeaderApproval) VerifyBinding(cardUUID, runID string, version int64, evi
 	if a.IssuerRole != ApprovalIssuerLeader {
 		return fmt.Errorf("%w: issuer %q holds role %q, not %q", ErrApprovalIssuer, a.Issuer, a.IssuerRole, ApprovalIssuerLeader)
 	}
-	if ownerLabel != "" && a.Issuer == ownerLabel {
+	if ownerLabel != "" && CanonicalApprovalOwnerLabel(a.Issuer) == CanonicalApprovalOwnerLabel(ownerLabel) {
 		return fmt.Errorf("%w: issuer %q is the card's performing owner — a performer does not approve its own work", ErrApprovalIssuer, a.Issuer)
 	}
 	if cardUUID != "" && a.CardUUID != cardUUID {
