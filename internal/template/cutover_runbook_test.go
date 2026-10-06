@@ -209,7 +209,7 @@ func TestCutoverRunbookShape(t *testing.T) {
 		if !ok3 {
 			t.Fatal("step 3 is missing")
 		}
-		if !(s2.lineIndex < s3.lineIndex && s3.lineIndex < s4.lineIndex) {
+		if s2.lineIndex >= s3.lineIndex || s3.lineIndex >= s4.lineIndex {
 			t.Errorf("the precheck (step 3, line %d) is not between the bundle merge (step 2, line %d) and the develop absorption (step 4, line %d)",
 				s3.lineIndex, s2.lineIndex, s4.lineIndex)
 		}
