@@ -1,0 +1,33 @@
+# SPEC-CUTOVER-RESIDUE-001 — Progress
+
+Card: t1564 (factory run tmhxo0, self-tree mode). Branch: `WT-cutover-residue` (cut from `origin/main` `cb2a011d0`).
+
+## §E.1 Plan-phase Audit-Ready Signal
+
+plan_status: audit-ready (self-tree mode — the dispatch authorizes in-lane-style plan→run→sync without a separate plan-auditor round; the plan-phase evidence below is the audit-cross input the leader reads)
+
+plan_complete_at: 2026-10-07
+
+### Plan-phase measurements (this run, tree `cb2a011d0`)
+
+- Remote probe: `git ls-remote --symref origin HEAD` → `ref: refs/heads/main	HEAD` (exit 0); `git ls-remote --exit-code origin refs/heads/develop` → exit 2 (absent); `git ls-remote --exit-code origin refs/heads/main` → exit 0.
+- Tracked config residue: `.moai/config/sections/git-strategy.yaml` carries `manual.workflow: git-flow`, `develop_branch: develop`, `worktree_base_branch: main` (mixed state), threshold comment naming `origin/develop..develop`.
+- Survival doc residue: §2.3 instructs `git restore --source=develop` and lists `worktree_base_branch: develop` as a key to re-apply.
+- Workflow residue: `branches: [main, develop]` in 8 files (10 filter lines) + docs-i18n-check.yml develop trigger + git-flow-era comment block.
+- Template residue: `git-strategy.yaml.tmpl` line ~25 comment names `origin/<develop>..<develop>`.
+
+## Run-phase notes
+
+(appended by M1–M4 below)
+
+### M1 — sweep base fallback (done)
+
+- Unit RED observed (compile failure, `undefined: sweepEffectiveBase` + seams) before implementation; GREEN: `go test ./internal/cli/worktree/ -run Sweep -count=1` → ok (123.667s).
+- Live RED→GREEN pair on the same tree: pre-fix binary 185/187 `cause=fetch-failed`; post-fix binary 0 fetch-failed (69 DISPOSE / 118 PRESERVE, preview only), stderr fallback notice naming both bases. Explicit `--base origin/develop` keeps 185 fetch-failed (honest failure, no silent switch).
+
+### M2 — config/doctrine/template (done, one run-phase amendment)
+
+- **Design-conflict discovery**: the plan's github-flow flip armed `TestGitHubFlowSweepGuard` (SPEC-GITHUB-FLOW-DEFAULT-001 M4 — arms only on `workflow == github-flow`) and its armed live-text assertions went red (`--- FAIL: TestGitHubFlowSweepGuard` in `internal/template`, observed on the flipped tree). The value's flip is that card's own M5 act, sequenced WITH its residue sweep. Resolution: REQ-CR-005 revised (spec §A amendment); the local config keeps `workflow: git-flow` + git-flow-era keys, gains only the branch-neutral threshold comment; `worktree_base_branch: main` unchanged. The sweep is value-independent via the M1 fallback (already measured GREEN with the git-flow config).
+- Survival doc §2.3 re-keyed to `--source=main` with the two verification greps; §0.1 provenance line updated to the main tree.
+- Template `lead_push_threshold` comment neutralized; `make build` green.
+
