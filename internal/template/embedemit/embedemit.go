@@ -109,8 +109,8 @@ func validatePattern(p string) error {
 		return fmt.Errorf("pattern %q contains a parent-directory element", p)
 	case strings.ContainsRune(p, '\\'):
 		return fmt.Errorf("pattern %q contains a backslash; go:embed patterns are slash-separated", p)
-	case strings.ContainsAny(p, " :*?\"<>|"):
-		return fmt.Errorf("pattern %q contains a character go:embed patterns cannot carry", p)
+	case strings.ContainsAny(p, " :*?\"<>|[]{}"):
+		return fmt.Errorf("pattern %q contains a character go:embed patterns cannot carry or interpret as a glob (brackets are character classes, braces are alternation)", p)
 	}
 	if path.Clean(p) != p {
 		return fmt.Errorf("pattern %q is not in clean form", p)

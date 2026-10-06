@@ -75,6 +75,12 @@ func TestRenderRejectsInvalidPatterns(t *testing.T) {
 		"empty":            "",
 		"space":            "templates/my file.md",
 		"outside prefix":   "cmd/moai/main.go",
+		// go:embed reads [c] as a character class and {a,b} as alternation,
+		// so a bracketed tracked name would drop from the embed set while an
+		// untracked name matching the class could be pulled in (card t1539
+		// review): the emitter refuses glob metacharacters instead.
+		"character class": "templates/a[x].md",
+		"alternation":     "templates/{a,b}.md",
 	}
 	for name, p := range cases {
 		if _, err := Render([]string{p}); err == nil {
