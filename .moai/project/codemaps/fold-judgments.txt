@@ -115,3 +115,11 @@ omission internal/cli/wizard/questions.go
 # process_fingerprint_* · sweep_cwd_* 선례). fold 로 적으면 검사기의 창에서
 # 이름 없는 변경으로 남는 것이 이유다.
 # 위 기존 fold/omission 판정들은 이번 판에서 문서 본문과 대조해 그대로 성립함을 확인했다.
+
+# --- t1510 판 (2026-10-06, 창 d0378d37c..HEAD) ---
+# 이번 창의 신규 유닛은 전부 named row로 문서 본문에 실렸다 — fold/omission 신규 판정 없음:
+# protected_zone_guard.go · protected_zone_shell.go · protected_zone_path.go (card t1510),
+# todo_issuance.go · factory_bundle.go · codex_review_binary_age.go · memory_fold.go
+# (t1454·t1528·t1502 창 몫) — 전부 named row(modules.md 각 카드 단락).
+# taxonomy/budget.go · taxonomy/reach.go는 기존 패키지의 +2 파일로 modules.md t1510 판이 이름을 운반한다.
+# 위 기존 fold/omission 판정들은 이번 판에서 문서 본문과 대조해 그대로 성립함을 확인했다.

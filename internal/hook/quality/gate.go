@@ -3,7 +3,6 @@ package quality
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -1047,6 +1046,10 @@ const nodeTestRunScript = "test:run"
 //	      `npm test` (vitest `--run`; jest `--ci`)
 //	(iii) anything else → `npm test` unchanged
 //
+// A valid packageManager "bun@<version>" declaration swaps the npm arm for
+// the bun arm (bunTestStep) — same tiers, explicit `bun run` script form,
+// never the builtin `bun test`; every other declaration keeps npm.
+//
 // Tier (i) appends no flags: the test:run script is an author-owned run-form
 // command, and appending `--passWithNoTests` via npm's `--` makes a
 // turbo-delegating script (`turbo run test:run --passWithNoTests`) hard-error
@@ -1061,10 +1064,14 @@ func resolveNodeTestStep(step gateStep, dir string) gateStep {
 	if step.name != nodeTestStepName || dir == "" {
 		return step
 	}
-	scripts, ok := readPackageJSONScripts(filepath.Join(dir, "package.json"))
+	manifest, ok := readNodeManifest(filepath.Join(dir, "package.json"))
 	if !ok {
 		return step
 	}
+	if manifest.pm == nodePMBun {
+		return bunTestStep(manifest.scripts)
+	}
+	scripts := manifest.scripts
 	if strings.TrimSpace(scripts[nodeTestRunScript]) != "" {
 		return gateStep{
 			name:   "npm run test:run",
@@ -1080,27 +1087,6 @@ func resolveNodeTestStep(step gateStep, dir string) gateStep {
 		}
 	}
 	return step
-}
-
-// readPackageJSONScripts parses the scripts map out of the package.json at
-// path. ok is false when the file is missing, unreadable, not valid JSON, the
-// root is not an object, or scripts is absent/not a string map — every
-// failure routes the Node test-step resolution to the tier-(iii) fallback.
-func readPackageJSONScripts(path string) (map[string]string, bool) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, false
-	}
-	var pkg struct {
-		Scripts map[string]string `json:"scripts"`
-	}
-	if err := json.Unmarshal(data, &pkg); err != nil {
-		return nil, false
-	}
-	if pkg.Scripts == nil {
-		return nil, false
-	}
-	return pkg.Scripts, true
 }
 
 // nodeNonWatchFlag returns the runner's non-watch flag for a watch-prone test
@@ -1178,6 +1164,11 @@ const reasonLintScriptWatchProneFmt = "lint script is watch-prone and would not 
 // every commit helps nobody. Every other shape — non-Node toolchains,
 // unreadable manifests, projects without the script — passes the table steps
 // through unchanged, which is the no-scripts.invariance card t687 pins.
+//
+// A valid bun declaration swaps the arm: scripts.lint runs as `bun run lint`
+// (mandatory, where the npm arm stays optional), and the config-gated
+// entries resolve their locally-installed binaries instead of npx
+// (bunConfigLintSteps).
 func resolveNodeLintSteps(steps []gateStep, dir string) (resolved []gateStep, script string, watchProne bool) {
 	// Language guard — the same guard the sibling resolveNodeTestStep
 	// carries (step.name != nodeTestStepName): only the Node lint axis
@@ -1190,16 +1181,26 @@ func resolveNodeLintSteps(steps []gateStep, dir string) (resolved []gateStep, sc
 	if dir == "" {
 		return steps, "", false
 	}
-	scripts, ok := readPackageJSONScripts(filepath.Join(dir, "package.json"))
+	manifest, ok := readNodeManifest(filepath.Join(dir, "package.json"))
 	if !ok {
 		return steps, "", false
 	}
-	script = strings.TrimSpace(scripts[nodeLintRunScript])
+	script = strings.TrimSpace(manifest.scripts[nodeLintRunScript])
 	if script == "" {
+		if manifest.pm == nodePMBun {
+			return bunConfigLintSteps(steps, dir), "", false
+		}
 		return steps, "", false
 	}
 	if nodeScriptWatchProne(script) {
 		return steps, script, true
+	}
+	if manifest.pm == nodePMBun {
+		return []gateStep{{
+			name:   bunRunStepName + nodeLintRunScript,
+			binary: "bun",
+			args:   []string{"run", nodeLintRunScript},
+		}}, script, false
 	}
 	return []gateStep{{
 		name:     nodeLintStepName,

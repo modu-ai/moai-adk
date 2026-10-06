@@ -49,9 +49,13 @@ package cli
 // Do not merge the two traversals into a shared helper.
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"testing"
 
@@ -395,6 +399,17 @@ func TestMain(m *testing.M) {
 	residueDir := filepath.Join(entryWD, ".moai")
 	residueExistedAtStart := residueGuardDirExists(residueDir)
 
+	// CONFIG SECTIONS GUARD (card t1529). The residue guard above watches the
+	// PACKAGE directory; this sibling watches the PROJECT root's
+	// .moai/config/sections — the measured locus of the t1454 incident, where
+	// a launch-path test resolved its project root through the un-stubbed
+	// findProjectRootFn and disableTeamMode re-marshaled the developer's real
+	// llm.yaml into schema defaults (team_mode: glm lost). Every section yaml
+	// is hashed (content + mode) before m.Run() and re-hashed after: any
+	// modified, added, or deleted file fails the run. A run outside a MoAI
+	// project (no .moai marker above the package dir) leaves the guard inert.
+	configSnap := snapshotRepoConfigSections(entryWD)
+
 	warmUpCommandTree(rootCmd)
 	// Serial, single-goroutine, immediately after the warm-up: these Commands()
 	// calls cannot open a race window, and the tree cannot have drifted yet.
@@ -408,6 +423,18 @@ func TestMain(m *testing.M) {
 			"directory (SPEC-CLI-TEST-CWD-ISOLATION-001 REQ-1/REQ-2/REQ-3). Isolate the "+
 			"producing test's project root (see the SPEC's mechanism ladder), then remove "+
 			"the directory so the guard re-arms for the next run.\n", residueDir)
+		if code == 0 {
+			code = 1
+		}
+	}
+
+	if changed := repoConfigSectionsChanged(configSnap, entryWD); len(changed) > 0 {
+		fmt.Fprintf(os.Stderr, "CONFIG SECTIONS GUARD FAIL: this test run mutated the real "+
+			"project config (card t1529): %s — internal/cli tests must not write the "+
+			"repository's .moai/config/sections. Isolate the producing test's project root "+
+			"(SPEC-CLI-TEST-CWD-ISOLATION-001 mechanism ladder: t.TempDir root injection or "+
+			"the findProjectRootFn stub), then restore the file from git.\n",
+			strings.Join(changed, ", "))
 		if code == 0 {
 			code = 1
 		}
@@ -478,6 +505,118 @@ func sandboxAuditReceiptFallbackRoot() func() {
 func residueGuardDirExists(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
+}
+
+// configSectionSig is the observable identity of one sections yaml file: its
+// permission bits and its content hash. Mode rides along so a rewrite that
+// restores identical bytes at a different mode (writeFileAtomic's 0600) still
+// counts as a mutation.
+type configSectionSig struct {
+	mode os.FileMode
+	sum  string
+}
+
+// repoConfigSectionsDir walks up from start to the nearest directory holding
+// a .moai marker — the same upward walk findProjectRoot performs for the code
+// under test — and returns its .moai/config/sections path, or "" when the run
+// is not inside a MoAI project (guard stays inert).
+func repoConfigSectionsDir(start string) string {
+	dir := start
+	for {
+		if info, err := os.Stat(filepath.Join(dir, ".moai")); err == nil && info.IsDir() {
+			return filepath.Join(dir, ".moai", "config", "sections")
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+		dir = parent
+	}
+}
+
+// configSectionSigOf reads one sections file's signature. A stat or read
+// error yields ok=false, recorded distinctly so an entry-time error does not
+// masquerade as content.
+func configSectionSigOf(path string) (configSectionSig, bool) {
+	info, err := os.Stat(path)
+	if err != nil || !info.Mode().IsRegular() {
+		return configSectionSig{}, false
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return configSectionSig{}, false
+	}
+	sum := sha256.Sum256(data)
+	return configSectionSig{mode: info.Mode().Perm(), sum: hex.EncodeToString(sum[:])}, true
+}
+
+// snapshotRepoConfigSections records name→sig for every *.yaml in the
+// repository sections dir, or nil when there is no MoAI project above start.
+func snapshotRepoConfigSections(start string) map[string]configSectionSig {
+	sectionsDir := repoConfigSectionsDir(start)
+	if sectionsDir == "" {
+		return nil
+	}
+	entries, err := os.ReadDir(sectionsDir)
+	if err != nil {
+		// No sections dir yet: snapshot empty so post-run creations still count.
+		return map[string]configSectionSig{}
+	}
+	snap := make(map[string]configSectionSig, len(entries))
+	for _, e := range entries {
+		if e.IsDir() || filepath.Ext(e.Name()) != ".yaml" {
+			continue
+		}
+		if sig, ok := configSectionSigOf(filepath.Join(sectionsDir, e.Name())); ok {
+			snap[e.Name()] = sig
+		}
+	}
+	return snap
+}
+
+// repoConfigSectionsChanged diffs the post-run sections dir against a
+// snapshotRepoConfigSections capture and returns one human-readable line per
+// mutated, added, or deleted file (sorted for deterministic output). A nil
+// snapshot disables the check (run outside a MoAI project).
+func repoConfigSectionsChanged(snap map[string]configSectionSig, start string) []string {
+	if snap == nil {
+		return nil
+	}
+	sectionsDir := repoConfigSectionsDir(start)
+	after := map[string]configSectionSig{}
+	if entries, err := os.ReadDir(sectionsDir); err == nil {
+		for _, e := range entries {
+			if e.IsDir() || filepath.Ext(e.Name()) != ".yaml" {
+				continue
+			}
+			if sig, ok := configSectionSigOf(filepath.Join(sectionsDir, e.Name())); ok {
+				after[e.Name()] = sig
+			}
+		}
+	}
+
+	names := make(map[string]bool, len(snap)+len(after))
+	for name := range snap {
+		names[name] = true
+	}
+	for name := range after {
+		names[name] = true
+	}
+	var changed []string
+	for name := range names {
+		before, inBefore := snap[name]
+		current, inAfter := after[name]
+		switch {
+		case !inAfter:
+			changed = append(changed, name+" (deleted)")
+		case !inBefore:
+			changed = append(changed, name+" (added)")
+		case before != current:
+			changed = append(changed, name+" (modified)")
+		}
+	}
+	sort.Strings(changed)
+	return changed
 }
 
 // TestProfileBaseDirIsSandboxed is the guard for sandboxProfileBaseDir.

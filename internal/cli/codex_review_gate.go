@@ -106,6 +106,13 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 	// serves both execution paths (REQ-CGS-009).
 	scope := reviewScopeResolver(reviewScopeSessionDir(input, projectDir))
 	reviewGateScopeLogger(scope, reviewGateEnvContext())
+	// (3a-0) The binary-age policy (card t1528): a gate binary whose build
+	// commit predates the session tree judges the tree with policy older than
+	// the code under review — skip before any scope-dependent policy runs.
+	// Shared with the Codex Stop-chain path (REQ-CRO-006).
+	if staleBinarySkipApplies(scope.Dir) {
+		return allow, nil
+	}
 	// (3a) The tree_scope policy: a tree-class session with no WT- evidence has
 	// no card to attribute its tree to. The read root is the one `enabled` came
 	// from (reviewGateConfigRoot), resolved only when the class is tree.

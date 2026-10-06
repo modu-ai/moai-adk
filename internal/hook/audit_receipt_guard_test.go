@@ -385,3 +385,214 @@ func TestAuditReceiptGuard_UnreadableEvidence(t *testing.T) {
 		t.Errorf("trailing whitespace PASS: decision = %q, want none", out.Decision)
 	}
 }
+
+// backgroundStartInput builds the SubagentStart payload shape of a background
+// Agent() spawn (card t1544): the auditor type and session id are carried,
+// the agent id is not.
+func backgroundStartInput(root, agentType, sessionID string) *HookInput {
+	return &HookInput{
+		CWD:           root,
+		AgentType:     agentType,
+		SessionID:     sessionID,
+		HookEventName: string(EventSubagentStart),
+	}
+}
+
+// Card t1544: a background Agent() spawn delivers SubagentStart without
+// agent_id, so the auditor start marker must be recorded under the identity
+// the payload does carry (session_id + agent_type). Keyed by agent id alone
+// the write was a structural no-op — the measured failure: five spawns, zero
+// markers — and every later auditor PASS permanently unprovable.
+func TestSubagentStart_BackgroundSpawnWithoutAgentIDRecordsMarker(t *testing.T) {
+	for _, agentType := range []string{auditreceipt.AgentPlanAuditor, auditreceipt.AgentSyncAuditor} {
+		root := newGateTree(t, "required")
+		if _, err := NewSubagentStartHandler().Handle(context.Background(), backgroundStartInput(root, agentType, "sess-bg-1")); err != nil {
+			t.Fatalf("%s: SubagentStart Handle: %v", agentType, err)
+		}
+		key := auditreceipt.StartMarkerKey("", "sess-bg-1", agentType)
+		if key == "" {
+			t.Fatalf("%s: StartMarkerKey returned empty for a background spawn", agentType)
+		}
+		m, err := auditreceipt.ReadStartMarker(root, key)
+		if err != nil {
+			t.Fatalf("%s: no start marker under the background key %q: %v", agentType, key, err)
+		}
+		if m.TreeRoot != root || m.StartedAt.IsZero() {
+			t.Errorf("%s: marker = %+v, want tree %q and a non-zero start time", agentType, m, root)
+		}
+	}
+}
+
+// Card t1544: the background-spawn audit ceremony must close. An auditor
+// spawned without an agent id mints a receipt during its run, cites it in its
+// verdict line, and the stop accepts the PASS instead of refusing it with
+// "start marker missing" — the refusal that, once persisted, denied every
+// phase-entry spawn with no path to resolution (t1509 deadlock).
+func TestSubagentStop_BackgroundSpawnAuditorPassIsProvable(t *testing.T) {
+	root := newGateTree(t, "required")
+	if _, err := NewSubagentStartHandler().Handle(context.Background(), backgroundStartInput(root, auditreceipt.AgentPlanAuditor, "sess-bg-2")); err != nil {
+		t.Fatalf("SubagentStart Handle: %v", err)
+	}
+	// A receipt minted after the marker's start time (Now at write), so the
+	// citation must qualify once the marker is findable.
+	id := seedReceipt(t, root, auditreceipt.Receipt{
+		Tool:      auditreceipt.ToolCodexAudit,
+		TreeRoot:  root,
+		CreatedAt: time.Now().UTC().Add(2 * time.Second),
+	})
+	stop := &HookInput{
+		CWD:                  root,
+		AgentType:            auditreceipt.AgentPlanAuditor,
+		SessionID:            "sess-bg-2",
+		LastAssistantMessage: "AUDIT-VERDICT: PASS spec=SPEC-BG-001 receipts=" + id,
+		HookEventName:        string(EventSubagentStop),
+	}
+	out := runStop(t, stop)
+	if out.Decision != "" {
+		t.Fatalf("decision = %q, want none — a proven background PASS must not block (reason %q)", out.Decision, out.Reason)
+	}
+	// The accepted PASS keeps the derived marker: it is a session-era anchor
+	// a concurrent same-role instance may still need (card t1544 card-review
+	// P2) — only an agent-id-keyed marker is consumed at stop.
+	if key := auditreceipt.StartMarkerKey("", "sess-bg-2", auditreceipt.AgentPlanAuditor); key != "" {
+		if _, err := auditreceipt.ReadStartMarker(root, key); err != nil {
+			t.Errorf("derived start marker %q was consumed by an accepted PASS: %v", key, err)
+		}
+	}
+}
+
+// Card t1544 card-review P2: two concurrent same-role background auditors
+// share the derived marker. The first accepted PASS must not destroy the
+// second instance's provability, and the second start must not move the
+// anchor's start time past receipts the first instance will cite.
+func TestSubagentStop_ConcurrentBackgroundAuditorsShareEraAnchor(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-bg-5"
+	start := backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session)
+	if _, err := NewSubagentStartHandler().Handle(context.Background(), start); err != nil {
+		t.Fatalf("first SubagentStart Handle: %v", err)
+	}
+	key := auditreceipt.StartMarkerKey("", session, auditreceipt.AgentPlanAuditor)
+	first, err := auditreceipt.ReadStartMarker(root, key)
+	if err != nil {
+		t.Fatalf("first start wrote no marker: %v", err)
+	}
+	// A second same-role spawn of the same session: the anchor keeps the
+	// earliest start.
+	if _, err := NewSubagentStartHandler().Handle(context.Background(), backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session)); err != nil {
+		t.Fatalf("second SubagentStart Handle: %v", err)
+	}
+	second, err := auditreceipt.ReadStartMarker(root, key)
+	if err != nil {
+		t.Fatalf("marker vanished after the second start: %v", err)
+	}
+	if second.StartedAt != first.StartedAt {
+		t.Errorf("anchor StartedAt moved from %v to %v, want keep-earliest", first.StartedAt, second.StartedAt)
+	}
+	// Each instance proves a receipt minted after the shared anchor began.
+	r1 := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: second.StartedAt.Add(time.Second)})
+	r2 := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: second.StartedAt.Add(2 * time.Second)})
+	for i, id := range []string{r1, r2} {
+		stop := &HookInput{
+			CWD:                  root,
+			AgentType:            auditreceipt.AgentPlanAuditor,
+			SessionID:            session,
+			LastAssistantMessage: "AUDIT-VERDICT: PASS spec=SPEC-BG-004 receipts=" + id,
+			HookEventName:        string(EventSubagentStop),
+		}
+		if out := runStop(t, stop); out.Decision != "" {
+			t.Fatalf("auditor %d decision = %q, want none (reason %q)", i+1, out.Decision, out.Reason)
+		}
+	}
+}
+
+// Card t1544 card-review P2: an agent-id-carrying auditor's FAIL must not
+// delete a concurrent background auditor's derived marker.
+func TestSubagentStop_AgentIDFailKeepsBackgroundMarker(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-bg-6"
+	if _, err := NewSubagentStartHandler().Handle(context.Background(), backgroundStartInput(root, auditreceipt.AgentSyncAuditor, session)); err != nil {
+		t.Fatalf("SubagentStart Handle: %v", err)
+	}
+	key := auditreceipt.StartMarkerKey("", session, auditreceipt.AgentSyncAuditor)
+	if _, err := auditreceipt.ReadStartMarker(root, key); err != nil {
+		t.Fatalf("background marker missing before the FAIL: %v", err)
+	}
+	stop := &HookInput{
+		CWD:                  root,
+		AgentID:              "id-other-1",
+		AgentType:            auditreceipt.AgentSyncAuditor,
+		SessionID:            session,
+		LastAssistantMessage: "AUDIT-VERDICT: FAIL spec=SPEC-BG-005 receipts=none",
+		HookEventName:        string(EventSubagentStop),
+	}
+	if out := runStop(t, stop); out.Decision != "" || out.SystemMessage != "" {
+		t.Fatalf("FAIL output = %+v, want silence", out)
+	}
+	if _, err := auditreceipt.ReadStartMarker(root, key); err != nil {
+		t.Errorf("an agent-id FAIL deleted the background marker %q: %v", key, err)
+	}
+}
+
+// Card t1544: a stop payload that carries an agent id the start payload did
+// not must still find the marker the start recorded under the derived key.
+func TestSubagentStop_BackgroundStartWithAgentIDStopFindsMarker(t *testing.T) {
+	root := newGateTree(t, "required")
+	if _, err := NewSubagentStartHandler().Handle(context.Background(), backgroundStartInput(root, auditreceipt.AgentSyncAuditor, "sess-bg-3")); err != nil {
+		t.Fatalf("SubagentStart Handle: %v", err)
+	}
+	id := seedReceipt(t, root, auditreceipt.Receipt{
+		Tool:      auditreceipt.ToolAuditMulti,
+		TreeRoot:  root,
+		CreatedAt: time.Now().UTC().Add(2 * time.Second),
+	})
+	stop := &HookInput{
+		CWD:                  root,
+		AgentID:              "id-late-1",
+		AgentType:            auditreceipt.AgentSyncAuditor,
+		SessionID:            "sess-bg-3",
+		LastAssistantMessage: "AUDIT-VERDICT: PASS spec=SPEC-BG-002 receipts=" + id,
+		HookEventName:        string(EventSubagentStop),
+	}
+	if out := runStop(t, stop); out.Decision != "" {
+		t.Fatalf("decision = %q, want none (reason %q)", out.Decision, out.Reason)
+	}
+}
+
+// Card t1544: the derived key must not weaken the anti-recycling invariant —
+// a receipt minted BEFORE the background auditor began is still refused under
+// the session_id+agent_type key.
+func TestSubagentStop_BackgroundSpawnRecycledReceiptStillRefused(t *testing.T) {
+	root := newGateTree(t, "required")
+	recycled := seedReceipt(t, root, auditreceipt.Receipt{
+		Tool:      auditreceipt.ToolCodexAudit,
+		TreeRoot:  root,
+		CreatedAt: time.Now().UTC().Add(-time.Minute),
+	})
+	if _, err := NewSubagentStartHandler().Handle(context.Background(), backgroundStartInput(root, auditreceipt.AgentPlanAuditor, "sess-bg-4")); err != nil {
+		t.Fatalf("SubagentStart Handle: %v", err)
+	}
+	stop := &HookInput{
+		CWD:                  root,
+		AgentType:            auditreceipt.AgentPlanAuditor,
+		SessionID:            "sess-bg-4",
+		LastAssistantMessage: "AUDIT-VERDICT: PASS spec=SPEC-BG-003 receipts=" + recycled,
+		HookEventName:        string(EventSubagentStop),
+	}
+	out := runStop(t, stop)
+	if out.Decision != "block" || !strings.Contains(out.Reason, auditreceipt.CauseReceiptBeforeStart) {
+		t.Fatalf("output = %+v, want a block naming %q", out, auditreceipt.CauseReceiptBeforeStart)
+	}
+}
+
+// Card t1544: a payload with neither agent id nor session id still keys no
+// marker — no invented identity, no store write.
+func TestSubagentStart_NoIdentityNoMarker(t *testing.T) {
+	root := newGateTree(t, "required")
+	if _, err := NewSubagentStartHandler().Handle(context.Background(), backgroundStartInput(root, auditreceipt.AgentPlanAuditor, "")); err != nil {
+		t.Fatalf("SubagentStart Handle: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(auditreceipt.StateDir(root), "starts")); !os.IsNotExist(err) {
+		t.Errorf("a marker was written for a payload with no agent id and no session id")
+	}
+}

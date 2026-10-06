@@ -73,6 +73,11 @@ func newSelfReviewFixture(t *testing.T) *selfReviewFixture {
 	primary := t.TempDir()
 	cardScopeGit(t, primary, "init", "-q", "-b", "develop")
 	writeCardFile(t, primary, "go.mod", "module example.com/sr\n\ngo 1.22\n")
+	// Precondition under test (card t1453): the card diff base is the configured
+	// integration target, so this fixture models a git-flow project (develop).
+	// Committed in c0 so every card worktree fork carries it inside its merge
+	// base — the config never shows up in a card diff or an untracked listing.
+	writeGitStrategyFixture(t, primary, "git-flow", "develop")
 	cardScopeGit(t, primary, "add", "-A")
 	cardScopeGit(t, primary, "commit", "-q", "-m", "c0")
 	c0 := cardScopeGit(t, primary, "rev-parse", "HEAD")

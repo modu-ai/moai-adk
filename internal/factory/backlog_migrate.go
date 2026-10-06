@@ -117,12 +117,16 @@ func (e *backlogEngine) readSnapshot(ctx context.Context) (*BacklogRecord, error
 	if err != nil {
 		return nil, err
 	}
+	issuanceExpr, err := e.columnExpr(ctx, "items", "issuance")
+	if err != nil {
+		return nil, err
+	}
 	itemRows, err := e.queryDB().QueryContext(ctx,
 		// SECURITY DISPOSITION: the concatenated fragments are compile-time
 		// constants — columnExpr returns only a bare column name or the
 		// literal NULL, never a runtime value; row VALUES travel through Scan,
 		// never string interpolation.
-		`SELECT id, text, added_at, spec_id, state, `+landingColumn+`, `+pickedAtExpr+`, `+droppedAtExpr+`, `+classificationExpr+`, `+pickedByExpr+`, `+leaseExpiresExpr+` FROM items ORDER BY seq`)
+		`SELECT id, text, added_at, spec_id, state, `+landingColumn+`, `+pickedAtExpr+`, `+droppedAtExpr+`, `+classificationExpr+`, `+pickedByExpr+`, `+leaseExpiresExpr+`, `+issuanceExpr+` FROM items ORDER BY seq`)
 	if err != nil {
 		return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
 	}
@@ -135,7 +139,8 @@ func (e *backlogEngine) readSnapshot(ctx context.Context) (*BacklogRecord, error
 		var pickedAt, droppedAt sql.NullString
 		var classification sql.NullString
 		var pickedBy, leaseExpiresAt sql.NullString
-		if err := itemRows.Scan(&it.ID, &it.Text, &it.AddedAt, &specID, &state, &landing, &pickedAt, &droppedAt, &classification, &pickedBy, &leaseExpiresAt); err != nil {
+		var issuance sql.NullString
+		if err := itemRows.Scan(&it.ID, &it.Text, &it.AddedAt, &specID, &state, &landing, &pickedAt, &droppedAt, &classification, &pickedBy, &leaseExpiresAt, &issuance); err != nil {
 			return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
 		}
 		if specID.Valid {
@@ -189,6 +194,17 @@ func (e *backlogEngine) readSnapshot(ctx context.Context) (*BacklogRecord, error
 			v := leaseExpiresAt.String
 			it.LeaseExpiresAt = &v
 		}
+		// The issuance column reads through the same null-pointer mapping;
+		// a PRESENT value that will not decode is surfaced, never dropped
+		// (the landing contract — the column's only writer marshals the
+		// typed struct, so an undecodable value is corruption).
+		if issuance.Valid {
+			iss, decErr := decodeIssuance(issuance.String)
+			if decErr != nil {
+				return nil, fmt.Errorf("load backlog %s: item %s: %w", e.dbPath, it.ID, decErr)
+			}
+			it.Issuance = &iss
+		}
 		it.State = BacklogState(state)
 		rec.Items = append(rec.Items, it)
 	}
@@ -196,16 +212,25 @@ func (e *backlogEngine) readSnapshot(ctx context.Context) (*BacklogRecord, error
 		return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
 	}
 
+	dispositionExpr, err := e.columnExpr(ctx, "findings", "disposition")
+	if err != nil {
+		return nil, err
+	}
 	findingRows, err := e.queryDB().QueryContext(ctx,
-		`SELECT subject_id, related_id, relation, source, score, note, at FROM findings ORDER BY rowid`)
+		`SELECT subject_id, related_id, relation, source, score, note, at, `+dispositionExpr+` FROM findings ORDER BY rowid`)
 	if err != nil {
 		return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
 	}
 	defer func() { _ = findingRows.Close() }()
 	for findingRows.Next() {
 		var f BacklogFinding
-		if err := findingRows.Scan(&f.SubjectID, &f.RelatedID, &f.Relation, &f.Source, &f.Score, &f.Note, &f.At); err != nil {
+		var disposition sql.NullString
+		if err := findingRows.Scan(&f.SubjectID, &f.RelatedID, &f.Relation, &f.Source, &f.Score, &f.Note, &f.At, &disposition); err != nil {
 			return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
+		}
+		if disposition.Valid {
+			v := disposition.String
+			f.Disposition = &v
 		}
 		rec.Findings = append(rec.Findings, f)
 	}
@@ -285,12 +310,16 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 	if err != nil {
 		return err
 	}
+	issuanceExpr, err := e.columnExpr(ctx, "archived_items", "issuance")
+	if err != nil {
+		return err
+	}
 	rows, err := e.queryDB().QueryContext(ctx,
 		// SECURITY DISPOSITION: same constant-fragment concatenation as the
 		// live read above — columnExpr yields a bare column name or literal
 		// NULL only; no runtime value enters the statement text.
 		`SELECT seq, id, text, added_at, spec_id, state, position, `+landingColumn+`, `+
-			pickedAtExpr+`, `+droppedAtExpr+`, `+archivedAtExpr+`, `+verdictExpr+`, `+classificationExpr+`, `+pickedByExpr+`, `+leaseExpiresExpr+` FROM archived_items ORDER BY seq`)
+			pickedAtExpr+`, `+droppedAtExpr+`, `+archivedAtExpr+`, `+verdictExpr+`, `+classificationExpr+`, `+pickedByExpr+`, `+leaseExpiresExpr+`, `+issuanceExpr+` FROM archived_items ORDER BY seq`)
 	if err != nil {
 		return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
 	}
@@ -307,8 +336,9 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 		var verdict sql.NullString
 		var classification sql.NullString
 		var pickedBy, leaseExpiresAt sql.NullString
+		var issuance sql.NullString
 		if err := rows.Scan(&seq, &entry.Item.ID, &entry.Item.Text, &entry.Item.AddedAt,
-			&specID, &state, &entry.Position, &landing, &pickedAt, &droppedAt, &archivedAt, &verdict, &classification, &pickedBy, &leaseExpiresAt); err != nil {
+			&specID, &state, &entry.Position, &landing, &pickedAt, &droppedAt, &archivedAt, &verdict, &classification, &pickedBy, &leaseExpiresAt, &issuance); err != nil {
 			return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
 		}
 		if specID.Valid {
@@ -365,6 +395,15 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 			v := leaseExpiresAt.String
 			entry.Item.LeaseExpiresAt = &v
 		}
+		// The archive mirrors the issuance column: an archived card keeps the
+		// issuance attributes it held when it left the queue.
+		if issuance.Valid {
+			iss, decErr := decodeIssuance(issuance.String)
+			if decErr != nil {
+				return fmt.Errorf("load backlog archive %s: item %s: %w", e.dbPath, entry.Item.ID, decErr)
+			}
+			entry.Item.Issuance = &iss
+		}
 		entry.Item.State = BacklogState(state)
 		entry.Findings = []BacklogArchivedFinding{}
 		bySeq[seq] = len(rec.Archived)
@@ -374,8 +413,17 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 		return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
 	}
 
+	// The disposition column rides the same tolerant accessor the main
+	// findings read uses: a database opened read-only (or one predating
+	// REQ-TCI-010) carries no disposition column, and an archived finding
+	// read NULL there — the same absent-means-nil reading the queue side
+	// takes.
+	archiveDispositionExpr, err := e.columnExpr(ctx, "archived_findings", "disposition")
+	if err != nil {
+		return err
+	}
 	findingRows, err := e.queryDB().QueryContext(ctx,
-		`SELECT archive_seq, position, subject_id, related_id, relation, source, score, note, at
+		`SELECT archive_seq, position, subject_id, related_id, relation, source, score, note, at, `+archiveDispositionExpr+`
 		 FROM archived_findings ORDER BY archive_seq, rowid`)
 	if err != nil {
 		return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
@@ -384,9 +432,14 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 	for findingRows.Next() {
 		var archiveSeq int
 		var af BacklogArchivedFinding
+		var disposition sql.NullString
 		if err := findingRows.Scan(&archiveSeq, &af.Position, &af.Finding.SubjectID, &af.Finding.RelatedID,
-			&af.Finding.Relation, &af.Finding.Source, &af.Finding.Score, &af.Finding.Note, &af.Finding.At); err != nil {
+			&af.Finding.Relation, &af.Finding.Source, &af.Finding.Score, &af.Finding.Note, &af.Finding.At, &disposition); err != nil {
 			return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
+		}
+		if disposition.Valid {
+			v := disposition.String
+			af.Finding.Disposition = &v
 		}
 		idx, ok := bySeq[archiveSeq]
 		if !ok {
@@ -464,25 +517,102 @@ func (e *backlogEngine) writeArchive(ctx context.Context, tx *sql.Tx, rec *Backl
 		if classErr != nil {
 			return fmt.Errorf("write backlog archive %s: item %s: %w", e.dbPath, entry.Item.ID, classErr)
 		}
+		issuance, issErr := issuanceValue(entry.Item.Issuance)
+		if issErr != nil {
+			return fmt.Errorf("write backlog archive %s: item %s: %w", e.dbPath, entry.Item.ID, issErr)
+		}
 		seq := i + 1
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO archived_items(seq, id, text, added_at, spec_id, state, position, landing, picked_at, dropped_at, archived_at, landing_verdict, classification, picked_by, lease_expires_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO archived_items(seq, id, text, added_at, spec_id, state, position, landing, picked_at, dropped_at, archived_at, landing_verdict, classification, picked_by, lease_expires_at, issuance)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			seq, entry.Item.ID, entry.Item.Text, entry.Item.AddedAt, specID,
-			string(entry.Item.State), entry.Position, landing, pickedAt, droppedAt, archivedAt, verdict, classification, pickedBy, leaseExpiresAt); err != nil {
+			string(entry.Item.State), entry.Position, landing, pickedAt, droppedAt, archivedAt, verdict, classification, pickedBy, leaseExpiresAt, issuance); err != nil {
 			return mapBacklogWriteError(e.dbPath, entry.Item.ID, err)
 		}
 		for _, af := range entry.Findings {
+			var disposition any
+			if af.Finding.Disposition != nil {
+				disposition = *af.Finding.Disposition
+			}
 			if _, err := tx.ExecContext(ctx,
-				`INSERT INTO archived_findings(archive_seq, position, subject_id, related_id, relation, source, score, note, at)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				`INSERT INTO archived_findings(archive_seq, position, subject_id, related_id, relation, source, score, note, at, disposition)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				seq, af.Position, af.Finding.SubjectID, af.Finding.RelatedID, af.Finding.Relation,
-				af.Finding.Source, af.Finding.Score, af.Finding.Note, af.Finding.At); err != nil {
+				af.Finding.Source, af.Finding.Score, af.Finding.Note, af.Finding.At, disposition); err != nil {
 				return mapBacklogEngineError(fmt.Sprintf("write backlog archive %s", e.dbPath), err)
 			}
 		}
 	}
 	return nil
+}
+
+// issuanceValue marshals the issuance attributes through the typed-NULL
+// seam: a nil pointer stores SQL NULL, a present one its exact JSON TEXT.
+// The column's only writer marshals the typed struct, so an undecodable
+// value on read is external corruption (surfaced, never dropped).
+func issuanceValue(i *BacklogIssuance) (any, error) {
+	if i == nil {
+		return nil, nil
+	}
+	b, err := json.Marshal(i)
+	if err != nil {
+		return nil, err
+	}
+	return string(b), nil
+}
+
+func decodeIssuance(s string) (BacklogIssuance, error) {
+	var iss BacklogIssuance
+	if err := json.Unmarshal([]byte(s), &iss); err != nil {
+		return iss, fmt.Errorf("issuance column: %w", err)
+	}
+	return iss, nil
+}
+
+func derefIssuance(i *BacklogIssuance) string {
+	if i == nil {
+		return "<nil>"
+	}
+	b, _ := json.Marshal(i)
+	return string(b)
+}
+
+func equalStringPtr(a, b *string) bool {
+	if (a == nil) != (b == nil) {
+		return false
+	}
+	return a == nil || *a == *b
+}
+
+func equalIntPtr(a, b *int) bool {
+	if (a == nil) != (b == nil) {
+		return false
+	}
+	return a == nil || *a == *b
+}
+
+func equalIssuance(a, b *BacklogIssuance) bool {
+	if (a == nil) != (b == nil) {
+		return false
+	}
+	if a == nil {
+		return true
+	}
+	if a.SpawnedBy != b.SpawnedBy || a.Origin != b.Origin || a.DropReason != b.DropReason {
+		return false
+	}
+	if !equalIntPtr(a.SizeLines, b.SizeLines) {
+		return false
+	}
+	if len(a.Files) != len(b.Files) {
+		return false
+	}
+	for k := range a.Files {
+		if a.Files[k] != b.Files[k] {
+			return false
+		}
+	}
+	return true
 }
 
 // readLastSeq reads the persisted high-water mark; an unstamped database
@@ -582,19 +712,28 @@ func (e *backlogEngine) writeRecordArchive(ctx context.Context, rec *BacklogReco
 			err = fmt.Errorf("write backlog %s: item %s: %w", e.dbPath, it.ID, classErr)
 			return err
 		}
+		issuance, issErr := issuanceValue(it.Issuance)
+		if issErr != nil {
+			err = fmt.Errorf("write backlog %s: item %s: %w", e.dbPath, it.ID, issErr)
+			return err
+		}
 		if _, err = tx.ExecContext(ctx,
-			`INSERT INTO items(seq, id, text, added_at, spec_id, state, landing, picked_at, dropped_at, classification, picked_by, lease_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			i+1, it.ID, it.Text, it.AddedAt, specID, string(it.State), landing, pickedAt, droppedAt, classification, pickedBy, leaseExpiresAt); err != nil {
+			`INSERT INTO items(seq, id, text, added_at, spec_id, state, landing, picked_at, dropped_at, classification, picked_by, lease_expires_at, issuance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			i+1, it.ID, it.Text, it.AddedAt, specID, string(it.State), landing, pickedAt, droppedAt, classification, pickedBy, leaseExpiresAt, issuance); err != nil {
 			err = mapBacklogWriteError(e.dbPath, it.ID, err)
 			return err
 		}
 	}
 
 	for _, f := range rec.Findings {
+		var disposition any
+		if f.Disposition != nil {
+			disposition = *f.Disposition
+		}
 		if _, err = tx.ExecContext(ctx,
-			`INSERT INTO findings(subject_id, related_id, relation, source, score, note, at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			f.SubjectID, f.RelatedID, f.Relation, f.Source, f.Score, f.Note, f.At); err != nil {
+			`INSERT INTO findings(subject_id, related_id, relation, source, score, note, at, disposition)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			f.SubjectID, f.RelatedID, f.Relation, f.Source, f.Score, f.Note, f.At, disposition); err != nil {
 			return mapBacklogEngineError(fmt.Sprintf("write backlog %s", e.dbPath), err)
 		}
 	}
@@ -934,13 +1073,28 @@ func assertBacklogParity(source, migrated *BacklogRecord) error {
 			return fmt.Errorf("item %d (%s): landing %v != %v", i, want.ID,
 				derefLandingEvidence(want.Landing), derefLandingEvidence(got.Landing))
 		}
+		// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-009: the parity assertion
+		// covers the issuance attributes (value equality, pointer identity
+		// is irrelevant after a round-trip).
+		if !equalIssuance(want.Issuance, got.Issuance) {
+			return fmt.Errorf("item %d (%s): issuance %+v != %+v", i, want.ID,
+				derefIssuance(want.Issuance), derefIssuance(got.Issuance))
+		}
 	}
 	if len(source.Findings) != len(migrated.Findings) {
 		return fmt.Errorf("finding count %d != %d", len(source.Findings), len(migrated.Findings))
 	}
 	for i := range source.Findings {
-		if source.Findings[i] != migrated.Findings[i] {
-			return fmt.Errorf("finding %d: %+v != %+v", i, source.Findings[i], migrated.Findings[i])
+		want, got := source.Findings[i], migrated.Findings[i]
+		// Field-wise: the Disposition pointer survives a round-trip as a NEW
+		// pointer to an equal string, so struct equality would refuse every
+		// dispositioned finding (REQ-TCI-009 — the parity covers the new
+		// storage).
+		if want.SubjectID != got.SubjectID || want.RelatedID != got.RelatedID ||
+			want.Relation != got.Relation || want.Source != got.Source ||
+			want.Score != got.Score || want.Note != got.Note || want.At != got.At ||
+			!equalStringPtr(want.Disposition, got.Disposition) {
+			return fmt.Errorf("finding %d: %+v != %+v", i, want, got)
 		}
 	}
 	// The archive is part of parity, not an extra. A legacy file can carry
@@ -982,14 +1136,26 @@ func assertBacklogParity(source, migrated *BacklogRecord) error {
 			return fmt.Errorf("archived %d (%s): landing_verdict %v != %v", i, want.Item.ID,
 				derefLandingVerdict(want.LandingVerdict), derefLandingVerdict(got.LandingVerdict))
 		}
+		if !equalIssuance(want.Item.Issuance, got.Item.Issuance) {
+			return fmt.Errorf("archived %d (%s): issuance %+v != %+v", i, want.Item.ID,
+				derefIssuance(want.Item.Issuance), derefIssuance(got.Item.Issuance))
+		}
 		if len(want.Findings) != len(got.Findings) {
 			return fmt.Errorf("archived %d (%s): finding count %d != %d", i, want.Item.ID,
 				len(want.Findings), len(got.Findings))
 		}
 		for j := range want.Findings {
-			if want.Findings[j] != got.Findings[j] {
+			wantF, gotF := want.Findings[j].Finding, got.Findings[j].Finding
+			if wantF.SubjectID != gotF.SubjectID || wantF.RelatedID != gotF.RelatedID ||
+				wantF.Relation != gotF.Relation || wantF.Source != gotF.Source ||
+				wantF.Score != gotF.Score || wantF.Note != gotF.Note || wantF.At != gotF.At ||
+				!equalStringPtr(wantF.Disposition, gotF.Disposition) {
 				return fmt.Errorf("archived %d (%s): finding %d: %+v != %+v", i, want.Item.ID, j,
 					want.Findings[j], got.Findings[j])
+			}
+			if want.Findings[j].Position != got.Findings[j].Position {
+				return fmt.Errorf("archived %d (%s): finding %d position %d != %d", i, want.Item.ID, j,
+					want.Findings[j].Position, got.Findings[j].Position)
 			}
 		}
 	}

@@ -60,6 +60,8 @@ func readObserveWireEntry(t *testing.T, root string) map[string]any {
 // `last_assistant_message`, so lastAssistantMessage decoded empty and the
 // message hash/len fields were silently dropped.
 func TestRunHarnessObserveStop_NativeCamelWireFormat(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -94,6 +96,8 @@ func TestRunHarnessObserveStop_NativeCamelWireFormat(t *testing.T) {
 // nested `session.id`, so a top-level session_id decoded empty and session_id
 // was silently dropped.
 func TestRunHarnessObserveStop_FlatSnakeWireFormat(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -125,6 +129,8 @@ func TestRunHarnessObserveStop_FlatSnakeWireFormat(t *testing.T) {
 // handler decoded camelCase agentType/agentName and the nested session.id, so
 // all four fields decoded empty under this format.
 func TestRunHarnessObserveSubagentStop_FlatSnakeWireFormat(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -163,6 +169,8 @@ func TestRunHarnessObserveSubagentStop_FlatSnakeWireFormat(t *testing.T) {
 // the snake agent_id and nested session.id, so agentId (camel) and the parent
 // session decoded empty.
 func TestRunHarnessObserveSubagentStop_NativeCamelWireFormat(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -196,6 +204,8 @@ func TestRunHarnessObserveSubagentStop_NativeCamelWireFormat(t *testing.T) {
 // (snake). The pre-fix PostToolUse handler decoded camelCase toolName, so the
 // subject fell back to "unknown".
 func TestRunHarnessObserve_FlatSnakeWireFormat(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	t.Chdir(dir)
@@ -220,6 +230,8 @@ func TestRunHarnessObserve_FlatSnakeWireFormat(t *testing.T) {
 // harness usage log MUST be written under CLAUDE_PROJECT_DIR, not under the
 // worktree cwd.
 func TestRunHarnessObserve_EnvFirstProjectRoot(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	projectDir := t.TempDir()
 	worktreeDir := t.TempDir()
 
@@ -250,6 +262,8 @@ func TestRunHarnessObserve_EnvFirstProjectRoot(t *testing.T) {
 // TestRunHarnessObserveStop_EnvFirstProjectRoot verifies the Stop handler also
 // resolves the project root env-first for its config gate + log location.
 func TestRunHarnessObserveStop_EnvFirstProjectRoot(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	projectDir := t.TempDir()
 	worktreeDir := t.TempDir()
 

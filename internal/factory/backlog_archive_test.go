@@ -76,6 +76,10 @@ var permittedItemFieldAdditions = map[string]string{
 	// operations are their only writers.
 	"PickedBy":       "*string",
 	"LeaseExpiresAt": "*string",
+	// SPEC-TODO-CARD-ISSUANCE-001 (card t1454) REQ-TCI-007: the ONE additive
+	// issuance attribute struct — spawned-by, closed-set origin, size
+	// estimate, expected files, drop reason — after the lease precedent.
+	"Issuance": "*factory.BacklogIssuance",
 }
 
 // frozenItemFields is the pre-addition per-item contract: ordered
