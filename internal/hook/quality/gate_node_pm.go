@@ -100,6 +100,12 @@ type nodeManifest struct {
 // A manifest without a scripts key is still ok (nil map reads as empty) —
 // the tiers treat "no scripts" as tier (iii), which is what they always did;
 // what changed is that a scriptless manifest can still declare bun.
+//
+// The packageManager field is captured raw and decoded separately: a
+// malformed VALUE there (a non-string, say) must degrade to "no declaration"
+// (npm), never take the scripts down with it — the scripts-only parser this
+// replaced ignored the field entirely, and losing scripts.test:run because
+// of a bad declaration would be a regression on valid manifests.
 func readNodeManifest(path string) (nodeManifest, bool) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -107,14 +113,20 @@ func readNodeManifest(path string) (nodeManifest, bool) {
 	}
 	var pkg struct {
 		Scripts        map[string]string `json:"scripts"`
-		PackageManager string            `json:"packageManager"`
+		PackageManager json.RawMessage   `json:"packageManager"`
 	}
 	if err := json.Unmarshal(data, &pkg); err != nil {
 		return nodeManifest{}, false
 	}
+	var decl string
+	if len(pkg.PackageManager) > 0 {
+		if err := json.Unmarshal(pkg.PackageManager, &decl); err != nil {
+			decl = ""
+		}
+	}
 	return nodeManifest{
 		scripts: pkg.Scripts,
-		pm:      nodePMFromDeclaration(pkg.PackageManager),
+		pm:      nodePMFromDeclaration(decl),
 	}, true
 }
 

@@ -531,6 +531,32 @@ func TestReadNodeManifest_ScriptlessManifestIsReadable(t *testing.T) {
 	}
 }
 
+// TestReadNodeManifest_MalformedPMKeepsScripts pins the card-review finding:
+// a packageManager field whose TYPE is wrong (an object, say) must degrade to
+// "no declaration" (npm) without discarding a perfectly valid scripts map —
+// the scripts-only parser this manifest reader replaced ignored the field
+// entirely, so tier-(i) selection on valid scripts must survive it.
+func TestReadNodeManifest_MalformedPMKeepsScripts(t *testing.T) {
+	base := nodeBaseStep(t)
+	dir := writePackageJSON(t,
+		`{"packageManager": {}, "scripts": {"test": "vitest", "test:run": "vitest run"}}`)
+
+	m, ok := readNodeManifest(filepath.Join(dir, "package.json"))
+	if !ok {
+		t.Fatal("valid manifest rejected because of a malformed packageManager type")
+	}
+	if m.pm != nodePMNpm {
+		t.Errorf("pm = %v, want npm (malformed declaration degrades, never guesses bun)", m.pm)
+	}
+	if strings.TrimSpace(m.scripts["test:run"]) == "" {
+		t.Fatal("scripts lost to a malformed packageManager field")
+	}
+	// The observable npm behavior: tier (i) still fires.
+	if got := resolveNodeTestStep(base, dir); got.name != "npm run test:run" {
+		t.Errorf("test step = %q, want npm run test:run (tier i preserved)", got.name)
+	}
+}
+
 // TestResolveNodeLocalBin_EdgeCells pins the walker's guard rails beyond the
 // lint-axis cells above: executability is required (unix), a directory
 // shaped like a tool never resolves, and a worktree's .git FILE witnesses
