@@ -4,6 +4,9 @@
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(git -C "$HERE" rev-parse --show-toplevel)"
+# GATE-9: observation log at an unpredictable mktemp path + cleanup trap.
+LOG="$(mktemp "${TMPDIR:-/tmp}/t1534-obs-XXXXXXXX")"
+trap 'rm -f "$LOG"' EXIT INT TERM
 VALIDATOR="$REPO_ROOT/scripts/ci-mirror/validate-required-checks.sh"
 WATCH="$REPO_ROOT/scripts/ci-watch/run.sh"
 cd "$HERE/merge-all-legs" && sh "$VALIDATOR" >/dev/null 2>&1
@@ -18,7 +21,7 @@ cd "$HERE/quoted-key"
 MOAI_CIWATCH_GH="$HERE/stub-skipping/gh" \
 MOAI_CIWATCH_REQUIRED_CHECKS_FILE=.github/required-checks.yml \
 MOAI_CIWATCH_NO_SLEEP=1 CIWATCH_TIMEOUT_SECONDS=10 \
-sh "$WATCH" 99 >/tmp/t1534-r7-green-watch.txt 2>&1
+sh "$WATCH" 99 > "$LOG" 2>&1
 echo "quoted-key watch GREEN(expect 0)=$?"
 cd "$HERE"
 sh "$REPO_ROOT/.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom.sh" >/dev/null 2>&1; echo "phantom(expect 1)=$?"

@@ -56,8 +56,20 @@ fail() {
 published="$(mktemp "${TMPDIR:-/tmp}/t1534-published-XXXXXXXX")"
 trap 'rm -f "$published"' EXIT INT TERM
 : > "$published"
+normalized="$(mktemp "${TMPDIR:-/tmp}/t1534-normalized-XXXXXXXX")"
+trap 'rm -f "$published" "$normalized"' EXIT INT TERM
 for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	[ -f "$wf" ] || continue
+	# GATE-9: parse YAML STRUCTURE, not line shapes — the workflow is
+	# re-rendered to its canonical BLOCK form by yq first (flow-form
+	# matrices, inline collections and shorthand all expand), and the
+	# line parser below reads one canonical shape. A yq failure aborts:
+	# an unparseable workflow must not silently contribute no names
+	# (the same vacuous-pass class as an unreadable SSoT).
+	if ! yq -P '.' "$wf" > "$normalized" 2>/dev/null; then
+		fail "workflow $wf failed to parse as YAML (yq) — its checks cannot be verified publishable"
+		continue
+	fi
 	awk '
 	# GATE-8: strip a trailing UNQUOTED comment (`name: Lint # required`) —
 	# quote-aware: a # inside quotes is literal value text.
@@ -92,7 +104,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		sufs[1] = ""
 		for (i = 1; i <= nk; i++) {
 			k = dims[i]
-			m = split(mvals[k], vals_arr, " ")
+			m = split(mvals[k], vals_arr, SUBSEP)
 			newn = 0
 			for (j = 1; j <= n; j++) {
 				for (q = 1; q <= m; q++) {
@@ -103,7 +115,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 					newn++
 					newlines[newn] = s
 					ns = sufs[j]
-					newsufs[newn] = (ns == "") ? vals_arr[q] : ns " " vals_arr[q]
+					newsufs[newn] = (ns == "") ? vals_arr[q] : ns SUBSEP vals_arr[q]
 				}
 			}
 			n = newn
@@ -117,7 +129,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			# required context GitHub can never run passed Dimension D
 			# silently (run-matrix-exclude.sh repro: false-green exit 0).
 			excluded = 0
-			nsuf = split(sufs[j], svals, " ")
+			nsuf = split(sufs[j], svals, SUBSEP)
 			if (nsuf == nk) {
 				for (e = 1; e <= ex_n && !excluded; e++) {
 					matches = 1
@@ -188,8 +200,9 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 				gsub("\\$\\{\\{[[:space:]]*matrix\\." ek[q] "[[:space:]]*\\}\\}", ev[q], outl)
 			sfx2 = sufs[j]
 			for (q = 1; q <= en; q++)
-				sfx2 = (sfx2 == "") ? ev[q] : sfx2 " " ev[q]
+				sfx2 = (sfx2 == "") ? ev[q] : sfx2 SUBSEP ev[q]
 			if (nk > 0 && !had_ref) {
+				gsub(SUBSEP, " ", sfx2)
 				print outl " (" sfx2 ")"
 			} else {
 				print outl
@@ -228,17 +241,20 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 				if (nk > 0) {
 					for (d = 1; d <= nk; d++) {
 						tv = incval[t, dims[d]]
-						if (tv != "") sfx = (sfx == "") ? tv : sfx " " tv
+						if (tv != "") sfx = (sfx == "") ? tv : sfx SUBSEP tv
 					}
 				}
 				if (sfx == "") {
 					for (i = 1; i <= ikt[t]; i++) {
 						tv = incval[t, incord[t, i]]
-						if (tv != "") sfx = (sfx == "") ? tv : sfx " " tv
+						if (tv != "") sfx = (sfx == "") ? tv : sfx SUBSEP tv
 					}
 				}
 				if (sfx == "") print line
-				else print line " (" sfx ")"
+				else {
+					gsub(SUBSEP, " ", sfx)
+					print line " (" sfx ")"
+				}
 			}
 		}
 		has_name = 0
@@ -304,7 +320,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	# tuple and the excluded combination stayed in the publishable set.
 	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*include:/ { mmode = "inc"; bdim_key = ""; next }
 	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*exclude:/ { mmode = "excl"; bdim_key = ""; next }
-	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*[A-Za-z_][A-Za-z_0-9]*:[[:space:]]*$/ {
+	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*[A-Za-z_][A-Za-z_0-9-]*:[[:space:]]*$/ {
 		# GATE-6: block-form array — `os:` with the values as `- ` items
 		# below (the same YAML meaning as the flow form `os: [a, b]`;
 		# pre-fix only the flow form parsed and the block form judged
@@ -313,16 +329,32 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		bdim_key = line
 		next
 	}
-	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*[A-Za-z_][A-Za-z_0-9]*:[[:space:]]*\[/ {
+	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*[A-Za-z_][A-Za-z_0-9-]*:[[:space:]]*\[/ {
 		bdim_key = ""
 		line = strip_comment($0); sub(/^[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
 		v = line; sub(/^[^[]*\[/, "", v); sub(/\][[:space:]]*$/, "", v)
-		gsub(/[[:space:]]/, "", v); gsub(/["\047]/, "", v)
+		gsub(/["\047]/, "", v)
+		# GATE-9: values may contain SPACES — split on commas and trim each
+		# item; pre-fix the whole list was whitespace-stripped, mangling a
+		# value like "Build (linux amd64)" into "Build(linuxamd64)". Note
+		# the space-joined suffix store then cannot distinguish a space
+		# inside a value, so the exclude subtraction conservatively skips
+		# such combinations (no false green — a kept combination is
+		# over-inclusive, never under).
+		parts_n = split(v, parts, ",")
+		mvals[k] = ""
+		for (pp = 1; pp <= parts_n; pp++) {
+			pv = parts[pp]
+			gsub(/^[[:space:]]+/, "", pv)
+			gsub(/[[:space:]]+$/, "", pv)
+			if (pv == "") continue
+			# GATE-9: the value store joins on SUBSEP — a space now stays
+			# INSIDE a value; split and print convert it back.
+			mvals[k] = (mvals[k] == "") ? pv : mvals[k] SUBSEP pv
+		}
 		nk++
 		dims[nk] = k
-		mvals[k] = v
-		gsub(/,/, " ", mvals[k])
 		next
 	}
 	in_matrix && ind == 10 && $0 ~ /^[[:space:]]*- / {
@@ -333,10 +365,15 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		if (bdim_key != "" && !is_pair) {
 			# GATE-6: block-form dim item — a bare value appended to the
 			# dim declared by the `key:` line above.
-			gsub(/[[:space:]]/, "", line); gsub(/["\047]/, "", line)
+			# GATE-9: a value may contain SPACES — trim, never strip (the
+			# whole-string whitespace strip mangled "ubuntu 24.04" into
+			# "ubuntu24.04" and judged the real check phantom).
+			gsub(/^[[:space:]]+/, "", line)
+			gsub(/[[:space:]]+$/, "", line)
+			gsub(/^["\047]|["\047]$/, "", line)
 			if (!(bdim_key in mvals)) { nk++; dims[nk] = bdim_key; mvals[bdim_key] = "" }
 			if (mvals[bdim_key] == "") mvals[bdim_key] = line
-			else mvals[bdim_key] = mvals[bdim_key] " " line
+			else mvals[bdim_key] = mvals[bdim_key] SUBSEP line
 			next
 		}
 		if (mmode == "excl") { ex_n++; exval[ex_n, k] = v }
@@ -368,7 +405,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	}
 	in_matrix && ind <= 6 && $0 !~ /^[[:space:]]*$/ { in_matrix = 0; bdim_key = "" }
 	END { if (has_name) emit() }
-	' "$wf" >> "$published"
+	' "$normalized" >> "$published"
 done
 sort -u -o "$published" "$published"
 
