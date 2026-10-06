@@ -244,6 +244,20 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		}},
 		{"Harness 5-Layer", func(v bool) DiagnosticCheck { return runHarnessCheck(cwd) }},
 		{"Migration", func(v bool) DiagnosticCheck { return checkMigration(cwd, v) }},
+		// SPEC-USER-ASSET-INSTALL-001 (M5, REQ-014/015/019): user-install
+		// integrity, project-vs-lock drift, and the plugin-migration
+		// advisory row (informational — the manual uninstall step).
+		{"User Install", func(v bool) DiagnosticCheck {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				c := DiagnosticCheck{Name: "User Install", Status: uikit.CheckWarn}
+				c.Message = fmt.Sprintf("cannot resolve home: %v", err)
+				return c
+			}
+			return checkUserInstallIntegrity(home, v)
+		}},
+		{"Project Lock", func(v bool) DiagnosticCheck { return checkProjectVsLock(cwd, v) }},
+		{"Plugin Migration", func(v bool) DiagnosticCheck { return checkPluginMigrationAdvisory(v) }},
 		{"Plugin Deployment", func(v bool) DiagnosticCheck { return checkPluginDeployment(cwd, v) }},
 		// SPEC-PLUGIN-MARKETPLACE-001 REQ-020..023 (card t1435): installed moai
 		// plugin version vs this binary. Reads one registry file and runs at most
