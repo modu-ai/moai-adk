@@ -97,6 +97,20 @@ func (g *backlogApprovalGate) verifyForClose(ctx context.Context, cardID, cardUU
 	return g.gate.Verify(ctx, card, cardUUID)
 }
 
+// refreshDoneApprovalGate re-checks, at archive moment under the queue lock
+// the close already holds, whether a factory database has appeared since the
+// pre-read (review round-5 P2): a FIRST dispatch racing in between the
+// pre-read and the archive makes the card factory-linked, and the nil gate
+// that skipped verification must be replaced by a real one — the
+// archive-moment verification then runs against the binding and refuses an
+// approval-less close. An already-open gate is returned unchanged.
+func refreshDoneApprovalGate(ctx context.Context, root string, g *backlogApprovalGate) (*backlogApprovalGate, error) {
+	if g != nil {
+		return g, nil
+	}
+	return holdDoneApprovalGate(ctx, root)
+}
+
 // release settles the gate. The gate's transaction never writes, so
 // rollback is the settle path on every exit — after a refusal, after the
 // guarded mutation failed, and after the guarded mutation has PERSISTED (the

@@ -39,6 +39,22 @@ func TestRecordedCardRowFollowsDispatchBinding(t *testing.T) {
 	frPlace(t, db, Card{RunID: "run-cur", CardID: "t1", State: CardMergedLocal, OwnerLabel: "worker-1", Version: 2, EvidenceSHA: "sha-cur", UpdatedAt: "2026-09-26T01:00:00Z"})
 	frBindDispatch(t, db, "t1", "run-cur")
 
+	// A FAILED assignment must leave the binding exactly as it was (review
+	// round-5 P1): the binding write lives in the T2 transaction, so a
+	// transition refusal cannot strand the card on a new run.
+	frPlace(t, db, Card{RunID: "run-cur", CardID: "t4", State: CardPicked, OwnerLabel: "worker-1", Version: 1, UpdatedAt: "2026-09-26T02:00:00Z"})
+	frBindDispatch(t, db, "t4", "run-cur")
+	if _, err := db.Transition(ctx, TransitionRequest{
+		RunID: "run-cur", CardID: "t4", To: CardAssigned,
+		ExpectedVersion: 1, Actor: "assign", Owner: "", Now: frNow,
+	}); !errors.Is(err, ErrInvalidCardInput) {
+		t.Fatalf("invalid assignment err = %v, want ErrInvalidCardInput", err)
+	}
+	row2, linked, err := db.RecordedCardRowReadonly(ctx, "t4")
+	if err != nil || !linked || row2.RunID != "run-cur" || row2.Version != 1 {
+		t.Fatalf("failed assignment changed the binding: linked=%v row=%+v err=%v", linked, row2, err)
+	}
+
 	row, linked, err := db.RecordedCardRowReadonly(ctx, "t1")
 	if err != nil || !linked {
 		t.Fatalf("binding resolution: linked=%v err=%v, want linked", linked, err)

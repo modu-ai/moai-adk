@@ -418,14 +418,13 @@ func applyAutoDoneCloses(ctx context.Context, root string, store *factory.Backlo
 		return outcomes, nil
 	}
 	err := store.WithLock(func(l *factory.LockedBacklog) error {
-		gate, gateErr := holdDoneApprovalGate(ctx, root)
+		gate, gateErr := holdDoneApprovalGate(context.Background(), root)
 		if gateErr != nil {
 			// The factory state cannot be verified against: fail the scan
 			// rather than closing factory-linked cards unchecked.
 			return gateErr
 		}
-		defer gate.release()
-		return l.Mutate(func(rec *factory.BacklogRecord) error {
+		mutErr := l.Mutate(func(rec *factory.BacklogRecord) error {
 			for k := range outcomes {
 				if !outcomes[k].closed {
 					continue
@@ -451,7 +450,14 @@ func applyAutoDoneCloses(ctx context.Context, root string, store *factory.Backlo
 					outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
 					continue
 				}
-				if verr := gate.verifyForClose(ctx, outcomes[k].id, outcomes[k].snapUUID); verr != nil {
+				// A first dispatch racing in under this queue lock re-opens
+				// the nil gate at archive moment (review round-5 P2).
+				refreshed, rerr := refreshDoneApprovalGate(context.Background(), root, gate)
+				if rerr != nil {
+					return rerr
+				}
+				gate = refreshed
+				if verr := gate.verifyForClose(context.Background(), outcomes[k].id, outcomes[k].snapUUID); verr != nil {
 					outcomes[k].downgrade(autoDoneReceiptDowngradeReason(verr))
 					continue
 				}
@@ -462,6 +468,8 @@ func applyAutoDoneCloses(ctx context.Context, root string, store *factory.Backlo
 			}
 			return nil
 		})
+		gate.release()
+		return mutErr
 	})
 	if err != nil {
 		return nil, fmt.Errorf("todo auto-done: %w", err)

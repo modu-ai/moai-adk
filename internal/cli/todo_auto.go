@@ -332,14 +332,21 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 				if gateErr != nil {
 					return gateErr
 				}
-				defer gate.release()
-				return l.Mutate(func(r *factory.BacklogRecord) error {
+				mutErr := l.Mutate(func(r *factory.BacklogRecord) error {
 					for i := range r.Items {
 						if r.Items[i].ID == card.ID {
 							// REQ-THS-012: positive enumeration — the done
 							// admits exactly `picked`, refuses everything else
 							// by name.
 							if r.Items[i].State == factory.BacklogStatePicked {
+								// A first dispatch racing in under this queue
+								// lock re-opens the nil gate at archive moment
+								// (review round-5 P2).
+								refreshed, rerr := refreshDoneApprovalGate(context.Background(), root, gate)
+								if rerr != nil {
+									return rerr
+								}
+								gate = refreshed
 								if err := gate.verifyForClose(context.Background(), card.ID, todoCardUUID(&r.Items[i])); err != nil {
 									return err
 								}
@@ -350,6 +357,8 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 					}
 					return fmt.Errorf("auto: card %s vanished", card.ID)
 				})
+				gate.release()
+				return mutErr
 			})
 			if err != nil {
 				// The card changed hands mid-flight: this cycle's claim is

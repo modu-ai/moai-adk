@@ -572,6 +572,44 @@ func TestApprovalGateOutlivesContextCancel(t *testing.T) {
 	gate.release()
 }
 
+// Regression pin for round-5 review P2 (card t1538): refreshDoneApprovalGate
+// is the archive-moment re-check. With no factory database it stays nil (the
+// card is not factory-linked); once the racing first dispatch has created
+// the database and binding, the refresh opens a real gate whose verification
+// refuses an approval-less close.
+func TestRefreshDoneApprovalGateRacingFirstDispatch(t *testing.T) {
+	root, store := fcFixture(t)
+	// Deliberately no factory database yet: the pre-read sees none.
+	gate, err := holdDoneApprovalGate(context.Background(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refreshed, err := refreshDoneApprovalGate(context.Background(), root, gate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refreshed != nil {
+		t.Fatal("refresh opened a gate although no factory database existed")
+	}
+	gate.release()
+
+	// The racing dispatch: card row + dispatch binding now exist.
+	uuid := fcLinkedCard(t, root, store, "t1", "racing factory-linked card")
+	fcPlaceFactoryCard(t, root, "t1", 1, "sha-t1", "2026-09-26T00:00:00Z")
+
+	refreshed, err = refreshDoneApprovalGate(context.Background(), root, refreshed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refreshed == nil {
+		t.Fatal("refresh did not open the gate after the factory database appeared")
+	}
+	if err := refreshed.verifyForClose(context.Background(), "t1", uuid); !errors.Is(err, homestate.ErrApprovalMissing) {
+		t.Fatalf("racing dispatch verify err = %v, want ErrApprovalMissing", err)
+	}
+	refreshed.release()
+}
+
 // Regression pin for round-2 review P2-1 (card t1538): `factory approve
 // --run <run>` reads THE NAMED RUN's row — never the most recently modified
 // row of any run — and refuses a run that has no row for the card.

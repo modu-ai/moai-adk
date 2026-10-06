@@ -447,6 +447,22 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 				return plan, err
 			}
 		}
+		// The dispatch binding (SPEC-FACTORY-COMPLETION-RECOVERY-001 review
+		// rounds 4-5): T2 records THIS run as the card's current factory
+		// engagement in the SAME transaction as the state change — a failed
+		// assignment leaves the binding exactly as it was, and the assign
+		// command, the dispatch mirror, and factory next all funnel through
+		// this one edge, so no assignment path can leave it behind. The run
+		// row is ensured here too (review P2-2): an assigned card is never
+		// stranded without the metadata its binding names.
+		if _, err := tx.ExecContext(ctx, `INSERT INTO runs(run_id,status,manifest_json,created_at,updated_at) VALUES(?,'active','{}',?,?) ON CONFLICT(run_id) DO NOTHING`,
+			cur.RunID, nowText, nowText); err != nil {
+			return plan, err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO card_dispatch(card_id,run_id,recorded_at) VALUES(?,?,?) ON CONFLICT(card_id) DO UPDATE SET run_id=excluded.run_id,recorded_at=excluded.recorded_at`,
+			cur.CardID, cur.RunID, nowText); err != nil {
+			return plan, err
+		}
 		plan.next.OwnerLabel = owner
 	case guardLeaseAcquire:
 		label := strings.TrimSpace(req.Actor)

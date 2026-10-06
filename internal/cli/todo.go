@@ -23,6 +23,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -1080,12 +1081,12 @@ func newTodoDoneCmd() *cobra.Command {
 				// recheck and the record landing. A card with no factory
 				// database and no factory row keeps its receipt-less
 				// completion — the gate does not apply.
-				gate, gateErr := holdDoneApprovalGate(cmd.Context(), resolveProjectDir())
+				root := resolveProjectDir()
+				gate, gateErr := holdDoneApprovalGate(context.Background(), root)
 				if gateErr != nil {
 					return gateErr
 				}
-				defer gate.release()
-				return l.Mutate(func(rec *factory.BacklogRecord) error {
+				mutErr := l.Mutate(func(rec *factory.BacklogRecord) error {
 					// Refused mutations below: the write is discarded, so the
 					// record stays byte-identical on every one of them.
 					at := -1
@@ -1117,6 +1118,14 @@ func newTodoDoneCmd() *cobra.Command {
 						}
 						verdict = answer
 					}
+					// A first dispatch racing in after the pre-read makes the
+					// card factory-linked under this very queue lock: re-check
+					// at archive moment (review round-5 P2).
+					refreshed, rerr := refreshDoneApprovalGate(context.Background(), root, gate)
+					if rerr != nil {
+						return rerr
+					}
+					gate = refreshed
 					if err := gate.verifyForClose(cmd.Context(), id, todoCardUUID(&rec.Items[at])); err != nil {
 						return err
 					}
@@ -1143,6 +1152,11 @@ func newTodoDoneCmd() *cobra.Command {
 					}
 					return nil
 				})
+				// Release the factory lock only after the queue write it
+				// guarded has persisted (LockedBacklog.Mutate saved above);
+				// the refreshed gate, when one was opened, settles here too.
+				gate.release()
+				return mutErr
 			}); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
