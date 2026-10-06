@@ -3190,3 +3190,27 @@ Known unowned residue unchanged (the M9-recorded plan gap, not in M10/M11 scope)
 diagnostic strings carrying the word (launcher `kanban:` prefixes, the doctor line, discovery and
 leader-reader mentions, `legacy_routes.go`'s one M9-recheck line) — for the sync audit, not silently
 dropped.
+
+### Post-close CI repair (2026-10-06, leader nudge tmf011 — PR #1752 two reds)
+
+Two red checks on PR head `15c5b079a`, repaired in `0b3ee15ce`:
+
+- spec-lint: the workflow still fetched the retired remote develop branch —
+  "couldn't find remote ref develop" (run 37316160167). Repair: dropped every develop
+  reference from `.github/workflows/spec-lint.yml` — the push trigger, the integration-ref
+  fetch, the release/* snapshot policy keyed to origin/develop, and the develop-push policy
+  branch; under GitHub Flow every pull request and main push takes the default strict,
+  baseline-gated gate. Latent same-class residue on main tip, out of this card's scope:
+  spec-lint.yml still carries 11 develop refs there (its pushes skip the SPEC paths filter),
+  and 10 other workflow files carry develop references.
+- Race Test 2: `TestManagedCardChildDeliversInboxThroughLoop` — "the lane endpoint never
+  bound within the watchdog" at 30.75s (run 37316159953). Not attributable to this PR (the
+  head's diff was 2 doc files, zero Go); the same tree passed main's run 37379279038 and
+  bound locally in 7.3s — CI -race full-shard load timing. Repair: `cardChildWatchdog`
+  30s → 90s (3x the observed breach point).
+
+Verification: gofmt clean; workflow YAML parses; `go vet ./internal/cli` rc 0;
+`go test -race -count=3 -run TestManagedCardChildDeliversInboxThroughLoop ./internal/cli/`
+ok 29.4s. Gap: the local strict spec-lint pre-run hung (35 min at 0% CPU sleeping, 0-byte
+log, aborted unobserved — other lanes were running heavy internal/cli suites on this
+machine concurrently) — the strict lint verdict is CI's to make on the pushed head.
