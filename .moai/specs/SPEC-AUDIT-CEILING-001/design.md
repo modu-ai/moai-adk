@@ -270,10 +270,20 @@ exception. `Admit` never silently passes a required-backend fail.
 
 | Seam | File | Behavior at ceiling / required-backend fail |
 |---|---|---|
-| Kickoff evaluator (LIVE) | `internal/contract/kickoff/decide.go:373-376` | engine before `Admit`; refusal carries the receipt/ceiling reason; exit nonzero via kickoff-check |
-| Card transition (LIVE) | `internal/homestate/card_audit_kickoff.go` + `card_evidence_readers.go` | engine before `Admit`; same refusal reasons through the shared predicate |
+| Kickoff evaluator (LIVE) | `internal/contract/kickoff/decide.go:373-376` | engine before `Admit`; resolves the configured gate set and passes it in; refusal carries the receipt/ceiling reason; exit nonzero via kickoff-check (AC-ACE-022's kickoff arm + AC-ACE-015's ceiling arm) |
+| Card transition (LIVE) | `internal/homestate/card_audit_kickoff.go` + `card_evidence_readers.go` | engine before `Admit`; resolves the gate set the same way; same refusal reasons through the shared predicate (AC-ACE-022's card-transition arm + AC-ACE-015) |
 | Run gate (library) | `internal/runtime/audit_gate.go` | the same Step 0 for when a caller exists — `GateConfig.Invoke` has no production caller today (0 non-test references, 17 test-only; research.md §2), which is why the LIVE rows above carry the ACs |
 | Audit trail | new `.moai/state/audit-enforcement.log` (append-only) | one line per refusal/override: timestamp, SPEC, kind, outcome/reason |
+
+Not a seam (D5 disposition): `internal/contract/rules.go:160` is a
+label-only consumer (`auditverdict.AdmitLabel`) — its own comment records
+that the field-level plan predicate runs at the kickoff evaluator and T7.
+It receives no gate set and performs no admission, so work item 2's
+receipt checks have no surface there; M1's call-site list deliberately
+excludes it, and AC-ACE-022's production-path arms cover the two seams
+that do admit. Measured at 10d189915: all three `Admit(fields, …)` call
+sites pass the gate-set-less form, so the gate-set resolution this SPEC
+adds is new wiring at exactly the two LIVE rows above.
 
 The trail is machine-local state (`.moai/state/`), gitignored, never a
 citation target — the durable record lives in progress.md §G Override and

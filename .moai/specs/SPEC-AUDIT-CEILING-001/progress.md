@@ -9,6 +9,59 @@ plan_phase_branch: WT-audit-ceiling-counter
 plan_phase_worktree: .moai/worktrees/t1500
 plan_phase_artifacts: 7 (spec.md, plan.md, acceptance.md, design.md, research.md, progress.md, decision-index.md — Tier L set of 5 + progress + decision-index per interview.decision_gate: on)
 
+### Plan-audit iter4 repair — v0.6.0 (2026-10-06, this change)
+
+- iter4 verdict: FAIL 0.81 + STOP (the delta round beyond the Tier L
+  ceiling; consumer-canonical export `plan-audit-iter4.md`, audited_sha
+  `10d189915`; identical copy `plan-audit-v4-iter4.md`) — the FIRST round
+  with both required backends answering: claude FAIL 0.74 (direct
+  scrubbed-env CLI; the iter1-3 "claude unavailable" readings were
+  root-caused to a frozen MCP server env, not a subscription outage),
+  codex FAIL on the export surface. Both blocking defects (D1, D2)
+  pre-date v0.4.0 — measurement deepening, not repair damage. iter5
+  re-audit authorized as the leader's exception round (D1/D2/D5 repair →
+  scrubbed-env re-audit → leader final judgment).
+- Blocking closures (fix_scope: acceptance#AC-ACE-021/#009/#010/#018/#019,
+  design#s5-seams, plan#M1-callsites, spec#REQ-ACE-015-label):
+  - D1: AC-ACE-021's final-hit Then no longer mandates REQ-ACE-005/006
+    only — the failing verdict receives the REQ-ACE-004/005/006 ladder
+    outcome (design §2 rungs 1-3), with debt-admit explicitly named for
+    the label-only-failing no-anchor case the old text would have held.
+  - D2: new AC-ACE-022 — one production-path arm per LIVE seam (kickoff
+    evaluator `planAuditCheck`, homestate card transition
+    `admitVerdictFile`) proving the seam resolves the configured gate set
+    and refuses on a required-backend fail receipt. RED-now is a
+    production-path range-read MEASURED this tree before this change:
+    `grep -n "auditverdict.Admit(fields" internal/contract/kickoff/decide.go
+    internal/homestate/card_evidence_readers.go` → three call sites, all
+    gate-set-less form, exit 0 @10d189915; seam tests declared E8 new
+    tests (`TestKickoffEvaluatorRequiredBackendRefusal`,
+    `TestCardTransitionRequiredBackendRefusal`). An empty-gate-set
+    implementation can no longer pass every AC.
+  - D5: `contract/rules.go:160` measured label-only (`AdmitLabel`, count 1;
+    its comment records the field-level predicate runs at the kickoff
+    evaluator and T7) — plan M1's call-site list drops it (deliberately
+    NOT updated), design §5 names it not-a-seam; the ambiguity (bypass vs
+    over-inclusion) is resolved as over-inclusion, no bypass exists.
+  - spec#REQ-ACE-015-label: pattern label corrected (Ubiquitous) → (Where)
+    per its Where-form body.
+- Verdict's D3/D4 (auditor self-export defects — non-admission hash
+  algorithm; v4-series filename invisible to the kickoff reader) were
+  fixed by the verdict's own export form; no SPEC-artifact change owed.
+- Optional findings (13 items) explicitly DEFERRED per the verdict's own
+  disposition (recorded with adjudication in the verdict § Finding
+  Adjudication) — none blocking, none in this repair's hunks; triage
+  surface for run-phase/follow-up.
+- Cross-layer sweep: design §5 (AC-ACE-022 refs + gate-set resolution +
+  D5 not-a-seam note), plan M1 (two call sites + D5 disposition), plan §E
+  E6 (+AC-ACE-022), acceptance §D.1 (REQ-ACE-009 → +AC-ACE-022; AC count
+  21 → 22), plan §H range, spec §D.1 (22 criteria). REQ ids unchanged
+  (15); AC 22/25 (Tier L ceiling 25).
+- Ceiling state: the audit budget is exhausted through the leader's
+  exception round — after this repair the iter5 re-audit (scrubbed env,
+  both required engines) is the final scoring round; its verdict file is
+  the leader's kickoff-judgment input.
+
 ### Plan-audit v4-iter2 repair — v0.5.1 (2026-10-06, this change)
 
 - v4-iter2 verdict: FAIL 0.94 (0.81 → 0.94, no regression; fresh-series

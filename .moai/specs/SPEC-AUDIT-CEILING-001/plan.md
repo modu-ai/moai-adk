@@ -104,9 +104,10 @@ Per-milestone, reported in the 5-section evidence-bearing format:
   measured baseline.
 - E6 RED evidence per TDD AC (verbatim pre-GREEN failure output) — required
   for every RB criterion whose RED is a new test (AC-ACE-001/003/004/006/
-  007/008/009/010/011/013/014/015/017/018/019/020/021), and grep-class RED
-  cells with recorded exit codes for AC-ACE-002 plus AC-ACE-008's
-  export-path grep (baselines in §C).
+  007/008/009/010/011/013/014/015/017/018/019/020/021/022), and grep-class
+  RED cells with recorded exit codes for AC-ACE-002 plus AC-ACE-008's
+  three export-path greps plus AC-ACE-022's production-path range-read
+  (baselines in §C).
 
 ## §F Milestones
 
@@ -150,8 +151,17 @@ Data-model first: the receipt schema is the least reversible decision.
   label (REQ-ACE-009), (b) required backend configured + receipt absent or
   missing that backend's line (REQ-ACE-010, Q4 default refuse). The override
   is NOT an `Admit` input — it lives at the CLI seam (M3, design.md §4).
-- Update the three call sites (`decide.go`, `contract/rules.go`,
-  `homestate/card_evidence_readers.go`) to pass the configured gate set.
+- Update the TWO admission call sites (`decide.go` `planAuditCheck`,
+  `homestate/card_evidence_readers.go` `admitVerdictFile`) to resolve the
+  tree's configured gate set — the error-vs-empty contract of REQ-ACE-010 —
+  and pass it to `Admit` (the LIVE seams of design.md §5; AC-ACE-022's
+  per-seam arms — D2).
+  `contract/rules.go:160` is deliberately NOT updated (D5 disposition): it
+  is a label-only consumer (`auditverdict.AdmitLabel`; its own comment
+  records that the field-level plan predicate runs at the kickoff evaluator
+  and at T7), not an admission seam — a gate-set check cannot apply at a
+  site that reads only the label, so including it in the call-site list
+  would over-include and imply a bypass that does not exist.
 - Mirrors: convention doc mirror in the same change.
 - Depends on: decision-index Q4 verdict (blocker report if unresolved — the
   refuse default stands while the question stays open).
@@ -234,7 +244,7 @@ Data-model first: the receipt schema is the least reversible decision.
 ## §H Cross-References
 
 - spec.md §B (REQ-ACE-001..015), §C constraints, §D.1 id-history note
-- acceptance.md §D (AC-ACE-001..021), §C edge cases
+- acceptance.md §D (AC-ACE-001..022), §C edge cases
 - design.md §1-§10 (counter model, receipt schema, enforcement, open points)
 - research.md §1-§5 (source verification, Go surfaces, mirrors, gaps)
 - decision-index.md Q0-Q6 (the D9 decision record, the disposition table,
