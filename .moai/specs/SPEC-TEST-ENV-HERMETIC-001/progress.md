@@ -240,7 +240,17 @@ MOAI_KANBAN_SETTINGS_INJECTED=1
 - cli scrubbed arm: both re-acquired at **84m** (until 15:31:41Z), `-timeout 82m` — the cap is
   1.5 × the longest runtime recorded so far (the cli lane arm's ~56m); released when the arm was
   killed (below).
-- Hook arms and any remaining arms: leases are acquired per arm by the resuming session.
+- Resuming session (2026-10-07), per-arm model kept; cap **116m** / `-timeout 114m` throughout
+  (= 1.5 × the survivor observation's 4649.376s ≈ 77.5m, the longest whole-package runtime
+  recorded — see the cli scrubbed arm's post-seal observation above; moai build `2a4fd910c`,
+  not an ancestor of tree HEAD `efc099b67`, §2.2 second-coordinate note):
+  - cli scrubbed re-run: both resources acquired 2026-10-06T18:32:18/19Z (holder session
+    `01e8bc01-2113-44d3-b6ae-48446f8bc46e`, until 20:28:18/19Z), released 19:37:07Z after the
+    arm completed.
+  - hook lane arm: both re-acquired 19:37:07Z (until 21:33:07Z), released 20:18:38Z after the
+    arm completed.
+  - hook scrubbed arm: both re-acquired 20:18:38Z (until 22:14:38Z), to be released after the
+    arm completes.
 
 ### c1 arm records
 
@@ -775,28 +785,257 @@ $ grep -cE '"Test":"(TestTodoClaim_LaneGovernance|TestTodoClaimMCP_Mirror|TestTo
   whole-package measurement on a quiet machine before c2. The partial 4 fail rows are NOT
   extrapolated to any claim.
 
-**hook lane arm — NOT STARTED** (prepared command, to run under a fresh per-arm lease):
+**cli scrubbed arm — COMPLETE, VALID (re-run by the resuming session 2026-10-07; supersedes the
+discarded first attempt above, whose kill did not in fact land).**
+
+- Post-seal observation (recorded before anything else): the first attempt's process survived the
+  recorded `pkill` and wrote a COMPLETE stream into the old `c1-cli-scrubbed.json` — terminal
+  rows `FAIL github.com/modu-ai/moai-adk/internal/cli 4649.376s` at 2026-10-07 00:25:22+09:00,
+  top-level rows T=5122, 6 fail rows, 0 invalid-arm markers, stream start back-computed to
+  2026-10-06 23:07:45+09:00 = the original launch. It is DISCARDED, never the arm record: it
+  outlived its declared kill, ran lease-less after the seal released its lease, and straddled the
+  recorded contention window (load up to 31.15). Preserved as
+  `.moai/state/verify/t1356/c1-cli-scrubbed-survivor.json` (machine-local scratch, never cited
+  as an arm record; full disposition note in scratch `arm-survivor-note.md`). Its ONE recorded
+  use: the runtime figure 4649.376s ≈ 77.5m feeds the D6 cap formula as the longest
+  whole-package runtime ⇒ cap = 1.5 × 77.5m ≈ **116m**, `-timeout 114m` (the lease below was
+  sized from the scratch-recorded survivor observation before this extension was committed).
+- Command (as executed, one compound invocation — the 16-axis scrubbed compound per §D.3):
 
 ```
-unset MOAI_FACTORY_APP_SERVER_TOKEN MOAI_FACTORY_MANAGED MOAI_FACTORY_MANAGED_TUI MOAI_FACTORY_SLOW_LAUNCH_MS MOAI_KANBAN_CARD MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_LEAD_NAME && env MOAI_AUTONOMY_TIER=fully-autonomous MOAI_FACTORY_AUTO_DISPATCH=auto MOAI_FACTORY_CLEAR_POLICY= MOAI_FACTORY_ROLE=lane MOAI_FACTORY_WORKER=lane-23 MOAI_FACTORY_WORKERS=0 MOAI_KANBAN_BACKEND=glm MOAI_KANBAN_ID=tm9i7y MOAI_KANBAN_SETTINGS_INJECTED=1 go test ./internal/hook -count=1 -timeout <cap-2m> -json > .moai/state/verify/t1356/c1-hook-lane.json 2> .moai/state/verify/t1356/c1-hook-lane.err
+unset MOAI_AUTONOMY_TIER MOAI_FACTORY_APP_SERVER_TOKEN MOAI_FACTORY_AUTO_DISPATCH MOAI_FACTORY_CLEAR_POLICY MOAI_FACTORY_MANAGED MOAI_FACTORY_MANAGED_TUI MOAI_FACTORY_ROLE MOAI_FACTORY_SLOW_LAUNCH_MS MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_KANBAN_BACKEND MOAI_KANBAN_CARD MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_LEAD_NAME MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/cli -count=1 -timeout 114m -json > .moai/state/verify/t1356/c1-cli-scrubbed.json 2> .moai/state/verify/t1356/c1-cli-scrubbed.err
 ```
 
-**hook scrubbed arm — NOT STARTED** (prepared command):
+- Exit code: **1** (`ARM-EXIT=1`). Window: 2026-10-06T18:32:19Z → 2026-10-06T19:35:40Z
+  (**3767.007s ≈ 62.8m runtime**). Quiet-machine precondition at launch: load average
+  **8.99-10.40**, foreign `go test` `pgrep` empty at 18:27Z (5 minutes pre-launch); mid-run load
+  was not sampled — recorded as a measurement gap, mitigated by the arm's own validity signals
+  (T=L, 0 invalid markers) and the 62.8m runtime consistent with an uncontended run.
+- Validity (§D.3 commands 1/4/5): T = **5122** = L0 cli 5122 (command 1); invalid-arm markers
+  (command 4, on both the JSON stream and the stderr capture) = **0 / 0**; exit non-zero with
+  fail rows present (command 5) = **3** (≥ 1). **The arm is valid.**
+- Failing rows: **3** — one test, `TestCodexAudit_NonRequiredGateGoldenByteIdentical`, with
+  subtests `/corrupt-yaml` and `/required-uppercase`. The same test is present in the c1 cli
+  lane names file, so it is a both-arms failure candidate for clause (c), not a lane-only red.
+- §D.3 command 10 (clause (f), on the sorted scrubbed names file): expected **0**, printed
+  **0** — the five observed reds are absent from the scrubbed arm.
+- Sorted failing-name file (commands 6+7, verbatim; machine-local source
+  `.moai/state/verify/t1356/c1-cli-scrubbed.names.txt`):
 
 ```
-unset MOAI_AUTONOMY_TIER MOAI_FACTORY_APP_SERVER_TOKEN MOAI_FACTORY_AUTO_DISPATCH MOAI_FACTORY_CLEAR_POLICY MOAI_FACTORY_MANAGED MOAI_FACTORY_MANAGED_TUI MOAI_FACTORY_ROLE MOAI_FACTORY_SLOW_LAUNCH_MS MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_KANBAN_BACKEND MOAI_KANBAN_CARD MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_LEAD_NAME MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -count=1 -timeout <cap-2m> -json > .moai/state/verify/t1356/c1-hook-scrubbed.json 2> .moai/state/verify/t1356/c1-hook-scrubbed.err
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexAudit_NonRequiredGateGoldenByteIdentical"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexAudit_NonRequiredGateGoldenByteIdentical/corrupt-yaml"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexAudit_NonRequiredGateGoldenByteIdentical/required-uppercase"
 ```
 
-**Partial-record statement (explicit, per verification-claim-integrity §3 Gaps).** This c1
-baseline record is INCOMPLETE by the leader's drain order of 2026-10-06 (operator reboot
-preparation): of the four §D.3 c1 arms, only the cli lane arm is measured. Pending before c2,
-all as whole-package runs on a quiet machine: cli scrubbed arm, hook lane arm, hook scrubbed
-arm; then the c1-stage command 9 (cross-arm failing-names `comm -3` — the designed red for the
-five observed reds), command 11 (cross-arm skip-set `comm -3` — the skip-equality baseline), and
-the clause (f) command 10 for the hook lane names file (expected **2**). The c1 commit SHA this
-record lands in is recorded in the seal note below; the resuming session extends this section
-in a progress.md-only commit BEFORE c2 so the c1 subject grep (§D.8 step 1) keeps finding exactly
-one line and the c1 → c2 ancestry holds.
+- Skipped rows: **56** (`c1-cli-scrubbed.skipnames.txt`); the cross-arm comparison is the
+  c1-stage command 11, run after the hook arms land.
+
+**hook lane arm — COMPLETE, VALID (run 2026-10-07 by the resuming session; the recorded c1
+cli-lane env line replayed verbatim per clause (f), keeping the four lane-arm env lines
+byte-identical).**
+
+- Command (as executed, one compound invocation — the c1 cli-lane env replayed: the seven
+  absent axes unset, the nine session axes set to the c1 recorded values
+  `MOAI_FACTORY_WORKER=lane-23` and `MOAI_KANBAN_ID=tm9i7y`, NOT the resuming session's own
+  `lane-5`/`tmhxo0` values — AC-THE-003(f)'s four-line byte-identity requirement decides this:
+  the c1 line is the reference every later lane arm replays, per §D.3 "the final arm replays
+  the c1 line"):
+
+```
+unset MOAI_FACTORY_APP_SERVER_TOKEN MOAI_FACTORY_MANAGED MOAI_FACTORY_MANAGED_TUI MOAI_FACTORY_SLOW_LAUNCH_MS MOAI_KANBAN_CARD MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_LEAD_NAME && env MOAI_AUTONOMY_TIER=fully-autonomous MOAI_FACTORY_AUTO_DISPATCH=auto MOAI_FACTORY_CLEAR_POLICY= MOAI_FACTORY_ROLE=lane MOAI_FACTORY_WORKER=lane-23 MOAI_FACTORY_WORKERS=0 MOAI_KANBAN_BACKEND=glm MOAI_KANBAN_ID=tm9i7y MOAI_KANBAN_SETTINGS_INJECTED=1 go test ./internal/hook -count=1 -timeout 114m -json > .moai/state/verify/t1356/c1-hook-lane.json 2> .moai/state/verify/t1356/c1-hook-lane.err
+```
+
+- lane-arm env line (§D.3 recording form; byte-identical to the c1 cli-lane line above):
+
+```
+lane-arm env: set MOAI_AUTONOMY_TIER=fully-autonomous MOAI_FACTORY_AUTO_DISPATCH=auto MOAI_FACTORY_CLEAR_POLICY= MOAI_FACTORY_ROLE=lane MOAI_FACTORY_WORKER=lane-23 MOAI_FACTORY_WORKERS=0 MOAI_KANBAN_BACKEND=glm MOAI_KANBAN_ID=tm9i7y MOAI_KANBAN_SETTINGS_INJECTED=1 ; unset MOAI_FACTORY_APP_SERVER_TOKEN MOAI_FACTORY_MANAGED MOAI_FACTORY_MANAGED_TUI MOAI_FACTORY_SLOW_LAUNCH_MS MOAI_KANBAN_CARD MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_LEAD_NAME
+```
+
+- Exit code: **1** (`ARM-EXIT=1`). Window: 2026-10-06T20:08:54Z → 2026-10-06T20:17:38Z
+  (**487.874s ≈ 8.1m runtime**). Quiet-machine precondition at launch: no `*.test` binaries
+  and no real `go test` invocations by `pgrep`; load average 19.05-20.66 — decaying residue of
+  foreign suites that ended minutes before; the recorded cli-lane precedent accepted load
+  14-16. Mid-run load not sampled (same gap note as the cli scrubbed arm).
+- Validity (§D.3 commands 1/4/5): T = **1315** = L0 hook 1315 (command 1); invalid-arm markers
+  (command 4, on both the JSON stream and the stderr capture) = **0 / 0**; exit non-zero with
+  fail rows present (command 5) = **3** (≥ 1). **The arm is valid.**
+- Failing rows: **3** — the two observed hook reds **plus one additional lane-only name**,
+  `TestStaleRunNoticeFactoryLegacyLabel` (not one of the five observed reds; a measured flip
+  this sweep exists to record — the hook scrubbed arm decides whether it is lane-only, an M3
+  fix target, or a both-arms failure candidate for clause (c)).
+- §D.3 command 10 (clause (f), on the sorted hook lane names file): expected **2**, printed
+  **2** — the hook observed reds are present.
+- Sorted failing-name file (commands 6+7, verbatim; machine-local source
+  `.moai/state/verify/t1356/c1-hook-lane.names.txt`):
+
+```
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestStaleRunNoticeFactoryLegacyLabel"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestStaleRunNoticeLegacyLeaderSpelling"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestStaleRunNoticeLegacySessionRecord"
+```
+
+- Skipped rows: **6** (`c1-hook-lane.skipnames.txt`); the cross-arm comparison is the c1-stage
+  command 11, run after the hook scrubbed arm lands.
+- Lease lines: both resources acquired at 116m cap at 2026-10-06T19:37:07Z (holder session
+  `01e8bc01-2113-44d3-b6ae-48446f8bc46e`, until 21:33:07Z), held across this arm, released at
+  20:18:38Z and immediately re-acquired (until 22:14:38Z) for the hook scrubbed arm; moai
+  build `2a4fd910c`, not an ancestor of tree HEAD `efc099b67` (§2.2 second-coordinate note).
+  Load-collision note: two foreign `cli.test` binaries (other sessions' suites) were running
+  at this arm's launch — a DIFFERENT package from this arm, load below the recorded incident
+  band (31); the arm's own validity signals carried the verdict.
+
+**hook scrubbed arm — COMPLETE, VALID (run 2026-10-07 by the resuming session; exit 0 — the
+arm is fully green).**
+
+- Command (as executed, one compound invocation — the 16-axis scrubbed compound per §D.3):
+
+```
+unset MOAI_AUTONOMY_TIER MOAI_FACTORY_APP_SERVER_TOKEN MOAI_FACTORY_AUTO_DISPATCH MOAI_FACTORY_CLEAR_POLICY MOAI_FACTORY_MANAGED MOAI_FACTORY_MANAGED_TUI MOAI_FACTORY_ROLE MOAI_FACTORY_SLOW_LAUNCH_MS MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_KANBAN_BACKEND MOAI_KANBAN_CARD MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_LEAD_NAME MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -count=1 -timeout 114m -json > .moai/state/verify/t1356/c1-hook-scrubbed.json 2> .moai/state/verify/t1356/c1-hook-scrubbed.err
+```
+
+- Exit code: **0** (`ARM-EXIT=0`; terminal rows `ok github.com/modu-ai/moai-adk/internal/hook
+  436.166s`). Window: 2026-10-06T20:19:26Z → 2026-10-06T20:26:43Z (**436.166s ≈ 7.3m
+  runtime**). Launch conditions as the hook lane arm (no test binaries by `pgrep`, load
+  16.82 decaying, two foreign `cli.test` suites of a DIFFERENT package running; mid-run load
+  not sampled).
+- Validity (§D.3 commands 1/4/5): T = **1315** = L0 hook 1315 (command 1); invalid-arm markers
+  (command 4, JSON + stderr) = **0 / 0**; exit zero — command 5 not applicable (it binds
+  non-zero exits only). **The arm is valid.**
+- Failing rows: **0** — the names file is empty (`grep` exits 1 with an empty file, a valid
+  empty set per §D.3 once commands 1 and 4 hold; they do).
+- §D.3 command 10 (on the sorted scrubbed names file): expected **0**, printed **0** — the
+  hook observed reds are absent.
+- Skipped rows: **6** — sorted skip-names file (commands 11 extraction + sort, verbatim;
+  machine-local source `.moai/state/verify/t1356/c1-hook-scrubbed.skipnames.txt`):
+
+```
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestConsumerOnly_M0AndMxByteUnchanged"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestDriftFillBurstHelper"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookBenchmarkBudget"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestScanWriteContent_SupportedExtension_ScannerNotAvailable"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestSessionStart_DriftCacheProbe"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestSessionStart_HandleStageProbe"
+```
+
+- Lease lines: both resources acquired 2026-10-06T20:18:38Z (holder session
+  `01e8bc01-2113-44d3-b6ae-48446f8bc46e`, until 22:14:38Z), released 20:27:47Z after the arm
+  completed (see the Slot leases section above for the resuming session's full lease history).
+
+### c1-stage commands 9/10/11 — COMPLETE (the c1 baseline comparisons)
+
+- **Command 9, hook** (clause (b) red state — expected to print at c1): `LC_ALL=C comm -3
+  c1-hook-lane.names.txt c1-hook-scrubbed.names.txt` prints exactly **3** rows, all lane-only
+  (verbatim):
+
+```
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestStaleRunNoticeFactoryLegacyLabel"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestStaleRunNoticeLegacyLeaderSpelling"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestStaleRunNoticeLegacySessionRecord"
+```
+
+  The two observed reds are the designed content. The third row,
+  `TestStaleRunNoticeFactoryLegacyLabel`, is a **newly measured lane-only flip** — absent from
+  the scrubbed arm — and is therefore an M3 fix target alongside the two observed reds (it
+  reads the same stale-run-notice family axes; the c1 lane names file is the witness it fails
+  only under the lane env).
+- **Command 9, cli** (red state): `LC_ALL=C comm -3 c1-cli-lane.names.txt
+  c1-cli-scrubbed.names.txt` prints **394** rows (grep/comm exit 1). Every printed line is a
+  row of the c1 cli lane names file recorded above (the 397-row file minus the three rows the
+  scrubbed arm shares — `TestCodexAudit_NonRequiredGateGoldenByteIdentical` and its two
+  subtests, recorded verbatim in the cli scrubbed arm block); both input files are carried in
+  this section, so the output is reconstructible byte-for-byte. The five observed cli reds are
+  among the printed rows (command 10 witnesses them at **3** on the lane names file, recorded
+  in the cli lane arm block).
+- **Command 10** (clause (f) positive control, c1 arms only): cli lane names file printed
+  **3** (expected 3 — recorded in the cli lane arm block); hook lane names file printed **2**
+  (expected 2 — recorded in the hook lane arm block); cli scrubbed names file printed **0**
+  (expected 0 — recorded in the cli scrubbed arm block); hook scrubbed names file printed
+  **0** (expected 0 — recorded in the hook scrubbed arm block above).
+- **Command 11** (skip-set equality, cross-arm pairing lane-vs-scrubbed of the same tree):
+  - cli: `LC_ALL=C comm -3 c1-cli-lane.skipnames.txt c1-cli-scrubbed.skipnames.txt` prints
+    **nothing** — the skip sets are equal (56 rows = 56 rows). The cli scrubbed skip-names
+    file (the lane-side file is recorded in the cli lane arm block above), sorted, verbatim:
+
+```
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestAuditPinLive_CodexPinConfirmation"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestAuditPinLive_GLMDifferential"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestAxisACanaryHomeSweep_TodoFamily"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCleanupMoaiWorktrees"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexAuditLaunchLiveContract"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexAuditLaunchLiveReadOnlyRoles"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexLive_ExplicitReadOnlyApprovalStall"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexLive_OmittedSandboxPolicyBaseline"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexLive_ReviewStartEmitsTurnStarted"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexLive_SandboxPolicyStickiness"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexLive_ThreadReuseAndTurnInterrupt"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexRoleLiveLoadAndReadOnly"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCrossCompileScriptMirrorsCanonical"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLeaseSerialCrossProcessHelper"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLiveCardFlowClaudeClaude"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLiveClaudeClaudeCompletionSeparation"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLiveHookBoundaryIdleTruth"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestGLMAudit_NoAskUserQuestion"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestGLMToolsEnable_AtomicWriteProtectsOriginal"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestGateLockHelperSleep"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestHeadroomInitSurfaceExport"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLegacySkillIDsNotEmbedded/manifest_empty"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLegacySkillIDsNotEmbedded/manifest_error"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveClaudeAudit_GPTAndGLMOriginsUseSubscriptionReadOnly_AC_CLA_003_005_006_009_010_015"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveCodexCompactFires"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveCodexGoalContinueUntilMet"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveCodexInterruptFires"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveCodexNeedsInputOutcome"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveCodexPermissionRequestFires"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveCodexStopTimeoutCeiling"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveHarnessIsolation"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveHookFaultOutcome"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveStopChainGoalContinuation"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMCPServer_StdioRoundTripSubprocess"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestManagedCodexFactoryBrokerLive"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestManagedCodexFakeAppServer"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestManagedCodexTUIFakeCodex"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestManagedLoopbackChild"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMigrationRollback_M001_Rejected"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMigrationRollback_NoRollbackable"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMigrationRollback_Succeeds"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMigrationRun_AppliesPending"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMigrationRun_NoPending"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMigrationStatus_Human"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMigrationStatus_JSON"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestPtyCaptureChild"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestPtyCapture_DowngradeConfirmButtonAlignment"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestPtyCapture_DowngradeConfirmLocalized"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestPtyCapture_FailWithoutTmux"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestPtyCapture_InitFirstScreen"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestPtyCapture_SkipWithoutGate"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestResolveRulesDir/windows_volume-letter_gate.yaml_value_passes_through_unjoined"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSessionPIDStampExecHelper"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestVerifyRunHelperProcess"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestViewAcceptanceCriteria_ShapeTraceE2E"
+```
+
+  - hook: `LC_ALL=C comm -3 c1-hook-lane.skipnames.txt c1-hook-scrubbed.skipnames.txt` prints
+    **nothing** — the skip sets are equal (6 rows = 6 rows). The fenced file above is the
+    scrubbed file verbatim (source `c1-hook-scrubbed.skipnames.txt`); the lane file
+    `c1-hook-lane.skipnames.txt` is set-identical — the empty `comm -3` itself is the witness.
+  - **BC-1 dispositions owed: none.** No skip-row difference exists in either package to
+    adjudicate — the c1 baseline is clean on the skip axis.
+
+**c1 completion statement (2026-10-07, resuming session — supersedes the seal's partial-record
+statement, which the seal commit `efc099b67` preserves verbatim in history).** All four §D.3
+c1 arms are now measured and valid — cli lane (previous session), cli scrubbed re-run, hook
+lane, hook scrubbed (this session; commands, validity signals and lease lines above) — and the
+c1-stage commands 9/10/11 are complete (the section above; command 11 prints nothing in both
+packages, so the skip sets are equal and **no BC-1 disposition is owed**). Baseline summary for
+the fix milestones: cli lane 397 failing rows / 280 unique vs scrubbed 3 rows / 1 unique (the
+394-row lane-only diff is the flip census this sweep exists to fix); hook lane 3 rows vs
+scrubbed 0 — the two observed reds plus one newly measured lane-only flip,
+`TestStaleRunNoticeFactoryLegacyLabel`, which is an M3 fix target alongside the observed reds.
+This extension is a progress.md-only commit: the §D.8 step 1 subject grep keeps finding exactly
+one line, step 4's c1 shape (progress.md only) is preserved, and the c1 → c2 ancestry holds
+from the seal commit.
 
 ### Discovery narrow pair re-record (plan.md M1 c1; both arms COMPLETE)
 
