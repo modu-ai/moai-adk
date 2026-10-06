@@ -381,6 +381,24 @@ func planAuditCheck(in DecideInput, dir string) (*contract.ReceiptFileRef, strin
 	if err != nil {
 		return ref, fmt.Sprintf("audit configuration error: %v", err)
 	}
+	// SPEC-AUDIT-CEILING-001 REQ-ACE-003/013: the ceiling-policy engine
+	// evaluates before the verdict reaches the admitting consumer. A blocked
+	// outcome refuses here; a debt-admit outcome substitutes its
+	// PASS-WITH-DEBT for the raw label in the label check alone (D20).
+	oc, override, cerr := runtime.EvaluateCeiling(runtime.CeilingInput{
+		SpecID: in.SpecID, SpecDir: dir, ProjectRoot: in.Root, CardID: in.Card,
+	}, fields, hashOK, gates.Required)
+	if cerr != nil {
+		return ref, fmt.Sprintf("audit ceiling evaluation error: %v", cerr)
+	}
+	if oc != nil {
+		if oc.Blocked {
+			return ref, fmt.Sprintf("plan-audit ceiling refusal (%s): %s", oc.Outcome, strings.Join(oc.Reasons, "; "))
+		}
+		if override {
+			fields.Label = auditverdict.LabelPassWithDebt
+		}
+	}
 	if ok, reason := auditverdict.Admit(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(dir), hashOK, gates.Required); !ok {
 		return ref, reason
 	}
