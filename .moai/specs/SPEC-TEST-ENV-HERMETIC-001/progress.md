@@ -825,6 +825,38 @@ stale signal reads `../hook/lane_env_axes_test.go` / `../cli/factory_env_axes_te
 `func <name>(`; no quoted family literal appears in the hook file (the
 `envkeys_factory_role_test.go:60` rule); gofmt clean.
 
+### RUN-PHASE SEAL (leader drain order 2026-10-06, operator reboot preparation)
+
+- **Freeze point**: c1 commit `39364e133` (`test(SPEC-TEST-ENV-HERMETIC-001): baseline record
+  (card t1356)`, progress.md only). Chain so far: `86aa3b1d6` (draft → in-progress) →
+  `39364e133` (c1). Branch `WT-test-env-hermetic-sweep`; NO push (remote freeze holds; the
+  leader batch-pushes). Slot leases `whole-package-test-suite` and `heavy-test`: **released** —
+  the resuming session acquires fresh per arm.
+- **Complete at freeze**: pre-flight in full (including the five observed reds re-established,
+  L0 cli 5122 / hook 1315, census 16, hook child census clean, lint 0 issues, pre-existing
+  Windows-vet failure recorded as the §C baseline); discovery narrow pair re-recorded equal;
+  the cli lane c1 arm VALID (T=L=5122, 397 fail rows / 280 unique, command 10 = 3); guard
+  drafts designed + persisted.
+- **NOT complete at freeze** (the resuming session, in order, before c2): ① re-run the c1 cli
+  scrubbed arm + run the hook lane and scrubbed arms (whole-package, per-arm leases, quiet
+  machine — the 2026-10-06 contention of three foreign cli suites at load 31 is recorded above
+  and must NOT be reproduced); ② extract names/skip files and run c1-stage commands 9 (five
+  designed reds), 10 (hook = 2), 11 (skip-equality baseline); ③ extend §E.2 in a
+  progress.md-only commit (the c1 subject grep of §D.8 step 1 must keep finding exactly one
+  line); ④ then c2 (the two guard files, EXACTLY those two, from the persisted drafts) → run
+  the guard reds on the c2 tree (plain-scrubbed and explicit-lane forms, 8 runs) → c2r
+  (progress.md only) → M2 (cli fix) → M3 (hook fix) → M4 (final pairs, mutation probes P1-P5,
+  AC re-evaluations). BC-1/BC-2/BC-3 stay binding (BC-1: any command-11/skip difference is a
+  clause-(b) failure unless the load/environment cause is independently proven; family-axis
+  differences are never excusable).
+- **Scratch persistence**: `/tmp` may not survive the reboot — everything load-bearing was
+  persisted under `.moai/state/verify/t1356/` (arm JSON + err, names/skip files, the two guard
+  drafts, this §E.2's assembly parts). `/tmp` remnants (`/tmp/t1356-guards/`,
+  `/tmp/t1356-regex-check/`, `/tmp/t1356-L0-*.txt`, `/tmp/t1356-census-*.txt`) are disposable.
+  The scratch dir stays machine-local: never committed, never cited; delete after §E.4 lands.
+- **Ceiling**: nothing after c1 was started this session — no c2 files, no fix commits, no
+  mutation probes. The new session takes the run from the resume list above.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — owned by manager-develop>_
