@@ -49,6 +49,68 @@ func fcLinkedCard(t *testing.T, root string, store *factory.BacklogStore, id, te
 	return ""
 }
 
+// Regression pin for round-4 continuation P1 (card t1538): EVERY assignment
+// path updates the dispatch binding — including a reassignment into a run
+// that already holds a row for the card. The old run's receipt then cannot
+// close the card's new work.
+func TestFactoryAssignUpdatesDispatchBinding(t *testing.T) {
+	root, store := fcFixture(t)
+	if _, _, err := runTodo(t, "add", "reassigned factory card"); err != nil {
+		t.Fatalf("todo add: %v", err)
+	}
+	if err := store.Mutate(func(r *factory.BacklogRecord) error {
+		for i := range r.Items {
+			if r.Items[i].ID == "t1" {
+				r.Items[i].State = factory.BacklogStatePicked
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// First dispatch: run-old is created and becomes the binding.
+	if _, _, err := runFactory(t, "assign", "t1", "--to", "worker-1", "--run", "run-old"); err != nil {
+		t.Fatalf("assign run-old: %v", err)
+	}
+	// Reassignment into run-cli, which ALREADY holds a picked row — the
+	// pre-fix mirror skipped RecordPicked here and left the binding stale.
+	fcPlace(t, root, homestate.Card{CardID: "t1", RunID: fcRun, State: homestate.CardPicked, OwnerLabel: "worker-2", Version: 1})
+	if _, _, err := runFactory(t, "assign", "t1", "--to", "worker-2", "--run", fcRun); err != nil {
+		t.Fatalf("assign into the existing run-cli row: %v", err)
+	}
+	db := fcOpen(t, root)
+	row, linked, err := db.RecordedCardRowReadonly(context.Background(), "t1")
+	if err != nil || !linked {
+		t.Fatalf("binding after reassignment: linked=%v err=%v, want run-cli", linked, err)
+	}
+	_ = db.Close()
+	if row.RunID != fcRun {
+		t.Fatalf("binding run = %s, want %s", row.RunID, fcRun)
+	}
+
+	// Completion scoping follows the binding: the old run's receipt is
+	// refused; the recorded run's receipt closes.
+	uuid := recheckUUID(t, root, store, "t1")
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: uuid, RunID: "run-old", CardID: "t1", FactoryVersion: 2,
+		EvidenceHash: "", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+	if _, _, err := runTodo(t, "done", "t1"); err == nil {
+		t.Fatal("done closed on the old run's receipt after reassignment")
+	}
+	if !fcLiveItem(t, store, "t1") {
+		t.Fatal("the refused done archived the card")
+	}
+	// The assigned row's evidence is empty until a commit lands; approve
+	// binds the current row as it stands.
+	if _, _, err := runFactory(t, "approve", "t1", "--run", fcRun, "--issuer", "lead"); err != nil {
+		t.Fatalf("approve the recorded run: %v", err)
+	}
+	if _, _, err := runTodo(t, "done", "t1"); err != nil {
+		t.Fatalf("done with the recorded run's receipt: %v", err)
+	}
+}
+
 // fcBindDispatch records the card's dispatch binding — the current-run
 // authority the completion gate and scan resolve through. Idempotent.
 func fcBindDispatch(t *testing.T, root, cardID, runID string) {

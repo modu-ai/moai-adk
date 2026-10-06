@@ -216,9 +216,18 @@ func TestAutoDoneScanDoesNotMigrateOldSchema(t *testing.T) {
 	commitOnRef(t, root, "Merge branch 'WT-r' into develop (card t960)")
 	materializeOriginDevelop(t, root)
 
+	// The non-factory control carries landing evidence but no factory row:
+	// an old-schema store must not downgrade it to query-inconclusive.
+	seedCard(t, store, "t961", "plain old-schema control", factory.BacklogStateQueued)
+	commitOnRef(t, root, "Merge branch 'WT-s' into develop (card t961)")
+	materializeOriginDevelop(t, root)
+
 	db := fcOpen(t, root)
 	if _, err := db.DB.Exec(`DROP TABLE leader_approvals`); err != nil {
 		t.Fatalf("drop approvals table: %v", err)
+	}
+	if _, err := db.DB.Exec(`DROP TABLE card_dispatch`); err != nil {
+		t.Fatalf("drop dispatch table: %v", err)
 	}
 	_ = db.Close()
 
@@ -228,6 +237,12 @@ func TestAutoDoneScanDoesNotMigrateOldSchema(t *testing.T) {
 	}
 	if !strings.Contains(stdout, "skip t960 reason=leader-unapproved") {
 		t.Errorf("stdout %q lacks skip t960 reason=leader-unapproved (missing-table read)", stdout)
+	}
+	if strings.Contains(stdout, "skip t961 reason=query-inconclusive") {
+		t.Errorf("the ordinary card was misclassified query-inconclusive:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "done t961 landing=landed") {
+		t.Errorf("stdout %q lacks the ordinary card's dry-run close", stdout)
 	}
 
 	// Reopen STRICTLY READ-ONLY for the check — a write-mode open runs the

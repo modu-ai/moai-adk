@@ -180,6 +180,13 @@ func scanApprovalStates(ctx context.Context, root string, snapshot *factory.Back
 		}
 		return states
 	}
+	hasDispatch, err := db.FactoryTablePresent(ctx, "card_dispatch")
+	if err != nil {
+		for _, id := range ids {
+			states[id] = factory.ReceiptGateUnknown
+		}
+		return states
+	}
 	for _, id := range ids {
 		var cardUUID string
 		for i := range snapshot.Items {
@@ -187,6 +194,23 @@ func scanApprovalStates(ctx context.Context, root string, snapshot *factory.Back
 				cardUUID = todoCardUUID(&snapshot.Items[i])
 				break
 			}
+		}
+		if !hasDispatch {
+			// An older-schema store: no dispatch bindings exist. REQ-FCR-002's
+			// scope sentence holds at this layer too — a card with no factory
+			// row is out of scope (None), and a factory-linked card (rows
+			// orphaned from their binding) reads unverified, never as a
+			// migration trigger.
+			exists, rerr := db.CardRowExistsReadonly(ctx, id)
+			switch {
+			case rerr != nil:
+				states[id] = factory.ReceiptGateUnknown
+			case !exists:
+				// not factory-linked: the axis does not apply
+			default:
+				states[id] = factory.ReceiptGateUnverified
+			}
+			continue
 		}
 		if !hasApprovals {
 			// An older-schema store: no receipts exist anywhere. A

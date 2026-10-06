@@ -248,7 +248,8 @@ func OpenFactoryReadonly(path string) (*FactoryDB, error) {
 func (f *FactoryDB) FactoryTablePresent(ctx context.Context, table string) (bool, error) {
 	switch table {
 	case "meta", "workers", "runs", "cards", "events", "dead_letters",
-		"resume_handoffs", "memory_handoffs", "handoff_events", "leader_approvals":
+		"resume_handoffs", "memory_handoffs", "handoff_events", "leader_approvals",
+		"card_dispatch":
 		// SQL: the allowlist pins table to a known identifier; the value never
 		// reaches the query from input.
 	default:

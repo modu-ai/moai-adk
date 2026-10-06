@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
@@ -42,10 +41,12 @@ func writeFactoryAssignment(ctx context.Context, root string, store *factory.Bac
 	}
 	defer func() { _ = db.Close() }()
 	now := factoryCardNow()
-	card, err := db.LoadCard(ctx, runID, cardID)
-	if errors.Is(err, homestate.ErrCardNotFound) {
-		card, err = db.RecordPicked(ctx, runID, cardID, homestate.CardFields{}, "dispatch", now)
-	}
+	// RecordPicked on EVERY assignment path — the existing-row case
+	// included (review round-4 P1): its transaction upserts the dispatch
+	// binding and ensures the run row, so a reassignment into a run that
+	// already holds a row also moves the binding. An empty CardFields
+	// re-record leaves an existing row's fields untouched.
+	card, err := db.RecordPicked(ctx, runID, cardID, homestate.CardFields{}, "dispatch", now)
 	if err != nil {
 		return err
 	}

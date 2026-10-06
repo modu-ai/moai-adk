@@ -259,6 +259,16 @@ func (f *FactoryDB) VerifyApprovalReadonly(ctx context.Context, cardID, cardUUID
 	return a.VerifyBinding(cardUUID, row.RunID, row.Version, row.EvidenceSHA, row.OwnerLabel)
 }
 
+// CardRowExistsReadonly reports whether the card has any factory row,
+// without touching the dispatch or receipt tables (an older-schema store
+// may lack both). Read-only safe; the REQ-FCR-002 scoping decision for a
+// pre-binding store uses this.
+func (f *FactoryDB) CardRowExistsReadonly(ctx context.Context, cardID string) (bool, error) {
+	var n int
+	err := f.DB.QueryRowContext(ctx, `SELECT count(*) FROM cards WHERE card_id=?`, cardID).Scan(&n)
+	return n > 0, err
+}
+
 // RecordedCardRowReadonly resolves the card's dispatch factory row for
 // read-only consumers that must not touch the receipt table (an
 // older-schema store may not have one). linked=false when the card has no
