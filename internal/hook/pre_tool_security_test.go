@@ -310,3 +310,203 @@ func TestCheckFileAccess_EditNewStringCleanAllowed(t *testing.T) {
 			decision, reason)
 	}
 }
+
+// --- card t1530: ".."-after-symlink physical resolution ---------------------
+//
+// The tests below cover the lexical gap in checkFileAccess's shared helper
+// resolveThroughExistingParent: on go1.26, filepath.EvalSymlinks — and
+// equally a lexical filepath.Clean — collapses a ".." that follows a symlink
+// against the LEXICAL parent, so "<symlink-to-outside>/../leaf.md" reads as
+// an in-project path while the Write tool's own resolution walks the symlink
+// physically and lands outside the project (CWE-61). The fix mirrors the
+// zoneResolve rewrite of t1510 (protected_zone_path.go): a per-component
+// physical walk where ".." pops the RESOLVED prefix.
+//
+// Attack paths in these tests are assembled by plain concatenation —
+// filepath.Join would Clean "linked/.." against the lexical parent inside
+// the TEST itself and destroy the very sequence under test.
+
+// TestCheckFileAccess_DotDotAfterOutsideSymlinkNewFileBlocked is the
+// failure-repro arm: a directory symlink points OUTSIDE the project and the
+// requested leaf does not exist yet (new-file Write). The kernel walks
+// "linked/.." physically — popping to the parent of the outside target — so
+// the write lands outside the project, while the lexical form reads as
+// project/evil.md (in-project, allowed by the pre-fix guard).
+func TestCheckFileAccess_DotDotAfterOutsideSymlinkNewFileBlocked(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	outsideDir := t.TempDir() // distinct temp dir = outside project
+	link := filepath.Join(projectDir, "linked")
+	if err := os.Symlink(outsideDir, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	// Concatenated on purpose: filepath.Join would clean "linked/.." away.
+	escape := projectDir + "/linked/../evil.md"
+
+	h := &preToolHandler{
+		cfg:        &mockConfigProvider{cfg: newTestConfig()},
+		policy:     DefaultSecurityPolicy(),
+		projectDir: projectDir,
+	}
+
+	toolInput, err := json.Marshal(map[string]string{"file_path": escape})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	decision, reason := h.checkFileAccess(toolInput, "Write")
+	if decision != DecisionDeny {
+		t.Errorf("'..' after outside symlink, new file: decision=%q reason=%q, want %q",
+			decision, reason, DecisionDeny)
+	}
+}
+
+// TestCheckFileAccess_DotDotAfterOutsideSymlinkExistingLeafBlocked is the
+// existing-leaf arm of the same escape: outside/present.md already exists,
+// so the write overwrites it once the physical walk lands there. The lexical
+// form reads as project/present.md, which does not exist at that location —
+// EvalSymlinks on the collapsed path errors and the pre-fix fallback keeps
+// the in-project form.
+func TestCheckFileAccess_DotDotAfterOutsideSymlinkExistingLeafBlocked(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	outsideDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outsideDir, "present.md"), []byte("p"), 0o600); err != nil {
+		t.Fatalf("write present.md: %v", err)
+	}
+	link := filepath.Join(projectDir, "linked")
+	if err := os.Symlink(outsideDir, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	escape := projectDir + "/linked/../present.md"
+
+	h := &preToolHandler{
+		cfg:        &mockConfigProvider{cfg: newTestConfig()},
+		policy:     DefaultSecurityPolicy(),
+		projectDir: projectDir,
+	}
+
+	toolInput, err := json.Marshal(map[string]string{"file_path": escape})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	decision, reason := h.checkFileAccess(toolInput, "Write")
+	if decision != DecisionDeny {
+		t.Errorf("'..' after outside symlink, existing leaf: decision=%q reason=%q, want %q",
+			decision, reason, DecisionDeny)
+	}
+}
+
+// TestCheckFileAccess_DotDotWithinProjectAllowed is the behavior-preservation
+// control: a plain ".." with NO symlink anywhere in the path must stay
+// allowed — the physical walk lands exactly where the lexical clean said it
+// would (NFR-SEC-003, no false-positive deny).
+func TestCheckFileAccess_DotDotWithinProjectAllowed(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projectDir, "sub"), 0o755); err != nil {
+		t.Fatalf("mkdir sub: %v", err)
+	}
+	plain := projectDir + "/sub/../plain.md"
+
+	h := &preToolHandler{
+		cfg:        &mockConfigProvider{cfg: newTestConfig()},
+		policy:     DefaultSecurityPolicy(),
+		projectDir: projectDir,
+	}
+
+	toolInput, err := json.Marshal(map[string]string{"file_path": plain})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	decision, reason := h.checkFileAccess(toolInput, "Write")
+	if decision != "" {
+		t.Errorf("plain '..' within project: decision=%q reason=%q, want empty (allow)",
+			decision, reason)
+	}
+}
+
+// TestCheckFileAccess_DotDotAfterInProjectSymlinkAllowed guards the
+// false-deny direction: the ".." follows a symlink that resolves INSIDE the
+// project (linked -> project/real), so the physical pop lands back on the
+// project root and the new-file Write stays allowed.
+func TestCheckFileAccess_DotDotAfterInProjectSymlinkAllowed(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	realDir := filepath.Join(projectDir, "real")
+	if err := os.MkdirAll(realDir, 0o755); err != nil {
+		t.Fatalf("mkdir real: %v", err)
+	}
+	link := filepath.Join(projectDir, "linked")
+	if err := os.Symlink(realDir, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	// Physical walk: linked -> real, ".." pops real => project/inreal.md.
+	stays := projectDir + "/linked/../inreal.md"
+
+	h := &preToolHandler{
+		cfg:        &mockConfigProvider{cfg: newTestConfig()},
+		policy:     DefaultSecurityPolicy(),
+		projectDir: projectDir,
+	}
+
+	toolInput, err := json.Marshal(map[string]string{"file_path": stays})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	decision, reason := h.checkFileAccess(toolInput, "Write")
+	if decision != "" {
+		t.Errorf("'..' after in-project symlink: decision=%q reason=%q, want empty (allow)",
+			decision, reason)
+	}
+}
+
+// TestCheckFileAccess_DotDotAfterChainedSymlinksDeepEscapeBlocked is the deep
+// nesting arm: the ".." follows a CHAIN of two directory symlinks whose final
+// target sits one level deep outside (outside/nested), so the physical pop
+// lands on the outside directory itself and the leaf escapes the project.
+func TestCheckFileAccess_DotDotAfterChainedSymlinksDeepEscapeBlocked(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	outsideDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(outsideDir, "nested"), 0o755); err != nil {
+		t.Fatalf("mkdir nested: %v", err)
+	}
+	// Chain: hop2 -> hop1 -> outside/nested.
+	hop1 := filepath.Join(projectDir, "hop1")
+	if err := os.Symlink(filepath.Join(outsideDir, "nested"), hop1); err != nil {
+		t.Fatalf("symlink hop1: %v", err)
+	}
+	hop2 := filepath.Join(projectDir, "hop2")
+	if err := os.Symlink(hop1, hop2); err != nil {
+		t.Fatalf("symlink hop2: %v", err)
+	}
+	// Physical walk: hop2 -> hop1 -> outside/nested, ".." pops nested =>
+	// outside/deep.md — outside the project.
+	escape := projectDir + "/hop2/../deep.md"
+
+	h := &preToolHandler{
+		cfg:        &mockConfigProvider{cfg: newTestConfig()},
+		policy:     DefaultSecurityPolicy(),
+		projectDir: projectDir,
+	}
+
+	toolInput, err := json.Marshal(map[string]string{"file_path": escape})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	decision, reason := h.checkFileAccess(toolInput, "Write")
+	if decision != DecisionDeny {
+		t.Errorf("'..' after chained symlinks, deep escape: decision=%q reason=%q, want %q",
+			decision, reason, DecisionDeny)
+	}
+}
