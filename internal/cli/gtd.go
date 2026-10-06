@@ -258,6 +258,15 @@ func newGTDEngageCmd() *cobra.Command {
 				if err := factory.RecordFactoryCardAssignment(root, runID, result.CardID, lane, ""); err != nil {
 					return err
 				}
+				// The dispatch binding re-points BEFORE the mirror (review
+				// round-20 P1): even when the mirror fails
+				// (FACTORY_RECORD_UNAVAILABLE), the old run's approval is
+				// inert — the completion gate resolves the NEW run and
+				// refuses. A binding failure fails the dispatch loudly
+				// instead of leaving the old approval armed.
+				if err := recordDispatchBindingAtRoot(result.CardID, runID, root); err != nil {
+					return err
+				}
 				mirrorFactoryAssignment(cmd.Context(), cmd.ErrOrStderr(), root, store, runID, result.CardID, lane)
 				return nil
 			}}

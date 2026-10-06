@@ -46,3 +46,10 @@ plan_complete_at: 2026-10-06
 - Decision: serial
 - 근거: Anthropic의 coding-task 병렬성 주의에 따라 구현 중심 작업은 순차가 기본 — M1의 게이트 설계가 M2/M3의 전제(완료 표면 열거·receipt 타입)라 의존성도 순차를 지지. manager-develop 역할의 per-spawn 일반 스폰이 본 카드 트리에서 수행한다(manager-* 타입 스폰의 자가 격리 회피 — t1318).
 - 경계 사례: 해당 없음. Kickoff: 리더 결정 (a)에 따른 자율 진입 — plan-audit PASS-WITH-DEBT 0.94(≥0.80)·plan_artifact_hash `29794e62…` @6f01022e3·blocker 없음(결정 기록 본 절).
+
+## 봉인 기록 — 2026-10-07 (리더 최종 지시: 즉시 봉인·추가 수리 금지)
+
+- **중단 지점**: M1 round-19 진행 중 미완성 — 미러 경로 바인딩 동기화 수리 착수분(goal.go·gtd.go 호출부 + todo.go 게이트 + leader_approval_gate_test.go), 컴파일 불확실 상태로 봉인(리더 지시: 게이트 미통과 무방).
+- **완료된 라운드**: round-1~18 전부 커밋됨(마지막 `62598f2a8` — REQ-THS-012 revert 가드). 세부는 git log와 plan-audit-iter3.md 닫는 기록.
+- **잔여 게이트 항목**: ① 미러 경로 P1 — 배차 저장과 바인딩 갱신을 한 잠금 구간으로, 미러 실패 시 구 승인 무효화(재현: FACTORY_RECORD_UNAVAILABLE 후 done err=nil) ② round-8~19에서 지적된 나머지 overlay 재현 전부(`^TestReview` 계열 — /tmp/t1538-review-overlay.json 재현 재료, 게이트가 매 라운드 갱신).
+- **재개 절차**: M1 마지막 라운드부터 — /tmp overlay 재현이 green이 될 때까지 수리 → 전체 TestReview 계열 → E1 매트릭스 → §E.2 확정. SPEC 아티팩트·Binding run conditions 장부는 본 브랜치에 동결 완료.

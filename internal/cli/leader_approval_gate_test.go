@@ -1390,3 +1390,72 @@ func TestFactoryApproveBindsNamedRun(t *testing.T) {
 		t.Errorf("approve output = %q, want run-old's own version and evidence", out)
 	}
 }
+
+// Regression pin for round-20 P1 (card t1538): the dispatch sequence
+// re-points the binding BEFORE the mirror runs, and a mirror FAILURE
+// (FACTORY_RECORD_UNAVAILABLE) leaves the old run's approval inert — done
+// refuses, the card stays live, and no closure happens on the old receipt.
+func TestDispatchRepointsBindingBeforeMirrorAndMirrorFailureFailsClosed(t *testing.T) {
+	root, store := fcFixture(t)
+	cardID := addShapeCard(t, "dispatch mirror failure card")
+	fcLinkRuntime(t, root, cardID)
+	// The old run: row + approval (the forgery bait).
+	fcPlace(t, root, homestate.Card{CardID: cardID, RunID: "run-old", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 2, EvidenceSHA: "sha-old", UpdatedAt: "2026-09-26T01:00:00Z"})
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: "uuid-dm", RunID: "run-old", CardID: cardID, FactoryVersion: 2,
+		EvidenceHash: "sha-old", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+	pick := func() {
+		if err := store.Mutate(func(r *factory.BacklogRecord) error {
+			for i := range r.Items {
+				if r.Items[i].ID == cardID {
+					r.Items[i].State = factory.BacklogStatePicked
+				}
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// The mirror seam fails: FACTORY_RECORD_UNAVAILABLE.
+	prevWriter := factoryAssignmentWriter
+	factoryAssignmentWriter = func(context.Context, string, *factory.BacklogStore, string, string, string) error {
+		return errors.New("injected mirror failure")
+	}
+	t.Cleanup(func() { factoryAssignmentWriter = prevWriter })
+
+	// The dispatch sequence the goal/gtd owners run, in their order:
+	// runtime assignment, binding re-point, mirror (fails).
+	if err := factory.RecordFactoryCardAssignment(root, fcRun, cardID, "worker-1", ""); err != nil {
+		t.Fatal(err)
+	}
+	pick()
+	if err := recordDispatchBindingAtRoot(cardID, fcRun, root); err != nil {
+		t.Fatalf("binding re-point: %v", err)
+	}
+	mirrorFactoryAssignment(context.Background(), os.Stderr, root, store, fcRun, cardID, "worker-1")
+
+	// The mirror failed, but the binding names the NEW run: the old
+	// approval is inert — done refuses, the card stays live. (The bound
+	// run has no row yet — the mirror that would have created it failed —
+	// so the gate's own resolution refuses as run-unresolvable, which is
+	// the fail-closed answer.)
+	bindDB := fcOpen(t, root)
+	var boundRun string
+	if rerr := bindDB.DB.QueryRow(`SELECT run_id FROM card_dispatch WHERE card_id=?`, cardID).Scan(&boundRun); rerr != nil {
+		t.Fatalf("binding read: %v", rerr)
+	}
+	_ = bindDB.Close()
+	if boundRun != fcRun {
+		t.Fatalf("binding run = %s, want %s", boundRun, fcRun)
+	}
+	if _, stderr, err := runTodo(t, "done", cardID); err == nil {
+		t.Fatal("done closed on the old run's approval after a failed mirror")
+	} else if !strings.Contains(stderr, "leader approval") {
+		t.Errorf("stderr %q does not name the leader approval reason", stderr)
+	}
+	if !fcLiveItem(t, store, cardID) {
+		t.Fatal("the mirror-failure dispatch archived the card")
+	}
+}

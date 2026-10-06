@@ -885,6 +885,15 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 			if err := factory.RecordFactoryCardAssignment(root, gitOpts.RunID, linkedCardID, gitOpts.Lane, ""); err != nil {
 				return err
 			}
+			// The dispatch binding re-points BEFORE the mirror (review
+			// round-20 P1): even when the mirror fails
+			// (FACTORY_RECORD_UNAVAILABLE), the old run's approval is inert —
+			// the completion gate resolves the NEW run and refuses. A
+			// binding failure fails the dispatch loudly instead of leaving
+			// the old approval armed.
+			if err := recordDispatchBindingAtRoot(linkedCardID, gitOpts.RunID, root); err != nil {
+				return err
+			}
 			mirrorFactoryAssignment(cmd.Context(), cmd.ErrOrStderr(), root, store, gitOpts.RunID, linkedCardID, gitOpts.Lane)
 			return nil
 		}}
