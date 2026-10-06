@@ -429,6 +429,63 @@ func TestDecideAbandonWorksWithCorruptQueue(t *testing.T) {
 	}
 }
 
+// Regression pin for round-13 P1 (card t1538): a LANE cannot run the
+// state-preserving re-bind — rotating the binding onto a past row would
+// revive that row's old approval and let the in-flight work close without
+// the leader's approval. The refusal leaves the binding and both receipts
+// inert.
+func TestLaneRebindRefusedAndOldApprovalInert(t *testing.T) {
+	root, store := fcFixture(t)
+	cardID := addShapeCard(t, "lane re-bind target")
+	pick := func() {
+		if err := store.Mutate(func(r *factory.BacklogRecord) error {
+			for i := range r.Items {
+				if r.Items[i].ID == cardID {
+					r.Items[i].State = factory.BacklogStatePicked
+				}
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// In-flight work: run-cur holds the card at merged-local v2 with the
+	// dispatch binding and NO approval yet.
+	fcPlace(t, root, homestate.Card{CardID: cardID, RunID: "run-old", State: homestate.CardDone, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-old", UpdatedAt: "2026-09-26T01:00:00Z"})
+	fcPlace(t, root, homestate.Card{CardID: cardID, RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 2, EvidenceSHA: "sha-new", UpdatedAt: "2026-09-26T02:00:00Z"})
+	fcBindDispatch(t, root, cardID, fcRun)
+	// The past row's approval, recorded under run-old at its own version.
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: "uuid-lane", RunID: "run-old", CardID: cardID, FactoryVersion: 1,
+		EvidenceHash: "sha-old", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+
+	pick()
+	t.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
+	if _, _, err := runFactory(t, "assign", cardID, "--run", "run-old", "--to", "worker-1"); err == nil {
+		t.Fatal("a lane session rotated the dispatch binding")
+	}
+	t.Setenv(config.EnvFactoryRole, "")
+
+	// The binding still names the in-flight run, whose completion gate
+	// refuses (no receipt for run-cli) — the old receipt stayed inert.
+	bindDB := fcOpen(t, root)
+	row, linked, rerr := bindDB.RecordedCardRowReadonly(context.Background(), cardID)
+	_ = bindDB.Close()
+	if rerr != nil || !linked {
+		t.Fatalf("binding read: linked=%v err=%v", linked, rerr)
+	}
+	if row.RunID != fcRun {
+		t.Fatalf("binding run = %s, want %s", row.RunID, fcRun)
+	}
+	if _, _, err := runTodo(t, "done", cardID); err == nil {
+		t.Fatal("the revived old approval closed the in-flight work")
+	}
+	if !fcLiveItem(t, store, cardID) {
+		t.Fatal("the card was archived on the revived approval")
+	}
+}
+
 // fcBindDispatch records the card's dispatch binding — the current-run
 // authority the completion gate and scan resolve through. Idempotent.
 func fcBindDispatch(t *testing.T, root, cardID, runID string) {
