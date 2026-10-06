@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 0a7782e7f2dc2380ba27d4b9c3acfa4cf45c69817c26267772cdf0c28bde3aba
+              hash: 79c45fd7826930b739fe75799cd06508f40add1999b7b248bd2be21b1c372bf9
               version: 1.0.0
               depends_skills:
                 - moai-workflow-spec
@@ -48,7 +48,7 @@ catalog:
             - name: moai-foundation-core
               tier: core
               path: templates/.claude/skills/moai-foundation-core/
-              hash: 6c5cc32c1d2ddeeac4b0b32415e36e55f751cf120e6429529ea4dd016806a971
+              hash: 3e8662f233011349dc95c8ad5493194955a3869e48ed785e50b902758eee7279
               version: 1.0.0
             - name: moai-foundation-quality
               tier: core
@@ -70,7 +70,7 @@ catalog:
             - name: moai-plan
               tier: core
               path: templates/.agents/skills/moai-plan/
-              hash: 65f3119bd2abaa650e3a48020ad0d4ab1a2c7ce601defb7f3cb320cea7ae9a51
+              hash: 964967bd3226ace441bd779380403848e287ee4534b9b9e53b6206865be48a34
               version: 1.0.0
               depends_skills:
                 - moai
@@ -101,7 +101,7 @@ catalog:
             - name: moai-run
               tier: core
               path: templates/.agents/skills/moai-run/
-              hash: 2577a1b409fb900ccd04dd86dcf5cc4f04d2bda74e3849ae4a1a11f5ae16c373
+              hash: b14cd7eaa7ef9e933969871b7806185377f5019c97a71d653f097c9cb3619e9d
               version: 1.0.0
               depends_skills:
                 - moai
@@ -111,7 +111,7 @@ catalog:
             - name: moai-sync
               tier: core
               path: templates/.agents/skills/moai-sync/
-              hash: e6dbf3d74035a75a8be112c7433594e4b870df1d9fbb83ff5a18a75d59fd4322
+              hash: 078e189ac587d72c02d04169a06ffed178e810205319b8f45557083fd9d2c7c4
               version: 1.0.0
               depends_skills:
                 - moai
@@ -127,7 +127,7 @@ catalog:
             - name: moai-workflow-project
               tier: core
               path: templates/.claude/skills/moai-workflow-project/
-              hash: 2009a4dc5f1ac7d342a9f22450b81679db27ae6b25a35682a1598611128886a2
+              hash: 9b4ae7bada89089190e7d88165396ab245ee37e2e6963a13b122ce00edfd148d
               version: 1.0.0
             - name: moai-workflow-spec
               tier: core
@@ -142,7 +142,7 @@ catalog:
             - name: moai-workflow-testing
               tier: core
               path: templates/.claude/skills/moai-workflow-testing/
-              hash: 0640a0057482e20697b0e53272b82b7f8d4e06e573f041f3f8008c9a7e0b3f92
+              hash: deff15b229731d15be8bb5458e085b7ed229a871f152b462554dc5be38983142
               version: 1.0.0
             - name: moai-workflow-worktree
               tier: core
@@ -153,7 +153,7 @@ catalog:
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: 20a6448d7ca75b172e724d7be43092c0f83d52f8ad738d88263720b195d88aad
+              hash: fbbdcd7c9f2714a70cc9728d3ca1af5ed69d4efb3eb811e137ca16a408b7eb49
               version: 1.0.0
               depends_skills:
                 - moai-foundation-core
@@ -167,7 +167,7 @@ catalog:
             - name: manager-lead
               tier: core
               path: templates/.claude/agents/moai/manager-lead.md
-              hash: de4e1e61898622b7987d15ab9bd8e30823677cd48978c2e24e927434bb793f12
+              hash: b75ecdb6a213f25fcc9685d52e15d8372ebf5f1dd428b6e7bc52a1f1b0c0908e
               version: 1.0.0
               depends_skills:
                 - moai-foundation-core
@@ -175,7 +175,7 @@ catalog:
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/moai/manager-spec.md
-              hash: c72d33255d958fff0a8760cc10791d2d1002a0f3a48944adf46532d9fb38ca83
+              hash: fbba83b6fb68f8f0809dcef24cccd89b6666e2719247e0c45090e94c9412fca4
               version: 1.0.0
               depends_skills:
                 - moai-foundation-core
@@ -183,7 +183,7 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: 72a03289d7dea8c27cfdb889226c924b52df754efff4170730f6026e0146c4dc
+              hash: c9b050aee7944b4491a35698329b9a9cc95b14d2597eee04313ccf62f483c778
               version: 1.0.0
             - name: sync-auditor
               tier: core
@@ -220,7 +220,7 @@ catalog:
                 - name: moai-clean
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-clean/
-                  hash: 6774540aabbb122af4b71f06097bf6ecafa4edaf434bfdf194f5fd629f80280d
+                  hash: 77a88356843cd40229546050e5e230ccb0140a6a465e97569e9589f731ea0626
                   version: 1.0.0
                   depends_skills:
                     - moai
@@ -228,14 +228,14 @@ catalog:
                 - name: moai-codemaps
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-codemaps/
-                  hash: 4e1f9e27e535a91328b70b22d2c7e3d4137fd45b86d56f3cf4e8128ea4c59524
+                  hash: bb6aaab2427d6967adebd4ba58f94f8e7635ba99fc7b96b8da33f0a811880640
                   version: 1.0.0
                   depends_skills:
                     - moai
                 - name: moai-e2e
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-e2e/
-                  hash: f1cf548cc3e2dda455407968c7659f8dfab18d7cbd5bd1f7ff66888790a0f2c1
+                  hash: 380df1ad5bba86118ca9974acee11f9e4862dd44b5e0e05507ba56d0cf94a463
                   version: 1.0.0
                   depends_skills:
                     - moai
@@ -246,14 +246,14 @@ catalog:
                 - name: moai-feedback
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-feedback/
-                  hash: 56458a6a17f1d3be3a626d839300ec15097abc2b9f7cff78a0abe15af7a838c4
+                  hash: e962dd0442de3ddc338dab9731b40956e4a4cc63fb87e11e78f2897d1203ca05
                   version: 1.0.0
                   depends_skills:
                     - moai
                 - name: moai-fix
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-fix/
-                  hash: d2b21bb671bbb36eaa33bb49764a5e80f8dc3c02ab2b48e54936887b59669c5c
+                  hash: ceed28b4155a3996b18fe396d3f35ebef4b469aa7286594769eb1fec3244e28c
                   version: 1.0.0
                   depends_skills:
                     - moai
@@ -261,28 +261,28 @@ catalog:
                 - name: moai-gate
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-gate/
-                  hash: 18e1bf650366109a9367da5609f9caa66c02fac5b408c6e0532e086ecea16cf7
+                  hash: c9c677e0d3c6a0da54ee6ce7819d7d1d9a1fa6be7d283f2adedab2cc84ab9f3d
                   version: 1.0.0
                   depends_skills:
                     - moai
                 - name: moai-goal
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-goal/
-                  hash: 7a91d06f8e7f7e99250e997807ad50fc15f45589f11fc007c22dbe57b8d9b3b0
+                  hash: f0ef4e50e6d22b7984f13fe4f2f0d3dadc701ea8e1e83f574ba17d3ca4265e51
                   version: 1.0.0
                   depends_skills:
                     - moai
                 - name: moai-gtd
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-gtd/
-                  hash: cde4060a5ca71b12cb30c52f6409692b12f8d09c5ae3eb5877b163d2bed15356
+                  hash: b806d6c0af29b626472b9aaf1f7db220c1c972bb6b71b2ab693dc23745a6a2a9
                   version: 1.0.0
                   depends_skills:
                     - moai
                 - name: moai-harness
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-harness/
-                  hash: c5e3694bed4224b2e1bb665e8367c8f63e179ebf7d82bf6515f94d83ae2adcd1
+                  hash: 0004d4fbd75c2c0bd55f9ed64b917e202e3f867118d4459faff92482ea6c9515
                   version: 1.0.0
                   depends_skills:
                     - moai
@@ -290,7 +290,7 @@ catalog:
                 - name: moai-loop
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-loop/
-                  hash: b484bce77dd8ce02332ef17cc7b008d51093413cd68d8caaabd17fd6d1f86b1c
+                  hash: 3e4f6c65e2d384e51b10ff02c935199e246837ebf54d84557fbee1aa4af58393
                   version: 1.0.0
                   depends_skills:
                     - moai
@@ -298,21 +298,21 @@ catalog:
                 - name: moai-mx
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-mx/
-                  hash: 5795b29247932fb92681846b3e2265e937d43950ec72845eb3efc7b75752e49b
+                  hash: b9278f0d7e4e3be65e8b08f91e1c03951543ed9b843d866bfc2ec63220939c92
                   version: 1.0.0
                   depends_skills:
                     - moai
                 - name: moai-project
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-project/
-                  hash: 70dcca18d56f51e021acb6bd88a22e02ef32459d322ae1caf73297d0171702a3
+                  hash: c461fa8bcd198f8fa4b390af5c7c5c5457380f27e7d33984170c098dd2aa6933
                   version: 1.0.0
                   depends_skills:
                     - moai
                 - name: moai-review
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-review/
-                  hash: 4163a608e041487b06a53b14cd7088bc71e6bf2f2c0eac2d1375697a80efa8aa
+                  hash: d6160db6427f54bd05b64bff12e5c8cbed8eb48f40f4a4a9471bc00c1a69e56e
                   version: 1.0.0
                   depends_skills:
                     - moai
@@ -321,7 +321,7 @@ catalog:
                 - name: moai-todo
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-todo/
-                  hash: 0d9d36eb395c3b39f7ef75465a23b557e3153bbaa4c4adf490abbed1b8bd8c44
+                  hash: 38216ff96f0e233cbd26c79e3706ca1c14198a5a2dd8b458cf5f2b13a57a89ac
                   version: 1.0.0
                   depends_skills:
                     - moai
@@ -334,12 +334,12 @@ catalog:
                 - name: e2e-tester
                   tier: optional-pack:consult
                   path: templates/.claude/agents/moai/e2e-tester.md
-                  hash: 2bcd5d661acbc37766d5e3c9b861097c025b7a6a586d4846cd5bc080d8cb10a2
+                  hash: 556995a6d185384bac85da8607123fc67df665fc10935d4c8f5f40bff51cdc3f
                   version: 1.0.0
                 - name: manager-design
                   tier: optional-pack:consult
                   path: templates/.claude/agents/moai/manager-design.md
-                  hash: 8ac9fd2c59a7816d926d9ace2d14cdc08c74a069fe0732a3c33fc398bdfc32ff
+                  hash: b60c34aa9a6e90de61c395105576a09a5889f539ec837d31c99d6789da4433b0
                   version: 1.0.0
                 - name: manager-todo
                   tier: optional-pack:consult
@@ -349,7 +349,7 @@ catalog:
                 - name: super-advisor
                   tier: optional-pack:consult
                   path: templates/.claude/agents/moai/super-advisor.md
-                  hash: b803cf227d57aaaeea8033514d33592a2301602d46baf3c9fa2e6870569b3f26
+                  hash: 488234c9e818bf16cbdeb46cb4de2a5b62bf43e1ac060de79af20b14f3269668
                   version: 1.0.0
         creative:
             description: Domain authoring skills for rendered and visual artifacts
@@ -368,7 +368,7 @@ catalog:
                 - name: moai-domain-svg-infographic
                   tier: optional-pack:creative
                   path: templates/.claude/skills/moai-domain-svg-infographic/
-                  hash: bdeecd89cabf7d25c70f50557bd33420a9e1c71ecdfa2fa983461e0021d72abf
+                  hash: 99d8b3819a86e5a259049eb69fa0523641d169fe1d0f9429f0dc5aba1b17470d
                   version: 1.0.0
             agents: []
         delivery:
@@ -471,7 +471,7 @@ catalog:
                 - name: moai-harness-learner
                   tier: optional-pack:ops-tools
                   path: templates/.claude/skills/moai-harness-learner/
-                  hash: 5eb87524f6abb6d5a2d2a89c7faca407becc15fee19dd2c384931b41b5b4df96
+                  hash: 05f85006101b5e2054510f9418af9b64812b73ee0b6aab10506faebbe84b53c2
                   version: 1.0.0
                 - name: moai-jev-skill-suggestion
                   tier: optional-pack:ops-tools
@@ -481,7 +481,7 @@ catalog:
                 - name: moai-meta-harness
                   tier: optional-pack:ops-tools
                   path: templates/.claude/skills/moai-meta-harness/
-                  hash: f98fa6a48bd3db2427c2a12b51a63f1e30b9f2dddf2919b045c5f2d011ac358d
+                  hash: 4f8afd3860591b6159d76d94e4bb0614554d637331bf0a89945cf44c2f0ee22e
                   version: 1.0.0
                 - name: moai-ref-aside-browser
                   tier: optional-pack:ops-tools
@@ -501,7 +501,7 @@ catalog:
                 - name: moai-workflow-loop
                   tier: optional-pack:ops-tools
                   path: templates/.claude/skills/moai-workflow-loop/
-                  hash: de4377e19fe10aa7fa6ce752792db76525ea2f164a46ea52715e803a1e259463
+                  hash: eadc2cf7d5029c7d9acd89f627d51ee4a722e54645eb61be8679144b430bf81f
                   version: 1.0.0
             agents: []
         testing:
@@ -515,5 +515,5 @@ catalog:
             - name: builder-harness
               tier: harness-generated
               path: templates/.claude/agents/moai/builder-harness.md
-              hash: 30d609f35e86e4b16ad5c6d2cfeccc22e6bcc03023f7f02659e5c512aa5c8864
+              hash: 9863199e8392136330d5d7978dfe17059b5666b5ec52fa86ebed2d347a00302a
               version: 1.0.0

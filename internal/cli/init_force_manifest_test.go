@@ -26,11 +26,12 @@ func TestInitForceCarriesManifestProvenance(t *testing.T) {
 
 	const (
 		olderRule = ".claude/rules/moai/core/moai-constitution.md"
-		// SPEC-USER-ASSET-INSTALL-001: the fixture skill must stay inside
-		// the deployed (mirror) payload; the pre-SPEC choice moai-gate is
-		// now an opt-in bundle entry (D-Q5) and no longer deploys — the L0
-		// published command skill moai-plan (D-Q4) replaces it.
-		olderSkill = ".agents/skills/moai-plan/SKILL.md"
+		// SPEC-USER-ASSET-INSTALL-001 (REQ-005): the project payload no
+		// longer carries any common skill — the pre-SPEC fixture skill
+		// (moai-gate, later moai-plan) is retired from the project tree
+		// entirely. A second RULE file (still project-deployed) carries the
+		// template-managed redeploy half of the fixture.
+		olderSkill = ".claude/rules/moai/development/coding-standards.md"
 		editedRule = ".claude/rules/moai/workflow/mx-tag-protocol.md"
 		ownedRule  = ".claude/rules/moai/languages/go.md"
 		olderBody  = "older deploy\n"

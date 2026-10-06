@@ -204,6 +204,14 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 			return nil
 		}
 
+		// SPEC-USER-ASSET-INSTALL-001 (REQ-005): the project payload carries
+		// NO common skill or agent file in ANY mode — the four user roots
+		// are the install surface (the M2 installer), so the walk skips the
+		// common-asset roots before any content read.
+		if isCommonAssetRoot(path) {
+			return nil
+		}
+
 		// Determine if this is a template file that needs rendering
 		isTemplate := strings.HasSuffix(path, ".tmpl")
 		var content []byte

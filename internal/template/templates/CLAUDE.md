@@ -28,7 +28,7 @@ Core principles (1-4) + six Agent Core Behaviors: `.claude/rules/moai/core/moai-
 
 ## 2. Request Processing Pipeline
 
-**Analyze-First** is the default main-session orchestration behavior: every request — in any input language, with or without a `/moai` subcommand — flows through one ordered pipeline, beginning with intent analysis (classify meaning, language-independent, never keyword-gated). The structured Intent Router lives in the `/moai` skill (`.claude/skills/moai/SKILL.md`).
+**Analyze-First** is the default main-session orchestration behavior: every request — in any input language, with or without a `/moai` subcommand — flows through one ordered pipeline, beginning with intent analysis (classify meaning, language-independent, never keyword-gated). The structured Intent Router lives in the `/moai` skill (`~/.claude/skills/moai/SKILL.md` — the per-user install).
 
 Five ordered stages: ① intent analysis → ② context-sufficiency check (insufficient → Rule 5 Context-First Discovery rounds, §7) → ③ execution-plan composition (`orchestration-mode-selection.md`; surfaced before execution per Approach-First, §7 Rule 1) → ④ **approval gates** — the plan→run Kickoff in its default autonomous form (independent audit cross + evidence criteria + a written decision record; `.claude/rules/moai/workflow/auto-semantics.md` §9.1; keep-set cases keep the operator answer) (§8; the progression axis is post-gate, never a bypass) → ⑤ execute → verify → iterate against acceptance criteria (an armed `/moai goal` is the termination judge).
 
@@ -44,7 +44,7 @@ Report: consolidate agent results in the user's `conversation_language`.
 
 ### Unified Skill: /moai
 
-Single entry point for all MoAI development workflows. Default (natural language): autonomous workflow (plan -> run -> sync pipeline). Subcommand catalogue and per-subcommand routing: `.claude/skills/moai/SKILL.md`.
+Single entry point for all MoAI development workflows. Default (natural language): autonomous workflow (plan -> run -> sync pipeline). Subcommand catalogue and per-subcommand routing: `~/.claude/skills/moai/SKILL.md` (per-user install).
 
 ---
 
@@ -81,8 +81,8 @@ The quality-gate system — 3-level harness, TRUST 5, sync-auditor scoring, and 
 The five development safeguards (HARD Rules) are the §1 HARD bullets expanded:
 
 - **Rule 1 — Approach-First Development**: Before non-trivial code, explain the approach + which files change + why; get user approval. Exceptions: typo/single-line/obvious bug fixes. Present the decisions most likely to change first (data-model changes, new type interfaces, user-facing/UX flows), deferring mechanical/refactoring steps to the end.
-  - **Proportionality test — "can the diff be stated in one sentence?"** Planning overhead is repaid only when the approach is genuinely uncertain, the change spans multiple files, or the code is unfamiliar. When none hold, the exception list applies and the change proceeds directly — gating an obvious change trains approval without reading, and the gate then fails on the changes that needed it.
-  - **The plan is editable, not just approvable.** In Plan Mode `Ctrl+G` opens the plan in an editor — route wording, scope trims, and step reordering there; route genuine either/or decisions through `AskUserQuestion` (§8 Channel Monopoly, unchanged).
+ - **Proportionality test — "can the diff be stated in one sentence?"** Planning overhead is repaid only when the approach is genuinely uncertain, the change spans multiple files, or the code is unfamiliar. When none hold, the exception list applies and the change proceeds directly — gating an obvious change trains approval without reading, and the gate then fails on the changes that needed it.
+ - **The plan is editable, not just approvable.** In Plan Mode `Ctrl+G` opens the plan in an editor — route wording, scope trims, and step reordering there; route genuine either/or decisions through `AskUserQuestion` (§8 Channel Monopoly, unchanged).
 - **Rule 2 — Multi-File Change Decomposition**: 3+ files → logical units (TodoList), file-by-file, dependencies before parallel execution.
 - **Rule 3 — Post-Implementation Review**: potential-issue list, suggested tests, known limitations, additional-validation recommendations.
 - **Rule 4 — Reproduction-First Bug Fixing**: failing reproduction test first; challenge the root cause once; fix minimally; verify the test passes.

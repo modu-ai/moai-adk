@@ -20,6 +20,7 @@ package web
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -106,11 +107,20 @@ func applyPerfTierEdits(projectRoot, perfTier string) error {
 // moai agents는 .claude/agents/moai/ 에, harness specialists는
 // .claude/agents/harness/ 에 위치한다 (namespace doctrine). 하니스 행은
 // 스캔만 하고 렌더하지 않는다 (REQ-AFR-001).
+//
+// SPEC-USER-ASSET-INSTALL-001 (JD-20): the retained agents install under the
+// USER folder (~/.claude/agents) now — the scan prefers the user folder so
+// the console rows do not vanish after the migration; the project dirs stay
+// in the list for pre-migration projects and harness specialists.
 func agentDirsFor(projectRoot string) []string {
-	return []string{
+	dirs := []string{}
+	if home, err := os.UserHomeDir(); err == nil {
+		dirs = append(dirs, filepath.Join(home, ".claude", "agents"))
+	}
+	return append(dirs,
 		filepath.Join(projectRoot, ".claude", "agents", "moai"),
 		filepath.Join(projectRoot, ".claude", "agents", "harness"),
-	}
+	)
 }
 
 // agentGroupRank classifies an agent name into one of 5 display buckets for

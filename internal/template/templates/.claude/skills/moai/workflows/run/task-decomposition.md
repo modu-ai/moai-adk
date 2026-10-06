@@ -2,8 +2,8 @@
 description: "Run Phase 11~4 — DDD/TDD implementation cycles, quality validation, git operations, and completion guidance"
 user-invocable: false
 metadata:
-  parent: moai-workflow-run
-  phase: "Phase 11-4: Implementation, Quality Validation, and Completion"
+ parent: moai-workflow-run
+ phase: "Phase 11-4: Implementation, Quality Validation, and Completion"
 ---
 
 # Phase 11: Implementation (Mode-Dependent)
@@ -49,12 +49,12 @@ After each DDD IMPROVE cycle completion, compare planned vs actual:
 2. Compare against actual_files from divergence tracking above
 3. Calculate drift: (unplanned_new_files / total_planned_files) * 100
 4. Log to `.moai/specs/SPEC-{ID}/progress.md`:
-   - Cycle number, planned count, actual count, drift percentage
-   - List any unplanned files
+  - Cycle number, planned count, actual count, drift percentage
+  - List any unplanned files
 5. Alert thresholds:
-   - drift <= 20%: Informational only
-   - 20% < drift <= 30%: Warning in progress.md
-   - drift > 30% (cumulative): Trigger Phase 14 re-planning gate
+  - drift <= 20%: Informational only
+  - 20% < drift <= 30%: Warning in progress.md
+  - drift > 30% (cumulative): Trigger Phase 14 re-planning gate
 
 ## Phase 12: TDD Implementation (for tdd mode)
 
@@ -96,12 +96,12 @@ After each TDD REFACTOR cycle completion, compare planned vs actual:
 2. Compare against actual_files from divergence tracking above
 3. Calculate drift: (unplanned_new_files / total_planned_files) * 100
 4. Log to `.moai/specs/SPEC-{ID}/progress.md`:
-   - Cycle number, planned count, actual count, drift percentage
-   - List any unplanned files
+  - Cycle number, planned count, actual count, drift percentage
+  - List any unplanned files
 5. Alert thresholds:
-   - drift <= 20%: Informational only
-   - 20% < drift <= 30%: Warning in progress.md
-   - drift > 30% (cumulative): Trigger Phase 14 re-planning gate
+  - drift <= 20%: Informational only
+  - 20% < drift <= 30%: Warning in progress.md
+  - drift > 30% (cumulative): Trigger Phase 14 re-planning gate
 
 ## Parallel Quality-Evidence Fan-Out (capability-gated)
 
@@ -190,19 +190,19 @@ Output: gate_report with pass/fail per check category (reused categories marked 
 
 Steps:
 1. Invoke sync-auditor with:
-   - SPEC acceptance criteria (from spec-compact.md or spec.md)
-   - Milestone contract (from contract.md, if thorough harness)
-   - Implementation changeset (modified/created files)
+  - SPEC acceptance criteria (from spec-compact.md or spec.md)
+  - Milestone contract (from contract.md, if thorough harness)
+  - Implementation changeset (modified/created files)
 2. sync-auditor evaluates all 4 dimensions:
-   - Functionality (40%): Run tests, verify each acceptance criterion
-   - Security (25%): OWASP check (HARD: Security FAIL = overall FAIL)
-   - Craft (20%): Coverage >= 85%, error handling review
-   - Consistency (15%): Pattern adherence check
+  - Functionality (40%): Run tests, verify each acceptance criterion
+  - Security (25%): OWASP check (HARD: Security FAIL = overall FAIL)
+  - Craft (20%): Coverage >= 85%, error handling review
+  - Consistency (15%): Pattern adherence check
 3. Verdict handling:
-   - PASS: Proceed to Phase 17
-   - FAIL: Return specific findings to implementation agent for targeted fix
-   - Maximum 3 fix-evaluate cycles
-   - After 3 FAIL cycles: Present findings to user via AskUserQuestion
+  - PASS: Proceed to Phase 17
+  - FAIL: Return specific findings to implementation agent for targeted fix
+  - Maximum 3 fix-evaluate cycles
+  - After 3 FAIL cycles: Present findings to user via AskUserQuestion
 
 Independent evaluation: Agent(subagent_type="sync-auditor"). A retired CG configuration never authorizes leader self-evaluation.
 
@@ -233,7 +233,7 @@ Purpose: Multi-dimensional review iteration for high-quality output. This phase 
 - User flow validation: End-to-end correctness
 
 **Security/Performance review** (conditional, triggered when changes affect security/performance/UX domains OR --review flag):
-- Invoke review workflow explicitly: Read `.claude/skills/moai/workflows/review.md` and execute its multi-perspective analysis (security, performance, quality, UX reviewers)
+- Invoke review workflow explicitly: Read `~/.claude/skills/moai/workflows/review.md` and execute its multi-perspective analysis (security, performance, quality, UX reviewers)
 - This replaces the previous vague "delegate to review workflow" with an explicit skill invocation
 
 Iteration behavior:
@@ -302,7 +302,7 @@ Tasks:
 
 Agent: manager-git subagent
 
-ENTRY PRECONDITION (SPEC-USER-ASSET-INSTALL-001, directed repair R-b): manager-git's role body ships in the opt-in `delivery` bundle, not L0 — verify it is installed (`~/.claude/agents/manager-git.md` for Claude, `~/.codex/agents/manager-git.toml` for Codex) BEFORE Phase 19 delegates; when it is absent, refuse with the named remediation `moai bundle add delivery` (C4: actionable report — never a missing-file error mid-flow).
+ENTRY PRECONDITION: manager-git's role body ships in the opt-in `delivery` bundle, not L0 — verify it is installed (`~/.claude/agents/manager-git.md` for Claude, `~/.codex/agents/manager-git.toml` for Codex) BEFORE Phase 19 delegates; when it is absent, refuse with the named remediation `moai bundle add delivery` (C4: actionable report — never a missing-file error mid-flow).
 
 Tasks:
 - Create feature branch `feat/SPEC-{ID}`

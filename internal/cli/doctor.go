@@ -955,9 +955,22 @@ func checkSlashCommands(projectRoot string, verbose bool) DiagnosticCheck {
 }
 
 // checkSkillsAllowlist verifies skill directories against the static allowlist.
+// SPEC-USER-ASSET-INSTALL-001 (round-5 fold A3): repointed to the USER
+// install path — post-M4 the project carries no .claude/skills, and reading
+// the project root alone would warn ".claude/skills/ not found" on every
+// healthy install. When the project dir is ABSENT the check reads the user
+// folder instead; a present project dir (pre-migration projects, test
+// fixtures) keeps the project reading.
 func checkSkillsAllowlist(projectRoot string, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Skills Allowlist"}
 	skillsDir := filepath.Join(projectRoot, ".claude", "skills")
+	if _, statErr := os.Stat(skillsDir); os.IsNotExist(statErr) {
+		if home, err := os.UserHomeDir(); err == nil {
+			if _, userStat := os.Stat(filepath.Join(home, ".claude", "skills")); userStat == nil {
+				skillsDir = filepath.Join(home, ".claude", "skills")
+			}
+		}
+	}
 	entries, err := os.ReadDir(skillsDir)
 	if err != nil {
 		if os.IsNotExist(err) {

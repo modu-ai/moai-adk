@@ -63,13 +63,13 @@ func newFixture(t *testing.T) *fixture {
 		},
 	}
 	f.src = fstest.MapFS{
-		"templates/.claude/skills/moai-alpha/SKILL.md":       &fstest.MapFile{Data: f.alphaV1},
-		"templates/.claude/skills/moai-alpha/workflows/a.md": &fstest.MapFile{Data: []byte("workflow a\n")},
-		"templates/.agents/skills/moai-alpha/SKILL.md":       &fstest.MapFile{Data: f.alphaV1},
-		"templates/.claude/skills/moai-beta/SKILL.md":        &fstest.MapFile{Data: f.betaV1},
-		"templates/.agents/skills/moai-beta/SKILL.md":        &fstest.MapFile{Data: f.betaV1},
-		"templates/.claude/agents/moai/manager-x.md":         &fstest.MapFile{Data: f.agentV1},
-		"templates/.codex/agents/moai/manager-x.toml":        &fstest.MapFile{Data: f.tomlV1},
+		".claude/skills/moai-alpha/SKILL.md":       &fstest.MapFile{Data: f.alphaV1},
+		".claude/skills/moai-alpha/workflows/a.md": &fstest.MapFile{Data: []byte("workflow a\n")},
+		".agents/skills/moai-alpha/SKILL.md":       &fstest.MapFile{Data: f.alphaV1},
+		".claude/skills/moai-beta/SKILL.md":        &fstest.MapFile{Data: f.betaV1},
+		".agents/skills/moai-beta/SKILL.md":        &fstest.MapFile{Data: f.betaV1},
+		".claude/agents/moai/manager-x.md":         &fstest.MapFile{Data: f.agentV1},
+		".codex/agents/moai/manager-x.toml":        &fstest.MapFile{Data: f.tomlV1},
 	}
 	return f
 }

@@ -129,29 +129,32 @@ func TestCodexOnlyDeployerRealDeployment(t *testing.T) {
 		t.Errorf("symlink count = %d, want 0", symlinks)
 	}
 
-	// Every catalog skill from the embedded .claude/skills listing is present
-	// as a real directory under .agents/skills with a readable SKILL.md.
+	// Every CORE (L0) catalog skill is present as a real directory under
+	// .agents/skills with a readable SKILL.md. SPEC-USER-ASSET-INSTALL-001
+	// M0: the relocation reads the catalog-filtered root, so only the L0
+	// view re-homes — bundle skills deploy only via their opt-in selection.
 	embedded, err := EmbeddedTemplates()
 	if err != nil {
 		t.Fatalf("embedded: %v", err)
 	}
-	catalogEntries, err := fs.ReadDir(embedded, filepath.ToSlash(filepath.Join(".claude", "skills")))
-	if err != nil {
-		t.Fatalf("read catalog listing: %v", err)
+	catL0, catErr := LoadEmbeddedCatalog()
+	if catErr != nil {
+		t.Fatalf("load catalog: %v", catErr)
 	}
-	for _, e := range catalogEntries {
-		if !e.IsDir() {
+	for _, ce := range catL0.Catalog.Core.Skills {
+		if !strings.HasPrefix(ce.Path, "templates/.claude/skills/") {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(skillsDir, e.Name(), "SKILL.md"))
+		data, err := os.ReadFile(filepath.Join(skillsDir, ce.Name, "SKILL.md"))
 		if err != nil {
-			t.Errorf("remapped catalog skill %s unreadable: %v", e.Name(), err)
+			t.Errorf("remapped catalog skill %s unreadable: %v", ce.Name, err)
 			continue
 		}
 		if len(data) == 0 {
-			t.Errorf("remapped catalog skill %s: SKILL.md empty", e.Name())
+			t.Errorf("remapped catalog skill %s: SKILL.md empty", ce.Name)
 		}
 	}
+	_ = embedded
 
 	// The claude-only surfaces did not deploy.
 	for _, rel := range []string{".claude", "CLAUDE.md", ".mcp.json", ".claudeignore", ".moai/status_line.sh"} {
@@ -363,7 +366,13 @@ func TestHarnessProfilesResolveSharedReferences(t *testing.T) {
 				if strings.Contains(string(body), ".claude/rules/moai/") || strings.Contains(string(body), ".claude/skills/moai/workflows/") {
 					t.Error("Codex dispatcher contains unavailable Claude reference")
 				}
-				if !strings.Contains(string(body), ".moai/policies/") || !strings.Contains(string(body), ".moai/workflows/") {
+				// SPEC-USER-ASSET-INSTALL-001 (fold A2): the dispatcher's
+				// workflow references rebind to installed-skill-relative
+				// paths (one form resolves in both user roots), and the
+				// normalizeHarnessReferences deploy-time projection still
+				// maps the workflows tree onto .moai/workflows for codex
+				// profiles.
+				if !strings.Contains(string(body), ".moai/policies/") || (!strings.Contains(string(body), ".moai/workflows/") && !strings.Contains(string(body), "workflows/")) {
 					t.Error("Codex dispatcher does not link shared references")
 				}
 				role, err := os.ReadFile(filepath.Join(root, ".codex", "agents", "moai", "manager-develop.toml"))

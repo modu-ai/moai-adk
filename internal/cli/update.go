@@ -537,16 +537,26 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	refreshCodexWiringBestEffort(out, cmd.ErrOrStderr())
 
 	// SPEC-UPDATE-MIRROR-HEAL-001 (REQ-UMH-001): restore a deleted
-	// .agents/skills mirror. Both of its producers live inside Deploy, which
-	// the version-match branch of runTemplateSyncWithProgress returns before
-	// reaching — so without this call a deleted mirror is permanent for a
-	// version-matched project. Deliberately BESIDE the early return, at the
-	// same position as the wiring refresh above and for the same reason: the
-	// repair does not depend on a template redeploy, and the optimization
-	// stays exactly where it is (C-2). Existence-gated on the project's
-	// recorded template_version, so a pre-mirror project gets nothing created
-	// (C-1).
-	repairSkillMirrorBestEffort(out, cmd.ErrOrStderr())
+	// .agents/skills mirror. SPEC-USER-ASSET-INSTALL-001 (final-class item 6,
+	// AC-011 repeated-update arm): this repair path is TERMINATED — Path B of
+	// RepairSkillMirror re-created the seventeen published copies
+	// restore-missing-only, actively re-growing the project placement the
+	// migration removed on every repeated update. The mirror concept retires
+	// with the project-side placement: the user folders are the primary
+	// (the M2 installer), not a mirror, so no user-side equivalent is needed.
+
+	// REQ-020 migration: remove project-side common skills/agents now that
+	// the user-asset phase above confirmed their counterparts (the ordering
+	// IS the per-asset gate — removal never precedes the install it
+	// replaces). Runs beside the (terminated) mirror repair's old position,
+	// before the archive contract below.
+	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+		if err := migrateProjectCommonAssets(".", homeDir, nil, func(format string, args ...interface{}) {
+			_, _ = fmt.Fprintf(out, format+"\n", args...)
+		}); err != nil {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: migration warning: %v\n", err)
+		}
+	}
 
 	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-004: when the template sync
 	// branch short-circuits (version match + !forceUpdate, or user cancelled

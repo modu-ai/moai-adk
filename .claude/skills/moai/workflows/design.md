@@ -20,7 +20,7 @@ metadata:
 progressive_disclosure:
   level_1_summary: "Conditional plan → design → run route for UI-surfaced SPECs; D1-D5 Claude Design pipeline."
   level_2_body: "Full D1-D5 pipeline + DesignSync tool contract + H1-H9 handoff contract reference (this file)."
-  level_3_bundled: ".claude/agents/moai/manager-design.md (H1-H9 verbatim + agent body)."
+  level_3_bundled: "~/.claude/agents/manager-design.md (H1-H9 verbatim + agent body)."
 ---
 
 # Design-Phase Workflow — Claude Design Collaboration
@@ -55,7 +55,7 @@ already-approved run envelope, before the first M1 implementation commit.
 
 ## Owner
 
-**manager-design** (`.claude/agents/moai/manager-design.md`) — design-phase
+**manager-design** (`~/.claude/agents/manager-design.md`) — design-phase
 worker. Couples ONLY to the documented DesignSync tool contract (11 methods).
 The `/design-login` and `/design-sync` slash commands are user-only TUI
 commands; the agent guides their use, never invokes them.
@@ -134,7 +134,7 @@ manager-design re-delegates and returns; it does not co-pilot implementation.
 ## H1-H9 Handoff Contract
 
 The 9 clauses that bind the handoff (D4) are reproduced VERBATIM in the
-manager-design agent body (`.claude/agents/moai/manager-design.md` § D4
+manager-design agent body (`~/.claude/agents/manager-design.md` § D4
 Handoff Contract). This workflow references them; the agent body is the
 normative source. Summary of clauses:
 
@@ -190,7 +190,7 @@ brand-consistency must-pass at sync.
 
 ## Cross-references
 
-- **Agent body (H1-H9 verbatim)**: `.claude/agents/moai/manager-design.md`.
+- **Agent body (H1-H9 verbatim)**: `~/.claude/agents/manager-design.md`.
 - **Conditional route**: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline.
 - **Re-delegation template**: `.claude/rules/moai/development/manager-develop-prompt-template.md` § 1 (Section A-E).
 - **Plan-audit gate**: `.claude/rules/moai/workflow/spec-workflow.md` § Phase 1 Plan Audit Gate.

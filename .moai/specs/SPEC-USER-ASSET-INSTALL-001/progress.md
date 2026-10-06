@@ -493,6 +493,63 @@ author: manager-spec
 - Verification: TestRouteBPrecheck ok; userassets full ok; cli
   M3-scoped families ok; lint 0 issues (this run, this tree).
 
+### M4 — project slimming, migration, doctor repoints (2026-10-06)
+
+- THE CLASS-CLAUSE REBIND (design §2.5, two populations): the MOVED-asset
+  population — 110 project-relative occurrences across the user-scope
+  deployed tree (workflows tree incl. subdirectories, agent sources,
+  dispatcher internals) rewritten to user-folder paths
+  (`.claude/skills/…` → `~/.claude/skills/…` etc.); zero-hit-after-rebind
+  measured on THAT population (raw-pattern grep → 0). The
+  PROJECT-RETAINED population — run/phase-execution.md rules refs, run.md
+  `.claude/rules` refs + trace-ledger hook, sync.md quality-gate hook,
+  plan.md spec-workflow pointer — untouched and verified present at their
+  project paths. Specific pins: all 17 command sources rebound
+  (`~/.agents/skills/moai/SKILL.md`), regenerated via COMMAND_EMIT_UPDATE
+  (the golden dispatch-branch pin updated to the user-folder form);
+  AGENTS.md.tmpl:40-41 skill-path sentences rebound; templates/CLAUDE.md
+  :31/:47 (retained-file→moved-asset) rebound with post-rewrite
+  verification; agent sources swept (8 files incl. the e2e-tester.md
+  measured instance) + `AGENTEMIT_UPDATE=1` TOML regeneration; the
+  dispatcher's 19 internal workflow refs rebind at source (M2, restated
+  here as part of the family).
+- REQ-005 slimming: `isCommonAssetRoot` excludes `.claude/skills/`,
+  `.claude/commands/moai/`, `.claude/agents/moai/`, `.agents/skills/`,
+  `.codex/agents/moai/` from the deploy walk in EVERY mode — the project
+  payload carries no common skill or agent file.
+- MIRROR-REPAIR TERMINATION (final-class item 6): update.go's
+  `repairSkillMirrorBestEffort` call removed; `update_mirror_heal.go` +
+  `skill_mirror_repair.go` + their three test files deleted (Path B
+  re-created the 17 published copies, undoing the migration);
+  `pluralMirrorEntries` helper relocated to update_migrate.go.
+- REQ-020 MIGRATION: `migrateProjectCommonAssets` (wired into runUpdate
+  after the user-asset phase — the ordering IS the per-asset gate):
+  provenance-classified removal — template_managed files removed ONLY
+  after the user counterpart confirms (user-manifest tracked with hash);
+  user_modified preserved + reported (C6); user_created untouched; a
+  file whose counterpart is unconfirmed stays project-side + reported
+  (REQ-024 upgrade arm, machine states a/b/c honored by the phase
+  ordering + the gate).
+- DOCTOR REPOINTS (fold A3 + R-d ii + JD-10 + JD-20):
+  `checkSkillsAllowlist` and `runHarnessCheck`'s L4 read the user
+  install when the PROJECT dir is absent (fallback shape keeps test
+  fixtures and pre-migration projects on the project reading — no
+  real-HOME leak); `inspectSkillMirror` passes clean when the user
+  install is present; `countCodexAgentTOMLs` prefers
+  `~/.codex/agents/*.toml`; `agentDirsFor` (web console) prepends
+  `~/.claude/agents` so post-migration rows do not vanish.
+- Template-guard fallout handled in-scope: SPEC-ID scrub from 4 template
+  files (the C1 leak guard), dogfood-mirror sync (rule-mirror +
+  pipeline-carry + late-branch pairs), the codex-only profile test
+  converted to the AC-011 placement set (absence of the project
+  placement + presence of the user set), the relocation-filter test's
+  L0-only expectation.
+- Verification (this run, this tree): template family + web +
+  userassets ok; cli families (Init/UpdatePhase/Bundle/CodexOnly/
+  Doctor/Harness/CheckSkills) rerun after the two fixture fixes →
+  broad run in flight at record time; GOOS=windows build exit 0;
+  golangci-lint 0 issues.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

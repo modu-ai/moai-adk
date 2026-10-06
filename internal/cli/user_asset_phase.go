@@ -12,6 +12,8 @@ package cli
 import (
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -150,6 +152,17 @@ func runUserAssetUpdatePhase(homeDir string, out io.Writer) error {
 		}
 	}
 	return nil
+}
+
+// userCodexInstallPresent reports whether the per-user Codex dispatcher
+// install exists (SPEC-USER-ASSET-INSTALL-001: the user-folder primary).
+func userCodexInstallPresent() bool {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return false
+	}
+	_, err = os.Stat(filepath.Join(home, ".agents", "skills", "moai", "SKILL.md"))
+	return err == nil
 }
 
 // parseBundleSelection splits a comma-separated --bundles value.

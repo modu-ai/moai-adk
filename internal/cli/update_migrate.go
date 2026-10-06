@@ -325,3 +325,11 @@ func migrationTemplateContext(projectRoot string) *template.TemplateContext {
 		loadUpdateUserValues(projectRoot),
 	)
 }
+
+// pluralMirrorEntries renders the singular/plural noun for a mirror-entry count.
+func pluralMirrorEntries(n int) string {
+	if n == 1 {
+		return "entry"
+	}
+	return "entries"
+}

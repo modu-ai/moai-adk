@@ -34,7 +34,7 @@ Flow: Identify Changes -> Analyze Perspectives -> Consolidate -> Report
 
 `/moai review` is a **read-only, report-only lens**: it produces findings and modifies nothing. Its behavior is unchanged by the loop-sweep redefinition. The relationship to `/moai loop` is layered, not competing — `/moai review` is **layered under loop** as a queue supplier: `/moai loop`'s scan stage may INVOKE the review lenses (the security lens and the `@MX` lens) so their findings are **consumed by** the loop as fixable queue items. Standalone `/moai review` still only REPORTS those findings; the loop is what enqueues and fixes them.
 
-Non-overlap: run a `/moai review` to SEE findings without changing anything; run a `/moai loop` to FIX the finite set of issues the scan (including review lenses) found. The loop-side view of this layering is documented in `.claude/skills/moai/workflows/loop.md` (§ Scan Stage / § Relationship to /moai review and /moai fix).
+Non-overlap: run a `/moai review` to SEE findings without changing anything; run a `/moai loop` to FIX the finite set of issues the scan (including review lenses) found. The loop-side view of this layering is documented in `~/.claude/skills/moai/workflows/loop.md` (§ Scan Stage / § Relationship to /moai review and /moai fix).
 
 ## Supported Flags
 
@@ -353,7 +353,7 @@ The --lean mode is read-only and advisory. It applies NO fixes, modifies NO file
 
 ### Doctrine cross-references (reuse, do not duplicate)
 
-- The 5 lean tags are the OPERATIONAL scan surface for the over-engineering anti-patterns already catalogued in `.claude/skills/moai/references/anti-patterns.md` (the Premature Abstraction and Over-Engineering categories, mapped to Agent Core Behavior #4 Enforce Simplicity). Consult that catalogue for the wrong/right examples; this section does not restate it.
+- The 5 lean tags are the OPERATIONAL scan surface for the over-engineering anti-patterns already catalogued in `~/.claude/skills/moai/references/anti-patterns.md` (the Premature Abstraction and Over-Engineering categories, mapped to Agent Core Behavior #4 Enforce Simplicity). Consult that catalogue for the wrong/right examples; this section does not restate it.
 - The lean audit is the post-hoc DETECTION counterpart to the pre-code PREVENTION ladder in `.claude/rules/moai/core/moai-constitution.md` § Agent Core Behaviors #4 Enforce Simplicity (the simplicity decision ladder). The ladder prevents over-engineering before code is written; the lean audit detects what slipped through. Consult that ladder for the ordered prevention steps; this section does not restate it.
 
 ## --deep Mode — On-Demand Multi-Agent Deep Vulnerability Scan

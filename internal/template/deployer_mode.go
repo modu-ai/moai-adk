@@ -100,6 +100,25 @@ func (d *deployer) pluginModeExcluded(relPath string) bool {
 	return isPluginExcludedPath(relPath, policy)
 }
 
+// isCommonAssetRoot reports whether a deploy-relative path lives under one
+// of the project common-asset roots the user-folder install replaces
+// (SPEC-USER-ASSET-INSTALL-001 REQ-005: the project payload carries no
+// common skill or agent file in any mode).
+func isCommonAssetRoot(relPath string) bool {
+	for _, root := range []string{
+		".claude/skills/",
+		".claude/commands/moai/",
+		".claude/agents/moai/",
+		".agents/skills/",
+		".codex/agents/moai/",
+	} {
+		if strings.HasPrefix(relPath, root) {
+			return true
+		}
+	}
+	return false
+}
+
 // stripMoaiFromMcpJSON removes the `moai` server from the mcpServers object
 // of a rendered .mcp.json (SPEC-INIT-SHRINK-001 REQ-005, OD-1 settled (c)):
 // on the plugin path the project render never carries the entry — the
