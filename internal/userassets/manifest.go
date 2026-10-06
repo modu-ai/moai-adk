@@ -62,6 +62,12 @@ type FileEntry struct {
 	InstalledAt string `json:"installed_at"`
 	MoaiVersion string `json:"moai_version"`
 
+	// installedByJournal marks a record completed by the journal
+	// reconciliation within the current run (the recovery lattice's case 2 —
+	// the retry claimed its own interrupted install). It is run-scoped
+	// coordination state, never serialized.
+	installedByJournal bool `json:"-"`
+
 	// unknown carries fields this binary does not model (REQ-021); captured
 	// on decode, re-emitted on encode.
 	unknown map[string]json.RawMessage

@@ -403,6 +403,68 @@ author: manager-spec
   absence assertions pinning the unselected-bundle skill OUT and the L0
   skills IN.
 
+### M2 — user-folder installer, init trigger, bundle command (2026-10-06)
+
+- Installer engine (`internal/userassets` install.go + remove.go): the
+  per-asset-state judgment over the four roots (skills land whole-tree in
+  BOTH harness roots; agents land flat in both — the Claude body from
+  .claude/agents/moai/<name>.md, the Codex body from the emitted
+  .codex/agents/moai/<name>.toml, REQ-022); the REQ-023 truth table
+  (absent/up-to-date/manifest-match/manifest-stale/divergent/collision);
+  the REQ-013 per-file fail-open; the pending-install journal
+  reconciliation before any collision judgment (the three-case E5 lattice
+  incl. R-f-① honest re-stamp and the R-e selection adoption); the C2
+  confinement writer (resolved roots once per run, confinedMkdir building
+  the chain WITHOUT following an escaping symlink — the plain-MkdirAll
+  variant was caught by the parent-symlink sentinel test writing a
+  directory through the symlink; leaf-symlink refusal; temp+rename with
+  the parent re-validated immediately before it; the REQ-023 backup home
+  resolved like the four roots — the macOS /var→/private/var form caught
+  by the divergence test). Bundle removal carries the one REQ-009 rule
+  (manifest-hash OR shipped-bytes), the E3 complement, and the R-f-②
+  deferral — whose deferral set EXCLUDES the dispatcher's matrix-class
+  conditional deps (documented at the RemoveBundle head: including them
+  would defeat the D28 selection-based prune, AC-018's shipped-but-
+  deselected arm).
+- RED evidence (E8): `go test ./internal/cli/ -run TestBundle` → 4 FAIL
+  ("unknown command" surface absent — `runBundleAdd` undefined at
+  authorship); the installer tests went RED first as the absent-surface
+  build failure, then through four implementation defects each caught by
+  a named arm (fixture source prefix; dirTargets walk prefix; backup-home
+  creation; /var symlink resolution; MkdirAll-through-symlink).
+- GREEN: internal/userassets 17/17 ok; `go test ./internal/cli/ -run
+  'TestBundle'` 5/5 ok (add exactness + selection record; the E3
+  complement arm over the REAL devops pack — the L0 trio survives with
+  report notes, llm-security/supply-chain removed; divergence honored at
+  removal; unknown-name refusal with the valid set; the R-f-② deferral
+  over the moai-e2e→e2e-tester edge); `go test ./internal/cli/ -run
+  'TestInitEnsuresUserAssets|TestInitBundlesFlagRecordsSelection'` ok —
+  init installs L0 user-side end-to-end (AC-001/002 presence arms) and
+  `--bundles` records the selection (REQ-004).
+- Fold A2 dispatcher rebind at SOURCE: all 19
+  `.claude/skills/moai/workflows/` references in
+  templates/.claude/skills/moai/SKILL.md rebound to the
+  installed-skill-relative `workflows/` form (one form resolves in
+  ~/.claude/skills/moai/ and $HOME/.agents/skills/moai/ alike); catalog
+  hashes regenerated (`gen-catalog-hashes --all`).
+- init wiring: the `--bundles` flag registered on initCmd (+ the test
+  cmd mirror); the ensure call after the project deploy succeeds —
+  systemic failures fail init with the idempotent-retry hint; per-file
+  failures surface in the summary.
+- Suite verdict attribution (this run, this tree): the change-scoped
+  families `TestInit|TestUpdate|TestBundle|TestCodexOnly|TestSkillMirror|
+  TestPublished|TestSlim` → exit 0, 0 failures (20m timeout envelope);
+  `golangci-lint run internal/cli/` 0 issues; `GOOS=windows` build exit 0.
+  The FULL internal/cli suite exceeded its wall-clock envelope TWICE on
+  this loaded machine (10m default kill mid-package; a 25m kill at
+  1500.9s with ZERO test-level failures — the package never reached
+  completion; the two earlier named failures
+  (TestStopChainMemberCostWithinBudget, TestCodexTaskBackgroundHandshake-
+  HonorsTaskBound) are pre-existing load-sensitive timing tests that pass
+  standalone and on -count=3, touch no code this SPEC changes). The
+  repository-wide test verdict is owned by the CI run on origin/develop —
+  PENDING at report time.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

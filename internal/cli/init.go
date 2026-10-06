@@ -91,6 +91,10 @@ func init() {
 	initCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 	initCmd.Flags().Bool("no-plugin", false, "Skip the moai plugin and deploy the FULL local payload (skills, commands, .mcp.json moai entry, Codex mirror). Also MOAI_SKIP_PLUGIN_INSTALL=1. Default (plugin mode) deploys no local skills or commands — they ride the moai plugin")
 	initCmd.Flags().Bool("all", false, "Deploy all catalog tiers locally (a full local deploy: the --no-plugin payload plus optional-pack entries). Bypasses slim mode (SPEC-V3R4-CATALOG-002)")
+	// SPEC-USER-ASSET-INSTALL-001 (REQ-004, iter2 D18): the initial opt-in
+	// bundle selection, recorded in the per-user manifest. L0 installs
+	// regardless; each named bundle adds its catalog entries.
+	initCmd.Flags().String("bundles", "", "Comma-separated opt-in bundle names to install into your user folders on first init (e.g. devops,frontend)")
 
 	// The two wizard mode flags are retired (REQ-WIZ-018): the wizard presents
 	// the same three pages to every user, so there is no mode to select.
@@ -930,6 +934,23 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 
 	if err := homestate.EnsureProjectLayout(opts.ProjectRoot); err != nil {
 		return fmt.Errorf("initialize private MoAI home layout: %w", err)
+	}
+
+	// SPEC-USER-ASSET-INSTALL-001 (REQ-024): the first-install trigger. Init
+	// ensures every L0 and opted-in-bundle asset is present user-side before
+	// the run reports success — the judgment is PER-ASSET-STATE applying the
+	// REQ-023 truth table exactly as update does (a user-edited file's bytes
+	// are never clobbered; an untracked target is a REQ-010 collision; a
+	// partial install's manifest does not suppress the run). Systemic
+	// failures fail the init; per-file failures continue and surface in the
+	// summary (REQ-013).
+	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+		selection := parseBundleSelection(getStringFlag(cmd, "bundles"))
+		if err := ensureUserAssetsLocked(homeDir, selection, cmd.OutOrStdout()); err != nil {
+			return fmt.Errorf("user-asset install failed: %w\n  Fix the cause and re-run 'moai init' — the ensure is idempotent and completes the shortfall", err)
+		}
+	} else {
+		p.Warn("Could not resolve the user home; the user-folder asset install was skipped: %v", homeErr)
 	}
 
 	// Chain ① consumer link (SPEC-INIT-WIZARD-REPAIR-001 REQ-003): wire the
