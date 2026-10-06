@@ -230,12 +230,14 @@ var workflowOptMirroredPaths = []string{
 	// card t1525 mirror re-sync: settings-management gained the in-session
 	// style-switching section; cache-aware-execution directive 4 now delegates
 	// its /clear decision to context-clear-policy.md (shipped in the same
-	// commit); factory-dispatch gained the worktree-sweep disposal sentence.
-	// All three local copies are clean of internal tokens, so byte-parity is
-	// the right invariant.
+	// commit). Both local copies are clean of internal tokens, so byte-parity
+	// is the right invariant. factory-dispatch.md stays UNENROLLED here: its
+	// live copy carries one live-only sentence (the worktree-sweep disposal
+	// sentence), a declared fork owned by TestAutoPickMirrorParity in
+	// internal/cli, which requires exactly that one-line difference —
+	// byte-parity here would re-absorb the sentence (the t1525 CI defect).
 	".claude/rules/moai/core/settings-management.md",
 	".claude/rules/moai/workflow/cache-aware-execution.md",
-	".claude/rules/moai/workflow/factory-dispatch.md",
 	// card t1525: 15 deployed rules existed only in the working tree — the
 	// mirror never shipped them. Two are referenced by shipped rules
 	// (context-clear-policy.md via cache-aware-execution directive 4;
