@@ -296,3 +296,29 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   control=0 malformed=1 matrix-exclude=1 repo-root=0; round-14/15/16
   probes green; harness 12 pass / 0 fail. CI publication still
   platform-blocked.
+- gate_round_18 (card t1546, lane-10 direct — the final-round conditional:
+  ONE delta re-audit follows; a 0.80 miss routes to the operator, no
+  further repair rounds): 4 repairs, RED observed on the committed
+  2eb41ec31 code then GREEN on this tree (commit `d4a239c27`) — (1)
+  object-axis exclude: the nested exclude group field renders at ind 14
+  in the yq-normalized form and never stored the dotted pair (target.os),
+  and the per-item object path never subtracted the exclude; bare-key
+  groups store dotted paths (the RAW value separates a group opener from
+  an explicit empty string) and object combinations subtract before
+  publishing (inverted probes obj-exclude/first-empty-excl/empty-array:
+  pre-repair exit 0 false approval, repaired exit 1); (2) positional
+  pair count: a leading EMPTY value (`os: ["", ubuntu]`) left the suffix
+  string empty and the nsuf == nk gate under-counted, skipping the
+  exclude check; the per-combination count moved to a side array copied
+  after generation — the first in-place write corrupted the
+  not-yet-read rows and regressed round-4 matrix-exclude (caught by the
+  GREEN suite before commit); (3) unset-field fill: the product path
+  printed the residual `${{ matrix.extra }}` raw and judged the real
+  context phantom (missing-include-field: pre-repair exit 1, repaired
+  exit 0); remaining references substitute as empty after the include
+  merge; (4) zero-value array: `os: []` was promoted by the GATE-17
+  whole-empty fixup to one empty combination; the promotion now requires
+  a non-empty raw list (empty-array: pre-repair exit 0, repaired exit 1)
+  and `[""]` keeps publishing `Test ()`. Regression: phantom=1 control=0
+  malformed=1 matrix-exclude=1 repo-root=0; round-17 probes green;
+  harness 12 pass / 0 fail.
