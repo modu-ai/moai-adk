@@ -59,6 +59,27 @@ trap 'rm -f "$published"' EXIT INT TERM
 for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	[ -f "$wf" ] || continue
 	awk '
+	# GATE-8: strip a trailing UNQUOTED comment (`name: Lint # required`) —
+	# quote-aware: a # inside quotes is literal value text.
+	function strip_comment(s,   i, c, q) {
+		q = ""
+		for (i = 1; i <= length(s); i++) {
+			c = substr(s, i, 1)
+			if (q != "") {
+				if (c == q) q = ""
+			} else {
+				if (c == "\"" || c == "\047") q = c
+				else if (c == "#" && i > 1 && substr(s, i - 1, 1) == " ") {
+					# rtrim too — the comment strip leaves `Lint ` and the
+					# trailing space judged a valid check phantom
+					s = substr(s, 1, i - 1)
+					sub(/[[:space:]]+$/, "", s)
+					return s
+				}
+			}
+		}
+		return s
+	}
 	function emit() {
 		if (!has_name) return
 		# include-only matrices (the matrix.include form) have nk == 0 — the
@@ -76,7 +97,9 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			for (j = 1; j <= n; j++) {
 				for (q = 1; q <= m; q++) {
 					s = lines[j]
-					gsub("\\$\\{\\{ matrix\\." k " }}", vals_arr[q], s)
+					# GATE-8: the expression whitespace is OPTIONAL —
+					# `${{matrix.os}}` is a valid Actions expression too.
+					gsub("\\$\\{\\{[[:space:]]*matrix\\." k "[[:space:]]*\\}\\}", vals_arr[q], s)
 					newn++
 					newlines[newn] = s
 					ns = sufs[j]
@@ -162,7 +185,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			# their ${{ matrix.* }} expressions and extend the suffix.
 			outl = lines[j]
 			for (q = 1; q <= en; q++)
-				gsub("\\$\\{\\{ matrix\\." ek[q] " }}", ev[q], outl)
+				gsub("\\$\\{\\{[[:space:]]*matrix\\." ek[q] "[[:space:]]*\\}\\}", ev[q], outl)
 			sfx2 = sufs[j]
 			for (q = 1; q <= en; q++)
 				sfx2 = (sfx2 == "") ? ev[q] : sfx2 " " ev[q]
@@ -187,7 +210,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 				split(kk, pair, SUBSEP)
 				if (pair[1] + 0 != t) continue
 				if (incval[kk] == "") continue
-				gsub("\\$\\{\\{ matrix\\." pair[2] " }}", incval[kk], line)
+				gsub("\\$\\{\\{[[:space:]]*matrix\\." pair[2] "[[:space:]]*\\}\\}", incval[kk], line)
 			}
 			if (had_ref) {
 				# expression-bearing name: print only when every matrix
@@ -260,7 +283,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		next
 	}
 	ind == 4 && $0 ~ /^[[:space:]]*name:/ {
-		name = $0
+		name = strip_comment($0)
 		sub(/^[[:space:]]*name:[[:space:]]*/, "", name)
 		# GATE-5: strip BOTH quote styles — a single-quoted name (Lint in
 		# ASCII single quotes) was
@@ -269,7 +292,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		# quote; the awk program itself is single-quote-wrapped).
 		gsub(/^["\047]|["\047]$/, "", name)
 		has_name = 1
-		had_ref = (name ~ /\$\{\{ matrix\./) ? 1 : 0
+		had_ref = (name ~ /\$\{\{[[:space:]]*matrix\./) ? 1 : 0
 		next
 	}
 	ind == 4 && $0 ~ /^[[:space:]]*steps:/ { in_steps = 1; next }
@@ -286,13 +309,13 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		# below (the same YAML meaning as the flow form `os: [a, b]`;
 		# pre-fix only the flow form parsed and the block form judged
 		# valid contexts phantom).
-		line = $0; sub(/^[[:space:]]*/, "", line); sub(/:[[:space:]]*$/, "", line)
+		line = strip_comment($0); sub(/^[[:space:]]*/, "", line); sub(/:[[:space:]]*$/, "", line)
 		bdim_key = line
 		next
 	}
 	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*[A-Za-z_][A-Za-z_0-9]*:[[:space:]]*\[/ {
 		bdim_key = ""
-		line = $0; sub(/^[[:space:]]*/, "", line)
+		line = strip_comment($0); sub(/^[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
 		v = line; sub(/^[^[]*\[/, "", v); sub(/\][[:space:]]*$/, "", v)
 		gsub(/[[:space:]]/, "", v); gsub(/["\047]/, "", v)
@@ -303,7 +326,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		next
 	}
 	in_matrix && ind == 10 && $0 ~ /^[[:space:]]*- / {
-		line = $0; sub(/^[[:space:]]*-[[:space:]]*/, "", line)
+		line = strip_comment($0); sub(/^[[:space:]]*-[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
 		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^["\047]|["\047]$/, "", v)
 		is_pair = (line ~ /:/)
@@ -328,14 +351,14 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		next
 	}
 	in_matrix && ind == 12 && mmode == "excl" && ex_n > 0 && $0 ~ /^[[:space:]]*[A-Za-z_]/ {
-		line = $0; sub(/^[[:space:]]*/, "", line)
+		line = strip_comment($0); sub(/^[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
 		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^["\047]|["\047]$/, "", v)
 		exval[ex_n, k] = v
 		next
 	}
 	in_matrix && ind == 12 && inc_n > 0 && $0 ~ /^[[:space:]]*[A-Za-z_]/ {
-		line = $0; sub(/^[[:space:]]*/, "", line)
+		line = strip_comment($0); sub(/^[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
 		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^["\047]|["\047]$/, "", v)
 		incval[inc_n, k] = v

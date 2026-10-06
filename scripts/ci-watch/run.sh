@@ -85,11 +85,9 @@ fi
 # a QUOTED key (`"main":`) is valid YAML the raw grep could not see, and it
 # aborted a perfectly watchable PR.
 _ssot_has_key() {
-    if command -v yq >/dev/null 2>&1; then
-        yq -r '.branches | keys | .[]' "$REQUIRED_CHECKS_FILE" 2>/dev/null | grep -qxF "$1"
-    else
-        grep -qF "  $1:" "$REQUIRED_CHECKS_FILE"
-    fi
+    # GATE-8: yq-only — the grep fallback could not see quoted keys and is
+    # retired with the rest of the raw-text SSoT reading.
+    yq -r '.branches | keys | .[]' "$REQUIRED_CHECKS_FILE" 2>/dev/null | grep -qxF "$1"
 }
 SSOT_BRANCH=""
 _ssot_has_key "$PR_BASE" && SSOT_BRANCH="$PR_BASE"
@@ -150,8 +148,13 @@ _check_bucket() {
 _check_link() {
     check_name="$1"
     json_file="$2"
+    # GATE-8: when a name has multiple entries the handoff must point at
+    # the run that produced the WORST verdict — the pre-fix head -1 sent
+    # the diagnostic loop to the PASSING run's log ([pass, fail] repro).
+    # Called only after the worst-case bucket resolved to fail/cancel, so
+    # a fail-or-cancel entry always exists for the name.
     jq -r --arg n "$check_name" \
-        '.[] | select(.name==$n) | .link // ""' "$json_file" \
+        '.[] | select(.name==$n) | select(.bucket=="fail" or .bucket=="cancel") | .link // ""' "$json_file" \
         | head -1
 }
 
@@ -174,43 +177,29 @@ TMP_FL="$(mktemp /tmp/ciwatch_fl_XXXXXXXXXX)"
 TMP_PAIR="$(mktemp /tmp/ciwatch_pair_XXXXXXXXXX)"
 trap 'rm -f "$TMP_JSON" "$TMP_SSOT" "$TMP_ALL" "$TMP_FN" "$TMP_FL" "$TMP_PAIR"' EXIT
 
-# t1534 M3: load the SSoT required contexts for this branch — yq when
-# available, otherwise an awk scan over the branches.<key>.contexts block.
+# t1534 M3: load the SSoT required contexts for this branch — through yq
+# (REQUIRED since gate round 8; the awk fallback mis-read flow-form
+# contexts as an empty list).
 _load_required_contexts() {
     branch_key="$1"
-    if command -v yq >/dev/null 2>&1; then
-        # GATE P1 fix: a yq FAILURE (malformed YAML, unreadable file) must
-        # abort — the pre-fix `|| true` turned an unreadable SSoT into an
-        # empty list, which the loop read as "all required passed" (exit 0).
-        # A successful yq run with an empty contexts list is still a legal
-        # empty result (e.g. release/* per decision-index Q1).
-        yq_out="$(yq -r ".branches[\"$branch_key\"].contexts // [] | .[]" "$REQUIRED_CHECKS_FILE" 2>/dev/null)" || {
-            abort "yq failed to read $REQUIRED_CHECKS_FILE — refusing to treat an unreadable SSoT as 'all required passed'" 1
-        }
-        printf '%s\n' "$yq_out"
-    else
-        # GATE P1 fix: match the REAL SSoT shape — branch keys at indent 2
-        # UNQUOTED (`  main:`) and contexts items at indent 6 (`      - `).
-        # The first draft matched a quoted `"main":` at indent 4 and yielded
-        # an empty list, which read as "all required passed" (exit 0).
-        awk -v key="$branch_key" '
-            /^branches:/ { inb = 1; next }
-            inb && /^[A-Za-z_*]/ { inb = 0 }
-            inb && $0 ~ ("^  " key ":") { inctx = 1; next }
-            # the key block owns a contexts: line at indent 4 — it OPENS the
-            # item list and must not terminate the scan (GATE P1 fix, second
-            # shape: the indent-4 terminator rule matched `    contexts:`
-            # itself and closed the scan before any item line).
-            inctx && /^    contexts:/ { next }
-            inctx && /^      - / {
-                line = $0
-                sub(/^ *- */, "", line)
-                gsub(/"/, "", line)
-                print line
-            }
-            inctx && /^    [A-Za-z_*]/ { inctx = 0 }
-        ' "$REQUIRED_CHECKS_FILE"
+    # GATE-8 P1: yq is REQUIRED — the awk fallback silently ignored the
+    # valid flow form `contexts: [Lint]`, the required list came back
+    # EMPTY, and an injected Lint=fail surfaced "All required checks
+    # passed" (exit 0) that yq correctly scores exit 2. The fallback is
+    # the same false-green class this SPEC removes, so the loop aborts
+    # without yq instead of silently mis-reading the SSoT.
+    if ! command -v yq >/dev/null 2>&1; then
+        abort "yq not found — the ci-watch loop requires yq to read the required-checks SSoT (the awk fallback mis-reads flow-form contexts as an empty list and scores all-passed)" 1
     fi
+    # GATE P1 fix: a yq FAILURE (malformed YAML, unreadable file) must
+    # abort — the pre-fix `|| true` turned an unreadable SSoT into an
+    # empty list, which the loop read as "all required passed" (exit 0).
+    # A successful yq run with an empty contexts list is still a legal
+    # empty result (e.g. release/* per decision-index Q1).
+    yq_out="$(yq -r ".branches[\"$branch_key\"].contexts // [] | .[]" "$REQUIRED_CHECKS_FILE" 2>/dev/null)" || {
+        abort "yq failed to read $REQUIRED_CHECKS_FILE — refusing to treat an unreadable SSoT as 'all required passed'" 1
+    }
+    printf '%s\n' "$yq_out"
 }
 
 while true; do
