@@ -293,6 +293,19 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 						// by name.
 						if r.Items[i].State == factory.BacklogStateQueued {
 							r.Items[i].State = factory.BacklogStatePicked
+							// The dispatch binding follows the re-selection
+							// (review round-16 P1-2): a card with an old run's
+							// approval, re-selected into the current run, is
+							// bound HERE — the later completion gate then
+							// resolves the current run and refuses the old
+							// approval. Silent skip when no factory run env
+							// is set (non-factory auto usage); a binding
+							// failure refuses the pick.
+							if envRunID := os.Getenv(config.EnvFactoryRunID); envRunID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+								if berr := recordDispatchBindingAtRoot(card.ID, envRunID, root); berr != nil {
+									return berr
+								}
+							}
 							return nil
 						}
 						return fmt.Errorf("auto: card %s is %s, not queued — refusing the pick", card.ID, r.Items[i].State)

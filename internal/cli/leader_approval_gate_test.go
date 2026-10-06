@@ -671,6 +671,61 @@ func TestClaimRevertedWhenBindingUpdateFails(t *testing.T) {
 	t.Fatal("claim card vanished")
 }
 
+// Regression pin for round-16 P1-1 + P2 (card t1538): the claim and its
+// dispatch binding land under ONE held queue lock, and the success line
+// prints exactly ONCE. A binding failure rolls the claim back under the
+// same lock and prints only the refusal.
+func TestClaimBindsUnderLockAndPrintsOnce(t *testing.T) {
+	root, _ := fcFixture(t)
+	if _, _, err := runTodo(t, "add", "claim single print card"); err != nil {
+		t.Fatal(err)
+	}
+	fcPlaceRun(t, root, fcRun, "active", "2026-09-25T00:00:00Z")
+	fcPlace(t, root, homestate.Card{CardID: "t1", RunID: fcRun, State: string(factory.BacklogStateQueued), OwnerLabel: "worker-1", Version: 1})
+
+	t.Setenv(config.EnvFactoryRunID, fcRun)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	out, _, err := runTodo(t, "claim")
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+	if got := strings.Count(out, "claimed t1 "); got != 1 {
+		t.Fatalf("claimed line count = %d, want 1 (output %q)", got, out)
+	}
+	// The binding followed the claim (same lock).
+	db := fcOpen(t, root)
+	defer func() { _ = db.Close() }()
+	row, linked, rerr := db.RecordedCardRowReadonly(context.Background(), "t1")
+	if rerr != nil || !linked {
+		t.Fatalf("binding read: linked=%v rerr=%v", linked, rerr)
+	}
+	if row.RunID != fcRun {
+		t.Fatalf("binding run = %s, want %s", row.RunID, fcRun)
+	}
+
+	// A claim whose binding write fails rolls back and prints only the
+	// refusal — never a claimed line for an unbound selection.
+	factoryDB, ferr := homestate.FactoryDBPath(root)
+	if ferr != nil {
+		t.Fatal(ferr)
+	}
+	if err := os.Remove(factoryDB); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(factoryDB, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(factoryDB) })
+	if _, _, err := runTodo(t, "add", "second claim card"); err != nil {
+		t.Fatal(err)
+	}
+	if outp, _, err := runTodo(t, "claim"); err == nil {
+		t.Fatal("claim with a failing binding write succeeded")
+	} else if strings.Contains(outp, "claimed t2") {
+		t.Fatal("the rolled-back claim still printed a claimed line")
+	}
+}
+
 // fcBindDispatch records the card's dispatch binding — the current-run
 // authority the completion gate and scan resolve through. Idempotent.
 func fcBindDispatch(t *testing.T, root, cardID, runID string) {

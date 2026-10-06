@@ -7,8 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/modu-ai/moai-adk/internal/config"
 
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
@@ -297,6 +299,71 @@ func TestAutoDoneLegacyQueueCompletesOnFirstRun(t *testing.T) {
 	}
 	if _, ok := liveItemOK(t, store, "t800"); ok {
 		t.Error("t800 stayed live after completing")
+	}
+}
+
+// Regression pin for round-16 P1-2 (card t1538): the auto cycle's
+// re-selection binds the card to the CURRENT run — a card with an old run's
+// approval, re-selected by `todo --auto` into a new run, collects new
+// evidence and the completion gate then resolves the CURRENT run, refusing
+// the old approval instead of closing on it.
+func TestAutoReselectRebindsAndRefusesOldApproval(t *testing.T) {
+	root, store := autoDoneFixture(t)
+	seedCard(t, store, "t970", "auto reselect card", factory.BacklogStateQueued)
+	// The OLD run: a done row + a valid-looking approval. The current run
+	// holds a picked row (the dispatch record the re-selection binds to).
+	fcPlace(t, root, homestate.Card{CardID: "t970", RunID: "run-old", State: homestate.CardDone, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-old", UpdatedAt: "2026-09-26T01:00:00Z"})
+	fcPlaceFactoryCard(t, root, "t970", 1, "sha-new", "2026-09-26T02:00:00Z")
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: "uuid-970", RunID: "run-old", CardID: "t970", FactoryVersion: 1,
+		EvidenceHash: "sha-old", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+
+	lv := autoTestLiveness(root, "t970", true, true, nil)
+	tick := 0
+	opts := autoOptions{
+		wait:      5 * time.Minute,
+		liveness:  lv,
+		sessionID: "operator-session-fixture",
+		sleep: func(time.Duration) {
+			tick++
+			path := filepath.Join(root, ".moai", "reports", "t970", "evidence.md")
+			if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte("# evidence\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		},
+		now: func() time.Time { return time.Unix(0, 0).Add(time.Duration(tick) * time.Minute) },
+	}
+	// The dispatch run env: the re-selection binds to THIS run.
+	t.Setenv(config.EnvFactoryRunID, fcRun)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+
+	var out strings.Builder
+	if err := runAutoCycle(&out, store, root, opts); err != nil {
+		t.Fatal(err)
+	}
+	got := out.String()
+	if strings.Contains(got, "done t970") {
+		t.Fatalf("the auto cycle closed the card on the OLD run's approval:\n%s", got)
+	}
+	if !strings.Contains(got, "non-finding") {
+		t.Errorf("the refused completion carried no labelled non-finding:\n%s", got)
+	}
+	if !fcLiveItem(t, store, "t970") {
+		t.Fatal("the auto cycle archived the card on the old approval")
+	}
+	// The re-selection bound the card to the current run.
+	db := fcOpen(t, root)
+	defer func() { _ = db.Close() }()
+	row, linked, err := db.RecordedCardRowReadonly(context.Background(), "t970")
+	if err != nil || !linked {
+		t.Fatalf("binding read: linked=%v err=%v", linked, err)
+	}
+	if row.RunID != fcRun {
+		t.Fatalf("binding run = %s, want %s (the re-selection run)", row.RunID, fcRun)
 	}
 }
 

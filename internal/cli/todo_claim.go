@@ -191,30 +191,41 @@ func runTodoClaimRoot(root string, cmd *cobra.Command, lane, renew string) error
 		return nil
 	}
 
-	result, err := store.Claim(holder)
+	// Claim + dispatch binding under ONE held queue lock (review round-16
+	// P1-1): the binding write lands before the lock releases, so a
+	// concurrent completion can never slip between the selection and the
+	// binding. Success prints ONCE, after both operations land (review
+	// round-16 P2).
+	var result *factory.BacklogClaim
+	err := store.WithLock(func(l *factory.LockedBacklog) error {
+		res, cerr := l.Claim(holder)
+		if cerr != nil {
+			return cerr
+		}
+		result = res
+		if envRunID := os.Getenv(config.EnvFactoryRunID); envRunID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+			if berr := recordDispatchBindingAtRoot(result.Item.ID, envRunID, root); berr != nil {
+				// Roll the claim back under the same held lock: no
+				// selection stands unbound (review round-15 P1-3).
+				if rerr := l.Mutate(revertClaimMutation(result.Item.ID, holder)); rerr != nil {
+					return fmt.Errorf("binding update failed (%v) AND the claim revert failed (%v) — card %s may be stuck picked", berr, rerr, result.Item.ID)
+				}
+				return berr
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		_, _ = fmt.Fprint(cmd.OutOrStdout(), out.String())
 		return todoClaimRefusal(cmd, err)
 	}
+	// The runtime report rides after the lock releases — report data, never
+	// completion authority.
+	recordFactoryCardState(result.Item.ID, "", "picked", "card.assigned")
 	todoClaimReclaimLines(out, result.Reclaimed)
 	fmt.Fprintf(out, "claimed %s %s lease_expires_at=%s picked_by=%s\n",
 		result.Item.ID, todoTextPrefix(result.Item.Text),
 		claimStrOr(result.Item.LeaseExpiresAt, "unknown"), claimStrOr(result.Item.PickedBy, "unknown"))
-	_, _ = fmt.Fprint(cmd.OutOrStdout(), out.String())
-	// The dispatch binding follows the claim, at the SAME explicit root the
-	// claim's queue came from (review round-14 P1-2) — never a server-cwd
-	// fallback. On a binding failure the claim is REVERTED before anything
-	// prints (review round-15 P1-3): no selection stands unbound, and the
-	// success line prints only after both operations land.
-	if envRunID := os.Getenv(config.EnvFactoryRunID); envRunID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
-		if err := recordDispatchBindingAtRoot(result.Item.ID, envRunID, root); err != nil {
-			if rerr := store.Mutate(revertClaimMutation(result.Item.ID, holder)); rerr != nil {
-				return fmt.Errorf("todo claim: binding update failed (%v) AND the claim revert failed (%v) — card %s may be stuck picked", err, rerr, result.Item.ID)
-			}
-			return todoClaimRefusal(cmd, err)
-		}
-	}
-	recordFactoryCardState(result.Item.ID, "", "picked", "card.assigned")
 	_, _ = fmt.Fprint(cmd.OutOrStdout(), out.String())
 	return nil
 }
