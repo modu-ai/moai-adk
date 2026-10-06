@@ -92,6 +92,18 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		}
 		return s
 	}
+	# GATE-11: literal-expression substitution — gsub treats & and
+	# backslash in its replacement as grammar (an ampersand expands to the
+	# whole match), and the escaping dance is a self-referential trap on
+	# BSD awk (the escaped replacement is recovered as a bare ampersand
+	# again). Split on the pattern instead: the replacement text enters as
+	# plain data, ampersands and all.
+	function subst_literal(str, ere, lit,   a, i, out) {
+		n = split(str, a, ere)
+		out = a[1]
+		for (i = 2; i <= n; i++) out = out lit a[i]
+		return out
+	}
 	function emit() {
 		if (!has_name) return
 		# include-only matrices (the matrix.include form) have nk == 0 — the
@@ -111,7 +123,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 					s = lines[j]
 					# GATE-8: the expression whitespace is OPTIONAL —
 					# `${{matrix.os}}` is a valid Actions expression too.
-					gsub("\\$\\{\\{[[:space:]]*matrix\\." k "[[:space:]]*\\}\\}", vals_arr[q], s)
+					s = subst_literal(s, "\\$\\{\\{[[:space:]]*matrix\\." k "[[:space:]]*\\}\\}", vals_arr[q])
 					newn++
 					newlines[newn] = s
 					ns = sufs[j]
@@ -197,11 +209,14 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			# their ${{ matrix.* }} expressions and extend the suffix.
 			outl = lines[j]
 			for (q = 1; q <= en; q++)
-				gsub("\\$\\{\\{[[:space:]]*matrix\\." ek[q] "[[:space:]]*\\}\\}", ev[q], outl)
-			sfx2 = sufs[j]
-			for (q = 1; q <= en; q++)
-				sfx2 = (sfx2 == "") ? ev[q] : sfx2 SUBSEP ev[q]
+				outl = subst_literal(outl, "\\$\\{\\{[[:space:]]*matrix\\." ek[q] "[[:space:]]*\\}\\}", ev[q])
+			# GATE-11: the include out-of-matrix fields feed ONLY the
+			# expression substitution — the auto suffix reflects the
+			# ORIGINAL matrix axes alone (GitHub names
+			# os:[ubuntu]+include[extra:smoke] as `Test (ubuntu-latest)`,
+			# never `Test (ubuntu-latest smoke)`).
 			if (nk > 0 && !had_ref) {
+				sfx2 = sufs[j]
 				gsub(SUBSEP, " ", sfx2)
 				print outl " (" sfx2 ")"
 			} else {
@@ -223,7 +238,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 				split(kk, pair, SUBSEP)
 				if (pair[1] + 0 != t) continue
 				if (incval[kk] == "") continue
-				gsub("\\$\\{\\{[[:space:]]*matrix\\." pair[2] "[[:space:]]*\\}\\}", incval[kk], line)
+				line = subst_literal(line, "\\$\\{\\{[[:space:]]*matrix\\." pair[2] "[[:space:]]*\\}\\}", incval[kk])
 			}
 			if (had_ref) {
 				# expression-bearing name: print only when every matrix
@@ -365,7 +380,10 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		# is a STRING scalar (no space after the colon) while `- color: green`
 		# is a mapping. The bare is_pair colon test mis-routed spaced-out
 		# string values into the tuple path and judged their checks phantom.
-		is_pair = (line ~ /:[[:space:]]/ || line ~ /:$/)
+		# GATE-11: a QUOTED item is a scalar by node type — yq re-renders a
+		# value such as node-colon-space as a QUOTED string whose inner
+		# colon+space is literal value text, not a mapping separator.
+		is_pair = (line !~ /^["\047]/) && (line ~ /:[[:space:]]/ || line ~ /:$/)
 		if (bdim_key != "" && !is_pair) {
 			# GATE-6: block-form dim item — a bare value appended to the
 			# dim declared by the `key:` line above.
