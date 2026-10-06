@@ -74,6 +74,18 @@ type FileOutcome struct {
 	Reason string
 }
 
+// InstallPreserveSelection is Install with the manifest's RECORDED selection
+// unioned under the request: a second project's default-selection run must
+// never wipe the shared manifest's bundle list (review fix RF9).
+func (in *Installer) InstallPreserveSelection(selection []string) (*Result, error) {
+	existing, err := Load(ManifestPath(in.Home))
+	if err != nil {
+		return nil, err
+	}
+	merged := append(append([]string{}, existing.Bundles...), selection...)
+	return in.Install(merged)
+}
+
 // Install ensures every entry of L0 plus the named selection is present under
 // the four roots, judged per asset state. A nil/empty selection installs L0
 // only; when a pending journal records an interrupted run's selection and the
@@ -102,8 +114,18 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	}
 
 	// Journal reconciliation BEFORE any install/collision judgment
-	// (final-class item 5).
-	journal, _ := LoadJournal(JournalPath(in.Home))
+	// (final-class item 5). A CORRUPT journal is preserved (renamed aside)
+	// and the run ABORTS: the journal carries the interrupted install's
+	// selection + ownership recovery data, and silently discarding it would
+	// turn the retry into a mis-attributed run (review fix RF4).
+	journal, journalErr := LoadJournal(JournalPath(in.Home))
+	if journalErr != nil {
+		sidecar := JournalPath(in.Home) + ".corrupt-" + time.Now().UTC().Format("20060102T150405")
+		if renameErr := os.Rename(JournalPath(in.Home), sidecar); renameErr != nil {
+			return nil, fmt.Errorf("journal corrupt and could not be preserved: %w", journalErr)
+		}
+		return nil, fmt.Errorf("pending-install journal corrupt — preserved at %s; inspect it and re-run (the interrupted install's selection + ownership recovery data must not be silently discarded)", sidecar)
+	}
 	if journal != nil {
 		in.reconcileJournal(journal, manifest, roots, res)
 		if len(selection) == 0 && len(journal.BundlesSelection) > 0 {
@@ -112,39 +134,64 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	}
 
 	// Effective selection: L0 ∪ the caller's (or journal's) named bundles.
+	// RF7 (review fix): unknown bundle names are an ERROR before anything
+	// saves — a typo'd name is never recorded, never silently skipped.
+	for _, name := range selection {
+		if _, ok := in.Catalog.Catalog.OptionalPacks[name]; !ok {
+			return nil, fmt.Errorf("unknown bundle %q — valid bundles: check 'moai bundle add --help'", name)
+		}
+	}
 	manifest.Bundles = normalizeSelection(selection)
 	targets, err := in.installTargets(manifest.Bundles)
 	if err != nil {
 		return nil, err
 	}
 
+	// RF5 (review fix): run the collision determination FIRST — a target
+	// holding an untracked content-identical user file is a REQ-010
+	// collision, never a journal ownership target. Only the delta that will
+	// actually be installed is staged.
+	installable := make([]installTarget, 0, len(targets))
+	for _, tgt := range targets {
+		if claimed, ok := manifest.Files[tgt.manifestKey]; ok && claimed.installedByJournal {
+			continue
+		}
+		root := roots[tgt.root]
+		abs := filepath.Join(root.dir, filepath.FromSlash(tgt.rel))
+		if current, readErr := os.ReadFile(abs); readErr == nil {
+			_, tracked := manifest.Files[tgt.manifestKey]
+			if !tracked {
+				// Untracked target: REQ-010 collision regardless of content —
+				// never a journal ownership target (RF5).
+				res.CollisionSkipped++
+				res.Collisions = append(res.Collisions, tgt.manifestKey)
+				continue
+			}
+			_ = current
+		}
+		installable = append(installable, tgt)
+	}
+
 	// Stage the pending-install journal BEFORE the asset writes (the
-	// intent-and-content proof, E4).
+	// intent-and-content proof, E4) — over ONLY the installable delta.
 	stage := &PendingJournal{
 		SchemaVersion:    SchemaVersion,
 		BundlesSelection: manifest.Bundles,
 		StartedAt:        now.UTC().Format(time.RFC3339),
 	}
-	claimable := map[string]JournalEntry{}
-	for _, tgt := range targets {
+	for _, tgt := range installable {
 		stage.Entries = append(stage.Entries, JournalEntry{
 			Path: tgt.manifestKey, ExpectedSHA256: tgt.sha,
 			Bundle: tgt.bundle, MoaiVersion: in.MoaiVersion,
 			InstalledAt: now.UTC().Format(time.RFC3339),
 		})
-		claimable[tgt.manifestKey] = stage.Entries[len(stage.Entries)-1]
-		_ = claimable[tgt.manifestKey]
 	}
 	if err := WriteJournal(JournalPath(in.Home), stage); err != nil {
 		return nil, fmt.Errorf("stage journal: %w", err)
 	}
 
 	// The per-asset judgment, one file at a time (REQ-013 fail-open per file).
-	for _, tgt := range targets {
-		// A journal-reconciled claim already owns this path.
-		if claimed, ok := manifest.Files[tgt.manifestKey]; ok && claimed.installedByJournal {
-			continue
-		}
+	for _, tgt := range installable {
 		if err := in.applyTarget(tgt, manifest, roots, res); err != nil {
 			res.Failures = append(res.Failures, FileOutcome{Path: tgt.manifestKey, Reason: err.Error()})
 		}
@@ -419,8 +466,14 @@ func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots ma
 			manifest.Files[tgt.manifestKey] = fe
 		}
 	case stateManifestMatch:
-		// REQ-008 refresh: rewrite to shipped + re-record.
-		fe := FileEntry{SHA256: tgt.sha, Bundle: tgt.bundle, InstalledAt: in.now().UTC().Format(time.RFC3339), MoaiVersion: in.MoaiVersion}
+		// REQ-008 refresh: rewrite to shipped + re-record — updating only
+		// the KNOWN fields of the existing record so unknown per-file
+		// fields captured at decode survive (REQ-021; review fix RF6).
+		fe := manifest.Files[tgt.manifestKey]
+		fe.SHA256 = tgt.sha
+		fe.Bundle = tgt.bundle
+		fe.InstalledAt = in.now().UTC().Format(time.RFC3339)
+		fe.MoaiVersion = in.MoaiVersion
 		if err := in.confinedWrite(root, tgt.rel, shipped, true); err != nil {
 			return err
 		}
@@ -428,7 +481,7 @@ func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots ma
 		res.Refreshed++
 	case stateManifestStale:
 		// REQ-023 truth table: repair the manifest record, no rewrite,
-		// counted refreshed (REQ-011).
+		// counted refreshed (REQ-011) — known fields only (RF6).
 		fe := manifest.Files[tgt.manifestKey]
 		fe.SHA256 = tgt.sha
 		fe.Bundle = tgt.bundle

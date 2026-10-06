@@ -37,7 +37,9 @@ func ensureUserAssetsLocked(homeDir string, selection []string, out io.Writer) e
 	if err != nil {
 		return err
 	}
-	res, err := inst.Install(selection)
+	// RF9 (review fix): a second project's init passes the DEFAULT empty
+	// selection — the recorded selection must be UNIONed, never wiped.
+	res, err := inst.InstallPreserveSelection(selection)
 	if err != nil {
 		return err
 	}

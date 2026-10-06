@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -25,9 +26,13 @@ import (
 // legitimately take minutes on a cold tree.
 const DefaultStaleAfter = 30 * time.Minute
 
-// UserLock is a held user-level lock. Release unlocks and removes the file.
+// UserLock is a held user-level lock. Release unlocks and removes the file —
+// ONLY if the lock file still carries this holder's identity token (the
+// mid-run review fix RF8: after a stale reclaim, the original holder's
+// late Release must not delete the NEW owner's lock).
 type UserLock struct {
-	path string
+	path  string
+	token string
 }
 
 // AcquireUserLock takes the user-level lock under the given moai home,
@@ -45,9 +50,10 @@ func acquireUserLockStale(path string, timeout, staleAfter time.Duration) (*User
 	for {
 		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 		if err == nil {
-			_, _ = fmt.Fprintf(f, "pid=%d acquired=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339))
+			token := fmt.Sprintf("%d-%s", os.Getpid(), time.Now().UTC().Format(time.RFC3339Nano))
+			_, _ = fmt.Fprintf(f, "pid=%d token=%s acquired=%s\n", os.Getpid(), token, time.Now().UTC().Format(time.RFC3339))
 			_ = f.Close()
-			return &UserLock{path: path}, nil
+			return &UserLock{path: path, token: token}, nil
 		}
 		if !errors.Is(err, os.ErrExist) {
 			return nil, fmt.Errorf("userassets: acquire lock: %w", err)
@@ -66,10 +72,17 @@ func acquireUserLockStale(path string, timeout, staleAfter time.Duration) (*User
 	}
 }
 
-// Release removes the lock file.
+// Release removes the lock file — only when it still carries THIS holder's
+// identity token. A lock reclaimed by another owner (the stale-reclaim path)
+// is left alone: the original holder's late release neither deletes the new
+// owner's lock nor opens a third-run window.
 func (l *UserLock) Release() error {
 	if l == nil {
 		return nil
+	}
+	raw, err := os.ReadFile(l.path)
+	if err == nil && !strings.Contains(string(raw), "token="+l.token) {
+		return fmt.Errorf("userassets: lock at %s was reclaimed by another owner — release skipped", l.path)
 	}
 	if err := os.Remove(l.path); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("userassets: release lock: %w", err)

@@ -15,6 +15,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -43,8 +44,27 @@ func (in *Installer) PruneUnselected(manifest *Manifest) (*Result, error) {
 		roots[r.Slug] = rr
 	}
 	allowed := map[string]bool{}
+	preserved := []template.Entry{}
 	for _, e := range in.preservedEntries(manifest.Bundles) {
 		allowed[e.Name] = true
+		preserved = append(preserved, e)
+	}
+	// RF2 (review fix): the prune applies the same R-f-② dependency-
+	// deferral rule as RemoveBundle — an entry that is a declared
+	// dependency of a PRESERVED entry is kept + reported (the dispatcher's
+	// own matrix-class dep list stays excluded, for the D28 reason recorded
+	// on RemoveBundle).
+	deferral := map[string]bool{}
+	for _, e := range preserved {
+		if e.Name == "moai" {
+			continue
+		}
+		for _, d := range e.DependsSkills {
+			deferral[d] = true
+		}
+		for _, d := range e.DependsAgents {
+			deferral[d] = true
+		}
 	}
 
 	// Snapshot the keys: removal mutates the map.
@@ -52,6 +72,7 @@ func (in *Installer) PruneUnselected(manifest *Manifest) (*Result, error) {
 	for k := range manifest.Files {
 		keys = append(keys, k)
 	}
+	deferredNames := map[string]bool{}
 	for _, k := range keys {
 		slug, rel, ok := splitManifestKey(k)
 		if !ok {
@@ -59,6 +80,13 @@ func (in *Installer) PruneUnselected(manifest *Manifest) (*Result, error) {
 		}
 		name, ok := owningEntryName(rel)
 		if !ok || allowed[name] {
+			continue
+		}
+		if deferral[name] {
+			if !deferredNames[name] {
+				deferredNames[name] = true
+				res.DeferredDeps = append(res.DeferredDeps, name)
+			}
 			continue
 		}
 		entry, found := in.lookupEntry(name)
@@ -187,28 +215,74 @@ func (in *Installer) RemoveBundle(manifest *Manifest, name string, remaining []s
 		preserved[e.Name] = true
 	}
 
-	removedBundle, ok := in.Catalog.Catalog.OptionalPacks[name]
-	if !ok {
+	if _, ok := in.Catalog.Catalog.OptionalPacks[name]; !ok {
 		return nil, fmt.Errorf("unknown bundle %q", name)
 	}
-	var candidates []template.Entry
-	candidates = append(candidates, removedBundle.Skills...)
-	candidates = append(candidates, removedBundle.Agents...)
+	// RF3 (review fix): enumerate the removal targets from the MANIFEST —
+	// every tracked key whose recorded bundle names the removed bundle.
+	// Files installed by an OLDER deployment are tracked but absent from
+	// the current source tree; walking the tree misses them and both the
+	// file and its record survive the removal.
+	bundleKeys := map[string]bool{}
+	for k, fe := range manifest.Files {
+		if fe.Bundle == name {
+			bundleKeys[k] = true
+		}
+	}
 
-	for _, e := range candidates {
-		if preserved[e.Name] {
-			res.SharedSurvivors = append(res.SharedSurvivors, e.Name)
+	// Group the keys by owning entry name so the E3/R-f-② classification
+	// (shared / deferred) runs per entry as before.
+	nameKeys := map[string][]string{}
+	for k := range bundleKeys {
+		_, rel, ok := splitManifestKey(k)
+		if !ok {
 			continue
 		}
-		if deferral[e.Name] {
-			res.DeferredDeps = append(res.DeferredDeps, e.Name)
+		n, ok := owningEntryName(rel)
+		if !ok {
 			continue
 		}
-		if err := in.removeEntry(e, manifest, roots, res); err != nil {
-			res.Failures = append(res.Failures, FileOutcome{Path: e.Name, Reason: err.Error()})
+		nameKeys[n] = append(nameKeys[n], k)
+	}
+	names := make([]string, 0, len(nameKeys))
+	for n := range nameKeys {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+
+	for _, n := range names {
+		if preserved[n] {
+			res.SharedSurvivors = append(res.SharedSurvivors, n)
+			continue
+		}
+		if deferral[n] {
+			res.DeferredDeps = append(res.DeferredDeps, n)
+			continue
+		}
+		entry, found := in.lookupEntry(n)
+		if !found {
+			entry = template.Entry{Name: n}
+		}
+		if err := in.removeKeys(entry, nameKeys[n], manifest, roots, res); err != nil {
+			res.Failures = append(res.Failures, FileOutcome{Path: n, Reason: err.Error()})
 		}
 	}
 	return res, nil
+}
+
+// removeKeys applies the one removal rule to an explicit key set (the RF3
+// manifest-driven enumeration).
+func (in *Installer) removeKeys(entry template.Entry, keys []string, manifest *Manifest, roots map[RootSlug]resolvedRoot, res *Result) error {
+	for _, k := range keys {
+		slug, rel, ok := splitManifestKey(k)
+		if !ok {
+			continue
+		}
+		if err := in.removeManifestKey(entry, k, slug, rel, roots[slug], manifest, res); err != nil {
+			res.Failures = append(res.Failures, FileOutcome{Path: k, Reason: err.Error()})
+		}
+	}
+	return nil
 }
 
 // preservedEntries gathers L0 ∪ the named selection's entries.
@@ -270,6 +344,14 @@ func (in *Installer) removeEntry(e template.Entry, manifest *Manifest, roots map
 			res.DivergencePreserved++
 			res.Divergences = append(res.Divergences, k)
 			continue
+		}
+		// RF1 (review fix): re-validate the destination parent immediately
+		// before the delete — a parent swapped to an outside-pointing
+		// symlink between the root resolution and here must not let
+		// os.Remove reach a file beyond the root boundary.
+		parentResolved, parentErr := filepath.EvalSymlinks(filepath.Dir(abs))
+		if parentErr != nil || !withinRoot(root.dir, parentResolved) {
+			return fmt.Errorf("userassets: delete parent re-validation failed — refused (C2 posture)")
 		}
 		if err := os.Remove(abs); err != nil {
 			return err
