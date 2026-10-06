@@ -1,4 +1,4 @@
-# Plan — SPEC-FEEDBACK-ANON-PARTICIPATION-001
+# Plan — SPEC-FEEDBACK-PARTICIPATION-001
 
 ## §A Context
 
@@ -7,15 +7,13 @@
 - Branch and worktree: the card worktree branches from `develop`; the commit trail carries the card id.
 - Methodology: TDD per `quality.yaml`; every named test in `acceptance.md` is written first (RED) and its failure observed before the milestone is called done.
 - Version 0.3.0 is the revision after plan-audit iteration 1 (FAIL, 0.62). The consent store moved from the tracked project file to a user-scoped file; attribution became an allowlist; the milestone set (M1 to M7) and the 25-requirement and 25-criterion counts are unchanged in shape, and the old-to-new criterion map is in `acceptance.md`.
+- Version 0.4.0 records the operator decisions that resolved the last two clarifications (DEC-7 ambiguous local-only; DEC-8 harness-defect narrowing accepted), renames the SPEC identifier (the design is real-name; the branch name is unchanged), and moves the respecified AC-009 from M6 to M4.
 
-## §B Open clarifications (Kickoff inputs)
+## §B Clarifications (Kickoff inputs)
 
-Exactly two remain. Both are operator-owned, both ship with a safe default, and both variants are specified so that answering flips a constant or a recorded scope line, not the design. This plan recommends nothing on either.
+Zero open clarifications remain. Every former marker is a recorded decision below: DEC-1 to DEC-6 recorded the earlier clarifications, and the last two were resolved by operator decisions on 2026-10-04 (leader recorded 2026-10-05) as DEC-7 and DEC-8.
 
-1. [NEEDS CLARIFICATION: ambiguous attribution — does an ambiguous verdict call the model, or stay local and unsent?] The card says deterministic rules come first and a model is used only when attribution is ambiguous; the leader's message says the model is called only at the moment an issue is published. Both variants are specified and tested (REQ-ANON-009, AC-008, AC-009, AC-019); the shipped constant is `local` until answered. Facts for the choice: the kinds that default to `ambiguous` are `hook_timeout`, a hook handler error without a marker, and the template tokens `unexpanded_token` and `invalid_json`; the model sees only fixed fields, so for `hook_timeout` it has no more information than the rules do. Under `adjudicate` an ambiguous item can cost two calls (one adjudication, one summary), bounded by the daily cap.
-2. [NEEDS CLARIFICATION: acceptance of narrowing "deployed harness defect" to the shipped-template render and validate sentinels] The card lists "deployed harness defect" as a signal; the tree has a machine-detectable signal only for hooks and for shipped templates that fail to render or validate. A behavioural defect of an agent or skill has none, and inferring one from Claude Code tool-failure stubs is excluded (REQ-ANON-007). The shipped scope covers the render and validate tokens only, pinned by the closed-kind test (AC-007). If the operator does not accept the narrowing, this SPEC's behaviour is unchanged and a follow-up SPEC adds a deployed-asset self-check as a new signal source, extending the closed token set by exactly one member (a visible one-line change to that test).
-
-(The numbering in earlier drafts skipped values on purpose; the former clarifications 3, 4, 7, 8 and the model-reach question are now recorded decisions below, and the consent-location and attribution-allowlist questions the audit raised are decided in `design.md` sections 3 and 9.)
+(The numbering in earlier drafts skipped values on purpose; the former clarifications 3, 4, 7, 8 and the model-reach question are recorded decisions below, and the consent-location and attribution-allowlist questions the audit raised are decided in `design.md` sections 3 and 9.)
 
 ### Decisions (recorded; each states the shipped default, the reason, and the one place that changes it)
 
@@ -25,6 +23,8 @@ Exactly two remain. Both are operator-owned, both ship with a safe default, and 
 - **DEC-4 withdrawal purge scope.** Turning participation off makes the next flush discard unsent items and the spool; the sent-history log stays; the purge command removes the queue, spool, ledger, and outbox log. Reason: conservative and already specified (REQ-ANON-021); the alternative of leaving unsent items inert until purge keeps data the user withdrew consent for. Changes at: the flush discard branch (one function).
 - **DEC-5 fingerprint merge granularity.** Follow the card: the fingerprint includes version, commit, operating system and architecture, kind, and the moai-internal frames, so one defect on two commits or two systems yields separate issues that the consumer merges by fingerprint family. Reason: the card defines it; a coarser key would hide which build is affected. Changes at: the canonical-input function and its golden (one place).
 - **DEC-6 how Go reaches a model.** Reuse the existing headless `claude` runner through one model seam owned by `publish` and injected from `internal/cli`; the consent text names that the summary may spend the user's own subscription tokens; the deterministic template text is used whenever the model is unavailable, unauthenticated, or fails. Reason and the candidates weighed (including the GLM and Codex paths and their privacy and cost): `design.md` section 8; the earlier premise "no text-generation call exists" was false. Changes at: the production seam implementation in `internal/cli` (one file); `publish` is untouched.
+- **DEC-7 ambiguous attribution is local-only (card t1498 operator decision 2026-10-04; leader decision recorded 2026-10-05).** Ambiguous errors are recorded locally only: no model call adjudicates them, and nothing is queued or sent. The former `adjudicate` variant — one bounded model call per ambiguous item — is out of implemented scope (spec.md, Out of Scope — Model adjudication of ambiguous attribution). Reason: the kinds that reach `ambiguous` are `hook_timeout`, an unmarked hook handler error, and the template tokens `unexpanded_token` and `invalid_json`; the model sees only the fixed payload fields, so for those kinds it has no more information than the deterministic rules already used, and an adjudication would add cost and a send risk without adding signal; `local` spends no tokens and publishes nothing doubtful. Shipped policy: `local`, final — no policy constant is needed. Changes at: nothing in the run phase; a follow-up SPEC would re-add the variant.
+- **DEC-8 narrowing of "deployed harness defect" accepted (card t1498 operator decision 2026-10-04).** Harness-defect signals are only the machine-detectable ones: hook failures, shipped-template render and validate failures, binary panics, and CLI internal errors. Behavioural defects of deployed agents or skills are out of scope; a follow-up SPEC may add a deployed-asset self-check as a new signal source (`design.md` section 2). Reason: the tree has a machine-detectable signal only for those kinds, and inferring a behavioural defect from Claude Code tool-failure stubs is excluded (REQ-ANON-007). Resolves audit finding D19.
 
 ## §C Milestones (ordered by decision reversibility: types and user-facing flows first, mechanical work last)
 
@@ -52,7 +52,7 @@ Proves: AC-002, AC-007, AC-008.
 
 ### M4 — Local pipeline, preview, log, withdrawal (High)
 Files: `internal/feedback/outbox/*.go` (drain, ledger, caps, tripwire, queue wiring, log); `internal/feedback/queue.go` (optional fields, `omitempty`, backward compatible); `internal/cli/feedback_participation.go` (preview, purge, flush); tests.
-Proves: AC-012, AC-013, AC-014, AC-022.
+Proves: AC-009, AC-012, AC-013, AC-014, AC-022.
 
 ### M5 — Publication through the user's gh, deterministic text (High)
 Files: `internal/feedback/publish/ghrunner.go`, `sender.go`, `lookup.go`, `contract.go`, `template.go`, `internal/feedback/testdata/bugreport_issue_v1.golden`; the flush call at the end of `update.go`; tests with a `gh` stub.
@@ -60,9 +60,9 @@ First test item: feasibility of the title-token search (design section 7, audit 
 Proves: AC-003, AC-015, AC-016, AC-020. After M5 the whole feature works with zero model calls.
 
 ### M6 — Model step, ambiguous policy, reachability guard (Medium)
-Files: `internal/feedback/publish/model.go` (the `Summarizer` interface), `adjudicate.go`, `budget.go`; `internal/cli/feedback_participation_model.go` (the production implementation over the existing headless runner, injected at the flush call); the static guard tests; tests with a counting stub. The policy value comes from clarification 1; until answered the policy is `local`. The channel is decided (DEC-6).
+Files: `internal/feedback/publish/model.go` (the `Summarizer` interface), `budget.go`; `internal/cli/feedback_participation_model.go` (the production implementation over the existing headless runner, injected at the flush call); the static guard tests; tests with a counting stub. Ambiguity is handled upstream (DEC-7: retained locally at the drain), so M6 adds no adjudication path and no policy constant. The channel is decided (DEC-6).
 First test: record that the flag set `claudeAuditArgs` passes today is accepted by the installed `claude` for a summary prompt, and that an unauthenticated session yields the template fallback.
-Proves: AC-009, AC-017, AC-018, AC-019, AC-025.
+Proves: AC-017, AC-018, AC-019, AC-025.
 
 ### M7 — Docs, skill bodies, shipping guards (mechanical, Medium)
 Files: `internal/template/templates/.claude/skills/moai/workflows/feedback.md`, `plugins/moai/skills/moai/workflows/feedback.md`, `.claude/skills/moai/workflows/feedback.md`; `docs-site/content/{en,ko,ja,zh}/utility-commands/moai-feedback.md`; `internal/template/auto_repair_guard_test.go` (new); `internal/cli/wizard/participation_guard_test.go` (new, the coexistence guard); `make build`.
@@ -73,7 +73,7 @@ Proves: AC-023, AC-024.
 - `@MX:ANCHOR` on `bugreport.Capture` (called from the main recover, ten recover sites, hook registry, update paths: fan-in well above three), on `bugreport.Fingerprint` (every dedupe, cap, title, and comment keys on it), and on the user-scoped reader (capture, drain, sender, preview, console, wizard, and update all read it).
 - `@MX:WARN` with `@MX:REASON` on: the capture hot path (time-boxed, fail-open, must stay network-free); the `gh` runner (public side effect from the user's account); the model seam (token spend, daily cap); the scrub tripwire stage (withholding, not masking); the consent reader (fail-closed, must never open a project file).
 - `@MX:NOTE` on each recover allowlist entry (the reason is the note) and on the frame filter (why file paths are never read).
-- `@MX:DEBT` with `@MX:CEILING` and `@MX:UPGRADE` on the interim `AmbiguousPolicy=local` constant, naming clarification 1 as the upgrade trigger.
+- No `@MX:DEBT` is planned on the ambiguous policy: DEC-7 made local retention final, so there is no interim constant and no upgrade trigger.
 
 ## §E Risks
 
@@ -86,7 +86,7 @@ Proves: AC-023, AC-024.
 | Handler identity leaks | `%T` of a handler | only a registered name from a closed table is used; the guard fails when a handler is wired without a table entry (AC-007) |
 | Real-name exposure | the issue and comment are public, tied to the user's account, their creation time is public, and the filer is subscribed to later comments | consent text states all of it in four locales (AC-006); caps keep volume low; the per-issue comment cap bounds notification fan-out; no client timestamp is sent |
 | Comment flood and forged markers | any user can post marker-shaped comments; a common defect gathers many occurrence comments | the sender skips commenting at the cap; the count is advisory; markers are documented as untrusted input and consumers re-derive fields from the title key (AC-016, AC-020) |
-| Hook timeouts from machine load | a slow host looks like a bug | `hook_timeout` defaults to `ambiguous`; per-fingerprint and global caps |
+| Hook timeouts from machine load | a slow host looks like a bug | `hook_timeout` is `ambiguous` and stays local (DEC-7); per-fingerprint and global caps |
 | Vulnerability disclosed publicly by a crash report | a path-traversal sentinel or a security-flavoured function name | `path_traversal` reports are always withheld; classifier tripwire; a function name that trips the classifier blocks its own report (fails safe) |
 | Duplicate issues from concurrent first filers | search index latency or title-token tokenisation (unverified) | accepted; the M5 first-test item records the measurement; the consumer merges by fingerprint; comments are append-only so counts do not lose updates |
 | Count drift | deleted comments, repeat users, forged markers | accepted as approximate; documented in `design.md` section 7 |

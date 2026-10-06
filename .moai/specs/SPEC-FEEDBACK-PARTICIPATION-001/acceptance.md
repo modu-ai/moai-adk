@@ -1,4 +1,4 @@
-# Acceptance — SPEC-FEEDBACK-ANON-PARTICIPATION-001
+# Acceptance — SPEC-FEEDBACK-PARTICIPATION-001
 
 > **Verify rule (every criterion).** A `go test` Verify line is run with `-v`. The criterion holds only when the exit code is 0 **and** a `--- PASS: <Name>` line appears for every test named in that line's `-run` selector (subtests aside; under `-count=N` at least one per name per run). A selector alternation silently skips a name that does not exist and still exits 0 with `ok`, so the missing PASS line is the failure, never the exit code. The equivalent machine form is `go test -json` with the number of distinct passed test names equal to the selector's arity. `grep` and `cmp` lines state their expected output and exit code. A `-run` selector that sweeps zero tests (`[no tests to run]`) is a failure of the criterion, never a pass. Local verification is package-scoped; the full suite is CI's. Tests that reach the user-scoped consent store set `MOAI_HOME` to a temporary directory with `t.Setenv`, so the real home directory is never touched.
 >
@@ -18,7 +18,7 @@
 | AC-006 | REQ-005 | M2 | Consent text in four locales states every required fact | E5 |
 | AC-007 | REQ-006, REQ-007 | M3 | Closed kind enum, registered sites and handler names, recover guard, exclusions | E3, E9, E10 |
 | AC-008 | REQ-009 | M3 | Allowlist attribution table: every row, first match wins, unknown never `moai` | E3 |
-| AC-009 | REQ-009 | M6 | Ambiguous verdict under both policy values | E11 |
+| AC-009 | REQ-009 | M4 | Ambiguous verdict retained locally: nothing queued, zero model calls, retention logged | E12 |
 | AC-010 | REQ-010 | M1 | Fingerprint stable; frames filtered by module path; generic frame shape pinned | E3 |
 | AC-011 | REQ-011 | M1 | Payload is a closed schema; `detail` is closed-set membership in an enum type | E3 |
 | AC-012 | REQ-012 | M4 | Scrub and classify tripwire; withheld on block, masking, or path traversal | E12 |
@@ -27,7 +27,7 @@
 | AC-015 | REQ-015 | M5 | Sender re-checks consent per item, off the hook path, time-boxed, quiet when `gh` is absent | E11 |
 | AC-016 | REQ-016 | M5 | Existing fingerprint issue gets one occurrence comment, none at the cap; zero model calls | E11 |
 | AC-017 | REQ-017 | M6 | New moai issue: one model call, validated output, template fallback | E11 |
-| AC-018 | REQ-017, REQ-018 | M6 | Summary persisted before create; retries reuse it; per-item call bound under both policies | E11 |
+| AC-018 | REQ-017, REQ-018 | M6 | Summary persisted before create; retries reuse it; per-item call bound across retries | E11 |
 | AC-019 | REQ-018 | M6 | Model-call budget: zero calls in every excluded case, one in the positive control | E11 |
 | AC-020 | REQ-019 | M5 | Issue title and marker contract round-trips; markers are untrusted; no body edit, no labels | E11, E23 |
 | AC-021 | REQ-020 | M2 | Web toggle: existing radio pair, present-companion, user-scoped read and write, marker key not rendered | E14, E15 |
@@ -85,12 +85,12 @@ internal/template/templates/.moai/config/sections/feedback.yaml:0
 note: an absence guard, green today by design (no consent key may ship); its mutant is a template that ships the key. Positive control E2p shows the instrument can fire.
 
 E2p
-tree: bb54f2903
-command: grep -c participation .moai/specs/SPEC-FEEDBACK-ANON-PARTICIPATION-001/spec.md
+tree: working tree atop HEAD `c34e24cab` — the v0.4.0 revision, uncommitted at observation time (re-measured in this pass after the 0.4.0 rename)
+command: grep -c participation .moai/specs/SPEC-FEEDBACK-PARTICIPATION-001/spec.md
 exit: 0
 stdout:
-16
-note: measured on the committed version 0.2.0 spec.md; a non-zero count proves the same grep reports a hit when the word is present
+21
+note: re-measured on the renamed path; the same instrument observed earlier on the committed v0.2.0 spec.md at the pre-rename path printed 16 with exit 0. A non-zero count proves the same grep reports a hit when the word is present.
 ```
 
 ```
@@ -188,7 +188,7 @@ stdout:
 stat /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1498/internal/feedback/publish: directory not found
 FAIL	./internal/feedback/publish [setup failed]
 FAIL
-why red: the package does not exist; every `internal/feedback/publish` selector fails identically, so this entry stands for AC-009, AC-015 to AC-020, and the publish half of AC-025
+why red: the package does not exist; every `internal/feedback/publish` selector fails identically, so this entry stands for AC-015 to AC-020, and the publish half of AC-025. Note: the 0.4.0 respecification moved AC-009 to the outbox package (E12) and retired the two policy test names in this command; the red (the package is absent) is identical for any selector.
 
 E12
 tree: bb54f2903
@@ -199,7 +199,7 @@ stdout:
 stat /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1498/internal/feedback/outbox: directory not found
 FAIL	./internal/feedback/outbox [setup failed]
 FAIL
-why red: the package does not exist; stands for AC-012, AC-013, and the outbox half of AC-022
+why red: the package does not exist; stands for AC-009, AC-012, AC-013, and the outbox half of AC-022
 ```
 
 ```
@@ -422,13 +422,13 @@ Maps REQ-ANON-009
 - **Verify (new-test line)**: `go test ./internal/bugreport/ -run '^(TestAttributionRulesTable|TestAttributionFirstMatchWins|TestAttributionMakesNoModelCall|TestUnknownErrorNeverAttributedToMoai|TestRegisterRowsDeclareDerivationMode)$' -count=1 -v` — expect exit 0 and a PASS line for each of the five names.
 - **RED-now**: E3. **Green path**: M3.
 
-### AC-009 — Ambiguous policy, both variants
+### AC-009 — Ambiguous verdict retained locally
 Maps REQ-ANON-009
-- **Given** an `ambiguous` signal and a counting model stub,
-- **When** the policy constant is `local`, then `adjudicate`,
-- **Then** under `local` the signal stays local, nothing is queued, and the stub records zero calls; under `adjudicate` the stub records exactly one call whose input is the validated payload fields only, an answer other than the two permitted tokens keeps the signal local, a `moai` answer continues the pipeline, and the answer is stored on the queue item.
-- **Verify (new-test line)**: `go test ./internal/feedback/publish/ -run '^(TestAmbiguousPolicyLocal|TestAmbiguousPolicyAdjudicate)$' -count=1 -v` — expect exit 0 and a PASS line for each name.
-- **RED-now**: E11. **Green path**: M6.
+- **Given** captured signals whose attribution is `ambiguous` (an unmarked hook handler error, a hook timeout, and a template token `unexpanded_token` or `invalid_json`), a counting model stub, a recording network stub, and an empty outbox log,
+- **When** the drain processes each signal end to end,
+- **Then** each stays local: nothing is queued, the model stub records zero calls, the network stub records zero requests, and one outbox log row names the retention reason; no code path or constant selects a model call for an ambiguous verdict. Mutants that must die: an adjudication call on an ambiguous item; an ambiguous item enqueued.
+- **Verify (new-test line)**: `go test ./internal/feedback/outbox/ -run '^(TestAmbiguousRetainedLocally|TestAmbiguousMakesNoModelCall)$' -count=1 -v` — expect exit 0 and a PASS line for each name.
+- **RED-now**: E12. **Green path**: M4.
 
 ### AC-010 — Fingerprint
 Maps REQ-ANON-010
@@ -496,16 +496,16 @@ Maps REQ-ANON-017
 
 ### AC-018 — Summary persisted; retries reuse it; per-item bound
 Maps REQ-ANON-017, REQ-ANON-018
-- **Given** a moai-verdict item with no existing issue, a counting model stub, and a `gh` stub whose `create` fails twice and then succeeds, under policy `local` and then under `adjudicate` with an ambiguous item,
+- **Given** a moai-verdict item with no existing issue, a counting model stub, and a `gh` stub whose `create` fails twice and then succeeds,
 - **When** the sender processes the item across the three attempts,
-- **Then** the model stub records exactly one summary call (the second and third attempts read the stored summary from the queue item), and under `adjudicate` exactly one adjudication call as well, so at most two calls in total across all retries; and when the remote lookup on a retry finds that an issue now exists, a comment is added and the stored summary is unused with no new model call. Mutants that must die: a sender that calls the model on every attempt; a sender that stores the summary after create instead of before.
+- **Then** the model stub records exactly one summary call in total (the second and third attempts read the stored summary from the queue item); and when the remote lookup on a retry finds that an issue now exists, a comment is added and the stored summary is unused with no new model call. Mutants that must die: a sender that calls the model on every attempt; a sender that stores the summary after create instead of before.
 - **Verify (new-test line)**: `go test ./internal/feedback/publish/ -run '^(TestSummaryPersistedBeforeCreateAndReusedOnRetry|TestModelCallBoundPerQueueItem)$' -count=1 -v` — expect exit 0 and a PASS line for each name.
 - **RED-now**: E11. **Green path**: M6.
 
 ### AC-019 — Model-call budget
 Maps REQ-ANON-018
 - **Given** a counting model stub across the whole pipeline,
-- **When** the pipeline processes: participation off; a `user` verdict; an `environment` verdict; an `ambiguous` verdict under `local`; a locally deduplicated fingerprint; a locally capped fingerprint; a withheld payload; an existing remote issue; a daily-cap-exhausted state,
+- **When** the pipeline processes: participation off; a `user` verdict; an `environment` verdict; an `ambiguous` verdict; a locally deduplicated fingerprint; a locally capped fingerprint; a withheld payload; an existing remote issue; a daily-cap-exhausted state,
 - **Then** every one of those records zero calls; the positive control (a new moai-verdict item, no remote issue) records exactly one; a counter that counts only the publish path would still pass the positive control, so the table asserts the stub at every pipeline entry point. Mutant that must die: a pipeline calling the model before the duplicate lookup.
 - **Verify (new-test line)**: `go test ./internal/feedback/publish/ -run '^(TestLLMBudgetZeroCalls|TestLLMBudgetPositiveControl|TestDailyModelCallCap)$' -count=1 -v` — expect exit 0 and a PASS line for each of the three names.
 - **RED-now**: E11. **Green path**: M6.

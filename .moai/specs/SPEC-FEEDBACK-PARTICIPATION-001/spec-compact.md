@@ -1,4 +1,4 @@
-# spec-compact — SPEC-FEEDBACK-ANON-PARTICIPATION-001 (version 0.3.0)
+# spec-compact — SPEC-FEEDBACK-PARTICIPATION-001 (version 0.4.0)
 
 Run-phase digest: requirements, acceptance map, files, exclusions. Full text in `spec.md` and `acceptance.md`.
 
@@ -15,7 +15,7 @@ Module B — detection and attribution
 - REQ-ANON-006 Closed kind enum (6) with verdict, derivation mode, registered sites; every recover site reports or is allowlisted; coverage is the main goroutine plus registered sites, other goroutines are a recorded gap.
 - REQ-ANON-007 Discard user-code, tool-failure, and user-config signals.
 - REQ-ANON-008 Capture is fail-open, bounded, network-free, model-free.
-- REQ-ANON-009 Ordered first-match attribution, environment then user; `moai` only for a panic, an internal marker, or an enumerated moai sentinel; everything else (including an unmarked hook handler error) is user, environment, or ambiguous; only `moai` continues; ambiguous follows one policy constant (local or one adjudication).
+- REQ-ANON-009 Ordered first-match attribution, environment then user; `moai` only for a panic, an internal marker, or an enumerated moai sentinel; everything else (including an unmarked hook handler error) is user, environment, or ambiguous; only `moai` continues; ambiguous is retained locally — no model call, nothing queued (out of scope: the former adjudication variant, DEC-7).
 - REQ-ANON-010 Fingerprint from version, commit, os/arch, kind, moai-internal frame names (module-prefix filter, no paths or lines).
 
 Module C — local pipeline
@@ -28,7 +28,7 @@ Module D — publication
 - REQ-ANON-015 Go sender over the user's own `gh`; consent re-read per item; target is the compiled default repository unless the user-scoped file names another; never in a hook dispatch; time-boxed; quiet when `gh` is absent.
 - REQ-ANON-016 Existing fingerprint issue: one occurrence comment, none at the per-issue cap (advisory count from `gh` JSON); no model call.
 - REQ-ANON-017 New moai issue: one model call through the seam at most per queue item, validated summary persisted before create and reused on retry, template fallback.
-- REQ-ANON-018 No model call in any excluded case or at the daily cap; across retries and either policy at most one summary and one adjudication per queue item.
+- REQ-ANON-018 No model call in any excluded case (including `ambiguous`) or at the daily cap; across retries at most one summary call per queue item.
 - REQ-ANON-019 Issue contract: title `[auto-report] <kind> <fingerprint>`, body marker block, occurrence marker, count = 1 + comments (advisory), markers untrusted (consumers re-derive from the title key), no body edit, no labels.
 
 Module E — console and boundary
@@ -43,11 +43,11 @@ Module F — cross-cutting
 
 ## Acceptance map (25)
 
-AC-001 R1+R24, AC-002 R2 (capture)+R8, AC-003 R2 (drain, sender)+R24, AC-004 R3, AC-005 R4, AC-006 R5, AC-007 R6+R7, AC-008 R9, AC-009 R9 (policy), AC-010 R10, AC-011 R11, AC-012 R12, AC-013 R13, AC-014 R14, AC-015 R15, AC-016 R16, AC-017 R17, AC-018 R17+R18, AC-019 R18, AC-020 R19, AC-021 R20, AC-022 R21, AC-023 R22, AC-024 R23, AC-025 R25. The old-to-new numbering map is in `acceptance.md`.
+AC-001 R1+R24, AC-002 R2 (capture)+R8, AC-003 R2 (drain, sender)+R24, AC-004 R3, AC-005 R4, AC-006 R5, AC-007 R6+R7, AC-008 R9, AC-009 R9 (ambiguous retained locally, M4), AC-010 R10, AC-011 R11, AC-012 R12, AC-013 R13, AC-014 R14, AC-015 R15, AC-016 R16, AC-017 R17, AC-018 R17+R18, AC-019 R18, AC-020 R19, AC-021 R20, AC-022 R21, AC-023 R22, AC-024 R23, AC-025 R25. The old-to-new numbering map is in `acceptance.md`.
 
 ## Files (by milestone)
 
-M1 `internal/bugreport/{kind,verdict,payload,validate,detail,fingerprint,frames,marker}.go`; M2 user-scoped reader in `internal/config`, writer and `PersistUserScoped` in `internal/settings`, web predicate and i18n, wizard, init and update files per `plan.md` §C (no template key, no inventory row); M3 capture, spool, attribution, register, `cmd/moai/main.go`, ten recover sites, hook registry and handler-name registration, preference cmd, update sync and clean-install; M4 `internal/feedback/outbox/`, `internal/cli/feedback_participation.go`; M5 `internal/feedback/publish/` and golden; M6 model seam, adjudicate, budget, CLI production implementation, static guards; M7 three `feedback.md` copies, four docs pages, `internal/template/auto_repair_guard_test.go`, wizard coexistence guard.
+M1 `internal/bugreport/{kind,verdict,payload,validate,detail,fingerprint,frames,marker}.go`; M2 user-scoped reader in `internal/config`, writer and `PersistUserScoped` in `internal/settings`, web predicate and i18n, wizard, init and update files per `plan.md` §C (no template key, no inventory row); M3 capture, spool, attribution, register, `cmd/moai/main.go`, ten recover sites, hook registry and handler-name registration, preference cmd, update sync and clean-install; M4 `internal/feedback/outbox/`, `internal/cli/feedback_participation.go`; M5 `internal/feedback/publish/` and golden; M6 model seam, budget, CLI production implementation, static guards; M7 three `feedback.md` copies, four docs pages, `internal/template/auto_repair_guard_test.go`, wizard coexistence guard.
 
 ## Exclusions
 
@@ -55,7 +55,8 @@ M1 `internal/bugreport/{kind,verdict,payload,validate,detail,fingerprint,frames,
 - User project bugs, user config errors, environment problems, Claude Code tool failures, user prompts and content.
 - Anonymous reporting (no relay, bot, App, shipped credential, non-GitHub intake).
 - Team-level or project-level consent.
-- Behavioural defects of deployed agents and skills (narrowing awaiting operator acceptance).
+- Behavioural defects of deployed agents and skills (narrowing accepted, DEC-8; a follow-up SPEC may add a deployed-asset self-check).
+- Model adjudication of ambiguous attribution (retention is the shipped policy, DEC-7; a follow-up SPEC may add the variant).
 - Panics on goroutines other than the main goroutine.
 - Changing the vulnerability policy or classifier vocabulary.
 - Free-text reports from automatic detection.

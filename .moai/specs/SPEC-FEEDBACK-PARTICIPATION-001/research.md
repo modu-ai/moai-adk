@@ -1,6 +1,6 @@
-# Research — SPEC-FEEDBACK-ANON-PARTICIPATION-001
+# Research — SPEC-FEEDBACK-PARTICIPATION-001
 
-Read-only research for card t1498, tree `bb54f2903` (the code tree is identical to `2f492df19`; only the SPEC files differ). Source: two earlier read-only explorations, the plan-audit iteration 1 report, and the re-verification below. Anything not re-read in this tree is marked unverified. No test of the new feature was run (none exists); the only network calls were read-only `gh` queries against `modu-ai/moai-adk`; nothing was created, commented, or edited on GitHub. Version 0.3.0 corrects the premises the audit found false; section 9 lists the corrections.
+Read-only research for card t1498, tree `bb54f2903` (the code tree is identical to `2f492df19`; only the SPEC files differ). Source: two earlier read-only explorations, the plan-audit iteration 1 report, and the re-verification below. Anything not re-read in this tree is marked unverified. No test of the new feature was run (none exists); the only network calls were read-only `gh` queries against `modu-ai/moai-adk`; nothing was created, commented, or edited on GitHub. Version 0.3.0 corrects the premises the audit found false (section 9 lists the corrections); version 0.4.0 renames the SPEC identifier per the operator/leader decision (audit finding D22 — the design is real-name, the former identifier said ANON).
 
 ## 1. Existing feedback subsystem (reused, not duplicated)
 
@@ -103,4 +103,4 @@ Unverified, listed as gaps rather than claims: a live `gh` search against GitHub
 
 ## 10. Open items
 
-The two open questions live in `plan.md` section B as marked clarifications; the recorded decisions live in the same file.
+Zero open clarifications remain: every former question is a recorded decision in `plan.md` section B. The last two — ambiguous attribution and the harness-defect narrowing — were resolved by operator decisions recorded there as DEC-7 and DEC-8.

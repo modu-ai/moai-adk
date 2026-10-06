@@ -1,6 +1,6 @@
-# Design — SPEC-FEEDBACK-ANON-PARTICIPATION-001
+# Design — SPEC-FEEDBACK-PARTICIPATION-001
 
-Design notes for the run phase (version 0.3.0). The spec states what must hold; this file states the shape that makes it hold. Citations were re-read in this tree (commit `bb54f2903`, code tree identical to `2f492df19`) unless marked unverified. Line numbers are leads for the run phase, which re-reads before editing.
+Design notes for the run phase (version 0.4.0). The spec states what must hold; this file states the shape that makes it hold. Citations were re-read in this tree (commit `bb54f2903`, code tree identical to `2f492df19`) unless marked unverified. Line numbers are leads for the run phase, which re-reads before editing.
 
 ## 1. Package layout and the import graph
 
@@ -41,7 +41,7 @@ The recover guard (REQ-ANON-006) is a go/parser walk over non-test files in `int
 
 **Panic coverage (stated scope).** A deferred `recover` in `main` recovers only panics on the main goroutine; a panic on any other goroutine terminates the process without running `main`'s defer. Hooks run synchronously on the main goroutine (`registry.go:108`, `h.Handle`), so hook panics are covered. Goroutine launch statements in non-test code: 43 files contain one (`grep -rEl '^[[:space:]]+go (func|[A-Za-z_.]+\()' internal cmd pkg --include='*.go' --exclude='*_test.go'`, measured at `bb54f2903`). Wrapping those entry points is out of scope; the gap is a residual risk, and a later helper (a goroutine launcher that recovers into capture) is the repair.
 
-The signal "deployed harness defect" is covered only by the render and validate tokens above. A runtime defect of a deployed agent or skill has no machine-detectable signal in the tree at this commit. This narrowing of the card text is recorded as a scope decision awaiting operator acceptance (plan.md section B). The closed-kind test (AC-007) pins the token set, so extending coverage later is one visible change.
+The signal "deployed harness defect" is covered only by the machine-detectable ones: hook failures, shipped-template render and validate failures, binary panics, and CLI internal errors (the kinds above). A behavioural defect of a deployed agent or skill has no machine-detectable signal in the tree at this commit, and the narrowing of the card text is an accepted scope decision (plan.md section B, DEC-8); a follow-up SPEC may add a deployed-asset self-check as a new signal source. The closed-kind test (AC-007) pins the token set, so extending coverage later is one visible change.
 
 ## 3. Attribution rules (deterministic, ordered, first match wins, `moai` is an allowlist)
 
@@ -64,7 +64,7 @@ Rows A and U run before M, so an internal marker wrapping an `*fs.PathError` res
 
 Only `moai` proceeds. `user` and `environment` stay local and end there (no queue, no model call). Because `moai` is an allowlist, a new error type that no row recognises can never become a public report by omission; the defect form where an unrecognised error "falls through to moai" does not exist.
 
-The ambiguous policy constant `AmbiguousPolicy` takes `local` or `adjudicate`. Under `local` the signal stays local with zero model calls. Under `adjudicate` one model call receives only the validated payload fields and must answer exactly `moai` or `not-moai`; any other answer keeps the signal local; the answer is persisted on the queue item so a retry never asks again. Both values are tested (AC-009). Interim shipped value until the operator resolves the open question in plan.md: `local`, because it spends no tokens and publishes nothing doubtful; flipping it is a one-constant change in M6.
+An `ambiguous` verdict is retained: the signal stays local with zero model calls, nothing is queued, and the drain appends one `ambiguous` log row (section 6). There is no policy constant and no model adjudication path: the former `adjudicate` variant — one bounded model call per ambiguous item, its answer persisted on the queue item so a retry never asked again — was removed by the operator's decision (plan.md section B, DEC-7) and a follow-up SPEC may add it. AC-009 tests the retention.
 
 ## 4. Fingerprint, frame filter, and the `detail` closed sets
 
@@ -94,7 +94,7 @@ Classifier caveat, accepted: the classifier vocabulary is English words such as 
 
 Capture appends one JSONL line (kind, frames, detail) to `.moai/state/bugreport/spool.jsonl`, bounded at 200 lines and 64 KiB; when full the signal is dropped. Capture first reads the user-scoped value and returns when it is not true; it does no attribution beyond the cheap environment-type check, no hashing of large inputs, no network, no model, and abandons its work after a 50 ms time box (the hook-path discipline in the repository's Advisory-Check rule: advisory work is time-boxed and fail-open). The spool and queue live under the project's `.moai/state/` (gitignored in this repository, and in the shipped template `.gitignore` line `.moai/state/`); they hold only closed-schema fields.
 
-The drain (run by flush) reads the spool and, per signal: attribute, then continue only for `moai`; fingerprint; local ledger check (per-fingerprint window); caps; build and validate the payload; render title and body; scrub tripwire; enqueue to `.moai/state/bugreport/queue.json` through `feedback.QueueStore`; append the outbox row. Each stage that stops a signal appends one log row naming the reason (`user`, `environment`, `deduped`, `capped`, `withheld`) and no payload text for non-queued outcomes. Queue items gain optional `omitempty` fields (fingerprint, kind, stored summary, summary decision `model` or `template`, adjudication decision), so existing readers of the manual queue stay compatible.
+The drain (run by flush) reads the spool and, per signal: attribute, then continue only for `moai`; fingerprint; local ledger check (per-fingerprint window); caps; build and validate the payload; render title and body; scrub tripwire; enqueue to `.moai/state/bugreport/queue.json` through `feedback.QueueStore`; append the outbox row. Each stage that stops a signal appends one log row naming the reason (`user`, `environment`, `ambiguous`, `deduped`, `capped`, `withheld`) and no payload text for non-queued outcomes. Queue items gain optional `omitempty` fields (fingerprint, kind, stored summary, summary decision `model` or `template`), so existing readers of the manual queue stay compatible.
 
 The outbox log `.moai/logs/bugreport-outbox.log` is append-only JSONL, mode 0600, holding the exact payload for `queued`, `sent`, and `withheld` rows. Preview prints the queued payloads through the same render function the sender uses, which is how AC-014 proves byte identity rather than similarity.
 
@@ -131,22 +131,21 @@ Candidates weighed:
 
 **Decision (recorded, plan.md Decisions):** reuse the existing headless `claude` runner through a single model seam; the consent text names that the summary may spend the user's own subscription tokens; the deterministic template text is used whenever the model is unavailable, unauthenticated, fails, or returns output that fails validation.
 
-**Seam shape.** `publish` owns the `Summarizer` interface (summary and adjudication methods taking validated payload fields only). The production implementation lives in `internal/cli` (`feedback_participation_model.go`), reusing the runner and a flag set derived from `claudeAuditArgs` without the audit `--json-schema`, and is injected where `internal/cli` calls flush. `publish` imports no model helper and no `internal/cli`; the static guard (REQ-ANON-025, AC-025) enforces it. The M6 first test records that the flag set `claudeAuditArgs` passes today is accepted by the installed `claude` for a summary prompt.
+**Seam shape.** `publish` owns the `Summarizer` interface whose methods take validated payload fields only (today the interface serves the summary alone). The production implementation lives in `internal/cli` (`feedback_participation_model.go`), reusing the runner and a flag set derived from `claudeAuditArgs` without the audit `--json-schema`, and is injected where `internal/cli` calls flush. `publish` imports no model helper and no `internal/cli`; the static guard (REQ-ANON-025, AC-025) enforces it. The M6 first test records that the flag set `claudeAuditArgs` passes today is accepted by the installed `claude` for a summary prompt.
 
 **Per-item call bound.** A queue item records its decisions as it goes, so a retry never repeats a paid step:
 
 | Stage | Model call | Stored on the queue item before the next stage |
 |---|---|---|
-| attribution `ambiguous`, policy `adjudicate` | at most 1 adjudication | the answer (`moai` or `not-moai`) |
 | remote lookup finds an issue | none | none |
 | remote lookup finds none, verdict `moai` | at most 1 summary, only when no stored summary exists | the validated summary or the template decision |
 | create fails and the item is retried | none (the stored summary is reused) | attempt count |
 
-So per queue item the total is at most 1 call under `local` and at most 2 under `adjudicate` (one adjudication and one summary), across any number of retries; the earlier label "model call 1 of 1" for the adjudication was wrong because a summary can follow it. Both kinds count against `MaxModelCallsPerDay`.
+So per queue item the total is at most 1 call across any number of retries. Every call counts against `MaxModelCallsPerDay`.
 
 ```
 capture (Go) -> attribute (Go) -> user/environment: stop
-                              -> ambiguous: policy local: stop | adjudicate: [model: adjudication, stored]
+                              -> ambiguous: stop (retained locally, logged)
                               -> moai: fingerprint -> dedupe/caps (Go) -> scrub tripwire (Go)
                                        -> remote duplicate lookup (gh) -> exists: comment (or skip at cap), stop
                                        -> absent: [model: summary, stored] -> create (retry reuses stored summary)
@@ -178,10 +177,10 @@ Guards: the model seam is one interface so a counting stub proves the budget at 
 | capture time box | 50 ms | on the hook path |
 | flush time box | 10 s | whole flush |
 | frame limit | 12 | innermost first |
-| daily model-call cap | 6 | summary plus adjudication combined |
+| daily model-call cap | 6 | summary calls |
 | per-issue occurrence-comment cap | 50 | the sender adds no comment at or beyond it (advisory) |
 | model input and output caps | fixed byte limits | bound token spend; values fixed in the run phase |
-| ambiguous policy | `local` (interim) | `local` or `adjudicate` |
+| ambiguous handling | retained locally (DEC-7, final) | no model call, nothing queued; no policy constant |
 
 ## 11. Out-of-design
 
