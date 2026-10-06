@@ -9,6 +9,8 @@
 package cli
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"os"
@@ -34,6 +36,7 @@ var projectCommonAssetRels = []string{
 // holds the confirmed install); the project manifest is updated to drop the
 // removed entries.
 func migrateProjectCommonAssets(projectRoot, homeDir string, out fmt.Stringer, report func(string, ...interface{})) error {
+	migrationPreservedProjectFiles = map[string]bool{}
 	mgr := manifest.NewManager()
 	if _, err := mgr.Load(projectRoot); err != nil {
 		// No project manifest: nothing provenance-classified to migrate.
@@ -68,22 +71,43 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, out fmt.Stringer, r
 			if hasEntry && entry != nil {
 				provenance = string(entry.Provenance)
 			}
-			switch provenance {
-			case string(manifest.UserCreated):
+			// F3 (review-fix round 2): judge the CURRENT bytes, not the
+			// recorded provenance alone — a file the user modified AFTER
+			// install still reads template_managed. When the on-disk hash
+			// differs from the recorded template hash, the file is
+			// user-modified in fact and is preserved (C6). An untracked
+			// file (no manifest entry) is user-owned — never deleted
+			// (AGENTS.local.md user-settings protection).
+			if !hasEntry || entry == nil {
+				untouched++
+				migrationPreservedProjectFiles[p] = true
+				return nil
+			}
+			if provenance == string(manifest.UserCreated) {
 				untouched++
 				return nil
-			case string(manifest.UserModified):
+			}
+			if currentBytes, hashErr := os.ReadFile(p); hashErr == nil &&
+				entry.TemplateHash != "" && manifest.HashBytes(currentBytes) != entry.TemplateHash {
 				preserved++
+				migrationPreservedProjectFiles[p] = true
+				report("  migration: preserved (bytes differ from the template — treated as user-modified): %s", relSlash)
+				return nil
+			}
+			if provenance == string(manifest.UserModified) {
+				preserved++
+				migrationPreservedProjectFiles[p] = true
 				report("  migration: preserved (you modified it): %s", relSlash)
 				return nil
-			default:
-				// template_managed (or unrecorded): removable once the user
-				// counterpart is confirmed.
 			}
-			if !userCounterpartConfirmed(userManifest, relSlash) {
+			// template_managed with template-matching bytes: removable once
+			// the user counterpart is confirmed.
+			if !userCounterpartConfirmed(userManifest, homeDir, relSlash) {
 				// Optional-pack (non-L0) asset without an opted-in selection,
-				// or a failed counterpart write: stays project-side, reported.
+				// or a failed counterpart write: stays project-side, reported
+				// — and gated out of the cleanup list (F2).
 				stayed++
+				migrationPreservedProjectFiles[p] = true
 				report("  migration: kept project-side (user counterpart not confirmed — opt in via 'moai bundle add <name>' or re-run update): %s", relSlash)
 				return nil
 			}
@@ -124,7 +148,7 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, out fmt.Stringer, r
 // .agents/skills/<name>/X ↔ agents-skills/<name>/X;
 // .claude/agents/moai/<n>.md ↔ claude-agents/<n>.md;
 // .codex/agents/moai/<n>.toml ↔ codex-agents/<n>.toml.
-func userCounterpartConfirmed(userManifest *userassets.Manifest, projectRel string) bool {
+func userCounterpartConfirmed(userManifest *userassets.Manifest, homeDir, projectRel string) bool {
 	var userKey string
 	switch {
 	case strings.HasPrefix(projectRel, ".claude/skills/"):
@@ -139,8 +163,28 @@ func userCounterpartConfirmed(userManifest *userassets.Manifest, projectRel stri
 		return false
 	}
 	fe, tracked := userManifest.Files[userKey]
-	if !tracked {
+	if !tracked || fe.SHA256 == "" {
 		return false
 	}
-	return true && fe.SHA256 != ""
+	// F4 (review-fix round 2): the recorded hash alone is NOT confirmation —
+	// the counterpart FILE must exist on disk and its CURRENT bytes must
+	// hash to the recorded value. A stale record from a failed install
+	// must never authorize the project-side deletion.
+	slug, rel, ok := strings.Cut(userKey, "/")
+	if !ok {
+		return false
+	}
+	dir := userassets.RootBySlugDir(homeDir, userassets.RootSlug(slug))
+	if dir == "" {
+		return false
+	}
+	data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(rel)))
+	if err != nil {
+		return false
+	}
+	// The USER manifest stores bare hex (its own convention); the PROJECT
+	// manifest stores the 'sha256:<hex>' prefix form — the two formats are
+	// intentionally distinct (B4).
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:]) == fe.SHA256
 }

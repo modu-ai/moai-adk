@@ -129,8 +129,27 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	}
 	if journal != nil {
 		in.reconcileJournal(journal, manifest, roots, res, journalClassified)
-		if len(selection) == 0 && len(journal.BundlesSelection) > 0 {
-			selection = journal.BundlesSelection
+		// F7 (review-fix round 2): distinguish EXISTING selection from
+		// INTERRUPTED REQUEST. The journal records the interrupted run's
+		// intended bundles list; when the caller passes no selection (moai
+		// update / bare init retry), the recorded intent is restored
+		// intact. When the caller passes an explicit selection, that is the
+		// new request and it supersedes — the journal is replaced by the
+		// staging below either way, so the delta is never silently lost.
+		if len(journal.BundlesSelection) > 0 {
+			current := map[string]bool{}
+			for _, b := range manifest.Bundles {
+				current[b] = true
+			}
+			differs := len(journal.BundlesSelection) != len(manifest.Bundles)
+			for _, b := range journal.BundlesSelection {
+				if !current[b] {
+					differs = true
+				}
+			}
+			if differs && len(selection) == 0 {
+				selection = journal.BundlesSelection
+			}
 		}
 	}
 
@@ -153,8 +172,14 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	// collision, never a journal ownership target. Only the delta that will
 	// actually be installed is staged.
 	installable := make([]installTarget, 0, len(targets))
+	reEvaluate := make([]installTarget, 0)
 	for _, tgt := range targets {
 		if claimed, ok := manifest.Files[tgt.manifestKey]; ok && claimed.installedByJournal {
+			// Sharpening (review-fix round 2): journal-recovered files STILL
+			// flow through normal update evaluation — the truth table
+			// decides refresh vs up-to-date. They are excluded from the
+			// STAGE journal only (they are not new writes this run).
+			reEvaluate = append(reEvaluate, tgt)
 			continue
 		}
 		root := roots[tgt.root]
@@ -198,9 +223,44 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	}
 
 	// The per-asset judgment, one file at a time (REQ-013 fail-open per file).
+	// F8 (review-fix round 2): each successful write flips the staged
+	// journal entry's WriteCompleted flag and the journal is re-persisted
+	// BEFORE the manifest save — an interruption after the manifest-save
+	// failure then classifies the run's OWN installs by the flag (divergence
+	// with shipped backup) instead of misreading them as collisions.
+	completed := map[string]bool{}
+	stageChanged := false
 	for _, tgt := range installable {
 		if err := in.applyTarget(tgt, manifest, roots, res); err != nil {
 			res.Failures = append(res.Failures, FileOutcome{Path: tgt.manifestKey, Reason: err.Error()})
+			continue
+		}
+		completed[tgt.manifestKey] = true
+	}
+	// Journal-recovered entries flow through the same truth table (the
+	// sharpening): a recovered file whose bytes differ from shipped is
+	// refreshed like any manifest-match file.
+	for _, tgt := range reEvaluate {
+		if err := in.applyTarget(tgt, manifest, roots, res); err != nil {
+			res.Failures = append(res.Failures, FileOutcome{Path: tgt.manifestKey, Reason: err.Error()})
+		}
+	}
+	// B3 (review-fix round 2 addendum): the completion flags go on the
+	// CURRENT run's stage journal — on a first install journal is nil and
+	// the stage is the newly-created one; with a pre-existing journal the
+	// stage replaced it at staging time. Persisting the stage (not the old
+	// journal) is what makes a manifest-save failure recoverable with
+	// correct ownership classification.
+	stageChanged = false
+	for i := range stage.Entries {
+		if completed[stage.Entries[i].Path] && !stage.Entries[i].WriteCompleted {
+			stage.Entries[i].WriteCompleted = true
+			stageChanged = true
+		}
+	}
+	if stageChanged {
+		if err := WriteJournal(JournalPath(in.Home), stage); err != nil {
+			res.Failures = append(res.Failures, FileOutcome{Path: JournalPath(in.Home), Reason: "persist completion flags: " + err.Error()})
 		}
 	}
 
@@ -405,12 +465,17 @@ func (in *Installer) reconcileJournal(j *PendingJournal, manifest *Manifest, roo
 			continue // case 1: absent — the install pass installs it
 		}
 		if sha256Hex(data) == e.ExpectedSHA256 {
-			// Case 2: claim as the run's own install (E4).
-			manifest.Files[e.Path] = FileEntry{
-				SHA256: e.ExpectedSHA256, Bundle: e.Bundle,
-				InstalledAt: e.InstalledAt, MoaiVersion: e.MoaiVersion,
-				installedByJournal: true,
-			}
+			// Case 2: claim as the run's own install (E4). B6 (review-fix
+			// round 2 addendum): update only the KNOWN fields of any
+			// existing record — unknown per-file fields captured at decode
+			// survive the recovery (REQ-021).
+			fe := manifest.Files[e.Path]
+			fe.SHA256 = e.ExpectedSHA256
+			fe.Bundle = e.Bundle
+			fe.InstalledAt = e.InstalledAt
+			fe.MoaiVersion = e.MoaiVersion
+			fe.installedByJournal = true
+			manifest.Files[e.Path] = fe
 			res.Installed++
 			continue
 		}
@@ -474,7 +539,13 @@ func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots ma
 
 	switch st {
 	case stateAbsent:
-		fe := FileEntry{SHA256: tgt.sha, Bundle: tgt.bundle, InstalledAt: in.now().UTC().Format(time.RFC3339), MoaiVersion: in.MoaiVersion}
+		// B6 (review-fix round 2 addendum): merge into any existing record
+		// (unknown fields survive), same as the refresh arm.
+		fe := manifest.Files[tgt.manifestKey]
+		fe.SHA256 = tgt.sha
+		fe.Bundle = tgt.bundle
+		fe.InstalledAt = in.now().UTC().Format(time.RFC3339)
+		fe.MoaiVersion = in.MoaiVersion
 		if err := in.confinedWrite(root, tgt.rel, shipped, true); err != nil {
 			return err
 		}

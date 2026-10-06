@@ -465,6 +465,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 					len(result.Inventory.Files), len(result.RemovedPaths)),
 				Theme: &th,
 			}))
+			// SPEC-USER-ASSET-INSTALL-001 (gate sharpening: v2-path install
+			// hookup): the clean-reinstall early return previously skipped
+			// the user-asset phase — a v2 project's first update never got
+			// its user-folder install. Run the same ensure the v3 path runs.
+			if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+				if err := runUserAssetUpdatePhase(homeDir, out); err != nil {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: user-asset phase failed (continuing): %v\n", err)
+				}
+			}
 			return nil
 		}
 
@@ -503,6 +512,19 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// (t1214). Before the sync so the deploy sees the healed entries, and
 	// before its version-match early return so an up-to-date project heals too.
 	healManifestBestEffort(".", out, cmd.ErrOrStderr())
+
+// REQ-020 migration: remove project-side common skills/agents now that
+	// the user-asset phase above confirmed their counterparts (the ordering
+	// IS the per-asset gate — removal never precedes the install it
+	// replaces). Runs beside the (terminated) mirror repair's old position,
+	// before the archive contract below.
+	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+		if err := migrateProjectCommonAssets(".", homeDir, nil, func(format string, args ...interface{}) {
+			_, _ = fmt.Fprintf(out, format+"\n", args...)
+		}); err != nil {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: migration warning: %v\n", err)
+		}
+	}
 
 	// SPEC-USER-ASSET-INSTALL-001 (M3): the user-asset phase — refresh
 	// (REQ-008), the selection-based prune (REQ-009), REQ-023 divergence
@@ -545,19 +567,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// with the project-side placement: the user folders are the primary
 	// (the M2 installer), not a mirror, so no user-side equivalent is needed.
 
-	// REQ-020 migration: remove project-side common skills/agents now that
-	// the user-asset phase above confirmed their counterparts (the ordering
-	// IS the per-asset gate — removal never precedes the install it
-	// replaces). Runs beside the (terminated) mirror repair's old position,
-	// before the archive contract below.
-	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
-		if err := migrateProjectCommonAssets(".", homeDir, nil, func(format string, args ...interface{}) {
-			_, _ = fmt.Fprintf(out, format+"\n", args...)
-		}); err != nil {
-			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: migration warning: %v\n", err)
-		}
-	}
-
+	
 	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-004: when the template sync
 	// branch short-circuits (version match + !forceUpdate, or user cancelled
 	// merge), the legacy-skill archive check MUST also be short-circuited.

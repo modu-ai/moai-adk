@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -67,6 +68,20 @@ func (in *Installer) PruneUnselected(manifest *Manifest) (*Result, error) {
 		}
 	}
 
+	// F9 (review-fix round 2): the allowed-name judgment keeps a SKILL, but
+	// files REMOVED from the new version inside a kept skill must still go:
+	// the judgment is per KEY, not per name. For an allowed entry the
+	// expected key set comes from the CURRENT catalog entry; tracked keys
+	// outside it are retired files and follow the one removal rule.
+	allowedKeys := map[string]bool{}
+	for _, e := range preserved {
+		if allowed[e.Name] {
+			for _, k := range in.entryManifestKeys(e) {
+				allowedKeys[k] = true
+			}
+		}
+	}
+
 	// Snapshot the keys: removal mutates the map.
 	keys := make([]string, 0, len(manifest.Files))
 	for k := range manifest.Files {
@@ -80,6 +95,18 @@ func (in *Installer) PruneUnselected(manifest *Manifest) (*Result, error) {
 		}
 		name, ok := owningEntryName(rel)
 		if !ok || allowed[name] {
+			// A kept skill's RETIRED file (removed upstream) still follows
+			// the one removal rule — the shipped source is gone, so only
+			// the manifest-hash alternative applies.
+			if allowed[name] && !allowedKeys[k] {
+				entry, found := in.lookupEntry(name)
+				if !found {
+					entry = template.Entry{Name: name}
+				}
+				if err := in.removeManifestKey(entry, k, slug, rel, roots[slug], manifest, res); err != nil {
+					res.Failures = append(res.Failures, FileOutcome{Path: k, Reason: err.Error()})
+				}
+			}
 			continue
 		}
 		if deferral[name] {
@@ -161,6 +188,15 @@ func (in *Installer) removeManifestKey(entry template.Entry, k string, slug Root
 		res.DivergencePreserved++
 		res.Divergences = append(res.Divergences, k)
 		return nil
+	}
+	// F1 (review-fix round 2): re-validate the destination parent
+	// immediately before the delete — a parent swapped to an
+	// outside-pointing symlink between the root resolution and here
+	// must not route os.Remove to a file beyond the boundary (the C2
+	// posture the write path already carries).
+	parentResolved, parentErr := filepath.EvalSymlinks(filepath.Dir(abs))
+	if parentErr != nil || !withinRoot(root.dir, parentResolved) {
+		return fmt.Errorf("userassets: delete parent re-validation failed — refused (C2 posture)")
 	}
 	if err := os.Remove(abs); err != nil {
 		return err
@@ -299,70 +335,6 @@ func (in *Installer) preservedEntries(selection []string) []template.Entry {
 	return entries
 }
 
-// removeEntry removes one entry's destination files per the one removal rule.
-func (in *Installer) removeEntry(e template.Entry, manifest *Manifest, roots map[RootSlug]resolvedRoot, res *Result) error {
-	keys := in.entryManifestKeys(e)
-	for _, k := range keys {
-		slug, rel, ok := splitManifestKey(k)
-		if !ok {
-			continue
-		}
-		root := roots[slug]
-		abs := filepath.Join(root.dir, filepath.FromSlash(rel))
-		record, tracked := manifest.Files[k]
-		if !tracked {
-			continue // nothing we installed at this path — never delete
-		}
-		current, readErr := os.ReadFile(abs)
-		if readErr != nil {
-			if os.IsNotExist(readErr) {
-				// Missing on disk: drop the entry, count removed (the truth
-				// table's missing arm).
-				delete(manifest.Files, k)
-				res.Removed++
-				continue
-			}
-			return fmt.Errorf("read %s: %w", abs, readErr)
-		}
-		currentSHA := sha256Hex(current)
-		shipped, shippedErr := in.readShippedForKey(e, k)
-		switch {
-		case currentSHA == record.SHA256:
-			// Manifest-hash match: remove.
-		case shippedErr == nil && currentSHA == sha256Hex(shipped):
-			// Shipped-bytes alternative (the manifest-stale arm): the bytes
-			// are moai's own — remove under REQ-009's extended rule.
-		default:
-			// REQ-023 divergence: preserve + backup + report. A shipped
-			// source exists here (the bundle definition persists in the
-			// catalog), so the backup arm applies.
-			if shippedErr == nil {
-				if err := in.backupShipped(root, rel, shipped); err != nil {
-					return fmt.Errorf("backup shipped bytes: %w", err)
-				}
-			}
-			res.DivergencePreserved++
-			res.Divergences = append(res.Divergences, k)
-			continue
-		}
-		// RF1 (review fix): re-validate the destination parent immediately
-		// before the delete — a parent swapped to an outside-pointing
-		// symlink between the root resolution and here must not let
-		// os.Remove reach a file beyond the root boundary.
-		parentResolved, parentErr := filepath.EvalSymlinks(filepath.Dir(abs))
-		if parentErr != nil || !withinRoot(root.dir, parentResolved) {
-			return fmt.Errorf("userassets: delete parent re-validation failed — refused (C2 posture)")
-		}
-		if err := os.Remove(abs); err != nil {
-			return err
-		}
-		delete(manifest.Files, k)
-		res.Removed++
-		in.pruneEmptyDirs(root, rel)
-	}
-	return nil
-}
-
 // entryManifestKeys lists the manifest keys one entry's destinations carry.
 func (in *Installer) entryManifestKeys(e template.Entry) []string {
 	var keys []string
@@ -405,12 +377,13 @@ func (in *Installer) readShippedForKey(e template.Entry, key string) ([]byte, er
 // tree path (stripped FS form).
 func (in *Installer) sourcePathFor(slug RootSlug, e template.Entry, rel string) (string, bool) {
 	switch slug {
-	case RootClaudeSkills:
-		return strings.TrimSuffix(srcPath(e.Path), "/") + "/" + strings.TrimPrefix(rel, e.Name+"/"), true
-	case RootAgentsSkills:
-		// The codex-root skill tree mirrors the .claude skill tree.
-		claudeRel := strings.TrimPrefix(rel, e.Name+"/")
-		return ".claude/skills/" + e.Name + "/" + claudeRel, true
+	case RootClaudeSkills, RootAgentsSkills:
+		// F10 (review-fix round 2): use the entry's ACTUAL catalog path —
+		// published command skills live under .agents/skills, not .claude/
+		// skills, and their divergence backups were silently skipped.
+		// (path.Join also collapses the entry path's trailing slash — a
+		// double slash makes fstest.MapFS reads fail in tests.)
+		return path.Join(srcPath(e.Path), strings.TrimPrefix(rel, e.Name+"/")), true
 	case RootClaudeAgents:
 		return srcPath(e.Path), true
 	case RootCodexAgents:

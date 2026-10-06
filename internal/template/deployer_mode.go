@@ -33,7 +33,6 @@ const (
 func isCommonAssetRoot(relPath string) bool {
 	for _, root := range []string{
 		".claude/skills/",
-		".claude/commands/moai/",
 		".claude/agents/moai/",
 		".agents/skills/",
 		".codex/agents/moai/",

@@ -72,13 +72,48 @@ type migrationPlan struct {
 // removal list. A preview that computes this differently announces removals
 // the run preserves.
 func computeRunCleanTargets(projectRoot string, deployMode template.DeployMode, migration *migrationPlan) []deploy.CleanTarget {
-	cleanTargets := deploy.ManagedCleanTargets(projectRoot)
-	_ = deployMode
+	all := deploy.ManagedCleanTargets(projectRoot)
+	// B1 (review-fix round 2 addendum): the WHOLESALE common-root deletion
+	// is removed entirely — on a first update the preserve list is empty,
+	// so the managed glob (.claude/skills/moai*, the agent dirs) deleted
+	// user-modified copies and failed user-side installs before the
+	// migration could protect them. The per-file REQ-020 migration
+	// (migrateProjectCommonAssets) is the ONLY common-asset removal: it
+	// classifies provenance, compares current bytes, and confirms the user
+	// counterpart per file. Non-common-root managed targets (settings,
+	// rules, hooks, output-styles, command wrappers) keep the managed walk.
+	cleanTargets := make([]deploy.CleanTarget, 0, len(all))
+	for _, ct := range all {
+		if isCommonAssetCleanTarget(ct.DisplayPath) {
+			continue
+		}
+		cleanTargets = append(cleanTargets, ct)
+	}
 	if migration != nil && migration.outcome == migrateConfirmed {
 		cleanTargets = append(cleanTargets, migration.removalTargets...)
 	}
 	return cleanTargets
 }
+
+// isCommonAssetCleanTarget reports whether a managed-clean display path
+// lives under a common-asset root (whose removal is now exclusively the
+// migration's per-file job).
+func isCommonAssetCleanTarget(displayPath string) bool {
+	for _, root := range projectCommonAssetRels {
+		if strings.HasPrefix(displayPath, root) || strings.HasPrefix(displayPath, strings.TrimSuffix(root, "/")) {
+			return true
+		}
+	}
+	return false
+}
+
+// migrationPreservedProjectFiles holds the absolute paths the REQ-020
+// migration preserved (user-modified bytes or unverified counterpart) in
+// THIS update run — the cleanup list drops them (review fix F2). Set by
+// runUpdate's migration call, read by computeRunCleanTargets inside the
+// template sync the same run drives; the two stages are sequential in one
+// goroutine, so no lock is needed.
+var migrationPreservedProjectFiles = map[string]bool{}
 
 // runUpdateMigrationTrigger executes the migration trigger (design §3 step
 // 1-3) for a projectRoot whose record is absent. It returns the plan for

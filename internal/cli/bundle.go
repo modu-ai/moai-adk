@@ -138,6 +138,13 @@ func runBundleRemove(cmd *cobra.Command, args []string) error {
 	if err := manifest.Save(manifestPath); err != nil {
 		return fmt.Errorf("save manifest: %w", err)
 	}
+	// A6 (review-fix round 2 addendum): a journal surviving a manifest-save
+	// interruption carries the OLD selection — before the deletion takes
+	// effect, clear any remaining install journal so a subsequent update
+	// cannot re-install the just-removed bundle from the stale delta.
+	if err := userassets.ClearJournal(userassets.JournalPath(homeDir)); err != nil {
+		return fmt.Errorf("clear stale journal: %w", err)
+	}
 	writeInstallSummary(cmd.OutOrStdout(), fmt.Sprintf("bundle remove %s", name), res)
 	return nil
 }

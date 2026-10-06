@@ -44,16 +44,19 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 	var failures []string
 
 	// L1: harness-* skills have triggers section.
-	// SPEC-USER-ASSET-INSTALL-001 (class repair R-d instance ii / JD-10):
-	// L4 inspects the workflows tree, which installs under the USER folder
-	// post-migration — when the project dir is ABSENT the check reads the
-	// user install; a present project dir (pre-migration projects, test
-	// fixtures) keeps the project reading.
+	// SPEC-USER-ASSET-INSTALL-001 (class repair R-d instance ii / JD-10,
+	// sharpened by review-fix round 2 A7): L1/L6 (project-skill allowlist)
+	// and L4 (common-workflow tree) are selected INDEPENDENTLY — post-
+	// migration a project-specific skill or an empty project dir must not
+	// decouple the healthy USER workflow lookup from L4.
 	skillsDir := filepath.Join(projectRoot, ".claude", "skills")
-	if _, statErr := os.Stat(skillsDir); os.IsNotExist(statErr) {
-		if home, err := os.UserHomeDir(); err == nil {
-			if _, userStat := os.Stat(filepath.Join(home, ".claude", "skills", "moai")); userStat == nil {
+	workflowsDir := filepath.Join(skillsDir, "moai", "workflows")
+	if home, err := os.UserHomeDir(); err == nil {
+		userWorkflows := filepath.Join(home, ".claude", "skills", "moai", "workflows")
+		if _, userStat := os.Stat(userWorkflows); userStat == nil {
+			if _, projStat := os.Stat(filepath.Join(workflowsDir)); os.IsNotExist(projStat) {
 				skillsDir = filepath.Join(home, ".claude", "skills")
+				workflowsDir = userWorkflows
 			}
 		}
 	}
@@ -79,7 +82,7 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 	}
 
 	// L4: 4 workflow files contain @.moai/harness/*-extension.md import.
-	l4, l4Detail := checkLayer4ImportLines(filepath.Join(skillsDir, "moai", "workflows"))
+	l4, l4Detail := checkLayer4ImportLines(workflowsDir)
 	statuses = append(statuses, "L4:"+l4)
 	if l4 == "FAIL" {
 		failures = append(failures, "L4 "+l4Detail)

@@ -8,8 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/modu-ai/moai-adk/internal/template"
 	"time"
 )
 
@@ -247,18 +245,18 @@ func TestRF1_DeleteParentSwapRefused(t *testing.T) {
 	}
 	symlinkOrSkip(t, outside, skillDir)
 
+	// Deselect extras so the swapped-dir files become removal candidates,
+	// then run the REAL removal path (RemoveBundle).
 	m, _ := Load(ManifestPath(f.home))
-	in := f.installer(t)
-	roots := map[RootSlug]resolvedRoot{}
-	for _, r := range ResolveRoots(f.home) {
-		rr, rrErr := resolveRoot(f.home, r)
-		if rrErr != nil {
-			t.Fatal(rrErr)
-		}
-		roots[r.Slug] = rr
+	m.Bundles = nil
+	if err := m.Save(ManifestPath(f.home)); err != nil {
+		t.Fatal(err)
 	}
-	res := &Result{}
-	_ = in.removeEntry(template.Entry{Name: "moai-beta", Path: "templates/.claude/skills/moai-beta/"}, m, roots, res)
+	in := f.installer(t)
+	m2, _ := Load(ManifestPath(f.home))
+	if _, err := in.RemoveBundle(m2, "extras", nil); err != nil {
+		t.Fatalf("RemoveBundle: %v", err)
+	}
 	if got := readBytes(t, sentinel); string(got) != "external\n" {
 		t.Errorf("RF1: external sentinel DELETED through the swapped parent: %q", got)
 	}
@@ -300,5 +298,38 @@ func TestRF5_IdenticalUntrackedNotJournaled(t *testing.T) {
 	m, _ := Load(ManifestPath(f.home))
 	if _, tracked := m.Files["claude-skills/moai-beta/SKILL.md"]; tracked {
 		t.Error("RF5: user file claimed as MoAI-owned")
+	}
+}
+
+// F9: a file removed from the new version inside a KEPT skill is removed by
+// the prune (per-KEY judgment, not per-name).
+func TestRF2F9_PruneRemovesRetiredFileInKeptSkill(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t)
+	if _, err := f.installer(t).Install(nil); err != nil {
+		t.Fatal(err)
+	}
+	retired := filepath.Join(f.home, ".claude/skills/moai-alpha/retired.md")
+	if err := os.WriteFile(retired, []byte("retired upstream\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, _ := Load(ManifestPath(f.home))
+	fe := m.Files["claude-skills/moai-alpha/retired.md"]
+	fe.SHA256 = sha256Hex([]byte("retired upstream\n"))
+	m.Files["claude-skills/moai-alpha/retired.md"] = fe
+	if err := m.Save(ManifestPath(f.home)); err != nil {
+		t.Fatal(err)
+	}
+
+	in := f.installer(t)
+	m2, _ := Load(ManifestPath(f.home))
+	if _, err := in.PruneUnselected(m2); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(retired); !os.IsNotExist(err) {
+		t.Errorf("F9: retired file in kept skill survived the prune: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(f.home, ".claude/skills/moai-alpha/SKILL.md")); err != nil {
+		t.Errorf("F9: kept skill's live file deleted: %v", err)
 	}
 }

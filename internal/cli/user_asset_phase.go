@@ -175,6 +175,11 @@ func updatePluginOptedOut() bool {
 	return v == "1" || strings.EqualFold(v, "true")
 }
 
+// setMigrationPreservedFiles replaces the migration-preserved set (test seam).
+func setMigrationPreservedFiles(m map[string]bool) {
+	migrationPreservedProjectFiles = m
+}
+
 // parseBundleSelection splits a comma-separated --bundles value.
 func parseBundleSelection(v string) []string {
 	if strings.TrimSpace(v) == "" {

@@ -46,6 +46,16 @@ func acquireUserLockStale(path string, timeout, staleAfter time.Duration) (*User
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, fmt.Errorf("userassets: mkdir lock home: %w", err)
 	}
+	// A3/B2 (review-fix round 2 addendum): the whole reclaim-then-acquire
+	// sequence runs under an OS-level guard (flock on unix) so two racing
+	// callers serialize — the rename-based reclaim alone did not give
+	// manifest-mutation mutual exclusion (21-32 concurrent owners
+	// reproduced by the gate).
+	guardPath := strings.TrimSuffix(path, ".lock") + ".acquire-guard"
+	if err := acquireGuard(guardPath); err != nil {
+		return nil, fmt.Errorf("userassets: acquire guard: %w", err)
+	}
+	defer releaseGuard()
 	deadline := time.Now().Add(timeout)
 	for {
 		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
@@ -59,9 +69,18 @@ func acquireUserLockStale(path string, timeout, staleAfter time.Duration) (*User
 			return nil, fmt.Errorf("userassets: acquire lock: %w", err)
 		}
 		// Held. Take over a stale lock — a crashed holder must not wedge
-		// the user's manifest forever.
+		// the user's manifest forever. F5 (review-fix round 2): the
+		// takeover is ATOMIC — rename(2) moves the stale lock to a unique
+		// reclaim name; exactly one racing caller succeeds, the losers see
+		// ENOENT (someone else reclaimed) and re-run the create loop. The
+		// former os.Remove-based takeover let a second caller delete the
+		// lock the first had just ACQUIRED.
 		if info, statErr := os.Stat(path); statErr == nil && time.Since(info.ModTime()) > staleAfter {
-			if removeErr := os.Remove(path); removeErr == nil || os.IsNotExist(removeErr) {
+			reclaim := path + ".reclaim-" + fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
+			if renameErr := os.Rename(path, reclaim); renameErr == nil {
+				_ = os.Remove(reclaim)
+				continue
+			} else if os.IsNotExist(renameErr) {
 				continue
 			}
 		}

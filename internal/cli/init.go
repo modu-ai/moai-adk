@@ -832,6 +832,26 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		emitAddCodexReinitGuidance(cmd.ErrOrStderr(), agentWiringSelection, probeErr == nil && !probe.Valid)
 	}
 
+	// B7 (review-fix round 2 addendum): validate --bundle names EARLY — a
+	// typo must fail before the deploy, not after the project is already
+	// initialized (where the re-run refuses with 'already initialized' and
+	// the missing install has no path forward).
+	if raw := getStringFlag(cmd, "bundles"); strings.TrimSpace(raw) != "" {
+		cat, catErr := template.LoadEmbeddedCatalog()
+		if catErr != nil {
+			return fmt.Errorf("load catalog for bundle validation: %w", catErr)
+		}
+		var unknown []string
+		for _, name := range parseBundleSelection(raw) {
+			if _, ok := cat.Catalog.OptionalPacks[name]; !ok {
+				unknown = append(unknown, name)
+			}
+		}
+		if len(unknown) > 0 {
+			return fmt.Errorf("unknown bundle(s) %s — valid bundles: run 'moai bundle add --help' or check catalog.yaml", strings.Join(unknown, ", "))
+		}
+	}
+
 	p.Info("Initializing MoAI project...")
 
 	// Deferred binary self-update check (REQ-TUX2-001/004): starts strictly

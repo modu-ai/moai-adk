@@ -42,6 +42,16 @@ func ResolveRoots(home string) []Root {
 	}
 }
 
+// RootBySlugDir returns the absolute directory for a root slug (the
+// string-only form the cli migration gate uses).
+func RootBySlugDir(home string, slug RootSlug) string {
+	r, ok := RootBySlug(home, slug)
+	if !ok {
+		return ""
+	}
+	return r.Dir
+}
+
 // RootBySlug returns the root with the given slug.
 func RootBySlug(home string, slug RootSlug) (Root, bool) {
 	for _, r := range ResolveRoots(home) {
