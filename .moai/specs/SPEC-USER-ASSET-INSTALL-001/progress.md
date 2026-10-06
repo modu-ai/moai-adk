@@ -550,6 +550,46 @@ author: manager-spec
   broad run in flight at record time; GOOS=windows build exit 0;
   golangci-lint 0 issues.
 
+### M7 — deployer_mode retirement (2026-10-06)
+
+- REMOVED (REQ-018): DeployModePlugin + PluginMirrorPolicy constants,
+  WithDeployMode/WithPluginMirrorPolicy options, the deployer's mode/
+  policy fields, pluginModeExcluded + isPluginExcludedPath walk branch,
+  stripMoaiFromMcpJSON, the plugin re-home path (pluginRehomedMirror +
+  rehomeOneSkill), RehomeExistingMirrorEntries, and
+  deployer_mode_test.go with the surface (the plan's deletion binding).
+  The retired mirror-policy test files whose subject died with the
+  project-side placement went with them (published_skills_deploy_test,
+  skill_mirror_test, skill_mirror_fallback_test,
+  skill_mirror_release_test, skill_mirror_manifest_test,
+  codex_agents_deploy_test + the plugin-mode update tests), with the
+  shared fixture helpers (threeSkillFS, sameStringSlice) recovered into
+  mirror_test_helpers_test.go for the surviving tests. Dead code that
+  lost its only callers went in the same change: updateDroppedRootTargets,
+  classifiedCleanTarget, migrationTemplateContext, the migration-plan
+  count fields, and the mirror syscall seams.
+- WHAT REMAINS: DeployMode survives as the project's deployment_mode
+  RECORD surface only (REQ-018: update never flips the record) —
+  DeployModeLocal is the single payload shape; isCommonAssetRoot stays
+  (the REQ-005 walk exclusion); resolveUpdateDeployMode resolves LOCAL
+  on every arm; init/update construct deployers with NO mode options.
+- JD-11 disposition: the carrier's absence is the EXPECTED post-M6
+  state — doctor carries no failure-signaling retirement check; the
+  Plugin Migration advisory row (M5) separates the manual uninstall
+  guidance from any failure signal, and the removed carrier rows cannot
+  fire. The recorded exit-1 grep semantics apply to residue sweeps
+  (boundary greps below), not to deleted files.
+- Boundary greps (this run, this tree): zero references to the retired
+  identifiers in non-test Go code (grep exit 1, 0 hits — the tombstone
+  comment reworded so even comment literals read zero);
+  `go build ./...` + GOOS=windows exit 0; golangci-lint 0 issues;
+  template family (Deployer/SlimFS/UserInstallView/CodexOnly/
+  EmbeddedSkill/HarnessProfiles) ok; cli Update family ok (43s).
+- 429-interruption note: the mid-surgery tree was resumed and completed
+  in this session; the scratch generator scripts at the repo root were
+  deleted (B8), and the llm.yaml runtime drift was restored to HEAD
+  (not M7 scope).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

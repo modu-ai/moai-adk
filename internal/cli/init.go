@@ -782,25 +782,23 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// Codex's actual execution of plugin-borne skills is verified (OD-6
 	// settled (a) + condition; the REQ-008 measurement proves listing, not
 	// execution).
-	// deployMode is resolved once above (beside opts.Harness); the deployer
-	// family receives it as an option — the split is an option, not a
-	// constructor axis.
-	modeOpts := []template.DeployerOption{template.WithDeployMode(deployMode)}
+	// SPEC-USER-ASSET-INSTALL-001 (M7): no deploy-mode options — the split
+	// is retired with the plugin carrier.
 	switch agentWiringSelection {
 	case agentWiringGPT:
-		deployer, err = template.NewCodexOnlyDeployerWithRenderer(cat, renderer, modeOpts...)
+		deployer, err = template.NewCodexOnlyDeployerWithRenderer(cat, renderer)
 	case agentWiringBoth:
 		if shouldDistributeAll(cmd) {
-			deployer, err = template.NewDualHarnessDeployerWithRenderer(cat, renderer, modeOpts...)
+			deployer, err = template.NewDualHarnessDeployerWithRenderer(cat, renderer)
 		} else {
-			deployer, err = template.NewDualHarnessSlimDeployerWithRenderer(cat, renderer, modeOpts...)
+			deployer, err = template.NewDualHarnessSlimDeployerWithRenderer(cat, renderer)
 			emitSlimModeNotice(cmd.OutOrStdout())
 		}
 	default:
 		if shouldDistributeAll(cmd) {
-			deployer, err = template.NewClaudeHarnessDeployerWithRenderer(cat, renderer, modeOpts...)
+			deployer, err = template.NewClaudeHarnessDeployerWithRenderer(cat, renderer)
 		} else {
-			deployer, err = template.NewClaudeHarnessSlimDeployerWithRenderer(cat, renderer, modeOpts...)
+			deployer, err = template.NewClaudeHarnessSlimDeployerWithRenderer(cat, renderer)
 			emitSlimModeNotice(cmd.OutOrStdout())
 		}
 	}

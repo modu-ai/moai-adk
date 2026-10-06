@@ -65,7 +65,6 @@ func retrackManifestFiles(projectRoot string, mgr manifest.Manager, errOut io.Wr
 	return mgr.Save()
 }
 
-
 // retrackSectionFiles retracks every .moai/config/sections/*.yaml the project
 // currently carries. The Restore Settings step rewrites that directory, and
 // profile.SyncToProjectConfig rewrites a subset of it afterwards — both after

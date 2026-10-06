@@ -151,55 +151,6 @@ func assertFilePresent(t *testing.T, root, rel string) {
 	}
 }
 
-// TestUpdateMigratesLegacyProject is AC-015: the three arms mapped to the
-// probe — confirmed (dedupe + record plugin), not-demonstrated (no dedupe,
-// record local), opted-out (full local deploy, record local).
-
-// templateMigrationTagForTest reads the migration archive tag through the
-// exported constant's package (the classifier owns the layout).
-const templateMigrationTagForTest = "init-shrink-migration"
-
-// TestMigrationRemovesIdenticalDroppedComponents is AC-011: identical
-// dropped components are removed with the count printed, no archive of an
-// identical component is written, and the removal ran through the
-// classified-set executor — a foreign file the classified set never
-// contains survives the same run untouched.
-
-// TestMigrationArchivesModifiedBeforeRemoval is AC-012: modified classified
-// files archive (per file, never a whole directory) before removal; an
-// archive failure anywhere in the batch aborts with nothing removed. The
-// negative control shows the unguarded pre-fix path losing the file.
-
-// TestMigrationIdempotent is AC-014: a second update on a migrated project
-// removes nothing, archives nothing, and the record is unchanged.
-
-// TestUpdatePluginModeSkipsDroppedRedeploy is AC-016: a plugin-mode
-// project's update deploys the thin set — no dropped component is
-// re-deployed — and the recorded value is byte-identical after the run.
-func TestUpdatePluginModeSkipsDroppedRedeploy(t *testing.T) {
-	root := buildMigrationFixture(t)
-	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
-	before := config.ReadDeployMode(root)
-
-	// A user file under a dropped root, planted AFTER the migration: the
-	// thin redeploy must not re-create template copies beside it.
-	plant := filepath.Join(root, ".claude", "skills", "moai-custom", "PLANTED")
-	if err := os.MkdirAll(filepath.Dir(plant), 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	if err := os.WriteFile(plant, []byte("x"), 0o644); err != nil {
-		t.Fatalf("plant: %v", err)
-	}
-
-	runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "force": "true"})
-
-	assertFileAbsent(t, root, migIdenticalSkill)
-	assertFileAbsent(t, root, migAbsentRecCmd)
-	if got := config.ReadDeployMode(root); got != before || got != "plugin" {
-		t.Errorf("deployment_mode = %q, want the recorded %q", got, before)
-	}
-}
-
 // TestUpdateLocalModeKeepsFullScope is AC-017: a local-mode project's
 // update keeps today's full merge scope — template-carried skills deploy
 // and the record survives the cycle.
@@ -235,33 +186,6 @@ func TestUpdateNeverFlipsModeRecord(t *testing.T) {
 		if !strings.Contains(out, "deploy mode: local") || !strings.Contains(out, "moai init") {
 			t.Errorf("force=%s: switch guidance missing from output:\n%s", force, out)
 		}
-	}
-}
-
-// TestUpdateForceDoesNotResurrectDropped is AC-019: --force on a
-// plugin-mode project never re-creates the dropped components.
-func TestUpdateForceDoesNotResurrectDropped(t *testing.T) {
-	root := buildMigrationFixture(t)
-	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
-
-	runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "force": "true"})
-
-	assertFileAbsent(t, root, migIdenticalSkill)
-	assertFileAbsent(t, root, migModifiedSkill)
-	assertFileAbsent(t, root, migAbsentRecCmd)
-	// The only file left under .claude/skills is the preserved foreign
-	// skill; the classified executor's file-level removal leaves no
-	// template copy behind. (Empty directory shells may remain — the
-	// removal unit is the classified file.)
-	var skillFiles []string
-	_ = filepath.WalkDir(filepath.Join(root, ".claude", "skills"), func(p string, d os.DirEntry, err error) error {
-		if err == nil && !d.IsDir() {
-			skillFiles = append(skillFiles, filepath.ToSlash(p))
-		}
-		return nil
-	})
-	if len(skillFiles) != 1 || !strings.Contains(skillFiles[0], "moai-custom") {
-		t.Errorf("force update left unexpected skill files: %v", skillFiles)
 	}
 }
 

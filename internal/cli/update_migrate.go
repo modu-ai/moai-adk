@@ -27,14 +27,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
-	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/template"
-	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // migrationOutcome is the trigger's decision for one update run. The zero
@@ -60,26 +57,13 @@ type migrationPlan struct {
 	// Clean step processes on a confirmed run. Nil for every other outcome.
 	removalTargets []deploy.CleanTarget
 	// counts are the three printed classification counts (REQ-010).
-	identical, modified, foreign int
 	// archivedModified counts the per-file archives written this run.
-	archivedModified int
 }
 
 // updateDroppedRootTargets are the managed clean targets whose roots the
 // thin deploy does not rewrite: they leave the global walk on every
 // thin-mode run, because P-08's backup exemption assumes the deploy
 // rewrites what it removes — a promise the thin deploy does not keep.
-func updateDroppedRootTargets(targets []deploy.CleanTarget) []deploy.CleanTarget {
-	kept := make([]deploy.CleanTarget, 0, len(targets))
-	for _, t := range targets {
-		norm := filepath.ToSlash(t.DisplayPath)
-		if strings.HasPrefix(norm, ".claude/skills") || strings.HasPrefix(norm, ".claude/commands") {
-			continue
-		}
-		kept = append(kept, t)
-	}
-	return kept
-}
 
 // computeRunCleanTargets is the run's Clean Managed Paths target list — the
 // single computation the execution and the --dry-run preview share (card
@@ -89,9 +73,7 @@ func updateDroppedRootTargets(targets []deploy.CleanTarget) []deploy.CleanTarget
 // the run preserves.
 func computeRunCleanTargets(projectRoot string, deployMode template.DeployMode, migration *migrationPlan) []deploy.CleanTarget {
 	cleanTargets := deploy.ManagedCleanTargets(projectRoot)
-	if deployMode == template.DeployModePlugin {
-		cleanTargets = updateDroppedRootTargets(cleanTargets)
-	}
+	_ = deployMode
 	if migration != nil && migration.outcome == migrateConfirmed {
 		cleanTargets = append(cleanTargets, migration.removalTargets...)
 	}
@@ -115,12 +97,6 @@ func runUpdateMigrationTrigger(projectRoot string, noPlugin bool, out, errOut io
 }
 
 // classifiedCleanTarget builds one classified removal target.
-func classifiedCleanTarget(projectRoot, relSlash string) deploy.CleanTarget {
-	return deploy.CleanTarget{
-		DisplayPath: relSlash,
-		FullPath:    filepath.Join(projectRoot, filepath.FromSlash(relSlash)),
-	}
-}
 
 // archiveMigrationFile archives ONE classified file (never a directory)
 // into the migration archive layout (REQ-012; the archiveSkill contract's
@@ -231,25 +207,5 @@ func rejectSymlinkedArchivePath(projectRoot, dst string) error {
 // re-home writes its copies with — the same shape the update flow's deploy
 // steps construct, so a re-homed .tmpl source renders identically to a
 // deployed one.
-func migrationTemplateContext(projectRoot string) *template.TemplateContext {
-	homeDir, _ := userHomeDirFn()
-	return template.NewTemplateContext(
-		template.WithGoBinPath(detectGoBinPathForUpdate(homeDir)),
-		template.WithResolvedMoaiPath(resolveMoaiExecutable()),
-		template.WithHomeDir(homeDir),
-		template.WithSmartPATH(template.BuildSmartPATH()),
-		template.WithPlatform(runtime.GOOS),
-		template.WithVersion(version.GetVersion()),
-		template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
-		template.WithGitMode(config.LoadGitMode(projectRoot)),
-		loadUpdateUserValues(projectRoot),
-	)
-}
 
 // pluralMirrorEntries renders the singular/plural noun for a mirror-entry count.
-func pluralMirrorEntries(n int) string {
-	if n == 1 {
-		return "entry"
-	}
-	return "entries"
-}
