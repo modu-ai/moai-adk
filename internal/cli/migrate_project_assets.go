@@ -48,6 +48,14 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, out fmt.Stringer, r
 	}
 
 	var removed, preserved, stayed, untouched int
+	// Item 1 (fix round 3 addendum): anchor the deletion boundary to the
+	// project root — a .claude (or sibling root) swapped to an
+	// outside-pointing symlink must not route os.Remove to an external
+	// sentinel even when the recorded hash matches.
+	rootResolved, rootErr := filepath.EvalSymlinks(projectRoot)
+	if rootErr != nil {
+		return fmt.Errorf("resolve project root: %w", rootErr)
+	}
 	for _, rootRel := range projectCommonAssetRels {
 		absRoot := filepath.Join(projectRoot, filepath.FromSlash(rootRel))
 		err := filepath.WalkDir(absRoot, func(p string, d fs.DirEntry, err error) error {
@@ -120,6 +128,11 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, out fmt.Stringer, r
 				stayed++
 				migrationPreservedProjectFiles[p] = true
 				report("  migration: kept project-side (user counterpart not confirmed — opt in via 'moai bundle add <name>' or re-run update): %s", relSlash)
+				return nil
+			}
+			resolvedP, resErr := filepath.EvalSymlinks(p)
+			if resErr != nil || !withinRootBoundary(rootResolved, resolvedP) {
+				report("  migration: removal refused (path escapes the project root through a symlink): %s", relSlash)
 				return nil
 			}
 			if err := os.Remove(p); err != nil {
@@ -198,4 +211,15 @@ func userCounterpartConfirmed(userManifest *userassets.Manifest, homeDir, projec
 	// intentionally distinct (B4).
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:]) == fe.SHA256
+}
+
+// withinRootBoundary reports whether path is inside (or equal to) the
+// resolved root (the same containment predicate the userassets package
+// uses; duplicated here to avoid importing the package for one helper).
+func withinRootBoundary(root, path string) bool {
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (!strings.HasPrefix(rel, "..") && rel != "")
 }

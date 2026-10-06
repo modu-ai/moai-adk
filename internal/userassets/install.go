@@ -247,7 +247,6 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	// failure then classifies the run's OWN installs by the flag (divergence
 	// with shipped backup) instead of misreading them as collisions.
 	completed := map[string]bool{}
-	stageChanged := false
 	for _, tgt := range installable {
 		if err := in.applyTarget(tgt, manifest, roots, res); err != nil {
 			res.Failures = append(res.Failures, FileOutcome{Path: tgt.manifestKey, Reason: err.Error()})
@@ -263,18 +262,40 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 			res.Failures = append(res.Failures, FileOutcome{Path: tgt.manifestKey, Reason: err.Error()})
 		}
 	}
-	// B3 (review-fix round 2 addendum): the completion flags go on the
-	// CURRENT run's stage journal — on a first install journal is nil and
-	// the stage is the newly-created one; with a pre-existing journal the
-	// stage replaced it at staging time. Persisting the stage (not the old
-	// journal) is what makes a manifest-save failure recoverable with
-	// correct ownership classification.
-	stageChanged = false
+	// B3 (review-fix round 2 addendum) + Item 3 (fix round 3 addendum): the
+	// completion flags go on the CURRENT run's stage journal, and the
+	// journal-carried entries (recovered claims + classified divergences)
+	// are CARRIED INTO the stage — the stage replaces the old journal at
+	// staging time, and dropping the carried entries would lose the
+	// ownership evidence if the manifest save failed AGAIN (the double-
+	// interruption repro: recovered files flip to permanent collisions).
+	stageChanged := false
 	for i := range stage.Entries {
 		if completed[stage.Entries[i].Path] && !stage.Entries[i].WriteCompleted {
 			stage.Entries[i].WriteCompleted = true
 			stageChanged = true
 		}
+	}
+	stagePaths := map[string]bool{}
+	for _, e := range stage.Entries {
+		stagePaths[e.Path] = true
+	}
+	journalCarried := []JournalEntry{}
+	if journal != nil {
+		journalCarried = journal.Entries
+	}
+	for _, e := range journalCarried {
+		if stagePaths[e.Path] {
+			continue
+		}
+		// Item 3 (fix round 3 addendum): carry EVERY old-journal entry into
+		// the stage unconditionally — the old journal is about to be
+		// replaced, and dropping any entry loses the ownership evidence if
+		// the manifest save fails AGAIN (the double-interruption repro:
+		// recovered files flip to permanent collisions). The entries carry
+		// their WriteCompleted state; cleared only with a successful save.
+		stage.Entries = append(stage.Entries, e)
+		stageChanged = true
 	}
 	if stageChanged {
 		if err := WriteJournal(JournalPath(in.Home), stage); err != nil {

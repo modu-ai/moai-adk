@@ -161,6 +161,16 @@ func (in *Installer) removeManifestKey(entry template.Entry, k string, slug Root
 	if !tracked {
 		return nil
 	}
+	// Item 2 (fix round 3 addendum): an unknown root slug resolves to an
+	// EMPTY resolvedRoot — os.Remove(abs) then falls back to the CURRENT
+	// WORKING DIRECTORY and deletes an external file (the gate's sentinel
+	// repro). Refuse the key outright.
+	if root.dir == "" {
+		return fmt.Errorf("userassets: unknown root slug %q for key %q — deletion refused", slug, k)
+	}
+	if clean, err := ValidateRelPath(rel); err != nil || clean != rel {
+		return fmt.Errorf("userassets: rel path %q escapes its root — deletion refused", rel)
+	}
 	abs := filepath.Join(root.dir, filepath.FromSlash(rel))
 	current, readErr := os.ReadFile(abs)
 	if readErr != nil {
