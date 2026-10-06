@@ -25,7 +25,6 @@ package cli
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -1522,12 +1521,19 @@ func recordDispatchBindingAtRoot(cardID, runID, root string) error {
 		return err
 	}
 	defer func() { _ = db.Close() }()
-	// REQ-FCR-002's scope sentence at this layer (review round-18 P2): a
-	// card with NO factory row is an ordinary card — out of scope for the
-	// binding. Writing one would dangle: the later done would fail
-	// leader-approval-run-unresolvable. Skip silently; the card keeps its
-	// existing completion behavior.
-	if _, err := db.LoadCard(context.Background(), runID, cardID); errors.Is(err, homestate.ErrCardNotFound) {
+	// REQ-FCR-002's scope sentence at this layer (review round-18 P2, tightened
+	// by the round-19 edge): a card with NO factory row in ANY run is an
+	// ordinary card — out of scope for the binding; skip silently and the
+	// card keeps its existing completion behavior. A card WITH rows (in this
+	// or any other run) is bound to the targeted run: the later done gate
+	// then refuses the stale approval (run mismatch, or run-unresolvable
+	// when the targeted run's row is yet to be created by the dispatch) —
+	// never success on the old approval.
+	var existing int
+	if err := db.DB.QueryRowContext(context.Background(), `SELECT count(*) FROM cards WHERE card_id=?`, cardID).Scan(&existing); err != nil {
+		return err
+	}
+	if existing == 0 {
 		return nil
 	}
 	return db.RecordDispatchBinding(context.Background(), cardID, runID, time.Now())

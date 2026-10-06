@@ -766,7 +766,53 @@ func TestOrdinaryCardSelectionSkipsBinding(t *testing.T) {
 	}
 }
 
-// fcBindDispatch records the card's dispatch binding — the current-run
+// Regression pin for round-19 P1 (card t1538): when the OLD run holds the
+// card's only factory row (the current run has none yet), the re-selection
+// still records the binding to the targeted run — the old approval goes
+// inert, and the done gate refuses instead of closing on it. The
+// "safely bound" arm completes once the targeted run's row and receipt
+// exist.
+func TestReselectWithoutCurrentRunRowRefusesOldApproval(t *testing.T) {
+	root, store := fcFixture(t)
+	cardID := addShapeCard(t, "reselect, no current-row yet")
+	fcLinkRuntime(t, root, cardID)
+	uuid := recheckUUID(t, root, store, cardID)
+	// ONLY the old run's row + approval: the current run has no row.
+	fcPlace(t, root, homestate.Card{CardID: cardID, RunID: "run-old", State: homestate.CardDone, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-old", UpdatedAt: "2026-09-26T01:00:00Z"})
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: uuid, RunID: "run-old", CardID: cardID, FactoryVersion: 1,
+		EvidenceHash: "sha-old", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+
+	t.Setenv(config.EnvFactoryRunID, fcRun)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	if _, _, err := runTodo(t, "next", cardID); err != nil {
+		t.Fatalf("next: %v", err)
+	}
+
+	// The binding now names the targeted run; the old approval is inert.
+	_, stderr, err := runTodo(t, "done", cardID)
+	if err == nil {
+		t.Fatal("done closed on the old run's approval although the targeted run has no row")
+	}
+	if !strings.Contains(stderr, "leader approval") {
+		t.Errorf("stderr %q does not name the leader approval reason", stderr)
+	}
+	if !fcLiveItem(t, store, cardID) {
+		t.Fatal("the refused done archived the card")
+	}
+
+	// The safely-bound arm: the targeted run's row and receipt exist.
+	fcPlace(t, root, homestate.Card{CardID: cardID, RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-new", UpdatedAt: "2026-09-26T02:00:00Z"})
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: uuid, RunID: fcRun, CardID: cardID, FactoryVersion: 1,
+		EvidenceHash: "sha-new", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+	if _, _, err := runTodo(t, "done", cardID); err != nil {
+		t.Fatalf("done with the targeted run's receipt: %v", err)
+	}
+}
+
 // authority the completion gate and scan resolve through. Idempotent.
 func fcBindDispatch(t *testing.T, root, cardID, runID string) {
 	t.Helper()
