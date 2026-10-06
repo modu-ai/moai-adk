@@ -158,6 +158,7 @@ import "embed"
 // prefix: one explicit directive per approved file — the allowlist boundary
 // (see internal/template/embed.go for the accessor) — plus the catalog.yaml
 // sibling.
+//
 `)
 	b.WriteString(catalogDirective)
 	b.WriteString("\n")

@@ -19,6 +19,7 @@ import "embed"
 // prefix: one explicit directive per approved file — the allowlist boundary
 // (see internal/template/embed.go for the accessor) — plus the catalog.yaml
 // sibling.
+//
 //go:embed catalog.yaml
 //go:embed templates/.agents/skills/moai-clean/SKILL.md
 //go:embed templates/.agents/skills/moai-codemaps/SKILL.md
