@@ -253,6 +253,14 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 				return "is not this lane"
 			}())
 	}
+	// The tip is pinned BEFORE the readiness triple runs (card-review r7):
+	// a SHA read after the check would let a commit landing mid-check become
+	// the auto-merge target. The post-check re-read below turns any such
+	// movement into a refusal.
+	verifiedTip, err := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
+	if err != nil {
+		return fmt.Errorf("factory complete: cannot read the branch tip before the readiness check: %w", err)
+	}
 	// REQ-GFD-005: the readiness check precedes the PR; a failing check opens nothing.
 	run, err := factoryPRReadiness(out, root, card, lane, cardBranch, target)
 	if err != nil {
@@ -266,13 +274,14 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 
 	stays := fmt.Sprintf("card %s stays in merging", card.CardID)
 
-	// The readiness triple judged THIS tip; anything that moves the branch
-	// afterwards (a concurrent push) must not ride the auto-merge request
-	// (card-review r6, the AGENTS.md stop-on-change rule). The pin travels
-	// to `gh pr merge --match-head-commit` below.
-	verifiedTip, err := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
-	if err != nil {
-		return fmt.Errorf("factory complete: %s; cannot read the branch tip the readiness triple judged: %w", stays, err)
+	// Stop-on-change (AGENTS.md §2, card-review r6/r7): a commit that landed
+	// while the readiness triple ran was never judged — refuse rather than
+	// pin it.
+	if moved, err := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", "HEAD^{commit}"); err != nil {
+		return fmt.Errorf("factory complete: %s; cannot re-read the branch tip after the readiness check: %w", stays, err)
+	} else if moved != verifiedTip {
+		return fmt.Errorf("factory complete: refused — %s's branch moved during the readiness check (%s → %s); re-run complete to judge the new tip",
+			card.CardID, verifiedTip, moved)
 	}
 
 	cur := card
@@ -287,10 +296,13 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 		}
 	}
 
-	// Re-validate the lease immediately before each external mutation (card
-	// review r6): a lease that lapses between the entry check and the gh
-	// calls is no authority to touch the remote. The re-load also catches a
-	// version bump from a concurrent transition.
+	// Re-validate the card immediately before each external mutation (card
+	// review r6/r7): a lease that lapses between the entry check and the gh
+	// calls is no authority to touch the remote, and a card that moved state
+	// or version (a concurrent abandon preserves the lease fields, so the
+	// lease predicates alone cannot see it) must not ride the request either.
+	// The re-load is the fresh truth; cur.Version is the version this
+	// invocation's record writes ride on.
 	revalidateLease := func(where string) error {
 		fresh, err := db.LoadCard(ctx, runID, card.CardID)
 		if err != nil {
@@ -299,6 +311,14 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 		if fresh.LeaseHolder != lane || fresh.LeaseExpired(factoryCardNow()) {
 			return fmt.Errorf("factory complete: %s; %s: card %s's lease is no longer live for %s (holder %s) — the remote was left untouched",
 				stays, where, card.CardID, lane, dash(fresh.LeaseHolder))
+		}
+		if fresh.State != homestate.CardMergeReady && fresh.State != homestate.CardMerging {
+			return fmt.Errorf("factory complete: %s; %s: card %s is %s, no longer deliverable — the remote was left untouched",
+				stays, where, card.CardID, fresh.State)
+		}
+		if fresh.Version != cur.Version {
+			return fmt.Errorf("factory complete: %s; %s: card %s moved to v%d while this run judged v%d — the remote was left untouched",
+				stays, where, card.CardID, fresh.Version, cur.Version)
 		}
 		return nil
 	}
@@ -317,6 +337,9 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 		return fmt.Errorf("factory complete: %s; the pull request could not be read, so none is opened: %w", stays, err)
 	}
 	if !found {
+		if err := revalidateLease("before pr create"); err != nil {
+			return err
+		}
 		title, body := factoryPRText(wt, card, target)
 		if _, err := factoryGHCall(wt, "pr", "create", "--base", target, "--head", cardBranch, "--title", title, "--body", body); err != nil {
 			return fmt.Errorf("factory complete: %s; opening the pull request failed: %w", stays, err)
