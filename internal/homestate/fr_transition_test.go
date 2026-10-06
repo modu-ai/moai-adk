@@ -336,4 +336,3 @@ func TestFR_AC006_RacingWritersExactlyOneWins(t *testing.T) {
 // the reserved set in M1: the receipt gate admits it
 // (TestFR_FCR_T20DoneRequiresReceipt, SPEC-FACTORY-COMPLETION-RECOVERY-001
 // REQ-FCR-002b).
-

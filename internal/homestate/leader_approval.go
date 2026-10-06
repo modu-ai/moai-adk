@@ -70,12 +70,12 @@ type LeaderApproval struct {
 	EvidenceHash string `json:"evidence_hash"`
 	// Issuer names who issued the receipt; IssuerRole carries the
 	// leader/lane marker the gates refuse on.
-	Issuer   string `json:"issuer"`
+	Issuer     string `json:"issuer"`
 	IssuerRole string `json:"issuer_role"`
-	IssuedAt string `json:"issued_at"`
+	IssuedAt   string `json:"issued_at"`
 }
 
-// verifyBinding checks the receipt against the named binding values — the
+// VerifyBinding checks the receipt against the named binding values — the
 // verifier's own identity knowledge, not a caller-supplied verdict. cardUUID
 // is the backlog identity; a verifier that cannot know it (the factory row
 // carries no uuid) passes "" and the uuid axis is skipped rather than failed
@@ -84,7 +84,7 @@ type LeaderApproval struct {
 // refused wherever it is presented (REQ-FCR-005 — performer ≠ approver; the
 // role marker is data, and this comparison is the gate's own), skipped only
 // when the row names no owner.
-func (a LeaderApproval) verifyBinding(cardUUID, runID string, version int64, evidenceHash, ownerLabel string) error {
+func (a LeaderApproval) VerifyBinding(cardUUID, runID string, version int64, evidenceHash, ownerLabel string) error {
 	if a.IssuerRole != ApprovalIssuerLeader {
 		return fmt.Errorf("%w: issuer %q holds role %q, not %q", ErrApprovalIssuer, a.Issuer, a.IssuerRole, ApprovalIssuerLeader)
 	}
@@ -174,7 +174,7 @@ func (f *FactoryDB) FindLeaderApproval(ctx context.Context, cardUUID string) (Le
 // findLeaderApprovalForCardTx reads the most recent receipt stored for the
 // (run, card) pair inside the caller's transaction — the done transitions'
 // lookup key. A receipt stored under another run is simply absent here, and
-// verifyBinding's run check refuses a row whose run_id was pointed elsewhere
+// VerifyBinding's run check refuses a row whose run_id was pointed elsewhere
 // anyway.
 func findLeaderApprovalForCardTx(ctx context.Context, q queryRower, runID, cardID string) (LeaderApproval, error) {
 	a, err := scanLeaderApproval(q.QueryRowContext(ctx,
@@ -266,7 +266,7 @@ func (g *ApprovalGate) Verify(ctx context.Context, cardUUID string) error {
 	if err != nil {
 		return err
 	}
-	return a.verifyBinding(cardUUID, g.card.RunID, g.card.Version, g.card.EvidenceSHA, g.card.OwnerLabel)
+	return a.VerifyBinding(cardUUID, g.card.RunID, g.card.Version, g.card.EvidenceSHA, g.card.OwnerLabel)
 }
 
 // Commit settles the gate after the close it guards has landed.
@@ -311,5 +311,5 @@ func verifyTransitionApproval(ctx context.Context, tx *sql.Tx, cur Card) error {
 	if err != nil {
 		return err
 	}
-	return a.verifyBinding("", cur.RunID, cur.Version, cur.EvidenceSHA, cur.OwnerLabel)
+	return a.VerifyBinding("", cur.RunID, cur.Version, cur.EvidenceSHA, cur.OwnerLabel)
 }

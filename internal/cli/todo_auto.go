@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"fmt"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
