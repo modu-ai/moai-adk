@@ -2,7 +2,7 @@
 id: SPEC-AUDIT-CEILING-001
 title: "Machine-enforced plan-audit repetition ceiling and required-backend admission"
 version: "0.6.1"
-status: draft
+status: in-progress
 created: 2026-10-04
 updated: 2026-10-06
 author: "Goos Kim"

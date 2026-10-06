@@ -115,6 +115,26 @@ An exported audit artifact carries at minimum:
   - debt: <id> dispose_in=<run|sync> <description>
   ```
 
+  A plan-audit verdict file from a tree whose audit configuration resolves one
+  or more **required backends** (an `audit.gates` entry or an `audit.model`
+  assignment an operator wrote) also carries the convergence receipt —
+  machine-readable lines recording the convergence result the shared admission
+  rule reads (SPEC-AUDIT-CEILING-001 REQ-ACE-008):
+
+  ```
+  convergence_overall: <pass|fail>
+  required_backend: <backend-name> <pass|fail|inconclusive>
+  ```
+
+  `convergence_overall` is written exactly once — a second, differing value
+  makes the file inadmissible. `required_backend` repeats once per audited
+  required backend; a second line for an already-recorded backend is
+  inadmissible only when its verdict differs. A required backend the audit did
+  not cover stays absent from the receipt and refuses admission (correct
+  fail-closed — never invent a line for a backend the audit did not run). A
+  tree resolving no required backend writes no receipt lines and admits
+  without them.
+
   A sync-audit verdict file keeps the two lines above; its label alone decides.
 
 An inline response summary alone does not satisfy this convention. The

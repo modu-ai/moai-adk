@@ -180,7 +180,7 @@ func admitVerdictFile(cur Card, path string, phase auditverdict.Phase) (bool, st
 	}
 	fields := auditverdict.Parse(raw)
 	if phase == auditverdict.PhaseSync {
-		return auditverdict.Admit(fields, auditverdict.PhaseSync, 0, false)
+		return auditverdict.Admit(fields, auditverdict.PhaseSync, 0, false, nil)
 	}
 	if !specIDPattern.MatchString(cur.SpecID) {
 		return false, fmt.Sprintf("card carries no valid SPEC id (%q), so the plan-artifact hash cannot be checked", cur.SpecID)
@@ -188,7 +188,14 @@ func admitVerdictFile(cur Card, path string, phase auditverdict.Phase) (bool, st
 	specDir := filepath.Join(cur.WorktreePath, ".moai", "specs", cur.SpecID)
 	current, err := runtime.NewInMemoryCache().ComputeHash(specDir)
 	hashOK := err == nil && fields.PlanArtifactHash != "" && fields.PlanArtifactHash == current
-	return auditverdict.Admit(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(specDir), hashOK)
+	// SPEC-AUDIT-CEILING-001 REQ-ACE-009/010 (D21): the same error-vs-empty
+	// gate-set resolution the kickoff evaluator performs — an unreadable or
+	// unresolvable audit configuration refuses, never folds into empty.
+	gates, err := auditverdict.ResolveRequiredBackends(cur.WorktreePath)
+	if err != nil {
+		return false, fmt.Sprintf("audit configuration error: %v", err)
+	}
+	return auditverdict.Admit(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(specDir), hashOK, gates.Required)
 }
 
 func readBoundedFile(path string) ([]byte, error) {

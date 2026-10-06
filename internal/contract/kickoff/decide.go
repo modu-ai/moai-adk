@@ -373,7 +373,15 @@ func planAuditCheck(in DecideInput, dir string) (*contract.ReceiptFileRef, strin
 	fields := auditverdict.Parse(data)
 	cur, err := runtime.NewInMemoryCache().ComputeHash(dir)
 	hashOK := err == nil && fields.PlanArtifactHash != "" && fields.PlanArtifactHash == cur
-	if ok, reason := auditverdict.Admit(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(dir), hashOK); !ok {
+	// SPEC-AUDIT-CEILING-001 REQ-ACE-009/010 (D21): resolve the tree's
+	// required-backend set with the error-vs-empty contract — an audit
+	// configuration that exists but cannot be read or parsed refuses, never
+	// folds into the empty set.
+	gates, err := auditverdict.ResolveRequiredBackends(in.Root)
+	if err != nil {
+		return ref, fmt.Sprintf("audit configuration error: %v", err)
+	}
+	if ok, reason := auditverdict.Admit(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(dir), hashOK, gates.Required); !ok {
 		return ref, reason
 	}
 	return ref, ""

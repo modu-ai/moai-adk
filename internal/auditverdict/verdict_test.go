@@ -27,7 +27,7 @@ debts:
 `
 
 func admitPlan(raw string, hashOK bool) (bool, string) {
-	return Admit(Parse([]byte(raw)), PhasePlan, 0.85, hashOK)
+	return Admit(Parse([]byte(raw)), PhasePlan, 0.85, hashOK, nil)
 }
 
 func TestAdmit_PlanPhaseFixtureTable(t *testing.T) {
@@ -74,7 +74,7 @@ func TestAdmit_SyncPhaseKeepsTheLabelOnlyCheck(t *testing.T) {
 		"no verdict line\n":         false,
 	}
 	for raw, want := range cases {
-		got, _ := Admit(Parse([]byte(raw)), PhaseSync, 0, false)
+		got, _ := Admit(Parse([]byte(raw)), PhaseSync, 0, false, nil)
 		if got != want {
 			t.Errorf("sync %q: admit=%v want %v", raw, got, want)
 		}
@@ -137,7 +137,7 @@ func TestAdmit_RefusesDuplicatedDecisionKeys(t *testing.T) {
 			t.Errorf("%s: admitted (%s)", name, reason)
 		}
 	}
-	if ok, _ := Admit(Parse([]byte("verdict: FAIL\nverdict: PASS\n")), PhaseSync, 0, false); ok {
+	if ok, _ := Admit(Parse([]byte("verdict: FAIL\nverdict: PASS\n")), PhaseSync, 0, false, nil); ok {
 		t.Errorf("sync phase: duplicated verdict admitted")
 	}
 }
