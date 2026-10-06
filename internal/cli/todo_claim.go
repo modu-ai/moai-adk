@@ -232,21 +232,25 @@ func runTodoClaimRoot(root string, cmd *cobra.Command, lane, renew string) error
 
 // revertClaimMutation undoes a successful claim whose dispatch binding
 // could not be recorded: back to queued with no lease, only when the card
-// still holds THIS holder's claim (review round-15 P1-3).
+// still holds THIS holder's claim (review round-15 P1-3). The guard is
+// written in the positive form (REQ-THS-012): exactly the revertable shape
+// is enumerated, every other state falls through to the refusal.
 func revertClaimMutation(id, holder string) func(*factory.BacklogRecord) error {
 	return func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
 			if rec.Items[i].ID != id {
 				continue
 			}
-			if rec.Items[i].State != factory.BacklogStatePicked || rec.Items[i].PickedBy == nil || *rec.Items[i].PickedBy != holder {
-				return fmt.Errorf("claim for %s changed hands before the binding update", id)
+			if rec.Items[i].State == factory.BacklogStatePicked &&
+				rec.Items[i].PickedBy != nil &&
+				*rec.Items[i].PickedBy == holder {
+				rec.Items[i].State = factory.BacklogStateQueued
+				rec.Items[i].PickedBy = nil
+				rec.Items[i].LeaseExpiresAt = nil
+				rec.Items[i].PickedAt = nil
+				return nil
 			}
-			rec.Items[i].State = factory.BacklogStateQueued
-			rec.Items[i].PickedBy = nil
-			rec.Items[i].LeaseExpiresAt = nil
-			rec.Items[i].PickedAt = nil
-			return nil
+			return fmt.Errorf("claim for %s changed hands before the binding update", id)
 		}
 		return fmt.Errorf("no backlog item %s", id)
 	}
