@@ -71,9 +71,10 @@ var commitVerbs = map[string]bool{
 // 51 literals). internal/hook/commit_identity_guard*_test.go files are
 // EXCLUDED from the enumeration because they carry out-of-list control
 // values; commit_identity_guard_list_test.go re-runs the same predicate and
-// fails when a literal is missing from this list (AC-CIG-010) — 59 literals
+// fails when a literal is missing from this list (AC-CIG-010) — 60 literals
 // after the landing/sweep/t1379/t1395/quota-dirs fixture emails joined the
-// enumeration.
+// enumeration and the t1453 landing-predicate fixture email (gfd-test) was
+// registered.
 var builtinCommitIdentityDenyEmails = []string{
 	"a@e.invalid",
 	"anchor-test@example.com",
@@ -91,6 +92,7 @@ var builtinCommitIdentityDenyEmails = []string{
 	"fixture@example.test",
 	"fixture@t516.invalid",
 	"fx@example.com",
+	"gfd-test@example.com",
 	"guard-test@example.invalid",
 	"guard@test",
 	"landing-test@example.com",
