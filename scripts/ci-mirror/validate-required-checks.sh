@@ -15,6 +15,12 @@
 #       matrix.include entries, and bare names on matrix jobs suffixed with
 #       the matrix values (the CodeQL `Analyze (Go)` + language: [go] →
 #       `Analyze (Go) (go)` shape). A phantom context fails naming it (E24).
+#       KNOWN LIMITATION (documented debt): dimension D is the UNION of all
+#       workflows' publishable names — it does not yet verify per-event /
+#       per-branch publishability (a schedule-only check required on main, or
+#       a main-only check required on release/*, passes this dimension).
+#       Follow-up: parse each workflow's `on:` triggers + branch filters
+#       per required context (gate-measured gap, card t1534 close round).
 #
 # Usage:
 #   ./scripts/ci-mirror/validate-required-checks.sh   # from the repo root

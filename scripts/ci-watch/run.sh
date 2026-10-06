@@ -67,9 +67,39 @@ _check_bucket() {
     if command -v jq >/dev/null 2>&1; then
         jq -r --arg n "$check_name" '.[] | select(.name==$n) | .bucket // "pending"' "$json_file"
     else
+        # GATE P2 fix, final shape: handle BOTH JSON layouts. Compact
+        # single-line arrays are split into per-check records (the greedy
+        # `^.*"bucket"` strip crossed record boundaries and returned another
+        # check's bucket — measured "fail" for Lint on a 2-entry array);
+        # pretty multi-line output keeps the found-flag scan. Both stop at
+        # the FIRST bucket after the matched name.
         awk -v n="$check_name" '
-            index($0, "\"name\": *\"" n "\"") { found=1 }
-            found && /"bucket"/ { gsub(/.*"bucket": *"|"".*/, ""); print; exit }
+            /^\[/ {
+                s = $0
+                gsub(/^\[/, "", s)
+                gsub(/\]$/, "", s)
+                cnt = split(s, recs, /\}[[:space:]]*,[[:space:]]*\{/)
+                for (r = 1; r <= cnt; r++) {
+                    rec = "{" recs[r] "}"
+                    if (rec ~ ("\"name\" *: *" "\"" n "\"")) {
+                        if (match(rec, /"bucket" *: *"[^"]*"/)) {
+                            b = substr(rec, RSTART, RLENGTH)
+                            gsub(/^"bucket" *: *"/, "", b)
+                            gsub(/"$/, "", b)
+                            print b
+                        }
+                        exit
+                    }
+                }
+                exit
+            }
+            $0 ~ ("\"name\" *: *" "\"" n "\"") { found = 1 }
+            found && /"bucket"/ {
+                sub(/^.*"bucket" *: *"/, "")
+                sub(/".*/, "")
+                print
+                exit
+            }
         ' "$json_file"
     fi
 }
@@ -116,17 +146,36 @@ trap 'rm -f "$TMP_JSON" "$TMP_SSOT" "$TMP_ALL" "$TMP_FN" "$TMP_FL" "$TMP_PAIR"' 
 _load_required_contexts() {
     branch_key="$1"
     if command -v yq >/dev/null 2>&1; then
-        yq -r ".branches[\"$branch_key\"].contexts // [] | .[]" "$REQUIRED_CHECKS_FILE" 2>/dev/null || true
+        # GATE P1 fix: a yq FAILURE (malformed YAML, unreadable file) must
+        # abort — the pre-fix `|| true` turned an unreadable SSoT into an
+        # empty list, which the loop read as "all required passed" (exit 0).
+        # A successful yq run with an empty contexts list is still a legal
+        # empty result (e.g. release/* per decision-index Q1).
+        yq_out="$(yq -r ".branches[\"$branch_key\"].contexts // [] | .[]" "$REQUIRED_CHECKS_FILE" 2>/dev/null)" || {
+            abort "yq failed to read $REQUIRED_CHECKS_FILE — refusing to treat an unreadable SSoT as 'all required passed'" 1
+        }
+        printf '%s\n' "$yq_out"
     else
-        awk -v key="\"$branch_key\"" '
-            $0 ~ "^  " key ":" { inb = 1; next }
-            inb && /^  [A-Za-z_*]/ && index($0, key) == 0 { inb = 0 }
-            inb && /^    - / {
+        # GATE P1 fix: match the REAL SSoT shape — branch keys at indent 2
+        # UNQUOTED (`  main:`) and contexts items at indent 6 (`      - `).
+        # The first draft matched a quoted `"main":` at indent 4 and yielded
+        # an empty list, which read as "all required passed" (exit 0).
+        awk -v key="$branch_key" '
+            /^branches:/ { inb = 1; next }
+            inb && /^[A-Za-z_*]/ { inb = 0 }
+            inb && $0 ~ ("^  " key ":") { inctx = 1; next }
+            # the key block owns a contexts: line at indent 4 — it OPENS the
+            # item list and must not terminate the scan (GATE P1 fix, second
+            # shape: the indent-4 terminator rule matched `    contexts:`
+            # itself and closed the scan before any item line).
+            inctx && /^    contexts:/ { next }
+            inctx && /^      - / {
                 line = $0
                 sub(/^ *- */, "", line)
                 gsub(/"/, "", line)
                 print line
             }
+            inctx && /^    [A-Za-z_*]/ { inctx = 0 }
         ' "$REQUIRED_CHECKS_FILE"
     fi
 }
