@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"database/sql"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -262,6 +263,40 @@ func TestAutoDoneScanDoesNotMigrateOldSchema(t *testing.T) {
 	}
 	if present {
 		t.Fatal("the scan migrated the store: leader_approvals was recreated")
+	}
+}
+
+// Regression pin for round-12 P2 (card t1538): a UUID-less legacy JSON
+// queue migrates under the archive lock — the freshly issued identity is
+// the scan's own side effect, never an external change — so a legitimate
+// non-factory completion lands on the FIRST real run.
+func TestAutoDoneLegacyQueueCompletesOnFirstRun(t *testing.T) {
+	root, store := autoDoneFixture(t)
+	seedCard(t, store, "t800", "legacy card", factory.BacklogStateQueued)
+	commitOnRef(t, root, "Merge branch 'WT-l' into develop (card t800)")
+	materializeOriginDevelop(t, root)
+
+	// Rewrite the queue as a UUID-less legacy JSON document and drop the
+	// sqlite database: the next locked write migrates it and issues
+	// identities.
+	dbPath := filepath.Join(filepath.Dir(todoBacklogPath(root)), "backlog.db")
+	legacy := `{"version":1,"seq":1,"items":[{"id":"t800","text":"legacy card","added_at":"2026-09-26T00:00:00Z","state":"queued"}],"findings":[]}`
+	if err := os.WriteFile(todoBacklogPath(root), []byte(legacy), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(dbPath); err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+
+	stdout, _, err := runTodo(t, "auto-done")
+	if err != nil {
+		t.Fatalf("auto-done: %v", err)
+	}
+	if !strings.Contains(stdout, "done t800 landing=landed") {
+		t.Fatalf("stdout %q lacks the first-run close (pre-fix: skipped on its own migration)", stdout)
+	}
+	if _, ok := liveItemOK(t, store, "t800"); ok {
+		t.Error("t800 stayed live after completing")
 	}
 }
 

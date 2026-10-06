@@ -443,6 +443,14 @@ func applyAutoDoneCloses(ctx context.Context, root string, store *factory.Backlo
 					continue
 				}
 				cur := rec.Items[at]
+				// A UUID-less legacy record gains its identity from the
+				// in-lock migration itself (review round-12 P2): the freshly
+				// issued uuid is OUR side effect, not an external change —
+				// adopt it into the snapshot instead of mistaking it for a
+				// stale row.
+				if outcomes[k].snapUUID == "" && todoCardUUID(&cur) != "" {
+					outcomes[k].snapUUID = todoCardUUID(&cur)
+				}
 				if !autoDoneSnapshotMatches(&outcomes[k], &cur) {
 					// REQ-FCR-004: the row was held, edited, re-identified,
 					// re-stated, or re-landed between snapshot and lock — the
@@ -478,9 +486,16 @@ func applyAutoDoneCloses(ctx context.Context, root string, store *factory.Backlo
 }
 
 // autoDoneSnapshotMatches compares the scan-time snapshot against the
-// current row: UUID, body, state, SPEC, landing — all five or no close.
+// current row: UUID, body, state, SPEC, landing — all five or no close. An
+// empty snapshot uuid with a non-empty current uuid is the in-lock
+// identity migration's own issue, not an external change: it is adopted
+// (the caller does the same) and the uuid axis matches.
 func autoDoneSnapshotMatches(o *autoDoneOutcome, cur *factory.BacklogItem) bool {
-	return todoCardUUID(cur) == o.snapUUID &&
+	curUUID := todoCardUUID(cur)
+	if o.snapUUID == "" && curUUID != "" {
+		o.snapUUID = curUUID
+	}
+	return o.snapUUID == curUUID &&
 		cur.Text == o.snapText &&
 		cur.State == o.snapState &&
 		backlogSpecText(cur) == o.snapSpec &&
