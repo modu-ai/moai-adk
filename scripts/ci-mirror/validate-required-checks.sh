@@ -149,13 +149,21 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			for (oa = 1; oa <= n_oaxes; oa++) {
 				axis = oaxes[oa]
 				base = n2
+				n3 = 0
 				for (c = 1; c <= base; c++) {
 					for (idx = 1; idx <= oin[axis]; idx++) {
-						n2++
-						ob_line[n2] = ob_line[c]
-						ob_ids[n2] = ob_ids[c] SUBSEP axis SUBSEP idx
+						n3++
+						nb_line[n3] = ob_line[c]
+						nb_ids[n3] = ob_ids[c] SUBSEP axis SUBSEP idx
 					}
 				}
+				# GATE-18d: each expansion REPLACES the working set — the
+				# pre-expansion partial combinations (earlier axes only)
+				# never exist on GitHub once a later axis is in play, and
+				# keeping them let a name referencing only the earlier
+				# axes publish while exclude wiped every real combination.
+				for (c = 1; c <= n3; c++) { ob_line[c] = nb_line[c]; ob_ids[c] = nb_ids[c] }
+				n2 = n3
 			}
 			# collect the REFERENCED sub-fields from the template — a field
 			# an item lacks evaluates as the EMPTY string on GitHub, so
@@ -404,8 +412,16 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 				line = subst_literal(line, "\\$\\{\\{[[:space:]]*matrix\\." pair[2] "[[:space:]]*\\}\\}", incval[kk])
 			}
 			if (had_ref) {
-				# expression-bearing name: print only when every matrix
-				# expression was substituted (residual ${{ }} prints raw)
+				# GATE-18c: unset fields evaluate EMPTY on GitHub — the same
+				# fill as the product path applies to a standalone include
+				# tuple, or a tuple missing a referenced field lost its
+				# whole published name and a real context was judged
+				# phantom. An expression-axis reference (exprdim) parks raw.
+				for (xd in exprdim)
+					line = subst_literal(line, "\\$\\{\\{[[:space:]]*matrix\\." xd "[[:space:]]*\\}\\}", SUBSEP xd SUBSEP)
+				line = subst_literal(line, "\\$\\{\\{[[:space:]]*matrix\\.[A-Za-z_][A-Za-z_0-9-]*[[:space:]]*\\}\\}", "")
+				for (xd in exprdim)
+					line = subst_literal(line, SUBSEP xd SUBSEP, "${{ matrix." xd " }}")
 				if (line !~ /\$\{\{/) print line
 			} else {
 				# GATE-5: a BARE job name on a matrix job is published with
@@ -415,20 +431,28 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 				# (include-only matrices have no dims). Pre-fix this
 				# printed the bare name only and judged the suffixed
 				# context phantom.
+				# GATE-18c: the suffix slots are positional — presence is the
+				# incset KEY test, never value emptiness; an explicitly
+				# EMPTY tuple value keeps its slot (`Test (, 18)`), which
+				# the old tv != "" test collapsed.
 				sfx = ""
+				sc = 0
 				if (nk > 0) {
 					for (d = 1; d <= nk; d++) {
+						if (!((t SUBSEP dims[d]) in incset)) continue
+						sc++
 						tv = incval[t, dims[d]]
-						if (tv != "") sfx = (sfx == "") ? tv : sfx SUBSEP tv
+						sfx = (sc == 1) ? tv : sfx SUBSEP tv
 					}
 				}
-				if (sfx == "") {
+				if (sc == 0) {
 					for (i = 1; i <= ikt[t]; i++) {
+						sc++
 						tv = incval[t, incord[t, i]]
-						if (tv != "") sfx = (sfx == "") ? tv : sfx SUBSEP tv
+						sfx = (sc == 1) ? tv : sfx SUBSEP tv
 					}
 				}
-				if (sfx == "") print line
+				if (sc == 0) print line
 				else {
 					gsub(SUBSEP, ", ", sfx)
 					print line " (" sfx ")"

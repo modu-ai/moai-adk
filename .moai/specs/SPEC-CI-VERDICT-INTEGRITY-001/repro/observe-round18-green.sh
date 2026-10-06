@@ -18,6 +18,12 @@ echo "empty-array GREEN(expect 1 = explicit failure)=$?"
 cd "$HERE"
 cd "$HERE/expr-axis" && sh "$VALIDATOR" >/dev/null 2>&1
 echo "expr-axis GREEN(expect 1 = expression axis never fabricates a name)=$?"
+cd "$HERE/obj-partial-axis" && sh "$VALIDATOR" >/dev/null 2>&1
+echo "obj-partial-axis GREEN(expect 1 = partial combos never publish)=$?"
+cd "$HERE/inc-missing-field" && sh "$VALIDATOR" >/dev/null 2>&1
+echo "inc-missing-field GREEN(expect 0 = unset tuple field fills empty)=$?"
+cd "$HERE/inc-empty-suffix" && sh "$VALIDATOR" >/dev/null 2>&1
+echo "inc-empty-suffix GREEN(expect 0 = empty tuple value keeps its slot)=$?"
 sh "$REPO_ROOT/.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom.sh" >/dev/null 2>&1; echo "phantom(expect 1)=$?"
 sh "$REPO_ROOT/.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom-control.sh" >/dev/null 2>&1; echo "control(expect 0)=$?"
 sh "$REPO_ROOT/.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-malformed.sh" >/dev/null 2>&1; echo "malformed(expect 1)=$?"

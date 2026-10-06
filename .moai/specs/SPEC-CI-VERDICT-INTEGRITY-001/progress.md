@@ -334,3 +334,17 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   [Unreleased] append-collision resolved keeping both sides) and the
   full observation suite re-run GREEN in the absorbed tree incl.
   repo-root against the real main SSoT.
+- gate_round_18 addendum 2 (turn-end codex gate, 3 P2 findings, each
+  RED-then-GREEN on this tree): (1) object-axis partial combinations —
+  the per-axis expansion kept pre-expansion partials, so a name
+  referencing only earlier axes published while exclude wiped every
+  real combination (obj-partial-axis RED exit 0 → GREEN exit 1;
+  expansion now REPLACES the working set); (2) a standalone include
+  tuple missing a referenced field dropped its whole published name
+  and a real context was judged phantom (inc-missing-field RED exit 1
+  → GREEN exit 0; the product-path empty fill applies to the tuple
+  path, expression-axis refs parked raw); (3) the tuple suffix
+  `tv != ""` test collapsed an explicitly EMPTY value out of its
+  positional slot (inc-empty-suffix RED exit 1 vs `Test (, 18)` →
+  GREEN exit 0; presence is the incset key test with a positional
+  counter). Full suite 16 probes + harness 12 pass / 0 fail.
