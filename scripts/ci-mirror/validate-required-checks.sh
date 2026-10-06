@@ -136,14 +136,71 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	}
 	function emit() {
 		if (!has_name) return
-		# GATE-14: object-axis sub-fields resolve on the template before
-		# combination expansion (single-object arrays; a multi-object
-		# object axis is an approximation — first value wins).
-		for (ok in objsub) {
-			split(ok, op, SUBSEP)
-			# the substitution consumes the WHOLE expression frame — a bare
-			# matrix.axis.sub pattern would leave `${{ value }}` residue
-			name = subst_literal(name, "\\$\\{\\{[[:space:]]*matrix\\." op[2] "\\." op[3] "[[:space:]]*\\}\\}", objsub[ok])
+		# GATE-14/17: object axes. SOLE object axis (no product dims, no
+		# include tuples): each item is ONE combination built from THAT
+		# item only — a mixed field-set would approve combinations GitHub
+		# never publishes. Combined with product dims or include tuples,
+		# the first item resolves the sub-field references (documented
+		# approximation).
+		if (n_oaxes > 0 && nk == 0 && inc_n == 0) {
+			n2 = 1
+			ob_line[1] = name
+			ob_ids[1] = ""
+			for (oa = 1; oa <= n_oaxes; oa++) {
+				axis = oaxes[oa]
+				base = n2
+				for (c = 1; c <= base; c++) {
+					for (idx = 1; idx <= oin[axis]; idx++) {
+						n2++
+						ob_line[n2] = ob_line[c]
+						ob_ids[n2] = ob_ids[c] SUBSEP axis SUBSEP idx
+					}
+				}
+			}
+			# collect the REFERENCED sub-fields from the template — a field
+			# an item lacks evaluates as the EMPTY string on GitHub, so
+			# every reference substitutes (value or empty) and nothing
+			# else: a mixed field-set can never approve a combination.
+			nref = 0
+			s = name
+			while (match(s, /matrix\.[A-Za-z_][A-Za-z_0-9-]*\.[A-Za-z_][A-Za-z_0-9-]*/)) {
+				ref = substr(s, RSTART + 7, RLENGTH - 7)
+				nref++
+				refax[nref] = substr(ref, 1, index(ref, ".") - 1)
+				refsub[nref] = substr(ref, index(ref, ".") + 1)
+				s = substr(s, RSTART + RLENGTH)
+			}
+			for (c = 1; c <= n2; c++) {
+				outl = ob_line[c]
+				cnt = split(ob_ids[c], oidp, SUBSEP)
+				for (p = 2; p <= cnt; p += 2) {
+					ax = oidp[p]
+					ix = oidp[p + 1]
+					for (r = 1; r <= nref; r++) {
+						if (refax[r] != ax) continue
+						lit = ""
+						for (fk in objitems) {
+							split(fk, fp, SUBSEP)
+							if (fp[1] != ax || fp[2] + 0 != ix || fp[3] != refsub[r]) continue
+							lit = objitems[fk]
+						}
+						outl = subst_literal(outl, "\\$\\{\\{[[:space:]]*matrix\\." ax "\\." refsub[r] "[[:space:]]*\\}\\}", lit)
+					}
+				}
+				if (outl !~ /\$\{\{/) print outl
+			}
+			has_name = 0
+			return
+		}
+		if (n_oaxes > 0) {
+			for (oa = 1; oa <= n_oaxes; oa++) {
+				axis = oaxes[oa]
+				for (fk in objitems) {
+					split(fk, fp, SUBSEP)
+					if (fp[1] != axis || fp[2] + 0 != 1) continue
+					name = subst_literal(name, "\\$\\{\\{[[:space:]]*matrix\\." axis "\\." fp[3] "[[:space:]]*\\}\\}", objitems[fk])
+				}
+			}
 		}
 		# include-only matrices (the matrix.include form) have nk == 0 — the
 		# tuple loop below is their publish path; never early-return. Plain
@@ -156,6 +213,9 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		for (i = 1; i <= nk; i++) {
 			k = dims[i]
 			m = split(mvals[k], vals_arr, SUBSEP)
+			# GATE-17: a stored EMPTY value splits to zero parts — it is
+			# still ONE combination (`option: [""]` publishes `Test ()`).
+			if (m == 0 && mvals[k] == "") { vals_arr[1] = ""; m = 1 }
 			newn = 0
 			for (j = 1; j <= n; j++) {
 				for (q = 1; q <= m; q++) {
@@ -319,9 +379,9 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	}
 	function reset_job_mem() {
 		nk = 0; inc_n = 0; had_ref = 0; ex_n = 0; mmode = "inc"; bdim_key = ""
-		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord; delete merged; delete objsub; delete incset; delete mcnt
+		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord; delete merged; delete objitems; delete oin; delete oaxes; delete incset; delete mcnt
 	}
-	BEGIN { in_jobs = 0; has_name = 0; nk = 0; inc_n = 0; in_steps = 0; in_strategy = 0; in_matrix = 0; mmode = "inc"; ex_n = 0; bdim_key = "" }
+	BEGIN { in_jobs = 0; has_name = 0; nk = 0; inc_n = 0; in_steps = 0; in_strategy = 0; in_matrix = 0; mmode = "inc"; ex_n = 0; bdim_key = ""; n_oaxes = 0 }
 	{
 		ind = 0
 		while (substr($0, ind + 1, 1) == " ") ind++
@@ -414,6 +474,9 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		# such combinations (no false green — a kept combination is
 		# over-inclusive, never under).
 		parts_n = split(v, parts, ",")
+		# GATE-17: a WHOLE-EMPTY value list is one empty combination —
+		# split("", sep) returns 0 parts and would drop the combination.
+		if (parts_n == 0 && v == "") { parts[1] = ""; parts_n = 1 }
 		mvals[k] = ""
 		mcnt[k] = 0
 		for (pp = 1; pp <= parts_n; pp++) {
@@ -451,7 +514,13 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			# (target: [{os: ubuntu-latest}]) is a sub-field the template
 			# reads as matrix.target.os.
 			if (is_pair) {
-				objsub[SUBSEP bdim_key SUBSEP k] = v
+				# GATE-17: the FIRST field of an item opens a NEW object —
+				# follow-up fields (ind 12) extend the SAME object, so the
+				# item index is allocated here and never in the ind-12
+				# path. Object axes expand per-item (not first-value).
+				oi = ++oin[bdim_key]
+				objitems[bdim_key SUBSEP oi SUBSEP k] = v
+				if (oin[bdim_key] == 1) { n_oaxes++; oaxes[n_oaxes] = bdim_key }
 				next
 			}
 			# GATE-6: block-form dim item — a bare value appended to the
@@ -493,7 +562,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		line = strip_comment($0); sub(/^[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
 		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); v = strip_quotes(v)
-		objsub[SUBSEP bdim_key SUBSEP k] = v
+		objitems[bdim_key SUBSEP oi SUBSEP k] = v
 		next
 	}
 	in_matrix && ind == 12 && mmode == "excl" && ex_n > 0 && $0 ~ /^[[:space:]]*[A-Za-z_]/ {
