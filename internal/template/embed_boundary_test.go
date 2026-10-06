@@ -5,10 +5,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/template/embedemit"
 )
 
 // The embed allowlist boundary tests (card t1539 M1).
@@ -38,26 +39,23 @@ import (
 // embedManifestFile is the generated allowlist this package compiles in.
 const embedManifestFile = "embed_manifest_gen.go"
 
-// embedDirectiveRe matches one //go:embed directive line in the manifest.
-var embedDirectiveRe = regexp.MustCompile(`(?m)^//go:embed (.+)$`)
-
 // embedManifestPaths parses the generated allowlist into bare template paths
-// (the coordinate space of EmbeddedTemplates(), "templates/" stripped). Only
-// patterns under templates/ belong to the boundary set; sibling embeds such
-// as catalog.yaml are outside it.
+// (the coordinate space of EmbeddedTemplates(), "templates/" stripped). The
+// directive grammar is read through embedemit.ParseDirectives — the single
+// reading of the manifest format. Only patterns under templates/ belong to
+// the boundary set; sibling embeds such as catalog.yaml are outside it.
 func embedManifestPaths(t *testing.T) map[string]struct{} {
 	t.Helper()
 	raw, err := os.ReadFile(embedManifestFile)
 	if err != nil {
 		t.Fatalf("embed manifest %s is unreadable (%v) — the embed allowlist boundary is absent; run `make embed-manifest` to emit it", embedManifestFile, err)
 	}
+	directives, err := embedemit.ParseDirectives(raw)
+	if err != nil {
+		t.Fatalf("parse embed manifest %s: %v", embedManifestFile, err)
+	}
 	paths := make(map[string]struct{})
-	for _, m := range embedDirectiveRe.FindAllStringSubmatch(string(raw), -1) {
-		fields := strings.Fields(m[1])
-		if len(fields) != 1 {
-			t.Fatalf("embed manifest directive %q carries %d patterns; the generator emits exactly one path per line", m[1], len(fields))
-		}
-		p := fields[0]
+	for _, p := range directives {
 		if !strings.HasPrefix(p, "templates/") {
 			continue
 		}
