@@ -282,33 +282,47 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 		}
 		_, _ = fmt.Fprintf(out, "accept %s %s\n", card.ID, todoTextPrefix(card.Text))
 		// Claim the card before dispatch: a queued card becomes picked (the
-		// cycle's own pick); a dead-owner picked card is already claimed. The
-		// card this cycle picked is the only one it may later close.
-		if card.State == factory.BacklogStateQueued {
+		// cycle's own pick); a dead-owner picked card is already claimed —
+		// and its dispatch binding re-points to THIS run (review round-17
+		// P1). The card this cycle picked is the only one it may later
+		// close.
+		if card.State == factory.BacklogStateQueued || card.State == factory.BacklogStatePicked {
+			claimed := card.State == factory.BacklogStatePicked
 			if err := store.Mutate(func(r *factory.BacklogRecord) error {
 				for i := range r.Items {
 					if r.Items[i].ID == card.ID {
 						// REQ-THS-012: positive enumeration — the pick
 						// admits exactly `queued`, refuses everything else
-						// by name.
-						if r.Items[i].State == factory.BacklogStateQueued {
-							r.Items[i].State = factory.BacklogStatePicked
-							// The dispatch binding follows the re-selection
-							// (review round-16 P1-2): a card with an old run's
-							// approval, re-selected into the current run, is
-							// bound HERE — the later completion gate then
-							// resolves the current run and refuses the old
-							// approval. Silent skip when no factory run env
-							// is set (non-factory auto usage); a binding
-							// failure refuses the pick.
-							if envRunID := os.Getenv(config.EnvFactoryRunID); envRunID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
-								if berr := recordDispatchBindingAtRoot(card.ID, envRunID, root); berr != nil {
-									return berr
-								}
+						// by name; the dead-owner rescue admits exactly
+						// `picked` (already claimed) and only re-points the
+						// dispatch binding.
+						switch r.Items[i].State {
+						case factory.BacklogStateQueued:
+							if claimed {
+								return fmt.Errorf("auto: card %s is queued — lost the dead-owner claim", card.ID)
 							}
-							return nil
+							r.Items[i].State = factory.BacklogStatePicked
+						case factory.BacklogStatePicked:
+							if !claimed {
+								return fmt.Errorf("auto: card %s is picked, not a dead-owner rescue", card.ID)
+							}
+						default:
+							return fmt.Errorf("auto: card %s is %s, not a claimable state", card.ID, r.Items[i].State)
 						}
-						return fmt.Errorf("auto: card %s is %s, not queued — refusing the pick", card.ID, r.Items[i].State)
+						// The dispatch binding follows the re-selection
+						// (review round-16 P1-2): a card with an old run's
+						// approval, re-selected into the current run, is
+						// bound HERE — the later completion gate then
+						// resolves the current run and refuses the old
+						// approval. Silent skip when no factory run env
+						// is set (non-factory auto usage); a binding
+						// failure refuses the pick.
+						if envRunID := os.Getenv(config.EnvFactoryRunID); envRunID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+							if berr := recordDispatchBindingAtRoot(card.ID, envRunID, root); berr != nil {
+								return berr
+							}
+						}
+						return nil
 					}
 				}
 				return fmt.Errorf("auto: card %s vanished", card.ID)

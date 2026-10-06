@@ -367,6 +367,80 @@ func TestAutoReselectRebindsAndRefusesOldApproval(t *testing.T) {
 	}
 }
 
+// Regression pin for round-18 P1 (card t1538): a dead-owner PICKED card
+// re-performed by the auto cycle re-points its dispatch binding to the
+// current run under the claim's queue lock — the old run's approval goes
+// inert, and the completion refuses the approval-less new work.
+func TestAutoDeadOwnerReselectBindsCurrentRun(t *testing.T) {
+	root, store := autoDoneFixture(t)
+	seedCard(t, store, "t980", "dead owner card", factory.BacklogStatePicked)
+	// Mark it dead-owner: picked_at/picked_by stamped by a vanished holder.
+	if err := store.Mutate(func(r *factory.BacklogRecord) error {
+		for i := range r.Items {
+			if r.Items[i].ID == "t980" {
+				h := "worker-vanished"
+				e := "2020-01-01T00:00:00Z"
+				r.Items[i].PickedBy = &h
+				r.Items[i].LeaseExpiresAt = &e
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// The old run's row + approval: the forgery bait. The CURRENT run also
+	// holds a picked row (the dispatch record the re-selection binds to).
+	fcPlace(t, root, homestate.Card{CardID: "t980", RunID: "run-old", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 2, EvidenceSHA: "sha-old", UpdatedAt: "2026-09-26T01:00:00Z"})
+	fcPlaceFactoryCard(t, root, "t980", 1, "sha-new", "2026-09-26T02:00:00Z")
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: "uuid-980", RunID: "run-old", CardID: "t980", FactoryVersion: 2,
+		EvidenceHash: "sha-old", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+
+	lv := autoTestLiveness(root, "t980", true, true, nil)
+	tick := 0
+	opts := autoOptions{
+		wait:      5 * time.Minute,
+		liveness:  lv,
+		sessionID: "operator-session-fixture",
+		sleep: func(time.Duration) {
+			tick++
+			path := filepath.Join(root, ".moai", "reports", "t980", "evidence.md")
+			if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte("# evidence\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		},
+		now: func() time.Time { return time.Unix(0, 0).Add(time.Duration(tick) * time.Minute) },
+	}
+	t.Setenv(config.EnvFactoryRunID, fcRun)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+
+	var out strings.Builder
+	if err := runAutoCycle(&out, store, root, opts); err != nil {
+		t.Fatal(err)
+	}
+	got := out.String()
+	if strings.Contains(got, "done t980") {
+		t.Fatalf("the auto cycle closed the dead-owner card on the OLD run's approval:\n%s", got)
+	}
+	if !strings.Contains(got, "non-finding") {
+		t.Errorf("the refused completion carried no labelled non-finding:\n%s", got)
+	}
+	// The re-selection re-bound the card to the current run.
+	db := fcOpen(t, root)
+	defer func() { _ = db.Close() }()
+	row, linked, err := db.RecordedCardRowReadonly(context.Background(), "t980")
+	if err != nil || !linked {
+		t.Fatalf("binding read: linked=%v err=%v", linked, err)
+	}
+	if row.RunID != fcRun {
+		t.Fatalf("binding run = %s, want %s (the re-selection run)", row.RunID, fcRun)
+	}
+}
+
 // fcApprovalsRow bumps a card's factory row version directly — the
 // archive-moment state after a concurrent factory transition.
 func fcBumpRowVersion(t *testing.T, root, cardID string, version int64) {

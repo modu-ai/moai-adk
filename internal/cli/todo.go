@@ -25,6 +25,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -1521,6 +1522,14 @@ func recordDispatchBindingAtRoot(cardID, runID, root string) error {
 		return err
 	}
 	defer func() { _ = db.Close() }()
+	// REQ-FCR-002's scope sentence at this layer (review round-18 P2): a
+	// card with NO factory row is an ordinary card — out of scope for the
+	// binding. Writing one would dangle: the later done would fail
+	// leader-approval-run-unresolvable. Skip silently; the card keeps its
+	// existing completion behavior.
+	if _, err := db.LoadCard(context.Background(), runID, cardID); errors.Is(err, homestate.ErrCardNotFound) {
+		return nil
+	}
 	return db.RecordDispatchBinding(context.Background(), cardID, runID, time.Now())
 }
 

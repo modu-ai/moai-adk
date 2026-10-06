@@ -726,6 +726,46 @@ func TestClaimBindsUnderLockAndPrintsOnce(t *testing.T) {
 	}
 }
 
+// Regression pin for round-18 P2 (card t1538): selecting an ORDINARY card
+// (no factory row) while another card's factory database exists does NOT
+// create a dangling dispatch binding — the ordinary card keeps its
+// existing completion behavior.
+func TestOrdinaryCardSelectionSkipsBinding(t *testing.T) {
+	root, _ := fcFixture(t)
+	// t1: the ordinary card — added to the queue, NO factory row anywhere.
+	if _, _, err := runTodo(t, "add", "ordinary card"); err != nil {
+		t.Fatal(err)
+	}
+	// t2: a factory-linked card (its row creates the factory database), so
+	// the selection of t1 has a live database to wrongly bind into.
+	fcPlaceFactoryCard(t, root, "t2", 1, "sha-t2", "2026-09-26T00:00:00Z")
+
+	t.Setenv(config.EnvFactoryRunID, fcRun)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	if _, _, err := runTodo(t, "next", "t1"); err != nil {
+		t.Fatalf("select the ordinary card: %v", err)
+	}
+
+	// No dangling binding: the factory database has no dispatch record for
+	// the ordinary card, and no factory row either.
+	db := fcOpen(t, root)
+	defer func() { _ = db.Close() }()
+	var n int
+	if err := db.DB.QueryRow(`SELECT count(*) FROM card_dispatch WHERE card_id='t1'`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatalf("a dangling dispatch binding was created for the ordinary card (%d rows)", n)
+	}
+	var rows int
+	if err := db.DB.QueryRow(`SELECT count(*) FROM cards WHERE card_id='t1'`).Scan(&rows); err != nil {
+		t.Fatal(err)
+	}
+	if rows != 0 {
+		t.Fatalf("a factory row was created for the ordinary card (%d rows)", rows)
+	}
+}
+
 // fcBindDispatch records the card's dispatch binding — the current-run
 // authority the completion gate and scan resolve through. Idempotent.
 func fcBindDispatch(t *testing.T, root, cardID, runID string) {
