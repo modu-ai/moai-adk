@@ -119,6 +119,7 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	// selection + ownership recovery data, and silently discarding it would
 	// turn the retry into a mis-attributed run (review fix RF4).
 	journal, journalErr := LoadJournal(JournalPath(in.Home))
+	journalClassified := map[string]bool{}
 	if journalErr != nil {
 		sidecar := JournalPath(in.Home) + ".corrupt-" + time.Now().UTC().Format("20060102T150405")
 		if renameErr := os.Rename(JournalPath(in.Home), sidecar); renameErr != nil {
@@ -127,7 +128,7 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 		return nil, fmt.Errorf("pending-install journal corrupt — preserved at %s; inspect it and re-run (the interrupted install's selection + ownership recovery data must not be silently discarded)", sidecar)
 	}
 	if journal != nil {
-		in.reconcileJournal(journal, manifest, roots, res)
+		in.reconcileJournal(journal, manifest, roots, res, journalClassified)
 		if len(selection) == 0 && len(journal.BundlesSelection) > 0 {
 			selection = journal.BundlesSelection
 		}
@@ -158,6 +159,12 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 		}
 		root := roots[tgt.root]
 		abs := filepath.Join(root.dir, filepath.FromSlash(tgt.rel))
+		if journalClassified[tgt.manifestKey] {
+			// The journal reconciliation already classified this path
+			// (RF5: never double-count, never journal it as an ownership
+			// target).
+			continue
+		}
 		if current, readErr := os.ReadFile(abs); readErr == nil {
 			_, tracked := manifest.Files[tgt.manifestKey]
 			if !tracked {
@@ -382,7 +389,7 @@ func normalizeSelection(selection []string) []string {
 // recorded provenance (E4 — flag or no flag); a mismatch NEVER reinstalls
 // (flag-complete → divergence; unflagged → collision); absent targets fall
 // through to the install pass.
-func (in *Installer) reconcileJournal(j *PendingJournal, manifest *Manifest, roots map[RootSlug]resolvedRoot, res *Result) {
+func (in *Installer) reconcileJournal(j *PendingJournal, manifest *Manifest, roots map[RootSlug]resolvedRoot, res *Result, classified map[string]bool) {
 	for _, e := range j.Entries {
 		slug, rel, ok := splitManifestKey(e.Path)
 		if !ok {
@@ -407,8 +414,23 @@ func (in *Installer) reconcileJournal(j *PendingJournal, manifest *Manifest, roo
 			res.Installed++
 			continue
 		}
-		// Case 3: never reinstall on a mismatch.
+		// Case 3: never reinstall on a mismatch. The classification is
+		// recorded so the RF5 collision pre-pass does not re-count it.
+		classified[e.Path] = true
 		if e.WriteCompleted {
+			// REQ-023 divergence: preserve + backup + report — the backup
+			// arm fires HERE (not in applyTarget) because the classified
+			// set excludes the path from the per-asset pass.
+			name, nameOk := owningEntryName(rel)
+			entry, found := in.lookupEntry(name)
+			if !found || !nameOk {
+				entry = template.Entry{Name: name}
+			}
+			if shipped, shipErr := in.readShippedForKey(entry, e.Path); shipErr == nil {
+				if backupErr := in.backupShipped(root, rel, shipped); backupErr != nil {
+					res.Failures = append(res.Failures, FileOutcome{Path: e.Path, Reason: backupErr.Error()})
+				}
+			}
 			res.DivergencePreserved++
 			res.Divergences = append(res.Divergences, e.Path)
 		} else {
