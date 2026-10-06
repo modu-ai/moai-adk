@@ -237,3 +237,19 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   malformed=1 matrix-exclude=1 repo-root=0; round-5/11/12 probes
   green; harness 12 pass / 0 fail. CI publication still
   platform-blocked.
+- gate_round_14 (codex review gate findings, lane-direct): 3 repairs,
+  RED observed on the committed ca15eceda code then GREEN on this tree
+  (commit `478032c4d`) — (1) value quote-stripping is PAIRED (a bare
+  trailing apostrophe is value text — flavor:["rock'"] publishes
+  Test (rock')); (2) the bracket reference form matrix["os"]
+  normalizes to the dot form before parsing (BSD awk has no gsub
+  backreferences — manual match/substr capture); (3) a list item under
+  a declared axis key belongs to that axis, never to include — object
+  items record sub-fields and the template reads matrix.target.os
+  through them, with the substitution consuming the WHOLE expression
+  frame (the bare-pattern residue `${{ value }}` was caught by the
+  GREEN probe before commit). Multi-object object axes resolve their
+  first value (documented approximation). Regression: phantom=1
+  control=0 malformed=1 matrix-exclude=1 repo-root=0; round-12/13
+  probes green; harness 12 pass / 0 fail. CI publication still
+  platform-blocked.
