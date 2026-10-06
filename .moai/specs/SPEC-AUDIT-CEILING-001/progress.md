@@ -493,7 +493,7 @@ dispositions above and in AC-ACE-014's carve-out.
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-06
-run_commit_sha: pending-backfill-run
+run_commit_sha: e86e44c8a
 run_status: complete
 ac_pass_count: 22
 ac_fail_count: 0
