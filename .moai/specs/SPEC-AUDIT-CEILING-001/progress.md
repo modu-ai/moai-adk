@@ -9,6 +9,44 @@ plan_phase_branch: WT-audit-ceiling-counter
 plan_phase_worktree: .moai/worktrees/t1500
 plan_phase_artifacts: 7 (spec.md, plan.md, acceptance.md, design.md, research.md, progress.md, decision-index.md — Tier L set of 5 + progress + decision-index per interview.decision_gate: on)
 
+### Plan-audit v4-iter2 repair — v0.5.1 (2026-10-06, this change)
+
+- v4-iter2 verdict: FAIL 0.94 (0.81 → 0.94, no regression; fresh-series
+  iter2) — `.moai/reports/t1500/plan-audit-v4-iter2.md`, audited_sha
+  `23fe75465`. iter1's V4-D1/D2/D3 and V4-O1/O2 all verified RESOLVED; one
+  new blocking V4-D4 (same mutant-probe class as V4-D3, minted by the
+  v0.5.0 repair text: the "removing either producer arm turns the criterion
+  red" claim was false in the multi-model direction — a single-model-only
+  body greens both v0.5.0 counts). Hunk-limited fix per the verdict's
+  reread_hunks (acceptance.md#AC-ACE-008, plan.md#sC-baselines + the
+  design §3 phrasing pin); patch version 0.5.1 per the dispatch's
+  allowance, recorded in §H.
+- V4-D4 closure: AC-ACE-008's claim reworded to THREE asserted counts, both
+  mutant directions verified by construction — single-model-only body:
+  `convergence_overall` ≥1 (green) + `backend it actually ran` ≥1 (green)
+  + `PerBackendVerdicts` = 0 (RED) → criterion red; multi-model-only body:
+  `convergence_overall` ≥1 (green) + `PerBackendVerdicts` ≥1 (green) +
+  `backend it actually ran` = 0 (RED) → criterion red; receipt-less body:
+  all three 0 → red. Third count phrase = `PerBackendVerdicts`, the
+  multi-model convergence-result field name plan.md M1's instruction
+  carries.
+- Deviation from the verdict's example, measured: the prescribed example
+  phrase `convergence result` reads **1 / exit 0 @23fe75465** (pre-existing
+  unrelated fail-open prose at plan-auditor.md:251) — a RED cell on it
+  would be vacuous and its green assertion already satisfied by untouched
+  text. `PerBackendVerdicts` measured 0 / exit 1 @23fe75465 and is
+  multi-model-only by construction; adopted instead. The rejection and
+  measurement are recorded in acceptance.md AC-ACE-008, plan.md §C, and
+  design.md §3.
+- Cross-layer sweep: design §3 pins the arm-distinctive phrasings
+  (multi-model `PerBackendVerdicts` / single-model "backend it actually
+  ran"); plan §C gains the multi-model baseline row; plan M1's multi-model
+  bullet names the pinned token. No REQ id changed (15); AC count 21.
+- Note carried from the verdict: the claude required-backend gate remains
+  unmet (inconclusive, both iterations) — no PASS can be yielded regardless
+  of score until a claude verdict is obtained; measure with `moai verify
+  audit-plan` after the audit_multi call before dispatching the next round.
+
 ### Plan-audit v4-iter1 repair — v0.5.0 (2026-10-06, this change)
 
 - v4-iter1 verdict: FAIL 0.81 (Tier L threshold 0.85; fresh v0.4.0-series

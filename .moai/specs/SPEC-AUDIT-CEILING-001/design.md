@@ -172,7 +172,17 @@ required_backend: <backend-name> <pass|fail|inconclusive>   # repeatable, one li
   required backend with no line at all (D3 — receipts record every required
   backend's state, so an absent or inconclusive required backend is
   distinguishable from a passing one).
-- Producer paths (D19 + D32 — both shapes REQ-ACE-008's trigger names):
+- Producer paths (D19 + D32 — both shapes REQ-ACE-008's trigger names).
+  Arm-distinctive phrasings (V4-D4): the two export instructions carry
+  non-overlapping distinctive tokens — the multi-model instruction cites
+  the convergence result's `PerBackendVerdicts` field; the single-model
+  instruction uses "the backend it actually ran". AC-ACE-008's three
+  asserted counts run one per arm plus the shared `convergence_overall`
+  key, so a body carrying only one producer instruction fails the other
+  arm's count in either mutant direction — a generic phrase
+  ("convergence result") cannot serve as a discriminating count because it
+  already appears in the deployed body's unrelated fail-open prose
+  (measured 1 / exit 0 at 23fe75465, plan-auditor.md:251):
   - Multi-model audit: the projection is mechanical from the convergence
     result the auditor already receives — `ConvergenceResult.OverallVerdict`
     and the `PerBackendVerdicts` entries whose `Gate == required`,

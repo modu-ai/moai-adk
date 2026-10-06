@@ -68,6 +68,7 @@ RED-now baselines (verbatim commands, this run, this tree, exit codes recorded; 
 | GateConfig production-dead | `grep -rn "runtime\.GateConfig" internal/ cmd/ --include="*.go" \| grep -v _test` | 0 non-test matches |
 | receipt export instruction absent (multi-model arm) | `grep -c "convergence_overall" .claude/agents/moai/plan-auditor.md` | 0 (exit 1) |
 | receipt export instruction absent (single-model arm) | `grep -c "backend it actually ran" .claude/agents/moai/plan-auditor.md` | 0 (exit 1; measured at a4c5b9594 — the V4-D3 per-arm split needs each arm's own baseline) |
+| receipt export instruction absent (multi-model arm) | `grep -c "PerBackendVerdicts" .claude/agents/moai/plan-auditor.md` | 0 (exit 1; measured at 23fe75465 — the V4-D4 third count; the convergence-result field name is multi-model-only, absent from the single-model instruction by design §3's phrasing pins. The verdict's example phrase `convergence result` was measured 1 / exit 0 at 23fe75465 — pre-existing prose at plan-auditor.md:251 — so it cannot discriminate arms and was not adopted) |
 | mirror drift | `diff -q` deployed vs template | plan-auditor.md DIFF; audit-artifact-convention.md SAME (phase-execution.md DIFF measured but no longer an edit target — Out of Scope) |
 | Tier ceilings verified | `sed -n '75,84p' .moai/config/sections/harness.yaml` | S:1 M:2 L:3; policy auto_delta_rounds=1, on_final_hit=hold-and-split |
 | resolver fail-open confirmed | `sed -n '123,131p' internal/cli/mcp_worktree_root.go` | `if err != nil { return config.AuditGates{}, "" }` — the fail-open path REQ-ACE-010 corrects |
@@ -123,7 +124,9 @@ Data-model first: the receipt schema is the least reversible decision.
   § What, covering BOTH audit shapes REQ-ACE-008's trigger names:
   - multi-model audit: project the `audit_multi` convergence result it
     already receives (`ConvergenceResult.OverallVerdict` +
-    `PerBackendVerdicts`, design.md §3);
+    `PerBackendVerdicts`, design.md §3) — the instruction carries the
+    `PerBackendVerdicts` field name, the arm-distinctive phrase AC-ACE-008's
+    third asserted count runs on (V4-D4);
   - single-model audit: write `convergence_overall` from its own verdict
     under the §3 projection rule ({PASS, PASS-WITH-DEBT} → pass;
     {FAIL, FAIL_WARNED} → fail; {INCONCLUSIVE} → inconclusive on the backend
