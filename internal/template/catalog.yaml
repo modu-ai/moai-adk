@@ -70,7 +70,7 @@ catalog:
             - name: moai-plan
               tier: core
               path: templates/.agents/skills/moai-plan/
-              hash: 964967bd3226ace441bd779380403848e287ee4534b9b9e53b6206865be48a34
+              hash: ab86a1939cde6dfa1d97a66ec451c2d05026cf630ed7e28699ff5fd917279ea1
               version: 1.0.0
               depends_skills:
                 - moai
@@ -101,7 +101,7 @@ catalog:
             - name: moai-run
               tier: core
               path: templates/.agents/skills/moai-run/
-              hash: b14cd7eaa7ef9e933969871b7806185377f5019c97a71d653f097c9cb3619e9d
+              hash: 56812b8d9bfd21b7b0167257b4876b76a49e21a219111f98b02a3467fdb8e222
               version: 1.0.0
               depends_skills:
                 - moai
@@ -111,7 +111,7 @@ catalog:
             - name: moai-sync
               tier: core
               path: templates/.agents/skills/moai-sync/
-              hash: 078e189ac587d72c02d04169a06ffed178e810205319b8f45557083fd9d2c7c4
+              hash: 259b1dcdd8ccdb06af4bf15552009e38a8bee794d3d98477ee427c3e9eac9466
               version: 1.0.0
               depends_skills:
                 - moai
@@ -127,7 +127,7 @@ catalog:
             - name: moai-workflow-project
               tier: core
               path: templates/.claude/skills/moai-workflow-project/
-              hash: 9b4ae7bada89089190e7d88165396ab245ee37e2e6963a13b122ce00edfd148d
+              hash: 98e3cb9d3e093411e864237b66abf44410fb4402456b5f87857f5a3cdadb21aa
               version: 1.0.0
             - name: moai-workflow-spec
               tier: core
@@ -220,7 +220,7 @@ catalog:
                 - name: moai-clean
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-clean/
-                  hash: 77a88356843cd40229546050e5e230ccb0140a6a465e97569e9589f731ea0626
+                  hash: 73b5afcb5ff9198d70eb5af9955cff517a17f2295850673b3e154eae147f8f32
                   version: 1.0.0
                   depends_skills:
                     - moai
@@ -228,14 +228,14 @@ catalog:
                 - name: moai-codemaps
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-codemaps/
-                  hash: bb6aaab2427d6967adebd4ba58f94f8e7635ba99fc7b96b8da33f0a811880640
+                  hash: 8ab5e7351c68052b36516d058565ba577d5b5139025acabe028c57a33e74d225
                   version: 1.0.0
                   depends_skills:
                     - moai
                 - name: moai-e2e
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-e2e/
-                  hash: 380df1ad5bba86118ca9974acee11f9e4862dd44b5e0e05507ba56d0cf94a463
+                  hash: d6a80302481e3c0dcd4e786448df35efffcd8c4052665e672a346db8c34d07f3
                   version: 1.0.0
                   depends_skills:
                     - moai
@@ -246,14 +246,14 @@ catalog:
                 - name: moai-feedback
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-feedback/
-                  hash: e962dd0442de3ddc338dab9731b40956e4a4cc63fb87e11e78f2897d1203ca05
+                  hash: 2a35ab80ba9c4e6b54adaa81264e89e9f56947f1a865a8c1effb5d9251ebfb63
                   version: 1.0.0
                   depends_skills:
                     - moai
                 - name: moai-fix
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-fix/
-                  hash: ceed28b4155a3996b18fe396d3f35ebef4b469aa7286594769eb1fec3244e28c
+                  hash: 6faafb575ce2d69888fb8563adf4802e9a91333651ea7a1b8fe8394faacbb07a
                   version: 1.0.0
                   depends_skills:
                     - moai
@@ -261,28 +261,28 @@ catalog:
                 - name: moai-gate
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-gate/
-                  hash: c9c677e0d3c6a0da54ee6ce7819d7d1d9a1fa6be7d283f2adedab2cc84ab9f3d
+                  hash: 548e9ed0f35a533aa8302ceddae7f8b690e7d35bf8d135d1e9a55d942a0cb7c1
                   version: 1.0.0
                   depends_skills:
                     - moai
                 - name: moai-goal
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-goal/
-                  hash: f0ef4e50e6d22b7984f13fe4f2f0d3dadc701ea8e1e83f574ba17d3ca4265e51
+                  hash: 371c292fdfaf895936696b35b6fa395b701c98675a6b8dee3a3212900b52ebb7
                   version: 1.0.0
                   depends_skills:
                     - moai
                 - name: moai-gtd
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-gtd/
-                  hash: b806d6c0af29b626472b9aaf1f7db220c1c972bb6b71b2ab693dc23745a6a2a9
+                  hash: 888fe21dcf7c70aeebaad5d751c05dba82b8f7788870c4c7716bfcfcc5f95357
                   version: 1.0.0
                   depends_skills:
                     - moai
                 - name: moai-harness
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-harness/
-                  hash: 0004d4fbd75c2c0bd55f9ed64b917e202e3f867118d4459faff92482ea6c9515
+                  hash: 09c89f3970afac8813a378ccd557c9fc4e583b0c443228453ae32d52cda51757
                   version: 1.0.0
                   depends_skills:
                     - moai
@@ -290,7 +290,7 @@ catalog:
                 - name: moai-loop
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-loop/
-                  hash: 3e4f6c65e2d384e51b10ff02c935199e246837ebf54d84557fbee1aa4af58393
+                  hash: 0b83c4b7be7040b5c5eba8c1f70df1d2e8301cefa29a1ec52c4f93618111e305
                   version: 1.0.0
                   depends_skills:
                     - moai
@@ -298,21 +298,21 @@ catalog:
                 - name: moai-mx
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-mx/
-                  hash: b9278f0d7e4e3be65e8b08f91e1c03951543ed9b843d866bfc2ec63220939c92
+                  hash: fa11d2b6c9a5065447046d9e63ceb0e83e1caa05257459356aefe1c890970c0f
                   version: 1.0.0
                   depends_skills:
                     - moai
                 - name: moai-project
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-project/
-                  hash: c461fa8bcd198f8fa4b390af5c7c5c5457380f27e7d33984170c098dd2aa6933
+                  hash: 095fd1b8d5c9f565e94b1bf1e00dc77b256ee8cf148ec256db865b1a22d55e4b
                   version: 1.0.0
                   depends_skills:
                     - moai
                 - name: moai-review
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-review/
-                  hash: d6160db6427f54bd05b64bff12e5c8cbed8eb48f40f4a4a9471bc00c1a69e56e
+                  hash: f098d342be7fd499e3f0a5a980b51a74ea7b175a13a70a1f43b2509f277aa6a7
                   version: 1.0.0
                   depends_skills:
                     - moai
@@ -321,7 +321,7 @@ catalog:
                 - name: moai-todo
                   tier: optional-pack:commands
                   path: templates/.agents/skills/moai-todo/
-                  hash: 38216ff96f0e233cbd26c79e3706ca1c14198a5a2dd8b458cf5f2b13a57a89ac
+                  hash: 058049e8a835f341894f63905b6109b04638747813fad5d7e7da1e31d774724d
                   version: 1.0.0
                   depends_skills:
                     - moai
