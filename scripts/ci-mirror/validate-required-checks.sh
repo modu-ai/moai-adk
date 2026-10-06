@@ -98,7 +98,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	# BSD awk (the escaped replacement is recovered as a bare ampersand
 	# again). Split on the pattern instead: the replacement text enters as
 	# plain data, ampersands and all.
-	function subst_literal(str, ere, lit,   a, i, out) {
+	function subst_literal(str, ere, lit,   a, i, out, n) {
 		n = split(str, a, ere)
 		out = a[1]
 		for (i = 2; i <= n; i++) out = out lit a[i]
@@ -215,9 +215,11 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			# ORIGINAL matrix axes alone (GitHub names
 			# os:[ubuntu]+include[extra:smoke] as `Test (ubuntu-latest)`,
 			# never `Test (ubuntu-latest smoke)`).
+			# GATE-12: GitHub joins MULTIPLE matrix values with comma+space
+			# (`Test (ubuntu-latest, 18)`), not a bare space.
 			if (nk > 0 && !had_ref) {
 				sfx2 = sufs[j]
-				gsub(SUBSEP, " ", sfx2)
+				gsub(SUBSEP, ", ", sfx2)
 				print outl " (" sfx2 ")"
 			} else {
 				print outl
@@ -267,7 +269,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 				}
 				if (sfx == "") print line
 				else {
-					gsub(SUBSEP, " ", sfx)
+					gsub(SUBSEP, ", ", sfx)
 					print line " (" sfx ")"
 				}
 			}
