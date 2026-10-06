@@ -1,8 +1,9 @@
+//go:build !windows
+
 package runtime
 
 import (
 	"path/filepath"
-	goruntime "runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -15,11 +16,11 @@ import (
 // blocks until a writer appears, which hung kickoff and card transitions.
 // The counter reads evidence through the homestate readBoundedFile
 // discipline instead: a regular-file check plus a size bound, refusing
-// non-conforming files without opening them.
+// non-conforming files without opening them. The `//go:build !windows` tag
+// (card t1563) is the compile-level guard the file's runtime GOOS check used
+// to approximate — syscall.Mkfifo does not exist on windows, and a runtime
+// skip runs after compilation, too late to help it.
 func TestCountAuditRoundsDoesNotBlockOnFifoEvidence(t *testing.T) {
-	if goruntime.GOOS == "windows" {
-		t.Skip("FIFOs are POSIX-only; the regular-file guard is source-level there")
-	}
 	cases := []struct {
 		name     string
 		filename string
