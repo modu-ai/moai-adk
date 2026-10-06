@@ -1,0 +1,11 @@
+# Hub-file list (SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-020): the tracked paths
+# the factory hub chain orders by. One path per line; '#' comments and blank
+# lines are ignored. Data mirror of the tracked baseline copy in this
+# repository's SPEC directory — the two path sets must stay equal
+# (TestHubFileListFromBaseline), and each path's recorded commit count is
+# re-measured by TestHubFileListMatchesMeasuringCommand.
+internal/template/catalog.yaml
+internal/config/defaults.go
+internal/cli/todo.go
+internal/web/assets/i18n.js
+.claude/rules/moai/workflow/kanban-dispatch.md

@@ -66,3 +66,60 @@ func todoRelationCell(f factory.BacklogFinding, self string) string {
 	}
 	return f.SubjectID + " " + f.Relation + " this (" + f.Source + ")"
 }
+
+// readTodoGraph is the relation view's read (SPEC-TODO-CARD-ISSUANCE-001
+// REQ-TCI-023): the same pure store read readTodoQueue makes, shaped as
+// graph nodes (every card the record still names — live, dropped, held —
+// plus the archive) and edges (the recorded findings, archived ones
+// included). It lives in THIS file because the single-seam rule is about
+// the package, not the function: the graph view names no store symbol
+// beyond what this file already names, takes no lock, and writes nothing.
+// Beyond todoGraphMaxNodes the view stops drawing and counts — the bound
+// the M0 baseline sized (the 214 finding-named cards union the 39 open
+// ones, with headroom).
+func readTodoGraph(projectRoot string) TodoGraphVM {
+	root := factory.ResolveTodoQueueRoot(projectRoot)
+	vm := TodoGraphVM{Root: root}
+	rec, err := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).LoadPure()
+	if err != nil {
+		vm.Unavailable = true
+		return vm
+	}
+	if rec == nil {
+		return vm
+	}
+	onGraph := make(map[string]bool, len(rec.Items)+len(rec.Archived))
+	for _, it := range rec.Items {
+		if len(vm.Nodes) >= todoGraphMaxNodes {
+			vm.Omitted++
+			continue
+		}
+		vm.Nodes = append(vm.Nodes, TodoGraphNode{ID: it.ID, Text: it.Text, State: string(it.State), Index: len(vm.Nodes)})
+		onGraph[it.ID] = true
+	}
+	for _, entry := range rec.Archived {
+		if len(vm.Nodes) >= todoGraphMaxNodes {
+			vm.Omitted++
+			continue
+		}
+		vm.Nodes = append(vm.Nodes, TodoGraphNode{ID: entry.Item.ID, Text: entry.Item.Text, State: "archived", Index: len(vm.Nodes)})
+		onGraph[entry.Item.ID] = true
+	}
+	addEdge := func(f factory.BacklogFinding) {
+		// An edge naming a node the bound omitted draws to nothing — it
+		// stays out with the node it names.
+		if !onGraph[f.SubjectID] || !onGraph[f.RelatedID] {
+			return
+		}
+		vm.Edges = append(vm.Edges, TodoGraphEdge{From: f.SubjectID, To: f.RelatedID, Relation: f.Relation, Source: f.Source})
+	}
+	for _, f := range rec.Findings {
+		addEdge(f)
+	}
+	for _, entry := range rec.Archived {
+		for _, af := range entry.Findings {
+			addEdge(af.Finding)
+		}
+	}
+	return vm
+}
