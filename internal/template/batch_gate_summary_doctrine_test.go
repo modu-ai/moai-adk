@@ -189,9 +189,13 @@ func batchGateAnchors() []batchGateAnchor {
 		{"A24", unit(`A row is reserved`, `outside the single approval`, `operator-held`), rep("operator-held, ", "")},
 		{"A25", unit(`A row is reserved`, `outside the single approval`, `irreversible operation on an external shared system`), rep("or an irreversible operation on an external shared system", "or another case")},
 		{"A26", allOf(
-			unit(`leader session keeps`, `final PASS/FAIL verdicts`, `final merge approval`, `operator gates`, "card issuance and `done` through queue mutations", `CodeRabbit slot-wait adjudication`, `cross-session dispute coordination`),
+			// Card t1542 moved the per-card verdict, merge approval, `done`,
+			// CodeRabbit adjudication, and dispute coordination to the lanes
+			// (auto-semantics.md §9.2 reserved list + mechanics § The
+			// leader's remaining role); the pin follows the revised sentence.
+			unit(`leader session keeps`, `card issuance and queue admissions`, `cross-card conflict coordination`, `serial-slot policy`),
 			unit(`operator gates item does not include the operator-form plan→run Kickoff row`, `reserved only when it falls in a keep-set category`, `otherwise it is a summary row`),
-		), rep("CodeRabbit slot-wait adjudication, and ", "and ")},
+		), rep("cross-card conflict coordination, and ", "and ")},
 		{"A27", unit("`workflow.autonomy.mode` is `contract`", `moai contract kickoff-check`, `no summary row exists`), rep("no summary row exists", "a summary row is formed")},
 		{"A28", unit(`binds to the final iteration`, `current plan artifacts`, `never covers`), rep("never covers", "may cover")},
 		{"A29", allOf(
