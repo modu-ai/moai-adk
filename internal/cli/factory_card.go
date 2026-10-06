@@ -1519,6 +1519,13 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// session refuses naming the holder; a free or stale window is resolved
 	// exactly as acquire resolves it and taken over. The refusal releases
 	// NOTHING: the window is the other session's (O1).
+	//
+	// F7 (card-review r3): the merge step reads WindowLeaseDuration when its
+	// seam is unset, so complete initializes the override here — the same
+	// initialization every other window verb performs at entry — or a
+	// configured lease_minutes: 0 would read as the shipped default in this
+	// process alone.
+	initWindowLeaseOverride(lockRoot)
 	lock, err := factory.ReadIntegrationLock(lockRoot)
 	if err != nil {
 		return fmt.Errorf("factory complete: %w", err)

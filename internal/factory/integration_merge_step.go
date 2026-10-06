@@ -206,9 +206,16 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	// The caller holds the window with an unexpired lease: renew it and
 	// apply the queue's liveness drops — the same serialized mutation
 	// (REQ-MWQ-017's second sentence).
+	//
+	// F7 (card-review r3): an unset seam falls back to WindowLeaseDuration —
+	// the CONFIGURED duration the CLI verbs initialize (the release-path
+	// promotion and the status refresh stamp with it too) — never straight
+	// to the shipped default. The former fallback re-enabled a lease the
+	// project had configured AWAY (lease_minutes: 0, the disabled lease the
+	// acquire verb honors) the moment the merge renewed it.
 	lease := seams.LeaseDuration
 	if lease == 0 {
-		lease = IntegrationLeaseDefault
+		lease = WindowLeaseDuration
 	}
 	if err := UpdateIntegrationWindow(in.Root, func(w *IntegrationLock) error {
 		if w.Held() && w.SessionID == in.CallerSessionID {

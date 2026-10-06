@@ -679,6 +679,39 @@ func TestMergeStepLateIgnoredFileCollisionRefusesMerge(t *testing.T) {
 	}
 }
 
+func TestMergeStepLeaseRenewalPreservesTheConfiguredDisabledLease(t *testing.T) {
+	// F7 (card-review r3): the renewal and the recheck stamp read ONLY
+	// seams.LeaseDuration, whose zero fell back to IntegrationLeaseDefault —
+	// a configured lease_minutes: 0 (the DISABLED lease, honored by the
+	// acquire verb and by the release-path promotion through
+	// WindowLeaseDuration) was silently re-enabled mid-merge: the holder
+	// left the step with a fresh 30-minute stamp it never configured. The
+	// unset-seam fallback is the configured value, so the disabled lease
+	// survives the renewal exactly as it survives acquire.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	prev := WindowLeaseDuration
+	WindowLeaseDuration = 0 // what lease_minutes: 0 resolves to (the disabled lease)
+	t.Cleanup(func() { WindowLeaseDuration = prev })
+	// DeferRelease: complete's shape — the step returns without releasing,
+	// so the renewed record is observable.
+	in := f.input()
+	in.DeferRelease = true
+	if _, err := RunMergeStep(in, f.seams(card)); err != nil {
+		t.Fatalf("the merge step must succeed: %v", err)
+	}
+	lock, err := ReadIntegrationLock(f.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !lock.Held() || lock.SessionID != "sess-b" {
+		t.Fatalf("the deferred shape leaves the window in the caller's hold: %+v", lock)
+	}
+	if lock.LeaseExpiresAt != "" {
+		t.Fatalf("a disabled lease must not be re-stamped by the merge step's renewal, got expiry %s", lock.LeaseExpiresAt)
+	}
+}
+
 func TestMergeStepRecheckReadsTheClockInsideTheSection(t *testing.T) {
 	// F9 (card-review r3): the re-verification decided lease expiry against
 	// the ENTRY-time clock — a lease lapsing between the entry read and the
