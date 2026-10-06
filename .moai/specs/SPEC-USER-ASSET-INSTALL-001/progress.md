@@ -659,7 +659,42 @@ author: manager-spec
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_complete_at: 2026-10-06
+- run_commit_sha: c5648ad0d
+- run_status: complete
+- ac_pass_count: 25
+- ac_fail_count: 0
+- preserve_list_post_run_count: 0
+- l44_pre_commit_fetch: not-run (lane worktree, local commits only — the
+  lane orchestrator owns integration; no push performed)
+- l44_post_push_fetch: not-run (same — push is the lane orchestrator's
+  batch act)
+- new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues at M7/M8/
+  review-fix exit; the numeral-residual failure for
+  internal/web/agentfm.go is a PRE-EXISTING baseline observation,
+  reproduced with this run's changes stashed)
+- cross_platform_build.linux: not-run (no linux lane; CI owns it)
+- cross_platform_build.windows: pass (GOOS=windows GOARCH=amd64
+  go build ./... exit 0 at M0/M2/M4/M6/M7/review-fix exits)
+- cross_platform_build.darwin: pass (native; every suite run above)
+- total_run_phase_files: ~200 (188 in M4 alone; M6 deleted 333 paths)
+- m1_to_m8_commit_strategy: per-milestone commits M0..M8 + review-fix +
+  coverage-gap + doctor-golden + evidence commits, all carrying the
+  card id (git log a4ff30c73~1..c5648ad0d — 14 commits)
+- coverage_note: internal/userassets 78.0% measured (below the 85%
+  TRUST 5 target); the remainder is confinedWrite/removeEntry error
+  arms and platform-specific lock branches — ACCEPTED DEBT per D.6,
+  named here per verification-claim-integrity §1.1
+- ci_run_owner: the repository-wide test verdict is owned by the CI run
+  on origin/develop — PENDING at report time (no push performed; the
+  full internal/cli suite exceeded two wall-clock timeouts on this
+  loaded machine with zero test-level failures; the two named flakes
+  are pre-existing load-sensitive timing tests)
+- e2e_matrix: M8 §E.2 above (real-binary init/update/divergence/
+  collision/bundle/doctor round-trip on a temp HOME, claude harness;
+  codex harness covered by the four-root presence assertions + the
+  codex-only profile tests)
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
