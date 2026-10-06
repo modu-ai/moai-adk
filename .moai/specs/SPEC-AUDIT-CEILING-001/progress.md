@@ -374,11 +374,138 @@ plan_phase_artifacts: 7 (spec.md, plan.md, acceptance.md, design.md, research.md
 
 ## §E.2 Run-phase Evidence
 
-_pending run-phase — owned by manager-develop_
+Run phase executed 2026-10-06 by manager-develop (card t1500, cycle_type=tdd),
+branch `WT-audit-ceiling-counter`, worktree `.moai/worktrees/t1500`. Milestone
+commits: M1 `fb7e89c8e` (carries the draft→in-progress transition), M2
+`8bbb400fa`, M3 `8bc6805db`, M4 (this commit). The AC rows below were each
+executed in this run against this tree (HEAD `8bc6805db` + the M4 working
+set); every output quoted is verbatim.
+
+### AC binary matrix (22/22 PASS)
+
+| AC | Verdict | Command (all with -count=1) | Observed output |
+|---|---|---|---|
+| AC-ACE-001 | PASS | `go test ./internal/runtime -run '^(TestCountAuditRounds\|TestCountAuditRoundsDistinctN)$' -race` | `--- PASS: TestCountAuditRounds` · `--- PASS: TestCountAuditRoundsDistinctN` · `ok ... internal/runtime 1.327s` |
+| AC-ACE-002 | PASS | `go test ./internal/config -run '^(TestStructYAMLSymmetry\|TestOnFinalHitValidated)$' -v` + `grep -c "no Go reader" internal/config/loader.go` | `--- PASS: TestStructYAMLSymmetry` · `--- PASS: TestOnFinalHitValidated` · `ok ... internal/config 0.329s`; grep → `0` |
+| AC-ACE-003 | PASS | `go test ./internal/runtime -run '^TestCeilingRefusal$' -race` | `--- PASS: TestCeilingRefusal` (both subtests) · `ok ... 1.186s` |
+| AC-ACE-004 | PASS | `go test ./internal/runtime -run '^(TestCeilingPolicyDebtAdmit\|TestCeilingPolicyReceiptHold)$' -race` | `--- PASS: TestCeilingPolicyDebtAdmit` · `--- PASS: TestCeilingPolicyReceiptHold` |
+| AC-ACE-005 | PASS (RG) | `go test ./internal/runtime -run '^TestCeilingPolicySplit$' -race` | `--- PASS: TestCeilingPolicySplit` |
+| AC-ACE-006 | PASS | `go test ./internal/runtime -run '^TestCeilingPolicyHold$' -race` | `--- PASS: TestCeilingPolicyHold` |
+| AC-ACE-007 | PASS | `go test ./internal/runtime -run '^TestCeilingRefusalOutput$'` | `--- PASS: TestCeilingRefusalOutput` |
+| AC-ACE-008 | PASS | `go test ./internal/auditverdict -run '^(TestParseReceipt\|TestParseReceiptPassWithDebtProjection)$' -v` + the three export greps | `--- PASS` ×2 · `ok ... 0.283s`; `grep -c convergence_overall plan-auditor.md` → `3`; `backend it actually ran` → `1`; `PerBackendVerdicts` → `1` (deployed, mirror, and emitted .toml all carry them) |
+| AC-ACE-009 | PASS | `go test ./internal/auditverdict -run '^TestAdmitRequiredBackendFail$'` | `--- PASS: TestAdmitRequiredBackendFail` |
+| AC-ACE-010 | PASS | `go test ./internal/auditverdict -run '^(TestAdmitReceiptAbsent\|TestAdmitConfigErrorRefused)$'` | `--- PASS` ×2 |
+| AC-ACE-011 | PASS | `go test ./internal/runtime -run '^TestRequiredBackendOverride$'` | `--- PASS: TestRequiredBackendOverride` |
+| AC-ACE-012 | PASS (RG) | `go test ./internal/runtime -run '^TestAuditTrailAppend$'` | `--- PASS: TestAuditTrailAppend` |
+| AC-ACE-013 | PASS | `go test ./internal/runtime -run '^TestCeilingPolicyPassThrough$' -race` | `--- PASS: TestCeilingPolicyPassThrough` |
+| AC-ACE-014 | PASS | `go test ./internal/template -run '^TestSPECEditedRegionsSynced$'` | `ok ... internal/template 0.403s` (region-scoped; plan-auditor.md whole-file drift named known-FAIL inside the test comment — the edited regions verify) |
+| AC-ACE-015 | PASS | `go test ./internal/homestate -run '^TestCardTransitionCeilingRefusal$'` + `go test ./internal/contract/kickoff -run '^TestKickoffEvaluatorCeilingRefusal$'` | `--- PASS` ×2 — one arm per LIVE seam, refusal reason + trail observable, pass-through control decides |
+| AC-ACE-016 | PASS (RG) | `go test ./internal/runtime -run '^TestNoInteractivePrompt$'` | `--- PASS: TestNoInteractivePrompt` (14 non-test files swept) |
+| AC-ACE-017 | PASS | `go test ./internal/runtime -run '^TestCeilingPolicyHashHold$' -race` | `--- PASS: TestCeilingPolicyHashHold` |
+| AC-ACE-018 | PASS | `go test ./internal/auditverdict -run '^TestAdmitRequiredBackendAbsent$'` | `--- PASS: TestAdmitRequiredBackendAbsent` |
+| AC-ACE-019 | PASS | `go test ./internal/auditverdict -run '^TestAdmitRequiredBackendInconclusive$'` | `--- PASS: TestAdmitRequiredBackendInconclusive` |
+| AC-ACE-020 | PASS | `go test ./internal/runtime -run '^TestCountAuditRoundsDistinctN$'` | `--- PASS: TestCountAuditRoundsDistinctN` |
+| AC-ACE-021 | PASS | `go test ./internal/runtime -run '^TestCeilingDeltaEligibility$' -race` | `--- PASS: TestCeilingDeltaEligibility` (all five arms + D1's debt-admit arm) |
+| AC-ACE-022 | PASS | `go test ./internal/contract/kickoff -run '^TestKickoffEvaluatorRequiredBackendRefusal$'` + `go test ./internal/homestate -run '^TestCardTransitionRequiredBackendRefusal$'` | `--- PASS` ×2 — both seams resolve the gate set and refuse on a fail receipt; pass-receipt controls decide |
+
+### RED evidence (E8, verbatim pre-GREEN captures)
+
+- auditverdict M1 RED (compile-error class — the new API did not exist):
+  `internal/auditverdict/verdict_receipt_test.go:29:60: too many arguments in
+  call to Admit ... want (Fields, Phase, float64, bool)` +
+  `f.Receipt undefined (type Fields has no field or method Receipt)`, FAIL
+  `[build failed]`.
+- kickoff seam M1 RED (behavioral): `decide_receipt_test.go:33: receipts 0→1
+  events 0→1, want receipts unchanged and one event` +
+  `kickoff-receipt.json written on a non-deciding path` — the required-
+  backend fail receipt was admitted at the seam before the fix.
+- homestate seam M1 RED (behavioral): `card_receipt_test.go:55: card
+  transition admitted a required-backend fail receipt`.
+- config M2 RED (compile-error class): `import cycle not allowed in test`
+  (config→contract→auditverdict→config) — the cycle the M2 resolver
+  relocation closed; then, post-relocation, the type symbols undefined.
+- runtime M3 RED (compile-error class): `undefined: CountAuditRounds` /
+  `undefined: CeilingInput` / `undefined: EvaluateCeiling` /
+  `undefined: OutcomePassThrough` ... `[build failed]`.
+- M4 guard RED probes (observed failure on planted inputs, then removed):
+  `audit_ceiling.go:30: interactive prompt surface in the CLI-side runtime
+  package` (code-shaped AskUserQuestion plant) and
+  `SPEC-EDITED-REGION-DRIFT: .claude/agents/moai/plan-auditor.md section ##
+  Retry Loop Contract differs from its template mirror` (mirror drift
+  plant).
+
+### E2 — cross-platform build
+
+- `go build ./...` → exit 0 (DARWIN_OK).
+- `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 (WIN_OK).
+  Re-verified after the final M4 edits, same run.
+
+### E3 — coverage (changed packages, this run, this tree)
+
+| Package | Coverage | Note |
+|---|---|---|
+| internal/auditverdict | 93.8% | ≥ 85% target |
+| internal/runtime | 82.0% | below the 85% package target; the SPEC's new files measure 71-100% per function (audit_ceiling.go, audit_counter.go, audit_gates.go — `go tool cover -func` figures in the run report). The package shortfall sits in pre-existing untested code (budget, persist, handoff, snapshot paths) outside this SPEC's scope. DEBT recorded: raise internal/runtime package coverage ≥ 85%, dispose_in=sync (or the follow-up card that owns the pre-existing gap). |
+| internal/config | 83.8% | below target by 1.2pt on the package's pre-existing bulk; the M2-added surface (new structs, load validation, defaults) is fully covered by TestStructYAMLSymmetry / TestOnFinalHitValidated / TestDefaults_MatchTemplate. DEBT: package-wide raise, dispose_in=sync. |
+| internal/homestate, internal/contract/kickoff, internal/template | seam + guard tests green (full-package suites run per milestone) | package-wide coverage not thresholded by plan §E E3 (which names runtime + auditverdict) |
+
+### E5 — lint
+
+`golangci-lint run --timeout=5m` → `0 issues.` (final). One NEW issue was
+introduced and fixed inside the run: errcheck on `fmt.Sscanf`
+(internal/runtime/audit_ceiling.go previousAuditedSHA) → replaced with a
+checked `strconv.Atoi`. Pre-existing baseline: 0 issues (measured at
+pre-flight, this tree, before M1).
+
+### E6 — commits and push state
+
+- M1 `fb7e89c8e` — verdict receipt + admission predicate extension
+  (draft→in-progress transition on spec.md frontmatter, status: only).
+- M2 `8bbb400fa` — config Go reader (+ the import-cycle repair relocating
+  the gate-set resolver to internal/runtime).
+- M3 `8bc6805db` — counter + ladder engine + LIVE-seam enforcement.
+- M4 (this commit) — regression guards, coverage completion, §E authoring.
+- Branch HEAD at report time: see §E.3 `run_commit_sha` (self-reference →
+  `pending-backfill-run`). **Not pushed** — lane protocol: the leader
+  integrates; no push, no PR, no branch switch performed.
+
+### E7 — blockers
+
+None. All 22 AC criteria PASS with evidence; the two coverage debts and the
+pre-existing plan-auditor.md whole-file mirror drift are recorded with
+dispositions above and in AC-ACE-014's carve-out.
+
+### Gaps and residual risk (5-section close)
+
+- Gaps: the debt-admit eligibility interpretation (findings = the verdict's
+  machine debt lines) is Q5's SPEC-embedded default, kickoff-amendable; the
+  delta round's diff/REQ-AC verification needs both audited SHAs to exist in
+  the audited repository and is fail-closed otherwise; a real end-to-end
+  audit_multi → receipt → seam pass on the production binary was not
+  exercised (the seam tests use fixtures; the unit surface is fully
+  covered).
+- Residual risk: a tree configuring a required backend but running
+  non-emitting auditors blocks every run entry until exporters carry the
+  receipt (the SPEC's own §G risk 1, accepted with the D32 producer arm);
+  the counter collapses a no-repair cross-card re-audit at a reused
+  iteration number (the D9-accepted §E limitation).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase — owned by manager-develop_
+run_complete_at: 2026-10-06
+run_commit_sha: pending-backfill-run
+run_status: complete
+ac_pass_count: 22
+ac_fail_count: 0
+preserve_list_post_run_count: 0 (plan.md §A PRESERVE list: phase-execution.md and auto-semantics.md untouched — verified by scope; no prohibited path written)
+l44_pre_commit_fetch: n/a — card worktree lane, commit-only protocol (HEAD re-read immediately before every commit; no divergence observed)
+l44_post_push_fetch: n/a — no push performed (lane protocol; leader integrates)
+new_warnings_or_lints_introduced: 0 (one transient errcheck finding introduced and fixed within the run; final lint 0 issues)
+cross_platform_build.darwin: pass
+cross_platform_build.windows: pass (GOOS=windows GOARCH=amd64)
+total_run_phase_files: 27
+m1_to_mN_commit_strategy: one commit per milestone (M1-M4), Conventional Commits with card id + Authored-By-Agent trailer; the M1 commit carries the draft→in-progress transition
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

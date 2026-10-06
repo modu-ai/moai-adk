@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/auditverdict"
 )
 
@@ -508,5 +509,168 @@ func TestAuditTrailAppend(t *testing.T) {
 	}
 	if !strings.Contains(lines[1], f.specID) || !strings.Contains(lines[1], "override") {
 		t.Fatalf("override trail line incomplete: %s", lines[1])
+	}
+}
+
+// TestRoundReportDirs covers the SPEC-attribution enumeration (REQ-ACE-001):
+// the SPEC-scoped directory, the card directory, and every foreign card
+// directory whose plan-audit iteration files name the SPEC — and never the
+// daily run-history directory.
+func TestRoundReportDirs(t *testing.T) {
+	specID := "SPEC-ACE-DIRS-001"
+	root := t.TempDir()
+	reports := filepath.Join(root, ".moai", "reports")
+	naming := filepath.Join(reports, "t8001")
+	foreign := filepath.Join(reports, "t8002")
+	writeAuditFixture(t, naming, "", specID, "PASS", 1)
+	writeAuditFixture(t, foreign, "", "SPEC-ACE-OTHER-009", "PASS", 1)
+	if err := os.MkdirAll(filepath.Join(reports, "plan-audit"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	dirs := RoundReportDirs(root, specID, "t8001")
+	joined := strings.Join(dirs, "\n")
+	if !strings.Contains(joined, filepath.Join(reports, specID)) {
+		t.Fatalf("SPEC-scoped dir missing: %v", dirs)
+	}
+	if !strings.Contains(joined, naming) {
+		t.Fatalf("card dir missing: %v", dirs)
+	}
+	if strings.Contains(joined, foreign) {
+		t.Fatalf("a foreign card dir not naming the SPEC was included: %v", dirs)
+	}
+	if strings.Contains(joined, filepath.Join(reports, "plan-audit")) {
+		t.Fatalf("the daily run-history directory was included: %v", dirs)
+	}
+}
+
+// TestResolveRequiredBackendsInRuntime covers the gate-set resolver from its
+// own package (the AC's TestAdmitConfigErrorRefused runs it from the
+// auditverdict external test binary, which does not attribute coverage
+// here): absent config resolves empty (C4), an unreadable config errors
+// (D21), and a valid required gate resolves.
+func TestResolveRequiredBackendsInRuntime(t *testing.T) {
+	dir := t.TempDir()
+	gs, err := ResolveRequiredBackends(dir)
+	if err != nil || len(gs.Required) != 0 {
+		t.Fatalf("absent config: %+v %v", gs, err)
+	}
+	cfgDir := filepath.Join(dir, ".moai", "config", "sections")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(cfgDir, "workflow.yaml")
+	if err := os.WriteFile(path, []byte("workflow: [unclosed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ResolveRequiredBackends(dir); err == nil {
+		t.Fatal("unparseable workflow.yaml resolved as empty")
+	}
+	if err := os.WriteFile(path, []byte("workflow:\n  audit:\n    gates:\n      claude: required\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gs, err = ResolveRequiredBackends(dir)
+	if err != nil || len(gs.Required) != 1 || gs.Required[0] != "claude" {
+		t.Fatalf("valid config: %+v %v", gs, err)
+	}
+}
+
+// TestDeltaGitHelpers covers the git-backed delta-eligibility helpers with a
+// real repository: an in-anchor diff and unchanged REQ/AC id sets verify, an
+// out-of-anchor diff and a changed id set fail, and unresolvable SHAs are
+// fail-closed (D6).
+func TestDeltaGitHelpers(t *testing.T) {
+	root := t.TempDir()
+	git := func(args ...string) string {
+		t.Helper()
+		out, err := auditreceipt.RunScrubbedGit(root, args...)
+		if err != nil {
+			t.Fatalf("git %v: %v", args, err)
+		}
+		return strings.TrimSpace(out)
+	}
+	specDir := filepath.Join(root, ".moai", "specs", "SPEC-ACE-GIT-001")
+	if err := os.MkdirAll(specDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	git("init", "-q")
+	git("config", "user.email", "t@example.com")
+	git("config", "user.name", "t")
+	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte("# spec\nREQ-ACE-001 AC-ACE-001\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "-A")
+	git("commit", "-q", "-m", "base")
+	first := git("rev-parse", "HEAD")
+
+	// An in-anchor change: the fix_scope-anchored spec.md itself, with its
+	// REQ/AC id set unchanged.
+	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte("# spec\nREQ-ACE-001 AC-ACE-001\nrepaired wording\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "-A")
+	git("commit", "-q", "-m", "in-anchor")
+	second := git("rev-parse", "HEAD")
+
+	if !diffInsideAnchors(root, first, second, []string{".moai/specs/SPEC-ACE-GIT-001/spec.md#REQ-ACE-001"}) {
+		t.Fatal("an in-anchor diff did not verify")
+	}
+	if !reqACSetsUnchanged(root, "SPEC-ACE-GIT-001", first, second) {
+		t.Fatal("unchanged REQ/AC id sets did not verify")
+	}
+
+	// An out-of-anchor change: an unanchored file.
+	if err := os.WriteFile(filepath.Join(root, "unrelated.md"), []byte("x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "-A")
+	git("commit", "-q", "-m", "outside")
+	third := git("rev-parse", "HEAD")
+	if diffInsideAnchors(root, second, third, []string{".moai/specs/SPEC-ACE-GIT-001/spec.md#REQ-ACE-001"}) {
+		t.Fatal("an out-of-anchor diff verified")
+	}
+
+	// A changed REQ/AC id set fails.
+	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte("# spec\nREQ-ACE-001 REQ-ACE-002 AC-ACE-001\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "-A")
+	git("commit", "-q", "-m", "ids")
+	fourth := git("rev-parse", "HEAD")
+	if reqACSetsUnchanged(root, "SPEC-ACE-GIT-001", third, fourth) {
+		t.Fatal("a changed REQ/AC id set verified")
+	}
+
+	// Unresolvable SHAs are fail-closed.
+	if diffInsideAnchors(root, "deadbeef", fourth, []string{"x#y"}) {
+		t.Fatal("unresolvable SHAs verified an in-anchor diff")
+	}
+	if reqACSetsUnchanged(root, "SPEC-ACE-GIT-001", "deadbeef", fourth) {
+		t.Fatal("unresolvable SHAs verified unchanged id sets")
+	}
+}
+
+// TestAttachCeiling covers GateConfig's Step 3.5: the ceiling outcome
+// attaches to the AuditResult without changing the Verdict, and a blocked
+// outcome is observable via Ceiling.Blocked (design.md §7).
+func TestAttachCeiling(t *testing.T) {
+	f := newCeilingFixture(t)
+	path := f.writeIter(t, 1, "FAIL")
+	c := &GateConfig{
+		SpecID:     f.specID,
+		SpecDir:    f.specDir,
+		ProjectDir: f.root,
+		Cache:      NewInMemoryCache(),
+	}
+	res := &AuditResult{Verdict: VerdictFail, ReportPath: path}
+	c.attachCeiling(res)
+	if res.Ceiling == nil {
+		t.Fatal("no ceiling outcome attached")
+	}
+	if res.Verdict != VerdictFail {
+		t.Fatalf("verdict rewritten to %s", res.Verdict)
+	}
+	if !res.Ceiling.Blocked {
+		t.Fatalf("blocked outcome not observable: %+v", res.Ceiling)
 	}
 }

@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -264,7 +265,9 @@ func previousAuditedSHA(in CeilingInput, ev RoundEvidence) string {
 		}
 		n := 1
 		if m[1] != "" {
-			fmt.Sscanf(m[1], "%d", &n)
+			if v, perr := strconv.Atoi(m[1]); perr == nil {
+				n = v
+			}
 		}
 		if n > best {
 			best = n
