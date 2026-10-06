@@ -38,6 +38,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -51,6 +52,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // autoDoneLogFileName is the scan's append-only execution log, sibling to
@@ -85,7 +87,9 @@ type autoDoneLogRow struct {
 	Source      string `json:"source,omitempty"`
 }
 
-// autoDoneOutcome is one card's resolved scan result, in queue order.
+// autoDoneOutcome is one card's resolved scan result, in queue order. The
+// snap* fields are the snapshot the lock re-verification (REQ-FCR-004)
+// compares the current row against, captured at scan time.
 type autoDoneOutcome struct {
 	id          string
 	specID      string
@@ -95,6 +99,11 @@ type autoDoneOutcome struct {
 	subject     string
 	commitSHA   string
 	recordedSHA string
+	snapUUID    string
+	snapText    string
+	snapState   factory.BacklogState
+	snapSpec    string
+	snapLanding *factory.LandingEvidence
 }
 
 // newTodoAutoDoneCmd — `moai todo auto-done`.
@@ -150,13 +159,19 @@ whose SPEC frontmatter status is anything other than completed (an
 unreadable status included) skips: a run commit landing does not license
 the close while sync is unfinished. A commit subject carrying an explicit
 non-landing declaration ("not merged" / "not landed") attributes nothing.
+A FACTORY-LINKED card — one with a factory card row — additionally closes
+only on a verified leader approval receipt; a card with no factory record
+completes exactly as before (SPEC-FACTORY-COMPLETION-RECOVERY-001
+REQ-FCR-002/003).
 
-The skip-reason vocabulary is CLOSED at exactly four tokens:
+The skip-reason vocabulary is CLOSED at exactly five tokens:
 
   ambiguous-id        — guard M1: reissued id, subject evidence alone
   spec-not-completed  — guard M2: SPEC status is not completed (unknown included)
   not-landed          — no landing evidence, including a negated subject
   query-inconclusive  — the question could not be asked; never a close
+  leader-unapproved   — guard M4: factory-linked card, no verified leader
+                        approval receipt
 
 Exit codes: 0 for every skip outcome (an inconclusive CARD is a skip, not a
 command failure); 1 only when the scan itself cannot run (the queue store
@@ -217,14 +232,14 @@ func runTodoAutoDone(cmd *cobra.Command, fetch, dryRun, jsonOut bool) error {
 		attributions = factory.LandedAttributions(commits, factory.LandedBranchFromRef(ref))
 	}
 
-	outcomes := planAutoDone(snapshot, root, ref, subjectKnown, attributions)
+	outcomes := planAutoDone(cmd.Context(), snapshot, root, ref, subjectKnown, attributions)
 
 	// Apply the closes in one locked write. Guards ran BEFORE the mutation
 	// (on the snapshot) and the callback re-checks each card, so every
 	// refusal inherits Mutate's byte-identity contract (C3).
 	var applied []autoDoneOutcome
 	if !dryRun {
-		applied, err = applyAutoDoneCloses(store, outcomes)
+		applied, err = applyAutoDoneCloses(cmd.Context(), root, store, outcomes)
 		if err != nil {
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: todo auto-done: %v\n", err)
 			return err
@@ -276,7 +291,13 @@ func splitLandedRefForFetch(ref string) (remote, branch string, ok bool) {
 // BacklogStateQueued or BacklogStatePicked (REQ-AD-001) — dropped cards are
 // never evaluated, already-archived ids are not re-evaluated (NFR-4's
 // idempotence), and the record's shape makes both true by construction.
-func planAutoDone(snapshot *factory.BacklogRecord, root, ref string, subjectKnown bool, attributions map[string]factory.LandedCommit) []autoDoneOutcome {
+//
+// Factory-linked candidates additionally carry their leader-approval
+// receipt state (REQ-FCR-003): a candidate whose receipt does not verify
+// against its current factory row never closes, while a non-factory
+// candidate assembles no receipt state at all.
+func planAutoDone(ctx context.Context, snapshot *factory.BacklogRecord, root, ref string, subjectKnown bool, attributions map[string]factory.LandedCommit) []autoDoneOutcome {
+	receiptStates := scanApprovalStates(ctx, root, snapshot)
 	outcomes := make([]autoDoneOutcome, 0, len(snapshot.Items))
 	for i := range snapshot.Items {
 		it := snapshot.Items[i]
@@ -296,6 +317,13 @@ func planAutoDone(snapshot *factory.BacklogRecord, root, ref string, subjectKnow
 		if it.SpecID != nil {
 			o.specID = *it.SpecID
 		}
+		// The REQ-FCR-004 snapshot: what the lock re-verification compares
+		// the row against at archive time.
+		o.snapUUID = todoCardUUID(&it)
+		o.snapText = it.Text
+		o.snapState = it.State
+		o.snapSpec = o.specID
+		o.snapLanding = it.Landing
 
 		// Guard M2's input: the SPEC frontmatter status read at scan time.
 		// No spec id means the gate does not apply (the Class A/B shape);
@@ -312,6 +340,7 @@ func planAutoDone(snapshot *factory.BacklogRecord, root, ref string, subjectKnow
 			SubjectKnown:  subjectKnown,
 			DistinctTexts: factory.AutoDoneDistinctTexts(snapshot, it.ID),
 			SpecSyncGate:  gate,
+			ReceiptGate:   receiptStates[it.ID],
 		}
 		if it.Landing != nil {
 			o.recordedSHA = strings.TrimSpace(it.Landing.SHA)
@@ -365,7 +394,14 @@ func todoAutoDoneSHAReachable(sha, ref string) factory.AutoDoneTri {
 // downgraded to a skip (query-inconclusive) rather than refusing the whole
 // scan; a store-level failure (lock, unreadable engine) refuses everything
 // and is the scan-cannot-run case.
-func applyAutoDoneCloses(store *factory.BacklogStore, outcomes []autoDoneOutcome) ([]autoDoneOutcome, error) {
+//
+// Two re-verification layers run inside the lock (SPEC-FACTORY-COMPLETION-RECOVERY-001
+// REQ-FCR-004): the snapshot comparison (UUID, body, state, SPEC, landing)
+// and — for factory-linked cards, only when all five match — the receipt's
+// four bindings re-verified against the archive-moment factory row inside a
+// factory write transaction held across the archive, serialized with
+// concurrent factory transitions.
+func applyAutoDoneCloses(ctx context.Context, root string, store *factory.BacklogStore, outcomes []autoDoneOutcome) ([]autoDoneOutcome, error) {
 	hasCloses := false
 	for _, o := range outcomes {
 		if o.closed {
@@ -394,7 +430,34 @@ func applyAutoDoneCloses(store *factory.BacklogStore, outcomes []autoDoneOutcome
 				outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
 				continue
 			}
+			cur := rec.Items[at]
+			if !autoDoneSnapshotMatches(&outcomes[k], &cur) {
+				// REQ-FCR-004: the row was held, edited, re-identified,
+				// re-stated, or re-landed between snapshot and lock — the
+				// downgrade carries the existing inconclusive reason.
+				outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
+				continue
+			}
+			gate, gateErr := holdDoneApprovalGate(ctx, root, outcomes[k].id)
+			if gateErr != nil {
+				// The factory state could not be read: an unanswerable
+				// question is a skip, never a close.
+				outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
+				continue
+			}
+			if verr := gate.verify(ctx, outcomes[k].snapUUID); verr != nil {
+				gate.refuse()
+				outcomes[k].downgrade(autoDoneReceiptDowngradeReason(verr))
+				continue
+			}
 			if err := rec.ArchiveCard(outcomes[k].id); err != nil {
+				gate.refuse()
+				outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
+				continue
+			}
+			// Settle the factory transaction only after the archive it
+			// guarded landed in the record.
+			if cerr := gate.commit(); cerr != nil {
 				outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
 				continue
 			}
@@ -405,6 +468,48 @@ func applyAutoDoneCloses(store *factory.BacklogStore, outcomes []autoDoneOutcome
 		return nil, fmt.Errorf("todo auto-done: %w", err)
 	}
 	return outcomes, nil
+}
+
+// autoDoneSnapshotMatches compares the scan-time snapshot against the
+// current row: UUID, body, state, SPEC, landing — all five or no close.
+func autoDoneSnapshotMatches(o *autoDoneOutcome, cur *factory.BacklogItem) bool {
+	return todoCardUUID(cur) == o.snapUUID &&
+		cur.Text == o.snapText &&
+		cur.State == o.snapState &&
+		backlogSpecText(cur) == o.snapSpec &&
+		landingEvidenceEqual(cur.Landing, o.snapLanding)
+}
+
+func backlogSpecText(it *factory.BacklogItem) string {
+	if it.SpecID == nil {
+		return ""
+	}
+	return *it.SpecID
+}
+
+// landingEvidenceEqual compares two landing snapshots. LandingEvidence is a
+// plain string struct, so equality is field equality; a nil and a non-nil
+// never match.
+func landingEvidenceEqual(a, b *factory.LandingEvidence) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+// autoDoneReceiptDowngradeReason classifies an archive-moment receipt
+// refusal: the approval sentinels are the leader-unapproved axis; anything
+// else is an unanswerable question.
+func autoDoneReceiptDowngradeReason(err error) string {
+	if errors.Is(err, homestate.ErrApprovalMissing) ||
+		errors.Is(err, homestate.ErrApprovalIssuer) ||
+		errors.Is(err, homestate.ErrApprovalCardMismatch) ||
+		errors.Is(err, homestate.ErrApprovalRunMismatch) ||
+		errors.Is(err, homestate.ErrApprovalStale) ||
+		errors.Is(err, homestate.ErrApprovalHashMismatch) {
+		return factory.AutoDoneSkipLeaderUnapproved
+	}
+	return factory.AutoDoneSkipQueryInconclusive
 }
 
 // effectiveOutcomes is the dry-run pass-through: the planned outcomes ARE

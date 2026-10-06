@@ -113,6 +113,74 @@ func todoCardUUID(item *factory.BacklogItem) string {
 	return strings.TrimSpace(*item.CardUUID)
 }
 
+// scanApprovalStates reads, once per scan, the leader-approval receipt state
+// of every live queued/picked candidate (REQ-FCR-003). A card with no
+// factory row is not factory-linked and assembles ReceiptGateNone; a card
+// whose receipt verifies against its current factory row assembles
+// ReceiptGateVerified; an absent or non-binding receipt is
+// ReceiptGateUnverified; an unreadable factory state is ReceiptGateUnknown —
+// an unanswerable question, never a close. Read-only: the authoritative
+// check is the archive-moment gate, which re-verifies inside the lock.
+func scanApprovalStates(ctx context.Context, root string, snapshot *factory.BacklogRecord) map[string]factory.ReceiptGateState {
+	states := make(map[string]factory.ReceiptGateState)
+	ids := make([]string, 0, len(snapshot.Items))
+	for i := range snapshot.Items {
+		switch snapshot.Items[i].State {
+		case factory.BacklogStateQueued, factory.BacklogStatePicked:
+			ids = append(ids, snapshot.Items[i].ID)
+		}
+	}
+	if len(ids) == 0 {
+		return states
+	}
+	path, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		return states
+	}
+	if _, statErr := os.Stat(path); statErr != nil {
+		// No factory database: no factory-linked cards exist; every state
+		// stays the zero value (ReceiptGateNone).
+		return states
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		for _, id := range ids {
+			states[id] = factory.ReceiptGateUnknown
+		}
+		return states
+	}
+	defer func() { _ = db.Close() }()
+	for _, id := range ids {
+		var uuid string
+		for i := range snapshot.Items {
+			if snapshot.Items[i].ID == id {
+				uuid = todoCardUUID(&snapshot.Items[i])
+				break
+			}
+		}
+		row, err := db.LatestCardByID(ctx, id)
+		if errors.Is(err, homestate.ErrCardNotFound) {
+			// Not factory-linked: the axis does not apply (ReceiptGateNone).
+			continue
+		}
+		if err != nil {
+			states[id] = factory.ReceiptGateUnknown
+			continue
+		}
+		approval, err := db.FindLeaderApproval(ctx, uuid)
+		if err != nil {
+			states[id] = factory.ReceiptGateUnverified
+			continue
+		}
+		if approval.VerifyBinding(uuid, row.RunID, row.Version, row.EvidenceSHA, row.OwnerLabel) != nil {
+			states[id] = factory.ReceiptGateUnverified
+			continue
+		}
+		states[id] = factory.ReceiptGateVerified
+	}
+	return states
+}
+
 // newFactoryApproveCommand is `moai factory approve` — the leader path's
 // issuance surface for leader approval receipts (REQ-FCR-001/014). The
 // receipt binds what the card's factory row IS at issuance time (current
