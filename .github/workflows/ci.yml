@@ -92,6 +92,12 @@ jobs:
               - '.claude/settings.json'
               - 'CLAUDE.md'
               - 'scripts/ci-census/**'
+              # AC-CI-012 (SPEC-CI-VERDICT-INTEGRITY-001): the branch-
+              # protection parity guard (internal/template/
+              # branch_protection_parity_test.go) reads this file — an edit
+              # to it alone must run the Go test jobs, or the parity guard
+              # never executes in CI.
+              - '.github/branch-protection.json.gtmpl'
 
   # ---------------------------------------------------------------------------
   # Test: Run tests with coverage (fast — NO race detector). The race
