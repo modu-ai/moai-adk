@@ -52,6 +52,28 @@ var (
 	specIDToken = regexp.MustCompile(`SPEC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*`)
 )
 
+// maxReportFileSize bounds one evidence-file read, mirroring the homestate
+// readBoundedFile discipline (card_evidence_readers.go, same 4 MiB value).
+// The constant is redeclared rather than imported: homestate already imports
+// this package, so the dependency runs one way only.
+const maxReportFileSize = int64(4 << 20)
+
+// readReportFile reads one evidence file only when it is a regular file of
+// at most maxReportFileSize bytes. Card-review round-2 P1: os.ReadFile on a
+// FIFO blocks until a writer appears, which hung kickoff and card
+// transitions; the Stat check refuses non-regular files without opening
+// them, so no evidence path can block the caller.
+func readReportFile(path string) ([]byte, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > maxReportFileSize {
+		return nil, fmt.Errorf("not a regular file of at most %d bytes", maxReportFileSize)
+	}
+	return os.ReadFile(path)
+}
+
 // CountAuditRounds computes the round count of specID from the given report
 // directories (see RoundReportDirs). A directory that does not exist is
 // skipped; an unreadable directory is an error — a count the caller cannot
@@ -106,7 +128,7 @@ func CountAuditRounds(specID string, reportDirs []string) (RoundEvidence, error)
 			// is not its round (card-review F5); the legacy family names the
 			// SPEC in its file name.
 			if convention {
-				data, rerr := os.ReadFile(path)
+				data, rerr := readReportFile(path)
 				if rerr != nil {
 					return ev, fmt.Errorf("read plan-audit evidence %s: %w", path, rerr)
 				}
@@ -128,7 +150,7 @@ func CountAuditRounds(specID string, reportDirs []string) (RoundEvidence, error)
 	}
 	ev.Count = len(seen) + failCounted
 	if ev.LatestPath != "" {
-		data, err := os.ReadFile(ev.LatestPath)
+		data, err := readReportFile(ev.LatestPath)
 		if err != nil {
 			return ev, fmt.Errorf("read plan-audit evidence %s: %w", ev.LatestPath, err)
 		}
@@ -195,7 +217,7 @@ func cardDirNamesSpec(dir, specID string) bool {
 		if !conventionFile.MatchString(name) && !conventionUnnumbered.MatchString(name) {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(dir, name))
+		data, err := readReportFile(filepath.Join(dir, name))
 		if err == nil {
 			if head := specIDToken.Find(data); head != nil && string(head) == specID {
 				return true
@@ -207,7 +229,7 @@ func cardDirNamesSpec(dir, specID string) bool {
 
 // auditedSHAOf reads the audited_sha machine line of one verdict file.
 func auditedSHAOf(path string) string {
-	data, err := os.ReadFile(path)
+	data, err := readReportFile(path)
 	if err != nil {
 		return ""
 	}
