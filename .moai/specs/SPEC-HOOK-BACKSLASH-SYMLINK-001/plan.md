@@ -5,9 +5,10 @@
 ## A. Context
 
 - Card t1556 (factory lane-12). Defect source: card t1533 codex review gate round 1,
-  new out-of-card P1 — evidence:
-  `.moai/worktrees/t1533/.moai/reports/t1533/codex-review-gate-1.md`
-  (absolute: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1533/.moai/reports/t1533/codex-review-gate-1.md`).
+  new out-of-card P1 — evidence (primary, in-tree):
+  `.moai/reports/t1556/codex-review-gate-1.md`
+  (provenance: `.moai/worktrees/t1533/.moai/reports/t1533/codex-review-gate-1.md`,
+  a disposable tree).
 - Defect site read and confirmed in this tree (`cad44a751`):
   `internal/hook/pre_tool.go:1397` —
   `parts := strings.Split(strings.ReplaceAll(filepath.ToSlash(p), "\\", "/"), "/")`
@@ -33,8 +34,11 @@
   prefixes, depth-bound fail-closed) is retained as-is. A repair agent MAY still choose
   a different concrete mechanism (e.g. build-tagged split helper) if it satisfies
   REQ-HBS-001/004.
-- `zoneSlash` (`protected_zone_path.go:36`) shares the unconditional conversion; out of
-  scope (see spec.md §F) but must not be "fixed in passing".
+- `zoneSlash` (`protected_zone_path.go:36`) shares the unconditional conversion and
+  feeds the protected-zone DENY-DECISION path (`resolveZoneTarget` →
+  `checkProtectedZone`) — a live sibling surface of the same defect family; deferred
+  to a named follow-up card in the t1454 residual ledger (spec.md §F), and must not
+  be "fixed in passing" here.
 
 ## C. Pre-flight
 
@@ -73,13 +77,18 @@ Ordered by decision-reversibility: the reproduction (highest-change-likelihood, 
 the defect shape) leads; the platform-mechanism decision follows; mechanical
 hardening trails.
 
-- **M1 — Reproduction test (RED)** [Priority High]
-  Add `internal/hook/pre_tool_test.go` case: create `<tmp-project>/innocent\dir` as a
-  symlink to an outside directory; call `checkFileAccess` with a Write `tool_input`
-  naming `<tmp-project>/innocent\dir/escaped.txt`; assert DENY and that
-  `<outside>/escaped.txt` does not exist. Run on the pre-fix tree; record the verbatim
-  RED output pinned to `cad44a751` in `progress.md` §E.2 seed. Skip guard for
-  symlink-incapable platforms.
+- **M1 — Reproduction test (RED) — DONE AT PLAN PHASE** [Priority High]
+  Authored at plan phase per plan-audit iteration-1 D1:
+  `internal/hook/pre_tool_backslash_repro_test.go` carries
+  `TestCheckFileAccessPosixBackslashSymlinkEscape` (guard-level: deny + no external
+  write, with a non-deny branch performing the actual write so the criterion is not
+  vacuous) and `TestResolveThroughExistingParentPosixBackslashSymlinkDivergence`
+  (resolver-level: resolution must land outside). Both observed RED on the pre-fix
+  tree (exit 1; four-element cells `RED-HBS-001`/`RED-HBS-003` in acceptance.md;
+  tree `785cfaaff`, code identical to `cad44a751`). The test file is committed WITH
+  the SPEC revision commit, before any fix exists — the ordering claim rests on the
+  recorded observation, taken now. Run phase proceeds directly to M2; the test file
+  flips GREEN at M2.
 - **M2 — Platform-appropriate segmentation (fix)** [Priority High]
   Make the walk's segment split treat `\` as a separator only on Windows (runtime
   GOOS check or build-tagged helper — repair agent's choice, constrained by

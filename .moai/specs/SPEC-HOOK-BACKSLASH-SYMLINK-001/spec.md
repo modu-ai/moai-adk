@@ -45,7 +45,9 @@ check. The actual Write, however, follows the REAL path the OS walks, where the
 `innocent\dir` symlink resolves outside the project, and the write lands outside.
 
 Reproduction evidence (verified, twice): card t1533 codex review gate round 1 —
-`.moai/worktrees/t1533/.moai/reports/t1533/codex-review-gate-1.md`, finding
+primary copy `.moai/reports/t1556/codex-review-gate-1.md` (in this card worktree;
+provenance: `.moai/worktrees/t1533/.moai/reports/t1533/codex-review-gate-1.md`, a
+disposable tree), finding
 "[P1] POSIX 경로의 실제 백슬래시를 보존 — internal/hook/pre_tool.go:1397". With the
 base commit's interpretation, blocking works; the backslash→slash conversion is what
 defeats it. The reproduced test wrote `"escaped"` to an external file.
@@ -125,18 +127,23 @@ fail-closed behavior.
 
 ### Out of Scope — other findings from the t1533 review round 1
 
-- The 12 other findings (2 in-card P1/P2 plus 10 residual-ledger items) reported by
-  `.moai/worktrees/t1533/.moi/reports/t1533/codex-review-gate-1.md` round 1 — they belong
-  to the t1454 residual ledger and follow-up cards. This SPEC repairs ONLY the
+- The 13 other findings (3 P1 + 10 P2; 14 total minus the backslash P1 under repair)
+  reported by `.moai/reports/t1556/codex-review-gate-1.md` round 1 — they belong to
+  the t1454 residual ledger and follow-up cards. This SPEC repairs ONLY the
   backslash/symlink boundary bypass at `internal/hook/pre_tool.go:1397`.
 
-### Out of Scope — the same conversion pattern elsewhere
+### Out of Scope — the same conversion pattern in the zone deny path
 
 - `zoneSlash` (`internal/hook/protected_zone_path.go:36`) carries the identical
-  unconditional `\`→`/` conversion. Its callers match display/folded forms of
-  PowerShell-origin paths, where the conversion may be intentional; auditing it is a
-  separate follow-up card, not this repair. Recorded here so the next auditor does not
-  count its silence as an oversight.
+  unconditional `\`→`/` conversion, and its output feeds `resolveZoneTarget`
+  (`protected_zone_path.go:183-218`) → `checkProtectedZone`
+  (`protected_zone_guard.go:152-178`) — a DENY-DECISION path, not display matching.
+  It is therefore a LIVE SIBLING SURFACE of the same defect family: a backslash-named
+  component in a zone-relative path is split into a fictional path before the zone's
+  physical walk, with both false-allow and false-deny directions possible. This SPEC
+  deliberately defers it to a named follow-up card (recorded in the t1454 residual
+  ledger) so one card closes one defect; it is NOT dismissed as benign, and plan.md §G
+  forbids fixing it in passing.
 
 ### Out of Scope — adjacent resolution surfaces
 
