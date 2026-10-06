@@ -103,19 +103,25 @@ if [ -z "$(printf '%s' "$RUNBLOCK" | tr -d '[:space:]')" ]; then
 fi
 
 # Compose the executable body once. DECLARED CLOCK INTERFACE (t1546): the
-# body reads the served time by `cat "$MOAI_CLOCK_FILE"` at every deadline
-# evaluation, and the deadline from `$merge_deadline` — both EXPORTED so the
-# stub child sees them too.
+# body reads the served time by `cat "$MOAI_CLOCK_FILE"` — and via its own
+# `date +%s` reads, which the PATH stub (repro/stub-record/date) serves from
+# the same file — at every deadline evaluation, and the deadline from
+# `$merge_deadline`. PROBE_DEADLINE overrides the deadline for the GATE-4
+# normal-merge control (a value past the advanced clock, e.g. 1300, lets the
+# control observe a legal in-deadline merge).
+PROBE_DEADLINE="${PROBE_DEADLINE:-1140}"
 BODY_SCRIPT="$(mktemp /tmp/t1534-e26-XXXXXX)" || harness_fail "mktemp failed for body script"
 {
-  printf 'export merge_deadline=1140\n'
+  printf 'export merge_deadline=%s\n' "$PROBE_DEADLINE"
   printf 'export MOAI_CLOCK_FILE="%s"\n' "$(mktemp /tmp/t1534-e26-clock-XXXXXX)" || exit 4
   printf '%s\n' "$ENV_EXPORTS" \
     | sed -e 's/\${{ secrets.GITHUB_TOKEN }}/dummy-t1546-token/' \
           -e 's/\${{ steps.pr.outputs.branch }}/release\/v3.3.0-probe/' \
-          -e 's/\${{ steps.pr.outputs.number }}/1/'
+          -e 's/\${{ steps.pr.outputs.number }}/1/' \
+          -e "s/\${{ steps.head.outputs.sha }}/$FIXTURE_SHA/g"
   printf '%s\n' "$RUNBLOCK" \
-    | sed -e 's/\${{ steps.pr.outputs.number }}/1/'
+    | sed -e 's/\${{ steps.pr.outputs.number }}/1/' \
+          -e "s/\${{ steps.head.outputs.sha }}/$FIXTURE_SHA/g"
 } > "$BODY_SCRIPT"
 CLOCK_FILE="$(sed -n 's/^export MOAI_CLOCK_FILE="\(.*\)"$/\1/p' "$BODY_SCRIPT")"
 printf '1100\n' > "$CLOCK_FILE"
@@ -185,24 +191,13 @@ if [ "$merge_calls" -eq 0 ] && [ "$head_queries" -eq 0 ]; then
   echo "GUARD MISBEHAVES: no gh interaction observed at all — the body neither re-checked the head nor merged" >&2
   exit 3
 fi
-echo "UNRECOGNIZED SHAPE: merge_calls=$merge_calls late_calls=$late_calls head_queries=$head_queries" >&2
-exit 3
-
-if [ "$body_rc" -ne 0 ]; then
-  echo "GUARD MISBEHAVES: the merge-step body exited $body_rc after clean execution — not a recognizable deadline contract shape" >&2
-  exit 3
-fi
-if [ "$late_calls" -gt 0 ]; then
-  echo "DEFECT: merge call(s) served AFTER the deadline crossed (late=$late_calls of $merge_calls merge call(s)) — the clock was not re-evaluated before merging"
+# GATE-4 control (PROBE_DEADLINE past the advanced clock): a merge observed
+# with served <= deadline is the LEGAL path — proof the withhold at 1140 was
+# deadline-driven, not a SHA-mismatch or harness artifact. Control mode ends
+# here with its own admission instead of the UNRECOGNIZED fallback.
+if [ "$merge_calls" -ge 1 ] && [ "$late_calls" -eq 0 ] && [ "$PROBE_DEADLINE" -gt 1200 ] 2>/dev/null; then
+  echo "CONTROL: merge call served within the overridden deadline ($PROBE_DEADLINE) — the deadline check governs the withhold (GATE-4 normal-merge control)"
   exit 0
-fi
-if [ "$merge_calls" -eq 0 ] && [ "$head_queries" -gt 0 ]; then
-  echo "M1 CONTRACT HOLDS: head re-queried, clock observed past the deadline after re-evaluation, merge withheld (P2-R waiting case) — zero late calls"
-  exit 2
-fi
-if [ "$merge_calls" -eq 0 ] && [ "$head_queries" -eq 0 ]; then
-  echo "GUARD MISBEHAVES: no gh interaction observed at all — the body neither re-checked the head nor merged" >&2
-  exit 3
 fi
 echo "UNRECOGNIZED SHAPE: merge_calls=$merge_calls late_calls=$late_calls head_queries=$head_queries" >&2
 exit 3
