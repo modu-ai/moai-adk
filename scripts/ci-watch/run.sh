@@ -42,6 +42,13 @@ if ! command -v "$GH" >/dev/null 2>&1; then
     abort "gh CLI not found at '$GH'. Install via: brew install gh && gh auth login" 1
 fi
 
+# t1534 gate round: jq is a REQUIRED dependency — the awk JSON fallbacks
+# were each a measured defect source (compact arrays, quoted names,
+# duplicate entries). Fail loudly rather than misclassify.
+if ! command -v jq >/dev/null 2>&1; then
+    abort "jq not found — the ci-watch loop requires jq for check classification (install: brew install jq)" 1
+fi
+
 # ─── SSoT override for testing ────────────────────────────────────────────────
 if [ -n "${MOAI_CIWATCH_REQUIRED_CHECKS_FILE:-}" ]; then
     REQUIRED_CHECKS_FILE="$MOAI_CIWATCH_REQUIRED_CHECKS_FILE"
@@ -64,68 +71,31 @@ log_step "Watching PR #${PR_NUMBER} on branch '${BRANCH}'"
 _check_bucket() {
     check_name="$1"
     json_file="$2"
-    if command -v jq >/dev/null 2>&1; then
-        jq -r --arg n "$check_name" '.[] | select(.name==$n) | .bucket // "pending"' "$json_file"
-    else
-        # GATE P2 fix, final shape: handle BOTH JSON layouts. Compact
-        # single-line arrays are split into per-check records (the greedy
-        # `^.*"bucket"` strip crossed record boundaries and returned another
-        # check's bucket — measured "fail" for Lint on a 2-entry array);
-        # pretty multi-line output keeps the found-flag scan. Both stop at
-        # the FIRST bucket after the matched name.
-        awk -v n="$check_name" '
-            /^\[/ {
-                s = $0
-                gsub(/^\[/, "", s)
-                gsub(/\]$/, "", s)
-                cnt = split(s, recs, /\}[[:space:]]*,[[:space:]]*\{/)
-                for (r = 1; r <= cnt; r++) {
-                    rec = "{" recs[r] "}"
-                    if (rec ~ ("\"name\" *: *" "\"" n "\"")) {
-                        if (match(rec, /"bucket" *: *"[^"]*"/)) {
-                            b = substr(rec, RSTART, RLENGTH)
-                            gsub(/^"bucket" *: *"/, "", b)
-                            gsub(/"$/, "", b)
-                            print b
-                        }
-                        exit
-                    }
-                }
-                exit
-            }
-            $0 ~ ("\"name\" *: *" "\"" n "\"") { found = 1 }
-            found && /"bucket"/ {
-                sub(/^.*"bucket" *: *"/, "")
-                sub(/".*/, "")
-                print
-                exit
-            }
-        ' "$json_file"
-    fi
+    # t1534 gate round: aggregate EVERY bucket entry for the name — real PR
+    # JSON carries duplicate names (push + PR runs both publish). Worst-case
+    # wins: fail/cancel > pending/absent > pass. Prints ONE verdict per name.
+    jq -r --arg n "$check_name" \
+        '.[] | select(.name==$n) | .bucket // "pending"' "$json_file" \
+        | sort | uniq -c | sort -rn \
+        | awk '$2 == "fail" || $2 == "cancel" { print "fail"; exit }
+               $2 == "pending" { print "pending"; exit }
+               { kept = $2 }
+               END { if (kept != "") print kept }'
 }
 
 # _check_link extracts the link for a named check from JSON array.
 _check_link() {
     check_name="$1"
     json_file="$2"
-    if command -v jq >/dev/null 2>&1; then
-        jq -r --arg n "$check_name" '.[] | select(.name==$n) | .link // ""' "$json_file"
-    else
-        awk "
-            /\"name\": *\"$check_name\"/ { found=1 }
-            found && /\"link\"/ { gsub(/.*\"link\": *\"|\".*/, \"\"); print; exit }
-        " "$json_file"
-    fi
+    jq -r --arg n "$check_name" \
+        '.[] | select(.name==$n) | .link // ""' "$json_file" \
+        | head -1
 }
 
 # _all_check_names lists all check names from JSON array.
 _all_check_names() {
     json_file="$1"
-    if command -v jq >/dev/null 2>&1; then
-        jq -r '.[].name' "$json_file"
-    else
-        grep '"name"' "$json_file" | sed 's/.*"name": *"\(.*\)".*/\1/'
-    fi
+    jq -r '.[].name' "$json_file"
 }
 
 # (_check_status removed — t1534 M3: `gh pr checks --json` has no `status`
@@ -133,12 +103,12 @@ _all_check_names() {
 
 # ─── main poll loop ───────────────────────────────────────────────────────────
 
-TMP_JSON="$(mktemp /tmp/ciwatch_checks_XXXXXX.json)"
-TMP_SSOT="$(mktemp /tmp/ciwatch_ssot_XXXXXX.txt)"
-TMP_ALL="$(mktemp /tmp/ciwatch_all_XXXXXX.txt)"
-TMP_FN="$(mktemp /tmp/ciwatch_fn_XXXXXX.txt)"
-TMP_FL="$(mktemp /tmp/ciwatch_fl_XXXXXX.txt)"
-TMP_PAIR="$(mktemp /tmp/ciwatch_pair_XXXXXX.txt)"
+TMP_JSON="$(mktemp /tmp/ciwatch_checks_XXXXXXXXXX)"
+TMP_SSOT="$(mktemp /tmp/ciwatch_ssot_XXXXXXXXXX)"
+TMP_ALL="$(mktemp /tmp/ciwatch_all_XXXXXXXXXX)"
+TMP_FN="$(mktemp /tmp/ciwatch_fn_XXXXXXXXXX)"
+TMP_FL="$(mktemp /tmp/ciwatch_fl_XXXXXXXXXX)"
+TMP_PAIR="$(mktemp /tmp/ciwatch_pair_XXXXXXXXXX)"
 trap 'rm -f "$TMP_JSON" "$TMP_SSOT" "$TMP_ALL" "$TMP_FN" "$TMP_FL" "$TMP_PAIR"' EXIT
 
 # t1534 M3: load the SSoT required contexts for this branch — yq when
