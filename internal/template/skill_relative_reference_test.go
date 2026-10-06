@@ -23,7 +23,7 @@ import (
 // Scope: the moai-foundation-cc/reference/sub-agents family in the template
 // source — the SSOT the deployed mirrors derive from. The regex catches both
 // reference shapes the family uses: markdown links `](../...)` and
-// backtick-quoted prose pointers `` > `../...` ``.
+// backtick-quoted prose pointers “ > `../...` “.
 func TestSubAgentReferenceRelativeLinksResolve(t *testing.T) {
 	t.Parallel()
 
