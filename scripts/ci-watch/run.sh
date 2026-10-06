@@ -81,12 +81,22 @@ fi
 # all-passed with every failure advisory (gate repro: base=develop +
 # Lint=fail surfaced exit 0). A release/* base resolves to the release/*
 # SSoT pattern key.
+# GATE-7: key presence is judged by the YAML parser when yq is available —
+# a QUOTED key (`"main":`) is valid YAML the raw grep could not see, and it
+# aborted a perfectly watchable PR.
+_ssot_has_key() {
+    if command -v yq >/dev/null 2>&1; then
+        yq -r '.branches | keys | .[]' "$REQUIRED_CHECKS_FILE" 2>/dev/null | grep -qxF "$1"
+    else
+        grep -qF "  $1:" "$REQUIRED_CHECKS_FILE"
+    fi
+}
 SSOT_BRANCH=""
-grep -qF "  $PR_BASE:" "$REQUIRED_CHECKS_FILE" && SSOT_BRANCH="$PR_BASE"
+_ssot_has_key "$PR_BASE" && SSOT_BRANCH="$PR_BASE"
 if [ -z "$SSOT_BRANCH" ]; then
     case "$PR_BASE" in
         release/*)
-            grep -qF "  release/*:" "$REQUIRED_CHECKS_FILE" && SSOT_BRANCH="release/*"
+            _ssot_has_key "release/*" && SSOT_BRANCH="release/*"
             ;;
     esac
 fi

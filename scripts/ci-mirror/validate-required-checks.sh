@@ -113,12 +113,16 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			# GATE-6: include tuples whose in-matrix keys all match this
 			# combination MERGE into it — GitHub adds their out-of-matrix
 			# key:value pairs to the combination and never overwrites
-			# original values. A merged tuple stops emitting standalone.
+			# original values. GATE-7: the merge applies to EVERY compatible
+			# combination (merged[t] marks only the standalone-suppression
+			# flag, never a per-combination skip — a tuple merged into the
+			# ubuntu leg still merges into the windows leg), and a later
+			# tuple assigning the same key OVERWRITES the earlier value
+			# (GitHub keeps the last include value).
 			# (Runs AFTER the exclude check: excluded combinations no longer
 			# exist for include to merge into.)
 			en = 0
 			for (t = 1; t <= inc_n; t++) {
-				if (merged[t]) continue
 				allmatch = 1
 				for (pk in incval) {
 					split(pk, pr2, SUBSEP)
@@ -136,9 +140,15 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 					for (dd = 1; dd <= nk; dd++)
 						if (dims[dd] == pr2[2]) { indim = 1; break }
 					if (indim) continue
-					en++
-					ek[en] = pr2[2]
-					ev[en] = incval[pk]
+					seen = 0
+					for (q = 1; q <= en; q++) {
+						if (ek[q] == pr2[2]) { ev[q] = incval[pk]; seen = 1; break }
+					}
+					if (!seen) {
+						en++
+						ek[en] = pr2[2]
+						ev[en] = incval[pk]
+					}
 				}
 				merged[t] = 1
 			}
@@ -219,13 +229,14 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		ind = 0
 		while (substr($0, ind + 1, 1) == " ") ind++
 	}
+	# GATE-7: comments and blank lines are NOT structural at ANY indent — a
+	# two-space-indented comment between name: and strategy: hit the
+	# job-boundary rule (ind == 2) and reset the matrix memory, judging a
+	# valid workflow context phantom. (Extends GATE-2, which guarded only
+	# column 0.)
+	$0 ~ /^[[:space:]]*$/ { next }
+	$0 ~ /^[[:space:]]*#/ { next }
 	ind == 0 {
-		# GATE-2: blank lines and column-0 comments must be skipped BEFORE any
-		# emit — a blank line inside a job block (between name: and strategy:)
-		# used to fire emit() with no matrix memory yet, publishing the bare
-		# name and making the real suffixed context judge phantom.
-		if ($0 ~ /^[[:space:]]*$/) next
-		if ($0 ~ /^[[:space:]]*#/) next
 		if (has_name) emit()
 		if ($0 ~ /^[A-Za-z_][A-Za-z_0-9-]*:/) { in_jobs = ($0 ~ /^jobs:/) ? 1 : 0; reset_job_mem() }
 		in_steps = 0; in_strategy = 0; in_matrix = 0
