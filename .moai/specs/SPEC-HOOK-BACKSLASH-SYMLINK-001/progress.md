@@ -191,7 +191,7 @@ env_notes: "DEBT-HBS-BASELINE-ENV: all measurements taken with lane env scrubbed
 ```yaml
 sync_status: audit-ready
 sync_complete_at: "2026-10-07"
-sync_commit_sha: "pending-backfill-sync"   # backfilled with the real SHA by a following commit (D3 exemption)
+sync_commit_sha: "f2d933a96"   # backfilled by the following commit per the D3 exemption
 status_transition: "in-progress -> implemented -> completed, spec.md frontmatter `status:` only, riding the single sync commit"
 changelog_entry_position: "CHANGELOG.md [Unreleased] / Fixed, first entry"
 b12_self_test_a: pre_emission_grep_0   # grep -c SPEC-HOOK-BACKSLASH-SYMLINK-001 CHANGELOG.md returned 0 before emission
