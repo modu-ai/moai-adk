@@ -207,6 +207,201 @@ func addShapeCard(t *testing.T, text string) string {
 	return id
 }
 
+// Regression matrix for round-7 review P1-1/P1-2 (card t1538): every
+// successful assignment/recovery shape records the binding for the run the
+// command targeted — regardless of row version, prior state, or a stale
+// prior binding — and failed/refused shapes leave it untouched.
+func TestFactoryAssignBindingMatrix(t *testing.T) {
+	root, store := fcFixture(t)
+	addCard := func(text string) string {
+		out, _, err := runTodo(t, "add", text)
+		if err != nil {
+			t.Fatalf("todo add: %v", err)
+		}
+		id, _, ok := strings.Cut(strings.TrimSpace(out), " ")
+		if !ok {
+			t.Fatalf("add output %q lacks an id", out)
+		}
+		return id
+	}
+	pick := func(card string) {
+		if err := store.Mutate(func(r *factory.BacklogRecord) error {
+			for i := range r.Items {
+				if r.Items[i].ID == card {
+					r.Items[i].State = factory.BacklogStatePicked
+				}
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	assign := func(card, run, lane string) error {
+		_, _, err := runFactory(t, "assign", card, "--to", lane, "--run", run)
+		return err
+	}
+	bindingRun := func(card string) string {
+		db := fcOpen(t, root)
+		defer func() { _ = db.Close() }()
+		row, linked, err := db.RecordedCardRowReadonly(context.Background(), card)
+		if err != nil || !linked {
+			t.Fatalf("%s binding: linked=%v err=%v, want linked", card, linked, err)
+		}
+		return row.RunID
+	}
+
+	// --to-less success at v2+ on an existing picked row: the binding moves
+	// to the targeted run (review round-7 P1-1).
+	cardID := addCard("matrix --to-less v2")
+	pick(cardID)
+	fcPlace(t, root, homestate.Card{CardID: cardID, RunID: fcRun, State: homestate.CardPicked, OwnerLabel: "worker-1", Version: 2})
+	fcBindDispatch(t, root, cardID, "run-old")
+	if _, _, err := runFactory(t, "assign", cardID, "--run", fcRun); err != nil {
+		t.Fatalf("--to-less assign: %v", err)
+	}
+	if got := bindingRun(cardID); got != fcRun {
+		t.Fatalf("--to-less binding = %s, want %s", got, fcRun)
+	}
+
+	// State-preserving recovery at every post-assigned state, including
+	// terminal done (review round-7 P1-2). Each row starts bound to the
+	// WRONG run; the same-owner recovery must re-bind to the row's run.
+	for _, state := range []string{homestate.CardAssigned, homestate.CardMergeReady, homestate.CardMergedLocal, homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone} {
+		recoverID := addCard("matrix recovery " + state)
+		pick(recoverID)
+		fcPlace(t, root, homestate.Card{CardID: recoverID, RunID: "run-old", State: state, OwnerLabel: "worker-1", Version: 3})
+		if err := assign(recoverID, "run-old", "worker-1"); err != nil {
+			t.Fatalf("recovery assign %s: %v", state, err)
+		}
+		if got := bindingRun(recoverID); got != "run-old" {
+			t.Fatalf("recovery %s binding = %s, want run-old", state, got)
+		}
+		// State and version are preserved: binding-only, no transition.
+		db := fcOpen(t, root)
+		row, rowErr := db.LoadCard(context.Background(), "run-old", recoverID)
+		_ = db.Close()
+		if rowErr != nil {
+			t.Fatalf("recovery %s load: %v", state, rowErr)
+		}
+		if row.State != state || row.Version != 3 {
+			t.Fatalf("recovery %s mutated the row: state=%s version=%d", state, row.State, row.Version)
+		}
+	}
+
+	// A different-lane re-bind on the SAME non-picked row is refused and
+	// leaves the binding untouched. (Assigning to a different run creates
+	// that run's own row and is the legitimate reassignment shape above.)
+	refuseID := addCard("matrix lane refusal")
+	pick(refuseID)
+	fcPlace(t, root, homestate.Card{CardID: refuseID, RunID: "run-old", State: homestate.CardAssigned, OwnerLabel: "worker-1", Version: 1})
+	fcBindDispatch(t, root, refuseID, "run-old")
+	if _, _, err := runFactory(t, "assign", refuseID, "--to", "worker-9", "--run", "run-old"); err == nil {
+		t.Fatal("different-lane re-bind was accepted")
+	}
+	if got := bindingRun(refuseID); got != "run-old" {
+		t.Fatalf("refused re-bind moved the binding: %s, want run-old", got)
+	}
+}
+
+// Regression pin for round-7 review P1-REPEAT (card t1538): a FIRST dispatch
+// serializes with a completion on the queue lock. The dispatch acquires the
+// queue lock first and creates the factory database inside it; the done
+// command then waits for the lock, opens the gate, sees the binding, and
+// refuses the approval-less close — the archive can never slip through a
+// stat-then-assign window.
+func TestFirstDispatchSerializesWithCompletion(t *testing.T) {
+	root, store := fcFixture(t)
+	if _, _, err := runTodo(t, "add", "serial first dispatch card"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Mutate(func(r *factory.BacklogRecord) error {
+		for i := range r.Items {
+			if r.Items[i].ID == "t1" {
+				r.Items[i].State = factory.BacklogStatePicked
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	locked := make(chan struct{})
+	dispatchErr := make(chan error, 1)
+	go func() {
+		dispatchErr <- store.WithLock(func(l *factory.LockedBacklog) error {
+			close(locked)
+			// Hold the lock long enough that the concurrent done is
+			// demonstrably waiting behind the dispatch.
+			time.Sleep(300 * time.Millisecond)
+			db, err := homestate.OpenFactory(root)
+			if err != nil {
+				return err
+			}
+			defer func() { _ = db.Close() }()
+			now := time.Now().UTC()
+			if _, err := db.RecordPicked(context.Background(), fcRun, "t1", homestate.CardFields{}, "dispatch", now); err != nil {
+				return err
+			}
+			if _, err := db.Transition(context.Background(), homestate.TransitionRequest{RunID: fcRun, CardID: "t1", To: homestate.CardAssigned, ExpectedVersion: 1, Actor: "dispatch", Owner: "worker-1", Now: now}); err != nil {
+				return err
+			}
+			return db.RecordDispatchBinding(context.Background(), "t1", fcRun, now)
+		})
+	}()
+	<-locked
+
+	_, stderr, err := runTodo(t, "done", "t1")
+	if err == nil {
+		t.Fatal("done completed while the racing first dispatch had created the factory record")
+	}
+	if !strings.Contains(stderr, "leader approval") {
+		t.Errorf("stderr %q does not name the leader approval reason", stderr)
+	}
+	if !fcLiveItem(t, store, "t1") {
+		t.Fatal("the refused done archived the card")
+	}
+	if err := <-dispatchErr; err != nil {
+		t.Fatalf("racing dispatch failed: %v", err)
+	}
+	if c := fcCard(t, root, "t1"); c.State != homestate.CardAssigned {
+		t.Fatalf("racing dispatch row = %s, want assigned", c.State)
+	}
+}
+
+// Regression pin for round-7 review P2 (card t1538): decide reads the
+// approval uuid from the queue at the PROJECT ROOT the factory DB was
+// opened at — never from the server cwd's queue. The decoy environment
+// points CLAUDE_PROJECT_DIR elsewhere; pre-fix the valid approval was
+// refused with an identity error.
+func TestFactoryDecideUsesTargetProjectRoot(t *testing.T) {
+	root, store := fcFixture(t)
+	cardID := addShapeCard(t, "target root decide card")
+	fcLinkRuntime(t, root, cardID)
+	fcBindDispatch(t, root, cardID, fcRun)
+	bare, bareMerge := fcRepo(t, false)
+	fcPlace(t, root, homestate.Card{CardID: cardID, RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, MergeSHA: bareMerge, WorktreePath: bare, EvidenceSHA: bareMerge})
+	uuid := recheckUUID(t, root, store, cardID)
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: uuid, RunID: fcRun, CardID: cardID, FactoryVersion: 1,
+		EvidenceHash: bareMerge, Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+
+	// Point the environment at a decoy project with an empty queue: the
+	// target root argument must win for the identity lookup.
+	decoy := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", decoy)
+
+	db := fcOpen(t, root)
+	defer func() { _ = db.Close() }()
+	card, err := decideOne(context.Background(), db, root, fcRun, cardID, "push", "", "")
+	if err != nil {
+		t.Fatalf("decide with a decoy cwd queue: %v", err)
+	}
+	if card.State != homestate.CardDone {
+		t.Fatalf("decide = %s, want done", card.State)
+	}
+}
+
 // fcBindDispatch records the card's dispatch binding — the current-run
 // authority the completion gate and scan resolve through. Idempotent.
 func fcBindDispatch(t *testing.T, root, cardID, runID string) {
@@ -708,14 +903,16 @@ func TestRefreshDoneApprovalGateRacingFirstDispatch(t *testing.T) {
 
 // Regression pin for round-6 review P2 (card t1538), end-to-end through the
 // done verb: the pre-read finds no factory database, a racing FIRST
-// dispatch creates it under the queue lock, and the archive-moment refresh
-// must then refuse the approval-less close instead of archiving.
+// dispatch creates it during the refresh window, and the archive-moment
+// refresh must then refuse the approval-less close instead of archiving.
+// The racing dispatch writes the factory store directly (a completion holds
+// the queue lock, so a real assign would serialize — pinned separately by
+// TestFirstDispatchSerializesWithCompletion).
 func TestDoneGateRacingFirstDispatchUnderQueueLock(t *testing.T) {
 	root, store := fcFixture(t)
 	if _, _, err := runTodo(t, "add", "racing first dispatch card"); err != nil {
 		t.Fatal(err)
 	}
-	fcLinkRuntime(t, root, "t1")
 
 	raced := false
 	prevStat := approvalGateStat
@@ -725,9 +922,22 @@ func TestDoneGateRacingFirstDispatchUnderQueueLock(t *testing.T) {
 			return nil, os.ErrNotExist
 		}
 		// The racing dispatch lands between the pre-read and the refresh.
-		fcLinkRuntime(t, root, "t1")
-		fcBindDispatch(t, root, "t1", fcRun)
-		fcPlaceFactoryCard(t, root, "t1", 1, "sha-t1", "2026-09-26T00:00:00Z")
+		db, err := homestate.OpenFactory(root)
+		if err != nil {
+			t.Errorf("racing dispatch open: %v", err)
+			return prevStat(path)
+		}
+		now := time.Now().UTC().Format(time.RFC3339Nano)
+		if _, err := db.DB.Exec(`INSERT INTO runs(run_id,status,manifest_json,created_at,updated_at) VALUES(?,'active','{}',?,?) ON CONFLICT(run_id) DO NOTHING`, fcRun, now, now); err != nil {
+			t.Errorf("racing runs row: %v", err)
+		}
+		if _, err := db.DB.Exec(`INSERT INTO card_dispatch(card_id,run_id,recorded_at) VALUES(?,?,?) ON CONFLICT(card_id) DO UPDATE SET run_id=excluded.run_id,recorded_at=excluded.recorded_at`, "t1", fcRun, now); err != nil {
+			t.Errorf("racing binding: %v", err)
+		}
+		if _, err := db.DB.Exec(`INSERT INTO cards(run_id,card_id,owner_label,state,version,evidence_sha,updated_at) VALUES(?,'t1','worker-1','picked',1,'sha-t1',?)`, fcRun, now); err != nil {
+			t.Errorf("racing card row: %v", err)
+		}
+		_ = db.Close()
 		return prevStat(path)
 	}
 	t.Cleanup(func() { approvalGateStat = prevStat })

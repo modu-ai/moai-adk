@@ -1976,43 +1976,48 @@ func newFactoryAssignCommand() *cobra.Command {
 				return fmt.Errorf("factory assign: %w", err)
 			}
 			defer func() { _ = db.Close() }()
+			// The record write runs under the queue lock, so a first
+			// dispatch can never interleave with a completion that already
+			// decided the factory DB was absent (review round-7 P1-REPEAT);
+			// the two paths serialize on the same lock.
+			queueStore := newTodoStore()
 			now := factoryCardNow()
-			card, err := db.RecordPicked(ctx, runID, cardID, fields, "assign", now)
+			var card homestate.Card
+			err = queueStore.WithLock(func(l *factory.LockedBacklog) error {
+				recordCard, err := db.RecordPicked(ctx, runID, cardID, fields, "assign", now)
+				if err != nil {
+					return err
+				}
+				card = recordCard
+				toTrim := strings.TrimSpace(to)
+				if card.State != homestate.CardPicked {
+					// State-preserving re-bind (review rounds 6-7): ANY
+					// non-picked, non-legacy row recovers or refreshes its
+					// dispatch binding without a state change, at every
+					// post-assigned state (assigned, merge-ready,
+					// merged-local, pushed, ci-green, done). The lane, when
+					// given, must match the recorded owner; the row's
+					// state, version, and owner are untouched.
+					if !card.Legacy() && (toTrim == "" || toTrim == card.OwnerLabel) {
+						return db.RecordDispatchBinding(ctx, cardID, runID, now)
+					}
+					return fmt.Errorf("factory assign: card %s is %s (owner %q); only a picked card can move to assigned%s", cardID, card.State, dash(card.OwnerLabel), func() string {
+						if !card.Legacy() && toTrim != "" && toTrim != card.OwnerLabel {
+							return " a different lane"
+						}
+						return ""
+					}())
+				}
+				if toTrim != "" {
+					card, err = db.Transition(ctx, homestate.TransitionRequest{RunID: runID, CardID: cardID, To: homestate.CardAssigned, ExpectedVersion: card.Version, Actor: "assign", Owner: to, Now: now})
+					return err
+				}
+				// A --to-less successful assign records THIS run as the
+				// current dispatch at any version (review round-7 P1-1).
+				return db.RecordDispatchBinding(ctx, cardID, runID, now)
+			})
 			if err != nil {
 				return fmt.Errorf("factory assign: %w", err)
-			}
-			toTrim := strings.TrimSpace(to)
-			if card.State != homestate.CardPicked {
-				// State-preserving re-bind (review round-6 P1-1): an
-				// assigned+ card recovers or refreshes its dispatch binding
-				// without any state change — this is the public recovery
-				// path for pre-binding rows.
-				if card.State == homestate.CardAssigned && (toTrim == "" || toTrim == card.OwnerLabel) {
-					if err := db.RecordDispatchBinding(ctx, cardID, runID, now); err != nil {
-						return fmt.Errorf("factory assign: %w", err)
-					}
-					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %s v%d owner=%s (dispatch binding recorded)\n", card.CardID, card.State, card.Version, dash(card.OwnerLabel))
-					return nil
-				}
-				return fmt.Errorf("factory assign: card %s is %s (owner %q); only a picked card can move to assigned%s", cardID, card.State, dash(card.OwnerLabel), func() string {
-					if card.State == homestate.CardAssigned && toTrim != "" && toTrim != card.OwnerLabel {
-						return " a different lane"
-					}
-					return ""
-				}())
-			}
-			if toTrim != "" {
-				card, err = db.Transition(ctx, homestate.TransitionRequest{RunID: runID, CardID: cardID, To: homestate.CardAssigned, ExpectedVersion: card.Version, Actor: "assign", Owner: to, Now: now})
-				if err != nil {
-					return fmt.Errorf("factory assign: %w", err)
-				}
-			} else if card.State == homestate.CardPicked && card.Version == 1 {
-				// A freshly created picked card is already dispatched under
-				// this run; record the binding so the completion gate can
-				// resolve it before a lane assignment happens.
-				if err := db.RecordDispatchBinding(ctx, cardID, runID, now); err != nil {
-					return fmt.Errorf("factory assign: %w", err)
-				}
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %s v%d owner=%s\n", card.CardID, card.State, card.Version, dash(card.OwnerLabel))
 			return nil
@@ -2220,7 +2225,7 @@ func factoryDecideCards(ctx context.Context, root string, out io.Writer, cards [
 	integration := config.LoadGitFlowIntegrationConfig(root).IntegrationTarget
 	refused := 0
 	for _, cardID := range cards {
-		card, err := decideOne(ctx, db, runID, cardID, gate, choice, integration)
+		card, err := decideOne(ctx, db, root, runID, cardID, gate, choice, integration)
 		if err != nil {
 			refused++
 			_, _ = fmt.Fprintf(out, "%s: refused: %v\n", cardID, err)
@@ -2279,8 +2284,11 @@ func newFactoryDecideCommand() *cobra.Command {
 }
 
 // decideOne applies one card's decision as its own version-checked
-// transition; a refusal for one card does not affect the others.
-func decideOne(ctx context.Context, db *homestate.FactoryDB, runID, cardID, gate, choice, integration string) (homestate.Card, error) {
+// transition; a refusal for one card does not affect the others. projectRoot
+// is the same root the factory DB was opened at: the queue record the
+// approval uuid is read from MUST come from this root, not the server's cwd
+// (review round-6 P2).
+func decideOne(ctx context.Context, db *homestate.FactoryDB, projectRoot, runID, cardID, gate, choice, integration string) (homestate.Card, error) {
 	cur, err := db.LoadCard(ctx, runID, cardID)
 	if err != nil {
 		return homestate.Card{}, err
@@ -2333,10 +2341,13 @@ func decideOne(ctx context.Context, db *homestate.FactoryDB, runID, cardID, gate
 	}
 	// Receipt-gated done edges bind the backlog identity, so a receipt
 	// minted for a different card cannot complete this one (review round-6
-	// P1-2). The uuid is identity knowledge read from the queue record.
+	// P1-2). The uuid is identity knowledge read from the queue record at
+	// the SAME project root the factory DB was opened at (review round-6
+	// P2): a server-cwd queue is never substituted for the target project.
 	approvalUUID := ""
 	if to == homestate.CardDone {
-		rec, err := newTodoStore().LoadPure()
+		queueStore := factory.NewBacklogStore(todoBacklogPath(projectRoot))
+		rec, err := queueStore.LoadPure()
 		if err != nil {
 			return cur, fmt.Errorf("factory decide: the queue could not be read for the approval check: %w", err)
 		}

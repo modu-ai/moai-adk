@@ -21,46 +21,54 @@ var factoryAssignmentWriter = writeFactoryAssignment
 
 // writeFactoryAssignment is the dispatch mirror (REQ-FR-025): T1 (when the
 // card has no record) and T2 through the transition API. A card already
-// assigned to the same lane is left as it is.
+// assigned to the same lane is left as it is. The whole dispatch — the
+// queue-picked check, the factory record creation, and the dispatch binding
+// — runs under the queue lock, so a first dispatch can never interleave
+// with a completion that already decided the factory DB was absent (review
+// round-7 P1-REPEAT): the two paths serialize on the lock the completion
+// holds.
 func writeFactoryAssignment(ctx context.Context, root string, store *factory.BacklogStore, runID, cardID, lane string) error {
-	record, err := store.LoadPure()
-	if err != nil {
-		return fmt.Errorf("read queue: %w", err)
-	}
-	picked := false
-	for _, item := range record.Items {
-		if item.ID == cardID {
-			picked = item.State == factory.BacklogStatePicked
+	return store.WithLock(func(l *factory.LockedBacklog) error {
+		record, err := l.LoadPure()
+		if err != nil {
+			return fmt.Errorf("read queue: %w", err)
 		}
-	}
-	if !picked {
-		return fmt.Errorf("queue item %s is not picked", cardID)
-	}
-	db, err := homestate.OpenFactory(root)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = db.Close() }()
-	now := factoryCardNow()
-	card, err := db.LoadCard(ctx, runID, cardID)
-	if errors.Is(err, homestate.ErrCardNotFound) {
-		card, err = db.RecordPicked(ctx, runID, cardID, homestate.CardFields{}, "dispatch", now)
-	}
-	if err != nil {
-		return err
-	}
-	switch {
-	case card.State == homestate.CardPicked:
-		_, err = db.Transition(ctx, homestate.TransitionRequest{RunID: runID, CardID: cardID, To: homestate.CardAssigned, ExpectedVersion: card.Version, Actor: "dispatch", Owner: lane, Now: now})
-		return err
-	case card.State == homestate.CardAssigned && card.OwnerLabel == lane:
-		// Idempotent re-assign (review round-4 P1-2): success without a T2
-		// still records THIS run as the current dispatch, which is also the
-		// recovery path for pre-binding rows at assigned-or-later.
-		return db.RecordDispatchBinding(ctx, cardID, runID, now)
-	default:
-		return fmt.Errorf("factory record for %s is %s (owner %q), not assignable to %s", cardID, card.State, card.OwnerLabel, lane)
-	}
+		picked := false
+		for _, item := range record.Items {
+			if item.ID == cardID {
+				picked = item.State == factory.BacklogStatePicked
+			}
+		}
+		if !picked {
+			return fmt.Errorf("queue item %s is not picked", cardID)
+		}
+		db, err := homestate.OpenFactory(root)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = db.Close() }()
+		now := factoryCardNow()
+		card, err := db.LoadCard(ctx, runID, cardID)
+		if errors.Is(err, homestate.ErrCardNotFound) {
+			card, err = db.RecordPicked(ctx, runID, cardID, homestate.CardFields{}, "dispatch", now)
+		}
+		if err != nil {
+			return err
+		}
+		switch {
+		case card.State == homestate.CardPicked:
+			_, err = db.Transition(ctx, homestate.TransitionRequest{RunID: runID, CardID: cardID, To: homestate.CardAssigned, ExpectedVersion: card.Version, Actor: "dispatch", Owner: lane, Now: now})
+			return err
+		case card.State == homestate.CardAssigned && card.OwnerLabel == lane:
+			// Idempotent re-assign (review round-4 P1-2): success without a
+			// T2 still records THIS run as the current dispatch, which is
+			// also the recovery path for pre-binding rows at
+			// assigned-or-later.
+			return db.RecordDispatchBinding(ctx, cardID, runID, now)
+		default:
+			return fmt.Errorf("factory record for %s is %s (owner %q), not assignable to %s", cardID, card.State, card.OwnerLabel, lane)
+		}
+	})
 }
 
 // mirrorFactoryAssignment writes the factory record for a dispatch that has
