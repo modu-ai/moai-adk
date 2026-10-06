@@ -199,15 +199,28 @@ func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTi
 		// REQ-MWQ-004: the bound elapsed before promotion — withdraw and
 		// name the holder, the last queue position, and the bound.
 		if now.After(deadline) {
+			// F6 (card-review r3): the heartbeat renewal above may have
+			// PROMOTED this waiter (the holder's lease lapsing mid-poll) —
+			// re-read holdership before declaring the timeout, or the
+			// caller exits believing it failed while the record says it
+			// holds the window (stranded until liveness reaps it).
+			if latest, readErr := mustReadWindowErr(root); readErr == nil && latest.Held() && latest.SessionID == sessionID {
+				if out != nil {
+					_, _ = fmt.Fprintln(out, "integration window acquired from the queue")
+				}
+				return nil
+			}
 			holder := "nobody"
 			if lock.Held() {
 				holder = holderLabel(lock)
 			}
 			position := factory.TicketPosition(lock, sessionID)
-			_ = factory.UpdateIntegrationWindow(root, func(w *factory.IntegrationLock) error {
+			if withdrawErr := factory.UpdateIntegrationWindow(root, func(w *factory.IntegrationLock) error {
 				factory.WithdrawTicket(w, sessionID)
 				return nil
-			})
+			}); withdrawErr != nil {
+				return fmt.Errorf("integration window: your ticket timed out after %s at queue position %d behind %s, and the withdrawal failed (%v) — moai integration status reads it", bound, position, holder, withdrawErr)
+			}
 			return fmt.Errorf("integration window: your ticket timed out after %s at queue position %d behind %s — re-acquire with --wait re-enters at the tail", bound, position, holder)
 		}
 	}

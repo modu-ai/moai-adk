@@ -11,6 +11,7 @@ package cli
 import (
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -187,6 +188,69 @@ func TestWaitLoopExitsWhenTicketDropped(t *testing.T) {
 	lock, _ := factory.ReadIntegrationLock(root)
 	if factory.TicketPosition(lock, "sess-b") != 0 {
 		t.Fatalf("a dropped waiter must not re-enqueue itself: %+v", lock.Queue)
+	}
+}
+
+func TestWaitTimeoutAfterRenewalPromotionAcquiresNotStrands(t *testing.T) {
+	// F6 (card-review r3): within one loop iteration the heartbeat-renewal
+	// mutation runs AFTER the promotion check and BEFORE the deadline
+	// check, and the renewal's RefreshWindow may PROMOTE the caller there —
+	// the holder's lease lapsing mid-poll. The timeout branch then withdrew
+	// a ticket that was no longer queued and exited non-zero without
+	// re-checking holdership: the waiter exited believing it had failed
+	// while the record said it held the window — stranded until liveness
+	// reaped it. The deadline branch re-reads holdership after the renewal,
+	// before the timeout return.
+	root := waitTestRoot(t)
+	oldInterval := integrationWaitPollInterval
+	integrationWaitPollInterval = time.Millisecond
+	t.Cleanup(func() { integrationWaitPollInterval = oldInterval })
+
+	// A count-stepping clock: every WindowClock read advances 18s — enough
+	// for one iteration to cross BOTH the 15s heartbeat-renewal gate and a
+	// 10s bound. The reads: the enqueue's refresh (base+18s), the enqueue
+	// instant (base+36s), then one per loop iteration (base+54s, ...).
+	base := time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)
+	oldClock := factory.WindowClock
+	var mu sync.Mutex
+	calls := 0
+	factory.WindowClock = func() time.Time {
+		mu.Lock()
+		defer mu.Unlock()
+		calls++
+		return base.Add(time.Duration(calls) * 18 * time.Second)
+	}
+	t.Cleanup(func() { factory.WindowClock = oldClock })
+
+	// The holder A: LIVE (this process), lease lapsing at base+30s — valid
+	// at the enqueue's refresh (base+18s), lapsed at the renewal's refresh
+	// (base+54s). A live-but-expired holder is exactly what the renewal's
+	// refresh promotes the queued caller past.
+	holder := factory.IntegrationLock{
+		SessionID: "sess-a", SessionName: "lane-a",
+		PID: os.Getpid(), PIDSource: factory.PIDSourceSessionOwner,
+		Branch: "develop",
+	}
+	factory.StampLease(&holder, base, 30*time.Second)
+	if err := factory.UpdateIntegrationWindow(root, func(w *factory.IntegrationLock) error {
+		*w = holder
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	err := integrationWaitInQueue(root, "sess-b", factory.IntegrationTicket{
+		SessionID: "sess-b", SessionName: "lane-b", OwnerPID: os.Getpid(), WaiterPID: os.Getpid(),
+	}, 10*time.Second, nil)
+	if err != nil {
+		t.Fatalf("the renewal's promotion landed before the deadline: the waiter must return acquired, got %v", err)
+	}
+	held, readErr := factory.ReadIntegrationLock(root)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if held.SessionID != "sess-b" {
+		t.Fatalf("the waiter must hold the window: %+v", held)
 	}
 }
 
