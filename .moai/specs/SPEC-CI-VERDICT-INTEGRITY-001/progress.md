@@ -70,4 +70,37 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase — owned by manager-docs_
+- sync_status: complete (single sync commit: CHANGELOG [Unreleased] Fixed entry +
+  spec.md frontmatter `in-progress → implemented → completed` + this §E.4;
+  `sync_commit_sha` backfilled in the follow-up commit)
+- sync_complete_at: 2026-10-06
+- sync_commit_sha: pending-backfill-sync
+- b12_self_test_a: pre-emission grep `grep -c 'SPEC-CI-VERDICT-INTEGRITY-001'
+  CHANGELOG.md` → 0 (exit 1) — no duplicate entry from a parallel sync
+- b12_self_test_b: AC count match — the counter on acceptance.md (tier M AC
+  source) reports live=14, excluded=0, ambiguous=0; the CHANGELOG entry
+  references the same 14 (AC-CI-001..014)
+- b12_self_test_c: file path verification — every path named in the entry
+  verified present via `ls` at write time (11 paths, 0 misses)
+- changelog_entry_position: CHANGELOG.md `## [Unreleased]` → `### Fixed` —
+  first entry (reverse-chronological house order)
+- frontmatter_status_transitions: in-progress → implemented → completed on the
+  single sync commit (manager-docs, per the Status Transition Ownership Matrix;
+  `status:` + `updated:` only, no body change — `updated:` already 2026-10-06)
+- canary_compliance_check: n/a — this SPEC defines no forward-looking policy
+  gated by its own sync tests
+- ac_ci_012_resolution: Path A (implement-flip, coordinator disposition) —
+  amendment `f6fbc0d9e` added the ci.yml filter entry + the correspondence
+  guard `TestBranchProtectionDetectFilterCoversParityInput`; flip re-measured
+  by manager-docs (E14 probe grep 0→1, guard test PASS `ok 0.406s`)
+- ac_ci_009_evidence_path_note: acceptance.md names
+  `.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/apply-package.md` as the keep-set
+  delivery surface; the actual package lives at
+  `.moai/reports/t1534/keep-set-package.md` (card evidence path is
+  authoritative) — resolved by this note, no manager-spec wording touch
+- codemaps: omitted — `ci-watch` has zero representation in
+  `.moai/project/codemaps/` (0 hits incl. modules.md); `scripts/` shell
+  tooling is not a codemap fold unit. Recorded as omission; scope not expanded
+- mx_tag_check: zero `@MX` tags present on the touched surfaces (4 workflows +
+  2 scripts + the new guard test) — none stale, none owed
+- sync_delegate: manager-docs (card t1534, lane-24 orchestration)
