@@ -43,7 +43,29 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase — owned by manager-develop_
+- run_status: complete (STEP-0 + M1 + M2 + M3 all landed)
+- run_complete_at: 2026-10-06 (lane-24 direct completion after the run
+  delegate was stopped output-silent at 2h27m; M1 landed by the delegate as
+  d74707a9e before the stop; M2/M3 completed lane-direct per the
+  consecutive-stall rule — zombie delegate TaskStopped, work checkpointed on
+  disk, zero loss)
+- run_commits: d74707a9e (M1 five gate repairs + STEP-0) → 845e9a20c (M2 SSoT
+  correction + validator publishability) → 6a8107f41 (M3 ci-watch
+  supported-field repair + harness transition)
+- verification: ci-watch test harness 12 pass / 0 fail (incl. field-contract
+  regression + missing-required-pending); validator exit 0 — all 9 main
+  contexts publishable incl. per-combination Build x5 and Analyze (Go) (go);
+  E26 RED exit 0 (merge served 1200 past deadline 1140 through the real
+  merge body) + GATE-4 control PROBE_DEADLINE=1300 observes the legal
+  in-deadline merge; sh -n clean on all touched scripts; blank-line variant
+  repro exits 0 identically (GATE-2 closed)
+- M2 keep-set package: PENDING — the branch-protection apply payload,
+  pre-apply live-diff command, and post-apply GET command are packaged at
+  `.moai/worktrees/t1534/.moai/reports/t1534/` for the operator
+  (AskUserQuestion delivery per the keep-set channel; delivery due next)
+- debt conditions status: D1 held through iter-5/6 (fixture byte-conformance,
+  not re-raised); the 7-item repro-infra list landed via amendments 5-7 and
+  is VERIFIED by the STEP-0/E26 measurements above
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
