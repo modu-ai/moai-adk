@@ -119,7 +119,7 @@ An exported audit artifact carries at minimum:
   or more **required backends** (an `audit.gates` entry or an `audit.model`
   assignment an operator wrote) also carries the convergence receipt —
   machine-readable lines recording the convergence result the shared admission
-  rule reads (SPEC-AUDIT-CEILING-001 REQ-ACE-008):
+  rule reads:
 
   ```
   convergence_overall: <pass|fail>
