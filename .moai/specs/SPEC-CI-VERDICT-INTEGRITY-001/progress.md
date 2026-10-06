@@ -116,3 +116,18 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   mutant probe (entry relocated to top level) FAILs, restored tree passes.
   Pushed a3febc2dd..ef8ebd702; CI publication still platform-blocked
   (04:17Z+ no-publish gap — leader watching).
+- gate_round_5 (codex review gate findings, lane-direct): 5 repairs, RED
+  observed on the committed ef8ebd702 code before each GREEN on this tree
+  (commit `fd98058a1`) — (1) run.sh `pr view` failure aborts after retry
+  instead of falling back to a non-SSoT head key (RED: 0/0 pass, advisory
+  Lint=fail, exit 0 / GREEN: abort 1); (2) a missing SSoT branch key aborts
+  too (empty contexts list stays legal via key-presence grep); (3) worse()
+  aggregates skipping as PENDING in every order (RED: 1 pass vs 0 pass
+  across orders / GREEN: 2 pending both); (4) validator strips
+  single-quoted names (octal \047); (5) exclude no longer applies to
+  include tuples (GitHub order: exclude then include) and a bare matrix
+  job name gets the per-tuple suffix. Regression suite re-run after an
+  in-round syntax incident (apostrophes in new awk comments broke the
+  single-quoted program; phantom=0 readings from that window are noise):
+  phantom=1 control=0 malformed=1 matrix-exclude=1 repo-root=0 all hold.
+  Pushed ef8ebd702..fd98058a1; CI publication still platform-blocked.
