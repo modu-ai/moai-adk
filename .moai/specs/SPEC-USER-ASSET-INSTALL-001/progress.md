@@ -698,4 +698,31 @@ author: manager-spec
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_complete_at: 2026-10-06
+- sync_commit_sha: pending-backfill-sync
+- sync_status: complete
+- changelog_entry_position: CHANGELOG.md `[Unreleased]` → `### Added` 최상단 항목
+- frontmatter_status_transitions:
+  - spec.md: in-progress → implemented → completed (단일 싱크 커밋 병합 종결 —
+    Status Transition Ownership Matrix, manager-docs 소관)
+  - updated: 2026-10-06 (기존값 유지 — 싱크 커밋 날짜와 동일해 재기록 불요)
+  - plan.md / acceptance.md: status 필드 없음(Artifact Statelessness) — 무변경
+- b12_self_test_a: `grep -c 'SPEC-USER-ASSET-INSTALL-001' CHANGELOG.md` → `0`
+  (exit 1, 배출 전 측정 — 중복 항목 없음 확인)
+- b12_self_test_b: AC live 카운터(awk, acceptance.md) → `live=25 excluded=0
+  ambiguous=0` — CHANGELOG 항목이 인용하는 AC-001..025 = 25건과 일치
+- b12_self_test_c: 항목이 주장하는 경로 실측 — `internal/userassets/` 존재
+  (install/remove/journal/lock/manifest/paths); `internal/cli/
+  update_mirror_heal.go`, `internal/cli/skill_mirror_repair.go`,
+  `plugins/moai` 부재 확인(M4/M6 삭제의 기대 부재)
+- canary_compliance_check:
+  - README.md + README.ko.md: "Deploy mode: plugin default and full local
+    deploy" 절을 사용자 폴더 모델 절로 교체(JD-6 소관 내 수정 — plugin 운반체
+    서술·`--no-plugin`/`--all` 구모델 안내 제거, 사용자 폴더 설치·매니페스트·
+    번들·update 갱신·D-Q3 프로필 한계 기술)
+  - docs-site(adk.mo.ai.kr): 이 싱크의 범위 밖 — 레인 보고에 관찰 항목으로 기재
+- mx_tag_validation: 싱크 단계는 .go 파일을 건드리지 않는다(소관 밖) — run 단계의
+  @MX 태그는 소스 그대로이며 go build + 소관 테스트로 컴파일·로드 정합 확인
+- sync_scope_note: 싱크 커밋 변경 파일 = CHANGELOG.md, README.md, README.ko.md,
+  .moai/specs/SPEC-USER-ASSET-INSTALL-001/{progress.md,spec.md} 5개 —
+  구현 소스 무변경(소유 경계 준수)

@@ -2,7 +2,7 @@
 id: SPEC-USER-ASSET-INSTALL-001
 title: "Install common skills and agents into per-user folders (no plugin carrier), slim the project payload to settings + AGENTS.md + lock file + project-only harness, and retire the pluginemit and deployer_mode surfaces"
 version: "0.6.4"
-status: in-progress
+status: completed
 created: 2026-10-05
 updated: 2026-10-06
 author: manager-spec
