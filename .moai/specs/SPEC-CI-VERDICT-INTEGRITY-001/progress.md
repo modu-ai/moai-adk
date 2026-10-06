@@ -253,3 +253,17 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   control=0 malformed=1 matrix-exclude=1 repo-root=0; round-12/13
   probes green; harness 12 pass / 0 fail. CI publication still
   platform-blocked.
+- gate_round_15 (codex review gate findings, lane-direct): 3 repairs
+  (commit `5f3fab757`) — (1) strip_quotes decodes the single-quote
+  escape (inner apostrophe = two apostrophes; RED on 166882a89);
+  (2) object-axis FOLLOW-UP fields at ind 12 collect into the axis
+  sub-fields (matrix.target.version resolves; RED on 166882a89);
+  (3) include presence tracked by incset — an explicit empty value
+  substitutes as empty (REGRESSION-GUARD: already green on the
+  baseline — the merge path substitutes empty values; the gate's
+  "current=1" reading was on an intermediate working state of this
+  repair). In-round comment hazard (AXIS's) caught by syntax check.
+  Regression: phantom=1 control=0 malformed=1 matrix-exclude=1
+  repo-root=0; round-14 probes green; harness 12 pass / 0 fail. CI
+  publication still platform-blocked. Leader drain notice received —
+  session ends after this round.
