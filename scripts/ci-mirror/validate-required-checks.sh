@@ -360,7 +360,15 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			# GitHub — a residual expression after all substitution is an
 			# unset field, not an unverifiable name; a partial include
 			# tuple must not poison the whole published name.
+			# GATE-18b: an EXPRESSION-declared axis (exprdim) has real
+			# values this parser cannot compute — its reference parks on a
+			# SUBSEP frame through the fill and is restored raw, so no
+			# empty-valued combination is fabricated for it.
+			for (xd in exprdim)
+				outl = subst_literal(outl, "\\$\\{\\{[[:space:]]*matrix\\." xd "[[:space:]]*\\}\\}", SUBSEP xd SUBSEP)
 			outl = subst_literal(outl, "\\$\\{\\{[[:space:]]*matrix\\.[A-Za-z_][A-Za-z_0-9-]*[[:space:]]*\\}\\}", "")
+			for (xd in exprdim)
+				outl = subst_literal(outl, SUBSEP xd SUBSEP, "${{ matrix." xd " }}")
 			# GATE-11: the include out-of-matrix fields feed ONLY the
 			# expression substitution — the auto suffix reflects the
 			# ORIGINAL matrix axes alone (GitHub names
@@ -431,7 +439,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	}
 	function reset_job_mem() {
 		nk = 0; inc_n = 0; had_ref = 0; ex_n = 0; mmode = "inc"; bdim_key = ""; zcombo = 0
-		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord; delete merged; delete objitems; delete oin; delete oaxes; delete incset; delete mcnt; delete exgrp; delete sufcnt; delete newsufcnt
+		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord; delete merged; delete objitems; delete oin; delete oaxes; delete incset; delete mcnt; delete exgrp; delete sufcnt; delete newsufcnt; delete exprdim
 	}
 	BEGIN { in_jobs = 0; has_name = 0; nk = 0; inc_n = 0; in_steps = 0; in_strategy = 0; in_matrix = 0; mmode = "inc"; ex_n = 0; bdim_key = ""; n_oaxes = 0; zcombo = 0 }
 	{
@@ -550,6 +558,19 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		}
 		nk++
 		dims[nk] = k
+		next
+	}
+	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*[A-Za-z_][A-Za-z_0-9-]*:[[:space:]]*[^[]/ {
+		# GATE-18b: an axis whose value is neither a flow array nor empty
+		# carries an EXPRESSION (`os: ${{ fromJSON(...) }}`) — the real
+		# values are uncomputable here, so the axis is recorded (never
+		# declared as a dimension) and the unset-field fill PARKS its
+		# reference: GitHub publishes the evaluated name no line parser
+		# can compute, and a raw name never matches a concrete required
+		# context — the conservative direction.
+		line = strip_comment($0); sub(/^[[:space:]]*/, "", line)
+		k = line; sub(/:.*/, "", k)
+		exprdim[k] = 1
 		next
 	}
 	in_matrix && ind == 10 && $0 ~ /^[[:space:]]*- / {

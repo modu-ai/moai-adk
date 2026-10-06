@@ -322,3 +322,15 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   and `[""]` keeps publishing `Test ()`. Regression: phantom=1 control=0
   malformed=1 matrix-exclude=1 repo-root=0; round-17 probes green;
   harness 12 pass / 0 fail.
+- gate_round_18 addendum (same round, codex advisory finding — FAIL P1,
+  measured): an EXPRESSION-declared axis (`os: ${{ fromJSON(...) }}`) is
+  unparseable for this line parser, fell out of the dimension set, and
+  the unset-field fill fabricated `Test (/18)` — RED exit 0
+  over-approval observed on repro `repro/expr-axis/` before the fix.
+  The fill now parks expression-axis references on a SUBSEP frame and
+  restores them raw (GREEN exit 1 — a raw name never matches a concrete
+  required context, the conservative direction). Absorb re-measure:
+  origin/main merged into the card branch (`013f717fa`, CHANGELOG.md
+  [Unreleased] append-collision resolved keeping both sides) and the
+  full observation suite re-run GREEN in the absorbed tree incl.
+  repo-root against the real main SSoT.
