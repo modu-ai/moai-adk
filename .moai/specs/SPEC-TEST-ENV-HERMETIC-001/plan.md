@@ -20,7 +20,7 @@ Priorities are High / Medium / Low; no time estimates.
 - **Development mode**: TDD — the RED guard commit precedes the fix commits (REQ-THE-006).
 - **Evidence status**: the five observed reds, the cli scrubbed arm, the hook one-axis arms and
   the discovery narrow pair, and the plan-time listed counts are carried in acceptance.md §D.0
-  (ledger E-1..E-8).
+  (ledger E-1..E-9).
   `.moai/reports/t1356/baseline.md` and `.moai/reports/t1356/plan-audit.md` are local-only and
   gitignored; never `git add -f` them and never re-add a gitignore negation.
 - **PRESERVE**: every production file; `internal/cli/ptycaptest/` (own guard); the six hook and ten
