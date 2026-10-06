@@ -168,13 +168,18 @@ func ReconcileManagedPaths(projectRoot string, out io.Writer, tmplFS fs.FS, rend
 
 	// Stage 2 — stale files: archive-then-remove (REQ-UPM-014). The archive
 	// copy is the preservation step: a failure aborts before the removal
-	// (REQ-UPM-016 / REQ-UDS-008). The archive root is run-scoped
-	// (timestamp-suffixed — review finding 5): a re-update must never
-	// overwrite the recovery copy a previous run took. Archive copies use the
-	// package default file mode (defs.FilePerm, 0644) — the archive is a
-	// recovery surface, not a confidentiality boundary, and source modes are
-	// not inherited.
-	archiveRoot := filepath.Join(ReconcileArchiveFilesRoot(), time.Now().Format(defs.BackupTimestampFormat))
+	// (REQ-UPM-016 / REQ-UDS-008). The archive root is run-scoped and
+	// ATOMICALLY unique (gate round 9, finding 2 — the second-level timestamp
+	// alone is not unique across runs in the same second): the run directory
+	// is claimed with os.Mkdir, which fails EEXIST on any collision, and a
+	// numbered suffix retries — a previous run's recovery copies are never a
+	// write target. Archive copies use the package default file mode
+	// (defs.FilePerm, 0644) — the archive is a recovery surface, not a
+	// confidentiality boundary, and source modes are not inherited.
+	archiveRoot, err := uniqueArchiveRunDir(projectRoot)
+	if err != nil {
+		return summary, pending, err
+	}
 	for _, f := range plan.Stale {
 		if err := archiveThenRemove(projectRoot, f.RelPath, archiveRoot); err != nil {
 			return summary, pending, err
@@ -328,6 +333,37 @@ func writeFilePreservingMode(abs string, data []byte) error {
 		return err
 	}
 	return os.WriteFile(abs, data, mode)
+}
+
+// uniqueArchiveRunDir claims the run's archive directory under the
+// reconciliation archive root and returns its project-root-relative slash
+// form. The claim is os.Mkdir — atomic, fails EEXIST on any collision — so
+// two runs in the same second (or a same-stamped re-run) land in distinct
+// numbered directories and no previous run's recovery copy is ever a write
+// target (gate round 9, finding 2). The parent tree is created with
+// MkdirAll; the stamp level itself is the atomic contention point.
+func uniqueArchiveRunDir(projectRoot string) (string, error) {
+	rootAbs := filepath.Join(projectRoot, filepath.FromSlash(ReconcileArchiveFilesRoot()))
+	if err := os.MkdirAll(rootAbs, defs.DirPerm); err != nil {
+		return "", fmt.Errorf("create archive root: %w", err)
+	}
+	stamp := time.Now().Format(defs.BackupTimestampFormat)
+	for n := 0; ; n++ {
+		name := stamp
+		if n > 0 {
+			name = fmt.Sprintf("%s-%d", stamp, n)
+		}
+		abs := filepath.Join(rootAbs, name)
+		if err := os.Mkdir(abs, defs.DirPerm); err == nil {
+			rel, relErr := filepath.Rel(projectRoot, abs)
+			if relErr != nil {
+				return "", relErr
+			}
+			return filepath.ToSlash(rel), nil
+		} else if !os.IsExist(err) {
+			return "", fmt.Errorf("claim archive run dir: %w", err)
+		}
+	}
 }
 
 // archiveThenRemove copies rel into the run-scoped reconciliation archive

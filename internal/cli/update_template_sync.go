@@ -910,14 +910,18 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				plRecon.Done(fmt.Sprintf("%d merged, %d conflict(s), %d preserved",
 					len(reconSummary.Merged), len(reconSummary.Conflicts), len(reconSummary.Preserved)))
 				// The merges rewrote files the deploy just tracked — re-record
-				// them (the t1275 pattern, extended to the reconciled set).
-				mergedPaths := make([]string, 0, len(reconSummary.Merged)+len(reconSummary.Conflicts))
-				mergedPaths = append(mergedPaths, reconSummary.Merged...)
-				for _, c := range reconSummary.Conflicts {
-					mergedPaths = append(mergedPaths, c.Path)
-				}
-				if len(mergedPaths) > 0 {
-					if retrackErr := retrackManifestFiles(projectRoot, mgr, errOut, mergedPaths); retrackErr != nil {
+				// the MERGED set (the t1275 pattern). Conflict-preserved paths
+				// are deliberately EXCLUDED (gate round 9, finding 1): their
+				// on-disk bytes are the OPERATOR's restored content, not this
+				// run's intended state — re-tracking one would register the
+				// user's bytes as a healthy template_managed record, and the
+				// next update would classify the file template-owned and
+				// overwrite it with the render (the R-2 recurrence path). An
+				// untouched record keeps the divergent hash, so the next run
+				// classifies the file user-modified and reports the conflict
+				// again instead of silently overwriting.
+				if len(reconSummary.Merged) > 0 {
+					if retrackErr := retrackManifestFiles(projectRoot, mgr, errOut, reconSummary.Merged); retrackErr != nil {
 						_, _ = fmt.Fprintf(errOut, "  manifest retrack (reconciled set): %v\n", retrackErr)
 					}
 				}

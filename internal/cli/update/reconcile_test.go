@@ -751,3 +751,179 @@ func TestUpdate_SummaryHonesty(t *testing.T) {
 		t.Errorf("rendered summary must list the preserved set, got:\n%s", rendered)
 	}
 }
+
+// TestConflictPreservedFileStaysUserModifiedNextRun — gate round 9, finding
+// 1's safety property: a conflict-preserved file whose manifest record still
+// reads template_managed with the RENDER's hash (the state the deploy's own
+// tracking left behind) classifies user-modified on the NEXT run, because
+// the recorded hash no longer matches the operator's restored bytes. The cli
+// wiring's exclusion of conflict paths from the retrack is what keeps this
+// property — re-tracking one would flip it to template-owned and the next
+// update would overwrite the operator's content (the R-2 recurrence path).
+func TestConflictPreservedFileStaysUserModifiedNextRun(t *testing.T) {
+	const rel = ".claude/rules/moai/policy.json"
+	const ours = "{\"shared\": \"user-value\"}\n"
+	const render = "{\"shared\": \"template-value\"}\n"
+	root := newClassifyFixture(t, map[string]string{rel: ours})
+	carried := map[string]string{rel: render}
+
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	if err := mgr.Track(rel, manifest.TemplateManaged, ""); err != nil {
+		t.Fatalf("track: %v", err)
+	}
+	// The deploy's tracking state: template_managed with the render's hash.
+	entry := mgr.Manifest().Files[rel]
+	entry.CurrentHash = manifest.HashBytes([]byte(render))
+	mgr.Manifest().Files[rel] = entry
+
+	plan, err := ClassifyManagedRoots(root, []deploy.CleanTarget{recTarget(root, ".claude/rules/moai")},
+		renderWith(carried), mgr.Manifest())
+	if err != nil {
+		t.Fatalf("ClassifyManagedRoots: %v", err)
+	}
+	if got := plan.ClassOf(rel); got != ClassUserModified {
+		t.Errorf("conflict-preserved file class = %q, want %q (template-owned would let the next update overwrite it)", got, ClassUserModified)
+	}
+}
+
+// TestUniqueArchiveRunDirDistinct — gate round 9, finding 2: two claims in
+// the same second land in distinct directories (the atomic Mkdir + numbered
+// suffix), so a same-stamped re-run can never write over a previous run's
+// recovery copy.
+func TestUniqueArchiveRunDirDistinct(t *testing.T) {
+	root := t.TempDir()
+	first, err := uniqueArchiveRunDir(root)
+	if err != nil {
+		t.Fatalf("first claim: %v", err)
+	}
+	second, err := uniqueArchiveRunDir(root)
+	if err != nil {
+		t.Fatalf("second claim: %v", err)
+	}
+	if first == second {
+		t.Fatalf("two claims returned the same run dir %q — a re-run would overwrite the first recovery copies", first)
+	}
+	// Both exist as real directories.
+	for _, d := range []string{first, second} {
+		info, err := os.Stat(filepath.Join(root, filepath.FromSlash(d)))
+		if err != nil || !info.IsDir() {
+			t.Errorf("claimed run dir %s missing or not a directory (err=%v)", d, err)
+		}
+	}
+}
+
+// TestCleanTreeEndStateEqualsWipeRedeploy — AC-UPM-010 / NFR-UPM-003. A
+// clean fixture (no operator modifications, no local-only files) run through
+// the pipeline reaches the same end state as the wipe-and-redeploy it
+// replaces: directory-diff equal. The preservation pipeline is additive —
+// a behavior change for no clean tree.
+func TestCleanTreeEndStateEqualsWipeRedeploy(t *testing.T) {
+	files := map[string]string{
+		".claude/settings.json":             "{\n  \"permissions\": {}\n}\n",
+		".claude/rules/moai/rule.md":        "rule render\n",
+		".moai/config/sections/system.yaml": "moai:\n  template_version: 0.0.0\n",
+		".moai/config/sections/llm.yaml":    "llm:\n  harness: claude\n",
+	}
+	carried := map[string]string{
+		".claude/settings.json":             "{\n  \"permissions\": {}\n}\n",
+		".claude/rules/moai/rule.md":        "rule render NEW\n",
+		".moai/config/sections/system.yaml": "moai:\n  template_version: 9.9.9\n",
+		".moai/config/sections/llm.yaml":    "llm:\n  harness: claude\n",
+	}
+
+	// Arm A — the wipe-and-redeploy end state (the M1-characterized flow):
+	// clean removes everything, deploy writes the renders.
+	rootA := newClassifyFixture(t, files)
+	if err := deploy.CleanMoaiManagedPaths(rootA, io.Discard, recTmplFS(carried)); err != nil {
+		t.Fatalf("arm A clean: %v", err)
+	}
+	recSimulateDeploy(t, rootA, carried)
+
+	// Arm B — the pipeline: reconcile → [deploy] → merge. The clean-project
+	// state of the AC's Given: a moai-installed tree whose manifest is
+	// healthy (every carried file pristine as last deployed). The
+	// manifest-ABSENT divergence case deliberately takes the R-1
+	// conservative route (conflict-preserve) instead — an untracked file
+	// whose bytes differ from the render is indistinguishable from an
+	// operator edit, and the pipeline never guesses.
+	rootB := newClassifyFixture(t, files)
+	mgrB := manifest.NewManager()
+	if _, err := mgrB.Load(rootB); err != nil {
+		t.Fatalf("arm B manifest: %v", err)
+	}
+	for rel, prior := range files {
+		if err := mgrB.Track(rel, manifest.TemplateManaged, ""); err != nil {
+			t.Fatalf("arm B track %s: %v", rel, err)
+		}
+		entry := mgrB.Manifest().Files[rel]
+		entry.CurrentHash = manifest.HashBytes([]byte(prior))
+		mgrB.Manifest().Files[rel] = entry
+	}
+	summary, pending, err := ReconcileManagedPaths(rootB, io.Discard, recTmplFS(carried), renderWith(carried), mgrB.Manifest(), ReconcileOptions{})
+	if err != nil {
+		t.Fatalf("arm B reconcile: %v", err)
+	}
+	recSimulateDeploy(t, rootB, carried)
+	summary, err = ReconcileMerges(rootB, io.Discard, renderWith(carried), nil, ReconcileMergeOptions{}, pending, summary)
+	if err != nil {
+		t.Fatalf("arm B merges: %v", err)
+	}
+
+	// Directory-diff equal: every fixture path ends byte-identical across
+	// the two arms.
+	for rel := range files {
+		absA := filepath.Join(rootA, filepath.FromSlash(rel))
+		absB := filepath.Join(rootB, filepath.FromSlash(rel))
+		dataA, errA := os.ReadFile(absA)
+		dataB, errB := os.ReadFile(absB)
+		if (errA == nil) != (errB == nil) {
+			t.Errorf("%s existence differs: arm A err=%v, arm B err=%v", rel, errA, errB)
+			continue
+		}
+		if errA == nil && string(dataA) != string(dataB) {
+			t.Errorf("%s content differs across arms:\nA: %q\nB: %q", rel, dataA, dataB)
+		}
+	}
+	_ = summary
+}
+
+// TestAbortLeavesTreeIntact — AC-UPM-041 (archive arm). An archive
+// machinery failure before any copy aborts the reconcile with the whole
+// tree byte-identical: no stale file was removed, no pending merge was
+// captured-and-lost (the run returns an error and nothing else happened).
+func TestAbortLeavesTreeIntact(t *testing.T) {
+	const staleRel = ".claude/rules/moai/old-rule.md"
+	const otherRel = ".claude/rules/moai/keep.md"
+	// .moai/archive exists as a regular FILE: the run-dir claim fails
+	// before any archive write.
+	root := newClassifyFixture(t, map[string]string{
+		staleRel:        "stale\n",
+		otherRel:        "keep me\n",
+		".moai/archive": "not a directory\n",
+	})
+	carried := map[string]string{".claude/rules/moai/note.md": "render\n"}
+
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	if err := mgr.Track(staleRel, manifest.TemplateManaged, ""); err != nil {
+		t.Fatalf("track: %v", err)
+	}
+
+	_, _, err := ReconcileManagedPaths(root, io.Discard, recTmplFS(carried), renderWith(carried), mgr.Manifest(), ReconcileOptions{})
+	if err == nil {
+		t.Fatal("archive claim failure must abort the reconcile")
+	}
+	// Both files are byte-identical to pre-run: the failure preceded every
+	// destructive step.
+	for rel, want := range map[string]string{staleRel: "stale\n", otherRel: "keep me\n"} {
+		data, readErr := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		if readErr != nil || string(data) != want {
+			t.Errorf("%s altered by the aborted run: %q (err=%v)", rel, data, readErr)
+		}
+	}
+}

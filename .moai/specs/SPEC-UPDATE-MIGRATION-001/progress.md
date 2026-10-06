@@ -173,7 +173,7 @@ environment, not code.
   `go test -count=1 ./internal/cli/update/...` all packages ok (this run, tree
   59fc3be1e). Broad cli update-flow suite (env-scrubbed, ~30 test-name families):
   `ok github.com/modu-ai/moai-adk/internal/cli 118.005s`.
-- **M5 — summary + counting** — `plan.AnalyzeFiles` managed exclusion removed
+- **M5 — summary + counting** — commit `e65a890c6`. `plan.AnalyzeFiles` managed exclusion removed
   (REQ-UPM-032; the wipe premise is gone), `report.RenderReconciliation` added on
   the existing plain-text outcome structure, cli outcome gains the reconciliation
   rows (counts + conflict/preserved/archived path lists; pill no longer adds
@@ -183,10 +183,75 @@ environment, not code.
   subject no longer exists). Tests: `TestUpdate_SummaryHonesty` (AC-UPM-032, all
   five categories per-path), preview + outcome test families updated to the new
   contracts.
+- **M6 — docs** — commit `9495bf3e5`. `.moai/docs/update-local-file-survival.md`
+  gains the 2026-10-07 code-enforcement section (four-class table, sidecar
+  scheme, guarantees, remaining care list); AGENTS.local.md §2.3 rewritten to
+  the enforced reality (`worktree_base_branch: main` cutover value preserved).
+- **Gate round 9 repairs (2 findings, both reproduced before repair)** —
+  1. conflict-preserved paths excluded from the manifest retrack (cli wiring):
+     re-tracking one registers the operator's restored bytes as a healthy
+     template_managed record, and the next update classifies the file
+     template-owned and overwrites it (R-2 recurrence). Test:
+     `TestConflictPreservedFileStaysUserModifiedNextRun` pins the next-run
+     classification.
+  2. archive run dir claimed with atomic `os.Mkdir` + numbered suffix — the
+     second-level timestamp alone allowed same-second re-runs to overwrite the
+     previous recovery copies. Test: `TestUniqueArchiveRunDirDistinct`.
+- **M7 — verification close** — coverage at/above the 85% target on every
+  touched package (measured this run, tree 9495bf3e5 + M7 tests): update 86.1%,
+  backup 86.6%, deploy 86.4%, merge 93.1%, plan 95.0%, report 94.9%,
+  manifest 88.3%. Boundary grep (AskUserQuestion-shaped code in the touched
+  update files): 0 hits. Windows cross build: exit 0. golangci-lint on the
+  update packages: 0 issues (baseline 0 → delta 0).
+
+### §E.2 AC matrix (run-phase evidence)
+
+Every row is the verbatim result of a test executed on this tree (command:
+`go test -count=1 ./internal/cli/update/...` and, where named, the broader
+env-scrubbed `./internal/cli/` families — outputs quoted in the milestone log
+above). No row is asserted from reading alone.
+
+| AC | Status | Evidence (test, this tree) |
+|----|--------|---------------------------|
+| AC-UPM-001 | PASS | `TestClassifyManagedRootsFourClasses` — four disjoint classes, Korean-named file byte-semantic, moai-named uncarried file user-owned |
+| AC-UPM-002 | PASS | `TestClassifyUserOwnedNamespaceForced` — hns-* forced user-owned over a contrary manifest record |
+| AC-UPM-003 | PASS | `TestClassifySymlinksNotDereferenced` + `TestDisposeSymlinks` — links recorded unclassified; dispositions remove the link, never the target |
+| AC-UPM-010 | PASS | `TestCleanTreeEndStateEqualsWipeRedeploy` — clean tracked tree directory-diff equal to the M1-characterized wipe-redeploy arm |
+| AC-UPM-020 | PASS | `TestUpdate_LocalOnlyFileSurvives` — RED ledgered above, GREEN here; byte-identical survival + preserved listing |
+| AC-UPM-021 | PASS | `TestUpdate_GitStrategyValuesSurvive` — operator VALUES asserted (never key presence) |
+| AC-UPM-030 | PASS | `TestUpdate_ConflictPreservesFileAndWritesSidecar` + `TestUpdate_ConflictSidecarCollisionUsesFirstUnusedNumber` |
+| AC-UPM-031 | PASS | `TestUpdate_StaleFileArchivedAndRemoved` + `TestUpdate_ArchiveRefusesSymlinkDestination` (forced archive failure aborts, file in place) |
+| AC-UPM-032 | PASS | `TestUpdate_SummaryHonesty` + `TestRenderReconciliation` |
+| AC-UPM-033 | PASS | `TestCleanGuarded_RefusesProtectedFiles` (legacy arm) + `TestProtectFuncFor`/`TestUnresolvedUserModified` (composition); default arm = the hazard tests (no removal exists to refuse) |
+| AC-UPM-040 | PASS | `TestUpdate_NoGitDeletionsForLocalOnlyFiles` — git-tracked fixture, zero ` D` lines |
+| AC-UPM-041 | PASS-WITH-SCOPE | `TestAbortLeavesTreeIntact` (archive-arm abort: tree byte-identical); the merge arm's per-file safety is structural (ours captured first, conflict restores, each merge writes only its own path) — a mid-merge injected-failure test is NOT in this run, recorded as the AC's residual scope note |
+| AC-UPM-050 | PASS | `TestClassifyDeterministic` — JSON-serialized byte-identical across runs |
+
+Gaps (explicitly unobserved): a real `moai update --yes` end-to-end run against a
+fixture project was NOT executed (the cli flow is verified through its test
+families — ~30 name families green, env-scrubbed — plus the pipeline unit
+suite); CI on the integration branch owns the repository-wide verdict and is
+PENDING at report time.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase_
+run_status: complete
+run_complete_at: 2026-10-07
+run_commit_sha: pending-backfill-run
+tier: L
+methodology: ddd
+ac_pass_count: 12
+ac_fail_count: 0
+ac_pass_with_scope_count: 1 (AC-UPM-041 merge-arm injected-failure test — scope note in §E.2)
+ac_release_blocking: AC-UPM-020, AC-UPM-021 (both RED-now cells satisfied with all four §2.1 elements — LEDGER-RED-UPM-020/-021; auto-demotion clause did NOT execute)
+preserve_list_post_run_count: 0 (no PRESERVE-target files modified; deploy leaf-ness kept — deploy imports no root-cli package)
+new_warnings_or_lints_introduced: 0 (baseline 0 → final 0, golangci-lint internal/cli/update/...)
+cross_platform_build.darwin: exit 0
+cross_platform_build.windows: exit 0 (GOOS=windows GOARCH=amd64)
+total_run_phase_files: 14 (11 Go source/test + 2 SPEC progress + AGENTS.local.md + survival doc)
+m1_to_mN_commit_strategy: one commit per milestone (M1 e9ed0ef0f, M2 c244fcdaf, RED-evidence 030d1c6ed, M3 1384236d2, M4 59fc3be1e, M5 e65a890c6, M6 9495bf3e5, M7 this commit; gate-repair rounds ride their milestone commits — round 8 in M4, round 9 in M7)
+debt_disposition: MP8-RED-M2 DISPOSED (see §E.2 RED evidence, recorded before M4)
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
