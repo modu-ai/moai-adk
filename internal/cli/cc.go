@@ -139,6 +139,13 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	}
 	endEntry := debugTiming.beginDebug(launchStepEntryParse, "")
 
+	// REQ-SCV-012 (SPEC-SESSION-CC-VERSION-002): the option model the resume
+	// interpreters read is derived once per process from the claude binary on
+	// PATH. Every derivation failure degrades silently to the compile-time
+	// snapshot and changes no exit status; the scan below stays a pure argv
+	// walk over package state.
+	refreshActiveClaudeOptionModel()
+
 	// REQ-SCV-009 (SPEC-SESSION-CC-VERSION-001): a --resume token with no
 	// session id is a broken launch — refuse before any launch side effect,
 	// including the --spawn window. Pure argv scan: no environment, no
