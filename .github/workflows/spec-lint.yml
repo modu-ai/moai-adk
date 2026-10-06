@@ -10,13 +10,13 @@ on:
       # REQ-SLGS-010). Without this path a rebaseline commit that touched
       # nothing else would change the verdict with no run to check it.
       - '.moai/spec-lint-baseline.json'
-  # develop is the integration branch under git-flow: lane work merges into it
-  # directly, with no card PR to carry the pull_request trigger above. Without a
-  # push trigger this lint never runs on the branch where SPECs actually land.
+  # Under GitHub Flow main is the integration branch and lane work reaches it
+  # through card PRs, which the pull_request trigger above already covers; the
+  # push trigger keeps the lint running on main itself. The retired remote
+  # develop branch is no longer listed here.
   push:
     branches:
       - main
-      - develop
     paths:
       - '.moai/specs/**'
       - 'internal/spec/**'
@@ -26,8 +26,8 @@ on:
 permissions:
   contents: read
 
-# One slot per ref, for pushes as well as pull requests: on a push to develop
-# `github.ref` is `refs/heads/develop`, so every develop push shares a slot and
+# One slot per ref, for pushes as well as pull requests: on a push to main
+# `github.ref` is `refs/heads/main`, so every main push shares a slot and
 # a newer push cancels an older run. The comment previously said "for the same
 # PR", which is what the group meant before the push trigger existed — and a
 # reading of this file went looking for that PR when diagnosing cancellations
@@ -80,6 +80,13 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
           HEAD_REF: ${{ github.head_ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # The develop-tip snapshot match and the develop push path died with
+        # the develop ref (GitHub Flow cutover); the release/* relaxation was
+        # re-keyed to origin/main and kept conditional on SPEC-input changes.
+        # The develop push elif remains as unreachable text under the
+        # main-only push trigger — harmless, awaiting the release
+        # discipline's own re-design (the cutover card's call, not this
+        # gate's).
         run: |
           set -euo pipefail
           strict=true
