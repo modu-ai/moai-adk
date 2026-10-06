@@ -348,3 +348,17 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   positional slot (inc-empty-suffix RED exit 1 vs `Test (, 18)` →
   GREEN exit 0; presence is the incset key test with a positional
   counter). Full suite 16 probes + harness 12 pass / 0 fail.
+- gate_round_18 addendum 3 (turn-end codex gate, 2 P2 findings, each
+  RED-then-GREEN on this tree): (1) n_oaxes leaked across jobs — the
+  reset cleared the object arrays but not the counter; a plain job
+  after an object-matrix job expanded a phantom empty axis, emitted
+  nothing and was judged phantom (obj-axis-reset RED exit 1 → GREEN
+  exit 0; the counter resets with the arrays); (2) mixed matrices
+  resolved only the FIRST object item — later items were judged
+  phantom and the scalar exclude could not reach object combinations
+  (mixed-matrix RED exit 1 → GREEN exit 0; mixed-matrix-excluded RED
+  exit 0 approving the excluded combination → GREEN exit 1; the
+  product path multiplies each object axis per item before the dim
+  loop and carries per-combination assignments through substitution
+  and the dotted exclude matcher). Full suite 19 probes + harness
+  12 pass / 0 fail.
