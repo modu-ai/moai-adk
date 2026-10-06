@@ -699,7 +699,7 @@ author: manager-spec
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - sync_complete_at: 2026-10-06
-- sync_commit_sha: pending-backfill-sync
+- sync_commit_sha: 33127926c178499bd972b433e31e13e0e57f6e38
 - sync_status: complete
 - changelog_entry_position: CHANGELOG.md `[Unreleased]` → `### Added` 최상단 항목
 - frontmatter_status_transitions:
