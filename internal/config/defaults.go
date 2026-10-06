@@ -565,6 +565,60 @@ const (
 	// which keeps the pre-submit confirmation gate mandatory.
 	DefaultFeedbackAutoSubmit = false
 
+	// SPEC-FEEDBACK-PARTICIPATION-001 (design.md section 10) — the bugreport
+	// participation pipeline's compiled constants. Every cap the local
+	// pipeline and the sender enforce is defined here once; the pipeline
+	// reads them, never a local literal.
+
+	// DefaultBugreportFingerprintWindowDays is the per-fingerprint dedupe
+	// window: a fingerprint queued or sent inside it is never queued again.
+	DefaultBugreportFingerprintWindowDays = 7
+
+	// DefaultBugreportDailyCap bounds the reports queued per rolling 24
+	// hours across all fingerprints.
+	DefaultBugreportDailyCap = 3
+
+	// DefaultBugreportWeeklyCap bounds the reports queued per rolling 7 days.
+	DefaultBugreportWeeklyCap = 10
+
+	// DefaultBugreportQueueBound bounds the queue length; the oldest item is
+	// dropped beyond it.
+	DefaultBugreportQueueBound = 20
+
+	// DefaultBugreportAttemptLimit is the per-item send-attempt limit; the
+	// item is dropped with a log row when reached.
+	DefaultBugreportAttemptLimit = 5
+
+	// DefaultBugreportSpoolMaxLines and DefaultBugreportSpoolMaxBytes bound
+	// the capture spool; capture drops a signal beyond either.
+	DefaultBugreportSpoolMaxLines = 200
+	DefaultBugreportSpoolMaxBytes = 64 * 1024
+
+	// DefaultBugreportCaptureTimeBox bounds one capture call on the hook
+	// path (time-boxed, fail-open, network-free by construction).
+	DefaultBugreportCaptureTimeBox = 50 * time.Millisecond
+
+	// DefaultBugreportFlushTimeBox bounds a whole flush run (drain + sender).
+	DefaultBugreportFlushTimeBox = 10 * time.Second
+
+	// DefaultBugreportFrameLimit caps the moai-internal frames kept per
+	// signal, innermost first.
+	DefaultBugreportFrameLimit = 12
+
+	// DefaultBugreportModelCallsPerDay is the rolling daily cap on summary
+	// model calls.
+	DefaultBugreportModelCallsPerDay = 6
+
+	// DefaultBugreportOccurrenceCommentsPerIssue is the per-issue occurrence
+	// comment cap; the sender adds no comment at or beyond it (advisory
+	// count, read from the remote).
+	DefaultBugreportOccurrenceCommentsPerIssue = 50
+
+	// DefaultBugreportModelInputMaxBytes and DefaultBugreportModelOutputMaxBytes
+	// bound the summary prompt and the accepted summary, bounding token spend.
+	DefaultBugreportModelInputMaxBytes  = 4096
+	DefaultBugreportModelOutputMaxBytes = 2048
+
 	// DefaultHandoffMode is the compiled default for HandoffConfig.Mode.
 	// SPEC-HANDOFF-AUTORESUME-001: auto-resume is opt-in — the default is
 	// "manual" (pure no-op), preserving the unchanged baseline UX.

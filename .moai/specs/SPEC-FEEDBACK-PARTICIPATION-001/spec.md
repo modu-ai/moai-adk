@@ -2,7 +2,7 @@
 id: SPEC-FEEDBACK-PARTICIPATION-001
 title: "Opt-in improvement participation — automatic filing of moai-adk-attributed tool bugs from the user's own gh account, with user-scoped consent, allowlist attribution, and a zero-token default path"
 version: "0.5.2"
-status: draft
+status: in-progress
 created: 2026-10-04
 updated: 2026-10-07
 author: manager-spec
