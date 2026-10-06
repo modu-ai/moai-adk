@@ -43,8 +43,18 @@ POLL_INTERVAL="${CIWATCH_POLL_INTERVAL:-30}"
 # HEAD branch. (GH/POLL must be initialized BEFORE this block — the gate
 # caught $GH used-when-unset here.)
 SSOT_BRANCH="$BRANCH"
+# GATE-5 P1: a failing `pr view` must NOT fall back silently to the head
+# branch — head branches (feature/*, WT-*) are not SSoT keys, the required
+# list comes back EMPTY, and an empty required list scores "all required
+# checks passed" (exit 0) with every failure reclassified advisory (gate
+# repro: injected Lint=fail surfaced exit 0). Retry once, then abort.
 PR_BASE="$("$GH" pr view "$PR_NUMBER" --json baseRefName --jq '.baseRefName' 2>/dev/null)" || PR_BASE=""
-[ -n "$PR_BASE" ] || PR_BASE="$BRANCH"
+if [ -z "$PR_BASE" ]; then
+    PR_BASE="$("$GH" pr view "$PR_NUMBER" --json baseRefName --jq '.baseRefName' 2>/dev/null)" || PR_BASE=""
+fi
+if [ -z "$PR_BASE" ]; then
+    abort "cannot resolve PR #${PR_NUMBER} base branch after retry — refusing to watch with a guessed SSoT key (an empty required list scores all-passed)" 1
+fi
 if [ "$PR_BASE" != "$BRANCH" ]; then
     SSOT_BRANCH="$PR_BASE"
     log_step "PR base branch '${PR_BASE}' differs from head '${BRANCH}' — classifying against SSoT key '${SSOT_BRANCH}'"
@@ -97,7 +107,10 @@ _check_bucket() {
                 # never a pass regardless of entry order (gate repro:
                 # [pass, cancel] scored exit 0 with the pass-keeping order).
                 if (cur == "fail" || cand == "fail" || cur == "cancel" || cand == "cancel") return "fail"
-                if (cur == "pending" || cand == "pending") return "pending"
+                # GATE-5: skipping aggregates as PENDING in every order — a
+                # skipped run published no verdict, and [pass, skipping]
+                # vs [skipping, pass] used to disagree on the verdict.
+                if (cur == "pending" || cand == "pending" || cur == "skipping" || cand == "skipping") return "pending"
                 if (cur == "") return cand
                 return cur
             }
@@ -185,6 +198,14 @@ while true; do
     fi
 
     _load_required_contexts "$SSOT_BRANCH" > "$TMP_SSOT"
+    # GATE-5 P1 (second face): a MISSING branch key would also read as an
+    # empty required list and score exit 0 with every failure advisory. An
+    # EMPTY contexts list is still legal (release/* per decision-index
+    # Q1) — distinguish by key presence in the SSoT file (unquoted
+    # indent-2 key + colon).
+    if [ ! -s "$TMP_SSOT" ] && ! grep -qF "  $SSOT_BRANCH:" "$REQUIRED_CHECKS_FILE"; then
+        abort "required-checks SSoT has no branch key '${SSOT_BRANCH}' — refusing to score an empty required list as all-passed" 1
+    fi
 
     # Classify SSoT required checks. t1534 M3: iterate the SSoT list
     # newline-safely (the pre-M3 loop word-split $(_all_check_names),

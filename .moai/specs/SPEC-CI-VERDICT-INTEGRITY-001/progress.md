@@ -104,3 +104,15 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
 - mx_tag_check: zero `@MX` tags present on the touched surfaces (4 workflows +
   2 scripts + the new guard test) — none stale, none owed
 - sync_delegate: manager-docs (card t1534, lane-24 orchestration)
+- gate_round_4 (post-CI-no-publish hold, lane-direct): 4 repairs, all probe-verified
+  before commit `ef8ebd702` — (1) run.sh GH/POLL init moved before the PR
+  base-branch block (gate caught $GH used-when-unset); (2) run.sh worse()
+  aggregates cancel as FAIL in every entry order ([pass,cancel]→fail,
+  [cancel,pass]→fail, [pass,pass]→pass observed); (3) validator
+  matrix.exclude subtraction — repro `run-matrix-exclude.sh` RED exit 0
+  (excluded combo counted publishable) → GREEN exit 1 naming the phantom,
+  positive controls intact (phantom=1 / phantom-control=0 / malformed=1 /
+  repo-root=0); (4) AC-CI-012 guard scoped to the go_code filter block —
+  mutant probe (entry relocated to top level) FAILs, restored tree passes.
+  Pushed a3febc2dd..ef8ebd702; CI publication still platform-blocked
+  (04:17Z+ no-publish gap — leader watching).

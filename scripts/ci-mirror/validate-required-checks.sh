@@ -124,34 +124,52 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		}
 		}
 		for (t = 1; t <= inc_n; t++) {
-			# GATE-4 P2: exclude also removes include tuples — a tuple whose
-			# every pair matches an exclude entry is not published.
-			skipped = 0
-			for (e = 1; e <= ex_n && !skipped; e++) {
-				matches = 1
-				for (pk in exval) {
-					split(pk, pr, SUBSEP)
-					if (pr[1] + 0 != e) continue
-					if (incval[t, pr[2]] != exval[pk]) { matches = 0; break }
-				}
-				if (matches) skipped = 1
-			}
-			if (skipped) continue
+			# GATE-5: exclude does NOT apply to include tuples — GitHub
+			# processes exclude BEFORE include, so an include tuple can
+			# RE-ADD a combination the exclude removed; the round-4
+			# subtraction here deleted such re-added combinations and
+			# judged a publishable context phantom.
 			line = name
-			fully = 1
 			for (kk in incval) {
 				split(kk, pair, SUBSEP)
 				if (pair[1] + 0 != t) continue
-				if (incval[kk] == "") { fully = 0; continue }
+				if (incval[kk] == "") continue
 				gsub("\\$\\{\\{ matrix\\." pair[2] " }}", incval[kk], line)
 			}
-			if (line !~ /\$\{\{/) print line
+			if (had_ref) {
+				# expression-bearing name: print only when every matrix
+				# expression was substituted (residual ${{ }} prints raw)
+				if (line !~ /\$\{\{/) print line
+			} else {
+				# GATE-5: a BARE job name on a matrix job is published with
+				# the per-tuple suffix — values in matrix-dims order when
+				# declared arrays exist, else the tuple key order (an
+				# apostrophe here would break the single-quoted awk)
+				# (include-only matrices have no dims). Pre-fix this
+				# printed the bare name only and judged the suffixed
+				# context phantom.
+				sfx = ""
+				if (nk > 0) {
+					for (d = 1; d <= nk; d++) {
+						tv = incval[t, dims[d]]
+						if (tv != "") sfx = (sfx == "") ? tv : sfx " " tv
+					}
+				}
+				if (sfx == "") {
+					for (i = 1; i <= ikt[t]; i++) {
+						tv = incval[t, incord[t, i]]
+						if (tv != "") sfx = (sfx == "") ? tv : sfx " " tv
+					}
+				}
+				if (sfx == "") print line
+				else print line " (" sfx ")"
+			}
 		}
 		has_name = 0
 	}
 	function reset_job_mem() {
 		nk = 0; inc_n = 0; had_ref = 0; ex_n = 0; mmode = "inc"
-		delete dims; delete mvals; delete incval; delete exval
+		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord
 	}
 	BEGIN { in_jobs = 0; has_name = 0; nk = 0; inc_n = 0; in_steps = 0; in_strategy = 0; in_matrix = 0; mmode = "inc"; ex_n = 0 }
 	{
@@ -180,7 +198,12 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	ind == 4 && $0 ~ /^[[:space:]]*name:/ && !has_name {
 		name = $0
 		sub(/^[[:space:]]*name:[[:space:]]*/, "", name)
-		gsub(/^"|"$/, "", name)
+		# GATE-5: strip BOTH quote styles — a single-quoted name (Lint in
+		# ASCII single quotes) was
+		# previously read as the literal string WITH the quotes still on it and a
+		# perfectly valid job name judged phantom (octal \047 = single
+		# quote; the awk program itself is single-quote-wrapped).
+		gsub(/^["\047]|["\047]$/, "", name)
 		has_name = 1
 		had_ref = (name ~ /\$\{\{ matrix\./) ? 1 : 0
 		next
@@ -198,7 +221,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		line = $0; sub(/^[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
 		v = line; sub(/^[^[]*\[/, "", v); sub(/\][[:space:]]*$/, "", v)
-		gsub(/[[:space:]]/, "", v); gsub(/"/, "", v)
+		gsub(/[[:space:]]/, "", v); gsub(/["\047]/, "", v)
 		nk++
 		dims[nk] = k
 		mvals[k] = v
@@ -208,23 +231,32 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	in_matrix && ind == 10 && $0 ~ /^[[:space:]]*- / {
 		line = $0; sub(/^[[:space:]]*-[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
-		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^"|"$/, "", v)
+		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^["\047]|["\047]$/, "", v)
 		if (mmode == "excl") { ex_n++; exval[ex_n, k] = v }
-		else { inc_n++; incval[inc_n, k] = v }
+		else {
+			# record the tuple key order — the bare-name suffix
+			# (GATE-5) needs it for include-only matrices with no dims
+			inc_n++
+			incval[inc_n, k] = v
+			ikt[inc_n]++
+			incord[inc_n, ikt[inc_n]] = k
+		}
 		next
 	}
 	in_matrix && ind == 12 && mmode == "excl" && ex_n > 0 && $0 ~ /^[[:space:]]*[A-Za-z_]/ {
 		line = $0; sub(/^[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
-		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^"|"$/, "", v)
+		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^["\047]|["\047]$/, "", v)
 		exval[ex_n, k] = v
 		next
 	}
 	in_matrix && ind == 12 && inc_n > 0 && $0 ~ /^[[:space:]]*[A-Za-z_]/ {
 		line = $0; sub(/^[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
-		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^"|"$/, "", v)
+		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^["\047]|["\047]$/, "", v)
 		incval[inc_n, k] = v
+		ikt[inc_n]++
+		incord[inc_n, ikt[inc_n]] = k
 		next
 	}
 	in_matrix && ind <= 6 && $0 !~ /^[[:space:]]*$/ { in_matrix = 0 }
