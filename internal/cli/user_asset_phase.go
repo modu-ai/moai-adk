@@ -165,6 +165,14 @@ func userCodexInstallPresent() bool {
 	return err == nil
 }
 
+// updatePluginOptedOut reads MOAI_SKIP_PLUGIN_INSTALL (the retired
+// carrier's opt-out env, kept as a no-op-shaped input for the deploy-mode
+// resolution until M7 removes the mode split entirely).
+func updatePluginOptedOut() bool {
+	v := strings.TrimSpace(os.Getenv("MOAI_SKIP_PLUGIN_INSTALL"))
+	return v == "1" || strings.EqualFold(v, "true")
+}
+
 // parseBundleSelection splits a comma-separated --bundles value.
 func parseBundleSelection(v string) []string {
 	if strings.TrimSpace(v) == "" {

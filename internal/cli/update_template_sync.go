@@ -193,7 +193,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// SPEC-INIT-SHRINK-001: the deploy mode and the opt-out resolve before
 	// the deployer is constructed; the migration trigger (below) reads the
 	// same opt-out.
-	updateNoPlugin := getBoolFlag(cmd, "no-plugin") || pluginOptOutFromEnv()
+	updateNoPlugin := getBoolFlag(cmd, "no-plugin") || updatePluginOptedOut()
 	deployMode := resolveUpdateDeployMode(".", updateNoPlugin)
 
 	// REQ-018: a recorded project is mode-aware, and update never flips the
@@ -340,7 +340,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// record reads at the end of the run.
 	var migration *migrationPlan
 	if config.ReadDeployMode(projectRoot) == "" {
-		plan, migErr := runUpdateMigrationTrigger(projectRoot, updateNoPlugin, pluginRunner, out, errOut)
+		plan, migErr := runUpdateMigrationTrigger(projectRoot, updateNoPlugin, out, errOut)
 		if migErr != nil {
 			// The abort-before-removal contract: nothing was removed, the
 			// record is unwritten, the next update re-triggers.

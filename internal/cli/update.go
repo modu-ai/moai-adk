@@ -330,7 +330,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 		// t40 defect 3: preview the managed-cleanup deletion list. A preview
 		// failure degrades to a warning — a dry run must not fail the command.
-		previewMode := resolveUpdateDeployMode(cwd, getBoolFlag(cmd, "no-plugin") || pluginOptOutFromEnv())
+		previewMode := resolveUpdateDeployMode(cwd, getBoolFlag(cmd, "no-plugin") || updatePluginOptedOut())
 		if previewErr := previewManagedCleanup(cwd, previewMode, out); previewErr != nil {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Cleanup preview", "failed", previewErr.Error(), &th))
 		}

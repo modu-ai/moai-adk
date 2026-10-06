@@ -174,7 +174,8 @@ func init() {
 
 	// SPEC-PLUGIN-MARKETPLACE-001 REQ-019: the plugin noun group; its one leaf,
 	// `moai plugin install`, is what the install scripts call.
-	rootCmd.AddCommand(newPluginCmd())
+	// SPEC-USER-ASSET-INSTALL-001 (REQ-016): the plugin command retires
+	// with its carrier — no marketplace command is registered.
 
 	// SPEC-V3R2-CON-001: register constitution subcommand
 	rootCmd.AddCommand(newConstitutionCmd())

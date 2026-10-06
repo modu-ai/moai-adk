@@ -19,7 +19,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/template"
 )
 
-// fixture builds a synthetic two-skill + one-agent catalog over a MapFS
+// fixture builds a synthetic catalog holding a pair of skills plus an agent
+// entry over a MapFS
 // source: skill "moai-alpha" (core), skill "moai-beta" (pack "extras"),
 // agent "manager-x" (core).
 type fixture struct {

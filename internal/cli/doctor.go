@@ -258,11 +258,14 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		}},
 		{"Project Lock", func(v bool) DiagnosticCheck { return checkProjectVsLock(cwd, v) }},
 		{"Plugin Migration", func(v bool) DiagnosticCheck { return checkPluginMigrationAdvisory(v) }},
-		{"Plugin Deployment", func(v bool) DiagnosticCheck { return checkPluginDeployment(cwd, v) }},
+		// SPEC-USER-ASSET-INSTALL-001 (REQ-019): the Plugin Deployment and
+		// Plugin Version carrier rows are REMOVED with the retired carrier
+		// (SPEC-PLUGIN-MARKETPLACE-001 REQ-020..024 disposition; hard delete,
+		// P5) — the replacement advisory row (Plugin Migration) carries the
+		// manual uninstall step.
 		// SPEC-PLUGIN-MARKETPLACE-001 REQ-020..023 (card t1435): installed moai
 		// plugin version vs this binary. Reads one registry file and runs at most
 		// one bounded `codex plugin list --json`; never starts claude.
-		{pluginVersionCheckName, checkPluginVersion},
 		// SPEC-V3R6-MOAI-CLEAN-HOME-001 REQ-MCH-001: advisory home disk check.
 		{"Home Disk Usage", checkHomeDisk},
 	}

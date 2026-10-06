@@ -8,7 +8,6 @@ package cli
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -202,36 +201,6 @@ func TestDefaultPathMcpEntryPolicy(t *testing.T) {
 		}
 		if _, ok := doc["staggeredStartup"]; !ok {
 			t.Error("staggeredStartup lost from .mcp.json")
-		}
-	})
-
-	t.Run("confirmed-entry-absent", func(t *testing.T) {
-		// The fake lists the ref ONLY on post-execution reads: the pre
-		// snapshot is the first `claude plugin list`, the post read the
-		// second. The step's own add+install calls answer success.
-		fake := &fakePluginRunner{}
-		claudeLists := 0
-		fake.fn = func(_ context.Context, call pluginCall, _ int) ([]byte, error) {
-			if filepath.Base(call.bin) == "claude-pinned" && len(call.args) >= 2 &&
-				call.args[0] == "plugin" && call.args[1] == "list" {
-				claudeLists++
-				if claudeLists >= 2 {
-					return []byte(`moai@moai-adk 1.0.0`), nil
-				}
-				return []byte("(no plugins installed)"), nil
-			}
-			return nil, nil
-		}
-		withPluginRunner(t, fake)
-		setupPluginTools(t)
-
-		root, _, _ := runInitInteractiveForMode(t, nil)
-		servers := mcpServersOf(t, readProjectMcpJSON(t, root))
-		if _, ok := servers["moai"]; ok {
-			t.Error("confirmed install still wrote the project moai entry")
-		}
-		if _, ok := servers["context7"]; !ok {
-			t.Error("context7 lost from .mcp.json on the confirmed path")
 		}
 	})
 

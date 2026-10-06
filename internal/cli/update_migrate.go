@@ -33,7 +33,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/update"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
@@ -103,94 +102,15 @@ func computeRunCleanTargets(projectRoot string, deployMode template.DeployMode, 
 // 1-3) for a projectRoot whose record is absent. It returns the plan for
 // the run and, on a confirmed outcome, the classified removal list ready
 // for the Clean step.
-func runUpdateMigrationTrigger(projectRoot string, noPlugin bool, run pluginCommandRunner, out, errOut io.Writer) (*migrationPlan, error) {
+func runUpdateMigrationTrigger(projectRoot string, noPlugin bool, out, errOut io.Writer) (*migrationPlan, error) {
 	plan := &migrationPlan{}
 
-	// Opted-out: decided before the step runs; no probing, full local path.
-	if noPlugin {
-		plan.outcome = migrateOptedOut
-		return plan, nil
-	}
-
-	// The install step runs fail-open under the opt-out, its outcome read
-	// through the post-install list-surface probe (design §2.4 — the
-	// migration surface of the arm mapping).
-	wiring := agentWiring(config.ReadHarness(projectRoot))
-	if wiring != agentWiringGPT && wiring != agentWiringBoth {
-		wiring = agentWiringClaude
-	}
-	opts := newPluginInstallOptions(pluginToolsForHarness(wiring), projectRoot, false)
-	pre := snapshotPluginListSurfaces(opts.Tools, opts.ProjectRoot, run)
-	_ = runPluginInstallStep(errOut, opts)
-	switch diffPluginListSurfaces(pre, opts.Tools, opts.ProjectRoot, run) {
-	case probeOutcomeConfirmed:
-		plan.outcome = migrateConfirmed
-	default:
-		// not-demonstrated: nothing is deduped, nothing removed, and no
-		// path records plugin (OD-4 settled (a, amended)).
-		plan.outcome = migrateNotDemonstrated
-		return plan, nil
-	}
-
-	// Classification (REQ-010) against the production render.
-	mgr := manifest.NewManager()
-	if _, err := mgr.Load(projectRoot); err != nil {
-		return nil, fmt.Errorf("migration classify: load manifest: %w", err)
-	}
-	embedded, err := template.EmbeddedTemplates()
-	if err != nil {
-		return nil, fmt.Errorf("migration classify: load embedded templates: %w", err)
-	}
-	plan2, err := update.ClassifyMigration(projectRoot, templateRenderCarriage(embedded, nil, nil), mgr.Manifest())
-	if err != nil {
-		return nil, fmt.Errorf("migration classify: %w", err)
-	}
-	plan.identical = plan2.CountIdentical()
-	plan.modified = plan2.CountModified()
-	plan.foreign = plan2.CountForeign()
-
-	// Archive (REQ-012) BEFORE any removal: every modified member archives
-	// per file, and any archive-write failure aborts the whole migration.
-	for _, f := range plan2.Modified {
-		if err := archiveMigrationFile(projectRoot, f.RelPath); err != nil {
-			return nil, fmt.Errorf("migration archive %s: %w", f.RelPath, err)
-		}
-		plan.archivedModified++
-	}
-
-	// Design §3 mirror paragraph (card t1438 review finding 2): the KEPT
-	// mirror entries are re-homed to real directory copies rendered from the
-	// embedded tree BEFORE the dropped-root removal runs — a kept symlink
-	// would dangle into the removed .claude/skills. The re-home converts
-	// existing links only (never provisions, REQ-019) and is best-effort
-	// like every other mirror producer: a per-entry failure warns and the
-	// migration continues (rehomeOneSkill's own convention).
-	rehomedCount := 0
-	for _, e := range template.RehomeExistingMirrorEntries(projectRoot, migrationTemplateContext(projectRoot)) {
-		if e.Mode == template.MirrorModeFailed {
-			_, _ = fmt.Fprintf(errOut, "warning: migration mirror re-home: %s\n", e.Warning)
-			continue
-		}
-		if e.Mode == template.MirrorModeCopy {
-			rehomedCount++
-		}
-	}
-	if rehomedCount > 0 {
-		_, _ = fmt.Fprintf(out, "migration: re-homed %d mirror %s to real copies\n",
-			rehomedCount, pluralMirrorEntries(rehomedCount))
-	}
-
-	// The classified removal list (design §3 step 4): identical files, plus
-	// the modified set now that every archive in the batch succeeded.
-	for _, f := range plan2.Identical {
-		plan.removalTargets = append(plan.removalTargets, classifiedCleanTarget(projectRoot, f.RelPath))
-	}
-	for _, f := range plan2.Modified {
-		plan.removalTargets = append(plan.removalTargets, classifiedCleanTarget(projectRoot, f.RelPath))
-	}
-
-	_, _ = fmt.Fprintf(out, "migration: classified %d identical, %d modified, %d foreign; archived %d modified file(s)\n",
-		plan.identical, plan.modified, plan.foreign, plan.archivedModified)
+	// SPEC-USER-ASSET-INSTALL-001 (M6, REQ-017): the plugin install probe is
+	// retired with its carrier — update invokes no marketplace or plugin
+	// install command. A record-less project takes the local deployment (the
+	// asset migration itself rides migrateProjectCommonAssets, driven by the
+	// user-asset phase's confirmed install).
+	plan.outcome = migrateOptedOut
 	return plan, nil
 }
 

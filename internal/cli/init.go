@@ -426,38 +426,13 @@ func shouldDistributeAll(cmd *cobra.Command) bool {
 	return v == "1" || strings.EqualFold(v, "true")
 }
 
-// resolveInitDeployMode resolves the run's deploy mode (SPEC-INIT-SHRINK-001
-// REQ-001/REQ-003/REQ-007, OD-5/OD-7 settled (a)): the opt-out surface
-// (--no-plugin flag or MOAI_SKIP_PLUGIN_INSTALL, the t1435 OD-5 pin) and the
-// --all flag (a local full deploy — OD-7 settled (a)) select the local
-// payload; everything else is the default plugin path.
+// resolveInitDeployMode resolves the run's deploy mode. SPEC-USER-ASSET-
+// INSTALL-001 (REQ-017, D4): the plugin carrier is retired — init NEVER
+// invokes a plugin marketplace or install command, and the deploy is the
+// local (slim) payload in every case; the common skills and agents install
+// into the user folders (REQ-005). M7 removes the mode split entirely.
 func resolveInitDeployMode(cmd *cobra.Command) template.DeployMode {
-	if getBoolFlag(cmd, "no-plugin") || pluginOptOutFromEnv() || shouldDistributeAll(cmd) {
-		return template.DeployModeLocal
-	}
-	return template.DeployModePlugin
-}
-
-// emitShrinkInstallGuidance prints the one guidance block of REQ-004: the
-// post-install probe did not demonstrate this run's install, so both
-// recourses are named. Recourse 1 names the flags that actually work — a
-// plain re-run fails "project already initialized", so --force is required
-// alongside --no-plugin, and the block states what force re-initialization
-// moves (card t1438 review finding 6). Fail-open — it never changes the
-// init result.
-func emitShrinkInstallGuidance(errOut io.Writer) {
-	_, _ = fmt.Fprintln(errOut, "note: the moai plugin install could not be demonstrated for this run.")
-	_, _ = fmt.Fprintln(errOut, "      Skills and commands are NOT deployed locally on the plugin path;")
-	_, _ = fmt.Fprintln(errOut, "      pick a recourse to keep them available:")
-	_, _ = fmt.Fprintln(errOut, "        1. re-run with --no-plugin --force for a full local deploy (a plain")
-	_, _ = fmt.Fprintln(errOut, "           re-run fails: the project already counts as initialized). --force")
-	_, _ = fmt.Fprintln(errOut, "           re-initialization moves the existing .moai/ to .moai-backups/<timestamp>/")
-	_, _ = fmt.Fprintln(errOut, "           and redeploys the MoAI-managed template files from scratch; your")
-	_, _ = fmt.Fprintln(errOut, "           manifest is carried forward, so user-modified files keep their")
-	_, _ = fmt.Fprintln(errOut, "           user_modified protection, or")
-	_, _ = fmt.Fprintln(errOut, "        2. install the plugin manually:")
-	_, _ = fmt.Fprintln(errOut, "           claude plugin marketplace add "+pluginMarketplaceSource+" ; claude plugin install "+pluginRef)
-	_, _ = fmt.Fprintln(errOut, "           codex  plugin marketplace add "+pluginMarketplaceSource+" ; codex  plugin add "+pluginRef)
+	return template.DeployModeLocal
 }
 
 // @MX:ANCHOR: [AUTO] runInit is the main entry point for project initialization
@@ -1087,17 +1062,10 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// probe (design §2.4): install the moai plugin into the tool(s) the
 	// harness selects, after the deployment is complete, and read the
 	// observable outcome from the post-install list-surface probe. Fail-open
-	// (REQ-013/014): guidance and skip lines go to stderr and never change
-	// the init result; --no-plugin and MOAI_SKIP_PLUGIN_INSTALL opt out.
-	installOutcome := runInitPluginInstallProbed(cmd.ErrOrStderr(), agentWiringSelection, opts.ProjectRoot, getBoolFlag(cmd, "no-plugin"))
-
-	// SPEC-INIT-SHRINK-001 REQ-004: on the default path, an install whose
-	// diff does not demonstrate success gets the one guidance block naming
-	// both recourses. The opt-out path is REQ-003's full local deploy and
-	// never triggers guidance; the exit status is unchanged either way.
-	if deployMode == template.DeployModePlugin && installOutcome == probeOutcomeNotDemonstrated {
-		emitShrinkInstallGuidance(cmd.ErrOrStderr())
-	}
+	// SPEC-USER-ASSET-INSTALL-001 (REQ-017): the plugin install step is
+	// retired with its carrier — init invokes no marketplace or plugin
+	// install command for either harness; the user-folder installer (M2)
+	// is the distribution.
 
 	// SPEC-MCP-DEFAULT-ON-001 (default-on, REQ-A-3): turn opts.MCPProvision
 	// into the single neutral .mcp.json entry. The interactive path sets it
@@ -1131,9 +1099,9 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	case agentWiringBoth:
 		mcpDeclined = false
 	}
-	if deployMode == template.DeployModePlugin && installOutcome == probeOutcomeConfirmed {
-		mcpDeclined = true
-	}
+	// SPEC-USER-ASSET-INSTALL-001 (REQ-017): the plugin probe arm is
+	// retired with its carrier — no plugin install can confirm or decline
+	// the MCP entry, so only the wizard answer decides mcpDeclined.
 	provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), cmd.ErrOrStderr(), opts.ProjectRoot, mcpDeclined)
 
 	// SPEC-CODEX-WIRING-001 (REQ-CW-002/004/008/013): wire the Codex side for
