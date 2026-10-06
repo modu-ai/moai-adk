@@ -204,7 +204,7 @@ func TestOpenFactoryReadonlyNeverCheckpointsWAL(t *testing.T) {
 		t.Fatalf("read-only read: linked=%v err=%v", linked, err)
 	}
 	if during := hash(); during != before {
-		ro.Close()
+		_ = ro.Close()
 		t.Fatalf("the read-only handle modified the store during its life: before %s during %s", before, during)
 	}
 
