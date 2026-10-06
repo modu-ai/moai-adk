@@ -361,7 +361,11 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		line = strip_comment($0); sub(/^[[:space:]]*-[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
 		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^["\047]|["\047]$/, "", v)
-		is_pair = (line ~ /:/)
+		# GATE-10: a colon does NOT make a mapping — in YAML, `- node:20`
+		# is a STRING scalar (no space after the colon) while `- color: green`
+		# is a mapping. The bare is_pair colon test mis-routed spaced-out
+		# string values into the tuple path and judged their checks phantom.
+		is_pair = (line ~ /:[[:space:]]/ || line ~ /:$/)
 		if (bdim_key != "" && !is_pair) {
 			# GATE-6: block-form dim item — a bare value appended to the
 			# dim declared by the `key:` line above.
