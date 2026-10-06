@@ -66,7 +66,8 @@ RED-now baselines (verbatim commands, this run, this tree, exit codes recorded; 
 | bare symmetry selector absent | `grep -cE "func TestStructYAMLSymmetry\(" internal/config/audit_struct_yaml_symmetry_test.go` | 0 (exit 1; only `_`-suffixed variants exist) |
 | package-wide selector listing | `go test -list '^TestStructYAMLSymmetry$' ./internal/config` | `ok github.com/modu-ai/moai-adk/internal/config 0.352s`, exit 0, no test listed |
 | GateConfig production-dead | `grep -rn "runtime\.GateConfig" internal/ cmd/ --include="*.go" \| grep -v _test` | 0 non-test matches |
-| receipt export instruction absent | `grep -c "convergence_overall" .claude/agents/moai/plan-auditor.md` | 0 (exit 1) |
+| receipt export instruction absent (multi-model arm) | `grep -c "convergence_overall" .claude/agents/moai/plan-auditor.md` | 0 (exit 1) |
+| receipt export instruction absent (single-model arm) | `grep -c "backend it actually ran" .claude/agents/moai/plan-auditor.md` | 0 (exit 1; measured at a4c5b9594 — the V4-D3 per-arm split needs each arm's own baseline) |
 | mirror drift | `diff -q` deployed vs template | plan-auditor.md DIFF; audit-artifact-convention.md SAME (phase-execution.md DIFF measured but no longer an edit target — Out of Scope) |
 | Tier ceilings verified | `sed -n '75,84p' .moai/config/sections/harness.yaml` | S:1 M:2 L:3; policy auto_delta_rounds=1, on_final_hit=hold-and-split |
 | resolver fail-open confirmed | `sed -n '123,131p' internal/cli/mcp_worktree_root.go` | `if err != nil { return config.AuditGates{}, "" }` — the fail-open path REQ-ACE-010 corrects |
@@ -123,8 +124,11 @@ Data-model first: the receipt schema is the least reversible decision.
   - multi-model audit: project the `audit_multi` convergence result it
     already receives (`ConvergenceResult.OverallVerdict` +
     `PerBackendVerdicts`, design.md §3);
-  - single-model audit: write `convergence_overall` from its own verdict and
-    one `required_backend:` line for the backend it actually ran, sourced
+  - single-model audit: write `convergence_overall` from its own verdict
+    under the §3 projection rule ({PASS, PASS-WITH-DEBT} → pass;
+    {FAIL, FAIL_WARNED} → fail; {INCONCLUSIVE} → inconclusive on the backend
+    line, fail on convergence_overall — no silent upgrade; V4-D2) and one
+    `required_backend:` line for the backend it actually ran, sourced
     from the named field of its own review output; a required backend the
     audit did not cover stays absent from the receipt and refuses under
     REQ-ACE-010 (correct fail-closed).
@@ -170,9 +174,10 @@ Data-model first: the receipt schema is the least reversible decision.
   (both families, one-iteration-once identity = the (SPEC id, iteration
   number) pair, unconditional — the D9-narrowed identity of REQ-ACE-001),
   the delta-eligibility check (fix_scope anchors + REQ/AC id sets + STOP;
-  REQ-ACE-003), and the policy outcome engine (pass-through for a
-  fully-admission-clean verdict at/over the ceiling (REQ-ACE-013, D31);
-  debt-admit / scope-split / hold-record for refused ones;
+  REQ-ACE-003), and the policy outcome engine (pass-through FIRST for a
+  fully-admission-clean verdict at any ceiling state (REQ-ACE-013, D31;
+  the tier-ceiling final-hit boundary included — V4-D1), then
+  debt-admit / scope-split / hold-record for verdicts that fail admission;
   REQ-ACE-004..006).
 - Enforcement wiring at the LIVE admission seams (the iter1 D4 finding —
   `GateConfig.Invoke` has no production caller, measured 0 non-test

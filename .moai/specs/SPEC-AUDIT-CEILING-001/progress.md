@@ -9,6 +9,49 @@ plan_phase_branch: WT-audit-ceiling-counter
 plan_phase_worktree: .moai/worktrees/t1500
 plan_phase_artifacts: 7 (spec.md, plan.md, acceptance.md, design.md, research.md, progress.md, decision-index.md — Tier L set of 5 + progress + decision-index per interview.decision_gate: on)
 
+### Plan-audit v4-iter1 repair — v0.5.0 (2026-10-06, this change)
+
+- v4-iter1 verdict: FAIL 0.81 (Tier L threshold 0.85; fresh v0.4.0-series
+  iter1, NOT the exhausted v0.3.0 series' iter4) —
+  `.moai/reports/t1500/plan-audit-v4-iter1.md`, audited_sha `a4c5b9594`.
+  All 9 must-pass green; 3 blocking (V4-D1/D2/D3) + 2 optional (V4-O1/O2).
+  This change closes the full delta, delta-scoped to the verdict's
+  fix_scope (spec.md#REQ-ACE-003/#REQ-ACE-008/#REQ-ACE-013,
+  acceptance.md#AC-ACE-003/#AC-ACE-008/#AC-ACE-015,
+  design.md#s2-ladder/#s3-receipt-schema); the lane runs the v4-iter2
+  delta re-audit.
+- spec.md version → 0.5.0; §H Amendments carries the per-defect record.
+- Blocking closures: V4-D1 (REQ-ACE-003's trigger scoped to verdicts that
+  FAIL the shared predicate's admission — the pass-through arm precedes and
+  the refusal REQ never claims an admission-clean verdict; REQ-ACE-013
+  extended to any ceiling state — the effective ceiling AND the
+  tier-ceiling final hit — closing the second face; AC-ACE-003 and
+  AC-ACE-015 carry the pass-through exclusion arm), V4-D2 (the receipt
+  projection rule defined for every label of the auditor's own verdict
+  enum — {PASS, PASS-WITH-DEBT} → pass, {FAIL, FAIL_WARNED} → fail,
+  {INCONCLUSIVE} → inconclusive on the backend line / fail on
+  convergence_overall; raw label preserved in the verdict body, no silent
+  upgrade; AC-ACE-008's PASS-WITH-DEBT end-to-end arm
+  `TestParseReceiptPassWithDebtProjection`), V4-D3 (AC-ACE-008's
+  export-path verification split per-arm — the multi-model
+  `convergence_overall` grep AND a new single-model `backend it actually
+  ran` grep, each with its own RED-now cell, both measured 0 / exit 1 at
+  a4c5b9594 before this change — so removing either producer arm turns the
+  criterion red).
+- Optionals folded: V4-O1 (design §1's "i.e. at max-N" gloss qualified
+  "under contiguous numbering"), V4-O2 (the Interlock note's stale Q2-Q6
+  pointer → Q2-Q5, noting Q0 decided / Q6 fell away).
+- Cross-layer sweep: REQ-ACE-008's projection → design §3 + plan M1;
+  REQ-ACE-013's boundary extension → design §2 rung 0 + §G risk 5 + plan
+  M3 + AC-ACE-003/013/015 arms; plan §C gains the single-model grep
+  baseline. No REQ id changed (15 REQs); the AC count stayed 21
+  (extensions, not additions).
+- Note (from the verdict's Operational Notes): the required-backend claude
+  gate was inconclusive this round (subscription unavailable) — even a
+  score-PASS repair round cannot leave the audit PASS until a claude
+  required-backend verdict is obtained; measure with `moai verify
+  audit-plan` after repairs, before dispatching the next audit round.
+
 ### v0.4.0 re-plan under operator decision D9 (2026-10-06, this tree, HEAD 69a085b2d)
 
 - Operator decision D9 (card t1500): resume with NARROWED scope — (1) a
@@ -84,8 +127,10 @@ plan_phase_artifacts: 7 (spec.md, plan.md, acceptance.md, design.md, research.md
 - manager-develop owns §E.2/§E.3; manager-docs owns §E.4. This file's later
   edits by those agents are expected and permitted.
 - decision-index.md rows carry empty Operator verdicts; the kickoff
-  conversation should surface Q2-Q6 before or during run entry (Q4 gates
-  M1's receipt-absence branch; Q2/Q3/Q5 gate M3).
+  conversation should surface Q2-Q5 before or during run entry (Q4 gates
+  M1's receipt-absence branch; Q2/Q3/Q5 gate M3). Q0 is OPERATOR-DECIDED
+  (the D9 resume posture) and Q6 FELL AWAY with the D9 scope cut — neither
+  is surfaced (V4-O2).
 
 ### Plan-audit iter1 repair (2026-10-04, this change)
 

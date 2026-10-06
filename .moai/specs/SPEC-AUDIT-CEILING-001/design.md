@@ -41,8 +41,9 @@ run-distinguishing identity component, or collapse gated on explicit
 double-export evidence — is follow-up card material. Within one card's own
 audit stream (the case the ceiling policy governs), different N always
 count, so the policy's own retry loop is capped exactly as configured.
-The count saturates at the number of distinct (SPEC, N) pairs, i.e. at
-max-N per SPEC under this identity.
+The count saturates at the number of distinct (SPEC, N) pairs — equal to
+max-N per SPEC only under contiguous numbering (non-contiguous N values,
+e.g. {1, 3}, give a count below max-N; V4-O1).
 
 SPEC attribution: a convention-family file belongs to the SPEC named in its
 report header; the counter resolves a SPEC's evidence from
@@ -77,20 +78,25 @@ and the REQ/AC id sets are unchanged. An ineligible delta or a STOP signal is
 a final hit: the outcomes below fire immediately at the tier ceiling.
 
 Ladder (fixed by spec.md §B; NOT config keys — research.md §4), evaluated
-when a verdict is presented at a LIVE admission seam for a SPEC at/over the
-effective ceiling:
+when a verdict is presented at a LIVE admission seam for a SPEC at any
+ceiling state — the effective ceiling reached (tier + delta), or the tier
+ceiling reached on a final hit with no eligible delta round (V4-D1):
 
 0. `pass-through` (D31, REQ-ACE-013) — the verdict satisfies every
    admission check of the shared predicate (label, score, must-pass,
    blocking, hash binding, duplicate keys, and the §4 receipt checks). The
    CLI admits the round and records a ceiling-reached outcome naming that
    the ceiling was reached; no question is asked. The ceiling caps
-   repetition, not a healthy result — a healthy resume presented at/over
-   the ceiling is never held by omission, which would force a mandatory
-   operator question on exactly the population §A measures (35% of SPECs
-   audited 3+ times) and contradict the SPEC's own no-question purpose.
-   The outcome record names the SPECs admitted this way so the population
-   stays auditable.
+   repetition, not a healthy result — a healthy resume presented at any
+   ceiling state (both boundaries, per V4-D1's second face: the
+   tier-ceiling final hit included) is never held by omission, which would
+   force a mandatory operator question on exactly the population §A
+   measures (35% of SPECs audited 3+ times) and contradict the SPEC's own
+   no-question purpose. This rung evaluates FIRST, so the refusal rungs
+   below see only verdicts that fail admission — REQ-ACE-003's refusal is
+   scoped accordingly (a verdict satisfying every admission check follows
+   REQ-ACE-013, never a refusal). The outcome record names the SPECs
+   admitted this way so the population stays auditable.
 
 For a verdict that FAILS admission, evaluated on the refusal of REQ-ACE-003:
 
@@ -178,11 +184,34 @@ required_backend: <backend-name> <pass|fail|inconclusive>   # repeatable, one li
     so a single-model producer fed only from `ConvergenceResult` would leave
     required-resolving trees with no writer and a permanent REQ-ACE-010
     block. The single-model path instead writes `convergence_overall` from
-    the auditor's own verdict and one `required_backend:` line for the
-    backend it actually ran, sourced from the named field of its own review
-    output. A required backend the audit did not cover stays absent from the
-    receipt and refuses under REQ-ACE-010 — correct fail-closed, never
-    weakened by this extension.
+    the auditor's own verdict under the projection rule below and one
+    `required_backend:` line for the backend it actually ran, sourced from
+    the named field of its own review output. A required backend the audit
+    did not cover stays absent from the receipt and refuses under
+    REQ-ACE-010 — correct fail-closed, never weakened by this extension.
+- Own-verdict projection rule (V4-D2 — defined for EVERY label the
+  auditor's own verdict enum can carry, so no projection is undefined):
+  the auditor's own verdict vocabulary is {PASS, PASS-WITH-DEBT, FAIL,
+  FAIL_WARNED, INCONCLUSIVE} (BYPASSED never reaches the export step — a
+  bypassed audit exports no verdict file, hence no receipt). The projection
+  onto the receipt vocabulary:
+  - `PASS` and `PASS-WITH-DEBT` → backend line `pass`, and
+    `convergence_overall: pass` — PASS-WITH-DEBT is a passing label per the
+    shared predicate's `AdmitLabel` (design.md §2), so mapping it to `pass`
+    is not an upgrade; the raw own label stays readable in the verdict
+    body, which the receipt never rewrites.
+  - `FAIL` and `FAIL_WARNED` → backend line `fail`,
+    `convergence_overall: fail`.
+  - `INCONCLUSIVE` → backend line `inconclusive`,
+    `convergence_overall: fail` (an unresolved audit is not a pass — the
+    same fail-closed posture §7 records; the resulting receipt refuses
+    under REQ-ACE-009/010 either way).
+  A receipt line carrying a value outside `pass|fail|inconclusive` (e.g. a
+  hand-written or future label written verbatim) stays malformed and
+  refuses under the existing malformed-line rule — the projection exists so
+  the producer never emits one, not so the parser learns to accept one.
+  AC-ACE-008's `TestParseReceiptPassWithDebtProjection` covers the
+  PASS-WITH-DEBT single-model receipt end to end.
 - The convention doc's export mandate extends to these lines whenever the
   tree resolves a non-empty required-backend set (REQ-ACE-008's trigger —
   a single-required-backend tree emits receipts under either producer path,
