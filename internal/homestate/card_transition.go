@@ -558,6 +558,15 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		if _, err := tx.ExecContext(ctx, `UPDATE workers SET heartbeat_at=? WHERE label=?`, nowText, label); err != nil {
 			return plan, err
 		}
+		// The dispatch binding follows this lease too (review round-10 P1):
+		// T8a leases from a run whose row may sit behind a stale binding —
+		// same transaction, same authority as T2/T3.
+		if err := ensureRunRowTx(ctx, tx, cur.RunID, nowText); err != nil {
+			return plan, err
+		}
+		if err := upsertDispatchBindingTx(ctx, tx, cur.CardID, cur.RunID, nowText); err != nil {
+			return plan, err
+		}
 		clearDecision(&plan.next)
 		plan.next.Stage = CardRun
 		plan.next.Decider, plan.next.DecidedAt = DeciderAudit, nowText

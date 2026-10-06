@@ -333,6 +333,55 @@ func TestLeaderReceiptGateEmptyEvidenceRefused(t *testing.T) {
 	}
 }
 
+// Review round-11 P1 (card t1538): the T8a audit-kickoff LEASE edge
+// re-points the dispatch binding in the same transaction — the kickoff→run
+// path grants a lease without passing T2/T3, so a stale binding from
+// another run would survive it.
+func TestFR_FCR_KickoffAuditUpdatesDispatchBinding(t *testing.T) {
+	db := frOpen(t)
+	repo := frNewRepo(t, true)
+	ctx := context.Background()
+	frRegisterWorker(t, db, "worker-1")
+	c := frFixtureCard(repo, "t8a", CardKickoff, CardRun)
+	c.Version = 1
+	frPlace(t, db, c)
+	frWriteVerdictsFor(t, repo, c.CardID, CardKickoff)
+	// Stale binding: the audit lease happens under run-a; the binding still
+	// names run-b with a matching receipt planted there.
+	frPlaceRun(t, db, "run-b", "active", "2026-09-25T01:00:00Z")
+	frApprove(t, db, LeaderApproval{
+		CardUUID: "uuid-t8a", RunID: "run-b", CardID: c.CardID, FactoryVersion: 1,
+		EvidenceHash: repo.Commit, Issuer: "lead", IssuerRole: ApprovalIssuerLeader,
+	})
+	frBindDispatch(t, db, c.CardID, "run-b")
+
+	got, err := db.Transition(ctx, frFullRequest(repo, c, CardRun))
+	if err != nil {
+		t.Fatalf("T8a: %v", err)
+	}
+	if got.State != CardRun || got.LeaseHolder != "worker-1" {
+		t.Fatalf("T8a = %s holder=%q, want run/worker-1", got.State, got.LeaseHolder)
+	}
+	row, linked, err := db.RecordedCardRowReadonly(ctx, c.CardID)
+	if err != nil || !linked {
+		t.Fatalf("binding read: linked=%v err=%v", linked, err)
+	}
+	if row.RunID != frRun {
+		t.Fatalf("binding run = %s, want %s (the T8a lease run)", row.RunID, frRun)
+	}
+	// The stale run's approval can no longer close; the lease run's does.
+	if err := db.VerifyApprovalReadonly(ctx, c.CardID, "uuid-t8a"); !errors.Is(err, ErrApprovalRunMismatch) {
+		t.Fatalf("stale-run approval err = %v, want ErrApprovalRunMismatch", err)
+	}
+	frApprove(t, db, LeaderApproval{
+		CardUUID: "uuid-t8a", RunID: frRun, CardID: c.CardID, FactoryVersion: got.Version,
+		EvidenceHash: repo.Commit, Issuer: "lead", IssuerRole: ApprovalIssuerLeader,
+	})
+	if err := db.VerifyApprovalReadonly(ctx, c.CardID, "uuid-t8a"); err != nil {
+		t.Fatalf("lease-run approval refused: %v", err)
+	}
+}
+
 // T20 (ci-green → done) is the reserved edge M1 admits — not by a CI reader
 // (that opens T19 only, and is M2's), but by the receipt gate inside
 // FactoryDB.Transition (REQ-FCR-002b, REQ-FCR-010). T19 stays reserved.
