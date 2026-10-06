@@ -267,3 +267,16 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   repo-root=0; round-14 probes green; harness 12 pass / 0 fail. CI
   publication still platform-blocked. Leader drain notice received —
   session ends after this round.
+- gate_round_16 (codex review gate findings, lane-direct): 2 repairs,
+  RED observed on the committed 85ec666c8 code then GREEN on this tree
+  (commit `6200e910a`) — (1) the exclude/include follow-up fields at
+  ind 12 use strip_quotes (the trailing-quote strip deleted a real
+  apostrophe from tag:"docs'" so the exclude never matched and an
+  EXCLUDED combination passed as required — inverted probe: pre-repair
+  exit 0 false approval, repaired exit 1 correct rejection); (2) the
+  matrix value store tracks membership by COUNT not string emptiness
+  (option:["", race] publishes `Test ()` first — pre-repair collapsed
+  the empty value into the uninitialized slot). Regression: phantom=1
+  control=0 malformed=1 matrix-exclude=1 repo-root=0; round-15 probes
+  green; harness 12 pass / 0 fail. CI publication still
+  platform-blocked.
