@@ -293,6 +293,16 @@ The gate's verdict on the rotation head failed with 2×P1 (this card) + 4×P2 (f
 
 RED rows observed first (both allow, matching the verdict verbatim). GREEN: `TestProtectedZone` hook+config (ShellMutation swept 99 — 2 new deny rows), `go build ./...` exit 0, GOOS=linux+windows OK, `golangci-lint` 0 issues, gofmt clean, `TestHMPSourceGuard` ok, live judge `JUDGE swept=67 expected=67 fail=0` exit 0.
 
+### Repair round 17 — bounded recursion unrolling, precise call-result merge (2026-10-06)
+
+The gate's verdict on the round-16 head failed with 1×P1 + 1×P2 (both this card, both function-model refinements) + 2×P2 (foreign re-flags):
+
+- **P1 bounded recursion unrolling** — the `calling` guard returned immediately on a recursive call, so the recursion's directory-driven unrolling was never walked (`f(){ echo > secret.md; test -f stop || { cd ..; f; }; }; cd zone_dir/a/b; f` writes into `zone_dir/secret.md` on the third level). A recursive call now RE-ENTERS its body bounded — each re-entry walks from the walker's CURRENT state, so the `cd ..` between levels is real — with a per-name counter (`zoneRecursionBound` 8); past the bound the walk sets the unbounded flag (the fail-closed denial), exactly the verdict's own alternative. 진행 중 한 번 헛점을 잡았다: 첫 RED 행이 디렉터리 엔트리(`zone_dir/`)를 써서 1패스 커버로 구멍을 가렸고, 판정서처럼 정확 파일 엔트리(`zone_dir/secret.md`)로 고친 뒤에야 적색이 관측됐다 — 가림 마스킹은 RED-first의 사각지대다.
+- **P2 call-result merge precision** — the call site seeded its result with the PRE-call registry, so a body that CERTAINLY redefines a name kept the old definition alive: `g(){ rm x; }; f(){ g(){ :; }; }; f; g` was DENIED on the retired body (false positive, observed). The call's result is now the union of the bodies' own outcomes — each walked from the pre-call entry state, merged bodies-wise — so a certain redefinition retires the old definition while genuinely-possible alternatives keep both.
+- **P2 2건 — 외부 소관(재지적)**: `todo.go:1055` 읽기 전용 명령의 큐 디렉터리 실제 이관(신규 성격이나 todo_issuance 계열 재지적)·`todo.go:940` --files 겹침(누적 재지적).
+
+RED rows observed first — the recursion row allow on the round-16 tree (after the fixture correction), the over-deny control deny. GREEN: `TestProtectedZone` hook+config (ShellMutation swept 101 — 1 new deny row + 1 allow control), `go build ./...` exit 0, GOOS=linux+windows OK, `golangci-lint` 0 issues, gofmt clean, live judge `JUDGE swept=67 expected=67 fail=0` exit 0.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready

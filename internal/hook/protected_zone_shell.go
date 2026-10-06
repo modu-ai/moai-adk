@@ -144,18 +144,21 @@ func zoneFirstArgWord(args []*syntax.Word) (string, bool) {
 // command is denied fail-closed rather than allowed on an incomplete walk
 // (round 9 P1).
 type zoneWalker struct {
-	h         *preToolHandler
-	cwds      []string
-	mutating  bool
-	unbounded bool
-	cands     []string
+	h        *preToolHandler
+	cwds     []string
+	mutating bool
 	// funcs maps a function name declared in THIS command to the bodies it
 	// may have: a straight-line redefinition replaces, a branch join unions
 	// — the skipped branch's definition must not win (round 14 P1). calling
-	// holds the names currently being walked, breaking recursive
-	// declarations.
-	funcs   map[string][]*syntax.Stmt
-	calling map[string]bool
+	// holds the names currently being walked; calls counts the bounded
+	// re-entries a recursion may unroll (round 17 P1). unbounded records
+	// that a walk outgrew one of its bounds — the command is then denied
+	// fail-closed rather than allowed on an incomplete analysis.
+	unbounded bool
+	cands     []string
+	funcs     map[string][]*syntax.Stmt
+	calling   map[string]bool
+	calls     map[string]int
 }
 
 // setCwds replaces the possible-directory set, dropping duplicates.
@@ -430,21 +433,38 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		// a call to a function declared in this command runs every body the
 		// name may have (round 10 P2). Each body is a separate WORLD, not a
 		// sequence: one body's inner declarations must not replace another's
-		// (round 16 P1 — the alternatives of `f` each define `g`, and the
-		// second walk was overwriting the first's registration). The
-		// directory set needs no such isolation — a candidate is judged
-		// against the whole accumulated set anyway.
+		// (round 16 P1), and the call's RESULT is the union of the bodies'
+		// own outcomes — a body that certainly redefines a name retires the
+		// pre-call definition instead of keeping it alive alongside (round
+		// 17 P2). The directory set needs no such isolation — a candidate
+		// is judged against the whole accumulated set anyway.
 		if w.calling[name] {
-			return
+			// a recursive call re-enters bounded: each re-entry walks the
+			// body from the walker's CURRENT state (the recursion's
+			// directory moves are real), and past the bound the command is
+			// fail-closed like any other walk that cannot complete (round
+			// 17 P1)
+			if w.calls[name] >= zoneRecursionBound {
+				w.unbounded = true
+				return
+			}
+			w.calls[name]++
+		} else {
+			w.calling[name] = true
+			w.calls[name] = 1
 		}
-		w.calling[name] = true
-		acc := cloneZoneFuncs(w.funcs)
+		entry := cloneZoneFuncs(w.funcs)
+		var result map[string][]*syntax.Stmt
 		for _, body := range bodies {
-			w.funcs = cloneZoneFuncs(acc)
+			w.funcs = cloneZoneFuncs(entry)
 			w.zoneWalkStmt(body)
-			acc = mergeZoneFuncs(acc, w.funcs)
+			if result == nil {
+				result = w.funcs
+			} else {
+				result = mergeZoneFuncs(result, w.funcs)
+			}
 		}
-		w.funcs = acc
+		w.funcs = result
 		delete(w.calling, name)
 		return
 	}
@@ -648,6 +668,12 @@ const (
 // through a chain of dangling destinations; deeper chains read as outside
 // the project (fail closed), standing in for the kernel's ELOOP.
 const zoneSymlinkDepthBound = 32
+
+// zoneRecursionBound bounds how many times a recursive call may re-enter
+// its own body within one walk; past the bound the walk sets the unbounded
+// flag — the fail-closed denial — instead of truncating the recursion
+// silently (round 17 P1).
+const zoneRecursionBound = 8
 
 // zoneCwdsEqual compares two possible-directory sets member for member.
 func zoneCwdsEqual(a, b []string) bool {
@@ -964,7 +990,7 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	if !ok {
 		return ""
 	}
-	w := &zoneWalker{h: h, cwds: []string{"."}, funcs: map[string][]*syntax.Stmt{}, calling: map[string]bool{}}
+	w := &zoneWalker{h: h, cwds: []string{"."}, funcs: map[string][]*syntax.Stmt{}, calling: map[string]bool{}, calls: map[string]int{}}
 	for _, stmt := range file.Stmts {
 		w.zoneWalkStmt(stmt)
 	}

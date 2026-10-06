@@ -1109,6 +1109,20 @@ func testZoneShellMutation(t *testing.T) {
 		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
 		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_zone")
 	}
+	// recursion unrolls across changing directories — the entry protects the
+	// EXACT file, so only the unrolled pass at zone_dir itself covers it; a
+	// directory entry here would deny on the first pass and mask the hole (r17)
+	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/secret.md\"]\n"), "")
+	h = zoneTestHandler(t, root)
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "f() { echo changed > secret.md; test -f stop || { cd ..; f; }; }; cd zone_dir/a/b; f"})
+	wantZoneDeny(t, "recursion unrolls across changing directories", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	// control: a body that certainly redefines a function must retire the old
+	// definition — analyzing the pre-call body here is a false denial (r17)
+	swept++
+	if d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "g() { rm zone_dir/secret.md; }; f() { g() { :; }; }; f; g"}); d == DecisionDeny {
+		t.Errorf("certain redefinition retiring the old body: decision=%q reason=%q, want allow", d, r)
+	}
 
 	if swept < 71 {
 		t.Fatalf("swept %d rows, want at least 71", swept)
