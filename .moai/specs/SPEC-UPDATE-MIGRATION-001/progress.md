@@ -237,7 +237,7 @@ PENDING at report time.
 
 run_status: complete
 run_complete_at: 2026-10-07
-run_commit_sha: pending-backfill-run
+run_commit_sha: f7e06ee90
 tier: L
 methodology: ddd
 ac_pass_count: 12
