@@ -131,3 +131,17 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   single-quoted program; phantom=0 readings from that window are noise):
   phantom=1 control=0 malformed=1 matrix-exclude=1 repo-root=0 all hold.
   Pushed ef8ebd702..fd98058a1; CI publication still platform-blocked.
+- gate_round_6 (codex review gate findings, lane-direct): 5 repairs, RED
+  observed on the committed a236ac8b3 code before each GREEN on this tree
+  (commit `c5f5ff229`) — (1) run.sh verifies the SSoT key BEFORE the loop
+  (the loader's bare newline for an unknown key defeated the loop's
+  file-size check; unkeyed base + Lint=fail scored all-passed exit 0 RED,
+  abort 1 GREEN; release/* bases resolve to the release/* pattern key);
+  (2) both gh test mocks serve `pr view` — the test harness was 5 pass /
+  7 fail against the base-resolution step, now 12 pass / 0 fail; (3)
+  validator parses block-form matrix arrays; (4) include tuples whose
+  in-matrix keys all match a combination merge into it (merged tuples
+  stop emitting standalone; merge runs after the exclude check); (5) a
+  job without `name:` publishes its job ID as the default check name.
+  Regression suite: phantom=1 control=0 malformed=1 matrix-exclude=1
+  repo-root=0. CI publication still platform-blocked.
