@@ -232,7 +232,10 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			has_name = 0
 			return
 		}
-		if (n_oaxes > 0) {
+		# GATE-18e: first-item substitution survives ONLY for the
+		# object-with-include (nk == 0) shape — with product dims the
+		# mixed expansion below multiplies every object item instead.
+		if (n_oaxes > 0 && nk == 0) {
 			for (oa = 1; oa <= n_oaxes; oa++) {
 				axis = oaxes[oa]
 				for (fk in objitems) {
@@ -251,6 +254,40 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		lines[1] = name
 		sufs[1] = ""
 		sufcnt[1] = 0
+		oids[1] = ""
+		# GATE-18e: object axes with product dims — each object axis
+		# multiplies the working set PER ITEM before the dim loop (the
+		# first-item approximation published only the first item of each
+		# object axis and judged the real checks of later items phantom,
+		# and the scalar exclude matcher could not reach the object
+		# combinations either).
+		if (n_oaxes > 0) {
+			nref = 0
+			s = name
+			while (match(s, /matrix\.[A-Za-z_][A-Za-z_0-9-]*\.[A-Za-z_][A-Za-z_0-9-]*/)) {
+				ref = substr(s, RSTART + 7, RLENGTH - 7)
+				nref++
+				refax[nref] = substr(ref, 1, index(ref, ".") - 1)
+				refsub[nref] = substr(ref, index(ref, ".") + 1)
+				s = substr(s, RSTART + RLENGTH)
+			}
+			for (oa = 1; oa <= n_oaxes; oa++) {
+				axis = oaxes[oa]
+				base = n
+				n4 = 0
+				for (c = 1; c <= base; c++) {
+					for (idx = 1; idx <= oin[axis]; idx++) {
+						n4++
+						nline4[n4] = lines[c]
+						nsuf4[n4] = sufs[c]
+						ncnt4[n4] = sufcnt[c]
+						noids4[n4] = oids[c] SUBSEP axis SUBSEP idx
+					}
+				}
+				for (c = 1; c <= n4; c++) { lines[c] = nline4[c]; sufs[c] = nsuf4[c]; sufcnt[c] = ncnt4[c]; oids[c] = noids4[c] }
+				n = n4
+			}
+		}
 		for (i = 1; i <= nk; i++) {
 			k = dims[i]
 			m = split(mvals[k], vals_arr, SUBSEP)
@@ -276,10 +313,11 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 					# corrupt the not-yet-read source rows).
 					newsufs[newn] = (sufcnt[j] == 0) ? vals_arr[q] : ns SUBSEP vals_arr[q]
 					newsufcnt[newn] = sufcnt[j] + 1
+					newoids[newn] = oids[j]
 				}
 			}
 			n = newn
-			for (j = 1; j <= n; j++) { lines[j] = newlines[j]; sufs[j] = newsufs[j]; sufcnt[j] = newsufcnt[j] }
+			for (j = 1; j <= n; j++) { lines[j] = newlines[j]; sufs[j] = newsufs[j]; sufcnt[j] = newsufcnt[j]; oids[j] = newoids[j] }
 		}
 		for (j = 1; j <= n; j++) {
 			# GATE-4 P2: matrix.exclude subtraction — GitHub does NOT publish
@@ -308,6 +346,36 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 						if (!hit) { matches = 0; break }
 					}
 					if (matches && np > 0) excluded = 1
+				}
+			}
+			# GATE-18e: dotted exclude pairs match the combination object
+			# assignments (mixed matrices carry one assignment set per
+			# combination); a flat key matches no object combination.
+			if (!excluded && n_oaxes > 0) {
+				for (e = 1; e <= ex_n && !excluded; e++) {
+					em2 = 1
+					enp2 = 0
+					for (pk in exval) {
+						split(pk, pr, SUBSEP)
+						if (pr[1] + 0 != e) continue
+						path = pr[2]
+						if (index(path, ".") == 0) continue
+						enp2++
+						ax2 = substr(path, 1, index(path, ".") - 1)
+						sub2 = substr(path, index(path, ".") + 1)
+						hit2 = 0
+						cnt2 = split(oids[j], ooidp, SUBSEP)
+						for (p = 2; p <= cnt2; p += 2) {
+							if (ooidp[p] != ax2) continue
+							for (fk2 in objitems) {
+								split(fk2, fp2, SUBSEP)
+								if (fp2[1] != ax2 || fp2[2] + 0 != ooidp[p + 1] + 0) continue
+								if (fp2[3] == sub2 && objitems[fk2] == exval[pk]) hit2 = 1
+							}
+						}
+						if (!hit2) { em2 = 0; break }
+					}
+					if (em2 && enp2 > 0) excluded = 1
 				}
 			}
 			if (excluded) continue
@@ -364,6 +432,24 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			outl = lines[j]
 			for (q = 1; q <= en; q++)
 				outl = subst_literal(outl, "\\$\\{\\{[[:space:]]*matrix\\." ek[q] "[[:space:]]*\\}\\}", ev[q])
+			# GATE-18e: the combination object assignments substitute their
+			# sub-field references; a field the item lacks evaluates empty
+			# (GitHub semantics).
+			if (n_oaxes > 0) {
+				cnt = split(oids[j], ooidp, SUBSEP)
+				for (r = 1; r <= nref; r++) {
+					lit = ""
+					for (p = 2; p <= cnt; p += 2) {
+						if (ooidp[p] != refax[r]) continue
+						for (fk in objitems) {
+							split(fk, fp, SUBSEP)
+							if (fp[1] != refax[r] || fp[2] + 0 != ooidp[p + 1] + 0 || fp[3] != refsub[r]) continue
+							lit = objitems[fk]
+						}
+					}
+					outl = subst_literal(outl, "\\$\\{\\{[[:space:]]*matrix\\." refax[r] "\\." refsub[r] "[[:space:]]*\\}\\}", lit)
+				}
+			}
 			# GATE-18: a field the matrix never declares evaluates EMPTY on
 			# GitHub — a residual expression after all substitution is an
 			# unset field, not an unverifiable name; a partial include
@@ -462,7 +548,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		has_name = 0
 	}
 	function reset_job_mem() {
-		nk = 0; inc_n = 0; had_ref = 0; ex_n = 0; mmode = "inc"; bdim_key = ""; zcombo = 0
+		nk = 0; inc_n = 0; had_ref = 0; ex_n = 0; mmode = "inc"; bdim_key = ""; zcombo = 0; n_oaxes = 0
 		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord; delete merged; delete objitems; delete oin; delete oaxes; delete incset; delete mcnt; delete exgrp; delete sufcnt; delete newsufcnt; delete exprdim
 	}
 	BEGIN { in_jobs = 0; has_name = 0; nk = 0; inc_n = 0; in_steps = 0; in_strategy = 0; in_matrix = 0; mmode = "inc"; ex_n = 0; bdim_key = ""; n_oaxes = 0; zcombo = 0 }

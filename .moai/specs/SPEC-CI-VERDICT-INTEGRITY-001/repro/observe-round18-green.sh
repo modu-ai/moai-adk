@@ -24,6 +24,12 @@ cd "$HERE/inc-missing-field" && sh "$VALIDATOR" >/dev/null 2>&1
 echo "inc-missing-field GREEN(expect 0 = unset tuple field fills empty)=$?"
 cd "$HERE/inc-empty-suffix" && sh "$VALIDATOR" >/dev/null 2>&1
 echo "inc-empty-suffix GREEN(expect 0 = empty tuple value keeps its slot)=$?"
+cd "$HERE/obj-axis-reset" && sh "$VALIDATOR" >/dev/null 2>&1
+echo "obj-axis-reset GREEN(expect 0 = axis counter resets per job)=$?"
+cd "$HERE/mixed-matrix" && sh "$VALIDATOR" >/dev/null 2>&1
+echo "mixed-matrix GREEN(expect 0 = every object item expands with dims)=$?"
+cd "$HERE/mixed-matrix-excluded" && sh "$VALIDATOR" >/dev/null 2>&1
+echo "mixed-matrix-excluded GREEN(expect 1 = dotted exclude reaches mixed combos)=$?"
 sh "$REPO_ROOT/.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom.sh" >/dev/null 2>&1; echo "phantom(expect 1)=$?"
 sh "$REPO_ROOT/.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom-control.sh" >/dev/null 2>&1; echo "control(expect 0)=$?"
 sh "$REPO_ROOT/.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-malformed.sh" >/dev/null 2>&1; echo "malformed(expect 1)=$?"
