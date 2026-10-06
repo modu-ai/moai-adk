@@ -3,11 +3,18 @@ package bugreport
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"runtime"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
+
+// goFileShape matches a Go file path embedded in a frame name: an identifier
+// ending in ".go" at a segment boundary, optionally followed by a line-number
+// colon or another path segment. Anchored rather than a substring check, so
+// function names like cli.goalProjectRoot are never misread as files.
+var goFileShape = regexp.MustCompile(`(?:^|/)[A-Za-z0-9_\-]+\.go(?:$|[:/])`)
 
 // ModulePrefix is the module path a stack frame's function name must begin
 // with to be moai-internal (REQ-ANON-010). Frames carry the Function name
@@ -40,9 +47,12 @@ func ValidateFrameName(name string) error {
 		strings.Contains(name, "/../") {
 		return fmt.Errorf("bugreport: frame %q is path-shaped", name)
 	}
-	// ".go" cannot occur in a function name's package path; it does occur in
-	// file paths, so its presence marks a path that slipped through.
-	if strings.Contains(name, ".go") {
+	// A Go FILE path in a frame is a path segment ending in ".go", followed
+	// by end-of-string, a line-number colon, or another slash. The check is
+	// anchored to the segment boundary on purpose: a substring containment
+	// would misclassify ordinary function names that merely carry ".go"
+	// inside them — cli.goalProjectRoot is a function, leak.go:42 is a file.
+	if goFileShape.MatchString(name) {
 		return fmt.Errorf("bugreport: frame %q carries a file-name shape", name)
 	}
 	for _, r := range name {

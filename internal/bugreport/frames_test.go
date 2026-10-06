@@ -68,6 +68,22 @@ func TestFrameLimitCapsInnermostFirst(t *testing.T) {
 	}
 }
 
+// TestFunctionNamesWithGoSubstringAreKept pins the review finding's exact
+// case: a function whose name merely CONTAINS the substring ".go"
+// (cli.goalProjectRoot) is a function name, not a file path. Dropping it
+// would lose fingerprint information; an anchored file-suffix check is what
+// distinguishes the two.
+func TestFunctionNamesWithGoSubstringAreKept(t *testing.T) {
+	const name = "internal/cli.goalProjectRoot"
+	if err := ValidateFrameName(name); err != nil {
+		t.Fatalf("ValidateFrameName(%q) = %v, want accepted (function name, not a path)", name, err)
+	}
+	got := FilterFrames([]runtime.Frame{{Function: ModulePrefix + name}})
+	if len(got) != 1 || got[0] != name {
+		t.Fatalf("function frame dropped by the filter: %v, want [%q]", got, name)
+	}
+}
+
 func itoa(i int) string {
 	if i == 0 {
 		return "0"
