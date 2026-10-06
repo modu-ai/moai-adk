@@ -47,7 +47,19 @@ Deferred to run-phase Phase 4 (owned by the orchestrator/manager-develop flow, n
 
 ## §E.2 Run-phase Evidence
 
-_pending run-phase_
+Duty mirror (plan-audit r2 claim-discrepancy note): the M2-before-M4 RED recording
+duty and the auto-demotion clause for AC-UPM-020/021 live in acceptance.md:31 and
+acceptance.md:37 — both hazard RED captures land HERE with all four §2.1 elements
+before M4, or both criteria auto-demote to regression-guard (binding, not discretionary).
+
+### Milestone log
+
+- **M1 — characterization pin (GREEN-BASE, no behavior change)** — commit _pending_.
+  `internal/cli/update/deploy/deploy_characterization_test.go` (new): 4 tests pinning
+  current `CleanMoaiManagedPaths` behavior — local-only file backed-up-then-deleted;
+  user-modified template file deleted WITHOUT backup (silent-overwrite hazard);
+  `.moai/config` wiped wholesale; managed roots fully emptied (wipe-first end state).
+  Exit: green on the UNMODIFIED tree (HEAD 80cfe7c0b).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
