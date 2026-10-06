@@ -171,6 +171,38 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 				s = substr(s, RSTART + RLENGTH)
 			}
 			for (c = 1; c <= n2; c++) {
+				# GATE-18: exclude applies to object-axis combinations too.
+				# An entry matches when EVERY stored pair hits the
+				# combination: a dotted pair (group.field, from the ind-12
+				# handler under a bare group key) reads that item sub-field;
+				# a flat key or a zero-pair entry never matches here.
+				excl_c = 0
+				for (e = 1; e <= ex_n && !excl_c; e++) {
+					em = 1
+					enp = 0
+					for (pk in exval) {
+						split(pk, pr, SUBSEP)
+						if (pr[1] + 0 != e) continue
+						enp++
+						path = pr[2]
+						if (index(path, ".") == 0) { em = 0; break }
+						ax2 = substr(path, 1, index(path, ".") - 1)
+						sub2 = substr(path, index(path, ".") + 1)
+						hit2 = 0
+						cnt2 = split(ob_ids[c], oidp2, SUBSEP)
+						for (p = 2; p <= cnt2; p += 2) {
+							if (oidp2[p] != ax2) continue
+							for (fk2 in objitems) {
+								split(fk2, fp2, SUBSEP)
+								if (fp2[1] != ax2 || fp2[2] + 0 != oidp2[p + 1] + 0) continue
+								if (fp2[3] == sub2 && objitems[fk2] == exval[pk]) hit2 = 1
+							}
+						}
+						if (!hit2) { em = 0; break }
+					}
+					if (em && enp > 0) excl_c = 1
+				}
+				if (excl_c) continue
 				outl = ob_line[c]
 				cnt = split(ob_ids[c], oidp, SUBSEP)
 				for (p = 2; p <= cnt; p += 2) {
@@ -210,12 +242,15 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		n = 1
 		lines[1] = name
 		sufs[1] = ""
+		sufcnt[1] = 0
 		for (i = 1; i <= nk; i++) {
 			k = dims[i]
 			m = split(mvals[k], vals_arr, SUBSEP)
 			# GATE-17: a stored EMPTY value splits to zero parts — it is
 			# still ONE combination (`option: [""]` publishes `Test ()`).
-			if (m == 0 && mvals[k] == "") { vals_arr[1] = ""; m = 1 }
+			# GATE-18: an explicitly EMPTY array (zcombo) contributes ZERO
+			# combinations — no fixup there.
+			if (m == 0 && mvals[k] == "" && !zcombo) { vals_arr[1] = ""; m = 1 }
 			newn = 0
 			for (j = 1; j <= n; j++) {
 				for (q = 1; q <= m; q++) {
@@ -226,11 +261,17 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 					newn++
 					newlines[newn] = s
 					ns = sufs[j]
-					newsufs[newn] = (ns == "") ? vals_arr[q] : ns SUBSEP vals_arr[q]
+					# GATE-18: positional PAIR COUNT, not string emptiness —
+					# a leading EMPTY value leaves the suffix string empty
+					# and the old ns == "" test lost the position. The count
+					# lands in newsufcnt (never in place: newn == j would
+					# corrupt the not-yet-read source rows).
+					newsufs[newn] = (sufcnt[j] == 0) ? vals_arr[q] : ns SUBSEP vals_arr[q]
+					newsufcnt[newn] = sufcnt[j] + 1
 				}
 			}
 			n = newn
-			for (j = 1; j <= n; j++) { lines[j] = newlines[j]; sufs[j] = newsufs[j] }
+			for (j = 1; j <= n; j++) { lines[j] = newlines[j]; sufs[j] = newsufs[j]; sufcnt[j] = newsufcnt[j] }
 		}
 		for (j = 1; j <= n; j++) {
 			# GATE-4 P2: matrix.exclude subtraction — GitHub does NOT publish
@@ -241,18 +282,24 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			# silently (run-matrix-exclude.sh repro: false-green exit 0).
 			excluded = 0
 			nsuf = split(sufs[j], svals, SUBSEP)
-			if (nsuf == nk) {
+			# GATE-18: the positional gate counts PAIRS (sufcnt), not the
+			# split count — a leading empty value made nsuf undercount and
+			# silently skip the exclude check. A dotted key is an
+			# object-axis pair and matches no scalar dimension here.
+			if (sufcnt[j] == nk) {
 				for (e = 1; e <= ex_n && !excluded; e++) {
 					matches = 1
+					np = 0
 					for (pk in exval) {
 						split(pk, pr, SUBSEP)
 						if (pr[1] + 0 != e) continue
+						np++
 						hit = 0
 						for (d = 1; d <= nk; d++)
 							if (dims[d] == pr[2] && svals[d] == exval[pk]) { hit = 1; break }
 						if (!hit) { matches = 0; break }
 					}
-					if (matches) excluded = 1
+					if (matches && np > 0) excluded = 1
 				}
 			}
 			if (excluded) continue
@@ -309,6 +356,11 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			outl = lines[j]
 			for (q = 1; q <= en; q++)
 				outl = subst_literal(outl, "\\$\\{\\{[[:space:]]*matrix\\." ek[q] "[[:space:]]*\\}\\}", ev[q])
+			# GATE-18: a field the matrix never declares evaluates EMPTY on
+			# GitHub — a residual expression after all substitution is an
+			# unset field, not an unverifiable name; a partial include
+			# tuple must not poison the whole published name.
+			outl = subst_literal(outl, "\\$\\{\\{[[:space:]]*matrix\\.[A-Za-z_][A-Za-z_0-9-]*[[:space:]]*\\}\\}", "")
 			# GATE-11: the include out-of-matrix fields feed ONLY the
 			# expression substitution — the auto suffix reflects the
 			# ORIGINAL matrix axes alone (GitHub names
@@ -378,10 +430,10 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		has_name = 0
 	}
 	function reset_job_mem() {
-		nk = 0; inc_n = 0; had_ref = 0; ex_n = 0; mmode = "inc"; bdim_key = ""
-		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord; delete merged; delete objitems; delete oin; delete oaxes; delete incset; delete mcnt
+		nk = 0; inc_n = 0; had_ref = 0; ex_n = 0; mmode = "inc"; bdim_key = ""; zcombo = 0
+		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord; delete merged; delete objitems; delete oin; delete oaxes; delete incset; delete mcnt; delete exgrp; delete sufcnt; delete newsufcnt
 	}
-	BEGIN { in_jobs = 0; has_name = 0; nk = 0; inc_n = 0; in_steps = 0; in_strategy = 0; in_matrix = 0; mmode = "inc"; ex_n = 0; bdim_key = ""; n_oaxes = 0 }
+	BEGIN { in_jobs = 0; has_name = 0; nk = 0; inc_n = 0; in_steps = 0; in_strategy = 0; in_matrix = 0; mmode = "inc"; ex_n = 0; bdim_key = ""; n_oaxes = 0; zcombo = 0 }
 	{
 		ind = 0
 		while (substr($0, ind + 1, 1) == " ") ind++
@@ -476,7 +528,11 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		parts_n = split(v, parts, ",")
 		# GATE-17: a WHOLE-EMPTY value list is one empty combination —
 		# split("", sep) returns 0 parts and would drop the combination.
-		if (parts_n == 0 && v == "") { parts[1] = ""; parts_n = 1 }
+		# GATE-18: a genuinely EMPTY array (`os: []`) declares ZERO values
+		# — GitHub runs the job zero times and publishes nothing. (The
+		# GATE-17 shape is a list holding one empty string, raw v == two
+		# quote characters — that still publishes `Test ()`.)
+		if (parts_n == 0 && v == "") { zcombo = 1 }
 		mvals[k] = ""
 		mcnt[k] = 0
 		for (pp = 1; pp <= parts_n; pp++) {
@@ -499,7 +555,11 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	in_matrix && ind == 10 && $0 ~ /^[[:space:]]*- / {
 		line = strip_comment($0); sub(/^[[:space:]]*-[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
-		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); v = strip_quotes(v)
+		v = line; sub(/^[^:]*:[[:space:]]*/, "", v)
+		# GATE-18: the RAW value separates a nested group opener (`target:`,
+		# nothing after the colon) from an explicit empty string (`os: ""`).
+		vraw = v
+		v = strip_quotes(v)
 		# GATE-10: a colon does NOT make a mapping — in YAML, `- node:20`
 		# is a STRING scalar (no space after the colon) while `- color: green`
 		# is a mapping. The bare is_pair colon test mis-routed spaced-out
@@ -542,7 +602,15 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			else mvals[bdim_key] = mvals[bdim_key] SUBSEP line
 			next
 		}
-		if (mmode == "excl") { ex_n++; exval[ex_n, k] = v }
+		if (mmode == "excl") {
+			ex_n++
+			# GATE-18: a bare key with NO raw value opens a NESTED group —
+			# `exclude: - target:` + ind-12 `os: windows` is the dotted
+			# pair target.os. An explicit empty string (os: "") is a PAIR
+			# whose value is empty, never a group opener.
+			if (vraw == "") exgrp[ex_n] = k
+			else exval[ex_n, k] = v
+		}
 		else {
 			# record the tuple key order — the bare-name suffix
 			# (GATE-5) needs it for include-only matrices with no dims
@@ -565,7 +633,11 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		objitems[bdim_key SUBSEP oi SUBSEP k] = v
 		next
 	}
-	in_matrix && ind == 12 && mmode == "excl" && ex_n > 0 && $0 ~ /^[[:space:]]*[A-Za-z_]/ {
+	# GATE-18: a NESTED group field under a bare exclude key renders at
+	# ind 14 in the yq-normalized form (`- target:` + child `os:` sits two
+	# deeper than the tuple flat fields) — the dotted pair would never be
+	# stored if only ind 12 matched.
+	in_matrix && (ind == 12 || ind == 14) && mmode == "excl" && ex_n > 0 && $0 ~ /^[[:space:]]*[A-Za-z_]/ {
 		line = strip_comment($0); sub(/^[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
 		# GATE-16: strip_quotes, not a trailing-quote strip — a value
@@ -573,7 +645,11 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		# the real matrix value and an EXCLUDED combination passes as a
 		# required check.
 		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); v = strip_quotes(v)
-		exval[ex_n, k] = v
+		# GATE-18: under a bare group key the field stores as the DOTTED
+		# path (group.field) — the object-axis exclude matches on the dot
+		# path, and the scalar matcher never confuses it with a dimension.
+		if (exgrp[ex_n] != "") exval[ex_n, exgrp[ex_n] "." k] = v
+		else exval[ex_n, k] = v
 		next
 	}
 	in_matrix && ind == 12 && inc_n > 0 && $0 ~ /^[[:space:]]*[A-Za-z_]/ {
