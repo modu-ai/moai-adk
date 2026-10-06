@@ -41,6 +41,14 @@ jobs:
     name: Detect Platform-Relevant Changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # paths-filter reads the PR's changed files through the GitHub API on
+    # pull_request events; without pull-requests: read the query is denied
+    # and the empty filter output makes even a docs-only PR run the two-OS
+    # matrix (leader repair #31, 2026-10-07). Read-only widening of this
+    # job only; the workflow-level least privilege is unchanged.
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       go_code: ${{ steps.f.outputs.go_code }}
     steps:
@@ -106,10 +114,12 @@ jobs:
   # ---------------------------------------------------------------------------
   # The single aggregate check branch protection registers (REQ-GFC-010).
   # `if: always()` lets the gate REPORT on docs-only PRs — where the matrix
-  # was legitimately skipped — but the step below turns a failed detect or a
-  # failed matrix leg into a failed gate, so a matrix failure can never be
-  # swallowed into a green aggregate (AC-GFC-009 (c)); only a hard 'failure'
-  # blocks, never 'skipped'.
+  # was legitimately skipped — but the step below is strict about what it
+  # accepts: the verification-needing path requires the matrix result to be
+  # exactly `success`, and only a POSITIVELY observed non-platform diff
+  # (detect's go_code == 'false') may pass with a skipped matrix. A
+  # `cancelled` matrix is therefore a failed gate, not a passed one (leader
+  # repair #30, 2026-10-07 — the t1534 "cancelled reads as success" class).
   # ---------------------------------------------------------------------------
   multi-os-runtime-gate:
     name: Multi-OS Runtime Gate
@@ -124,8 +134,12 @@ jobs:
             echo "::error::Platform detection FAILED before the matrix could run — not treating a skipped matrix as verification"
             exit 1
           fi
-          if [ "${{ needs.multi-os-test.result }}" = "failure" ]; then
-            echo "::error::Multi-OS runtime verification FAILED on at least one OS"
+          if [ "${{ needs.multi-os-test.result }}" != "success" ]; then
+            if [ "${{ needs.detect-platform.outputs.go_code }}" = "false" ]; then
+              echo "✓ Multi-OS runtime verification SKIPPED (positively non-platform diff)"
+              exit 0
+            fi
+            echo "::error::Multi-OS runtime verification did not succeed (matrix result: ${{ needs.multi-os-test.result }}) — a cancelled or failed matrix is not a passed gate"
             exit 1
           fi
-          echo "✓ Multi-OS runtime verification PASSED (or skipped for non-platform PRs)"
+          echo "✓ Multi-OS runtime verification PASSED"
