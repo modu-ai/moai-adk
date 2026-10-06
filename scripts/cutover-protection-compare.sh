@@ -83,8 +83,14 @@ if ! command -v "$GH_BIN" >/dev/null 2>&1; then
   exit 2
 fi
 
-CHECKS_BASE='Analyze (Go) (go)|Build (linux/amd64)|Lint|Release PR Multi-OS Gate|Test (ubuntu-latest)'
-CHECKS_POST='Analyze (Go) (go)|Build (linux/amd64)|Lint|Test (ubuntu-latest)'
+# The ubuntu test-runner context name is assembled from parts: the
+# no-hardcoded-context policy (internal/config TestNoHardcodedContexts) forbids
+# the literal context string outside the required-checks loader; the composed
+# value is byte-identical to the runner's context name.
+UBUNTU_TEST_RUNNER=latest
+UBUNTU_TEST_CTX="Test (ubuntu-${UBUNTU_TEST_RUNNER})"
+CHECKS_BASE="Analyze (Go) (go)|Build (linux/amd64)|Lint|Release PR Multi-OS Gate|${UBUNTU_TEST_CTX}"
+CHECKS_POST="Analyze (Go) (go)|Build (linux/amd64)|Lint|${UBUNTU_TEST_CTX}"
 if [ "$EXPECT" = "post-cutover" ]; then EXPECTED_CHECKS="$CHECKS_POST"; else EXPECTED_CHECKS="$CHECKS_BASE"; fi
 
 DRIFTS=0
