@@ -385,7 +385,7 @@ func planAuditCheck(in DecideInput, dir string) (*contract.ReceiptFileRef, strin
 	// evaluates before the verdict reaches the admitting consumer. A blocked
 	// outcome refuses here; a debt-admit outcome substitutes its
 	// PASS-WITH-DEBT for the raw label in the label check alone (D20).
-	oc, override, cerr := runtime.EvaluateCeiling(runtime.CeilingInput{
+	oc, override, cerr := runtime.EvaluateCeiling(runtime.VerdictCeilingInput{
 		SpecID: in.SpecID, SpecDir: dir, ProjectRoot: in.Root, CardID: in.Card,
 	}, fields, hashOK, gates.Required)
 	if cerr != nil {
@@ -399,14 +399,14 @@ func planAuditCheck(in DecideInput, dir string) (*contract.ReceiptFileRef, strin
 			fields.Label = auditverdict.LabelPassWithDebt
 		}
 	}
-	if ok, reason := auditverdict.Admit(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(dir), hashOK, gates.Required); !ok {
+	if ok, reason := auditverdict.AdmitWithRequired(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(dir), hashOK, gates.Required); !ok {
 		// REQ-ACE-007/012 (card-review F7): a required-backend refusal is
 		// recorded regardless of the ceiling state — the ladder persists its
 		// own outcomes, so only a below-ceiling receipt refusal is recorded
 		// here.
 		if oc == nil {
 			if _, receiptRefused := auditverdict.ReceiptRefusal(fields, gates.Required); receiptRefused {
-				runtime.RecordRequiredBackendRefusal(runtime.CeilingInput{
+				runtime.RecordRequiredBackendRefusal(runtime.VerdictCeilingInput{
 					SpecID: in.SpecID, SpecDir: dir, ProjectRoot: in.Root, CardID: in.Card,
 				}, reason)
 			}

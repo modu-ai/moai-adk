@@ -136,7 +136,7 @@ func TestOnFinalHitValidated(t *testing.T) {
 	if cfg.PlanAuditCeilingPolicy.OnFinalHit != "hold-and-split" {
 		t.Fatalf("on_final_hit %q, want hold-and-split", cfg.PlanAuditCeilingPolicy.OnFinalHit)
 	}
-	if cfg.PlanAuditTierCeilings.S != 1 || cfg.PlanAuditTierCeilings.M != 2 || cfg.PlanAuditTierCeilings.L != 3 {
+	if cfg.PlanAuditTierCeilings["S"] != 1 || cfg.PlanAuditTierCeilings["M"] != 2 || cfg.PlanAuditTierCeilings["L"] != 3 {
 		t.Fatalf("ceilings %+v, want S:1 M:2 L:3", cfg.PlanAuditTierCeilings)
 	}
 	if cfg.PlanAuditCeilingPolicy.AutoDeltaRounds != 1 {

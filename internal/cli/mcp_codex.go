@@ -212,22 +212,28 @@ func resolveCodexModelEffort(params map[string]any) config.ModelEffort {
 // codexServable (an unservable pin falls back to the backend default — never
 // break the review gate); an explicit caller `model` argument still outranks the
 // pinned model, mirroring the legacy precedence (the paired pin effort stays).
-// An effort with an empty model pins nothing (the model is the gate).
-func resolveCodexAuditModelEffort(params map[string]any) config.ModelEffort {
+// An effort with an empty model pins nothing (the model is the gate). A
+// workflow.yaml that cannot be read or parsed returns the error — the audit
+// never runs with an assumed-absent pin (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+func resolveCodexAuditModelEffort(params map[string]any) (config.ModelEffort, error) {
 	cwd, _ := params["cwd"].(string)
 	if strings.TrimSpace(cwd) == "" {
 		cwd = projectDirResolver()
 	}
-	if pin := workflowAuditPins(cwd).Codex; pin.Model != "" && codexServableModel(pin.Model) {
+	pins, pinErr := workflowAuditPins(cwd)
+	if pinErr != nil {
+		return config.ModelEffort{}, pinErr
+	}
+	if pin := pins.Codex; pin.Model != "" && codexServableModel(pin.Model) {
 		if explicit, ok := params["model"].(string); ok && strings.TrimSpace(explicit) != "" {
 			pin.Model = strings.TrimSpace(explicit)
 		}
-		return pin
+		return pin, nil
 	}
 	if explicit, ok := params["model"].(string); ok && strings.TrimSpace(explicit) != "" {
-		return resolveCodexModelEffort(params)
+		return resolveCodexModelEffort(params), nil
 	}
-	return config.ModelEffort{Model: codexAuditDefaultModel, Effort: codexAuditDefaultEffort}
+	return config.ModelEffort{Model: codexAuditDefaultModel, Effort: codexAuditDefaultEffort}, nil
 }
 
 // VerdictInconclusive is the fail-open verdict value. It rides the same
@@ -669,17 +675,26 @@ type codexSessionHandle struct {
 	// resolveCodexAuditModelEffort; every other caller (codex_task, the
 	// Stop-hook review gate) passes nil and resolves through the legacy
 	// pin-free resolveCodexModelEffort (REQ-AMP-008 isolation). nil here
-	// means legacy — see effortResolver.
-	resolveME func(params map[string]any) config.ModelEffort
+	// means legacy — see effortResolver. Since SPEC-AUDIT-CEILING-002 the
+	// seam carries the pin-read error out, so the turn never runs with an
+	// assumed-absent pin.
+	resolveME func(params map[string]any) (config.ModelEffort, error)
+}
+
+// pinFreeEffortResolver adapts the legacy pin-free resolver to the
+// error-returning audit seam: the task path carries no pin read, so it can
+// never fail (SPEC-AUDIT-CEILING-002).
+func pinFreeEffortResolver(params map[string]any) (config.ModelEffort, error) {
+	return resolveCodexModelEffort(params), nil
 }
 
 // effortResolver returns the session's {model, effort} resolver, defaulting to
 // the pin-free resolution when none was injected.
-func (h *codexSessionHandle) effortResolver() func(map[string]any) config.ModelEffort {
+func (h *codexSessionHandle) effortResolver() func(map[string]any) (config.ModelEffort, error) {
 	if h != nil && h.resolveME != nil {
 		return h.resolveME
 	}
-	return resolveCodexModelEffort
+	return pinFreeEffortResolver
 }
 
 // codexSessionError carries the fail-open summary text alongside the underlying
@@ -752,9 +767,11 @@ func openCodexSessionOn(ctx context.Context, binaryPath string, params map[strin
 // resolveCodexAuditModelEffort. This is the seam that keeps the pin
 // audit-entry-only: codex_task and the review gate keep calling
 // openCodexSessionOn, which resolves exactly as before this SPEC (REQ-AMP-008).
-func openCodexSessionResolved(ctx context.Context, binaryPath string, params map[string]any, resumeThreadID string, resolve func(map[string]any) config.ModelEffort) (*codexSessionHandle, error) {
+// Since SPEC-AUDIT-CEILING-002 the resolver's error return propagates to the
+// turn that consumes it.
+func openCodexSessionResolved(ctx context.Context, binaryPath string, params map[string]any, resumeThreadID string, resolve func(map[string]any) (config.ModelEffort, error)) (*codexSessionHandle, error) {
 	if resolve == nil {
-		resolve = resolveCodexModelEffort
+		resolve = pinFreeEffortResolver
 	}
 	conn, err := codexSession.start(ctx, binaryPath, []string{codexAppServerSubcmd})
 	if err != nil {
@@ -785,7 +802,11 @@ func openCodexSessionResolved(ctx context.Context, binaryPath string, params map
 	if instr, ok := params["developerInstructions"].(string); ok && instr != "" {
 		threadParams["developerInstructions"] = instr
 	}
-	if me := resolve(params); me.Model != "" {
+	me, resolveErr := resolve(params)
+	if resolveErr != nil {
+		return nil, codexHandshakeFailure(conn, "codex thread model resolution failed: "+resolveErr.Error(), resolveErr)
+	}
+	if me.Model != "" {
 		threadParams["model"] = me.Model
 	}
 	if err := writeCodexRequest(conn, threadIDReq, threadMethod, threadParams); err != nil {
@@ -1023,7 +1044,7 @@ func codexReviewSessionParams(method string, params map[string]any) map[string]a
 	return out
 }
 
-func runCodexReviewRPCResolved(ctx context.Context, binaryPath, method string, params map[string]any, resolve func(map[string]any) config.ModelEffort) (ReviewOutput, error) {
+func runCodexReviewRPCResolved(ctx context.Context, binaryPath, method string, params map[string]any, resolve func(map[string]any) (config.ModelEffort, error)) (ReviewOutput, error) {
 	sess, err := openCodexSessionResolved(ctx, binaryPath, codexReviewSessionParams(method, params), "", resolve)
 	if err != nil {
 		var sErr *codexSessionError
@@ -1138,9 +1159,9 @@ func extractThreadID(result json.RawMessage) string {
 // The error return is the review/start target's: a variant whose required
 // fields cannot be populated yields no request at all, rather than an
 // incomplete object or a quietly substituted one.
-func buildCodexReviewParams(method string, params map[string]any, threadID string, resolve func(map[string]any) config.ModelEffort) (map[string]any, error) {
+func buildCodexReviewParams(method string, params map[string]any, threadID string, resolve func(map[string]any) (config.ModelEffort, error)) (map[string]any, error) {
 	if resolve == nil {
-		resolve = resolveCodexModelEffort
+		resolve = pinFreeEffortResolver
 	}
 	out := map[string]any{"threadId": threadID}
 	switch method {
@@ -1157,7 +1178,13 @@ func buildCodexReviewParams(method string, params map[string]any, threadID strin
 			prompt = codexAdversarialReviewPrompt("")
 		}
 		out["input"] = []map[string]any{{"type": "text", "text": prompt}}
-		me := resolve(params)
+		me, resolveErr := resolve(params)
+		if resolveErr != nil {
+			// The {model, effort} resolution failed: nothing is sent, and the
+			// cause rides the same not-sent exit every other build failure
+			// takes (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+			return nil, resolveErr
+		}
 		if me.Model != "" {
 			out["model"] = me.Model
 		}
@@ -2046,8 +2073,16 @@ func applyGateUnmet(out ReviewOutput, projectDir string) ReviewOutput {
 	// A config-orphaned worktree takes the gate from its primary checkout, and
 	// fails closed when that primary cannot be identified
 	// (SPEC-MCP-WORKTREE-UNTRACKED-001 REQ-MWU-011/012); every other tree reads
-	// its own workflow.yaml exactly as before.
-	gates, assumedNote := resolveAuditGates(projectDir)
+	// its own workflow.yaml exactly as before. A gate read that ERRORS is
+	// surfaced as a fail verdict naming the cause — it never reads as an
+	// absent configuration (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+	gates, assumedNote, gateErr := resolveAuditGates(projectDir)
+	if gateErr != nil {
+		out.GateUnmet = "workflow.audit gates unreadable: " + gateErr.Error()
+		out.Verdict = "fail"
+		out.Summary = out.GateUnmet + ": " + out.Summary
+		return out
+	}
 	if gates.Codex != config.AuditGateRequired {
 		return out
 	}

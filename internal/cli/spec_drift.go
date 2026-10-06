@@ -40,6 +40,13 @@ var driftFillComputeFn = func(projectRoot string) {
 //
 // The channel is buffered so an abandoned worker never blocks on send.
 // Everything is best-effort: the fill has no user, so it has nothing to report.
+//
+// @MX:DEBT: [AUTO] the deadline is enforced by returning, not by cancelling
+// the worker — the drift compute has no context awareness.
+// @MX:CEILING: the abandoned goroutine never outlives the process: this is
+// the fill child's entry point and the child exits at the deadline.
+// @MX:UPGRADE: thread context.Context through spec.WithDriftFillLock and
+// spec.DetectDriftFresh when the drift computation grows a cancellation path.
 func runDriftCacheFill(projectRoot string, timeout time.Duration) error {
 	if timeout <= 0 {
 		timeout = config.DefaultDriftCacheFillTimeout

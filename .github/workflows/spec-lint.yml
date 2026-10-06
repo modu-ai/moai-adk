@@ -10,13 +10,13 @@ on:
       # REQ-SLGS-010). Without this path a rebaseline commit that touched
       # nothing else would change the verdict with no run to check it.
       - '.moai/spec-lint-baseline.json'
-  # develop is the integration branch under git-flow: lane work merges into it
-  # directly, with no card PR to carry the pull_request trigger above. Without a
-  # push trigger this lint never runs on the branch where SPECs actually land.
+  # Under GitHub Flow main is the integration branch and lane work reaches it
+  # through card PRs, which the pull_request trigger above already covers; the
+  # push trigger keeps the lint running on main itself. The retired remote
+  # develop branch is no longer listed here.
   push:
     branches:
       - main
-      - develop
     paths:
       - '.moai/specs/**'
       - 'internal/spec/**'
@@ -26,8 +26,8 @@ on:
 permissions:
   contents: read
 
-# One slot per ref, for pushes as well as pull requests: on a push to develop
-# `github.ref` is `refs/heads/develop`, so every develop push shares a slot and
+# One slot per ref, for pushes as well as pull requests: on a push to main
+# `github.ref` is `refs/heads/main`, so every main push shares a slot and
 # a newer push cancels an older run. The comment previously said "for the same
 # PR", which is what the group meant before the push trigger existed — and a
 # reading of this file went looking for that PR when diagnosing cancellations
@@ -61,13 +61,14 @@ jobs:
           cache: true
       # Explicit integration-ref fetch (REQ-SLGB-008). Whether actions/checkout at
       # fetch-depth: 0 populates refs/remotes/origin/* is NOT a verified
-      # assumption (SPEC-SPECLINT-GITBLIND-001 §2.3) — this repo integrates
-      # through develop, so a checkout of a develop push holds no local main
-      # either way, and the lint's base-ref chain needs one. Redundant when
-      # checkout already fetched it, the fetch costs one command; missing, it
-      # costs the lint its eyes again.
+      # assumption (SPEC-SPECLINT-GITBLIND-001 §2.3) — under GitHub Flow the
+      # integration branch is main, and naming the deleted develop ref here
+      # fails the whole fetch with "couldn't find remote ref develop" (exit
+      # 128), so only main is fetched. Redundant when checkout already
+      # fetched it, the fetch costs one command; missing, it costs the lint
+      # its eyes again.
       - name: Fetch integration refs
-        run: git fetch origin main:refs/remotes/origin/main develop:refs/remotes/origin/develop
+        run: git fetch origin main:refs/remotes/origin/main
       - name: Select SPEC lint policy
         id: policy
         shell: bash
@@ -79,6 +80,13 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
           HEAD_REF: ${{ github.head_ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # The develop-tip snapshot match and the develop push path died with
+        # the develop ref (GitHub Flow cutover); the release/* relaxation was
+        # re-keyed to origin/main and kept conditional on SPEC-input changes.
+        # The develop push elif remains as unreachable text under the
+        # main-only push trigger — harmless, awaiting the release
+        # discipline's own re-design (the cutover card's call, not this
+        # gate's).
         run: |
           set -euo pipefail
           strict=true
@@ -89,13 +97,27 @@ jobs:
               echo "::error::release snapshot PR must target main (got ${BASE_REF:-<empty>})"
               exit 1
             fi
-            develop_sha=$(git rev-parse origin/develop)
-            if [[ "$PR_HEAD_SHA" != "$develop_sha" ]]; then
-              echo "::error::release snapshot head $PR_HEAD_SHA does not match origin/develop $develop_sha"
-              exit 1
+            # The develop-tip snapshot match died with the develop ref (GitHub
+            # Flow cutover): a release/* PR now targets main directly, and the
+            # release discipline's own re-design belongs to the cutover card,
+            # not to this lint gate. The relaxation is NOT a branch-name
+            # bypass: a release PR that changes SPEC inputs or the linter gets
+            # the full baseline gate; one that does not keeps the
+            # inherited-warning reporting (same case list as the push branch).
+            base_sha=$(git rev-parse origin/main)
+            spec_changed=false
+            while IFS= read -r path; do
+              case "$path" in
+                .moai/specs/*|internal/spec/*|.moai/spec-lint-baseline.json) spec_changed=true ;;
+              esac
+            done <<< "$(git diff --name-only --no-renames "$base_sha" "$PR_HEAD_SHA")"
+            if [[ "$spec_changed" == "true" ]]; then
+              strict=true
+              reason="release PR changes SPEC inputs or the spec linter; baseline gate applies"
+            else
+              strict=false
+              reason="release PR leaves SPEC inputs and the spec linter unchanged; report inherited warnings while blocking errors"
             fi
-            strict=false
-            reason="release snapshot matches develop; report inherited warnings while blocking errors"
           elif [[ "$EVENT_NAME" == "push" && "$REF_NAME" == "develop" ]]; then
             if [[ -z "$EVENT_BEFORE" || "$EVENT_BEFORE" =~ ^0+$ ]]; then
               reason="develop comparison base is unavailable; fail closed with strict lint"

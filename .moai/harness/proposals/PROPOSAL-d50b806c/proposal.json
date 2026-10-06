@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-d50b806c",
+  "generated_at": "2026-10-02T15:53:50Z",
+  "generator_version": "0.1.0",
+  "observation_count": 10,
+  "pattern_key": "tool_failure:mcp__moai__factory_next:UnknownFailure",
+  "source_ts": "2026-10-04T06:34:56Z",
+  "tier": "auto_update"
+}

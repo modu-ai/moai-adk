@@ -393,7 +393,10 @@ func TestResolveClaudeAuditModelEffort_FieldsOverrideIndependently_AC_CLA_016(t 
 			if err := os.WriteFile(workflowPath, []byte(tt.workflow), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			got := resolveClaudeAuditModelEffort(root, tt.explicitModel, tt.explicitEffort)
+			got, gotErr := resolveClaudeAuditModelEffort(root, tt.explicitModel, tt.explicitEffort)
+			if gotErr != nil {
+				t.Fatalf("resolveClaudeAuditModelEffort: %v", gotErr)
+			}
 			if got.Model != tt.wantModel || got.Effort != tt.wantEffort {
 				t.Fatalf("resolved model/effort = %+v, want {%s %s}", got, tt.wantModel, tt.wantEffort)
 			}

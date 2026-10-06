@@ -19,6 +19,12 @@ import (
 // share one key through the repository common directory — the primary
 // checkout's key in an ordinary repository; see CanonicalProjectRoot for the
 // layouts where that shared root is a git directory instead.
+//
+// @MX:ANCHOR: [AUTO] the one project identity key all home-state paths derive from.
+// @MX:REASON: [AUTO] fan_in >= 3 (10 non-test caller files across homestate, cli,
+// hook, factory and profile); every per-project state path (todo, factory,
+// search cache, run dirs) is keyed here, so a key change silently orphans
+// every existing project's state.
 func ProjectKey(projectRoot string) string {
 	return projectKeyFromCanonicalRoot(CanonicalProjectRoot(projectRoot))
 }
@@ -55,6 +61,12 @@ func projectKeyFromCanonicalRoot(root string) string {
 // for the main worktree, so a linked worktree resolves to the git directory
 // itself (the metadata dir, the bare repo, .git/modules/<name>). That root is a
 // key, not a place to write: ProjectDir never lays state out inside it (t1221).
+//
+// @MX:ANCHOR: [AUTO] worktree-to-shared-root normalization feeding ProjectKey.
+// @MX:REASON: [AUTO] fan_in >= 3 (discovery, cli migration/handoff-recovery and
+// factory todo-root callers outside homestate, plus the in-package path
+// builders); every caller must land on the same root or one repository splits
+// across two project keys.
 func CanonicalProjectRoot(projectRoot string) string {
 	if projectRoot == "" {
 		projectRoot = "."

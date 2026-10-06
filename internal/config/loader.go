@@ -342,8 +342,8 @@ var knownHarnessTopLevelKeys = map[string]bool{
 	"levels":                    true,
 	"model_upgrade_review":      true,
 	"plan_audit_global":         true,
-	"plan_audit_tier_ceilings":  true, // LIVE: PlanAuditTierCeilingsConfig (SPEC-AUDIT-CEILING-001 REQ-ACE-002)
-	"plan_audit_ceiling_policy": true, // LIVE: PlanAuditCeilingPolicyConfig, on_final_hit validated below
+	"plan_audit_tier_ceilings":  true, // Go-read since SPEC-AUDIT-CEILING-002 (HarnessConfig.PlanAuditTierCeilings)
+	"plan_audit_ceiling_policy": true, // Go-read since SPEC-AUDIT-CEILING-002 (HarnessConfig.PlanAuditCeilingPolicy)
 	"evaluator":                 true,
 	"learning":                  true, // LIVE: harness learning sub-system, consumed by internal/cli/hook.go
 }
@@ -367,9 +367,15 @@ func LoadHarnessConfig(path string) (*HarnessConfig, error) {
 		return nil, fmt.Errorf("LoadHarnessConfig read %s: %w", path, err)
 	}
 
-	// Step 1: unmarshal into the struct
-	var wrapper harnessFileWrapper
-	if err := yaml.Unmarshal(data, &wrapper); err != nil {
+	// Step 1: unmarshal into the struct. The wrapper is seeded with the
+	// plan-audit ceiling defaults so a harness.yaml omitting those keys keeps
+	// the shipped values (partial-override contract, mirroring
+	// loadHandoffSection); SPEC-AUDIT-CEILING-002.
+	wrapper := &harnessFileWrapper{Harness: HarnessConfig{
+		PlanAuditTierCeilings:  DefaultPlanAuditTierCeilings(),
+		PlanAuditCeilingPolicy: DefaultPlanAuditCeilingPolicy(),
+	}}
+	if err := yaml.Unmarshal(data, wrapper); err != nil {
 		return nil, fmt.Errorf("LoadHarnessConfig parse %s: %w", path, ErrInvalidYAML)
 	}
 

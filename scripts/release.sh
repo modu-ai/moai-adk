@@ -6,10 +6,13 @@
 #   scripts/release.sh v2.14.1              # Patch release (fix 직접 main)
 #   scripts/release.sh v2.14.1 --hotfix     # Hotfix release
 #   scripts/release.sh v2.15.0 --dry-run    # 검증만 (실제 tag/push 없이)
+#   scripts/release.sh v3.2.0-rc.1          # Release candidate (-rc.N): CHANGELOG 섹션 불필요
+#   scripts/release.sh v3.2.0 --require-matrix-run   # 태그 전에 3-OS 매트릭스(workflow_dispatch) 녹색 확인 (기본 꺼짐)
 #
 # 전제 조건 (CLAUDE.local.md §18.8):
-#   - CHANGELOG.md 에 해당 버전 섹션 존재
+#   - CHANGELOG.md 에 해당 버전 섹션 존재 (-rc.N 태그는 예외)
 #   - main 브랜치 checkout + origin/main 과 동기화
+#     (origin/main 과 같은 커밋을 가리키는 detached HEAD 도 허용)
 #   - 모든 CI 통과
 #   - 작업 트리 clean
 #
@@ -45,14 +48,16 @@ VERSION=""
 DRY_RUN=false
 HOTFIX=false
 SKIP_CI_CHECK=false
+REQUIRE_MATRIX_RUN=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run)       DRY_RUN=true; shift ;;
         --hotfix)        HOTFIX=true; shift ;;
         --skip-ci-check) SKIP_CI_CHECK=true; shift ;;
+        --require-matrix-run) REQUIRE_MATRIX_RUN=true; shift ;;
         -h|--help)
-            sed -n '2,20p' "$0"
+            sed -n '2,23p' "$0"
             exit 0
             ;;
         -*)
@@ -85,6 +90,15 @@ done
 # ACCEPTED so the historical `v3.0.0-rc12` line of tags remains valid input.
 if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
     die "Invalid version format: $VERSION (expected SemVer 2.0.0: vX.Y.Z, or vX.Y.Z-rc.N for a pre-release)"
+fi
+
+# Release candidate: the project's own `-rc.N` form (no leading zero). The same
+# grammar scripts/verify-release-provenance.sh uses to skip its checks 5 and 6;
+# the legacy undotted `-rcN` and other pre-release identifiers are NOT release
+# candidates here, so they keep the CHANGELOG requirement.
+IS_RC=false
+if [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-rc\.(0|[1-9][0-9]*)$ ]]; then
+    IS_RC=true
 fi
 
 log_info "Release version: ${BOLD}$VERSION${NC}"
@@ -121,30 +135,49 @@ log_ok "Working tree clean"
 
 # ─── Validation 5: Current branch ──────────────────────────────────────────
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-if [[ "$CURRENT_BRANCH" != "main" ]]; then
-    if [[ "$HOTFIX" == true ]]; then
-        log_warn "On branch '$CURRENT_BRANCH' (hotfix mode — allowed)"
-    else
-        die "Must be on 'main' branch (current: $CURRENT_BRANCH). Use --hotfix for hotfix branches."
+# The release harness runs from a detached worktree pinned at origin/main, so a
+# detached HEAD is admitted here; validation 6 then requires it to be exactly
+# origin/main's commit (an older or divergent detached HEAD is refused there).
+# On a branch, the rule is unchanged.
+DETACHED=false
+SYNC_BRANCH="$CURRENT_BRANCH"
+if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
+    DETACHED=true
+    SYNC_BRANCH="main"
+    log_ok "On expected ref: detached HEAD (must equal origin/main, checked next)"
+else
+    if [[ "$CURRENT_BRANCH" != "main" ]]; then
+        if [[ "$HOTFIX" == true ]]; then
+            log_warn "On branch '$CURRENT_BRANCH' (hotfix mode — allowed)"
+        else
+            die "Must be on 'main' branch (current: $CURRENT_BRANCH). Use --hotfix for hotfix branches."
+        fi
     fi
+    log_ok "On expected branch: $CURRENT_BRANCH"
 fi
-log_ok "On expected branch: $CURRENT_BRANCH"
 
 # ─── Validation 6: Synced with origin ──────────────────────────────────────
 git fetch origin --tags --quiet
 LOCAL_SHA="$(git rev-parse HEAD)"
-REMOTE_SHA="$(git rev-parse "origin/$CURRENT_BRANCH" 2>/dev/null || echo "")"
+REMOTE_SHA="$(git rev-parse "origin/$SYNC_BRANCH" 2>/dev/null || echo "")"
 
 if [[ -z "$REMOTE_SHA" ]]; then
-    die "Remote branch 'origin/$CURRENT_BRANCH' not found. Push branch first."
+    die "Remote branch 'origin/$SYNC_BRANCH' not found. Push branch first."
 fi
 
 if [[ "$LOCAL_SHA" != "$REMOTE_SHA" ]]; then
     AHEAD="$(git rev-list --count "$REMOTE_SHA..$LOCAL_SHA" 2>/dev/null || echo "?")"
     BEHIND="$(git rev-list --count "$LOCAL_SHA..$REMOTE_SHA" 2>/dev/null || echo "?")"
+    if [[ "$DETACHED" == true ]]; then
+        die "Detached HEAD is not origin/main (ahead: $AHEAD, behind: $BEHIND). Check out origin/main (or main) first."
+    fi
     die "Local '$CURRENT_BRANCH' diverged from origin (ahead: $AHEAD, behind: $BEHIND). Pull/push first."
 fi
-log_ok "Local $CURRENT_BRANCH synced with origin"
+if [[ "$DETACHED" == true ]]; then
+    log_ok "Detached HEAD equals origin/main"
+else
+    log_ok "Local $CURRENT_BRANCH synced with origin"
+fi
 
 # ─── Validation 7: Tag does not exist ──────────────────────────────────────
 if git rev-parse "$VERSION" >/dev/null 2>&1; then
@@ -165,14 +198,25 @@ CHANGELOG_HEADER="## [$CHANGELOG_VERSION]"
 # fall back to the v-prefixed one. CHANGELOG_HEADER must point at the form
 # that actually matched because the tag-annotation extraction below matches
 # it literally.
+#
+# A release candidate (-rc.N) needs no section of its own: it has no release
+# notes to write. When one exists anyway it is used; when it does not, the tag
+# annotation below is a one-line pre-release note and this validation is skipped.
+CHANGELOG_HAS_SECTION=true
 if ! grep -q "^## \[$CHANGELOG_VERSION\]" CHANGELOG.md; then
     if grep -q "^## \[v$CHANGELOG_VERSION\]" CHANGELOG.md; then
         CHANGELOG_HEADER="## [v$CHANGELOG_VERSION]"
+    elif [[ "$IS_RC" == true ]]; then
+        CHANGELOG_HAS_SECTION=false
     else
         die "CHANGELOG.md missing section '## [$CHANGELOG_VERSION]' (or '## [v$CHANGELOG_VERSION]'). Add release notes first."
     fi
 fi
-log_ok "CHANGELOG.md contains $CHANGELOG_HEADER section"
+if [[ "$CHANGELOG_HAS_SECTION" == true ]]; then
+    log_ok "CHANGELOG.md contains $CHANGELOG_HEADER section"
+else
+    log_ok "Pre-release $VERSION: no CHANGELOG.md section required (skipped)"
+fi
 
 # ─── Validation 9: CI status on HEAD (optional) ────────────────────────────
 if [[ "$SKIP_CI_CHECK" != true ]]; then
@@ -206,6 +250,77 @@ else
     log_warn "CI check skipped (--skip-ci-check)"
 fi
 
+# ─── Validation 9b: 3-OS matrix run on this commit (opt-in) ─────────────────
+# Off unless --require-matrix-run is given: with it off nothing below runs and no
+# `gh run` call is made, so the script behaves exactly as it did before the
+# option existed. The multi-OS workflow (release-pr-multi-os.yml) runs on
+# release/* PR heads and by hand; a release tagged from a main commit no PR head
+# ever tested would otherwise reach macOS and windows untested, and a pushed v*
+# tag cannot be deleted or moved. So the maintainer dispatches the workflow on
+# this commit first, and this check reads the result BEFORE the tag exists.
+#
+# A run counts only when ALL of these hold: it belongs to that workflow, it ran
+# on exactly this commit, workflow_dispatch started it (on a pull_request event
+# a leg can be skipped by the docs-only filter), it is completed with conclusion
+# success, AND each of the three OS legs itself concluded success (a run-level
+# success is not enough: a skipped leg leaves it green).
+if [[ "$REQUIRE_MATRIX_RUN" == true ]]; then
+    MATRIX_WORKFLOW="release-pr-multi-os.yml"
+    command -v gh >/dev/null 2>&1 || die "Matrix gate: --require-matrix-run needs the gh CLI to read the $MATRIX_WORKFLOW run, and gh is not available."
+
+    MATRIX_RUNS="$(gh run list --workflow "$MATRIX_WORKFLOW" --commit "$LOCAL_SHA" --limit 50 \
+        --json databaseId,headSha,event,status,conclusion \
+        --jq '.[] | select(.headSha == "'"$LOCAL_SHA"'") | "\(.databaseId)|\(.event)|\(.status)|\(.conclusion // "")"')" \
+        || die "Matrix gate: could not list runs of $MATRIX_WORKFLOW (gh run list failed)."
+
+    MATRIX_OK_ID=""
+    MATRIX_REASON=""
+    MATRIX_EVENTS=""
+    MATRIX_DISPATCH_SEEN=false
+    while IFS='|' read -r run_id run_event run_status run_conclusion; do
+        [[ -n "$run_id" ]] || continue
+        MATRIX_EVENTS="${MATRIX_EVENTS:+$MATRIX_EVENTS, }$run_event"
+        [[ "$run_event" == "workflow_dispatch" ]] || continue
+        MATRIX_DISPATCH_SEEN=true
+
+        run_problem=""
+        if [[ "$run_status" != "completed" ]]; then
+            run_problem="run $run_id of $MATRIX_WORKFLOW for $LOCAL_SHA is $run_status, not completed."
+        elif [[ "$run_conclusion" != "success" ]]; then
+            run_problem="run $run_id of $MATRIX_WORKFLOW for $LOCAL_SHA concluded ${run_conclusion:-unknown}, not success."
+        else
+            RUN_JOBS="$(gh run view "$run_id" --json jobs --jq '.jobs[] | "\(.name)|\(.conclusion // "")"')" \
+                || die "Matrix gate: could not read the jobs of run $run_id (gh run view failed)."
+            for leg in "Release Verify (ubuntu-latest)" "Release Verify (macos-latest)" "Release Verify (windows-latest)"; do
+                leg_line="$(printf '%s\n' "$RUN_JOBS" | awk -F'|' -v leg="$leg" '$1 == leg {print "found|" $2; exit}')"
+                if [[ -z "$leg_line" ]]; then
+                    run_problem="run $run_id has no leg '$leg'."
+                    break
+                elif [[ "${leg_line#found|}" != "success" ]]; then
+                    run_problem="run $run_id leg '$leg' is ${leg_line#found|}, not success."
+                    break
+                fi
+            done
+        fi
+
+        if [[ -z "$run_problem" ]]; then
+            MATRIX_OK_ID="$run_id"
+            break
+        fi
+        [[ -n "$MATRIX_REASON" ]] || MATRIX_REASON="$run_problem"
+    done <<< "$MATRIX_RUNS"
+
+    if [[ -z "$MATRIX_OK_ID" ]]; then
+        if [[ -z "$MATRIX_RUNS" ]]; then
+            MATRIX_REASON="no run of $MATRIX_WORKFLOW found for $LOCAL_SHA. Dispatch it on this commit, wait for it to finish, then release again."
+        elif [[ "$MATRIX_DISPATCH_SEEN" != true ]]; then
+            MATRIX_REASON="runs of $MATRIX_WORKFLOW exist for $LOCAL_SHA but none came from workflow_dispatch (events: $MATRIX_EVENTS). Dispatch it by hand on this commit."
+        fi
+        die "Matrix gate: $MATRIX_REASON"
+    fi
+    log_ok "Matrix gate: run $MATRIX_OK_ID of $MATRIX_WORKFLOW is green on all three OS legs for ${LOCAL_SHA:0:12}"
+fi
+
 # ─── Validation 10: SPEC status 확인 (optional, informational) ───────────────
 if [[ -d .moai/specs ]]; then
     DRAFT_COUNT="$(find .moai/specs -name 'spec.md' -exec grep -l '^status: draft' {} \; 2>/dev/null | wc -l | tr -d ' ')"
@@ -225,11 +340,15 @@ trap 'rm -f "$TMP_NOTES"' EXIT
 # trailing space in target disambiguates "3.0.0" from "3.0.0-rc1". The `started`
 # guard stops after the first section so a duplicate header (e.g. a localized
 # "## [3.0.0]" section) does not re-open extraction.
-awk -v target="$CHANGELOG_HEADER " '
-    !started && index($0, target) == 1 {flag=1; started=1; print; next}
-    /^## \[/ && flag {flag=0}
-    flag
-' CHANGELOG.md > "$TMP_NOTES"
+if [[ "$CHANGELOG_HAS_SECTION" == true ]]; then
+    awk -v target="$CHANGELOG_HEADER " '
+        !started && index($0, target) == 1 {flag=1; started=1; print; next}
+        /^## \[/ && flag {flag=0}
+        flag
+    ' CHANGELOG.md > "$TMP_NOTES"
+else
+    echo "Pre-release $VERSION" > "$TMP_NOTES"
+fi
 
 if [[ ! -s "$TMP_NOTES" ]]; then
     die "Failed to extract CHANGELOG section for $VERSION"
@@ -253,15 +372,27 @@ TAG_COMMIT="$(git rev-parse HEAD^{commit})"
 } >> "$TMP_NOTES"
 
 NOTES_LINES="$(wc -l < "$TMP_NOTES" | tr -d ' ')"
-log_ok "Extracted $NOTES_LINES line(s) from CHANGELOG.md as tag annotation"
+if [[ "$CHANGELOG_HAS_SECTION" == true ]]; then
+    log_ok "Extracted $NOTES_LINES line(s) from CHANGELOG.md as tag annotation"
+else
+    log_ok "Composed $NOTES_LINES line(s) of pre-release tag annotation (no CHANGELOG.md section)"
+fi
 
 # ─── Final confirmation ────────────────────────────────────────────────────
 echo
 echo -e "${BOLD}=== Release Summary ===${NC}"
 echo "  Version:     $VERSION"
-echo "  Branch:      $CURRENT_BRANCH"
+if [[ "$DETACHED" == true ]]; then
+    echo "  Branch:      (detached HEAD at origin/main)"
+else
+    echo "  Branch:      $CURRENT_BRANCH"
+fi
 echo "  HEAD SHA:    ${LOCAL_SHA:0:12}"
-echo "  Notes size:  $NOTES_LINES lines (from CHANGELOG.md $CHANGELOG_HEADER)"
+if [[ "$CHANGELOG_HAS_SECTION" == true ]]; then
+    echo "  Notes size:  $NOTES_LINES lines (from CHANGELOG.md $CHANGELOG_HEADER)"
+else
+    echo "  Notes size:  $NOTES_LINES lines (pre-release note; no CHANGELOG.md section)"
+fi
 echo "  Dry-run:     $DRY_RUN"
 echo "  Hotfix:      $HOTFIX"
 echo

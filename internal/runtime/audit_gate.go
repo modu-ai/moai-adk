@@ -100,7 +100,7 @@ type AuditResult struct {
 	// Verdict value the routing switch would fold into INCONCLUSIVE). The
 	// Verdict keeps its honest underlying state; refusal is observable via
 	// Ceiling != nil && Ceiling.Blocked.
-	Ceiling *CeilingOutcome `json:"ceiling,omitempty"`
+	Ceiling *VerdictCeilingOutcome `json:"ceiling,omitempty"`
 }
 
 // PlanAuditor is the interface for invoking the plan-auditor subagent.
@@ -341,7 +341,7 @@ func (c *GateConfig) attachCeiling(result *AuditResult) {
 	if gates, gerr := ResolveRequiredBackends(c.ProjectDir); gerr == nil {
 		required = gates.Required
 	}
-	if oc, _, eerr := EvaluateCeiling(CeilingInput{
+	if oc, _, eerr := EvaluateCeiling(VerdictCeilingInput{
 		SpecID: c.SpecID, SpecDir: c.SpecDir, ProjectRoot: c.ProjectDir,
 	}, fields, hashOK, required); eerr == nil {
 		result.Ceiling = oc

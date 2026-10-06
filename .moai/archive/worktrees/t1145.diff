@@ -1,0 +1,97 @@
+diff --git a/.moai/manifest.json b/.moai/manifest.json
+index 7b3141e36..e4d47b8c6 100644
+--- a/.moai/manifest.json
++++ b/.moai/manifest.json
+@@ -2996,6 +2996,92 @@
+       "deployed_hash": "sha256:ad59a5c9de8ad804f922323180274e29a4d2e5a3f92242035123aa9915dd6ec7",
+       "current_hash": "sha256:ad59a5c9de8ad804f922323180274e29a4d2e5a3f92242035123aa9915dd6ec7"
+     },
++    ".codex/config.toml": {
++      "provenance": "generated_managed",
++      "template_hash": "",
++      "deployed_hash": "56250f31a992eb6225d03ab4dd7ce5286b5d094d9a2c462eebbcd00f387b1c52",
++      "current_hash": "56250f31a992eb6225d03ab4dd7ce5286b5d094d9a2c462eebbcd00f387b1c52",
++      "parts": [
++        {
++          "kind": "toml-table",
++          "key": "mcp_servers.moai",
++          "origin": "preexisting"
++        },
++        {
++          "kind": "toml-key",
++          "key": "tui.status_line",
++          "origin": "preexisting"
++        }
++      ]
++    },
++    ".codex/hooks.json": {
++      "provenance": "generated_managed",
++      "template_hash": "",
++      "deployed_hash": "fefff2e95f757784add8725101b8ab556f60383f7f909c4c4c1f82a5dbd753e7",
++      "current_hash": "fefff2e95f757784add8725101b8ab556f60383f7f909c4c4c1f82a5dbd753e7",
++      "parts": [
++        {
++          "kind": "whole-file",
++          "key": "",
++          "origin": "created",
++          "hash": "fefff2e95f757784add8725101b8ab556f60383f7f909c4c4c1f82a5dbd753e7"
++        },
++        {
++          "kind": "json-key",
++          "key": "description",
++          "origin": "created",
++          "hash": "0bfa6b81ee938b167e67493b833f4952959ae65ea9fb31d3062749c6f8691b40"
++        },
++        {
++          "kind": "hook-handler",
++          "key": "PreToolUse|moai hook pre-tool --harness codex",
++          "origin": "created",
++          "hash": "e5a959cd7adf63cb1bc54b06b363bb05687fd5c9abe9a691844a46791898dbf9"
++        },
++        {
++          "kind": "hook-handler",
++          "key": "PostToolUse|moai hook post-tool --harness codex",
++          "origin": "created",
++          "hash": "578d595fc2d199cba20bdada4f69b149f4a81d34b68345bfb50e5dc364a6c6cc"
++        },
++        {
++          "kind": "hook-handler",
++          "key": "SessionStart|moai hook session-start --harness codex",
++          "origin": "created",
++          "hash": "bda82876072b15462c31d5718f6bf714477a9f84f7d11741810fbebc061b70b3"
++        },
++        {
++          "kind": "hook-handler",
++          "key": "SessionEnd|moai hook session-end --harness codex",
++          "origin": "created",
++          "hash": "d33ce3eb2f10e84a472bbfcb690fb44e8ce2f032915a1375d0af45d1c4366ad7"
++        },
++        {
++          "kind": "hook-handler",
++          "key": "Stop|moai hook stop --harness codex",
++          "origin": "created",
++          "hash": "453c024da4752fd1b59216abbd04842a0cc2187dc5b9b6078da9cf88da11026f"
++        },
++        {
++          "kind": "hook-handler",
++          "key": "UserPromptSubmit|moai hook user-prompt-submit --harness codex",
++          "origin": "created",
++          "hash": "843b07465e72c0da67bfe67938f10e6fbdaf9462cb23a4d2ea71fa7a0d18e830"
++        },
++        {
++          "kind": "hook-handler",
++          "key": "SubagentStart|moai hook subagent-start --harness codex",
++          "origin": "created",
++          "hash": "45158bfbb74d70eb42ff8e6853915b46fb6b715cc275fd5c7060c87b6b7bf4e1"
++        },
++        {
++          "kind": "hook-handler",
++          "key": "SubagentStop|moai hook subagent-stop --harness codex",
++          "origin": "created",
++          "hash": "c2793a5f00ebe2ba7cdce7358e6de59070cc00be96ebe7554e7f9324a7296fd9"
++        }
++      ]
++    },
+     ".gitignore": {
+       "provenance": "user_created",
+       "template_hash": "sha256:8d84586b1eb497fc3eae4e428242089a86d5fc4963501697f28e7f32454b510d",

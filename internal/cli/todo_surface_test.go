@@ -96,7 +96,16 @@ var frozenTodoSurface = map[string][]string{
 // guard's own guidance already cited as the address grammar. Read-only
 // through LoadPure — the same lookup machine `history <id>` answers through,
 // one line, full text last, no flags.
-var permittedVerbAdditions = []string{"export-json", "undone", "history", "landed", "auto-done", "triage", "hold", "unhold", "claim", "show"}
+// (card t1349, REQ-TSP-001/003): the single-card fate line the mistyped-verb
+// guard's own guidance already cited as the address grammar. Read-only
+// through LoadPure — the same lookup machine `history <id>` answers through,
+// one line, full text last, no flags.
+//
+// permittedVerbAdditions — SPEC-TODO-CARD-ISSUANCE-001 declares `merge`
+// (REQ-TCI-019, the operator fold-and-drop verb; no flags) and `trace`
+// (REQ-TCI-015, the transitive relation read; flags: --kind, --depth —
+// read-only, on the lane read-only list).
+var permittedVerbAdditions = []string{"export-json", "undone", "history", "landed", "auto-done", "triage", "hold", "unhold", "claim", "show", "merge", "trace"}
 
 // permittedFlagAdditions records flags added to an ALREADY-FROZEN verb, which
 // is a re-flagging and therefore needs its own declaration rather than an edit
@@ -129,12 +138,29 @@ var permittedVerbAdditions = []string{"export-json", "undone", "history", "lande
 var permittedFlagAdditions = map[string][]string{
 	"done <n>": {"expect=string()", "require-landed=bool(false)"},
 	"list":     {"dropped=bool(false)", "limit=int(100)"},
-	// add --classification-file — SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-004:
-	// the validated classification judgement input (<path> or - for stdin),
-	// the ONLY classification injection seam. Opt-in: absent, `add` classifies
-	// through the deterministic default decider and behaves as the frozen
-	// surface says.
-	"add <text>": {"classification-file=string()"},
+	// add <text> — two declarations:
+	//
+	//   - --classification-file — SPEC-TODO-CLASSIFY-DISPATCH-001
+	//     REQ-TCD-004: the validated classification judgement input (<path>
+	//     or - for stdin), the ONLY classification injection seam.
+	//
+	//   - --origin/--parent/--size-lines/--files/--dry-run —
+	//     SPEC-TODO-CARD-ISSUANCE-001 M2 (REQ-TCI-004/-006/-009): the
+	//     issuance attribute inputs and the no-write preview.
+	//
+	// Both opt-in: absent, `add` records no issuance attributes and
+	// classifies through the deterministic default decider, behaving as the
+	// frozen surface says.
+	"add <text>": {
+		"classification-file=string()",
+		"dry-run=bool(false)", "files=string()", "origin=string()",
+		"parent=string()", "size-lines=string()",
+	},
+	// relate --disposition — SPEC-TODO-CARD-ISSUANCE-001 M2/M3
+	// (REQ-TCI-011): turns the verb into the disposition recorder — it sets
+	// the matching finding's disposition and records no relation. Opt-in:
+	// absent, `relate` records findings exactly as the frozen surface says.
+	"relate <a> <b> --relation <contains|absorbs|replaces|conflicts>": {"disposition=string()"},
 }
 
 // permittedUsageRewrites records usage-string widenings of ALREADY-FROZEN

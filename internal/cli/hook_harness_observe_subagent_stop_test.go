@@ -18,6 +18,8 @@ import (
 // SubagentStop handler does not create usage-log.jsonl when learning.enabled=false.
 // REQ-HRN-FND-009: reuses the isHarnessLearningEnabled gate.
 func TestRunHarnessObserveSubagentStop_NoOpWhenLearningDisabled(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
 	t.Chdir(dir)
@@ -40,6 +42,8 @@ func TestRunHarnessObserveSubagentStop_NoOpWhenLearningDisabled(t *testing.T) {
 // in the disabled state, an existing log file is not modified.
 // REQ-HRN-FND-009: when the gate is disabled, existing data must remain unchanged.
 func TestRunHarnessObserveSubagentStop_PreservesExistingLogWhenDisabled(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
 	t.Chdir(dir)
@@ -80,6 +84,8 @@ func TestRunHarnessObserveSubagentStop_PreservesExistingLogWhenDisabled(t *testi
 // - agent_name, agent_type, agent_id, parent_session_id fields
 // REQ-HRN-OBS-005, REQ-HRN-FND-010.
 func TestRunHarnessObserveSubagentStop_RecordsAllFields(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -153,6 +159,8 @@ func TestRunHarnessObserveSubagentStop_RecordsAllFields(t *testing.T) {
 // handler does not return an error on log-write failure (non-blocking) and instead
 // writes to stderr.
 func TestRunHarnessObserveSubagentStop_LogErrorPathDoesNotReturn(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -179,6 +187,8 @@ func TestRunHarnessObserveSubagentStop_LogErrorPathDoesNotReturn(t *testing.T) {
 // TestRunHarnessObserveSubagentStop_UnknownSubjectFallback verifies that, when
 // agent_name is absent, subject falls back to "unknown".
 func TestRunHarnessObserveSubagentStop_UnknownSubjectFallback(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)

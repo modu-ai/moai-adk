@@ -27,7 +27,7 @@ debts:
 `
 
 func admitPlan(raw string, hashOK bool) (bool, string) {
-	return Admit(Parse([]byte(raw)), PhasePlan, 0.85, hashOK, nil)
+	return Admit(Parse([]byte(raw)), PhasePlan, 0.85, hashOK)
 }
 
 func TestAdmit_PlanPhaseFixtureTable(t *testing.T) {
@@ -74,7 +74,7 @@ func TestAdmit_SyncPhaseKeepsTheLabelOnlyCheck(t *testing.T) {
 		"no verdict line\n":         false,
 	}
 	for raw, want := range cases {
-		got, _ := Admit(Parse([]byte(raw)), PhaseSync, 0, false, nil)
+		got, _ := Admit(Parse([]byte(raw)), PhaseSync, 0, false)
 		if got != want {
 			t.Errorf("sync %q: admit=%v want %v", raw, got, want)
 		}
@@ -137,7 +137,7 @@ func TestAdmit_RefusesDuplicatedDecisionKeys(t *testing.T) {
 			t.Errorf("%s: admitted (%s)", name, reason)
 		}
 	}
-	if ok, _ := Admit(Parse([]byte("verdict: FAIL\nverdict: PASS\n")), PhaseSync, 0, false, nil); ok {
+	if ok, _ := Admit(Parse([]byte("verdict: FAIL\nverdict: PASS\n")), PhaseSync, 0, false); ok {
 		t.Errorf("sync phase: duplicated verdict admitted")
 	}
 }
@@ -174,5 +174,49 @@ func TestAdmitLabel(t *testing.T) {
 		if AdmitLabel(label) != want {
 			t.Errorf("AdmitLabel(%q) != %v", label, want)
 		}
+	}
+}
+
+// TestAdmitRequiredBackendFail — SPEC-AUDIT-CEILING-002 REQ-ACR-005: a
+// required_backend_fail line refuses the verdict regardless of its own label,
+// naming the recorded backend; the absence of lines refuses nothing.
+func TestAdmitRequiredBackendFail(t *testing.T) {
+	withLine := strings.Replace(planPass, "verdict: PASS", "verdict: PASS\nrequired_backend_fail: codex", 1)
+	if ok, reason := admitPlan(withLine, true); ok {
+		t.Error("PASS + required_backend_fail must refuse")
+	} else if !strings.Contains(reason, "codex") {
+		t.Errorf("refusal names no backend: %q", reason)
+	}
+
+	failWithLine := strings.Replace(planPass, "verdict: PASS", "verdict: FAIL\nrequired_backend_fail: codex", 1)
+	if ok, _ := admitPlan(failWithLine, true); ok {
+		t.Error("FAIL + required_backend_fail must refuse")
+	}
+
+	if ok, _ := admitPlan(planPass, true); !ok {
+		t.Error("no line: admission unchanged")
+	}
+
+	// Unconditional: a sync-audit verdict carrying the line is malformed
+	// evidence and refuses.
+	syncWithLine := "verdict: PASS\nrequired_backend_fail: glm\n"
+	if ok, reason := Admit(Parse([]byte(syncWithLine)), PhaseSync, 0, false); ok {
+		t.Error("sync verdict with the line must refuse")
+	} else if !strings.Contains(reason, "glm") {
+		t.Errorf("sync refusal names no backend: %q", reason)
+	}
+
+	// Repeated lines both collect; the refusal names the backend.
+	dup := planPass + "required_backend_fail: codex\nrequired_backend_fail: glm\n"
+	if ok, reason := admitPlan(dup, true); ok {
+		t.Error("two required_backend_fail lines must refuse")
+	} else if !strings.Contains(reason, "codex") || !strings.Contains(reason, "glm") {
+		t.Errorf("refusal names both backends: %q", reason)
+	}
+
+	// Parse exposes the collected backends.
+	f := Parse([]byte(dup))
+	if len(f.RequiredBackendFails) != 2 || f.RequiredBackendFails[0] != "codex" || f.RequiredBackendFails[1] != "glm" {
+		t.Errorf("parsed backends = %v, want [codex glm]", f.RequiredBackendFails)
 	}
 }

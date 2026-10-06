@@ -616,7 +616,7 @@ func TestQAS_AC018_LaneInventoryCandidates(t *testing.T) {
 		root := newRoot(t)
 		qasWriteLanes(t, root, qasStandardLaneRows())
 		before := qasRegistryState(t, root)
-		if !strings.Contains(before, "meta|[schema_version 5]") || strings.Contains(before, "legacy_workers_imported") {
+		if !strings.Contains(before, "meta|[schema_version 6]") || strings.Contains(before, "legacy_workers_imported") {
 			t.Fatalf("fixture precondition: the registry must carry schema_version and lack the legacy_workers_imported marker:\n%s", before)
 		}
 		assertInventory(t, factoryQuotaReadLanes(root), laneTwoThree, 2)

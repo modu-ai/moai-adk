@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -55,6 +56,22 @@ var (
 // the same shared gate; an explicit selection that retires stops the loop.
 // @MX:SPEC: SPEC-FACTORY-STALE-RUN-HEAL-001
 func runFactoryLaneRelaunch(cmd *cobra.Command, label string, claudeArgs []string, explicit, leadTarget string) error {
+	// REQ-SCV-012 (SPEC-SESSION-CC-VERSION-002): derive the claude option
+	// model once per process from the binary on PATH before the guard scans;
+	// a derivation failure degrades silently to the snapshot and the scan
+	// below stays a pure argv walk over package state.
+	refreshActiveClaudeOptionModel()
+	// REQ-SCV-010 (SPEC-SESSION-CC-VERSION-001): the guard runs before the
+	// parent-checkout assertion and the loop's first iteration — a --resume
+	// token under the relaunch policy cannot mean what it says (every card
+	// session the loop starts would receive it), so the loop refuses to start
+	// at all: zero leases, zero card sessions, and the token is neither
+	// propagated nor stripped. The refusal names the bare one-shot lane join;
+	// an operator --name beside -l is refused at the entry parse
+	// (laneFlagNameError) before this guard is ever reached.
+	if carriesResumeToken(claudeArgs) {
+		return errors.New(relaunchResumeRefusal)
+	}
 	// The loop drives the F1 lease machinery itself, so it inherits the
 	// `next` verb's own precondition: the parent checkout (REQ-SD-010).
 	if err := factoryAssertParentCheckout(resolveProjectDir()); err != nil {

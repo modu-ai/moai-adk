@@ -14,11 +14,13 @@ package runtime
 // Refusal Record and the machine-local audit trail (REQ-ACE-007/012).
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -36,10 +38,10 @@ const (
 	OutcomeHold        = "hold"
 )
 
-// CeilingOutcome is the structured record of one ceiling evaluation. Refusal
+// VerdictCeilingOutcome is the structured record of one ceiling evaluation. Refusal
 // is observable via Blocked; a pass-through carries Blocked == false and
 // records that the ceiling was reached (REQ-ACE-013).
-type CeilingOutcome struct {
+type VerdictCeilingOutcome struct {
 	Outcome  string              `json:"outcome"`
 	Reasons  []string            `json:"reasons"`
 	Evidence []string            `json:"evidence"`
@@ -47,11 +49,11 @@ type CeilingOutcome struct {
 	Debts    []auditverdict.Debt `json:"debts,omitempty"`
 }
 
-// CeilingInput names the SPEC a ceiling evaluation runs for. SpecDir is the
+// VerdictCeilingInput names the SPEC a ceiling evaluation runs for. SpecDir is the
 // SPEC directory (tier, threshold, and the progress.md §G record target);
 // ProjectRoot is the tree whose harness config and report directories the
 // engine reads.
-type CeilingInput struct {
+type VerdictCeilingInput struct {
 	SpecID      string
 	SpecDir     string
 	ProjectRoot string
@@ -77,7 +79,7 @@ var (
 // @MX:ANCHOR: [AUTO] the ceiling-policy outcome ladder every LIVE run-entry admission seam evaluates before admitting a verdict
 // @MX:REASON: fan_in 3 measured — kickoff planAuditCheck, homestate admitVerdictFile, and GateConfig.attachCeiling all resolve through it; a second copy of the ladder is the drift this SPEC exists to close
 // @MX:SPEC: SPEC-AUDIT-CEILING-001
-func EvaluateCeiling(in CeilingInput, fields auditverdict.Fields, hashOK bool, required []string) (*CeilingOutcome, bool, error) {
+func EvaluateCeiling(in VerdictCeilingInput, fields auditverdict.Fields, hashOK bool, required []string) (*VerdictCeilingOutcome, bool, error) {
 	tier := auditverdict.SpecTier(in.SpecDir)
 	threshold := auditverdict.PlanThreshold(in.SpecDir)
 	tierCeiling, deltaRounds, policyNamed, cfgErr := loadCeilings(in.ProjectRoot, tier)
@@ -111,8 +113,8 @@ func EvaluateCeiling(in CeilingInput, fields auditverdict.Fields, hashOK bool, r
 
 	// Rung 0 — pass-through (REQ-ACE-013, D31): an admission-clean verdict
 	// admits at any ceiling state, without a question.
-	if ok, _ := auditverdict.Admit(fields, auditverdict.PhasePlan, threshold, hashOK, required); ok {
-		oc := &CeilingOutcome{
+	if ok, _ := auditverdict.AdmitWithRequired(fields, auditverdict.PhasePlan, threshold, hashOK, required); ok {
+		oc := &VerdictCeilingOutcome{
 			Outcome:  OutcomePassThrough,
 			Blocked:  false,
 			Evidence: ev.Sources,
@@ -135,8 +137,8 @@ func EvaluateCeiling(in CeilingInput, fields auditverdict.Fields, hashOK bool, r
 	if fields.Label != auditverdict.LabelPassWithDebt {
 		converted := fields
 		converted.Label = auditverdict.LabelPassWithDebt
-		if ok, _ := auditverdict.Admit(converted, auditverdict.PhasePlan, threshold, hashOK, required); ok {
-			oc := &CeilingOutcome{
+		if ok, _ := auditverdict.AdmitWithRequired(converted, auditverdict.PhasePlan, threshold, hashOK, required); ok {
+			oc := &VerdictCeilingOutcome{
 				Outcome:  OutcomeDebtAdmit,
 				Blocked:  false,
 				Debts:    fields.Debts,
@@ -154,7 +156,7 @@ func EvaluateCeiling(in CeilingInput, fields auditverdict.Fields, hashOK bool, r
 	// fix anchor produce a hold record plus a split proposal naming the
 	// anchored scope.
 	if fields.BlockingKnown && fields.BlockingCount > 0 && len(anchors) > 0 {
-		oc := &CeilingOutcome{
+		oc := &VerdictCeilingOutcome{
 			Outcome:  OutcomeSplit,
 			Blocked:  true,
 			Evidence: ev.Sources,
@@ -169,7 +171,7 @@ func EvaluateCeiling(in CeilingInput, fields auditverdict.Fields, hashOK bool, r
 	// Rung 3 — hold (REQ-ACE-006): everything else (a stale hash, no
 	// findings, unanchored blocking findings, missing fields). The hold
 	// names its release path so it is never a silent dead end (D30).
-	oc := &CeilingOutcome{
+	oc := &VerdictCeilingOutcome{
 		Outcome:  OutcomeHold,
 		Blocked:  true,
 		Evidence: ev.Sources,
@@ -206,16 +208,16 @@ func loadCeilings(projectRoot, tier string) (tierCeiling int, deltaRounds int, p
 	}
 	switch tier {
 	case "S":
-		if cfg.PlanAuditTierCeilings.S > 0 {
-			tierCeiling = cfg.PlanAuditTierCeilings.S
+		if cfg.PlanAuditTierCeilings["S"] > 0 {
+			tierCeiling = cfg.PlanAuditTierCeilings["S"]
 		}
 	case "M":
-		if cfg.PlanAuditTierCeilings.M > 0 {
-			tierCeiling = cfg.PlanAuditTierCeilings.M
+		if cfg.PlanAuditTierCeilings["M"] > 0 {
+			tierCeiling = cfg.PlanAuditTierCeilings["M"]
 		}
 	default:
-		if cfg.PlanAuditTierCeilings.L > 0 {
-			tierCeiling = cfg.PlanAuditTierCeilings.L
+		if cfg.PlanAuditTierCeilings["L"] > 0 {
+			tierCeiling = cfg.PlanAuditTierCeilings["L"]
 		}
 	}
 	if cfg.PlanAuditCeilingPolicy.AutoDeltaRounds > 0 {
@@ -263,7 +265,7 @@ func deltaMarkers(latestRaw []byte) (anchors []string, stop bool) {
 // largest iteration strictly below the latest, deduped across both families
 // and including the legacy stream (card-review F4), "" when no prior round
 // exists.
-func previousAuditedSHA(in CeilingInput, ev RoundEvidence) string {
+func previousAuditedSHA(in VerdictCeilingInput, ev RoundEvidence) string {
 	if ev.LatestPath == "" {
 		return ""
 	}
@@ -454,7 +456,7 @@ func readEvidenceRaw(path string) []byte {
 // audit trail (REQ-ACE-007/012). Persistence is best-effort: a record-write
 // failure warns on stderr but never flips the admission decision the outcome
 // already decided.
-func persistOutcome(in CeilingInput, kind string, oc *CeilingOutcome) {
+func persistOutcome(in VerdictCeilingInput, kind string, oc *VerdictCeilingOutcome) {
 	line := fmt.Sprintf("- %s %s %s outcome=%s reasons=%q evidence=%s",
 		time.Now().UTC().Format(time.RFC3339), in.SpecID, kind, oc.Outcome,
 		strings.Join(oc.Reasons, "; "), strings.Join(oc.Evidence, ","))
@@ -498,7 +500,7 @@ func appendProgressRecord(specDir, line string) error {
 // (card-review F7). Recording is best-effort (the same stderr-warning
 // posture persistOutcome takes): a record-write failure never changes the
 // refusal the seam already returned.
-func RecordRequiredBackendRefusal(in CeilingInput, reason string) {
+func RecordRequiredBackendRefusal(in VerdictCeilingInput, reason string) {
 	line := fmt.Sprintf("- %s %s required-backend-refusal outcome=refused reasons=%q",
 		time.Now().UTC().Format(time.RFC3339), in.SpecID, reason)
 	if err := appendProgressRecord(in.SpecDir, line); err != nil {
@@ -511,7 +513,7 @@ func RecordRequiredBackendRefusal(in CeilingInput, reason string) {
 
 // appendAuditTrail appends one machine-local trail line to
 // <root>/.moai/state/audit-enforcement.log (design.md §5).
-func appendAuditTrail(in CeilingInput, kind, outcome, reason string) error {
+func appendAuditTrail(in VerdictCeilingInput, kind, outcome, reason string) error {
 	dir := filepath.Join(in.ProjectRoot, ".moai", "state")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
@@ -535,7 +537,7 @@ func appendAuditTrail(in CeilingInput, kind, outcome, reason string) error {
 //
 // @MX:NOTE: [AUTO] operator-override record path for a required-backend refusal — the acknowledgement note is mandatory, there is no silent-skip form
 // @MX:SPEC: SPEC-AUDIT-CEILING-001
-func AcknowledgeRequiredBackend(in CeilingInput, backend, note string) error {
+func AcknowledgeRequiredBackend(in VerdictCeilingInput, backend, note string) error {
 	if strings.TrimSpace(note) == "" {
 		return fmt.Errorf("override of required backend %s refused: the acknowledgement note is mandatory", backend)
 	}
@@ -549,6 +551,353 @@ func AcknowledgeRequiredBackend(in CeilingInput, backend, note string) error {
 	}
 	if err := appendAuditTrail(in, "override", "ack", fmt.Sprintf("backend=%s note=%q", backend, note)); err != nil {
 		return fmt.Errorf("audit trail: %w", err)
+	}
+	return nil
+}
+
+// planAuditRoundFile is one recorded plan-audit file: plan-audit.md ranks as
+// iteration 0 and each plan-audit-iter<N>.md carries its parsed N.
+type planAuditRoundFile struct {
+	path string
+	n    int
+}
+
+// iterFileName matches the plan-audit-iter<N>.md family; the captured suffix
+// must parse as a positive integer. The suffix may be empty (an
+// iter-with-no-number file still carries the family shape, so it fails the
+// count closed rather than skipping silently).
+var iterFileName = regexp.MustCompile(`^plan-audit-iter(.*)\.md$`)
+
+// evidenceDirInput is one deduplicated evidence-directory input carrying its
+// directory class.
+type evidenceDirInput struct {
+	path   string
+	listed bool
+}
+
+// canonicalEvidenceDir resolves one evidence-directory spelling to the
+// absolute, symlink-resolved form the dedupe keys on (card-review r1
+// CR-P2-2): identical directories compare equal regardless of spelling, so a
+// relative `.moai/reports/<SPEC-ID>` listing and the auto-included absolute
+// form are one directory, never two. A path that is already absolute passes
+// through Abs untouched (Abs never joins the cwd onto an absolute path);
+// EvalSymlinks resolves macOS /var-style links; a non-existent path keeps its
+// Abs form (the absent-listed error still fires on the read, naming the
+// resolved path).
+func canonicalEvidenceDir(p string) string {
+	if p == "" {
+		return ""
+	}
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		return filepath.Clean(p)
+	}
+	if resolved, linkErr := filepath.EvalSymlinks(abs); linkErr == nil {
+		return resolved
+	}
+	return abs
+}
+
+// evidenceDirInputs builds the deduplicated directory inputs over canonical
+// spellings: listed directories register first so their error-on-absent class
+// wins a dedupe collision against the SPEC-scoped class (fail-closed
+// direction).
+func evidenceDirInputs(specDir string, listedDirs []string) []evidenceDirInput {
+	var inputs []evidenceDirInput
+	seen := map[string]bool{}
+	for _, d := range listedDirs {
+		if d == "" {
+			continue
+		}
+		clean := canonicalEvidenceDir(d)
+		if seen[clean] {
+			continue
+		}
+		seen[clean] = true
+		inputs = append(inputs, evidenceDirInput{path: clean, listed: true})
+	}
+	if specDir != "" {
+		clean := canonicalEvidenceDir(specDir)
+		if !seen[clean] {
+			seen[clean] = true
+			inputs = append(inputs, evidenceDirInput{path: clean, listed: false})
+		}
+	}
+	return inputs
+}
+
+// evidenceDirList names the deduplicated evidence directories an evaluation
+// covered — the record's evidence paths (REQ-ACR-003).
+func evidenceDirList(specDir string, listedDirs []string) []string {
+	inputs := evidenceDirInputs(specDir, listedDirs)
+	paths := make([]string, 0, len(inputs))
+	for _, in := range inputs {
+		paths = append(paths, in.path)
+	}
+	return paths
+}
+
+// scanEvidenceDirs is the shared scanner behind CountPlanAuditRounds and
+// SelectLatestVerdict: it walks the SPEC-scoped directory and the explicitly
+// listed directories and returns the plan-audit round files each holds.
+//
+// Directory-class rules (REQ-ACR-001/013): an absent SPEC-scoped directory
+// contributes 0 (an unaudited SPEC is not an error); an explicitly LISTED
+// directory that does not exist is an error naming the missing path — a typo
+// must never silently count 0. Identical listed paths are deduplicated before
+// counting (R6).
+func scanEvidenceDirs(specDir string, listedDirs []string) ([]planAuditRoundFile, error) {
+	var out []planAuditRoundFile
+	for _, in := range evidenceDirInputs(specDir, listedDirs) {
+		entries, err := os.ReadDir(in.path)
+		if err != nil {
+			if in.listed || !os.IsNotExist(err) {
+				return nil, fmt.Errorf("read evidence directory %q: %w", in.path, err)
+			}
+			continue // SPEC-scoped and absent → contributes 0
+		}
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			name := e.Name()
+			if name == "plan-audit.md" {
+				out = append(out, planAuditRoundFile{path: filepath.Join(in.path, name), n: 0})
+				continue
+			}
+			m := iterFileName.FindStringSubmatch(name)
+			if m == nil {
+				continue // not in the plan-audit round family
+			}
+			n, perr := strconv.Atoi(m[1])
+			if perr != nil || n <= 0 {
+				return nil, fmt.Errorf("round file %q has an iteration suffix that does not parse as a positive integer", filepath.Join(in.path, name))
+			}
+			out = append(out, planAuditRoundFile{path: filepath.Join(in.path, name), n: n})
+		}
+	}
+	return out, nil
+}
+
+// CountPlanAuditRounds computes a SPEC's plan-audit round count from durable
+// iteration evidence on disk, one recorded file one round: plan-audit.md
+// contributes one round and each plan-audit-iter<N>.md one round. specDir is
+// the SPEC-scoped evidence directory (.moai/reports/<SPEC-ID>); listedDirs are
+// the evidence directories explicitly listed in the invocation. The count is
+// never derived from in-process memory or session state.
+func CountPlanAuditRounds(specDir string, listedDirs []string) (int, error) {
+	files, err := scanEvidenceDirs(specDir, listedDirs)
+	if err != nil {
+		return 0, err
+	}
+	return len(files), nil
+}
+
+// SelectLatestVerdict returns the recorded file with the highest parsed
+// iteration number — plan-audit.md ranking as iteration 0 — the verdict the
+// disposition branches read. The same highest number appearing in two evidence
+// directories is a selection error rather than a silent pick; no evidence at
+// all selects nothing (empty path, no error).
+func SelectLatestVerdict(specDir string, listedDirs []string) (string, error) {
+	files, err := scanEvidenceDirs(specDir, listedDirs)
+	if err != nil {
+		return "", err
+	}
+	if len(files) == 0 {
+		return "", nil
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].n < files[j].n })
+	best := files[len(files)-1]
+	var tied []string
+	for _, f := range files {
+		if f.n == best.n {
+			tied = append(tied, f.path)
+		}
+	}
+	if len(tied) > 1 {
+		return "", fmt.Errorf("latest plan-audit verdict is ambiguous: iteration %d recorded in %d evidence files (%q and %q); list one evidence directory to disambiguate",
+			best.n, len(tied), tied[0], tied[1])
+	}
+	return best.path, nil
+}
+
+// ResolvePlanAuditCeiling resolves the SPEC's ceiling from the configured
+// plan_audit_tier_ceilings map. The tier resolves under the shared predicate's
+// rule (auditverdict.SpecTier): an absent or unknown tier resolves to L. A
+// resolved ceiling that is missing from the map or non-positive is a
+// configuration error rather than a ceiling of zero (REQ-ACR-002).
+func ResolvePlanAuditCeiling(tier string, ceilings map[string]int) (int, error) {
+	resolved := tier
+	if resolved != "S" && resolved != "M" && resolved != "L" {
+		resolved = "L" // auditverdict.SpecTier's rule: absent or unknown → L
+	}
+	ceiling, ok := ceilings[resolved]
+	if !ok || ceiling <= 0 {
+		return 0, fmt.Errorf("plan_audit_tier_ceilings carries no positive ceiling for tier %q (resolved to %q); a mis-configured ceilings map must never resolve to a ceiling of zero", tier, resolved)
+	}
+	return ceiling, nil
+}
+
+// Ceiling disposition values — exactly the three operator-named tokens of
+// REQ-ACR-003/D2.
+const (
+	CeilingDispositionDebtProceed = "debt-proceed"
+	CeilingDispositionSplit       = "split"
+	CeilingDispositionHold        = "hold"
+)
+
+// AuditCeilingStateDir is the machine-local directory the outcome records
+// live under, relative to the project root (gitignored parent — the record is
+// machine-local state, not a cross-machine durable carrier; SPEC
+// §F F2).
+const AuditCeilingStateDir = ".moai/state/audit-ceiling"
+
+// CeilingOutcome is one ceiling policy outcome record. Every record carries
+// the round count, the ceiling, the latest verdict label, and the evidence
+// paths (REQ-ACR-003).
+type CeilingOutcome struct {
+	SpecID           string   `json:"spec_id"`
+	Disposition      string   `json:"disposition"`
+	Count            int      `json:"count"`
+	Ceiling          int      `json:"ceiling"`
+	VerdictLabel     string   `json:"verdict_label"`
+	VerdictAdmitted  bool     `json:"verdict_admitted"`
+	DebtIDs          []string `json:"debt_ids,omitempty"`
+	EvidencePaths    []string `json:"evidence_paths"`
+	SplitProposalRef string   `json:"split_proposal_ref,omitempty"`
+}
+
+// CeilingInput carries one ceiling evaluation's inputs.
+type CeilingInput struct {
+	// SpecID is the SPEC whose ceiling is evaluated (names the record file).
+	SpecID string
+	// SpecEvidenceDir is the SPEC-scoped evidence directory
+	// (.moai/reports/<SPEC-ID>); absent contributes 0.
+	SpecEvidenceDir string
+	// ListedDirs are the evidence directories explicitly listed in the
+	// invocation; an absent listing is an error.
+	ListedDirs []string
+	// Tier is the SPEC's tier; an absent or unknown value resolves to L.
+	Tier string
+	// Threshold is the plan PASS threshold the admission check uses (the
+	// caller resolves it from the SPEC's tier).
+	Threshold float64
+	// Ceilings is the configured plan_audit_tier_ceilings map.
+	Ceilings map[string]int
+	// OnFinalHit is the configured plan_audit_ceiling_policy.on_final_hit
+	// value; any other or unreadable value fails closed to hold.
+	OnFinalHit string
+}
+
+// EvaluatePlanAuditCeiling is the single evaluation entry composing select →
+// count → ceiling → disposition. The ceiling resolution error propagates
+// BEFORE any count/ceiling comparison, and nothing is recorded here — the
+// caller records the returned outcome through RecordCeilingOutcome, the one
+// recording path (REQ-ACR-003). The returned bool reports whether the ceiling
+// applies: a clean admitted PASS at the ceiling is not a ceiling outcome at
+// all (REQ-ACR-004 — the ceiling caps repetition, not a healthy result), and
+// rounds below the ceiling apply nothing.
+func EvaluatePlanAuditCeiling(in CeilingInput) (CeilingOutcome, bool, error) {
+	latest, err := SelectLatestVerdict(in.SpecEvidenceDir, in.ListedDirs)
+	if err != nil {
+		return CeilingOutcome{}, false, err
+	}
+	count, err := CountPlanAuditRounds(in.SpecEvidenceDir, in.ListedDirs)
+	if err != nil {
+		return CeilingOutcome{}, false, err
+	}
+	// The configuration error propagates before any comparison is made (R2's
+	// Evaluate-level arm): a mis-configured ceilings map never fires the path.
+	ceiling, err := ResolvePlanAuditCeiling(in.Tier, in.Ceilings)
+	if err != nil {
+		return CeilingOutcome{}, false, err
+	}
+	if count < ceiling {
+		return CeilingOutcome{}, false, nil
+	}
+
+	// The hashOK argument is true here by design: the plan-artifact hash
+	// binding belongs to the run-entry seams (the kickoff evaluator and the
+	// card-transition guard) that run the shared predicate before any ceiling
+	// evaluation; this path judges repetition against the verdict's recorded
+	// fields, not the tree's current hash state.
+	fields := auditverdict.Fields{}
+	if latest != "" {
+		raw, readErr := os.ReadFile(latest)
+		if readErr != nil {
+			return CeilingOutcome{}, false, fmt.Errorf("read latest verdict %q: %w", latest, readErr)
+		}
+		fields = auditverdict.Parse(raw)
+	}
+	admitted, _ := auditverdict.Admit(fields, auditverdict.PhasePlan, in.Threshold, true)
+
+	if admitted && fields.Label == auditverdict.LabelPass {
+		return CeilingOutcome{}, false, nil
+	}
+
+	out := CeilingOutcome{
+		SpecID:          in.SpecID,
+		Count:           count,
+		Ceiling:         ceiling,
+		VerdictLabel:    fields.Label,
+		VerdictAdmitted: admitted,
+		EvidencePaths:   evidenceDirList(in.SpecEvidenceDir, in.ListedDirs),
+	}
+	switch {
+	case admitted:
+		// The only admitted label left is PASS-WITH-DEBT: record debt-proceed
+		// referencing the verdict's debt ids (REQ-ACR-003 arm 1).
+		out.Disposition = CeilingDispositionDebtProceed
+		for _, d := range fields.Debts {
+			out.DebtIDs = append(out.DebtIDs, d.ID)
+		}
+	case in.OnFinalHit == config.PlanAuditCeilingOnFinalSplit:
+		out.Disposition = CeilingDispositionSplit
+	case in.OnFinalHit == config.PlanAuditCeilingOnFinalHoldAndSplit:
+		// One record carrying both halves of the shipped value: disposition
+		// hold plus the split-proposal reference (REQ-ACR-003 arm 2 / D2).
+		out.Disposition = CeilingDispositionHold
+		out.SplitProposalRef = splitProposalReference(in.SpecID)
+	default:
+		// Any other or unreadable policy value records hold (fail-closed;
+		// REQ-ACR-003 arm 4).
+		out.Disposition = CeilingDispositionHold
+	}
+	return out, true, nil
+}
+
+// splitProposalReference is the deterministic split-proposal reference a
+// hold-and-split record carries: the SPEC must be split before further plan
+// audits, and the reference names what the split applies to.
+func splitProposalReference(specID string) string {
+	return "split required by plan_audit_ceiling_policy.on_final_hit=hold-and-split: propose splitting " + specID
+}
+
+// RecordCeilingOutcome writes the outcome record to
+// <projectRoot>/.moai/state/audit-ceiling/<SPEC-ID>.json (machine-local
+// state). The record lands under the project whose ceiling was judged — the
+// caller passes its root, so a CLI run from a different cwd records where the
+// SPEC lives, not where the command ran (card-review r1 CR-P2-1). It is the
+// ONE recording path: no other code writes a ceiling outcome record.
+//
+// @MX:ANCHOR: [AUTO] the ONE ceiling-outcome recording path — every recorded plan-audit ceiling outcome is written by this function, never elsewhere
+// @MX:REASON: a second writer would fork the record format and let two audit-ceiling truth sources drift silently
+// @MX:SPEC: SPEC-AUDIT-CEILING-002
+func RecordCeilingOutcome(projectRoot, specID string, outcome CeilingOutcome) error {
+	if specID == "" || specID == "." || specID == ".." || strings.ContainsAny(specID, `/\`) {
+		return fmt.Errorf("RecordCeilingOutcome: invalid SPEC id %q", specID)
+	}
+	dir := filepath.Join(projectRoot, AuditCeilingStateDir)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("RecordCeilingOutcome: create %s: %w", dir, err)
+	}
+	path := filepath.Join(dir, specID+".json")
+	data, err := json.MarshalIndent(outcome, "", "  ")
+	if err != nil {
+		return fmt.Errorf("RecordCeilingOutcome: marshal: %w", err)
+	}
+	if err := atomicWrite(path, append(data, '\n')); err != nil {
+		return fmt.Errorf("RecordCeilingOutcome: write %s: %w", path, err)
 	}
 	return nil
 }

@@ -669,4 +669,3 @@ moai-workflow ci --commit abc123 --quality-gates strict
 ---
 
 Version: 1.0.0
-Last Updated: 2025-12-06

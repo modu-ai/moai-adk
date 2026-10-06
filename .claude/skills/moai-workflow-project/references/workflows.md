@@ -14,6 +14,13 @@ Step 2: Execute complete setup with the following configuration parameters:
 - Project type: Classification (e.g., web_application)
 - Optimization enabled: Set true to enable template optimization during init
 
+Interview questions: [schemas/tab_schema.json](../schemas/tab_schema.json) defines the
+tab/batch/question structure the initialization and settings interviews walk through — read it
+and follow its tabs and `field` keys when collecting configuration, so the questions asked and the
+config values they write stay consistent with `schemas/config-schema.json` and the shipped
+`git-strategy.yaml` template. When the schema and the live config templates disagree, the config
+templates are authoritative — fix the schema instead of asking a dead key.
+
 Step 3: Review initialization results:
 
 - Language configuration with token cost analysis

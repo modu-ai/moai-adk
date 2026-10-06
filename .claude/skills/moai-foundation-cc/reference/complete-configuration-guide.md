@@ -115,7 +115,7 @@ Configuration Priority (highest to lowest):
 
 ```json
 {
- "model": "claude-3-5-sonnet-20241022",
+ "model": "claude-sonnet-5",
  "permissionMode": "default",
  "maxFileSize": 10000000,
  "maxTokens": 200000,
@@ -132,7 +132,7 @@ Configuration Priority (highest to lowest):
 Model Settings:
 ```json
 {
- "model": "claude-3-5-sonnet-20241022", // or haiku, opus
+ "model": "claude-sonnet-5", // or haiku, opus
  "maxTokens": 200000, // Context window limit
  "temperature": 1.0 // Creativity level (0.0-1.0)
 }

@@ -24,7 +24,7 @@ required_backend: claude pass
 
 // admitPlanGates mirrors admitPlan with the tree's required-backend set.
 func admitPlanGates(raw string, hashOK bool, required []string) (bool, string) {
-	return Admit(Parse([]byte(raw)), PhasePlan, 0.85, hashOK, required)
+	return AdmitWithRequired(Parse([]byte(raw)), PhasePlan, 0.85, hashOK, required)
 }
 
 // TestParseReceipt covers REQ-ACE-008's Parse arm: the receipt keys are read,
@@ -121,7 +121,7 @@ required_backend: claude pass
 // TestAdmitRequiredBackendFail covers REQ-ACE-009: a required backend
 // recorded fail refuses regardless of the auditor's own PASS label, with a
 // reason naming the backend.
-func TestAdmitRequiredBackendFail(t *testing.T) {
+func TestAdmitWithRequiredReceiptFail(t *testing.T) {
 	raw := strings.Replace(planPassReceipt, "required_backend: claude pass", "required_backend: claude fail", 1)
 	ok, reason := admitPlanGates(raw, true, []string{"claude"})
 	if ok {

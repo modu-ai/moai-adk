@@ -34,11 +34,40 @@ func initSyncGitFixture(t *testing.T, specID, status string) string {
 		}
 	}
 	run("-C", tmpDir, "init", "-q", "-b", "main")
+	syncGitDisableMaintenance(t, tmpDir)
 	run("-C", tmpDir, "-c", "user.name=t", "-c", "user.email=t@t.local", "add", "-A")
 	run("-C", tmpDir, "-c", "user.name=t", "-c", "user.email=t@t.local", "commit", "-qm", "chore: seed")
 	run("-C", tmpDir, "-c", "user.name=t", "-c", "user.email=t@t.local", "commit", "-qm", "feat("+specID+"): M1 implementation", "--allow-empty")
 
 	return tmpDir
+}
+
+// syncGitDisableMaintenance turns off git's automatic maintenance in a fixture
+// repo, right after `git init` and before any commit (card t1506). Mechanism:
+// a git commit ends with a `gc --auto` trigger, and where gc.autoDetach is in
+// force (the default wherever detached forks are available — CI runners
+// included) the resulting maintenance runs as a detached child that can still
+// be writing into .git/ after every git call the test made has returned; the
+// test binary then reaches t.TempDir()'s RemoveAll and fails with
+// `.git: directory not empty`. gc.auto=0 removes the trigger,
+// gc.autoDetach=false removes the detach if maintenance is ever asked for, and
+// maintenance.auto=false covers the git 2.29+ `maintenance run --auto` trigger
+// (fetch-driven; kept for defense in depth). The --sync-git product path itself
+// was audited for this card: every git invocation there is a synchronous
+// exec.Command().Output() — no unwaited child — so git's own background
+// maintenance is the mechanism, and this hardening is the fix.
+func syncGitDisableMaintenance(t *testing.T, dir string) {
+	t.Helper()
+	for _, cfg := range [][2]string{
+		{"gc.auto", "0"},
+		{"gc.autoDetach", "false"},
+		{"maintenance.auto", "false"},
+	} {
+		out, err := exec.Command("git", "-C", dir, "config", cfg[0], cfg[1]).CombinedOutput()
+		if err != nil {
+			t.Fatalf("git config %s=%s failed: %v\n%s", cfg[0], cfg[1], err, out)
+		}
+	}
 }
 
 // SPEC-STATUS-DRYRUN-001 AC-006 (REQ-005): `--sync-git --dry-run --yes`
@@ -148,6 +177,7 @@ func TestSyncGitSpecStatuses_InvalidStatusSkippedLoudly(t *testing.T) {
 		}
 	}
 	run("-C", tmpDir, "init", "-q", "-b", "main")
+	syncGitDisableMaintenance(t, tmpDir)
 	run("-C", tmpDir, "-c", "user.name=t", "-c", "user.email=t@t.local", "add", "-A")
 	run("-C", tmpDir, "-c", "user.name=t", "-c", "user.email=t@t.local", "commit", "-qm", "chore: seed")
 	run("-C", tmpDir, "-c", "user.name=t", "-c", "user.email=t@t.local", "commit", "-qm", "feat(SPEC-INVALIDST-001): M1 implementation", "--allow-empty")
@@ -231,6 +261,7 @@ func TestSyncGitSpecStatuses_NoSpecIDsInGitLog(t *testing.T) {
 		}
 	}
 	run("-C", tmpDir, "init", "-q", "-b", "main")
+	syncGitDisableMaintenance(t, tmpDir)
 	run("-C", tmpDir, "-c", "user.name=t", "-c", "user.email=t@t.local", "commit", "-qm", "chore: seed only", "--allow-empty")
 
 	oldFindProjectRootFn := findProjectRootFn

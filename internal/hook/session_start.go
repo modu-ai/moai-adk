@@ -613,6 +613,22 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	appendAdditionalContext(out, guardLivenessAdvisory(guardLivenessRoot, h.asyncDeferredScans()))
 	clock.lap("guard_liveness_advisory")
 
+	// SPEC-MEMORY-FOLD-BUDGET-001 follow-up card REQ-MFB-011/012: the
+	// MEMORY.md budget warning, emitted without anyone asking for it.
+	//
+	// It joins the same additionalContext block through the same helper, and
+	// it sits past every source condition on purpose — startup, resume,
+	// clear and compact all reach here, which is REQ-MFB-012's whole point.
+	// Below the warn percentage, with no store, on a read error and under
+	// MOAI_MEMORY_AUDIT=0 it adds nothing (memoryBudgetAdvisory's own
+	// silence), so a healthy session never sees the line.
+	memoryBudgetRoot := input.ProjectDir
+	if memoryBudgetRoot == "" {
+		memoryBudgetRoot = input.CWD
+	}
+	appendAdditionalContext(out, memoryBudgetAdvisory(ctx, memoryBudgetRoot, h.asyncDeferredScans()))
+	clock.lap("memory_budget_advisory")
+
 	return out, nil
 }
 
@@ -813,6 +829,17 @@ func (h *sessionStartHandler) computeDeferredAdvisory(
 	allowFill bool,
 ) map[string]any {
 	res := make(map[string]any)
+
+	// SPEC-MOAI-HYGIENE-001 REQ-HYG-014: the hygiene engine runs here, in
+	// the deferred advisory pass — best-effort, bounded scans, every error
+	// logged and swallowed; the session launch is never blocked or delayed
+	// by it. Mode: workflow.hygiene.mode (report default; apply is the
+	// operator's explicit config opt-in on this auto surface, REQ-HYG-013).
+	if err := hygieneRunFn(projectDir); err != nil {
+		slog.Warn("session start (deferred): hygiene pass failed (non-blocking)",
+			"error", err.Error(),
+		)
+	}
 
 	// SPEC-TELEMETRY-001 R4: prune files older than 90 days. Durable side effect.
 	if err := pruneTelemetry(projectDir); err != nil {
@@ -1478,7 +1505,7 @@ func loadGLMKeyFromEnvFile() string {
 // The now parameter is accepted to allow deterministic testing.
 func detectAndWrapStaleMemories(projectDir string, now time.Time) string {
 	// Respect kill-switch (rollback safety — plan.md §6.2).
-	if os.Getenv("MOAI_MEMORY_AUDIT") == "0" {
+	if os.Getenv(config.EnvMemoryAudit) == "0" {
 		return ""
 	}
 

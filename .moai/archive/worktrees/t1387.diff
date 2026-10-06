@@ -1,0 +1,68 @@
+diff --git a/.moai/config/sections/gate.yaml b/.moai/config/sections/gate.yaml
+index 08225913b..00788cd33 100644
+--- a/.moai/config/sections/gate.yaml
++++ b/.moai/config/sections/gate.yaml
+@@ -82,3 +82,5 @@ gate:
+     # Query-time refresh cost budget in milliseconds. A refresh that exceeds
+     # it warns and still answers; it never blocks.
+     update_budget_ms: 2000
++  pre_commit:
++    enabled: true
+diff --git a/.moai/config/sections/workflow.yaml b/.moai/config/sections/workflow.yaml
+index 8cad2cbf2..0c657be39 100644
+--- a/.moai/config/sections/workflow.yaml
++++ b/.moai/config/sections/workflow.yaml
+@@ -22,15 +22,20 @@ workflow:
+     audit:
+         claude:
+             model: claude-opus-5-5
+-            effort: medium
++            effort: high
+         codex:
+             model: gpt-6.1-sol
+             effort: high
+         glm:
+             model: glm-5.3
+             effort: max
++        gates:
++            claude: off
++            codex: required
++            glm: off
++        model: codex
+     default_mode: ""
+-    execution_mode: auto
++    execution_mode: solo
+     # context_folding: manager-lead's per-milestone Context-Folding trigger policy
+     # (SPEC-HIERARCHICAL-TEAM-001 REQ-FOLD-001 OQ-1 decision). The fold procedure
+     # itself reuses existing primitives (/compact + .moai/state/verify/ redirect +
+@@ -151,8 +156,8 @@ workflow:
+         # `moai session list`의 부수효과가 아니라 의도된 행위여야 한다.
+         # 재활성화는 제거 예정 트리를 먼저 열거한 뒤 운영자가 판단할 것
+         # (acceptance.md AC-WR-023(b)).
+-        auto_cleanup: false
+-        auto_create: false
++        auto_cleanup: true
++        auto_create: true
+         auto_merge: true
+         session_name_pattern: moai-{ProjectName}-{SPEC-ID}
+         tmux_preferred: true
+@@ -248,7 +253,7 @@ workflow:
+     # stricter default (guided, required, human, 0.50) with a warning naming
+     # the key.
+     autonomy:
+-        mode: guided              # guided | contract
++        mode: guided # guided | contract
+         contract:
+             # sign several SPECs with one confirmation
+             batch_sign: true
+@@ -259,4 +264,9 @@ workflow:
+             # decider: human | llm | llm+jev   (omitted: human in guided, llm in contract)
+             jev_min_confidence: 0.50
+         escalation:
+-            budget_default: { turns: 60, operations: 40, audit_retries: 2 }
++            budget_default: {turns: 60, operations: 40, audit_retries: 2}
++    codex:
++        review_gate:
++            enabled: true
++        task:
++            allow_write: true

@@ -1,0 +1,37 @@
+[
+  {
+    "id": "sync_sentinel",
+    "first_exit": 0,
+    "first_stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=7 go build=7 deps_modified=1). Detail: .moai/logs/sync-quality-gate.log\"}",
+    "second_exit": 0,
+    "second_stdout": ""
+  },
+  {
+    "id": "sync_java",
+    "exit": 0,
+    "stdout": "",
+    "compiler_invoked": true,
+    "log": "2026-09-11T02:10:07Z [sync-phase-quality-gate] language=java mode=blocking decision=allow javac compile check=0 (none)=0 deps_modified=1 head=9da1933efeec80f930601502fdc5de6883941492"
+  },
+  {
+    "id": "sync_ruby",
+    "exit": 0,
+    "stdout": "",
+    "compiler_invoked": true,
+    "log": "2026-09-11T02:10:08Z [sync-phase-quality-gate] language=ruby mode=blocking decision=allow ruby syntax=0 (none)=0 deps_modified=1 head=5ae7030071d233d160196c2d3f9d91355cacd0e6"
+  },
+  {
+    "id": "sync_cpp",
+    "exit": 0,
+    "stdout": "",
+    "compiler_invoked": false,
+    "log": "2026-09-11T02:10:08Z [sync-phase-quality-gate] language=cpp mode=blocking decision=allow g++ syntax check=0 (none)=0 deps_modified=1 head=028a658b63cf998ad781f36f4f6dfbb6270e5400"
+  },
+  {
+    "id": "sync_kotlin",
+    "exit": 0,
+    "stdout": "",
+    "compiler_invoked": false,
+    "log_exists": false
+  }
+]

@@ -12,7 +12,7 @@
 
 ### 0.1 [HARD] 정본은 레인이 분기하는 트리의 사본이다
 
-**판별식은 「레인이 분기하는 트리가 지배한다」이고, 현재 그 트리는 `develop` 이다.** 카드 워크트리가 `develop` 에서 나오므로 `develop` 의 사본이 레인이 실제로 읽는 문서이며, 그것이 정본이다.
+**판별식은 「레인이 분기하는 트리가 지배한다」이고, 현재 그 트리는 `main` 이다(2026-10-05 GitHub Flow 전환 — §4.1).** 카드 워크트리가 `main` 에서 나오므로 `main` 의 커밋 사본이 레인이 실제로 읽는 문서이며, 그것이 정본이다.
 
 **날짜나 「나중에 전달된 쪽」을 판별식으로 쓰지 않는다.** 2026-09-07 에 나중에 전달된 텍스트가 틀린 쪽이었다 — 최신성 규칙이었다면 그 사고를 막지 못했을 것이다. 분기 트리는 push-model 이 바뀌어도 같은 방식으로 답을 낸다.
 
@@ -24,17 +24,17 @@
 
 ### 0.3 [HARD] `main` 의 커밋본은 폐기된 제3의 모델이다
 
-**`main`에 커밋된 옛 `CLAUDE.local.md`는 폐기된 모델이며 인용 대상이 아니다.** 그 판은 「`develop`을 원격에 올리지 않고 카드마다 `main`으로 PR을 낸다」는 체제를 서술하는데, 현행 체제(§4.1)와 정면으로 다르다. 다음 사람이 `main` 사본을 정본으로 집는 것이 2026-09-07 실패의 재현이다.
+**전환 이전 `main`에 커밋된 옛 `CLAUDE.local.md`는 폐기된 모델이며 인용 대상이 아니다.** 그 판은 「`develop`을 원격에 올리지 않고 카드마다 `main`으로 PR을 낸다」는 체제를 서술하는데, 그 체제는 2026-08-29 develop GitFlow 체인에 밀려났고 2026-10-05 GitHub Flow 전환이 다시 `main` 기반으로 돌아왔다(§4.1) — 지금 정본은 전환을 거친 현재 `main` 커밋 사본(§0.1)이지 전환 이전의 옛 커밋이 아니다. 옛 판을 정본으로 집는 것이 2026-09-07 실패의 재현이다.
 
 ### 0.4 [HARD] primary `main` 의 구형 로컬 파일은 정본이 아니다
 
-이 이관이 `develop`에 병합되면 그 커밋의 `AGENTS.local.md`가 정본이다. primary 체크아웃이 아직 `main`인 동안 보이는 `M CLAUDE.local.md`는 전환 이전부터 유지한 공유 워킹 사본이다. 그 상태를 새 워크트리의 수신 증거로 인용하지 않는다.
+이 이관은 develop을 거쳐 2026-10-05 전환과 함께 `main`에 도달했고, 그 이후 `main`에 병합된 커밋의 `AGENTS.local.md`가 정본이다. primary 체크아웃에서 보이는 `M CLAUDE.local.md`는 커밋되지 않은 공유 워킹 사본이다(§0.2). 그 상태를 새 워크트리의 수신 증거로 인용하지 않는다.
 
 > **[HARD] 이 표식은 정리 대상이 아니다.**
 >
 > **primary에서 `git restore CLAUDE.local.md`를 실행하지 마라** — 공유 워킹 사본을 §0.3의 폐기 모델로 되돌리는 회귀다.
 >
-> 이 파일을 고칠 때는 카드 워크트리에서 고쳐 `develop`으로 병합한다(§4.1). primary의 구형 파일은 별도 전환을 마쳤다(card t1317, 2026-09-29 — 보존 사본은 primary의 `.moai/state/retired/`).
+> 이 파일을 고칠 때는 카드 워크트리에서 고쳐 `main`으로 병합한다(§4.1). primary의 구형 파일은 별도 전환을 마쳤다(card t1317, 2026-09-29 — 보존 사본은 primary의 `.moai/state/retired/`).
 
 ---
 
@@ -117,7 +117,7 @@ Never add files directly to the local project directories without also adding th
 
 ### [HARD] §2.3 moai update는 관리 대상 뿌리 안의 로컬 전용 파일을 통째로 삭제한다
 
-**요지 — 본문 전량은 `.moai/docs/update-local-file-survival.md` 로 이관됐다(card t750).** `CleanMoaiManagedPaths`(`internal/cli/update/deploy/deploy.go:107`)가 템플릿 재배포 **전에** 관리 대상 뿌리(`.claude/settings.json` · `.claude/{commands,agents,hooks}/moai` · `.claude/skills/moai*` 글롭 · `.claude/rules/moai` · `.claude/output-styles/moai` · `.moai/config`)를 통째로 삭제하고 임베드 템플릿에 있는 것만 다시 깐다. **보호 목록 설정은 존재하지 않고**, `Updated N files` 요약에 삭제는 나타나지 않는다. **[HARD] 새 로컬 전용 파일은 위 뿌리 밖에 둔다** — 용도별 배치 표(룰·스킬·ast-grep·하네스)는 이관 문서에 있다. **[HARD] update 후엔 매번** ① 삭제 검증(`git status --porcelain | grep '^ D'` — 0이어야 정상)과 ② `git-strategy.yaml` git-flow 키 **+ `worktree_base_branch: develop`** 재적용을 실행한다(후자를 빼면 `moai worktree new` 가 카드 트리를 develop 이 아니라 main 에서 판다 — 2026-09-24 6건, card t1159). 재적용은 `--source=develop` 이다(`HEAD`=main 에는 그 키가 없다) — 명령과 실측 근거는 이관 문서에.
+**요지 — 본문 전량은 `.moai/docs/update-local-file-survival.md` 로 이관됐다(card t750).** `CleanMoaiManagedPaths`(`internal/cli/update/deploy/deploy.go:107`)가 템플릿 재배포 **전에** 관리 대상 뿌리(`.claude/settings.json` · `.claude/{commands,agents,hooks}/moai` · `.claude/skills/moai*` 글롭 · `.claude/rules/moai` · `.claude/output-styles/moai` · `.moai/config`)를 통째로 삭제하고 임베드 템플릿에 있는 것만 다시 깐다. **보호 목록 설정은 존재하지 않고**, `Updated N files` 요약에 삭제는 나타나지 않는다. **[HARD] 새 로컬 전용 파일은 위 뿌리 밖에 둔다** — 용도별 배치 표(룰·스킬·ast-grep·하네스)는 이관 문서에 있다. **[HARD] update 후엔 매번** ① 삭제 검증(`git status --porcelain | grep '^ D'` — 0이어야 정상)과 ② `git-strategy.yaml` git-flow 키 **+ `worktree_base_branch: main`** 재적용을 실행한다(전환 후 기저는 `main`이다 — 이 키를 develop 으로 두면 `moai worktree new` 가 스테일 develop 에서 카드 트리를 판다; 2026-09-24 역방향 사고 6건, card t1159. 재적용 원천은 `main`의 커밋 사본이다 — 템플릿 기본값은 중립 `""`이다) — 명령과 실측 근거는 이관 문서에.
 
 ### [HARD] settings.local.json Separation
 
@@ -172,60 +172,55 @@ Language policy는 `.claude/rules/moai/development/coding-standards.md`에 정�
 
 Conventional Commits — `<type>(<scope>): <description>` + 선택 본문/푸터. Types: feat, fix, docs, style, refactor, perf, test, chore, revert. 예시와 서식 전문: `.moai/docs/local-dev-guide.md` § 4a.
 
-### §4.1 GitFlow 통합 체인 (develop)
+### §4.1 통합 체인 (main)
 
-카드별로 각각 검증해 머지했는데 **합쳐진 상태는 아무도 보지 않는** 구멍을 막는다. 2026-08-15에 PR 12개가 각각 초록불로 main에 들어갔고, 합류 후에야 `moai update`가 로컬 전용 파일을 지운다는 사실이 드러났다.
+카드별로 각각 검증해 머지했는데 **합쳐진 상태는 아무도 보지 않는** 구멍을 막는다. 2026-08-15에 PR 12개가 각각 초록불로 main에 들어갔고, 합류 후에야 `moai update`가 로컬 전용 파일을 지운다는 사실이 드러났다. 2026-10-05 GitHub Flow 전환(M2)으로 통합 기저는 `main`이다 — 아래 체인은 전환 후 기준이고, develop 체인은 아래 [SUPERSEDED] 표식과 함께 역사로 남는다.
 
-**[HARD] 표준 체인 — 운영자 지시 2026-08-29**
+**[HARD] 표준 체인 — GitHub Flow 전환(운영자 지시, 2026-10-05 M2 착지)**
 
 ```
 origin/main
    ↓ fetch
-local/main
-   ↓ 분기
-develop  ← 통합 브랜치. 원격에 존재(origin/develop)
+local/main  ← 기본 브랜치. 카드 브랜치의 기저
    ↓ 분기
 worktree (카드별 WT-<slug>)
-   ↓ merge --no-ff  ← 카드 완료 시 반드시 develop으로
-develop
-   ↓ 분기
-release/vX.Y.Z
-   ↓ PR
-origin/main
+   ↓ PR (base: main)  ← 카드 완료 시 — 통합 창(직렬) 경유, 병합은 리더가
+origin/main  ← CI가 통합 판정
    ↓ fetch
 local/main
 ```
 
 **[HARD] 규율**
 
-1. **모든 워크트리는 develop으로 병합한다.** 카드가 끝나면 `main`이 아니라 `develop`에 합친다. 카드 브랜치는 develop에서 판다.
-2. **`develop`은 원격에 있다.** push는 **리더가 일괄**로 수행하며(2026-09-02 — 레인은 push하지 않는다), 그 head의 CI가 통합 판정을 만든다.
-3. **main으로는 release 브랜치의 PR만 올라간다.** 카드가 직접 main으로 PR을 내지 않는다.
-4. **통합 창은 직렬이다.** `moai integration acquire --card <card-id>` → 병합 → `release` — push는 창 밖이다(리더 일괄, 2026-09-02). 락은 병합을 직렬화하는 장치이지 수리를 직렬화하는 장치가 아니므로, 수리가 남았으면 준비된 뒤에 잡는다.
-5. **판정은 CI.** 로컬 통과는 조기 신호일 뿐이다 — 깨끗한 환경도, darwin/windows 매트릭스도 아니다. 병합 전 검증을 병합 후 근거로 재사용하지 않는다: 병합 트리에서 다시 재거나, 병합 커밋의 `git rev-parse <merge>^{tree}`가 재측정한 트리와 동일함을 보인다.
-6. **로컬 `main`은 commit-dead다 (SPEC-MAIN-COMMIT-BAN-001, 카드 t1337).** 어느 세션도 primary 체크아웃의 `main` 안에서 커밋하지 않는다 — `git commit` / `git revert` / `git cherry-pick`은 BranchGuard(`workflow.branch_guard.deny_commits_on: [main]`)가 거부하고, 커밋은 `develop`에서 분기한 카드 워크트리에서만 만든다. main의 잔여물을 처분하는 절차(운영자 터미널 전용)는 `.moai/docs/gitflow-integration-chain.md`가 소유한다. 리더의 develop push는 배치 트리거로 닫는다 — `git rev-list --count origin/develop..develop`이 `git_strategy.manual.lead_push_threshold`에 닿으면 배치를 닫는다. 현재값의 원천은 설정 파일이고 이 규율은 키와 계수 명령을 명명할 뿐이다. push는 초록 조건부를 따른다 — 카드 병합마다 통합 창의 병합 트리 재측정이 사전 게이트이고, 마지막 push의 `origin/develop` CI가 red인 동안 다음 push는 보류된다. 상세는 `.claude/rules/local/gitflow-lane-protocol.md` §4.
+1. **카드 브랜치는 `main`에서 판다.** 카드가 끝나면 카드 PR(base `main`)로 `main`에 반영한다. `develop`은 legacy다 — 새 카드의 기저로 쓰지 않는다.
+2. **`main`은 원격 기본 브랜치다.** 그 head의 CI가 통합 판정을 만든다. 병합·push는 **리더가 일괄**로 수행한다(2026-09-02 — 레인은 push하지 않는다).
+3. **통합 창은 직렬이다.** `moai integration acquire --card <card-id>` → 병합 → `release` — push는 창 밖이다(리더 일괄, 2026-09-02). 락은 병합을 직렬화하는 장치이지 수리를 직렬화하는 장치가 아니므로, 수리가 남았으면 준비된 뒤에 잡는다.
+4. **판정은 CI.** 로컬 통과는 조기 신호일 뿐이다 — 깨끗한 환경도, darwin/windows 매트릭스도 아니다. 병합 전 검증을 병합 후 근거로 재사용하지 않는다: 병합 트리에서 다시 재거나, 병합 커밋의 `git rev-parse <merge>^{tree}`가 재측정한 트리와 동일함을 보인다.
+5. **로컬 `main`은 commit-dead다 (SPEC-MAIN-COMMIT-BAN-001, 카드 t1337).** 어느 세션도 primary 체크아웃의 `main` 안에서 커밋하지 않는다 — `git commit` / `git revert` / `git cherry-pick`은 BranchGuard(`workflow.branch_guard.deny_commits_on: [main]`)가 거부하고, 커밋은 `main`에서 분기한 카드 워크트리에서만 만든다. 리더의 `main` push는 배치 트리거로 닫는다 — `git rev-list --count origin/main..main`이 `git_strategy.manual.lead_push_threshold`에 닿으면 배치를 닫는다(설정 파일의 계수 주석은 아직 `origin/develop..develop`을 가리킨다 — drift). 현재값의 원천은 설정 파일이고 이 규율은 키와 계수 명령을 명명할 뿐이다. push는 초록 조건부를 따른다 — 카드 병합마다 통합 창의 병합 트리 재측정이 사전 게이트이고, 마지막 push의 `origin/main` CI가 red인 동안 다음 push는 보류된다. 상세는 `.claude/rules/local/gitflow-lane-protocol.md` §4(해당 룰은 아직 develop 서술 — drift).
 
-**[SUPERSEDED by 위 체인 — 2026-08-29]** 종전 규위(develop 원격 미푸시 · 카드별 main PR · 일회용 develop)은 폐기됐다 — 폐기 사실과 사유의 보존은 두 문서가 반대 지시를 하지 않게 하기 위함이며, 전문은 `.moai/docs/gitflow-integration-chain.md` 에 있다.
+**[SUPERSEDED by 위 체인 — 2026-10-05]** 2026-08-29~2026-10-05의 develop GitFlow 체인(카드는 develop에서 분기해 develop으로 `--no-ff` 병합, main에는 release PR만)과 그 이전 규위(develop 원격 미푸시 · 카드별 main PR · 일회용 develop)은 모두 폐기됐다 — 폐기 사실과 사유의 보존은 두 문서가 반대 지시를 하지 않게 하기 위함이며, develop 체인의 전문은 `.moai/docs/gitflow-integration-chain.md` 에 있다.
+
+**[HARD] 전환 후 drift — 절차 문서군.** `.moai/docs/git-workflow-doctrine.md`·`.moai/docs/git-local-workflow-doctrine.md`·`.moai/docs/gitflow-integration-chain.md`·`.claude/rules/local/gitflow-lane-protocol.md`은 아직 develop 체인을 서술한다. 전환 후 규범의 정본은 이 §4.1과 전환 규칙(`.claude/rules/moai/**`, card t1522)이며, 그 문서들을 열 때는 이 고지 아래에서 읽는다.
 
 **관련 문서 포인터 (SPEC-RC-TESTBED-001)** — 절차 본문은 두지 않는다(위 규율 4의 delivery.md 위임과 마찬가지로, 두 벌이 되는 순간 갈라진다):
 
 - 로컬 rc 빌드의 `rc.N` 번호 정책·무태그 원칙·`BUILD_ID` 빌드 식별: `.moai/docs/version-management.md` — **Local RC Numbering** 절
-- 병합 후 로컬 develop 갱신(판정 기준·BranchGuard 안전 경로): `.claude/rules/local/gitflow-lane-protocol.md` — **develop 갱신** 절 (그 절이 §9 rc 런북을 교차참조한다)
+- 병합 후 로컬 `main` 갱신(판정 기준·BranchGuard 안전 경로): `.claude/rules/local/gitflow-lane-protocol.md` — **develop 갱신** 절 (해당 절은 아직 develop 서술 — drift; 그 절이 §9 rc 런북을 교차참조한다)
 
 **[HARD] -f / -l 모드 레인 의무**
 
-Factory(리더 `moai cc -f` · 레인 `moai cc -l`) 모드에서 레인은 카드 작업이 끝나면 **반드시 리더에게 로컬 develop 병합을 요청한다.** 레인이 스스로 병합 창을 잡지 않는다.
+Factory(리더 `moai cc -f` · 레인 `moai cc -l`) 모드에서 레인은 카드 작업이 끝나면 **반드시 리더에게 `main` 반영을 요청한다.** 레인이 스스로 병합 창을 잡지 않는다.
 
-- **self-dispatch lane 예외 — 병합 창.** Claude self-dispatch 팩토리 run의 레인은 위 요청을 하지 않는다 — `moai factory complete`의 통합 절차로 스스로 통합 창을 잡고 자기 카드를 `develop`에 병합한다(OD-2). Codex 레인은 예외가 아니다 — merge-ready에서 정지한다(REQ-SD-025). 이 예외도 위의 다른 큐 변경(`add`, `drop`, `done`, `edit` 등) 금지와 `moai contract sign` 금지는 바꾸지 않는다(카드 임대만 `moai factory next`로 허용 — OD-1; `.claude/rules/local/gitflow-lane-protocol.md` §6).
+- **self-dispatch lane 예외 — 병합 창.** Claude self-dispatch 팩토리 run의 레인은 위 요청을 하지 않는다 — `moai factory complete`의 통합 절차로 스스로 통합 창을 잡고 자기 카드를 `main`에 반영한다(OD-2). Codex 레인은 예외가 아니다 — merge-ready에서 정지한다(REQ-SD-025). 이 예외도 위의 다른 큐 변경(`add`, `drop`, `done`, `edit` 등) 금지와 `moai contract sign` 금지는 바꾸지 않는다(카드 임대만 `moai factory next`로 허용 — OD-1; `.claude/rules/local/gitflow-lane-protocol.md` §6).
 - 완료 보고에 담을 것: 카드 id · 브랜치와 HEAD · 로컬 병합 SHA · 미푸시 커밋 수 · 증거 경로(primary 반출 여부) · 재측정 범위
 - `moai integration status`가 `free`인 것은 **승인이 아니다.** 리더의 창 지명만이 근거다.
-- 창을 받으면: `moai integration acquire --name <lane> --card <card-id>` → 본인 워크트리에서 `git merge develop` 흡수(대상은 **로컬** `develop` — 원격이 아니다. 흡수 **전에** 그 로컬 develop 이 최신인지부터 본다 — 판정식과 갱신 경로는 `.claude/rules/local/gitflow-lane-protocol.md` §11) → **병합 트리에서 재측정** → `EnterWorktree(.claude/worktrees/develop)` → `git merge --no-ff <WT-브랜치>` → `moai integration release` → `ExitWorktree keep` → 완료 보고(로컬 병합 SHA를 리더에게 보고 — push는 리더가 일괄로 한다)
-- **[HARD] WT 브랜치 push·CI 직접 요청 금지 (운영자 지시 2026-09-01).** 카드가 마감되면 원격 develop 반영이 **유일한** 공개 경로다 — 리더가 창 밖에서 레인 병합 SHA를 모아 일괄로 실행하는 `git push origin develop`이며, 레인은 그 push의 주체가 아니다. 레인은 `git push origin <WT-브랜치>`를 하지 않고, `gh run rerun`/`workflow dispatch` 등 CI를 직접 요청·재요청하지도 않는다 — CI 판정은 develop push가 일으키는 실행에 맡기고, 판독은 리더 몫이다. (당일 lane-2가 `WT-version-stamp-predicate`를 origin에 push한 전례로 추가)
+- 창을 받으면: `moai integration acquire --name <lane> --card <card-id>` → 본인 워크트리에서 `git merge main` 흡수(대상은 **로컬** `main` — 원격이 아니다. 흡수 **전에** 그 로컬 main 이 최신인지부터 본다 — 판정식과 갱신 경로는 `.claude/rules/local/gitflow-lane-protocol.md` §11, 아직 develop 서술 — drift) → **병합 트리에서 재측정** → 통합 워크트리 진입 → `main` 반영(카드 PR base `main` 병합 또는 `--no-ff` 병합 — 세부 형태는 이관 문서가 정한다) → `moai integration release` → `ExitWorktree keep` → 완료 보고(반영 SHA를 리더에게 보고 — push·병합은 리더가 일괄로 한다)
+- **[HARD] 카드 PR(base `main`)이 유일한 공개 경로다 (2026-10-05 전환 개정).** 카드가 마감되면 레인은 카드 브랜치를 push해 PR(base `main`)을 열되 **직접 병합하지 않는다** — 병합·push는 리더가 일괄로 수행하고 레인은 그 주체가 아니다. 레인은 `gh run rerun`/`workflow dispatch` 등 CI를 직접 요청·재요청하지도 않는다 — CI 판정은 `main` 반영이 일으키는 실행에 맡기고, 판독은 리더 몫이다. (종전 금지 — 운영자 지시 2026-09-01, WT 브랜치 push 금지·develop 일괄 push 체제 — 는 develop 체인과 함께 역사가 됐다; 당일 lane-2가 `WT-version-stamp-predicate`를 origin에 push한 전례로 추가됐던 조항이다)
 - **[HARD] `acquire`는 창을 기록하기 전에 호출자 트리를 먼저 단정한다.** tracked `.claude/settings.json`의 워킹 사본이 수정돼 있는지 `git --no-optional-locks status --porcelain -- .claude/settings.json`으로 재고, 적중이면 그 사본을 primary 체크아웃의 `.moai/state/settings-drift/` 아래로 보존한 뒤 같은 자리 `ledger.jsonl`에 한 줄을 남기고 보존 경로·sha256을 출력한다. **검출·보존·원장은 설정과 무관하게 매번 돈다**(9일 동안 아무도 보지 않아서 놓친 것이 문제였지 막지 않아서가 아니다). 거절만 opt-in이며(`workflow.settings_drift_gate.enabled`, 이 저장소는 켠다) 우회는 `--allow-settings-drift`다 — `--force`는 "살아 있는 보유자에게서 창을 빼앗는다"는 다른 축이라 우회로 쓰지 않는다. 창과 무관하게 손으로 확인할 때는 `moai integration preflight [경로]`. **어떤 경우에도 자동 복원하지 않는다** — 그 파일은 런타임이 쓰고 토큰·절대경로·tmux pane id를 담을 수 있어 자동 복원 자체가 데이터 파괴다. 적중 보고를 받으면 리더가 처분을 정한다.
 - **워크트리는 원격 머지가 확인되기 전까지 폐기하지 않는다.** 미푸시 브랜치의 워크트리는 그 작업의 유일본이다.
-- sync는 병합 **전에** 워크트리 안에서 끝낸다. run만 닫고 병합하면 SPEC이 `in-progress`로 develop에 올라가 창을 다시 받아야 한다(2026-08-29 t342 실사례).
+- sync는 병합 **전에** 워크트리 안에서 끝낸다. run만 닫고 병합하면 SPEC이 `in-progress`로 `main`에 올라가 창을 다시 받아야 한다(2026-08-29 t342 실사례).
 
-**운영 절차 이하는 `.moai/docs/gitflow-integration-chain.md` 로 이관됐다(card t750) — 창 집행 bash(통합 워크트리 진입·흡수·재측정·병합), 리더 develop 일괄 push 절차, 로컬 CI 기각 기록, BranchGuard 조회 과다 매칭 마찰, docs-site Vercel 바인딩 주의.** 위 [HARD] 규율과 레인 의무가 변하지 않는 한 이 요지로 충분하고, 절차를 실행할 때 이관 문서를 연다.
+**운영 절차 이하는 `.moai/docs/gitflow-integration-chain.md` 로 이관됐다(card t750) — 창 집행 bash(통합 워크트리 진입·흡수·재측정·병합), 리더 일괄 push 절차, 로컬 CI 기각 기록, BranchGuard 조회 과다 매칭 마찰, docs-site Vercel 바인딩 주의. 해당 문서의 절차 본문은 아직 develop 체인을 서술한다 — 실행할 때는 위 전환 고지 아래에서 읽는다.** 위 [HARD] 규율과 레인 의무가 변하지 않는 한 이 요지로 충분하고, 절차를 실행할 때 이관 문서를 연다.
 
 ---
 
@@ -424,12 +419,12 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 
 - **§5 Version Management** (SemVer pre-release, ldflags injection, release process): `.moai/docs/version-management.md`
 - **§7 Hook Development** (shell-script-only pattern, settings.json format, quoting rules): `.moai/docs/hook-development.md`
-- **§18 Git Workflow** (Enhanced GitHub Flow 본문 + [2026-08-27] git-flow 전환 상위모델 노트 — 정본은 §4.1, branch protection `enforce_admins: true`, Hybrid Trunk RETIRED): `.moai/docs/git-workflow-doctrine.md`
+- **§18 Git Workflow** (Enhanced GitHub Flow 본문 + [2026-08-27] git-flow 전환 상위모델 노트 — 정본은 §4.1(`main` 기반, 2026-10-05 전환), 해당 문서는 아직 develop 서술·drift, branch protection `enforce_admins: true`, Hybrid Trunk RETIRED): `.moai/docs/git-workflow-doctrine.md`
 - **§19 AskUserQuestion Enforcement + §19.1 Implementation Kickoff Approval** (REQ-ATR-015, 기본 자율 전이로 개정): canonical SSOT at `.claude/rules/moai/core/askuser-protocol.md` + `.claude/rules/moai/workflow/auto-semantics.md` §9.1 (plan→run 진입의 기본형은 감사 교차 증거 — plan-auditor PASS + audit-ready + 해시 무결성 + 무차단 — + 결정 기록; keep-set 3범주 [environment-impossible / operator-held / irreversible external-shared]는 운영자 직답 유지)
 - **§20 Vercel Build Cost Guard** [HARD]: all Vercel projects MUST use Elastic build machine ($0.0035/CPU min vs Turbo $0.126/min); check Build Machine setting first on cost anomalies
 - **§21 Dev-Only Commands Isolation** (split harnesses, `SPLIT_HARNESS_NAMESPACE_LEAK` sentinel): `.moai/docs/dev-only-commands-isolation.md`
 - **§22 Dev Settings Intent** (settings.json key semantics): `.moai/docs/local-dev-settings-intent.md`
-- **§23 Local Git Workflows** (PR-mandatory 1-person OSS, all tiers via PR — 릴리스 PR 경로; [2026-08-27] 카드 작업은 git-flow `develop` 병합으로 전환, 상위모델 노트 참조): `.moai/docs/git-local-workflow-doctrine.md`
+- **§23 Local Git Workflows** (PR-mandatory 1-person OSS, all tiers via PR — 릴리스 PR 경로; [2026-08-27] git-flow `develop` 전환 → [2026-10-05] GitHub Flow 전환으로 `main` 기반 복귀 — 정본은 §4.1, 해당 문서는 아직 develop 서술·drift): `.moai/docs/git-local-workflow-doctrine.md`
 - **§24 Harness Namespace** (template-managed vs user-owned separation): `.moai/docs/harness-namespace-doctrine.md`
 - **§25 Template Internal-Content Isolation** (neutrality catalogue, CI guard): `.moai/docs/template-internal-isolation-doctrine.md`
 - **§26 Linear 연동** (local-only): `.moai/docs/local-linear-integration.md`

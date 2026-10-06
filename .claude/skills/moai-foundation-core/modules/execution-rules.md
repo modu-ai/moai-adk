@@ -2,7 +2,6 @@
 
 Purpose: Security policies, execution constraints, and Git workflow strategies governing MoAI-ADK agent behavior.
 
-Last Updated: 2025-11-25
 Version: 2.0.0
 
 ---

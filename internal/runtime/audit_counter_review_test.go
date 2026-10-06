@@ -75,7 +75,7 @@ func TestPreviousAuditedSHALegacyPriorRound(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	in := CeilingInput{SpecID: specID, ProjectRoot: t.TempDir()}
+	in := VerdictCeilingInput{SpecID: specID, ProjectRoot: t.TempDir()}
 	if got := previousAuditedSHA(in, ev); got != "sha-rev2" {
 		t.Fatalf("previous audited SHA %q, want sha-rev2 (largest round below the latest, legacy included)", got)
 	}

@@ -180,7 +180,7 @@ func admitVerdictFile(cur Card, path string, phase auditverdict.Phase) (bool, st
 	}
 	fields := auditverdict.Parse(raw)
 	if phase == auditverdict.PhaseSync {
-		return auditverdict.Admit(fields, auditverdict.PhaseSync, 0, false, nil)
+		return auditverdict.Admit(fields, auditverdict.PhaseSync, 0, false)
 	}
 	if !specIDPattern.MatchString(cur.SpecID) {
 		return false, fmt.Sprintf("card carries no valid SPEC id (%q), so the plan-artifact hash cannot be checked", cur.SpecID)
@@ -199,7 +199,7 @@ func admitVerdictFile(cur Card, path string, phase auditverdict.Phase) (bool, st
 	// before admission — a blocked outcome refuses the transition; a
 	// debt-admit outcome substitutes its PASS-WITH-DEBT for the raw label in
 	// the label check alone (D20).
-	oc, override, cerr := runtime.EvaluateCeiling(runtime.CeilingInput{
+	oc, override, cerr := runtime.EvaluateCeiling(runtime.VerdictCeilingInput{
 		SpecID: cur.SpecID, SpecDir: specDir, ProjectRoot: cur.WorktreePath, CardID: cur.CardID,
 	}, fields, hashOK, gates.Required)
 	if cerr != nil {
@@ -213,12 +213,12 @@ func admitVerdictFile(cur Card, path string, phase auditverdict.Phase) (bool, st
 			fields.Label = auditverdict.LabelPassWithDebt
 		}
 	}
-	if ok, reason := auditverdict.Admit(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(specDir), hashOK, gates.Required); !ok {
+	if ok, reason := auditverdict.AdmitWithRequired(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(specDir), hashOK, gates.Required); !ok {
 		// REQ-ACE-007/012 (card-review F7): the same below-ceiling recording
 		// duty the kickoff seam performs.
 		if oc == nil {
 			if _, receiptRefused := auditverdict.ReceiptRefusal(fields, gates.Required); receiptRefused {
-				runtime.RecordRequiredBackendRefusal(runtime.CeilingInput{
+				runtime.RecordRequiredBackendRefusal(runtime.VerdictCeilingInput{
 					SpecID: cur.SpecID, SpecDir: specDir, ProjectRoot: cur.WorktreePath, CardID: cur.CardID,
 				}, reason)
 			}

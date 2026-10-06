@@ -60,7 +60,6 @@ var expectedWorktreeReaders = map[string][]string{
 	"auto_merge":           {"internal/cli/session_worktree_automerge.go"},
 	"auto_cleanup":         {"internal/cli/session_worktree.go", "internal/cli/session_worktree_prmerge.go"},
 	"session_name_pattern": {},
-	"tmux_preferred":       {},
 }
 
 // reservedWorktreeKeys declares the keys whose reader status is "reserved: no
@@ -70,7 +69,6 @@ var expectedWorktreeReaders = map[string][]string{
 // (REQ-005) rather than silently re-classifying the key as read.
 var reservedWorktreeKeys = map[string]bool{
 	"session_name_pattern": true,
-	"tmux_preferred":       true,
 }
 
 // mandatoryAutoCleanupReaders names the two load-bearing auto-cleanup sites
