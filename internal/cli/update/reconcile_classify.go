@@ -230,10 +230,21 @@ func ClassifyManagedRoots(projectRoot string, targets []deploy.CleanTarget, rend
 //
 //  1. IsUserOwnedNamespace → user-owned, whatever the manifest says
 //     (REQ-UPM-003, defense-in-depth over carriage);
-//  2. template carries the path → classifyCarried decides template-owned
-//     vs user-modified (the SPEC-INIT-SHRINK-001 logic, reused);
+//  2. template carries the path → template-owned when the manifest record
+//     is HEALTHY and the on-disk content equals the TRACKED state (the
+//     recorded CurrentHash) — the file is pristine as last deployed, so the
+//     current render refreshes it in place whatever the template changed
+//     since; everything else (record absent, stale hash, user_modified or
+//     deprecated provenance) is user-modified, conservatively;
 //  3. template does not carry it → stale when a prior template carried it
 //     (a manifest record with managed provenance), else user-owned.
+//
+// The tracked-state comparison — NOT a comparison against the NEW render —
+// is what separates a template update to an untouched file (template-owned:
+// the new value must land) from an operator edit (user-modified: merge or
+// conflict). Comparing against the new render would route every pristine
+// file the template just changed into the merge path, where a missing base
+// reverts the template's own update (card t1547 review finding 1).
 func classifyManagedFile(rel string, disk []byte, render TemplateRender, mf *manifest.Manifest) ReconcileClass {
 	// REQ-UPM-003: the namespace predicate forces user-owned before any
 	// carriage or manifest consideration.
@@ -242,6 +253,8 @@ func classifyManagedFile(rel string, disk []byte, render TemplateRender, mf *man
 	}
 
 	rendered, carried := render.Carries(rel)
+	_ = rendered // carriage is the gate; the content decision reads the manifest
+
 	if !carried {
 		// Not carried by the current template. Removal-eligible ONLY when a
 		// prior template carried it — a manifest record with managed
@@ -255,10 +268,11 @@ func classifyManagedFile(rel string, disk []byte, render TemplateRender, mf *man
 		return ClassUserOwned
 	}
 
-	// Template-carried: reuse the dropped-roots classifier's healthy-record
-	// decision (identical → template-owned; absent/stale record or diverging
-	// content → user-modified, conservatively).
-	if classifyCarried(disk, rendered, manifestEntry(mf, rel)) == ClassIdentical {
+	// Template-carried: the healthy-record decision against the TRACKED
+	// state (REQ-UPM-001's template-owned definition).
+	entry := manifestEntry(mf, rel)
+	if entry != nil && entry.Provenance == manifest.TemplateManaged &&
+		(entry.CurrentHash == "" || entry.CurrentHash == manifest.HashBytes(disk)) {
 		return ClassTemplateOwned
 	}
 	return ClassUserModified

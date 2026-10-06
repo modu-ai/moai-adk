@@ -23,9 +23,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"testing/fstest"
 
+	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"gopkg.in/yaml.v3"
 )
@@ -258,7 +260,10 @@ func TestUpdate_ConflictPreservesFileAndWritesSidecar(t *testing.T) {
 	const rel = ".claude/rules/moai/policy.json"
 	const ours = "{\"keep\": \"user\", \"shared\": \"user-value\"}\n"
 	const rendered = "{\"keep\": \"user\", \"shared\": \"template-value\"}\n"
-	const baseJSON = "{\"keep\": \"user\", \"shared\": \"user-value\"}\n"
+	// The merge base holds a THIRD value: ours changed from it (user-value)
+	// AND theirs changed from it (template-value) — the both-changed branch
+	// is what produces the conflict.
+	const baseJSON = "{\"keep\": \"user\", \"shared\": \"base-value\"}\n"
 	root := newClassifyFixture(t, map[string]string{rel: ours})
 	carried := map[string]string{rel: rendered}
 	tmplFS := recTmplFS(carried)
@@ -313,7 +318,7 @@ func TestUpdate_ConflictSidecarCollisionUsesFirstUnusedNumber(t *testing.T) {
 	const rel = ".claude/rules/moai/policy.json"
 	const ours = "{\"keep\": \"user\", \"shared\": \"user-value\"}\n"
 	const rendered = "{\"keep\": \"user\", \"shared\": \"template-value\"}\n"
-	const baseJSON = "{\"keep\": \"user\", \"shared\": \"user-value\"}\n"
+	const baseJSON = "{\"keep\": \"user\", \"shared\": \"base-value\"}\n"
 	const occupiedSibling = "<<leftover sidecar from a prior unresolved conflict>>\n"
 	root := newClassifyFixture(t, map[string]string{
 		rel:                 ours,
@@ -394,11 +399,21 @@ func TestUpdate_StaleFileArchivedAndRemoved(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); !os.IsNotExist(err) {
 		t.Errorf("stale file still in place (err=%v)", err)
 	}
-	// Archived byte-identical under the migration archive root, layout kept.
-	archivePath := filepath.Join(root, filepath.FromSlash(ArchiveFilesRoot()), filepath.FromSlash(rel))
-	data, err := os.ReadFile(archivePath)
+	// Archived byte-identical under the run-scoped reconciliation archive
+	// root (tag/<timestamp>/<rel> — review finding 5: a re-update must never
+	// overwrite the recovery copy a previous run took). The timestamp run
+	// scope is located by glob under the tag root.
+	tagRoot := filepath.Join(root, filepath.FromSlash(ReconcileArchiveFilesRoot()))
+	matches, globErr := filepath.Glob(filepath.Join(tagRoot, "*", filepath.FromSlash(rel)))
+	if globErr != nil {
+		t.Fatalf("glob archive: %v", globErr)
+	}
+	if len(matches) != 1 {
+		t.Fatalf("archive copies under %s = %v, want exactly 1", tagRoot, matches)
+	}
+	data, err := os.ReadFile(matches[0])
 	if err != nil {
-		t.Fatalf("stale file not archived at %s: %v", archivePath, err)
+		t.Fatalf("read archive copy: %v", err)
 	}
 	if string(data) != staleContent {
 		t.Errorf("archive copy = %q, want byte-identical %q", data, staleContent)
@@ -406,5 +421,234 @@ func TestUpdate_StaleFileArchivedAndRemoved(t *testing.T) {
 	// The summary lists the removal.
 	if !containsPath(summary.ArchivedRemoved, rel) {
 		t.Errorf("summary.ArchivedRemoved = %v, want it to list %s", summary.ArchivedRemoved, rel)
+	}
+}
+
+// TestClassifyHealthyRecordPristineContentRefreshes — card t1547 review
+// finding 1: a file pristine as last deployed (healthy manifest record,
+// content equals the TRACKED state) whose PRIOR render differs from the NEW
+// render is template-owned — the template's own update must land. Routing it
+// user-modified would send the pristine file through the merge path where a
+// missing base reverts the template's update.
+func TestClassifyHealthyRecordPristineContentRefreshes(t *testing.T) {
+	const priorRender = "rules_dir: .moai/previous-template-rules\n"
+	const newRender = "rules_dir: .moai/config/astgrep-rules\n"
+	const rel = ".moai/config/sections/cache.yaml"
+	root := newClassifyFixture(t, map[string]string{rel: priorRender})
+	carried := map[string]string{rel: newRender}
+
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	if err := mgr.Track(rel, manifest.TemplateManaged, ""); err != nil {
+		t.Fatalf("track: %v", err)
+	}
+	// The record's CurrentHash matches the on-disk (prior-render) bytes —
+	// pristine as deployed.
+	entry := mgr.Manifest().Files[rel]
+	entry.CurrentHash = manifest.HashBytes([]byte(priorRender))
+	mgr.Manifest().Files[rel] = entry
+
+	targets := []deploy.CleanTarget{recTarget(root, ".moai/config")}
+	plan, err := ClassifyManagedRoots(root, targets, renderWith(carried), mgr.Manifest())
+	if err != nil {
+		t.Fatalf("ClassifyManagedRoots: %v", err)
+	}
+	if got := plan.ClassOf(rel); got != ClassTemplateOwned {
+		t.Errorf("pristine file with healthy record = %q, want %q (the template's update must land)", got, ClassTemplateOwned)
+	}
+
+	// The operator-edit case still routes user-modified: the recorded hash
+	// no longer matches the edited bytes.
+	const userEdit = "rules_dir: .moai/previous-template-rules\nextra: operator\n"
+	root2 := newClassifyFixture(t, map[string]string{rel: userEdit})
+	// A fresh manager bound to root2 — the first manager's record belongs to
+	// the first fixture tree.
+	mgr2 := manifest.NewManager()
+	if _, err := mgr2.Load(root2); err != nil {
+		t.Fatalf("load manifest 2: %v", err)
+	}
+	if err := mgr2.Track(rel, manifest.TemplateManaged, ""); err != nil {
+		t.Fatalf("track 2: %v", err)
+	}
+	entry2 := mgr2.Manifest().Files[rel]
+	entry2.CurrentHash = manifest.HashBytes([]byte(priorRender)) // stale: file edited since
+	mgr2.Manifest().Files[rel] = entry2
+	targets2 := []deploy.CleanTarget{recTarget(root2, ".moai/config")}
+	plan2, err := ClassifyManagedRoots(root2, targets2, renderWith(carried), mgr2.Manifest())
+	if err != nil {
+		t.Fatalf("ClassifyManagedRoots 2: %v", err)
+	}
+	if got := plan2.ClassOf(rel); got != ClassUserModified {
+		t.Errorf("edited file with stale hash = %q, want %q", got, ClassUserModified)
+	}
+}
+
+// TestUpdate_SymlinkedRootDisposedBeforeDeploy — card t1547 review finding
+// 3: a symlinked managed root is disposed (the link removed, the target
+// untouched) BEFORE the deploy stage, so the deploy's writes land in a real
+// directory inside the project instead of following the link outside it.
+// The wholesale clean this pipeline replaces removed link entries; leaving
+// them would be a regression with an external-write blast radius.
+func TestUpdate_SymlinkedRootDisposedBeforeDeploy(t *testing.T) {
+	external := t.TempDir() // OUTSIDE the fixture project
+	sentinel := filepath.Join(external, "canary.txt")
+	if err := os.WriteFile(sentinel, []byte("untouched\n"), 0o644); err != nil {
+		t.Fatalf("sentinel: %v", err)
+	}
+	root := newClassifyFixture(t, map[string]string{})
+	// .claude/rules/moai is a symlink to the external directory.
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "rules"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.Symlink(external, filepath.Join(root, ".claude", "rules", "moai")); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	carried := map[string]string{
+		".claude/rules/moai/update-note.md": "# template render\n",
+	}
+	tmplFS := recTmplFS(carried)
+
+	recRunUpdate(t, root, tmplFS, renderWith(carried), nil, carried)
+
+	// The path is no longer a link (the deploy recreated a real directory in
+	// its place) — and the external target was never written through.
+	info, err := os.Lstat(filepath.Join(root, ".claude", "rules", "moai"))
+	if err != nil {
+		t.Fatalf("post-deploy root missing: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		t.Errorf("symlinked root survived the reconcile — the deploy would write through it")
+	}
+	data, err := os.ReadFile(sentinel)
+	if err != nil {
+		t.Fatalf("external sentinel unreadable: %v", err)
+	}
+	if string(data) != "untouched\n" {
+		t.Errorf("external sentinel polluted: %q — deploy wrote through the link", data)
+	}
+}
+
+// TestUpdate_ArchiveRefusesSymlinkDestination — card t1547 review finding 4:
+// an archive destination on (or under) a symlink is refused before any
+// write, so the archive copy can neither pollute an external file nor strip
+// the operator's file after a hijacked copy.
+func TestUpdate_ArchiveRefusesSymlinkDestination(t *testing.T) {
+	external := t.TempDir() // outside the fixture project
+	sentinelPath := filepath.Join(external, "sentinel.txt")
+	const sentinel = "external file — must stay byte-identical\n"
+	if err := os.WriteFile(sentinelPath, []byte(sentinel), 0o644); err != nil {
+		t.Fatalf("sentinel: %v", err)
+	}
+	const rel = ".claude/rules/moai/old-rule.md"
+	root := newClassifyFixture(t, map[string]string{rel: "stale content\n"})
+	// Stale requires manifest evidence: track the file as prior-template-
+	// carried so the classifier routes it to the archive step at all.
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	if err := mgr.Track(rel, manifest.TemplateManaged, ""); err != nil {
+		t.Fatalf("track: %v", err)
+	}
+	// .moai/archive/files/update-migration is a symlink to the external dir:
+	// the archive copy would land outside the project.
+	archiveAbs := filepath.Join(root, filepath.FromSlash(ReconcileArchiveFilesRoot()))
+	if err := os.MkdirAll(filepath.Dir(archiveAbs), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.Symlink(external, archiveAbs); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	carried := map[string]string{".claude/rules/moai/update-note.md": "render\n"}
+
+	summary, _, err := ReconcileManagedPaths(root, io.Discard, recTmplFS(carried), renderWith(carried), mgr.Manifest(), ReconcileOptions{})
+	if err == nil {
+		t.Fatalf("archive through a symlinked destination must be refused (summary: %+v)", summary)
+	}
+	// The operator's file is still in place — no hijacked write, no removal.
+	if _, statErr := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); statErr != nil {
+		t.Errorf("stale file vanished despite the refused archive: %v", statErr)
+	}
+	// The external sentinel is byte-identical.
+	data, readErr := os.ReadFile(sentinelPath)
+	if readErr != nil || string(data) != sentinel {
+		t.Errorf("external sentinel polluted (%q, err=%v) — the archive write escaped the project", data, readErr)
+	}
+}
+
+// TestUpdate_ArchiveRunScopedNoOverwrite — card t1547 review finding 5: a
+// second update over the same fixture must not overwrite the first run's
+// recovery copy — each run's archive lives under its own timestamp scope.
+func TestUpdate_ArchiveRunScopedNoOverwrite(t *testing.T) {
+	const rel = ".claude/rules/moai/old-rule.md"
+	carried := map[string]string{".claude/rules/moai/update-note.md": "render\n"}
+	tmplFS := recTmplFS(carried)
+
+	// Run 1: stale v1 content archived.
+	root := newClassifyFixture(t, map[string]string{rel: "stale v1\n"})
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	if err := mgr.Track(rel, manifest.TemplateManaged, ""); err != nil {
+		t.Fatalf("track: %v", err)
+	}
+	recRunUpdate(t, root, tmplFS, renderWith(carried), mgr.Manifest(), carried)
+
+	// Run 2: a NEW stale file with different content is archived; the
+	// run-1 copy must survive byte-identical.
+	const rel2 = ".claude/rules/moai/old-rule-2.md"
+	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(rel2)), []byte("stale v2\n"), 0o644); err != nil {
+		t.Fatalf("seed run-2 stale file: %v", err)
+	}
+	if err := mgr.Track(rel2, manifest.TemplateManaged, ""); err != nil {
+		t.Fatalf("track 2: %v", err)
+	}
+	recRunUpdate(t, root, tmplFS, renderWith(carried), mgr.Manifest(), carried)
+
+	firstCopy := filepath.Join(root, filepath.FromSlash(ReconcileArchiveFilesRoot()), "*", filepath.FromSlash(rel))
+	matches, err := filepath.Glob(firstCopy)
+	if err != nil || len(matches) != 1 {
+		t.Fatalf("run-1 archive copies = %v (err=%v), want exactly 1 untouched", matches, err)
+	}
+	data, err := os.ReadFile(matches[0])
+	if err != nil || string(data) != "stale v1\n" {
+		t.Errorf("run-1 archive copy overwritten or altered: %q (err=%v)", data, err)
+	}
+	secondCopy := filepath.Join(root, filepath.FromSlash(ReconcileArchiveFilesRoot()), "*", filepath.FromSlash(rel2))
+	matches2, err := filepath.Glob(secondCopy)
+	if err != nil || len(matches2) != 1 {
+		t.Fatalf("run-2 archive copies = %v (err=%v), want exactly 1", matches2, err)
+	}
+}
+
+// TestUpdate_ExcludedPathsNotPending — card t1547 review finding 2: paths
+// another update-flow step already reconciles (the config sections restore,
+// the mergeable-file merge) are never captured for the merge phase, so the
+// phase cannot diff the operator's pre-deploy bytes against the other step's
+// merged output and revert its delivered template updates.
+func TestUpdate_ExcludedPathsNotPending(t *testing.T) {
+	const rel = ".moai/config/sections/git-strategy.yaml"
+	root := newClassifyFixture(t, map[string]string{
+		rel: "git_strategy:\n  worktree_base_branch: develop\n",
+	})
+	carried := map[string]string{rel: "git_strategy:\n  worktree_base_branch: \"\"\n"}
+	tmplFS := recTmplFS(carried)
+
+	_, pending, err := ReconcileManagedPaths(root, io.Discard, tmplFS, renderWith(carried), nil, ReconcileOptions{
+		// The production exclude shape (the cli wiring composes it with the
+		// mergeable-file set): restore-handled config sections are never
+		// captured for reprocessing.
+		Exclude: func(rel string) bool { return strings.HasPrefix(rel, ".moai/config/sections/") },
+	})
+	if err != nil {
+		t.Fatalf("ReconcileManagedPaths: %v", err)
+	}
+	for _, p := range pending {
+		if p.RelPath == rel {
+			t.Errorf("restore-handled path %s captured for reprocessing: %+v", rel, pending)
+		}
 	}
 }

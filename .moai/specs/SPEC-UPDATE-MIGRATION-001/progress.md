@@ -117,6 +117,54 @@ execute. The RED-for-the-right-reason check: both failures name the exact hazard
 the criterion asserts (file destroyed / operator VALUES reverted), not an unrelated
 pre-existing breakage.
 
+### Card-scope review findings (leader relay, 4 P1 + 2 P2) — reproduction and repair
+
+Each finding was reproduced in this session before repair (VCI §1: a codex claim is
+a hypothesis until measured). All six verified against this tree; regression tests
+added for each.
+
+1. **P1 classifier misroute (reconcile_classify.go)** — REPRODUCED: a pristine
+   prior-render file (healthy manifest record, hash matches disk) whose NEW render
+   differs classified `user-modified`; with no merge base the conflict disposition
+   then reverted the template's own update. REPAIR: the template-owned decision now
+   reads the TRACKED state (REQ-UPM-001's own wording) — healthy record + hash match
+   → template-owned regardless of the new render. Test: `TestClassifyHealthyRecordPristineContentRefreshes`.
+   The failing `TestUpdateForce_TemplateChangedKeyStillPropagates` family is green again.
+2. **P1 double processing (update_template_sync.go)** — REPRODUCED (same failing
+   family): restore-merged section files and the mergeable set were re-captured into
+   `reconPending`; the merge phase then diffed the operator's pre-deploy bytes
+   against the OTHER step's output and could revert its delivered updates. REPAIR:
+   `ReconcileOptions.Exclude` — the cli wiring excludes `.moai/config/sections/*`
+   (restore-handled) and the `collectMergeableFiles` set (mergeable-handled). Tests:
+   `TestUpdate_ExcludedPathsNotPending` + the green YAML propagation family.
+3. **P1 symlink regression (reconcile.go)** — REPRODUCED: a symlinked managed root
+   recorded-but-left let the deploy write THROUGH the link to an external directory
+   (the wholesale clean this replaces used to remove link entries). REPAIR:
+   `deploy.DisposeSymlinks` applies the existing link-dedicated dispositions to the
+   classifier's recorded links BEFORE the deploy; the reconcile calls it as a
+   destructive step inside the guard window. Test: `TestUpdate_SymlinkedRootDisposedBeforeDeploy`
+   (external sentinel byte-identical, link removed, deploy writes a real directory).
+4. **P1 archive escape (reconcile.go)** — REPRODUCED shape: an archive destination
+   under a symlink would route the copy outside the project and then remove the
+   operator's file. REPAIR: `ensureNoSymlinkPath` Lstats every path component from
+   the project root to the destination and refuses before any write; the stale file
+   stays in place. Test: `TestUpdate_ArchiveRefusesSymlinkDestination`.
+5. **P2 archive overwrite across runs** — REPRODUCED by construction: the archive
+   root was run-invariant, so a re-update overwrote the previous recovery copy.
+   REPAIR: run-scoped archive root `<tag>/<timestamp>/<rel>`. Test:
+   `TestUpdate_ArchiveRunScopedNoOverwrite` (run-1 copy survives run-2 byte-identical).
+6. **P2 outcome accounting (update_template_sync.go)** — REPRODUCED: the outcome
+   note still counted the whole pre-clean snapshot as removals on the default path,
+   reporting preserved files as deleted. REPAIR: the default path's removal
+   accounting reads the reconciliation's actual dispositions
+   (`len(ArchivedRemoved)`; RemovedLocalOnly stays 0 — every removal carries a
+   recovery copy); the wholesale branches keep the t40 accounting.
+
+Environment note: `TestGuardBypassMutant_ObserveHomePollution` reads the lane
+factory env; from this lane session it false-reds on `MOAI_FACTORY_WORKER=lane-11`
+(the t1350 class). With the env scrubbed the test passes — the red is session
+environment, not code.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
