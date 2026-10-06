@@ -943,29 +943,37 @@ func enterCodexRelaunchJoin(root string, entry factoryFlagParse, timing *factory
 	return enterFactoryLaneRun(root, entry.RunID, entry.Lead, timing)
 }
 
-// @MX:NOTE: the supervising loop stays the parent (design.md §6): lease the
-// next card through the F1 machinery on the parent checkout, ensure its
-// worktree, start ONE interactive Codex child there, wait, repeat. The stop
-// condition is `next`'s no-card answer — which the REQ-SD-025 merge-ready
-// skip rule feeds, so a card the Codex harness cannot advance never
-// livelocks the loop. The child learns its card through MOAI_KANBAN_CARD
-// (REQ-SD-019). The launcher stays the parent across every card on both
-// doors: the managed path (SPEC-FACTORY-MANAGED-CARD-CHILD-001) owns the
-// App Server child, and the direct door starts the child with
-// codexStartAndWait whenever the card environment is present (card t1488,
-// codex_direct_posix.go) instead of replacing the launcher process.
+// codexLaneAutoPrompt is the initial directive of the `-l` lane session (card
+// t1554): the session consumes the queue through the unified `moai todo
+// --auto` engine — the one card-consumption path since the boot auto-lease
+// loop's removal. The positional prompt is the Codex CLI's own channel for an
+// initial directive (`codex [OPTIONS] [PROMPT]`), and `-l` takes no operator
+// tail, so the prompt is always ours.
+const codexLaneAutoPrompt = "Run `moai todo --auto` to consume the backlog queue: " +
+	"the cycle ranks the queued candidates, leases the top card through the factory lease edge, " +
+	"dispatches one isolated worker per card, judges completion on the disk evidence, and continues to the next card."
+
+// @MX:NOTE: card t1554 removed the boot auto-lease loop — lane boot is not
+// queue consumption. The launcher stamps the lane environment (the shared
+// join, the atomic label claim, the role/backend markers) and starts ONE
+// interactive Codex session in the parent checkout; that session consumes the
+// queue through `moai todo --auto`, which carries REQ-SD-003's
+// continue-with-next and the REQ-SD-011 worktree step. The launcher execs
+// into the session through the direct door (no card environment, so
+// defaultCodexDirectLaunch replaces the process — the same shape as a plain
+// `codex` launch, and the lane claim's pid anchor stays valid).
 // @MX:SPEC: SPEC-FACTORY-SELF-DISPATCH-001
 func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool) error {
-	// The loop drives the F1 lease machinery itself, so it inherits the
-	// `next` verb's own precondition: the parent checkout (REQ-SD-010).
+	// The lane session leases through `moai todo --auto` from the parent
+	// checkout — the lease machinery's own precondition (REQ-SD-010).
 	if err := factoryAssertParentCheckout(resolveProjectDir()); err != nil {
 		return err
 	}
-	// Debug mode (SPEC-CODEX-DEBUG-MODE-001): the relaunch loop traces its
-	// own pre-exec steps — binary resolution, run resolution, the lane claim
-	// with its claimed label — through the same collector, then dumps once
-	// before the first session handoff. Without debug the collector stays
-	// nil and nothing changes.
+	// Debug mode (SPEC-CODEX-DEBUG-MODE-001): the lane launch traces its own
+	// pre-exec steps — binary resolution, run resolution, the lane claim with
+	// its claimed label — through the same collector, then dumps once before
+	// the session handoff. Without debug the collector stays nil and nothing
+	// changes.
 	var launchTiming *factoryLaunchTiming
 	if debug {
 		launchTiming = &factoryLaunchTiming{debug: true}
@@ -1006,111 +1014,39 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 	if debug {
 		launchTiming.debugDump(cmd.ErrOrStderr())
 	}
-	// The stamps arm the loop's own next calls (lane admission, the
-	// merge-ready skip) and identify the lane; the backend value rides the
-	// same export the cc/glm launches use (REQ-SD-002's stamp set, gpt). The
-	// factory card verbs (next/stage/complete) and the factory notices read the
-	// lane label from the lane-worker marker alone (REQ-RNC-011's kept name), and
-	// the child environment carries the same marker.
+	// The stamps identify the lane to the session it starts; the backend
+	// value rides the same export the cc/glm launches use (REQ-SD-002's stamp
+	// set, gpt). The factory card verbs (next/stage/complete) and the factory
+	// notices read the lane label from the lane-worker marker alone
+	// (REQ-RNC-011's kept name).
 	restoreLane := enterFactoryLaneMode(label, 0, "", config.FactoryDispatchAuto)
 	defer restoreLane()
 	restoreBackend := exportFactoryLaunchFacts("", factory.BackendGPT)
 	defer restoreBackend()
 
-	// The managed card children of this loop share one operator-input pump,
-	// built when the first of them asks for input and released here.
-	defer endManagedLanePump()
-
-	ctx := cmd.Context()
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	for {
-		card, leased, err := factoryNextLeaseOnce(ctx, root, runID, label)
-		if err != nil {
-			return fmt.Errorf("codex lane: %w", err)
-		}
-		if !leased {
-			return nil // no card available: the loop's stop condition (REQ-SD-003)
-		}
-		wt, _, err := factoryEnsureCardWorktree(ctx, root, runID, card, label, cmd.ErrOrStderr())
-		if err != nil {
-			return fmt.Errorf("codex lane: %w", err)
-		}
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s stage=%s worktree=%s\n", card.CardID, dash(card.Stage), filepath.Base(wt))
-		if err := launchCodexCardSession(binaryPath, wt, label, card.CardID, runID, debug); err != nil {
-			// On that session's exit, continue with the next card
-			// (REQ-SD-003): a child that failed to start or exited non-zero
-			// does not stop the loop; its card stays leased until expiry.
-			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "codex lane: card %s session: %v\n", card.CardID, err)
-		}
-	}
-}
-
-// launchCodexCardSession starts ONE interactive Codex session whose working
-// directory is the card worktree (design.md D1): `codex -C <worktree>`, the
-// card worktree's local instruction files attached. On the managed path
-// the launcher stays the parent and waits; on the direct door the card
-// environment makes the default implementation start the child and wait
-// (codexStartAndWait, card t1488), so the launcher stays the parent there too
-// (design.md §6). Under debug mode the child environment carries the
-// RUST_LOG linkage (REQ-010/REQ-011).
-func launchCodexCardSession(binaryPath, wt, label, cardID, runID string, debug bool) error {
-	localArgs, err := codexLocalDeveloperInstructionArgs(wt)
+	localArgs, err := codexLocalDeveloperInstructionArgs(root)
 	if err != nil {
 		return fmt.Errorf("load Codex local instructions: %w", err)
 	}
-	args := append([]string{"-C", wt}, localArgs...)
-	for _, arg := range args {
-		if strings.HasPrefix(arg, "developer_instructions=") {
-			if err := checkCodexInstructionSize(len(arg), "lane instruction token"); err != nil {
-				return err
-			}
-		}
+	args := append([]string{"-C", root}, localArgs...)
+	args = append(args, codexLaneAutoPrompt)
+	env := append(codexChildEnv(),
+		config.EnvFactoryRole+"="+config.FactoryRoleLane,
+		config.EnvMoaiFactoryWorker+"="+label,
+		config.EnvFactoryBackend+"="+factory.BackendGPT,
+		config.EnvFactoryRunID+"="+runID,
+	)
+	if debug {
+		env = codexApplyDebugEnv(env)
 	}
-	// SPEC-FACTORY-MANAGED-CARD-CHILD-001: the explicit managed opt-in plus the
-	// factory stamps (the same two predicates the plain divert reads) send the
-	// card child to the managed Codex owner, started in the card worktree. The
-	// owner refuses -C, so the argv carries only the local instruction pair; the
-	// run id the owner requires rides the child environment. The launcher stays
-	// the parent and the lane claim holder: no anchor lock, no claim rewrite.
-	// Without the switch the direct door below is reached exactly as before.
-	if factoryManagedRequested(os.Environ()) && factoryLaunchEnabled(os.Environ()) {
-		env := append(codexCardLaunchEnv(label, cardID), config.EnvFactoryRunID+"="+runID)
-		return managedCodexCardLaunchFunc(binaryPath, append([]string{binaryPath}, localArgs...), env, wt)
-	}
-	req := codexLaunchRequest{Program: binaryPath, Args: args, Dir: wt, Debug: debug}
+	req := codexLaunchRequest{Program: binaryPath, Args: args, Dir: root, Debug: debug}
 	c := exec.Command(req.Program, req.Args...)
 	c.Dir = req.Dir
-	c.Env = codexCardLaunchEnv(label, cardID)
-	if debug {
-		c.Env = codexApplyDebugEnv(c.Env)
-	}
+	c.Env = env
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	return codexDirectLaunchFn(c)
-}
-
-// codexCardLaunchEnv is the per-card child environment (design.md §4): the
-// eleven-key scrub of codexChildEnv, then the entries the owned-card session
-// reads — the role marker, the lane label (the lane-worker marker, the one carrier
-// the factory card verbs and the factory notices read), the Codex backend
-// value, and the leased card's id in the card-identifier variable
-// (REQ-SD-003, -019). Appending after the scrub
-// is what keeps them authoritative: the inherited environment lost every
-// lane key before the lane values land. The factory fan-out signal
-// (MOAI_FACTORY_WORKERS) is deliberately not carried — it feeds the Stop-hook
-// block cap, and a Codex lane has no moai hook peer (REQ-CFR-022).
-// @MX:SPEC: SPEC-FACTORY-SELF-DISPATCH-001
-func codexCardLaunchEnv(label, cardID string) []string {
-	env := codexChildEnv()
-	return append(env,
-		config.EnvFactoryRole+"="+config.FactoryRoleLane,
-		config.EnvMoaiFactoryWorker+"="+label,
-		config.EnvFactoryBackend+"="+factory.BackendGPT,
-		config.EnvFactoryCard+"="+cardID,
-	)
 }
 
 // codexUsageFailure prints the usage constant to stderr and fails with rc 1.
