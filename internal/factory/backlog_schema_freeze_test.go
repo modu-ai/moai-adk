@@ -159,7 +159,11 @@ func assertBacklogSchemaFrozen(t *testing.T) {
 		// ensure path appended after the classification column, never
 		// backlogItemsTableColumns.
 		"picked_by:TEXT:0:NULL " +
-		"lease_expires_at:TEXT:0:NULL"
+		"lease_expires_at:TEXT:0:NULL " +
+		// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-007: the issuance attributes
+		// ride the ensure path appended after the lease columns, same
+		// discipline.
+		"issuance:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "items"); got != wantItemsColumns {
 		t.Errorf("items column tuples =\n %s\nwant\n %s", got, wantItemsColumns)
 	}
@@ -180,9 +184,43 @@ func assertBacklogSchemaFrozen(t *testing.T) {
 		// The archive mirrors the lease columns (REQ-TCL-001): an archived
 		// card keeps the holder and expiry it held when it left the queue.
 		"picked_by:TEXT:0:NULL " +
-		"lease_expires_at:TEXT:0:NULL"
+		"lease_expires_at:TEXT:0:NULL " +
+		// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-007: the archive mirrors the
+		// issuance column — an archived card keeps the attributes it held
+		// when it left the queue.
+		"issuance:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "archived_items"); got != wantArchivedItemsColumns {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, wantArchivedItemsColumns)
+	}
+
+	// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-010: the finding-bearing tables
+	// were NOT frozen before this SPEC (no prior tuple pin existed), and the
+	// disposition column is the first additive column they carry — freeze
+	// them now so no further column arrives silently.
+	const wantFindingsColumns = "subject_id:TEXT:1:NULL " +
+		"related_id:TEXT:1:NULL " +
+		"relation:TEXT:1:NULL " +
+		"source:TEXT:1:NULL " +
+		"score:REAL:1:NULL " +
+		"note:TEXT:1:'''''' " +
+		"at:TEXT:1:NULL " +
+		"disposition:TEXT:0:NULL"
+	if got := columnTupleSequence(t, eng, "findings"); got != wantFindingsColumns {
+		t.Errorf("findings column tuples =\n %s\nwant\n %s", got, wantFindingsColumns)
+	}
+
+	const wantArchivedFindingsColumns = "archive_seq:INTEGER:1:NULL " +
+		"position:INTEGER:1:NULL " +
+		"subject_id:TEXT:1:NULL " +
+		"related_id:TEXT:1:NULL " +
+		"relation:TEXT:1:NULL " +
+		"source:TEXT:1:NULL " +
+		"score:REAL:1:NULL " +
+		"note:TEXT:1:'''''' " +
+		"at:TEXT:1:NULL " +
+		"disposition:TEXT:0:NULL"
+	if got := columnTupleSequence(t, eng, "archived_findings"); got != wantArchivedFindingsColumns {
+		t.Errorf("archived_findings column tuples =\n %s\nwant\n %s", got, wantArchivedFindingsColumns)
 	}
 
 	// schema_version is stamped at the current "2" — an older binary refuses

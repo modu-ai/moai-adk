@@ -18,13 +18,24 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 )
+
+// recentRFC3339 returns an RFC3339 timestamp minsAgo minutes in the past.
+// Fixtures use now-relative dates, never fixed dates: the classifier applies
+// the retention window at the aggregation input
+// (SPEC-HARNESS-DETACHED-PRUNE-001 REQ-DP-009), so a fixed past date ages out
+// of the DefaultRetentionDays window and the seeded events stop aggregating.
+func recentRFC3339(minsAgo int) string {
+	return time.Now().UTC().Add(-time.Duration(minsAgo) * time.Minute).Format(time.RFC3339)
+}
 
 // writeUsageLog writes a usage-log.jsonl file under dir/.moai/harness/.
 // Each line in lines is appended verbatim as a JSONL entry.
@@ -53,7 +64,7 @@ func TestRunHarnessClassify_NoOpWhenLearningDisabled(t *testing.T) {
 
 	// Seed usage-log so the test would otherwise produce promotions.
 	writeUsageLog(t, dir, []string{
-		`{"timestamp":"2026-05-24T00:00:00Z","event_type":"agent_invocation","subject":"Bash","context_hash":"","schema_version":"v1"}`,
+		fmt.Sprintf(`{"timestamp":%q,"event_type":"agent_invocation","subject":"Bash","context_hash":"","schema_version":"v1"}`, recentRFC3339(180)),
 	})
 
 	t.Chdir(dir)
@@ -94,9 +105,9 @@ func TestRunHarnessClassify_WritesPromotionsOnHappyPath(t *testing.T) {
 	// context_hash) tuple so the aggregator collapses them into a single
 	// pattern. Net unique patterns = 2.
 	writeUsageLog(t, dir, []string{
-		`{"timestamp":"2026-05-24T00:00:00Z","event_type":"agent_invocation","subject":"Bash","context_hash":"","schema_version":"v1"}`,
-		`{"timestamp":"2026-05-24T00:01:00Z","event_type":"agent_invocation","subject":"Bash","context_hash":"","schema_version":"v1"}`,
-		`{"timestamp":"2026-05-24T00:02:00Z","event_type":"agent_invocation","subject":"Edit","context_hash":"","schema_version":"v1"}`,
+		fmt.Sprintf(`{"timestamp":%q,"event_type":"agent_invocation","subject":"Bash","context_hash":"","schema_version":"v1"}`, recentRFC3339(180)),
+		fmt.Sprintf(`{"timestamp":%q,"event_type":"agent_invocation","subject":"Bash","context_hash":"","schema_version":"v1"}`, recentRFC3339(179)),
+		fmt.Sprintf(`{"timestamp":%q,"event_type":"agent_invocation","subject":"Edit","context_hash":"","schema_version":"v1"}`, recentRFC3339(178)),
 	})
 
 	t.Chdir(dir)
@@ -151,7 +162,7 @@ func TestRunHarnessClassify_CorruptEntryFailOpen(t *testing.T) {
 	// produce a promotion; the corrupt entry is silently skipped per
 	// AggregatePatterns scanner semantics.
 	writeUsageLog(t, dir, []string{
-		`{"timestamp":"2026-05-24T00:00:00Z","event_type":"agent_invocation","subject":"Bash","context_hash":"","schema_version":"v1"}`,
+		fmt.Sprintf(`{"timestamp":%q,"event_type":"agent_invocation","subject":"Bash","context_hash":"","schema_version":"v1"}`, recentRFC3339(180)),
 		`{this is not valid json`,
 	})
 

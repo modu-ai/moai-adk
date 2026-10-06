@@ -28,6 +28,7 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -306,9 +307,9 @@ mentions an id later in the sentence still falls through, and
 	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoUndoneCmd(), newTodoNextCmd(),
 		newTodoClaimCmd(),
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
-		newTodoDropCmd(), newTodoUndropCmd(),
+		newTodoDropCmd(), newTodoUndropCmd(), newTodoMergeCmd(),
 		newTodoHoldCmd(), newTodoUnholdCmd(),
-		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
+		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(), newTodoTraceCmd(),
 		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd(),
 		newTodoShowCmd(), newTodoTriageCmd())
 	cmd.Flags().BoolVar(&todoAutoFlag, "auto", false,
@@ -352,6 +353,7 @@ var todoLaneReadOnlyVerbs = map[string]bool{
 	"why":     true,
 	"pr":      true,
 	"triage":  true,
+	"trace":   true,
 }
 
 // todoTreeRoot returns the todo tree's own root for run: the nearest
@@ -637,10 +639,22 @@ func todoVerbNames(cmd *cobra.Command) []string {
 type todoAddScan struct {
 	pick          bool
 	force         bool
+	dryRun        bool
 	classFile     string
 	haveClassFile bool
 	help          bool
 	text          string
+	// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-013 (add clause): the issuance
+	// flags. The have* markers turn a repeated flag into a named refusal —
+	// a silent overwrite would bury the first judgment.
+	origin        string
+	haveOrigin    bool
+	parent        string
+	haveParent    bool
+	sizeLines     string
+	haveSizeLines bool
+	files         string
+	haveFiles     bool
 }
 
 // scanTodoAddArgs separates the known flags from the card text in the raw
@@ -674,8 +688,66 @@ func scanTodoAddArgs(raw []string) (*todoAddScan, error) {
 			switch name {
 			case "--pick":
 				scan.pick = true
+			case "--dry-run":
+				scan.dryRun = true
 			case "--force":
 				scan.force = true
+			case "--origin":
+				if scan.haveOrigin {
+					return nil, fmt.Errorf("flag repeated: %s", name)
+				}
+				scan.haveOrigin = true
+				if hasValue {
+					scan.origin = value
+				} else {
+					i++
+					if i >= len(raw) {
+						return nil, fmt.Errorf("flag needs an argument: %s", name)
+					}
+					scan.origin = raw[i]
+				}
+			case "--parent":
+				if scan.haveParent {
+					return nil, fmt.Errorf("flag repeated: %s", name)
+				}
+				scan.haveParent = true
+				if hasValue {
+					scan.parent = value
+				} else {
+					i++
+					if i >= len(raw) {
+						return nil, fmt.Errorf("flag needs an argument: %s", name)
+					}
+					scan.parent = raw[i]
+				}
+			case "--size-lines":
+				if scan.haveSizeLines {
+					return nil, fmt.Errorf("flag repeated: %s", name)
+				}
+				scan.haveSizeLines = true
+				if hasValue {
+					scan.sizeLines = value
+				} else {
+					i++
+					if i >= len(raw) {
+						return nil, fmt.Errorf("flag needs an argument: %s", name)
+					}
+					scan.sizeLines = raw[i]
+				}
+			case "--files":
+				if scan.haveFiles {
+					return nil, fmt.Errorf("flag repeated: %s", name)
+				}
+				scan.haveFiles = true
+				if hasValue {
+					scan.files = value
+				} else {
+					i++
+					if i >= len(raw) {
+						return nil, fmt.Errorf("flag needs an argument: %s", name)
+					}
+					scan.files = raw[i]
+				}
 			case "--classification-file":
 				scan.haveClassFile = true
 				if hasValue {
@@ -746,6 +818,13 @@ func newTodoAddCmd() *cobra.Command {
 			if strings.TrimSpace(text) == "" {
 				return fmt.Errorf("todo add: text must be non-empty")
 			}
+			// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-004: --dry-run prints the
+			// same presentation and writes nothing — the queue file stays
+			// byte-identical, no id is consumed, and an exact duplicate is
+			// reported as a would-be refusal instead of refusing.
+			if scan.dryRun {
+				return runTodoAddDryRun(cmd, text)
+			}
 			// REQ-TCD-004: the supplied classification is validated BEFORE
 			// the locked write — an out-of-set value or the jev identity is
 			// a usage refusal with nothing written.
@@ -766,14 +845,48 @@ func newTodoAddCmd() *cobra.Command {
 				}
 				dec = selected
 			}
-			if scan.pick {
-				return runTodoAddPick(cmd, newTodoStore(), text, scan.force, dec)
+			// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-013: the issuance flags
+			// resolve to the attribute record the locked write validates and
+			// attaches; a flag-less surface passes nil. The resolution sits
+			// BEFORE the pick branch (card t1454 card-review r2 finding 7):
+			// `--pick` carries the issuance flags too — an early return here
+			// left them unvalidated and unsaved.
+			var iss *factory.BacklogIssuance
+			if scan.haveOrigin || scan.haveParent || scan.haveSizeLines || scan.haveFiles {
+				iss = &factory.BacklogIssuance{Origin: scan.origin, SpawnedBy: scan.parent}
+				if scan.haveSizeLines {
+					n, parseErr := strconv.Atoi(strings.TrimSpace(scan.sizeLines))
+					if parseErr != nil {
+						return fmt.Errorf("todo add: --size-lines must be an integer (got %q)", scan.sizeLines)
+					}
+					iss.SizeLines = &n
+				}
+				if scan.haveFiles {
+					for _, f := range strings.Split(scan.files, ",") {
+						if f = strings.TrimSpace(f); f != "" {
+							iss.Files = append(iss.Files, f)
+						}
+					}
+				}
 			}
-			return runTodoAddAppend(cmd, text, scan.force, dec)
+			if scan.pick {
+				return runTodoAddPick(cmd, newTodoStore(), text, scan.force, dec, iss)
+			}
+			return runTodoAddAppendIss(cmd, text, scan.force, dec, iss)
 		},
 	}
 	cmd.Flags().BoolVar(new(bool), "pick", false,
 		"Append AND mark picked as one locked write, printing the issued id")
+	cmd.Flags().BoolVar(new(bool), "dry-run", false,
+		"Print the issuance presentation and write nothing")
+	cmd.Flags().StringVar(new(string), "origin", "",
+		"Issuance origin (closed set: "+strings.Join(factory.IssuanceOrigins, ", ")+")")
+	cmd.Flags().StringVar(new(string), "parent", "",
+		"Card id this card was spawned from (live, dropped or archived)")
+	cmd.Flags().StringVar(new(string), "size-lines", "",
+		"Estimated product line count")
+	cmd.Flags().StringVar(new(string), "files", "",
+		"Comma-separated expected files")
 	cmd.Flags().BoolVar(new(bool), "force", false,
 		"Admit a card the analyser reads as an exact duplicate, recording that it was forced")
 	cmd.Flags().StringVar(new(string), "classification-file", "",
@@ -784,16 +897,31 @@ func newTodoAddCmd() *cobra.Command {
 // runTodoAddAppend is the plain-add body shared by `todo add <text>` and the
 // parent's natural-language fallthrough (t69): non-empty guard, locked
 // append, "<id> <position>" stdout line. `--pick` stays add-only — the
-// fallthrough path has no flags.
+// fallthrough path has no flags. The presentation renders to stderr here;
+// the MCP surface takes the returned text instead.
 func runTodoAddAppend(cmd *cobra.Command, text string, force bool, dec factory.CardDecider) error {
-	return runTodoAddAppendRoot(resolveTodoQueueRoot(), cmd, text, force, dec)
+	return runTodoAddAppendIss(cmd, text, force, dec, nil)
+}
+
+// runTodoAddAppendIss is the issuance-carrying form: the add surface with
+// flags passes the resolved attributes; the fallthrough and MCP surfaces
+// run the nil form.
+func runTodoAddAppendIss(cmd *cobra.Command, text string, force bool, dec factory.CardDecider, iss *factory.BacklogIssuance) error {
+	presentation, err := runTodoAddAppendRoot(resolveTodoQueueRoot(), cmd, text, force, dec, iss)
+	if err == nil && presentation != "" {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), presentation)
+	}
+	return err
 }
 
 // runTodoAddAppendRoot is runTodoAddAppend anchored at an explicit root —
 // the shape the MCP todo_add tool calls (REQ-SD-024), so both surfaces run
 // one implementation. The decider argument is the classification seam this
-// invocation resolves; the MCP surface passes the package default.
-func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool, dec factory.CardDecider) error {
+// invocation resolves; the MCP surface passes the package default. It
+// returns the rendered issuance presentation (SPEC-TODO-CARD-ISSUANCE-001
+// REQ-TCI-002/005): the CLI prints it to stderr, the MCP tool appends it
+// after the result's first line; "" means nothing fired.
+func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool, dec factory.CardDecider, iss *factory.BacklogIssuance) (string, error) {
 	if dec == nil {
 		// SPEC-TCD-LLM-DECIDER-001 REQ-TLD-002: the MCP todo_add surface
 		// resolves the same standing decider the CLI path resolves, so the
@@ -801,17 +929,22 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 		// one nil branch.
 		selected, err := todoDeciderFromEnv()
 		if err != nil {
-			return err
+			return "", err
 		}
 		dec = selected
 	}
+	// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-003: the presentation is computed
+	// BEFORE the queue lock is acquired (queue snapshot, completed-SPEC
+	// directory read, lane probes — all outside the lock) and rendered after
+	// the admission is decided; a refusal still carries it.
+	presentation := todoIssuancePresentation(root, text)
 	// SPEC-TCD-LLM-DECIDER-001 REQ-TLD-005: the LLM judgment is computed
 	// BEFORE the queue lock is acquired and attached inside the same locked
 	// write as a static carrier — only the computation moved out of the
 	// lock, never the attachment.
 	dec = todoPreClassifyLLM(dec, text, cmd.ErrOrStderr())
 	if strings.TrimSpace(text) == "" {
-		return fmt.Errorf("todo add: text must be non-empty")
+		return "", fmt.Errorf("todo add: text must be non-empty")
 	}
 	// Card t1313 (GitHub #1732): the WRITE verb discloses the store
 	// DIVERGENCE the read verbs disclose (SPEC-TODO-STALE-STORE-001
@@ -824,16 +957,25 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 	// stderr; stdout stays the bare "id position" machine line.
 	if err := discloseStaleLocalStores(cmd.ErrOrStderr(), "add",
 		factory.InspectStaleLocalStores(todoQueueRootForDisclosure())); err != nil {
-		return err
+		return "", err
 	}
 	var item factory.BacklogItem
 	var pos int
 	err := todoStoreAt(root).Mutate(func(rec *factory.BacklogRecord) error {
+		// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-013: the issuance validations
+		// run BEFORE the append — nothing is written and no id is consumed
+		// on a refusal. Parent existence reads the record the same locked
+		// write will append into: live, dropped AND archived all count
+		// (a follow-up of a closed card is the normal flow).
+		if err := validateIssuanceInLock(rec, iss); err != nil {
+			return err
+		}
 		var mutErr error
 		item, pos, mutErr = appendAnalyzedCard(rec, text, factory.BacklogStateQueued, force)
 		if mutErr != nil {
 			return mutErr
 		}
+		attachIssuance(rec, item.ID, iss)
 		// REQ-TCD-001: the classification is resolved INSIDE the same locked
 		// write — no card becomes visible to a machine selector unclassified,
 		// and no two-step window exists (plan G1).
@@ -845,10 +987,84 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 		return nil
 	})
 	if err != nil {
+		if presText := renderIssuanceText(presentation); presText != "" {
+			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), presText)
+		}
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+		return "", err
+	}
+	presText := renderIssuanceText(presentation)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %d\n", item.ID, pos)
+	return presText, nil
+}
+
+// validateIssuanceInLock runs the issuance attribute validations inside the
+// caller's locked write (SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-013): an
+// out-of-set origin, or a parent that names no card, refuses with nothing
+// written. Parent existence reads the record the same locked write appends
+// into: live, dropped AND archived all count — a follow-up of a closed card
+// is the normal flow. Both add surfaces (append and --pick) share it.
+func validateIssuanceInLock(rec *factory.BacklogRecord, iss *factory.BacklogIssuance) error {
+	if iss == nil {
+		return nil
+	}
+	if iss.Origin != "" && !factory.IssuanceOriginValid(iss.Origin) {
+		return fmt.Errorf("todo add: --origin must be one of %s (got %q)",
+			strings.Join(factory.IssuanceOrigins, ", "), iss.Origin)
+	}
+	if iss.SpawnedBy != "" {
+		parentExists := false
+		for i := range rec.Items {
+			if rec.Items[i].ID == iss.SpawnedBy {
+				parentExists = true
+				break
+			}
+		}
+		for i := range rec.Archived {
+			if rec.Archived[i].Item.ID == iss.SpawnedBy {
+				parentExists = true
+				break
+			}
+		}
+		if !parentExists {
+			return fmt.Errorf("todo add: --parent names no card: %s", iss.SpawnedBy)
+		}
+	}
+	return nil
+}
+
+// attachIssuance records the issuance attributes on the freshly appended
+// item; a nil record attaches nothing.
+func attachIssuance(rec *factory.BacklogRecord, cardID string, iss *factory.BacklogIssuance) {
+	if iss == nil {
+		return
+	}
+	for i := range rec.Items {
+		if rec.Items[i].ID == cardID {
+			rec.Items[i].Issuance = iss
+			return
+		}
+	}
+}
+
+// runTodoAddDryRun is the `--dry-run` body (REQ-TCI-004): the same
+// presentation with the floor lifted (design §3.2 — top-3 regardless of
+// score), nothing written, and an exact duplicate reported as a would-be
+// refusal instead of refusing.
+func runTodoAddDryRun(cmd *cobra.Command, text string) error {
+	root := resolveTodoQueueRoot()
+	rec, err := todoStoreAt(root).LoadPure()
+	if err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %d\n", item.ID, pos)
+	presentation := todoIssuancePresentationFloor(root, text, 0)
+	if presText := renderIssuanceText(presentation); presText != "" {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), presText)
+	}
+	if match := factory.ClassifyCardText(text, rec.Items); match.Kind == factory.BacklogMatchExact {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "a real add would refuse: %s already holds this card\n", match.ID)
+	}
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "dry-run: nothing was written")
 	return nil
 }
 
@@ -860,8 +1076,10 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 // where a guessed id could address a concurrent session's card — the exact
 // race that mis-picked t67 on 2026-08-16. The confirmation prints the
 // issued id and the card text prefix; the caller never has to guess what
-// `--pick` just picked.
-func runTodoAddPick(cmd *cobra.Command, store *factory.BacklogStore, text string, force bool, dec factory.CardDecider) error {
+// `--pick` just picked. The issuance attributes ride the same locked write
+// and the same validations as the append path (card t1454 card-review r2
+// finding 7).
+func runTodoAddPick(cmd *cobra.Command, store *factory.BacklogStore, text string, force bool, dec factory.CardDecider, iss *factory.BacklogIssuance) error {
 	if dec == nil {
 		dec = todoCardDecider
 	}
@@ -878,11 +1096,17 @@ func runTodoAddPick(cmd *cobra.Command, store *factory.BacklogStore, text string
 	}
 	var item factory.BacklogItem
 	err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		// REQ-TCI-013: the issuance validations run BEFORE the append —
+		// nothing is written and no id is consumed on a refusal.
+		if err := validateIssuanceInLock(rec, iss); err != nil {
+			return err
+		}
 		var mutErr error
 		item, _, mutErr = appendAnalyzedCard(rec, text, factory.BacklogStatePicked, force)
 		if mutErr != nil {
 			return mutErr
 		}
+		attachIssuance(rec, item.ID, iss)
 		// REQ-TCD-001: same locked write, same seam, same sort duty.
 		todoApplyClassification(rec, item.ID, todoClassifyInLock(dec, text, cmd.ErrOrStderr()))
 		rec.SortByClassification()
@@ -1153,6 +1377,11 @@ func newTodoDoneCmd() *cobra.Command {
 			}
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
 			recordFactoryCardState(id, specID, "completed", "card.completed")
+			// The queue write is committed and the lock released: the
+			// card-close memory fold runs outside the store's mutation
+			// window (AC-MFB-008 (iv)), gated, bounded and fail-open
+			// (REQ-MFB-007).
+			foldClosedCardMemoryFn(id)
 			return nil
 		},
 	}

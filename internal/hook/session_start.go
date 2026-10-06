@@ -613,6 +613,22 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	appendAdditionalContext(out, guardLivenessAdvisory(guardLivenessRoot, h.asyncDeferredScans()))
 	clock.lap("guard_liveness_advisory")
 
+	// SPEC-MEMORY-FOLD-BUDGET-001 follow-up card REQ-MFB-011/012: the
+	// MEMORY.md budget warning, emitted without anyone asking for it.
+	//
+	// It joins the same additionalContext block through the same helper, and
+	// it sits past every source condition on purpose — startup, resume,
+	// clear and compact all reach here, which is REQ-MFB-012's whole point.
+	// Below the warn percentage, with no store, on a read error and under
+	// MOAI_MEMORY_AUDIT=0 it adds nothing (memoryBudgetAdvisory's own
+	// silence), so a healthy session never sees the line.
+	memoryBudgetRoot := input.ProjectDir
+	if memoryBudgetRoot == "" {
+		memoryBudgetRoot = input.CWD
+	}
+	appendAdditionalContext(out, memoryBudgetAdvisory(ctx, memoryBudgetRoot, h.asyncDeferredScans()))
+	clock.lap("memory_budget_advisory")
+
 	return out, nil
 }
 
@@ -1489,7 +1505,7 @@ func loadGLMKeyFromEnvFile() string {
 // The now parameter is accepted to allow deterministic testing.
 func detectAndWrapStaleMemories(projectDir string, now time.Time) string {
 	// Respect kill-switch (rollback safety — plan.md §6.2).
-	if os.Getenv("MOAI_MEMORY_AUDIT") == "0" {
+	if os.Getenv(config.EnvMemoryAudit) == "0" {
 		return ""
 	}
 

@@ -159,6 +159,13 @@ func (a *app) handleTodo(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	vm := a.shellVM(r, "todo", "Todo", "backlog queue")
+	// The relation view (REQ-TCI-023) shares the route and the read-only
+	// posture: same GET-only gate, no write, no lock — a second VIEW, not a
+	// second surface. Any other view value degrades to the plain table.
+	if q.Get("view") == "graph" {
+		a.renderPage(w, TodoGraph(vm, readTodoGraph(a.cfg.ProjectRoot)))
+		return
+	}
 	a.renderPage(w, Todo(vm, a.buildTodo(q.Get("sort"), q.Get("id"))))
 }
 

@@ -25,11 +25,11 @@ import (
 // excluded from promotion by design — seeding it would produce zero promotions.
 //
 // The timestamp is computed relative to now (NOT a hardcoded absolute date):
-// RecordExtendedEvent prunes events older than defaultRetentionDays (30) on
-// every call, so a fixed past date would age out of the retention window and
-// be archived away before classify runs, yielding zero promotions. Using a
-// recent timestamp keeps the seeded events inside the window regardless of the
-// wall-clock date the suite executes.
+// a fixed past date would age out of the DefaultRetentionDays (30) window and
+// be archived away before classify runs, yielding zero promotions (and since
+// SPEC-HARNESS-DETACHED-PRUNE-001 REQ-DP-001 the record path no longer prunes
+// at all). Using a recent timestamp keeps the seeded events inside the window
+// regardless of the wall-clock date the suite executes.
 func seedUsageLog(t *testing.T, dir string, n int) {
 	t.Helper()
 	logDir := filepath.Join(dir, ".moai", "harness")
@@ -51,6 +51,8 @@ func seedUsageLog(t *testing.T, dir string, n int) {
 // TestRunHarnessObserveStop_AutoClassifyChain verifies AC-HEP-003a: the Stop
 // handler chains the classifier, producing tier-promotions.jsonl automatically.
 func TestRunHarnessObserveStop_AutoClassifyChain(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -81,6 +83,8 @@ func TestRunHarnessObserveStop_AutoClassifyChain(t *testing.T) {
 // classify path is degraded (usage-log path blocked by a directory), the Stop
 // handler still returns nil (exit 0, non-blocking) and logs to stderr.
 func TestRunHarnessObserveStop_ClassifyFailOpen(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)

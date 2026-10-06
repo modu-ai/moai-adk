@@ -53,7 +53,7 @@ func newFactoryCommand() *cobra.Command {
 	handoff.AddCommand(newFactoryAdoptCommand())
 	factory.AddCommand(handoff)
 	factory.AddCommand(newFactoryRunsCommand(), newFactoryRelaunchCommand())
-	factory.AddCommand(newFactoryAssignCommand(), newFactoryStatusCommand(), newFactoryDecideCommand(),
+	factory.AddCommand(newFactoryAssignCommand(), newFactoryBundleCommand(), newFactoryStatusCommand(), newFactoryDecideCommand(),
 		newFactoryNextCommand(), newFactoryStageCommand(), newFactoryCompleteCommand())
 	factory.AddCommand(newFactoryMessagingCommand(), newFactoryFallbackCommand())
 	factory.AddCommand(newFactoryPickupCommand())
