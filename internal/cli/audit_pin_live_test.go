@@ -237,7 +237,10 @@ func TestAuditPinLive_GLMDifferential(t *testing.T) {
 			projectDirResolver = func() string { return lowRoot }
 		}
 		// CR #8: the reviewed tree names the pin tree explicitly.
-		me := resolveGLMAuditModelEffort(runRoot)
+		me, pinErr := resolveGLMAuditModelEffort(runRoot)
+		if pinErr != nil {
+			t.Fatalf("%s run: resolveGLMAuditModelEffort: %v", label, pinErr)
+		}
 		t.Logf("%s run: pin resolved to {%s %s}", label, me.Model, me.Effort)
 		if me.Effort != label {
 			t.Fatalf("%s run: resolver effort = %q — the pin is not being read", label, me.Effort)
@@ -318,7 +321,10 @@ func TestAuditPinLive_CodexPinConfirmation(t *testing.T) {
 	prevProj := projectDirResolver
 	projectDirResolver = func() string { return repoRoot }
 	t.Cleanup(func() { projectDirResolver = prevProj })
-	me := resolveCodexAuditModelEffort(map[string]any{"cwd": repoRoot})
+	me, pinErr := resolveCodexAuditModelEffort(map[string]any{"cwd": repoRoot})
+	if pinErr != nil {
+		t.Fatalf("resolveCodexAuditModelEffort: %v", pinErr)
+	}
 	t.Logf("audit-scoped resolution from the tracked pin: %+v", me)
 
 	tapPtr := probeInstallRunner(t)

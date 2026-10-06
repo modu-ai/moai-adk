@@ -92,7 +92,7 @@ type homeStateCensus struct {
 var liveTestGroups = map[string][]string{
 	"./internal/cli":       {"TestHomeStateDryRunNoMutation", "TestHomeStateDryRunReport", "TestHomeStateApplyCensusFailClosed", "TestHomeStateBackupBeforeWrite", "TestHomeStateRefusesDivergentTarget", "TestHomeStateApplyFaultPreservesSource", "TestHomeStateApplyPreservesSourceAndBackup", "TestHomeStateApplyIdempotentNoOp", "TestHomeStateBarrierAdmissionHaltsAllHosts", "TestHomeStateStartVsMigrateSerialized", "TestHomeStateCrashMarkerFailsClosed", "TestResumeLegacyIndeterminateOperatorRecovery", "TestProfileLeaseLifecycleAndNonExecCleanerRace", "TestCleanHomeSkipsLiveAndIndeterminateProfiles", "TestHomeStateRecoverCrashMarkerSafely", "TestHomeStateRollbackVerifiedBackup", "TestHomeStateRollbackRequiresMigrationIdentity", "TestHomeStateVerifiedLiveGateCannotBypassOrReplay"},
 	"./internal/homestate": {"TestFactoryV1ClaimedRowsUpgradeToV2", "TestResumeLatestPendingThenExpiredReclaim", "TestResumeFinishRejectsABAToken", "TestResumeInjectionCrashIsAtLeastOnce", "TestProfileLeasesAreGlobalAndPrivate", "TestProfileLeaseReconcilePIDFingerprint", "TestRuntimeCensusCountsLiveAndIgnoresProvablyDead", "TestRuntimeCensusRejectsCorruptRegistries"},
-	"./internal/kanban":    {"TestResolveTodoQueueRoot_WorktreeConvergesOnPrimary"},
+	"./internal/factory":   {"TestResolveTodoQueueRoot_WorktreeConvergesOnPrimary"},
 }
 
 var liveRaceGroups = map[string][]string{
@@ -184,7 +184,7 @@ func validateLivePreApplyWith(ctx context.Context, root string, headReader func(
 		record.Head = head
 		ledger.Checks["race:"+pkg] = record
 	}
-	if out, err := runner(ctx, root, nil, "vet", "./internal/homestate", "./internal/hook/handoff", "./internal/hook", "./internal/kanban", "./internal/cli"); err != nil {
+	if out, err := runner(ctx, root, nil, "vet", "./internal/homestate", "./internal/hook/handoff", "./internal/hook", "./internal/factory", "./internal/cli"); err != nil {
 		return nil, fmt.Errorf("vet: %w\n%s", err, out)
 	} else {
 		ledger.Checks["vet"] = newHomeStateEvidenceRecord("go vet affected packages", out, 0, head)
@@ -199,7 +199,7 @@ func validateLivePreApplyWith(ctx context.Context, root string, headReader func(
 		return nil, err
 	}
 	defer func() { _ = os.RemoveAll(compileDir) }()
-	for i, pkg := range []string{"./internal/homestate", "./internal/hook/handoff", "./internal/hook", "./internal/kanban", "./internal/cli"} {
+	for i, pkg := range []string{"./internal/homestate", "./internal/hook/handoff", "./internal/hook", "./internal/factory", "./internal/cli"} {
 		env := append(os.Environ(), "GOOS=windows", "GOARCH=amd64", "CGO_ENABLED=0")
 		if out, err := runner(ctx, root, env, "test", "-c", "-o", filepath.Join(compileDir, strconv.Itoa(i)+".test.exe"), pkg); err != nil {
 			return nil, fmt.Errorf("windows compile %s: %w\n%s", pkg, err, out)
@@ -284,7 +284,7 @@ func validateHomeStateEvidenceLedger(l homeStateEvidenceLedger) error {
 			return fmt.Errorf("race evidence incomplete")
 		}
 	}
-	for _, pkg := range []string{"./internal/homestate", "./internal/hook/handoff", "./internal/hook", "./internal/kanban", "./internal/cli"} {
+	for _, pkg := range []string{"./internal/homestate", "./internal/hook/handoff", "./internal/hook", "./internal/factory", "./internal/cli"} {
 		if _, ok := l.Checks["windows:"+pkg]; !ok {
 			return fmt.Errorf("windows evidence incomplete")
 		}

@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-1341c075",
+  "generated_at": "2026-10-03T05:28:34Z",
+  "generator_version": "0.1.0",
+  "observation_count": 5,
+  "pattern_key": "tool_failure:mcp__moai__factory_stage:UnknownFailure",
+  "source_ts": "2026-10-03T05:28:34Z",
+  "tier": "rule"
+}

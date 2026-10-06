@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 const debounce = 250 * time.Millisecond
@@ -30,16 +30,28 @@ var watchMap = map[string][]string{
 	"session": {".moai/state"},
 	"goal":    {".moai/state/goal"},
 	"verify":  {".moai/state/verify"},
-	// SSE event KEY stays "kanban" — it is a frontend-visible contract. Only
-	// the watched PATH moved with the state-directory rename.
-	"kanban": {".moai/state/todo"},
-	"config": {".moai/config/sections"},
+	// The SSE event KEY is a frontend-visible contract: assets/app.js lists it in
+	// EVENTS and the screens carry it as data-live, so the three move together
+	// (TestWebLiveKeyContract). The watched path is the todo queue.
+	"factory": {".moai/state/todo"},
+	"config":  {".moai/config/sections"},
 }
 
 // Hub 는 열린 SSE 연결 집합이다. 값을 나르지 않으므로 상태는 채널뿐이다.
 type Hub struct {
 	mu      sync.Mutex
 	clients map[chan string]struct{}
+	// subs are in-process listeners told every published event name — the SPEC
+	// scan cache drops itself on "spec" through this, reusing this watcher
+	// rather than running a second one. Listeners must be quick and non-blocking.
+	subs []func(event string)
+}
+
+// Subscribe registers an in-process listener for every published event name.
+func (h *Hub) Subscribe(fn func(event string)) {
+	h.mu.Lock()
+	h.subs = append(h.subs, fn)
+	h.mu.Unlock()
 }
 
 func NewHub() *Hub { return &Hub{clients: map[chan string]struct{}{}} }
@@ -61,6 +73,15 @@ func (h *Hub) remove(ch chan string) {
 
 // Publish 는 열린 모든 연결에 이벤트 이름을 흘린다.
 func (h *Hub) Publish(event string) {
+	h.mu.Lock()
+	// Listeners run before the browsers are signalled, so a re-fetch triggered
+	// by this event never reads a cache this event was meant to drop.
+	subs := append(([]func(string))(nil), h.subs...)
+	h.mu.Unlock()
+	for _, fn := range subs {
+		fn(event)
+	}
+
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for ch := range h.clients {
@@ -220,9 +241,9 @@ func resolvedWatchPaths(root string) map[string]string {
 			pathEvent[abs] = event
 		}
 	}
-	pathEvent[kanban.StateDirForRoot(root)] = "kanban"
+	pathEvent[factory.StateDirForRoot(root)] = "factory"
 	if factoryDir, err := homestate.FactoryDir(root); err == nil {
-		pathEvent[factoryDir] = "kanban"
+		pathEvent[factoryDir] = "factory"
 	}
 	return pathEvent
 }

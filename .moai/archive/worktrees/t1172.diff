@@ -1,0 +1,183 @@
+diff --git a/internal/cli/codex_audit_live_test.go b/internal/cli/codex_audit_live_test.go
+index cd4ceb229..da7688583 100644
+--- a/internal/cli/codex_audit_live_test.go
++++ b/internal/cli/codex_audit_live_test.go
+@@ -25,6 +25,7 @@ import (
+ 	"testing"
+ 	"time"
+ 
++	"github.com/modu-ai/moai-adk/internal/codexwiring"
+ 	"github.com/modu-ai/moai-adk/internal/config"
+ )
+ 
+@@ -46,6 +47,39 @@ type codexAuditLiveFixture struct {
+ 	ledger                                                []codexLiveLedgerEntry
+ }
+ 
++func codexAuditProjectConfig(t *testing.T, root, wrapper string) string {
++	t.Helper()
++	workflow := filepath.Join(root, ".moai", "config", "sections", "workflow.yaml")
++	if err := os.MkdirAll(filepath.Dir(workflow), 0o755); err != nil {
++		t.Fatal(err)
++	}
++	if err := os.WriteFile(workflow, []byte("workflow:\n  codex:\n    preapproval:\n      enabled: true\n"), 0o644); err != nil {
++		t.Fatal(err)
++	}
++	var out, warn bytes.Buffer
++	if _, err := codexwiring.Wire(root, &out, &warn); err != nil {
++		t.Fatalf("codex wiring: %v: %s", err, warn.String())
++	}
++	path := filepath.Join(root, ".codex", "config.toml")
++	body, err := os.ReadFile(path)
++	if err != nil {
++		t.Fatal(err)
++	}
++	config := strings.Replace(string(body), `command = "moai"`, "command = "+fmt.Sprintf("%q", wrapper), 1)
++	if config == string(body) || strings.Count(config, "[mcp_servers.moai.tools.codex_role_audit]") != 1 {
++		t.Fatalf("writer did not emit one pre-approved moai tool: %s", config)
++	}
++	config = "sandbox_mode = \"workspace-write\"\n" + config
++	if err := os.WriteFile(path, []byte(config), 0o644); err != nil {
++		t.Fatal(err)
++	}
++	return config
++}
++
++func codexAuditDecoyConfig(wrapper string) string {
++	return fmt.Sprintf("\n[mcp_servers.decoy]\ncommand = %q\nargs = [\"mcp-server\"]\nenv_vars = [\"CODEX_HOME\", \"MOAI_HOME\"]\nenabled_tools = [\"spec_progress\"]\n", wrapper)
++}
++
+ func newCodexAuditLiveFixture(t *testing.T, withMCP bool) *codexAuditLiveFixture {
+ 	t.Helper()
+ 	if os.Getenv(envCodexRoleLive) != "1" {
+@@ -85,10 +119,9 @@ func newCodexAuditLiveFixture(t *testing.T, withMCP bool) *codexAuditLiveFixture
+ 				t.Fatal(err)
+ 			}
+ 		}
+-		// Project layer: the real wiring's shape (moai server, writes
+-		// approval) plus sandbox_mode workspace-write, which -s must beat.
+-		// CODEX_HOME rides env_vars so the launcher's child stays isolated.
+-		project := fmt.Sprintf("sandbox_mode = \"workspace-write\"\n\n[mcp_servers.moai]\ncommand = %q\nargs = [\"mcp-server\"]\nenv_vars = [\"CODEX_HOME\", \"MOAI_HOME\"]\ndefault_tools_approval_mode = \"writes\"\n", filepath.Join(bin, "moai-wrapper"))
++		// The opt-in project table is emitted by the product writer. The
++		// fixture changes only the server executable to its recording wrapper.
++		project := codexAuditProjectConfig(t, f.root, filepath.Join(bin, "moai-wrapper"))
+ 		if err := os.WriteFile(filepath.Join(f.root, ".codex", "config.toml"), []byte(project), 0o644); err != nil {
+ 			t.Fatal(err)
+ 		}
+@@ -96,7 +129,7 @@ func newCodexAuditLiveFixture(t *testing.T, withMCP bool) *codexAuditLiveFixture
+ 		if err != nil {
+ 			t.Fatal(err)
+ 		}
+-		user = append(user, []byte(fmt.Sprintf("\n[mcp_servers.decoy]\ncommand = %q\nargs = [\"mcp-server\"]\nenv_vars = [\"CODEX_HOME\", \"MOAI_HOME\"]\n", filepath.Join(bin, "decoy-wrapper")))...)
++		user = append(user, []byte(codexAuditDecoyConfig(filepath.Join(bin, "decoy-wrapper")))...)
+ 		if err := os.WriteFile(filepath.Join(f.codexHome, "config.toml"), user, 0o600); err != nil {
+ 			t.Fatal(err)
+ 		}
+diff --git a/internal/cli/codex_preapproval_startup_test.go b/internal/cli/codex_preapproval_startup_test.go
+index bc4ae588c..dad72e6cf 100644
+--- a/internal/cli/codex_preapproval_startup_test.go
++++ b/internal/cli/codex_preapproval_startup_test.go
+@@ -179,6 +179,30 @@ func preApprovalRunCar011Startup(t *testing.T) *preApprovalFixture {
+ 	return preApprovalRunStartupFor(t, true, "car011")
+ }
+ 
++func TestCodexPreApprovalCar010StartupOnly(t *testing.T) {
++	if os.Getenv("MOAI_CAR010_PREPARE_ONLY") != "1" {
++		t.Skip("NOT_RUN MOAI_CAR010_PREPARE_ONLY is not 1")
++	}
++	preApprovalRunStartupFor(t, true, "car010")
++}
++
++func preApprovalCar010PrepAttempt(rows []map[string]any) (int, error) {
++	starts := 0
++	for _, row := range rows {
++		if row["kind"] == "stop" || row["kind"] == "invalidate" && row["fixture"] == "car010" ||
++			row["kind"] == "live" && row["fixture"] == "car010" {
++			return 0, errors.New("car010 evidence already stopped or attempted")
++		}
++		if row["kind"] == "startup" && row["fixture"] == "car010" {
++			starts++
++		}
++	}
++	if starts != 2 {
++		return 0, fmt.Errorf("car010 requires M1-a and M1-b startups, got %d", starts)
++	}
++	return 1, nil
++}
++
+ func preApprovalAppendStartup(t *testing.T, path string, rows *[]map[string]any, entry preApprovalStartupRow, stopReason string) {
+ 	t.Helper()
+ 	body, err := json.Marshal(entry)
+@@ -301,7 +325,7 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
+ 
+ func preApprovalRunStartupFor(t *testing.T, preserveLedger bool, only string) *preApprovalFixture {
+ 	t.Helper()
+-	if os.Getenv(envCodexPreApprovalLive) != "1" && !(only == "car011" && os.Getenv(envCodexRoleLive) == "1") {
++	if os.Getenv(envCodexPreApprovalLive) != "1" && !(only == "car011" && os.Getenv(envCodexRoleLive) == "1") && !(only == "car010" && os.Getenv("MOAI_CAR010_PREPARE_ONLY") == "1") {
+ 		t.Skip("NOT_RUN " + envCodexPreApprovalLive + " is not 1")
+ 	}
+ 	evidenceDir := os.Getenv(envT1172EvidenceDir)
+@@ -340,6 +364,11 @@ func preApprovalRunStartupFor(t *testing.T, preserveLedger bool, only string) *p
+ 			if readErr != nil {
+ 				t.Fatal(readErr)
+ 			}
++		} else if only == "car010" {
++			attempt, readErr = preApprovalCar010PrepAttempt(prior)
++			if readErr != nil {
++				t.Fatal(readErr)
++			}
+ 		} else {
+ 			t.Fatalf("unsupported startup fixture %q", only)
+ 		}
+@@ -381,6 +410,15 @@ func preApprovalRunStartupFor(t *testing.T, preserveLedger bool, only string) *p
+ 		t.Skipf("CODEX_NOT_INSTALLED: %v", err)
+ 	}
+ 	procs := newLiveProcs(t)
++	if only == "car010" {
++		version, versionErr := preApprovalCar011Version(procs, codexBin, t.TempDir())
++		if versionErr != nil {
++			t.Fatalf("car010 Codex version: %v", versionErr)
++		}
++		if versionErr = preApprovalCar011RequireVersion(version); versionErr != nil {
++			t.Fatalf("car010 Codex version: %v", versionErr)
++		}
++	}
+ 	moaiBin := buildLiveMoai(t, procs)
+ 	moaiBytes, err := os.ReadFile(moaiBin)
+ 	if err != nil {
+@@ -407,7 +445,7 @@ func preApprovalRunStartupFor(t *testing.T, preserveLedger bool, only string) *p
+ 	if err := os.WriteFile(filepath.Join(root, "README"), []byte("preapproval fixture\n"), 0o600); err != nil {
+ 		t.Fatal(err)
+ 	}
+-	if only == "car011" {
++	if only == "car011" || only == "car010" {
+ 		installAuditRoles(t, root)
+ 	}
+ 	for _, args := range [][]string{{"-C", root, "add", "README"}, {"-C", root, "commit", "-q", "-m", "fixture"}} {
+@@ -415,7 +453,7 @@ func preApprovalRunStartupFor(t *testing.T, preserveLedger bool, only string) *p
+ 			t.Fatalf("fixture git: %v: %s", err, out)
+ 		}
+ 	}
+-	if only == "car011" {
++	if only == "car011" || only == "car010" {
+ 		if out, err := git("-C", root, "add", ".codex/agents/moai"); err != nil {
+ 			t.Fatalf("fixture role add: %v: %s", err, out)
+ 		}
+@@ -481,6 +519,8 @@ func preApprovalRunStartupFor(t *testing.T, preserveLedger bool, only string) *p
+ 			project := baseProject
+ 			if name == "disc-treatment" {
+ 				project += "\n[mcp_servers.moai.tools.codex_role_audit]\napproval_mode = \"approve\"\n"
++			} else if name == "car010" && only == "car010" {
++				project = codexAuditProjectConfig(t, root, filepath.Join(binDir, "moai"))
+ 			}
+ 			if err := os.WriteFile(filepath.Join(root, ".codex", "config.toml"), []byte(project), 0o600); err != nil {
+ 				t.Fatal(err)
+@@ -497,7 +537,7 @@ func preApprovalRunStartupFor(t *testing.T, preserveLedger bool, only string) *p
+ 			}
+ 			user := "[projects." + strconv.Quote(root) + "]\ntrust_level = \"trusted\"\n"
+ 			if name == "car010" || only == "car011" {
+-				user += "\n[mcp_servers.decoy]\ncommand = " + strconv.Quote(filepath.Join(binDir, "decoy")) + "\nargs = [\"mcp-server\"]\nenabled_tools = [\"spec_progress\"]\n"
++				user += codexAuditDecoyConfig(filepath.Join(binDir, "decoy"))
+ 			}
+ 			if err := os.WriteFile(filepath.Join(codexHome, "config.toml"), []byte(user), 0o600); err != nil {
+ 				t.Fatal(err)

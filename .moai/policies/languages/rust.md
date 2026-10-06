@@ -1,0 +1,140 @@
+---
+paths: "**/*.rs,**/Cargo.toml,**/Cargo.lock"
+---
+
+# Rust Development Guide
+
+Rust 1.88+ Development Specialist with deep patterns for high-performance, memory-safe applications.
+
+
+Core Capabilities:
+
+- High-performance REST APIs and microservices
+- Memory-safe concurrent systems
+- CLI tools and system utilities
+- WebAssembly applications
+- Low-latency networking services
+
+### Quick Patterns
+
+Axum REST API: Create Router with route macro chaining path and handler. Add with_state for shared state. Bind TcpListener with tokio::net and serve with axum::serve.
+
+Async Handler with SQLx: Define async handler function taking State extractor for AppState and Path extractor for id. Use sqlx::query_as! macro with SQL string and bind parameters. Call fetch_optional on pool, await, and use ok_or for error conversion. Return Json wrapped result.
+
+---
+
+
+### Rust 1.88 Features
+
+Modern Rust Features:
+
+- Rust 2024 Edition available (released with Rust 1.85)
+- Async traits in stable (no more async-trait crate needed)
+- Const generics for compile-time array sizing
+- let-else for pattern matching with early return
+- Improved borrow checker (polonius is experimental, opt-in with -Zpolonius on nightly)
+
+Async Traits (Stable): Define trait with async fn signatures. Implement trait for concrete types with async fn implementations. Call sqlx macros directly in trait methods.
+
+Let-Else Pattern: Use let Some(value) = option else with return for early exit. Chain multiple let-else statements for sequential validation. Return error types in else blocks.
+
+### Web Framework: Axum 0.8
+
+Installation: In Cargo.toml dependencies section, add axum version 0.8, tokio version 1.48 with full features, and tower-http version 0.6 with cors and trace features.
+
+Complete API Setup: Import extractors from axum::extract and routing macros. Define Clone-derive AppState struct holding PgPool. In tokio::main async main, create pool with PgPoolOptions setting max_connections and connecting with DATABASE_URL from env. Build Router with route chains for paths and handlers, add CorsLayer, and call with_state. Bind TcpListener and call axum::serve.
+
+Handler Patterns: Define async handlers taking State, Path, and Query extractors with appropriate types. Use sqlx::query_as! for type-safe queries with positional binds. Return Result with Json success and AppError failure.
+
+### Async Runtime: Tokio 1.48
+
+Task Spawning and Channels: Create mpsc channel with capacity. Spawn worker tasks with tokio::spawn that receive from channel in loop. For timeouts, use tokio::select! macro with operation branch and sleep branch, returning error on timeout.
+
+### Database: SQLx 0.8
+
+Type-Safe Queries: Derive sqlx::FromRow on structs for automatic mapping. Use query_as! macro for compile-time checked queries. Call fetch_one or fetch_optional on pool. For transactions, call pool.begin, execute queries on transaction reference, and call tx.commit.
+
+### Serialization: Serde 1.0
+
+Derive Serialize and Deserialize on structs. Use serde attribute with rename_all for case conversion. Use rename attribute for field-specific naming. Use skip_serializing_if with Option::is_none. Use default attribute for default values.
+
+### Error Handling
+
+thiserror: Derive Error on enum with error attribute for display messages. Use from attribute for automatic conversion from source errors. Implement IntoResponse by matching on variants and returning status code with Json body containing error message.
+
+### CLI Development: clap
+
+Derive Parser on main Cli struct with command attributes for name, version, about. Use arg attribute for global flags. Derive Subcommand on enum for commands. Match on command in main to dispatch logic.
+
+### Testing Patterns
+
+Create test module with cfg(test) attribute. Define tokio::test async functions. Call setup helpers, invoke functions under test, and use assert! macros for verification.
+
+---
+
+## Advanced Patterns
+
+For comprehensive coverage including:
+
+- Advanced ownership patterns, lifetimes, and smart pointers
+- Trait design and generic programming
+- Performance optimization strategies and profiling
+- Engineering best practices and coding guidelines
+- Async patterns and concurrency
+
+Apply the sections above together with the Documentation References for these advanced topics (ownership and traits, optimization, coding standards); this guide is self-contained.
+
+### Performance Optimization
+
+Release Build: In Cargo.toml profile.release section, enable lto, set codegen-units to 1, set panic to abort, and enable strip.
+
+### Deployment
+
+Minimal Container: Use multi-stage Dockerfile. First stage uses rust alpine image, copies Cargo files, creates dummy main for dependency caching, builds release, copies source, touches main.rs for rebuild, builds final release. Second stage uses alpine, copies binary from builder, exposes port, and sets CMD.
+
+### Concurrency
+
+Rate-Limited Operations: Create Arc-wrapped Semaphore with max permits. Map over items spawning tasks that acquire permit, process, and return result. Use futures::future::join_all to collect results.
+
+---
+
+## Documentation References
+
+Library Documentation Access:
+
+- `/rust-lang/rust` - Rust language and stdlib
+- `/tokio-rs/tokio` - Tokio async runtime
+- `/tokio-rs/axum` - Axum web framework
+- `/launchbadge/sqlx` - SQLx async SQL
+- `/serde-rs/serde` - Serialization framework
+- `/dtolnay/thiserror` - Error derive
+- `/clap-rs/clap` - CLI parser
+
+## Related Resources
+
+- `.claude/rules/moai/languages/go.md` - Go systems programming patterns
+- `moai-domain-backend` - REST API architecture and microservices patterns
+- `moai-foundation-quality` - Security hardening for Rust applications
+- `moai-workflow-testing` - Test-driven development workflows
+
+---
+
+## Troubleshooting
+
+Common Issues:
+
+- Cargo errors: Run cargo clean followed by cargo build
+- Version check: Run rustc --version and cargo --version
+- Dependency issues: Run cargo update and cargo tree
+- Compile-time SQL check: Run cargo sqlx prepare
+
+Performance Characteristics:
+
+- Startup Time: 50-100ms
+- Memory Usage: 5-20MB base
+- Throughput: 100k-200k req/s
+- Latency: p99 less than 5ms
+- Container Size: 5-15MB (alpine)
+
+---
+

@@ -24,14 +24,27 @@
 //
 // effort is deliberately out of scope: the Agent tool exposes no effort
 // parameter, so only `model` is observable at spawn time.
+//
+// v0.3.0 extension (REQ-AFR-018, SPEC-WEB-AGENTFM-RESTORE-001, card t1421):
+// with the llm.agent_overrides_consume opt-in ON, the advise layer compares
+// the spawn's declared model against the agent's override expectation —
+// template.ResolveAgentOverrideConsumption — and the audit record gains an
+// override hit/miss field. Every property above is preserved: the extension
+// adds observation and advice only, never a deny and never a payload
+// rewrite, and a closed gate (or an unreadable config — fail-open) degrades
+// to the off mark with the pre-extension behaviour intact.
 package hook
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // agentModelAuditFileName is the per-spawn audit log under <root>/.moai/logs/.
@@ -123,6 +136,49 @@ type agentModelAuditRecord struct {
 	DeclaredModel string `json:"declared_model"`
 	ResolvedModel string `json:"resolved_model"`
 	Verdict       string `json:"verdict"`
+	// OverrideConsumption is the v0.3.0 extension (REQ-AFR-018): how the
+	// spawn's declared model related to the agent's llm.agent_overrides
+	// expectation under the opt-in gate — hit (pinned and matched), miss
+	// (pinned but the declaration differs from or omits the pin), inherit
+	// (gate on, expectation is plain inheritance or the explicit inherit
+	// no-op), or off (gate closed / config unreadable — storage-only). The
+	// axis is MODEL only: effort is never compared (the file header contract).
+	OverrideConsumption string `json:"override_consumption"`
+}
+
+// Override-consumption marks (the values of
+// agentModelAuditRecord.OverrideConsumption).
+const (
+	overrideConsumptionOff     = "off"
+	overrideConsumptionHit     = "hit"
+	overrideConsumptionMiss    = "miss"
+	overrideConsumptionInherit = "inherit"
+)
+
+// classifyOverrideConsumption compares a spawn's declared model against the
+// agent's resolved override expectation (model axis only, case-insensitive —
+// the same alias-comparison tolerance the pre-M5 guard used). It returns the
+// record mark plus the non-blocking miss advisory ("" for every other mark —
+// there is nothing to correct in a hit, a closed gate, or an explicit
+// inheritance).
+func classifyOverrideConsumption(sp agentSpawn, c template.AgentOverrideConsumption) (mark, advisory string) {
+	if !c.ConsumeEnabled {
+		return overrideConsumptionOff, ""
+	}
+	if !c.Pinned {
+		return overrideConsumptionInherit, ""
+	}
+	if sp.DeclaredModel != "" && strings.EqualFold(sp.DeclaredModel, c.Model) {
+		return overrideConsumptionHit, ""
+	}
+	declared := sp.DeclaredModel
+	if declared == "" {
+		declared = "no model"
+	}
+	advisory = fmt.Sprintf(
+		"agent-model: %s carries an llm.agent_overrides pin (model: %s) but this spawn declared %s — the pin was not applied; pass model=%s on the spawn (llm.agent_overrides_consume is on).",
+		sp.Agent, c.Model, declared, c.Model)
+	return overrideConsumptionMiss, advisory
 }
 
 // appendAgentModelAudit appends one record to <projectRoot>/.moai/logs/.
@@ -168,8 +224,10 @@ func appendAuditJSONL(projectRoot string, rec any) {
 }
 
 // checkAgentModel is the PreToolUse entry point for an Agent/Task spawn. It
-// records the declared-model observation and returns "" — with the profile
-// matrix gone there is no expected model to advise against. It never denies.
+// records the declared-model observation and — with the v0.3.0 opt-in ON —
+// compares the declaration against the agent's override expectation (model
+// axis), returning the non-blocking miss advisory when the pin was not
+// applied. It never denies.
 func (h *preToolHandler) checkAgentModel(input *HookInput) (advisory string) {
 	sp, ok := extractAgentSpawn(input.ToolInput)
 	if !ok {
@@ -179,13 +237,25 @@ func (h *preToolHandler) checkAgentModel(input *HookInput) (advisory string) {
 
 	verdict, recorded := classifyAgentModel(sp)
 
+	// Fail-open on config: an absent provider or an unreadable config
+	// resolves the closed gate (storage-only), degrading the extension to the
+	// off mark with the pre-extension behaviour intact.
+	var consumption template.AgentOverrideConsumption
+	if h.cfg != nil {
+		if cfg := h.cfg.Get(); cfg != nil {
+			consumption = template.ResolveAgentOverrideConsumption(cfg.LLM, sp.Agent)
+		}
+	}
+	overrideMark, overrideAdvisory := classifyOverrideConsumption(sp, consumption)
+
 	appendAgentModelAudit(h.projectRoot(), agentModelAuditRecord{
-		SessionID:     input.SessionID,
-		Agent:         sp.Agent,
-		DeclaredModel: sp.DeclaredModel,
-		ResolvedModel: recorded,
-		Verdict:       string(verdict),
+		SessionID:           input.SessionID,
+		Agent:               sp.Agent,
+		DeclaredModel:       sp.DeclaredModel,
+		ResolvedModel:       recorded,
+		Verdict:             string(verdict),
+		OverrideConsumption: overrideMark,
 	})
 
-	return ""
+	return overrideAdvisory
 }

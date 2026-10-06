@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // amSeams snapshots the auto-merge seams so a test can swap them and restore
@@ -36,9 +36,9 @@ type amSeams struct {
 	aheadCount  func(wtPath, develop, branch string) (int, error)
 	wtForBranch func(branch string) string
 	ownerPID    func() (int, bool)
-	readLock    func(root string) (*kanban.IntegrationLock, error)
-	acquire     func(root string, lock kanban.IntegrationLock) (*kanban.IntegrationLock, error)
-	release     func(root, sessionID string) (*kanban.IntegrationLock, error)
+	readLock    func(root string) (*factory.IntegrationLock, error)
+	acquire     func(root string, lock factory.IntegrationLock) (*factory.IntegrationLock, error)
+	release     func(root, sessionID string) (*factory.IntegrationLock, error)
 	merge       func(dir, branch string) (string, error)
 	inProgress  func(dir string) bool
 	abort       func(dir string) error
@@ -130,9 +130,9 @@ type amRecorder struct {
 	// lockLog records "acquire" / "release" in order.
 	lockLog []string
 	// written is the last lock record acquire wrote; nil after release.
-	written *kanban.IntegrationLock
+	written *factory.IntegrationLock
 	// held is what ReadIntegrationLock returns (nil → free window).
-	held *kanban.IntegrationLock
+	held *factory.IntegrationLock
 	// mergeDirs / mergeBranches record each merge invocation's operands.
 	mergeDirs     []string
 	mergeBranches []string
@@ -170,18 +170,18 @@ func baseAMSeams(rec *amRecorder) amSeams {
 			return amTargetWt
 		},
 		ownerPID: func() (int, bool) { return 4242, true },
-		readLock: func(_ string) (*kanban.IntegrationLock, error) {
+		readLock: func(_ string) (*factory.IntegrationLock, error) {
 			if rec.held != nil {
 				return rec.held, nil
 			}
-			return &kanban.IntegrationLock{}, nil
+			return &factory.IntegrationLock{}, nil
 		},
-		acquire: func(_ string, lock kanban.IntegrationLock) (*kanban.IntegrationLock, error) {
+		acquire: func(_ string, lock factory.IntegrationLock) (*factory.IntegrationLock, error) {
 			rec.lockLog = append(rec.lockLog, "acquire")
 			rec.written = &lock
 			return nil, nil
 		},
-		release: func(_, _ string) (*kanban.IntegrationLock, error) {
+		release: func(_, _ string) (*factory.IntegrationLock, error) {
 			rec.lockLog = append(rec.lockLog, "release")
 			rec.written = nil
 			return nil, nil
@@ -378,7 +378,7 @@ func TestAutoMergeHappyPath(t *testing.T) {
 	}
 
 	// The window was acquired and released for this session (released at end).
-	lock, err := kanban.ReadIntegrationLock(root)
+	lock, err := factory.ReadIntegrationLock(root)
 	if err != nil {
 		t.Fatalf("read lock: %v", err)
 	}
@@ -479,17 +479,17 @@ func TestAutoMergeUnconfiguredTarget(t *testing.T) {
 func TestAutoMergeBusyWindow(t *testing.T) {
 	cases := []struct {
 		name   string
-		held   kanban.IntegrationLock
+		held   factory.IntegrationLock
 		holder string // expected to appear in the skip notice
 	}{
 		{
 			name:   "live_holder",
-			held:   kanban.IntegrationLock{SessionID: "other-live", SessionName: "lane-2", PID: os.Getpid(), Branch: "develop", AcquiredAt: "2026-09-12T00:00:00Z"},
+			held:   factory.IntegrationLock{SessionID: "other-live", SessionName: "lane-2", PID: os.Getpid(), Branch: "develop", AcquiredAt: "2026-09-12T00:00:00Z"},
 			holder: "lane-2",
 		},
 		{
 			name:   "stale_record",
-			held:   kanban.IntegrationLock{SessionID: "dead-lane", PID: 999999999, Branch: "develop", AcquiredAt: "2026-09-12T00:00:00Z"},
+			held:   factory.IntegrationLock{SessionID: "dead-lane", PID: 999999999, Branch: "develop", AcquiredAt: "2026-09-12T00:00:00Z"},
 			holder: "dead-lane",
 		},
 	}
@@ -521,7 +521,7 @@ func TestAutoMergeBusyWindow(t *testing.T) {
 	// Own-session hold: the lock API re-acquires (refresh) rather than
 	// refusing, so the ceremony proceeds and the release frees our own hold.
 	t.Run("own_session_hold_proceeds", func(t *testing.T) {
-		rec := &amRecorder{held: &kanban.IntegrationLock{SessionID: "sess-am-1", PID: os.Getpid(), Branch: "develop"}}
+		rec := &amRecorder{held: &factory.IntegrationLock{SessionID: "sess-am-1", PID: os.Getpid(), Branch: "develop"}}
 		swapAutoMergeSeams(t, baseAMSeams(rec))
 		swapCleanStatusSeams(t)
 		out := &bytes.Buffer{}
@@ -658,7 +658,7 @@ func TestAutoMergeConflict(t *testing.T) {
 			t.Errorf("session worktree content changed: %q (err %v)", kept, rerr)
 		}
 		// Window released.
-		lock, lerr := kanban.ReadIntegrationLock(root)
+		lock, lerr := factory.ReadIntegrationLock(root)
 		if lerr != nil || lock.Held() {
 			t.Errorf("window must be released after the conflict (err %v, lock %+v)", lerr, lock)
 		}
@@ -855,7 +855,7 @@ func TestAutoMergeNoticePrefixDistinct(t *testing.T) {
 	requireNoticePrefixed(t, unconfigured.String())
 
 	busy := &bytes.Buffer{}
-	rec3 := &amRecorder{held: &kanban.IntegrationLock{SessionID: "other", PID: 1}}
+	rec3 := &amRecorder{held: &factory.IntegrationLock{SessionID: "other", PID: 1}}
 	swapAutoMergeSeams(t, baseAMSeams(rec3))
 	sessionExitAutoMerge(amCfg(true, false), amSessionWt, true, busy)
 	requireNoticePrefixed(t, busy.String())
@@ -990,14 +990,14 @@ func TestAutoMergeFailurePaths(t *testing.T) {
 		{
 			name: "window_record_unreadable",
 			mutate: func(s *amSeams) {
-				s.readLock = func(string) (*kanban.IntegrationLock, error) { return nil, &execExitErr{} }
+				s.readLock = func(string) (*factory.IntegrationLock, error) { return nil, &execExitErr{} }
 			},
 			notice: "window record unreadable", noMerge: true, noLock: true,
 		},
 		{
 			name: "acquire_refused",
 			mutate: func(s *amSeams) {
-				s.acquire = func(string, kanban.IntegrationLock) (*kanban.IntegrationLock, error) {
+				s.acquire = func(string, factory.IntegrationLock) (*factory.IntegrationLock, error) {
 					return nil, &execExitErr{}
 				}
 			},
@@ -1006,7 +1006,7 @@ func TestAutoMergeFailurePaths(t *testing.T) {
 		{
 			name: "release_fails",
 			mutate: func(s *amSeams) {
-				s.release = func(string, string) (*kanban.IntegrationLock, error) { return nil, &execExitErr{} }
+				s.release = func(string, string) (*factory.IntegrationLock, error) { return nil, &execExitErr{} }
 			},
 			notice: "window release failed", wantMerges: 1,
 		},

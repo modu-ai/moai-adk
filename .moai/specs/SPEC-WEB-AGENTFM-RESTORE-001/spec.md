@@ -1,8 +1,8 @@
 ---
 id: SPEC-WEB-AGENTFM-RESTORE-001
 title: "moai web 서브 에이전트 설정 표면 복원 — agentfm 오버라이드 · llm.profile · 저장 경로 · UI 노출"
-version: "0.2.0"
-status: in-progress
+version: "0.3.0"
+status: completed
 created: 2026-10-02
 updated: 2026-10-03
 author: manager-spec
@@ -22,6 +22,7 @@ amendment_of: SPEC-WEB-AGENTFM-RESTORE-001
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-10-02 | manager-spec | 최초 작성 (카드 t1411, Class C, 운영자 지시 2026-10-02). 삭제 커밋 `384eb3460`(card t1246, SPEC-AGENT-MODEL-INHERIT-001 M2/REQ-AMI-011)의 역방향 복원 SPEC. 블루프린트: `.moai/reports/t1411/removed-commit-384eb3460.diff` (7,922행). |
 | 0.2.0 | 2026-10-03 | manager-spec | **In-place amendment of the `completed` SPEC (card t1446 — t1411 sync-audit round-2 N1; manager-spec 재위임).** REQ-AFR-007 축소: 영속-오류 원자 복원을 llm.yaml agent-overrides write pair(`llm.profile` + `llm.agent_overrides`)로 한정. 검증-오류 원자 거절은 의미 불변. pair 밖 선행 단계는 문서화된 best-effort 동작 유지 + 한계를 본문에 명시. §D 원자성 제약 행 동기화. 요구사항 삭제 없음, id 재번호 없음, AC 매핑 무변경 (14 REQ / 13 AC); progress.md §E.4 `sync_commit_sha` 불변. 상태 축은 SSOT 수정 전이 `completed → in-progress`를 따르며 구조 기록은 `## Amendments`. |
+| 0.3.0 | 2026-10-03 | manager-spec | **In-place amendment (card t1421 — decision-index Q2 후속 카드, 운영자 결정 2026-10-03 옵트인 고정).** 스폰-소비 계약 신설: REQ-AFR-015..020 / AC-AFR-014..019 — 옵트인 키 `llm.agent_overrides_consume`(기본 false)·소비 리졸버·교리 수비 의미론(룰 텍스트는 sync-phase)·훅 advise/audit 확장·console·doctor 계약 상태 가시성·AMI-001 수정안 링크. 기존 14 REQ·13 AC 무변경 — 삭제·재번호·AC 매핑 변경 없음. Out of Scope 런타임 소비 절 재기술(공백이 본 수정안으로 경계). REQ 20 / AC 19 — Tier M 상한 초과분의 예산 처분은 `## Amendments` v0.3.0 블록과 plan.md §I.3. 재close는 0.2.0 + 0.3.0 공동 close 커밋(카드 t1446 재진입 동행). |
 
 ## Amendments
 
@@ -39,6 +40,25 @@ amendment_of: SPEC-WEB-AGENTFM-RESTORE-001
   | 2 | §D 비기능 제약 원자성 행 | Amended here — mirrors the narrowed wording (the same claim stated at constraint level) |
   | 3 | acceptance.md AC-AFR-004 (REQ-AFR-006/007) | Unchanged — its scenarios are validation-error rejections, which keep full atomicity under the narrowed wording; no criterion pins the broad persistence-error claim |
   | 4 | progress.md | Dated amendment note appended at the tail; §E.2/§E.3/§E.4 evidence untouched |
+
+**2026-10-03 — v0.3.0 — in-place amendment (card t1421 — decision-index Q2 후속 카드).**
+
+- Transition: `in-progress` 유지 — v0.2.0 수정안이 이미 SSOT 수정 진행형이라 재전이 불요; `amendment_of: SPEC-WEB-AGENTFM-RESTORE-001`(자기참조) 불변. Authorized by the operator decision 2026-10-03(lane AskUserQuestion 라운드, 카드 t1421 — decision-index Q4): contract = **옵트인 고정** — `llm` 섹션의 단일 명시 키(기본 off)를 켠 세션만 서브에이전트 스폰에 `llm.agent_overrides`를 소비하고, 오케스트레이터가 Agent() 호출에 설정된 model/effort를 실어 보낸다. 키 없는 세션은 오늘의 상속 기본을 유지한다.
+- Prior completed version: **0.1.0** — closed 2026-10-02 (card t1411 sync lane). `prior_completed_sha: bd51d75a17a39c7fd0d4437cf62a28ce4be677a3` 불변 — 0.2.0도 아직 재close 전이며, **0.2.0 + 0.3.0 두 수정안의 재close는 하나의 joint close 커밋**으로 수행한다(카드 t1446 재진입이 본 카드와 동행). 수정 전 spec.md 마지막 본문 커밋: `9c6056164` (2026-10-03 — card t1446 v0.2.0 amendment).
+- Rationale: v0.1.0이 복원한 저장 표면의 스폰-경로 공백(decision-index Q2)을 메우는 후속 계약. 메커니즘 제약 실측: Claude Code의 서브에이전트 모델 해상은 스폰 시점 `model` → 프론트매터 `model` → `CLAUDE_CODE_SUBAGENT_MODEL` → 세션 모델 순서(`.claude/rules/moai/development/model-policy.md` § Inherit-by-Default Convention)라, 오케스트레이터가 Agent() 호출에 model/effort를 전달하는 것이 유일한 승인 소비 경로다 — 훅 입력 재작성과 차단 레이어 부활은 없다(관측층 확장만).
+- Scope — six new requirements + six new acceptance criteria; no requirement deleted, no id renumbered, no existing AC remapped:
+
+  | # | Surface | Disposition |
+  |---|---|---|
+  | 1 | REQ-AFR-015 신설 | 옵트인 키 `llm.agent_overrides_consume`(bool, 기본 false) — 비-불리언 값은 기존 원자 거절 합류, 템플릿 `llm.yaml` 수재 + shipped-key 인벤토리 등록(REQ-AFR-008의 seam 연장) |
+  | 2 | REQ-AFR-016 신설 | 소비 리졸버 — consume on 시 override 항목 승리·부재 항목 상속·`inherit` no-op; off 시 저장 전용 (블루프린트 형태 `3fa8bd2ab^`, 현 트리 M1 재포트 해상 기계 재사용) |
+  | 3 | REQ-AFR-017 신설 | 교리 수비 소비 의미론 — 스폰 전 조회·Agent() 호출 파라미터 전달; 룰 텍스트 소비 조항 자체는 sync-phase(REQ-AMD-001 계열) |
+  | 4 | REQ-AFR-018 신설 | 훅 advise/audit 확장 — override 적중/미적중 필드, observe-무차단 보존 (비교 축은 모델 — effort는 스폰 페이로드 미운반) |
+  | 5 | REQ-AFR-019 신설 | 계약 상태 가시성 — agentfm 콘솔 표면 + doctor served-model 표면을 하나의 REQ로(동일 요구의 두 검증 면) — 저장 항목이 live로 침묵-독해되는 것 금지 |
+  | 6 | REQ-AFR-020 신설 | AMI-001 REQ-AMI-011 운영자-지시 예외의 소비 계약 확장 — REQ 텍스트는 본 수정안, 동 SPEC 파일 편집은 run-phase M10(M5b 선례 재위임) |
+  | 7 | Out of Scope — 런타임 소비 절 | 재기술 — 스폰-소비 공백이 본 수정안으로 경계; Codex/GLM task 모델 파라미터·런처 세션 표면·프론트매터 쓰기·`moai model profile` CLI·차단 레이어는 계속 밖 |
+  | 8 | §D 비기능 제약 | 스폰 소비 제약 1행 추가(옵트인 기본 off·observe/advise 한정·[1m] 잔여·캐시 비용 독트라 인용) |
+  | 9 | 예산 | REQ 20 / AC 19 — Tier M 상한(16/16) 초과. 분할 기각(운영자가 단일 계약을 본 SPEC 수정안으로 지정), 티어 상향 기각(Tier L 아티팩트 집합 design.md·research.md를 수정안이 저술하지 않음 — `TierArtifactMissingRule` 경고 유발, `internal/spec/lint.go:227`). 초과 판정은 본 수정안의 plan 감사(plan-auditor) 소관 — 상세 plan.md §I.3 |
 
 ## §A 배경과 복원 대상
 
@@ -74,14 +94,23 @@ amendment_of: SPEC-WEB-AGENTFM-RESTORE-001
 
 ### B.3 설정 스키마
 
-- **REQ-AFR-002** (Ubiquitous): Sub-agent model/effort inheritance shall remain the default behavior — an agent without an `llm.agent_overrides` entry resolves to the session model/effort — and this SPEC shall change no spawn-path behavior.
+- **REQ-AFR-002** (Ubiquitous): Sub-agent model/effort inheritance shall remain the default behavior — an agent without an `llm.agent_overrides` entry resolves to the session model/effort — and this SPEC shall change no spawn-path behavior for sessions without the v0.3.0 opt-in key (REQ-AFR-015); the opt-in consumption contract itself is REQ-AFR-015..017. (v0.3.0 in-place qualification — REQ-AFR-007의 v0.2.0 축소 선례 형식; id 불변·재번호 없음. plan-audit iter1 D1)
 - **REQ-AFR-008** (Ubiquitous): The shipped template `llm.yaml` shall carry the `llm.profile` and `llm.agent_overrides` keys again with an updated comment block, and `moai update` shall not strip a retired key while the embedded template still ships it (`template.ShippedRetiredModelKeys` seam), so `llm.performance_tier`, `llm.harness_agents`, and the `workflow.yaml` retired keys remain retired-and-stripped.
 
 ### B.4 상위 SPEC 수정 관계
 
 - **REQ-AFR-014** (Ubiquitous): The restoration shall be recorded as a narrow amendment of SPEC-AGENT-MODEL-INHERIT-001 — REQ-AMI-011 gains the operator-directed console-surface exception, REQ-AMI-013 narrows to the still-retired key set (`performance_tier`, `harness_agents`, workflow keys) — following the repo's completed-SPEC amendment contract (spec-frontmatter-schema.md § completed → in-progress (amendment): HISTORY 행, 요구사항 삭제 없음, id 재번호 없음, `amendment_of` + `## Amendments` + `prior_completed_sha` = 기존 close의 `sync_commit_sha` 기록; `sync_commit_sha` 불변, 상태 축은 SSOT 수정 전이 `completed → in-progress`를 따른다 — sync-audit F7 재기술). 수정안 SPEC의 재완료는 수정 범위의 독립 검증 후 본 카드와 별도 close 커밋으로 수행하며(§E.4 갱신 동반), 그 전까지 드리프트-면제 형상(in-progress + amendment_of)을 유지한다.
 
-REQ 총수 14 ≤ Tier M 상한 16.
+### B.5 스폰 소비 계약 (v0.3.0 — card t1421, 옵트인 고정)
+
+- **REQ-AFR-015** (Capability-gate): **Where** the `llm` config section declares `llm.agent_overrides_consume`, the key shall be a boolean defaulting to `false` — a session that sets it `true` opts its subagent spawns into consuming `llm.agent_overrides`, and a session without the key keeps today's storage-only behaviour (REQ-AFR-002 불변) — and a non-boolean value shall join the existing atomic-reject flow (REQ-AFR-006/007). The shipped template `llm.yaml` shall carry the key (default `false`) with an updated comment block, and `moai update` shall not strip it — the shipped-key inventory registration contract (`TestShippedConfigKeysHaveReaders`, REQ-AFR-008의 seam 연장) extends to the new key.
+- **REQ-AFR-016** (State-driven): **While** `llm.agent_overrides_consume` is `true`, the read path shall resolve each agent's (model, effort) as — the agent's `llm.agent_overrides` entry wins; an absent entry resolves to plain inheritance (the session model/effort); an override value of `inherit` is an explicit inheritance no-op — and **While** the key is `false` or absent, the same map stays console-stored-only. 해상 형태는 삭제 커밋 `3fa8bd2ab^`의 블루프린트(`EffectiveProfile`·`validateAgentOverrides`)를 따르되, 현 트리에 M1이 재포트한 해상 기계(`ResolveAgentModelEffort` 등)를 소비 게이트 뒤에 연결한다 — 재유도 금지, 단일 유도.
+- **REQ-AFR-017** (Ubiquitous): When the opt-in is on, the orchestrator shall consult the resolved overrides before spawning and pass the configured model/effort on the Agent() call — 유일한 승인 소비 메커니즘이다(Claude Code의 서브에이전트 모델 해상 순서: 스폰 시점 `model` → 프론트매터 → `CLAUDE_CODE_SUBAGENT_MODEL` → 세션 모델 — `.claude/rules/moai/development/model-policy.md` § Inherit-by-Default Convention); opt-in 없는 세션의 상속 기본 문장은 변경되지 않는다(`.claude/rules/moai/core/agent-common-protocol.md` § Subagent Model and Effort). 룰 텍스트의 소비 조항 자체는 sync-phase 규칙 개정으로 착지한다(REQ-AMD-001 계열 — run 코드 확정 후 정산, 본 SPEC은 본문에 그 계약만 규정).
+- **REQ-AFR-018** (Event-driven): **When** the opt-in is on, the spawn guard hook (`internal/hook/agent_model_guard.go`) shall extend its `advise` layer to compare the spawn's declared parameters against the agent's override expectation, and the audit record (`.moai/logs/agent-model-audit.jsonl`) shall gain an override hit/miss field — observe-never-blocks는 보존된다(차단 레이어 부활·훅 입력 재작성 없음). 비교 가능한 축은 모델이다 — effort는 스폰 페이로드가 운반하지 않는다(기존 파일 헤더 계약 "the Agent tool exposes no effort parameter" 승계); effort의 전달은 교리 수비(REQ-AFR-017)가 담당한다.
+- **REQ-AFR-019** (Ubiquitous): The contract state — consuming vs stored-only — shall be visible wherever a stored override can be mistaken for a live one: the agentfm console surface shall mark the sub-section's consumption state, and the served-model doctor surface (`internal/cli/doctor_served_model.go`) shall report the switch state — 하나의 요구에 두 검증 면(console·doctor)이며, 저장 항목이 소비 상태를 침묵시키는 표현은 어느 면에서도 금지된다.
+- **REQ-AFR-020** (Ubiquitous): The opt-in consumption contract (REQ-AFR-015..019) shall be recorded as the growth of the operator-directed exception in SPEC-AGENT-MODEL-INHERIT-001 REQ-AMI-011 — REQ 텍스트는 본 수정안(v0.3.0)이 규정하고, 동 SPEC 파일 편집(HISTORY 신규 행 + REQ-AMI-011 예외 문단의 소비 계약 확장)은 run-phase 마일스톤 M10이 수행한다(M5b 선례 — manager-spec 재위임, spec-frontmatter-schema.md § Forbidden ownership crossings). 형식 불변: 요구사항 삭제 없음, id 재번호 없음, 동 SPEC 기존 close의 `sync_commit_sha` 불변, `TestJevAmendmentLinkage` 스타일의 본문·HISTORY·인용 3자 정합.
+
+REQ 총수 20 (v0.1.0 14 + v0.3.0 신설 6) · AC 총수 19 (13 + 6) — Tier M 상한(16/16) 초과. 예산 신호의 처분: 분할·티어 상향 모두 기각, 근거는 `## Amendments` v0.3.0 블록 9행과 plan.md §I.3; 초과 판정은 본 수정안의 plan 감사 소관이다.
 
 ## §C 설계 결정 (운영자 지시 5항목의 명시적 처분)
 
@@ -100,6 +129,7 @@ REQ 총수 14 ≤ Tier M 상한 16.
 - i18n: 신규 사용자 노출 문자열 4-locale(ko/en/ja/zh) 필수, i18n 거버넌스·미번역 허용목록 테스트 통과.
 - TRUST 5 전 영역 + LSP 게이트(quality.yaml `lsp_quality_gates`: plan 기준선 필수, run 오류 0).
 - 탭 계약: 13탭 유지 — `wantTabOrder`·`>13<` 어설션 무변경 통과.
+- 스폰 소비 (v0.3.0): 옵트인 기본 off — 소비 계약은 관측(observe/advise)만 강화하고 어떤 스폰도 차단하지 않는다(차단 레이어·훅 입력 재작성 부활 금지). override 값은 REQ-AFR-006 폐쇄집합 별칭만 허용한다(전체 모델 ID 형태 금지 — model-policy.md 의도적 불허). 스폰 시점 모델 핀은 부모의 [1m] 컨텍스트 자격을 상속하지 않는다("Usage credits required for 1M" 즉시 스폰 실패 — upstream #36670/#51060; STILL-ACTIVE 기제, 현재 기본 라인업 실영향 0 — model-policy.md; 별칭 폐쇄집합이 완화하며 잔여는 문서화로 닫는다). 프롬프트 캐시 비용은 기존 독트라 인용만 한다(cache-aware-execution.md 지시 5 — 스폰별 모델 오버라이드는 세션이 쌓은 모든 캐시에서 스폰을 갈라놓는다; 지시 10 — effort 전환은 캐시를 무효화한다); 미측정 토큰·금액 수치를 본문에 넣지 않는다.
 
 ## §E 관련 SPEC
 
@@ -111,8 +141,8 @@ REQ 총수 14 ≤ Tier M 상한 16.
 
 ### Out of Scope — 런타임 소비(spawn 경로)
 
-- 복원된 `llm.agent_overrides`를 런처/스폰 경로가 읽어 실제 모델·effort를 고정하는 소비 계약. 현재 트리에 그 소비자가 존재하지 않음(실측: `ResolveAgentModelEffort` 소멸 커밋 `3fa8bd2ab`). 본 SPEC은 콘솔이 읽고·쓰는 저장 표면까지이며, 스폰 시점 강제는 별도 후속 SPEC이다. decision-index Q2 운영자 결정(2026-10-02): 스폰-소비 계약 SPEC의 후속 카드 발행 완료 — 이 공백은 무기한이 아니라 그 후속 카드(전제: 본 SPEC 착지)로 경계 진다.
-- `moai model profile` CLI 부활.
+- (v0.3.0 재기술) 복원된 `llm.agent_overrides`의 스폰-소비는 **본 수정안(v0.3.0)이 옵트인 계약으로 범위에 넣었다** — REQ-AFR-015..020. decision-index Q2의 후속 카드 t1421이 이 공백을 소진한다(운영자 결정 2026-10-03, 옵트인 고정). 구 서술 "스폰 시점 강제는 별도 후속 SPEC이다"는 소진됨 — 후속이 발행된 것이 아니라 본 SPEC 안에 흡수되었다.
+- 계속 밖: (a) Codex/GLM 작업 위임 표면(`codex_task`·`glm_task` 등)의 모델 파라미터 — Claude 서브에이전트 Agent() 스폰 소비와 별개 위임 경로다. (b) 런처 세션 표면(`moai cc`/`moai glm`/`moai gpt`)의 세션 시작 모델 선택 — 세션 모델은 프로파일·환경 축 소관이다. (c) 에이전트 프론트매터 쓰기(REQ-AFR-005 승계 — 소비는 Agent() 호출 파라미터 전달이지 `.claude/agents` 파일 편집이 아니다). (d) `moai model profile` CLI 부활. (e) 차단 레이어(`workflow.agent_model_guard.enabled`) 부활과 훅 입력 재작성 — 소비 계약은 observe/advise 관측만 강화한다.
 
 ### Out of Scope — t1246 커밋의 비(非)콘솔 삭제분
 

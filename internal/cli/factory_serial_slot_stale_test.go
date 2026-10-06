@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // fcSlotFixture builds a run whose queue is t1 (picked) plus `queued` queued
@@ -22,13 +22,13 @@ import (
 func fcSlotFixture(t *testing.T, t1 homestate.Card, queued int) string {
 	t.Helper()
 	root, store := fcFixture(t)
-	states := []kanban.BacklogState{kanban.BacklogStatePicked}
+	states := []factory.BacklogState{factory.BacklogStatePicked}
 	for i := 0; i < queued; i++ {
-		states = append(states, kanban.BacklogStateQueued)
+		states = append(states, factory.BacklogStateQueued)
 	}
 	fcQueue(t, store, states...)
 	for i := range states {
-		fcClassify(t, store, fmt.Sprintf("t%d", i+1), kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+		fcClassify(t, store, fmt.Sprintf("t%d", i+1), factory.ClassPriorityNormal, false, factory.ClassModeSerial)
 	}
 	t1.CardID = "t1"
 	fcPlace(t, root, t1)
@@ -168,9 +168,9 @@ func TestFactoryNextFailedSerialRowReleasesSlot(t *testing.T) {
 // serial cards are still served one at a time.
 func TestFactoryNextOwnAssignedSerialCardLeasesPastSiblingAssigned(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
-	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
-	fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
 	fcPlace(t, root,
 		homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1"},
 		homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2"},
@@ -246,9 +246,9 @@ func TestFactoryNextAssignedSerialCardHoldsSlotInPickedArms(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root, store := fcFixture(t)
-			fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
-			fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
-			fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+			fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+			fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+			fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
 			rows := []homestate.Card{{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1"}}
 			if tc.recordSecond {
 				rows = append(rows, homestate.Card{CardID: "t2", State: homestate.CardPicked})
@@ -268,20 +268,21 @@ func TestFactoryNextAssignedSerialCardHoldsSlotInPickedArms(t *testing.T) {
 }
 
 // TestFactoryNextOwnAssignedSerialCardBlockedByPickedSibling — the option-B
-// exception ignores sibling `assigned` rows and nothing else: a `picked` serial
-// row still counts in arm (a), so a lane's own assigned serial card is not
-// leased past it. (Both rows then wait on each other — arm b cannot take the
-// picked row while the assigned one holds the slot; that residual belongs to
-// the same ruling and is recorded in the amendment, not repaired here.) A
-// mutation that ignores `picked` as well as `assigned` fails this test.
+// exception ignores sibling `assigned` rows and nothing else: a DRIVEN `picked`
+// serial row (an owner recorded) still counts in arm (a), so a lane's own
+// assigned serial card is not leased past it. Card t1513 refined the row read
+// from state-only to driver-carrying — an ownerless picked sibling releases
+// the slot (see TestFactoryNextPickedOwnerlessRowReleasesSlot) — so the
+// blocking shape here is picked WITH an owner. A mutation that ignores driven
+// `picked` rows as well as `assigned` fails this test.
 func TestFactoryNextOwnAssignedSerialCardBlockedByPickedSibling(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
-	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
-	fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
 	fcPlace(t, root,
 		homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1"},
-		homestate.Card{CardID: "t2", State: homestate.CardPicked},
+		homestate.Card{CardID: "t2", State: homestate.CardPicked, OwnerLabel: "lane-2"},
 	)
 	sdRegisterLane(t, root, "lane-1")
 
@@ -290,7 +291,7 @@ func TestFactoryNextOwnAssignedSerialCardBlockedByPickedSibling(t *testing.T) {
 		t.Fatalf("next: %v", err)
 	}
 	if owned {
-		t.Fatalf("lane-1 leased its assigned %s past a picked serial sibling; only assigned siblings are ignored in arm (a)", got.CardID)
+		t.Fatalf("lane-1 leased its assigned %s past a driven picked serial sibling; only assigned siblings are ignored in arm (a)", got.CardID)
 	}
 }
 
@@ -310,9 +311,9 @@ func TestFactoryNextParallelizableLeasesBesideLiveSerial(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root, store := fcFixture(t)
-			fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStateQueued)
-			fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
-			fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+			fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStateQueued)
+			fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+			fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 			rows := []homestate.Card{fcDeadLaneCard(homestate.CardRun, live)}
 			rows[0].CardID = "t1"
 			if tc.assignedRow {
@@ -332,19 +333,17 @@ func TestFactoryNextParallelizableLeasesBesideLiveSerial(t *testing.T) {
 	}
 }
 
-// TestFactoryNextPickedOwnerlessRowHoldsSlot_OutOfExpiryScope measures the
-// boundary of the expiry repair: a `picked` row with no owner and no lease —
-// what a failed claim leaves behind, and the shape of t810 in run tm9i7y — is
-// not a lease-holding state, so lease expiry never reaches it and it keeps
-// holding the serial slot. The queue side of t1 is blocked (the operator-held
-// shape), so no lane can take t1 itself and t2 stays refused. Whether such a
-// row should release the slot is the same ruling as the assigned case
-// (REQ-TCD-008), not part of this card's expiry repair.
-func TestFactoryNextPickedOwnerlessRowHoldsSlot_OutOfExpiryScope(t *testing.T) {
+// TestFactoryNextPickedOwnerlessRowReleasesSlot — the ruling the expiry
+// repair left open is now made by card t1513: a `picked` row with no owner
+// and no lease — what a failed claim leaves behind, and the shape of t1453 in
+// run tmf011 — has no recorded driver, so it holds nothing and the queued
+// serial card behind it leases. (The superseded form of this test pinned the
+// old hold; its own comment recorded the ruling as out of that card's scope.)
+func TestFactoryNextPickedOwnerlessRowReleasesSlot(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
-	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, true, kanban.ClassModeSerial)
-	fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+	fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStateQueued)
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, true, factory.ClassModeSerial)
+	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
 	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked})
 	sdRegisterLane(t, root, "lane-1")
 
@@ -352,7 +351,7 @@ func TestFactoryNextPickedOwnerlessRowHoldsSlot_OutOfExpiryScope(t *testing.T) {
 	if err != nil {
 		t.Fatalf("next: %v", err)
 	}
-	if owned {
-		t.Fatalf("lane-1 leased %s; a picked ownerless row is outside lease expiry and keeps holding the slot", got.CardID)
+	if !owned || got.CardID != "t2" {
+		t.Fatalf("lane-1 next = (%s, owned=%v), want t2 leased past the ownerless picked t1 (card t1513 ruling)", got.CardID, owned)
 	}
 }

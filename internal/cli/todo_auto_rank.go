@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/jev"
 	"github.com/modu-ai/moai-adk/internal/jevcred"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // SPEC-TODO-AUTO-PRIORITY-001 (card t1400) — the ranking stage of
@@ -108,7 +108,7 @@ const (
 // answering, per card id, the pull-request outcome kind `moai todo pr`
 // reports. The stage reads only the `landed` kind; `unknown`, an absent id and
 // a returned error are all UNMEASURED, never read as poor.
-type autoLandedLookup func(rec *kanban.BacklogRecord) (map[string]kanban.PRLinkKind, error)
+type autoLandedLookup func(rec *factory.BacklogRecord) (map[string]factory.PRLinkKind, error)
 
 // autoJevRanker is the Jev ordering seam: one bounded request in, the
 // capability's own typed Result out. It never returns an error — every absence
@@ -118,7 +118,7 @@ type autoJevRanker func(req jev.Request) jev.Result
 
 // autoRankCandidate is one eligible queued card with its ranking inputs.
 type autoRankCandidate struct {
-	Item         kanban.BacklogItem
+	Item         factory.BacklogItem
 	PriorityRank int
 	Signals      []string
 }
@@ -138,7 +138,7 @@ type autoRankFlag struct {
 type autoRankResult struct {
 	Source   string
 	Reason   string
-	Ranked   []kanban.BacklogItem
+	Ranked   []factory.BacklogItem
 	Flagged  []autoRankFlag
 	Excluded []string
 	Notes    []string
@@ -155,10 +155,10 @@ func autoRankHoldMarked(text string) bool {
 // record a person reads and never a readiness signal (SPEC-JEV-CONSUMERS-001
 // REQ-JEVN-004): the ranking's only Jev input is its own request, so an earlier
 // answer must not filter, demote or flag a card here.
-func autoRankNearDuplicate(rec *kanban.BacklogRecord, id string) bool {
+func autoRankNearDuplicate(rec *factory.BacklogRecord, id string) bool {
 	findings, _ := rec.FindingsNaming(id)
 	for _, f := range findings {
-		if f.Relation == kanban.BacklogRelationNearDuplicate && f.Source != kanban.BacklogSourceJev {
+		if f.Relation == factory.BacklogRelationNearDuplicate && f.Source != factory.BacklogSourceJev {
 			return true
 		}
 	}
@@ -168,9 +168,9 @@ func autoRankNearDuplicate(rec *kanban.BacklogRecord, id string) bool {
 // autoRankPartition splits the queued candidates into the eligible ones and
 // the ids excluded as blocked, both in queue order. Blocked is an eligibility
 // fact applied on every ranking source; it changes no card state.
-func autoRankPartition(queued []kanban.BacklogItem) (eligible []kanban.BacklogItem, excluded []string) {
+func autoRankPartition(queued []factory.BacklogItem) (eligible []factory.BacklogItem, excluded []string) {
 	for _, it := range queued {
-		if kanban.EffectiveCardClassification(it).Blocked {
+		if factory.EffectiveCardClassification(it).Blocked {
 			excluded = append(excluded, it.ID)
 			continue
 		}
@@ -183,7 +183,7 @@ func autoRankPartition(queued []kanban.BacklogItem) (eligible []kanban.BacklogIt
 // returns one candidate per card in queue order. The landed lookup runs once
 // per call. A signal that cannot be measured yields no demotion and one note
 // naming it.
-func autoRankCandidates(rec *kanban.BacklogRecord, eligible []kanban.BacklogItem, landed autoLandedLookup) (cands []autoRankCandidate, notes []string) {
+func autoRankCandidates(rec *factory.BacklogRecord, eligible []factory.BacklogItem, landed autoLandedLookup) (cands []autoRankCandidate, notes []string) {
 	if len(eligible) == 0 {
 		return nil, nil
 	}
@@ -191,7 +191,7 @@ func autoRankCandidates(rec *kanban.BacklogRecord, eligible []kanban.BacklogItem
 	// lookedUp is true only when a lookup ran and returned without error; the
 	// per-card unknown note below is for that case alone, because the other two
 	// cases already name the whole signal as unmeasured.
-	var kinds map[string]kanban.PRLinkKind
+	var kinds map[string]factory.PRLinkKind
 	lookedUp := false
 	if landed == nil {
 		notes = append(notes, fmt.Sprintf("%s signal unmeasured (no lookup wired)", autoRankSignalLanded))
@@ -205,7 +205,7 @@ func autoRankCandidates(rec *kanban.BacklogRecord, eligible []kanban.BacklogItem
 	for _, it := range eligible {
 		c := autoRankCandidate{
 			Item:         it,
-			PriorityRank: kanban.PriorityRank(kanban.EffectiveCardClassification(it).Priority),
+			PriorityRank: factory.PriorityRank(factory.EffectiveCardClassification(it).Priority),
 		}
 		if autoRankHoldMarked(it.Text) {
 			c.Signals = append(c.Signals, autoRankSignalHoldMarker)
@@ -213,9 +213,9 @@ func autoRankCandidates(rec *kanban.BacklogRecord, eligible []kanban.BacklogItem
 		if lookedUp {
 			kind, answered := kinds[it.ID]
 			switch {
-			case answered && kind == kanban.PRLinkLanded:
+			case answered && kind == factory.PRLinkLanded:
 				c.Signals = append(c.Signals, autoRankSignalLanded)
-			case !answered || kind == kanban.PRLinkUnknown:
+			case !answered || kind == factory.PRLinkUnknown:
 				unknown = append(unknown, it.ID)
 			}
 		}
@@ -276,7 +276,7 @@ func autoRankResultOf(source string, excluded, notes []string, ordered []autoRan
 // excluded, the rest are ordered by priority with readiness-poor cards moved
 // behind the clean ones — demoted, never dropped. queued is the queued suffix
 // of the pickup targets, in queue order. The caller sets Reason.
-func autoRankFallback(rec *kanban.BacklogRecord, queued []kanban.BacklogItem, landed autoLandedLookup) autoRankResult {
+func autoRankFallback(rec *factory.BacklogRecord, queued []factory.BacklogItem, landed autoLandedLookup) autoRankResult {
 	eligible, excluded := autoRankPartition(queued)
 	cands, notes := autoRankCandidates(rec, eligible, landed)
 	return autoRankResultOf(autoRankSourceFallback, excluded, notes, autoRankOrderFallback(cands))
@@ -290,7 +290,7 @@ func autoRankFallback(rec *kanban.BacklogRecord, queued []kanban.BacklogItem, la
 //
 // Demotion is a fallback-source rule: on the Jev source a readiness-poor card
 // is flagged in the record but keeps the place Jev gave it.
-func autoRank(rec *kanban.BacklogRecord, queued []kanban.BacklogItem, landed autoLandedLookup, ask autoJevRanker) autoRankResult {
+func autoRank(rec *factory.BacklogRecord, queued []factory.BacklogItem, landed autoLandedLookup, ask autoJevRanker) autoRankResult {
 	eligible, excluded := autoRankPartition(queued)
 	cands, notes := autoRankCandidates(rec, eligible, landed)
 	fallback := autoRankOrderFallback(cands)
@@ -320,10 +320,10 @@ func autoRank(rec *kanban.BacklogRecord, queued []kanban.BacklogItem, landed aut
 // place at the head, untouched and unsent; only the queued suffix is ranked.
 // The record is skipped when no queued candidate survived the relation filter.
 // It writes nothing to the queue.
-func autoRankTargets(out io.Writer, rec *kanban.BacklogRecord, targets []kanban.BacklogItem, opts autoOptions) []kanban.BacklogItem {
-	var rescue, queued []kanban.BacklogItem
+func autoRankTargets(out io.Writer, rec *factory.BacklogRecord, targets []factory.BacklogItem, opts autoOptions) []factory.BacklogItem {
+	var rescue, queued []factory.BacklogItem
 	for _, it := range targets {
-		if it.State == kanban.BacklogStateQueued {
+		if it.State == factory.BacklogStateQueued {
 			queued = append(queued, it)
 		} else {
 			rescue = append(rescue, it)
@@ -398,7 +398,7 @@ func autoRankJevRequest(cands []autoRankCandidate) jev.Request {
 			flags = strings.Join(c.Signals, ", ")
 		}
 		fmt.Fprintf(&state, "%s | priority=%s | readiness-flags=%s | %s\n",
-			c.Item.ID, kanban.EffectiveCardClassification(c.Item).Priority, flags, todoTextPrefix(c.Item.Text))
+			c.Item.ID, factory.EffectiveCardClassification(c.Item).Priority, flags, todoTextPrefix(c.Item.Text))
 		questions = append(questions, jev.Question{
 			ID: c.Item.ID,
 			Text: fmt.Sprintf("How ready is card %s to be picked and worked on right now? "+
@@ -488,9 +488,9 @@ func liveAutoJevRanker(req jev.Request) jev.Result {
 // computation `moai todo pr` renders — one `gh` query, a local git check per
 // card, fail-open to `unknown`. Its degradation notes are discarded here; the
 // selection record names the unmeasured signal instead.
-func liveAutoLandedLookup(rec *kanban.BacklogRecord) (map[string]kanban.PRLinkKind, error) {
+func liveAutoLandedLookup(rec *factory.BacklogRecord) (map[string]factory.PRLinkKind, error) {
 	rows := computeTodoPRRows(io.Discard, rec, "")
-	kinds := make(map[string]kanban.PRLinkKind, len(rows))
+	kinds := make(map[string]factory.PRLinkKind, len(rows))
 	for _, r := range rows {
 		kinds[r.CardID] = r.Kind
 	}

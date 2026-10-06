@@ -18,7 +18,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // todoWriteLine writes one line to w and folds a stream-write failure into
@@ -57,7 +57,7 @@ splitting one id across two cards is worse than the mistake being undone.`,
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
 			var restored string
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				// Refused mutations: Mutate writes nothing, so the record
 				// stays byte-identical on every one of them.
 				at := rec.ArchivedIndex(id)

@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 const (
@@ -62,7 +62,7 @@ func ghfWriteConfig(t *testing.T, root, mergeMethod string) {
 func ghfNew(t *testing.T, o ghfOpts) ghfFixture {
 	t.Helper()
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked)
+	fcQueue(t, store, factory.BacklogStatePicked)
 	ghfWriteConfig(t, root, o.mergeCfg)
 	fcGit(t, root, "branch", "-M", "main")
 	if err := os.WriteFile(filepath.Join(root, "base.txt"), []byte("base\n"), 0o600); err != nil {
@@ -217,7 +217,7 @@ func ghFlag(args []string, name string) string {
 
 func (d *ghDouble) run(ctx context.Context, _ string, args ...string) ([]byte, error) {
 	d.calls = append(d.calls, append([]string(nil), args...))
-	if lock, err := kanban.ReadIntegrationLock(d.f.root); err == nil && lock.Held() {
+	if lock, err := factory.ReadIntegrationLock(d.f.root); err == nil && lock.Held() {
 		d.windowSeenHeld = true
 	}
 	if d.hang {
@@ -265,10 +265,10 @@ func ghfComplete(t *testing.T) (string, error) {
 
 func ghfNoWindow(t *testing.T, f ghfFixture, where string) {
 	t.Helper()
-	if _, err := os.Stat(filepath.Join(f.root, ".moai", "state", kanban.IntegrationLockFileName)); err == nil {
+	if _, err := os.Stat(filepath.Join(f.root, ".moai", "state", factory.IntegrationLockFileName)); err == nil {
 		t.Errorf("%s: an integration window record exists", where)
 	}
-	if lock, err := kanban.ReadIntegrationLock(f.root); err != nil || lock.Held() {
+	if lock, err := factory.ReadIntegrationLock(f.root); err != nil || lock.Held() {
 		t.Errorf("%s: the integration window is held (%+v, err %v)", where, lock, err)
 	}
 }
@@ -533,7 +533,7 @@ func TestFactoryCompleteGitHubFlowRefusals(t *testing.T) {
 	})
 	t.Run("codex_lane_refused_before_anything", func(t *testing.T) {
 		f := ghfNew(t, ghfOpts{syncStatus: "complete"})
-		sdLaneEnv(t, ghfLane, kanban.BackendGPT)
+		sdLaneEnv(t, ghfLane, factory.BackendGPT)
 		d := newGHDouble(t, f)
 		if _, err := ghfComplete(t); err == nil {
 			t.Fatal("a Codex lane completed a card")
@@ -566,7 +566,7 @@ func TestFactoryCompleteNoWindowGitHubFlow(t *testing.T) {
 	t.Run("another_lanes_window_is_neither_waited_for_nor_disturbed", func(t *testing.T) {
 		f := ghfNew(t, ghfOpts{syncStatus: "complete"})
 		newGHDouble(t, f)
-		sdHoldWindow(t, f.root, "sess-lane-2", "lane-2", "main", kanban.BranchSourceConfig, "", "t2")
+		sdHoldWindow(t, f.root, "sess-lane-2", "lane-2", "main", factory.BranchSourceConfig, "", "t2")
 		if _, err := ghfComplete(t); err != nil {
 			t.Fatalf("complete with a foreign window held: %v", err)
 		}
@@ -620,7 +620,7 @@ func TestFactoryStageVerbCannotMintPRStates(t *testing.T) {
 // The operator's push gate closes a PR-merged card (there is nothing to push).
 func TestFactoryDecidePushGateClosesAMergedPRCard(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked)
+	fcQueue(t, store, factory.BacklogStatePicked)
 	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardMergedPR})
 	db := fcOpen(t, root)
 	got, err := decideOne(context.Background(), db, fcRun, "t1", "push", "", "")

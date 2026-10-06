@@ -7,50 +7,50 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 type gtdE2EPublishOwner struct {
-	store  *kanban.BacklogStore
+	store  *factory.BacklogStore
 	itemID string
 }
 
-func (o gtdE2EPublishOwner) Readback(ctx context.Context, _ kanban.GTDOperation) (bool, error) {
-	item, err := kanban.LoadGTDItem(ctx, o.store, o.itemID)
+func (o gtdE2EPublishOwner) Readback(ctx context.Context, _ factory.GTDOperation) (bool, error) {
+	item, err := factory.LoadGTDItem(ctx, o.store, o.itemID)
 	return err == nil && item.CardID != "", err
 }
 
-func (o gtdE2EPublishOwner) Apply(ctx context.Context, _ kanban.GTDOperation) error {
-	_, err := kanban.EngageGTDItem(ctx, o.store, kanban.EngageInput{ItemID: o.itemID, Authorized: true, EvidenceFresh: true, DependenciesReady: true, LaneAvailable: true, ResourcesAvailable: true})
+func (o gtdE2EPublishOwner) Apply(ctx context.Context, _ factory.GTDOperation) error {
+	_, err := factory.EngageGTDItem(ctx, o.store, factory.EngageInput{ItemID: o.itemID, Authorized: true, EvidenceFresh: true, DependenciesReady: true, LaneAvailable: true, ResourcesAvailable: true})
 	return err
 }
 
 type gtdE2EPickOwner struct {
-	store  *kanban.BacklogStore
+	store  *factory.BacklogStore
 	cardID string
 }
 
-func (o gtdE2EPickOwner) Readback(_ context.Context, _ kanban.GTDOperation) (bool, error) {
+func (o gtdE2EPickOwner) Readback(_ context.Context, _ factory.GTDOperation) (bool, error) {
 	record, err := o.store.LoadPure()
 	if err != nil {
 		return false, err
 	}
 	for _, item := range record.Items {
 		if item.ID == o.cardID {
-			return item.State == kanban.BacklogStatePicked, nil
+			return item.State == factory.BacklogStatePicked, nil
 		}
 	}
 	return false, errors.New("card missing")
 }
 
-func (o gtdE2EPickOwner) Apply(_ context.Context, _ kanban.GTDOperation) error {
-	return o.store.Mutate(func(record *kanban.BacklogRecord) error {
+func (o gtdE2EPickOwner) Apply(_ context.Context, _ factory.GTDOperation) error {
+	return o.store.Mutate(func(record *factory.BacklogRecord) error {
 		for i := range record.Items {
 			if record.Items[i].ID == o.cardID {
-				if record.Items[i].State != kanban.BacklogStateQueued {
+				if record.Items[i].State != factory.BacklogStateQueued {
 					return errors.New("card not queued")
 				}
-				record.Items[i].State = kanban.BacklogStatePicked
+				record.Items[i].State = factory.BacklogStatePicked
 				return nil
 			}
 		}
@@ -63,8 +63,8 @@ type gtdE2EDispatchOwner struct {
 	crashAfterEffect          bool
 }
 
-func (o *gtdE2EDispatchOwner) Readback(_ context.Context, _ kanban.GTDOperation) (bool, error) {
-	record, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(o.root)).LoadPure()
+func (o *gtdE2EDispatchOwner) Readback(_ context.Context, _ factory.GTDOperation) (bool, error) {
+	record, err := factory.NewBacklogStore(factory.BacklogPathForRoot(o.root)).LoadPure()
 	if err != nil {
 		return false, err
 	}
@@ -76,8 +76,8 @@ func (o *gtdE2EDispatchOwner) Readback(_ context.Context, _ kanban.GTDOperation)
 	return false, nil
 }
 
-func (o *gtdE2EDispatchOwner) Apply(_ context.Context, _ kanban.GTDOperation) error {
-	if err := kanban.RecordFactoryCardAssignment(o.root, o.runID, o.cardID, o.lane, ""); err != nil {
+func (o *gtdE2EDispatchOwner) Apply(_ context.Context, _ factory.GTDOperation) error {
+	if err := factory.RecordFactoryCardAssignment(o.root, o.runID, o.cardID, o.lane, ""); err != nil {
 		return err
 	}
 	if o.crashAfterEffect {
@@ -90,17 +90,17 @@ func (o *gtdE2EDispatchOwner) Apply(_ context.Context, _ kanban.GTDOperation) er
 func TestGTDAutonomyEndToEnd(t *testing.T) {
 	ctx := context.Background()
 	root := t.TempDir()
-	store := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
-	restartedStore := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
-	item, err := kanban.CaptureGTDItem(ctx, store, kanban.CaptureInput{Content: "implement approved card", Source: "user", SourceAllowed: true, Sensitivity: kanban.SensitivityPrivate, EventID: "e2e-1"})
+	store := factory.NewBacklogStore(factory.BacklogPathForRoot(root))
+	restartedStore := factory.NewBacklogStore(factory.BacklogPathForRoot(root))
+	item, err := factory.CaptureGTDItem(ctx, store, factory.CaptureInput{Content: "implement approved card", Source: "user", SourceAllowed: true, Sensitivity: factory.SensitivityPrivate, EventID: "e2e-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	clarified, err := kanban.ClarifyGTDItem(ctx, store, kanban.ClarifyInput{ItemID: item.ItemID, Disposition: kanban.DispositionAction, DesiredOutcome: "merged", CompletionEvidence: "CI+landed", Authority: "queue,dispatch", SourceTrusted: true})
+	clarified, err := factory.ClarifyGTDItem(ctx, store, factory.ClarifyInput{ItemID: item.ItemID, Disposition: factory.DispositionAction, DesiredOutcome: "merged", CompletionEvidence: "CI+landed", Authority: "queue,dispatch", SourceTrusted: true})
 	if err != nil || !clarified.Publishable {
 		t.Fatalf("clarify=%+v err=%v", clarified, err)
 	}
-	if _, err := kanban.OrganizeGTDItem(ctx, store, kanban.OrganizeInput{ItemID: item.ItemID, Class: kanban.ClassAction, Context: "computer"}); err != nil {
+	if _, err := factory.OrganizeGTDItem(ctx, store, factory.OrganizeInput{ItemID: item.ItemID, Class: factory.ClassAction, Context: "computer"}); err != nil {
 		t.Fatal(err)
 	}
 	contract := completeContract()
@@ -116,14 +116,14 @@ func TestGTDAutonomyEndToEnd(t *testing.T) {
 	if _, err := ValidateMissionDecision(sealed, snapshot, decision, time.Now()); err != nil {
 		t.Fatalf("sealed publication denied: %v", err)
 	}
-	publish := kanban.GTDOperation{OperationID: "op-publish", MissionID: contract.MissionID, Action: "publish", Target: contract.Scope[0], ReceiptJSON: []byte(`{"status":"passed"}`), SnapshotHash: snapshot.SnapshotHash}
+	publish := factory.GTDOperation{OperationID: "op-publish", MissionID: contract.MissionID, Action: "publish", Target: contract.Scope[0], ReceiptJSON: []byte(`{"status":"passed"}`), SnapshotHash: snapshot.SnapshotHash}
 	publishResults := make(chan error, 2)
 	var publishWG sync.WaitGroup
-	for _, operationStore := range []*kanban.BacklogStore{store, restartedStore} {
+	for _, operationStore := range []*factory.BacklogStore{store, restartedStore} {
 		publishWG.Add(1)
-		go func(operationStore *kanban.BacklogStore) {
+		go func(operationStore *factory.BacklogStore) {
 			defer publishWG.Done()
-			_, err := kanban.ExecuteGTDOperation(ctx, operationStore, publish, gtdE2EPublishOwner{store: operationStore, itemID: item.ItemID})
+			_, err := factory.ExecuteGTDOperation(ctx, operationStore, publish, gtdE2EPublishOwner{store: operationStore, itemID: item.ItemID})
 			publishResults <- err
 		}(operationStore)
 	}
@@ -134,7 +134,7 @@ func TestGTDAutonomyEndToEnd(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	itemAfterPublish, err := kanban.LoadGTDItem(ctx, restartedStore, item.ItemID)
+	itemAfterPublish, err := factory.LoadGTDItem(ctx, restartedStore, item.ItemID)
 	if err != nil || itemAfterPublish.CardID == "" {
 		t.Fatalf("published item=%+v err=%v", itemAfterPublish, err)
 	}
@@ -143,25 +143,25 @@ func TestGTDAutonomyEndToEnd(t *testing.T) {
 		t.Fatalf("concurrent publish created %d cards: %v", len(record.Items), err)
 	}
 	cardID := itemAfterPublish.CardID
-	pick := kanban.GTDOperation{OperationID: "op-pick", MissionID: contract.MissionID, Action: "pick", Target: contract.Scope[0], ReceiptJSON: []byte(`{"status":"passed"}`), SnapshotHash: "pick-snapshot"}
-	if _, err := kanban.ExecuteGTDOperation(ctx, restartedStore, pick, gtdE2EPickOwner{store: restartedStore, cardID: cardID}); err != nil {
+	pick := factory.GTDOperation{OperationID: "op-pick", MissionID: contract.MissionID, Action: "pick", Target: contract.Scope[0], ReceiptJSON: []byte(`{"status":"passed"}`), SnapshotHash: "pick-snapshot"}
+	if _, err := factory.ExecuteGTDOperation(ctx, restartedStore, pick, gtdE2EPickOwner{store: restartedStore, cardID: cardID}); err != nil {
 		t.Fatal(err)
 	}
-	lease, err := kanban.AcquireSlotLease(root, kanban.SlotLeaseRequest{Resource: "lane-10", SessionID: contract.MissionID, MaxDuration: time.Minute})
+	lease, err := factory.AcquireSlotLease(root, factory.SlotLeaseRequest{Resource: "lane-10", SessionID: contract.MissionID, MaxDuration: time.Minute})
 	if err != nil || lease.SessionID != contract.MissionID {
 		t.Fatalf("lease=%+v err=%v", lease, err)
 	}
-	dispatch := kanban.GTDOperation{OperationID: "op-dispatch", MissionID: contract.MissionID, Action: "dispatch", Target: contract.Scope[0], ReceiptJSON: []byte(`{"status":"passed"}`), SnapshotHash: "dispatch-snapshot"}
+	dispatch := factory.GTDOperation{OperationID: "op-dispatch", MissionID: contract.MissionID, Action: "dispatch", Target: contract.Scope[0], ReceiptJSON: []byte(`{"status":"passed"}`), SnapshotHash: "dispatch-snapshot"}
 	dispatchOwner := &gtdE2EDispatchOwner{root: root, runID: "run-1", cardID: cardID, lane: "lane-10", crashAfterEffect: true}
-	if _, err := kanban.ExecuteGTDOperation(ctx, store, dispatch, dispatchOwner); err == nil {
+	if _, err := factory.ExecuteGTDOperation(ctx, store, dispatch, dispatchOwner); err == nil {
 		t.Fatal("dispatch crash cut was not observed")
 	}
-	reconciled, err := kanban.ExecuteGTDOperation(ctx, restartedStore, dispatch, dispatchOwner)
-	if err != nil || reconciled.State != kanban.GTDOperationReconciled {
+	reconciled, err := factory.ExecuteGTDOperation(ctx, restartedStore, dispatch, dispatchOwner)
+	if err != nil || reconciled.State != factory.GTDOperationReconciled {
 		t.Fatalf("dispatch reconciliation=%+v err=%v", reconciled, err)
 	}
 	final, err := restartedStore.LoadPure()
-	if err != nil || len(final.Items) != 1 || final.Items[0].State != kanban.BacklogStatePicked || len(final.Runtime.Assignments) != 1 {
+	if err != nil || len(final.Items) != 1 || final.Items[0].State != factory.BacklogStatePicked || len(final.Runtime.Assignments) != 1 {
 		t.Fatalf("final=%+v err=%v", final, err)
 	}
 	if final.Runtime.Assignments[0].CardID != cardID || final.Runtime.Assignments[0].OwnerLabel != "lane-10" {

@@ -17,7 +17,7 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
-const factorySchemaVersion = 5
+const factorySchemaVersion = 6
 
 const factoryDDL = `
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS cards (
   merge_sha TEXT NOT NULL DEFAULT '',
   merge_tree TEXT NOT NULL DEFAULT '',
   remeasure_path TEXT NOT NULL DEFAULT '',
+  bundle_id TEXT NOT NULL DEFAULT '',
+  bundle_order INTEGER NOT NULL DEFAULT 0,
   contract_spec_id TEXT NOT NULL DEFAULT '',
   contract_sha256 TEXT NOT NULL DEFAULT '',
   contract_signed_at TEXT NOT NULL DEFAULT '',
@@ -157,10 +159,35 @@ func OpenFactory(projectRoot string) (*FactoryDB, error) {
 	return OpenFactoryPath(path)
 }
 
+// factoryBusyTimeoutDefault is the busy timeout every connection opened
+// through OpenFactory and OpenFactoryPath carries in its DSN.
+const factoryBusyTimeoutDefault = 5 * time.Second
+
+// OpenFactoryBounded is OpenFactory with a busy timeout of busy carried in the
+// connection's DSN instead of the default 5 s (SPEC-FACTORY-ATOMIC-LEASE-001
+// plan D2). A runtime PRAGMA does not substitute: it did not survive a
+// context-cancelled call, so the value rides the DSN. The lease path opens its
+// record connection through it so that a claim stalled behind another writer
+// overshoots its deadline by at most the busy timeout.
+func OpenFactoryBounded(projectRoot string, busy time.Duration) (*FactoryDB, error) {
+	if err := EnsureProjectLayout(projectRoot); err != nil {
+		return nil, err
+	}
+	path, err := FactoryDBPath(projectRoot)
+	if err != nil {
+		return nil, err
+	}
+	return openFactoryPathBusy(path, busy)
+}
+
 // OpenFactoryPath opens a factory database at an already-resolved path. It is
 // used by compatibility adapters whose public API historically accepted a
 // registry path rather than a project root.
 func OpenFactoryPath(path string) (*FactoryDB, error) {
+	return openFactoryPathBusy(path, factoryBusyTimeoutDefault)
+}
+
+func openFactoryPathBusy(path string, busy time.Duration) (*FactoryDB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, err
 	}
@@ -168,7 +195,7 @@ func OpenFactoryPath(path string) (*FactoryDB, error) {
 		return nil, err
 	}
 	values := url.Values{}
-	values.Add("_pragma", "busy_timeout(5000)")
+	values.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", busy.Milliseconds()))
 	values.Add("_pragma", "journal_mode(WAL)")
 	values.Add("_pragma", "foreign_keys(ON)")
 	values.Add("_txlock", "immediate")
@@ -228,6 +255,12 @@ func OpenFactoryPath(path string) (*FactoryDB, error) {
 		err = migrateFactoryV4ToV5(ctx, db)
 		if err == nil {
 			version = "5"
+		}
+	}
+	if err == nil && version == "5" {
+		err = migrateFactoryV5ToV6(ctx, db)
+		if err == nil {
+			version = "6"
 		}
 	}
 	if err == nil && version != strconv.Itoa(factorySchemaVersion) {
@@ -421,6 +454,40 @@ func migrateFactoryV4ToV5(ctx context.Context, db *sql.DB) error {
 		}
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE meta SET value='5' WHERE key='schema_version' AND value='4'`); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// migrateFactoryV5ToV6 adds the bundle columns (SPEC-TODO-CARD-ISSUANCE-001
+// REQ-TCI-018, card t1454): bundle_id groups cards into a bundle chain and
+// bundle_order sequences them within the chain. Both are TEXT/INTEGER NOT
+// NULL with zero-value defaults, so no backfill is needed and every v5 row
+// stays valid — a row whose bundle_id is empty is simply not a bundle member.
+func migrateFactoryV5ToV6(ctx context.Context, db *sql.DB) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	existing, err := factoryTableColumns(ctx, tx, "cards")
+	if err != nil {
+		return err
+	}
+	for _, column := range []string{"bundle_id", "bundle_order"} {
+		if existing[column] {
+			continue
+		}
+		// SQL: column comes from the constant list above, never from input.
+		colType := "TEXT NOT NULL DEFAULT ''"
+		if column == "bundle_order" {
+			colType = "INTEGER NOT NULL DEFAULT 0"
+		}
+		if _, err := tx.ExecContext(ctx, `ALTER TABLE cards ADD COLUMN `+column+` `+colType); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE meta SET value='6' WHERE key='schema_version' AND value='5'`); err != nil {
 		return err
 	}
 	return tx.Commit()

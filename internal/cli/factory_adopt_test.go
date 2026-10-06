@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // adoptFixture seeds one picked card (t1) with a run-phase progress record
@@ -17,9 +17,9 @@ import (
 func adoptFixture(t *testing.T) (string, string, string) {
 	t.Helper()
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked)
+	fcQueue(t, store, factory.BacklogStatePicked)
 	spec := "SPEC-ADOPT-EXAMPLE-001"
-	if err := store.Mutate(func(r *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(r *factory.BacklogRecord) error {
 		r.Items[0].SpecID = &spec
 		return nil
 	}); err != nil {
@@ -80,7 +80,7 @@ func TestAdoptBriefsFromRecordedProgressAndEvidenceBeforeWork(t *testing.T) {
 // AC-FLA-004 precondition: adoption is only for a card in picked state.
 func TestAdoptRefusesCardNotPicked(t *testing.T) {
 	_, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStateQueued)
+	fcQueue(t, store, factory.BacklogStateQueued)
 	laneEnv(t)
 	_, _, err := runFactory(t, "handoff", "adopt", "--card", "t1")
 	if err == nil || !strings.Contains(err.Error(), "not picked") {
@@ -92,7 +92,7 @@ func TestAdoptRefusesCardNotPicked(t *testing.T) {
 // resumption — adopt refuses rather than laundering a silent restart.
 func TestAdoptRefusesWhenNothingRecorded(t *testing.T) {
 	_, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked)
+	fcQueue(t, store, factory.BacklogStatePicked)
 	laneEnv(t)
 	_, _, err := runFactory(t, "handoff", "adopt", "--card", "t1")
 	if err == nil || !strings.Contains(err.Error(), "nothing recorded") {

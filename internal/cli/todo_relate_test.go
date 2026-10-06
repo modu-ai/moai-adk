@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // findingLines returns the indented finding lines of a `todo list` render.
@@ -39,9 +39,9 @@ func findingLines(out string) []string {
 func TestTodoRelateAndUnrelateTouchNoCard(t *testing.T) {
 	_, store := todoFixture(t)
 	seedItems(t, store, "Alpha card", "Beta card", "Gamma card", "Delta card")
-	seedFindings(t, store, kanban.BacklogFinding{
+	seedFindings(t, store, factory.BacklogFinding{
 		SubjectID: "t3", RelatedID: "t4",
-		Relation: kanban.BacklogRelationContains, Source: kanban.BacklogSourceAgent,
+		Relation: factory.BacklogRelationContains, Source: factory.BacklogSourceAgent,
 	})
 	snapshot := snapshotItems(t, store)
 
@@ -53,15 +53,18 @@ func TestTodoRelateAndUnrelateTouchNoCard(t *testing.T) {
 	if len(afterRelate) != 2 {
 		t.Fatalf("findings after relate = %d, want 2: %+v", len(afterRelate), afterRelate)
 	}
+	// REQ-TCI-013: absorbs is symmetric for dedup, so the recorded pair is
+	// normalized smaller-id-first — the caller's (t2, t1) spelling lands as
+	// (t1, t2).
 	recorded := -1
 	for i, f := range afterRelate {
-		if f.SubjectID == "t2" && f.RelatedID == "t1" &&
-			f.Relation == kanban.BacklogRelationAbsorbs && f.Source == kanban.BacklogSourceAgent {
+		if f.SubjectID == "t1" && f.RelatedID == "t2" &&
+			f.Relation == factory.BacklogRelationAbsorbs && f.Source == factory.BacklogSourceAgent {
 			recorded = i + 1
 		}
 	}
 	if recorded < 0 {
-		t.Fatalf("no {t2, t1, absorbs, agent} finding was recorded: %+v", afterRelate)
+		t.Fatalf("no {t1, t2, absorbs, agent} finding was recorded: %+v", afterRelate)
 	}
 	assertItemsUnchanged(t, store, snapshot, "after relate")
 
@@ -78,7 +81,7 @@ func TestTodoRelateAndUnrelateTouchNoCard(t *testing.T) {
 		t.Errorf("the surviving finding = %+v, want the untouched t3↔t4 one", survivor)
 	}
 	for _, f := range afterUnrelate {
-		if f.Names("t2") && f.Names("t1") && f.Relation == kanban.BacklogRelationAbsorbs {
+		if f.Names("t2") && f.Names("t1") && f.Relation == factory.BacklogRelationAbsorbs {
 			t.Errorf("the addressed finding survived unrelate: %+v", f)
 		}
 	}
@@ -97,10 +100,10 @@ func TestSemanticRelationsChangeNothing(t *testing.T) {
 	seedItems(t, store, "Alpha card", "Beta card", "Gamma card")
 
 	for _, rel := range []struct{ a, b, relation string }{
-		{"t1", "t2", kanban.BacklogRelationContains},
-		{"t2", "t3", kanban.BacklogRelationAbsorbs},
-		{"t1", "t3", kanban.BacklogRelationReplaces},
-		{"t3", "t1", kanban.BacklogRelationConflicts},
+		{"t1", "t2", factory.BacklogRelationContains},
+		{"t2", "t3", factory.BacklogRelationAbsorbs},
+		{"t1", "t3", factory.BacklogRelationReplaces},
+		{"t3", "t1", factory.BacklogRelationConflicts},
 	} {
 		if _, _, err := runTodo(t, "relate", rel.a, rel.b, "--relation", rel.relation); err != nil {
 			t.Fatalf("relate %s %s %s: %v", rel.a, rel.relation, rel.b, err)
@@ -132,9 +135,9 @@ func TestSemanticRelationsChangeNothing(t *testing.T) {
 func TestTodoListJSONIsIdempotent(t *testing.T) {
 	_, store := todoFixture(t)
 	seedItems(t, store, "Alpha card", "Beta card")
-	seedFindings(t, store, kanban.BacklogFinding{
+	seedFindings(t, store, factory.BacklogFinding{
 		SubjectID: "t2", RelatedID: "t1",
-		Relation: kanban.BacklogRelationNearDuplicate, Source: kanban.BacklogSourceMechanical,
+		Relation: factory.BacklogRelationNearDuplicate, Source: factory.BacklogSourceMechanical,
 		Score: 0.9, At: "2026-01-01T00:00:00Z",
 	})
 	before := queueDigest(t, store)
@@ -170,9 +173,9 @@ func TestTodoListJSONIsIdempotent(t *testing.T) {
 func TestTodoListShowsFindingAndNextStep(t *testing.T) {
 	_, store := todoFixture(t)
 	seedItems(t, store, "Alpha card", "Beta", "Gamma", "Delta", "Epsilon")
-	seedFindings(t, store, kanban.BacklogFinding{
+	seedFindings(t, store, factory.BacklogFinding{
 		SubjectID: "t5", RelatedID: "t1",
-		Relation: kanban.BacklogRelationNearDuplicate, Source: kanban.BacklogSourceMechanical,
+		Relation: factory.BacklogRelationNearDuplicate, Source: factory.BacklogSourceMechanical,
 		Score: 0.87, At: "2026-01-01T00:00:00Z",
 	})
 
@@ -234,9 +237,9 @@ func TestTodoWhySaysNothingFound(t *testing.T) {
 func TestMachineOnlyMarkAppearsAndClears(t *testing.T) {
 	_, store := todoFixture(t)
 	seedItems(t, store, "Alpha card", "Beta", "Gamma", "Delta", "Epsilon")
-	seedFindings(t, store, kanban.BacklogFinding{
+	seedFindings(t, store, factory.BacklogFinding{
 		SubjectID: "t5", RelatedID: "t1",
-		Relation: kanban.BacklogRelationNearDuplicate, Source: kanban.BacklogSourceMechanical,
+		Relation: factory.BacklogRelationNearDuplicate, Source: factory.BacklogSourceMechanical,
 		Score: 0.87, At: "2026-01-01T00:00:00Z",
 	})
 
@@ -399,7 +402,7 @@ func TestTodoRelateSequencingKinds(t *testing.T) {
 	if len(findings) != 2 {
 		t.Fatalf("findings = %d, want 2: %+v", len(findings), findings)
 	}
-	seen := map[string]kanban.BacklogFinding{}
+	seen := map[string]factory.BacklogFinding{}
 	for _, f := range findings {
 		seen[f.SubjectID+"|"+f.Relation+"|"+f.RelatedID] = f
 	}
@@ -433,7 +436,7 @@ func TestTodoRelateSequencingKinds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("relate --help: %v", err)
 	}
-	for _, kind := range kanban.BacklogSemanticRelations {
+	for _, kind := range factory.BacklogSemanticRelations {
 		if !strings.Contains(helpOut, kind) {
 			t.Errorf("relate help missing accepted relation %q:\n%s", kind, helpOut)
 		}

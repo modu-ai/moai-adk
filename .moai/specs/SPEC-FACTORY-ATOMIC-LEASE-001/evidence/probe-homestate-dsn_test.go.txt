@@ -1,0 +1,124 @@
+package homestate
+
+// Plan-phase observation probe for SPEC-FACTORY-ATOMIC-LEASE-001 (card t1458),
+// iteration 2 repair (defect D1). Evidence, not source: .txt suffix, mapped in
+// for one run by overlay-homestate-dsn.json.
+//
+// The iteration-1 probe (probe-homestate) lowered its "low" handle with a runtime
+// PRAGMA after opening it through OpenFactoryPath, so a busy timeout CARRIED IN
+// THE DSN was never measured. This probe opens the handle with the timeout in
+// the DSN (the only form the SPEC adopts) and measures what that does and does
+// not bound:
+//
+//   - with NO context deadline the claim still waits the whole holder out,
+//     because retryFactoryBusy re-enters the transaction up to 100 times, so the
+//     DSN timeout alone does not bound the claim;
+//   - with a context deadline the claim returns once the deadline passes plus at
+//     most the remaining busy-timeout wait of the in-flight attempt;
+//   - the DSN value persists across a context-cancelled call.
+//
+// It uses only symbols the tree has at the pin; the DSN is built by the same
+// recipe as OpenFactoryPath (factory.go) with only the busy timeout changed.
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"net/url"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+)
+
+func dsnProbeOpen(t *testing.T, path string, busyMS int) *FactoryDB {
+	t.Helper()
+	values := url.Values{}
+	values.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", busyMS))
+	values.Add("_pragma", "journal_mode(WAL)")
+	values.Add("_pragma", "foreign_keys(ON)")
+	values.Add("_txlock", "immediate")
+	p := filepath.ToSlash(path)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	dsn := (&url.URL{Scheme: "file", Path: p, RawQuery: values.Encode()}).String()
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.SetMaxOpenConns(1)
+	return &FactoryDB{DB: db, Path: path}
+}
+
+func dsnProbeClaim(db *FactoryDB, ctx context.Context, id string) (time.Duration, error) {
+	start := time.Now()
+	c, err := db.RecordPicked(ctx, "run-p", id, CardFields{}, "probe", time.Now())
+	if err != nil {
+		return time.Since(start), err
+	}
+	c, err = db.Transition(ctx, TransitionRequest{RunID: "run-p", CardID: id, To: CardAssigned, ExpectedVersion: c.Version, Actor: "probe", Owner: "lane-1", Now: time.Now()})
+	if err != nil {
+		return time.Since(start), err
+	}
+	_, err = db.Transition(ctx, TransitionRequest{RunID: "run-p", CardID: id, To: CardLeased, ExpectedVersion: c.Version, Actor: "lane-1", Now: time.Now()})
+	return time.Since(start), err
+}
+
+func TestT1458ProbeDSNClaim(t *testing.T) {
+	db := openSandboxFactory(t)
+	ctx := context.Background()
+	mustRecordRun(t, db, FactoryRun{RunID: "run-p", Backend: "claude", LeadPID: 1, LeadProcessStart: "st"})
+	frRegisterWorker(t, db, "lane-1")
+
+	other, err := OpenFactoryPath(db.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = other.Close() }()
+	hold := func(d time.Duration) {
+		tx, err := other.DB.BeginTx(ctx, nil)
+		if err != nil {
+			t.Fatalf("holder begin: %v", err)
+		}
+		time.AfterFunc(d, func() { _ = tx.Rollback() })
+	}
+
+	low := dsnProbeOpen(t, db.Path, 200)
+	defer func() { _ = low.Close() }()
+	var bt int
+	if err := low.DB.QueryRow(`PRAGMA busy_timeout`).Scan(&bt); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("PROBE DSN-carried handle busy_timeout=%dms", bt)
+
+	// 1. DSN timeout only, no context deadline, against a 3 s holder.
+	hold(3 * time.Second)
+	d, cerr := dsnProbeClaim(low, ctx, "t9401")
+	t.Logf("PROBE claim DSN busy_timeout=200ms + NO ctx deadline vs 3s write holder: elapsed=%s err=%v", d, cerr)
+	time.Sleep(3200 * time.Millisecond)
+
+	// 2. DSN timeout plus an 800 ms deadline against a 3 s holder, three times.
+	for i := 0; i < 3; i++ {
+		hold(3 * time.Second)
+		cctx, cancel := context.WithTimeout(ctx, 800*time.Millisecond)
+		d, cerr = dsnProbeClaim(low, cctx, fmt.Sprintf("t95%02d", i))
+		cancel()
+		t.Logf("PROBE claim DSN busy_timeout=200ms + ctx-deadline=800ms vs 3s write holder (run %d): elapsed=%s overshoot-past-deadline=%s err=%v", i+1, d, d-800*time.Millisecond, cerr)
+		time.Sleep(3200 * time.Millisecond)
+	}
+
+	// 3. The same pair against a holder much longer than any cap.
+	hold(7 * time.Second)
+	cctx, cancel := context.WithTimeout(ctx, 800*time.Millisecond)
+	d, cerr = dsnProbeClaim(low, cctx, "t9601")
+	cancel()
+	t.Logf("PROBE claim DSN busy_timeout=200ms + ctx-deadline=800ms vs 7s write holder: elapsed=%s err=%v", d, cerr)
+
+	// 4. The DSN value after cancelled calls (the runtime-PRAGMA form fell back to 5000 ms).
+	if err := low.DB.QueryRow(`PRAGMA busy_timeout`).Scan(&bt); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("PROBE busy_timeout on the DSN-carried handle after cancelled calls=%dms", bt)
+	time.Sleep(7200 * time.Millisecond)
+}

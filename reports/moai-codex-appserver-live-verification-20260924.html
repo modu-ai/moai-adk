@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>MoAI Codex App Server 실세션 검증</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <style>
+  :root{color-scheme:light;--bg:#faf9f5;--ink:#17202a;--muted:#52606d;--line:#d9ddd9;--accent:#b95334;--panel:#fff;--soft:#f1ece3}
+  *{box-sizing:border-box}html{scroll-behavior:smooth}body{max-width:1020px;margin:0 auto;padding:38px 34px 90px;background:var(--bg);color:var(--ink);font:16px/1.72 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;word-break:keep-all}
+  h1,h2,h3{line-height:1.3;letter-spacing:-.035em}h1{font-size:2.35rem;margin:0 0 18px}h2{font-size:1.55rem;margin:58px 0 18px;padding:0 0 11px;border-bottom:2px solid var(--accent)}h3{font-size:1.15rem;margin:34px 0 12px;color:#8f3d2a}
+  p{margin:12px 0}strong{font-weight:700}a{color:#9a442d;text-decoration-thickness:1px;text-underline-offset:3px}a:hover{color:#652315}
+  #TOC{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px 24px;margin:28px 0 42px;box-shadow:0 8px 28px #17202a0b}#TOC ul{margin:5px 0;padding-left:22px}#TOC a{text-decoration:none}
+  table{border-collapse:collapse;width:100%;margin:20px 0 30px;font-size:.9rem;background:var(--panel)}th,td{border:1px solid var(--line);padding:11px 12px;text-align:left;vertical-align:top}th{background:var(--soft);font-weight:700}tr:nth-child(even) td{background:#fdfcf9}
+  code{background:#ece9e2;border-radius:4px;padding:2px 4px;font:0.87em/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-word}pre{background:#202933;color:#f6f5f0;padding:18px 20px;border-radius:10px;overflow:auto;white-space:pre-wrap}pre code{padding:0;background:none;color:inherit;word-break:normal}
+  blockquote{border-left:4px solid var(--accent);padding:4px 18px;margin:20px 0;background:#f3eee7;color:var(--muted)}li{margin:5px 0}hr{border:0;border-top:1px solid var(--line);margin:38px 0}
+  @media(max-width:700px){body{padding:25px 17px 65px;font-size:15px}h1{font-size:1.8rem}table{display:block;overflow-x:auto;white-space:normal}th,td{min-width:120px}}@media print{body{max-width:none;padding:0;background:white;color:black;font-size:11pt}#TOC{box-shadow:none}h2{break-after:avoid}h3{break-after:avoid}pre,table{break-inside:avoid}a{color:inherit;text-decoration:none}}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">MoAI Codex App Server 실세션 검증</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#claude-code-codex-cli-자동-전달-실세션-검증"
+id="toc-claude-code-codex-cli-자동-전달-실세션-검증">Claude Code → Codex
+CLI 자동 전달 실세션 검증</a>
+<ul>
+<li><a href="#claim-어느-단계까지-실제로-되었나"
+id="toc-claim-어느-단계까지-실제로-되었나">1. Claim: 어느 단계까지
+실제로 되었나</a></li>
+<li><a href="#evidence-명령과-축약하지-않은-판정-출력"
+id="toc-evidence-명령과-축약하지-않은-판정-출력">2. Evidence: 명령과
+축약하지 않은 판정 출력</a></li>
+<li><a href="#baseline-attribution-무엇을-시험한-것인가"
+id="toc-baseline-attribution-무엇을-시험한-것인가">3.
+Baseline-attribution: 무엇을 시험한 것인가</a></li>
+<li><a href="#gaps-통과로-확장할-수-없는-범위"
+id="toc-gaps-통과로-확장할-수-없는-범위">4. Gaps: 통과로 확장할 수 없는
+범위</a></li>
+<li><a href="#residual-risk와-진행-판정"
+id="toc-residual-risk와-진행-판정">5. Residual-risk와 진행 판정</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="claude-code-codex-cli-자동-전달-실세션-검증">Claude Code → Codex
+CLI 자동 전달 실세션 검증</h1>
+<p><strong>판정:</strong> 제한된 macOS 실험에서
+<strong>가능함(PASS)</strong>. MoAI MCP 사서함을 폴링하는 임시 브리지가
+Codex App Server의 <code>turn/start</code>로 전달하자, 이미 열려 있던
+Codex CLI 원격 TUI 화면과 저장된 턴 기록에 메시지가 나타났다. 작업 중
+<code>turn/steer</code>도 별도로 통과했다. <strong>제품 구현·운영 지원
+판정은 아직 아님.</strong><br />
+<strong>기준선:</strong> 2026-09-24, 저장소 <code>main</code> /
+<code>2213871af</code>, 설치 <code>moai-adk v3.2.0-rc.13</code>
+(<code>g60017eb83</code>), <code>codex-cli 0.156.1</code>, Claude Code
+<code>2.1.281</code>, macOS. 임시 작업 루트
+<code>/private/tmp/moai-appserver-live-20260924</code>.<br />
+<strong>연결 관계:</strong> <a
+href="moai-codex-broker-feature-reset-20260923.html">기능 재정의
+보고서</a>의 “현재 제품에 자동 push 경로 없음” 판정은 유지된다. 이
+보고서는 <strong>저장소 밖 임시 브리지</strong>로 그 경로의 기술적
+성립을 시험한 후속 증거다.</p>
+<h2 id="claim-어느-단계까지-실제로-되었나">1. Claim: 어느 단계까지
+실제로 되었나</h2>
+<pre class="text"><code>실제 Claude Code(GLM 백엔드)
+  → mcp__moai__session_msg_register / session_msg_send
+  → 공유 .moai/state/session-msg 사서함
+  → 임시 브리지의 session_msg_poll
+  → Codex App Server turn/start
+  → 실행 중인 codex --remote TUI에 표시
+  → thread/read에서 완료된 최종 답변 확인</code></pre>
+<p>App Server와 TUI의 직접 시험에서는 다음 두 상태가 각각 통과했다.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>수신 Codex 상태</th>
+<th>브리지 측 API</th>
+<th>실제 관측</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>대기 중</td>
+<td><code>turn/start(threadId, input)</code></td>
+<td>다른 WebSocket 클라이언트가 시작한 턴의
+<code>TUI_PUSH_VISIBLE_OK</code>가 TUI에 표시되고
+<code>thread/read</code>에서 <code>completed</code>로 확인됨</td>
+</tr>
+<tr>
+<td>작업 중</td>
+<td><code>turn/steer(threadId, expectedTurnId, input)</code></td>
+<td>API가 같은 turnId를 반환했고 TUI 최종 답변
+<code>TUI_BASE_DONE TUI_STEER_VISIBLE_OK</code> 확인</td>
+</tr>
+</tbody>
+</table>
+<p>이번 시험의 <strong>실제 Claude Code 발신 → TUI 수신</strong>은 대기
+중 <code>turn/start</code> 경로다. 실제 Claude Code 발신 메시지로 활성
+턴의 <code>turn/steer</code>까지 연결한 왕복은 별도 검증이 필요하다.</p>
+<h2 id="evidence-명령과-축약하지-않은-판정-출력">2. Evidence: 명령과
+축약하지 않은 판정 출력</h2>
+<p>아래는 이번 실행에서 관측한 판정용 출력이다. 장식적인 TUI 제어
+문자열과 모델의 중간 스트리밍 조각은 제외하고, 최종 화면 문구는 그대로
+옮겼다. 인증 정보는 기록하지 않았다.</p>
+<pre class="text"><code>git rev-parse --short HEAD
+2213871af
+
+codex --version
+codex-cli 0.156.1
+
+claude --version
+2.1.281 (Claude Code)
+
+moai version
+moai-adk v3.2.0-rc.13
+[v3.2.0-rc.13] [moai_cp/20260910_130400-2916-g60017eb83] [built 2026-09-23T23:56:01Z]
+
+codex app-server --listen ws://127.0.0.1:61026
+codex app-server (WebSockets)
+  listening on: ws://127.0.0.1:61026
+  readyz: http://127.0.0.1:61026/readyz
+  healthz: http://127.0.0.1:61026/healthz
+  note: binds localhost only (use SSH port-forwarding for remote access)</code></pre>
+<p>격리된 스레드 <code>01a0d0b9-e89c-7e01-8d3d-355da719af07</code>의
+직접 API 시험:</p>
+<pre class="text"><code>IDLE_TURN_ID 01a0d0b9-e9de-7a22-99b9-26766a08ff3c
+item/completed.agentMessage.text = IDLE_DELIVERY_OK
+turn/completed.status = completed
+
+ACTIVE_TURN_ID 01a0d0b9-fc14-7500-8057-b90d1687fcac
+STEER_ACCEPTED {&quot;turnId&quot;: &quot;01a0d0b9-fc14-7500-8057-b90d1687fcac&quot;}
+item/completed.agentMessage.text = &quot;BASE_DONE\nSTEER_DELIVERY_OK&quot;
+turn/completed.status = completed</code></pre>
+<p>실행 중인 원격 CLI는
+<code>codex --remote ws://127.0.0.1:61026 -C /private/tmp/moai-appserver-live-20260924 --no-alt-screen -a never -s read-only</code>로
+연결했다. 별도 WebSocket 클라이언트가 대상 스레드
+<code>01a0d0bc-c7ae-7321-909e-7f01ae9ddca8</code>에 요청했고, TUI 화면과
+<code>thread/read</code>가 같은 결과를 보였다.</p>
+<pre class="text"><code>turn/start → turn.id 01a0d0be-25b6-74a3-887e-c83b3250ebbb
+TUI 최종 화면: TUI_PUSH_VISIBLE_OK
+thread/read: status=completed, messages=[&quot;TUI_PUSH_VISIBLE_OK&quot;]
+
+turn/start → turn.id 01a0d0bf-9b33-7382-91e1-54e893dbe185
+turn/steer → {&quot;turnId&quot;:&quot;01a0d0bf-9b33-7382-91e1-54e893dbe185&quot;}
+TUI 최종 화면: TUI_BASE_DONE TUI_STEER_VISIBLE_OK
+thread/read: status=completed, messages=[&quot;구스~오뽜, 8초 기다리는 명령 실행할게.&quot;,&quot;TUI_BASE_DONE TUI_STEER_VISIBLE_OK&quot;]</code></pre>
+<p>실제 Claude Code 발신 시험은
+<code>moai glm -- --print ... --mcp-config &lt;임시 설정&gt; --strict-mcp-config --allowedTools &lt;등록·송신 도구&gt; --permission-mode dontAsk</code>로
+실행했다. Claude Code가 GLM 백엔드에서 반환한 메시지 ID와 브리지의
+수신·확인, Codex 저장 기록이 일치했다.</p>
+<pre class="text"><code>Claude Code 결과: 메시지 전송 완료. messageId: msg-1e9dd6da8f7a7ed8
+BRIDGE_AGENT_ID codex-ae035d78
+BROKER_RECEIVED {&quot;messageId&quot;:&quot;msg-1e9dd6da8f7a7ed8&quot;,&quot;senderKind&quot;:&quot;claude&quot;,&quot;text&quot;:&quot;GLM_CLAUDE_TO_CODEX_LIVE_20260924&quot;}
+PUSH_RESPONSE turn.id = 01a0d104-2540-7681-9266-43c623aecc99
+ACKED_COUNT 1
+TUI 최종 화면: CROSS_HOST_DELIVERED_OK GLM_CLAUDE_TO_CODEX_LIVE_20260924
+thread/read: status=completed, messages=[&quot;CROSS_HOST_DELIVERED_OK GLM_CLAUDE_TO_CODEX_LIVE_20260924&quot;]</code></pre>
+<h2 id="baseline-attribution-무엇을-시험한-것인가">3.
+Baseline-attribution: 무엇을 시험한 것인가</h2>
+<ul>
+<li>저장소 코어는 현재 HEAD <code>2213871af</code>였지만, 호출된 설치
+<code>moai</code>는 더 뒤의 빌드 <code>g60017eb83</code>이었다. 이
+시험은 <strong>설치 바이너리의 MCP 동작</strong> 근거다. 현재 HEAD
+바이너리와의 동일성을 주장하지 않는다.</li>
+<li>브리지 파일
+<code>/private/tmp/moai-appserver-bridge-20260924.py</code>, Claude MCP
+설정과 수신 프로젝트는 <code>/private/tmp</code>에 격리했다. 저장소 제품
+코드에는 브리지를 추가하지 않았다.</li>
+<li>두 WebSocket 클라이언트와 Codex TUI가 <strong>같은 로컬 App
+Server</strong>를 사용했다. 이것이 기존 독립 <code>codex</code>
+프로세스의 임의 스레드로 push할 수 있다는 뜻은 아니다.</li>
+<li><a href="https://learn.chatgpt.com/docs/app-server">Codex App Server
+공식 문서</a>는 <code>turn/start</code>, 활성 턴의
+<code>turn/steer</code>, <code>codex --remote</code> 연결을 설명한다.
+원격 WebSocket/App Server 표면은 문서에서 실험적이고 운영용으로
+미지원이라고 표시한다.</li>
+</ul>
+<h2 id="gaps-통과로-확장할-수-없는-범위">4. Gaps: 통과로 확장할 수 없는
+범위</h2>
+<ol type="1">
+<li><strong>Anthropic 본계정 미실행:</strong> <code>claude -p</code>는
+첫 API 요청에서 <code>429</code> 주간 한도에 걸렸고 도구 호출 없이
+끝났다. 실제 발신 성공은 <strong>Claude Code 클라이언트 + GLM
+백엔드</strong> 조합이다.</li>
+<li><strong>동시 상시 브리지 지연 미측정:</strong> 첫 브리지는 메시지
+송신 전에 제한된 폴링 창이 끝났다(<code>BROKER_TIMEOUT</code>). Claude가
+보낸 메시지는 사서함에 남았고, 브리지를 다시 실행하자 자동으로 poll·App
+Server 전달이 이뤄졌다. 따라서 보관·재시작 전달은 보였지만 상시 실행 중
+도착 지연은 측정하지 않았다.</li>
+<li><strong>단방향:</strong> Codex 결과를 Claude Code의 살아 있는 턴으로
+다시 자동 전달하는 역방향은 시험하지 않았다.</li>
+<li><strong>플랫폼:</strong> macOS 로컬 WebSocket·공유 파일 시스템만
+시험했다. Linux·Windows·WSL2와 다른 머신 간 전달은 미검증이다.</li>
+<li><strong>운영:</strong> 재연결, 다중 발신·중복, 충돌, 실제 승인 요청,
+네트워크 단절, 서버 재시작, 버전 변경, 장시간 운용은 미검증이다.</li>
+</ol>
+<h2 id="residual-risk와-진행-판정">5. Residual-risk와 진행 판정</h2>
+<p><strong>진행 권고: 제한된 구현 실험은 진행해도 된다. 기본 제품
+기능·Factory·운영 지원으로 승격하는 것은 보류한다.</strong> 지금의
+실증은 “Codex App Server가 관리하는 원격 TUI에 메시지를 자동 표시하는
+경로가 성립한다”는 기술적 가능성을 충분히 뒷받침한다.</p>
+<p>제품 코드로 옮길 때는 다음 순서로 검증해야 한다.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>순서</th>
+<th>필수 보강</th>
+<th>완료 게이트</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>MoAI가 소유하는 App Server·TUI 연결 수명과 정확한 thread/turn
+식별</td>
+<td>잘못된 사용자 스레드·프로젝트에 전달 0건</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Claude/GLM 메시지를 <strong>동료 출처의 데이터</strong>로 라벨링하고
+사용자 지시·승인으로 승격하지 않는 입력 경계</td>
+<td>악의적 메시지로 파일 변경·권한 상승·승인 통과 0건</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>turn/start</code> 수락, <code>turn/completed</code>, TUI 표시,
+브로커 ack를 별도 상태로 저장</td>
+<td>실패·재시작·중복에서 메시지 손실과 중복 작업 없음</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>turn/steer</code>의 활성 턴 ID 경합·대기 턴 전환·승인 중단
+처리</td>
+<td>실제 Claude Code 발신으로 두 상태 모두 종단 PASS</td>
+</tr>
+<tr>
+<td>5</td>
+<td>현재 대상 Codex 버전과 지원 OS별 회귀 시험</td>
+<td>macOS·Linux·Windows 지원 범위별 판정, 실험적 App Server 정책
+명시</td>
+</tr>
+</tbody>
+</table>
+<p><strong>이번 임시 브리지의 한계:</strong> <code>turn/start</code>가
+수락되자마자 사서함을 ack했다. 그 뒤 Codex 턴이 실패하면 메시지가 유실될
+수 있으므로 제품 구현에서는 이 순서를 그대로 쓰면 안 된다. 또한 브리지는
+동료 메시지를 일반 턴의 사용자 입력으로 보냈다. 시험 문구만 사용했으므로
+결과는 유효하지만, 제품에서는 출처·권한 분리 후 입력 경로를 정해야
+한다.</p>
+<p><strong>정리:</strong> MoAI MCP 파일 브로커만으로는 자동 push가 되지
+않는다. <strong>MoAI 브리지 + Codex App Server + 같은 서버에 연결된
+Codex CLI</strong> 조합은 이 실험에서 실제 화면 표시까지 성공했다. 구현
+여부 결정은 이 두 문장을 분리한 상태에서 내려야 한다.</p>
+</body>
+</html>

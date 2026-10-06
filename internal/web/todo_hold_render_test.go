@@ -8,21 +8,21 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 func TestTodoQueueRendersHeldCardState(t *testing.T) {
 	a := newTestApp(t)
 	root := a.cfg.ProjectRoot
 
-	store := kanban.NewBacklogStore(kanban.BacklogPathForRootAdopting(root))
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	store := factory.NewBacklogStore(factory.BacklogPathForRootAdopting(root))
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		rec.LastSeq++
-		rec.Items = append(rec.Items, kanban.BacklogItem{
+		rec.Items = append(rec.Items, factory.BacklogItem{
 			ID:      "t" + itoaForWebTest(rec.LastSeq),
 			Text:    "parked pending decision",
 			AddedAt: "2026-09-29T00:00:00Z",
-			State:   kanban.BacklogStateHold,
+			State:   factory.BacklogStateHold,
 		})
 		return nil
 	}); err != nil {

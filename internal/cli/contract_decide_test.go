@@ -28,7 +28,7 @@ func prepareDecide(t *testing.T, p *signtest.Project) {
 		t.Fatal(err)
 	}
 	p.WriteFile(".moai/reports/"+signtest.Card+"/plan-audit-1.md",
-		fmt.Sprintf("Verdict: PASS\nOverall Score: 0.90\nplan_artifact_hash: %s\n", h))
+		fmt.Sprintf("Verdict: PASS\nOverall Score: 0.90\nmust_pass_failed: 0\nblocking_count: 0\nplan_artifact_hash: %s\n", h))
 	p.Git("add", "-A")
 	p.Git("commit", "-q", "-m", "report")
 }

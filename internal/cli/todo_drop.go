@@ -13,7 +13,7 @@
 // card is still worth keeping — no staleness heuristic, no duplicate
 // detection, no absorption of one card into another. An agent that drops
 // cards on its own initiative collides head-on with the [HARD] clauses in
-// workflows/gtd.md and kanban-dispatch.md, and a doctrine change would have
+// workflows/gtd.md and the Factory Dispatch Protocol, and a doctrine change would have
 // to come first.
 //
 // EXACT REVERSAL is the property that makes a wrong drop survivable, and it
@@ -40,7 +40,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // The drop marker follows the convention the hand-written dropped cards
@@ -97,7 +97,7 @@ leaving the file untouched.`,
 
 			store := newTodoStore()
 			var original string
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID != id {
 						continue
@@ -109,9 +109,9 @@ leaving the file untouched.`,
 							id, todoTextPrefix(rec.Items[i].Text), expect)
 					}
 					switch rec.Items[i].State {
-					case kanban.BacklogStateDropped:
+					case factory.BacklogStateDropped:
 						return fmt.Errorf("backlog item %s is already dropped", id)
-					case kanban.BacklogStateQueued:
+					case factory.BacklogStateQueued:
 						// the only droppable state
 					default:
 						return fmt.Errorf(
@@ -120,9 +120,18 @@ leaving the file untouched.`,
 					}
 					original = rec.Items[i].Text
 					rec.Items[i].Text = todoDropMarkerOpen + reason + todoDropMarkerClose + original
-					rec.Items[i].State = kanban.BacklogStateDropped
+					rec.Items[i].State = factory.BacklogStateDropped
 					// REQ-TST-006: the drop is stamped at the transition.
 					rec.Items[i].DroppedAt = todoStampNow()
+					// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-010: the reason is
+					// ALSO stored in the drop-reason attribute while the text
+					// keeps its prefix — the attribute is machine-readable
+					// (issuance JSON), the prefix stays for humans. Merge into
+					// any issuance the card already carries; create otherwise.
+					if rec.Items[i].Issuance == nil {
+						rec.Items[i].Issuance = &factory.BacklogIssuance{}
+					}
+					rec.Items[i].Issuance.DropReason = reason
 					return nil
 				}
 				return fmt.Errorf("no backlog item %s", id)
@@ -166,7 +175,7 @@ form a listing shows, marker included) and refuses the undrop on a mismatch.`,
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
 			var restored string
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID != id {
 						continue
@@ -178,18 +187,30 @@ form a listing shows, marker included) and refuses the undrop on a mismatch.`,
 					// POSITIVE enumeration (SPEC-TODO-HOLD-STATE-001
 					// REQ-THS-012): the gate names the state it reverts.
 					switch rec.Items[i].State {
-					case kanban.BacklogStateDropped:
+					case factory.BacklogStateDropped:
 						// the only undroppable-into-queued state
 					default:
 						return fmt.Errorf("backlog item %s is %s, not dropped", id, rec.Items[i].State)
 					}
 					restored = stripTodoDropMarker(rec.Items[i].Text)
 					rec.Items[i].Text = restored
-					rec.Items[i].State = kanban.BacklogStateQueued
+					rec.Items[i].State = factory.BacklogStateQueued
 					// REQ-TST-006: undrop clears the stamp — a queued card
 					// carries no dropped stamp, and a later re-drop stamps
 					// afresh.
 					rec.Items[i].DroppedAt = nil
+					// Exact reversal reaches the drop-reason attribute too
+					// (REQ-TCI-010's mirror): a reason left behind would
+					// survive undrop as a machine-readable claim the state
+					// no longer backs. An issuance carrying ONLY the reason
+					// is removed whole; one carrying more keeps its other
+					// keys.
+					if iss := rec.Items[i].Issuance; iss != nil && iss.DropReason != "" {
+						iss.DropReason = ""
+						if iss.SpawnedBy == "" && iss.Origin == "" && iss.SizeLines == nil && len(iss.Files) == 0 {
+							rec.Items[i].Issuance = nil
+						}
+					}
 					return nil
 				}
 				return fmt.Errorf("no backlog item %s", id)

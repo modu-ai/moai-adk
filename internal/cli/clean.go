@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -14,6 +16,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/hygiene"
 )
 
 // newCleanCmd creates the clean subcommand.
@@ -23,6 +26,9 @@ func newCleanCmd() *cobra.Command {
 	var codexSkills bool
 	var reportsArchive bool
 	var reportsArchiveDays int
+	var auditLogs bool
+	var sessionState bool
+	var apply bool
 
 	cmd := &cobra.Command{
 		Use:   "clean",
@@ -32,8 +38,9 @@ Default: dry-run mode (no actual deletion). Use --force to actually delete.
 
 retention_days is read from .moai/config/sections/state.yaml.
 
-Exactly one scope is cleaned per invocation. --home, --codex-skills and
---reports-archive select different files and may not be combined.
+Exactly one scope is cleaned per invocation. --home, --codex-skills,
+--reports-archive, --audit-logs and --session-state select different files
+and may not be combined.
 
 With --home, clean the ~/.moai home directory instead of the project scope.
 The default is a report-only dry-run. --force removes per-profile projects/
@@ -59,14 +66,23 @@ ever deleted). A candidate is a top-level entry whose name is
 evidence-shaped (t<digits> or SPEC-<DOMAIN>-<NNN>), whose mtime is older
 than the retention window (--reports-archive-days, default 90), and that
 holds no git-tracked files. historical/, plan-audit/, worktrees/ and
-archive/ are never candidates. Dry-run by default.`,
+archive/ are never candidates. Dry-run by default.
+
+With --audit-logs, run the audit-log rotator (SPEC-MOAI-HYGIENE-001): it
+holds every registered sink under .moai/logs/ to a size bound (default
+10 MiB, keep-1). With --session-state, run the finished-session state GC:
+it removes only DEAD sessions' content-datable residue past the age floor
+(default 7 days), never touching LIVE or indeterminate sessions. Both
+scopes are dry-run by default and mutate only with --apply on THIS
+invocation — the workflow.hygiene.mode config governs the SessionStart
+auto path alone and never makes a CLI invocation mutate.`,
 		GroupID: "tools",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Status output routes through the Printer to stderr
 			// (SPEC-CLI-TUX-V3-001 REQ-CTX-012/017 ratchet migration).
 			p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
-			if (home && codexSkills) || (home && reportsArchive) || (codexSkills && reportsArchive) {
-				return fmt.Errorf("--home, --codex-skills and --reports-archive select different scopes; pass exactly one")
+			if countScopes(home, codexSkills, reportsArchive, auditLogs, sessionState) > 1 {
+				return fmt.Errorf("--home, --codex-skills, --reports-archive, --audit-logs and --session-state select different scopes; pass exactly one")
 			}
 			if reportsArchive {
 				return runCleanReportsArchive(p, force, reportsArchiveDays)
@@ -77,6 +93,12 @@ archive/ are never candidates. Dry-run by default.`,
 			if home {
 				return runCleanHome(p, force)
 			}
+			if auditLogs {
+				return runCleanHygiene(p, hygieneScopeAuditLogs, apply)
+			}
+			if sessionState {
+				return runCleanHygiene(p, hygieneScopeSessionState, apply)
+			}
 			return runClean(p, force)
 		},
 	}
@@ -86,8 +108,129 @@ archive/ are never candidates. Dry-run by default.`,
 	cmd.Flags().BoolVar(&codexSkills, "codex-skills", false, "Remove provably-absent [[skills.config]] entries from ~/.codex/config.toml (dry-run by default)")
 	cmd.Flags().BoolVar(&reportsArchive, "reports-archive", false, "Move aging evidence directories from .moai/reports/ into archive/<YYYY-MM>/ (move-only; dry-run by default)")
 	cmd.Flags().IntVar(&reportsArchiveDays, "reports-archive-days", config.DefaultReportsArchiveRetentionDays, "Retention window in days for --reports-archive candidates")
+	cmd.Flags().BoolVar(&auditLogs, "audit-logs", false, "Run the audit-log rotator over .moai/logs/ (dry-run by default; mutates only with --apply)")
+	cmd.Flags().BoolVar(&sessionState, "session-state", false, "Run the finished-session state GC over .moai/state/ (dry-run by default; mutates only with --apply)")
+	cmd.Flags().BoolVar(&apply, "apply", false, "Let this --audit-logs / --session-state invocation mutate (overrides workflow.hygiene.mode for this invocation only)")
 
 	return cmd
+}
+
+// countScopes counts how many clean scopes are selected.
+func countScopes(scopes ...bool) int {
+	n := 0
+	for _, s := range scopes {
+		if s {
+			n++
+		}
+	}
+	return n
+}
+
+// hygieneScope selects which hygiene unit the CLI invocation runs.
+type hygieneScope int
+
+const (
+	hygieneScopeAuditLogs hygieneScope = iota
+	hygieneScopeSessionState
+)
+
+// runCleanHygiene runs one hygiene unit for the project scope: --audit-logs
+// runs the rotator, --session-state runs the GC. The invocation mutates
+// only with --apply (REQ-HYG-013): the workflow.hygiene.mode config governs
+// the SessionStart auto path alone and is never consulted for the CLI's own
+// mutation decision.
+func runCleanHygiene(p printer.Printer, scope hygieneScope, apply bool) error {
+	stateDir, err := findStateDirNoEnv()
+	if err != nil {
+		return fmt.Errorf("find state dir: %w", err)
+	}
+	moaiDir := filepath.Dir(stateDir)
+	projectRoot := filepath.Dir(moaiDir)
+	printResolvedRoot(p, stateDir)
+
+	settings := hygiene.LoadSettingsFrom(projectRoot)
+	if err := settings.Validate(); err != nil {
+		// D30: a config-invalid value refuses the run — mutation never
+		// proceeds on unvalidated floors.
+		p.Warn("%v", err)
+		return err
+	}
+
+	mode := hygiene.ModeReport
+	if apply {
+		mode = hygiene.ModeApply
+	}
+	if mode == hygiene.ModeReport {
+		p.Info("hygiene: dry-run (pass --apply on this invocation to mutate)")
+	}
+
+	switch scope {
+	case hygieneScopeAuditLogs:
+		r := &hygiene.Rotator{
+			LogDir:        filepath.Join(moaiDir, "logs"),
+			MaxBytes:      settings.AuditLogMaxBytes,
+			KeptRotations: settings.AuditLogKeptRotations,
+		}
+		rows, err := r.Run(mode)
+		if err != nil {
+			return err
+		}
+		for _, row := range rows {
+			if row.Outcome == hygiene.OutcomeSummary {
+				printHygieneSummary(p, row.Counts, mode)
+				continue
+			}
+			printHygieneRow(p, row.Outcome.String(), row.Path, row.Reason, mode)
+		}
+	case hygieneScopeSessionState:
+		g := &hygiene.GC{
+			MoaiRoot:         moaiDir,
+			RegistryPath:     filepath.Join(moaiDir, "state", "active-sessions.json"),
+			TranscriptRoots:  hygiene.DefaultTranscriptRoots(),
+			MinAge:           settings.MinAge(),
+			TranscriptWindow: settings.TranscriptActivityWindow,
+			HeartbeatWindow:  settings.HeartbeatStaleWindow,
+		}
+		rep, err := g.Run(mode)
+		if err != nil {
+			return err
+		}
+		for _, d := range rep.Decisions {
+			printHygieneRow(p, d.Outcome, d.Path, d.Reason, mode)
+		}
+	}
+	return nil
+}
+
+// printHygieneSummary renders a summary row's outcome counts.
+func printHygieneSummary(p printer.Printer, counts map[string]int, mode hygiene.Mode) {
+	prefix := ""
+	if mode == hygiene.ModeReport {
+		prefix = "[dry-run] "
+	}
+	keys := make([]string, 0, len(counts))
+	for k := range counts {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%d", k, counts[k]))
+	}
+	p.Info("%ssummary: %s", prefix, strings.Join(parts, ", "))
+}
+
+// printHygieneRow renders one decision line.
+func printHygieneRow(p printer.Printer, outcome, path, reason string, mode hygiene.Mode) {
+	prefix := ""
+	if mode == hygiene.ModeReport {
+		prefix = "[dry-run] "
+	}
+	if reason != "" {
+		p.Info("%s%s: %s — %s", prefix, outcome, path, reason)
+		return
+	}
+	p.Info("%s%s: %s", prefix, outcome, path)
 }
 
 // stateYAMLWrapper is the top-level key structure of state.yaml.

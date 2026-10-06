@@ -185,7 +185,10 @@ func TestGLMAuditPin_TaskResolutionUnaffected(t *testing.T) {
 	// The pin DOES apply on the audit resolver under the same config. CR #8:
 	// the caller names the reviewed tree explicitly; the same root resolves
 	// the pin the audit reads.
-	me := resolveGLMAuditModelEffort(root)
+	me, meErr := resolveGLMAuditModelEffort(root)
+	if meErr != nil {
+		t.Fatalf("resolveGLMAuditModelEffort(root): %v", meErr)
+	}
 	if me.Model != "glm-5.3" || me.Effort != template.GLMStateMax {
 		t.Errorf("resolveGLMAuditModelEffort(root) = %+v, want {glm-5.3 max} (the pin outranks the backend default on the audit path)", me)
 	}
@@ -200,7 +203,10 @@ func TestGLMAuditPin_BypassesSessionBackendCheck(t *testing.T) {
 	writeCodexWorkflowYAML(t, root, auditGLMPinYAML("glm-4.6", template.GLMStateLow))
 	withCodexProjectDir(t, root)
 
-	me := resolveGLMAuditModelEffort(root)
+	me, meErr := resolveGLMAuditModelEffort(root)
+	if meErr != nil {
+		t.Fatalf("resolveGLMAuditModelEffort(root): %v", meErr)
+	}
 	if me.Model != "glm-4.6" || me.Effort != template.GLMStateLow {
 		t.Errorf("resolveGLMAuditModelEffort(root) = %+v, want {glm-4.6 low} (a pin resolves without a GLM session marker)", me)
 	}

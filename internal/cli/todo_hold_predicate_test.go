@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // AC-THS-011(a) — the form axis: no non-test file in this package compares a
@@ -63,12 +63,12 @@ func TestTodoSelectionPredicatesPositivelyEnumerateStates(t *testing.T) {
 		}
 		scanned++
 		for _, line := range strings.Split(string(raw), "\n") {
-			if strings.Contains(line, "State != kanban.BacklogState") {
+			if strings.Contains(line, "State != factory.BacklogState") {
 				t.Errorf("%s excludes states by a negated comparison (REQ-THS-012): %s",
 					name, strings.TrimSpace(line))
 			}
-			if strings.Contains(line, "State == kanban.BacklogState") ||
-				strings.Contains(line, "case kanban.BacklogState") {
+			if strings.Contains(line, "State == factory.BacklogState") ||
+				strings.Contains(line, "case factory.BacklogState") {
 				positives[name]++
 			}
 		}
@@ -92,8 +92,8 @@ func TestTodoSelectionPredicatesPositivelyEnumerateStates(t *testing.T) {
 func TestTodoFutureStateCardIsNeverSelectedByActionablePaths(t *testing.T) {
 	root, store := todoFixture(t)
 	seedTodo(t, "first queued", "second queued", "third queued")
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-		rec.Items[0].State = kanban.BacklogStateHold
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Items[0].State = factory.BacklogStateHold
 		return nil
 	}); err != nil {
 		t.Fatalf("seed hold: %v", err)
@@ -159,8 +159,8 @@ func TestTodoFutureStateCardIsNeverSelectedByActionablePaths(t *testing.T) {
 // set grow.
 func TestTodoAutoDoneSkipsHeldCard(t *testing.T) {
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t901", "queued work", kanban.BacklogStateQueued)
-	seedCard(t, store, "t921", "held work", kanban.BacklogStateHold)
+	seedCard(t, store, "t901", "queued work", factory.BacklogStateQueued)
+	seedCard(t, store, "t921", "held work", factory.BacklogStateHold)
 	commitOnRef(t, root, "Merge branch 'WT-x' into develop (card t901)")
 	commitOnRef(t, root, "Merge branch 'WT-y' into develop (card t921)")
 	materializeOriginDevelop(t, root)
@@ -187,10 +187,10 @@ func TestTodoAutoDoneSkipsHeldCard(t *testing.T) {
 
 	// Positive control (mutation): the same card in queued state IS a close
 	// candidate — the scan sees hold, it does not ignore it.
-	if err := store.Mutate(func(r *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(r *factory.BacklogRecord) error {
 		for i := range r.Items {
 			if r.Items[i].ID == "t921" {
-				r.Items[i].State = kanban.BacklogStateQueued
+				r.Items[i].State = factory.BacklogStateQueued
 			}
 		}
 		return nil
@@ -226,11 +226,11 @@ func TestTodoMachineLeaseSelectsOnlyQueued(t *testing.T) {
 		{"queued-b", "picked", "queued-a", "held"},
 		{"held", "picked", "queued-a", "queued-b"},
 	}
-	stateOf := map[string]kanban.BacklogState{
-		"queued-a": kanban.BacklogStateQueued,
-		"queued-b": kanban.BacklogStateQueued,
-		"held":     kanban.BacklogStateHold,
-		"picked":   kanban.BacklogStatePicked,
+	stateOf := map[string]factory.BacklogState{
+		"queued-a": factory.BacklogStateQueued,
+		"queued-b": factory.BacklogStateQueued,
+		"held":     factory.BacklogStateHold,
+		"picked":   factory.BacklogStatePicked,
 	}
 	for run := 0; run < len(orders); run++ {
 		t.Run(fmtShuffledRun(run), func(t *testing.T) {
@@ -238,17 +238,17 @@ func TestTodoMachineLeaseSelectsOnlyQueued(t *testing.T) {
 			// The ids follow insertion order, so the shuffle decides which id
 			// carries which state.
 			queuedIDs, nonQueuedIDs := []string{}, []string{}
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				for _, name := range orders[run] {
 					rec.LastSeq++
 					id := fmt.Sprintf("t%d", rec.LastSeq)
-					rec.Items = append(rec.Items, kanban.BacklogItem{
+					rec.Items = append(rec.Items, factory.BacklogItem{
 						ID:      id,
 						Text:    name,
 						AddedAt: "2026-09-29T00:00:00Z",
 						State:   stateOf[name],
 					})
-					if stateOf[name] == kanban.BacklogStateQueued {
+					if stateOf[name] == factory.BacklogStateQueued {
 						queuedIDs = append(queuedIDs, id)
 					} else {
 						nonQueuedIDs = append(nonQueuedIDs, id)

@@ -68,7 +68,7 @@ shift+tab 返回 • enter 下一步
 ┃ 默认模型覆盖                                                                  
 ┃ 使用此配置文件启动时覆盖模型。                                                
 ┃   (project default)                                                           
-┃   fable[1m] (Fable 5 + 1M 上下文)                                             
+┃   fable[1m] (Fable 5.1 + 1M 上下文)                                           
 ┃ ▸ opus[1m] (Opus 5.5 + 1M 上下文，推荐)                                       
 ┃   sonnet[1m] (Sonnet 5.5 + 1M 上下文)                                         
 ┃   haiku (Haiku 4.5，最快)                                                     

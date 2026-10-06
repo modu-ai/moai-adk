@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/mx"
 )
 
@@ -15,12 +16,16 @@ import (
 const MetaFileName = "edges.meta.json"
 
 // Edges source-set names (REQ-GF-002 edges row): a derived artifact is stale
-// exactly when one of its sources moves.
+// exactly when one of its sources moves. srcCardMerges (SPEC-TODO-CARD-
+// ISSUANCE-001 REQ-TCI-016) is the card-attributed merge list the card-file
+// layer walks — a new card merge landing moves it, an absorb-direction merge
+// does not (it attributes nothing).
 const (
-	srcCodemaps = "codemaps"
-	srcMXIndex  = "mx-index"
-	srcSpecs    = "specs"
-	srcReports  = "reports"
+	srcCodemaps   = "codemaps"
+	srcMXIndex    = "mx-index"
+	srcSpecs      = "specs"
+	srcReports    = "reports"
+	srcCardMerges = "card-merges"
 )
 
 // edgesMeta is the .meta.json carrier: the provenance block plus the edge
@@ -30,7 +35,7 @@ type edgesMeta struct {
 	EdgeCount  int            `json:"edge_count"`
 }
 
-// SourceFingerprintsForEdges recomputes the four source-set fingerprints of
+// SourceFingerprintsForEdges recomputes the five source-set fingerprints of
 // the edges layer against projectRoot's CURRENT state. Shared by the check
 // (mismatch counting) and the build (stamping) so the two can never disagree
 // about what a source set is.
@@ -47,6 +52,12 @@ func SourceFingerprintsForEdges(projectRoot string) map[string]string {
 	}
 	if fp, err := dirFingerprint(filepath.Join(projectRoot, ".moai", "reports")); err == nil {
 		out[srcReports] = fp
+	}
+	// The card-attributed merge list fails open like the layer it
+	// fingerprints: a project outside git contributes no key, and an absent
+	// key reads as a stable state exactly like an absent source dir.
+	if fp, err := CardMergeFingerprint(projectRoot, cardFileLandedBranch(projectRoot), factory.AttributeSubject); err == nil {
+		out[srcCardMerges] = fp
 	}
 	return out
 }

@@ -104,11 +104,11 @@ var specStatusPattern = regexp.MustCompile(`(?m)^status:\s*(.+?)\s*$`)
 // ("..." or '...') is stripped, so `status: "completed"` compares equal to
 // `status: completed`. Mismatched or inner quotes are left untouched. Every
 // frontmatter `status:` reader that compares the value (this package's and
-// internal/kanban's) routes its capture through here so they all agree on one
+// internal/factory's) routes its capture through here so they all agree on one
 // value; a reader that only quotes the raw text back does not.
 //
-// @MX:ANCHOR: [AUTO] shared status normalizer — fan_in 5 across internal/spec and internal/kanban
-// @MX:REASON: changing which quotes are stripped shifts every status comparison (audit, closer, ParseStatus, ownership lint, kanban board) at once
+// @MX:ANCHOR: [AUTO] shared status normalizer — fan_in 5 across internal/spec and internal/factory
+// @MX:REASON: changing which quotes are stripped shifts every status comparison (audit, closer, ParseStatus, ownership lint, factory backlog) at once
 func NormalizeStatusValue(raw string) string {
 	v := strings.TrimSpace(raw)
 	if len(v) >= 2 && (v[0] == '"' || v[0] == '\'') && v[len(v)-1] == v[0] {

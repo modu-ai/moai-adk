@@ -133,4 +133,3 @@ workflow:
         auto_create: false
         auto_merge: true
         session_name_pattern: moai-{ProjectName}-{SPEC-ID}
-        tmux_preferred: true

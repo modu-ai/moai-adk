@@ -19,9 +19,12 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
-# Release provenance gate (verify-provenance job below). The seven checks live in
-# scripts/verify-release-provenance.sh so they can be run against fixtures; this
-# job fetches the tag and origin/main (the only network steps) and calls it.
+# Release provenance gate (verify-provenance job below). The seven git-carried
+# checks live in scripts/verify-release-provenance.sh so they can be run against
+# fixtures; this job fetches the tag and origin/main (the only network steps) and
+# calls it. The eighth check (plugin version, SPEC-PLUGIN-MARKETPLACE-001 REQ-024)
+# runs inline in the job — it reads the checked-out plugin manifest, which the
+# fixture harness does not carry.
 #
 # This workflow is the only publishing surface, and its only trigger is a `v*`
 # tag push — so every route to a production release converges on one choke
@@ -48,6 +51,10 @@ jobs:
     name: Verify release provenance
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      # Job-level TAG feeds the plugin-version step below; the provenance step
+      # carries its own step-level TAG (the fixture replay keys on that one).
+      TAG: ${{ github.ref_name }}
 
     steps:
       - name: Checkout code
@@ -65,6 +72,21 @@ jobs:
           git fetch origin +refs/heads/main:refs/remotes/origin/main
 
           bash scripts/verify-release-provenance.sh "${TAG}"
+
+      # Check 8 — the generated plugin version carrier equals the tag
+      # (SPEC-PLUGIN-MARKETPLACE-001 REQ-024, absorbed from main). The workflow
+      # checked out the tagged tree, so the committed manifest is the one being
+      # released. This rides its own step, separate from the fixture-replayed
+      # provenance step: the scratch repositories the provenance script is
+      # replayed against carry no plugin manifest, so this check runs only in
+      # the real release job. TAG comes from the job-level env.
+      - name: Verify plugin version
+        run: |
+          if ! sh scripts/check-plugin-version.sh "${TAG}"; then
+            echo "::error::RELEASE_PROVENANCE_GATE: check 8 (plugin version): plugins/moai/.claude-plugin/plugin.json does not carry '${TAG#v}'; run 'make plugin-emit' in the bump."
+            echo "Releases must be produced by the /harness:release maintainer harness."
+            exit 1
+          fi
 
   release:
     name: Release

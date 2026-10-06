@@ -91,7 +91,10 @@ func operationalHookShellEnv(t *testing.T, bin string, env []string) []string {
 func prepareOperationalProject(root, bin string, env []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, bin, "init", "--non-interactive", "--llm", "gpt", "--no-hooks", "--root", root)
+	// "--no-plugin": this child is the production binary, not a Go test binary, so
+	// the install step's test-binary refusal does not cover it; without the
+	// opt-out a real codex on PATH would be driven against the real home (F14).
+	cmd := exec.CommandContext(ctx, bin, "init", "--non-interactive", "--llm", "gpt", "--no-hooks", "--no-plugin", "--root", root)
 	cmd.Dir, cmd.Env = root, env
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("production init: %w: %s", err, out)

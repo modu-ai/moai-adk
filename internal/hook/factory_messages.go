@@ -5,15 +5,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -32,7 +33,15 @@ var (
 	factoryHookDBPath     = homestate.FactoryDBPath
 	factoryHookProbeRun   = factorymsg.ProbeRunStateAt
 	factoryHookActiveRuns = factorymsg.ActiveRunIDsAt
+	// factoryHookOpenStore and factoryHookOpenInbox are the broker opens of
+	// the bind and of the inbox claim, seams so tests can count or fail them.
+	factoryHookOpenStore = factorymsg.Open
+	factoryHookOpenInbox = factorymsg.OpenExistingWithDeadline
 )
+
+// factoryDegradedNoticeInterval bounds how often a degraded inbox claim is
+// surfaced to one session (each occurrence is still logged at warn).
+var factoryDegradedNoticeInterval = 10 * time.Minute
 
 type factoryPeerBindMode uint8
 
@@ -75,7 +84,7 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 // outcome). The prompt handler hands that run to the same invocation's inbox
 // claim (SPEC-FACTORY-STALE-RUN-HEAL-001 REQ-SRH-008).
 func registerFactoryHookPeerRun(ctx context.Context, input *HookInput, mode factoryPeerBindMode) (notice, reboundRun string) {
-	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
 	root := factoryHookRoot(input)
 	if runID == "" || root == "" || input.SessionID == "" {
 		return "", ""
@@ -88,17 +97,17 @@ func registerFactoryHookPeerRun(ctx context.Context, input *HookInput, mode fact
 	// alone.
 	label := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
 	if label != "" {
-		if kanban.IsLegacyFactoryRoleValue(label) {
+		if factory.IsLegacyFactoryRoleValue(label) {
 			return staleRunPrescriptionGate(ctx, root, input.SessionID, label, runID, langEnglish), ""
 		}
 	} else if os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
 		return "", ""
 	}
-	role, slot := kanban.RoleLeader, kanban.RoleLeader
+	role, slot := factory.RoleLeader, factory.RoleLeader
 	if label != "" {
-		role, slot = kanban.RoleLane, label
+		role, slot = factory.RoleLane, label
 	}
-	backend := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanBackend))
+	backend := strings.TrimSpace(os.Getenv(config.EnvFactoryBackend))
 	if backend == "" {
 		backend = "unknown"
 	}
@@ -129,7 +138,9 @@ func registerFactoryHookPeerRun(ctx context.Context, input *HookInput, mode fact
 		}
 		return "factory messaging degraded: " + probeErr.Error(), ""
 	case factorymsg.RunStateNotActive:
-		if role != kanban.RoleLane {
+		// The cached binding names a run that is no longer live.
+		dropFactoryBindCache(root, input.SessionID)
+		if role != factory.RoleLane {
 			// A leader is not a lane: its answer on a not-active run is the one
 			// it always had.
 			return "factory messaging degraded: NO_ACTIVE_FACTORY", ""
@@ -142,7 +153,14 @@ func registerFactoryHookPeerRun(ctx context.Context, input *HookInput, mode fact
 		want := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), Backend: backend, Role: role, Slot: slot, SessionUUID: input.SessionID, Generation: 1, PID: ownerPID, ProcessStart: start}
 		return rebindFactoryLane(ctx, laneRebindRequest{root: root, dbPath: dbPath, sessionID: input.SessionID, envRun: runID, slot: slot, want: want})
 	}
-	s, err := factorymsg.Open(root, runID)
+	// The probe above has just reported this run live; a binding this session
+	// already established for the same run, owner, and slot needs no broker
+	// round trip (REQ-FDA-020).
+	cacheKey := factoryBindCacheEntry{Session: input.SessionID, Run: runID, PID: ownerPID, Start: start, Role: role, Slot: slot}
+	if mode == factoryPeerBindUserPrompt && factoryBindCacheHit(root, cacheKey) {
+		return "", ""
+	}
+	s, err := factoryHookOpenStore(root, runID)
 	if err != nil {
 		return "factory messaging degraded: " + err.Error(), ""
 	}
@@ -150,6 +168,7 @@ func registerFactoryHookPeerRun(ctx context.Context, input *HookInput, mode fact
 	want := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: runID, Backend: backend, Role: role, Slot: slot, SessionUUID: input.SessionID, Generation: 1, PID: ownerPID, ProcessStart: start}
 	if current, peerErr := s.Peer(ctx, input.SessionID); peerErr == nil {
 		if current.ProjectKey == want.ProjectKey && current.RunID == want.RunID && current.Backend == want.Backend && current.Role == want.Role && current.Slot == want.Slot && current.PID == want.PID && current.ProcessStart == want.ProcessStart {
+			writeFactoryBindCache(root, cacheKey)
 			return "", ""
 		}
 	} else if !errors.Is(peerErr, sql.ErrNoRows) {
@@ -157,6 +176,7 @@ func registerFactoryHookPeerRun(ctx context.Context, input *HookInput, mode fact
 	}
 	if mode == factoryPeerBindSessionStart {
 		if notice, handled := bindFactoryInteractiveHandoff(ctx, s, input, want); handled {
+			dropFactoryBindCacheForSlot(root, runID, slot, input.SessionID)
 			return notice, ""
 		}
 		p, bound, bindErr := s.BindLaunchPending(ctx, want)
@@ -169,6 +189,7 @@ func registerFactoryHookPeerRun(ctx context.Context, input *HookInput, mode fact
 		if !bound {
 			return "", ""
 		}
+		dropFactoryBindCacheForSlot(root, runID, slot, input.SessionID)
 		return fmt.Sprintf("factory messaging bound: run=%s slot=%s generation=%d; messages arrive at turn boundaries, not idle wake", runID, p.Slot, p.Generation), ""
 	}
 	p, err := s.RegisterPeer(ctx, want)
@@ -178,6 +199,8 @@ func registerFactoryHookPeerRun(ctx context.Context, input *HookInput, mode fact
 		}
 		return "factory messaging degraded: " + err.Error(), ""
 	}
+	dropFactoryBindCacheForSlot(root, runID, slot, input.SessionID)
+	writeFactoryBindCache(root, cacheKey)
 	return fmt.Sprintf("factory messaging bound: run=%s slot=%s generation=%d; messages arrive at turn boundaries, not idle wake", runID, p.Slot, p.Generation), ""
 }
 
@@ -198,7 +221,7 @@ func factoryHookBatchForRun(ctx context.Context, input *HookInput, event EventTy
 	defer cancel()
 	runID := strings.TrimSpace(runOverride)
 	if runID == "" {
-		runID = strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+		runID = strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
 	}
 	root := factoryHookRoot(input)
 	if runID == "" || root == "" || input.SessionID == "" {
@@ -207,8 +230,13 @@ func factoryHookBatchForRun(ctx context.Context, input *HookInput, event EventTy
 	if input.IsInterrupt || os.Getenv("MOAI_PERMISSION_WAITING") == "1" {
 		return "", false, "permission-or-interrupt"
 	}
-	s, err := factorymsg.OpenExistingWithDeadline(root, runID, factoryHookInspectionDeadline)
+	s, err := factoryHookOpenInbox(root, runID, factoryHookInspectionDeadline)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			// No broker exists for this run yet: still reported as degraded
+			// (the named run was opened), but never surfaced as a notice.
+			return "", false, "degraded: no-broker: " + err.Error()
+		}
 		return "", false, "degraded: " + err.Error()
 	}
 	defer closeFactoryHookStore(s)

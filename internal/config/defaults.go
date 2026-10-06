@@ -113,12 +113,34 @@ const (
 	// DefaultManagedCodexReadyTimeout bounds one Codex App Server handshake —
 	// process spawn, /readyz wait, loopback WS dial, initialize, thread start
 	// (SPEC-FACTORY-MANAGED-SESSION-001 AC-MS-001). It also bounds the WS
-	// handshake itself.
-	DefaultManagedCodexReadyTimeout = 10 * time.Second
+	// handshake itself. UNMEASURED: the 30 s value is a relaxation of the
+	// former 10 s with no cold-start data behind it (card t1410, F9).
+	DefaultManagedCodexReadyTimeout = 30 * time.Second
 	// DefaultManagedCodexTurnTimeout bounds one injected turn: a turn that
 	// never completes fails the delivery instead of holding the serial queue
 	// forever; the store's claim lease owns redelivery afterwards.
 	DefaultManagedCodexTurnTimeout = 10 * time.Minute
+	// DefaultManagedSessionMaxConsecutiveTurnFailures bounds how many turn-scoped
+	// failures in a row the managed delivery driver tolerates before it returns
+	// the last failure and ends the session; a successful turn resets the count
+	// (SPEC-FACTORY-MANAGED-HARDEN-001 REQ-MH-008). UNMEASURED: there is no
+	// failure-rate data behind 3 — it is the repo's "maximum 3 retries per
+	// operation" convention (moai-constitution Error Handling Protocol), in the
+	// same spirit as the DefaultQuotaGate* defaults. Correct it here when
+	// evidence says otherwise.
+	DefaultManagedSessionMaxConsecutiveTurnFailures = 3
+	// DefaultManagedCodexProbeTimeout bounds the `codex resume --help` capability
+	// probe that decides whether the operator TUI can attach
+	// (SPEC-FACTORY-MANAGED-TUI-001 REQ-MT-003). UNMEASURED: one run of the probe
+	// took 0.040 s on codex-cli 0.160.0; the bound is set orders of magnitude
+	// above that and is not derived from a latency distribution.
+	DefaultManagedCodexProbeTimeout = 5 * time.Second
+	// DefaultManagedCodexTUIStopGrace is how long the owner waits for an
+	// interrupted operator TUI to exit before it kills the child
+	// (SPEC-FACTORY-MANAGED-TUI-001 REQ-MT-011). UNMEASURED: no TUI shutdown
+	// timing was observed; the value only has to be long enough for a TUI that
+	// handles the interrupt to restore the terminal.
+	DefaultManagedCodexTUIStopGrace = 5 * time.Second
 
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
@@ -177,6 +199,23 @@ const (
 	// literal at two dispatcher call sites in internal/cli/hook.go; this is the
 	// single source of truth.
 	DefaultHookDispatcherTimeout = 30 * time.Second
+
+	// Per-command bound of the plugin install step: it limits ONE `claude
+	// plugin` / `codex plugin` command (SPEC-PLUGIN-MARKETPLACE-001 REQ-013).
+	// Four commands in the worst case make RK-15's 240-second ceiling a visible
+	// number rather than a literal in a call. A chosen value, not a measured one.
+	DefaultPluginInstallCommandTimeout = 60 * time.Second
+
+	// DefaultPluginCommandWaitDelay is how long a plugin command's output pipes
+	// may stay open after its context ends before the runner stops waiting for
+	// them (a grandchild holding the pipe must not outlive the bound).
+	DefaultPluginCommandWaitDelay = 2 * time.Second
+
+	// DefaultPluginVersionProbeTimeout bounds the one `codex plugin list --json`
+	// the "Plugin Version" doctor check starts (SPEC-PLUGIN-MARKETPLACE-001
+	// REQ-021). The command measured 0.02 s; the bound only stops a hang from
+	// stalling an on-demand `moai doctor`. A chosen value, not a measured one.
+	DefaultPluginVersionProbeTimeout = 3 * time.Second
 
 	// DefaultStopParseCapLimit is N, the number of consecutive stdin-parse-
 	// failure Stops under the Claude harness that keep the fail-closed deny;
@@ -428,9 +467,22 @@ const (
 	// the reports-archive action warns before moving.
 	DefaultReportsArchiveWarnBytes int64 = 1 << 30 // 1 GiB
 
+	// Hygiene thresholds (SPEC-MOAI-HYGIENE-001 REQ-HYG-016). Every size,
+	// count, age, window, and mode default of the hygiene engine lives
+	// here — no call site carries a magic number. KeptRotations is PINNED
+	// to 1 (D30): the REQ-HYG-002 chunk sequence is keep-1 by construction,
+	// and the hygiene engine validates the override (any other value is a
+	// config-invalid refusal, never a silent clamp).
+	HygieneAuditLogMaxBytes         = 10 * 1024 * 1024
+	HygieneAuditLogKeptRotations    = 1
+	HygieneTranscriptActivityWindow = 48 * time.Hour
+	HygieneHeartbeatStaleWindow     = 24 * time.Hour
+	HygieneMinAgeDays               = 7
+	HygieneModeDefault              = "report"
+
 	// DefaultSessionRecordRetentionDays is the shipped default for the
 	// project-tier `state.session_record_retention_days` key (card t1312):
-	// the age bound past which SessionStart prunes kanban session records.
+	// the age bound past which SessionStart prunes factory session records.
 	// It mirrors DefaultHomeCleanRetentionDays — the same 30-day window the
 	// home tier already ships — because the consumers (doctor Factory Run,
 	// the web ops console, the stale-run hook) need liveness only and no
@@ -461,6 +513,32 @@ const (
 	DefaultMemoryIndexLineCap            = 200 // MEMORY.md lines beyond this trigger MEMORY_INDEX_OVERFLOW
 	DefaultMemoryStaleAggregateThreshold = 10  // stale files >= this count emit one aggregated warning
 	DefaultMemoryTopicFileCap            = 50  // topic files beyond this trigger MEMORY_TOPIC_COUNT_OVER_CAP
+
+	// Memory index budget and card-close fold defaults
+	// (SPEC-MEMORY-FOLD-BUDGET-001, plan.md M1).
+	//
+	// DefaultMemoryIndexByteCap is the doctor's advisory byte cap for
+	// MEMORY.md: the smaller reading of the host's announced "25KB"
+	// (25,000 vs 25,600). The loader's actual cut is unconfirmed
+	// (spec.md §1.4) — the cap is a conservative proxy that decides only
+	// when a warning appears, never what is lost. DefaultMemoryIndexWarnPercent
+	// is the warn percentage both budget axes share, applied with the integer
+	// test value*100 >= warnPercent*cap.
+	//
+	// DefaultMemoryFoldOnDone is the compiled default of the card-close fold
+	// gate: off. Wiring every queue close to a shared-store mutation is
+	// opt-in (plan.md OD-1); the gate reads config.EnvMemoryFoldOnDone.
+	//
+	// DefaultMemoryFoldOnDoneBound bounds one card's fold-on-done step. 2s
+	// mirrors DefaultHookAsyncJoinTimeout rather than inventing a second
+	// calibration (plan.md OD-11): the bounded work — a file read, one
+	// append, one rename — sits orders of magnitude below it. The 5s ceiling
+	// is asserted by the test (AC-MFB-008 (x)), not carried as a second
+	// constant. Consumed by the close paths (plan.md M4).
+	DefaultMemoryIndexByteCap     = 25000
+	DefaultMemoryIndexWarnPercent = 80
+	DefaultMemoryFoldOnDone       = false
+	DefaultMemoryFoldOnDoneBound  = 2 * time.Second
 
 	// DefaultFeedbackRepository is the default target repository for the /moai
 	// feedback workflow (SPEC-INVOCATION-MODEL-001). Feedback targets the remote
@@ -623,6 +701,18 @@ const (
 	CodexReviewGateTreeScopeSkip   = "skip"
 )
 
+// Values of workflow.codex.review_gate.primary_scope
+// (SPEC-CODEX-GATE-SCOPING-001 REQ-CGSC-004): what the codex review gate does
+// for a tree-scope session whose tree is the repository's primary working
+// tree. Skip is the distributed default — a primary checkout's non-card
+// changes have no card to attribute them to (REQ-CGSC-002); Review is the
+// explicit restore axis that keeps the pre-SPEC whole-tree review. Single
+// source of truth for both names.
+const (
+	CodexReviewGatePrimaryScopeSkip   = "skip"
+	CodexReviewGatePrimaryScopeReview = "review"
+)
+
 // NormalizeCodexReviewGateTreeScope maps a raw tree_scope value onto the policy:
 // only "skip", compared without regard to case or surrounding whitespace, reads
 // as skip; an empty, unknown or misspelled value reads as review, so a mistyped
@@ -633,6 +723,23 @@ func NormalizeCodexReviewGateTreeScope(value string) string {
 		return CodexReviewGateTreeScopeSkip
 	}
 	return CodexReviewGateTreeScopeReview
+}
+
+// NormalizeCodexReviewGatePrimaryScope maps a raw primary_scope value onto the
+// policy (the §F.2 disposition table): only an explicit "review", compared
+// without regard to case or surrounding whitespace, restores the pre-SPEC
+// whole-tree review; every other read outcome — an empty, unknown or
+// misspelled value, a missing key — leaves the default skip in force, because
+// the gate does not review a primary checkout's unattributable changes
+// (REQ-CGSC-002). The fail direction is deliberately REVERSED from
+// NormalizeCodexReviewGateTreeScope: there the default reviews, here it skips.
+// The config loader and the gate's hand-rolled reader both go through this one
+// function.
+func NormalizeCodexReviewGatePrimaryScope(value string) string {
+	if strings.EqualFold(strings.TrimSpace(value), CodexReviewGatePrimaryScopeReview) {
+		return CodexReviewGatePrimaryScopeReview
+	}
+	return CodexReviewGatePrimaryScopeSkip
 }
 
 // DefaultMultiReviewGateTimeout is the per-call timeout for the multi-model
@@ -772,8 +879,8 @@ var (
 	DefaultSessionMsgMaxPending = 64
 )
 
-// DefaultFactoryLanes is the fan-out size the count-less `-k --name
-// lane-<n>` form takes when the operator supplies no count
+// DefaultFactoryLanes is the fan-out size the legacy count-less `-k` lane
+// entry takes when the operator supplies no count
 // (SPEC-FACTORY-WORKER-FANOUT-001 REQ-FF-001, t85 leader loop). The value 8 is
 // the operator-decided factory default for that legacy entry — large enough to
 // keep a card queue draining, small enough to sit under the session-count a
@@ -784,7 +891,7 @@ const DefaultFactoryLanes = 8
 // DefaultFactoryLeaderLanes is the leader fan-out a bare `-f` / `--factory`
 // (no count) resolves to (t118 launcher axis, v3.1.1): one lane. The revived
 // -f entry starts the minimal factory — leader plus lane-1 — which the
-// operator then grows one lane at a time with `-f lane-<n>`, so the
+// operator then grows one lane at a time with `-l`, so the
 // count-less default is 1, not the legacy form's 8 (DefaultFactoryLanes).
 //
 // Its role is the LEADER FAN-OUT DEFAULT only (SPEC-CODEX-LANE-SLOTS-001,
@@ -804,12 +911,24 @@ const DefaultFactoryLeaderLanes = 1
 const DefaultFactorySlowLaunchThreshold = 2 * time.Second
 
 // DefaultLaneMaxConcurrentSubagents is the per-lane concurrent-subagent cap
-// the launcher seeds on kanban companion and factory lane sessions (t118,
+// the launcher seeds on factory lane sessions (t118,
 // operator-confirmed architecture: each lane runs up to 10 agents in
 // parallel). It rides CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS (runtime default
 // 20) so N lanes fanning out simultaneously divide the machine's capacity by
 // construction rather than by operator restraint.
 const DefaultLaneMaxConcurrentSubagents = 10
+
+// DefaultTodoClassifyLLMTimeout is the HTTP timeout ceiling of the LLM
+// classification decider (SPEC-TCD-LLM-DECIDER-001 REQ-TLD-006). An
+// interactive add cannot wait out the audit path's 120s ceiling
+// (glmAuditHTTPTimeout): past this bound the judgment fails and the add
+// degrades to the fail-safe default with the one-line notice (REQ-TLD-003).
+const DefaultTodoClassifyLLMTimeout = 10 * time.Second
+
+// DefaultTodoClassifyLLMMaxTokens bounds a single LLM classification
+// response (SPEC-TCD-LLM-DECIDER-001): the judgment is a three-field JSON
+// object plus a one-line reason — far below the audit pass's 4096 cap.
+const DefaultTodoClassifyLLMMaxTokens = 512
 
 // DefaultGLMJobCancelGrace is how long glm_job_cancel waits for a cancelled
 // job's in-flight HTTP call to end on its own. Derived from
@@ -859,6 +978,23 @@ func NewDefaultConfig() *Config {
 		ContextSearch: defaultContextConfig(),
 		Interview:     defaultInterviewConfig(),
 		Design:        defaultDesignConfig(),
+	}
+}
+
+// DefaultPlanAuditTierCeilings returns the shipped plan_audit_tier_ceilings
+// values ({S:1, M:2, L:3}), mirroring the template harness.yaml verbatim
+// (SPEC-AUDIT-CEILING-002: a project without the keys resolves these).
+func DefaultPlanAuditTierCeilings() map[string]int {
+	return map[string]int{"S": 1, "M": 2, "L": 3}
+}
+
+// DefaultPlanAuditCeilingPolicy returns the shipped plan_audit_ceiling_policy
+// values {AutoDeltaRounds: 1, OnFinalHit: hold-and-split}, mirroring the
+// template harness.yaml verbatim.
+func DefaultPlanAuditCeilingPolicy() PlanAuditCeilingPolicyConfig {
+	return PlanAuditCeilingPolicyConfig{
+		AutoDeltaRounds: 1,
+		OnFinalHit:      PlanAuditCeilingOnFinalHoldAndSplit,
 	}
 }
 
@@ -1043,7 +1179,11 @@ func NewDefaultGitStrategyConfig() GitStrategyConfig {
 			GitHubIntegration: false,
 			PushToRemote:      false,
 			AutoCheckpoint:    "disabled",
-			MergeMethod:       "squash",
+			// card t1504 (re-lands PR #1738 / t1281 intent): manual-mode cards
+			// land as plain merges into the local integration branch (WT-*
+			// --no-ff house practice), so the seeded default follows the
+			// practice instead of contradicting it.
+			MergeMethod: "merge",
 			// SPEC-MAIN-COMMIT-BAN-001 REQ-3.3: 0 disables the batch-push
 			// trigger (template-neutral — manual mode ships push_to_remote:
 			// false, so a nonzero default would push a workflow choice).
@@ -1190,7 +1330,6 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			AutoCreate:         false,
 			AutoMerge:          false,
 			SessionNamePattern: "moai-{ProjectName}-{SPEC-ID}",
-			TmuxPreferred:      true,
 		},
 		// SPEC-TODO-ENABLE-FLAG-001 REQ-1: Todo is left at its zero value on
 		// purpose — Enabled stays nil, which TodoEnabled reads as ENABLED.
@@ -1204,6 +1343,17 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// so this line is belt-and-braces: it makes the default readable from
 		// the struct rather than only from the resolver.
 		Project: WorkflowProjectConfig{Continuation: ProjectContinuationCard},
+		// SPEC-MOAI-HYGIENE-001 REQ-HYG-016: the hygiene engine's defaults
+		// mirror the Hygiene* constants above. Mode ships "report" — the
+		// non-mutating default (REQ-HYG-013).
+		Hygiene: WorkflowHygieneConfig{
+			Mode:                     HygieneModeDefault,
+			AuditLogMaxBytes:         HygieneAuditLogMaxBytes,
+			AuditLogKeptRotations:    HygieneAuditLogKeptRotations,
+			TranscriptActivityWindow: HygieneTranscriptActivityWindow,
+			HeartbeatStaleWindow:     HygieneHeartbeatStaleWindow,
+			MinAgeDays:               HygieneMinAgeDays,
+		},
 		// The out-of-band drift-cache fill ships ENABLED. Unlike the guard
 		// family below it, this feature is not inert when on — it starts a
 		// child process on a cache miss — so the default is an accepted cost
@@ -1331,8 +1481,9 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// `enabled: true` under internal/template/templates/.
 		Codex: CodexConfig{
 			ReviewGate: CodexReviewGateConfig{
-				Enabled:   false,
-				TreeScope: CodexReviewGateTreeScopeReview,
+				Enabled:      false,
+				TreeScope:    CodexReviewGateTreeScopeReview,
+				PrimaryScope: CodexReviewGatePrimaryScopeSkip,
 			},
 			// SPEC-CODEX-PHASE2-001 (REQ-CX2-007 / REQ-CX2-015): the codex_task
 			// write mode ships default-OFF. A local opt-in belongs in local

@@ -315,10 +315,23 @@ type LLMConfig struct {
 	// AgentOverrides is an optional per-agent {model, effort} override keyed
 	// by canonical agent name, applied on top of the active profile's cell
 	// (REQ-AFR-004; restored under SPEC-WEB-AGENTFM-RESTORE-001 M1).
-	// Validated by validateAgentOverrides. Runtime spawn-path consumption
-	// remains Out of Scope (decision-index Q2 — the follow-up card owns it);
-	// today only the console reads and writes this map.
+	// Validated by validateAgentOverrides.
 	AgentOverrides map[string]ModelEffort `yaml:"agent_overrides"`
+	// AgentOverridesConsume is the v0.3.0 opt-in switch (REQ-AFR-015,
+	// SPEC-WEB-AGENTFM-RESTORE-001, card t1421): when true, the session's
+	// subagent spawns consume llm.agent_overrides — the orchestrator consults
+	// the resolved overrides before each spawn and passes the configured
+	// model on the Agent() call (template.ResolveAgentOverrideConsumption).
+	// The zero value false keeps today's storage-only behaviour
+	// byte-for-byte: the override map stays a console-stored surface and
+	// every spawn keeps the session-inherit default (REQ-AFR-002). A
+	// non-boolean stored value joins the console's atomic-reject set through
+	// ValidateLLMYAMLSection (the write boundary re-checks the stored section
+	// strictly — a genuine type mismatch errors in the typed pass, and a
+	// string-coercible "yes"/"on"/"1" is rejected by tag strictness, since
+	// the yaml.v3 decoder would otherwise coerce it into an opt-in the
+	// operator never wrote as one).
+	AgentOverridesConsume bool `yaml:"agent_overrides_consume"`
 	// Claude model mapping by tier
 	ClaudeModels ClaudeTierModels `yaml:"claude_models"`
 	// GLM API configuration
@@ -461,6 +474,14 @@ type WorkflowConfig struct {
 	// Config.ProjectContinuation, never directly: the resolver supplies the
 	// absent-key default and reports an unmatched value rather than applying it.
 	Project WorkflowProjectConfig `yaml:"project"`
+	// Hygiene carries the .moai hygiene engine's thresholds and mode
+	// (SPEC-MOAI-HYGIENE-001 REQ-HYG-013/016). The CLI mutates only with
+	// --apply on its own invocation — this config block governs the
+	// SessionStart auto path's mode alone. Defaults live in defaults.go's
+	// Hygiene* constants; hygiene.Settings validation enforces the D30
+	// floors (kept-rotations pinned to 1, positive windows, unknown mode ⇒
+	// report).
+	Hygiene WorkflowHygieneConfig `yaml:"hygiene"`
 	// SessionWorktree gates the automatic worktree isolation for
 	// moai init / moai profile / moai web (SPEC-SESSION-WORKTREE-001 REQ-SW-001 /
 	// REQ-SW-002). Default false: the feature ships INERT (byte-identical
@@ -693,7 +714,6 @@ type WorkflowWorktreeConfig struct {
 	AutoCreate         bool   `yaml:"auto_create"`
 	AutoMerge          bool   `yaml:"auto_merge"`
 	SessionNamePattern string `yaml:"session_name_pattern"`
-	TmuxPreferred      bool   `yaml:"tmux_preferred"`
 }
 
 // WorkflowTodoConfig mirrors workflow.todo.* — the backlog-queue guidance gate
@@ -956,6 +976,18 @@ type CodexReviewGateConfig struct {
 	// NormalizeCodexReviewGateTreeScope — any other value means review. The
 	// template ships this key only as a commented example.
 	TreeScope string `yaml:"tree_scope"`
+
+	// PrimaryScope decides what the gate does for a tree-scope session whose
+	// tree IS the repository's primary working tree
+	// (SPEC-CODEX-GATE-SCOPING-001 REQ-CGSC-002): "skip" — the distributed
+	// default, since a primary checkout's non-card changes have no card to
+	// attribute them to — or "review", the explicit restore of the pre-SPEC
+	// whole-tree review (REQ-CGSC-004). Read through
+	// NormalizeCodexReviewGatePrimaryScope: the fail direction is REVERSED
+	// from TreeScope — only an explicit review wins; a missing key, an
+	// unknown value, an unreadable file or a YAML error all leave the default
+	// skip in force.
+	PrimaryScope string `yaml:"primary_scope"`
 }
 
 // MultiConfig mirrors workflow.multi.* — the multi-model convergence review-gate
@@ -1032,7 +1064,7 @@ type SecuritySandbox struct {
 type StateConfig struct {
 	RetentionDays int `yaml:"retention_days"` // SPEC-V3R2-RT-004 REQ-031: retention days for the runs/ directory
 
-	// SessionRecordRetentionDays bounds the age of kanban session records
+	// SessionRecordRetentionDays bounds the age of factory session records
 	// (<state-dir>/<session>.json), pruned at SessionStart (card t1312). It
 	// is a pointer so an explicit 0 ("disable retention") stays
 	// distinguishable from a key the user omitted, which retains the
@@ -1323,9 +1355,41 @@ type HarnessConfig struct {
 	ModelUpgradeReview ModelUpgradeReviewConfig `yaml:"model_upgrade_review,omitempty"`
 	// PlanAuditGlobal holds the global plan audit settings.
 	PlanAuditGlobal PlanAuditGlobalConfig `yaml:"plan_audit_global,omitempty"`
+	// PlanAuditTierCeilings is the per-Tier plan-auditor retry ceiling map
+	// (harness.yaml plan_audit_tier_ceilings, keyed {S,M,L}).
+	// SPEC-AUDIT-CEILING-002 REQ-ACR-002: Go-read by the ceiling evaluation;
+	// the former no-Go-reader disposition is retired.
+	PlanAuditTierCeilings map[string]int `yaml:"plan_audit_tier_ceilings,omitempty"`
+	// PlanAuditCeilingPolicy is the ceiling-hit policy block
+	// (harness.yaml plan_audit_ceiling_policy). SPEC-AUDIT-CEILING-002
+	// REQ-ACR-002/003: on_final_hit drives the recorded outcome selection.
+	PlanAuditCeilingPolicy PlanAuditCeilingPolicyConfig `yaml:"plan_audit_ceiling_policy,omitempty"`
 	// Evaluator is the HRN-002 substrate — used for memory_scope FROZEN validation.
 	Evaluator EvaluatorConfig `yaml:"evaluator"`
 }
+
+// PlanAuditCeilingPolicyConfig is the configuration struct for the
+// plan_audit_ceiling_policy block: what happens when a plan audit reaches its
+// tier ceiling without an admitted verdict.
+type PlanAuditCeilingPolicyConfig struct {
+	// AutoDeltaRounds is the count of delta audits that run without asking
+	// when the fix stays inside fix_scope. Parsed and carried here; the
+	// eligibility computation stays prose-consumed (SPEC-AUDIT-CEILING-002 §E).
+	AutoDeltaRounds int `yaml:"auto_delta_rounds"`
+	// OnFinalHit is the policy value applied when the final ceiling hit
+	// reaches no admitted verdict. Shipped value: hold-and-split.
+	OnFinalHit string `yaml:"on_final_hit"`
+}
+
+// The on_final_hit policy values the ceiling evaluation selects on (the closed
+// set; any other value — or an empty/unreadable one — fails closed to `hold`).
+const (
+	// PlanAuditCeilingOnFinalHoldAndSplit is the shipped value: a hold record
+	// carrying the split-proposal reference.
+	PlanAuditCeilingOnFinalHoldAndSplit = "hold-and-split"
+	// PlanAuditCeilingOnFinalSplit records a bare split disposition.
+	PlanAuditCeilingOnFinalSplit = "split"
+)
 
 // AutoDetectionConfig is the configuration struct for the auto_detection block.
 // REQ-HRN-001-007: the rules map priority is minimal → standard → thorough.
@@ -1832,6 +1896,28 @@ type archiveFileWrapper struct {
 // gateFileWrapper handles the gate.yaml section file.
 type gateFileWrapper struct {
 	Gate GateConfig `yaml:"gate"`
+}
+
+// WorkflowHygieneConfig mirrors workflow.hygiene.* — the .moai hygiene
+// engine's thresholds and mode (SPEC-MOAI-HYGIENE-001 REQ-HYG-016). The
+// D30 validation floors live in hygiene.Settings.Validate; this type is
+// the yaml surface only.
+type WorkflowHygieneConfig struct {
+	// Mode governs the SessionStart auto path: "report" (default) or
+	// "apply". An unrecognizable string falls back to report (D30). The
+	// CLI ignores this for its own mutation decision — --apply only.
+	Mode string `yaml:"mode"`
+	// AuditLogMaxBytes is the sink rotation threshold.
+	AuditLogMaxBytes int64 `yaml:"audit_log_max_bytes"`
+	// AuditLogKeptRotations is PINNED to 1 (D30): any other value is a
+	// config-invalid refusal.
+	AuditLogKeptRotations int `yaml:"audit_log_kept_rotations"`
+	// TranscriptActivityWindow bounds transcript recency.
+	TranscriptActivityWindow time.Duration `yaml:"transcript_activity_window"`
+	// HeartbeatStaleWindow bounds registry heartbeat recency.
+	HeartbeatStaleWindow time.Duration `yaml:"heartbeat_stale_window"`
+	// MinAgeDays is the deletion age floor.
+	MinAgeDays int `yaml:"min_age_days"`
 }
 
 // systemFileWrapper handles the system.yaml section file.

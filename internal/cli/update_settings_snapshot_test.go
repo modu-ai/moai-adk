@@ -166,7 +166,7 @@ func snapChdir(t *testing.T, root string) {
 func snapUseSyncDeployer(t *testing.T, d template.Deployer) {
 	t.Helper()
 	prev := newTemplateSyncDeployer
-	newTemplateSyncDeployer = func(fs.FS) (template.Deployer, error) { return d, nil }
+	newTemplateSyncDeployer = func(fs.FS, template.DeployMode) (template.Deployer, error) { return d, nil }
 	t.Cleanup(func() { newTemplateSyncDeployer = prev })
 }
 

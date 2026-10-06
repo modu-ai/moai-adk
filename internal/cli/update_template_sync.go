@@ -50,20 +50,51 @@ import (
 // deployer (force-update semantics preserved) instead of resurrecting the
 // Claude surfaces. The other profiles use their matching deployers. A
 // catalog/construction error aborts update instead of changing profiles.
-var newTemplateSyncDeployer = func(embedded fs.FS) (template.Deployer, error) {
+//
+// SPEC-INIT-SHRINK-001 (REQ-016): the deploy mode rides through as an
+// option — a plugin-mode project deploys the thin set, a local-mode project
+// today's full set. The caller resolves the mode from the record (and the
+// migration's shape for a record-less project). On plugin mode the mirror
+// policy is None: REQ-019 holds the .agents/skills entries STABLE on update
+// runs — the re-home belongs to the fresh plugin deploy (init), and the
+// update never adds, restores, or rewrites mirror entries.
+var newTemplateSyncDeployer = func(embedded fs.FS, deployMode template.DeployMode) (template.Deployer, error) {
 	renderer := template.NewRenderer(embedded)
 	cat, catErr := template.LoadEmbeddedCatalog()
 	if catErr != nil {
 		return nil, fmt.Errorf("load harness catalog: %w", catErr)
 	}
+	modeOpts := []template.DeployerOption{template.WithDeployMode(deployMode)}
+	if deployMode == template.DeployModePlugin {
+		modeOpts = append(modeOpts, template.WithPluginMirrorPolicy(template.MirrorPolicyNone))
+	}
 	switch config.ReadHarness(".") {
 	case "gpt":
-		return template.NewCodexOnlyDeployerWithRendererAndForceUpdate(cat, renderer)
+		return template.NewCodexOnlyDeployerWithRendererAndForceUpdate(cat, renderer, modeOpts...)
 	case "both":
-		return template.NewDualHarnessDeployerWithRendererAndForceUpdate(cat, renderer)
+		return template.NewDualHarnessDeployerWithRendererAndForceUpdate(cat, renderer, modeOpts...)
 	default:
-		return template.NewClaudeHarnessDeployerWithRendererAndForceUpdate(cat, renderer)
+		return template.NewClaudeHarnessDeployerWithRendererAndForceUpdate(cat, renderer, modeOpts...)
 	}
+}
+
+// resolveUpdateDeployMode resolves the run's deploy mode (REQ-016, design
+// §3 step 4's last paragraph): a recorded plugin project deploys thin, a
+// recorded local project today's full set, and a record-less project (the
+// migration path) deploys thin unless the opt-out is set — both migration
+// deploy arms (confirmed and not-demonstrated) leave the dropped roots
+// untouched, and the opted-out arm deploys the full local payload.
+func resolveUpdateDeployMode(projectRoot string, noPlugin bool) template.DeployMode {
+	switch config.ReadDeployMode(projectRoot) {
+	case "plugin":
+		return template.DeployModePlugin
+	case "local":
+		return template.DeployModeLocal
+	}
+	if noPlugin {
+		return template.DeployModeLocal
+	}
+	return template.DeployModePlugin
 }
 
 // runTemplateSync synchronizes embedded templates with the project directory.
@@ -158,6 +189,17 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// Get flags for template sync
 	forceBackup := getBoolFlag(cmd, "force")
 	autoConfirm := getBoolFlag(cmd, "yes")
+	// SPEC-INIT-SHRINK-001: the deploy mode and the opt-out resolve before
+	// the deployer is constructed; the migration trigger (below) reads the
+	// same opt-out.
+	updateNoPlugin := getBoolFlag(cmd, "no-plugin") || pluginOptOutFromEnv()
+	deployMode := resolveUpdateDeployMode(".", updateNoPlugin)
+
+	// REQ-018: a recorded project is mode-aware, and update never flips the
+	// record — the switch surface is the init re-entry, named here.
+	if record := config.ReadDeployMode("."); record != "" {
+		_, _ = fmt.Fprintf(out, "deploy mode: %s (to switch, re-run moai init — with --no-plugin for local, without for plugin)\n", record)
+	}
 
 	// Use current directory as project root
 	projectRoot := "."
@@ -222,7 +264,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	// Create deployer with renderer and force update enabled for template sync
 	// This ensures template files are rendered (.tmpl -> actual file) and updated even if they exist
-	deployer, err := newTemplateSyncDeployer(embedded)
+	deployer, err := newTemplateSyncDeployer(embedded, deployMode)
 	if err != nil {
 		return fmt.Errorf("construct harness deployer: %w", err)
 	}
@@ -289,6 +331,22 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			reporter.StepError(errors.New("cancelled by user"))
 		}
 		return nil
+	}
+
+	// SPEC-INIT-SHRINK-001 (REQ-015, OD-4 settled (a, amended)): on a
+	// record-less project the migration trigger runs AFTER the user
+	// confirmed (the install step may touch the network) and BEFORE the step
+	// table. Its plan decides what the Clean step may remove and what the
+	// record reads at the end of the run.
+	var migration *migrationPlan
+	if config.ReadDeployMode(projectRoot) == "" {
+		plan, migErr := runUpdateMigrationTrigger(projectRoot, updateNoPlugin, pluginRunner, out, errOut)
+		if migErr != nil {
+			// The abort-before-removal contract: nothing was removed, the
+			// record is unwritten, the next update re-triggers.
+			return fmt.Errorf("migration: %w", migErr)
+		}
+		migration = plan
 	}
 
 	// Deploy templates
@@ -399,10 +457,27 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				reportArchiveShortfall(legacyBefore, archived, out)
 				archiveDriftRootsCreated = newArchiveDriftRoots(projectRoot, driftBefore)
 
-				// t40 defect 2: snapshot what exists under the managed roots
-				// BEFORE the removal (read-only; the deletion below is
-				// unchanged).
-				preCleanFiles = deploy.InventoryManagedPaths(projectRoot)
+				// SPEC-INIT-SHRINK-001 (REQ-011/REQ-013/REQ-016, design §3
+				// step 4): the removal scope is the run's target list —
+				//  a thin-mode run (plugin deployer, migration included)
+				//  excludes the dropped roots from the global walk, because
+				//  P-08's backup exemption assumes the deploy rewrites what
+				//  Clean removes, and the thin deploy does not rewrite them;
+				//  a confirmed migration APPENDS the classified removal list
+				//  (identical + archived modified), the only removal the
+				//  dropped roots ever see;
+				//  a local-mode run keeps today's global walk (the documented
+				//  REQ-017 boundary — preservation is one migration run, not
+				//  a byte-for-byte promise for every future update).
+				// The list comes from computeRunCleanTargets — the exact
+				// computation the --dry-run preview shares (card t1438
+				// review finding 4), so the preview can never announce a
+				// removal the run does not make.
+				cleanTargets := computeRunCleanTargets(projectRoot, deployMode, migration)
+				// t40 defect 2: snapshot what exists under THIS run's target
+				// list BEFORE the removal (read-only; the accounting matches
+				// the removal scope).
+				preCleanFiles = deploy.InventoryManagedPathsWithTargets(projectRoot, cleanTargets)
 				// SPEC-UPDATE-DATA-SURVIVAL-001 REQ-UDS-001/003/005: the three
 				// in-memory-only files reach disk before this step removes
 				// anything. A backup-write failure aborts here, so the removal
@@ -418,7 +493,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 						// anything up — abort rather than delete blind.
 						return fmt.Errorf("load embedded templates: %w", tmplErr)
 					}
-					return deploy.CleanMoaiManagedPaths(projectRoot, out, tmplFS)
+					return deploy.CleanMoaiManagedPathsWithTargets(projectRoot, out, tmplFS, cleanTargets)
 				})
 			},
 		},
@@ -660,6 +735,15 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 						updateLedger.requiref(sevWarn, "llm.harness re-assert failed: %v", err)
 					}
 				}
+				// SPEC-INIT-SHRINK-001 (REQ-009, OD-5 settled condition): the
+				// same re-assert for the deploy-mode record — the Clean step's
+				// .moai/config wipe must not cost the key, and the deploy just
+				// rewrote llm.yaml from the template (which carries no record).
+				if recorded := config.ReadDeployModeFrom(filepath.Join(configBackupPath, "sections")); recorded != "" {
+					if err := template.ApplyDeployMode(projectRoot, recorded); err != nil {
+						_, _ = fmt.Fprintf(out, "  %s deployment_mode re-assert warning: %v\n", uikit.SymWarning(), err)
+					}
+				}
 				// card t1275: RestoreMoaiConfigRetained + ApplyHarness just
 				// rewrote .moai/config/sections/*.yaml on top of the deployed
 				// render — re-record those hashes so the manifest matches what
@@ -800,6 +884,25 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// belongs in a worktree. Card t1527 D5: routed into the Reference section
 	// (the AC-WBG-009 wording travels with it verbatim).
 	updateLedger.referencef("%s", worktreeAdvisoryText(projectRoot))
+
+	// SPEC-INIT-SHRINK-001 (REQ-015, design §3 step 5): a completed
+	// migration run writes the record — plugin after a confirmed install,
+	// local under every other arm. A record-bearing project is unchanged:
+	// update never flips the record (REQ-018). A failed run lands here never
+	// (the error paths above return first), so the record is written only
+	// over a completed sync.
+	if migration != nil {
+		switch migration.outcome {
+		case migrateConfirmed:
+			if err := template.ApplyDeployMode(projectRoot, "plugin"); err != nil {
+				_, _ = fmt.Fprintf(errOut, "  %s deployment_mode write warning: %v\n", uikit.SymWarning(), err)
+			}
+		case migrateNotDemonstrated, migrateOptedOut:
+			if err := template.ApplyDeployMode(projectRoot, "local"); err != nil {
+				_, _ = fmt.Fprintf(errOut, "  %s deployment_mode write warning: %v\n", uikit.SymWarning(), err)
+			}
+		}
+	}
 
 	return nil
 }

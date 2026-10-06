@@ -85,9 +85,13 @@ type AuditCache interface {
 // The list is the UNION of all tier subject sets; the "skip if missing" rule in
 // ComputeHash makes inclusion tier-conditional by construction. The Tier L
 // extension (design.md, research.md) is SPEC-AUDIT-SNAPSHOT-001 A1; tasks.md is
-// retained for grandfathered V3R4-era SPECs (K-2).
+// retained for grandfathered V3R4-era SPECs (K-2). decision-index.md joined so a
+// decision-index edit after the audited SHA invalidates the audit — this also
+// widens the run Phase 1 skip-cache key on purpose: a decision-index the audit
+// did not cover must not pass a cached verdict.
 var planArtifactNames = []string{
 	"acceptance.md",
+	"decision-index.md",
 	"design.md",
 	"plan.md",
 	"research.md",

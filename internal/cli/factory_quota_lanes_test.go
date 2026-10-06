@@ -31,8 +31,8 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // qasDeadPID is the one registered pid the liveness seam reports dead.
@@ -59,10 +59,10 @@ type qasRegistryLane struct {
 // lane-3 gpt, lane-4 dead glm, lane-5 legacy (empty backend), lane-6 unrecognised.
 func qasStandardLaneRows() []qasRegistryLane {
 	return []qasRegistryLane{
-		{label: "lane-1", pid: 5001, backend: kanban.BackendClaude},
-		{label: "lane-2", pid: 5002, backend: kanban.BackendGLM},
-		{label: "lane-3", pid: 5003, backend: kanban.BackendGPT},
-		{label: "lane-4", pid: qasDeadPID, backend: kanban.BackendGLM},
+		{label: "lane-1", pid: 5001, backend: factory.BackendClaude},
+		{label: "lane-2", pid: 5002, backend: factory.BackendGLM},
+		{label: "lane-3", pid: 5003, backend: factory.BackendGPT},
+		{label: "lane-4", pid: qasDeadPID, backend: factory.BackendGLM},
 		{label: "lane-5", pid: 5005, legacy: true},
 		{label: "lane-6", pid: 5006, backend: "mystery"},
 	}
@@ -213,13 +213,13 @@ func qasGoldenAuto(t *testing.T) string {
 // lane row is not reproduced: `factory status` prints card rows only, and the
 // lane rows of a test belong to the caller (qasWriteLanes), so a standard
 // registry never collides with a fixture row.
-func qasStatusRoot(t *testing.T, oneCard bool) (string, *kanban.BacklogStore) {
+func qasStatusRoot(t *testing.T, oneCard bool) (string, *factory.BacklogStore) {
 	t.Helper()
 	sdClearLaneEnv(t)
 	root, store := sdMoaiFixture(t)
 	if oneCard {
-		fcQueue(t, store, kanban.BacklogStateQueued)
-		fcClassify(t, store, "t1", kanban.ClassPriorityHigh, false, kanban.ClassModeSerial)
+		fcQueue(t, store, factory.BacklogStateQueued)
+		fcClassify(t, store, "t1", factory.ClassPriorityHigh, false, factory.ClassModeSerial)
 		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardLeased, LeaseHolder: "lane-1", LeaseExpiresAt: "2026-09-26T10:00:00Z", Stage: homestate.CardRun})
 	}
 	return root, store
@@ -261,7 +261,7 @@ func qasStatusQuota(t *testing.T, js string) (map[string]any, bool) {
 // qasAutoRun runs the M0 `--auto` recipe over two queued cards (t1 "card a", t2
 // "card b") with the Jev line stubbed and a fake clock, through the production
 // quota seam, and returns the output with the per-run root rendered as <ROOT>.
-func qasAutoRun(t *testing.T, root string, store *kanban.BacklogStore) string {
+func qasAutoRun(t *testing.T, root string, store *factory.BacklogStore) string {
 	t.Helper()
 	for _, text := range []string{"card a", "card b"} {
 		if _, _, err := store.Add(text); err != nil {
@@ -308,7 +308,7 @@ var (
 
 // qasPressureRoot is the status fixture with the gate enabled and the five-hour
 // window at 92%.
-func qasPressureRoot(t *testing.T, oneCard bool, five float64) (string, *kanban.BacklogStore) {
+func qasPressureRoot(t *testing.T, oneCard bool, five float64) (string, *factory.BacklogStore) {
 	t.Helper()
 	root, store := qasStatusRoot(t, oneCard)
 	qasEnableGate(t, root)
@@ -512,7 +512,7 @@ func TestQAS_AC018_LaneInventoryCandidates(t *testing.T) {
 			t.Errorf("inventory = %+v, want candidates %+v unknown %d", got, wantCandidates, wantUnknown)
 		}
 	}
-	laneTwoThree := []factoryQuotaLane{{Label: "lane-2", Backend: kanban.BackendGLM}, {Label: "lane-3", Backend: kanban.BackendGPT}}
+	laneTwoThree := []factoryQuotaLane{{Label: "lane-2", Backend: factory.BackendGLM}, {Label: "lane-3", Backend: factory.BackendGPT}}
 
 	t.Run("candidates_and_unknown", func(t *testing.T) {
 		root := newRoot(t)
@@ -531,15 +531,15 @@ func TestQAS_AC018_LaneInventoryCandidates(t *testing.T) {
 		qasWriteLanes(t, root, qasStandardLaneRows())
 		// A record that would turn the legacy lane-5 into a glm candidate, and one
 		// that would turn the registered glm lane-2 into a claude lane.
-		for sid, rec := range map[string]*kanban.Record{
-			"sess-five": kanban.NewRecord("sess-five", "", kanban.BackendGLM).WithRole("lane").WithLane(5),
-			"sess-two":  kanban.NewRecord("sess-two", "", kanban.BackendClaude).WithRole("lane").WithLane(2),
+		for sid, rec := range map[string]*factory.Record{
+			"sess-five": factory.NewRecord("sess-five", "", factory.BackendGLM).WithRole("lane").WithLane(5),
+			"sess-two":  factory.NewRecord("sess-two", "", factory.BackendClaude).WithRole("lane").WithLane(2),
 		} {
-			if err := kanban.Write(root, rec); err != nil {
+			if err := factory.Write(root, rec); err != nil {
 				t.Fatalf("write session record %s: %v", sid, err)
 			}
 		}
-		dir := filepath.Dir(kanban.RecordPath(root, "sess-five"))
+		dir := filepath.Dir(factory.RecordPath(root, "sess-five"))
 		before := qasTreeSnapshot(t, dir)
 		assertInventory(t, factoryQuotaReadLanes(root), laneTwoThree, 2)
 		if after := qasTreeSnapshot(t, dir); after != before {
@@ -616,7 +616,7 @@ func TestQAS_AC018_LaneInventoryCandidates(t *testing.T) {
 		root := newRoot(t)
 		qasWriteLanes(t, root, qasStandardLaneRows())
 		before := qasRegistryState(t, root)
-		if !strings.Contains(before, "meta|[schema_version 5]") || strings.Contains(before, "legacy_workers_imported") {
+		if !strings.Contains(before, "meta|[schema_version 6]") || strings.Contains(before, "legacy_workers_imported") {
 			t.Fatalf("fixture precondition: the registry must carry schema_version and lack the legacy_workers_imported marker:\n%s", before)
 		}
 		assertInventory(t, factoryQuotaReadLanes(root), laneTwoThree, 2)
@@ -650,7 +650,7 @@ func TestQAS_AC018_LaneInventoryCandidates(t *testing.T) {
 // AC-QAS-019 — pressure on: `--auto` and `moai factory status` recommend the
 // candidate lanes.
 func TestQAS_AC019_AutoAndStatusRecommendNonClaudeLanes(t *testing.T) {
-	setup := func(t *testing.T) (string, *kanban.BacklogStore) {
+	setup := func(t *testing.T) (string, *factory.BacklogStore) {
 		t.Helper()
 		qasLaneSeam(t)
 		root, store := qasPressureRoot(t, false, 92)
@@ -740,8 +740,8 @@ func TestQAS_AC020_NoNonClaudeLaneWarnsOnly(t *testing.T) {
 		rows        []qasRegistryLane
 		wantUnknown int
 	}{
-		{"only_claude_lanes", []qasRegistryLane{{label: "lane-1", pid: 5001, backend: kanban.BackendClaude}, {label: "lane-2", pid: 5002, backend: kanban.BackendClaude}}, 0},
-		{"only_dead_lanes", []qasRegistryLane{{label: "lane-2", pid: qasDeadPID, backend: kanban.BackendGLM}, {label: "lane-3", pid: qasDeadPID, backend: kanban.BackendGPT}}, 0},
+		{"only_claude_lanes", []qasRegistryLane{{label: "lane-1", pid: 5001, backend: factory.BackendClaude}, {label: "lane-2", pid: 5002, backend: factory.BackendClaude}}, 0},
+		{"only_dead_lanes", []qasRegistryLane{{label: "lane-2", pid: qasDeadPID, backend: factory.BackendGLM}, {label: "lane-3", pid: qasDeadPID, backend: factory.BackendGPT}}, 0},
 		{"no_lanes", nil, 0},
 	}
 	for _, c := range cases {
@@ -816,14 +816,14 @@ func TestQAS_AC021_SteeringChangesNothing(t *testing.T) {
 		qasLaneSeam(t)
 		root, _ := qasPressureRoot(t, true, 92)
 		qasWriteLanes(t, root, qasStandardLaneRows())
-		sessDir := filepath.Dir(kanban.RecordPath(root, "sess-guard"))
-		if err := kanban.Write(root, kanban.NewRecord("sess-guard", "", kanban.BackendClaude).WithRole("lane").WithLane(1)); err != nil {
+		sessDir := filepath.Dir(factory.RecordPath(root, "sess-guard"))
+		if err := factory.Write(root, factory.NewRecord("sess-guard", "", factory.BackendClaude).WithRole("lane").WithLane(1)); err != nil {
 			t.Fatal(err)
 		}
 		cardsBefore := qasRecordDump(t, root) // opens the record read-write: measured before the byte fingerprint
 		registryBefore := qasRegistryState(t, root)
 		sessBefore := qasTreeSnapshot(t, sessDir)
-		queueBefore := sdQueueBytes(t, kanban.NewBacklogStore(todoBacklogPath(root)))
+		queueBefore := sdQueueBytes(t, factory.NewBacklogStore(todoBacklogPath(root)))
 
 		_, js := qasStatus(t)
 		quota, ok := qasStatusQuota(t, js)
@@ -836,7 +836,7 @@ func TestQAS_AC021_SteeringChangesNothing(t *testing.T) {
 		if after := qasTreeSnapshot(t, sessDir); after != sessBefore {
 			t.Errorf("the session registry changed under status")
 		}
-		if after := sdQueueBytes(t, kanban.NewBacklogStore(todoBacklogPath(root))); after != queueBefore {
+		if after := sdQueueBytes(t, factory.NewBacklogStore(todoBacklogPath(root))); after != queueBefore {
 			t.Errorf("the queue changed under status")
 		}
 		if after := qasRecordDump(t, root); after != cardsBefore {
@@ -901,11 +901,11 @@ func TestQAS_AC021_SteeringChangesNothing(t *testing.T) {
 		qasLaneSeam(t)
 		root, store := qasPressureRoot(t, false, 92)
 		qasWriteLanes(t, root, qasStandardLaneRows())
-		fcQueue(t, store, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
-		fcClassify(t, store, "t1", kanban.ClassPriorityHigh, false, kanban.ClassModeSerial)
-		fcClassify(t, store, "t2", kanban.ClassPriorityNormal, true, kanban.ClassModeParallelizable)
+		fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStateQueued)
+		fcClassify(t, store, "t1", factory.ClassPriorityHigh, false, factory.ClassModeSerial)
+		fcClassify(t, store, "t2", factory.ClassPriorityNormal, true, factory.ClassModeParallelizable)
 		first := todoAutoQuotaLine(root)
-		fcClassify(t, store, "t1", kanban.ClassPriorityNormal, true, kanban.ClassModeParallelizable)
+		fcClassify(t, store, "t1", factory.ClassPriorityNormal, true, factory.ClassModeParallelizable)
 		if second := todoAutoQuotaLine(root); first == "" || first != second {
 			t.Errorf("the line depends on the queue's classification: %q vs %q", first, second)
 		}
@@ -923,7 +923,7 @@ type qasStreams struct {
 
 // AC-QAS-022 — gate disabled or pressure off: the output is unchanged.
 func TestQAS_AC022_GateOffOrPressureOffOutputUnchanged(t *testing.T) {
-	autoFixtureRoot := func(t *testing.T) (string, *kanban.BacklogStore) {
+	autoFixtureRoot := func(t *testing.T) (string, *factory.BacklogStore) {
 		t.Helper()
 		sdClearLaneEnv(t)
 		return sdMoaiFixture(t)
@@ -998,7 +998,7 @@ func TestQAS_AC022_GateOffOrPressureOffOutputUnchanged(t *testing.T) {
 		stamp := regexp.MustCompile(`[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+(Z|[+-][0-9:]+)?`)
 		run := func(enable bool) qasStreams {
 			sdClearLaneEnv(t)
-			t.Setenv(config.EnvMoaiLaunchProvider, kanban.BackendClaude)
+			t.Setenv(config.EnvMoaiLaunchProvider, factory.BackendClaude)
 			root := t.TempDir()
 			if enable {
 				qasEnableGate(t, root)

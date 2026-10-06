@@ -804,6 +804,12 @@
 - path: "harness.plan_audit_global.rationale"
   class: R
   evidence: none
+- path: "harness.plan_audit_ceiling_policy.auto_delta_rounds"
+  class: P
+  evidence: .claude/agents/moai/plan-auditor.md
+- path: "harness.plan_audit_ceiling_policy.on_final_hit"
+  class: P
+  evidence: .claude/agents/moai/plan-auditor.md
 - path: "harness.plan_audit_tier_ceilings.L"
   class: P
   evidence: .claude/agents/moai/plan-auditor.md
@@ -894,6 +900,9 @@
 - path: "llm.agent_overrides"
   class: R
   evidence: none
+- path: "llm.agent_overrides_consume"
+  class: W
+  evidence: "reader: template.ResolveAgentOverrideConsumption (v0.3.0 spawn-consumption gate) + hook advise compare + web console contract-state chip and save-path strict reject + cli doctor served-model switch state"
 - path: "llm.claude_bin"
   class: W
   evidence: reader
@@ -901,6 +910,18 @@
   class: W
   evidence: reader
 - path: "llm.glm.base_url"
+  class: W
+  evidence: reader
+- path: "llm.glm.effort.fable"
+  class: W
+  evidence: reader
+- path: "llm.glm.effort.high"
+  class: W
+  evidence: reader
+- path: "llm.glm.effort.low"
+  class: W
+  evidence: reader
+- path: "llm.glm.effort.medium"
   class: W
   evidence: reader
 - path: "llm.glm.models.fable"
@@ -2400,6 +2421,24 @@
 - path: "workflow.multi.review_gate.enabled"
   class: W
   evidence: reader
+- path: "workflow.hygiene.audit_log_kept_rotations"
+  class: W
+  evidence: reader
+- path: "workflow.hygiene.audit_log_max_bytes"
+  class: W
+  evidence: reader
+- path: "workflow.hygiene.heartbeat_stale_window"
+  class: W
+  evidence: reader
+- path: "workflow.hygiene.min_age_days"
+  class: W
+  evidence: reader
+- path: "workflow.hygiene.mode"
+  class: W
+  evidence: reader
+- path: "workflow.hygiene.transcript_activity_window"
+  class: W
+  evidence: reader
 - path: "workflow.project.continuation"
   class: P
   evidence: .claude/skills/moai/workflows/project/doc-generation.md
@@ -2449,10 +2488,6 @@
   class: W
   evidence: reader
 - path: "workflow.worktree.session_name_pattern"
-  class: D
-  evidence: none
-  deprecate_after: "v3.1.0"
-- path: "workflow.worktree.tmux_preferred"
   class: D
   evidence: none
   deprecate_after: "v3.1.0"

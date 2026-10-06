@@ -1,0 +1,181 @@
+---
+paths: "**/.claude/agents/**"
+---
+
+# Model Policy
+
+Rules for agent model field values and multi-model architecture.
+
+## Valid Model Field Values
+
+MoAI agent definitions declare neither `model:` nor `effort:`: every subagent inherits the main session's model and effort, and a spawn passes neither. The values below remain the accepted set for an agent file a user authors.
+
+Agent definition `model` field accepts only these values:
+- inherit: Uses parent session's model (default)
+- opus: Claude Opus (highest capability)
+- sonnet: Claude Sonnet (balanced)
+- fable: Claude Fable (current generation; added to the model enum per CC v2.1.196 model-priority update)
+- haiku: Claude Haiku (fastest, lowest cost)
+
+Current model generation mapping:
+- opus = Opus 5.5 (`claude-opus-5-5`) on the Anthropic API — the `opus` alias target and default Opus model; requires Claude Code v2.1.280 or later; native 1M context, 128K max output, $4 / $20 per MTok, fast mode available, adaptive thinking always on (cannot be disabled), default effort `medium`. Defaults differ per model: `high` on most other effort-capable models, `xhigh` on Opus 4.7; raise the effort per role where the work needs it. The previous Opus 5 id `claude-opus-5` (superseded) stays selectable by full model name.
+- sonnet = Sonnet 5.5 on the Anthropic API (current generation; canonical id `claude-sonnet-5-5`; 1M context window and 128K max output per the official models overview; same input/output price as Sonnet 5 — $2/$10 per MTok). The previous Sonnet 5 id `claude-sonnet-5` stays selectable by full model name and normalizes back to the alias. Behind an LLM gateway or with `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`, `sonnet` budgets 200K. See § Sonnet 5 Native-1M Re-scope (CC 2.1.198) for the window doctrine's history. Note that `CLAUDE_CODE_DISABLE_1M_CONTEXT` is not sonnet-specific: per the CC 2.1.223 changelog it holds **every** Claude model with a native 1M window — Opus 5.5 included — to 200K via auto-compaction, and a startup warning appears when auto-compaction is not holding the session to 200K. The official env-vars page still describes the flag in Sonnet-5 terms (upstream doc lag as of CC 2.1.225); the changelog is the current source.
+
+  Migration note (Sonnet 5.5): a session running Sonnet with thinking **off** must switch to the `between_tools` thinking setting before moving to Sonnet 5.5 — up-front thinking stays off under 5.5. This note is docs-surface only; no moai runtime surface reads or enforces the setting.
+- fable = Fable (current generation; added to the model enum per CC v2.1.196 model-priority update)
+- haiku = Haiku (current generation; retired from MoAI agent routing per the No-Haiku policy — value remains valid for documentation/example YAML)
+
+On the Anthropic API, Opus 5.5 and Opus 4.8 serve the full 1M token context window by default (no beta header, no long-context premium); Opus 4.8 and later run with a 200K window on some providers, such as Amazon Bedrock, Google Cloud, and Microsoft Foundry. Fast mode applies to Opus 5.5 and Opus 4.8, and Opus 5.5 is the fast-mode default from CC 2.1.280 (Opus 4.7 was removed from fast mode). Explore (Anthropic built-in) inherits the session model per CC v2.1.198 — no separate deployment or model pin needed.
+
+Invalid values (NEVER use):
+- glm: Not a model field value (GLM is configured via environment variables)
+- high/medium/low: These are CLI policy flags, not model field values
+- Pinned old versions (opus-4-0, opus-4-1, sonnet-4-5): Auto-migrated to current generation
+- Full model-ID form (e.g., `claude-opus-5-5`): **official-but-intentionally-disallowed in MoAI.** Claude Code itself accepts a full model-ID string in the `model` field, but MoAI intentionally restricts agents to the five alias values above (`inherit` / `opus` / `sonnet` / `fable` / `haiku`). The reason is the `[1m]` context-entitlement inheritance bug (see § Inherit-by-Default Convention): a subagent that pins a concrete full model ID — like an explicit `model: sonnet` / `model: opus` — does not inherit the parent session's `[1m]` entitlement and fails to spawn. Omitting the field (or `inherit`) sidesteps this. This restriction being a deliberate MoAI policy (not a stale gap) means "MoAI is outdated relative to Claude Code" is a misreading — the full-ID form is omitted on purpose.
+
+## Inherit-by-Default Convention
+
+[ZONE:Evolvable] [HARD] MoAI agents declare no `model:` and no `effort:` frontmatter key. Claude Code resolves a subagent's model as spawn-time `model` → frontmatter `model` → `CLAUDE_CODE_SUBAGENT_MODEL` → the main conversation's model, and an absent `effort` inherits the session's, so an agent with neither field runs on the main session's model and effort. MoAI never sets `CLAUDE_CODE_SUBAGENT_MODEL`; a user who exports it still pins every subagent (a documented user-environment residual).
+
+Rationale (Claude Code session inheritance bug):
+- When the parent session uses an `[1m]` context variant (e.g., `claude-opus-5-5[1m]`, `claude-sonnet-5-5[1m]`) and a spawned subagent declares an explicit `model: sonnet` or `model: opus` in its frontmatter, the parent's 1M context entitlement does NOT propagate to the subagent.
+- Result: subagent spawn fails with `API Error: Usage credits required for 1M context · run /usage-credits to turn them on, or /model to switch to standard context`.
+- Sonnet **4.6** 1M specifically requires extra usage credits on every plan (including Max), so the entitlement mismatch is unrecoverable mid-spawn. (Re-scoped CC 2.1.198: on the Anthropic API `sonnet` now resolves to **Sonnet 5** with a native 1M window that needs NO usage credits and exposes no `[1m]` suffix, so this credit-mismatch failure binds Sonnet 4.6 1M and gateway-selected Sonnet paths — NOT Sonnet 5 on the Anthropic API. See § Sonnet 5 Native-1M Re-scope below.)
+
+Upstream tracking (Anthropic claude-code repository):
+- [Issue #45847](https://github.com/anthropics/claude-code/issues/45847): skill with `model: sonnet` frontmatter fails from Opus 4.6/4.7 [1m] parent
+- [Issue #51060](https://github.com/anthropics/claude-code/issues/51060): subagent with `model: opus` ignores parent's Extra Usage flag
+- [Issue #36670](https://github.com/anthropics/claude-code/issues/36670): Team teammates do not inherit the `[1m]` context variant from leader
+
+Workaround pattern (no `model:` field, equivalent to `model: inherit`):
+- The subagent fully inherits the parent's model + context entitlement, eliminating the mismatch.
+- No agent definition under `.claude/agents/moai/` declares `model:` or `effort:`, and no spawn passes either. The No-Haiku policy retired the former `model: haiku` exception.
+
+Exceptions (do NOT migrate to inherit):
+- Documentation/example YAML inside skill bodies (`.claude/skills/moai-foundation-cc/reference/**/*.md`) — these mirror official Claude Code documentation and MUST show all valid values (`sonnet`, `opus`, `haiku`, `inherit`) for educational purposes.
+
+## Baseline-Refill Breaker (team sonnet — second failure mode; resolved for Sonnet 5.5 / Opus 5.5 on the Anthropic API)
+
+[ZONE:Evolvable] The `[1m]` entitlement bug in § Inherit-by-Default Convention is the *spawn-time* failure mode (a frontmatter `model: sonnet` pin → spawn fails with a 1M credit error). A **distinct second failure mode** historically affected team-mode teammates spawned via per-spawn `model: "sonnet"` override:
+
+| failure mode | trigger | symptom | mitigation |
+|--------------|---------|---------|------------|
+| `[1m]` credit-fail | frontmatter `model: sonnet` pin | spawn fails immediately (`Usage credits required for 1M`) | use `model: inherit` |
+| baseline-refill breaker | per-spawn `model: "sonnet"` in team mode on a **200K-variant** model | spawn succeeds, but the 200K window saturates under the heavy baseline → autocompact → rapid-refill → runtime circuit breaker → zero output | historical on the Anthropic API; still live on 200K-budget paths — see resolution below |
+
+**Resolution (Sonnet 5.5 / Opus 5.5 era):** the breaker required a teammate to fall back to a **200K context variant** after the `[1m]` suffix was stripped on teammate spawn (Anthropic issues #36670 / #34421; the suffix-strip mechanism is still OPEN upstream). The fallback target — a 200K context variant — **no longer exists in the current default lineup**: Sonnet 5.5 ships a single 1M-token context window (1M is both default and maximum; no smaller variant — per the official Sonnet 5.5 model docs), and Opus 5.5 likewise serves the full 1M window by default on the Anthropic API. With no 200K variant to fall back to, a teammate spawned as `sonnet` / `opus` on the Anthropic API operates at 1M regardless of suffix stripping, and the rapid-refill → circuit-breaker → zero-output cascade cannot trigger. The mechanism (#36670) is technically still open but its observable impact on the current default lineup on the Anthropic API is zero. This resolution does not carry to 200K-budget paths — `sonnet` behind an LLM gateway or under `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`, and Opus on a 200K provider such as Amazon Bedrock (see the `sonnet` alias entry and the provider-window paragraph at the top of this file): there a stripped suffix can still land on 200K, and the legacy hazard below applies.
+
+The breaker therefore remains documented as a **live hazard on the 200K-budget paths named above** and as a **historical hazard for legacy 200K-variant models** (Opus 4.6 and Sonnet 4.6, which in Claude Code reach 1M only through their `[1m]` variant, so a stripped suffix lands on the 200K default; and Sonnet 4.5 and earlier, Opus 4.5 and earlier, and Haiku 4.5, which are 200K outright): on those models a teammate can still fall back to 200K. For the current default lineup the operational mitigation (single `manager-develop` + Milestone split over team mode) is no longer forced by the breaker — though team mode is additionally disabled by default per the Phase 4 re-design (`.claude/rules/moai/workflow/orchestration-mode-selection.md`), in favor of subagent fanout (fanout) for multi-domain research/review and sequential sub-agent (serial) for coding.
+
+## `[1m]` Constraint Re-Verification (CC 2.1.178; Sonnet 5.5 / Opus 5.5 practical-impact update)
+
+The `[1m]` entitlement-inheritance constraint was re-verified against CC 2.1.178. **Verdict: STILL-ACTIVE mechanism, but ZERO PRACTICAL IMPACT on the current default lineup (Sonnet 5.5 / Opus 5.5).** Per-agent `model:` pins remain forbidden regardless (the re-verification records per-agent pinning as out-of-scope).
+
+Evidence fetched via the GitHub issue API + the canonical CC CHANGELOG:
+
+- Issue #45847 (skill with `model:` fails from `[1m]` parent): **closed**, labeled `duplicate` — no explicit "fixed" resolution.
+- Issue #51060 (subagent `model: opus` spawn fails): **closed**, labeled `bug, area:model, area:agents, stale` — no CHANGELOG entry fixes the spawn-time entitlement-inheritance root cause.
+- Issue #36670 (Team teammates don't inherit `[1m]` from leader): **OPEN** — the Team-mode path is confirmed unfixed at CC 2.1.178.
+- CC 2.1.172 fixes ("1M context stuck session", "doubled `[1m]` suffix") address the *symptom* and *suffix normalization*, NOT the *spawn-time entitlement mismatch*. CC 2.1.173/2.1.174 are Fable-5-suffix and background-env-inheritance fixes — orthogonal.
+
+**Why STILL-ACTIVE mechanism ≠ practical impact (Sonnet 5.5 / Opus 5.5 era):** the #36670 mechanism strips the `[1m]` suffix on teammate spawn, which historically forced a fallback to a 200K variant. On the Anthropic API, Sonnet 5.5 and Opus 5.5 have **no 200K variant** — their context window is 1M as both default and maximum (per the official Sonnet 5.5 model docs; Opus 5.5 serves the full 1M window by default). The stripped-suffix teammate therefore still resolves to 1M; there is no smaller variant to degrade into. The mechanism is unfixed upstream, but on the current default lineup it has nothing to break. The no-field (inherit) convention is retained as defense-in-depth and for legacy-200K-variant models (Haiku 4.5 still ships 200K).
+
+A follow-up SPEC (conditional) MAY re-enable per-agent pinning only when #36670 is closed-with-fixed AND a CHANGELOG confirms Team `[1m]` inheritance for explicit `model:` teammates — though for Sonnet 5.5 / Opus 5.5 the practical case for that re-enablement has dissolved.
+
+### Sonnet 5 Native-1M Re-scope (CC 2.1.198)
+
+Re-verified against the CC 2.1.197 Sonnet 5 release + `code.claude.com/docs/en/model-config`. **Verdict: the sonnet-side premise of the `[1m]` doctrine changed; the doctrine is re-scoped, NOT deleted.**
+
+- On the Anthropic API, `sonnet` resolves to **Sonnet 5** with a **native 1M context window — there is no 200K variant, no `[1m]` suffix to select, and no usage credits required on any plan** (sessions auto-compact ~967K). A frontmatter `model: sonnet` pin therefore no longer trips the sonnet-side `[1m]` credit-mismatch on the Anthropic API — the credit entitlement it used to require does not exist for Sonnet 5.
+- The `[1m]` doctrine still binds two surviving paths: (1) the **opus`[1m]`** path (Opus variants still expose `[1m]` selection), and (2) the **gateway / older-model** path — behind an LLM gateway (`ANTHROPIC_BASE_URL` non-Anthropic) or with `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`, `sonnet` budgets 200K and `sonnet[1m]` selects the 1M window for Sonnet 5.5. The flag's blast radius widened at CC 2.1.223 — it now holds every native-1M Claude model (Opus 5.5 included) to 200K, so setting it changes the Opus-side budget too, not only the sonnet-side one.
+- **Inheriting remains the MoAI default regardless.** Sonnet 5.5's native 1M removes the sonnet-side spawn-time hazard on the Anthropic API, but per-agent `model:` pins stay deprecated (§ Inherit-by-Default Convention) — the opus`[1m]` + Team-mode paths still make inheriting the safe choice.
+- **Gap (NOT re-verified this run)**: issue #36670 (Team teammates don't inherit `[1m]` from leader) was **NOT re-checked** against CC 2.1.198 — its state is unknown; do NOT claim it closed. The Team-mode `[1m]` non-inheritance premise in § Baseline-Refill Breaker is unchanged pending a fresh issue-state observation.
+
+## Default-Model Cost Lever (Default = sonnet, no allowlist enforcement)
+
+[ZONE:Evolvable] [HARD] The `[1m]`-safe cost lever is the **Default model** set at the settings level; MoAI assigns no per-agent model. The deployed `settings.json` template (`.claude/settings.json.tmpl`) sets ONLY:
+
+```json
+"model": "sonnet"
+```
+
+The template deliberately does **NOT** set `availableModels` or `enforceAvailableModels`. A closed `availableModels` allowlist combined with `enforceAvailableModels: true` hides any model not in the list from the `/model` picker (CC v2.1.172 behavior), which caused two problems:
+
+1. **New-model lockout** — every new Claude model (for example a new `fable` generation, or any future tier) was invisible in `/model` until an operator manually appended it to the allowlist. This recurred on every model release.
+2. **GLM allowlist maintenance** — enforcement forced every GLM swap target (whichever model id each GLM tier slot held) to be enumerated in the allowlist, or the swap was declined (see GLM-mode reconciliation below).
+
+Dropping `enforceAvailableModels` resolves both at once: all Claude models (current and future) auto-appear in the picker with no maintenance, and the GLM swap is admitted without an allowlist. Only the Default-model cost lever is retained — `"model": "sonnet"` alone still routes the busy-agent cost through Sonnet by default.
+
+Why this is `[1m]`-safe: the lever operates on the **Default** model resolution at the settings level, not on per-agent explicit pins, so it does not trigger the spawn-time entitlement-inheritance failure (#45847/#51060/#36670). Subagents inherit the session model, so the Default drives their cost too; a task that needs a stronger model runs in a session started on that model.
+
+### GLM-mode reconciliation
+
+[ZONE:Evolvable] [HARD] With `enforceAvailableModels` unset, GLM mode needs no allowlist reconciliation. When GLM mode is active (`moai glm` whole-session), the GLM activation sets `ANTHROPIC_DEFAULT_OPUS_MODEL` to the configured GLM high model (currently `glm-5.3`; the `DefaultGLMHigh` constant is the SSOT, so read it there rather than trusting this line after a model generation turns over), surfaced in the model UI as the Opus-slot alias. The CC 2.1.176 redirect-blocking semantics — which decline an `ANTHROPIC_DEFAULT_*_MODEL` redirect to a model NOT in `availableModels` — apply ONLY when `enforceAvailableModels` is `true`. Because the template no longer sets that flag, the GLM swap is never checked against an allowlist and is admitted directly; the session runs on the configured GLM model instead of silently falling back to Sonnet.
+
+This supersedes the earlier approach of enumerating the GLM model ids in `availableModels` (the `[1m]`-variant + raw-GLM-id expansion). That expansion existed only to satisfy `enforceAvailableModels: true`; removing the enforcement flag removes the need for the expansion entirely. The Default model stays `sonnet` — a non-GLM (`moai cc` / plain Claude) session still resolves its Default to Sonnet; the only change is that no model is hidden and no swap is declined.
+
+Scope note: this is a **static template change** in `.claude/settings.json.tmpl` (removal of the `availableModels` + `enforceAvailableModels` keys). It touches no Go runtime code (`glm.go` / `launcher.go` / `settings.go` unchanged) and writes nothing to `settings.local.json` — so the solo `moai glm` "settings.local.json clean" design (no GLM env leak to subsequent plain-`claude` invocations) is preserved.
+
+### Three model-selection env axes (they are not interchangeable)
+
+Claude Code exposes three separate `ANTHROPIC_*` axes for choosing a model. They are frequently confused because the names are near-identical, and only the third is one MoAI writes.
+
+| Variable | What it selects | Lifetime |
+|---|---|---|
+| `ANTHROPIC_MODEL` | The model for **the session launched with it**. Documented as applying only to that launch — a separate terminal needs its own value rather than a `/model` switch. | Session-scoped; a `/model` choice saved in settings does not survive it — the next launch returns to this variable's model |
+| `ANTHROPIC_DEFAULT_MODEL` | The model **new sessions start on**, and what the picker's Default row resolves to (shown as `Set by ANTHROPIC_DEFAULT_MODEL`). Requires Claude Code v2.1.236+. | Applies only when nothing else selected a model; a `/model` choice saved to settings outranks it on later launches too |
+| `ANTHROPIC_DEFAULT_<TIER>_MODEL` (`OPUS` / `SONNET` / `HAIKU` / `FABLE`) | Which concrete model ID a **tier alias** resolves to. This is the alias→ID resolution layer, not a session-model choice. | Per-slot mapping, for as long as it is exported |
+
+**MoAI writes only the third axis.** The GLM activation path (`setGLMEnv` in `glm.go`) sets all four `ANTHROPIC_DEFAULT_<TIER>_MODEL` variables so each tier slot resolves to the configured GLM model. MoAI neither reads nor writes `ANTHROPIC_MODEL` or `ANTHROPIC_DEFAULT_MODEL`.
+
+**The documented precedence.** `ANTHROPIC_DEFAULT_MODEL` applies only when *none* of these selected a model: the `--model` flag, `ANTHROPIC_MODEL`, a `model` value in any settings file (including a choice saved with `/model`), or an organization default model. It is ignored outright when set to `default`, `inherit`, `opusplan`, or `haiku`; when `enforceAvailableModels` is on; or when `availableModels` / organization restrictions exclude the model or the account cannot reach it. A resumed session (`--resume`, `--continue`, `/resume`) starts on the variable's model too rather than on the model saved in the transcript — but only in the case where a new session would have started on it.
+
+**Why the axes do not compete.** The precedence above governs the *session* model; the tier variables govern *alias resolution*. A globally-exported `ANTHROPIC_DEFAULT_MODEL` therefore sets the starting model of every session, a GLM session included, without disturbing the slot mapping MoAI writes — the two are in play at once and neither overrides the other. When a GLM session reports an unexpected starting model, check for a globally-exported `ANTHROPIC_DEFAULT_MODEL` before suspecting the slot mapping.
+
+**Observation scope.** All of the above is read from the official model-configuration page (`https://code.claude.com/docs/en/model-config`, §"Set a default model for new sessions" and §"Restrict model selection"), re-fetched against the Claude Code v2.1.236 documentation. This supersedes an earlier note in this file recording the variable as changelog-only with its precedence unmeasured: at that time the page carried zero occurrences of `ANTHROPIC_DEFAULT_MODEL`, and it now documents the variable in a dedicated section. The orthogonality stated above is no longer an inference — it is what the page says.
+
+### The companion display and capability variables
+
+Each tier variable, and `ANTHROPIC_CUSTOM_MODEL_OPTION`, takes three companions — `_NAME`, `_DESCRIPTION`, and `_SUPPORTED_CAPABILITIES` — that override how a pinned model appears in the `/model` picker and which features Claude Code enables for it (`effort`, `xhigh_effort`, `thinking`, `adaptive_thinking`, and so on). They take effect on third-party providers (Amazon Bedrock, Google Cloud's Agent Platform, Microsoft Foundry); `_NAME` and `_DESCRIPTION` additionally apply when `ANTHROPIC_BASE_URL` points at an LLM gateway, and none of them apply on `api.anthropic.com`. `ANTHROPIC_CUSTOM_MODEL_OPTION` itself adds one custom entry to the picker without replacing the built-in aliases, and its value skips model-ID validation.
+
+`ANTHROPIC_SMALL_FAST_MODEL` is **deprecated** upstream in favour of `ANTHROPIC_DEFAULT_HAIKU_MODEL`; prefer the tier variable.
+
+MoAI reads and writes none of these. They are named here, and declared in `internal/config/envkeys.go`, because that package's contract is to enumerate the `ANTHROPIC_*` namespace completely rather than only the names MoAI consumes — a contract asserted at runtime by `TestAnthropicBannedSetCoversAllNames`.
+
+## Model Policy (main session)
+
+The `model_policy` preference (`high` / `medium` / `low`, set with `moai profile setup` or `moai web`) supplies the main session's default effort when no `effort_level` is chosen: the launcher maps it one-to-one (`MapModelPolicyToEffort`). It assigns nothing to subagents — they inherit the session's model and effort. The superseded top-tier name `max` is still read as `high`. The former `moai init --model-policy` / `--profile` flags are accepted but have no effect beyond a deprecation warning.
+
+## Harness-Agent Model Policy
+
+Generated harness specialists (`/moai:harness`, `.claude/agents/harness/`) follow the same rule as every MoAI agent: their definitions declare no `model:` and no `effort:`, and a harness v4 manifest may omit a specialist's `model` / `effort` (an existing manifest that names them still validates). Harness agents are user-owned — `moai update` never rewrites them — so a file generated before this rule keeps its fields until the user edits it.
+
+## Legacy CG Configuration
+
+`team_mode: cg` is legacy data requiring explicit migration, not an active model-routing mode. Run `moai migrate cg` to preview the choices. Removing automatic GLM teammate assignment requires `--target claude-only --apply --accept-role-change`. The `claude-glm` target remains blocked until actual mixed-provider teammate capability is verified; native Agent Teams availability alone is insufficient. See `glm-web-tooling.md` § CG Retirement and Migration.
+
+## Effort Levels
+
+Claude models support five effort levels that control reasoning depth. The set is `low` → `medium` → `high` → `xhigh` → `max`; availability is per-model — `max` is offered on Fable 5, Opus 5.5, Sonnet 5.5 and the 4.6+ Opus/Sonnet generations, while `xhigh` is the newer level and is offered on Fable 5, Opus 5.5, Opus 4.8/4.7 and Sonnet 5.5. Haiku 4.5 supports neither. The effort scale is calibrated per model, so the same level name is not the same underlying value across models. Opus 5.5 calibration:
+
+- max: can improve demanding tasks but shows diminishing returns; reserve for tasks that justify it
+- xhigh: deeper reasoning at higher token spend; raise to it per role for hard coding and agentic work
+- high: default on most effort-capable models (Opus 5.5 defaults to `medium` and Opus 4.7 to `xhigh`); minimum for intelligence-sensitive work
+- medium: the default on Opus 5.5 and MoAI's recommended session effort; reduces token usage for work that can trade off some intelligence
+- low: short, scoped, latency-sensitive tasks — and the documented level for read-only subagents
+
+The vendor guidance that `low` and `medium` are stronger than on earlier Opus models was measured on Opus 5 and is not re-stated for Opus 5.5; treat `low` and `medium` as the primary control for token cost and response time wherever quality holds, and re-sweep effort settings carried over from an earlier model generation rather than reusing them. On Opus 5.5, thinking cannot be disabled at any effort level (adaptive thinking is always on); MoAI never disables thinking, so this constraint does not bind any MoAI path.
+
+Effort is a session setting: subagents inherit the main session's effort. Under a GLM backend, MoAI's GLM overlay collapses every effort above `low` (`medium`, `high`, `xhigh`, `max`) onto `reasoning_effort=max` and keeps only `low` at the low level (on `glm-5.3-flash`, which accepts `max` only, `low` maps to `max` too), and the delivery channel is session-global — the launcher injects one `ANTHROPIC_REASONING_EFFORT` per session, derived from `SessionGLMReasoningState()`.
+
+Note: `ultrathink` is a Claude Code one-turn keyword that requests deeper reasoning for that prompt; MoAI standardizes it to `effort: xhigh` (the coding/agentic level above) for that turn.
+
+## Rules
+
+- Agent `model` field must be one of: inherit, opus, sonnet, fable, haiku
+- [ZONE:Evolvable] [HARD] New MoAI agent definitions omit `model:` and `effort:` (subagents inherit the main session's); explicit `sonnet`/`opus` pins are deprecated due to Claude Code Issue #45847/#51060 (see Inherit-by-Default Convention)
+- `model: haiku` is retired from MoAI agent routing per the No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D); the HaikuResidualRule lint enforces 0 haiku references in agent definitions and the `claude_models` block.
+- GLM is configured via env vars in settings.json, never via model field
+- The model policy (high/medium/low) is a main-session preference set with `moai profile setup`, not an agent definition concern
+- Legacy CG configuration never selects a runtime provider or bypasses independent review
+- Old model versions are auto-migrated: do not pin to specific version IDs

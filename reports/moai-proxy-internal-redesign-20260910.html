@@ -1,0 +1,1060 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>moai-proxy 내부 package 상세 재설계</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&amp;family=Noto+Serif+KR:wght@700&amp;family=JetBrains+Mono:wght@400&amp;display=swap">
+<style>
+:root{--ivory:#FAF9F5;--paper:#fff;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;--olive:#788C5D;--g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;--sans:'Noto Sans KR',system-ui,sans-serif;--serif:'Noto Serif KR',serif;--mono:'JetBrains Mono',monospace}
+*{box-sizing:border-box}body{margin:0;background:var(--ivory);color:var(--g700);font:15px/1.8 var(--sans)}.hero{background:#242e2a;color:#f8f3e9;padding:62px max(24px,calc((100vw - 1180px)/2)) 52px}.hero .eyebrow{color:#b9c9b1;letter-spacing:.15em;font-size:12px}.hero h1{font:700 clamp(30px,4vw,52px)/1.35 var(--serif);letter-spacing:-.035em;max-width:1000px;margin:16px 0}.hero p{max-width:870px;color:#d7dfd6}.badges{display:flex;gap:9px;flex-wrap:wrap}.badges span{border:1px solid #68746b;padding:5px 12px;border-radius:25px;font-size:12px}.layout{max-width:1440px;margin:auto;display:grid;grid-template-columns:240px minmax(0,1fr);gap:32px;padding:32px 24px 80px}aside{position:sticky;top:20px;align-self:start;max-height:92vh;overflow:auto;font-size:12px}aside ul{list-style:none;padding:0}aside li{margin:8px 0}aside a{color:#5e685f;text-decoration:none}main{min-width:0;max-width:1120px}h2{font:700 27px/1.45 var(--serif);color:var(--slate);padding-top:28px;margin:40px 0 18px;border-top:2px solid var(--oat);scroll-margin-top:15px}h3{color:var(--slate)}p{margin:12px 0}strong{color:#273c30}a{color:var(--clay-d);text-underline-offset:3px}pre{background:#202923;color:#e4eddf;padding:20px;border-radius:12px;overflow:auto;font:12px/1.75 var(--mono);tab-size:4}code{font-family:var(--mono);font-size:.85em;overflow-wrap:anywhere}pre code{font-size:inherit;overflow-wrap:normal}table{width:100%;border-collapse:collapse;background:var(--paper);font-size:13px;display:block;overflow:auto;border:1px solid var(--oat);border-radius:10px;margin:20px 0}th{background:#e7ecdf;color:#304331;text-align:left}th,td{padding:13px 15px;border-bottom:1px solid var(--oat);vertical-align:top;min-width:110px}tr:last-child td{border:0}ul,ol{padding-left:23px}li{margin:7px 0}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{background:#fff;border:1px solid var(--oat);border-top:4px solid var(--olive);border-radius:12px;padding:17px}.card b{font-size:24px;color:#294633}.card p{font-size:12px;margin:6px 0}.diagram{background:#fff;border:1px solid var(--oat);border-radius:15px;padding:22px;margin:25px 0}.diagram pre{background:#fff;color:#334637}.diagram svg{max-width:100%;height:auto}.diagram .caption{font-size:13px;color:#687365}.note{padding:17px 20px;background:#edf1e7;border-left:4px solid var(--olive);border-radius:0 10px 10px 0;margin:24px 0}.footer{border-top:1px solid var(--oat);padding:22px;color:#737367;font-size:12px}.sourceCode{background:#202923}section{min-width:0}
+@media(max-width:1000px){.layout{display:block}aside{position:static;max-height:200px;margin-bottom:24px}.cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.layout{padding:18px 12px}.hero{padding:34px 18px}h2{font-size:23px}table{font-size:12px}.card{padding:12px}}
+@media print{aside{display:none}.layout{display:block;padding:0}.hero{background:#fff;color:#111;padding:20px}.hero p{color:#333}.badges{display:none}pre{white-space:pre-wrap;color:#111;background:#eee}table{display:table;font-size:10px}th,td{min-width:0;padding:7px}h2{break-after:avoid}.card,.diagram{break-inside:avoid}body{font-size:11px}.footer{font-size:9px}}
+</style>
+</head>
+<body>
+<header class="hero"><div class="eyebrow">MOAI ENGINEERING · INTERNAL PACKAGE REDESIGN</div><h1>moai-proxy
+내부 package 상세
+재설계</h1><p>ccmproxy의 프로토콜 변환 로직을 MoAI 내부에 통합한다. 서버는 MoAI 프로세스 안에서 실행하고, Claude Code의 실행 수명·모델 요청·인증을 함께 관리한다.</p><div class="badges"><span>2026-09-10</span><span>plan · basic / MoAI-Easy</span><span>설계 완료 · 구현 전</span><span>MoAI baseline 2213871af</span></div></header>
+<div class="layout"><aside aria-label="목차"><b>상세 설계 목차</b><ul>
+<li><a href="#설계-결정과-적용-범위" id="toc-설계-결정과-적용-범위">1.
+설계 결정과 적용 범위</a></li>
+<li><a href="#이번-소스-확인과-이전-실측의-구분"
+id="toc-이번-소스-확인과-이전-실측의-구분">2. 이번 소스 확인과 이전
+실측의 구분</a></li>
+<li><a href="#ccmproxy-로직별-차용과-변경"
+id="toc-ccmproxy-로직별-차용과-변경">3. ccmproxy 로직별 차용과
+변경</a></li>
+<li><a href="#패키지-배치와-의존성" id="toc-패키지-배치와-의존성">4.
+패키지 배치와 의존성</a></li>
+<li><a href="#실행-수명과-cli-사용자-흐름"
+id="toc-실행-수명과-cli-사용자-흐름">5. 실행 수명과 CLI 사용자
+흐름</a></li>
+<li><a href="#라우팅과-요청-경계" id="toc-라우팅과-요청-경계">6.
+라우팅과 요청 경계</a></li>
+<li><a href="#messagesresponses-상세-변환"
+id="toc-messagesresponses-상세-변환">7. Messages→Responses 상세
+변환</a></li>
+<li><a href="#sse-상태기계와-오류" id="toc-sse-상태기계와-오류">8. SSE
+상태기계와 오류</a></li>
+<li><a href="#인증세션모델-상태" id="toc-인증세션모델-상태">9.
+인증·세션·모델 상태</a></li>
+<li><a href="#glm과-혼합-세션" id="toc-glm과-혼합-세션">10. GLM과 혼합
+세션</a></li>
+<li><a href="#설정기존-코드-통합" id="toc-설정기존-코드-통합">11.
+설정·기존 코드 통합</a></li>
+<li><a href="#구현-단계와-이진-합격-기준"
+id="toc-구현-단계와-이진-합격-기준">12. 구현 단계와 이진 합격
+기준</a></li>
+<li><a href="#gaps와-residual-risk" id="toc-gaps와-residual-risk">13.
+Gaps와 Residual-risk</a></li>
+<li><a href="#검토자가-확인할-결정과-출처"
+id="toc-검토자가-확인할-결정과-출처">14. 검토자가 확인할 결정과
+출처</a></li>
+</ul></aside><main>
+<div class="cards"><div class="card"><b>1</b><p>배포 바이너리 · moai</p></div><div class="card"><b>in-process</b><p>내부 HTTP 서버</p></div><div class="card"><b>2</b><p>provider · Codex / GLM</p></div><div class="card"><b>16</b><p>검증 계약</p></div></div>
+<div class="note"><b>이전 보고서에서 바뀐 결정</b><br>별도 GPL companion과 추가 바이너리 installer 계획을 내부 package 설계로 대체했다. GPL은 기술 설계 착수 조건에서 제외하며, 실제 차용·외부 배포의 라이선스 처리는 별도 미해결 사항으로 남긴다.</div>
+<div class="diagram"><h3>실행 구조를 한눈에 보기</h3><pre class="mermaid">
+flowchart TD
+  U[사용자: moai cc --provider codex] --> L[CLI: LaunchSpec 조립]
+  L --> S[동일 moai 프로세스: internal/proxy 서버]
+  L --> C[자식 프로세스: Claude Code]
+  C -->|loopback HTTP와 세션 token| R[요청별 registry와 정책 검사]
+  S --- R
+  R --> X[Codex 변환기와 전용 OAuth]
+  R --> G[GLM Messages 전달과 ZAI 인증]
+  X --> O[Codex Responses backend]
+  G --> Z[ZAI Anthropic endpoint]
+  C -->|종료| W[부모 wait와 shutdown]
+  W -->|listener 종료| S
+</pre><p class="caption">한 MoAI 프로세스가 서버를 소유하고 Claude Code만 별도 자식으로 실행한다. 기존 exec 경로를 그대로 사용하면 서버가 사라지므로 proxy 실행 경로에 수명 관리가 필요하다.</p><noscript><p>MoAI CLI가 내부 HTTP 서버를 시작하고 Claude Code를 자식으로 실행한다. Claude 요청은 registry에서 Codex 또는 GLM으로 분기된다. Claude 종료 뒤 부모가 서버를 정리한다.</p></noscript></div>
+<h2 id="설계-결정과-적용-범위">1. 설계 결정과 적용 범위</h2>
+<p>사용자의 최신 지시에 따라 <strong>같은 Go module의
+<code>internal/proxy</code>에 구현하고 기존 <code>moai</code> 바이너리에
+포함</strong>한다. <code>moai-proxy</code>는 기능 이름이며 별도 다운로드
+대상 executable이 아니다. 기존 companion 보고서의 분리 저장소·별도
+installer·별도 version handshake·proxy child supervision 계획은 이
+설계로 대체한다.</p>
+<p>기본 실행은 <code>moai</code> 프로세스 안에서 loopback HTTP 서버를
+goroutine으로 구동하고 Claude Code만 자식 프로세스로 실행하는 구조다.
+사용자는 MoAI 설치 후 <code>moai proxy login codex</code>로 최초 인증을
+하고, <code>moai cc --provider codex</code>로 시작한다. 유효한 Codex
+파일 인증이 있는 사용자는 읽기 전용 재사용을 명시적으로 선택할 수 있다.
+별도 proxy 바이너리 설치는 없다. <strong>이 사용자 경험은 제안이며 아직
+구현·설치 실측 결과가 아니다.</strong></p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>구분</th>
+<th>확정한 설계</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>배포 단위</td>
+<td>기존 <code>cmd/moai</code> 단일 바이너리</td>
+</tr>
+<tr>
+<td>코드 경계</td>
+<td><code>internal/proxy</code>; CLI와 config package가 조립하고 proxy는
+cli/config를 import하지 않음</td>
+</tr>
+<tr>
+<td>기본 실행</td>
+<td>in-process HTTP 서버 + supervised Claude 자식</td>
+</tr>
+<tr>
+<td>기본 주소</td>
+<td><code>127.0.0.1:0</code>, OS가 실제 포트 배정</td>
+</tr>
+<tr>
+<td>GPT backend</td>
+<td>Codex subscription Responses adapter; 공개 OpenAI API adapter와 혼동
+금지</td>
+</tr>
+<tr>
+<td>GLM backend</td>
+<td>Anthropic-compatible Z.AI pass-through adapter</td>
+</tr>
+<tr>
+<td>혼합 모드</td>
+<td>Codex와 GLM만 명시적으로 활성화; 기본 세션은 단일 provider</td>
+</tr>
+<tr>
+<td>Claude 원본 passthrough</td>
+<td>MVP 제외. 로그인·헤더 전달 계약을 별도 입증한 뒤 추가</td>
+</tr>
+<tr>
+<td>시스템 변경</td>
+<td>hosts, system CA, CONNECT interception, privileged listener
+불필요</td>
+</tr>
+<tr>
+<td>이번 산출물</td>
+<td>내부 설계와 구현·검증 계획. production 코드 변경 없음</td>
+</tr>
+</tbody>
+</table>
+<p>GPL을 기술 설계의 선행 승인 조건으로 두지 않는다. 다만 코드의 출처나
+라이선스 효력이 없어지는 것은 아니므로 상류 고지와 차용 기록을 보존하고,
+내부 편입물을 외부 배포할 때의 라이선스 처리는 미해결 사항으로 기록한다.
+이 보고서는 법적 배포 허가를 확정하지 않는다.</p>
+<h2 id="이번-소스-확인과-이전-실측의-구분">2. 이번 소스 확인과 이전
+실측의 구분</h2>
+<p><strong>Claim:</strong> 현재 확인한 MoAI 실행기는 POSIX에서
+<code>syscall.Exec</code>를 호출한다. 그 경로에서 in-process 서버를
+시작하면 Claude 실행으로 프로세스 이미지가 교체될 때 서버가 사라진다.
+따라서 proxy-enabled 실행은 spawn/wait 경로가 필요하다.</p>
+<p><strong>Evidence — 이번 실행 명령과 출력 발췌:</strong></p>
+<pre class="text"><code>$ git rev-parse --short HEAD
+2213871af
+$ git branch --show-current
+main
+$ moai session current
+01a0896e-4701-7cb0-bd4e-7064dabb0e26
+$ rg -n &#39;outputStyle&#39; .claude/settings*.json
+.claude/settings.json:362:  &quot;outputStyle&quot;: &quot;MoAI-Easy&quot;,
+.claude/settings.local.json:40:  &quot;outputStyle&quot;: &quot;MoAI-Easy&quot;,
+$ sed -n &#39;1,180p&#39; internal/cli/launch_exec_posix.go
+func execOrSpawnClaude(claudeBin string, args, env []string) error {
+    return syscall.Exec(claudeBin, args, withSessionPID(env, os.Getpid()))
+}</code></pre>
+<p><strong>Baseline-attribution:</strong> MoAI working tree
+<code>main@2213871af</code>를 읽었다. dirty checkout 전체를 해당
+commit의 깨끗한 tree와 같다고 주장하지 않는다. 상류 임시 clone은
+<code>112588175eb2b3b693a5bd23d58d8c501e0ae406</code>; 이번
+<code>git status --short</code>는 출력이 없었다. 소스 발췌의 들여쓰기는
+읽기 쉽게 정리했다.</p>
+<p>상류에서 이번에 다시 읽은 로직은 다음과 같다.</p>
+<pre class="text"><code>$ git -C &lt;upstream-clone&gt; rev-parse HEAD
+112588175eb2b3b693a5bd23d58d8c501e0ae406
+$ sed -n &#39;1,130p&#39; internal/codex/responses.go
+req.Header.Set(&quot;Authorization&quot;, &quot;Bearer &quot;+accessToken)
+req.Header.Set(&quot;Session_id&quot;, sessionID)
+$ sed -n &#39;150,292p&#39; internal/codex/store.go
+refreshed, err := s.client.Refresh(context.WithoutCancel(ctx), token.RefreshToken)
+if err := os.WriteFile(target.path, data, 0o600); err != nil {
+$ sed -n &#39;1,100p&#39; internal/translate/claude_to_codex.go
+const SignatureMarker = &quot;ccmp1:&quot;
+body, _ = sjson.SetBytes(body, &quot;store&quot;, false)
+body, _ = sjson.SetBytes(body, &quot;stream&quot;, true)</code></pre>
+<p>위 각 source read의 exit code는 0이다. 이는 로직 존재 확인이지 취약점
+재현·런타임 호환성의 새 증거는 아니다.</p>
+<p><strong>이전 세션 증거:</strong> GPT-6 응답·picker·Read 왕복, GLM
+응답·Read 왕복, HTTP-only 호출, unit/race/vet, 상류 main의 취약점 15건은
+<a href="moai-proxy-feasibility-plan-20260910.md">이전 실측 원장</a>에
+기록돼 있다. 이번 설계 턴에서는 유료 호출과 취약점 검사를 반복하지
+않았다. 과거 15건을 현재 취약점 DB에 대한 새 측정치로 취급하지
+않는다.</p>
+<h2 id="ccmproxy-로직별-차용과-변경">3. ccmproxy 로직별 차용과 변경</h2>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>상류 source</th>
+<th>현재 역할</th>
+<th>내부 재설계</th>
+<th>시험으로 확인할 계약</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cmd/ccmproxy/main.go</code></td>
+<td>CLI·CA·resolver·backend·listeners 조립</td>
+<td><code>internal/cli/proxy.go</code>는 조립만;
+<code>internal/proxy/server.go</code>가 수명 소유</td>
+<td>listener 준비 후에만 Claude 시작</td>
+</tr>
+<tr>
+<td><code>router/router.go</code></td>
+<td>model 검사 후 Codex 또는 Anthropic 전달</td>
+<td>명시 registry로 분기; unknown은 400, disabled provider는 400</td>
+<td>unknown 요청의 외부 송신 0건</td>
+</tr>
+<tr>
+<td><code>router/body.go</code></td>
+<td>gzip/deflate 해제·body 수정</td>
+<td>압축 전/후 크기 별도 제한; duplicate model JSON 거절</td>
+<td>압축 폭탄·중복 routing key 거절</td>
+</tr>
+<tr>
+<td><code>translate/claude_to_codex.go</code></td>
+<td>Messages→Responses</td>
+<td>순수 변환 함수; raw payload와 capability profile 입력</td>
+<td>system/text/tool/image/PDF/schema golden</td>
+</tr>
+<tr>
+<td><code>translate/codex_to_claude.go</code></td>
+<td>SSE를 Claude block 이벤트로 변환</td>
+<td>응답별 상태기계, 완료/실패를 명확히 분리</td>
+<td>terminal event 누락·중복·순서 위반 감지</td>
+</tr>
+<tr>
+<td><code>translate/sanitize.go</code></td>
+<td>provider 불일치 thinking 제거</td>
+<td>opaque reasoning 상태에 provider/버전 표시, 텍스트·tool 보존</td>
+<td>GPT→GLM 전환 시 private reasoning 제거</td>
+</tr>
+<tr>
+<td><code>codex/responses.go</code></td>
+<td>OAuth bearer로 Responses POST</td>
+<td>전용 transport·redirect 제한·bounded error body</td>
+<td>다른 호스트에 credential 송신 0건</td>
+</tr>
+<tr>
+<td><code>codex/store.go</code></td>
+<td>auth 후보 탐색·refresh·writeback</td>
+<td>MoAI 소유 저장소 refresh; Codex auth는 read-only</td>
+<td>외부 auth 파일 SHA 변화 0건</td>
+</tr>
+<tr>
+<td><code>codex/models.go</code></td>
+<td>고정 모델·effort·suffix 해석</td>
+<td>versioned profile + 계정 가용성 결과 + 사용자 alias</td>
+<td>unsupported effort 조용한 강등 금지</td>
+</tr>
+<tr>
+<td><code>tokenize/tokenize.go</code></td>
+<td>문자 수 기반 추정</td>
+<td>추정치임을 명시; compact-safe margin</td>
+<td>한국어·코드·schema corpus 오차 기록</td>
+</tr>
+<tr>
+<td><code>proxy</code>, <code>ca</code>, <code>resolve</code>,
+<code>run.sh</code></td>
+<td>MITM·CA·DNS 우회·hosts</td>
+<td>MVP에서 가져오지 않음; OS resolver와 표준 HTTP 사용</td>
+<td>전후 hosts/trust 동일</td>
+</tr>
+<tr>
+<td><code>httplog</code></td>
+<td>URL·status·bytes 기록</td>
+<td>request ID·provider·status·latency만; query/body/token 제외</td>
+<td>로그 secret fixture 0건</td>
+</tr>
+</tbody>
+</table>
+<p>출처는 아래 참조 목록의 SHA 고정 상류 tree다. 행별 변경은
+<strong>설계 제안</strong>이며 구현 완료를 뜻하지 않는다.</p>
+<h2 id="패키지-배치와-의존성">4. 패키지 배치와 의존성</h2>
+<p>provider가 둘뿐인 초기 단계에서는 거대한 공통 이벤트 체계를 만들지
+않는다. HTTP Handler와 작은 provider interface를 쓰고, Codex 변환만 별도
+하위 package로 분리한다.</p>
+<pre class="text"><code>internal/proxy/
+  server.go                 listener·ready·shutdown·local auth
+  handler.go                endpoint·body 검증·모델 해석·오류 envelope
+  registry.go               alias/slot→provider/upstream model 해석
+  types.go                  Options, Route, Capabilities, Provider
+  policy.go                 URL·redirect·body·concurrency 제한
+  catalog.go                지원 profile·계정 probe 결과
+  codex.go                  Responses 호출·credential 획득
+  glm.go                    Z.AI Messages passthrough
+  credentials.go            전용 auth·read-only Codex adapter
+  credential_lock_posix.go  MoAI 소유 store process lock
+  credential_lock_windows.go
+  translate/
+    request.go              Messages→Responses 순수 변환
+    stream.go               Responses→Messages SSE 상태기계
+    aggregate.go            non-stream collector
+    reasoning.go            provider 간 opaque 상태 처리
+  testdata/                 credential-free protocol fixtures
+
+internal/cli/proxy.go        serve/login/logout/status 명령
+internal/cli/proxy_launch.go proxy Start→Claude spawn/wait→Close
+internal/cli/proxy_launch_posix.go   terminal·signal·child 관리
+internal/cli/proxy_launch_windows.go Windows job/console 종료 관리
+internal/cli/doctor_proxy.go 정적 진단 + 명시 --live probe</code></pre>
+<p>기존 <code>internal/config</code> 타입을
+<code>internal/proxy</code>에서 직접 읽지 않는다. CLI가
+<code>config.ProxySettings</code>를 <code>proxy.Options</code>로
+변환한다. 흐름은 <code>cli → config</code>와
+<code>cli → proxy → translate</code>이며 역방향 import는 금지한다. 실제
+파일 수는 구현 시 응집도에 따라 합칠 수 있다.</p>
+<pre class="go"><code>// 제안 API: 아직 존재하는 코드가 아님.
+type Provider interface {
+    ServeMessages(context.Context, http.ResponseWriter, Request, Route) error
+}
+type Options struct {
+    ListenAddress string
+    SessionToken  string
+    Providers     map[string]Provider
+    Registry      *Registry
+    Limits        Limits
+}
+type Runtime interface {
+    BaseURL() string
+    Done() &lt;-chan error
+    Close(context.Context) error
+}
+func Start(context.Context, Options) (Runtime, error)</code></pre>
+<p><code>Start</code>는 <code>net.Listen</code>이 성공하고 handler가
+준비된 뒤 반환한다. 임시 포트를 검색했다가 다시 bind하지 않는다.
+<code>Runtime.Close</code>는 여러 번 호출돼도 안전해야 하며 listener
+닫기·in-flight 취소·idle connections 해제를 끝낸다. readiness는 account
+entitlement를 의미하지 않는다. 계정 상태는 <code>doctor --live</code>
+또는 첫 요청에서 별도로 판정한다.</p>
+<h2 id="실행-수명과-cli-사용자-흐름">5. 실행 수명과 CLI 사용자 흐름</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>명령 제안</th>
+<th>동작</th>
+<th>설정 지속성</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>moai proxy login codex</code></td>
+<td>PKCE 로그인, MoAI 전용 token 저장</td>
+<td>사용자 auth만 변경</td>
+</tr>
+<tr>
+<td><code>moai proxy logout codex</code></td>
+<td>MoAI가 소유한 auth만 삭제</td>
+<td>Codex CLI auth는 유지</td>
+</tr>
+<tr>
+<td><code>moai cc --provider codex</code></td>
+<td>내장 서버 시작 후 Claude 실행</td>
+<td>부모 shell·전역 settings 불변</td>
+</tr>
+<tr>
+<td><code>moai cc --provider glm</code></td>
+<td>동일 런처를 통한 GLM 단일 route</td>
+<td>기존 <code>moai glm</code> 유지</td>
+</tr>
+<tr>
+<td><code>moai cc --provider mixed</code></td>
+<td>활성화한 GPT/GLM registry의 picker</td>
+<td>명시 opt-in</td>
+</tr>
+<tr>
+<td><code>moai proxy serve --listen 127.0.0.1:0</code></td>
+<td>같은 binary의 진단용 foreground 서버</td>
+<td>기본 daemon/service 없음</td>
+</tr>
+<tr>
+<td><code>moai proxy status --json</code></td>
+<td>config/auth 존재·catalog profile 표시</td>
+<td>기본 네트워크 요청 없음</td>
+</tr>
+<tr>
+<td><code>moai doctor --proxy --live</code></td>
+<td>명시적 backend probe</td>
+<td>synthetic prompt 여부·비용을 명시</td>
+</tr>
+</tbody>
+</table>
+<p>실행 순서:</p>
+<ol type="1">
+<li>기존 프로젝트·worktree·permission/model profile 해석을
+재사용한다.</li>
+<li>proxy-specific provider/model을 검증한다.
+<code>team_mode=glm</code>을 GPT 선택으로 덮어쓰지 않는다.</li>
+<li><code>crypto/rand</code>로 세션 token을 만들고 loopback listener를
+시작한다.</li>
+<li>user settings의 미관련 키를 보존하는 session overlay를 만든다.
+generated model aliases와 slot env만 주입한다.</li>
+<li>Claude 자식에 <code>ANTHROPIC_BASE_URL</code>, local token, picker와
+privacy env를 적용한다. 기존 Anthropic/ZAI bearer가 local token과
+충돌하지 않도록 자식 env에서 해당 인증 키를 명시적으로 정리한다.</li>
+<li>terminal input/output을 자식과 연결하고 기다린다. 기존 POSIX exec
+경로는 proxy-disabled 실행에 그대로 둔다.</li>
+<li>Claude 종료 시 runtime shutdown 후 그 exit code를 반환한다. 서버가
+먼저 치명적으로 종료되면 소유한 Claude 자식을 종료시키고 supervisor
+오류로 반환한다.</li>
+</ol>
+<p><code>MOAI_SESSION_PID</code>는 중요하다. 현재 exec 경로는
+<code>os.Getpid()</code>를 넣지만 spawn 경로의 부모 PID는 Claude PID가
+아니다. 새 경로는 고정된 자신 소유 wrapper entry를 self-reexec한 뒤
+wrapper에서 실제 PID를 env에 설정하고 Claude로 exec하는 POSIX 방안,
+Windows의 생성 PID 전달 방안을 검토·시험해야 한다. 임의
+<code>sh -c</code> wrapper를 만들지 않는다. launcher 구현 전에
+<strong>session PID contract test를 별도 작업으로 완료</strong>한다.</p>
+<p>POSIX interactive job control도 별도 계약이다. foreground process
+group과 SIGINT/SIGTSTP/SIGCONT 전달을 PTY 시험으로 검증한다. 단순
+<code>Cmd.Run</code> 성공만으로 interactive 지원을 선언하지 않는다. 일반
+종료는 supervisor가 정리하고, 부모 SIGKILL 때 in-process HTTP 서버는
+OS에 의해 사라지지만 Claude orphan 방지는 추가 장치가 필요하다. MVP는
+치명적 부모 종료 뒤 잔존 Claude 문제를 시험·기록하고 플랫폼별
+parent-death/Job Object 또는 wrapper 감시를 적용한다.</p>
+<h2 id="라우팅과-요청-경계">6. 라우팅과 요청 경계</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>endpoint</th>
+<th>기본 동작</th>
+<th>외부 송신</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HEAD /api/hello</code></td>
+<td>로컬 200</td>
+<td>없음</td>
+</tr>
+<tr>
+<td><code>GET /healthz</code></td>
+<td>readiness만 반환; 계정/토큰 없음</td>
+<td>없음</td>
+</tr>
+<tr>
+<td><code>GET /v1/models</code></td>
+<td>활성 catalog 반환; picker discovery와 구분</td>
+<td>없음</td>
+</tr>
+<tr>
+<td><code>POST /v1/messages</code></td>
+<td>인증·body·route 검사 뒤 provider 실행</td>
+<td>선택 provider 한 곳</td>
+</tr>
+<tr>
+<td><code>POST /v1/messages/count_tokens</code></td>
+<td>provider별 estimate/지원 기능</td>
+<td>명시 policy</td>
+</tr>
+<tr>
+<td>기타 <code>/api/*</code></td>
+<td>지원 profile에서 요구하는 최소 로컬 응답 또는 404</td>
+<td>Anthropic 기본 전달 없음</td>
+</tr>
+<tr>
+<td>unknown method/path</td>
+<td>404/405</td>
+<td>없음</td>
+</tr>
+</tbody>
+</table>
+<p><code>/healthz</code> 외 endpoint는 세션 local token을 요구한다.
+loopback이라고 인증을 생략하지 않는다. Host는 실제 bind된 loopback
+주소만 허용하고 Origin 있는 브라우저 요청은 기본 거절한다. CORS
+<code>*</code>를 제공하지 않는다. 이는 같은 OS 사용자에게서 token을
+숨기는 완전한 격리가 아니라 다른 로컬 client의 오접속과 browser-driven
+요청을 줄이는 경계다.</p>
+<p>routing은 prefix만 보지 않고 registry의 정확한 ID를 조회한다.
+<code>gpt-6-astra[1m]</code> suffix는 client 표시 속성으로 분리하며
+upstream에는 base ID를 보낸다. <code>[1m]</code>이 계정의 실제 문맥 사용
+권한을 만들지 않는다.</p>
+<p>Claude main model 이외의 opus/sonnet/haiku 및 실제 client가 쓰는 추가
+slot을 활성 모델로 매핑한다. session-title/compact/서브에이전트 요청에서
+Claude model ID가 나온다고 Anthropic으로 넘기지 않는다. 알려진 slot
+alias는 session provider로 해석하고 미등록 canonical ID는 명시적 오류를
+낸다. current client별 slot 목록과 이 호출들은 실사용 canary로 확인해야
+한다.</p>
+<p><strong>제안 초기 자원 한도</strong>는 측정된 최적값이 아니다. 압축
+body 16 MiB, 해제 후 32 MiB, SSE event 전체 4 MiB, 동시 upstream 요청
+4개를 시작값으로 두고 corpus와 병렬 agent 시험 후 조정한다. chunked
+body에도 같은 해제 한도를 적용한다. semaphore를 body 읽기 전 획득해 동시
+buffering을 제한한다. 4×32 MiB는 raw body 예산일 뿐 전체 RSS 상한은
+아니며 JSON·이미지·stream 복사량을 별도 측정한다.</p>
+<h2 id="messagesresponses-상세-변환">7. Messages→Responses 상세
+변환</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Claude 입력</th>
+<th>Codex 출력</th>
+<th>처리 계약</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>system text/blocks</td>
+<td>developer message 또는 검증된 instructions 위치</td>
+<td>둘에 중복 삽입하지 않음; 순서 보존</td>
+</tr>
+<tr>
+<td>user/assistant text</td>
+<td>input message content</td>
+<td>role·content 순서 보존</td>
+</tr>
+<tr>
+<td>image</td>
+<td>input_image</td>
+<td>data URL/허용 URL 변환; proxy 자체 arbitrary URL fetch 금지</td>
+</tr>
+<tr>
+<td>PDF document</td>
+<td>input_file</td>
+<td>backend 지원 profile 확인; 미지원은 400</td>
+</tr>
+<tr>
+<td>tool definition</td>
+<td>function name/description/parameters</td>
+<td>schema enum/required/additionalProperties 의미 보존</td>
+</tr>
+<tr>
+<td>tool_use</td>
+<td>function_call</td>
+<td>call ID와 name 역매핑 저장</td>
+</tr>
+<tr>
+<td>tool_result</td>
+<td>function_call_output</td>
+<td>original call ID 복원; 실패 결과도 보존</td>
+</tr>
+<tr>
+<td>tool_choice</td>
+<td>required/auto/none/function</td>
+<td>parallel disable도 함께 변환</td>
+</tr>
+<tr>
+<td>thinking / effort</td>
+<td>reasoning.effort·summary</td>
+<td>model별 capability 밖 값 거절</td>
+</tr>
+<tr>
+<td>output_config.format</td>
+<td>text.format JSON schema</td>
+<td>schema 의미 손실 시 거절</td>
+</tr>
+<tr>
+<td>cache_control</td>
+<td>provider가 지원하는 경로만 적용</td>
+<td>지원 안 되면 pricing/cache hit를 날조하지 않음</td>
+</tr>
+<tr>
+<td>stop_sequences/max_tokens/temperature</td>
+<td>backend capability별 처리</td>
+<td>전달·정규화·미지원 오류 중 하나를 profile에 명시</td>
+</tr>
+</tbody>
+</table>
+<p>backend request의 <code>stream:true</code>, <code>store:false</code>,
+encrypted reasoning include는 상류 구조를 참고한다. client가
+<code>stream:false</code>여도 backend는 stream을 읽고 완료된 결과를
+collector로 합친다. 완성되지 않은 tool argument JSON을 정상 응답으로
+반환하지 않는다.</p>
+<p>긴 tool 이름은 해시 suffix로 제한 길이 안에 매핑하고 같은 request에서
+충돌 검사를 한다. 서로 다른 긴 이름이 같아지면 변환 실패로 끝낸다. 이름
+역매핑과 call-ID 매핑은 응답 단위 상태에 두며 전역 map으로 공유하지
+않는다.</p>
+<h2 id="sse-상태기계와-오류">8. SSE 상태기계와 오류</h2>
+<p>서버 전송 이벤트(SSE)는 텍스트뿐 아니라 도구 인자 조각과 종료 이유를
+순서대로 전달한다. 단순 문자열 치환으로 구현하지 않는다.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>상태/입력</th>
+<th>내보낼 Claude event</th>
+<th>불변 조건</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>INIT + response.created</td>
+<td>message_start</td>
+<td>정확히 1회</td>
+</tr>
+<tr>
+<td>텍스트 delta</td>
+<td>content_block_start, text_delta</td>
+<td>block index 단조 증가</td>
+</tr>
+<tr>
+<td>reasoning summary delta</td>
+<td>thinking block/delta</td>
+<td>암호화 상태는 완료 시에만 signature로 추가</td>
+</tr>
+<tr>
+<td>function call added/delta/done</td>
+<td>tool_use + input_json_delta + block_stop</td>
+<td>여러 call interleaving을 call ID별 큐로 직렬화</td>
+</tr>
+<tr>
+<td>response.completed</td>
+<td>열린 block 닫기, usage, message_delta, message_stop</td>
+<td>정상 terminal 1회</td>
+</tr>
+<tr>
+<td>response.incomplete</td>
+<td>이유별 max_tokens 또는 error</td>
+<td>완료와 구분</td>
+</tr>
+<tr>
+<td>response.failed/error</td>
+<td>stream 전이면 HTTP error, 이후 SSE error</td>
+<td>error 뒤 성공 message_stop 금지</td>
+</tr>
+<tr>
+<td>terminal 없는 EOF</td>
+<td>upstream_truncated error</td>
+<td>EOF를 성공으로 해석 금지</td>
+</tr>
+<tr>
+<td>client disconnect</td>
+<td>upstream context 취소·body close</td>
+<td>downstream write 종료</td>
+</tr>
+</tbody>
+</table>
+<p>line 한도와 event 누적 한도를 함께 둔다. 여러 짧은 <code>data:</code>
+줄이 합쳐진 event가 한도를 우회하지 않아야 한다. heartbeat는 무출력 연결
+유지용으로만 내보내고 upstream idle timeout은 실제 upstream 데이터가
+와야 갱신한다. heartbeat 자체가 멈춘 backend를 영구히 살려 두지 않게
+한다.</p>
+<p>HTTP status 확정 전 401/403/429/5xx는 Anthropic error envelope에
+status·안전한 메시지를 보존한다. <code>Retry-After</code>는 유효한 값만
+전달한다. 이미 stream을 내보냈거나 backend가 요청을 수신했을 수 있는
+상황에서 자동 POST 재시도를 하지 않는다. 클라이언트 재시도와 중복
+생성·과금 가능성을 겹치지 않게 한다.</p>
+<p>실제 1회 기본 예: Claude가 Read 도구를 요구한 응답의
+<code>tool_use.id=call_A</code>를 받으면 Claude가 실행하고 다음 요청의
+<code>tool_result.tool_use_id=call_A</code>를 보낸다. translator는 이를
+같은 <code>call_A</code>의 <code>function_call_output</code>으로 보내며,
+다음 text 완료를 <code>end_turn</code>으로 반환한다. 이 예는 규약
+설명이고 이번 턴의 새 실호출 로그가 아니다.</p>
+<h2 id="인증세션모델-상태">9. 인증·세션·모델 상태</h2>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr>
+<th>인증 source</th>
+<th>읽기</th>
+<th>refresh</th>
+<th>기록 위치</th>
+<th>실패 동작</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MoAI 전용 Codex OAuth</td>
+<td>가능</td>
+<td>MoAI가 소유</td>
+<td>사용자 data dir 아래 auth/codex.json</td>
+<td>bounded retry 후 login 안내</td>
+</tr>
+<tr>
+<td>Codex CLI auth.json</td>
+<td>명시 선택 시</td>
+<td>금지</td>
+<td>없음</td>
+<td>파일 재읽기; 만료면 Codex login 또는 MoAI login 안내</td>
+</tr>
+<tr>
+<td>Codex keyring/ephemeral</td>
+<td>adapter 구현 전 지원 안 함</td>
+<td>없음</td>
+<td>없음</td>
+<td>지원 안 되는 저장 방식 명시</td>
+</tr>
+<tr>
+<td>Z.AI</td>
+<td>기존 glmcred helper로 획득</td>
+<td>해당 없음</td>
+<td>기존 사용자 credential store</td>
+<td>키 누락 진단</td>
+</tr>
+<tr>
+<td>local gateway token</td>
+<td>session 생성</td>
+<td>불필요</td>
+<td>기본 메모리·child env</td>
+<td>mismatch 401</td>
+</tr>
+</tbody>
+</table>
+<p><strong>중요한 교정:</strong> MoAI가 Codex 파일 옆에 lock을 만들어도
+Codex CLI가 같은 lock 규약을 사용하지 않으면 양쪽 갱신은 직렬화되지
+않는다. 따라서 기존 보고서의 “공유 auth에 lock+rename이면 충분”한 해석을
+폐기한다. read-only borrow와 소유권 있는 독립 refresh를 분리한다. CLI
+refresh token을 별도 파일로 단순 복제해도 같은 회전 체계를 공유하므로
+독립 로그인과 같지 않다.</p>
+<p>MoAI 소유 auth는 directory 0700/file 0600, process lock → 디스크
+재읽기 → expiry 재판정 → bounded refresh → 임시 파일 fsync → atomic
+replace 순서를 적용한다. Windows는 ACL과 ReplaceFile semantics를 별도
+시험한다. refresh 결과의 expiry/token은 로그로 내보내지 않으며, 실패한
+응답으로 유효한 기존 파일을 덮어쓰지 않는다.</p>
+<p>세션 ID, thread ID, request ID를 구분한다. launch마다 session ID,
+resume할 때 thread ID, HTTP request마다 request ID를 둔다. Codex header
+이름·scope·originator는 <code>CompatibilityProfile</code>의 versioned
+fixture로 관리한다. 이전 조사에서 관측한 <code>Session_id</code>와
+<code>session-id</code> 차이는 조정 후보이지, 옛 헤더가 지금 모든
+요청에서 실패한다는 뜻이 아니다.</p>
+<p>모델 metadata는 context 지원값, Claude 표시값, 실제 계정 probe 결과를
+분리한다. 보수적인 검증값으로 기본 compaction을 설정하고 장문맥은 명시
+opt-in으로만 열어 둔다. 이전 보고서의 <code>[1m]</code> 기본 사용 제안은
+이 정책으로 대체한다. <code>MOAI_STATUSLINE_CONTEXT_SIZE</code>는 표시
+보정일 뿐 Claude의 실제 compaction 제어를 증명하지 않는다.</p>
+<p>reasoning signature는 <code>moaip1:</code> 버전 envelope 안에
+provider/model family와 opaque 데이터를 구분해 담는다. 다른 provider로
+전환하면 해당 opaque 상태는 제거하되 사용자·assistant text와 tool
+history는 보존한다. 같은 provider라도 모델 간 reasoning 재사용은
+profile에서 허용한 조합만 통과시킨다. 손상된 envelope는 upstream에
+보내지 않고 진단한다.</p>
+<h2 id="glm과-혼합-세션">10. GLM과 혼합 세션</h2>
+<p>GLM은 Messages를 직접 받으므로 Codex 변환기를 거치지 않는다. body의
+model만 registry에 따라 바꾸고, upstream credential을 Z.AI 키로 새로
+설정한다. Claude local token·Codex bearer·account ID·Codex session
+header는 GLM으로 전달하지 않는다.</p>
+<p>GLM stream은 가능한 한 bytes를 보존한다. unsupported beta/body
+field는 실제 거부 fixture가 있는 경우에만 provider profile에서 처리한다.
+미리 모든 모르는 필드를 삭제하지 않는다. GLM effort와 Claude effort의
+대응은 모델별 fixture로 따로 검증하며 문서 이름만으로 같은 의미라고
+판단하지 않는다.</p>
+<p>mixed 모드는 picker에 등록된 모델을 request마다 해석한다. global
+provider를 변경하는 공유 변수는 두지 않는다. GPT request와 GLM subagent
+request가 동시에 들어와도 각 request의 Route/credential/translator가
+독립적이어야 한다. tool continuation의 provider 변경과
+compact/title/agent slot 선택까지 함께 시험한다. 지원되지 않는 조합은
+picker에서 숨기고 이유를 doctor에 표시한다.</p>
+<h2 id="설정기존-코드-통합">11. 설정·기존 코드 통합</h2>
+<p>독립 <code>proxy.yaml</code> loader를 새로 만드는 대신 기존
+<code>llm.yaml</code> 안에 <code>proxy</code> 항목을 추가한다. 배포
+원본은
+<code>internal/template/templates/.moai/config/sections/llm.yaml</code>이다.
+CLI flag가 세션에서 최우선이고, 다음은 프로젝트 proxy 설정, 마지막은
+안전한 기본값이다. credential은 YAML에 넣지 않는다.</p>
+<pre class="yaml"><code>llm:
+  proxy:
+    enabled: false
+    provider: codex
+    listen: 127.0.0.1:0
+    credential_source: moai
+    allow_mixed: false
+    long_context: false
+    models:
+      primary: gpt-6-astra
+      compact: gpt-6-astra
+      background: gpt-6-astra</code></pre>
+<p>이 YAML의 필드명은 제안이다. 실제 wrapper 형태는 현재 loader/Save
+roundtrip과 일치하도록 구현 시 확정한다. enabled/provider 조합, loopback
+주소, model availability를 validation한다. arbitrary backend URL은
+프로젝트가 token 탈취 endpoint를 지정할 수 있으므로 기본 사용자-facing
+설정에서 제외한다. custom endpoint는 사용자 범위의 명시 신뢰 설정에서만
+허용하고 redirect와 DNS 주소 정책을 함께 적용한다.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>기존 파일</th>
+<th>필요한 수정</th>
+<th>보존할 계약</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>internal/cli/cc.go</code></td>
+<td>provider flag 등록</td>
+<td>일반 cc 동작</td>
+</tr>
+<tr>
+<td><code>internal/cli/launcher.go</code></td>
+<td>공통 LaunchSpec 생성 후 executor 선택</td>
+<td>worktree·profile·continue·permission 처리</td>
+</tr>
+<tr>
+<td><code>internal/cli/launch_exec_posix.go</code></td>
+<td>기본 경로 유지</td>
+<td>non-proxy exec semantics</td>
+</tr>
+<tr>
+<td>신규 <code>proxy_launch*.go</code></td>
+<td>spawn/wait·server 수명</td>
+<td>session PID·PTY·signal</td>
+</tr>
+<tr>
+<td><code>internal/config/types.go</code>, <code>defaults.go</code>,
+<code>validation.go</code></td>
+<td>ProxySettings 추가</td>
+<td>기존 GLM URL 검증 유지</td>
+</tr>
+<tr>
+<td><code>internal/config/envkeys.go</code></td>
+<td>proxy child-env 키 등록</td>
+<td>인증 충돌 정리</td>
+</tr>
+<tr>
+<td>template <code>llm.yaml</code></td>
+<td>선택 기능 기본 disabled</td>
+<td>기존 프로젝트 update 보존</td>
+</tr>
+<tr>
+<td><code>internal/cli/doctor.go</code></td>
+<td>proxy 진단 합류</td>
+<td>일반 doctor에 유료 호출 없음</td>
+</tr>
+<tr>
+<td><code>internal/statusline</code></td>
+<td>profile 기반 표시 보정</td>
+<td>statusline에서 live network 금지</td>
+</tr>
+</tbody>
+</table>
+<p>별도 proxy binary downloader, checksum registry, updater, CA
+installer는 만들지 않는다. Go toolchain 갱신과 vulnerability gate는 MoAI
+전체 배포물 기준으로 다시 측정해야 한다. 상류의 15건 결과를 그대로 MoAI
+binary의 결과라고 표기하지 않는다.</p>
+<h2 id="구현-단계와-이진-합격-기준">12. 구현 단계와 이진 합격 기준</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>단계</th>
+<th>범위</th>
+<th>완료 산출물</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>upstream 변환 corpus·LaunchSpec 계약 고정</td>
+<td>fixture manifest, 지원 기능 표</td>
+</tr>
+<tr>
+<td>B</td>
+<td>internal server/router + fake providers</td>
+<td>local auth·route·limits·shutdown 시험</td>
+</tr>
+<tr>
+<td>C</td>
+<td>Codex request/stream + credentials</td>
+<td>translation golden, refresh 동시성·읽기 전용 인증 시험</td>
+</tr>
+<tr>
+<td>D</td>
+<td>cc executor·설정·doctor 통합</td>
+<td>PTY·session PID·종료·resume 회귀</td>
+</tr>
+<tr>
+<td>E</td>
+<td>GLM passthrough·mixed route</td>
+<td>secret 격리·provider 전환 E2E</td>
+</tr>
+<tr>
+<td>F</td>
+<td>신규 설치·배포 검증</td>
+<td>단일 binary 설치·runtime matrix·승인형 live canary</td>
+</tr>
+</tbody>
+</table>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>ID</th>
+<th>구체적 입력/동작</th>
+<th>합격 기준</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ROUTE-01</td>
+<td>3개 활성 route + unknown + duplicate model + 잘못된 suffix</td>
+<td>선택 provider 한 곳 또는 400; 잘못된 provider 요청 0</td>
+</tr>
+<tr>
+<td>AUTH-01</td>
+<td>inbound local/Anthropic/Codex/ZAI secret sentinel 조합</td>
+<td>잘못된 outbound header·로그 sentinel 0</td>
+</tr>
+<tr>
+<td>AUTH-02</td>
+<td>Codex borrowed file 읽기·만료·외부 교체</td>
+<td>파일 전후 SHA 동일; expired token 송신 금지</td>
+</tr>
+<tr>
+<td>AUTH-03</td>
+<td>2 MoAI process 동시 만료 refresh, 중간 write 실패</td>
+<td>단일 refresh 또는 회전 후 재읽기; 유효 JSON·권한 유지</td>
+</tr>
+<tr>
+<td>BODY-01</td>
+<td>chunked/gzip/deflate·limit+1·중복 key</td>
+<td>한도 초과 413, unsupported encoding 415, routing ambiguity 400</td>
+</tr>
+<tr>
+<td>STREAM-01</td>
+<td>text/tool interleaving·중복 terminal·terminal 없는 EOF</td>
+<td>frame golden 일치; 정상 종료 event 최대 1; truncated는 오류</td>
+</tr>
+<tr>
+<td>STREAM-02</td>
+<td>multiline event 한도 초과·idle·disconnect</td>
+<td>자원 상한 준수; upstream cancel; goroutine 누수 0</td>
+</tr>
+<tr>
+<td>TOOL-01</td>
+<td>긴 이름 충돌·call ID·tool error 왕복</td>
+<td>이름/ID/실패 의미 보존</td>
+</tr>
+<tr>
+<td>LAUNCH-01</td>
+<td>fake Claude가 받은 env·PID·stdin을 기록</td>
+<td>실제 Claude PID와 session PID 일치; 부모 env 불변</td>
+</tr>
+<tr>
+<td>LAUNCH-02</td>
+<td>PTY Ctrl-C/Ctrl-Z/fg, Claude exit 0/7, proxy fail</td>
+<td>terminal 복원, exit 보존, listener·child 잔존 0</td>
+</tr>
+<tr>
+<td>LAUNCH-03</td>
+<td>부모 SIGKILL·resume·같은 프로젝트 두 세션</td>
+<td>orphan 정책 충족; 서로 다른 token/port; 타 세션 종료 0</td>
+</tr>
+<tr>
+<td>SETTINGS-01</td>
+<td>기존 settings/GLM 프로젝트에 활성화·해제</td>
+<td>미관련 키와 사용자 auth SHA 불변</td>
+</tr>
+<tr>
+<td>GLM-01</td>
+<td>GPT↔︎GLM tool/thinking 전환·동시 requests</td>
+<td>opaque 상태·credential 교차 송신 0</td>
+</tr>
+<tr>
+<td>INSTALL-01</td>
+<td>깨끗한 fixture user dir에 MoAI 설치→login→cc</td>
+<td>proxy 추가 binary 다운로드 0; built-in server 실행</td>
+</tr>
+<tr>
+<td>LIVE-01</td>
+<td>exact Claude version의 단문·Read·compact·title·subagent·MCP</td>
+<td>run manifest에 model/route/status/exit 기록; 실패 기능 미지원
+표시</td>
+</tr>
+<tr>
+<td>RELEASE-01</td>
+<td>Linux/macOS/Windows runtime와 Go vulnerability 검사</td>
+<td>지원 target 모두 pass; 실행하지 못한 target은 미검증 표시</td>
+</tr>
+</tbody>
+</table>
+<p>구현 후 예정 명령은
+<code>go test ./internal/proxy/... -count=1</code>, 해당 package race,
+launcher의 지정 회귀 테스트, <code>go vet</code> 대상 package, CI의 MoAI
+전체 binary vulnerability 검사다. 아직 실행 결과가 없으므로 위 표는
+<strong>예정 합격 기준</strong>이다. 테스트 파일과 함수 이름은 구현 시
+각 ID와 일대일로 연결한다. 무작정 전체 suite를 로컬에서 반복하지
+않는다.</p>
+<h2 id="gaps와-residual-risk">13. Gaps와 Residual-risk</h2>
+<p><strong>Gaps:</strong> 내부 package와 새로운 executor는 아직 만들지
+않았다. 이번 턴은 소스 재확인과 상세 설계다. 실제 OAuth login/refresh,
+과금·quota, 272k 초과 장문맥, mixed 세션, PTY job control, parent death
+cleanup, Windows ACL/Job Object, image/PDF/structured-output, MoAI
+hooks/subagents/MCP 통합은 새 구현에서 검증해야 한다. 이전 safe-mode
+실측은 hooks/skills 보존을 입증하지 않는다.</p>
+<p><strong>Residual-risk:</strong> ChatGPT subscription backend 및
+Claude Code client 계약 변경, API 의미론 차이, 계정별 entitlement 차이,
+in-process translator 결함이 전체 MoAI 프로세스에 미치는 영향, 모델
+명칭과 실제 비용 표시 불일치가 남는다. GPL은 이번 기술 진행 조건에서
+제외했지만 직접 차용한 코드를 포함한 단일 바이너리의 외부 배포
+라이선스는 여전히 별도 해결 대상이다.</p>
+<h2 id="검토자가-확인할-결정과-출처">14. 검토자가 확인할 결정과
+출처</h2>
+<p>이 설계의 핵심 결정은 내부 package·단일 binary·in-process HTTP·Claude
+spawn/wait·Codex auth 읽기 전용 borrow·GLM native passthrough다. 다음
+구현에서 먼저 검증할 부분은 translator보다 <strong>LaunchSpec/session
+PID/terminal 계약</strong>이며, 그 위에 provider와 stream을
+결합한다.</p>
+<ul>
+<li><a
+href="https://github.com/jclab-joseph/claude-code-model-proxy/tree/112588175eb2b3b693a5bd23d58d8c501e0ae406">ccmproxy
+기준 tree</a></li>
+<li><a
+href="https://github.com/jclab-joseph/claude-code-model-proxy/blob/112588175eb2b3b693a5bd23d58d8c501e0ae406/internal/router/router.go">라우팅</a></li>
+<li><a
+href="https://github.com/jclab-joseph/claude-code-model-proxy/blob/112588175eb2b3b693a5bd23d58d8c501e0ae406/internal/translate/claude_to_codex.go">요청
+변환</a></li>
+<li><a
+href="https://github.com/jclab-joseph/claude-code-model-proxy/blob/112588175eb2b3b693a5bd23d58d8c501e0ae406/internal/translate/codex_to_claude.go">응답
+변환</a></li>
+<li><a
+href="https://github.com/jclab-joseph/claude-code-model-proxy/blob/112588175eb2b3b693a5bd23d58d8c501e0ae406/internal/codex/store.go">인증
+저장</a></li>
+<li><a href="moai-proxy-feasibility-plan-20260910.md">이전 실측
+보고서</a>: 이전 결과와 공식 문서 조회의 원장. 이번 새 런타임 검증과
+구분한다.</li>
+</ul>
+</main></div><footer class="footer">영실 · 내부 package 상세 재설계 · 이전 실측과 이번 source inspection, 향후 합격 기준을 구분함 · production 코드 구현 전</footer>
+<script type="module">try { const {default:mermaid}=await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:'base',themeVariables:{primaryColor:'#e7ecdf',primaryTextColor:'#243629',primaryBorderColor:'#788C5D',lineColor:'#75836e',fontFamily:'Noto Sans KR, sans-serif'}});await mermaid.run({querySelector:'.mermaid'});}catch(e){document.querySelector('.diagram').dataset.fallback='source';}</script>
+</body></html>

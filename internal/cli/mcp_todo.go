@@ -29,7 +29,7 @@ import (
 func registerTodoMCPTools(add func(name string, tool mcp.Tool, handler server.ToolHandlerFunc)) {
 	add("todo_add", mcp.NewTool(
 		"todo_add",
-		mcp.WithDescription("Append one card to the kanban backlog queue. Same implementation as `moai todo add` (without --pick/--force). "+projectRootDesc),
+		mcp.WithDescription("Append one card to the backlog queue. Same implementation as `moai todo add` (without --pick/--force). "+projectRootDesc),
 		mcp.WithString("text", mcp.Required(), mcp.Description("The card text.")),
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
@@ -104,10 +104,19 @@ func handleTodoAdd(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolRes
 		return toolErr("todo_add", errors.New("todo add: text must be non-empty")), nil
 	}
 	out, errBuf := &bytes.Buffer{}, &bytes.Buffer{}
-	if err := runTodoAddAppendRoot(root, newBufferedCommand(out, errBuf), text, false, todoCardDecider); err != nil {
+	presentation, err := runTodoAddAppendRoot(root, newBufferedCommand(out, errBuf), text, false, todoCardDecider, nil)
+	if err != nil {
 		return toolErr("todo_add", err), nil
 	}
-	return mcp.NewToolResultText(strings.TrimRight(out.String(), "\n")), nil
+	// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-005: the result text's first line
+	// stays "<id> <pos>"; a non-empty presentation follows after one blank
+	// line. An empty presentation adds nothing — the text stays the CLI
+	// stdout, byte for byte (MU-21).
+	result := strings.TrimRight(out.String(), "\n")
+	if presentation != "" {
+		result += "\n\n" + presentation
+	}
+	return mcp.NewToolResultText(result), nil
 }
 
 // handleTodoList wraps runTodoListRoot (todo.go) — the same default render

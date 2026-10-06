@@ -23,9 +23,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/hook/handoff"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/mission"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
@@ -429,7 +429,7 @@ func (e *cliSupervisorEngine) Snapshot(ctx context.Context, step mission.Supervi
 	}
 	revision := int64(1)
 	if strings.HasPrefix(step.Target, "gtd:") {
-		item, err := kanban.LoadGTDItem(ctx, newTodoStore(), strings.TrimPrefix(step.Target, "gtd:"))
+		item, err := factory.LoadGTDItem(ctx, newTodoStore(), strings.TrimPrefix(step.Target, "gtd:"))
 		if err != nil {
 			return mission.SupervisionSnapshot{}, err
 		}
@@ -492,7 +492,7 @@ func (e *cliSupervisorEngine) Execute(ctx context.Context, step mission.Supervis
 	if err != nil || len(state.OperationIDs) == 0 {
 		return mission.OperationReceipt{}, errors.New("auto mission supervisor: operation_receipt_missing")
 	}
-	op, err := kanban.LoadGTDOperation(ctx, newTodoStore(), state.OperationIDs[len(state.OperationIDs)-1])
+	op, err := factory.LoadGTDOperation(ctx, newTodoStore(), state.OperationIDs[len(state.OperationIDs)-1])
 	if err != nil {
 		return mission.OperationReceipt{}, err
 	}
@@ -500,11 +500,11 @@ func (e *cliSupervisorEngine) Execute(ctx context.Context, step mission.Supervis
 }
 
 func (e *cliSupervisorEngine) Readback(ctx context.Context, _ mission.SupervisionStep, receipt mission.OperationReceipt) error {
-	op, err := kanban.LoadGTDOperation(ctx, newTodoStore(), receipt.OperationID)
+	op, err := factory.LoadGTDOperation(ctx, newTodoStore(), receipt.OperationID)
 	if err != nil {
 		return err
 	}
-	if op.State != kanban.GTDOperationReconciled || op.SnapshotHash != receipt.SnapshotHash {
+	if op.State != factory.GTDOperationReconciled || op.SnapshotHash != receipt.SnapshotHash {
 		return errors.New("auto mission supervisor: authoritative_readback_missing")
 	}
 	return nil
@@ -520,8 +520,8 @@ func (e *cliSupervisorEngine) Finalize(ctx context.Context, plan mission.Supervi
 	}
 	store := newTodoStore()
 	for i, id := range state.OperationIDs {
-		op, loadErr := kanban.LoadGTDOperation(ctx, store, id)
-		if loadErr != nil || op.State != kanban.GTDOperationReconciled || op.MissionID != plan.MissionID || op.Action != string(plan.Steps[i].Action) || op.Target != plan.Steps[i].Target {
+		op, loadErr := factory.LoadGTDOperation(ctx, store, id)
+		if loadErr != nil || op.State != factory.GTDOperationReconciled || op.MissionID != plan.MissionID || op.Action != string(plan.Steps[i].Action) || op.Target != plan.Steps[i].Target {
 			return errors.New("auto mission supervisor: completion_operation_lineage")
 		}
 	}
@@ -624,15 +624,15 @@ func currentMissionHead(root string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func publishDependenciesReady(ctx context.Context, store *kanban.BacklogStore, itemID string) (bool, error) {
-	reflection, err := kanban.ReflectGTDStore(ctx, store)
+func publishDependenciesReady(ctx context.Context, store *factory.BacklogStore, itemID string) (bool, error) {
+	reflection, err := factory.ReflectGTDStore(ctx, store)
 	if err != nil {
 		return false, err
 	}
 	return !reflection.Result.Blocked[itemID] && !reflection.Result.Stale[itemID], nil
 }
 
-func authoritativeDispatchEvidence(ctx context.Context, store *kanban.BacklogStore, root, sessionID, itemID, cardID, lane, runID string, expectedRevision int64) (map[string]string, error) {
+func authoritativeDispatchEvidence(ctx context.Context, store *factory.BacklogStore, root, sessionID, itemID, cardID, lane, runID string, expectedRevision int64) (map[string]string, error) {
 	// card t1349 integration repair: stored assignments carry the canonical
 	// vocabulary only (REQ-TSP-052 write normalization), so the ASSIGNMENT
 	// comparison maps the caller's lane label onto the same canonical form —
@@ -640,8 +640,8 @@ func authoritativeDispatchEvidence(ctx context.Context, store *kanban.BacklogSto
 	// lookup keeps the caller's spelling: the lease registry keys on the
 	// label the caller acquired with, which the vocabulary migration does
 	// not touch.
-	canonicalLane := kanban.NormalizeOwnerLabel(lane)
-	item, err := kanban.LoadGTDItem(ctx, store, itemID)
+	canonicalLane := factory.NormalizeOwnerLabel(lane)
+	item, err := factory.LoadGTDItem(ctx, store, itemID)
 	if err != nil {
 		return nil, err
 	}
@@ -655,7 +655,7 @@ func authoritativeDispatchEvidence(ctx context.Context, store *kanban.BacklogSto
 	picked, laneOwnerFree := false, true
 	for _, card := range record.Items {
 		if card.ID == cardID {
-			picked = card.State == kanban.BacklogStatePicked
+			picked = card.State == factory.BacklogStatePicked
 		}
 	}
 	for _, assignment := range record.Runtime.Assignments {
@@ -666,7 +666,7 @@ func authoritativeDispatchEvidence(ctx context.Context, store *kanban.BacklogSto
 			laneOwnerFree = false
 		}
 	}
-	lease, leaseErr := kanban.ReadSlotLease(root, lane)
+	lease, leaseErr := factory.ReadSlotLease(root, lane)
 	leaseHeld := leaseErr == nil && lease.Held() && lease.SessionID == sessionID && !lease.Expired(time.Now())
 	values := map[string]string{
 		"fresh_snapshot":  strconv.FormatInt(expectedRevision, 10),
@@ -704,7 +704,7 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 	var linkedCardID string
 	dependenciesReady := true
 	if (action == mission.ActionPublish || action == mission.ActionPick || action == mission.ActionDispatch) && strings.HasPrefix(target, "gtd:") {
-		item, loadErr := kanban.LoadGTDItem(cmd.Context(), store, itemID)
+		item, loadErr := factory.LoadGTDItem(cmd.Context(), store, itemID)
 		if loadErr != nil {
 			return loadErr
 		}
@@ -720,7 +720,7 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 				_ = persistMissionBlock(root, state, "dependencies_blocked")
 				return errors.New("auto mission blocked: dependencies_blocked")
 			}
-			evidence = map[string]string{"approval": "explicit", "clarified": strconv.FormatBool(item.Disposition == kanban.DispositionAction && item.SourceTrusted), "fresh_snapshot": strconv.FormatInt(revision, 10), "organized": strconv.FormatBool(item.Status == kanban.GTDStatusOrganized)}
+			evidence = map[string]string{"approval": "explicit", "clarified": strconv.FormatBool(item.Disposition == factory.DispositionAction && item.SourceTrusted), "fresh_snapshot": strconv.FormatInt(revision, 10), "organized": strconv.FormatBool(item.Status == factory.GTDStatusOrganized)}
 		case mission.ActionPick:
 			if linkedCardID == "" {
 				_ = persistMissionBlock(root, state, "published_card_missing")
@@ -819,7 +819,7 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 	var owner gtdCLIOwner
 	if action == mission.ActionPublish && strings.HasPrefix(target, "gtd:") {
 		owner = gtdCLIOwner{readback: func() (bool, error) {
-			item, err := kanban.LoadGTDItem(cmd.Context(), store, itemID)
+			item, err := factory.LoadGTDItem(cmd.Context(), store, itemID)
 			return item.CardID != "", err
 		}, apply: func() error {
 			ready, readyErr := publishDependenciesReady(cmd.Context(), store, itemID)
@@ -829,7 +829,7 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 				}
 				return errors.New("auto mission blocked: dependencies_blocked")
 			}
-			result, err := kanban.EngageGTDItem(cmd.Context(), store, kanban.EngageInput{ItemID: itemID, Authorized: true, EvidenceFresh: true, DependenciesReady: dependenciesReady && ready, LaneAvailable: true, ResourcesAvailable: true})
+			result, err := factory.EngageGTDItem(cmd.Context(), store, factory.EngageInput{ItemID: itemID, Authorized: true, EvidenceFresh: true, DependenciesReady: dependenciesReady && ready, LaneAvailable: true, ResourcesAvailable: true})
 			if err == nil && result.CardID == "" {
 				return fmt.Errorf("publish blocked: %s", strings.Join(result.Reasons, ","))
 			}
@@ -843,20 +843,20 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 			}
 			for _, card := range record.Items {
 				if card.ID == linkedCardID {
-					return card.State == kanban.BacklogStatePicked, nil
+					return card.State == factory.BacklogStatePicked, nil
 				}
 			}
 			return false, nil
 		}, apply: func() error {
-			return store.Mutate(func(record *kanban.BacklogRecord) error {
+			return store.Mutate(func(record *factory.BacklogRecord) error {
 				for i := range record.Items {
 					if record.Items[i].ID == linkedCardID {
 						// POSITIVE enumeration (SPEC-TODO-HOLD-STATE-001
 						// REQ-THS-011): the --auto admission pick names the
 						// one state it admits.
 						switch record.Items[i].State {
-						case kanban.BacklogStateQueued:
-							record.Items[i].State = kanban.BacklogStatePicked
+						case factory.BacklogStateQueued:
+							record.Items[i].State = factory.BacklogStatePicked
 							// REQ-TST-004: the mission pick is a picked
 							// transition — stamp it in the same locked write.
 							record.Items[i].PickedAt = todoStampNow()
@@ -879,7 +879,7 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 			// the REQ-TSP-052 canonical write normalization, so the readback
 			// maps the caller's lane label onto the same canonical form
 			// before comparing — a legacy-spelled lane keeps its authority.
-			want := kanban.NormalizeOwnerLabel(gitOpts.Lane)
+			want := factory.NormalizeOwnerLabel(gitOpts.Lane)
 			for _, a := range record.Runtime.Assignments {
 				if a.RunID == gitOpts.RunID && a.CardID == linkedCardID && a.OwnerLabel == want {
 					return true, nil
@@ -890,7 +890,7 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 			if _, err := authoritativeDispatchEvidence(cmd.Context(), store, root, sessionID, itemID, linkedCardID, gitOpts.Lane, gitOpts.RunID, revision); err != nil {
 				return err
 			}
-			if err := kanban.RecordFactoryCardAssignment(root, gitOpts.RunID, linkedCardID, gitOpts.Lane, ""); err != nil {
+			if err := factory.RecordFactoryCardAssignment(root, gitOpts.RunID, linkedCardID, gitOpts.Lane, ""); err != nil {
 				return err
 			}
 			mirrorFactoryAssignment(cmd.Context(), cmd.ErrOrStderr(), root, store, gitOpts.RunID, linkedCardID, gitOpts.Lane)
@@ -903,8 +903,8 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 		return fmt.Errorf("auto mission blocked: owner_adapter_unsupported")
 	}
 	receiptJSON, _ := json.Marshal(receipt)
-	op := kanban.GTDOperation{OperationID: receipt.OperationID, MissionID: sessionID, Action: string(action), Target: target, SnapshotHash: snapshot.SnapshotHash, ReceiptJSON: receiptJSON}
-	stored, err := kanban.ExecuteGTDOperation(cmd.Context(), store, op, owner)
+	op := factory.GTDOperation{OperationID: receipt.OperationID, MissionID: sessionID, Action: string(action), Target: target, SnapshotHash: snapshot.SnapshotHash, ReceiptJSON: receiptJSON}
+	stored, err := factory.ExecuteGTDOperation(cmd.Context(), store, op, owner)
 	if err != nil {
 		_ = persistMissionBlock(root, state, err.Error())
 		return err

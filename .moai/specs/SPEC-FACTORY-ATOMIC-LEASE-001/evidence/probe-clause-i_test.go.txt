@@ -1,0 +1,195 @@
+package cli
+
+// Plan-phase RED-now probes of CLAUSE (i) of AC-FAL-002 and AC-FAL-003 for
+// SPEC-FACTORY-ATOMIC-LEASE-001 (card t1458), iteration 2 repair (defect D5).
+//
+// Evidence, not source: the .txt suffix keeps the build blind to this file and
+// `go test -overlay` (overlay-clause-i.json) maps it into internal/cli for one
+// run. It compiles against the unmodified tree at the pin.
+//
+// Why a second set of probes. The iteration-1 probes (probe-nominated, probe-arms)
+// fail on the END STATE `queue == hold && record == leased`. That end state stays
+// reachable after the fix (spec section F R10: a hold that arrives mid-section
+// applies after the lease), so those probes are red before and after the fix for
+// a reason the fix does not touch. They also call the public Mutate (via
+// nmSetState) synchronously from inside the seam; after the fix that call
+// contends with the section's own lock descriptor and waits out the budget.
+//
+// The probes below observe the criterion's own predicate instead: the operator
+// write is started in a GOROUTINE from inside the seam (so it can block without
+// deadlocking the lease) and the probe records whether that write COMPLETED
+// before the seam returned. Unfixed code holds no queue lock at the seam, so the
+// write completes at once ("completed inside section = true"). After the fix the
+// seam runs while the section holds the queue lock, the write waits for it, and
+// the same line reads false. The goroutine is always joined after the verb
+// returns, so nothing outlives the test.
+
+import (
+	"fmt"
+	"runtime"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/kanban"
+)
+
+// ciOp is an operator hold write running in its own goroutine.
+type ciOp struct {
+	ch        chan error
+	completed bool
+	err       error
+}
+
+func ciStartHold(store *kanban.BacklogStore, cardID string) *ciOp {
+	op := &ciOp{ch: make(chan error, 1)}
+	go func() {
+		op.ch <- store.Mutate(func(r *kanban.BacklogRecord) error {
+			for i := range r.Items {
+				if r.Items[i].ID == cardID {
+					r.Items[i].State = kanban.BacklogStateHold
+					return nil
+				}
+			}
+			return fmt.Errorf("no card %s", cardID)
+		})
+	}()
+	return op
+}
+
+// within reports whether the write has completed, waiting at most d for it.
+func (o *ciOp) within(d time.Duration) bool {
+	if o.completed {
+		return true
+	}
+	select {
+	case o.err = <-o.ch:
+		o.completed = true
+	case <-time.After(d):
+	}
+	return o.completed
+}
+
+// ciAtClaim reports whether the calling stack is inside a claim function, the
+// same probe device probe-arms uses: arm (c) has no seam in the tree, so the
+// hook rides the existing factoryCardNow variable, which the claim calls as an
+// argument of its first record write.
+func ciAtClaim() bool {
+	pcs := make([]uintptr, 24)
+	n := runtime.Callers(2, pcs)
+	frames := runtime.CallersFrames(pcs[:n])
+	for {
+		f, more := frames.Next()
+		if strings.HasSuffix(f.Function, ".factoryNextRecordAndClaim") || strings.HasSuffix(f.Function, ".factoryNextClaim") {
+			return true
+		}
+		if !more {
+			return false
+		}
+	}
+}
+
+// AC-FAL-002 clause (i), nominated form: a queued nominee, the operator hold
+// started from the nomination seam.
+func TestT1458ProbeClauseINominated(t *testing.T) {
+	root, store := nmQueuedNominee(t)
+	nmIsolatedWorktrees(t, "t1")
+	var op *ciOp
+	inside := false
+	nmSetSeam(t, func(cardID string) error {
+		op = ciStartHold(store, cardID)
+		inside = op.within(400 * time.Millisecond)
+		return nil
+	})
+	_, _, verbErr := qasRunNext(t, "--run", fcRun, "--card", "t1")
+	if op == nil {
+		t.Fatal("the nomination seam was never reached")
+	}
+	if !op.within(10 * time.Second) {
+		t.Fatal("the operator write never completed after the verb returned")
+	}
+	q := nmQueueState(t, store, "t1")
+	state, holder := "", ""
+	if fcHasCard(t, root, "t1") {
+		c := fcCard(t, root, "t1")
+		state, holder = c.State, c.LeaseHolder
+	}
+	t.Logf("PROBE clause-i nominated: completed inside section = %v operator-write-err=%v after the verb: queue=%s record=%s holder=%s verb-err=%v", inside, op.err, q, state, holder, verbErr)
+	if inside {
+		t.Errorf("clause (i) not met: the operator write completed inside the section (the seam returned only after the write finished)")
+	}
+}
+
+// AC-FAL-003 clause (i), unnominated arm (c): the operator hold started at the
+// claim point, which on the unfixed tree is after arm (c)'s queue promotion
+// returned and released the queue lock.
+func TestT1458ProbeClauseIArmC(t *testing.T) {
+	root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+	nmLaneEnv(t, "lane-1", "")
+	nmIsolatedWorktrees(t, "t1")
+	prevNow := factoryCardNow
+	var mu sync.Mutex
+	started := false
+	var op *ciOp
+	inside := false
+	factoryCardNow = func() time.Time {
+		if ciAtClaim() {
+			mu.Lock()
+			first := !started
+			started = true
+			mu.Unlock()
+			if first {
+				op = ciStartHold(store, "t1")
+				inside = op.within(400 * time.Millisecond)
+			}
+		}
+		return prevNow()
+	}
+	t.Cleanup(func() { factoryCardNow = prevNow })
+	_, _, verbErr := qasRunNext(t, "--run", fcRun)
+	if op == nil {
+		t.Fatal("the claim point was never reached")
+	}
+	if !op.within(10 * time.Second) {
+		t.Fatal("the operator write never completed after the verb returned")
+	}
+	q := nmQueueState(t, store, "t1")
+	state, holder := "", ""
+	if fcHasCard(t, root, "t1") {
+		c := fcCard(t, root, "t1")
+		state, holder = c.State, c.LeaseHolder
+	}
+	t.Logf("PROBE clause-i arm-c: completed at claim point = %v operator-write-err=%v after the verb: queue=%s record=%s holder=%s verb-err=%v", inside, op.err, q, state, holder, verbErr)
+	if state != "" && state != homestate.CardLeased {
+		t.Logf("note: the record row is %s, not leased", state)
+	}
+	if inside {
+		t.Errorf("clause (i) not met: the operator write completed at the claim point (arm (c) held no queue lock there)")
+	}
+}
+
+// Positive control for the two probes above: a write started from inside an open
+// Mutate, that is while the queue lock IS held, must read "completed inside
+// section = false". If this prints true the 400 ms window cannot tell a held
+// lock from a free one and the two probes above prove nothing.
+func TestT1458ProbeClauseIControl(t *testing.T) {
+	_, store := nmQueuedNominee(t)
+	var op *ciOp
+	inside := true
+	if err := store.Mutate(func(r *kanban.BacklogRecord) error {
+		op = ciStartHold(store, "t1")
+		inside = op.within(400 * time.Millisecond)
+		return nil
+	}); err != nil {
+		t.Fatalf("outer Mutate: %v", err)
+	}
+	if !op.within(10 * time.Second) {
+		t.Fatal("the second write never completed after the outer Mutate returned")
+	}
+	t.Logf("PROBE clause-i control (a write started while another Mutate holds the queue lock): completed inside section = %v operator-write-err=%v", inside, op.err)
+	if inside {
+		t.Errorf("control invalid: a write started under a held queue lock completed inside the window")
+	}
+}

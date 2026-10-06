@@ -177,7 +177,7 @@ func prepareCodexAudit(ctx context.Context, req codexAuditRequest) *codexAuditPl
 	if err != nil {
 		return fail("destination rejected: %v", err)
 	}
-	role, err := codexAuditLoadRole(root, req.Role)
+	role, err := codexAuditLoadRole(req.Role)
 	if err != nil {
 		return fail("%v", err)
 	}
@@ -198,8 +198,15 @@ func prepareCodexAudit(ctx context.Context, req codexAuditRequest) *codexAuditPl
 	}
 
 	// Effort rides the audit pin or nothing: pin > absent (codex applies its
-	// own default). No per-agent source remains to fall back to.
-	effort := workflowAuditPins(root).Codex.Effort
+	// own default). No per-agent source remains to fall back to. A workflow.yaml
+	// that cannot be read or parsed refuses the launch — the error is surfaced
+	// on stderr, never folded into an absent pin (SPEC-AUDIT-CEILING-002
+	// REQ-ACR-006).
+	pins, pinErr := workflowAuditPins(root)
+	if pinErr != nil {
+		return fail("workflow.audit pins unreadable: %v", pinErr)
+	}
+	effort := pins.Codex.Effort
 	if effort != "" && !codexAuditServerName.MatchString(effort) {
 		return fail("workflow.audit.codex effort %q is not a launchable value", effort)
 	}
@@ -486,6 +493,13 @@ func codexAuditResolveMaybeMissing(p string) (string, error) {
 	}
 }
 
+// codexAuditRoleFS is the source of both role eligibility and role content:
+// the binary's embedded templates. A project's .codex/ copy is not consulted,
+// because a Claude-profile project never refreshes it on update and a stale
+// copy would refuse a role the binary considers read-only (GitHub #1735).
+// Tests replace it to size the instructions without rebuilding the binary.
+var codexAuditRoleFS = template.EmbeddedTemplates
+
 // codexAuditLaunchableRoles derives the launchable set from the permission
 // contract: every emitted role whose contract sandbox is read-only.
 func codexAuditLaunchableRoles() (map[string]bool, error) {
@@ -496,7 +510,7 @@ func codexAuditLaunchableRoles() (map[string]bool, error) {
 	if man.PermissionContract == nil {
 		return nil, errors.New("the Codex mapping manifest carries no permission contract")
 	}
-	fsys, err := template.EmbeddedTemplates()
+	fsys, err := codexAuditRoleFS()
 	if err != nil {
 		return nil, err
 	}
@@ -514,8 +528,9 @@ func codexAuditLaunchableRoles() (map[string]bool, error) {
 	return set, nil
 }
 
-// codexAuditLoadRole checks eligibility and reads the role file in root.
-func codexAuditLoadRole(root, role string) (codexAuditRole, error) {
+// codexAuditLoadRole checks eligibility and reads the role file from the
+// embedded templates (codexAuditRoleFS).
+func codexAuditLoadRole(role string) (codexAuditRole, error) {
 	set, err := codexAuditLaunchableRoles()
 	if err != nil {
 		return codexAuditRole{}, fmt.Errorf("cannot derive launchable roles: %w", err)
@@ -523,8 +538,11 @@ func codexAuditLoadRole(root, role string) (codexAuditRole, error) {
 	if !set[role] {
 		return codexAuditRole{}, fmt.Errorf("role %q is not a read-only contract role", role)
 	}
-	path := filepath.Join(root, filepath.FromSlash(codexAuditRoleDir), role+".toml")
-	src, err := os.ReadFile(path)
+	fsys, err := codexAuditRoleFS()
+	if err != nil {
+		return codexAuditRole{}, fmt.Errorf("role %q: cannot open embedded templates: %w", role, err)
+	}
+	src, err := fs.ReadFile(fsys, codexAuditRoleDir+"/"+role+".toml")
 	if err != nil {
 		return codexAuditRole{}, fmt.Errorf("role %q has no emitted role file: %w", role, err)
 	}

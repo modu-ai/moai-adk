@@ -75,6 +75,12 @@ harness:
     M: 2   # Tier M (300-1000 LOC, 5-15 files): up to two spawns
     L: 3   # Tier L (>1000 LOC or constitutional): up to three spawns (legacy behavior)
 
+  # Ceiling policy: what happens when a plan audit reaches its tier ceiling
+  # without an admitted verdict. Applies to every session (lane or not).
+  plan_audit_ceiling_policy:
+    auto_delta_rounds: 1           # delta audits run without asking, when the fix stays inside fix_scope
+    on_final_hit: hold-and-split   # only value: hold record + split proposal
+
   # Level definitions
   levels:
     minimal:

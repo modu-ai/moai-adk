@@ -87,9 +87,10 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// supplied — decides every backend's gate. A configured value outside the
 	// closed sets is the second hard-error path of this handler for the same
 	// reason as the unusable project_root above: a mistyped token silently
-	// becoming the default is the failure the resolver exists to remove. An
-	// unreadable workflow.yaml still reads as "no audit configuration"
-	// (workflowAuditPins fails open), so a direct caller keeps today's reading.
+	// becoming the default is the failure the resolver exists to remove. Since
+	// SPEC-AUDIT-CEILING-002 REQ-ACR-006, a workflow.yaml that cannot be read
+	// or parsed is the third hard-error path: the error surfaces, it never
+	// reads as an absent audit configuration.
 	planRoot := projectRoot
 	if planRoot == "" {
 		planRoot = resolveProjectDir()
@@ -99,7 +100,11 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		primaryUnidentified bool
 	)
 	if planRoot != "" {
-		audit, primaryUnidentified = auditSectionForRoot(planRoot)
+		var sectionErr error
+		audit, primaryUnidentified, sectionErr = auditSectionForRoot(planRoot)
+		if sectionErr != nil {
+			return toolErr(auditMultiToolName, sectionErr), nil
+		}
 	}
 	plan, planErr := config.ResolveAuditPlan(audit, gates)
 	if planErr != nil {

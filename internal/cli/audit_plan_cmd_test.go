@@ -133,7 +133,7 @@ func TestAuditPlanCmd_RegisteredUnderVerify(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatal("audit-plan must be registered under the verify group (verifyExtraCommands)")
+		t.Fatal("audit-plan must be registered under the verify group (newVerifyCmd)")
 	}
 }
 

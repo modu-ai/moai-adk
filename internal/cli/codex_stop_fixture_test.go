@@ -37,6 +37,16 @@ func newStopFixture(t *testing.T) *stopFixture {
 // AC-HPR-003 golden deploys a gpt-profile project there first).
 func newStopFixtureAt(t *testing.T, root string) *stopFixture {
 	t.Helper()
+	// SPEC-HARNESS-DETACHED-PRUNE-001 REQ-DP-007: the Stop chain's member 8 is
+	// the harness observer, whose record-then-gate wrapper would spawn a real
+	// detached prune child on any fixture whose gates are on and whose stamp is
+	// absent — overlay-reproduced as `cli.test hook retention-prune …` recursion
+	// (a child process spawning child processes). The stub sits at this DEEPEST
+	// shared constructor so every stopFixture-family consumer — newStopFixture,
+	// newTimingFixture, and the direct newStopFixtureAt callers — is covered;
+	// no member of the family can reach the real spawn. Package-var override +
+	// t.Cleanup restore; the overriding tests never run parallel.
+	stubRetentionSpawnNoop(t)
 	if runtime.GOOS == "windows" {
 		t.Skip("the Claude sync-gate script is bash; the golden needs a POSIX shell")
 	}
@@ -109,6 +119,10 @@ func (f *stopFixture) setFakeGo(t *testing.T, vetExit int) {
 }
 
 // enableReviewGates writes the project's review-gate switches (git-ignored).
+// The primary_scope restore rides along: these fixtures pin review-path
+// mechanics (receipts, Claude/Codex parity, budgets), and the distributed
+// primary_scope default now skips a primary-checkout tree session before any
+// of that runs (SPEC-CODEX-GATE-SCOPING-001 REQ-CGSC-002 / REQ-CGSC-004).
 func (f *stopFixture) enableReviewGates(t *testing.T, codexGate, multiGate bool) {
 	t.Helper()
 	b := func(v bool) string {
@@ -118,7 +132,7 @@ func (f *stopFixture) enableReviewGates(t *testing.T, codexGate, multiGate bool)
 		return "false"
 	}
 	f.write(t, ".moai/config/sections/workflow.yaml",
-		"workflow:\n  codex:\n    review_gate:\n      enabled: "+b(codexGate)+"\n  multi:\n    review_gate:\n      enabled: "+b(multiGate)+"\n")
+		"workflow:\n  codex:\n    review_gate:\n      enabled: "+b(codexGate)+"\n      primary_scope: review\n  multi:\n    review_gate:\n      enabled: "+b(multiGate)+"\n")
 }
 
 // dirty leaves an uncommitted, reviewable change in the tree.

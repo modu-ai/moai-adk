@@ -35,7 +35,7 @@ criteria + a written decision record), where this inventory says so.
 
 | Surface | Coverage | Boundary statement |
 |---|---|---|
-| lane (factory / kanban worker session, `moai cc` / `moai glm` / `moai codex`) | **COVERED** — this document + the watchdog skill | the full semantics below |
+| lane (factory worker session, `moai cc` / `moai glm` / `moai codex`) | **COVERED** — this document + the watchdog skill | the full semantics below |
 | queue batch cycle (`todo --auto`) | boundary only | an operator-unused batch cycle with a 30-minute evidence deadline + automatic unpick of an unprogressing picked card. Its bounded-wait shape is cited as design PRECEDENT for the watchdog window — nothing more. The queue surface keeps its own owner and its own mechanics; this document does not redefine them |
 | mission loop (`goal --auto`) | boundary only | already bounded — turn ceiling, stagnation guard, wall-clock bound; untouched |
 
@@ -203,11 +203,20 @@ carries its justification right here, in this inventory.
 ### 9.1 The default-autonomous Kickoff transition
 
 plan→run entry is AUTONOMOUS when ALL of the following hold: the independent
-plan-audit verdict is PASS (FAIL and INCONCLUSIVE stay hard blocks — the §7
-authority-gate invariant), the SPEC's plan phase records audit-ready status,
+plan-audit verdict is admitted by the plan-phase admission predicate — a
+`PASS` or `PASS-WITH-DEBT` label with `must_pass_failed: 0`,
+`blocking_count: 0`, a score at or above the tier's plan threshold, a
+plan-artifact hash that binds the current plan artifacts, and for
+`PASS-WITH-DEBT` at least one enumerated debt (FAIL, INCONCLUSIVE, BYPASSED,
+and an absent verdict stay hard blocks — the §7 authority-gate invariant;
+`.moai/docs/audit-artifact-convention.md` carries the field format), the
+SPEC's plan phase records audit-ready status,
 the plan-artifact hashes are unchanged since that verdict, and no blocker is
 open. The transition writes a decision record (§10) that the sync audit
-re-reads. Keep-set cases keep the operator answer; the contract-signing path
+re-reads. A `PASS-WITH-DEBT` Kickoff copies every enumerated debt into the
+SPEC's `progress.md` under a `Binding run conditions` heading; both sync
+verdict owners re-read them, and an undisposed condition is a failed must-pass
+criterion that caps the sync verdict at FAIL. Keep-set cases keep the operator answer; the contract-signing path
 stays as the voluntary equivalent form. Operator-form Kickoff rows that wait
 together are presented through §9.2.
 
@@ -239,9 +248,9 @@ The batch gate summary is a presentation form for operator-form decisions, not a
 
 **Approvable, blocked, reserved**
 
-- A row is approvable only when all four hold: its most recent independent plan-audit verdict is PASS, the plan phase records audit-ready status, the plan-artifact hashes are unchanged since that verdict, and no blocker is open. Every other row is reported as blocked and excluded from the single approval.
+- A row is approvable only when all four hold: its most recent independent plan-audit verdict is admitted by the plan-phase admission predicate (§9.1 — `PASS` or `PASS-WITH-DEBT`), the plan phase records audit-ready status, the plan-artifact hashes are unchanged since that verdict, and no blocker is open. Every other row is reported as blocked and excluded from the single approval.
 - The verdict must be independent, produced by the plan-auditor; a PASS stated by the session that authored the plan artifacts is blocked.
-- Blocked states are: PASS-WITH-DEBT, BYPASSED, FAIL, INCONCLUSIVE, an absent verdict, audit-ready status not recorded, a plan-artifact hash changed since the verdict, and an open blocker.
+- Blocked states are: PASS-WITH-DEBT not admitted by the predicate, BYPASSED, FAIL, INCONCLUSIVE, an absent verdict, audit-ready status not recorded, a plan-artifact hash changed since the verdict, and an open blocker.
 - A row is reserved, and handled individually outside the single approval, when it falls in a keep-set category (environment-impossible, operator-held, or an irreversible operation on an external shared system) or in a power the leader session keeps: final PASS/FAIL verdicts, final merge approval, operator gates, card issuance and `done` through queue mutations, CodeRabbit slot-wait adjudication, and cross-session dispute coordination. The operator gates item does not include the operator-form plan→run Kickoff row: that row is reserved only when it falls in a keep-set category, and otherwise it is a summary row classified by the approvability rule above.
 
 **Records**
@@ -342,10 +351,22 @@ by relation bookkeeping.
 A wait is legitimate only as an **explicit wait** — a disk record naming:
 
 ```text
-wait record: waiting_on=<subject> reason=<why> recheck=<condition or next check point>
+wait record: id=w-<card>-<UTC> waiting_on=<subject> reason=<why> recheck=<condition or next check point>
 ```
 
-recorded on the card's evidence path or the decision board. The lane does
+recorded on the card's evidence path (the decision board is the leader's;
+a lane never writes it). A wait ends only when a board record's `resolves`
+field names its id — any other record for the same card leaves it open.
+While a wait whose `waiting_on` names the leader is open, the lane keeps a
+one-shot recheck (`CronCreate` with `recurring: false`) at
+`workflow.watchdog.wait_recheck_minutes` (default 5, never below 5) from
+now, re-armed by each fire that finds the wait still open and not re-armed
+once it resolves; the standing carrier of §5.1 stays armed. The codex runner
+has no cron tool: there the leader's board write plus the nudge is the named
+substitute. When the leader resolves a judgment a lane waits on, it records
+the ruling (`moai decision record ... --resolves <wait-id>`) before sending
+any message, sends only the record id as a nudge, and never re-sends a
+ruling a standing record governs. The lane does
 not idle-spin on a wait: it rechecks per awaken (§5), yields when the
 recheck shows no change, and never prompts the operator on its own behalf.
 Where no on-disk gate state exists (a gate mid-question), the recheck
@@ -355,7 +376,7 @@ progress resumes only on evidence.
 ## 15. Cross-references
 
 - `.claude/skills/moai-lane-watchdog/` — the executable carrier (one watchdog iteration)
-- `.claude/rules/moai/workflow/kanban-dispatch.md` — the dispatch protocol; the explicit-wait posture at dispatch
+- `.claude/rules/moai/workflow/factory-dispatch.md` — the dispatch protocol; the explicit-wait posture at dispatch
 - `.claude/rules/moai/workflow/cross-session-messaging.md` — the reply-independence boundary step ⑤ rests on
 - `.claude/rules/moai/core/agent-common-protocol.md` — the retry ceiling the shell-error remedy inherits
 - `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` — the checkpoint-return convention the accidental-stop remedy follows

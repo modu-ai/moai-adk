@@ -498,6 +498,17 @@ func agentFMIsGLMBackend(llm config.LLMConfig) bool {
 	return template.IsGLMBackend(llm)
 }
 
+// agentFMConsumeOn reports the llm.agent_overrides_consume opt-in switch for
+// the sub-section's contract-state chip (REQ-AFR-019, v0.3.0 M9): a stored
+// override must never render as if it were live when the gate is off, so the
+// state is stated explicitly on the surface — consume-on (spawns consume the
+// overrides) or consume-off (the map stays console-stored only). The helper
+// lives here, on the sentinel-allowed surface file, because the templ
+// generation must stay sentinel-free (the mcp_audit_surface guard).
+func agentFMConsumeOn(llm config.LLMConfig) bool {
+	return llm.AgentOverridesConsume
+}
+
 // agentGLMReasoning returns the per-agent GLM reasoning state for the
 // effort(reasoning) map exposure: under a GLM backend the sub-agent model
 // is session-inherited, so the per-agent axis is effort — and its GLM reading

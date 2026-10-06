@@ -6,7 +6,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -103,16 +105,60 @@ func (h *userPromptSubmitHandler) EventType() EventType {
 // workflowKeywords are prompt keywords that indicate an active MoAI workflow context.
 var workflowKeywords = []string{"loop", "run", "plan"}
 
+// workflowKeywordPatterns holds one case-insensitive whole-word matcher per
+// entry of workflowKeywords (same order). A keyword matches only as a whole
+// word, so "running", "planning", "prune" and "run_tests" never fire; the
+// slash-command forms ("/moai run", "/moai plan", "/moai loop") match because
+// the keyword is a whole word there.
+var workflowKeywordPatterns = func() []*regexp.Regexp {
+	pats := make([]*regexp.Regexp, len(workflowKeywords))
+	for i, kw := range workflowKeywords {
+		pats[i] = regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(kw) + `\b`)
+	}
+	return pats
+}()
+
 // detectWorkflowContext checks whether the prompt contains any workflow keywords
-// and returns a non-empty additionalContext string if a match is found.
+// as whole words and returns a non-empty additionalContext string if a match is
+// found.
 func detectWorkflowContext(prompt string) string {
-	lower := strings.ToLower(prompt)
-	for _, kw := range workflowKeywords {
-		if strings.Contains(lower, kw) {
+	for i, kw := range workflowKeywords {
+		if workflowKeywordPatterns[i].MatchString(prompt) {
 			return "workflow keyword '" + kw + "' detected — MoAI workflow context may be active"
 		}
 	}
 	return ""
+}
+
+// workflowContextStateRelDir holds one empty marker file per session that has
+// already received the workflow-context line, relative to the project root.
+const workflowContextStateRelDir = ".moai/state/workflow-context"
+
+// claimWorkflowContextOnce reports whether the workflow-context line may be
+// injected for this session, and records that it was. It returns true exactly
+// once per session id: the marker is created with O_EXCL, so the claim is
+// atomic across concurrent hook processes. It fails open — an unknown project
+// root or session id, or any filesystem error, returns true so the line is
+// injected as before rather than silently dropped.
+func claimWorkflowContextOnce(input *HookInput) bool {
+	sessionID := input.SessionID
+	if sessionID == "" || strings.ContainsAny(sessionID, `/\`) || strings.Contains(sessionID, "..") {
+		return true
+	}
+	root := resolveProjectRoot(input)
+	if root == "" {
+		return true
+	}
+	dir := filepath.Join(root, workflowContextStateRelDir)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return true
+	}
+	f, err := os.OpenFile(filepath.Join(dir, sessionID), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		return !errors.Is(err, fs.ErrExist)
+	}
+	_ = f.Close()
+	return true
 }
 
 // Handle processes a UserPromptSubmit event.
@@ -149,6 +195,13 @@ func (h *userPromptSubmitHandler) Handle(ctx context.Context, input *HookInput) 
 
 	// Detect workflow context
 	additionalCtx := detectWorkflowContext(prompt)
+	// The line is injected at most once per session: it carries no per-prompt
+	// information, so repeating it only adds context noise. A non-matching
+	// prompt never reaches the claim, so it cannot spend the session's one
+	// injection.
+	if additionalCtx != "" && !claimWorkflowContextOnce(input) {
+		additionalCtx = ""
+	}
 	// reboundRun is the run the registration just rebound this session into
 	// (SPEC-FACTORY-STALE-RUN-HEAL-001 REQ-SRH-004); the claim below reads it
 	// and not the environment run. Empty for every non-rebound session.
@@ -165,7 +218,14 @@ func (h *userPromptSubmitHandler) Handle(ctx context.Context, input *HookInput) 
 			additionalCtx += bindNotice
 		}
 	}
-	if factoryCtx, _, _ := factoryHookBatchForRun(ctx, input, EventUserPromptSubmit, reboundRun); factoryCtx != "" {
+	factoryCtx, _, inboxState := factoryHookBatchForRun(ctx, input, EventUserPromptSubmit, reboundRun)
+	if notice := surfaceFactoryInboxState(factoryHookRoot(input), input.SessionID, inboxState); notice != "" {
+		if factoryCtx != "" {
+			factoryCtx += "\n\n"
+		}
+		factoryCtx += notice
+	}
+	if factoryCtx != "" {
 		if additionalCtx != "" {
 			additionalCtx += "\n\n"
 		}
@@ -211,7 +271,7 @@ func (h *userPromptSubmitHandler) buildSessionTitle(ctx context.Context, cwd, tr
 		return ""
 	}
 
-	// No title yet, and this is a kanban or factory LEADER: the session's own name
+	// No title yet, and this is a factory LEADER: the session's own name
 	// is the title, so the operator finds it in the session list under the name
 	// they and every peer already address it by (issue #1596). This branch sits
 	// ABOVE the SPEC branch deliberately — a leader session sitting in a project
@@ -245,7 +305,7 @@ func (h *userPromptSubmitHandler) buildSessionTitle(ctx context.Context, cwd, tr
 }
 
 // leaderSessionTitle returns the leader session's resolved name, or "" when this
-// session is not a kanban or factory leader.
+// session is not a factory leader.
 //
 // The value is published by the launcher (exportLeaderSessionName) because the
 // launcher is the only actor that knows which name actually reached the backend
@@ -254,7 +314,7 @@ func (h *userPromptSubmitHandler) buildSessionTitle(ctx context.Context, cwd, tr
 // title and the messaging address the same string; a title that guessed the role
 // would disagree with the session's real name on every bumped leader.
 func leaderSessionTitle() string {
-	return strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLeadName))
+	return strings.TrimSpace(os.Getenv(config.EnvFactoryLeadName))
 }
 
 // conversationLanguage returns the configured conversation_language, or "" when

@@ -1,0 +1,112 @@
+[
+  {
+    "finding_id": "H01",
+    "card_id": "t596",
+    "state": "queued",
+    "severity": "P1",
+    "title": "새 파일은 심볼릭 링크를 따라 프로젝트 밖에 기록할 수 있음",
+    "created": true,
+    "added_at": "2026-09-11T02:54:33Z",
+    "exact_text_verified": true
+  },
+  {
+    "finding_id": "H02",
+    "card_id": "t597",
+    "state": "queued",
+    "severity": "P1",
+    "title": "최근 갱신한 다른 팀의 자료가 오래된 디렉터리 시각 때문에 삭제됨",
+    "created": true,
+    "added_at": "2026-09-11T02:54:36Z",
+    "exact_text_verified": true
+  },
+  {
+    "finding_id": "H03",
+    "card_id": "t598",
+    "state": "queued",
+    "severity": "P1",
+    "title": "팀 디렉터리가 없다는 이유만으로 다른 작업 목록을 즉시 삭제함",
+    "created": true,
+    "added_at": "2026-09-11T02:54:38Z",
+    "exact_text_verified": true
+  },
+  {
+    "finding_id": "H04",
+    "card_id": "t599",
+    "state": "queued",
+    "severity": "P2",
+    "title": "이름이 {}인 디렉터리 안의 임의 자료를 일괄 삭제함",
+    "created": true,
+    "added_at": "2026-09-11T02:54:40Z",
+    "exact_text_verified": true
+  },
+  {
+    "finding_id": "H05",
+    "card_id": "t600",
+    "state": "queued",
+    "severity": "P1",
+    "title": "작업 공간 이름 ../..가 기본 체크아웃 재사용으로 연결됨",
+    "created": true,
+    "added_at": "2026-09-11T02:54:42Z",
+    "exact_text_verified": true
+  },
+  {
+    "finding_id": "H06",
+    "card_id": "t601",
+    "state": "queued",
+    "severity": "P1",
+    "title": "동일 커밋의 두 번째 품질 검사에서 앞선 차단 결과가 사라짐",
+    "created": true,
+    "added_at": "2026-09-11T02:54:45Z",
+    "exact_text_verified": true
+  },
+  {
+    "finding_id": "H07",
+    "card_id": "t602",
+    "state": "queued",
+    "severity": "P2",
+    "title": "Java·Ruby 검사 실패가 성공 종료 코드로 집계됨",
+    "created": true,
+    "added_at": "2026-09-11T02:54:47Z",
+    "exact_text_verified": true
+  },
+  {
+    "finding_id": "H08",
+    "card_id": "t603",
+    "state": "queued",
+    "severity": "P2",
+    "title": ".cpp 파일에서 C++ 검사기가 호출되지 않음",
+    "created": true,
+    "added_at": "2026-09-11T02:54:50Z",
+    "exact_text_verified": true
+  },
+  {
+    "finding_id": "H09",
+    "card_id": "t604",
+    "state": "queued",
+    "severity": "P2",
+    "title": "Kotlin 프로젝트가 Java로 감지되어 검사 없이 종료됨",
+    "created": true,
+    "added_at": "2026-09-11T02:54:52Z",
+    "exact_text_verified": true
+  },
+  {
+    "finding_id": "H10",
+    "card_id": "t605",
+    "state": "queued",
+    "severity": "P2",
+    "title": "단발성 ConfigChange 프로세스가 비동기 검증 결과를 남기지 못함",
+    "created": true,
+    "added_at": "2026-09-11T02:54:56Z",
+    "exact_text_verified": true
+  },
+  {
+    "finding_id": "H11",
+    "card_id": "t606",
+    "state": "queued",
+    "severity": "P2",
+    "title": "pre-commit 형식 검사가 스테이징 내용 대신 작업 파일을 읽음",
+    "created": true,
+    "added_at": "2026-09-11T02:54:58Z",
+    "exact_text_verified": true
+  }
+]

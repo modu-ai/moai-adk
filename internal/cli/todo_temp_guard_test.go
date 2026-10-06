@@ -4,7 +4,7 @@ package cli
 // half of AC-THG-005: a refusal must not read as a silent success.
 //
 // The console half (the pure resolver stays silent and writes nothing) lives in
-// internal/kanban; this file owns the surface only the command has — guidance
+// internal/factory; this file owns the surface only the command has — guidance
 // on stderr, and an exit status that says the run continued.
 //
 // These tests mutate CLAUDE_PROJECT_DIR and the userHomeDirFn seam, both
@@ -17,7 +17,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // TestTempOriginGuidance_NamesRootsAndContinues — AC-THG-005.
@@ -40,7 +40,7 @@ func TestTempOriginGuidance_NamesRootsAndContinues(t *testing.T) {
 	userHomeDirFn = func() (string, error) { return canaryHome, nil }
 	t.Cleanup(func() { userHomeDirFn = orig })
 
-	matched, isTemp := kanban.TempOriginReason(dir)
+	matched, isTemp := factory.TempOriginReason(dir)
 	if !isTemp {
 		t.Fatalf("precondition: %q must classify as a temporary origin", dir)
 	}
@@ -66,12 +66,12 @@ func TestTempOriginGuidance_NamesRootsAndContinues(t *testing.T) {
 	if root != dir {
 		t.Errorf("queue root = %q, want the substitute root %q", root, dir)
 	}
-	rec, loadErr := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).Load()
+	rec, loadErr := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).Load()
 	if loadErr != nil {
 		t.Fatalf("load the project-local queue: %v", loadErr)
 	}
 	if len(rec.Items) == 0 {
-		t.Errorf("the card landed nowhere: the queue at %s is empty", kanban.BacklogPathForRoot(root))
+		t.Errorf("the card landed nowhere: the queue at %s is empty", factory.BacklogPathForRoot(root))
 	}
 	if entries, readErr := os.ReadDir(filepath.Join(canaryHome, ".moai", "db")); readErr == nil && len(entries) > 0 {
 		t.Errorf("canary HOME polluted: %d entr(ies) under %s",

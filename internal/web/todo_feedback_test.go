@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
-func watchSeededTodo(t *testing.T) (string, *kanban.BacklogStore, <-chan string) {
+func watchSeededTodo(t *testing.T) (string, *factory.BacklogStore, <-chan string) {
 	t.Helper()
 	t.Setenv("MOAI_HOME", t.TempDir())
 	root := t.TempDir()
-	store := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
+	store := factory.NewBacklogStore(factory.BacklogPathForRoot(root))
 	if _, _, err := store.Add("seed"); err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestTodoCommitsStillRefresh(t *testing.T) {
 			}
 			select {
 			case ev := <-events:
-				if ev != "kanban" {
+				if ev != "factory" {
 					t.Fatalf("commit event=%s", ev)
 				}
 			case <-time.After(3 * time.Second):
@@ -153,7 +153,7 @@ func TestTodoCreatedWALRefreshesOnlyWhenPopulated(t *testing.T) {
 				if !tc.want {
 					t.Fatalf("empty WAL creation emitted %s", ev)
 				}
-				if ev != "kanban" {
+				if ev != "factory" {
 					t.Fatalf("created WAL event=%s", ev)
 				}
 			case <-time.After(wait):

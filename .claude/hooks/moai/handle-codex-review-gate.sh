@@ -6,26 +6,19 @@
 # alongside handle-stop.sh, handle-stop-goal.sh, and sync-phase-quality-gate.sh;
 # it does NOT replace them. Each wrapper reads the same stdin JSON independently.
 #
-# SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / AC-MCP-009/010). The handler is
-# opt-in (workflow.codex.review_gate.enabled, default OFF) and self-gates to
-# ALLOW on a no-edit / loop-prevention / disabled turn; it runs a codex review
-# otherwise and BLOCKs on a fail verdict. Fail-open ALLOW on a missing or
-# inconclusive codex.
-#
-# settings.json TEMPLATE registration (with the 900s timeout override) lands in
-# M4 alongside the Template-First reversal. This wrapper exists in M2 so direct
-# invocation + the M4 registration both have a target. M2 tests the handler via
-# `moai hook codex-review-gate` direct invocation.
+# The handler is opt-in (workflow.codex.review_gate.enabled, default OFF) and
+# self-gates to ALLOW on a no-edit / loop-prevention / disabled turn; it runs a
+# codex review otherwise and BLOCKs on a fail verdict. Fail-open ALLOW on a
+# missing or inconclusive codex.
 #
 # Capture stdin once (Stop hooks may have multiple composited readers).
 INPUT=$(cat)
 
 # --- shell-layer self-gate (the handle-stop-goal.sh precondition pattern) ---
 # The gate ships OFF, so being registered in the Stop array must NOT add a moai
-# cold start to every turn-end for every user — that would undo the per-turn
-# cold-start reduction the Stop-chain trim achieved. Read the opt-in here, in
-# pure shell, and exit 0 before any binary resolution unless it is explicitly
-# true.
+# cold start to every turn-end for every user: a hook that ships OFF should
+# cost nothing per turn. Read the opt-in here, in pure shell, and exit 0 before
+# any binary resolution unless it is explicitly true.
 #
 # The parse is deliberately conservative: awk walks the nested
 # workflow: -> codex: -> review_gate: -> enabled: indentation and accepts only a

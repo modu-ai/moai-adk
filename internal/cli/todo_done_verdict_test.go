@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // seedLandedRepo turns the fixture repository into one whose recorded
@@ -32,8 +32,8 @@ func seedLandedRepo(t *testing.T, root string) {
 // root — the same resolution the verb performs (level 2 here).
 func landedRefName(t *testing.T, root string) string {
 	t.Helper()
-	ref, level := kanban.LandedRefForWithLevel(root)
-	if level != kanban.LandedRefOriginHEAD || ref != "origin/landed" {
+	ref, level := factory.LandedRefForWithLevel(root)
+	if level != factory.LandedRefOriginHEAD || ref != "origin/landed" {
 		t.Fatalf("fixture ref resolution = (%q, level %d), want (origin/landed, level 2) — the seeded control is broken", ref, level)
 	}
 	return ref
@@ -69,8 +69,8 @@ func TestDoneVerdict_PersistedWithRefAndTime(t *testing.T) {
 	if v == nil {
 		t.Fatalf("landing_verdict is NULL after a --require-landed done, want a record")
 	}
-	if v.Verdict != kanban.LandingLanded {
-		t.Errorf("verdict = %q, want %q", v.Verdict, kanban.LandingLanded)
+	if v.Verdict != factory.LandingLanded {
+		t.Errorf("verdict = %q, want %q", v.Verdict, factory.LandingLanded)
 	}
 	if v.Ref != ref {
 		t.Errorf("ref = %q, want the answering ref %q", v.Ref, ref)
@@ -92,7 +92,7 @@ func TestDoneVerdict_PersistedWithRefAndTime(t *testing.T) {
 	if len(keys) != 3 {
 		t.Errorf("verdict record carries %d keys (%v), want exactly 3", len(keys), keys)
 	}
-	for _, key := range []string{kanban.LandingVerdictKeyVerdict, kanban.LandingVerdictKeyRef, kanban.LandingVerdictKeyAt} {
+	for _, key := range []string{factory.LandingVerdictKeyVerdict, factory.LandingVerdictKeyRef, factory.LandingVerdictKeyAt} {
 		if _, ok := keys[key]; !ok {
 			t.Errorf("verdict record is missing key %q", key)
 		}
@@ -150,7 +150,7 @@ func TestDoneVerdict_RefusalArchivesNothing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if len(rec.Items) != 1 || rec.Items[0].State != kanban.BacklogStatePicked {
+	if len(rec.Items) != 1 || rec.Items[0].State != factory.BacklogStatePicked {
 		t.Fatalf("live row did not survive the refusal: %d items, state %s", len(rec.Items), rec.Items[0].State)
 	}
 	if stampOf(rec.Items[0].PickedAt) == "" {
@@ -173,9 +173,9 @@ func TestDoneVerdict_RefusedWithoutRefThroughStoreAPI(t *testing.T) {
 	if _, _, err := runTodo(t, "done", "t1"); err != nil {
 		t.Fatalf("done: %v", err)
 	}
-	err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-		rec.Archived[0].LandingVerdict = &kanban.LandingVerdict{
-			Verdict: kanban.LandingLanded,
+	err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Archived[0].LandingVerdict = &factory.LandingVerdict{
+			Verdict: factory.LandingLanded,
 			Ref:     "",
 			At:      "2026-09-29T00:00:00Z",
 		}
@@ -210,14 +210,14 @@ func TestDoneVerdict_CoexistsWithOperatorEvidence(t *testing.T) {
 	}
 	// Record operator evidence the way `todo landed` writes it — through the
 	// evidence store's own discipline.
-	ev := kanban.LandingEvidence{
+	ev := factory.LandingEvidence{
 		Ref:        ref,
 		RefHead:    "abc1234567890abcdef1234567890abcdef1234",
 		ObservedAt: "2026-09-28T10:00:00Z",
 		SHA:        "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-		SHASource:  kanban.LandingSHASourceOperator,
+		SHASource:  factory.LandingSHASourceOperator,
 	}
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		rec.Items[0].Landing = &ev
 		return nil
 	}); err != nil {
@@ -234,10 +234,10 @@ func TestDoneVerdict_CoexistsWithOperatorEvidence(t *testing.T) {
 	if entry.Item.Landing == nil {
 		t.Fatalf("the operator's evidence did not survive the done — REQ-TST-009's preservation is broken")
 	}
-	if entry.Item.Landing.SHA != ev.SHA || entry.Item.Landing.SHASource != kanban.LandingSHASourceOperator {
+	if entry.Item.Landing.SHA != ev.SHA || entry.Item.Landing.SHASource != factory.LandingSHASourceOperator {
 		t.Errorf("operator evidence mutated: %+v", *entry.Item.Landing)
 	}
-	if entry.LandingVerdict == nil || entry.LandingVerdict.Verdict != kanban.LandingLanded {
+	if entry.LandingVerdict == nil || entry.LandingVerdict.Verdict != factory.LandingLanded {
 		t.Fatalf("the query verdict is missing beside the operator evidence: %+v", entry.LandingVerdict)
 	}
 }

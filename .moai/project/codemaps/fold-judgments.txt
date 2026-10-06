@@ -5,6 +5,7 @@ fold internal/core/git
 fold internal/cli/doctor_hook_delivery.go
 fold internal/hook/quality/step_git_env.go
 fold internal/kanban/prlink_landedref.go
+fold internal/factory/prlink_landedref.go
 fold internal/web/fieldsets_codex_templ.go
 
 omission internal/chain
@@ -19,7 +20,7 @@ omission internal/cli/codex_skills_disable.go
 omission internal/cli/codex_skills_prune.go
 omission internal/cli/integration_settings_drift.go
 omission internal/cli/update_mirror_heal.go
-omission internal/kanban/settings_drift.go
+omission internal/factory/settings_drift.go
 omission internal/statusline/state_anchor.go
 omission internal/web/codexmirror.go
 
@@ -100,3 +101,17 @@ omission internal/cli/wizard/questions.go
 # (cli·todo*·doctor*·kanban·config·homestate)에 이름과 함께 서술됐다 — 이름이 문서에
 # 있으므로 fold 성립 안 한다. 위 기존 판정들은 이번 판에서 문서 본문과 대조해 그대로
 # 성립함을 확인했다.
+
+# --- 2026-10-05 refresh (worktree develop, base d0378d37c, card t1524) ---
+# 이번 판도 새 fold/omission 판정이 없다. 창 안 신규 23파일 전부(internal/hygiene 12 ·
+# internal/session ccversion 4 · internal/cli 3 · internal/harness retention_open 쌍 ·
+# internal/hook session_start_hygiene · internal/runtime audit_ceiling)는 modules.md 의
+# 패키지·클러스터 행과 entry-points.md·data-flow.md 의 표면·흐름 절에 이름과 함께
+# 서술됐다 — 이름이 문서에 있으므로 fold 성립 안 한다.
+# 판정 — 플랫폼 쌍은 부모 설명에 접지 않고 개별 이름으로 적는 기존 선례를 따랐다:
+# probe_pid_unix.go·probe_pid_windows.go, rotate_lock_unix.go·rotate_lock_windows.go,
+# ccversion_darwin.go·ccversion_linux.go·ccversion_other.go,
+# retention_open_unix.go·retention_open_windows.go — 전부 named row(codex_local_file_* ·
+# process_fingerprint_* · sweep_cwd_* 선례). fold 로 적으면 검사기의 창에서
+# 이름 없는 변경으로 남는 것이 이유다.
+# 위 기존 fold/omission 판정들은 이번 판에서 문서 본문과 대조해 그대로 성립함을 확인했다.

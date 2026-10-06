@@ -25,7 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // newTodoExportJSONCmd — `moai todo export-json`.
@@ -57,8 +57,8 @@ reads: it is a copy taken at a point in time, not a migration back.`,
 func runTodoExportJSON(cmd *cobra.Command) error {
 	store := newTodoStore()
 
-	var rec *kanban.BacklogRecord
-	if err := store.Mutate(func(r *kanban.BacklogRecord) error {
+	var rec *factory.BacklogRecord
+	if err := store.Mutate(func(r *factory.BacklogRecord) error {
 		rec = r
 		return nil
 	}); err != nil {
@@ -98,7 +98,7 @@ func runTodoExportJSON(cmd *cobra.Command) error {
 // STDERR, not stdout: `internal/cli/todo.go:20-22` contracts one structured
 // stdout line per verb, and that line is the surface agents parse. A warning
 // printed there would corrupt a machine read to deliver a human message.
-func discloseArchiveDowngradeCost(cmd *cobra.Command, rec *kanban.BacklogRecord) {
+func discloseArchiveDowngradeCost(cmd *cobra.Command, rec *factory.BacklogRecord) {
 	if len(rec.Archived) == 0 {
 		return
 	}

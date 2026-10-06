@@ -73,7 +73,7 @@ func TestGoalCancelledStatusReaders(t *testing.T) {
 	})
 
 	t.Run("launcher raises the block cap only for an armed goal", func(t *testing.T) {
-		clearKanbanLauncherEnv(t)
+		clearFactoryLauncherEnv(t)
 		root := t.TempDir()
 		base := []string{"PATH=/usr/bin"}
 		writeGoalStatusFixture(t, root, "d6-armed", goal.StatusArmed)

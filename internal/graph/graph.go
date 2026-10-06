@@ -11,6 +11,10 @@
 //	kind "report-milestone" report → milestone  .moai/reports/*.md Card
 //	                                          Cross-Check sections (report.go)
 //	kind "milestone-card"   milestone → card    same section, card column
+//	kind "card-file"    card → file         card-attributed merge commits and
+//	                                          the files they brought in
+//	                                          (card_file.go — committed
+//	                                          evidence only, queue never read)
 //
 // Output contract: one line = one edge, edges sorted by (kind, source,
 // target, line), no timestamps — two runs on the same tree produce
@@ -29,6 +33,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/mx"
 	"github.com/modu-ai/moai-adk/internal/navigator/astx"
 	"github.com/modu-ai/moai-adk/internal/navigator/tiers"
@@ -43,6 +48,10 @@ const (
 	KindMXSpec = "mx-spec"
 	// KindSpecDepends is a SPEC→SPEC edge from spec.md frontmatter depends_on.
 	KindSpecDepends = "spec-depends"
+	// KindCardFile is a card→file edge from a card-attributed merge commit
+	// (SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-016): committed evidence only —
+	// the queue is never read (card_file.go).
+	KindCardFile = "card-file"
 )
 
 // Tag-kind edge kinds (REQ-MTE-001): one kind per standalone @MX tag kind,
@@ -197,14 +206,44 @@ func buildDocLayers(projectRoot string, rangesByFile map[string][]astx.FuncRange
 	if err != nil {
 		return nil, err
 	}
+	// card-file layer (REQ-TCI-016): card-attributed merges and the files
+	// they brought in, attributed through the engine's single attribution
+	// point (factory.AttributeSubject) and the landed-ref chain. The layer
+	// fails open like the code layers: a project built outside git (or with
+	// an unreadable history) contributes zero edges instead of failing the
+	// build — the fingerprint treats the same failure as an absent source
+	// set, so the two readings of "no card edges" cannot diverge.
+	cardLinks, err := cardFileEdges(projectRoot)
+	if err != nil {
+		cardLinks = nil
+	}
 
-	edges := make([]Edge, 0, len(imports)+len(specLinks)+len(tagLinks)+len(depends)+len(reportLinks))
+	edges := make([]Edge, 0, len(imports)+len(specLinks)+len(tagLinks)+len(depends)+len(reportLinks)+len(cardLinks))
 	edges = append(edges, imports...)
 	edges = append(edges, specLinks...)
 	edges = append(edges, tagLinks...)
 	edges = append(edges, depends...)
 	edges = append(edges, reportLinks...)
+	edges = append(edges, cardLinks...)
 	sort.Slice(edges, func(i, j int) bool { return EdgeLess(edges[i], edges[j]) })
+	return edges, nil
+}
+
+// cardFileEdges runs the card→file layer with the one wiring the whole
+// package shares: attribution through factory.AttributeSubject, the landed
+// branch through factory.LandedRefFor + LandedBranchFromRef. A second
+// wiring in the fingerprint would be a second chance for the build's edges
+// and the check's freshness input to disagree about what an attributed
+// merge is.
+func cardFileEdges(projectRoot string) ([]Edge, error) {
+	raw, err := CardFileEdges(projectRoot, cardFileLandedBranch(projectRoot), factory.AttributeSubject)
+	if err != nil {
+		return nil, err
+	}
+	edges := make([]Edge, 0, len(raw))
+	for _, e := range raw {
+		edges = append(edges, Edge{Kind: KindCardFile, Source: e.Card, Target: e.File})
+	}
 	return edges, nil
 }
 

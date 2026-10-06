@@ -1,0 +1,10 @@
+2213871afb7d655f411c46a34fd38bb8153278fc
+ .claude/settings.json                              |   8 -
+ .moai/config/sections/crosssession.yaml            |   4 +-
+ .moai/config/sections/feedback.yaml                |   2 +-
+ .moai/config/sections/gate.yaml                    |   2 +
+ .moai/config/sections/git-strategy.yaml            | 216 ++++++++++-------
+ .moai/config/sections/workflow.yaml                |  16 +-
+ CLAUDE.local.md                                    | 261 ++++++++++++++++-----
+ .../template/templates/.claude/settings.json.tmpl  |   8 -
+ 8 files changed, 339 insertions(+), 178 deletions(-)
