@@ -145,3 +145,18 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   job without `name:` publishes its job ID as the default check name.
   Regression suite: phantom=1 control=0 malformed=1 matrix-exclude=1
   repo-root=0. CI publication still platform-blocked.
+- gate_round_7 (codex review gate findings, lane-direct): 4 repairs, RED
+  observed on the committed c5f5ff229 code before each GREEN on this tree
+  (commit `084bb13fd`) — (1) a merged include tuple applies to EVERY
+  compatible combination (merged[t] now marks only standalone
+  suppression; os:[ubuntu,windows]+include[{color:green}} judged the
+  real windows check phantom RED); (2) a later include tuple overwrites
+  an earlier value for the same key — pink now passes AND the superseded
+  green is correctly rejected (merge-green-gone negative probe); (3)
+  comments/blank lines are structural at NO indent — an ind-2 comment
+  between name: and strategy: reset matrix memory via the job-boundary
+  rule (column-0-only guard extended); (4) SSoT key presence is judged
+  by yq when available (quoted `"main":` key aborted a watchable PR via
+  the raw grep). Regression: phantom=1 control=0 malformed=1
+  matrix-exclude=1 repo-root=0, test harness 12 pass / 0 fail. CI
+  publication still platform-blocked.
