@@ -12,6 +12,7 @@ import (
 	"time"
 
 	astgrep "github.com/modu-ai/moai-adk/internal/astgrep"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/modu-ai/moai-adk/internal/hook/mx"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
@@ -621,7 +622,7 @@ func convertHookDiagsToLSP(diags []lsphook.Diagnostic) []lsp.Diagnostic {
 // Observation-only: never returns an error or blocks execution.
 // MOAI_MEMORY_AUDIT=0 disables all audit output (SPEC-V3R2-EXT-001 T6).
 func runMemoryAudit(input *HookInput) {
-	if os.Getenv("MOAI_MEMORY_AUDIT") == "0" {
+	if os.Getenv(config.EnvMemoryAudit) == "0" {
 		return
 	}
 
