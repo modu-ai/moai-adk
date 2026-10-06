@@ -91,22 +91,40 @@ func auditReceiptScope(input *HookInput) (guardTree, bool) {
 // (REQ-CAG-010). Failures are logged, never surfaced: SubagentStart has no
 // blocking channel, and a marker that could not be written shows up later as
 // the "start marker missing" refusal cause rather than as a silent pass.
+//
+// A background Agent() spawn delivers no agent_id, so the marker is keyed by
+// the identity the payload does carry (session_id + agent_type, card t1544):
+// keyed by agent id alone the write was a structural no-op and the auditor's
+// later PASS permanently unprovable.
 func recordAuditorStart(input *HookInput) {
-	if input == nil || !auditreceipt.IsAuditorAgent(input.AgentType) || input.AgentID == "" {
+	if input == nil || !auditreceipt.IsAuditorAgent(input.AgentType) {
 		return
+	}
+	key := auditreceipt.StartMarkerKey(input.AgentID, input.SessionID, input.AgentType)
+	if key == "" {
+		return // no identity at all: no key, no marker
 	}
 	g, ok := auditReceiptScope(input)
 	if !ok || g.assumed() {
 		return // no store: nothing may be written under any root (REQ-WSR-010)
 	}
+	if auditreceipt.IsDerivedMarkerKey(key) {
+		// A derived key is a session-era anchor shared by every same-role
+		// background auditor of the session: an existing marker keeps the
+		// earliest start, so a second concurrent spawn does not move
+		// StartedAt forward past receipts the first instance will cite.
+		if _, err := auditreceipt.ReadStartMarker(g.store, key); err == nil {
+			return
+		}
+	}
 	m := auditreceipt.StartMarker{
-		AgentID:   input.AgentID,
+		AgentID:   key,
 		AgentType: input.AgentType,
 		SessionID: input.SessionID,
 		TreeRoot:  g.tree,
 	}
 	if err := auditreceipt.WriteStartMarker(g.store, &m); err != nil {
-		slog.Warn("auditor start marker not recorded", "agent_id", input.AgentID, "tree_root", g.tree, "error", err)
+		slog.Warn("auditor start marker not recorded", "agent_id", key, "tree_root", g.tree, "error", err)
 	}
 }
 
@@ -126,7 +144,8 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 	if parsed && !line.IsPass() {
 		// A FAIL needs no receipt: it is not claiming an audit approved anything.
 		if !g.assumed() {
-			clearStartMarker(g.store, input.AgentID)
+			_, key := readStartMarker(g.store, input)
+			consumeStartMarker(g.store, key)
 		}
 		return nil
 	}
@@ -144,7 +163,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 		// refusal can be recorded: refuse, and say why the gate applied.
 		cause = auditreceipt.GateAssumedRequiredNote + ", so no audit receipt can be recorded or checked for this tree"
 	case parsed:
-		start := readStartMarker(g.store, input.AgentID)
+		start, foundKey := readStartMarker(g.store, input)
 		ok, failure := auditreceipt.CheckCitedReceipts(g.store, start, cited)
 		if ok {
 			// A proven PASS clears this role's outstanding refusals in THIS tree —
@@ -155,7 +174,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 			if err := auditreceipt.ClearRejectionsForRoleInTreeKind(g.store, g.tree, input.AgentType, auditreceipt.KindReceipt); err != nil {
 				slog.Warn("audit rejections not cleared", "agent_type", input.AgentType, "tree_root", g.tree, "error", err)
 			}
-			clearStartMarker(g.store, input.AgentID)
+			consumeStartMarker(g.store, foundKey)
 			return nil
 		}
 		cause = failure
@@ -170,7 +189,8 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 		// hook. The refusal stays on disk (or, with no store, the spawn check
 		// fails closed on its own), so the phase-entry spawns stay denied.
 		if !g.assumed() {
-			clearStartMarker(g.store, input.AgentID)
+			_, key := readStartMarker(g.store, input)
+			consumeStartMarker(g.store, key)
 		}
 		return &HookOutput{SystemMessage: fmt.Sprintf(
 			"%s: this %s PASS is not accepted — %s. Phase-entry spawns (manager-develop / manager-docs / manager-git) stay denied in %s until a PASS citing a valid audit receipt is recorded.",
@@ -216,23 +236,49 @@ func persistAuditRejection(g guardTree, input *HookInput, specID, cause string, 
 	}
 }
 
-func readStartMarker(store, agentID string) *auditreceipt.StartMarker {
-	if agentID == "" {
-		return nil
+// markerKeys lists the store keys this instance's start marker may be filed
+// under, best candidate first: the agent id the payload carried, then the
+// session_id+agent_type key a background spawn's start was recorded under —
+// its SubagentStart carries no agent id while its stop payload may still
+// carry one, so both spellings are tried (card t1544).
+func markerKeys(input *HookInput) []string {
+	var keys []string
+	if id := strings.TrimSpace(input.AgentID); id != "" {
+		keys = append(keys, id)
 	}
-	m, err := auditreceipt.ReadStartMarker(store, agentID)
-	if err != nil {
-		return nil // absent or unreadable: both mean this instance cannot be corroborated
+	if bg := auditreceipt.StartMarkerKey("", input.SessionID, input.AgentType); bg != "" {
+		keys = append(keys, bg)
 	}
-	return &m
+	return keys
 }
 
-func clearStartMarker(store, agentID string) {
-	if agentID == "" {
+// readStartMarker loads this instance's start marker, trying every key it may
+// be filed under. It returns the marker and the store key it was found under;
+// absent or unreadable under all of them returns a nil marker and "" — this
+// instance cannot be corroborated.
+func readStartMarker(store string, input *HookInput) (*auditreceipt.StartMarker, string) {
+	for _, key := range markerKeys(input) {
+		m, err := auditreceipt.ReadStartMarker(store, key)
+		if err == nil {
+			return &m, key
+		}
+	}
+	return nil, ""
+}
+
+// consumeStartMarker removes the start marker found under key. A derived
+// background key is deliberately NOT removed: it is a session-era anchor
+// shared by every same-role background auditor of the session, so one
+// instance's stop must not destroy another live instance's marker — that
+// deletion re-created the unprovable-PASS deadlock for the second instance
+// (card t1544 card-review P2). Derived anchors go stale with their session id
+// and are never read again.
+func consumeStartMarker(store, key string) {
+	if key == "" || auditreceipt.IsDerivedMarkerKey(key) {
 		return
 	}
-	if err := auditreceipt.RemoveStartMarker(store, agentID); err != nil {
-		slog.Debug("start marker not removed", "agent_id", agentID, "error", err)
+	if err := auditreceipt.RemoveStartMarker(store, key); err != nil {
+		slog.Debug("start marker not removed", "agent_id", key, "error", err)
 	}
 }
 
