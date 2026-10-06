@@ -13,7 +13,6 @@ package runtime
 // (.moai/reports/plan-audit/…) is never counted (plan.md §G).
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -39,11 +38,18 @@ type RoundEvidence struct {
 
 var (
 	// conventionFile is the plan-audit family: a bare single-iteration file
-	// (iteration 1) or one file per iteration (plan-audit-iter<N>.md).
-	conventionFile = regexp.MustCompile(`^plan-audit(?:-iter([0-9]+))?\.md$`)
+	// (iteration 1), one file per iteration (plan-audit-iter<N>.md), or the
+	// numbered shape plan-audit-<N>.md the kickoff reader and the factory
+	// card record also accept — the counter and the reader must agree on
+	// what an iteration file is, or the ceiling never sees the verdict the
+	// seam judges (card-review F2).
+	conventionFile = regexp.MustCompile(`^plan-audit(?:-iter)?-?([0-9]+)?\.md$`)
 	// conventionUnnumbered is the family shape with an iteration number the
 	// counter cannot read — fail-counted, never collapsed (REQ-ACE-001).
 	conventionUnnumbered = regexp.MustCompile(`^plan-audit-iter[^/]*\.md$`)
+	// specIDToken matches a SPEC identifier anywhere; the FIRST token in a
+	// report body is its header's SPEC attribution (card-review F5).
+	specIDToken = regexp.MustCompile(`SPEC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*`)
 )
 
 // CountAuditRounds computes the round count of specID from the given report
@@ -94,14 +100,17 @@ func CountAuditRounds(specID string, reportDirs []string) (RoundEvidence, error)
 			}
 			path := filepath.Join(dir, name)
 			// A convention-family file belongs to the SPEC named in its
-			// report header (REQ-ACE-001); the legacy family names the SPEC
-			// in its file name.
+			// report header (REQ-ACE-001), compared exactly on the FIRST
+			// SPEC identifier in the body — the header's attribution. A
+			// foreign SPEC's report that merely mentions the target in prose
+			// is not its round (card-review F5); the legacy family names the
+			// SPEC in its file name.
 			if convention {
 				data, rerr := os.ReadFile(path)
 				if rerr != nil {
 					return ev, fmt.Errorf("read plan-audit evidence %s: %w", path, rerr)
 				}
-				if !bytes.Contains(data, []byte(specID)) {
+				if head := specIDToken.Find(data); head == nil || string(head) != specID {
 					continue
 				}
 			}
@@ -165,9 +174,12 @@ func RoundReportDirs(projectRoot, specID, cardID string) []string {
 	return dirs
 }
 
-// cardDirNamesSpec reports whether dir carries a plan-audit iteration file
-// whose report header names specID.
+// cardDirNamesSpec reports whether dir carries round evidence for specID: a
+// plan-audit iteration file whose report header names the SPEC, or a legacy
+// stream file whose FILE NAME names it (card-review F6 — a legacy-only
+// directory is evidence too).
 func cardDirNamesSpec(dir, specID string) bool {
+	legacyFile := regexp.MustCompile(`^` + regexp.QuoteMeta(specID) + `-review-[0-9]+\.md$`)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return false
@@ -177,12 +189,17 @@ func cardDirNamesSpec(dir, specID string) bool {
 			continue
 		}
 		name := e.Name()
+		if legacyFile.MatchString(name) {
+			return true
+		}
 		if !conventionFile.MatchString(name) && !conventionUnnumbered.MatchString(name) {
 			continue
 		}
 		data, err := os.ReadFile(filepath.Join(dir, name))
-		if err == nil && bytes.Contains(data, []byte(specID)) {
-			return true
+		if err == nil {
+			if head := specIDToken.Find(data); head != nil && string(head) == specID {
+				return true
+			}
 		}
 	}
 	return false

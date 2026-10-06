@@ -14,6 +14,7 @@ package runtime
 // Refusal Record and the machine-local audit trail (REQ-ACE-007/012).
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -79,7 +80,10 @@ var (
 func EvaluateCeiling(in CeilingInput, fields auditverdict.Fields, hashOK bool, required []string) (*CeilingOutcome, bool, error) {
 	tier := auditverdict.SpecTier(in.SpecDir)
 	threshold := auditverdict.PlanThreshold(in.SpecDir)
-	tierCeiling, deltaRounds, policyNamed := loadCeilings(in.ProjectRoot, tier)
+	tierCeiling, deltaRounds, policyNamed, cfgErr := loadCeilings(in.ProjectRoot, tier)
+	if cfgErr != nil {
+		return nil, false, cfgErr
+	}
 
 	ev, err := CountAuditRounds(in.SpecID, RoundReportDirs(in.ProjectRoot, in.SpecID, in.CardID))
 	if err != nil {
@@ -178,11 +182,13 @@ func EvaluateCeiling(in CeilingInput, fields auditverdict.Fields, hashOK bool, r
 }
 
 // loadCeilings reads the SPEC's tier ceiling and the delta-round count from
-// the tree's harness config. An absent or unreadable config reads
-// fail-closed: the template default ceiling, zero delta rounds, and
-// policyNamed false — an unnamed policy never earns a granted delta round,
-// so every ceiling hit is a final hit (REQ-ACE-002's fail-closed core).
-func loadCeilings(projectRoot, tier string) (tierCeiling int, deltaRounds int, policyNamed bool) {
+// the tree's harness config. A genuinely ABSENT config reads fail-closed on
+// the template defaults (the same posture the loader's absence path takes);
+// a config that exists but cannot be read, parsed, or validated — an invalid
+// on_final_hit included — is an ERROR the seam refuses on, never a silent
+// fallback to the defaults (card-review F1: a policy name the CLI cannot
+// enforce must not be swallowed).
+func loadCeilings(projectRoot, tier string) (tierCeiling int, deltaRounds int, policyNamed bool, err error) {
 	def := config.PlanAuditTierCeilingsConfig{}.Defaults()
 	tierCeiling = def.L
 	switch tier {
@@ -193,7 +199,10 @@ func loadCeilings(projectRoot, tier string) (tierCeiling int, deltaRounds int, p
 	}
 	cfg, err := config.LoadHarnessConfig(filepath.Join(projectRoot, ".moai", "config", "sections", "harness.yaml"))
 	if err != nil {
-		return tierCeiling, 0, false
+		if errors.Is(err, config.ErrConfigNotFound) {
+			return tierCeiling, 0, false, nil
+		}
+		return 0, 0, false, fmt.Errorf("read harness config: %w", err)
 	}
 	switch tier {
 	case "S":
@@ -214,9 +223,9 @@ func loadCeilings(projectRoot, tier string) (tierCeiling int, deltaRounds int, p
 	}
 	policyNamed = cfg.PlanAuditCeilingPolicy.OnFinalHit == "hold-and-split"
 	if !policyNamed {
-		return tierCeiling, 0, false // an unnamed policy: no delta round is granted
+		return tierCeiling, 0, false, nil // an unnamed policy: no delta round is granted
 	}
-	return tierCeiling, deltaRounds, true
+	return tierCeiling, deltaRounds, true, nil
 }
 
 func policyNote(named bool) string {
@@ -250,52 +259,82 @@ func deltaMarkers(latestRaw []byte) (anchors []string, stop bool) {
 	return anchors, stop
 }
 
-// previousAuditedSHA returns the audited SHA of the second-highest iteration
-// in the evidence, "" when no prior iteration exists.
+// previousAuditedSHA returns the audited SHA of the previous round — the
+// largest iteration strictly below the latest, deduped across both families
+// and including the legacy stream (card-review F4), "" when no prior round
+// exists.
 func previousAuditedSHA(in CeilingInput, ev RoundEvidence) string {
 	if ev.LatestPath == "" {
 		return ""
 	}
+	latestN := iterationOf(filepath.Base(ev.LatestPath), in.SpecID)
+	if latestN <= 0 {
+		return ""
+	}
+	legacyFile := regexp.MustCompile(`^` + regexp.QuoteMeta(in.SpecID) + `-review-([0-9]+)\.md$`)
 	best := -1
-	second := ""
+	prev := ""
 	for _, src := range ev.Sources {
 		if src == ev.LatestPath {
 			continue
 		}
 		name := filepath.Base(src)
-		m := conventionFile.FindStringSubmatch(name)
-		if m == nil {
-			continue
-		}
-		n := 1
-		if m[1] != "" {
-			if v, perr := strconv.Atoi(m[1]); perr == nil {
-				n = v
+		n := iterationOf(name, in.SpecID)
+		if n <= 0 {
+			if m := legacyFile.FindStringSubmatch(name); m != nil {
+				if v, perr := strconv.Atoi(m[1]); perr == nil {
+					n = v
+				}
 			}
+		}
+		if n <= 0 || n >= latestN {
+			continue
 		}
 		if n > best {
 			best = n
-			second = src
+			prev = src
 		}
 	}
-	if second == "" {
+	if prev == "" {
 		return ""
 	}
-	return auditedSHAOf(second)
+	return auditedSHAOf(prev)
 }
 
-// diffInsideAnchors reports whether every path git names between the two
-// audited SHAs stays inside the fix_scope anchor files, progress.md, or the
-// report tree (the prose policy's own composition, D6). A git failure is
-// fail-closed: the delta is not verified.
+// iterationOf returns the iteration number a convention-family file name
+// carries (1 for the bare plan-audit.md shape), 0 when the name is not a
+// convention shape.
+func iterationOf(name, _ string) int {
+	m := conventionFile.FindStringSubmatch(name)
+	if m == nil {
+		return 0
+	}
+	if m[1] == "" {
+		return 1
+	}
+	if v, err := strconv.Atoi(m[1]); err == nil {
+		return v
+	}
+	return 0
+}
+
+// diffInsideAnchors reports whether every change git names between the two
+// audited SHAs stays inside the fix_scope anchors — the anchor's #token is
+// load-bearing: a hunk in an anchored file verifies only when its context
+// references one of that file's anchors (card-review F3 — a filename-only
+// check admitted out-of-anchor edits), while edits to progress.md and the
+// report tree stay always-allowed (the prose policy's own composition, D6).
+// A git failure is fail-closed: the delta is not verified.
 func diffInsideAnchors(projectRoot, fromSHA, toSHA string, anchors []string) bool {
 	if len(anchors) == 0 {
 		return false
 	}
-	anchorFiles := map[string]bool{}
+	// anchorTokens maps a changed file to the anchor tokens scoped to it.
+	anchorTokens := map[string][]string{}
 	for _, a := range anchors {
-		file, _, _ := strings.Cut(a, "#")
-		anchorFiles[strings.TrimSpace(file)] = true
+		file, token, _ := strings.Cut(a, "#")
+		file = strings.TrimSpace(file)
+		anchorTokens[file] = append(anchorTokens[file], strings.TrimSpace(token))
 	}
 	out, err := auditreceipt.RunScrubbedGit(projectRoot, "diff", "--name-only", fromSHA+".."+toSHA)
 	if err != nil {
@@ -309,11 +348,62 @@ func diffInsideAnchors(projectRoot, fromSHA, toSHA string, anchors []string) boo
 		if p == "progress.md" || strings.HasSuffix(p, "/progress.md") || strings.HasPrefix(p, ".moai/reports/") {
 			continue
 		}
-		if !anchorFiles[p] {
+		tokens, anchored := anchorTokens[p]
+		if !anchored {
 			return false
+		}
+		hunks, herr := diffHunkBodies(projectRoot, fromSHA, toSHA, p)
+		if herr != nil || len(hunks) == 0 {
+			return false
+		}
+		for _, hunk := range hunks {
+			matched := false
+			for _, tok := range tokens {
+				if tok != "" && strings.Contains(hunk, tok) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				return false
+			}
 		}
 	}
 	return true
+}
+
+// diffHunkBodies returns the text of each diff hunk for one file between two
+// SHAs. The @@ hunk header line is EXCLUDED from the body: git appends the
+// nearest enclosing funcname line after the @@ range, and that heuristic can
+// carry an anchor-section line from far outside the hunk (observed: a tail-
+// section edit whose @@ header read "REQ-ACE-001 detail") — only the hunk's
+// own context and changed lines decide (card-review F3). A git failure is an
+// error — the caller treats it as fail-closed.
+func diffHunkBodies(projectRoot, fromSHA, toSHA, path string) ([]string, error) {
+	out, err := auditreceipt.RunScrubbedGit(projectRoot, "diff", "-U3", fromSHA+".."+toSHA, "--", path)
+	if err != nil {
+		return nil, err
+	}
+	var hunks []string
+	cur := ""
+	inHunk := false
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "@@") {
+			if inHunk && cur != "" {
+				hunks = append(hunks, cur)
+			}
+			cur = ""      // the @@ header and its trailing funcname context do not count
+			inHunk = true // the diff preamble ("--- a/...") must not become a hunk
+			continue
+		}
+		if inHunk {
+			cur += line + "\n"
+		}
+	}
+	if inHunk && cur != "" {
+		hunks = append(hunks, cur)
+	}
+	return hunks, nil
 }
 
 // reqACSetsUnchanged reports whether the REQ/AC id set of the SPEC's spec.md
@@ -399,6 +489,24 @@ func appendProgressRecord(specDir, line string) error {
 	}
 	content += line + "\n"
 	return os.WriteFile(path, []byte(content), 0o644)
+}
+
+// RecordRequiredBackendRefusal persists a required-backend refusal
+// (REQ-ACE-009/010) to the SPEC's progress.md §G record and the audit trail
+// — the durable carrier REQ-ACE-007/012 requires for EVERY required-backend
+// refusal, including the below-ceiling ones the ceiling ladder never sees
+// (card-review F7). Recording is best-effort (the same stderr-warning
+// posture persistOutcome takes): a record-write failure never changes the
+// refusal the seam already returned.
+func RecordRequiredBackendRefusal(in CeilingInput, reason string) {
+	line := fmt.Sprintf("- %s %s required-backend-refusal outcome=refused reasons=%q",
+		time.Now().UTC().Format(time.RFC3339), in.SpecID, reason)
+	if err := appendProgressRecord(in.SpecDir, line); err != nil {
+		fmt.Fprintf(os.Stderr, "[audit-ceiling] warning: progress.md §G record: %v\n", err)
+	}
+	if err := appendAuditTrail(in, "required-backend-refusal", "refused", reason); err != nil {
+		fmt.Fprintf(os.Stderr, "[audit-ceiling] warning: audit trail: %v\n", err)
+	}
 }
 
 // appendAuditTrail appends one machine-local trail line to
