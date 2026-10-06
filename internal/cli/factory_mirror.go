@@ -54,7 +54,10 @@ func writeFactoryAssignment(ctx context.Context, root string, store *factory.Bac
 		_, err = db.Transition(ctx, homestate.TransitionRequest{RunID: runID, CardID: cardID, To: homestate.CardAssigned, ExpectedVersion: card.Version, Actor: "dispatch", Owner: lane, Now: now})
 		return err
 	case card.State == homestate.CardAssigned && card.OwnerLabel == lane:
-		return nil
+		// Idempotent re-assign (review round-4 P1-2): success without a T2
+		// still records THIS run as the current dispatch, which is also the
+		// recovery path for pre-binding rows at assigned-or-later.
+		return db.RecordDispatchBinding(ctx, cardID, runID, now)
 	default:
 		return fmt.Errorf("factory record for %s is %s (owner %q), not assignable to %s", cardID, card.State, card.OwnerLabel, lane)
 	}

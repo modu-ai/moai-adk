@@ -224,7 +224,7 @@ func recordedCardRow(ctx context.Context, q queryRowerEx, cardID string) (Card, 
 		if rows == 0 {
 			return Card{}, false, nil
 		}
-		return Card{}, false, fmt.Errorf("%w: card %s has factory rows but no recorded dispatch binding — re-record it with `factory assign %s --run <run>` (review round-4, SPEC-FACTORY-COMPLETION-RECOVERY-001)", ErrApprovalRunUnresolvable, cardID, cardID)
+		return Card{}, false, fmt.Errorf("%w: card %s has factory rows but no recorded dispatch binding — recover it with `factory assign %s --run <run> --to <owner>` (review round-4, SPEC-FACTORY-COMPLETION-RECOVERY-001)", ErrApprovalRunUnresolvable, cardID, cardID)
 	}
 	if err != nil {
 		return Card{}, false, err
@@ -237,6 +237,56 @@ func recordedCardRow(ctx context.Context, q queryRowerEx, cardID string) (Card, 
 		return Card{}, false, err
 	}
 	return row, true, nil
+}
+
+// ensureRunRowTx inserts the run row when missing so a bound card is never
+// stranded without the metadata its dispatch names.
+func ensureRunRowTx(ctx context.Context, tx *sql.Tx, runID, nowText string) error {
+	// SQL: 'active' is the runs table's status literal
+	// (factory_run_retire.go classifies on the same literal).
+	_, err := tx.ExecContext(ctx, `INSERT INTO runs(run_id,status,manifest_json,created_at,updated_at) VALUES(?,'active','{}',?,?) ON CONFLICT(run_id) DO NOTHING`,
+		runID, nowText, nowText)
+	return err
+}
+
+// upsertDispatchBindingTx records cardID -> runID as the card's current
+// factory engagement inside the caller's transaction.
+func upsertDispatchBindingTx(ctx context.Context, tx *sql.Tx, cardID, runID, nowText string) error {
+	_, err := tx.ExecContext(ctx, `INSERT INTO card_dispatch(card_id,run_id,recorded_at) VALUES(?,?,?) ON CONFLICT(card_id) DO UPDATE SET run_id=excluded.run_id,recorded_at=excluded.recorded_at`,
+		cardID, runID, nowText)
+	return err
+}
+
+// RecordDispatchBinding records the card's dispatch binding — THIS run is
+// the card's current factory engagement — and ensures the named run row in
+// one transaction. Assignment callers invoke it when an assignment succeeds
+// without the T2 transition (the idempotent same-lane re-assign), so the
+// binding follows every successful assignment path and provides the
+// documented recovery for pre-binding rows at assigned-or-later states
+// (review round-4 P1-1/P1-2).
+func (f *FactoryDB) RecordDispatchBinding(ctx context.Context, cardID, runID string, now time.Time) error {
+	cardID, runID = strings.TrimSpace(cardID), strings.TrimSpace(runID)
+	if cardID == "" || runID == "" {
+		return fmt.Errorf("%w: card id and run id are required", ErrInvalidCardInput)
+	}
+	if now.IsZero() {
+		now = time.Now()
+	}
+	nowText := now.UTC().Format(time.RFC3339Nano)
+	return retryFactoryBusy(ctx, func() error {
+		tx, err := f.DB.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = tx.Rollback() }()
+		if err := ensureRunRowTx(ctx, tx, runID, nowText); err != nil {
+			return err
+		}
+		if err := upsertDispatchBindingTx(ctx, tx, cardID, runID, nowText); err != nil {
+			return err
+		}
+		return tx.Commit()
+	})
 }
 
 // VerifyApprovalReadonly is the scan-time counterpart of the gate: the same

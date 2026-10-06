@@ -455,12 +455,10 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		// this one edge, so no assignment path can leave it behind. The run
 		// row is ensured here too (review P2-2): an assigned card is never
 		// stranded without the metadata its binding names.
-		if _, err := tx.ExecContext(ctx, `INSERT INTO runs(run_id,status,manifest_json,created_at,updated_at) VALUES(?,'active','{}',?,?) ON CONFLICT(run_id) DO NOTHING`,
-			cur.RunID, nowText, nowText); err != nil {
+		if err := ensureRunRowTx(ctx, tx, cur.RunID, nowText); err != nil {
 			return plan, err
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO card_dispatch(card_id,run_id,recorded_at) VALUES(?,?,?) ON CONFLICT(card_id) DO UPDATE SET run_id=excluded.run_id,recorded_at=excluded.recorded_at`,
-			cur.CardID, cur.RunID, nowText); err != nil {
+		if err := upsertDispatchBindingTx(ctx, tx, cur.CardID, cur.RunID, nowText); err != nil {
 			return plan, err
 		}
 		plan.next.OwnerLabel = owner

@@ -111,6 +111,102 @@ func TestFactoryAssignUpdatesDispatchBinding(t *testing.T) {
 	}
 }
 
+// Regression pin for round-4 review P1-1/P1-2 (card t1538): all four
+// assignment shapes keep the dispatch binding aligned — new-row assignment,
+// reassignment into an existing target row, idempotent same-lane re-assign
+// over a stale binding, and legacy-row recovery at assigned+. The shapes
+// drive the dispatch mirror directly, the same writer every dispatch path
+// shares.
+func TestDispatchBindingCoversAssignmentShapes(t *testing.T) {
+	root, store := fcFixture(t)
+	assign := func(card, run, lane string) error {
+		return writeFactoryAssignment(context.Background(), root, store, run, card, lane)
+	}
+	pick := func(card string) {
+		if err := store.Mutate(func(r *factory.BacklogRecord) error {
+			for i := range r.Items {
+				if r.Items[i].ID == card {
+					r.Items[i].State = factory.BacklogStatePicked
+				}
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	bindingRun := func(card string) string {
+		db := fcOpen(t, root)
+		defer func() { _ = db.Close() }()
+		row, linked, err := db.RecordedCardRowReadonly(context.Background(), card)
+		if err != nil || !linked {
+			t.Fatalf("%s binding: linked=%v err=%v, want linked", card, linked, err)
+		}
+		return row.RunID
+	}
+
+	// Shape 1 — new-row assignment records the binding.
+	shapeNew := addShapeCard(t, "shape new row")
+	pick(shapeNew)
+	if err := assign(shapeNew, "run-old", "worker-1"); err != nil {
+		t.Fatalf("new-row assign: %v", err)
+	}
+	if got := bindingRun(shapeNew); got != "run-old" {
+		t.Fatalf("new-row binding = %s, want run-old", got)
+	}
+
+	// Shape 3 — idempotent same-lane re-assign repairs a stale binding.
+	fcBindDispatch(t, root, shapeNew, "run-stale")
+	if err := assign(shapeNew, "run-old", "worker-1"); err != nil {
+		t.Fatalf("idempotent assign: %v", err)
+	}
+	if got := bindingRun(shapeNew); got != "run-old" {
+		t.Fatalf("idempotent binding = %s, want run-old", got)
+	}
+
+	// Shape 4 — legacy row at assigned+ with no binding recovers through
+	// the idempotent path, then completes with a matching receipt.
+	shapeLegacy := addShapeCard(t, "shape legacy recovery")
+	fcPlace(t, root, homestate.Card{CardID: shapeLegacy, RunID: "run-old", State: homestate.CardAssigned, OwnerLabel: "worker-1", Version: 1, UpdatedAt: "2026-09-26T01:00:00Z"})
+	pick(shapeLegacy)
+	if err := assign(shapeLegacy, "run-old", "worker-1"); err != nil {
+		t.Fatalf("legacy recovery assign: %v", err)
+	}
+	if got := bindingRun(shapeLegacy); got != "run-old" {
+		t.Fatalf("legacy binding = %s, want run-old", got)
+	}
+	if _, _, err := runFactory(t, "approve", shapeLegacy, "--run", "run-old", "--issuer", "lead"); err != nil {
+		t.Fatalf("approve legacy row: %v", err)
+	}
+	if _, _, err := runTodo(t, "done", shapeLegacy); err != nil {
+		t.Fatalf("legacy recovery done: %v", err)
+	}
+
+	// Shape 2 — reassignment into an existing target row moves the binding.
+	shapeExisting := addShapeCard(t, "shape existing target")
+	pick(shapeExisting)
+	fcPlace(t, root, homestate.Card{CardID: shapeExisting, RunID: fcRun, State: homestate.CardPicked, OwnerLabel: "worker-2", Version: 1})
+	if err := assign(shapeExisting, fcRun, "worker-2"); err != nil {
+		t.Fatalf("existing-target assign: %v", err)
+	}
+	if got := bindingRun(shapeExisting); got != fcRun {
+		t.Fatalf("existing-target binding = %s, want %s", got, fcRun)
+	}
+}
+
+// addShapeCard adds one queue card and returns its generated id.
+func addShapeCard(t *testing.T, text string) string {
+	t.Helper()
+	out, _, err := runTodo(t, "add", text)
+	if err != nil {
+		t.Fatalf("todo add: %v", err)
+	}
+	id, _, ok := strings.Cut(strings.TrimSpace(out), " ")
+	if !ok {
+		t.Fatalf("add output %q lacks an id", out)
+	}
+	return id
+}
+
 // fcBindDispatch records the card's dispatch binding — the current-run
 // authority the completion gate and scan resolve through. Idempotent.
 func fcBindDispatch(t *testing.T, root, cardID, runID string) {
