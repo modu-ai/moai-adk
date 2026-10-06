@@ -45,6 +45,11 @@ make_mock_gh() {
     cat > "$mock_script" << SCRIPT
 #!/bin/sh
 # Mock gh for test scenario: $scenario
+# GATE-6: the watch resolves the PR base branch first — serve main.
+if [ "\$1" = "pr" ] && [ "\$2" = "view" ]; then
+    printf '%s\n' 'main'
+    exit 0
+fi
 if [ "\$1" = "pr" ] && [ "\$2" = "checks" ]; then
     cat "$MOCK_DIR/checks_${scenario}.json"
     exit 0
@@ -289,6 +294,11 @@ make_mock_gh_strict() {
     cat > "$mock_script" << SCRIPT
 #!/bin/sh
 # argv: gh pr checks <PR_NUMBER> --json <fields> — \$3 is the PR number.
+# GATE-6: the watch resolves the PR base branch first — serve main.
+if [ "\$1" = "pr" ] && [ "\$2" = "view" ]; then
+    printf '%s\n' 'main'
+    exit 0
+fi
 if [ "\$1" = "pr" ] && [ "\$2" = "checks" ] && [ "\$4" = "--json" ] && [ "\$5" = "name,state,bucket,link" ]; then
     cat "$MOCK_DIR/$fixture"
     exit 0

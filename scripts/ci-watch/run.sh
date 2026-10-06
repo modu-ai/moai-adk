@@ -42,7 +42,6 @@ POLL_INTERVAL="${CIWATCH_POLL_INTERVAL:-30}"
 # base branch from gh for the SSoT lookup; the handoff keeps reporting the
 # HEAD branch. (GH/POLL must be initialized BEFORE this block — the gate
 # caught $GH used-when-unset here.)
-SSOT_BRANCH="$BRANCH"
 # GATE-5 P1: a failing `pr view` must NOT fall back silently to the head
 # branch — head branches (feature/*, WT-*) are not SSoT keys, the required
 # list comes back EMPTY, and an empty required list scores "all required
@@ -54,10 +53,6 @@ if [ -z "$PR_BASE" ]; then
 fi
 if [ -z "$PR_BASE" ]; then
     abort "cannot resolve PR #${PR_NUMBER} base branch after retry — refusing to watch with a guessed SSoT key (an empty required list scores all-passed)" 1
-fi
-if [ "$PR_BASE" != "$BRANCH" ]; then
-    SSOT_BRANCH="$PR_BASE"
-    log_step "PR base branch '${PR_BASE}' differs from head '${BRANCH}' — classifying against SSoT key '${SSOT_BRANCH}'"
 fi
 
 # Verify gh is available.
@@ -78,6 +73,28 @@ if [ -n "${MOAI_CIWATCH_REQUIRED_CHECKS_FILE:-}" ]; then
 fi
 if [ ! -f "$REQUIRED_CHECKS_FILE" ]; then
     abort "required-checks.yml not found at $REQUIRED_CHECKS_FILE" 1
+fi
+
+# GATE-6 P1: verify the base-branch KEY in the SSoT BEFORE watching — the
+# loader still prints a newline for an unknown key, so a file-size check on
+# the loaded list passes and the required list reads empty, which scores
+# all-passed with every failure advisory (gate repro: base=develop +
+# Lint=fail surfaced exit 0). A release/* base resolves to the release/*
+# SSoT pattern key.
+SSOT_BRANCH=""
+grep -qF "  $PR_BASE:" "$REQUIRED_CHECKS_FILE" && SSOT_BRANCH="$PR_BASE"
+if [ -z "$SSOT_BRANCH" ]; then
+    case "$PR_BASE" in
+        release/*)
+            grep -qF "  release/*:" "$REQUIRED_CHECKS_FILE" && SSOT_BRANCH="release/*"
+            ;;
+    esac
+fi
+if [ -z "$SSOT_BRANCH" ]; then
+    abort "required-checks SSoT has no key for base branch '${PR_BASE}' — refusing to watch an unkeyed base (an empty required list scores all-passed)" 1
+fi
+if [ "$PR_BASE" != "$BRANCH" ]; then
+    log_step "PR base branch '${PR_BASE}' differs from head '${BRANCH}' — classifying against SSoT key '${SSOT_BRANCH}'"
 fi
 
 # ─── start timer ──────────────────────────────────────────────────────────────
@@ -198,14 +215,10 @@ while true; do
     fi
 
     _load_required_contexts "$SSOT_BRANCH" > "$TMP_SSOT"
-    # GATE-5 P1 (second face): a MISSING branch key would also read as an
-    # empty required list and score exit 0 with every failure advisory. An
-    # EMPTY contexts list is still legal (release/* per decision-index
-    # Q1) — distinguish by key presence in the SSoT file (unquoted
-    # indent-2 key + colon).
-    if [ ! -s "$TMP_SSOT" ] && ! grep -qF "  $SSOT_BRANCH:" "$REQUIRED_CHECKS_FILE"; then
-        abort "required-checks SSoT has no branch key '${SSOT_BRANCH}' — refusing to score an empty required list as all-passed" 1
-    fi
+    # GATE-6 P1: key presence is verified ONCE before the loop (above) —
+    # the loader prints a bare newline for an unknown key, so a file-size
+    # check here passed an empty required list; release/* bases are
+    # resolved to the release/* pattern key there too.
 
     # Classify SSoT required checks. t1534 M3: iterate the SSoT list
     # newline-safely (the pre-M3 loop word-split $(_all_check_names),

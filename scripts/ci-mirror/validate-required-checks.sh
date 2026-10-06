@@ -110,20 +110,63 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 				}
 			}
 			if (excluded) continue
+			# GATE-6: include tuples whose in-matrix keys all match this
+			# combination MERGE into it — GitHub adds their out-of-matrix
+			# key:value pairs to the combination and never overwrites
+			# original values. A merged tuple stops emitting standalone.
+			# (Runs AFTER the exclude check: excluded combinations no longer
+			# exist for include to merge into.)
+			en = 0
+			for (t = 1; t <= inc_n; t++) {
+				if (merged[t]) continue
+				allmatch = 1
+				for (pk in incval) {
+					split(pk, pr2, SUBSEP)
+					if (pr2[1] + 0 != t) continue
+					d2 = -1
+					for (dd = 1; dd <= nk; dd++)
+						if (dims[dd] == pr2[2]) { d2 = dd; break }
+					if (d2 > 0 && svals[d2] != incval[pk]) { allmatch = 0; break }
+				}
+				if (!allmatch) continue
+				for (pk in incval) {
+					split(pk, pr2, SUBSEP)
+					if (pr2[1] + 0 != t) continue
+					indim = 0
+					for (dd = 1; dd <= nk; dd++)
+						if (dims[dd] == pr2[2]) { indim = 1; break }
+					if (indim) continue
+					en++
+					ek[en] = pr2[2]
+					ev[en] = incval[pk]
+				}
+				merged[t] = 1
+			}
 			# P2-B: the bare-name suffix applies ONLY when the job HAS a
 			# matrix but its name never carried a ${{ matrix.* }} expression
 			# (CodeQL `Analyze (Go)` + language: [go] → `Analyze (Go) (go)`).
 			# P2-Q: the suffix is PER-COMBINATION — each emitted context keeps
 			# its own tuple of matrix values (first[i]-only dropped valid
 			# combinations like `Test (windows-latest)` on the floor).
+			# GATE-6: apply merged include values — out-of-matrix keys fill
+			# their ${{ matrix.* }} expressions and extend the suffix.
+			outl = lines[j]
+			for (q = 1; q <= en; q++)
+				gsub("\\$\\{\\{ matrix\\." ek[q] " }}", ev[q], outl)
+			sfx2 = sufs[j]
+			for (q = 1; q <= en; q++)
+				sfx2 = (sfx2 == "") ? ev[q] : sfx2 " " ev[q]
 			if (nk > 0 && !had_ref) {
-				print lines[j] " (" sufs[j] ")"
+				print outl " (" sfx2 ")"
 			} else {
-				print lines[j]
+				print outl
 			}
 		}
 		}
 		for (t = 1; t <= inc_n; t++) {
+			# GATE-6: a tuple that merged into a product combination does
+			# not ALSO emit as a standalone combination.
+			if (merged[t]) continue
 			# GATE-5: exclude does NOT apply to include tuples — GitHub
 			# processes exclude BEFORE include, so an include tuple can
 			# RE-ADD a combination the exclude removed; the round-4
@@ -168,10 +211,10 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		has_name = 0
 	}
 	function reset_job_mem() {
-		nk = 0; inc_n = 0; had_ref = 0; ex_n = 0; mmode = "inc"
-		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord
+		nk = 0; inc_n = 0; had_ref = 0; ex_n = 0; mmode = "inc"; bdim_key = ""
+		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord; delete merged
 	}
-	BEGIN { in_jobs = 0; has_name = 0; nk = 0; inc_n = 0; in_steps = 0; in_strategy = 0; in_matrix = 0; mmode = "inc"; ex_n = 0 }
+	BEGIN { in_jobs = 0; has_name = 0; nk = 0; inc_n = 0; in_steps = 0; in_strategy = 0; in_matrix = 0; mmode = "inc"; ex_n = 0; bdim_key = "" }
 	{
 		ind = 0
 		while (substr($0, ind + 1, 1) == " ") ind++
@@ -192,10 +235,20 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	ind == 2 && $0 !~ /^[[:space:]]*$/ {
 		if (has_name) emit()
 		reset_job_mem()
+		# GATE-6: the job ID is the DEFAULT name — `name:` is optional in
+		# GitHub workflows and a nameless job publishes its ID as the
+		# check name. A later name: line overwrites this.
+		jid = $0
+		sub(/^[[:space:]]*/, "", jid)
+		sub(/:.*/, "", jid)
+		gsub(/^["\047]|["\047]$/, "", jid)
+		name = jid
+		has_name = 1
+		had_ref = 0
 		in_steps = 0; in_strategy = 0; in_matrix = 0
 		next
 	}
-	ind == 4 && $0 ~ /^[[:space:]]*name:/ && !has_name {
+	ind == 4 && $0 ~ /^[[:space:]]*name:/ {
 		name = $0
 		sub(/^[[:space:]]*name:[[:space:]]*/, "", name)
 		# GATE-5: strip BOTH quote styles — a single-quoted name (Lint in
@@ -215,9 +268,19 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	# GATE-4 P2: `include:` / `exclude:` section markers under matrix: set the
 	# tuple mode — without this an exclude entry was parsed as an include
 	# tuple and the excluded combination stayed in the publishable set.
-	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*include:/ { mmode = "inc"; next }
-	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*exclude:/ { mmode = "excl"; next }
+	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*include:/ { mmode = "inc"; bdim_key = ""; next }
+	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*exclude:/ { mmode = "excl"; bdim_key = ""; next }
+	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*[A-Za-z_][A-Za-z_0-9]*:[[:space:]]*$/ {
+		# GATE-6: block-form array — `os:` with the values as `- ` items
+		# below (the same YAML meaning as the flow form `os: [a, b]`;
+		# pre-fix only the flow form parsed and the block form judged
+		# valid contexts phantom).
+		line = $0; sub(/^[[:space:]]*/, "", line); sub(/:[[:space:]]*$/, "", line)
+		bdim_key = line
+		next
+	}
 	in_matrix && ind == 8 && $0 ~ /^[[:space:]]*[A-Za-z_][A-Za-z_0-9]*:[[:space:]]*\[/ {
+		bdim_key = ""
 		line = $0; sub(/^[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
 		v = line; sub(/^[^[]*\[/, "", v); sub(/\][[:space:]]*$/, "", v)
@@ -232,6 +295,16 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		line = $0; sub(/^[[:space:]]*-[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
 		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^["\047]|["\047]$/, "", v)
+		is_pair = (line ~ /:/)
+		if (bdim_key != "" && !is_pair) {
+			# GATE-6: block-form dim item — a bare value appended to the
+			# dim declared by the `key:` line above.
+			gsub(/[[:space:]]/, "", line); gsub(/["\047]/, "", line)
+			if (!(bdim_key in mvals)) { nk++; dims[nk] = bdim_key; mvals[bdim_key] = "" }
+			if (mvals[bdim_key] == "") mvals[bdim_key] = line
+			else mvals[bdim_key] = mvals[bdim_key] " " line
+			next
+		}
 		if (mmode == "excl") { ex_n++; exval[ex_n, k] = v }
 		else {
 			# record the tuple key order — the bare-name suffix
@@ -259,7 +332,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		incord[inc_n, ikt[inc_n]] = k
 		next
 	}
-	in_matrix && ind <= 6 && $0 !~ /^[[:space:]]*$/ { in_matrix = 0 }
+	in_matrix && ind <= 6 && $0 !~ /^[[:space:]]*$/ { in_matrix = 0; bdim_key = "" }
 	END { if (has_name) emit() }
 	' "$wf" >> "$published"
 done
