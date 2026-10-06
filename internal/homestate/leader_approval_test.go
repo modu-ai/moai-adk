@@ -196,10 +196,20 @@ func TestFR_FCR_T18DoneRequiresReceipt(t *testing.T) {
 	ctx := context.Background()
 	c := Card{RunID: frRun, CardID: "noreceipt", State: CardMergedLocal, Version: 1, OwnerLabel: "worker-1", WorktreePath: bare.Dir, MergeSHA: bare.Merge, EvidenceSHA: bare.Commit}
 	frPlace(t, db, c)
-	req := TransitionRequest{RunID: frRun, CardID: c.CardID, To: CardDone, ExpectedVersion: c.Version, Actor: "lead", Decider: DeciderHuman, Now: frNow}
+	req := TransitionRequest{RunID: frRun, CardID: c.CardID, To: CardDone, ExpectedVersion: c.Version, Actor: "lead", Decider: DeciderHuman, Now: frNow, ApprovalUUID: "uuid-nr"}
 	before := frRowDump(t, db, frRun, c.CardID)
 	if _, err := db.Transition(ctx, req); !errors.Is(err, ErrApprovalMissing) {
 		t.Fatalf("done without receipt err = %v, want ErrApprovalMissing", err)
+	}
+	// A different card's uuid is refused even when a receipt exists for
+	// this (run, card) pair under another identity (review round-6 P1-2).
+	frApprove(t, db, LeaderApproval{
+		CardUUID: "uuid-other", RunID: frRun, CardID: c.CardID, FactoryVersion: 1,
+		EvidenceHash: bare.Commit, Issuer: "lead", IssuerRole: ApprovalIssuerLeader,
+		IssuedAt: "2026-09-26T08:00:00Z",
+	})
+	if _, err := db.Transition(ctx, TransitionRequest{RunID: frRun, CardID: c.CardID, To: CardDone, ExpectedVersion: c.Version, Actor: "lead", Decider: DeciderHuman, Now: frNow, ApprovalUUID: "uuid-nr"}); !errors.Is(err, ErrApprovalCardMismatch) {
+		t.Fatalf("cross-uuid receipt err = %v, want ErrApprovalCardMismatch", err)
 	}
 	if after := frRowDump(t, db, frRun, c.CardID); after != before {
 		t.Fatal("refused done changed the record")
@@ -223,7 +233,7 @@ func TestFR_FCR_T18DoneRequiresReceipt(t *testing.T) {
 		CardUUID: "uuid-st", RunID: frRun, CardID: "stale", FactoryVersion: 1,
 		EvidenceHash: bare.Commit, Issuer: "lead", IssuerRole: ApprovalIssuerLeader,
 	})
-	req2 := TransitionRequest{RunID: frRun, CardID: "stale", To: CardDone, ExpectedVersion: 2, Actor: "lead", Decider: DeciderHuman, Now: frNow}
+	req2 := TransitionRequest{RunID: frRun, CardID: "stale", To: CardDone, ExpectedVersion: 2, Actor: "lead", Decider: DeciderHuman, Now: frNow, ApprovalUUID: "uuid-st"}
 	if _, err := db.Transition(ctx, req2); !errors.Is(err, ErrApprovalStale) {
 		t.Fatalf("done with stale receipt err = %v, want ErrApprovalStale", err)
 	}
@@ -240,13 +250,22 @@ func TestFR_FCR_T20DoneRequiresReceipt(t *testing.T) {
 	c := frFixtureCard(repo, "t20", CardCIGreen, CardDone)
 	c.Version = 1
 	frPlace(t, db, c)
-	req := TransitionRequest{RunID: frRun, CardID: c.CardID, To: CardDone, ExpectedVersion: c.Version, Actor: "lead", Decider: DeciderHuman, Now: frNow}
+	req := TransitionRequest{RunID: frRun, CardID: c.CardID, To: CardDone, ExpectedVersion: c.Version, Actor: "lead", Decider: DeciderHuman, Now: frNow, ApprovalUUID: "uuid-t20"}
 	before := frRowDump(t, db, frRun, c.CardID)
 	if _, err := db.Transition(ctx, req); !errors.Is(err, ErrApprovalMissing) {
 		t.Fatalf("T20 without receipt err = %v, want ErrApprovalMissing", err)
 	}
 	if after := frRowDump(t, db, frRun, c.CardID); after != before {
 		t.Fatal("refused T20 changed the record")
+	}
+	// T20 enforces the same card-identity binding as T18 (review round-6
+	// P1-2).
+	frApprove(t, db, LeaderApproval{
+		CardUUID: "uuid-other", RunID: frRun, CardID: c.CardID, FactoryVersion: 1,
+		EvidenceHash: repo.Commit, Issuer: "lead", IssuerRole: ApprovalIssuerLeader,
+	})
+	if _, err := db.Transition(ctx, req); !errors.Is(err, ErrApprovalCardMismatch) {
+		t.Fatalf("T20 cross-uuid receipt err = %v, want ErrApprovalCardMismatch", err)
 	}
 	frApprove(t, db, LeaderApproval{
 		CardUUID: "uuid-t20", RunID: frRun, CardID: c.CardID, FactoryVersion: 1,
@@ -275,7 +294,7 @@ func TestFR_FCR_PerformerOwnerRefusedOnTransition(t *testing.T) {
 		CardUUID: "uuid-self", RunID: frRun, CardID: c.CardID, FactoryVersion: 1,
 		EvidenceHash: bare.Commit, Issuer: "worker-1", IssuerRole: ApprovalIssuerLeader,
 	})
-	req := TransitionRequest{RunID: frRun, CardID: c.CardID, To: CardDone, ExpectedVersion: c.Version, Actor: "lead", Decider: DeciderHuman, Now: frNow}
+	req := TransitionRequest{RunID: frRun, CardID: c.CardID, To: CardDone, ExpectedVersion: c.Version, Actor: "lead", Decider: DeciderHuman, Now: frNow, ApprovalUUID: "uuid-self"}
 	before := frRowDump(t, db, frRun, c.CardID)
 	if _, err := db.Transition(ctx, req); !errors.Is(err, ErrApprovalIssuer) {
 		t.Fatalf("self-issued T18 err = %v, want ErrApprovalIssuer", err)

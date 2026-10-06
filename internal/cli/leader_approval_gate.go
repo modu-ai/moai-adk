@@ -32,6 +32,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// approvalGateStat is the existence probe for the factory database; a seam
+// so tests can reproduce the racing first dispatch between the pre-read
+// and the archive-moment re-check (review round-5 P2).
+var approvalGateStat = os.Stat
+
 // backlogApprovalGate couples an open homestate.ApprovalGate with its factory
 // DB handle so a close can verify, persist under the factory write lock, and
 // then release — in that order, every time. All methods are safe on the nil
@@ -61,7 +66,7 @@ func holdDoneApprovalGate(_ context.Context, root string) (*backlogApprovalGate,
 	if err != nil {
 		return nil, fmt.Errorf("leader approval gate: %w", err)
 	}
-	if _, statErr := os.Stat(path); statErr != nil {
+	if _, statErr := approvalGateStat(path); statErr != nil {
 		if os.IsNotExist(statErr) {
 			return nil, nil
 		}

@@ -706,6 +706,47 @@ func TestRefreshDoneApprovalGateRacingFirstDispatch(t *testing.T) {
 	refreshed.release()
 }
 
+// Regression pin for round-6 review P2 (card t1538), end-to-end through the
+// done verb: the pre-read finds no factory database, a racing FIRST
+// dispatch creates it under the queue lock, and the archive-moment refresh
+// must then refuse the approval-less close instead of archiving.
+func TestDoneGateRacingFirstDispatchUnderQueueLock(t *testing.T) {
+	root, store := fcFixture(t)
+	if _, _, err := runTodo(t, "add", "racing first dispatch card"); err != nil {
+		t.Fatal(err)
+	}
+	fcLinkRuntime(t, root, "t1")
+
+	raced := false
+	prevStat := approvalGateStat
+	approvalGateStat = func(path string) (os.FileInfo, error) {
+		if !raced {
+			raced = true
+			return nil, os.ErrNotExist
+		}
+		// The racing dispatch lands between the pre-read and the refresh.
+		fcLinkRuntime(t, root, "t1")
+		fcBindDispatch(t, root, "t1", fcRun)
+		fcPlaceFactoryCard(t, root, "t1", 1, "sha-t1", "2026-09-26T00:00:00Z")
+		return prevStat(path)
+	}
+	t.Cleanup(func() { approvalGateStat = prevStat })
+
+	_, stderr, err := runTodo(t, "done", "t1")
+	if err == nil {
+		t.Fatal("done archived a card that became factory-linked mid-flight without an approval")
+	}
+	if !strings.Contains(stderr, "leader approval") {
+		t.Errorf("stderr %q does not name the leader approval reason", stderr)
+	}
+	if !fcLiveItem(t, store, "t1") {
+		t.Fatal("the racing dispatch archived the card without an approval")
+	}
+	if c := fcCard(t, root, "t1"); c.CardID != "t1" {
+		t.Fatalf("racing factory card missing: %+v", c)
+	}
+}
+
 // Regression pin for round-2 review P2-1 (card t1538): `factory approve
 // --run <run>` reads THE NAMED RUN's row — never the most recently modified
 // row of any run — and refuses a run that has no row for the card.

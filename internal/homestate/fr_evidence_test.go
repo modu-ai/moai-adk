@@ -204,7 +204,7 @@ func TestFR_AC018_PushGateStore(t *testing.T) {
 	c := Card{RunID: frRun, CardID: "push", State: CardMergedLocal, Version: 1, OwnerLabel: "worker-1", WorktreePath: repo.Dir, MergeSHA: local}
 	frPlace(t, db, c)
 	decide := func(c Card, to string) (Card, error) {
-		return db.Transition(ctx, TransitionRequest{RunID: frRun, CardID: c.CardID, To: to, ExpectedVersion: c.Version, Actor: "lead", Decider: DeciderHuman, IntegrationBranch: repo.Integration, Now: frNow})
+		return db.Transition(ctx, TransitionRequest{RunID: frRun, CardID: c.CardID, To: to, ExpectedVersion: c.Version, Actor: "lead", Decider: DeciderHuman, IntegrationBranch: repo.Integration, Now: frNow, ApprovalUUID: "uuid-" + c.CardID})
 	}
 	before := frRowDump(t, db, frRun, "push")
 	if _, err := decide(c, CardPushed); !errors.Is(err, ErrEvidence) {
@@ -231,7 +231,7 @@ func TestFR_AC018_PushGateStore(t *testing.T) {
 	// REQ-FCR-002b (SPEC-FACTORY-COMPLETION-RECOVERY-001): the no-remote edge
 	// no longer completes without the leader's receipt — the expectation the
 	// pre-M1 gate asserted ("no remote — no CI verdict" admits receipt-less
-	// done) is inverted here.
+	// done) is inverted here. decide binds the backlog uuid "uuid-noremote".
 	done, err := decide(n, CardDone)
 	if !errors.Is(err, ErrApprovalMissing) {
 		t.Fatalf("no-remote done without receipt err = %v, want ErrApprovalMissing", err)

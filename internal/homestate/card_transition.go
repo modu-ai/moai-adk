@@ -59,6 +59,12 @@ type TransitionRequest struct {
 	// transaction, right before the commit; its reading replaces QueueHold
 	// so a hold set after an earlier read still refuses.
 	QueueHoldRead func() string
+	// ApprovalUUID is the backlog card's identity (its projected card uuid)
+	// for receipt-gated done edges (T18, T20). It is identity knowledge —
+	// never a verdict — and the receipt gate compares it against the
+	// recorded approval so a receipt minted for a different card cannot
+	// complete this one (review round-6 P1-2).
+	ApprovalUUID string
 	// Now is the injected clock; zero means time.Now().
 	Now time.Time
 }
@@ -598,7 +604,7 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 			// complete without the leader's receipt — the gate runs inside
 			// this transition's transaction, so it binds the row as the
 			// transition will commit it.
-			if err := verifyTransitionApproval(ctx, tx, cur); err != nil {
+			if err := verifyTransitionApproval(ctx, tx, cur, req.ApprovalUUID); err != nil {
 				return plan, err
 			}
 			plan.note = "no remote — leader approval verified"
@@ -620,7 +626,7 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		if req.Decider != DeciderHuman {
 			return plan, fmt.Errorf("%w: F1 accepts only decider %q, got %q", ErrDecider, DeciderHuman, req.Decider)
 		}
-		if err := verifyTransitionApproval(ctx, tx, cur); err != nil {
+		if err := verifyTransitionApproval(ctx, tx, cur, req.ApprovalUUID); err != nil {
 			return plan, err
 		}
 		plan.note = "leader approval verified"

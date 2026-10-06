@@ -1981,9 +1981,36 @@ func newFactoryAssignCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("factory assign: %w", err)
 			}
-			if strings.TrimSpace(to) != "" {
+			toTrim := strings.TrimSpace(to)
+			if card.State != homestate.CardPicked {
+				// State-preserving re-bind (review round-6 P1-1): an
+				// assigned+ card recovers or refreshes its dispatch binding
+				// without any state change — this is the public recovery
+				// path for pre-binding rows.
+				if card.State == homestate.CardAssigned && (toTrim == "" || toTrim == card.OwnerLabel) {
+					if err := db.RecordDispatchBinding(ctx, cardID, runID, now); err != nil {
+						return fmt.Errorf("factory assign: %w", err)
+					}
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %s v%d owner=%s (dispatch binding recorded)\n", card.CardID, card.State, card.Version, dash(card.OwnerLabel))
+					return nil
+				}
+				return fmt.Errorf("factory assign: card %s is %s (owner %q); only a picked card can move to assigned%s", cardID, card.State, dash(card.OwnerLabel), func() string {
+					if card.State == homestate.CardAssigned && toTrim != "" && toTrim != card.OwnerLabel {
+						return " a different lane"
+					}
+					return ""
+				}())
+			}
+			if toTrim != "" {
 				card, err = db.Transition(ctx, homestate.TransitionRequest{RunID: runID, CardID: cardID, To: homestate.CardAssigned, ExpectedVersion: card.Version, Actor: "assign", Owner: to, Now: now})
 				if err != nil {
+					return fmt.Errorf("factory assign: %w", err)
+				}
+			} else if card.State == homestate.CardPicked && card.Version == 1 {
+				// A freshly created picked card is already dispatched under
+				// this run; record the binding so the completion gate can
+				// resolve it before a lane assignment happens.
+				if err := db.RecordDispatchBinding(ctx, cardID, runID, now); err != nil {
 					return fmt.Errorf("factory assign: %w", err)
 				}
 			}
@@ -2304,8 +2331,36 @@ func decideOne(ctx context.Context, db *homestate.FactoryDB, runID, cardID, gate
 	case choice == "abandon":
 		to = homestate.CardAbandoned
 	}
+	// Receipt-gated done edges bind the backlog identity, so a receipt
+	// minted for a different card cannot complete this one (review round-6
+	// P1-2). The uuid is identity knowledge read from the queue record.
+	approvalUUID := ""
+	if to == homestate.CardDone {
+		rec, err := newTodoStore().LoadPure()
+		if err != nil {
+			return cur, fmt.Errorf("factory decide: the queue could not be read for the approval check: %w", err)
+		}
+		for i := range rec.Items {
+			if rec.Items[i].ID == cardID {
+				approvalUUID = todoCardUUID(&rec.Items[i])
+				break
+			}
+		}
+		if approvalUUID == "" {
+			for i := range rec.Archived {
+				if rec.Archived[i].Item.ID == cardID {
+					approvalUUID = todoCardUUID(&rec.Archived[i].Item)
+					break
+				}
+			}
+		}
+		if approvalUUID == "" {
+			return cur, fmt.Errorf("factory decide: card %s has no backlog identity for the approval check", cardID)
+		}
+	}
 	return db.Transition(ctx, homestate.TransitionRequest{
 		RunID: runID, CardID: cardID, To: to, ExpectedVersion: cur.Version,
 		Actor: "operator", Decider: homestate.DeciderHuman, IntegrationBranch: integration, Now: factoryCardNow(),
+		ApprovalUUID: approvalUUID,
 	})
 }

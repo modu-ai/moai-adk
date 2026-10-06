@@ -454,7 +454,7 @@ func TestFR_AC017_DecideUnblock(t *testing.T) {
 // AC-018 (command half) — the push gate reads the remote-tracking ref and
 // never fetches; a repository with no remote goes straight to done.
 func TestFR_AC018_DecidePushGate(t *testing.T) {
-	root, _ := fcFixture(t)
+	root, store := fcFixture(t)
 	fcGitFlowConfig(t, root)
 	dir, merge := fcRepo(t, true)
 	fcPlace(t, root, homestate.Card{CardID: "p1", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", MergeSHA: merge, WorktreePath: dir})
@@ -474,20 +474,27 @@ func TestFR_AC018_DecidePushGate(t *testing.T) {
 
 	bare, bareMerge := fcRepo(t, false)
 	// REQ-FCR-002b (SPEC-FACTORY-COMPLETION-RECOVERY-001): the no-remote edge
-	// requires a leader approval receipt — the pre-M1 expectation (receipt-less
-	// done accepted on the "no remote — no CI verdict" note) is inverted.
-	fcPlace(t, root, homestate.Card{CardID: "p2", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", MergeSHA: bareMerge, WorktreePath: bare, EvidenceSHA: bareMerge})
-	if _, _, err := runFactory(t, "decide", "p2", "--gate", "push", "--run", fcRun); err == nil {
+	// requires a leader approval receipt bound to the backlog identity —
+	// decide resolves the uuid from the queue record (review round-6 P1-2);
+	// the pre-M1 expectation (receipt-less done accepted) is inverted.
+	p2 := addShapeCard(t, "no-remote push gate card")
+	fcBindDispatch(t, root, p2, fcRun)
+	fcPlace(t, root, homestate.Card{CardID: p2, RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, MergeSHA: bareMerge, WorktreePath: bare, EvidenceSHA: bareMerge})
+	if _, _, err := runFactory(t, "decide", p2, "--gate", "push", "--run", fcRun); err == nil {
 		t.Fatal("no-remote push gate accepted done without a leader approval receipt")
 	}
+	if c := fcCard(t, root, p2); c.State != homestate.CardMergedLocal {
+		t.Fatalf("p2 = %s, want merged-local", c.State)
+	}
+	uuidP2 := recheckUUID(t, root, store, p2)
 	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
-		CardUUID: "uuid-p2", RunID: fcRun, CardID: "p2", FactoryVersion: 1,
+		CardUUID: uuidP2, RunID: fcRun, CardID: p2, FactoryVersion: 1,
 		EvidenceHash: bareMerge, Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
 	})
-	if _, _, err := runFactory(t, "decide", "p2", "--gate", "push", "--run", fcRun); err != nil {
+	if _, _, err := runFactory(t, "decide", p2, "--gate", "push", "--run", fcRun); err != nil {
 		t.Fatalf("push gate with no remote and a receipt: %v", err)
 	}
-	if c := fcCard(t, root, "p2"); c.State != homestate.CardDone {
+	if c := fcCard(t, root, p2); c.State != homestate.CardDone {
 		t.Fatalf("p2 = %s, want done", c.State)
 	}
 	db := fcOpen(t, root)

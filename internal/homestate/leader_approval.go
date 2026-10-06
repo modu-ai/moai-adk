@@ -409,9 +409,14 @@ func (g *ApprovalGate) Rollback() error {
 // verifyTransitionApproval is the done transitions' receipt gate
 // (REQ-FCR-002b): it runs inside FactoryDB.Transition's own transaction, so
 // the version and evidence it binds against are the row as the transition
-// will commit it. The uuid axis is skipped — the factory row carries no
-// backlog identity — and is enforced by the CLI surfaces, which do know it.
-func verifyTransitionApproval(ctx context.Context, tx *sql.Tx, cur Card) error {
+// will commit it. approvalUUID is the backlog identity the caller resolved
+// for this card; an empty value is refused — a done edge must never skip
+// the card-identity check (review round-6 P1-2).
+func verifyTransitionApproval(ctx context.Context, tx *sql.Tx, cur Card, approvalUUID string) error {
+	approvalUUID = strings.TrimSpace(approvalUUID)
+	if approvalUUID == "" {
+		return fmt.Errorf("%w: card %s completion requires its backlog card uuid for the approval check", ErrApprovalCardMismatch, cur.CardID)
+	}
 	a, err := findLeaderApprovalForCardTx(ctx, tx, cur.RunID, cur.CardID)
 	if errors.Is(err, ErrApprovalMissing) {
 		return fmt.Errorf("%w: card %s cannot complete without a leader approval receipt", ErrApprovalMissing, cur.CardID)
@@ -419,5 +424,5 @@ func verifyTransitionApproval(ctx context.Context, tx *sql.Tx, cur Card) error {
 	if err != nil {
 		return err
 	}
-	return a.VerifyBinding("", cur.RunID, cur.Version, cur.EvidenceSHA, cur.OwnerLabel)
+	return a.VerifyBinding(approvalUUID, cur.RunID, cur.Version, cur.EvidenceSHA, cur.OwnerLabel)
 }
