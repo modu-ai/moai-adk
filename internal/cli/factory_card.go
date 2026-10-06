@@ -1999,16 +1999,16 @@ func newFactoryAssignCommand() *cobra.Command {
 					// given, must match the recorded owner; the row's
 					// state, version, and owner are untouched.
 					if !card.Legacy() && (toTrim == "" || toTrim == card.OwnerLabel) {
-					// Binding recovery is leader/operator territory
-					// (REQ-FCR-014): a lane session can never rotate the
-					// dispatch binding — least of all onto a past row whose
-					// old approval would then revive (review round-13 P1).
-					if factoryLaneRefusal() {
-						return fmt.Errorf("factory assign: refused — %s: dispatch-binding recovery is the leader path's act (%s=%s marks a lane)",
-							factoryLaneBoundarySentinel, config.EnvFactoryRole, config.FactoryRoleLane)
+						// Binding recovery is leader/operator territory
+						// (REQ-FCR-014): a lane session can never rotate the
+						// dispatch binding — least of all onto a past row whose
+						// old approval would then revive (review round-13 P1).
+						if factoryLaneRefusal() {
+							return fmt.Errorf("factory assign: refused — %s: dispatch-binding recovery is the leader path's act (%s=%s marks a lane)",
+								factoryLaneBoundarySentinel, config.EnvFactoryRole, config.FactoryRoleLane)
+						}
+						return db.RecordDispatchBinding(ctx, cardID, runID, now)
 					}
-					return db.RecordDispatchBinding(ctx, cardID, runID, now)
-				}
 					return fmt.Errorf("factory assign: card %s is %s (owner %q); only a picked card can move to assigned%s", cardID, card.State, dash(card.OwnerLabel), func() string {
 						if !card.Legacy() && toTrim != "" && toTrim != card.OwnerLabel {
 							return " a different lane"

@@ -201,15 +201,42 @@ func runTodoClaimRoot(root string, cmd *cobra.Command, lane, renew string) error
 		result.Item.ID, todoTextPrefix(result.Item.Text),
 		claimStrOr(result.Item.LeaseExpiresAt, "unknown"), claimStrOr(result.Item.PickedBy, "unknown"))
 	_, _ = fmt.Fprint(cmd.OutOrStdout(), out.String())
-	recordFactoryCardState(result.Item.ID, "", "picked", "card.assigned")
 	// The dispatch binding follows the claim, at the SAME explicit root the
 	// claim's queue came from (review round-14 P1-2) — never a server-cwd
-	// fallback. A failure surfaces loudly: the completion gate fails closed
-	// on the stale binding.
-	if runID := os.Getenv(config.EnvFactoryRunID); runID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
-		if err := recordDispatchBindingAtRoot(result.Item.ID, runID, root); err != nil {
-			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "note: dispatch binding update for %s failed (%v) — completion will fail closed\n", result.Item.ID, err)
+	// fallback. On a binding failure the claim is REVERTED before anything
+	// prints (review round-15 P1-3): no selection stands unbound, and the
+	// success line prints only after both operations land.
+	if envRunID := os.Getenv(config.EnvFactoryRunID); envRunID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+		if err := recordDispatchBindingAtRoot(result.Item.ID, envRunID, root); err != nil {
+			if rerr := store.Mutate(revertClaimMutation(result.Item.ID, holder)); rerr != nil {
+				return fmt.Errorf("todo claim: binding update failed (%v) AND the claim revert failed (%v) — card %s may be stuck picked", err, rerr, result.Item.ID)
+			}
+			return todoClaimRefusal(cmd, err)
 		}
 	}
+	recordFactoryCardState(result.Item.ID, "", "picked", "card.assigned")
+	_, _ = fmt.Fprint(cmd.OutOrStdout(), out.String())
 	return nil
+}
+
+// revertClaimMutation undoes a successful claim whose dispatch binding
+// could not be recorded: back to queued with no lease, only when the card
+// still holds THIS holder's claim (review round-15 P1-3).
+func revertClaimMutation(id, holder string) func(*factory.BacklogRecord) error {
+	return func(rec *factory.BacklogRecord) error {
+		for i := range rec.Items {
+			if rec.Items[i].ID != id {
+				continue
+			}
+			if rec.Items[i].State != factory.BacklogStatePicked || rec.Items[i].PickedBy == nil || *rec.Items[i].PickedBy != holder {
+				return fmt.Errorf("claim for %s changed hands before the binding update", id)
+			}
+			rec.Items[i].State = factory.BacklogStateQueued
+			rec.Items[i].PickedBy = nil
+			rec.Items[i].LeaseExpiresAt = nil
+			rec.Items[i].PickedAt = nil
+			return nil
+		}
+		return fmt.Errorf("no backlog item %s", id)
+	}
 }

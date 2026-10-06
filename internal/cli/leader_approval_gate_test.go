@@ -563,10 +563,26 @@ func TestPickRefusedWhenBindingUpdateFails(t *testing.T) {
 	if _, _, err := runTodo(t, "next", cardID); err == nil {
 		t.Fatal("pick succeeded although the binding update could not run")
 	}
-	// The pick is refused: the card stays queued, nothing archived.
+	// The pick is refused ATOMICALLY: the queue write aborted, so the card
+	// is back to queued (never stuck picked), nothing archived, and the
+	// binding never moved.
 	if _, ok := liveItemOK(t, store, cardID); !ok {
 		t.Fatal("the refused pick removed the card")
 	}
+	rec, err := store.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range rec.Items {
+		if rec.Items[i].ID == cardID {
+			if rec.Items[i].State != factory.BacklogStateQueued {
+				t.Fatalf("card stuck in %s after the refused pick, want queued", rec.Items[i].State)
+			}
+		}
+	}
+	// The factory database path is a directory at this point (the failure
+	// injection) — no binding assertion is possible or needed: the queue
+	// state above is the contract.
 }
 
 // Regression pin for round-14 P1-2 (card t1538): the binding write lands at
@@ -604,6 +620,55 @@ func fcPlaceRun(t *testing.T, root, runID, status, created string) {
 	if _, err := db.DB.Exec(`INSERT INTO runs(run_id,status,manifest_json,created_at,updated_at) VALUES(?,?,'{}',?,?) ON CONFLICT(run_id) DO NOTHING`, runID, status, created, created); err != nil {
 		t.Fatalf("place run %s: %v", runID, err)
 	}
+}
+
+// Regression pin for round-15 P1-3 (card t1538): a claim whose dispatch
+// binding cannot be recorded is REVERTED before anything prints — the card
+// returns to queued with no lease, and no selection stands unbound.
+func TestClaimRevertedWhenBindingUpdateFails(t *testing.T) {
+	root, store := fcFixture(t)
+	if _, _, err := runTodo(t, "add", "claim revert card"); err != nil {
+		t.Fatal(err)
+	}
+	fcPlaceRun(t, root, fcRun, "active", "2026-09-25T00:00:00Z")
+	fcPlace(t, root, homestate.Card{CardID: "t1", RunID: fcRun, State: string(factory.BacklogStateQueued), OwnerLabel: "worker-1", Version: 1})
+
+	factoryDB, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(factoryDB); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(factoryDB, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(factoryDB) })
+
+	t.Setenv(config.EnvFactoryRunID, fcRun)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	if _, _, err := runTodo(t, "claim"); err == nil {
+		t.Fatal("claim succeeded although the binding update could not run")
+	}
+	rec, err := store.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range rec.Items {
+		if rec.Items[i].ID == "t1" {
+			if rec.Items[i].State != factory.BacklogStateQueued {
+				t.Fatalf("card stuck in %s after the reverted claim, want queued", rec.Items[i].State)
+			}
+			if rec.Items[i].PickedBy != nil {
+				t.Fatalf("reverted claim kept picked_by %q", *rec.Items[i].PickedBy)
+			}
+			if rec.Items[i].LeaseExpiresAt != nil {
+				t.Fatalf("reverted claim kept a lease %q", *rec.Items[i].LeaseExpiresAt)
+			}
+			return
+		}
+	}
+	t.Fatal("claim card vanished")
 }
 
 // fcBindDispatch records the card's dispatch binding — the current-run

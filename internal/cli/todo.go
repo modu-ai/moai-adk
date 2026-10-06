@@ -1351,68 +1351,73 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 			id := normalizeTodoRef(args[0])
 			var pickedText string
 			// Selection-through-binding runs under the SAME queue lock the
-			// completion path holds (review round-14 P1-1): the dispatch
-			// binding re-point and the pick persist atomically with respect
-			// to any concurrent done, and a binding-update failure refuses
-			// the pick instead of leaving the old approval armed.
+			// completion path holds, and the binding write happens INSIDE
+			// the mutate callback (review round-15 P1-1/P1-2): a refused
+			// selection never touches the binding, and a binding-update
+			// failure aborts the queue write — LockedBacklog.Mutate persists
+			// only when its callback returns nil, so the card can never be
+			// left stuck in picked with the old approval armed.
 			queueRoot := resolveTodoQueueRoot()
 			if err := store.WithLock(func(l *factory.LockedBacklog) error {
 				mutErr := l.Mutate(func(rec *factory.BacklogRecord) error {
-				for i := range rec.Items {
-					if rec.Items[i].ID == id {
-						// The pick gate enumerates POSITIVELY
-						// (SPEC-TODO-HOLD-STATE-001 REQ-THS-011/012): only a
-						// queued card is pickable, and every other state —
-						// including any state added after this code was
-						// written — is refused by the switch's default rather
-						// than admitted by a negative's fall-through. This
-						// gate was the SPEC's one behavioral red-now: it used
-						// to refuse only `dropped`, so a held card (and any
-						// future state) was pickable.
-						switch rec.Items[i].State {
-						case factory.BacklogStateQueued:
-							// the only pickable state
-						case factory.BacklogStateDropped:
-							return fmt.Errorf("backlog item %s is dropped — use moai todo undrop %s before picking", id, id)
-						case factory.BacklogStateHold:
-							return fmt.Errorf("backlog item %s is held — use moai todo unhold %s before picking", id, id)
-						case factory.BacklogStatePicked:
-							return fmt.Errorf("backlog item %s is already picked — use moai todo unpick %s before picking it again", id, id)
-						default:
-							return fmt.Errorf("backlog item %s is %q — not a pickable state", id, rec.Items[i].State)
+					for i := range rec.Items {
+						if rec.Items[i].ID == id {
+							// The pick gate enumerates POSITIVELY
+							// (SPEC-TODO-HOLD-STATE-001 REQ-THS-011/012): only a
+							// queued card is pickable, and every other state —
+							// including any state added after this code was
+							// written — is refused by the switch's default rather
+							// than admitted by a negative's fall-through. This
+							// gate was the SPEC's one behavioral red-now: it used
+							// to refuse only `dropped`, so a held card (and any
+							// future state) was pickable.
+							switch rec.Items[i].State {
+							case factory.BacklogStateQueued:
+								// the only pickable state
+							case factory.BacklogStateDropped:
+								return fmt.Errorf("backlog item %s is dropped — use moai todo undrop %s before picking", id, id)
+							case factory.BacklogStateHold:
+								return fmt.Errorf("backlog item %s is held — use moai todo unhold %s before picking", id, id)
+							case factory.BacklogStatePicked:
+								return fmt.Errorf("backlog item %s is already picked — use moai todo unpick %s before picking it again", id, id)
+							default:
+								return fmt.Errorf("backlog item %s is %q — not a pickable state", id, rec.Items[i].State)
+							}
+							if expect != "" && !strings.HasPrefix(rec.Items[i].Text, expect) {
+								// Refused mutation: Mutate writes nothing, so the
+								// file stays byte-identical on a mismatch.
+								return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
+									id, todoTextPrefix(rec.Items[i].Text), expect)
+							}
+							rec.Items[i].State = factory.BacklogStatePicked
+							// REQ-TST-004: the current picked episode begins now;
+							// any stamp from a previous episode is overwritten.
+							rec.Items[i].PickedAt = todoStampNow()
+							pickedText = rec.Items[i].Text
+							if specID != "" {
+								// Recorded as-is: the store is not a SPEC registry;
+								// normalization is out of scope (acceptance.md §C).
+								spec := specID
+								rec.Items[i].SpecID = &spec
+							}
+							// The dispatch binding re-point runs INSIDE the
+							// mutate callback (review round-15 P1-1/P1-2): a
+							// binding-update failure returns an error from the
+							// callback, which aborts the queue write — the card
+							// is never left stuck in picked with the old run's
+							// approval armed, and a refused selection never
+							// touches the binding. Non-factory selections (no
+							// run env) skip the axis.
+							if runID := os.Getenv(config.EnvFactoryRunID); runID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+								if err := recordDispatchBindingAtRoot(id, runID, queueRoot); err != nil {
+									return err
+								}
+							}
+							return nil
 						}
-						if expect != "" && !strings.HasPrefix(rec.Items[i].Text, expect) {
-							// Refused mutation: Mutate writes nothing, so the
-							// file stays byte-identical on a mismatch.
-							return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
-								id, todoTextPrefix(rec.Items[i].Text), expect)
-						}
-						rec.Items[i].State = factory.BacklogStatePicked
-						// REQ-TST-004: the current picked episode begins now;
-						// any stamp from a previous episode is overwritten.
-						rec.Items[i].PickedAt = todoStampNow()
-						pickedText = rec.Items[i].Text
-						if specID != "" {
-							// Recorded as-is: the store is not a SPEC registry;
-							// normalization is out of scope (acceptance.md §C).
-							spec := specID
-							rec.Items[i].SpecID = &spec
-						}
-						return nil
 					}
-				}
-				return fmt.Errorf("no backlog item %s", id)
+					return fmt.Errorf("no backlog item %s", id)
 				})
-				// The dispatch binding re-point runs INSIDE the queue lock
-				// (review round-14 P1-1): a binding-update failure refuses
-				// the pick, so the old run's approval is never left armed on
-				// a card that just moved runs. Non-factory selections (no
-				// run env) skip the axis.
-				if runID := os.Getenv(config.EnvFactoryRunID); runID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
-					if err := recordDispatchBindingAtRoot(id, runID, queueRoot); err != nil {
-						return err
-					}
-				}
 				return mutErr
 			}); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
