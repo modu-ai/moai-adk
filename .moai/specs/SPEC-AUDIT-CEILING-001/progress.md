@@ -510,7 +510,7 @@ m1_to_mN_commit_strategy: one commit per milestone (M1-M4), Conventional Commits
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-10-06
-sync_commit_sha: pending-backfill-sync (canonical placeholder — a sync commit cannot cite its own hash; the real SHA is backfilled in the immediately following commit, per spec-frontmatter-schema.md § SHA placeholder backfill exemption D3)
+sync_commit_sha: 242ba7230 (backfilled — the sync commit cannot cite its own hash; placeholder pending-backfill-sync was replaced per the D3 backfill exemption)
 sync_status: complete
 b12_self_test_a: pass — `grep -c 'SPEC-AUDIT-CEILING-001' CHANGELOG.md` → `0` (exit 1) before emission; no duplicate entry from a parallel BATCH-SYNC session
 b12_self_test_b: pass — AC counter over acceptance.md → live=22 excluded=0 ambiguous=0 (22 live criteria); the CHANGELOG entry references 22 acceptance criteria (AC-ACE-001..022), matching
