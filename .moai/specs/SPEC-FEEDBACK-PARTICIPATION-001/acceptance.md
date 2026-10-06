@@ -8,6 +8,8 @@
 
 ## §D AC Matrix
 
+> Abbreviation rule: the REQ column spells `REQ-ANON-NNN` as `REQ-NNN` (D33; the requirement layer's full tokens are `REQ-ANON-001`..`REQ-ANON-025`).
+
 | AC | REQ | Milestone | Summary | RED-now |
 |---|---|---|---|---|
 | AC-001 | REQ-001, REQ-024 | M2 | User-scoped store: defaults false, tracked file ignored, repository default, no key shipped | E1, E2 |
@@ -23,20 +25,20 @@
 | AC-011 | REQ-011 | M1 | Payload is a closed schema; `detail` is closed-set membership in an enum type | E3 |
 | AC-012 | REQ-012 | M4 | Scrub and classify tripwire; withheld on block, masking, or path traversal | E12 |
 | AC-013 | REQ-013 | M4 | Per-fingerprint window, global caps, queue bound, attempt limit | E12 |
-| AC-014 | REQ-014 | M4 | Preview is byte-identical to what is handed to `gh`; append-only log, mode 0600 | E13a, E13b |
+| AC-014 | REQ-014 | M4 | Preview prints the queued payload render; append-only log, mode 0600; create-path identity closes at AC-020 | E13a, E13b |
 | AC-015 | REQ-015 | M5 | Sender re-checks consent per item, off the hook path, time-boxed, quiet when `gh` is absent | E11 |
 | AC-016 | REQ-016 | M5 | Existing fingerprint issue gets one occurrence comment, none at the cap; zero model calls | E11 |
 | AC-017 | REQ-017 | M6 | New moai issue: one model call, validated output, template fallback | E11 |
-| AC-018 | REQ-017, REQ-018 | M6 | Summary persisted before create; retries reuse it; per-item call bound across retries | E11 |
+| AC-018 | REQ-017, REQ-018 | M6 | Summary persisted before create; retries reuse it; per-item call bound across retries and crash windows | E11 |
 | AC-019 | REQ-018 | M6 | Model-call budget: zero calls in every excluded case, one in the positive control | E11 |
-| AC-020 | REQ-019 | M5 | Issue title and marker contract round-trips; markers are untrusted; no body edit, no labels | E11, E23 |
-| AC-021 | REQ-020 | M2 | Web toggle: existing radio pair, present-companion, user-scoped read and write, marker key not rendered | E14, E15 |
+| AC-020 | REQ-019, REQ-014 | M5 | Issue title and marker contract round-trips; markers are untrusted; no body edit, no labels; preview equals the create bytes | E11, E23 |
+| AC-021 | REQ-020 | M2 | Web toggle: existing radio pair, present-companion, user-scoped read and write, marker key not rendered, full disclosure carried | E14, E15 |
 | AC-022 | REQ-021 | M4 | Withdrawal discards unsent items; purge removes all local state; no network | E12, E17 |
-| AC-023 | REQ-022 | M7 | Skill-body copies, docs-site wording with a positive per-locale pattern, mirror equality, pins | E18, E19, E20 |
+| AC-023 | REQ-022, REQ-001 | M7 | Skill-body copies, docs-site wording with a positive per-locale pattern, participation-free config copies, pins | E18, E19, E20 |
 | AC-024 | REQ-023 | M7 | No auto-repair artifact ships; the wizard question never ships without the sender | E22a, E22b |
 | AC-025 | REQ-025 | M6 | Static reachability guard: import allowlists and the injected model seam | E3, E11 |
 
-All criteria are release-blocking. The tree pin for every RED-now observation below is the commit `bb54f2903` (measured in this run, in this worktree, on a clean tree; `git diff --stat 2f492df19 HEAD` lists only the seven SPEC files, so the code tree is identical to the earlier pin `2f492df19`).
+All criteria are release-blocking. The tree pin for the RED-now observations below is the commit `bb54f2903`, measured in the pass that wrote them. The branch was subsequently rebased onto `origin/main` `5a9d34fbb`; the pre- and post-rebase trees share no ancestry, so no cross-rebase equivalence is claimed (the earlier "code tree identical" sentence was false after the rebase and is retired). Every entry was re-executed on the post-rebase tree during the iteration-2 audit and reproduced as recorded (plan-audit-iter2, MP-8); the entries this revision re-measured itself — E2, E2p, and E21 — carry their re-measurement inline, pinned to `28a4a16bd`. E21 did not reproduce (the local `feedback.yaml` was rewritten by commit `82677fd27` before this SPEC) and its byte-equality guard is retired; see that entry.
 
 ### Renumbering map (version 0.2.0 to 0.3.0)
 
@@ -56,11 +58,11 @@ Merged to stay inside the 25-criterion ceiling: the capture half of old AC-002 a
 
 ## RED-now evidence ledger
 
-Each entry: the single-invocation command, its verbatim stdout (raw bytes as observed; the absolute path shown by `go test` is this worktree's), its exit code as its own field, and the pinned tree `bb54f2903`. An empty stdout with exit 1 is a complete observation.
+Each entry: the single-invocation command, its verbatim stdout (raw bytes as observed; the absolute path shown by `go test` is this worktree's), its exit code as its own field, and the pinned tree named in the entry (`bb54f2903` for the original observations; E2, E2p, and E21 carry their re-measurement pins). An empty stdout with exit 1 is a complete observation.
 
 **RED-now proxy rule.** For a test that does not exist yet in a package that already exists, the criterion's own `-run` command exits 0 and prints `[no tests to run]` (E1, E5, E14, E15); that reads as red only through the PASS-line rule of the preface, because no `--- PASS` line appears. For the `internal/cli` package, whose test binary is the largest in the module, the ledger records a grep-for-name proxy instead (E6, E7a, E7b, E9, E13a, E13b, E17, E22a, E22b): empty stdout with exit 1 states that the named test does not exist, which is the same fact as a missing PASS line. For a package that does not exist, `go test` itself fails with `[setup failed]` (E3, E4, E11, E12).
 
-**Observation caveat.** The Bash tool did not surface a non-zero exit status for the empty-output `grep` commands, so every exit code below was read in a separate harness invocation that ran the same command and then printed `rc=$?`; the cited commands themselves are single invocations. Ids skip E8 and E16, which belonged to the 0.2.0 numbering and are retired; E21 is green today by design.
+**Observation caveat.** The Bash tool did not surface a non-zero exit status for the empty-output `grep` commands, so every exit code below was read in a separate harness invocation that ran the same command and then printed `rc=$?`; the cited commands themselves are single invocations. Ids skip E8 and E16, which belonged to the 0.2.0 numbering and are retired.
 
 ```
 E1
@@ -76,21 +78,21 @@ why red: the three named tests do not exist; no `--- PASS` line appears, so the 
 
 ```
 E2
-tree: bb54f2903
+tree: bb54f2903 (re-measured at `28a4a16bd` after the rebase; output identical)
 command: grep -c participation internal/template/templates/.moai/config/sections/feedback.yaml .moai/config/sections/feedback.yaml
 exit: 1
 stdout:
-internal/template/templates/.moai/config/sections/feedback.yaml:0
 .moai/config/sections/feedback.yaml:0
-note: an absence guard, green today by design (no consent key may ship); its mutant is a template that ships the key. Positive control E2p shows the instrument can fire.
+internal/template/templates/.moai/config/sections/feedback.yaml:0
+note: an absence guard, green by design at both pins (no consent key may ship); its mutant is a template that ships the key. The local copy's `auto_submit` value changed at commit `82677fd27` (D29), but it carries no participation key — re-measured at `28a4a16bd`, same two `:0` lines, exit 1. Positive control E2p shows the instrument can fire.
 
 E2p
-tree: working tree atop HEAD `c34e24cab` — the v0.4.0 revision, uncommitted at observation time (re-measured in this pass after the 0.4.0 rename)
+tree: working tree atop HEAD `28a4a16bd` — the v0.5.0 revision, uncommitted at observation time (re-measured in this pass)
 command: grep -c participation .moai/specs/SPEC-FEEDBACK-PARTICIPATION-001/spec.md
 exit: 0
 stdout:
 21
-note: re-measured on the renamed path; the same instrument observed earlier on the committed v0.2.0 spec.md at the pre-rename path printed 16 with exit 0. A non-zero count proves the same grep reports a hit when the word is present.
+note: re-measured on the renamed path at the post-rebase tree; earlier observations of the same instrument: 16 on the committed v0.2.0 spec.md at the pre-rename path, 21 on the v0.4.0 working tree. A non-zero count proves the same grep reports a hit when the word is present.
 ```
 
 ```
@@ -310,12 +312,12 @@ why red: all three skill-body copies are silent on participation; the criterion 
 
 ```
 E21
-tree: bb54f2903
+tree: bb54f2903 (re-measured at `28a4a16bd`; did not reproduce)
 command: cmp internal/template/templates/.moai/config/sections/feedback.yaml .moai/config/sections/feedback.yaml
-exit: 0
+exit: 0 (at `bb54f2903`); 1 (at `28a4a16bd`)
 stdout:
-(empty)
-note: the mirror guard is green today by design; its mutant is editing one copy only. The criterion's red comes from E18 to E20, not from this line.
+(empty at `bb54f2903`); internal/template/templates/.moai/config/sections/feedback.yaml .moai/config/sections/feedback.yaml differ: char 13, line 2 (at `28a4a16bd`, verbatim)
+why retired, not red (D29): the byte-equality mirror guard was green by design at the original pin; after the rebase the local copy carries `auto_submit: true` with different indentation, preserved by the cutover state-preservation commit `82677fd27` before this SPEC, so the equality can no longer hold after correct M7 work and reconciling it would overwrite the maintainer's preserved preference. The guard is retired from this SPEC; the invariant this SPEC owns — neither copy carries a participation key — is E2's absence guard, re-measured green at `28a4a16bd`. The criterion's red comes from E18 to E20, not from this line.
 ```
 
 ```
@@ -416,9 +418,9 @@ Maps REQ-ANON-006, REQ-ANON-007
 
 ### AC-008 — Allowlist attribution
 Maps REQ-ANON-009
-- **Given** a table of signals covering every row of the attribution register in `design.md` section 3: a panic; an internal-marker wrapper; a marker wrapping an `*fs.PathError`; filesystem, syscall, network, `*exec.Error`, `*exec.ExitError`, and cancellation errors; config sentinels; `*json.SyntaxError` and `*json.UnmarshalTypeError`; `*yaml.TypeError`; a plain `errors.New` hook handler error with no marker; the hook timeout; each template and harness token; and an arbitrary custom error type,
-- **When** attribution runs on each,
-- **Then** the verdict equals the table's verdict: panic, marker, and the tokens `not_found`, `preserve_integrity`, `path_traversal`, `missing_key` give `moai`; the marker wrapping an `*fs.PathError`, filesystem, syscall, network, exec, exec-exit, and cancellation errors give `environment`; config sentinels, JSON errors, and YAML type errors give `user`; the unmarked handler error, the hook timeout, the tokens `unexpanded_token` and `invalid_json`, and the custom error type give `ambiguous`, never `moai`; an error chain matching both an environment row and a moai row yields `environment`; every register row declares its derivation mode (derived or call-site asserted); and no row calls a model (a counting stub records zero). Mutants that must die: `moai` as the default verdict; an unmarked handler error, an `*exec.ExitError`, or a JSON decode error attributed to moai.
+- **Given** a table of signals covering every row of the attribution register in `design.md` section 3: a panic; an internal-marker wrapper; a marker wrapping an `*fs.PathError`; filesystem, syscall, network, and cancellation errors; an `exec` reason token supplied by a call site (standing in for the exec-typed errors `*exec.Error`, `exec.ErrNotFound`, and `*exec.ExitError`, which `bugreport` cannot name — row A3a); config sentinels; `*json.SyntaxError` and `*json.UnmarshalTypeError`; `*yaml.TypeError`; a plain `errors.New` hook handler error with no marker; the hook timeout; each template and harness token; and an arbitrary custom error type,
+- **When** attribution runs on each at capture, where the error chain is alive (D24),
+- **Then** the verdict equals the table's verdict: panic, marker, and the tokens `not_found`, `preserve_integrity`, `path_traversal`, `missing_key` give `moai`; the marker wrapping an `*fs.PathError`, filesystem, syscall, network, cancellation errors, and the call-site `exec` token give `environment`; config sentinels, JSON errors, and YAML type errors give `user`; the unmarked handler error, the hook timeout, the tokens `unexpanded_token` and `invalid_json`, and the custom error type give `ambiguous`, never `moai`; an error chain matching both an environment row and a moai row yields `environment`; every register row declares its derivation mode (derived or call-site asserted); and no row calls a model (a counting stub records zero). Mutants that must die: `moai` as the default verdict; an unmarked handler error, an `exec`-shaped cause, or a JSON decode error attributed to moai.
 - **Verify (new-test line)**: `go test ./internal/bugreport/ -run '^(TestAttributionRulesTable|TestAttributionFirstMatchWins|TestAttributionMakesNoModelCall|TestUnknownErrorNeverAttributedToMoai|TestRegisterRowsDeclareDerivationMode)$' -count=1 -v` — expect exit 0 and a PASS line for each of the five names.
 - **RED-now**: E3. **Green path**: M3.
 
@@ -462,11 +464,11 @@ Maps REQ-ANON-013
 - **Verify (new-test line)**: `go test ./internal/feedback/outbox/ -run '^(TestDedupeWindow|TestGlobalCaps|TestQueueBound|TestAttemptsIncrementedAndCapped)$' -count=1 -v` — expect exit 0 and a PASS line for each of the four names.
 - **RED-now**: E12. **Green path**: M4.
 
-### AC-014 — Preview and outbox log
+### AC-014 — Preview renders the queued payload; outbox log
 Maps REQ-ANON-014
-- **Given** two queued items,
-- **When** `moai feedback participation preview` runs with a network stub and the sender then runs against a recording `gh` stub,
-- **Then** the preview bytes equal, per item, the bytes the stub received; the preview made zero network requests; the outbox log is JSONL, append-only across runs, mode 0600, and holds the exact payload for queued, sent, and withheld rows.
+- **Given** two queued items and a network stub,
+- **When** `moai feedback participation preview` runs,
+- **Then** the preview prints, per item, exactly the bytes of the queued payload's rendered title and body — the one render function the publication create path reuses — and makes zero network requests; the outbox log is JSONL, append-only across runs, mode 0600, and holds the exact payload for queued, sent, and withheld rows. The byte identity against what the sender hands to `gh` is asserted at AC-020 (M5), where the sender exists; the occurrence-comment path and the summary-augmented body are different byte streams by design and are excluded from this criterion (AC-016, AC-017).
 - **Verify (new-test line)**: `go test ./internal/cli/ -run '^(TestParticipationPreview|TestOutboxLogAppendOnly0600)$' -count=1 -v` — expect exit 0 and a PASS line for each name.
 - **RED-now**: E13a, E13b. **Green path**: M4.
 
@@ -494,35 +496,35 @@ Maps REQ-ANON-017
 - **Verify (new-test line)**: `go test ./internal/feedback/publish/ -run '^(TestPublishCallsModelOnceAndValidates|TestPublishFallsBackToTemplate|TestModelInputIsPayloadFieldsOnly)$' -count=1 -v` — expect exit 0 and a PASS line for each of the three names.
 - **RED-now**: E11. **Green path**: M6.
 
-### AC-018 — Summary persisted; retries reuse it; per-item bound
+### AC-018 — Summary persisted; retries and crash windows stay inside the bound
 Maps REQ-ANON-017, REQ-ANON-018
-- **Given** a moai-verdict item with no existing issue, a counting model stub, and a `gh` stub whose `create` fails twice and then succeeds,
-- **When** the sender processes the item across the three attempts,
-- **Then** the model stub records exactly one summary call in total (the second and third attempts read the stored summary from the queue item); and when the remote lookup on a retry finds that an issue now exists, a comment is added and the stored summary is unused with no new model call. Mutants that must die: a sender that calls the model on every attempt; a sender that stores the summary after create instead of before.
-- **Verify (new-test line)**: `go test ./internal/feedback/publish/ -run '^(TestSummaryPersistedBeforeCreateAndReusedOnRetry|TestModelCallBoundPerQueueItem)$' -count=1 -v` — expect exit 0 and a PASS line for each name.
+- **Given** a moai-verdict item with no existing issue, a counting model stub, and a `gh` stub whose `create` fails twice and then succeeds; and separately a fault case in which the process is interrupted (or the queue-store write fails) after the durable `summary_requested` marker is persisted but before the summary is stored,
+- **When** the sender processes the retry item across the three attempts, and the fault-case item is recovered and processed again,
+- **Then** in the retry case the model stub records exactly one summary call in total (the second and third attempts read the stored summary from the queue item); in the fault case the marker makes the recovered item take the template text with zero additional model calls, so the per-item total stays at 1 across retries and crash windows; and when the remote lookup on a retry finds that an issue now exists, a comment is added and the stored summary is unused with no new model call. Mutants that must die: a sender that calls the model on every attempt; a sender that stores the summary after create instead of before; a sender that calls again after recovering an item whose marker exists without a stored summary.
+- **Verify (new-test line)**: `go test ./internal/feedback/publish/ -run '^(TestSummaryPersistedBeforeCreateAndReusedOnRetry|TestModelCallBoundPerQueueItem|TestMarkerBoundsCrashWindowRecall)$' -count=1 -v` — expect exit 0 and a PASS line for each of the three names.
 - **RED-now**: E11. **Green path**: M6.
 
 ### AC-019 — Model-call budget
 Maps REQ-ANON-018
 - **Given** a counting model stub across the whole pipeline,
-- **When** the pipeline processes: participation off; a `user` verdict; an `environment` verdict; an `ambiguous` verdict; a locally deduplicated fingerprint; a locally capped fingerprint; a withheld payload; an existing remote issue; a daily-cap-exhausted state,
+- **When** the pipeline processes: participation off; a `user` verdict (dropped at capture); an `environment` verdict (dropped at capture); an `ambiguous` verdict; a locally deduplicated fingerprint; a locally capped fingerprint; a withheld payload; an existing remote issue; a daily-cap-exhausted state,
 - **Then** every one of those records zero calls; the positive control (a new moai-verdict item, no remote issue) records exactly one; a counter that counts only the publish path would still pass the positive control, so the table asserts the stub at every pipeline entry point. Mutant that must die: a pipeline calling the model before the duplicate lookup.
 - **Verify (new-test line)**: `go test ./internal/feedback/publish/ -run '^(TestLLMBudgetZeroCalls|TestLLMBudgetPositiveControl|TestDailyModelCallCap)$' -count=1 -v` — expect exit 0 and a PASS line for each of the three names.
 - **RED-now**: E11. **Green path**: M6.
 
-### AC-020 — Issue contract and untrusted markers
-Maps REQ-ANON-019
-- **Given** a payload, the golden file `internal/feedback/testdata/bugreport_issue_v1.golden`, and a forged occurrence comment whose marker carries a fingerprint, version, and `os_arch` that disagree with the issue's title key,
-- **When** the issue title, body, and occurrence comment are rendered and then parsed back, and the forged comment is parsed alongside the title key,
-- **Then** the rendering equals the golden bytes; parsing recovers every marker field; the same fingerprint renders the same title key; the create command carries no `--label`; no command edits an issue body; and for the forged comment the parser keeps the fields derived from the title key and the body block and ignores the disagreeing marker fields while still counting the comment toward the advisory total.
-- **Verify (new-test line)**: `go test ./internal/feedback/publish/ -run '^(TestIssueContractRoundTrip|TestSameFingerprintSameTitleKey|TestNoLabelsNoBodyEdit|TestOccurrenceMarkersAreUntrustedInput)$' -count=1 -v` — expect exit 0 and a PASS line for each of the four names.
+### AC-020 — Issue contract, untrusted markers, and the create-path byte identity
+Maps REQ-ANON-019, REQ-ANON-014
+- **Given** a payload, the golden file `internal/feedback/testdata/bugreport_issue_v1.golden`, a forged occurrence comment whose marker carries a fingerprint, version, and `os_arch` that disagree with the issue's title key, and the same payload queued for `moai feedback participation preview`,
+- **When** the issue title, body, and occurrence comment are rendered and then parsed back, the forged comment is parsed alongside the title key, and the preview output is compared with the bytes the create command hands to `gh`,
+- **Then** the rendering equals the golden bytes; parsing recovers every marker field; the same fingerprint renders the same title key; the create command carries no `--label`; no command edits an issue body; the preview bytes equal the body bytes the create command hands to `gh` for a new issue (REQ-ANON-014's identity, closed here where the sender exists; the comment path and the summary-augmented body are excluded and covered by AC-016 and AC-017); and for the forged comment the parser keeps the fields derived from the title key and the body block and ignores the disagreeing marker fields while still counting the comment toward the advisory total.
+- **Verify (new-test line)**: `go test ./internal/feedback/publish/ -run '^(TestIssueContractRoundTrip|TestSameFingerprintSameTitleKey|TestNoLabelsNoBodyEdit|TestOccurrenceMarkersAreUntrustedInput|TestPreviewMatchesCreateBytes)$' -count=1 -v` — expect exit 0 and a PASS line for each of the five names.
 - **RED-now**: E11, E23. **Green path**: M5.
 
 ### AC-021 — Web toggle on the user-scoped value
 Maps REQ-ANON-020
 - **Given** the settings schema, the console assets, and a temporary `MOAI_HOME`,
 - **When** the feedback panel is rendered and a form with the toggle off then on is submitted, then submitted again unchanged, and an untouched rendered body is saved,
-- **Then** `feedback.participation` renders as the console's existing two-option radio pair, exactly two inputs named `feedback.participation` with the hidden `feedback.participation__present` companion and zero checkbox inputs, with the four-locale title and description keys present and the description stating public and account-tied in all four locales; the submitted value is read from and written to the user-scoped file, not the project section file; a change of `enabled` also sets `asked` true; an unchanged submission and an untouched body write nothing; the project `feedback.yaml` stays byte-identical; and `feedback.participation_asked` is not among the rendered fields. Mutants that must die: a checkbox widget; a rendered `asked` field; a console write that leaves `asked` false; a write into the project file.
+- **Then** `feedback.participation` renders as the console's existing two-option radio pair, exactly two inputs named `feedback.participation` with the hidden `feedback.participation__present` companion and zero checkbox inputs, with the four-locale title and description keys present and the description carrying the REQ-ANON-005 required-fact set in all four locales on the shared locale strings, so a console-first enablement receives the full disclosure before the value is written; the submitted value is read from and written to the user-scoped file, not the project section file; a change of `enabled` also sets `asked` true; an unchanged submission and an untouched body write nothing; the project `feedback.yaml` stays byte-identical; and `feedback.participation_asked` is not among the rendered fields. Mutants that must die: a checkbox widget; a rendered `asked` field; a console write that leaves `asked` false; a write into the project file; a console description that states only the public-and-account facts instead of the full statement set.
 - **Verify (new-test line, web)**: `go test ./internal/web/ -run '^(TestFeedbackParticipationI18nKeysInAllLocales|TestFeedbackParticipationRendersAsRadioPair)$' -count=1 -v` — expect exit 0 and a PASS line for each name.
 - **Verify (new-test line, settings)**: `go test ./internal/settings/ -run '^(TestFeedbackParticipationFieldIsBool|TestUserScopedEditWritesHomeFileOnly|TestUserScopedValueInvariantTouchesNothing|TestUserScopedWriteSetsAsked)$' -count=1 -v` — expect exit 0 and a PASS line for each of the four names.
 - **Verify (regression guard, web)**: `go test ./internal/web/ -run '^(TestBoolFieldsRenderAsRadio|TestSchemaTogglePresentCompanion|TestFeedbackPanelRendered|TestFeedbackPanelFieldsWired|TestI18nKeySetParity|TestHandleSaveUntouchedRenderedBodyLeavesTrackedConfigByteIdentical|TestSaveSchemaSmokeAllSections|TestSchemaSectionsRenderSmoke)$' -count=1 -v` — expect exit 0 and a PASS line for each of the eight names.
@@ -537,13 +539,13 @@ Maps REQ-ANON-021
 - **Verify (new-test line)**: `go test ./internal/feedback/outbox/ ./internal/cli/ -run '^(TestWithdrawalDiscardsQueueOnFlush|TestParticipationPurge)$' -count=1 -v` — expect exit 0 and a PASS line for each name.
 - **RED-now**: E12, E17. **Green path**: M4.
 
-### AC-023 — Skill bodies, docs wording, mirror
-Maps REQ-ANON-022
+### AC-023 — Skill bodies, docs wording, participation-free config copies
+Maps REQ-ANON-022, REQ-ANON-001
 - **Given** the template tree, the three skill-body copies, the four docs-site pages, and the local feedback section file,
 - **When** the build and the guard tests run,
-- **Then** each of the three skill-body copies mentions participation; the template and local `feedback.yaml` are byte-identical; none of the four docs-site pages still says the issue is created automatically; each page positively states the corrected wording, which is for each locale the substring in the Verify lines below; and `make build` exits 0.
+- **Then** each of the three skill-body copies mentions participation; neither the template nor the local `feedback.yaml` carries a participation key (the absence guard below); the pre-existing divergence between the two copies — the local `auto_submit: true` with its own indentation, preserved by the cutover state-preservation commit `82677fd27` before this SPEC while the template keeps `auto_submit: false` — is out of scope and asserted by no criterion here (D29); none of the four docs-site pages still says the issue is created automatically; each page positively states the corrected wording, which is for each locale the substring in the Verify lines below; and `make build` exits 0.
 - **Verify (skill bodies)**: `grep -c participation .claude/skills/moai/workflows/feedback.md plugins/moai/skills/moai/workflows/feedback.md internal/template/templates/.claude/skills/moai/workflows/feedback.md` — expect three `path:N` lines, each with N at least 1, and exit 0.
-- **Verify (mirror)**: `cmp internal/template/templates/.moai/config/sections/feedback.yaml .moai/config/sections/feedback.yaml` — expect empty stdout and exit 0.
+- **Verify (config copies carry no participation key)**: the E2 command — expect two `path:0` lines and exit 1 (re-run at close time against the then-current tree).
 - **Verify (old wording gone)**: the E18 command — expect four `path:0` lines.
 - **Verify (positive wording, en)**: `grep -c -F "GitHub issue only after you confirm" docs-site/content/en/utility-commands/moai-feedback.md` — expect `1` or more, exit 0.
 - **Verify (positive wording, ko)**: `grep -c -F "확인한 뒤에만 GitHub 이슈" docs-site/content/ko/utility-commands/moai-feedback.md` — expect `1` or more, exit 0.
@@ -551,7 +553,7 @@ Maps REQ-ANON-022
 - **Verify (positive wording, zh)**: `grep -c -F "确认后才会创建 GitHub Issue" docs-site/content/zh/utility-commands/moai-feedback.md` — expect `1` or more, exit 0.
 - **Verify (neutrality)**: `go test ./internal/template/ -run '^TestTemplateNeutralityAudit$' -count=1 -v` — expect exit 0 and `--- PASS: TestTemplateNeutralityAudit ` (the name followed by a space).
 - **Verify (build)**: `make build` — expect exit 0.
-- **RED-now**: E18, E19 (four entries), E20; the mirror line E21 is green today by design. **Green path**: M7. Mutants that must die: skipping a skill-body copy; deleting the old sentence without writing the new one (the positive patterns); editing one `feedback.yaml` copy only.
+- **RED-now**: E18, E19 (four entries), E20. **Green path**: M7. Mutants that must die: skipping a skill-body copy; deleting the old sentence without writing the new one (the positive patterns); a config copy that ships a participation key.
 
 ### AC-024 — No auto-repair artifact ships; the question never ships without the sender
 Maps REQ-ANON-023
@@ -583,4 +585,4 @@ Maps REQ-ANON-025
 
 ## Definition of Done
 
-All 25 criteria pass with their named commands, each Verify line satisfying the preface rule (exit 0 and a `--- PASS` line per named test); `go vet` and `golangci-lint` clean on touched packages; the guard families (shipped-key readers, i18n parity, template neutrality, radio widget, present-companion) pass; the amendment of the quiet-wizard pins is recorded in the commit message; progress.md §E.2 carries each criterion's observed output.
+All 25 criteria pass with their named commands, each Verify line satisfying its own stated expectation — named-test lines by exit 0 plus a `--- PASS` line per named test, absence-guard `grep` and `cmp` lines by their stated output and exit code; `go vet` and `golangci-lint` clean on touched packages; the guard families (shipped-key readers, i18n parity, template neutrality, radio widget, present-companion) pass; the amendment of the quiet-wizard pins is recorded in the commit message; progress.md §E.2 carries each criterion's observed output.
