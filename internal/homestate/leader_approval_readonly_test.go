@@ -8,60 +8,72 @@ import (
 )
 
 // The read-only surface the backlog scan consumes (SPEC-FACTORY-COMPLETION-RECOVERY-001
-// review P2-2) and the dispatch-run resolution (reviews P1 round-2 and P1
-// round-3), pinned at the homestate level.
+// review P2-2) and the recorded dispatch binding (reviews P1 rounds 2-4),
+// pinned at the homestate level.
 
 func frPlaceRun(t *testing.T, db *FactoryDB, runID, status, created string) {
 	t.Helper()
-	if _, err := db.DB.Exec(`INSERT INTO runs(run_id,status,manifest_json,created_at,updated_at) VALUES(?,?,'{}',?,?)`, runID, status, created, created); err != nil {
+	if _, err := db.DB.Exec(`INSERT INTO runs(run_id,status,manifest_json,created_at,updated_at) VALUES(?,?,'{}',?,?) ON CONFLICT(run_id) DO NOTHING`, runID, status, created, created); err != nil {
 		t.Fatalf("place run %s: %v", runID, err)
 	}
 }
 
-// The dispatch binding the runs table carries is the anchor: an active run
-// wins over a retired one even when the retired run's row was modified more
-// recently, and a store that no longer describes any candidate run refuses
-// to guess (ErrApprovalRunUnresolvable).
-func TestRecordedCardRowPrefersActiveRun(t *testing.T) {
+func frBindDispatch(t *testing.T, db *FactoryDB, cardID, runID string) {
+	t.Helper()
+	if _, err := db.DB.Exec(`INSERT INTO card_dispatch(card_id,run_id,recorded_at) VALUES(?,?,?) ON CONFLICT(card_id) DO UPDATE SET run_id=excluded.run_id,recorded_at=excluded.recorded_at`, cardID, runID, "2026-09-26T00:00:00Z"); err != nil {
+		t.Fatalf("bind dispatch %s -> %s: %v", cardID, runID, err)
+	}
+}
+
+// The recorded dispatch binding is the only current-run authority: it beats
+// a newer modification time on another run's row, and a card with no
+// binding is refused rather than guessed from any derivative signal.
+func TestRecordedCardRowFollowsDispatchBinding(t *testing.T) {
 	db := frOpen(t)
 	ctx := context.Background()
-	// The card is recorded in TWO runs. run-old's row carries the newest
-	// updated_at (a worktree re-record bumped it) and its run is retired;
-	// run-cur is active.
+	// run-old's row carries the newest updated_at (a worktree re-record
+	// bumped it); the binding names run-cur.
 	frPlaceRun(t, db, "run-old", "retired", "2026-09-25T00:00:00Z")
 	frPlaceRun(t, db, "run-cur", "active", "2026-09-26T00:00:00Z")
 	frPlace(t, db, Card{RunID: "run-old", CardID: "t1", State: CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-old", UpdatedAt: "2026-09-26T03:00:00Z"})
 	frPlace(t, db, Card{RunID: "run-cur", CardID: "t1", State: CardMergedLocal, OwnerLabel: "worker-1", Version: 2, EvidenceSHA: "sha-cur", UpdatedAt: "2026-09-26T01:00:00Z"})
+	frBindDispatch(t, db, "t1", "run-cur")
 
 	row, linked, err := db.RecordedCardRowReadonly(ctx, "t1")
 	if err != nil || !linked {
-		t.Fatalf("active-run resolution: linked=%v err=%v, want linked", linked, err)
+		t.Fatalf("binding resolution: linked=%v err=%v, want linked", linked, err)
 	}
 	if row.RunID != "run-cur" || row.Version != 2 || row.EvidenceSHA != "sha-cur" {
-		t.Fatalf("row = %s v%d sha=%s, want run-cur v2 sha-cur (the active dispatch)", row.RunID, row.Version, row.EvidenceSHA)
+		t.Fatalf("row = %s v%d sha=%s, want run-cur v2 sha-cur (the recorded dispatch)", row.RunID, row.Version, row.EvidenceSHA)
 	}
 
-	// A card with no factory row at all is not linked.
+	// A card with neither factory rows nor a binding is not linked.
 	if _, linked, err := db.RecordedCardRowReadonly(ctx, "absent"); err != nil || linked {
 		t.Fatalf("absent card: linked=%v err=%v, want not linked", linked, err)
 	}
 
-	// Both candidate runs undescribed: the dispatch cannot be determined —
+	// Factory rows with no binding: the dispatch cannot be determined —
 	// refuse rather than guess on modification time.
 	frPlace(t, db, Card{RunID: "run-ghost-a", CardID: "t2", State: CardMergedLocal, OwnerLabel: "worker-1", Version: 1, UpdatedAt: "2026-09-26T05:00:00Z"})
-	frPlace(t, db, Card{RunID: "run-ghost-b", CardID: "t2", State: CardMergedLocal, OwnerLabel: "worker-1", Version: 1, UpdatedAt: "2026-09-26T04:00:00Z"})
 	if _, _, err := db.RecordedCardRowReadonly(ctx, "t2"); !errors.Is(err, ErrApprovalRunUnresolvable) {
-		t.Fatalf("undescribed runs err = %v, want ErrApprovalRunUnresolvable", err)
+		t.Fatalf("unbound rows err = %v, want ErrApprovalRunUnresolvable", err)
+	}
+
+	// A dangling binding (the named run lost its row) is also unresolvable.
+	frPlace(t, db, Card{RunID: "run-two", CardID: "t3", State: CardMergedLocal, OwnerLabel: "worker-1", Version: 1, UpdatedAt: "2026-09-26T05:00:00Z"})
+	frBindDispatch(t, db, "t3", "run-gone")
+	if _, _, err := db.RecordedCardRowReadonly(ctx, "t3"); !errors.Is(err, ErrApprovalRunUnresolvable) {
+		t.Fatalf("dangling binding err = %v, want ErrApprovalRunUnresolvable", err)
 	}
 }
 
 func TestVerifyApprovalReadonlyPaths(t *testing.T) {
 	db := frOpen(t)
 	ctx := context.Background()
-	frPlaceRun(t, db, frRun, "active", "2026-09-25T00:00:00Z")
 	frPlaceRun(t, db, "run-two", "active", "2026-09-26T00:00:00Z")
 	c := Card{RunID: frRun, CardID: "t1", State: CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-t1"}
 	frPlace(t, db, c)
+	frBindDispatch(t, db, "t1", frRun)
 	frApprove(t, db, LeaderApproval{
 		CardUUID: "uuid-t1", RunID: frRun, CardID: "t1", FactoryVersion: 1,
 		EvidenceHash: "sha-t1", Issuer: "lead", IssuerRole: ApprovalIssuerLeader,
@@ -81,6 +93,7 @@ func TestVerifyApprovalReadonlyPaths(t *testing.T) {
 	}
 	// The stale receipt: a bumped row against the version-1 approval.
 	frPlace(t, db, Card{RunID: "run-two", CardID: "t2", State: CardMergedLocal, OwnerLabel: "worker-1", Version: 2, EvidenceSHA: "sha-t2"})
+	frBindDispatch(t, db, "t2", "run-two")
 	frApprove(t, db, LeaderApproval{
 		CardUUID: "uuid-t2", RunID: "run-two", CardID: "t2", FactoryVersion: 1,
 		EvidenceHash: "sha-t2", Issuer: "lead", IssuerRole: ApprovalIssuerLeader,

@@ -125,6 +125,25 @@ func (f *FactoryDB) RecordPicked(ctx context.Context, runID, cardID string, fiel
 	nowText := now.Format(time.RFC3339Nano)
 	var result Card
 	err := f.withCardTx(ctx, runID, func(tx *sql.Tx) (func(), error) {
+		// The dispatch binding (SPEC-FACTORY-COMPLETION-RECOVERY-001 review
+		// round-4 P1): THIS run is the card's current factory engagement,
+		// recorded at assignment time inside the same transaction that
+		// creates or re-records the card row. Every later reader — the
+		// completion gate, the scan, approve — resolves the card through
+		// this row instead of deriving the run from a modification time, a
+		// runtime record, or creation order, all of which measured dead.
+		// The run row is ensured here too, so an assigned card is never
+		// stranded without the metadata its binding names (review P2-2).
+		// SQL: 'active' is the runs table's status literal
+		// (factory_run_retire.go classifies on the same literal).
+		if _, err := tx.ExecContext(ctx, `INSERT INTO runs(run_id,status,manifest_json,created_at,updated_at) VALUES(?,'active','{}',?,?) ON CONFLICT(run_id) DO NOTHING`,
+			runID, nowText, nowText); err != nil {
+			return nil, err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO card_dispatch(card_id,run_id,recorded_at) VALUES(?,?,?) ON CONFLICT(card_id) DO UPDATE SET run_id=excluded.run_id,recorded_at=excluded.recorded_at`,
+			cardID, runID, nowText); err != nil {
+			return nil, err
+		}
 		cur, err := loadCard(ctx, tx, runID, cardID)
 		if errors.Is(err, ErrCardNotFound) {
 			c := Card{RunID: runID, CardID: cardID, State: CardPicked, Version: 1, UpdatedAt: nowText}

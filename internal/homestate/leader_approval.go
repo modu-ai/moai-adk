@@ -26,7 +26,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 )
@@ -193,17 +192,15 @@ func findLeaderApprovalPreferringRun(ctx context.Context, q queryRower, cardUUID
 }
 
 // recordedCardRow resolves the factory row a backlog card's verification
-// binds against: the card's row in its ACTUAL dispatch run, never the
-// most-recently-modified row. The dispatch binding the runs table itself
-// carries is the anchor that cannot drift from `factory assign`: an ACTIVE
-// run wins, then the newest-created run. A card row's updated_at is never
-// the key — any write to an old run's row (a worktree re-record, a legacy
-// touch) would otherwise resurrect that run as the card's current
-// engagement — and the backlog's runtime assignment record is never the key
-// either: a reassignment through `factory assign` updates the card row and
-// the runs table, not the runtime record. When no candidate run is described
-// by the runs table the dispatch cannot be determined, and the resolution
-// refuses (ErrApprovalRunUnresolvable) rather than guessing.
+// binds against: the row the card's DISPATCH BINDING names. The binding is
+// recorded at assignment time — RecordPicked writes it in the same
+// transaction that creates or re-records the card row — so it cannot drift
+// from the assign path the way a modification time (round-2), a runtime
+// assignment record (round-3), or run creation order (round-4) all
+// measured dead. A card with no binding, or a binding whose row is gone,
+// is unresolvable: the resolution refuses (ErrApprovalRunUnresolvable) and
+// the recovery is one idempotent command — re-record the card with
+// `factory assign <card> --run <run>`.
 
 // queryRowerEx is the read surface recordedCardRow needs: single-row and
 // multi-row queries inside the caller's transaction or on the bare handle.
@@ -214,101 +211,32 @@ type queryRowerEx interface {
 }
 
 func recordedCardRow(ctx context.Context, q queryRowerEx, cardID string) (Card, bool, error) {
-	rows, err := queryCardRowsByID(ctx, q, cardID)
-	if err != nil || len(rows) == 0 {
+	var runID string
+	err := q.QueryRowContext(ctx, `SELECT run_id FROM card_dispatch WHERE card_id=?`, cardID).Scan(&runID)
+	if errors.Is(err, sql.ErrNoRows) {
+		// Distinguish a card the factory has never engaged (not linked —
+		// the gate does not apply) from rows orphaned from their dispatch
+		// record (unresolvable — fail closed).
+		var rows int
+		if err := q.QueryRowContext(ctx, `SELECT count(*) FROM cards WHERE card_id=?`, cardID).Scan(&rows); err != nil {
+			return Card{}, false, err
+		}
+		if rows == 0 {
+			return Card{}, false, nil
+		}
+		return Card{}, false, fmt.Errorf("%w: card %s has factory rows but no recorded dispatch binding — re-record it with `factory assign %s --run <run>` (review round-4, SPEC-FACTORY-COMPLETION-RECOVERY-001)", ErrApprovalRunUnresolvable, cardID, cardID)
+	}
+	if err != nil {
 		return Card{}, false, err
 	}
-	if len(rows) == 1 {
-		// A single row is the dispatch — unless this store no longer
-		// describes its run, in which case the binding below could not be
-		// trusted to mean the current engagement.
-		meta, err := runRowMeta(ctx, q, rows[0].RunID)
-		if err != nil {
-			return Card{}, false, err
-		}
-		if !meta.known {
-			return Card{}, false, fmt.Errorf("%w: card %s holds a factory row in run %q, which this store does not describe", ErrApprovalRunUnresolvable, cardID, rows[0].RunID)
-		}
-		return rows[0], true, nil
-	}
-	type candidate struct {
-		card Card
-		meta runMeta
-	}
-	var known []candidate
-	byRun := make(map[string]runMeta, len(rows))
-	for _, c := range rows {
-		meta, err := runRowMeta(ctx, q, c.RunID)
-		if err != nil {
-			return Card{}, false, err
-		}
-		if !meta.known {
-			continue
-		}
-		byRun[c.RunID] = meta
-		known = append(known, candidate{card: c, meta: meta})
-	}
-	if len(known) == 0 {
-		runs := make([]string, 0, len(rows))
-		for _, c := range rows {
-			runs = append(runs, c.RunID)
-		}
-		return Card{}, false, fmt.Errorf("%w: card %s holds factory rows in runs this store does not describe (%s) — the current dispatch cannot be determined", ErrApprovalRunUnresolvable, cardID, strings.Join(runs, ", "))
-	}
-	sort.SliceStable(known, func(i, j int) bool {
-		mi, mj := known[i].meta, known[j].meta
-		if mi.active != mj.active {
-			return mi.active
-		}
-		if mi.created != mj.created {
-			return mi.created > mj.created
-		}
-		return known[i].card.UpdatedAt > known[j].card.UpdatedAt
-	})
-	return known[0].card, true, nil
-}
-
-// runMeta describes one run's dispatch binding: an active run is the card's
-// current engagement; created_at orders same-status runs (a reassignment
-// into a newer run happened after the older run started).
-type runMeta struct {
-	known   bool
-	active  bool
-	created string
-}
-
-func runRowMeta(ctx context.Context, q queryRower, runID string) (runMeta, error) {
-	var status, created string
-	err := q.QueryRowContext(ctx, `SELECT status,created_at FROM runs WHERE run_id=?`, runID).Scan(&status, &created)
-	if errors.Is(err, sql.ErrNoRows) {
-		return runMeta{}, nil
+	row, err := loadCard(ctx, q, runID, cardID)
+	if errors.Is(err, ErrCardNotFound) {
+		return Card{}, false, fmt.Errorf("%w: card %s dispatch binding names run %q, which holds no row for the card", ErrApprovalRunUnresolvable, cardID, runID)
 	}
 	if err != nil {
-		return runMeta{}, err
+		return Card{}, false, err
 	}
-	// SQL: "active" is the runs table's status literal (factory_run_retire.go
-	// classifies on the same literal); the value comes from the row, never input.
-	return runMeta{known: true, active: status == "active", created: created}, nil
-}
-
-func queryCardRowsByID(ctx context.Context, q interface {
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-}, cardID string) ([]Card, error) {
-	rows, err := q.QueryContext(ctx,
-		`SELECT run_id,card_id,owner_label,state,version,evidence_path,updated_at,stage,lease_holder,lease_expires_at,heartbeat_at,decision_gate,decision_question,decision_resume,decider,decided_at,failure_reason,hint_prefer,hint_after,spec_id,worktree_path,evidence_sha,merge_sha,merge_tree,remeasure_path,contract_spec_id,contract_sha256,contract_signed_at,contract_event FROM cards WHERE card_id=?`, cardID)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	var out []Card
-	for rows.Next() {
-		c, err := scanCard(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, c)
-	}
-	return out, rows.Err()
+	return row, true, nil
 }
 
 // VerifyApprovalReadonly is the scan-time counterpart of the gate: the same

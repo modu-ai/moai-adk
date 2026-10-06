@@ -150,6 +150,11 @@ CREATE TABLE IF NOT EXISTS leader_approvals (
   issued_at TEXT NOT NULL,
   PRIMARY KEY(card_uuid, run_id)
 );
+CREATE TABLE IF NOT EXISTS card_dispatch (
+  card_id TEXT PRIMARY KEY,
+  run_id TEXT NOT NULL,
+  recorded_at TEXT NOT NULL
+);
 `
 
 type FactoryDB struct {

@@ -49,23 +49,23 @@ func fcLinkedCard(t *testing.T, root string, store *factory.BacklogStore, id, te
 	return ""
 }
 
-// fcPlaceRun records a run row — the dispatch binding the completion gate
-// and the scan resolve through (review round-3 P1). Idempotent.
-func fcPlaceRun(t *testing.T, root, runID, status, created string) {
+// fcBindDispatch records the card's dispatch binding — the current-run
+// authority the completion gate and scan resolve through. Idempotent.
+func fcBindDispatch(t *testing.T, root, cardID, runID string) {
 	t.Helper()
 	db := fcOpen(t, root)
 	defer func() { _ = db.Close() }()
-	if _, err := db.DB.Exec(`INSERT INTO runs(run_id,status,manifest_json,created_at,updated_at) VALUES(?,?,'{}',?,?) ON CONFLICT(run_id) DO NOTHING`, runID, status, created, created); err != nil {
-		t.Fatalf("place run %s: %v", runID, err)
+	if _, err := db.DB.Exec(`INSERT INTO card_dispatch(card_id,run_id,recorded_at) VALUES(?,?,?) ON CONFLICT(card_id) DO UPDATE SET run_id=excluded.run_id,recorded_at=excluded.recorded_at`, cardID, runID, "2026-09-26T00:00:00Z"); err != nil {
+		t.Fatalf("bind dispatch %s -> %s: %v", cardID, runID, err)
 	}
 }
 
 // fcPlaceFactoryCard places the card's factory row (the factory-linked
 // marker) with the version and evidence hash named, inside the recorded
-// active run.
+// dispatch run.
 func fcPlaceFactoryCard(t *testing.T, root, cardID string, version int64, evidenceSHA, updated string) {
 	t.Helper()
-	fcPlaceRun(t, root, fcRun, "active", "2026-09-25T00:00:00Z")
+	fcBindDispatch(t, root, cardID, fcRun)
 	fcPlace(t, root, homestate.Card{CardID: cardID, RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: version, EvidenceSHA: evidenceSHA, MergeSHA: evidenceSHA, UpdatedAt: updated})
 }
 
@@ -144,8 +144,7 @@ func TestLeaderReceiptGateBinding(t *testing.T) {
 
 	// The archive-moment row: run R2, version 1, evidence sha-r2 — the
 	// recorded active dispatch (newer-created run).
-	fcPlaceRun(t, root, "run-r1", "retired", "2026-09-25T00:00:00Z")
-	fcPlaceRun(t, root, "run-r2", "active", "2026-09-26T00:00:00Z")
+	fcBindDispatch(t, root, "t1", "run-r2")
 	fcPlace(t, root, homestate.Card{CardID: "t1", RunID: "run-r2", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-r2", UpdatedAt: "2026-09-26T02:00:00Z"})
 	// The previous run's row: identical uuid, version, and evidence — the
 	// shape whose receipt must NOT close run R2 (REQ-FCR-001).
@@ -359,8 +358,7 @@ func TestLeaderReceiptGateKeysOnActiveDispatch(t *testing.T) {
 	uuid := fcLinkedCard(t, root, store, "t1", "factory-linked card")
 	// run-old: retired, but its row carries the newest updated_at and a
 	// matching receipt — the forgery bait both prior reviews used.
-	fcPlaceRun(t, root, "run-old", "retired", "2026-09-25T00:00:00Z")
-	fcPlaceRun(t, root, fcRun, "active", "2026-09-26T00:00:00Z")
+	fcBindDispatch(t, root, "t1", fcRun)
 	fcPlace(t, root, homestate.Card{CardID: "t1", RunID: "run-old", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-old", UpdatedAt: "2026-09-26T03:00:00Z"})
 	fcPlace(t, root, homestate.Card{CardID: "t1", RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-cur", UpdatedAt: "2026-09-26T01:00:00Z"})
 	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
@@ -481,6 +479,35 @@ func TestLeaderReceiptGateRefusesUnstatableFactoryDB(t *testing.T) {
 	if !fcLiveItem(t, store, "t1") {
 		t.Fatal("the refused done archived the card")
 	}
+}
+
+// Regression pin for round-4 review P2-1 (card t1538): the gate's factory
+// transaction is deliberately opened on a detached context — a request
+// cancellation after verification must not roll the lock back while the
+// guarded backlog save continues. The helper accepts a canceled context
+// and still returns a live, usable gate.
+func TestApprovalGateOutlivesContextCancel(t *testing.T) {
+	root, store := fcFixture(t)
+	uuid := fcLinkedCard(t, root, store, "t1", "factory-linked card")
+	fcPlaceFactoryCard(t, root, "t1", 1, "sha-t1", "2026-09-26T00:00:00Z")
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: uuid, RunID: fcRun, CardID: "t1", FactoryVersion: 1,
+		EvidenceHash: "sha-t1", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	gate, err := holdDoneApprovalGate(ctx, root)
+	if err != nil {
+		t.Fatalf("gate died with the canceled request context: %v", err)
+	}
+	if gate == nil {
+		t.Fatal("gate missing with an existing factory database")
+	}
+	if err := gate.verifyForClose(context.Background(), "t1", uuid); err != nil {
+		t.Fatalf("verify after request cancellation: %v", err)
+	}
+	gate.release()
 }
 
 // Regression pin for round-2 review P2-1 (card t1538): `factory approve

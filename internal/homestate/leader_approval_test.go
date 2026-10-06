@@ -124,7 +124,7 @@ func TestApprovalGateLinkedAndUnlinked(t *testing.T) {
 	ctx := context.Background()
 	c := Card{RunID: frRun, CardID: "gated", State: CardMergedLocal, Version: 1, OwnerLabel: "worker-1", WorktreePath: repo.Dir, MergeSHA: repo.Merge, EvidenceSHA: repo.Commit}
 	frPlace(t, db, c)
-	frPlaceRun(t, db, frRun, "active", "2026-09-25T00:00:00Z")
+	frBindDispatch(t, db, "gated", frRun)
 
 	gate, err := db.HoldApprovalGate(ctx)
 	if err != nil {

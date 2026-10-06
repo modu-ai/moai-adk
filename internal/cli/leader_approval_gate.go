@@ -49,7 +49,14 @@ type backlogApprovalGate struct {
 // stat failure (permission denied, a symlink loop, ...) is a database we
 // cannot verify against: fail closed and refuse the close rather than
 // silently completing without the receipt check.
-func holdDoneApprovalGate(ctx context.Context, root string) (*backlogApprovalGate, error) {
+//
+// The gate deliberately runs on context.Background(): the queue write it
+// guards persists on a background context (LockedBacklog.Mutate), so a
+// request cancellation that arrived after verification must not roll the
+// factory transaction back while the save continues — the lock's lifetime
+// covers the whole persistence window (review round-4 P2-1).
+func holdDoneApprovalGate(_ context.Context, root string) (*backlogApprovalGate, error) {
+	ctx := context.Background()
 	path, err := homestate.FactoryDBPath(root)
 	if err != nil {
 		return nil, fmt.Errorf("leader approval gate: %w", err)

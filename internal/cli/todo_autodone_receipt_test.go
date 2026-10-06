@@ -131,11 +131,11 @@ func TestAutoDoneReceiptCurrentRunPreferred(t *testing.T) {
 	fcLinkRuntime(t, root, "t950")
 	fcLinkRuntime(t, root, "t951")
 
-	// Both cards' current factory engagement is the recorded run (active,
-	// newest-created); run-a is the retired previous engagement with
-	// identical bindings.
-	fcPlaceRun(t, root, "run-a", "retired", "2026-09-25T00:00:00Z")
-	fcPlaceRun(t, root, fcRun, "active", "2026-09-26T00:00:00Z")
+	// Both cards' current factory engagement is the recorded run (the
+	// dispatch binding); run-a is the previous engagement with identical
+	// bindings — but only the binding decides which receipt judges.
+	fcBindDispatch(t, root, "t950", fcRun)
+	fcBindDispatch(t, root, "t951", fcRun)
 	fcPlace(t, root, homestate.Card{CardID: "t950", RunID: "run-a", State: homestate.CardDone, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-ev", UpdatedAt: "2026-09-26T01:00:00Z"})
 	fcPlace(t, root, homestate.Card{CardID: "t950", RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-ev", UpdatedAt: "2026-09-26T02:00:00Z"})
 	fcPlace(t, root, homestate.Card{CardID: "t951", RunID: "run-a", State: homestate.CardDone, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-ev", UpdatedAt: "2026-09-26T01:00:00Z"})
@@ -410,12 +410,11 @@ func TestAutoDoneRecheckStaleRow(t *testing.T) {
 	})
 
 	t.Run("run replaced after approval", func(t *testing.T) {
-		// The receipt binds the original run; a re-dispatch put the card's
-		// current row in a NEWER-CREATED ACTIVE run with the same uuid,
-		// version, and evidence — exactly the cross-run shape REQ-FCR-001
-		// forbids reusing. The dispatch binding (the runs table) selects
-		// the new run; the receipt's run no longer matches.
-		fcPlaceRun(t, root, "run-late", "active", "2026-09-27T00:00:00Z")
+		// A re-dispatch updates the DISPATCH BINDING to a newer run whose
+		// row carries the same uuid, version, and evidence — exactly the
+		// cross-run shape REQ-FCR-001 forbids reusing. The receipt bound to
+		// the original run no longer matches.
+		fcBindDispatch(t, root, "t100", "run-late")
 		db := fcOpen(t, root)
 		defer func() { _ = db.Close() }()
 		if _, err := db.DB.Exec(`INSERT INTO cards(run_id,card_id,owner_label,state,version,evidence_sha,updated_at,merge_sha) VALUES('run-late','t100','worker-1','picked',1,'sha-evidence','2026-09-26T10:00:00Z','sha-evidence')`); err != nil {
@@ -426,10 +425,11 @@ func TestAutoDoneRecheckStaleRow(t *testing.T) {
 	})
 
 	t.Run("matching snapshot and receipt closes", func(t *testing.T) {
-		// Restore the pristine live row and factory state: drop the
-		// replacement-run row so the receipt's run is current again, and
-		// restore version 1.
+		// Restore the pristine live row and factory state: restore the
+		// dispatch binding, drop the replacement-run row, and restore
+		// version 1.
 		resetRecheckRow(t, store, "t100", text)
+		fcBindDispatch(t, root, "t100", fcRun)
 		db := fcOpen(t, root)
 		if _, err := db.DB.Exec(`DELETE FROM cards WHERE run_id='run-late'`); err != nil {
 			t.Fatal(err)
