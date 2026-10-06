@@ -303,10 +303,30 @@ func factoryGeneratedHubFields(fields homestate.CardFields, row *homestate.Card)
 	return fields
 }
 
+// factoryMergedCards reduces recorded rows to the set of cards whose
+// implementation pipeline has reached the merge — the selector's completion
+// set and the nominated validation's wait check read the SAME set, so the
+// two never drift (card t1533).
+func factoryMergedCards(rows []homestate.Card) map[string]bool {
+	merged := make(map[string]bool, len(rows))
+	for _, c := range rows {
+		switch c.State {
+		// merged-pr belongs here beside merged-local: the T2 guard
+		// (predecessorMerged) accepts it, and a selector that did not made a
+		// github-flow predecessor release nothing — the follower answered no
+		// card forever (card t1533, review-gate r2 finding b).
+		case homestate.CardMergedLocal, homestate.CardMergedPR, homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone:
+			merged[c.CardID] = true
+		}
+	}
+	return merged
+}
+
 // factoryHubWaitUnmerged reports whether cardID still waits behind an
-// unmerged hub-chain predecessor: any recorded, open queue card EARLIER in
-// queue order whose files share a hub path with the candidate and whose
-// record has not reached the merge (card t1533, card-review r2f finding 4).
+// unmerged hub-chain predecessor, naming the blocking card: any recorded,
+// open queue card EARLIER in queue order whose files share a hub path with
+// the candidate and whose record has not reached the merge (card t1533,
+// card-review r2f finding 4).
 // The stored hint names one predecessor — the tail at the card's own record
 // creation — but a candidate whose files cross several hub paths has a
 // predecessor per hub path, and waiting on the named one alone leased the
@@ -315,9 +335,9 @@ func factoryGeneratedHubFields(fields homestate.CardFields, row *homestate.Card)
 // candidates, mergedLocal the merge states — the same inputs
 // factoryHubChainFields reads, and like it a read-only predicate: selection
 // consults it on every pass, it writes nothing.
-func factoryHubWaitUnmerged(queueRec *factory.BacklogRecord, cards []homestate.Card, mergedLocal map[string]bool, cardID string) bool {
+func factoryHubWaitUnmerged(queueRec *factory.BacklogRecord, cards []homestate.Card, mergedLocal map[string]bool, cardID string) (string, bool) {
 	if queueRec == nil {
-		return false
+		return "", false
 	}
 	hub := make(map[string]bool)
 	for _, p := range homestate.HubFiles() {
@@ -341,7 +361,7 @@ func factoryHubWaitUnmerged(queueRec *factory.BacklogRecord, cards []homestate.C
 		break
 	}
 	if candIdx < 0 || len(candHub) == 0 {
-		return false
+		return "", false
 	}
 	recorded := make(map[string]bool, len(cards))
 	for _, c := range cards {
@@ -362,9 +382,9 @@ func factoryHubWaitUnmerged(queueRec *factory.BacklogRecord, cards []homestate.C
 		}
 		for _, f := range it.Issuance.Files {
 			if candHub[f] {
-				return true
+				return it.ID, true
 			}
 		}
 	}
-	return false
+	return "", false
 }

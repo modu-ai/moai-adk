@@ -129,16 +129,11 @@ func TestReviewNominatedBundlePreservesHint(t *testing.T) {
 		t.Fatalf("fixture: t3 = bundle=%q after=%q, want the member chained after t2", c.BundleID, c.HintAfter)
 	}
 
-	// t4's record lands as the residue of a refused nominated claim: created
-	// with the hub hint t3, refused at the T2 guard, left picked and unowned
-	// (spec § B.8).
-	sdLaneEnv(t, "lane-2", "")
-	if _, _, err := runFactory(t, "next", "--card", "t4", "--run", fcRun); err == nil {
-		t.Fatal("fixture: t4 leased although its hub predecessor t3 is unmerged")
-	}
-	if c := fcCard(t, root, "t4"); c.State != homestate.CardPicked || c.HintAfter != "t3" {
-		t.Fatalf("fixture: t4 = %s after=%q, want the picked residue chained after t3", c.State, c.HintAfter)
-	}
+	// t4's record carries the generated hub hint t3 — the queue-later sharer
+	// the tail rule named at its creation (placed directly; since the
+	// nominated validation decides the wait pre-promotion, the
+	// refused-nomination residue no longer mints rows).
+	fcPlace(t, root, homestate.Card{CardID: "t4", State: homestate.CardPicked, HintAfter: "t3"})
 
 	// The bundle head reaches the local merge; the member is next in its own
 	// chain, and lane-1 nominates it.
@@ -304,15 +299,11 @@ func TestReviewPickedHubSkip(t *testing.T) {
 		if got := fbLeasedCard(t, root, "lane-2"); got != "t2" {
 			t.Fatalf("lane-2's lease = %q, want t2", got)
 		}
-		// t3's record lands as the refused nomination's residue (hint t2,
-		// unmerged); the queue item is restored, the row stays.
-		sdLaneEnv(t, "lane-3", "")
-		if _, _, err := runFactory(t, "next", "--card", "t3", "--run", fcRun); err == nil {
-			t.Fatal("fixture: t3 leased although its hub predecessor t2 is unmerged")
-		}
-		if c := fcCard(t, root, "t3"); c.State != homestate.CardPicked || c.HintAfter != "t2" {
-			t.Fatalf("fixture: t3 = %s after=%q, want the picked residue chained after t2", c.State, c.HintAfter)
-		}
+		// t3's record carries its stored hub hint t2 — the queue-later sharer
+		// the generation named as the tail at its creation (placed directly;
+		// since the nominated validation decides the wait pre-promotion, the
+		// refused-nomination residue no longer mints rows).
+		fcPlace(t, root, homestate.Card{CardID: "t3", State: homestate.CardPicked, HintAfter: "t2"})
 		// t2 merges; t1 — the sharer of the OTHER hub path — is still open.
 		fcSetCardState(t, root, "t2", homestate.CardMergedLocal)
 		if got := fbLeasedCard(t, root, "lane-3"); got != "" {
@@ -355,5 +346,84 @@ func TestFactoryCompleteMergingRetryRefusesForeignLane(t *testing.T) {
 	}
 	if c := fcCard(t, f.root, "t1"); c.State != homestate.CardPROpen {
 		t.Fatalf("card = %s, want pr-open after the holder's retry", c.State)
+	}
+}
+
+// TestFactoryCompleteMergingRetryRefusesExpiredLease — gate r5: the merging
+// retry's owner check carried the holder NAME only, so an EXPIRED existing
+// holder still ran the push, the pull-request create, and the auto-merge
+// request before the record refused it. The retry requires a holder whose
+// lease has not expired, refused before the first remote mutation.
+func TestFactoryCompleteMergingRetryRefusesExpiredLease(t *testing.T) {
+	f := ghfNew(t, ghfOpts{syncStatus: "complete", state: homestate.CardMerging})
+	d := newGHDouble(t, f)
+	expired := fcNow.Add(-time.Minute).Format(time.RFC3339Nano)
+	db := fcOpen(t, f.root)
+	if _, err := db.DB.Exec(`UPDATE cards SET lease_expires_at = ? WHERE card_id = 't1'`, expired); err != nil {
+		t.Fatalf("expire the merging lease: %v", err)
+	}
+	_ = db.Close()
+
+	sdLaneEnv(t, ghfLane, "")
+	if _, err := ghfComplete(t); err == nil {
+		t.Fatal("an expired holder's merging retry was accepted")
+	}
+	if d.created {
+		t.Fatalf("the expired holder created the pull request before any refusal; calls: %v", d.calls)
+	}
+	if tip := f.remoteBranchTip(t); tip != "" {
+		t.Fatalf("the expired holder pushed %s before any refusal", tip)
+	}
+	if c := fcCard(t, f.root, "t1"); c.State != homestate.CardMerging {
+		t.Fatalf("card = %s, want still merging (the refusal changed nothing)", c.State)
+	}
+}
+
+// TestReviewNominatedWaitsOnAllHubPredecessors — gate r5: the nominated
+// lease bypassed the multi-hub wait the un-nominated selection applies — a
+// candidate whose stored hint's predecessor merged but whose OTHER hub
+// path's predecessor is still in flight leased straight through the direct
+// path. The nominated validation runs the same wait before it promotes
+// anything, refusing with the predecessor error the T2 guard would give.
+func TestReviewNominatedWaitsOnAllHubPredecessors(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStateQueued, factory.BacklogStateQueued)
+	for _, id := range []string{"t1", "t2", "t3"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	}
+	fbSeedFiles(t, store, "t1", t1533HubA)
+	fbSeedFiles(t, store, "t2", t1533HubB)
+	fbSeedFiles(t, store, "t3", t1533HubA, t1533HubB)
+	for _, lane := range []string{"lane-1", "lane-2", "lane-3"} {
+		sdRegisterLane(t, root, lane)
+	}
+	t.Chdir(root)
+
+	if got := fbLeasedCard(t, root, "lane-1"); got != "t1" {
+		t.Fatalf("lane-1's lease = %q, want t1", got)
+	}
+	if got := fbLeasedCard(t, root, "lane-2"); got != "t2" {
+		t.Fatalf("lane-2's lease = %q, want t2", got)
+	}
+	// t3's record carries its stored hub hint t2 — the queue-later sharer
+	// the generation named as the tail at its creation.
+	fcPlace(t, root, homestate.Card{CardID: "t3", State: homestate.CardPicked, HintAfter: "t2"})
+	// The stored predecessor merges; the OTHER hub path's t1 is in flight.
+	fcSetCardState(t, root, "t2", homestate.CardMergedLocal)
+
+	sdLaneEnv(t, "lane-3", "")
+	if _, _, err := runFactory(t, "next", "--card", "t3", "--run", fcRun); err == nil {
+		t.Fatal("the nominated lease succeeded while hub predecessor t1 is unmerged — the direct path waits on every hub predecessor too")
+	}
+	if c := fcCard(t, root, "t3"); c.State != homestate.CardPicked {
+		t.Fatalf("t3 = %s, want still picked (the refusal decided before any promotion)", c.State)
+	}
+	// The last hub predecessor merges; the direct lease follows.
+	fcSetCardState(t, root, "t1", homestate.CardMergedLocal)
+	if _, _, err := runFactory(t, "next", "--card", "t3", "--run", fcRun); err != nil {
+		t.Fatalf("next --card t3 after every hub predecessor merged: %v", err)
+	}
+	if c := fcCard(t, root, "t3"); c.State != homestate.CardLeased || c.LeaseHolder != "lane-3" {
+		t.Fatalf("t3 = %s holder=%q, want leased to lane-3", c.State, c.LeaseHolder)
 	}
 }

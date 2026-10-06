@@ -719,17 +719,7 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	if err != nil {
 		return homestate.Card{}, false, false, err
 	}
-	mergedLocal := make(map[string]bool, len(allRuns))
-	for _, c := range allRuns {
-		switch c.State {
-		// merged-pr belongs here beside merged-local: the T2 guard
-		// (predecessorMerged) accepts it, and a selector that did not made a
-		// github-flow predecessor release nothing — the follower answered no
-		// card forever (card t1533, review-gate r2 finding b).
-		case homestate.CardMergedLocal, homestate.CardMergedPR, homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone:
-			mergedLocal[c.CardID] = true
-		}
-	}
+	mergedLocal := factoryMergedCards(allRuns)
 	// selectionSkips reports why a recorded candidate must not lease on this
 	// pass: it is another lane's bundle member, its predecessor is
 	// unmerged, or an open sharer of one of its hub paths is unmerged —
@@ -737,7 +727,7 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	// per hub path (card t1533, card-review r2f finding 4). The direct
 	// nominated path keeps the T2 error — the skip is the un-nominated
 	// selection's shape alone.
-	hubWaitUnmerged := func(cardID string) bool {
+	hubWaitUnmerged := func(cardID string) (string, bool) {
 		return factoryHubWaitUnmerged(queueRec, cards, mergedLocal, cardID)
 	}
 	selectionSkips := func(c homestate.Card) bool {
@@ -749,7 +739,8 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		if c.HintAfter != "" && !mergedLocal[c.HintAfter] {
 			return true
 		}
-		return hubWaitUnmerged(c.CardID)
+		_, wait := hubWaitUnmerged(c.CardID)
+		return wait
 	}
 	// hubFields computes the hub-chain hint a record CREATION carries for
 	// cardID, from the same one queue read every arm sees (REQ-TCI-020).
@@ -883,7 +874,9 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 					if selectionSkips(row) {
 						continue
 					}
-				} else if hf := hubFields(it.ID); (hf.HintAfter != nil && !mergedLocal[*hf.HintAfter]) || hubWaitUnmerged(it.ID) {
+				} else if hf := hubFields(it.ID); hf.HintAfter != nil && !mergedLocal[*hf.HintAfter] {
+					continue
+				} else if _, wait := hubWaitUnmerged(it.ID); wait {
 					continue
 				}
 				if cls.Mode == factory.ClassModeSerial && serialInFlightExcluding(it.ID, false) {
@@ -1202,6 +1195,20 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 			}
 			break
 		}
+	}
+	// The multi-hub wait the un-nominated selection applies runs here too
+	// (card t1533, review-gate r5): the stored hint names ONE predecessor,
+	// and a candidate sharing other hub paths leased straight past their
+	// still-in-flight sharers through the direct path. The wait is decided
+	// before the promotion, so the refusal writes nothing, and it carries the
+	// T2 guard's own sentinel so both paths read as the same predecessor
+	// error.
+	allRuns, err := db.ListCards(ctx, "")
+	if err != nil {
+		return nom, nil, err
+	}
+	if blocker, wait := factoryHubWaitUnmerged(queueRec, cards, factoryMergedCards(allRuns), cardID); wait {
+		return nom, nil, fmt.Errorf("factory next: %w: %s has not reached %s (git-flow) or %s (github-flow)", homestate.ErrPredecessorUnmerged, blocker, homestate.CardMergedLocal, homestate.CardMergedPR)
 	}
 	// The claim would refuse a foreign tree only after the promotion; deciding
 	// it here keeps the refusal write-free. The carry-over read runs first: a

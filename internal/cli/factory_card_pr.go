@@ -228,10 +228,15 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 	// request, and the auto-merge request with no owner check at all — a
 	// foreign lane's work landed before the record refused it (card t1533,
 	// review-gate r2 finding c). Only the recorded lease holder re-enters a
-	// mutating path, and the refusal precedes the push.
+	// mutating path, and only on a lease that has not expired — an expired
+	// holder's retry ran the same remote mutations before the F1 expiry
+	// refusal (review-gate r5) — and the refusal precedes the push.
 	if card.State == homestate.CardMerging {
 		if holder := strings.TrimSpace(card.LeaseHolder); holder == "" || holder != lane {
 			return fmt.Errorf("factory complete: refused — card %s is merging under lease holder %s; %s cannot retry the delivery", card.CardID, dash(holder), dash(lane))
+		}
+		if card.LeaseExpired(factoryCardNow()) {
+			return fmt.Errorf("factory complete: refused — card %s's merging lease held by %s expired at %s; the expiry must be collected before the delivery is retried", card.CardID, dash(card.LeaseHolder), card.LeaseExpiresAt)
 		}
 	}
 	wt := card.WorktreePath
