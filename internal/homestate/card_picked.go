@@ -256,7 +256,8 @@ func (f *FactoryDB) RecordBundleChain(ctx context.Context, runID string, members
 }
 
 // predecessorMerged is the T2 `after` guard (REQ-FR-016): the predecessor
-// must have a factory record — in any run — that reached the local merge.
+// must have a factory record — in any run — that reached the merge: the local
+// merge (git-flow) or the pull-request merge (github-flow).
 func predecessorMerged(ctx context.Context, tx *sql.Tx, after string) error {
 	rows, err := tx.QueryContext(ctx, `SELECT state FROM cards WHERE card_id=?`, after)
 	if err != nil {
@@ -271,7 +272,7 @@ func predecessorMerged(ctx context.Context, tx *sql.Tx, after string) error {
 		}
 		seen = true
 		switch state {
-		case CardMergedLocal, CardPushed, CardCIGreen, CardDone:
+		case CardMergedLocal, CardMergedPR, CardPushed, CardCIGreen, CardDone:
 			return nil
 		}
 	}
@@ -281,5 +282,5 @@ func predecessorMerged(ctx context.Context, tx *sql.Tx, after string) error {
 	if !seen {
 		return fmt.Errorf("%w: %s has no factory record (clear the hint with assign --after \"\")", ErrUnknownPredecessor, after)
 	}
-	return fmt.Errorf("%w: %s has not reached merged-local", ErrPredecessorUnmerged, after)
+	return fmt.Errorf("%w: %s has not reached %s (git-flow) or %s (github-flow)", ErrPredecessorUnmerged, after, CardMergedLocal, CardMergedPR)
 }

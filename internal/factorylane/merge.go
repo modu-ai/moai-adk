@@ -106,7 +106,7 @@ func (r ExecGitRunner) Git(args ...string) (string, error) {
 type MergeTripleInput struct {
 	Lane        string
 	Card        string
-	SpecDir     string // the card's .moai/specs/<SPEC-ID> directory
+	SpecDir     string // the card's .moai/specs/<SPEC-ID> directory; empty = a SPEC-less card, which reads RepoDir's .moai/reports/<Card>/verdict.md instead
 	Branch      string // the card branch (merge source)
 	Develop     string // the integration branch (merge target)
 	RepoDir     string // the git repository the probes run in
@@ -151,7 +151,15 @@ func EvaluateMergeTriple(in MergeTripleInput, git GitRunner) (MergeCheckRun, err
 	run := MergeCheckRun{Lane: in.Lane, Card: in.Card, Branch: in.Branch, Develop: in.Develop}
 
 	// (a) sync-audit: the card's sync phase record reads closed.
-	syncDetail, syncOK := checkSyncAudit(in.SpecDir)
+	// A SPEC-less card (empty SpecDir) closes on its verdict file instead
+	// (merge_specless.go); a card with a SPEC reads its progress.md as before.
+	var syncDetail string
+	var syncOK bool
+	if in.SpecDir == "" {
+		syncDetail, syncOK = checkSyncAuditVerdictFile(git, in.RepoDir, in.Card)
+	} else {
+		syncDetail, syncOK = checkSyncAudit(in.SpecDir)
+	}
 	run.Checks = append(run.Checks, MergeCheck{Name: CheckSyncAudit, Passed: syncOK, Detail: syncDetail})
 
 	// (b) conflict-free and (c) tree-identity share one merge-tree probe in
