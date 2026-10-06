@@ -486,6 +486,54 @@ func TestLaneRebindRefusedAndOldApprovalInert(t *testing.T) {
 	}
 }
 
+// Regression pin for round-13 P1 continuation (card t1538): a re-selection
+// (`todo pick`) into a new run re-points the dispatch binding with the
+// assignment record — the leftover old run's approval goes inert, and the
+// done gate refuses the approval-less new work.
+func TestTodoPickUpdatesDispatchBinding(t *testing.T) {
+	root, store := fcFixture(t)
+	cardID := addShapeCard(t, "re-selected card")
+	// The old run: a done row with a valid-looking approval.
+	fcPlace(t, root, homestate.Card{CardID: cardID, RunID: "run-old", State: homestate.CardDone, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-old", UpdatedAt: "2026-09-26T01:00:00Z"})
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: "uuid-old", RunID: "run-old", CardID: cardID, FactoryVersion: 1,
+		EvidenceHash: "sha-old", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+	// The new run: a picked row at v1 with no approval.
+	fcPlaceFactoryCard(t, root, cardID, 1, "sha-new", "2026-09-26T02:00:00Z")
+
+	// Re-selection records the assignment under run-new (env-driven) and —
+	// the fix — re-points the dispatch binding in the same flow. `todo
+	// next --card` is the re-selection surface the overlay drove.
+	t.Setenv(config.EnvFactoryRunID, fcRun)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	if _, _, err := runTodo(t, "next", cardID); err != nil {
+		t.Fatalf("next: %v", err)
+	}
+
+	bindDB := fcOpen(t, root)
+	row, linked, rerr := bindDB.RecordedCardRowReadonly(context.Background(), cardID)
+	_ = bindDB.Close()
+	if rerr != nil || !linked {
+		t.Fatalf("binding read: linked=%v err=%v", linked, rerr)
+	}
+	if row.RunID != fcRun {
+		t.Fatalf("binding run = %s, want %s", row.RunID, fcRun)
+	}
+	// The old run's approval is inert: the done gate resolves run-cli's
+	// row, holds no receipt for it, and refuses.
+	_, stderr, err := runTodo(t, "done", cardID)
+	if err == nil {
+		t.Fatal("done closed on the old run's approval after re-selection")
+	}
+	if !strings.Contains(stderr, "leader approval") {
+		t.Errorf("stderr %q does not name the leader approval reason", stderr)
+	}
+	if !fcLiveItem(t, store, cardID) {
+		t.Fatal("the refused done archived the card")
+	}
+}
+
 // fcBindDispatch records the card's dispatch binding — the current-run
 // authority the completion gate and scan resolve through. Idempotent.
 func fcBindDispatch(t *testing.T, root, cardID, runID string) {

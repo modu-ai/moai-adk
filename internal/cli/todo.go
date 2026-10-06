@@ -37,6 +37,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // init wires internal/cli's existing userHomeDirFn test-injection seam
@@ -1473,6 +1474,41 @@ func recordFactoryCardState(cardID, specID, state, eventKind string) {
 	// describe the lane checkout that actually selected and executed the card.
 	// OpenFactory canonicalizes only the DB routing after capture.
 	_ = factory.RecordFactoryCardState(resolveProjectDir(), runID, cardID, owner, specID, state, eventKind)
+	// The dispatch binding follows every claimed/released assignment record
+	// (review round-13 P1): a re-selection into a new run re-points the
+	// binding here, so the completion gate resolves the run the work now
+	// lives in — never the previous run whose approval would otherwise
+	// revive. A missing factory database is fine (a later first dispatch
+	// records the binding); any other failure surfaces on stderr — the
+	// completion gate fails closed on the stale binding either way.
+	if state == "picked" || state == "assigned" {
+		if err := recordDispatchBindingFromEnv(cardID, runID); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "note: dispatch binding update for %s failed (%v) — completion will fail closed\n", cardID, err)
+		}
+	}
+}
+
+// recordDispatchBindingFromEnv records the dispatch binding for the env run
+// when a factory database already exists. A missing database is a no-op: the
+// first real dispatch (assign/mirror/next) records the binding itself.
+func recordDispatchBindingFromEnv(cardID, runID string) error {
+	root := resolveProjectDir()
+	path, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		return err
+	}
+	if _, statErr := os.Stat(path); statErr != nil {
+		if os.IsNotExist(statErr) {
+			return nil
+		}
+		return statErr
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
+	return db.RecordDispatchBinding(context.Background(), cardID, runID, time.Now())
 }
 
 // normalizeTodoRef maps a bare <n> argument to the item id t<n>; an explicit
