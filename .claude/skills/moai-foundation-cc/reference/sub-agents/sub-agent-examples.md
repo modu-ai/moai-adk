@@ -11,7 +11,7 @@
 >
 > **For the real MoAI agent surface**, consult the flat 11-agent retained
 > catalog at
-> `../../moai-foundation-core/modules/agents-reference.md`
+> `../../../moai-foundation-core/modules/agents-reference.md`
 > (10 MoAI-custom managers/auditors/builders/advisor/design/e2e + the
 > Anthropic built-in `Explore`). MoAI does NOT use the tiered
 > `{domain}-{role}` scheme; it uses a flat `manager-*` / `*-auditor` /
