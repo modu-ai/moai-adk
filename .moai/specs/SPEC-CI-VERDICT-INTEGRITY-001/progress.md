@@ -192,3 +192,12 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   outside sentinel at exit 0). Regression: phantom=1 control=0
   malformed=1 matrix-exclude=1 repo-root=0, harness 12 pass / 0 fail.
   CI publication still platform-blocked.
+- gate_round_10 (codex review gate finding, lane-direct): 1 repair, RED
+  observed on the committed 82d5a6e66 code then GREEN on this tree
+  (commit `ba14eb726`) — the bare-mapping test treated ANY colon in a
+  block list item as a mapping, but YAML makes `- node:20` a STRING
+  scalar (no space after the colon); `image: ["node:20"]` mis-routed
+  into the tuple path and its real check was judged phantom. The
+  mapping test now requires a space (or EOL) after the colon.
+  Regression: phantom=1 control=0 malformed=1 matrix-exclude=1
+  repo-root=0. CI publication still platform-blocked.
