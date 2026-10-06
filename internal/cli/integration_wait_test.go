@@ -100,8 +100,16 @@ func TestWaitLoopTimesOutNamingHolderAndPosition(t *testing.T) {
 	integrationWaitPollInterval = 5 * time.Millisecond
 	t.Cleanup(func() { integrationWaitPollInterval = oldInterval })
 	oldClock := factory.WindowClock
+	// The advancing clock is shared with the waiter goroutine — the guard
+	// makes the read/write race-free (the r3 round's -race leg caught the
+	// unguarded form).
+	var clockMu sync.Mutex
 	clockAt := time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)
-	factory.WindowClock = func() time.Time { return clockAt }
+	factory.WindowClock = func() time.Time {
+		clockMu.Lock()
+		defer clockMu.Unlock()
+		return clockAt
+	}
 	t.Cleanup(func() { factory.WindowClock = oldClock })
 	waitHolder(t, root, "sess-a")
 
@@ -114,7 +122,9 @@ func TestWaitLoopTimesOutNamingHolderAndPosition(t *testing.T) {
 	// Advance the clock past the bound while the waiter polls.
 	go func() {
 		time.Sleep(100 * time.Millisecond)
+		clockMu.Lock()
 		clockAt = clockAt.Add(3 * time.Minute)
+		clockMu.Unlock()
 	}()
 	select {
 	case err := <-done:
