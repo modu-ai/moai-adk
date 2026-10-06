@@ -238,6 +238,21 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 	if _, err := factoryGitRead(wt, "config", "--get", "remote.origin.url"); err != nil {
 		return fmt.Errorf("factory complete: refused — the repository has no remote named origin to push %s to", cardBranch)
 	}
+	// The deliver half performs EXTERNAL mutations (push, pull request,
+	// auto-merge), so a retry on a card whose lease has lapsed must refuse
+	// before any of them runs — an expired lease is no authority to touch
+	// the remote (card-review r5). The observation half (pr-open) is
+	// different by design: the lease is released there, and reading the PR
+	// mutates nothing.
+	if card.LeaseHolder != lane || card.LeaseExpired(factoryCardNow()) {
+		return fmt.Errorf("factory complete: refused — card %s's lease is held by %s and %s; delivering to the remote needs a live lease of the calling lane's own card",
+			card.CardID, dash(card.LeaseHolder), func() string {
+				if card.LeaseExpired(factoryCardNow()) {
+					return "has expired"
+				}
+				return "is not this lane"
+			}())
+	}
 	// REQ-GFD-005: the readiness check precedes the PR; a failing check opens nothing.
 	run, err := factoryPRReadiness(out, root, card, lane, cardBranch, target)
 	if err != nil {

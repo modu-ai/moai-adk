@@ -725,6 +725,36 @@ func TestFactoryCompleteGitHubFlowClosesTheQueueCard(t *testing.T) {
 	}
 }
 
+// TestFactoryCompleteRefusesExpiredLeaseOnDelivery — card-review r5: the
+// deliver half pushes, opens the PR, and asks for auto-merge — EXTERNAL
+// mutations a retry must not run on a lapsed lease. An expired-lease card
+// at merge-ready is refused before anything reaches the remote; the
+// observation half (pr-open, lease released) is unaffected by design.
+func TestFactoryCompleteRefusesExpiredLeaseOnDelivery(t *testing.T) {
+	f := ghfNew(t, ghfOpts{syncStatus: "complete"})
+	d := newGHDouble(t, f)
+	// fcFixture pins factoryCardNow to 2026-09-26; the fixture lease
+	// (2026-10-01) is therefore live — expire it in place.
+	db := fcOpen(t, f.root)
+	if _, err := db.DB.Exec(`UPDATE cards SET lease_expires_at='2026-09-01T00:00:00Z' WHERE card_id='t1'`); err != nil {
+		t.Fatalf("expire the lease: %v", err)
+	}
+	_ = db.Close()
+	sdLaneEnv(t, ghfLane, "")
+	if _, err := ghfComplete(t); err == nil {
+		t.Fatal("complete delivered to the remote on an expired lease")
+	}
+	if d.count("pr", "create") != 0 || d.count("pr", "merge") != 0 {
+		t.Errorf("the refused run still called gh: create=%d merge=%d", d.count("pr", "create"), d.count("pr", "merge"))
+	}
+	if got := f.remoteBranchTip(t); got != "" {
+		t.Errorf("the refused run pushed %s to origin (tip %q)", ghfBranch, got)
+	}
+	if c := fcCard(t, f.root, "t1"); c.State != homestate.CardMergeReady {
+		t.Fatalf("the refused run moved the card to %s", c.State)
+	}
+}
+
 // TestFactoryCompleteRefusesAnotherLanesCard — card-review r1: a lane
 // completes only its own card. lane-2 running complete on lane-1's card is
 // refused at entry, and lane-1's queue card stays live.
