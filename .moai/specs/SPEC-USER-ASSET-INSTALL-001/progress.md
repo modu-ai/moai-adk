@@ -590,6 +590,36 @@ author: manager-spec
   deleted (B8), and the llm.yaml runtime drift was restored to HEAD
   (not M7 scope).
 
+### M8 — cross-harness end-to-end verification (2026-10-06)
+
+- REAL-BINARY E2E (built /tmp/t1509-moai-bin from this tree; temp HOME +
+  temp project; claude harness; script output held in the run transcript):
+  1. `moai init` exit 0 → all four user roots populated (~/.claude/skills
+     incl. the dispatcher, ~/.claude/agents/manager-spec.md,
+     ~/.codex/agents/manager-spec.toml, ~/.agents/skills/moai/SKILL.md —
+     the dispatcher mirror), user-assets.json written.
+  2. PROJECT placement absent: .claude/skills/moai, .agents/skills/moai,
+     .codex/agents/moai, .claude/agents/moai all absent (AC-011).
+  3. Idempotent second init: `user-asset ensure: 0 installed, 0 refreshed,
+     0 removed, 0 collision-skipped, 0 divergence-preserved` (AC-004).
+  4. `moai update` exit 0 in-project; the user-asset update + prune lines
+     render (REQ-011).
+  5. COLLISION: a user file planted at an install target survives
+     byte-identical ("collision preserved: yes").
+  6. DIVERGENCE: an edited tracked file preserved byte-identical, counted
+     (`1 divergence-preserved`), named with its path, and the shipped copy
+     backed up under ~/.moai/backups/claude-skills/moai-workflow-spec/
+     (REQ-023 + D33 layout observed on disk).
+  7. DOCTOR: User Install / Project Lock rows render in-project.
+  8. BUNDLE round-trip: `moai bundle add ops-tools` exit 0 (skill lands),
+     `bundle remove ops-tools` exit 0.
+- D-Q3/P6 documentation: the declared limitation (profile sessions do not
+  see the shared user assets in v1) is doc-visible here and in the SPEC
+  body; the user-facing doc placement (README/docs-site) is manager-docs'
+  sync-phase deliverable per the ownership matrix — recorded as the M8
+  docs item handed to /moai sync.
+- CHANGELOG: manager-docs-owned (B12); the sync phase owns the entry.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
