@@ -216,3 +216,12 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   syntax/probe checks before commit. Regression: phantom=1 control=0
   malformed=1 matrix-exclude=1 repo-root=0; round-6/7/10 probes green;
   harness 12 pass / 0 fail. CI publication still platform-blocked.
+- gate_round_12 (codex review gate findings, lane-direct): 2 repairs,
+  RED observed on the committed 058a7fe6a code then GREEN on this tree
+  (commit `291ac13f2`) — (1) subst_literal() now declares n as a local
+  (it clobbered the product-loop combination counter and dropped the
+  macOS legs of an os-3 x version-2 workflow); (2) the auto suffix
+  joins multiple matrix values with comma+space (`Test (ubuntu-latest,
+  18)`) at both suffix sites. Regression: phantom=1 control=0
+  malformed=1 matrix-exclude=1 repo-root=0; round-6/11 probes green;
+  harness 12 pass / 0 fail. CI publication still platform-blocked.
