@@ -14,7 +14,7 @@ import (
 
 func TestLaneBootstrapCarriesDispatchMode(t *testing.T) {
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
-	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
+	t.Setenv(config.EnvFactoryBackend, "claude")
 
 	t.Setenv(config.EnvFactoryAutoDispatch, config.FactoryDispatchAuto)
 	autoPayload := factoryLaneRuleForSource("startup", "en")

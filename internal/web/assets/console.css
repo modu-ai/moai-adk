@@ -321,7 +321,7 @@ html[lang="en"] .nav__en{display:none}
 .spark__b{width:9px;height:16px;background:var(--bg-3);border-radius:2px}
 .spark__b--on{background:var(--fg-1)}
 
-/* ── §9 화면 — 개요 · 칸반 · SPEC · 모니터 ────────────── */
+/* ── §9 화면 — 개요 · 팩토리 · SPEC · 모니터 ────────────── */
 .eyebrow{display:block;font:var(--text-caption);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--primary)}
 .overview-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:24px 26px;border:1px solid var(--border-strong);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm)}
 .overview-hero__copy{min-width:0;max-width:60rem}

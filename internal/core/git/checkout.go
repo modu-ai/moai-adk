@@ -25,8 +25,8 @@ import (
 // dispatcher inside ResolveGitDirs (an older-git host rejecting
 // --path-format=absolute). Direct invocation of the fallback is INSUFFICIENT —
 // a vacuous pass that bypasses the dispatcher. Exported so out-of-package
-// consumers (the hook's fallback suite, the kanban board's fallback-forced
-// criterion) can force the same branch.
+// consumers (the hook's fallback suite and any fallback-forced criterion)
+// can force the same branch.
 var ExecCommand = exec.Command
 
 // GitDirs holds the absolute paths of a repository's git directory and git

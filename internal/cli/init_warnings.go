@@ -96,18 +96,25 @@ func (w *warnCollector) emitSummary(errOut io.Writer) {
 // form. Colour is sourced from tui.Theme tokens (paintToken); under NO_COLOR
 // every helper degrades to plain text (tui.Pill → "[label]", tui.Box border
 // runes intact) — REQ-TUXIU-040/041.
-func buildInitSuccessCard(projectName string, dirs, files, warnCount int) string {
+func buildInitSuccessCard(projectName string, dirs, files, warnCount int, deployMode string) string {
 	th := resolveTheme()
 
 	countRow := tui.Pill(tui.PillOpts{Kind: tui.PillOk, Label: fmt.Sprintf("%d dirs", dirs), Theme: &th}) +
 		"  " + tui.Pill(tui.PillOpts{Kind: tui.PillInfo, Label: fmt.Sprintf("%d files", files), Theme: &th})
+
+	// SPEC-INIT-SHRINK-001 (REQ-021): the card names the deploy mode and
+	// both paths, so a plugin-mode user knows where skills and commands live.
+	modeRow := "Deploy mode: plugin (skills and commands ride the moai plugin; --no-plugin for a full local deploy)"
+	if deployMode == "local" {
+		modeRow = "Deploy mode: local (full local deploy)"
+	}
 
 	nextSteps := "Next steps:\n" +
 		"  1. cd " + projectName + "\n" +
 		"  2. moai cc\n" +
 		"  3. /moai plan \"describe your first feature\""
 
-	body := countRow + "\n\n" + nextSteps
+	body := countRow + "\n" + modeRow + "\n\n" + nextSteps
 	if warnCount > 0 {
 		body += "\n\n" + paintToken(
 			fmt.Sprintf("%d warning(s) collected — see the warning summary on stderr below", warnCount),

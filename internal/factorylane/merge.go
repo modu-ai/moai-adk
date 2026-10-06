@@ -316,7 +316,7 @@ const VerifyWhyText = "the recorded check output for all three conditions exists
 
 // WindowSnapshot is one read of the integration window record, flattened to
 // what the AC-FLA-011 predicate decides on. The CLI flattens the
-// kanban.IntegrationLock into it; tests forge it directly.
+// factory.IntegrationLock into it; tests forge it directly.
 type WindowSnapshot struct {
 	Held       bool // a holder is recorded at all
 	Live       bool // the recorded holder's session is alive

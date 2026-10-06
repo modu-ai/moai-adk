@@ -62,7 +62,8 @@ func TestNormalizeModel_Deprecated(t *testing.T) {
 		{"claude-opus-4-8", "opus[1m]"},
 		{"claude-sonnet-5-5", "sonnet[1m]"}, // current canonical (alias table)
 		{"claude-sonnet-5", "sonnet[1m]"},   // superseded id (deprecated map)
-		{"claude-fable-5", "fable[1m]"},
+		{"claude-fable-5", "fable[1m]"},     // superseded id (deprecated map) — card t1503
+		{"claude-fable-5-1", "fable[1m]"},   // current canonical (alias table) — card t1503
 	}
 	for _, tt := range tests {
 		t.Run("deprecated/"+tt.in, func(t *testing.T) {

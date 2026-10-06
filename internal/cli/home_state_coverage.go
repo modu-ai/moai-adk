@@ -52,7 +52,7 @@ func measureChangedSurfaceCoverage(ctx context.Context, root string) (float64, e
 
 func runChangedSurfaceCoverageSuite(ctx context.Context, root, path string) error {
 	pattern := "^(TestHomeState.*|TestHomeLayout.*|TestProject(Layout|Dir).*|TestRuntimeCensus.*|TestAdmission.*|TestFactory.*|TestResolveFactory.*|TestResume.*|TestExpireResume.*|TestImportLegacy.*|TestHandoff.*|TestClaim.*|TestClaimThenInject.*|TestConcurrentConsume.*|TestSQLiteClaim.*|TestNonceFallback.*|TestManualMode.*|TestNonClearSource.*|TestDegradeToGuidance.*|TestFailOpen_CorruptPending.*|TestStaleTTL.*|TestBranchTable.*|TestRenderHandoff.*|TestHandle_.*|TestIsHex.*|TestInjectionHeader.*|TestNoUserInteraction.*|TestThreeHandler.*|TestProfile.*|TestCleanHome.*|TestScanHomeCleanable.*|TestSecureHomeDirectories.*|TestContinue.*|TestCC.*|TestCharacterize_CC.*|TestRunCC.*|TestRunGLM.*|TestSession(Start|End).*|TestPersistedHomeStateEvidence.*|TestPlatformProcessIdentity.*|TestParseChanged.*|TestChangedProduction.*|TestCommittedCoverage.*)$"
-	coverpkg := "./internal/cli,./internal/homestate,./internal/hook/handoff,./internal/hook,./internal/kanban"
+	coverpkg := "./internal/cli,./internal/homestate,./internal/hook/handoff,./internal/hook,./internal/factory"
 	parts := []struct {
 		name string
 		args []string
@@ -61,7 +61,7 @@ func runChangedSurfaceCoverageSuite(ctx context.Context, root, path string) erro
 		{"homestate", []string{"./internal/homestate"}},
 		{"handoff", []string{"./internal/hook/handoff"}},
 		{"hook", []string{"./internal/hook", "-run", pattern}},
-		{"kanban", []string{"./internal/kanban", "-run", pattern}},
+		{"factory", []string{"./internal/factory", "-run", pattern}},
 	}
 	var merged strings.Builder
 	merged.WriteString("mode: set\n")

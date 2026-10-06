@@ -264,9 +264,11 @@ func TestUpdateLLMYAMLNewKeyDelivery(t *testing.T) {
 }
 
 // TestUpdateLLMYAMLFirstDeployCalm covers AC-LCP-003: for a project with NO
-// llm.yaml, the update deploys the template default verbatim — byte-identical
-// (nothing was merged, so the byte-equality ban does not apply here) — and
-// the update output carries no preservation advisory for llm.yaml.
+// llm.yaml, the update deploys the template default and — since
+// SPEC-INIT-SHRINK-001 — appends the persisted deployment_mode record (the
+// record-less fixture takes the migration path, whose not-demonstrated arm
+// writes `local`): stripping that one line yields the template bytes
+// verbatim. The update output carries no preservation advisory for llm.yaml.
 func TestUpdateLLMYAMLFirstDeployCalm(t *testing.T) {
 	root := makeLLMPreserveFixture(t, false, false)
 	out := runTemplateSyncAt(t, root)
@@ -276,8 +278,20 @@ func TestUpdateLLMYAMLFirstDeployCalm(t *testing.T) {
 		t.Fatalf("llm.yaml absent after update on a project that had none: %v", err)
 	}
 	embedded := embeddedLLMYAMLBytes(t)
-	if !bytes.Equal(disk, embedded) {
-		t.Errorf("first deploy must ship the template llm.yaml verbatim; disk %d bytes vs embedded %d bytes", len(disk), len(embedded))
+	if !strings.Contains(string(disk), "deployment_mode: local") {
+		t.Errorf("the migration's not-demonstrated arm did not persist deployment_mode: local; llm.yaml:\n%s", disk)
+	}
+	// Strip the persisted record line; the remainder is the template verbatim.
+	var lines []string
+	for _, line := range strings.Split(string(disk), "\n") {
+		if strings.Contains(line, "deployment_mode:") {
+			continue
+		}
+		lines = append(lines, line)
+	}
+	stripped := []byte(strings.Join(lines, "\n"))
+	if !bytes.Equal(stripped, embedded) {
+		t.Errorf("first deploy must ship the template llm.yaml verbatim apart from the record line; stripped %d bytes vs embedded %d bytes", len(stripped), len(embedded))
 	}
 	if strings.Contains(out, "llm.yaml") {
 		t.Errorf("update output reports a preservation advisory for llm.yaml on a fresh install; output:\n%s", out)

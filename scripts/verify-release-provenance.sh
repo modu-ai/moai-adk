@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/verify-release-provenance.sh — release provenance gate (7 checks)
+# scripts/verify-release-provenance.sh — release provenance gate (8 checks)
 #
 # Usage:
 #   scripts/verify-release-provenance.sh <tag>      # e.g. v3.1.0
@@ -18,14 +18,18 @@
 #   5  CHANGELOG.md at the tagged commit has this version's section
 #   6  .moai/config/sections/system.yaml at the tagged commit has version: <tag>
 #   7  the tagged commit is an ancestor of origin/main
+#   8  the plugin version carrier (plugins/moai/.claude-plugin/plugin.json,
+#      via scripts/check-plugin-version.sh) equals the tag
 #
-# Pre-release tags (SemVer -rc.N) skip checks 5 and 6 and keep 1-4 and 7: a
-# release candidate has no CHANGELOG section or version bump of its own, but who
-# tagged which commit, by which route, is exactly as binding as for a final tag.
-# No substitute check takes the place of the two that are skipped, and the
-# verdict says so explicitly. Tags without a pre-release suffix run all seven
-# checks unchanged. Only the project's own `-rc.N` form counts; the legacy
-# undotted `-rcN` and other pre-release identifiers keep all seven.
+# Pre-release tags (SemVer -rc.N) skip checks 5, 6 and 8 and keep 1-4 and 7: a
+# release candidate has no CHANGELOG section or version bump of its own — the
+# plugin manifest is emitted by the version bump, so it carries the last formal
+# version — but who tagged which commit, by which route, is exactly as binding
+# as for a final tag. No substitute check takes the place of the three that are
+# skipped, and the verdict says so explicitly. Tags without a pre-release
+# suffix run all eight checks unchanged. Only the project's own `-rc.N` form
+# counts; the legacy undotted `-rcN` and other pre-release identifiers keep all
+# eight.
 #
 # Exit 0 = every applicable check passed; exit 1 = a check failed (the verdict
 # line names it); exit 2 = bad usage.
@@ -80,14 +84,15 @@ if [ "${TRAILER_COMMIT}" != "${TAG_COMMIT}" ]; then
   fail "check 4 (commit binding): trailer Release-commit='${TRAILER_COMMIT}' != tagged commit '${TAG_COMMIT}'."
 fi
 
-# Pre-release tags (-rc.N) skip checks 5 and 6; see the header. The grammar is
-# the project's own `-rc.N` (no leading zero), the form scripts/release.sh
+# Pre-release tags (-rc.N) skip checks 5, 6 and 8; see the header. The grammar
+# is the project's own `-rc.N` (no leading zero), the form scripts/release.sh
 # produces. A tag outside it — the legacy undotted `-rcN`, `-beta.1`, build
-# metadata — is treated as a formal tag and keeps all seven checks.
+# metadata — is treated as a formal tag and keeps all eight checks.
 if [[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-rc\.(0|[1-9][0-9]*)$ ]]; then
-  echo "RELEASE_PROVENANCE_GATE: pre-release tag ${TAG}: skipping check 5 (CHANGELOG) and check 6 (version SSOT) per the rc rule."
+  echo "RELEASE_PROVENANCE_GATE: pre-release tag ${TAG}: skipping check 5 (CHANGELOG), check 6 (version SSOT) and check 8 (plugin version) per the rc rule."
   APPLICABLE_CHECKS="5 applicable checks"
-  SKIPPED_NOTE="; checks 5 and 6 skipped (pre-release)"
+  SKIPPED_NOTE="; checks 5, 6 and 8 skipped (pre-release)"
+  IS_RC=1
 else
   # Check 5 — CHANGELOG.md at the tagged commit has this version's section.
   # Formal sections are bare ('## [3.1.0]'); pre-release (rc) sections
@@ -104,13 +109,24 @@ else
     ACTUAL="$(git show "${TAG_COMMIT}:${SSOT_PATH}" | sed -n 's/^[[:space:]]*version:[[:space:]]*//p' | head -n1)"
     fail "check 6 (version SSOT): ${SSOT_PATH} at ${TAG_COMMIT} has version='${ACTUAL}', expected '${TAG}'."
   fi
-  APPLICABLE_CHECKS="all 7 checks"
+  APPLICABLE_CHECKS="all 8 checks"
   SKIPPED_NOTE=""
+  IS_RC=0
 fi
 
 # Check 7 — the tagged commit is an ancestor of origin/main.
 if ! git merge-base --is-ancestor "${TAG_COMMIT}" origin/main; then
   fail "check 7 (main ancestry): tagged commit ${TAG_COMMIT} is not an ancestor of origin/main."
+fi
+
+# Check 8 — the generated plugin version carrier equals the tag
+# (SPEC-PLUGIN-MARKETPLACE-001 REQ-024). The workflow checked out the
+# tagged tree, so the committed manifest is the one being released.
+# Skipped for pre-release tags together with checks 5 and 6 (see the header).
+if [ "${IS_RC}" -eq 0 ]; then
+  if ! sh scripts/check-plugin-version.sh "${TAG}"; then
+    fail "check 8 (plugin version): plugins/moai/.claude-plugin/plugin.json does not carry '${TAG#v}'; run 'make plugin-emit' in the bump."
+  fi
 fi
 
 echo "RELEASE_PROVENANCE_GATE: ${APPLICABLE_CHECKS} passed for ${TAG} (${TAG_COMMIT})${SKIPPED_NOTE}."

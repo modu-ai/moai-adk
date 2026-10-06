@@ -139,23 +139,31 @@ func TestCharacterize_AuditPinPrecedenceAndBackendDefault(t *testing.T) {
 			"    glm:\n      model: glm-4.6\n      effort: low\n")
 	projectDirResolver = func() string { return pinned }
 
-	if got := resolveCodexAuditModelEffort(map[string]any{"cwd": pinned}); got != (config.ModelEffort{Model: "gpt-5-codex", Effort: "high"}) {
+	if got, gotErr := resolveCodexAuditModelEffort(map[string]any{"cwd": pinned}); gotErr != nil {
+		t.Fatalf("resolveCodexAuditModelEffort: %v", gotErr)
+	} else if got != (config.ModelEffort{Model: "gpt-5-codex", Effort: "high"}) {
 		t.Errorf("codex audit with pin = %+v, want the pin", got)
 	}
-	if got := resolveGLMAuditModelEffort(pinned); got != (config.ModelEffort{Model: "glm-4.6", Effort: "low"}) {
+	if got, gotErr := resolveGLMAuditModelEffort(pinned); gotErr != nil {
+		t.Fatalf("resolveGLMAuditModelEffort: %v", gotErr)
+	} else if got != (config.ModelEffort{Model: "glm-4.6", Effort: "low"}) {
 		t.Errorf("glm audit with pin = %+v, want the pin", got)
 	}
 
 	bare := charAuditRoot(t, "")
 	projectDirResolver = func() string { return bare }
 
-	if got := resolveCodexAuditModelEffort(map[string]any{"cwd": bare}); got != (config.ModelEffort{Model: codexAuditDefaultModel, Effort: codexAuditDefaultEffort}) {
+	if got, gotErr := resolveCodexAuditModelEffort(map[string]any{"cwd": bare}); gotErr != nil {
+		t.Fatalf("resolveCodexAuditModelEffort: %v", gotErr)
+	} else if got != (config.ModelEffort{Model: codexAuditDefaultModel, Effort: codexAuditDefaultEffort}) {
 		t.Errorf("codex audit without pin = %+v, want the {%s, %s} default pin (REQ-MMU-001 — the former zero value fell with superseded REQ-AMP-005)", got, codexAuditDefaultModel, codexAuditDefaultEffort)
 	}
 	if got := resolveCodexModelEffort(map[string]any{"cwd": bare}); got != (config.ModelEffort{}) {
 		t.Errorf("codex task without pin = %+v, want the zero value", got)
 	}
-	if got := resolveGLMAuditModelEffort(bare); got != (config.ModelEffort{Model: glmAuditDefaultModel, Effort: glmAuditDefaultEffort}) {
+	if got, gotErr := resolveGLMAuditModelEffort(bare); gotErr != nil {
+		t.Fatalf("resolveGLMAuditModelEffort: %v", gotErr)
+	} else if got != (config.ModelEffort{Model: glmAuditDefaultModel, Effort: glmAuditDefaultEffort}) {
 		t.Errorf("glm audit without pin = %+v, want the {%s, %s} default pin (REQ-TIER-004 — the former empty-effort backend default fell with the operator pin flip)", got, glmAuditDefaultModel, glmAuditDefaultEffort)
 	}
 	if got := resolveGLMTaskModel(); got != config.DefaultGLMHigh {

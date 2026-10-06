@@ -1,7 +1,7 @@
 // release_provenance_test.go: guards for the release provenance gate
 // (SPEC-GITHUB-FLOW-DEFAULT-001 M3, AC-GFD-008, design D-6, REQ-GFD-008).
 //
-// The gate is the seven-check body of the verify-provenance job in
+// The gate is the eight-check body of the verify-provenance job in
 // .github/workflows/release.yml, moved to scripts/verify-release-provenance.sh
 // so it can be run against fixtures. The tests judge the shipped gate, not only
 // the script: the workflow must call the script with the tag, must no longer
@@ -25,7 +25,7 @@ import (
 const rlsGateTrailerVia = "Released-via: harness:release"
 
 // rlsProvKind says how a fixture tag is built; each kind violates (or satisfies)
-// exactly one of the seven checks.
+// exactly one of the eight checks.
 type rlsProvKind int
 
 const (
@@ -55,19 +55,21 @@ func rlsGateFail(msg string) []string {
 }
 
 func rlsRcSkipNotice(tag string) string {
-	return fmt.Sprintf("RELEASE_PROVENANCE_GATE: pre-release tag %s: skipping check 5 (CHANGELOG) and check 6 (version SSOT) per the rc rule.", tag)
+	return fmt.Sprintf("RELEASE_PROVENANCE_GATE: pre-release tag %s: skipping check 5 (CHANGELOG), check 6 (version SSOT) and check 8 (plugin version) per the rc rule.", tag)
 }
 
 func rlsRcPass(tag string) string {
-	return fmt.Sprintf("RELEASE_PROVENANCE_GATE: 5 applicable checks passed for %s (<sha>); checks 5 and 6 skipped (pre-release).", tag)
+	return fmt.Sprintf("RELEASE_PROVENANCE_GATE: 5 applicable checks passed for %s (<sha>); checks 5, 6 and 8 skipped (pre-release).", tag)
 }
 
 // rlsSuffixlessRows are the suffix-less (formal release) tags: their seven
 // checks must be exactly what the inline step did before the move.
 func rlsSuffixlessRows() []rlsProvRow {
 	return []rlsProvRow{
-		{name: "6_all_seven_checks_hold", tag: "v9.9.9", kind: provOK, changelog: true, ssot: "v9.9.9", wantExit: 0,
-			wantOut: []string{"RELEASE_PROVENANCE_GATE: all 7 checks passed for v9.9.9 (<sha>)."}},
+		{name: "6_all_eight_checks_hold", tag: "v9.9.9", kind: provOK, changelog: true, ssot: "v9.9.9", wantExit: 0,
+			wantOut: []string{
+				"check-plugin-version: plugin version 9.9.9 matches tag v9.9.9",
+				"RELEASE_PROVENANCE_GATE: all 8 checks passed for v9.9.9 (<sha>)."}},
 		{name: "4_no_changelog_section", tag: "v9.9.8", kind: provOK, changelog: false, ssot: "v9.9.8", wantExit: 1,
 			wantOut: rlsGateFail("check 5 (CHANGELOG): CHANGELOG.md at <sha> has no '## [9.9.8]' or '## [v9.9.8]' section.")},
 		{name: "5_ssot_version_differs", tag: "v9.9.7", kind: provOK, changelog: true, ssot: "v9.9.6", wantExit: 1,
@@ -104,7 +106,7 @@ func rlsRcRows() []rlsProvRow {
 		{name: "d13_rc_check3_trailer_version_differs", tag: "v9.9.9-rc.6", kind: provBadVersion, changelog: false, ssot: "v9.0.0", wantExit: 1,
 			wantOut: rlsGateFail("check 3 (version binding): trailer Release-version='v9.9.99' != pushed tag 'v9.9.9-rc.6'.")},
 		// The rc rule covers the project's `-rc.N` form only. The legacy
-		// undotted `-rcN` and other pre-release identifiers keep all seven checks.
+		// undotted `-rcN` and other pre-release identifiers keep all eight checks.
 		{name: "near_miss_legacy_undotted_rc_keeps_check5", tag: "v9.9.9-rc12", kind: provOK, changelog: false, ssot: "v9.9.9-rc12", wantExit: 1,
 			wantOut: rlsGateFail("check 5 (CHANGELOG): CHANGELOG.md at <sha> has no '## [9.9.9-rc12]' or '## [v9.9.9-rc12]' section.")},
 		{name: "near_miss_other_prerelease_keeps_check5", tag: "v9.9.9-beta.1", kind: provOK, changelog: false, ssot: "v9.9.9-beta.1", wantExit: 1,
@@ -119,8 +121,13 @@ func rlsBuildProvenanceRepo(t *testing.T, rows []rlsProvRow) *rlsRepo {
 	t.Helper()
 	r := rlsNewRepo(t)
 	r.commit(map[string]string{
-		"CHANGELOG.md":                      "# Changelog\n\n## [Unreleased]\n",
-		".moai/config/sections/system.yaml": "system:\n  version: v0.0.0\n",
+		"CHANGELOG.md": "# Changelog\n\n## [Unreleased]\n",
+		// The plugin version carrier check (8) reads the working tree, which in
+		// the hosted runner is the tagged checkout; here one manifest persists
+		// for every row, so it carries the only formal OK row's version. The
+		// version field sits on its own line, as the check script's sed reads it.
+		"plugins/moai/.claude-plugin/plugin.json": "{\n  \"name\": \"moai\",\n  \"version\": \"9.9.9\"\n}\n",
+		".moai/config/sections/system.yaml":       "system:\n  version: v0.0.0\n",
 	}, "base")
 	r.git("push", "-q", "origin", "main")
 
@@ -230,6 +237,7 @@ func TestReleaseProvenanceStepReplaySuffixless(t *testing.T) {
 	rows := rlsSuffixlessRows()
 	r := rlsBuildProvenanceRepo(t, rows)
 	r.installRepoFile(rlsProvenanceRel)
+	r.installRepoFile(rlsPluginVersionRel) // check 8 delegates to the plugin version script
 	for _, row := range rows {
 		t.Run(row.name, func(t *testing.T) {
 			rlsCheckRow(t, row, rlsReplayStepBody(t, r, row.tag))
@@ -248,6 +256,7 @@ func TestReleaseProvenanceRcRule(t *testing.T) {
 	rows := append(rlsSuffixlessRows()[:3:3], rlsRcRows()...)
 	r := rlsBuildProvenanceRepo(t, rows)
 	r.installRepoFile(rlsProvenanceRel)
+	r.installRepoFile(rlsPluginVersionRel) // check 8 delegates to the plugin version script
 	for _, row := range rows {
 		t.Run(row.name, func(t *testing.T) {
 			rlsCheckRow(t, row, rlsDirectProvenance(t, r, row.tag))
@@ -327,6 +336,7 @@ func TestReleaseWorkflowInvokesProvenanceScript(t *testing.T) {
 		rows := append(rlsSuffixlessRows(), rlsRcRows()...)
 		r := rlsBuildProvenanceRepo(t, rows)
 		hasScript := r.installRepoFile(rlsProvenanceRel)
+		r.installRepoFile(rlsPluginVersionRel) // check 8 delegates to the plugin version script
 		for _, row := range rows {
 			t.Run(row.name, func(t *testing.T) {
 				replay := rlsReplayStepBody(t, r, row.tag)

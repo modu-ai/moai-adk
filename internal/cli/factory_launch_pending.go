@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 func launchEnvValue(env []string, key string) string {
@@ -35,7 +35,7 @@ func factoryManagedRequested(env []string) bool {
 }
 
 func factoryLaunchEnabled(env []string) bool {
-	return strings.TrimSpace(launchEnvValue(env, config.EnvMoaiKanbanID)) != "" &&
+	return strings.TrimSpace(launchEnvValue(env, config.EnvFactoryRunID)) != "" &&
 		(strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryWorker)) != "" ||
 			strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryWorkers)) != "")
 }
@@ -44,7 +44,7 @@ func factoryLaunchEnabled(env []string) bool {
 // A SessionStart hook later replaces its private provisional row key with the
 // actual session UUID through Store.RegisterPeer's owner-preserving upsert.
 func registerFactoryLaunchPending(ctx context.Context, root string, env []string, pid int, processStart string) (_ factorymsg.Peer, err error) {
-	runID := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(launchEnvValue(env, config.EnvFactoryRunID))
 	laneLabel := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryWorker))
 	laneCountEnv := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryWorkers))
 	if runID == "" || (laneLabel == "" && laneCountEnv == "") {
@@ -59,14 +59,14 @@ func registerFactoryLaunchPending(ctx context.Context, root string, env []string
 	// Persisted vocabulary: `leader` for the run's leader, `lane`/`lane-<n>`
 	// for a lane (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-010). A legacy label in
 	// the launch environment is refused — never registered.
-	role, slot := kanban.RoleLeader, kanban.RoleLeader
+	role, slot := factory.RoleLeader, factory.RoleLeader
 	if laneLabel != "" {
-		if kanban.IsLegacyFactoryRoleValue(laneLabel) {
+		if factory.IsLegacyFactoryRoleValue(laneLabel) {
 			return factorymsg.Peer{}, fmt.Errorf("factory lane label %q is legacy vocabulary; relaunch under the lane vocabulary (lane-<n>)", laneLabel)
 		}
-		role, slot = kanban.RoleLane, laneLabel
+		role, slot = factory.RoleLane, laneLabel
 	}
-	backend := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiKanbanBackend))
+	backend := strings.TrimSpace(launchEnvValue(env, config.EnvFactoryBackend))
 	if backend == "" {
 		backend = "unknown"
 	}

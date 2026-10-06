@@ -211,15 +211,19 @@ func glmServedModelWarning(requested, served string) string {
 // read the pin from a DIFFERENT tree than the diff under review — the same
 // caller-named-root contract the codex counterpart honors via params["cwd"].
 // Empty falls back to projectDirResolver() (the pre-CR behavior).
-func resolveGLMAuditModelEffort(projectRoot string) config.ModelEffort {
+func resolveGLMAuditModelEffort(projectRoot string) (config.ModelEffort, error) {
 	root := strings.TrimSpace(projectRoot)
 	if root == "" {
 		root = projectDirResolver()
 	}
-	if pin := workflowAuditPins(root).GLM; pin.Model != "" {
-		return pin
+	pins, err := workflowAuditPins(root)
+	if err != nil {
+		return config.ModelEffort{}, err
 	}
-	return config.ModelEffort{Model: glmAuditDefaultModel, Effort: glmAuditDefaultEffort}
+	if pin := pins.GLM; pin.Model != "" {
+		return pin, nil
+	}
+	return config.ModelEffort{Model: glmAuditDefaultModel, Effort: glmAuditDefaultEffort}, nil
 }
 
 // handleGLMAudit is the thin-wrapper handler for the `glm_audit` MCP tool. It
@@ -274,11 +278,30 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	// the diff under review — a worktree session names its own root, and
 	// resolving through projectDirResolver() here could read a different
 	// tree's workflow.yaml.
-	me := resolveGLMAuditModelEffort(root) // pin > backend default (REQ-AMP-003)
+	me, pinErr := resolveGLMAuditModelEffort(root) // pin > backend default (REQ-AMP-003)
+	if pinErr != nil {
+		// The pin read failed: surface it rather than auditing with an
+		// assumed-absent pin (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+		return review(glmInconclusive("workflow.audit pins unreadable: " + pinErr.Error())), nil
+	}
 	if explicit := req.GetString("model", ""); strings.TrimSpace(explicit) != "" {
 		me.Model = strings.TrimSpace(explicit) // explicit caller model outranks the pin
 	}
-	diff, err := collectReviewDiff(root, target)
+	// A baseBranch review resolves its base ONCE, here, and the diff is measured
+	// from that exact merge base; the same value is what review_base reports, so
+	// a base ref moving while z.ai answers cannot make the two disagree (t1426).
+	var base *reviewBase
+	var diff string
+	var err error
+	if target == codexTargetBaseBranch {
+		var b reviewBase
+		if b, err = resolveReviewBase(root); err == nil {
+			base = &b
+			diff, err = collectReviewDiffAt(root, b)
+		}
+	} else {
+		diff, err = collectReviewDiff(root, target)
+	}
 	if err != nil {
 		return review(glmInconclusive("no reviewable change: " + err.Error())), nil
 	}
@@ -288,6 +311,9 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 
 	notifyMCPProgress(ctx, token, 0.05, "glm 감사 — z.ai 요청 준비 중...")
 	out := callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, token)
+	if base != nil {
+		out.ReviewBase = base.String()
+	}
 	return review(out), nil
 }
 

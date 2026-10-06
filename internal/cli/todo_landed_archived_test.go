@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // TestLandedOnArchivedCardNamesTheArchive — an archived card is refused as
@@ -77,7 +77,7 @@ func TestLandedOnUnknownIDStillSaysNoBacklogItem(t *testing.T) {
 // sibling file's storedLanding reads `items`; an archived row lives in
 // `archived_items`, and asking the wrong table would report "no evidence" for
 // every archived card whatever the column actually held.
-func archivedLanding(t *testing.T, store *kanban.BacklogStore, id string) (string, bool) {
+func archivedLanding(t *testing.T, store *factory.BacklogStore, id string) (string, bool) {
 	t.Helper()
 	var v sql.NullString
 	if err := openQueueDB(t, store).QueryRow(

@@ -45,6 +45,17 @@ const (
 // DeciderHuman is the only decider F1 accepts.
 const DeciderHuman = "human"
 
+// DeciderAudit approves a Kickoff on verdict-file evidence (edge T8a only).
+const DeciderAudit = "audit"
+
+// Queue-hold readings the caller passes for an audit approval. Only a clear
+// reading admits; an unread or unreadable queue fails closed.
+const (
+	QueueHoldClear      = "clear"
+	QueueHoldHeld       = "hold"
+	QueueHoldUnreadable = "unreadable"
+)
+
 var cardStates = []string{
 	CardPicked, CardAssigned, CardLeased, CardPlan, CardPlanAudit, CardKickoff,
 	CardRun, CardSync, CardSyncAudit, CardMergeReady, CardMerging, CardMergedLocal,
@@ -111,6 +122,14 @@ type Card struct {
 	MergeSHA         string `json:"merge_sha"`
 	MergeTree        string `json:"merge_tree"`
 	RemeasurePath    string `json:"remeasure_path"`
+	// BundleID/BundleOrder are ADDITIVE (SPEC-TODO-CARD-ISSUANCE-001
+	// REQ-TCI-018): the bundle chain's identity and the member's position in
+	// it. An empty bundle id is simply not a bundle member. Schema version 6
+	// adds both (migrateFactoryV5ToV6); factoryDDL declares the same pair for
+	// a fresh database. They are written with the picked record only — no
+	// transition edits them.
+	BundleID         string `json:"bundle_id"`
+	BundleOrder      int    `json:"bundle_order"`
 	ContractSpecID   string `json:"contract_spec_id"`
 	ContractSHA256   string `json:"contract_sha256"`
 	ContractSignedAt string `json:"contract_signed_at"`
@@ -139,7 +158,7 @@ func (c Card) LeaseExpired(now time.Time) bool {
 const cardSelectColumns = `run_id,card_id,owner_label,state,version,evidence_path,updated_at,` +
 	`stage,lease_holder,lease_expires_at,heartbeat_at,decision_gate,decision_question,decision_resume,` +
 	`decider,decided_at,failure_reason,hint_prefer,hint_after,spec_id,worktree_path,evidence_sha,` +
-	`merge_sha,merge_tree,remeasure_path,contract_spec_id,contract_sha256,contract_signed_at,contract_event`
+	`merge_sha,merge_tree,remeasure_path,bundle_id,bundle_order,contract_spec_id,contract_sha256,contract_signed_at,contract_event`
 
 type rowScanner interface{ Scan(dest ...any) error }
 
@@ -148,7 +167,7 @@ func scanCard(row rowScanner) (Card, error) {
 	err := row.Scan(&c.RunID, &c.CardID, &c.OwnerLabel, &c.State, &c.Version, &c.EvidencePath, &c.UpdatedAt,
 		&c.Stage, &c.LeaseHolder, &c.LeaseExpiresAt, &c.HeartbeatAt, &c.DecisionGate, &c.DecisionQuestion, &c.DecisionResume,
 		&c.Decider, &c.DecidedAt, &c.FailureReason, &c.HintPrefer, &c.HintAfter, &c.SpecID, &c.WorktreePath, &c.EvidenceSHA,
-		&c.MergeSHA, &c.MergeTree, &c.RemeasurePath, &c.ContractSpecID, &c.ContractSHA256, &c.ContractSignedAt, &c.ContractEvent)
+		&c.MergeSHA, &c.MergeTree, &c.RemeasurePath, &c.BundleID, &c.BundleOrder, &c.ContractSpecID, &c.ContractSHA256, &c.ContractSignedAt, &c.ContractEvent)
 	return c, err
 }
 

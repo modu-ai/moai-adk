@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // showFields splits a show stdout line into its tab-separated fields.
@@ -49,7 +49,7 @@ func TestTodoShow(t *testing.T) {
 		if len(fields) != 7 {
 			t.Fatalf("show t1 line = %d fields, want 7: %q", len(fields), lines[0])
 		}
-		if fields[0] != "t1" || fields[1] != "live" || fields[2] != string(kanban.BacklogStateQueued) {
+		if fields[0] != "t1" || fields[1] != "live" || fields[2] != string(factory.BacklogStateQueued) {
 			t.Errorf("show t1 id/live/state = %q/%q/%q, want t1/live/queued", fields[0], fields[1], fields[2])
 		}
 		if !strings.HasPrefix(fields[3], "landing=") {

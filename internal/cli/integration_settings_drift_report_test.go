@@ -11,14 +11,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 func TestSettingsDriftReportNamesTheTreeInEveryState(t *testing.T) {
 	t.Parallel()
 
-	clean := settingsDriftReportText(kanban.SettingsDriftResult{
-		Status: kanban.SettingsDriftClean, MatchCount: 0, Worktree: "/tmp/lane-tree",
+	clean := settingsDriftReportText(factory.SettingsDriftResult{
+		Status: factory.SettingsDriftClean, MatchCount: 0, Worktree: "/tmp/lane-tree",
 	})
 	if !strings.Contains(clean, "/tmp/lane-tree") {
 		t.Errorf("clean report does not name the measured tree: %q", clean)
@@ -28,9 +28,9 @@ func TestSettingsDriftReportNamesTheTreeInEveryState(t *testing.T) {
 	}
 
 	// `undetermined` must not be able to read as a pass to someone skimming.
-	undet := settingsDriftReportText(kanban.SettingsDriftResult{
-		Status:     kanban.SettingsDriftUndetermined,
-		MatchCount: kanban.SettingsDriftMatchCountUnmeasured,
+	undet := settingsDriftReportText(factory.SettingsDriftResult{
+		Status:     factory.SettingsDriftUndetermined,
+		MatchCount: factory.SettingsDriftMatchCountUnmeasured,
 		Worktree:   "/tmp/lane-tree",
 		Err:        errors.New("not a git repository"),
 	})
@@ -48,8 +48,8 @@ func TestSettingsDriftReportNamesTheTreeInEveryState(t *testing.T) {
 		t.Errorf("undetermined report reports a match count: %q", undet)
 	}
 
-	drift := settingsDriftReportText(kanban.SettingsDriftResult{
-		Status:        kanban.SettingsDriftDetected,
+	drift := settingsDriftReportText(factory.SettingsDriftResult{
+		Status:        factory.SettingsDriftDetected,
 		MatchCount:    1,
 		Worktree:      "/tmp/lane-tree",
 		Path:          "/tmp/lane-tree/.claude/settings.json",
@@ -78,8 +78,8 @@ func TestSettingsDriftReportNamesTheTreeInEveryState(t *testing.T) {
 // is checked rather than dropped.
 func TestWriteSettingsDriftReportSurfacesAWriteFailure(t *testing.T) {
 	t.Parallel()
-	err := writeSettingsDriftReport(failingWriter{}, kanban.SettingsDriftResult{
-		Status: kanban.SettingsDriftClean, Worktree: "/tmp/lane-tree",
+	err := writeSettingsDriftReport(failingWriter{}, factory.SettingsDriftResult{
+		Status: factory.SettingsDriftClean, Worktree: "/tmp/lane-tree",
 	})
 	if err == nil {
 		t.Fatal("a failed report write was swallowed")
@@ -94,7 +94,7 @@ func TestWriteSettingsDriftReportSurfacesAWriteFailure(t *testing.T) {
 func TestWriteSettingsDriftReportIsSilentForAnUnsetResult(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
-	if err := writeSettingsDriftReport(&buf, kanban.SettingsDriftResult{}); err != nil {
+	if err := writeSettingsDriftReport(&buf, factory.SettingsDriftResult{}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if buf.Len() != 0 {

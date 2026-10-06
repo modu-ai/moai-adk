@@ -68,7 +68,7 @@ shift+tab 이전 • enter 다음
 ┃ 기본 모델 오버라이드                                                          
 ┃ 이 프로필로 실행할 때 모델을 오버라이드합니다.                                
 ┃   (project default)                                                           
-┃   fable[1m] (Fable 5 + 1M 컨텍스트)                                           
+┃   fable[1m] (Fable 5.1 + 1M 컨텍스트)                                         
 ┃ ▸ opus[1m] (Opus 5.5 + 1M 컨텍스트, 권장)                                     
 ┃   sonnet[1m] (Sonnet 5.5 + 1M 컨텍스트)                                       
 ┃   haiku (Haiku 4.5, 최고 속도)                                                

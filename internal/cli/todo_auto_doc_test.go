@@ -38,8 +38,8 @@ type autoDocSurface struct {
 // canonical documents, each live and as its template mirror.
 func autoDocDoctrineSurfaces() []autoDocSurface {
 	return []autoDocSurface{
-		{"live kanban-dispatch.md", filepath.Join(".claude", "rules", "moai", "workflow", "kanban-dispatch.md")},
-		{"template kanban-dispatch.md", filepath.Join("internal", "template", "templates", ".claude", "rules", "moai", "workflow", "kanban-dispatch.md")},
+		{"live factory-dispatch.md", filepath.Join(".claude", "rules", "moai", "workflow", "factory-dispatch.md")},
+		{"template factory-dispatch.md", filepath.Join("internal", "template", "templates", ".claude", "rules", "moai", "workflow", "factory-dispatch.md")},
 		{"live gtd.md", filepath.Join(".claude", "skills", "moai", "workflows", "gtd.md")},
 		{"template gtd.md", filepath.Join("internal", "template", "templates", ".claude", "skills", "moai", "workflows", "gtd.md")},
 	}
@@ -111,14 +111,14 @@ func TestAutoRankDoctrineAmendment(t *testing.T) {
 	// whole sentence or clause quoted from the pre-amendment documents, so a
 	// mutant that deletes the prohibition while keeping the exception fails.
 	prohibitions := map[string][]string{
-		filepath.Join(".claude", "rules", "moai", "workflow", "kanban-dispatch.md"): {
+		filepath.Join(".claude", "rules", "moai", "workflow", "factory-dispatch.md"): {
 			"Outside an --auto authorization the leader never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item.",
 			"An empty queue is a state to report, not a prompt to invent work.",
 			"never from queue emptiness, card readiness, or a peer's request",
 			"queue ADMISSION (production) stays the operator's.",
 			"the leader never folds the related card away, never reorders the queue around it, and never drops or edits it.",
 		},
-		filepath.Join("internal", "template", "templates", ".claude", "rules", "moai", "workflow", "kanban-dispatch.md"): {
+		filepath.Join("internal", "template", "templates", ".claude", "rules", "moai", "workflow", "factory-dispatch.md"): {
 			"Outside an --auto authorization the leader never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item.",
 			"An empty queue is a state to report, not a prompt to invent work.",
 			"never from queue emptiness, card readiness, or a peer's request",
@@ -155,7 +155,7 @@ var autoDocGTDProhibitions = []string{
 
 // autoDocMirrorPassage extracts the part of a document the amendment owns, so
 // the live copy and its mirror can be compared on it alone (the two
-// kanban-dispatch.md copies differ elsewhere, by a pre-existing sentence that
+// factory-dispatch.md copies differ elsewhere, by a pre-existing sentence that
 // is not part of this amendment).
 func autoDocMirrorPassage(t *testing.T, name, doc, startMarker, endMarker string) string {
 	t.Helper()
@@ -182,9 +182,9 @@ func TestAutoRankMirrorParity(t *testing.T) {
 		name, live, mirror, start, end string
 	}{
 		{
-			name:   "kanban-dispatch.md promotion and --auto reconciliation clauses",
-			live:   filepath.Join(".claude", "rules", "moai", "workflow", "kanban-dispatch.md"),
-			mirror: filepath.Join("internal", "template", "templates", ".claude", "rules", "moai", "workflow", "kanban-dispatch.md"),
+			name:   "factory-dispatch.md promotion and --auto reconciliation clauses",
+			live:   filepath.Join(".claude", "rules", "moai", "workflow", "factory-dispatch.md"),
+			mirror: filepath.Join("internal", "template", "templates", ".claude", "rules", "moai", "workflow", "factory-dispatch.md"),
 			start:  "[HARD] **Promotion is the operator's act, in person or in advance.**",
 			end:    "[HARD] **The self-dispatch lane exception.**",
 		},

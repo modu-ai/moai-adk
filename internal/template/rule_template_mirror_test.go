@@ -220,6 +220,13 @@ var workflowOptMirroredPaths = []string{
 	// and byte-parity is the right invariant. Enrolled at creation so a future
 	// single-tree edit is caught at CI rather than after a release.
 	".claude/rules/moai/workflow/resource-slot-lease.md",
+	// factory-dispatch-cards.md + factory-dispatch-gates.md — split from
+	// factory-dispatch-detail.md by its per-file budget (card t1483). Both
+	// ship byte-identically to both trees and name no SPEC, card id or date,
+	// so byte-parity is the right invariant. Enrolled at creation so a future
+	// single-tree edit is caught at CI rather than after a release.
+	".claude/rules/moai/workflow/factory-dispatch-cards.md",
+	".claude/rules/moai/workflow/factory-dispatch-gates.md",
 	// Layer G — evaluator profile D7/D8 weight registration
 	".moai/config/evaluator-profiles/default.md",
 	".moai/config/evaluator-profiles/frontend.md",

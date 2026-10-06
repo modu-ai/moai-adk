@@ -140,9 +140,9 @@ func TestRestampSeamIsCalledAtEveryNonReplaceCallSite(t *testing.T) {
 	const seamCall = "stampFactoryRunOwner("
 
 	required := []string{
-		"launch_exec_windows.go",  // spawn
-		"codex_direct_windows.go", // Codex child
-		"codex_launcher.go",       // Codex tmux pane
+		"launch_exec_windows.go", // spawn
+		"codex_direct_wait.go",   // Codex child (Windows door + POSIX lane-card launch, card t1488)
+		"codex_launcher.go",      // Codex tmux pane
 	}
 	for _, name := range required {
 		t.Run("required/"+name, func(t *testing.T) {
@@ -183,9 +183,9 @@ func TestCodexPaneDoorIdentityRefusalLeavesRunOwner(t *testing.T) {
 	launcherPID := os.Getpid()
 	seedRun(t, root, runID, launcherPID, "launcher-start")
 
-	t.Setenv(config.EnvMoaiKanbanID, runID)
+	t.Setenv(config.EnvFactoryRunID, runID)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
+	t.Setenv(config.EnvFactoryBackend, "claude")
 
 	restoreSpawn := tmuxSpawnFn
 	restoreIdentity := codexSpawnPaneIdentityFn
@@ -230,9 +230,9 @@ func TestCodexPaneDoorAnchorRefusalLeavesRunOwner(t *testing.T) {
 		t.Fatalf("precondition: seeded owner = (%d, %q), want (%d, %q)", pid, start, launcherPID, "launcher-start")
 	}
 
-	t.Setenv(config.EnvMoaiKanbanID, runID)
+	t.Setenv(config.EnvFactoryRunID, runID)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
+	t.Setenv(config.EnvFactoryBackend, "claude")
 
 	restoreSpawn := tmuxSpawnFn
 	restoreIdentity := codexSpawnPaneIdentityFn

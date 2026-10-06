@@ -1,6 +1,6 @@
 # 자모 무결성 가이드 — GLM 채널 한국어 오염 검출·복원
 
-> 카드 t1336. 대상: 레인(팩토리·칸반) 세션. 판정 근거: `.moai/reports/t1336/characterization.md`.
+> 카드 t1336. 대상: 레인(팩토리) 세션. 판정 근거: `.moai/reports/t1336/characterization.md`.
 
 ## 무엇이 문제인가
 

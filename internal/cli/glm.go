@@ -17,8 +17,8 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tmux"
@@ -37,7 +37,7 @@ func init() {
 }
 
 var glmCmd = &cobra.Command{
-	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -f | -f lane | -f lane-<n>] [-- claude-args...]",
+	Use:   "glm [-p profile] [-f | -l] [-- claude-args...]",
 	Short: "Launch Claude Code with GLM backend",
 	Long: `Launch Claude Code with GLM backend.
 
@@ -62,56 +62,36 @@ Flags:
       --spawn                   Run this command in a new tmux window instead of
                                 replacing the current session (requires tmux)
 
-Kanban Mode:
-  -k, --kanban [SPEC-ID]       Enter as the LEADER of a kanban run. Seeds a
-                                plan -> run -> sync chain in this
-                                session. The optional SPEC-ID ties the run to a
-                                SPEC. The leader drives the whole chain; three
-                                companion sessions are launched by hand.
-  -k --name <role>             Enter as a COMPANION of an existing kanban run.
-                                Joins the run without seeding a chain. The three
-                                roles are: plan, run, sync. A role name
-                                held by a live session is bumped to the next
-                                free number (plan-1, plan-2, ...).
-
-Factory Mode (dedicated -f entry):
+Factory Mode (dedicated -f and -l entries):
   -f, --factory                Enter as the LEADER of a factory run (one
-                                lane, lane-1, grown afterwards with the
-                                forms below). The leader routes
+                                lane, lane-1, grown afterwards with -l).
+                                The flag takes no argument. The leader routes
                                 operator-picked cards to free lanes over
                                 cross-session messages — each card goes
                                 WHOLE to one lane, which carries it through
                                 plan -> run -> sync in-session.
-  -f lane                      Join the running factory as a LANE: the next
+  -l, --lane                   Join the running factory as a LANE: the next
                                 free lane-<n> label is claimed for this
-                                session. If the run's record is missing or
-                                retired while a live leader session exists,
-                                the join verifies that leader (pid +
-                                process-start) and restores its run, so the
-                                lane still lands on the live factory.
-  -f lane-<n>                  Launch exactly one additional lane — lane n —
-                                and connect it to the leader socket of the
-                                running factory. A number whose label is held by
-                                a live session is bumped to the next free number.
-  -l, --leader <name>            With -f lane / -f lane-<n>: which leader session
-                                the record-absence verification targets
+                                session. The flag takes no argument. If the
+                                run's record is missing or retired while a
+                                live leader session exists, the join verifies
+                                that leader (pid + process-start) and
+                                restores its run, so the lane still lands on
+                                the live factory.
+  --leader <name>              With -l: which leader session the
+                                record-absence verification targets
                                 (default: leader). A legacy spelling of the
                                 leader name is refused.
-  -k <N> / -k <N> --name lane-<i>
-                                The v1.2.0 unified -k factory shapes, still
-                                valid: -k N is the leader of an N-lane run,
-                                -k N --name lane-<i> is lane i of it (a
-                                bare -k --name lane-<i> defaults to 8).
-                                One entry token per launch: -k and -f
-                                together is an error.
+  One entry token per launch: -f beside -l is an error. A lane number
+  held by a live session is bumped to the next free number.
   Legacy role and label spellings (the pre-rename nouns, any letter case)
-  are refused — the error names the canonical -f lane / lane-<n> form.
+  are refused — the error names the canonical lane-<n> label.
 
-  Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to
-  -k/--kanban in #1513 (7f61332ef) and now drives the three-role kanban chain
-  above. -f briefly returned as the factory fan-out flag and was RETIRED
-  (v1.2.0) in favor of '-k <N>'; t118 (v3.1.1) revived it as the dedicated
-  factory entry — the kanban chain keeps -k, the factory gets -f.
+  Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to -k
+  in #1513 (7f61332ef). -f briefly returned as the factory fan-out flag and
+  was RETIRED (v1.2.0) in favor of '-k <N>'; t118 (v3.1.1) revived it as the
+  dedicated factory entry, and -k itself is now retired: a launch carrying
+  it is refused with one line naming -f and -l.
 
 Note: Auto mode is not available with GLM (third-party provider).
 Use 'moai cc --permission-mode auto' instead.
@@ -119,17 +99,16 @@ Use 'moai cc --permission-mode auto' instead.
 Note: Z.AI enforces low concurrency limits (paid tiers observe 1-3 in-flight
 requests). Multi-agent workflows that exceed this limit can surface as opaque
 errors (sometimes misreported by clients as "context window limit"). The GLM
-models themselves have ample context (glm-5.2 1M, glm-4.7 ~202K). Legacy mixed-role CG configurations require explicit migration; run 'moai migrate cg' to preview the available choices.
+models themselves have ample context (glm-5.2 1M, glm-4.7 ~202K). Keep
+multi-agent parallelism within the in-flight budget — stagger fan-out instead
+of stacking concurrent lanes.
 
 Examples:
   moai glm setup sk-xxx    # Save API key (one-time)
   moai glm                 # Launch with GLM backend
   moai glm -p work         # Use 'work' profile with GLM
-  moai glm -k              # Kanban leader on GLM: seeds the chain
-  moai glm -k --name run           # Kanban companion on GLM (the GLM-recommended role)
-  moai glm -f              # Factory leader on GLM: one lane (lane-1)
-  moai glm -f lane         # Join the running factory as the next free lane (GLM backend)
-  moai glm -f lane-2       # Add lane 2 to the running factory (GLM backend)
+  moai glm -f             # Factory leader on GLM: one lane (lane-1)
+  moai glm -l              # Join the running factory as the next free lane (GLM backend)
 
 Mixed Claude/GLM teammate roles require verified teammate routing support.
 Use 'moai cc' to switch back to Claude backend.`,
@@ -231,6 +210,9 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// See cc.go for the ordering rationale.
 	if spawnArgs, spawn := stripSpawnFlag(args); spawn {
 		endEntry()
+		if err := refuseBadEntryBeforeSpawn(spawnArgs); err != nil {
+			return err
+		}
 		return spawnLaunch(cmd.OutOrStdout(), "glm", spawnArgs)
 	}
 
@@ -239,9 +221,8 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		endEntry()
 		return err
 	}
-	// t118 launcher axis: the unified entry parse — parseLauncherEntry covers
-	// the -k shapes (SPEC-FACTORY-BOOTSTRAP-001 + the v1.2.0 factory shapes)
-	// and the revived dedicated -f surface. See cc.go for the truth table;
+	// t118 launcher axis: the entry parse — parseLauncherEntry refuses the
+	// retired -k spelling and covers the dedicated -f / -l surface. See cc.go;
 	// glm mirrors cc exactly except for the backend constant.
 	entry, err := parseLauncherEntry(filteredArgs)
 	if err != nil {
@@ -250,7 +231,6 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	}
 	filteredArgs = entry.Rest
 	endEntry()
-	label, isCompanion := parseCompanionLabel(filteredArgs)
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
 	case factoryBranchLeader:
@@ -262,18 +242,18 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			return runErr
 		}
 		defer restoreRun()
-		// Same recording as the cc leader: the kanban store AND the factory state
-		// a lane's -f lane-<n> join resolves. Recording only the former left
-		// every GLM-led run unjoinable (NO_ACTIVE_FACTORY).
-		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), kanban.BackendGLM, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
+		// Same recording as the cc leader: the factory run state a lane's -l join
+		// resolves. Without it every GLM-led run is unjoinable
+		// (NO_ACTIVE_FACTORY).
+		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvFactoryRunID), factory.BackendGLM, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
 			return fmt.Errorf("record factory run: %w", err)
 		}
-		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
+		defer exportFactoryLaunchFacts(entry.Spec, factory.BackendGLM)()
 		var leaderName string
 		filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 		defer exportLeaderSessionName(leaderName)()
 		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
-		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+		settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
 		endSettings()
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
@@ -291,7 +271,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		// See cc.go: a live-held lane number is bumped, and the bumped value
 		// must reach the backend argv.
 		endClaim := debugTiming.beginDebug(factoryStepLaneClaim, "")
-		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, kanban.BackendGLM, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, factory.BackendGLM, entry.FactoryAutoNumber, cmd.ErrOrStderr())
 		endClaim()
 		if claimErr == nil {
 			debugTiming.annotateDetail("label=" + finalLabel)
@@ -301,12 +281,12 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
 		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes, entry.ClearPolicy, laneDispatchSelection(entry))()
-		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
+		defer exportFactoryLaunchFacts(entry.Spec, factory.BackendGLM)()
 		// See cc.go: the relaunch policy is the supervising loop (design.md
 		// §6) — the launcher stays the parent across every card.
 		if entry.ClearPolicy == config.FactoryClearPolicyRelaunch {
 			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
-			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+			settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
 			endSettings()
 			defer settingsCleanup()
 			if len(settingsFlag) > 0 {
@@ -318,46 +298,12 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs, entry.FactoryRun, entry.FactoryLead)
 		}
 		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
-		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+		settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
 		endSettings()
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
-	}
-	if !entry.FactoryEnabled {
-		switch resolveKanbanBranch(entry.KanbanEnabled, isCompanion) {
-		case kanbanBranchLeader:
-			// See cc.go: the operator's leader run id is adopted rather than replaced.
-			leaderLabel, _ := parseLeaderLabel(filteredArgs)
-			defer enterKanbanMode(entry.Spec, leaderLabel)()
-			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
-			// See cc.go: glm mirrors the leader branch exactly.
-			var leaderName string
-			filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
-			defer exportLeaderSessionName(leaderName)()
-			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
-			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
-			endSettings()
-			if len(settingsFlag) > 0 {
-				filteredArgs = append(filteredArgs, settingsFlag...)
-			}
-			defer settingsCleanup()
-		case kanbanBranchCompanion:
-			// See cc.go: a live-held label is bumped, and the bumped value must
-			// reach the backend argv.
-			finalLabel := resolveCompanionName(launchProjectRoot(), label, cmd.ErrOrStderr())
-			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
-			defer enterKanbanCompanionMode(finalLabel)()
-			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
-			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
-			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
-			endSettings()
-			if len(settingsFlag) > 0 {
-				filteredArgs = append(filteredArgs, settingsFlag...)
-			}
-			defer settingsCleanup()
-		}
 	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: see cc.go for the rationale.
 	endWt := debugTiming.beginDebug(launchStepWorktree, "")

@@ -43,7 +43,7 @@ Flow: Parallel Scan -> Classify -> Fix -> Verify -> Report
 
 ## Pipeline Contract (Agentless Classification)
 
-<!-- @MX:NOTE - Agentless fixed-pipeline classification; localize→repair→validate contract. See spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent. -->
+<!-- @MX:NOTE - Agentless fixed-pipeline classification; localize→repair→validate contract. See spec-workflow.md#subcommand-classification. -->
 
 This subcommand is classified as **Agentless fixed-pipeline**.
 It executes a deterministic 3-phase contract: **localize → repair → validate**.
@@ -55,7 +55,7 @@ It executes a deterministic 3-phase contract: **localize → repair → validate
 - **`--mode` flag handling**: Any `--mode` flag passed to this subcommand is ignored. The system logs `MODE_FLAG_IGNORED_FOR_UTILITY` at info level and proceeds with the fixed pipeline.
 - **Repeatability**: Even when the parent invocation supplies `--mode loop`, the pipeline runs once per command invocation. Re-entry requires explicit user re-invocation.
 
-See [Subcommand Classification matrix](../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent) for the full pipeline-vs-multi-agent contract.
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent contract.
 
 ## Loop Taxonomy Position — goal engine + presets
 
@@ -325,5 +325,5 @@ Resume commands:
 ---
 
 Version: 3.0.0
-Updated: removed the Related Skills CI watch/auto-fix routing entry (3.0.0 — the CI watch loop is a dev-repo-local asset, not part of the delegated skill routing).
-Previous: 2.4.0 — Phase 5 rewritten into an evidence-bearing claim/evidence contract with a full-rescan-vs-baseline regression guard (revert-or-report-failed, never silent acceptance); added Phase 8 (residue persistence to the loop-verdict schema + non-auto-invoking `/moai loop` recommendation); added the Loop Taxonomy Position section placing this workflow in the turn-based quadrant. 2.2.0 (2026-03-02) — added 16-language LSP/linter tables and structured error output normalization for language-agnostic fix agents.
+Updated: removed the Related Skills CI watch/auto-fix routing entry (3.0.0 — the CI watch loop is not part of the distributed toolchain).
+Previous: 2.4.0 — Phase 5 rewritten into an evidence-bearing claim/evidence contract with a full-rescan-vs-baseline regression guard (revert-or-report-failed, never silent acceptance); added Phase 8 (residue persistence to the loop-verdict schema + non-auto-invoking `/moai loop` recommendation); added the Loop Taxonomy Position section placing this workflow in the turn-based quadrant. 2.2.0 — added 16-language LSP/linter tables and structured error output normalization for language-agnostic fix agents.

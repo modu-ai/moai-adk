@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/runtime"
 )
 
 // frRepo is a fixture git repository shaped for the F1 evidence readers.
@@ -30,6 +32,10 @@ type frRepo struct {
 }
 
 const frIntegration = "integration"
+
+// frSpecID is the SPEC every fixture repo carries; plan-audit fixture cards
+// name it so T7 can bind the verdict's plan-artifact hash.
+const frSpecID = "SPEC-FIXTURE-001"
 
 // frGitEnv isolates git from the developer's global and system config.
 func frGitEnv(t *testing.T) {
@@ -106,6 +112,19 @@ func frWriteVerdict(t *testing.T, dir, cardID, name, verdict, sha string) {
 	if verdict != "" {
 		b.WriteString("verdict: " + verdict + "\n")
 	}
+	// A plan-audit verdict carries the fields the shared admission predicate
+	// checks at T7 (internal/auditverdict): score, must-pass, blocking count,
+	// the plan-artifact hash of the fixture SPEC, and debts for PASS-WITH-DEBT.
+	if strings.HasPrefix(name, "plan-audit") && (verdict == "PASS" || verdict == "PASS-WITH-DEBT") {
+		h, err := runtime.NewInMemoryCache().ComputeHash(filepath.Join(dir, ".moai", "specs", frSpecID))
+		if err != nil {
+			t.Fatalf("fixture plan hash: %v", err)
+		}
+		b.WriteString("Overall Score: 0.90\nmust_pass_failed: 0\nblocking_count: 0\nplan_artifact_hash: " + h + "\n")
+		if verdict == "PASS-WITH-DEBT" {
+			b.WriteString("debts:\n- debt: D1 dispose_in=run fixture debt\n")
+		}
+	}
 	if sha != "" {
 		b.WriteString("audited_sha: " + sha + "\n")
 	}
@@ -123,11 +142,11 @@ func frPlace(t *testing.T, db *FactoryDB, c Card) {
 		c.UpdatedAt = "2026-09-26T00:00:00Z"
 	}
 	// SQL: the concatenated fragment is a compile-time constant; every value goes through a ? placeholder.
-	_, err := db.DB.Exec(`INSERT INTO cards(`+cardSelectColumns+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+	_, err := db.DB.Exec(`INSERT INTO cards(`+cardSelectColumns+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		c.RunID, c.CardID, c.OwnerLabel, c.State, c.Version, c.EvidencePath, c.UpdatedAt,
 		c.Stage, c.LeaseHolder, c.LeaseExpiresAt, c.HeartbeatAt, c.DecisionGate, c.DecisionQuestion, c.DecisionResume,
 		c.Decider, c.DecidedAt, c.FailureReason, c.HintPrefer, c.HintAfter, c.SpecID, c.WorktreePath, c.EvidenceSHA,
-		c.MergeSHA, c.MergeTree, c.RemeasurePath, c.ContractSpecID, c.ContractSHA256, c.ContractSignedAt, c.ContractEvent)
+		c.MergeSHA, c.MergeTree, c.RemeasurePath, c.BundleID, c.BundleOrder, c.ContractSpecID, c.ContractSHA256, c.ContractSignedAt, c.ContractEvent)
 	if err != nil {
 		t.Fatalf("place card %s: %v", c.CardID, err)
 	}

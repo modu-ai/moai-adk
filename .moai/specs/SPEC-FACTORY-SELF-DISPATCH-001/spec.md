@@ -324,3 +324,9 @@ the rest of the doctrine is out of scope; only the two exceptions REQ-SD-015 nam
    `todo next <n>` by REQ-SD-015; the help text should name `moai factory next` as the lane path.
 4. `AGENTS.local.md` §4.1 and `.claude/rules/local/gitflow-lane-protocol.md` §6 are amended by this
    SPEC (REQ-SD-015); both are local-only and outside t1257's template scope.
+
+## Amendments
+
+| Date | Source | Amendment |
+|---|---|---|
+| 2026-10-03 | SPEC-FACTORY-DECISION-AUTO-001 (REQ-FDA-016) | REQ-SD-016 is narrowed by exactly one exception: a lane session may run `moai factory decide <card> --gate kickoff --choice approve --decider audit` for a card whose record owner is that lane. Every other lane decide stays refused. |

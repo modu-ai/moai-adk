@@ -1,0 +1,193 @@
+package cli
+
+// Plan-phase probe for SPEC-FACTORY-ATOMIC-LEASE-001 (card t1458), iteration 2
+// repair (defect D6): the M1 bare-form breach with the two lanes as SEPARATE
+// PROCESSES, not goroutines of one test process.
+//
+// Evidence, not source (.txt suffix; mapped in by overlay-xproc.json). The
+// iteration-1 concurrency probes run both lanes as goroutines in one process, so
+// a process-local sync.Mutex around the lease would satisfy them while breaking
+// the production topology (two `moai factory next` processes). This probe is the
+// RED-now observation for the cross-process clause of AC-FAL-001, and it is also
+// the answer to "what does a cross-process helper need in this package":
+//
+//   - the package already re-executes its own test binary for helpers
+//     (exec.Command(os.Args[0], "-test.run=^<Helper>$"), e.g.
+//     gate_lock_cli_test.go); no new TestMain is needed, the existing TestMain
+//     (main_test.go) runs in the child first;
+//   - TestMain unsets CLAUDE_PROJECT_DIR and clears the factory/kanban ambient
+//     environment unless factoryEnvPinnedEnv is set, so the child re-establishes
+//     CLAUDE_PROJECT_DIR, MOAI_HOME and the lane variables itself, inside the
+//     helper test function (after TestMain);
+//   - channels cannot cross a process boundary, so the hold at the pass entry is
+//     a file rendezvous (each child touches a file in a shared directory and
+//     waits until both files exist or a grace window passes);
+//   - the worktree creator stub is rebuilt in the child from repository paths
+//     the parent prepared (the child cannot see the parent's closures).
+//
+// The pass entry is held with the same probe device probe-arms uses: the
+// existing factoryCardNow variable, recognised by the calling function name.
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/cli/worktree"
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/kanban"
+)
+
+const (
+	xpLaneEnv  = "T1458_XPROC_LANE"
+	xpRootEnv  = "T1458_XPROC_ROOT"
+	xpRdvEnv   = "T1458_XPROC_RDV"
+	xpTreesEnv = "T1458_XPROC_TREES"
+)
+
+// xpAtPassEntry reports whether factoryCardNow was called directly by
+// factoryNextSelectAndLease (its first line, before any snapshot read).
+func xpAtPassEntry() bool {
+	pcs := make([]uintptr, 4)
+	n := runtime.Callers(3, pcs)
+	if n == 0 {
+		return false
+	}
+	f, _ := runtime.CallersFrames(pcs[:n]).Next()
+	return strings.HasSuffix(f.Function, ".factoryNextSelectAndLease")
+}
+
+// TestT1458ProbeXProcHelper is the child. It does nothing unless the parent set
+// the lane variable, so a plain `go test` run skips it.
+func TestT1458ProbeXProcHelper(t *testing.T) {
+	lane := os.Getenv(xpLaneEnv)
+	if lane == "" {
+		t.Skip("helper process only")
+	}
+	root := os.Getenv(xpRootEnv)
+	rdv := os.Getenv(xpRdvEnv)
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
+	t.Setenv(config.EnvHome, "")
+	t.Chdir(root)
+	nmLaneEnv(t, lane, "")
+
+	trees := map[string]string{}
+	for _, kv := range strings.Split(os.Getenv(xpTreesEnv), ";") {
+		if k, v, ok := strings.Cut(kv, "="); ok {
+			trees[k] = v
+		}
+	}
+	prevCreator := worktree.WorktreeCreator
+	worktree.WorktreeCreator = func(name string, _ io.Writer) (string, error) {
+		dir, ok := trees[name]
+		if !ok {
+			return "", fmt.Errorf("no isolated worktree prepared for %s", name)
+		}
+		return dir, nil
+	}
+	t.Cleanup(func() { worktree.WorktreeCreator = prevCreator })
+
+	prevNow := factoryCardNow
+	factoryCardNow = func() time.Time { return fcNow }
+	held := false
+	inner := factoryCardNow
+	factoryCardNow = func() time.Time {
+		if !held && xpAtPassEntry() {
+			held = true
+			_ = os.WriteFile(filepath.Join(rdv, "arrived-"+lane), nil, 0o600)
+			deadline := time.Now().Add(3 * time.Second)
+			for time.Now().Before(deadline) {
+				entries, _ := os.ReadDir(rdv)
+				if len(entries) >= 2 {
+					break
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+		}
+		return inner()
+	}
+	t.Cleanup(func() { factoryCardNow = prevNow })
+
+	stdout, stderr, err := qasRunNext(t, "--run", fcRun)
+	fmt.Printf("XPROC-RESULT lane=%s held-at-pass-entry=%v verb-err=%v stdout=%q stderr-first-line=%q\n", lane, held, err, stdout, xpFirstLine(stderr))
+}
+
+func xpFirstLine(s string) string {
+	line, _, _ := strings.Cut(strings.TrimSpace(s), "\n")
+	return line
+}
+
+// M1, bare form, two PROCESSES: two queued serial cards, nothing in flight, both
+// lanes held at the pass entry (before either reads the record) and released
+// together. Exactly one serial card may end leased.
+func TestT1458ProbeXProcSerialTwoLanes(t *testing.T) {
+	root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+	fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+	trees := make([]string, 0, 2)
+	for _, id := range []string{"t1", "t2"} {
+		dir := t.TempDir()
+		initGitRepo(t, dir)
+		trees = append(trees, id+"="+dir)
+	}
+	rdv := t.TempDir()
+
+	lanes := []string{"lane-1", "lane-2"}
+	outs := make([]bytes.Buffer, len(lanes))
+	var wg sync.WaitGroup
+	for i, lane := range lanes {
+		cmd := exec.Command(os.Args[0], "-test.run=^TestT1458ProbeXProcHelper$", "-test.timeout=3m")
+		cmd.Dir = root
+		cmd.Env = append(os.Environ(),
+			factoryEnvPinnedEnv+"=1",
+			xpLaneEnv+"="+lane,
+			xpRootEnv+"="+root,
+			xpRdvEnv+"="+rdv,
+			xpTreesEnv+"="+strings.Join(trees, ";"),
+		)
+		cmd.Stdout = &outs[i]
+		cmd.Stderr = &outs[i]
+		if err := cmd.Start(); err != nil {
+			t.Fatalf("start the helper process for %s: %v", lane, err)
+		}
+		wg.Add(1)
+		go func(c *exec.Cmd) {
+			defer wg.Done()
+			_ = c.Wait()
+		}(cmd)
+	}
+	wg.Wait()
+
+	n := 0
+	var held []string
+	for _, id := range []string{"t1", "t2"} {
+		if !fcHasCard(t, root, id) {
+			continue
+		}
+		c := fcCard(t, root, id)
+		held = append(held, fmt.Sprintf("%s=%s/%s", id, c.State, c.LeaseHolder))
+		if c.State == homestate.CardLeased {
+			n++
+		}
+	}
+	for i := range outs {
+		for _, line := range strings.Split(outs[i].String(), "\n") {
+			if strings.HasPrefix(line, "XPROC-RESULT") {
+				t.Logf("%s", line)
+			}
+		}
+	}
+	t.Logf("PROBE xproc arm-c serial cards leased=%d rows=%v", n, held)
+	if n > 1 {
+		t.Errorf("serial exclusivity breached across two processes: %d serial cards are leased at once (%v)", n, held)
+	}
+}

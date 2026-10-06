@@ -16,21 +16,21 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // fcClassify sets one card's classification (the add path's write shape:
 // classify AND re-sort inside one locked write).
-func fcClassify(t *testing.T, store *kanban.BacklogStore, cardID, prio string, blocked bool, mode string) {
+func fcClassify(t *testing.T, store *factory.BacklogStore, cardID, prio string, blocked bool, mode string) {
 	t.Helper()
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
 			if rec.Items[i].ID != cardID {
 				continue
 			}
-			rec.Items[i].Classification = &kanban.CardClassification{
-				Priority: prio, Blocked: blocked, Mode: mode, Decider: kanban.DeciderIdentityLLM,
+			rec.Items[i].Classification = &factory.CardClassification{
+				Priority: prio, Blocked: blocked, Mode: mode, Decider: factory.DeciderIdentityLLM,
 			}
 			rec.SortByClassification()
 			return nil
@@ -66,10 +66,10 @@ func fcSetCardState(t *testing.T, root, cardID, state string) {
 // the boundary a terminal-enumeration mutation would break.
 func TestFactoryNextSerialMutualExclusivity(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStateQueued, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
-	fcClassify(t, store, "t1", kanban.ClassPriorityHigh, false, kanban.ClassModeSerial)
-	fcClassify(t, store, "t2", kanban.ClassPriorityLow, false, kanban.ClassModeSerial)
-	fcClassify(t, store, "t3", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+	fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStateQueued, factory.BacklogStateQueued)
+	fcClassify(t, store, "t1", factory.ClassPriorityHigh, false, factory.ClassModeSerial)
+	fcClassify(t, store, "t2", factory.ClassPriorityLow, false, factory.ClassModeSerial)
+	fcClassify(t, store, "t3", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	sdRegisterLane(t, root, "lane-1")
 	sdRegisterLane(t, root, "lane-2")
 	sdLaneEnv(t, "lane-1", "")
@@ -112,7 +112,7 @@ func TestFactoryNextSerialMutualExclusivity(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, it := range rec.Items {
-		if it.ID == "t2" && it.State != kanban.BacklogStateQueued {
+		if it.ID == "t2" && it.State != factory.BacklogStateQueued {
 			t.Errorf("t2 queue state = %s while the high serial is in flight, want still queued", it.State)
 		}
 	}
@@ -159,12 +159,12 @@ func TestFactoryNextSerialMutualExclusivity(t *testing.T) {
 // blocked lease), and the lease arrives only after the block lifts.
 func TestFactoryNextSkipsClassificationBlocked(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStateQueued, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+	fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStateQueued, factory.BacklogStateQueued)
 	// The blocked card carries the HIGHEST priority: without the skip, the
 	// promotion loop would take it first and every assertion below fails.
-	fcClassify(t, store, "t1", kanban.ClassPriorityHigh, true, kanban.ClassModeParallelizable)
-	fcClassify(t, store, "t2", kanban.ClassPriorityLow, false, kanban.ClassModeParallelizable)
-	fcClassify(t, store, "t3", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+	fcClassify(t, store, "t1", factory.ClassPriorityHigh, true, factory.ClassModeParallelizable)
+	fcClassify(t, store, "t2", factory.ClassPriorityLow, false, factory.ClassModeParallelizable)
+	fcClassify(t, store, "t3", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	sdRegisterLane(t, root, "lane-1")
 	sdLaneEnv(t, "lane-1", "")
 	t.Chdir(root)
@@ -187,7 +187,7 @@ func TestFactoryNextSkipsClassificationBlocked(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, it := range rec.Items {
-		if it.ID == "t1" && it.State != kanban.BacklogStateQueued {
+		if it.ID == "t1" && it.State != factory.BacklogStateQueued {
 			t.Fatalf("t1 queue state = %s while blocked, want still queued", it.State)
 		}
 	}
@@ -205,7 +205,7 @@ func TestFactoryNextSkipsClassificationBlocked(t *testing.T) {
 
 	// The block lifts (the operator unblock path): the promotion arm now
 	// leases the formerly blocked card.
-	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	if _, _, err := runFactory(t, "next", "--run", fcRun); err != nil {
 		t.Fatalf("next after unblock: %v", err)
 	}
@@ -225,9 +225,9 @@ func outOf(err error) string { return fmt.Sprint(err) }
 // uses).
 func TestFactoryNextParallelizableConcurrentLeases(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
-	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
-	fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+	fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStateQueued)
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	sdRegisterLane(t, root, "lane-1")
 	sdRegisterLane(t, root, "lane-2")
 
@@ -279,9 +279,9 @@ func TestFactoryNextParallelizableConcurrentLeases(t *testing.T) {
 // that as "another lane took it", a race to re-select, not a hard error.
 func TestFactoryNextRecordAndClaimRaceOnLeasedRow(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStateQueued)
-	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
-	fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStateQueued)
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	sdRegisterLane(t, root, "lane-1")
 	sdRegisterLane(t, root, "lane-2")
 
@@ -309,7 +309,7 @@ func TestFactoryNextRecordAndClaimRaceOnLeasedRow(t *testing.T) {
 	}
 
 	// lane-2 claims t1 through the b2 arm: no error, a race signal.
-	card, owned, raced, err := factoryNextRecordAndClaim(ctx, db, root, fcRun, "t1", "lane-2")
+	card, owned, raced, err := factoryNextRecordAndClaim(ctx, db, root, fcRun, "t1", "lane-2", homestate.CardFields{})
 	if err != nil {
 		t.Fatalf("RecordAndClaim on an already-leased card: %v", err)
 	}
@@ -335,7 +335,7 @@ func TestFactoryNextRecordAndClaimRaceOnLeasedRow(t *testing.T) {
 // mismatches map to a retry, and nothing else does.
 func TestFactoryNextDuplicateDispatchGuard(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStateQueued)
+	fcQueue(t, store, factory.BacklogStateQueued)
 	sdRegisterLane(t, root, "lane-1")
 	sdRegisterLane(t, root, "lane-2")
 
@@ -391,9 +391,9 @@ func TestFactoryNextClaimRefusedMapsRace(t *testing.T) {
 // together with the card's mode and priority, and both output forms agree.
 func TestFactoryStatusShowsHolderModePriority(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
-	fcClassify(t, store, "t1", kanban.ClassPriorityHigh, false, kanban.ClassModeSerial)
-	fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+	fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStateQueued)
+	fcClassify(t, store, "t1", factory.ClassPriorityHigh, false, factory.ClassModeSerial)
+	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	sdRegisterLane(t, root, "lane-1")
 	sdRegisterLane(t, root, "lane-2")
 	fcPlace(t, root,

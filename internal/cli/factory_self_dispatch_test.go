@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // sdRegisterLane inserts a lane label into the factory workers roster, the
@@ -42,7 +42,7 @@ func sdLaneEnv(t *testing.T, label, backend string) {
 	t.Helper()
 	t.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
 	t.Setenv(config.EnvMoaiFactoryWorker, label)
-	t.Setenv(config.EnvMoaiKanbanBackend, backend)
+	t.Setenv(config.EnvFactoryBackend, backend)
 }
 
 // sdClearLaneEnv removes every variable the lane predicates read, so a test
@@ -51,11 +51,11 @@ func sdClearLaneEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv(config.EnvFactoryRole, "")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
-	t.Setenv(config.EnvMoaiKanbanBackend, "")
+	t.Setenv(config.EnvFactoryBackend, "")
 }
 
 // sdQueueBytes snapshots the queue file the verbs share.
-func sdQueueBytes(t *testing.T, store *kanban.BacklogStore) string {
+func sdQueueBytes(t *testing.T, store *factory.BacklogStore) string {
 	t.Helper()
 	raw, err := os.ReadFile(store.EnginePath())
 	if err != nil {
@@ -123,14 +123,14 @@ func sdAssertLeasedOutput(t *testing.T, out, cardID, stage, worktree string) {
 func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 	t.Run("assigned-to-this-lane wins over unowned picked", func(t *testing.T) {
 		root, store := fcFixture(t)
-		fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+		fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 		// SPEC-TODO-CLASSIFY-DISPATCH-001: this scenario is mode-NEUTRAL —
 		// its subject is the arm ordering, not exclusivity. Two cards left
 		// unclassified both read serial (the absent-field default), and the
 		// serial-vs-serial gate would then wedge the arm ordering this test
 		// pins; the mode-neutral intent maps to parallelizable.
-		fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
-		fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+		fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 		sdRegisterLane(t, root, "lane-1")
 		fcPlace(t, root,
 			homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun},
@@ -156,7 +156,7 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 
 	t.Run("unowned picked wins over older queued", func(t *testing.T) {
 		root, store := fcFixture(t)
-		fcQueue(t, store, kanban.BacklogStateQueued, kanban.BacklogStatePicked)
+		fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStatePicked)
 		sdRegisterLane(t, root, "lane-1")
 		fcPlace(t, root, homestate.Card{CardID: "t2", State: homestate.CardPicked})
 		sdLaneEnv(t, "lane-1", "")
@@ -175,7 +175,7 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if rec.Items[0].State != kanban.BacklogStateQueued {
+		if rec.Items[0].State != factory.BacklogStateQueued {
 			t.Errorf("queued card promoted although a picked card existed: %s", rec.Items[0].State)
 		}
 		sdAssertLeasedOutput(t, out, "t2", "-", "t2")
@@ -183,7 +183,7 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 
 	t.Run("card assigned to another lane is never taken; exit 3", func(t *testing.T) {
 		root, store := fcFixture(t)
-		fcQueue(t, store, kanban.BacklogStatePicked)
+		fcQueue(t, store, factory.BacklogStatePicked)
 		sdRegisterLane(t, root, "lane-1")
 		sdRegisterLane(t, root, "lane-2")
 		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-2"})
@@ -201,7 +201,7 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 
 	t.Run("oldest queued promoted and leased; newer stays queued", func(t *testing.T) {
 		root, store := fcFixture(t)
-		fcQueue(t, store, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+		fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStateQueued)
 		sdRegisterLane(t, root, "lane-1")
 		sdLaneEnv(t, "lane-1", "")
 		t.Chdir(root)
@@ -213,7 +213,7 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if rec.Items[0].State != kanban.BacklogStatePicked || rec.Items[1].State != kanban.BacklogStateQueued {
+		if rec.Items[0].State != factory.BacklogStatePicked || rec.Items[1].State != factory.BacklogStateQueued {
 			t.Fatalf("queue = (%s, %s), want (picked, queued)", rec.Items[0].State, rec.Items[1].State)
 		}
 		if c := fcCard(t, root, "t1"); c.State != homestate.CardLeased || c.LeaseHolder != "lane-1" {
@@ -235,7 +235,7 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 
 	t.Run("two lanes concurrently: exactly one leases the picked card", func(t *testing.T) {
 		root, store := fcFixture(t)
-		fcQueue(t, store, kanban.BacklogStateQueued, kanban.BacklogStatePicked)
+		fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStatePicked)
 		sdRegisterLane(t, root, "lane-1")
 		sdRegisterLane(t, root, "lane-2")
 		fcPlace(t, root, homestate.Card{CardID: "t2", State: homestate.CardPicked})
@@ -323,7 +323,7 @@ func TestSD_AC009_NextWaitLeasesOrTimesOut(t *testing.T) {
 // variant lands with the MCP tools in M3 and consumes the same function).
 func TestSD_AC010_NextRefusedOutsideParent(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked)
+	fcQueue(t, store, factory.BacklogStatePicked)
 	sdRegisterLane(t, root, "lane-1")
 	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked})
 	sdLaneEnv(t, "lane-1", "")
@@ -366,7 +366,7 @@ func TestSD_AC010_NextRefusedOutsideParent(t *testing.T) {
 // AC-SD-015 — lane predicate and queue allowlist: the walk.
 func TestSD_AC015_LaneQueueAllowlistWalk(t *testing.T) {
 	_, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+	fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStateQueued)
 	sdLaneEnv(t, "lane-1", "")
 
 	// The walked set is derived from the tree itself: a verb without test
@@ -397,8 +397,14 @@ func TestSD_AC015_LaneQueueAllowlistWalk(t *testing.T) {
 		"export-json": nil,
 		"history":     nil,
 		"triage":      {"t1"},
+		// merge — SPEC-TODO-CARD-ISSUANCE-001 M4: a mutation the lane guard
+		// refuses like every other queue write; the args name two seeded ids.
+		"merge": {"t1", "t2"},
+		// trace — SPEC-TODO-CARD-ISSUANCE-001 M3: read-only in a lane (it is
+		// on todoLaneReadOnlyVerbs), so it walks allowlisted.
+		"trace": {"t1"},
 	}
-	allow := map[string]bool{"list": true, "history": true, "why": true, "pr": true, "triage": true, "show": true}
+	allow := map[string]bool{"list": true, "history": true, "why": true, "pr": true, "triage": true, "show": true, "trace": true}
 
 	todoRoot := newTodoCmd()
 	walked := 0
@@ -461,7 +467,7 @@ func TestSD_AC015_LaneQueueAllowlistWalk(t *testing.T) {
 // Codex backend value (the Codex MCP env carries no role marker).
 func TestSD_AC015_LabelOnlyIsNotALane(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStateQueued)
+	fcQueue(t, store, factory.BacklogStateQueued)
 	sdRegisterLane(t, root, "lane-1")
 
 	// Label-only environment: the marker is unset.
@@ -493,7 +499,7 @@ func TestSD_AC015_LabelOnlyIsNotALane(t *testing.T) {
 	// Codex MCP environment: lane label + backend gpt, no role marker. The
 	// todo_add MCP tool refusal is exercised when the tool lands (M3); the
 	// CLI todo surface and the not-a-lane factory refusal are covered here.
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGPT)
+	t.Setenv(config.EnvFactoryBackend, factory.BackendGPT)
 	before = sdQueueBytes(t, store)
 	if _, _, err := runTodo(t, "add", "x"); err == nil || !strings.Contains(err.Error(), "lane boundary") {
 		t.Errorf("todo add under Codex MCP env: err = %v, want the lane-boundary refusal", err)
@@ -510,7 +516,7 @@ func TestSD_AC015_LabelOnlyIsNotALane(t *testing.T) {
 // MCP tools in M3).
 func TestSD_AC016_LaneDecideRefused(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked)
+	fcQueue(t, store, factory.BacklogStatePicked)
 	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardKickoff, DecisionGate: homestate.DecisionGateKickoff})
 	before := fcCard(t, root, "t1")
 	eventsBefore := fcEventCount(t, root, "card.transition")
@@ -540,12 +546,12 @@ func TestSD_AC016_LaneDecideRefused(t *testing.T) {
 // AC-SD-023 — a Codex lane never re-leases a card it cannot advance.
 func TestSD_AC023_CodexNextSkipsUnadvanceableCard(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked)
+	fcQueue(t, store, factory.BacklogStatePicked)
 	sdRegisterLane(t, root, "lane-1")
 	// A card returned to `assigned` by lease expiry, stage merge-ready.
 	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardMergeReady})
 
-	sdLaneEnv(t, "lane-1", kanban.BackendGPT)
+	sdLaneEnv(t, "lane-1", factory.BackendGPT)
 	before := fcCard(t, root, "t1")
 	out, _, err := runFactory(t, "next", "--run", fcRun)
 	sdExit3(t, "codex unadvanceable", err)

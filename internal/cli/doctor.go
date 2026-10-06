@@ -228,6 +228,11 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// artifact inventory (legacy backlog.json, .migrated, session
 		// records), judged from the same detector (REQ-TSP-042). Read-only.
 		{todoGhostInventoryCheckName, func(v bool) DiagnosticCheck { return checkTodoGhostInventory(cwd, v) }},
+		// SPEC-SESSION-CC-VERSION-001 REQ-SCV-007: per live registry session,
+		// the running Claude Code version against the installed one. Read-only,
+		// at most one probe per live entry, advisory — never CheckFail, so it
+		// never gates doctor's exit status.
+		{ccVersionStalenessCheckName, func(v bool) DiagnosticCheck { return checkSessionCCVersionStaleness(cwd, v) }},
 		// SPEC-AGENT-EMIT-LINEAGE-001 REQ-AEL-004: embed-axis judgment point.
 		// Applicable only in a tree carrying the committed emission set — a
 		// deployed project sees one added `ok` row and the same exit status.
@@ -240,6 +245,10 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"Harness 5-Layer", func(v bool) DiagnosticCheck { return runHarnessCheck(cwd) }},
 		{"Migration", func(v bool) DiagnosticCheck { return checkMigration(cwd, v) }},
 		{"Plugin Deployment", func(v bool) DiagnosticCheck { return checkPluginDeployment(cwd, v) }},
+		// SPEC-PLUGIN-MARKETPLACE-001 REQ-020..023 (card t1435): installed moai
+		// plugin version vs this binary. Reads one registry file and runs at most
+		// one bounded `codex plugin list --json`; never starts claude.
+		{pluginVersionCheckName, checkPluginVersion},
 		// SPEC-V3R6-MOAI-CLEAN-HOME-001 REQ-MCH-001: advisory home disk check.
 		{"Home Disk Usage", checkHomeDisk},
 	}

@@ -199,10 +199,10 @@ func TestFactoryLeadNoticeUsesOperationalStatus(t *testing.T) {
 	t.Setenv("CLAUDE_CONFIG_DIR", t.TempDir())
 	root, run := t.TempDir(), "ops-notice"
 	c := operationalStatusClient(t, root, run)
-	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvFactoryRunID, run)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
-	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
+	t.Setenv(config.EnvFactoryBackend, "codex")
 	t.Setenv(config.EnvMoaiSessionPID, strconv.Itoa(os.Getpid()))
 	start, state := homestate.ProbeProcessIdentity(os.Getpid())
 	if state != homestate.ProcessIdentityLive || start == "" {
@@ -343,5 +343,85 @@ func TestFactoryMsgSendRejectsClaudeOnlyRun(t *testing.T) {
 	}
 	if result.IsError {
 		t.Fatalf("factory_msg_send from a registered endpoint owner = %v, want delivery", result)
+	}
+}
+
+// TestFactoryMsgSendOptionalIDsDefault pins GitHub #1737 (card t1473): the
+// tool schema registers correlation_id and task_ref as optional, so a send
+// that omits them must deliver instead of failing "invalid correlation id".
+// An omitted value defaults to the idempotency key, so a same-key retry
+// without the fields resolves to the original message rather than tripping
+// the idempotency collision check. The explicit-value arm guards against a
+// mutant that overwrites caller-supplied identifiers.
+func TestFactoryMsgSendOptionalIDsDefault(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root, run := t.TempDir(), "optional-ids-run"
+	activateManagedRun(t, root, run)
+	t.Setenv(config.EnvClaudeProjectDir, root)
+	t.Setenv(config.EnvClaudeCodeSessionID, "")
+
+	store, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	start := homestate.CurrentProcessFingerprint()
+	if start == "" {
+		t.Fatal("test process identity unavailable")
+	}
+	leader := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "claude",
+		Role: "leader", Slot: "leader", SessionUUID: "optional-ids-leader", Generation: 1,
+		PID: os.Getpid(), ProcessStart: start}
+	if _, err := store.RegisterPeer(context.Background(), leader); err != nil {
+		t.Fatal(err)
+	}
+	lane := leader
+	lane.Role, lane.Slot, lane.SessionUUID = "lane", "lane-1", "optional-ids-lane"
+	if _, err := store.RegisterPeer(context.Background(), lane); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(config.EnvMoaiSessionPID, strconv.Itoa(os.Getpid()))
+
+	send := func(arguments map[string]any) factorymsg.Envelope {
+		t.Helper()
+		result, err := handleFactoryMsgSend(context.Background(), mcp.CallToolRequest{Params: mcp.CallToolParams{Name: "factory_msg_send", Arguments: arguments}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.IsError {
+			t.Fatalf("factory_msg_send(%v) = %+v, want delivery", arguments, result.Content)
+		}
+		env, ok := result.StructuredContent.(factorymsg.Envelope)
+		if !ok {
+			t.Fatalf("structured content = %T, want factorymsg.Envelope", result.StructuredContent)
+		}
+		return env
+	}
+	omitted := func() map[string]any {
+		return map[string]any{"run_id": run, "to_slot": "lane-1", "kind": "status_request",
+			"idempotency_key": "optional-ids-once", "body": "ids omitted"}
+	}
+
+	first := send(omitted())
+	if first.CorrelationID != "optional-ids-once" || first.TaskRef != "optional-ids-once" {
+		t.Fatalf("defaults = correlation %q task_ref %q, want the idempotency key", first.CorrelationID, first.TaskRef)
+	}
+	retry := send(omitted())
+	if retry.ID != first.ID {
+		t.Fatalf("same-key retry returned message %q, want the original %q", retry.ID, first.ID)
+	}
+
+	empty := send(map[string]any{"run_id": run, "to_slot": "lane-1", "kind": "status_request",
+		"idempotency_key": "optional-ids-empty", "body": "ids empty",
+		"task_ref": "", "correlation_id": ""})
+	if empty.CorrelationID != "optional-ids-empty" || empty.TaskRef != "optional-ids-empty" {
+		t.Fatalf("empty ids = correlation %q task_ref %q, want the idempotency key", empty.CorrelationID, empty.TaskRef)
+	}
+
+	explicit := send(map[string]any{"run_id": run, "to_slot": "lane-1", "kind": "status_request",
+		"idempotency_key": "optional-ids-explicit", "body": "ids given",
+		"task_ref": "t1473", "correlation_id": "corr-1"})
+	if explicit.CorrelationID != "corr-1" || explicit.TaskRef != "t1473" {
+		t.Fatalf("explicit ids = correlation %q task_ref %q, want corr-1/t1473", explicit.CorrelationID, explicit.TaskRef)
 	}
 }

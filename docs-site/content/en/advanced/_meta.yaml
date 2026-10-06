@@ -51,10 +51,10 @@ index:
   title: "Harness Learning Surface"
 "autonomy-tier":
   title: "Autonomy Tier (MOAI_AUTONOMY_TIER)"
-"kanban-mode":
-  title: "Kanban Mode"
 "factory-mode":
   title: "Factory Mode"
+"origin-trail-chain":
+  title: "Origin-Trail Chain"
 "manager-lead":
   title: "manager-lead Leader Coordinator"
 "multi-model-audit":
@@ -72,7 +72,6 @@ index:
   weight: 96
 # v3.1 NEW-badge section-level list (SPEC-DESIGN-DOCS-V31-001 M3).
 new_items:
-  - kanban-mode
   - bas-navigator
   - manager-lead
   - multi-model-audit

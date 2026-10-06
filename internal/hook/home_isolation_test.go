@@ -84,6 +84,7 @@ var homeJoinSiteAllowlist = []string{
 	"internal/cli/preference/cmd.go",
 	"internal/cli/tokens.go", // glob READ of the real home (session transcript lookup)
 	"internal/hook/session_end.go",
+	"internal/hygiene/settings.go", // READ of the real home (transcript profile roots; never written)
 }
 
 // TestHomeJoinSiteCountIsPinned asserts the tree's home-join sites match

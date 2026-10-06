@@ -37,51 +37,43 @@
 
 ---
 
-## v3.1 새 기능 — 칸반 모드
-
-> v3.1은 광복절인 8월 15일에 맞춰 내놓는다. 한 세션이 컨텍스트 한도에 묶인 채 일하던 방식에서 풀려난다는 뜻을 담았다. 다만 한도 자체가 없어지는 것은 아니다 — 실제로 달라지는 지점은 아래에 그대로 적는다.
+## v3.2 새 기능 — 팩토리 모드
 
 세션 하나는 컨텍스트 창 하나를 쓴다. 긴 SPEC은 그 창을 채우고, 뒤에 오는 작업은 앞의 것을 전부 지고 간다. 계획은 이미 끝났는데도 리뷰하는 내내 창에 남아 있고, 그 리뷰는 문서를 쓰는 내내 또 남아 있다. 흔한 탈출구인 `/clear`는 짐과 함께 맥락까지 버린다.
 
-칸반 모드는 작업 하나를 **터미널 한 개가 아니라 네 개로** 나눈다. 팩토리 리더 세션이 체인을 몰고, 세 개의 동반 세션이 `plan`·`run`·`sync` 한 칸씩을 맡아 **자기 칸의 맥락만** 진다. 검토는 별도 칸이 아니라 sync 게이트가 흡수한다 — sync 단계가 리뷰 렌즈를 직접 돌려 판정을 낸다. 무제한이 되는 것이 아니다 — 세션마다 한도는 그대로 있다. 달라지는 것은 어느 세션도 세 단계치 이력을 짊어지지 않는다는 점이고, 그래서 같은 예산이 훨씬 멀리 가며, 끝난 단계는 카드를 잃지 않고 비울 수 있다.
-
-<p align="center">
-  <img src="./assets/images/kanban-five-sessions.png" alt="칸반 모드 한 런 — 다섯 칸 보드와 리더·세 동반 세션이 각자의 터미널에서, 각자의 모델과 추론 강도로 돌고 있다" width="100%">
-</p>
-
-칸마다 백엔드와 추론 강도를 다르게 둘 수 있다. 위 화면은 Plan을 Opus 5 high로, Run을 GLM 5.2 xhigh로, Sync를 GLM 5.2로 돌린다. 칸마다 필요한 추론의 깊이가 같지 않기 때문이다.
+팩토리 모드는 일을 **리더 세션 하나와 번호가 붙은 레인 세션 여럿**으로 나눈다. 리더는 큐를 지키며 카드를 빈 레인에 나른다. 카드는 단계마다 세션을 갈아타지 않고 **통째로 레인 하나**에 들어가며, 그 레인이 세션 안에서 `plan → run → sync`를 순서대로 끝까지 맡는다. 각 단계는 `Agent()` 서브에이전트로 띄우고, 레인 자신은 오케스트레이션만 한다. 무제한이 되는 것이 아니다 — 세션마다 한도는 그대로 있다. 달라지는 것은 카드 한 장의 이력이 그 카드를 맡은 레인에만 쌓인다는 점이다. 그래서 같은 예산이 훨씬 멀리 가고, 레인은 카드 하나가 끝날 때마다 맥락을 비운 채 다음 카드를 받는다.
 
 ### 시작하기
 
 ```bash
-moai cc -k                    # 리더 — run-id를 알려주고 체인을 깐다
-moai cc -k --name plan        # 동반 세션, 각자 별도 터미널에서
-moai cc -k --name run
-moai cc -k --name sync
+moai cc -f                    # 리더 — 팩토리를 연다
+moai cc -l                    # 레인, 각자 별도 터미널에서 — 다음 빈 번호로 합류
+moai cc -l                    # lane-1, lane-2 … 순으로 붙는다
+moai glm -l                   # GLM 백엔드로 띄운 레인
+moai codex -l                 # Codex 레인
 ```
 
-동반 세션은 **터미널을 하나씩 새로 열어 직접** 띄운다. 이름은 역할만으로 붙인다 — run-id는 리더 세션의 식별자이고 동반 세션이 물고 다니지 않는다. 같은 역할 이름이 이미 살아 있으면 다음 번호가 붙는다. 세션은 다른 세션을 대신 띄우지 못한다. 어느 칸이든 `moai cc` 대신 `moai glm`을 쓰면 그 칸만 GLM 백엔드로 돈다.
+`-f`(긴 형태 `--factory`)가 리더를 열고, `-l`(긴 형태 `--lane`)이 실행 중인 팩토리에 레인으로 합류한다. 둘 다 인자를 받지 않는다. 레인 번호는 운영자가 고르지 않고 자동으로 배정된다. 레인은 **터미널을 하나씩 새로 열어 직접** 띄운다. 세션은 다른 세션을 대신 띄우지 못한다. `moai codex`에는 리더 진입이 없어 레인으로만 합류할 수 있다.
 
-### 어느 백엔드로 나눌까
+한 번의 실행에는 진입 토큰이 하나뿐이라 `-f`와 `-l`을 함께 쓰면 에러다. 값이 붙은 형태(`moai cc -f <값>`, `moai cc -l lane-2`)도 한 줄 에러로 거부되고, 에러 문구가 올바른 형태를 알려 준다. 예전 다중 세션 보드 모드의 `-k`는 제거되었고, `moai cg`는 이전 안내를 띄우고 종료한다(`moai migrate cg`로 먼저 확인). `moai gpt`는 없으며 GPT 모델은 `moai codex`로 돌린다.
 
-칸반을 열 때 부트스트랩 안내가 기본 추천을 함께 알려 준다 — 토큰 가용성을 우선하면 리더는 `moai glm -k`, plan은 `moai cc -k --name plan`, run은 `moai glm -k --name run`, sync는 `moai cc -k --name sync`다. 그림의 이유는 레인마다 필요한 추론의 종류다. plan과 sync는 판단과 리뷰를 도는 칸이라 Claude에 두고, run은 구현 중심이라 GLM로 비용을 낮춘다. 리더는 판정을 내리는 자리가 아니라 큐를 지키며 카드를 나르는 자리라, 상시 대기 비용이 크지 않은 GLM이 어울린다. GLM 리더 아래에서 Claude 판정이 필요해지면 `judge`라는 이름의 세션으로 빠져나간다 — GLM 리더가 Claude를 쓰는 유일한 경로다. 한 계정이 429로 막히기 시작하면 레인을 계정에 분산해 배치하는 운영이 통한다. 이 조합은 어디까지나 기본 추천일 뿐 — 다른 조합이나 전 세션을 한 백엔드로 통일해도 무방하다.
+### 어느 백엔드로 돌릴까
 
-### 팩토리 모드 (Factory Mode) — 레인 N개에 카드를 한꺼번에
+백엔드는 레인마다 따로 고른다. `moai cc -l`은 Claude, `moai glm -l`은 GLM, `moai codex -l`은 Codex 레인이다. 리더는 판정을 내리는 자리가 아니라 큐를 지키며 카드를 나르는 자리라, 상시 대기 비용이 크지 않은 GLM(`moai glm -f`)이 어울린다. 한 계정이 429로 막히기 시작하면 레인을 계정에 분산해 배치하는 운영이 통한다. 이 조합은 어디까지나 한 예일 뿐 — 전 세션을 한 백엔드로 통일해도 무방하다.
 
-`-f`는 칸반의 두 번째 형태인 팩토리 리더를 연다. 칸반 카드가 칸을 옮겨 다니는 것과 달리, 팩토리 카드는 **통째로 레인 하나**에 들어가 그 레인이 세션 안에서 `plan → run → sync`를 순서대로 지나간다. 단계마다 `Agent()` 서브에이전트로 띄운다. 레인 이름은 `lane-1` … `lane-N`이다.
+### 레인 N개에 카드를 한꺼번에
 
-```bash
-moai cc -f                    # 리더만 연다(레인 하나, lane-1)
-moai cc -f lane              # 레인 하나, 다음 빈 번호로 자동 합류
-moai cc -f lane-3            # 레인 하나, 번호를 직접 지정
-moai glm -f lane             # …GLM 백엔드로 띄운 레인 하나
-```
+레인은 `-l`을 한 번 더 쳐서 하나씩 늘린다. 번호는 자동 배정이라 `--name`/`-n`을 함께 주면 에러다. 번호는 살아 있는 세션이 쥔 것만 건너뛴다 — 죽은 레인의 claim은 더 이상 그 번호를 막지 않지만, 자동 배정은 항상 살아 있는 최고 번호+1만 받으므로 중간 빈 번호를 채우지는 않는다. 레인 소유권은 `~/.moai/db/<project-key>/factory/factory.db`에 기록한다. 기점 디렉터리가 임시 디렉터리면(절대 `MOAI_HOME` 오버라이드 없음) 프로젝트 로컬 `<base>/.moai/db/<project-key>/factory/` 아래에 기록한다 — 백로그 큐와 같은 예외다. 기존 `.moai/state/factory/workers.json`은 한 번만 가져오고 롤백 증거로만 남긴다.
 
-레인은 `-f lane`(다음 빈 번호로 자동 합류) 또는 `-f lane-<n>`(정확히 그 번호)로 하나씩 늘린다. 두 형태 모두 레인 이름을 이미 정하므로 `--name`/`-n`을 함께 주면 에러다. 직접 고른 번호가 살아 있는 레인과 겹치면 다음 빈 번호로 붙는다. 번호는 살아 있는 세션이 쥔 것만 건너뛴다 — 죽은 레인의 claim은 더 이상 그 번호를 막지 않지만(직접 고른 번호는 바로 재사용 가능), `-f lane` 자동 배정은 항상 최고 번호+1만 받으므로 중간 빈 번호를 채우지는 않는다. 레인 소유권은 `~/.moai/db/<project-key>/factory/factory.db`에 기록한다. 기점 디렉터리가 임시 디렉터리면(절대 `MOAI_HOME` 오버라이드 없음) 프로젝트 로컬 `<base>/.moai/db/<project-key>/factory/` 아래에 기록한다 — 백로그 큐와 같은 예외다. 기존 `.moai/state/factory/workers.json`은 한 번만 가져오고 롤백 증거로만 남긴다. 레인 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 레인을 한꺼번에 켜지 말고 첫 레인을 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 레인에 쪼개어 넣지 않는다. `-k`는 그대로 세 역할짜리 칸반 체인을 돌린다. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k`와 `-f`를 함께 쓰면 에러다. CG는 폐기되었다. `moai migrate cg`로 이전 선택지를 먼저 확인한다. 팩토리 런은 이제 자기를 소유한 세션의 프로세스 신원을 기록한다. 리더가 죽은 런은 다음 레인이 합류하는 시점에 자동으로 회수되므로 합류가 `AMBIGUOUS_FACTORY`에서 막히지 않는다. 그 반대도 막혀 있다: 레인이 합류할 때 실행 기록이 없거나 은퇴했는데 살아 있는 리더 세션이 있으면, 합류는 그 리더를 검증하고(pid + 프로세스 시작 지문, `-l/--lead`로 대상 지정, 기본값 `leader`) 그 런 기록을 복원한 뒤 그대로 합류한다 — 검증된 리더가 둘 이상이면 후보를 모두 이름 대고 실패로 닫는다. `moai factory runs`는 모든 런을 소유자 생존 여부와 함께 보여주고, `moai factory runs --retire <run-id>`는 지목한 런 하나를 손으로 회수한다. 소유자가 실제로 죽지 않았으면 거절한다. 런이 죽거나 바뀐 뒤에도 레인 세션은 환경에 박힌 옛 런을 계속 가리키는데, 이 레인은 `moai factory relaunch`로 살아 있는 런에 다시 붙인다. 이 명령은 공급자의 레인 합류 줄(`moai cc -f lane-<n>`, `moai glm -f lane-<n>`, Codex는 `moai codex -f lane`뿐)을 그대로 다시 실행하고, 옵션은 `--provider`·`--lane`·`--run`·`--from-run <run-id>`·`--dry-run`이다. `--from-run`은 그 런이 활성이면서 소유자가 죽은 경우에만 먼저 회수하고, `--dry-run`은 실행 줄만 찍고 아무것도 바꾸지 않는다. 한 런 안에서 카드를 돌며 도는 `--clear-policy relaunch` 루프와는 별개의 일회성 명령이다. 이제 stale-run 안내문도 산문 대신 이 명령을 채워 넣은 줄로 보여 준다. 현재 어휘의 레인(`lane-<n>`)은 런이 끝나면 다음 프롬프트에서 유일한 활성 런에 제자리로 다시 등록되고, 옛 `worker-N` 라벨은 다시 붙이지 않고 이 명령만 안내한다.
+레인 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 레인을 한꺼번에 켜지 말고 첫 레인을 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 레인에 쪼개어 넣지 않는다.
 
-> 자세히: [칸반 모드 — 팩토리 모드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
+팩토리 런은 자기를 소유한 세션의 프로세스 신원을 기록한다. 리더가 죽은 런은 다음 레인이 합류하는 시점에 자동으로 회수되므로 합류가 `AMBIGUOUS_FACTORY`에서 막히지 않는다. 그 반대도 막혀 있다: 레인이 합류할 때 실행 기록이 없거나 은퇴했는데 살아 있는 리더 세션이 있으면, 합류는 그 리더를 검증하고(pid + 프로세스 시작 지문, 대상은 긴 형태 `--leader <이름>`으로 지정, 기본값 `leader`) 그 런 기록을 복원한 뒤 그대로 합류한다 — 검증된 리더가 둘 이상이면 후보를 모두 이름 대고 실패로 닫는다. `--leader`는 `-l`/`--lane`과만 함께 쓰는 선택자이고 진입 토큰의 짧은 형태가 아니다. `moai factory runs`는 모든 런을 소유자 생존 여부와 함께 보여주고, `moai factory runs --retire <run-id>`는 지목한 런 하나를 손으로 회수한다. 소유자가 실제로 죽지 않았으면 거절한다.
 
-보드는 `backlog → plan → run → sync → done` 다섯 칸이다. `backlog`에는 주인 세션이 일부러 없다. 그래서 일감은 사람이 넣을 때만 보드에 들어온다.
+런이 죽거나 바뀐 뒤에도 레인 세션은 환경에 박힌 옛 런을 계속 가리키는데, 이 레인은 `moai factory relaunch`로 살아 있는 런에 다시 붙인다. 이 명령은 공급자의 레인 합류 줄(`moai cc -l`, `moai glm -l`, Codex는 `moai codex -l`)을 그대로 다시 실행하고, 옵션은 `--provider`·`--lane`·`--run`·`--from-run <run-id>`·`--dry-run`이다. `-l`은 인자를 받지 않으므로 `--lane`을 줘도 합류 줄에는 실리지 않는다. 명령이 stderr로 그렇게 알리고, 레인은 다음 빈 번호로 합류한다. `--from-run`은 그 런이 활성이면서 소유자가 죽은 경우에만 먼저 회수하고, `--dry-run`은 실행 줄만 찍고 아무것도 바꾸지 않는다. 한 런 안에서 카드를 돌며 도는 `--clear-policy relaunch` 루프와는 별개의 일회성 명령이다. stale-run 안내문도 산문 대신 이 명령을 채워 넣은 줄로 보여 준다.
+
+> 자세히: [팩토리 모드](https://adk.mo.ai.kr/ko/advanced/factory-mode)
+
+카드는 큐에서 출발한다. `backlog`에는 주인 세션이 일부러 없다. 그래서 일감은 사람이 넣을 때만 큐에 들어온다.
 
 ```text
 /moai gtd "rename 힌트가 낡았다"   # 카드 추가
@@ -90,59 +82,45 @@ moai glm -f lane             # …GLM 백엔드로 띄운 레인 하나
 
 `/moai gtd`가 정식 작업 관리 표면입니다. `/moai todo`는 같은 SQLite 대기열, 카드 ID, 순서, 보관·복원 동작을 쓰는 호환 이름으로 남습니다. `moai gtd capture|clarify|organize|reflect|engage`는 승인된 일이 기존 `backlog → plan → run → sync → done` 개발 흐름에 들어가기 전에 Capture → Clarify → Organize → Reflect → Engage를 실제 SQLite 상태로 이어 갑니다. 작업 receipt와 실제 상태 재확인이 중간 종료 뒤 발행·선택·배차의 중복을 막습니다.
 
-보드를 정직하게 유지하는 규칙이 둘 있다. 리더는 카드의 `progress.md`에서 **직접 읽은 증거로만** 카드를 넘긴다 — 동반 세션의 답장으로는 넘기지 않는다. 답장은 관측이 아니라 주장이고, 세션 간 전달은 보장되지도 않기 때문이다. 그리고 단계가 끝나면 리더가 해당 세션을 `/clear` 해달라고 요청한다. `/clear`는 사람이 직접 치는 명령이라 지시로 보낼 수 없다.
+팩토리를 정직하게 유지하는 규칙이 둘 있다. 리더는 카드의 `progress.md`에서 **직접 읽은 증거로만** 카드를 넘긴다 — 레인의 답장으로는 넘기지 않는다. 답장은 관측이 아니라 주장이고, 세션 간 전달은 보장되지도 않기 때문이다. 그리고 카드가 끝나면 레인이 `/clear`를 요청한다. `/clear`는 사람이 직접 치는 명령이라 지시로 보낼 수 없다(`--clear-policy`로 바꿀 수 있다).
 
-### 네 세션이 쓰는 말
+### 팩토리가 쓰는 말
 
-칸반 문서가 되풀이하는 낱말을 그림 한 장으로 묶으면 이렇다. **칸** (column) 은 보드의 단계이고, **레인** (lane) 은 카드 한 장을 그 단계들 사이로 끝까지 나르는 세션과 워크트리의 짝이다 — 정류장과 노선의 차이다.
-
-```text
-운영자 ── /moai todo ──▶ backlog ─▶ plan ─▶ run ─▶ sync ─▶ done
-                          (리더가 직접 읽은 증거로만 카드를 다음 칸으로)
-
-레인 — 카드 t0:  run 세션 + 워크트리 t0      ┐ 두 흐름은 같은 보드를
-레인 — 카드 t1:  run 세션 + 워크트리 t1      ┘ 나란히 흐르고 섞이지 않는다
-```
+팩토리 문서에 되풀이되는 낱말을 한 장에 모으면 이렇다. **리더** (leader) 는 큐를 지키며 카드를 나르는 세션이고, **레인** (lane) 은 카드 한 장을 끝까지 나르는 세션과 워크트리의 짝이다.
 
 | 낱말 | 한 줄 정의 |
 |---|---|
-| 카드 (card) | 작업 단위 하나. `/moai todo`로 들어오고 짧은 아이디로 불린다 |
-| 칸 (column) | 보드의 단계 하나 — 다섯 칸은 고정 순서 |
+| 카드 (card) | 작업 단위 하나. `/moai gtd`로 들어오고 짧은 아이디로 불린다 |
 | 백로그 (backlog) | 입구 대기열. 주인 세션이 없어 사람만 넣을 수 있다 |
-| 레인 (lane) | 카드 한 장을 끝까지 나르는 세션+워크트리의 짝. 병렬 작업 흐름 하나 |
 | 리더 (leader) | 조율하는 세션. 읽은 증거로만 카드를 넘기고, 코드는 직접 쓰지 않는다 |
-| 동반 세션 (companion) | 칸마다 앉아 일하는 세션. 터미널 하나씩 사람이 직접 띄운다 |
-| 런 아이디 (run-id) | 리더가 시작할 때 알려주는 짧은 식별자. 리더 세션의 이름이고 동반 세션은 물지 않는다 |
-| 워크트리 (worktree) | 카드 전용 격리 체크아웃. 디렉터리는 카드 아이디, 브랜치는 한 일을 담은 `WT-<슬러그>`. run부터 sync까지 하나가 관통한다 |
-| 배차 (dispatch) | 리더가 동반 세션에 보내는 지시 — 일의 포인터이지 복사물이 아니다 |
+| 레인 (lane) | 카드 한 장을 끝까지 나르는 세션+워크트리의 짝. 병렬 작업 흐름 하나이고 `lane-1`, `lane-2` … 번호가 자동으로 붙는다 |
+| 런 아이디 (run-id) | 팩토리 실행 하나를 가리키는 짧은 식별자. 실행이 여럿 살아 있으면 `--factory-run <run-id>`로 합류할 실행을 고른다 |
+| 워크트리 (worktree) | 카드 전용 격리 체크아웃. 디렉터리는 카드 아이디, 브랜치는 한 일을 담은 `WT-<슬러그>` |
+| 배차 (dispatch) | 리더가 레인에 보내는 지시 — 일의 포인터이지 복사물이 아니다 |
 
-정의와 예시를 갖춘 정식 용어집: [칸반 보드 용어](https://adk.mo.ai.kr/ko/core-concepts/kanban-board-terms)
-
-카드도 모양에 따라 지나치는 칸이 갈린다. 리더는 카드가 `backlog`를 떠날 때 세 클래스로 분류해 배차문에 이름 붙인다.
+카드도 모양에 따라 레인이 거치는 단계가 갈린다. 리더는 카드가 큐를 떠날 때 세 클래스로 분류해 배차문에 이름 붙인다.
 
 | 클래스 | 모양 | 지름길 |
 |---|---|---|
-| A — 바로 닫기 | 파일 하나·한 줄, 설계 판단 없음, 회귀는 CI가 잡음 | 한 세션이 PR까지 통째로 (`plan` 건너뜀) |
+| A — 바로 닫기 | 파일 하나·한 줄, 설계 판단 없음, 회귀는 CI가 잡음 | 레인 하나가 PR까지 통째로 (`plan` 건너뜀) |
 | B — 원인 미확인 결함 | 잘못된 건 분명한데 원인이 아직 안 서 있음 | `run → sync` (`plan` 없이, SPEC 없음) |
-| C — 설계 변경 | 결정이 들어 있거나 하위 시스템에 걸침 | 세 칸 모두 |
+| C — 설계 변경 | 결정이 들어 있거나 하위 시스템에 걸침 | 세 단계 모두 |
 
 클래스 A는 주장이 아니라 확인된 증거로만 인정한다 — 파일 하나로 측정된 diff와 머지될 HEAD의 초록 CI를 인용하지 못하면 클래스 A가 아니다. 클래스 B는 `plan`만 건너뛰고 sync 게이트의 리뷰는 그대로 돌아가며, 원인 확립 증거(재현 명령과 출력)를 카드의 진행 기록에 남긴다.
 
-자세히: [칸반 모드 — 카드 클래스](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
+### 팩토리를 눈으로 보기
 
-### 보드를 눈으로 보기
-
-`moai web`은 로컬 콘솔을 띄운다. 칸반 화면에서 칸반 체인과 SPEC 파이프라인을 함께 보고, Overview·Specs·Monitor·Settings·Todo 화면이 함께 붙는다.
+`moai web`은 로컬 콘솔을 띄운다. Factory 화면에서 팩토리 레인과 SPEC 파이프라인을 함께 보고, Overview·Specs·Monitor·Settings·Todo 화면이 함께 붙는다.
 
 <p align="center">
   <img src="./assets/images/moai-web-overview.png" alt="moai web 콘솔 Overview 화면 — SPEC 집계, 진행 중 SPEC 목록, 세션 레지스트리" width="90%">
 </p>
 
-자세한 안내: [칸반 모드](https://adk.mo.ai.kr/ko/advanced/kanban-mode) · [manager-lead 리더 코디네이터](https://adk.mo.ai.kr/ko/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/ko/utility-commands/moai-todo)
+자세한 안내: [팩토리 모드](https://adk.mo.ai.kr/ko/advanced/factory-mode) · [manager-lead 리더 코디네이터](https://adk.mo.ai.kr/ko/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/ko/utility-commands/moai-todo)
 
 ### v3.1.1에서 더해진 것
 
-칸반 모드 말고도 v3.1.1에 들어온 것들이다. 각각은 뒤의 해당 절에서 자세히 다룬다.
+앞서 v3.1.1에 들어온 것들이다. 각각은 뒤의 해당 절에서 자세히 다룬다.
 
 **홈 디렉터리 정리.** 오래 쓸수록 `~/.moai`에는 지난 실행 산출물이 쌓인다. `moai clean --home`이 허용목록 범위 안에서만 그것을 치운다 — 기본은 dry-run이라 무엇이 지워질지 먼저 보여주고, 실제 삭제는 `--force`를 줘야 한다. 며칠 지난 것부터 치울지는 `state.home_retention_days`(기본 30일, `0`이면 끔)로 정한다. 지금 얼마나 불었는지는 `moai doctor`의 Home Disk Usage 항목이 알려준다. 홈 경로 자체는 `MOAI_HOME` 환경변수로 옮길 수 있다 — 절대 경로만 받는다. 다만 이 변수를 읽는 건 Go 프로세스뿐이라, 경로를 옮겨도 statusline과 셸 훅은 여전히 `$HOME/.moai`를 본다. `.env.glm` 같은 셸 쪽 자격증명과 statusline 데이터만 옛 자리에 남아, 상태가 조용히 두 곳으로 갈린다.
 
@@ -158,7 +136,7 @@ moai glm -f lane             # …GLM 백엔드로 띄운 레인 하나
 
 **스테이터스라인 GitLab 지원.** `statusline.forge`로 열린 작업을 GitHub과 GitLab 중 어느 쪽에서 셀지 고른다. 비워 두면 origin 리모트 호스트를 보고 판단한다.
 
-**맨 `/loop`가 칸반 포먼이 된다.** 인자 없이 `/loop`만 치면 백로그 큐를 지켜보다 운영자가 이미 `picked`로 골라둔 다음 카드를 격리된 워커에 배차하고, 완료는 주장이 아니라 읽은 증거로 확인한 뒤 보고하는 사이클이 돈다. 사람이 지켜보지 않는 자리라 카드를 큐에 넣는 것도 고르는 것도 운영자 몫이고, 포먼은 고르지 않고 나르기만 한다.
+**맨 `/loop`가 팩토리 포어맨이 된다.** 인자 없이 `/loop`만 치면 백로그 큐를 지켜보다 운영자가 이미 `picked`로 골라둔 다음 카드를 격리된 워커에 배차하고, 완료는 주장이 아니라 읽은 증거로 확인한 뒤 보고하는 사이클이 돈다. 사람이 지켜보지 않는 자리라 카드를 큐에 넣는 것도 고르는 것도 운영자 몫이고, 포먼은 고르지 않고 나르기만 한다.
 
 ---
 
@@ -301,6 +279,10 @@ cd my-project
 | `gpt` | Codex 단독 배포: `AGENTS.md`와 Codex 표면(`.codex/`, `.agents/skills/`, `.moai/`)만 설치. `.claude/` 디렉터리, `CLAUDE.md`, `.mcp.json`은 생기지 않는다. Claude 전용 런타임 기능(AskUserQuestion, 서브에이전트 소환, output style, 슬래시 명령, Workflow 스크립트)은 사용할 수 없다 |
 | `both` | `claude` 배포에 `.codex/` 연결을 더한다. `.mcp.json` 프로비저닝은 강제로 켜진다 |
 
+#### 배포 모드: 플러그인 기본과 전체 로컬 배포
+
+기본 경로(플러그인 모드)에서는 스킬과 명령를 프로젝트에 복사하지 않는다 — moai 플러그인이 운반한다. `.claude/` 표면의 나머지(에이전트, 룰, 훅 등록, 설정)는 오늘과 같이 배포된다. 스킬과 명령을 로컬 파일로 유지하려면 `--no-plugin`(전체 로컬 배포 — `.mcp.json`의 moai 항목과 Codex 미러 포함)을, 선택적 팩 카탈로그까지 모두 로컬로 깔려면 `--all`을 쓴다. 배포 모드는 `.moai/config/sections/llm.yaml`의 `deployment_mode`에 기록되고 `moai update`는 그 기록을 따라 같은 범위를 유지한다. 플러그인 설치가 확인되지 않은 프로젝트는 안전한 쪽인 `local`로 기록된다.
+
 
 > **GPT 게이트웨이 철회(2026-09-16).** 내장 번역 게이트웨이로 GPT 모델을 Claude Code에 얹던 옛 `moai gpt`
 > 런처는 제거되었습니다. GPT 모델은 이제 원래 하네스인 `moai codex`(Codex CLI)로 사용합니다. 위의
@@ -378,9 +360,11 @@ Codex가 활성화된 하네스(`moai init --llm gpt|both`)에서 Codex의 상�
 
 SPEC마다 독립된 작업 트리를 준다. `moai cc -w <이름>`으로 진입하고, `--spawn`을 붙이면 현재 세션을 유지한 채 새 창에서 연다. 브랜치 상태 가드가 주 체크아웃에서 실수로 브랜치를 바꾸는 것을 막는다.
 
-### 칸반 모드
+### 팩토리 모드
 
-`--kanban`(짧게 `-k`)은 세션 런처 스위치로, 리더 세션의 지휘 아래 하나의 SPEC을 `plan → run → sync`로 밀고 가며 다중 세션 보드로 조율한다. 보드의 뼈대가 **Origin-Trail Chain**이다 — append-only JSONL 계보 트리로 worktree 조상을 추적하고, 깊이 망각(`/clear` 뒤 루트-리프 체인 복구)을 해결하며, 하트비트 부실로 죽은 리더 세션을 감지한다.
+`-f`(`--factory`)가 팩토리 리더를, `-l`(`--lane`)이 레인을 연다. 둘 다 인자를 받지 않는다. 리더 하나가 큐의 카드를 번호가 붙은 레인에 나르고, 레인은 카드 한 장을 `plan → run → sync`로 끝까지 맡는다. 실행 순서는 위 "v3.2 새 기능 — 팩토리 모드" 절에 있다.
+
+세션의 계보는 **Origin-Trail Chain**이 따로 맡는다 — 팩토리 모드와 독립이라 리더도 레인도 필요 없고, `moai cc -w <이름>`처럼 worktree를 지정해 띄운 모든 세션이 체인에 오른다. append-only JSONL 계보 트리로 worktree 조상을 추적하고, 깊이 망각(`/clear` 뒤 루트-리프 체인 복구)을 해결하며, 하트비트가 끊긴 세션을 `stale`로 가려낸다.
 
 | 개념 | 하는 일 |
 |------|--------|
@@ -389,9 +373,9 @@ SPEC마다 독립된 작업 트리를 준다. `moai cc -w <이름>`으로 진입
 | CWD 충돌 해결 | `(worktree_path, session_id)` 쌍으로 재사용 경로를 구분 |
 | 깊이 상한 | 중첩 복잡도를 제한 |
 
-> **지금 쓸 수 있다**: `moai cc -k`(또는 `moai glm -k`)로 리더를 띄우고, `-k --name <role>`로 동반 세션을 하나씩 붙인다 — 터미널당 하나씩 손으로 띄운다. `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo`(인자 없이 대기열 보기, `add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`·`analyze`, 두 단어 이상은 그대로 카드 추가)로 `backlog` 컬럼을 운영한다. 실행 순서는 위 "v3.1 새 기능 — 칸반 모드" 절에 있다.
+> **지금 쓸 수 있다**: `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo`(인자 없이 대기열 보기, `add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`·`analyze`, 두 단어 이상은 그대로 카드 추가)로 `backlog` 큐를 운영한다.
 
-> 자세히: [칸반 모드 가이드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
+> 자세히: [팩토리 모드](https://adk.mo.ai.kr/ko/advanced/factory-mode) · [세션 계보 체인](https://adk.mo.ai.kr/ko/advanced/origin-trail-chain)
 
 ### CG 폐기와 설정 이전
 
@@ -444,7 +428,7 @@ AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 주고받는
   <img src="./assets/images/moai-web-settings.png" alt="moai web 콘솔 설정 화면 — 프로파일 바와 설정 탭" width="90%">
 </p>
 
-`moai web`이 로컬호스트에만 열리는 콘솔을 띄운다. 화면은 Overview·Kanban·Specs·Monitor·Settings·Todo 여섯 개이고, 설정 화면은 Identity·Language·Claude settings·GLM Settings·Codex settings·Workflow·Git & Worktree·Audit·Report·MCP·Cross-Session·Feedback·Quality Gate 탭으로 나뉜다. Codex 설정 탭은 흩어져 있는 codex 설정을 한 화면에 모아 보여주는 읽기 전용 화면이라, 값은 원래 자기 탭에서 고친다. 프로파일 생성·이름 변경·삭제도 같은 화면에서 한다.
+`moai web`이 로컬호스트에만 열리는 콘솔을 띄운다. 화면은 Overview·Factory·Specs·Monitor·Settings·Todo 여섯 개이고, 설정 화면은 Identity·Language·Claude settings·GLM Settings·Codex settings·Workflow·Git & Worktree·Audit·Report·MCP·Cross-Session·Feedback·Quality Gate 탭으로 나뉜다. Codex 설정 탭은 흩어져 있는 codex 설정을 한 화면에 모아 보여주는 읽기 전용 화면이라, 값은 원래 자기 탭에서 고친다. 프로파일 생성·이름 변경·삭제도 같은 화면에서 한다.
 
 ### ref / domain 스킬
 
@@ -506,7 +490,7 @@ flowchart TD
 | | manager-docs | sync 단계 문서화 |
 | | manager-git | PR 생성·라우팅 |
 | | manager-design | 디자인 단계 협업 (Claude Design) |
-| | manager-lead | 계층 팀 Tier L 조율 + 칸반·팩토리 리더 세션 배차 (유일한 Agent 보유, 깊이 2 봉인) |
+| | manager-lead | 계층 팀 Tier L 조율 + 팩토리 리더 세션 배차 (유일한 Agent 보유, 깊이 2 봉인) |
 | **평가자** | plan-auditor | 독립 plan 감사 (편향 방지) |
 | | sync-auditor | 4차원 품질 채점 (기능성 40 · 보안 25 · 제작 20 · 일관성 15) |
 | **빌더** | builder-harness | 프로젝트 전용 에이전트·스킬·커맨드·훅 스캐폴딩 |
@@ -764,7 +748,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai memory <doctor\|archive>` | 에이전트 메모리 점검과 오래된 항목 보관 |
 | `moai tokens record` | 풀별 토큰 사용 원장 기록 |
 | `moai clean [--home] [--codex-skills] [--reports-archive]` | 오래된 실행 산출물 정리. `--home`을 붙이면 `~/.moai`를 허용목록 범위 안에서 치우고, `--codex-skills`를 붙이면 `~/.codex/config.toml`에서 선언된 경로가 부재로 증명된 `[[skills.config]]` 등록을 지운다. `--reports-archive`를 붙이면 `.moai/reports/`의 오래된 증거 디렉터리를 `archive/<YYYY-MM>/`로 옮긴다 — 삭제는 없고 이동만 한다(기본 보존 90일, `--reports-archive-days`). 스코프는 한 번에 하나만 고른다. 기본은 dry-run이고 `--force`를 줘야 실제로 지운다 |
-| `moai web` | 웹 콘솔 — 6개 화면(Overview · Kanban · Specs · Monitor · Settings · Todo), 설정 탭 |
+| `moai web` | 웹 콘솔 — 6개 화면(Overview · Factory · Specs · Monitor · Settings · Todo), 설정 탭 |
 
 > 전체 49개 커맨드: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)
 

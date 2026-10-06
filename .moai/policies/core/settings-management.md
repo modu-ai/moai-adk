@@ -1,0 +1,398 @@
+---
+paths: "**/.moai/config/**,**/.mcp.json,**/.claude/settings.json,**/.claude/settings.local.json"
+---
+
+# Settings Management
+
+Claude Code and MoAI configuration management rules.
+
+## Configuration Files
+
+### Claude Code Settings
+
+`.claude/settings.json` - Project-level settings:
+
+- allowedTools: Permitted tool list
+- hooks: Hook script definitions
+- permissions: Access control
+- statusLine: Statusline configuration
+- attribution: Commit/PR attribution block. Sub-keys: `commit` (attribution text appended to git commits, including trailers; empty string hides attribution), `pr` (attribution text for PR bodies), and `sessionUrl` (Claude Code v2.1.183+; boolean, default `true`) which controls whether the claude.ai session link is appended to commits and PRs created from web or Remote Control sessions — set `false` to omit the Claude-Session trailer and PR-body link. The MoAI template pins `sessionUrl: false` so its own `🗿 MoAI` attribution trailers are not accompanied by a session link. The boolean type was confirmed against the bundled Claude Code v2.1.183 settings schema; verify the type against your own Claude Code instance before pinning a non-default value, since the published machine-readable schemastore entry may lag the release.
+- promptCacheTtl / subagentPromptCacheTtl (Claude Code v2.1.243; official docs floor v2.1.242): let API-key and cloud-provider sessions keep a 1-hour prompt cache on the main conversation while subagents stay at 5 minutes (env-var twins `CLAUDE_CODE_PROMPT_CACHE_TTL` / `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`). MoAI leaves both unset — cache spend is a cost trade-off that belongs to the user or organization, and the effect on third-party gateways is unmeasured (see `cache-aware-execution.md`).
+- modelPicker (Claude Code v2.1.243): curates the `/model` picker with an ordered, labeled model list (any id spelling, appended to or replacing the built-in lineup). MoAI leaves it unset — model curation is a per-user decision, and MoAI subagents inherit the main session's model (`.claude/rules/moai/development/model-policy.md`).
+- modelPricing (Claude Code v2.1.243; managed setting): applies an organization's contracted per-model rates and discount multiplier to `/cost`, the status line, and telemetry cost figures instead of list price. MoAI leaves it unset — managed-settings billing data is an organization decision, and pinning prices from a distributed template would misstate costs for every other deployment.
+- bashEditDiffEnabled (Claude Code v2.1.269): when the Bash tool handles a file edit, append a diff of the files the command changed to the Bash tool result. MoAI leaves it unset — the diff is a per-session readability preference whose cost is extra tool-result tokens on every file-touching Bash call, and MoAI's own edit path already goes through Edit/Write rather than Bash.
+- disableBundledSkills: Hide bundled skills/workflows (e.g. `/deep-research`) from discovery. Set `true` to suppress the Claude Code bundled skill catalog so only project + user skills remain visible. An equivalent environment variable form is also supported. MoAI-ADK does not emit this toggle — it is documented here as a Claude Code option that exists for projects that want to ship a curated, bundle-free skill surface.
+- `--safe-mode` CLI flag: Launch Claude Code with bundled skills and workflows disabled (equivalent runtime effect to `disableBundledSkills: true`, but applied at launch time rather than via settings). Useful for locked-down environments or when debugging whether a behavior originates from a bundled skill. MoAI-ADK does not pass this flag automatically; it is documented as an available launch option.
+
+#### `/config` command (Claude Code v2.1.178+)
+
+The genuine Claude Code `/config` slash command (distinct from MoAI's `.moai`-prefixed config filesystem paths) edits `settings.json` interactively or directly:
+
+- Direct-set form: `/config key=value` writes a single setting without opening the selector (e.g. `/config theme=dark`). `/config <key>=<value>` is the general syntax.
+- Help listing: `/config --help` lists the available shorthand keys the command accepts.
+- Toggle-key behavior (within the `/config` settings selector): Enter AND Space both change the currently-selected setting, and Esc now saves-and-closes the selector (it no longer reverts unsaved changes).
+
+
+#### Claude Code environment variables (v2.1.268-2.1.282)
+
+Four environment variables landed in this window that a MoAI deployment may need to
+know about. MoAI sets none of them — each is a per-machine or per-organization
+operational choice, not something a distributed template should decide.
+
+| Variable | Version | What it does |
+|---|---|---|
+| `CLAUDE_CODE_MCP_STARTUP_WAIT_MS` | v2.1.274 | Bounds how long the first non-interactive turn waits for MCP servers that are still connecting. `0` means do not wait. Relevant to a headless run whose first turn would otherwise stall behind a slow MCP server. |
+| `CLAUDE_CODE_WEBFETCH_DEADLINE_MS` | v2.1.268 | Overrides the WebFetch deadline, which now defaults to 300 seconds so a server holding a response open no longer hangs the fetch forever. `0` turns the deadline off. |
+| `CLAUDE_CODE_BG_TASKS_REPORT_RUNNING` | v2.1.269 | Remote and headless sessions now report background agents as still running rather than announcing they are waiting for input. Set it to `0` to restore the previous behaviour. |
+| `CLAUDE_CODE_GATEWAY_HINT_HEADERS` | v2.1.273 | Opt-in (`=1`) for the LLM-gateway hint headers `x-claude-code-request-class`, `x-claude-code-agent-type`, `x-claude-code-prev-tool-durations`, `x-claude-code-compaction` and `x-claude-code-context-compacted`. Only useful in front of a gateway that reads them. |
+
+A fifth, `CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS` (v2.1.269), raises the Workflow
+tool's per-run concurrent-agent limit and is documented with the rest of the workflow
+ceilings in `.claude/rules/moai/workflow/dynamic-workflows.md`.
+
+Claude Code v2.1.280-2.1.281 added three more operator controls and changed a fourth.
+MoAI does not set any of them in its distributed settings:
+
+| Variable | Version | What it does |
+|---|---|---|
+| `CLAUDE_CODE_MAX_MCP_DESCRIPTION_LENGTH` | v2.1.280 | Changes the default 2,048-character cap on each MCP tool description and server instructions across the session. Raising it can increase tool-schema context cost. |
+| `CLAUDE_CODE_AUTO_MODE_SERVER` | v2.1.273; scope changed v2.1.278, v2.1.281, v2.1.282 | Selects the auto-mode classifier: `1` uses the server-side classifier, `0` opts out (the local classifier then counts toward usage). v2.1.273 made Bedrock, Vertex and Foundry default to the local classifier; v2.1.278 made Claude API, Enterprise, Bedrock, Vertex, Foundry and gateways default to the server-side classifier; v2.1.281 made the variable apply on a direct Anthropic API connection; v2.1.282 made that connection default to the server-side classifier when telemetry is off. |
+| `CLAUDE_CODE_DISABLE_DANGEROUS_RM_TIMEOUT` | v2.1.281 | `1` disables the two-minute timeout that otherwise denies an unanswered dangerous-`rm` prompt in auto or bypass mode. |
+| `CLAUDE_CODE_DISABLE_SUBSTITUTION_RM_PROMPT` | v2.1.281 | `1` disables the additional prompt for recursive `rm` whose target consists only of command-substitution output, even when a Bash allow rule matches. |
+
+#### OpenTelemetry surface additions (v2.1.268-2.1.282)
+
+MoAI configures no Claude Code telemetry; these are recorded so a deployment that does
+run OTel knows what changed rather than rediscovering it.
+
+- `effort` attribute added to the `claude_code.llm_request` trace span, matching the `api_request` event (v2.1.274).
+- `claude_code.managed_settings_resolved` event carrying managed-settings sources and policy-helper state; redacted settings and digests are included with `OTEL_LOG_MANAGED_SETTINGS=1` (v2.1.274).
+- `OTEL_LOG_RAW_API_BODIES=file:<dir>` gained an `index.jsonl` plus `request_body_id` / `message.id` event attributes linking each response to its request file and transcript message (v2.1.274).
+- `OTEL_LOG_TOOL_DETAILS=1` now also includes real agent, skill, plugin and MCP-server names on cost and token metrics (v2.1.273).
+- `OTEL_METRICS_INCLUDE_REPOSITORY` tags metrics and events with `vcs.*` repository attributes; commit events gain `vcs.ref.head.*` when `OTEL_LOG_TOOL_DETAILS` is also set (v2.1.269).
+
+Claude Code v2.1.282 reports ignored or disabling telemetry variables from
+project `.claude/settings.json` and `.claude/settings.local.json` in diagnostics.
+Repository settings cannot enable telemetry, select its destination, or expose
+content with `CLAUDE_CODE_ENABLE_TELEMETRY`, `OTEL_EXPORTER_OTLP_*`, or
+`OTEL_LOG_*`; use managed settings, the launch environment, or user settings
+for those choices. A repository may set an exporter selector such as
+`OTEL_LOGS_EXPORTER=none` to turn a signal off unless a higher-priority source
+sets that variable. MoAI does not emit telemetry variables in its template.
+
+### MCP Configuration
+
+MoAI-ADK provisions a neutral MCP surface via a template-managed `.mcp.json` (project scope) or `~/.claude.json` (user scope). The distributed default ships TWO active entries — the self-hosted `moai` local stdio server (`moai mcp-server`) and `context7` for up-to-date library documentation — both provisioned default-on by `moai init` (a fresh project receives them; an explicit decline is honored silently). `context7` is default-on because the shipped guidance already assumes it: the agent selection tree routes external doc research to "WebSearch+Context7", so leaving it unwired advertised a capability the project did not actually have. Three documented-but-disabled entries (`chrome-devtools`, `playwright`, `ast-grep`) are activated via `moai mcp add <name> ...`.
+
+The second entry carries a session-start cost: `context7` launches through `npx -y`, so every session pays a fetch-and-launch that depends on the network and is, on a loaded machine, the slowest single step of MCP startup. A project that does not consult library documentation drops it with `moai mcp remove context7`, which touches nothing else. The contract is "no entry THAT CARRIES SECRETS, requires credentials, or fails the neutrality check" — secret-free neutral surfaces are permitted, while the load-bearing secret-hygiene invariant holds absolutely (every env value is a `${VAR}` literal expanded by the Claude Code runtime; resolved secrets are NEVER serialized into a git-tracked `.mcp.json`).
+
+The generic `moai mcp add|remove|list` CLI manages third-party entries via the SAME atomic-RMW seam the GLM tools CLI uses (flock + compare-retry + backup-before-publish + idempotent-skip); users NEVER hand-edit `.mcp.json`. Authenticated HTTP servers (z.ai, Semgrep, Sentry) keep their `${VAR}`-literal env-expansion pattern; the GLM-backend z.ai web-tooling servers (`zai-mcp-server`, `web_search_prime`, `web_reader`) remain available via `moai glm tools enable` under a GLM session (see `.claude/rules/moai/core/glm-web-tooling.md` for the HARD routing table). Users may also configure Claude Code's native MCP support directly — see the official Claude Code MCP documentation.
+
+> Sequential Thinking MCP was retired in an earlier deep-reasoning consolidation. Use the `ultrathink` keyword (Adaptive Thinking on Opus 4.7+, including Opus 5.5 and 4.8) for deep reasoning.
+
+**`alwaysLoad` field (Claude Code v2.1.119+)** — Claude Code supports an `"alwaysLoad": true` field on MCP server entries in a user-authored `.mcp.json`; when set, the server's tool schema loads at session start instead of via the deferred-load default. This is a Claude Code platform feature documented for reference; MoAI-ADK does not emit it from its own templates.
+
+MCP tools (when a user configures their own `.mcp.json`) are deferred by default and must be loaded before use. Use ToolSearch to find and load the tool, then call it directly. Authenticated URLs may require specialized MCP tools.
+
+**Claude Code v2.1.119-121 Hook Changes**:
+
+| Version | Change | Impact |
+|---------|--------|--------|
+| v2.1.119 | PostToolUse / PostToolUseFailure stdin JSON now includes `duration_ms` field | MoAI records slow hooks (>5000ms) to `.moai/observability/hook-metrics.jsonl` when observability dir exists |
+| v2.1.119 | `claude --print` mode honors agent `tools:` / `disallowedTools:` frontmatter | CG Mode regression risk — verify `disallowedTools` in agent frontmatter is intentional |
+| v2.1.121 | PostToolUse `hookSpecificOutput.updatedToolOutput` extended from MCP-only to all tools | `MOAI_HOOK_OUTPUT_TRANSFORM=1` env var activates output transform scaffold |
+
+**Settings intentionally unset by MoAI-ADK**: Several Claude Code settings exist that MoAI-ADK deliberately does NOT set in `settings.json.tmpl`. Their absence is by design — a future template audit should treat it as intentional, not a gap:
+
+| Setting | Version | Scope | Why MoAI leaves it unset |
+|---------|---------|-------|--------------------------|
+| `agent` | v2.1.157+ | User/Project/Local (not Managed) | The top-level `agent` key (example `"code-reviewer"`) runs the main thread as a named subagent and sets the default agent for sessions dispatched from `claude agents`, applying that subagent's system prompt, tool restrictions, and model. MoAI invokes its retained agent catalog via explicit delegation, not a session-wide default agent (orchestrator-is-main-thread model). |
+| `requiredMinimumVersion` | v2.1.163+ | Managed | Hard version-gate — Claude Code refuses to start when its version is below the floor. An org/admin decision, parallel to the `disableWorkflows` stance. Distinct from the older advisory `minimumVersion`. |
+| `requiredMaximumVersion` | v2.1.163+ | Managed | Hard version-ceiling — refuses to start above the cap. Likewise an org/admin decision. |
+| `effortLevel` | v2.1.110+ | User/Project/Local | Intentionally NOT shipped in `settings.json.tmpl`. The launcher passes a profile effort of `low`, `medium`, `high`, or `xhigh` as an `effortLevel` in the transient `--settings` file it injects — a launch DEFAULT an in-session `/effort` or `/model` change may replace. Opus 4.7/4.8 and Fable 5 honour it from Claude Code v2.1.280 (earlier versions let those models ignore it in favour of their launch default), and it takes precedence over the user's saved per-model effort levels. A resolved `max` is never written there (the settings key does not accept `max`): it travels as the `--effort max` launch argument, which applies to that session only, and an operator-supplied `--effort` anywhere in the argv suppresses it. Do NOT pin the level through `CLAUDE_CODE_EFFORT_LEVEL`: that variable is an OVERRIDE, so while it is set Claude Code refuses every in-session effort change for the rest of the session. Pinning a fixed high effort level project-wide would also force elevated token cost on every user session. |
+| `workflowSizeGuideline` | v2.1.219+ | Any settings file | Sets the advisory Dynamic workflow size guideline (`small` / `medium` / `large` / `unrestricted`; default `medium` — aim for fewer than 10 agents, lowered from 15 in v2.1.271; the default drops to `small` on Pro plans); the `/config` row is hidden while one is set. MoAI does not pin a size — the choice is left to the user/org (see `.claude/rules/moai/workflow/dynamic-workflows.md`). |
+| `maxProseWidth` | v2.1.282+ | Claude Code setting | Caps prose width in wide terminals; tables and code blocks still use the full width. MoAI leaves this display preference to the user. |
+
+Reference: https://code.claude.com/docs/en/settings.
+
+**`model` — shipped deliberately (contrast with the unset settings above)**: unlike the settings in the table above, `settings.json.tmpl` DOES pin `"model": "sonnet"`. This is intentional: it gives user projects a cost-predictable default model rather than inheriting whatever model the user's Claude Code client happens to default to. Users remain free to override the default via `/model` or their own project/user settings — the template pin is a starting point, not a lock-in.
+
+**Adaptive Thinking Usage** - For complex analysis requiring deeper reasoning:
+
+- Breaking down multi-step problems
+- Architecture decisions
+- Technology trade-off analysis
+
+Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus 4.7+, including Opus 5.5 and 4.8). This is the canonical deep-reasoning path; Sequential Thinking MCP was retired in an earlier consolidation.
+
+### MoAI Configuration
+
+`.moai/config/` - MoAI-specific settings:
+
+- sections/*.yaml: Section-file family — the configuration SSOT (no aggregate config.yaml file exists)
+- sections/quality.yaml: Quality gates, coverage targets
+- sections/language.yaml: Language preferences
+- sections/user.yaml: User information
+
+#### MoAI Configuration — Section Loaders
+
+Configuration sections are loaded via two mechanisms:
+
+**1. `Loader.Load()` chain** (`internal/config/loader.go:31-74`):
+Loads the following 15 sections in fixed order. All return defaults on absent file.
+
+| YAML file | loadedSections key | Go field |
+|---|---|---|
+| user.yaml | `user` | `cfg.User` |
+| language.yaml | `language` | `cfg.Language` |
+| quality.yaml | `quality` | `cfg.Quality` |
+| git-convention.yaml | `git_convention` | `cfg.GitConvention` |
+| git-strategy.yaml | `git_strategy` | `cfg.GitStrategy` |
+| llm.yaml | `llm` | `cfg.LLM` |
+| ralph.yaml | `ralph` | `cfg.Ralph` |
+| state.yaml | `state` | `cfg.State` |
+| workflow.yaml | `workflow` | `cfg.Workflow` |
+| statusline.yaml | `statusline` | `cfg.Statusline` |
+| constitution.yaml | `constitution` | `cfg.Constitution` |
+| context.yaml | `context_search` | `cfg.ContextSearch` |
+| interview.yaml | `interview` | `cfg.Interview` |
+| design.yaml | `design` | `cfg.Design` |
+
+**2. Dedicated entry-points** (outside `Loader.Load()` by design):
+
+| Section | Loader | Package | Rationale |
+|---|---|---|---|
+| harness.yaml | `LoadHarnessConfig(path)` | `internal/config` | FROZEN validation (HRN-001); returns error on absent file (not defaults) |
+
+**New loaders** (`internal/config/loader_{constitution,context,interview,design}.go`):
+
+- `LoadConstitutionConfig(path)` — constitution.yaml; exposes `ForbiddenPatterns` (ForbiddenLibraries alias) policy enforcement.
+- `LoadContextConfig(path)` — context.yaml; provides `TokenBudget.MaxInjectionTokens` and `Search.DateRangeDays` for CLAUDE.md §16 Context Search.
+- `LoadInterviewConfig(path)` — interview.yaml; provides `ClarityThreshold`, `Plan.MaxRounds`, `SkipConditions`.
+- `LoadDesignConfig(path)` — design.yaml; provides `GanLoop.PassThreshold` (FROZEN floor 0.60), `GanLoop.SprintContract.Enabled`, `Adaptation.IterationLimits` for GAN loop runtime.
+
+**SunsetConfig** (`internal/config/types.go`): DORMANT — struct defined but no runtime hot path enforces sunset conditions. `LoadSunsetConfig` must NOT be added until an activation SPEC is filed.
+
+**CI Guards** (run on every `go test ./internal/config/...`):
+
+- `YAML_SECTION_NO_LOADER` (`audit_loader_completeness_test.go:TestAuditLoaderCompleteness`): fails if a new `.moai/config/sections/*.yaml` file has no loader and is not in the acknowledged allowlist.
+- `CONFIG_STRUCT_YAML_MISMATCH` (`audit_struct_yaml_symmetry_test.go:TestStructYAMLSymmetry_*`): fails if a Go struct field lacks a matching YAML key or vice versa.
+
+**Acknowledged config orphans** (single documented inventory): the following section
+files currently have no doc cross-references and/or no `Loader.Load()` consumer and are
+acknowledged as-is — `security.yaml`, `observability.yaml`, `report.yaml`, `sunset.yaml`
+(DORMANT by design), `archive.yaml`, `cache.yaml` (dedicated `LoadCacheConfig`),
+`feedback.yaml`, `project.yaml`. Maintainer-only surfaces (`tool-policy.yaml`,
+`mcp-matrix.yaml`) are not distributed to user projects; `lsp.yaml` is the LSP-gate
+threshold SSOT referenced from CLAUDE.md §6. The Go-side registry of these dispositions
+is `internal/config/audit_registry.go` + the loader-completeness allowlist.
+
+**Adding a new YAML section** (5-step procedure):
+1. Add `<name>.yaml` to `internal/template/templates/.moai/config/sections/`
+2. Add `XxxConfig` struct + sub-types + `xxxFileWrapper` to `internal/config/types.go`
+3. Add `defaultXxxConfig()` helper to `internal/config/defaults.go` and wire into `NewDefaultConfig()`
+4. Create `internal/config/loader_<name>.go` with `LoadXxxConfig(path)` + `loadXxxSection(dir, cfg *Config)`
+5. Wire `l.loadXxxSection(sectionsDir, cfg)` into `Loader.Load()` AND add the struct to `audit_struct_yaml_symmetry_test.go` symmetryCases
+
+## Hooks Configuration
+
+> Canonical: see `.claude/rules/moai/core/hooks-system.md` § Hook Configuration (the hook JSON config block + `$CLAUDE_PROJECT_DIR` path-quoting rule) and § Timeout Configuration (the per-hook timeout table, including the PostToolUse 10s+`async:true` exception vs the 5s synchronous-default). This file owns only the StatusLine-no-env-var delta (below).
+
+Hook timeout unit is **seconds** (not milliseconds). The canonical per-hook timeout policy lives in `hooks-system.md` § Timeout Configuration — the PostToolUse 10s+`async:true` exception (background LSP/AST/MX validation) and the 5s synchronous-default for SessionStart/PreToolUse are stated there. For very long validations, prefer `"async": true` over high timeout.
+
+### Freeze Diagnosis Checklist
+
+If a session appears to freeze mid-conversation, check in this order (cheapest to most invasive):
+
+1. **MCP authentication failures** — most common cause. Run `claude mcp list` and remove servers showing `oauth_required` / `connection_failed`. Each unauthenticated MCP can add 5-30s retry latency on tool calls.
+2. **Hook timeout** — run `claude --debug "hooks"` to see per-hook latency. If a hook exceeds its timeout, the response stalls until timeout expires. moai hook handlers (post-tool, stop, subagent-stop) typically complete in <50ms; persistent slowness usually points to LSP server hangs.
+3. **Context window pressure** — see `.claude/rules/moai/workflow/context-window-management.md`. SSE streams stall when prompts approach the model-specific threshold (1M context = 50%, 200K context = 90%).
+4. **Terminal I/O saturation** — high write ratio (>90% writes in `tmux info`) can make output appear delayed. This is rendering only, not a true freeze.
+
+Profile a hook directly:
+```bash
+echo '{"hook_event_name":"PostToolUse","tool_name":"Write","tool_response":{"success":true},"session_id":"test"}' | time moai hook post-tool
+```
+Healthy result: under 100ms. Persistent slowness → check LSP / disk I/O / MX validation cost.
+
+## StatusLine Configuration
+
+The statusLine command runs with the same environment variables as hooks, including the Claude Code built-in `$CLAUDE_PROJECT_DIR`. Anchor paths to it so they resolve regardless of the current working directory (e.g. after `/cd` changes cwd away from the project root):
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "$CLAUDE_PROJECT_DIR/.moai/status_line.sh"
+  }
+}
+```
+
+Note: GitHub Issue #7925 ("statusline does not expand environment variables") refers to generic shell env-var interpolation and user-defined `env` values, NOT the Claude Code built-in `CLAUDE_PROJECT_DIR` token. The built-in token is exported into the command's environment before it shells out. Reference: https://code.claude.com/docs/en/statusline ("The status line command runs with the same environment variables as hooks, including `CLAUDE_PROJECT_DIR`.").
+
+## Permission Management
+
+Tool permissions in settings.json:
+
+- Read, Write, Edit: File operations
+- Bash: Shell command execution
+- Agent: Sub-agent delegation
+- AskUserQuestion: User interaction
+
+### Permission Rule Syntax
+
+Claude Code permission rules support two forms:
+
+- `Tool(specifier)` — scope a tool by a specifier (e.g. `Bash(npm test:)` allows only `npm test` Bash commands; `Read(//tmp/**)` allows reads under `/tmp`).
+- `Tool(param:value)` — param-scoped wildcard (e.g. `WebFetch(domain:example.com)` allows WebFetch only against that domain; `Bash(cmd:git status)` matches the `git status` command). The `*` wildcard is accepted inside the value to broaden a match (`WebFetch(domain:*.example.com)`, `Bash(cmd:git *)`).
+
+Both forms compose with `allow` / `deny` / `ask` in `permissions`. MoAI-ADK does not currently emit param-scoped rules from its own settings generators; the `Tool(param:value)` syntax is documented here as an available option for projects that need fine-grained, parameter-level permission control beyond the plain `Tool(specifier)` form.
+
+Example:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm test:)",
+      "Bash(cmd:git status)",
+      "WebFetch(domain:*.moai.kr)"
+    ]
+  }
+}
+```
+
+## Quality Configuration
+
+Quality gates in quality.yaml:
+
+- constitution.development_mode: ddd or tdd (nested under the top-level `constitution:` block in quality.yaml — NOT a top-level `quality.development_mode` key)
+- test_coverage_target: Minimum coverage percentage
+- lsp_quality_gates: LSP-based validation
+
+## Language Settings
+
+Language preferences in language.yaml:
+
+- conversation_language: User response language
+- agent_prompt_language: Internal communication
+- code_comments: Code comment language
+
+## Agent Teams Settings — Re-allowed (experimental)
+
+Agent Teams usage is ALLOWED as an experimental surface (operator decision): the env-var gate `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in `.claude/settings.json` and the distributed template, and a `--team` / `--mode team` request selects the Agent Teams layer (constraints per `orchestration-mode-selection.md` §C.1). Genealogy: the static layer was previously RETIRED (the former Teams-API gate, `workflow.team` config block, and team auto-selection thresholds were removed; a forced `--mode team` emitted `MODE_TEAM_UNAVAILABLE` and fell back — the sentinel is retained as documented history). The Phase 4
+auto-select thresholds (≥ 3 domains / ≥ 10 files / score ≥ 7) remain prose-only SSOT in
+`.claude/rules/moai/workflow/orchestration-mode-selection.md` §B.1 (no team auto-selection was reinstated).
+
+Native Claude Code Agent Teams remain experimental under the constraints above. Retired CG routing is not a capability guarantee for mixed-provider teammates; see `.claude/rules/moai/core/glm-web-tooling.md` § CG Retirement and Migration.
+
+## Output Style Configuration
+
+Output styles are Markdown files in `.claude/output-styles/moai/` that control how MoAI formats responses.
+Three styles ship with MoAI-ADK: **MoAI** (`moai.md`), **MoAI-Easy** (`moai-easy.md`), and **MoAI-Learn** (`moai-learn.md`).
+
+### Precedence
+
+When `outputStyle` is set in multiple places, the first match wins:
+
+| Priority | Source | Key | Example |
+|----------|--------|-----|---------|
+| 1 (highest) | `.claude/settings.local.json` (local, gitignored) | `outputStyle` | `"outputStyle": "MoAI-Learn"` |
+| 2 | `.claude/settings.json` (project) | `outputStyle` | `"outputStyle": "MoAI-Easy"` |
+| 3 | `~/.claude/settings.json` (user) | `outputStyle` | `"outputStyle": "MoAI"` |
+| 4 (lowest) | Hardcoded default | — | `"MoAI"` |
+
+The **local** scope (`.claude/settings.local.json`) is the highest-priority resolver source and is where the Claude Code `/config` → Output style menu writes a user's selection (official docs: code.claude.com/docs/en/output-styles — "Your selection is saved to `.claude/settings.local.json`"). This is why the project-scope pin MoAI-ADK ships as the product default never traps a user: any `/config` choice lands in scope 1, which outranks the project pin. The setting is read once at session start — a change takes effect after `/clear` or a new session.
+
+### In-session switching — `/config` and `/output-style`
+
+Two surfaces select a style in-session, and both persist the choice to `.claude/settings.local.json`:
+
+| Form | Behavior |
+|---|---|
+| `/config` → Output style | menu pick |
+| `/output-style` | lists available styles, marking the current one; changes nothing |
+| `/output-style <style>` | switches, custom MoAI styles included |
+
+Upstream sources disagree on whether `/output-style` still exists — a CHANGELOG entry deprecates it in favour of `/config`, a later one re-adds it. Resolve that by measurement, never by the documents: on Claude Code **2.1.275** (darwin/arm64) a bare call printed `Available styles:` with `(current)`, and `/output-style <name>` printed `Output style set to <name>` and wrote `{"outputStyle": "<name>"}`. Whether a mid-session switch takes effect before `/clear` was NOT measured. `/config` stays the surface to document for users, because it is present on every version.
+
+**Example 1 — project overrides user:**
+
+```json
+// ~/.claude/settings.json
+{ "outputStyle": "MoAI" }
+
+// .claude/settings.json (project)
+{ "outputStyle": "MoAI-Learn" }
+```
+
+Result: **MoAI-Learn** loads (project wins over user).
+
+**Example 2 — user setting applies when project is absent:**
+
+```json
+// ~/.claude/settings.json
+{ "outputStyle": "MoAI-Learn" }
+
+// .claude/settings.json (project) — outputStyle key not present
+```
+
+Result: **MoAI-Learn** loads (user setting applies).
+
+**Example 3 — third-party style at project level:**
+
+```json
+// .claude/settings.json (project)
+{ "outputStyle": "ThirdStyle" }
+```
+
+Result: **ThirdStyle** loads if the file `output-styles/moai/thirdstyle.md` exists.
+If the file does not exist, see Fallback Policy below.
+
+### Fallback Policy
+
+When the requested style name cannot be resolved to a file in `output-styles/moai/`, MoAI falls back
+to the built-in **MoAI** style and emits the following warning to **stderr**:
+
+```
+OUTPUT_STYLE_UNKNOWN: <name> not found; falling back to MoAI
+```
+
+`<name>` is replaced by the exact string from the `outputStyle` setting (e.g., `NonExistent`).
+This warning is emitted to stderr only — it does not appear in the AI response body.
+
+### Frontmatter Schema Contract
+
+Every output style file MUST have a YAML frontmatter block with exactly these required keys:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `name` | string | Human-readable style name (e.g., `"MoAI"`) |
+| `description` | string | One-sentence description of the style |
+| `keep-coding-instructions` | boolean | `true` = preserve coding directives; `false` = suppress |
+
+`keep-coding-instructions` MUST be a raw boolean literal (`true` or `false`) — quoted strings
+(`"true"`, `"false"`), capitalized forms (`True`, `False`), or other values are schema errors.
+
+Additional frontmatter keys beyond these three are tolerated and ignored.
+
+### Breaking Change Policy
+
+Adding a new output style requires:
+1. Adding the `.md` file to `internal/template/templates/.claude/output-styles/moai/` (Template-First).
+2. Running `make build` to regenerate the embedded template.
+3. Mirroring the file to `.claude/output-styles/moai/` in the project.
+4. Updating `TestOutputStylesExactlyTwo` in `internal/template/output_styles_audit_test.go` to reflect
+   the new expected count and add the new file to the allowed set.
+
+Removing a built-in style is a breaking change and requires a major version bump.
+
+## Rules
+
+- Never commit secrets to settings files
+- Use environment variables for sensitive data
+- Keep settings minimal and focused
+- Hook paths must be quoted when using environment variables
+- StatusLine uses relative paths only (no env var expansion)
+- Template sources (.tmpl files) belong in `internal/template/templates/` only
+- Local projects should contain rendered results, not template sources

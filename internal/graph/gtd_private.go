@@ -15,11 +15,11 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
-func BuildPrivateGTDProjectionFromStore(ctx context.Context, store *kanban.BacklogStore) (PrivateGTDProjection, error) {
-	revision, relations, err := kanban.GTDProjectionSource(ctx, store)
+func BuildPrivateGTDProjectionFromStore(ctx context.Context, store *factory.BacklogStore) (PrivateGTDProjection, error) {
+	revision, relations, err := factory.GTDProjectionSource(ctx, store)
 	if err != nil {
 		return PrivateGTDProjection{}, err
 	}

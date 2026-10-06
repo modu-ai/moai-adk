@@ -7,7 +7,7 @@ package config
 // the one place the literal is the assertion rather than a drift — and reads
 // the contract-sign guard's source to keep the guard's environment surface
 // inside the closed set: the F2 lane-gate trio
-// {EnvFactoryRole, EnvMoaiFactoryWorker, EnvMoaiKanbanBackend}
+// {EnvFactoryRole, EnvMoaiFactoryWorker, EnvFactoryBackend}
 // (REQ-AP-009's original {EnvFactoryRole} set, widened by
 // SPEC-FACTORY-SELF-DISPATCH-001's three-clause lane refusal;
 // SPEC-AUTONOMY-PRECONDITION-001 carries
@@ -65,7 +65,7 @@ func TestFactoryRoleEnvConstant(t *testing.T) {
 	// AC-AP-017 limb: the guard reads no environment variable outside the
 	// closed set, enumerated from the guard's os.Getenv / os.LookupEnv call
 	// sites. The set is the F2 lane-gate trio the guard's contractLaneGate
-	// denies on — {EnvFactoryRole, EnvMoaiFactoryWorker, EnvMoaiKanbanBackend}
+	// denies on — {EnvFactoryRole, EnvMoaiFactoryWorker, EnvFactoryBackend}
 	// (SPEC-FACTORY-SELF-DISPATCH-001 widened the lane refusal from
 	// REQ-AP-009's original single variable;
 	// SPEC-AUTONOMY-PRECONDITION-001 carries
@@ -81,12 +81,12 @@ func TestFactoryRoleEnvConstant(t *testing.T) {
 	allowed := map[string]bool{
 		"config.EnvFactoryRole":       true,
 		"config.EnvMoaiFactoryWorker": true,
-		"config.EnvMoaiKanbanBackend": true,
+		"config.EnvFactoryBackend":    true,
 	}
 	for _, m := range callRe.FindAllStringSubmatch(string(data), -1) {
 		arg := strings.TrimSpace(m[1])
 		if !allowed[arg] {
-			t.Errorf("guard environment read %s is outside the closed set {config.EnvFactoryRole, config.EnvMoaiFactoryWorker, config.EnvMoaiKanbanBackend} (AC-AP-017, widened by SPEC-FACTORY-SELF-DISPATCH-001)", m[0])
+			t.Errorf("guard environment read %s is outside the closed set {config.EnvFactoryRole, config.EnvMoaiFactoryWorker, config.EnvFactoryBackend} (AC-AP-017, widened by SPEC-FACTORY-SELF-DISPATCH-001)", m[0])
 		}
 	}
 }

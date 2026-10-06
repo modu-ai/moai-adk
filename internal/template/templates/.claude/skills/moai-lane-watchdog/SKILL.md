@@ -29,7 +29,7 @@ progressive_disclosure:
 
 # Lane Stall Watchdog — One Iteration
 
-One watchdog pass for a lane session (a factory or kanban worker running
+One watchdog pass for a lane session (a factory lane running
 under `moai cc` / `moai glm` / `moai codex`). The law — the ladder, the
 outcome transitions, the gate inventory, the view–SSOT rule, the record
 formats — lives in `.claude/rules/moai/workflow/auto-semantics.md`. Read
@@ -90,10 +90,14 @@ and at an authority gate they fail closed.
    files, the card's progress record, plan-audit verdicts, evidence paths.
    Evidence shows proceed → resume. Evidence shows do-not-proceed → record
    the wait; never proceed against evidence. Unreadable or absent → step 2.
-2. **Decision board** — poll the disk SSOT (doctrine §11: the append-only
+2. **Decision board** — run `moai decision read --scope card:<id>` (the
+   card's rulings plus every standing ruling; doctrine §11: the append-only
    board under the moai home, keyed by the project). A recorded judgment →
-   follow it. A judgment that says wait → explicit wait record. Board empty
-   → step 3; never wait on the board being filled.
+   follow it. A judgment that says wait → explicit wait record (with an id;
+   doctrine §14). A record whose `resolves` names an open wait ends that
+   wait. `board=absent` / `board=empty` → step 3; never wait on the board
+   being filled. While a wait on the leader stays open, keep the one-shot
+   short recheck of doctrine §14 armed.
 3. **Audit cross** — run one `moai` MCP audit tool (`codex_audit`,
    `glm_audit`, `claude_audit`, or `audit_multi`) for an independent second
    opinion. Positive → proceed per verdict. Negative → fail-closed: no

@@ -1,0 +1,482 @@
+[
+  {
+    "path": ".claude/hooks/moai/chain-event.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-agent-hook.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-codex-review-gate.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-compact.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-config-change.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-cwd-changed.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-elicitation-result.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-elicitation.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-file-changed.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-harness-observe-stop.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-harness-observe-subagent-stop.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-harness-observe-user-prompt-submit.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-harness-observe.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-instructions-loaded.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-multi-review-gate.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-notification.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-permission-denied.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-permission-request.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-post-compact.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-post-tool-failure.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-post-tool.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-pre-tool.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-security-commit.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-security-scan.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-security-turn.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-session-end.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-session-start-compact.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-session-start-navigator.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-session-start.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-stop-failure.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-stop-goal.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-stop.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-subagent-start.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-subagent-stop.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-task-completed.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-task-created.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-teammate-idle.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-user-prompt-submit.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-worktree-create.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/handle-worktree-remove.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/status-transition-ownership.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/sync-phase-quality-gate.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/hooks/moai/team-ac-verify.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".claude/skills/hns-lsel-curator/drain.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".git_hooks/pre-commit",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".git_hooks/pre-push",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": ".moai/hooks/lsel-apply.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/chain-event.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-agent-hook.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-agent-hook.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-codex-review-gate.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-compact.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-config-change.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-cwd-changed.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-elicitation-result.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-elicitation.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-file-changed.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-harness-observe-stop.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-harness-observe-subagent-stop.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-harness-observe-user-prompt-submit.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-harness-observe.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-instructions-loaded.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-multi-review-gate.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-notification.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-permission-denied.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-permission-request.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-post-compact.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-post-tool-failure.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-post-tool.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-pre-tool.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-security-commit.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-security-scan.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-security-turn.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-session-end.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-session-start-compact.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-session-start-navigator.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-session-start.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-stop-failure.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-stop-goal.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-stop-goal.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-stop.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-subagent-start.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-subagent-stop.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-task-completed.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-task-completed.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-task-created.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-teammate-idle.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-teammate-idle.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-user-prompt-submit.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-worktree-create.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/handle-worktree-remove.sh.tmpl",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/status-transition-ownership.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.claude/hooks/moai/team-ac-verify.sh",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.git_hooks/pre-commit",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "path": "internal/template/templates/.git_hooks/pre-push",
+    "exit": 0,
+    "stderr": ""
+  }
+]

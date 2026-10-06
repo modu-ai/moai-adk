@@ -5,7 +5,7 @@ draft: false
 description: "The moai web command that starts the local operations console — flags, routes, port-reclaim behavior."
 ---
 
-`moai web` starts **MoAI Web Console**, the local operations screen. It lets you view the project's SPEC catalog, the Kanban chain, and session, goal and verification state in a browser, and edit profile preferences and project settings from the same screen.
+`moai web` starts **MoAI Web Console**, the local operations screen. It lets you view the project's SPEC catalog, the factory lanes, and session, goal and verification state in a browser, and edit profile preferences and project settings from the same screen.
 
 The screen layout and what each area reads are covered in [MoAI Web Console](/en/advanced/moai-web-console/). This page covers the command itself — flags, routes and port handling.
 
@@ -46,8 +46,8 @@ The console serves the following paths. The five read-only screens refuse any me
 
 | Path | Method | What it does |
 |------|--------|--------------|
-| `/` | GET | Overview — stat tiles, Kanban chain, in-progress SPECs, attention list, sessions |
-| `/kanban` | GET | Chain session board plus the SPEC pipeline |
+| `/` | GET | Overview — stat tiles, in-progress SPECs, attention list, sessions |
+| `/factory` | GET | Factory lane list plus the SPEC pipeline |
 | `/specs` | GET | SPEC catalog. `?q=` searches, `?status=` filters, `?id=` opens the detail |
 | `/monitor` | GET | Sessions, goals, verification, epics |
 | `/settings` | GET | The settings tabs. `?tab=` selects the tab, `?profile=` the profile being edited |

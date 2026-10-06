@@ -254,6 +254,21 @@ fi
 # walks above (which itself mirrors sourceScanSkipDirs in
 # internal/hook/quality/gate.go), so every collector in this hook skips one
 # shared set of trees.
+# The parked-audit-lab exclusion: .moai/reports holds per-card audit and gate
+# evidence (often a Go module root of its own), none of it this session's
+# change scope — a fixture parked there joined the delta set and became a
+# vetted module root, so a docs-adjacent sync turn blocked on a lab no lane
+# owns. The entry joins WCI_EXCLUDES for the walk arms below, and — scoped to
+# THIS entry alone, never the full set — the two committed/tracked diff arms,
+# which would otherwise carry the committed and tracked legs of the same
+# parked tree into the delta.
+# The find-based checker sweeps prune the same tree, for cache-key parity:
+# the content key (worktree_content_id) excludes reports, so a checker
+# verdict recorded while a parked fixture there was broken is keyed WITHOUT
+# that fixture — fixing the fixture would then change neither HEAD nor the
+# key, and the stored failure would replay stale-fail. The sweeps and the key
+# must read the same trees.
+WCI_REPORTS_EXCLUDE=':(top,exclude).moai/reports'
 WCI_EXCLUDES=(':(top,exclude).moai/state' ':(top,exclude).moai/logs'
     ':(top,exclude).moai/worktrees' ':(top,exclude).claude/worktrees'
     ':(glob,top,exclude)**/node_modules/**' ':(glob,top,exclude)**/vendor/**'
@@ -263,7 +278,8 @@ WCI_EXCLUDES=(':(top,exclude).moai/state' ':(top,exclude).moai/logs'
     ':(glob,top,exclude)**/venv/**' ':(glob,top,exclude)**/__pycache__/**'
     ':(glob,top,exclude)**/site-packages/**' ':(glob,top,exclude)**/.tox/**'
     ':(glob,top,exclude)**/.nox/**' ':(glob,top,exclude)**/.mypy_cache/**'
-    ':(glob,top,exclude)**/.ruff_cache/**' ':(glob,top,exclude)**/.pytest_cache/**')
+    ':(glob,top,exclude)**/.ruff_cache/**' ':(glob,top,exclude)**/.pytest_cache/**'
+    "$WCI_REPORTS_EXCLUDE")
 
 # Ignored sources join the delta set AND the worktree key. The find-based
 # checkers (Ruby/PHP/C++ …) scan ignored sources, so a broken ignored file
@@ -302,10 +318,13 @@ fi
 # re-run), but the changed-language set aggregates only what is listed here,
 # so leaving ② and ③ out let a Go compile error added beside a Ruby-only
 # commit pass with zero Go checks (codex review gate reproduction —
-# `language=ruby`, no go steps, decision=allow). sort -u deduplicates the
+# `language=ruby`, no go steps, decision=allow). Arms ① and ② carry the
+# reports exclusion alone — the parked lab reaches them through its committed
+# and tracked legs too, and widening those arms to the full set is a
+# deliberate scope decision, not a default. sort -u deduplicates the
 # overlap between the four sources.
-SYNC_DELTA_FILES=$({ git diff --name-only "$DIFF_RANGE" 2>/dev/null || true
-                     git diff HEAD --name-only 2>/dev/null || true
+SYNC_DELTA_FILES=$({ git diff --name-only "$DIFF_RANGE" -- "$WCI_REPORTS_EXCLUDE" 2>/dev/null || true
+                     git diff HEAD --name-only -- "$WCI_REPORTS_EXCLUDE" 2>/dev/null || true
                      git ls-files --others --exclude-standard -- "${WCI_EXCLUDES[@]}" 2>/dev/null || true
                      [ -n "$WCI_IGNORED_SOURCES" ] && printf '%s\n' "$WCI_IGNORED_SOURCES"
                    } | sort -u)
@@ -762,7 +781,11 @@ GOFILES
 # resolves a changed file to its OWNING module; when a changed file's whole
 # module is deleted its go.mod is gone with it and the walk resolves nothing.
 # The prune set mirrors has_suffix's, so discovery skips the
-# same heavy trees.
+# same heavy trees — and the parked-audit-lab tree, for cache-key parity: the
+# content key excludes .moai/reports, so a verdict vetted from a module parked
+# there is keyed WITHOUT it, and fixing the fixture would replay the stored
+# failure. Same -path/-prune shape as the checker sweeps; the spelling follows
+# this walk's absolute start point.
 find_surviving_go_module_roots() {
     find "$PROJECT_ROOT" \
         \( -name .git -o -name .hg -o -name .svn \
@@ -770,7 +793,8 @@ find_surviving_go_module_roots() {
            -o -name .venv -o -name venv -o -name site-packages -o -name __pycache__ \
            -o -name .tox -o -name .nox -o -name .mypy_cache -o -name .ruff_cache \
            -o -name .pytest_cache \
-           -o -name dist -o -name build -o -name target -o -name .next -o -name .output \) -prune \
+           -o -name dist -o -name build -o -name target -o -name .next -o -name .output \
+           -o -path "$PROJECT_ROOT/.moai/reports" \) -prune \
         -o -type f -name go.mod -print 2>/dev/null | while IFS= read -r m; do
             [ -n "$m" ] || continue
             dirname "$m"
@@ -882,11 +906,11 @@ case "$checked_language" in
         # The compiler's status is captured BEFORE the output is truncated: in
         # `javac … | head -20` the pipeline's status is head's, so a failed compile
         # was recorded as c1=0. The same shape applies to kotlinc and scalac.
-        run_step javac c1 sh -c 'out=$(find . -name "*.java" -exec javac -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1); rc=$?; printf "%s\n" "$out" | head -20; exit $rc' || true
+        run_step javac c1 sh -c 'out=$(find . -path ./.moai/reports -prune -o -name "*.java" -exec javac -cp "$(find . -path ./.moai/reports -prune -o -name "*.jar" -printf "{}:")" {} + 2>&1); rc=$?; printf "%s\n" "$out" | head -20; exit $rc' || true
         ;;
     kotlin)
         C1_LABEL="kotlinc"
-        run_step kotlinc c1 sh -c 'out=$(find . -name "*.kt" -exec kotlinc -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1); rc=$?; printf "%s\n" "$out" | head -20; exit $rc' || true
+        run_step kotlinc c1 sh -c 'out=$(find . -path ./.moai/reports -prune -o -name "*.kt" -exec kotlinc -cp "$(find . -path ./.moai/reports -prune -o -name "*.jar" -printf "{}:")" {} + 2>&1); rc=$?; printf "%s\n" "$out" | head -20; exit $rc' || true
         ;;
     csharp)
         C1_LABEL="dotnet build"
@@ -898,11 +922,11 @@ case "$checked_language" in
         # separately and the failures are summed. `-exec … \;` cannot carry this:
         # find exits 0 however many invocations failed. The `{} +` batch hands the
         # files to a loop whose non-zero exit find does propagate.
-        run_step ruby c1 find . -name "*.rb" -exec sh -c 'rc=0; for f do ruby -c "$f" 2>&1 || rc=1; done; exit $rc' sh {} + || true
+        run_step ruby c1 find . -path ./.moai/reports -prune -o -name "*.rb" -exec sh -c 'rc=0; for f do ruby -c "$f" 2>&1 || rc=1; done; exit $rc' sh {} + || true
         ;;
     php)
         C1_LABEL="php syntax"
-        run_step php c1 find . -name "*.php" -exec sh -c 'rc=0; for f do php -l "$f" 2>&1 || rc=1; done; exit $rc' sh {} + || true
+        run_step php c1 find . -path ./.moai/reports -prune -o -name "*.php" -exec sh -c 'rc=0; for f do php -l "$f" 2>&1 || rc=1; done; exit $rc' sh {} + || true
         ;;
     elixir)
         C1_LABEL="mix compile"
@@ -936,7 +960,7 @@ case "$checked_language" in
         #              scanning headers converts a correct project into a gate
         #              failure. The residual asymmetry is recorded rather than traded
         #              for false positives; see .moai/reports/t663/verdict.md.
-        run_step g++ c1 sh -c 'out=$(find . \( -name "*.cpp" -o -name "*.cc" -o -name "*.cxx" \) -print -exec g++ -fsyntax-only -std=c++17 {} + 2>&1); rc=$?; if [ -z "$out" ]; then echo "0 C++ files checked: no *.cpp/*.cc/*.cxx found (not a passing check)"; else echo "$out"; fi; exit $rc' || true
+        run_step g++ c1 sh -c 'out=$(find . -path ./.moai/reports -prune -o \( -name "*.cpp" -o -name "*.cc" -o -name "*.cxx" \) -print -exec g++ -fsyntax-only -std=c++17 {} + 2>&1); rc=$?; if [ -z "$out" ]; then echo "0 C++ files checked: no *.cpp/*.cc/*.cxx found (not a passing check)"; else echo "$out"; fi; exit $rc' || true
         # Per-check logs live in GATE_TMPDIR, which the EXIT trap removes, and nothing
         # reads them — so the zero-target case is promoted to the audit log here. Without
         # it, "checked nothing" and "checked everything and it passed" are both a silent
@@ -947,14 +971,14 @@ case "$checked_language" in
         ;;
     scala)
         C1_LABEL="scalac"
-        run_step scalac c1 sh -c 'out=$(find . -name "*.scala" -exec scalac -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1); rc=$?; printf "%s\n" "$out" | head -20; exit $rc' || true
+        run_step scalac c1 sh -c 'out=$(find . -path ./.moai/reports -prune -o -name "*.scala" -exec scalac -cp "$(find . -path ./.moai/reports -prune -o -name "*.jar" -printf "{}:")" {} + 2>&1); rc=$?; printf "%s\n" "$out" | head -20; exit $rc' || true
         ;;
     r)
         C1_LABEL="R syntax"
         # A loop fed by a pipe reports only its LAST iteration, so a broken file
         # followed by a valid one passed. The loop reads a here-document instead
         # (no subshell), and every parse failure is summed into rc.
-        run_step R c1 sh -c 'files=$(find . -name "*.R" -o -name "*.r" | head -5); rc=0
+        run_step R c1 sh -c 'files=$(find . -path ./.moai/reports -prune -o \( -name "*.R" -o -name "*.r" \) -print | head -5); rc=0
 while IFS= read -r f; do
     [ -n "$f" ] || continue
     Rscript -e "parse(\"$f\")" 2>&1 || rc=1

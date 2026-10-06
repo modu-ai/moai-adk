@@ -118,6 +118,7 @@ var builtinCommitIdentityDenyEmails = []string{
 	"t1204@example.invalid",
 	"t1379@example.invalid",
 	"t1395@example.invalid",
+	"t1404@example.invalid",
 	"t371@example.com",
 	"t461@example.test",
 	"t488@example.invalid",

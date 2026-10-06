@@ -668,15 +668,31 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// coordinates moved.
 		"home_state_coverage.go:264": true,
 		"home_state_coverage.go:272": true,
-		"mcp_review_material.go:95":  true,
+		// Re-measured at card t1468: card t1426 added the base-selection
+		// ladder above this comparison, moving it from :95. Same single
+		// review-diff base measurement, same count — only the coordinate moved.
+		"mcp_review_material.go:175": true,
 		"todo_landed.go:231":         true,
-		"todo_autodone.go:349":       true,
+		// Re-measured at card t1502: M4's card-close wiring added three lines
+		// above this comparison, moving it from :349. Same single ancestry
+		// comparison (the auto-done scan's merge-base --is-ancestor), same
+		// count — only the coordinate moved.
+		"todo_autodone.go:352": true,
 		// SPEC-CODEX-GATE-SCOPE-001 (card t1383): the card-diff BASE
 		// measurement — gitflow-lane-protocol §8 requires the gate to recompute
 		// `git merge-base develop HEAD` per evaluation. It selects which
 		// changes a review targets; it never judges binary-vs-source freshness,
 		// so binlag.Evaluate remains the one binary-lag comparison.
-		"codex_review_scope.go:132": true,
+		// Re-measured at card t1404: SPEC-CODEX-GATE-SCOPING-001's M2 primary
+		// check (isPrimaryCheckoutGit + reviewScopeGitPath) was inserted above
+		// cardMergeBase, moving the same single comparison from 132. Same one
+		// comparison, same count — only the coordinate moved (the t948
+		// precedent below); caught by the card's owed full-package re-run, not
+		// by the repair's own diff, which starts at line 233.
+		// Re-measured again at the card-review round-2 repair: N4's
+		// reviewScopeEvalPath insertion above cardMergeBase moved the same
+		// single comparison from 182. Same one comparison, same count.
+		"codex_review_scope.go:197": true,
 		// SPEC-WEB-SETTINGS-SAVE-001 scope ③ (card t1393): the session-worktree
 		// disposal landing check — arm (i) of the decided predicate asks
 		// whether the branch tip is an ancestor of refs/remotes/origin/develop
@@ -688,6 +704,21 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// owner (REQ-WSS-302's fail-open preserve is the safety net there).
 		"session_worktree.go:810": true,
 		"session_worktree.go:836": true,
+		// SPEC-TODO-CARD-ISSUANCE-001 (card t1454): the in-flight lane
+		// changed-files probe — productionLaneFilesProbe resolves the fork
+		// point between the integration branch and the card's lane branch
+		// before diffing the lane's changed files. :165 is the doc comment
+		// naming the primitive, :173 the probe itself. A reachability
+		// precondition about two repo refs (which changes belong to the
+		// lane), the same family as the todo_landed/todo_autodone
+		// coordinates — not a binary-vs-source freshness comparison, so
+		// binlag.Evaluate is not its owner.
+		// Re-measured at the card-review r2 closure: the issuance probe's
+		// repairs moved the same two hits from 165/173 to 204/212. Same
+		// probe, same count — only the coordinates moved (the t948
+		// precedent).
+		"todo_issuance.go:204": true,
+		"todo_issuance.go:212": true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")

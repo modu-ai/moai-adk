@@ -36,7 +36,7 @@ otherwise deny every turn indefinitely with no way for the session to end.
 Claude Code's `Stop` is denied fail-closed too, but MoAI does not rely on the
 host's limit on consecutive `Stop` blocks to end that loop. Measured, that
 limit ended the turn only when no tool use came in between the blocks, and a
-session started with a raised limit (kanban, factory, or an infinite goal)
+session started with a raised limit (factory or an infinite goal)
 kept going to its turn limit. So MoAI counts the loop itself:
 
 - **N=8.** The first 8 consecutive `Stop` calls whose stdin cannot be parsed

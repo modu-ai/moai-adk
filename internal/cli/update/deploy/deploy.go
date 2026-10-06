@@ -105,7 +105,18 @@ func ManagedCleanTargets(projectRoot string) []CleanTarget {
 // (measured 2026-08-15: 12 files vanished this way, among them
 // .moai/config/astgrep-rules and dev-only rules under .claude/rules/moai).
 func CleanMoaiManagedPaths(projectRoot string, out io.Writer, tmplFS fs.FS) error {
-	targets := ManagedCleanTargets(projectRoot)
+	return CleanMoaiManagedPathsWithTargets(projectRoot, out, tmplFS, ManagedCleanTargets(projectRoot))
+}
+
+// CleanMoaiManagedPathsWithTargets is CleanMoaiManagedPaths over an explicit
+// target list (SPEC-INIT-SHRINK-001 design §3 step 4, the primary form):
+// the migration run passes the classified removal list PLUS the non-dropped
+// managed roots, and a thin deploy run passes the managed roots with the
+// dropped roots excluded. The per-target machinery — progress lines, the
+// pre-clean backup, crash-window guards, symlink dispositions — is exactly
+// the default walk's; only the target list differs. Callers that pass
+// ManagedCleanTargets(projectRoot) get the historic behavior byte-for-byte.
+func CleanMoaiManagedPathsWithTargets(projectRoot string, out io.Writer, tmplFS fs.FS, targets []CleanTarget) error {
 
 	// One timestamp for the whole run, so every root's unmanaged files land
 	// under a single pre-clean directory and are restored together.
@@ -220,8 +231,16 @@ func CleanMoaiManagedPaths(projectRoot string, out io.Writer, tmplFS fs.FS) erro
 // are skipped rather than failed. Paths are returned relative to projectRoot
 // with forward separators so they compare directly against template paths.
 func InventoryManagedPaths(projectRoot string) []string {
+	return InventoryManagedPathsWithTargets(projectRoot, ManagedCleanTargets(projectRoot))
+}
+
+// InventoryManagedPathsWithTargets is InventoryManagedPaths over an explicit
+// target list (SPEC-INIT-SHRINK-001 REQ-016 accounting honesty): the run
+// snapshots the SAME list the removal machinery will process, so the outcome
+// summary cannot count a file the run's scoped target list never touches.
+func InventoryManagedPathsWithTargets(projectRoot string, targets []CleanTarget) []string {
 	var files []string
-	for _, t := range ManagedCleanTargets(projectRoot) {
+	for _, t := range targets {
 		paths := []string{t.FullPath}
 		if t.IsGlob {
 			matches, err := filepath.Glob(t.FullPath)

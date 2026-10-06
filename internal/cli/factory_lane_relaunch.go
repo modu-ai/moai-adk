@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,7 +15,7 @@ import (
 
 // factory_lane_relaunch.go is the Claude-harness lane's supervising loop
 // (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-020, design.md §6): the relaunch
-// clear policy turns the `moai cc|glm -f lane --clear-policy relaunch`
+// clear policy turns the `moai cc|glm -l --clear-policy relaunch`
 // launcher into the parent that leases the next card, ensures its worktree,
 // starts ONE interactive session in that worktree, waits for the operator to
 // end it, and repeats — no process replacement happens on this path (the
@@ -41,7 +42,7 @@ var (
 // through the F1 machinery on the parent checkout, ensure its worktree,
 // start ONE interactive session there, wait, repeat. The stop condition is
 // `next`'s no-card answer. The child learns its card through
-// config.EnvMoaiKanbanCard; the launcher process carries the lane stamps
+// config.EnvFactoryCard; the launcher process carries the lane stamps
 // (enterFactoryLaneMode ran in the lane branch) and every child inherits
 // them, so each fresh session re-enters the cycle with the same lane
 // identity and the same clear policy.
@@ -55,6 +56,17 @@ var (
 // the same shared gate; an explicit selection that retires stops the loop.
 // @MX:SPEC: SPEC-FACTORY-STALE-RUN-HEAL-001
 func runFactoryLaneRelaunch(cmd *cobra.Command, label string, claudeArgs []string, explicit, leadTarget string) error {
+	// REQ-SCV-010 (SPEC-SESSION-CC-VERSION-001): the guard runs before the
+	// parent-checkout assertion and the loop's first iteration — a --resume
+	// token under the relaunch policy cannot mean what it says (every card
+	// session the loop starts would receive it), so the loop refuses to start
+	// at all: zero leases, zero card sessions, and the token is neither
+	// propagated nor stripped. The refusal names the bare one-shot lane join;
+	// an operator --name beside -l is refused at the entry parse
+	// (laneFlagNameError) before this guard is ever reached.
+	if carriesResumeToken(claudeArgs) {
+		return errors.New(relaunchResumeRefusal)
+	}
 	// The loop drives the F1 lease machinery itself, so it inherits the
 	// `next` verb's own precondition: the parent checkout (REQ-SD-010).
 	if err := factoryAssertParentCheckout(resolveProjectDir()); err != nil {
@@ -99,7 +111,7 @@ func factoryLaneRelaunchIteration(ctx context.Context, cmd *cobra.Command, root,
 		return false, fmt.Errorf("factory lane: re-join the factory run: %w", err)
 	}
 	defer restore()
-	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
 	card, leased, err := factoryLaneLeaseFn(ctx, root, runID, label)
 	if err != nil {
 		return false, fmt.Errorf("factory lane: %w", err)
@@ -131,7 +143,7 @@ func factoryLaneRelaunchIteration(ctx context.Context, cmd *cobra.Command, root,
 // leased for it. The existing child-process launch form serves every
 // platform; no syscall use on this path.
 func launchFactoryLaneCardSession(binaryPath string, claudeArgs []string, wt, cardID string) error {
-	env := append(os.Environ(), config.EnvMoaiKanbanCard+"="+cardID)
+	env := append(os.Environ(), config.EnvFactoryCard+"="+cardID)
 	c := exec.Command(binaryPath, claudeArgs...)
 	c.Dir = wt
 	c.Env = env

@@ -5,7 +5,7 @@ draft: false
 description: "启动本地运维控制台的 moai web 命令 — 标志、路由、端口回收行为。"
 ---
 
-`moai web` 启动本地运维界面 **MoAI Web Console**。它让你在浏览器中查看项目的 SPEC 目录与看板链，以及会话、目标、验证的状态，并在同一界面里修改配置文件偏好与项目设置。
+`moai web` 启动本地运维界面 **MoAI Web Console**。它让你在浏览器中查看项目的 SPEC 目录与工厂 lane，以及会话、目标、验证的状态，并在同一界面里修改配置文件偏好与项目设置。
 
 界面构成以及各区域读取什么，在 [MoAI Web Console](/zh/advanced/moai-web-console/) 中说明。本页整理命令本身 — 标志、路由与端口处理。
 
@@ -46,8 +46,8 @@ moai web --no-reuse      # 端口被占用时不回收而是失败
 
 | 路径 | 方法 | 作用 |
 |------|------|------|
-| `/` | GET | 概览 — 统计磁贴、看板链、进行中的 SPEC、注意列表、会话 |
-| `/kanban` | GET | 链会话看板 + SPEC 流水线 |
+| `/` | GET | 概览 — 统计磁贴、进行中的 SPEC、注意列表、会话 |
+| `/factory` | GET | 工厂 lane 列表 + SPEC 流水线 |
 | `/specs` | GET | SPEC 目录。`?q=` 搜索、`?status=` 筛选、`?id=` 打开详情 |
 | `/monitor` | GET | 会话・目标・验证・史诗 |
 | `/settings` | GET | 设置标签页界面。`?tab=` 指定标签页，`?profile=` 指定编辑对象配置文件 |

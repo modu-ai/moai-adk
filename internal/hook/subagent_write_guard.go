@@ -18,7 +18,9 @@ package hook
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -103,7 +105,7 @@ type swgEvaluation struct {
 //
 // @MX:NOTE: [AUTO] the predicate's evaluation order is load-bearing — the two
 // payload-derived size conditions are decided BEFORE any git subprocess
-// (REQ-SWG-004). @MX:REASON: one `git rev-parse` per kanban session moved
+// (REQ-SWG-004). @MX:REASON: one `git rev-parse` per factory session moved
 // SessionStart from under 500ms to 650-890ms against a 5s hook budget
 // (session_start_record.go), and the Write path fires far more often.
 func evaluateSubagentWrite(input *HookInput, denyEnabled bool) swgEvaluation {
@@ -128,9 +130,10 @@ func evaluateSubagentWrite(input *HookInput, denyEnabled bool) swgEvaluation {
 	}
 	ev.PostBytes = int64(len(payload.Content))
 
-	// Existing size is the file's byte length on disk (REQ-SWG-004). Any stat
-	// failure is fail-open (REQ-SWG-007 "an unreadable existing file"): the
-	// predicate needs the on-disk size as positive evidence.
+	// Existing size is the file's byte length on disk (REQ-SWG-004). A missing
+	// file is an allow (new file); any other stat failure is fail-open
+	// (REQ-SWG-007 "an unreadable existing file"): the predicate needs the
+	// on-disk size as positive evidence.
 	absPath := payload.FilePath
 	if !filepath.IsAbs(absPath) {
 		cwd := resolveProjectRootFromInputOrEnv(input, "subagent_write_guard")
@@ -141,7 +144,15 @@ func evaluateSubagentWrite(input *HookInput, denyEnabled bool) swgEvaluation {
 	}
 	stat, err := os.Stat(absPath)
 	if err != nil {
-		return swgFailOpen(ev, "existing file unreadable", err)
+		if errors.Is(err, fs.ErrNotExist) {
+			// A file that does not exist cannot be destructively shrunk: there
+			// is nothing to lose, so this is a positive allow, not an
+			// uncertainty. Recording it as fail-open buried the real fail-opens
+			// (card t1499: 6,122 of 6,947 rows were new files).
+			ev.Reason = "new file"
+			return swgAllow(ev)
+		}
+		return swgFailOpen(ev, "stat failed on the existing file", err)
 	}
 	ev.PreBytes = stat.Size()
 

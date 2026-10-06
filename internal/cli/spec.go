@@ -29,6 +29,9 @@ func newSpecCmd() *cobra.Command {
 	specCmd.AddCommand(newSpecAuditCmd())
 	// SPEC-SESSIONSTART-PERF-001 M2 — SPEC auto-archive (bounds the active scan set)
 	specCmd.AddCommand(newSpecArchiveCmd())
+	// SPEC-AUDIT-CEILING-002 M2 — plan-audit iteration ceiling evaluation
+	// (the one ceiling-outcome recording path's CLI surface)
+	specCmd.AddCommand(newSpecCeilingCmd())
 
 	return specCmd
 }

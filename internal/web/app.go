@@ -41,6 +41,10 @@ type app struct {
 	// truth stays on the server.
 	hub *Hub
 
+	// specs caches the full SPEC scan (rows + drift findings) that /, /factory
+	// and /specs all read. It is dropped when hub publishes "spec" (card t1460).
+	specs *specCache
+
 	// bindAddr returns the real bound loopback address (127.0.0.1:<port>) for
 	// the appbar loopback indicator (REQ-WC4-005). NewServer wires it to the
 	// server's listener accessor; when nil (bare app in a unit test) the view
@@ -135,9 +139,10 @@ type app struct {
 // The page is rendered by the compiled-in Templ root component (no runtime
 // template parse), so newApp no longer carries a template-parse step.
 func newApp(cfg Config) *app {
-	return &app{
+	a := &app{
 		cfg:              cfg,
 		hub:              NewHub(),
+		specs:            newSpecCache(loadSpecRows, specCacheMaxAge),
 		readPreferences:  profile.ReadPreferences,
 		writePreferences: profile.WritePreferences,
 		syncToProject:    profile.SyncToProjectConfig,
@@ -174,6 +179,12 @@ func newApp(cfg Config) *app {
 		renameProfile: renameProfileDir,
 		deleteProfile: profile.Delete,
 	}
+	a.hub.Subscribe(func(event string) {
+		if event == "spec" {
+			a.specs.invalidate()
+		}
+	})
+	return a
 }
 
 // routes builds the HTTP handler tree with Host-check middleware applied to the
@@ -184,9 +195,10 @@ func (a *app) routes() http.Handler {
 	mux := http.NewServeMux()
 	// 재설계본 라우트. "/" 는 개요로 올라가고, 설정 편집기는 /settings 로 내려간다
 	// — 세션을 열었을 때 먼저 보고 싶은 것은 설정값이 아니라 현재 상태이기 때문이다.
-	// 모니터링 라우트(개요·칸반·모니터·SPEC)는 GET 외 메서드를 405 로 거부한다.
+	// 모니터링 라우트(개요·팩토리·모니터·SPEC)는 GET 외 메서드를 405 로 거부한다.
 	mux.HandleFunc("/", a.handleOverview)
-	mux.HandleFunc("/kanban", a.handleKanban)
+	mux.HandleFunc("/factory", a.handleFactory)
+	registerLegacyRoutes(mux)
 	mux.HandleFunc("/monitor", a.handleMonitor)
 	// SPEC-WEB-TODO-QUEUE-001 M2 (REQ-WTQ-002): /todo renders the backlog queue
 	// read-only. Writes and id issuance belong to `moai todo`; this route only

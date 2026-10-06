@@ -24,7 +24,7 @@
 //     the scan itself being unable to run (the queue store unreadable).
 //
 // The three misfire guards live in the decision function the scan wires
-// (internal/kanban/autodone_scan.go): M1 the reissued-id collision gate
+// (internal/factory/autodone_scan.go): M1 the reissued-id collision gate
 // (`ambiguous-id`), M2 the sync gate (`spec-not-completed`), M3 the
 // non-landing declaration exclusion (in the shared subject predicate).
 //
@@ -50,7 +50,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // autoDoneLogFileName is the scan's append-only execution log, sibling to
@@ -210,11 +210,11 @@ func runTodoAutoDone(cmd *cobra.Command, fetch, dryRun, jsonOut bool) error {
 
 	refHead, _ := todoGitOutput("rev-parse", "--verify", "--quiet", gitEndOfOptions, ref+"^{commit}")
 
-	commits, subjErr := kanban.ScanLandedSubjects(todoRunCommand, ref)
+	commits, subjErr := factory.ScanLandedSubjects(todoRunCommand, ref)
 	subjectKnown := subjErr == nil
-	var attributions map[string]kanban.LandedCommit
+	var attributions map[string]factory.LandedCommit
 	if subjectKnown {
-		attributions = kanban.LandedAttributions(commits, kanban.LandedBranchFromRef(ref))
+		attributions = factory.LandedAttributions(commits, factory.LandedBranchFromRef(ref))
 	}
 
 	outcomes := planAutoDone(snapshot, root, ref, subjectKnown, attributions)
@@ -255,6 +255,9 @@ func runTodoAutoDone(cmd *cobra.Command, fetch, dryRun, jsonOut bool) error {
 	for _, o := range applied {
 		if o.closed {
 			recordFactoryCardState(o.id, o.specID, "completed", "card.completed")
+			// One gated, bounded, fail-open fold per closed card
+			// (AC-MFB-008; the bound is per card, plan.md §G).
+			foldClosedCardMemoryFn(o.id)
 		}
 	}
 	appendAutoDoneRows(autoDoneLogPathFor(root), autoDoneLogRowsFor(ref, refHead, applied))
@@ -276,7 +279,7 @@ func splitLandedRefForFetch(ref string) (remote, branch string, ok bool) {
 // BacklogStateQueued or BacklogStatePicked (REQ-AD-001) — dropped cards are
 // never evaluated, already-archived ids are not re-evaluated (NFR-4's
 // idempotence), and the record's shape makes both true by construction.
-func planAutoDone(snapshot *kanban.BacklogRecord, root, ref string, subjectKnown bool, attributions map[string]kanban.LandedCommit) []autoDoneOutcome {
+func planAutoDone(snapshot *factory.BacklogRecord, root, ref string, subjectKnown bool, attributions map[string]factory.LandedCommit) []autoDoneOutcome {
 	outcomes := make([]autoDoneOutcome, 0, len(snapshot.Items))
 	for i := range snapshot.Items {
 		it := snapshot.Items[i]
@@ -287,7 +290,7 @@ func planAutoDone(snapshot *kanban.BacklogRecord, root, ref string, subjectKnown
 		// must not be able to slip into the candidate set through a
 		// comparison the code forgot to negate.
 		switch it.State {
-		case kanban.BacklogStateQueued, kanban.BacklogStatePicked:
+		case factory.BacklogStateQueued, factory.BacklogStatePicked:
 			// the only auto-done candidate states (REQ-AD-001)
 		default:
 			continue
@@ -301,16 +304,16 @@ func planAutoDone(snapshot *kanban.BacklogRecord, root, ref string, subjectKnown
 		// No spec id means the gate does not apply (the Class A/B shape);
 		// anything other than a read `completed` is not a pass (unknown
 		// included).
-		gate := kanban.AutoDoneYes
+		gate := factory.AutoDoneYes
 		if strings.TrimSpace(o.specID) != "" {
-			if status, ok := kanban.ReadPrimarySpecStatus(root, o.specID); !ok || status != "completed" {
-				gate = kanban.AutoDoneNo
+			if status, ok := factory.ReadPrimarySpecStatus(root, o.specID); !ok || status != "completed" {
+				gate = factory.AutoDoneNo
 			}
 		}
 
-		facts := kanban.AutoDoneFacts{
+		facts := factory.AutoDoneFacts{
 			SubjectKnown:  subjectKnown,
-			DistinctTexts: kanban.AutoDoneDistinctTexts(snapshot, it.ID),
+			DistinctTexts: factory.AutoDoneDistinctTexts(snapshot, it.ID),
 			SpecSyncGate:  gate,
 		}
 		if it.Landing != nil {
@@ -321,14 +324,14 @@ func planAutoDone(snapshot *kanban.BacklogRecord, root, ref string, subjectKnown
 			facts.SHAReachable = todoAutoDoneSHAReachable(o.recordedSHA, ref)
 		}
 		if subjectKnown {
-			if hit, ok := attributions[it.ID]; ok && kanban.AutoDoneSubjectFresh(hit, it.AddedAt) {
+			if hit, ok := attributions[it.ID]; ok && factory.AutoDoneSubjectFresh(hit, it.AddedAt) {
 				o.subject = hit.Subject
 				o.commitSHA = hit.SHA
 				facts.SubjectHit = &hit
 			}
 		}
 
-		decision := kanban.AutoDoneDecide(facts)
+		decision := factory.AutoDoneDecide(facts)
 		if decision.Close {
 			o.closed = true
 			o.form = decision.Form
@@ -345,19 +348,19 @@ func planAutoDone(snapshot *kanban.BacklogRecord, root, ref string, subjectKnown
 // re-asked at scan time against the ref as it NOW stands. A git exit code of
 // exactly 1 is the NEGATIVE answer (not an ancestor); any other failure is
 // an unanswerable question, never a negative.
-func todoAutoDoneSHAReachable(sha, ref string) kanban.AutoDoneTri {
+func todoAutoDoneSHAReachable(sha, ref string) factory.AutoDoneTri {
 	_, err := todoGitOutput("merge-base", "--is-ancestor", gitEndOfOptions, sha, ref)
 	if err == nil {
-		return kanban.AutoDoneYes
+		return factory.AutoDoneYes
 	}
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
-		return kanban.AutoDoneNo
+		return factory.AutoDoneNo
 	}
 	if gitUnrunnable(err) != nil {
-		return kanban.AutoDoneUnknown
+		return factory.AutoDoneUnknown
 	}
-	return kanban.AutoDoneUnknown
+	return factory.AutoDoneUnknown
 }
 
 // applyAutoDoneCloses archives the planned closes in one locked Mutate. A
@@ -365,7 +368,7 @@ func todoAutoDoneSHAReachable(sha, ref string) kanban.AutoDoneTri {
 // downgraded to a skip (query-inconclusive) rather than refusing the whole
 // scan; a store-level failure (lock, unreadable engine) refuses everything
 // and is the scan-cannot-run case.
-func applyAutoDoneCloses(store *kanban.BacklogStore, outcomes []autoDoneOutcome) ([]autoDoneOutcome, error) {
+func applyAutoDoneCloses(store *factory.BacklogStore, outcomes []autoDoneOutcome) ([]autoDoneOutcome, error) {
 	hasCloses := false
 	for _, o := range outcomes {
 		if o.closed {
@@ -376,7 +379,7 @@ func applyAutoDoneCloses(store *kanban.BacklogStore, outcomes []autoDoneOutcome)
 	if !hasCloses {
 		return outcomes, nil
 	}
-	err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for k := range outcomes {
 			if !outcomes[k].closed {
 				continue
@@ -391,11 +394,11 @@ func applyAutoDoneCloses(store *kanban.BacklogStore, outcomes []autoDoneOutcome)
 			if at < 0 {
 				// The queue changed between snapshot and lock; this scan's
 				// facts for the card are stale.
-				outcomes[k].downgrade(kanban.AutoDoneSkipQueryInconclusive)
+				outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
 				continue
 			}
 			if err := rec.ArchiveCard(outcomes[k].id); err != nil {
-				outcomes[k].downgrade(kanban.AutoDoneSkipQueryInconclusive)
+				outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
 				continue
 			}
 		}
@@ -474,7 +477,7 @@ func writeAutoDoneJSON(w io.Writer, ref string, outcomes []autoDoneOutcome) erro
 // state directory (REQ-AD-011) — machine-local, matching the queue's
 // locality.
 func autoDoneLogPathFor(root string) string {
-	return filepath.Join(kanban.RuntimeStateDirForRoot(root), autoDoneLogFileName)
+	return filepath.Join(factory.RuntimeStateDirForRoot(root), autoDoneLogFileName)
 }
 
 // autoDoneLogPath resolves the log for the current queue (the undone verb's

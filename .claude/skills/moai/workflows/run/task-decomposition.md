@@ -227,9 +227,7 @@ Steps:
    - Maximum 3 fix-evaluate cycles
    - After 3 FAIL cycles: Present findings to user via AskUserQuestion
 
-Mode-specific deployment:
-- Sub-agent mode: Agent(subagent_type="sync-auditor")
-- CG mode: Leader performs evaluation inline
+Independent evaluation: Agent(subagent_type="sync-auditor"). A retired CG configuration never authorizes leader self-evaluation.
 
 Output: evaluation_report with per-dimension PASS/FAIL/UNVERIFIED verdicts and findings list.
 
@@ -271,7 +269,7 @@ Purpose: Multi-dimensional review iteration for high-quality output. This phase 
 - User flow validation: End-to-end correctness
 
 **Security/Performance review** (conditional, triggered when changes affect security/performance/UX domains OR --review flag):
-- Invoke review workflow explicitly: Read `${CLAUDE_SKILL_DIR}/workflows/review.md` and execute its multi-perspective analysis (security, performance, quality, UX reviewers)
+- Invoke review workflow explicitly: Read `.claude/skills/moai/workflows/review.md` and execute its multi-perspective analysis (security, performance, quality, UX reviewers)
 - This replaces the previous vague "delegate to review workflow" with an explicit skill invocation
 
 Iteration behavior:

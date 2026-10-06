@@ -94,6 +94,44 @@ An exported audit artifact carries at minimum:
   only, never in the auditor's final chat message, whose last line stays the
   receipt-citation verdict line where that gate applies.
 
+  A **plan-audit** verdict file adds the fields the shared admission rule
+  checks before a card may leave plan audit for Kickoff — every one is
+  required, and a missing field refuses the card:
+
+  ```
+  overall_score: <aggregate score, e.g. 0.88>
+  must_pass_failed: <count of failed must-pass criteria>
+  blocking_count: <count of blocking findings>
+  plan_artifact_hash: <plan-artifact hash of the SPEC directory>
+  ```
+
+  A `PASS` or `PASS-WITH-DEBT` label is admitted only when `must_pass_failed`
+  and `blocking_count` are both `0`, the score meets the tier's plan threshold,
+  and the hash binds the current plan artifacts (the hash input set includes
+  `decision-index.md`). A `PASS-WITH-DEBT` verdict also enumerates at least one
+  debt, one per line:
+
+  ```
+  - debt: <id> dispose_in=<run|sync> <description>
+  ```
+
+  A verdict that records a required backend the audit could not admit carries
+  one line per failed backend, each at the start of its own line:
+
+  ```
+  required_backend_fail: <backend>
+  ```
+
+  The line's producer is the exporting auditor: from the multi-model
+  convergence result's per-backend verdicts, or from a single-backend audit's
+  own review. The shared admission rule refuses a verdict carrying the line
+  regardless of the verdict's own label, naming the recorded backend.
+  Required backends the audit did not cover carry no line, and the absence of
+  lines refuses nothing — the label and field checks above remain the primary
+  admission gates.
+
+  A sync-audit verdict file keeps the two lines above; its label alone decides.
+
 An inline response summary alone does not satisfy this convention. The
 summary points to the file; it does not substitute for it.
 
@@ -169,7 +207,7 @@ Three enforcement layers, none of which depends on a person remembering:
 
 ## Cross-references
 
-- `.claude/rules/moai/workflow/kanban-dispatch.md` § Completion is read,
+- `.claude/rules/moai/workflow/factory-dispatch.md` § Completion is read,
   never trusted — the lead-side reading obligation
 - `.claude/rules/moai/core/verification-claim-integrity.md` — the
   unattributed-claim invariant this convention operationalizes

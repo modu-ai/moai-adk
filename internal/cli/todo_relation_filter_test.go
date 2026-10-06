@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // TestAutoPickTargetsRelationBlocked — AC-RPF-001/002 (REQ-RPF-001/002, M1):
@@ -32,16 +32,16 @@ func TestAutoPickTargetsRelationBlocked(t *testing.T) {
 		wantBlocked string
 		wantKept    string
 	}{
-		{"depends blocks its subject", "t1", kanban.BacklogRelationDepends, "t2", "t1", "t2"},
-		{"blocks blocks its related", "t1", kanban.BacklogRelationBlocks, "t2", "t2", "t1"},
+		{"depends blocks its subject", "t1", factory.BacklogRelationDepends, "t2", "t1", "t2"},
+		{"blocks blocks its related", "t1", factory.BacklogRelationBlocks, "t2", "t2", "t1"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			root, store := todoFixture(t)
 			seedItems(t, store, "predecessor card", "successor card")
-			seedFindings(t, store, kanban.BacklogFinding{
+			seedFindings(t, store, factory.BacklogFinding{
 				SubjectID: tc.subject, RelatedID: tc.related,
-				Relation: tc.relation, Source: kanban.BacklogSourceAgent,
+				Relation: tc.relation, Source: factory.BacklogSourceAgent,
 			})
 			rec, err := store.LoadPure()
 			if err != nil {
@@ -75,9 +75,9 @@ func TestAutoPickTargetsRelationBlocked(t *testing.T) {
 func TestAutoPickTargetsReturnsAfterDone(t *testing.T) {
 	root, store := todoFixture(t)
 	seedItems(t, store, "predecessor card", "successor card")
-	seedFindings(t, store, kanban.BacklogFinding{
+	seedFindings(t, store, factory.BacklogFinding{
 		SubjectID: "t2", RelatedID: "t1",
-		Relation: kanban.BacklogRelationDepends, Source: kanban.BacklogSourceAgent,
+		Relation: factory.BacklogRelationDepends, Source: factory.BacklogSourceAgent,
 	})
 	lv := autoTestLiveness(root, "t1", true, true, nil)
 
@@ -97,7 +97,7 @@ func TestAutoPickTargetsReturnsAfterDone(t *testing.T) {
 
 	// done the predecessor the way `done` does: ArchiveCard moves every
 	// finding naming it into the archive entry.
-	if err := store.Mutate(func(r *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(r *factory.BacklogRecord) error {
 		return r.ArchiveCard("t1")
 	}); err != nil {
 		t.Fatal(err)
@@ -222,10 +222,10 @@ func TestRunAutoCycleSkipsBlockedCards(t *testing.T) {
 	root, store := todoFixture(t)
 	seedItems(t, store, "alpha card", "beta card") // t1, t2
 	seedFindings(t, store,
-		kanban.BacklogFinding{SubjectID: "t1", RelatedID: "t2",
-			Relation: kanban.BacklogRelationDepends, Source: kanban.BacklogSourceAgent},
-		kanban.BacklogFinding{SubjectID: "t2", RelatedID: "t1",
-			Relation: kanban.BacklogRelationDepends, Source: kanban.BacklogSourceAgent},
+		factory.BacklogFinding{SubjectID: "t1", RelatedID: "t2",
+			Relation: factory.BacklogRelationDepends, Source: factory.BacklogSourceAgent},
+		factory.BacklogFinding{SubjectID: "t2", RelatedID: "t1",
+			Relation: factory.BacklogRelationDepends, Source: factory.BacklogSourceAgent},
 	)
 
 	// The clock seam advances on each poll tick, so a cycle that (wrongly)
@@ -266,9 +266,9 @@ func TestRunAutoCycleSkipsBlockedCards(t *testing.T) {
 	// label while the free predecessor t1 is still a candidate.
 	root2, store2 := todoFixture(t)
 	seedItems(t, store2, "free predecessor", "blocked successor")
-	seedFindings(t, store2, kanban.BacklogFinding{
+	seedFindings(t, store2, factory.BacklogFinding{
 		SubjectID: "t1", RelatedID: "t2",
-		Relation: kanban.BacklogRelationBlocks, Source: kanban.BacklogSourceAgent,
+		Relation: factory.BacklogRelationBlocks, Source: factory.BacklogSourceAgent,
 	})
 	clock2 := time.Unix(0, 0)
 	opts2 := autoOptions{
@@ -299,10 +299,10 @@ func TestRunAutoCycleSkipsBlockedCards(t *testing.T) {
 func TestAutoPickTargetsRescueArmUnfiltered(t *testing.T) {
 	root, store := todoFixture(t)
 	seedItems(t, store, "predecessor", "in-flight card") // t1, t2
-	autoSetState(t, store, "t2", kanban.BacklogStatePicked)
-	seedFindings(t, store, kanban.BacklogFinding{
+	autoSetState(t, store, "t2", factory.BacklogStatePicked)
+	seedFindings(t, store, factory.BacklogFinding{
 		SubjectID: "t1", RelatedID: "t2",
-		Relation: kanban.BacklogRelationBlocks, Source: kanban.BacklogSourceAgent,
+		Relation: factory.BacklogRelationBlocks, Source: factory.BacklogSourceAgent,
 	})
 
 	lv := autoTestLiveness(root, "t2", true, true, nil) // t2's owner measures dead
@@ -327,9 +327,9 @@ func TestAutoPickTargetsRescueArmUnfiltered(t *testing.T) {
 func TestAutoPickTargetsNonSequencingRelation(t *testing.T) {
 	root, store := todoFixture(t)
 	seedItems(t, store, "bigger card", "smaller card") // t1, t2
-	seedFindings(t, store, kanban.BacklogFinding{
+	seedFindings(t, store, factory.BacklogFinding{
 		SubjectID: "t1", RelatedID: "t2",
-		Relation: kanban.BacklogRelationContains, Source: kanban.BacklogSourceAgent,
+		Relation: factory.BacklogRelationContains, Source: factory.BacklogSourceAgent,
 	})
 
 	rec, err := store.LoadPure()

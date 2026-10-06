@@ -205,6 +205,21 @@ audited_sha: <full commit SHA the audit read>
 
 `audited_sha` names the commit the audit actually read — the commit recorded when the card entered audit. The factory card record reads these two lines to decide whether a card may leave audit: a missing line, two different values for either line, or a commit other than the recorded one keeps the card where it is. Write each line exactly once. These lines belong in the exported file only — never in the final chat message, whose last line is governed by § Cite your audit receipt below.
 
+[HARD] A plan-audit verdict file also carries the fields the shared admission rule checks before Kickoff — every one is required, and a missing field refuses the card:
+
+```
+overall_score: <aggregate score>
+must_pass_failed: <count of failed must-pass criteria>
+blocking_count: <count of blocking findings>
+plan_artifact_hash: <plan-artifact hash of the SPEC directory>
+scope: <full|delta|reread>
+fix_scope: <file#anchor list of required fixes, on a FAIL>
+defect_class: <ac-wording|design|traceability|format|other, per blocking finding>
+reread_hunks: <file#anchor list, only when a re-read of those hunks suffices>
+```
+
+Emit `PASS-WITH-DEBT` only when `must_pass_failed` is `0`, `blocking_count` is `0`, the score meets the tier's plan threshold, and at least one debt is enumerated, one per line: `- debt: <id> dispose_in=<run|sync> <description>`. Field format: `.moai/docs/audit-artifact-convention.md`.
+
 ## MCP Audit Tools (cross-model second opinion)
 
 This auditor carries single- and multi-backend audit MCP tools in its `tools:` list. Which of them to call is read from the audit plan, never from the `audit_model` value by prose:
@@ -687,23 +702,15 @@ Stagnation detection: If a defect appears in all three iterations unchanged, fla
 
 The following three clauses extend the retry loop contract to fix the score-regression pattern (0.78 → 0.81 → 0.77) observed when unconditional iteration continues on a deteriorating SPEC.
 
-**STOP escalation on score regression.** If iter(N+1) aggregate score is **lower** than iter(N) aggregate score, the agent emits a `STOP` signal in the Verdict block of the report and proposes a scope-reduction action to the orchestrator. The orchestrator MUST NOT iterate further unconditionally; instead, present the user with three options via the orchestrator's user-question channel (`.claude/rules/moai/core/askuser-protocol.md`):
-
-1. Reduce scope (split SPEC into smaller sub-SPECs)
-2. Accept current iter(N+1) verdict with documented debt (PASS-with-debt)
-3. Explicit user override to continue iterating (rare)
+**STOP escalation on score regression.** If iter(N+1) aggregate score is **lower** than iter(N) aggregate score, the agent emits a `STOP` signal in the Verdict block of the report and proposes a scope-reduction action to the orchestrator. The orchestrator MUST NOT iterate further unconditionally; a STOP takes the final-hit path of the ceiling policy (`harness.plan_audit_ceiling_policy`): a hold record plus a split proposal. Outside a factory the orchestrator informs the user, and any question it asks only offers an override.
 
 Rationale: continued unconditional iteration on a regressing score wastes orchestrator turns and indicates the SPEC has structural defects no number of revisions will resolve.
 
 **Tier-differentiated PASS threshold.** The PASS aggregate-score threshold varies by SPEC complexity tier (read from the `tier:` frontmatter field in spec.md; absence = Tier L for backward compat). The per-tier threshold values are the SSOT table in `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier (column "plan-auditor PASS threshold") — read them there rather than from a copy. Rationale: a Tier S SPEC (2 artifacts, narrow scope) has less surface area for ambiguity defects, so its lower threshold is still high-confidence in absolute terms; Tier L retains the strictest threshold to preserve quality for constitutional / large SPECs.
 
-**Max 3 iterations cap (hard limit).** The retry loop MUST NOT exceed 3 iterations per SPEC plan-phase. After iter3 (regardless of verdict), the orchestrator escalates to the user via the orchestrator's user-question channel (`.claude/rules/moai/core/askuser-protocol.md`) with three options:
+**Ceiling policy (hard limit).** The tier ceiling in `harness.plan_audit_tier_ceilings` is the only iteration cap. At the ceiling without an admitted verdict, the ceiling policy (`harness.plan_audit_ceiling_policy`) applies in every session: a ceiling-hit verdict that lists `fix_scope` earns `auto_delta_rounds` delta audits without asking anyone — eligible only when the diff between the two audited SHAs stays inside the `fix_scope` anchor ranges (plus `progress.md` and `.moai/reports/**`) and the REQ/AC id sets are unchanged. The final hit (ceiling + `auto_delta_rounds`, an ineligible delta, or a STOP) writes a hold record and a split proposal. A final hit with exactly one blocking finding of `defect_class: ac-wording`, on a card the release scope depends on, and with `reread_hunks` listed may instead take a hunk-limited fix plus a `scope: reread` verdict, only after the leader records the exception on the decision board.
 
-1. PASS-with-debt: accept current state, document residual defects, proceed to /moai run
-2. Scope-reduction: split or shrink SPEC and re-enter plan-phase
-3. Explicit user override: extend the cap to iter4+ (rare; conscious choice, not silent drift)
-
-This prevents the unbounded-iteration anti-pattern documented in `agent-patterns.md` § Pattern 4 (Producer-Reviewer) and matches `harness.yaml` `max_iterations: 3`.
+This prevents the unbounded-iteration anti-pattern documented in `agent-patterns.md` § Pattern 4 (Producer-Reviewer).
 
 ## Input Contract
 

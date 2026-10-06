@@ -128,7 +128,13 @@ func withOptionDesc(f FieldDef, descPrefix string) FieldDef {
 func gitStrategyFields() []FieldDef {
 	modeField := withRadio(typedField(SectionGitStrategy, "git_strategy", "mode", TypeRadio),
 		"f.git_strategy.mode.opt.", []string{"manual", "personal", "team"}, "", "")
-	modeField.Description = "fieldDesc.git_strategy.mode"
+	// card t1504 (PR #1738 re-land): the three profiles differ in contract
+	// shape, not just name — per-option descriptions carry the difference.
+	// Keys use the ".option." form so they follow the locale (the ".opt."
+	// label guard must not match). With option descriptions present the
+	// field-level description is cleared — the per-option lines are the sole
+	// explanation (report.format precedent).
+	modeField = withOptionDesc(modeField, "f.git_strategy.mode.option.")
 	// SPEC-WORKTREE-BASEREF-001 REQ-WBR-014: free text, NOT a closed option set.
 	// A select carrying main / develop would bake two repository-specific branch
 	// names into the shipped schema, so a user whose default branch is `trunk`
@@ -176,6 +182,26 @@ func glmDefaultTierEffort(tier string) string {
 	return template.GLMStateMax
 }
 
+// glmDefaultTierModel는 티어별 모델 기본 선택값이다. config.NewDefaultLLMConfig()
+// — 런타임이 부재 키를 채우는 바로 그 기본값 — 에서 읽으며 리터럴을 재선언하지
+// 않는다. 이 Default가 없으면 llm.glm.models 블록이 디스크에 없을 때 라디오가
+// 아무것도 선택하지 않은 채 렌더되고, 기본값과 같은 선택은 no-op 게이트
+// (REQ-WSL-001)가 기록하지 않으므로 저장 후에도 빈 선택으로 돌아온다 (card t1461).
+func glmDefaultTierModel(tier string) string {
+	m := config.NewDefaultLLMConfig().GLM.Models
+	switch tier {
+	case "high":
+		return m.High
+	case "medium":
+		return m.Medium
+	case "low":
+		return m.Low
+	case "fable":
+		return m.Fable
+	}
+	return ""
+}
+
 // llmFields는 GLM tier 매핑 4종(high/medium/low/fable)과 티어별 추론 강도 4종을
 // 반환한다.
 //
@@ -201,6 +227,7 @@ func llmFields() []FieldDef {
 		f := withRadio(typedField(SectionLLM, "llm", "glm.models."+tier, TypeRadio),
 			"f.llm.glm.models.opt.", config.ValidGLMModels(), "", "")
 		f.Description = "fieldDesc.llm.glm.models." + tier
+		f.Default = glmDefaultTierModel(tier)
 		fields = append(fields, f)
 	}
 	for _, tier := range glmTiers() {
@@ -331,7 +358,6 @@ func seamSectionFields() []FieldDef {
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_cleanup"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_create"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_merge"),
-		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "tmux_preferred"),
 		// SPEC-WT-DOC-001 (branch-guard config surface): the distributed template
 		// ships without a branch_guard block, so this key is absent until the user
 		// opts in via `moai init --branch-guard` or the reconfigure wizard. The web

@@ -378,6 +378,11 @@ func TestSelfReview_CodexUncommittedRequestShapeIsTheGatesTreeRequest(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The gate's whole-tree review path this shape pin references now requires
+	// the explicit primary_scope restore: the distributed default skips a
+	// primary-checkout tree session (REQ-CGSC-002 / REQ-CGSC-004).
+	writeCardFile(t, plainCanon, filepath.Join(".moai", "config", "sections", "workflow.yaml"),
+		"workflow:\n  codex:\n    review_gate:\n      primary_scope: review\n")
 
 	// The gate's own request for the same plain tree is the reference.
 	gateSess := withCodexSession(t, codexSessionScript(realCleanReview))
