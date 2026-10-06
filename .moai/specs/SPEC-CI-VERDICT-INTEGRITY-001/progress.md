@@ -225,3 +225,15 @@ STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored
   18)`) at both suffix sites. Regression: phantom=1 control=0
   malformed=1 matrix-exclude=1 repo-root=0; round-6/11 probes green;
   harness 12 pass / 0 fail. CI publication still platform-blocked.
+- gate_round_13 (codex review gate findings, lane-direct): 2 repairs,
+  RED observed on the committed 6aa294541 code then GREEN on this tree
+  (commit `72f2be54f`) — (1) the yq normalization is now
+  `explode(.)` so YAML aliases (`os: *oses`) resolve to their anchor
+  values before the line parser runs; (2) YAML single-quote escapes
+  are decoded before the name comparison (an inner apostrophe is two
+  apostrophes), and quote stripping is PAIRED — the trailing-only
+  strip bit the apostrophe off an unquoted escaped name, which the
+  GREEN probe caught before commit. Regression: phantom=1 control=0
+  malformed=1 matrix-exclude=1 repo-root=0; round-5/11/12 probes
+  green; harness 12 pass / 0 fail. CI publication still
+  platform-blocked.
