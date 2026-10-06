@@ -38,3 +38,7 @@ _pending sync-phase_
 - Mode evaluation: direct — no (semantic new-code work). fanout — no (coding-heavy per Anthropic's coding-task parallelism caveat). sweep — no (semantic multi-rule work, not mechanical-uniform). agent-team — no (explicit operator request absent). serial — selected.
 - Decision: serial
 - Justification: coding-heavy new-code implementation is the canonical serial case; milestones M1→M7 are dependency-ordered by decision reversibility; the plan's M2/M3 disjoint-file parallel carve-out is not exercised (one writer per tree; the shared integration point internal/config/defaults.go serializes it anyway).
+
+## §G Kickoff Decision Record
+
+decision record: decided_by=lane-4(glm)+orchestrator evidence_refs=.moai/reports/t1498/plan-audit-iter5.md (AUDIT-VERDICT: PASS-WITH-DEBT spec=SPEC-FEEDBACK-PARTICIPATION-001, score 0.88, must_pass_failed=0, blocking_count=0, receipts=rcpt-d56a4335c42963c8d744210f, plan_artifact_hash=cb94c1fa5e8bb4f034108930be8fb69de016c1d73baeeeb2c3ceddd2d3bdd584, audited_sha=b00d2f7d6) + convergence_check ok (moai verify audit-plan, unmet=[]) + progress.md §E.1 audit-ready + §F Mode Selection serial ladder_path=plan→run Kickoff, §9.1 autonomous form — keep-set categories absent (implementation is worktree-isolated; the terminal push+PR is the dispatch-designated path of card t1498, 2026-10-07). The decision-board mirror is a leader handoff (the board's record verb is leader-only).
