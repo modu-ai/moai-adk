@@ -49,11 +49,24 @@ func fcLinkedCard(t *testing.T, root string, store *factory.BacklogStore, id, te
 	return ""
 }
 
+// fcPlaceRun records a run row — the dispatch binding the completion gate
+// and the scan resolve through (review round-3 P1). Idempotent.
+func fcPlaceRun(t *testing.T, root, runID, status, created string) {
+	t.Helper()
+	db := fcOpen(t, root)
+	defer func() { _ = db.Close() }()
+	if _, err := db.DB.Exec(`INSERT INTO runs(run_id,status,manifest_json,created_at,updated_at) VALUES(?,?,'{}',?,?) ON CONFLICT(run_id) DO NOTHING`, runID, status, created, created); err != nil {
+		t.Fatalf("place run %s: %v", runID, err)
+	}
+}
+
 // fcPlaceFactoryCard places the card's factory row (the factory-linked
-// marker) with the version and evidence hash named.
+// marker) with the version and evidence hash named, inside the recorded
+// active run.
 func fcPlaceFactoryCard(t *testing.T, root, cardID string, version int64, evidenceSHA, updated string) {
 	t.Helper()
-	fcPlace(t, root, homestate.Card{CardID: cardID, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: version, EvidenceSHA: evidenceSHA, MergeSHA: evidenceSHA, UpdatedAt: updated})
+	fcPlaceRun(t, root, fcRun, "active", "2026-09-25T00:00:00Z")
+	fcPlace(t, root, homestate.Card{CardID: cardID, RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: version, EvidenceSHA: evidenceSHA, MergeSHA: evidenceSHA, UpdatedAt: updated})
 }
 
 // fcPlaceApprovalRaw inserts a receipt row directly — the shape an
@@ -129,7 +142,10 @@ func TestLeaderReceiptGateBinding(t *testing.T) {
 	root, store := fcFixture(t)
 	uuid := fcLinkedCard(t, root, store, "t1", "factory-linked card")
 
-	// The archive-moment row: run R2, version 1, evidence sha-r2.
+	// The archive-moment row: run R2, version 1, evidence sha-r2 — the
+	// recorded active dispatch (newer-created run).
+	fcPlaceRun(t, root, "run-r1", "retired", "2026-09-25T00:00:00Z")
+	fcPlaceRun(t, root, "run-r2", "active", "2026-09-26T00:00:00Z")
 	fcPlace(t, root, homestate.Card{CardID: "t1", RunID: "run-r2", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-r2", UpdatedAt: "2026-09-26T02:00:00Z"})
 	// The previous run's row: identical uuid, version, and evidence — the
 	// shape whose receipt must NOT close run R2 (REQ-FCR-001).
@@ -331,6 +347,48 @@ func TestFactoryApproveIssuance(t *testing.T) {
 	}
 }
 
+// Regression pin for round-2 review P1 and round-3 review P1 (card t1538):
+// the completion gate keys on the DISPATCH BINDING the runs table carries —
+// an active run wins over a retired one, and a reassignment into a newer
+// run wins — never on a row's modification time and never on the backlog's
+// runtime assignment record (which `factory assign` does not update). The
+// old run's row carries the newest updated_at AND a matching receipt; the
+// gate must still resolve the active run and refuse.
+func TestLeaderReceiptGateKeysOnActiveDispatch(t *testing.T) {
+	root, store := fcFixture(t)
+	uuid := fcLinkedCard(t, root, store, "t1", "factory-linked card")
+	// run-old: retired, but its row carries the newest updated_at and a
+	// matching receipt — the forgery bait both prior reviews used.
+	fcPlaceRun(t, root, "run-old", "retired", "2026-09-25T00:00:00Z")
+	fcPlaceRun(t, root, fcRun, "active", "2026-09-26T00:00:00Z")
+	fcPlace(t, root, homestate.Card{CardID: "t1", RunID: "run-old", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-old", UpdatedAt: "2026-09-26T03:00:00Z"})
+	fcPlace(t, root, homestate.Card{CardID: "t1", RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-cur", UpdatedAt: "2026-09-26T01:00:00Z"})
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: uuid, RunID: "run-old", CardID: "t1", FactoryVersion: 1,
+		EvidenceHash: "sha-old", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+
+	_, stderr, err := runTodo(t, "done", "t1")
+	if err == nil {
+		t.Fatal("done closed on the retired run's receipt — the gate keyed on modification time")
+	}
+	if !strings.Contains(stderr, "leader approval") {
+		t.Errorf("stderr %q does not name the leader approval reason", stderr)
+	}
+	if !fcLiveItem(t, store, "t1") {
+		t.Fatal("the refused done archived the card")
+	}
+
+	// The active run's own receipt closes (repro shape 2).
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: uuid, RunID: fcRun, CardID: "t1", FactoryVersion: 1,
+		EvidenceHash: "sha-cur", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+	if _, _, err := runTodo(t, "done", "t1"); err != nil {
+		t.Fatalf("done with the active run's receipt: %v", err)
+	}
+}
+
 // Regression pin for review P1-1 (card t1538): the close's verification must
 // read the archive-moment row even when a factory transition commits while
 // the done command is in flight. A concurrent writer holds the factory write
@@ -422,45 +480,6 @@ func TestLeaderReceiptGateRefusesUnstatableFactoryDB(t *testing.T) {
 	}
 	if !fcLiveItem(t, store, "t1") {
 		t.Fatal("the refused done archived the card")
-	}
-}
-
-// Regression pin for round-2 review P1 (card t1538): the completion gate
-// keys on the card's RECORDED dispatch run, never on a row's modification
-// time. The old run's row carries the newest updated_at (a worktree
-// re-record bumped it) and holds a matching receipt; the card's recorded
-// run is run-cli. The gate must resolve run-cli's row and refuse the old
-// run's receipt — pre-fix it resolved the bumped old row and succeeded.
-func TestLeaderReceiptGateKeysOnAssignedRun(t *testing.T) {
-	root, store := fcFixture(t)
-	uuid := fcLinkedCard(t, root, store, "t1", "factory-linked card")
-	// run-old: the most recently MODIFIED row, with a matching receipt.
-	fcPlace(t, root, homestate.Card{CardID: "t1", RunID: "run-old", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-old", UpdatedAt: "2026-09-26T03:00:00Z"})
-	// run-cli: the recorded run — older updated_at.
-	fcPlace(t, root, homestate.Card{CardID: "t1", RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-cur", UpdatedAt: "2026-09-26T01:00:00Z"})
-	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
-		CardUUID: uuid, RunID: "run-old", CardID: "t1", FactoryVersion: 1,
-		EvidenceHash: "sha-old", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
-	})
-
-	_, stderr, err := runTodo(t, "done", "t1")
-	if err == nil {
-		t.Fatal("done closed on the old run's receipt — the gate keyed on modification time")
-	}
-	if !strings.Contains(stderr, "leader approval") {
-		t.Errorf("stderr %q does not name the leader approval reason", stderr)
-	}
-	if !fcLiveItem(t, store, "t1") {
-		t.Fatal("the refused done archived the card")
-	}
-
-	// The recorded run's own receipt closes.
-	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
-		CardUUID: uuid, RunID: fcRun, CardID: "t1", FactoryVersion: 1,
-		EvidenceHash: "sha-cur", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
-	})
-	if _, _, err := runTodo(t, "done", "t1"); err != nil {
-		t.Fatalf("done with the recorded run's receipt: %v", err)
 	}
 }
 

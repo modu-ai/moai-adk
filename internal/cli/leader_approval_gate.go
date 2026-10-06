@@ -73,14 +73,14 @@ func holdDoneApprovalGate(ctx context.Context, root string) (*backlogApprovalGat
 }
 
 // verifyForClose loads the archive-moment factory row inside the gate's
-// transaction — resolved against the card's recorded dispatch runs — and
+// transaction — resolved through the runs table's dispatch binding — and
 // verifies the receipt bound to the card's backlog uuid. A card with no
 // factory row passes — not factory-linked.
-func (g *backlogApprovalGate) verifyForClose(ctx context.Context, cardID, cardUUID string, assignedRuns []string) error {
+func (g *backlogApprovalGate) verifyForClose(ctx context.Context, cardID, cardUUID string) error {
 	if g == nil {
 		return nil
 	}
-	card, linked, err := g.gate.Row(ctx, cardID, assignedRuns)
+	card, linked, err := g.gate.Row(ctx, cardID)
 	if err != nil {
 		return fmt.Errorf("leader approval gate: %w", err)
 	}
@@ -88,23 +88,6 @@ func (g *backlogApprovalGate) verifyForClose(ctx context.Context, cardID, cardUU
 		return nil
 	}
 	return g.gate.Verify(ctx, card, cardUUID)
-}
-
-// cardAssignedRuns collects the factory runs a backlog card's dispatch was
-// recorded under — the card's recorded run, which the completion gate and
-// the scan key on instead of a card row's modification time.
-func cardAssignedRuns(rec *factory.BacklogRecord, cardID string) []string {
-	if rec == nil {
-		return nil
-	}
-	var runs []string
-	for i := range rec.Runtime.Assignments {
-		a := rec.Runtime.Assignments[i]
-		if a.CardID == cardID && strings.TrimSpace(a.RunID) != "" {
-			runs = append(runs, a.RunID)
-		}
-	}
-	return runs
 }
 
 // release settles the gate. The gate's transaction never writes, so
@@ -198,12 +181,11 @@ func scanApprovalStates(ctx context.Context, root string, snapshot *factory.Back
 				break
 			}
 		}
-		assignedRuns := cardAssignedRuns(snapshot, id)
 		if !hasApprovals {
 			// An older-schema store: no receipts exist anywhere. A
 			// factory-linked card reads as unverified — never as a
 			// migration trigger.
-			if _, linked, rerr := db.RecordedCardRowReadonly(ctx, id, assignedRuns); rerr != nil {
+			if _, linked, rerr := db.RecordedCardRowReadonly(ctx, id); rerr != nil {
 				states[id] = factory.ReceiptGateUnknown
 			} else if !linked {
 				continue // not factory-linked: the axis does not apply
@@ -212,7 +194,7 @@ func scanApprovalStates(ctx context.Context, root string, snapshot *factory.Back
 			}
 			continue
 		}
-		switch err := db.VerifyApprovalReadonly(ctx, id, cardUUID, assignedRuns); {
+		switch err := db.VerifyApprovalReadonly(ctx, id, cardUUID); {
 		case err == nil:
 			states[id] = factory.ReceiptGateVerified
 		case isApprovalRefusal(err):
@@ -221,6 +203,8 @@ func scanApprovalStates(ctx context.Context, root string, snapshot *factory.Back
 			// Not factory-linked: the axis does not apply (ReceiptGateNone).
 			continue
 		default:
+			// Includes ErrApprovalRunUnresolvable: the dispatch cannot be
+			// determined — an unanswerable question, never a close.
 			states[id] = factory.ReceiptGateUnknown
 		}
 	}

@@ -1117,7 +1117,7 @@ func newTodoDoneCmd() *cobra.Command {
 						}
 						verdict = answer
 					}
-					if err := gate.verifyForClose(cmd.Context(), id, todoCardUUID(&rec.Items[at]), cardAssignedRuns(rec, id)); err != nil {
+					if err := gate.verifyForClose(cmd.Context(), id, todoCardUUID(&rec.Items[at])); err != nil {
 						return err
 					}
 					if err := rec.ArchiveCard(id); err != nil {

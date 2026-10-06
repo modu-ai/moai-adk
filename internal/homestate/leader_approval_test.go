@@ -124,6 +124,7 @@ func TestApprovalGateLinkedAndUnlinked(t *testing.T) {
 	ctx := context.Background()
 	c := Card{RunID: frRun, CardID: "gated", State: CardMergedLocal, Version: 1, OwnerLabel: "worker-1", WorktreePath: repo.Dir, MergeSHA: repo.Merge, EvidenceSHA: repo.Commit}
 	frPlace(t, db, c)
+	frPlaceRun(t, db, frRun, "active", "2026-09-25T00:00:00Z")
 
 	gate, err := db.HoldApprovalGate(ctx)
 	if err != nil {
@@ -132,7 +133,7 @@ func TestApprovalGateLinkedAndUnlinked(t *testing.T) {
 	// A card with no factory row reads as not linked — the caller skips
 	// verification entirely and the close proceeds (the gate does not
 	// apply; the CLI wrapper encodes exactly this branch).
-	card, linked, err := gate.Row(ctx, "absent", nil)
+	card, linked, err := gate.Row(ctx, "absent")
 	if err != nil || linked {
 		t.Fatalf("absent card: linked=%v err=%v, want not linked", linked, err)
 	}
@@ -161,7 +162,7 @@ func TestApprovalGateLinkedAndUnlinked(t *testing.T) {
 			t.Fatalf("rollback: %v", err)
 		}
 	}()
-	card, linked, rowErr := gate.Row(ctx, "gated", nil)
+	card, linked, rowErr := gate.Row(ctx, "gated")
 	if rowErr != nil || !linked {
 		t.Fatalf("gated card: linked=%v err=%v, want linked", linked, rowErr)
 	}
