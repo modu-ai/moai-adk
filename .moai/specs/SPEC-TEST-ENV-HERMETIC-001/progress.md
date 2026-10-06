@@ -2,7 +2,7 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-- plan_status: audit-ready (v0.8.0 iteration-11 revision; the one-pass repair of C1..C6 from `plan-audit-iter11.md` is authorized by the leader's gate ruling of 2026-10-06 — this line previously described the v0.6.0/iteration-6 state under the leader's second cross-session dispatch of 2026-10-04, lane-27)
+- plan_status: audit-ready (v0.8.1; the plan-audit surface CLOSED at iteration 13 under the leader-bounded disposition (ii), accepted tree HEAD `46b8eeb75` (branch `WT-test-env-hermetic-sweep`, clean), receipt `rcpt-9f93b72c6eb4dbba07f004bf`, verdict `.moai/reports/t1356/plan-audit-iter13.md` — this line previously described the v0.8.0/iteration-11 state; refreshed 2026-10-06 on the first §E.2 write per the leader's binding condition BC-3)
 - plan_complete_at: 2026-10-03
 - tier: M
 - artifacts: spec.md, plan.md, acceptance.md (Tier M 3) + decision-index.md (decision gate on) + progress.md
@@ -11,7 +11,7 @@
 - plan-phase measurement notes: the hook one-axis arms (E-3) isolate the `MOAI_KANBAN_ID` ∧ `MOAI_FACTORY_WORKERS` conjunction; the cli red is attributed to `MOAI_FACTORY_ROLE` by the explicit single-axis env of E-1 and the scrubbed arm E-1b. Whole-package test runs were NOT performed at plan time (card constraint; minute-scale suites; machine load average above 50): the whole-package pairs are the M1 c1 obligation; the `go test -list` counts were taken at iteration 3 (E-8: cli 4884, hook 1322) and are re-recorded at c1.
 - gaps: (1) the ~357 nominated functions are unmeasured; (2) the effect of `MOAI_FACTORY_MANAGED`, `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`, `MOAI_AUTONOMY_TIER`, `MOAI_FACTORY_SLOW_LAUNCH_MS`, `MOAI_FACTORY_MANAGED_TUI`, `MOAI_FACTORY_APP_SERVER_TOKEN` on any test is unmeasured (static read only; the two absorption-added axes joined this list at the v0.8.0 revision, 2026-10-06); (3) `internal/cli/ptycaptest` unmeasured (own drift guard); (4) E-6 refusals and the discarded partial arms; (5) T == L on the whole cli and hook packages is unobserved (whole-package runs are the c1 obligation); (6) the hook eight referenced axes outside the ID ∧ WORKERS conjunction are not isolated by one-axis arms; (7) the guard pair, the applied-behaviour probe and the c1, c2 and c2r commits do not exist yet — their behaviour is specified, not observed.
 - disclosed design residual (iter12 N4, leader acceptance 2026-10-06 — recorded, not a defect to repair): the c1 lane arm carries the secret-valued axis at its real value while the final lane arm replays the `<redacted>` literal, so the clause (f) byte-identity over that axis proves presence and mask form only; a test whose verdict depends on the token's VALUE rather than its presence could differ between c1 and final for a reason clauses (b)/(e) do not isolate.
-- audit-ready: pending the iteration-12 scrubbed re-run of `plan-audit-iter11.md`'s residual C1..C6 repair (the Retry Loop Contract ceiling extended by the leader's gate ruling of 2026-10-06; `.moai/reports/t1356/plan-audit-iter3.md` through `plan-audit-iter11.md` are the earlier reports, local and gitignored, cited by path only).
+- audit-ready: closed — the run phase is authorized on the accepted tree by the leader's message of 2026-10-06 plus that verdict (the audit-cross decision record). The run carries the leader's binding conditions: BC-1 — at run phase ANY command 11 / skip-names difference is treated as a clause (b) failure unless the load/environment cause is independently proven, and a difference attributable to the audited family axes is NEVER excusable (a finding, not noise); BC-2 — the skip-equality excusal boundary stays recorded design debt, applied as written, no mid-run redesign; BC-3 — the §E.1 refresh on the first §E.2 write (this write). `.moai/reports/t1356/plan-audit-iter3.md` through `plan-audit-iter13.md` are the audit reports, local and gitignored, cited by path only.
 
 ### Iteration 2 revision (plan-audit iteration 1: FAIL, 0.79 vs Tier M 0.80)
 
@@ -150,7 +150,680 @@ Iteration-12 repair (v0.8.1, 2026-10-06, leader-dispatched one-pass micro round)
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — owned by manager-develop>_
+### Run entry and authorization (2026-10-06)
+
+- Accepted tree: HEAD `46b8eeb75` (branch `WT-test-env-hermetic-sweep`, clean at entry); run
+  authorization = the leader's message of 2026-10-06 + the iteration-13 verdict
+  `.moai/reports/t1356/plan-audit-iter13.md` (disposition (ii), receipt
+  `rcpt-9f93b72c6eb4dbba07f004bf`) — the audit-cross decision record.
+- First run-phase commit: `86aa3b1d6` `fix(SPEC-TEST-ENV-HERMETIC-001): draft -> in-progress on
+  run entry (card t1356)` — spec.md frontmatter `status: draft` → `status: in-progress` only
+  (Status Transition Ownership Matrix, manager-develop). It precedes the c1 commit so the c1
+  file set stays exactly progress.md (§D.8 step 4); both are progress.md/spec.md-only commits
+  and neither touches `internal/`, so the §D.8 step 6 enumeration is unaffected.
+- `<BASE>` re-derived at run entry: `git merge-base develop HEAD` →
+  `985bd43daa9494b9bda3c88fb4a5f3281cc1a81b` (the 2026-10-06 re-derivation, unchanged by the
+  iter-12 commit); `git rev-list --count 985bd43da..HEAD` = **11** (≥ 1, §D.8 step 0 positive
+  control).
+
+### Pre-flight record (plan.md §C)
+
+- **§C step 2 — the session family env read** (one read before any arm; this session models the
+  lane arm). Command: `env | grep -E '^(MOAI_FACTORY_|MOAI_KANBAN|MOAI_AUTONOMY_TIER)'`, exit 0,
+  output verbatim (nine axes; no secret-valued axis is present in this session, so nothing
+  requires masking; `MOAI_FACTORY_APP_SERVER_TOKEN` is among the absent seven):
+
+```
+MOAI_KANBAN_ID=tm9i7y
+MOAI_AUTONOMY_TIER=fully-autonomous
+MOAI_FACTORY_WORKER=lane-23
+MOAI_FACTORY_ROLE=lane
+MOAI_FACTORY_WORKERS=0
+MOAI_FACTORY_CLEAR_POLICY=
+MOAI_FACTORY_AUTO_DISPATCH=auto
+MOAI_KANBAN_BACKEND=glm
+MOAI_KANBAN_SETTINGS_INJECTED=1
+```
+
+  Clause (f) minimum holds: `MOAI_FACTORY_ROLE=lane` present, `MOAI_FACTORY_WORKER=lane-23`,
+  `MOAI_FACTORY_WORKERS=0` (non-empty string), `MOAI_KANBAN_ID=tm9i7y` non-empty. The lane arm
+  models THIS session (`MOAI_KANBAN_BACKEND=glm`, `MOAI_FACTORY_WORKER=lane-23` — not the
+  plan-time `claude`/`lane-6` values; spec.md R8: the arm models the measuring session).
+- **Census sanity (§A.6)**: `grep -oE '"MOAI_(FACTORY_|KANBAN)[A-Z_]*"|"MOAI_AUTONOMY_TIER"'
+  internal/config/envkeys.go` → sorted-unique file, `wc -l` = **16**, member set identical to the
+  §A.6 sixteen (re-derivation at run entry; the family rule yields the same 16 as at
+  `c5260970e`).
+- **B2 conflict scan**:
+  `grep -rn "Retired\|TestHarnessRetirement\|superseded" internal/cli internal/hook | head` —
+  hits only in unrelated test fixtures and comments (a `plan_audit_d7_d8_test.go` harness
+  retirement-conflict test, a CG-retirement error-symbol test, translation fixtures mentioning a
+  superseded model id). No scrub-mechanism conflict. No conflicting retired policy found.
+- **§C step 1 — the five observed reds re-established** on the accepted tree `46b8eeb75` (Go
+  sources of the same lineage as the pinned measurement trees):
+  - E-1 form: `env MOAI_FACTORY_ROLE=lane go test ./internal/cli -count=1 -v -run
+    '^(TestTodoClaim_LaneGovernance|TestTodoClaimMCP_Mirror|TestTodoPickInFactoryProvenanceFailsOpenWithoutSpecOrGit)$'`
+    — exit **1**, three `--- FAIL` with the ledger's messages (`todo_claim_test.go:291`,
+    `todo_claim_test.go:416`, `todo_test.go:190`, each `refused — lane boundary`).
+  - E-2 form (lane env with this session's values): exit **1**, two `--- FAIL`
+    (`stale_run_m1_test.go:42` and `:85`, `staleRunNoticeFor = ""` both).
+  - E-1b form: `unset MOAI_FACTORY_ROLE && go test ./internal/cli -count=1 -v -run …` — exit
+    **0**, three `--- PASS`.
+- **§C step 3 — hook child re-exec census** (B9's four `os.Args[0]` sites): `slot_lease_guard_test.go`
+  (`exitedChildPID`) sets no `cmd.Env` (inherits); `session_start_drift_fill_burst_test.go`
+  appends only its `helperDriftFillBurst*` vars to `os.Environ()`;
+  `factory_handoff_race_test.go` and `factory_handoff_bind_test.go` append only
+  `ownerHelperEnv=1`. **None carries a family axis as payload** — spec.md §D precondition (ii)
+  holds; M3 needs no pin-marker pattern.
+- **Builds**: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- **Lint baseline**: `golangci-lint run --timeout=2m` → `0 issues.` (exit 0).
+- **Windows vet baseline (pre-existing, not introduced by this run)**:
+  `GOOS=windows GOARCH=amd64 go vet ./internal/cli ./internal/hook` exits **1**:
+  `internal/cli/audit_gates_failclosed_test.go:159:3: undefined: installFakeCodex` and
+  `:162:8: undefined: runAudit`. Recorded as the §C step 4 baseline; the M4 delta check is
+  against this. Not this SPEC's defect and not repaired here (scope discipline); flagged to the
+  leader in the run report.
+- **§C step 6 — listed counts L0** (warm build cache, plain `go test -list '.*' P` redirected,
+  then `grep -cE '^(Test|Example|Fuzz)'`): cli **5122** (exit 0; non-matching lines:
+  `BenchmarkIsTrivialCommand`, `BenchmarkTodoAuditAnalyze`, the `ok` line), hook **1315** (exit
+  0; non-matching lines: the five `Benchmark*` rows, the `ok` line). The plan-time figures
+  (E-8: 4884 / 1322) moved with the develop absorptions, as E-8 anticipated; these are the
+  pre-guard L0 of this tree.
+- Guard files confirmed absent at entry (`ls` on both paths: No such file).
+
+### Slot leases (per §C step 5, per-arm model)
+
+- First acquisition: both `whole-package-test-suite` (leader-directed resource) and `heavy-test`
+  (SPEC §D.3/§G resource) at `--max-duration 40m` — released unused; see the discarded attempt
+  below.
+- cli lane arm: both resources acquired at 80m (holder `0bb55ed0-b1f3-4665-816b-2c88a8678321`,
+  until 14:29:30Z), released after the arm.
+- cli scrubbed arm: both re-acquired at **84m** (until 15:31:41Z), `-timeout 82m` — the cap is
+  1.5 × the longest runtime recorded so far (the cli lane arm's ~56m); released when the arm was
+  killed (below).
+- Hook arms and any remaining arms: leases are acquired per arm by the resuming session.
+
+### c1 arm records
+
+**Discarded first attempt (cli lane arm)** — launched at 40m lease / `-timeout 38m` from a cold
+build cache; measured rate ~110 tests/min (compilation included) projected a ~47m total, past
+the 38m timeout. Killed by the session before any verdict (exit 144 after `pkill`), partial file
+discarded (overwritten by the restart). Not a measurement; recorded for the lease-cap history.
+
+**cli lane arm — COMPLETE, VALID.**
+
+- Command (as executed, one compound invocation; the seven absent axes unset, the nine session
+  axes set verbatim in the same compound per §D.3/B4):
+
+```
+unset MOAI_FACTORY_APP_SERVER_TOKEN MOAI_FACTORY_MANAGED MOAI_FACTORY_MANAGED_TUI MOAI_FACTORY_SLOW_LAUNCH_MS MOAI_KANBAN_CARD MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_LEAD_NAME && env MOAI_AUTONOMY_TIER=fully-autonomous MOAI_FACTORY_AUTO_DISPATCH=auto MOAI_FACTORY_CLEAR_POLICY= MOAI_FACTORY_ROLE=lane MOAI_FACTORY_WORKER=lane-23 MOAI_FACTORY_WORKERS=0 MOAI_KANBAN_BACKEND=glm MOAI_KANBAN_ID=tm9i7y MOAI_KANBAN_SETTINGS_INJECTED=1 go test ./internal/cli -count=1 -timeout 78m -json > .moai/state/verify/t1356/c1-cli-lane.json 2> .moai/state/verify/t1356/c1-cli-lane.err
+```
+
+- lane-arm env line (§D.3 recording form; names sorted; no secret-valued axis in this session's
+  env, so no masked entry applies):
+
+```
+lane-arm env: set MOAI_AUTONOMY_TIER=fully-autonomous MOAI_FACTORY_AUTO_DISPATCH=auto MOAI_FACTORY_CLEAR_POLICY= MOAI_FACTORY_ROLE=lane MOAI_FACTORY_WORKER=lane-23 MOAI_FACTORY_WORKERS=0 MOAI_KANBAN_BACKEND=glm MOAI_KANBAN_ID=tm9i7y MOAI_KANBAN_SETTINGS_INJECTED=1 ; unset MOAI_FACTORY_APP_SERVER_TOKEN MOAI_FACTORY_MANAGED MOAI_FACTORY_MANAGED_TUI MOAI_FACTORY_SLOW_LAUNCH_MS MOAI_KANBAN_CARD MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_LEAD_NAME
+```
+
+- Exit code: **1** (`ARM-EXIT=1`). Window: 13:09:38Z → 14:05:48Z (**~56m runtime**; the recorded
+  runtime the cap formula uses). Load average ~14-16 during the run.
+- Validity (§D.3 commands 1/4/5): T = **5122** = L0 cli 5122 (command 1); invalid-arm markers
+  (command 4, on both the JSON stream and the stderr capture) = **0 / 0**; exit non-zero with
+  fail rows present (command 5) = **397** (≥ 1). **The arm is valid.**
+- Failing rows: **397** (subtests included), **280** unique top-level tests. Dominated by the
+  survey's todo-family nomination (177 of 280 unique names carry `todo`) plus factory-gate tests
+  (`TestFactoryNext*`, `TestSD_AC0xx*`, `TestJevFinding*`, `TestTransitionStamps*`) — the
+  pre-fix flip census this sweep exists to measure. The three cli observed reds are present
+  (command 10 below).
+- Skipped rows: **56** (the live-contract and credential-gated skips; compared cross-arm at the
+  c1-stage command 11, pending the scrubbed arm).
+- §D.3 command 10 (clause (f) positive control, on the sorted names file):
+
+```
+$ grep -cE '"Test":"(TestTodoClaim_LaneGovernance|TestTodoClaimMCP_Mirror|TestTodoPickInFactoryProvenanceFailsOpenWithoutSpecOrGit)"' c1-cli-lane.names.txt
+3
+```
+
+  Expected 3, printed **3** — the cli observed reds are in the c1 lane arm.
+- Sorted failing-name file (command 6 + 7, verbatim; machine-local source
+  `.moai/state/verify/t1356/c1-cli-lane.names.txt`):
+
+```
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestAdoptAppendsResumptionRecordWithoutTouchingPriorRecords"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestAdoptBriefsFromRecordedProgressAndEvidenceBeforeWork"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestAdoptDerivesSyncPhaseFromCloseMarker"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestAdoptRefusesCardNotPicked"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestAdoptRefusesWhenNothingRecorded"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestAutoHelpAndRefusalDoNotAssertPickOrder"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexAudit_NonRequiredGateGoldenByteIdentical"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexAudit_NonRequiredGateGoldenByteIdentical/corrupt-yaml"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexAudit_NonRequiredGateGoldenByteIdentical/required-uppercase"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexLaneChildEnvOmitsLabelMarker"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexLaneEntryStartsRelaunchLane"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexLaneLoopDefaultLaunchContinuesAfterFirstCard"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestDoneVerdict_CoexistsWithOperatorEvidence"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestDoneVerdict_NotPersistedWithoutFlag"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestDoneVerdict_PersistedWithRefAndTime"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestDoneVerdict_ReAdjudicationReDerivesSHA"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestDoneVerdict_RefusalArchivesNothing"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestDoneVerdict_RefusedWithoutRefThroughStoreAPI"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFDA_AuditDecideReadsTheQueueHold"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFDA_LaneAuditDecideAdmission"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFR_AC002_LegacyAbandonViaDecide"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFR_AC013_DecideAfterClockAdvance"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFR_AC014_AssignHints"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFR_AC015_DecideKickoffBatch"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFR_AC016_DecideQuestionChoices"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFR_AC017_DecideUnblock"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFR_AC018_DecidePushGate"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFR_AC018_PushGateNeverFetches"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFR_AC021_QueueSchemaUntouched"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFR_AC022_AssignRequiresQueuePicked"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFR_AC023_StatusIsReadOnly"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFR_AC024_CharacterizeGTDDispatch"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFR_AC024_GTDDispatchMirrorsFactoryRecord"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFR_AC025_GoalDispatchMirrorsFactoryRecord"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryCardVerbsResolveLaneFromWorkerMarker"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryEntryMatrix"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryEntryMatrix/codex_lane"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextAssignedSerialCardHoldsSlotInPickedArms"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextAssignedSerialCardHoldsSlotInPickedArms/arm-b-recorded-picked-ownerless"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextAssignedSerialCardHoldsSlotInPickedArms/arm-b2-queue-picked-unrecorded"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextAssignedSerialCardStillHoldsSlotAgainstNewTakes"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextDuplicateDispatchGuard"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextExpiredLeaseReleasesSerialSlot"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextExpiredLeaseReleasesSerialSlot/leased"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextExpiredLeaseReleasesSerialSlot/plan"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextExpiredLeaseReleasesSerialSlot/plan-audit"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextExpiredLeaseReleasesSerialSlot/run"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextExpiredLeaseReleasesSerialSlot/sync"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextExpiredLeaseReleasesSerialSlot/sync-audit"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextFailedSerialRowReleasesSlot"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextFailedSerialRowReleasesSlot/blocked"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextFailedSerialRowReleasesSlot/failed"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextFailedSerialRowReleasesSlot/needs-decision"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextLiveLeaseHoldsSerialSlotInEveryState"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextLiveLeaseHoldsSerialSlotInEveryState/leased"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextLiveLeaseHoldsSerialSlotInEveryState/plan"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextLiveLeaseHoldsSerialSlotInEveryState/plan-audit"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextLiveLeaseHoldsSerialSlotInEveryState/run"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextLiveLeaseHoldsSerialSlotInEveryState/sync"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextLiveLeaseHoldsSerialSlotInEveryState/sync-audit"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextOwnAssignedSerialCardBlockedByLiveSerialLease"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextOwnAssignedSerialCardBlockedByPickedSibling"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextOwnAssignedSerialCardLeasesPastSiblingAssigned"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextParallelizableConcurrentLeases"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextParallelizableLeasesBesideLiveSerial"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextParallelizableLeasesBesideLiveSerial/arm-a-assigned-parallelizable"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextParallelizableLeasesBesideLiveSerial/arm-c-queued-parallelizable"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextPickedOwnerlessRowHoldsSlot_OutOfExpiryScope"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextRecordAndClaimRaceOnLeasedRow"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextSerialMutualExclusivity"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextSerialSlotLeaseExpiryBoundary"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextSerialSlotLeaseExpiryBoundary/exactly-now"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextSerialSlotLeaseExpiryBoundary/future"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextSerialSlotLeaseExpiryBoundary/no-expiry-recorded"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextSerialSlotLeaseExpiryBoundary/past"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryNextSkipsClassificationBlocked"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryStatusShowsHolderModePriority"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestGTDAllTodoVerbsParity"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestGTDFiveStageCLIUsesSameSQLite"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestGuardBypassMutant_ObserveHomePollution"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestHistoryArchivedRowAbsentStampsRenderDash"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestHistoryArchivedRowExposesTimeAxis"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestHistoryListingExposesTimeAxis"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestHistoryLiveRowExposesPickedAt"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestJevFinding_AdmissionOnly_ReSweepNeverCallsIt"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestJevFinding_PrecedenceHalfA_Suppressed"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestJevFinding_PrecedenceHalfA_Suppressed/agent"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestJevFinding_PrecedenceHalfA_Suppressed/mechanical"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestJevFinding_WritesNoCardField"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestJevFinding_WrittenAtAdmission"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestJevProbe_DisabledCapabilityProducesNothing"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLandedGitCallsGuardEndOfOptions"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLandedOnArchivedCardNamesTheArchive"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLandedOnUnknownIDStillSaysNoBacklogItem"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLandedOptionShapedRefIsRefused"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLandingBackfillPathForAlreadyClosedCard"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLandingEvidenceRoundTrip"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLandingEvidenceSurvivesArchive_StoreLevel"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLaneMarkerGoldenMatchesFLane"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLaneMarkerGoldenMatchesFLane/codex"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestListJSONStampsOmitEmpty"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveReadersUnchangedByHistoryVerb"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMachineOnlyMarkAppearsAndClears"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestRelateAndUnrelateRefusals"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC003_CodexRelaunchPerCard"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC006_LaneCycleWithoutRemote"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC008_NextSelectionOrderAndOutput"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC008_NextSelectionOrderAndOutput/assigned-to-this-lane_wins_over_unowned_picked"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC008_NextSelectionOrderAndOutput/card_assigned_to_another_lane_is_never_taken;_exit_3"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC008_NextSelectionOrderAndOutput/oldest_queued_promoted_and_leased;_newer_stays_queued"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC008_NextSelectionOrderAndOutput/two_lanes_concurrently:_exactly_one_leases_the_picked_card"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC008_NextSelectionOrderAndOutput/unowned_picked_wins_over_older_queued"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC010_MCPNextParentCheck"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC010_NextRefusedOutsideParent"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC011_CardWorktreeCreateReuseRefuse"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC011_CardWorktreeCreateReuseRefuse/existing_directory_no_card_record_names_it:_refuse,_row_unchanged"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC011_CardWorktreeCreateReuseRefuse/leased_card_with_no_recorded_worktree_gains_one_through_the_materializer"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC011_CardWorktreeCreateReuseRefuse/recorded_worktree_is_reused_without_creating_another"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC013_ClaudeCompleteViaIntegrationWorktree"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/caller-source_window:_refused_naming_--branch"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/complete_performs_the_merge_itself_and_records_the_re-measure_evidence"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_branch_held_by_no_tree:_not_provisioned"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_branch_held_only_by_the_parent_checkout:_not_provisioned"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/pre-merged_card_reaches_merged-local;_the_window_stays_held"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/window_naming_the_card's_own_branch:_refused"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC014_MCPMatchesCLIWithProjectRoot"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC014_MCPMatchesCLIWithProjectRoot/todo_list_renders_identically;_an_unusable_root_is_refused_identically"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC015_LabelOnlyIsNotALane"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC015_LaneQueueAllowlistWalk"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC015_MCPTodoAddRefused"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC016_LaneDecideRefused"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC016_MCPDecideRefused"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC018_ParentCheckoutUntouched"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC020_ClearPolicies"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC020_ClearPolicies/relaunch_continues_after_a_failed_child_session"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC020_ClearPolicies/relaunch_supervising_loop_starts_one_session_per_card"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC020_ClearPolicies/relaunch_without_the_claude_binary_is_refused"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC023_CodexNextSkipsUnadvanceableCard"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC024_CodexMergeRefusedComplete"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC024_CodexMergeRefusedMCP"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC024_CodexMergeRefusedStage"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSD_AC025_IntegrationWindowSerializes"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSemanticRelationsChangeNothing"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTempOriginGuidance_NamesRootsAndContinues"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTempOriginGuidance_SilentOnNonTemporaryBase"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTempOriginGuidance_SilentWithExplicitAbsoluteMOAIHome"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddClassificationFile"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddClassificationFileUnavailableFallsBack"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddClassificationFileValidatesAndRecords"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddClassificationFileValidatesAndRecords/decider_jev"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddClassificationFileValidatesAndRecords/malformed_json"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddClassificationFileValidatesAndRecords/mode_out_of_set"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddClassificationFileValidatesAndRecords/priority_out_of_set"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddClassificationFileValidatesAndRecords/valid"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddDeciderFailureFallsBackWithNotice"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddDeciderFailureFallsBackWithNotice/failure_promotes_the_fail-safe_default_with_one_notice"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddDeciderFailureFallsBackWithNotice/positive_control:_healthy_decider_records_its_real_judgment"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddDefaultDeciderPrintsNoNotice"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddForce"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddForceAdmitsAndRecords"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddLeadingDashText"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddNearDuplicateRecordsOnly"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddPick"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddPick_ConcurrentProcesses"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddPick_OneLockedWrite"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddRecordsClassificationInLockedWrite"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddRefusesExactDuplicate"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddReturnedIDAddressesALiveRow"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAddSortsQueueAndPrintsSortedPosition"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAdd_LLMFailureDegradesWithExactlyOneNotice"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAdd_LLMFailureDegradesWithExactlyOneNotice/append_path"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAdd_LLMFailureDegradesWithExactlyOneNotice/pick_path"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAdd_LLMSecretNeverPrinted"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAdd_LLMSecretNeverPrinted/failure_path"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAdd_LLMSecretNeverPrinted/happy_path"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAdd_LLMSelectionRecordsModelJudgment"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAdd_PrintsIDAndPosition"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAdd_SuppliedFileBeatsLLMSelection"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAdd_UnsetEnvBehavesPreSPEC"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAnalysisNeverReordersQueue"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAnalyzeRerunIsIdempotent"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAuditDropReasonSingleLine"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAuditMultilineRows"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAuditMultilineRows/next"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAuditPickDropped"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDoneSkipsHeldCard"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_CloseLineContract"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_CloseSurfaceExclusivity"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_CloseSurfaceExclusivity/todo_landed_transitions_nothing"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_CollisionRecordedSHAOverrides"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_CollisionSkipsAmbiguous"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_DryRunByteIdentity"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_ExecutionLog"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_FalseNegativeShapes"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_FetchBoundary"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_FetchBoundary/with_--fetch_runs_exactly_one_fetch"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_FetchBoundary/without_--fetch_runs_zero_fetches"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_FormRecordedSHA"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_FormSubjectAttribution"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_Idempotence"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_InconclusiveNeverCloses"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_JSONOutput"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_LiveFilter"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_NegationAttributesNothing"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_NoLandingColumnWrites"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_RecordedSHAUnreachableSkips"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_ReissuedIDOlderCommitSkips"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_ReversalRow"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_SpecNotCompletedSkips"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoDone_SpecUnreadableIsNotCompleted"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoAutoEntryPointFlag"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoBareFallthrough"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoBareInvocationLists"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoClaimMCP_Mirror"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoClaim_LaneGovernance"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoClaim_ListHistoryExposesLeaseColumns"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoClaim_NoCardExit"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoClaim_RefusesNonQueued"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoClaim_Renew"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoClaim_Success"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoComposedUpgrade_ForwardCompatibleFieldsSurvive"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoComposedUpgrade_FromLegacyV312Layout"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoConcurrentAdd_8Processes"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDisclosure_LeavesBacklogJSONUntouched"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDoneReclaimsFindings"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDoneUndone_NeverPrompt"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDoneUndone_RefusalsWriteNothing"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_ArchivedRowsInvisibleToLiveReaders"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_ArchivesRatherThanDiscards"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_DisclosesLevel3"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_ExpectRefusesMismatch"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_MissReportedFileUntouched"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_NoDisclosureAtLevel1"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_NoLandingQueryWithoutTheFlag"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_RemovesByID"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_RequireLandedProceedsWhenInconclusive"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_RequireLandedRefusesWhenNotLanded"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_StdoutCarriesTheLandingVerdict"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_StdoutCarriesTheLandingVerdict/landed"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_StdoutCarriesTheLandingVerdict/no_query_at_all"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_StdoutCarriesTheLandingVerdict/unanswerable"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_UndoneRoundTripIsByteIdentical"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_UnknownStillProceeds"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_VerdictNamesRefAndDisclosesLevel2"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDone_WithoutFlagNoRefNamed"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDrop_AlreadyDropped_Refused"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDrop_DroppedCardIsNotAPickCandidate"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDrop_ExpectMatchAllowsTheDrop"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDrop_MarksDroppedAndRecordsTheReason"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDrop_RefusalsLeaveTheFileByteIdentical"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDrop_UndropIsAnExactReversal"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoDrop_UndropRestoresAHandWrittenDroppedCard"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoEdit_EmptyText_RefusedNoWrite"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoEdit_ExpectMismatch_RefusedNoWrite"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoEdit_PrintsPriorTextSoTheEditIsReversible"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoEdit_RewritesTextPreservingIdentity"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoEdit_UnknownID_RefusedNoWrite"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoExactRefusalWorksWithoutAgent"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoExportJSON_CarriesArchiveAndDisclosesDowngrade"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoExportJSON_FailurePathsSurface"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoExportJSON_FailurePathsSurface/no_residue_is_left_when_the_write_fails"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoExportJSON_FailurePathsSurface/unwritable_queue_directory_is_reported,_not_swallowed"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoExportJSON_LeavesTheLiveStoreAuthoritative"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoExportJSON_NoDisclosureWithoutArchivedRows"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoExportJSON_NoTempResidue"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoExportJSON_RoundTripsThroughTheLegacyShape"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoExportJSON_SurvivesSubsequentVerbs"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoFindingLineSuggestsDroppingTheSubjectNotTheRow"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoFutureStateCardIsNeverSelectedByActionablePaths"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHistoryDegradesWithoutArchiveTables"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHistoryDegradesWithoutArchiveTables/dropped_archive_tables"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHistoryDisclosesPreArchiveQueue"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHistoryEmptyArchiveIsExplicit"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHistoryLeavesStorageByteIdentical"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHistoryLimitBound"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHistoryListsNewestFirst"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHistoryNormalizesBareOrdinal"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHistoryRefusesNegativeLimit"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHistoryReportsAbsentCard"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHistoryReportsArchivedCard"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHistoryReportsLiveCard"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHistoryStatesWithheldCount"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHold_ExpectMismatchRefuses"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHold_MovesQueuedCardToHold"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHold_RefusesNonQueuedStates"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoHold_RefusesUnknownState"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLanded_ClearIsExclusive"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLanded_NoSHADerivedFromTheGrep"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLanded_OneRecordUnderTheLock"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLanded_ReplaceAndClear"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLanded_SHAValidation"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLanded_SHAValidation/no_git_is_unrunnable_and_refuses"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLanded_SHAValidation/reachable_accepts_and_stores_the_full_SHA"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLanded_SHAValidation/refusing_branches_exit_1,_write_nothing,_and_are_distinguishable"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLanded_SHAValidation/refusing_branches_exit_1,_write_nothing,_and_are_distinguishable/non-existent_object"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLanded_SHAValidation/refusing_branches_exit_1,_write_nothing,_and_are_distinguishable/unreachable_commit"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLanded_SHAValidation/refusing_branches_exit_1,_write_nothing,_and_are_distinguishable/unresolvable_ref"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLanded_SHAValidation/the_card_id_reaches_neither_check"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLanded_SpecStatusReadNeverInvented"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLanded_StateCheckAndStatesUntouched"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLanded_WholeQueueUnmoved"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoLegacyRecordRoundTrips"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoListRendersHeldCardTruthfully"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoList_AllDroppedDefaultView"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoList_DroppedFlagEmptySaysSo"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoList_DroppedFlagRendersDroppedOnly"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoList_DroppedHiddenByDefault"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoList_JSONKeepsDroppedCards"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoList_JSONStructured"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoList_LockFreeWhileForeignProcessHoldsLock"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoMachineLeaseSelectsOnlyQueued"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoMachineLeaseSelectsOnlyQueued/order-0"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoMachineLeaseSelectsOnlyQueued/order-1"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoMachineLeaseSelectsOnlyQueued/order-2"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoMachineLeaseSelectsOnlyQueued/order-3"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoMachineLeaseSelectsOnlyQueued/order-4"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoMove_BeforeAndAfter"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoMove_PositionFlagContract"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoMove_PreservesEveryItem"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoMove_TopAndBottom"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoMultiWordFallthroughAdds"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNaturalLanguageCardsSurviveVerbGuard"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNaturalLanguageCardsSurviveVerbGuard/fix_3_flaky_tests"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNaturalLanguageCardsSurviveVerbGuard/fix_the_drift_found_in_t151"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNaturalLanguageCardsSurviveVerbGuard/fix_the_flaky_gate"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNaturalLanguageCardsSurviveVerbGuard/t151_regression_follow-up"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNewVerbsAreHeadless"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNewVerbsAreHeadless/add"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNewVerbsAreHeadless/analyze"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNewVerbsAreHeadless/relate"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNewVerbsAreHeadless/unrelate"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNextBare_ReadOnlyOldestFirst"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNextPick_ConfirmationShowsText"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNextPick_ExpectGuard"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNextPick_OneLockedWrite"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNext_OutOfRangeFileUntouched"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoNext_PickOnHeldCardRefused"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoPickInFactoryCapturesLinkedWorktreeSpecAndHEAD"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoPickInFactoryProvenanceFailsOpenWithoutSpecOrGit"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoQueue_WorktreeSeesPrimaryQueue"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_DisclosesNonAuthoritativeJSON"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_DisclosesNonAuthoritativeJSON/bare"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_DisclosesNonAuthoritativeJSON/history"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_DisclosesNonAuthoritativeJSON/list"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_DisclosesNonAuthoritativeJSON/pr"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_DisclosesNonAuthoritativeJSON/why"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_SilentWithoutJSON"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_SilentWithoutJSON/bare"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_SilentWithoutJSON/history"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_SilentWithoutJSON/list"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_SilentWithoutJSON/pr"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_SilentWithoutJSON/why"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_StdoutUnpolluted"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_StdoutUnpolluted/bare"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_StdoutUnpolluted/history"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_StdoutUnpolluted/list"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_StdoutUnpolluted/pr"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoReadSurface_StdoutUnpolluted/why"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoRelateAndUnrelateTouchNoCard"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoRelateCycleGuardShapes"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoRelateCycleGuardShapes/3-cycle_through_an_intermediate_card_is_refused"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoRelateCycleGuardShapes/blocks_spelling_closes_a_cycle_like_depends"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoRelateCycleGuardShapes/open_chain_into_a_new_card_is_allowed"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoRelateCycleGuardShapes/same-pair_opposite_spelling_encodes_no_cycle"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoRelateRefusesCycle"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoRelateSequencingKinds"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoShow"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoShow/absent_id_prints_absent_and_the_issued-mark_qualifier"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoShow/body_with_tabs_and_newlines_flattens_without_truncation"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoShow/live_line_carries_the_full_text"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoShowReadOnly"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoStaleStoreDisclosure_AddVerb"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoUndone_EmptiesTheArchiveEntry"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoUndone_ReissuedIDRefuses"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoUndone_RestoresTheCard"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoUndone_SurvivesMigrationFromLegacyJSON"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoUnhold_RefusesNonHeldStates"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoUnhold_ReturnsHeldCardToQueued"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoUnpick_RefusalsLeaveFileUntouched"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoUnpick_RevertsPickedToQueued"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoVerbExitCodesUnchanged"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoVerbGuardStillAddsNonAddresses"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoVerbGuardStillAddsNonAddresses/epic_7_planning"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoVerbGuardStillAddsNonAddresses/fix_3_flaky_tests"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoVerbGuardStillAddsNonAddresses/peek_T401"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoVerbGuardStillAddsNonAddresses/peek_card"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoVerbGuardStillAddsNonAddresses/peek_t401x"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoVerbGuardStillAddsNonAddresses/재현_t401"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoVerbsUnaffectedByFlag"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTodoWriteVerbs_CarryNoDisclosure"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTransitionStamps_ArchivePreservesStampsAndStampsArchivedAt"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTransitionStamps_DropThenDoneCarriesDroppedStampOnly"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTransitionStamps_DroppedAtStampsAndClears"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTransitionStamps_GtdEngagePickAndGoalMissionPick"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTransitionStamps_GtdEngagePickAndGoalMissionPick/gtd_engage_--pick"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTransitionStamps_NextPickStamps"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestTransitionStamps_PickedAtStampsAndClears"
+```
+
+- Sorted skip names file (command 11 extraction, verbatim; machine-local source
+  `.moai/state/verify/t1356/c1-cli-lane.skipnames.txt`):
+
+```
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestAuditPinLive_CodexPinConfirmation"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestAuditPinLive_GLMDifferential"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestAxisACanaryHomeSweep_TodoFamily"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCleanupMoaiWorktrees"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexAuditLaunchLiveContract"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexAuditLaunchLiveReadOnlyRoles"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexLive_ExplicitReadOnlyApprovalStall"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexLive_OmittedSandboxPolicyBaseline"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexLive_ReviewStartEmitsTurnStarted"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexLive_SandboxPolicyStickiness"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexLive_ThreadReuseAndTurnInterrupt"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexRoleLiveLoadAndReadOnly"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCrossCompileScriptMirrorsCanonical"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLeaseSerialCrossProcessHelper"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLiveCardFlowClaudeClaude"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLiveClaudeClaudeCompletionSeparation"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLiveHookBoundaryIdleTruth"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestGLMAudit_NoAskUserQuestion"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestGLMToolsEnable_AtomicWriteProtectsOriginal"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestGateLockHelperSleep"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestHeadroomInitSurfaceExport"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLegacySkillIDsNotEmbedded/manifest_empty"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLegacySkillIDsNotEmbedded/manifest_error"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveClaudeAudit_GPTAndGLMOriginsUseSubscriptionReadOnly_AC_CLA_003_005_006_009_010_015"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveCodexCompactFires"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveCodexGoalContinueUntilMet"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveCodexInterruptFires"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveCodexNeedsInputOutcome"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveCodexPermissionRequestFires"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveCodexStopTimeoutCeiling"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveHarnessIsolation"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveHookFaultOutcome"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestLiveStopChainGoalContinuation"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMCPServer_StdioRoundTripSubprocess"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestManagedCodexFactoryBrokerLive"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestManagedCodexFakeAppServer"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestManagedCodexTUIFakeCodex"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestManagedLoopbackChild"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMigrationRollback_M001_Rejected"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMigrationRollback_NoRollbackable"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMigrationRollback_Succeeds"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMigrationRun_AppliesPending"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMigrationRun_NoPending"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMigrationStatus_Human"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestMigrationStatus_JSON"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestPtyCaptureChild"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestPtyCapture_DowngradeConfirmButtonAlignment"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestPtyCapture_DowngradeConfirmLocalized"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestPtyCapture_FailWithoutTmux"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestPtyCapture_InitFirstScreen"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestPtyCapture_SkipWithoutGate"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestResolveRulesDir/windows_volume-letter_gate.yaml_value_passes_through_unjoined"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestSessionPIDStampExecHelper"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestVerifyRunHelperProcess"
+"Action":"skip","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestViewAcceptanceCriteria_ShapeTraceE2E"
+```
+**cli scrubbed arm — NOT COMPLETED (killed before any verdict; no measurement).**
+
+- Command (as launched): the 16-axis scrubbed compound per §D.3 — `unset MOAI_AUTONOMY_TIER
+  MOAI_FACTORY_APP_SERVER_TOKEN MOAI_FACTORY_AUTO_DISPATCH MOAI_FACTORY_CLEAR_POLICY
+  MOAI_FACTORY_MANAGED MOAI_FACTORY_MANAGED_TUI MOAI_FACTORY_ROLE MOAI_FACTORY_SLOW_LAUNCH_MS
+  MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_KANBAN_BACKEND MOAI_KANBAN_CARD MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_LEAD_NAME MOAI_KANBAN_SETTINGS_INJECTED && go test
+  ./internal/cli -count=1 -timeout 82m -json > .moai/state/verify/t1356/c1-cli-scrubbed.json 2>
+  .moai/state/verify/t1356/c1-cli-scrubbed.err` (one invocation; wrapped here for readability).
+- Killed by the session (exit 144 after `pkill`) at 14:52:16Z with **1966/5122** top-level
+  terminal rows and **4** fail rows partial. Two independent reasons, both recorded:
+  1. **Projected timeout** — measured rate ~50 tests/min against a completion need of ~69 more
+     minutes while the `-timeout 82m` bound (from lease start 14:07:41Z) expired at 15:29:40Z.
+     The arm could not finish before its own bound.
+  2. **Concurrent-load contamination** — at the kill decision the machine carried **three
+     foreign `go test` processes against the same `./internal/cli` package** (two from card
+     t1538: a `-run 'TestFR_|TestTodo|TestAutoDone|TestFactory'` selector run and a
+     `-cover ./internal/cli/... ./internal/homestate/... ./internal/factory/...` run; one from
+     card t1509: a template/cli review-scope run — `pgrep` evidence captured 14:41Z), with load
+     average **31.15**. A measurement taken under that load is not a clean baseline (spec.md R7;
+     `.claude/rules/local/gitflow-lane-protocol.md` §8's serialization intent).
+- Disposition: the arm is **invalid-by-omission, never a pass** — the c1 record is explicitly
+  partial (see Partial-record statement below), and the resuming session re-runs this arm as a
+  whole-package measurement on a quiet machine before c2. The partial 4 fail rows are NOT
+  extrapolated to any claim.
+
+**hook lane arm — NOT STARTED** (prepared command, to run under a fresh per-arm lease):
+
+```
+unset MOAI_FACTORY_APP_SERVER_TOKEN MOAI_FACTORY_MANAGED MOAI_FACTORY_MANAGED_TUI MOAI_FACTORY_SLOW_LAUNCH_MS MOAI_KANBAN_CARD MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_LEAD_NAME && env MOAI_AUTONOMY_TIER=fully-autonomous MOAI_FACTORY_AUTO_DISPATCH=auto MOAI_FACTORY_CLEAR_POLICY= MOAI_FACTORY_ROLE=lane MOAI_FACTORY_WORKER=lane-23 MOAI_FACTORY_WORKERS=0 MOAI_KANBAN_BACKEND=glm MOAI_KANBAN_ID=tm9i7y MOAI_KANBAN_SETTINGS_INJECTED=1 go test ./internal/hook -count=1 -timeout <cap-2m> -json > .moai/state/verify/t1356/c1-hook-lane.json 2> .moai/state/verify/t1356/c1-hook-lane.err
+```
+
+**hook scrubbed arm — NOT STARTED** (prepared command):
+
+```
+unset MOAI_AUTONOMY_TIER MOAI_FACTORY_APP_SERVER_TOKEN MOAI_FACTORY_AUTO_DISPATCH MOAI_FACTORY_CLEAR_POLICY MOAI_FACTORY_MANAGED MOAI_FACTORY_MANAGED_TUI MOAI_FACTORY_ROLE MOAI_FACTORY_SLOW_LAUNCH_MS MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_KANBAN_BACKEND MOAI_KANBAN_CARD MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_LEAD_NAME MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -count=1 -timeout <cap-2m> -json > .moai/state/verify/t1356/c1-hook-scrubbed.json 2> .moai/state/verify/t1356/c1-hook-scrubbed.err
+```
+
+**Partial-record statement (explicit, per verification-claim-integrity §3 Gaps).** This c1
+baseline record is INCOMPLETE by the leader's drain order of 2026-10-06 (operator reboot
+preparation): of the four §D.3 c1 arms, only the cli lane arm is measured. Pending before c2,
+all as whole-package runs on a quiet machine: cli scrubbed arm, hook lane arm, hook scrubbed
+arm; then the c1-stage command 9 (cross-arm failing-names `comm -3` — the designed red for the
+five observed reds), command 11 (cross-arm skip-set `comm -3` — the skip-equality baseline), and
+the clause (f) command 10 for the hook lane names file (expected **2**). The c1 commit SHA this
+record lands in is recorded in the seal note below; the resuming session extends this section
+in a progress.md-only commit BEFORE c2 so the c1 subject grep (§D.8 step 1) keeps finding exactly
+one line and the c1 → c2 ancestry holds.
+
+### Discovery narrow pair re-record (plan.md M1 c1; both arms COMPLETE)
+
+- Discovery lane arm (the compound lane form of this session) — exit **0**: 14 `--- PASS`,
+  1 `--- SKIP: TestHelperLeaderChild (0.00s)` (`factory_discovery_live_test.go:91: helper only`),
+  `ok … internal/discovery 2.404s`.
+- Discovery scrubbed arm (all 16 family axes unset, one compound) — exit **0**: the same 14
+  `--- PASS` and the same one `--- SKIP`, `ok … internal/discovery 1.877s`.
+- **Equal** — same pass set, same pre-existing helper skip, no flip. Matches plan-time E-7.
+
+### Guard-draft persistence note (leader drain order item ③)
+
+The two guard drafts prepared for c2 are persisted at
+`.moai/state/verify/t1356/factory_env_axes_test.go` and
+`.moai/state/verify/t1356/lane_env_axes_test.go` (machine-local scratch, NEVER committed, never
+cited as evidence; `/tmp` copies may not survive the operator reboot). Design points frozen in
+the drafts: family read from `../config/envkeys.go` at test time (regex verified against the
+real file in a scratch module — exactly 16 axes, the §A.6 identifiers); cli scrub set =
+`factoryAmbientEnvKeys` ∩ family; hook scrub set `laneEnvScrubAxes` declared EMPTY at c2 (D5) —
+the draft omits the scrub function at c2 (no unused symbol) and adds it at M3 with the `TestMain`
+call; applied-behaviour probes re-execute `os.Args[0]` with all 16 axes at a sentinel value
+(`t1356-axes-sentinel`) plus a witness var (`MOAI_CLI_TEST_FACTORY_AXES_PROBE` /
+`MOAI_HOOK_TEST_LANE_AXES_PROBE`), child bound 300s (never below the 20s precedent; the measured
+child runtime is recorded at M4), case-insensitive axis stripping for Windows; sibling-guard
+stale signal reads `../hook/lane_env_axes_test.go` / `../cli/factory_env_axes_test.go` for
+`func <name>(`; no quoted family literal appears in the hook file (the
+`envkeys_factory_role_test.go:60` rule); gofmt clean.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
