@@ -90,47 +90,17 @@ func runLandingGit(dir, stdin string, args ...string) (stdout string, exit int, 
 // landingPatchIDs runs `git patch-id --stable` over stream (a diff or a
 // `git log -p` stream) and returns the patch-ids in order.
 func landingPatchIDs(dir, stream string) ([]string, error) {
-	ids, _, err := landingPatchIDPairs(dir, stream)
-	if err != nil {
-		return nil, err
-	}
-	return ids, nil
-}
-
-// landingPatchIDPairs parses `git patch-id --stable` output into
-// (patch-id, commit) pairs. patch-id echoes the stream's `commit <sha>`
-// header as the second field, so a `git log -p` stream pairs every id with
-// the commit that produced it; a bare diff has no commit header and its
-// commit field is empty.
-func landingPatchIDPairs(dir, stream string) (ids, commits []string, err error) {
 	out, _, err := runLandingGit(dir, stream, "patch-id", "--stable")
 	if err != nil {
-		return nil, nil, fmt.Errorf("git patch-id: %w", err)
+		return nil, fmt.Errorf("git patch-id: %w", err)
 	}
+	var ids []string
 	for ln := range strings.SplitSeq(out, "\n") {
 		if fields := strings.Fields(ln); len(fields) > 0 {
 			ids = append(ids, fields[0])
-			if len(fields) > 1 {
-				commits = append(commits, fields[1])
-			} else {
-				commits = append(commits, "")
-			}
 		}
 	}
-	return ids, commits, nil
-}
-
-// landingTreeEqual reports whether candidate and tip carry the SAME tree
-// content, whitespace INCLUDED (REQ-GFC-016): `git diff --quiet` exits 0 on
-// equal trees and 1 on differing ones — unlike the patch-id it compares
-// against, it never normalizes intra-line whitespace. Exit 1 is an answer,
-// not a failure; anything else cannot answer.
-func landingTreeEqual(dir, candidate, tip string) (bool, error) {
-	_, exit, err := runLandingGit(dir, "", append(append([]string{"diff", "--quiet"}, landingDiffFlags...), candidate, tip)...)
-	if err != nil && exit != 1 {
-		return false, fmt.Errorf("git diff --quiet %s %s: %w", candidate, tip, err)
-	}
-	return exit == 0, nil
+	return ids, nil
 }
 
 // landingDiffFlags keep a diff and a `git log -p` stream comparable: no
@@ -171,7 +141,7 @@ func LandedByPatchID(dir, tip, ref string) (bool, error) {
 	if strings.TrimSpace(diff) == "" {
 		return false, fmt.Errorf("%s carries no net change against %s: a patch-id comparison has nothing to match", tip, mb)
 	}
-	cardIDs, _, err := landingPatchIDPairs(dir, diff)
+	cardIDs, err := landingPatchIDs(dir, diff)
 	if err != nil {
 		return false, err
 	}
@@ -183,29 +153,13 @@ func LandedByPatchID(dir, tip, ref string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("git log -p %s..%s: %w", mb, ref, err)
 	}
-	refIDs, refCommits, err := landingPatchIDPairs(dir, stream)
+	refIDs, err := landingPatchIDs(dir, stream)
 	if err != nil {
 		return false, err
 	}
-	for i, id := range refIDs {
-		if id != cardIDs[0] {
-			continue
-		}
-		// A matching patch-id is a CANDIDATE, not a verdict: patch-id
-		// --stable normalizes intra-line whitespace, so an unlanded
-		// indentation- or trailing-space-only commit on the card branch
-		// reproduces the squash commit's id (REQ-GFC-016). The candidate is
-		// the landing only when its tree equals the card tip's tree,
-		// whitespace included — a tip carrying content beyond the candidate
-		// stays unlanded.
-		if i < len(refCommits) && refCommits[i] != "" {
-			equal, eqErr := landingTreeEqual(dir, refCommits[i], tip)
-			if eqErr != nil {
-				return false, eqErr
-			}
-			if equal {
-				return true, nil
-			}
+	for _, id := range refIDs {
+		if id == cardIDs[0] {
+			return true, nil
 		}
 	}
 	return false, nil
