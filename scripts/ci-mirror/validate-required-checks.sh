@@ -98,11 +98,15 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	# GATE-14: strip quotes only when they are PAIRED (same char leading
 	# and trailing) — a bare trailing apostrophe is VALUE TEXT
 	# (a trailing apostrophe is VALUE TEXT, not a quoting character)
+	# GATE-15: a single-quoted string decodes its ESCAPE — YAML writes an
+	# inner apostrophe as two, so the parsed value restores one.
 	function strip_quotes(s,   f) {
 		if (length(s) >= 2) {
 			f = substr(s, 1, 1)
-			if ((f == "\"" || f == "\047") && substr(s, length(s), 1) == f)
+			if ((f == "\"" || f == "\047") && substr(s, length(s), 1) == f) {
 				s = substr(s, 2, length(s) - 2)
+				if (f == "\047") gsub(/\047\047/, "\047", s)
+			}
 		}
 		return s
 	}
@@ -274,7 +278,9 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			for (kk in incval) {
 				split(kk, pair, SUBSEP)
 				if (pair[1] + 0 != t) continue
-				if (incval[kk] == "") continue
+				# GATE-15: an EXPLICIT empty value substitutes as empty —
+				# only an ABSENT field is skipped (presence, not value).
+				if (!((kk) in incset)) continue
 				line = subst_literal(line, "\\$\\{\\{[[:space:]]*matrix\\." pair[2] "[[:space:]]*\\}\\}", incval[kk])
 			}
 			if (had_ref) {
@@ -313,7 +319,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	}
 	function reset_job_mem() {
 		nk = 0; inc_n = 0; had_ref = 0; ex_n = 0; mmode = "inc"; bdim_key = ""
-		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord; delete merged; delete objsub
+		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord; delete merged; delete objsub; delete incset
 	}
 	BEGIN { in_jobs = 0; has_name = 0; nk = 0; inc_n = 0; in_steps = 0; in_strategy = 0; in_matrix = 0; mmode = "inc"; ex_n = 0; bdim_key = "" }
 	{
@@ -464,9 +470,21 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			# (GATE-5) needs it for include-only matrices with no dims
 			inc_n++
 			incval[inc_n, k] = v
+			incset[inc_n, k] = 1
 			ikt[inc_n]++
 			incord[inc_n, ikt[inc_n]] = k
 		}
+		next
+	}
+	# GATE-15: FOLLOW-UP fields of an object axis item sit at ind 12 —
+	# target: [{os: ubuntu-latest, version: "18"}] normalizes with
+	# `version:` on the next line, and it is still a sub-field of the AXIS,
+	# never an include tuple.
+	in_matrix && ind == 12 && bdim_key != "" && $0 ~ /^[[:space:]]*[A-Za-z_]/ {
+		line = strip_comment($0); sub(/^[[:space:]]*/, "", line)
+		k = line; sub(/:.*/, "", k)
+		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); v = strip_quotes(v)
+		objsub[SUBSEP bdim_key SUBSEP k] = v
 		next
 	}
 	in_matrix && ind == 12 && mmode == "excl" && ex_n > 0 && $0 ~ /^[[:space:]]*[A-Za-z_]/ {
@@ -481,6 +499,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		k = line; sub(/:.*/, "", k)
 		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^["\047]|["\047]$/, "", v)
 		incval[inc_n, k] = v
+		incset[inc_n, k] = 1
 		ikt[inc_n]++
 		incord[inc_n, ikt[inc_n]] = k
 		next
