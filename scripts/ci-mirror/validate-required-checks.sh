@@ -95,6 +95,29 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		}
 		return s
 	}
+	# GATE-14: strip quotes only when they are PAIRED (same char leading
+	# and trailing) — a bare trailing apostrophe is VALUE TEXT
+	# (a trailing apostrophe is VALUE TEXT, not a quoting character)
+	function strip_quotes(s,   f) {
+		if (length(s) >= 2) {
+			f = substr(s, 1, 1)
+			if ((f == "\"" || f == "\047") && substr(s, length(s), 1) == f)
+				s = substr(s, 2, length(s) - 2)
+		}
+		return s
+	}
+	# GATE-14: bracket form normalizes to dot form — `${{ matrix['os'] }}`
+	# is the same reference as `${{ matrix.os }}`. Manual capture via
+	# match/substr: BSD awk has no backreferences in gsub replacements.
+	function norm_bracket(s,   m) {
+		while (match(s, /matrix\[["\047]?[A-Za-z_][A-Za-z_0-9-]*["\047]?\]/)) {
+			m = substr(s, RSTART, RLENGTH)
+			sub(/^matrix\[["\047]?/, "", m)
+			sub(/["\047]?\]$/, "", m)
+			s = substr(s, 1, RSTART - 1) "matrix." m substr(s, RSTART + RLENGTH)
+		}
+		return s
+	}
 	# GATE-11: literal-expression substitution — gsub treats & and
 	# backslash in its replacement as grammar (an ampersand expands to the
 	# whole match), and the escaping dance is a self-referential trap on
@@ -109,6 +132,15 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	}
 	function emit() {
 		if (!has_name) return
+		# GATE-14: object-axis sub-fields resolve on the template before
+		# combination expansion (single-object arrays; a multi-object
+		# object axis is an approximation — first value wins).
+		for (ok in objsub) {
+			split(ok, op, SUBSEP)
+			# the substitution consumes the WHOLE expression frame — a bare
+			# matrix.axis.sub pattern would leave `${{ value }}` residue
+			name = subst_literal(name, "\\$\\{\\{[[:space:]]*matrix\\." op[2] "\\." op[3] "[[:space:]]*\\}\\}", objsub[ok])
+		}
 		# include-only matrices (the matrix.include form) have nk == 0 — the
 		# tuple loop below is their publish path; never early-return. Plain
 		# jobs (no matrix, no include) print their bare name once.
@@ -281,7 +313,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	}
 	function reset_job_mem() {
 		nk = 0; inc_n = 0; had_ref = 0; ex_n = 0; mmode = "inc"; bdim_key = ""
-		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord; delete merged
+		delete dims; delete mvals; delete incval; delete exval; delete ikt; delete incord; delete merged; delete objsub
 	}
 	BEGIN { in_jobs = 0; has_name = 0; nk = 0; inc_n = 0; in_steps = 0; in_strategy = 0; in_matrix = 0; mmode = "inc"; ex_n = 0; bdim_key = "" }
 	{
@@ -340,6 +372,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			name = substr(name, 2, length(name) - 2)
 		}
 		if (sq_quoted) gsub(/\047\047/, "\047", name)
+		name = norm_bracket(name)
 		has_name = 1
 		had_ref = (name ~ /\$\{\{[[:space:]]*matrix\./) ? 1 : 0
 		next
@@ -367,7 +400,6 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		line = strip_comment($0); sub(/^[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
 		v = line; sub(/^[^[]*\[/, "", v); sub(/\][[:space:]]*$/, "", v)
-		gsub(/["\047]/, "", v)
 		# GATE-9: values may contain SPACES — split on commas and trim each
 		# item; pre-fix the whole list was whitespace-stripped, mangling a
 		# value like "Build (linux amd64)" into "Build(linuxamd64)". Note
@@ -393,7 +425,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 	in_matrix && ind == 10 && $0 ~ /^[[:space:]]*- / {
 		line = strip_comment($0); sub(/^[[:space:]]*-[[:space:]]*/, "", line)
 		k = line; sub(/:.*/, "", k)
-		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^["\047]|["\047]$/, "", v)
+		v = line; sub(/^[^:]*:[[:space:]]*/, "", v); v = strip_quotes(v)
 		# GATE-10: a colon does NOT make a mapping — in YAML, `- node:20`
 		# is a STRING scalar (no space after the colon) while `- color: green`
 		# is a mapping. The bare is_pair colon test mis-routed spaced-out
@@ -402,15 +434,25 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 		# value such as node-colon-space as a QUOTED string whose inner
 		# colon+space is literal value text, not a mapping separator.
 		is_pair = (line !~ /^["\047]/) && (line ~ /:[[:space:]]/ || line ~ /:$/)
-		if (bdim_key != "" && !is_pair) {
+		if (bdim_key != "") {
+			# GATE-14: a list item under a DECLARED axis key belongs to
+			# that axis, never to include — an object item
+			# (target: [{os: ubuntu-latest}]) is a sub-field the template
+			# reads as matrix.target.os.
+			if (is_pair) {
+				objsub[SUBSEP bdim_key SUBSEP k] = v
+				next
+			}
 			# GATE-6: block-form dim item — a bare value appended to the
 			# dim declared by the `key:` line above.
 			# GATE-9: a value may contain SPACES — trim, never strip (the
 			# whole-string whitespace strip mangled "ubuntu 24.04" into
 			# "ubuntu24.04" and judged the real check phantom).
+			# GATE-14: quotes strip only when PAIRED — a bare trailing
+			# apostrophe is value text, not a quoting character
 			gsub(/^[[:space:]]+/, "", line)
 			gsub(/[[:space:]]+$/, "", line)
-			gsub(/^["\047]|["\047]$/, "", line)
+			line = strip_quotes(line)
 			if (!(bdim_key in mvals)) { nk++; dims[nk] = bdim_key; mvals[bdim_key] = "" }
 			if (mvals[bdim_key] == "") mvals[bdim_key] = line
 			else mvals[bdim_key] = mvals[bdim_key] SUBSEP line

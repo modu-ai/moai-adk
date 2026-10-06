@@ -1,0 +1,11 @@
+name: ci
+on: [push]
+jobs:
+  Test:
+    name: "Test (${{ matrix.flavor }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        flavor: ["rock'"]
+    steps:
+      - run: "true"
