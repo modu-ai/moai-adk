@@ -23,6 +23,7 @@ package feedback
 // B1 defect this split closes).
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"runtime"
@@ -55,12 +56,29 @@ func pidAlive(pid int) bool {
 
 // lockOwnerIsDead applies the two verification paths.
 func lockOwnerIsDead(owner lockOwner) bool {
-	if cur := currentBootID(); cur != "" && owner.BootID != "" && owner.BootID != cur {
+	if cur := bootIDIdentity(); cur != "" && owner.BootID != "" && owner.BootID != cur {
 		// The owner ran on a previous boot: it cannot be alive, whatever
 		// lives at that pid today.
 		return true
 	}
 	return !pidAlive(owner.PID)
+}
+
+// bootIDIdentity is the lock record's wire form of the boot identity: hex
+// of currentBootID's raw bytes. The raw form is BINARY on the BSD family
+// (kern.boottime is a struct timeval), and JSON serialization of binary
+// bytes mangles invalid UTF-8 into replacement runes — a mangled record
+// then compares unequal to the live machine's identity and a LIVE
+// same-boot owner is misjudged as a previous boot, firing the break
+// mid-Mutate (the lost-update the D37 repair exists to close). Hex is
+// lossless over any byte string, so the record round-trips and the
+// comparison is exact.
+func bootIDIdentity() string {
+	raw := currentBootID()
+	if raw == "" {
+		return ""
+	}
+	return hex.EncodeToString([]byte(raw))
 }
 
 // lockOwnerFromBytes decodes a lock file's owner record.
