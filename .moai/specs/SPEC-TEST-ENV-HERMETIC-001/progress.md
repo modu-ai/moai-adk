@@ -1081,6 +1081,148 @@ from the seal commit.
 - Machine-local run logs (never a citation target): `/tmp/t1356-c2r-<pkg>-<test>-<form>.txt`,
   eight files; the verdict lines above are the committed carrier.
 
+### M2/M3 fix record (tree `63b4e77e4`)
+
+**M2 — commit `dd2303570`** (`fix(SPEC-TEST-ENV-HERMETIC-001): M2 extend the cli TestMain
+scrub set with the eight uncovered family axes (card t1356)`): `factoryAmbientEnvKeys` gains
+`config.EnvFactoryRole` plus the seven other uncovered axes. Verified (all exit 0):
+
+- AC-THE-001 narrow lane command (`env MOAI_FACTORY_ROLE=lane go test ./internal/cli -count=1
+  -v -run '^(TestTodoClaim_LaneGovernance|TestTodoClaimMCP_Mirror|TestTodoPickInFactoryProvenanceFailsOpenWithoutSpecOrGit)$'`):
+  **exactly 3 `--- PASS`** (`TestTodoClaim_LaneGovernance (0.68s)`, `TestTodoClaimMCP_Mirror
+  (0.31s)`, `TestTodoPickInFactoryProvenanceFailsOpenWithoutSpecOrGit (0.99s)`), **0 `--- SKIP`**.
+- Both cli guard tests PASS: `--- PASS: TestFactoryEnvAxesCovered (0.04s)`,
+  `--- PASS: TestFactoryEnvAxesScrubApplied (0.11s)`.
+- Existing pin/clear tests PASS: `--- PASS: TestFactoryAmbientEnvClearedInTestMain (0.00s)`,
+  `--- PASS: TestFactoryEnvPinnedSkipsTestMainClear (0.00s)`.
+- gofmt clean (empty `gofmt -l`).
+
+**M3 single-axis arms (measured BEFORE choosing the set, on tree `dd2303570`, per plan.md M3
+step 1; each arm = the recorded c1 lane env minus the named axis, both StaleRunNotice tests,
+exit codes as shown):**
+
+| arm (lane env minus one axis) | exit | verdict |
+|---|---|---|
+| unset `MOAI_KANBAN_ID` | **0** | both `--- PASS` — responsible axis |
+| unset `MOAI_FACTORY_WORKERS` | **0** | both `--- PASS` — responsible axis |
+| unset `MOAI_FACTORY_ROLE` | 1 | both `--- FAIL` — not responsible |
+| unset `MOAI_FACTORY_WORKER` | 1 | both `--- FAIL` — not responsible |
+| unset `MOAI_KANBAN_BACKEND` | 1 | both `--- FAIL` — not responsible |
+
+  Matches the plan-phase result: the stale-run gate reads the `MOAI_KANBAN_ID` ∧
+  `MOAI_FACTORY_WORKERS` conjunction. Machine-local arm logs:
+  `/tmp/t1356-m3-arm-unset-<axis>.txt`.
+
+**M3 — commit `63b4e77e4`** (`fix(SPEC-TEST-ENV-HERMETIC-001): M3 fill the hook scrub set
+with the ten referenced family axes and wire TestMain (card t1356)`): `laneEnvScrubAxes`
+filled with the ten production-referenced axes; `hook TestMain` calls `scrubLaneEnvAxes()`
+beside the existing `CLAUDE_PROJECT_DIR` scrub. Precondition (i) held from the c1 hook
+scrubbed arm (all sixteen axes unset, exit 0, zero fail rows). Exemption table stays EMPTY
+(no measurement shows a test needing an ambient family value). Verified (all exit 0):
+
+- E-2 / AC-THE-002 lane command: **exactly 2 `--- PASS`** (`TestStaleRunNoticeLegacyLeaderSpelling
+  (0.00s)`, `TestStaleRunNoticeLegacySessionRecord (0.00s)`), **0 `--- SKIP`**.
+- Both hook guard tests PASS: `--- PASS: TestLaneEnvAxesCovered (0.04s)`,
+  `--- PASS: TestLaneEnvAxesScrubApplied (0.08s)`.
+- The third measured flip green under the c1 lane env replay:
+  `--- PASS: TestStaleRunNoticeFactoryLegacyLabel (0.61s)`.
+- AC-THE-002 assertion-diff clause: `git diff 985bd43d… -- internal/hook/stale_run_m1_test.go`
+  prints nothing.
+- gofmt clean (empty `gofmt -l` on both files).
+
+**L1 listings on the post-M3 tree** (`go test -list '.*'`, `grep -cE '^(Test|Example|Fuzz)'`):
+cli **5124** = L0 5122 + 2 guard tests; hook **1317** = L0 1315 + 2 guard tests (both ≥ L0 + 2).
+
+**§D.8 step 6 enumeration at `63b4e77e4`** (re-evaluated at the M4 tip after the final
+record lands): `git rev-list --no-merges --reverse 985bd43d… -- internal/` lists exactly
+`ef18813fc…` (c2, the excluded commit), `dd2303570…` (M2), `63b4e77e4…` (M3); M2 and M3 each
+descend from c2r `9048623ec` (`merge-base --is-ancestor` exit 0, `rev-list --count` ≥ 1).
+
+**Mutation probes P1-P5 (run on tree `63b4e77e4`, each mutation reverted and the revert
+verified by an empty `git diff` on the touched code paths).** Run BEFORE the final pairs —
+the machine was under sustained foreign load (up to 107) that blocks the whole-package arms,
+the probes are load-tolerant sub-second guard runs, and they will be re-affirmed if any
+post-pair change (a contingent pin) lands; none is expected since M2/M3 fixed every measured
+flip:
+
+| probe | mutation | verdict (verbatim) | naming line |
+|---|---|---|---|
+| P1 | `config.EnvFactoryRole` removed from `factoryAmbientEnvKeys` | `--- FAIL: TestFactoryEnvAxesCovered (0.12s)` | `family axis MOAI_FACTORY_ROLE is referenced by production (codex_factory.go, codex_launcher.go, factory.go, factory_card.go)` |
+| P2 cli | `clearFactoryAmbientEnv()` disabled in cli `TestMain` | `--- FAIL: TestFactoryEnvAxesScrubApplied (0.74s)` | 16 `still present in the child` lines (every family axis survives) |
+| P2 hook | `scrubLaneEnvAxes()` disabled in hook `TestMain` | `--- FAIL: TestLaneEnvAxesScrubApplied (0.22s)` | 10 `still present in the child` lines — the ten referenced hook axes, AC-THE-008's prediction |
+| P3 | padded exemption row (reason `n/a`; citation `update_disk_backup_test.go`, first verified to not mention the axis) | `--- FAIL: TestFactoryEnvAxesCovered (0.24s)` | `exemption row for MOAI_FACTORY_ROLE cites update_disk_backup_test.go, which does not reference the axis` |
+| P4 | reference scan pointed at `t.TempDir()` (an empty directory) | `--- FAIL: TestFactoryEnvAxesCovered (0.00s)` | `reference scan found zero production references: the scan has silently stopped matching (moved files, renamed constants)` |
+| P5 | hook guard file moved aside and restored | `--- FAIL: TestFactoryEnvAxesCovered (0.24s)` | `sibling guard file ../hook/lane_env_axes_test.go is missing: open ../hook/lane_env_axes_test.go: no such file or directory` |
+
+  Probe logs `/tmp/t1356-p1.txt`, `p2-cli.txt`, `p2-hook.txt`, `p3.txt`, `p4.txt`, `p5.txt`
+  (machine-local, never a citation target). After P5's restore the code tree was verified
+  byte-identical to HEAD `63b4e77e4` (`git status --short` names only the in-progress
+  progress.md record; `git diff` on code paths empty).
+
+### M4 final pairs — hook pair, first measurement (tree `63b4e77e4`)
+
+**final hook lane arm — COMPLETE, VALID, GREEN (first measurement).**
+
+- Command (as executed — the c1 hook lane env replayed verbatim, `-timeout 114m`):
+
+```
+unset MOAI_FACTORY_APP_SERVER_TOKEN MOAI_FACTORY_MANAGED MOAI_FACTORY_MANAGED_TUI MOAI_FACTORY_SLOW_LAUNCH_MS MOAI_KANBAN_CARD MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_LEAD_NAME && env MOAI_AUTONOMY_TIER=fully-autonomous MOAI_FACTORY_AUTO_DISPATCH=auto MOAI_FACTORY_CLEAR_POLICY= MOAI_FACTORY_ROLE=lane MOAI_FACTORY_WORKER=lane-23 MOAI_FACTORY_WORKERS=0 MOAI_KANBAN_BACKEND=glm MOAI_KANBAN_ID=tm9i7y MOAI_KANBAN_SETTINGS_INJECTED=1 go test ./internal/hook -count=1 -timeout 114m -json > .moai/state/verify/t1356/final-hook-lane.json 2> .moai/state/verify/t1356/final-hook-lane.err
+```
+
+- Exit code: **0** (`ARM-EXIT=0`; terminal `ok github.com/modu-ai/moai-adk/internal/hook
+  506.147s`). Window: 2026-10-06T23:56:17Z → 2026-10-07T00:06:44Z (**506.147s ≈ 8.4m**).
+  Launch: stable quiet window (load 12.46, zero `*.test` binaries — the watcher's
+  two-consecutive-poll condition), leases re-acquired at 23:56:17Z (holder session
+  `01e8bc01-2113-44d3-b6ae-48446f8bc46e`, until 01:52:16/17Z; §2.2 note: moai build
+  `2a4fd910c`, not an ancestor of tree HEAD).
+- Validity (§D.3 commands 1/4/5): T = **1317** = L1 hook (command 1); invalid-arm markers
+  (command 4) = **0 / 0**; exit zero — command 5 not applicable. **The arm is valid.**
+- Failing rows: **0** — the fix holds at whole-package scale under the full lane env: the c1
+  lane-only flips (the two observed reds plus `TestStaleRunNoticeFactoryLegacyLabel`) are
+  gone.
+- Clause (f): the lane-arm env line replays the c1 recorded line byte for byte; the
+  child-visible env witness (`unset <the sixteen family axes> && env <the nine lane axes>
+  env`, the arm command's prefix with `env` in place of the test run) printed exactly the
+  nine replayed axes through the §C step 2 family filter — byte-identical to the c1
+  recorded env line, no unset axis present — and the full-env dump was deleted immediately
+  after extraction per §D.3.
+- Skipped rows: **6** (`final-hook-lane.skipnames.txt`).
+
+**final hook scrubbed arm — COMPLETE, VALID (first measurement), 1 failing row.**
+
+- Command (as executed — the 16-axis scrubbed compound, `-timeout 114m`):
+
+```
+unset MOAI_AUTONOMY_TIER MOAI_FACTORY_APP_SERVER_TOKEN MOAI_FACTORY_AUTO_DISPATCH MOAI_FACTORY_CLEAR_POLICY MOAI_FACTORY_MANAGED MOAI_FACTORY_MANAGED_TUI MOAI_FACTORY_ROLE MOAI_FACTORY_SLOW_LAUNCH_MS MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_KANBAN_BACKEND MOAI_KANBAN_CARD MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_LEAD_NAME MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -count=1 -timeout 114m -json > .moai/state/verify/t1356/final-hook-scrubbed.json 2> .moai/state/verify/t1356/final-hook-scrubbed.err
+```
+
+- Exit code: **1** (`ARM-EXIT=1`; terminal `FAIL github.com/modu-ai/moai-adk/internal/hook
+  786.863s`). Window: 2026-10-07T00:07:18Z → 2026-10-07T00:20:36Z (**786.863s ≈ 13.1m**);
+  same lease window, launch conditions as the lane arm.
+- Validity (§D.3 commands 1/4/5): T = **1317** = L1 hook; invalid-arm markers = **0 / 0**;
+  exit non-zero with **1** fail row (command 5 ≥ 1). **The arm is valid.**
+- Failing row: **`TestFactoryHookContextAndContinuationSafety`** — scrubbed-ONLY (the lane
+  arm passes it). Static read of the failure block (`factory_messages_test.go:706`, "first
+  stop continuation"): the test expects `DecisionBlock` from the Stop handler after seeding
+  the ledger; the Stop gate reads the ambient lane axes, and with them unset the gate does
+  not fire and `Decision` stays empty — an env-deterministic, non-load-shaped failure shape
+  (the same stale-run gate family as the two observed reds, here asserted from the positive
+  side). Machine-local run log `.moai/state/verify/t1356/final-hook-scrubbed.json`.
+- §D.3 command 9 (final, first measurement): prints exactly this one name — **clause (b)
+  candidate, pending the repeat protocol below**. Command 11 (final skips): prints nothing.
+  The labelled no-new-skip extra vs c1: prints nothing (both packages of the hook pair).
+
+**Repeat protocol (owed before any clause (b) verdict on this name).** Both arms repeat —
+the identical commands on the same tree — on a stable quiet window: under load a repeat
+could falsely convict a load-flaky test, so the repeats carry the same quiet-machine
+discipline as the arms themselves (the two-consecutive-poll watcher condition). If the
+scrubbed repeat re-prints the name (printed in both runs), clause (b) fails and the M4
+step-2 contingent fix applies — a `t.Setenv` pin of the axes the gate reads makes the
+verdict arm-independent, an exemption row only if a measurement shows the test truly needs
+the ambient value — followed by re-measuring the pair on the post-pin tree (the final-tree
+measurements must be on the tree the AC judges). If the name prints only in the initial
+run, it is load noise, recorded with both outputs.
+
 ### Discovery narrow pair re-record (plan.md M1 c1; both arms COMPLETE)
 
 - Discovery lane arm (the compound lane form of this session) — exit **0**: 14 `--- PASS`,
