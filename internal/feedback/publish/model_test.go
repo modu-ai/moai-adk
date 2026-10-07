@@ -8,6 +8,7 @@ package publish
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/feedback"
+	"github.com/modu-ai/moai-adk/internal/feedback/outbox"
 )
 
 // stubSummarizer counts calls and scripts outputs.
@@ -280,15 +282,87 @@ func TestLLMBudgetPositiveControl(t *testing.T) {
 }
 
 func TestDailyModelCallCap(t *testing.T) {
-	b := NewModelCallBudget()
-	if !b.Allow() {
-		t.Fatal("a fresh budget must allow the first call")
-	}
+	// The persisted seam (review-gate finding 3): the cap state lives in the
+	// user-scoped store, counted atomically cross-process — the in-process
+	// budget a new Sender instance reset is gone.
+	home := t.TempDir()
+	t.Setenv("MOAI_HOME", home)
+	now := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
+	outbox.SetClockForTest(func() time.Time { return now })
+	t.Cleanup(func() { outbox.SetClockForTest(nil) })
+
 	for i := 0; i < config.DefaultBugreportModelCallsPerDay; i++ {
-		b.Record()
+		if !outbox.AllowAndRecordModelCall(context.Background(), now.Add(time.Duration(i)*time.Minute)) {
+			t.Fatalf("call %d of %d refused — a fresh budget must allow up to the cap", i+1, config.DefaultBugreportModelCallsPerDay)
+		}
 	}
-	if b.Allow() {
+	if outbox.AllowAndRecordModelCall(context.Background(), now.Add(time.Duration(config.DefaultBugreportModelCallsPerDay)*time.Minute)) {
 		t.Fatalf("the budget allowed a call past the daily cap of %d", config.DefaultBugreportModelCallsPerDay)
+	}
+	// The window is rolling: past 24 hours the spend prunes and the budget
+	// reopens.
+	if !outbox.AllowAndRecordModelCall(context.Background(), now.Add(25*time.Hour)) {
+		t.Fatal("the budget stayed closed past the rolling 24-hour window")
+	}
+}
+
+// TestModelCallBudgetPersistsAcrossSenders (review-gate finding 3, P2): the
+// budget reset per Sender instance — every new flush was a fresh budget, so
+// N flushes could spend N x the daily cap. The cap state is per-user and
+// counted atomically cross-process: a NEW sender facing a full budget falls
+// back to the template, it does not call again.
+func TestModelCallBudgetPersistsAcrossSenders(t *testing.T) {
+	sum, _, _ := summarizerFixture(t)
+	sum.out = "A validated summary."
+
+	// Six distinct reports: the first sender burns the whole daily cap on
+	// the create path (one call each).
+	var items []feedback.QueueItem
+	for i := 0; i < config.DefaultBugreportModelCallsPerDay; i++ {
+		p, err := bugreport.Build(bugreport.KindPanic, []string{fmt.Sprintf("internal/cli.Execute.f%d", i)}, nil, bugreport.BuildIdentity{Version: "v3.2.0", Commit: "abcdef1234567"})
+		if err != nil {
+			t.Fatalf("build payload %d: %v", i, err)
+		}
+		title, body := outbox.RenderReport(p)
+		items = append(items, feedback.QueueItem{
+			ID:          fmt.Sprintf("f%d", i+1),
+			Title:       title,
+			Body:        body,
+			QueuedAt:    time.Now().UTC().Format(time.RFC3339),
+			Fingerprint: p.Fingerprint,
+			Kind:        string(p.Kind),
+		})
+	}
+	seedQueue(t, items...)
+
+	first := NewSender(newStubRunner(true))
+	first.Summarizer = sum
+	if err := first.Send(context.Background()); err != nil {
+		t.Fatalf("first send: %v", err)
+	}
+	if got := sum.count(); got != config.DefaultBugreportModelCallsPerDay {
+		t.Fatalf("the first sender made %d calls, want the full cap %d", got, config.DefaultBugreportModelCallsPerDay)
+	}
+
+	// A seventh report and a NEW sender — the mutant shape: a fresh budget
+	// resets the spend and calls again.
+	p, err := bugreport.Build(bugreport.KindPanic, []string{"internal/cli.Execute.f7"}, nil, bugreport.BuildIdentity{Version: "v3.2.0", Commit: "abcdef1234567"})
+	if err != nil {
+		t.Fatalf("build payload 7: %v", err)
+	}
+	title, body := outbox.RenderReport(p)
+	seedQueue(t, feedback.QueueItem{ID: "f7", Title: title, Body: body, QueuedAt: time.Now().UTC().Format(time.RFC3339), Fingerprint: p.Fingerprint, Kind: string(p.Kind)})
+
+	second := NewSender(newStubRunner(true))
+	second.Summarizer = sum
+	if err := second.Send(context.Background()); err != nil {
+		t.Fatalf("second send: %v", err)
+	}
+	if got := sum.count(); got != config.DefaultBugreportModelCallsPerDay {
+		t.Fatalf("a new sender called the model again (total %d) — the budget reset per sender instead of persisting per user", got)
+	}
+	if rest := queuedItems(t); len(rest) != 0 {
+		t.Fatalf("the capped report did not publish on the template fallback: %+v", rest)
 	}
 }
 
@@ -369,7 +443,7 @@ func TestBugreportAndOutboxImportAllowlist(t *testing.T) {
 }
 
 func TestModelSeamIsInjectedNotImported(t *testing.T) {
-	for _, name := range []string{"model.go", "budget.go", "sender.go", "revalidate.go"} {
+	for _, name := range []string{"model.go", "sender.go", "revalidate.go"} {
 		raw, err := os.ReadFile(name)
 		if err != nil {
 			t.Fatalf("read %s: %v", name, err)

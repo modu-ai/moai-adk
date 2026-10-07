@@ -49,16 +49,17 @@ const (
 
 // Sender files queued reports through one Runner. The Summarizer is
 // INJECTED by internal/cli at the flush call (REQ-ANON-025); nil means the
-// deterministic template only.
+// deterministic template only. The model-call budget is NOT sender state:
+// it persists per user in the outbox store and is counted atomically
+// cross-process (review-gate finding 3).
 type Sender struct {
 	Runner     Runner
 	Summarizer Summarizer
-	budget     *ModelCallBudget
 }
 
 // NewSender returns a sender over r.
 func NewSender(r Runner) *Sender {
-	return &Sender{Runner: r, budget: NewModelCallBudget()}
+	return &Sender{Runner: r}
 }
 
 // FlushContext is the production entry the CLI's flush call drives: the
@@ -285,7 +286,7 @@ func (s *Sender) itemSummary(ctx context.Context, store *feedback.QueueStore, it
 		s.persistSummaryOutcome(ctx, store, item, "", summaryDecisionTemplate)
 		return "", false
 	}
-	if s.Summarizer == nil || !s.budget.Allow() {
+	if s.Summarizer == nil || !outbox.AllowAndRecordModelCall(ctx, time.Now()) {
 		s.persistSummaryOutcome(ctx, store, item, "", summaryDecisionTemplate)
 		return "", false
 	}
@@ -302,7 +303,9 @@ func (s *Sender) itemSummary(ctx context.Context, store *feedback.QueueStore, it
 	}); err != nil {
 		return "", false // the marker could not land: template, never an unbounded call
 	}
-	s.budget.Record()
+	// The attempt is already counted (AllowAndRecordModelCall above, one
+	// atomic judgment-and-record): a failing endpoint hammers no further
+	// than the cap, across senders and processes.
 	out, err := s.Summarizer.Summarize(ctx, payload)
 	if err != nil || validateSummary(out) != nil {
 		s.persistSummaryOutcome(ctx, store, item, "", summaryDecisionTemplate)

@@ -18,7 +18,7 @@ func PurgeStores() error {
 	if err := bugreport.ClearSpool(); err != nil {
 		return fmt.Errorf("outbox: purge spool: %w", err)
 	}
-	for _, name := range []string{QueueFileName, LedgerFileName, OutboxFileName} {
+	for _, name := range []string{QueueFileName, LedgerFileName, OutboxFileName, ModelCallsFileName} {
 		path, err := StorePath(name)
 		if err != nil {
 			return err
