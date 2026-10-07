@@ -1,6 +1,19 @@
 # 데이터 흐름
 
-## PR #1772 최신 통합 트리의 흐름
+## 현재 최종 통합 트리의 흐름 — 840826
+
+기준은 `840826fa662080e5ee2a82001338f004e4d3e479`다. 다음은 실제 호출부와 저장 경로의 소스 대조이며 외부 실행·OS 런타임의 성공 판정이 아니다.
+
+1. UserPromptSubmit의 기본 2초 bind context → `registerFactoryHookPeerRun` → 일반 등록 또는 rebound 등록의 `OpenWithContext` → `FactoryDirContext` → `ProjectDirContext` → `CanonicalProjectRootContext` → `internal/core`의 checkout.go에 있는 `ResolveGitDirsContext`로 예산이 전달된다. broker는 caller 잔여 예산과 기본 5초 중 작은 값을 사용하고 경로 탐색 뒤 남은 예산으로 DB busy timeout을 구성한다. inbox의 200ms inspection open은 별도다. 기존 contextless API도 남아 있다.
+2. initializer의 template 배포 → 기본 AGENTS.md → validator의 존재 진단으로 이어진다. InstructionsLoaded는 AGENTS 우선·legacy CLAUDE fallback으로 anchor와 import closure를 관측한다. Codex contract는 AGENTS.md·AGENTS.local.md를 보호하며 legacy root 파일을 읽거나 쓰지 않는다. Codex launcher의 local producer는 AGENTS.local.md와 CLAUDE.local.md를 순서대로 둘 다 읽어 하나의 override로 연결한다.
+3. Factory는 저장된 after·bundle 순서를 먼저 보존하고 여러 hub의 dependency를 합친다. 순환을 닫는 추론 edge는 넣지 않는다. 같은 wait 판정이 selection과 direct nomination으로 이어지고, 현재 hold/queued 상태의 assigned row는 바로 임대하지 않는다. 기존 hint는 생성 필드로 덮지 않는다.
+4. PR 전달은 readiness 전후 tip 대조 → merging 재시도의 holder·expiry 검사 → 원격 변경 직전 state·version·holder·expiry 재확인 → 확인한 SHA push → PR head 대조 → match-head auto-merge 요청으로 이어진다. candidate-tip remeasure와 complete T16의 실제 merge-tree remeasure는 기존의 서로 다른 증거 시점을 유지한다.
+5. init/update → `internal/cli/user_asset_phase.go` → 사용자 잠금·기록된 bundle selection·embedded catalog/tree → `internal/userassets` Installer로 이어진다. 네 사용자 루트 설치와 프로젝트 자산 이행 확인이 먼저이며, project deployer는 네 공통 skill/agent 루트를 제외한다. AGENTS 기본 instruction 배포와 사용자 자산 설치는 서로 다른 단계다.
+6. protected-zone 판정은 shell quote 문법별 literal 복원 → OS별 native 경로와 lexical 비교형 분리 → 실제 구성요소 walk로 이어진다. POSIX literal backslash와 Windows separator를 같은 것으로 바꾸지 않는다. roster sweep은 dated reports를 live roster에서 제외한다.
+
+> `internal/template/templates/CLAUDE.md`와 plugin 운반체는 퇴역했다. 아래 이전 미러·생산자 설명은 현재 제공 흐름이 아닌 이력이다.
+
+## 이전 c572 기준의 흐름
 
 기준은 `c572e7baceaa6fd0cd3c78a9335b4baabd320347`다. 아래는 호출부·저장 경로의 소스 대조이며 외부 프로세스나 원격 병합을 실제 실행했다는 주장은 아니다.
 

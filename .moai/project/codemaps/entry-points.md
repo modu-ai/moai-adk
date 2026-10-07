@@ -1,6 +1,16 @@
 # 진입점
 
-## PR #1772 최신 통합 트리의 진입점
+## 현재 최종 통합 트리의 진입점 — 840826
+
+기준은 `840826fa662080e5ee2a82001338f004e4d3e479`다. 비테스트 소스에서 literal `AddCommand(` 호출 줄은 250개(78개 파일), `rootCmd.AddCommand(` 줄은 68개다. c572 이후 이 수는 변하지 않았다. 호출 줄 수를 실행 가능한 명령 개수로 취급하지 않는다.
+
+- `internal/hook/user_prompt_submit.go`는 기본 2초 bind context를 만들어 일반 peer 등록에 전달한다. `internal/hook/factory_messages.go`와 `internal/hook/factory_rebind.go`가 `OpenWithContext`를 사용한다. inbox open은 기존 inspection 계약을 별도로 사용한다.
+- `internal/core/project/initializer.go`는 모든 harness의 기본 AGENTS.md를 template deployer에서 받는다. `internal/cli/harness/install.go`와 `internal/cli/doctor_harness.go`의 marker 대상 선택은 AGENTS 우선, 존재하는 legacy CLAUDE fallback이다. validator와 Codex contract의 새 기본 파일 요구를 이 fallback으로 대체하지 않는다.
+- `internal/cli/codex_launcher.go`의 local instruction producer는 AGENTS.local.md 다음 CLAUDE.local.md를 둘 다 읽고 provenance header와 함께 하나의 developer_instructions override로 연결한다. root instruction의 우선·fallback과 다른 계약이다.
+- `internal/cli/init.go`의 `ensureUserAssetsLocked`, `internal/cli/update.go`의 `runUserAssetUpdatePhase`, `internal/cli/bundle.go`의 add/remove 진입은 유지된다. AGENTS 전환은 사용자 공통 자산을 프로젝트 폴더로 되돌리는 흐름이 아니다.
+- `internal/cli/factory_card.go`의 selection·nomination은 공통 다중 hub wait를 거친다. `internal/cli/factory_card_pr.go`는 고정한 tip과 원격 변경 직전 재검사를 묶는다. 기존 candidate-tip remeasure와 complete T16의 실제 merge-tree remeasure는 구분한다.
+
+## 이전 c572 기준의 진입점
 
 기준은 `c572e7baceaa6fd0cd3c78a9335b4baabd320347`다. 비테스트 소스의 literal `AddCommand(` 호출 줄은 이전 ff7722 기준 249개에서 250개로 늘었고, `rootCmd.AddCommand(` 줄은 68개로 같다. 이는 호출 줄 수이며 실행 가능한 명령 개수와 같다는 뜻은 아니다.
 

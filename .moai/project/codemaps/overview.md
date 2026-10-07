@@ -1,8 +1,16 @@
 # 아키텍처 개요
 
-## PR #1772 최신 통합 트리의 재측정
+## 현재 최종 통합 트리 — 840826
 
-기준은 `c572e7baceaa6fd0cd3c78a9335b4baabd320347`이며 실제 main `87da0636746331c1a4b6dc53e243fac9fd75fd82`를 정상 병합한 트리다. `go list -deps -json ./...`와 파일 열거를 이 트리에서 실행했다. 비테스트 Go 파일 1606개, 테스트 Go 파일 2961개, 패키지 170개, 최상위 디렉터리 88개(`internal` 84·`cmd` 2·`pkg` 2), 임베드 템플릿과 manifest 항목 각각 620개다. 내부 import 엣지는 480개, 최상위로 접고 self-edge를 뺀 고유 쌍은 305개다. 아래 규모 표는 이 기준의 현재 값이며, 이전 재측정 단락과 모듈별 역사 기록의 수량은 당시 관측값이다.
+소스 기준은 `840826fa662080e5ee2a82001338f004e4d3e479`다. PR #1772의 사용자 자산 설치 코드를 실제 main `c8a41a58315b463651cae1386fd4c93968760381`과 정상 통합한 뒤 읽기 전용으로 재측정했다. `go list -deps -json ./...`의 현재 darwin/arm64 패키지 선택과 모든 OS 파일을 포함한 파일 census를 구분한다. 비테스트 Go 파일은 1606개, 테스트 파일은 2973개, 모듈 패키지는 170개, 최상위 디렉터리는 88개다. 내부 import는 패키지 단위 480쌍, 최상위로 접고 self-edge를 뺀 집계는 305쌍이다.
+
+이전 본문 기준 `c572e7baceaa6fd0cd3c78a9335b4baabd320347` 이후 설명 대상 소스 변경은 34개이며 모두 기존 파일 수정이다. 현재 사용자 자산 14개 소스는 존재하고 퇴역한 plugin 소스 11개는 없다. AGENTS 중심 instruction, hook 등록의 caller context와 Git·HOME·broker 경로, Factory 다중 hub 순서와 원격 전달 재검증을 본문에 반영했다. 사용자 폴더 설치와 프로젝트 공통 자산 제외 책임은 유지한다.
+
+임베드 원본은 619파일이며 generated manifest는 templates 항목 619개와 별도 `catalog.yaml` 1개를 합친 620개다. 카탈로그의 이름 항목은 70개(스킬 58·에이전트 12)다. 이 수를 설치되는 물리 파일 수와 혼용하지 않는다. Go directive는 1.26.8이고 c572 이후 `go.mod`·`go.sum` 차이는 없다. 아래 규모 표는 이번 값이며 이후의 이전 판 기록은 각각 당시 기준이다. 이 절은 소스 구조의 측정이며 OS 런타임이나 원격 실행의 성공 판정이 아니다.
+
+## 이전 c572 기준의 재측정
+
+기준은 `c572e7baceaa6fd0cd3c78a9335b4baabd320347`이며 실제 main `87da0636746331c1a4b6dc53e243fac9fd75fd82`를 정상 병합한 트리다. `go list -deps -json ./...`와 파일 열거를 이 트리에서 실행했다. 비테스트 Go 파일 1606개, 테스트 Go 파일 2961개, 패키지 170개, 최상위 디렉터리 88개(`internal` 84·`cmd` 2·`pkg` 2), 임베드 템플릿과 manifest 항목 각각 620개다. 내부 import 엣지는 480개, 최상위로 접고 self-edge를 뺀 고유 쌍은 305개다. 이 단락의 수량은 c572 당시 관측값이며, 현재 규모 표는 맨 위 840826 재측정을 따른다.
 
 이전 소스 기준 `ff7722d2d157dd4e3cffd88ebb644e0f8ead83fa` 이후 설명 대상 소스 41개(수정 30·신규 10·삭제 1)를 대조했다. 새 창은 Factory 직렬 통합·재측정, Codex 단일 대화형 부모와 `todo --auto`, 배치 카드·파일 수집, CLI 상태 표시, MCP 전송, update의 이전 루트 거부 규칙 이행을 포함한다. 사용자 폴더 자산 설치와 플러그인 폐기는 기존 PR 책임으로 유지한다. 이는 소스 구조의 대조이며 실제 원격 병합이나 각 OS의 런타임을 검증했다는 주장은 아니다.
 
@@ -51,14 +59,14 @@
 | 값 | 수치 | 산출 명령 |
 |---|---|---|
 | 비테스트 Go 파일 | 1606 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
-| 테스트 Go 파일 | 2961 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
+| 테스트 Go 파일 | 2973 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
 | Go 패키지 총수 | 170 | `go list ./... \| wc -l` |
 | 최상위 디렉터리 | 88 | `internal` 84(`ls -d internal/*/`) + `cmd` 2 + `pkg` 2 |
 | 내부 import 엣지 (패키지 단위) | 480 | `go list -deps -json ./...`의 프로젝트 패키지 `Imports` 중 **모듈 내부 경로**(`github.com/modu-ai/moai-adk/` 접두 — `internal`·`pkg`·`cmd` 전부 포함; `internal` 전용 필터로는 이 값보다 작게 나온다 — t1456 판에서 t1443 감사 F1대로 문언을 실측 필터와 일치시켰다) |
 | 내부 import 엣지 (최상위 집계) | 305 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
-| 임베드 템플릿 파일 | 620 | `find internal/template/templates -type f \| wc -l` |
+| 임베드 템플릿 파일 | 619 | `find internal/template/templates -type f \| wc -l` |
 
-테스트 대 비테스트 비율은 **1.84 : 1**입니다. `go list`의 패키지 가운데 테스트 Go 파일이
+테스트 대 비테스트 비율은 **1.85 : 1**입니다. `go list`의 패키지 가운데 테스트 Go 파일이
 0개인 곳은 6개입니다. 그중 `cmd/moai`·`cmd/t657-merge`·`internal/template/scripts`·
 `scripts/convert-nextra-to-hextra`는 실행 파일이고, `internal/closure/closuretest`·
 `internal/escalation/escalationtest`는 다른 패키지의 테스트가 쓰는 픽스처입니다.

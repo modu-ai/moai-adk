@@ -1,6 +1,29 @@
 # 패키지 모듈 상세
 
-## PR #1772 최신 통합 트리의 변경 경계
+## 현재 최종 통합 트리의 책임 — 840826
+
+기준은 `840826fa662080e5ee2a82001338f004e4d3e479`다. c572 이후 수정된 설명 대상 소스 34개를 실제 파일·호출부·package 문서와 대조했다. 새 패키지나 비테스트 파일 추가·삭제는 없다. 다음 표는 소스 책임을 설명하며 런타임 보장으로 확대하지 않는다.
+
+| 소유 모듈·경로 | 현재 책임 |
+|---|---|
+| `internal/core`의 checkout.go | `ResolveGitDirsContext`가 caller context를 Git 명령까지 전달하고 inherited output pipe의 대기를 `DefaultGitPathWaitDelay` 100ms로 제한한다. 기존 contextless API도 유지한다. |
+| `internal/homestate/paths.go` · `internal/factorymsg/store.go` | `CanonicalProjectRootContext` → `ProjectDirContext` → `FactoryDirContext`로 상태 경로를 구한다. `OpenWithContext`는 caller 잔여 예산과 기본 5초 중 작은 값을 사용하고, Git 탐색 뒤 남은 예산의 절반으로 SQLite busy timeout을 구성한다. 취소·불확실한 Git 결과를 단순 비저장소로 분류하지 않는다. |
+| `internal/homestate/profile_lease.go` · `internal/factorymsg/store.go` | profile lease와 broker의 DSN을 file URI로 구성해 drive·특수문자가 있는 경로를 전달한다. |
+| `internal/hook/factory_messages.go` · `internal/hook/factory_rebind.go` | 일반 등록과 rebound 등록이 caller context를 broker open에 전달한다. inbox의 기존 200ms inspection 및 `OpenExistingWithDeadline`은 별도 계약이다. |
+| `internal/defs/files.go` · `internal/core/project/initializer.go` · `internal/core/project/validator.go` | 기본 instruction은 AGENTS.md다. initializer는 template deployer에서 이를 받으며 별도 CLAUDE.md 생성 단계가 없다. validator는 legacy 파일만으로 새 기본 파일의 존재 판정을 대신하지 않는다. |
+| `internal/cli/codex_contract.go` · `internal/cli/doctor_harness.go` · `internal/cli/harness/install.go` · `internal/hook/instructions_loaded.go` | Codex contract는 AGENTS.md·AGENTS.local.md를 보호한다. doctor·marker install·InstructionsLoaded는 각각 AGENTS 우선과 legacy CLAUDE fallback을 구현한다. 이 선택 계약을 Codex local 파일 둘의 연결 계약과 구분한다. |
+| `internal/config/token_budget_guard.go` · `internal/evolution/safety.go` · `internal/harness/curator/dispatch.go` · `internal/harness/layer5.go` · `internal/harness/observer.go` | byte 측정·보호·curator Tier4·L3 안내를 AGENTS로 정렬한다. 안전 보호와 observer는 legacy CLAUDE도 유지한다. curator Tier3 대상은 AGENTS.local.md다. |
+| `internal/cli/factory_bundle.go` · `internal/cli/factory_card.go` | 저장된 after·bundle 순서를 보존하고 모든 hub 후보를 검사한다. 결합 순환을 닫는 추론 edge를 제외하며 기존 row의 생성 hint를 다시 쓰지 않는다. bare selection과 nomination이 같은 hub wait를 사용하고 hold/queued 상태의 assigned row는 바로 임대하지 않는다. |
+| `internal/cli/factory_card_pr.go` | readiness 전후 tip, merging 재시도의 holder·expiry, 원격 변경 직전 state·version·holder·expiry를 재검사한다. 확인한 SHA의 push와 PR head 대조, match-head auto-merge 요청을 연결한다. |
+| `internal/hook/pre_tool.go` · `internal/hook/protected_zone_path.go` · `internal/hook/protected_zone_shell.go` | OS별 separator·volume과 실제 구성요소 walk, POSIX literal backslash, double/ANSI-C quoted shell literal 해석을 native 경로 판정으로 연결한다. |
+| `internal/harness/rosterguard` · `internal/session/anchor_relocate_audit.go` | roster sweep은 dated reports를 제외하고 subset-by-design fixture·파생 등록을 구분한다. anchor 복원은 registry suffix에 native separator를 사용한다. |
+| `internal/template/deployer.go` · `internal/template/embed.go` · `internal/template/embed_manifest_gen.go` · `internal/cli/init.go` · `internal/web/agentfm.go` | AGENTS 중심 프로젝트 payload와 명시적 임베드 allowlist를 사용한다. init의 사용자 자산 설치와 user-home 우선 agent 스캔 책임은 유지한다. 이 창의 init·agentfm 변경은 안내·주석이다. |
+
+`internal/userassets`의 10개 파일과 CLI의 bundle·doctor_user_install·migrate_project_assets·user_asset_phase 4개 파일은 실제 존재한다. 네 사용자 루트 설치와 프로젝트 공통 자산 제외는 아래 기존 설치 책임대로 유지한다. local/template meta-harness의 AGENTS marker와 사용자 `~/.claude` workflow 루트는 함께 보존한다.
+
+> `internal/template/templates/CLAUDE.md`와 `internal/template/pluginemit`은 현재 트리에 없다. 아래 이전 판에 남은 해당 구현은 퇴역 이력이다.
+
+## 이전 c572 기준의 변경 경계
 
 기준은 `c572e7baceaa6fd0cd3c78a9335b4baabd320347`다. 이전 ff7722 기준 이후 설명 대상 소스 41개를 대조했다. 다음은 소스에서 확인한 책임과 연결이며 실제 원격 실행의 성공 판정은 아니다. 아래 이전 기록의 파일 수는 각 당시 기준이다.
 

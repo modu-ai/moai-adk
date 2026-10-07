@@ -1,6 +1,12 @@
 # 의존성 그래프
 
-## PR #1772 최신 통합 트리의 의존성
+## 현재 최종 통합 트리의 의존성 — 840826
+
+기준은 `840826fa662080e5ee2a82001338f004e4d3e479`다. 현재 darwin/arm64의 `go list -deps -json ./...`에서 모듈 패키지 170개, 내부 import 480쌍, 최상위 집계 305쌍을 측정했다. 보존된 c572 JSON과 이번 JSON을 같은 술어로 set 비교한 결과 패키지와 두 엣지 집합의 추가·삭제가 모두 0개였다. 숫자만 같은 것으로 관계 동일성을 추정한 결과가 아니다. `go.mod`·`go.sum`도 이 창에서 변하지 않았다.
+
+caller context API는 기존 모듈 안에서 확장됐다. hook 등록 → broker → HOME 경로 → `internal/core`의 Git helper 연결을 사용하며 새 내부 import edge나 외부 require를 추가한 창은 아니다. `internal/userassets`는 `internal/template`을 import하고 사용자 설치의 CLI 배선은 유지한다. 아래 fan-in/out 표와 순환 절은 이번 집계를 사용하며, 이전 판 단락의 수치는 각 당시 관측값이다.
+
+## 이전 c572 기준의 의존성
 
 기준은 `c572e7baceaa6fd0cd3c78a9335b4baabd320347`다. `go list -deps -json ./...`에서 내부 import 엣지 480개, 최상위로 접고 self-edge를 뺀 고유 쌍 305개를 측정했다. 이전 ff7722 이후 `internal/cli/worktree` → `internal/factory`, `internal/factory` → `internal/factorylane`, `internal/factory` → `pkg/version`이 추가됐고, `internal/cli/worktree` → `internal/config`는 제거됐다. `go.mod`·`go.sum` 차이는 없다.
 
@@ -89,25 +95,25 @@ $ go list -deps -json ./... 의 프로젝트 패키지 Imports 중 모듈 내부
 
 ## fan-in 상위 — 다른 최상위 패키지에게 import 당한 수
 
-| # | 패키지 | 피import | 레이어 |
-|---|---|---|---|
-| 1 | `internal/config` | 30 | data |
-| 2 | `internal/atomicfile` | 14 | cross-cutting |
-| 2 | `internal/paths` | 14 | cross-cutting |
-| 4 | `internal/defs` | 13 | cross-cutting |
-| 5 | `internal/homestate` | 9 | data |
-| 6 | `internal/core` | 8 | domain |
-| 6 | `internal/factory` | 8 | domain |
-| 6 | `internal/spec` | 8 | domain |
-| 9 | `internal/execerr` | 7 | cross-cutting |
-| 9 | `pkg/models` | 7 | cross-cutting |
-| 11 | `internal/gitenv` | 6 | cross-cutting |
-| 11 | `internal/hook` | 6 | **presentation** |
-| 11 | `internal/template` | 6 | domain |
-| 11 | `pkg/version` | 6 | cross-cutting |
-| 15 | `internal/lsp` | 5 | infrastructure |
-| 15 | `internal/statusline` | 5 | **presentation** |
-| 15 | `internal/lockfile` | 5 | cross-cutting |
+| # | 패키지 | 피import |
+|---|---|---|
+| 1 | `internal/config` | 30 |
+| 2 | `internal/atomicfile` | 14 |
+| 2 | `internal/paths` | 14 |
+| 4 | `internal/defs` | 13 |
+| 5 | `internal/homestate` | 9 |
+| 6 | `internal/core` | 8 |
+| 6 | `internal/factory` | 8 |
+| 6 | `internal/spec` | 8 |
+| 9 | `internal/execerr` | 7 |
+| 9 | `internal/template` | 7 |
+| 9 | `pkg/models` | 7 |
+| 12 | `internal/gitenv` | 6 |
+| 12 | `internal/hook` | 6 |
+| 12 | `pkg/version` | 6 |
+| 15 | `internal/lockfile` | 5 |
+| 15 | `internal/lsp` | 5 |
+| 15 | `internal/statusline` | 5 |
 
 산출은 최상위 집계 엣지 목록의 목적지 열을 `sort | uniq -c | sort -rn` 한 것입니다.
 
@@ -168,22 +174,35 @@ admission 계약을 공유합니다.
 
 | # | 패키지 | import |
 |---|---|---|
-| 1 | `internal/cli` | **75** |
+| 1 | `internal/cli` | 76 |
 | 2 | `internal/hook` | 40 |
 | 3 | `internal/web` | 16 |
 | 4 | `internal/core` | 13 |
 | 5 | `internal/escalation` | 12 |
 | 6 | `internal/contract` | 10 |
-| 7 | `internal/statusline` | 8 |
-| 8 | `internal/settings` | 7 |
-| 8 | `internal/factory` | 7 |
-| 10 | `internal/feedback` · `homestate` | 6 각 |
-| 12 | `internal/codexwiring` · `closure` · `harness` | 5 각 |
-| 15 | `internal/update` · `spec` · `template` · `discovery` | 4 각 |
-| 19 | `internal/session` · `ralph` · `profile` · `lsp` · `loop` · `graph` · `factorylane` · `config` | 3 각 |
+| 7 | `internal/factory` | 9 |
+| 8 | `internal/statusline` | 8 |
+| 9 | `internal/settings` | 7 |
+| 10 | `internal/feedback` | 6 |
+| 10 | `internal/homestate` | 6 |
+| 12 | `internal/closure` | 5 |
+| 12 | `internal/codexwiring` | 5 |
+| 12 | `internal/harness` | 5 |
+| 15 | `internal/discovery` | 4 |
+| 15 | `internal/spec` | 4 |
+| 15 | `internal/update` | 4 |
+| 18 | `internal/config` | 3 |
+| 18 | `internal/factorylane` | 3 |
+| 18 | `internal/graph` | 3 |
+| 18 | `internal/loop` | 3 |
+| 18 | `internal/lsp` | 3 |
+| 18 | `internal/profile` | 3 |
+| 18 | `internal/ralph` | 3 |
+| 18 | `internal/runtime` | 3 |
+| 18 | `internal/session` | 3 |
+| 18 | `internal/template` | 3 |
 
-`internal/cli`가 다른 최상위 패키지 **75개**를 import 합니다(t1524 판 재측정 73→75 — `internal/hygiene`(card t1518)·`internal/auditverdict`(`spec_ceiling.go` · card t1500) 합류; t1485 판 재측정 72→73 — 신규 `internal/decision`; t1297 판 재측정 — t1305 판 70에서
-커밋 신원 가드 배선·codex factory 복원 등의 누적 +3) — 사실상 전 트리에 닿습니다.
+`internal/cli`가 다른 최상위 패키지 **76개**를 import 한다(840826의 최상위 집계). 아래 판별 설명과 변화 이력은 기존 구조 분석의 기록이다.
 합성 루트(`internal/cli/deps.go`)가 여기 있으므로 일부는 의도된 것이지만, 상당수는
 `deps.go`가 아니라 **개별 verb 파일에서 직접** 들어옵니다. 이것이 "명령 하나 = 파일 하나 = 그 명령이
 필요한 것 전부 import"라는 수직 슬라이스 성격을 만듭니다.
@@ -198,22 +217,19 @@ admission 계약을 공유합니다.
 
 ## 순환
 
-**패키지 단위 순환은 존재하지 않습니다.** Go 컴파일러가 금지하므로 구조적으로 불가능하고,
-`go list ./...`가 오류 없이 완주하는 것으로 확인됩니다.
+840826의 실제 package adjacency에 SCC 분석을 적용한 nontrivial component는 0개다. `go list -deps -json ./...`도 exit0이었다. 상위 디렉터리로 접은 그래프에는 15개 단위 그룹 1개와 contract/escalation의 2개 단위 그룹 1개가 있다. 서로 다른 하위 패키지를 같은 부모로 합친 집계 결과를 Go import cycle로 해석하지 않는다.
 
-**최상위 집계 단위에서는 상호 참조가 5쌍** 있습니다. 엣지 목록과 그 역방향을 교차시켜 얻었습니다.
+직접 양방향으로 연결된 최상위 쌍은 5개다. 아래는 현재 package adjacency에서 확인한 실제 경로다. SCC는 더 긴 경로도 포함하므로 직접 양방향 쌍의 개수와 별개다.
 
-| 상호 쌍 | 실제 엣지 | 원인 |
-|---|---|---|
-| `internal/cli` ↔ `internal/hook` | `cli → hook`, `cli → hook/{handoff,memo/taxonomy,perf,quality,security}` / `hook → cli/preference` | `cli/preference`가 CLI 표면이 아닌 공유 leaf인데 `internal/cli` 밑에 있다 |
-| `internal/cli` ↔ `internal/factory` | `cli → kanban` / `kanban → cli/specid` | `cli/specid`(SPEC-ID sanitizer leaf)가 `internal/cli` 밑에 있다 |
-| `internal/hook` ↔ `internal/migration` | `hook → migration` / `migration/migrations → hook` | 마이그레이션 스텝이 훅의 은퇴 이벤트 목록을 읽는다 |
-| `internal/contract` ↔ `internal/escalation` | `contract/revoke`·`contract/kickoff` → `escalation`(의사결정·철회가 감지기 루트·기록을 읽는다) / `escalation → contract`(감지기의 계약 해석) | **t1305 판 신규.** 계약 하위 의사결정 패키지가 감지기의 루트 분류를 읽는 방향이 생기며 최상위 접기에서 맞섰다 |
-| `internal/profile` ↔ `internal/settings` | `profile → settings`, `settings → profile` | **t1297 판 신규 기재.** 양 엇키는 앵커 이전부터 존재했다(`git grep` 실측 — `internal/profile/sync.go`) — profile 동기화가 settings 모델을 읽고 settings 저장 seam이 profile 행을 쓰는 맞센 방향이다 |
+| 최상위 쌍 | 실제 package import의 예 |
+|---|---|
+| `internal/cli` ↔ `internal/factory` | cli·cli/worktree → factory, factory → cli/specid |
+| `internal/cli` ↔ `internal/hook` | cli → hook 및 hook 하위 패키지, hook → cli/preference |
+| `internal/contract` ↔ `internal/escalation` | contract/kickoff·contract/revoke → escalation, escalation → contract |
+| `internal/hook` ↔ `internal/migration` | hook → migration, migration/migrations → hook |
+| `internal/profile` ↔ `internal/settings` | profile → settings/yamlpatch, settings → profile |
 
-**다섯 쌍 모두 패키지 배치 문제이지 실제 순환이 아닙니다.** 앞의 두 쌍은 `cli/preference`와
-`cli/specid`를 최상위로 승격하면 즉시 사라집니다. 새 넷째 쌍도 하위 패키지(`contract/revoke`·
-`contract/kickoff` ↔ 최상위 `escalation`) 사이의 방향이라 패키지 그래프 자체는 순환이 아닙니다.
+15개 단위 그룹은 cli·codexadapter·codexwiring·discovery·factory·factorymsg·feedback·graph·hook·migration·permission·profile·settings·statusline·web이다. 정확한 package 관계는 480쌍의 집합으로 따로 유지하며 최상위 집계와 혼용하지 않는다.
 
 ---
 
