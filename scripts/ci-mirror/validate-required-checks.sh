@@ -466,8 +466,8 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
 			# GATE-11: the include out-of-matrix fields feed ONLY the
 			# expression substitution — the auto suffix reflects the
 			# ORIGINAL matrix axes alone (GitHub names
-			# os:[ubuntu]+include[extra:smoke] as `Test (ubuntu-latest)`,
-			# never `Test (ubuntu-latest smoke)`).
+			# os:[runner]+include[extra:smoke] as `Test (runner)`,
+			# never `Test (runner smoke)`).
 			# GATE-12: GitHub joins MULTIPLE matrix values with comma+space
 			# (`Test (ubuntu-latest, 18)`), not a bare space.
 			if (nk > 0 && !had_ref) {
