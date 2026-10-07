@@ -59,6 +59,17 @@ func (r Reason) Valid() bool {
 // The returned reason echoes the call-site token when one decided the row,
 // so the spool line carries why.
 func Attribute(kind Kind, err error, reason Reason) (Verdict, Reason) {
+	// The hook_timeout register verdict is unconditional-ambiguous (design
+	// section 2: "load and a stuck handler look alike without more data"),
+	// and it routes BEFORE the generic error-chain rows: the timeout
+	// sentinels the registry captures under this kind — context.
+	// DeadlineExceeded first among them — implement net.Error, so the A2
+	// network row classified environment and Capture discarded the signal
+	// the SPEC retains locally (review-gate P2; DEC-7).
+	if kind == KindHookTimeout {
+		return VerdictAmbiguous, ""
+	}
+
 	// A1: filesystem / syscall.
 	var pathErr *os.PathError
 	if errors.As(err, &pathErr) {
