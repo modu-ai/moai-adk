@@ -28,13 +28,17 @@ func PurgeStores() error {
 		return fmt.Errorf("outbox: purge spool: %w", err)
 	}
 	store := BugreportQueueStore()
-	err := store.MutateContext(context.Background(), func(rec *feedback.QueueRecord) error {
+	// A CORRUPTED queue must not block the purge (review gate finding, P2):
+	// the mutation's load step fails on unparsable JSON, but the user asked
+	// for the store GONE — the removal below proceeds regardless of the
+	// parse verdict. The mutation still takes the queue's lock, so an
+	// in-flight writer stays serialized against this removal (the finding
+	// this call path was added for is unchanged); only the parse outcome is
+	// ignored.
+	_ = store.MutateContext(context.Background(), func(rec *feedback.QueueRecord) error {
 		rec.Items = []feedback.QueueItem{}
 		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("outbox: purge queue: %w", err)
-	}
 	queuePath, err := StorePath(QueueFileName)
 	if err != nil {
 		return err

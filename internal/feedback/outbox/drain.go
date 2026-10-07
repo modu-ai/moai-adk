@@ -417,8 +417,37 @@ func sentHistoryHasFingerprint(fp string, now time.Time, windowDays int) bool {
 	if err != nil {
 		return false
 	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
+	// The read is BOUNDED (review gate finding, P2): a non-regular outbox
+	// log is refused WITHOUT opening it — a FIFO swapped in at the log path
+	// parked this read past every deadline, hanging the auto-flush AND
+	// `moai update`, the same defect class the queue read was hardened
+	// against — and the open+read runs under
+	// DefaultFeedbackQueueReadTimeBox with the DefaultFeedbackQueueMaxBytes
+	// size cap. Every refusal answers "no history": the boolean API has no
+	// error channel, and a refused read must suppress nothing.
+	if info, serr := os.Stat(path); serr == nil && !info.Mode().IsRegular() {
+		return false
+	}
+	type readResult struct {
+		raw []byte
+		err error
+	}
+	done := make(chan readResult, 1)
+	go func() {
+		raw, rerr := os.ReadFile(path)
+		done <- readResult{raw: raw, err: rerr}
+	}()
+	var raw []byte
+	select {
+	case r := <-done:
+		if r.err != nil {
+			return false
+		}
+		raw = r.raw
+	case <-time.After(config.DefaultFeedbackQueueReadTimeBox):
+		return false
+	}
+	if len(raw) > config.DefaultFeedbackQueueMaxBytes {
 		return false
 	}
 	for _, line := range strings.Split(string(raw), "\n") {

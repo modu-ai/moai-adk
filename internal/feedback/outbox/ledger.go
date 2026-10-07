@@ -6,6 +6,7 @@ package outbox
 // queue uses.
 
 import (
+	"io"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -58,8 +59,18 @@ func loadLedger() (*Ledger, error) {
 	}
 	done := make(chan readResult, 1)
 	go func() {
-		raw, err := os.ReadFile(path)
-		done <- readResult{raw: raw, err: err}
+		f, oerr := os.Open(path)
+		if oerr != nil {
+			done <- readResult{err: oerr}
+			return
+		}
+		defer func() { _ = f.Close() }()
+		// Read at most cap+1 bytes (review gate finding, P2): the size
+		// verdict must be made BEFORE the whole file is allocated — a
+		// full os.ReadFile on a huge file charged its entire size to
+		// memory before the cap check could reject it.
+		raw, rerr := io.ReadAll(io.LimitReader(f, config.DefaultBugreportLedgerMaxBytes+1))
+		done <- readResult{raw: raw, err: rerr}
 	}()
 	var raw []byte
 	select {
