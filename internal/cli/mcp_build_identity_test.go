@@ -723,8 +723,17 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// Re-measured hits: the arm (i) comment stays at 839, its one actual
 		// ancestry comparison moves to 876, and the removed comment at 844
 		// is no longer a hit. This remains a disposal check, not binary lag.
+		// Re-measured at card t1561 (SPEC-GFD-PATCHID-VERBATIM-001): M2
+		// replaced the `git cherry` arm with worktree.LandedByCommitPatchIDs
+		// and grew the predicate doc block above the comparison, moving the
+		// one actual ancestry comparison 876→879 and adding a doc-comment
+		// mention at 845 (arm (iii) naming worktree.LandedByPatchID — the
+		// same doc-mention family as the t1453 844 precedent). Same single
+		// comparison plus one doc mention — same count of actual ancestry
+		// comparisons.
 		"session_worktree.go:839": true,
-		"session_worktree.go:876": true,
+		"session_worktree.go:845": true,
+		"session_worktree.go:879": true,
 		// SPEC-TODO-CARD-ISSUANCE-001 (card t1454): the in-flight lane
 		// changed-files probe — productionLaneFilesProbe resolves the fork
 		// point between the integration branch and the card's lane branch
