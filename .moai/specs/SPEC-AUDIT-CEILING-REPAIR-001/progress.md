@@ -246,6 +246,22 @@ a `## ` line inside an open fence is code, not a boundary. Regression test
 variants, including a ``` line inside a tilde fence as content — the record
 lands immediately before the first real heading after the fence closes.
 
+### Round-3 repair 1 record — fence state on the §G start-heading scan (leader-approved, AC wording syncing in parallel)
+
+RED observed pre-fix at HEAD `ccd1603af`:
+`audit_ceiling_fence_test.go:99: the line immediately before the next real
+heading is "", want the record` — the scan that FINDS the §G heading
+tracked no fence state, so a fenced example early in progress.md carrying
+a §G-heading-prefixed line (`## §G Override and Refusal Record (fenced
+example)`) was selected as §G and the record landed before the real
+section. Fix: the heading lookup walks with the same
+`opensFence`/`closesFence` state the next-heading scan already applies —
+the real `## §G Override and Refusal Record` is selected. Regression test
+`TestAppendProgressRecordStartHeadingSkipsFence`
+(`internal/runtime/audit_ceiling_fence_test.go`). The AC wording for this
+batch is being updated by manager-spec in parallel; the tests bind to the
+behavior.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07

@@ -653,7 +653,25 @@ func progressWithRecord(content, line string) string {
 	}
 	lines := strings.Split(strings.TrimSuffix(content, "\n"), "\n")
 	heading := -1
+	// The §G heading itself is looked up with the same fence state the
+	// next-heading scan applies: a §G-heading-prefixed line inside an open
+	// fenced code block (an example, a quoted template) is code, not the
+	// section (round-3 repair 1).
+	inFence := false
+	var fenceChar byte
+	fenceLen := 0
 	for i, l := range lines {
+		if inFence {
+			if closesFence(l, fenceChar, fenceLen) {
+				inFence = false
+			}
+			continue
+		}
+		if c, n, opened := opensFence(l); opened {
+			inFence = true
+			fenceChar, fenceLen = c, n
+			continue
+		}
 		if strings.HasPrefix(l, progressSectionHeading) {
 			heading = i
 			break
