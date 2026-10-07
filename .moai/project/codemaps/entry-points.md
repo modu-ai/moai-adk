@@ -2,7 +2,7 @@
 
 ## PR #1772의 설치 진입점
 
-- `internal/cli/init.go` → `ensureUserAssetsLocked`: 사용자 공통 자산 설치를 프로젝트 배포에 앞서 실행한다.
+- `internal/cli/init.go` → `ensureUserAssetsLocked`: 프로젝트 배포가 완료된 뒤, init 성공을 보고하기 전에 사용자 공통 자산을 설치한다. 이 단계의 오류로 init이 실패해도 프로젝트 배포 결과는 이미 남아 있다.
 - `internal/cli/update.go` → `runUserAssetUpdatePhase` → `migrateProjectCommonAssets`: 사용자 쪽 설치·갱신과 대응 파일 확인이 프로젝트 쪽 제거에 앞선다.
 - `internal/cli/bundle.go`: `moai bundle add/remove`가 사용자 번들 선택을 변경한다.
 - `internal/cli/doctor.go` → `internal/cli/doctor_user_install.go`: User Install·Project Lock·Plugin Migration 진단을 등록한다. 기존 Plugin Deployment·Plugin Version 행은 등록에서 빠졌다.
