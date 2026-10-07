@@ -129,11 +129,9 @@ func zoneResolveDepth(p string, depth int) (string, bool) {
 	if real, err := filepath.EvalSymlinks(p); err == nil {
 		return real, true
 	}
-	parts := strings.Split(p, "/")
-	resolved := ""
-	if len(parts) > 0 && parts[0] == "" {
-		resolved = "/"
-	}
+	volume := filepath.VolumeName(p)
+	parts := pathSegments(strings.TrimPrefix(p, volume), runtime.GOOS == "windows")
+	resolved := filepath.ToSlash(volume) + "/"
 	skipped := 0
 	for i := 1; i < len(parts); i++ {
 		part := parts[i]
@@ -183,11 +181,11 @@ func zoneResolveDepth(p string, depth int) (string, bool) {
 				}
 				// the link's resolution takes the component's place; what
 				// remains of the original path rejoins onto it
-				resolved = strings.TrimSuffix(sub, "/") + "/"
+				resolved = strings.TrimSuffix(filepath.ToSlash(sub), "/") + "/"
 				skipped++
 				continue
 			}
-			resolved = strings.TrimSuffix(real, "/") + "/"
+			resolved = strings.TrimSuffix(filepath.ToSlash(real), "/") + "/"
 			skipped++
 		}
 	}

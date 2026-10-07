@@ -1061,10 +1061,12 @@ func TestCommitIdentityGuard_HelperUnits(t *testing.T) {
 	})
 
 	t.Run("resolveAgainst", func(t *testing.T) {
-		if got := resolveAgainst("/base", "/abs/p"); got != "/abs/p" {
+		base := t.TempDir()
+		abs := filepath.Join(t.TempDir(), "abs", "p")
+		if got := resolveAgainst(base, abs); got != abs {
 			t.Fatalf("absolute passthrough = %q", got)
 		}
-		if got := resolveAgainst("/base", "rel/p"); got != "/base/rel/p" {
+		if got := resolveAgainst(base, "rel/p"); got != filepath.Join(base, "rel", "p") {
 			t.Fatalf("relative join = %q", got)
 		}
 		if got := resolveAgainst("", "rel"); got != "" {
@@ -1085,7 +1087,8 @@ func TestCommitIdentityGuard_HelperUnits(t *testing.T) {
 		if normalizeRepoPath("") != "" {
 			t.Fatal("empty input must normalize to empty")
 		}
-		if got := normalizeRepoPath("/a/../b"); got != "/b" {
+		base := t.TempDir()
+		if got := normalizeRepoPath(base + string(filepath.Separator) + "a/../b"); got != filepath.Join(base, "b") {
 			t.Fatalf("clean = %q, want /b", got)
 		}
 	})
