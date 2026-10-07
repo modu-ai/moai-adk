@@ -500,6 +500,40 @@ func TestAutoLaneCycleHonorsLauncherRunID(t *testing.T) {
 	})
 }
 
+// TestAutoLaneCycleSkipsExcludedAssignedCard — card t1577 card-review: an
+// assigned card the operator later excluded (queue item dropped, or the text
+// hold-marked) must not lease through the assigned arm — the same keep-set
+// the nominated path applies. Assigned priority is preserved: the cycle skips
+// the excluded card and works the fresh candidate.
+func TestAutoLaneCycleSkipsExcludedAssignedCard(t *testing.T) {
+	root, store := nmBase(t, factory.BacklogStateDropped, factory.BacklogStateQueued)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+	nmSetText(t, store, "t1", nmHoldMarker+" parked after dispatch")
+	nmSetText(t, store, "t2", "the fresh candidate")
+	nmLaneEnv(t, "lane-1", "")
+	nmIsolatedWorktrees(t, "t1", "t2")
+	laneAutoSeams(t)
+	laneAutoSeedEvidence(t, root, "t2")
+
+	tick := 0
+	sleep, now := laneAutoTickClock(&tick)
+	var out, errOut bytes.Buffer
+	if err := runAutoLaneCycle(context.Background(), root, &out, &errOut, laneAutoOpts(t, 5*time.Minute, sleep, now)); err != nil {
+		t.Fatalf("lane cycle: %v (stderr %q)", err, errOut.String())
+	}
+	got := out.String()
+	if strings.Contains(got, "t1 stage=") {
+		t.Errorf("an operator-excluded assigned card was leased anyway:\n%s", got)
+	}
+	if !strings.Contains(got, "t2 stage=") {
+		t.Errorf("the fresh candidate was not worked after the excluded card was skipped:\n%s", got)
+	}
+	if s := nmQueueState(t, store, "t1"); s != factory.BacklogStateDropped {
+		t.Errorf("t1 queue state = %s, want dropped (the exclusion stands)", s)
+	}
+	nmAssertLeased(t, root, "t2", "lane-1")
+}
+
 // TestAutoLaneCycleNoteNamesNextCandidate — a permanent refusal names the
 // candidate it skipped, so the cycle's narration is checkable against the
 // queue (one line per fall-through).
