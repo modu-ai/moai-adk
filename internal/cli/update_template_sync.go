@@ -987,6 +987,17 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				detail.RemovedLocalOnly++
 			}
 		}
+		if migration != nil {
+			// Gate round 8 (card t1547 repair round): the record-less
+			// migration arm carries NO removal targets of its own — the
+			// reconcile the same branch drives is what archives-then-removes
+			// the stale managed set, and that removal never reached this
+			// tally (the wholesale inventory above is empty on that arm).
+			// REQ-UPM-030/031: a run that removed N managed files says so,
+			// whatever branch removed them.
+			detail.RemovedManaged += len(reconSummary.ArchivedRemoved)
+			detail.ArchivedForRecovery += len(reconSummary.ArchivedRemoved)
+		}
 	} else {
 		// SPEC-UPDATE-MIGRATION-001 (card t1547, review finding 6): the
 		// default path removed NOTHING wholesale — its only removals are the

@@ -957,3 +957,42 @@ func TestCancelledUpdateKeepsProjectManagedAssets(t *testing.T) {
 		t.Errorf("deployment_mode = %q after a cancelled run, want empty", got)
 	}
 }
+
+// TestRecordlessBranchTallyCountsReconcileRemovals is gate round 8's finding
+// (card t1547 repair round): a record-less project enters the migration
+// branch carrying a migration object with NO removal targets, so the
+// outcome's deletion tally — fed by the wholesale inventory on that branch —
+// stayed at zero while the reconciliation the same branch drives archived
+// and removed the stale managed set. REQ-UPM-030/031: a run that removed N
+// managed files says so, whatever branch removed them.
+func TestRecordlessBranchTallyCountsReconcileRemovals(t *testing.T) {
+	root := buildMigrationFixture(t)
+
+	// A stale managed file: tracked template_managed, carried by no current
+	// template — the reconciliation archives then removes it.
+	const staleRel = ".claude/rules/moai/zzz-stale-never-in-template.md"
+	const staleBytes = "# stale rule the templates dropped\n"
+	writeFixtureFile(t, root, staleRel, staleBytes)
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Track(staleRel, manifest.TemplateManaged, manifest.HashBytes([]byte(staleBytes))); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	out, _ := runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
+
+	// The reconcile really removed it...
+	assertFileAbsent(t, root, staleRel)
+	// ...and the outcome tally must say so.
+	if !strings.Contains(out, "archived for recovery") {
+		t.Errorf("the record-less branch's reconciliation removal never reached the deletion tally:\n%s", out)
+	}
+	if !strings.Contains(out, "removed 1 under managed paths") {
+		t.Errorf("deletion tally did not count the reconciliation's archived removal:\n%s", out)
+	}
+}
