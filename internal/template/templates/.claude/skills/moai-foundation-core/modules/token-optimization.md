@@ -7,7 +7,7 @@
 > `manager-docs`, etc.) through **natural-language delegation** ("Use the
 > {agent} subagent to {task}"), never a `subagent_type` code literal — see
 > [delegation-patterns.md](delegation-patterns.md) § Note + the flat
-> 11-agent catalog in [agents-reference.md](agents-reference.md).
+> 13-agent catalog in [agents-reference.md](agents-reference.md).
 >
 > **The hard-coded "200K token budget" / "Phase 2: DDD 180K" /
 > `clear_threshold = 150000` figures below are ILLUSTRATIVE DEFAULTS for a
@@ -381,103 +381,10 @@ def load_history():
 
 ### Model Selection Strategy
 
-Decision Matrix:
-
-| Task Type | Model | Reason | Cost | Speed |
-|-----------|-------|--------|------|-------|
-| SPEC generation | Sonnet 4.5 | High-quality design | $$$ | Slower |
-| Security review | Sonnet 4.5 | Precise analysis | $$$ | Slower |
-| Architecture design | Sonnet 4.5 | Complex reasoning | $$$ | Slower |
-| DDD implementation | Haiku 4.5 | Fast execution | $ | 3x faster |
-| Simple edits | Haiku 4.5 | Minimal complexity | $ | 3x faster |
-| Test generation | Haiku 4.5 | Pattern-based | $ | 3x faster |
-| Documentation | Haiku 4.5 | Template-based | $ | 3x faster |
-
-Cost Comparison:
-
-```python
-class ModelCostCalculator:
- """Calculate cost savings with strategic model selection."""
- 
- COSTS_PER_1M_TOKENS = {
- "sonnet-4.5": {
- "input": 3.00,
- "output": 15.00
- },
- "haiku-4.5": {
- "input": 1.00,
- "output": 5.00
- }
- }
- 
- def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
- """Calculate cost for specific model and token usage."""
- input_cost = (input_tokens / 1_000_000) * self.COSTS_PER_1M_TOKENS[model]["input"]
- output_cost = (output_tokens / 1_000_000) * self.COSTS_PER_1M_TOKENS[model]["output"]
- return input_cost + output_cost
- 
- def compare_strategies(self, feature_token_budget: dict):
- """Compare cost of all-Sonnet vs strategic mix."""
- 
- # Strategy 1: All Sonnet
- all_sonnet_cost = sum(
- self.calculate_cost("sonnet-4.5", phase["input"], phase["output"])
- for phase in feature_token_budget.values()
- )
- 
- # Strategy 2: Strategic mix
- strategic_costs = {
- "spec": self.calculate_cost(
- "sonnet-4.5", # Sonnet for SPEC
- feature_token_budget["spec"]["input"],
- feature_token_budget["spec"]["output"]
- ),
- "ddd": self.calculate_cost(
- "haiku-4.5", # Haiku for DDD
- feature_token_budget["ddd"]["input"],
- feature_token_budget["ddd"]["output"]
- ),
- "docs": self.calculate_cost(
- "haiku-4.5", # Haiku for docs
- feature_token_budget["docs"]["input"],
- feature_token_budget["docs"]["output"]
- )
- }
- strategic_total = sum(strategic_costs.values())
- 
- savings = all_sonnet_cost - strategic_total
- savings_percent = (savings / all_sonnet_cost) * 100
- 
- return {
- "all_sonnet": all_sonnet_cost,
- "strategic_mix": strategic_total,
- "savings": savings,
- "savings_percent": savings_percent
- }
-
-# Example calculation
-calculator = ModelCostCalculator()
-
-feature_budget = {
- "spec": {"input": 20_000, "output": 10_000},
- "ddd": {"input": 100_000, "output": 80_000},
- "docs": {"input": 30_000, "output": 10_000}
-}
-
-comparison = calculator.compare_strategies(feature_budget)
-print(f"All Sonnet: ${comparison['all_sonnet']:.2f}")
-print(f"Strategic Mix: ${comparison['strategic_mix']:.2f}")
-print(f"Savings: ${comparison['savings']:.2f} ({comparison['savings_percent']:.1f}%)")
-
-# Output:
-# All Sonnet: $32.40
-# Strategic Mix: $11.80
-# Savings: $20.60 (63.6%)
-```
-
----
-
-## Advanced Implementation (10+ minutes)
+MoAI does not route tasks to models. Agent definitions declare no `model:`/`effort:` and inherit
+the session's model (model-policy.md § Inherit-by-Default Convention, [HARD]); the No-Haiku policy
+has retired Haiku routing. Session-level cost control lives in `/model` and the launcher, not in
+per-task model tables.
 
 ### Context Passing Optimization
 

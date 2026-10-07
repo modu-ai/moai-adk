@@ -75,16 +75,24 @@ func RunInstall(opts InstallOptions) error {
 		return fmt.Errorf("harness install: scaffold .moai/harness/: %w", err)
 	}
 
-	// REQ-HAW-001/002: inject the CLAUDE.md routing marker block via the
-	// existing InjectMarker installer (layer3). Idempotent — re-running
+	// REQ-HAW-001/002: inject the instruction-file routing marker block via
+	// the existing InjectMarker installer (layer3). Idempotent — re-running
 	// replaces the existing block rather than duplicating it. The import path
 	// points at the just-scaffolded main.md so the auto-trigger chain has its
-	// entry point. REQ-HAW-004: a CLAUDE.md read/write failure surfaces here as
-	// a wrapped error and does NOT report success.
-	claudeMdPath := filepath.Join(opts.ProjectRoot, "CLAUDE.md")
-	if err := harness.InjectMarker(claudeMdPath, opts.SpecID, opts.Domain,
+	// entry point. REQ-HAW-004: an instruction-file read/write failure
+	// surfaces here as a wrapped error and does NOT report success.
+	// AGENTS.md is the instruction file of the AGENTS.md-primary product; a
+	// legacy project still carrying only CLAUDE.md gets the marker there.
+	instructionPath := filepath.Join(opts.ProjectRoot, "AGENTS.md")
+	if _, err := os.Stat(instructionPath); err != nil {
+		legacyPath := filepath.Join(opts.ProjectRoot, "CLAUDE.md")
+		if _, lerr := os.Stat(legacyPath); lerr == nil {
+			instructionPath = legacyPath
+		}
+	}
+	if err := harness.InjectMarker(instructionPath, opts.SpecID, opts.Domain,
 		[]string{harnessMainImportPath}); err != nil {
-		return fmt.Errorf("harness install: inject CLAUDE.md marker: %w", err)
+		return fmt.Errorf("harness install: inject AGENTS.md marker: %w", err)
 	}
 
 	return nil
@@ -105,13 +113,13 @@ func NewInstallCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "install",
-		Short: "Wire a generated harness: scaffold .moai/harness/main.md + install CLAUDE.md markers",
+		Short: "Wire a generated harness: scaffold .moai/harness/main.md + install instruction-file markers",
 		Long: `Activate a generated project harness by wiring the two installers that the
 meta-harness generation flow relies on:
 
-  1. Scaffold .moai/harness/ (emitting main.md — the CLAUDE.md @import entry
+  1. Scaffold .moai/harness/ (emitting main.md — the AGENTS.md @import entry
      point and task-shape router).
-  2. Inject the CLAUDE.md '<!-- moai:harness-start -->' / '<!-- moai:harness-end -->'
+  2. Inject the instruction-file '<!-- moai:harness-start -->' / '<!-- moai:harness-end -->'
      routing marker block (idempotent — a re-install replaces the existing block).
 
 This subcommand never invokes AskUserQuestion. It takes positional flags
@@ -150,7 +158,7 @@ Examples:
 				return err
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(),
-				"harness activation wired: scaffolded %s + installed CLAUDE.md markers (spec=%s domain=%s)\n",
+				"harness activation wired: scaffolded %s + installed instruction-file markers (spec=%s domain=%s)\n",
 				filepath.Join(root, ".moai", "harness"), specID, domain)
 			return nil
 		},

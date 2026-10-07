@@ -105,14 +105,14 @@ func TestNewInstallCmd_Execute_DefaultCwd(t *testing.T) {
 	}
 }
 
-// TestNewInstallCmd_Execute_RunInstallError — CLAUDE.md 부재 root로 Execute 시
+// TestNewInstallCmd_Execute_RunInstallError — AGENTS.md 부재 root로 Execute 시
 // RunInstall이 InjectMarker error를 반환하고, RunE 클로저의 error 전파 분기
 // (install.go:149-150)가 도달됨을 검증한다. exit-error 반환 확인.
 func TestNewInstallCmd_Execute_RunInstallError(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
-	// CLAUDE.md를 생성하지 않는다 → InjectMarker의 os.ReadFile 실패 → RunInstall error.
+	// AGENTS.md를 생성하지 않는다 → InjectMarker의 os.ReadFile 실패 → RunInstall error.
 
 	cmd := NewInstallCmd()
 	cmd.SetOut(&bytes.Buffer{})
@@ -123,9 +123,9 @@ func TestNewInstallCmd_Execute_RunInstallError(t *testing.T) {
 
 	err := cmd.Execute()
 	if err == nil {
-		t.Fatal("Execute must return an error when CLAUDE.md is absent (RunInstall error propagation)")
+		t.Fatal("Execute must return an error when AGENTS.md is absent (RunInstall error propagation)")
 	}
-	if !strings.Contains(err.Error(), "CLAUDE.md") {
-		t.Errorf("error should mention CLAUDE.md, got: %v", err)
+	if !strings.Contains(err.Error(), "AGENTS.md") {
+		t.Errorf("error should mention AGENTS.md, got: %v", err)
 	}
 }

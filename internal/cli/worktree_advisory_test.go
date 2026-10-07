@@ -19,12 +19,13 @@ import (
 // advisoryWBG009Regex is the AC-WBG-009 observability pattern, verbatim.
 var advisoryWBG009Regex = regexp.MustCompile(`worktree.*isolation|use a worktree|moai \(cc\|cg\) -w|claude --worktree`)
 
-// advisoryFalseWording is the exact recommendation wording the false branch
-// (and every degradation path) must keep emitting byte-identically. The flag
+// advisoryFalseWording is the recommendation wording the false branch (and
+// every degradation path) must keep emitting, modulo the severity glyph prefix
+// the line renderer owns (card t1527 D4: "Tip:" became the · glyph). The flag
 // list carries `moai glm -w` (not the retired `cg` token) per the t649
-// gateway rename absorbed into this branch — the byte-identity contract is
+// gateway rename absorbed into this branch — the body-identity contract is
 // unchanged, only the retired token was replaced.
-const advisoryFalseWording = "Tip: this checkout is shared across concurrent sessions; " +
+const advisoryFalseWording = "this checkout is shared across concurrent sessions; " +
 	"for branch-changing work (switch/reset/rebase), use a worktree for isolation — " +
 	"`moai cc -w` / `moai glm -w`, or `claude --worktree`. " +
 	"See .claude/rules/moai/workflow/main-checkout-branch-guard.md.\n"
@@ -71,8 +72,8 @@ func TestWorktreeAdvisoryTruthful(t *testing.T) {
 	t.Run("auto_create_false_wording_unchanged", func(t *testing.T) {
 		out := &bytes.Buffer{}
 		emitWorktreeAdvisory(out, advisoryFixture(t, false))
-		if got := out.String(); got != advisoryFalseWording {
-			t.Errorf("false wording must stay byte-identical:\n got %q\nwant %q", got, advisoryFalseWording)
+		if got := stripSGR(out.String()); got != "· "+advisoryFalseWording {
+			t.Errorf("false wording must stay body-identical behind the · glyph:\n got %q\nwant %q", got, "· "+advisoryFalseWording)
 		}
 	})
 
@@ -81,8 +82,8 @@ func TestWorktreeAdvisoryTruthful(t *testing.T) {
 		// A root with no .moai directory at all — the loader fails, the
 		// advisory degrades to the default (false) wording.
 		emitWorktreeAdvisory(out, filepath.Join(t.TempDir(), "nonexistent"))
-		if got := out.String(); got != advisoryFalseWording {
-			t.Errorf("degradation wording must match the false wording byte-identically:\n got %q\nwant %q", got, advisoryFalseWording)
+		if got := stripSGR(out.String()); got != "· "+advisoryFalseWording {
+			t.Errorf("degradation wording must match the false wording:\n got %q\nwant %q", got, "· "+advisoryFalseWording)
 		}
 	})
 }

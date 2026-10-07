@@ -2099,7 +2099,7 @@ func TestTemplateLearnedWorkflowBlockNeutral(t *testing.T) {
 		endMarker   = "<!-- moai:learned-end -->"
 	)
 
-	rel := filepath.Join(templatesRoot, "CLAUDE.md")
+	rel := filepath.Join(templatesRoot, "AGENTS.md.tmpl")
 	data, err := os.ReadFile(rel)
 	if err != nil {
 		t.Fatalf("read %s: %v", rel, err)
@@ -2109,7 +2109,7 @@ func TestTemplateLearnedWorkflowBlockNeutral(t *testing.T) {
 	// (a) Presence: heading + start + end markers all ship in the template.
 	for _, marker := range []string{heading, startMarker, endMarker} {
 		if !strings.Contains(content, marker) {
-			t.Errorf("templates/CLAUDE.md missing MOAI:LEARNED-WORKFLOW marker %q", marker)
+			t.Errorf("templates/AGENTS.md.tmpl missing MOAI:LEARNED-WORKFLOW marker %q", marker)
 		}
 	}
 
@@ -2135,7 +2135,7 @@ func TestTemplateLearnedWorkflowBlockNeutral(t *testing.T) {
 	classes := make([]leakClass, 0, len(leakClasses)+len(strictLeakClasses))
 	classes = append(classes, leakClasses...)
 	classes = append(classes, strictLeakClasses...)
-	if v := collectLeakViolations(rel, "CLAUDE.md", region, classes); len(v) != 0 {
+	if v := collectLeakViolations(rel, "AGENTS.md.tmpl", region, classes); len(v) != 0 {
 		t.Errorf("MOAI:LEARNED-WORKFLOW template block leaked forbidden content: %v", v)
 	}
 }

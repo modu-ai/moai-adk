@@ -3,6 +3,7 @@ package hook
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -620,10 +621,22 @@ func TestFactoryLaneHandoffRebindVsLaunchBindRace(t *testing.T) {
 	t.Run("unforced_200_iterations", func(t *testing.T) {
 		launcher, rebind := 0, 0
 		for i := 0; i < 200; i++ {
-			if runUnforcedLaunchVsRebind(t, i, storeFixture) {
-				launcher++
-			} else {
-				rebind++
+			var current *launchRaceFixture
+			iterationFixture := func(t *testing.T) *launchRaceFixture {
+				current = storeFixture(t)
+				return current
+			}
+			if !t.Run(fmt.Sprintf("iteration_%03d", i), func(t *testing.T) {
+				if runUnforcedLaunchVsRebind(t, i, iterationFixture) {
+					launcher++
+				} else {
+					rebind++
+				}
+			}) {
+				return
+			}
+			if current != nil && (current.seed.HandleStats().OpenConnections != 0 || current.db.Stats().OpenConnections != 0) {
+				t.Fatalf("iteration %d retained broker or observer connections after completion", i)
 			}
 		}
 		t.Logf("UNFORCED_OUTCOMES launcher_first=%d rebind_first=%d", launcher, rebind)

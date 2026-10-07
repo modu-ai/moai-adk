@@ -349,8 +349,8 @@ func (e *todoTriageEngine) pathNeighborhood(sym string) todoTriageNeighborhood {
 		lowered := strings.ToLower(stem)
 		// SAME EXTENSION ONLY. The stem match is a substring test, so a short
 		// common stem drags in everything that merely CONTAINS it: measured
-		// live on `internal/cli/update/merge/base.go` against origin/develop
-		// (10,887 files), the stem `base` matched 55 paths, of which the ten
+		// live on `internal/cli/update/merge/base.go` against a 10,887-file
+		// integration-base tree, the stem `base` matched 55 paths, of which the ten
 		// actually rendered were `codebase-analysis.md`, `supabase.md` and a
 		// run of `*-baseline.*` — ten rows of chaff and not one real
 		// neighbour, because dot-directories sort first and the cap fell

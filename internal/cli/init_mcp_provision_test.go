@@ -29,7 +29,7 @@ func TestProvisionMCPEntryUnlessDeclined_Default(t *testing.T) {
 	tmp := t.TempDir()
 	var out, errOut bytes.Buffer
 
-	provisionMCPEntryUnlessDeclined(&out, &errOut, tmp, false)
+	_ = provisionMCPEntryUnlessDeclined(&out, tmp, false)
 
 	data, err := os.ReadFile(filepath.Join(tmp, ".mcp.json"))
 	if err != nil {
@@ -69,7 +69,7 @@ func TestProvisionMCPEntryUnlessDeclined_Declined(t *testing.T) {
 	tmp := t.TempDir()
 	var out, errOut bytes.Buffer
 
-	provisionMCPEntryUnlessDeclined(&out, &errOut, tmp, true)
+	_ = provisionMCPEntryUnlessDeclined(&out, tmp, true)
 
 	if _, err := os.Stat(filepath.Join(tmp, ".mcp.json")); !os.IsNotExist(err) {
 		t.Errorf("an explicit decline must leave .mcp.json absent, stat err = %v", err)
@@ -80,8 +80,10 @@ func TestProvisionMCPEntryUnlessDeclined_Declined(t *testing.T) {
 }
 
 // TestProvisionMCPEntryUnlessDeclined_FailureIsNonFatal verifies the
-// best-effort contract: a provisioning failure warns on stderr and never
-// panics, so a broken config can never fail `moai init`.
+// best-effort contract (card t1527 repair round): a provisioning failure is
+// RETURNED for the caller's warning collector — the helper prints nothing —
+// and never panics, so a broken config can never fail `moai init`. The exit
+// summary panel is the failure's single surface.
 func TestProvisionMCPEntryUnlessDeclined_FailureIsNonFatal(t *testing.T) {
 	tmp := t.TempDir()
 	// A directory where the file must be makes the atomic write fail.
@@ -90,10 +92,19 @@ func TestProvisionMCPEntryUnlessDeclined_FailureIsNonFatal(t *testing.T) {
 	}
 	var out, errOut bytes.Buffer
 
-	provisionMCPEntryUnlessDeclined(&out, &errOut, tmp, false)
+	err := provisionMCPEntryUnlessDeclined(&out, tmp, false)
 
-	if !strings.Contains(strings.ToLower(errOut.String()), "warning") {
-		t.Errorf("a provisioning failure must warn on stderr, got %q", errOut.String())
+	if err == nil {
+		t.Fatal("a provisioning failure must return an error for the caller's collector")
+	}
+	if errOut.Len() != 0 {
+		t.Errorf("the helper must not print the failure (one-surface rule), stderr=%q", errOut.String())
+	}
+	// Card t1527 repair round 3: the helper must not print the failure on
+	// stdout either — a regression that moved the message to the progress
+	// stream would otherwise still pass the stderr assertion alone.
+	if out.Len() != 0 {
+		t.Errorf("the helper must not print the failure on stdout either (one-surface rule), stdout=%q", out.String())
 	}
 }
 

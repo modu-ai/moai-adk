@@ -60,6 +60,10 @@ var landedRefGitRun CommandRunner = func(name string, args ...string) (string, e
 //
 // No failure path aborts the invocation: an unresolvable symref behaves as
 // one that is absent.
+//
+// @MX:ANCHOR: [AUTO] the single landed-ref resolution chain — the todo surface (todoLandedRef/Resolved) and, since SPEC-GITHUB-FLOW-CI-RESIDUE-001, the worktree landing surfaces (sweep default --base, done's origin-landing check) all answer from here
+// @MX:REASON: fan_in reached 3 when the worktree surfaces adopted the chain (REQ-GFC-005); a change to the level order or the write-form shape now moves every landing question in the product
+// @MX:SPEC: SPEC-TODO-LANDING-ATTRIBUTION-001
 func LandedRefForWithLevel(projectRoot string) (string, LandedRefLevel) {
 	if base := strings.TrimSpace(config.LoadWorktreeBaseBranch(projectRoot)); base != "" {
 		return "origin/" + base, LandedRefConfigured
@@ -74,4 +78,20 @@ func LandedRefForWithLevel(projectRoot string) (string, LandedRefLevel) {
 		}
 	}
 	return DefaultLandedRef, LandedRefDefault
+}
+
+// LandedRefLevelSource names where a chain level's answer came from, for the
+// disclosure lines consumers print (the REQ-TLA-011 vocabulary: an operator
+// sees where the ref came from rather than inferring it). The worktree-side
+// MERGE_NOT_ON_ORIGIN refusal prints it since SPEC-GITHUB-FLOW-CI-RESIDUE-001
+// (REQ-GFC-002); the todo surface keeps its own todoRefLevelSource wrapper.
+func LandedRefLevelSource(level LandedRefLevel) string {
+	switch level {
+	case LandedRefConfigured:
+		return "git_strategy.worktree_base_branch"
+	case LandedRefOriginHEAD:
+		return "refs/remotes/origin/HEAD"
+	default:
+		return "the compiled-in default"
+	}
 }

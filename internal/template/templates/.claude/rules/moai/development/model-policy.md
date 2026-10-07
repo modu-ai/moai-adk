@@ -8,7 +8,7 @@ Rules for agent model field values and multi-model architecture.
 
 ## Valid Model Field Values
 
-MoAI agent definitions declare neither `model:` nor `effort:`: every subagent inherits the main session's model and effort, and a spawn passes neither. The values below remain the accepted set for an agent file a user authors.
+Catalog agents under `.claude/agents/moai/` declare neither `model:` nor `effort:`: every subagent inherits the main session's model and effort, and a spawn passes neither. Harness specialists (`.claude/agents/harness/`) are the sanctioned exception — they pin `model`/`effort` to their purpose (§ Harness-Agent Model Policy). The values below remain the accepted set for an agent file a user authors.
 
 Agent definition `model` field accepts only these values:
 - inherit: Uses parent session's model (default)
@@ -35,7 +35,7 @@ Invalid values (NEVER use):
 
 ## Inherit-by-Default Convention
 
-[ZONE:Evolvable] [HARD] MoAI agents declare no `model:` and no `effort:` frontmatter key. Claude Code resolves a subagent's model as spawn-time `model` → frontmatter `model` → `CLAUDE_CODE_SUBAGENT_MODEL` → the main conversation's model, and an absent `effort` inherits the session's, so an agent with neither field runs on the main session's model and effort. MoAI never sets `CLAUDE_CODE_SUBAGENT_MODEL`; a user who exports it still pins every subagent (a documented user-environment residual).
+[ZONE:Evolvable] [HARD] Catalog agents (`.claude/agents/moai/`) declare no `model:` and no `effort:` frontmatter key; harness specialists are exempt (§ Harness-Agent Model Policy). Claude Code resolves a subagent's model as spawn-time `model` → frontmatter `model` → `CLAUDE_CODE_SUBAGENT_MODEL` → the main conversation's model, and an absent `effort` inherits the session's, so an agent with neither field runs on the main session's model and effort. MoAI never sets `CLAUDE_CODE_SUBAGENT_MODEL`; a user who exports it still pins every subagent (a documented user-environment residual).
 
 Consumption exception (opt-in only): a session that sets `llm.agent_overrides_consume: true` may have the orchestrator pass a stored `llm.agent_overrides` model on the Agent() call — the spawn-time `model` slot of the resolution order above is the delivery channel, so the override touches no frontmatter, no env var, and no agent definition. Stored values are restricted to the closed alias set {inherit, haiku, sonnet, opus, fable} (full model-ID strings stay intentionally disallowed), and the `[1m]` residual above applies to any non-`inherit` value exactly as it does to an alias pin — which is why `inherit` remains the sanctioned no-op and `false` (the default) keeps storage-only behaviour.
 
@@ -150,7 +150,7 @@ The `model_policy` preference (`high` / `medium` / `low`, set with `moai profile
 
 ## Harness-Agent Model Policy
 
-Generated harness specialists (`/moai:harness`, `.claude/agents/harness/`) follow the same rule as every MoAI agent: their definitions declare no `model:` and no `effort:`, and a harness v4 manifest may omit a specialist's `model` / `effort` (an existing manifest that names them still validates). Harness agents are user-owned — `moai update` never rewrites them — so a file generated before this rule keeps its fields until the user edits it.
+Generated harness specialists (`/moai:harness`, `.claude/agents/harness/`) pin `model:` / `effort:` deliberately, matched to each specialist's purpose (operator decision — e.g. `model: opus` + `effort: high` on the dev-maintainer specialists). A harness v4 manifest may omit a specialist's `model` / `effort`; an omitted field resolves to session inheritance, and an existing manifest that names them still validates. Harness agents are user-owned — `moai update` never rewrites them.
 
 ## Legacy CG Configuration
 
@@ -175,7 +175,7 @@ Note: `ultrathink` is a Claude Code one-turn keyword that requests deeper reason
 ## Rules
 
 - Agent `model` field must be one of: inherit, opus, sonnet, fable, haiku
-- [ZONE:Evolvable] [HARD] New MoAI agent definitions omit `model:` and `effort:` (subagents inherit the main session's); explicit `sonnet`/`opus` pins are deprecated due to Claude Code Issue #45847/#51060 (see Inherit-by-Default Convention)
+- [ZONE:Evolvable] [HARD] New MoAI agent definitions omit `model:` and `effort:` (subagents inherit the main session's); explicit `sonnet`/`opus` pins on catalog agents are deprecated due to Claude Code Issue #45847/#51060 (see Inherit-by-Default Convention); harness specialists are the sanctioned exception (§ Harness-Agent Model Policy)
 - `model: haiku` is retired from MoAI agent routing per the No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D); the HaikuResidualRule lint enforces 0 haiku references in agent definitions and the `claude_models` block.
 - GLM is configured via env vars in settings.json, never via model field
 - The model policy (high/medium/low) is a main-session preference set with `moai profile setup`, not an agent definition concern

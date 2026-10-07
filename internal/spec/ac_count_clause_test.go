@@ -860,24 +860,26 @@ func acWriteSnapshot(t *testing.T, snapshotPath string, data []byte) {
 	}
 }
 
-// TestACPromptTemplateMirrorParity covers AC-ACD-005 item 4: the pair's only
-// permitted difference is the line-171 SPEC-ID neutralization. A verbatim copy
-// would silently revert it (plan.md §B-3).
+// TestACPromptTemplateMirrorParity requires the neutralized instruction-cutover
+// prompt to remain identical in both trees, including the attribution clause.
 func TestACPromptTemplateMirrorParity(t *testing.T) {
 	root := repoRoot(t)
 	localLines := readLinesForAC(t, filepath.Join(root, acLocalPromptTemplatePath))
 	mirrorLines := readLinesForAC(t, filepath.Join(root, acMirrorPromptTemplatePath))
-	if len(localLines) != len(mirrorLines) {
-		t.Fatalf("prompt-template pair differs in line count: local=%d mirror=%d", len(localLines), len(mirrorLines))
+	if strings.Join(localLines, "\n") != strings.Join(mirrorLines, "\n") {
+		t.Error("prompt-template pair must be byte-identical after neutralization")
 	}
-	var differing []int
-	for i := range localLines {
-		if localLines[i] != mirrorLines[i] {
-			differing = append(differing, i+1)
+	found := false
+	for _, line := range mirrorLines {
+		if strings.HasPrefix(line, "This attribution triple is what the orchestrator's trust-but-verify batch diff-checks") {
+			found = true
+			if strings.Contains(line, "SPEC-") {
+				t.Error("attribution clause restored an internal SPEC identifier")
+			}
 		}
 	}
-	if len(differing) != 1 || differing[0] != 171 {
-		t.Errorf("prompt-template pair must differ on line 171 only; differing lines: %v", differing)
+	if !found {
+		t.Error("neutral attribution clause missing")
 	}
 }
 

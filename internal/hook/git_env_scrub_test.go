@@ -72,6 +72,7 @@ func gitEnvNewRepo(t *testing.T, dir, marker, committerDate string) string {
 		t.Fatalf("mkdir %s: %v", dir, err)
 	}
 	gitEnvRun(t, dir, nil, "init", "-q", "-b", "main")
+	gitEnvRun(t, dir, nil, "config", "core.autocrlf", "false")
 	gitEnvRun(t, dir, nil, "config", "user.name", "t560")
 	gitEnvRun(t, dir, nil, "config", "user.email", "t560@test.invalid")
 	if err := os.WriteFile(filepath.Join(dir, marker+".go"), []byte("package "+marker+"\n"), 0o644); err != nil {
