@@ -418,30 +418,25 @@ func TestLandingPredicateSquashSafe(t *testing.T) {
 	}
 }
 
-// TestLandingPredicateLaterChangeObservation records what a main change made
-// AFTER the squash does to the cumulative patch-id layer (plan-audit could not
-// reproduce the case; research.md §5 and AC-GFD-002 F5 assert a mismatch). It
-// is observed here: the squash commit's own patch-id is untouched by a later
-// commit, so layer 2 still confirms and the PR layer is never consulted.
+// A historical matching patch is insufficient when a touched path now differs.
 func TestLandingPredicateLaterChangeObservation(t *testing.T) {
 	f := newGFDFixture(t)
 	f.cardCommit(t, 10, "card")
 	f.squash(t)
-	f.mainCommit(t, 10, "later") // same line, after the squash
+	f.mainCommit(t, 10, "later")
 	f.pushMain(t)
 	d := installGH(t, &ghDouble{prs: []ghPR{}})
 	if !f.cumulativeMatches(t) {
-		t.Fatal("observation premise: a later same-line change leaves the squash commit's patch-id matching the card's cumulative patch-id")
+		t.Fatal("control: historical patch must still match")
 	}
-	landed, verdict, reason := f.sweepLanded(t)
-	if landed != staleStateYes || verdict != sweepDispose {
-		t.Errorf("sweep: landed=%q verdict=%q reason=%q, want landed via layer 2", landed, verdict, reason)
+	if landed, verdict, reason := f.sweepLanded(t); landed == staleStateYes || verdict == sweepDispose {
+		t.Errorf("later changed path must preserve: %s %s %s", landed, verdict, reason)
 	}
-	if got, err := f.doneLanded(t); !got {
-		t.Errorf("done: want landed via layer 2, got err=%v", err)
+	if gone, err := f.doneLanded(t); gone || err == nil {
+		t.Errorf("later changed path must refuse: %v %v", gone, err)
 	}
-	if d.callCount() != 0 {
-		t.Errorf("layer 2 answered; gh must not be consulted, got %d call(s)", d.callCount())
+	if d.callCount() == 0 {
+		t.Fatal("exact object mismatch must defer to head-bound PR evidence")
 	}
 }
 
@@ -456,8 +451,13 @@ func TestLandingPredicateCommitCap(t *testing.T) {
 		f := newGFDFixture(t)
 		f.cardCommit(t, 5, "card")
 		sq := f.squash(t)
+		// Advance the commit count without changing the card's exact objects.
 		for i := 0; i < 4; i++ {
-			f.mainCommit(t, 18, "pad"+itoa(i))
+			if err := os.WriteFile(filepath.Join(f.repo, "padding.txt"), []byte(itoa(i)), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			landingGit(t, f.repo, "add", "padding.txt")
+			landingGit(t, f.repo, "commit", "-q", "-m", "unrelated padding")
 		}
 		f.pushMain(t)
 		return f, sq
@@ -538,5 +538,266 @@ func TestLandingPredicateGHFailureIsFailClosed(t *testing.T) {
 				t.Errorf("sweep: landed=%q verdict=%q reason=%q, want preserve on a gh failure", landed, verdict, reason)
 			}
 		})
+	}
+}
+
+// Patch-id's default whitespace folding is unsafe for a deletion predicate:
+// whitespace inside a literal is data, even when Git considers the patches equal.
+func TestLandingPredicatePreservesWhitespaceDistinctContent(t *testing.T) {
+	for _, tc := range []struct {
+		name, card, remote string
+	}{
+		{"string_spaces", "package fixture\nconst value = \"a  b\"\n", "package fixture\nconst value = \"a b\"\n"},
+		{"configured_textconv", "package fixture\nconst value = \"a  b\"\n", "package fixture\nconst value = \"a b\"\n"},
+		{"string_tab", "package fixture\nconst value = `a\tb`\n", "package fixture\nconst value = `a b`\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newGFDFixture(t)
+			if tc.name == "configured_textconv" {
+				if _, err := exec.LookPath("sed"); err != nil {
+					t.Skip("textconv fixture needs sed")
+				}
+				landingGit(t, f.repo, "config", "diff.landing-fold.textconv", "sed -e 's/ //g'")
+				if err := os.WriteFile(filepath.Join(f.repo, ".git", "info", "attributes"), []byte("value.go diff=landing-fold\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, change := range []struct{ dir, content string }{{f.tree, tc.card}, {f.repo, tc.remote}} {
+				if err := os.WriteFile(filepath.Join(change.dir, "value.go"), []byte(change.content), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				landingGit(t, change.dir, "add", "value.go")
+				landingGit(t, change.dir, "commit", "-q", "-m", "add distinct literal")
+			}
+			f.pushMain(t)
+			installGH(t, &ghDouble{})
+			if !f.cumulativeMatches(t) {
+				t.Fatal("fixture must collide under whitespace-folding patch-id")
+			}
+			if landed, err := LandedByPatchID(f.repo, f.branch, "origin/main"); err != nil || landed {
+				t.Errorf("distinct literal must not be landed: landed=%v err=%v", landed, err)
+			}
+			if landed, verdict, reason := f.sweepLanded(t); landed == staleStateYes || verdict == sweepDispose {
+				t.Errorf("sweep must preserve distinct content: landed=%q verdict=%q reason=%q", landed, verdict, reason)
+			}
+			if gone, err := f.doneLanded(t); gone || err == nil {
+				t.Errorf("done must refuse distinct content: gone=%v err=%v", gone, err)
+			}
+			if raw, err := os.ReadFile(filepath.Join(f.tree, "value.go")); err != nil || string(raw) != tc.card {
+				t.Errorf("card bytes must survive: content=%q err=%v", raw, err)
+			}
+		})
+	}
+}
+
+// Relocating a byte-identical patch must remain squash-safe even when another
+// integration commit changes its hunk line numbers.
+func TestLandingPredicatePreservesRelocatedSquashWithoutBoundEvidence(t *testing.T) {
+	f := newGFDFixture(t)
+	f.cardCommit(t, 15, "card")
+	p := filepath.Join(f.repo, "f.txt")
+	raw, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, append([]byte("unrelated prefix\n"), raw...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	landingGit(t, f.repo, "commit", "-q", "-a", "-m", "move card hunk down")
+	f.squash(t)
+	f.pushMain(t)
+	if landed, err := LandedByPatchID(f.repo, f.branch, "origin/main"); err != nil || landed {
+		t.Fatalf("different touched-file object must preserve without bound evidence: landed=%v err=%v", landed, err)
+	}
+}
+
+// Tool failures and incomplete merge metadata must never authorize deleting a
+// worktree, including when a Git version cannot compute verbatim patch IDs.
+func TestLandingPredicatePreservesUnconfirmableState(t *testing.T) {
+	f := newGFDFixture(t)
+	f.mainCommit(t, 5, "unrelated")
+	f.pushMain(t)
+	if landed, err := LandedByPatchID(f.repo, f.branch, "origin/main"); landed || err == nil {
+		t.Fatalf("empty card must remain unconfirmed: landed=%v err=%v", landed, err)
+	}
+	t.Run("missing_card_tip", func(t *testing.T) {
+		if landed, err := LandedByPatchID(f.repo, "missing-card-tip", "origin/main"); landed || err == nil {
+			t.Fatalf("missing tip must remain unconfirmed: landed=%v err=%v", landed, err)
+		}
+		if landed, err := landedByMergedPR(f.repo, "missing-card-tip", "origin/main"); landed || err == nil {
+			t.Fatalf("PR layer must reject an unresolved local tip: landed=%v err=%v", landed, err)
+		}
+	})
+	t.Run("git_unavailable", func(t *testing.T) {
+		t.Setenv("PATH", t.TempDir())
+		if _, err := landingPatchIDs(f.repo, "unreadable patch"); err == nil {
+			t.Fatal("missing Git must fail patch-ID computation")
+		}
+	})
+	for _, tc := range []struct {
+		name    string
+		pr      ghPR
+		wantErr bool
+	}{
+		{"missing_merge_commit", ghPR{State: "MERGED", HeadRefOid: f.cardTip(t)}, false},
+		{"unknown_merge_commit", mergedPR(f.cardTip(t), strings.Repeat("f", 40)), true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			installGH(t, &ghDouble{prs: []ghPR{tc.pr}})
+			if landed, err := landedByMergedPR(f.repo, f.branch, "origin/main"); landed || (err != nil) != tc.wantErr {
+				t.Fatalf("unconfirmable PR must preserve the tree: landed=%v err=%v", landed, err)
+			}
+		})
+	}
+}
+
+// A local diff preference must not conceal an unlanded gitlink from disposal.
+func TestLandingPredicatePreservesHiddenGitlink(t *testing.T) {
+	for _, format := range []string{"short", "log", "diff"} {
+		t.Run(format, func(t *testing.T) {
+			f := newGFDFixture(t)
+			landingGit(t, f.repo, "config", "diff.submodule", format)
+			seed := landingGit(t, f.repo, "rev-parse", "HEAD")
+			landingGit(t, f.repo, "update-index", "--add", "--cacheinfo", "160000,"+strings.TrimSpace(seed)+",module")
+			landingGit(t, f.repo, "commit", "-q", "-m", "seed gitlink")
+			landingGit(t, f.tree, "merge", "--ff-only", "main")
+			f.cardCommit(t, 15, "shared")
+			tip := f.cardTip(t)
+			landingGit(t, f.tree, "update-index", "--cacheinfo", "160000,"+tip+",module")
+			landingGit(t, f.tree, "commit", "-q", "-m", "unlanded gitlink")
+			f.mainCommit(t, 15, "shared")
+			f.pushMain(t)
+			landingGit(t, f.repo, "config", "diff.ignoreSubmodules", "all")
+			installGH(t, &ghDouble{})
+			if landed, err := LandedByPatchID(f.repo, f.branch, "origin/main"); err != nil || landed {
+				t.Errorf("unlanded gitlink must preserve: landed=%v err=%v", landed, err)
+			}
+			if landed, verdict, reason := f.sweepLanded(t); landed == staleStateYes || verdict == sweepDispose {
+				t.Errorf("sweep must preserve gitlink: landed=%q verdict=%q reason=%q", landed, verdict, reason)
+			}
+			if gone, err := f.doneLanded(t); gone || err == nil {
+				t.Errorf("done must refuse gitlink: gone=%v err=%v", gone, err)
+			}
+			if _, err := os.Stat(f.tree); err != nil {
+				t.Errorf("gitlink worktree must survive: %v", err)
+			}
+		})
+	}
+}
+
+func TestLandingPredicatePreservesRepeatedLocationCollision(t *testing.T) {
+	f := newGFDFixture(t)
+	seed := "package fixture\nfunc first() string {\n return \"old\"\n}\nfunc second() string {\n return \"old\"\n}\n"
+	if err := os.WriteFile(filepath.Join(f.repo, "value.go"), []byte(seed), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	landingGit(t, f.repo, "add", "value.go")
+	landingGit(t, f.repo, "commit", "-q", "-m", "two locations")
+	landingGit(t, f.tree, "merge", "--ff-only", "main")
+	for _, change := range []struct{ dir, old, new string }{
+		{f.tree, "first() string {\n return \"old\"", "first() string {\n return \"new\""},
+		{f.repo, "second() string {\n return \"old\"", "second() string {\n return \"new\""},
+	} {
+		content := strings.Replace(seed, change.old, change.new, 1)
+		if err := os.WriteFile(filepath.Join(change.dir, "value.go"), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		landingGit(t, change.dir, "commit", "-q", "-a", "-m", "different location")
+	}
+	f.pushMain(t)
+	landingGit(t, f.repo, "config", "diff.context", "0")
+	installGH(t, &ghDouble{})
+	mb := strings.TrimSpace(landingGit(t, f.repo, "merge-base", f.branch, "origin/main"))
+	patch := func(tip string) string {
+		out, _, err := runLandingGit(f.repo, "", append(append([]string{"diff"}, landingDiffFlags...), mb, tip)...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids, err := landingPatchIDs(f.repo, out)
+		if err != nil || len(ids) != 1 {
+			t.Fatalf("patch control %v, %v", ids, err)
+		}
+		return ids[0]
+	}
+	if patch(f.branch) != patch("origin/main") {
+		t.Fatal("control: repeated location patches must collide")
+	}
+	if landed, err := LandedByPatchID(f.repo, f.branch, "origin/main"); err != nil || landed {
+		t.Errorf("unlanded first function: landed=%v err=%v", landed, err)
+	}
+	if landed, verdict, reason := f.sweepLanded(t); landed == staleStateYes || verdict == sweepDispose {
+		t.Errorf("sweep must preserve: %s %s %s", landed, verdict, reason)
+	}
+	if gone, err := f.doneLanded(t); gone || err == nil {
+		t.Errorf("done must refuse: %v %v", gone, err)
+	}
+	if raw, err := os.ReadFile(filepath.Join(f.tree, "value.go")); err != nil || !strings.Contains(string(raw), "first() string {\n return \"new\"") {
+		t.Errorf("card bytes must survive: %q, %v", raw, err)
+	}
+}
+
+func TestLandingExactChangedPathObjects(t *testing.T) {
+	f := newGFDFixture(t)
+	blob := func(content string) string {
+		out, _, err := runLandingGit(f.repo, content, "hash-object", "-w", "--stdin")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return strings.TrimSpace(out)
+	}
+	a, b := blob("old\n"), blob("new\n")
+	commit := strings.TrimSpace(landingGit(t, f.repo, "rev-parse", "HEAD"))
+	tree := func(entries map[string]string) string {
+		var input strings.Builder
+		for path, object := range entries {
+			input.WriteString(object)
+			input.WriteByte('\t')
+			input.WriteString(path)
+			input.WriteByte(0)
+		}
+		out, _, err := runLandingGit(f.repo, input.String(), "mktree", "-z")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return strings.TrimSpace(out)
+	}
+	base := tree(map[string]string{"old": "100644 blob " + a, "deleted": "100644 blob " + a, "executable": "100644 blob " + a})
+	cardObjects := map[string]string{"new\nname": "100644 blob " + b, "executable": "100755 blob " + a, "link": "120000 blob " + b, "module": "160000 commit " + commit}
+	tip := tree(cardObjects)
+	for _, tc := range []struct {
+		name, path, value string
+		want              bool
+	}{
+		{"exact with unrelated file", "unrelated", "100644 blob " + a, true},
+		{"rename source retained", "old", "100644 blob " + a, false},
+		{"deleted path retained", "deleted", "100644 blob " + a, false},
+		{"renamed target differs", "new\nname", "100644 blob " + a, false},
+		{"executable mode differs", "executable", "100644 blob " + a, false},
+		{"symlink mode differs", "link", "100644 blob " + b, false},
+		{"gitlink absent", "module", "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			entries := map[string]string{}
+			for k, v := range cardObjects {
+				entries[k] = v
+			}
+			if tc.value == "" {
+				delete(entries, tc.path)
+			} else {
+				entries[tc.path] = tc.value
+			}
+			got, err := landingExactChangedPaths(f.repo, base, tip, tree(entries))
+			if err != nil || got != tc.want {
+				t.Fatalf("exact changed paths=%v err=%v, want %v", got, err, tc.want)
+			}
+		})
+	}
+	if got, err := landingExactChangedPaths(f.repo, base, base, tip); err != nil || got {
+		t.Fatalf("no changed paths must not confirm: %v %v", got, err)
+	}
+	for _, revisions := range [][3]string{{"missing", tip, tip}, {base, "missing", tip}, {base, tip, "missing"}} {
+		if got, err := landingExactChangedPaths(f.repo, revisions[0], revisions[1], revisions[2]); err == nil || got {
+			t.Fatalf("unreadable tree must refuse: %v %v", got, err)
+		}
 	}
 }

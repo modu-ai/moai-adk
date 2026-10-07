@@ -105,10 +105,11 @@ func warnMirrorRepair(errOut io.Writer, msg string) {
 	if errOut == nil {
 		return
 	}
+	// Card t1527 D4: ! severity line instead of the raw "warning:" prefix.
 	// Write error intentionally ignored (nolint:errcheck rationale): this is
 	// the fail-open warning path itself, so a failure to report a failure has
 	// nowhere left to escalate.
-	_, _ = fmt.Fprintf(errOut, "warning: skill mirror repair: %s\n", msg)
+	emitSeverityLine(errOut, sevWarn, resolveTheme(), "skill mirror repair: %s", msg)
 }
 
 func pluralMirrorEntries(n int) string {

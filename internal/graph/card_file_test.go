@@ -304,3 +304,120 @@ func TestGraphCardFileEdgesKeepNonASCIIPaths(t *testing.T) {
 		t.Fatalf("t16's edge file = %q, want the raw path %q", got, filepath.Join("문서", "설계노트.txt"))
 	}
 }
+
+// TestGraphCardFileEdgesSeeSquashLanding — AC-GCSE-001..003: a card-attributed
+// SQUASH landing (a single-parent commit) produces its edge, enters the
+// fingerprint input, and flips the fingerprint. A GitHub Flow squash landing
+// never creates a merge commit, so a walk restricted to `--merges` commits is
+// blind to it (SPEC-GRAPH-CARD-SQUASH-EDGE-001). Arms:
+//   - base: the token-free reachable history attributes nothing (AC-GCSE-002
+//     control — the broadened walk earns nothing unearned);
+//   - landing: exactly one edge {t1560, squash.txt, 9-char SHA}, the landing
+//     SHA in the fingerprint input, and a fingerprint difference against the
+//     base arm;
+//   - root contrast (AC-GCSE-002): a parentless ROOT commit whose subject
+//     carries a card token (form 1 scope) makes the attribution gate
+//     non-empty for a parentless commit, so the first-parent-diff failure
+//     guard (the per-commit continue) is exercised for real — the base arm's
+//     token-free subjects skip at the attribution gate before the diff ever
+//     runs. Nil error, zero edges.
+func TestGraphCardFileEdgesSeeSquashLanding(t *testing.T) {
+	initRepo := func(dir string) {
+		t.Helper()
+		gitFix(t, dir, "init", "-q", "-b", "main")
+		gitFix(t, dir, "config", "user.email", "fixture@example.com")
+		gitFix(t, dir, "config", "user.name", "Fixture")
+		// Same detached-`git maintenance` refusal as cardFileFixture.
+		gitFix(t, dir, "config", "gc.auto", "0")
+		gitFix(t, dir, "config", "gc.autoDetach", "false")
+	}
+	commitIn := func(dir, msg string, files map[string]string) {
+		t.Helper()
+		for name, body := range files {
+			path := filepath.Join(dir, name)
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			gitFix(t, dir, "add", name)
+		}
+		gitFix(t, dir, "commit", "-q", "-m", msg)
+	}
+
+	// Landing fixture: token-free base history; squash.txt lives on the card
+	// branch, unreachable from main until the squash landing.
+	root := t.TempDir()
+	initRepo(root)
+	commitIn(root, "base", map[string]string{"f.txt": "0\n"})
+	gitFix(t, root, "checkout", "-q", "-b", "t1560br")
+	commitIn(root, "branch work", map[string]string{"squash.txt": "squash\n"})
+	gitFix(t, root, "checkout", "-q", "main")
+	branch := cardFileLandedBranch(root)
+
+	// Base arm: nothing attributed before the landing.
+	if baseEdges := cardFileRun(t, root); len(baseEdges) != 0 {
+		t.Fatalf("token-free base history produced edges: %+v", baseEdges)
+	}
+	baseSHAs, err := CardAttributedMergeSHAs(root, branch, factory.AttributeSubject)
+	if err != nil {
+		t.Fatalf("CardAttributedMergeSHAs (base): %v", err)
+	}
+	if len(baseSHAs) != 0 {
+		t.Fatalf("token-free base history entered the fingerprint input: %v", baseSHAs)
+	}
+	baseFP, err := CardMergeFingerprint(root, branch, factory.AttributeSubject)
+	if err != nil {
+		t.Fatalf("CardMergeFingerprint (base): %v", err)
+	}
+
+	// The squash landing: a SINGLE-PARENT commit on main whose subject the
+	// attributor maps to exactly one card (form 2b — card group + PR group).
+	gitFix(t, root, "merge", "--squash", "-q", "t1560br")
+	gitFix(t, root, "commit", "-q", "-m", "fix(graph): repair the card-file squash blind spot (card t1560) (#1999)")
+	landing := gitFix(t, root, "rev-parse", "HEAD")
+
+	edges := cardFileRun(t, root)
+	if len(edges) != 1 {
+		t.Fatalf("want exactly one edge for the squash landing, got %+v", edges)
+	}
+	want := []CardFileEdge{{Card: "t1560", File: "squash.txt", SHA: edges[0].SHA}}
+	if !reflect.DeepEqual(edges, want) {
+		t.Fatalf("edges mismatch:\n got: %+v\nwant: %+v", edges, want)
+	}
+	if len(edges[0].SHA) != 9 {
+		t.Fatalf("edge SHA %q is not the 9-char evidence pointer", edges[0].SHA)
+	}
+
+	// The landing enters the fingerprint input and flips the fingerprint.
+	shas, err := CardAttributedMergeSHAs(root, branch, factory.AttributeSubject)
+	if err != nil {
+		t.Fatalf("CardAttributedMergeSHAs: %v", err)
+	}
+	if len(shas) != 1 || shas[0] != landing {
+		t.Fatalf("fingerprint input = %v, want exactly the landing %s", shas, landing)
+	}
+	fp, err := CardMergeFingerprint(root, branch, factory.AttributeSubject)
+	if err != nil {
+		t.Fatalf("CardMergeFingerprint: %v", err)
+	}
+	if fp == baseFP {
+		t.Fatalf("fingerprint did not flip after the landing: %s", fp)
+	}
+
+	// Root contrast fixture: the ROOT itself carries the card token, so the
+	// attribution gate is non-empty for a parentless commit and the
+	// first-parent-diff guard decides the outcome.
+	rootRoot := t.TempDir()
+	initRepo(rootRoot)
+	commitIn(rootRoot, "fix(t1561): seeded root (card t1561)", map[string]string{"r.txt": "r\n"})
+
+	rootEdges, err := CardFileEdges(rootRoot, cardFileLandedBranch(rootRoot), factory.AttributeSubject)
+	if err != nil {
+		t.Fatalf("root fixture errored: %v", err)
+	}
+	if len(rootEdges) != 0 {
+		t.Fatalf("card-attributed root commit produced edges: %+v", rootEdges)
+	}
+}

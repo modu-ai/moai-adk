@@ -5,6 +5,7 @@ package cli
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -52,5 +53,63 @@ func TestCleanupSessionWorktree_GitHubFlowSquash(t *testing.T) {
 
 	if ghWasCalled(t, marker) {
 		t.Fatal("session-exit cleanup ran gh")
+	}
+}
+
+func TestCleanupSessionWorktreePreservesWhitespaceDistinctContent(t *testing.T) {
+	f := gfdSessRepo(t, "main", gfdSessGitHubFlowYAML)
+	card := "package fixture\nconst value = \"a  b\"\n"
+	remote := "package fixture\nconst value = \"a b\"\n"
+	for _, change := range []struct{ dir, content string }{{f.tree, card}, {f.repo, remote}} {
+		if err := os.WriteFile(filepath.Join(change.dir, "value.go"), []byte(change.content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		gfdSessGit(t, change.dir, "add", "value.go")
+		gfdSessGit(t, change.dir, "commit", "-q", "-m", "distinct literal")
+	}
+	gfdSessGit(t, f.tree, "push", "-q", "-u", "origin", "WT-sess-card")
+	f.push(t)
+	if cherry := gfdSessGit(t, f.tree, "cherry", "origin/main", "HEAD"); !strings.HasPrefix(cherry, "-") {
+		t.Fatalf("control: cherry must collide: %q", cherry)
+	}
+	chdirTemp(t, f.repo)
+	if landed, err := gitBranchLandedReal(f.tree); err != nil || landed {
+		t.Errorf("distinct bytes must not be landed: %v, %v", landed, err)
+	}
+	var out strings.Builder
+	cleanupSessionWorktree(worktreeCfg(true), f.tree, true, &out)
+	if raw, err := os.ReadFile(filepath.Join(f.tree, "value.go")); err != nil || string(raw) != card {
+		t.Errorf("unlanded bytes must survive cleanup: %q, %v; notice %s", raw, err, out.String())
+	}
+}
+
+func TestCleanupSessionWorktreePreservesRepeatedLocationCollision(t *testing.T) {
+	f := gfdSessRepo(t, "main", gfdSessGitHubFlowYAML)
+	seed := "package fixture\nfunc first() string {\n return \"old\"\n}\nfunc second() string {\n return \"old\"\n}\n"
+	if err := os.WriteFile(filepath.Join(f.repo, "value.go"), []byte(seed), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gfdSessGit(t, f.repo, "add", "value.go")
+	gfdSessGit(t, f.repo, "commit", "-q", "-m", "two locations")
+	gfdSessGit(t, f.tree, "merge", "--ff-only", "main")
+	card := strings.Replace(seed, "first() string {\n return \"old\"", "first() string {\n return \"new\"", 1)
+	remote := strings.Replace(seed, "second() string {\n return \"old\"", "second() string {\n return \"new\"", 1)
+	for _, change := range []struct{ dir, content string }{{f.tree, card}, {f.repo, remote}} {
+		if err := os.WriteFile(filepath.Join(change.dir, "value.go"), []byte(change.content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		gfdSessGit(t, change.dir, "commit", "-q", "-a", "-m", "different locations")
+	}
+	gfdSessGit(t, f.tree, "push", "-q", "-u", "origin", "WT-sess-card")
+	f.push(t)
+	gfdSessGit(t, f.repo, "config", "diff.context", "0")
+	chdirTemp(t, f.repo)
+	if landed, err := gitBranchLandedReal(f.tree); err != nil || landed {
+		t.Errorf("different location must preserve: %v %v", landed, err)
+	}
+	var out strings.Builder
+	cleanupSessionWorktree(worktreeCfg(true), f.tree, true, &out)
+	if raw, err := os.ReadFile(filepath.Join(f.tree, "value.go")); err != nil || string(raw) != card {
+		t.Errorf("card must survive: %q %v; %s", raw, err, out.String())
 	}
 }

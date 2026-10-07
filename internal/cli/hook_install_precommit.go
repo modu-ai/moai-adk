@@ -360,19 +360,25 @@ func (p *PreCommitInstaller) InstallPreCommitHook(skip bool) error {
 // installPreCommitHookOptional installs the pre-commit hook into projectRoot's
 // .git/hooks/ unless skip is true. Friendly, non-fatal: prints progress to out,
 // warnings to warn (a writer distinct from out — both callers bind it to the
-// command's stderr, REQ-PCP-004), returns nothing. Used by `moai init` and
-// `moai update` to install the hook consistently alongside the pre-push hook.
+// command's stderr, REQ-PCP-004). Used by `moai init` and `moai update` to
+// install the hook consistently alongside the pre-push hook.
 //
 // If a non-MoAI user hook is present, this function preserves it and prints a
-// note. Other errors are reported as warnings; project init/update is never
-// blocked by hook installation failures.
-func installPreCommitHookOptional(projectRoot string, skip bool, out, warn io.Writer) {
+// note. Other errors are reported as ✗ lines (card t1527 D4); project
+// init/update is never blocked by hook installation failures.
+//
+// Card t1527 D5: the RETURN value carries the failure states the terminal
+// block must escalate — a failed install, or a hook left unchanged because its
+// backup could not be written. A successful install, a preserved user hook,
+// and a self-healing provenance miss return nil (nothing to act on).
+func installPreCommitHookOptional(projectRoot string, skip bool, out, warn io.Writer) error {
+	th := resolveTheme()
 	installer := NewPreCommitInstaller(projectRoot)
 	err := installer.InstallPreCommitHook(skip)
 	switch {
 	case err == nil:
 		if !skip {
-			_, _ = fmt.Fprintln(out, "  Pre-commit hook installed (.git/hooks/pre-commit)")
+			emitSeverityLine(out, sevOK, th, "Pre-commit hook installed (.git/hooks/pre-commit)")
 			if installer.lastBackupPath != "" {
 				// REQ-PCP-004: the notice carries exactly two elements — the
 				// backup path and the fact of the replacement — on the warning
@@ -380,30 +386,34 @@ func installPreCommitHookOptional(projectRoot string, skip bool, out, warn io.Wr
 				// to stdout, where a redirected run swallows a data-loss
 				// notice whole). It names nothing else; in particular it does
 				// not name pre-commit.local, a facility this SPEC does not ship.
-				_, _ = fmt.Fprintf(warn, "  Warning: user-modified pre-commit hook was replaced; previous hook backed up at %s\n", installer.lastBackupPath)
+				emitSeverityLine(warn, sevWarn, th, "user-modified pre-commit hook was replaced; previous hook backed up at %s", installer.lastBackupPath)
 			}
 			if installer.lastProvenanceErr != nil {
 				// REQ-PCP-010 sub-case (b): the hook write already succeeded,
 				// so the replacement stands; the missing record self-heals on
 				// the next run (REQ-PCP-005).
-				_, _ = fmt.Fprintf(warn, "  Warning: pre-commit provenance record not written: %v\n", installer.lastProvenanceErr)
+				emitSeverityLine(warn, sevWarn, th, "pre-commit provenance record not written: %v", installer.lastProvenanceErr)
 			}
 		}
+		return nil
 	case errors.Is(err, ErrUserHookExists):
-		_, _ = fmt.Fprintln(out, "  Note: existing pre-commit hook preserved (no MoAI-ADK marker found)")
+		emitSeverityLine(out, sevNote, th, "existing pre-commit hook preserved (no MoAI-ADK marker found)")
+		return nil
 	case errors.Is(err, errPreCommitBackupFailed):
 		// REQ-PCP-010 sub-case (a): no backup could be written, so the hook was
 		// left exactly as found — nothing was installed and nothing was lost.
-		_, _ = fmt.Fprintf(warn, "  Warning: pre-commit hook left unchanged (backup could not be written): %v\n", err)
+		emitSeverityLine(warn, sevErr, th, "pre-commit hook left unchanged (backup could not be written): %v", err)
+		return err
 	default:
 		if installer.lastBackupPath != "" {
 			// The backup succeeded but the replacement write failed, so no
 			// replacement notice (the hook was not replaced). Name the orphan
 			// backup so the artifact beside the unchanged hook is explained
 			// rather than mysterious (acceptance.md §D.1 edge table).
-			_, _ = fmt.Fprintf(warn, "  Warning: pre-commit hook install failed: %v (previous hook backed up at %s)\n", err, installer.lastBackupPath)
+			emitSeverityLine(warn, sevErr, th, "pre-commit hook install failed: %v (previous hook backed up at %s)", err, installer.lastBackupPath)
 		} else {
-			_, _ = fmt.Fprintf(out, "  Warning: pre-commit hook install failed: %v\n", err)
+			emitSeverityLine(out, sevErr, th, "pre-commit hook install failed: %v", err)
 		}
+		return err
 	}
 }
