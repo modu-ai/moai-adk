@@ -25,9 +25,10 @@ runs:
         # which is alphabetical by language name except that a tsconfig.json
         # makes the package a TypeScript project and suppresses the
         # package.json -> javascript hit (it then describes tooling, not a
-        # second source language). Kotlin has no unambiguous root manifest
-        # (Gradle files are shared with Java), so it is detected by the file
-        # scan only. The check order is a deterministic tie-break, not a
+        # second source language). Shared Gradle manifests use Java/Kotlin
+        # source counts to resolve their language. The source scan is
+        # computed first for this purpose. The manifest check order is a
+        # deterministic tie-break, not a
         # capability ranking — all languages are supported equally.
         # Pass 2 — source files. Every matching file is enumerated (no
         # -print -quit), so a mixed repository reports every language it
@@ -59,32 +60,6 @@ runs:
             MANIFEST_PRIMARY="${MANIFEST_PRIMARY:-$1}"
           fi
         }
-
-        manifest cpp CMakeLists.txt
-        for f in *.csproj *.sln; do
-          [ -f "$f" ] || continue
-          add_lang csharp
-          MANIFEST_PRIMARY="${MANIFEST_PRIMARY:-csharp}"
-          break
-        done
-        manifest elixir mix.exs
-        manifest flutter pubspec.yaml
-        manifest go go.mod
-        manifest java pom.xml
-        manifest java build.gradle
-        if [ -f tsconfig.json ]; then
-          manifest typescript tsconfig.json
-        else
-          manifest javascript package.json
-        fi
-        manifest php composer.json
-        manifest python pyproject.toml
-        manifest python setup.py
-        manifest python requirements.txt
-        manifest ruby Gemfile
-        manifest rust Cargo.toml
-        manifest scala build.sbt
-        manifest swift Package.swift
 
         # lang_of echoes the canonical language for a file's extension, and
         # nothing for an unknown one. It is a function — not an inline case
@@ -124,6 +99,41 @@ runs:
           \) -print 2>/dev/null | while read -r f; do
             lang_of "$f"
           done | LC_ALL=C sort | LC_ALL=C uniq -c | LC_ALL=C sort -k1,1rn -k2,2 || true)
+
+        manifest cpp CMakeLists.txt
+        for f in *.csproj *.sln; do
+          [ -f "$f" ] || continue
+          add_lang csharp
+          MANIFEST_PRIMARY="${MANIFEST_PRIMARY:-csharp}"
+          break
+        done
+        manifest elixir mix.exs
+        manifest flutter pubspec.yaml
+        manifest go go.mod
+        manifest java pom.xml
+        # Groovy Gradle manifests are shared by Java and Kotlin. Reuse the pruned,
+        # count-ordered source scan to resolve them, with Java as the
+        # source-less fallback; the build-script DSL is not the language.
+        if [ -f build.gradle ]; then
+          GRADLE_LANGUAGE=$(printf '%s\n' "$SCAN_REPORT" | awk '
+            ($2 == "java" || $2 == "kotlin") && lang == "" { lang = $2 }
+            END { print (lang == "" ? "java" : lang) }')
+          add_lang "$GRADLE_LANGUAGE"
+          MANIFEST_PRIMARY="${MANIFEST_PRIMARY:-$GRADLE_LANGUAGE}"
+        fi
+        if [ -f tsconfig.json ]; then
+          manifest typescript tsconfig.json
+        else
+          manifest javascript package.json
+        fi
+        manifest php composer.json
+        manifest python pyproject.toml
+        manifest python setup.py
+        manifest python requirements.txt
+        manifest ruby Gemfile
+        manifest rust Cargo.toml
+        manifest scala build.sbt
+        manifest swift Package.swift
 
         # Merge scan hits into LANGS in count order (most files first, ties
         # by name), keeping manifest hits ahead of scan-only hits.
