@@ -209,7 +209,7 @@ m1_to_mN_commit_strategy: M1 test-only commit (f6476244f, carries the sanctioned
 
 ```yaml
 sync_complete_at: 2026-10-07T02:15:48Z
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "6e220d9ff819d57ac3037730ee735a8df6f59e9b"
 sync_status: complete
 sync_scope: CHANGELOG.md + spec.md frontmatter + progress.md §E.4 (3 files; no SPEC body edits, no run-phase files touched)
 changelog_entry_position: CHANGELOG.md [Unreleased] → Fixed, top entry (SPEC-GRAPH-CARD-SQUASH-EDGE-001)
