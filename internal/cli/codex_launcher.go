@@ -951,7 +951,7 @@ func enterCodexRelaunchJoin(root string, entry factoryFlagParse, timing *factory
 // tail, so the prompt is always ours.
 const codexLaneAutoPrompt = "Run `moai todo --auto` to consume the backlog queue: " +
 	"the cycle ranks the queued candidates, leases the top card through the factory lease edge, " +
-	"dispatches one isolated worker per card, judges completion on the disk evidence, and continues to the next card."
+	"dispatches one isolated lane per card, judges completion on the disk evidence, and continues to the next card."
 
 // @MX:NOTE: card t1554 removed the boot auto-lease loop — lane boot is not
 // queue consumption. The launcher stamps the lane environment (the shared
