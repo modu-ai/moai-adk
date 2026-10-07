@@ -39,9 +39,9 @@ type CardFileEdge struct {
 	SHA  string // the landing commit's abbreviated SHA (the evidence pointer)
 }
 
-// commitInfo is one commit of the reachable walk: full SHA and subject.
+// commitInfo is one commit of the reachable walk: full SHA, subject, and parents.
 type commitInfo struct {
-	sha, subject string
+	sha, subject, parents string
 }
 
 // walkCardCommits lists every commit reachable from HEAD by ANY parent path —
@@ -52,7 +52,7 @@ type commitInfo struct {
 // NUL-separated so a subject carrying spaces or format metacharacters still
 // parses.
 func walkCardCommits(repoRoot string) ([]commitInfo, error) {
-	out, err := gitIn(repoRoot, "log", "--format=%H%x00%s", "HEAD")
+	out, err := gitIn(repoRoot, "log", "--format=%H%x00%s%x00%P", "HEAD")
 	if err != nil {
 		return nil, fmt.Errorf("card_file: log: %w", err)
 	}
@@ -61,11 +61,11 @@ func walkCardCommits(repoRoot string) ([]commitInfo, error) {
 		if line == "" {
 			continue
 		}
-		sha, subject, ok := strings.Cut(line, "\x00")
-		if !ok || sha == "" {
+		fields := strings.SplitN(line, "\x00", 3)
+		if len(fields) != 3 || fields[0] == "" {
 			continue
 		}
-		commits = append(commits, commitInfo{sha: sha, subject: subject})
+		commits = append(commits, commitInfo{sha: fields[0], subject: fields[1], parents: fields[2]})
 	}
 	return commits, nil
 }
@@ -93,13 +93,17 @@ func CardFileEdges(repoRoot, landedBranch string, attribute CardFileAttributor) 
 	}
 	var selected []commitInfo
 	cards := make(map[string]string)
+	var sentinel string
 	for _, m := range commits {
+		if m.parents == "" {
+			sentinel = m.sha
+		}
 		if card := attribute(m.subject, landedBranch); card != "" {
 			selected = append(selected, m)
 			cards[m.sha] = card
 		}
 	}
-	filesBySHA, batchErr := cardFileBatch(repoRoot, selected)
+	filesBySHA, batchErr := cardFileBatch(repoRoot, selected, sentinel)
 	var edges []CardFileEdge
 	for _, m := range selected {
 		cardID := cards[m.sha]
@@ -142,16 +146,25 @@ func CardFileEdges(repoRoot, landedBranch string, attribute CardFileAttributor) 
 // walking again or spawning one process per landing. The empty NUL token marks
 // a commit boundary; paths are never trimmed or split on newlines. A root's
 // files are deliberately ignored, matching the failed ^1 diff in the fallback.
-func cardFileBatch(root string, commits []commitInfo) (map[string]string, error) {
+// A reachable root is appended last as an ignored terminal record: seeing its
+// complete header proves all preceding landing records reached the reader.
+func cardFileBatch(root string, commits []commitInfo, sentinel string) (map[string]string, error) {
 	files := make(map[string]string, len(commits))
 	if len(commits) == 0 {
 		return files, nil
 	}
+	if sentinel == "" {
+		return nil, fmt.Errorf("card_file: missing batch sentinel")
+	}
 	var input strings.Builder
 	for _, c := range commits {
+		if c.sha == sentinel {
+			continue
+		}
 		input.WriteString(c.sha)
 		input.WriteByte('\n')
 	}
+	input.WriteString(sentinel + "\n")
 	cmd := exec.Command("git", "-C", root, "log", "--no-walk=unsorted", "--stdin",
 		"--diff-merges=first-parent", "--name-only", "-z", "--format=%x00%H%x00%P")
 	cmd.Stdin = strings.NewReader(input.String())
@@ -159,12 +172,17 @@ func cardFileBatch(root string, commits []commitInfo) (map[string]string, error)
 	if err != nil {
 		return nil, err
 	}
+	if len(out) == 0 || out[len(out)-1] != 0 {
+		return nil, fmt.Errorf("card_file: unterminated batch output")
+	}
 	tokens := strings.Split(string(out), "\x00")
+	var lastSHA string
 	for i := 0; i < len(tokens)-1; {
 		if tokens[i] != "" || i+2 >= len(tokens) {
 			return nil, fmt.Errorf("card_file: invalid batch header")
 		}
 		sha, parents := tokens[i+1], tokens[i+2]
+		lastSHA = sha
 		i += 3
 		var paths []string
 		for first := true; i < len(tokens) && tokens[i] != ""; i++ {
@@ -183,6 +201,9 @@ func cardFileBatch(root string, commits []commitInfo) (map[string]string, error)
 		} else {
 			files[sha] = ""
 		}
+	}
+	if lastSHA != sentinel {
+		return nil, fmt.Errorf("card_file: missing terminal batch sentinel")
 	}
 	for _, c := range commits {
 		if _, ok := files[c.sha]; !ok {
