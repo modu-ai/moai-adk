@@ -33,6 +33,7 @@ type cardChildLoop struct {
 	managed []cardChildCall
 	cards   int
 	logPath string
+	bin     string
 }
 
 func newCardChildLoop(t *testing.T, opts cardChildOpts) *cardChildLoop {
@@ -48,10 +49,10 @@ func newCardChildLoop(t *testing.T, opts cardChildOpts) *cardChildLoop {
 	t.Chdir(root)
 	t.Setenv(config.EnvFactoryRunID, fcRun)
 	h := &cardChildLoop{t: t, root: root, cards: opts.cards}
-	prevLook, prevSource := codexLookPath, managedLaneOperatorSource
+	prevSource := managedLaneOperatorSource
 	t.Cleanup(func() {
 		endManagedLanePump()
-		codexLookPath, managedLaneOperatorSource = prevLook, prevSource
+		managedLaneOperatorSource = prevSource
 	})
 	if opts.source != nil {
 		managedLaneOperatorSource = opts.source
@@ -63,8 +64,7 @@ func newCardChildLoop(t *testing.T, opts cardChildOpts) *cardChildLoop {
 		h.logPath = filepath.Join(t.TempDir(), "card-child.log")
 		t.Setenv(fakeAppServerRoleEnv, "appserver")
 		t.Setenv(fakeAppServerLogEnv, h.logPath)
-		bin := fakeAppServerScript(t)
-		codexLookPath = func(string) (string, error) { return bin, nil }
+		h.bin = fakeAppServerScript(t)
 	}
 	return h
 }
@@ -84,9 +84,8 @@ func (h *cardChildLoop) run() (string, string, error) {
 	restoreBackend := exportFactoryLaunchFacts("", factory.BackendGPT)
 	defer restoreBackend()
 	defer endManagedLanePump()
-	bin, err := codexLookPath(codexBinaryName)
-	if err != nil {
-		return "", "", err
+	if h.bin == "" {
+		t.Fatal("managed card fixture requires an explicitly configured fake App Server")
 	}
 	var stderr strings.Builder
 	for i := 0; i < h.cards; i++ {
@@ -99,7 +98,7 @@ func (h *cardChildLoop) run() (string, string, error) {
 			config.EnvFactoryCard+"="+cardID,
 			config.EnvFactoryRunID+"="+fcRun)
 		h.managed = append(h.managed, cardChildCall{dir: wt})
-		if err := defaultManagedCodexCardLaunch(bin, []string{bin}, env, wt); err != nil {
+		if err := defaultManagedCodexCardLaunch(h.bin, []string{h.bin}, env, wt); err != nil {
 			fmt.Fprintf(&stderr, "managed card %s: %v\n", cardID, err)
 		}
 	}
@@ -186,7 +185,7 @@ func TestManagedCardChildSecondCardRebinds(t *testing.T) {
 	})
 	t.Run("start_failure_leaves_no_pending_row", func(t *testing.T) {
 		h := newCardChildLoop(t, cardChildOpts{cards: 2, realOwner: true, source: strings.NewReader("")})
-		codexLookPath = func(string) (string, error) { return filepath.Join(t.TempDir(), "no-such-codex"), nil }
+		h.bin = filepath.Join(t.TempDir(), "no-such-codex")
 		if err := runCardChildLoopBounded(t, h); err != nil {
 			t.Fatalf("codex lane: %v (a failed session must not stop the loop)", err)
 		}
