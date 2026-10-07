@@ -285,4 +285,35 @@ debt_disposition: MP8-RED-M2 DISPOSED (see §E.2 RED evidence, recorded before M
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+- sync_complete_at: 2026-10-07T02:26:44Z
+- sync_status: audit-ready
+- sync_commit_sha: pending-backfill-sync  # D3 placeholder — a commit cannot cite its own hash; backfilled by the following commit
+- sync scope (single sync commit): CHANGELOG.md `### Changed` entry + README
+  4-locale stale wipe-first paragraphs and command-table rows repaired
+  (ko/en/ja/zh, same change all four) + codemap refresh
+  (.moai/project/codemaps/modules.md `update*` row t1547 plate, data-flow.md
+  update-flow block reconcile stage) + spec.md frontmatter
+  `in-progress → implemented → completed` merged transition (status + updated
+  only — SPEC body untouched) + this §E.4 signal
+- b12_self_tests: pre-emission grep `SPEC-UPDATE-MIGRATION-001` in CHANGELOG.md
+  = 0 hits (no duplicate); AC counter live=13 excluded=0 ambiguous=0
+  (acceptance.md §D — matches §E.2 matrix: 12 PASS + 1 PASS-WITH-SCOPE);
+  entry path/behavior claims verified in this tree (archive root
+  `ReconcileArchiveTag = "update-migration"` reconcile.go:120, sidecar
+  `<path>.moai-new` / first unused `.moai-new.N` reconcile.go:295-306)
+- changelog_entry_position: `[Unreleased]` → `### Changed` (first and only entry)
+- frontmatter_status_transitions:
+  in-progress→implemented: merged into the single sync commit
+  implemented→completed: merged into the single sync commit (3-phase close —
+  no separate Mx chore commit)
+- mx_tag_validation: existing update-family tags present (deploy.go, merge.go,
+  class.go, preview.go, backup/*); the four new reconcile/outcome/restore
+  files carry no @MX annotations — Consider-level gap REPORTED to the lane,
+  not repaired (code files out of sync-phase scope per the delegation boundary)
+- no_op_dispositions: docs-site (adk.mo.ai.kr) content lives in a separate
+  repository — its update-flow pages could not be audited from this worktree
+  and are flagged for the docs-site owner; AGENTS.local.md §2.3 and
+  .moai/docs/update-local-file-survival.md were already rewritten by run M6
+  (verified in this tree — no residual stale surface in dev docs that state
+  current behavior; historical dated analysis docs left as history)
+- open_blockers: none

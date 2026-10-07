@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-MIGRATION-001
 title: "Preservation-based moai update migration for existing projects"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-07
 updated: 2026-10-07
 author: GOOS (via manager-spec)

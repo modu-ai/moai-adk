@@ -164,15 +164,21 @@ internal/config/atomicfile/write.go     원자적 쓰기
 
 ```
 internal/cli/update_template_sync.go    NewDeployerWithRendererAndForceUpdate(embedded, renderer, true)
-internal/cli/update/plan/plan.go        분석·분류·네임스페이스 보호
+internal/cli/update/plan/plan.go        분석·분류·네임스페이스 보호 (t1547 판부터 관리 뿌리 파일도 분석 대상)
+internal/cli/update/reconcile_classify.go   소유권 분류기 — 4부류 (template-owned/user-modified/user-owned/stale)
+internal/cli/update/reconcile.go        조정 파이프라인 — 갱신·3-way 병합·무접촉 보존·아카이브 후 삭제
+                                          (t1547 판 — 기본 경로의 wipe-first 대체,
+                                           충돌은 `<경로>.moai-new[.N]` 사이드카로 보고)
 internal/cli/update/backup/backup.go    백업 + 로테이션
 internal/cli/update/backup/file_snapshot.go   파일별 base 스냅샷 기계 (settings.json과 .mcp.json이 공유)
 internal/cli/update/backup/mcp_snapshot.go    .mcp.json 전용 — 배포가 실제로 쓴 렌더를 base로 기억
 internal/merge/*                        3-way 머지 (사용자 편집 보존)
                                           이 판에서 머지 결과가 RetainedKeys를 함께 돌려준다 —
                                           새 템플릿이 더 이상 안 들고 온 키의 dotted 경로
-internal/cli/update/deploy/deploy.go    배포 + 레거시 마이그레이션
+internal/cli/update/deploy/deploy.go    배포 + 링크 처분(DisposeSymlinks) + 레거시 마이그레이션
 internal/cli/update/report/report.go    사용자 대상 advisory 출력
+internal/cli/update/report/outcome.go   조정 요약 — 5범주(refresh/merge/conflict/preserve/archive-removed)
+                                          집계 + 경로 목록 (t1547 판 — 삭제가 요약에 숨지 않는다)
 internal/manifest/*                     provenance 기록
 
 ── 버전이 일치해 Deploy 앞에서 조기 반환하는 경로 ──
