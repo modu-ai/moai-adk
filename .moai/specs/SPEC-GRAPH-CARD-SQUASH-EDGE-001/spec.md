@@ -2,7 +2,7 @@
 id: SPEC-GRAPH-CARD-SQUASH-EDGE-001
 title: "graph card-file layer: walk every commit so squash landings produce card edges"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-07
 updated: 2026-10-07
 author: manager-spec

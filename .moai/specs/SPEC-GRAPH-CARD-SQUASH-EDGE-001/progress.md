@@ -207,4 +207,19 @@ m1_to_mN_commit_strategy: M1 test-only commit (f6476244f, carries the sanctioned
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-07T02:15:48Z
+sync_commit_sha: "pending-backfill-sync"
+sync_status: complete
+sync_scope: CHANGELOG.md + spec.md frontmatter + progress.md §E.4 (3 files; no SPEC body edits, no run-phase files touched)
+changelog_entry_position: CHANGELOG.md [Unreleased] → Fixed, top entry (SPEC-GRAPH-CARD-SQUASH-EDGE-001)
+frontmatter_status_transitions: in-progress → implemented → completed (single sync commit; the completed transition rides this commit per the 3-phase close)
+b12_self_test_a: pre-emission `/usr/bin/grep -ac SPEC-GRAPH-CARD-SQUASH-EDGE-001 CHANGELOG.md` → 0 hits exit 1; post-write → 1 exit 0 (no duplicate entry)
+b12_self_test_b: acceptance.md live AC count via the reserved-token counter → 11 (live=11 excluded=0 ambiguous=0); CHANGELOG entry cites "11 acceptance criteria AC-GCSE-001..011" — match
+b12_self_test_c: named paths ls-verified — internal/graph/card_file.go, internal/graph/card_file_test.go, .moai/specs/SPEC-GRAPH-CARD-SQUASH-EDGE-001/{spec,plan,acceptance,progress}.md all present
+sync_reverification: AC-GCSE-009/010 re-measured on the landing tree (HEAD 3d07ac094) per acceptance.md §D — `go vet ./internal/graph/...` exit 0; `golangci-lint run ./internal/graph/...` → "0 issues." exit 0; `go test -timeout 30m -count=1 ./internal/graph/...` → ok (graph 537.389s, symbol 0.696s) exit 0; `git diff --name-only 5fb7baf88 HEAD -- internal/` → exactly the two named files; `git log --oneline 5fb7baf88..HEAD` re-witnesses f6476244f(test) preceding 0d32f5733(fix) (AC-GCSE-011); AC-GCSE-004 grep 0 hits exit 1; AC-GCSE-008 file-local 0 + repo-wide sweep 0 output lines exit 1
+mx_tag_validation: MX sync sub-step — no @MX tags present in the two changed files and no threshold crossed (no goroutines, cyclomatic complexity < 15, attribution stays the single caller-supplied point); zero tag churn to report
+docs_site_readme: n/a — no user-facing doc surface (internal graph tooling; per dispatch instruction)
+```
+
+`sync_commit_sha` carries the `pending-backfill-sync` placeholder in this sync commit (a commit cannot cite its own SHA); the real SHA is backfilled in a following commit per the D3 backfill exemption.
