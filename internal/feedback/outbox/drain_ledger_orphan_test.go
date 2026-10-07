@@ -10,6 +10,9 @@ package outbox
 // lack the fingerprint.
 
 import (
+	"context"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -124,6 +127,34 @@ func TestSentFingerprintStillDedupes(t *testing.T) {
 // into the caps. The recovery now ADOPTS the orphan's slot: the caps
 // judgment excludes the orphan's own reservation, and the re-queue replaces
 // the orphan's QueuedAt entry instead of appending.
+
+// TestDiscardAllPropagatesBlockedSpoolRemoval (review gate, P2): the
+// withdrawal discard ignored ClearSpool errors and returned success — a
+// blocked removal (a non-empty directory sitting at the spool path) left
+// untransmitted capture data on disk while the caller believed withdrawal
+// had completed. The cleanup failure must propagate: withdrawal reports the
+// failure instead of false success.
+func TestDiscardAllPropagatesBlockedSpoolRemoval(t *testing.T) {
+	spoolPath := spoolFixture(t, bugreport.KindPanic)
+	consentOn(t)
+
+	// The blocked-removal shape: a non-empty DIRECTORY at the spool path —
+	// os.Remove refuses a non-empty directory, so ClearSpool fails.
+	if err := os.Remove(spoolPath); err != nil {
+		t.Fatalf("remove spool file: %v", err)
+	}
+	if err := os.Mkdir(spoolPath, 0o700); err != nil {
+		t.Fatalf("mkdir spool path: %v", err)
+	}
+	blocked := filepath.Join(spoolPath, "held-capture.jsonl")
+	if err := os.WriteFile(blocked, []byte(`{"kind":"panic","verdict":"moai","frames":["internal/cli.Execute"]}`+"\n"), 0o600); err != nil {
+		t.Fatalf("seed blocked content: %v", err)
+	}
+
+	if err := discardAll(context.Background()); err == nil {
+		t.Fatal("discardAll returned nil while the spool removal was blocked — untransmitted capture data is still on disk under a false success")
+	}
+}
 
 // TestOrphanRecoveryAtTheCapAdoptsItsSlot (finding 9's fixture): the
 // orphaned reservation plus two other reports fill the DAILY CAP of 3. The

@@ -714,7 +714,10 @@ func tripwire(payload bugreport.Payload, entry bugreport.SpoolEntry) (reason str
 
 // discardAll is the withdrawal branch (REQ-ANON-021): every unsent queue
 // item and the spool are discarded, each recorded, the sent history kept.
-// No network request and no model call — this package has neither.
+// No network request and no model call — this package has neither. A spool
+// removal that FAILS is returned, not swallowed (review gate finding, P2):
+// withdrawal reporting success while untransmitted capture data survives on
+// disk is a false success.
 func discardAll(ctx context.Context) error {
 	spoolHadContent := spoolFileNonEmpty()
 
@@ -731,7 +734,10 @@ func discardAll(ctx context.Context) error {
 	for i := 0; i < discarded; i++ {
 		_ = AppendOutbox(OutboxRow{Outcome: "discarded", Reason: "participation off: unsent item discarded"})
 	}
-	if err := bugreport.ClearSpool(); err == nil && spoolHadContent {
+	if err := bugreport.ClearSpool(); err != nil {
+		return fmt.Errorf("outbox: discard spool: %w", err)
+	}
+	if spoolHadContent {
 		_ = AppendOutbox(OutboxRow{Outcome: "discarded", Reason: "participation off: capture spool discarded"})
 	}
 	return nil
