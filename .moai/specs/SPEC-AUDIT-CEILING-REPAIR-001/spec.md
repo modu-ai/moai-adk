@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUDIT-CEILING-REPAIR-001
 title: "Audit-ceiling engine defect repair — legacy-family latest-verdict resolution and debt-inventory persistence"
-version: "0.1.0"
+version: "0.3.0"
 status: draft
 created: 2026-10-07
 updated: 2026-10-07
@@ -72,6 +72,17 @@ each other with stale content and can destroy pre-existing progress content:
 the turn-end codex review gate measured 24 parallel record calls on
 `903ccd028` surviving as 7, with the pre-existing §G heading lost.
 
+**D4 — `CountAuditRounds` collapses an unparseable iteration number into
+round 1** (`internal/runtime/audit_counter.go:107-114`, the Atoi at `:111`;
+leader ruling #2 fold-in, 2026-10-07). A convention-family file whose numeric
+suffix overflows the integer range (e.g. `plan-audit-iter99999999999999999999.md`)
+fails `strconv.Atoi`, and `n` silently keeps its initialized value 1 — the
+same round number as a bare `plan-audit.md`. The two files dedupe into ONE
+counted round (`audit_counter.go:144`), undercounting the ceiling input. The
+counter's own fail-counted convention (the `conventionUnnumbered` branch,
+`audit_counter.go:49,117-119`) already treats a non-numeric suffix as its own
+round; the numeric-but-overflowing suffix is the one spelling that collapses.
+
 ## §B Requirements (GEARS)
 
 - **REQ-ACR-001** (When the latest audit-round evidence file the round counter
@@ -140,20 +151,33 @@ the turn-end codex review gate measured 24 parallel record calls on
   pre-existing progress.md content — the §G heading included — is never
   destroyed, truncated, or duplicated by a racing write.
 
+- **REQ-ACR-009** (When a convention-family evidence file carries an
+  iteration suffix that does not parse as an in-range integer — an Atoi range
+  error — the round counter shall count it as its own round): An unparseable
+  iteration number is never collapsed into another round's number (round 1
+  included); it counts via the counter's existing fail-counted path, never
+  becomes the latest verdict, and never merges with a same-numbered file
+  into one round. Semantics note (leader-carried, one line): round-counting
+  semantics change — unparseable iteration numbers count as their own round
+  rather than collapsing to 1.
+
 ## §C Success Criteria
 
-Acceptance criteria live in `acceptance.md` (AC-ACR-001 … AC-ACR-013, Tier M).
-The three load-bearing RED-first criteria: AC-ACR-001 (D1 reproduction — a
-legacy-family latest verdict resolves the prior audited SHA), AC-ACR-005
-(D2 reproduction — a debt-admit outcome's §G record carries the admitted debt
-inventory), and AC-ACR-013 (D3 reproduction — concurrent §G appends all
-survive with pre-existing content intact), each observed failing on
-unmodified main `903ccd028` for the stated reason before its fix.
+Acceptance criteria live in `acceptance.md` (AC-ACR-001 … AC-ACR-014, Tier
+M). The release-blocking RED-first criteria — AC-ACR-001 (D1), AC-ACR-004
+(D1 end-to-end), AC-ACR-005 (D2), AC-ACR-013 (D3), AC-ACR-014 (D4) — each
+carry the family-convention declaration **"RED is a new test (E8 evidence
+required)"** (SPEC-AUDIT-CEILING-001 acceptance.md §A:11-18): the repro
+tests are M1 deliverables authored against the still-pristine `903ccd028`
+code, and each RED (verbatim stdout + exit code) is recorded in
+`progress.md` §E.2 at M1. AC-ACR-003 is a preserve-behavior check (passes on
+unmodified main and must keep passing) — deliberately not a RED observation.
 
 ## §D Non-Functional Constraints and Security
 
-- **Scope discipline**: the three defect sites and their tests only. No engine
-  refactor, no renaming, no drive-by cleanup of adjacent code.
+- **Scope discipline**: the defect sites across the two engine files only
+  (`audit_ceiling.go` D1-D3, `audit_counter.go` D4) and their tests. No
+  engine refactor, no renaming, no drive-by cleanup of adjacent code.
 - **C5 posture inherited**: admission thresholds, the admission predicate
   (`internal/auditverdict`), and the outcome ladder's rung order keep their
   meaning; this SPEC changes no admission decision — only what the previous-
@@ -177,9 +201,9 @@ scope for card t1560 and must ride its own card or SPEC.
 
 ### Out of Scope — engine surface beyond the two defects
 
-- No refactor of `audit_ceiling.go` / `audit_counter.go` beyond the two repair
-  sites — no restructuring of the outcome ladder, no signature or naming
-  changes beyond the minimum the fixes need.
+- No refactor of `audit_ceiling.go` / `audit_counter.go` beyond the named
+  repair sites (D1-D4) — no restructuring of the outcome ladder, no signature
+  or naming changes beyond the minimum the fixes need.
 - No change to `DeltaEligible`'s predicate, the diff-in-anchors check, the
   REQ/AC-set comparison, or the tier-ceiling / delta-round configuration
   semantics.
@@ -214,6 +238,23 @@ scope for card t1560 and must ride its own card or SPEC.
 
 ## HISTORY
 
+- v0.3.0 (2026-10-07): plan-audit-1 repair revision (verdict FAIL 0.81,
+  iteration 1/2, receipt rcpt-136dc402f67a6b1d93bf69bf,
+  `.moai/reports/t1560/plan-audit-1.md`) + leader ruling #2. MP-8 closed by
+  the family-convention per-criterion declaration "RED is a new test (E8
+  evidence required)" (acceptance.md §A rewritten; command lines added to
+  the AC-ACR-004/013 RED cells; AC-ACR-012's no-RED no-regression character
+  stated). AC-ACR-004 fixture corrected to tier ceiling 2 (the ceiling-1
+  form could not grant a delta even after the D1 fix — `audit_ceiling.go:94/:110`
+  arithmetic, codex-measured). AC-ACR-003 marked a preserve-behavior check;
+  M1's RED obligation scoped to the RED-first tests. AC-ACR-010 re-anchored
+  to the SPEC-local verbatim excerpt `references/t1500-seal-excerpt.md`
+  (finding D4: the cross-tree path does not resolve from the card tree).
+  D4 folded in per leader ruling #2 (주제당 한 장 basis, decision-index Q5):
+  new REQ-ACR-009 + AC-ACR-014 (`audit_counter.go:111` Atoi-error collapse;
+  M2 extended; one-line semantics note carried in the AC). Optionals folded:
+  §D.2 non-REQ rows (D7), `-race -count=1` bound (D8), DoD #5 rephrased
+  (D9), t1538 remote-provenance note (D10). Frontmatter version 0.3.0.
 - v0.2.0 (2026-10-07): scope extension per leader ruling (card t1560,
   adopted on the 주제당 한 장 basis — decision-index Q4) — third defect D3
   added: `appendProgressRecord` (`audit_ceiling.go:479-496`, write at

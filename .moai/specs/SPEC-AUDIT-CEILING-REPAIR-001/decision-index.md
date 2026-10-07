@@ -85,3 +85,21 @@ Operator verdict: ADOPTED — leader ruling 2026-10-07: scope extension
 adopted on the 주제당 한 장 basis; D3 joins this SPEC as REQ-ACR-008 /
 AC-ACR-013 and folds into the persistence milestone M3 (recorded by
 manager-spec per the leader's instruction)
+
+### Q5: Does card t1560 absorb the fourth defect (CountAuditRounds overflow collapse at audit_counter.go:111) or split it to a new card?
+
+Label: FOUNDER
+Class: product-level (adds a round-counting semantics change — unparseable
+iteration numbers count as their own round — to the card's shipped behavior)
+Authority anchor: none in the committed register — the settling act is the
+leader ruling #2 of 2026-10-07 (folded into the D1 requirement family;
+basis: 주제당 한 장 — one card per topic; that rule lives in card-issuance
+memory, not in a committed artifact, so no verifiable anchor exists)
+Why unresolved at authoring: surfaced post-plan-audit-1 as the leader's
+second scope ruling; the counter defect was not part of the original
+dispatch surface
+Operator verdict: ADOPTED — leader ruling #2 2026-10-07:
+`audit_counter.go:111` folded into the D1 requirement family as REQ-ACR-009
+/ AC-ACR-014, M2 extended, the leader-required one-line semantics note
+carried in the AC wording (recorded by manager-spec per the leader's
+instruction)

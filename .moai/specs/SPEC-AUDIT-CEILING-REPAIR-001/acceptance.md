@@ -8,14 +8,24 @@ updated: 2026-10-07
 
 # acceptance.md — SPEC-AUDIT-CEILING-REPAIR-001
 
-## §A Purpose and RED-first contract
+## §A Classification and RED/GREEN discipline
 
-Every defect AC below is two-celled: the RED-now cell names the command and
-the reason it fails on unmodified main `903ccd028`; the green-path cell names
-the milestone that flips it (M2 for D1, M3 for D2). The verbatim RED output
-and exit code are recorded in `progress.md` §E.2 when run phase executes M1 —
-this file pins the expectation, the run records the observation. The RED
-baseline tree is `903ccd028` (origin/main tip this branch was cut from).
+Severity classes: **RB** = release-blocking, **RG** = regression-guard, **PG**
+= process gate. Following the engine family convention (SPEC-AUDIT-CEILING-001
+`acceptance.md` §A:11-18): every RB criterion below carries the explicit
+per-criterion declaration **"RED is a new test (E8 evidence required)"** — the
+repro tests are M1 deliverables, authored at run phase against the still-
+pristine `903ccd028` code, and each RED (verbatim stdout + exit code) is
+observed and recorded in `progress.md` §E.2 at M1 per
+manager-develop-prompt-template §E8. No repro test exists at plan phase by
+design, so a plan-phase `go test -run '^Test…$'` that returns
+`ok … [no tests to run]` (exit 0) is the expected plan-phase state and is
+never a RED observation and never a pass — the plan-audit-1 MP-8 measurement.
+RG criteria pass both before and after the fix and pin what the repair must
+not break; PG criteria are read-and-note obligations with their own evidence
+paths. Document-level RED baseline tree: `903ccd028` (the audited SPEC commit
+`e93cbad45` is code-identical to it — plan-audit-1 measured the delta as
+artifact-only).
 
 ## §D AC Matrix
 
@@ -27,7 +37,8 @@ baseline tree is `903ccd028` (origin/main tip this branch was cut from).
   (the largest round strictly below the latest, deduped across families).
   RED: `go test -run '^TestPreviousAuditedSHALatestLegacyRound$' ./internal/runtime/`
   fails on `903ccd028` with got `""` want `sha-rev2` — the `latestN <= 0`
-  early exit aborts on the legacy-family latest name. Green at M2. Test:
+  early exit aborts on the legacy-family latest name. **RED is a new test
+  (E8 evidence required).** Green at M2. Test:
   `TestPreviousAuditedSHALatestLegacyRound` (`audit_counter_review_test.go`).
 
 - **AC-ACR-002 (D1 mixed families)** — Given a legacy-family latest
@@ -40,19 +51,29 @@ baseline tree is `903ccd028` (origin/main tip this branch was cut from).
   `LatestPath` base name parses under neither family (e.g. `garbage.md`), When
   `previousAuditedSHA` runs, Then it returns `""` — the no-prior-round
   fail-closed semantics are preserved for genuinely unparseable names after
-  the fix. Test: `TestPreviousAuditedSHAUnparseableLatestStaysEmpty`.
-  Regression-guard (passes before and after; pins what the fix must not
-  break).
+  the fix. **Preserve-behavior check, NOT a RED observation**: it passes on
+  unmodified main (`latestN <= 0 → ""` IS the current behavior for
+  unparseable names) and must keep passing — M1 runs it as a pre-and-post
+  green guard, never in the RED obligation. Test:
+  `TestPreviousAuditedSHAUnparseableLatestStaysEmpty`.
+  Regression-guard (RG).
 
 - **AC-ACR-004 (D1 end-to-end, release-blocking)** — Given a git-initialized
   temp project (pattern of `TestDiffInsideAnchorsHunkScope`) with a committed
   spec.md, two legacy-family rounds (`-review-1.md` audited at the base
   commit, `-review-2.md` latest, carrying a `fix_scope:` anchor line and
   audited at a later commit whose diff touches only `.moai/reports/` paths),
-  and harness config with tier ceiling 1 and `auto_delta_rounds: 1`, When
+  and harness config with **tier ceiling 2** and `auto_delta_rounds: 1`, When
   `EvaluateCeiling` runs, Then it returns no ceiling outcome (nil — the delta
-  round is granted). RED: on `903ccd028` the same fixture returns a final-hit
-  outcome (non-nil) because `prevSHA` is empty. Green at M2. Test:
+  round is granted: count 2 reaches the ceiling 2, and with the D1 fix
+  `deltaOK` is true so `2 < 2+1` grants the delta at `audit_ceiling.go:110`).
+  RED: `go test -run '^TestEvaluateCeilingLegacyLatestDeltaGranted$'
+  ./internal/runtime/` fails on `903ccd028` — the same fixture returns a
+  final-hit outcome (non-nil) because `prevSHA` is empty, `deltaOK` is false,
+  and `2 < 3 && false` routes to the outcome ladder. (Fixture corrected at
+  v0.3.0 per plan-audit-1 D2: the previous ceiling-1 form could not grant a
+  delta even after the fix — `2 < 2` at `:110`.) **RED is a new test (E8
+  evidence required).** Green at M2. Test:
   `TestEvaluateCeilingLegacyLatestDeltaGranted` (`audit_ceiling_test.go`).
 
 - **AC-ACR-005 (D2 RED, release-blocking)** — Given the ceiling fixture
@@ -63,7 +84,8 @@ baseline tree is `903ccd028` (origin/main tip this branch was cut from).
   ID and `dispose_in` (recoverable tokens) and remains a single line. RED:
   `go test -run '^TestPersistOutcomeDebtAdmitCarriesDebtInventory$'
   ./internal/runtime/` fails on `903ccd028` — the record line serializes
-  kind/outcome/reasons/evidence only. Green at M3. Test:
+  kind/outcome/reasons/evidence only. **RED is a new test (E8 evidence
+  required).** Green at M3. Test:
   `TestPersistOutcomeDebtAdmitCarriesDebtInventory` (`audit_ceiling_test.go`).
 
 - **AC-ACR-006 (D2 trail parity)** — Given the same debt-admit evaluation,
@@ -94,49 +116,78 @@ baseline tree is `903ccd028` (origin/main tip this branch was cut from).
   test arm or reuse the existing warning posture).
 
 - **AC-ACR-010 (consistency read a, process gate)** — The run phase reads the
-  t1500 seal record
-  (`.moai/worktrees/t1500/.moai/reports/t1500/lane28-wait-claude-gate.md`
-  §SEAL/§PUSH) and records in progress.md a non-contradiction note: the
+  t1500 seal record and records in progress.md a non-contradiction note: the
   repair extends the dual-family contract the sealed card-review F4 test
   established and keeps the sealed test surface green. Read-and-note only —
-  no re-derivation.
+  no re-derivation. Cited source: the SPEC-local verbatim excerpt
+  `references/t1500-seal-excerpt.md` (§SEAL/§PUSH, with provenance header —
+  re-anchored at v0.3.0 per plan-audit-1 finding D4 because the original
+  cross-tree path `.moai/worktrees/t1500/…` does not resolve from the card
+  tree and the t1500 worktree is sweep-pending; the absolute primary-checkout
+  path `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1500/.moai/reports/t1500/lane28-wait-claude-gate.md`
+  is retained in the excerpt's provenance header).
 
 - **AC-ACR-011 (consistency read b, process gate)** — The run phase reads the
-  t1538 sealed resume point (`origin/WT-t1538-factory-recovery`
-  `.moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/progress.md` §봉인 기록)
-  and records in progress.md a non-contradiction note: the remaining-gate
-  inventory (mirror-path P1, `^TestReview` overlay family) is disjoint from
-  `internal/runtime/audit_ceiling.go`.
+  t1538 sealed resume point and records in progress.md a non-contradiction
+  note: the remaining-gate inventory (mirror-path P1, `^TestReview` overlay
+  family) is disjoint from `internal/runtime/audit_ceiling.go`. Provenance
+  note: `SPEC-FACTORY-COMPLETION-RECOVERY-001` lives on
+  `origin/WT-t1538-factory-recovery`, not in this tree's `.moai/specs/` —
+  read via `git show origin/WT-t1538-factory-recovery:.moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/progress.md`
+  (§봉인 기록; verified present on that ref at plan phase).
 
-- **AC-ACR-012 (no-regression suite, release-blocking)** —
-  `go test -timeout 30m ./internal/runtime/...` is green, explicitly
-  including the pre-existing sealed-surface tests: `TestPreviousAuditedSHALegacyPriorRound`,
+- **AC-ACR-012 (no-regression suite, release-blocking — no-RED character)** —
+  `go test -race -count=1 -timeout 30m ./internal/runtime/...` is green,
+  explicitly including the pre-existing sealed-surface tests:
+  `TestPreviousAuditedSHALegacyPriorRound`,
   `TestCountAuditRoundsLegacyPlanAuditNumbered`, `TestCeilingPolicyDebtAdmit`,
   `TestCeilingDeltaEligibility`, `TestAuditTrailAppend`,
   `TestDiffInsideAnchorsHunkScope`, `TestEvaluateCeilingUnknownPolicyFailClosed`
   — the t1500 sealed behavior survives the repair unchanged. `go vet` and
-  `golangci-lint` clean on the package.
+  `golangci-lint` clean on the package. **Character (stated per plan-audit-1
+  MP-8/D1): this criterion has NO RED cell by design** — it is a
+  no-regression gate whose evidence is the full-family green run (`-race
+  -count=1`: the D3 fix and the concurrency test are goroutine code); it is
+  never satisfied by a RED observation and never recorded from one.
 
 - **AC-ACR-013 (D3 RED, release-blocking — "ProgressAppend atomicity")** —
   Given a specDir whose progress.md already carries content and the §G
   heading, When 24 concurrent `appendProgressRecord` calls run (goroutines
   joined via WaitGroup), Then all 24 record lines are present exactly once,
   the §G heading appears exactly once, and no pre-existing line is lost.
-  RED: on `903ccd028` the unlocked read-modify-write race loses records —
-  the turn-end codex review gate measured 24 parallel calls → 7 survivors
-  with the pre-existing heading lost (leader-cited evidence material; the
-  test's own RED run records its verbatim output in §E.2). Green at M3
+  RED: `go test -run '^TestAppendProgressRecordConcurrentSurvival$'
+  -race -count=1 ./internal/runtime/` fails on `903ccd028` — the unlocked
+  read-modify-write race loses records; the turn-end codex review gate
+  measured 24 parallel calls → 7 survivors with the pre-existing heading
+  lost (leader-cited evidence material; the test's own RED run records its
+  verbatim output in §E.2; concurrency is judged over repeated runs, never
+  one green). **RED is a new test (E8 evidence required).** Green at M3
   (the persistence milestone). Test:
   `TestAppendProgressRecordConcurrentSurvival` (`audit_ceiling_test.go`).
+
+- **AC-ACR-014 (D4 RED, release-blocking)** — Given a report directory with
+  `plan-audit.md` (round 1) and `plan-audit-iter99999999999999999999.md` (a
+  20-digit suffix that overflows the integer range), When `CountAuditRounds`
+  runs, Then the count is 2 — the overflow file is fail-counted as its own
+  round, not merged into round 1, and does not become `LatestPath`. RED:
+  `go test -run '^TestCountAuditRoundsOverflowOwnRound$' ./internal/runtime/`
+  fails on `903ccd028` with count 1, want 2 — the Atoi range error at
+  `audit_counter.go:111` leaves `n` at its initialized 1, so the two files
+  dedupe into one round. **Semantics note (one line, leader-carried,
+  non-blocking auditor note): round-counting semantics change — unparseable
+  iteration numbers count as their own round rather than collapsing to 1.**
+  **RED is a new test (E8 evidence required).** Green at M2. Test:
+  `TestCountAuditRoundsOverflowOwnRound` (`audit_counter_review_test.go`).
 
 ## §D.1 Severity classification
 
 | AC | Severity | Rationale |
 |---|---|---|
-| AC-ACR-001, 004, 005, 012, 013 | Release-blocking | RED-first defect proofs + sealed-surface no-regression |
-| AC-ACR-002, 006, 007, 008, 009 | Normal | Contract completion arms of the two fixes |
-| AC-ACR-003 | Regression-guard | Pins preserved fail-closed semantics |
-| AC-ACR-010, 011 | Process gate | Read-and-note consistency obligations from the dispatch |
+| AC-ACR-001, 004, 005, 013, 014 | Release-blocking (RB) | RED-first defect proofs — each declared "RED is a new test (E8 evidence required)", observed at M1 |
+| AC-ACR-012 | Release-blocking (RB, no-RED) | No-regression gate: evidence is the full-family green run (`-race -count=1`), never a RED cell |
+| AC-ACR-002, 006, 007, 008, 009 | Normal | Contract completion arms of the fixes |
+| AC-ACR-003 | Regression-guard (RG) | Preserve-behavior check — passes on unmodified main and must keep passing |
+| AC-ACR-010, 011 | Process gate (PG) | Read-and-note consistency obligations from the dispatch |
 
 ## §D.2 Traceability
 
@@ -150,6 +201,13 @@ baseline tree is `903ccd028` (origin/main tip this branch was cut from).
 | REQ-ACR-006 | AC-ACR-008 |
 | REQ-ACR-007 | AC-ACR-009 |
 | REQ-ACR-008 | AC-ACR-013 |
+| REQ-ACR-009 | AC-ACR-014 |
+
+Non-REQ criteria (deliberate, repair-SPEC bookkeeping — stated per
+plan-audit-1 D7): AC-ACR-010 and AC-ACR-011 are process gates (dispatch
+consistency reads — no REQ parent); AC-ACR-012 is the no-regression suite
+grounded in spec.md §D's "C5 posture inherited" constraint — it maps to the
+repair's constraint layer, not to a single REQ.
 
 ## §D.3 Edge cases (covered by the AC set or explicitly observed)
 
@@ -168,6 +226,9 @@ baseline tree is `903ccd028` (origin/main tip this branch was cut from).
     repeated runs, not one green (concurrency discipline).
 11. §G heading absent at first append under a race — created exactly once,
     never duplicated (AC-ACR-013 arm).
+12. Overflow iteration file (`-iter999…9`) never becomes `LatestPath` — the
+    fail-counted path skips the best-N update, mirroring the existing
+    unnumbered-file handling (AC-ACR-014 arm).
 
 ## §D.4 Indirect verification
 
@@ -197,8 +258,10 @@ baseline tree is `903ccd028` (origin/main tip this branch was cut from).
    ./internal/runtime/...`); vet + lint clean.
 4. `spec.md` frontmatter transitions `draft → in-progress` at the first
    run-phase commit (manager-develop, ownership matrix).
-5. No commit on this card's tree from this plan phase — the lane reviews and
-   commits the plan artifacts.
+5. No further plan-phase artifact commits after the plan-audit verdict
+   without a fresh audit — the landed plan commit `e93cbad45` is the audited
+   baseline; the lane commits the v0.3.0 revision and iteration 2 re-audits
+   the delta (rephrased per plan-audit-1 D9).
 
 ## §D.7 Forward-looking checks (non-blocking)
 

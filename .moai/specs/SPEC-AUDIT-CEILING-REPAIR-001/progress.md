@@ -8,7 +8,7 @@ evidence: this file (§G carries any ceiling records for THIS spec if the engine
 
 plan_status: pending-plan-audit
 plan_complete_at: 2026-10-07
-비고: plan artifacts (spec.md · plan.md · acceptance.md · decision-index.md) authored 2026-10-07 by manager-spec (card t1560, Tier M — 3 artifacts + progress + decision-index). `plan_status: audit-ready` is set after the plan-auditor verdict; the lane runs plan-audit next.
+비고: plan artifacts (spec.md · plan.md · acceptance.md · decision-index.md · references/t1500-seal-excerpt.md) authored 2026-10-07 by manager-spec (card t1560, Tier M). Revision v0.3.0 (2026-10-07): plan-audit-1 repairs integrated (verdict FAIL 0.81, `.moai/reports/t1560/plan-audit-1.md`) + leader ruling #2 (D4 fold-in). `plan_status: audit-ready` is set after the plan-auditor verdict; iteration 2 re-audits delta-scoped to the fix_scope anchors (mapping in plan.md §H).
 
 ## §E.2 Run-phase Evidence
 
