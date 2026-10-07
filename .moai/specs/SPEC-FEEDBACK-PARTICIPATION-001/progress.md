@@ -22,7 +22,7 @@
 
 ## §E.2 Run-phase Evidence
 
-_run in progress — M1..M5 + the full review-gate fix stack (14 commits) landed; M6 is the resume point (see the resume block at the end of this section)_
+_run in progress — M1..M7 landed through generation 4; the twelve-finding review-gate repair stack (9 from the M6 resume block + 3 lane-directed), M7 (skill bodies, docs wording, shipping guards), and the run-close verification batch are in (see the generation-4 table and §E.3)_
 
 ### Landed commits (this run, branch WT-feedback-optin-anon)
 
@@ -77,7 +77,44 @@ _run in progress — M1..M5 + the full review-gate fix stack (14 commits) landed
 | 9693fcab9 | hardening amendment: a past sent record suppresses only inside the DEC-3 window (SentHistoryHasFingerprintWithin) | publish+outbox+feedback ok; 3 builds 0; RED: 8-day-old row suppressed a new report |
 | 131aeb712 | the drain honors its context through every lock wait (RED: a 200ms-deadline drain ran 13.31s against a live holder — the gate measured 13.36) | green in 0.20s, 3/3 -race; all five touched suites ok; 3 builds 0; ClaimSection/MutateContext carry ctx |
 
+### Review-gate repair stack — generation 4 (M6 resume block 9 findings + 3 lane-directed; each RED-first)
+
+| SHA | What | RED tail / verification |
+|---|---|---|
+| 368cf5609 | finding 1 (P1): the REUSED stored summary passes validateSummary at send time; failure → deterministic template, decision recorded | "the unvalidated stored summary reached the public issue body" (×2 shapes); publish ok; trio 0 |
+| ffcb7029d | finding 4 (P2): the ledger rollback verifies its own reservation (recorded stamp == attempt stamp) before deleting | "the prior success's fingerprint record was deleted"; outbox ok incl. TestFailedSaves family |
+| fa6029007 | finding 8 (P2): an attempt-exhausted discard is recorded TERMINALLY in the ledger (Discarded map); recovery re-queues only genuinely unfinished reservations | "queue holds 1 items, want the discarded report NOT re-enrolled" + "left no terminal discard marker"; both suites ok |
+| 3a0377137 | findings 5+9 (P2): orphan recovery ADOPTS the orphaned reservation's cap slot (GlobalCapsAllowedExcluding + RecordQueuedAdopting) | "queue holds 0 items — cap-judged against its own orphan slot" + "2 QueuedAt entries for ONE report"; outbox ok |
+| a0029c056 + 8a651afe9 | finding 3 (P2): the model-call budget persists per user (modelcalls.json), counted atomically cross-process (outbox.AllowAndRecordModelCall, one queue-locked mutation); in-memory budget deleted; PurgeStores includes it | "a new sender called the model again (total 7) — the budget reset per sender"; both suites ok |
+| 80dfbec3f | finding 2 (P2): the consent check precedes the gh auth status network probe | "gh auth status ran 1 time(s) with participation OFF"; publish ok |
+| 8a9feed5e | finding 7 (P2): model byte caps reference config.DefaultBugreportModelInput/OutputMaxBytes (4096/2048), not local 8192/4096 | "model input cap = 8192, want the central 4096"; publish ok |
+| 06dbfed28 | finding 6 (P2): the summarizer env is os.Environ() through the audit scrub (claudeParticipationEnv), not scrubClaudeAuditEnv(nil) | compile RED "undefined: claudeParticipationEnv"; HOME/PATH present, ANTHROPIC_API_KEY absent, validateClaudeAuditEnv nil |
+| d13574925 | lane finding A (P2): the consent reader refuses non-regular files (stat) and bounds open+read (DefaultParticipationConsentReadTimeBox 100ms / MaxBytes 4096) | "the consent reader blocked 10.002125125s on a FIFO consent file"; config ok |
+| a8c251596 | lane finding B (P2): the attempt limit is re-checked on the LIVE item after the claim | "searches=1 creates=1 — an item exhausted between the snapshot and the claim was sent anyway"; publish ok |
+| 1afbe0e7d | lane finding C (P2): an expired discard marker no longer suppresses (TerminallyDiscardedWithin, window-scoped like the sent-record reconcile) | "an 8-day-old discard record suppressed a genuinely unfinished reservation and the report was consumed"; outbox ok |
+
+### M7 (generation 4, mechanical)
+
+| SHA | What | Verification tail |
+|---|---|---|
+| 0d50c2713 | AC-023: three feedback skill-body copies gain the relationship-to-participation section (Template-First: authored in the template copy, synced byte-identical; make build regenerated catalog.yaml); four docs-site pages drop the "created automatically" wording (E18: four :0) and positively state the corrected per-locale wording (E19: en 1 / ko 2 / ja 2 / zh 2) | grep -c participation → 4/4/4; TestTemplateNeutralityAudit PASS; make build 0 |
+| 1966ca0d0 | AC-024: TestNoAutoRepairArtifactsShipped (templates + plugins/moai walk: no auto-repair path token, no moai-bugreport content) + canary; TestParticipationQuestionRequiresSender + missing-sender canary. The first canary run caught the guard judging the ABSOLUTE path (its own temp-dir name tripped the token check) — the walk now judges the root-relative path | E22a/E22b were empty-grep red; both guards + canaries PASS; wizard suite ok |
+
 Gate item 3 (re-verify at the new HEAD): the double-ClaimSection dead-owner repro family at HEAD 9236c5cd6 — TestBreakerExcludesRivals..., TestBreakNeverDisposes..., TestBreakAborts..., TestBreakStillFires..., TestBreakGateAborts... x -count=3 -race = 15/15 PASS; TestStaleLockReclaimDoesNotDeleteTheNewLock (16 concurrent ClaimSection callers against a dead-owner fixture, no release) x -count=3 -race = 3/3 PASS.
+
+### Generation-4 verification batch (run close, HEAD 1afbe0e7d)
+
+| Item | Command | Observed |
+|---|---|---|
+| Full suites | `go test ./internal/feedback/... ./internal/bugreport/... -count=1` | ok × 4 packages (feedback, outbox, publish, bugreport) |
+| Wizard + cli families | `go test ./internal/cli/wizard/ -count=1` + targeted cli selectors | wizard ok; 6/6 PASS (TestFlushWiresClaudeSummarizer, TestParticipationSummarizerEnvCarriesTheBaseEnvironment, TestUpdateParticipationStep, TestUpdateFlagInventoryClassified, TestApplyParticipationFromWizard, TestEveryRegisteredHookHandlerHasBugreportName) |
+| Coverage (union -coverpkg across the four packages, all their tests) | `go test -coverpkg=<feedback,feedback/outbox,feedback/publish,bugreport> ./internal/feedback/... ./internal/bugreport/... -coverprofile=...` then `go tool cover -func` | bugreport 84.4%, feedback 86.8%, outbox 81.8%, publish 76.8% — union total 82.4% |
+| Boundary grep | `grep -rn 'AskUserQuestion\|mcp__askuser' internal/feedback/ internal/bugreport/ internal/config/participation_user.go` (non-test, non-comment) | 0 hits |
+| Lint (NEW vs baseline: baseline was 0 issues on these packages at generation start) | `golangci-lint run --timeout=2m ./internal/feedback/... ./internal/bugreport/... ./internal/config/...` | 0 issues |
+| Build trio + vet | `go build ./...` / GOOS=linux / GOOS=windows + `go vet` on the touched packages | all exit 0 at HEAD 1afbe0e7d |
+| Divergence at close | `git fetch origin main` + `git rev-list --count --left-right origin/main...HEAD` | `106 73` — the card-worktree baseline (branch is develop-descended; integration is the leader's develop-merge, no push from this lane) |
+
+Publish coverage gap (honest): ghrunner.go is 0% — the production `gh` exec paths are exercised by the Runner seam's tests, not unit-executed (no real gh in tests); template.go (1 stmt) same family. revalidate.go 68%. These figures are the union across all four packages' test binaries; the internal/cli model file (feedback_participation_model.go) is outside this profile (cli suite not in the -coverpkg run — load discipline).
 
 ### Gaps (explicitly unobserved)
 
@@ -161,7 +198,25 @@ After merge: /moai sync SPEC-FEEDBACK-PARTICIPATION-001
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase_
+```yaml
+run_complete_at: 2026-10-08
+run_commit_sha: "1afbe0e7d"   # run tip, branch WT-feedback-optin-anon; nothing pushed
+run_status: complete            # run-phase complete; sync pending (manager-docs owns the close)
+ac_pass_count: 25               # recorded in §E.2 across M1..M7 generations; generation 4 re-measured AC-017/018/019/023/024/025 + all twelve repair families (40 named `--- PASS` lines in the close batch, table above)
+ac_fail_count: 0
+preserve_list_post_run_count: 0 # five plan-artifact bodies byte-untouched: git diff b00d2f7d6..HEAD -- .moai/specs/ shows only progress.md (evidence) and spec.md's single sanctioned status line draft→in-progress (M1, Status Transition Ownership Matrix)
+l44_pre_commit_fetch: "git fetch origin main; git rev-list --count --left-right origin/main...HEAD → 106 73 at HEAD 1afbe0e7d — the card-worktree baseline (develop-descended branch; integration is the leader's develop-merge; this lane does not push)"
+l44_post_push_fetch: "n/a — no push from this lane (B9); remote landing is the leader's batch push + CI verdict"
+new_warnings_or_lints_introduced: 0  # golangci-lint 0 issues on internal/feedback/... internal/bugreport/... internal/config/... (baseline at generation start was also 0); go vet clean on all touched packages
+cross_platform_build:
+  native: exit 0
+  linux: exit 0   # GOOS=linux GOARCH=amd64 go build ./...
+  windows: exit 0 # GOOS=windows GOARCH=amd64 go build ./...
+total_run_phase_files: 154  # git diff --name-only b00d2f7d6..HEAD (154 files, +13919/-78) — M1..M7 generations combined
+m1_to_mN_commit_strategy: one commit per RED-GREEN unit (RED observed first, verbatim output in the commit body), docs/resume updates as separate docs commits; generation 4 = 14 commits (12 repair + 2 M7)
+```
+
+Run-phase gaps carried from earlier generations (unchanged, CI owns the verdicts): internal/cli FULL suite and internal/hook FULL suite were not re-run by generation 4 (load discipline; gen-1/gen-2 records in §E.2 Gaps stand); the publish union-coverage figure excludes the cli model file; D23's fresh-issue index-latency half stands as the recorded operator decision.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
