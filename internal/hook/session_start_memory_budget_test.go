@@ -441,3 +441,64 @@ func TestSessionStartMemoryBudget_JoinBoundBelowHookTimeout(t *testing.T) {
 			memoryBudgetJoinBound, hookPolicyTimeout)
 	}
 }
+
+// A scan owns one read dependency across candidate retries, even if its caller
+// replaces the package seam while the first candidate is still in flight.
+func TestSessionStartMemoryBudget_AsyncScanKeepsItsReader(t *testing.T) {
+	root := memoryBudgetTestRoot(t)
+	t.Setenv("HOME", root)
+	t.Setenv("USERPROFILE", root)
+	profile := filepath.Join(root, "profile")
+	t.Setenv(config.EnvClaudeConfigDir, profile)
+	t.Setenv(config.EnvMemoryAudit, "1")
+
+	started, release, exited := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	var releaseOnce sync.Once
+	unblock := func() { releaseOnce.Do(func() { close(release) }) }
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	origSeam, origBound := memoryBudgetReadFile, memoryBudgetJoinBound
+	memoryBudgetJoinBound = time.Second
+	memoryBudgetReadFile = func(path string) ([]byte, error) {
+		if strings.HasPrefix(path, profile+string(filepath.Separator)) {
+			close(started)
+			<-release
+			return nil, os.ErrNotExist
+		}
+		return []byte(strings.Repeat("a", memoryBudgetAtWarnFloor()+1)), nil
+	}
+	t.Cleanup(func() {
+		cancel()
+		unblock()
+		<-exited
+		memoryBudgetReadFile, memoryBudgetJoinBound = origSeam, origBound
+	})
+	result := make(chan string, 1)
+	go func() {
+		defer close(exited)
+		result <- memoryBudgetAdvisory(ctx, filepath.Join(root, "project"), true)
+	}()
+	select {
+	case <-started:
+	case <-ctx.Done():
+		t.Fatal("scan did not begin its first read")
+	}
+	memoryBudgetReadFile = func(string) ([]byte, error) { return nil, os.ErrNotExist }
+	unblock()
+	select {
+	case line := <-result:
+		if !strings.Contains(line, memoryBudgetPrefix) || !strings.Contains(line, filepath.Join(root, ".claude")) {
+			t.Fatalf("scan lost its original reader on retry: %q", line)
+		}
+	case <-ctx.Done():
+		t.Fatal("released scan did not finish")
+	}
+}
+
+func TestSessionStartMemoryBudget_CancelledAsyncScanIsSilent(t *testing.T) {
+	root := memoryBudgetTestRoot(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if line := memoryBudgetAdvisory(ctx, root, true); line != "" {
+		t.Fatalf("cancelled scan produced a budget warning: %q", line)
+	}
+}
