@@ -87,18 +87,13 @@ func checkSyncAuditVerdictFile(git GitRunner, repoDir, card string) (string, boo
 	// verdict regardless of its own label — the PASS+INCONCLUSIVE mixed shape
 	// from the t1557 gate repro. A malformed receipt line is refused
 	// fail-closed; a verdict file with no receipt lines is the legacy shape
-	// and admits on the label checks alone.
+	// and admits on the label checks alone. (The convergence_overall: fail
+	// refusal is owned by the shared auditverdict predicate itself — card
+	// t1571 gate round 3 moved it there so every admission site is covered.)
 	for _, v := range fields.Receipt.Backends {
 		if v != "pass" {
 			return refuse("%s is inadmissible: a recorded backend receipt reads %q — the audit record is not closed", path, v)
 		}
-	}
-	// The receipt's own overall verdict is the exporting auditor's bottom
-	// line: a recorded "fail" is a failed audit even when every backend line
-	// reads pass (gate round 2, card t1571). An absent convergence_overall is
-	// the legacy shape and stays on the label checks.
-	if fields.Receipt.ConvergenceOverall == "fail" {
-		return refuse("%s is inadmissible: the convergence receipt records overall fail — the audit record is not closed", path)
 	}
 	if fields.MalformedReceipts > 0 {
 		return refuse("%s is inadmissible: %d malformed receipt line(s)", path, fields.MalformedReceipts)
