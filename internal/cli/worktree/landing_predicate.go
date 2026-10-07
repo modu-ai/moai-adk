@@ -18,8 +18,11 @@ package worktree
 //  2. cumulative patch-id — the patch-id of `git diff <merge-base> <tip>`
 //     compared with the patch-id of every commit on <ref> since the
 //     merge-base. A squash commit carries the card's cumulative change, so
-//     the ids are equal. Capped at landingPatchIDCommitCap commits; over the
-//     cap the layer cannot answer.
+//     the ids are equal. A candidate match is accepted only when every path
+//     changed by the card has the exact same native Git object and mode on
+//     the integration ref (deleted paths must be absent). Later edits to a
+//     touched file preserve unless ancestry or head-bound PR evidence confirms.
+//     Capped at landingPatchIDCommitCap commits; over the cap it cannot answer.
 //  3. PR merged state — `gh pr list --head <branch> --state merged`, bounded by
 //     landingGHTimeout, fail-closed on any gh failure. Landed only when a PR
 //     is MERGED, its headRefOid IS the local tip (a later local commit would
@@ -113,7 +116,7 @@ var landingDiffFlags = []string{"--no-ext-diff", "--no-textconv", "--ignore-subm
 
 // LandedByPatchID is layer 2 — and the only layer past ancestry that session-exit
 // cleanup may use. It reports whether the cumulative patch of tip (relative to
-// its merge-base with ref) already exists as a commit on ref. A nil error means
+// its merge-base with ref) matches a commit on ref AND every changed path has the exact card object/mode on ref. A nil error means
 // the layer answered, yes or no; an error means it could not (no merge-base, a
 // range over the commit cap, a branch with no net change, a git failure) and the
 // caller must treat the landing as unconfirmed — never as landed.
@@ -162,10 +165,55 @@ func LandedByPatchID(dir, tip, ref string) (bool, error) {
 	}
 	for _, id := range refIDs {
 		if id == cardIDs[0] {
-			return true, nil
+			return landingExactChangedPaths(dir, mb, tip, ref)
 		}
 	}
 	return false, nil
+}
+
+// landingExactChangedPaths confirms every changed leaf's native Git object and
+// mode on ref. Patch IDs discard location, so they are only a prefilter.
+// Later edits to a touched path preserve the card unless head-bound PR evidence
+// or ancestry independently confirms its landing. ls-tree bypasses diff config,
+// attributes, text conversion and merge drivers; NUL records preserve filenames.
+func landingExactChangedPaths(dir, base, tip, ref string) (bool, error) {
+	trees := make([]map[string]string, 0, 3)
+	for _, revision := range []string{base, tip, ref} {
+		output, _, err := runLandingGit(dir, "", "ls-tree", "-r", "-z", "--full-tree", revision)
+		if err != nil {
+			return false, fmt.Errorf("read landing tree %s: %w", revision, err)
+		}
+		entries := map[string]string{}
+		for _, record := range strings.Split(output, "\x00") {
+			if record == "" {
+				continue
+			}
+			object, path, ok := strings.Cut(record, "\t")
+			if !ok || path == "" || len(strings.Fields(object)) != 3 {
+				return false, fmt.Errorf("malformed landing tree record for %s", revision)
+			}
+			entries[path] = object
+		}
+		trees = append(trees, entries)
+	}
+	changed := false
+	paths := map[string]bool{}
+	for path := range trees[0] {
+		paths[path] = true
+	}
+	for path := range trees[1] {
+		paths[path] = true
+	}
+	for path := range paths {
+		if trees[0][path] == trees[1][path] {
+			continue
+		}
+		changed = true
+		if trees[1][path] != trees[2][path] {
+			return false, nil
+		}
+	}
+	return changed, nil
 }
 
 func errOrEmpty(err error) error {

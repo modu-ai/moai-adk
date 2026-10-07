@@ -837,12 +837,13 @@ func sessionLandingRefLabel(wtPath string) string {
 //
 //	 (i) the branch tip is an ancestor of the remote-tracking integration
 //	     ref (`git merge-base --is-ancestor`), or
-//	(ii) the branch's cumulative verbatim patch-id equals a commit on the
-//	     ref since the merge-base (worktree.LandedByPatchID), covering
-//	     both one-commit and several-commit squash merges.
+//	(ii) the branch's cumulative verbatim patch-id matches a commit on the
+//	     ref and every card-changed path has the exact card Git object/mode
+//	     on that ref (worktree.LandedByPatchID), covering unchanged-path
+//	     one-commit and several-commit squash merges.
 //
 // A rebase whose per-commit patches match but whose cumulative patch cannot
-// be confirmed is preserved. Whitespace-folding git cherry cannot authorize
+// be confirmed, or whose touched path differs, is preserved. git cherry cannot authorize
 // deletion, because whitespace may be part of a string literal.
 //
 // The integration ref is the configured target (sessionWorktreeIntegrationRefFor),
