@@ -556,3 +556,81 @@ exec "$GRAPH_REAL_GIT" "$@"
 		t.Fatal("invalid repository lost its log error")
 	}
 }
+
+func TestGraphCardFileEdgesRejectsTruncatedSuccessfulBatch(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX executable shim; native batch equivalence runs on all platforms")
+	}
+	root := cardFileFixture(t)
+	for _, name := range []string{"first-path.txt", "second-path.txt"} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte("landing\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		gitFix(t, root, "add", "--", name)
+	}
+	gitFix(t, root, "commit", "-qm", "fix(graph): two-path landing (card t1563) (#2002)")
+	want := cardFileRun(t, root)
+	commits, err := walkCardCommits(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var input strings.Builder
+	var last, sentinel string
+	for i := len(commits) - 1; i >= 0; i-- {
+		c := commits[i]
+		if c.parents == "" {
+			sentinel = c.sha
+		}
+		if factory.AttributeSubject(c.subject, "main") != "" {
+			input.WriteString(c.sha + "\n")
+			last = c.sha
+		}
+	}
+	input.WriteString(sentinel + "\n")
+	cmd := exec.Command("git", "-C", root, "log", "--no-walk=unsorted", "--stdin", "--diff-merges=first-parent", "--name-only", "-z", "--format=%x00%H%x00%P")
+	cmd.Stdin = strings.NewReader(input.String())
+	raw, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	marker := "\x00" + last + "\x00"
+	header := strings.LastIndex(string(raw), marker) + len(marker)
+	headerEnd := header + strings.IndexByte(string(raw[header:]), 0) + 1
+	if header < len(marker) || headerEnd <= header || headerEnd >= len(raw)-1 {
+		t.Fatal("missing nonempty final landing positive control")
+	}
+	sentinelStart := strings.LastIndex(string(raw), "\x00"+sentinel+"\x00")
+	if sentinelStart <= headerEnd {
+		t.Fatal("missing terminal root positive control")
+	}
+	firstPathEnd := headerEnd + strings.IndexByte(string(raw[headerEnd:]), 0) + 1
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	shim := t.TempDir()
+	script := `#!/bin/sh
+for arg do
+ if [ "$arg" = "--stdin" ]; then cat "$GRAPH_BATCH_OUTPUT"; exit 0; fi
+done
+exec "$GRAPH_REAL_GIT" "$@"
+`
+	if err := os.WriteFile(filepath.Join(shim, "git"), []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GRAPH_REAL_GIT", realGit)
+	t.Setenv("PATH", shim+string(os.PathListSeparator)+os.Getenv("PATH"))
+	for name, output := range map[string][]byte{"complete-path": raw[:firstPathEnd], "complete": raw, "mid-path": raw[:sentinelStart-3], "header-only": raw[:headerEnd], "unterminated-header": raw[:headerEnd-1]} {
+		t.Run(name, func(t *testing.T) {
+			file := filepath.Join(t.TempDir(), "batch-output")
+			if err := os.WriteFile(file, output, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("GRAPH_BATCH_OUTPUT", file)
+			got := cardFileRun(t, root)
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("successful partial batch accepted: got %#v want %#v", got, want)
+			}
+		})
+	}
+}
