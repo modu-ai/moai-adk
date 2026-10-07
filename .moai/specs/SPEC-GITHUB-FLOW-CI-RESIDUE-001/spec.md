@@ -2,7 +2,7 @@
 id: SPEC-GITHUB-FLOW-CI-RESIDUE-001
 title: "GitHub Flow 전환 CI 잔여 — 착지 검사 기준 브랜치 전환·일반 PR 다중 OS 게이트·develop 트리거 정리·SPEC 상태 자동 동기화 PR 전환"
 version: "0.5.1"
-status: in-progress
+status: completed
 created: 2026-10-07
 updated: 2026-10-07
 author: manager-spec (card t1535)

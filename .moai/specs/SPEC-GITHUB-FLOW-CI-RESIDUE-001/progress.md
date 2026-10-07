@@ -1,7 +1,7 @@
 # SPEC-GITHUB-FLOW-CI-RESIDUE-001 — Progress
 
 - SPEC: SPEC-GITHUB-FLOW-CI-RESIDUE-001 (card t1535)
-- phase 진행: plan 완료(2026-10-07) → run 완료(2026-10-07, 아래 §E.2) — sync 대기
+- phase 진행: plan 완료(2026-10-07) → run 완료(2026-10-07, §E.2) → sync 완료(2026-10-07, §E.4)
 - worktree: `.moai/worktrees/t1535` · branch `WT-github-flow-ci-residue`
 
 ## §E.1 Plan-phase Audit-Ready Signal
@@ -61,4 +61,22 @@ measured_branch: WT-github-flow-ci-residue
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_complete_at: 2026-10-07
+- sync_status: audit-ready
+- sync_commit_sha: "pending-backfill-sync"  # D3-exempt placeholder — a commit cannot cite its own hash; the real SHA is backfilled in a following commit (spec-frontmatter-schema § SHA placeholder backfill exemption)
+- sync scope (single sync commit): CHANGELOG.md `### Fixed` entry (card t1535,
+  B12 duplicate pre-check measured 0) + spec.md frontmatter
+  `in-progress → implemented → completed` merged transition (status only —
+  `updated:` already carried 2026-10-07; SPEC body untouched; plan.md and
+  acceptance.md carry no frontmatter block, so nothing to refresh there) +
+  this §E.4 signal
+- b12_self_test_a: pre-emission `grep -c 'SPEC-GITHUB-FLOW-CI-RESIDUE-001' CHANGELOG.md` → 0 적중 (duplicate guard PASS)
+- b12_self_test_b: canonical AC counter on acceptance.md → `live=17 excluded=0 ambiguous=0`; CHANGELOG entry references 17 AC (16 closed + AC-GFC-016 delegated to t1561) — count match PASS
+- b12_self_test_c: every file path named in the entry verified via `git diff --stat 04e8a6ae6..HEAD` (9 workflow files, worktree 3 files, factory 1, cli 4, probe test) + direct reads of sweep.go·done.go·prlink_landedref.go·pr-multi-os-gate.yml and the M2/M3 spec-lint diffs — PASS
+- changelog_entry_position: [Unreleased] → `### Fixed`, first entry
+- frontmatter_status_transitions.spec_md: in-progress → implemented → completed (merged close, single sync commit)
+- MX validation (sync sub-step): LandedRefForWithLevel의 기존 `@MX:ANCHOR`가 run 단계에서 갱신된 상태로 검증됨(사유: worktree 표면 편입으로 fan_in 3, 파일 본문 직접 판독); 신규 위험 패턴(goroutine·복잡도) 없음, 제거할 `@MX:TODO` 없음
+- no-op dispositions: codemaps rotation — 패키지 구조 변화 없음(기존 파일 함수 내부 수정 + 테스트 2건); README/docs-site sync — 사용자 대면 제품 문서 표면 아님(CI 워크플로 + 내부 CLI 동작)
+- delegated: AC-GFC-016 patch-id whitespace repair → card t1561 (leader ruling 2026-10-07, revert commit `8b098c508`)
+- out_of_scope: 스코프 4(SPEC 상태 자동 동기화 PR 전환) — v0.5.0 분할 → 카드 t1557(운영자 결정 (a) 라벨+수동 병합); 본 sync가 shipped로 기술하지 않는 범위
+- open_blockers: none
