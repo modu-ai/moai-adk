@@ -785,13 +785,24 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 						archivedSet[rel] = true
 					}
 				}
+				// Gate round 23, finding 2 (P2): preserved section files are
+				// excluded too — a preserved local-only file was reported
+				// untouched, and the restore's merge rewrote it with normalized
+				// YAML bytes (4-space indent collapsed), the same contradiction
+				// as the archived arm, on the preserve side (REQ-UPM-002).
+				preservedSet := make(map[string]bool, len(reconSummary.Preserved))
+				for _, p := range reconSummary.Preserved {
+					if rel, ok := strings.CutPrefix(p, ".moai/config/sections/"); ok {
+						preservedSet[rel] = true
+					}
+				}
 				retainedKeys, restoreErr := backup.RestoreMoaiConfigRetained(projectRoot, configBackupPath, func(pr, relPath string, success bool, errOut io.Writer) {
 					// Bridge to the noise-suppression ledger (recordMergeFallback +
 					// updateVerboseMode), which stays in package cli. The closure
 					// captures updateVerboseMode so the backup subpackage does not
 					// need a cross-package mutable-state seam.
 					recordMergeFallback(pr, relPath, success, updateVerboseMode, errOut)
-				}, func(relPath string) bool { return archivedSet[relPath] })
+				}, func(relPath string) bool { return archivedSet[relPath] || preservedSet[relPath] })
 				if restoreErr != nil {
 					plRestore.Fail(fmt.Sprintf("Restore failed: %v", restoreErr))
 					if reporter != nil {

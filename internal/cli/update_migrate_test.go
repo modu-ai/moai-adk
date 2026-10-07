@@ -542,6 +542,39 @@ func TestNotDemonstratedPreservationHoldsAtNextLocalUpdate(t *testing.T) {
 	}
 }
 
+// TestPreservedSectionSurvivesRestoreUntouched pins gate round 23, finding 2
+// (P2): the Restore Settings skip filter excluded only the reconciliation's
+// archived-removed section files, so a PRESERVED local-only sections file was
+// re-merged from the config backup and rewritten with normalized YAML bytes
+// (4-space indentation collapsed) — contradicting the summary's preserved
+// report (REQ-UPM-002: user-owned files are never rewritten). The skip set
+// must carry the preserved paths too.
+func TestPreservedSectionSurvivesRestoreUntouched(t *testing.T) {
+	root := buildMigrationFixture(t)
+
+	// A local-only sections file: never template-carried, never manifest-
+	// recorded — the reconciliation classifies it user-owned and preserves it
+	// byte-for-byte. The 4-space indentation is the canary: any YAML round-
+	// trip rewrites it.
+	localOnly := ".moai/config/sections/local-only.yaml"
+	content := "deploy:\n    target:\n        region: local\n"
+	abs := filepath.Join(root, filepath.FromSlash(localOnly))
+	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(abs, []byte(content), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	out, _ := runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
+	if !strings.Contains(out, "local-only.yaml") {
+		t.Errorf("summary did not report the local-only section as preserved:\n%s", out)
+	}
+	if got := readFixtureFile(t, root, localOnly); got != content {
+		t.Errorf("the update rewrote the preserved local-only section file:\n--- before ---\n%s\n--- after ---\n%s", content, got)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Card t1438 card-review findings 1 and 2
 // ---------------------------------------------------------------------------
