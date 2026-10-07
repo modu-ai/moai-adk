@@ -159,7 +159,11 @@ func ReconcileManagedPaths(projectRoot string, out io.Writer, tmplFS fs.FS, rend
 	// to wherever it points — potentially outside the project. The recorded
 	// links (never dereferenced by the classifier) are disposed here with the
 	// existing link-dedicated machinery: remove the link itself, never the
-	// target. Destructive, so it runs inside the caller's
+	// target. ONLY the regular-target links dispose here: a PreserveOnly
+	// root's links (plan.PreserveOnlySymlinks) never do — the deployer skips
+	// those paths before any content read, so there is no write-through
+	// hazard and the user's entry survives (card t1547 repair round).
+	// Destructive, so it runs inside the caller's
 	// guardFirstDestructiveStep window, after the Backup step (REQ-UPM-016).
 	if len(plan.Symlinks) > 0 {
 		if err := deploy.DisposeSymlinks(projectRoot, out, tmplFS, plan.Symlinks); err != nil {

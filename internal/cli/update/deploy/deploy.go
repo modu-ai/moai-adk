@@ -45,6 +45,15 @@ type CleanTarget struct {
 	FullPath string
 	// IsGlob indicates the target uses filepath.Glob matching
 	IsGlob bool
+	// PreserveOnly marks a CLASSIFICATION-scope-only target (card t1547
+	// repair round): the reconciliation classifies the files under it, but no
+	// removal may ever process it. The joint t1547×t1509 contract makes the
+	// common-asset roots preserve-only for the update run — the deployer
+	// skips them (REQ-005) and the per-file user-asset migration is their
+	// only removal — so the classifier lists their files preserved without
+	// ever routing them to a removal-eligible disposition. The removal walks
+	// skip a PreserveOnly target as defense-in-depth.
+	PreserveOnly bool
 }
 
 // ManagedCleanTargets returns the fixed list of MoAI-managed paths that
@@ -127,6 +136,11 @@ func CleanMoaiManagedPathsWithTargets(projectRoot string, out io.Writer, tmplFS 
 	// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces the legacy
 	// CR-plus-format pair in this hot path (REQ-UPR-004).
 	for _, t := range targets {
+		// Defense-in-depth (card t1547 repair round): a PreserveOnly target
+		// is a classification-scope entry — the removal never processes it.
+		if t.PreserveOnly {
+			continue
+		}
 		pl := tui.ProgressLine(out, fmt.Sprintf("Removing %s...", t.DisplayPath), nil)
 
 		if t.IsGlob {
@@ -261,6 +275,11 @@ func CleanMoaiManagedPathsWithTargetsGuarded(projectRoot string, out io.Writer, 
 	}
 
 	for _, t := range targets {
+		// Defense-in-depth (card t1547 repair round): a PreserveOnly target
+		// is a classification-scope entry — the removal never processes it.
+		if t.PreserveOnly {
+			continue
+		}
 		paths := []string{t.FullPath}
 		if t.IsGlob {
 			matches, err := filepath.Glob(t.FullPath)

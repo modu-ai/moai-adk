@@ -1009,10 +1009,15 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// counts and per-path lists, every deletion named.
 	renderReconciliationOutcome(out, reconSummary, th)
 
-	// Card t1527 D5: conflicts the merge flagged are an ACTION REQUIRED row —
-	// the operator must resolve them before the next template sync.
-	if conflictCount > 0 {
-		updateLedger.requiref(sevErr, "%d conflicting file(s) flagged by the 3-way merge — resolve them before the next template sync (see the backup at %s)", conflictCount, configBackupPath)
+	// Card t1527 D5, repaired by gate round 4 (card t1547): the ACTION
+	// REQUIRED row keys on the ACTUAL unresolved conflicts — the
+	// reconciliation's conflict list (files preserved byte-for-byte with a
+	// .moai-new sidecar) — never on the pre-merge risk classification:
+	// conflictCount counts RiskLevel=="high" files, and a fresh project's
+	// high-risk AGENTS.md/settings.json merge clean, so the risk-derived
+	// count cried wolf on every such run.
+	if unresolved := len(reconSummary.Conflicts); unresolved > 0 {
+		updateLedger.requiref(sevErr, "%d conflicting file(s) flagged by the 3-way merge — resolve them before the next template sync (see the backup at %s)", unresolved, configBackupPath)
 	}
 
 	// REQ-DHR-007: a .codex/ template the target harness profile (or this

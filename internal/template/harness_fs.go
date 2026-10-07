@@ -127,14 +127,24 @@ func (h *harnessFS) isHidden(name string) bool {
 	return false
 }
 
-// sharedSource projects the existing rule and workflow catalog into the
-// harness-neutral paths used by both hosts. The source is read-only and the
-// projection is deterministic; no user file is copied or rewritten in place.
-func (h *harnessFS) sharedSource(name string) (string, bool) {
-	for _, p := range []struct{ target, source string }{
-		{".moai/policies", ".claude/rules/moai"},
-		{".moai/workflows", ".claude/skills/moai/workflows"},
-	} {
+// sharedDeploySurfaces is the harness-neutral surface table: each deploy-side
+// target directory and the shared template source directory its deployed
+// bytes are projected from. One table serves both consumers — the harnessFS
+// open path below and the update reconciliation's classification scope +
+// carriage mapping (internal/cli) — so a deployed .moai/policies or
+// .moai/workflows file classifies against the source that actually produced
+// it (card t1547 repair round, gate finding 1).
+var sharedDeploySurfaces = []struct{ target, source string }{
+	{".moai/policies", ".claude/rules/moai"},
+	{".moai/workflows", ".claude/skills/moai/workflows"},
+}
+
+// SharedDeploySource projects a harness-neutral deploy path onto the shared
+// template source path its deployed bytes come from; ok=false for paths
+// outside the shared surfaces. The projection is deterministic and read-only;
+// no user file is copied or rewritten in place.
+func SharedDeploySource(name string) (string, bool) {
+	for _, p := range sharedDeploySurfaces {
 		if name == p.target {
 			return p.source, true
 		}
@@ -143,6 +153,24 @@ func (h *harnessFS) sharedSource(name string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// SharedDeployTargets lists the deploy-side directories of the shared
+// surfaces — the classification-scope entries the update reconciliation adds
+// (the surfaces are real deploy paths of the dual/codex deployers).
+func SharedDeployTargets() []string {
+	targets := make([]string, len(sharedDeploySurfaces))
+	for i, p := range sharedDeploySurfaces {
+		targets[i] = p.target
+	}
+	return targets
+}
+
+// sharedSource projects the existing rule and workflow catalog into the
+// harness-neutral paths used by both hosts. The source is read-only and the
+// projection is deterministic; no user file is copied or rewritten in place.
+func (h *harnessFS) sharedSource(name string) (string, bool) {
+	return SharedDeploySource(name)
 }
 
 // NormalizeCodexRoleForDeploy returns the bytes the deployer writes for a

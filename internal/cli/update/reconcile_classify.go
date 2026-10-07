@@ -73,9 +73,17 @@ type ReconcilePlan struct {
 	UserOwned     []ReconcileFile
 	Stale         []ReconcileFile
 	// Symlinks holds the project-root-relative slash paths of every symlink
-	// entry found under the targets, live or dangling. They are never
-	// classified, merged, archived, or followed (REQ-UPM-004).
+	// entry found under the regular targets, live or dangling. They are never
+	// classified, merged, archived, or followed (REQ-UPM-004), and the run's
+	// link-disposition stage removes them before the deploy.
 	Symlinks []string
+	// PreserveOnlySymlinks holds the link entries found under PreserveOnly
+	// targets (card t1547 repair round): recorded like every link — never
+	// classified, merged, archived, or followed — but NEVER disposed. The run
+	// never writes under a preserve-only root (the deployer skips those paths
+	// before any content read), so no write-through hazard exists and the
+	// user's link entry survives untouched.
+	PreserveOnlySymlinks []string
 }
 
 // Count returns the total classified regular-file count.
@@ -123,8 +131,9 @@ func ClassifyManagedRoots(projectRoot string, targets []deploy.CleanTarget, rend
 	}
 
 	type found struct {
-		rel   string
-		bytes []byte
+		rel          string
+		bytes        []byte
+		preserveOnly bool
 	}
 	var files []found
 
@@ -142,9 +151,20 @@ func ClassifyManagedRoots(projectRoot string, targets []deploy.CleanTarget, rend
 	}
 
 	for _, t := range targets {
+		preserveOnly := t.PreserveOnly
+		// recordLink lands a found link entry in the plan's matching list —
+		// disposable links under regular targets, never-disposed links under
+		// PreserveOnly targets (see ReconcilePlan.PreserveOnlySymlinks).
+		recordLink := func(rel string) {
+			if preserveOnly {
+				planOut.PreserveOnlySymlinks = append(planOut.PreserveOnlySymlinks, rel)
+				return
+			}
+			planOut.Symlinks = append(planOut.Symlinks, rel)
+		}
 		roots, err := resolveTarget(t)
 		if err != nil {
-			return ReconcilePlan{Symlinks: planOut.Symlinks}, errors.Join(errReconcileClassifyStopped, err)
+			return ReconcilePlan{Symlinks: planOut.Symlinks, PreserveOnlySymlinks: planOut.PreserveOnlySymlinks}, errors.Join(errReconcileClassifyStopped, err)
 		}
 		for _, root := range roots {
 			info, err := os.Lstat(root)
@@ -153,12 +173,12 @@ func ClassifyManagedRoots(projectRoot string, targets []deploy.CleanTarget, rend
 			}
 			relRoot, relErr := filepath.Rel(projectRoot, root)
 			if relErr != nil {
-				return ReconcilePlan{Symlinks: planOut.Symlinks}, errors.Join(errReconcileClassifyStopped, relErr)
+				return ReconcilePlan{Symlinks: planOut.Symlinks, PreserveOnlySymlinks: planOut.PreserveOnlySymlinks}, errors.Join(errReconcileClassifyStopped, relErr)
 			}
 			relRoot = filepath.ToSlash(relRoot)
 			if info.Mode()&fs.ModeSymlink != 0 {
 				// The target ITSELF is a link: record and move on.
-				planOut.Symlinks = append(planOut.Symlinks, relRoot)
+				recordLink(relRoot)
 				continue
 			}
 			if !info.IsDir() {
@@ -171,9 +191,9 @@ func ClassifyManagedRoots(projectRoot string, targets []deploy.CleanTarget, rend
 				}
 				data, readErr := os.ReadFile(root)
 				if readErr != nil {
-					return ReconcilePlan{Symlinks: planOut.Symlinks}, errors.Join(errReconcileClassifyStopped, readErr)
+					return ReconcilePlan{Symlinks: planOut.Symlinks, PreserveOnlySymlinks: planOut.PreserveOnlySymlinks}, errors.Join(errReconcileClassifyStopped, readErr)
 				}
-				files = append(files, found{rel: relRoot, bytes: data})
+				files = append(files, found{rel: relRoot, bytes: data, preserveOnly: preserveOnly})
 				continue
 			}
 			walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -191,7 +211,7 @@ func ClassifyManagedRoots(projectRoot string, targets []deploy.CleanTarget, rend
 				// REQ-UPM-004: Lstat semantics — the link itself is the
 				// entry. Never dereference, never classify, never merge it.
 				if d.Type()&fs.ModeSymlink != 0 {
-					planOut.Symlinks = append(planOut.Symlinks, rel)
+					recordLink(rel)
 					return nil
 				}
 				if !d.Type().IsRegular() {
@@ -201,11 +221,11 @@ func ClassifyManagedRoots(projectRoot string, targets []deploy.CleanTarget, rend
 				if readErr != nil {
 					return readErr
 				}
-				files = append(files, found{rel: rel, bytes: data})
+				files = append(files, found{rel: rel, bytes: data, preserveOnly: preserveOnly})
 				return nil
 			})
 			if walkErr != nil {
-				return ReconcilePlan{Symlinks: planOut.Symlinks}, errors.Join(errReconcileClassifyStopped, walkErr)
+				return ReconcilePlan{Symlinks: planOut.Symlinks, PreserveOnlySymlinks: planOut.PreserveOnlySymlinks}, errors.Join(errReconcileClassifyStopped, walkErr)
 			}
 		}
 	}
@@ -213,9 +233,10 @@ func ClassifyManagedRoots(projectRoot string, targets []deploy.CleanTarget, rend
 	// Deterministic output order: sort the whole set once (NFR-UPM-001).
 	sort.Slice(files, func(i, j int) bool { return files[i].rel < files[j].rel })
 	sort.Strings(planOut.Symlinks)
+	sort.Strings(planOut.PreserveOnlySymlinks)
 
 	for _, f := range files {
-		class := classifyManagedFile(f.rel, f.bytes, render, mf)
+		class := classifyManagedFile(f.rel, f.bytes, render, mf, f.preserveOnly)
 		file := ReconcileFile{RelPath: f.rel, Class: class}
 		switch class {
 		case ClassTemplateOwned:
@@ -236,13 +257,20 @@ func ClassifyManagedRoots(projectRoot string, targets []deploy.CleanTarget, rend
 //
 //  1. IsUserOwnedNamespace → user-owned, whatever the manifest says
 //     (REQ-UPM-003, defense-in-depth over carriage);
-//  2. template carries the path → template-owned when the manifest record
+//  2. the file came from a PreserveOnly target → user-owned, whatever the
+//     carriage or manifest says (card t1547 repair round): the update run
+//     never writes under a preserve-only root — the deployer skips the
+//     common-asset roots (REQ-005) and the per-file user-asset migration is
+//     their only removal — so "preserved" is the one honest disposition, and
+//     a carriage- or record-derived stale class here would re-open the exact
+//     removal path the clean-side exclusion closed;
+//  3. template carries the path → template-owned when the manifest record
 //     is HEALTHY and the on-disk content equals the TRACKED state (the
 //     recorded CurrentHash) — the file is pristine as last deployed, so the
 //     current render refreshes it in place whatever the template changed
 //     since; everything else (record absent, stale hash, user_modified or
 //     deprecated provenance) is user-modified, conservatively;
-//  3. template does not carry it → stale when a prior template carried it
+//  4. template does not carry it → stale when a prior template carried it
 //     (a manifest record with managed provenance), else user-owned.
 //
 // The tracked-state comparison — NOT a comparison against the NEW render —
@@ -251,10 +279,17 @@ func ClassifyManagedRoots(projectRoot string, targets []deploy.CleanTarget, rend
 // conflict). Comparing against the new render would route every pristine
 // file the template just changed into the merge path, where a missing base
 // reverts the template's own update (card t1547 review finding 1).
-func classifyManagedFile(rel string, disk []byte, render TemplateRender, mf *manifest.Manifest) ReconcileClass {
+func classifyManagedFile(rel string, disk []byte, render TemplateRender, mf *manifest.Manifest, preserveOnly bool) ReconcileClass {
 	// REQ-UPM-003: the namespace predicate forces user-owned before any
 	// carriage or manifest consideration.
 	if plan.IsUserOwnedNamespace(rel) {
+		return ClassUserOwned
+	}
+
+	// PreserveOnly target (see the decision table): preserved, never
+	// removal-eligible, never a false "refreshed" claim over a root the
+	// deployer skips.
+	if preserveOnly {
 		return ClassUserOwned
 	}
 

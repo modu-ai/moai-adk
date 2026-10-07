@@ -44,12 +44,42 @@ func legacyFreshConfigInstall(projectRoot string) bool {
 
 // reconcileTargets returns the classification scope for a default-path run:
 // the run's clean-target list (deploy-mode aware, migration-aware — the same
-// list computeRunCleanTargets produces) PLUS .moai/config, the directory the
-// wholesale clean used to remove inline and the pipeline now classifies
-// instead (REQ-UPM-020).
+// list computeRunCleanTargets produces) PLUS the classification-only roots —
+// .moai/config, the directory the wholesale clean used to remove inline and
+// the pipeline now classifies instead (REQ-UPM-020); the common-asset roots
+// as PRESERVE-ONLY targets; and the harness-neutral shared surfaces.
 func reconcileTargets(projectRoot string, cleanTargets []deploy.CleanTarget) []deploy.CleanTarget {
-	targets := make([]deploy.CleanTarget, len(cleanTargets))
-	copy(targets, cleanTargets)
+	targets := make([]deploy.CleanTarget, 0, len(cleanTargets)+len(projectCommonAssetRels)+len(template.SharedDeployTargets())+1)
+	targets = append(targets, cleanTargets...)
+	// The common-asset roots re-enter the classification scope as
+	// PRESERVE-ONLY targets (card t1547 repair round). The de-plugin
+	// absorption's clean-side exclusion (computeRunCleanTargets) removed them
+	// from the CLEAN scope — correct: the per-file user-asset migration
+	// (migrateProjectCommonAssets) is their only removal — but it silently
+	// dropped them from the CLASSIFICATION scope too, so user-owned files
+	// under them classified nowhere and vanished from the preserved listing.
+	// The PreserveOnly flag routes them to user-owned at the classifier and
+	// keeps every removal walk off them.
+	for _, root := range projectCommonAssetRels {
+		targets = append(targets, deploy.CleanTarget{
+			DisplayPath:  strings.TrimSuffix(root, "/"),
+			FullPath:     filepath.Join(projectRoot, filepath.FromSlash(root)),
+			PreserveOnly: true,
+		})
+	}
+	// The harness-neutral shared surfaces (.moai/policies ← .claude/rules/moai,
+	// .moai/workflows ← .claude/skills/moai/workflows — the dual/codex
+	// deployers project them, gate round 4 finding 1): real deploy paths the
+	// managed-clean list never covered, so a user-modified policies file was
+	// overwritten without a sidecar on a force run. Full classification —
+	// these ARE rewritten by the deploy, so template-owned/user-modified/
+	// stale all remain honest classes here.
+	for _, target := range template.SharedDeployTargets() {
+		targets = append(targets, deploy.CleanTarget{
+			DisplayPath: target,
+			FullPath:    filepath.Join(projectRoot, filepath.FromSlash(target)),
+		})
+	}
 	targets = append(targets, deploy.CleanTarget{
 		DisplayPath: filepath.Join(defs.MoAIDir, defs.ConfigSubdir),
 		FullPath:    filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir),
