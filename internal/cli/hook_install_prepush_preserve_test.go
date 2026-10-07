@@ -116,7 +116,7 @@ func TestInstallPrePushHook_UserModified_ReplacementDisclosed(t *testing.T) {
 	installPrePushAndPatch(t, root)
 
 	var out, warn strings.Builder
-	installPrePushHookOptional(root, false, &out, &warn)
+	_ = installPrePushHookOptional(root, false, &out, &warn)
 
 	if !strings.Contains(warn.String(), "backed up") {
 		t.Errorf("SILENT REPLACEMENT: warning output %q does not disclose the replacement of the user-modified hook (standard: notice naming the backup)", warn.String())
@@ -139,7 +139,7 @@ func TestInstallPrePushHook_UnchangedReinstall_Quiet(t *testing.T) {
 	}
 
 	var out, warn strings.Builder
-	installPrePushHookOptional(root, false, &out, &warn)
+	_ = installPrePushHookOptional(root, false, &out, &warn)
 
 	if len(findPrePushBackups(t, root)) != 0 {
 		t.Errorf("unchanged reinstall must not take a backup, found: %v", findPrePushBackups(t, root))

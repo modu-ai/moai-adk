@@ -127,15 +127,21 @@ Display sync plan report and present options:
 
 Before any modifications:
 
-- Generate timestamp identifier
-- Create backup directory: .moai/backups/sync-{timestamp}/
-- Copy critical files: README.md, docs/, .moai/specs/ (record absent paths as
-  explicit backup failures rather than silently skipping them)
-- Create a SHA-256 `manifest.tsv` and verify every copied file with
-  `.claude/hooks/moai/verify-sync-backup.sh verify`; a non-empty directory is
-  not an integrity check
-- Before applying document writes, perform a restore/readback check against the
-  manifest and record the backup path, file count, and result in the sync report
+- Choose the approved relative paths (for example README.md, docs, and .moai/specs).
+  Keep every required input in the list; an absent required input blocks sync.
+- Generate a unique timestamp and use a new `.moai/backups/sync-{timestamp}/`
+  directory. The helper refuses an existing backup rather than overwriting it.
+- From the project root, create the copies and SHA-256 `manifest.tsv` together:
+  `bash .claude/hooks/moai/verify-sync-backup.sh create "$backup_dir" "$PWD" README.md docs .moai/specs`
+  Replace the example path list with the approved inputs. Use paths without a
+  trailing slash; links, traversal, tabs, and newlines are rejected.
+- Run `bash .claude/hooks/moai/verify-sync-backup.sh verify "$backup_dir"` and
+  retain its output. Every copied file must match its recorded digest and the
+  manifest must cover the complete copied file set. Missing inputs are recorded
+  as `MISSING` rows and fail verification; a non-empty directory is insufficient.
+- Before any document writer starts, read back the approved files or restore
+  them into an isolated fixture. Record the backup path, file count, and both
+  verification and readback results in the sync report.
 
 #### Step 2.2: Document Synchronization
 

@@ -592,6 +592,13 @@ func TestFactoryCompleteNoWindowGitHubFlow(t *testing.T) {
 func TestFactoryCompleteWindowGitFlowUnchanged(t *testing.T) {
 	root, integWT, cards := sdMergeFixture(t, true, true, false, 1)
 	sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
+	// The merge-window-queue gate (REQ-MWQ-019 step 3, card t1479) refuses a
+	// complete whose candidate tree carries no valid re-measure record; the
+	// other git-flow cycle tests place one through the remeasure verb, and
+	// this test's held window stands in for acquire the same way.
+	if _, err := factory.RunRemeasure(root, cards[0].wt, "develop", "true"); err != nil {
+		t.Fatalf("place re-measure record: %v", err)
+	}
 	before := factoryGHUnexpectedCalls.Load()
 	sdLaneEnv(t, "lane-1", "")
 	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
@@ -605,8 +612,12 @@ func TestFactoryCompleteWindowGitFlowUnchanged(t *testing.T) {
 	if got := fcGit(t, integWT, "rev-list", "--parents", "-n", "1", "HEAD"); len(strings.Fields(got)) != 3 {
 		t.Errorf("integration HEAD is not a two-parent merge: %s", got)
 	}
-	if lock := sdWindow(t, root); !lock.Held() || lock.SessionID != "sess-lane-1" {
-		t.Errorf("window after complete = held=%v by %q, want held by sess-lane-1", lock.Held(), lock.SessionID)
+	if lock := sdWindow(t, root); lock.Held() {
+		// AC-GFD-006 keeps complete's window-taking; the merge-window queue
+		// (card t1479, REQ-MWQ-019) releases the window after the state
+		// transitions so the next live ticket promotes — the lane's manual
+		// release step is gone under the queue.
+		t.Errorf("window after complete = held=%v by %q, want released after the transitions", lock.Held(), lock.SessionID)
 	}
 	if got := factoryGHUnexpectedCalls.Load(); got != before {
 		t.Errorf("git-flow complete called gh %d time(s)", got-before)

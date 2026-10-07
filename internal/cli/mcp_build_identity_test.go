@@ -696,7 +696,11 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// the literal develop read above the comparison with the configured
 		// integration-target resolution (three lines), moving the same single
 		// comparison from 197. Same one comparison, same count.
+		// Card t1555 also orders local and remote common ancestors. These
+		// three reads select the review diff; none judges binary freshness.
 		"codex_review_scope.go:198": true,
+		"codex_review_scope.go:204": true,
+		"codex_review_scope.go:207": true,
 		// SPEC-WEB-SETTINGS-SAVE-001 scope ③ (card t1393): the session-worktree
 		// disposal landing check — arm (i) of the decided predicate asks
 		// whether the branch tip is an ancestor of the remote-tracking
@@ -714,9 +718,13 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// the same family as :839), and the comparison itself moved 836→875.
 		// Same single comparison, one more doc-comment mention — same count of
 		// actual ancestry comparisons.
+		// PR #1754's cleanup repair removes the obsolete third-arm comment
+		// and requires exact Git objects after cumulative patch matching.
+		// Re-measured hits: the arm (i) comment stays at 839, its one actual
+		// ancestry comparison moves to 876, and the removed comment at 844
+		// is no longer a hit. This remains a disposal check, not binary lag.
 		"session_worktree.go:839": true,
-		"session_worktree.go:844": true,
-		"session_worktree.go:875": true,
+		"session_worktree.go:876": true,
 		// SPEC-TODO-CARD-ISSUANCE-001 (card t1454): the in-flight lane
 		// changed-files probe — productionLaneFilesProbe resolves the fork
 		// point between the integration branch and the card's lane branch

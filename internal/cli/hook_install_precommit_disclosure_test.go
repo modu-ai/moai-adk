@@ -267,7 +267,7 @@ func runOptionalOnUserModifiedHook(t *testing.T, root string) (out, warn *bytes.
 	t.Helper()
 	writeExistingHook(t, root, previousPreCommitHookContent)
 	out, warn = &bytes.Buffer{}, &bytes.Buffer{}
-	installPreCommitHookOptional(root, false, out, warn)
+	_ = installPreCommitHookOptional(root, false, out, warn)
 	return out, warn
 }
 
@@ -286,15 +286,17 @@ func TestPreCommitBackupNoticeContent(t *testing.T) {
 	if len(backups) != 1 {
 		t.Fatalf("expected exactly one backup, found %d: %v", len(backups), backups)
 	}
-	wantNotice := fmt.Sprintf("  Warning: user-modified pre-commit hook was replaced; previous hook backed up at %s\n", backups[0])
-	if got := warn.String(); got != wantNotice {
+	// Card t1527 D4: the notice leads with the ! severity glyph; the elements
+	// (backup path + replacement statement) are unchanged.
+	wantNotice := fmt.Sprintf("! user-modified pre-commit hook was replaced; previous hook backed up at %s\n", backups[0])
+	if got := stripSGR(warn.String()); got != wantNotice {
 		t.Errorf("warning writer = %q,\nwant exactly %q (the backup path and the replacement statement, and nothing else)", got, wantNotice)
 	}
 	if strings.Contains(warn.String(), "pre-commit.local") {
 		t.Errorf("the notice must not name pre-commit.local — a recovery path the installed hook never reads (REQ-PCP-004)")
 	}
-	const wantSuccess = "  Pre-commit hook installed (.git/hooks/pre-commit)\n"
-	if got := out.String(); got != wantSuccess {
+	const wantSuccess = "✓ Pre-commit hook installed (.git/hooks/pre-commit)\n"
+	if got := stripSGR(out.String()); got != wantSuccess {
 		t.Errorf("progress writer = %q, want exactly %q (the notice must not ride the progress writer)", got, wantSuccess)
 	}
 }
@@ -419,9 +421,11 @@ func TestPreCommitSupportWriteFailureNonFatal(t *testing.T) {
 		}
 
 		var out, warn bytes.Buffer
-		installPreCommitHookOptional(root, false, &out, &warn) // MUST NOT panic or abort the caller
+		_ = installPreCommitHookOptional(root, false, &out, &warn) // MUST NOT panic or abort the caller
 
-		if !strings.Contains(warn.String(), "Warning") || !strings.Contains(warn.String(), "backup") {
+		// Card t1527 D4: the ✗ severity glyph replaces the "Warning:" prefix;
+		// the message still names the backup failure.
+		if !strings.Contains(stripSGR(warn.String()), "✗") || !strings.Contains(warn.String(), "backup could not be written") {
 			t.Errorf("expected a warning naming the failed backup, got: %q", warn.String())
 		}
 		// POST-STATE — the clause that defeats warn-then-overwrite-anyway: a
@@ -446,7 +450,7 @@ func TestPreCommitSupportWriteFailureNonFatal(t *testing.T) {
 		}
 
 		var out1, warn1 bytes.Buffer
-		installPreCommitHookOptional(root, false, &out1, &warn1) // MUST NOT panic or abort the caller
+		_ = installPreCommitHookOptional(root, false, &out1, &warn1) // MUST NOT panic or abort the caller
 
 		if got := readHook(t, root); got != preCommitHookContent {
 			t.Fatalf("the hook must BE replaced when only the post-write provenance write fails; got %d bytes", len(got))
@@ -464,7 +468,7 @@ func TestPreCommitSupportWriteFailureNonFatal(t *testing.T) {
 		// replacement notice. (The provenance warning may repeat: the record
 		// is still unwritable, and that is a different, correct warning.)
 		var out2, warn2 bytes.Buffer
-		installPreCommitHookOptional(root, false, &out2, &warn2)
+		_ = installPreCommitHookOptional(root, false, &out2, &warn2)
 
 		if got := findBackups(t, root); len(got) != len(backupsAfterRun1) {
 			t.Errorf("run 2 must take no backup: found %d backups, want %d", len(got), len(backupsAfterRun1))
@@ -472,9 +476,9 @@ func TestPreCommitSupportWriteFailureNonFatal(t *testing.T) {
 		if strings.Contains(warn2.String(), "was replaced") || strings.Contains(warn2.String(), backupsAfterRun1[0]) {
 			t.Errorf("run 2 must emit no replacement notice, got: %q", warn2.String())
 		}
-		const wantSuccess = "  Pre-commit hook installed (.git/hooks/pre-commit)\n"
-		if out2.String() != wantSuccess {
-			t.Errorf("run 2 progress output = %q, want exactly %q", out2.String(), wantSuccess)
+		const wantSuccess = "✓ Pre-commit hook installed (.git/hooks/pre-commit)\n"
+		if got := stripSGR(out2.String()); got != wantSuccess {
+			t.Errorf("run 2 progress output = %q, want exactly %q", got, wantSuccess)
 		}
 	})
 }
