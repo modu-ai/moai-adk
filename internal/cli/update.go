@@ -564,7 +564,6 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// with the project-side placement: the user folders are the primary
 	// (the M2 installer), not a mirror, so no user-side equivalent is needed.
 
-	
 	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-004: when the template sync
 	// branch short-circuits (version match + !forceUpdate, or user cancelled
 	// merge), the legacy-skill archive check MUST also be short-circuited.

@@ -7,9 +7,8 @@
 // The lock is a file under ~/.moai/ — a user-level concern, because the
 // concurrent writers are different projects sharing one manifest. The file
 // is created O_EXCL and carries the holder's PID; a lock whose mtime is
-// older than staleAfter is taken over (a crashed holder must not deadlock
-// every later run). flock(2) is deliberately not used: it has no portable
-// Windows form, and the B1 cross-platform build must pass untagged.
+// older than staleAfter is taken over only after its holder is confirmed
+// gone. Age alone never authorizes taking a live holder's lock.
 package userassets
 
 import (
@@ -17,6 +16,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -76,7 +76,7 @@ func acquireUserLockStale(path string, timeout, staleAfter time.Duration) (*User
 		// ENOENT (someone else reclaimed) and re-run the create loop. The
 		// former os.Remove-based takeover let a second caller delete the
 		// lock the first had just ACQUIRED.
-		if info, statErr := os.Stat(path); statErr == nil && time.Since(info.ModTime()) > staleAfter {
+		if info, statErr := os.Stat(path); statErr == nil && time.Since(info.ModTime()) > staleAfter && lockOwnerGone(path) {
 			reclaim := path + ".reclaim-" + fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
 			if renameErr := os.Rename(path, reclaim); renameErr == nil {
 				_ = os.Remove(reclaim)
@@ -108,4 +108,20 @@ func (l *UserLock) Release() error {
 		return fmt.Errorf("userassets: release lock: %w", err)
 	}
 	return nil
+}
+
+// lockOwnerGone fails closed for unreadable or malformed ownership records.
+// PID reuse can delay recovery, but cannot authorize a second live writer.
+func lockOwnerGone(path string) bool {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	for _, field := range strings.Fields(string(raw)) {
+		if strings.HasPrefix(field, "pid=") {
+			pid, err := strconv.Atoi(strings.TrimPrefix(field, "pid="))
+			return err == nil && pid > 0 && int64(pid) <= 2147483647 && lockProcessGone(pid)
+		}
+	}
+	return false
 }

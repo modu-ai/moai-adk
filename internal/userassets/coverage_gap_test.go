@@ -45,7 +45,7 @@ func TestLockTakeoverAfterStale(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A stale lock file: created long in the past.
-	if err := os.WriteFile(path, []byte("pid=1 token=stale\n"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("pid=2147483647 token=stale\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	stale := time.Now().Add(-2 * DefaultStaleAfter)
