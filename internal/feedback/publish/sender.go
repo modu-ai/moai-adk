@@ -105,6 +105,13 @@ func (s *Sender) Send(ctx context.Context) error {
 	if err != nil || len(rec.Items) == 0 {
 		return nil // no queue or nothing to send: quiet
 	}
+	// Consent BEFORE any network work (review-gate finding 2, P2): the gh
+	// availability probe is a network round-trip, and a user who never
+	// consented must not cause even that. The per-item check below still
+	// re-reads consent per item (a mid-run withdrawal).
+	if !config.ReadUserParticipation().Enabled {
+		return nil
+	}
 	if !s.Runner.Available(ctx) {
 		// gh missing or unauthenticated: leave the items queued, quietly.
 		return nil

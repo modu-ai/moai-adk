@@ -113,6 +113,8 @@ type stubRunner struct {
 	creates  []createCall
 	comments []commentCall
 
+	availableCalls int
+
 	createErr error // when set, CreateIssue fails (the retry-shape fixture)
 
 	onSearch func(s *stubRunner)
@@ -135,7 +137,12 @@ func newStubRunner(available bool) *stubRunner {
 	return &stubRunner{available: available}
 }
 
-func (s *stubRunner) Available(_ context.Context) bool { return s.available }
+func (s *stubRunner) Available(_ context.Context) bool {
+	s.mu.Lock()
+	s.availableCalls++
+	s.mu.Unlock()
+	return s.available
+}
 
 func (s *stubRunner) SearchIssues(ctx context.Context, repo, token string) ([]RemoteIssue, error) {
 	if s.block != nil {
@@ -832,4 +839,26 @@ func terminalDiscardRecorded(t *testing.T, fp string) bool {
 	}
 	_, ok := l.Discarded[fp]
 	return ok
+}
+
+// TestConsentCheckedBeforeGhAuthStatus (review-gate finding 2, P2): the
+// sender ran gh auth status (a NETWORK round-trip) before the consent
+// check — a user who never consented still caused network traffic. Consent
+// gates EVERYTHING network-shaped, availability probing included: with
+// participation off, the run ends before Available is ever called.
+func TestConsentCheckedBeforeGhAuthStatus(t *testing.T) {
+	consentOff(t)
+	_, item := payloadFixture(t)
+	seedQueue(t, item)
+
+	stub := newStubRunner(true)
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	stub.mu.Lock()
+	calls := stub.availableCalls
+	stub.mu.Unlock()
+	if calls != 0 {
+		t.Fatalf("gh auth status ran %d time(s) with participation OFF — no network probe may precede the consent check", calls)
+	}
 }
