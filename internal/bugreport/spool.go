@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -181,12 +182,12 @@ func ConsumeSpoolPrefix(consumed []byte) error {
 	}
 	defer func() { _ = release() }()
 
-	now, err := os.ReadFile(path)
+	now, err := boundedSpoolReread(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil // nothing left to consume
 		}
-		return nil // unreadable: leave it for the next drain
+		return nil // unreadable (or past its time box): leave it for the next drain
 	}
 	if len(consumed) == 0 || !bytes.HasPrefix(now, consumed) {
 		return nil // not the batch this consumer read: touch nothing
@@ -270,6 +271,119 @@ func ClearSpool() error {
 		return nil
 	}
 	return err
+}
+
+// spoolGenerationFileName marks the store's generation: the purge bumps
+// it, and an in-flight drain re-reads it before each item, so a batch read
+// BEFORE the purge stops instead of resurrecting withdrawn reports
+// (review gate finding, P2).
+const spoolGenerationFileName = "generation"
+
+// SpoolGenerationPath is the generation marker's path beside the spool.
+func SpoolGenerationPath() (string, error) {
+	home, err := paths.MoaiHome()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, filepath.FromSlash(BugreportStoreDir), spoolGenerationFileName), nil
+}
+
+// SpoolGeneration reads the store's generation counter. An absent marker
+// is generation 0. The read is bounded the way every file in this store
+// is: a non-regular marker is refused without opening, and the read costs
+// one small capped allocation.
+func SpoolGeneration() (uint64, error) {
+	path, err := SpoolGenerationPath()
+	if err != nil {
+		return 0, err
+	}
+	if info, serr := os.Stat(path); serr == nil && !info.Mode().IsRegular() {
+		return 0, fmt.Errorf("bugreport: generation marker is not a regular file: %s", path)
+	}
+	type readResult struct {
+		raw []byte
+		err error
+	}
+	done := make(chan readResult, 1)
+	go func() {
+		f, oerr := os.Open(path)
+		if oerr != nil {
+			done <- readResult{err: oerr}
+			return
+		}
+		defer func() { _ = f.Close() }()
+		raw, rerr := io.ReadAll(io.LimitReader(f, 64))
+		done <- readResult{raw: raw, err: rerr}
+	}()
+	var raw []byte
+	select {
+	case r := <-done:
+		if r.err != nil {
+			if os.IsNotExist(r.err) {
+				return 0, nil
+			}
+			return 0, r.err
+		}
+		raw = r.raw
+	case <-time.After(config.DefaultBugreportSpoolReadTimeBox):
+		return 0, fmt.Errorf("bugreport: generation read exceeded its %s time box", config.DefaultBugreportSpoolReadTimeBox)
+	}
+	gen, perr := strconv.ParseUint(strings.TrimSpace(string(raw)), 10, 64)
+	if perr != nil {
+		return 0, fmt.Errorf("bugreport: generation marker is unreadable: %w", perr)
+	}
+	return gen, nil
+}
+
+// BumpSpoolGeneration invalidates every batch an in-flight drain read
+// before this bump. The purge calls it before removing the stores; a lost
+// race between two concurrent bumps only skips a number.
+func BumpSpoolGeneration() error {
+	gen, err := SpoolGeneration()
+	if err != nil {
+		gen = 0 // an unreadable marker still bumps past itself
+	}
+	path, err := SpoolGenerationPath()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(strconv.FormatUint(gen+1, 10)), 0o600)
+}
+
+// boundedSpoolReread re-reads the spool under the same bounds as the first
+// read (review gate finding, P2): a non-regular file is refused without
+// opening — a FIFO swapped in between the two reads parked the consume
+// WITH the spool section lock held — and the read is capped and time-boxed.
+// On deadline the helper goroutine is left parked on the blocked handle;
+// it exits when the blocking writer closes, and the caller never waits.
+func boundedSpoolReread(path string) ([]byte, error) {
+	if info, serr := os.Stat(path); serr == nil && !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("bugreport: spool is not a regular file: %s", path)
+	}
+	type readResult struct {
+		raw []byte
+		err error
+	}
+	done := make(chan readResult, 1)
+	go func() {
+		f, oerr := os.Open(path)
+		if oerr != nil {
+			done <- readResult{err: oerr}
+			return
+		}
+		defer func() { _ = f.Close() }()
+		raw, rerr := io.ReadAll(io.LimitReader(f, config.DefaultBugreportSpoolMaxBytes+1))
+		done <- readResult{raw: raw, err: rerr}
+	}()
+	select {
+	case r := <-done:
+		return r.raw, r.err
+	case <-time.After(config.DefaultBugreportSpoolReadTimeBox):
+		return nil, fmt.Errorf("bugreport: spool reread exceeded its %s time box", config.DefaultBugreportSpoolReadTimeBox)
+	}
 }
 
 // appendSpoolLine appends one JSONL line to the user-scoped spool, bounded

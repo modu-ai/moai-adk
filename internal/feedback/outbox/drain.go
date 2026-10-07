@@ -292,6 +292,15 @@ func DrainContext(ctx context.Context) error {
 	if len(entries) == 0 && len(consumed) == 0 {
 		return nil
 	}
+	// The batch's generation (review gate finding, P2): re-checked before
+	// each item below — a purge completing mid-batch bumps it, and a stale
+	// in-memory batch must STOP instead of enqueueing reports the user
+	// withdrew. An unreadable generation reads as 0 and the check degrades
+	// to pass-through.
+	batchGen, gerr := bugreport.SpoolGeneration()
+	if gerr != nil {
+		batchGen = 0
+	}
 
 	// Test seam: a capture landing between the drain's read and its
 	// consume — the interleaving the batch-clear contract must survive.
@@ -309,6 +318,13 @@ func DrainContext(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			// The deadline or cancellation arrived: the decided prefix
 			// leaves the spool, the rest stays for the next drain.
+			return consumeProcessed(consumed, len(entries), processed)
+		}
+		if gen, gerr := bugreport.SpoolGeneration(); gerr == nil && gen != batchGen {
+			// The store was purged mid-batch: the spool AND the queue are
+			// gone. Enqueueing this stale batch would resurrect withdrawn
+			// reports — stop; the decided prefix is already removed with
+			// the store, and the rest goes with it.
 			return consumeProcessed(consumed, len(entries), processed)
 		}
 		switch bugreport.Verdict(entry.Verdict) {

@@ -63,6 +63,16 @@ const (
 // would let the retry path publish what the gate declined.
 var ErrQueueBlockedResult = errors.New("feedback: refusing to queue a blocked result")
 
+// ErrQueueUnreadable wraps the load-step failures an over-cap or corrupted
+// queue file produces. A PURGE may ignore it — the user asked for the
+// store GONE, and the removal happens under the lock either way — while
+// every other consumer treats it as a retryable failure.
+var ErrQueueUnreadable = errors.New("feedback: queue file unreadable")
+
+// ErrQueueFull is returned when an enqueue would push the queue file past
+// its size cap: the store it would create could not be loaded back.
+var ErrQueueFull = errors.New("feedback: queue is full")
+
 // QueueItem is one report awaiting re-send. Title and Body are MASKED — the
 // queue never carries pre-scrub text.
 //
@@ -170,11 +180,11 @@ func (s *QueueStore) Load() (*QueueRecord, error) {
 		return nil, fmt.Errorf("load feedback queue %s: read exceeded its %s time box", s.path, config.DefaultFeedbackQueueReadTimeBox)
 	}
 	if len(raw) > config.DefaultFeedbackQueueMaxBytes {
-		return nil, fmt.Errorf("load feedback queue %s: %d bytes, over the %d cap", s.path, len(raw), config.DefaultFeedbackQueueMaxBytes)
+		return nil, fmt.Errorf("load feedback queue %s: %d bytes, over the %d cap: %w", s.path, len(raw), config.DefaultFeedbackQueueMaxBytes, ErrQueueUnreadable)
 	}
 	var rec QueueRecord
 	if err := json.Unmarshal(raw, &rec); err != nil {
-		return nil, fmt.Errorf("load feedback queue %s: parsing: %w", s.path, err)
+		return nil, fmt.Errorf("load feedback queue %s: parsing: %w: %w", s.path, err, ErrQueueUnreadable)
 	}
 	normalizeQueueRecord(&rec)
 	return &rec, nil
@@ -238,6 +248,14 @@ func (s *QueueStore) EnqueueMasked(res Result) (*QueueItem, error) {
 			QueuedAt: time.Now().UTC().Format(time.RFC3339),
 		}
 		rec.Items = append(rec.Items, item)
+		// The save-side cap (review gate finding, P2): the load side
+		// refuses a queue past DefaultFeedbackQueueMaxBytes, so a save that
+		// would CROSS the cap is rejected here instead — otherwise a
+		// manually-enqueued store could grow unreadable, and every resend,
+		// remove, and add on it would fail with the load.
+		if raw, merr := json.Marshal(rec); merr == nil && len(raw) > config.DefaultFeedbackQueueMaxBytes {
+			return fmt.Errorf("%w: %d bytes would exceed the %d cap", ErrQueueFull, len(raw), config.DefaultFeedbackQueueMaxBytes)
+		}
 		return nil
 	})
 	if err != nil {

@@ -2,7 +2,6 @@ package outbox
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -10,16 +9,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"github.com/modu-ai/moai-adk/internal/feedback"
 )
-
-// isQueueCorruptionError reports whether the queue mutation failed because
-// the queue file did not parse — the only failure a purge may ignore.
-// Unparsable JSON surfaces as *json.SyntaxError or *json.UnmarshalTypeError
-// wrapped by the queue's load step.
-func isQueueCorruptionError(err error) bool {
-	var syn *json.SyntaxError
-	var typ *json.UnmarshalTypeError
-	return errors.As(err, &syn) || errors.As(err, &typ)
-}
 
 // PurgeStores removes every user-scoped participation store: the queue, the
 // capture spool, the dedupe ledger, and the outbox log (REQ-ANON-021's
@@ -36,22 +25,30 @@ func isQueueCorruptionError(err error) bool {
 // commit, empties the queue under the same lock, and only then removes the
 // file — the writer has already finished, so nothing comes back.
 func PurgeStores() error {
+	// The generation bump comes FIRST (review gate finding, P2): a drain
+	// that read its batch before this purge re-checks the generation before
+	// each item, so the bump — not the file removals — is what stops it
+	// from enqueueing a stale batch over the withdrawn store.
+	if err := bugreport.BumpSpoolGeneration(); err != nil {
+		return fmt.Errorf("outbox: purge generation: %w", err)
+	}
 	if err := bugreport.ClearSpool(); err != nil {
 		return fmt.Errorf("outbox: purge spool: %w", err)
 	}
 	store := BugreportQueueStore()
-	// Only a CORRUPTED queue (the mutation's load step failing to parse) is
-	// ignored here — the user asked for the store GONE, so the removal
-	// below proceeds on a parse failure. Every OTHER mutation failure
-	// propagates (review gate finding, P2): a lock-acquire failure
-	// swallowed here would remove the file under the lock's holder, and the
-	// holder's save would resurrect the purged report — exactly the
-	// resurrection the lock-serialized queue step exists to prevent.
+	// Only an UNREADABLE queue (the mutation's load step failing to parse
+	// or refusing an over-cap file) is ignored here — the user asked for
+	// the store GONE, so the removal below proceeds on any content
+	// failure. Every OTHER mutation failure propagates (review gate
+	// finding, P2): a lock-acquire failure swallowed here would remove the
+	// file under the lock's holder, and the holder's save would resurrect
+	// the purged report — exactly the resurrection the lock-serialized
+	// queue step exists to prevent.
 	merr := store.MutateContext(context.Background(), func(rec *feedback.QueueRecord) error {
 		rec.Items = []feedback.QueueItem{}
 		return nil
 	})
-	if merr != nil && !isQueueCorruptionError(merr) {
+	if merr != nil && !errors.Is(merr, feedback.ErrQueueUnreadable) {
 		return fmt.Errorf("outbox: purge queue: %w", merr)
 	}
 	queuePath, err := StorePath(QueueFileName)

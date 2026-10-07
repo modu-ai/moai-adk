@@ -31,15 +31,34 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
 	"time"
 )
 
+// sectionOwnerReadMaxBytes caps the verdict read: an owner record is a
+// short JSON object; anything longer is not one.
+const sectionOwnerReadMaxBytes = 4096
+
 // sectionRereadFn is the verdict-read seam (tests inject a racing
-// reclaimer's swap between the verdict and the gate).
-var sectionRereadFn = os.ReadFile
+// reclaimer's swap between the verdict and the gate). The production read
+// is BOUNDED (review gate finding, P2): a non-regular lock path is refused
+// WITHOUT opening it — a FIFO swapped in at the lock path parked the
+// reread past every deadline, beyond the caller's context — and the read
+// costs one small capped allocation, never the file's size.
+var sectionRereadFn = func(path string) ([]byte, error) {
+	if info, serr := os.Stat(path); serr == nil && !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("section owner %s: not a regular file", path)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	return io.ReadAll(io.LimitReader(f, sectionOwnerReadMaxBytes))
+}
 
 // sectionRemoveFn is the removal seam.
 var sectionRemoveFn = os.Remove
