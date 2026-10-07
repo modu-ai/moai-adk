@@ -100,6 +100,16 @@ func (s *Sender) Send(ctx context.Context) error {
 			continue
 		}
 
+		// Send-time trust boundary (review-gate finding, P1): the queue
+		// file is a local file, so the stored body is untrusted. Validate
+		// BEFORE any gh call and publish only the regenerated title and
+		// body — never the stored text as-is.
+		payload, title, body, ok := revalidatedItem(item)
+		if !ok {
+			s.fail(store, item, errUnvalidatedBody)
+			continue
+		}
+
 		issue, markerCount, err := findIssue(ctx, s.Runner, repo, item)
 		if err != nil {
 			// A gh failure is environmental (network, rate limit): stop
@@ -120,25 +130,18 @@ func (s *Sender) Send(ctx context.Context) error {
 				})
 				continue
 			}
-			body := OccurrenceComment(item)
-			if body == "" {
-				// A queued body without a marker block never belongs on
-				// this path; leave it queued rather than comment blind.
-				s.fail(store, item, errNoMarkerBlock)
-				continue
-			}
-			if err := s.Runner.CommentIssue(ctx, repo, issue.Number, strings.NewReader(body)); err != nil {
+			comment := OccurrenceCommentFromPayload(payload)
+			if err := s.Runner.CommentIssue(ctx, repo, issue.Number, strings.NewReader(comment)); err != nil {
 				s.fail(store, item, err)
 				return nil
 			}
-			s.complete(store, item, "occurrence comment on #"+itoa(issue.Number), body)
+			s.complete(store, item, "occurrence comment on #"+itoa(issue.Number), comment)
 			continue
 		}
 
 		// No match: the create path. M5 files the deterministic template
 		// text; M6 slots the summarizer ahead of CreateBody.
-		body := CreateBody(item)
-		if err := s.Runner.CreateIssue(ctx, repo, item.Title, strings.NewReader(body)); err != nil {
+		if err := s.Runner.CreateIssue(ctx, repo, title, strings.NewReader(body)); err != nil {
 			s.fail(store, item, err)
 			return nil
 		}
@@ -146,9 +149,6 @@ func (s *Sender) Send(ctx context.Context) error {
 	}
 	return nil
 }
-
-// errNoMarkerBlock marks a queued item whose body lost its marker block.
-var errNoMarkerBlock = errorString("queued body carries no bugreport marker block")
 
 type errorString string
 

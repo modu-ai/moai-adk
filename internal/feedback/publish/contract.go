@@ -15,6 +15,7 @@ package publish
 import (
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"github.com/modu-ai/moai-adk/internal/feedback"
 	"github.com/modu-ai/moai-adk/internal/feedback/outbox"
 )
@@ -131,6 +132,33 @@ func OccurrenceComment(item feedback.QueueItem) string {
 	if !ok {
 		return ""
 	}
+	return renderOccurrence(fields)
+}
+
+// OccurrenceCommentFromPayload renders one occurrence comment's body from a
+// VALIDATED payload — the sender's path after send-time re-validation
+// (revalidate.go): the comment's marker is regenerated from the validated
+// closed-set fields, never from stored text. Byte-identical to
+// OccurrenceComment for an intact item (the same fields, the same order).
+func OccurrenceCommentFromPayload(p bugreport.Payload) string {
+	fields := MarkerFields{
+		"schema":      p.Schema,
+		"fingerprint": p.Fingerprint,
+		"kind":        string(p.Kind),
+		"version":     p.Version,
+		"commit":      p.Commit,
+		"os_arch":     p.OS + "/" + p.Arch,
+		"frames":      strings.Join(p.Frames, ","),
+	}
+	if p.Detail != nil {
+		fields["detail"] = p.Detail.Token()
+	}
+	return renderOccurrence(fields)
+}
+
+// renderOccurrence writes the occurrence-tagged marker block from fields in
+// the pinned order, quoting values that need it (the marker round-trip).
+func renderOccurrence(fields MarkerFields) string {
 	var b strings.Builder
 	b.WriteString(markerPrefix)
 	b.WriteString(occurrenceToken)

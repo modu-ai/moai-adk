@@ -374,6 +374,93 @@ func TestOccurrenceCapSkipsComment(t *testing.T) {
 	}
 }
 
+// ---- review-gate P1: send-time re-validation of the stored body ----
+
+// TestSenderRevalidatesStoredBodyBeforeCreate pins the trust boundary: the
+// queue file is a local file, so the stored body is untrusted input. An
+// intact item creates with EXACTLY the stored bytes; a body replaced on
+// disk after enqueue never reaches gh — the item fails re-validation,
+// stays queued, and no search runs either (the refusal precedes every gh
+// call).
+func TestSenderRevalidatesStoredBodyBeforeCreate(t *testing.T) {
+	payload, item := payloadFixture(t)
+	freshHome := func() {
+		t.Setenv("MOAI_HOME", t.TempDir())
+		consentOn(t)
+	}
+
+	// (a) Intact: the create carries exactly the stored title and body.
+	freshHome()
+	stub := newStubRunner(true)
+	seedQueue(t, item)
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if _, creates, _ := stub.recorded(); creates != 1 {
+		t.Fatalf("creates = %d, want the one create for the intact item", creates)
+	}
+	if stub.creates[0].Body != item.Body || stub.creates[0].Title != item.Title {
+		t.Fatalf("the intact item's create drifted from the stored bytes:\n--- create ---\n%s\n--- stored ---\n%s", stub.creates[0].Body, item.Body)
+	}
+
+	// (b) Tampered: a body replaced on disk after enqueue.
+	freshHome()
+	stub = newStubRunner(true)
+	tampered := item
+	tampered.Body = "private notes with /Users/x/secret paths"
+	seedQueue(t, tampered)
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if searches, creates, comments := stub.recorded(); searches != 0 || creates != 0 || comments != 0 {
+		t.Fatalf("a tampered body reached gh: searches=%d creates=%d comments=%d", searches, creates, comments)
+	}
+	if rest := queuedItems(t); len(rest) != 1 {
+		t.Fatalf("the tampered item did not stay queued: %+v", rest)
+	}
+
+	// (c) Spliced: a valid render of ANOTHER payload under this item's
+	// title — the marker fields disagree with the title key.
+	freshHome()
+	stub = newStubRunner(true)
+	spliced := item
+	other := payload
+	other.Fingerprint = "fedcba9876543210"
+	_, spliced.Body = outbox.RenderReport(other)
+	seedQueue(t, spliced)
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if searches, creates, _ := stub.recorded(); searches != 0 || creates != 0 {
+		t.Fatalf("a spliced body reached gh: searches=%d creates=%d", searches, creates)
+	}
+	if rest := queuedItems(t); len(rest) != 1 {
+		t.Fatalf("the spliced item did not stay queued: %+v", rest)
+	}
+}
+
+// TestSenderRevalidatesStoredBodyBeforeComment extends the boundary to the
+// comment path: a tampered body must not become a public comment either.
+func TestSenderRevalidatesStoredBodyBeforeComment(t *testing.T) {
+	consentOn(t)
+	_, item := payloadFixture(t)
+	tampered := item
+	tampered.Body = "private notes with /Users/x/secret paths"
+	seedQueue(t, tampered)
+
+	stub := newStubRunner(true)
+	stub.issues = []RemoteIssue{{Number: 7, Title: tampered.Title, State: "open"}}
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if _, creates, comments := stub.recorded(); creates != 0 || comments != 0 {
+		t.Fatalf("a tampered body reached the comment path: creates=%d comments=%d", creates, comments)
+	}
+	if rest := queuedItems(t); len(rest) != 1 {
+		t.Fatalf("the tampered item did not stay queued: %+v", rest)
+	}
+}
+
 // ---- AC-003: the off/tracked-only arms at the sender ----
 
 func TestSenderNoopWhenParticipationOff(t *testing.T) {
