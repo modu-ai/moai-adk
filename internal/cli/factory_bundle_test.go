@@ -9,6 +9,7 @@ package cli
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -468,16 +469,41 @@ func TestFactoryBundleRecordsUnderTheQueueLock(t *testing.T) {
 	t.Chdir(root)
 
 	probe := factory.NewBacklogStore(todoBacklogPath(root))
-	var lockWasFree bool
+	acquired, done, release := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	var probeErr error
+	var started, lockWasFree bool
+	var releaseOnce sync.Once
+	finishProbe := func() {
+		releaseOnce.Do(func() { close(release) })
+		if !started {
+			return
+		}
+		select {
+		case <-done:
+			if probeErr != nil {
+				t.Errorf("queue probe: %v", probeErr)
+			}
+		case <-time.After(factory.LockWaitBudget() + time.Second):
+			t.Error("queue probe did not finish within its lock wait budget")
+		}
+	}
+	t.Cleanup(finishProbe)
 	prev := factoryBundleRecord
 	factoryBundleRecord = func(ctx context.Context, db *homestate.FactoryDB, runID string, members []homestate.BundleMemberSpec, lane string, now time.Time) (homestate.Card, error) {
-		done := make(chan bool, 1)
+		started = true
 		go func() {
-			err := probe.WithLock(func(*factory.LockedBacklog) error { return nil })
-			done <- (err == nil)
+			defer close(done)
+			probeErr = probe.WithLock(func(*factory.LockedBacklog) error {
+				close(acquired)
+				<-release
+				return nil
+			})
 		}()
 		select {
-		case lockWasFree = <-done:
+		case <-acquired:
+			lockWasFree = true
+		case <-done:
+			t.Errorf("queue probe ended before acquiring the lock: %v", probeErr)
 		case <-time.After(200 * time.Millisecond):
 			// Still blocked after the window — the lock is held.
 		}
@@ -488,6 +514,21 @@ func TestFactoryBundleRecordsUnderTheQueueLock(t *testing.T) {
 	sdClearLaneEnv(t)
 	if _, _, err := runFactory(t, "bundle", "lane-1", "t1", "t2", "--run", fcRun); err != nil {
 		t.Fatalf("bundle: %v", err)
+	}
+	// Force the probe to own the released lock before checking its lifetime.
+	select {
+	case <-acquired:
+	case <-done:
+		t.Fatalf("queue probe did not acquire the released lock: %v", probeErr)
+	case <-time.After(factory.LockWaitBudget() + time.Second):
+		t.Fatal("queue probe never acquired the released lock")
+	}
+	// Release and join the owned writer before TempDir cleanup can begin.
+	finishProbe()
+	select {
+	case <-done:
+	default:
+		t.Error("owned queue probe is still active when the bundle test returns")
 	}
 	if lockWasFree {
 		t.Fatal("the record step ran with the queue lock free — the verify→record span is not one critical section")
