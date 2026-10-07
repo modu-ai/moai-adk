@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorylane"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
@@ -175,12 +176,22 @@ func factoryCompleteGitHubFlow(ctx context.Context, out io.Writer, root, cardID,
 	if cardBranch == "" || cardBranch == "HEAD" || cardBranch == target {
 		return fmt.Errorf("factory complete: refused — card %s's worktree %q is not on a card branch (reads %q, integration target %q)", card.CardID, card.WorktreePath, cardBranch, target)
 	}
+	// A lane completes only its own card (card-review r1): the pr-open and
+	// merged-pr edges have no lease-holder seam of their own, so the
+	// ownership check lives here — ahead of every transition and every queue
+	// write this verb performs.
+	if card.OwnerLabel != lane && card.LeaseHolder != lane {
+		return fmt.Errorf("factory complete: refused — card %s belongs to %s (lease %s), not %s; a lane completes only its own card", card.CardID, dash(card.OwnerLabel), dash(card.LeaseHolder), lane)
+	}
 
 	switch card.State {
 	case homestate.CardPROpen:
 		return factoryObservePRMerge(ctx, out, db, root, runID, card, cardBranch, target, lane)
 	case homestate.CardMergedPR:
 		_, _ = fmt.Fprintf(out, "%s %s merge=%s — nothing to do\n", card.CardID, card.State, card.MergeSHA)
+		// The merged-pr state IS the mechanical landing answer; a queue card
+		// an earlier run failed to close is reconciled here (card t1542).
+		factoryCloseLaneCard(out, root, runID, card, lane, target)
 		return nil
 	case homestate.CardMergeReady, homestate.CardMerging:
 		return factoryDeliverByPR(ctx, out, db, root, runID, card, cardBranch, target, cfg.MergeMethod, lane)
@@ -245,6 +256,21 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 	if _, err := factoryGitRead(wt, "config", "--get", "remote.origin.url"); err != nil {
 		return fmt.Errorf("factory complete: refused — the repository has no remote named origin to push %s to", cardBranch)
 	}
+	// The deliver half performs EXTERNAL mutations (push, pull request,
+	// auto-merge), so a retry on a card whose lease has lapsed must refuse
+	// before any of them runs — an expired lease is no authority to touch
+	// the remote (card-review r5). The observation half (pr-open) is
+	// different by design: the lease is released there, and reading the PR
+	// mutates nothing.
+	if card.LeaseHolder != lane || card.LeaseExpired(factoryCardNow()) {
+		return fmt.Errorf("factory complete: refused — card %s's lease is held by %s and %s; delivering to the remote needs a live lease of the calling lane's own card",
+			card.CardID, dash(card.LeaseHolder), func() string {
+				if card.LeaseExpired(factoryCardNow()) {
+					return "has expired"
+				}
+				return "is not this lane"
+			}())
+	}
 	// REQ-GFD-005: the readiness check precedes the PR; a failing check opens nothing.
 	// The card tip is captured AT the check (card t1533, review-gate r10):
 	// the merge request pins to the commit the triple verified, and a
@@ -264,6 +290,18 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 		return fmt.Errorf("factory complete: refused — merge-readiness failed on %s against %s; no branch was pushed and no pull request was opened", run.FailedCondition, target)
 	}
 
+	stays := fmt.Sprintf("card %s stays in merging", card.CardID)
+
+	// Stop-on-change (AGENTS.md §2, card-review r6/r7): a commit that landed
+	// while the readiness triple ran was never judged — refuse rather than
+	// pin it.
+	if moved, err := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", "HEAD^{commit}"); err != nil {
+		return fmt.Errorf("factory complete: %s; cannot re-read the branch tip after the readiness check: %w", stays, err)
+	} else if strings.TrimSpace(moved) != checkedTip {
+		return fmt.Errorf("factory complete: refused — %s's branch moved during the readiness check (%s → %s); re-run complete to judge the new tip",
+			card.CardID, checkedTip, moved)
+	}
+
 	cur := card
 	if card.State == homestate.CardMergeReady {
 		// T14 — the lease holder's edge, refused by F1 verbatim for any other lane.
@@ -275,7 +313,6 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 			return fmt.Errorf("factory complete: %w", err)
 		}
 	}
-	stays := fmt.Sprintf("card %s stays in merging", card.CardID)
 
 	// The lease is re-verified IMMEDIATELY BEFORE every remote mutation
 	// (card t1533, review-gate r13): the entry check guarded only the
@@ -288,6 +325,9 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 		now, err := db.LoadCard(ctx, runID, card.CardID)
 		if err != nil {
 			return fmt.Errorf("factory complete: %s; re-read the card: %w", stage, err)
+		}
+		if now.State != homestate.CardMergeReady && now.State != homestate.CardMerging {
+			return fmt.Errorf("factory complete: %s; card %s is %s, no longer deliverable — the remote was left untouched", stage, card.CardID, now.State)
 		}
 		if now.Version != baseline {
 			return fmt.Errorf("factory complete: %s; card %s moved to v%d under another writer — re-run complete", stage, card.CardID, now.Version)
@@ -320,6 +360,9 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 	}
 	if _, err := factoryGitRead(wt, "push", "origin", checkedTip+":refs/heads/"+cardBranch); err != nil {
 		return fmt.Errorf("factory complete: %s; the push of %s failed: %w", stays, cardBranch, err)
+	}
+	if err := verifyLease("before the pull request"); err != nil {
+		return err
 	}
 	pr, found, err := factoryReadPR(wt, cardBranch)
 	if err != nil {
@@ -455,6 +498,41 @@ func factoryObservePRMerge(ctx context.Context, out io.Writer, db *homestate.Fac
 		return fmt.Errorf("factory complete: %s; the F1 record refused merged-pr: %w", stays, err)
 	}
 	_, _ = fmt.Fprintf(out, "%s %s merge=%s pr=%s branch=%s base=%s\n", merged.CardID, merged.State, merged.MergeSHA, pr.URL, cardBranch, target)
+	// The runtime completion's archive authority (card t1542): the record
+	// just moved to merged-pr, which IS the mechanical landing answer — the
+	// pull request merged from this card's tip into the integration target —
+	// so the lane closes its own queue card here instead of leaving every
+	// completion to a leader `todo done`.
+	factoryCloseLaneCard(out, root, runID, merged, lane, target)
 	factoryPrintClearPolicyLine(out, root)
 	return nil
+}
+
+// factoryCloseLaneCard closes the lane's own queue card at completion
+// authority (card t1542): one locked archive write with the verdict the
+// delivery edge answered, then the runtime completion row. Each step is
+// fail-open against the caller — the factory record already carries
+// merged-pr, a failure prints a note naming the card, and the next complete
+// run reconciles (the store method reads already-closed as closed).
+func factoryCloseLaneCard(out io.Writer, root, runID string, card homestate.Card, lane, target string) {
+	// Ownership: a lane closes only its own card. Another lane's card that
+	// somehow reached this edge (a mis-dispatch, a shared worktree) is
+	// reported, never archived.
+	if card.OwnerLabel != lane && card.LeaseHolder != lane {
+		_, _ = fmt.Fprintf(out, "  note: queue card %s belongs to %s (lease %s), not %s — not closed\n",
+			card.CardID, dash(card.OwnerLabel), dash(card.LeaseHolder), lane)
+		return
+	}
+	verdict := factory.LandingVerdict{Verdict: factory.LandingLanded, Ref: target, At: time.Now().UTC().Format(time.RFC3339)}
+	// The caller's root decides the queue: the MCP surface passes a
+	// project_root that need not match this process's working directory, and
+	// closing the session's own queue instead would archive a stranger's
+	// card and leave the requested project's card live.
+	if err := factory.NewBacklogStore(todoBacklogPath(root)).ArchiveOnRuntimeCompletion(card.CardID, verdict); err != nil {
+		_, _ = fmt.Fprintf(out, "  note: queue card %s was not closed (%v); a re-run of complete reconciles it\n", card.CardID, err)
+		return
+	}
+	if err := factory.RecordFactoryCardState(root, runID, card.CardID, lane, card.SpecID, "completed", "card.completed"); err != nil {
+		_, _ = fmt.Fprintf(out, "  note: the runtime completion row for %s was not recorded (%v)\n", card.CardID, err)
+	}
 }
