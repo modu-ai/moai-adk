@@ -1223,6 +1223,127 @@ the ambient value — followed by re-measuring the pair on the post-pin tree (th
 measurements must be on the tree the AC judges). If the name prints only in the initial
 run, it is load noise, recorded with both outputs.
 
+**Repeat protocol — EXECUTED (2026-10-07 06:12–06:25Z; verdict: LOAD NOISE, clause (b)
+holds, no pin needed).** A self-launching script waited out the fleet's heavy cycle and ran
+both repeats itself the moment a stable window opened (window open at 06:12:02Z, load
+14.71, zero test binaries — the pickup-latency failure mode of the earlier
+watcher-then-wake design removed). Fresh per-arm leases (116m cap); released after.
+
+- Lane repeat: exit **0**, T = **1317** = L1, invalid-arm markers **0**, **0** fail rows,
+  `ok github.com/modu-ai/moai-adk/internal/hook 391.186s` (≈ 6.5m). Identical command to
+  the first measurement; outputs `final-hook-lane-repeat.json/.err`.
+- Scrubbed repeat: exit **0**, T = **1317** = L1, invalid-arm markers **0**, **0** fail
+  rows, `ok github.com/modu-ai/moai-adk/internal/hook 384.482s` (≈ 6.4m). Outputs
+  `final-hook-scrubbed-repeat.json/.err`.
+- `TestFactoryHookContextAndContinuationSafety`: printed in the INITIAL scrubbed run,
+  **absent from the repeat** — the defined load-noise direction (§D.3: "load noise is the
+  reverse, a name printed in the initial run and absent from the repeat, recorded with both
+  outputs"). Both outputs are recorded above and beside this block; the excusal needs no
+  further proof (the independent-proof requirement binds skip rows only). Corroborating
+  load signal: the initial scrubbed arm ran 786.863s under a rising-load window while the
+  repeat ran 384.482s in the quiet window — half the runtime.
+- Repeat comparison (command 9 between the two repeat names files): prints **nothing**.
+  Repeat command 11 (skip sets): prints **nothing**. Both repeat names files are empty —
+  valid empty sets.
+- Disposition: **clause (b) holds for the hook final pair; no contingent pin; the tree
+  stands at `1d505143c` and the hook pair's measurements are final-tree measurements.**
+
+### M4 final record — cli pair (first measurement, repeats, contingent fix, post-fix pairs; tree `e1071126f`)
+
+**M4.1 — cli final pair, first measurement (pre-fix tree `1d505143c`).** Both arms launched by
+the self-launching script (window open 2026-10-07T16:39:52Z, load 9.86, zero test binaries;
+fresh per-arm leases; identical commands to the c1 forms, `-timeout 114m`):
+
+- cli lane: exit **1**, T = **5124** = L1, invalid-arm markers **0**, `FAIL … 3078.235s`
+  (≈ 51.3m) — **9 fail rows / 6 unique tests**; skips 56.
+- cli scrubbed: exit **1**, T = **5124** = L1, invalid-arm markers **0**, `FAIL … 2734.383s`
+  (≈ 45.6m) — **the same 9 rows / 6 unique, byte-identical set**.
+- §D.3 command 9 (final): prints **nothing** — clause (b) held already at the first
+  measurement. Command 11: prints nothing; no-new-skip vs c1: 0.
+- **Command 8 (both arm types): 6 rows** — four tests absent from the c1 failing set:
+  `TestCodexDebugOffKeepsTimingReportFrozen` (+ `/fast_lane_launch_is_silent_(debug_off)`),
+  `TestCodexDebugSupersedesLaunchThreshold`, `TestManagedCodexTUIAttachCommand` (+
+  `/token_in_env`), `TestManagedCodexTUILoopbackRoundTrip` — **clause (e) candidate**.
+  First-measurement names/skip files preserved as `*-first.names.txt` / `*-first.skipnames.txt`
+  (scratch).
+
+**M4.2 — the repeat protocol on the command-8 prints (pre-fix tree).** Both arms repeated
+(identical commands; window open 19:02:27Z, load 9.30): lane repeat exit 1, T = 5124, **the
+same 9 rows**, 2400.109s; scrubbed repeat exit 1, T = 5124, **the same 9 rows**, 2429.580s;
+repeat command 9: prints nothing. **Names printed in both runs → clause (e) REAL** —
+change-induced regressions, never load noise; the M4 step-2 contingent fix applies.
+
+**M4.3 — root cause and the contingent fix (`e1071126f`).** Both failures share one root
+cause — M2 widened `factoryAmbientEnvKeys`, and two test sites composed env the widened clear
+then wiped (failure outputs quoted from the arm streams):
+
+- `managed_codex_tui_test.go:945` — `TUI env token [""], App Server token ["e15ee47b…"]:
+  want the same non-empty value`: the fake TUI child is the test binary re-executed
+  (`os.Args[0]`), and its `TestMain` ambient clear — now covering
+  `EnvMoaiFactoryAppServerToken` — emptied the token the child carries as the payload under
+  test. Fix: the generated script exports `factoryEnvPinnedEnv` — the documented t1252
+  pattern for deliberately composed children.
+- `codex_debug_composition_test.go:89/:116` — `driveCodexLaneLaunch` called
+  `clearFactoryTestEnv` AFTER the caller's `t.Setenv(EnvMoaiFactorySlowLaunchMS)`, wiping the
+  test's own threshold. Fix: the helper takes the threshold and sets it after the clear
+  (a test-deliberate value, not ambient lane state).
+
+RED evidence: the four arm runs above. GREEN: the four tests **4/4 `--- PASS` under BOTH env
+forms** (plain and the c1 lane replay) on the fix tree. Class coverage = the whole-package
+arms themselves (no selector). gofmt clean. The clause-(e) candidate is thereby resolved by
+fix, not exemption — the exemption tables stay empty.
+
+**M4.4 — the post-fix cli final pair (tree `e1071126f`; the pairs AC-THE-003 judges).**
+Launched by the self-launching script (window open at launch, load 5.64 — the quietest of the
+run; fresh per-arm leases until 23:00:43Z):
+
+- **cli lane**: exit **1**, T = **5124** = L1, invalid-arm markers **0/0**,
+  `FAIL … 2386.306s` (≈ 39.8m) — **3 fail rows, exactly `TestCodexAudit_NonRequiredGateGoldenByteIdentical`
+  + `/corrupt-yaml` + `/required-uppercase`** (verbatim names file):
+
+```
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexAudit_NonRequiredGateGoldenByteIdentical"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexAudit_NonRequiredGateGoldenByteIdentical/corrupt-yaml"
+"Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestCodexAudit_NonRequiredGateGoldenByteIdentical/required-uppercase"
+```
+
+- **cli scrubbed**: exit **1**, T = **5124** = L1, invalid-arm markers **0/0**,
+  `FAIL … 2390.548s` (≈ 39.8m) — **the identical 3 rows**; skips 56 = 56.
+- §D.3 command 9 (final): prints **nothing** — **clause (b) holds**. Command 8 (lane and
+  scrubbed, vs the c1 failing sets): prints **nothing** — **clause (e) holds**. Clause (c):
+  the 3 rows are identical in both arms AND present in the c1 failing set of both arm types
+  (the c1 lane names file and the c1 scrubbed arm's only failure) — **named env-unrelated**.
+  Clause (d): no guard test or observed red is named. Command 11 (final): prints **nothing**
+  — skip equality holds; the no-new-skip c1-vs-final extra: 0 / 0.
+- Clause (f): the lane-arm env line replays the c1 recorded line byte for byte; the
+  child-visible env witness printed exactly the nine replayed axes — identical to the c1
+  line — and the dump was deleted immediately after extraction.
+
+**M4.5 — the AC evaluations at the M4 tip `e1071126f`:**
+
+| AC | verdict | evidence |
+|---|---|---|
+| AC-THE-001 | PASS | M2 record above (3 `--- PASS`, 0 `--- SKIP`, exit 0) |
+| AC-THE-002 | PASS | M3 record above (2 `--- PASS`, 0 `--- SKIP`; assertion diff empty) |
+| AC-THE-003 | PASS | hook pair (M4 hook block + repeat verdict) + cli post-fix pair (M4.4) — all clauses hold per package |
+| AC-THE-004 | PASS | red on c2 (c2r record: 8 reds) → green on final (M2/M3 records) → P1/P3/P4/P5 red (probe table) |
+| AC-THE-005 | PASS | §D.8 steps 0-5 + 7 evaluated (c1 `39364e133`, c2 `ef18813fc`, c2r `9048623ec` each exactly once, chain verified, step-7 witness `:8`/`:3`); step-6 enumeration re-run at the M4 tip after this record lands |
+| AC-THE-006 | PASS at the M4 tip | `git diff --name-only 985bd43d…HEAD` names only `*_test.go` + SPEC-directory paths; 0 `func Test` removals; re-read at the sync tip |
+| AC-THE-007 | PASS | E-4a exit 0 with 2 `--- PASS`; E-4b exit 0, `TestContractRoleScopedAllowWithoutLaneMarker` green (post-fix tree) |
+| AC-THE-008 | PASS | red on c2 (c2r: cli 16 / hook 10 surviving axes) → green on final (M2/M3 records) → P2 red naming every axis (probe table) |
+
+**M4.6 — step-4 toolchain delta.** `go vet ./internal/cli ./internal/hook` (darwin): clean.
+`GOOS=windows go vet`: the **§C pre-existing baseline** (`audit_gates_failclosed_test.go:159/162`
+undefined `installFakeCodex`/`runAudit` — recorded at pre-flight, unchanged by this SPEC).
+`golangci-lint run ./internal/cli/... ./internal/hook/...`: exit 0, **zero findings in any
+file this SPEC touched**.
+
+**M4.7 — exemption tables.** cli `factoryEnvAxisExemptions`: **EMPTY**. hook
+`laneEnvAxisExemptions`: **EMPTY**. No whole-package scrubbed-arm measurement showed a test
+going red because an axis was stripped (the c1 scrubbed arms were green; the M4 command-8
+prints were child-env composition bugs, fixed by `e1071126f`, not axis dependencies) — an
+empty table needs no row (D2).
+
 ### Discovery narrow pair re-record (plan.md M1 c1; both arms COMPLETE)
 
 - Discovery lane arm (the compound lane form of this session) — exit **0**: 14 `--- PASS`,
@@ -1284,7 +1405,14 @@ stale signal reads `../hook/lane_env_axes_test.go` / `../cli/factory_env_axes_te
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — owned by manager-develop>_
+run_status: audit-ready
+run_complete_at: 2026-10-08
+final_tree: e1071126f (branch `WT-test-env-hermetic-sweep`)
+base_record: c1 `39364e133` (completed by `ddf0ae21d`) → c2 `ef18813fc` → c2r `9048623ec` → M2 `dd2303570` → M3 `63b4e77e4` → M4 records `1d505143c` → M4 fix `e1071126f`
+AC matrix: AC-THE-001..008 all PASS at the M4 tip (§E.2 M4.5 table; AC-THE-006 re-reads at the sync tip)
+measurement summary: c1 four arms (cli lane 397 rows/280 unique — the flip census; hook lane 3) → M2/M3 scrub-set fixes (the observed reds + the third measured flip green) → final pairs: hook both arms GREEN (T=1317), cli both arms exactly the named env-unrelated `TestCodexAudit_NonRequiredGateGoldenByteIdentical` set (T=5124) — commands 8/9/11 print nothing on the final tree
+binding conditions: BC-1 satisfied (command 11 printed nothing in both packages — no skip difference ever needed adjudication); BC-2 held as written (no mid-run redesign of the skip-equality excusal boundary); BC-3 satisfied (the §E.1 refresh landed with the first §E.2 write)
+evidence: this §E.2 + machine-local scratch `.moai/state/verify/t1356/` (arm JSON streams, names/skip files, probe logs, survivor note — never a citation target)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
