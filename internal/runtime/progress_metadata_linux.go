@@ -41,7 +41,10 @@ func seedFileMetadata(tmp, original string) error {
 			return fmt.Errorf("set xattr %s: %w", name, err)
 		}
 	}
-	return nil
+	// Ownership rides the contract (round-4 edge 6b): mode+xattr copy alone
+	// would re-own the file to the process. A chown this process cannot
+	// make is an error and the replace aborts.
+	return preserveOwnership(tmp, original)
 }
 
 // listXattrs returns the NUL-separated attribute name list of path, sizing

@@ -100,6 +100,68 @@ func TestAppendProgressRecordStartHeadingSkipsFence(t *testing.T) {
 	}
 }
 
+// TestAppendProgressRecordGateInputsSingleSectionG (round-4 edge 7b) —
+// both gate inputs leave EXACTLY ONE §G section after the append:
+//
+//	gate input A — a line whose backtick fence info string contains a
+//	backtick is INLINE CODE, not a fence open (CommonMark); a phantom open
+//	here swallowed the real §G and duplicated the section at end-of-file.
+//	gate input B — a closed list-item fence (opener and closer indented to
+//	the item's content column) opens and closes cleanly; the real §G after
+//	it is found.
+func TestAppendProgressRecordGateInputsSingleSectionG(t *testing.T) {
+	cases := []struct {
+		name string
+		pre  string
+	}{
+		{
+			name: "backtick_info_string_with_backtick_is_inline_code",
+			pre:  "# progress\n\n```json with `quotes` inside\nnot actually fenced\n\n## §G Override and Refusal Record\n\n- old record\n\n## §E.2 Run-phase Evidence\nbody\n",
+		},
+		{
+			// gate round-37 edge 8: inline triple-backtick code
+			// (```example```) is not an unclosed fence opener — the same
+			// info-string rule, whose RED face is shared with input A
+			// (both misread as a phantom open at the pre-fix tree).
+			name: "inline_triple_backtick_code_is_not_a_fence_open",
+			pre:  "# progress\n\n```example``` inline code line\n\n## §G Override and Refusal Record\n\n- old record\n\n## §E.2 Run-phase Evidence\nbody\n",
+		},
+		{
+			name: "closed_list_item_fence",
+			pre:  "# progress\n\n- item\n  ```text\n  fenced\n  ```\n\n## §G Override and Refusal Record\n\n- old record\n\n## §E.2 Run-phase Evidence\nbody\n",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			specDir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(specDir, "progress.md"), []byte(tc.pre), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := appendProgressRecord(specDir, "- new record"); err != nil {
+				t.Fatal(err)
+			}
+			raw, err := os.ReadFile(filepath.Join(specDir, "progress.md"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			content := string(raw)
+			if got := strings.Count(content, progressSectionHeading); got != 1 {
+				t.Fatalf("§G heading appears %d times, want 1 (no duplicate section):\n%s", got, content)
+			}
+			lines := strings.Split(content, "\n")
+			for i, l := range lines {
+				if strings.HasPrefix(l, "## §E.2") {
+					if lines[i-1] != "- new record" {
+						t.Fatalf("the record did not land at the real §G block's end (line before §E.2 is %q):\n%s", lines[i-1], content)
+					}
+					return
+				}
+			}
+			t.Fatalf("no §E.2 heading found:\n%s", content)
+		})
+	}
+}
+
 // TestAppendProgressRecordStartHeadingSkipsIndentedCodeBlock (round-4
 // edge 5) — a fence marker indented 4+ spaces is an INDENTED CODE BLOCK in
 // Markdown, not a fence: the fence-state tracker must not treat it as a

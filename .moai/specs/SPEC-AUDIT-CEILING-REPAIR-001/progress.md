@@ -415,6 +415,60 @@ decision requested: (i) accept cp -p as the permanent documented darwin
 exception, (ii) authorize a follow-up SPEC for the kauth_filesec route, or
 (iii) narrow the darwin ACL axis out of the contract.
 
+**Leader ruling received (i)**: the cp -p darwin exception is ACCEPTED —
+the source comment now records it as the leader-accepted darwin exception
+(kernel surface structurally blocks explicit-ACL copy; kauth_filesec
+reimplementation is a follow-up-SPEC candidate). The held three-axis
+family stays UNCOMMITTED at
+`.moai/state/verify/t1560/held-audit_ceiling_axes_test.go` as follow-up
+SPEC material, and the windows no-op posture is documented in
+`progress_metadata_other.go`.
+
+### Round-4 gate edges 6b/7b/8/7c record (gate rounds 36-37, leader-approved)
+
+**Edge 6b (UID/GID preservation, `progress_metadata_linux.go`)** — the
+seeder contract now includes ownership: `preserveOwnership` chowns the
+temp to the original's uid/gid when they differ, and an impossible chown
+is an error that aborts the replace (the F8 posture). RED-face honesty:
+on darwin the pre-fix seeder (cp -p) already preserves the supplementary
+group, so `TestAppendProgressRecordPreservesOwnership` is a preserve arm
+on this machine (observed PASS pre-fix); the RED face lives in the linux
+seeder (stat/chmod/xattrs copied no ownership), which this darwin lane
+cannot execute — flagged as an unmeasured Gap for CI linux.
+
+**Edge 7b/8 (Markdown-context fence detection, gate rounds 36-37)** — RED
+observed pre-fix at HEAD `30dc284c2` for gate input A:
+`audit_ceiling_fence_test.go:141: §G heading appears 2 times, want 1 (no
+duplicate section)` — a line whose backtick fence info string contains a
+backtick (and the round-37 shape, inline ```example```) was misread as an
+UNCLOSED fence opener, hiding the real §G behind a phantom and
+duplicating the section at end-of-file (Goldmark-verified by the gate).
+Fix per the stated Markdown rules: a BACKTICK fence opener whose info
+string contains a backtick is rejected (inline code, not a fence; tilde
+fences unaffected); the closing fence's char+length matching was already
+in place (≥ opener run, same character, whitespace tail) and the 0-3
+indent window stands. Regression test
+`TestAppendProgressRecordGateInputsSingleSectionG`
+(`internal/runtime/audit_ceiling_fence_test.go`): gate inputs A, the
+round-37 inline shape, and the closed list-item fence (a pin arm that was
+green pre-fix) each leave exactly one §G with the record at its block
+end.
+
+**Edge 7c (hardlinked progress.md)** — RED observed pre-fix at HEAD
+`30dc284c2` (the hardlinked mirror stopped seeing the record and
+`os.SameFile` went false after the replace). Resolution per the
+coordinator's framing: the IN-PLACE option is adopted — it reproduces
+os.WriteFile semantics, which preserve the link relationship. When
+`hardLinked` reports nlink > 1 the append writes in place through the
+shared inode (truncate+write; the §G mutex keeps concurrent writers
+serialized and the write-denial check enforces the permission posture);
+the trade for the hardlinked shape is crash-atomicity, documented at the
+branch. Platform note: nlink detection is darwin/linux (Stat_t); other
+platforms keep the rename path (hardlinked progress.md unsupported
+there). Regression test `TestAppendProgressRecordPreservesHardlink`
+(`internal/runtime/audit_ceiling_replace_test.go`, darwin||linux): both
+paths show the record, `os.SameFile` holds.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07

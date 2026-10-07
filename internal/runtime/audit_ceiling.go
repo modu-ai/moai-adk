@@ -630,6 +630,17 @@ func appendProgressRecord(specDir, line string) error {
 	} else {
 		_ = f.Close()
 	}
+	// Hardlinked progress.md (round-4 edge 7c): a rename would replace only
+	// this directory entry's inode and silently break the link — the other
+	// names would stop seeing records. Write IN PLACE through the shared
+	// inode, the pre-repair os.WriteFile semantics that preserve the link;
+	// the §G mutex serializes concurrent writers and the write-denial
+	// check above enforced the permission posture. The trade for the
+	// hardlinked shape is crash-atomicity: this append is a
+	// truncate+write, not a rename.
+	if hardLinked(path) {
+		return os.WriteFile(path, []byte(content), 0)
+	}
 	// Atomic same-directory replace, seeded with the original's file
 	// metadata (round-3 repair 3): rename(2) swaps the directory entry, so
 	// the replacement carries the TEMP file's access-control entries — a
@@ -810,7 +821,17 @@ func opensFence(line string) (c byte, n int, ok bool) {
 	for n < len(trimmed) && trimmed[n] == c {
 		n++
 	}
-	return c, n, n >= 3
+	if n < 3 {
+		return 0, 0, false
+	}
+	// CommonMark: a BACKTICK fence's info string cannot contain a backtick
+	// — such a line is an inline code span, not a fence open, and treating
+	// it as one hid the real §G heading behind a never-closed phantom
+	// (round-4 edge 7b). Tilde fences may carry any info string.
+	if c == '`' && strings.Contains(trimmed[n:], "`") {
+		return 0, 0, false
+	}
+	return c, n, true
 }
 
 // closesFence reports whether line closes a fence opened with n of the

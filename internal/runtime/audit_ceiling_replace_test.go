@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 )
 
@@ -92,3 +93,103 @@ type errSeedFailure struct{}
 func (errSeedFailure) Error() string { return "injected seeding failure" }
 
 var _ = strings.TrimSpace // keep strings linked for sibling tests in this file
+
+// TestAppendProgressRecordPreservesOwnership (round-4 edge 6b) — a
+// progress.md owned by a different GROUP than the process keeps its
+// ownership through the replace: mode+xattr copy alone would re-own the
+// file to the process and change who can access it; the seeder chowns the
+// temp to the original's owner, and an impossible preservation aborts the
+// replace (the F8 posture). darwin||linux: syscall.Stat_t ownership.
+func TestAppendProgressRecordPreservesOwnership(t *testing.T) {
+	specDir := t.TempDir()
+	path := filepath.Join(specDir, "progress.md")
+	pre := "# progress\n\n## §G Override and Refusal Record\n\n- old record\n"
+	if err := os.WriteFile(path, []byte(pre), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Move the file to a supplementary group of this process (a chown the
+	// process is allowed to make), so the original's group differs from
+	// the group a fresh temp file would get.
+	gids, err := syscall.Getgroups()
+	if err != nil || len(gids) == 0 {
+		t.Skipf("no supplementary groups to test with: %v", err)
+	}
+	ogid := gidOf(t, path)
+	target := ogid
+	for _, g := range gids {
+		if g != ogid {
+			target = g
+			break
+		}
+	}
+	if target == ogid {
+		t.Skip("process belongs to a single group — ownership preservation untestable here")
+	}
+	if err := os.Chown(path, -1, target); err != nil {
+		t.Skipf("cannot chown the fixture: %v", err)
+	}
+	if gidOf(t, path) != target {
+		t.Skip("the chown did not take effect")
+	}
+	if err := appendProgressRecord(specDir, "- new record"); err != nil {
+		t.Fatalf("the ownership-preserving replace failed: %v", err)
+	}
+	if got := gidOf(t, path); got != target {
+		t.Fatalf("progress.md gid %d, want %d — ownership changed on replace", got, target)
+	}
+}
+
+func gidOf(t *testing.T, path string) int {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		t.Skip("no Stat_t ownership on this platform")
+	}
+	return int(st.Gid)
+}
+
+// TestAppendProgressRecordPreservesHardlink (round-4 edge 7c) — a
+// hardlinked progress.md keeps the link relationship across the append: a
+// rename would replace only this directory entry's inode and the other
+// names would stop seeing records. The append writes IN PLACE through the
+// shared inode (the pre-repair os.WriteFile semantics), so both paths show
+// the record and nlink is unchanged.
+func TestAppendProgressRecordPreservesHardlink(t *testing.T) {
+	specDir := t.TempDir()
+	path := filepath.Join(specDir, "progress.md")
+	pre := "# progress\n\n## §G Override and Refusal Record\n\n- old record\n"
+	if err := os.WriteFile(path, []byte(pre), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mirror := filepath.Join(specDir, "progress-mirror.md")
+	if err := os.Link(path, mirror); err != nil {
+		t.Skipf("hardlinks unavailable here: %v", err)
+	}
+	if err := appendProgressRecord(specDir, "- new record"); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{path, mirror} {
+		raw, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(raw), "- new record") {
+			t.Fatalf("%s does not see the record — the hardlink was broken:\n%s", p, raw)
+		}
+	}
+	i1, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	i2, err := os.Stat(mirror)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(i1, i2) {
+		t.Fatal("the hardlink relationship was broken by the replace")
+	}
+}
