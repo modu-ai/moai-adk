@@ -364,3 +364,22 @@ gaps: >-
   storm (subject code byte-identical between commits; passed in the quiet-window
   re-run) — attributed to contention, CI is the integrated judge; the turn-end
   gate's post-repair silence is NOT load-bearing (overlay caveat stated in §E E8).
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-10-07
+sync_commit_sha: pending-backfill-sync   # D3 backfill window (spec-frontmatter-schema.md § SHA placeholder backfill exemption) — a commit cannot cite its own SHA; the landed SHA is backfilled in the follow-up commit
+files_changed:
+  - CHANGELOG.md   # Unreleased § Fixed — sync-phase close entry prepended at the top of the first Fixed list (newest-first, t1510/t1515 precedent); B12 duplicate check `grep -c SPEC-HOOK-ZONE-BACKSLASH-001 CHANGELOG.md` = 0 pre-emission
+  - .moai/specs/SPEC-HOOK-ZONE-BACKSLASH-001/spec.md   # frontmatter status: in-progress → completed (3-phase close, completed rides the sync commit); updated: 2026-10-07 (already the current date — no byte change)
+  - .moai/specs/SPEC-HOOK-ZONE-BACKSLASH-001/progress.md   # this §E.4 block
+notes: >-
+  AC count cited in the CHANGELOG entry is from acceptance.md (SSOT):
+  AC-HZB-001..005 = 5, matching §E.3's 5/5. plan.md and acceptance.md bodies
+  untouched; no internal/hook source change in sync (documentation-only phase);
+  spec.md body content untouched (frontmatter status axis only, per the
+  Status Transition Ownership Matrix). No push — lane discipline; integration
+  is the leader's window.
+```
