@@ -15,7 +15,7 @@
     "MOAI_FACTORY_ROLE": "lane",
     "MOAI_FACTORY_WORKER": "lane-1",
     "MOAI_KANBAN_BACKEND": "gpt",
-    "MOAI_KANBAN_CARD": "t1",
+    "MOAI_KANBAN_ID": "run-cli",
     "MOAI_KANBAN_LABEL": "lane-1"
   },
   "glm": {
