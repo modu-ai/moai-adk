@@ -1,11 +1,21 @@
 # 데이터 흐름
 
+## 현재 main의 흐름 보충
+
+기준은 `081899adb825935d5263b1699fe730373deaa4fd`다. 다음은 호출부와 저장 경로의 소스 대조이며 외부 프로세스·원격 병합을 실제 실행했다는 뜻은 아니다.
+
+- `internal/hook/post_tool_scope.go`가 프로젝트와 CWD의 가장 가까운 Git 루트를 물리 경로로 비교한다. 외부임이 확인된 Write/Edit 대상은 `post_tool.go`·`post_tool_guardian.go`의 LSP·AST·guardian 스캔을 생략하고, 판정이 불확실하면 스캔을 유지한다.
+- Factory 병합 관측은 `factoryCloseLaneCard`와 `BacklogStore.ArchiveOnRuntimeCompletion`을 거쳐 호출자 루트의 큐 카드 보관과 runtime `completed`로 이어진다. 이미 보관된 카드도 닫힌 상태로 재관측한다.
+- 훅 이벤트 append 뒤 `MaybeSpawnRetentionPruner`가 stamp를 읽고, 오래됐거나 없을 때 같은 바이너리의 `hook retention-prune`를 분리 실행한다. 플랫폼별 실행은 `retention_spawn_unix.go`·`retention_spawn_windows.go`가 맡는다.
+- 감사 시작 키는 `auditreceipt.StartMarkerKey`가 agent ID 우선으로 만들고, 없으면 session/role에서 파생한다. 파생 키는 가장 이른 시작을 유지하며 단일 stop으로 삭제하지 않는다.
+- `internal/graph/card_file.go`의 `CardFileEdges`, `CardAttributedMergeSHAs`, `CardMergeFingerprint`가 카드·파일 연결을 제공하고 웹 `TodoGraph` 표면이 이를 읽는다.
+
 > **t1510 판(card t1510)** — § N이 하나 더 붙었다: **보호 구역 거부 흐름**. PreToolUse(`moai hook pre-tool`)가 `harness-learner` identity의 Write·Edit·Bash를 받으면 `protected_zone_guard.go`(파일 도구)와 `protected_zone_shell.go`(Bash — mvdan/sh AST 위의 가능-디렉터리-집합 워커)가 대상 경로를 `protected_zone_path.go`의 물리 해석(끊긴 심링크 목적지 추종 포함)으로 정규화해 shipped+overlay 매니페스트와 compiled baseline에 대조하고, 적중 시 `HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION` sentinel과 사람 회송 이유로 거부하며 감사 행을 `.moai/logs/protected-zone-audit.jsonl`에 남긴다. 매니페스트가 invalid면 변이 명령을 읽지 않고 거부한다(fail-closed).
 > **t1524 판(card t1518)** — § N이 새로 붙었다: `.moai` 위생 엔진의 두 흐름(감사 로그 회전 한 판, 끝난 세션 상태 GC의 생존 판정→연대→재판정→삭제). 신규 패키지 `internal/hygiene`(card t1518, SPEC-MOAI-HYGIENE-001) — SessionStart 자동 경로는 `internal/hook/session_start_hygiene.go`가 best-effort로 운반하고(기동을 막지 않는다), 수동 표면은 `moai clean --audit-logs|--session-state`다. 두 경로 다 기본은 report — 파일을 하나도 바꾸지 않는다. 같은 창의 세션 비상 재개 경로(`lane_resume.go` · card t1465)는 § F 계열 런처의 예비 경로고, 감사 상한(card t1500)은 § I의 판정 위에 반복 상한을 얹는다.
 
 > **t1443 판(card t1347·t1375)** — Factory 흐름에 두 관문이 더했다: ① **할당량 게이트** — `factory next` 임대 전 `internal/cli/factory_quota.go`가 상태 디렉터리의 사용량 창 원장으로 보유 창·압력을 평가한다(원장은 `internal/statusline/context_usage.go`가 스키마 v3로 쓰고 `internal/statusline/quota.go`의 `AggregateQuota`가 읽는 것과 같은 것). 판정은 배차 스티어링 행(`factory_quota_lanes.go`)과 `--auto` 사이클 안내 줄로 흘러 임대 보유를 설명한다. 게이트 설정은 `workflow.quota_gate.*`(`loader_quota_gate.go` — 모든 실패에서 꺼짐 기본). ② **관리 세션 divert** — `MOAI_FACTORY_MANAGED`가 명시적으로 켜진 런치는 `launcher.go`·`codex_launcher.go`의 게이트에서 관리 소유자로 갈라진다(`managed_factory_session.go`의 stream-json Claude 자식 · `managed_codex_factory.go`의 websocket Codex App-Server 자식 — 런처가 대화를 소유한다). 기본은 꺼짐이다. ③ **llm.yaml 셋째 쓰기 경로**(card t1411) — § G의 두 갈래 밖에 `internal/settings/llmoverrides.go`가 더했다: 웹 에이전트 설정 탭의 저장이 llm.yaml 프로파일·에이전트별 model/effort를 원자 쓰기+스냅샷/복원으로 쓴다. ④ **할당량 판독 확장**(card t1442 — t1347 부채 F1) — 게이트 판독이 primary 하나가 아니라 primary+링크된 워크트리 상태 디렉터리 전부로 넓었다(`internal/statusline/quota_dirs.go`의 `QuotaStateDirs` — git 메타데이터 파일 읽기만으로 열거, `workflow.quota_gate.max_scan_dirs` 바운드; 다른 형태의 상태 디렉터리는 단독 판독 — fail-open). ⑤ **스테일 런 리바인딩**(card t1345) — 프롬프트마다 env 네임 런의 활성을 재측정해 비활성이면 레인을 살아 있는 런으로 재결합하거나(`internal/hook/factory_rebind.go`) `moai factory relaunch` 실행 명령줄을 운영자에게 안내한다.
 
-**현재 갱신 — t1295, `develop` `cee197917` (2026-09-28).**
+**이전 갱신 — t1295, `develop` `cee197917` (2026-09-28).**
 MoAI가 만드는 L1 워크트리 경로와 기존 트리의 이전 경로를 § M에 추가했다.
 Factory 런 은퇴의 `lead` 표기는 이전 런의 저장 역할값이다. 현재 런은 `leader/lane`을 쓰며,
 옛 역할을 가진 세션은 `internal/hook/session_stale_run.go`에서 재등록하지 않고 안내한다.
@@ -123,8 +133,10 @@ internal/escalation 패키지의 `Active` 게이트(contract 모드인가?)를 �
 ### 빌드 타임
 
 ```
-internal/template/embed.go                            //go:embed all:templates   (588개 파일)
-internal/template/embed.go                            //go:embed catalog.yaml
+internal/template/embedemit                          Git 추적 경로 ApprovedPaths → Render
+internal/template/embed_manifest_gen.go               개별 템플릿 지시문 604개 + catalog.yaml
+                                                      → embeddedRaw
+internal/template/embed.go                            → EmbeddedTemplates
 internal/template/scripts/gen-catalog-hashes.go       별도 main — 카탈로그 해시 사전 생성
 internal/template/agentemit                           make agents-emit
                                                         .claude/agents/moai/*.md × agents-codex.yaml
@@ -135,7 +147,7 @@ internal/template/commandemit                         make commands-emit
                                                         (본문 바이트 동일 verbatim)
 ```
 
-두 방출기는 **빌드 타임에만** 돕니다. 런타임 배포 경로는 그 산물을 다른 템플릿 파일과
+방출기는 **빌드 타임에만** 돕니다. 런타임 배포 경로는 그 산물을 다른 템플릿 파일과
 구분하지 않고 나릅니다 — 그래서 발행 스킬 경로에 별도 보호가 필요해집니다(아래).
 
 ### 런타임 — `moai init`
