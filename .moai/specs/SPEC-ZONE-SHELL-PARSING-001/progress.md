@@ -70,7 +70,7 @@ The test file was untracked at base, so `git diff` has no base side; the evidenc
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-08T00:34:16+09:00
-run_commit_sha: pending-backfill-run
+run_commit_sha: 759c4514f
 run_status: complete
 ac_pass_count: 6
 ac_fail_count: 0
