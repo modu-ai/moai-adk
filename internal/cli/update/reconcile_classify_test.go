@@ -255,3 +255,45 @@ func TestClassifyManifestAbsentProject(t *testing.T) {
 		t.Errorf("manifest-absent project produced stale entries %v — stale requires manifest evidence", plan.Stale)
 	}
 }
+
+// TestClassifyHashlessRecordTakesTheMergeRoute — gate round 16 (card t1547
+// repair round): a template_managed record whose CurrentHash is EMPTY must
+// not short-circuit to template-owned — the empty-hash arm verified nothing
+// about the disk bytes, so a user-modified file carrying a hash-less record
+// was refreshed (overwritten) in place. Hash-less records take the
+// ClassUserModified route: the file becomes a merge candidate, and a
+// conflict preserves the operator's bytes with a sidecar.
+func TestClassifyHashlessRecordTakesTheMergeRoute(t *testing.T) {
+	const renderedRule = "# template rule (current render)\n"
+	const userEdit = "# template rule (current render)\n<!-- the operator's own note -->\n"
+	root := newClassifyFixture(t, map[string]string{
+		".claude/rules/moai/hashless.md": userEdit,
+	})
+	carried := map[string]string{
+		".claude/rules/moai/hashless.md": renderedRule,
+	}
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	// The hash-less record: template_managed with every hash field empty —
+	// the shape a hand-edited or legacy-schema manifest carries (manifest
+	// Track always fills CurrentHash, so the empty form only arises here).
+	mgr.Manifest().Files[".claude/rules/moai/hashless.md"] = manifest.FileEntry{
+		Provenance: manifest.TemplateManaged,
+	}
+	if err := mgr.Save(); err != nil {
+		t.Fatalf("save manifest: %v", err)
+	}
+
+	plan, err := ClassifyManagedRoots(root,
+		[]deploy.CleanTarget{recTarget(root, ".claude/rules/moai")},
+		renderWith(carried), mgr.Manifest())
+	if err != nil {
+		t.Fatalf("ClassifyManagedRoots: %v", err)
+	}
+	const rel = ".claude/rules/moai/hashless.md"
+	if got := plan.ClassOf(rel); got != ClassUserModified {
+		t.Errorf("a hash-less record's user-modified file classified %q — the empty-hash arm refreshed it over the operator's bytes", got)
+	}
+}

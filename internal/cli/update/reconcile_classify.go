@@ -310,10 +310,15 @@ func classifyManagedFile(rel string, disk []byte, render TemplateRender, mf *man
 	}
 
 	// Template-carried: the healthy-record decision against the TRACKED
-	// state (REQ-UPM-001's template-owned definition).
+	// state (REQ-UPM-001's template-owned definition). A record with an
+	// EMPTY CurrentHash is NOT healthy (gate round 16, card t1547 repair
+	// round): the empty-hash arm verified nothing about the disk bytes and
+	// refreshed a user-modified file over the operator's edits — hash-less
+	// records take the conservative ClassUserModified route, where a
+	// conflict preserves the operator's bytes with a sidecar.
 	entry := manifestEntry(mf, rel)
 	if entry != nil && entry.Provenance == manifest.TemplateManaged &&
-		(entry.CurrentHash == "" || entry.CurrentHash == manifest.HashBytes(disk)) {
+		entry.CurrentHash == manifest.HashBytes(disk) {
 		return ClassTemplateOwned
 	}
 	return ClassUserModified
