@@ -1,5 +1,14 @@
 # 진입점
 
+## main 통합 뒤의 공통 진입 경로
+
+기준은 `ff7722d2d157dd4e3cffd88ebb644e0f8ead83fa`다. 아래는 소스 호출 대조이며 원격 정리나 오류 주입을 실제 실행했다는 뜻은 아니다.
+
+- `internal/cli/worktree/done.go`·`internal/cli/worktree/sweep.go`와 `internal/cli/session_worktree.go`의 gitBranchLandedReal은 `internal/cli/worktree/landing_predicate.go`의 LandedByPatchID를 공유한다. patch-id 후보 일치 뒤 native object·mode와 삭제 상태를 확인한다.
+- `internal/graph/graph.go`의 카드·파일 edge와 `internal/graph/meta.go`의 fingerprint는 `internal/graph/card_file.go`의 공통 커밋 열거를 사용한다. HEAD의 모든 부모 경로에서 merge와 squash를 함께 읽는다.
+- `internal/cli/init.go`의 MCP provisioning 오류는 p.Collect를 거쳐 deferred emitSummary로 전달한다. 이 오류를 init 실패로 승격하지 않는다. 사용자 자산 설치 오류의 실패 반환과는 처리 결과가 다르다.
+- `internal/cli/update.go`는 실행별 action registry를 초기화하고 defer로 마지막 Require/Reference 블록을 렌더한다. 표시 구현은 `internal/cli/update_action_block.go`와 `internal/cli/severity_line.go`에 있다.
+
 ## PR #1772의 설치 진입점
 
 - `internal/cli/init.go` → `ensureUserAssetsLocked`: 프로젝트 배포가 완료된 뒤, init 성공을 보고하기 전에 사용자 공통 자산을 설치한다. 이 단계의 오류로 init이 실패해도 프로젝트 배포 결과는 이미 남아 있다.

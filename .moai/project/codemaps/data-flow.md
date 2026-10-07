@@ -1,5 +1,14 @@
 # 데이터 흐름
 
+## main 통합 뒤의 판정과 관측 흐름
+
+기준은 `ff7722d2d157dd4e3cffd88ebb644e0f8ead83fa`다. 사용자 폴더 설치 흐름은 이전 PR 기준과 같고, 다음 경로를 소스에서 추가 대조했다.
+
+- 착지: ancestry 확인 또는 누적 patch-id 후보 일치 → `internal/cli/worktree/landing_predicate.go`의 landingExactChangedPaths → base·tip·ref의 NUL 구분 ls-tree → 변경 경로의 native object/type/mode·삭제 상태 비교 → done/sweep/세션 종료 호출부에 판정 반환.
+- 카드·파일: `internal/graph/card_file.go`의 walkCardCommits가 HEAD에서 도달 가능한 모든 부모 경로의 커밋 subject를 attribution → merge·squash landing의 first parent와 NUL 구분 파일 diff → CardFileEdges → `internal/graph/graph.go`의 edge 계층. 같은 landing 목록은 CardAttributedMergeff7722d2d157dd4e3cffd88ebb644e0f8ead83fas → CardMergeFingerprint → `internal/graph/meta.go`의 freshness 값으로 흐른다. root 또는 비교 실패 커밋은 파일 edge를 만들지 않는다.
+- init MCP 오류: `internal/cli/init.go`의 provisionMCPEntryUnlessDeclined 오류 반환 → runInit의 p.Collect → deferred emitSummary 한 번. 이 오류는 요약으로 전달하고 init 실패로 승격하지 않는다.
+- update 표시: 진입 시 registry reset → 실행 중 Require/Reference 행 수집 → defer로 `internal/cli/update_action_block.go` 종료 블록 출력. severity glyph는 `internal/cli/severity_line.go`가 tui.StatusIcon에서 가져온다.
+
 ## PR #1772의 사용자 폴더 설치 흐름
 
 `internal/cli/user_asset_phase.go`는 카탈로그와 임베드 템플릿을 `internal/userassets/install.go`의 Installer에 전달한다. `paths.go`의 설치 루트는 `~/.claude/skills`, `~/.claude/agents`, `~/.agents/skills`, `~/.codex/agents` 네 곳이다. 사용자 manifest는 `~/.moai/user-assets.json`에 두며, 설치 중단 기록과 백업 경로도 같은 사용자 상태 영역에서 관리한다.

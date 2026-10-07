@@ -2,7 +2,7 @@
 
 ## PR #1772 반영 트리의 import 대조
 
-`8a66677a1d1e74f5bf65c8da0f8b40ae25128318`에서 `go list -deps -json ./...`를 실행했다. 모듈 내부 패키지 170개, 내부 import 엣지 478개, 최상위로 접고 self-edge를 제거한 고유 쌍 303개다. `internal/userassets`는 `internal/template`을 import하며 비테스트 소비자는 `internal/cli` 하나다. 아래 main 기준 fan-in/out과 이전 기록은 각각 명시된 시점의 관측값이다.
+`ff7722d2d157dd4e3cffd88ebb644e0f8ead83fa`에서 `go list -deps -json ./...`를 실행했다. 모듈 내부 패키지 170개, 내부 import 엣지 478개, 최상위로 접고 self-edge를 제거한 고유 쌍 303개다. `internal/userassets`는 `internal/template`을 import하며 비테스트 소비자는 `internal/cli` 하나다. 아래 main 기준 fan-in/out과 이전 기록은 각각 명시된 시점의 관측값이다.
 
 > `internal/template/pluginemit`은 PR #1772에서 폐기됐다. 현재 빌드 방출기는 agentemit·commandemit·embedemit이며, 아래 이전 pluginemit 수치는 이력이다.
 

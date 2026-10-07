@@ -1,5 +1,18 @@
 # 패키지 모듈 상세
 
+## main 통합 뒤의 책임 대조
+
+기준은 `ff7722d2d157dd4e3cffd88ebb644e0f8ead83fa`다. 이전 PR 기준 이후 변경된 21개 비테스트 Go 파일을 대조했으며, 사용자 자산 설치 책임과 해당 패키지의 import 관계는 그대로다.
+
+| 경로 | 통합 뒤의 책임 |
+|---|---|
+| `internal/cli/worktree/landing_predicate.go` | LandedByPatchID는 누적 patch-id 일치 뒤 landingExactChangedPaths로 base·tip·ref의 `git ls-tree -r -z --full-tree`를 읽는다. 카드가 바꾼 모든 경로의 native object/type/mode와 삭제 상태가 ref와 같아야 한다. diff는 textconv를 끄고 submodule을 포함한다. |
+| `internal/cli/worktree/done.go` · `internal/cli/worktree/sweep.go` · `internal/cli/session_worktree.go` | 공통 착지 판정을 사용한다. 세션 종료의 gitBranchLandedReal도 ancestry 확인 뒤 LandedByPatchID로 이어지며 gh를 호출하지 않는다. |
+| `internal/graph/card_file.go` | walkCardCommits가 HEAD에서 모든 부모 경로의 커밋을 읽어 merge와 단일 부모 squash를 함께 attribution한다. CardFileEdges는 각 landing의 first parent 대비 변경 파일을 NUL로 읽는다. root 또는 비교 실패 커밋에서는 edge를 추가하지 않는다. |
+| `internal/graph/graph.go` · `internal/graph/meta.go` | 카드·파일 edge와 freshness fingerprint가 같은 landing 목록을 사용한다. CardAttributedMergeff7722d2d157dd4e3cffd88ebb644e0f8ead83fas라는 공개 이름은 유지됐지만 squash도 목록에 들어간다. |
+| `internal/cli/init.go` | provisionMCPEntryUnlessDeclined가 오류를 반환하고 runInit이 p.Collect에 모은다. deferred emitSummary가 한 번 출력하며, MCP provisioning 오류 자체로 init 실패를 반환하지 않는다. |
+| `internal/cli/severity_line.go` · `internal/cli/update_action_block.go` | severity glyph를 tui.StatusIcon에서 공유하고 update의 Require/Reference 행을 실행별로 모아 종료 블록으로 출력한다. registry를 진입 시 reset하고 defer로 렌더해 조기 반환에도 적용한다. 재실행 표식은 숨김 argv 플래그 `--moai-reexeced`다. |
+
 ## PR #1772의 사용자 자산 설치 책임
 
 | 경로 | 현재 책임 |
