@@ -467,14 +467,6 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		// (REQ-ZSP-002).
 		w.zoneWalkDeclared(raw, def)
 	}
-	name := raw
-	if strings.Contains(name, "/") {
-		// a literal executable path (/bin/rm, ./rm) names the verb through
-		// its base (round 13 P1) — card t1574 K4: for the VERB judgment
-		// only, never the funcs table above; a path to some OTHER binary
-		// folds to a base that matches no verb, exactly as before
-		name = path.Base(name)
-	}
 	// card t1574 K3: strip the static wrapper set — `command`/`builtin`
 	// bypass function lookup and `env`/`nohup` are external binaries that
 	// exec their argument, so once a wrapper is present the stripped head
@@ -484,12 +476,16 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 	// `builtin rm` and deletes nothing, so judging it as the verb is the
 	// safe direction (spec D3).
 	args := zoneStripWrapperPrefix(cmd.Args)
-	name, literal = zoneFirstArgWord(args)
+	name, literal := zoneFirstArgWord(args)
 	if !literal {
 		return // the stripped head is dynamic: under-match as today
 	}
 	if strings.Contains(name, "/") {
-		// the stripped executable may itself be a path (`env /bin/rm x`)
+		// a literal executable path (/bin/rm, ./rm) names the verb through
+		// its base (round 13 P1) — card t1574 K4: for the VERB judgment
+		// only, never the funcs table above; the stripped executable may
+		// itself be a path (`env /bin/rm x`), and a path to some OTHER
+		// binary folds to a base that matches no verb, exactly as before
 		name = path.Base(name)
 	}
 	if name == "cd" {
