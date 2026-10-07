@@ -216,7 +216,10 @@ elsewhere in the zone guard files (stated zero, measured by Form B over
   in §E E2 when it fired). AC-HZB-004 verdict **PASS** on the countable-delta
   reading — no failure attributable to the change; CI is the integrated judge.
 
-## §E — Self-Verification Evidence (run phase)
+## §E.2 Run-phase Evidence
+
+*(the canonical run-phase evidence marker; the milestone narratives live in the
+§M1/§M2/§M3 sections above.)*
 
 Attribution per manager-develop-prompt-template.md §E: every item names (a) the
 command, (b) the observed output, (c) the baseline attribution — this run, this
@@ -342,3 +345,22 @@ FAIL
   branch (the measured surface) — the shell branch's own quote-parsing defects
   (gate-turnend-2 item 5, unattributed, leader disposition) are a different
   class and untouched.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-10-07
+run_commit_sha:
+  M1: f4f0e3f7d   # RED reproduction + evidence ledger fill (2 repro tests + positive control; RED-HZB-001..003 + X1/X2)
+  M2: 7945a442a   # minimal repair — zoneNativeSlash separates comparison normalization from filesystem resolution
+  M2b: a03c6d56b  # amendment — converted-absoluteness vector (leader-forwarded gate round 8; RED-HZB-004)
+  M3: 189cbbb61   # family sweep + §E evidence + AC-HZB-004 verdict + gate-silence discriminator
+ac_pass_count: 5/5   # AC-HZB-001..003 release-blocking (two-cell adopted: RED observed + GREEN flip) + AC-HZB-004/005 regression-guard
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # internal/hook/pre_tool.go (t1556) and internal/cli/worktree/landing_predicate.go (t1561) untouched — diff scope E7
+gaps: >-
+  six Factory/SessionStart timing tests failed once under the multi-lane go-test
+  storm (subject code byte-identical between commits; passed in the quiet-window
+  re-run) — attributed to contention, CI is the integrated judge; the turn-end
+  gate's post-repair silence is NOT load-bearing (overlay caveat stated in §E E8).
