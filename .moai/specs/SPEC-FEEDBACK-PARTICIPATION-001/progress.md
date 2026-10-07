@@ -22,7 +22,7 @@
 
 ## §E.2 Run-phase Evidence
 
-_run in progress — M1..M5 + the full review-gate fix stack (13 commits) landed; M6 is the resume point (see the resume block at the end of this section)_
+_run in progress — M1..M5 + the full review-gate fix stack (14 commits) landed; M6 is the resume point (see the resume block at the end of this section)_
 
 ### Landed commits (this run, branch WT-feedback-optin-anon)
 
@@ -60,6 +60,7 @@ _run in progress — M1..M5 + the full review-gate fix stack (13 commits) landed
 | 728a1904b | the drain consumes only the spool batch it read (RED: compile-RED on the seams, then the late capture survived) | outbox+bugreport ok; outbox -count=3 -race ok; 3 builds 0 |
 | 65380b6e8 | the spool entry carries the CAPTURE-TIME build identity (RED: a v3.2.0 capture flushed by a v9.9.9 binary queued the v9.9.9 fingerprint) | outbox+bugreport ok; 3 builds 0. Note for sync: design section 1's bugreport import sentence gains pkg/version (cycle-free, outside AC-025's guard set) and the spool schema gains version/commit — for manager-spec to fold into the design body |
 | d6613a015 | M5 publication through the user's gh, deterministic text | publish 15/15; AC-003 four names PASS; outbox+feedback+cli families ok; 3 builds 0; lint 0 issues on touched packages |
+| 131aeb712 | the drain honors its context through every lock wait (RED: a 200ms-deadline drain ran 13.31s against a live holder — the gate measured 13.36) | green in 0.20s, 3/3 -race; all five touched suites ok; 3 builds 0; ClaimSection/MutateContext carry ctx |
 
 Gate item 3 (re-verify at the new HEAD): the double-ClaimSection dead-owner repro family at HEAD 9236c5cd6 — TestBreakerExcludesRivals..., TestBreakNeverDisposes..., TestBreakAborts..., TestBreakStillFires..., TestBreakGateAborts... x -count=3 -race = 15/15 PASS; TestStaleLockReclaimDoesNotDeleteTheNewLock (16 concurrent ClaimSection callers against a dead-owner fixture, no release) x -count=3 -race = 3/3 PASS.
 
@@ -84,7 +85,7 @@ mode: serial
 applied lessons: feedback_glm_lane_env_pollutes_claude_audit (scrub MOAI_KANBAN_*/MOAI_FACTORY_* before hook/cli suites), feedback_codex_task_turn_bound_use_raw_exec
 
 Preconditions:
-1) git rev-parse --short HEAD → M5 tip d6613a015 on WT-feedback-optin-anon; tree clean
+1) git rev-parse --short HEAD → tip 131aeb712 (M5 d6613a015 + the ctx fix) on WT-feedback-optin-anon; tree clean
 2) go build ./... && GOOS=linux GOARCH=amd64 go build ./... && GOOS=windows GOARCH=amd64 go build ./... → all exit 0
 3) go test ./internal/feedback/publish/ ./internal/feedback/outbox/ -count=1 → ok (15 + 14 tests)
 
