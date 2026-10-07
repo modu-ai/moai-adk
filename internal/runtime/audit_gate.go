@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/auditverdict"
 )
 
 // Verdict represents the outcome of a plan audit operation.
@@ -92,6 +94,13 @@ type AuditResult struct {
 
 	// SpecID is the SPEC identifier that was audited.
 	SpecID string
+
+	// Ceiling carries the ceiling-policy outcome of this invocation
+	// (SPEC-AUDIT-CEILING-001 design.md §7 — a separate field, never a new
+	// Verdict value the routing switch would fold into INCONCLUSIVE). The
+	// Verdict keeps its honest underlying state; refusal is observable via
+	// Ceiling != nil && Ceiling.Blocked.
+	Ceiling *VerdictCeilingOutcome `json:"ceiling,omitempty"`
 }
 
 // PlanAuditor is the interface for invoking the plan-auditor subagent.
@@ -257,6 +266,12 @@ func (c *GateConfig) Invoke(ctx context.Context) (*AuditResult, error) {
 		return result, nil
 	}
 
+	// Step 3.5: ceiling-policy evaluation (SPEC-AUDIT-CEILING-001) — the
+	// library-level Step 0 for when a production caller exists. The outcome
+	// attaches to the result without changing the Verdict (design.md §7);
+	// refusal is observable via Ceiling.Blocked.
+	c.attachCeiling(result)
+
 	// Step 4: route verdict
 	switch verdict {
 	case VerdictPass:
@@ -305,4 +320,30 @@ func (c *GateConfig) Invoke(ctx context.Context) (*AuditResult, error) {
 func (c *GateConfig) TeamModeInvoke(ctx context.Context) (*AuditResult, error) {
 	fmt.Printf("[plan-audit] team mode detected, gate applies before TeamCreate\n")
 	return c.Invoke(ctx)
+}
+
+// attachCeiling evaluates the ceiling policy against the exported verdict
+// report (SPEC-AUDIT-CEILING-001) and attaches the outcome. Evaluation is
+// best-effort: an unreadable report or a counter failure leaves Ceiling nil
+// and the gate's own verdict routing unchanged.
+func (c *GateConfig) attachCeiling(result *AuditResult) {
+	if result == nil || result.ReportPath == "" {
+		return
+	}
+	data, err := os.ReadFile(result.ReportPath)
+	if err != nil {
+		return
+	}
+	fields := auditverdict.Parse(data)
+	cur, herr := c.Cache.ComputeHash(c.SpecDir)
+	hashOK := herr == nil && fields.PlanArtifactHash != "" && fields.PlanArtifactHash == cur
+	required := []string{}
+	if gates, gerr := ResolveRequiredBackends(c.ProjectDir); gerr == nil {
+		required = gates.Required
+	}
+	if oc, _, eerr := EvaluateCeiling(VerdictCeilingInput{
+		SpecID: c.SpecID, SpecDir: c.SpecDir, ProjectRoot: c.ProjectDir,
+	}, fields, hashOK, required); eerr == nil {
+		result.Ceiling = oc
+	}
 }

@@ -81,6 +81,10 @@ func newLandingFixture(t *testing.T) *landingFixture {
 	}
 	landingGit(t, f.tree, "add", ".")
 	landingGit(t, f.tree, "commit", "-q", "-m", "card work")
+	// The landing base derives from the configured integration target (card
+	// t1453): seed the git-flow configuration these cells exercise. Written
+	// untracked after the commits so rows can replace or remove it.
+	installBaseRow(t, f.repo, gitFlowBaseRow())
 	// Wire the real WorktreeProvider for repo; the launch-ledger prune is
 	// stubbed so removal never touches the developer's ~/.moai state.
 	withTierTestEnv(t, f.repo)

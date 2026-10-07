@@ -71,6 +71,18 @@ func realLandingRepo(t *testing.T, withDevelop bool) (repoDir, wtPath string) {
 		git("-C", repoDir, "push", "-q", "origin", "develop")
 	}
 
+	// The landing predicate reads the CONFIGURED integration target (card
+	// t1453 M2-A; before it, a literal origin/develop): seed the git-flow
+	// configuration these cells exercise, untracked like the M1 fixtures.
+	cfgDir := filepath.Join(repoDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatalf("mkdir config: %v", err)
+	}
+	gitFlowYAML := "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n        develop_branch: develop\n"
+	if err := os.WriteFile(filepath.Join(cfgDir, "git-strategy.yaml"), []byte(gitFlowYAML), 0o644); err != nil {
+		t.Fatalf("write git-strategy.yaml: %v", err)
+	}
+
 	wtPath = filepath.Join(tmp, "wt")
 	git("-C", repoDir, "worktree", "add", "-q", "-b", "WT-landing03-fix", wtPath)
 	if err := os.WriteFile(filepath.Join(wtPath, "card.txt"), []byte("card work\n"), 0o644); err != nil {

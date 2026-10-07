@@ -12,6 +12,10 @@ Shared protocol for all MoAI agent definitions. This rule is automatically loade
 
 `AskUserQuestion` is the **only** user-facing question channel. The boundary is asymmetric by design.
 
+### Lane disposition of a blocker
+
+A lane session is orchestrator-class for its card and holds no user channel, so the disposition above is not its path. A blocker report a lane receives from a spawned agent — or the missing-input moment the lane hits itself — is NOT routed to the leader to ask and wait: the lane resolves the judgment through the decision ladder (`.claude/rules/moai/workflow/auto-semantics.md` §6, terminal step: the lane's own judgment), records it (§10) in the card's progress record, and proceeds. Escalation to the leader survives for the keep-set categories only (environment-impossible, operator-held, irreversible external-shared operations) and for cross-card conflicts. The AskUserQuestion-with-user round remains the main orchestrator's disposition; the leader is not the lane's user.
+
 ### Subagent Prohibitions
 
 [ZONE:Frozen] [HARD] Subagents MUST NOT prompt the user. AskUserQuestion is reserved exclusively for the MoAI orchestrator.
@@ -100,7 +104,7 @@ fetch, and image read route to the z.ai MCP tools instead of the built-ins. HARD
 
 Subagents inherit the main session's model and effort: pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. A PreToolUse hook records each Agent spawn to `.moai/logs/agent-model-audit.jsonl` as an observation log; it never blocks a spawn.
 
-Opt-in consumption exception — `llm.agent_overrides_consume` (boolean, default `false`): a session that sets the key `true` opts its spawns into consuming the stored `llm.agent_overrides`; the orchestrator consults the resolved override before spawning and passes the configured model on the Agent() call — the one sanctioned override surface. A stored model override wins on the model axis, an agent without an entry resolves to plain session inheritance (not a profile-matrix cell), and an override value of `inherit` is an explicit no-op. Effort is doctrine-level only — the Agent tool carries no effort parameter. Key-less sessions keep the inherit default above; the spawn-audit JSONL gains an `override_consumption` field ∈ {hit, miss, inherit, off} and stays observe-never-blocks; a closed config gate reads as `off`.
+Opt-in consumption exception — `llm.agent_overrides_consume` (boolean, default `false`): a session that sets the key `true` opts its spawns into consuming the stored `llm.agent_overrides`; the orchestrator consults the resolved override before spawning and passes the configured model on the Agent() call — the one sanctioned override surface. A stored model override wins on the model axis, an agent without an entry resolves to plain session inheritance (not a profile-matrix cell), and an override value of `inherit` is an explicit no-op. Effort remains doctrine-level: since CC 2.1.292 the Agent tool does accept an `effort` parameter, and MoAI deliberately leaves it unset — subagents inherit the session effort, and a per-spawn effort value would split the spawn onto a cold model-scoped cache (composing with the model-override cost in `cache-aware-execution.md` directive 5). Key-less sessions keep the inherit default above; the spawn-audit JSONL gains an `override_consumption` field ∈ {hit, miss, inherit, off} and stays observe-never-blocks; a closed config gate reads as `off`.
 
 ## Background Agent Execution
 
