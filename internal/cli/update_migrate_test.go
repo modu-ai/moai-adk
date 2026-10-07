@@ -505,13 +505,19 @@ func TestUpdateForceDoesNotResurrectDropped(t *testing.T) {
 	}
 }
 
-// TestNotDemonstratedPreservationEndsAtNextLocalUpdate pins the D-16 loss
-// path (leader condition 5b): the not-demonstrated migration preserves the
-// foreign file for THAT run; the next update — the record now local, the
-// full deployer and today's Clean walk — removes it (backed up). The
-// boundary is executable, not prose: preservation is one migration run
-// (acceptance.md Edge Cases, the narrowed promise).
-func TestNotDemonstratedPreservationEndsAtNextLocalUpdate(t *testing.T) {
+// TestNotDemonstratedPreservationHoldsAtNextLocalUpdate — SPEC-UPDATE-
+// MIGRATION-001 (card t1547): the preservation contract supersedes
+// SPEC-INIT-SHRINK-001's D-16 narrowed promise ("preservation is one
+// migration run", leader condition 5b) whose removal-at-next-local-update
+// behavior this test previously pinned. The next recorded-local update
+// RECONCILES the managed roots: a foreign file under the moai* managed glob
+// (template-carriage gate — not carried, no manifest record) classifies
+// user-owned and survives byte-for-byte, listed in the reconciliation
+// summary (REQ-UPM-002/013; AC-UPM-001's flow-level form). The old
+// managed-glob removal-with-backup was exactly the D-15 loss path
+// REQ-UPM-002 exists to close (leader-approved test-contract update,
+// 2026-10-07).
+func TestNotDemonstratedPreservationHoldsAtNextLocalUpdate(t *testing.T) {
 	root := buildMigrationFixture(t)
 
 	// Run 1 — the not-demonstrated migration: the foreign file survives.
@@ -524,19 +530,15 @@ func TestNotDemonstratedPreservationEndsAtNextLocalUpdate(t *testing.T) {
 		t.Fatalf("run 1 lost the foreign file:\n%s", foreignBefore)
 	}
 
-	// Run 2 — the recorded-local update: today's full deployer + today's
-	// Clean walk. --force bypasses the version-compare skip (RK-7) so the
-	// walk actually runs. The managed-glob hit (.claude/skills/moai-custom)
-	// is backed up and removed — exactly where the one-run promise ends.
-	runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "no-plugin": "true", "force": "true"})
-	assertFileAbsent(t, root, migForeignSkill)
-
-	// The removal was backed up (the P-08 rule: files the template does not
-	// carry reach the pre-clean backup) — the loss is recoverable.
-	matches, _ := filepath.Glob(filepath.Join(root, ".moai-backups", "*", "pre-clean",
-		".claude", "skills", "moai-custom", "SKILL.md"))
-	if len(matches) == 0 {
-		t.Error("the removed foreign skill left no pre-clean backup copy")
+	// Run 2 — the recorded-local update reconciles the managed roots: the
+	// foreign skill is user-owned (never removal-eligible) and survives
+	// byte-for-byte, and the summary lists it as preserved.
+	out, _ := runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "no-plugin": "true", "force": "true"})
+	if got := readFixtureFile(t, root, migForeignSkill); got != foreignBefore {
+		t.Errorf("run 2 altered the foreign skill:\n%s", got)
+	}
+	if !strings.Contains(out, "moai-custom") {
+		t.Errorf("run 2 summary did not list the preserved foreign skill:\n%s", out)
 	}
 }
 
