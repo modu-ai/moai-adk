@@ -44,3 +44,10 @@ r10 수리 판정 통과(리뷰어 명시: 캐시 회귀 테스트 3개 통과).
 - **① TestStopChainEffectParityGolden /codex_review_gate 2 leg** — REQ-GBN-001이 바꾼 공유 저장소 계약의 갱신: Claude 게이트가 라이브 판정을 기록하므로(의도된 M1 동작) "Claude 통과 뒤 영수증 부재 → unmeasured" 골든이 더 이상 성립하지 않는다. 두 leg(codex installed no receipt·stale receipt HEAD moved)를 gate_failed 기대로 갱신하고, 영수증 기록 자체를 전제 단언(receiptForCurrentState 헬퍼 — 기록이 말없이 빠지면 leg가 공허해지는 것을 막음)으로 고정. 판정 일치(Deny=Deny)는 유지 — parity 위반 아닌 관측 클래스 갱신. unmeasured 행위 커버리지는 cap 서브테스트가 유지.
 - **② TestCheckProtectedZonePosixBackslashConvertedAbsoluteness** — origin/main(5e5ff8e31, t1570 #1797) 흡수 후 green. 코드 변경 0건.
 - 흡수: origin/main → 병합 HEAD 64a13b837. 재판정: `go test ./internal/cli/ -run 'TestStopChainEffectParityGolden' -count=1` → ok (40.9s) · `-run 'TestReviewGate|TestCheckProtectedZone'` → cli ok (7.0s)·hook ok (5.0s).
+
+## 최종 판정 (2026-10-07 — PR #1793 @ 92897ca84 전 체크 초록)
+
+- **CI**: 29 pass·0 fail·0 pending — Test (ubuntu-latest) 12m37s·Race Test 1/2 (17m17s/18m40s)·Build×5·Lint·Constitution·Integration×3·spec-lint·spec-status-sync·graph-freshness-conflict-guard·CodeRabbit 포함. CodeRabbit 판독은 리더 몫(AH §4 병합 판정).
+- **CI 수리 이력**: 골든 2 leg 계약 갱신(7986851b9) → LiveAxis 오탐 제거(1a3bf99a7) → inconclusive exit 2(92897ca84, 쌍둥이 포함).
+- **게이트 라운드 원장 (r12~r17)**: 본 카드 diff 발견 0건 6라운드 연속. 전부 기존 원장 계열의 재관측/신규 인스턴스 — integration 병합 창 재검증 4건·factory_card/bundle 선행의존성 5건·todo_issuance 4건·backlog relation/store 2건·todo.go 2건·landing_predicate 공백 1건·audit_receipt_guard 재시작 표식 1건·todo_auto_lane 1건·integration remeasure 2건. 소관: t1538/t1542 원장·t1561·t1562·t1559·t1454·t1554·t1509.
+- **잔여(M2/M3, 체크포인트)**: 지연 블록(Stop 백그라운드 기동 → 다음 턴 진입 훅 집행)·라이브 리뷰 0건 조건부 재현(reviewRequestParams 확장) — 신선 세션 continuation 권장.
