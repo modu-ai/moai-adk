@@ -155,7 +155,7 @@ If `--all` in progress: return a blocker report (next-PR / done) for the orchest
 
 - [HARD] All GitHub operations use `gh` CLI directly — no custom wrappers.
 - [HARD] All implementation delegated to specialized agents.
-- [HARD] User confirmation required before PR creation and review submission — surface via orchestrator blocker report + the orchestrator's user-decision channel (subagents cannot interact with users per CLAUDE.md §8).
+- [HARD] User confirmation required before PR creation and review submission — surface via orchestrator blocker report + the orchestrator's user-decision channel (subagents cannot interact with users per askuser-protocol.md).
 - Branch per issue; test verification before PR; Conventional Commits.
 
 ## Anti-Patterns

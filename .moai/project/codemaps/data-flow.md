@@ -1,6 +1,29 @@
 # 데이터 흐름
 
-## 현재 main의 흐름 보충
+## 현재 main48의 변경 흐름
+
+기준은 `48fa94b99023bb252a9731fbbd5ebc6dcc7472ab`다. 아래는15개 수정 소스의 호출·저장 흐름을 대조한 결과이며 런타임 보안이나 원격 실행 성공 주장은 아니다.
+
+1. `internal/cli/factory_card.go`가 현재 큐 상태를 읽어 assigned 카드의 재임대·지명 거절을 판단한다. queued 승격에서 이미 assigned인 행은 빈 `CardFields`로 전이해 기존 배정 입력을 유지한다.
+2. done·sweep·발행 probe가 Factory의 설정 우선 landed-ref 체인을 공유한다. done은 선택한 단계의 출처도 반환하고 sweep는 ref만 반환하며 명시적 sweep `--base`는 이 기본값보다 우선한다.
+3. update의 바이너리·dry-run 조기 종료 뒤 또는 clean install의 설정 보존 뒤, `internal/cli/update_deny_migration.go`가 정확히 일치하는 root deny 문자열만 치환한다. 알 수 없는 항목과 목록 순서는 유지한다.
+4. `internal/graph/card_file.go`가 도달 가능한 카드 귀속 커밋을 수집하고 native Git batch의 첫 부모 차이를 NUL 경계로 해석한다. 끝 sentinel까지 확인하지 못하면 커밋별 수집으로 돌아가며 batch의 부분 결과를 완성된 그래프로 사용하지 않는다.
+5. shell word의 quote 종류에 맞춰 escape를 해석한 뒤 `internal/hook/protected_zone_path.go`가 native 파일시스템 경로와 lexical 비교형을 만든다. POSIX literal backslash를 Windows 구분자로 바꾸지 않는 경로 처리가 이번 창의 변경이다.
+
+## 이전067 기준의 통합·카드 증거 흐름
+
+기준은 `067fdced2dd8f38812d4c36ec17ceb8d2ca3e263`다. 아래는 호출부·저장 경로의 소스 대조이며 외부 프로세스나 원격 병합을 실제 실행했다는 주장은 아니다.
+
+1. `internal/cli/integration.go`의 acquire/wait가 `internal/factory/integration_window_queue.go`의 직렬 RMW와 `internal/factory/integration_window_ops.go`의 FIFO 승격으로 이어진다.
+2. `internal/factory/integration_remeasure.go`가 트리에 묶인 실행 기록을 만들고 검증한다. `internal/factory/integration_merge_step.go`는 고정한 SHA와 소유권·임대·작업 트리·충돌을 재확인해 병합한다.
+3. `internal/cli/factory_card.go`의 complete가 T14/T16 전이를 만들고, `TransitionRequest.VerifyRemeasure` 콜백을 통해 `internal/homestate/card_evidence_readers.go`가 병합 트리의 재측정 기록을 확인한다. 단순 merge SHA 텍스트 파일을 검증 근거로 대신 읽는 흐름이 아니다.
+4. Codex의 대화형 부모가 `moai todo --auto`를 수행하면 `internal/cli/todo_auto_lane.go`가 순위 결정 → 지명 임대 → 카드 워크트리 → 증거 인계를 수행한다. 공유 순환의 quota hold는 Claude 레인에만 적용되고, 이때는 자기 할당 카드만 임대 관문을 거친다. Codex/GPT의 할당량 평가는 false를 반환한다. 이는 T8a 감사 승인에서 사용하는 별도의 `QueueHold`와 구분한다.
+5. 워크트리 착지 판정은 `internal/cli/worktree/landing_predicate.go`의 `landingExactChangedPaths`에서 native object/mode를 확인한다. CLI의 `session_worktree.go`도 같은 helper를 호출한다.
+6. `internal/graph/card_file.go`가 모든 도달 가능한 부모의 카드 귀속을 모으고 각 착지 커밋의 첫 부모와 파일 차이를 계산한다. 결과는 `internal/graph/graph.go`의 그래프와 `internal/graph/meta.go`의 fingerprint에 쓰인다.
+
+`internal/cli/init.go`의 MCP provisioning 실패는 collector에 전달되고, `internal/hook/session_start_memory_budget.go`는 goroutine 시작 전에 읽기 의존성을 고정한다. 기존 흐름의 과거 구현 설명은 아래에 당시 기준과 함께 남긴다.
+
+## 이전 081899 기준의 흐름 보충
 
 기준은 `081899adb825935d5263b1699fe730373deaa4fd`다. 다음은 호출부와 저장 경로의 소스 대조이며 외부 프로세스·원격 병합을 실제 실행했다는 뜻은 아니다.
 

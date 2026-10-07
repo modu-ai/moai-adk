@@ -696,7 +696,11 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// the literal develop read above the comparison with the configured
 		// integration-target resolution (three lines), moving the same single
 		// comparison from 197. Same one comparison, same count.
+		// Card t1555 also orders local and remote common ancestors. These
+		// three reads select the review diff; none judges binary freshness.
 		"codex_review_scope.go:198": true,
+		"codex_review_scope.go:204": true,
+		"codex_review_scope.go:207": true,
 		// SPEC-WEB-SETTINGS-SAVE-001 scope ③ (card t1393): the session-worktree
 		// disposal landing check — arm (i) of the decided predicate asks
 		// whether the branch tip is an ancestor of the remote-tracking
@@ -734,8 +738,14 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// repairs moved the same two hits from 165/173 to 204/212. Same
 		// probe, same count — only the coordinates moved (the t948
 		// precedent).
+		// Re-measured at the #1789 repair round (card t1535): the
+		// REQ-GFC-017 comment reword (configured-first landed-ref chain,
+		// never a literal branch name) grew the doc comment above
+		// productionLaneFilesProbe and moved the comparison 212→215. Same
+		// probe, same count — only the coordinate moved (the t948
+		// precedent).
 		"todo_issuance.go:204": true,
-		"todo_issuance.go:212": true,
+		"todo_issuance.go:215": true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")

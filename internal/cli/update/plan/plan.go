@@ -23,8 +23,9 @@ const MaxConfigSize = 10 * 1024 * 1024 // 10MB
 func ClassifyFileRisk(filename string, exists bool) string {
 	base := filepath.Base(filename)
 
-	// High risk files
-	highRiskFiles := []string{"CLAUDE.md", "settings.json"}
+	// High risk files — AGENTS.md is the primary instruction file of the
+	// AGENTS.md-primary product; CLAUDE.md stays listed for legacy projects.
+	highRiskFiles := []string{"AGENTS.md", "CLAUDE.md", "settings.json"}
 	if slices.Contains(highRiskFiles, base) {
 		return "high"
 	}
@@ -42,7 +43,7 @@ func DetermineStrategy(filename string) merge.MergeStrategy {
 	ext := filepath.Ext(filename)
 
 	switch {
-	case base == "CLAUDE.md":
+	case base == "AGENTS.md" || base == "CLAUDE.md":
 		return merge.SectionMerge
 	case base == ".gitignore":
 		return merge.EntryMerge

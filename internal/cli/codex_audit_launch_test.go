@@ -329,10 +329,52 @@ func launchRecordLines(stderr string) []string {
 
 // ─── AC-CAR-001 ────────────────────────────────────────────────────────────
 
+func TestCodexAuditPluginTransport(t *testing.T) {
+	repo := newAuditRepo(t)
+	fake := installFakeCodex(t)
+	fake.setMCP(`[{"name":"archhub","transport":{"type":"streamable_http","url":"https://example.invalid/mcp?token=private"}},{"name":"plugin_stdio","transport":{"type":"stdio","command":"/tool path/$(inert)","env":{"SECRET":"private-env"}}}]`, 0)
+	r := runAudit(t, codexAuditRequest{Role: "sync-auditor", ProjectRoot: repo.a, Root: repo.a1})
+	if r.res.ExitCode != 0 {
+		t.Fatalf("launch failed: %s", r.stderr)
+	}
+	argv := fake.execCalls(t)[0]
+	for _, want := range []string{"mcp_servers.archhub.url=" + strconv.Quote(codexAuditDisabledURL), "mcp_servers.plugin_stdio.command=" + strconv.Quote(codexAuditDisabledCmd), "mcp_servers.archhub.enabled=false", "mcp_servers.plugin_stdio.enabled=false"} {
+		if !containsString(argv, want) {
+			t.Errorf("missing transport-preserving disable %q", want)
+		}
+	}
+	for _, arg := range argv {
+		if strings.Contains(arg, "token=private") || strings.Contains(arg, "private-env") || strings.Contains(arg, "$(inert)") {
+			t.Fatal("real transport credentials or commands leaked to process argv")
+		}
+	}
+	record, err := os.ReadFile(filepath.Join(repo.a1, r.res.RecordPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(record, []byte("token=private")) || bytes.Contains(record, []byte("private-env")) || bytes.Contains(record, []byte("$(inert)")) {
+		t.Fatal("transport or credentials leaked to the launch record")
+	}
+}
+
+func TestCodexAuditInvalidTransportRefuses(t *testing.T) {
+	for _, transport := range []string{`null`, `{}`, `{"type":"unknown"}`, `{"type":"stdio","command":""}`, `{"type":"streamable_http","url":""}`} {
+		t.Run(transport, func(t *testing.T) {
+			repo := newAuditRepo(t)
+			fake := installFakeCodex(t)
+			fake.setMCP(`[{"name":"plugin","transport":`+transport+`}]`, 0)
+			r := runAudit(t, codexAuditRequest{Role: "sync-auditor", ProjectRoot: repo.a, Root: repo.a1})
+			if r.res.ExitCode == 0 || len(fake.execCalls(t)) != 0 || r.res.RecordPath != "" {
+				t.Fatalf("invalid transport launched an auditor: %+v", r.res)
+			}
+		})
+	}
+}
+
 func TestCodexAuditLaunchArgv(t *testing.T) {
 	repo := newAuditRepo(t)
 	fake := installFakeCodex(t)
-	fake.setMCP(`[{"name":"alpha","enabled":true},{"name":"beta","enabled":false},{"name":"moai","enabled":true}]`, 0)
+	fake.setMCP(`[{"name":"alpha","enabled":true,"transport":{"type":"stdio","command":"alpha"}},{"name":"beta","enabled":false,"transport":{"type":"stdio","command":"beta"}},{"name":"moai","enabled":true,"transport":{"type":"stdio","command":"moai"}}]`, 0)
 
 	roleSrc, err := os.ReadFile(filepath.Join(repo.a1, ".codex", "agents", "moai", "plan-auditor.toml"))
 	if err != nil {
@@ -378,6 +420,9 @@ func TestCodexAuditLaunchArgv(t *testing.T) {
 			return append(append([]string{}, a[:len(a)-1]...), "-c", "mcp_servers={}", "-")
 		},
 		"missing disable": func(a []string) []string { return removeTokenPair(a, "mcp_servers.beta.enabled=false") },
+		"missing transport": func(a []string) []string {
+			return removeTokenPair(a, "mcp_servers.beta.command="+strconv.Quote(codexAuditDisabledCmd))
+		},
 		"bypass flag": func(a []string) []string {
 			return append(append([]string{}, a[:len(a)-1]...), "--dangerously-bypass-approvals-and-sandbox", "-")
 		},
@@ -506,6 +551,11 @@ func codexAuditArgvViolations(argv []string, root, instrJSON, effort string, nam
 				} else {
 					wantNames[n]++
 				}
+			case strings.HasPrefix(key, "mcp_servers.") && strings.HasSuffix(key, ".command"):
+				n := strings.TrimSuffix(strings.TrimPrefix(key, "mcp_servers."), ".command")
+				if _, ok := wantNames[n]; !ok || val != strconv.Quote(codexAuditDisabledCmd) || keys[key] != 1 {
+					v = append(v, "unexpected transport override "+argv[i])
+				}
 			default:
 				v = append(v, "-c key outside allowlist: "+key)
 			}
@@ -548,6 +598,9 @@ func codexAuditArgvViolations(argv []string, root, instrJSON, effort string, nam
 	for n, c := range wantNames {
 		if c != 1 {
 			v = append(v, fmt.Sprintf("mcp_servers.%s.enabled=false appears %d times, want 1", n, c))
+		}
+		if keys["mcp_servers."+n+".command"] != 1 {
+			v = append(v, "missing transport override for "+n)
 		}
 	}
 	return v
@@ -1039,7 +1092,7 @@ func TestCodexAuditLaunchInstructionCeiling(t *testing.T) {
 func TestCodexAuditLaunchRecord(t *testing.T) {
 	repo := newAuditRepo(t)
 	fake := installFakeCodex(t)
-	fake.setMCP(`[{"name":"moai"}]`, 0)
+	fake.setMCP(`[{"name":"moai","transport":{"type":"stdio","command":"moai"}}]`, 0)
 	recordDir := filepath.Join(repo.a1, ".moai", "reports", "codex-audit")
 
 	// Rejected invocations first: none may create the record directory.

@@ -1,0 +1,11 @@
+{
+  "session_id": "fixture-holder-A",
+  "session_name": "lane-a",
+  "pid": 1,
+  "pid_source": "session-owner",
+  "branch": "develop",
+  "worktree": "/fixture/develop",
+  "acquired_at": "2026-10-03T00:00:00Z",
+  "card": "t0001",
+  "branch_source": "config"
+}

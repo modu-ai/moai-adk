@@ -11,7 +11,7 @@ paths: "**/internal/spec/**,**/.moai/specs/**"
 > Enforcement: `internal/spec/era.go` `ClassifyEra()` (canonical Go implementation),
 > `internal/spec/audit.go` `Audit()` (drift detection engine).
 > Cross-referenced by: `.claude/rules/moai/development/spec-frontmatter-schema.md`
-> § Optional Fields, `internal/spec/CLAUDE.md`, `internal/spec/audit_test.go`.
+> § Optional Fields, `internal/spec/audit_test.go`.
 
 ---
 

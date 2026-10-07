@@ -428,6 +428,11 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if stripErr := stripRetiredV2DenyEntries(cwd, out); stripErr != nil {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Deny-rule migration", "failed", stripErr.Error(), &th))
 		}
+		// Card t1569 M2: replace the pre-t1569 root-denial deny rules with
+		// their canonical forms (same no-op-when-no-match contract).
+		if normErr := normalizeLegacyRootDenySpecifiers(cwd, out); normErr != nil {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Deny-rule migration", "failed", normErr.Error(), &th))
+		}
 	}
 
 	// SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 REQ-VVCR-002: detect v2 fingerprint

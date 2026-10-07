@@ -78,9 +78,31 @@ func mergeReadyFixture(t *testing.T, syncStatus string, lane, sessionID string) 
 	}
 
 	lockRoot = t.TempDir()
-	t.Chdir(repo)
 	t.Setenv("CLAUDE_PROJECT_DIR", lockRoot)
 	t.Setenv(config.EnvMoaiFactoryWorker, lane)
+	// REQ-MWQ-021 (card t1479): merge-readiness runs the FOURTH condition —
+	// a valid re-measure record keyed to the candidate tree. Seed one for
+	// the WT-card tree; a test that needs the condition to FAIL uses a
+	// syncStatus that fails earlier (sync-audit) or clears the store.
+	tree := strings.TrimSpace(func() string {
+		cmd := exec.Command("git", "rev-parse", "WT-card^{tree}")
+		cmd.Dir = repo
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("read candidate tree: %v", err)
+		}
+		return string(out)
+	}())
+	if err := factory.WriteRemeasureRecord(lockRoot, strings.TrimSpace(tree), factory.RemeasureRecord{
+		Base:          "seeded-by-mergeReadyFixture",
+		Command:       "true",
+		ExitCode:      0,
+		BuildIdentity: "moai merge-ready fixture",
+		RecordedAt:    time.Now().UTC().Format(time.RFC3339),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(repo)
 	return repo, lockRoot, specID
 }
 

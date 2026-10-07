@@ -53,7 +53,7 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 > **[HARD] 창의 생존 판정은 세션 프로세스에 묶여 있다 — 카드 t298.** `acquire`가 남기는 pid는 그 명령을 실행한 짧은 CLI 프로세스가 아니라 **그것을 실행한 세션**의 것이다. 그래서 창은 `acquire`가 반환한 뒤에도 계속 held로 읽히고, 풀리는 길은 셋뿐이다 — 홀더 세션이 죽거나, 홀더가 스스로 `release` 하거나, 다른 레인이 기록을 남기는 `--force`로 가져가거나.
 > 소유자를 판별하지 못한 채 잡힌 창은 pid 0으로 기록되고 **살아 있는 것으로** 읽힌다. 확실하지 않을 때 창을 비우는 쪽이 두 레인이 함께 머지하는 사고로 이어지므로, 판정은 늘 "살아 있다" 쪽으로 기운다.
 > **수정 이전에 잡힌 창은 여전히 인수 가능하게 읽힌다** — 옛 기록에는 세션 앵커가 없다. 업그레이드 시점에 창을 쥐고 있던 레인은 `moai integration acquire --name <lane> --card <card-id>`를 한 번 더 실행해 재획득한다.
-> 이 기록이 레인을 기계적으로 갈라놓지는 않는다. `acquire` 자체가 읽고-고치고-쓰는 과정을 갈라 세우지 않으므로, 같은 순간에 두 레인이 잡으러 들어오면 둘 다 잡았다고 믿을 수 있다. 이것은 조율 신호이지 권한 경계가 아니며, **리더 공지가 여전히 첫 번째 층**이고 이 기록은 그 아래 기계 층이다.
+> 이 기록이 레인을 기계적으로 갈라놓지는 않는다. `acquire` 자체가 읽고-고치고-쓰는 과정을 갈라 세우지 않으므로, 같은 순간에 두 레인이 잡으러 들어오면 둘 다 잡았다고 믿을 수 있다. 이것은 조율 신호이지 권한 경계가 아니며, 이 기록이 기계 층이다. open 정책에서 대기열 맨 앞으로 승격되어 창을 쥔 레인은 리더 지명 없이 병합한다.
 
 ```bash
 moai integration acquire --name <lane> --card <card-id>   # 통합 워크트리에 들어가기 전
@@ -96,7 +96,7 @@ git branch --show-current
 
 - 로컬 병합을 마치고 병합 SHA를 리더에게 보고하면 `ExitWorktree`로 primary 체크아웃에 돌아와, **리더가 다음 카드를 dispatch 할 때까지 기다린다.** 레인이 큐에서 카드를 집지 않는다. 그 대기는 열린 대기가 아니라 **명시적 대기(explicit wait)** 다 — 디스크에 대기 기록(reason + 대상 + 재확인 지점)을 남기는 대기이고, 각성(awaken) 턴에서는 카드 작업 재개 전에 레인 스톨 워치독을 먼저 실행한다 — Skill("moai-lane-watchdog")을 호출해 따른다. 워치독은 진행 3채널(HEAD SHA · 증거 mtime · 통합 창 상태)을 재측정해 원인을 분류하고, 판단이 필요하면 결정 사다리(디스크 증거 → 결정 보드 → 감사 교차 → jev_ask → 리드 채팅 최후)로 답장 없이 푼다 — 답장 부재를 진행 부재로 읽지 않는다. 이 대기·사다리 독트린의 정본은 `.claude/rules/moai/workflow/auto-semantics.md`이고, 워치독의 queue-readonly 경계는 큐 수준 픽업 필터를 소유하는 SPEC-RELATION-PICKUP-FILTER-001과의 조합으로 성립한다(레인은 여전히 카드를 고르지 않는다 — 위 금지와 같은 경계다).
 - **self-dispatch lane 예외 — 카드 임대.** self-dispatch 팩토리 run의 레인은 `moai factory next`로 대기 중인 다음 카드를 임대할 수 있다(레인이 수행하는 유일한 promotion). 이 예외를 제외한 큐 변경(`add`, `drop`, `done`, `edit` 등)과 `moai contract sign`은 레인에게 금지된다.
-- **self-dispatch lane 예외 — 병합 창.** Claude self-dispatch 레인은 리더에게 창을 요청하지 않고 `moai factory complete`의 통합 절차로 스스로 통합 창을 잡고 자기 카드를 `develop`에 병합한다(위 첫 번째 항목의 「리더에게 병합을 요청한다」를 이 레인에서 대체한다). Codex 레인은 예외가 아니다 — merge-ready에서 정지한다(REQ-SD-025). 두 예외 모두 위 금지(그 외 큐 변경 + `moai contract sign`)를 바꾸지 않는다.
+- **self-dispatch lane 예외 — 병합 창.** Claude self-dispatch 레인은 리더에게 창을 요청하지 않고 `moai integration merge --card`를 부르는 `moai factory complete`의 통합 절차로 스스로 통합 창을 잡고 자기 카드를 `develop`에 병합한다(위 첫 번째 항목의 「리더에게 병합을 요청한다」를 이 레인에서 대체한다). 레인은 develop에 손으로 git merge 하지 않고 moai integration merge --card 또는 그것을 부르는 moai factory complete 로만 병합한다. Codex 레인은 예외가 아니다 — merge-ready에서 정지한다(REQ-SD-025). 두 예외 모두 위 금지(그 외 큐 변경 + `moai contract sign`)를 바꾸지 않는다.
 - [HARD] **카드 워크트리는 작업이 `origin/develop`에 올라간 뒤에야 폐기한다.** 그전까지 그 트리가 작업의 유일한 사본이다. 원격 착지는 리더의 일괄 push가 만든다(§4, §7). L1 트리(`.claude/worktrees/…`)는 `moai worktree done`의 대상이 아니다 — 세션 종료 keep/remove 프롬프트나 `git worktree unlock` + `git worktree remove`로 닫는다.
 
 ## 7. 리더 — 읽어서 판정한다

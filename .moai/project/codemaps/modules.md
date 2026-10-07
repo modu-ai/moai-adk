@@ -1,6 +1,40 @@
 # 패키지 모듈 상세
 
-## 현재 main의 변경 경계
+## 현재 main48의 변경 경계
+
+기준은 `48fa94b99023bb252a9731fbbd5ebc6dcc7472ab`다. 소스가 같은 `a064df553563463918885181de0c25aa233048d8` 트리에서 이전067 기준 뒤 설명 대상 소스 15개를 대조했다. 모두 기존 파일 수정이며 새 패키지나 비테스트 파일은 없다. 다음은 소스에서 확인한 책임이며 실행 성공 판정은 아니다.
+
+| 경로·소유 모듈 | 이번 창에서 확인한 책임 |
+|---|---|
+| `internal/cli/factory_card.go` | 기존 assigned 카드도 현재 큐 상태가 hold/queued면 재임대에서 제외한다. queued 승격에서 이미 assigned인 행에는 빈 `CardFields`를 전달해 기존 배정 입력을 보존한다. 지명된 assigned+queued 카드도 pick 전에는 거절한다. |
+| `internal/cli/worktree/done.go` · `internal/cli/worktree/sweep.go` · `internal/cli/todo_issuance.go` | done·sweep의 기본 착지 기준과 발행 파일 probe가 Factory의 공통 landed-ref 해석을 사용한다. sweep의 명시적 `--base`는 우선한다. |
+| `internal/factory`의 prlink_landedref.go | 설정의 `worktree_base_branch` → `origin/HEAD` → `origin/main` 순서로 해석한다. 새 `LandedRefLevelSource`가 선택한 단계의 출처 어휘를 반환한다. |
+| `internal/cli/doctor_git_strategy_workflow.go` · `internal/cli/todo_autodone.go`와 CLI의 todo_triage.go | doctor의 기준 브랜치 안내와 autodone 도움말·주석을 해석된 착지 기준에 맞춘다. triage 변경은 역사 주석에 한정된다. |
+| `internal/cli/update.go` · `internal/cli/update_clean_install.go` · `internal/cli/update_deny_migration.go` | 보존한 설정의 root deny 항목 중 정확히 일치하는 아홉 문자열만 정규화한다. 알 수 없는 키와 목록 순서를 보존하고 일치할 때만 쓴다. 일반 update는 바이너리·dry-run 조기 종료 뒤, 같은 버전 조기 종료 전에 호출한다. clean install은 설정 보존 뒤 호출한다. |
+| `internal/graph/card_file.go` | 모든 도달 가능한 부모의 카드 귀속을 유지하며 착지 커밋들의 첫 부모 차이를 native Git batch로 읽는다. NUL 파일명과 끝 sentinel을 검사하고 batch가 불완전하거나 실패하면 커밋별 수집으로 돌아간다. |
+| `internal/hook/commit_identity_guard.go` | 내장 거부 신원에 chain-test@example.com과 probe-test@example.com을 포함한다. |
+| `internal/hook/protected_zone_path.go` · `internal/hook/protected_zone_shell.go` | POSIX의 literal backslash를 보존하는 native 경로와 lexical 비교형을 나눈다. shell word는 double quote·ANSI-C quote에 맞춰 escape를 해석한 뒤 경로 판정에 전달한다. |
+
+## 이전067 기준의 변경 경계
+
+기준은 `067fdced2dd8f38812d4c36ec17ceb8d2ca3e263`다. 이전 기준 이후 설명 대상 소스 51개를 대조했다. 다음은 소스에서 확인한 책임과 연결이며 실제 원격 실행의 성공 판정은 아니다. 아래 이전 기록의 파일 수는 각 당시 기준이다.
+
+| 경로 | 현재 책임 |
+|---|---|
+| `internal/factory/integration_window_queue.go` · `internal/factory/integration_window_ops.go` | 병합 창 상태의 읽기·수정·쓰기를 직렬화하고, FIFO 순서와 open/hold 정책으로 대기자를 승격한다. |
+| `internal/factory/integration_remeasure.go` | `RunRemeasure`가 실행 기록을 남기고 `ValidateRemeasureRecord`가 병합 트리에 묶인 기록을 대조한다. `ClassifyStructuredOutput`이 인식한 출력은 구조화 판정으로 읽는다. 인식하지 못하는 비테스트 명령은 성공 종료 사실만 기록하므로 테스트 성공과 구분한다. |
+| `internal/factory/integration_merge_step.go` | `RunMergeStep`이 고정한 SHA를 병합하기 전에 소유권·임대·작업 트리 상태·충돌을 재확인한다. CLI의 integration merge와 factory complete가 공유한다. `candidate_ci`의 공통 착지 배선은 아직 거절 경로다. |
+| `internal/cli/todo_auto_lane.go` | 카드 순위 결정, 지명 카드의 할당량 검사와 임대, 카드 워크트리 진입, 증거 인계를 담당한다. 이 경로는 직접 done/unpick을 기록하지 않는다. |
+| `internal/cli/codex_launcher.go` | 부모 체크아웃에서 대화형 Codex 하나를 실행하고 `moai todo --auto` 지시를 전달한다. |
+| `internal/cli/codex_audit_launch.go` | MCP의 command/url 전송 종류를 먼저 검사하고 같은 종류의 비활성 인자와 `enabled=false`를 만든다. 잘못된·중복된 전송 선언은 실행 전에 거절한다. |
+| `internal/cli/worktree/landing_predicate.go` | patch identity 대조 뒤 native Git object와 mode를 비교한다. 워크트리 정리와 CLI의 `session_worktree.go`가 같은 판정을 공유한다. |
+| `internal/graph/card_file.go` | 도달 가능한 모든 부모에서 카드 귀속 커밋을 모으고, 각 착지 커밋의 첫 부모와 파일 차이를 계산한다. graph 생성과 병합 출처 fingerprint가 공유한다. |
+| `internal/cli/severity_line.go` · `internal/cli/update_action_block.go` | 상태 아이콘을 공통 `tui.StatusIcon`에서 얻고 update의 마지막 action/reference 블록을 렌더링한다. |
+| `internal/hook/session_start_memory_budget.go` | goroutine을 시작하기 전에 읽기 의존성을 캡처한다. |
+
+> 폐기된 경로: `internal/cli/factory_lane_relaunch.go`. 아래 과거 레인 재실행 설명은 당시 구현의 기록이다.
+
+## 이전 081899 기준의 변경 경계
 
 `081899adb825935d5263b1699fe730373deaa4fd`의 소스·공개 함수·import를 대조했다. 아래 이전 갱신 기록과 세부 수량은 각각 명시된 당시 기준이며, 이번 창의 신규 책임은 다음과 같다.
 

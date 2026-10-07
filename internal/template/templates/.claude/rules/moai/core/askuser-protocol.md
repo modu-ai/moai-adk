@@ -5,7 +5,7 @@ description: Canonical reference for AskUserQuestion-only interaction protocol, 
 # AskUserQuestion Protocol — Canonical Reference
 
 > This file is the **single source of truth** for AskUserQuestion interaction rules.
-> Cross-referenced by: CLAUDE.md §8, moai-constitution.md §MoAI Orchestrator, agent-common-protocol.md §User Interaction Boundary, output-styles/moai/moai.md §3/§10.
+> Cross-referenced by: askuser-protocol.md, moai-constitution.md §MoAI Orchestrator, agent-common-protocol.md §User Interaction Boundary, output-styles/moai/moai.md §3/§10.
 >
 > **Loading scope**: Intentionally always-loaded (no `paths:` restriction). The orchestrator may compose an `AskUserQuestion` on any non-trivial turn, so the channel-monopoly rule and the ToolSearch deferred-tool preload procedure must be available every session.
 >
@@ -17,7 +17,7 @@ description: Canonical reference for AskUserQuestion-only interaction protocol, 
 
 **AskUserQuestion is the only user-facing question channel.** The MoAI orchestrator MUST route every user-facing question through an `AskUserQuestion` tool invocation. Free-form interrogative prose in the response body is **prohibited** as a question channel.
 
-Applies to every orchestrator turn involving clarification (Stage 1 Clarify), a preference or decision ("Which approach?", "Continue or abort?"), a Socratic interview round during Context-First Discovery (CLAUDE.md §7 Rule 5), branch and workflow selection, or conflict resolution.
+Applies to every orchestrator turn involving clarification (Stage 1 Clarify), a preference or decision ("Which approach?", "Continue or abort?"), a Socratic interview round during Context-First Discovery (AGENTS.md §13 (Context-First Discovery)), branch and workflow selection, or conflict resolution.
 
 **Exceptions** (free-form prose questions permitted ONLY when):
 - `AskUserQuestion` is technically unavailable — should not occur in normal orchestrator operation
@@ -188,7 +188,7 @@ Owned by `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Fo
 
 ## Ambiguity Triggers and Exceptions
 
-This section is the **single source of truth** for Stage 1 Clarify trigger conditions. Both `CLAUDE.md §7 Rule 5` and `CLAUDE.md §8 Ambiguity Triggers` cross-reference this definition.
+This section is the **single source of truth** for Stage 1 Clarify trigger conditions. Both `AGENTS.md §13 (Context-First Discovery)` and `askuser-protocol.md Ambiguity Triggers` cross-reference this definition.
 
 <!-- moai:contract-mode-start id="contract-ambiguity" -->
 Where `workflow.autonomy.mode: contract` — after the contract is signed, a trigger the contract already answers is recorded, not asked; an ambiguity that contradicts the contract escalates instead. See `.claude/rules/moai/workflow/contract-autonomy.md` § Gate disposition.

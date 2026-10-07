@@ -563,6 +563,11 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	if stripErr := stripRetiredV2DenyEntries(projectRoot, out); stripErr != nil {
 		_, _ = fmt.Fprintf(out, "[clean-reinstall] deny-rule migration warning: %v\n", stripErr)
 	}
+	// Card t1569 M2: replace the pre-t1569 root-denial deny rules with their
+	// canonical forms (merge-preservation above keeps them alive otherwise).
+	if normErr := normalizeLegacyRootDenySpecifiers(projectRoot, out); normErr != nil {
+		_, _ = fmt.Fprintf(out, "[clean-reinstall] deny-rule migration warning: %v\n", normErr)
+	}
 
 	// ---------------------------------------------------------------
 	// Step 6 — MERGE-back PRESERVE inventory

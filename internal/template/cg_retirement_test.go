@@ -32,12 +32,19 @@ func TestCGEmbeddedRetirementPreservesRoutingAndAudit(t *testing.T) {
 			t.Errorf("rendered retired instruction: %s", retired)
 		}
 	}
-	claude := render("CLAUDE.md")
-	if !strings.Contains(claude, "Agent Teams usage ALLOWED (experimental)") || !strings.Contains(claude, "moai migrate cg") {
-		t.Error("native team allowance or explicit migration missing")
+	// AGENTS.md-primary product: the standing contract (and its CG-migration
+	// row) ships as AGENTS.md.tmpl; the native Agent Teams allowance lives in
+	// the orchestration-modes doctrine the contract cross-references.
+	agents := render("AGENTS.md.tmpl")
+	if !strings.Contains(agents, "moai migrate cg") {
+		t.Error("explicit migration missing")
 	}
-	if strings.Contains(claude, "60-70% cost reduction") {
+	if strings.Contains(agents, "60-70% cost reduction") {
 		t.Error("CG cost guarantee survived")
+	}
+	team := render(".claude/rules/moai/workflow/orchestration-mode-selection.md")
+	if !strings.Contains(team, "Agent Teams") || !strings.Contains(team, "re-allowed") {
+		t.Error("native team allowance missing")
 	}
 	var cfg struct {
 		Harness struct {

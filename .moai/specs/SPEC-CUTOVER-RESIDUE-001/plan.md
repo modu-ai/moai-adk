@@ -29,7 +29,7 @@ Files: `internal/cli/worktree/sweep.go` (modify), `internal/cli/worktree/sweep_b
    - `var sweepRemoteHead = func(repoRoot, remote string) (string, error)` — `git ls-remote --symref <remote> HEAD`, parse `ref: refs/heads/<name>` first line, trim after TAB/space.
    - `func sweepEffectiveBase(repoRoot, base string) (string, bool)` — split at first `/` (sweepFetchBase convention); absent ref + resolvable HEAD → `remote + "/" + head`, true; every other path → `base, false`. Guard: if resolved head equals the absent ref name, return base unchanged (honest failure).
    - Wire in `runSweep` only on the derived path (before `classifySweepVerdicts`); on fallback print one stderr line: `base <derived> absent on <remote>; falling back to the remote default branch <effective>`. Explicit `--base` skips both the derivation and the fallback.
-4. Verify: `go test ./internal/cli/worktree/... -run 'Sweep' -count=1` green; GREEN (live): re-run the sweep command from step 1 → fetch-failed count collapses to 0 (fallback notice present), landings evaluated against `origin/main`.
+4. Verify: `go test ./internal/cli/worktree/... -run '^TestSweep.*$' -count=1` green; GREEN (live): re-run the sweep command from step 1 → fetch-failed count collapses to 0 (fallback notice present), landings evaluated against `origin/main`.
 
 ### M2 — Config + doctrine + template residue
 

@@ -96,7 +96,12 @@ func editLine(t *testing.T, dir string, n int, suffix string) {
 		t.Fatal(err)
 	}
 	lines := strings.Split(string(raw), "\n")
-	lines[n-1] = lines[n-1] + " " + suffix
+	// Keep CRLF checkout endings intact while changing only the line's content.
+	ending := ""
+	if strings.HasSuffix(lines[n-1], "\r") {
+		ending = "\r"
+	}
+	lines[n-1] = strings.TrimSuffix(lines[n-1], ending) + " " + suffix + ending
 	if err := os.WriteFile(p, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -299,6 +304,35 @@ func (f *gfdFixture) driftSquash(t *testing.T, push bool) (squashSHA string) {
 		f.pushMain(t)
 	}
 	return squashSHA
+}
+
+// The fixture must edit file content without changing the checkout's line endings.
+func TestLandingFixtureCRLFEditsSquash(t *testing.T) {
+	f := newGFDFixture(t)
+	runGit(t, f.repo, "config", "core.autocrlf", "true")
+	for _, dir := range []string{f.repo, f.tree} {
+		if err := os.Remove(filepath.Join(dir, "f.txt")); err != nil {
+			t.Fatal(err)
+		}
+		runGit(t, dir, "checkout-index", "-f", "--all")
+		raw, err := os.ReadFile(filepath.Join(dir, "f.txt"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Count(string(raw), "\r\n") != gfdSeedLines {
+			t.Fatal("fixture did not produce CRLF checkout")
+		}
+	}
+	f.cardCommit(t, 5, "card")
+	raw, err := os.ReadFile(filepath.Join(f.tree, "f.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "line 5 card\r\n") || strings.Count(string(raw), "\r\n") != gfdSeedLines {
+		t.Fatalf("edit must preserve CRLF and append inside the line: %q", raw)
+	}
+	f.mainCommit(t, 15, "main")
+	f.squash(t)
 }
 
 // TestLandingPredicateSquashSafe is AC-GFD-002: nine fixtures, each answered by

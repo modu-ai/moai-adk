@@ -1,0 +1,14 @@
+#!/bin/sh
+# t1534 round-8 flow-contexts stub — pr view succeeds (main base), pr
+# checks publishes a FAILED Lint. Against a flow-form SSoT the pre-repair
+# awk fallback (no yq) scored all-passed.
+if [ "$1" = "pr" ] && [ "$2" = "view" ]; then
+  printf '%s\n' 'main'
+  exit 0
+fi
+if [ "$1" = "pr" ] && [ "$2" = "checks" ]; then
+  printf '%s\n' '[{"name":"Lint","state":"FAILURE","bucket":"fail","link":"http://example.invalid/lint"}]'
+  exit 0
+fi
+echo "stub: unexpected invocation: $*" >&2
+exit 1

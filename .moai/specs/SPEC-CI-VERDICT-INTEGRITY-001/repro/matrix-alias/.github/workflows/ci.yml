@@ -1,0 +1,13 @@
+name: ci
+on: [push]
+x-oses: &oses
+  - ubuntu-latest
+jobs:
+  Test:
+    name: "Test (${{ matrix.os }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: *oses
+    steps:
+      - run: "true"

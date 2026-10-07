@@ -1,0 +1,7 @@
+version: 1
+branches:
+  main:
+    contexts:
+      - "Test (ubuntu-latest/amd64)"
+      - "Test (windows-latest/)"
+auxiliary: []

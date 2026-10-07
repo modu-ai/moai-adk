@@ -9,7 +9,7 @@ Purpose: Error handling, recovery strategies, and hybrid delegation patterns for
 > **natural-language delegation** ("Use the {agent} subagent to {task}"),
 > never a `subagent_type` code literal — see
 > [delegation-patterns.md](delegation-patterns.md) § Note + the flat
-> 11-agent catalog in [agents-reference.md](agents-reference.md). Per-spawn
+> 13-agent catalog in [agents-reference.md](agents-reference.md). Per-spawn
 > `general-purpose` (with domain instructions in the prompt) is the
 > canonical mechanism for cross-cutting domain work; legacy tiered names
 > (`code-backend`, `security-expert`, `core-quality`, etc.) are archived

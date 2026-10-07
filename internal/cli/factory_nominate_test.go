@@ -235,6 +235,16 @@ func nmCases() []nmCase {
 		}},
 		{"dropped", "dropped", single(factory.BacklogStateDropped, nil)},
 		{"held", "held", single(factory.BacklogStateHold, nil)},
+		// Card t1516: an assigned record row whose queue item the operator moved
+		// out of picked — parked at hold, or back at queued — is excluded from
+		// leasing. The hold state is refused by the state switch; the queued
+		// state is the stale-row shape, refused as `recorded`.
+		{"held-assigned", "held", single(factory.BacklogStateHold, func(t *testing.T, root string, store *factory.BacklogStore) {
+			fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+		})},
+		{"queued-assigned", "recorded", single(factory.BacklogStateQueued, func(t *testing.T, root string, store *factory.BacklogStore) {
+			fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+		})},
 		{"hold-marker", "hold-marker", single(factory.BacklogStateQueued, func(t *testing.T, _ string, store *factory.BacklogStore) {
 			nmSetText(t, store, "t1", nmHoldMarker+" waiting for the operator's decision")
 		})},
@@ -610,7 +620,7 @@ func TestFactoryNextNominateSameCardExactlyOne(t *testing.T) {
 // its own token and changes no state; a card that merely mentions the marker
 // mid-text is not a marker card and leases.
 func TestFactoryNextNominateRefusesKeepSet(t *testing.T) {
-	for _, c := range nmCaseByName(t, "held", "hold-marker", "marker-leading-space", "marker-mid-text", "blocked", "blocked-picked", "serial-slot", "dropped", "owned") {
+	for _, c := range nmCaseByName(t, "held", "held-assigned", "queued-assigned", "hold-marker", "marker-leading-space", "marker-mid-text", "blocked", "blocked-picked", "serial-slot", "dropped", "owned") {
 		t.Run(c.name, func(t *testing.T) { nmRunCase(t, c) })
 	}
 	t.Run("ordinary card leases", func(t *testing.T) {
@@ -655,6 +665,75 @@ func TestFactoryNextArmCSkipsHoldMarker(t *testing.T) {
 			t.Errorf("%s gained a record row although its text opens with the marker", id)
 		}
 	}
+}
+
+// ---------------------------------------------------------------------------
+// card t1516 — an assigned row whose queue item is hold or queued is excluded
+// from the bare lease path's arm (a)
+// ---------------------------------------------------------------------------
+
+// TestFactoryNextArmASkipsHoldQueueItem — bare `factory next` must not lease an
+// assigned row whose queue item the operator parked at hold (card t1516): the
+// row stays assigned with its version unchanged, the queue stays hold, and the
+// verb ends on the no-card answer.
+func TestFactoryNextArmASkipsHoldQueueItem(t *testing.T) {
+	root, store := nmBase(t, factory.BacklogStateHold)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+	before := fcCard(t, root, "t1")
+	nmLaneEnv(t, "lane-1", "")
+
+	out, _, err := qasRunNext(t, "--run", fcRun)
+	sdExit3(t, "an assigned row under a held queue item", err)
+	if !strings.Contains(out, "no card is available") {
+		t.Errorf("stdout = %q, want `no card is available`", out)
+	}
+	if got := fcCard(t, root, "t1"); got.State != homestate.CardAssigned || got.OwnerLabel != "lane-1" || got.Version != before.Version {
+		t.Errorf("t1 = %s owner=%q version=%d, want assigned/lane-1 version=%d unchanged", got.State, got.OwnerLabel, got.Version, before.Version)
+	}
+	if got := nmQueueState(t, store, "t1"); got != factory.BacklogStateHold {
+		t.Errorf("t1 queue state = %s, want still hold", got)
+	}
+}
+
+// TestFactoryNextArmAQueuedQueueItemPromotesFirst — an assigned row whose queue
+// item is back at queued (card t1516) is not leased at the row's edge while the
+// item is queued: bare `next` reaches the card only through arm (c)'s
+// promotion, which flips the item to picked first, so the end state is an
+// ordinary lease of a picked card.
+func TestFactoryNextArmAQueuedQueueItemPromotesFirst(t *testing.T) {
+	root, store := nmBase(t, factory.BacklogStateQueued)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+	nmLaneEnv(t, "lane-1", "")
+
+	out, stderr, err := qasRunNext(t, "--run", fcRun)
+	if err != nil {
+		t.Fatalf("bare next with a queued assigned row: %v (stderr %q)", err, stderr)
+	}
+	if head := nmLeasedHead(out); !strings.HasPrefix(head, "t1 stage=") {
+		t.Fatalf("bare next leased %q, want t1", head)
+	}
+	nmAssertLeased(t, root, "t1", "lane-1")
+	if got := nmQueueState(t, store, "t1"); got != factory.BacklogStatePicked {
+		t.Errorf("t1 queue state = %s, want picked (promoted before the lease, never leased while queued)", got)
+	}
+}
+
+// TestFactoryNextArmALeasesOwnAssignedPickedCard — the control of the two
+// exclusions above: the self-resume edge is intact for a card whose queue item
+// is still picked (a lane re-leasing its own assigned card mid-flight).
+func TestFactoryNextArmALeasesOwnAssignedPickedCard(t *testing.T) {
+	root, _ := nmBase(t, factory.BacklogStatePicked)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+	nmLaneEnv(t, "lane-1", "")
+
+	out, stderr, err := qasRunNext(t, "--run", fcRun)
+	if err != nil {
+		t.Fatalf("bare next with a picked assigned row: %v (stderr %q)", err, stderr)
+	}
+	if head := nmLeasedHead(out); !strings.HasPrefix(head, "t1 stage=") {
+		t.Fatalf("bare next leased %q, want t1", head)
+	}
+	nmAssertLeased(t, root, "t1", "lane-1")
 }
 
 // ---------------------------------------------------------------------------
@@ -1215,22 +1294,49 @@ var nmLaneVariants = []struct {
 	}},
 }
 
-// TestTodoLaneRefusesAutoCycle — a lane session, however it is identified, is
-// refused `moai todo --auto` and the queue file is byte-identical; the
-// read-only forms still run.
-func TestTodoLaneRefusesAutoCycle(t *testing.T) {
+// TestTodoLaneRunsAutoCycleThroughLeaseEdges — card t1554 replaced the
+// dedicated `--auto` lane refusal (SPEC-TODO-AUTO-PICK-001 REQ-TAU-008): a
+// fully-stamped lane session now RUNS the cycle — the lease-based lane form,
+// whose only queue write is the nominated lease edge. The leased card is
+// picked, never archived; the read-only forms still run. A partial stamp
+// cannot run the cycle: the cycle is never wider than the lane verbs it
+// replaces, so a label-only session (no role marker) is refused "not a lane
+// session" exactly as `factory next` refuses it, and a role marker without a
+// lane label is refused with the label requirement (the label is the lease
+// identity) — configuration errors, never the operator cycle.
+func TestTodoLaneRunsAutoCycleThroughLeaseEdges(t *testing.T) {
 	for _, v := range nmLaneVariants {
 		t.Run(v.name, func(t *testing.T) {
 			store := nmAutoFixture(t)
+			sdRegisterLane(t, factoryCardRoot(), "lane-1")
+			nmIsolatedWorktrees(t, "t1", "t2")
+			origRun := autoLaneRunResolveFn
+			t.Cleanup(func() { autoLaneRunResolveFn = origRun })
+			autoLaneRunResolveFn = func(context.Context, string) (string, error) { return fcRun, nil }
 			v.set(t)
-			before := sdQueueBytes(t, store)
 			out, _, err := runTodo(t, "--auto", "--auto-wait", "1ms")
-			if err == nil {
-				t.Fatalf("a lane session ran `moai todo --auto`: output %q", out)
+			switch v.name {
+			case "label-only":
+				if err == nil || !strings.Contains(err.Error(), "not a lane session") {
+					t.Fatalf("label-only lane `--auto` = %v, want the lane-boundary refusal", err)
+				}
+				return
+			case "role-only":
+				if err == nil || !strings.Contains(err.Error(), "MOAI_FACTORY_WORKER is empty") {
+					t.Fatalf("role-only lane `--auto` = %v, want the lane-label requirement", err)
+				}
+				return
 			}
-			if after := sdQueueBytes(t, store); after != before {
-				t.Errorf("the refused lane `--auto` changed the queue file")
+			if err != nil {
+				t.Fatalf("a lane session's `moai todo --auto`: %v", err)
 			}
+			if !strings.Contains(out, "t1 stage=") {
+				t.Errorf("lane `--auto` output shows no lease: %q", out)
+			}
+			if s := nmQueueState(t, store, "t1"); s != factory.BacklogStatePicked {
+				t.Errorf("t1 queue state = %s, want picked (the lease is the only queue write)", s)
+			}
+			nmAssertLeased(t, factoryCardRoot(), "t1", "lane-1")
 		})
 	}
 	t.Run("read-only forms still run", func(t *testing.T) {
@@ -1245,27 +1351,29 @@ func TestTodoLaneRefusesAutoCycle(t *testing.T) {
 	})
 }
 
-// TestTodoLaneAutoRefusalText — the refusal is the dedicated text: it names
-// the lease path and says the --auto authorization is exercised through it,
-// so a lane that reads it proceeds instead of asking.
-func TestTodoLaneAutoRefusalText(t *testing.T) {
-	for _, v := range nmLaneVariants {
-		t.Run(v.name, func(t *testing.T) {
-			nmAutoFixture(t)
-			v.set(t)
-			_, _, err := runTodo(t, "--auto", "--auto-wait", "1ms")
-			if err == nil {
-				t.Fatal("a lane session ran `moai todo --auto`")
-			}
-			for _, want := range []string{"the --auto authorization is exercised through", "moai factory next --card <id>"} {
-				if !strings.Contains(err.Error(), want) {
-					t.Errorf("refusal = %q, want it to contain %q", err.Error(), want)
-				}
-			}
-			if strings.Contains(err.Error(), "cannot mutate the queue") {
-				t.Errorf("refusal reuses the queue-mutation text: %q", err.Error())
-			}
-		})
+// TestTodoLaneAutoWritesLeaseOnly — the queue-integrity half of the replaced
+// refusal, through the real flag surface: the lane cycle records no done and
+// never unpicks, so the queue close belongs to the existing completion path
+// and a missed deadline leaves the lease to the F1 expiry machinery.
+func TestTodoLaneAutoWritesLeaseOnly(t *testing.T) {
+	store := nmAutoFixture(t)
+	sdRegisterLane(t, factoryCardRoot(), "lane-1")
+	nmIsolatedWorktrees(t, "t1", "t2")
+	origRun := autoLaneRunResolveFn
+	t.Cleanup(func() { autoLaneRunResolveFn = origRun })
+	autoLaneRunResolveFn = func(context.Context, string) (string, error) { return fcRun, nil }
+	t.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
+
+	out, _, err := runTodo(t, "--auto", "--auto-wait", "1ms")
+	if err != nil {
+		t.Fatalf("a lane session's `moai todo --auto`: %v", err)
+	}
+	if strings.Contains(out, "\ndone t") {
+		t.Errorf("the lane cycle recorded a done:\n%s", out)
+	}
+	if s := nmQueueState(t, store, "t1"); s != factory.BacklogStatePicked {
+		t.Errorf("t1 queue state = %s, want picked (no unpick past a missed deadline)", s)
 	}
 }
 
