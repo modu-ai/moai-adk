@@ -826,6 +826,15 @@ func testZoneShellMutation(t *testing.T) {
 	// 4. git -C moves the directory its file arguments resolve against — the
 	// hook process here sits in docs/, the -C target is the project root
 	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n  probe_logs:\n    paths: [\".moai/logs/\"]\n"), "")
+	parent, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	rootWithSpace := filepath.Join(parent, "shell's root")
+	if err := os.Rename(root, rootWithSpace); err != nil {
+		t.Fatal(err)
+	}
+	root = rootWithSpace
 	h = zoneTestHandler(t, root)
 	if err := os.MkdirAll(filepath.Join(root, "docs"), 0o755); err != nil {
 		t.Fatal(err)
@@ -835,7 +844,7 @@ func testZoneShellMutation(t *testing.T) {
 	zoneGetwd = func() (string, error) { return docs, nil }
 	t.Cleanup(func() { zoneGetwd = prevZoneGetwd })
 	swept++
-	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "git -C " + root + " restore -- .moai/logs/secret"})
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "git -C '" + strings.ReplaceAll(root, "'", "'\\''") + "' restore -- .moai/logs/secret"})
 	wantZoneDeny(t, "git -C", d, r, harnessLearnerIdentity, "category", "probe_logs")
 	// 5-7: async boundaries restore the pre-group directory, a piped cd never
 	// moves the main shell, and cd's arguments exclude its redirection
@@ -1234,8 +1243,24 @@ func testZoneShellQuoting(t *testing.T) {
 	// The literal-name directory is symlinked onto the zone: a command that
 	// writes through `lnk\dir/` (backslash preserved) really lands inside
 	// zone_dir/, so the guard must deny it.
-	if err := os.Symlink(filepath.Join(root, "zone_dir"), filepath.Join(root, `lnk\dir`)); err != nil {
+	target := filepath.Join(root, "zone_dir")
+	link := filepath.Join(root, `lnk\dir`)
+	// Windows treats the backslash as a separator; the link's parent must
+	// exist there. The target must exist too, so this is a directory link.
+	for _, dir := range []string{target, filepath.Dir(link)} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(target, link); err != nil {
 		t.Fatalf("symlink: %v", err)
+	}
+	landed, err := filepath.EvalSymlinks(link)
+	if err != nil {
+		t.Fatalf("resolve link into the protected directory: %v", err)
+	}
+	if landed != target {
+		t.Fatalf("link lands at %q, want protected directory", landed)
 	}
 
 	denying := []struct {

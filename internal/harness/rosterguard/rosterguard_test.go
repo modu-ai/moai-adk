@@ -365,6 +365,12 @@ func TestSweepFiresOnAnUndeclaredListing(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, "docs-site", "page.md"), []byte(strings.Join(universe, "\n")), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.MkdirAll(filepath.Join(tmp, "reports", "dated-audit"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "reports", "dated-audit", "roster.md"), []byte(strings.Join(universe, "\n")), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	// Runtime state is machine-local and untracked; a full roster there must
 	// not be reported either.
 	if err := os.MkdirAll(filepath.Join(tmp, ".moai", "state", "verify"), 0o750); err != nil {

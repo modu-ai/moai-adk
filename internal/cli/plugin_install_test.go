@@ -622,7 +622,7 @@ func TestInitPluginStep_AfterDeployment(t *testing.T) {
 
 	var earlyCalls int
 	deployed := func() bool {
-		for _, rel := range []string{"CLAUDE.md", ".claude/settings.json", ".moai/config/sections/quality.yaml", ".moai/manifest.json"} {
+		for _, rel := range []string{"AGENTS.md", ".claude/settings.json", ".moai/config/sections/quality.yaml", ".moai/manifest.json"} {
 			if _, err := os.Stat(filepath.Join(projectDir, rel)); err != nil {
 				return false
 			}
