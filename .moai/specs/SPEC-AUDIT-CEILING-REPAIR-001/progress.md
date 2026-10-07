@@ -57,6 +57,108 @@ Full verbatim outputs: `.moai/state/verify/t1560/m1-red-batch.txt`,
 `m1-red-e2e.txt`, `m1-red-concurrent.txt`, `m1-red-base-baseline.txt`
 (machine-local scratch, this run).
 
+### M2 — D1 + D4 + C3 fixes, REDs flip green (commit `c049810a2`)
+
+`go test -count=1 -run '<M2 selectors + sealed counter/delta tests>' -v
+./internal/runtime/` → exit 0, all PASS:
+`TestPreviousAuditedSHALatestLegacyRound`, `TestPreviousAuditedSHAMixedFamilyPrior`,
+`TestPreviousAuditedSHAUnparseableLatestStaysEmpty` (guard stays green),
+`TestCountAuditRoundsOverflowOwnRound` (all five subtests),
+`TestPreviousAuditedSHABaseRoundBaseline`, `TestReqACSetsUnchangedReadsAcceptance`,
+`TestEvaluateCeilingLegacyLatestDeltaGranted`, plus the sealed
+`TestCountAuditRounds`, `TestCountAuditRoundsDistinctN`,
+`TestCountAuditRoundsLegacyPlanAuditNumbered`,
+`TestPreviousAuditedSHALegacyPriorRound`,
+`TestCountAuditRoundsExactHeaderAttribution`, `TestDeltaGitHelpers` —
+`ok github.com/modu-ai/moai-adk/internal/runtime 9.378s`.
+
+### M3 — D2 + D3 fixes, REDs flip green (commit `38272872c`)
+
+`go test -count=1 -run '<persistence selectors>' -v ./internal/runtime/` →
+exit 0, all 17 PASS (the D2/D3 repro REDs, the escaping RED, the two
+preserve tests, and the pre-existing ceiling/trail/override family).
+Concurrency discipline: `go test -count=5 -race -run
+'^TestAppendProgressRecordConcurrentSurvival$|^TestAppendProgressRecordInsertsAtSectionEnd$'`
+→ 10/10 `--- PASS`, `ok … 1.334s` (judged over repeated runs, not one
+green).
+
+### M4 — consistency notes (AC-ACR-010/011) and re-measurement
+
+**AC-ACR-010 (t1500 seal, read-and-note — non-contradiction)**: the
+SPEC-local verbatim excerpt `references/t1500-seal-excerpt.md` (§SEAL/§PUSH,
+provenance header retained) re-read at run phase against the post-repair
+diff. The seal froze card t1500's engine work at `3d7215b72` (22/22 AC +
+card-review repairs). Non-contradiction holds: this repair EXTENDS the
+dual-family contract the sealed card-review F4 test
+(`TestPreviousAuditedSHALegacyPriorRound`, legacy-as-PRIOR) established to
+its uncovered face (legacy-as-LATEST, `TestPreviousAuditedSHALatestLegacyRound`)
+— the sealed test itself stays green (M2 run above), the seal's resume
+points (re-review recording, factory stage path, leader push batch) are
+untouched by this diff, and no sealed behavior was rewritten (the
+heading-absent and §G-last record shapes are byte-identical to the sealed
+append; only the §G-followed-by-a-section insertion position and the
+base/overflow round identity changed, per REQ-ACR-008/009).
+
+**AC-ACR-011 (t1538 sealed resume point, read-and-note — non-contradiction)**:
+`git show origin/WT-t1538-factory-recovery:.moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/progress.md`
+§봉인 기록 re-read at run phase: the remaining-gate inventory is (1) the
+factory mirror-path P1 (dispatch store + binding update in one lock
+section) and (2) the `^TestReview` overlay reproduction family. Both live
+in factory dispatch / review-gate code — disjoint from
+`internal/runtime/audit_ceiling.go` (E5 scope grep below confirms this
+diff's only engine files are the four §C files).
+
+**Re-measurement (this run, this tree, HEAD `38272872c` + M4 docs)**:
+
+- E3 affected-package family: `go test -race -count=1 -timeout 30m
+  ./internal/runtime/...` → `ok github.com/modu-ai/moai-adk/internal/runtime
+  12.753s` + `ok … internal/runtime/gobin 1.415s` (full package, race on).
+  `go test -count=1 -timeout 30m ./internal/auditverdict/...` → `ok … 0.289s`
+  (untouched package stays green).
+- AC-ACR-012's named sealed tests all pass inside the full-suite run and
+  passed an explicit named selection at M2 (list above).
+- Consolidated green run of all thirteen repair tests: `go test -count=1
+  -run '<13 repair selectors>' -v ./internal/runtime/` → exit 0, 13/13
+  `--- PASS` (`.moai/state/verify/t1560/m4-green-all.txt`).
+- E4 lint/format: `go vet ./internal/runtime/... ./internal/auditverdict/...`
+  clean; `golangci-lint run ./internal/runtime/...` → `0 issues.`; `gofmt -l`
+  on both packages → empty.
+- E5 scope grep: `git diff --name-only 903ccd028..HEAD` under `internal/`
+  → exactly `internal/runtime/audit_ceiling.go`,
+  `audit_ceiling_test.go`, `audit_counter.go`,
+  `audit_counter_review_test.go` — no `auditverdict`, `DeltaEligible`, or
+  JSON-path (`RecordCeilingOutcome`) changes.
+- E6 record grammar spot-check: a no-debt outcome's §G line is built by the
+  unchanged Sprintf and carries no suffix when the inventory is empty;
+  `TestPersistOutcomeNoDebtRecordUnchanged` verifies the pre-repair grammar
+  (`- <ts> <spec> ceiling-outcome outcome=… reasons=… evidence=…`, no
+  `debts=`) for pass-through/hold, and the refusal/override shapes, green
+  pre- and post-fix.
+- @MX tag report: no tag changes — no new exported functions, no new
+  goroutines or dangerous patterns (the §G mutex is standard in-process
+  serialization per plan §D.7), no fan_in changes on tagged functions.
+  Existing tags (EvaluateCeiling ANCHOR, CountAuditRounds NOTE) unchanged.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+run_complete_at: 2026-10-07
+run_commit_sha: 38272872c
+run_status: complete
+ac_pass_count: 16
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not-applicable (card-dedicated worktree, single-writer lane; branch/HEAD re-read before each commit per the staleness rule)
+l44_post_push_fetch: pending (push is the leader's batch — lane does not push)
+new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues; go vet clean; gofmt clean)
+cross_platform_build: not-run-in-lane (CI matrix owns the darwin/windows verdict; `go vet` compiled both engine packages clean locally)
+total_run_phase_files: 4 (the plan §C set: audit_ceiling.go, audit_counter.go, audit_counter_review_test.go, audit_ceiling_test.go) + progress.md/spec.md run-phase records
+m1_to_m4_commit_strategy: one commit per milestone (M1 932f1bed0 REDs · M2 c049810a2 D1+D4+C3 · M3 38272872c D2+D3 · M4 this record); CI run on the integrated branch owns the repository-wide test verdict — PENDING at report time
+비고: AC-ACR-004's tier-ceiling fixture and AC-ACR-015's git fixture measured
+slower under the race detector (2-3 s each) — no flake observed across the
+repeated concurrency runs. The arm-(e) Count=2 parenthetical in
+acceptance.md could not be reproduced (measured 1, see §E.2 measurement
+note) — recorded as an observation, not an AC failure.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — manager-develop owns this section.>_
