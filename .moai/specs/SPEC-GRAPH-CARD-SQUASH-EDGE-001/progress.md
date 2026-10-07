@@ -47,7 +47,14 @@ spec: SPEC-GRAPH-CARD-SQUASH-EDGE-001
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-_<pending plan-audit — populated after the plan-auditor verdict lands>_
+plan_status: audit-ready
+plan_complete_at: 2026-10-07T00:49:24Z
+verdict: PASS — plan-audit iteration 2/2, overall 0.97, blocking 0, must_pass_failed 0
+audited_sha: 122c83085db56c10a0ec06a51b2a2745e29870be
+plan_artifact_hash: 6dfcd9e2bca3b64aefa674377ee6a9eadd8b75682f4e4230eb57b12d1ff53ab3
+receipt: rcpt-e8ccfe80a979d3060d61cf30
+verdict_file: .moai/reports/t1559/plan-audit-verdict.md
+history: r1 FAIL (iter 1/2, 0.90, 5 blocking D1-D5, audited_sha 08de1c43c) → manager-spec fix_scope repair (spec §3, plan §A/B/C/E/F, acceptance §A/AC-002/007/010/011; base re-pin df0c417e9 → 5fb7baf88 via the lane's origin/main absorb) → r2 delta re-audit PASS (iter 2/2, 0.97, reread scope).
 
 ## §E.2 Run-phase Evidence
 
