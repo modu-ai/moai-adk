@@ -23,9 +23,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/cli/update/report"
@@ -654,6 +657,93 @@ func TestUpdate_ExcludedPathsNotPending(t *testing.T) {
 	}
 }
 
+// TestMergePhaseSkipsVanishedPending — the merge phase's not-exist arm: a
+// pending user-modified file the deploy stage did not carry (removed, not
+// rewritten) leaves the operator's bytes as they are — nothing to reconcile,
+// no error.
+func TestMergePhaseSkipsVanishedPending(t *testing.T) {
+	const rel = ".claude/rules/moai/tuned.md"
+	root := newClassifyFixture(t, map[string]string{rel: "user edit\n"})
+	carried := map[string]string{".claude/rules/moai/note.md": "render\n"}
+
+	summary, pending, err := ReconcileManagedPaths(root, io.Discard, recTmplFS(carried), renderWith(carried), nil, ReconcileOptions{})
+	if err != nil {
+		t.Fatalf("ReconcileManagedPaths: %v", err)
+	}
+	recSimulateDeploy(t, root, carried)
+	// The deploy did not carry this path and it vanished in between.
+	if err := os.Remove(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	summary, err = ReconcileMerges(root, io.Discard, renderWith(carried), nil, ReconcileMergeOptions{}, pending, summary)
+	if err != nil {
+		t.Fatalf("ReconcileMerges: %v", err)
+	}
+	if len(summary.Merged) != 0 || len(summary.Conflicts) != 0 {
+		t.Errorf("vanished pending produced an outcome: %+v", summary)
+	}
+}
+
+// TestExclusiveWriteFileFileParentIsAFile — the helper's MkdirAll arm: a
+// target whose parent chain terminates at a regular file errors instead of
+// creating through it.
+func TestExclusiveWriteFileFileParentIsAFile(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".claude", "rules"), []byte("a file, not a dir\n"), 0o644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := exclusiveWriteFile(root, ".claude/rules/moai/policy.json.moai-new", []byte("x\n")); err == nil {
+		t.Fatal("exclusiveWriteFile under a file-parent must error")
+	}
+}
+
+// TestMergePhaseAbortsOnLinkedParentRestore — the conflict-restore error
+// arm: when the pending file's PARENT chain is swapped to a link before the
+// merge phase, the conflict disposition refuses to write (and the whole
+// phase aborts with the error) — it never writes through the link.
+func TestMergePhaseAbortsOnLinkedParentRestore(t *testing.T) {
+	external := t.TempDir()
+	const rel = ".claude/rules/moai/tuned.md"
+	root := newClassifyFixture(t, map[string]string{rel: "user edit\n"})
+	carried := map[string]string{rel: "render NEW\n", ".claude/rules/moai/note.md": "render\n"}
+
+	summary, pending, err := ReconcileManagedPaths(root, io.Discard, recTmplFS(carried), renderWith(carried), nil, ReconcileOptions{})
+	if err != nil {
+		t.Fatalf("ReconcileManagedPaths: %v", err)
+	}
+	recSimulateDeploy(t, root, carried)
+	// Swap the PARENT directory (.claude/rules/moai) to an external link.
+	// The external dir carries a same-named file so the pending read
+	// SUCCEEDS through the link (the render bytes are external) — pushing
+	// the disposition into its write, which the chain gate must refuse.
+	if err := os.RemoveAll(filepath.Join(root, ".claude", "rules", "moai")); err != nil {
+		t.Fatalf("remove dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(external, "tuned.md"), []byte("render NEW\n"), 0o644); err != nil {
+		t.Fatalf("external twin: %v", err)
+	}
+	if err := os.Symlink(external, filepath.Join(root, ".claude", "rules", "moai")); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	_, err = ReconcileMerges(root, io.Discard, renderWith(carried), nil, ReconcileMergeOptions{}, pending, summary)
+	if err == nil {
+		t.Fatal("conflict restore through a linked parent must be refused")
+	}
+	// The external twin survives — the write was refused, not followed. The
+	// conflict-restore content must not have landed in the external dir.
+	if data, readErr := os.ReadFile(filepath.Join(external, "tuned.md")); readErr != nil || string(data) != "render NEW\n" {
+		t.Errorf("external twin altered by the refused restore: %q (err=%v)", data, readErr)
+	}
+	entries, readErr := os.ReadDir(external)
+	if readErr != nil || len(entries) != 1 {
+		t.Errorf("external directory polluted: %v (err=%v)", entries, readErr)
+	}
+}
+
 // TestUpdate_SummaryHonesty — AC-UPM-032. One fixture run that refreshes,
 // merges, conflicts, preserves, and archive-removes at least one file each:
 // the summary reports all five categories with per-path lists (including
@@ -812,6 +902,272 @@ func TestUniqueArchiveRunDirDistinct(t *testing.T) {
 		if err != nil || !info.IsDir() {
 			t.Errorf("claimed run dir %s missing or not a directory (err=%v)", d, err)
 		}
+	}
+}
+
+// TestArchiveRootCreationRefusesExternalLink — gate round 10, finding 6:
+// .moai/archive as an external symlink is refused BEFORE any creation — the
+// MkdirAll must never follow the link and create the archive tree outside
+// the project (the round 11 refinement: the check precedes creation).
+func TestArchiveRootCreationRefusesExternalLink(t *testing.T) {
+	external := t.TempDir()
+	const rel = ".claude/rules/moai/old-rule.md"
+	root := newClassifyFixture(t, map[string]string{rel: "stale\n"})
+	archiveAbs := filepath.Join(root, filepath.FromSlash(ReconcileArchiveFilesRoot()))
+	if err := os.MkdirAll(filepath.Dir(archiveAbs), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.Symlink(external, archiveAbs); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	carried := map[string]string{".claude/rules/moai/note.md": "render\n"}
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	if err := mgr.Track(rel, manifest.TemplateManaged, ""); err != nil {
+		t.Fatalf("track: %v", err)
+	}
+
+	if _, _, err := ReconcileManagedPaths(root, io.Discard, recTmplFS(carried), renderWith(carried), mgr.Manifest(), ReconcileOptions{}); err == nil {
+		t.Fatal("archive root on an external link must be refused")
+	}
+	// Nothing was created outside the project through the link.
+	entries, err := os.ReadDir(external)
+	if err != nil {
+		t.Fatalf("read external: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("external directory polluted through the link: %v", entries)
+	}
+	// The stale file is still in place.
+	if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
+		t.Errorf("stale file missing after the refused run: %v", err)
+	}
+}
+
+// TestArchiveNestedStaleFileArchived — gate round 16: a stale file under a
+// NESTED managed path archives into the matching nested layout (the run's
+// destination subdirectories are created first) and is removed from place.
+func TestArchiveNestedStaleFileArchived(t *testing.T) {
+	const rel = ".claude/rules/moai/sub/deep-rule.md"
+	root := newClassifyFixture(t, map[string]string{rel: "nested stale\n"})
+	carried := map[string]string{".claude/rules/moai/note.md": "render\n"}
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	if err := mgr.Track(rel, manifest.TemplateManaged, ""); err != nil {
+		t.Fatalf("track: %v", err)
+	}
+
+	summary := recRunUpdate(t, root, recTmplFS(carried), renderWith(carried), mgr.Manifest(), carried)
+
+	if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); !os.IsNotExist(err) {
+		t.Errorf("nested stale file still in place (err=%v)", err)
+	}
+	tagRoot := filepath.Join(root, filepath.FromSlash(ReconcileArchiveFilesRoot()))
+	matches, err := filepath.Glob(filepath.Join(tagRoot, "*", filepath.FromSlash(rel)))
+	if err != nil || len(matches) != 1 {
+		t.Fatalf("nested archive copies = %v (err=%v), want exactly 1", matches, err)
+	}
+	if data, readErr := os.ReadFile(matches[0]); readErr != nil || string(data) != "nested stale\n" {
+		t.Errorf("nested archive copy = %q (err=%v)", data, readErr)
+	}
+	if !containsPath(summary.ArchivedRemoved, rel) {
+		t.Errorf("summary.ArchivedRemoved = %v, want it to list %s", summary.ArchivedRemoved, rel)
+	}
+}
+
+// TestMergePhaseRefusesSwappedSymlinkTarget — gate round 10, finding 2: a
+// user-modified file swapped to an EXTERNAL symlink between the reconcile
+// and the merge phase must not route the merge writes outside the project.
+// The safe write replaces the link (rename never follows) with the
+// operator's bytes; the external sentinel is untouched.
+func TestMergePhaseRefusesSwappedSymlinkTarget(t *testing.T) {
+	external := t.TempDir()
+	sentinel := filepath.Join(external, "sentinel.txt")
+	const sentinelBytes = "external — byte-identical\n"
+	if err := os.WriteFile(sentinel, []byte(sentinelBytes), 0o644); err != nil {
+		t.Fatalf("sentinel: %v", err)
+	}
+	const rel = ".claude/rules/moai/tuned.md"
+	const ours = "operator tuning\n"
+	const rendered = "template render NEW\n"
+	root := newClassifyFixture(t, map[string]string{rel: ours})
+	carried := map[string]string{rel: rendered, ".claude/rules/moai/note.md": "render\n"}
+
+	summary, pending, err := ReconcileManagedPaths(root, io.Discard, recTmplFS(carried), renderWith(carried), nil, ReconcileOptions{})
+	if err != nil {
+		t.Fatalf("ReconcileManagedPaths: %v", err)
+	}
+	recSimulateDeploy(t, root, carried)
+	// The swap: the deployed file becomes a link to the external sentinel.
+	abs := filepath.Join(root, filepath.FromSlash(rel))
+	if err := os.Remove(abs); err != nil {
+		t.Fatalf("remove deployed file: %v", err)
+	}
+	if err := os.Symlink(sentinel, abs); err != nil {
+		t.Fatalf("swap to symlink: %v", err)
+	}
+
+	summary, err = ReconcileMerges(root, io.Discard, renderWith(carried), nil, ReconcileMergeOptions{}, pending, summary)
+	if err != nil {
+		t.Fatalf("ReconcileMerges: %v", err)
+	}
+
+	// The external sentinel is byte-identical — nothing followed the link.
+	if data, readErr := os.ReadFile(sentinel); readErr != nil || string(data) != sentinelBytes {
+		t.Errorf("external sentinel polluted: %q (err=%v)", data, readErr)
+	}
+	// The path no longer carries a link, and the disposition ran (merged or
+	// conflict — either way the write landed INSIDE the project).
+	info, err := os.Lstat(abs)
+	if err != nil {
+		t.Fatalf("reconciled path missing: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		t.Errorf("path still a symlink — the safe write did not replace it")
+	}
+	_ = summary
+}
+
+// TestClassifyNonRegularTargetDoesNotHang — gate round 10, finding 5: a
+// FIFO at a managed target path must not hang the classifier's read (the
+// dry-run preview included). Non-regular plain targets are skipped.
+func TestClassifyNonRegularTargetDoesNotHang(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("FIFOs are a POSIX fixture")
+	}
+	root := newClassifyFixture(t, map[string]string{})
+	fifo := filepath.Join(root, ".claude", "rules", "moai", "pipe")
+	if err := os.MkdirAll(filepath.Dir(fifo), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := syscall.Mkfifo(fifo, 0o644); err != nil {
+		t.Fatalf("mkfifo: %v", err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := ClassifyManagedRoots(root, []deploy.CleanTarget{recTarget(root, ".claude/rules/moai")},
+			renderWith(map[string]string{}), nil)
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("ClassifyManagedRoots: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("classifier blocked reading a FIFO — the IsRegular guard is missing")
+	}
+}
+
+// TestArchiveThenRemoveRefusesLinkedDestinationDir — gate round 11's
+// parent-swap variant, exercised through its deterministic shape: an archive
+// root whose PARENT chain holds a link is refused at the pre-check, and the
+// operator's file stays in place (the removal is gated on a verified-clean
+// chain, so a mid-copy swap can never destroy the original).
+func TestArchiveThenRemoveRefusesLinkedDestinationDir(t *testing.T) {
+	external := t.TempDir()
+	const rel = ".claude/rules/moai/old-rule.md"
+	root := newClassifyFixture(t, map[string]string{rel: "stale\n"})
+	// The claimed run dir is created by the reconcile; here the deterministic
+	// variant drives archiveThenRemove directly with a root whose parent is a
+	// symlink to the external directory.
+	linkedRoot := filepath.Join(ReconcileArchiveFilesRoot(), "linked-parent")
+	abs := filepath.Join(root, filepath.FromSlash(linkedRoot))
+	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.Symlink(external, abs); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	err := archiveThenRemove(root, rel, linkedRoot)
+	if err == nil {
+		t.Fatal("archive through a linked destination parent must be refused")
+	}
+	if data, readErr := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel))); readErr != nil || string(data) != "stale\n" {
+		t.Errorf("operator's file altered by the refused archive: %q (err=%v)", data, readErr)
+	}
+	entries, err := os.ReadDir(external)
+	if err != nil || len(entries) != 0 {
+		t.Errorf("external directory polluted: %v (err=%v)", entries, err)
+	}
+}
+
+// TestArchiveThenRemoveRefusesLinkedSourceDir — gate round 17, finding 1's
+// deterministic shape: the SOURCE's parent chain swapped to an external link
+// refuses the archive outright — no read through the link, and above all no
+// os.Remove at the swapped path (the gate's reproduction deleted the
+// external sentinel through it).
+func TestArchiveThenRemoveRefusesLinkedSourceDir(t *testing.T) {
+	external := t.TempDir()
+	sentinel := filepath.Join(external, "sentinel.txt")
+	const sentinelBytes = "external file — must survive\n"
+	if err := os.WriteFile(sentinel, []byte(sentinelBytes), 0o644); err != nil {
+		t.Fatalf("sentinel: %v", err)
+	}
+	const rel = ".claude/rules/moai/old-rule.md"
+	root := newClassifyFixture(t, map[string]string{})
+	// The source's parent (.claude/rules/moai) is a symlink to the external
+	// directory, and the source path resolves INSIDE it.
+	externalRule := filepath.Join(external, "old-rule.md")
+	if err := os.WriteFile(externalRule, []byte("external twin\n"), 0o644); err != nil {
+		t.Fatalf("external twin: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "rules"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.Symlink(external, filepath.Join(root, ".claude", "rules", "moai")); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	err := archiveThenRemove(root, rel, filepath.Join(ReconcileArchiveFilesRoot(), "run"))
+	if err == nil {
+		t.Fatal("archive through a linked source parent must be refused")
+	}
+	if data, readErr := os.ReadFile(sentinel); readErr != nil || string(data) != sentinelBytes {
+		t.Errorf("external sentinel deleted or altered: %q (err=%v)", data, readErr)
+	}
+	// The external twin (the entry the swapped path would resolve to) also
+	// survives — the removal never fired.
+	if _, statErr := os.Stat(externalRule); statErr != nil {
+		t.Errorf("external twin deleted: %v", statErr)
+	}
+}
+
+// TestExclusiveSidecarClaimNeverClobbers — gate round 17, finding 2: the
+// sidecar name is claimed with an exclusive create. An occupied candidate is
+// refused (EEXIST), never followed or replaced; the pre-existing sibling's
+// bytes are byte-identical after the conflict disposition ran through the
+// numbered retries.
+func TestExclusiveSidecarClaimNeverClobbers(t *testing.T) {
+	root := t.TempDir()
+	occupied := filepath.Join(root, ".claude", "rules", "moai", "policy.json.moai-new")
+	if err := os.MkdirAll(filepath.Dir(occupied), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(occupied, []byte("32MiB recovery file from a prior run\n"), 0o644); err != nil {
+		t.Fatalf("seed sibling: %v", err)
+	}
+
+	err := exclusiveWriteFile(root, ".claude/rules/moai/policy.json.moai-new", []byte("payload\n"))
+	if !os.IsExist(err) {
+		t.Fatalf("exclusive create on an occupied name: err=%v, want EEXIST", err)
+	}
+	// The occupied sibling is byte-identical — never clobbered.
+	if data, readErr := os.ReadFile(occupied); readErr != nil || string(data) != "32MiB recovery file from a prior run\n" {
+		t.Errorf("occupied sibling clobbered: %q (err=%v)", data, readErr)
+	}
+	// A fresh name claims exclusively and lands the payload.
+	if err := exclusiveWriteFile(root, ".claude/rules/moai/policy.json.moai-new.2", []byte("payload\n")); err != nil {
+		t.Fatalf("exclusive create on a fresh name: %v", err)
+	}
+	if data, readErr := os.ReadFile(filepath.Join(root, ".claude", "rules", "moai", "policy.json.moai-new.2")); readErr != nil || string(data) != "payload\n" {
+		t.Errorf("claimed sidecar content = %q (err=%v)", data, readErr)
 	}
 }
 

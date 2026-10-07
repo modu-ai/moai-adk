@@ -98,6 +98,25 @@ func resolveUpdateDeployMode(projectRoot string, noPlugin bool) template.DeployM
 	return template.DeployModePlugin
 }
 
+// mergeableFilePaths is the fixed mergeable-file set — the files merged with
+// the 3-way merge engine after the deploy (NOT handled by restoreMoaiConfig,
+// which owns .moai/config/sections/*.yaml). Package-level so the
+// reconciliation merge-phase exclusion (update_reconcile.go) shares the one
+// definition (card t1547 review finding 2; the 429-interrupted refactor
+// moved it out of the runTemplateSyncWithReporter closure).
+//
+// .mcp.json IS shipped (internal/template/templates/.mcp.json, deployed by
+// deployer.go's no-dotfile-skip WalkDir) and IS a 3-way merge target so a
+// user's own MCP entries survive `moai update` instead of being clobbered
+// by the template deploy (SPEC-MCP-DEFAULT-ON-001 REQ-A-4 / AC-A-012).
+func mergeableFilePaths() []string {
+	return []string{
+		".claude/settings.json",
+		".moai/status_line.sh",
+		".mcp.json",
+	}
+}
+
 // runTemplateSync synchronizes embedded templates with the project directory.
 // It performs a quick version comparison first - if the project's template version
 // matches the package version, the sync is skipped for performance (70-80% faster).
@@ -402,16 +421,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// (Moved above the step table: the Clean step's reconcile closure reads
 	// it for the merge-phase exclusion set — card t1547 review finding 2.)
 	collectMergeableFiles := func(projectRoot string) []string {
-		// Fixed mergeable files at project root that are NOT handled by restoreMoaiConfig.
-		// .mcp.json IS shipped (internal/template/templates/.mcp.json, deployed by
-		// deployer.go's no-dotfile-skip WalkDir) and IS a 3-way merge target so a
-		// user's own MCP entries survive `moai update` instead of being clobbered
-		// by the template deploy (SPEC-MCP-DEFAULT-ON-001 REQ-A-4 / AC-A-012).
-		return []string{
-			".claude/settings.json",
-			".moai/status_line.sh",
-			".mcp.json",
-		}
+		return mergeableFilePaths()
 	}
 
 	// Define deployment steps
@@ -510,34 +520,23 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// review finding 4), so the preview can never announce a
 				// removal the run does not make.
 				cleanTargets := computeRunCleanTargets(projectRoot, deployMode, migration)
-				// t40 defect 2: snapshot what exists under THIS run's target
-				// list BEFORE the removal (read-only; the accounting matches
-				// the removal scope).
-				preCleanFiles = deploy.InventoryManagedPathsWithTargets(projectRoot, cleanTargets)
 
-				// SPEC-UPDATE-MIGRATION-001 (card t1547, REQ-UPM-040): the
-				// legacy v1→v2 fresh-install branch keeps the wholesale walk —
-				// behind the REQ-UPM-015 guard, and with the archive shortfall
-				// report that only makes sense where a wholesale removal
-				// actually follows. The DEFAULT path never removes wholesale:
-				// it reconciles (classify → archive-then-remove stale →
-				// preserve → capture ours), leaving user-owned and
-				// user-modified files in place (REQ-UPM-013/015/020). The
-				// init-shrink migration run is its own contract
-				// (SPEC-INIT-SHRINK-001 REQ-011): its classified removal list
-				// (identical + already-archived modified, under the DROPPED
-				// roots) executes exactly as before — the reconciliation's
-				// stale-only removal would strand the migration's removals.
-				if legacyClean || migration != nil {
+				switch {
+				case legacyClean:
+					// t40 defect 2: snapshot what exists under THIS run's
+					// wholesale scope BEFORE the removal (read-only; the
+					// accounting matches the removal scope).
+					preCleanFiles = deploy.InventoryManagedPathsWithTargets(projectRoot, cleanTargets)
 					// A skill present now but not archived is deleted by the
 					// wholesale removal below, so the shortfall is reported as
-					// a loss — these branches only.
+					// a loss — this branch only.
 					reportArchiveShortfall(legacyBefore, archived, out)
-					if legacyClean {
-						plLegacy := tui.ProgressLine(out, "Checking config compatibility...", nil)
-						plLegacy.Done("Legacy config detected: fresh config install required (full backup already taken)")
-					}
-					return guardFirstDestructiveStep(projectRoot, configBackupPath, func() error {
+					plLegacy := tui.ProgressLine(out, "Checking config compatibility...", nil)
+					plLegacy.Done("Legacy config detected: fresh config install required (full backup already taken)")
+					// SPEC-UPDATE-MIGRATION-001 (card t1547, REQ-UPM-040): the
+					// legacy v1→v2 fresh-install branch keeps the wholesale
+					// walk behind the REQ-UPM-015 guard.
+					if err := guardFirstDestructiveStep(projectRoot, configBackupPath, func() error {
 						tmplFS, tmplErr := template.EmbeddedTemplates()
 						if tmplErr != nil {
 							// Without the template FS the removal cannot tell
@@ -545,64 +544,66 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 							// anything up — abort rather than delete blind.
 							return fmt.Errorf("load embedded templates: %w", tmplErr)
 						}
-						if legacyClean {
-							// REQ-UPM-015: even the fresh-install walk refuses
-							// user-owned namespace and unresolved user-modified
-							// files. The migration arm keeps the UNGUARDED
-							// form: its removal list is already classified by
-							// the migration classifier (identical + archived
-							// modified), the protection the guard would add.
-							protect := update.ProtectFuncFor(projectRoot, mgr.Manifest())
-							return deploy.CleanMoaiManagedPathsWithTargetsGuarded(projectRoot, out, tmplFS, cleanTargets, protect)
-						}
-						return deploy.CleanMoaiManagedPathsWithTargets(projectRoot, out, tmplFS, cleanTargets)
-					})
-				}
-
-				// SPEC-UPDATE-DATA-SURVIVAL-001 REQ-UDS-001/003/005: the three
-				// in-memory-only files reach disk before this step removes
-				// anything. A backup-write failure aborts here, so the removal
-				// never runs while a file's only copy is in the heap.
-				// Card t111: the embedded FS rides along so the removal can
-				// back up every file the template does not carry before
-				// deleting the root it lives under.
-				return guardFirstDestructiveStep(projectRoot, configBackupPath, func() error {
-					tmplFS, tmplErr := template.EmbeddedTemplates()
-					if tmplErr != nil {
-						return fmt.Errorf("load embedded templates: %w", tmplErr)
-					}
-					// The reconciliation is read-only until the stale archive;
-					// a classification failure aborts with the tree intact
-					// (NFR-UPM-002 stage 1). The exclude set names the paths
-					// another step of THIS flow already reconciles — the
-					// config sections restore below and the mergeable-file
-					// merge — so the merge phase never reprocesses them
-					// (review finding 2: reprocessing would diff the
-					// operator's pre-deploy bytes against the other step's
-					// merged output and revert its delivered updates).
-					summary, pending, err := update.ReconcileManagedPaths(projectRoot, out,
-						tmplFS, templateRenderCarriage(tmplFS, nil, nil), mgr.Manifest(),
-						update.ReconcileOptions{
-							Targets: reconcileTargets(projectRoot, cleanTargets),
-							Exclude: func(rel string) bool {
-								if reconcileExclude(rel) {
-									return true
-								}
-								for _, m := range collectMergeableFiles(projectRoot) {
-									if rel == m {
-										return true
-									}
-								}
-								return false
-							},
-						})
-					if err != nil {
+						// REQ-UPM-015: even the fresh-install walk refuses
+						// user-owned namespace and unresolved user-modified
+						// files.
+						protect := update.ProtectFuncFor(projectRoot, mgr.Manifest())
+						return deploy.CleanMoaiManagedPathsWithTargetsGuarded(projectRoot, out, tmplFS, cleanTargets, protect)
+					}); err != nil {
 						return err
 					}
-					reconSummary = summary
-					reconPending = pending
-					return nil
-				})
+
+				case migration != nil:
+					// SPEC-INIT-SHRINK-001 (REQ-011, design §3 step 4): the
+					// migration's WHOLESALE removal is exactly its classified
+					// dropped-root list (identical + already-archived
+					// modified) — the unguarded form is correct because that
+					// list IS classified by the migration classifier. The
+					// MANAGED roots no longer ride the wholesale walk (gate
+					// round 10, finding 1): a record-less --no-plugin run
+					// must not delete the local files the dry-run preview
+					// promised to preserve — they reconcile like every
+					// default run.
+					preCleanFiles = deploy.InventoryManagedPathsWithTargets(projectRoot, migration.removalTargets)
+					reportArchiveShortfall(legacyBefore, archived, out)
+					if err := guardFirstDestructiveStep(projectRoot, configBackupPath, func() error {
+						tmplFS, tmplErr := template.EmbeddedTemplates()
+						if tmplErr != nil {
+							return fmt.Errorf("load embedded templates: %w", tmplErr)
+						}
+						if len(migration.removalTargets) > 0 {
+							if err := deploy.CleanMoaiManagedPathsWithTargets(projectRoot, out, tmplFS, migration.removalTargets); err != nil {
+								return err
+							}
+						}
+						return reconcileManagedRoots(projectRoot, out, tmplFS, mgr, deployMode, &reconSummary, &reconPending)
+					}); err != nil {
+						return err
+					}
+
+				default:
+					// t40 defect 2: snapshot what exists under THIS run's
+					// target list BEFORE the removal (read-only; the
+					// accounting matches the removal scope).
+					preCleanFiles = deploy.InventoryManagedPathsWithTargets(projectRoot, cleanTargets)
+					// SPEC-UPDATE-DATA-SURVIVAL-001 REQ-UDS-001/003/005: the
+					// three in-memory-only files reach disk before this step
+					// removes anything. A backup-write failure aborts here,
+					// so the removal never runs while a file's only copy is
+					// in the heap. Card t111: the embedded FS rides along so
+					// the removal can back up every file the template does
+					// not carry before deleting the root it lives under.
+					if err := guardFirstDestructiveStep(projectRoot, configBackupPath, func() error {
+						tmplFS, tmplErr := template.EmbeddedTemplates()
+						if tmplErr != nil {
+							return fmt.Errorf("load embedded templates: %w", tmplErr)
+						}
+						return reconcileManagedRoots(projectRoot, out, tmplFS, mgr, deployMode, &reconSummary, &reconPending)
+					}); err != nil {
+						return err
+					}
+				}
+				return nil
 			},
 		},
 		{
@@ -783,14 +784,24 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// t63: RestoreMoaiConfigRetained collects the retained-key refs
 				// instead of letting the merge append raw per-key "advisory:"
 				// lines to stderr mid-redraw; the advisory renders through the
-				// same stdout channel as the progress line below.
+				// same stdout channel as the progress line below. The skip
+				// filter excludes the reconciliation's archived-removed
+				// section files (gate round 10, finding 3): the pipeline
+				// archived and removed them, and a restore that re-created
+				// them from the backup would contradict the reported removal.
+				archivedSet := make(map[string]bool, len(reconSummary.ArchivedRemoved))
+				for _, a := range reconSummary.ArchivedRemoved {
+					if rel, ok := strings.CutPrefix(a, ".moai/config/sections/"); ok {
+						archivedSet[rel] = true
+					}
+				}
 				retainedKeys, restoreErr := backup.RestoreMoaiConfigRetained(projectRoot, configBackupPath, func(pr, relPath string, success bool, errOut io.Writer) {
 					// Bridge to the noise-suppression ledger (recordMergeFallback +
 					// updateVerboseMode), which stays in package cli. The closure
 					// captures updateVerboseMode so the backup subpackage does not
 					// need a cross-package mutable-state seam.
 					recordMergeFallback(pr, relPath, success, updateVerboseMode, errOut)
-				})
+				}, func(relPath string) bool { return archivedSet[relPath] })
 				if restoreErr != nil {
 					plRestore.Fail(fmt.Sprintf("Restore failed: %v", restoreErr))
 					if reporter != nil {

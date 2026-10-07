@@ -28,6 +28,7 @@ package update
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -252,7 +253,7 @@ func ReconcileMerges(projectRoot string, out io.Writer, render TemplateRender, m
 		if hasBase {
 			result, mergeErr := engine.MergeFile(ctx, p.RelPath, base, p.Ours, theirs)
 			if mergeErr == nil && !result.HasConflict {
-				if writeErr := writeFilePreservingMode(abs, result.Content); writeErr != nil {
+				if writeErr := safeWriteFile(projectRoot, p.RelPath, result.Content); writeErr != nil {
 					return summary, writeErr
 				}
 				summary.Merged = append(summary.Merged, p.RelPath)
@@ -274,38 +275,63 @@ func ReconcileMerges(projectRoot string, out io.Writer, render TemplateRender, m
 }
 
 // conflictDisposition implements the REQ-UPM-012 conflict arm: restore the
-// operator's bytes to the file byte-for-byte, write the render to the first
-// unused <path>.moai-new sibling, and report the collision when numbering
-// was needed. The existing sibling is never overwritten.
+// operator's bytes to the file byte-for-byte (through the link-free
+// safe-write — the swapped-file variant of gate round 10 finding 2), write
+// the render to the first unused <path>.moai-new sibling, and report the
+// collision when numbering was needed. The existing sibling is never
+// overwritten.
+//
+// Gate round 17, finding 2: the sidecar name is CLAIMED with an exclusive
+// create (O_CREATE|O_EXCL — never clobbers, never follows an existing
+// entry), not installed by rename after a check: a sibling another process
+// created between the name check and the install would otherwise be
+// silently replaced. An EEXIST advances to the next numbered suffix and
+// retries, and the collision flag reports it.
 func conflictDisposition(projectRoot, rel string, ours, theirs []byte) (ConflictRecord, error) {
-	abs := filepath.Join(projectRoot, filepath.FromSlash(rel))
-	if err := writeFilePreservingMode(abs, ours); err != nil {
+	if err := safeWriteFile(projectRoot, rel, ours); err != nil {
 		return ConflictRecord{}, err
 	}
 
-	sidecarRel := firstUnusedSidecar(projectRoot, rel)
-	collision := sidecarRel != rel+".moai-new"
-
-	sidecarAbs := filepath.Join(projectRoot, filepath.FromSlash(sidecarRel))
-	if err := os.MkdirAll(filepath.Dir(sidecarAbs), defs.DirPerm); err != nil {
-		return ConflictRecord{}, err
+	sidecarRel := rel + ".moai-new"
+	collision := false
+	for n := 2; ; n++ {
+		err := exclusiveWriteFile(projectRoot, sidecarRel, theirs)
+		if err == nil {
+			return ConflictRecord{Path: rel, Sidecar: sidecarRel, Collision: collision}, nil
+		}
+		if !os.IsExist(err) {
+			return ConflictRecord{}, err
+		}
+		collision = true
+		sidecarRel = rel + ".moai-new." + itoa(n)
 	}
-	if err := os.WriteFile(sidecarAbs, theirs, defs.FilePerm); err != nil {
-		return ConflictRecord{}, err
-	}
-	return ConflictRecord{Path: rel, Sidecar: sidecarRel, Collision: collision}, nil
 }
 
-// firstUnusedSidecar returns the first unused sidecar name for rel:
-// <rel>.moai-new, then <rel>.moai-new.2, .3, … (REQ-UPM-012 While-clause).
-func firstUnusedSidecar(projectRoot, rel string) string {
-	candidate := rel + ".moai-new"
-	for n := 2; ; n++ {
-		if _, err := os.Lstat(filepath.Join(projectRoot, filepath.FromSlash(candidate))); err != nil {
-			return candidate
+// exclusiveWriteFile creates the file at the project-relative slash path
+// with O_CREATE|O_EXCL — the creation claims the name atomically: an entry
+// already at the path (any kind, link included) fails with EEXIST instead of
+// being followed or replaced. The parent chain is verified link-free first.
+func exclusiveWriteFile(projectRoot, rel string, data []byte) error {
+	dirRel := filepath.ToSlash(filepath.Dir(rel))
+	if dirRel != "." && dirRel != "" {
+		if err := ensureNoSymlinkPath(projectRoot, dirRel); err != nil {
+			return fmt.Errorf("write target %s: %w", rel, err)
 		}
-		candidate = rel + ".moai-new." + itoa(n)
 	}
+	absDir := filepath.Dir(filepath.Join(projectRoot, filepath.FromSlash(rel)))
+	if err := os.MkdirAll(absDir, defs.DirPerm); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(filepath.Join(projectRoot, filepath.FromSlash(rel)),
+		os.O_WRONLY|os.O_CREATE|os.O_EXCL, defs.FilePerm)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
 }
 
 // itoa is a tiny int→decimal helper avoiding strconv for one call site.
@@ -321,18 +347,55 @@ func itoa(n int) string {
 	return string(digits)
 }
 
-// writeFilePreservingMode writes data to abs, keeping the file's existing
-// mode when it is already on disk (the operator's file, restored) and the
-// package default mode otherwise.
-func writeFilePreservingMode(abs string, data []byte) error {
-	mode := defs.FilePerm
-	if info, err := os.Stat(abs); err == nil && info.Mode().IsRegular() {
-		mode = info.Mode().Perm()
+// safeWriteFile writes data to the project-relative slash path WITHOUT
+// following a symlink at the path or in its parent chain (gate round 10,
+// finding 2 — after the deploy and before the merge phase, a restored file
+// or its parent can be swapped to an external link, and os.WriteFile would
+// follow it): the parent chain is verified link-free, the payload lands in
+// a same-directory temp file, and os.Rename — which replaces, never
+// follows, the final component — installs it. The file's existing mode is
+// preserved when it is already on disk (the operator's file, restored); the
+// package default mode applies to new files.
+func safeWriteFile(projectRoot, rel string, data []byte) error {
+	dirRel := filepath.ToSlash(filepath.Dir(rel))
+	if dirRel != "." && dirRel != "" {
+		if err := ensureNoSymlinkPath(projectRoot, dirRel); err != nil {
+			return fmt.Errorf("write target %s: %w", rel, err)
+		}
 	}
-	if err := os.MkdirAll(filepath.Dir(abs), defs.DirPerm); err != nil {
+	absDir := filepath.Dir(filepath.Join(projectRoot, filepath.FromSlash(rel)))
+	if err := os.MkdirAll(absDir, defs.DirPerm); err != nil {
 		return err
 	}
-	return os.WriteFile(abs, data, mode)
+	abs := filepath.Join(projectRoot, filepath.FromSlash(rel))
+	mode := defs.FilePerm
+	if info, err := os.Lstat(abs); err == nil && info.Mode().IsRegular() {
+		mode = info.Mode().Perm()
+	}
+	tmp, err := os.CreateTemp(absDir, ".moai-merge-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer func() { _ = os.Remove(tmpName) }() // no-op after a successful rename
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmpName, mode); err != nil {
+		return err
+	}
+	// Install with rename (replaces the final component without following
+	// it), after re-verifying the parent chain against a mid-write swap.
+	if dirRel != "." && dirRel != "" {
+		if err := ensureNoSymlinkPath(projectRoot, dirRel); err != nil {
+			return fmt.Errorf("write target %s changed during write: %w", rel, err)
+		}
+	}
+	return os.Rename(tmpName, abs)
 }
 
 // uniqueArchiveRunDir claims the run's archive directory under the
@@ -340,10 +403,19 @@ func writeFilePreservingMode(abs string, data []byte) error {
 // form. The claim is os.Mkdir — atomic, fails EEXIST on any collision — so
 // two runs in the same second (or a same-stamped re-run) land in distinct
 // numbered directories and no previous run's recovery copy is ever a write
-// target (gate round 9, finding 2). The parent tree is created with
-// MkdirAll; the stamp level itself is the atomic contention point.
+// target (gate round 9, finding 2).
+//
+// Gate round 10 finding 6 + round 11 refinement: the link check runs BEFORE
+// any creation. os.MkdirAll would follow an existing symlinked component
+// (.moai/archive as an external link) and create the archive tree outside
+// the project; the chain is therefore verified link-free first, so creation
+// only ever fills genuinely-absent components with real directories.
 func uniqueArchiveRunDir(projectRoot string) (string, error) {
-	rootAbs := filepath.Join(projectRoot, filepath.FromSlash(ReconcileArchiveFilesRoot()))
+	rootRel := ReconcileArchiveFilesRoot()
+	if err := ensureNoSymlinkPath(projectRoot, rootRel); err != nil {
+		return "", err
+	}
+	rootAbs := filepath.Join(projectRoot, filepath.FromSlash(rootRel))
 	if err := os.MkdirAll(rootAbs, defs.DirPerm); err != nil {
 		return "", fmt.Errorf("create archive root: %w", err)
 	}
@@ -370,19 +442,88 @@ func uniqueArchiveRunDir(projectRoot string) (string, error) {
 // root (layout preserved, package default file mode) and then removes it
 // from place. The archive copy completes BEFORE the removal: a failed copy
 // aborts and the file stays in place (REQ-UPM-016).
+//
+// Gate round 11 (reconcile.go:384): a parent directory swapped to a symlink
+// BETWEEN the pre-check and the write must never cost the operator's file.
+// The copy lands in a same-directory O_EXCL temp file and is installed with
+// os.Rename — which replaces, never follows, the final component — and the
+// whole chain is RE-VERIFIED after the write and BEFORE the rename and the
+// source removal. The worst residual is a temp copy outside the project in
+// a mid-write swap; the original is only ever removed on a verified-clean
+// chain (stdlib Go cannot pin a dirfd; the window is documented residual).
 func archiveThenRemove(projectRoot, rel, archiveRoot string) error {
 	src := filepath.Join(projectRoot, filepath.FromSlash(rel))
 	dstRel := filepath.Join(archiveRoot, filepath.FromSlash(rel))
-	// Containment (review finding 4): a destination on — or under — a
-	// symlink would route the archive write OUTSIDE the project and the
-	// removal would then delete the operator's only copy. Refuse before any
-	// write: every path component from the project root down is verified
-	// link-free with Lstat.
 	if err := ensureNoSymlinkPath(projectRoot, dstRel); err != nil {
 		return err
 	}
-	if err := copyRegularDefault(src, filepath.Join(projectRoot, filepath.FromSlash(dstRel))); err != nil {
+	// Gate round 17, finding 1: the SOURCE side is pinned too. A source
+	// parent swapped to an external link would route BOTH the read (external
+	// bytes into the archive) and — fatally — the os.Remove below at the
+	// outside file. The entry's identity is captured before the read, the
+	// source chain is verified link-free, and the removal fires only when
+	// the entry at src is STILL the file that was read (os.SameFile is the
+	// portable identity check — dev+ino on unix, file ID on windows). Any
+	// mismatch aborts with the entry at src untouched; the archive copy may
+	// then hold bytes read through the swap, which is recoverable — the
+	// destruction of the original is not.
+	srcInfo, err := os.Lstat(src)
+	if err != nil {
 		return err
+	}
+	if err := ensureNoSymlinkPath(projectRoot, filepath.ToSlash(filepath.Dir(rel))); err != nil {
+		return fmt.Errorf("archive source %s: %w", rel, err)
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	dstAbs := filepath.Join(projectRoot, filepath.FromSlash(dstRel))
+	// Gate round 16: the destination's nested subdirectories are created
+	// BEFORE the temp write — a stale file under a nested managed path (e.g.
+	// .claude/rules/moai/sub/) otherwise fails CreateTemp with "no such file
+	// or directory" and aborts the whole update. The creation is
+	// link-free-safe by construction: every EXISTING component was just
+	// verified link-free, so MkdirAll only fills genuinely-absent components
+	// with real directories, root-pinned.
+	if err := os.MkdirAll(filepath.Dir(dstAbs), defs.DirPerm); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(dstAbs), ".moai-archive-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer func() { _ = os.Remove(tmpName) }() // no-op after a successful rename
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmpName, defs.FilePerm); err != nil {
+		return err
+	}
+	// The destination gate: re-verify before installing the copy.
+	if err := ensureNoSymlinkPath(projectRoot, dstRel); err != nil {
+		return fmt.Errorf("archive destination changed during copy of %s: %w", rel, err)
+	}
+	if err := os.Rename(tmpName, dstAbs); err != nil {
+		return err
+	}
+	// The removal gate (round 17, finding 1): the entry at src must still be
+	// the file this run read, in a link-free parent chain, or nothing is
+	// removed.
+	if err := ensureNoSymlinkPath(projectRoot, filepath.ToSlash(filepath.Dir(rel))); err != nil {
+		return fmt.Errorf("archive source changed during copy of %s: %w", rel, err)
+	}
+	nowInfo, err := os.Lstat(src)
+	if err != nil {
+		return fmt.Errorf("archive source vanished during copy of %s: %w", rel, err)
+	}
+	if !os.SameFile(srcInfo, nowInfo) {
+		return fmt.Errorf("archive source %s was replaced during the copy — removal refused", rel)
 	}
 	return os.Remove(src)
 }
@@ -409,18 +550,25 @@ func ensureNoSymlinkPath(projectRoot, rel string) error {
 	return nil
 }
 
-// copyRegularDefault copies one regular file with the package default file
-// mode (defs.FilePerm) — the archive copy contract (design §3): source modes
-// are NOT inherited.
-func copyRegularDefault(src, dst string) error {
-	data, err := os.ReadFile(src)
+// LoadManifestReadOnly reads .moai/manifest.json WITHOUT the Manager's
+// corrupt-file recovery: absent, unreadable, or corrupt manifests return nil
+// (the classifier's conservative no-record route) and nothing on disk is
+// touched. The dry-run preview uses this — a preview must never mutate the
+// project, and Manager.Load renames a corrupt manifest to .corrupt as its
+// production recovery (gate round 19).
+func LoadManifestReadOnly(projectRoot string) *manifest.Manifest {
+	data, err := os.ReadFile(filepath.Join(projectRoot, defs.MoAIDir, defs.ManifestJSON))
 	if err != nil {
-		return err
+		return nil
 	}
-	if err := os.MkdirAll(filepath.Dir(dst), defs.DirPerm); err != nil {
-		return err
+	var mf manifest.Manifest
+	if err := json.Unmarshal(data, &mf); err != nil {
+		return nil
 	}
-	return os.WriteFile(dst, data, defs.FilePerm)
+	if mf.Files == nil {
+		mf.Files = make(map[string]manifest.FileEntry)
+	}
+	return &mf
 }
 
 // ProtectFuncFor returns the production protection predicate for the

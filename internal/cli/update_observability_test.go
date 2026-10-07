@@ -252,6 +252,48 @@ func TestPreviewReconciliation_EmptyProject(t *testing.T) {
 	}
 }
 
+// TestPreviewReconciliation_ReadOnlyOnCorruptManifest — gate round 19: a
+// CORRUPT manifest must not mutate the project on a dry run. Manager.Load's
+// production recovery renames the original to .corrupt; the preview reads
+// through the read-only loader instead — the original stays byte-identical,
+// no .corrupt appears, and the preview still renders (conservative
+// no-record classification).
+func TestPreviewReconciliation_ReadOnlyOnCorruptManifest(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	const corrupt = "{ this is not valid json"
+	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(root, ".moai", "manifest.json")
+	if err := os.WriteFile(manifestPath, []byte(corrupt), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	localRule := filepath.Join(root, ".claude", "rules", "moai", "local.md")
+	if err := os.MkdirAll(filepath.Dir(localRule), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(localRule, []byte("local\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := previewReconciliation(root, template.DeployModeLocal, &out); err != nil {
+		t.Fatalf("previewReconciliation: %v", err)
+	}
+
+	data, err := os.ReadFile(manifestPath)
+	if err != nil || string(data) != corrupt {
+		t.Errorf("corrupt manifest was moved or altered: %q (err=%v)", data, err)
+	}
+	if _, err := os.Stat(manifestPath + ".corrupt"); !os.IsNotExist(err) {
+		t.Errorf(".corrupt file created by a dry run: %v", err)
+	}
+	if !strings.Contains(out.String(), "local.md") {
+		t.Errorf("preview must still classify (conservative no-record route), got:\n%s", out.String())
+	}
+}
+
 // TestPreviewReconciliation_ModeScoped is card t1438 review finding 4,
 // carried onto the reconciliation preview: the preview must share the run's
 // exact target computation. On a plugin-mode record the dropped roots are

@@ -8,12 +8,17 @@ package cli
 // v1→v2 fresh-install case, behind the REQ-UPM-015 guard.
 
 import (
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/cli/update"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/template"
 	"gopkg.in/yaml.v3"
 )
 
@@ -59,4 +64,53 @@ func reconcileTargets(projectRoot string, cleanTargets []deploy.CleanTarget) []d
 // deploy-time snapshot base.
 func reconcileExclude(rel string) bool {
 	return strings.HasPrefix(rel, ".moai/config/sections/")
+}
+
+// reconcileMergeExclude composes reconcileExclude with the mergeable-file
+// set — the full merge-phase exclusion the run applies (review finding 2).
+func reconcileMergeExclude() func(rel string) bool {
+	return func(rel string) bool {
+		if reconcileExclude(rel) {
+			return true
+		}
+		for _, m := range mergeableFilePaths() {
+			if rel == m {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// reconcileManagedRoots runs the preservation reconcile over the run's
+// managed-root scope (deploy-mode aware, WITHOUT any migration removal
+// append — gate round 10, finding 1: the migration's wholesale removal is
+// exactly its classified dropped-root list, and the managed roots reconcile
+// like every default run). Shared by the default path and the migration arm;
+// results land in the caller's summary/pending slots, and the legacy
+// .moai/memory migration runs after the reconcile's own work (gate round 10,
+// finding 4 — the wholesale clean used to carry it at the end of its walk).
+func reconcileManagedRoots(projectRoot string, out io.Writer, tmplFS fs.FS, mgr manifest.Manager, deployMode template.DeployMode, summary *update.ReconciliationSummary, pending *[]update.PendingMerge) error {
+	// The reconciliation is read-only until the stale archive; a
+	// classification failure aborts with the tree intact (NFR-UPM-002
+	// stage 1). The exclude set names the paths another step of THIS flow
+	// already reconciles — the config sections restore below and the
+	// mergeable-file merge — so the merge phase never reprocesses them
+	// (review finding 2: reprocessing would diff the operator's pre-deploy
+	// bytes against the other step's merged output and revert its delivered
+	// updates).
+	s, p, err := update.ReconcileManagedPaths(projectRoot, out,
+		tmplFS, templateRenderCarriage(tmplFS, nil, nil), mgr.Manifest(),
+		update.ReconcileOptions{
+			Targets: reconcileTargets(projectRoot, computeRunCleanTargets(projectRoot, deployMode, nil)),
+			Exclude: reconcileMergeExclude(),
+		})
+	if err != nil {
+		return err
+	}
+	*summary = s
+	*pending = p
+	// The legacy .moai/memory migration (finding 4): unchanged contract, now
+	// carried by the reconcile path instead of the wholesale walk's tail.
+	return deploy.MigrateLegacyMemoryDir(projectRoot, out)
 }

@@ -233,6 +233,34 @@ families — ~30 name families green, env-scrubbed — plus the pipeline unit
 suite); CI on the integration branch owns the repository-wide verdict and is
 PENDING at report time.
 
+### Card-scope review rounds 10-19 (post-M7) — reproduction and repair
+
+All findings reproduced/verified before repair (VCI §1); regression tests added
+per finding class. Round 12's "compile error" was this lane's own 429-interrupted
+editing state, not a defect.
+
+| # | Round | Finding | Repair | Regression test |
+|---|-------|---------|--------|-----------------|
+| 1 | r10/card-review P1 | record-less + `--no-plugin` → migration arm wiped the MANAGED roots wholesale (dry-run had promised preservation) | the migration arm's wholesale removal is confined to its classified dropped-root list (`migration.removalTargets`); the managed roots reconcile via the shared `reconcileManagedRoots` helper | `TestUpdateOptedOutMigrationPreservesManagedRootLocals` |
+| 2 | r10 P1 | post-deploy swap of a restore target/parent to an external symlink → `os.WriteFile` followed it outside | `safeWriteFile`: link-free parent chain (pre + post), same-dir temp + rename (replaces, never follows, the final component), mode preserved | `TestMergePhaseRefusesSwappedSymlinkTarget`, `TestSafeWriteFileRefusesLinkedParentDir`, `TestSafeWriteFilePreservesExistingMode`, `TestMergePhaseAbortsOnLinkedParentRestore` |
+| 3 | r10 P2 | archived-removed config sections re-created by the backup restore (reported removal contradicted) | `RestoreMoaiConfigRetained` gained variadic `skipRel` filters; the cli passes the archived-removed set | `TestRestoreMoaiConfigRetained_SkipsArchivedEntries` |
+| 4 | r10 P2 | `MigrateLegacyMemoryDir` missing on the default reconcile path | carried by `reconcileManagedRoots` after the reconcile's own work | asserted in `TestUpdateOptedOutMigrationPreservesManagedRootLocals` |
+| 5 | r10 P2 | FIFO at a plain-file target hung the classifier read | `Mode().IsRegular()` guard before the read | `TestClassifyNonRegularTargetDoesNotHang` (5s timeout guard) |
+| 6 | r10 P2 + r11 refinement | `.moai/archive` as an external link → MkdirAll created outside (check ran too late) | `ensureNoSymlinkPath` on the archive root BEFORE any creation | `TestArchiveRootCreationRefusesExternalLink` |
+| 7 | r11 P1 | archive copy through a stale swapped parent | O_EXCL temp + rename install + destination chain re-verified before install AND before the source removal | `TestArchiveThenRemoveRefusesLinkedDestinationDir` |
+| 8 | r16 P1 | nested stale archive failed — destination subdirectories never created (CreateTemp ENOENT aborted the update) | nested destination dirs created first, after the link check (root-pinned MkdirAll of verified/absent components) | `TestArchiveNestedStaleFileArchived` |
+| 9 | r17 P1 | source parent swapped mid-copy → `os.Remove(src)` deleted the EXTERNAL file (sentinel exists=false repro) | source side pinned: entry identity captured (Lstat) before the read, source chain verified at entry and before removal, and `os.SameFile` must match or NOTHING is removed | `TestArchiveThenRemoveRefusesLinkedSourceDir` |
+| 10 | r17 P1 | sidecar name claimed by check-then-rename — a sibling created in between was silently replaced (collision=false) | exclusive claim: `exclusiveWriteFile` with O_CREATE\|O_EXCL; EEXIST advances to the next numbered suffix with collision reported | `TestExclusiveSidecarClaimNeverClobbers`, `TestExclusiveWriteFileRefusesLinkedParentDir`, `TestExclusiveWriteFileFileParentIsAFile` |
+| 12 | r19 P2 | `--dry-run` on a corrupt manifest MUTATED the project (Manager.Load renames the original to `.corrupt`) | `update.LoadManifestReadOnly` — read+parse only, nil on any failure (conservative no-record route); the production update path keeps the recovery behavior | `TestLoadManifestReadOnly`, `TestPreviewReconciliation_ReadOnlyOnCorruptManifest` |
+
+Residual (documented, not fixable in stdlib Go without dirfd): the mid-copy
+TOCTOU window between the pre-check and the temp-write is narrowed to a
+post-write re-verification — the worst residual is a temp copy outside the
+project in a mid-write swap; the removal never fires on an unverified chain.
+The merged-write `theirs` read follows a swapped link when a base exists
+(read-side only; writes stay root-pinned) — flagged here for the gate's
+disposition, not silently ignored.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: complete

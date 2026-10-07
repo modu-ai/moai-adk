@@ -16,7 +16,6 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update"
-	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tui"
 )
@@ -38,14 +37,14 @@ func previewReconciliation(projectRoot string, deployMode template.DeployMode, o
 	}
 	// The migration's classified append is the one piece a dry run cannot
 	// reproduce (it needs the confirmed probe); the mode-scoped list is the
-	// honest preview floor, as it was for the cleanup preview.
-	mgr := manifest.NewManager()
-	if _, err := mgr.Load(projectRoot); err != nil {
-		return fmt.Errorf("load manifest: %w", err)
-	}
+	// honest preview floor, as it was for the cleanup preview. The manifest
+	// is read through the read-only loader (gate round 19): Manager.Load's
+	// corrupt-file recovery RENAMES the original to .corrupt — a disk
+	// mutation a dry run must never make. A corrupt/absent manifest reads as
+	// nil and the classifier takes its conservative no-record route.
 	plan, err := update.ClassifyManagedRoots(projectRoot,
 		reconcileTargets(projectRoot, computeRunCleanTargets(projectRoot, deployMode, nil)),
-		templateRenderCarriage(embedded, nil, nil), mgr.Manifest())
+		templateRenderCarriage(embedded, nil, nil), update.LoadManifestReadOnly(projectRoot))
 	if err != nil {
 		return fmt.Errorf("classify managed roots: %w", err)
 	}

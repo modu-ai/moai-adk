@@ -162,7 +162,13 @@ func ClassifyManagedRoots(projectRoot string, targets []deploy.CleanTarget, rend
 				continue
 			}
 			if !info.IsDir() {
-				// A plain-file target is classified directly.
+				// A plain-REGULAR-file target is classified directly. The
+				// IsRegular check is load-bearing (gate round 10, finding 5):
+				// a FIFO or device node passes IsDir()==false, and reading it
+				// would block the walk — and the dry-run preview — forever.
+				if !info.Mode().IsRegular() {
+					continue
+				}
 				data, readErr := os.ReadFile(root)
 				if readErr != nil {
 					return ReconcilePlan{Symlinks: planOut.Symlinks}, errors.Join(errReconcileClassifyStopped, readErr)

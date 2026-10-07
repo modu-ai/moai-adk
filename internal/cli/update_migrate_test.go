@@ -243,6 +243,52 @@ func TestUpdateMigratesLegacyProject(t *testing.T) {
 // exported constant's package (the classifier owns the layout).
 const templateMigrationTagForTest = "init-shrink-migration"
 
+// TestUpdateOptedOutMigrationPreservesManagedRootLocals — SPEC-UPDATE-
+// MIGRATION-001 (card t1547, gate round 10 finding 1): a record-less project
+// run with --no-plugin takes the migration arm, whose WHOLESALE removal is
+// exactly its classified dropped-root list. The managed roots reconcile:
+// a local-only rule file survives byte-for-byte, and the legacy
+// .moai/memory tree still migrates (finding 4). Before the split, this arm
+// wiped the managed roots wholesale — deleting what the dry-run preview had
+// promised to preserve.
+func TestUpdateOptedOutMigrationPreservesManagedRootLocals(t *testing.T) {
+	root := buildMigrationFixture(t)
+	const localRule = ".claude/rules/moai/local-rule.md"
+	const localRuleBytes = "# operator's dev-only rule — exists in no template\n"
+	abs := filepath.Join(root, filepath.FromSlash(localRule))
+	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(abs, []byte(localRuleBytes), 0o644); err != nil {
+		t.Fatalf("write local rule: %v", err)
+	}
+	// Legacy .moai/memory tree (finding 4): the wholesale clean used to run
+	// MigrateLegacyMemoryDir at the end of its walk; the reconcile path must
+	// carry it too.
+	memCkpt := filepath.Join(root, ".moai", "memory", "checkpoints")
+	if err := os.MkdirAll(memCkpt, 0o755); err != nil {
+		t.Fatalf("mkdir memory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(memCkpt, "state.json"), []byte("{}"), 0o644); err != nil {
+		t.Fatalf("write checkpoint: %v", err)
+	}
+
+	runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "no-plugin": "true"})
+
+	// The managed-root local survived byte-for-byte.
+	if got := readFixtureFile(t, root, localRule); got != localRuleBytes {
+		t.Errorf("managed-root local rule content = %q, want byte-identical %q", got, localRuleBytes)
+	}
+	// The legacy memory tree migrated (renamed to .moai/state — no state dir
+	// pre-existed in the fixture).
+	if _, err := os.Stat(filepath.Join(root, ".moai", "memory")); !os.IsNotExist(err) {
+		t.Errorf("legacy .moai/memory still present (err=%v)", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".moai", "state", "checkpoints", "state.json")); err != nil {
+		t.Errorf("legacy memory not migrated to .moai/state: %v", err)
+	}
+}
+
 // TestMigrationRemovesIdenticalDroppedComponents is AC-011: identical
 // dropped components are removed with the count printed, no archive of an
 // identical component is written, and the removal ran through the
