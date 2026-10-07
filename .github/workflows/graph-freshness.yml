@@ -6,15 +6,15 @@ on:
   # widened the same statement without a recorded decision; naming the integration
   # branches here declares the firing set already in force rather than changing it.
   pull_request:
-    branches: [main, develop]
+    branches: [main]
   # Card t1298 — the conflict-guard job needs a fire on conflicting PRs,
   # whose merge ref (and therefore pull_request event) does not exist.
   # pull_request_target runs in the base context and needs no merge ref;
   # the guard job alone consumes this event (job-level if: below).
   pull_request_target:
-    branches: [main, develop]
+    branches: [main]
   push:
-    branches: [main, develop]
+    branches: [main]
 
 permissions:
   contents: read

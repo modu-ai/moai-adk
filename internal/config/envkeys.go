@@ -345,6 +345,14 @@ const (
 	// default is off (config.DefaultMemoryFoldOnDone); wiring every queue
 	// close to a shared-store mutation is opt-in (plan.md OD-1/OD-2).
 	EnvMemoryFoldOnDone = "MOAI_MEMORY_FOLD_ON_DONE"
+
+	// EnvMemoryAudit is the memory-subsystem kill switch. The value "0"
+	// silences every unasked memory surface — the SessionStart budget line
+	// (SPEC-MEMORY-FOLD-BUDGET-001 follow-up card, REQ-MFB-011) and the
+	// staleness audit path (SPEC-V3R2-EXT-001 T6) read it. The constant gives
+	// the gate's name one home; the SessionStart advisory was the first reader
+	// to cite it, the older literal readers predate it.
+	EnvMemoryAudit = "MOAI_MEMORY_AUDIT"
 )
 
 // Factory-role marker constants (SPEC-AUTONOMY-PRECONDITION-001

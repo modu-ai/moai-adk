@@ -70,6 +70,7 @@ func todoFixture(t *testing.T) (root string, store *factory.BacklogStore) {
 	// stays project-local under it, where these tests read it (card t1229).
 	t.Setenv(config.EnvHome, "")
 	initGitRepo(t, root)
+	seedGitFlowPrecondition(t, root)
 	store = factory.NewBacklogStore(todoBacklogPath(root))
 	return root, store
 }

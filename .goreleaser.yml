@@ -50,3 +50,7 @@ release:
   github:
     owner: modu-ai
     name: moai-adk
+  # A tag with a SemVer pre-release suffix (v3.2.0-rc.1) is published as a
+  # GitHub pre-release; a formal tag (v3.2.0) stays a normal release. Unset, the
+  # release is never flagged pre-release, whatever the tag's suffix.
+  prerelease: auto
