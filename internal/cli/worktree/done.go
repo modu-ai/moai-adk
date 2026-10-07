@@ -11,8 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -26,8 +26,9 @@ This command performs the completion workflow:
 1. Refuse while a live session is anchored in the worktree (tree-local
    session registry check; --force overrides with a warning)
 2. Card worktrees (WT- branches): refuse until the card's merge commit is
-   confirmed on the remote integration branch, origin/<integration target>
-   (origin/develop under git-flow; git fetch + rev-list machine check)
+   confirmed on the resolved landed ref — git_strategy.worktree_base_branch,
+   else refs/remotes/origin/HEAD, else origin/main (git fetch + rev-list
+   machine check)
 3. Remove the worktree at the specified branch
 4. Optionally delete the feature branch (with --delete-branch)
 
@@ -278,23 +279,22 @@ func refuseL1SessionWorktree(path string) error {
 const cardBranchPrefix = "WT-"
 
 // landingBase resolves the integration branch the origin-landing machine
-// check fetches and compares against: the configured integration target (the
-// interpretation table behind config.LoadGitFlowIntegrationConfig — develop
-// under git-flow, main under github-flow), read from the project root of the
-// tree being disposed. An unresolvable root or an empty target is an error:
-// the caller refuses, it never substitutes a branch. The second result names
-// the config value the base came from, for the MERGE_NOT_ON_ORIGIN refusal.
+// check fetches and compares against, through the same landed-ref chain the
+// todo surface answers from (factory.LandedRefForWithLevel —
+// SPEC-GITHUB-FLOW-CI-RESIDUE-001 REQ-GFC-001): the configured
+// git_strategy.worktree_base_branch, then refs/remotes/origin/HEAD, then the
+// compiled-in default. Read from the project root of the tree being disposed;
+// the chain always answers, so only an unresolvable root is an error — the
+// caller refuses, it never substitutes a branch. The second result names the
+// chain level the base came from, for the MERGE_NOT_ON_ORIGIN refusal
+// (REQ-GFC-002 disclosure).
 func landingBase(targetPath string) (base, provenance string, err error) {
 	root, err := gitMainRootFromTargetFunc(targetPath)
 	if err != nil {
 		return "", "", fmt.Errorf("cannot resolve the project root: %w", err)
 	}
-	cfg := config.LoadGitFlowIntegrationConfig(root)
-	base = strings.TrimSpace(cfg.IntegrationTarget)
-	if base == "" {
-		return "", "", fmt.Errorf("no integration target configured under %s: %s", root, cfg.EmptyTargetGuidance(root, ""))
-	}
-	return base, cfg.TargetProvenance(), nil
+	ref, level := factory.LandedRefForWithLevel(root)
+	return strings.TrimPrefix(ref, "origin/"), factory.LandedRefLevelSource(level), nil
 }
 
 // landingGitCmd is the git execution seam for the origin-landing machine

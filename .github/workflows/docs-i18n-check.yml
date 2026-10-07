@@ -25,7 +25,8 @@ on:
       - 'scripts/docs-i18n-check.sh'
       - '.github/workflows/docs-i18n-check.yml'
   # main is the integration branch (GitHub Flow, 2026-10-05 cutover): direct
-  # pushes carry docs-site content between PRs, so the check rides push too.
+  # pushes carry docs-site content between PRs, so the check rides push too
+  # (card t1535 REQ-GFC-013 — the push trigger is main-only).
   push:
     branches:
       - main
