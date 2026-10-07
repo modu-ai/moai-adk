@@ -12,6 +12,10 @@ Shared protocol for all MoAI agent definitions. This rule is automatically loade
 
 `AskUserQuestion` is the **only** user-facing question channel. The boundary is asymmetric by design.
 
+### Lane disposition of a blocker
+
+A lane session is orchestrator-class for its card and holds no user channel, so the disposition above is not its path. A blocker report a lane receives from a spawned agent — or the missing-input moment the lane hits itself — is NOT routed to the leader to ask and wait: the lane resolves the judgment through the decision ladder (`.claude/rules/moai/workflow/auto-semantics.md` §6, terminal step: the lane's own judgment), records it (§10) in the card's progress record, and proceeds. Escalation to the leader survives for the keep-set categories only (environment-impossible, operator-held, irreversible external-shared operations) and for cross-card conflicts. The AskUserQuestion-with-user round remains the main orchestrator's disposition; the leader is not the lane's user.
+
 ### Subagent Prohibitions
 
 [ZONE:Frozen] [HARD] Subagents MUST NOT prompt the user. AskUserQuestion is reserved exclusively for the MoAI orchestrator.
