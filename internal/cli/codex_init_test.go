@@ -632,7 +632,8 @@ func TestCodexInitAcceptDelegation(t *testing.T) {
 	type cellResult struct {
 		contractRootRel string // captured ProjectRoot with the per-cell sandbox prefix stripped
 		contractCalls   int
-		agents, claude  []byte
+		agents          []byte
+		claudeAbsent    bool // no CLAUDE.md after acceptance — it must never be created
 	}
 	byPair := map[string][]cellResult{}
 	for _, st := range codexAllIncompleteStates {
@@ -668,20 +669,17 @@ func TestCodexInitAcceptDelegation(t *testing.T) {
 					if len(h.order) != 2 || h.order[0] != "generator" || h.order[1] != "contract" {
 						t.Errorf("call order = %v, want [generator contract]", h.order)
 					}
-					// disk: the instruction files really exist, with exactly
-					// one executing import.
+					// disk: AGENTS.md really exists — created by the contract —
+					// and no CLAUDE.md is ever created (the AGENTS.md-primary
+					// product; a legacy CLAUDE.md is inert).
 					agentsPath := filepath.Join(proj, codexAgentsRelPath)
-					claudePath := filepath.Join(proj, codexClaudeRelPath)
+					claudePath := filepath.Join(proj, "CLAUDE.md")
 					agents, aerr := os.ReadFile(agentsPath)
 					if aerr != nil {
 						t.Fatalf("AGENTS.md missing after acceptance: %v", aerr)
 					}
-					claude, cerr := os.ReadFile(claudePath)
-					if cerr != nil {
-						t.Fatalf("CLAUDE.md missing after acceptance: %v", cerr)
-					}
-					if got := codexTestExecImports(t, claudePath, codexLinkAgentsDirective); got != 1 {
-						t.Errorf("executing @AGENTS.md imports in CLAUDE.md = %d, want 1", got)
+					if _, cerr := os.Stat(claudePath); !os.IsNotExist(cerr) {
+						t.Errorf("CLAUDE.md created by the contract — it must stay absent")
 					}
 					if got := codexTestExecImports(t, agentsPath, codexTestLocalImportDirective); got != 0 {
 						t.Errorf("executing @AGENTS.local.md imports in AGENTS.md = %d, want 0", got)
@@ -710,10 +708,12 @@ func TestCodexInitAcceptDelegation(t *testing.T) {
 					}
 
 					key := fmt.Sprintf("%s/%s", st, verb)
+					_, claudeStatErr := os.Stat(claudePath)
 					byPair[key] = append(byPair[key], cellResult{
 						contractRootRel: strings.TrimPrefix(h.contractReqs[0].ProjectRoot, sbx+string(filepath.Separator)),
 						contractCalls:   h.contractCalls,
-						agents:          agents, claude: claude,
+						agents:          agents,
+						claudeAbsent:    os.IsNotExist(claudeStatErr),
 					})
 				})
 			}
@@ -733,8 +733,8 @@ func TestCodexInitAcceptDelegation(t *testing.T) {
 		if a.contractCalls != 1 || b.contractCalls != 1 {
 			t.Errorf("pair %s: contract calls differ by spawn (%d vs %d)", key, a.contractCalls, b.contractCalls)
 		}
-		if string(a.agents) != string(b.agents) || string(a.claude) != string(b.claude) {
-			t.Errorf("pair %s: instruction file bytes differ by spawn — the contract read the flag", key)
+		if string(a.agents) != string(b.agents) || a.claudeAbsent != b.claudeAbsent {
+			t.Errorf("pair %s: instruction file outcome differs by spawn — the contract read the flag", key)
 		}
 	}
 }
@@ -805,7 +805,7 @@ func codexLayUserInstructionFiles(t *testing.T, proj string) (agents, claude, lo
 	claude = []byte("# My claude notes\n\nmore prose\n")
 	local = []byte("local secrets — uncommitted guidance\n")
 	for name, content := range map[string][]byte{
-		codexAgentsRelPath: agents, codexClaudeRelPath: claude, codexLocalInstructionName: local,
+		codexAgentsRelPath: agents, "CLAUDE.md": claude, codexLocalInstructionName: local,
 	} {
 		if err := os.WriteFile(filepath.Join(proj, name), content, 0o644); err != nil {
 			t.Fatal(err)
@@ -826,7 +826,8 @@ func TestCodexInitFailurePaths(t *testing.T) {
 		name     string
 		opts     func(t *testing.T) codexHarnessOpts
 		layDisk  func(t *testing.T, proj string)
-		wantCall string // the underlying failure text the output must name
+		postLay  func(t *testing.T, proj string) // runs after the user instruction files are laid
+		wantCall string                          // the underlying failure text the output must name
 	}
 	fixtures := []failureFixture{
 		{
@@ -845,8 +846,14 @@ func TestCodexInitFailurePaths(t *testing.T) {
 					failCreateTemp: errors.New("read-only target directory (e2)"), contractReal: true,
 				}
 			},
-			layDisk:  func(t *testing.T, proj string) {},
-			wantCall: "stage CLAUDE.md",
+			postLay: func(t *testing.T, proj string) {
+				// AGENTS.md absent → the contract's create plan is the only
+				// one, and the injected temp failure fails its stage.
+				if err := os.Remove(filepath.Join(proj, codexAgentsRelPath)); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantCall: "stage AGENTS.md",
 		},
 		{
 			name: "e3_partial_output_then_fails",
@@ -873,8 +880,13 @@ func TestCodexInitFailurePaths(t *testing.T) {
 				t.Run(name, func(t *testing.T) {
 					sbx, proj := codexNewSandbox(t)
 					codexLayWiringState(t, proj, stateNotWiredMissing)
-					fx.layDisk(t, proj)
+					if fx.layDisk != nil {
+						fx.layDisk(t, proj)
+					}
 					agents, claude, local := codexLayUserInstructionFiles(t, proj)
+					if fx.postLay != nil {
+						fx.postLay(t, proj)
+					}
 					before := codexSnapSandbox(t, sbx)
 					h := withCodexGateHarness(t, proj, fx.opts(t))
 					stdout, stderr, code := runCodexInitCell(t, verb, spawn)
@@ -885,11 +897,22 @@ func TestCodexInitFailurePaths(t *testing.T) {
 					if exitCode := code; exitCode != codexInitFailureExitCode {
 						t.Errorf("exit code = %d, want %d (non-success)", exitCode, codexInitFailureExitCode)
 					}
-					// all three instruction files byte-identical: a contract
-					// that truncates before failing would zero them here.
-					for name, want := range map[string][]byte{
-						codexAgentsRelPath: agents, codexClaudeRelPath: claude, codexLocalInstructionName: local,
-					} {
+					// every laid instruction file byte-identical: a contract
+					// that truncates before failing would zero them here. The
+					// legacy CLAUDE.md is pinned too — the contract must not
+					// touch it even on a failure path. AGENTS.md is exempt only
+					// in e2, where the fixture removed it so the create-plan
+					// stage is the failure point; its preserved state is
+					// absence.
+					wantFiles := map[string][]byte{
+						"CLAUDE.md": claude, codexLocalInstructionName: local,
+					}
+					if fx.postLay == nil {
+						wantFiles[codexAgentsRelPath] = agents
+					} else if _, err := os.Stat(filepath.Join(proj, codexAgentsRelPath)); !os.IsNotExist(err) {
+						t.Errorf("AGENTS.md recreated across the failed initialization")
+					}
+					for name, want := range wantFiles {
 						got, err := os.ReadFile(filepath.Join(proj, name))
 						if err != nil {
 							t.Fatalf("read %s after failure: %v", name, err)
@@ -904,7 +927,7 @@ func TestCodexInitFailurePaths(t *testing.T) {
 					}
 					// no write-mode call ever named an instruction target.
 					for _, p := range h.fs.writePaths() {
-						if strings.HasSuffix(p, codexAgentsRelPath) || strings.HasSuffix(p, codexClaudeRelPath) || strings.HasSuffix(p, codexLocalInstructionName) {
+						if strings.HasSuffix(p, codexAgentsRelPath) || strings.HasSuffix(p, "CLAUDE.md") || strings.HasSuffix(p, codexLocalInstructionName) {
 							t.Errorf("write-mode seam call named an instruction target: %q", p)
 						}
 						if !strings.HasPrefix(p, proj+string(filepath.Separator)) {
@@ -1004,17 +1027,6 @@ func codexTestExecImports(t *testing.T, path, directive string) int {
 		}
 	}
 	return n
-}
-
-// codexTestRawOccurrences counts raw substring occurrences (the I6/I7
-// companion count).
-func codexTestRawOccurrences(t *testing.T, path, needle string) int {
-	t.Helper()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read %s: %v", path, err)
-	}
-	return strings.Count(string(data), needle)
 }
 
 // ─── SPEC-CODEX-TEST-GAPS-001 M7 (REQ-CTG-005 / AC-CTG-005) ───────────────

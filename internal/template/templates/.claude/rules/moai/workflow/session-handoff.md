@@ -116,7 +116,7 @@ The message then survives `/clear` and is discoverable at the next session's sta
 - `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol — auto-memory + `[SUPERSEDED by ...]` convention
 - `.moai/config/sections/handoff.yaml` — `handoff.mode` (`manual`/`auto`) + `handoff.guide` config keys consumed by § Auto-Injected Resume Flow
 - `.claude/rules/moai/workflow/goal-directive.md` § Goal-Presentation Timing — the arm-only property and the Kickoff-gate timing that Block 5 implements; § MoAI Integration Notes — the auto-injected resume path
-- Output-style §6 (Persistence & Context Awareness) and CLAUDE.md §11 (token-limit recovery): `session-handoff-format.md` § Cross-references
+- Output-style §6 (Persistence & Context Awareness) and context-window-management.md (token-limit recovery): `session-handoff-format.md` § Cross-references
 
 ---
 

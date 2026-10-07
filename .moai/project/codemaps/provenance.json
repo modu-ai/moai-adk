@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "tree_root": "/Users/goos/.codex/worktrees/pr-ci-codemaps-fix/moai-adk-go",
-  "commit_sha": "067fdced2dd8f38812d4c36ec17ceb8d2ca3e263",
+  "commit_sha": "48fa94b99023bb252a9731fbbd5ebc6dcc7472ab",
   "dirty": false,
   "described_roots": [
     "internal",
@@ -9,5 +9,5 @@
     "pkg"
   ],
   "generated_by": "codemaps-gen",
-  "generated_at": "2026-10-07T05:17:55Z"
+  "generated_at": "2026-10-07T07:13:26Z"
 }

@@ -94,7 +94,7 @@ Canonical native documentation: `https://code.claude.com/docs/en/goal`.
 - `.claude/rules/moai/workflow/native-invocation-model.md` § Classification Matrix / § Axis B — the invocation classification and the automation justification the Native `/goal` Prohibition rests on
 - `https://code.claude.com/docs/en/hooks-guide` — prompt-based / agent-based Stop hooks (the mechanism class the goal evaluator belongs to)
 - `.claude/output-styles/moai/moai.md` § Persistence & Context Awareness — long-horizon non-stop doctrine
-- `.claude/skills/moai/workflow-loop` — `/moai loop` Ralph Engine (deterministic diagnostic loop)
+- `.claude/skills/moai-workflow-loop/SKILL.md` — `/moai loop` Ralph Engine (deterministic diagnostic loop)
 
 ## Proactive Recommendation Triggers
 

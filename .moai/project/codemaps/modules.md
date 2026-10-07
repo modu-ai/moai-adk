@@ -1,6 +1,21 @@
 # 패키지 모듈 상세
 
-## 현재 main의 변경 경계
+## 현재 main48의 변경 경계
+
+기준은 `48fa94b99023bb252a9731fbbd5ebc6dcc7472ab`다. 소스가 같은 `a064df553563463918885181de0c25aa233048d8` 트리에서 이전067 기준 뒤 설명 대상 소스 15개를 대조했다. 모두 기존 파일 수정이며 새 패키지나 비테스트 파일은 없다. 다음은 소스에서 확인한 책임이며 실행 성공 판정은 아니다.
+
+| 경로·소유 모듈 | 이번 창에서 확인한 책임 |
+|---|---|
+| `internal/cli/factory_card.go` | 기존 assigned 카드도 현재 큐 상태가 hold/queued면 재임대에서 제외한다. queued 승격에서 이미 assigned인 행에는 빈 `CardFields`를 전달해 기존 배정 입력을 보존한다. 지명된 assigned+queued 카드도 pick 전에는 거절한다. |
+| `internal/cli/worktree/done.go` · `internal/cli/worktree/sweep.go` · `internal/cli/todo_issuance.go` | done·sweep의 기본 착지 기준과 발행 파일 probe가 Factory의 공통 landed-ref 해석을 사용한다. sweep의 명시적 `--base`는 우선한다. |
+| `internal/factory`의 prlink_landedref.go | 설정의 `worktree_base_branch` → `origin/HEAD` → `origin/main` 순서로 해석한다. 새 `LandedRefLevelSource`가 선택한 단계의 출처 어휘를 반환한다. |
+| `internal/cli/doctor_git_strategy_workflow.go` · `internal/cli/todo_autodone.go`와 CLI의 todo_triage.go | doctor의 기준 브랜치 안내와 autodone 도움말·주석을 해석된 착지 기준에 맞춘다. triage 변경은 역사 주석에 한정된다. |
+| `internal/cli/update.go` · `internal/cli/update_clean_install.go` · `internal/cli/update_deny_migration.go` | 보존한 설정의 root deny 항목 중 정확히 일치하는 아홉 문자열만 정규화한다. 알 수 없는 키와 목록 순서를 보존하고 일치할 때만 쓴다. 일반 update는 바이너리·dry-run 조기 종료 뒤, 같은 버전 조기 종료 전에 호출한다. clean install은 설정 보존 뒤 호출한다. |
+| `internal/graph/card_file.go` | 모든 도달 가능한 부모의 카드 귀속을 유지하며 착지 커밋들의 첫 부모 차이를 native Git batch로 읽는다. NUL 파일명과 끝 sentinel을 검사하고 batch가 불완전하거나 실패하면 커밋별 수집으로 돌아간다. |
+| `internal/hook/commit_identity_guard.go` | 내장 거부 신원에 chain-test@example.com과 probe-test@example.com을 포함한다. |
+| `internal/hook/protected_zone_path.go` · `internal/hook/protected_zone_shell.go` | POSIX의 literal backslash를 보존하는 native 경로와 lexical 비교형을 나눈다. shell word는 double quote·ANSI-C quote에 맞춰 escape를 해석한 뒤 경로 판정에 전달한다. |
+
+## 이전067 기준의 변경 경계
 
 기준은 `067fdced2dd8f38812d4c36ec17ceb8d2ca3e263`다. 이전 기준 이후 설명 대상 소스 51개를 대조했다. 다음은 소스에서 확인한 책임과 연결이며 실제 원격 실행의 성공 판정은 아니다. 아래 이전 기록의 파일 수는 각 당시 기준이다.
 

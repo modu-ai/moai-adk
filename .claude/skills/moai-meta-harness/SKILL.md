@@ -122,7 +122,7 @@ Meta-factory skill that architects and generates project-specific agent teams. A
 ### When to Use
 
 - `/moai project` Phase 5+ runs and detects an absent `.moai/harness/main.md`
-- CLAUDE.md contains `<!-- moai:harness-start -->` markers (installed by the project-harness generation policy, not this skill)
+- AGENTS.md contains `<!-- moai:harness-start -->` markers (installed by the project-harness generation policy, not this skill)
 - User explicitly requests harness generation for their project domain
 
 ### Key Outputs
@@ -263,7 +263,7 @@ Both fields are enforced at runtime by the Phase-6 post-generation smoke gate (`
 **Auto-load Conditions**:
 
 1. `/moai project` Phase 5+ runs and `.moai/harness/main.md` is absent
-2. CLAUDE.md contains `<!-- moai:harness-start -->` markers. These markers are installed by the project-harness generation policy during project initialization; this skill does not install them.
+2. AGENTS.md contains `<!-- moai:harness-start -->` markers. These markers are installed by the project-harness generation policy during project initialization; this skill does not install them.
 
 **Frontmatter Triggers**:
 
@@ -286,7 +286,7 @@ This skill provides the workflow recipe and agent cross-references. It does NOT 
 
 The following capabilities are explicitly NOT implemented by this skill:
 
-- **5-layer integration mechanism** — owned by the project-harness generation policy. The integration with `/moai project` phases, hook installation, and CLAUDE.md marker management are all delegated to that SPEC.
+- **5-layer integration mechanism** — owned by the project-harness generation policy. The integration with `/moai project` phases, hook installation, and AGENTS.md marker management are all delegated to that SPEC.
 - **16-question Socratic interview** — owned by the project-harness generation policy. The `manager-spec` conducts the interview under that SPEC's control.
 - **Auto-evolution loop** — owned by the harness-learning policy. The learning feedback mechanism (Phase 7) and delta capture are separate work items outside Wave A.
 - **Modification of `.claude/agents/{moai,harness}/` or static `moai-*` skills** — this meta-harness generates only `hns-*` prefixed artifacts and has no write access to MoAI's own agent/skill directories.
