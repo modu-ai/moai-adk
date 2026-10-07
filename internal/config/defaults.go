@@ -609,6 +609,18 @@ const (
 	// contract (purge required).
 	DefaultBugreportLedgerMaxBytes = 256 * 1024
 
+	// DefaultFeedbackQueueReadTimeBox bounds ONE queue-file read — the same
+	// blocking-file defense the consent, spool, and ledger reads carry. The
+	// sender and `moai update` both read the queue, so a file that blocks
+	// must read as a refusal within a bound instead of stalling them past
+	// their own deadlines.
+	DefaultFeedbackQueueReadTimeBox = 100 * time.Millisecond
+
+	// DefaultFeedbackQueueMaxBytes caps the queue file's size; the queue is
+	// bounded at DefaultBugreportQueueBound items, and anything larger is
+	// out of contract.
+	DefaultFeedbackQueueMaxBytes = 1024 * 1024
+
 	// DefaultBugreportCaptureTimeBox bounds one capture call on the hook
 	// path (time-boxed, fail-open, network-free by construction).
 	DefaultBugreportCaptureTimeBox = 50 * time.Millisecond

@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
@@ -133,13 +134,43 @@ func (s *QueueStore) LockPath() string {
 // queue, never an error. A malformed file surfaces as a parse error with the
 // file untouched: the queued report is the one thing that cannot be
 // regenerated, so there is no repair-on-load path.
+//
+// The read is BOUNDED (review gate finding, P2): a non-regular queue file is
+// refused WITHOUT opening it — a FIFO swapped in at the queue path used to
+// park the read past every deadline, hanging the auto-flush AND `moai
+// update` — and the open+read runs under
+// DefaultFeedbackQueueReadTimeBox with the DefaultFeedbackQueueMaxBytes
+// size cap. On deadline the helper goroutine is left parked on the blocked
+// handle; it exits when the blocking writer closes, and the caller never
+// waits for it.
 func (s *QueueStore) Load() (*QueueRecord, error) {
-	raw, err := atomicfile.ReadFile(s.path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return &QueueRecord{Version: queueVersion, Items: []QueueItem{}}, nil
+	if info, serr := os.Stat(s.path); serr == nil && !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("load feedback queue %s: not a regular file", s.path)
+	}
+	type readResult struct {
+		raw []byte
+		err error
+	}
+	done := make(chan readResult, 1)
+	go func() {
+		raw, err := atomicfile.ReadFile(s.path)
+		done <- readResult{raw: raw, err: err}
+	}()
+	var raw []byte
+	select {
+	case r := <-done:
+		if r.err != nil {
+			if errors.Is(r.err, os.ErrNotExist) {
+				return &QueueRecord{Version: queueVersion, Items: []QueueItem{}}, nil
+			}
+			return nil, fmt.Errorf("load feedback queue %s: %w", s.path, r.err)
 		}
-		return nil, fmt.Errorf("load feedback queue %s: %w", s.path, err)
+		raw = r.raw
+	case <-time.After(config.DefaultFeedbackQueueReadTimeBox):
+		return nil, fmt.Errorf("load feedback queue %s: read exceeded its %s time box", s.path, config.DefaultFeedbackQueueReadTimeBox)
+	}
+	if len(raw) > config.DefaultFeedbackQueueMaxBytes {
+		return nil, fmt.Errorf("load feedback queue %s: %d bytes, over the %d cap", s.path, len(raw), config.DefaultFeedbackQueueMaxBytes)
 	}
 	var rec QueueRecord
 	if err := json.Unmarshal(raw, &rec); err != nil {
