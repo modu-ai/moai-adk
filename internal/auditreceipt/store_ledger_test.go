@@ -1,6 +1,8 @@
 package auditreceipt
 
 import (
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -176,5 +178,191 @@ func TestInstanceLedgerConcurrentCountsSurvive(t *testing.T) {
 	}
 	if l.EndedAt.IsZero() {
 		t.Errorf("EndedAt zero after %d ends — the last single-live end must seal the era", n)
+	}
+}
+
+// Post-sync repair (P2-1, card t1562 mid-flight review): a holder that stalls
+// past the stale age can have its lock broken and taken by a successor. The
+// stalled holder's eventual release must NOT delete the successor's lock —
+// release is token-aware: it removes the lockfile only when the file still
+// carries this holder's own token.
+func TestLedgerLockReleaseRespectsSuccessorToken(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-own", AgentPlanAuditor)
+	p := ledgerPath(root, key)
+
+	release1, err := lockLedger(p)
+	if err != nil {
+		t.Fatalf("first lockLedger: %v", err)
+	}
+	// The first holder stalls past the stale age; a successor breaks the lock
+	// and acquires its own.
+	if err := os.Remove(p + ledgerLockSuffix); err != nil {
+		t.Fatalf("successor break: %v", err)
+	}
+	release2, err := lockLedger(p)
+	if err != nil {
+		t.Fatalf("successor lockLedger: %v", err)
+	}
+
+	release1() // the stalled holder finally finishes
+	if _, err := os.Stat(p + ledgerLockSuffix); err != nil {
+		t.Errorf("the stalled holder's release deleted the successor's lock: %v", err)
+	}
+
+	release2() // the successor's own release removes its own lock
+	if _, err := os.Stat(p + ledgerLockSuffix); !os.IsNotExist(err) {
+		t.Errorf("the successor's release left its own lock behind: %v", err)
+	}
+}
+
+// Post-sync repair (P2-2, card t1562 mid-flight review): a start whose ledger
+// write was dropped leaves the outstanding count short by one — every end
+// computed from it is unreliable, so the end path must FREEZE the boundary
+// instead of advancing it on a count known to be incomplete. The uncertainty
+// flag file is the durable trace of the dropped start; refusing a live
+// instance's own receipt as predecessor-era (AC-RR-002) is the wrong error to
+// make here.
+func TestInstanceLedgerUncertainStartFreezesBoundary(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-unc", AgentPlanAuditor)
+	if err := RecordInstanceStart(root, key, t0); err != nil { // A is recorded
+		t.Fatalf("RecordInstanceStart: %v", err)
+	}
+	// B's start-record write is dropped: the uncertainty is marked duratively.
+	uncertain := ledgerPath(root, key) + ".uncertain"
+	if err := os.WriteFile(uncertain, []byte("start-count uncertain\n"), 0o644); err != nil {
+		t.Fatalf("mark uncertain: %v", err)
+	}
+	// A ends while the uncounted B is still live: the count reads 1 — do not
+	// trust it.
+	if err := RecordInstanceEnd(root, key, t0.Add(time.Second)); err != nil {
+		t.Fatalf("RecordInstanceEnd: %v", err)
+	}
+	l, err := ReadInstanceLedger(root, key)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if !l.EndedAt.IsZero() {
+		t.Errorf("EndedAt = %v, want frozen — an end on a count known to be incomplete must not advance the boundary", l.EndedAt)
+	}
+	if l.Ends != 1 {
+		t.Errorf("Ends = %d, want 1 — the end itself still counts", l.Ends)
+	}
+}
+
+// Post-sync repair (P2-2 mirror, card t1562 gate round 19): an end whose
+// ledger write was dropped leaves a pending mark, and the NEXT ledger
+// operation replays it under the lock — the boundary seals at the pending end
+// time. Unlike a dropped START (permanent freeze), a dropped END is
+// recoverable: the end's own timestamp is known, only its write was lost.
+func TestInstanceLedgerPendingEndReplaysUnderLock(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-pend", AgentPlanAuditor)
+	if err := RecordInstanceStart(root, key, t0); err != nil {
+		t.Fatalf("RecordInstanceStart: %v", err)
+	}
+	// A's end write was dropped: the pending mark carries the end time.
+	endAt := t0.Add(2 * time.Second)
+	pending := ledgerPath(root, key) + ".end-pending"
+	body := `{"ended_at":"` + endAt.Format(time.RFC3339Nano) + `"}`
+	if err := os.WriteFile(pending, []byte(body), 0o644); err != nil {
+		t.Fatalf("write pending mark: %v", err)
+	}
+
+	// The next operation — here B's start — replays the pending end first.
+	if err := RecordInstanceStart(root, key, t0.Add(3*time.Second)); err != nil {
+		t.Fatalf("RecordInstanceStart (replay carrier): %v", err)
+	}
+	l, err := ReadInstanceLedger(root, key)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if !l.EndedAt.Equal(endAt) {
+		t.Errorf("EndedAt = %v, want the replayed pending end %v", l.EndedAt, endAt)
+	}
+	if l.Ends != 1 || l.Starts != 2 {
+		t.Errorf("ledger = %d starts / %d ends, want 2 / 1 — the pending end must be counted", l.Starts, l.Ends)
+	}
+	if _, err := os.Stat(pending); !os.IsNotExist(err) {
+		t.Errorf("the replayed pending mark was not consumed: %v", err)
+	}
+
+	// The uncertainty freeze outranks the replay: a pending end on a key whose
+	// start count is known incomplete counts but never advances.
+	key2 := StartMarkerKey("", "sess-ledger-pend-unc", AgentPlanAuditor)
+	if err := RecordInstanceStart(root, key2, t0); err != nil {
+		t.Fatalf("RecordInstanceStart key2: %v", err)
+	}
+	if err := os.WriteFile(ledgerPath(root, key2)+".uncertain", []byte("start-count uncertain\n"), 0o644); err != nil {
+		t.Fatalf("mark uncertain: %v", err)
+	}
+	if err := os.WriteFile(ledgerPath(root, key2)+".end-pending", []byte(`{"ended_at":"`+endAt.Format(time.RFC3339Nano)+`"}`), 0o644); err != nil {
+		t.Fatalf("write pending mark key2: %v", err)
+	}
+	if err := RecordInstanceEnd(root, key2, t0.Add(4*time.Second)); err != nil {
+		t.Fatalf("RecordInstanceEnd key2: %v", err)
+	}
+	l2, err := ReadInstanceLedger(root, key2)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger key2: %v", err)
+	}
+	if !l2.EndedAt.IsZero() {
+		t.Errorf("key2 EndedAt = %v, want frozen — the uncertainty freeze outranks the replay", l2.EndedAt)
+	}
+	if l2.Ends != 2 {
+		t.Errorf("key2 Ends = %d, want 2 — both the replayed and the current end count", l2.Ends)
+	}
+}
+
+// MarkInstanceStartUncertain is idempotent: a second mark on an already
+// uncertain key is not an error.
+func TestMarkInstanceStartUncertainIdempotent(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-mark", AgentPlanAuditor)
+	if err := MarkInstanceStartUncertain(root, key); err != nil {
+		t.Fatalf("MarkInstanceStartUncertain: %v", err)
+	}
+	if err := MarkInstanceStartUncertain(root, key); err != nil {
+		t.Fatalf("second MarkInstanceStartUncertain: %v", err)
+	}
+	if !startCountUncertain(root, key) {
+		t.Errorf("the uncertainty mark is not visible to startCountUncertain")
+	}
+}
+
+// MarkInstanceEndPending writes the mark the next ledger operation replays.
+func TestMarkInstanceEndPendingRoundTrip(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-pmark", AgentPlanAuditor)
+	endAt := t0.Add(2 * time.Second)
+	if err := MarkInstanceEndPending(root, key, endAt); err != nil {
+		t.Fatalf("MarkInstanceEndPending: %v", err)
+	}
+	got, ok := readEndPending(root, key)
+	if !ok || !got.Equal(endAt) {
+		t.Errorf("readEndPending = (%v, %v), want the marked end %v", got, ok, endAt)
+	}
+}
+
+// A ledger lock held past the wait budget makes lockLedger give up with an
+// error rather than wait forever — the hook time budget bounds the wait.
+func TestLedgerLockTimesOutWhenHeld(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-timeout", AgentPlanAuditor)
+	p := ledgerPath(root, key)
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	lf, err := os.OpenFile(p+ledgerLockSuffix, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatalf("hold the lock: %v", err)
+	}
+	defer func() {
+		_ = lf.Close()
+		_ = os.Remove(p + ledgerLockSuffix)
+	}()
+	if _, err := lockLedger(p); err == nil {
+		t.Fatal("lockLedger acquired a lock held by another holder")
 	}
 }

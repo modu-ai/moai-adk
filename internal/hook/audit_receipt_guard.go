@@ -119,6 +119,13 @@ func recordAuditorStart(input *HookInput) {
 		// single-live end from an ambiguous one.
 		if err := auditreceipt.RecordInstanceStart(g.store, key, auditreceipt.Now()); err != nil {
 			slog.Warn("auditor start not counted", "agent_id", key, "error", err)
+			// The dropped start makes the outstanding count short: mark the
+			// key duratively so no later end advances the boundary on a count
+			// known to be incomplete (post-sync review P2-2). Best-effort —
+			// if even the mark fails, only this log remains.
+			if merr := auditreceipt.MarkInstanceStartUncertain(g.store, key); merr != nil {
+				slog.Warn("auditor start uncertainty not marked", "agent_id", key, "error", merr)
+			}
 		}
 		if _, err := auditreceipt.ReadStartMarker(g.store, key); err == nil {
 			return
@@ -315,8 +322,16 @@ func recordAuditorEnd(store, key string) {
 	if key == "" || !auditreceipt.IsDerivedMarkerKey(key) {
 		return
 	}
-	if err := auditreceipt.RecordInstanceEnd(store, key, auditreceipt.Now()); err != nil {
+	now := auditreceipt.Now()
+	if err := auditreceipt.RecordInstanceEnd(store, key, now); err != nil {
 		slog.Warn("auditor end not counted", "agent_id", key, "error", err)
+		// The dropped end must still seal the era: mark it pending so the next
+		// ledger operation replays it under the lock and the boundary advances
+		// to the end time (post-sync review, dropped END mirror). Best-effort —
+		// if even the mark fails, only this log remains.
+		if perr := auditreceipt.MarkInstanceEndPending(store, key, now); perr != nil {
+			slog.Warn("auditor end not marked pending", "agent_id", key, "error", perr)
+		}
 	}
 }
 

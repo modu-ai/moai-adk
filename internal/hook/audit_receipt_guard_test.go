@@ -907,6 +907,113 @@ func TestSubagentStop_UnreadableInstanceLedgerFailsClosed(t *testing.T) {
 	}
 }
 
+// Post-sync repair (P2-2, card t1562 mid-flight review) — the gate's
+// reproduction end to end: B's start-record write is discarded (the ledger
+// lock is held past the start-record wait budget), so the outstanding count is
+// short when A terminally ends. Without the repair the boundary advances on
+// the incomplete count and B's OWN freshly-minted receipt is refused as
+// predecessor-era — a false positive AC-RR-002 forbids. With it, the dropped
+// start marks the key uncertain, A's end freezes the boundary, and B's own
+// receipt stays provable.
+func TestSubagentStop_DroppedStartFreezesBoundary(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-drop"
+	now := freezeClock(t)
+	key := auditreceipt.StartMarkerKey("", session, auditreceipt.AgentPlanAuditor)
+	lockFile := filepath.Join(auditreceipt.StateDir(root), "ledgers", key+".json.lock")
+
+	// A begins and stays live.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+
+	// Hold the ledger lock past the start-record wait budget, so B's
+	// start-record write is discarded.
+	if err := os.MkdirAll(filepath.Dir(lockFile), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	lf, err := os.OpenFile(lockFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatalf("hold the ledger lock: %v", err)
+	}
+	_ = lf.Close()
+	// B begins: its marker write proceeds, its ledger count does not.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	// The dropped start must leave its durable uncertainty mark.
+	uncertainFile := filepath.Join(auditreceipt.StateDir(root), "ledgers", key+".json.uncertain")
+	if _, err := os.Stat(uncertainFile); err != nil {
+		t.Errorf("the dropped start left no uncertainty mark: %v", err)
+	}
+	// Release the fake hold so later ledger writes succeed.
+	if err := os.Remove(lockFile); err != nil {
+		t.Fatalf("release the fake lock hold: %v", err)
+	}
+
+	// B mints its own receipt during its lifetime; A mints and cites its own.
+	advanceClock(now, time.Second)
+	rb := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+	advanceClock(now, time.Second)
+	rA := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+	advanceClock(now, time.Second)
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-003 receipts="+rA, false)); out.Decision != "" {
+		t.Fatalf("setup: A's accepted end blocked: %q (%s)", out.Decision, out.Reason)
+	}
+
+	// B ends citing its own receipt: accepted — the uncertain count froze the
+	// boundary.
+	out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-003 receipts="+rb, false))
+	if out.Decision != "" {
+		t.Fatalf("decision = %q, want none — B's own receipt must not be refused as predecessor-era on a count known to be incomplete (reason %q)", out.Decision, out.Reason)
+	}
+}
+
+// Post-sync repair (P2-2 mirror, card t1562 gate round 19): the END-record
+// side of the wait budget. A's terminal end is real but its ledger write is
+// discarded (the lock is held past the budget) — without the repair the
+// boundary never seals, and the NEXT auditor of the session accepts A's
+// receipt with zero audit calls. With it, the lost end is marked pending and
+// the next ledger operation replays it under the lock, so the boundary seals
+// at the end time and the successor's reuse is REFUSED.
+func TestSubagentStop_DroppedEndStillSealsBoundary(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-dropend"
+	now := freezeClock(t)
+	key := auditreceipt.StartMarkerKey("", session, auditreceipt.AgentPlanAuditor)
+	lockFile := filepath.Join(auditreceipt.StateDir(root), "ledgers", key+".json.lock")
+
+	// A begins, mints rA, and terminally ends — while the ledger lock is held
+	// past the end-record budget, so the end-record write is discarded.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+	rA := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+	advanceClock(now, time.Second)
+	if err := os.MkdirAll(filepath.Dir(lockFile), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	lf, err := os.OpenFile(lockFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatalf("hold the ledger lock: %v", err)
+	}
+	_ = lf.Close()
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-019 receipts="+rA, false)); out.Decision != "" {
+		t.Fatalf("setup: A's accepted end blocked: %q (%s)", out.Decision, out.Reason)
+	}
+	// The dropped end must leave its durable pending mark.
+	pendingFile := filepath.Join(auditreceipt.StateDir(root), "ledgers", key+".json.end-pending")
+	if _, err := os.Stat(pendingFile); err != nil {
+		t.Errorf("the dropped end left no pending mark: %v", err)
+	}
+	if err := os.Remove(lockFile); err != nil {
+		t.Fatalf("release the fake lock hold: %v", err)
+	}
+
+	// B begins after A's end and cites A's receipt with zero audit calls.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+	out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-019 receipts="+rA, false))
+	if out.Decision != "block" || !strings.Contains(out.Reason, auditreceipt.CauseReceiptReused) {
+		t.Fatalf("output = %+v, want a block naming %q — the replayed end must seal the boundary against the successor's reuse", out, auditreceipt.CauseReceiptReused)
+	}
+}
+
 // SPEC-RECEIPT-REUSE-001 AC-RR-007 (REQ-RR-002): the foreground path —
 // agent-id-keyed markers, consumed at the instance's own stop — is unchanged:
 // a foreground successor citing a predecessor foreground instance's receipt is

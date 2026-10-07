@@ -227,7 +227,18 @@ func ledgerPath(treeRoot, key string) string {
 // lock-free, because the atomic rename guarantees they see a whole file.
 //
 // The wait is bounded well inside the hook time budget (5s policy, 10s
-// PreToolUse) and a lock left by a dead holder ages out.
+// PreToolUse) and a lock left by a dead holder ages out. Release is
+// TOKEN-AWARE: each holder writes a random token into its lockfile and a
+// release removes the file only when it still carries that token — a holder
+// that stalled past the stale age, had its lock broken and taken by a
+// successor, cannot take the successor's lock down with it when it finally
+// finishes (post-sync review P2-1). The chosen trade-off against a kernel
+// flock: the token keeps the lock on the pure-os path all 16 supported
+// platforms build unchanged (a Windows flock would need a second LockFileEx
+// implementation), and it makes the ownership semantics deterministically
+// testable without real 5s stalls. The accepted residual is the break corner
+// itself: a stalling-but-alive holder finishing after a break lands its write
+// as a normal last-writer via the atomic rename.
 
 const (
 	ledgerLockWait   = 250 * time.Millisecond
@@ -244,12 +255,24 @@ func lockLedger(path string) (func(), error) {
 	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
 		return nil, err
 	}
+	token, err := newLedgerLockToken()
+	if err != nil {
+		return nil, err
+	}
 	deadline := time.Now().Add(ledgerLockWait)
 	for {
 		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 		if err == nil {
-			_ = f.Close()
-			return func() { _ = os.Remove(lockPath) }, nil
+			if _, werr := f.WriteString(token + "\n"); werr != nil {
+				_ = f.Close()
+				_ = os.Remove(lockPath)
+				return nil, werr
+			}
+			if cerr := f.Close(); cerr != nil {
+				_ = os.Remove(lockPath)
+				return nil, cerr
+			}
+			return func() { releaseLedgerLock(lockPath, token) }, nil
 		}
 		if !os.IsExist(err) {
 			return nil, err
@@ -265,8 +288,31 @@ func lockLedger(path string) (func(), error) {
 	}
 }
 
+// newLedgerLockToken mints the per-holder token a release matches against.
+func newLedgerLockToken() (string, error) {
+	buf := make([]byte, 12)
+	if _, err := rand.Read(buf); err != nil {
+		return "", fmt.Errorf("ledger lock token: %w", err)
+	}
+	return hex.EncodeToString(buf), nil
+}
+
+// releaseLedgerLock removes the lockfile only when it still carries this
+// holder's token: a successor that broke the stale lock and acquired its own
+// wrote its own token, and this holder's release must leave the successor's
+// lock alone.
+func releaseLedgerLock(lockPath, token string) {
+	data, err := os.ReadFile(lockPath)
+	if err == nil && strings.TrimSpace(string(data)) == token {
+		_ = os.Remove(lockPath)
+	}
+}
+
 // updateInstanceLedger applies mutate to the key's ledger under the lock, so
-// concurrent starts and ends of one session cannot lose a count.
+// concurrent starts and ends of one session cannot lose a count. An end whose
+// own write was dropped earlier is replayed first, under the same lock and
+// with the same single-live rule — the pending end happened before this
+// operation (post-sync review, dropped END).
 func updateInstanceLedger(treeRoot, key string, at time.Time, mutate func(*InstanceLedger)) error {
 	path := ledgerPath(treeRoot, key)
 	release, err := lockLedger(path)
@@ -278,9 +324,23 @@ func updateInstanceLedger(treeRoot, key string, at time.Time, mutate func(*Insta
 	if err != nil {
 		return err
 	}
+	if pending, ok := readEndPending(treeRoot, key); ok {
+		applyEnd(&l, pending, treeRoot, key)
+		_ = os.Remove(endPendingPath(treeRoot, key))
+	}
 	mutate(&l)
 	l.UpdatedAt = at
 	return writeJSON(path, &l)
+}
+
+// applyEnd counts one terminal end on the ledger, advancing the boundary only
+// when the end is single-live AND the start count is not known to be
+// incomplete (MarkInstanceStartUncertain's freeze outranks every advance).
+func applyEnd(l *InstanceLedger, at time.Time, treeRoot, key string) {
+	if l.Starts-l.Ends <= 1 && !startCountUncertain(treeRoot, key) {
+		l.EndedAt = at
+	}
+	l.Ends++
 }
 
 // ReadInstanceLedger loads the ledger of a derived key. A ledger never written
@@ -306,6 +366,48 @@ func RecordInstanceStart(treeRoot, key string, at time.Time) error {
 	})
 }
 
+// uncertainPath is the durable trace of a start whose ledger write was
+// dropped: its presence tells the end path the outstanding count is short by
+// at least one.
+func uncertainPath(treeRoot, key string) string {
+	return ledgerPath(treeRoot, key) + ".uncertain"
+}
+
+// MarkInstanceStartUncertain leaves the trace a dropped start needs: the
+// start's write failed, so every end computed from the ledger is unreliable.
+// While the flag exists, RecordInstanceEnd freezes the key's boundary — ends
+// still count, but nothing advances EndedAt — because refusing a live
+// instance's own receipt as predecessor-era (AC-RR-002) is the wrong error to
+// make here, and the audited reading is fail-closed on the ADVANCE. A dropped
+// start can never be re-derived from anonymous events, so the freeze is
+// permanent for the key and goes stale with its session id; the reuse
+// protection for that session simply stays at whatever the last trusted end
+// sealed.
+func MarkInstanceStartUncertain(treeRoot, key string) error {
+	p := uncertainPath(treeRoot, key)
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(p, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		if os.IsExist(err) {
+			return nil
+		}
+		return err
+	}
+	if _, werr := f.WriteString("start-count uncertain\n"); werr != nil {
+		_ = f.Close()
+		return werr
+	}
+	return f.Close()
+}
+
+// startCountUncertain reports whether a start of this key was dropped.
+func startCountUncertain(treeRoot, key string) bool {
+	_, err := os.Stat(uncertainPath(treeRoot, key))
+	return err == nil
+}
+
 // RecordInstanceEnd counts one terminal instance end. When the ender is the
 // only outstanding start (starts minus ends at most 1 — the ender is counted
 // in starts, not yet in ends), the end is single-live and the boundary
@@ -313,14 +415,43 @@ func RecordInstanceStart(treeRoot, key string, at time.Time) error {
 // that has terminally ended. An end arriving while MORE THAN ONE instance is
 // outstanding is ambiguous — anonymous events cannot say who ended — so the
 // boundary stays frozen at its existing value and the era the overlap minted
-// stays citable (card t1544's concurrency semantics).
+// stays citable (card t1544's concurrency semantics). An end computed while a
+// start is known dropped (MarkInstanceStartUncertain) is frozen too: the
+// single-live reading rests on a count that is short (post-sync review P2-2).
 func RecordInstanceEnd(treeRoot, key string, at time.Time) error {
 	return updateInstanceLedger(treeRoot, key, at, func(l *InstanceLedger) {
-		if l.Starts-l.Ends <= 1 {
-			l.EndedAt = at
-		}
-		l.Ends++
+		applyEnd(l, at, treeRoot, key)
 	})
+}
+
+// endPendingPath holds the durable record of an end whose ledger write was
+// dropped: the next ledger operation replays it under the lock.
+func endPendingPath(treeRoot, key string) string {
+	return ledgerPath(treeRoot, key) + ".end-pending"
+}
+
+// endPending is the payload of a dropped end's durable mark.
+type endPending struct {
+	EndedAt time.Time `json:"ended_at"`
+}
+
+// MarkInstanceEndPending records an end whose ledger write was dropped, so the
+// next ledger operation replays it and the boundary still seals at the end
+// time. Unlike a dropped START — permanent freeze, the count can never be
+// re-derived — a dropped END is recoverable: the end's own timestamp is known,
+// only its write was lost (post-sync review, dropped END mirror).
+func MarkInstanceEndPending(treeRoot, key string, at time.Time) error {
+	return writeJSON(endPendingPath(treeRoot, key), &endPending{EndedAt: at})
+}
+
+// readEndPending loads a pending end, reporting false when none is recorded or
+// the mark carries no time.
+func readEndPending(treeRoot, key string) (time.Time, bool) {
+	var p endPending
+	if err := readJSON(endPendingPath(treeRoot, key), &p); err != nil || p.EndedAt.IsZero() {
+		return time.Time{}, false
+	}
+	return p.EndedAt, true
 }
 
 // Rejection records a refused auditor PASS. It outlives the subagent: the
