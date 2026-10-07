@@ -193,3 +193,32 @@ func TestAppendProgressRecordPreservesHardlink(t *testing.T) {
 		t.Fatal("the hardlink relationship was broken by the replace")
 	}
 }
+
+// TestAppendProgressRecordLandsInUnwritableDir (consolidated item 5) — an
+// existing writable progress.md in an UNWRITABLE directory still receives
+// the record: the in-place write needs no directory write, exactly as the
+// pre-repair os.WriteFile worked. Losing the record because CreateTemp
+// cannot run in the directory is the defect.
+func TestAppendProgressRecordLandsInUnwritableDir(t *testing.T) {
+	specDir := t.TempDir()
+	path := filepath.Join(specDir, "progress.md")
+	pre := "# progress\n\n## §G Override and Refusal Record\n\n- old record\n"
+	if err := os.WriteFile(path, []byte(pre), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(specDir, 0o555); err != nil {
+		t.Skipf("cannot make the directory unwritable here: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(specDir, 0o755) })
+	if err := appendProgressRecord(specDir, "- new record"); err != nil {
+		t.Fatalf("the record was lost to an unwritable directory although the file itself is writable: %v", err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(raw)
+	if !strings.Contains(content, "- old record") || !strings.Contains(content, "- new record") {
+		t.Fatalf("the record did not land:\n%s", content)
+	}
+}

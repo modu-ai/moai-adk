@@ -656,7 +656,12 @@ func appendProgressRecord(specDir, line string) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".progress-*.tmp")
 	if err != nil {
-		return err
+		// The directory itself does not accept a temp file (unwritable
+		// parent — consolidated item 5), but the original passed the
+		// write-denial check above: the pre-repair in-place write remains
+		// available and preserves every bit of the file's metadata. The §G
+		// mutex holds; the trade is the crash-atomicity window.
+		return os.WriteFile(path, []byte(content), 0)
 	}
 	tmpName := tmp.Name()
 	if err := tmp.Close(); err != nil {
@@ -870,7 +875,8 @@ func opensFence(line string) (c byte, n int, ok bool) {
 	// CommonMark: a BACKTICK fence's info string cannot contain a backtick
 	// — such a line is an inline code span, not a fence open, and treating
 	// it as one hid the real §G heading behind a never-closed phantom
-	// (round-4 edge 7b). Tilde fences may carry any info string.
+	// (round-4 edge 7b / gate round-37 item 8). Tilde fences may carry any
+	// info string.
 	if c == '`' && strings.Contains(trimmed[n:], "`") {
 		return 0, 0, false
 	}

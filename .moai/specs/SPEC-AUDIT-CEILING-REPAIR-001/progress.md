@@ -543,6 +543,25 @@ Regression test `TestAppendProgressRecordStartHeadingSkipsListFence`
 (`audit_ceiling_fence_test.go`): one §G, no duplicate, record at the
 block's end.
 
+**Item 5 — parent-dir unwritable (gate round-38)**: RED observed pre-fix
+at HEAD `e54ef43ab`: `the record was lost to an unwritable directory
+although the file itself is writable: open …/​.progress-….tmp: permission
+denied` — an existing writable progress.md in an unwritable DIRECTORY
+needs no directory write for an in-place append (pre-repair os.WriteFile
+worked), but CreateTemp cannot run there and the record was lost. Fix:
+when CreateTemp fails in the original's directory, the replace falls back
+to the serialized in-place write (the same branch the hardlink case uses)
+— the file's own metadata is untouched, the §G mutex holds, and the trade
+is the crash-atomicity window. Regression test
+`TestAppendProgressRecordLandsInUnwritableDir`
+(`audit_ceiling_replace_test.go`, darwin||linux): record lands, no error.
+
+**Item 6 carry-through**: the metadata contract sentence ("the temp file
+must carry ONLY the original's metadata" — one mechanism, not
+axis-by-axis) is recorded in this §E.2 block (items 1/6 above) and noted
+for SPEC wording — the lane routes SPEC-text changes through manager-spec
+if the auditor requires more than this progress note.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07
