@@ -187,7 +187,7 @@ ASSUMPTIONS I'M MAKING:
 → Correct me now or I'll proceed with these.
 ```
 
-Anti-pattern: silently picking one interpretation of ambiguous requirements and running with it. Discovery triggers: CLAUDE.md §7 Rule 5.
+Anti-pattern: silently picking one interpretation of ambiguous requirements and running with it. Discovery triggers: AGENTS.md §13 (Context-First Discovery).
 
 ### 2. Manage Confusion Actively [ZONE:Evolvable] [HARD]
 
@@ -240,7 +240,7 @@ Do NOT:
 - Delete code that seems unused without explicit approval
 - Add features not in the spec because they "seem useful"
 
-Anti-pattern: "While I was in this file I noticed..." — stay focused (CLAUDE.md §7 Rule 2). Positive directive: match the existing style of the file being modified — naming, error handling, import organization; consistency within a file outranks personal preference.
+Anti-pattern: "While I was in this file I noticed..." — stay focused (AGENTS.md §13 Rule 2). Positive directive: match the existing style of the file being modified — naming, error handling, import organization; consistency within a file outranks personal preference.
 
 ### 6. Verify, Don't Assume [ZONE:Evolvable] [HARD]
 
@@ -252,5 +252,5 @@ Evidence requirements:
 - File created: verify with Read
 - Behavior correct: show the runtime evidence
 
-Anti-pattern: claiming "tests pass" without running them; assuming code compiles without building (CLAUDE.md §7 Rule 3). Goal-to-test pattern: for ad-hoc tasks without a SPEC, define completion as a testable assertion first — "done when X produces Y" — then verify it.
+Anti-pattern: claiming "tests pass" without running them; assuming code compiles without building (AGENTS.md §13 Rule 3). Goal-to-test pattern: for ad-hoc tasks without a SPEC, define completion as a testable assertion first — "done when X produces Y" — then verify it.
 <!-- moai:evolvable-end -->

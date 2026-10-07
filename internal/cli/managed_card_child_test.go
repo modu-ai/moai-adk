@@ -4,6 +4,7 @@ package cli
 // retained managed owner directly, independently of the retired boot loop.
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -223,15 +224,18 @@ func TestManagedCardChildDeliversInboxThroughLoop(t *testing.T) {
 	pr, pw := io.Pipe()
 	t.Cleanup(func() { _ = pw.Close() })
 	h := newCardChildLoop(t, cardChildOpts{cards: 1, realOwner: true, source: pr})
-	errCh := make(chan error, 1)
+	done := make(chan cardChildResult, 1)
 	go func() {
-		_, _, err := h.run()
-		errCh <- err
+		stdout, stderr, err := h.run()
+		done <- cardChildResult{stdout: stdout, stderr: stderr, err: err}
 	}()
 
 	var lane factorymsg.LaneStatus
 	deadline := time.Now().Add(cardChildWatchdog)
 	for time.Now().Before(deadline) {
+		if err := cardChildEarlyExit(done); err != nil {
+			t.Fatal(err)
+		}
 		if lanes := brokerLanes(t, h.root); len(lanes) == 1 && lanes[0].BindingState == factorymsg.BindingBound {
 			lane = lanes[0]
 			break
@@ -280,15 +284,43 @@ func TestManagedCardChildDeliversInboxThroughLoop(t *testing.T) {
 		t.Logf("write /exit: %v", werr)
 	}
 	select {
-	case err := <-errCh:
-		if err != nil {
-			t.Errorf("codex lane: %v", err)
+	case result := <-done:
+		if result.err != nil {
+			t.Errorf("codex lane: %v; stdout=%q stderr=%q", result.err, result.stdout, result.stderr)
 		}
 	case <-time.After(cardChildWatchdog):
 		t.Fatal("lane loop did not finish after /exit")
 	}
 	if !delivered {
 		t.Error("the fake App Server never saw a second turn/start (the inbox message was not delivered through the loop)")
+	}
+}
+
+func TestManagedCardChildEarlyExitReportsLaunchEvidence(t *testing.T) {
+	for _, launchErr := range []error{nil, errors.New("fixture startup refused")} {
+		done := make(chan cardChildResult, 1)
+		done <- cardChildResult{stdout: "fixture stdout", stderr: "fixture stderr", err: launchErr}
+		err := cardChildEarlyExit(done)
+		if err == nil || !strings.Contains(err.Error(), "fixture stdout") || !strings.Contains(err.Error(), "fixture stderr") {
+			t.Fatalf("early completion = %v, want launch output even when the loop returned nil", err)
+		}
+		if launchErr != nil && !errors.Is(err, launchErr) {
+			t.Fatalf("early completion = %v, want wrapped launch error %v", err, launchErr)
+		}
+	}
+}
+
+type cardChildResult struct {
+	stdout, stderr string
+	err            error
+}
+
+func cardChildEarlyExit(done <-chan cardChildResult) error {
+	select {
+	case result := <-done:
+		return errors.Join(fmt.Errorf("managed owner sessions ended before binding; stdout=%q stderr=%q", result.stdout, result.stderr), result.err)
+	default:
+		return nil
 	}
 }
 

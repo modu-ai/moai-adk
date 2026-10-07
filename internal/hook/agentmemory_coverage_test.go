@@ -115,10 +115,12 @@ func TestAgentMemoryHelpers(t *testing.T) {
 	if indexLinksTarget("- [a](sub/feedback_y.md) — y", "feedback_x.md") {
 		t.Error("wrong target matched")
 	}
-	if got := absPathAgainst("/base", "rel/dir"); got != "/base/rel/dir" {
+	base := t.TempDir()
+	abs := filepath.Join(t.TempDir(), "abs", "dir")
+	if got := absPathAgainst(base, "rel/dir"); got != filepath.Join(base, "rel", "dir") {
 		t.Errorf("absPathAgainst relative = %q", got)
 	}
-	if got := absPathAgainst("/base", "/abs/dir"); got != "/abs/dir" {
+	if got := absPathAgainst(base, abs); got != abs {
 		t.Errorf("absPathAgainst absolute = %q", got)
 	}
 }

@@ -154,14 +154,14 @@ The following patterns violate the archived-agent rejection contract:
 - **Re-introducing archived agents in template** — `internal/template/templates/.claude/agents/moai/<archived>.md` MUST NOT contain any of the 12 archived files; re-introduction triggers a template-leak audit failure
 - **Paste-ready resume → autonomous execution without Implementation Kickoff Approval** — when a paste-ready resume references an archived agent and the orchestrator silently substitutes, the user loses the Implementation Kickoff Approval plan-to-implement gate signal (per the Implementation Kickoff Approval mandatory restoration policy)
 - **Skipping the `ToolSearch` preload before `AskUserQuestion`** — `AskUserQuestion` is a deferred tool; the orchestrator MUST `ToolSearch(query: "select:AskUserQuestion")` per `.claude/rules/moai/core/askuser-protocol.md` § ToolSearch Preload Procedure
-- **Returning an `AskUserQuestion` invocation from a subagent body** — subagents MUST NOT prompt the user; this is the orchestrator's responsibility (CLAUDE.md §8 + agent-common-protocol.md § User Interaction Boundary). If a subagent encounters an archived-agent reference in its scope, it returns a structured blocker report and the orchestrator runs the recovery flow
+- **Returning an `AskUserQuestion` invocation from a subagent body** — subagents MUST NOT prompt the user; this is the orchestrator's responsibility (askuser-protocol.md + agent-common-protocol.md § User Interaction Boundary). If a subagent encounters an archived-agent reference in its scope, it returns a structured blocker report and the orchestrator runs the recovery flow
 - **Updating an archived agent's body content** — archived agents in the offline migration backup location are read-only historical preservation; future revival requires a dedicated revival SPEC, not a body modification
 
 ---
 
 ## §F — Cross-References
 
-- The agent catalog consolidation policy's retain-vs-archive matrix — design-time SSOT for the 8-retain (at decision time; now 10 per CLAUDE.md §4) / 12-archive decision with per-agent rationale and Anthropic citations
+- The agent catalog consolidation policy's retain-vs-archive matrix — design-time SSOT for the 8-retain (at decision time; now 10 per .moai/config/sections/delegation.yaml) / 12-archive decision with per-agent rationale and Anthropic citations
 - The agent catalog consolidation policy's design-level migration table (this rule's §C is the canonical runtime SSOT)
 - The offline migration backup location's README — archive backup directory with per-agent README entries
 - `.claude/rules/moai/workflow/orchestration-mode-selection.md` — sibling rule documenting the 5-mode autonomous selection at Phase 4 (independent of archived-agent rejection)

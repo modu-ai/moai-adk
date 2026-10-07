@@ -1,11 +1,14 @@
 package cli
 
 // codex_contract.go — SPEC-CODEX-INIT-001 M4+M5+M6 (REQ-CI-005..008,
-// REQ-CI-011): the AGENTS.md ↔ CLAUDE.md instruction contract. Connection
-// only — never content: a missing file is created with a minimal body, an
-// existing file is preserved byte-for-byte with only its missing link lines
-// appended — at most two, CLAUDE.md only (REQ-CI-006, REQ-IFU-002). Every write is a per-file temp+rename; no truncating
-// write path exists here at all (AC-CI-010's open cell observes that).
+// REQ-CI-011): the instruction contract of the AGENTS.md-primary product.
+// Connection only — never content: a missing AGENTS.md is created with a
+// minimal body; an existing AGENTS.md is preserved byte-for-byte. A legacy
+// CLAUDE.md is inert here — the contract neither reads nor writes it (the
+// product ships no CLAUDE.md; the legacy CLAUDE.local.md move belongs to
+// `moai migrate local-instructions`). Every write is a per-file temp+rename;
+// no truncating write path exists here at all (AC-CI-010's open cell
+// observes that).
 //
 // Containment comes FIRST (M4 before M5 — plan §D): before any touch of an
 // instruction path, every existing path component must Lstat as a plain
@@ -24,45 +27,33 @@ import (
 	"strings"
 )
 
-// Instruction paths — the single source the contract guards. AGENTS.local.md
-// is the user-owned local file shared by both harnesses: Claude reaches it
-// through CLAUDE.md's final import, Codex through the launcher's
-// developer_instructions injection. The neutral AGENTS.md never imports it
-// (SPEC-INSTRUCTION-FILES-UNIFY-001 REQ-IFU-002).
+// Instruction paths — the single source the contract guards. AGENTS.md is
+// the sole instruction file; AGENTS.local.md is the user-owned local file
+// neither harness reaches through an import — Codex through the launcher's
+// developer_instructions injection (SPEC-INSTRUCTION-FILES-UNIFY-001
+// REQ-IFU-002/006), Claude through the moai launcher. The legacy
+// CLAUDE.local.md is read ahead of it by the launcher but never written
+// here.
 const (
 	codexAgentsRelPath        = "AGENTS.md"
-	codexClaudeRelPath        = "CLAUDE.md"
 	codexLocalInstructionName = "AGENTS.local.md"
 	codexClaudeLocalName      = "CLAUDE.local.md"
 )
 
-// Link directives — the only executing lines this contract may add, and only
-// to CLAUDE.md. They form the two-import shape of REQ-IFU-002: the contract
-// import first, the local import as the final import. An unresolved local
-// import is skipped silently by Claude Code, so it is written whether or not
-// AGENTS.local.md exists (REQ-IFU-004).
-const (
-	codexLinkAgentsDirective = "@AGENTS.md"
-	codexLinkLocalDirective  = "@AGENTS.local.md"
-)
-
-// Created bodies — minimal and non-empty (AC-CI-005 requires a created
+// Created body — minimal and non-empty (AC-CI-005 requires a created
 // AGENTS.md to carry at least one non-space character; body QUALITY is out
-// of this SPEC's scope). A created CLAUDE.md carries the two-import shape; a
-// created AGENTS.md imports nothing — it is the neutral contract.
-const (
-	codexCreatedClaudeBody = "# CLAUDE.md\n\n" + codexLinkAgentsDirective + "\n\n" + codexLinkLocalDirective + "\n"
-	codexCreatedAgentsBody = "# AGENTS.md\n"
-)
+// of this SPEC's scope). A created AGENTS.md imports nothing — it is the
+// neutral contract.
+const codexCreatedAgentsBody = "# AGENTS.md\n"
 
-// codexInstructionRelPathsFn is the path-table seam: the three instruction
-// paths the contract guards and links, in guard order. The tests override it
-// with variant spellings (docs/<name>, ..-escapes) to drive the
-// parent-component escape axis through the real launch verbs.
+// codexInstructionRelPathsFn is the path-table seam: the instruction paths
+// the contract guards, in guard order. The tests override it with variant
+// spellings (docs/<name>, ..-escapes) to drive the parent-component escape
+// axis through the real launch verbs.
 var codexInstructionRelPathsFn = defaultCodexInstructionRelPaths
 
 func defaultCodexInstructionRelPaths() []string {
-	return []string{codexAgentsRelPath, codexClaudeRelPath, codexLocalInstructionName}
+	return []string{codexAgentsRelPath, codexLocalInstructionName}
 }
 
 // Filesystem seams — EVERY touch of an instruction path goes through one of
@@ -172,57 +163,6 @@ func codexModeName(m os.FileMode) string {
 	}
 }
 
-// codexCountExecutingImports counts EXECUTING import lines of directive per
-// definition 5 of the acceptance: the line is exactly the directive (no
-// leading spaces — trailing spaces and CR tolerated), outside code fences
-// (``` / ~~~ toggling from the first line), outside HTML comment blocks, and
-// not a blockquote line. Counting raw occurrences would let a fenced
-// example satisfy the contract; this scan is what "already linked" means.
-func codexCountExecutingImports(content []byte, directive string) int {
-	count := 0
-	inFence := false
-	inComment := false
-	for _, raw := range strings.Split(string(content), "\n") {
-		if strings.HasPrefix(raw, "```") || strings.HasPrefix(raw, "~~~") {
-			inFence = !inFence
-			continue
-		}
-		if inFence {
-			continue
-		}
-		trimmed := strings.TrimRight(raw, " \t\r")
-		if inComment {
-			if strings.Contains(trimmed, "-->") {
-				inComment = false
-			}
-			continue
-		}
-		if idx := strings.Index(trimmed, "<!--"); idx >= 0 {
-			inComment = !strings.Contains(trimmed[idx+4:], "-->")
-			continue
-		}
-		if strings.HasPrefix(raw, ">") {
-			continue
-		}
-		if strings.HasPrefix(raw, "@") && strings.TrimRight(raw, " \t\r") == directive {
-			count++
-		}
-	}
-	return count
-}
-
-// codexAppendLine appends one link line at END of file (the acceptance pins
-// the position to make the expected byte sequence unique), inserting a
-// separating newline when the content does not end with one — an import
-// glued to a prose line would not execute.
-func codexAppendLine(content []byte, line string) []byte {
-	out := append([]byte(nil), content...)
-	if len(out) > 0 && out[len(out)-1] != '\n' {
-		out = append(out, '\n')
-	}
-	return append(out, []byte(line+"\n")...)
-}
-
 // @MX:ANCHOR: [AUTO] the contract is the single writer of instruction links
 // for the codex init gate — reached by both launch verbs and both launch
 // paths, containment-guarded before any touch.
@@ -232,8 +172,8 @@ func codexAppendLine(content []byte, line string) []byte {
 func secureCodexInstructionContract(req codexContractRequest) error {
 	root := req.ProjectRoot
 	rels := codexInstructionRelPathsFn()
-	if len(rels) != 3 {
-		return fmt.Errorf("instruction path table must name exactly three paths, got %d", len(rels))
+	if len(rels) != 2 {
+		return fmt.Errorf("instruction path table must name exactly two paths, got %d", len(rels))
 	}
 
 	// 1. Containment guards — BEFORE any read or write of the paths.
@@ -247,6 +187,8 @@ func secureCodexInstructionContract(req codexContractRequest) error {
 	}
 
 	// 2. Read + plan — compute EVERY intended change before applying any.
+	// Only AGENTS.md is ever written (created when absent); AGENTS.local.md
+	// is guard-only, and a legacy CLAUDE.md is neither read nor written.
 	type codexContractPlan struct {
 		rel     string
 		content []byte
@@ -258,31 +200,8 @@ func secureCodexInstructionContract(req codexContractRequest) error {
 	if aerr != nil && !errors.Is(aerr, os.ErrNotExist) {
 		return fmt.Errorf("read %s: %w", rels[0], aerr)
 	}
-	switch {
-	case !agentsExists:
+	if !agentsExists {
 		plans = append(plans, codexContractPlan{rel: rels[0], content: []byte(codexCreatedAgentsBody)})
-	}
-
-	claudeBytes, cerr := codexReadFileFn(filepath.Join(root, filepath.FromSlash(rels[1])))
-	claudeExists := cerr == nil
-	if cerr != nil && !errors.Is(cerr, os.ErrNotExist) {
-		return fmt.Errorf("read %s: %w", rels[1], cerr)
-	}
-	if !claudeExists {
-		plans = append(plans, codexContractPlan{rel: rels[1], content: []byte(codexCreatedClaudeBody)})
-	} else {
-		// Append only the missing link(s), contract import before local
-		// import. Append-only cannot reorder: a file carrying the local import
-		// alone gets the contract import after it (REQ-CI-006 wins over order).
-		linked := claudeBytes
-		for _, directive := range []string{codexLinkAgentsDirective, codexLinkLocalDirective} {
-			if codexCountExecutingImports(linked, directive) == 0 {
-				linked = codexAppendLine(linked, directive)
-			}
-		}
-		if len(linked) != len(claudeBytes) {
-			plans = append(plans, codexContractPlan{rel: rels[1], content: linked})
-		}
 	}
 
 	// 3. Stage ALL temp files first. A staging failure leaves every target
@@ -339,7 +258,7 @@ func secureCodexInstructionContract(req codexContractRequest) error {
 		staged[i].tmp = ""
 	}
 	if len(staged) > 0 {
-		codexGatePrintf(req.Out, "codex init: linked instruction files (%s)\n", strings.Join(rels[0:2], ", "))
+		codexGatePrintf(req.Out, "codex init: instruction file ready (%s)\n", rels[0])
 	}
 	return nil
 }

@@ -14,7 +14,7 @@ MoAI's three-phase development workflow with token budget management.
 | Run | /moai run | manager-develop (per quality.yaml constitution.development_mode; cycle_type=ddd / tdd / autofix) | 180K | DDD / TDD / autofix implementation |
 | Sync | /moai sync | manager-docs | 40K | Documentation sync |
 
-Per the canonical agent catalog policy, the MoAI agent catalog consists of exactly 11 retained agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `manager-design`, `e2e-tester`, `plan-auditor`, `sync-auditor`, `builder-harness`, `super-advisor`, plus the Anthropic built-in `Explore` — per CLAUDE.md §4). 12 phantom and domain-expert agents (`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the 6 `expert-*` agents) were archived offline during the catalog consolidation. For migration guidance and the per-archived-agent replacement pattern, see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
+Per the canonical agent catalog policy, the MoAI agent catalog consists of exactly 11 retained agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `manager-design`, `e2e-tester`, `plan-auditor`, `sync-auditor`, `builder-harness`, `super-advisor`, plus the Anthropic built-in `Explore` — per .moai/config/sections/delegation.yaml). 12 phantom and domain-expert agents (`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the 6 `expert-*` agents) were archived offline during the catalog consolidation. For migration guidance and the per-archived-agent replacement pattern, see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
 
 ## SPEC Phase Discipline
 
@@ -22,7 +22,7 @@ Per the canonical agent catalog policy, the MoAI agent catalog consists of exact
 
 [ZONE:Frozen] [HARD] Every MoAI SPEC follows the three-phase lifecycle (plan → run → sync). How each phase transition is *triggered* depends on the **route** the SPEC takes. There are exactly TWO routes, and the route is determined by Tier (per § SPEC Complexity Tier) and the explicit `--pr` flag:
 
-- **Route A — Hybrid Trunk main-direct (default; Tier S / Tier M):** manager-develop commits and pushes directly to `main`; there is NO per-phase PR and NO per-phase branch. Phase transitions are triggered by commit / push events (Conventional-Commit subjects pushed to `main` + green CI), NOT by PR merges. This is the 1-person-OSS Hybrid Trunk policy (CLAUDE.md §5 + `manager-develop-prompt-template.md` §B9).
+- **Route A — Hybrid Trunk main-direct (default; Tier S / Tier M):** manager-develop commits and pushes directly to `main`; there is NO per-phase PR and NO per-phase branch. Phase transitions are triggered by commit / push events (Conventional-Commit subjects pushed to `main` + green CI), NOT by PR merges. This is the 1-person-OSS Hybrid Trunk policy (spec-workflow.md + `manager-develop-prompt-template.md` §B9).
 - **Route B — PR route (Tier L OR explicit `--pr`):** `manager-git` creates a feature branch and opens a PR per phase (`gh pr create`); phase transitions are triggered by PR merges into `main`. This is the route the Late-Branch closure pattern (below) applies to.
 
 The route governs the trigger vocabulary in § Phase Transitions below (commit/push event vs PR merge). Neither route changes the phase *ordering* (plan → run → sync) or the *artifact* set (per Tier).

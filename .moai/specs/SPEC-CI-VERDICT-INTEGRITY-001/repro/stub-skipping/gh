@@ -1,0 +1,19 @@
+#!/bin/sh
+# t1534 round-5 worse-order stub — pr view succeeds (main base); pr checks
+# publishes the SAME check name twice with {skipping, pass} buckets. The
+# SKIP_ORDER env flips the array order; a correct aggregation is
+# order-invariant (pending both ways).
+if [ "$1" = "pr" ] && [ "$2" = "view" ]; then
+  printf '%s\n' 'main'
+  exit 0
+fi
+if [ "$1" = "pr" ] && [ "$2" = "checks" ]; then
+  if [ "$SKIP_ORDER" = "2" ]; then
+    printf '%s\n' '[{"name":"Lint","state":"SUCCESS","bucket":"pass","link":"http://x"},{"name":"Lint","state":"SKIPPED","bucket":"skipping","link":""}]'
+  else
+    printf '%s\n' '[{"name":"Lint","state":"SKIPPED","bucket":"skipping","link":""},{"name":"Lint","state":"SUCCESS","bucket":"pass","link":"http://x"}]'
+  fi
+  exit 0
+fi
+echo "stub: unexpected invocation: $*" >&2
+exit 1

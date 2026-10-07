@@ -124,8 +124,8 @@ See [debugging/refactoring/performance step-by-step walkthroughs](.claude/skills
 5-step multi-agent pipeline:
 
 1. Eligibility Check (Haiku): skip closed/draft/already-reviewed/trivial PRs
-2. Context Gathering: find CLAUDE.md per modified dir + summarize PR
-3. Parallel Review (5 Sonnet agents): CLAUDE.md compliance / obvious bugs / git blame / previous comments / code comment compliance
+2. Context Gathering: find AGENTS.md per modified dir + summarize PR
+3. Parallel Review (5 Sonnet agents): AGENTS.md compliance / obvious bugs / git blame / previous comments / code comment compliance
 4. Confidence Scoring (0-100): 0=false positive, 25=somewhat, 50=moderate, 75=high, 100=certain
 5. Filter & Report: drop issues <80 confidence, post via gh CLI with file/line/commit links
 

@@ -1,6 +1,24 @@
 # 진입점
 
-## 현재 main의 추가 표면
+## 현재 main48의 기존 진입점 연결
+
+기준은 `48fa94b99023bb252a9731fbbd5ebc6dcc7472ab`다. 비테스트 소스의 literal `AddCommand(` 호출 줄249개와 `rootCmd.AddCommand(` 줄68개는 이전067과 같다. 이 값은 명령 개수가 아닌 소스 호출 줄 수다.
+
+- `internal/cli/worktree/done.go`의 `landingBase`와 `internal/cli/worktree/sweep.go`의 `sweepDefaultBase`는 Factory의 `LandedRefForWithLevel`에서 기본 ref를 얻는다. done은 `LandedRefLevelSource`로 출처도 반환하고, sweep는 단계 값을 버리고 ref만 반환한다. 명시적 sweep `--base`의 우선순위를 유지한다.
+- `internal/cli/todo_issuance.go`의 `productionLaneFilesProbe`는 공통 `LandedRefFor`로 merge-base 기준을 얻는다. `internal/cli/doctor_git_strategy_workflow.go`도 이 기준 체인을 안내한다.
+- `internal/cli/update.go`와 `internal/cli/update_clean_install.go`의 기존 진입점은 보존한 설정에 root deny 정규화를 호출한다. 새 CLI 명령은 추가되지 않았다.
+- `internal/cli/factory_card.go`의 기존 next/select/lease와 queued 승격 경로는 현재 큐 상태를 확인하고 기존 assigned 행의 배정 입력을 보존한다.
+
+## 이전067 기준의 통합·레인 진입
+
+기준은 `067fdced2dd8f38812d4c36ec17ceb8d2ca3e263`다. 비테스트 소스의 literal `AddCommand(` 호출 줄은 이전 기준 248개에서 249개로 늘었고, `rootCmd.AddCommand(` 줄은 68개로 같다. 이는 호출 줄 수이며 실행 가능한 명령 개수와 같다는 뜻은 아니다.
+
+- `internal/cli/integration.go`가 policy·remeasure·merge를 등록하고 acquire의 대기 경로를 `internal/cli/integration_wait.go`로 연결한다. `internal/cli/integration_merge.go`는 primary 통합 체크아웃에서 병합을 거절한다.
+- `internal/cli/todo.go`의 레인 `--auto`는 `internal/cli/todo_auto_lane.go`의 `runAutoLaneCycle`로 이어진다. `internal/cli/codex_launcher.go`는 부모 체크아웃의 대화형 세션 하나에 이 지시를 전달한다.
+- `internal/cli/codex_audit_launch.go`의 `codexAuditMCPDisableArgs`는 감사 프로세스를 시작하기 전에 MCP 전송 선언을 검증하고 비활성 인자를 구성한다.
+- `internal/cli/update.go`는 출력 원장을 초기화하고 종료 시 action/reference 블록을 렌더링한다. `internal/cli/init.go`의 MCP provisioning 오류는 collector로 전달된다.
+
+## 이전 081899 기준의 추가 표면
 
 기준은 `081899adb825935d5263b1699fe730373deaa4fd`다. 다음은 소스 배선을 확인한 표면이며 실제 원격 실행의 성공 주장은 아니다.
 

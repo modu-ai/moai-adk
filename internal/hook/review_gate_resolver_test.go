@@ -65,9 +65,21 @@ func TestReviewGateResolverRegularExecutablePrecedence(t *testing.T) {
 					cmd.Dir = project
 					cmd.Env = []string{"PATH=" + pathBin + ":/usr/bin:/bin", "HOME=" + home, "CLAUDE_PROJECT_DIR=" + project}
 					cmd.Stdin = strings.NewReader(`{}`)
+					// NTFS/Git Bash does not implement POSIX executable mode bits.
+					// Measure the resolver's own -x contract rather than assuming
+					// chmod(0644) makes a file non-executable on every platform.
+					want := tc.want
+					if tc.dev == "noexec" {
+						probe := exec.CommandContext(ctx, "bash", "-c", `[ -x "$1" ]`, "probe", filepath.Join(project, "bin", "moai"))
+						if probeErr := probe.Run(); probeErr == nil {
+							want = "dev"
+						} else if exit, ok := probeErr.(*exec.ExitError); !ok || exit.ExitCode() != 1 {
+							t.Fatalf("executable precondition: %v", probeErr)
+						}
+					}
 					out, err := cmd.CombinedOutput()
-					if err != nil || string(out) != tc.want {
-						t.Errorf("resolver exit=%v output=%q want=%q", err, out, tc.want)
+					if err != nil || string(out) != want {
+						t.Errorf("resolver exit=%v output=%q want=%q", err, out, want)
 					}
 				})
 			}

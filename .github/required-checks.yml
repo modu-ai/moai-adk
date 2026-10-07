@@ -4,41 +4,35 @@ version: 1
 #   - internal/cli/branch_protection.go (renders gh api PUT branch protection JSON)
 #   - Wave 2 CI watch loop (filters required vs auxiliary failures)
 # Update: edit this file ONLY. Hardcoding contexts elsewhere is prohibited (AC-CIAUT-021).
-
+#
+# Values corrected by SPEC-CI-VERDICT-INTEGRITY-001 M2 against the
+# deterministically published check names (plan ledger E13 live observation +
+# E21 trigger facts; release/* resolution per decision-index Q1):
+#   - Test (macos-latest) / Test (windows-latest) removed (PR matrix is
+#     ubuntu-only; cross-platform runtime verification runs at release time
+#     inside Release PR Multi-OS Gate)
+#   - CodeQL replaced by Analyze (Go) (go) (the composite job display name
+#     actually published by codeql.yml's matrix)
+#   - Release PR Multi-OS Gate added (published on every main-targeting PR)
 branches:
   main:
     contexts:
       - Lint
       - "Test (ubuntu-latest)"
-      - "Test (macos-latest)"
-      - "Test (windows-latest)"
       - "Build (linux/amd64)"
       - "Build (linux/arm64)"
       - "Build (darwin/amd64)"
       - "Build (darwin/arm64)"
       - "Build (windows/amd64)"
-      - CodeQL
+      - "Analyze (Go) (go)"
+      - "Release PR Multi-OS Gate"
   release/*:
-    contexts:
-      - Lint
-      - "Test (ubuntu-latest)"
-      - "Test (macos-latest)"
-      - "Test (windows-latest)"
-      - "Build (linux/amd64)"
-      - "Build (linux/arm64)"
-      - "Build (darwin/amd64)"
-      - "Build (darwin/arm64)"
-      - "Build (windows/amd64)"
-      - CodeQL
-    # Wave 3 2026-06-24: release/* now matches main exactly. All 10 contexts
-    # below are emitted by ci.yml + codeql.yml on release/* → main PRs (both
-    # workflows trigger on pull_request without branch-name restriction, so a
-    # PR from a release/* head_ref into main gets the full matrix). Matrix
-    # alignment verified against ci.yml:
-    #   test matrix os: [ubuntu-latest, macos-latest, windows-latest]
-    #   build matrix: linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, windows/amd64
-    #   (ci.yml has NO windows/arm64 build — not added here to avoid phantom context.)
-
+    # Decision-index Q1 (micro-card t1543 resolution): this key lists ONLY
+    # contexts that publish on release-TARGETING pull requests. All three
+    # producing workflows restrict their pull_request triggers to main, so
+    # the published set for release-base PRs is empty. Trigger expansion is
+    # the release-pipeline scope (t1536); revisit this list if that lands.
+    contexts: []
 # Auxiliary checks run on PRs but DO NOT block merge (advisory only).
 # Wave 2 watch loop reads this list to discriminate failures.
 auxiliary:

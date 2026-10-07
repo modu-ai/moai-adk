@@ -27,6 +27,11 @@ import (
 var factoryAmbientEnvKeys = []string{
 	config.EnvMoaiFactoryWorkers,
 	config.EnvMoaiFactoryWorker,
+	// Card t1516: the lane-admission predicate reads the role variable
+	// (factoryLaneAdmission), so an ambient MOAI_FACTORY_ROLE=lane that
+	// survived this clear refused every unscrubbed fixture's `todo add` as a
+	// lane queue mutation — 21 local-only false reds on 2026-10-05.
+	config.EnvFactoryRole,
 	retiredLeaderMarker,
 	config.EnvFactoryRunID,
 	retiredSpecMarker,

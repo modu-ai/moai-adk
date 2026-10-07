@@ -139,7 +139,7 @@ func deployedPolicy(t *testing.T) *SecurityPolicy {
 	if err != nil {
 		t.Fatalf("open embedded templates: %v", err)
 	}
-	data, err := fs.ReadFile(embedded, filepath.Join(".moai", "config", "sections", "security.yaml"))
+	data, err := fs.ReadFile(embedded, ".moai/config/sections/security.yaml")
 	if err != nil {
 		t.Fatalf("read embedded security.yaml: %v", err)
 	}

@@ -293,8 +293,14 @@ func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
 // A `picked` row carrying a bundle identity is excluded the same way (card
 // t1454 card-review r2 P1-2): it is a chain member waiting on its head, not
 // an independently picked serial card — its bundle orders it, and selection
-// skips it until the predecessor merges. A standalone picked row keeps
-// holding the slot, exactly as the t1407 ruling's tests pin.
+// skips it until the predecessor merges. The sibling class (card t1533,
+// card-review r2f finding 2): a `picked` row carrying an AFTER hint is
+// chain-ordered work the same way — it waits on its predecessor's merge and
+// nobody is implementing it — so it is excluded too, while a standalone
+// driven picked row (no bundle identity, no hint) keeps holding the slot
+// exactly as the t1407 ruling's tests pin.
+//
+// @MX:NOTE: [AUTO] The one serial-slot read of selection — fan-in 3 (both selection closures and the nominated validation); an ANCHOR is owed but factory_card.go is at its 3-anchor limit, and a queue-mutation path bypassing this read would break REQ-TCD-008.
 func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string) factory.CardClassification, cardID string, now time.Time, ignoreAssigned bool) bool {
 	for _, c := range cards {
 		if c.CardID == cardID {
@@ -303,7 +309,7 @@ func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string)
 		if ignoreAssigned && c.State == homestate.CardAssigned {
 			continue
 		}
-		if c.State == homestate.CardPicked && c.BundleID != "" {
+		if c.State == homestate.CardPicked && (c.BundleID != "" || c.HintAfter != "") {
 			continue
 		}
 		if factorySerialSlotHeld(c, now) && classOf(c.CardID).Mode == factory.ClassModeSerial {
@@ -715,30 +721,33 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	if err != nil {
 		return homestate.Card{}, false, false, err
 	}
-	mergedLocal := make(map[string]bool, len(allRuns))
-	for _, c := range allRuns {
-		switch c.State {
-		case homestate.CardMergedLocal, homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone,
-			homestate.CardMergedPR: // github-flow's terminal delivery state — a merged PR frees its successor
-			mergedLocal[c.CardID] = true
-		}
-	}
+	mergedLocal := factoryMergedCards(allRuns)
 	// selectionSkips reports why a recorded candidate must not lease on this
-	// pass: it is another lane's bundle member, or its predecessor is
-	// unmerged. The direct nominated path keeps the T2 error — the skip is
-	// the un-nominated selection's shape alone.
+	// pass: it is another lane's bundle member, its predecessor is
+	// unmerged, or an open sharer of one of its hub paths is unmerged —
+	// the stored hint names one predecessor, a multi-hub candidate has one
+	// per hub path (card t1533, card-review r2f finding 4). The direct
+	// nominated path keeps the T2 error — the skip is the un-nominated
+	// selection's shape alone.
+	hubWaitUnmerged := func(cardID string) (string, bool) {
+		return factoryHubWaitUnmerged(queueRec, cards, mergedLocal, cardID)
+	}
 	selectionSkips := func(c homestate.Card) bool {
 		if c.BundleID != "" {
 			if owner, ok := bundleLane[c.BundleID]; ok && owner != lane {
 				return true
 			}
 		}
-		return c.HintAfter != "" && !mergedLocal[c.HintAfter]
+		if c.HintAfter != "" && !mergedLocal[c.HintAfter] {
+			return true
+		}
+		_, wait := hubWaitUnmerged(c.CardID)
+		return wait
 	}
 	// hubFields computes the hub-chain hint a record CREATION carries for
 	// cardID, from the same one queue read every arm sees (REQ-TCI-020).
 	hubFields := func(cardID string) homestate.CardFields {
-		return factoryHubChainFields(queueRec, cards, cardID)
+		return factoryHubChainFields(queueRec, cards, cardID, nil)
 	}
 	// (a) a card assigned to this lane — the lease edge alone (T3).
 	for _, c := range cards {
@@ -749,6 +758,17 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 			continue
 		}
 		if selectionSkips(c) {
+			continue
+		}
+		// The queue item's CURRENT state gates the row's lease edge (card
+		// t1516): an item the operator parked at hold, or that is back at
+		// queued, excludes its assigned row. The row re-enters a lease only
+		// once the item is picked again — an operator pick, or arm (c)'s
+		// promotion on this same pass, which flips the state before the next
+		// attempt re-reads it. A card in no queue row is not gated: the record
+		// row is all that remains of it.
+		if st, inQueue := queueItemStateIn(queueRec, c.CardID); inQueue &&
+			(st == factory.BacklogStateHold || st == factory.BacklogStateQueued) {
 			continue
 		}
 		if classOf(c.CardID).Mode == factory.ClassModeSerial && serialInFlightExcluding(c.CardID, true) {
@@ -820,6 +840,14 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 			if !modeEligible(it.ID) {
 				continue
 			}
+			// The no-record arm waits like every other path (card t1533,
+			// review-gate r6/r7): recording first and refusing at the claim
+			// errored the whole next call while unrelated ready cards waited
+			// behind it. Skipped here, the card is neither recorded nor
+			// claimed, and selection reaches the ready cards.
+			if _, wait := hubWaitUnmerged(it.ID); wait {
+				continue
+			}
 			if err := factoryLeaseBeforeClaim("b2", it.ID); err != nil {
 				return homestate.Card{}, false, false, err
 			}
@@ -853,20 +881,23 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 				if cls.Blocked {
 					continue
 				}
-				// Another lane's bundle member, or a candidate whose after
-				// predecessor is unmerged, is never auto-promoted
+				// Another lane's bundle member, a candidate whose after
+				// predecessor is unmerged, or a candidate with an unmerged
+				// sharer on ANY of its hub paths is never auto-promoted
 				// (REQ-TCI-018/-020): the record row, when one exists, says
 				// which. A rowless candidate's hub hint is computed at
 				// promotion, so its predecessor condition is checked HERE —
 				// the same predicate selectionSkips applies to rows
-				// (card t1454 card-review r2 finding 4). Promoting a
-				// candidate whose hint names an unmerged predecessor failed
-				// the claim and errored the whole verb.
+				// (card t1454 card-review r2 finding 4, multi-hub sweep card
+				// t1533). Promoting a candidate whose hint names an unmerged
+				// predecessor failed the claim and errored the whole verb.
 				if row, ok := rowByID[it.ID]; ok {
 					if selectionSkips(row) {
 						continue
 					}
 				} else if hf := hubFields(it.ID); hf.HintAfter != nil && !mergedLocal[*hf.HintAfter] {
+					continue
+				} else if _, wait := hubWaitUnmerged(it.ID); wait {
 					continue
 				}
 				if cls.Mode == factory.ClassModeSerial && serialInFlightExcluding(it.ID, false) {
@@ -886,7 +917,18 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		if err := factoryLeaseBeforeClaim("c", promoted); err != nil {
 			return homestate.Card{}, false, false, err
 		}
-		return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane, hubFields(promoted))
+		// Generated hub hints are creation inputs; preserve every existing row's hint.
+		var promotedRow *homestate.Card
+		if row, exists := rowByID[promoted]; exists {
+			promotedRow = &row
+		}
+		fields := factoryGeneratedHubFields(hubFields(promoted), promotedRow)
+		if promotedRow != nil && promotedRow.State == homestate.CardAssigned {
+			// Reuse the assignment unchanged, then re-select through arm (a).
+			// Hub hints are creation inputs, not edits to an assigned row.
+			fields = homestate.CardFields{}
+		}
+		return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane, fields)
 	case sawQueued > 0:
 		// Queued cards existed but none was eligible (blocked, or serial with
 		// the slot held). That is the no-card answer, not a race: re-selecting
@@ -1102,6 +1144,15 @@ func factoryKeepSetRefusal(it factory.BacklogItem, row *homestate.Card, lane str
 			return r
 		}
 	}
+	// An assigned row whose queue item is back at queued is a shape no lease
+	// path takes (card t1516): the item is promotable pool material again, so
+	// the nomination does not re-arm the row — an operator pick re-arms it, and
+	// the bare path reaches the card only through arm (c)'s promotion, which
+	// flips the state to picked first. `hold` is refused above; this clause
+	// names `queued` alone.
+	if row != nil && row.State == homestate.CardAssigned && it.State == factory.BacklogStateQueued {
+		return factoryRefusal(factoryRefuseRecorded, "the record row sits assigned while the queue item is queued; an operator pick re-arms the lease")
+	}
 	if factoryQueuedHoldMarked(it) {
 		return factoryRefusal(factoryRefuseHoldMarker, "the card's text opens with the hold marker %s; the operator parked it", autoRankHoldMarker)
 	}
@@ -1185,6 +1236,20 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 			}
 			break
 		}
+	}
+	// The multi-hub wait the un-nominated selection applies runs here too
+	// (card t1533, review-gate r5): the stored hint names ONE predecessor,
+	// and a candidate sharing other hub paths leased straight past their
+	// still-in-flight sharers through the direct path. The wait is decided
+	// before the promotion, so the refusal writes nothing, and it carries the
+	// T2 guard's own sentinel so both paths read as the same predecessor
+	// error.
+	allRuns, err := db.ListCards(ctx, "")
+	if err != nil {
+		return nom, nil, err
+	}
+	if blocker, wait := factoryHubWaitUnmerged(queueRec, cards, factoryMergedCards(allRuns), cardID); wait {
+		return nom, nil, fmt.Errorf("factory next: %w: %s has not reached %s (git-flow) or %s (github-flow)", homestate.ErrPredecessorUnmerged, blocker, homestate.CardMergedLocal, homestate.CardMergedPR)
 	}
 	// The claim would refuse a foreign tree only after the promotion; deciding
 	// it here keeps the refusal write-free. The carry-over read runs first: a
@@ -1319,7 +1384,11 @@ func factoryNominateInSection(ctx context.Context, l *factory.LockedBacklog, db 
 	if err != nil {
 		return homestate.Card{}, fmt.Errorf("read the records for the hub chain: %w", err)
 	}
-	hubHint := factoryHubChainFields(queueRec, hubRows, cardID)
+	// A row that already carries a hint keeps it (card t1533): the generated
+	// hint is a record-creation input, never an overwrite — the recomputed
+	// tail drifts as the chain moves, and overwriting with it re-ordered a
+	// bundle member against its own stored chain.
+	hubHint := factoryGeneratedHubFields(factoryHubChainFields(queueRec, hubRows, cardID, nil), nom.row)
 
 	// A claim that neither leased nor errored lost a race (the same signal the
 	// unnominated arms re-select on); an error is a failure of the claim.
@@ -2347,7 +2416,7 @@ func newFactoryAssignCommand() *cobra.Command {
 							// set above and must survive the fill (AC-TCI-020's
 							// explicit-input-outranks clause cuts the other way
 							// for --after alone, never for the whole struct).
-							if hub := factoryHubChainFields(rec, rows, cardID); hub.HintAfter != nil {
+							if hub := factoryHubChainFields(rec, rows, cardID, nil); hub.HintAfter != nil {
 								fields.HintAfter = hub.HintAfter
 							}
 						} else {

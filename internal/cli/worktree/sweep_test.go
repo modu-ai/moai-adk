@@ -950,9 +950,10 @@ func TestSweepLockedAndAnchored(t *testing.T) {
 // GOOS=windows build (sweep_cwd_windows_test.go runs on the Windows side).
 func TestSweepProcessCWDPredicate(t *testing.T) {
 	t.Run("cwd-inside-tree", func(t *testing.T) {
-		m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/occupied", Branch: "feature/occupied"}})
+		tree := filepath.Join(t.TempDir(), "occupied")
+		m := sweepMockEnv(t, []git.Worktree{{Path: tree, Branch: "feature/occupied"}})
 		// A cwd deep INSIDE the tree counts — prefix match, not equality.
-		m.cwds = []string{"/elsewhere", "/wt/occupied/inner/deeper"}
+		m.cwds = []string{filepath.Join(t.TempDir(), "elsewhere"), filepath.Join(tree, "inner", "deeper")}
 		m.landed["feature/occupied"] = true
 
 		out, err := runSweepCmd(t, map[string]string{"json": "true"})
@@ -973,7 +974,7 @@ func TestSweepProcessCWDPredicate(t *testing.T) {
 	})
 
 	t.Run("probe-unanswerable", func(t *testing.T) {
-		m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/unprobed", Branch: "feature/unprobed"}})
+		m := sweepMockEnv(t, []git.Worktree{{Path: filepath.Join(t.TempDir(), "unprobed"), Branch: "feature/unprobed"}})
 		m.cwdErr = errors.New("lsof: command not found")
 		m.landed["feature/unprobed"] = true
 
@@ -1745,10 +1746,11 @@ func TestSweepDoneCoreKeptNotice(t *testing.T) {
 // TestSweepL1RemoveErrorWarning pins the L1 apply path's removal failure: a
 // warning notice, the tree survives, hoist already ran (evidence safe).
 func TestSweepL1RemoveErrorWarning(t *testing.T) {
-	l1Path := "/repo/.claude/worktrees/swepl1fail"
+	mainRoot := t.TempDir()
+	l1Path := filepath.Join(mainRoot, ".claude", "worktrees", "swepl1fail")
 	m := sweepMockEnv(t, []git.Worktree{{Path: l1Path, Branch: "feature/l1fail"}})
 	m.landed["feature/l1fail"] = true
-	m.lockPorcelain = sweepLockPorcelain("/repo") // the fallback main-root resolver reads this
+	m.lockPorcelain = sweepLockPorcelain(mainRoot) // the fallback main-root resolver reads this
 	m.removeErr[l1Path] = errors.New("git worktree remove refused")
 
 	out, err := runSweepCmd(t, map[string]string{"yes": "true"})

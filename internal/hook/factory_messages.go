@@ -35,7 +35,7 @@ var (
 	factoryHookActiveRuns = factorymsg.ActiveRunIDsAt
 	// factoryHookOpenStore and factoryHookOpenInbox are the broker opens of
 	// the bind and of the inbox claim, seams so tests can count or fail them.
-	factoryHookOpenStore = factorymsg.Open
+	factoryHookOpenStore = factorymsg.OpenWithContext
 	factoryHookOpenInbox = factorymsg.OpenExistingWithDeadline
 )
 
@@ -160,7 +160,7 @@ func registerFactoryHookPeerRun(ctx context.Context, input *HookInput, mode fact
 	if mode == factoryPeerBindUserPrompt && factoryBindCacheHit(root, cacheKey) {
 		return "", ""
 	}
-	s, err := factoryHookOpenStore(root, runID)
+	s, err := factoryHookOpenStore(ctx, root, runID)
 	if err != nil {
 		return "factory messaging degraded: " + err.Error(), ""
 	}

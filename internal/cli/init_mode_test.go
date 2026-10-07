@@ -107,7 +107,6 @@ func assertDeployedPresent(t *testing.T, root string) {
 	for _, rel := range []string{
 		".claude/agents",
 		".claude/rules",
-		"CLAUDE.md",
 		"AGENTS.md",
 		".moai/config",
 	} {
