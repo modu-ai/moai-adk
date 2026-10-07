@@ -11,6 +11,7 @@ package cli
 import (
 	"database/sql"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -279,12 +280,18 @@ func TestTodoHold_ActorBoundaryLeasePathsCannotHold(t *testing.T) {
 		"gtd.go",
 		"todo_autodone.go",
 	}
-	assignment := "= factory.BacklogStateHold"
+	// Card t1516: the scan matches true assignments only. The lease edge's
+	// queue-state gate reads `st == factory.BacklogStateHold`, and the plain
+	// substring `"= factory.BacklogStateHold"` matched its `==` — a comparison
+	// sets nothing and must not trip this guard. The character class before
+	// the `=` refuses the comparison operators (==, !=, <=, >=) while a real
+	// assignment (` = `, `=`, `:=`) still matches.
+	assignmentRE := regexp.MustCompile(`[^=!<>]=\s*factory\.BacklogStateHold`)
 	holdImplementations := 0
 	for _, name := range leasePathFiles {
 		body := readCliSource(t, name)
 		for _, line := range strings.Split(string(body), "\n") {
-			if strings.Contains(line, assignment) {
+			if assignmentRE.MatchString(line) {
 				t.Errorf("%s carries a hold assignment on a lease/lane path: %s", name, strings.TrimSpace(line))
 			}
 		}
@@ -294,7 +301,7 @@ func TestTodoHold_ActorBoundaryLeasePathsCannotHold(t *testing.T) {
 		body := readCliSource(t, name)
 		found := false
 		for _, line := range strings.Split(string(body), "\n") {
-			if strings.Contains(line, assignment) || strings.Contains(line, "BacklogStateHold") {
+			if strings.Contains(line, "BacklogStateHold") {
 				found = true
 			}
 		}
