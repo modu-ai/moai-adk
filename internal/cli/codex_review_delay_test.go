@@ -197,10 +197,11 @@ func TestReviewEntry_SubdirSessionReadsRootReceipt(t *testing.T) {
 	}
 }
 
-// TestKickInFlight_ExclusiveAcquisition — the marker is acquired atomically:
-// the first caller wins the exclusive create and owns the kick; the second
-// caller on the same fresh marker reads in-flight; a dead marker is replaced
-// and re-acquired.
+// TestKickInFlight_ExclusiveAcquisition — the marker takes exactly ONE
+// mutation (the exclusive create): the first caller owns the kick, every
+// later caller on the same marker — fresh OR stale — reads in-flight, and the
+// stale one ages out by mtime within the review budget (the next Stop then
+// re-kicks through the expired marker). No takeover path exists to race.
 func TestKickInFlight_ExclusiveAcquisition(t *testing.T) {
 	root := cacheTestRoot(t)
 	state, err := codexReviewReceiptStateForScope(context.Background(), reviewScopeResolver(root), "/fake/codex")
@@ -217,44 +218,15 @@ func TestKickInFlight_ExclusiveAcquisition(t *testing.T) {
 		t.Fatal("a concurrent second acquisition on the fresh marker must read in-flight")
 	}
 
+	// A stale marker ALSO reads in-flight — it ages out by mtime; there is no
+	// takeover to race on.
 	stale := time.Now().Add(-2 * config.DefaultCodexReviewGateTimeout)
 	if err := os.Chtimes(markerPath, stale, stale); err != nil {
 		t.Fatal(err)
 	}
-	inFlight, markerPath2 := kickInFlight(root, state)
-	if inFlight || markerPath2 == "" {
-		t.Fatalf("a dead marker must be replaced and re-acquired, got inFlight=%v path=%q", inFlight, markerPath2)
-	}
-}
-
-// TestKickInFlight_LiveStealIsRestored — a takeover rename that moved a FRESH
-// marker (a live steal mid-protocol) puts the identical file back and reads
-// in-flight: the previous owner's marker survives the thief untouched.
-func TestKickInFlight_LiveStealIsRestored(t *testing.T) {
-	root := cacheTestRoot(t)
-	state, err := codexReviewReceiptStateForScope(context.Background(), reviewScopeResolver(root), "/fake/codex")
-	if err != nil {
-		t.Fatal(err)
-	}
-	inFlight, markerPath := kickInFlight(root, state)
-	if inFlight || markerPath == "" {
-		t.Fatalf("premise: the first acquisition must own, got %v %q", inFlight, markerPath)
-	}
-	before, err := os.ReadFile(markerPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	inFlight, _ = kickInFlight(root, state)
 	if !inFlight {
-		t.Fatal("a fresh marker must read in-flight")
-	}
-	after, err := os.ReadFile(markerPath)
-	if err != nil {
-		t.Fatalf("the live marker must survive a stealing takeover, got %v", err)
-	}
-	if string(before) != string(after) {
-		t.Fatalf("the restored marker must be byte-identical, got %q want %q", after, before)
+		t.Fatal("a stale marker must read in-flight (it ages out by mtime; no takeover exists)")
 	}
 }
 
@@ -320,10 +292,11 @@ func TestReviewGate_InFlightKickNotRepeated(t *testing.T) {
 	}
 }
 
-// TestReviewGate_StaleKickMarkerRekicks — a marker older than the review
-// budget reads as a dead review (its kick never recorded) and the next Stop
-// re-kicks.
-func TestReviewGate_StaleKickMarkerRekicks(t *testing.T) {
+// TestReviewGate_StaleMarkerAgesOut — a marker older than the review budget
+// reads as a dead review that ages out by mtime: the next Stop does NOT
+// re-kick while it sits there (no takeover, no race), and the marker's
+// expiry restores the kick within one budget.
+func TestReviewGate_StaleMarkerAgesOut(t *testing.T) {
 	root := cacheTestRoot(t)
 	entrySeams(t)
 	kicked := withKickRecorder(t)
@@ -343,8 +316,8 @@ func TestReviewGate_StaleKickMarkerRekicks(t *testing.T) {
 	if _, err := HandleCodexReviewGate(gateInput(false), true, root); err != nil {
 		t.Fatalf("second Stop error: %v", err)
 	}
-	if len(*kicked) != 2 {
-		t.Fatalf("a dead marker must be re-kicked; got %v", *kicked)
+	if len(*kicked) != 1 {
+		t.Fatalf("a stale marker must NOT re-kick (it ages out; no takeover exists); got %v", *kicked)
 	}
 }
 

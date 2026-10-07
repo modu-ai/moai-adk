@@ -25,7 +25,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/verify"
 )
@@ -78,14 +77,16 @@ func codexReviewKickMarkerPath(dir, head, digest string) string {
 
 // kickInFlight reports whether a kick for this exact tree state is already in
 // flight, and otherwise records the marker for the kick the caller is about
-// to start. Both races are decided atomically: ACQUISITION is an exclusive
-// create (two overlapping Stops race on O_EXCL; exactly one wins), and the
-// DEAD-MARKER TAKEOVER is an atomic RENAME of whatever sits at the path to a
-// unique tombstone — a second caller's takeover rename loses with ENOENT
-// instead of deleting the winner's fresh marker, so the remove-and-recreate
-// race can never yield two owners. A takeover that moved a FRESH marker (a
-// live steal) renames the byte-identical file back and reads in-flight. An
-// unkeyed state and an unwritable marker are fail-open toward reviewing.
+// to start. Acquisition is a single exclusive create — the ONLY mutation the
+// marker ever takes. An existing marker (fresh or stale) reads in-flight: a
+// fresh one is a live kick, and a stale one ages out by mtime within one
+// review budget, after which the next Stop re-kicks. There is deliberately NO
+// in-place takeover: every take-over-and-recreate protocol opens an
+// empty-path window in which a third caller acquires while the first owner
+// already kicked — two owners, the race the turn-end gate's r5 reproduced.
+// The ≤-one-budget re-kick delay after a dead review is the price of that
+// closure. An unkeyed state and an unwritable marker are fail-open toward
+// reviewing: the kick proceeds undeduplicated.
 func kickInFlight(dir string, state verify.ReceiptState) (bool, string) {
 	if state.Head == "" || state.TreeDigest == "" {
 		return false, "" // unkeyed ⇒ no marker; the kick proceeds undeduplicated
@@ -94,37 +95,16 @@ func kickInFlight(dir string, state verify.ReceiptState) (bool, string) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return false, ""
 	}
-	for attempt := 0; attempt < 3; attempt++ {
-		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
-		if err == nil {
-			_, _ = f.WriteString(time.Now().UTC().Format(time.RFC3339))
-			_ = f.Close()
-			return false, path // we own the kick
-		}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
 		if !os.IsExist(err) {
 			return false, "" // unwritable ⇒ fail-open toward reviewing
 		}
-		// The marker exists: fresh means in-flight; stale means dead.
-		if fi, statErr := os.Stat(path); statErr == nil && time.Since(fi.ModTime()) < config.DefaultCodexReviewGateTimeout {
-			return true, path
-		}
-		// Dead (or gone mid-protocol): attempt the atomic takeover.
-		tombstone := path + ".taking-" + fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
-		if rerr := os.Rename(path, tombstone); rerr != nil {
-			continue // ENOENT — another caller is mid-takeover; retry the create
-		}
-		if fi, serr := os.Stat(tombstone); serr == nil && time.Since(fi.ModTime()) < config.DefaultCodexReviewGateTimeout {
-			// We stole a LIVE marker — put the identical file back; we are
-			// not the owner. (A concurrent excl-create since our rename would
-			// be replaced by the identical file it wrote — no drift.)
-			_ = os.Rename(tombstone, path)
-			return true, path
-		}
-		_ = os.Remove(tombstone) // the dead marker is disposed; path is now empty
-		// Fall through: the next exclusive create decides ownership.
+		return true, path // owned by another Stop: fresh kick or aging-out stale
 	}
-	// Every race lost: read in-flight rather than re-kicking blind.
-	return true, path
+	_, _ = f.WriteString(time.Now().UTC().Format(time.RFC3339))
+	_ = f.Close()
+	return false, path // we own the kick
 }
 
 // HandleCodexReviewEntry is the NEXT-TURN-ENTRY enforcement half of the
