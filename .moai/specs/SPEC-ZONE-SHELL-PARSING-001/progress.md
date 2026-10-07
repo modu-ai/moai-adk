@@ -67,10 +67,22 @@ The test file was untracked at base, so `git diff` has no base side; the evidenc
 4. **K7 order.** Final verdict order: covered-candidate deny (precedence — the more specific verdict the family freezes) → unbounded deny (BEFORE the `!w.mutating` short-circuit, regardless of manifest state) → `!w.mutating` → invalid-manifest deny → absent-manifest COMPLETED-walk degrade.
 5. **Lint first reading.** The first lint run printed 107 issues while another session's golangci-lint held the run lock; two clean serial re-runs after the ineffassign fix read `0 issues.` — the 107-issue reading was contention-polluted and is superseded by the serial observations.
 
+### Gate round — turn-end codex gate findings folded (commit `123409baf`)
+
+Both findings RED-first (tests authored and observed failing before the fixes), TDD cycle closed green, family `ok 2.738s`, vet exit 0, lint `0 issues.`, native + windows builds exit 0 at `123409baf`.
+
+| Finding | RED evidence (verbatim, pre-fix, this run) | Fix | Post-fix |
+|---------|-------------------------------------------|-----|----------|
+| Wrapped-cd over-denial (P2): after the K3 strip, `env cd`/`nohup cd` were tracked as parent-shell directory changes | `env cd zone_dir; rm harmless: decision="deny" … path=zone_dir/harmless", want allow` (same for `nohup cd zone_dir`) | `zoneStripWrapperPrefix` reports whether it stripped; the cd branch fires for a BARE cd head only — a stripped head resolves as an external execution whose cd cannot move the parent shell | matrix cells `wrapped_cd_env_not_tracked` / `wrapped_cd_nohup_not_tracked` PASS (allow); the control `bare_cd_tracking_control` (`cd zone_dir; rm harmless` → deny) PASS — tracking stays live |
+| Read-only fast path (P2): K7 moved the unbounded check ahead of the mutating short-circuit, and every command then loaded the manifest — loader-count probe: baseline 0, current 1, even for `echo hello` | `read-only command performed 1 zone loads, want 0` (TestProtectedZoneShellReadOnlyFastPath) | `!w.mutating && !w.unbounded` returns BEFORE `loadZone`; the K7 semantics unchanged — the unbounded denial still precedes every allow answer, regardless of manifest state | fast-path test PASS: `echo hello` → 0 loads; the unbounded read-only-tail cell still loads and denies |
+
+Matrix: 51 cells (`parsing-matrix sweep: 51 cells`), all PASS. Final-tree full-suite re-measurement (slot lease `hook-test-suite`, tree `123409baf` content): `ok github.com/modu-ai/moai-adk/internal/hook 406.964s coverage: 87.5% of statements`, exit 0, zero `stack overflow`/`fatal error` tokens — the E3 coverage figure and the suite verdict now carry the same final tree.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-08T00:34:16+09:00
-run_commit_sha: 759c4514f
+run_commit_sha: 123409baf
+gate_round: folded 2 P2 gate findings RED-first (commit 123409baf)
 run_status: complete
 ac_pass_count: 6
 ac_fail_count: 0
