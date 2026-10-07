@@ -1,3 +1,9 @@
+//go:build unix
+
+// The FIFO fixture is unix-only: syscall.Mkfifo and O_NONBLOCK do not
+// compile on windows, and a runtime skip cannot fix a build failure — the
+// B1 split (review-gate P1: GOOS=windows `go test -c` failed on this file).
+
 package bugreport
 
 import (
