@@ -124,8 +124,8 @@ func TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey(t *testing.T) {
 	// The fatal shape is verdict pass: a "review happened and found nothing"
 	// claim no real review produced (card t52 — the pipeline used to launder
 	// codex's "Reviewer failed to output a response." placeholder into pass).
-	switch {
-	case r.Verdict == codexReviewVerdictFail:
+	switch r.Verdict {
+	case codexReviewVerdictFail:
 		entry, entryErr := HandleCodexReviewEntry(&hook.HookInput{CWD: repo}, true /* enabled */, repo)
 		if entryErr != nil {
 			t.Fatalf("entry error: %v", entryErr)
@@ -134,7 +134,7 @@ func TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey(t *testing.T) {
 			t.Fatalf("a fresh FAIL receipt must BLOCK at turn entry (the delayed enforcement point), got %+v", entry)
 		}
 		t.Logf("BLOCK reached at turn entry. reason=%q", entry.Reason)
-	case r.Verdict == codexReviewVerdictInconclusive:
+	case codexReviewVerdictInconclusive:
 		t.Skipf("codex review turn did not complete — the producer recorded inconclusive with the error surfaced (correct behavior)")
 	default:
 		t.Fatalf("expected a FAIL receipt on injection+AWS-key fixture; got verdict=%q\n"+

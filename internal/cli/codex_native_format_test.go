@@ -176,7 +176,7 @@ func TestCodexReviewSessionParamsCarryReproductionNote(t *testing.T) {
 	if !ok {
 		t.Fatalf("review/start session params must carry developerInstructions, got %v", params)
 	}
-	if !strings.Contains(instr, "REQ-GBN-003") || !strings.Contains(instr, "do NOT run") {
+	if !strings.Contains(instr, "conditional reproduction") || !strings.Contains(instr, "do NOT run") {
 		t.Errorf("review/start session params must carry the reproduction directive, got %q", instr)
 	}
 	// The directive must not displace the output-format pin — the verdict

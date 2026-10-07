@@ -1934,7 +1934,7 @@ const codexNativeReviewFormatPin = "Use exactly this output format so the review
 // the pin so the parser-pinned format text stays byte-identical at the head.
 const codexReviewReproductionNote = "Reproduction policy: this review's verdict is cached " +
 	"by tree key and reused verbatim, and a zero-findings verdict is accepted as-is " +
-	"(conditional reproduction, REQ-GBN-003) — do NOT run the project's tests, builds, " +
+	"(conditional reproduction) — do NOT run the project's tests, builds, " +
 	"or reproduction commands; review the changed code only."
 
 // codexAdversarialReviewPrompt builds the adversarial-review prompt text the

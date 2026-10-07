@@ -113,11 +113,6 @@ func TestTreeScopedSelfGateSkipsConfigOnlyTree(t *testing.T) {
 
 // --- R3: finding paths are normalized before the exclusion check -----------
 
-// absoluteDriftReviewText is the R3 shape: the same config-only finding the
-// reclassification admits, carrying the config file as an ABSOLUTE path — the
-// un-normalized prefix comparison let it keep the block.
-const absoluteDriftReviewText = "- [P1] `/proj/.claude/settings.json:13` personal PATH entry drifted\n"
-
 // TestCodexReviewGateRuntimeDriftFindingsAbsolutePathsReclassified pins R3 at
 // its M2 home, the receipt producer (the gate's live arm moved with the review
 // — REQ-GBN-002): the finding anchor is normalized against the reviewed
