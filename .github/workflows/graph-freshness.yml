@@ -6,17 +6,13 @@ on:
   # widened the same statement without a recorded decision; naming the integration
   # branches here declares the firing set already in force rather than changing it.
   pull_request:
-    branches: [main, develop]
+    branches: [main]
   # Card t1298 — the conflict-guard job needs a fire on conflicting PRs,
   # whose merge ref (and therefore pull_request event) does not exist.
   # pull_request_target runs in the base context and needs no merge ref;
   # the guard job alone consumes this event (job-level if: below).
   pull_request_target:
-    branches: [main, develop]
-  # card t1535 (REQ-GFC-013): the push trigger is main-only under GitHub
-  # Flow. The pull_request/pull_request_target blocks above keep their
-  # develop entries — PR events on a deleted ref can no longer fire, and
-  # that residue's cleanup belongs to the cutover card (design D-4).
+    branches: [main]
   push:
     branches: [main]
 

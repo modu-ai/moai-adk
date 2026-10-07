@@ -213,7 +213,10 @@ The default base is the landed ref, resolved through the SAME chain the todo
 surface's landing questions answer from (factory.LandedRefForWithLevel): the
 configured git_strategy.worktree_base_branch first, then the integration
 branch the repository itself records (refs/remotes/origin/HEAD), then the
-compiled-in default (origin/main). This diverges from clean --stale,
+compiled-in default (origin/main). When the resolved ref is absent on its
+remote (an integration-branch cutover deleted it), the derived base falls
+back to the remote's own default branch, with a notice on stderr (REQ-CR-001).
+This diverges from clean --stale,
 whose default is origin/main (that flag sweeps stale references, not
 landings). Override with --base.
 
@@ -228,6 +231,73 @@ Previews by default; pass --yes to remove.`,
 	cmd.Flags().Bool("json", false, "Report every non-protected worktree's evaluation as JSON; removes nothing")
 	cmd.Flags().String("base", "", "Remote integration base the landing check compares against (default: the chain-resolved landed ref — git_strategy.worktree_base_branch, else refs/remotes/origin/HEAD, else origin/main)")
 	return cmd
+}
+
+// sweepRemoteRefExists probes whether refs/heads/<ref> exists on the remote
+// (REQ-CR-001): `git ls-remote --exit-code` answers structurally — exit 0
+// present, exit 2 absent, anything else undeterminable — instead of parsing
+// fetch stderr text, which is not stable across git versions.
+var sweepRemoteRefExists = func(repoRoot, remote, ref string) (bool, error) {
+	_, err := gitWorktreeCmd("-C", repoRoot, "ls-remote", "--exit-code", remote, "refs/heads/"+ref)
+	if err == nil {
+		return true, nil
+	}
+	if sweepProcessExitCode(err) == 2 {
+		return false, nil
+	}
+	return false, err
+}
+
+// sweepRemoteHead resolves the remote's default branch name from the remote
+// itself (REQ-CR-003): the first `ref: refs/heads/<name>` line of
+// `git ls-remote --symref <remote> HEAD` — the same answer `git clone` uses
+// to pick its initial branch, so no branch name is hardcoded here.
+var sweepRemoteHead = func(repoRoot, remote string) (string, error) {
+	out, err := gitWorktreeCmd("-C", repoRoot, "ls-remote", "--symref", remote, "HEAD")
+	if err != nil {
+		return "", err
+	}
+	for _, line := range strings.Split(out, "\n") {
+		const prefix = "ref: refs/heads/"
+		if !strings.HasPrefix(line, prefix) {
+			continue
+		}
+		rest := strings.TrimPrefix(line, prefix)
+		if i := strings.IndexAny(rest, "\t "); i >= 0 {
+			rest = rest[:i]
+		}
+		if rest != "" {
+			return rest, nil
+		}
+	}
+	return "", fmt.Errorf("ls-remote --symref %s HEAD: no symbolic ref line", remote)
+}
+
+// sweepEffectiveBase resolves the DERIVED default base against the remote
+// (SPEC-CUTOVER-RESIDUE-001 REQ-CR-002/003): a derived ref the remote no
+// longer carries (a workflow cutover deleting the old integration branch)
+// makes every tree's landing predicate fail with cause=fetch-failed, so the
+// absent-ref case falls back to the remote's own default branch. Every case
+// the probe cannot answer affirmatively keeps the derived base — the
+// existing three-way landing contract then renders it honestly (fetch
+// failure → PRESERVE). The second return reports that a fallback engaged;
+// the caller surfaces it so the switch is never silent. An explicit --base
+// never reaches this function: the operator's word is the base (REQ-CR-004).
+func sweepEffectiveBase(repoRoot, base string) (string, bool) {
+	i := strings.Index(base, "/")
+	if i <= 0 || i == len(base)-1 {
+		return base, false
+	}
+	remote, ref := base[:i], base[i+1:]
+	exists, err := sweepRemoteRefExists(repoRoot, remote, ref)
+	if err != nil || exists {
+		return base, false
+	}
+	head, err := sweepRemoteHead(repoRoot, remote)
+	if err != nil || head == "" || head == ref {
+		return base, false
+	}
+	return remote + "/" + head, true
 }
 
 // sweepConfigRoot names the project root the default --base is derived from.
@@ -256,7 +326,12 @@ func runSweep(cmd *cobra.Command, _ []string) error {
 	asJSON, _ := cmd.Flags().GetBool("json")
 
 	if strings.TrimSpace(base) == "" {
-		base = sweepDefaultBase(sweepConfigRoot())
+		derived := sweepDefaultBase(sweepConfigRoot())
+		effective, fellBack := sweepEffectiveBase(WorktreeProvider.Root(), derived)
+		if fellBack {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "base %s is absent on its remote; using the remote default branch %s as the sweep base\n", derived, effective)
+		}
+		base = effective
 	}
 
 	worktrees, err := WorktreeProvider.List()

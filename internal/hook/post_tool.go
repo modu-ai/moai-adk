@@ -211,9 +211,17 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 	var systemMessage string
 	var collectedDiags []lsphook.Diagnostic
 
+	// Lint and security scans apply only to files inside the project: a
+	// throwaway script under a session scratchpad or /tmp is not project code
+	// (card t1507, re-landing card t1499's reverted M4). The scope check fails
+	// closed toward scanning — an unknown root or an ambiguous judgment keeps
+	// the scans on.
+	scanInScope := (input.ToolName == "Write" || input.ToolName == "Edit") &&
+		!postToolTargetOutsideProject(input)
+
 	// Collect LSP diagnostics for Write/Edit operations (REQ-HOOK-150, REQ-HOOK-153).
 	// Also generates systemMessage if lint_as_instruction is enabled (REQ-LAI-001).
-	if (input.ToolName == "Write" || input.ToolName == "Edit") && h.diagnostics != nil {
+	if scanInScope && h.diagnostics != nil {
 		systemMessage, collectedDiags = h.collectDiagnosticsWithInstructionAndReturn(ctx, input, metrics)
 	}
 
@@ -225,7 +233,7 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 	// Perform AST file scan after Write/Edit operations (observation-only, never blocks).
 	// When lint_as_instruction is enabled, security findings are also appended to
 	// systemMessage alongside LSP errors (REQ-LAI-008).
-	if (input.ToolName == "Write" || input.ToolName == "Edit") && h.analyzer != nil {
+	if scanInScope && h.analyzer != nil {
 		if astResult := h.runAstScan(ctx, input, metrics); astResult != nil && h.lintAsInstructionEnabled() {
 			// Extract file path from tool input for the security message header.
 			var parsed map[string]any
