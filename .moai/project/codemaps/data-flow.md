@@ -1,8 +1,8 @@
 # 데이터 흐름
 
-## 현재 최종 통합 트리의 흐름 — 840826
+## 현재 최종 통합 트리의 흐름 — e65b3b
 
-기준은 `840826fa662080e5ee2a82001338f004e4d3e479`다. 다음은 실제 호출부와 저장 경로의 소스 대조이며 외부 실행·OS 런타임의 성공 판정이 아니다.
+기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. 다음은 실제 호출부와 저장 경로의 소스 대조이며 외부 실행·OS 런타임의 성공 판정이 아니다.
 
 1. UserPromptSubmit의 기본 2초 bind context → `registerFactoryHookPeerRun` → 일반 등록 또는 rebound 등록의 `OpenWithContext` → `FactoryDirContext` → `ProjectDirContext` → `CanonicalProjectRootContext` → `internal/core`의 checkout.go에 있는 `ResolveGitDirsContext`로 예산이 전달된다. broker는 caller 잔여 예산과 기본 5초 중 작은 값을 사용하고 경로 탐색 뒤 남은 예산으로 DB busy timeout을 구성한다. inbox의 200ms inspection open은 별도다. 기존 contextless API도 남아 있다.
 2. initializer의 template 배포 → 기본 AGENTS.md → validator의 존재 진단으로 이어진다. InstructionsLoaded는 AGENTS 우선·legacy CLAUDE fallback으로 anchor와 import closure를 관측한다. Codex contract는 AGENTS.md·AGENTS.local.md를 보호하며 legacy root 파일을 읽거나 쓰지 않는다. Codex launcher의 local producer는 AGENTS.local.md와 CLAUDE.local.md를 순서대로 둘 다 읽어 하나의 override로 연결한다.
@@ -10,6 +10,10 @@
 4. PR 전달은 readiness 전후 tip 대조 → merging 재시도의 holder·expiry 검사 → 원격 변경 직전 state·version·holder·expiry 재확인 → 확인한 SHA push → PR head 대조 → match-head auto-merge 요청으로 이어진다. candidate-tip remeasure와 complete T16의 실제 merge-tree remeasure는 기존의 서로 다른 증거 시점을 유지한다.
 5. init/update → `internal/cli/user_asset_phase.go` → 사용자 잠금·기록된 bundle selection·embedded catalog/tree → `internal/userassets` Installer로 이어진다. 네 사용자 루트 설치와 프로젝트 자산 이행 확인이 먼저이며, project deployer는 네 공통 skill/agent 루트를 제외한다. AGENTS 기본 instruction 배포와 사용자 자산 설치는 서로 다른 단계다.
 6. protected-zone 판정은 shell quote 문법별 literal 복원 → OS별 native 경로와 lexical 비교형 분리 → 실제 구성요소 walk로 이어진다. POSIX literal backslash와 Windows separator를 같은 것으로 바꾸지 않는다. roster sweep은 dated reports를 live roster에서 제외한다.
+
+7. Stop review gate의 resolved scope → tree key → 공유 영수증 Load·CheckReceipt(24시간 TTL) → cached block/allow 또는 live RPC로 갈라진다. live 결과는 RecordReceipt로 기록하고 fail 상세를 같은 key의 로컬 파일에 보존한다. 일반 fail은 exit1, inconclusive는 exit2로 기록한다. runtime-config-only tree finding의 통과 처리는 게이트의 별도 disposition이며 producer와 모든 매핑이 같다고 보지 않는다.
+8. SPEC 없는 카드의 verdict 파일 → `internal/auditverdict`의 Parse → backend·손상 receipt 거부 → 공통 Admit의 PhaseSync 판정으로 이어진다. convergence overall fail도 공통 술어에서 거부하며, HEAD 또는 evidence-directory-only drift의 SHA 증거는 `internal/factorylane`에서 별도로 확인한다.
+9. packageManager의 Bun 선언 → repository 경계까지 로컬 node_modules tool 확인 → 해결된 tool은 `bun x` argv(타입 검사는 `tsc --noEmit`)로 실행한다. 미해결 tool은 예상 로컬 경로의 mandatory 실행으로 실패하고, 명시 override와 비Bun npx 흐름은 바꾸지 않는다.
 
 > `internal/template/templates/CLAUDE.md`와 plugin 운반체는 퇴역했다. 아래 이전 미러·생산자 설명은 현재 제공 흐름이 아닌 이력이다.
 

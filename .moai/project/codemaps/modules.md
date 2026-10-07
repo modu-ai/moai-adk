@@ -1,8 +1,8 @@
 # 패키지 모듈 상세
 
-## 현재 최종 통합 트리의 책임 — 840826
+## 현재 최종 통합 트리의 책임 — e65b3b
 
-기준은 `840826fa662080e5ee2a82001338f004e4d3e479`다. c572 이후 수정된 설명 대상 소스 34개를 실제 파일·호출부·package 문서와 대조했다. 새 패키지나 비테스트 파일 추가·삭제는 없다. 다음 표는 소스 책임을 설명하며 런타임 보장으로 확대하지 않는다.
+기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. 앞선840826의 소스34개 수정 설명에 외부 main의 Go13경로 변화를 대조했다. 이번 창에서 비테스트 파일7개가 바뀌었고(수정6·추가1), 새 패키지는 없다. 추가된 비테스트 파일은 codex_review_cache.go다. 다음 표는 소스 책임을 설명하며 런타임 보장으로 확대하지 않는다.
 
 | 소유 모듈·경로 | 현재 책임 |
 |---|---|
@@ -18,6 +18,9 @@
 | `internal/hook/pre_tool.go` · `internal/hook/protected_zone_path.go` · `internal/hook/protected_zone_shell.go` | OS별 separator·volume과 실제 구성요소 walk, POSIX literal backslash, double/ANSI-C quoted shell literal 해석을 native 경로 판정으로 연결한다. |
 | `internal/harness/rosterguard` · `internal/session/anchor_relocate_audit.go` | roster sweep은 dated reports를 제외하고 subset-by-design fixture·파생 등록을 구분한다. anchor 복원은 registry suffix에 native separator를 사용한다. |
 | `internal/template/deployer.go` · `internal/template/embed.go` · `internal/template/embed_manifest_gen.go` · `internal/cli/init.go` · `internal/web/agentfm.go` | AGENTS 중심 프로젝트 payload와 명시적 임베드 allowlist를 사용한다. init의 사용자 자산 설치와 user-home 우선 agent 스캔 책임은 유지한다. 이 창의 init·agentfm 변경은 안내·주석이다. |
+| `internal/cli/codex_review_cache.go` · `internal/cli/codex_review_gate.go` · `internal/cli/codex_review_receipt.go` | 게이트가 RPC 전에 resolved scope의 tree key로 공유 영수증을 조회한다. accepted receipt의 fail은 차단하고 그 외는 allow한다. miss·stale은 live review로 넘긴다. 일반 fail은 exit1, inconclusive는 exit2로 기록한다. runtime-config-only tree finding의 통과 처리는 게이트의 별도 disposition이다. 실패 상세는 같은 key의 로컬 파일에 보존해 cached block 이유에 연결한다. |
+| `internal/auditverdict/verdict.go` · `internal/factorylane/merge_specless.go` | SPEC 없는 카드의 감사 파일을 `Parse`와 공통 `Admit`의 PhaseSync 판정으로 읽는다. backend 실패·inconclusive·손상된 receipt와 `convergence_overall: fail`을 PASS label로 덮지 않는다. SHA binding은 별도 기존 증거 검사로 유지한다. |
+| `internal/hook/quality/gate_node_pm.go` · `internal/hook/quality/gate_typecheck.go` | Bun 선언 프로젝트의 로컬 tool 존재를 먼저 확인하고 해결된 eslint·biome·oxlint·tsc는 `bun x` argv로 실행한다. 없는 tool은 예상 로컬 경로 실행으로 실패하도록 유지한다. 명시적 override와 npm·pnpm의 npx 벡터는 별도 계약이다. |
 
 `internal/userassets`의 10개 파일과 CLI의 bundle·doctor_user_install·migrate_project_assets·user_asset_phase 4개 파일은 실제 존재한다. 네 사용자 루트 설치와 프로젝트 공통 자산 제외는 아래 기존 설치 책임대로 유지한다. local/template meta-harness의 AGENTS marker와 사용자 `~/.claude` workflow 루트는 함께 보존한다.
 

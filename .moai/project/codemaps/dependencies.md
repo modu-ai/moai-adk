@@ -1,10 +1,10 @@
 # 의존성 그래프
 
-## 현재 최종 통합 트리의 의존성 — 840826
+## 현재 최종 통합 트리의 의존성 — e65b3b
 
-기준은 `840826fa662080e5ee2a82001338f004e4d3e479`다. 현재 darwin/arm64의 `go list -deps -json ./...`에서 모듈 패키지 170개, 내부 import 480쌍, 최상위 집계 305쌍을 측정했다. 보존된 c572 JSON과 이번 JSON을 같은 술어로 set 비교한 결과 패키지와 두 엣지 집합의 추가·삭제가 모두 0개였다. 숫자만 같은 것으로 관계 동일성을 추정한 결과가 아니다. `go.mod`·`go.sum`도 이 창에서 변하지 않았다.
+기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. 현재 darwin/arm64의 `go list -deps -json ./...`에서 모듈 패키지170개, 내부 import481쌍, 최상위 집계306쌍을 측정했다. 보존된840826 JSON과 정확한 set 비교에서 `internal/factorylane` → `internal/auditverdict` 한 쌍이 package·folded 집계에 각각 추가됐고 제거는0개였다. 패키지 집합170개는 같고 `go.mod`·`go.sum`도 변하지 않았다. 숫자만 같아서 관계 동일성을 추정한 결과가 아니다.
 
-caller context API는 기존 모듈 안에서 확장됐다. hook 등록 → broker → HOME 경로 → `internal/core`의 Git helper 연결을 사용하며 새 내부 import edge나 외부 require를 추가한 창은 아니다. `internal/userassets`는 `internal/template`을 import하고 사용자 설치의 CLI 배선은 유지한다. 아래 fan-in/out 표와 순환 절은 이번 집계를 사용하며, 이전 판 단락의 수치는 각 당시 관측값이다.
+새 의존성은 SPEC 없는 카드의 감사 admission을 공통 술어로 연결한다. folded fan-in에서 `internal/auditverdict`는4→5로 아래 표에 들어왔고, `internal/factorylane`의 fan-out은3→4다. 게이트 영수증 캐시는 기존 CLI 모듈 안에 추가됐고 Bun 실행은 기존 quality 모듈 안에서 바뀌었다. caller context와 사용자 자산 설치 배선은 유지한다. 아래 fan-in/out 표와 순환 절은 이번 집계이며 이전 판 수치는 각각 당시 기록이다.
 
 ## 이전 c572 기준의 의존성
 
@@ -111,6 +111,7 @@ $ go list -deps -json ./... 의 프로젝트 패키지 Imports 중 모듈 내부
 | 12 | `internal/gitenv` | 6 |
 | 12 | `internal/hook` | 6 |
 | 12 | `pkg/version` | 6 |
+| 15 | `internal/auditverdict` | 5 |
 | 15 | `internal/lockfile` | 5 |
 | 15 | `internal/lsp` | 5 |
 | 15 | `internal/statusline` | 5 |
@@ -145,7 +146,7 @@ $ go list -deps -json ./... 의 프로젝트 패키지 Imports 중 모듈 내부
 | 패키지 | fan-in | 비고 |
 |---|---|---|
 | `internal/hygiene` | 2 | **t1524 판에서 새로 들어왔다.**(card t1518, SPEC-MOAI-HYGIENE-001) 소비자는 `internal/cli`(`clean.go` — 수동 표면)와 `internal/hook`(`session_start_hygiene.go` — SessionStart 자동 경로)둘이며, 패키지 스스로는 `internal/config` 하나만 import 한다(workflow.hygiene 6키 — 두 경로가 같은 임계값을 읽는다) |
-| `internal/auditverdict` | 4 | **t1485 판에서 새로 들어오고 t1524 판에서 넷이 됐다.** 소비자는 `internal/contract`·`internal/contract/kickoff`·`internal/homestate`(`card_audit_kickoff.go`)에 이번 판의 `internal/cli`(`spec_ceiling.go`)·`internal/runtime`(`audit_ceiling.go`) 합류(card t1500) — 감사 판정의 단일 admission 술어라 소비자가 늘어나는 것이 설계다 |
+| `internal/auditverdict` | 5 | **t1485 판에서 새로 들어오고 t1524 판에서 넷이 됐다.** 소비자는 `internal/contract`·`internal/contract/kickoff`·`internal/homestate`(`card_audit_kickoff.go`)에 이번 판의 `internal/cli`(`spec_ceiling.go`)·`internal/runtime`(`audit_ceiling.go`) 합류(card t1500) — 현재 e65b3b에서는 `internal/factorylane`의 SPEC 없는 카드 admission이 추가돼 folded 소비자는5개다 |
 | `internal/stateanchor` | 3 | 상태 앵커 seam. 소비자는 `internal/statusline`, `internal/cli`, 그리고 이 판에 합류한 `internal/session` — 레지스트리 경로 해석이 같은 seam을 쓰기 시작했다(워크트리마다 갈라지던 레지스트리 하나로 모으기) |
 | `internal/chain` | 2 | 워크트리 세션 origin-trail 원장. 소비자는 `internal/cli`와 `internal/hook` |
 | `internal/auditreceipt` | 3 | **t999 판에서 새로 들어왔다.** 소비자는 `internal/cli`와 `internal/hook` — 생산 쪽(MCP 도구 호출)과 소비 쪽(훅 가드)이 각각 하나씩이며, 그 비대칭이 아니라 대칭이 이 패키지의 설계다 **t1333 판 정정: 소비자는 cli·hook·closure 셋이다 — closure 엇키는 앵컰 이전부터 존재했고 이 판이 스테일 값을 바로잛었다** |
@@ -189,20 +190,20 @@ admission 계약을 공유합니다.
 | 12 | `internal/codexwiring` | 5 |
 | 12 | `internal/harness` | 5 |
 | 15 | `internal/discovery` | 4 |
+| 15 | `internal/factorylane` | 4 |
 | 15 | `internal/spec` | 4 |
 | 15 | `internal/update` | 4 |
-| 18 | `internal/config` | 3 |
-| 18 | `internal/factorylane` | 3 |
-| 18 | `internal/graph` | 3 |
-| 18 | `internal/loop` | 3 |
-| 18 | `internal/lsp` | 3 |
-| 18 | `internal/profile` | 3 |
-| 18 | `internal/ralph` | 3 |
-| 18 | `internal/runtime` | 3 |
-| 18 | `internal/session` | 3 |
-| 18 | `internal/template` | 3 |
+| 19 | `internal/config` | 3 |
+| 19 | `internal/graph` | 3 |
+| 19 | `internal/loop` | 3 |
+| 19 | `internal/lsp` | 3 |
+| 19 | `internal/profile` | 3 |
+| 19 | `internal/ralph` | 3 |
+| 19 | `internal/runtime` | 3 |
+| 19 | `internal/session` | 3 |
+| 19 | `internal/template` | 3 |
 
-`internal/cli`가 다른 최상위 패키지 **76개**를 import 한다(840826의 최상위 집계). 아래 판별 설명과 변화 이력은 기존 구조 분석의 기록이다.
+`internal/cli`가 다른 최상위 패키지 **76개**를 import 한다(e65b3b의 최상위 집계). 아래 판별 설명과 변화 이력은 기존 구조 분석의 기록이다.
 합성 루트(`internal/cli/deps.go`)가 여기 있으므로 일부는 의도된 것이지만, 상당수는
 `deps.go`가 아니라 **개별 verb 파일에서 직접** 들어옵니다. 이것이 "명령 하나 = 파일 하나 = 그 명령이
 필요한 것 전부 import"라는 수직 슬라이스 성격을 만듭니다.
@@ -217,7 +218,7 @@ admission 계약을 공유합니다.
 
 ## 순환
 
-840826의 실제 package adjacency에 SCC 분석을 적용한 nontrivial component는 0개다. `go list -deps -json ./...`도 exit0이었다. 상위 디렉터리로 접은 그래프에는 15개 단위 그룹 1개와 contract/escalation의 2개 단위 그룹 1개가 있다. 서로 다른 하위 패키지를 같은 부모로 합친 집계 결과를 Go import cycle로 해석하지 않는다.
+e65b3b의 실제 package adjacency에 SCC 분석을 적용한 nontrivial component는 0개다. `go list -deps -json ./...`도 exit0이었다. 상위 디렉터리로 접은 그래프에는 15개 단위 그룹 1개와 contract/escalation의 2개 단위 그룹 1개가 있다. 서로 다른 하위 패키지를 같은 부모로 합친 집계 결과를 Go import cycle로 해석하지 않는다.
 
 직접 양방향으로 연결된 최상위 쌍은 5개다. 아래는 현재 package adjacency에서 확인한 실제 경로다. SCC는 더 긴 경로도 포함하므로 직접 양방향 쌍의 개수와 별개다.
 
