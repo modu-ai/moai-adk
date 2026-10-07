@@ -9,7 +9,7 @@ added_in: "v3.1"
 {{< new-badge v3.1 >}}
 
 {{< callout type="info" >}}
-`/moai todo` and `moai todo` remain as **compatibility surfaces** for existing automation and scripts. The canonical names are [`/moai gtd`](/en/utility-commands/moai-gtd) and `moai gtd`; both names use the same SQLite queue, card IDs, ordering, archive, and restore behavior.
+`moai gtd` and [`/moai gtd`](/en/utility-commands/moai-gtd) remain a fully supported **compatibility surface** for existing automation and scripts. The canonical names are `/moai todo` and `moai todo`; both names use the same SQLite queue, card IDs, ordering, archive, and restore behavior.
 {{< /callout >}}
 
 A **backlog queue** where you stack up what to do next, one line at a time. The factory queue's `backlog` has no session assigned to it, so nobody pushes work into it on its own. Putting a card in the queue is therefore always a human's judgment, and `/moai todo` is that window.

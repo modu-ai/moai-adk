@@ -7,7 +7,7 @@ new: true
 
 # /moai gtd
 
-`/moai gtd` and `moai gtd` are the canonical GTD surfaces for capturing work, deciding whether it is actionable, and connecting approved work to the existing development queue. The `todo` SQLite database, card IDs, order, `queued`/`picked`/`dropped` states, and archive/restore semantics do not change. `todo` remains a compatibility name backed by the same command tree.
+`/moai gtd` and `moai gtd` are the GTD surfaces for capturing work, deciding whether it is actionable, and connecting approved work to the existing development queue. The canonical names are `/moai todo` and `moai todo`; the SQLite database, card IDs, order, `queued`/`picked`/`dropped` states, and archive/restore semantics do not change. `moai gtd` remains a fully supported compatibility name backed by the same command tree.
 
 ```bash
 moai gtd add "clean up authentication error paths"
@@ -16,7 +16,7 @@ moai gtd next t1 --spec SPEC-AUTH-001
 moai gtd done t1 --expect "clean up"
 ```
 
-Existing `moai todo ...` calls produce the same result. See the [todo compatibility reference](/en/utility-commands/moai-todo) for the complete queue verb and flag reference.
+The canonical `moai todo ...` spelling produces the same result. See the [todo command reference](/en/utility-commands/moai-todo) for the complete queue verb and flag reference.
 
 The five GTD-specific verbs carry one SQLite-backed item through the workflow.
 
