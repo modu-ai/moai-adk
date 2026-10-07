@@ -1,6 +1,6 @@
 # progress — SPEC-GFD-PATCHID-VERBATIM-001
 
-상태: in-progress (M1 run 커밋에서 manager-develop 이 전이 — card t1561, 2026-10-07)
+상태: completed (sync 커밋에서 manager-docs 이 전이 — in-progress→implemented→completed 3-phase close, card t1561, 2026-10-07)
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -134,7 +134,30 @@ m1_to_mn_commit_strategy: 3 커밋 — M1 5f952f509(술어 전환+RED 게이트+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs 소관>_
+```yaml
+sync_complete_at: 2026-10-07
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own SHA; backfilled in the immediately following commit (spec-frontmatter-schema.md § D3 placeholder backfill exemption)
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-GFD-PATCHID-VERBATIM-001' CHANGELOG.md -> 0 (pre-emission; no duplicate entry from a parallel session)"
+b12_self_test_b: "AC counter (manager-docs.md B12, MOAI-AC-COUNTER sentinels) on acceptance.md -> stdout 12, rc=0, stderr 'live=12 excluded=0 ambiguous=0'. The 12 decomposes into the 7 declared criteria AC-GPV-001..007 + the 5 dispatch-alias tokens AC-01..AC-05 of the §A mapping row (배차 지시의 AC-01..AC-05 대응 — each alias names an already-counted AC-GPV row: a cross-reference, not a criterion). The SPEC declares 7 criteria — spec.md HISTORY 'REQ 5개·AC 7개', §A table 7 rows, §E.3 ac_pass_count: 7 — and the CHANGELOG entry states 7. The canonical remedy ([REF] marks on the alias tokens) would be an acceptance.md body edit, outside manager-docs' forbidden-crossings boundary, so the aliasing is recorded here rather than marked in the body"
+b12_self_test_c: "ls on every path claimed in the entry -> all present: internal/cli/worktree/landing_predicate.go, internal/cli/worktree/landing_predicate_test.go, internal/cli/session_worktree.go, internal/cli/session_worktree_landing_test.go, .moai/specs/SPEC-GFD-PATCHID-VERBATIM-001/spec.md"
+changelog_entry_position: "CHANGELOG.md [Unreleased] -> ### Fixed, first entry; inserted above the SPEC-SELF-IMPROVE-PROTECTED-ZONE-001 row"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (merged 3-phase close on this sync commit); updated: 2026-10-07 (already the commit date — value unchanged)"
+  plan_md: "no frontmatter block — statelessness § (spec-frontmatter-schema.md § Artifact Statelessness); nothing to refresh"
+  acceptance_md: "no frontmatter block — statelessness §; nothing to refresh"
+  progress_md: "status line (상태:) flipped in-progress -> completed by manager-docs on this sync commit (Status Transition Ownership Matrix, the progress.md status line where present)"
+mx_tag_check: "no code edit by sync; tags re-inventoried in the 4 run-phase files — LandedByCommitPatchIDs carries @MX:NOTE + @MX:SPEC (this SPEC), landedBeyondAncestry keeps @MX:ANCHOR + @MX:REASON + @MX:SPEC, session_worktree.go keeps its 5 pre-existing tags; gitBranchLandedReal (unexported, fan-in 1, contract carried in godoc) triggers no mandatory tag — no missing mandatory sub-lines found"
+canary_compliance_check:
+  applicable: false
+  reason: "this SPEC defines no forward-looking policy exercised by its own sync-phase tests"
+tests:
+  affected_packages: "run-phase M3 batch — go test ./internal/cli/worktree/ -> ok 1364.466s; the internal/cli root package carries pre-existing TestCodexTask* reds proven by base-commit A/B (§E.2 배치 판독); no new run by sync — the full-suite verdict is CI's (AGENTS.md §4)"
+push_state: "not pushed, not merged — push and PR are the lane's act (run §E.6 B9); branch WT-landing-patchid"
+```
+
+**이 sync 가 관측하지 않은 것.** 브랜치가 미푸시라 CI 판정이 없다. 전체 스위트는 로컬에서
+돌리지 않았다. `sync_commit_sha` 는 커밋 시점에 확정되지 않으므로 후속 커밋에서 채운다.
 
 ## §F Phase 4 Mode Selection
 

@@ -2,7 +2,7 @@
 id: SPEC-GFD-PATCHID-VERBATIM-001
 title: "착지 판정 patch-id 비교의 공백 충실화 — --verbatim 전환과 미지원 git fail-closed"
 version: "0.1.2"
-status: in-progress
+status: completed
 created: 2026-10-07
 updated: 2026-10-07
 author: GOOS
