@@ -262,10 +262,11 @@ func TestInstanceLedgerPendingEndReplaysUnderLock(t *testing.T) {
 	if err := RecordInstanceStart(root, key, t0); err != nil {
 		t.Fatalf("RecordInstanceStart: %v", err)
 	}
-	// A's end write was dropped: the pending mark carries the end time.
+	// A's end write was dropped: the pending mark carries the entry id and the
+	// end time.
 	endAt := t0.Add(2 * time.Second)
-	pending := ledgerPath(root, key) + ".end-pending"
-	body := `{"ended_at":"` + endAt.Format(time.RFC3339Nano) + `"}`
+	pending := ledgerPath(root, key) + ".end-pending-idPend"
+	body := `{"pending_id":"idPend","ended_at":"` + endAt.Format(time.RFC3339Nano) + `"}`
 	if err := os.WriteFile(pending, []byte(body), 0o644); err != nil {
 		t.Fatalf("write pending mark: %v", err)
 	}
@@ -297,7 +298,7 @@ func TestInstanceLedgerPendingEndReplaysUnderLock(t *testing.T) {
 	if err := os.WriteFile(ledgerPath(root, key2)+".uncertain", []byte("start-count uncertain\n"), 0o644); err != nil {
 		t.Fatalf("mark uncertain: %v", err)
 	}
-	if err := os.WriteFile(ledgerPath(root, key2)+".end-pending", []byte(`{"ended_at":"`+endAt.Format(time.RFC3339Nano)+`"}`), 0o644); err != nil {
+	if err := os.WriteFile(ledgerPath(root, key2)+".end-pending-idPend2", []byte(`{"pending_id":"idPend2","ended_at":"`+endAt.Format(time.RFC3339Nano)+`"}`), 0o644); err != nil {
 		t.Fatalf("write pending mark key2: %v", err)
 	}
 	if err := RecordInstanceEnd(root, key2, t0.Add(4*time.Second)); err != nil {
@@ -339,9 +340,12 @@ func TestMarkInstanceEndPendingRoundTrip(t *testing.T) {
 	if err := MarkInstanceEndPending(root, key, endAt); err != nil {
 		t.Fatalf("MarkInstanceEndPending: %v", err)
 	}
-	got, ok := readEndPending(root, key)
-	if !ok || !got.Equal(endAt) {
-		t.Errorf("readEndPending = (%v, %v), want the marked end %v", got, ok, endAt)
+	marks, err := readEndPendings(root, key)
+	if err != nil {
+		t.Fatalf("readEndPendings: %v", err)
+	}
+	if len(marks) != 1 || !marks[0].pending.EndedAt.Equal(endAt) || marks[0].pending.PendingID == "" {
+		t.Errorf("readEndPendings = %+v, want exactly the marked end %v under a fresh id", marks, endAt)
 	}
 }
 
@@ -364,5 +368,142 @@ func TestLedgerLockTimesOutWhenHeld(t *testing.T) {
 	}()
 	if _, err := lockLedger(p); err == nil {
 		t.Fatal("lockLedger acquired a lock held by another holder")
+	}
+}
+
+// Post-sync supplement (gate round 20, P1): two same-role auditors can BOTH
+// fail their end-record under lock contention. A single .end-pending file
+// lets the second writer overwrite the first, so recovery loses an end and
+// the boundary never seals. Each failed writer therefore gets its own
+// per-instance pending file, and recovery applies ALL of them.
+func TestInstanceLedgerAllPendingEndsRecovered(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-multi", AgentPlanAuditor)
+	for i := 0; i < 3; i++ { // three recorded starts: A, B, C
+		if err := RecordInstanceStart(root, key, t0.Add(time.Duration(i)*time.Second)); err != nil {
+			t.Fatalf("RecordInstanceStart %d: %v", i, err)
+		}
+	}
+	// A and B both fail their end-record: each leaves its own pending file.
+	pendingA := ledgerPath(root, key) + ".end-pending-idA"
+	pendingB := ledgerPath(root, key) + ".end-pending-idB"
+	body := func(id string, at time.Time) string {
+		return `{"pending_id":"` + id + `","ended_at":"` + at.Format(time.RFC3339Nano) + `"}`
+	}
+	if err := os.WriteFile(pendingA, []byte(body("idA", t0.Add(4*time.Second))), 0o644); err != nil {
+		t.Fatalf("write pending A: %v", err)
+	}
+	if err := os.WriteFile(pendingB, []byte(body("idB", t0.Add(5*time.Second))), 0o644); err != nil {
+		t.Fatalf("write pending B: %v", err)
+	}
+
+	// C's own end (the next ledger op) replays both pendings first, then
+	// counts itself: all three ends land, and C — the last single-live end —
+	// seals the boundary at its own time.
+	if err := RecordInstanceEnd(root, key, t0.Add(6*time.Second)); err != nil {
+		t.Fatalf("RecordInstanceEnd: %v", err)
+	}
+	l, err := ReadInstanceLedger(root, key)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if l.Ends != 3 {
+		t.Errorf("Ends = %d, want 3 — a second failed writer must not overwrite the first's pending end", l.Ends)
+	}
+	if !l.EndedAt.Equal(t0.Add(6 * time.Second)) {
+		t.Errorf("EndedAt = %v, want the last single-live end %v", l.EndedAt, t0.Add(6*time.Second))
+	}
+	if _, err := os.Stat(pendingA); !os.IsNotExist(err) {
+		t.Errorf("pending A was not consumed: %v", err)
+	}
+	if _, err := os.Stat(pendingB); !os.IsNotExist(err) {
+		t.Errorf("pending B was not consumed: %v", err)
+	}
+}
+
+// Post-sync supplement (gate round 20, P2): the pending end used to be
+// deleted BEFORE the ledger save, so a failed save lost the end from both
+// sides. The pending file must survive a failed save and be recovered by the
+// next operation.
+func TestInstanceLedgerPendingSurvivesFailedSave(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-savefail", AgentPlanAuditor)
+	if err := RecordInstanceStart(root, key, t0); err != nil {
+		t.Fatalf("RecordInstanceStart: %v", err)
+	}
+	pending := ledgerPath(root, key) + ".end-pending-idS"
+	body := `{"pending_id":"idS","ended_at":"` + t0.Add(time.Second).Format(time.RFC3339Nano) + `"}`
+	if err := os.WriteFile(pending, []byte(body), 0o644); err != nil {
+		t.Fatalf("write pending: %v", err)
+	}
+
+	// Make the ledger save fail: the ledgers directory loses write permission,
+	// so writeJSON's temp file cannot be created.
+	dir := filepath.Dir(ledgerPath(root, key))
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatalf("chmod ledgers dir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+	if err := RecordInstanceEnd(root, key, t0.Add(2*time.Second)); err == nil {
+		t.Fatal("the ledger save unexpectedly succeeded in a read-only directory")
+	}
+
+	// The pending file survived the failed save...
+	if _, err := os.Stat(pending); err != nil {
+		t.Fatalf("the pending end was deleted before the save succeeded: %v", err)
+	}
+
+	// ...and the next operation recovers it.
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatalf("restore ledgers dir: %v", err)
+	}
+	if err := RecordInstanceEnd(root, key, t0.Add(3*time.Second)); err != nil {
+		t.Fatalf("retrying RecordInstanceEnd: %v", err)
+	}
+	l, err := ReadInstanceLedger(root, key)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if l.Ends != 2 {
+		t.Errorf("Ends = %d, want 2 — the recovered pending end plus the retry's own", l.Ends)
+	}
+	if _, err := os.Stat(pending); !os.IsNotExist(err) {
+		t.Errorf("the recovered pending mark was not consumed: %v", err)
+	}
+}
+
+// The replay is idempotent by pending-entry id: an entry already folded into
+// a ledger save whose remove was lost (crash between save and remove) is
+// skipped, not counted twice.
+func TestInstanceLedgerPendingEndIdempotentByEntryID(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-idem", AgentPlanAuditor)
+	if err := os.MkdirAll(filepath.Dir(ledgerPath(root, key)), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	// A ledger whose save already folded in pending id "p1" (starts 2, ends 1),
+	// with the pending file still on disk because its remove was lost.
+	ledgerBody := `{"key":"` + key + `","starts":2,"ends":1,"applied_ends":["p1"],"updated_at":"` + t0.Format(time.RFC3339Nano) + `"}`
+	if err := os.WriteFile(ledgerPath(root, key), []byte(ledgerBody), 0o644); err != nil {
+		t.Fatalf("write ledger: %v", err)
+	}
+	pending := ledgerPath(root, key) + ".end-pending-p1"
+	body := `{"pending_id":"p1","ended_at":"` + t0.Add(time.Second).Format(time.RFC3339Nano) + `"}`
+	if err := os.WriteFile(pending, []byte(body), 0o644); err != nil {
+		t.Fatalf("write pending: %v", err)
+	}
+
+	if err := RecordInstanceEnd(root, key, t0.Add(2*time.Second)); err != nil {
+		t.Fatalf("RecordInstanceEnd: %v", err)
+	}
+	l, err := ReadInstanceLedger(root, key)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if l.Ends != 2 {
+		t.Errorf("Ends = %d, want 2 — an already-applied pending entry must not be counted twice", l.Ends)
+	}
+	if _, err := os.Stat(pending); !os.IsNotExist(err) {
+		t.Errorf("the already-applied pending mark was not consumed: %v", err)
 	}
 }

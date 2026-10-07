@@ -996,10 +996,11 @@ func TestSubagentStop_DroppedEndStillSealsBoundary(t *testing.T) {
 	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-019 receipts="+rA, false)); out.Decision != "" {
 		t.Fatalf("setup: A's accepted end blocked: %q (%s)", out.Decision, out.Reason)
 	}
-	// The dropped end must leave its durable pending mark.
-	pendingFile := filepath.Join(auditreceipt.StateDir(root), "ledgers", key+".json.end-pending")
-	if _, err := os.Stat(pendingFile); err != nil {
-		t.Errorf("the dropped end left no pending mark: %v", err)
+	// The dropped end must leave its durable pending mark (one file per
+	// instance, named by an id the test cannot predict).
+	pendingMarks, _ := filepath.Glob(filepath.Join(auditreceipt.StateDir(root), "ledgers", key+".json.end-pending-*"))
+	if len(pendingMarks) == 0 {
+		t.Errorf("the dropped end left no pending mark")
 	}
 	if err := os.Remove(lockFile); err != nil {
 		t.Fatalf("release the fake lock hold: %v", err)

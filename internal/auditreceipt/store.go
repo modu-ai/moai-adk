@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -207,8 +208,13 @@ type InstanceLedger struct {
 	// EndedAt is the end-event boundary: receipts minted before it were
 	// minted during a predecessor instance's lifetime. Zero while no
 	// single-live end has sealed an era.
-	EndedAt   time.Time `json:"ended_at,omitempty"`
-	UpdatedAt time.Time `json:"updated_at"`
+	EndedAt time.Time `json:"ended_at,omitempty"`
+	// AppliedEnds holds the pending-entry ids already folded into a saved
+	// ledger, so a pending file whose remove was lost after its save is
+	// skipped on replay instead of counted twice. Bounded by the ends of one
+	// session — auditor instances of one session are few.
+	AppliedEnds []string  `json:"applied_ends,omitempty"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 func ledgerPath(treeRoot, key string) string {
@@ -255,7 +261,7 @@ func lockLedger(path string) (func(), error) {
 	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
 		return nil, err
 	}
-	token, err := newLedgerLockToken()
+	token, err := newRandomToken()
 	if err != nil {
 		return nil, err
 	}
@@ -288,11 +294,13 @@ func lockLedger(path string) (func(), error) {
 	}
 }
 
-// newLedgerLockToken mints the per-holder token a release matches against.
-func newLedgerLockToken() (string, error) {
+// newRandomToken mints a random hex id: the per-holder lock token a release
+// matches against, and the pending-entry id that makes a dropped end's replay
+// idempotent.
+func newRandomToken() (string, error) {
 	buf := make([]byte, 12)
 	if _, err := rand.Read(buf); err != nil {
-		return "", fmt.Errorf("ledger lock token: %w", err)
+		return "", fmt.Errorf("ledger token: %w", err)
 	}
 	return hex.EncodeToString(buf), nil
 }
@@ -309,10 +317,15 @@ func releaseLedgerLock(lockPath, token string) {
 }
 
 // updateInstanceLedger applies mutate to the key's ledger under the lock, so
-// concurrent starts and ends of one session cannot lose a count. An end whose
-// own write was dropped earlier is replayed first, under the same lock and
-// with the same single-live rule — the pending end happened before this
-// operation (post-sync review, dropped END).
+// concurrent starts and ends of one session cannot lose a count. Every end
+// whose own write was dropped earlier is replayed first, under the same lock
+// and with the same single-live rule — pending ends happened before this
+// operation. Ordering is apply → SAVE → consume: a pending file is removed
+// only after the save that folded it in succeeded, so a failed save leaves
+// the end recoverable by the next operation (post-sync review r2, remove-
+// before-save). Re-application after a save-succeeded-but-remove-lost crash
+// is idempotent by pending-entry id — the ledger remembers the ids it folded
+// in and skips them.
 func updateInstanceLedger(treeRoot, key string, at time.Time, mutate func(*InstanceLedger)) error {
 	path := ledgerPath(treeRoot, key)
 	release, err := lockLedger(path)
@@ -324,13 +337,30 @@ func updateInstanceLedger(treeRoot, key string, at time.Time, mutate func(*Insta
 	if err != nil {
 		return err
 	}
-	if pending, ok := readEndPending(treeRoot, key); ok {
-		applyEnd(&l, pending, treeRoot, key)
-		_ = os.Remove(endPendingPath(treeRoot, key))
+	pendings, err := readEndPendings(treeRoot, key)
+	if err != nil {
+		return err
+	}
+	consumed := make([]string, 0, len(pendings))
+	for _, p := range pendings {
+		if slices.Contains(l.AppliedEnds, p.pending.PendingID) {
+			// A previous save folded this entry in but its remove was lost.
+			consumed = append(consumed, p.path)
+			continue
+		}
+		applyEnd(&l, p.pending.EndedAt, treeRoot, key)
+		l.AppliedEnds = append(l.AppliedEnds, p.pending.PendingID)
+		consumed = append(consumed, p.path)
 	}
 	mutate(&l)
 	l.UpdatedAt = at
-	return writeJSON(path, &l)
+	if err := writeJSON(path, &l); err != nil {
+		return err // every pending file survives; the next operation retries
+	}
+	for _, p := range consumed {
+		_ = os.Remove(p)
+	}
+	return nil
 }
 
 // applyEnd counts one terminal end on the ledger, advancing the boundary only
@@ -424,34 +454,64 @@ func RecordInstanceEnd(treeRoot, key string, at time.Time) error {
 	})
 }
 
-// endPendingPath holds the durable record of an end whose ledger write was
-// dropped: the next ledger operation replays it under the lock.
-func endPendingPath(treeRoot, key string) string {
-	return ledgerPath(treeRoot, key) + ".end-pending"
+// endPendingPath is the durable record one dropped end: one file per instance
+// (post-sync review r2 — a single per-key file let two same-role failed
+// writers overwrite each other and lose an end), named by the entry id so
+// concurrent writers never collide.
+func endPendingPath(treeRoot, key, id string) string {
+	return ledgerPath(treeRoot, key) + ".end-pending-" + id
 }
 
-// endPending is the payload of a dropped end's durable mark.
+// endPending is the payload of one dropped end's durable mark.
 type endPending struct {
-	EndedAt time.Time `json:"ended_at"`
+	PendingID string    `json:"pending_id"`
+	EndedAt   time.Time `json:"ended_at"`
 }
 
-// MarkInstanceEndPending records an end whose ledger write was dropped, so the
-// next ledger operation replays it and the boundary still seals at the end
+// pendingEndFile pairs a pending mark with the file it was read from.
+type pendingEndFile struct {
+	path    string
+	pending endPending
+}
+
+// MarkInstanceEndPending records an end whose ledger write was dropped, so a
+// later ledger operation replays it and the boundary still seals at the end
 // time. Unlike a dropped START — permanent freeze, the count can never be
 // re-derived — a dropped END is recoverable: the end's own timestamp is known,
 // only its write was lost (post-sync review, dropped END mirror).
 func MarkInstanceEndPending(treeRoot, key string, at time.Time) error {
-	return writeJSON(endPendingPath(treeRoot, key), &endPending{EndedAt: at})
+	id, err := newRandomToken()
+	if err != nil {
+		return err
+	}
+	p := endPendingPath(treeRoot, key, id)
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		return err
+	}
+	return writeJSON(p, &endPending{PendingID: id, EndedAt: at})
 }
 
-// readEndPending loads a pending end, reporting false when none is recorded or
-// the mark carries no time.
-func readEndPending(treeRoot, key string) (time.Time, bool) {
-	var p endPending
-	if err := readJSON(endPendingPath(treeRoot, key), &p); err != nil || p.EndedAt.IsZero() {
-		return time.Time{}, false
+// readEndPendings loads every pending end of a key, in end-time order — the
+// order the ends really happened in, which is what the single-live rule reads
+// them in. A mark that cannot be read stays on disk and is retried by later
+// passes; an unreadable mark is never silently consumed.
+func readEndPendings(treeRoot, key string) ([]pendingEndFile, error) {
+	matches, err := filepath.Glob(ledgerPath(treeRoot, key) + ".end-pending-*")
+	if err != nil {
+		return nil, err
 	}
-	return p.EndedAt, true
+	out := make([]pendingEndFile, 0, len(matches))
+	for _, m := range matches {
+		var p endPending
+		if err := readJSON(m, &p); err != nil || p.EndedAt.IsZero() || p.PendingID == "" {
+			continue
+		}
+		out = append(out, pendingEndFile{path: m, pending: p})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].pending.EndedAt.Before(out[j].pending.EndedAt)
+	})
+	return out, nil
 }
 
 // Rejection records a refused auditor PASS. It outlives the subagent: the
