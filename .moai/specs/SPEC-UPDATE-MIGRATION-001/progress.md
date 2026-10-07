@@ -287,7 +287,7 @@ debt_disposition: MP8-RED-M2 DISPOSED (see §E.2 RED evidence, recorded before M
 
 - sync_complete_at: 2026-10-07T02:26:44Z
 - sync_status: audit-ready
-- sync_commit_sha: pending-backfill-sync  # D3 placeholder — a commit cannot cite its own hash; backfilled by the following commit
+- sync_commit_sha: 348e15f6887f50496abfbae80b49f587c25d5954  # D3 backfill — the sync commit's pending-backfill-sync placeholder replaced with the real SHA by the phase-owning agent (spec-frontmatter-schema § SHA placeholder backfill exemption)
 - sync scope (single sync commit): CHANGELOG.md `### Changed` entry + README
   4-locale stale wipe-first paragraphs and command-table rows repaired
   (ko/en/ja/zh, same change all four) + codemap refresh
