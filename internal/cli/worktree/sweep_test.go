@@ -950,9 +950,10 @@ func TestSweepLockedAndAnchored(t *testing.T) {
 // GOOS=windows build (sweep_cwd_windows_test.go runs on the Windows side).
 func TestSweepProcessCWDPredicate(t *testing.T) {
 	t.Run("cwd-inside-tree", func(t *testing.T) {
-		m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/occupied", Branch: "feature/occupied"}})
+		tree := filepath.Join(t.TempDir(), "occupied")
+		m := sweepMockEnv(t, []git.Worktree{{Path: tree, Branch: "feature/occupied"}})
 		// A cwd deep INSIDE the tree counts — prefix match, not equality.
-		m.cwds = []string{"/elsewhere", "/wt/occupied/inner/deeper"}
+		m.cwds = []string{filepath.Join(t.TempDir(), "elsewhere"), filepath.Join(tree, "inner", "deeper")}
 		m.landed["feature/occupied"] = true
 
 		out, err := runSweepCmd(t, map[string]string{"json": "true"})
@@ -973,7 +974,7 @@ func TestSweepProcessCWDPredicate(t *testing.T) {
 	})
 
 	t.Run("probe-unanswerable", func(t *testing.T) {
-		m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/unprobed", Branch: "feature/unprobed"}})
+		m := sweepMockEnv(t, []git.Worktree{{Path: filepath.Join(t.TempDir(), "unprobed"), Branch: "feature/unprobed"}})
 		m.cwdErr = errors.New("lsof: command not found")
 		m.landed["feature/unprobed"] = true
 
