@@ -54,8 +54,8 @@ func TestTodoHoldDocumentedOnEverySurface(t *testing.T) {
 		}
 		body := string(raw)
 		for _, want := range []string{
-			"`moai gtd hold <n> [--expect <prefix>]`",
-			"`moai gtd unhold <n> [--expect <prefix>]`",
+			"`moai todo hold <n> [--expect <prefix>]`",
+			"`moai todo unhold <n> [--expect <prefix>]`",
 			`"state": "hold"`,
 		} {
 			if !strings.Contains(body, want) {
