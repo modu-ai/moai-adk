@@ -1208,7 +1208,17 @@ func TestSubagentStop_ForegroundEndWithSurvivorsDoesNotCount(t *testing.T) {
 	advanceClock(now, time.Second)
 	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
 	advanceClock(now, time.Second)
-	if out := runStop(t, stopInput(root, auditreceipt.AgentPlanAuditor, fgID, "AUDIT-VERDICT: FAIL spec=SPEC-RR-030 receipts=none", false)); out.Decision != "" || out.SystemMessage != "" {
+	// The fg stop carries the session id (real payload shape) — its derived
+	// fallback hit is the sibling anchor, which the trace must veto.
+	fgStop := &HookInput{
+		CWD:                  root,
+		AgentID:              fgID,
+		AgentType:            auditreceipt.AgentPlanAuditor,
+		SessionID:            session,
+		LastAssistantMessage: "AUDIT-VERDICT: FAIL spec=SPEC-RR-030 receipts=none",
+		HookEventName:        string(EventSubagentStop),
+	}
+	if out := runStop(t, fgStop); out.Decision != "" || out.SystemMessage != "" {
 		t.Fatalf("setup: foreground FAIL end output = %+v, want silence", out)
 	}
 	l, err := auditreceipt.ReadInstanceLedger(root, auditreceipt.StartMarkerKey("", session, auditreceipt.AgentPlanAuditor))

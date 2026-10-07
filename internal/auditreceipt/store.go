@@ -373,6 +373,7 @@ func updateInstanceLedger(treeRoot, key string, at time.Time, mutate func(*Insta
 		return endJudgment{}, err
 	}
 	consumed := make([]string, 0, len(pendings))
+	applied := 0
 	for _, p := range pendings {
 		if slices.Contains(l.AppliedEnds, p.pending.PendingID) {
 			// A previous save folded this entry in but its remove was lost.
@@ -380,20 +381,35 @@ func updateInstanceLedger(treeRoot, key string, at time.Time, mutate func(*Insta
 			continue
 		}
 		// The replay re-applies the judgment the end carried when it
-		// happened. A pending foreign to this ledger at replay time (no
-		// uncounted start left) contributes nothing and is consumed.
+		// happened: a single-live end seals at ITS OWN end time — the
+		// generation it closed — never at the global watermark, which later
+		// generations' ends may already have advanced (post-sync repair r7).
+		// A pending foreign to this ledger at replay time (no uncounted start
+		// left) contributes nothing and is consumed.
 		if l.Ends < l.Starts {
+			l.Ends++
 			if p.pending.EndedAt.After(l.LastEndedAt) {
 				l.LastEndedAt = p.pending.EndedAt
 			}
-			l.Ends++
 			if p.pending.SingleLive && !startCountUncertain(treeRoot, key) &&
-				(l.EndedAt.IsZero() || l.LastEndedAt.After(l.EndedAt)) {
-				l.EndedAt = l.LastEndedAt
+				(l.EndedAt.IsZero() || p.pending.EndedAt.After(l.EndedAt)) {
+				l.EndedAt = p.pending.EndedAt
 			}
 			l.AppliedEnds = append(l.AppliedEnds, p.pending.PendingID)
+			applied++
 		}
 		consumed = append(consumed, p.path)
+	}
+	// Era closure at recovery time (post-sync repair r7): a per-end
+	// single-live judgment cannot know whether sibling ends also lost their
+	// writes — that combined judgment is only decidable here, once every
+	// recovered mark is visible. When the replay accounts for EVERY start the
+	// ledger recorded, no survivor remains, the freeze's purpose is void, and
+	// the boundary seals at the watermark — the last terminal end of the now
+	// fully accounted era. With survivors outstanding the freeze stands.
+	if applied > 0 && l.Ends == l.Starts && !startCountUncertain(treeRoot, key) &&
+		(l.EndedAt.IsZero() || l.LastEndedAt.After(l.EndedAt)) {
+		l.EndedAt = l.LastEndedAt
 	}
 	j := mutate(&l)
 	j.known = true
@@ -597,6 +613,16 @@ func RecordInstanceEnd(treeRoot, key string, at time.Time) error {
 			if snap, rerr := ReadInstanceLedger(treeRoot, key); rerr == nil {
 				counted = snap.Ends < snap.Starts
 				singleLive = counted && snap.Starts-snap.Ends <= 1 && !startCountUncertain(treeRoot, key)
+			} else {
+				// The ledger is unreadable: the end cannot be judged here,
+				// but the end happened, and the pending directory is writable
+				// even when the ledger file is not — park it judgment-less so
+				// the count survives the ledger's restoration (post-sync
+				// repair r7). Its replay counts it only if it is not foreign,
+				// and PendingEndHold holds the approval while it is
+				// unapplied.
+				counted = true
+				singleLive = false
 			}
 		}
 		if counted {

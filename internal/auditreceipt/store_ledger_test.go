@@ -640,6 +640,191 @@ func TestInstanceLedgerPendingReplayKeepsEndTimeJudgment(t *testing.T) {
 	}
 }
 
+// Post-sync repair r7 (gate round 34, P1): two auditors ending against a held
+// lock BOTH park judgment-less pendings — the lock-free snapshot sees both
+// starts outstanding, so neither end can claim single-live on its own. The
+// combined judgment is only decidable at RECOVERY time: once every start is
+// accounted (ends == starts) no survivor remains, the freeze's purpose is
+// void, and the boundary seals at the watermark — the last terminal end of
+// the now fully accounted era. Leaving it unsealed re-opened the
+// predecessor's receipt to a zero-audit successor.
+func TestInstanceLedgerRecoverySealsFullyAccountedEra(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-r7", AgentPlanAuditor)
+	if err := RecordInstanceStart(root, key, t0); err != nil {
+		t.Fatalf("first RecordInstanceStart: %v", err)
+	}
+	if err := RecordInstanceStart(root, key, t0.Add(time.Second)); err != nil {
+		t.Fatalf("second RecordInstanceStart: %v", err)
+	}
+	// Both ends lose the lock: judgment-less pendings at t2 and t3.
+	pendingA := ledgerPath(root, key) + ".end-pending-idR7A"
+	bodyA := `{"pending_id":"idR7A","ended_at":"` + t0.Add(2*time.Second).Format(time.RFC3339Nano) + `"}`
+	if err := os.WriteFile(pendingA, []byte(bodyA), 0o644); err != nil {
+		t.Fatalf("write pending A: %v", err)
+	}
+	pendingB := ledgerPath(root, key) + ".end-pending-idR7B"
+	bodyB := `{"pending_id":"idR7B","ended_at":"` + t0.Add(3*time.Second).Format(time.RFC3339Nano) + `"}`
+	if err := os.WriteFile(pendingB, []byte(bodyB), 0o644); err != nil {
+		t.Fatalf("write pending B: %v", err)
+	}
+
+	// The replay carrier: the next ledger op recovers both. The era is then
+	// fully accounted and seals at the watermark (t3).
+	if err := RecordInstanceEnd(root, key, t0.Add(4*time.Second)); err != nil {
+		t.Fatalf("replay carrier RecordInstanceEnd: %v", err)
+	}
+	l, err := ReadInstanceLedger(root, key)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if !l.EndedAt.Equal(t0.Add(3 * time.Second)) {
+		t.Errorf("EndedAt = %v, want the fully-accounted era's last end %v — the recovered judgment must not leave the boundary at zero", l.EndedAt, t0.Add(3*time.Second))
+	}
+
+	// A receipt minted between the starts and the ends is predecessor-era.
+	start := &StartMarker{AgentID: "a1", AgentType: AgentPlanAuditor, TreeRoot: root, StartedAt: t0}
+	rMid := seedLedgerTestReceipt(t, root, t0.Add(1500*time.Millisecond))
+	if ok, cause := CheckCitedReceiptsSince(root, start, l.EndedAt, []string{rMid}); ok {
+		t.Errorf("a predecessor-era receipt was accepted after the fully-accounted recovery sealed the era")
+	} else if cause != CauseReceiptReused {
+		t.Errorf("cause = %q, want %q", cause, CauseReceiptReused)
+	}
+}
+
+// Post-sync repair r7 (gate round 34, P2): an UNREADABLE ledger must still
+// park its end as a judgment-less pending — the pending directory is
+// writable even when the ledger file is not readable, and the end count must
+// survive the ledger's restoration instead of vanishing.
+func TestInstanceLedgerUnreadableLedgerStillParks(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-r7b", AgentPlanAuditor)
+	if err := RecordInstanceStart(root, key, t0); err != nil {
+		t.Fatalf("RecordInstanceStart: %v", err)
+	}
+	ledgerFile := ledgerPath(root, key)
+	if err := os.WriteFile(ledgerFile, []byte("{broken"), 0o644); err != nil {
+		t.Fatalf("corrupt the ledger: %v", err)
+	}
+
+	// The end fails (the ledger is unreadable) but must still park.
+	if err := RecordInstanceEnd(root, key, t0.Add(time.Second)); err == nil {
+		t.Fatal("the end unexpectedly succeeded against an unreadable ledger")
+	}
+	marks, _ := filepath.Glob(ledgerFile + ".end-pending-*")
+	if len(marks) != 1 {
+		t.Fatalf("pending marks = %v, want exactly 1 — an unreadable-ledger end must still park", marks)
+	}
+
+	// The ledger is restored (a valid copy with the recorded start): the next
+	// operation recovers the parked end — the era's single start gets its end
+	// back and the boundary seals at the parked end's time.
+	if err := os.WriteFile(ledgerFile, []byte(`{"key":"`+key+`","starts":1,"updated_at":"`+t0.Format(time.RFC3339Nano)+`"}`), 0o644); err != nil {
+		t.Fatalf("restore the ledger: %v", err)
+	}
+	if err := RecordInstanceEnd(root, key, t0.Add(2*time.Second)); err != nil {
+		t.Fatalf("recovery RecordInstanceEnd: %v", err)
+	}
+	l, err := ReadInstanceLedger(root, key)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if l.Ends != 1 {
+		t.Errorf("Ends = %d, want 1 — the parked end is the era's one end, recovered once the ledger is readable again", l.Ends)
+	}
+	if !l.EndedAt.Equal(t0.Add(time.Second)) {
+		t.Errorf("EndedAt = %v, want the parked end's seal %v", l.EndedAt, t0.Add(time.Second))
+	}
+
+	// The gate's defect is closed: a successor citing the predecessor-era
+	// receipt (minted before the sealed end) is refused, not approved.
+	start := &StartMarker{AgentID: "a1", AgentType: AgentPlanAuditor, TreeRoot: root, StartedAt: t0}
+	rPred := seedLedgerTestReceipt(t, root, t0.Add(500*time.Millisecond))
+	if ok, cause := CheckCitedReceiptsSince(root, start, l.EndedAt, []string{rPred}); ok {
+		t.Errorf("a predecessor-era receipt was approved after the parked end was recovered and sealed")
+	} else if cause != CauseReceiptReused {
+		t.Errorf("cause = %q, want %q", cause, CauseReceiptReused)
+	}
+}
+
+// Post-sync repair r7 (gate round 34, P2): a recovered single-live pending
+// seals at ITS OWN end time — the generation it closed — never at the global
+// watermark, which later generations' ends have already advanced. A boundary
+// lifted to a later generation's end would refuse the live sibling's
+// overlap-era receipts. The mark is modeled as landing LATE (after C's end),
+// the exact ordering the gate reproduced.
+func TestInstanceLedgerRecoverySealsItsOwnGeneration(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-r7c", AgentPlanAuditor)
+	// A starts t0 and terminally ends t1 — but the end's ledger save fails
+	// (the lock is held past the budget), parking a single-live pending via
+	// the lock-free snapshot judgment.
+	if err := RecordInstanceStart(root, key, t0); err != nil {
+		t.Fatalf("RecordInstanceStart (A): %v", err)
+	}
+	lf, err := os.OpenFile(ledgerPath(root, key)+ledgerLockSuffix, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatalf("hold the ledger lock: %v", err)
+	}
+	_ = lf.Close()
+	if err := RecordInstanceEnd(root, key, t0.Add(time.Second)); err == nil {
+		t.Fatal("setup: the end unexpectedly succeeded while the lock was held")
+	}
+	if err := os.Remove(ledgerPath(root, key) + ledgerLockSuffix); err != nil {
+		t.Fatalf("release the lock hold: %v", err)
+	}
+	// Model the late-landing mark: remove A's pending (random id) now and
+	// re-write it after the later generation's end has applied.
+	early, _ := filepath.Glob(ledgerPath(root, key) + ".end-pending-*")
+	if len(early) == 0 {
+		t.Fatal("setup: A's failed end parked no pending mark to defer")
+	}
+	for _, p := range early {
+		if err := os.Remove(p); err != nil {
+			t.Fatalf("remove the early mark: %v", err)
+		}
+	}
+	pending := ledgerPath(root, key) + ".end-pending-idR7C"
+
+	// B and C start (a new generation) and C terminally ends — its end is
+	// ambiguous and advances the watermark to t4.
+	if err := RecordInstanceStart(root, key, t0.Add(2*time.Second)); err != nil {
+		t.Fatalf("RecordInstanceStart (B): %v", err)
+	}
+	if err := RecordInstanceStart(root, key, t0.Add(3*time.Second)); err != nil {
+		t.Fatalf("RecordInstanceStart (C): %v", err)
+	}
+	if err := RecordInstanceEnd(root, key, t0.Add(4*time.Second)); err != nil {
+		t.Fatalf("RecordInstanceEnd (C): %v", err)
+	}
+	// A's mark lands late, carrying A's end-time judgment (single-live, t1).
+	body := `{"pending_id":"idR7C","ended_at":"` + t0.Add(time.Second).Format(time.RFC3339Nano) + `","single_live":true}`
+	if err := os.WriteFile(pending, []byte(body), 0o644); err != nil {
+		t.Fatalf("write the late pending mark: %v", err)
+	}
+
+	// The replay carrier (D's start) recovers A's pending: the boundary seals
+	// at A's own end time — A's generation — never at C's later end.
+	if err := RecordInstanceStart(root, key, t0.Add(5*time.Second)); err != nil {
+		t.Fatalf("RecordInstanceStart (replay carrier): %v", err)
+	}
+	l, err := ReadInstanceLedger(root, key)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if !l.EndedAt.Equal(t0.Add(time.Second)) {
+		t.Errorf("EndedAt = %v, want A's own end %v — the recovery must not lift the boundary to a later generation's watermark", l.EndedAt, t0.Add(time.Second))
+	}
+
+	// B's overlap-era receipt stays citable: A's seal bounded to A's
+	// generation does not reach it.
+	snap := &StartMarker{AgentID: "a1", AgentType: AgentPlanAuditor, TreeRoot: root, StartedAt: t0}
+	rB := seedLedgerTestReceipt(t, root, t0.Add(2500*time.Millisecond))
+	if ok, cause := CheckCitedReceiptsSince(root, snap, l.EndedAt, []string{rB}); !ok {
+		t.Errorf("B's overlap-era receipt was refused with %q — the recovery crossed into the next generation", cause)
+	}
+}
+
 // Post-sync repair r4 (gate round 25): a pending end mark that exists but
 // cannot be read makes the boundary bookkeeping unknowable — a ledger update
 // must give up (and the approval path must refuse), never apply a partial
