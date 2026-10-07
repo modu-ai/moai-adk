@@ -178,6 +178,32 @@ func TestRenderUpdateOutcome_ZeroDetailUnchanged(t *testing.T) {
 	}
 }
 
+// TestRenderUpdateOutcome_ArchivedRemovalsNotRedeployed — gate round 21
+// (card t1547): stale-only removals whose copies reached the archive must
+// NOT be reported as "all re-deployed" — a recovery copy is not a
+// redeployment in place. The breakdown names the archived-recovery
+// disposition instead.
+func TestRenderUpdateOutcome_ArchivedRemovalsNotRedeployed(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	detail := updateOutcomeDetail{
+		RemovedManaged:      2,
+		ArchivedForRecovery: 2,
+	}
+	renderUpdateOutcome(&buf, 175, detail, "", tui.LightTheme())
+	got := buf.String()
+
+	if !strings.Contains(got, "archived for recovery") {
+		t.Errorf("breakdown must name the archived-recovery disposition, got:\n%s", got)
+	}
+	if !strings.Contains(got, "not redeployed") {
+		t.Errorf("breakdown must say the files are NOT redeployed, got:\n%s", got)
+	}
+	if strings.Contains(got, "all re-deployed") {
+		t.Errorf("breakdown must not claim all-re-deployed over archived removals, got:\n%s", got)
+	}
+}
+
 // --- Defect 3 → SPEC-UPDATE-MIGRATION-001: --dry-run previews the
 // reconciliation plan (the cleanup-deletion preview's subject no longer
 // exists — the default path preserves instead of deleting) ---

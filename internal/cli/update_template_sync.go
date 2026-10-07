@@ -990,6 +990,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		// reads the reconciliation's actual dispositions (REQ-UPM-031:
 		// deletions reported, never a deletion-free claim over removals).
 		detail.RemovedManaged = len(reconSummary.ArchivedRemoved)
+		// Gate round 21: the recovery copies are named as exactly that —
+		// the breakdown must not claim "all re-deployed" over files that are
+		// gone from place and only recoverable from the archive.
+		detail.ArchivedForRecovery = len(reconSummary.ArchivedRemoved)
 		// RemovedLocalOnly stays 0: an archived removal is recoverable by
 		// definition, and preserved files were never removed.
 	}
@@ -1004,7 +1008,6 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	if conflictCount > 0 {
 		updateLedger.requiref(sevErr, "%d conflicting file(s) flagged by the 3-way merge — resolve them before the next template sync (see the backup at %s)", conflictCount, configBackupPath)
 	}
-
 
 	// REQ-DHR-007: a .codex/ template the target harness profile (or this
 	// version) no longer ships is reported and left in place, never deleted.

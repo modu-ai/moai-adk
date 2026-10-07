@@ -160,6 +160,12 @@ type updateOutcomeDetail struct {
 	// RemovedLocalOnly counts removed files the embedded templates do not
 	// restore — the local-only losses the summary must not hide.
 	RemovedLocalOnly int
+	// ArchivedForRecovery counts removals whose copies reached the
+	// reconciliation archive (SPEC-UPDATE-MIGRATION-001, gate round 21): a
+	// recovery copy is NOT a redeployment — the file is gone from place and
+	// only recoverable by hand, so the breakdown must never claim "all
+	// re-deployed" over it.
+	ArchivedForRecovery int
 	// NamespaceBackupPath is the user-owned namespace backup root the run
 	// created ("" when none) — REQ-ICU-004 full-root accounting. The three-root
 	// structure itself is a recorded deliberate decision
@@ -236,7 +242,12 @@ func renderUpdateOutcome(w io.Writer, fileCount int, detail updateOutcomeDetail,
 			if breakdown == "" {
 				sep = ""
 			}
-			if detail.RemovedLocalOnly > 0 {
+			if detail.ArchivedForRecovery > 0 {
+				// Gate round 21: a recovery copy is not a redeployment — the
+				// stale files are gone from place and recoverable only from
+				// the archive, so the honest wording says so.
+				breakdown += fmt.Sprintf("%sremoved %d under managed paths (%d stale file(s) archived for recovery — not redeployed)", sep, detail.RemovedManaged, detail.ArchivedForRecovery)
+			} else if detail.RemovedLocalOnly > 0 {
 				breakdown += fmt.Sprintf("%sremoved %d under managed paths (%d not restored — local-only)", sep, detail.RemovedManaged, detail.RemovedLocalOnly)
 			} else {
 				breakdown += fmt.Sprintf("%sremoved %d under managed paths (all re-deployed)", sep, detail.RemovedManaged)
