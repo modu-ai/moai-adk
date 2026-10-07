@@ -47,7 +47,31 @@ FAIL	github.com/modu-ai/moai-adk/internal/hook	1.680s
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase_
+```
+run_complete_at: 2026-10-07T16:05+09:00
+run_status: complete
+run_commit_sha: pending-backfill-run
+ac_pass_count: 9
+ac_fail_count: 0
+preserve_list_post_run_count: 4
+l44_pre_commit_fetch: not-performed (isolated card worktree .moai/worktrees/t1562 — 커밋은 카드 트리에서, push 없음)
+l44_post_push_fetch: n/a (레인 push 금지 — 리더 일괄 착지)
+new_warnings_or_lints_introduced: 0
+cross_platform_build: darwin/arm64 ok · windows/amd64 ok (go build ./... 전체)
+total_run_phase_files: 6
+m1_to_mN_commit_strategy: M1 RED · M2 수리 · M2 리뷰 수리 · M3 증거 — 마일스톤별 별도 커밋
+```
+
+**측정 귀속 (이 실행, 이 트리 — HEAD `44d79fb86` 브랜치 `WT-receipt-reuse`)**:
+
+- **AC 전수**: 9/9 PASS — AC-RR-001/002 `TestSubagentStop_SequentialAuditorReceiptReuseIsRefused` (네 종료 형태 팔 + 거부 기록·스폰 거부 3종·해제), AC-RR-003/005/008 보존 앵커 3건 문장 불변 GREEN, AC-RR-004/006/007 확장 테스트 swept=1 각각 exit 0, AC-RR-009 `TestSubagentStop_ReceiptBoundaryAmbiguitySemantics` (단일-생존 전진 + 모호 동결 대조). swept-count 우선 `-list` 5(신규)+6(앵커) 상관 후 `-run`.
+- **영향 패키지 전체**: `go test -count=1 -timeout 30m ./internal/hook/ ./internal/auditreceipt/` → `internal/auditreceipt` ok (3.006s), `internal/hook` 기존 실패 4건만 (`TestAstgrepCorpusRunDoesNotSkip`·`TestStaleRunNoticeLegacy{LeaderSpelling,SessionRecord,FactoryLabel}`) — 기저(62574ab3a, 796.944s)와 동일 집합, **신규 실패 0**.
+- **경합**: 감사 영수증 패밀리 `-race` ok; 원장 동시성 테스트(32 start/32 end) `-race` ok — 잠금 우회 변이체에서 `1 starts / 6 ends` 소실 재현 후 복원 판정.
+- **커버리지**: `internal/auditreceipt` 87.1% (패키지 목표 85% 충족; 원장 신규 함수 ReadInstanceLedger 100%·RecordInstanceStart/End 100%·lockLedger 72.2%·updateInstanceLedger 81.8%·CheckCitedReceiptsSince 80.8%) / `internal/hook` guard 함수(패밀리 스코프): checkAuditorStop 95.3%·instanceEndBoundary 100%·recordAuditorEnd 75%·recordAuditorStart 87.5%. 훅 패키지 전체 커버리지 기저 수치는 미측정(Gap — CI 몫).
+- **lint**: golangci-lint 양 패키지 0 issues (총계 0 = 신규 0). `go vet` 양 패키지 통과.
+- **E4 하위경계**: 신규 추가 0 — 사전 존재 1건(`internal/hook/pre_tool.go:855` 질문 채널 관측 분기, 카드 t1530 이후 미변경, 호출 아닌 관측)만 존재.
+- **보존 목록 4항목**: wsr 테스트 파일 diff 0 · kind 기계/StoreRoot/TreeRootFromCWD/sanitizeKey 미편집 · FAIL 경로/재진입 경로/거부 갱신 규칙 기존 의미 불볇(원장 카운트만 가법) · 앵커 테스트 6건 문장 불변 GREEN. (§D.1 "FAIL 소비 경로" 보존은 기존 의미 보존으로 판독 — AC-RR-001 팔 (c)가 FAIL 종료의 종료 기록을 요구하므로 가법적 종료 기록은 계획 기제의 일부다.)
+- **리뷰 수리 접수 (코디네이터 mid-flight 리뷰 2건)**: P1 원장 무잠금 RMW → 포터블 lockfile(O_EXCL, 250ms 유계 대기, 5s stale break) 직렬화 — 기존 직렬화 관용 부재 검증 후 신규 도입; P2 원장 읽기 실패 zero-vision → `instanceEndBoundary` 오류 전파 + `CauseInstanceLedgerUnreadable` 폐쇄 거부(스폰 게이트의 읽을 수 없는 거부 기록 판독과 동일 원칙). 종료-기록 쓰기 실패는 기존 관용(로그 전용) 유지 — atomic rename이 이전 유효 원장을 남기므로 무-정지 소멸 잔여(acceptance §E)와 동일 급.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
