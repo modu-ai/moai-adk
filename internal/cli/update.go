@@ -547,6 +547,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if err := stripRetiredModelConfigOnVersionMatch(cmd, out, "."); err != nil {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Retired model keys", "removal failed", err.Error(), &th))
 		}
+		// SPEC-FEEDBACK-PARTICIPATION-001 (REQ-ANON-004): a version-matched
+		// update is still a finished plain template-sync run, so the ask runs
+		// here too; its own gates (mode flags, terminal, CI, asked) decide
+		// whether anything prompts. A failure warns; it never fails the update.
+		if err := runParticipationStep(cmd, out); err != nil {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Participation ask", "failed", err.Error(), &th))
+		}
 		return nil
 	}
 
@@ -590,6 +597,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		// behind (a stale hash here is what froze four files user_modified on
 		// the next `init --force`).
 		retrackSectionFiles(".", cmd.ErrOrStderr())
+	}
+
+	// SPEC-FEEDBACK-PARTICIPATION-001 (REQ-ANON-004): the ask runs once, at
+	// the end of a finished plain template-sync run, after every step that
+	// writes project state. Its own gates (mode flags, terminal, CI, asked)
+	// decide whether anything prompts; a failure warns and never fails the
+	// update. (M5 adds the participation flush beside this call site.)
+	if err := runParticipationStep(cmd, out); err != nil {
+		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Participation ask", "failed", err.Error(), &th))
 	}
 
 	return nil

@@ -1000,6 +1000,16 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		p.Warn("Failed to persist the Jev opt-in: %v", err)
 	}
 
+	// SPEC-FEEDBACK-PARTICIPATION-001 (REQ-ANON-003): route the wizard's
+	// participation answer into the user-scoped consent file the update ask
+	// and the console also drive. The bridge gates on wizardRan and an empty
+	// CI environment; its own failure warns rather than failing the init, for
+	// the same reason the Jev bridge's does — the capability is off by
+	// default, and a consent that could not be recorded is no consent.
+	if err := applyParticipationFromWizard(wizardRan, wizardResult, opts.ProjectRoot); err != nil {
+		p.Warn("Failed to persist the participation opt-in: %v", err)
+	}
+
 	// SPEC-INIT-HARNESS-001 (REQ-IH-002): persist the RESOLVED harness value to
 	// llm.harness on every init run — all three closed-set values INCLUDING the
 	// claude default. agentWiringSelection is already the single resolution
