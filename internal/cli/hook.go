@@ -308,6 +308,10 @@ type registryShutdowner interface{ Shutdown() }
 // @MX:REASON: [AUTO] fan_in=3, called from hook.go init(), coverage_test.go, hook_e2e_test.go
 // runHookEvent dispatches a hook event by reading JSON from stdin and writing to stdout.
 func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
+	// SPEC-FEEDBACK-PARTICIPATION-001 (REQ-ANON-015): the process is marked
+	// as a hook dispatch so the participation sender refuses to publish
+	// from this path — flush runs from the CLI's flush triggers only.
+	_ = os.Setenv(config.EnvHookDispatch, "1")
 	if deps == nil || deps.HookProtocol == nil || deps.HookRegistry == nil {
 		return fmt.Errorf("hook system not initialized")
 	}
@@ -522,6 +526,8 @@ func runHookList(cmd *cobra.Command, _ []string) error {
 // runAgentHook executes an agent-specific hook action.
 // Agent actions are like: cycle-pre-transformation, backend-validation, etc.
 func runAgentHook(cmd *cobra.Command, args []string) error {
+	// Same hook-dispatch marking as runHookEvent (REQ-ANON-015).
+	_ = os.Setenv(config.EnvHookDispatch, "1")
 	if deps == nil || deps.HookProtocol == nil || deps.HookRegistry == nil {
 		return fmt.Errorf("hook system not initialized")
 	}

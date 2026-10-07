@@ -7,7 +7,7 @@ draft: false
 向 MoAI-ADK 提交反馈或 Bug 报告的命令。
 
 {{< callout type="info" >}}
-**一句话总结**: `/moai feedback` 是把针对 MoAI-ADK 本身的改进建议或 Bug 报告 **自动创建为 GitHub Issue** 的命令。
+**一句话总结**: `/moai feedback` 收集针对 MoAI-ADK 本身的改进建议或 Bug 报告,**确认后才会创建 GitHub Issue**。
 {{< /callout >}}
 
 {{< callout type="info" >}}
@@ -200,7 +200,7 @@ flowchart TD
 > /moai feedback
 ```
 
-MoAI 编排器依次询问反馈类型、标题、描述。输入回答后自动创建 GitHub Issue,并返回 Issue URL。
+MoAI 编排器依次询问反馈类型、标题、描述。你确认后才会创建 GitHub Issue,并返回 Issue URL。
 
 ```
 GitHub Issue 已创建:

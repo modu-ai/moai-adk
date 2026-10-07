@@ -37,14 +37,17 @@ var sharedInitRemovedIDs = []string{"project_name", "report_format"}
 //
 // SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005 took the set from four to five by
 // adding the init-only Jev opt-in at the end of the Agents & Autonomy page.
+// SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-003 takes it from five to six by
+// adding the init-only participation opt-in on its own page after the Jev
+// slot (the quiet-wizard amendment REQ-ANON-022 records in the M2 commit).
 // The three DefaultQuestions entries the quiet wizard dropped stay dropped —
 // that half of the AC is untouched (TestRemovedQuestionsAbsentFromInitSet).
 func TestInitQuestions_QuietSet(t *testing.T) {
 	t.Parallel()
 	questions := InitQuestions(t.TempDir())
 
-	wantIDs := []string{"conversation_language", "user_name", "agent_wiring", "autonomy_tier", "jev_enabled"}
-	wantGroups := []string{"Basic", "Basic", "Agents & Autonomy", "Agents & Autonomy", "Judgment Capability"}
+	wantIDs := []string{"conversation_language", "user_name", "agent_wiring", "autonomy_tier", "jev_enabled", "feedback_participation"}
+	wantGroups := []string{"Basic", "Basic", "Agents & Autonomy", "Agents & Autonomy", "Judgment Capability", "Participation"}
 
 	if len(questions) != len(wantIDs) {
 		got := make([]string, 0, len(questions))

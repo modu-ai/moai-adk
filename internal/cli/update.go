@@ -611,6 +611,14 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 		// Card t1527 D5 + repair round: the deferred render carries the block
 		// on this early return too — no explicit call here.
+		// SPEC-FEEDBACK-PARTICIPATION-001 (REQ-ANON-004): a version-matched
+		// update is still a finished plain template-sync run, so the ask runs
+		// here too; its own gates (mode flags, terminal, CI, asked) decide
+		// whether anything prompts. A failure warns; it never fails the update.
+		if err := runParticipationStep(cmd, out); err != nil {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Participation ask", "failed", err.Error(), &th))
+		}
+		runParticipationFlushAtUpdate(cmd.ErrOrStderr())
 		return nil
 	}
 
@@ -662,6 +670,17 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 
 	// Card t1527 D5 + repair round: the terminal block renders via the defer
 	// at the top of runUpdate — one surface, on every exit path.
+	// SPEC-FEEDBACK-PARTICIPATION-001 (REQ-ANON-004): the ask runs once, at
+	// the end of a finished plain template-sync run, after every step that
+	// writes project state. Its own gates (mode flags, terminal, CI, asked)
+	// decide whether anything prompts; a failure warns and never fails the
+	// update. Beside it, the participation flush is DEC-2's second trigger:
+	// the end of a plain update drains the spool and sends (time-boxed,
+	// warn-only — it never fails the update).
+	if err := runParticipationStep(cmd, out); err != nil {
+		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Participation ask", "failed", err.Error(), &th))
+	}
+	runParticipationFlushAtUpdate(cmd.ErrOrStderr())
 	return nil
 }
 

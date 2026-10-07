@@ -57,6 +57,9 @@ pre-submit draft, which holds pre-scrub raw text for a different failure.`,
 
 	cmd.AddCommand(newFeedbackScrubCmd(&root))
 	cmd.AddCommand(newFeedbackQueueCmd(&root))
+	// SPEC-FEEDBACK-PARTICIPATION-001 (REQ-ANON-014/021): the participation
+	// subtree — preview, purge, flush.
+	cmd.AddCommand(feedbackParticipationCmd)
 	return cmd
 }
 
