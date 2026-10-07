@@ -10,9 +10,11 @@ package cli
 // preserved, user-owned entries untouched, absent files skipped.
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/manifest"
@@ -163,7 +165,9 @@ func TestRetrackSectionFilesCoversSectionDirectory(t *testing.T) {
 		t.Fatalf("rewrite: %v", err)
 	}
 
-	retrackSectionFiles(root, os.Stderr)
+	if err := retrackSectionFiles(root, os.Stderr); err != nil {
+		t.Fatalf("retrackSectionFiles on a writable tree: %v", err)
+	}
 
 	reloaded := manifest.NewManager()
 	if _, err := reloaded.Load(root); err != nil {
@@ -179,6 +183,52 @@ func TestRetrackSectionFilesCoversSectionDirectory(t *testing.T) {
 	}
 	if entry.CurrentHash != current {
 		t.Errorf("CurrentHash = %q, want on-disk %q", entry.CurrentHash, current)
+	}
+}
+
+// TestRetrackSectionFiles_FailureReturnsErrorAndPrintsNothing pins the
+// card t1527 repair-round-3 contract on the FAILURE path: the save error is
+// RETURNED for the caller's collector (the init tail routes it into the
+// warning summary panel) and the helper itself prints nothing on its writer —
+// a regression that printed its own diagnostic would break the init
+// ordering contract (nothing after the completion card but the panel) and
+// double-surface the failure.
+func TestRetrackSectionFiles_FailureReturnsErrorAndPrintsNothing(t *testing.T) {
+	root := t.TempDir()
+	mgr := retrackFixture(t, root)
+	retrackWriteTracked(t, root, mgr, ".moai/config/sections/user.yaml", "user:\n  name: a\n")
+	if err := mgr.Save(); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	// Dirty the tracked file so the retrack is dirty and Save actually runs.
+	sections := filepath.Join(root, ".moai", "config", "sections", "user.yaml")
+	if err := os.WriteFile(sections, []byte("user:\n  name: b\n"), 0o644); err != nil {
+		t.Fatalf("rewrite: %v", err)
+	}
+
+	// Break the SAVE, not the load: .moai goes read-only so the helper's own
+	// Load still succeeds (a broken load is the documented no-op escape) but
+	// mgr.Save's write into .moai fails.
+	if runtime.GOOS == "windows" {
+		t.Skip("a 0500 directory does not deny writes on Windows; the failure injection cannot reproduce there")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("running as root bypasses directory permission checks")
+	}
+	moaiDir := filepath.Join(root, ".moai")
+	if err := os.Chmod(moaiDir, 0o500); err != nil {
+		t.Fatalf("chmod .moai read-only: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(moaiDir, 0o755) })
+
+	var errOut bytes.Buffer
+	err := retrackSectionFiles(root, &errOut)
+
+	if err == nil {
+		t.Fatal("a failed manifest save must return an error for the caller's collector")
+	}
+	if errOut.Len() != 0 {
+		t.Errorf("the helper must not print the failure (one-surface rule), writer=%q", errOut.String())
 	}
 }
 

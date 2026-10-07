@@ -20,6 +20,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
@@ -244,6 +245,8 @@ func TestSD_AC006_LaneCycleWithoutRemote(t *testing.T) {
 		t.Skip("the recording wrapper is a POSIX shell script (the TestFR_AC018 family)")
 	}
 	root, store := fcFixture(t)
+	// Completion checks lease liveness against the real clock.
+	factoryCardNow = time.Now
 	fcQueue(t, store, factory.BacklogStateQueued)
 	sdRegisterLane(t, root, "lane-1")
 	// The §B fixture layout: the integration branch is develop, configured as
@@ -293,6 +296,10 @@ func TestSD_AC006_LaneCycleWithoutRemote(t *testing.T) {
 	// the recorded evidence commit (the E-VERDICT prefix rule).
 	if _, _, err := runFactory(t, "stage", "t1", "sync-audit", runSHA+":done.txt", "--run", fcRun); err != nil {
 		t.Fatalf("stage sync-audit: %v", err)
+	}
+	// Measure the clean committed candidate before writing the uncommitted audit artifact.
+	if _, err := factory.RunRemeasure(root, card.WorktreePath, "develop", "true"); err != nil {
+		t.Fatalf("place candidate re-measure: %v", err)
 	}
 	verdictAbs := filepath.Join(card.WorktreePath, ".moai", "reports", "t1", "sync-audit.md")
 	if err := os.MkdirAll(filepath.Dir(verdictAbs), 0o700); err != nil {

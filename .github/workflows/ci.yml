@@ -49,55 +49,17 @@ jobs:
       go_code: ${{ steps.f.outputs.go_code }}
     steps:
       - uses: actions/checkout@v7
-      # go_code covers BOTH Go sources AND the non-Go repo inputs the Go test
-      # suite reads (`go test ./...` in the `test` job). A PR that moves or
-      # edits any of the non-Go roots below can turn the suite red with zero
-      # .go files changed; without them in the filter the skip-marker stub
-      # satisfies the required check over a broken tree — exactly what #1557
-      # did (moved .moai/config/astgrep-rules/ → .moai/astgrep-rules/, three
-      # internal/astgrep tests went FAIL, filter read "no Go changes", stub
-      # reported green). Evidence per root — the test file that reads it:
-      #   .moai/**                        internal/astgrep/gar_rule_test.go (shipped rule file, fail-loud)
-      #   internal/template/templates/**  internal/spec/catalog_hash_test.go + internal/template parity tests
-      #   internal/template/catalog.yaml  internal/spec/catalog_hash_test.go (fail-loud)
-      #   .claude/agents/**               internal/template/agent_askuser_audit_test.go (walks .claude/agents/**)
-      #                                    + manager_lead_depth_test.go + haiku_effort_guard_test.go
-      #   .claude/rules/moai/**           internal/config/token_budget_guard.go (always-loaded budget walk)
-      #   .claude/output-styles/moai/**   internal/config/token_budget_guard.go (fixed surface slot)
-      #   CLAUDE.md                       internal/config/token_budget_guard.go (fixed surface slot)
-      #   .claude/settings.json           internal/config/toolpolicy/drift_check_test.go (permissions block vs tool-policy.yaml, fail-loud)
-      #   scripts/ci-census/**            the test steps below shell out to it;
-      #                                    without it here, a PR that edits the
-      #                                    census alone gets the skip-marker
-      #                                    stub and the edit is never exercised
-      # dorny/paths-filter matches with picomatch {dot: true}, so `**` also
-      # traverses the dot-directories inside templates/ (.claude/, .moai/).
+      # go_code covers BOTH Go sources AND the non-Go repo inputs the Go
+      # test suite reads (`go test ./...` in the `test` job). The filter
+      # list is the shared single source at .github/test-input-filters.yml —
+      # the same file codeql.yml and release-pr-multi-os.yml consume — with
+      # its per-root test-suite evidence inline, so the three classifiers
+      # cannot drift (card t1536; the #1557 skip-marker-over-broken-tree
+      # hazard that evidence documents).
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: f
         with:
-          filters: |
-            go_code:
-              - '**/*.go'
-              - 'go.mod'
-              - 'go.sum'
-              - 'Makefile'
-              - '.github/workflows/ci.yml'
-              - '.github/workflows/codeql.yml'
-              - '.moai/**'
-              - 'internal/template/templates/**'
-              - 'internal/template/catalog.yaml'
-              - '.claude/agents/**'
-              - '.claude/rules/moai/**'
-              - '.claude/output-styles/moai/**'
-              - '.claude/settings.json'
-              - 'CLAUDE.md'
-              - 'scripts/ci-census/**'
-              # AC-CI-012 (SPEC-CI-VERDICT-INTEGRITY-001): the branch-
-              # protection parity guard (internal/template/
-              # branch_protection_parity_test.go) reads this file — an edit
-              # to it alone must run the Go test jobs, or the parity guard
-              # never executes in CI.
-              - '.github/branch-protection.json.gtmpl'
+          filters: .github/test-input-filters.yml
 
   # ---------------------------------------------------------------------------
   # Test: Run tests with coverage (fast — NO race detector). The race
@@ -460,7 +422,7 @@ jobs:
             echo "inputs, so the Go test matrix did not run and this stub job"
             echo "satisfies the required check."
             echo ""
-            echo "- Filter definition: \`.github/workflows/ci.yml\` — job \`detect\`, step \`f\` (\`go_code\`)"
+            echo "- Filter definition: \`.github/test-input-filters.yml\` (shared \`go_code\` filter, consumed by ci.yml \`detect\`)"
             echo "- If this change moved or edited a file the Go tests read (see the"
             echo "  non-Go input roots listed in that filter) and the suite should"
             echo "  have run, add the path to the filter — a skip here means NO Go"

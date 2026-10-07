@@ -45,10 +45,15 @@ jobs:
       go_code: ${{ steps.f.outputs.go_code }}
     steps:
       - uses: actions/checkout@v7
-      # Paths-filter mirrors ci.yml's detect idiom: a docs-only release PR
-      # (e.g. a CHANGELOG-only re-push) skips the 13-min 3-OS matrix below
-      # while the required gate still reports success. Measured on release PR
-      # #1555: 26/40 files were .go, so a real release PR runs the matrix.
+      # Paths-filter classifies the release-PR diff as test-input vs docs-only
+      # via the shared filter at .github/test-input-filters.yml (card t1536).
+      # The previous inline copy was narrow, so a template/config-only release
+      # PR read as docs-only and skipped this matrix while ci.yml excludes
+      # release/* from its own Race Test — no race verification ran at all.
+      # A genuinely docs-only release PR (e.g. a CHANGELOG-only re-push)
+      # still skips the 13-min 3-OS matrix below while the required gate
+      # reports success. Measured on release PR #1555: 26/40 files were .go,
+      # so a real release PR runs the matrix.
       # continue-on-error plus full-matrix-test's `!= 'false'` comparison keep
       # the failure direction safe: if the filter cannot evaluate, go_code is
       # empty, the matrix RUNS — an abnormal filter can never silently skip
@@ -58,14 +63,9 @@ jobs:
         id: f
         continue-on-error: true
         with:
-          filters: |
-            go_code:
-              - '**/*.go'
-              - 'go.mod'
-              - 'go.sum'
-              - 'Makefile'
-              - '.github/workflows/release-pr-multi-os.yml'
-              - '.github/workflows/codeql.yml'
+          # Shared single-source go_code filter — same list ci.yml and
+          # codeql.yml consume, so the classifiers cannot drift (card t1536).
+          filters: .github/test-input-filters.yml
       - id: gate
         run: echo "proceed=true" >> $GITHUB_OUTPUT
 

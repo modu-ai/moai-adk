@@ -35,6 +35,17 @@ func TestBranchProtectionDetectFilterCoversParityInput(t *testing.T) {
 		t.Fatalf("read %s: %v", ciYml, err)
 	}
 	content := string(raw)
+	const sharedFilter = ".github/test-input-filters.yml"
+	filterRef := regexp.MustCompile(`(?m)^\s+filters:\s*` + regexp.QuoteMeta(sharedFilter) + `\s*$`)
+	if !filterRef.MatchString(content) {
+		t.Fatalf("%s does not consume the canonical filter %s", ciYml, sharedFilter)
+	}
+	filterPath := filepath.Join(projectRoot, filepath.FromSlash(sharedFilter))
+	raw, err = os.ReadFile(filterPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", filterPath, err)
+	}
+	content = string(raw)
 	lines := strings.Split(content, "\n")
 
 	// Same literal the parity test reads (branchProtectionRelPath) — kept
@@ -60,7 +71,7 @@ func TestBranchProtectionDetectFilterCoversParityInput(t *testing.T) {
 		}
 	}
 	if goStart < 0 {
-		t.Fatalf("go_code filter not found in %s — the detect filter is renamed or moved; re-derive this guard", ciYml)
+		t.Fatalf("go_code filter not found in %s — the detect filter is renamed or moved; re-derive this guard", filterPath)
 	}
 	var goBlock []string
 	for _, ln := range lines[goStart+1:] {
@@ -74,7 +85,7 @@ func TestBranchProtectionDetectFilterCoversParityInput(t *testing.T) {
 	}
 	if !entryRe.MatchString(strings.Join(goBlock, "\n")) {
 		t.Fatalf("detect-filter correspondence violated: %s go_code filter does not cover %s — a PR editing it alone would skip the branch-protection parity guard (AC-CI-012)",
-			ciYml, parityInput)
+			filterPath, parityInput)
 	}
 
 	// The parity test itself must still exist and still read the covered
