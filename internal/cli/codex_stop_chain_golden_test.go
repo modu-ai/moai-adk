@@ -511,14 +511,14 @@ func intp(n int) *int { return &n }
 // receiptForCurrentState reads the review receipt bound to the fixture
 // tree's CURRENT state — the same binding the Codex member 6 consults — so a
 // golden leg can premise-assert what the shared store holds before reading
-// the member's outcome.
+// the member's outcome. The binary path is a literal: fakeCodexVersion pins
+// codexVersionProbe for the whole golden, so the tool_version matches what
+// the gate recorded whatever path is named (the fixture never resolves a real
+// binary — and never names the live-resolution idiom this package's live-axis
+// detector scans for).
 func receiptForCurrentState(t *testing.T, f *stopFixture) *verify.Receipt {
 	t.Helper()
-	binaryPath, err := codexLookPath(codexBinaryName)
-	if err != nil {
-		t.Fatalf("codex look: %v", err)
-	}
-	state, err := codexReviewReceiptStateForScope(context.Background(), reviewScopeResolver(f.root), binaryPath)
+	state, err := codexReviewReceiptStateForScope(context.Background(), reviewScopeResolver(f.root), "/fake/codex")
 	if err != nil {
 		t.Fatalf("receipt state: %v", err)
 	}
