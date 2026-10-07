@@ -37,17 +37,16 @@ import (
 // (moai doctor) can pattern-match on them. See SPEC-V3R4-CATALOG-002 REQ-021
 // and acceptance scenario S1.
 //
-// SPEC-INIT-SHRINK-001 (REQ-021): the notice also names the plugin carrier —
-// on the default path skills and commands deploy no local copies and ride
-// the moai plugin instead; --no-plugin and --all keep a full local deploy.
+// Common skills and agents install into user folders; optional bundles require
+// an explicit selection and do not follow the project template --all switch.
 func emitSlimModeNotice(out io.Writer) {
 	_, _ = fmt.Fprintln(out,
 		"Deploying core templates only (slim mode). "+
-			"Use --all or MOAI_DISTRIBUTE_ALL=1 for full deploy. "+
+			"Use --all or MOAI_DISTRIBUTE_ALL=1 for all project harness templates. "+
 			"Note: builder-harness agent is omitted (see SPEC-V3R4-CATALOG-005 for bootstrap).")
 	_, _ = fmt.Fprintln(out,
-		"Skills and commands ride the moai plugin on the default path (no local copies). "+
-			"Use --no-plugin or --all for a full local deploy.")
+		"Common skills and agents install into your user folders. "+
+			"Use --bundles to opt into optional user assets.")
 }
 
 var initCmd = &cobra.Command{
@@ -65,7 +64,7 @@ Examples:
   moai init my-app           Creates ./my-app/ and initializes MoAI inside
   moai init .                Initializes MoAI in the current directory
   moai init --mode tdd       Initialize with specific development mode (default: tdd)
-  moai init --all            Deploy all catalog entries (default is core-only slim mode; SPEC-V3R4-CATALOG-002)
+  moai init --all            Select all project harness templates; optional user assets require --bundles
 
 Note: moai init / moai update do NOT auto-enter a worktree. To work inside a
 worktree, enter one with the launcher flag (moai cc -w <name>).`,
@@ -89,8 +88,8 @@ func init() {
 	initCmd.Flags().Bool("non-interactive", false, "Skip interactive wizard; use flags and defaults")
 	initCmd.Flags().Bool("force", false, "Reinitialize an existing project (backs up current .moai/)")
 	initCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
-	initCmd.Flags().Bool("no-plugin", false, "Skip the moai plugin and deploy the FULL local payload (skills, commands, .mcp.json moai entry, Codex mirror). Also MOAI_SKIP_PLUGIN_INSTALL=1. Default (plugin mode) deploys no local skills or commands — they ride the moai plugin")
-	initCmd.Flags().Bool("all", false, "Deploy all catalog tiers locally (a full local deploy: the --no-plugin payload plus optional-pack entries). Bypasses slim mode (SPEC-V3R4-CATALOG-002)")
+	initCmd.Flags().Bool("no-plugin", false, "Deprecated compatibility flag; init always deploys locally and installs common assets into user folders")
+	initCmd.Flags().Bool("all", false, "Select all project harness templates; optional user assets still require --bundles")
 	// SPEC-USER-ASSET-INSTALL-001 (REQ-004, iter2 D18): the initial opt-in
 	// bundle selection, recorded in the per-user manifest. L0 installs
 	// regardless; each named bundle adds its catalog entries.

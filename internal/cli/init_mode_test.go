@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/template"
+	"github.com/modu-ai/moai-adk/internal/userassets"
 )
 
 // initModeTestCmd mirrors the production initCmd flag surface for the mode
@@ -89,16 +91,6 @@ func mcpServersOf(t *testing.T, doc map[string]any) map[string]any {
 	return servers
 }
 
-// assertDeployedAbsent asserts none of the dropped component roots exists.
-func assertDeployedAbsent(t *testing.T, root string) {
-	t.Helper()
-	for _, rel := range []string{".claude/skills", ".claude/commands"} {
-		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); !os.IsNotExist(err) {
-			t.Errorf("plugin deploy wrote dropped root %s (stat err: %v)", rel, err)
-		}
-	}
-}
-
 // assertDeployedPresent asserts the kept components a thin deploy still
 // carries.
 func assertDeployedPresent(t *testing.T, root string) {
@@ -116,18 +108,96 @@ func assertDeployedPresent(t *testing.T, root string) {
 	}
 }
 
-// TestDefaultDeploySetExcludesSkillsAndCommands is AC-001 (a): the default
-// (plugin-path) init deploy carries no .claude/skills or .claude/commands
-// file and keeps the instruction files, rules, agents, settings render, and
-// .moai/config.
-func TestDefaultDeploySetExcludesSkillsAndCommands(t *testing.T) {
+// The default deploy keeps project harness files and installs common core assets
+// user-side; optional assets require an explicit bundle selection.
+func TestDefaultDeploySetUsesUserCoreAssets(t *testing.T) {
+	home := initModeUserHome(t)
 	root, _, _ := runInitForMode(t, map[string]string{"non-interactive": "true"})
-	assertDeployedAbsent(t, root)
 	assertDeployedPresent(t, root)
-	// The deploy-mode record follows the deploy path (REQ-009), never the
-	// probe.
-	if got := readDeployModeForTest(t, root); got != "plugin" {
-		t.Errorf("deployment_mode = %q, want plugin", got)
+	assertUserCatalogEntries(t, root, home, nil)
+	if got := readDeployModeForTest(t, root); got != "local" {
+		t.Errorf("deployment_mode = %q, want local", got)
+	}
+}
+
+func initModeUserHome(t *testing.T) string {
+	t.Helper()
+	home := t.TempDir()
+	orig := userHomeDirFn
+	userHomeDirFn = func() (string, error) { return home, nil }
+	t.Cleanup(func() { userHomeDirFn = orig })
+	return home
+}
+
+// Check actual entry kinds in both harness roots and the recorded selection;
+// the same common asset must never also be deployed to the project.
+func assertUserCatalogEntries(t *testing.T, project, home string, bundles []string) {
+	t.Helper()
+	cat, err := template.LoadEmbeddedCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected := map[string]bool{}
+	for _, b := range bundles {
+		selected[b] = true
+	}
+	entries := append([]template.Entry{}, cat.Catalog.Core.Skills...)
+	entries = append(entries, cat.Catalog.Core.Agents...)
+	present := map[string]bool{}
+	for _, entry := range entries {
+		present[entry.Path] = true
+	}
+	for name, pack := range cat.Catalog.OptionalPacks {
+		packEntries := append(append([]template.Entry{}, pack.Skills...), pack.Agents...)
+		entries = append(entries, packEntries...)
+		if selected[name] {
+			for _, entry := range packEntries {
+				present[entry.Path] = true
+			}
+		}
+	}
+	for _, entry := range entries {
+		var paths []string
+		if strings.HasSuffix(entry.Path, "/") {
+			paths = []string{filepath.Join(".claude", "skills", entry.Name, "SKILL.md"), filepath.Join(".agents", "skills", entry.Name, "SKILL.md")}
+		} else if strings.HasSuffix(entry.Path, ".md") {
+			paths = []string{filepath.Join(".claude", "agents", entry.Name+".md"), filepath.Join(".codex", "agents", entry.Name+".toml")}
+		} else {
+			t.Fatalf("unsupported catalog entry kind: %+v", entry)
+		}
+		for _, rel := range paths {
+			_, err := os.Stat(filepath.Join(home, rel))
+			if present[entry.Path] && err != nil {
+				t.Errorf("user asset %s (%s): %v", rel, entry.Tier, err)
+			}
+			if !present[entry.Path] && !os.IsNotExist(err) {
+				t.Errorf("unselected optional user asset exists %s: %v", rel, err)
+			}
+		}
+		rel := strings.TrimPrefix(entry.Path, "templates/")
+		if strings.HasSuffix(rel, "/") {
+			rel += "SKILL.md"
+		}
+		if _, err := os.Stat(filepath.Join(project, filepath.FromSlash(rel))); !os.IsNotExist(err) {
+			t.Errorf("common asset duplicated in project %s: %v", rel, err)
+		}
+	}
+	manifest, err := userassets.Load(userassets.ManifestPath(home))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(manifest.Bundles) != len(selected) {
+		t.Errorf("recorded bundles=%v, want %v", manifest.Bundles, bundles)
+	}
+	for _, b := range manifest.Bundles {
+		if !selected[b] {
+			t.Errorf("unexpected bundle opt-in %q", b)
+		}
+	}
+	for key, file := range manifest.Files {
+		if file.Bundle != "core" && !selected[file.Bundle] {
+			t.Errorf("unselected optional asset installed: %s (%s)", key, file.Bundle)
+		}
 	}
 }
 
@@ -153,35 +223,21 @@ func TestNoPluginPathDeploysFullLocalPayload(t *testing.T) {
 	}
 }
 
-// TestShrinkInitGuidanceOnMissingPlugin is AC-004: on the default path with
-// the probe reading not-demonstrated (the default runner's refusal under a
-// test binary degrades every surface read), exactly one guidance block
-// names both recourses and the init exit status stays 0.
-func TestShrinkInitGuidanceOnMissingPlugin(t *testing.T) {
-	root, _, stderr := runInitInteractiveForMode(t, nil)
-	if got := strings.Count(stderr, "note: the moai plugin install could not be demonstrated"); got != 1 {
-		t.Fatalf("guidance block count = %d, want 1\nstderr:\n%s", got, stderr)
+// Retired plugin probes cannot send users back to marketplace commands.
+func TestInitGuidanceUsesLocalAssetsWithoutPluginRecourse(t *testing.T) {
+	home := initModeUserHome(t)
+	root, stdout, stderr := runInitInteractiveForMode(t, nil)
+	for _, retired := range []string{"plugin install", "plugin marketplace add", "--no-plugin --force", "plugin install could not be demonstrated"} {
+		if strings.Contains(stdout+stderr, retired) {
+			t.Errorf("retired plugin guidance %q: %s", retired, stdout+stderr)
+		}
 	}
-	if !strings.Contains(stderr, "--no-plugin") {
-		t.Errorf("guidance does not name the --no-plugin recourse:\n%s", stderr)
+	if !strings.Contains(stdout+stderr, "Deploy mode: local") {
+		t.Errorf("missing local deploy guidance: %s", stdout+stderr)
 	}
-	// Card t1438 review finding 6: a plain re-run fails "project already
-	// initialized" — the guidance must name the flags that actually work
-	// (--no-plugin --force) and state what force re-initialization does with
-	// the existing .moai/.
-	if !strings.Contains(stderr, "--no-plugin --force") {
-		t.Errorf("guidance does not name the working re-entry flags (--no-plugin --force):\n%s", stderr)
-	}
-	if !strings.Contains(stderr, ".moai-backups") {
-		t.Errorf("guidance does not state the --force backup disposition of the existing .moai/:\n%s", stderr)
-	}
-	if !strings.Contains(stderr, "plugin marketplace add") {
-		t.Errorf("guidance does not name the manual install commands:\n%s", stderr)
-	}
-	// The guidance names both recourses; the record still reads plugin (the
-	// deploy path decides the record).
-	if got := readDeployModeForTest(t, root); got != "plugin" {
-		t.Errorf("deployment_mode = %q, want plugin", got)
+	assertUserCatalogEntries(t, root, home, nil)
+	if got := readDeployModeForTest(t, root); got != "local" {
+		t.Errorf("deployment_mode = %q, want local", got)
 	}
 }
 
@@ -216,40 +272,35 @@ func TestDefaultPathMcpEntryPolicy(t *testing.T) {
 	})
 }
 
-// TestAllFlagDeploysAllTiersLocally is AC-007 (OD-7 settled (a)): --all is
-// the local full deploy — the --no-plugin payload plus the wider tier — and
-// the record reads local.
-func TestAllFlagDeploysAllTiersLocally(t *testing.T) {
-	root, _, _ := runInitForMode(t, map[string]string{
-		"non-interactive": "true",
-		"all":             "true",
-	})
-	for _, rel := range []string{".claude/skills", ".claude/commands"} {
-		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
-			t.Errorf("--all deploy lost %s: %v", rel, err)
+// --all selects the project harness templates; it cannot silently opt a user
+// into optional bundles. Explicit bundle selection installs every entry kind.
+func TestAllFlagRespectsUserBundleSelection(t *testing.T) {
+	cat, err := template.LoadEmbeddedCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var all []string
+	for name := range cat.Catalog.OptionalPacks {
+		all = append(all, name)
+	}
+	sort.Strings(all)
+	if len(all) == 0 {
+		t.Fatal("catalog has no optional bundles to exercise")
+	}
+	for _, bundles := range [][]string{nil, all} {
+		name := "core-only"
+		if len(bundles) != 0 {
+			name = "all-explicit-bundles"
 		}
-	}
-	// The wider tier: an optional-pack catalog entry the slim deploy hides.
-	cat, catErr := template.LoadEmbeddedCatalog()
-	if catErr != nil {
-		t.Fatalf("load catalog: %v", catErr)
-	}
-	optionalPack := 0
-	for _, entry := range cat.AllEntries() {
-		if entry.Tier == "core" || entry.Tier == "harness-generated" {
-			continue
-		}
-		optionalPack++
-		skillFile := filepath.Join(root, ".claude", "skills", entry.Name, "SKILL.md")
-		if _, err := os.Stat(skillFile); err != nil {
-			t.Errorf("--all deploy lost optional-pack entry %s (%s): %v", entry.Name, entry.Tier, err)
-		}
-	}
-	if optionalPack == 0 {
-		t.Fatal("no optional-pack entries to probe (catalog changed?)")
-	}
-	if got := readDeployModeForTest(t, root); got != "local" {
-		t.Errorf("deployment_mode = %q, want local", got)
+		t.Run(name, func(t *testing.T) {
+			home := initModeUserHome(t)
+			root, _, _ := runInitForMode(t, map[string]string{"non-interactive": "true", "all": "true", "bundles": strings.Join(bundles, ",")})
+			assertDeployedPresent(t, root)
+			assertUserCatalogEntries(t, root, home, bundles)
+			if got := readDeployModeForTest(t, root); got != "local" {
+				t.Errorf("deployment_mode = %q, want local", got)
+			}
+		})
 	}
 }
 

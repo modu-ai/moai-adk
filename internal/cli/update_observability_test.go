@@ -187,7 +187,8 @@ func TestPreviewManagedCleanup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Local-only: a legacy skill gone from the templates.
+	// Local-only hook: an owned managed root still subject to cleanup.
+	// Unknown skills are preserved and must not appear as cleanup losses.
 	localOnly := filepath.Join(root, ".claude", "skills", legacySkillIDs[0], "SKILL.md")
 	makeSkillDir(t, root, legacySkillIDs[0], "# local-only customization")
 
@@ -200,17 +201,31 @@ func TestPreviewManagedCleanup(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	hook := filepath.Join(root, ".claude", "hooks", "moai", "local-only-review.sh")
+	if err := os.MkdirAll(filepath.Dir(hook), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(hook, []byte("local hook bytes"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := auditSnapshotTree(t, root)
 	var out bytes.Buffer
 	if err := previewManagedCleanup(root, template.DeployModeLocal, &out); err != nil {
 		t.Fatalf("previewManagedCleanup: %v", err)
 	}
 	got := out.String()
+	if delta := auditDiffSnapshots(before, auditSnapshotTree(t, root)); len(delta) != 0 {
+		t.Fatalf("preview changed the fixture: %v", delta)
+	}
 
 	if !strings.Contains(got, "not restored") {
 		t.Errorf("preview must classify the local-only file as not restored, got:\n%s", got)
 	}
-	if !strings.Contains(got, "skills/"+legacySkillIDs[0]) {
-		t.Errorf("preview must name the local-only skill path, got:\n%s", got)
+	if !strings.Contains(got, "hooks/moai/local-only-review.sh") {
+		t.Errorf("preview must name the local-only managed hook: %s", got)
+	}
+	if strings.Contains(got, "skills/"+legacySkillIDs[0]) {
+		t.Errorf("preview must not list a preserved unknown skill as removed: %s", got)
 	}
 	if !strings.Contains(got, "re-deployed") {
 		t.Errorf("preview must count template re-deployments, got:\n%s", got)
@@ -220,7 +235,7 @@ func TestPreviewManagedCleanup(t *testing.T) {
 	}
 
 	// Read-only contract: nothing deleted, nothing created.
-	for _, path := range []string{restored, localOnly, cfg} {
+	for _, path := range []string{restored, localOnly, cfg, hook} {
 		if _, err := os.Stat(path); err != nil {
 			t.Errorf("preview must not remove %s: %v", path, err)
 		}

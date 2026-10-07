@@ -12,52 +12,36 @@ import (
 	"testing"
 )
 
-// TestInitDocsDescribeThinDeploy asserts the init flag help and the success
-// card name the thin deploy and both paths: a plugin-mode user can tell
-// where skills and commands live, and an opt-out user can find --no-plugin.
-func TestInitDocsDescribeThinDeploy(t *testing.T) {
+// Public help must describe the supported project/user split, not send users
+// back to the retired plugin carrier. Runtime bundle behavior is tested beside it.
+func TestInitDocsDescribeUserAssets(t *testing.T) {
 	src, err := os.ReadFile(filepath.Join("init.go"))
 	if err != nil {
-		t.Fatalf("read init.go: %v", err)
+		t.Fatal(err)
 	}
 	text := string(src)
-
-	// The --no-plugin flag help names the full local payload AND the
-	// plugin-mode default.
 	noPluginHelp := extractFlagHelp(t, text, `"no-plugin"`)
-	for _, want := range []string{"FULL local payload", "ride the moai plugin"} {
-		if !strings.Contains(noPluginHelp, want) {
-			t.Errorf("--no-plugin flag help missing %q:\n%s", want, noPluginHelp)
-		}
+	if !strings.Contains(noPluginHelp, "Deprecated") {
+		t.Errorf("legacy no-plugin flag must disclose retirement: %s", noPluginHelp)
 	}
-
-	// The --all flag help names the local full deploy.
 	allHelp := extractFlagHelp(t, text, `"all"`)
-	if !strings.Contains(allHelp, "full local deploy") {
-		t.Errorf("--all flag help does not name the local full deploy:\n%s", allHelp)
-	}
-
-	// The success card names the deploy mode and both paths (the builder
-	// carries the mode-aware line; asserted live by init_mode_test.go).
-	card, err := os.ReadFile(filepath.Join("init_warnings.go"))
-	if err != nil {
-		t.Fatalf("read init_warnings.go: %v", err)
-	}
-	cardText := string(card)
-	for _, want := range []string{
-		"Deploy mode: plugin",
-		"--no-plugin for a full local deploy",
-		"Deploy mode: local",
-	} {
-		if !strings.Contains(cardText, want) {
-			t.Errorf("success card missing %q", want)
+	for _, want := range []string{"project harness", "--bundles"} {
+		if !strings.Contains(allHelp, want) {
+			t.Errorf("--all help missing %q: %s", want, allHelp)
 		}
 	}
-
-	// Card t1438 review finding 6: the not-demonstrated guidance block
-	// assertions were retired with the plugin carrier (SPEC-USER-ASSET-
-	// INSTALL-001 M6 — emitShrinkInstallGuidance removed with the install
-	// step it described).
+	var notice strings.Builder
+	emitSlimModeNotice(&notice)
+	for _, want := range []string{"user folders", "--bundles"} {
+		if !strings.Contains(notice.String(), want) {
+			t.Errorf("notice missing %q: %s", want, notice.String())
+		}
+	}
+	for _, retired := range []string{"ride the moai plugin", "--no-plugin or --all for a full local deploy"} {
+		if strings.Contains(notice.String(), retired) {
+			t.Errorf("retired plugin guidance remains: %s", notice.String())
+		}
+	}
 }
 
 // extractFlagHelp returns the help string of one flag registration line.

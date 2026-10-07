@@ -189,38 +189,43 @@ func TestUpdateNeverFlipsModeRecord(t *testing.T) {
 	}
 }
 
-// TestNotDemonstratedPreservationEndsAtNextLocalUpdate pins the D-16 loss
-// path (leader condition 5b): the not-demonstrated migration preserves the
-// foreign file for THAT run; the next update — the record now local, the
-// full deployer and today's Clean walk — removes it (backed up). The
-// boundary is executable, not prose: preservation is one migration run
-// (acceptance.md Edge Cases, the narrowed promise).
-func TestNotDemonstratedPreservationEndsAtNextLocalUpdate(t *testing.T) {
+// Unknown project skills stay byte-identical across migration and later forced
+// local updates; neither an unconfirmed counterpart nor a name prefix proves ownership.
+func TestUnknownSkillPreservedAcrossLocalUpdates(t *testing.T) {
 	root := buildMigrationFixture(t)
-
-	// Run 1 — the not-demonstrated migration: the foreign file survives.
-	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
-	if got := config.ReadDeployMode(root); got != "local" {
-		t.Fatalf("run 1 record = %q, want local", got)
+	before := readFixtureFile(t, root, migForeignSkill)
+	hook := filepath.Join(root, ".claude", "hooks", "moai", "local-only-review.sh")
+	if err := os.MkdirAll(filepath.Dir(hook), 0o755); err != nil {
+		t.Fatal(err)
 	}
-	foreignBefore := readFixtureFile(t, root, migForeignSkill)
-	if !strings.Contains(foreignBefore, "the user's own skill") {
-		t.Fatalf("run 1 lost the foreign file:\n%s", foreignBefore)
+	const hookBytes = "local hook must remain recoverable"
+	if err := os.WriteFile(hook, []byte(hookBytes), 0o644); err != nil {
+		t.Fatal(err)
 	}
-
-	// Run 2 — the recorded-local update: today's full deployer + today's
-	// Clean walk. --force bypasses the version-compare skip (RK-7) so the
-	// walk actually runs. The managed-glob hit (.claude/skills/moai-custom)
-	// is backed up and removed — exactly where the one-run promise ends.
-	runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "no-plugin": "true", "force": "true"})
-	assertFileAbsent(t, root, migForeignSkill)
-
-	// The removal was backed up (the P-08 rule: files the template does not
-	// carry reach the pre-clean backup) — the loss is recoverable.
-	matches, _ := filepath.Glob(filepath.Join(root, ".moai-backups", "*", "pre-clean",
-		".claude", "skills", "moai-custom", "SKILL.md"))
-	if len(matches) == 0 {
-		t.Error("the removed foreign skill left no pre-clean backup copy")
+	for i, flags := range []map[string]string{
+		{"yes": "true"},
+		{"yes": "true", "no-plugin": "true", "force": "true"},
+	} {
+		runUpdateCobraCmd(t, root, flags)
+		if got := config.ReadDeployMode(root); got != "local" {
+			t.Errorf("run%d mode=%q, want local", i+1, got)
+		}
+		if got := readFixtureFile(t, root, migForeignSkill); got != before {
+			t.Fatalf("run%d altered unknown skill: %q, want %q", i+1, got, before)
+		}
+	}
+	if _, err := os.Stat(hook); !os.IsNotExist(err) {
+		t.Fatalf("managed local-only hook not cleaned: %v", err)
+	}
+	matches, err := filepath.Glob(filepath.Join(root, ".moai-backups", "*", "pre-clean", ".claude", "hooks", "moai", "local-only-review.sh"))
+	if err != nil || len(matches) == 0 {
+		t.Fatalf("managed hook has no pre-clean backup: %v", err)
+	}
+	for _, path := range matches {
+		data, err := os.ReadFile(path)
+		if err != nil || string(data) != hookBytes {
+			t.Fatalf("managed hook backup differs: %q, %v", data, err)
+		}
 	}
 }
 
