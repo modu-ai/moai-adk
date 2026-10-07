@@ -3,9 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -163,38 +161,25 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 		}
 	})
 
-	t.Run("relaunch supervising loop starts one session per card", func(t *testing.T) {
+	t.Run("relaunch degrades to the one-shot lane session", func(t *testing.T) {
+		// Card t1554: the supervising lease loop is removed — card
+		// consumption is the unified `moai todo --auto` engine's alone. The
+		// flag stays accepted: one supersession note on the error stream, one
+		// lane session started, and the queue untouched (no lease, no card
+		// rows — the session consumes the queue itself).
 		root, store := fcFixture(t)
 		fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
-		// SPEC-TODO-CLASSIFY-DISPATCH-001: this scenario pins the LOOP's
-		// continuation mechanics, and its stub children exit WITHOUT working
-		// their card (the crashed-lane shape, whose recovery is lease
-		// expiry). Unclassified cards read serial by default, so the
-		// serial-vs-serial gate would stop the loop after one card — the
-		// mode-neutral intent of this scenario maps to parallelizable.
-		fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
-		fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 		sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
-		wantLabel := sdNextFreeLaneLabel(t, root)
 		t.Chdir(root)
 		t.Setenv(config.EnvClaudeProjectDir, root)
 		sdScrubLauncherEnv(t)
 
-		var got []sdCardLaunchCapture
+		var launches int
 		prevLook := claudeLookPath
 		claudeLookPath = func(string) (string, error) { return "/sentinel/claude", nil }
-		prevLaunch := factoryLaneCardLaunchFn
-		factoryLaneCardLaunchFn = func(c *exec.Cmd) error {
-			got = append(got, sdCardLaunchCapture{
-				argv: append([]string(nil), c.Args...),
-				dir:  c.Dir,
-				env:  sdEnvOf(t, c.Env),
-			})
-			return nil
-		}
 		prevUnified := unifiedLaunchFunc
 		unifiedLaunchFunc = func(string, string, []string) error {
-			t.Error("the exec launch ran; the relaunch loop must start the children itself")
+			launches++
 			return nil
 		}
 		prevRoot := findProjectRootFn
@@ -202,41 +187,24 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 		prevDeps := deps
 		deps = nil
 		t.Cleanup(func() {
-			claudeLookPath, factoryLaneCardLaunchFn, unifiedLaunchFunc = prevLook, prevLaunch, prevUnified
+			claudeLookPath, unifiedLaunchFunc = prevLook, prevUnified
 			findProjectRootFn, deps = prevRoot, prevDeps
 		})
 
 		if err := sdCCEntry([]string{"-l", "--clear-policy", "relaunch"}); err != nil {
 			t.Fatalf("cc lane relaunch: %v", err)
 		}
-
-		if len(got) != 2 {
-			t.Fatalf("the supervising loop started %d sessions, want 2 (one per operator-picked card)", len(got))
+		if launches != 1 {
+			t.Fatalf("the degraded relaunch started %d sessions, want 1 (the one-shot lane session)", launches)
 		}
-		for i, cardID := range []string{"t1", "t2"} {
-			card := fcCard(t, root, cardID)
-			rec := got[i]
-			if card.WorktreePath == "" {
-				t.Fatalf("%s recorded no worktree", cardID)
+		// The queue is untouched: the launcher leases nothing at boot.
+		for _, cardID := range []string{"t1", "t2"} {
+			if fcHasCard(t, root, cardID) {
+				t.Errorf("%s gained a factory record row; the launcher must not lease", cardID)
 			}
-			if rec.dir != card.WorktreePath {
-				t.Errorf("session %d: child working directory = %q, want card %s's worktree %q", i, rec.dir, cardID, card.WorktreePath)
-			}
-			if rec.env[config.EnvFactoryCard] != cardID {
-				t.Errorf("session %d: child env %s = %q, want card %s's id", i, config.EnvFactoryCard, rec.env[config.EnvFactoryCard], cardID)
-			}
-			if rec.env[config.EnvFactoryClearPolicy] != config.FactoryClearPolicyRelaunch {
-				t.Errorf("session %d: child env %s = %q, want %q", i, config.EnvFactoryClearPolicy, rec.env[config.EnvFactoryClearPolicy], config.FactoryClearPolicyRelaunch)
-			}
-			if rec.env[config.EnvFactoryRole] != config.FactoryRoleLane {
-				t.Errorf("session %d: child env %s = %q, want %q", i, config.EnvFactoryRole, rec.env[config.EnvFactoryRole], config.FactoryRoleLane)
-			}
-			if rec.env[config.EnvMoaiFactoryWorker] != wantLabel {
-				t.Errorf("session %d: child env %s = %q, want the lane label %q", i, config.EnvMoaiFactoryWorker, rec.env[config.EnvMoaiFactoryWorker], wantLabel)
-			}
-			if !containsPair(rec.argv, nameFlagLong, wantLabel) {
-				t.Errorf("session %d: argv %v does not carry --name with the lane label", i, rec.argv)
-			}
+		}
+		if s := nmQueueState(t, store, "t1"); s != factory.BacklogStatePicked {
+			t.Errorf("t1 queue state = %s, want picked (the seeded operator pick stands)", s)
 		}
 	})
 
@@ -244,6 +212,9 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 		sdClearLaneEnv(t)
 		root, integWT, cards := sdMergeFixture(t, true, true, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
+		if _, err := factory.RunRemeasure(root, cards[0].wt, "develop", "true"); err != nil {
+			t.Fatalf("place candidate re-measure: %v", err)
+		}
 		sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
 		sdLaneEnv(t, "lane-1", "")
 		t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
@@ -261,72 +232,10 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 		}
 	})
 
-	t.Run("relaunch without the claude binary is refused", func(t *testing.T) {
-		root, store := fcFixture(t)
-		fcQueue(t, store, factory.BacklogStatePicked)
-		sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
-		t.Chdir(root)
-		t.Setenv(config.EnvClaudeProjectDir, root)
-		sdScrubLauncherEnv(t)
-		prevLook := claudeLookPath
-		claudeLookPath = func(string) (string, error) { return "", errors.New("not installed") }
-		prevLaunch := factoryLaneCardLaunchFn
-		factoryLaneCardLaunchFn = func(*exec.Cmd) error {
-			t.Error("a session started without the binary")
-			return nil
-		}
-		prevRoot := findProjectRootFn
-		findProjectRootFn = func() (string, error) { return root, nil }
-		prevDeps := deps
-		deps = nil
-		t.Cleanup(func() {
-			claudeLookPath, factoryLaneCardLaunchFn = prevLook, prevLaunch
-			findProjectRootFn, deps = prevRoot, prevDeps
-		})
-		if err := sdCCEntry([]string{"-l", "--clear-policy", "relaunch"}); err == nil {
-			t.Fatal("relaunch without the claude binary succeeded, want a refusal")
-		}
-	})
-
-	t.Run("relaunch continues after a failed child session", func(t *testing.T) {
-		root, store := fcFixture(t)
-		fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
-		// SPEC-TODO-CLASSIFY-DISPATCH-001: same mode-neutral mapping as the
-		// per-card subtest above — the subject is the loop's continuation
-		// after a failed child, not exclusivity; the failed card stays leased
-		// until expiry either way.
-		fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
-		fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
-		sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
-		t.Chdir(root)
-		t.Setenv(config.EnvClaudeProjectDir, root)
-		sdScrubLauncherEnv(t)
-		var started int
-		prevLook := claudeLookPath
-		claudeLookPath = func(string) (string, error) { return "/sentinel/claude", nil }
-		prevLaunch := factoryLaneCardLaunchFn
-		factoryLaneCardLaunchFn = func(*exec.Cmd) error {
-			started++
-			if started == 1 {
-				return errors.New("child exited non-zero")
-			}
-			return nil
-		}
-		prevRoot := findProjectRootFn
-		findProjectRootFn = func() (string, error) { return root, nil }
-		prevDeps := deps
-		deps = nil
-		t.Cleanup(func() {
-			claudeLookPath, factoryLaneCardLaunchFn = prevLook, prevLaunch
-			findProjectRootFn, deps = prevRoot, prevDeps
-		})
-		if err := sdCCEntry([]string{"-l", "--clear-policy", "relaunch"}); err != nil {
-			t.Fatalf("relaunch loop: %v", err)
-		}
-		if started != 2 {
-			t.Fatalf("the loop started %d sessions after one failed child, want 2 (the failure continues the loop)", started)
-		}
-	})
+	// (The loop's own "relaunch without the claude binary is refused" pin is
+	// gone with the loop: the binary precondition lived in the removed
+	// supervisor. The one-shot launch's resolution is the plain lane
+	// launch's, not the relaunch policy's.)
 
 	t.Run("clear-policy outside a lane entry is refused", func(t *testing.T) {
 		root := t.TempDir()
@@ -389,7 +298,6 @@ func TestSD_M6_ClearPolicyCarrierConstantOnly(t *testing.T) {
 	scanned := map[string]string{
 		"factory.go":                    sdReadSource(t, filepath.Join(cliDir, "factory.go")),
 		"factory_card.go":               sdReadSource(t, filepath.Join(cliDir, "factory_card.go")),
-		"factory_lane_relaunch.go":      sdReadSource(t, filepath.Join(cliDir, "factory_lane_relaunch.go")),
 		"cc.go":                         sdReadSource(t, filepath.Join(cliDir, "cc.go")),
 		"glm.go":                        sdReadSource(t, filepath.Join(cliDir, "glm.go")),
 		"codex_launcher.go":             sdReadSource(t, filepath.Join(cliDir, "codex_launcher.go")),

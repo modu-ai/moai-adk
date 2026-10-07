@@ -192,12 +192,21 @@ func cardMergeBase(dir string) (string, error) {
 	if target == "" {
 		return "", fmt.Errorf("card merge base: no integration target configured: %s", cfg.EmptyTargetGuidance(dir, ""))
 	}
-	// The ONE ancestry read in this file — the card-diff base measurement, not
+	// Card-diff ancestry measurements, not
 	// a binary-lag comparison (REQ-ABI-006: binlag.Evaluate stays the only
 	// binary-lag judge; the sweep allowlist pins this coordinate).
 	base, err := reviewScopeGit(dir, "merge-base", target, "HEAD")
 	if err != nil {
 		return "", fmt.Errorf("card merge base: %s", execerr.StatusDetail(err))
+	}
+	// Exclude already-landed remote changes when the local target is stale.
+	// An unpushed newer local target remains the review base.
+	remote, remoteErr := runReviewGit(dir, "merge-base", "refs/remotes/origin/"+target, "HEAD")
+	remote = strings.TrimSpace(remote)
+	if remoteErr == nil && remote != "" {
+		if _, err := runReviewGit(dir, "merge-base", "--is-ancestor", base, remote); err == nil {
+			base = remote
+		}
 	}
 	return base, nil
 }
