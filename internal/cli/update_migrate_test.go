@@ -126,28 +126,6 @@ func runUpdateCobraCmd(t *testing.T, root string, flags map[string]string) (stri
 	return out.String(), errBuf.String()
 }
 
-// confirmedRunner fakes the world where THIS run's install demonstrated
-// success: the claude list surface reads absent pre-execution and present
-// post-execution. The Claude binary is pinned to an inert scratch file so the
-// install step does not depend on a real `claude` on PATH (absent on CI).
-func confirmedRunner(t *testing.T) {
-	t.Helper()
-	setupPluginTools(t)
-	fake := &fakePluginRunner{}
-	lists := 0
-	fake.fn = func(_ context.Context, call pluginCall, _ int) ([]byte, error) {
-		if len(call.args) >= 2 && call.args[0] == "plugin" && call.args[1] == "list" {
-			lists++
-			if lists >= 2 {
-				return []byte(`moai@moai-adk 1.0.0`), nil
-			}
-			return []byte("(no plugins installed)"), nil
-		}
-		return nil, nil
-	}
-	withPluginRunner(t, fake)
-}
-
 // readFixtureFile returns a file's bytes, failing the test when absent.
 func readFixtureFile(t *testing.T, root, rel string) string {
 	t.Helper()
@@ -180,7 +158,6 @@ func assertFilePresent(t *testing.T, root, rel string) {
 func TestUpdateMigratesLegacyProject(t *testing.T) {
 	t.Run("confirmed", func(t *testing.T) {
 		root := buildMigrationFixture(t)
-		confirmedRunner(t)
 		runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
 
 		if got := config.ReadDeployMode(root); got != "plugin" {
@@ -296,7 +273,6 @@ func TestUpdateOptedOutMigrationPreservesManagedRootLocals(t *testing.T) {
 // contains survives the same run untouched.
 func TestMigrationRemovesIdenticalDroppedComponents(t *testing.T) {
 	root := buildMigrationFixture(t)
-	confirmedRunner(t)
 	out, _ := runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
 
 	assertFileAbsent(t, root, migIdenticalSkill)
@@ -343,7 +319,6 @@ func TestMigrationArchivesModifiedBeforeRemoval(t *testing.T) {
 
 	t.Run("migration_archives_then_removes", func(t *testing.T) {
 		root := buildMigrationFixture(t)
-		confirmedRunner(t)
 		runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
 
 		// The modified skill member archived with its pre-run bytes, and the
@@ -374,7 +349,6 @@ func TestMigrationArchivesModifiedBeforeRemoval(t *testing.T) {
 // removes nothing, archives nothing, and the record is unchanged.
 func TestMigrationIdempotent(t *testing.T) {
 	root := buildMigrationFixture(t)
-	confirmedRunner(t)
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
 	if got := config.ReadDeployMode(root); got != "plugin" {
 		t.Fatalf("first run record = %q, want plugin", got)
@@ -390,7 +364,6 @@ func TestMigrationIdempotent(t *testing.T) {
 	// Second run: --force bypasses the version-compare skip (RK-7) so the
 	// flow actually runs; the record is present — step 1 short-circuits, and
 	// the thin deploy rewrites nothing under the dropped roots.
-	confirmedRunner(t)
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "force": "true"})
 
 	if got := config.ReadDeployMode(root); got != "plugin" {
@@ -414,7 +387,6 @@ func TestMigrationIdempotent(t *testing.T) {
 // re-deployed — and the recorded value is byte-identical after the run.
 func TestUpdatePluginModeSkipsDroppedRedeploy(t *testing.T) {
 	root := buildMigrationFixture(t)
-	confirmedRunner(t)
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
 	before := config.ReadDeployMode(root)
 
@@ -428,7 +400,6 @@ func TestUpdatePluginModeSkipsDroppedRedeploy(t *testing.T) {
 		t.Fatalf("plant: %v", err)
 	}
 
-	confirmedRunner(t)
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "force": "true"})
 
 	assertFileAbsent(t, root, migIdenticalSkill)
@@ -480,10 +451,8 @@ func TestUpdateNeverFlipsModeRecord(t *testing.T) {
 // plugin-mode project never re-creates the dropped components.
 func TestUpdateForceDoesNotResurrectDropped(t *testing.T) {
 	root := buildMigrationFixture(t)
-	confirmedRunner(t)
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
 
-	confirmedRunner(t)
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "force": "true"})
 
 	assertFileAbsent(t, root, migIdenticalSkill)
@@ -623,7 +592,6 @@ func TestMigrationArchiveRefusesSymlinkedArchiveDestination(t *testing.T) {
 	t.Run("flow_aborts_before_any_removal", func(t *testing.T) {
 		root := buildMigrationFixture(t)
 		plantSymlinkedArchiveRoot(t, root)
-		confirmedRunner(t)
 
 		err := tryRunUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
 		if err == nil {
@@ -703,7 +671,6 @@ func TestMigrationRehomesExistingMirrorEntries(t *testing.T) {
 		t.Fatalf("mkdir user mirror entry: %v", err)
 	}
 
-	confirmedRunner(t)
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
 
 	// The entry is now a REAL directory (not a symlink), holding the
@@ -741,4 +708,99 @@ func TestMigrationRehomesExistingMirrorEntries(t *testing.T) {
 	if entries, _ := os.ReadDir(userEntry); len(entries) != 0 {
 		t.Errorf("the user's own mirror entry was modified: %v", entries)
 	}
+}
+func TestUnknownSkillPreservedAcrossLocalUpdates(t *testing.T) {
+	root := buildMigrationFixture(t)
+	before := readFixtureFile(t, root, migForeignSkill)
+	hook := filepath.Join(root, ".claude", "hooks", "moai", "local-only-review.sh")
+	if err := os.MkdirAll(filepath.Dir(hook), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	const hookBytes = "local hook must remain recoverable"
+	if err := os.WriteFile(hook, []byte(hookBytes), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for i, flags := range []map[string]string{
+		{"yes": "true"},
+		{"yes": "true", "no-plugin": "true", "force": "true"},
+	} {
+		runUpdateCobraCmd(t, root, flags)
+		if got := config.ReadDeployMode(root); got != "local" {
+			t.Errorf("run%d mode=%q, want local", i+1, got)
+		}
+		if got := readFixtureFile(t, root, migForeignSkill); got != before {
+			t.Fatalf("run%d altered unknown skill: %q, want %q", i+1, got, before)
+		}
+	}
+	if _, err := os.Stat(hook); !os.IsNotExist(err) {
+		t.Fatalf("managed local-only hook not cleaned: %v", err)
+	}
+	matches, err := filepath.Glob(filepath.Join(root, ".moai-backups", "*", "pre-clean", ".claude", "hooks", "moai", "local-only-review.sh"))
+	if err != nil || len(matches) == 0 {
+		t.Fatalf("managed hook has no pre-clean backup: %v", err)
+	}
+	for _, path := range matches {
+		data, err := os.ReadFile(path)
+		if err != nil || string(data) != hookBytes {
+			t.Fatalf("managed hook backup differs: %q, %v", data, err)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Card t1438 card-review findings 1 and 2
+func TestMigrationPreservesExistingMirrorEntries(t *testing.T) {
+	root := buildMigrationFixture(t)
+	mirrorEntry := filepath.Join(root, ".agents", "skills", "moai-foundation-core")
+	if err := os.MkdirAll(filepath.Dir(mirrorEntry), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join("..", "..", ".claude", "skills", "moai-foundation-core")
+	if err := os.Symlink(target, mirrorEntry); err != nil {
+		t.Fatal(err)
+	}
+	userEntry := filepath.Join(root, ".agents", "skills", "moai-user-own")
+	if err := os.MkdirAll(userEntry, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	home := installMigrationUserCounterparts(t)
+	if err := migrateProjectCommonAssets(root, home, nil, func(string, ...interface{}) {}); err != nil {
+		t.Fatal(err)
+	}
+	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
+	if got, err := os.Readlink(mirrorEntry); err != nil || got != target {
+		t.Fatalf("user alias changed: %q (%v)", got, err)
+	}
+	assertFileAbsent(t, root, migIdenticalSkill)
+	assertFilePresent(t, root, migModifiedSkill)
+	assertFilePresent(t, root, migForeignSkill)
+	if _, err := os.Lstat(filepath.Join(root, ".agents", "skills", "moai-workflow-tdd")); !os.IsNotExist(err) {
+		t.Fatalf("retired mirror provisioned: %v", err)
+	}
+	if entries, err := os.ReadDir(userEntry); err != nil || len(entries) != 0 {
+		t.Fatalf("user entry changed: %v (%v)", entries, err)
+	}
+}
+
+// Exercise the same user-install phase that precedes project migration in
+// runUpdate, with both roots confined to test-owned temporary directories.
+func installMigrationUserCounterparts(t *testing.T) string {
+	t.Helper()
+	home := t.TempDir()
+	if err := runUserAssetUpdatePhase(home, &strings.Builder{}); err != nil {
+		t.Fatal(err)
+	}
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := fs.ReadFile(embedded, migIdenticalSkill)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(home, filepath.FromSlash(migIdenticalSkill)))
+	if err != nil || string(got) != string(want) {
+		t.Fatalf("user counterpart differs: %v", err)
+	}
+	return home
 }

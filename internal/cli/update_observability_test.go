@@ -338,14 +338,10 @@ func TestPreviewReconciliation_ModeScoped(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var pluginOut bytes.Buffer
-	if err := previewReconciliation(root, template.DeployModePlugin, &pluginOut); err != nil {
-		t.Fatalf("previewReconciliation (plugin): %v", err)
-	}
-	if strings.Contains(pluginOut.String(), "moai-custom") {
-		t.Errorf("preview lists a file the plugin-mode run never scopes:\n%s", pluginOut.String())
-	}
-
+	// SPEC-USER-ASSET-INSTALL-001 (t1509 M7) retired the plugin payload:
+	// DeployMode is Local-only now, so the former plugin-scope subtest is
+	// gone with its carrier. The local-mode preview still must list the
+	// preserved unknown skill.
 	var localOut bytes.Buffer
 	if err := previewReconciliation(root, template.DeployModeLocal, &localOut); err != nil {
 		t.Fatalf("previewReconciliation (local): %v", err)

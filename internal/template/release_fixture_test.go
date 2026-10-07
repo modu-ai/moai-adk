@@ -30,7 +30,6 @@ import (
 const (
 	rlsReleaseScriptRel = "scripts/release.sh"
 	rlsProvenanceRel    = "scripts/verify-release-provenance.sh"
-	rlsPluginVersionRel = "scripts/check-plugin-version.sh"
 	rlsDeadline         = 90 * time.Second
 )
 

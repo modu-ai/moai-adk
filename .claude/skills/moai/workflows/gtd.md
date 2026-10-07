@@ -496,4 +496,4 @@ Say this plainly when it applies rather than implying a lane fleet exists.
 
 - `.claude/rules/moai/workflow/factory-dispatch.md` — the dispatch cycle this feeds
 - `.claude/rules/moai/core/askuser-protocol.md` — the channel the pick runs through
-- `.claude/agents/moai/manager-lead.md` — the coordination agent
+- `~/.claude/agents/manager-lead.md` — the coordination agent

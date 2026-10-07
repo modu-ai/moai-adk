@@ -47,12 +47,19 @@ func FormatOptionalPackTier(packName string) string {
 //   - Path: path relative to the templates/ root (e.g. "templates/.claude/skills/moai/")
 //   - Hash: sha256 hex digest of the normalized source file (64 lowercase hex chars)
 //   - Version: semver string (e.g. "1.0.0")
+//   - DependsSkills / DependsAgents: the entry's declared runtime
+//     dependencies (SPEC-USER-ASSET-INSTALL-001 REQ-004 — per-entry skill
+//     dependencies; the L0 factory entry declares its manager-lead agent
+//     dependency here, and bundle removal consults these rows for the R-f-②
+//     dependency-maintenance deferral).
 type Entry struct {
-	Name    string `yaml:"name"`
-	Tier    string `yaml:"tier"`
-	Path    string `yaml:"path"`
-	Hash    string `yaml:"hash"`
-	Version string `yaml:"version"`
+	Name          string   `yaml:"name"`
+	Tier          string   `yaml:"tier"`
+	Path          string   `yaml:"path"`
+	Hash          string   `yaml:"hash"`
+	Version       string   `yaml:"version"`
+	DependsSkills []string `yaml:"depends_skills,omitempty"`
+	DependsAgents []string `yaml:"depends_agents,omitempty"`
 }
 
 // Pack represents an optional-pack section in catalog.yaml.
