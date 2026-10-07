@@ -49,7 +49,7 @@ const (
 	// expectedRegistryEntries is the number of exact paths the registry
 	// holds. Held as a constant, never derived from a parse of itself — a
 	// count compared with itself is always equal and asserts nothing.
-	expectedRegistryEntries = 28
+	expectedRegistryEntries = 35
 
 	// expectedStampEntries is the number of entries classified stamp. Held
 	// separately from expectedRegistryEntries on purpose: deriving one from
@@ -97,6 +97,14 @@ var versionStampRegistry = []versionStampEntry{
 	{path: "pkg/version/version.go", class: versionStampClassStamp},
 
 	// Prose — citations of releases; a bump rewrites none of them.
+	// Historical artifacts remain exact-path prose entries; no exclusion is widened.
+	{path: ".moai/archive/worktrees/t204.diff", class: versionStampClassProse},
+	{path: ".moai/lessons-inbox.jsonl", class: versionStampClassProse},
+	{path: "reports/backlog-status-20260825.html", class: versionStampClassProse},
+	{path: "reports/backlog-status-20260826.html", class: versionStampClassProse},
+	{path: "reports/backlog-status-20260826.md", class: versionStampClassProse},
+	{path: "reports/hooks-audit-20260911-01a08e35/cards-after.json", class: versionStampClassProse},
+	{path: "reports/hooks-audit-20260911-01a08e35/cards-before.json", class: versionStampClassProse},
 	{path: ".moai/docs/version-management.md", class: versionStampClassProse},
 	{path: "docs-site/content/en/advanced/codex-dual-harness.md", class: versionStampClassProse},
 	{path: "docs-site/content/en/advanced/statusline.md", class: versionStampClassProse},
@@ -429,8 +437,8 @@ func TestVersionStampSyntheticVacuity(t *testing.T) {
 		in.population = in.population[:len(in.population)-1]
 		delete(in.contents, dropped.path)
 		findings := judgeVersionStampRegistry(in.token, in.population, in.contents, in.registry, in.docStamps)
-		if len(findings) != 1 || findings[0] != "registry entries=27 expected=28" {
-			t.Errorf("check did not emit expected failure: registry entries=27 expected=28 (got %v)", findings)
+		if len(findings) != 1 || findings[0] != "registry entries=34 expected=35" {
+			t.Errorf("check did not emit expected failure: registry entries=34 expected=35 (got %v)", findings)
 		}
 	})
 	t.Run("holds the stamp classification count", func(t *testing.T) {
@@ -510,7 +518,7 @@ func TestVersionStampSyntheticDocCrossCheck(t *testing.T) {
 		}
 	})
 	t.Run("passes with prose entries the document never lists", func(t *testing.T) {
-		// The baseline already holds 21 prose registry entries the document
+		// The baseline already holds 28 prose registry entries the document
 		// does not name — the documentation cross-check reads stamp sets
 		// only, so it must stay silent on all of them.
 		in := versionStampSyntheticBase()
@@ -581,7 +589,7 @@ func TestVersionStampSyntheticPopulationReach(t *testing.T) {
 		const unreadable = "dist/artifact.bin"
 		in.population = append(in.population, unreadable)
 		findings := judgeVersionStampRegistry(in.token, in.population, in.contents, in.registry, in.docStamps)
-		want := "judged=28 handed=29"
+		want := "judged=35 handed=36"
 		if len(findings) != 1 || findings[0] != want {
 			t.Errorf("check did not emit expected failure: %s (got %v)", want, findings)
 		}
@@ -658,12 +666,9 @@ var versionStampExclusionGroups = []string{
 	".moai/reports/",
 	".moai/specs/",
 	".moai/release-notes/",
-	".moai/archive/",
-	".moai/lessons-inbox.jsonl",
 	"CHANGELOG.md",
 	"*_test.go",
 	"docs-site/content/*/changelog*",
-	"reports/",
 }
 
 // versionStampExclusionGlobRes holds the compiled forms of the groups that

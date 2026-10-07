@@ -7,7 +7,7 @@
 // //go:embed all:templates, which embedded every file on disk including
 // git-ignored and untracked additions (card t1539). This includes agent
 // definitions, skill files, rules, output styles, configuration references,
-// and root files (CLAUDE.md, .gitignore).
+// and root files (AGENTS.md, .gitignore).
 //
 // Runtime-generated files (settings.json, .lsp.json) are
 // intentionally excluded from the embedded templates per ADR-011

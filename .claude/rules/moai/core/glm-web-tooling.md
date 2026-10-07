@@ -9,7 +9,7 @@ This file is the **single source of truth** for how MoAI agents and the orchestr
 
 > **Why this rule exists**: Under a GLM backend the built-in Claude Code `WebSearch` / `WebFetch` tools route through the z.ai Anthropic-compatible gateway, which intermittently returns HTTP 529 (overload). Reading an image file with the built-in `Read` tool likewise hits a known base64-encoding failure (HTTP 422) under GLM. z.ai ships dedicated MCP servers that run server-side and bypass these failure modes. Without this doctrine, agents silently fall back to the failing built-in tools and research/fetch/vision operations break.
 
-Cross-referenced by: `agent-common-protocol.md` §MCP Fallback Strategy, `settings-management.md` §MCP Configuration, `moai-constitution.md` §URL Verification, `output-styles/moai/moai-learn.md`, `CLAUDE.md` §10/§12.
+Cross-referenced by: `agent-common-protocol.md` §MCP Fallback Strategy, `settings-management.md` §MCP Configuration, `moai-constitution.md` §URL Verification, `output-styles/moai/moai-learn.md`.
 
 ---
 
@@ -139,7 +139,7 @@ Each tool-name argument registers the correct server: `vision` → `zai-mcp-serv
 - `agent-common-protocol.md` §MCP Fallback Strategy — general MCP fallback behavior
 - `settings-management.md` §MCP Configuration — the three z.ai server entries and `alwaysLoad` semantics
 - `moai-constitution.md` §URL Verification — URL verification under GLM uses `mcp__web_reader__webReader`
-- `CLAUDE.md` §10 Web Search Protocol / §12 MCP Servers — orchestrator-facing routing pointer
+- orchestrator-facing routing pointer (this file is the SSOT for GLM web routing)
 - z.ai official docs: docs.z.ai/devpack/mcp (reader / search / vision MCP servers)
 
 ---

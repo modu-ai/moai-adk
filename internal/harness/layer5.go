@@ -65,7 +65,7 @@ func scaffoldFiles(opts ScaffoldOpts) []scaffoldFile {
 	files := []scaffoldFile{
 		{
 			name:    "main.md",
-			purpose: "CLAUDE.md @import 진입점 — 프로젝트 메타데이터 + 도메인 요약",
+			purpose: "AGENTS.md @import 진입점 — 프로젝트 메타데이터 + 도메인 요약",
 			body:    mainMD(opts, now),
 		},
 		{
@@ -112,7 +112,7 @@ func scaffoldFiles(opts ScaffoldOpts) []scaffoldFile {
 func mainMD(opts ScaffoldOpts, now string) string {
 	var b strings.Builder
 	b.WriteString("# Harness Main\n")
-	b.WriteString("<!-- 진입점: CLAUDE.md @import가 이 파일을 따라옵니다. -->\n\n")
+	b.WriteString("<!-- 진입점: AGENTS.md @import가 이 파일을 따라옵니다. -->\n\n")
 	fmt.Fprintf(&b, "**Domain**: %s\n", opts.Domain)
 	fmt.Fprintf(&b, "**SPEC**: %s\n", opts.SpecID)
 	fmt.Fprintf(&b, "**Updated**: %s\n\n", now)
@@ -191,21 +191,21 @@ func readmeMD(opts ScaffoldOpts) string {
 	b.WriteString("이 디렉터리는 Layer 5 (사용자 영역) 콘텐츠입니다. 5-Layer 통합 장치:\n\n")
 	b.WriteString("- **L1**: harness-* skill frontmatter triggers (paths/keywords/agents/phases)\n")
 	b.WriteString("- **L2**: `.moai/config/sections/workflow.yaml` `harness:` 섹션\n")
-	b.WriteString("- **L3**: `CLAUDE.md` `<!-- moai:harness-start -->` ~ `<!-- moai:harness-end -->` marker\n")
+	b.WriteString("- **L3**: `AGENTS.md` `<!-- moai:harness-start -->` ~ `<!-- moai:harness-end -->` marker\n")
 	b.WriteString("- **L4**: `.claude/skills/moai/workflows/{plan,run,sync,design}.md` 정적 import line\n")
 	b.WriteString("- **L5**: `.moai/harness/` (이 디렉터리)\n\n")
 	b.WriteString("## Editable Files\n\n")
-	b.WriteString("- `main.md` — CLAUDE.md @import 진입점 (편집 가능)\n")
+	b.WriteString("- `main.md` — AGENTS.md @import 진입점 (편집 가능)\n")
 	b.WriteString("- `*-extension.md` — phase별 chain 확장 (편집 가능)\n")
 	b.WriteString("- `chaining-rules.yaml` — chain rules (편집 가능, schema 준수)\n")
 	b.WriteString("- `interview-results.md` — 인터뷰 답변 (참조용, 편집 비권장)\n\n")
 	// Activation / retrofit note: a harness only auto-triggers when the L3
-	// CLAUDE.md marker + L5 main.md entry point are installed. If this harness
-	// was generated before the activation wiring existed (markers absent), run
-	// the install command to retrofit the trigger chain. The install is
-	// idempotent, so re-running on an already-wired harness is safe.
+	// instruction-file marker + L5 main.md entry point are installed. If this
+	// harness was generated before the activation wiring existed (markers
+	// absent), run the install command to retrofit the trigger chain. The
+	// install is idempotent, so re-running on an already-wired harness is safe.
 	b.WriteString("## Activation / Retrofit\n\n")
-	b.WriteString("이 하네스가 자동 활성화되려면 L3 (CLAUDE.md marker) + L5 (`main.md` 진입점)이 설치되어 있어야 합니다.\n")
+	b.WriteString("이 하네스가 자동 활성화되려면 L3 (AGENTS.md marker) + L5 (`main.md` 진입점)이 설치되어 있어야 합니다.\n")
 	b.WriteString("마커가 없는 (구버전 생성) 하네스는 다음 명령으로 트리거 체인을 복원합니다 (멱등 — 재실행 안전):\n\n")
 	b.WriteString("```bash\n")
 	fmt.Fprintf(&b, "moai harness install --spec-id %s --domain %s\n", opts.SpecID, opts.Domain)

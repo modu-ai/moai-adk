@@ -137,10 +137,12 @@ func (v *projectValidator) Validate(root string) (*ValidationResult, error) {
 		result.Warnings = append(result.Warnings, ".claude/ directory already exists; templates may be updated.")
 	}
 
-	// Check if CLAUDE.md already exists
-	claudeMD := filepath.Join(root, defs.ClaudeMD)
-	if fileExists(claudeMD) {
-		result.Warnings = append(result.Warnings, "CLAUDE.md already exists; it will be updated.")
+	// Check if AGENTS.md already exists (the sole instruction file of the
+	// AGENTS.md-primary product). A legacy CLAUDE.md is inert: never an error,
+	// never recreated, and not mentioned.
+	agentsMD := filepath.Join(root, defs.AgentsMD)
+	if fileExists(agentsMD) {
+		result.Warnings = append(result.Warnings, "AGENTS.md already exists; it will be updated.")
 	}
 
 	// Check Git repository
@@ -206,10 +208,11 @@ func (v *projectValidator) ValidateMoAI(root string) (*ValidationResult, error) 
 		result.Warnings = append(result.Warnings, ".claude/ directory not found.")
 	}
 
-	// Check CLAUDE.md exists
-	claudeMD := filepath.Join(root, defs.ClaudeMD)
-	if !fileExists(claudeMD) {
-		result.Warnings = append(result.Warnings, "CLAUDE.md not found.")
+	// Check AGENTS.md exists (steers legacy projects toward the current
+	// instruction file; a legacy CLAUDE.md alone does not satisfy this).
+	agentsMD := filepath.Join(root, defs.AgentsMD)
+	if !fileExists(agentsMD) {
+		result.Warnings = append(result.Warnings, "AGENTS.md not found. Run 'moai init' to create it.")
 	}
 
 	return result, nil

@@ -1,6 +1,15 @@
 # 진입점
 
-## 현재 main의 통합·레인 진입
+## 현재 main48의 기존 진입점 연결
+
+기준은 `48fa94b99023bb252a9731fbbd5ebc6dcc7472ab`다. 비테스트 소스의 literal `AddCommand(` 호출 줄249개와 `rootCmd.AddCommand(` 줄68개는 이전067과 같다. 이 값은 명령 개수가 아닌 소스 호출 줄 수다.
+
+- `internal/cli/worktree/done.go`의 `landingBase`와 `internal/cli/worktree/sweep.go`의 `sweepDefaultBase`는 Factory의 `LandedRefForWithLevel`에서 기본 ref를 얻는다. done은 `LandedRefLevelSource`로 출처도 반환하고, sweep는 단계 값을 버리고 ref만 반환한다. 명시적 sweep `--base`의 우선순위를 유지한다.
+- `internal/cli/todo_issuance.go`의 `productionLaneFilesProbe`는 공통 `LandedRefFor`로 merge-base 기준을 얻는다. `internal/cli/doctor_git_strategy_workflow.go`도 이 기준 체인을 안내한다.
+- `internal/cli/update.go`와 `internal/cli/update_clean_install.go`의 기존 진입점은 보존한 설정에 root deny 정규화를 호출한다. 새 CLI 명령은 추가되지 않았다.
+- `internal/cli/factory_card.go`의 기존 next/select/lease와 queued 승격 경로는 현재 큐 상태를 확인하고 기존 assigned 행의 배정 입력을 보존한다.
+
+## 이전067 기준의 통합·레인 진입
 
 기준은 `067fdced2dd8f38812d4c36ec17ceb8d2ca3e263`다. 비테스트 소스의 literal `AddCommand(` 호출 줄은 이전 기준 248개에서 249개로 늘었고, `rootCmd.AddCommand(` 줄은 68개로 같다. 이는 호출 줄 수이며 실행 가능한 명령 개수와 같다는 뜻은 아니다.
 
