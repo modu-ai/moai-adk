@@ -14,9 +14,10 @@ proof of integrity.
 
 The backup step must:
 
-1. copy the approved path set into `.moai/backups/sync-{timestamp}/`;
-2. write `manifest.tsv` with file hashes and `MISSING` rows;
-3. run `verify-sync-backup.sh verify` and retain its output;
+1. run `bash .claude/hooks/moai/verify-sync-backup.sh create <new-backup-dir> <project-root> <relative-path>...`
+   for the approved path set, using a new `.moai/backups/sync-{timestamp}/` directory;
+2. retain the generated `manifest.tsv` with file hashes and `MISSING` rows;
+3. run `bash .claude/hooks/moai/verify-sync-backup.sh verify <backup-dir>` and retain its output;
 4. read back the approved files (or perform a restore-to-isolated-fixture
    check) before any writer starts.
 

@@ -111,6 +111,7 @@ import "embed"
 //go:embed templates/.claude/hooks/moai/sync-phase-quality-gate.sh
 //go:embed templates/.claude/hooks/moai/team-ac-verify.sh
 //go:embed templates/.claude/hooks/moai/trace-ledger.sh
+//go:embed templates/.claude/hooks/moai/verify-sync-backup.sh
 //go:embed templates/.claude/loop.md
 //go:embed templates/.claude/output-styles/moai/moai-easy.md
 //go:embed templates/.claude/output-styles/moai/moai-learn.md
