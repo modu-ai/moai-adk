@@ -156,6 +156,16 @@ func (e *backlogEngine) copyRuntime(ctx context.Context, runtime TodoRuntime) er
 // recordRuntime shares the card mutation lock and commits seed/assignment together.
 // @MX:NOTE: [AUTO] External provenance is captured before acquiring this lock; a reported completion never archives a card.
 func (s *BacklogStore) recordRuntime(run TodoRuntimeRun, assignment *TodoRuntimeAssignment) (err error) {
+	return s.recordRuntimeHook(run, assignment, nil)
+}
+
+// recordRuntimeHook is recordRuntime with a follow-up write that must land
+// in the same critical section: hook runs after the assignment transaction
+// commits while the queue lock is still held, so a completion path cannot
+// interleave between the assignment save and the hook's write (review
+// round-20 P1, SPEC-FACTORY-COMPLETION-RECOVERY-001). A hook error
+// propagates after the lock releases.
+func (s *BacklogStore) recordRuntimeHook(run TodoRuntimeRun, assignment *TodoRuntimeAssignment, hook func() error) (err error) {
 	// @MX:NOTE: [TID:LINK] Runtime UUIDs are projected from the one live/archive card identity snapshot; owner and provenance remain report data.
 	if strings.TrimSpace(run.RunID) == "" {
 		return errors.New("runtime run_id is required")
@@ -229,5 +239,11 @@ func (s *BacklogStore) recordRuntime(run TodoRuntimeRun, assignment *TodoRuntime
 	if _, err := migrateOwnerLabelVocabularyTx(ctx, tx); err != nil {
 		return err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	if hook != nil {
+		return hook()
+	}
+	return nil
 }

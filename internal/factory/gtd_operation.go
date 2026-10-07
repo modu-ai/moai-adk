@@ -3,10 +3,15 @@ package factory
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 type GTDOperationState string
@@ -17,6 +22,13 @@ const (
 	GTDOperationReconciled GTDOperationState = "reconciled"
 	GTDOperationBlocked    GTDOperationState = "blocked"
 )
+
+// GTDActionDispatch is the dispatch action's vocabulary. The engine keys its
+// factory-binding reconciliation on it (review round-20 P1,
+// SPEC-FACTORY-COMPLETION-RECOVERY-001): the owner's readback proves its own
+// effect, and the dispatch binding is the factory record's half of the same
+// success.
+const GTDActionDispatch = "dispatch"
 
 type GTDOperation struct {
 	OperationID  string            `json:"operation_id"`
@@ -116,6 +128,18 @@ func ExecuteGTDOperation(ctx context.Context, store *BacklogStore, candidate GTD
 	if err != nil {
 		return stored, err
 	}
+	// The owner's readback proves its own effect; a dispatch reconciles
+	// only when the factory record's half agrees too (review round-20 P1,
+	// SPEC-FACTORY-COMPLETION-RECOVERY-001). A partial failure — the
+	// assignment save landed, the binding write did not — is repaired HERE
+	// rather than declared reconciled over: re-running the owner's apply
+	// would repeat the save that already committed, and the binding write
+	// alone is what went missing.
+	if applied && stored.Action == GTDActionDispatch {
+		if rerr := reconcileGTDDispatchBinding(ctx, store, stored.Target, stored.MissionID); rerr != nil {
+			return stored, rerr
+		}
+	}
 	if applied {
 		if stored.State == GTDOperationReconciled {
 			return stored, nil
@@ -142,8 +166,217 @@ func ExecuteGTDOperation(ctx context.Context, store *BacklogStore, candidate GTD
 	if !applied {
 		return stored, errors.New("gtd operation: authoritative_readback_missing")
 	}
+	if stored.Action == GTDActionDispatch {
+		if rerr := reconcileGTDDispatchBinding(ctx, store, stored.Target, stored.MissionID); rerr != nil {
+			return stored, rerr
+		}
+	}
 	if err := markGTDOperationState(ctx, store, stored.OperationID, GTDOperationInvoking, GTDOperationReconciled); err != nil {
 		return stored, err
 	}
 	return LoadGTDOperation(ctx, store, stored.OperationID)
+}
+
+// reconcileGTDDispatchBinding verifies — and repairs — the factory record's
+// half of a dispatch success (review round-20 P1): the owner's readback
+// proves the assignment, and the dispatch binding must name the operation's
+// run before the operation may reconcile. The repair runs
+// repairGTDDispatchRecord, because the missing writes are the factory
+// record's alone — the assignment they pair with already committed — and
+// re-running the owner's apply would repeat that committed save.
+func reconcileGTDDispatchBinding(ctx context.Context, store *BacklogStore, cardID, runID string) error {
+	current, err := gtdDispatchBindingCurrent(ctx, store, cardID, runID)
+	if err != nil {
+		return err
+	}
+	if current {
+		return nil
+	}
+	root := gtdProjectRootForStore(store)
+	if root == "" {
+		return fmt.Errorf("gtd operation: dispatch target %s does not name run %s and the project root is unresolvable for the binding repair", cardID, runID)
+	}
+	if err := repairGTDDispatchRecord(ctx, store, root, cardID, runID); err != nil {
+		return err
+	}
+	current, err = gtdDispatchBindingCurrent(ctx, store, cardID, runID)
+	if err != nil {
+		return err
+	}
+	if !current {
+		return fmt.Errorf("gtd operation: dispatch target %s does not name run %s after the binding repair", cardID, runID)
+	}
+	return nil
+}
+
+// repairGTDDispatchRecord completes the factory-record half of a dispatch
+// whose apply landed the assignment save but failed the factory writes
+// (review round-20 P1): the card row — RecordPicked when the run holds none,
+// the mirror's T1 — and the dispatch binding. The mirror's shape, driven from
+// the operation engine: the same queue-lock discipline, a picked queue item
+// as the only precondition, and an already-recorded row left exactly as it
+// stands. The completion gate reads the repaired pair as one binding: the
+// row resolves the bound run, and the binding re-targets the gate away from
+// the superseded approval.
+func repairGTDDispatchRecord(ctx context.Context, store *BacklogStore, root, cardID, runID string) error {
+	return store.WithLock(func(l *LockedBacklog) error {
+		record, err := l.LoadPure()
+		if err != nil {
+			return fmt.Errorf("read queue: %w", err)
+		}
+		picked := false
+		for _, item := range record.Items {
+			if item.ID == cardID {
+				picked = item.State == BacklogStatePicked
+			}
+		}
+		if !picked {
+			return fmt.Errorf("queue item %s is not picked", cardID)
+		}
+		db, err := homestate.OpenFactory(root)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = db.Close() }()
+		now := time.Now().UTC()
+		if _, err := db.LoadCard(ctx, runID, cardID); errors.Is(err, homestate.ErrCardNotFound) {
+			if _, err := db.RecordPicked(ctx, runID, cardID, homestate.CardFields{}, "dispatch", now); err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		}
+		return db.RecordDispatchBinding(ctx, cardID, runID, now)
+	})
+}
+
+// RecordDispatchBindingIfEngaged records cardID -> runID as the card's
+// current factory engagement when the card has factory rows — REQ-FCR-002's
+// scope sentence at the storage layer (review round-18 P2, tightened by the
+// round-19 edge): a card with NO factory row in ANY run is an ordinary card,
+// out of scope for the binding; the write is skipped silently and the card
+// keeps its existing completion behavior. A card WITH rows (in this or any
+// other run) is bound to the targeted run: the later done gate then refuses
+// the stale approval (run mismatch, or run-unresolvable when the targeted
+// run's row is yet to be created by the dispatch) — never success on the old
+// approval. A missing factory database is a no-op: the first real dispatch
+// records the binding through the mirror path instead.
+func RecordDispatchBindingIfEngaged(root, cardID, runID string) error {
+	path, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		return err
+	}
+	if _, statErr := os.Stat(path); statErr != nil {
+		if os.IsNotExist(statErr) {
+			return nil
+		}
+		return statErr
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
+	var existing int
+	if err := db.DB.QueryRowContext(context.Background(), `SELECT count(*) FROM cards WHERE card_id=?`, cardID).Scan(&existing); err != nil {
+		return err
+	}
+	if existing == 0 {
+		return nil
+	}
+	return db.RecordDispatchBinding(context.Background(), cardID, runID, time.Now())
+}
+
+// gtdDispatchBindingCurrent reports whether the card's recorded dispatch
+// binding names the operation's run — the factory record's half of a dispatch
+// reconciliation (review round-20 P1). Scope follows REQ-FCR-002's sentence:
+// a missing factory database, a missing card_dispatch table, or a card with
+// no factory row leaves the axis vacuous (the completion gate does not
+// apply); a binding naming another run — or factory rows orphaned from any
+// binding, which apply's binding write repairs — reads stale.
+//
+// The factory database resolves through homestate's own canonical path from
+// the project root located above the queue store (see
+// gtdProjectRootForStore) — the same resolution the dispatch writers and the
+// completion gate use. A queue with no project ancestor leaves the axis
+// vacuous here; the completion gate resolves the project root
+// authoritatively on the done side.
+func gtdDispatchBindingCurrent(ctx context.Context, store *BacklogStore, cardID, runID string) (bool, error) {
+	root := gtdProjectRootForStore(store)
+	if root == "" {
+		return true, nil
+	}
+	path, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		return false, err
+	}
+	if _, statErr := os.Stat(path); statErr != nil {
+		if os.IsNotExist(statErr) {
+			return true, nil
+		}
+		return false, statErr
+	}
+	db, err := homestate.OpenFactoryReadonly(path)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = db.Close() }()
+	hasDispatch, err := db.FactoryTablePresent(ctx, "card_dispatch")
+	if err != nil {
+		return false, err
+	}
+	if !hasDispatch {
+		// An older-schema store: no dispatch bindings exist anywhere, so
+		// none can be stale (the completion gate reads the same store as
+		// unverified, never as a migration trigger).
+		return true, nil
+	}
+	var bound string
+	err = db.DB.QueryRowContext(ctx, `SELECT run_id FROM card_dispatch WHERE card_id=?`, cardID).Scan(&bound)
+	if errors.Is(err, sql.ErrNoRows) {
+		var rows int
+		if rerr := db.DB.QueryRowContext(ctx, `SELECT count(*) FROM cards WHERE card_id=?`, cardID).Scan(&rows); rerr != nil {
+			return false, rerr
+		}
+		// No factory row at all: out of scope, the axis passes. Rows
+		// orphaned from their binding: stale — apply's binding write
+		// recovers exactly this shape.
+		return rows == 0, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if bound != runID {
+		return false, nil
+	}
+	// The binding names this run, but the mirror half may still be missing:
+	// reconciliation requires the card row the bound run resolves against
+	// (review round-20 P1) — without it the completion gate reads the
+	// binding as run-unresolvable and every close refuses.
+	var row int
+	if err := db.DB.QueryRowContext(ctx, `SELECT count(*) FROM cards WHERE run_id=? AND card_id=?`, runID, cardID).Scan(&row); err != nil {
+		return false, err
+	}
+	return row > 0, nil
+}
+
+// gtdProjectRootForStore walks up from the queue store to the project root —
+// the directory whose .moai carries the queue — so the factory database
+// resolves through homestate's canonical FactoryDBPath, the same resolution
+// every dispatch writer and the completion gate use. The walk is bounded; a
+// queue with no project .moai ancestor (the home-queue fallback) yields ""
+// and the dispatch-binding axis stays vacuous for the engine check.
+func gtdProjectRootForStore(store *BacklogStore) string {
+	dir := filepath.Dir(store.path)
+	for i := 0; i < 6; i++ {
+		if fi, err := os.Stat(filepath.Join(dir, ".moai")); err == nil && fi.IsDir() {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+		dir = parent
+	}
+	return ""
 }

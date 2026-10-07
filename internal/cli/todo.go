@@ -37,7 +37,6 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
-	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // init wires internal/cli's existing userHomeDirFn test-injection seam
@@ -1502,41 +1501,15 @@ func recordFactoryCardState(cardID, specID, state, eventKind string) {
 
 // recordDispatchBindingAtRoot records the card's dispatch binding — THIS run
 // is the card's current factory engagement — against the named project root.
-// A missing factory database is a no-op: the first real dispatch records the
-// binding itself. The caller decides the root (the selection's own queue
-// root, never a server-cwd fallback — review round-14 P1-2).
+// The scope sentence (REQ-FCR-002's, review round-18 P2, tightened by the
+// round-19 edge) and the write live in one place,
+// factory.RecordDispatchBindingIfEngaged: the dispatch operation engine's
+// partial-failure repair reuses the same implementation, so the binding the
+// gate verifies is the binding every writer wrote. The caller decides the
+// root (the selection's own queue root, never a server-cwd fallback —
+// review round-14 P1-2).
 func recordDispatchBindingAtRoot(cardID, runID, root string) error {
-	path, err := homestate.FactoryDBPath(root)
-	if err != nil {
-		return err
-	}
-	if _, statErr := os.Stat(path); statErr != nil {
-		if os.IsNotExist(statErr) {
-			return nil
-		}
-		return statErr
-	}
-	db, err := homestate.OpenFactory(root)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = db.Close() }()
-	// REQ-FCR-002's scope sentence at this layer (review round-18 P2,
-	// tightened by the round-19 edge): a card with NO factory row in ANY run
-	// is an ordinary card — out of scope for the binding; skip silently and
-	// the card keeps its existing completion behavior. A card WITH rows (in
-	// this or any other run) is bound to the targeted run: the later done
-	// gate then refuses the stale approval (run mismatch, or
-	// run-unresolvable when the targeted run's row is yet to be created by
-	// the dispatch) — never success on the old approval.
-	var existing int
-	if err := db.DB.QueryRowContext(context.Background(), `SELECT count(*) FROM cards WHERE card_id=?`, cardID).Scan(&existing); err != nil {
-		return err
-	}
-	if existing == 0 {
-		return nil
-	}
-	return db.RecordDispatchBinding(context.Background(), cardID, runID, time.Now())
+	return factory.RecordDispatchBindingIfEngaged(root, cardID, runID)
 }
 
 // normalizeTodoRef maps a bare <n> argument to the item id t<n>; an explicit
