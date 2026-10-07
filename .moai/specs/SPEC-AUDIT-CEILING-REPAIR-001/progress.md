@@ -600,6 +600,83 @@ the replace the access ACL must decode to exactly USER_OBJ/GROUP_OBJ/OTHER
 [1, 4, 0x20] with perms [6, 4, 0] (mode 0640), proving the inheritance was
 fully overwritten. Decisive run: CI linux (Gap).
 
+### Round-4 structural repair (sync-audit-7) — F13 fd-held replace, F11 resolved-position pops, F12 mid-component fail-closed
+
+**F13 (High, temp-symlink swap race)** — RED observed at HEAD `e055710e0`
+(seam stub performing the attack; probe file removed at commit):
+`append returned nil — the swap was not detected` + `the victim was
+overwritten with progress content` — the CreateTemp fd closed before
+seeding/writing/rename, all of which operated by NAME: a directory writer
+swapping the temp for a symlink truncated the project-external victim and
+made progress.md that symlink (auditor probe: victim_overwritten=true,
+progress_path_is_symlink=true). Fix: the fd is HELD end-to-end — seeding
+lands through the descriptor (linux: Fchmod/Fsetxattr/Fchown fully
+fd-based; darwin: cp -p stays path-based under the leader-accepted
+exception, flagged), the content write is truncate+write on the held fd
+(immune to the name swap by construction), the name is verified against
+the held fd (device+inode) before seeding, after seeding, and before the
+rename, and a mismatch fails closed WITHOUT touching the swapped entry
+(it is no longer ours). The rename is the only step that creates the
+final name. Regression test `TestAppendProgressRecordTempSwapFailsClosed`
+(`audit_ceiling_replace_test.go`, darwin||linux, `-race -count=2`): the
+swap stub performs the attack at the seeder seam → the append reports the
+error, the victim is byte-identical, progress.md keeps its content and
+stays a regular file. **Darwin consistency note (flagged, not resolved)**:
+cp -p has no fd form — the path-based steps sit between the caller's
+inode verifications, and the residual between a verification and cp's
+internal writes is the flagged darwin conflict for leader re-verification.
+
+**F11 (High, resolved-position pops)** — RED observed at HEAD
+`e055710e0`: `the record did not land in the resolved real target (the
+middle alias was not expanded)` (codex repro: `alias → real/deep`,
+progress.md at `alias/spec/progress.md` → `../../actual.md`; the record
+stranded at `real/deep/actual.md` while `real/actual.md` went untouched).
+Fix: resolveProgressPath is a component-wise realpath walker — every
+symlink in EVERY component is expanded in filesystem order, so `..` pops
+apply to the Dir of the RESOLVED position, never to a spelling with
+unexpanded links. Regression test
+`TestAppendProgressRecordPopsResolvedPosition`.
+
+**F12 (High, mid-component absence)** — RED observed at HEAD
+`e055710e0`: `missing/../victim.md recorded into victim.md — the kernel
+would return ENOENT`. Fix: absence is allowed ONLY for the FINAL
+component (the dangling write-through path); a missing or non-directory
+MID-component fails closed like the kernel's ENOENT/ENOTDIR. Regression
+test `TestAppendProgressRecordMidComponentAbsenceFailsClosed` (both
+shapes). The walker rewrite also carries **gate round-46 item 6c** (the
+walk base preserves the volume root — unix `/`, drive `C:/`, UNC
+`//server/share`; a bare separator turned `C:\repo\...`'s first probe
+into `\C:`): regression test `TestResolveProgressPathWindowsVolumeRoot`
+(`progress_resolve_windows_test.go`, //go:build windows — **CI-windows
+runs it; the darwin lane cannot**, the gate's windows-runtime
+verification carried as the pre-fix RED evidence).
+
+### Gate round-46 items 6c/6d records
+
+**6c (P1, windows volume root)**: fixed as above; the walk base is the
+preserved volume root and the root-relative `..` guard compares against
+it. Windows-runtime execution: CI windows (gap carried; the gate's
+windows standard-path verification is the pre-fix evidence).
+
+**6d (P2, ACL-unsupported filesystems)**: the linux seeder's F9
+minimal-ACL write is now tolerated when the filesystem answers
+ENOTSUP/EOPNOTSUPP (Docker tmpfs and friends): `aclUnsupported` (errors.Is
+family check) skips the ACL write — the chmod'd perms stand, ownership
+still applies through the held fd, and the record LANDS — while EINVAL
+and other real failures still abort per the F8 posture (a real blob
+failure must never silently degrade — that is the F10 face). Pure-helper
+unit test `TestAclUnsupportedFamily` (linux-tagged, CI-owned) classifies
+ENOTSUP/EOPNOTSUPP/wrapped as unsupported and EINVAL as abort; the
+tmpfs-style integration regression is CI-linux-owned (gap).
+
+### Leader ledger note — 429 interruption (this round)
+
+The round-4 structural pass was interrupted mid-flight by a rate-window
+429 (coordinator resume after the ~02:58 KST reset; resumed from the
+coordinator's state summary: F11/F12 fixes restored uncommitted, F13 in
+flight at the seeder-signature step). Recorded per the leader's ledger
+request; the resume did not re-order any committed work.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07

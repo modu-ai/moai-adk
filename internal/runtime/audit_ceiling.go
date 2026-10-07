@@ -663,20 +663,51 @@ func appendProgressRecord(specDir, line string) error {
 		// mutex holds; the trade is the crash-atomicity window.
 		return os.WriteFile(path, []byte(content), 0)
 	}
+	// The fd is HELD end-to-end (sync-audit-7 F13): seeding and the content
+	// write land on the inode the descriptor points at, so a directory
+	// writer swapping the temp's NAME for a symlink cannot redirect them.
+	// Every name-based step below is verified against the held fd first and
+	// a mismatch fails closed WITHOUT touching the swapped entry; the
+	// rename is the only step that creates the final name, and it too runs
+	// behind an inode verification.
 	tmpName := tmp.Name()
-	if err := tmp.Close(); err != nil {
-		_ = os.Remove(tmpName)
-		return err
+	renamed := false
+	defer func() {
+		if !renamed {
+			// A mismatch path deliberately does NOT remove the swapped
+			// name — it is no longer ours to touch.
+			_ = os.Remove(tmpName)
+		}
+	}()
+	if !fdMatchesName(tmp, tmpName) {
+		return fmt.Errorf("progress.md replace: temp %s was swapped before seeding", tmpName)
 	}
-	defer func() { _ = os.Remove(tmpName) }() // no-op once the rename succeeds
-	if serr := seedFileMetadataFn(tmpName, path); serr != nil {
+	if serr := seedFileMetadataFn(tmp, tmpName, path); serr != nil {
 		_ = os.Remove(tmpName)
 		return fmt.Errorf("seed progress.md metadata: %w", serr)
 	}
-	if werr := os.WriteFile(tmpName, []byte(content), 0); werr != nil {
+	if !fdMatchesName(tmp, tmpName) {
+		return fmt.Errorf("progress.md replace: temp %s was swapped during seeding", tmpName)
+	}
+	// Content through the HELD descriptor: truncate + write on the fd —
+	// immune to the name swap by construction.
+	if werr := tmp.Truncate(0); werr != nil {
 		return werr
 	}
-	return os.Rename(tmpName, path)
+	if _, werr := tmp.Seek(0, 0); werr != nil {
+		return werr
+	}
+	if _, werr := tmp.Write([]byte(content)); werr != nil {
+		return werr
+	}
+	if !fdMatchesName(tmp, tmpName) {
+		return fmt.Errorf("progress.md replace: temp %s was swapped before the rename", tmpName)
+	}
+	if rerr := os.Rename(tmpName, path); rerr != nil {
+		return rerr
+	}
+	renamed = true
+	return nil
 }
 
 // seedFileMetadataFn is the metadata-seeding seam (a package var so the
@@ -696,8 +727,23 @@ func resolveProgressPath(path string) (string, error) {
 	if !filepath.IsAbs(path) {
 		return "", fmt.Errorf("progress.md symlink resolution requires an absolute path: %s", path)
 	}
-	cur := string(filepath.Separator)
-	todo := strings.Split(strings.Trim(filepath.ToSlash(path), "/"), "/")
+	// Base = the VOLUME root preserved (gate round-46 item 6c): unix "/",
+	// a drive root "C:/", or a UNC server+share "//server/share" — a bare
+	// separator turned `C:\repo\...`'s first probe into `\C:` and lost the
+	// UNC share.
+	slash := filepath.ToSlash(path)
+	base := string(filepath.Separator)
+	if strings.HasPrefix(slash, "//") {
+		idx := strings.Index(slash[2:], "/")
+		if idx < 0 {
+			return slash, nil // the path IS the share root
+		}
+		base = slash[:2+idx]
+	} else if len(slash) >= 2 && slash[1] == ':' {
+		base = slash[:2] + "/"
+	}
+	cur := base
+	todo := strings.Split(strings.Trim(strings.TrimPrefix(slash, base), "/"), "/")
 	hops := 0
 	for len(todo) > 0 {
 		part := todo[0]
@@ -706,7 +752,7 @@ func resolveProgressPath(path string) (string, error) {
 			continue
 		}
 		if part == ".." {
-			if cur != string(filepath.Separator) {
+			if cur != base {
 				cur = filepath.Dir(cur)
 			}
 			continue
