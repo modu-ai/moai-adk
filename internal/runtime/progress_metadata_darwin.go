@@ -18,6 +18,16 @@ import (
 // candidate. A failure is an error and the caller aborts the replace —
 // there is no mode-only fallback (sync-audit-4 F8).
 func seedFileMetadata(tmp, original string) error {
+	// The temp was created in the original's directory, so os.CreateTemp
+	// handed it the PARENT's inherited ACL entries at birth. Strip them
+	// FIRST (chmod -N — the temp is still empty), then cp -p copies the
+	// original's data, mode, and ACL exactly: inherited entries cannot
+	// survive, and an explicit original ACL is applied after the strip, so
+	// the replaced file's ACL is EXACTLY the original's (sync-audit-5
+	// item 2 — the inverse face of F6).
+	if out, err := exec.Command("chmod", "-N", tmp).CombinedOutput(); err != nil {
+		return fmt.Errorf("chmod -N %s: %v (%s)", tmp, err, out)
+	}
 	if out, err := exec.Command("cp", "-p", original, tmp).CombinedOutput(); err != nil {
 		return fmt.Errorf("cp -p %s %s: %v (%s)", original, tmp, err, out)
 	}

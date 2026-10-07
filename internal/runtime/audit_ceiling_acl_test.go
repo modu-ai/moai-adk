@@ -46,3 +46,48 @@ func TestAppendProgressRecordPreservesACL(t *testing.T) {
 		t.Fatalf("the original's ACL did not survive the atomic replace:\nbefore:\n%s\nafter:\n%s", before, after)
 	}
 }
+
+// TestAppendProgressRecordAclExactlyOriginal (consolidated item 2) — the
+// temp is created inside the SPEC directory, so it inherits the PARENT's
+// inherited ACL entries at creation; cp -p does not remove them when the
+// original itself has no ACL. The replaced file must carry EXACTLY the
+// original's ACL — no inherited over-grant — and the record lands.
+func TestAppendProgressRecordAclExactlyOriginal(t *testing.T) {
+	specDir := t.TempDir()
+	// The original predates the directory ACL: it carries none.
+	path := filepath.Join(specDir, "progress.md")
+	pre := "# progress\n\n## §G Override and Refusal Record\n\n- old record\n"
+	if err := os.WriteFile(path, []byte(pre), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("chmod", "+a", "group:_guest allow read,file_inherit", specDir).CombinedOutput(); err != nil {
+		t.Skipf("cannot set an inherited ACL on the directory: %v (%s)", err, out)
+	}
+	if before := aclOf(t, path); strings.Contains(before, "group:_guest") {
+		t.Skipf("the original unexpectedly carries ACL entries:\n%s", before)
+	}
+	if err := appendProgressRecord(specDir, "- new record"); err != nil {
+		t.Fatal(err)
+	}
+	after := aclOf(t, path)
+	if strings.Contains(after, "group:_guest") {
+		t.Fatalf("the replaced file GAINED the parent's inherited ACL entry the original lacked:\n%s", after)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "- new record") {
+		t.Fatalf("the record did not land:\n%s", raw)
+	}
+}
+
+// aclOf lists the file's ACL entries (ls -le) for exact-match assertions.
+func aclOf(t *testing.T, path string) string {
+	t.Helper()
+	out, err := exec.Command("/bin/ls", "-le", path).Output()
+	if err != nil {
+		t.Fatalf("ls -le: %v", err)
+	}
+	return string(out)
+}

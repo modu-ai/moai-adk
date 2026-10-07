@@ -499,6 +499,20 @@ mechanism. Noted for SPEC wording — the lane routes SPEC-text changes
 through manager-spec if the auditor requires more than this progress
 note.
 
+**Item 2 — darwin inherited-ACL over-grant (inverse face of F6)**: RED
+observed pre-fix at HEAD `e54ef43ab`: `the replaced file GAINED the
+parent's inherited ACL entry the original lacked` (probe: a parent with
+`group:_guest allow read,file_inherit`; the temp was created inside it and
+cp -p, whose source had no ACL, left the inherited entry in place). Fix
+(within the leader-accepted cp -p exception): the darwin seeder strips the
+temp's ACL FIRST (chmod -N — the temp is still empty) and THEN copies the
+original's data, mode, and ACL, so the replaced file's ACL is EXACTLY the
+original's — inherited entries cannot survive and explicit entries are
+applied after the strip. Regression test
+`TestAppendProgressRecordAclExactlyOriginal`
+(`audit_ceiling_acl_test.go`, darwin): replaced file carries no
+`group:_guest` entry, record lands.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07
