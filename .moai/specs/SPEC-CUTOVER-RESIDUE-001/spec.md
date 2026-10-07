@@ -57,12 +57,12 @@ The sweep resolves its landing base resiliently: when the derived default ref do
 
 ## §E — Out of Scope
 
-### E.1 Deferred
+### Out of Scope — E.1 Deferred
 - Sweeping every historical comment that mentions a dead "develop run" ID in ci.yml / release-pr-multi-os.yml (cosmetic; comments do not alter behavior).
 - Migrating `.claude/rules/local/gitflow-lane-protocol.md` and `.moai/docs/gitflow-integration-chain.md` (both already carry the cutover drift notice in `AGENTS.local.md` §4.1 — a separate card's scope if the operator wants the bodies rewritten).
 - Changing the primary checkout's deployed (untracked) `.moai/config/sections/git-strategy.yaml` — runtime-managed, shared-tree; the re-apply doctrine lands here and the operator/next `moai update` cycle applies it.
 
-### E.2 Explicitly excluded
+### Out of Scope — E.2 Explicitly excluded
 - Any change to `develop_branch`'s loader semantics (`LoadGitFlowIntegrationConfig` gating) — the gating is correct; only the local config's declared value is the residue.
 - Branch deletion on the remote or in local trees.
 
