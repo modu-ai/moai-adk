@@ -184,6 +184,12 @@ type updateOutcomeDetail struct {
 	UpdatedFiles int
 	// ConflictFiles counts high-risk (conflict-class) files the merge flagged.
 	ConflictFiles int
+	// MigrationRemoved counts files the per-file user-asset migration
+	// removed after confirming each counterpart (gate round 12): content-safe
+	// by construction — the confirmed user copy holds the bytes — so they
+	// must never read as losses (local-only) or recoveries (archived). The
+	// breakdown gives them their own segment.
+	MigrationRemoved int
 }
 
 // renderReconciliationOutcome emits the reconciliation outcome lines
@@ -237,21 +243,35 @@ func renderUpdateOutcome(w io.Writer, fileCount int, detail updateOutcomeDetail,
 		if detail.ManagedRedeployed > 0 {
 			breakdown = fmt.Sprintf("%d total (includes %d managed re-deployed)", fileCount, detail.ManagedRedeployed)
 		}
-		if detail.RemovedManaged > 0 {
+		// Gate round 12: the wholesale segment counts only what the walk or
+		// the reconcile removed — the migration's confirmed-counterpart
+		// removals carry their own segment, so "(all re-deployed)" can never
+		// cover a migration removal (its content is safe user-side, which is
+		// the opposite of re-deployed).
+		wholesale := detail.RemovedManaged - detail.MigrationRemoved
+		if wholesale > 0 {
 			sep := " · "
 			if breakdown == "" {
 				sep = ""
 			}
-			if detail.ArchivedForRecovery > 0 {
+			switch {
+			case detail.ArchivedForRecovery > 0:
 				// Gate round 21: a recovery copy is not a redeployment — the
 				// stale files are gone from place and recoverable only from
 				// the archive, so the honest wording says so.
-				breakdown += fmt.Sprintf("%sremoved %d under managed paths (%d stale file(s) archived for recovery — not redeployed)", sep, detail.RemovedManaged, detail.ArchivedForRecovery)
-			} else if detail.RemovedLocalOnly > 0 {
-				breakdown += fmt.Sprintf("%sremoved %d under managed paths (%d not restored — local-only)", sep, detail.RemovedManaged, detail.RemovedLocalOnly)
-			} else {
-				breakdown += fmt.Sprintf("%sremoved %d under managed paths (all re-deployed)", sep, detail.RemovedManaged)
+				breakdown += fmt.Sprintf("%sremoved %d under managed paths (%d stale file(s) archived for recovery — not redeployed)", sep, wholesale, detail.ArchivedForRecovery)
+			case detail.RemovedLocalOnly > 0:
+				breakdown += fmt.Sprintf("%sremoved %d under managed paths (%d not restored — local-only)", sep, wholesale, detail.RemovedLocalOnly)
+			default:
+				breakdown += fmt.Sprintf("%sremoved %d under managed paths (all re-deployed)", sep, wholesale)
 			}
+		}
+		if detail.MigrationRemoved > 0 {
+			sep := " · "
+			if breakdown == "" {
+				sep = ""
+			}
+			breakdown += fmt.Sprintf("%s%d removed by the asset migration (your user copy holds the content)", sep, detail.MigrationRemoved)
 		}
 		_, _ = fmt.Fprintln(w, paintToken(breakdown, th.Dim, false))
 	}

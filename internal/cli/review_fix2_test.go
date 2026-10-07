@@ -40,7 +40,7 @@ func TestRF2F3_MigrationPreservesPostInstallEdits(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := migrateProjectCommonAssets(root, home, true, nil, func(string, ...interface{}) {}); err != nil {
+	if _, err := migrateProjectCommonAssets(root, home, true, nil, func(string, ...interface{}) {}); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := os.ReadFile(live); err != nil || string(got) != "user's post-install edit\n" {
@@ -67,7 +67,7 @@ func TestRF2F3b_MigrationPreservesUntracked(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := migrateProjectCommonAssets(root, home, true, nil, func(string, ...interface{}) {}); err != nil {
+	if _, err := migrateProjectCommonAssets(root, home, true, nil, func(string, ...interface{}) {}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(live); err != nil {
@@ -93,7 +93,11 @@ func TestRF2F4_StaleRecordDoesNotAuthorizeDeletion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if userCounterpartConfirmed(um, embedded, home, ".claude/skills/moai-ghost/SKILL.md") {
+	cat, err := template.LoadEmbeddedCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if userCounterpartConfirmed(um, cat, embedded, home, ".claude/skills/moai-ghost/SKILL.md") {
 		t.Error("F4: stale record authorized deletion — the disk check is missing")
 	}
 }

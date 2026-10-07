@@ -13,9 +13,12 @@ package cli
 import (
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update"
+	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tui"
 )
@@ -42,9 +45,10 @@ func previewReconciliation(projectRoot string, deployMode template.DeployMode, o
 	// corrupt-file recovery RENAMES the original to .corrupt — a disk
 	// mutation a dry run must never make. A corrupt/absent manifest reads as
 	// nil and the classifier takes its conservative no-record route.
+	mf := update.LoadManifestReadOnly(projectRoot)
 	plan, err := update.ClassifyManagedRoots(projectRoot,
 		reconcileTargets(projectRoot, computeRunCleanTargets(projectRoot, deployMode, nil)),
-		templateRenderCarriage(embedded, nil, nil), update.LoadManifestReadOnly(projectRoot))
+		templateRenderCarriage(embedded, nil, nil), mf)
 	if err != nil {
 		return fmt.Errorf("classify managed roots: %w", err)
 	}
@@ -67,6 +71,18 @@ func previewReconciliation(projectRoot string, deployMode template.DeployMode, o
 			"3-way merged with the new render; a conflict preserves your file and writes <path>.moai-new", "", &th))
 	}
 	for _, f := range plan.UserOwned {
+		// Gate round 12 (card t1547): under the common-asset roots,
+		// "preserved" splits in two. A file still carrying the migration's
+		// removal shape (template_managed record, bytes matching the recorded
+		// template) will be REMOVED by the real update's asset migration once
+		// the user counterpart confirms — folding it into "user-owned — left
+		// untouched" promised a preservation the run then breaks. The preview
+		// states the conditional removal as its own disposition.
+		if isCommonAssetCleanTarget(f.RelPath) && migrationRemovalCandidate(projectRoot, mf, f.RelPath) {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "[dry-run] migration candidate: "+f.RelPath,
+				"template-managed common asset — removed by the asset migration once your user-side copy is confirmed", "", &th))
+			continue
+		}
 		_, _ = fmt.Fprintln(out, tui.CheckLine("info", "[dry-run] preserved: "+f.RelPath,
 			"user-owned — left untouched", "", &th))
 	}
@@ -75,4 +91,24 @@ func previewReconciliation(projectRoot string, deployMode template.DeployMode, o
 			strings.Join(plan.Symlinks, ", ")+" — link entries removed before deploy, targets untouched", "", &th))
 	}
 	return nil
+}
+
+// migrationRemovalCandidate reports whether a preserved common-asset file
+// carries the exact shape the asset migration removes: a template_managed
+// record whose recorded template hash matches the bytes on disk — the
+// confirmable-counterpart shape of migrateProjectCommonAssets's deletion
+// preconditions. Anything else under the roots stays plain "preserved".
+func migrationRemovalCandidate(projectRoot string, mf *manifest.Manifest, rel string) bool {
+	if mf == nil {
+		return false
+	}
+	entry, ok := mf.Files[rel]
+	if !ok || entry.Provenance != manifest.TemplateManaged || entry.TemplateHash == "" {
+		return false
+	}
+	data, err := os.ReadFile(filepath.Join(projectRoot, filepath.FromSlash(rel)))
+	if err != nil {
+		return false
+	}
+	return entry.TemplateHash == manifest.HashBytes(data)
 }

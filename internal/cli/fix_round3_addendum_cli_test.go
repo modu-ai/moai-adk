@@ -48,7 +48,7 @@ func TestFR3A1_MigrationDeletionAnchoredToProjectRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := migrateProjectCommonAssets(proj, home, true, nil, func(string, ...interface{}) {}); err != nil {
+	if _, err := migrateProjectCommonAssets(proj, home, true, nil, func(string, ...interface{}) {}); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := os.ReadFile(sentinel); err != nil || string(got) != "external\n" {

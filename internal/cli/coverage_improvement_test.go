@@ -2956,7 +2956,7 @@ func TestRunTemplateSyncWithReporter_VersionMatch(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetContext(context.Background())
 
-	err := runTemplateSyncWithReporter(cmd, nil, true)
+	err := runTemplateSyncWithReporter(cmd, nil, true, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -3009,7 +3009,7 @@ func TestRunTemplateSyncWithReporter_FullDeploy(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetContext(context.Background())
 
-	err := runTemplateSyncWithReporter(cmd, nil, true)
+	err := runTemplateSyncWithReporter(cmd, nil, true, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -3062,7 +3062,7 @@ func TestRunTemplateSyncWithReporter_ForceFlag(t *testing.T) {
 	cmd.SetContext(context.Background())
 
 	// skipConfirm=true to avoid interactive merge
-	err := runTemplateSyncWithReporter(cmd, nil, true)
+	err := runTemplateSyncWithReporter(cmd, nil, true, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

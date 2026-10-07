@@ -12,6 +12,7 @@ package cli
 // through runUpdateCobraCmd) against a fixture old-project tree.
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -127,7 +128,7 @@ func runUpdateCobraCmd(t *testing.T, root string, flags map[string]string) (stri
 	}
 	t.Cleanup(func() { _ = os.Chdir(origDir) })
 
-	if err := runTemplateSyncWithReporter(cmd, nil, true); err != nil {
+	if err := runTemplateSyncWithReporter(cmd, nil, true, nil); err != nil {
 		t.Fatalf("runTemplateSyncWithReporter: %v (stderr: %s)", err, errBuf.String())
 	}
 	return out.String(), errBuf.String()
@@ -625,7 +626,7 @@ func tryRunUpdateCobraCmd(t *testing.T, root string, flags map[string]string) er
 	}
 	t.Cleanup(func() { _ = os.Chdir(origDir) })
 
-	return runTemplateSyncWithReporter(cmd, nil, true)
+	return runTemplateSyncWithReporter(cmd, nil, true, nil)
 }
 
 // (TestMigrationRehomesExistingMirrorEntries was finding 2, design §3
@@ -690,7 +691,7 @@ func TestMigrationPreservesExistingMirrorEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 	home := installMigrationUserCounterparts(t)
-	if err := migrateProjectCommonAssets(root, home, true, nil, func(string, ...interface{}) {}); err != nil {
+	if _, err := migrateProjectCommonAssets(root, home, true, nil, func(string, ...interface{}) {}); err != nil {
 		t.Fatal(err)
 	}
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
@@ -841,7 +842,7 @@ func TestMigrationRefusesRemovalWhenUserInstallMissing(t *testing.T) {
 	// The counterpart record and bytes WOULD confirm removal (the identical
 	// skill's user copy is installed and current) — the missing install
 	// still refuses it.
-	if err := migrateProjectCommonAssets(root, home, false, nil, func(string, ...interface{}) {}); err != nil {
+	if _, err := migrateProjectCommonAssets(root, home, false, nil, func(string, ...interface{}) {}); err != nil {
 		t.Fatal(err)
 	}
 	assertFilePresent(t, root, migIdenticalSkill)
@@ -857,6 +858,10 @@ func TestMigrationRefusesRemovalWhenUserInstallMissing(t *testing.T) {
 func TestUserCounterpartMustBeCurrentVersion(t *testing.T) {
 	home := t.TempDir()
 	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat, err := template.LoadEmbeddedCatalog()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -882,7 +887,7 @@ func TestUserCounterpartMustBeCurrentVersion(t *testing.T) {
 
 	// The record matches the stale disk bytes (the F4 gate passes) — the
 	// current-version gate must still refuse.
-	if userCounterpartConfirmed(um, embedded, home, rel) {
+	if userCounterpartConfirmed(um, cat, embedded, home, rel) {
 		t.Error("a stale old-version counterpart confirmed removal — the current-version check is missing")
 	}
 
@@ -899,7 +904,7 @@ func TestUserCounterpartMustBeCurrentVersion(t *testing.T) {
 		SHA256: hex.EncodeToString(sum[:]), Bundle: "core",
 		InstalledAt: "t1", MoaiVersion: "vCurrent",
 	}
-	if !userCounterpartConfirmed(um, embedded, home, rel) {
+	if !userCounterpartConfirmed(um, cat, embedded, home, rel) {
 		t.Error("the current-version counterpart did not confirm — the gate over-refuses")
 	}
 }
@@ -1034,6 +1039,10 @@ func TestAgentsSkillsCounterpartMapsToClaudeSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	cat, err := template.LoadEmbeddedCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
 	const claudeRel = ".claude/skills/moai-foundation-core/SKILL.md"
 	current, err := fs.ReadFile(embedded, claudeRel)
 	if err != nil {
@@ -1060,7 +1069,7 @@ func TestAgentsSkillsCounterpartMapsToClaudeSource(t *testing.T) {
 
 	// The healthy relocated counterpart CONFIRMS against the mapped source.
 	const agentsRel = ".agents/skills/moai-foundation-core/SKILL.md"
-	if !userCounterpartConfirmed(um, embedded, home, agentsRel) {
+	if !userCounterpartConfirmed(um, cat, embedded, home, agentsRel) {
 		t.Error("a healthy relocated counterpart did not confirm — the mapping reads the wrong embedded source")
 	}
 
@@ -1070,7 +1079,7 @@ func TestAgentsSkillsCounterpartMapsToClaudeSource(t *testing.T) {
 	if err := os.WriteFile(userCopy, stale, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if userCounterpartConfirmed(um, embedded, home, agentsRel) {
+	if userCounterpartConfirmed(um, cat, embedded, home, agentsRel) {
 		t.Error("a stale relocated counterpart confirmed — the current-version gate broke with the remap")
 	}
 }
@@ -1118,4 +1127,166 @@ func TestPostRemovalUserFileSurvivesNextUpdate(t *testing.T) {
 	if !strings.Contains(out, "zzz-stale-never-in-template") {
 		t.Errorf("the preserved post-removal file never reached the summary:\n%s", out)
 	}
+}
+
+// TestAgentsOriginSkillMapsToItsOwnCatalogSource is gate round 12's
+// refinement of the relocation mapping (card t1547): the relocation is NOT
+// a uniform .claude→.agents rule — moai-plan, moai-run, and moai-sync
+// ORIGINATE in .agents/skills (their catalog entry's path is the authority,
+// the same source installTargets walks). A healthy user copy of an
+// agents-origin skill confirms against ITS OWN catalog source; a uniform
+// .claude-prefix mapping fails it, and the project copy lingers forever.
+func TestAgentsOriginSkillMapsToItsOwnCatalogSource(t *testing.T) {
+	home := t.TempDir()
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat, err := template.LoadEmbeddedCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// moai-plan's catalog origin IS .agents/skills — its project copy maps
+	// there, not to .claude/skills (which carries no moai-plan at all).
+	const agentsRel = ".agents/skills/moai-plan/SKILL.md"
+	current, err := fs.ReadFile(embedded, agentsRel)
+	if err != nil {
+		t.Fatalf("embedded agents-origin source: %v", err)
+	}
+	sum := sha256.Sum256(current)
+	um := &userassets.Manifest{Files: map[string]userassets.FileEntry{
+		"agents-skills/moai-plan/SKILL.md": {
+			SHA256: hex.EncodeToString(sum[:]), Bundle: "core",
+			InstalledAt: "t1", MoaiVersion: "vCurrent",
+		},
+	}}
+	dir := userassets.RootBySlugDir(home, userassets.RootSlug("agents-skills"))
+	if err := os.MkdirAll(filepath.Join(dir, "moai-plan"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "moai-plan", "SKILL.md"), current, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if !userCounterpartConfirmed(um, cat, embedded, home, agentsRel) {
+		t.Error("an agents-origin skill's healthy user copy did not confirm — the mapping forced the .claude prefix over the catalog source")
+	}
+
+	// The claude-side project copy of the SAME agents-origin skill maps to
+	// the same source (the installer lands both roots from it).
+	const claudeRel = ".claude/skills/moai-plan/SKILL.md"
+	um.Files["claude-skills/moai-plan/SKILL.md"] = um.Files["agents-skills/moai-plan/SKILL.md"]
+	dirClaude := userassets.RootBySlugDir(home, userassets.RootSlug("claude-skills"))
+	if err := os.MkdirAll(filepath.Join(dirClaude, "moai-plan"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dirClaude, "moai-plan", "SKILL.md"), current, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !userCounterpartConfirmed(um, cat, embedded, home, claudeRel) {
+		t.Error("an agents-origin skill's claude-root copy did not confirm against its catalog source")
+	}
+}
+
+// TestPreviewFlagsMigrationRemovalCandidates is gate round 12's preview/act
+// finding (card t1547): a common-asset file still carrying the migration's
+// removal shape (template_managed record, bytes matching the recorded
+// template) is REMOVED by the real update once the user counterpart
+// confirms — the preview must state that conditional removal as its own
+// disposition, never fold it into "user-owned — left untouched".
+func TestPreviewFlagsMigrationRemovalCandidates(t *testing.T) {
+	root := t.TempDir()
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// A migration removal candidate: current template bytes + a healthy
+	// template_managed record.
+	identical, err := fs.ReadFile(embedded, migIdenticalSkill)
+	if err != nil {
+		t.Fatalf("embedded read: %v", err)
+	}
+	writeFixtureFile(t, root, migIdenticalSkill, string(identical))
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Track(migIdenticalSkill, manifest.TemplateManaged, manifest.HashBytes(identical)); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Save(); err != nil {
+		t.Fatal(err)
+	}
+	// The control: an untracked local-only skill stays plain preserved.
+	writeFixtureFile(t, root, migForeignSkill, "# moai-custom: the user's own skill\n")
+
+	var out bytes.Buffer
+	if err := previewReconciliation(root, template.DeployModeLocal, &out); err != nil {
+		t.Fatalf("previewReconciliation: %v", err)
+	}
+	got := out.String()
+
+	if !strings.Contains(got, "migration candidate: "+migIdenticalSkill) {
+		t.Errorf("the preview folded a migration removal candidate into plain preserved:\n%s", got)
+	}
+	if strings.Contains(got, "preserved: "+migIdenticalSkill) {
+		t.Errorf("the migration candidate was also listed as user-owned — the dispositions must not overlap:\n%s", got)
+	}
+	if !strings.Contains(got, "preserved: "+migForeignSkill) {
+		t.Errorf("the control (untracked local-only skill) must stay plain preserved:\n%s", got)
+	}
+}
+
+// TestTallyCountsMigrationRemovals is gate round 12's reporting finding
+// (card t1547): a successful migration removal is NAMED (per-path report
+// line) and reaches the outcome's deletion tally with its own content-safe
+// disposition — the old body only bumped a counter, and the reconcile can
+// no longer see an already-removed file, so the deletion vanished from
+// every list.
+func TestTallyCountsMigrationRemovals(t *testing.T) {
+	root := buildMigrationFixture(t)
+	home := installMigrationUserCounterparts(t)
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	cmd := &cobra.Command{Use: "update"}
+	cmd.Flags().Bool("force", false, "")
+	cmd.Flags().Bool("yes", true, "")
+	cmd.Flags().Bool("no-hooks", true, "")
+	cmd.Flags().Bool("no-plugin", false, "")
+	cmd.Flags().Bool("dry-run", false, "")
+	cmd.Flags().String("check", "", "")
+	var out strings.Builder
+	cmd.SetOut(&out)
+	cmd.SetErr(&strings.Builder{})
+	cmd.SetContext(context.Background())
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(origDir) })
+
+	if _, err := runTemplateSyncWithProgress(cmd, true); err != nil {
+		t.Fatalf("runTemplateSyncWithProgress: %v", err)
+	}
+	got := out.String()
+
+	// The per-path naming (§2.3: every deletion named)...
+	if !strings.Contains(got, "migration: removed: "+migIdenticalSkill) {
+		t.Errorf("the migration's successful removal was never named:\n%s", got)
+	}
+	// ...and the outcome tally carries it with the content-safe disposition.
+	if !strings.Contains(got, "removed by the asset migration") {
+		t.Errorf("the deletion tally did not carry the migration removal:\n%s", got)
+	}
+	if !strings.Contains(got, "1 removed by the asset migration") {
+		t.Errorf("the tally counted %s", "the wrong number of migration removals:\n%s")
+	}
+	assertFileAbsent(t, root, migIdenticalSkill)
 }

@@ -118,7 +118,7 @@ func mergeableFilePaths() []string {
 // Template deployment uses a 3-way merge strategy to preserve local modifications.
 // Users are prompted to confirm the merge before proceeding.
 func runTemplateSync(cmd *cobra.Command) error {
-	return runTemplateSyncWithReporter(cmd, nil, false)
+	return runTemplateSyncWithReporter(cmd, nil, false, nil)
 }
 
 // managedRedeployCount derives the outcome-summary accounting from the
@@ -192,7 +192,12 @@ func newArchiveDriftRoots(projectRoot string, before map[string]bool) []string {
 // Design source: screens.jsx ScreenUpdate.
 //
 // runTemplateSyncWithReporter synchronizes templates with progress reporting.
-func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressReporter, skipConfirm bool) error {
+// runTemplateSyncWithReporter drives the update step table.
+// migrationRemoved carries the paths the per-file user-asset migration
+// removed before this call (gate round 12) — the outcome's deletion tally
+// counts them with their own content-safe disposition, since the
+// reconciliation can no longer see an already-removed file.
+func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressReporter, skipConfirm bool, migrationRemoved []string) error {
 	out := cmd.OutOrStdout()
 	// The mirror notice is a warning, so it gets its own stderr writer rather
 	// than riding `out` — which is stdout here (internal/cli/CLAUDE.md:14).
@@ -1014,6 +1019,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		// RemovedLocalOnly stays 0: an archived removal is recoverable by
 		// definition, and preserved files were never removed.
 	}
+	// Gate round 12 (card t1547): the asset migration's confirmed-counterpart
+	// removals are deletions too — the tally carries them with their own
+	// content-safe disposition (the user copy holds the bytes), on every arm:
+	// the migration runs after the confirm gate regardless of branch.
+	detail.MigrationRemoved = len(migrationRemoved)
+	detail.RemovedManaged += len(migrationRemoved)
 	renderUpdateOutcome(out, len(analysis.Files), detail, configBackupPath, th)
 	// SPEC-UPDATE-MIGRATION-001 (card t1547, REQ-UPM-030/031): the
 	// reconciliation outcome rides the existing report structures — plain
@@ -1164,16 +1175,21 @@ func runTemplateSyncWithProgress(cmd *cobra.Command, userAssetsInstalled bool) (
 	// (runUpdate, before this prompt) still precedes the removal, and
 	// userAssetsInstalled gates every removal: a failed or skipped install
 	// leaves the project-side assets in place (leader scope addition #5 —
-	// the stale-counterpart deletion hazard).
+	// the stale-counterpart deletion hazard). The removed paths ride into
+	// the reporter so the outcome's deletion tally carries them (gate round
+	// 12 — a removal that only bumped a counter vanished from every list).
+	var migrationRemoved []string
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
-		if err := migrateProjectCommonAssets(projectRoot, homeDir, userAssetsInstalled, nil, func(format string, args ...interface{}) {
+		removed, err := migrateProjectCommonAssets(projectRoot, homeDir, userAssetsInstalled, nil, func(format string, args ...interface{}) {
 			_, _ = fmt.Fprintf(out, format+"\n", args...)
-		}); err != nil {
+		})
+		if err != nil {
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: migration warning: %v\n", err)
 		}
+		migrationRemoved = removed
 	}
 
-	return false, runTemplateSyncWithReporter(cmd, nil, true)
+	return false, runTemplateSyncWithReporter(cmd, nil, true, migrationRemoved)
 }
 
 // toPreviewInputs maps a merge.MergeAnalysis into the neutral

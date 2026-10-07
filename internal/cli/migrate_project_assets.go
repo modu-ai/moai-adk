@@ -45,26 +45,38 @@ var projectCommonAssetRels = []string{
 // removal rests on is THIS run's install, and a stale user manifest from an
 // earlier run agrees with a stale project copy in exactly the way that
 // destroys the newest remaining copy.
-func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled bool, out fmt.Stringer, report func(string, ...interface{})) error {
+//
+// The returned list names every successfully removed path in slash form —
+// the §2.3 full-deletion-list rule (gate round 12): a removal that only
+// bumped a counter vanished from every deletion list, because the
+// reconciliation can no longer see the already-removed file.
+func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled bool, out fmt.Stringer, report func(string, ...interface{})) ([]string, error) {
 	migrationPreservedProjectFiles = map[string]bool{}
 	if !userAssetsInstalled {
 		report("migration: the user-asset install did not succeed this run — every project-side asset stays in place (nothing removed)")
-		return nil
+		return nil, nil
 	}
 	embedded, err := template.EmbeddedTemplates()
 	if err != nil {
-		return fmt.Errorf("load embedded templates for migration: %w", err)
+		return nil, fmt.Errorf("load embedded templates for migration: %w", err)
+	}
+	cat, err := template.LoadEmbeddedCatalog()
+	if err != nil {
+		// No catalog → no source mapping → no confirmation evidence → no
+		// removals (the conservative direction; the caller warns).
+		return nil, fmt.Errorf("load harness catalog for migration: %w", err)
 	}
 	mgr := manifest.NewManager()
 	if _, err := mgr.Load(projectRoot); err != nil {
 		// No project manifest: nothing provenance-classified to migrate.
-		return nil
+		return nil, nil
 	}
 	userManifest, err := userassets.Load(userassets.ManifestPath(homeDir))
 	if err != nil {
-		return fmt.Errorf("load user manifest for migration: %w", err)
+		return nil, fmt.Errorf("load user manifest for migration: %w", err)
 	}
 
+	var removedPaths []string
 	var removed, preserved, stayed, untouched int
 	// Item 1 (fix round 3 addendum): anchor the deletion boundary to the
 	// project root — a .claude (or sibling root) swapped to an
@@ -72,7 +84,7 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 	// sentinel even when the recorded hash matches.
 	rootResolved, rootErr := filepath.EvalSymlinks(projectRoot)
 	if rootErr != nil {
-		return fmt.Errorf("resolve project root: %w", rootErr)
+		return nil, fmt.Errorf("resolve project root: %w", rootErr)
 	}
 	for _, rootRel := range projectCommonAssetRels {
 		absRoot := filepath.Join(projectRoot, filepath.FromSlash(rootRel))
@@ -139,7 +151,7 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 			}
 			// template_managed with template-matching bytes: removable once
 			// the user counterpart is confirmed.
-			if !userCounterpartConfirmed(userManifest, embedded, homeDir, relSlash) {
+			if !userCounterpartConfirmed(userManifest, cat, embedded, homeDir, relSlash) {
 				// Optional-pack (non-L0) asset without an opted-in selection,
 				// or a failed counterpart write: stays project-side, reported
 				// — and gated out of the cleanup list (F2).
@@ -158,10 +170,17 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 				return nil
 			}
 			removed++
+			// Gate round 12 (§2.3 full-deletion-list rule): the removal is
+			// NAMED, and the path rides back to the outcome tally — the old
+			// body only bumped the counter, and the reconcile can no longer
+			// see an already-removed file, so the deletion vanished from
+			// every list.
+			removedPaths = append(removedPaths, relSlash)
+			report("  migration: removed: %s", relSlash)
 			return nil
 		})
 		if err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("walk %s: %w", rootRel, err)
+			return nil, fmt.Errorf("walk %s: %w", rootRel, err)
 		}
 	}
 
@@ -176,47 +195,49 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 	}
 	if removed > 0 || dropped > 0 || preserved > 0 || stayed > 0 {
 		if err := mgr.Save(); err != nil {
-			return fmt.Errorf("save project manifest after migration: %w", err)
+			return nil, fmt.Errorf("save project manifest after migration: %w", err)
 		}
 		report("migration: %d removed, %d preserved (user-modified), %d kept project-side, %d user-created untouched", removed, preserved, stayed, untouched)
 	}
-	return nil
+	return removedPaths, nil
 }
 
 // userCounterpartConfirmed reports whether the project file's user-side
 // counterpart is manifest-tracked with a hash matching the installed bytes
 // AND carries the CURRENT version's content (REQ-020's per-asset gate).
-// The mapping is mechanical: a project path
+// The user-key mapping is mechanical: a project path
 // .claude/skills/<name>/X ↔ user key claude-skills/<name>/X;
 // .agents/skills/<name>/X ↔ agents-skills/<name>/X;
 // .claude/agents/moai/<n>.md ↔ claude-agents/<n>.md;
 // .codex/agents/moai/<n>.toml ↔ codex-agents/<n>.toml.
-func userCounterpartConfirmed(userManifest *userassets.Manifest, embedded fs.FS, homeDir, projectRel string) bool {
+// The SOURCE mapping is the CATALOG's (gate round 12 — the single mapping
+// authority): the entry's own path is what installTargets walks, so a
+// .claude/skills copy of a .claude-origin skill maps to .claude/skills/...,
+// an .agents/skills copy of an .agents-origin skill (moai-plan, moai-run,
+// moai-sync) maps to .agents/skills/..., and a copy under the OTHER root is
+// the installer's relocation of the same source. The Codex agent TOML is
+// emitted at its own .codex/agents/moai path (no relocation).
+func userCounterpartConfirmed(userManifest *userassets.Manifest, cat *template.Catalog, embedded fs.FS, homeDir, projectRel string) bool {
 	var userKey, sourceRel string
 	switch {
 	case strings.HasPrefix(projectRel, ".claude/skills/"):
-		rest := strings.TrimPrefix(projectRel, ".claude/skills/")
-		userKey, sourceRel = "claude-skills/"+rest, projectRel
+		userKey = "claude-skills/" + strings.TrimPrefix(projectRel, ".claude/skills/")
+		sourceRel = skillSourceRel(cat, projectRel)
 	case strings.HasPrefix(projectRel, ".agents/skills/"):
-		rest := strings.TrimPrefix(projectRel, ".agents/skills/")
-		// The installer lands the SAME catalog bytes in BOTH skill roots
-		// (userassets installTargets: one .claude/skills source dir →
-		// RootClaudeSkills + RootAgentsSkills), so an .agents/skills copy is
-		// a RELOCATION of the .claude/skills original — the embedded lookup
-		// maps to the true source (gate round 11 finding 1: the project-path
-		// lookup failed even for a healthy current install, because the
-		// embedded tree carries no .agents/skills content at all).
-		userKey, sourceRel = "agents-skills/"+rest, ".claude/skills/"+rest
+		userKey = "agents-skills/" + strings.TrimPrefix(projectRel, ".agents/skills/")
+		sourceRel = skillSourceRel(cat, projectRel)
 	case strings.HasPrefix(projectRel, ".claude/agents/moai/"):
 		rest := strings.TrimPrefix(projectRel, ".claude/agents/moai/")
 		userKey, sourceRel = "claude-agents/"+rest, projectRel
 	case strings.HasPrefix(projectRel, ".codex/agents/moai/"):
 		rest := strings.TrimPrefix(projectRel, ".codex/agents/moai/")
-		// The Codex agent TOML is EMITTED into the template tree at its own
-		// path (installTargets reads .codex/agents/moai/<name>.toml
-		// directly) — no relocation.
 		userKey, sourceRel = "codex-agents/"+rest, projectRel
 	default:
+		return false
+	}
+	if sourceRel == "" {
+		// No catalog entry → no installer source → no confirmation evidence
+		// (the conservative refuse).
 		return false
 	}
 	fe, tracked := userManifest.Files[userKey]
@@ -260,6 +281,33 @@ func userCounterpartConfirmed(userManifest *userassets.Manifest, embedded fs.FS,
 		return false
 	}
 	return bytes.Equal(data, current)
+}
+
+// skillSourceRel resolves a project skill path (.claude/skills or
+// .agents/skills form) to its CATALOG source path — the single mapping
+// authority shared with the installer (installTargets walks srcPath of the
+// entry's own path): a .claude-origin skill maps to .claude/skills/..., an
+// .agents-origin skill (moai-plan, moai-run, moai-sync) to
+// .agents/skills/..., whichever root the PROJECT copy sits under. Empty
+// when the name has no catalog entry (no installer source — the caller's
+// conservative refuse).
+func skillSourceRel(cat *template.Catalog, projectRel string) string {
+	rest := projectRel
+	for _, root := range projectCommonAssetRels[:2] { // the two skill roots
+		if strings.HasPrefix(projectRel, root) {
+			rest = strings.TrimPrefix(projectRel, root)
+			break
+		}
+	}
+	name, file, ok := strings.Cut(rest, "/")
+	if !ok {
+		return ""
+	}
+	entry, found := cat.LookupSkill(name)
+	if !found {
+		return ""
+	}
+	return strings.TrimSuffix(strings.TrimPrefix(entry.Path, "templates/"), "/") + "/" + file
 }
 
 // withinRootBoundary reports whether path is inside (or equal to) the
