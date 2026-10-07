@@ -139,17 +139,32 @@ func TestFactoryNextRefusesAgainAfterLaterAssign(t *testing.T) {
 // unnominated arm has read it this way since t1407; the nominated arm passed
 // false unconditionally and re-created the wedge through the --card door.
 func TestFactoryNextOwnAssignedCardIgnoresSiblingAssignments(t *testing.T) {
-	root, _ := flSerialPair(t)
+	root, store := flSerialPair(t)
+	// A nominated resume requires the operator-picked queue state; queued
+	// plus an assigned row is the stale-row shape, refused as recorded.
+	if _, _, err := runTodo(t, "next", "1"); err != nil {
+		t.Fatalf("operator pick: %v", err)
+	}
 	nmIsolatedWorktrees(t, "t1", "t2")
 	fcPlace(t, root,
 		homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1"},
 		homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2"})
+	sibling := fcCard(t, root, "t2")
 	nmLaneEnv(t, "lane-1", "")
 	if _, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1"); err != nil {
 		t.Fatalf("factory next refused the lane's own assigned card behind sibling assignments: %v stderr=%q", err, stderr)
 	}
 	if st, owner := flRow(t, root, "t1"); st != homestate.CardLeased || owner != "lane-1" {
 		t.Fatalf("t1 state=%s owner=%q, want leased by lane-1", st, owner)
+	}
+	if got := nmQueueState(t, store, "t1"); got != factory.BacklogStatePicked {
+		t.Errorf("own resumed card queue=%s, want picked", got)
+	}
+	if got := nmQueueState(t, store, "t2"); got != factory.BacklogStateQueued {
+		t.Errorf("sibling queue=%s, want unchanged queued", got)
+	}
+	if got := fcCard(t, root, "t2"); got != sibling {
+		t.Errorf("sibling assignment changed: got %+v, want %+v", got, sibling)
 	}
 }
 

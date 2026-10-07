@@ -129,14 +129,14 @@ curation pass (M2+), your job on top of the mechanical output is:
 ## What this skill does NOT do (M1 boundaries)
 
 - **No APPROVE / APPLY** — the parallel user-owned applier (`hns-lsel-applier`) is M3.
-- **No edits to frozen doctrine** — `.claude/rules/moai/**`, `CLAUDE.md`,
+- **No edits to frozen doctrine** — `.claude/rules/moai/**`, `AGENTS.md`,
   `internal/template/templates/**`, retained agents, `moai-*` skills, and the frozen Go
   applier / `curator_dispatch.go` are all byte-for-byte untouched (REQ-LSEL-001 / §B.3).
 - **No new `.moai/config/sections/` file** — loop state lives under `.moai/state/lsel/`
   (a new section file would be wiped on `moai update`; plan.md §B.4 / AP-LSEL-005).
 - **No orchestrator-only synchronous user-question channel** — this is a subagent-owned
   mechanism skill; it never invokes the orchestrator's user gate. On a missing input,
-  return a structured blocker report; the orchestrator runs the user gate (CLAUDE.md §8).
+  return a structured blocker report; the orchestrator runs the user gate (askuser-protocol.md).
 
 ## Durable operations — the session-start trigger (`session_drain.sh`)
 

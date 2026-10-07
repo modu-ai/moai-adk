@@ -53,7 +53,7 @@ func TestMergeReadinessBeforePRSpecLess(t *testing.T) {
 		{"no_verdict_file", func(string) string { return "" }, false,
 			[]string{verdictPath, "does not exist", "verdict: PASS", "audited_sha:"}},
 		{"verdict_fail", func(tip string) string { return "verdict: FAIL\naudited_sha: " + tip + "\n" }, false,
-			[]string{verdictPath, "verdict: FAIL"}},
+			[]string{verdictPath, "verdict FAIL"}},
 		{"stale_audited_sha", func(string) string { return "verdict: PASS\naudited_sha: " + strings.Repeat("b", 40) + "\n" }, false,
 			[]string{verdictPath, "audited_sha"}},
 	}

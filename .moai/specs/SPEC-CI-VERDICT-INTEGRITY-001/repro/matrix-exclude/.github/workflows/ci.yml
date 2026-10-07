@@ -1,0 +1,20 @@
+name: ci
+on: [push]
+jobs:
+  Lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - run: "true"
+  Test:
+    name: "Test (${{ matrix.os }}, ${{ matrix.go }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        go: ["1.23"]
+        exclude:
+          - os: windows-latest
+            go: "1.23"
+    steps:
+      - run: "true"

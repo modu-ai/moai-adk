@@ -159,8 +159,26 @@ func projectKeyFromBrokerPath(path string) string {
 	return filepath.Base(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path)))))
 }
 
+// brokerDSN encodes the broker path and connection settings as a file URI.
+func brokerDSN(path string, query url.Values) string {
+	// Drive paths need a leading slash so C: remains a path, not URI authority.
+	// Preserve an existing leading double slash for UNC paths.
+	p := filepath.ToSlash(path)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return (&url.URL{Scheme: "file", Path: p, RawQuery: query.Encode()}).String()
+}
+
 func Open(projectRoot, runID string) (*Store, error) {
-	return OpenWithDeadline(projectRoot, runID, 5*time.Second)
+	return OpenWithContext(context.Background(), projectRoot, runID)
+}
+
+// OpenWithContext keeps initialization and SQLite lock waits inside the caller's budget.
+// @MX:ANCHOR: [AUTO] context-bound broker initialization for ordinary and rebound hook registration
+// @MX:REASON: Open and both hook registration paths share the caller-budget clamp and connection cleanup.
+func OpenWithContext(ctx context.Context, projectRoot, runID string) (*Store, error) {
+	return openWithContext(ctx, projectRoot, runID, 5*time.Second)
 }
 
 // ValidateActiveRun rejects stale or invented run identifiers without
@@ -208,7 +226,7 @@ func OpenExistingWithDeadline(projectRoot, runID string, deadline time.Duration)
 	v := url.Values{}
 	v.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", busyMillis))
 	v.Add("_txlock", "immediate")
-	db, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: v.Encode()}).String())
+	db, err := sql.Open("sqlite", brokerDSN(path, v))
 	if err != nil {
 		return nil, err
 	}
@@ -235,17 +253,44 @@ func OpenExistingWithDeadline(projectRoot, runID string, deadline time.Duration)
 
 // OpenWithDeadline bounds SQLite initialization and lock wait for hook paths.
 func OpenWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store, error) {
-	path, err := BrokerPath(projectRoot, runID)
-	if err != nil {
+	return openWithContext(context.Background(), projectRoot, runID, deadline)
+}
+
+func openWithContext(parent context.Context, projectRoot, runID string, deadline time.Duration) (*Store, error) {
+	if err := parent.Err(); err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return nil, err
+	if end, ok := parent.Deadline(); ok && time.Until(end) < deadline {
+		deadline = time.Until(end)
 	}
-	v := url.Values{}
 	if deadline <= 0 {
 		return nil, errors.New("factory broker deadline must be positive")
 	}
+	ctx, cancel := context.WithTimeout(parent, deadline)
+	defer cancel()
+	if !safeID.MatchString(runID) {
+		return nil, fmt.Errorf("invalid factory run id %q", runID)
+	}
+	dir, err := homestate.FactoryDirContext(ctx, projectRoot)
+	if err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	path := filepath.Join(dir, "messages", runID, "broker.db")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	end, _ := ctx.Deadline()
+	deadline = time.Until(end)
+	if deadline <= 0 {
+		return nil, context.DeadlineExceeded
+	}
+	v := url.Values{}
 	// Leave half of the caller's budget for path setup, schema execution, and
 	// cleanup. Some SQLite drivers do not interrupt a busy wait immediately
 	// when the Go context expires, so using the full deadline here would make
@@ -257,7 +302,7 @@ func OpenWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store
 	v.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", busyMillis))
 	v.Add("_pragma", "journal_mode(WAL)")
 	v.Add("_txlock", "immediate")
-	db, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: v.Encode()}).String())
+	db, err := sql.Open("sqlite", brokerDSN(path, v))
 	if err != nil {
 		return nil, err
 	}
@@ -268,8 +313,6 @@ func OpenWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store
 		return state == homestate.ProcessIdentityLive && fp == start
 	}
 	s.recordReject = s.recordDead
-	ctx, cancel := context.WithTimeout(context.Background(), deadline)
-	defer cancel()
 	if _, err = db.ExecContext(ctx, schema); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("initialize factory message broker: %w", err)

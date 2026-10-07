@@ -24,6 +24,7 @@ var zoneRuntimeAllowed = map[string]bool{
 	".moai/harness/learning-history/rate-limit-state.json": true,
 	".moai/harness/learning-history/":                      true,
 	".moai/harness/usage-log.jsonl":                        true,
+	"**/CLAUDE.md":                                         true,
 	"**/AGENTS.md":                                         true,
 	"**/AGENTS.local.md":                                   true,
 }

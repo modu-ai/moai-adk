@@ -1,0 +1,7 @@
+version: 1
+branches:
+  main:
+    contexts:
+      - "Check (ubuntu-latest, green)"
+      - "Check (windows-latest, green)"
+auxiliary: []

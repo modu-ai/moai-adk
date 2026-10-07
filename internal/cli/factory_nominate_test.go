@@ -235,6 +235,16 @@ func nmCases() []nmCase {
 		}},
 		{"dropped", "dropped", single(factory.BacklogStateDropped, nil)},
 		{"held", "held", single(factory.BacklogStateHold, nil)},
+		// Card t1516: an assigned record row whose queue item the operator moved
+		// out of picked — parked at hold, or back at queued — is excluded from
+		// leasing. The hold state is refused by the state switch; the queued
+		// state is the stale-row shape, refused as `recorded`.
+		{"held-assigned", "held", single(factory.BacklogStateHold, func(t *testing.T, root string, store *factory.BacklogStore) {
+			fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+		})},
+		{"queued-assigned", "recorded", single(factory.BacklogStateQueued, func(t *testing.T, root string, store *factory.BacklogStore) {
+			fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+		})},
 		{"hold-marker", "hold-marker", single(factory.BacklogStateQueued, func(t *testing.T, _ string, store *factory.BacklogStore) {
 			nmSetText(t, store, "t1", nmHoldMarker+" waiting for the operator's decision")
 		})},
@@ -610,7 +620,7 @@ func TestFactoryNextNominateSameCardExactlyOne(t *testing.T) {
 // its own token and changes no state; a card that merely mentions the marker
 // mid-text is not a marker card and leases.
 func TestFactoryNextNominateRefusesKeepSet(t *testing.T) {
-	for _, c := range nmCaseByName(t, "held", "hold-marker", "marker-leading-space", "marker-mid-text", "blocked", "blocked-picked", "serial-slot", "dropped", "owned") {
+	for _, c := range nmCaseByName(t, "held", "held-assigned", "queued-assigned", "hold-marker", "marker-leading-space", "marker-mid-text", "blocked", "blocked-picked", "serial-slot", "dropped", "owned") {
 		t.Run(c.name, func(t *testing.T) { nmRunCase(t, c) })
 	}
 	t.Run("ordinary card leases", func(t *testing.T) {
@@ -655,6 +665,75 @@ func TestFactoryNextArmCSkipsHoldMarker(t *testing.T) {
 			t.Errorf("%s gained a record row although its text opens with the marker", id)
 		}
 	}
+}
+
+// ---------------------------------------------------------------------------
+// card t1516 — an assigned row whose queue item is hold or queued is excluded
+// from the bare lease path's arm (a)
+// ---------------------------------------------------------------------------
+
+// TestFactoryNextArmASkipsHoldQueueItem — bare `factory next` must not lease an
+// assigned row whose queue item the operator parked at hold (card t1516): the
+// row stays assigned with its version unchanged, the queue stays hold, and the
+// verb ends on the no-card answer.
+func TestFactoryNextArmASkipsHoldQueueItem(t *testing.T) {
+	root, store := nmBase(t, factory.BacklogStateHold)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+	before := fcCard(t, root, "t1")
+	nmLaneEnv(t, "lane-1", "")
+
+	out, _, err := qasRunNext(t, "--run", fcRun)
+	sdExit3(t, "an assigned row under a held queue item", err)
+	if !strings.Contains(out, "no card is available") {
+		t.Errorf("stdout = %q, want `no card is available`", out)
+	}
+	if got := fcCard(t, root, "t1"); got.State != homestate.CardAssigned || got.OwnerLabel != "lane-1" || got.Version != before.Version {
+		t.Errorf("t1 = %s owner=%q version=%d, want assigned/lane-1 version=%d unchanged", got.State, got.OwnerLabel, got.Version, before.Version)
+	}
+	if got := nmQueueState(t, store, "t1"); got != factory.BacklogStateHold {
+		t.Errorf("t1 queue state = %s, want still hold", got)
+	}
+}
+
+// TestFactoryNextArmAQueuedQueueItemPromotesFirst — an assigned row whose queue
+// item is back at queued (card t1516) is not leased at the row's edge while the
+// item is queued: bare `next` reaches the card only through arm (c)'s
+// promotion, which flips the item to picked first, so the end state is an
+// ordinary lease of a picked card.
+func TestFactoryNextArmAQueuedQueueItemPromotesFirst(t *testing.T) {
+	root, store := nmBase(t, factory.BacklogStateQueued)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+	nmLaneEnv(t, "lane-1", "")
+
+	out, stderr, err := qasRunNext(t, "--run", fcRun)
+	if err != nil {
+		t.Fatalf("bare next with a queued assigned row: %v (stderr %q)", err, stderr)
+	}
+	if head := nmLeasedHead(out); !strings.HasPrefix(head, "t1 stage=") {
+		t.Fatalf("bare next leased %q, want t1", head)
+	}
+	nmAssertLeased(t, root, "t1", "lane-1")
+	if got := nmQueueState(t, store, "t1"); got != factory.BacklogStatePicked {
+		t.Errorf("t1 queue state = %s, want picked (promoted before the lease, never leased while queued)", got)
+	}
+}
+
+// TestFactoryNextArmALeasesOwnAssignedPickedCard — the control of the two
+// exclusions above: the self-resume edge is intact for a card whose queue item
+// is still picked (a lane re-leasing its own assigned card mid-flight).
+func TestFactoryNextArmALeasesOwnAssignedPickedCard(t *testing.T) {
+	root, _ := nmBase(t, factory.BacklogStatePicked)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+	nmLaneEnv(t, "lane-1", "")
+
+	out, stderr, err := qasRunNext(t, "--run", fcRun)
+	if err != nil {
+		t.Fatalf("bare next with a picked assigned row: %v (stderr %q)", err, stderr)
+	}
+	if head := nmLeasedHead(out); !strings.HasPrefix(head, "t1 stage=") {
+		t.Fatalf("bare next leased %q, want t1", head)
+	}
+	nmAssertLeased(t, root, "t1", "lane-1")
 }
 
 // ---------------------------------------------------------------------------

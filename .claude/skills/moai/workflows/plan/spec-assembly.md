@@ -398,7 +398,7 @@ Out of Scope (BODP Gate):
 
 #### Worktree Path — retired
 
-`/moai plan --worktree` is retired along with `moai worktree new`. Plan no longer
+`/moai plan --worktree` is retired. Plan no longer
 creates a workspace: entering one is the launcher's job, and doing it first is
 strictly simpler than having plan do it afterwards.
 

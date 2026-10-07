@@ -1,6 +1,20 @@
 # 의존성 그래프
 
-## 현재 main의 재측정
+## 현재 main48의 재측정
+
+`48fa94b99023bb252a9731fbbd5ebc6dcc7472ab`와 소스가 같은 `a064df553563463918885181de0c25aa233048d8` 트리에서 `go list -deps -json ./...`를 실행했다. 내부 패키지 import 엣지는 480개, 최상위 모듈로 접고 self-edge를 뺀 고유 쌍은 304개다. 이전067과 수량은 같지만 패키지 연결은 하나 바뀌었다. `internal/cli/worktree` → `internal/config`가 사라지고 `internal/cli/worktree` → `internal/factory`가 생겼다. 착지 기준을 공통 Factory 해석으로 연결한 변경이다.
+
+최상위 접기 결과의 엣지 집합과 fan-in/out은 이전067과 같다. 이번 실측 fan-out은 cli75·hook40·web16, fan-in은 config30·paths14·atomicfile14·defs13이다. `pkg/version`의 fan-in은 7로 측정해 아래 현재 표에 반영했다. `go.mod`와 `go.sum`은067 이후 차이가 없고, 외부 모듈을 추가하지 않았다. Go 패키지 수는170, 비테스트 파일1603, 템플릿620으로 다시 측정했다.
+
+## 이전067 기준의 재측정
+
+`067fdced2dd8f38812d4c36ec17ceb8d2ca3e263`와 소스가 같은 트리에서 `go list -deps -json ./...`를 다시 실행했다. 내부 import 엣지는 480개, 최상위 패키지로 접고 self-edge를 뺀 고유 쌍은 304개다. `081899adb825935d5263b1699fe730373deaa4fd` 이후 추가된 소스 import 쌍은 `internal/factory` → `internal/factorylane`, `internal/factory` → `pkg/version` 두 개이며 제거는 없다. 각각 병합 단계와 재측정 도구 신원에 쓰인다. 두 기준 사이 `go.mod`·`go.sum` 차이는 없다.
+
+현재 최상위 fan-out은 `internal/cli` 75, `internal/hook` 40, `internal/web` 16이다. fan-in은 `internal/config` 30, `internal/paths` 14, `internal/atomicfile` 14, `internal/defs` 13이다. 이 값은 같은 `go list` 출력의 Imports를 최상위로 접어 계산했다.
+
+`internal/cli/integration_merge.go`와 `internal/cli/factory_card.go`가 `internal/factory/integration_merge_step.go`의 `RunMergeStep`으로 합류한다. merge-ready는 `internal/cli/factory_merge.go`의 콜백을 통해 `internal/factorylane/merge.go`가 읽은 후보 브랜치의 tip tree를 검증한다. complete의 T16은 `internal/homestate/card_evidence_readers.go`가 실제 병합 커밋의 tree를 검증한다. 두 경로는 `ReadRemeasureRecord`와 `ValidateRemeasureRecord`를 공유하며 검사 시점과 트리의 출처가 다르다. 이러한 호출 관계는 import 엣지와 별도로 소스에서 대조했다.
+
+## 이전 081899 기준의 재측정
 
 `081899adb825935d5263b1699fe730373deaa4fd`에서 `go list -deps -json ./...`를 실행했다. 모듈 내부 Imports 엣지는 478개이고, 최상위 패키지로 접어 self-edge를 뺀 고유 쌍은 302개다. 아래 이전 기록의 그래프 수치는 각 시점의 관측으로 남긴다.
 
@@ -90,7 +104,7 @@ $ go list -deps -json ./... 의 프로젝트 패키지 Imports 중 모듈 내부
 | 11 | `internal/gitenv` | 6 | cross-cutting |
 | 11 | `internal/hook` | 6 | **presentation** |
 | 11 | `internal/template` | 6 | domain |
-| 11 | `pkg/version` | 6 | cross-cutting |
+| 9 | `pkg/version` | 7 | cross-cutting |
 | 15 | `internal/lsp` | 5 | infrastructure |
 | 15 | `internal/statusline` | 5 | **presentation** |
 | 15 | `internal/lockfile` | 5 | cross-cutting |

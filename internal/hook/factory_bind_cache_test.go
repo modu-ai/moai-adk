@@ -22,12 +22,12 @@ func countOpens(t *testing.T, fail bool) *int {
 	t.Helper()
 	n := 0
 	prev := factoryHookOpenStore
-	factoryHookOpenStore = func(root, run string) (*factorymsg.Store, error) {
+	factoryHookOpenStore = func(ctx context.Context, root, run string) (*factorymsg.Store, error) {
 		n++
 		if fail {
 			return nil, errors.New("open past budget")
 		}
-		return prev(root, run)
+		return prev(ctx, root, run)
 	}
 	t.Cleanup(func() { factoryHookOpenStore = prev })
 	return &n

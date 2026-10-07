@@ -330,7 +330,7 @@ witnesses the order (`verification-claim-integrity.md` §2.3):
   kanban count is 0 today; with `-test` it is 1, through `internal/homestate/temp_parity_test.go`
   line 10, ledger L16, so a guard written the natural way would be red on arrival) and
   `TestFactoryLeaseSectionRejectsNestedMutate`; and, from the override round,
-  `TestFactoryLeaseArmAKeepsHeldAssignedCard` (AC-FAL-003 clause (iii), a guard that pins spec §F R17),
+  `TestFactoryLeaseArmAExcludesHeldAssignedCard` (AC-FAL-003 clause (iii), a guard that pins spec §F R17),
   `TestFactoryLeaseDriftLogStallBounded` and `TestFactoryLeaseDriftLogVerbWorktreeWriteWaits`
   (`internal/cli`) and `TestRecordWriteReconcileBoundedSkipsOnContention`,
   `TestRecordWriteReconcileDefaultStillWaits` and `TestRecordWriteReconcileBoundedRereadsUnderLock`
@@ -473,7 +473,7 @@ the old tests built by hand.
 | MU15 | make the claim's reconciliation wait for the drift log's lock, as the pin does | AC-FAL-015 clause (i) (`TestFactoryLeaseDriftLogStallBounded`, `TestRecordWriteReconcileBoundedSkipsOnContention`) |
 | MU16 | apply the skip to every record write, not only the claim's | AC-FAL-015 clause (iv) (`TestRecordWriteReconcileDefaultStillWaits`) |
 | MU17 | decide the skip after the drift events were appended (skip only the mark) | AC-FAL-015 clauses (ii) and (iii) (`TestRecordWriteReconcileBoundedSkipsOnContention`) |
-| MU18 | make arm (a) refuse a card whose queue item is held | AC-FAL-003 clause (iii) (`TestFactoryLeaseArmAKeepsHeldAssignedCard`) — a behavior change the SPEC does not make, so this mutant must be caught as a guard |
+| MU18 | make arm (a) refuse a card whose queue item is held | AC-FAL-003 clause (iii) (`TestFactoryLeaseArmAExcludesHeldAssignedCard`) — a behavior change the SPEC does not make, so this mutant must be caught as a guard |
 | MU19 | make the bounded flow reconcile from the unlocked read, with no re-read under the lock | AC-FAL-015 clause (vi) (`TestRecordWriteReconcileBoundedRereadsUnderLock`) |
 | MU20 | let the skip reach the verb's card-worktree record write (the marker set on a context that write also receives, or scoped to the connection) | AC-FAL-015 clause (vii) (`TestFactoryLeaseDriftLogVerbWorktreeWriteWaits`) |
 

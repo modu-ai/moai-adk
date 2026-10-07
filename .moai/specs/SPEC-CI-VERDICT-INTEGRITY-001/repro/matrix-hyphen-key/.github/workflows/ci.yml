@@ -1,0 +1,11 @@
+name: ci
+on: [push]
+jobs:
+  Test:
+    name: "Test (${{ matrix.go-version }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ["1.23"]
+    steps:
+      - run: "true"

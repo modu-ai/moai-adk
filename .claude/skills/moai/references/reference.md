@@ -29,8 +29,8 @@ triggers:
 
 Common patterns, flag reference, and legacy command mapping used across all MoAI workflows.
 
-For configuration file paths, see: CLAUDE.md Section 9
-For error handling delegation, see: CLAUDE.md Section 11
+For configuration file paths, see: `.moai/config/sections/*.yaml`
+For error handling delegation, see: `agent-common-protocol-reference.md` § Error Recovery Pattern
 For development mode details, see: .claude/rules/moai/workflow/spec-workflow.md (Run Phase section)
 
 ---

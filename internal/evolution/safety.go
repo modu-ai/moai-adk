@@ -19,6 +19,7 @@ import (
 // constant slice) so tests can extend it, but it is not exported for
 // production mutation.
 var frozenPaths = []string{
+	"AGENTS.md",
 	"CLAUDE.md",
 	".claude/rules/moai/core/moai-constitution.md",
 	".claude/rules/moai/core/agent-common-protocol.md",

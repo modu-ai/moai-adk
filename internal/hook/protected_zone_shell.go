@@ -78,11 +78,10 @@ func zoneParse(command string) (*syntax.File, bool) {
 }
 
 // zoneUnescapeLit resolves the backslash escapes a literal keeps in its
-// source text (`\ ` -> ` `, `\\` -> `\`, `\"` -> `"`). Every two-character
-// escape resolves to its second character — a slight over-approximation
-// inside double quotes, where `\n` is not an escape and the shell keeps the
-// backslash: the guard prefers matching a file the command cannot touch over
-// missing one it can (round 8 P1).
+// source text (`\ ` -> ` `, `\\` -> `\`, `\"` -> `"`). It is the decode for
+// BARE (unquoted) words, where bash removes the backslash before every
+// character. Quoted words decode differently — see zoneUnescapeDbl and
+// zoneUnescapeAnsiC (card t1570).
 func zoneUnescapeLit(v string) string {
 	if !strings.Contains(v, "\\") {
 		return v
@@ -98,6 +97,147 @@ func zoneUnescapeLit(v string) string {
 	return b.String()
 }
 
+// zoneUnescapeDbl decodes one literal part of a double-quoted word: bash
+// keeps the backslash an escape only before $ ` " \ and newline, and before
+// any other character the backslash is literal ("lnk\dir" names a directory
+// whose name carries the backslash — collapsing it to lnkdir missed the
+// zone, gate round 8 / card t1570). A backslash-newline is a line
+// continuation and drops both characters.
+func zoneUnescapeDbl(v string) string {
+	if !strings.Contains(v, "\\") {
+		return v
+	}
+	var b strings.Builder
+	b.Grow(len(v))
+	for i := 0; i < len(v); i++ {
+		c := v[i]
+		if c == '\\' && i+1 < len(v) {
+			switch v[i+1] {
+			case '$', '`', '"', '\\':
+				b.WriteByte(v[i+1])
+				i++
+				continue
+			case '\n':
+				i++
+				continue
+			}
+			b.WriteByte('\\')
+			continue
+		}
+		b.WriteByte(c)
+	}
+	return b.String()
+}
+
+// zoneUnescapeAnsiC decodes the ANSI-C ($'...') escape set bash honors: the
+// single-character escapes, octal \nnn, hex \xH.., and \u/\U code points.
+// An escape with no defined meaning keeps the backslash and the character —
+// bash renders `$'a\qb'` as `a\qb` — so the guard checks the same text bash
+// writes. Before this decoder ANSI-C words were matched on their raw source
+// text, so any defined escape (`\\`, `\x2e`, ...) hid the real path (card
+// t1570).
+func zoneUnescapeAnsiC(v string) string {
+	if !strings.Contains(v, "\\") {
+		return v
+	}
+	var b strings.Builder
+	b.Grow(len(v))
+	for i := 0; i < len(v); i++ {
+		c := v[i]
+		if c != '\\' || i+1 >= len(v) {
+			b.WriteByte(c)
+			continue
+		}
+		i++
+		switch e := v[i]; e {
+		case 'a':
+			b.WriteByte(7)
+		case 'b':
+			b.WriteByte(8)
+		case 'e', 'E':
+			b.WriteByte(27)
+		case 'f':
+			b.WriteByte(12)
+		case 'n':
+			b.WriteByte(10)
+		case 'r':
+			b.WriteByte(13)
+		case 't':
+			b.WriteByte(9)
+		case 'v':
+			b.WriteByte(11)
+		case '\\', '\'', '"', '?':
+			b.WriteByte(e)
+		case 'x':
+			b.WriteString(zoneHexEscape(v, &i, 2))
+		case 'u':
+			b.WriteString(zoneHexEscape(v, &i, 4))
+		case 'U':
+			b.WriteString(zoneHexEscape(v, &i, 8))
+		default:
+			if e >= '0' && e <= '7' {
+				b.WriteByte(zoneOctalEscape(v, &i, e))
+				continue
+			}
+			b.WriteByte('\\')
+			b.WriteByte(e)
+		}
+	}
+	return b.String()
+}
+
+// zoneHexEscape reads up to maxDigits hex digits after the \x/\u/\U prefix
+// letter at v[*i], renders the code point as UTF-8, and advances *i over the
+// digits consumed. With no digit the escape is not defined: the backslash
+// and the prefix letter stay literal, the way bash renders them.
+func zoneHexEscape(v string, i *int, maxDigits int) string {
+	j := *i + 1
+	val := rune(0)
+	digits := 0
+	for digits < maxDigits && j < len(v) {
+		c := v[j]
+		var d rune
+		switch {
+		case c >= '0' && c <= '9':
+			d = rune(c - '0')
+		case c >= 'a' && c <= 'f':
+			d = rune(c-'a') + 10
+		case c >= 'A' && c <= 'F':
+			d = rune(c-'A') + 10
+		default:
+			d = -1
+		}
+		if d < 0 {
+			break
+		}
+		val = val*16 + d
+		digits++
+		j++
+	}
+	if digits == 0 {
+		return v[*i : *i+2]
+	}
+	*i = j - 1
+	return string(val)
+}
+
+// zoneOctalEscape reads one to two further octal digits after v[*i] (v[*i]
+// is the first digit) and renders the byte.
+func zoneOctalEscape(v string, i *int, first byte) byte {
+	val := rune(first - '0')
+	j := *i + 1
+	for k := 0; k < 2 && j < len(v); k++ {
+		c := v[j]
+		if c < '0' || c > '7' {
+			break
+		}
+		val = val*8 + rune(c-'0')
+		j++
+	}
+	*i = j - 1
+	return byte(val)
+}
+
 // zoneWordText returns the literal text of a word and whether the word is
 // fully literal. Words carrying expansions or globs are dynamic: their text
 // normalizes to a path no entry matches, so callers drop them (under-match).
@@ -111,14 +251,22 @@ func zoneWordText(w *syntax.Word) (string, bool) {
 		case *syntax.Lit:
 			b.WriteString(zoneUnescapeLit(p.Value))
 		case *syntax.SglQuoted:
-			b.WriteString(p.Value) // single quotes carry no escapes
+			// Plain single quotes carry no escapes. $'...' is ANSI-C
+			// quoting (mvdan marks it with Dollar and keeps the raw source
+			// text), whose escape set bash decodes — the guard must check
+			// the decoded path, not the source text (card t1570).
+			if p.Dollar {
+				b.WriteString(zoneUnescapeAnsiC(p.Value))
+			} else {
+				b.WriteString(p.Value)
+			}
 		case *syntax.DblQuoted:
 			for _, dp := range p.Parts {
 				lit, ok := dp.(*syntax.Lit)
 				if !ok {
 					return "", false
 				}
-				b.WriteString(zoneUnescapeLit(lit.Value))
+				b.WriteString(zoneUnescapeDbl(lit.Value))
 			}
 		default:
 			return "", false

@@ -137,22 +137,90 @@ func TestFactoryLeaseArmCOperatorHold(t *testing.T) {
 	})
 }
 
-// TestFactoryLeaseArmAKeepsHeldAssignedCard — AC-FAL-003 clause (iii), a
-// regression guard pinning the narrowing of REQ-FAL-003 (spec §F R17): a card
-// whose queue item is `hold` and whose row is `assigned` to the lane is leased
-// by arm (a), exactly as today; the end state is queue `hold`, row `leased`.
-func TestFactoryLeaseArmAKeepsHeldAssignedCard(t *testing.T) {
+// TestFactoryLeaseArmAExcludesHeldAssignedCard — card t1516 (leader ruling
+// 2026-10-05) supersedes AC-FAL-003 clause (iii)'s pin of spec §F R17: a card
+// whose queue item is `hold` and whose row is `assigned` to the lane is no
+// longer leased by arm (a) — the queue item's current state gates the row's
+// lease edge. The verb ends on the no-card answer with the queue item still
+// hold and the row still assigned, version unchanged.
+func TestFactoryLeaseArmAExcludesHeldAssignedCard(t *testing.T) {
 	root, store := nmBase(t, factory.BacklogStatePicked)
 	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
 	nmSetState(t, store, "t1", factory.BacklogStateHold)
+	before := fcCard(t, root, "t1")
 	nmLaneEnv(t, "lane-1", "")
-	nmIsolatedWorktrees(t, "t1")
-	out, stderr, err := qasRunNext(t, "--run", fcRun)
-	q := nmQueueState(t, store, "t1")
-	state, holder := flRow(t, root, "t1")
-	t.Logf("arm-a-hold err=%v queue=%s record=%s holder=%s stdout=%q stderr=%q", err, q, state, holder, out, stderr)
-	if q != factory.BacklogStateHold || state != homestate.CardLeased || holder != "lane-1" {
-		t.Errorf("arm (a) no longer leases a held card whose row is assigned to the lane: queue=%s record=%s holder=%s (a deliberate change must amend the SPEC, spec §F R17)", q, state, holder)
+
+	out, _, err := qasRunNext(t, "--run", fcRun)
+	sdExit3(t, "an assigned row under a held queue item", err)
+	if !strings.Contains(out, "no card is available") {
+		t.Errorf("stdout = %q, want `no card is available`", out)
+	}
+	if q := nmQueueState(t, store, "t1"); q != factory.BacklogStateHold {
+		t.Errorf("t1 queue state = %s, want still hold", q)
+	}
+	if got := fcCard(t, root, "t1"); got.State != homestate.CardAssigned || got.OwnerLabel != "lane-1" || got.Version != before.Version {
+		t.Errorf("t1 = %s owner=%q version=%d, want assigned/lane-1 version=%d unchanged", got.State, got.OwnerLabel, got.Version, before.Version)
+	}
+}
+
+// Re-promoting a queued recorded card preserves its stored or empty hint.
+// A held ownerless hub peer and an existing assignment remain unchanged.
+func TestFactoryNextQueuedAssignedCardPreservesHubHints(t *testing.T) {
+	for _, state := range []string{homestate.CardPicked, homestate.CardAssigned} {
+		for _, after := range []string{"t0", ""} {
+			t.Run(state+"/after="+after, func(t *testing.T) {
+				root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateHold)
+				for _, id := range []string{"t1", "t2"} {
+					fbSeedFiles(t, store, id, "internal/template/catalog.yaml")
+				}
+				fcPlace(t, root,
+					homestate.Card{CardID: "t0", State: homestate.CardMergedLocal},
+					homestate.Card{CardID: "t1", State: state, OwnerLabel: "lane-1", Stage: homestate.CardRun, HintAfter: after},
+					homestate.Card{CardID: "t2", State: homestate.CardPicked},
+				)
+				before := fcCard(t, root, "t2")
+				candidate := fcCard(t, root, "t1")
+				promoted := false
+				previous := factoryLeaseBeforeClaim
+				factoryLeaseBeforeClaim = func(arm, cardID string) error {
+					if cardID == "t1" && arm == "c" {
+						promoted = true
+					}
+					if cardID == "t1" && arm == "a" && state == homestate.CardAssigned {
+						if got := fcCard(t, root, "t1"); got != candidate {
+							t.Errorf("promotion changed the assigned row before its lease: got %+v, want %+v", got, candidate)
+						}
+					}
+					return nil
+				}
+				t.Cleanup(func() { factoryLeaseBeforeClaim = previous })
+				nmIsolatedWorktrees(t, "t1")
+				nmLaneEnv(t, "lane-1", "")
+				out, stderr, err := qasRunNext(t, "--run", fcRun)
+				if err != nil {
+					t.Fatalf("queued assigned card: %v (stderr %q)", err, stderr)
+				}
+				if head := nmLeasedHead(out); !strings.HasPrefix(head, "t1 stage=") {
+					t.Fatalf("leased %q, want assigned t1", head)
+				}
+				if !promoted {
+					t.Fatal("queued candidate never reached arm (c)")
+				}
+				nmAssertLeased(t, root, "t1", "lane-1")
+				if got := fcCard(t, root, "t1"); got.HintAfter != after || got.OwnerLabel != "lane-1" || got.Stage != homestate.CardRun {
+					t.Errorf("original assignment changed: after=%q owner=%q", got.HintAfter, got.OwnerLabel)
+				}
+				if got := nmQueueState(t, store, "t1"); got != factory.BacklogStatePicked {
+					t.Errorf("promoted card queue=%s, want picked", got)
+				}
+				if got := nmQueueState(t, store, "t2"); got != factory.BacklogStateHold {
+					t.Errorf("held peer queue=%s, want hold", got)
+				}
+				if got := fcCard(t, root, "t2"); got != before {
+					t.Errorf("held peer changed: got %+v, want %+v", got, before)
+				}
+			})
+		}
 	}
 }
 

@@ -97,7 +97,7 @@ func rebindFactoryLane(ctx context.Context, req laneRebindRequest) (notice, rebo
 // RegisterPeer refuses it and that refusal is the refused state, written
 // nowhere.
 func registerReboundLane(ctx context.Context, req laneRebindRequest, y, provider string) (notice, reboundRun string) {
-	s, err := factorymsg.Open(req.root, y)
+	s, err := factorymsg.OpenWithContext(ctx, req.root, y)
 	if err != nil {
 		return "factory messaging degraded: " + err.Error(), ""
 	}
