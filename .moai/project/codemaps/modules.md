@@ -7,7 +7,7 @@
 | 경로 | 통합 뒤의 책임 |
 |---|---|
 | `internal/cli/worktree/landing_predicate.go` | LandedByPatchID는 누적 patch-id 일치 뒤 landingExactChangedPaths로 base·tip·ref의 `git ls-tree -r -z --full-tree`를 읽는다. 카드가 바꾼 모든 경로의 native object/type/mode와 삭제 상태가 ref와 같아야 한다. diff는 textconv를 끄고 submodule을 포함한다. |
-| `internal/cli/worktree/done.go` · `internal/cli/worktree/sweep.go` · `internal/cli/session_worktree.go` | 공통 착지 판정을 사용한다. 세션 종료의 gitBranchLandedReal도 ancestry 확인 뒤 LandedByPatchID로 이어지며 gh를 호출하지 않는다. |
+| `internal/cli/worktree/done.go` · `internal/cli/worktree/sweep.go` · CLI의 `session_worktree.go` | 공통 착지 판정을 사용한다. 세션 종료의 gitBranchLandedReal도 ancestry 확인 뒤 LandedByPatchID로 이어지며 gh를 호출하지 않는다. |
 | `internal/graph/card_file.go` | walkCardCommits가 HEAD에서 모든 부모 경로의 커밋을 읽어 merge와 단일 부모 squash를 함께 attribution한다. CardFileEdges는 각 landing의 first parent 대비 변경 파일을 NUL로 읽는다. root 또는 비교 실패 커밋에서는 edge를 추가하지 않는다. |
 | `internal/graph/graph.go` · `internal/graph/meta.go` | 카드·파일 edge와 freshness fingerprint가 같은 landing 목록을 사용한다. CardAttributedMergeff7722d2d157dd4e3cffd88ebb644e0f8ead83fas라는 공개 이름은 유지됐지만 squash도 목록에 들어간다. |
 | `internal/cli/init.go` | provisionMCPEntryUnlessDeclined가 오류를 반환하고 runInit이 p.Collect에 모은다. deferred emitSummary가 한 번 출력하며, MCP provisioning 오류 자체로 init 실패를 반환하지 않는다. |
