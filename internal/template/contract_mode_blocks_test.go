@@ -1044,7 +1044,10 @@ func TestJevDoctrineAmendment(t *testing.T) {
 		if !strings.Contains(sec, ".moai/docs/jev-local-operations.md") {
 			t.Error("AGENTS.local.md §29 does not point at the relocated procedure document")
 		}
-		for _, marker := range []string{"판단 자료일 뿐", "판정 근거로 쓰지 않는다"} {
+		// Card t1542 promoted Jev to the lane's in-card decision advisory: the
+		// compressed §29 now carries the advisory wording ("자문 입력", "단독
+		// 판정 금지") instead of the pre-amendment display-only phrases.
+		for _, marker := range []string{"자문 입력", "단독 판정 금지"} {
 			if !strings.Contains(sec, marker) {
 				t.Errorf("AGENTS.local.md §29 compressed principle lacks %q", marker)
 			}

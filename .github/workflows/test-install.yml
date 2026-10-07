@@ -2,7 +2,7 @@ name: Test Installation Scripts
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
     paths:
       - 'install.sh'
       - 'install.ps1'
