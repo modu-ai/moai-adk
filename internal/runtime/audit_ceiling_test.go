@@ -1420,3 +1420,169 @@ func TestReqACSetsUnchangedReadsAcceptance(t *testing.T) {
 		t.Fatal("identical definition files verified as changed")
 	}
 }
+
+// AC-ACR-007 (D2 escaping, security) — debt fields are verdict-supplied
+// free text: double quotes, semicolons, and a raw newline in an admitted
+// debt's ID or description never inject record lines into §G or the trail
+// (both records stay single lines) and every field stays recoverable
+// uncorrupted after escaping.
+func TestPersistOutcomeDebtFieldsEscapedSingleLine(t *testing.T) {
+	f := newCeilingFixture(t)
+	oc := &VerdictCeilingOutcome{
+		Outcome: OutcomeDebtAdmit,
+		Debts: []auditverdict.Debt{
+			{ID: `D"1;`, DisposeIn: "run", Description: "has \"quotes\" and; semicolons\nand a raw newline"},
+			{ID: "D2", DisposeIn: "sync", Description: "plain second debt"},
+		},
+	}
+	persistOutcome(f.input(), "ceiling-outcome", oc)
+
+	progressRaw, err := os.ReadFile(filepath.Join(f.specDir, "progress.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gLine string
+	for _, l := range strings.Split(string(progressRaw), "\n") {
+		if strings.Contains(l, "debts=") {
+			gLine = l
+			break
+		}
+	}
+	if gLine == "" {
+		t.Fatal("no §G record carries a debts field")
+	}
+	trailRaw, err := os.ReadFile(filepath.Join(f.root, ".moai", "state", "audit-enforcement.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tLine string
+	for _, l := range strings.Split(string(trailRaw), "\n") {
+		if strings.Contains(l, "debts=") {
+			tLine = l
+			break
+		}
+	}
+	if tLine == "" {
+		t.Fatal("no trail line carries a debts field")
+	}
+
+	for name, line := range map[string]string{"§G": gLine, "trail": tLine} {
+		if strings.Contains(line, "\n") || strings.Contains(line, "\r") {
+			t.Fatalf("%s record is not a single line: %q", name, line)
+		}
+		if !strings.Contains(line, `\n`) {
+			t.Fatalf("%s record does not escape the raw newline: %q", name, line)
+		}
+		idx := strings.LastIndex(line, " debts=")
+		if idx < 0 {
+			t.Fatalf("%s record lost the debts field: %q", name, line)
+		}
+		var got []struct {
+			ID          string `json:"id"`
+			DisposeIn   string `json:"dispose_in"`
+			Description string `json:"description"`
+		}
+		if err := json.Unmarshal([]byte(line[idx+len(" debts="):]), &got); err != nil {
+			t.Fatalf("%s debts field does not decode: %v — %q", name, err, line)
+		}
+		if len(got) != 2 {
+			t.Fatalf("%s debts decode: %d entries, want 2", name, len(got))
+		}
+		if got[0].ID != `D"1;` || got[0].DisposeIn != "run" ||
+			got[0].Description != "has \"quotes\" and; semicolons\nand a raw newline" {
+			t.Fatalf("%s first debt corrupted: %+v", name, got[0])
+		}
+		if got[1].ID != "D2" || got[1].DisposeIn != "sync" || got[1].Description != "plain second debt" {
+			t.Fatalf("%s second debt corrupted: %+v", name, got[1])
+		}
+	}
+}
+
+// AC-ACR-008 (D2 negative, RG) — outcomes with no debts keep the pre-repair
+// record grammar with no debt field emitted, and the required-backend
+// refusal / operator-override record shapes are untouched. Preserve test —
+// green before and after the fix.
+func TestPersistOutcomeNoDebtRecordUnchanged(t *testing.T) {
+	f := newCeilingFixture(t)
+
+	// pass-through, hold, and split outcomes through the engine.
+	clean := f.writeIter(t, 1, "PASS")
+	fields, hashOK := f.fieldsFromHash(t, clean)
+	fields.Label = "PASS"
+	oc, _, err := EvaluateCeiling(f.input(), fields, hashOK, nil)
+	if err != nil || oc == nil || oc.Outcome != OutcomePassThrough {
+		t.Fatalf("pass-through fixture: %+v %v", oc, err)
+	}
+	path := f.writeIter(t, 2, "FAIL")
+	f.appendLine(t, path, "must_pass_failed: 1") // a must-pass failure holds
+	fields2, hashOK2 := f.fieldsFromHash(t, path)
+	oc2, _, err := EvaluateCeiling(f.input(), fields2, hashOK2, nil)
+	if err != nil || oc2 == nil || oc2.Outcome != OutcomeHold {
+		t.Fatalf("hold fixture: %+v %v", oc2, err)
+	}
+
+	progressRaw, err := os.ReadFile(filepath.Join(f.specDir, "progress.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(progressRaw), "debts=") {
+		t.Fatalf("a no-debt record emitted a debts field:\n%s", progressRaw)
+	}
+	trailRaw, err := os.ReadFile(filepath.Join(f.root, ".moai", "state", "audit-enforcement.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(trailRaw), "debts=") {
+		t.Fatalf("a no-debt trail line emitted a debts field:\n%s", trailRaw)
+	}
+	// The pre-repair grammar shape: one line per record, key=value fields.
+	for _, l := range strings.Split(strings.TrimSpace(string(progressRaw)), "\n") {
+		if !strings.HasPrefix(l, "- ") {
+			continue
+		}
+		if !strings.Contains(l, " outcome=") || !strings.Contains(l, " reasons=") || !strings.Contains(l, " evidence=") {
+			t.Fatalf("record line lost the pre-repair grammar: %s", l)
+		}
+	}
+
+	// Required-backend refusal and override shapes are unchanged.
+	RecordRequiredBackendRefusal(f.input(), "claude verdict unavailable")
+	if err := AcknowledgeRequiredBackend(f.input(), "claude", "operator accepted the stale claude gate"); err != nil {
+		t.Fatal(err)
+	}
+	progressRaw, err = os.ReadFile(filepath.Join(f.specDir, "progress.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(progressRaw)
+	if !strings.Contains(content, "required-backend-refusal outcome=refused reasons=") ||
+		strings.Contains(content, "debts=") {
+		t.Fatalf("refusal record shape changed or grew a debts field:\n%s", content)
+	}
+	if !strings.Contains(content, "override backend=claude note=") {
+		t.Fatalf("override record shape changed:\n%s", content)
+	}
+}
+
+// AC-ACR-009 (best-effort invariant, RG) — a record-write failure never
+// flips the admission decision: a debt-admit evaluation against an
+// unwritable SPEC directory still returns the debt-admit outcome with
+// override=true and no error. Preserve test — green before and after the
+// fix.
+func TestPersistOutcomeRecordFailureKeepsAdmission(t *testing.T) {
+	f := newCeilingFixture(t)
+	path := f.writeIter(t, 1, "FAIL")
+	f.appendLine(t, path, "- debt: D1 dispose_in=run fixture debt")
+	fields, hashOK := f.fieldsFromHash(t, path)
+	if err := os.Chmod(f.specDir, 0o555); err != nil {
+		t.Skipf("cannot make the SPEC directory unwritable here: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(f.specDir, 0o755) })
+	oc, override, err := EvaluateCeiling(f.input(), fields, hashOK, nil)
+	if err != nil {
+		t.Fatalf("a record-write failure must not error the evaluation: %v", err)
+	}
+	if oc == nil || oc.Outcome != OutcomeDebtAdmit || oc.Blocked || !override {
+		t.Fatalf("outcome %+v override %v, want debt-admit admitting despite the record failure", oc, override)
+	}
+}

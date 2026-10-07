@@ -23,11 +23,13 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/auditverdict"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 )
 
 // Outcome vocabulary (design.md §2).
@@ -499,44 +501,130 @@ func readEvidenceRaw(path string) []byte {
 
 // persistOutcome records one ceiling outcome to the SPEC's progress.md §G
 // Override and Refusal Record (the durable carrier) and the machine-local
-// audit trail (REQ-ACE-007/012). Persistence is best-effort: a record-write
-// failure warns on stderr but never flips the admission decision the outcome
-// already decided.
+// audit trail (REQ-ACE-007/012). A non-empty debt inventory rides both
+// records as the additive `debts=` field (REQ-ACR-004). Persistence is
+// best-effort: a record-write or serialization failure warns on stderr but
+// never flips the admission decision the outcome already decided
+// (REQ-ACR-007).
 func persistOutcome(in VerdictCeilingInput, kind string, oc *VerdictCeilingOutcome) {
 	line := fmt.Sprintf("- %s %s %s outcome=%s reasons=%q evidence=%s",
 		time.Now().UTC().Format(time.RFC3339), in.SpecID, kind, oc.Outcome,
 		strings.Join(oc.Reasons, "; "), strings.Join(oc.Evidence, ","))
+	debtsField := debtsRecordField(oc.Debts)
+	if debtsField != "" {
+		line += " " + debtsField
+	}
 	if err := appendProgressRecord(in.SpecDir, line); err != nil {
 		fmt.Fprintf(os.Stderr, "[audit-ceiling] warning: progress.md §G record: %v\n", err)
 	}
-	if err := appendAuditTrail(in, kind, oc.Outcome, strings.Join(oc.Reasons, "; ")); err != nil {
+	if err := appendAuditTrail(in, kind, oc.Outcome, strings.Join(oc.Reasons, "; "), debtsField); err != nil {
 		fmt.Fprintf(os.Stderr, "[audit-ceiling] warning: audit trail: %v\n", err)
 	}
+}
+
+// debtRecord is the persisted form of one admitted debt in the debts= field
+// (decision-index Q2): a JSON object with snake_case keys — the verdict's
+// own Debt struct stays untouched.
+type debtRecord struct {
+	ID          string `json:"id"`
+	DisposeIn   string `json:"dispose_in"`
+	Description string `json:"description"`
+}
+
+// debtsRecordField serializes the admitted debt inventory as the record's
+// additive `debts=` field (decision-index Q2): one JSON array of
+// {id, dispose_in, description} objects — a single line by construction and
+// fully escaped by the stdlib encoder, so quotes, separators, and newlines
+// in a debt's free text never inject record lines and every field stays
+// recoverable (REQ-ACR-004/005). Empty when the inventory is empty — no
+// debt-free record changes shape (REQ-ACR-006). A serialization failure
+// degrades to the best-effort warning posture, never to an admission change
+// (REQ-ACR-007).
+func debtsRecordField(debts []auditverdict.Debt) string {
+	if len(debts) == 0 {
+		return ""
+	}
+	records := make([]debtRecord, len(debts))
+	for i, d := range debts {
+		records[i] = debtRecord{ID: d.ID, DisposeIn: d.DisposeIn, Description: d.Description}
+	}
+	b, err := json.Marshal(records)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[audit-ceiling] warning: debt inventory serialization: %v\n", err)
+		return ""
+	}
+	return "debts=" + string(b)
 }
 
 // progressSectionHeading is the §G section the engine and the override path
 // append records under — outside the plan-artifact hash subject set (D10).
 const progressSectionHeading = "## §G Override and Refusal Record"
 
-// appendProgressRecord appends one record line under the §G heading of the
-// SPEC's progress.md, creating the file and the heading when absent.
+// progressRecordMu serializes the §G read-modify-write in-process, so
+// concurrent persistOutcome calls on one SPEC each read progress.md after
+// the previous write lands: every record survives exactly once and no
+// pre-existing content is overwritten (REQ-ACR-008 — the measured defect
+// was 24 parallel record calls surviving as 7 with the heading lost).
+var progressRecordMu sync.Mutex
+
+// appendProgressRecord appends one record line at the END of the §G block
+// of the SPEC's progress.md — immediately before the next same-level
+// heading when a section follows §G, end-of-file only when §G is last —
+// creating the file and the heading when absent (REQ-ACR-008/AC-ACR-016).
+// The read-modify-write is serialized in-process and written through an
+// atomic mode-preserving same-directory replace, so concurrent records
+// neither lose each other nor destroy pre-existing content and a reader
+// never observes a partial write.
 func appendProgressRecord(specDir, line string) error {
+	progressRecordMu.Lock()
+	defer progressRecordMu.Unlock()
 	path := filepath.Join(specDir, "progress.md")
 	raw, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	content := string(raw)
-	if !strings.Contains(content, progressSectionHeading) {
-		if content != "" && !strings.HasSuffix(content, "\n") {
-			content += "\n"
-		}
-		content += "\n" + progressSectionHeading + "\n\n"
-	} else if content != "" && !strings.HasSuffix(content, "\n") {
+	content := progressWithRecord(string(raw), line)
+	// The mode-preserving atomic writer keeps an existing progress.md's
+	// permission bits and creates a new one at 0644 — the pre-repair
+	// os.WriteFile semantics — while the replace itself is atomic.
+	return atomicfile.Write(path, []byte(content), 0o644)
+}
+
+// progressWithRecord returns content with one record line inserted at the
+// end of the §G block. The heading-absent and §G-last shapes are
+// byte-identical to the pre-repair append-at-EOF behavior; only the
+// §G-followed-by-a-section shape changed, from absorbing the record into
+// the later section to ending the §G block with it.
+func progressWithRecord(content, line string) string {
+	if content == "" {
+		return "\n" + progressSectionHeading + "\n\n" + line + "\n"
+	}
+	if !strings.HasSuffix(content, "\n") {
 		content += "\n"
 	}
-	content += line + "\n"
-	return os.WriteFile(path, []byte(content), 0o644)
+	lines := strings.Split(strings.TrimSuffix(content, "\n"), "\n")
+	heading := -1
+	for i, l := range lines {
+		if strings.HasPrefix(l, progressSectionHeading) {
+			heading = i
+			break
+		}
+	}
+	var out []string
+	if heading < 0 {
+		out = append(lines, "", progressSectionHeading, "", line)
+	} else {
+		at := len(lines) // §G is the last section: append at end-of-file
+		for i := heading + 1; i < len(lines); i++ {
+			if strings.HasPrefix(lines[i], "## ") {
+				at = i // a section follows §G: the record ends the §G block
+				break
+			}
+		}
+		out = append(lines[:at:at], line)
+		out = append(out, lines[at:]...)
+	}
+	return strings.Join(out, "\n") + "\n"
 }
 
 // RecordRequiredBackendRefusal persists a required-backend refusal
@@ -558,14 +646,23 @@ func RecordRequiredBackendRefusal(in VerdictCeilingInput, reason string) {
 }
 
 // appendAuditTrail appends one machine-local trail line to
-// <root>/.moai/state/audit-enforcement.log (design.md §5).
-func appendAuditTrail(in VerdictCeilingInput, kind, outcome, reason string) error {
+// <root>/.moai/state/audit-enforcement.log (design.md §5). Each non-empty
+// extra value appends as an additive `key=value` trail field — the debt
+// inventory rides it (REQ-ACR-004) — and absent extras leave the line
+// byte-identical to the pre-repair grammar (REQ-ACR-006).
+func appendAuditTrail(in VerdictCeilingInput, kind, outcome, reason string, extra ...string) error {
 	dir := filepath.Join(in.ProjectRoot, ".moai", "state")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	line := fmt.Sprintf("%s spec=%s kind=%s outcome=%s reason=%q\n",
+	line := fmt.Sprintf("%s spec=%s kind=%s outcome=%s reason=%q",
 		time.Now().UTC().Format(time.RFC3339), in.SpecID, kind, outcome, reason)
+	for _, e := range extra {
+		if e != "" {
+			line += " " + e
+		}
+	}
+	line += "\n"
 	f, err := os.OpenFile(filepath.Join(dir, "audit-enforcement.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
