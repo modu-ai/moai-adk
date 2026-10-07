@@ -30,6 +30,7 @@ package atomicfile
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"runtime"
 	"syscall"
@@ -48,10 +49,16 @@ type LockOwner struct {
 }
 
 // PidAlive probes a pid with signal 0 — a liveness check that changes
-// nothing. It returns false ONLY when the kernel answers ESRCH (no such
-// process); every other outcome reads as alive. On Windows Signal is
-// unsupported and always errors, which reads as alive — the conservative
-// direction.
+// nothing. It returns false when the process verifiably does not exist:
+// ESRCH from the kernel, or os.ErrProcessDone — a process this machine's
+// runtime already observed exiting is finished, and Signal surfaces that as
+// ErrProcessDone rather than ESRCH. Reading ErrProcessDone as alive judged
+// every finished same-boot child alive, so an orphan lock whose owner
+// exited was never reclaimed. Every OTHER outcome (EPERM from a live
+// process owned by someone else, a platform without a liveness probe)
+// reads as alive — the conservative direction: an incorrect "dead" breaks a
+// lock and discards a live writer's committed mutation, an incorrect
+// "alive" only delays.
 func PidAlive(pid int) bool {
 	if pid <= 0 {
 		return false
@@ -61,7 +68,7 @@ func PidAlive(pid int) bool {
 		return false // no such process on this platform's FindProcess
 	}
 	if err := p.Signal(syscall.Signal(0)); err != nil {
-		if err == syscall.ESRCH {
+		if errors.Is(err, os.ErrProcessDone) || err == syscall.ESRCH {
 			return false
 		}
 		// EPERM (a live process owned by someone else) and any other error
