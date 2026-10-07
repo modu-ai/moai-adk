@@ -575,6 +575,7 @@ func TestGraphCardFileEdgesRejectsTruncatedSuccessfulBatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	var input strings.Builder
+	var selected []commitInfo
 	var last, sentinel string
 	for i := len(commits) - 1; i >= 0; i-- {
 		c := commits[i]
@@ -583,6 +584,7 @@ func TestGraphCardFileEdgesRejectsTruncatedSuccessfulBatch(t *testing.T) {
 		}
 		if factory.AttributeSubject(c.subject, "main") != "" {
 			input.WriteString(c.sha + "\n")
+			selected = append(selected, c)
 			last = c.sha
 		}
 	}
@@ -620,14 +622,41 @@ exec "$GRAPH_REAL_GIT" "$@"
 	}
 	t.Setenv("GRAPH_REAL_GIT", realGit)
 	t.Setenv("PATH", shim+string(os.PathListSeparator)+os.Getenv("PATH"))
-	for name, output := range map[string][]byte{"complete-path": raw[:firstPathEnd], "complete": raw, "mid-path": raw[:sentinelStart-3], "header-only": raw[:headerEnd], "unterminated-header": raw[:headerEnd-1]} {
+	for name, output := range map[string][]byte{
+		"complete":                           raw,
+		"complete-empty-root-header":         raw[:sentinelStart+len(sentinel)+3],
+		"sentinel-missing-parent-terminator": raw[:sentinelStart+len(sentinel)+2],
+		"complete-path":                      raw[:firstPathEnd],
+		"mid-path":                           raw[:sentinelStart-3],
+		"header-only":                        raw[:headerEnd],
+		"unterminated-header":                raw[:headerEnd-1],
+	} {
 		t.Run(name, func(t *testing.T) {
 			file := filepath.Join(t.TempDir(), "batch-output")
 			if err := os.WriteFile(file, output, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			t.Setenv("GRAPH_BATCH_OUTPUT", file)
+			_, batchErr := cardFileBatch(root, selected, sentinel)
+			complete := name == "complete" || name == "complete-empty-root-header"
+			if complete && batchErr != nil {
+				t.Errorf("complete batch rejected: %v", batchErr)
+			}
+			if !complete && batchErr == nil {
+				t.Error("truncated batch returned nil error")
+			}
+			trace := filepath.Join(t.TempDir(), "fallback-trace.log")
+			t.Setenv("GIT_TRACE", trace)
 			got := cardFileRun(t, root)
+			traceOutput, err := os.ReadFile(trace)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fallbackCount := strings.Count(string(traceOutput), "built-in: git diff ")
+			t.Logf("batch_error=%v native_diff_fallback_commands=%d", batchErr, fallbackCount)
+			if !complete && fallbackCount == 0 {
+				t.Error("truncated batch skipped native per-commit diff fallback")
+			}
 			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("successful partial batch accepted: got %#v want %#v", got, want)
 			}
