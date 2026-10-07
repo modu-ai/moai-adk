@@ -23,6 +23,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -257,7 +258,7 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 			s.fail(ctx, store, item, err)
 			return false
 		}
-		s.complete(ctx, store, item, "occurrence comment on #"+itoa(issue.Number), comment)
+		s.complete(ctx, store, item, "occurrence comment on #"+strconv.Itoa(issue.Number), comment)
 		return true
 	}
 
@@ -347,22 +348,6 @@ func (s *Sender) persistSummaryOutcome(ctx context.Context, store *feedback.Queu
 		}
 		return nil
 	})
-}
-
-type errorString string
-
-func (e errorString) Error() string { return string(e) }
-
-func itoa(i int) string {
-	if i == 0 {
-		return "0"
-	}
-	var digits []byte
-	for i > 0 {
-		digits = append([]byte{byte('0' + i%10)}, digits...)
-		i /= 10
-	}
-	return string(digits)
 }
 
 // complete records a successful send: the outbox log carries the sent

@@ -10,6 +10,7 @@ package publish
 // fields); a tampered one fails a cross-check and never reaches gh.
 
 import (
+	"errors"
 	"runtime"
 	"strings"
 
@@ -21,7 +22,7 @@ import (
 // errUnvalidatedBody marks a queued item whose stored body failed send-time
 // re-validation. The item stays queued (the attempt limit eventually drops
 // it) and never reaches gh — no search, no comment, no create.
-var errUnvalidatedBody = errorString("queued body failed send-time re-validation")
+var errUnvalidatedBody = errors.New("queued body failed send-time re-validation")
 
 // revalidatedItem recovers the VALIDATED payload from a queued item's
 // stored body marker and regenerates the exact title and body the send

@@ -178,7 +178,7 @@ func TestOrphanRecoveryAtTheCapAdoptsItsSlot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load ledger: %v", err)
 	}
-	ledger.RecordQueued(fp, now) // the orphan's slot
+	ledger.RecordQueued(fp, now)              // the orphan's slot
 	ledger.QueuedAt = append(ledger.QueuedAt, // two other reports' slots
 		now.Add(-1*time.Hour).UTC().Format(time.RFC3339),
 		now.Add(-2*time.Hour).UTC().Format(time.RFC3339))

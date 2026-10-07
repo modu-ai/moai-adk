@@ -31,18 +31,18 @@ import (
 )
 
 // Store file names under <moai home>/state/bugreport/ (design.md section 6,
-// D36 — every bugreport store is user-scoped).
+// D36 — every bugreport store is user-scoped). The spool's file name and
+// the store directory live in the SSOT bugreport package (spoolFileName /
+// BugreportStoreDir) — no local copies.
 const (
-	QueueFileName   = "queue.json"
-	LedgerFileName  = "ledger.json"
-	OutboxFileName  = "outbox.log"
-	spoolFileName   = "spool.jsonl"
-	outboxFilePerm  = 0o600
-	storeDirPerms   = 0o700
-	titleKeyPrefix  = "[auto-report] "
-	schemaMarkerV1  = "v1"
-	issueMarkerV1   = "<!-- moai-bugreport:v1 "
-	storeDirDefault = "state/bugreport"
+	QueueFileName  = "queue.json"
+	LedgerFileName = "ledger.json"
+	OutboxFileName = "outbox.log"
+	outboxFilePerm = 0o600
+	storeDirPerms  = 0o700
+	titleKeyPrefix = "[auto-report] "
+	schemaMarkerV1 = "v1"
+	issueMarkerV1  = "<!-- moai-bugreport:v1 "
 )
 
 // OutboxRow is one outbox log line. Payload-bearing rows (queued, sent,
