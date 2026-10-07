@@ -22,11 +22,11 @@ func escapeGuardMutate(t *testing.T) (yamlPath, settingsPath, escaped string) {
 	if err != nil {
 		t.Fatalf("read yaml copy: %v", err)
 	}
-	const clean = `args_pattern: "rm -rf C:/:*"`
+	const clean = `args_pattern: "rm -rf C:/*"`
 	if !bytes.Contains(body, []byte(clean)) {
 		t.Fatalf("committed policy lacks %s; the mutation has nothing to rewrite", clean)
 	}
-	mutated := bytes.Replace(body, []byte(clean), []byte(`args_pattern: "rm -rf C\\:/:*"`), 1)
+	mutated := bytes.Replace(body, []byte(clean), []byte(`args_pattern: "rm -rf C\\:/*"`), 1)
 	driftWriteFixture(t, filepath.Dir(yamlPath), filepath.Base(yamlPath), string(mutated))
 
 	doc, err := Load(yamlPath)
@@ -48,7 +48,7 @@ func escapeGuardMutate(t *testing.T) (yamlPath, settingsPath, escaped string) {
 		t.Fatalf("encode regenerated settings: %v", err)
 	}
 	driftWriteFixture(t, filepath.Dir(settingsPath), filepath.Base(settingsPath), out.String())
-	return yamlPath, settingsPath, `Bash(rm -rf C\:/:*)`
+	return yamlPath, settingsPath, `Bash(rm -rf C\:/*)`
 }
 
 // escapedColonSpecifiers returns every Bash or PowerShell specifier in the policy at path
