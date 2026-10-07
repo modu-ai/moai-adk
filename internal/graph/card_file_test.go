@@ -9,8 +9,11 @@ package graph
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
+	"sort"
 	"strings"
 	"testing"
 
@@ -419,5 +422,137 @@ func TestGraphCardFileEdgesSeeSquashLanding(t *testing.T) {
 	}
 	if len(rootEdges) != 0 {
 		t.Fatalf("card-attributed root commit produced edges: %+v", rootEdges)
+	}
+}
+
+// Native serial diffs remain the oracle for the batch protocol, including paths
+// that look like framing tokens. The process budget prevents a history-sized
+// number of subprocess launches from returning unnoticed.
+func TestGraphCardFileEdgesBatchMatchesSerial(t *testing.T) {
+	root := cardFileFixture(t)
+	for _, name := range []string{"\nleading\nnewline.txt", strings.Repeat("a", 40)} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte("squash\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		gitFix(t, root, "add", "--", name)
+	}
+	gitFix(t, root, "commit", "-qm", "fix(graph): squash landing (card t1560) (#1999)")
+	gitFix(t, root, "mv", "--", "t5.txt", "renamed.txt")
+	gitFix(t, root, "commit", "-qm", "fix(graph): rename landing (card t1561) (#2000)")
+	gitFix(t, root, "commit", "--allow-empty", "-qm", "fix(graph): empty landing (card t1562) (#2001)")
+	for _, renames := range []string{"true", "false"} {
+		t.Run(renames, func(t *testing.T) {
+			gitFix(t, root, "config", "diff.renames", renames)
+			commits, err := walkCardCommits(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var want []CardFileEdge
+			for _, c := range commits {
+				card := factory.AttributeSubject(c.subject, "main")
+				if card == "" {
+					continue
+				}
+				out, err := exec.Command("git", "-C", root, "diff", "--name-only", "-z", c.sha+"^1", c.sha).Output()
+				if err != nil {
+					continue
+				}
+				for _, file := range strings.Split(string(out), "\x00") {
+					if file != "" {
+						want = append(want, CardFileEdge{Card: card, File: file, SHA: c.sha[:9]})
+					}
+				}
+			}
+			sort.Slice(want, func(i, j int) bool {
+				a, b := want[i], want[j]
+				if a.Card != b.Card {
+					return a.Card < b.Card
+				}
+				if a.File != b.File {
+					return a.File < b.File
+				}
+				return a.SHA < b.SHA
+			})
+			trace := filepath.Join(t.TempDir(), "git-trace.log")
+			t.Setenv("GIT_TRACE", trace)
+			got, err := CardFileEdges(root, "main", factory.AttributeSubject)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("batch differs from native serial diffs:\n got: %#v\nwant: %#v", got, want)
+			}
+			raw, err := os.ReadFile(trace)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if n := strings.Count(string(raw), "built-in: git "); n > 2 {
+				t.Fatalf("card-file collection launched %d Git commands; want at most 2", n)
+			}
+		})
+	}
+}
+
+func TestGraphCardFileEdgesBatchFailurePreservesPerCommitIsolation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX executable shim; native batch equivalence runs on all platforms")
+	}
+	root := cardFileFixture(t)
+	want := cardFileRun(t, root)
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	shim := t.TempDir()
+	script := `#!/bin/sh
+for arg do
+ if [ "$arg" = "--stdin" ]; then
+  if [ "$GRAPH_BATCH_EMPTY" = "1" ]; then exit 0; fi
+  exit 1
+ fi
+ if [ -n "$GRAPH_FAILED_REV" ] && [ "$arg" = "$GRAPH_FAILED_REV" ]; then exit 1; fi
+done
+exec "$GRAPH_REAL_GIT" "$@"
+`
+	if err := os.WriteFile(filepath.Join(shim, "git"), []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GRAPH_REAL_GIT", realGit)
+	t.Setenv("PATH", shim+string(os.PathListSeparator)+os.Getenv("PATH"))
+	got := cardFileRun(t, root)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("batch failure lost healthy edges: got %#v want %#v", got, want)
+	}
+	t.Setenv("GRAPH_BATCH_EMPTY", "1")
+	if incomplete := cardFileRun(t, root); !reflect.DeepEqual(incomplete, want) {
+		t.Fatalf("incomplete successful batch lost healthy edges: %#v", incomplete)
+	}
+	commits, err := walkCardCommits(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var failed string
+	for _, c := range commits {
+		if factory.AttributeSubject(c.subject, "main") == "t7" {
+			failed = c.sha
+			break
+		}
+	}
+	if failed == "" {
+		t.Fatal("missing second-parent landing positive control")
+	}
+	t.Setenv("GRAPH_FAILED_REV", failed+"^1")
+	var surviving []CardFileEdge
+	for _, edge := range want {
+		if edge.SHA != failed[:9] {
+			surviving = append(surviving, edge)
+		}
+	}
+	got = cardFileRun(t, root)
+	if !reflect.DeepEqual(got, surviving) {
+		t.Fatalf("per-commit failure isolation changed: got %#v want %#v", got, surviving)
+	}
+	if _, err := CardFileEdges(t.TempDir(), "main", factory.AttributeSubject); err == nil {
+		t.Fatal("invalid repository lost its log error")
 	}
 }
