@@ -180,7 +180,9 @@ func newLaunchRaceFixture(t *testing.T, hookReady bool, ownerPID int, ownerStart
 		recordActiveFactoryRun(t, f.root, f.run)
 	}
 	var err error
-	if f.seed, err = factorymsg.Open(f.root, f.run); err != nil {
+	// Cold fixture setup is outside the races below; their registration,
+	// ownership and transaction assertions do not measure Open's default limit.
+	if f.seed, err = factorymsg.OpenWithDeadline(f.root, f.run, 30*time.Second); err != nil {
 		t.Fatal(err)
 	}
 	closeOnCleanup(t, "seed broker", f.seed)
