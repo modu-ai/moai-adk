@@ -3,8 +3,10 @@
 ## §A Context
 
 - Card t1559, lane-3 self-dispatch run tmhxo0. Tier M. cycle_type **tdd** (RED → GREEN → verify).
-- Working tree: this card worktree, branch `WT-graph-card-merges-edge`, plan base pinned at
-  **df0c417e9** (all "unchanged" and scope checks resolve against this SHA, never a moving ref).
+- Working tree: this card worktree, branch `WT-graph-card-merges-edge`. Plan base re-pinned at
+  **5fb7baf88** (the lane's origin/main absorb after plan-audit iter 1 — plan §C.1); all
+  "unchanged" and scope checks resolve against this SHA, never a moving ref. Authoring-time
+  baselines were measured at df0c417e9 (pre-absorb) and stay in §C.2 as historical anchors.
 - Defect in one sentence: the `--merges` filter at internal/graph/card_file.go:49 predates the
   2026-10-05 squash-landing flow, and attribution (`factory.AttributeSubject` forms 1/2/2b/2c)
   already reads squash subjects — removing the filter is the whole fix.
@@ -22,17 +24,35 @@
 - `CardAttributedMergeSHAs` and `CardMergeFingerprint` names become broader than their content
   ("Merge" → any attributed landing commit). The doc comments state the commit-level semantics;
   renaming the exported identifiers is out of scope.
-- In a card worktree mid-flight, the broadened walk attributes intermediate card-branch commits
-  (the traceability mandate puts the card id in every commit subject), so edges and the
-  fingerprint pick up unlanded SHAs while the card runs. On `main` only the landed squash is
-  reachable — the CI-facing surface this SPEC targets. Accepted behavior, no carve-out (spec.md
-  §3).
+- Intermediate-commit attribution is accepted (lane decision, spec.md §3): every intermediate
+  branch commit carries the card id by the traceability mandate, and pre-cutover `--no-ff`
+  merges make those commits reachable from `main` — so edges and the fingerprint now span a
+  card's intermediate commits, on `main` as well as in in-flight worktrees. Semantically
+  consistent landed evidence; a one-time historical enrichment with no ongoing churn under
+  squash landing (each new landing attributes exactly one new commit). No carve-out — a
+  walk-side subject filter would contradict REQ-GCSE-001 and plan §G.
 
-## §C Pre-flight (measured, this tree, 2026-10-07)
+## §C Pre-flight
+
+### §C.1 Absorbed-state precondition (re-pinned 2026-10-07 — D4)
+
+Plan-audit iter 1 found the verification commands failing with `[setup failed]`:
+`internal/template/embed_manifest_gen.go:71` still embeds `handle-agent-hook.sh`, which card
+t1540 (d9b1334d2, PR #1779) had deleted from the tree. The heal landed on origin/main —
+f97edcc55 (PR #1762), plus #1783/#1784 — and the lane absorbed origin/main into the card
+branch. Post-absorb HEAD is the merge commit **5fb7baf88**, the new plan base. Measured
+post-absorb on this tree:
 
 | # | Fact | Command | Observed |
 |---|------|---------|----------|
-| C1 | HEAD is single-parent (squash) | `git rev-list --parents -1 HEAD` | `df0c417e971… cb2a011d03…` — exactly one parent |
+| C7 | Template package compiles | `go build ./internal/template/` | exit 0 |
+| C8 | Graph suite green | `go test -count=1 ./internal/graph/` | ok 107.741s |
+
+### §C.2 Authoring-time baselines (measured at df0c417e9, pre-absorb — historical anchors)
+
+| # | Fact | Command | Observed |
+|---|------|---------|----------|
+| C1 | HEAD was single-parent (squash) | `git rev-list --parents -1 HEAD` | `df0c417e971… cb2a011d03…` — exactly one parent |
 | C2 | Attribution reads the squash shape | HEAD subject vs form-2b ERE | 1 match |
 | C3 | Walk breadth delta | `git rev-list --count HEAD` / `--merges` | 13127 / 2664 |
 | C4 | Rename baseline | `grep -c walkCardMerges internal/graph/card_file.go` | 4 (target after M2: 0) |
@@ -60,8 +80,10 @@
 - E1 AC matrix — every acceptance.md §B criterion judged with verbatim command output.
 - E2 package re-measure — `go test -timeout 30m ./internal/graph/...` exit 0.
 - E3 lint — `go vet ./internal/graph/...` and `golangci-lint run ./internal/graph/...` exit 0.
-- E4 scope — `git diff --name-only df0c417e9 HEAD` lists exactly the two sanctioned paths.
-- E5 ordering — `git log --oneline df0c417e9..HEAD` shows the fix commit newest and the
+- E4 scope — `git diff --name-only 5fb7baf88 HEAD -- internal/` prints exactly two lines (the
+  two sanctioned paths; product paths only — the SPEC documents themselves are commits in this
+  range and are excluded by the pathspec).
+- E5 ordering — `git log --oneline 5fb7baf88..HEAD` shows the fix commit newest and the
   test-only commit immediately before it.
 
 ## §F Milestones (decision-reversibility order)
@@ -74,8 +96,14 @@
    spot (card t1560) (#1999)"` on `main` — a single-parent landing; assert exactly one edge
    `{t1560, squash.txt, <9-char SHA>}`, the landing SHA in `CardAttributedMergeSHAs`, and a
    `CardMergeFingerprint` difference against the same fixture without the landing (control arm).
+   The test also carries AC-GCSE-002's root contrast group: a second fixture whose ROOT
+   (parentless) commit subject carries a card token (`fix(t1561): seeded root (card t1561)`),
+   asserting nil error + zero edges so the first-parent-diff guard path (card_file.go:95-98) is
+   actually exercised through the attribution gate (:86-89).
 2. Run `go test ./internal/graph/ -run '^TestGraphCardFileEdgesSeeSquashLanding$' -v -count=1` —
-   observe FAIL (0 edges, want 1); record verbatim output in progress.md.
+   observe FAIL (0 edges, want 1); record verbatim output in progress.md. The expected RED is
+   an assertion failure — a `[setup failed]` compile error is a defect to fix first, not the
+   RED being sought (the post-absorb tree compiles: plan §C.1).
 3. Commit test only: `test(graph): reproduce the squash-landing blind spot in the card-file walk (card t1559)`.
 
 Files: `internal/graph/card_file_test.go`.
@@ -88,10 +116,12 @@ Files: `internal/graph/card_file_test.go`.
    `CardMergeFingerprint` doc comments, the per-commit diff comments, and the error string to
    commit-level semantics (keep the root-commit guard and its rationale, broadened to "commit").
 2. Run the new test GREEN, then
-   `go test ./internal/graph/ -run '^TestGraph(CardFile|CheckNoticesCardFileSource)' -count=1`
-   — all six existing tests pass unmodified. Leading anchor only, deliberately no `$`: the
-   selector is prefix-open (`TestGraphCardFile` names no test exactly — the linter's full-wrap
-   form would select nothing), and none of these tests uses subtests.
+   `go test ./internal/graph/ -run '^TestGraph(CardFile|CheckNoticesCardFileSource)' -v -count=1`
+   — all six existing tests pass unmodified (seven `-v` PASS lines at M2 time: six existing +
+   the new one). Leading anchor only, deliberately no `$`: the selector is prefix-open — the
+   full-wrap form the linter suggests would match only `TestGraphCheckNoticesCardFileSource`
+   (card_file_test.go:146) and silently drop the six `TestGraphCardFile*` tests (1 of 7
+   selected); none of these tests uses subtests.
 3. Commit: `fix(graph): walk every commit so squash landings produce card edges (card t1559)`.
 
 Files: `internal/graph/card_file.go`.
@@ -99,8 +129,10 @@ Files: `internal/graph/card_file.go`.
 ### M3 — Gates and evidence (Priority Medium)
 
 1. `go vet ./internal/graph/...` · `golangci-lint run ./internal/graph/...` ·
-   `go test -timeout 30m ./internal/graph/...` — all exit 0.
-2. `git diff --name-only df0c417e9 HEAD` — exactly the two sanctioned paths.
+   `go test -timeout 30m ./internal/graph/...` — all exit 0; the package run's wall-clock is
+   recorded once in progress.md (the measured cost of the broadened walk — D2 residual).
+2. `git diff --name-only 5fb7baf88 HEAD -- internal/` — exactly two lines: the two sanctioned
+   paths (product paths only; the SPEC documents are commits in this range).
 3. `moai spec lint` on the SPEC artifacts — 0 errors.
 4. Record §E evidence in progress.md; hand to plan-audit.
 

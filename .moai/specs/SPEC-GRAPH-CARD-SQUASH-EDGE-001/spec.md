@@ -86,20 +86,27 @@ single-parent landing subjects already — the `--merges` filter is the only blo
 
 ## §3 Non-Functional Constraints
 
-- Performance: the broadened walk reads 13127 commits instead of 2664 on this repository's
-  history (measured 2026-10-07); the delta is milliseconds and no commit-limit or pagination is
-  engineered. The per-commit `git diff` subprocess count is unchanged — attribution gates it.
+- Performance (measured): the broadened walk grows the first-parent diff workload from 681 to
+  5,851 runs (≈8.6×) — measured by extracting the attribution implementation and counting
+  attributed commits at the fixed authoring base df0c417e9 (codex extraction, 2026-10-07); the
+  audit's independent consistency probe (1,303/2,664 merges vs 6,591/13,127 card-token
+  subjects) confirms the scale and direction. No commit-limit, pagination, or caching is
+  engineered (§4); the wall-clock cost of one full affected-package run is recorded once at
+  plan M3 so the acceptance picture carries a measured number.
 - Security lens (dispatch `--security`): the walk runs the same `git` subprocess with one flag
   removed — no new input surface; the NUL-separated `%x00` subject parsing and the `-z`
   first-parent-diff parsing stay as-is; `repoRoot` and `landedBranch` provenance unchanged.
 - Determinism: no wall-clock and no map-iteration-order output; git log order plus the existing
   three-key sort.
-- In-flight worktree consequence (known, accepted): on a card worktree branch whose commits
-  carry the card id per the traceability mandate, the broadened walk attributes those
-  intermediate commits too — edges point at unlanded SHAs while the card is in flight. On the
-  integration base (`main`) only the landed squash commit is reachable, which is the surface
-  this SPEC targets; attribution remains the single filter, so no in-worktree carve-out is
-  added.
+- Attribution semantics — intermediate-commit attribution is ACCEPTED (lane decision, recorded
+  2026-10-07): every intermediate branch commit carries the card id by the traceability
+  mandate, and pre-cutover `--no-ff` merges make those commits reachable from `main`, so the
+  broadened walk attributes them — a card's edges now span its intermediate commits, not only
+  the landing, on `main` as well as in in-flight worktrees. This is semantically consistent
+  landed evidence (the card did touch those files) and a ONE-TIME historical enrichment: under
+  the current squash-landing flow each new landing attributes exactly one new commit, so no
+  ongoing churn follows. No walk-side filter is added — attribution remains the single filter
+  (REQ-GCSE-001; a walk-side subject filter is plan §G's first anti-pattern).
 
 ## §4 Out of Scope
 

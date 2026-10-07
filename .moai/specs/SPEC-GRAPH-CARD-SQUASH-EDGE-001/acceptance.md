@@ -5,8 +5,9 @@
 - Every criterion is binary-testable and judged by the exit code or count of a named command;
   outputs are recorded verbatim in progress.md §E.2.
 - All commands are plain one-git-per-line form (worktree-guard safe); no `git` inside `$()`.
-- "Unchanged" and scope checks resolve against the pinned plan base **df0c417e9**, never a
-  moving ref.
+- "Unchanged" and scope checks resolve against the pinned plan base **5fb7baf88** (the lane's
+  origin/main absorb — plan §C.1), never a moving ref; the scope check is pathspec-restricted
+  to product paths (`-- internal/`).
 - The RED arm is re-witnessed at run phase (plan M1 step 2) with verbatim output — the
   plan-phase baseline (spec.md §1) establishes the mechanism; M1 establishes the behavior.
 
@@ -44,13 +45,20 @@ criteria cover a REQ pair; every REQ has at least one owning AC).
 - **Judgement**: fails on the pre-fix tree (0 edges, want 1 — RED, plan M1 step 2); passes
   after M2 (GREEN).
 
-### AC-GCSE-002 — Over-attribution control arm
+### AC-GCSE-002 — Over-attribution control arms
 
 - **Given** the same fixture's base arm: the card branch's intermediate commit is NOT reachable
-  from `main` (squash flattens it away), and the reachable root + base commits carry no card
-  token.
+  from `main` (squash flattens it away), and the reachable base commits carry no card token.
 - **When** `CardFileEdges` and `CardAttributedMergeSHAs` run over the pre-landing base history.
 - **Then** zero edges and an empty SHA list — the broadened walk attributes nothing unearned.
+- **Given (root contrast group)** a second fixture whose ROOT (parentless) commit itself
+  carries a card token — subject `fix(t1561): seeded root (card t1561)` — so the attribution
+  gate returns non-empty for a parentless commit.
+- **When** `CardFileEdges` runs over that fixture.
+- **Then** it returns nil error with zero edges — the first-parent-diff failure guard
+  (card_file.go:95-98 `continue`) is exercised for real, because the token-less base arm above
+  skips at the attribution gate (:86-89) before the diff ever runs; a mutant turning the guard
+  into a hard error return flips this assertion while leaving the base arm green.
 
 ### AC-GCSE-003 — Fingerprint input convergence
 
@@ -81,11 +89,14 @@ criteria cover a REQ pair; every REQ has at least one owning AC).
 
 ### AC-GCSE-007 — Six existing tests unmodified in intent
 
-- **When** `go test ./internal/graph/ -run '^TestGraph(CardFile|CheckNoticesCardFileSource)' -count=1`
-  (leading anchor only — prefix-open selector; the full-wrap form would select nothing) and
-  `git diff df0c417e9 HEAD -- internal/graph/card_file_test.go`.
-- **Then** all six existing tests pass and the diff shows only the added
-  `TestGraphCardFileEdgesSeeSquashLanding` — no existing fixture pattern edited.
+- **When** `go test ./internal/graph/ -run '^TestGraph(CardFile|CheckNoticesCardFileSource)' -v -count=1`
+  (leading anchor only — prefix-open selector; the full-wrap form would match only
+  `TestGraphCheckNoticesCardFileSource`, card_file_test.go:146 — 1 of 7 selected, the six
+  `TestGraphCardFile*` names silently dropped) and
+  `git diff 5fb7baf88 HEAD -- internal/graph/card_file_test.go`.
+- **Then** all six existing tests pass (each named on its own `-v` PASS line) and the diff
+  shows only the added `TestGraphCardFileEdgesSeeSquashLanding` — no existing fixture pattern
+  edited.
 
 ### AC-GCSE-008 — Doc-comment truthfulness + rename completeness
 
@@ -103,13 +114,16 @@ criteria cover a REQ pair; every REQ has at least one owning AC).
 
 ### AC-GCSE-010 — Scope guard
 
-- **When** `git diff --name-only df0c417e9 HEAD`
-- **Then** exactly `internal/graph/card_file.go` and `internal/graph/card_file_test.go` — no
-  other path.
+- **When** `git diff --name-only 5fb7baf88 HEAD -- internal/` (product paths only — the SPEC
+  documents themselves are commits in this range and are excluded by the pathspec)
+- **Then** the output is exactly two lines — `internal/graph/card_file.go` and
+  `internal/graph/card_file_test.go` — no other path. (Base re-pinned to the absorbed merge
+  5fb7baf88; the authoring base df0c417e9 predates the SPEC-document commits, so an unpinned
+  whole-tree diff can never yield two lines.)
 
 ### AC-GCSE-011 — RED→GREEN ordering witnessed by the commit graph
 
-- **When** `git log --oneline df0c417e9..HEAD`
+- **When** `git log --oneline 5fb7baf88..HEAD`
 - **Then** the newest commit is the fix commit and the next-older commit is the test-only
   commit — the test commit precedes the fix commit, so the RED-first claim is re-witnessable
   from git history alone (SPEC-V3R6-GRAPH-FRESHNESS-001 §2.3 ordering attribution).
