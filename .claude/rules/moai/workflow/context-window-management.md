@@ -44,7 +44,7 @@ The orchestrator MUST proactively recognize the model-specific boundary and prep
 
 [ZONE:Evolvable] [HARD] Resume message format: include all of the following so the next session is self-sufficient (locale renderings per `session-handoff.md` § Localization Table — do not redefine a parallel format here):
 ```
-ultrathink. Resume Epic <N>. SPEC-<ID> — <approach summary>.
+Resume Epic <N>. SPEC-<ID> — <approach summary>.
 applied lessons: <memory file names>.
 progress.md path: .moai/specs/SPEC-<ID>/progress.md
 Run: <one-line command>.
