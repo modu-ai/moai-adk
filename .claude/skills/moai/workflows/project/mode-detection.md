@@ -6,9 +6,8 @@ metadata:
   phase: "Phase 1/0.3: Mode Detection and New Project Interview"
 ---
 
-<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
-<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
-<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
+<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
 ## Mode Flag Compatibility
 
@@ -108,7 +107,7 @@ round uncollected:
 
 Stage A is clarity-driven, NOT fixed-length. It scores accumulated answer clarity on a
 0-10 scale and adapts the round count, reusing the adaptive mechanism defined in
-`.claude/skills/moai/workflows/plan/clarity-interview.md` (the SAME 0-10 scale
+`~/.claude/skills/moai/workflows/plan/clarity-interview.md` (the SAME 0-10 scale
 semantics — do NOT invent a divergent rubric):
 
 - **Entry floor**: `clarity_threshold` (4, from `.moai/config/sections/interview.yaml`)
@@ -210,14 +209,14 @@ ambiguity resolution. There is nothing to "score" about whether the project has 
 or which test command it runs — so subjecting them to the Stage A clarity loop, or to
 its round cap, would be a category error and would leave them uncollected.
 
-Topic: How is the project verified, what does it surface, what does it integrate with, and who runs it? Elicit these four axes (later recorded into `harness-spec.yaml` — see `doc-generation.md`). Present one batched AskUserQuestion for all four axes, with a structured answer area or four labeled selections in the same response. Do not issue four sequential question calls:
+Topic: How is the project verified, what does it surface, what does it integrate with, and who runs it? Elicit these four axes (later recorded into `harness-spec.yaml` — see `doc-generation.md`). Present each as a separate AskUserQuestion with up to 4 options:
 
 - **Verification method** — the test / e2e command or verification method (e.g., `go test ./...`, `pytest`, an e2e suite, or "manual verification"). Recorded as the `verification` field.
 - **UI surface** — whether the project has a user-facing UI or is headless: `has-ui` (web / desktop / mobile front-end) vs `headless` (CLI / API / library / service). Recorded as the `ui_surface` field.
 - **External systems** — the databases, APIs, or services the project integrates with (e.g., PostgreSQL, Redis, a payment API, an external microservice), or "none". Recorded as the `external_systems` field.
 - **Team-sharing intent** — whether the project is `solo` (single maintainer) or `team-shared` (multiple contributors). Recorded as the `team_sharing` field.
 
-An axis the user declines or cannot answer is recorded as an explicit empty value. The single batch round still RAN, which is what makes that value a legitimate empty rather than an uncollected one. Record the batch response count as one user round, not four rounds.
+An axis the user declines or cannot answer is recorded as an explicit empty value. The round still RAN, which is what makes that value a legitimate empty rather than an uncollected one.
 
 **Output:** Write all answers to `.moai/project/interview.md` with this structure:
 

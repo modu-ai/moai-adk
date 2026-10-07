@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -1394,16 +1395,9 @@ func resolvePhysicalWalk(p string, depth int) (string, bool) {
 			return real, true
 		}
 	}
-	parts := strings.Split(strings.ReplaceAll(filepath.ToSlash(p), "\\", "/"), "/")
-	resolved := ""
-	if len(parts) > 0 {
-		switch {
-		case parts[0] == "":
-			resolved = "/"
-		case isWindowsVolumePrefix(parts[0]):
-			resolved = parts[0] + "/"
-		}
-	}
+	volume := filepath.VolumeName(p)
+	parts := pathSegments(strings.TrimPrefix(p, volume), runtime.GOOS == "windows")
+	resolved := filepath.ToSlash(volume) + "/"
 	skipped := 0
 	for i := 1; i < len(parts); i++ {
 		switch parts[i] {
@@ -1450,15 +1444,37 @@ func resolvePhysicalWalk(p string, depth int) (string, bool) {
 				}
 				// the link's resolution takes the component's place; what
 				// remains of the original path rejoins onto it
-				resolved = strings.TrimSuffix(sub, "/") + "/"
+				resolved = strings.TrimSuffix(filepath.ToSlash(sub), "/") + "/"
 				skipped++
 				continue
 			}
-			resolved = strings.TrimSuffix(real, "/") + "/"
+			resolved = strings.TrimSuffix(filepath.ToSlash(real), "/") + "/"
 			skipped++
 		}
 	}
 	return filepath.Clean(resolved), true
+}
+
+// pathSegments splits an absolute path into its components using the
+// platform's actual separators only (SPEC-HOOK-BACKSLASH-SYMLINK-001
+// REQ-HBS-001): on Windows `\` and `/` are interchangeable separators, so
+// both split; everywhere else `/` alone separates and every `\` in a
+// component is an ordinary filename character that must survive the split
+// verbatim — converting it would validate a FICTIONAL path (a POSIX
+// component literally named `innocent\dir` and symlinked outside the project
+// used to be split into a non-existent `innocent`, letting the boundary
+// check pass while the Write landed outside, CWE-61). The platform choice is
+// an argument rather than a runtime.GOOS read inside the body so the Windows
+// branch stays unit-testable at the string level on every platform
+// (AC-HBS-005); the single production caller passes runtime.GOOS == "windows".
+func pathSegments(p string, windows bool) []string {
+	if windows {
+		// The explicit ReplaceAll is load-bearing: filepath.ToSlash is a
+		// runtime no-op wherever the host separator is already "/", so it
+		// would leave the Windows branch untested on every CI runner.
+		return strings.Split(strings.ReplaceAll(p, "\\", "/"), "/")
+	}
+	return strings.Split(p, "/")
 }
 
 // pathHasDotDotSegment reports whether p contains a ".." PATH SEGMENT (not a
@@ -1470,13 +1486,6 @@ func pathHasDotDotSegment(p string) bool {
 		}
 	}
 	return false
-}
-
-// isWindowsVolumePrefix reports whether seg is a drive-letter prefix ("C:"),
-// which seeds the walk prefix on Windows the way "/" seeds it on POSIX.
-func isWindowsVolumePrefix(seg string) bool {
-	return len(seg) == 2 && seg[1] == ':' &&
-		((seg[0] >= 'a' && seg[0] <= 'z') || (seg[0] >= 'A' && seg[0] <= 'Z'))
 }
 
 // absoluteUncleaned makes filePath absolute WITHOUT lexical cleaning.
@@ -1562,15 +1571,13 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 			// Cannot resolve project directory, skip boundary check
 			slog.Debug("cannot resolve project directory", "error", absErr)
 		} else {
-			// Normalize projectAbs via EvalSymlinks ONLY when resolvedPath was
-			// also resolved, so the boundary comparison stays symmetric. If
-			// resolvedPath fell back to its unresolved form (new-file Write),
-			// keep projectAbs unresolved too — otherwise a symlinked project
-			// prefix (macOS /var -> /private/var) would make a legitimate
-			// in-project new-file look like an escape (false-positive deny,
-			// NFR-SEC-003 violation). Mirrors file_changed.go's normRoot.
+			// Resolve the root through the same existing-parent walk as the
+			// target. Even a missing project leaf can have an aliased parent
+			// (Windows short names or POSIX symlinks). Comparing its lexical
+			// spelling with a resolved target would falsely deny that file.
+			// If the target could not resolve, keep both spellings lexical.
 			if resolvedSymlink {
-				if resolvedProject, evalErr := filepath.EvalSymlinks(projectAbs); evalErr == nil {
+				if resolvedProject, ok := resolveThroughExistingParent(projectAbs); ok {
 					projectAbs = resolvedProject
 				}
 			}

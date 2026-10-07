@@ -157,7 +157,7 @@ A skill MAY use `reference.md`, `references/`, and `reference/` independently or
 
 ### Skill Listing Budget and Compaction (Claude Code runtime)
 
-MoAI's 3-level disclosure sits on top of two runtime budgets the Claude Code host applies. CLAUDE.md § Progressive Disclosure System cross-references this section as canonical:
+MoAI's 3-level disclosure sits on top of two runtime budgets the Claude Code host applies. This section is the canonical progressive-disclosure reference:
 
 - **Listing budget**: skill descriptions are loaded so Claude knows what is available; the budget scales at ~1% of the model context window. On overflow, the least-used skills' descriptions are dropped first (names are always kept). Raise it with the `skillListingBudgetFraction` setting (e.g. `0.02` = 2%) or the `SLASH_COMMAND_TOOL_CHAR_BUDGET` env var; each entry's combined `description` + `when_to_use` text is capped at 1,536 characters (`maxSkillDescriptionChars`). Run `/doctor` to detect overflow.
 - **Compaction budget**: an invoked skill's rendered content stays in context across turns. After auto-compaction, Claude Code re-attaches the most recent invocation of each skill keeping its first ~5,000 tokens, sharing a combined ~25,000-token budget filled from the most-recently-invoked skill. Older skills can be dropped entirely; re-invoke a skill after compaction to restore its full content.

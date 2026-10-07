@@ -2,21 +2,9 @@
 description: "Run Phase 11~4 — DDD/TDD implementation cycles, quality validation, git operations, and completion guidance"
 user-invocable: false
 metadata:
-  parent: moai-workflow-run
-  phase: "Phase 11-4: Implementation, Quality Validation, and Completion"
+ parent: moai-workflow-run
+ phase: "Phase 11-4: Implementation, Quality Validation, and Completion"
 ---
-
-# Approved Plan Handoff
-
-The run phase receives an immutable handoff from plan containing
-`plan_artifact_hash`, `task_graph_id`, the approved scope, and the approval
-record. Before delegating implementation, the orchestrator recomputes the
-artifact hash and validates the task graph against the current tree. When the
-identity and scope are unchanged, this is an input-validation step: do not
-re-invoke `manager-spec` to repeat plan analysis or ask the same approval
-question. When the hash, scope, dependency set, or risk classification changes,
-record the mismatch and route only the affected portion back to planning for
-re-approval. The approval meaning is preserved in both paths.
 
 # Phase 11: Implementation (Mode-Dependent)
 
@@ -61,12 +49,12 @@ After each DDD IMPROVE cycle completion, compare planned vs actual:
 2. Compare against actual_files from divergence tracking above
 3. Calculate drift: (unplanned_new_files / total_planned_files) * 100
 4. Log to `.moai/specs/SPEC-{ID}/progress.md`:
-   - Cycle number, planned count, actual count, drift percentage
-   - List any unplanned files
+  - Cycle number, planned count, actual count, drift percentage
+  - List any unplanned files
 5. Alert thresholds:
-   - drift <= 20%: Informational only
-   - 20% < drift <= 30%: Warning in progress.md
-   - drift > 30% (cumulative): Trigger Phase 14 re-planning gate
+  - drift <= 20%: Informational only
+  - 20% < drift <= 30%: Warning in progress.md
+  - drift > 30% (cumulative): Trigger Phase 14 re-planning gate
 
 ## Phase 12: TDD Implementation (for tdd mode)
 
@@ -80,17 +68,6 @@ Requirements:
 - Execute the complete RED-GREEN-REFACTOR cycle for each feature
 - Write tests before implementation (test-first discipline)
 - Ensure minimum 80% coverage per commit (85% recommended for new code)
-
-### TDD Result Classification (RED is not any failure)
-
-Record the semantic result of every TDD command using
-`.claude/rules/moai/workflow/tdd-result-contract.md`. A RED result is valid
-only when the new AC test reaches its intended assertion and the command's
-verbatim output proves that expected failure. Compile errors, test discovery
-errors, missing fixtures, tool failures, timeouts, and failures in existing
-tests are `TOOL_FAILURE` or `REGRESSION_FAILURE` and block the cycle. GREEN
-must rerun the new AC test plus the regression set; REFACTOR must preserve
-their PASS results.
 
 ### RED-stage Drafter Pool (read-only, conditional)
 
@@ -119,12 +96,12 @@ After each TDD REFACTOR cycle completion, compare planned vs actual:
 2. Compare against actual_files from divergence tracking above
 3. Calculate drift: (unplanned_new_files / total_planned_files) * 100
 4. Log to `.moai/specs/SPEC-{ID}/progress.md`:
-   - Cycle number, planned count, actual count, drift percentage
-   - List any unplanned files
+  - Cycle number, planned count, actual count, drift percentage
+  - List any unplanned files
 5. Alert thresholds:
-   - drift <= 20%: Informational only
-   - 20% < drift <= 30%: Warning in progress.md
-   - drift > 30% (cumulative): Trigger Phase 14 re-planning gate
+  - drift <= 20%: Informational only
+  - 20% < drift <= 30%: Warning in progress.md
+  - drift > 30% (cumulative): Trigger Phase 14 re-planning gate
 
 ## Parallel Quality-Evidence Fan-Out (capability-gated)
 
@@ -213,36 +190,23 @@ Output: gate_report with pass/fail per check category (reused categories marked 
 
 Steps:
 1. Invoke sync-auditor with:
-   - SPEC acceptance criteria (from spec-compact.md or spec.md)
-   - Milestone contract (from contract.md, if thorough harness)
-   - Implementation changeset (modified/created files)
+  - SPEC acceptance criteria (from spec-compact.md or spec.md)
+  - Milestone contract (from contract.md, if thorough harness)
+  - Implementation changeset (modified/created files)
 2. sync-auditor evaluates all 4 dimensions:
-   - Functionality (40%): Run tests, verify each acceptance criterion
-   - Security (25%): OWASP check (HARD: Security FAIL = overall FAIL)
-   - Craft (20%): Coverage >= 85%, error handling review
-   - Consistency (15%): Pattern adherence check
+  - Functionality (40%): Run tests, verify each acceptance criterion
+  - Security (25%): OWASP check (HARD: Security FAIL = overall FAIL)
+  - Craft (20%): Coverage >= 85%, error handling review
+  - Consistency (15%): Pattern adherence check
 3. Verdict handling:
-   - PASS: Proceed to Phase 17
-   - FAIL: Return specific findings to implementation agent for targeted fix
-   - Maximum 3 fix-evaluate cycles
-   - After 3 FAIL cycles: Present findings to user via AskUserQuestion
+  - PASS: Proceed to Phase 17
+  - FAIL: Return specific findings to implementation agent for targeted fix
+  - Maximum 3 fix-evaluate cycles
+  - After 3 FAIL cycles: Present findings to user via AskUserQuestion
 
 Independent evaluation: Agent(subagent_type="sync-auditor"). A retired CG configuration never authorizes leader self-evaluation.
 
 Output: evaluation_report with per-dimension PASS/FAIL/UNVERIFIED verdicts and findings list.
-
-#### Evidence and Decision Ownership
-
-The run-phase four-dimension result is an evidence bundle, not an unconditional
-sync decision. It MUST carry `tree_key`, the resolved AC set, rubric version,
-dimension evidence, and an `evidence_status` of `COMPLETE`, `INCOMPLETE`, or
-`CONTESTED`. Sync may reuse the bundle only when all three identity inputs
-(tree, AC, rubric) match and the status is `COMPLETE`. A changed tree, changed
-AC/rubric, `INCOMPLETE`, or `CONTESTED` finding forces the sync-phase decision
-owner to perform the missing review; the orchestrator records the reason for
-every reuse or re-execution. The sync-auditor/4dim binding predicate remains
-the owner of the sync verdict, while the run result remains attributable
-evidence.
 
 <!-- moai:evolvable-start id="gate-run-2" -->
 ## HUMAN GATE: Implementation Complete
@@ -269,7 +233,7 @@ Purpose: Multi-dimensional review iteration for high-quality output. This phase 
 - User flow validation: End-to-end correctness
 
 **Security/Performance review** (conditional, triggered when changes affect security/performance/UX domains OR --review flag):
-- Invoke review workflow explicitly: Read `.claude/skills/moai/workflows/review.md` and execute its multi-perspective analysis (security, performance, quality, UX reviewers)
+- Invoke review workflow explicitly: Read `~/.claude/skills/moai/workflows/review.md` and execute its multi-perspective analysis (security, performance, quality, UX reviewers)
 - This replaces the previous vague "delegate to review workflow" with an explicit skill invocation
 
 Iteration behavior:
@@ -337,6 +301,8 @@ Tasks:
 **Route B — Tier L OR explicit `--pr`:**
 
 Agent: manager-git subagent
+
+ENTRY PRECONDITION: manager-git's role body ships in the opt-in `delivery` bundle, not L0 — verify it is installed (`~/.claude/agents/manager-git.md` for Claude, `~/.codex/agents/manager-git.toml` for Codex) BEFORE Phase 19 delegates; when it is absent, refuse with the named remediation `moai bundle add delivery` (C4: actionable report — never a missing-file error mid-flow).
 
 Tasks:
 - Create feature branch `feat/SPEC-{ID}`

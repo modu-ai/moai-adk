@@ -45,6 +45,9 @@ func formRepo(t *testing.T, branch string, entries ...formCommit) string {
 		}
 	}
 	run("init", "-q", "-b", "main")
+	// Disable automatic maintenance before fixture TempDir cleanup.
+	run("config", "gc.auto", "0")
+	run("config", "maintenance.auto", "false")
 	for i, e := range entries {
 		file := "f" + string(rune('a'+i)) + ".txt"
 		args := []string{"commit", "-q", "-m", e.subject}

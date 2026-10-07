@@ -82,7 +82,7 @@ Quality assessment model with five dimensions:
 
 Overall score: weighted average with critical-dimension override (security/testability cannot be masked).
 
-See [TRUST 5 detailed dimensions and scoring](.claude/skills/moai-workflow-testing/references/trust5-framework.md) for full assessment rubric.
+See [TRUST 5 detailed dimensions and scoring](~/.claude/skills/moai-workflow-testing/references/trust5-framework.md) for full assessment rubric.
 
 ### DDD Testing Process
 
@@ -108,7 +108,7 @@ Greenfield Development:
 
 All three follow a 6-step pattern: capture/analyze → classify → identify candidates → apply → verify → document.
 
-See [debugging/refactoring/performance step-by-step walkthroughs](.claude/skills/moai-workflow-testing/references/workflow-processes.md) for detailed process tables.
+See [debugging/refactoring/performance step-by-step walkthroughs](~/.claude/skills/moai-workflow-testing/references/workflow-processes.md) for detailed process tables.
 
 ### Code Review Process
 
@@ -124,18 +124,18 @@ See [debugging/refactoring/performance step-by-step walkthroughs](.claude/skills
 5-step multi-agent pipeline:
 
 1. Eligibility Check (Haiku): skip closed/draft/already-reviewed/trivial PRs
-2. Context Gathering: find CLAUDE.md per modified dir + summarize PR
-3. Parallel Review (5 Sonnet agents): CLAUDE.md compliance / obvious bugs / git blame / previous comments / code comment compliance
+2. Context Gathering: find AGENTS.md per modified dir + summarize PR
+3. Parallel Review (5 Sonnet agents): AGENTS.md compliance / obvious bugs / git blame / previous comments / code comment compliance
 4. Confidence Scoring (0-100): 0=false positive, 25=somewhat, 50=moderate, 75=high, 100=certain
 5. Filter & Report: drop issues <80 confidence, post via gh CLI with file/line/commit links
 
-See [PR review multi-agent architecture and output format](.claude/skills/moai-workflow-testing/references/pr-review-multi-agent.md) for agent role detail and example output.
+See [PR review multi-agent architecture and output format](~/.claude/skills/moai-workflow-testing/references/pr-review-multi-agent.md) for agent role detail and example output.
 
 ### Multi-Language Support
 
 Per-language toolchain mappings (Python pytest+ruff+bandit, JS/TS Jest+ESLint+npm audit, Go go test+staticcheck+gosec, Rust cargo test+clippy+gosec equivalents).
 
-See [multi-language toolchain reference](.claude/skills/moai-workflow-testing/references/multi-language-support.md) for per-language testing/lint/security/perf tool inventory.
+See [multi-language toolchain reference](~/.claude/skills/moai-workflow-testing/references/multi-language-support.md) for per-language testing/lint/security/perf tool inventory.
 
 ---
 
@@ -155,11 +155,11 @@ Gate config: per-dimension thresholds, max issues by severity, coverage targets,
 
 Four-stage pipeline: Code Quality → Testing → Performance → Security. Each stage terminates pipeline on failure with stage-specific failure report.
 
-See [CI/CD integration patterns (GitHub Actions + Docker)](.claude/skills/moai-workflow-testing/references/integration-patterns.md) for job configuration walkthroughs.
+See [CI/CD integration patterns (GitHub Actions + Docker)](~/.claude/skills/moai-workflow-testing/references/integration-patterns.md) for job configuration walkthroughs.
 
 ### E2E / Browser Testing
 
-Playwright patterns (Page Object Model, cross-browser, visual regression) and documentation-lookup integration. See [Playwright best practices](.claude/skills/moai-workflow-testing/references/playwright-best-practices.md).
+Playwright patterns (Page Object Model, cross-browser, visual regression) and documentation-lookup integration. See [Playwright best practices](~/.claude/skills/moai-workflow-testing/references/playwright-best-practices.md).
 
 ---
 
@@ -167,12 +167,12 @@ Playwright patterns (Page Object Model, cross-browser, visual regression) and do
 
 Deep-dive modules for each workflow stage. These describe conceptual workflows
 (not an importable SDK) — apply each with your project's own toolchain. Start at
-the [modules index](.claude/skills/moai-workflow-testing/modules/INDEX.md), or jump to a stage:
+the [modules index](~/.claude/skills/moai-workflow-testing/modules/INDEX.md), or jump to a stage:
 
-- [AI-Powered Debugging](.claude/skills/moai-workflow-testing/modules/ai-debugging.md) — error classification + solution candidates
-- [Smart Refactoring](.claude/skills/moai-workflow-testing/modules/smart-refactoring.md) — technical-debt analysis + safe transforms
-- [Performance Optimization](.claude/skills/moai-workflow-testing/modules/performance-optimization.md) — profiling + bottleneck detection
-- [Automated Code Review](.claude/skills/moai-workflow-testing/modules/automated-code-review.md) — TRUST 5 scoring + static analysis
+- [AI-Powered Debugging](~/.claude/skills/moai-workflow-testing/modules/ai-debugging.md) — error classification + solution candidates
+- [Smart Refactoring](~/.claude/skills/moai-workflow-testing/modules/smart-refactoring.md) — technical-debt analysis + safe transforms
+- [Performance Optimization](~/.claude/skills/moai-workflow-testing/modules/performance-optimization.md) — profiling + bottleneck detection
+- [Automated Code Review](~/.claude/skills/moai-workflow-testing/modules/automated-code-review.md) — TRUST 5 scoring + static analysis
 
 ---
 

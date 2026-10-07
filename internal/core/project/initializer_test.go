@@ -135,7 +135,13 @@ func TestInit_BasicInitialization(t *testing.T) {
 	assertFileExists(t, filepath.Join(root, ".moai", "config", "sections", "language.yaml"))
 	assertFileExists(t, filepath.Join(root, ".moai", "config", "sections", "quality.yaml"))
 	assertFileExists(t, filepath.Join(root, ".moai", "config", "sections", "workflow.yaml"))
-	assertFileExists(t, filepath.Join(root, "CLAUDE.md"))
+
+	// AGENTS.md-primary product: the fallback path (nil deployer) writes no
+	// instruction file at all — AGENTS.md comes from the template deployer and
+	// CLAUDE.md is never written by any harness value.
+	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); !os.IsNotExist(err) {
+		t.Error("CLAUDE.md must not be created by init")
+	}
 
 	// Verify result
 	if result.DevelopmentMode != "ddd" {
@@ -333,7 +339,11 @@ func TestInit_InvalidDevelopmentModeFallsBackToTDD(t *testing.T) {
 	}
 }
 
-func TestInit_CLAUDEMDContent(t *testing.T) {
+// TestInit_NoInstructionStubOnFallback pins the AGENTS.md-primary conversion:
+// with no deployer the fallback path must not mint an instruction-file stub.
+// AGENTS.md is deployed from AGENTS.md.tmpl by the template deployer, and no
+// harness value of init writes CLAUDE.md.
+func TestInit_NoInstructionStubOnFallback(t *testing.T) {
 	root := t.TempDir()
 	init := NewInitializer(nil, nil, nil)
 
@@ -352,24 +362,10 @@ func TestInit_CLAUDEMDContent(t *testing.T) {
 		t.Fatalf("Init() error = %v", err)
 	}
 
-	claudeMDPath := filepath.Join(root, "CLAUDE.md")
-	data, err := os.ReadFile(claudeMDPath)
-	if err != nil {
-		t.Fatalf("read CLAUDE.md: %v", err)
-	}
-
-	content := string(data)
-	if !strings.Contains(content, "awesome-app") {
-		t.Error("CLAUDE.md should contain project name")
-	}
-	if !strings.Contains(content, "TypeScript") {
-		t.Error("CLAUDE.md should contain language")
-	}
-	if !strings.Contains(content, "Next.js") {
-		t.Error("CLAUDE.md should contain framework")
-	}
-	if !strings.Contains(content, "tdd") {
-		t.Error("CLAUDE.md should contain development mode")
+	for _, name := range []string{"CLAUDE.md", "AGENTS.md"} {
+		if _, err := os.Stat(filepath.Join(root, name)); !os.IsNotExist(err) {
+			t.Errorf("%s must not be created by the fallback path", name)
+		}
 	}
 }
 
@@ -397,7 +393,6 @@ func TestInit_NoDynamicTokensInGeneratedFiles(t *testing.T) {
 		filepath.Join(root, ".moai", "config", "sections", "user.yaml"),
 		filepath.Join(root, ".moai", "config", "sections", "language.yaml"),
 		filepath.Join(root, ".moai", "config", "sections", "quality.yaml"),
-		filepath.Join(root, "CLAUDE.md"),
 	}
 
 	for _, f := range files {
@@ -693,7 +688,7 @@ func TestInit_WorkflowYAMLContent(t *testing.T) {
 
 func TestInit_ManifestPreservesDeployedEntries(t *testing.T) {
 	// Regression test: verifies that template entries tracked during
-	// deployTemplates (Step 4) are not lost when initManifest (Step 6)
+	// deployTemplates (Step 3) are not lost when initManifest (Step 4)
 	// finalizes the manifest. Previously, initManifest called Load()
 	// which replaced the in-memory entries with an empty disk file.
 	root := t.TempDir()
@@ -704,7 +699,7 @@ func TestInit_ManifestPreservesDeployedEntries(t *testing.T) {
 		files: map[string][]byte{
 			".claude/agents/expert/expert-backend.md": []byte("# Expert Backend Agent"),
 			".claude/rules/moai/core/constitution.md": []byte("# MoAI Constitution"),
-			"CLAUDE.md": []byte("# MoAI Execution Directive"),
+			"AGENTS.md": []byte("# MoAI Execution Directive"),
 		},
 	}
 	mgr := manifest.NewManager()

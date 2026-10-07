@@ -176,9 +176,11 @@ func TestInstructionsLoadedHandler_CheckCharacterBudget(t *testing.T) {
 //
 //	root/
 //	  .moai/                                  (dir — resolveProjectRoot requires it)
-//	  CLAUDE.md                               @-imports AGENTS.md (twice, for dedup)
+//	  AGENTS.md                               anchor — @-imports chained.md (twice, for dedup)
 //	                                          and missing.md (dangling — excluded)
-//	  AGENTS.md                               plain import-closure member
+//	  chained.md                              plain import-closure member
+//	  CLAUDE.md                               legacy file — not an anchor while AGENTS.md
+//	                                          exists, and imported by nothing
 //	  .claude/rules/moai/always-core.md       no frontmatter  → always-loaded
 //	  .claude/rules/moai/scoped.md            top-level paths: → excluded
 //	  .claude/rules/moai/notes.txt            non-md          → excluded
@@ -192,8 +194,9 @@ func writeBudgetFixture(t *testing.T) string {
 		t.Fatal(err)
 	}
 	files := map[string]string{
-		"CLAUDE.md":                         "# Project\n\n@AGENTS.md\n@AGENTS.md\n@missing.md\n",
-		"AGENTS.md":                         "# Agents\n\nThe standing contract body.\n",
+		"AGENTS.md":                         "# Agents\n\n@chained.md\n@chained.md\n@missing.md\n",
+		"chained.md":                        "# Chained\n\nThe standing contract body.\n",
+		"CLAUDE.md":                         "# Project\n\nLegacy local instruction prose.\n",
 		".claude/rules/moai/always-core.md": "# Always-loaded core rule\n\nNo frontmatter block.\n",
 		".claude/rules/moai/scoped.md":      "---\npaths:\n  - \"**/scoped/**\"\n---\n\n# Scoped rule\n",
 		".claude/rules/moai/notes.txt":      "not markdown\n",
@@ -219,7 +222,7 @@ func TestInstructionFileSetDerivation(t *testing.T) {
 	want := []string{
 		filepath.Join(root, ".claude", "rules", "moai", "always-core.md"),
 		filepath.Join(root, "AGENTS.md"),
-		filepath.Join(root, "CLAUDE.md"),
+		filepath.Join(root, "chained.md"),
 	}
 	if got := instructionFileSet(root); !reflect.DeepEqual(got, want) {
 		t.Errorf("instructionFileSet() = %v, want %v", got, want)
@@ -261,16 +264,47 @@ func TestInstructionFileSetDerivation(t *testing.T) {
 	if res := instructionFileSet(root); len(res) != len(grown)+2 {
 		t.Errorf("indented paths: wrongly scoped the rule: %d members, want %d", len(res), len(grown)+2)
 	}
+
+	// Legacy anchor: a project still carrying ONLY CLAUDE.md is measured
+	// through it (resolveInstructionFile fallback). The AGENTS.md-bearing
+	// fixture above must never reach this branch — CLAUDE.md there is inert.
+	legacyRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(legacyRoot, ".moai"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(legacyRoot, ".claude", "rules", "moai"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	legacyFiles := map[string]string{
+		"CLAUDE.md":                         "# Legacy project\n\n@AGENTS.md\n",
+		".claude/rules/moai/always-core.md": "# Always-loaded core rule\n",
+	}
+	for rel, content := range legacyFiles {
+		path := filepath.Join(legacyRoot, filepath.FromSlash(rel))
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	legacyWant := []string{
+		filepath.Join(legacyRoot, ".claude", "rules", "moai", "always-core.md"),
+		filepath.Join(legacyRoot, "CLAUDE.md"),
+	}
+	if got := instructionFileSet(legacyRoot); !reflect.DeepEqual(got, legacyWant) {
+		t.Errorf("legacy anchor set = %v, want %v", got, legacyWant)
+	}
 }
 
 // TestInstructionFileSetCycleSafe pins the visited-set behavior: a mutual
-// @-import between CLAUDE.md and AGENTS.md must terminate and yield both
+// @-import between AGENTS.md and CLAUDE.md must terminate and yield both
 // members exactly once.
 func TestInstructionFileSetCycleSafe(t *testing.T) {
 	t.Parallel()
 
 	root := writeBudgetFixture(t)
 	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("# Agents\n@CLAUDE.md\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("# Project\n@AGENTS.md\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	got := instructionFileSet(root)

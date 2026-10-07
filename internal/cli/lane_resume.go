@@ -79,11 +79,6 @@ func isShortClusterCarryingR(arg string) bool {
 // required form verbatim.
 const resumeRequiresValueError = "--resume requires a session id (--resume <session-id>); a bare --resume or --resume= launches nothing"
 
-// relaunchResumeRefusal is REQ-SCV-010's refusal text: the loop refuses to
-// start (nothing leased, nothing launched, the token neither propagated nor
-// stripped) and names the safe one-shot lane-join form verbatim.
-const relaunchResumeRefusal = "factory lane: --resume cannot run under --clear-policy relaunch — every card session the loop starts would resume the same conversation in a foreign worktree; the emergency form is the one-shot lane join: moai cc -l -- --resume <session-id>"
-
 // @MX:NOTE: pure by construction — takes no environment, filesystem, or
 // process parameter and returns a fresh []string (REQ-SCV-008). On the
 // one-shot path the behavior is unchanged from the inline append it replaced:
@@ -125,22 +120,6 @@ func validateResumeArgs(args []string) error {
 		return errors.New(resumeRequiresValueError)
 	}
 	return nil
-}
-
-// carriesResumeToken reports whether args contain a resume carrier before
-// Claude's argument separator. The guard is FAIL-CLOSED on everything the
-// model does not definitively interpret (card-review round 3, leader
-// ruling): a short-option cluster whose body carries an `r` (the attached
-// `-r<uuid>` and clusters like `-pr<uuid>` all resume), and the token after
-// an optional-value, boolean, or unknown option (`-w --resume <id>` cannot
-// be proven not to resume, so it fires). What IS definitive skips: the value
-// after a required-value option (a system prompt that MENTIONS --resume is
-// prompt text, not a resume), and everything after Claude's own argument
-// separator. A `--` is never consumed as an option's value — it counts as
-// the separator.
-func carriesResumeToken(args []string) bool {
-	carrier, _ := scanResumeArgs(args, true)
-	return carrier
 }
 
 // scanResumeArgs is the single two-segment walk behind both interpreters

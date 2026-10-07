@@ -282,20 +282,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
 		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes, entry.ClearPolicy, laneDispatchSelection(entry))()
 		defer exportFactoryLaunchFacts(entry.Spec, factory.BackendGLM)()
-		// See cc.go: the relaunch policy is the supervising loop (design.md
-		// §6) — the launcher stays the parent across every card.
+		// See cc.go: card t1554 demoted the relaunch policy to the one-shot
+		// lane session — the unified `moai todo --auto` engine is the one
+		// card-consumption path.
 		if entry.ClearPolicy == config.FactoryClearPolicyRelaunch {
-			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
-			settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
-			endSettings()
-			defer settingsCleanup()
-			if len(settingsFlag) > 0 {
-				filteredArgs = append(filteredArgs, settingsFlag...)
-			}
-			if debugRequested {
-				debugTiming.debugDump(cmd.ErrOrStderr())
-			}
-			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs, entry.FactoryRun, entry.FactoryLead)
+			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), factoryRelaunchSupersededNote)
 		}
 		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 		settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)

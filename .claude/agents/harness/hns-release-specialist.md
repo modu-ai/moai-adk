@@ -423,7 +423,7 @@ so no raw commit dump competes with them. Two
 adaptations: (1) the archived `expert-debug` quality-escalation route is replaced
 by a per-spawn `Agent(general-purpose)` diagnostic specialist per
 archived-agent-rejection.md; (2) the Phase 3/5 user-interaction points (which a
-subagent cannot drive directly per CLAUDE.md §8) are replaced by blocker-report →
+subagent cannot drive directly per askuser-protocol.md) are replaced by blocker-report →
 orchestrator user-decision prompt → re-delegation. Routing changed from `/99-release`
 → `Skill("moai/workflows/release")` to `/harness:release` → this harness
 specialist.

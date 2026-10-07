@@ -166,7 +166,7 @@ Tasks for manager-spec:
 - Analyze project documents (product.md, structure.md, tech.md)
 - Propose 1-3 SPEC candidates with proper naming
 - Check for duplicate SPECs in .moai/specs/
-- Design GEARS structure for each candidate using the 5 GEARS patterns (Ubiquitous, Event-driven `When`, State-driven `While`, Capability-gate `Where`, Event-detected unwanted). EARS legacy form is accepted for pre-v3 SPECs until 2026-11-22; new SPECs MUST use GEARS. Canonical authoring reference: `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format.
+- Design GEARS structure for each candidate using the 5 GEARS patterns (Ubiquitous, Event-driven `When`, State-driven `While`, Capability-gate `Where`, Event-detected unwanted). EARS legacy form is accepted for pre-v3 SPECs until 2026-11-22; new SPECs MUST use GEARS. Canonical authoring reference: `~/.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format.
 - Create implementation plan with technical constraints
 - Identify library versions (production stable only, no beta/alpha)
 - Search for reference implementations: Identify similar patterns in the existing codebase or well-documented approaches that can guide implementation

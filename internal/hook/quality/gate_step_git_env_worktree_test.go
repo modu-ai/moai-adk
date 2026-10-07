@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -141,9 +142,11 @@ func TestGitInitFlipsCoreBareOnlyThroughWorktreeGitDir(t *testing.T) {
 			wantFlip: true,
 		},
 		{
-			name:     "shared gitdir",
-			env:      map[string]string{"GIT_DIR": filepath.Join(host, ".git")},
-			wantFlip: false,
+			name: "shared gitdir",
+			env:  map[string]string{"GIT_DIR": filepath.Join(host, ".git")},
+			// Git for Windows also flips the shared-gitdir control; the
+			// production isolation assertion above must preserve it too.
+			wantFlip: runtime.GOOS == "windows",
 		},
 		{
 			name:     "index file only",

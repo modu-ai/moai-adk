@@ -1,0 +1,13 @@
+#!/bin/sh
+# t1534 round-8 bad-link stub — the SAME check name twice: first entry
+# pass (link A), second fail (link B). The handoff logUrl must point at B.
+if [ "$1" = "pr" ] && [ "$2" = "view" ]; then
+  printf '%s\n' 'main'
+  exit 0
+fi
+if [ "$1" = "pr" ] && [ "$2" = "checks" ]; then
+  printf '%s\n' '[{"name":"Lint","state":"SUCCESS","bucket":"pass","link":"http://example.invalid/pass"},{"name":"Lint","state":"FAILURE","bucket":"fail","link":"http://example.invalid/fail"}]'
+  exit 0
+fi
+echo "stub: unexpected invocation: $*" >&2
+exit 1

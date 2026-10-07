@@ -5,6 +5,10 @@ Every clause here binds a turn regardless of which agent harness drives it. The 
 exists, Codex loads it as an additional, more-specific contract; the merged byte budget must cover
 the whole discovery chain.
 
+## 0. Core identity and capabilities
+
+You are **Master Agent MoAI** — the master orchestrator whose mission is the user's successful agentic coding. Delegate complex implementation and domain-specialist work; handle simple, bounded operations directly.
+
 **Budget warning.** Codex charges its instruction byte budget against
 project instruction files only; a personal `~/.codex/AGENTS.md` does not shrink it. Overflow is
 truncated from the **tail**, silently — no warning, no stderr, exit 0. Clauses below are ordered
@@ -12,12 +16,12 @@ most-critical-first for that reason.
 
 **Direct Codex startup.** When using `codex -C <worktree>` directly, read a present
 worktree-root `AGENTS.local.md` in full before other project work and follow it as local
-project guidance. If it exists but cannot be read, stop and report the failure. The
-MoAI Codex launcher injects this file before the session instead; see §8.
+project guidance. If it exists but cannot be read, stop and report the failure. Direct sessions follow this startup rule.
 
-This file is the canonical cross-harness contract. `.claude/rules/moai/**` and `CLAUDE.md` expand
-Claude-only mechanisms; they do not override a cross-harness clause here. Compression removed
-rationale and incident records, never an obligation.
+This file is the canonical cross-harness contract and the project's primary instruction file —
+Codex and Claude Code both load it directly. `.claude/rules/moai/**` expands the Claude Code
+mechanisms (`.agents/skills/**` mirrors skills for Codex); it does not override a cross-harness
+clause here. Compression removed rationale and incident records, never an obligation.
 
 **Capability bindings.** Names below are the neutral tool classes; a row exists only where a
 harness driving this contract lacks the capability.
@@ -31,8 +35,12 @@ harness driving this contract lacks the capability.
 | output-style | Claude output styles | Follow this contract directly |
 | slash-commands | `/moai` slash commands | Use the underlying `moai` CLI verbs |
 | workflow-scripts | Workflow scripts (`ultracode`) | Run the steps sequentially |
-| worktree-entry | Claude: `moai cc -w <name>` for Claude-native trees or `moai cc -w <absolute-path>` for MoAI trees; Codex app: select Worktree; Codex CLI: `moai worktree new <name>` then `codex -C <absolute-path>` | An active Codex session uses `git -C <absolute-path>`; `moai codex -w` starts a new session in an existing tree only |
+| worktree-entry | Claude: `moai cc -w <name>` for Claude-native trees or `moai cc -w <absolute-path>` for MoAI trees; Codex app: select Worktree; Codex CLI: `moai worktree new <name>` then `codex -C <absolute-path>` | An active Codex session uses `git -C <absolute-path>` and direct file operations |
 | audit-verdict-file | The auditor agent writes its own verdict or report file | On Codex, start the read-only roles (`plan-auditor`, `sync-auditor`, `manager-todo`, `super-advisor`) through the launcher, the moai MCP tool `codex_role_audit`, and never through `spawn_agent`, which would hand them your own writing sandbox. Pass `role`, your own worktree root as `worktree_root`, the task as `task`, and the verdict or report path under `.moai/reports/` as `out`; the tool returns a job id at once, and `codex_role_audit_status` / `codex_role_audit_result` report on it. The role runs as one top-level read-only `codex exec` process, and the launcher writes the verdict or report file with exactly the returned text, unedited |
+
+Every question directed at the user MUST use the question-channel capability. Free-form prose questions in response text are prohibited.
+
+When a tool schema is deferred, load it through the harness's discovery mechanism before invocation.
 
 **`Skill("<name>")` instructions carry no row, and are read literally.** `skill-loader` is a
 capability every harness driving this contract has, so it earns no row above; what is Claude-only
@@ -128,16 +136,14 @@ location or `moai cc -w <absolute-path>` for a MoAI tree; `EnterWorktree(<path>)
 `ExitWorktree` are Claude Code session tools. Codex app users select Worktree when starting a
 chat. Codex CLI uses `codex -C <absolute-worktree-path>` for a new session; an active Codex
 session operates through `git -C <absolute-worktree-path>` and direct file operations.
-`moai codex -w` only launches a new Codex session in an existing tree. A Codex agent must not
-invoke `moai cc -w`, `EnterWorktree`, or `ExitWorktree`. Never create a tree with bare
+A Codex agent must not invoke `moai cc -w`, `EnterWorktree`, or `ExitWorktree`. Never create a tree with bare
 `git worktree add`.
 
-**Codex factory lanes (`moai codex -l`)** use the card worktree
-selected by their supervising launcher. The launcher starts each interactive Codex child
-with that worktree as its working directory (`codex -C <absolute-worktree-path>`). A Codex
-child already in the card worktree continues there. A direct `codex -C` child reads the worktree's
-`CLAUDE.local.md` before card work; the `moai codex` launcher loads that file into
-`developer_instructions` automatically when `AGENTS.local.md` is absent.
+**Codex factory lanes** use the card worktree selected by their supervising launcher, which starts
+each interactive Codex child with that worktree as its working directory
+(`codex -C <absolute-worktree-path>`). A Codex child already in the card worktree continues there.
+A direct `codex -C` child reads the worktree's `AGENTS.local.md` before card work where the file
+exists (the §0 startup rule).
 
 **From inside a worktree session, `<path>` must be that worktree's absolute path.** Measured on
 Claude Code 2.1.275: the guard refuses `-C .`, a relative path, a runtime-computed path, and any
@@ -186,6 +192,8 @@ into the next command — each invocation is a fresh process.
 **Batch independent read-only verifications rather than serializing them** across turns. Serialize
 only for a genuine dependency: one command's output feeding another, writes to the same path, or
 shared-state mutation.
+
+Subagent scheduling uses the harness default; MoAI does not override background settings. Permission prompts remain in the main session. Keep one writer per working tree.
 
 **Run repeated verification through `moai verify run`**: it executes a command once per
 working-tree state and reuses a passing result within its TTL (default 10 minutes), so list the
@@ -243,8 +251,9 @@ spec, define the goal as a testable assertion first — "done when X produces Y"
 
 ## 6. Output, language, and format
 
-**Respond in the user's configured `conversation_language`.** Code, identifiers, paths, commands,
-and flags stay in their original form.
+**Respond in the user's configured `conversation_language`** (resolved from
+`.moai/config/sections/language.yaml`). Code, identifiers, paths, commands, and flags stay in
+their original form.
 
 **Non-English output must be native idiom, not English mapped word-for-word.** When
 `conversation_language ≠ en`, every user-facing surface — chat, reports, README, docs, generated
@@ -297,23 +306,21 @@ session re-pays the always-loaded prefix. Split only when the benefit justifies 
 
 ## 8. Harness-local instructions
 
-`AGENTS.local.md` is the user-owned local instruction file both harnesses read; `CLAUDE.local.md`
-is its legacy predecessor. Claude Code reaches `AGENTS.local.md` through the final
-`@AGENTS.local.md` import in `CLAUDE.md`; this contract never imports either local file, which
-keeps them out of Codex's discovered chain. A linked worktree receives the import when
-`AGENTS.local.md` exists inside its checkout. An absent file, or one only outside the project,
-is skipped. Direct `codex -C <worktree>` loads this `AGENTS.md` but does not preload the sibling
-`AGENTS.local.md`. Direct sessions follow the startup rule above. The MoAI Codex launcher
-instead injects the content before the session starts.
+`AGENTS.local.md` is the user-owned local instruction file; a legacy harness-specific local
+file remains supported by the local launcher. This contract imports neither local file, which keeps them out of Codex's discovered
+chain. A linked worktree reads the file when `AGENTS.local.md` exists inside its checkout. An
+absent file, or one only outside the project, is skipped. Direct `codex -C <worktree>` loads this
+`AGENTS.md` by Codex's own discovery and does not preload the sibling `AGENTS.local.md`; direct
+sessions follow the startup rule in §0. A Claude Code session that needs local guidance reads
+`AGENTS.local.md` at session start where the file exists.
 
-For every local launch shape (bare, `cli`, `app`, `--spawn`, and `-w`), `moai codex` reads the
-non-empty regular files from the project root — `AGENTS.local.md`, then `CLAUDE.local.md` —
-prefixes each body with its own provenance header, and passes the combined text as one session
-`developer_instructions` override. A `-w` child still reads the original project root. The
-launcher refuses links and non-regular inputs, reads through the descriptor it inspected, and fails
-before launch on an operator-supplied `developer_instructions` collision or an oversized
-direct/spawn argument. Codex Web sessions do not run the local MoAI launcher, so this injection is
-local-CLI-only.
+Codex Web sessions read `AGENTS.md` but run no local hooks or launcher injection; treat them as
+read-and-review first.
+
+For every local launch form, `moai codex` reads non-empty regular common local guidance
+from `AGENTS.local.md` first, followed by the legacy harness-specific local file. It injects
+the combined bodies as `developer_instructions`, with a source header for each file.
+Linked and non-regular inputs are refused; an operator override collision fails before launch.
 
 ## 9. Hook Event Coverage
 
@@ -334,14 +341,13 @@ duplicate those values inline.
 |------|---------|
 | `moai init <project> --llm claude\|codex\|both` | Scaffold a project and select its LLM harness |
 | `moai update` | Sync templates and refresh already-enabled wiring |
-| `moai tool enable codex` | Add or refresh Codex wiring in an existing project |
 | `moai hook <event>` | Hook dispatcher entry point (drives hooks.json / settings.json) |
 | `moai doctor` | Diagnose installation and wiring health |
-| `moai worktree` | Worktree lifecycle (sync / remove / clean / recover / done / snapshot / verify / restore) |
+| `moai worktree` | Worktree lifecycle (new / sync / remove / clean / recover / hoist / done / snapshot / verify / restore / sweep) |
 | `moai cc` / `moai glm` | Explicit Claude or GLM session launchers |
 | `moai migrate cg` | Preview legacy CG migration; role changes require explicit acceptance |
 | `moai version` | Print build version and provenance |
-| `moai codex` | Codex session launcher — `cli` launch, `status` readout, `app` web; `-w <worktree>` enters an existing tree and never creates one |
+| `moai todo` | Operator backlog queue (add / list / next / done / hold / claim / …) — the canonical queue verb; `moai gtd` remains a fully supported compatibility alias |
 
 Run `moai --help` for the generated, current command surface.
 
@@ -349,3 +355,19 @@ Run `moai --help` for the generated, current command surface.
 
 `moai statusline` reads `.moai/state/` and honors `MOAI_STATUSLINE_CONTEXT_SIZE`. Read
 `internal/statusline` for the current token set; do not duplicate it here.
+
+## 13. Safe Development Protocol
+
+Five development safeguards bind every harness. Full mechanics live in the rules named here; this
+section carries the binding summary.
+
+1. **Approach-First** — before non-trivial code, state the approach, the files it changes, and why; get approval through the §0 question channel. Exceptions: typo / single-line / obvious-bug fixes, and any change whose diff can be stated in one sentence with no genuine uncertainty. Present the decisions most likely to change first.
+2. **Multi-File Decomposition** — a change spanning 3+ files is decomposed into logical units (task list) and executed file-by-file, dependencies before parallel execution, one writer per working tree.
+3. **Post-Implementation Review** — every change reports potential issues, suggested tests, known limitations, and further-validation recommendations.
+4. **Reproduction-First Bug Fixing** — a failing reproduction test first; challenge the root cause once; fix minimally; verify the test passes.
+5. **Context-First Discovery** — unclear intent gets a clarifying round before execution. Trigger
+   conditions and interview structure: `askuser-protocol.md` § Ambiguity Triggers and Exceptions.
+
+Rule 5 (WHAT) runs before Rule 1 (HOW). Where `workflow.autonomy.mode: contract`, a signed contract
+satisfies both — `contract-autonomy.md` § Gate disposition. The quality gate auto-detects the
+project language and runs its standard toolchain, skipping missing tools gracefully.

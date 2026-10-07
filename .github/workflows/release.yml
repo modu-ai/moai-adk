@@ -19,7 +19,7 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
-# Release provenance gate (verify-provenance job below). The eight checks live in
+# Release provenance gate (verify-provenance job below). The seven checks live in
 # scripts/verify-release-provenance.sh so they can be run against fixtures; this
 # job fetches the tag and origin/main (the only network steps) and calls it.
 #
@@ -48,6 +48,10 @@ jobs:
     name: Verify release provenance
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      # Job-level TAG feeds the plugin-version step below; the provenance step
+      # carries its own step-level TAG (the fixture replay keys on that one).
+      TAG: ${{ github.ref_name }}
 
     steps:
       - name: Checkout code

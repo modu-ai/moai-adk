@@ -1,0 +1,12 @@
+name: ci
+on: [push]
+jobs:
+  Test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        version: ["18", "20"]
+    steps:
+      - run: "true"

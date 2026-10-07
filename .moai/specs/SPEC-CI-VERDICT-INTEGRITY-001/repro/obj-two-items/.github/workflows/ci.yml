@@ -1,0 +1,11 @@
+name: ci
+on: [push]
+jobs:
+  Test:
+    name: "Test (${{ matrix.target.os }}/${{ matrix.target.arch }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [{os: ubuntu-latest, arch: amd64}, {os: windows-latest}]
+    steps:
+      - run: "true"

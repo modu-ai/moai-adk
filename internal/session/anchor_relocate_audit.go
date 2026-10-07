@@ -304,7 +304,7 @@ func appendRelocationAudit(registryPath string, audit RelocationAudit) {
 // end in the canonical layout yields the empty string and the audit row is
 // dropped — never guessed at.
 func projectRootOfRegistry(registryPath string) string {
-	const suffix = string(filepath.Separator) + DefaultRegistryPath
+	suffix := string(filepath.Separator) + filepath.FromSlash(DefaultRegistryPath)
 	if !strings.HasSuffix(registryPath, suffix) {
 		return ""
 	}

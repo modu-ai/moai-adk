@@ -1,7 +1,7 @@
 # Delegation Map — default skill/agent designations per /moai subcommand.
 #
-# SSOT consumed by CLAUDE.md orchestration. The orchestrator reads this map
-# when composing execution plans (Analyze-First, CLAUDE.md section 2) and
+# SSOT consumed by AGENTS.md orchestration. The orchestrator reads this map
+# when composing execution plans (Analyze-First — the orchestrator pipeline) and
 # injects `At start, invoke Skill("<name>") for <reason>` lines into Agent()
 # spawn prompts per .claude/rules/moai/workflow/skill-routing.md section 1.
 #
@@ -11,7 +11,7 @@
 # proposal ladder. A Tier-4 change to this file requires user approval via
 # AskUserQuestion (auto_apply is false).
 #
-# Agent names are the 13 retained agents (CLAUDE.md section 4). Skill names are
+# Agent names are the 13 retained agents (this map is the SSOT). Skill names are
 # template-distributed moai-* skills. Zero designations is valid — an entry may
 # route to orchestrator-direct execution with no agent and no skill.
 delegation:

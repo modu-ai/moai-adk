@@ -245,21 +245,22 @@ func hasPathsRestriction(path string) bool {
 }
 
 // alwaysLoadedSurface는 repoRoot 기준 always-loaded 컨텍스트 표면을 나열한다: frontmatter에
-// `paths:` 제한이 없는 모든 .claude/rules/moai/**/*.md 파일(정렬), 이어서 3개의 고정 표면
-// 슬롯(CLAUDE.md, AGENTS.md, .claude/output-styles/moai/moai.md). 3개 고정 슬롯은
-// 디스크에 파일이 없어도 항상 목록에 포함된다 — 없는 파일은 측정 시 0 토큰으로 계산한다.
+// `paths:` 제한이 없는 모든 .claude/rules/moai/**/*.md 파일(정렬), 이어서 2개의 고정 표면
+// 슬롯(AGENTS.md, .claude/output-styles/moai/moai.md). 고정 슬롯은 디스크에 파일이 없어도
+// 항상 목록에 포함된다 — 없는 파일은 측정 시 0 토큰으로 계산한다.
 //
 // 열거(enumeration)와 측정(measurement)은 다른 규칙을 따른다. 위 hermetic 처리는 *측정*에
 // 관한 것이다: 사용자 트리에 슬롯 파일이 없을 수 있고, 그때는 0 토큰으로 계산하면 된다.
 // *열거*에는 더 강한 규칙이 붙는다 — 이 저장소 트리에 존재하지 않는 경로를 가리키는 슬롯은
 // 여기서 영원히 아무것도 측정하지 못하므로 애초에 열거되어서는 안 된다. 위 TOMBSTONE 이
-// 제거한 슬롯이 정확히 그 경우였고, TestFixedSlotsExistInRepoTree 가 재발을 막는다.
+// 제거한 슬롯과 AGENTS.md 전환 때 제거한 CLAUDE.md 슬롯이 정확히 그 경우였고,
+// TestFixedSlotsExistInRepoTree 가 재발을 막는다.
 //
-// AGENTS.md 슬롯(SPEC-AGENTS-MD-CANON-001 REQ-AMC-008): 루트 AGENTS.md는 CLAUDE.md의
-// `@`-import이므로 존재하는 순간부터 always-loaded다. 이 슬롯이 없으면 규칙 파일에서
-// AGENTS.md로 옮긴 조항이 always-loaded 컨텍스트에는 그대로 남은 채 측정에서만 사라져,
-// 일어나지 않은 감축이 다이어트로 기록된다. hermetic 처리를 그대로 쓰므로 AGENTS.md가 없는
-// 트리의 baseline은 영향을 받지 않는다.
+// AGENTS.md 슬롯(SPEC-AGENTS-MD-CANON-001 REQ-AMC-008): 루트 AGENTS.md는 이제 유일한
+// 기본 지시 파일이다(AGENTS.md 전용 전환 — 구 CLAUDE.md 슬롯은 파일 삭제와 함께 퇴역했다).
+// 이 슬롯이 없으면 규칙 파일에서 AGENTS.md로 옮긴 조항이 always-loaded 컨텍스트에는 그대로
+// 남은 채 측정에서만 사라져, 일어나지 않은 감축이 다이어트로 기록된다. hermetic 처리를 그대로
+// 쓰므로 AGENTS.md가 없는 트리의 baseline은 영향을 받지 않는다.
 func alwaysLoadedSurface(repoRoot string) ([]string, error) {
 	rulesDir := filepath.Join(repoRoot, ".claude", "rules", "moai")
 	var ruleFiles []string
@@ -280,10 +281,8 @@ func alwaysLoadedSurface(repoRoot string) ([]string, error) {
 	}
 	sort.Strings(ruleFiles)
 
-	// 3개 고정 표면 슬롯을 항상 고정 순서로 추가한다. AGENTS.md는 CLAUDE.md의 `@`-import라
-	// 바로 뒤에 둔다.
+	// 고정 표면 슬롯을 항상 고정 순서로 추가한다.
 	fixed := []string{
-		filepath.Join(repoRoot, "CLAUDE.md"),
 		filepath.Join(repoRoot, "AGENTS.md"),
 		filepath.Join(repoRoot, ".claude", "output-styles", "moai", "moai.md"),
 	}

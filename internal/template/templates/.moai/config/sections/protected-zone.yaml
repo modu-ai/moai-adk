@@ -61,7 +61,7 @@ categories:
       - .claude/commands/
       - .claude/hooks/
       - .claude/output-styles/
-      - "**/CLAUDE.md"
     runtime_paths:
+      - "**/CLAUDE.md"
       - "**/AGENTS.md"
       - "**/AGENTS.local.md"
