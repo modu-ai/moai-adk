@@ -120,8 +120,8 @@ func rlsBuildProvenanceRepo(t *testing.T, rows []rlsProvRow) *rlsRepo {
 	t.Helper()
 	r := rlsNewRepo(t)
 	r.commit(map[string]string{
-		"CHANGELOG.md": "# Changelog\n\n## [Unreleased]\n",
-		".moai/config/sections/system.yaml":       "system:\n  version: v0.0.0\n",
+		"CHANGELOG.md":                      "# Changelog\n\n## [Unreleased]\n",
+		".moai/config/sections/system.yaml": "system:\n  version: v0.0.0\n",
 	}, "base")
 	r.git("push", "-q", "origin", "main")
 
