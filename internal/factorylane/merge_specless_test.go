@@ -195,7 +195,7 @@ func TestMergeTripleSpecLessVerdict(t *testing.T) {
 				return ""
 			},
 			pass:  false,
-			wants: []string{wantPath, "no `verdict:` line"},
+			wants: []string{wantPath, "no verdict"},
 		},
 		{
 			name: "specless_verdict_fail",
@@ -204,7 +204,7 @@ func TestMergeTripleSpecLessVerdict(t *testing.T) {
 				return ""
 			},
 			pass:  false,
-			wants: []string{wantPath, "verdict: FAIL"},
+			wants: []string{wantPath, "verdict FAIL"},
 		},
 		{
 			name: "specless_conflicting_verdict_lines",
@@ -213,7 +213,7 @@ func TestMergeTripleSpecLessVerdict(t *testing.T) {
 				return ""
 			},
 			pass:  false,
-			wants: []string{wantPath, "conflicting `verdict:` lines"},
+			wants: []string{wantPath, "duplicated decision key(s): verdict"},
 		},
 		{
 			name: "specless_no_audited_sha_line",
@@ -267,6 +267,30 @@ func TestMergeTripleSpecLessVerdict(t *testing.T) {
 			},
 			pass:  false,
 			wants: []string{wantPath, "audited_sha", "not an ancestor"},
+		},
+		{
+			// Card t1571 — the repro shape from the t1557 gate round 1: a
+			// required backend recorded fail must refuse the merge even when
+			// the file's own label reads PASS. The reader used to ignore the
+			// required_backend_fail line entirely.
+			name: "specless_required_backend_fail_refuses_despite_pass_label",
+			setup: func(t *testing.T, r specLessRepo, head string) string {
+				r.write(t, r.verdictRel(), "verdict: PASS\naudited_sha: "+head+"\nrequired_backend_fail: codex\n")
+				return ""
+			},
+			pass:  false,
+			wants: []string{wantPath, "required backend"},
+		},
+		{
+			// The PASS+INCONCLUSIVE mixed shape from the same repro: a receipt
+			// recording a backend inconclusive is not a closed audit.
+			name: "specless_inconclusive_receipt_refuses_despite_pass_label",
+			setup: func(t *testing.T, r specLessRepo, head string) string {
+				r.write(t, r.verdictRel(), "verdict: PASS\naudited_sha: "+head+"\nrequired_backend: codex inconclusive\n")
+				return ""
+			},
+			pass:  false,
+			wants: []string{wantPath, "inconclusive"},
 		},
 	}
 	visited := 0

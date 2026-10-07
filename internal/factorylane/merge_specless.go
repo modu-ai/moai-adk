@@ -26,12 +26,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/auditverdict"
 )
 
 var (
-	specLessCardIDPattern  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-	specLessVerdictPattern = regexp.MustCompile(`^verdict: (PASS|PASS-WITH-DEBT|FAIL)$`)
-	specLessSHAPattern     = regexp.MustCompile(`^audited_sha: ([0-9a-f]{12,40})$`)
+	specLessCardIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	specLessSHAPattern    = regexp.MustCompile(`^audited_sha: ([0-9a-f]{12,40})$`)
 )
 
 // specLessMaxVerdictBytes bounds the verdict file the condition reads.
@@ -66,25 +67,39 @@ func checkSyncAuditVerdictFile(git GitRunner, repoDir, card string) (string, boo
 		return refuse("%s is unreadable: %v", path, err)
 	}
 
-	verdicts, shas := map[string]bool{}, map[string]bool{}
+	shas := map[string]bool{}
 	for _, line := range strings.Split(string(raw), "\n") {
 		line = strings.TrimRight(line, " \t\r")
-		if m := specLessVerdictPattern.FindStringSubmatch(line); m != nil {
-			verdicts[m[1]] = true
-		}
 		if m := specLessSHAPattern.FindStringSubmatch(line); m != nil {
 			shas[m[1]] = true
 		}
 	}
-	verdict, ok := soleKey(verdicts)
-	switch {
-	case len(verdicts) == 0:
-		return refuse("%s carries no `verdict:` line (verdict: PASS, PASS-WITH-DEBT or FAIL)", path)
-	case !ok:
-		return refuse("%s carries conflicting `verdict:` lines", path)
-	case verdict != "PASS" && verdict != "PASS-WITH-DEBT":
-		return refuse("%s reads verdict: %s, want verdict: PASS or verdict: PASS-WITH-DEBT", path, verdict)
+
+	// Card t1571: the verdict admission is the shared auditverdict predicate —
+	// the same rule the contract, the kickoff evaluator, and the
+	// card-transition guard use — so a verdict cannot pass this reader and
+	// fail another site. PhaseSync keeps the label-only rule (PASS,
+	// PASS-WITH-DEBT) plus the unconditional required_backend_fail refusal
+	// (REQ-ACR-005) and the conflicting-decision-key refusal.
+	fields := auditverdict.Parse(raw)
+	// A spec-less card's merge evidence claims a CLOSED audit: a recorded
+	// backend receipt that is not "pass" (fail or inconclusive) refuses the
+	// verdict regardless of its own label — the PASS+INCONCLUSIVE mixed shape
+	// from the t1557 gate repro. A malformed receipt line is refused
+	// fail-closed; a verdict file with no receipt lines is the legacy shape
+	// and admits on the label checks alone.
+	for _, v := range fields.Receipt.Backends {
+		if v != "pass" {
+			return refuse("%s is inadmissible: a recorded backend receipt reads %q — the audit record is not closed", path, v)
+		}
 	}
+	if fields.MalformedReceipts > 0 {
+		return refuse("%s is inadmissible: %d malformed receipt line(s)", path, fields.MalformedReceipts)
+	}
+	if ok, reason := auditverdict.Admit(fields, auditverdict.PhaseSync, 0, false); !ok {
+		return refuse("%s is inadmissible: %s", path, reason)
+	}
+
 	audited, ok := soleKey(shas)
 	switch {
 	case len(shas) == 0:
@@ -122,7 +137,7 @@ func checkSyncAuditVerdictFile(git GitRunner, repoDir, card string) (string, boo
 			}
 		}
 	}
-	return fmt.Sprintf("%s: verdict: %s, audited_sha %s binds HEAD %s — the SPEC-less card's audit record reads closed", rel, verdict, auditedFull, head), true
+	return fmt.Sprintf("%s: verdict: %s, audited_sha %s binds HEAD %s — the SPEC-less card's audit record reads closed", rel, fields.Label, auditedFull, head), true
 }
 
 // soleKey returns the only key of m, and false when m does not hold exactly one.
