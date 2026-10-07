@@ -55,6 +55,18 @@ var sectionRemoveFn = os.Remove
 // removes only its own label, and a dead owner issues none.
 const breakingSuffix = ".breaking"
 
+// reclaimSuffix names a RECLAIMER's mutual-exclusion marker beside the
+// breaker marker it is reclaiming (review-gate finding: the marker's own
+// reclaim was a non-atomic read→delete — one reclaimer's late delete could
+// remove a rival's LIVE re-acquired marker). The same CAS shape the queue
+// break received applies one level down: create the replacement (the
+// .reclaim marker) with O_EXCL first, and delete the breaker marker only
+// on creation success. While this disposal holds .reclaim, no rival
+// disposal can run, and a re-creation of the breaker marker (a rival
+// claiming it as ITS live section) can only happen after this release —
+// so a late delete can never land on a live marker.
+const reclaimSuffix = ".reclaim"
+
 // ClaimSection takes the advisory lock at path, returning its release
 // func. Contention retries within the given budget, breaking the lock only
 // on a verified-dead owner, then errors naming the path. The context is
@@ -164,14 +176,29 @@ func writeOwnerLabel(path string, perm os.FileMode) error {
 //
 // A breaker that dies holding the marker leaves an owner-labelled marker
 // file; the next breaker's ClaimSection contention path reclaims it through
-// the same verified-dead rule (the bare path below), so the marker cannot
-// wedge the break.
+// the same verified-dead rule (the .reclaim-guarded path below), so the
+// marker cannot wedge the break.
 func BreakStaleLock(path string) bool {
+	if strings.HasSuffix(path, reclaimSuffix) {
+		// Reclaiming a dead reclaimer's own marker: bare. The downstream
+		// Claim of the breaker marker being disposed is the real
+		// arbitration — a raced double-dispose of a dead .reclaim marker is
+		// idempotent (one delete lands, the other reports success), and the
+		// claim's O_EXCL decides which reclaimer proceeds. Nesting a
+		// further marker here would recurse without bound.
+		return breakStaleLockBare(path)
+	}
 	if strings.HasSuffix(path, breakingSuffix) {
-		// Reclaiming an orphaned breaker marker: no nested marker — a
-		// marker's break needs no breaker-vs-breaker serialization beyond
-		// the rename-free verify-then-dispose, and nesting one would
-		// recurse without bound.
+		// Reclaiming an orphaned breaker marker: hold OUR OWN reclaim
+		// marker first — delete only on creation success. While this
+		// disposal holds .reclaim, no rival disposal can run and no rival
+		// can re-create the breaker marker as its live section, so this
+		// delete can never remove a live re-acquired marker.
+		release, err := ClaimSection(context.Background(), path+reclaimSuffix, 0o600, 2, 2*time.Millisecond)
+		if err != nil {
+			return false // a live reclaimer owns the disposal; the caller's retry loop re-runs
+		}
+		defer func() { _ = release() }()
 		return breakStaleLockBare(path)
 	}
 	release, err := ClaimSection(context.Background(), path+breakingSuffix, 0o600, 2, 2*time.Millisecond)
