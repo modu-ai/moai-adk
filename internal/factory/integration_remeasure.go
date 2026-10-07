@@ -250,6 +250,17 @@ func shellSegments(command string) []string {
 			cur.WriteByte(c)
 			continue
 		}
+		// A word-initial # comments out the rest of the line — separators
+		// inside the comment are data, not a second command (t1576 review
+		// round 16).
+		if c == '#' && (i == 0 || command[i-1] == ' ' || command[i-1] == '\t' || command[i-1] == '\n' || command[i-1] == ';' || command[i-1] == '&' || command[i-1] == '|') {
+			cur.WriteByte(c)
+			for i+1 < len(command) && command[i+1] != '\n' {
+				i++
+				cur.WriteByte(command[i])
+			}
+			continue
+		}
 		if c == ';' {
 			flush()
 			continue

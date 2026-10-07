@@ -925,6 +925,22 @@ func TestMergeStepCheckoutCheckReadsTheFullRef(t *testing.T) {
 	}
 }
 
+func TestSameIntegrationTreeReadsSubdirectoryAsWorktreeRoot(t *testing.T) {
+	// t1576 review round 16: an acquire from a subdirectory records the
+	// subdirectory as the worktree, while the merge passes the worktree
+	// root — the same git worktree under two paths. Both sides resolve to
+	// their git worktree root before comparing, or a legitimately acquired
+	// window is refused and released.
+	f := newMergeFixture(t)
+	sub := filepath.Join(f.integ, "sub")
+	if err := os.Mkdir(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if !sameIntegrationTree(sub, f.integ) {
+		t.Fatalf("a subdirectory of the worktree must read as the same tree")
+	}
+}
+
 func TestMergeStepCardDriftAfterMergeHoldsNamingSHA(t *testing.T) {
 	// t1576 review round 1: the section's card re-gate reads BEFORE the
 	// merge; a card transition landing between that read and the merge

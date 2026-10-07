@@ -284,6 +284,16 @@ func TestClassifyQuotedWordsAndGOFLAGSCarryJSON(t *testing.T) {
 	}
 }
 
+func TestClassifyCommentSemicolonStaysOneCommand(t *testing.T) {
+	// t1576 review round 16: a word-initial # comments out the rest of the
+	// line — separators inside the comment are data, not a second command.
+	command := `printf '%s\n' ok # example only; go test -json ./...`
+	_, structured, err := ClassifyStructuredOutput(command, strings.NewReader(""))
+	if err != nil || structured {
+		t.Fatalf("the comment must not mint a phantom go test segment: structured=%v err=%v", structured, err)
+	}
+}
+
 func TestRemeasureRecordValidity(t *testing.T) {
 	// REQ-MWQ-014 (local form): a record is valid when it keys the candidate
 	// tree, carries build identity, and its command classification accepts

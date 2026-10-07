@@ -607,15 +607,31 @@ func sameIntegrationTree(a, b string) bool {
 	sa, ea := os.Stat(a)
 	sb, eb := os.Stat(b)
 	if ea == nil && eb == nil {
-		return os.SameFile(sa, sb)
+		if os.SameFile(sa, sb) {
+			return true
+		}
 	}
-	if fa, err := filepath.EvalSymlinks(a); err == nil {
-		a = fa
+	// t1576 review round 16: an acquire from a subdirectory records the
+	// subdirectory, while the merge passes the worktree root — the same git
+	// worktree under two paths. Both sides resolve to their git worktree
+	// root before the final comparison.
+	if ra := gitToplevelOf(a); ra != "" {
+		a = ra
 	}
-	if fb, err := filepath.EvalSymlinks(b); err == nil {
-		b = fb
+	if rb := gitToplevelOf(b); rb != "" {
+		b = rb
 	}
 	return filepath.Clean(a) == filepath.Clean(b)
+}
+
+// gitToplevelOf resolves the git worktree root containing path, or "" when
+// path is not inside a git worktree (the caller keeps its original value).
+func gitToplevelOf(path string) string {
+	out, err := execGitIn(path, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out)
 }
 
 // readCardState calls the gate read and wraps its absence.
