@@ -751,6 +751,17 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		if selectionSkips(c) {
 			continue
 		}
+		// The queue item's CURRENT state gates the row's lease edge (card
+		// t1516): an item the operator parked at hold, or that is back at
+		// queued, excludes its assigned row. The row re-enters a lease only
+		// once the item is picked again — an operator pick, or arm (c)'s
+		// promotion on this same pass, which flips the state before the next
+		// attempt re-reads it. A card in no queue row is not gated: the record
+		// row is all that remains of it.
+		if st, inQueue := queueItemStateIn(queueRec, c.CardID); inQueue &&
+			(st == factory.BacklogStateHold || st == factory.BacklogStateQueued) {
+			continue
+		}
 		if classOf(c.CardID).Mode == factory.ClassModeSerial && serialInFlightExcluding(c.CardID, true) {
 			continue
 		}
@@ -886,7 +897,13 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		if err := factoryLeaseBeforeClaim("c", promoted); err != nil {
 			return homestate.Card{}, false, false, err
 		}
-		return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane, hubFields(promoted))
+		fields := hubFields(promoted)
+		if row, exists := rowByID[promoted]; exists && row.State == homestate.CardAssigned {
+			// Reuse the assignment unchanged, then re-select through arm (a).
+			// Hub hints are creation inputs, not edits to an assigned row.
+			fields = homestate.CardFields{}
+		}
+		return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane, fields)
 	case sawQueued > 0:
 		// Queued cards existed but none was eligible (blocked, or serial with
 		// the slot held). That is the no-card answer, not a race: re-selecting
@@ -1101,6 +1118,15 @@ func factoryKeepSetRefusal(it factory.BacklogItem, row *homestate.Card, lane str
 		if r := factoryRecordRefusal(*row, lane); r != nil {
 			return r
 		}
+	}
+	// An assigned row whose queue item is back at queued is a shape no lease
+	// path takes (card t1516): the item is promotable pool material again, so
+	// the nomination does not re-arm the row — an operator pick re-arms it, and
+	// the bare path reaches the card only through arm (c)'s promotion, which
+	// flips the state to picked first. `hold` is refused above; this clause
+	// names `queued` alone.
+	if row != nil && row.State == homestate.CardAssigned && it.State == factory.BacklogStateQueued {
+		return factoryRefusal(factoryRefuseRecorded, "the record row sits assigned while the queue item is queued; an operator pick re-arms the lease")
 	}
 	if factoryQueuedHoldMarked(it) {
 		return factoryRefusal(factoryRefuseHoldMarker, "the card's text opens with the hold marker %s; the operator parked it", autoRankHoldMarker)

@@ -2,6 +2,25 @@
 
 ## 현재 main의 변경 경계
 
+기준은 `067fdced2dd8f38812d4c36ec17ceb8d2ca3e263`다. 이전 기준 이후 설명 대상 소스 51개를 대조했다. 다음은 소스에서 확인한 책임과 연결이며 실제 원격 실행의 성공 판정은 아니다. 아래 이전 기록의 파일 수는 각 당시 기준이다.
+
+| 경로 | 현재 책임 |
+|---|---|
+| `internal/factory/integration_window_queue.go` · `internal/factory/integration_window_ops.go` | 병합 창 상태의 읽기·수정·쓰기를 직렬화하고, FIFO 순서와 open/hold 정책으로 대기자를 승격한다. |
+| `internal/factory/integration_remeasure.go` | `RunRemeasure`가 실행 기록을 남기고 `ValidateRemeasureRecord`가 병합 트리에 묶인 기록을 대조한다. `ClassifyStructuredOutput`이 인식한 출력은 구조화 판정으로 읽는다. 인식하지 못하는 비테스트 명령은 성공 종료 사실만 기록하므로 테스트 성공과 구분한다. |
+| `internal/factory/integration_merge_step.go` | `RunMergeStep`이 고정한 SHA를 병합하기 전에 소유권·임대·작업 트리 상태·충돌을 재확인한다. CLI의 integration merge와 factory complete가 공유한다. `candidate_ci`의 공통 착지 배선은 아직 거절 경로다. |
+| `internal/cli/todo_auto_lane.go` | 카드 순위 결정, 지명 카드의 할당량 검사와 임대, 카드 워크트리 진입, 증거 인계를 담당한다. 이 경로는 직접 done/unpick을 기록하지 않는다. |
+| `internal/cli/codex_launcher.go` | 부모 체크아웃에서 대화형 Codex 하나를 실행하고 `moai todo --auto` 지시를 전달한다. |
+| `internal/cli/codex_audit_launch.go` | MCP의 command/url 전송 종류를 먼저 검사하고 같은 종류의 비활성 인자와 `enabled=false`를 만든다. 잘못된·중복된 전송 선언은 실행 전에 거절한다. |
+| `internal/cli/worktree/landing_predicate.go` | patch identity 대조 뒤 native Git object와 mode를 비교한다. 워크트리 정리와 CLI의 `session_worktree.go`가 같은 판정을 공유한다. |
+| `internal/graph/card_file.go` | 도달 가능한 모든 부모에서 카드 귀속 커밋을 모으고, 각 착지 커밋의 첫 부모와 파일 차이를 계산한다. graph 생성과 병합 출처 fingerprint가 공유한다. |
+| `internal/cli/severity_line.go` · `internal/cli/update_action_block.go` | 상태 아이콘을 공통 `tui.StatusIcon`에서 얻고 update의 마지막 action/reference 블록을 렌더링한다. |
+| `internal/hook/session_start_memory_budget.go` | goroutine을 시작하기 전에 읽기 의존성을 캡처한다. |
+
+> 폐기된 경로: `internal/cli/factory_lane_relaunch.go`. 아래 과거 레인 재실행 설명은 당시 구현의 기록이다.
+
+## 이전 081899 기준의 변경 경계
+
 `081899adb825935d5263b1699fe730373deaa4fd`의 소스·공개 함수·import를 대조했다. 아래 이전 갱신 기록과 세부 수량은 각각 명시된 당시 기준이며, 이번 창의 신규 책임은 다음과 같다.
 
 | 경로 | 현재 책임 |
