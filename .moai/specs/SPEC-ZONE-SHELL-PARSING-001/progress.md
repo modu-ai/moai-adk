@@ -75,14 +75,15 @@ Both findings RED-first (tests authored and observed failing before the fixes), 
 |---------|-------------------------------------------|-----|----------|
 | Wrapped-cd over-denial (P2): after the K3 strip, `env cd`/`nohup cd` were tracked as parent-shell directory changes | `env cd zone_dir; rm harmless: decision="deny" … path=zone_dir/harmless", want allow` (same for `nohup cd zone_dir`) | `zoneStripWrapperPrefix` reports whether it stripped; the cd branch fires for a BARE cd head only — a stripped head resolves as an external execution whose cd cannot move the parent shell | matrix cells `wrapped_cd_env_not_tracked` / `wrapped_cd_nohup_not_tracked` PASS (allow); the control `bare_cd_tracking_control` (`cd zone_dir; rm harmless` → deny) PASS — tracking stays live |
 | Read-only fast path (P2): K7 moved the unbounded check ahead of the mutating short-circuit, and every command then loaded the manifest — loader-count probe: baseline 0, current 1, even for `echo hello` | `read-only command performed 1 zone loads, want 0` (TestProtectedZoneShellReadOnlyFastPath) | `!w.mutating && !w.unbounded` returns BEFORE `loadZone`; the K7 semantics unchanged — the unbounded denial still precedes every allow answer, regardless of manifest state | fast-path test PASS: `echo hello` → 0 loads; the unbounded read-only-tail cell still loads and denies |
+| Invalid-manifest reason precedence (gate round 2, `185f1604c`): under candidate precedence a mutating command against an INVALID manifest answered the candidate deny before the invalid check — the `manifest=invalid` reason and the InvalidFile path were lost (REQ-SIPZ-009 error contract) | `rm .claude/hooks/a.sh (invalid manifest): reason "… category=baseline … path=.claude/hooks/a.sh" does not start with "… manifest=invalid …"` + the unbounded walk under invalid answering `category=loop-unbounded` (TestProtectedZoneShellInvalidManifestReason, both legs RED) | the invalid-manifest branch moves back ahead of the per-candidate denies and the unbounded deny, for any walk that reached the load — the base reason order; the read-only fast path untouched | both legs PASS carrying `manifest=invalid` + `protected-zone.yaml`; boundary stated — no frozen-family cell pins a candidate reason on an invalid manifest (all five family invalid expectations pin `manifest=invalid`), no frozen assertion touched |
 
 Matrix: 51 cells (`parsing-matrix sweep: 51 cells`), all PASS. Final-tree full-suite re-measurement (slot lease `hook-test-suite`, tree `123409baf` content): `ok github.com/modu-ai/moai-adk/internal/hook 406.964s coverage: 87.5% of statements`, exit 0, zero `stack overflow`/`fatal error` tokens — the E3 coverage figure and the suite verdict now carry the same final tree.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-08T00:34:16+09:00
-run_commit_sha: 123409baf
-gate_round: folded 2 P2 gate findings RED-first (commit 123409baf)
+run_commit_sha: 185f1604c
+gate_round: 3 findings folded RED-first across two rounds (123409baf: wrapped-cd + read-only fast path; 185f1604c: invalid-manifest reason precedence)
 run_status: complete
 ac_pass_count: 6
 ac_fail_count: 0
