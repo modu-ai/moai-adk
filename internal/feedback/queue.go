@@ -20,6 +20,7 @@
 package feedback
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -158,7 +159,15 @@ func (s *QueueStore) Load() (*QueueRecord, error) {
 // Ids are issued from rec.LastSeq inside the callback, so issuance is covered
 // by the same lock as the write.
 func (s *QueueStore) Mutate(mutate func(*QueueRecord) error) (err error) {
-	release, err := s.acquireLock()
+	return s.MutateContext(context.Background(), mutate)
+}
+
+// MutateContext is Mutate under a caller's context: the sibling-lock
+// acquisition honors cancellation (SPEC-FEEDBACK-PARTICIPATION-001 — a
+// drain whose deadline expired must stop waiting for the lock instead of
+// accumulating a full retry budget per queued item).
+func (s *QueueStore) MutateContext(ctx context.Context, mutate func(*QueueRecord) error) (err error) {
+	release, err := s.acquireLock(ctx)
 	if err != nil {
 		return err
 	}
@@ -244,12 +253,12 @@ func (s *QueueStore) Resolve(id string) (bool, error) {
 // closes. The invariant is absolute: verified owner death, nothing else.
 // The machinery lives in internal/config/atomicfile so the capture spool's
 // section lock shares the same implementation.
-func (s *QueueStore) acquireLock() (func() error, error) {
+func (s *QueueStore) acquireLock(ctx context.Context) (func() error, error) {
 	dir := filepath.Dir(s.path)
 	if err := os.MkdirAll(dir, queueDirPerm); err != nil {
 		return nil, fmt.Errorf("mutate feedback queue %s: creating dir: %w", s.path, err)
 	}
-	release, err := atomicfile.ClaimSection(s.LockPath(), queueFilePerm, queueLockRetries, queueLockRetryDelay)
+	release, err := atomicfile.ClaimSection(ctx, s.LockPath(), queueFilePerm, queueLockRetries, queueLockRetryDelay)
 	if err != nil {
 		return nil, fmt.Errorf("mutate feedback queue %s: %w", s.path, err)
 	}

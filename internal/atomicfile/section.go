@@ -27,6 +27,7 @@ package atomicfile
 // possibly-live owner — the conservative direction.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -54,12 +55,19 @@ var sectionRemoveFn = os.Remove
 // removes only its own label, and a dead owner issues none.
 const breakingSuffix = ".breaking"
 
-// ClaimSection takes the advisory lock at path, returning its release func.
-// Contention retries within the given budget, breaking the lock only on a
-// verified-dead owner, then errors naming the path.
-func ClaimSection(path string, perm os.FileMode, retries int, delay time.Duration) (func() error, error) {
+// ClaimSection takes the advisory lock at path, returning its release
+// func. Contention retries within the given budget, breaking the lock only
+// on a verified-dead owner, then errors naming the path. The context is
+// honored THROUGHOUT the contention loop: a caller's deadline or
+// cancellation ends the wait at the next retry boundary instead of burning
+// the whole budget — a lock wait that outlives its caller's context is
+// precisely the stall the caller was trying to bound.
+func ClaimSection(ctx context.Context, path string, perm os.FileMode, retries int, delay time.Duration) (func() error, error) {
 	var lastErr error
 	for attempt := 0; attempt <= retries; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("claim section %s: %w", path, err)
+		}
 		err := Claim(path, perm)
 		if err == nil {
 			if werr := writeOwnerLabel(path, perm); werr != nil {
@@ -82,7 +90,11 @@ func ClaimSection(path string, perm os.FileMode, retries int, delay time.Duratio
 			continue
 		}
 		lastErr = err
-		time.Sleep(delay)
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("claim section %s: %w", path, ctx.Err())
+		case <-time.After(delay):
+		}
 	}
 	return nil, fmt.Errorf("claim section %s: lock held: %w", path, lastErr)
 }
@@ -162,7 +174,7 @@ func BreakStaleLock(path string) bool {
 		// recurse without bound.
 		return breakStaleLockBare(path)
 	}
-	release, err := ClaimSection(path+breakingSuffix, 0o600, 2, 2*time.Millisecond)
+	release, err := ClaimSection(context.Background(), path+breakingSuffix, 0o600, 2, 2*time.Millisecond)
 	if err != nil {
 		return false // a live breaker owns the break; the caller's retry loop re-runs
 	}

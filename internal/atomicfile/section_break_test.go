@@ -1,6 +1,7 @@
 package atomicfile
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -32,7 +33,7 @@ func TestBreakNeverDisposesALockAcquiredMidSection(t *testing.T) {
 	prevRemove := sectionRemoveFn
 	t.Cleanup(func() { sectionRemoveFn = prevRemove })
 	sectionRemoveFn = func(path string) error {
-		release, cerr := ClaimSection(lockPath, 0o600, 3, 2*time.Millisecond)
+		release, cerr := ClaimSection(context.Background(), lockPath, 0o600, 3, 2*time.Millisecond)
 		if cerr == nil {
 			rivalAcquired = true
 			_ = release()

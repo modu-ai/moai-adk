@@ -220,13 +220,16 @@ func Drain() error {
 // Each stage that stops a signal appends exactly one row naming the reason.
 // Drain is network-free by construction (this package cannot import the
 // network) and makes no model call (there is no model seam here). The
-// context is accepted for the flush time box the CLI call site applies;
-// the drain's own work is local file IO bounded by the spool's ceilings.
+// context bounds the whole run — the CLI's flush time box: the per-item
+// loop stops on cancellation and the queue-lock acquisition selects on it
+// (review-gate P2: lock waits used to accumulate per item, so a
+// 50ms-deadline drain ran thirteen seconds against a live lock holder). A
+// cancelled drain returns nil with the spool batch unconsumed — the next
+// drain retries it — matching the flush contract (warn-only, quiet).
 func DrainContext(ctx context.Context) error {
-	_ = ctx
 	// Withdrawal first: consent off discards everything unsent and stops.
 	if !config.ReadUserParticipation().Enabled {
-		return discardAll()
+		return discardAll(ctx)
 	}
 
 	entries, consumed, err := bugreport.ReadSpoolConsumable()
@@ -244,6 +247,11 @@ func DrainContext(ctx context.Context) error {
 	}
 
 	for _, entry := range entries {
+		if err := ctx.Err(); err != nil {
+			// The deadline or cancellation arrived: stop with the batch
+			// unconsumed (nothing below removes the consumed bytes).
+			return nil
+		}
 		switch bugreport.Verdict(entry.Verdict) {
 		case bugreport.VerdictAmbiguous:
 			_ = AppendOutbox(OutboxRow{
@@ -259,7 +267,7 @@ func DrainContext(ctx context.Context) error {
 			continue
 		}
 
-		if reason, stop := drainMoai(entry); stop {
+		if reason, stop := drainMoai(ctx, entry); stop {
 			_ = AppendOutbox(OutboxRow{Outcome: reason.outcome, Reason: reason.reason, Fingerpr: reason.fp})
 			continue
 		}
@@ -301,7 +309,7 @@ type drainOutcome struct {
 // the append, and a ledger save failure aborts the whole mutation (the
 // queue file stays unchanged — a signal whose ledger commit failed is
 // never queued).
-func drainMoai(entry bugreport.SpoolEntry) (drainOutcome, bool) {
+func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (drainOutcome, bool) {
 	fp := fingerprintOf(entry)
 
 	// Build the validated payload from the spool's closed fields — pure,
@@ -341,7 +349,7 @@ func drainMoai(entry bugreport.SpoolEntry) (drainOutcome, bool) {
 	var outcome *drainOutcome
 	var droppedIDs []string
 	var queued feedback.QueueItem
-	err = store.Mutate(func(rec *feedback.QueueRecord) error {
+	err = store.MutateContext(ctx, func(rec *feedback.QueueRecord) error {
 		ledger, lerr := loadLedger()
 		if lerr != nil {
 			outcome = &drainOutcome{outcome: "dropped", reason: "ledger unreadable: " + lerr.Error()}
@@ -450,12 +458,12 @@ func tripwire(payload bugreport.Payload, entry bugreport.SpoolEntry) (reason str
 // discardAll is the withdrawal branch (REQ-ANON-021): every unsent queue
 // item and the spool are discarded, each recorded, the sent history kept.
 // No network request and no model call — this package has neither.
-func discardAll() error {
+func discardAll(ctx context.Context) error {
 	spoolHadContent := spoolFileNonEmpty()
 
 	store := BugreportQueueStore()
 	discarded := 0
-	err := store.Mutate(func(rec *feedback.QueueRecord) error {
+	err := store.MutateContext(ctx, func(rec *feedback.QueueRecord) error {
 		discarded = len(rec.Items)
 		rec.Items = []feedback.QueueItem{}
 		return nil

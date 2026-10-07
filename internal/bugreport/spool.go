@@ -2,6 +2,7 @@ package bugreport
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -272,5 +273,5 @@ const (
 // the spool went silently dead for the life of the boot.
 func claimSpoolSection(spoolPath string) (func() error, error) {
 	lockPath := filepath.Join(filepath.Dir(spoolPath), spoolSectionClaim)
-	return atomicfile.ClaimSection(lockPath, 0o600, spoolSectionRetries, spoolSectionDelay)
+	return atomicfile.ClaimSection(context.Background(), lockPath, 0o600, spoolSectionRetries, spoolSectionDelay)
 }

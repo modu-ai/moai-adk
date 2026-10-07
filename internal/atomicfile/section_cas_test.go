@@ -1,6 +1,7 @@
 package atomicfile
 
 import (
+	"context"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
@@ -31,7 +32,7 @@ func TestBreakerExcludesRivalsForTheWholeVerdictToDisposalSpan(t *testing.T) {
 	var bRelease func() error
 	bAttempt := func() {
 		// B: a full reclaim attempt (verify + break + claim) by a rival.
-		release, err := ClaimSection(lockPath, 0o600, 4, 2*time.Millisecond)
+		release, err := ClaimSection(context.Background(), lockPath, 0o600, 4, 2*time.Millisecond)
 		if err == nil {
 			bAcquired.Store(true)
 			bRelease = release
@@ -40,7 +41,7 @@ func TestBreakerExcludesRivalsForTheWholeVerdictToDisposalSpan(t *testing.T) {
 	cAttempt := func() {
 		// C: a plain acquire while B holds the section. It must fail for as
 		// long as B holds it — no breaker step may free the path under B.
-		release, err := ClaimSection(lockPath, 0o600, 1, time.Millisecond)
+		release, err := ClaimSection(context.Background(), lockPath, 0o600, 1, time.Millisecond)
 		if err == nil {
 			cAcquired.Store(true)
 			_ = release()
