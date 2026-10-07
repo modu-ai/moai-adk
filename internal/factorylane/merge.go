@@ -44,6 +44,10 @@ const (
 	// a clean merge commit's tree is exactly the merge-tree result, and
 	// HEAD^2 is the merged branch, so the two forms coincide).
 	CheckTreeIdentity = "tree-identity"
+	// CheckRemeasureRecord is condition (d) (card t1479, REQ-MWQ-021): the
+	// re-measure record keyed to the candidate tree is valid, and the
+	// recorded command is printed verbatim in the condition's detail.
+	CheckRemeasureRecord = "re-measure-record"
 )
 
 // GitExitError reports a git invocation that exited non-zero, carrying the
@@ -111,6 +115,13 @@ type MergeTripleInput struct {
 	Develop     string // the integration branch (merge target)
 	RepoDir     string // the git repository the probes run in
 	MergeCommit string // optional: a prepared merge commit for the literal tree-identity form
+
+	// VerifyRemeasure (card t1479, REQ-MWQ-021): the FOURTH condition —
+	// the re-measure record keyed to the candidate tree must be valid, and
+	// the recorded command prints verbatim in the condition's detail. The
+	// callback is the reader the record store owns; nil skips the condition
+	// (callers that predate the record store keep the triple's shape).
+	VerifyRemeasure func(treeSHA string) (command string, err error)
 }
 
 // MergeCheck is one condition's recorded verdict: the condition name, whether
@@ -177,7 +188,34 @@ func EvaluateMergeTriple(in MergeTripleInput, git GitRunner) (MergeCheckRun, err
 	}
 	run.Checks = append(run.Checks, MergeCheck{Name: CheckTreeIdentity, Passed: treeOK, Detail: treeDetail})
 
-	run.AllPassed = syncOK && conflictOK && treeOK
+	// (d) the re-measure record (REQ-MWQ-021): keyed to the candidate tree
+	// and valid — the recorded command prints verbatim. The candidate tree
+	// is the card branch's tip tree, read through the same runner the
+	// identity probe uses.
+	var remeasureDetail string
+	var remeasureOK bool
+	if in.VerifyRemeasure == nil {
+		remeasureDetail = "not checked (no re-measure reader wired)"
+		remeasureOK = true // the triple's own shape is unchanged for legacy callers
+	} else {
+		treeOut, err := git.Git("rev-parse", in.Branch+"^{tree}")
+		if err != nil {
+			remeasureDetail = fmt.Sprintf("the candidate tree of %s cannot be read: %v", in.Branch, err)
+			remeasureOK = false
+		} else {
+			command, recErr := in.VerifyRemeasure(strings.TrimSpace(treeOut))
+			if recErr != nil {
+				remeasureDetail = fmt.Sprintf("no valid re-measure record for the candidate tree (%v)", recErr)
+				remeasureOK = false
+			} else {
+				remeasureDetail = fmt.Sprintf("re-measure record valid; recorded command: %s", command)
+				remeasureOK = true
+			}
+		}
+	}
+	run.Checks = append(run.Checks, MergeCheck{Name: CheckRemeasureRecord, Passed: remeasureOK, Detail: remeasureDetail})
+
+	run.AllPassed = syncOK && conflictOK && treeOK && remeasureOK
 	for _, chk := range run.Checks {
 		if !chk.Passed {
 			run.FailedCondition = chk.Name
