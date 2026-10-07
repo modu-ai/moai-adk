@@ -32,8 +32,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -209,12 +209,14 @@ landed, and ANY other exit (fetch failure, unresolvable base) means the
 sweep cannot answer, which PRESERVES the tree. A stale remote-tracking ref
 never satisfies the predicate on its own.
 
-The default base is origin/<the configured integration target> —
-origin/develop under git-flow, origin/main under github-flow; with no target
-configured the sweep stops and asks for --base. When the configured ref does
-not exist on its remote (an integration-branch cutover deleted it), the
-derived base falls back to the remote's own default branch, with a notice on
-stderr. This diverges from clean --stale,
+The default base is the landed ref, resolved through the SAME chain the todo
+surface's landing questions answer from (factory.LandedRefForWithLevel): the
+configured git_strategy.worktree_base_branch first, then the integration
+branch the repository itself records (refs/remotes/origin/HEAD), then the
+compiled-in default (origin/main). When the resolved ref is absent on its
+remote (an integration-branch cutover deleted it), the derived base falls
+back to the remote's own default branch, with a notice on stderr (REQ-CR-001).
+This diverges from clean --stale,
 whose default is origin/main (that flag sweeps stale references, not
 landings). Override with --base.
 
@@ -227,7 +229,7 @@ Previews by default; pass --yes to remove.`,
 	}
 	cmd.Flags().Bool("yes", false, "Actually perform the disposals instead of previewing them")
 	cmd.Flags().Bool("json", false, "Report every non-protected worktree's evaluation as JSON; removes nothing")
-	cmd.Flags().String("base", "", "Remote integration base the landing check compares against (default: origin/<configured integration target>)")
+	cmd.Flags().String("base", "", "Remote integration base the landing check compares against (default: the chain-resolved landed ref — git_strategy.worktree_base_branch, else refs/remotes/origin/HEAD, else origin/main)")
 	return cmd
 }
 
@@ -303,17 +305,15 @@ func sweepEffectiveBase(repoRoot, base string) (string, bool) {
 // provider root is a fake path can point it at a fixture root.
 var sweepConfigRoot = func() string { return WorktreeProvider.Root() }
 
-// sweepDefaultBase derives the default --base from the configured integration
-// target of the project rooted at root (the interpretation table behind
-// config.LoadGitFlowIntegrationConfig). With no target the answer is an error,
-// never a substituted branch: the sweep cannot name what it compares against.
-func sweepDefaultBase(root string) (string, error) {
-	cfg := config.LoadGitFlowIntegrationConfig(root)
-	target := strings.TrimSpace(cfg.IntegrationTarget)
-	if target == "" {
-		return "", fmt.Errorf("sweep: no integration target configured under %s: %s", root, cfg.EmptyTargetGuidance(root, "pass --base origin/<branch>"))
-	}
-	return "origin/" + target, nil
+// sweepDefaultBase derives the default --base from the landed-ref chain the
+// todo surface answers from (factory.LandedRefForWithLevel —
+// SPEC-GITHUB-FLOW-CI-RESIDUE-001 REQ-GFC-001): the configured
+// git_strategy.worktree_base_branch, then refs/remotes/origin/HEAD, then the
+// compiled-in default (origin/main). The chain always answers — there is no
+// "no configured target" error path anymore; --base keeps precedence over it.
+func sweepDefaultBase(root string) string {
+	ref, _ := factory.LandedRefForWithLevel(root)
+	return ref
 }
 
 func runSweep(cmd *cobra.Command, _ []string) error {
@@ -326,10 +326,7 @@ func runSweep(cmd *cobra.Command, _ []string) error {
 	asJSON, _ := cmd.Flags().GetBool("json")
 
 	if strings.TrimSpace(base) == "" {
-		derived, err := sweepDefaultBase(sweepConfigRoot())
-		if err != nil {
-			return err
-		}
+		derived := sweepDefaultBase(sweepConfigRoot())
 		effective, fellBack := sweepEffectiveBase(WorktreeProvider.Root(), derived)
 		if fellBack {
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "base %s is absent on its remote; using the remote default branch %s as the sweep base\n", derived, effective)

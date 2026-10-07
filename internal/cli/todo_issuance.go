@@ -201,15 +201,18 @@ func parseIssuanceFrontmatter(dirName, data string) *factory.IssuanceCompletedSp
 // productionLaneFilesProbe resolves one in-flight card's lane-branch changed
 // files: the card worktree convention names the worktree directory after the
 // card id, so one porcelain listing locates its branch and the diff runs
-// against that branch's merge-base with develop. Any failure is "no input",
-// which the presentation reports as unmeasured rather than none.
+// against that branch's merge-base with the project's resolved integration
+// base — the same configured-first landed-ref chain the landing surfaces use
+// (factory.LandedRefFor, SPEC-GITHUB-FLOW-CI-RESIDUE-001 REQ-GFC-017), never
+// a literal branch name. Any failure is "no input", which the presentation
+// reports as unmeasured rather than none.
 func productionLaneFilesProbe(cardID, lane string) ([]string, bool) {
 	root := resolveTodoQueueRoot()
 	_, branch, ok := worktreeBranchForCard(root, cardID)
 	if !ok {
 		return nil, false
 	}
-	base := issuanceGitOneLine(root, "merge-base", "develop", branch)
+	base := issuanceGitOneLine(root, "merge-base", factory.LandedRefFor(root), branch)
 	if base == "" {
 		return nil, false
 	}
