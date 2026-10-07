@@ -24,6 +24,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/feedback"
@@ -155,9 +156,10 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 	// queue with the sent row already recorded — the next flush must not
 	// publish again (review-gate hardening round, P2: the first run created
 	// the issue; a resent run would add an occurrence comment for the same
-	// report). The sent history is the completion record: reconcile the
-	// surviving item out of the queue instead.
-	if item.Fingerprint != "" && outbox.SentHistoryHasFingerprint(item.Fingerprint) {
+	// report). The sent history is the completion record, scoped to the
+	// DEC-3 duplicate-suppression window: an expired-window recurrence is a
+	// new report and publishes (review-gate amendment).
+	if item.Fingerprint != "" && outbox.SentHistoryHasFingerprintWithin(item.Fingerprint, time.Now(), config.DefaultBugreportFingerprintWindowDays) {
 		_ = store.MutateContext(ctx, func(rec *feedback.QueueRecord) error {
 			kept := rec.Items[:0]
 			for _, it := range rec.Items {

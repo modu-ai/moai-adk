@@ -360,20 +360,23 @@ func queueHasFingerprint(items []feedback.QueueItem, fp string) bool {
 	return false
 }
 
-// SentHistoryHasFingerprint reports whether the outbox log carries a sent
-// row for the fingerprint — the send-completion record. The drain's orphan
-// recovery discriminates with it, and the sender reconciles a surviving
-// queue item whose send already landed (review-gate hardening round: a
-// send whose queue cleanup failed must not publish again).
-func SentHistoryHasFingerprint(fp string) bool {
-	return sentHistoryHasFingerprint(fp)
+// SentHistoryHasFingerprintWithin reports whether the outbox log carries a
+// sent row for the fingerprint INSIDE the duplicate-suppression window —
+// the send-completion record, scoped like every other dedupe signal (the
+// DEC-3 window). The drain's orphan recovery discriminates with it, and
+// the sender reconciles a surviving queue item whose send already landed
+// (review-gate hardening round: a send whose queue cleanup failed must not
+// publish again) — and an expired-window recurrence must NOT be suppressed
+// by an old row: past the window it is a new report.
+func SentHistoryHasFingerprintWithin(fp string, now time.Time, windowDays int) bool {
+	return sentHistoryHasFingerprint(fp, now, windowDays)
 }
 
 // sentHistoryHasFingerprint reports whether the outbox log carries a sent
-// row for the fingerprint — the discriminator between a legitimately
-// handled record (sent: the queue no longer holds it by design) and an
-// orphaned one (recorded, never queued, never sent).
-func sentHistoryHasFingerprint(fp string) bool {
+// row for the fingerprint inside the window — the discriminator between a
+// legitimately handled record (sent: the queue no longer holds it by
+// design) and an orphaned one (recorded, never queued, never sent).
+func sentHistoryHasFingerprint(fp string, now time.Time, windowDays int) bool {
 	path, err := StorePath(OutboxFileName)
 	if err != nil {
 		return false
@@ -390,7 +393,14 @@ func sentHistoryHasFingerprint(fp string) bool {
 		if json.Unmarshal([]byte(line), &row) != nil {
 			continue
 		}
-		if row.Outcome == "sent" && row.Fingerpr == fp {
+		if row.Outcome != "sent" || row.Fingerpr != fp {
+			continue
+		}
+		at, perr := time.Parse(time.RFC3339, row.At)
+		if perr != nil {
+			continue // an unreadable stamp suppresses nothing
+		}
+		if now.Sub(at) < time.Duration(windowDays)*24*time.Hour {
 			return true
 		}
 	}
@@ -504,7 +514,7 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 			// report deduped and consume it. A record whose report lives
 			// in NEITHER the queue nor the sent history is that orphan:
 			// fall through and queue it (RecordQueued re-stamps below).
-			if queueHasFingerprint(rec.Items, fp) || sentHistoryHasFingerprint(fp) {
+			if queueHasFingerprint(rec.Items, fp) || sentHistoryHasFingerprint(fp, clock(), config.DefaultBugreportFingerprintWindowDays) {
 				outcome = &drainOutcome{outcome: "deduped", reason: "fingerprint already queued or sent inside the window"}
 				return nil
 			}

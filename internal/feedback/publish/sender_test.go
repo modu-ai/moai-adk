@@ -666,6 +666,43 @@ func TestSendHonorsDeadlineOnResultSaves(t *testing.T) {
 	}
 }
 
+// TestExpiredWindowRecurrenceIsNotSuppressedByAnOldSentRow pins the
+// reconcile rule's scope: a past sent record suppresses only within the
+// DEC-3 duplicate-suppression window. An expired-window recurrence is a
+// NEW report — it publishes (here: an occurrence comment on the family
+// issue) instead of disappearing into the reconcile path.
+func TestExpiredWindowRecurrenceIsNotSuppressedByAnOldSentRow(t *testing.T) {
+	consentOn(t)
+	payload, item := payloadFixture(t)
+	seedQueue(t, item)
+
+	// A sent row stamped 8 days ago — one day past the 7-day window.
+	outbox.SetClockForTest(func() time.Time { return time.Now().Add(-8 * 24 * time.Hour) })
+	if err := outbox.AppendOutbox(outbox.OutboxRow{
+		Outcome:  "sent",
+		Reason:   "issue created",
+		Title:    item.Title,
+		Body:     item.Body,
+		Fingerpr: payload.Fingerprint,
+	}); err != nil {
+		t.Fatalf("seed sent row: %v", err)
+	}
+	outbox.SetClockForTest(nil)
+
+	stub := newStubRunner(true)
+	stub.issues = []RemoteIssue{{Number: 12, Title: item.Title, State: "open"}}
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	_, creates, comments := stub.recorded()
+	if creates != 0 || comments != 1 {
+		t.Fatalf("an expired-window recurrence published nothing: creates=%d comments=%d — the old sent row suppressed a new report past the window", creates, comments)
+	}
+	if rest := queuedItems(t); len(rest) != 0 {
+		t.Fatalf("the recurrence did not process out of the queue: %+v", rest)
+	}
+}
+
 // ---- AC-003: the off/tracked-only arms at the sender ----
 
 func TestSenderNoopWhenParticipationOff(t *testing.T) {
