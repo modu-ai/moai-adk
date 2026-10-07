@@ -1,12 +1,15 @@
 package cli
 
 // update_migrate_test.go — the M3 migration criteria (SPEC-INIT-SHRINK-001
-// acceptance.md AC-011..AC-019) plus the leader condition 5b test (D-16:
-// the one-run preservation boundary). Every test drives the REAL update
-// flow (runTemplateSyncWithReporter through runUpdateCobraCmd) against a
-// fixture old-project tree; the probe arms are reached through the injected
-// fake runner or the default runner's test-binary refusal (REQ-020: no
-// real tool, no real profile).
+// acceptance.md AC-011..AC-019), re-baselined to the joint t1547×t1509
+// contract (repair round, leader disposition): the plugin probe arms are
+// retired with their carrier (SPEC-USER-ASSET-INSTALL-001 M6 — every
+// record-less run resolves opted-out and records local), DeployMode is
+// Local-only (M7), and the common-asset roots are the user-asset install
+// surface whose only removal is the per-file migration
+// (migrateProjectCommonAssets — covered by fix_round3_* and review_fix2).
+// Every test drives the REAL update flow (runTemplateSyncWithReporter
+// through runUpdateCobraCmd) against a fixture old-project tree.
 
 import (
 	"context"
@@ -152,20 +155,29 @@ func assertFilePresent(t *testing.T, root, rel string) {
 	}
 }
 
-// TestUpdateMigratesLegacyProject is AC-015: the three arms mapped to the
-// probe — confirmed (dedupe + record plugin), not-demonstrated (no dedupe,
-// record local), opted-out (full local deploy, record local).
+// TestUpdateMigratesLegacyProject is AC-015, re-baselined (repair round):
+// the probe arms collapsed — the confirmed arm retired with the plugin
+// carrier (M6), so every record-less arm lands the same contract. The
+// not-demonstrated and opted-out subtests below keep their historic names;
+// this subtest carries the confirmed arm's re-baseline.
 func TestUpdateMigratesLegacyProject(t *testing.T) {
-	t.Run("confirmed", func(t *testing.T) {
+	t.Run("confirmed_arm_retired_recordless_local", func(t *testing.T) {
 		root := buildMigrationFixture(t)
 		runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
 
-		if got := config.ReadDeployMode(root); got != "plugin" {
-			t.Fatalf("deployment_mode = %q, want plugin", got)
+		// The record reads local — the plugin record is retired with its
+		// carrier (M6): a record-less project takes the local deployment.
+		if got := config.ReadDeployMode(root); got != "local" {
+			t.Fatalf("deployment_mode = %q, want local", got)
 		}
-		assertFileAbsent(t, root, migIdenticalSkill)
-		assertFileAbsent(t, root, migModifiedSkill)
-		assertFileAbsent(t, root, migAbsentRecCmd)
+		// The template sync removes NOTHING (REQ-UPM-002): the old body
+		// asserted the confirmed arm's classified removal here, whose only
+		// surviving producer is the per-file user-asset migration — covered
+		// by the migrateProjectCommonAssets tests (fix_round3_*, review_fix2),
+		// not by the sync.
+		assertFilePresent(t, root, migIdenticalSkill)
+		assertFilePresent(t, root, migModifiedSkill)
+		assertFilePresent(t, root, migAbsentRecCmd)
 		// Foreign files are preserved byte-for-byte (REQ-013).
 		if got := readFixtureFile(t, root, migForeignSkill); !strings.Contains(got, "the user's own skill") {
 			t.Errorf("foreign skill content changed:\n%s", got)
@@ -173,11 +185,10 @@ func TestUpdateMigratesLegacyProject(t *testing.T) {
 		if got := readFixtureFile(t, root, migForeignCommand); !strings.Contains(got, "user's own command") {
 			t.Errorf("foreign command content changed:\n%s", got)
 		}
-		// The modified skill's archive holds the pre-run bytes (REQ-012).
-		archived := readFixtureFile(t, root,
-			".moai/archive/skills/"+templateMigrationTagForTest+"/moai-workflow-tdd/SKILL.md")
-		if !strings.Contains(archived, "user edit") {
-			t.Errorf("archived copy lost the user's edit:\n%s", archived)
+		// No migration archive: the archive-then-absorb of user-modified
+		// skills is retired — C6 preserves them with a report instead.
+		if _, err := os.Stat(filepath.Join(root, ".moai", "archive", "skills", templateMigrationTagForTest)); !os.IsNotExist(err) {
+			t.Errorf("record-less local run wrote a migration archive: %v", err)
 		}
 	})
 
@@ -266,36 +277,14 @@ func TestUpdateOptedOutMigrationPreservesManagedRootLocals(t *testing.T) {
 	}
 }
 
-// TestMigrationRemovesIdenticalDroppedComponents is AC-011: identical
-// dropped components are removed with the count printed, no archive of an
-// identical component is written, and the removal ran through the
-// classified-set executor — a foreign file the classified set never
-// contains survives the same run untouched.
-func TestMigrationRemovesIdenticalDroppedComponents(t *testing.T) {
-	root := buildMigrationFixture(t)
-	out, _ := runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
-
-	assertFileAbsent(t, root, migIdenticalSkill)
-	assertFileAbsent(t, root, migAbsentRecCmd)
-	// The counts line names the three classes (REQ-010).
-	if !strings.Contains(out, "migration: classified ") {
-		t.Errorf("counts line missing from update output:\n%s", out)
-	}
-	// No archive of an IDENTICAL component exists (OD-3 settled (a)).
-	if _, err := os.Stat(filepath.Join(root, ".moai", "archive", "skills",
-		templateMigrationTagForTest, "moai-foundation-core")); !os.IsNotExist(err) {
-		t.Errorf("an identical component was archived: %v", err)
-	}
-	// The classified-set executor: the foreign file is not in the removal
-	// list, so the same Clean step that removed the classified files left
-	// it untouched (the global walk did not run over the dropped roots).
-	assertFilePresent(t, root, migForeignSkill)
-}
-
-// TestMigrationArchivesModifiedBeforeRemoval is AC-012: modified classified
-// files archive (per file, never a whole directory) before removal; an
-// archive failure anywhere in the batch aborts with nothing removed. The
-// negative control shows the unguarded pre-fix path losing the file.
+// TestMigrationArchivesModifiedBeforeRemoval keeps only the negative
+// control: AC-012's flow-level archive-then-remove subtest was a dead arm of
+// the retired confirmed migration (repair round) — the sync never archives
+// or removes common assets anymore, and the per-file removal machinery's
+// coverage lives in the migrateProjectCommonAssets tests plus the
+// archiveMigrationFile unit tests (the symlink-refusal subtest below). The
+// control still documents why the unguarded wholesale walk (the legacy
+// fresh-install branch's retained path) must never be the default.
 func TestMigrationArchivesModifiedBeforeRemoval(t *testing.T) {
 	t.Run("negative_control_unguarded_path_loses_the_file", func(t *testing.T) {
 		// The pre-fix shape (P-08): the global managed-roots walk removes
@@ -316,42 +305,16 @@ func TestMigrationArchivesModifiedBeforeRemoval(t *testing.T) {
 			t.Fatalf("the unguarded control unexpectedly archived: %v", err)
 		}
 	})
-
-	t.Run("migration_archives_then_removes", func(t *testing.T) {
-		root := buildMigrationFixture(t)
-		runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
-
-		// The modified skill member archived with its pre-run bytes, and the
-		// file is gone; the command file (absent manifest record → modified)
-		// likewise.
-		archivedSkill := readFixtureFile(t, root,
-			".moai/archive/skills/"+templateMigrationTagForTest+"/moai-workflow-tdd/SKILL.md")
-		if !strings.Contains(archivedSkill, "user edit") {
-			t.Errorf("skill archive lost the user's bytes:\n%s", archivedSkill)
-		}
-		assertFileAbsent(t, root, migModifiedSkill)
-		archivedCmd := readFixtureFile(t, root,
-			".moai/archive/files/"+templateMigrationTagForTest+"/.claude/commands/moai/todo.md")
-		if archivedCmd == "" {
-			t.Error("command archive is empty")
-		}
-		assertFileAbsent(t, root, migAbsentRecCmd)
-		// Per-file archive unit: the identical member of the SAME directory
-		// family was not archived (no directory-level copy).
-		if _, err := os.Stat(filepath.Join(root, ".moai", "archive", "skills",
-			templateMigrationTagForTest, "moai-foundation-core")); !os.IsNotExist(err) {
-			t.Error("a directory-level archive copied an identical member")
-		}
-	})
 }
 
-// TestMigrationIdempotent is AC-014: a second update on a migrated project
-// removes nothing, archives nothing, and the record is unchanged.
+// TestMigrationIdempotent is AC-014, re-baselined to the local record
+// (repair round): a second update on a record-less-run project removes
+// nothing, archives nothing, and the record is unchanged.
 func TestMigrationIdempotent(t *testing.T) {
 	root := buildMigrationFixture(t)
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
-	if got := config.ReadDeployMode(root); got != "plugin" {
-		t.Fatalf("first run record = %q, want plugin", got)
+	if got := config.ReadDeployMode(root); got != "local" {
+		t.Fatalf("first run record = %q, want local", got)
 	}
 	archiveDir := filepath.Join(root, ".moai", "archive", "skills", templateMigrationTagForTest)
 	var before []string
@@ -362,11 +325,11 @@ func TestMigrationIdempotent(t *testing.T) {
 	}
 
 	// Second run: --force bypasses the version-compare skip (RK-7) so the
-	// flow actually runs; the record is present — step 1 short-circuits, and
-	// the thin deploy rewrites nothing under the dropped roots.
+	// flow actually runs; the record is present — the trigger short-circuits,
+	// and the reconcile preserves the common-asset roots.
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "force": "true"})
 
-	if got := config.ReadDeployMode(root); got != "plugin" {
+	if got := config.ReadDeployMode(root); got != "local" {
 		t.Errorf("second run flipped the record to %q", got)
 	}
 	var after []string
@@ -378,20 +341,23 @@ func TestMigrationIdempotent(t *testing.T) {
 	if strings.Join(before, ",") != strings.Join(after, ",") {
 		t.Errorf("second run changed the archive set: before=%v after=%v", before, after)
 	}
-	assertFileAbsent(t, root, migIdenticalSkill)
+	assertFilePresent(t, root, migIdenticalSkill)
 	assertFilePresent(t, root, migForeignSkill)
 }
 
-// TestUpdatePluginModeSkipsDroppedRedeploy is AC-016: a plugin-mode
-// project's update deploys the thin set — no dropped component is
-// re-deployed — and the recorded value is byte-identical after the run.
-func TestUpdatePluginModeSkipsDroppedRedeploy(t *testing.T) {
+// TestUpdateForceKeepsPlantedCommonAssets re-aims AC-016 (repair round): the
+// plugin-mode thin-deploy premise is retired with the carrier (M7 —
+// DeployMode is Local-only). The contract a force run must now hold: a user
+// file planted under a common-asset root survives byte-for-byte — the
+// deployer skips those roots (REQ-005) and the reconcile lists them
+// preserved — and the record never flips.
+func TestUpdateForceKeepsPlantedCommonAssets(t *testing.T) {
 	root := buildMigrationFixture(t)
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
 	before := config.ReadDeployMode(root)
 
-	// A user file under a dropped root, planted AFTER the migration: the
-	// thin redeploy must not re-create template copies beside it.
+	// A user file under a common-asset root, planted before the force run:
+	// the deploy must not re-create template copies beside it or touch it.
 	plant := filepath.Join(root, ".claude", "skills", "moai-custom", "PLANTED")
 	if err := os.MkdirAll(filepath.Dir(plant), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
@@ -402,9 +368,13 @@ func TestUpdatePluginModeSkipsDroppedRedeploy(t *testing.T) {
 
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "force": "true"})
 
-	assertFileAbsent(t, root, migIdenticalSkill)
-	assertFileAbsent(t, root, migAbsentRecCmd)
-	if got := config.ReadDeployMode(root); got != before || got != "plugin" {
+	if data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(".claude/skills/moai-custom/PLANTED"))); err != nil {
+		t.Errorf("force run removed the planted user file: %v", err)
+	} else if string(data) != "x" {
+		t.Errorf("force run altered the planted user file: %q", data)
+	}
+	assertFilePresent(t, root, migForeignSkill)
+	if got := config.ReadDeployMode(root); got != before {
 		t.Errorf("deployment_mode = %q, want the recorded %q", got, before)
 	}
 }
@@ -447,30 +417,35 @@ func TestUpdateNeverFlipsModeRecord(t *testing.T) {
 	}
 }
 
-// TestUpdateForceDoesNotResurrectDropped is AC-019: --force on a
-// plugin-mode project never re-creates the dropped components.
-func TestUpdateForceDoesNotResurrectDropped(t *testing.T) {
+// TestForceUpdatePreservesUserCommonAssets re-aims AC-019 (repair round,
+// leader disposition): the old body pinned SPEC-INIT-SHRINK-001's
+// plugin-mode force contract ("--force never re-creates the dropped
+// components"), whose dropped-component premise the de-plugin absorption
+// retired — DeployMode is Local-only (M7) and the common-asset roots are
+// the user-asset install surface (M4), never the sync's removal targets.
+// The joint t1547×t1509 contract a force run must hold: the record never
+// flips (REQ-018), every common-root file survives byte-for-byte, and the
+// summary lists the user's own skill as preserved.
+func TestForceUpdatePreservesUserCommonAssets(t *testing.T) {
 	root := buildMigrationFixture(t)
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
+	foreignBefore := readFixtureFile(t, root, migForeignSkill)
+	modifiedBefore := readFixtureFile(t, root, migModifiedSkill)
 
-	runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "force": "true"})
+	out, _ := runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "no-plugin": "true", "force": "true"})
 
-	assertFileAbsent(t, root, migIdenticalSkill)
-	assertFileAbsent(t, root, migModifiedSkill)
-	assertFileAbsent(t, root, migAbsentRecCmd)
-	// The only file left under .claude/skills is the preserved foreign
-	// skill; the classified executor's file-level removal leaves no
-	// template copy behind. (Empty directory shells may remain — the
-	// removal unit is the classified file.)
-	var skillFiles []string
-	_ = filepath.WalkDir(filepath.Join(root, ".claude", "skills"), func(p string, d os.DirEntry, err error) error {
-		if err == nil && !d.IsDir() {
-			skillFiles = append(skillFiles, filepath.ToSlash(p))
-		}
-		return nil
-	})
-	if len(skillFiles) != 1 || !strings.Contains(skillFiles[0], "moai-custom") {
-		t.Errorf("force update left unexpected skill files: %v", skillFiles)
+	if got := config.ReadDeployMode(root); got != "local" {
+		t.Errorf("force update flipped the record to %q, want local", got)
+	}
+	if got := readFixtureFile(t, root, migForeignSkill); got != foreignBefore {
+		t.Errorf("force update altered the foreign skill:\n%s", got)
+	}
+	if got := readFixtureFile(t, root, migModifiedSkill); got != modifiedBefore {
+		t.Errorf("force update absorbed the user-modified skill:\n%s", got)
+	}
+	assertFilePresent(t, root, migIdenticalSkill)
+	if !strings.Contains(out, "moai-custom") {
+		t.Errorf("force-run summary did not list the preserved foreign skill:\n%s", out)
 	}
 }
 
@@ -595,9 +570,14 @@ func TestMigrationArchiveRefusesSymlinkedArchiveDestination(t *testing.T) {
 
 		err := tryRunUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
 		if err == nil {
-			t.Fatal("the confirmed migration did not abort on the symlinked archive destination")
+			t.Fatal("the run did not abort on the symlinked archive destination")
 		}
-		if !strings.Contains(err.Error(), "ARCHIVE_SYMLINK") {
+		// Re-baselined (repair round): the flow's FIRST archive attempt is
+		// now the reconciliation's run-dir claim, whose guard refuses the
+		// link with the same semantics — the ARCHIVE_SYMLINK code itself
+		// stays pinned by the unit subtest above. The contract here is the
+		// refusal names the symlinked path.
+		if !strings.Contains(err.Error(), ".moai/archive") {
 			t.Errorf("abort error does not name the symlink refusal: %v", err)
 		}
 		// The abort-before-removal contract (OD-3): nothing was removed.
@@ -606,7 +586,7 @@ func TestMigrationArchiveRefusesSymlinkedArchiveDestination(t *testing.T) {
 		assertFilePresent(t, root, migForeignSkill)
 		// The record is unwritten — the next update re-triggers.
 		if got := config.ReadDeployMode(root); got != "" {
-			t.Errorf("deployment_mode = %q after an aborted migration, want empty", got)
+			t.Errorf("deployment_mode = %q after an aborted run, want empty", got)
 		}
 	})
 }
@@ -644,71 +624,16 @@ func tryRunUpdateCobraCmd(t *testing.T, root string, flags map[string]string) er
 	return runTemplateSyncWithReporter(cmd, nil, true)
 }
 
-// TestMigrationRehomesExistingMirrorEntries is finding 2 (design §3 mirror
-// paragraph): on a confirmed migration the KEPT mirror entries are re-homed
-// to real directory copies rendered from the embedded tree BEFORE the
-// dropped-root removal runs — a kept symlink would dangle into the removed
-// .claude/skills. The re-home converts existing entries; it never provisions
-// new ones (REQ-019), and a non-link entry is the user's and stays untouched.
-func TestMigrationRehomesExistingMirrorEntries(t *testing.T) {
-	root := buildMigrationFixture(t)
-	embedded, err := template.EmbeddedTemplates()
-	if err != nil {
-		t.Fatalf("load embedded templates: %v", err)
-	}
+// (TestMigrationRehomesExistingMirrorEntries was finding 2, design §3
+// mirror paragraph: it pinned the confirmed migration's mirror re-home,
+// whose producer retired with the plugin carrier — repair round: the re-home
+// machinery has no remaining call site, and the dropped-root removal it
+// protected against never runs. The surviving user-alias contract is pinned
+// by TestMigrationPreservesExistingMirrorEntries.)
 
-	// A pre-existing mirror entry in the local deploy's P-11 symlink shape.
-	mirrorEntry := filepath.Join(root, ".agents", "skills", "moai-foundation-core")
-	if err := os.MkdirAll(filepath.Dir(mirrorEntry), 0o755); err != nil {
-		t.Fatalf("mkdir mirror root: %v", err)
-	}
-	if err := os.Symlink(filepath.Join("..", "..", ".claude", "skills", "moai-foundation-core"), mirrorEntry); err != nil {
-		t.Fatalf("seed mirror symlink: %v", err)
-	}
-	// A non-link entry is the user's: untouched by the re-home.
-	userEntry := filepath.Join(root, ".agents", "skills", "moai-user-own")
-	if err := os.MkdirAll(userEntry, 0o755); err != nil {
-		t.Fatalf("mkdir user mirror entry: %v", err)
-	}
-
-	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
-
-	// The entry is now a REAL directory (not a symlink), holding the
-	// embedded skill bytes.
-	info, err := os.Lstat(mirrorEntry)
-	if err != nil {
-		t.Fatalf("re-homed mirror entry missing: %v", err)
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		t.Fatal("the mirror entry is still a symlink — it dangles once .claude/skills is removed")
-	}
-	if !info.IsDir() {
-		t.Fatalf("re-homed mirror entry is not a directory: %v", info.Mode())
-	}
-	copied, err := os.ReadFile(filepath.Join(mirrorEntry, "SKILL.md"))
-	if err != nil {
-		t.Fatalf("re-homed copy missing SKILL.md: %v", err)
-	}
-	embeddedData, err := fs.ReadFile(embedded, migIdenticalSkill)
-	if err != nil {
-		t.Fatalf("embedded read: %v", err)
-	}
-	if string(copied) != string(embeddedData) {
-		t.Error("re-homed copy does not carry the embedded skill bytes")
-	}
-
-	// The classified removal still ran (after the re-home).
-	assertFileAbsent(t, root, migIdenticalSkill)
-
-	// No provisioning: a catalog skill with no pre-existing entry gains none.
-	if _, err := os.Lstat(filepath.Join(root, ".agents", "skills", "moai-workflow-tdd")); !os.IsNotExist(err) {
-		t.Errorf("the migration provisioned a mirror entry for a skill that had none: %v", err)
-	}
-	// The user's own entry stays untouched (an empty dir is still empty).
-	if entries, _ := os.ReadDir(userEntry); len(entries) != 0 {
-		t.Errorf("the user's own mirror entry was modified: %v", entries)
-	}
-}
+// TestUnknownSkillPreservedAcrossLocalUpdates pins the preservation contract
+// across the record-less and the recorded-local arm: the user's own skill
+// survives both runs byte-for-byte, the record reads local after each.
 func TestUnknownSkillPreservedAcrossLocalUpdates(t *testing.T) {
 	root := buildMigrationFixture(t)
 	before := readFixtureFile(t, root, migForeignSkill)
@@ -732,18 +657,15 @@ func TestUnknownSkillPreservedAcrossLocalUpdates(t *testing.T) {
 			t.Fatalf("run%d altered unknown skill: %q, want %q", i+1, got, before)
 		}
 	}
-	if _, err := os.Stat(hook); !os.IsNotExist(err) {
-		t.Fatalf("managed local-only hook not cleaned: %v", err)
-	}
-	matches, err := filepath.Glob(filepath.Join(root, ".moai-backups", "*", "pre-clean", ".claude", "hooks", "moai", "local-only-review.sh"))
-	if err != nil || len(matches) == 0 {
-		t.Fatalf("managed hook has no pre-clean backup: %v", err)
-	}
-	for _, path := range matches {
-		data, err := os.ReadFile(path)
-		if err != nil || string(data) != hookBytes {
-			t.Fatalf("managed hook backup differs: %q, %v", data, err)
-		}
+	// The old body pinned the wholesale clean's managed local-only hook
+	// removal here ("cleaned with a pre-clean backup") — retired with the
+	// wholesale path (repair round): the reconcile classifies a local-only
+	// file under a managed root user-owned and preserves it byte-for-byte
+	// (REQ-UPM-002/013, the D-15 gate).
+	if got, err := os.ReadFile(hook); err != nil {
+		t.Fatalf("update removed the user's local-only hook: %v", err)
+	} else if string(got) != hookBytes {
+		t.Fatalf("update rewrote the user's local-only hook: %q", got)
 	}
 }
 
@@ -803,4 +725,66 @@ func installMigrationUserCounterparts(t *testing.T) string {
 		t.Fatalf("user counterpart differs: %v", err)
 	}
 	return home
+}
+
+// TestUpdatePreservesUserModifiedPolicies is gate round 4 finding 1's repro
+// (card t1547 repair round): in a `both` project the harness-neutral shared
+// surfaces (.moai/policies ← .claude/rules/moai) are real deploy paths, so a
+// user-modified policies file must classify user-modified and reach the
+// merge-or-conflict disposition — a force update preserves the operator's
+// bytes and writes the render to the <path>.moai-new sidecar, never an
+// overwrite without a sidecar.
+func TestUpdatePreservesUserModifiedPolicies(t *testing.T) {
+	root := buildMigrationFixture(t)
+	// The `both` harness profile deploys the projected shared surfaces.
+	writeFixtureFile(t, root, ".moai/config/sections/llm.yaml",
+		"llm:\n  harness: both\n")
+
+	// Install the policies file at its deploy path with the template bytes
+	// the deploy would carry, track it healthy, THEN land the user's edit —
+	// the install-then-edit shape a real project presents.
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("load embedded templates: %v", err)
+	}
+	const policiesRel = ".moai/policies/core/moai-constitution.md"
+	source, err := fs.ReadFile(embedded, ".claude/rules/moai/core/moai-constitution.md")
+	if err != nil {
+		t.Fatalf("embedded policies source: %v", err)
+	}
+	writeFixtureFile(t, root, policiesRel, string(source))
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	if err := mgr.Track(policiesRel, manifest.TemplateManaged, manifest.HashBytes(source)); err != nil {
+		t.Fatalf("track: %v", err)
+	}
+	if err := mgr.Save(); err != nil {
+		t.Fatalf("save manifest: %v", err)
+	}
+	const sentinel = "\n<!-- the operator's own policy amendment -->\n"
+	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(policiesRel)),
+		[]byte(string(source)+sentinel), 0o644); err != nil {
+		t.Fatalf("write user edit: %v", err)
+	}
+
+	out, _ := runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "force": "true"})
+
+	// The operator's bytes are restored byte-for-byte...
+	got, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(policiesRel)))
+	if err != nil {
+		t.Fatalf("policies file removed by the force update: %v", err)
+	}
+	if !strings.Contains(string(got), "the operator's own policy amendment") {
+		t.Errorf("force update overwrote the user-modified policies file without preservation:\n%s", out)
+	}
+	// ...and the render reached the sidecar (REQ-UPM-012).
+	sidecar, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(policiesRel+".moai-new")))
+	if err != nil {
+		t.Fatalf("no conflict sidecar for the user-modified policies file: %v", err)
+	}
+	if string(sidecar) != string(source) {
+		t.Errorf("sidecar does not carry the template render")
+	}
 }
