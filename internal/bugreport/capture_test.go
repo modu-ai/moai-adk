@@ -8,6 +8,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // seedConsent writes a consent file enabling capture under the test's
@@ -195,5 +197,49 @@ func TestCaptureSpoolsMoaiAndAmbiguous(t *testing.T) {
 	Capture(KindHookTimeout, errors.New("deadline"), "", nil)
 	if got := spoolLineCount(t, path); got != 1 {
 		t.Fatalf("ambiguous capture spooled %d line(s), want 1", got)
+	}
+}
+
+// TestSpoolCeilingHoldsUnderConcurrentWriters is review-gate finding #4's
+// pin: the ceiling check and the append were separate unsynchronized steps,
+// so 32 concurrent writers each saw room and appended — the spool finished
+// over its 200-line ceiling. The check and the append now share one
+// cross-process critical section (the D37 lock discipline): at most
+// DefaultBugreportSpoolMaxLines lines can land.
+func TestSpoolCeilingHoldsUnderConcurrentWriters(t *testing.T) {
+	seedConsent(t) // sets MOAI_HOME once and seeds consent
+	path, err := SpoolPath()
+	if err != nil {
+		t.Fatalf("SpoolPath: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	const writers = 32
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for i := 0; i < writers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			_ = appendSpoolLine(SpoolEntry{
+				Kind:    KindHookTimeout,
+				Verdict: VerdictAmbiguous,
+				Frames:  []string{"internal/cli.Execute"},
+			})
+		}()
+	}
+	close(start)
+	wg.Wait()
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read spool: %v", err)
+	}
+	lines := strings.Count(string(raw), "\n")
+	if lines > config.DefaultBugreportSpoolMaxLines {
+		t.Fatalf("spool holds %d lines, ceiling %d — the check and the append raced", lines, config.DefaultBugreportSpoolMaxLines)
 	}
 }
