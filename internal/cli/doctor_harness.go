@@ -44,7 +44,22 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 	var failures []string
 
 	// L1: harness-* skills have triggers section.
+	// SPEC-USER-ASSET-INSTALL-001 (class repair R-d instance ii / JD-10,
+	// sharpened by review-fix round 2 A7): L1/L6 (project-skill allowlist)
+	// and L4 (common-workflow tree) are selected INDEPENDENTLY — post-
+	// migration a project-specific skill or an empty project dir must not
+	// decouple the healthy USER workflow lookup from L4.
 	skillsDir := filepath.Join(projectRoot, ".claude", "skills")
+	workflowsDir := filepath.Join(skillsDir, "moai", "workflows")
+	if home, err := os.UserHomeDir(); err == nil {
+		userWorkflows := filepath.Join(home, ".claude", "skills", "moai", "workflows")
+		if _, userStat := os.Stat(userWorkflows); userStat == nil {
+			if _, projStat := os.Stat(filepath.Join(workflowsDir)); os.IsNotExist(projStat) {
+				skillsDir = filepath.Join(home, ".claude", "skills")
+				workflowsDir = userWorkflows
+			}
+		}
+	}
 	l1, l1Detail := checkLayer1Triggers(skillsDir)
 	statuses = append(statuses, "L1:"+l1)
 	if l1 == "FAIL" {
@@ -75,7 +90,7 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 	}
 
 	// L4: 4 workflow files contain @.moai/harness/*-extension.md import.
-	l4, l4Detail := checkLayer4ImportLines(filepath.Join(projectRoot, ".claude", "skills", "moai", "workflows"))
+	l4, l4Detail := checkLayer4ImportLines(workflowsDir)
 	statuses = append(statuses, "L4:"+l4)
 	if l4 == "FAIL" {
 		failures = append(failures, "L4 "+l4Detail)

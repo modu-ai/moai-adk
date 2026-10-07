@@ -64,7 +64,7 @@ Agent: sync-auditor subagent (independent quality scoring), gated by harness lev
 - `minimal` harness level (`harness.yaml` `levels.minimal.evaluator: false`): skip the sync-auditor invocation; rely on the orchestrator verification batch (lint + test + coverage) instead
 - `standard` / `thorough` harness level (`evaluator: true`): invoke sync-auditor for independent quality scoring
 
-Execute multi-perspective code review beyond basic TRUST 5 validation, using the canonical sync-auditor rubric (`.claude/agents/moai/sync-auditor.md`):
+Execute multi-perspective code review beyond basic TRUST 5 validation, using the canonical sync-auditor rubric (`~/.claude/agents/sync-auditor.md`):
 
 Evaluation Dimensions:
 - Functionality (40%): All SPEC acceptance criteria met

@@ -46,6 +46,8 @@ func newInitTestCmd() *cobra.Command {
 	cmd.Flags().Bool("force", false, "")
 	cmd.Flags().Bool("no-hooks", true, "")
 	cmd.Flags().Bool("all", false, "")
+	// SPEC-USER-ASSET-INSTALL-001: the opt-in bundle selection surface.
+	cmd.Flags().String("bundles", "", "")
 	// (--project-mode removed from the production surface by
 	// SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001; not mirrored here.)
 	cmd.Flags().Bool("enable-lsp", false, "")

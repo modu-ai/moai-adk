@@ -127,7 +127,7 @@ The register also admits a standing decision-board record and a signed mission c
 3. `## §E.3 Run-phase Audit-Ready Signal`
 4. `## §E.4 Sync-phase Audit-Ready Signal`
 
-Why these markers: the era-classification engine (`internal/spec/era.go` `hasAnyProgressMarker`) greps for the literal `§E.2`/`§E.3`/`§E.4`/`§E.5` substrings — NOT `§E.1` (`§E.5` is the retired Mx-phase marker, still recognized so pre-3-phase SPECs classify correctly; do NOT emit it in new skeletons) — so emitting the literal `§E.2`-`§E.4` headings at plan-phase is what prevents the SPEC from drifting into ad-hoc `§F.*` markers that the engine misclassifies (an H-2 era misclassification). The `§E.1` heading is emitted for human/audit readability. The `§E.2` heading specifically is the §E-section run-evidence start marker, not the sync phase (which lives at `§E.4`). The former `§E.5 Mx-phase` section is retired per SPEC-V3R6-LIFECYCLE-REDESIGN-001 (3-phase lifecycle: plan→run→sync; MX Tag is a cross-cutting sync concern, NOT a separate phase); its content is folded into §E.4.
+Why these markers: the SPEC era-classification engine greps for the literal `§E.2`/`§E.3`/`§E.4`/`§E.5` substrings — NOT `§E.1` (`§E.5` is the retired Mx-phase marker, still recognized so pre-3-phase SPECs classify correctly; do NOT emit it in new skeletons) — so emitting the literal `§E.2`-`§E.4` headings at plan-phase is what prevents the SPEC from drifting into ad-hoc `§F.*` markers that the engine misclassifies (an H-2 era misclassification). The `§E.1` heading is emitted for human/audit readability. The `§E.2` heading specifically is the §E-section run-evidence start marker, not the sync phase (which lives at `§E.4`). The former `§E.5 Mx-phase` section is retired (3-phase lifecycle: plan→run→sync; MX Tag is a cross-cutting sync concern, NOT a separate phase); its content is folded into §E.4.
 
 Keep the skeleton minimal: each section is a heading plus a one-line placeholder note (e.g. `_<pending run-phase>_`). Emit NO populated evidence tables, commit SHAs, or audit-ready YAML blocks at plan-phase.
 
@@ -142,9 +142,9 @@ ID="SPEC-{DOMAIN}-{NUM}"   # candidate SPEC ID under check
 [[ "$ID" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]] && echo PASS || echo FAIL
 ```
 
-The pattern mirrors the Go `specIDPattern` in `internal/spec/lint.go` (content-token anchor; line numbers drift): first segment literal `SPEC`, one or more middle segments matching `[A-Z][A-Z0-9]*`, digit-only 3-digit tail. Bash ERE has no `\d`, so `[0-9]{3}` stands in for `\d{3}`. The `[0-9]{3}$` end anchor rejects any trailing alpha suffix.
+The pattern mirrors the SPEC-ID pattern the lint engine enforces: first segment literal `SPEC`, one or more middle segments matching `[A-Z][A-Z0-9]*`, digit-only 3-digit tail. Bash ERE has no `\d`, so `[0-9]{3}` stands in for `\d{3}`. The `[0-9]{3}$` end anchor rejects any trailing alpha suffix.
 
-- Valid: `SPEC-AUTH-001`, `SPEC-V3R6-SPEC-ID-VALIDATION-001`, `SPEC-RETIRED-DDD-001` (multi-segment domains, including retired-marker prefixes, remain canonical)
+- Valid: `SPEC-AUTH-001`, `SPEC-V3R6-SPEC-ID-VALIDATION-001`, `SPEC-EXAMPLE-DOMAIN-001` (multi-segment domains remain canonical)
 - Invalid: `SPEC-AUTH-001a` (alpha suffix), `SPEC-001` (no domain), `SPEC-auth-001` (lowercase)
 
 On `FAIL`, halt the Write and return a structured blocker report naming the offending segment and proposing the canonical correction. On `PASS`, proceed to the Step 5 frontmatter schema validation, then Write/Edit.
@@ -155,7 +155,7 @@ On `FAIL`, halt the Write and return a structured blocker report naming the offe
 
 [HARD] Every `spec.md` YAML frontmatter MUST contain ALL 12 canonical fields. Missing any one is a schema violation and blocks creation.
 
-The canonical field list, the per-field types, the 8-value `status` enum, the `priority` format, the ISO-date requirement, and the REJECTED snake_case aliases (`created_at` / `updated_at` / `labels` / `spec_id` — silently dropped by the YAML decoder, producing empty-value `FrontmatterInvalid` findings) all live in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields, § Field Reference, § Status Enum, and § Rejected Snake_Case Aliases — the SSOT, aligned with `internal/spec/lint.go` `FrontmatterSchemaRule`. Read the schema there; do not work from a copy.
+The canonical field list, the per-field types, the 8-value `status` enum, the `priority` format, the ISO-date requirement, and the REJECTED snake_case aliases (`created_at` / `updated_at` / `labels` / `spec_id` — silently dropped by the YAML decoder, producing empty-value `FrontmatterInvalid` findings) all live in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields, § Field Reference, § Status Enum, and § Rejected Snake_Case Aliases — the SSOT, aligned with the lint engine's frontmatter-schema rule. Read the schema there; do not work from a copy.
 
 [HARD] The `phase` field names the **release target** — the version this SPEC is aimed at, quoted, in the shape the schema template shows (`phase: "vX.Y.Z target"`; the SSOT § Canonical 12 Required Fields template line and the § Field Reference row for `phase` are authoritative). It is **not a lifecycle field**: the workflow stage a SPEC currently occupies is carried by `status`, so writing a bare workflow-stage token — `plan`, `run`, `sync`, or `mx` — into `phase` is an authoring error, and the linter rejects it at error severity on every SPEC, grandfather-era ones included. When the target release is undecided, use the next unreleased version rather than a stage name.
 

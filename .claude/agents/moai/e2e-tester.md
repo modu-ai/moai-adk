@@ -138,7 +138,7 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 - When running gate / TRUST 5 quality checks on a suite run, invoke Skill("moai-foundation-quality") to load it on demand.
 - When deciding test-suite structure or the unit/integration/E2E balance for a journey, invoke Skill("moai-ref-testing-pyramid") to load it on demand.
-- When the detected project type is `desktop-native`, read `.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md` for the per-OS accessibility recipes before probing.
+- When the detected project type is `desktop-native`, read `~/.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md` for the per-OS accessibility recipes before probing.
 
 ## Subagent Boundary
 

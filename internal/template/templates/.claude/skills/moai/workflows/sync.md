@@ -139,16 +139,16 @@ Where `workflow.autonomy.mode: contract` — the sync phase carries the last thr
 
 ```
 # Phase 1 (Pre-Sync Quality Gate) 진입 시
-Read .claude/skills/moai/workflows/sync/quality-gates-context.md
+Read ~/.claude/skills/moai/workflows/sync/quality-gates-context.md
 
 # Phase 7 (Quality Verification) 진입 시
-Read .claude/skills/moai/workflows/sync/quality-gates-quality.md
+Read ~/.claude/skills/moai/workflows/sync/quality-gates-quality.md
 
 # Phase 11 (Analysis and Planning) 진입 시
-Read .claude/skills/moai/workflows/sync/doc-execution.md
+Read ~/.claude/skills/moai/workflows/sync/doc-execution.md
 
 # Phase 13 (Git Operations) 진입 시
-Read .claude/skills/moai/workflows/sync/delivery.md
+Read ~/.claude/skills/moai/workflows/sync/delivery.md
 ```
 
 ## Custom Harness Extension

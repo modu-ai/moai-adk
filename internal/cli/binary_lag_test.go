@@ -3,6 +3,7 @@ package cli
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -16,12 +17,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/hook"
 )
-
-// lagBaselineSHA is the commit this SPEC's first commit sits on top of. The
-// AC-BLV-009 judgment is a BEFORE/AFTER delta, so it needs a fixed point to
-// measure from; a moving reference like a branch name would read an upstream
-// commit as this SPEC's own change.
-const lagBaselineSHA = "22f90b1c7"
 
 // --- AC-BLV-005: one comparison, two surfaces -------------------------------
 
@@ -115,7 +110,7 @@ func TestBinaryLag_NonGitDirectoryKeepsDoctorExitZero(t *testing.T) {
 // added the same way and report an empty delta while the requirement was being
 // broken. The whole slice literal is read, not a line window, because the
 // natural place to append a new check is the end.
-func checkNamesFromSource(t *testing.T, src []byte) map[string]bool {
+func checkNamesFromSource(t *testing.T, src []byte) map[string]int {
 	t.Helper()
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "doctor.go", src, 0)
@@ -124,7 +119,7 @@ func checkNamesFromSource(t *testing.T, src []byte) map[string]bool {
 	}
 
 	registries := map[string]bool{"systemChecks": true, "moaiChecks": true, "workspaceChecks": true}
-	names := map[string]bool{}
+	names := map[string]int{}
 
 	ast.Inspect(file, func(n ast.Node) bool {
 		assign, ok := n.(*ast.AssignStmt)
@@ -145,7 +140,7 @@ func checkNamesFromSource(t *testing.T, src []byte) map[string]bool {
 				if !ok || len(entry.Elts) == 0 {
 					continue
 				}
-				names[exprSource(fset, src, entry.Elts[0])] = true
+				names[exprSource(fset, src, entry.Elts[0])]++
 			}
 		}
 		return true
@@ -165,186 +160,115 @@ func exprSource(fset *token.FileSet, src []byte, e ast.Expr) string {
 	return string(src[start:end])
 }
 
-// namesAddedAfterBaseline lists doctor check names registered by LATER SPECs,
-// which this guard must not attribute to REQ-BLV-009.
-//
-// The guard's subject is the binary-lag SPEC's own delta: it pins that
-// REQ-BLV-009 rewires "Binary Freshness" and registers no new name. Because it
-// measures against a FIXED baseline SHA rather than against that SPEC's own
-// commits, every later SPEC that legitimately adds a check trips it — a false
-// positive with respect to the stated intent. Naming the additions here keeps
-// the freeze in force for every other name (an unlisted addition, and any
-// removal, still fails) while letting a later SPEC's own tests own its check.
-//
-// Bumping lagBaselineSHA would be the wrong fix: it would silence every other
-// drift accumulated since the baseline, not just this one entry.
-//
-// An entry is written as the SOURCE TEXT of the registry entry's name
-// expression, because that is what checkNamesFromSource extracts. The two
-// shapes are not interchangeable: a check registered through a constant is
-// listed bare (hookWiringCheckName), while one registered as a string literal
-// keeps its quotes as characters (`"Hook Delivery"`). Listing a literal-named
-// check without the quotes matches nothing, so the guard stays red while
-// looking fixed.
-//
-//   - hookWiringCheckName — SPEC-HOOK-WIRING-DRIFT-001 M2, the "Hook Wiring"
-//     drift diagnostic.
-//   - `"Hook Delivery"` — t466, the hook-delivery workspace diagnostic
-//     (doctor.go registers it as a string literal, hence the quotes).
-//   - flagSlotCheckName — t702, the shared-flag-slot session diagnostic
-//     (registered through the constant, hence bare).
-//   - `"Git Strategy Workflow"` — t656, the git-strategy workflow
-//     interpretation-table diagnostic (string literal, hence the quotes).
-var namesAddedAfterBaseline = map[string]bool{
-	"hookWiringCheckName":     true,
-	`"Hook Delivery"`:         true,
-	"flagSlotCheckName":       true,
-	`"Git Strategy Workflow"`: true,
-	// jevCheckName — SPEC-JEV-CORE-001 (card t1020), the Jev readiness
-	// diagnostic. Registered through a constant, so it is listed bare.
-	"jevCheckName": true,
-	// mcpProviderDuplicatesCheckName — card t1250, the local-server vs
-	// claude.ai-connector overlap diagnostic. Registered through a constant.
+// Approved current registrations: the user-asset contract replaces Plugin
+// Deployment/Plugin Version with User Install, Project Lock, and Plugin Migration.
+// Pin the complete set hermetically rather than attributing all future doctor
+// evolution to the old binary-lag baseline. Unknown additions and removals fail.
+var doctorCheckNameContract = map[string]bool{
+	`"BODP Config"`:                  true,
+	`"Binary Freshness"`:             true,
+	`"Claude Code"`:                  true,
+	`"Claude Config"`:                true,
+	`"Codex Wiring"`:                 true,
+	`"Constitution Registry"`:        true,
+	`"Git Strategy Workflow"`:        true,
+	`"Git"`:                          true,
+	`"GitHub CLI"`:                   true,
+	`"Glamour Cache"`:                true,
+	`"Go Runtime"`:                   true,
+	`"Harness 5-Layer"`:              true,
+	`"Home Disk Usage"`:              true,
+	`"Hook Delivery"`:                true,
+	`"Hook opt-in:"`:                 true,
+	`"Hooks Config"`:                 true,
+	`"MCP Scope Duplicates"`:         true,
+	`"MX Tag Config"`:                true,
+	`"Migration"`:                    true,
+	`"MoAI Config"`:                  true,
+	`"MoAI Version"`:                 true,
+	`"Plugin Migration"`:             true,
+	`"Project Lock"`:                 true,
+	`"Skills Allowlist"`:             true,
+	`"Slash Commands"`:               true,
+	`"Telemetry Config"`:             true,
+	`"User Install"`:                 true,
+	`"Worktree Base Branch"`:         true,
+	`"Worktree State"`:               true,
+	`"ast-grep CLI"`:                 true,
+	"agentEmitEmbedCheckName":        true,
+	"ccVersionStalenessCheckName":    true,
+	"factoryRunCheckName":            true,
+	"flagSlotCheckName":              true,
+	"hookMissingLogCheckName":        true,
+	"hookWiringCheckName":            true,
+	"jevCheckName":                   true,
 	"mcpProviderDuplicatesCheckName": true,
-	// settingsDefaultModeCheckName — card t1247, the ignored
-	// defaultMode=bypassPermissions diagnostic. Registered through a constant.
-	"settingsDefaultModeCheckName": true,
-	// hookMissingLogCheckName — card t1251, the "Hook Missing Log" skipped-hook
-	// diagnostic. Registered through a constant, hence bare.
-	"hookMissingLogCheckName": true,
-	// factoryRunCheckName — SPEC-ROLE-NAMING-CODE-001 M3 (card t1256), the
-	// "Factory Run" leader-role diagnostic. Registered through a constant,
-	// hence bare.
-	"factoryRunCheckName": true,
-	// servedModelCheckName — card t1282, the "Served Model" read-only sweep of
-	// subagent transcripts. Registered through a constant, hence bare.
-	"servedModelCheckName": true,
-	// todoStoreDivergenceCheckName — SPEC-TODO-STALE-STORE-001 M2 (card
-	// t1307), the stale project-local queue store divergence diagnostic.
-	// Registered through a constant, hence bare.
-	"todoStoreDivergenceCheckName": true,
-	// todoGhostInventoryCheckName — SPEC-TODO-SURFACE-POLISH-001 M2 (card
-	// t1349), the non-SQLite ghost artifact inventory diagnostic.
-	// Registered through a constant, hence bare.
-	"todoGhostInventoryCheckName": true,
-	// ownerLabelDriftCheckName — SPEC-TODO-SURFACE-POLISH-001 M3 (card
-	// t1349), the owner_label vocabulary drift diagnostic. Registered
-	// through a constant, hence bare.
-	"ownerLabelDriftCheckName": true,
-	// pluginVersionCheckName — SPEC-PLUGIN-MARKETPLACE-001 M4 (card t1435),
-	// the "Plugin Version" installed-plugin vs binary comparison. Registered
-	// through a constant, hence bare.
-	"pluginVersionCheckName": true,
-	// ccVersionStalenessCheckName — SPEC-SESSION-CC-VERSION-001 (card t1465),
-	// the "Session CC Version" running-vs-installed staleness diagnostic.
-	// Registered through a constant, hence bare.
-	"ccVersionStalenessCheckName": true,
+	"mcpServerVersionCheckName":      true,
+	"ownerLabelDriftCheckName":       true,
+	"servedModelCheckName":           true,
+	"settingsDefaultModeCheckName":   true,
+	"todoGhostInventoryCheckName":    true,
+	"todoStoreDivergenceCheckName":   true,
 }
 
-// TestBinaryLag_AllowlistKeysAreLiveNames asserts that every key of
-// namesAddedAfterBaseline is a name checkNamesFromSource actually extracts from
-// the CURRENT doctor.go.
-//
-// The failure it prevents: allowlist keys are compared against the extracted set
-// verbatim, and that set mixes two shapes — a constant-registered check appears
-// as a bare identifier, a literal-registered one keeps its quotes as characters.
-// A key written in the wrong shape matches nothing, so it allows nothing. The
-// sibling guard then stays red while the allowlist looks fixed, and its message
-// blames a name drift that never happened: cause and symptom come apart. Nothing
-// else reports this, because a map key matching nothing is indistinguishable
-// from a key not yet needed.
-//
-// Both directions are live, because the allowlist carries both shapes side by
-// side and the next author copies one of them. Reporting only that a key failed
-// would be no better than "something is wrong" — the message has to name which
-// direction the mistake went.
-//
-// This guard reads only the current doctor.go. It deliberately shares no input
-// with TestBinaryLag_DoctorCheckNameSetIsUnchanged, which parses a historical
-// blob and skips when that blob is unreachable: a guard that skips in a shallow
-// clone is absent exactly where a fresh checkout most needs it.
-func TestBinaryLag_AllowlistKeysAreLiveNames(t *testing.T) {
+func doctorCheckNameContractError(names map[string]int) error {
+	for name, count := range names {
+		if count != 1 {
+			return fmt.Errorf("duplicate doctor registration %s: %d", name, count)
+		}
+		if !doctorCheckNameContract[name] {
+			return fmt.Errorf("unknown doctor registration %s", name)
+		}
+	}
+	for name := range doctorCheckNameContract {
+		if names[name] != 1 {
+			return fmt.Errorf("missing doctor registration %s", name)
+		}
+	}
+	return nil
+}
+
+func TestBinaryLag_DoctorCheckNameSetIsUnchanged(t *testing.T) {
 	src, err := os.ReadFile("doctor.go")
 	if err != nil {
 		t.Fatal(err)
 	}
-	live := checkNamesFromSource(t, src)
-
-	substantive := 0
-	for _, allowed := range namesAddedAfterBaseline {
-		if allowed {
-			substantive++
-		}
-	}
-	if substantive == 0 {
-		t.Fatal("namesAddedAfterBaseline holds no substantive key, so this guard checked " +
-			"nothing; a green over an empty subject asserts nothing about key shape")
-	}
-
-	for key := range namesAddedAfterBaseline {
-		if live[key] {
-			continue
-		}
-		inner := ""
-		quoted := len(key) >= 2 && strings.HasPrefix(key, `"`) && strings.HasSuffix(key, `"`)
-		if quoted {
-			inner = key[1 : len(key)-1]
-		}
-		switch {
-		case quoted && live[inner]:
-			// Both operands are rendered with %q. Rendering one of them plainly
-			// would print the same characters for two different set elements,
-			// and a message that cannot separate them names no direction.
-			t.Errorf("allowlist key %q matches no registered check name, but %q does: the "+
-				"quotes were ADDED. doctor.go registers this check through a constant "+
-				"identifier, so write the entry as a plain string key %q.", key, inner, inner)
-		case !quoted && live[`"`+key+`"`]:
-			t.Errorf("allowlist key %q matches no registered check name, but %q does: the "+
-				"quotes were STRIPPED. doctor.go registers this check as a string literal "+
-				"and checkNamesFromSource keeps those quotes as characters, so write the "+
-				"entry as a backtick raw string: `%s`.", key, `"`+key+`"`, `"`+key+`"`)
-		default:
-			t.Errorf("allowlist key %q matches no registered check name in doctor.go at "+
-				"all, in either quoting shape; it allows nothing and is provably inert. "+
-				"Remove it, or correct it to a name checkNamesFromSource extracts.", key)
-		}
+	if err := doctorCheckNameContractError(checkNamesFromSource(t, src)); err != nil {
+		t.Fatal(err)
 	}
 }
 
-func TestBinaryLag_DoctorCheckNameSetIsUnchanged(t *testing.T) {
-	before, err := exec.Command("git", "show", lagBaselineSHA+":internal/cli/doctor.go").Output()
-	if err != nil {
-		t.Skipf("baseline blob %s unavailable (shallow clone?): %v", lagBaselineSHA, err)
-	}
-	after, err := os.ReadFile("doctor.go")
+// Negative controls prove that an unknown literal/constant, removed freshness
+// row, or duplicate row cannot pass the registration guard.
+func TestBinaryLag_DoctorCheckNameGuardRejectsMutations(t *testing.T) {
+	src, err := os.ReadFile("doctor.go")
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	beforeNames := checkNamesFromSource(t, before)
-	afterNames := checkNamesFromSource(t, after)
-
-	for name := range afterNames {
-		if beforeNames[name] || namesAddedAfterBaseline[name] {
-			continue
-		}
-		t.Errorf("this SPEC added doctor check name %s; REQ-BLV-009 rewires the existing "+
-			"\"Binary Freshness\" item and registers no new name", name)
+	const row = `{"Binary Freshness", checkBinaryFreshness},`
+	if strings.Count(string(src), row) != 1 {
+		t.Fatal("freshness registration anchor must occur exactly once")
 	}
-	for name := range beforeNames {
-		if !afterNames[name] {
-			t.Errorf("this SPEC removed doctor check name %s", name)
-		}
-	}
-	if !afterNames[`"Binary Freshness"`] {
-		t.Error(`"Binary Freshness" is not registered after the change`)
+	for name, replacement := range map[string]string{
+		"unknown-literal":     row + `{"Unknown Check", checkBinaryFreshness},`,
+		"unknown-constant":    row + `{unknownCheckName, checkBinaryFreshness},`,
+		"missing-freshness":   "",
+		"duplicate-freshness": row + row,
+		"retired-plugin":      row + `{"Plugin Deployment", checkBinaryFreshness},`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			mutated := []byte(strings.Replace(string(src), row, replacement, 1))
+			if err := doctorCheckNameContractError(checkNamesFromSource(t, mutated)); err == nil {
+				t.Fatal("guard accepted forbidden registry mutation")
+			}
+		})
 	}
 }
 
 // --- AC-BLV-004: monotone build identity, VERSION untouched -----------------
 
 // versionLineExpected is the Makefile's VERSION derivation as it stood at
-// lagBaselineSHA. Operator decision (b): this SPEC introduces the monotone
+// commit 22f90b1c7. Operator decision (b): this SPEC introduces the monotone
 // identity in a separate BUILD_ID and leaves VERSION byte-identical, so the
 // release artifact name, version.json, and the update path stay outside this
 // card's blast radius.
