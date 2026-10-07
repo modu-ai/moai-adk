@@ -45,6 +45,7 @@ func TestBrokerOpenWithSpentContextDoesNotInitialize(t *testing.T) {
 
 func TestBrokerOpenContextPreservesConnectionSettings(t *testing.T) {
 	t.Setenv("MOAI_HOME", t.TempDir())
+	started := time.Now()
 	store, err := OpenWithContext(context.Background(), t.TempDir(), "run-settings")
 	if err != nil {
 		t.Fatal(err)
@@ -58,7 +59,8 @@ func TestBrokerOpenContextPreservesConnectionSettings(t *testing.T) {
 	if err := store.db.QueryRow("PRAGMA busy_timeout").Scan(&busy); err != nil {
 		t.Fatal(err)
 	}
-	if mode != "wal" || busy != 2500 {
+	minimumBusy := (5*time.Second-time.Since(started)).Milliseconds()/2 - 1
+	if mode != "wal" || busy > 2500 || int64(busy) < minimumBusy {
 		t.Fatalf("connection settings changed: journal=%s busy=%d", mode, busy)
 	}
 }

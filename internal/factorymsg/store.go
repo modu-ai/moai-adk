@@ -268,12 +268,27 @@ func openWithContext(parent context.Context, projectRoot, runID string, deadline
 	}
 	ctx, cancel := context.WithTimeout(parent, deadline)
 	defer cancel()
-	path, err := BrokerPath(projectRoot, runID)
+	if !safeID.MatchString(runID) {
+		return nil, fmt.Errorf("invalid factory run id %q", runID)
+	}
+	dir, err := homestate.FactoryDirContext(ctx, projectRoot)
 	if err != nil {
 		return nil, err
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	path := filepath.Join(dir, "messages", runID, "broker.db")
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	end, _ := ctx.Deadline()
+	deadline = time.Until(end)
+	if deadline <= 0 {
+		return nil, context.DeadlineExceeded
 	}
 	v := url.Values{}
 	// Leave half of the caller's budget for path setup, schema execution, and

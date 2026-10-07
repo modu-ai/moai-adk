@@ -11,11 +11,13 @@ package git
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
@@ -55,11 +57,33 @@ type GitDirs struct {
 // used alone: it returns a repository-relative path (.git) in the primary
 // checkout, so "the parent of it" would not be a path at all.
 func ResolveGitDirs(dir string) (*GitDirs, error) {
+	return resolveGitDirs(dir, runGitRevParse)
+}
+
+// ResolveGitDirsContext resolves the same identity without outliving the caller.
+func ResolveGitDirsContext(ctx context.Context, dir string) (*GitDirs, error) {
+	return resolveGitDirs(dir, func(dir string, args ...string) (string, error) {
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
+		cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir, "rev-parse"}, args...)...)
+		cmd.Env = gitenv.Env()
+		// Do not wait on inherited pipes after Git exits or is canceled.
+		cmd.WaitDelay = config.DefaultGitPathWaitDelay
+		out, err := cmd.Output()
+		if ctx.Err() != nil {
+			return "", ctx.Err()
+		}
+		return strings.TrimSpace(string(out)), err
+	})
+}
+
+func resolveGitDirs(dir string, run func(string, ...string) (string, error)) (*GitDirs, error) {
 	if err := validateDirArg(dir); err != nil {
 		return nil, err
 	}
 
-	out, err := runGitRevParse(dir, "--path-format=absolute", "--git-dir", "--git-common-dir")
+	out, err := run(dir, "--path-format=absolute", "--git-dir", "--git-common-dir")
 	if err == nil {
 		lines := strings.Split(out, "\n")
 		if len(lines) >= 2 {
@@ -71,11 +95,11 @@ func ResolveGitDirs(dir string) (*GitDirs, error) {
 		// Unexpected output shape; fall through to the fallback below.
 	}
 
-	absGitDir, err := runGitRevParse(dir, "--absolute-git-dir")
+	absGitDir, err := run(dir, "--absolute-git-dir")
 	if err != nil {
 		return nil, fmt.Errorf("resolve git dirs: --absolute-git-dir failed: %w", err)
 	}
-	relCommon, err := runGitRevParse(dir, "--git-common-dir")
+	relCommon, err := run(dir, "--git-common-dir")
 	if err != nil {
 		return nil, fmt.Errorf("resolve git dirs: --git-common-dir failed: %w", err)
 	}

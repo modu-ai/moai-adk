@@ -635,7 +635,7 @@ func TestFactoryLaneHandoffRebindVsLaunchBindRace(t *testing.T) {
 			}) {
 				return
 			}
-			if current.seed.HandleStats().OpenConnections != 0 || current.db.Stats().OpenConnections != 0 {
+			if current != nil && (current.seed.HandleStats().OpenConnections != 0 || current.db.Stats().OpenConnections != 0) {
 				t.Fatalf("iteration %d retained broker or observer connections after completion", i)
 			}
 		}
