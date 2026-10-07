@@ -289,6 +289,14 @@ func admitBase(f Fields, phase Phase, threshold float64, hashOK bool) (bool, str
 	if len(f.RequiredBackendFails) > 0 {
 		return false, "required backend(s) recorded fail: " + strings.Join(dedupeStrings(f.RequiredBackendFails), ", ")
 	}
+	// The receipt's own overall verdict is the exporting auditor's bottom
+	// line: a recorded "fail" refuses the verdict regardless of its label or
+	// backend lines (card t1571 — the same unconditional posture as the
+	// required_backend_fail refusal above). An absent convergence_overall is
+	// the legacy shape and stays on the label and field checks below.
+	if f.Receipt.ConvergenceOverall == "fail" {
+		return false, "convergence receipt records overall fail"
+	}
 	if !AdmitLabel(f.Label) {
 		if f.Label == "" {
 			return false, "no verdict"

@@ -1,0 +1,7 @@
+version: 1
+branches:
+  main:
+    contexts:
+      - Lint
+      - "Test (ubuntu)"
+auxiliary: []

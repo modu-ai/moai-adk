@@ -277,15 +277,39 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      exclusion: ${{ steps.verify.outputs.exclusion }}
     steps:
       - name: Verify all OS legs passed
+        id: verify
         run: |
-          if [ "${{ needs.detect-release.result }}" = "failure" ]; then
-            echo "::error::Release PR detection FAILED before the matrix could run — not treating a skipped matrix as verification"
+          # AC-CI-001: the gate passes only when BOTH the detection and the
+          # full matrix concluded success, or when the matrix produced no run
+          # because of a positively identified intentional exclusion. Any
+          # other conclusion (cancelled, timed_out, skipped without a named
+          # exclusion, failure) fails the gate — a cancelled matrix is never
+          # "PASSED".
+          if [ "${{ needs.detect-release.result }}" != "success" ] && [ "${{ needs.detect-release.result }}" != "skipped" ]; then
+            echo "::error::Release PR detection did not succeed before the matrix could run — not treating a skipped matrix as verification"
             exit 1
           fi
-          if [ "${{ needs.full-matrix-test.result }}" = "failure" ]; then
-            echo "::error::Release PR multi-OS verification FAILED on at least one OS"
-            exit 1
+
+          if [ "${{ needs.detect-release.result }}" = "skipped" ]; then
+            echo "exclusion=non-release-pr" >> "$GITHUB_OUTPUT"
+            echo "::notice::Intentional exclusion: non-release PR (detect-release skipped by design) — matrix not required"
+            exit 0
           fi
-          echo "✓ Release PR multi-OS verification PASSED (or skipped for non-release / docs-only PR)"
+
+          if [ "${{ needs.full-matrix-test.result }}" = "success" ]; then
+            echo "✓ Release PR multi-OS verification PASSED"
+            exit 0
+          fi
+
+          if [ "${{ needs.full-matrix-test.result }}" = "skipped" ] && [ "${{ needs.detect-release.result }}" = "success" ] && [ "${{ needs.detect-release.outputs.go_code }}" = "false" ]; then
+            echo "exclusion=docs-only-release-pr" >> "$GITHUB_OUTPUT"
+            echo "::notice::Intentional exclusion: docs-only release PR (paths-filter reported no code changes) — matrix not required"
+            exit 0
+          fi
+
+          echo "::error::Release PR multi-OS verification concluded '${{ needs.full-matrix-test.result }}' (cancelled/timed_out/skipped-without-exclusion/failure) — not treating this as verification"
+          exit 1
