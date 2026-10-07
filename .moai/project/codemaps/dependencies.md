@@ -230,7 +230,7 @@ e65b3b의 실제 package adjacency에 SCC 분석을 적용한 nontrivial compone
 | `internal/hook` ↔ `internal/migration` | hook → migration, migration/migrations → hook |
 | `internal/profile` ↔ `internal/settings` | profile → settings/yamlpatch, settings → profile |
 
-15개 단위 그룹은 cli·codexadapter·codexwiring·discovery·factory·factorymsg·feedback·graph·hook·migration·permission·profile·settings·statusline·web이다. 정확한 package 관계는 480쌍의 집합으로 따로 유지하며 최상위 집계와 혼용하지 않는다.
+15개 단위 그룹은 cli·codexadapter·codexwiring·discovery·factory·factorymsg·feedback·graph·hook·migration·permission·profile·settings·statusline·web이다. 정확한 package 관계는 481쌍의 집합으로 따로 유지하며 최상위 집계와 혼용하지 않는다.
 
 ---
 
