@@ -2,6 +2,7 @@ package bugreport
 
 import (
 	"encoding/json"
+	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -100,6 +101,41 @@ func TestPayloadSchemaClosed(t *testing.T) {
 		if _, err := ParsePayload(mutated); err == nil {
 			t.Errorf("%s: ParsePayload accepted a payload outside the anchored allowlist", tc.name)
 		}
+	}
+}
+
+// TestParsePayloadRejectsTrailingData pins the closed-schema read-back
+// against the review finding: json.Decoder binds only the FIRST value, so a
+// valid payload followed by a second object (or plain junk) would otherwise
+// parse as valid. The schema is closed at the byte boundary too: after the
+// first value only whitespace may remain.
+func TestParsePayloadRejectsTrailingData(t *testing.T) {
+	p := buildValidPayload(t)
+	raw, err := json.Marshal(p)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	suffixes := map[string]string{
+		"second_object": ` {"kind":"panic","fingerprint":"0123456789abcdef"}`,
+		"not_json":      `not-json`,
+		"array":         `[]`,
+	}
+	for name, suffix := range suffixes {
+		doctored := make([]byte, 0, len(raw)+len(suffix))
+		doctored = append(doctored, raw...)
+		doctored = append(doctored, []byte(suffix)...)
+		if _, err := ParsePayload(doctored); !errors.Is(err, ErrPayloadRejected) {
+			t.Errorf("%s: trailing data accepted (err = %v, want ErrPayloadRejected)", name, err)
+		}
+	}
+
+	// Whitespace after the payload is not trailing data.
+	padded := make([]byte, 0, len(raw)+4)
+	padded = append(padded, raw...)
+	padded = append(padded, []byte(" \n\t")...)
+	if _, err := ParsePayload(padded); err != nil {
+		t.Errorf("whitespace-padded payload rejected: %v", err)
 	}
 }
 

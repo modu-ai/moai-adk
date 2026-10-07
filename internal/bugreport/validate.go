@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"regexp"
 )
 
@@ -123,13 +124,20 @@ var ErrPayloadRejected = errors.New("bugreport: payload rejected")
 
 // ParsePayload decodes and re-validates a queued payload (REQ-ANON-011):
 // unknown fields are rejected, every field must pass its anchored allowlist,
-// and the detail string must be a member of the closed set for the kind.
+// the detail string must be a member of the closed set for the kind — and
+// the input must be EXACTLY one value. json.Decoder binds only the first
+// value, so trailing data (a second object, an array, plain junk) would
+// otherwise ride in behind a valid payload; the second decode must reach
+// EOF or the payload is rejected.
 func ParsePayload(data []byte) (Payload, error) {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	var w payloadWire
 	if err := dec.Decode(&w); err != nil {
 		return Payload{}, fmt.Errorf("%w: decode: %v", ErrPayloadRejected, err)
+	}
+	if err := dec.Decode(&struct{}{}); err != io.EOF {
+		return Payload{}, fmt.Errorf("%w: trailing data after the payload", ErrPayloadRejected)
 	}
 	p := Payload{
 		Schema:      w.Schema,
