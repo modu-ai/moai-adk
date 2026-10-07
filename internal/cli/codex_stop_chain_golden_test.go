@@ -228,8 +228,18 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 		t.Run("codex installed, no receipt", func(t *testing.T) {
 			f := setup(t)
 			claude := claudeReview(t, f, failReview, false)
+			// SPEC-GATE-BOTTLENECK-001 REQ-GBN-001: the Claude gate RECORDS the
+			// live review's verdict now, so after the Claude pass the shared
+			// store holds a fresh FAIL receipt — the Codex member reads the
+			// same verdict class the explicit FAIL-receipt leg pins (one
+			// store, both harnesses), no longer the pre-M1 unmeasured shape.
+			// Premise assertion: a regression that silently drops the record
+			// would re-vacate this leg to unmeasured while staying green.
+			if r := receiptForCurrentState(t, f); r == nil || r.Verdict != codexReviewVerdictFail {
+				t.Fatalf("premise: the Claude live review must record a %q receipt (REQ-GBN-001)", codexReviewVerdictFail)
+			}
 			got := codex(t, f, false)
-			wantPair(t, claude, got, codexadapter.DecisionDeny, reasonUnmeasured)
+			wantPair(t, claude, got, codexadapter.DecisionDeny, reasonGateFailed)
 			if !strings.Contains(got.Reason, codexwiring.CodexReviewReceiptCommand) {
 				t.Fatalf("reason must name the review runner; got %q", got.Reason)
 			}
@@ -285,8 +295,14 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 			f.commit(t, "feat: move HEAD after the review")
 			f.dirty(t, "reviewable again")
 			claude := claudeReview(t, f, failReview, false)
+			// REQ-GBN-001, stale arm: the stale key fell through to the live
+			// review, which recorded a fresh FAIL receipt for the NEW key —
+			// the same shared-store shape the no-receipt leg documents.
+			if r := receiptForCurrentState(t, f); r == nil || r.Verdict != codexReviewVerdictFail {
+				t.Fatalf("premise: the stale-key live review must record a %q receipt for the moved key (REQ-GBN-001)", codexReviewVerdictFail)
+			}
 			got := codex(t, f, false)
-			wantPair(t, claude, got, codexadapter.DecisionDeny, reasonUnmeasured)
+			wantPair(t, claude, got, codexadapter.DecisionDeny, reasonGateFailed)
 		})
 		t.Run("codex binary missing", func(t *testing.T) {
 			f := setup(t)
@@ -491,6 +507,23 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 }
 
 func intp(n int) *int { return &n }
+
+// receiptForCurrentState reads the review receipt bound to the fixture
+// tree's CURRENT state — the same binding the Codex member 6 consults — so a
+// golden leg can premise-assert what the shared store holds before reading
+// the member's outcome.
+func receiptForCurrentState(t *testing.T, f *stopFixture) *verify.Receipt {
+	t.Helper()
+	binaryPath, err := codexLookPath(codexBinaryName)
+	if err != nil {
+		t.Fatalf("codex look: %v", err)
+	}
+	state, err := codexReviewReceiptStateForScope(context.Background(), reviewScopeResolver(f.root), binaryPath)
+	if err != nil {
+		t.Fatalf("receipt state: %v", err)
+	}
+	return verify.LoadReceipt(f.root, state)
+}
 
 // allowMember1 stands in for `moai hook stop` where a golden isolates another
 // member.

@@ -38,3 +38,9 @@ run_status: partial — M1 착지, M2(지연 블록)·라이브 리뷰 0건 조�
 ## 턴종료 게이트 발견 처분 (r11 — 본 카드 diff 발견 0건 연속)
 
 r10 수리 판정 통과(리뷰어 명시: 캐시 회귀 테스트 3개 통과). 13건 전부 기존 원장 행의 재관측 — factory_card 3·factory_bundle 3·todo_issuance 4·todo.go 2·backlog_store/relation 2의 계열 분포는 r9/r10과 동일. 소관 카드(t1542 원장·t1561·t1562·t1559·t1454·t1554)가 소유하며 본 카드 수리 소관 아님.
+
+## CI 적색 2건 수리 (리더 지시 2026-10-07 — M1 PR #1793)
+
+- **① TestStopChainEffectParityGolden /codex_review_gate 2 leg** — REQ-GBN-001이 바꾼 공유 저장소 계약의 갱신: Claude 게이트가 라이브 판정을 기록하므로(의도된 M1 동작) "Claude 통과 뒤 영수증 부재 → unmeasured" 골든이 더 이상 성립하지 않는다. 두 leg(codex installed no receipt·stale receipt HEAD moved)를 gate_failed 기대로 갱신하고, 영수증 기록 자체를 전제 단언(receiptForCurrentState 헬퍼 — 기록이 말없이 빠지면 leg가 공허해지는 것을 막음)으로 고정. 판정 일치(Deny=Deny)는 유지 — parity 위반 아닌 관측 클래스 갱신. unmeasured 행위 커버리지는 cap 서브테스트가 유지.
+- **② TestCheckProtectedZonePosixBackslashConvertedAbsoluteness** — origin/main(5e5ff8e31, t1570 #1797) 흡수 후 green. 코드 변경 0건.
+- 흡수: origin/main → 병합 HEAD 64a13b837. 재판정: `go test ./internal/cli/ -run 'TestStopChainEffectParityGolden' -count=1` → ok (40.9s) · `-run 'TestReviewGate|TestCheckProtectedZone'` → cli ok (7.0s)·hook ok (5.0s).
