@@ -151,6 +151,32 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 		return true
 	}
 
+	// A recorded send whose queue cleanup failed leaves the item in the
+	// queue with the sent row already recorded — the next flush must not
+	// publish again (review-gate hardening round, P2: the first run created
+	// the issue; a resent run would add an occurrence comment for the same
+	// report). The sent history is the completion record: reconcile the
+	// surviving item out of the queue instead.
+	if item.Fingerprint != "" && outbox.SentHistoryHasFingerprint(item.Fingerprint) {
+		_ = store.Mutate(func(rec *feedback.QueueRecord) error {
+			kept := rec.Items[:0]
+			for _, it := range rec.Items {
+				if it.ID == item.ID {
+					continue
+				}
+				kept = append(kept, it)
+			}
+			rec.Items = kept
+			return nil
+		})
+		_ = outbox.AppendOutbox(outbox.OutboxRow{
+			Outcome:  "sent",
+			Reason:   "queue cleanup reconciled on a later flush",
+			Fingerpr: item.Fingerprint,
+		})
+		return true
+	}
+
 	// Send-time trust boundary (review-gate finding, P1): the queue
 	// file is a local file, so the stored body is untrusted. Validate
 	// BEFORE any gh call and publish only the regenerated title and
@@ -216,10 +242,18 @@ func itoa(i int) string {
 	return string(digits)
 }
 
-// complete records a successful send: the item leaves the queue and the
-// outbox log carries the sent payload (queued/sent/withheld rows hold the
-// exact payload; decision rows do not).
+// complete records a successful send: the outbox log carries the sent
+// payload FIRST (the completion record must survive a cleanup failure —
+// the sender's reconcile rule then removes a surviving item on the next
+// flush instead of publishing again), and the item leaves the queue.
 func (s *Sender) complete(store *feedback.QueueStore, item feedback.QueueItem, reason, body string) {
+	_ = outbox.AppendOutbox(outbox.OutboxRow{
+		Outcome:  "sent",
+		Reason:   reason,
+		Title:    item.Title,
+		Body:     body,
+		Fingerpr: item.Fingerprint,
+	})
 	_ = store.Mutate(func(rec *feedback.QueueRecord) error {
 		kept := rec.Items[:0]
 		for _, it := range rec.Items {
@@ -230,13 +264,6 @@ func (s *Sender) complete(store *feedback.QueueStore, item feedback.QueueItem, r
 		}
 		rec.Items = kept
 		return nil
-	})
-	_ = outbox.AppendOutbox(outbox.OutboxRow{
-		Outcome:  "sent",
-		Reason:   reason,
-		Title:    item.Title,
-		Body:     body,
-		Fingerpr: item.Fingerprint,
 	})
 }
 

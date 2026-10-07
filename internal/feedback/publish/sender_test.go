@@ -602,6 +602,42 @@ func TestStaleSnapshotDoesNotResendADeletedItem(t *testing.T) {
 	}
 }
 
+// TestRecordedSendIsReconciledNotResent pins the completion-state rule: a
+// send whose queue cleanup failed left the item in the queue with a sent
+// row already recorded — the next flush must NOT publish again (the first
+// run created the issue; a resent run would only add an occurrence comment
+// for the same report). The sent history is the completion record: the
+// surviving item is reconciled (removed), never re-sent.
+func TestRecordedSendIsReconciledNotResent(t *testing.T) {
+	consentOn(t)
+	payload, item := payloadFixture(t)
+	seedQueue(t, item)
+
+	// The post-cleanup-failure state: the issue EXISTS remotely, the sent
+	// row is in the history, and the item survived in the queue.
+	if err := outbox.AppendOutbox(outbox.OutboxRow{
+		Outcome:  "sent",
+		Reason:   "issue created (queue cleanup failed)",
+		Title:    item.Title,
+		Body:     item.Body,
+		Fingerpr: payload.Fingerprint,
+	}); err != nil {
+		t.Fatalf("seed sent row: %v", err)
+	}
+
+	stub := newStubRunner(true)
+	stub.issues = []RemoteIssue{{Number: 12, Title: item.Title, State: "open"}}
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if _, creates, comments := stub.recorded(); creates != 0 || comments != 0 {
+		t.Fatalf("a recorded send was published again: creates=%d comments=%d — the surviving item must be reconciled, not re-sent", creates, comments)
+	}
+	if rest := queuedItems(t); len(rest) != 0 {
+		t.Fatalf("the surviving item was not reconciled out of the queue: %+v", rest)
+	}
+}
+
 // ---- AC-003: the off/tracked-only arms at the sender ----
 
 func TestSenderNoopWhenParticipationOff(t *testing.T) {
