@@ -642,3 +642,49 @@ func TestLandingPredicateWhitespaceDivergenceMultiCommitKeepsTree(t *testing.T) 
 		t.Errorf("sweep: landed=%q verdict=%q reason=%q, want preserve — a whitespace-divergent multi-commit tip is not on the ref and the patch-id normalization must not read it as landed", landed, verdict, reason)
 	}
 }
+
+// TestLandingPredicateVerbatimUnsupportedIsFailClosed pins REQ-GPV-003: a git
+// without the whitespace-faithful mode can never answer, and the landing
+// decision still lands on its feet — the cumulative layer reports a
+// cannot-answer error, the sweep preserves when no PR exists, and layer 3
+// still disposes when one does. The quiet fallback to the normalizing mode
+// (the t1561 defect path) is what this gate exists to refuse.
+func TestLandingPredicateVerbatimUnsupportedIsFailClosed(t *testing.T) {
+	orig := landingVerbatimSupport
+	landingVerbatimSupport = func(string) (bool, error) { return false, nil }
+	t.Cleanup(func() { landingVerbatimSupport = orig })
+
+	t.Run("landedbypatchid_errors", func(t *testing.T) {
+		f := newGFDFixture(t)
+		f.cardCommit(t, 5, "card")
+		f.squash(t)
+		f.pushMain(t)
+		if _, err := LandedByPatchID(f.repo, f.cardTip(t), "origin/main"); err == nil {
+			t.Error("LandedByPatchID answered without the whitespace-faithful mode; want a cannot-answer error")
+		}
+	})
+
+	t.Run("sweep_preserves_without_pr", func(t *testing.T) {
+		f := newGFDFixture(t)
+		f.cardCommit(t, 5, "card")
+		f.squash(t)
+		f.pushMain(t)
+		installGH(t, &ghDouble{prs: []ghPR{}})
+		landed, verdict, reason := f.sweepLanded(t)
+		if landed == staleStateYes || verdict == sweepDispose {
+			t.Errorf("sweep: landed=%q verdict=%q reason=%q, want preserve on an unsupported git", landed, verdict, reason)
+		}
+	})
+
+	t.Run("layer3_still_decides", func(t *testing.T) {
+		f := newGFDFixture(t)
+		f.cardCommit(t, 5, "card")
+		sq := f.squash(t)
+		f.pushMain(t)
+		installGH(t, &ghDouble{prs: []ghPR{mergedPR(f.cardTip(t), sq)}})
+		landed, verdict, reason := f.sweepLanded(t)
+		if landed != staleStateYes || verdict != sweepDispose {
+			t.Errorf("sweep: landed=%q verdict=%q reason=%q, want dispose via layer 3 on an unsupported git", landed, verdict, reason)
+		}
+	})
+}
