@@ -67,7 +67,7 @@ func ResolveGitDirsContext(ctx context.Context, dir string) (*GitDirs, error) {
 			return "", err
 		}
 		cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir, "rev-parse"}, args...)...)
-		cmd.Env = gitenv.Env()
+		cmd.Env = append(gitenv.Env(), "LC_ALL=C", "LANGUAGE=C")
 		// Do not wait on inherited pipes after Git exits or is canceled.
 		cmd.WaitDelay = config.DefaultGitPathWaitDelay
 		out, err := cmd.Output()

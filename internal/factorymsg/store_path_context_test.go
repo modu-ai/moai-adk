@@ -25,6 +25,18 @@ func brokerPathGitHelper() {
 		time.Sleep(2 * time.Second)
 		os.Exit(0)
 	}
+	if mode == "locale" {
+		if logPath := os.Getenv("MOAI_TEST_BROKER_GIT_LOCALE_LOG"); logPath != "" {
+			if file, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600); err == nil {
+				_, _ = file.WriteString(os.Getenv("LC_ALL") + "|" + os.Getenv("LANGUAGE") + "|" + strings.Join(os.Args[1:], " ") + "\n")
+				_ = file.Close()
+			}
+		}
+		if os.Getenv("LC_ALL") != "C" || os.Getenv("LANGUAGE") != "C" {
+			_, _ = os.Stderr.WriteString("fatal: pas un dépôt git (ni aucun de ses parents) : .git\n")
+			os.Exit(128)
+		}
+	}
 	primary := strings.Contains(strings.Join(os.Args[1:], " "), "--path-format=absolute")
 	if mode == "unknown" || (mode == "legacy" && primary) {
 		_, _ = os.Stderr.WriteString("controlled Git failure\n")
@@ -45,6 +57,10 @@ func brokerPathGitHelper() {
 	cmd := exec.Command(realGit, os.Args[1:]...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
+		var exit *exec.ExitError
+		if errors.As(err, &exit) {
+			os.Exit(exit.ExitCode())
+		}
 		os.Exit(1)
 	}
 	os.Exit(0)
@@ -229,5 +245,70 @@ func TestBrokerOpenContextGitFailuresDoNotFallbackIdentity(t *testing.T) {
 				t.Fatalf("uncertain Git identity created state: %v", err)
 			}
 		})
+	}
+}
+
+func TestBrokerOpenContextRejectsCorruptGitFile(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("MOAI_HOME", home)
+	root := t.TempDir()
+	missing := filepath.Join(t.TempDir(), "missing-metadata")
+	if err := os.WriteFile(filepath.Join(root, ".git"), []byte("gitdir: "+missing+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, nativeErr := exec.Command("git", "-C", root, "rev-parse", "--absolute-git-dir").CombinedOutput()
+	if nativeErr == nil {
+		t.Fatal("corrupt .git positive control unexpectedly succeeded")
+	}
+	t.Logf("actual Git corrupt .git error=%v output=%s", nativeErr, out)
+	store, err := OpenWithContext(context.Background(), root, "run-corrupt")
+	if store != nil {
+		_ = store.Close()
+		t.Error("corrupt Git identity returned a broker")
+	}
+	if err == nil {
+		t.Error("corrupt Git identity silently fell back to a root hash")
+	}
+	if _, err := os.Stat(filepath.Join(home, "db")); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("corrupt Git identity created broker state: %v", err)
+	}
+}
+
+func TestBrokerOpenContextPinsGitErrorLocaleOnlyInChildren(t *testing.T) {
+	t.Setenv("MOAI_HOME", "")
+	root := t.TempDir()
+	slowBrokerGit(t, 0)
+	logPath := filepath.Join(t.TempDir(), "locale.log")
+	t.Setenv("MOAI_TEST_BROKER_GIT_MODE", "locale")
+	t.Setenv("MOAI_TEST_BROKER_GIT_LOCALE_LOG", logPath)
+	t.Setenv("LC_ALL", "fr_FR.UTF-8")
+	t.Setenv("LANGUAGE", "fr")
+	out, err := exec.Command("git", "-C", root, "rev-parse", "--absolute-git-dir").CombinedOutput()
+	if err == nil || !strings.Contains(string(out), "pas un dépôt git") {
+		t.Fatalf("localized positive control absent: %v %s", err, out)
+	}
+	if err := os.WriteFile(logPath, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store, err := OpenWithContext(context.Background(), root, "run-locale")
+	if err != nil {
+		t.Fatalf("ordinary nonGit directory rejected under caller locale: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if os.Getenv("LC_ALL") != "fr_FR.UTF-8" || os.Getenv("LANGUAGE") != "fr" {
+		t.Fatal("caller locale was globally mutated")
+	}
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("expected core primary+fallback and homestate layout probes, got %q", data)
+	}
+	for _, line := range lines {
+		if !strings.HasPrefix(line, "C|C|") {
+			t.Fatalf("Git child locale not pinned: %q", line)
+		}
 	}
 }
