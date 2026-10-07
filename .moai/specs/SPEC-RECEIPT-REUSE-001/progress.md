@@ -75,7 +75,20 @@ m1_to_mN_commit_strategy: M1 RED · M2 수리 · M2 리뷰 수리 · M3 증거 �
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+```
+sync_complete_at: 2026-10-07T14:58+09:00
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a: pre_emission_grep=0 — grep -c 'SPEC-RECEIPT-REUSE-001' CHANGELOG.md → 0 (exit 1, 중복 엔트리 없음, emission 허용)
+b12_self_test_b: ac_count=9 — acceptance.md (tier M AC 원천) 카운터 live=9 excluded=0 ambiguous=0; CHANGELOG 엔트리의 9 기재와 일치
+b12_self_test_c: file_paths 4/4 존재 — internal/hook/audit_receipt_guard.go, internal/auditreceipt/store.go, internal/hook/audit_receipt_guard_test.go, internal/auditreceipt/store_test.go (ls 실측)
+changelog_entry_position: "[Unreleased] > ### Fixed 첫 항목"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (implemented 중간점은 이 sync 커밋에 병합 — 3-phase close)"
+  plan_md: "updated 리프레시 (frontmatter 한정; status 필드 없음 — stateless)"
+  acceptance_md: "frontmatter 블록 부재 — 리프레시 대상 없음 (본문 미편집)"
+mx_tag_report: "added=0 removed=0 updated=0 — 기존 파일 수준 ANCHOR/REASON(/SPEC) 태그는 SPEC-CODEX-AUDIT-GATE-AXES-001 유산으로 여전히 정확; 신규 export 함수(ReadInstanceLedger·RecordInstanceStart·RecordInstanceEnd·CheckCitedReceiptsSince)는 godoc 보유·fan_in<3·위험 패턴 없음으로 프로토콜 요구 태그 없음 (moai mx scan --dry --path 실측)"
+```
 
 ## §F Phase 4 Mode Selection + plan→run Kickoff Record
 

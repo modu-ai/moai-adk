@@ -2,6 +2,7 @@
 id: SPEC-RECEIPT-REUSE-001
 title: "plan — 감사 영수증 인스턴스 간 재사용 차단"
 created: 2026-10-07
+updated: 2026-10-07
 ---
 
 # SPEC-RECEIPT-REUSE-001 — Implementation Plan

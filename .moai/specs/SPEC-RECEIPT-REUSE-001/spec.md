@@ -2,7 +2,7 @@
 id: SPEC-RECEIPT-REUSE-001
 title: "감사 영수증 인스턴스 간 재사용 차단 — 순차 감사 인스턴스의 영수증 경계"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-07
 updated: 2026-10-07
 author: manager-spec
