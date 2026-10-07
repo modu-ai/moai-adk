@@ -730,8 +730,14 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// repairs moved the same two hits from 165/173 to 204/212. Same
 		// probe, same count — only the coordinates moved (the t948
 		// precedent).
+		// Re-measured at the #1789 repair round (card t1535): the
+		// REQ-GFC-017 comment reword (configured-first landed-ref chain,
+		// never a literal branch name) grew the doc comment above
+		// productionLaneFilesProbe and moved the comparison 212→215. Same
+		// probe, same count — only the coordinate moved (the t948
+		// precedent).
 		"todo_issuance.go:204": true,
-		"todo_issuance.go:212": true,
+		"todo_issuance.go:215": true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")
