@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUDIT-CEILING-REPAIR-001
 title: "Audit-ceiling engine defect repair — legacy-family latest-verdict resolution and debt-inventory persistence"
-version: "0.3.4"
+version: "0.3.5"
 status: implemented
 created: 2026-10-07
 updated: 2026-10-07
@@ -154,7 +154,11 @@ round; the numeric-but-overflowing suffix is the one spelling that collapses.
   destroyed, truncated, or duplicated by a racing write. A record appends
   at the END of the §G block — immediately before the next same-level
   heading when a section follows §G, falling back to end-of-file only when
-  §G is the last section — never inside a later section.
+  §G is the last section — never inside a later section. **Metadata
+  contract (general):** the call site preserves `os.WriteFile`'s visible
+  metadata semantics — umask-derived mode on create AND ACL/metadata
+  preservation on replace — one contract covering both axes (F2 umask,
+  landed; F6 ACL, in flight).
 
 - **REQ-ACR-009** (When a convention-family evidence file carries an
   iteration suffix that does not parse as an in-range integer — an Atoi range
@@ -273,6 +277,24 @@ scope for card t1560 and must ride its own card or SPEC.
 
 ## HISTORY
 
+- v0.3.5 (2026-10-08): leader rulings — AC wording generalization batch of
+  3, all no-new-ID, artifacts only. (1) AC-ACR-016 gains the GENERAL fence
+  contract: the §G boundary scans (§G-start heading lookup AND
+  next-same-level-heading scan) track fenced-code-block state at every scan
+  point — headings inside an open fence are never section boundaries; the
+  two scan points (`audit_ceiling.go:628`, `:656-657`, gate-reproduced base
+  PASS → HEAD FAIL) are named as instances, not as the contract. (2) The
+  metadata contract lands with the D3 persistence requirements
+  (REQ-ACR-008 + AC-ACR-013 arm): the call site preserves `os.WriteFile`'s
+  visible metadata semantics — umask-derived mode on create AND ACL/metadata
+  preservation on replace (F2 umask landed; F6 ACL in flight). (3)
+  AC-ACR-014 arm (g): round-0 FAMILY parity — convention `plan-audit-0.md`
+  and legacy `<SpecID>-review-0.md` treat round 0 with identical validity
+  and ordering; a rename between families must not change the previous-SHA
+  selection nor flip an admitted delta to hold (finding
+  `audit_ceiling.go:321`, gate-reproduced). Recorded in HISTORY and the §H
+  mapping; no decision-index row — these are wording contracts under the
+  standing Q7 fifth-delta authorization, not new scope rulings.
 - v0.3.4 (2026-10-07): leader rulings, round-internal completion of the
   fifth delta (no new round). Token A: §H Q-range Q1-Q6 → Q1-Q7 (Q7 exists).
   Token B: the Out-of-Scope REQ/AC-set-comparison exclusion reworded — the

@@ -338,6 +338,16 @@ Pre-flight checks (all observed at plan phase):
     `audit_ceiling.go:479-496`) → `spec.md` REQ-ACR-008 extended +
     `acceptance.md` AC-ACR-016 (RED: record lands inside a following
     section today), `plan.md` §F M1/M3 extended
+- v0.3.5 (leader rulings — AC wording generalization, all no-new-ID):
+  - AC-ACR-016 fence contract → `acceptance.md` AC-ACR-016 (general fence
+    clause; scan-point instances named: `audit_ceiling.go:628`
+    next-heading scan, `:656-657` §G-start heading lookup)
+  - metadata contract → `spec.md` REQ-ACR-008 + `acceptance.md` AC-ACR-013
+    RG arm (`os.WriteFile` visible-metadata semantics: umask-derived mode
+    on create + ACL/metadata preservation on replace — one contract, both
+    axes)
+  - round-0 family parity → `acceptance.md` AC-ACR-014 arm (g) (finding:
+    `audit_ceiling.go:321`)
 
 **Count/version sweep guard (class-level, plan-audit-3 B3 — mechanical,
 run before the lane commits):** (1) `spec.md` frontmatter `version:` MUST

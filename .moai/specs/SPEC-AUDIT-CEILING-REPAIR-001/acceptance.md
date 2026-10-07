@@ -164,6 +164,12 @@ artifact-only).
   one green). **RED is a new test (E8 evidence required).** Green at M3
   (the persistence milestone). Test:
   `TestAppendProgressRecordConcurrentSurvival` (`audit_ceiling_test.go`).
+  **Metadata contract (general, REQ-ACR-008 — RG arm):** the call site
+  preserves `os.WriteFile`'s visible metadata semantics — umask-derived
+  mode on create AND ACL/metadata preservation on replace; the umask axis
+  is landed (F2), the ACL axis in flight (F6) — both covered by the one
+  contract, verified as a preserve check (passes before and must keep
+  passing).
 
 - **AC-ACR-014 (D4 RED, release-blocking)** — **RED modes** (each observed
   failing on unmodified main `903ccd028`; the base report and
@@ -202,6 +208,12 @@ artifact-only).
     behavior: the explicit 0-numbered file keeps its own `seen[0]` identity;
     a naive base≡round-0 merge would drop the count to 1 and flip
     `LatestPath` — codex-measured regression target).
+  - (g) round-0 family parity (general): both filename families —
+    convention `plan-audit-0.md` and legacy `<SpecID>-review-0.md` — treat
+    round 0 with IDENTICAL validity and ordering in the previous-round
+    scan; renaming a round-0 file between the families must not change the
+    previous-SHA selection nor flip an admitted delta round to hold
+    (finding: `audit_ceiling.go:321`, gate-reproduced).
   - **Semantics note (one line, leader-carried, non-blocking auditor
     note): round-counting semantics change — the base report becomes round
     0 (own counted round, earliest order, eligible as previous-round
@@ -233,7 +245,14 @@ artifact-only).
   `appendProgressRecord` appends a record, Then the record lands at the END
   of the §G block — the last line immediately before the next same-level
   heading — not inside the later section; and When §G is the last section,
-  Then the record appends at end-of-file. RED: `go test -run
+  Then the record appends at end-of-file. **Fence contract (general):** the
+  §G boundary scans — the §G-start heading lookup AND the
+  next-same-level-heading scan — track fenced-code-block state at every
+  scan point; headings inside an open fence are never section boundaries.
+  The two scan points are instances of this contract, not its definition:
+  the next-same-level-heading scan (`audit_ceiling.go:628`) and the §G-start
+  heading lookup (`audit_ceiling.go:656-657`) — both gate-reproduced (base
+  PASS → HEAD FAIL). RED: `go test -run
   '^TestAppendProgressRecordInsertsAtSectionEnd$' ./internal/runtime/`
   fails on `903ccd028` — the append writes to file end, so a following
   section absorbs the record (gate-reproduced). **RED is a new test (E8
