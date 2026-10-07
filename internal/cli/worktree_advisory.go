@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"io"
 	"path/filepath"
 
@@ -23,32 +22,39 @@ import (
 // `worktree.*isolation|use a worktree|moai (cc|cg) -w|claude --worktree` so the
 // advisory is mechanically observable (AC-WBG-009), and MUST claim no automatic
 // worktree creation that no code performs.
+//
+// Card t1527 D4/D5: the wording lives in worktreeAdvisoryText with NO severity
+// prefix; emitters choose the shape. init/web print it as one · note line
+// (emitSeverityLine); `moai update` routes the text into the terminal block's
+// Reference section, where it renders with the same glyph.
 
-// emitWorktreeAdvisory prints the shared-checkout worktree advisory to out,
-// phrased according to the project's `workflow.worktree.auto_create` setting.
-// Failures to read the config degrade silently to the recommendation wording
-// (the default `auto_create: false` policy) — the advisory is non-blocking.
-func emitWorktreeAdvisory(out io.Writer, projectRoot string) {
-	autoCreate := readWorktreeAutoCreate(projectRoot)
-	if autoCreate {
+// worktreeAdvisoryText returns the advisory wording for the project's
+// `workflow.worktree.auto_create` setting, without any severity prefix.
+func worktreeAdvisoryText(projectRoot string) string {
+	if readWorktreeAutoCreate(projectRoot) {
 		// Auto-create preference is set: state the preference truthfully (no
 		// code on this path creates a worktree) and name the key that DOES
 		// enable real automatic isolation. Still names the shared-checkout
 		// hazard and the -w flag so AC-WBG-009's regex matches.
-		_, _ = fmt.Fprintln(out,
-			"Note: this checkout is shared across concurrent sessions; "+
-				"for branch-changing work (switch/reset/rebase), use a worktree for isolation "+
-				"(`moai cc -w` / `moai glm -w`, or `claude --worktree`). "+
-				"This command does not create one automatically; set workflow.session_worktree.enabled "+
-				"to have init/web/profile materialize a session worktree. "+
-				"See .claude/rules/moai/workflow/main-checkout-branch-guard.md.")
-		return
+		return "this checkout is shared across concurrent sessions; " +
+			"for branch-changing work (switch/reset/rebase), use a worktree for isolation " +
+			"(`moai cc -w` / `moai glm -w`, or `claude --worktree`). " +
+			"This command does not create one automatically; set workflow.session_worktree.enabled " +
+			"to have init/web/profile materialize a session worktree. " +
+			"See .claude/rules/moai/workflow/main-checkout-branch-guard.md."
 	}
-	_, _ = fmt.Fprintln(out,
-		"Tip: this checkout is shared across concurrent sessions; "+
-			"for branch-changing work (switch/reset/rebase), use a worktree for isolation — "+
-			"`moai cc -w` / `moai glm -w`, or `claude --worktree`. "+
-			"See .claude/rules/moai/workflow/main-checkout-branch-guard.md.")
+	return "this checkout is shared across concurrent sessions; " +
+		"for branch-changing work (switch/reset/rebase), use a worktree for isolation — " +
+		"`moai cc -w` / `moai glm -w`, or `claude --worktree`. " +
+		"See .claude/rules/moai/workflow/main-checkout-branch-guard.md."
+}
+
+// emitWorktreeAdvisory prints the shared-checkout worktree advisory to out as
+// one · note line, phrased according to workflow.worktree.auto_create.
+// Failures to read the config degrade silently to the recommendation wording
+// (the default `auto_create: false` policy) — the advisory is non-blocking.
+func emitWorktreeAdvisory(out io.Writer, projectRoot string) {
+	emitSeverityLine(out, sevNote, resolveTheme(), "%s", worktreeAdvisoryText(projectRoot))
 }
 
 // readWorktreeAutoCreate reads workflow.worktree.auto_create from the project's

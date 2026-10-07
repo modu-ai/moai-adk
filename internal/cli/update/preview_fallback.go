@@ -87,15 +87,18 @@ func renderCard(title string, lines []string) string {
 //   - A card carrying a per-class count line for every class with count >= 1
 //     (each line carries the class label, satisfying AC-TUX3-014 for the
 //     preserve class)
-//   - One aligned row per file: "<class label padded><relPath>", where the
-//     class column width is uniform across every row (AC-TUIM-013)
+//   - One aligned row per CONFLICT file only: "<class label padded><relPath>",
+//     uniform class column (AC-TUIM-013, scoped to the listed rows). Card
+//     t1527 D3: the former full file dump listed every row in a run that can
+//     redeploy 700+ files, burying the rows that need a human decision; the
+//     counts card carries the rest of the story.
 func renderFallback(classes []FileClassification, noColor bool) string {
 	_ = noColor // structurally color-free; see the file comment
 
 	counts := countByClass(classes)
 
-	// One class-column width shared by the summary card and the file list, so
-	// the two blocks line up with each other as well as internally.
+	// One class-column width shared by the summary card and the conflict list,
+	// so the two blocks line up with each other as well as internally.
 	classWidth := 0
 	for _, class := range classOrder {
 		classWidth = max(classWidth, displayWidth(class.String()))
@@ -114,10 +117,19 @@ func renderFallback(classes []FileClassification, noColor bool) string {
 	b.WriteString("moai update — change preview\n")
 	b.WriteString("\n")
 	b.WriteString(renderCard("Classification summary", summary))
-	b.WriteString("\n")
-	b.WriteString("Files\n")
+
+	var conflicts []FileClassification
 	for _, c := range classes {
-		fmt.Fprintf(&b, "  %s  %s\n", padRight(c.Class.String(), classWidth), c.RelPath)
+		if c.Class == ClassConflict {
+			conflicts = append(conflicts, c)
+		}
+	}
+	if len(conflicts) > 0 {
+		b.WriteString("\n")
+		b.WriteString("Conflicts (resolve before proceeding — see the recover hint in the run output)\n")
+		for _, c := range conflicts {
+			fmt.Fprintf(&b, "  %s  %s\n", padRight(c.Class.String(), classWidth), c.RelPath)
+		}
 	}
 	return b.String()
 }

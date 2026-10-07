@@ -206,7 +206,9 @@ func wireCodexUnlessClaude(cmd *cobra.Command, wiring agentWiring, projectRoot s
 		return
 	}
 	if _, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: Codex wiring failed: %v\n", err)
+		// Card t1527 D4 (repair round): ! severity line replaces the raw
+		// "warning:" prefix.
+		emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Codex wiring failed: %v", err)
 	}
 }
 
@@ -260,19 +262,22 @@ func getBoolFlag(cmd *cobra.Command, name string) bool {
 // The write goes through the shared atomic-config seam
 // (provisionMoaiMCPServerEntryAt -> mutateClaudeJSONAtomic), so it inherits the
 // same lock + backup + idempotent-skip behaviour the other entry writers use.
-// Provisioning is best-effort: a failure warns and is swallowed, so a broken or
-// unwritable config can never fail an init. The user's explicit decline is
-// honored absolutely (C-A-5): default-on is a default, not a mandate.
-func provisionMCPEntryUnlessDeclined(out, errOut io.Writer, projectRoot string, declined bool) {
+// Provisioning is best-effort: a failure is RETURNED, not printed — the caller
+// records it into the warning collector and the exit summary panel renders it
+// exactly once (card t1527 D5 + repair round: one surface per failure), so a
+// broken or unwritable config can never fail an init. The user's explicit
+// decline is honored absolutely (C-A-5): default-on is a default, not a
+// mandate.
+func provisionMCPEntryUnlessDeclined(out io.Writer, projectRoot string, declined bool) error {
 	if declined {
-		return
+		return nil
 	}
 	configPath := filepath.Join(projectRoot, ".mcp.json")
 	if err := provisionMoaiMCPServerEntryAt(configPath); err != nil {
-		_, _ = fmt.Fprintf(errOut, "warning: MCP server entry provisioning failed: %v\n", err)
-		return
+		return err
 	}
 	_, _ = fmt.Fprintln(out, "Provisioned the moai MCP server entry in .mcp.json (default-on).")
+	return nil
 }
 
 // applyWizardPage3ToOpts applies the wizard result's fixed Page-3 seeds to
@@ -983,20 +988,14 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	backup.SettleMCPSnapshot(opts.ProjectRoot, false, cmd.ErrOrStderr())
 
 	// Route executor result warnings into the collector (they surface once,
-	// in the exit summary panel — REQ-TUX2-013) and display the completion
-	// card with the next-action sequence (REQ-TUX2-016). Human-facing status
-	// belongs on stderr (internal/cli/CLAUDE.md Output streams; REQ-CTX-012).
+	// in the exit summary panel — REQ-TUX2-013). Human-facing status belongs
+	// on stderr (internal/cli/CLAUDE.md Output streams; REQ-CTX-012).
+	// Card t1527 D5: the completion card itself MOVED below the tail — the
+	// profile/Jev/harness/hooks/MCP tail steps used to print their lines after
+	// the card, so the card did not read as the end of the run.
 	for _, w := range result.Warnings {
 		p.Collect(w)
 	}
-	cardName := opts.ProjectName
-	if cardName == "" {
-		cardName = filepath.Base(opts.ProjectRoot)
-	}
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
-		buildInitSuccessCard(cardName, len(result.CreatedDirs), len(result.CreatedFiles), p.Count(), string(deployMode)))
-
 	// Sync profile preferences to project config (after template deployment)
 	if err := profile.SyncToProjectConfig(opts.ProjectRoot, prefs); err != nil {
 		p.Warn("Failed to sync profile to project config: %v", err)
@@ -1049,11 +1048,17 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// Install pre-push hook (REQ-CIAUT-002). Non-fatal; --no-hooks opts out.
-	// Status/warning lines are human-facing -> stderr (REQ-CTX-016).
-	installPrePushHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr())
+	// Status/warning lines are human-facing -> stderr (REQ-CTX-016). Card
+	// t1527 D5: an install failure reaches the warning collector, so the
+	// terminal summary panel carries it.
+	if pushErr := installPrePushHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr()); pushErr != nil {
+		p.Warn("Pre-push hook installation failed: %v", pushErr)
+	}
 
 	// Install pre-commit hook (REQ-PC-001). Fast-subset commit tier; --no-hooks opts out.
-	installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr())
+	if commitErr := installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr()); commitErr != nil {
+		p.Warn("Pre-commit hook installation failed: %v", commitErr)
+	}
 
 	// SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-009): surface the shared-checkout
 	// worktree advisory. Phrased per workflow.worktree.auto_create; rides stdout
@@ -1120,7 +1125,10 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// SPEC-USER-ASSET-INSTALL-001 (REQ-017): the plugin probe arm is
 	// retired with its carrier — no plugin install can confirm or decline
 	// the MCP entry, so only the wizard answer decides mcpDeclined.
-	provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), cmd.ErrOrStderr(), opts.ProjectRoot, mcpDeclined)
+	// The returned failure joins the warning collector exactly once.
+	if mcpErr := provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), opts.ProjectRoot, mcpDeclined); mcpErr != nil {
+		p.Collect("MCP server entry provisioning failed: " + mcpErr.Error())
+	}
 
 	// SPEC-CODEX-WIRING-001 (REQ-CW-002/004/008/013): wire the Codex side for
 	// --llm gpt|both — hooks.json (EventTable-derived, whitelist-gated),
@@ -1131,18 +1139,42 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 
 	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
 	// with the `moai update` hint; a failed or in-flight check never affects
-	// the init result.
+	// the init result. Card t1527 repair round: this runs BEFORE the
+	// completion card, so the card is followed only by the deferred warning
+	// summary panel — the terminal surface by design (REQ-TUX2-013: the
+	// collector re-emits every warning exactly once when the run terminates;
+	// the card's own pointer text reads "see the warning summary on stderr
+	// below", which is only true with the panel last).
 	flushUpdateNotice(p)
 
 	// card t1277: every post-deploy rewrite above (WritePhase1Configs patching
-	// lsp/quality/design, ApplyHarness
-	// rewriting llm.yaml) happens AFTER the deploy tracked the rendered
-	// sections, so the manifest saves the pre-answer hashes and the next
-	// init --force reads the drifted files as user edits. Re-record the
-	// section hashes here — the LAST writer wins, so one retrack at the tail
-	// covers the whole family. template_managed-only filtering keeps
-	// user-owned entries untouched (two-way invariant).
-	retrackSectionFiles(opts.ProjectRoot, cmd.ErrOrStderr())
+	// lsp/quality/design, ApplyHarness rewriting llm.yaml) happens AFTER the
+	// deploy tracked the rendered sections, so the manifest saves the
+	// pre-answer hashes and the next init --force reads the drifted files as
+	// user edits. Re-record the section hashes here — the LAST writer wins, so
+	// one retrack at the tail covers the whole family. template_managed-only
+	// filtering keeps user-owned entries untouched (two-way invariant).
+	// Card t1527 repair round 3: a retrack FAILURE routes into the warning
+	// collector (per-file skip notes still stream to stderr — bookkeeping
+	// noise, not the failure verdict). Card t1527 repair round 4: the whole
+	// block runs BEFORE the completion card, so the card's warning count and
+	// its "see the warning summary" hint include the retrack failure, and
+	// nothing but the deferred summary panel ever follows the card.
+	if retrackErr := retrackSectionFiles(opts.ProjectRoot, cmd.ErrOrStderr()); retrackErr != nil {
+		p.Collect("manifest retrack (config sections) failed: " + retrackErr.Error())
+	}
+
+	// Card t1527 D5: the completion card prints after every tail step above —
+	// its "initialized" verdict is the last thing the operator reads before
+	// the collected warning summary panel (see the comment above). The card's
+	// warning count is taken HERE, after every collector source above.
+	cardName := opts.ProjectName
+	if cardName == "" {
+		cardName = filepath.Base(opts.ProjectRoot)
+	}
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
+		buildInitSuccessCard(cardName, len(result.CreatedDirs), len(result.CreatedFiles), p.Count(), string(deployMode)))
 
 	// The template snapshot is written by opts.AfterTemplateDeploy (set before
 	// executor.Execute), not here: by this point the section files carry the

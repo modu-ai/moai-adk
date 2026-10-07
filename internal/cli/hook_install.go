@@ -241,49 +241,58 @@ func (p *PrePushInstaller) InstallPrePushHook(skip bool) error {
 // installPrePushHookOptional installs the pre-push hook into projectRoot's .git/hooks/
 // unless skip is true. Friendly, non-fatal: prints progress to out, warnings to
 // warn (a writer distinct from out — callers bind it to the command's stderr,
-// the REQ-PCP-004 wiring the pre-commit wrapper uses), returns nothing. Used by
-// `moai init` and `moai update` to install the hook consistently
-// (REQ-CIAUT-002).
+// the REQ-PCP-004 wiring the pre-commit wrapper uses). Used by `moai init` and
+// `moai update` to install the hook consistently (REQ-CIAUT-002).
 //
 // If a non-MoAI user hook is present, this function preserves it and prints a
-// note. Other errors are reported as warnings; project init/update is never
-// blocked by hook installation failures.
-func installPrePushHookOptional(projectRoot string, skip bool, out, warn io.Writer) {
+// note. Other errors are reported as ✗ lines (card t1527 D4); project
+// init/update is never blocked by hook installation failures.
+//
+// Card t1527 D5: the RETURN value carries the failure states the terminal
+// block must escalate — a failed install, or a hook left unchanged because its
+// backup could not be written. A successful install, a preserved user hook,
+// and a self-healing provenance miss return nil (nothing to act on).
+func installPrePushHookOptional(projectRoot string, skip bool, out, warn io.Writer) error {
+	th := resolveTheme()
 	installer := NewPrePushInstaller(projectRoot)
 	err := installer.InstallPrePushHook(skip)
 	switch {
 	case err == nil:
 		if !skip {
-			_, _ = fmt.Fprintln(out, "  Pre-push hook installed (.git/hooks/pre-push)")
+			emitSeverityLine(out, sevOK, th, "Pre-push hook installed (.git/hooks/pre-push)")
 			if installer.lastBackupPath != "" {
 				// The notice carries exactly two elements — the backup path and
 				// the fact of the replacement — on the warning writer, never
 				// the progress writer (which `moai update` binds to stdout,
 				// where a redirected run swallows a data-loss notice whole).
-				_, _ = fmt.Fprintf(warn, "  Warning: user-modified pre-push hook was replaced; previous hook backed up at %s\n", installer.lastBackupPath)
+				emitSeverityLine(warn, sevWarn, th, "user-modified pre-push hook was replaced; previous hook backed up at %s", installer.lastBackupPath)
 			}
 			if installer.lastProvenanceErr != nil {
 				// The hook write already succeeded, so the replacement stands;
 				// the missing record self-heals on the next run.
-				_, _ = fmt.Fprintf(warn, "  Warning: pre-push provenance record not written: %v\n", installer.lastProvenanceErr)
+				emitSeverityLine(warn, sevWarn, th, "pre-push provenance record not written: %v", installer.lastProvenanceErr)
 			}
 		}
+		return nil
 	case errors.Is(err, ErrUserHookExists):
-		_, _ = fmt.Fprintln(out, "  Note: existing pre-push hook preserved (no MoAI-ADK marker found)")
+		emitSeverityLine(out, sevNote, th, "existing pre-push hook preserved (no MoAI-ADK marker found)")
+		return nil
 	case errors.Is(err, errPrePushBackupFailed):
 		// No backup could be written, so the hook was left exactly as found —
 		// nothing was installed and nothing was lost.
-		_, _ = fmt.Fprintf(warn, "  Warning: pre-push hook left unchanged (backup could not be written): %v\n", err)
+		emitSeverityLine(warn, sevErr, th, "pre-push hook left unchanged (backup could not be written): %v", err)
+		return err
 	default:
 		if installer.lastBackupPath != "" {
 			// The backup succeeded but the replacement write failed, so no
 			// replacement notice (the hook was not replaced). Name the orphan
 			// backup so the artifact beside the unchanged hook is explained
 			// rather than mysterious.
-			_, _ = fmt.Fprintf(warn, "  Warning: pre-push hook install failed: %v (previous hook backed up at %s)\n", err, installer.lastBackupPath)
+			emitSeverityLine(warn, sevErr, th, "pre-push hook install failed: %v (previous hook backed up at %s)", err, installer.lastBackupPath)
 		} else {
-			_, _ = fmt.Fprintf(out, "  Warning: pre-push hook install failed: %v\n", err)
+			emitSeverityLine(out, sevErr, th, "pre-push hook install failed: %v", err)
 		}
+		return err
 	}
 }
 

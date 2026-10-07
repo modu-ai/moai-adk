@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"github.com/mattn/go-isatty"
-	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/update"
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
@@ -202,14 +201,19 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	currentVersion := version.GetVersion()
 	// Identity header band (REQ-TUXIU-015): "◆ MoAI-ADK <version> <go-runtime>
-	// · claude" with the version as a solid brand pill.
+	// · claude" with the version as a solid brand pill. Card t1527 D1: the band
+	// is THE single version surface of a sync — the former duplicate
+	// "Current version" KV beside it is gone.
 	_, _ = fmt.Fprintln(out, renderIdentityBand(currentVersion, th))
-	_, _ = fmt.Fprintln(out, tui.KV("Current version", "moai-adk "+currentVersion, tui.KVOpts{Theme: &th, KeyWidth: 16}))
 	_, _ = fmt.Fprintln(out, tui.CheckLine("run", "Syncing templates", "from embedded filesystem", "", &th))
 
-	if reporter != nil {
-		reporter.StepStart("Version Check", "Checking template version...")
-	}
+	// Card t1527 D2: the three pre-deploy phases render on the SAME stdout
+	// ✓-line model as the deploy steps (tui.ProgressLine). They previously rode
+	// the printerReporter — a second (stderr) surface whose ○/✓ pairs
+	// interleaved with the stdout progress the operator was already reading.
+	// The reporter parameter stays for error surfacing below; no production
+	// caller drives step pairs through it any more.
+	plVersion := tui.ProgressLine(out, "Checking template version...", nil)
 
 	// Stage 2: Config Version Comparison (before template sync)
 	// Compare package template_version with project config template_version
@@ -217,51 +221,41 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	packageVersion := version.GetVersion()
 	projectVersion, err := plan.GetProjectConfigVersion(projectRoot)
 	if err == nil && packageVersion == projectVersion && !forceBackup {
-		if reporter != nil {
-			reporter.StepComplete("Already up-to-date")
-		}
+		plVersion.Done("Already up-to-date")
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
 		return nil
 	}
 
-	if reporter != nil {
-		reporter.StepComplete("Version check complete")
-	}
+	plVersion.Done("Version check complete")
 
-	if reporter != nil {
-		reporter.StepStart("Loading Templates", "Reading embedded templates...")
-	}
+	plLoad := tui.ProgressLine(out, "Loading embedded templates...", nil)
 
 	// Load embedded templates
 	embedded, err := template.EmbeddedTemplates()
 	if err != nil {
+		plLoad.Fail(fmt.Sprintf("Template load failed: %v", err))
 		if reporter != nil {
 			reporter.StepError(err)
 		}
 		return fmt.Errorf("load embedded templates: %w", err)
 	}
 
-	if reporter != nil {
-		reporter.StepComplete("Templates loaded")
-	}
+	plLoad.Done("Templates loaded")
 
-	if reporter != nil {
-		reporter.StepStart("Loading Manifest", "Reading project manifest...")
-	}
+	plManifest := tui.ProgressLine(out, "Loading project manifest...", nil)
 
 	// Initialize manifest manager
 	mgr := manifest.NewManager()
 	if _, err := mgr.Load(projectRoot); err != nil {
+		plManifest.Fail(fmt.Sprintf("Manifest load failed: %v", err))
 		if reporter != nil {
 			reporter.StepError(err)
 		}
 		return fmt.Errorf("load manifest: %w", err)
 	}
 
-	if reporter != nil {
-		reporter.StepComplete("Manifest loaded")
-	}
+	plManifest.Done("Manifest loaded")
 
 	// Create deployer with renderer and force update enabled for template sync
 	// This ensures template files are rendered (.tmpl -> actual file) and updated even if they exist
@@ -284,21 +278,27 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// y/n confirmation — reprinting them here duplicates the visible output.
 	analysis := updatemerge.AnalyzeMergeChanges(deployer, projectRoot)
 
+	// Card t1527 D3: derive the class counts ONCE for the whole flow — the
+	// pre-confirm card and the end-of-run outcome breakdown read the same
+	// numbers, so a --yes run (which skips the card) still carries the
+	// add/update/conflict summary to the outcome.
+	addCount, updateCount, conflictCount := classifyUpdateCounts(analysis.Files)
+
 	if !skipConfirm {
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Section("Analyzing merge changes", tui.SectionOpts{Theme: &th}))
 		// Card-style classification summary (REQ-TUXIU-010/011): accent box with
 		// up to three count pills; zero-count pills omitted; suppressed entirely
 		// when the run is clean (all counts zero).
-		addCount, updateCount, conflictCount := classifyUpdateCounts(analysis.Files)
 		if card := renderClassificationSummary(addCount, updateCount, conflictCount, th); card != "" {
 			_, _ = fmt.Fprintln(out, card)
 		}
 	}
 
-	if reporter != nil {
-		reporter.StepUpdate("Found " + fmt.Sprintf("%d files to sync", len(analysis.Files)))
-	}
+	// Card t1527 D2: the found-count rides the same stdout model (the former
+	// reporter.StepUpdate printed it on the interleaved stderr surface).
+	_, _ = fmt.Fprintf(out, "%s Found %d files to sync\n",
+		paintToken(tui.StatusIcon("info"), th.Faint, false), len(analysis.Files))
 
 	// Skip confirmation if --yes flag is provided (CI/CD mode) or pre-confirmed
 	var proceed bool
@@ -386,26 +386,14 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		execute func() error
 	}{
 		{
+			// Card t1527 D2: the loop intercepts "Backup" by name before any
+			// execute runs (the interception owns config backup, namespace
+			// backup, and the pre-merge snapshots) — this closure was dead
+			// in-loop and is now gone. The message keeps the stage readable if
+			// it is ever listed.
 			name:    "Backup",
 			message: "Backing up configuration",
-			execute: func() error {
-				// Always backup before update (even with --force)
-				// --force only skips version check, not backup/merge
-				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
-				// the legacy CR-plus-format pair (REQ-UPR-004).
-				pl := tui.ProgressLine(out, "Backing up .moai/config...", nil)
-				configBackupPath, backupErr := backup.BackupMoaiConfig(projectRoot)
-				if backupErr != nil {
-					pl.Fail(fmt.Sprintf("Backup failed: %v", backupErr))
-					return backupErr
-				}
-				if configBackupPath != "" {
-					pl.Done(".moai/config backed up")
-				} else {
-					pl.Done("No config to backup")
-				}
-				return nil
-			},
+			execute: nil,
 		},
 		{
 			name:    "Validate Templates",
@@ -454,7 +442,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				driftBefore := presentArchiveDriftRoots(projectRoot)
 				archived, archiveErr := archiveLegacySkills(projectRoot, out, forceBackup)
 				if archiveErr != nil {
-					_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Legacy skill archive", "failed", archiveErr.Error(), &th))
+					// Card t1527 D5 + repair round: ONE surface — unarchived
+					// skills are removed by this step's cleanup, so the
+					// terminal ACTION REQUIRED row is the failure's home.
+					updateLedger.requiref(sevWarn, "legacy skill archive failed: %v", archiveErr)
 				}
 				// A skill present now but not archived is deleted by the removal
 				// below, so the shortfall is reported as a loss.
@@ -563,13 +554,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			},
 		},
 		{
+			// Card t1527 D2: like "Backup", the loop intercepts "Restore
+			// Settings" by name — the interception owns the restore + merge
+			// + retrack work, so the no-op closure is gone.
 			name:    "Restore Settings",
 			message: "Restoring user settings",
-			execute: func() error {
-				// This step's status is tracked via configBackupPath variable
-				// We'll handle this in the main flow
-				return nil
-			},
+			execute: nil,
 		},
 	}
 
@@ -608,7 +598,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// in-flight line) alongside the stdout ProgressLine, producing the two-part
 	// "○…○" spinner residue on a TTY (REQ-TUXIU-020/021). Errors still surface
 	// via reporter.StepError (orphan-safe) below.
-	for i, step := range steps {
+	for _, step := range steps {
 		// Special handling for backup/restore steps; default executes normally
 		switch step.name {
 		case "Backup":
@@ -719,7 +709,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// itself already succeeded.
 				removedModelKeys, stripErr := stripRetiredModelConfig(out, projectRoot, configBackupPath)
 				if stripErr != nil {
-					_, _ = fmt.Fprintf(out, "  %s retired model key removal warning: %v\n", uikit.SymWarning(), stripErr)
+					// Card t1527 repair round: one surface (terminal row).
+					updateLedger.requiref(sevWarn, "retired model key removal failed: %v", stripErr)
 				}
 				retainedKeys = withoutStrippedKeys(retainedKeys, removedModelKeys)
 				// t63: one summary line by default; the key list expands only
@@ -735,7 +726,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// absent key does.
 				if harness := config.ReadHarnessFrom(filepath.Join(configBackupPath, "sections")); harness != "" {
 					if err := template.ApplyHarness(projectRoot, harness); err != nil {
-						_, _ = fmt.Fprintf(out, "  %s llm.harness re-assert warning: %v\n", uikit.SymWarning(), err)
+						// Card t1527 repair round: one surface (terminal row).
+						updateLedger.requiref(sevWarn, "llm.harness re-assert failed: %v", err)
 					}
 				}
 				// SPEC-INIT-SHRINK-001 (REQ-009, OD-5 settled condition): the
@@ -750,8 +742,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// card t1275: RestoreMoaiConfigRetained + ApplyHarness just
 				// rewrote .moai/config/sections/*.yaml on top of the deployed
 				// render — re-record those hashes so the manifest matches what
-				// this update actually left on disk.
-				retrackSectionFiles(projectRoot, errOut)
+				// this update actually left on disk. Card t1527 repair round 3:
+				// the failure now returns; the ! line keeps the immediate
+				// surface the internal print used to own.
+				if retrackErr := retrackSectionFiles(projectRoot, errOut); retrackErr != nil {
+					emitSeverityLine(errOut, sevWarn, resolveTheme(), "manifest retrack (config sections) failed: %v", retrackErr)
+				}
 				deletedCount := backup.CleanupOldBackups(projectRoot, 5)
 				if deletedCount > 0 {
 					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
@@ -761,7 +757,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			if len(gitignoreBackup) > 0 {
 				gitignorePath := filepath.Join(projectRoot, ".gitignore")
 				if mergeErr := updatemerge.MergeGitignoreFile(gitignorePath, gitignoreBackup); mergeErr != nil {
-					_, _ = fmt.Fprintf(out, "  %s .gitignore merge warning: %v\n", uikit.SymWarning(), mergeErr)
+					// Card t1527 repair round: one surface (terminal row).
+					updateLedger.requiref(sevWarn, ".gitignore merge failed: %v", mergeErr)
 				} else {
 					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", uikit.SymSuccess())
 					// card t1276 F1 (leader-approved option A): the EntryMerge
@@ -786,7 +783,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			// run even with no backups: the promotion decision belongs to every
 			// flow that deployed (plan.md D4 ③, M-07d).
 			if err := mergeUserFilesSettlingSnapshot(projectRoot, mergeableBackups, out, errOut); err != nil {
-				_, _ = fmt.Fprintf(out, "  %s File merge warning: %v\n", uikit.SymWarning(), err)
+				// Card t1527 repair round: one surface (terminal row).
+				updateLedger.requiref(sevWarn, "mergeable-file merge failed: %v (a pre-update copy is in the run backup)", err)
 			}
 			// card t1275: the 3-way merge rewrote the mergeable set
 			// (.claude/settings.json, .moai/status_line.sh, .mcp.json, ...)
@@ -812,12 +810,13 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				return err
 			}
 		}
-
-		// Block progress bar reflecting completed/total deploy steps
-		// (REQ-TUXIU-014). Replaces the legacy "N/M steps complete" reporter
-		// text; the bar rides the same stdout channel as the step ProgressLines.
-		_, _ = fmt.Fprintln(out, renderDeployProgress(i+1, len(steps), th))
 	}
+
+	// Card t1527 D2: the block progress bar (REQ-TUXIU-014) renders ONCE at
+	// completion. The former per-step render printed five intermediate bars
+	// ("1/5"…"5/5") that read as the accumulated-snapshot breakage t694 already
+	// fixed inside the bar glyph — one completed bar is the whole story.
+	_, _ = fmt.Fprintln(out, renderDeployProgress(len(steps), len(steps), th))
 
 	_, _ = fmt.Fprintln(out)
 	// Outcome banner (REQ-TUXIU-016): solid success pill + dim detail note.
@@ -828,6 +827,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		ManagedRedeployed:   managedRedeployed,
 		NamespaceBackupPath: nsBackupDisplay,
 		ArchiveDriftRoots:   archiveDriftRootsCreated,
+		AddFiles:            addCount,
+		UpdatedFiles:        updateCount,
+		ConflictFiles:       conflictCount,
 	}
 	for _, f := range preCleanFiles {
 		detail.RemovedManaged++
@@ -836,30 +838,47 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		}
 	}
 	renderUpdateOutcome(out, len(analysis.Files), detail, configBackupPath, th)
+
+	// Card t1527 D5: conflicts the merge flagged are an ACTION REQUIRED row —
+	// the operator must resolve them before the next template sync.
+	if conflictCount > 0 {
+		updateLedger.requiref(sevErr, "%d conflicting file(s) flagged by the 3-way merge — resolve them before the next template sync (see the backup at %s)", conflictCount, configBackupPath)
+	}
+
 	// REQ-DHR-007: a .codex/ template the target harness profile (or this
 	// version) no longer ships is reported and left in place, never deleted.
 	reportUndeployedCodexTemplates(errOut, projectRoot, mgr.Manifest().Files, restoredSet)
-	report.EmitHooksReviewGuidance(out)
 
-	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintln(out, "To reconfigure project settings (development mode, git, model policy), run:")
-	_, _ = fmt.Fprintln(out, "   moai update -c")
+	// Card t1527 D5: the tail's mid-noise emitters move into the terminal
+	// block — the hook-restart step is ACTION REQUIRED, the -c hint and the
+	// worktree advisory are Reference one-liners. The block renders at the end
+	// of runUpdate, after the post-sync steps.
+	updateLedger.requiref(sevWarn, "%s", hooksReviewGuidanceMsg())
+
+	updateLedger.referencef("Reconfigure project settings (development mode, git, model policy): moai update -c")
 
 	// Ensure global settings.json has required env variables
 	if err := ensureGlobalSettingsEnv(); err != nil {
-		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Global settings env", "update failed", err.Error(), &th))
+		// Card t1527 repair round: one surface (terminal row).
+		updateLedger.requiref(sevWarn, "global settings env update failed: %v", err)
 	}
 
 	// Install pre-push hook (REQ-CIAUT-002). Non-fatal; --no-hooks opts out.
-	installPrePushHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out, errOut)
+	// Card t1527 D5: a failed install is escalated into the terminal block.
+	if pushErr := installPrePushHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out, errOut); pushErr != nil {
+		updateLedger.requiref(sevErr, "pre-push hook installation failed: %v", pushErr)
+	}
 
 	// Install pre-commit hook (REQ-PC-001). Fast-subset commit tier; --no-hooks opts out.
-	installPreCommitHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out, errOut)
+	if commitErr := installPreCommitHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out, errOut); commitErr != nil {
+		updateLedger.requiref(sevErr, "pre-commit hook installation failed: %v", commitErr)
+	}
 
 	// SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-009): one-line worktree advisory on
 	// update completion. The primary checkout is shared; branch-changing work
-	// belongs in a worktree.
-	emitWorktreeAdvisory(out, projectRoot)
+	// belongs in a worktree. Card t1527 D5: routed into the Reference section
+	// (the AC-WBG-009 wording travels with it verbatim).
+	updateLedger.referencef("%s", worktreeAdvisoryText(projectRoot))
 
 	// SPEC-INIT-SHRINK-001 (REQ-015, design §3 step 5): a completed
 	// migration run writes the record — plugin after a confirmed install,
@@ -908,10 +927,11 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
 	autoConfirm := getBoolFlag(cmd, "yes")
 	forceUpdate := getBoolFlag(cmd, "force")
 
-	// Use printer-backed console output for progress reporting
-	// (REQ-CTX-015: routes step events through the Printer to stderr).
-	consoleReporter := newPrinterReporter(
-		printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr())))
+	// Card t1527 D2: pass nil — the sync renders its pre-deploy phases on the
+	// same stdout ✓-line model as the deploy steps, and the former
+	// printer-backed stderr phase pairs no longer interleave with it. (The
+	// reporter parameter itself stays: it surfaces step errors for any future
+	// spinner-backed caller, exactly as runInit does.)
 
 	// Check for version match before proceeding
 	packageVersion := version.GetVersion()
@@ -946,7 +966,7 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
 		}
 	}
 
-	return false, runTemplateSyncWithReporter(cmd, consoleReporter, true)
+	return false, runTemplateSyncWithReporter(cmd, nil, true)
 }
 
 // toPreviewInputs maps a merge.MergeAnalysis into the neutral
