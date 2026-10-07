@@ -1,0 +1,11 @@
+name: ci
+on: [push]
+jobs:
+  Build:
+    name: "Build (${{ matrix.image }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: ["node:20", "node:22"]
+    steps:
+      - run: "true"

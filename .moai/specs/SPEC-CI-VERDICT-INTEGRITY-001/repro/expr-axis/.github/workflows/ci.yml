@@ -1,0 +1,12 @@
+name: ci
+on: [push]
+jobs:
+  Test:
+    name: "Test (${{ matrix.os }}/${{ matrix.node }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: ${{ fromJSON('["ubuntu"]') }}
+        node: ["18"]
+    steps:
+      - run: "true"

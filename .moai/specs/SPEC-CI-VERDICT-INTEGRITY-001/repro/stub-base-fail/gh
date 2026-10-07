@@ -1,0 +1,16 @@
+#!/bin/sh
+# t1534 round-5 P1 stub — `pr view` fails twice (base unresolvable) while
+# `pr checks` publishes a FAILED required check (Lint). A correct watch
+# aborts on the unresolvable base; the pre-repair silent fallback to the
+# head branch scored an empty required list as "all required checks
+# passed" (exit 0) with the failure reclassified advisory.
+if [ "$1" = "pr" ] && [ "$2" = "view" ]; then
+  echo "gh: base branch lookup unavailable" >&2
+  exit 1
+fi
+if [ "$1" = "pr" ] && [ "$2" = "checks" ]; then
+  printf '%s\n' '[{"name":"Lint","state":"FAILURE","bucket":"fail","link":"http://example.invalid/lint"}]'
+  exit 0
+fi
+echo "stub: unexpected invocation: $*" >&2
+exit 1

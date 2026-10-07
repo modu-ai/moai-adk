@@ -1,0 +1,6 @@
+version: 1
+branches:
+  main:
+    contexts:
+      - "Build (node:20)"
+auxiliary: []

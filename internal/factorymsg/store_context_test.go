@@ -64,3 +64,63 @@ func TestBrokerOpenContextPreservesConnectionSettings(t *testing.T) {
 		t.Fatalf("connection settings changed: journal=%s busy=%d", mode, busy)
 	}
 }
+
+// A setup caller may opt into an explicit deadline without changing Open's
+// ordinary five-second limit. The delay is in a cleanup-bound Git child.
+func TestBrokerExplicitSetupDeadlinePreservesDefaultLimit(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root := brokerGitRoot(t)
+	slowBrokerGit(t, 5400)
+	started := time.Now()
+	store, err := Open(root, "run-default-limit")
+	if store != nil {
+		_ = store.Close()
+		t.Fatal("default Open exceeded its initialization limit")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("default Open error=%v, want deadline exceeded", err)
+	}
+	t.Logf("default Open elapsed=%v error=%v", time.Since(started), err)
+	started = time.Now()
+	store, err = OpenWithDeadline(root, "run-explicit-setup", 30*time.Second)
+	if err != nil {
+		t.Fatalf("explicit setup deadline failed: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	t.Logf("explicit setup elapsed=%v", time.Since(started))
+}
+
+func TestBrokerReopenRestoresDefaultConnectionBudget(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root := t.TempDir()
+	setup, err := OpenWithDeadline(root, "run-reopen-budget", 30*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var setupBusy int
+	if err := setup.db.QueryRow("PRAGMA busy_timeout").Scan(&setupBusy); err != nil {
+		_ = setup.Close()
+		t.Fatal(err)
+	}
+	if err := setup.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if setup.HandleStats().OpenConnections != 0 {
+		t.Fatal("setup retained a connection after close")
+	}
+	for _, name := range []string{"A", "B"} {
+		racer, err := Open(root, "run-reopen-budget")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = racer.Close() })
+		var busy int
+		if err := racer.db.QueryRow("PRAGMA busy_timeout").Scan(&busy); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("setup busy_timeout=%d default racer %s busy_timeout=%d", setupBusy, name, busy)
+		if setupBusy <= 2500 || busy <= 0 || busy > 2500 {
+			t.Fatalf("setup/default connection budgets not separated: setup=%d %s=%d", setupBusy, name, busy)
+		}
+	}
+}

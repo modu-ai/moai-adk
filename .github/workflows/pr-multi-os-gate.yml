@@ -130,12 +130,12 @@ jobs:
     steps:
       - name: Verify the matrix ran and passed
         run: |
-          if [ "${{ needs.detect-platform.result }}" = "failure" ]; then
-            echo "::error::Platform detection FAILED before the matrix could run — not treating a skipped matrix as verification"
+          if [ "${{ needs.detect-platform.result }}" != "success" ]; then
+            echo "::error::Platform detection did not succeed before the matrix could run — not treating a skipped matrix as verification"
             exit 1
           fi
           if [ "${{ needs.multi-os-test.result }}" != "success" ]; then
-            if [ "${{ needs.detect-platform.outputs.go_code }}" = "false" ]; then
+            if [ "${{ needs.multi-os-test.result }}" = "skipped" ] && [ "${{ needs.detect-platform.outputs.go_code }}" = "false" ]; then
               echo "✓ Multi-OS runtime verification SKIPPED (positively non-platform diff)"
               exit 0
             fi

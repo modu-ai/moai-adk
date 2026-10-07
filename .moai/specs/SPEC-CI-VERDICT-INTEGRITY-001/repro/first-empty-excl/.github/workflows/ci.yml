@@ -1,0 +1,15 @@
+name: ci
+on: [push]
+jobs:
+  Test:
+    name: "Test (${{ matrix.os }}/${{ matrix.node }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: ["", ubuntu]
+        node: ["18"]
+        exclude:
+          - os: ""
+            node: "18"
+    steps:
+      - run: "true"

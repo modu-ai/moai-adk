@@ -1,0 +1,11 @@
+name: ci
+on: [push]
+jobs:
+  Test:
+    name: "Test (${{ matrix.label }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        label: ["lint & test"]
+    steps:
+      - run: "true"
