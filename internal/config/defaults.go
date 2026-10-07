@@ -621,6 +621,16 @@ const (
 	// out of contract.
 	DefaultFeedbackQueueMaxBytes = 1024 * 1024
 
+	// DefaultBugreportModelCallsReadTimeBox bounds ONE budget-file read —
+	// the judgment runs INSIDE the queue-lock mutation, so a blocking file
+	// here stalls every queue operation, not just the sender.
+	DefaultBugreportModelCallsReadTimeBox = 100 * time.Millisecond
+
+	// DefaultBugreportModelCallsMaxBytes caps the budget file's size; it
+	// holds a handful of attempt stamps, and anything larger is out of
+	// contract.
+	DefaultBugreportModelCallsMaxBytes = 4096
+
 	// DefaultBugreportCaptureTimeBox bounds one capture call on the hook
 	// path (time-boxed, fail-open, network-free by construction).
 	DefaultBugreportCaptureTimeBox = 50 * time.Millisecond

@@ -11,6 +11,7 @@ package outbox
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -32,13 +33,45 @@ type modelCallLog struct {
 // loadModelCalls reads the budget file; an absent or malformed file reads as
 // empty spend — failing closed here would suppress every summary forever
 // until a manual purge, and the cap is a spend bound, not a safety gate.
+// The read is BOUNDED (review gate finding, P2): the judgment runs INSIDE
+// the queue-lock mutation, so a non-regular budget file is refused without
+// opening and the open+read runs under DefaultBugreportModelCallsReadTimeBox
+// with the config.DefaultBugreportModelCallsMaxBytes size cap — a FIFO swapped in
+// at the budget path used to park the read while HOLDING the queue lock,
+// stalling every other queue operation. On deadline the helper goroutine is
+// left parked on the blocked handle; it exits when the blocking writer
+// closes, and the caller never waits for it.
 func loadModelCalls() *modelCallLog {
 	path, err := StorePath(ModelCallsFileName)
 	if err != nil {
 		return &modelCallLog{}
 	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
+	if info, serr := os.Stat(path); serr == nil && !info.Mode().IsRegular() {
+		return &modelCallLog{}
+	}
+	type readResult struct {
+		raw []byte
+		err error
+	}
+	done := make(chan readResult, 1)
+	go func() {
+		f, err := os.Open(path)
+		if err != nil {
+			done <- readResult{}
+			return
+		}
+		defer func() { _ = f.Close() }()
+		raw, err := io.ReadAll(io.LimitReader(f, config.DefaultBugreportModelCallsMaxBytes+1))
+		done <- readResult{raw: raw, err: err}
+	}()
+	var raw []byte
+	select {
+	case r := <-done:
+		if r.err != nil || len(r.raw) == 0 || len(r.raw) > config.DefaultBugreportModelCallsMaxBytes {
+			return &modelCallLog{}
+		}
+		raw = r.raw
+	case <-time.After(config.DefaultBugreportModelCallsReadTimeBox):
 		return &modelCallLog{}
 	}
 	var l modelCallLog
