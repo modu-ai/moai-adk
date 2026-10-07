@@ -346,16 +346,23 @@ func consumeStartMarker(store, key string) {
 // agent id whose own marker is missing while a foreground-failure trace
 // exists is a foreground instance whose marker save failed: its start was
 // never counted in the background ledger, so its end contributes nothing —
-// not even when background survivors leave the Ends >= Starts room test
-// unguarded (post-sync repair r5 supplement 3, gate round 33).
+// checked BEFORE the marker-less fallback, which would otherwise attribute
+// the end to a live background instance's anchor (post-sync repair r5
+// supplement 3, gate round 33) or count it into that instance's ledger
+// outright (post-sync repair r8, gate round 37).
 func endAggregationKey(store string, input *HookInput, foundKey string) string {
-	if foundKey == "" {
-		return auditreceipt.StartMarkerKey("", input.SessionID, input.AgentType)
-	}
-	if id := strings.TrimSpace(input.AgentID); id != "" && foundKey != id {
+	// The foreground-failure trace vetoes every attribution path: an
+	// agent-id-bearing instance whose marker save failed has no start counted
+	// in the background ledger, so its end contributes nothing there —
+	// whether the marker lookup found a sibling's derived anchor or found
+	// nothing at all.
+	if id := strings.TrimSpace(input.AgentID); id != "" {
 		if failed, err := auditreceipt.ForegroundMarkerFailed(store, id); err == nil && failed {
 			return ""
 		}
+	}
+	if foundKey == "" {
+		return auditreceipt.StartMarkerKey("", input.SessionID, input.AgentType)
 	}
 	return foundKey
 }

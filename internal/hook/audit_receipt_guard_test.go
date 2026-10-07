@@ -1177,6 +1177,77 @@ func TestSubagentStop_ForegroundEndDoesNotSealBackgroundLedger(t *testing.T) {
 	}
 }
 
+// Post-sync repair r8 (gate round 37, card t1562): the marker-less early
+// return in endAggregationKey fired BEFORE the foreground-failure trace
+// check — when the background start WAS aggregated (its own marker save
+// failed) AND the foreground marker save ALSO failed, the foreground end was
+// attributed to the live background instance: counted, and the boundary SET
+// at the foreground end's time. The trace check must precede the fallback
+// decision — the attribution table's trace arm guards every path.
+func TestSubagentStop_ForegroundTraceVetoesBeforeMarkerlessFallback(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-r8"
+	now := freezeClock(t)
+	key := auditreceipt.StartMarkerKey("", session, auditreceipt.AgentPlanAuditor)
+	fgID := "id-fg-r8"
+
+	// Both marker saves are sabotaged: the background start's ledger record
+	// succeeds while its marker does not, and the foreground start's marker
+	// fails into its failure trace.
+	bgMarker := filepath.Join(auditreceipt.StateDir(root), "starts", key+".json")
+	if err := os.MkdirAll(bgMarker, 0o755); err != nil {
+		t.Fatalf("MkdirAll (bg marker sabotage): %v", err)
+	}
+	fgMarker := filepath.Join(auditreceipt.StateDir(root), "starts", fgID+".json")
+	if err := os.MkdirAll(fgMarker, 0o755); err != nil {
+		t.Fatalf("MkdirAll (fg marker sabotage): %v", err)
+	}
+
+	// The background auditor begins: counted (starts=1), marker absent.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+
+	// The foreground auditor begins: its marker fails into the trace.
+	runStart(t, &HookInput{CWD: root, AgentID: fgID, AgentType: auditreceipt.AgentPlanAuditor, SessionID: session, HookEventName: string(EventSubagentStart)})
+
+	// The foreground auditor terminally ends (FAIL — terminal): its end must
+	// be attributed to its failed-foreground trace — nothing counted into
+	// the background ledger, no boundary set.
+	advanceClock(now, time.Second)
+	fgStop := &HookInput{
+		CWD:                  root,
+		AgentID:              fgID,
+		AgentType:            auditreceipt.AgentPlanAuditor,
+		SessionID:            session,
+		LastAssistantMessage: "AUDIT-VERDICT: FAIL spec=SPEC-RR-031 receipts=none",
+		HookEventName:        string(EventSubagentStop),
+	}
+	if out := runStop(t, fgStop); out.Decision != "" || out.SystemMessage != "" {
+		t.Fatalf("setup: foreground FAIL end output = %+v, want silence", out)
+	}
+	l, err := auditreceipt.ReadInstanceLedger(root, key)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if l.Ends != 0 || !l.EndedAt.IsZero() {
+		t.Fatalf("ledger = %d ends, EndedAt %v — the foreground end was attributed to the live background instance (want 0 ends, no boundary)", l.Ends, l.EndedAt)
+	}
+
+	// The still-live background auditor's overlap-era receipt: the refusal it
+	// now gets names ITS OWN lost marker ("start marker missing" — its save
+	// was sabotaged in this scenario), never the misattributed boundary the
+	// un-vetoed fallback used to set.
+	advanceClock(now, time.Second)
+	rB := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+	advanceClock(now, time.Second)
+	out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-031 receipts="+rB, false))
+	if out.Decision != "block" || !strings.Contains(out.Reason, auditreceipt.CauseStartMarkerMissing) {
+		t.Fatalf("output = %+v, want a block naming the background instance's own missing start marker — not a misattributed-boundary refusal", out)
+	}
+	if strings.Contains(out.Reason, auditreceipt.CauseReceiptReused) {
+		t.Errorf("reason = %q, want no reuse cause — the r8 defect attributed the foreground end and set a boundary", out.Reason)
+	}
+}
+
 // Post-sync repair r5 supplement 3 (gate round 33, P2 — the survivors-live
 // variant): the SAME foreground marker-save failure, but the FAIL end arrives
 // while TWO background auditors are already live. Ends < Starts, so the
