@@ -77,6 +77,14 @@ func revalidatedItem(item feedback.QueueItem) (payload bugreport.Payload, title,
 	if err := bugreport.ValidatePayload(p); err != nil {
 		return bugreport.Payload{}, "", "", false
 	}
+	// Required hold (review gate, P2): field format is not the whole trust
+	// boundary — a payload the tripwire is required to hold (the
+	// path-traversal sentinel) must not publish from a tampered queue any
+	// more than from the spool. The rule lives in outbox (the tripwire's
+	// owner) so the drain and the send path cannot fork.
+	if outbox.RequiresHold(p) {
+		return bugreport.Payload{}, "", "", false
+	}
 	regenTitle, regenBody := outbox.RenderReport(p)
 	if regenTitle != item.Title {
 		return bugreport.Payload{}, "", "", false

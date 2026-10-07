@@ -664,13 +664,30 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 // production leaves it nil and the real render is screened.
 var tripwireInputForTest func() (title, body string)
 
+// RequiresHold reports whether a payload's kind/detail combination carries
+// a REQUIRED HOLD — a report the pipeline may never publish (REQ-ANON-012):
+// the path-traversal sentinel report, whose publication could disclose the
+// probed path shape. The drain's tripwire applies this against the spool
+// entry, and the SENDER applies it against the revalidated payload — a
+// tampered queue re-carrying the token must not publish what the pipeline
+// is required to hold. The rule lives here so the two checkpoints cannot
+// fork.
+func RequiresHold(p bugreport.Payload) bool {
+	if d, ok := p.Detail.(bugreport.TemplateToken); ok && d == bugreport.TokenPathTraversal {
+		return true
+	}
+	return false
+}
+
 // tripwire runs the existing scrubber and classifier over the rendered
 // report: a blocked verdict or ANY masking finding withholds the payload.
 func tripwire(payload bugreport.Payload, entry bugreport.SpoolEntry) (reason string, withheld bool) {
 	// The path-traversal token is always withheld (REQ-ANON-012): the report
 	// itself derives from a path-traversal sentinel, and publishing it could
-	// disclose the probed path shape.
-	if entry.Reason == string(bugreport.ReasonPathTraversal) {
+	// disclose the probed path shape. Held on the spool entry's reason AND
+	// on the payload's own detail token (RequiresHold) — either carrier of
+	// the sentinel triggers the hold.
+	if entry.Reason == string(bugreport.ReasonPathTraversal) || RequiresHold(payload) {
 		return "path_traversal reports are always withheld", true
 	}
 

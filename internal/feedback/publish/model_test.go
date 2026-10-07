@@ -267,6 +267,41 @@ func TestStoredSummaryOverCapFallsBackToTemplate(t *testing.T) {
 	}
 }
 
+// TestTamperedPathTraversalTokenDoesNotPublish (review gate, P2): the
+// revalidation checked field FORMAT but not the tripwire's required-hold
+// rules — a tampered queue item re-carrying the path_traversal token in its
+// detail passed ValidatePayload and published (one search + one create).
+// The path-traversal sentinel report is ALWAYS withheld (REQ-ANON-012); the
+// send path must hold it too.
+func TestTamperedPathTraversalTokenDoesNotPublish(t *testing.T) {
+	consentOn(t)
+	p, err := bugreport.Build(bugreport.KindTemplateDeployFailure, []string{"internal/cli.Execute"}, bugreport.TokenPathTraversal, bugreport.BuildIdentity{Version: "v3.2.0", Commit: "abcdef1234567"})
+	if err != nil {
+		t.Fatalf("build payload: %v", err)
+	}
+	title, body := outbox.RenderReport(p)
+	seedQueue(t, feedback.QueueItem{
+		ID:          "f1",
+		Title:       title,
+		Body:        body,
+		QueuedAt:    time.Now().UTC().Format(time.RFC3339),
+		Fingerprint: p.Fingerprint,
+		Kind:        string(p.Kind),
+	})
+
+	stub := newStubRunner(true)
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	searches, creates, _ := stub.recorded()
+	if searches != 0 || creates != 0 {
+		t.Fatalf("searches=%d creates=%d — a required-hold payload (path_traversal) was published from the queue", searches, creates)
+	}
+	if rest := queuedItems(t); len(rest) != 1 {
+		t.Fatalf("the held item did not stay queued (items: %d) — the hold must keep it for the attempt limit, not lose it", len(rest))
+	}
+}
+
 // ---- AC-019: the budget ----
 
 func TestLLMBudgetZeroCalls(t *testing.T) {
