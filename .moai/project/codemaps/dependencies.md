@@ -1,16 +1,22 @@
 # 의존성 그래프
 
+## PR #1772 반영 트리의 import 대조
+
+`8a66677a1d1e74f5bf65c8da0f8b40ae25128318`에서 `go list -deps -json ./...`를 실행했다. 모듈 내부 패키지 170개, 내부 import 엣지 478개, 최상위로 접고 self-edge를 제거한 고유 쌍 303개다. `internal/userassets`는 `internal/template`을 import하며 비테스트 소비자는 `internal/cli` 하나다. 아래 main 기준 fan-in/out과 이전 기록은 각각 명시된 시점의 관측값이다.
+
+> `internal/template/pluginemit`은 PR #1772에서 폐기됐다. 현재 빌드 방출기는 agentemit·commandemit·embedemit이며, 아래 이전 pluginemit 수치는 이력이다.
+
 ## 현재 main의 재측정
 
 `081899adb825935d5263b1699fe730373deaa4fd`에서 `go list -deps -json ./...`를 실행했다. 모듈 내부 Imports 엣지는 478개이고, 최상위 패키지로 접어 self-edge를 뺀 고유 쌍은 302개다. 아래 이전 기록의 그래프 수치는 각 시점의 관측으로 남긴다.
 
-현재 최상위 fan-out은 `internal/cli` 75, `internal/hook` 40, `internal/web` 16이다. fan-in은 `internal/config` 30, `internal/paths` 14, `internal/atomicfile` 14, `internal/defs` 13이다. 신규 빌드 도구 `internal/template/embedemit`은 표준 라이브러리만 사용하고 비테스트 fan-in은 0이다. 런타임에서 호출하지 않는 점은 `agentemit`·`commandemit`·`pluginemit`과 같다.
+현재 최상위 fan-out은 `internal/cli` 75, `internal/hook` 40, `internal/web` 16이다. fan-in은 `internal/config` 30, `internal/paths` 14, `internal/atomicfile` 14, `internal/defs` 13이다. 신규 빌드 도구 `internal/template/embedemit`은 표준 라이브러리만 사용하고 비테스트 fan-in은 0이다. 런타임에서 호출하지 않는 점은 `agentemit`·`commandemit`과 같다.
 
 **이전 부분 재측정 — t1524, worktree `.claude/worktrees/develop`, 브랜치 `develop`, base `d0378d37c` (2026-10-05).**
 문서의 산출 명령으로 내부 import를 다시 쟀다 — 패키지 단위 470→**476**, 최상위 접기 + self-edge 제거 고유 쌍 295→**301**. 신규 패키지 `internal/hygiene`(card t1518)은 내부 import `internal/config` 하나, 소비자 `internal/cli`·`internal/hook` 둘. 움직인 엣지는 전부 이번 창 몫이다 — `cli→hygiene`·`hook→hygiene`·`hygiene→config`(card t1518), `runtime→auditverdict`·`runtime→config`·`cli→auditverdict`(card t1500 — `audit_ceiling.go`와 `spec_ceiling.go`). fan-in 상위에서 움직인 행: `internal/config` 28→30(`hygiene`·`runtime` 합류). fan-out 상위: `internal/cli` 73→75, `internal/hook` 39→40. 작은 fan-in 표에 `internal/auditverdict` 4(`contract`·`homestate`에 `cli`·`runtime` 합류)와 `internal/hygiene` 2가 들어왔다. § 순환은 재확인 결과 변동 없음(신규 엣지는 전부 일방향 — leaf 방향). go.mod는 앵커 이후에도 한 줄도 바뀌지 않았다.
 
 **이전 부분 재측정 — t1485, 브랜치 `WT-codemaps-regen3`, base `83086bec5` (2026-10-04).**
-문서의 산출 명령으로 내부 import를 다시 쟀다 — 패키지 단위 461→**470**, 최상위 접기 + self-edge 제거 고유 쌍 289→**295**. 큐 도메인 패키지가 `internal/factory`로 개명되며(card t1399) 그 행들이 새 이름으로 옮겨졌다. 신규 패키지 셋: `internal/decision`(내부 import `internal/homestate` 하나, 소비자 `internal/cli`), `internal/auditverdict`(내부 import 0인 leaf, 소비자 `internal/contract`·`internal/homestate`), `internal/template/pluginemit`(`internal/template`·`pkg/version` import, 비테스트 소비자 0 — 빌드타임 방출기). fan-in 상위에서 움직인 행: `internal/config` 27→28, `internal/homestate` 8→9, `pkg/version` 5→6, `internal/lockfile` 5로 상위 진입. fan-out 상위: `internal/cli` 72→73, `internal/web` 15→16, `internal/contract` 9→10, `internal/homestate` 4→6. go.mod는 t1456 앵커 이후에도 한 줄도 바뀌지 않았다.
+문서의 산출 명령으로 내부 import를 다시 쟀다 — 패키지 단위 461→**470**, 최상위 접기 + self-edge 제거 고유 쌍 289→**295**. 큐 도메인 패키지가 `internal/factory`로 개명되며(card t1399) 그 행들이 새 이름으로 옮겨졌다. 신규 패키지 셋: `internal/decision`(내부 import `internal/homestate` 하나, 소비자 `internal/cli`), `internal/auditverdict`(내부 import 0인 leaf, 소비자 `internal/contract`·`internal/homestate`), 당시 `pluginemit`(`internal/template`·`pkg/version` import, 비테스트 소비자 0 — 빌드타임 방출기). fan-in 상위에서 움직인 행: `internal/config` 27→28, `internal/homestate` 8→9, `pkg/version` 5→6, `internal/lockfile` 5로 상위 진입. fan-out 상위: `internal/cli` 72→73, `internal/web` 15→16, `internal/contract` 9→10, `internal/homestate` 4→6. go.mod는 t1456 앵커 이후에도 한 줄도 바뀌지 않았다.
 
 **이전 부분 재측정 — t1456, worktree `.moai/worktrees/t1456`, 브랜치 `WT-codemaps-regen2`, base `5501c06af` (2026-10-03).**
 문서의 산출 명령으로 내부 import를 다시 쟀다 — 패키지 단위 460→**461**, 최상위 접기 + self-edge 제거 고유 쌍 288→**289**. 창의 신규 8파일은 전부 기존 패키지 안에 들어와 신규 패키지는 없다. fan-out·fan-in 상위 표는 전 행 재확인 결과 변동이 없었고(`internal/cli` 72·`internal/hook` 39·`internal/config` 27·`internal/paths`·`internal/atomicfile` 14), 작은 fan-in 표도 변동 없었다. § 순환은 재확인 결과 변동 없음. go.mod는 t1443 앵커 이후에도 한 줄도 바뀌지 않았다 — § 외부 의존성 표는 t1443 판의 32항목이 그대로 유효하다.

@@ -1,5 +1,13 @@
 # 데이터 흐름
 
+## PR #1772의 사용자 폴더 설치 흐름
+
+`internal/cli/user_asset_phase.go`는 카탈로그와 임베드 템플릿을 `internal/userassets/install.go`의 Installer에 전달한다. `paths.go`의 설치 루트는 `~/.claude/skills`, `~/.claude/agents`, `~/.agents/skills`, `~/.codex/agents` 네 곳이다. 사용자 manifest는 `~/.moai/user-assets.json`에 두며, 설치 중단 기록과 백업 경로도 같은 사용자 상태 영역에서 관리한다.
+
+update는 사용자 잠금 획득 → 기록된 번들 선택으로 Install → 새 manifest의 PruneUnselected → manifest 저장 순서다. 그 뒤 `internal/cli/migrate_project_assets.go`가 프로젝트 파일의 현재 hash·provenance·사용자 대응 파일을 확인하고 프로젝트 템플릿 동기화로 넘어간다. 수정되거나 대응 파일을 확인하지 못한 항목은 프로젝트에 남긴다. 프로젝트 배포기는 공통 자산 루트를 제외하며 버전 일치 조기 반환에서 프로젝트 스킬 미러를 다시 만들지 않는다.
+
+> 아래의 과거 미러 생산자 설명 중 `internal/cli/update_mirror_heal.go`와 `internal/template/skill_mirror_repair.go` 경로는 폐기됐다. 현재 사용자 폴더 설치와 별개의 이전 구현 이력이다.
+
 ## 현재 main의 흐름 보충
 
 기준은 `081899adb825935d5263b1699fe730373deaa4fd`다. 다음은 호출부와 저장 경로의 소스 대조이며 외부 프로세스·원격 병합을 실제 실행했다는 뜻은 아니다.
@@ -188,11 +196,7 @@ internal/cli/update/report/report.go    사용자 대상 advisory 출력
 internal/manifest/*                     provenance 기록
 
 ── 버전이 일치해 Deploy 앞에서 조기 반환하는 경로 ──
-internal/cli/update_mirror_heal.go      그 조기 반환 자리 옆에서 실행
-  └ internal/template/skill_mirror_repair.go
-                                        Deploy 없이 .agents/skills 두 생산자 결과를 복구
-                                        (패키지 수준 함수 — DeployerOption 이었다면 배포 경로에서도
-                                         살아나 수리 기능의 부작용으로 배포 동작이 바뀐다)
+프로젝트 스킬 미러 복구 없음            사용자 폴더 설치가 공통 자산을 담당
 ```
 
 **`.mcp.json` 스냅샷이 settings.json의 형제가 된 갈래.** 배포가 자기가 쓴 렌더를

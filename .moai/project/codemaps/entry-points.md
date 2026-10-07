@@ -1,5 +1,12 @@
 # 진입점
 
+## PR #1772의 설치 진입점
+
+- `internal/cli/init.go` → `ensureUserAssetsLocked`: 사용자 공통 자산 설치를 프로젝트 배포에 앞서 실행한다.
+- `internal/cli/update.go` → `runUserAssetUpdatePhase` → `migrateProjectCommonAssets`: 사용자 쪽 설치·갱신과 대응 파일 확인이 프로젝트 쪽 제거에 앞선다.
+- `internal/cli/bundle.go`: `moai bundle add/remove`가 사용자 번들 선택을 변경한다.
+- `internal/cli/doctor.go` → `internal/cli/doctor_user_install.go`: User Install·Project Lock·Plugin Migration 진단을 등록한다. 기존 Plugin Deployment·Plugin Version 행은 등록에서 빠졌다.
+
 ## 현재 main의 추가 표면
 
 기준은 `081899adb825935d5263b1699fe730373deaa4fd`다. 다음은 소스 배선을 확인한 표면이며 실제 원격 실행의 성공 주장은 아니다.
