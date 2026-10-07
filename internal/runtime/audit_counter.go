@@ -26,7 +26,11 @@ import (
 // RoundEvidence is the per-SPEC audit-round evidence the ceiling engine and
 // the admission seams read.
 type RoundEvidence struct {
-	// Count is the number of distinct (SPEC id, iteration number) pairs.
+	// Count is the number of distinct (SPEC id, iteration number) pairs,
+	// plus one for the bare base report's own round-0 bucket and one per
+	// fail-counted file (an iteration number the counter cannot read —
+	// non-numeric or outside the integer range — is never collapsed into
+	// another file's round, REQ-ACE-001/REQ-ACR-009).
 	Count int
 	// Sources lists every evidence file consulted.
 	Sources []string
@@ -84,6 +88,7 @@ func readReportFile(path string) ([]byte, error) {
 func CountAuditRounds(specID string, reportDirs []string) (RoundEvidence, error) {
 	var ev RoundEvidence
 	seen := map[int]bool{}
+	baseSeen := false
 	failCounted := 0
 	bestN := -1
 	legacyFile := regexp.MustCompile(`^` + regexp.QuoteMeta(specID) + `-review-([0-9]+)\.md$`)
@@ -103,14 +108,25 @@ func CountAuditRounds(specID string, reportDirs []string) (RoundEvidence, error)
 			name := e.Name()
 			n := -1
 			fail := false
+			base := false
 			convention := false
 			if m := conventionFile.FindStringSubmatch(name); m != nil {
 				convention = true
-				n = 1
-				if m[1] != "" {
-					if v, perr := strconv.Atoi(m[1]); perr == nil {
-						n = v
-					}
+				if m[1] == "" {
+					// The bare base report counts in its own dedicated
+					// bucket (round 0, earliest) — never through the
+					// numbered dedupe identity the n=1 default used to give
+					// it, and never merged with an explicitly 0-numbered
+					// file's seen[0] identity (REQ-ACR-009).
+					base = true
+				} else if v, perr := strconv.Atoi(m[1]); perr == nil {
+					n = v
+				} else {
+					// A numeric suffix outside the integer range is
+					// fail-counted like any unreadable iteration number —
+					// never collapsed into round 1, never the LatestPath
+					// (REQ-ACR-009).
+					fail = true
 				}
 			} else if m := legacyFile.FindStringSubmatch(name); m != nil {
 				n, _ = strconv.Atoi(m[1])
@@ -141,6 +157,20 @@ func CountAuditRounds(specID string, reportDirs []string) (RoundEvidence, error)
 				failCounted++
 				continue
 			}
+			if base {
+				if !baseSeen {
+					baseSeen = true
+					if bestN < 1 {
+						// The base orders EARLIEST (round 0): it stays the
+						// selected latest evidence only until a numbered
+						// round appears, and it outranks an explicitly
+						// 0-numbered file on the round-0 tie (REQ-ACR-009).
+						bestN = 0
+						ev.LatestPath = path
+					}
+				}
+				continue
+			}
 			seen[n] = true
 			if n > bestN {
 				bestN = n
@@ -149,6 +179,9 @@ func CountAuditRounds(specID string, reportDirs []string) (RoundEvidence, error)
 		}
 	}
 	ev.Count = len(seen) + failCounted
+	if baseSeen {
+		ev.Count++
+	}
 	if ev.LatestPath != "" {
 		data, err := readReportFile(ev.LatestPath)
 		if err != nil {

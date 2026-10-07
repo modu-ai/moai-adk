@@ -264,34 +264,33 @@ func deltaMarkers(latestRaw []byte) (anchors []string, stop bool) {
 }
 
 // previousAuditedSHA returns the audited SHA of the previous round — the
-// largest iteration strictly below the latest, deduped across both families
-// and including the legacy stream (card-review F4), "" when no prior round
-// exists.
+// largest round strictly below the latest, deduped across both families and
+// including the legacy stream (card-review F4), with the bare base report
+// ordering earliest as round 0 (REQ-ACR-009), "" when no prior round exists.
+// Both the latest round number and every source round number resolve through
+// the same dual-family, base-aware parse: the counter counts BOTH families
+// and a legacy-family file can be the selected LatestPath, so resolving the
+// latest through the convention family alone would lose the diff baseline
+// whenever the stream tip is a legacy verdict (REQ-ACR-001).
 func previousAuditedSHA(in VerdictCeilingInput, ev RoundEvidence) string {
 	if ev.LatestPath == "" {
 		return ""
 	}
-	latestN := iterationOf(filepath.Base(ev.LatestPath), in.SpecID)
-	if latestN <= 0 {
+	latestN, ok := evidenceRoundOf(filepath.Base(ev.LatestPath), in.SpecID)
+	if !ok || latestN <= 0 {
+		// An unparseable or non-positive latest round number stays
+		// fail-closed: no guessed, defaulted, or sibling-derived baseline
+		// (REQ-ACR-002).
 		return ""
 	}
-	legacyFile := regexp.MustCompile(`^` + regexp.QuoteMeta(in.SpecID) + `-review-([0-9]+)\.md$`)
 	best := -1
 	prev := ""
 	for _, src := range ev.Sources {
 		if src == ev.LatestPath {
 			continue
 		}
-		name := filepath.Base(src)
-		n := iterationOf(name, in.SpecID)
-		if n <= 0 {
-			if m := legacyFile.FindStringSubmatch(name); m != nil {
-				if v, perr := strconv.Atoi(m[1]); perr == nil {
-					n = v
-				}
-			}
-		}
-		if n <= 0 || n >= latestN {
+		n, ok := evidenceRoundOf(filepath.Base(src), in.SpecID)
+		if !ok || n >= latestN {
 			continue
 		}
 		if n > best {
@@ -303,6 +302,34 @@ func previousAuditedSHA(in VerdictCeilingInput, ev RoundEvidence) string {
 		return ""
 	}
 	return auditedSHAOf(prev)
+}
+
+// evidenceRoundOf is the scan-local dual-family, base-aware parse of one
+// evidence file name (plan.md §G sanctioned exception): the convention
+// family through iterationOf's existing parse, with the bare base report
+// ranking as round 0 — the engine's own plan-round convention
+// (planAuditRoundFile) — and the legacy family (<SpecID>-review-<N>.md).
+// ok is false when the name parses under neither family or its number does
+// not parse: a name the caller cannot order must not yield a baseline.
+func evidenceRoundOf(name, specID string) (n int, ok bool) {
+	if m := conventionFile.FindStringSubmatch(name); m != nil {
+		if m[1] == "" {
+			return 0, true // the bare base report — round 0, earliest
+		}
+		if v := iterationOf(name, specID); v > 0 {
+			return v, true
+		}
+		return 0, false // a convention shape whose number does not parse
+	}
+	legacyFile := regexp.MustCompile(`^` + regexp.QuoteMeta(specID) + `-review-([0-9]+)\.md$`)
+	if m := legacyFile.FindStringSubmatch(name); m != nil {
+		v, err := strconv.Atoi(m[1])
+		if err != nil {
+			return 0, false
+		}
+		return v, true
+	}
+	return 0, false
 }
 
 // iterationOf returns the iteration number a convention-family file name
@@ -410,8 +437,13 @@ func diffHunkBodies(projectRoot, fromSHA, toSHA, path string) ([]string, error) 
 	return hunks, nil
 }
 
-// reqACSetsUnchanged reports whether the REQ/AC id set of the SPEC's spec.md
-// is identical at both audited SHAs. A git failure is fail-closed.
+// reqACSetsUnchanged reports whether the REQ/AC id sets of the SPEC's
+// definition files — spec.md AND acceptance.md — are identical at both
+// audited SHAs (REQ-ACR-010): an identifier change confined to acceptance.md
+// refuses the delta exactly as a spec.md change does. A git failure on
+// spec.md is fail-closed; acceptance.md absent at BOTH ends (a Tier S SPEC)
+// reads as an unchanged empty set, while absent at one end only fails
+// closed.
 func reqACSetsUnchanged(projectRoot, specID, fromSHA, toSHA string) bool {
 	specRel := filepath.ToSlash(filepath.Join(".moai", "specs", specID, "spec.md"))
 	from, err1 := auditreceipt.RunScrubbedGit(projectRoot, "show", fromSHA+":"+specRel)
@@ -419,7 +451,19 @@ func reqACSetsUnchanged(projectRoot, specID, fromSHA, toSHA string) bool {
 	if err1 != nil || err2 != nil {
 		return false
 	}
-	return equalStringSets(reqACSet(from), reqACSet(to))
+	if !equalStringSets(reqACSet(from), reqACSet(to)) {
+		return false
+	}
+	accRel := filepath.ToSlash(filepath.Join(".moai", "specs", specID, "acceptance.md"))
+	fromAcc, errA := auditreceipt.RunScrubbedGit(projectRoot, "show", fromSHA+":"+accRel)
+	toAcc, errB := auditreceipt.RunScrubbedGit(projectRoot, "show", toSHA+":"+accRel)
+	if errA != nil && errB != nil {
+		return true // no acceptance.md at either end — nothing to compare
+	}
+	if errA != nil || errB != nil {
+		return false // it appeared or disappeared — fail closed
+	}
+	return equalStringSets(reqACSet(fromAcc), reqACSet(toAcc))
 }
 
 func reqACSet(raw string) map[string]bool {
