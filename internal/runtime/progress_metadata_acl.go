@@ -9,9 +9,7 @@ import (
 // system.posix_acl_access / system.posix_acl_default xattrs carry).
 const (
 	aclUserObj  uint16 = 0x01 // 1
-	aclUser     uint16 = 0x02 // 2
 	aclGroupObj uint16 = 0x04 // 4
-	aclGroup    uint16 = 0x08 // 8
 	aclMaskObj  uint16 = 0x10 // 16
 	aclOtherObj uint16 = 0x20 // 32
 
