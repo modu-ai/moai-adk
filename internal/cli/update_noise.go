@@ -110,12 +110,13 @@ func recordMergeFallback(projectRoot, relPath string, success, verbose bool, err
 
 	if verbose {
 		// REQ-UN-010: every fallback emits the legacy warning under --verbose.
-		_, _ = fmt.Fprintf(errOut, "Warning: 3-way merge failed for %s, falling back to 2-way\n", relPath)
+		// Card t1527 D4: ! severity line replaces the raw "Warning:" prefix.
+		emitSeverityLine(errOut, sevWarn, resolveTheme(), "3-way merge failed for %s, falling back to 2-way", relPath)
 		return
 	}
 	// REQ-UN-008: emit advisory exactly once when post-increment count equals
 	// the threshold. Counts 1, 2 are silent; counts >=4 stay silent.
 	if entry.FallbackCount == fallbackAdvisoryThreshold {
-		_, _ = fmt.Fprintf(errOut, "hint: 'moai update -c' to resync templates for %s\n", relPath)
+		emitSeverityLine(errOut, sevNote, resolveTheme(), "'moai update -c' to resync templates for %s", relPath)
 	}
 }

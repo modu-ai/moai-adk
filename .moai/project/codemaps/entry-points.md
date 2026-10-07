@@ -1,6 +1,19 @@
 # 진입점
 
-**현재 부분 갱신 — t1510, worktree `.claude/worktrees/t1510`, 브랜치 `WT-self-improve-protected-zone`, base `d0378d37c` (2026-10-06).**
+## 현재 main의 추가 표면
+
+기준은 `081899adb825935d5263b1699fe730373deaa4fd`다. 다음은 소스 배선을 확인한 표면이며 실제 원격 실행의 성공 주장은 아니다.
+
+- `internal/cli/factory_card_pr.go`: 검증 전 HEAD 고정, 준비 검사, HEAD 재확인, push·PR 생성 직전 임대/버전 재검사, 현재 head를 지정한 병합 요청, 병합 관측을 잇는다.
+- `internal/cli/todo_merge.go`: 운영자용 `todo merge <into> <from>` 진입점.
+- `internal/cli/todo_trace.go`: 레인도 읽을 수 있는 `todo trace <id> [--kind <k>]... [--depth <n>]`.
+- `internal/cli/hook.go`: 숨김 `hook retention-prune` 진입점.
+- `internal/cli/worktree/sweep.go`: 설정에서 유도한 원격 브랜치가 없으면 원격 HEAD로 폴백하며 안내한다. 명시적 `--base`에는 이 폴백을 적용하지 않는다.
+- `internal/cli/lane_resume_model.go`: Claude 도움말에서 재개 인자 형태를 분류한다.
+
+아래 이전 기록의 명령 등록 수는 당시 관측값이다.
+
+**이전 부분 갱신 — t1510, worktree `.claude/worktrees/t1510`, 브랜치 `WT-self-improve-protected-zone`, base `d0378d37c` (2026-10-06).**
 앵커 `d0378d37c`(t1524 판 본문) 뒤 창(§ `modules.md` t1510 판)을 반영했다. 등록 수치를 이 트리에서 다시 쟀다 — 비테스트 `AddCommand(` 247 불변, `rootCmd.AddCommand(` 68 불변. 등록 줄 수는 움직이지 않았지만 기존 다중 등록 줄 안에서 표면이 늘었다: **`moai factory bundle <lane> <card>...`·`moai factory decide`**(card t1454 — `factory.go`의 기존 factory.AddCommand 줄에 인수 추가), **`moai memory doctor|archive|drain|fold`**(card t1502 — `memory.go`의 기존 memoryCmd 등록 줄 재작성). 동작 변화: PreToolUse 가드가 하네스 학습자 identity의 구역 멤버 쓰기를 매니페스트로 거부한다(card t1510 — 신규 진입점이 아니라 기존 `moai hook pre-tool` 안쪽의 판정 확장; 거부 이유는 사람 회송 필드 route·next를 싣는다), `moai todo add`가 발행 제시(중복·겹침·관계)를 읽기 전용 안내로 얹는다(card t1454 — `todo_issuance.go`), `moai memory fold`가 도달성 모델로 카드 종결 시 지식 이관을 계산한다(card t1502 — `memo/taxonomy`의 `budget.go`·`reach.go`), codex 리뷰 게이트가 세션 트리보다 오래된 바이너리에서 스킵한다(card t1528 — `codex_review_binary_age.go`).
 **이전 부분 갱신 — t1524, worktree `.claude/worktrees/develop`, 브랜치 `develop`, base `d0378d37c` (2026-10-05).**
 앵커 `f4c483a5a`(t1485 판 스탬프) 뒤 창(§ `modules.md` t1524 판)을 반영했다. 등록 수치를 이 트리에서 다시 쟀다 — 비테스트 `AddCommand(` 246→**247**(+1 — `moai spec ceiling <SPEC-ID> [--evidence <dir>]... [--record]`, `spec.go`의 기존 specCmd 등록 줄 옆 한 줄 · card t1500 — 읽기 전용이 기본이고 기록은 `--record` 한 길), `rootCmd.AddCommand(` 68 불변. 새 표면: **`moai clean --audit-logs|--session-state|--apply`**(card t1518, SPEC-MOAI-HYGIENE-001 — `--audit-logs`는 감사 로그 회전기, `--session-state`는 끝난 세션 상태 GC를 돌리고 둘 다 dry-run이 기본; REQ-HYG-013 — **CLI의 변이 결정은 이 호출의 `--apply` 하나로 하고 `workflow.hygiene.mode` 설정은 자동 경로(SessionStart)만 정한다**. 기존 `--home`·`--codex-skills`·`--reports-archive`와 스코프 상호배타), **`moai session list --cc-version`**(card t1465 — 실행 중 바이너리와 설치 바이너리의 버전 대조 열; 기본 경로는 프로브가 없다), **doctor Session CC Version 권고 진단**(`doctor_ccversion.go` — stale이면 조언만 하고 gate하지 않는다). 동작 변화: `moai codex audit|role-audit`와 MCP 감사 도구 쪽 리졸버가 required-backend 거부·fail-closed 해석을 얹었다(card t1500 — `audit_pin.go`의 읽기·파스 오류는 핀 부재로 접히지 않는다), 세 런처(cc·glm relaunch 루프)에 세션 비상 재개 경로가 배선됐다(`lane_resume.go` — 값 없는 `--resume` 거부, resume 토큰 fail-closed 검출 · card t1465), SessionStart가 `.moai` 위생 엔진을 best-effort로 돌린다(`session_start_hygiene.go` — 기동을 막지 않는다 · card t1518).

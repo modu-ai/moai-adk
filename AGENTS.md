@@ -82,8 +82,9 @@ shared history mid-operation). Read-only inspection, `git fetch`, and pushing th
 already-checked-out branch are permitted. Commits to the already-checked-out branch are permitted
 EXCEPT on `main` — in this repository `main` is commit-dead (no session commits there; the
 BranchGuard refuses commit-creating commands on branches listed in
-`workflow.branch_guard.deny_commits_on`), card work flows on develop-based worktrees, and
-reviving `main` is the operator-side residue procedure in
+`workflow.branch_guard.deny_commits_on`), card work flows on main-based worktrees (card branches
+cut from local `main`; card PRs go to base `main` — `develop` is legacy since the 2026-10-05
+GitHub Flow cutover), and the operator-side residue procedure lives in
 `.moai/docs/gitflow-integration-chain.md`.
 
 **Re-read branch and commit state immediately before any commit or push** — never a value read
@@ -151,12 +152,13 @@ from the registry, and is disposed by the session-end prompt or by `git worktree
 **A card's branch is unpushed, so its worktree holds the only copy of the work.** Dispose of no
 worktree — L1 or L2 — until the branch is integrated and the remote merge has landed.
 
-**Start a new card in a new worktree from local `develop`.** A Claude Code session exits its
+**Start a new card in a new worktree from local `main`.** A Claude Code session exits its
 previous worktree first; a Codex lane starts a new session in the new card tree. Verify the new
-tree's HEAD equals the local `develop` tip before editing; never reuse the previous card's tree.
+tree's HEAD equals the local `main` tip before editing; never reuse the previous card's tree.
 Where the new card depends on a prior card's unmerged code, merge that branch inside the new
-worktree. When complete, merge the card branch into local `develop` through the serial integration
-window; the factory leader pushes `develop` after the local merges.
+worktree. When complete, land the card branch on `main` through the serial integration window —
+the card PR goes to base `main` and the factory leader lands `main`; `develop` is legacy since
+the 2026-10-05 GitHub Flow cutover.
 
 **Card worktree branches carry the `WT-` prefix and a descriptive slug, never the card id.** Rename
 in place immediately after creating the tree: `git branch -m WT-<slug>`; re-entry resolves by tree

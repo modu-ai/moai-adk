@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -125,6 +126,74 @@ func TestFactoryNextRefusesAgainAfterLaterAssign(t *testing.T) {
 
 	if _, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t2"); err == nil {
 		t.Fatalf("the assigned row must hold the slot again: stderr=%q", stderr)
+	} else if !strings.Contains(stderr, "refused serial-slot") {
+		t.Fatalf("refusal is not serial-slot: %v stderr=%q", err, stderr)
+	}
+}
+
+// TestFactoryNextOwnAssignedCardIgnoresSiblingAssignments — arm (a) through
+// the nominated door (card t1542, measured on run tmhxo0 2026-10-07): the
+// lane's own card sits `assigned` to it and sibling serial rows are merely
+// `assigned` to other lanes; `factory next --card` leases its own card
+// instead of being refused serial-slot by rows nothing is driving. The
+// unnominated arm has read it this way since t1407; the nominated arm passed
+// false unconditionally and re-created the wedge through the --card door.
+func TestFactoryNextOwnAssignedCardIgnoresSiblingAssignments(t *testing.T) {
+	root, _ := flSerialPair(t)
+	nmIsolatedWorktrees(t, "t1", "t2")
+	fcPlace(t, root,
+		homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1"},
+		homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2"})
+	nmLaneEnv(t, "lane-1", "")
+	if _, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1"); err != nil {
+		t.Fatalf("factory next refused the lane's own assigned card behind sibling assignments: %v stderr=%q", err, stderr)
+	}
+	if st, owner := flRow(t, root, "t1"); st != homestate.CardLeased || owner != "lane-1" {
+		t.Fatalf("t1 state=%s owner=%q, want leased by lane-1", st, owner)
+	}
+}
+
+// TestFactoryNextLeasesBehindMergedPRPredecessor — github-flow's terminal
+// delivery state counts as predecessor completion (card-review r1): a
+// successor whose after-hint names a merged-pr card leases instead of being
+// skipped forever. The successor rides the operator-picked shape (a row at
+// picked with no owner), the shape a hint-carrying record starts from.
+func TestFactoryNextLeasesBehindMergedPRPredecessor(t *testing.T) {
+	root, store := flSerialPair(t)
+	if err := store.Mutate(func(r *factory.BacklogRecord) error {
+		for i := range r.Items {
+			if r.Items[i].ID == "t2" {
+				r.Items[i].State = factory.BacklogStatePicked
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("set t2 queue state: %v", err)
+	}
+	nmIsolatedWorktrees(t, "t1", "t2")
+	fcPlace(t, root,
+		homestate.Card{CardID: "t1", State: homestate.CardMergedPR, OwnerLabel: "lane-1"},
+		homestate.Card{CardID: "t2", State: homestate.CardPicked, HintAfter: "t1"})
+	nmLaneEnv(t, "lane-1", "")
+	if _, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t2"); err != nil {
+		t.Fatalf("factory next refused behind a merged-pr predecessor: %v stderr=%q", err, stderr)
+	}
+	if st, owner := flRow(t, root, "t2"); st != homestate.CardLeased || owner != "lane-1" {
+		t.Fatalf("t2 state=%s owner=%q, want leased by lane-1", st, owner)
+	}
+}
+
+// TestFactoryNextForeignNominationStillHoldsBehindAssignments — the control
+// arm: the arm-(a) read belongs to the lane's OWN card. A nomination of a
+// card that is not assigned to the caller still counts sibling assigned rows
+// and is refused serial-slot.
+func TestFactoryNextForeignNominationStillHoldsBehindAssignments(t *testing.T) {
+	root, _ := flSerialPair(t)
+	nmIsolatedWorktrees(t, "t1", "t2")
+	fcPlace(t, root, homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2"})
+	nmLaneEnv(t, "lane-1", "")
+	if _, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1"); err == nil {
+		t.Fatalf("a foreign nomination leased behind sibling assigned rows: stderr=%q", stderr)
 	} else if !strings.Contains(stderr, "refused serial-slot") {
 		t.Fatalf("refusal is not serial-slot: %v stderr=%q", err, stderr)
 	}

@@ -3,7 +3,7 @@
 # Synchronizes .github/labels.yml to the GitHub repository labels.
 # Triggers:
 #   - Manual: workflow_dispatch (admin-initiated, dry-run support)
-#   - Automatic: push to main when .github/labels.yml or this workflow file changes
+#   - Automatic: push to main/develop when .github/labels.yml or this workflow file changes
 #
 # Source of truth: .github/labels.yml
 # Action reference: https://github.com/EndBug/label-sync
@@ -23,7 +23,11 @@ on:
           - "false"
   push:
     branches:
+      # main is the default branch; develop is the integration branch where
+      # label edits can land first, and they should sync without waiting for
+      # a release merge — matching the push set the CI workflows use.
       - main
+      - develop
     paths:
       - ".github/labels.yml"
       - ".github/workflows/label-sync.yml"
