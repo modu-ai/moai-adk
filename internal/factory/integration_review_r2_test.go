@@ -12,7 +12,6 @@ import (
 	"time"
 )
 
-
 // TestR2_A_LiteralPathspecBracketCollision is the NEW P1 RED: the candidate
 // adds the leaf `[a]`; the worktree holds an ignored regular file `[a]` and
 // TRACKS `a`. git ls-files/clean interpret `[a]` as a PATHSPEC GLOB
