@@ -113,9 +113,11 @@ func sweepMockEnv(t *testing.T, worktrees []git.Worktree) *sweepMock {
 			return nil
 		},
 	}
-	// The default --base derives from the configured integration target
-	// (card t1453): the fake provider root has no configuration, so the seam
-	// points at a git-flow fixture root — the default these tests exercise.
+	// The default --base derives from the landed-ref chain
+	// (SPEC-GITHUB-FLOW-CI-RESIDUE-001 REQ-GFC-001): the fixture root is a
+	// bare temp dir — no worktree_base_branch, no origin/HEAD — so the chain's
+	// compiled-in default (origin/main) is the default these tests exercise.
+	// Override sweepConfigRoot per test to point the chain at a fixture repo.
 	gitFlowRoot := t.TempDir()
 	installBaseRow(t, gitFlowRoot, gitFlowBaseRow())
 	sweepConfigRoot = func() string { return gitFlowRoot }
@@ -324,10 +326,12 @@ func newSweepRepo(t *testing.T) sweepFixture {
 		}
 		return r
 	}
-	// The default --base derives from the configured integration target (card
-	// t1453): seed the git-flow configuration these fixtures exercise, untracked
+	// The default --base derives from the landed-ref chain
+	// (SPEC-GITHUB-FLOW-CI-RESIDUE-001 REQ-GFC-001): the git-flow row that
+	// names its base through worktree_base_branch keeps origin/develop — the
+	// base this develop-only fixture's fetch and ancestry exercise. Untracked,
 	// so no card tree carries it.
-	installBaseRow(t, repo, gitFlowBaseRow())
+	installBaseRow(t, repo, gitFlowCompatRow())
 	return sweepFixture{base: resolve(base), repo: resolve(repo), origin: resolve(origin)}
 }
 
@@ -442,25 +446,31 @@ func TestSweep_JSONEmitsEveryNonProtectedTree(t *testing.T) {
 	}
 }
 
-// TestSweep_BaseDefaultsToOriginDevelop is REQ-WS-004's default clause: the
-// integration base defaults to origin/develop — deliberately NOT the
-// origin/main that clean --stale uses, and the help must say so.
-func TestSweep_BaseDefaultsToOriginDevelop(t *testing.T) {
+// TestSweep_BaseDefaultsToTheResolvedLandedRef is REQ-WS-004's default clause
+// under the landed-ref chain (SPEC-GITHUB-FLOW-CI-RESIDUE-001 REQ-GFC-001):
+// in a root with no worktree_base_branch and no origin/HEAD the chain's
+// compiled-in default (origin/main) is the default base, and --base
+// overrides it.
+func TestSweep_BaseDefaultsToTheResolvedLandedRef(t *testing.T) {
 	m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/base-check", Branch: "feature/base-check"}})
 
 	if _, err := runSweepCmd(t, map[string]string{}); err != nil {
 		t.Fatalf("runSweep error: %v", err)
 	}
-	if len(m.fetchedBases) != 1 || m.fetchedBases[0] != "origin/develop" {
-		t.Fatalf("the sweep must fetch the default base origin/develop exactly once, observed %v", m.fetchedBases)
+	if len(m.fetchedBases) != 1 || m.fetchedBases[0] != "origin/main" {
+		t.Fatalf("the sweep must fetch the chain default origin/main exactly once, observed %v", m.fetchedBases)
 	}
 }
 
-// TestSweep_HelpStatesDivergenceFromCleanStale is REQ-WS-004's help clause.
+// TestSweep_HelpStatesDivergenceFromCleanStale is REQ-WS-004's help clause:
+// the help names the chain the default comes from and keeps the divergence
+// from clean --stale's origin/main stated.
 func TestSweep_HelpStatesDivergenceFromCleanStale(t *testing.T) {
 	cmd := newSweepCmd()
-	if !strings.Contains(cmd.Long, "origin/develop") {
-		t.Error("help must state the origin/develop default base")
+	for _, want := range []string{"worktree_base_branch", "refs/remotes/origin/HEAD", "origin/main"} {
+		if !strings.Contains(cmd.Long, want) {
+			t.Errorf("help must state the chain that resolves the default base: missing %q", want)
+		}
 	}
 	if !strings.Contains(cmd.Long, "clean --stale") {
 		t.Error("help must state the divergence from clean --stale's origin/main default")
@@ -1644,9 +1654,9 @@ func TestSweepDirtyCheckFailurePreserves(t *testing.T) {
 }
 
 // TestSweepFetchErrorDefaultImpl pins the DEFAULT fetch seam's failure path
-// and its remote/ref derivation: base origin/develop fetches
-// `git -C <root> fetch origin develop`; the failure makes every tree's
-// landing unanswerable.
+// and its remote/ref derivation: the chain default (origin/main in the bare
+// mock root) fetches `git -C <root> fetch origin main`; the failure makes
+// every tree's landing unanswerable.
 func TestSweepFetchErrorDefaultImpl(t *testing.T) {
 	defaultFetch := sweepFetchBase // capture before sweepMockEnv replaces it
 	m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/unfetched2", Branch: "feature/unfetched2"}})
@@ -1660,7 +1670,7 @@ func TestSweepFetchErrorDefaultImpl(t *testing.T) {
 	if len(m.fetchArgs) != 1 {
 		t.Fatalf("the default fetch must run exactly once, got %v", m.fetchArgs)
 	}
-	want := []string{"-C", "/repo", "fetch", "origin", "develop"}
+	want := []string{"-C", "/repo", "fetch", "origin", "main"}
 	for i, a := range want {
 		if m.fetchArgs[0][i] != a {
 			t.Fatalf("fetch invocation = %v, want %v", m.fetchArgs[0], want)

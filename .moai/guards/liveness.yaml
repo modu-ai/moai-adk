@@ -96,6 +96,15 @@ entries:
     measure: fired-at-all
 
   - kind: github-workflow
+    locator: .github/workflows/pr-multi-os-gate.yml
+    events: [pull_request]
+    window: 14d
+    # Path-gated (platform-sensitive packages only): a skip on a positively
+    # observed non-platform diff is the designed outcome, so only "did it
+    # run" is a meaningful liveness signal.
+    measure: fired-at-all
+
+  - kind: github-workflow
     locator: .github/workflows/lsel-leak-guard.yaml
     events: [push, pull_request]
     window: 3d
