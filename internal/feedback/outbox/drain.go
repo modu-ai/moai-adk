@@ -11,6 +11,7 @@
 package outbox
 
 import (
+	"errors"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -321,6 +322,45 @@ func consumeProcessed(consumed []byte, entries, processed int) error {
 	return nil
 }
 
+// queueHasFingerprint reports whether a live queue item already carries the
+// fingerprint.
+func queueHasFingerprint(items []feedback.QueueItem, fp string) bool {
+	for i := range items {
+		if items[i].Fingerprint == fp {
+			return true
+		}
+	}
+	return false
+}
+
+// sentHistoryHasFingerprint reports whether the outbox log carries a sent
+// row for the fingerprint — the discriminator between a legitimately
+// handled record (sent: the queue no longer holds it by design) and an
+// orphaned one (recorded, never queued, never sent).
+func sentHistoryHasFingerprint(fp string) bool {
+	path, err := StorePath(OutboxFileName)
+	if err != nil {
+		return false
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		if line == "" {
+			continue
+		}
+		var row OutboxRow
+		if json.Unmarshal([]byte(line), &row) != nil {
+			continue
+		}
+		if row.Outcome == "sent" && row.Fingerpr == fp {
+			return true
+		}
+	}
+	return false
+}
+
 // spoolAfterReadForTest runs between the drain's read and its consume (nil
 // in production); the batch-clear test interposes a capture there.
 var spoolAfterReadForTest func()
@@ -337,6 +377,12 @@ type drainOutcome struct {
 // the lock — the deterministic driver for the partial-consumption tests (a
 // real cross-process contention would be timing-dependent).
 var queueWriteBlockForTest func(entry bugreport.SpoolEntry) bool
+
+// queueCommitFailForTest makes the mutation callback fail AFTER the ledger
+// record lands — the exact state a queue-replace failure produces (ledger
+// recorded, queue unchanged): the orphaned-record shape the recovery tests
+// seed and repair.
+var queueCommitFailForTest bool
 
 // drainMoai runs one moai verdict through fingerprint → payload → tripwire
 // → ONE queue-lock critical section covering dedupe → caps → append →
@@ -412,8 +458,18 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 
 		// Per-fingerprint window (design section 10): no re-queue inside it.
 		if !ledger.FingerprintAllowed(fp, clock(), config.DefaultBugreportFingerprintWindowDays) {
-			outcome = &drainOutcome{outcome: "deduped", reason: "fingerprint already queued or sent inside the window"}
-			return nil
+			// Orphan repair (review-gate residual, P2): the ledger record
+			// and the queue replacement are two writes inside this one
+			// section, and the record lands first — a crash or write
+			// failure in between leaves a record whose report never
+			// entered the queue, and the next drain used to judge the
+			// report deduped and consume it. A record whose report lives
+			// in NEITHER the queue nor the sent history is that orphan:
+			// fall through and queue it (RecordQueued re-stamps below).
+			if queueHasFingerprint(rec.Items, fp) || sentHistoryHasFingerprint(fp) {
+				outcome = &drainOutcome{outcome: "deduped", reason: "fingerprint already queued or sent inside the window"}
+				return nil
+			}
 		}
 
 		// Rolling global caps.
@@ -448,6 +504,9 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 			// Aborting the callback leaves the queue file unchanged: a
 			// signal whose ledger commit failed is never queued.
 			return serr
+		}
+		if queueCommitFailForTest {
+			return errors.New("outbox: (test) queue replace failed after the ledger record")
 		}
 		return nil
 	})
