@@ -3,6 +3,7 @@
 package runtime
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -13,29 +14,21 @@ import (
 // posixAclAccess is the xattr name Linux stores a file's ACCESS ACL in.
 const posixAclAccess = "system.posix_acl_access"
 
-// seedFileMetadata makes the temp file carry the original's metadata —
-// the mode (a plain stat/chmod, applied FIRST: on Linux a chmod rewrites
-// the POSIX ACL's mask, so the ACL must land after it), then the extended
-// attributes through the xattr family, POSIX ACLs included (Linux stores
-// them as the system.posix_acl_access attribute) — one Go-native
-// mechanism with no external tool (round-4 class closure). A failure is
-// an error and the caller aborts the replace — there is no mode-only
-// fallback.
-//
-// F9: the temp is created in the original's directory, and os.CreateTemp
-// INHERITS that directory's default ACL as the temp's access ACL. An
-// original carrying only the minimal ACL (mode bits — which listxattr
-// does NOT enumerate) must never keep the inherited one: the seeder
-// therefore ALWAYS writes the original's effective access ACL — the
-// copied extended ACL when one exists, otherwise the minimal ACL
-// constructed from the mode — fully overwriting inheritance, so the
-// replaced file is never wider than the original.
-func seedFileMetadata(tmp, original string) error {
+// seedFileMetadata makes the temp carry the original's metadata — the
+// mode, the extended attributes, the POSIX ACL (extended, else the minimal
+// ACL built from the mode — F9), and ownership — ALL through the temp's
+// HELD descriptor (Fchmod/Fsetxattr/Fchown): fd-based, immune to the
+// name swap (sync-audit-7 F13). The SOURCE side is read by path (the
+// resolved original — documented). A failure is an error and the caller
+// aborts the replace — there is no mode-only fallback; an ACL/xattr
+// UNSUPPORTED filesystem keeps the chmod'd perms and ownership and lands
+// the record (gate round-46 item 6d).
+func seedFileMetadata(tmp *os.File, tmpPath, original string) error {
 	info, err := os.Stat(original)
 	if err != nil {
 		return err
 	}
-	if err := os.Chmod(tmp, info.Mode().Perm()); err != nil {
+	if err := tmp.Chmod(info.Mode().Perm()); err != nil {
 		return err
 	}
 	names, err := listXattrs(original)
@@ -43,6 +36,7 @@ func seedFileMetadata(tmp, original string) error {
 		return err
 	}
 	hasAcl := false
+	fd := int(tmp.Fd())
 	for _, name := range names {
 		if name == posixAclAccess {
 			hasAcl = true
@@ -55,13 +49,19 @@ func seedFileMetadata(tmp, original string) error {
 		if _, err := unix.Getxattr(original, name, val); err != nil {
 			return fmt.Errorf("read xattr %s: %w", name, err)
 		}
-		if err := unix.Setxattr(tmp, name, val, 0); err != nil {
+		if err := unix.Fsetxattr(fd, name, val, 0); err != nil {
 			return fmt.Errorf("set xattr %s: %w", name, err)
 		}
 	}
 	if !hasAcl {
-		if err := setMinimalAcl(tmp, info.Mode().Perm()); err != nil {
-			return err
+		if err := unix.Fsetxattr(fd, posixAclAccess, minimalAclBlob(info.Mode().Perm()), 0); err != nil {
+			if aclUnsupported(err) {
+				// An ACL-less filesystem (Docker tmpfs and friends) has no
+				// inherited ACL surface to overwrite — the chmod'd perms
+				// stand and the record lands (gate round-46 item 6d).
+				return preserveOwnership(tmp, original)
+			}
+			return fmt.Errorf("write minimal access acl: %w", err)
 		}
 	}
 	// Ownership rides the contract (round-4 edge 6b): mode+xattr copy alone
@@ -70,16 +70,13 @@ func seedFileMetadata(tmp, original string) error {
 	return preserveOwnership(tmp, original)
 }
 
-// setMinimalAcl writes the minimal POSIX access ACL for the mode to the
-// path as system.posix_acl_access, REPLACING whatever inherited ACL the
-// temp carries (F9). The blob comes from minimalAclBlob — the POSIX tag
-// vocabulary it uses is documented on the shared constants (progress_
-// metadata_acl.go): USER_OBJ 1, GROUP_OBJ 4, OTHER 0x20.
-func setMinimalAcl(path string, mode os.FileMode) error {
-	if err := unix.Setxattr(path, posixAclAccess, minimalAclBlob(mode), 0); err != nil {
-		return fmt.Errorf("write minimal access acl: %w", err)
-	}
-	return nil
+// aclUnsupported reports whether err is the filesystem's "ACLs not
+// supported here" answer (the ENOTSUP/EOPNOTSUPP family, wrapped or not):
+// on such a filesystem the F9 overwrite has no surface, so the seeder
+// keeps the chmod'd perms and lands the record instead of aborting (gate
+// round-46 item 6d).
+func aclUnsupported(err error) bool {
+	return errors.Is(err, unix.ENOTSUP) || errors.Is(err, unix.EOPNOTSUPP)
 }
 
 // listXattrs returns the NUL-separated attribute name list of path, sizing

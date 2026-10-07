@@ -80,7 +80,7 @@ func TestAppendProgressRecordSeedFailureAborts(t *testing.T) {
 func stubSeedFailure(t *testing.T) func() {
 	t.Helper()
 	orig := seedFileMetadataFn
-	seedFileMetadataFn = func(tmp, originalPath string) error {
+	seedFileMetadataFn = func(tmp *os.File, tmpPath, original string) error {
 		return errSeedInjected
 	}
 	return func() { seedFileMetadataFn = orig }
@@ -150,6 +150,66 @@ func gidOf(t *testing.T, path string) int {
 		t.Skip("no Stat_t ownership on this platform")
 	}
 	return int(st.Gid)
+}
+
+// TestAppendProgressRecordTempSwapFailsClosed (sync-audit-7 F13) — a
+// directory writer that swaps the temp's NAME for a symlink to a
+// project-external file must not redirect anything: the fd-held flow
+// detects the inode mismatch at the post-seed verification and fails
+// closed — the victim is untouched, progress.md keeps its original
+// content, and the append reports the error.
+func TestAppendProgressRecordTempSwapFailsClosed(t *testing.T) {
+	specDir := t.TempDir()
+	victimDir := t.TempDir()
+	victim := filepath.Join(victimDir, "victim.md")
+	victimData := "victim data — must stay intact\n"
+	if err := os.WriteFile(victim, []byte(victimData), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(specDir, "progress.md")
+	pre := "# progress\n\n## §G Override and Refusal Record\n\n- old record\n"
+	if err := os.WriteFile(path, []byte(pre), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	orig := seedFileMetadataFn
+	seedFileMetadataFn = func(tmp *os.File, tmpPath, original string) error {
+		// The dir-writer swap: move our temp away, put a symlink to the
+		// victim at the temp's name, and report success.
+		if err := os.Rename(tmpPath, tmpPath+".attacker"); err != nil {
+			return err
+		}
+		return os.Symlink(victim, tmpPath)
+	}
+	t.Cleanup(func() {
+		seedFileMetadataFn = orig
+		_ = os.Remove(path + ".attacker")
+		_ = os.Remove(path)
+	})
+
+	if err := appendProgressRecord(specDir, "- new record"); err == nil {
+		t.Fatal("the swapped temp silently completed the replace")
+	}
+	raw, rerr := os.ReadFile(victim)
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
+	if string(raw) != victimData {
+		t.Fatalf("the victim was overwritten:\n%s", raw)
+	}
+	info, lerr := os.Lstat(path)
+	if lerr != nil {
+		t.Fatal(lerr)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		t.Fatal("progress.md became a symlink to the victim")
+	}
+	pinned, rerr := os.ReadFile(path)
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
+	if string(pinned) != pre {
+		t.Fatalf("progress.md was modified by the aborted replace:\n%s", pinned)
+	}
 }
 
 // TestAppendProgressRecordPreservesHardlink (round-4 edge 7c) — a

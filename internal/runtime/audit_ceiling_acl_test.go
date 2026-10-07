@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"golang.org/x/sys/unix"
 )
 
 // TestAppendProgressRecordPreservesACL (round-3 repair 3, F6) — the atomic
@@ -79,6 +81,31 @@ func TestAppendProgressRecordAclExactlyOriginal(t *testing.T) {
 	}
 	if !strings.Contains(string(raw), "- new record") {
 		t.Fatalf("the record did not land:\n%s", raw)
+	}
+}
+
+// TestAppendProgressRecordPreservesXattr (consolidated pass, xattr axis)
+// — an extended attribute on the original progress.md survives the atomic
+// replace (the darwin seeder's cp -p copies xattrs; the F13 fd-held
+// restructure must not regress it). darwin-only: user xattrs via
+// unix.Setxattr.
+func TestAppendProgressRecordPreservesXattr(t *testing.T) {
+	specDir := t.TempDir()
+	path := filepath.Join(specDir, "progress.md")
+	pre := "# progress\n\n## §G Override and Refusal Record\n\n- old record\n"
+	if err := os.WriteFile(path, []byte(pre), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := unix.Setxattr(path, "user.t1560-axis", []byte("seeded"), 0); err != nil {
+		t.Skipf("cannot set a user xattr here: %v", err)
+	}
+	if err := appendProgressRecord(specDir, "- new record"); err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]byte, 64)
+	n, err := unix.Getxattr(path, "user.t1560-axis", buf)
+	if err != nil || string(buf[:n]) != "seeded" {
+		t.Fatalf("the xattr did not survive the replace (n=%d err=%v value=%q)", n, err, string(buf[:max(n, 0)]))
 	}
 }
 

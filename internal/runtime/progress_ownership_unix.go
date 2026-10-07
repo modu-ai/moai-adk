@@ -19,18 +19,20 @@ func hardLinked(path string) bool {
 	return ok && st.Nlink > 1
 }
 
-// preserveOwnership chowns tmp to the original's uid/gid when they differ
-// (round-4 edge 6b): mode+xattr copy alone re-owns the file to the process
-// and changes who can access it, while the pre-repair os.WriteFile
-// preserved ownership. A failure — this process may not re-own the temp,
-// e.g. a non-root chown to a foreign user — is an ERROR and the caller
-// aborts the replace (the F8 posture).
-func preserveOwnership(tmp, original string) error {
+// preserveOwnership chowns the temp to the original's uid/gid when they
+// differ (round-4 edge 6b): mode+xattr copy alone re-owns the file to the
+// process and changes who can access it, while the pre-repair
+// os.WriteFile preserved ownership. The temp is addressed through its HELD
+// descriptor (sync-audit-7 F13) — fd-based, immune to the name swap. A
+// failure — this process may not re-own the temp, e.g. a non-root chown
+// to a foreign user — is an ERROR and the caller aborts the replace (the
+// F8 posture).
+func preserveOwnership(tmp *os.File, original string) error {
 	oinfo, err := os.Stat(original)
 	if err != nil {
 		return err
 	}
-	tinfo, err := os.Stat(tmp)
+	tinfo, err := tmp.Stat()
 	if err != nil {
 		return err
 	}
@@ -42,5 +44,5 @@ func preserveOwnership(tmp, original string) error {
 	if ost.Uid == tst.Uid && ost.Gid == tst.Gid {
 		return nil
 	}
-	return os.Chown(tmp, int(ost.Uid), int(ost.Gid))
+	return tmp.Chown(int(ost.Uid), int(ost.Gid))
 }

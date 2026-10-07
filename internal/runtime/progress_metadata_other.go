@@ -11,10 +11,11 @@ import "os"
 // portable axis here: both postures are flagged for leader review).
 // Round-4 class closure; a failure is an error and the caller aborts the
 // replace.
-func seedFileMetadata(tmp, original string) error {
+func seedFileMetadata(tmp *os.File, tmpPath, original string) error {
 	info, err := os.Stat(original)
 	if err != nil {
 		return err
 	}
-	return os.Chmod(tmp, info.Mode().Perm())
+	// The mode rides the HELD descriptor (F13).
+	return tmp.Chmod(info.Mode().Perm())
 }

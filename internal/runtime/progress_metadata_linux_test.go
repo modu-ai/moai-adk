@@ -4,12 +4,34 @@ package runtime
 
 import (
 	"encoding/binary"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"golang.org/x/sys/unix"
 )
+
+// TestAclUnsupportedFamily (gate round-46 item 6d) — the ENOTSUP /
+// EOPNOTSUPP family is the filesystem's "ACLs not supported here": the
+// seeder treats it as skip-the-ACL-write (perms/ownership stand, record
+// lands), never as a metadata-copy failure to abort on. Wrapped errors
+// must classify the same way.
+func TestAclUnsupportedFamily(t *testing.T) {
+	if !aclUnsupported(unix.ENOTSUP) {
+		t.Fatal("ENOTSUP is not classified as ACL-unsupported")
+	}
+	if !aclUnsupported(unix.EOPNOTSUPP) {
+		t.Fatal("EOPNOTSUPP is not classified as ACL-unsupported")
+	}
+	wrapped := fmt.Errorf("write minimal access acl: %w", unix.EOPNOTSUPP)
+	if !aclUnsupported(wrapped) {
+		t.Fatal("a wrapped EOPNOTSUPP is not classified as ACL-unsupported")
+	}
+	if aclUnsupported(unix.EINVAL) {
+		t.Fatal("EINVAL classified as ACL-unsupported — a real blob failure must abort (F10)")
+	}
+}
 
 // defaultAclBlob builds a POSIX default-ACL xattr value granting other
 // users read+write (the permissive shape F9 protects against). The tags

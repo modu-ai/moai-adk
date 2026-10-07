@@ -1,9 +1,8 @@
 package runtime
 
 import (
-	"os"
-
 	"encoding/binary"
+	"os"
 )
 
 // POSIX ACL tag constants (linux acl.h; the same vocabulary the
