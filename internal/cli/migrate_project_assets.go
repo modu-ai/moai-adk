@@ -9,6 +9,7 @@
 package cli
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/userassets"
 )
 
@@ -35,8 +37,24 @@ var projectCommonAssetRels = []string{
 // The user manifest is read-only here (the user-asset phase already ran and
 // holds the confirmed install); the project manifest is updated to drop the
 // removed entries.
-func migrateProjectCommonAssets(projectRoot, homeDir string, out fmt.Stringer, report func(string, ...interface{})) error {
+//
+// userAssetsInstalled is the run-level removal gate (repair round, leader
+// scope addition #5): the removal arm runs ONLY when THIS invocation's
+// user-asset install succeeded. A failed, cancelled, or skipped install
+// leaves every project-side asset in place — the confirmation evidence a
+// removal rests on is THIS run's install, and a stale user manifest from an
+// earlier run agrees with a stale project copy in exactly the way that
+// destroys the newest remaining copy.
+func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled bool, out fmt.Stringer, report func(string, ...interface{})) error {
 	migrationPreservedProjectFiles = map[string]bool{}
+	if !userAssetsInstalled {
+		report("migration: the user-asset install did not succeed this run — every project-side asset stays in place (nothing removed)")
+		return nil
+	}
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		return fmt.Errorf("load embedded templates for migration: %w", err)
+	}
 	mgr := manifest.NewManager()
 	if _, err := mgr.Load(projectRoot); err != nil {
 		// No project manifest: nothing provenance-classified to migrate.
@@ -121,7 +139,7 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, out fmt.Stringer, r
 			}
 			// template_managed with template-matching bytes: removable once
 			// the user counterpart is confirmed.
-			if !userCounterpartConfirmed(userManifest, homeDir, relSlash) {
+			if !userCounterpartConfirmed(userManifest, embedded, homeDir, relSlash) {
 				// Optional-pack (non-L0) asset without an opted-in selection,
 				// or a failed counterpart write: stays project-side, reported
 				// — and gated out of the cleanup list (F2).
@@ -167,22 +185,27 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, out fmt.Stringer, r
 
 // userCounterpartConfirmed reports whether the project file's user-side
 // counterpart is manifest-tracked with a hash matching the installed bytes
-// (REQ-020's per-asset gate). The mapping is mechanical: a project path
+// AND carries the CURRENT version's content (REQ-020's per-asset gate).
+// The mapping is mechanical: a project path
 // .claude/skills/<name>/X ↔ user key claude-skills/<name>/X;
 // .agents/skills/<name>/X ↔ agents-skills/<name>/X;
 // .claude/agents/moai/<n>.md ↔ claude-agents/<n>.md;
 // .codex/agents/moai/<n>.toml ↔ codex-agents/<n>.toml.
-func userCounterpartConfirmed(userManifest *userassets.Manifest, homeDir, projectRel string) bool {
-	var userKey string
+func userCounterpartConfirmed(userManifest *userassets.Manifest, embedded fs.FS, homeDir, projectRel string) bool {
+	var userKey, sourceRel string
 	switch {
 	case strings.HasPrefix(projectRel, ".claude/skills/"):
-		userKey = "claude-skills/" + strings.TrimPrefix(projectRel, ".claude/skills/")
+		rest := strings.TrimPrefix(projectRel, ".claude/skills/")
+		userKey, sourceRel = "claude-skills/"+rest, projectRel
 	case strings.HasPrefix(projectRel, ".agents/skills/"):
-		userKey = "agents-skills/" + strings.TrimPrefix(projectRel, ".agents/skills/")
+		rest := strings.TrimPrefix(projectRel, ".agents/skills/")
+		userKey, sourceRel = "agents-skills/"+rest, projectRel
 	case strings.HasPrefix(projectRel, ".claude/agents/moai/"):
-		userKey = "claude-agents/" + strings.TrimPrefix(projectRel, ".claude/agents/moai/")
+		rest := strings.TrimPrefix(projectRel, ".claude/agents/moai/")
+		userKey, sourceRel = "claude-agents/"+rest, projectRel
 	case strings.HasPrefix(projectRel, ".codex/agents/moai/"):
-		userKey = "codex-agents/" + strings.TrimPrefix(projectRel, ".codex/agents/moai/")
+		rest := strings.TrimPrefix(projectRel, ".codex/agents/moai/")
+		userKey, sourceRel = "codex-agents/"+rest, projectRel
 	default:
 		return false
 	}
@@ -210,7 +233,23 @@ func userCounterpartConfirmed(userManifest *userassets.Manifest, homeDir, projec
 	// manifest stores the 'sha256:<hex>' prefix form — the two formats are
 	// intentionally distinct (B4).
 	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:]) == fe.SHA256
+	if hex.EncodeToString(sum[:]) != fe.SHA256 {
+		return false
+	}
+	// Repair round (card t1547, leader scope addition #5): the record
+	// agreeing with the disk is STILL not confirmation — an old-version
+	// record agrees with an old-version file, and a failed or refused
+	// update (a symlink refusal, --templates-only) leaves exactly that pair
+	// behind while the deletion proceeds. The counterpart must be the
+	// CURRENT version's content: byte-equal to the source this binary
+	// installs from (the installer is a plain copy of the embedded
+	// deploy-path tree). A counterpart that is not this version's install
+	// is not a counterpart, and the project file stays.
+	current, err := fs.ReadFile(embedded, sourceRel)
+	if err != nil {
+		return false
+	}
+	return bytes.Equal(data, current)
 }
 
 // withinRootBoundary reports whether path is inside (or equal to) the

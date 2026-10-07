@@ -83,7 +83,7 @@ func TestSkipSyncNoArchive(t *testing.T) {
 		cmd.Flags().Bool("force", false, "")
 
 		// Contract: version match + !force → skipped=true, no error.
-		skipped, syncErr := runTemplateSyncWithProgress(cmd)
+		skipped, syncErr := runTemplateSyncWithProgress(cmd, true)
 		if syncErr != nil {
 			t.Fatalf("runTemplateSyncWithProgress: %v", syncErr)
 		}
@@ -160,7 +160,7 @@ func TestSkipSyncNoArchive(t *testing.T) {
 		requireNotRealHome(t, home)
 
 		// Contract: version match + --force → skipped=false (sync runs).
-		skipped, _ := runTemplateSyncWithProgress(cmd)
+		skipped, _ := runTemplateSyncWithProgress(cmd, true)
 		// We do not assert on err: when running outside the dev project tree,
 		// template deployment may fail; the contract under test is the
 		// skipped flag, not the deployment outcome.

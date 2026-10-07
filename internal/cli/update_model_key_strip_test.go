@@ -238,7 +238,7 @@ func TestUserCancelledMerge_LeavesConfigByteIdentical(t *testing.T) {
 	t.Cleanup(func() { confirmViaPreviewFn = prev })
 
 	cmd, buf := stripTestCmd(false)
-	skipped, err := runTemplateSyncWithProgress(cmd)
+	skipped, err := runTemplateSyncWithProgress(cmd, true)
 	if err != nil || !skipped {
 		t.Fatalf("cancelled sync = (%v, %v), want (true, nil)", skipped, err)
 	}

@@ -13,6 +13,8 @@ package cli
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -24,7 +26,9 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/merge"
 	"github.com/modu-ai/moai-adk/internal/template"
+	"github.com/modu-ai/moai-adk/internal/userassets"
 )
 
 // migration fixture paths (the AC-010 fixture shapes, reused end to end).
@@ -686,7 +690,7 @@ func TestMigrationPreservesExistingMirrorEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 	home := installMigrationUserCounterparts(t)
-	if err := migrateProjectCommonAssets(root, home, nil, func(string, ...interface{}) {}); err != nil {
+	if err := migrateProjectCommonAssets(root, home, true, nil, func(string, ...interface{}) {}); err != nil {
 		t.Fatal(err)
 	}
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
@@ -786,5 +790,170 @@ func TestUpdatePreservesUserModifiedPolicies(t *testing.T) {
 	}
 	if string(sidecar) != string(source) {
 		t.Errorf("sidecar does not carry the template render")
+	}
+}
+
+// TestCommonAssetCleanFilterNormalizesSeparators is the Windows-shaped repro
+// for the clean-scope exclusion (repair round, leader directive): on Windows
+// ManagedCleanTargets builds DisplayPath with filepath.Join, so the display
+// path carries backslashes while projectCommonAssetRels uses slash roots —
+// a raw prefix comparison misses, the exclusion silently lets the
+// common-asset roots back into the clean scope, and the cleanup deletes
+// skills the migration just preserved (user-modified copy loss).
+// Preservation is platform-independent: the comparison normalizes to slash
+// form first.
+func TestCommonAssetCleanFilterNormalizesSeparators(t *testing.T) {
+	// Windows-shaped inputs, constructed directly (the shape filepath.Join
+	// produces on GOOS=windows).
+	windowsShaped := func(rel string) string {
+		return strings.ReplaceAll(rel, "/", "\\")
+	}
+	for _, path := range []string{
+		windowsShaped(".claude/skills/moai-foundation-core/SKILL.md"),
+		windowsShaped(".claude/skills"),
+		windowsShaped(".agents/skills/moai-custom/SKILL.md"),
+		windowsShaped(".claude/agents/moai/manager-develop.md"),
+		windowsShaped(".codex/agents/moai/manager-develop.toml"),
+	} {
+		if !isCommonAssetCleanTarget(path) {
+			t.Errorf("common-asset filter missed the Windows-shaped path %q — the clean scope would delete preserved assets", path)
+		}
+	}
+	// The slash forms keep matching, and non-common roots stay outside.
+	for _, path := range []string{".claude/skills/moai-foundation-core/SKILL.md", ".claude/rules/moai/core"} {
+		want := path != ".claude/rules/moai/core"
+		if got := isCommonAssetCleanTarget(path); got != want {
+			t.Errorf("isCommonAssetCleanTarget(%q) = %v, want %v", path, got, want)
+		}
+	}
+}
+
+// TestMigrationRefusesRemovalWhenUserInstallMissing is the Gate-A repro
+// (repair round, leader scope addition #5): the removal arm runs ONLY when
+// THIS invocation's user-asset install succeeded. A failed, cancelled, or
+// skipped install leaves every project-side asset in place — even one whose
+// counterpart record and bytes would otherwise confirm removal, because the
+// confirmation evidence a removal rests on is THIS run's install.
+func TestMigrationRefusesRemovalWhenUserInstallMissing(t *testing.T) {
+	root := buildMigrationFixture(t)
+	home := installMigrationUserCounterparts(t)
+
+	// The counterpart record and bytes WOULD confirm removal (the identical
+	// skill's user copy is installed and current) — the missing install
+	// still refuses it.
+	if err := migrateProjectCommonAssets(root, home, false, nil, func(string, ...interface{}) {}); err != nil {
+		t.Fatal(err)
+	}
+	assertFilePresent(t, root, migIdenticalSkill)
+}
+
+// TestUserCounterpartMustBeCurrentVersion is the Gate-B repro (repair round,
+// leader scope addition #5): a counterpart record agreeing with an
+// OLD-version user file must NOT confirm removal — the counterpart must be
+// the CURRENT version's content, byte-equal to the source this binary
+// installs from. The old-record-agrees-with-old-file pair is exactly what a
+// refused update (a symlink refusal, --templates-only) leaves behind while
+// the deletion proceeds, destroying the newest remaining copy.
+func TestUserCounterpartMustBeCurrentVersion(t *testing.T) {
+	home := t.TempDir()
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const rel = ".claude/skills/moai-foundation-core/SKILL.md"
+	stale := []byte("OLD-VERSION CONTENT — no longer what this binary ships\n")
+	sum := sha256.Sum256(stale)
+	um := &userassets.Manifest{Files: map[string]userassets.FileEntry{
+		"claude-skills/moai-foundation-core/SKILL.md": {
+			SHA256: hex.EncodeToString(sum[:]), Bundle: "core",
+			InstalledAt: "t0", MoaiVersion: "vOld",
+		},
+	}}
+	dir := userassets.RootBySlugDir(home, userassets.RootSlug("claude-skills"))
+	if dir == "" {
+		t.Fatal("claude-skills root dir unresolved")
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "moai-foundation-core"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "moai-foundation-core", "SKILL.md"), stale, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// The record matches the stale disk bytes (the F4 gate passes) — the
+	// current-version gate must still refuse.
+	if userCounterpartConfirmed(um, embedded, home, rel) {
+		t.Error("a stale old-version counterpart confirmed removal — the current-version check is missing")
+	}
+
+	// The control: the CURRENT version's bytes DO confirm.
+	current, err := fs.ReadFile(embedded, rel)
+	if err != nil {
+		t.Fatalf("embedded source: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "moai-foundation-core", "SKILL.md"), current, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sum = sha256.Sum256(current)
+	um.Files["claude-skills/moai-foundation-core/SKILL.md"] = userassets.FileEntry{
+		SHA256: hex.EncodeToString(sum[:]), Bundle: "core",
+		InstalledAt: "t1", MoaiVersion: "vCurrent",
+	}
+	if !userCounterpartConfirmed(um, embedded, home, rel) {
+		t.Error("the current-version counterpart did not confirm — the gate over-refuses")
+	}
+}
+
+// TestCancelledUpdateKeepsProjectManagedAssets is the cancel-path repro
+// (repair round, gate r5 finding): the project migration's removal arm runs
+// AFTER the confirmation gate — cancelling the update leaves the project's
+// managed assets byte-intact and the record unwritten. The original defect's
+// deletion-before-prompt lived in runUpdate (observed by the gate overlay's
+// cancelled-migration repro); this test pins the fixed contract at the gate
+// the fix placed it behind.
+func TestCancelledUpdateKeepsProjectManagedAssets(t *testing.T) {
+	root := buildMigrationFixture(t)
+	home := installMigrationUserCounterparts(t)
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	cmd := &cobra.Command{Use: "update"}
+	cmd.Flags().Bool("force", false, "")
+	cmd.Flags().Bool("yes", false, "")
+	cmd.Flags().Bool("no-hooks", true, "")
+	cmd.Flags().Bool("no-plugin", false, "")
+	cmd.Flags().Bool("dry-run", false, "")
+	cmd.Flags().String("check", "", "")
+	var out strings.Builder
+	cmd.SetOut(&out)
+	cmd.SetContext(context.Background())
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(origDir) })
+
+	prev := confirmViaPreviewFn
+	confirmViaPreviewFn = func(merge.MergeAnalysis, string) (bool, error) { return false, nil }
+	t.Cleanup(func() { confirmViaPreviewFn = prev })
+
+	skipped, err := runTemplateSyncWithProgress(cmd, true)
+	if err != nil {
+		t.Fatalf("runTemplateSyncWithProgress: %v", err)
+	}
+	if !skipped {
+		t.Errorf("a cancelled run must report skipped, got false")
+	}
+	if !strings.Contains(out.String(), "Merge cancelled by user") {
+		t.Errorf("cancellation banner missing from output:\n%s", out.String())
+	}
+	// The project's managed asset survives the cancelled run byte-for-byte.
+	assertFilePresent(t, root, migIdenticalSkill)
+	if got := config.ReadDeployMode(root); got != "" {
+		t.Errorf("deployment_mode = %q after a cancelled run, want empty", got)
 	}
 }

@@ -1095,7 +1095,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 // A skipped sync is not an error; callers receive (true, nil).
 // A user-cancelled merge is also (true, nil) — it is a no-op for downstream
 // purposes (no files written), so archive does not need to run.
-func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
+// runTemplateSyncWithProgress is `moai update`'s sync entry: the
+// version-match skip, the interactive confirmation (unless --yes), then the
+// reporter-driven flow. userAssetsInstalled rides in from the user-asset
+// phase (runUpdate) as the project migration's run-level removal gate — the
+// migration itself runs BELOW, after this function's confirmation gate.
+func runTemplateSyncWithProgress(cmd *cobra.Command, userAssetsInstalled bool) (skipped bool, err error) {
 	out := cmd.OutOrStdout()
 	th := resolveTheme()
 	projectRoot := "."
@@ -1138,6 +1143,22 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
 			_, _ = fmt.Fprintln(out)
 			_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillNeutral, Solid: false, Label: "Merge cancelled by user", Theme: &th}))
 			return true, nil
+		}
+	}
+
+	// Item 5 (fix round 3), relocated by the repair round (gate r5 finding):
+	// the per-file project migration runs HERE — after the confirmation gate
+	// above, whose cancel return already exited — so a cancelled update
+	// leaves the project's managed assets byte-intact. The user-side install
+	// (runUpdate, before this prompt) still precedes the removal, and
+	// userAssetsInstalled gates every removal: a failed or skipped install
+	// leaves the project-side assets in place (leader scope addition #5 —
+	// the stale-counterpart deletion hazard).
+	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+		if err := migrateProjectCommonAssets(projectRoot, homeDir, userAssetsInstalled, nil, func(format string, args ...interface{}) {
+			_, _ = fmt.Fprintf(out, format+"\n", args...)
+		}); err != nil {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: migration warning: %v\n", err)
 		}
 	}
 
