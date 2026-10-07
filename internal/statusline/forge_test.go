@@ -233,3 +233,58 @@ func TestForgeOverride_EmptyRootIsANoOp(t *testing.T) {
 		t.Errorf("forgeOverride(\"\") = %q, want empty", got)
 	}
 }
+
+// writeLocalForgeOverride pins the forge in the update-durable local file —
+// the .moai/ root location `moai update` never touches (card t1583).
+func writeLocalForgeOverride(t *testing.T, root, forge string) {
+	t.Helper()
+
+	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := "statusline:\n  forge: " + forge + "\n"
+	if err := os.WriteFile(filepath.Join(root, ".moai", "statusline.local.yaml"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestForgeOverride_LocalFileWins(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	writeForgeOverride(t, root, "github")
+	writeLocalForgeOverride(t, root, "gitlab")
+
+	if got := forgeOverride(root); got != "gitlab" {
+		t.Errorf("forgeOverride = %q, want %q (the local file outranks the managed one)", got, "gitlab")
+	}
+}
+
+// The shape card t1583 landed for: an override written straight to the local
+// file decides even though the managed statusline.yaml carries no key — so a
+// per-repo forge choice survives `moai update` redeploying the config root.
+func TestForgeOverride_LocalFileAloneDecides(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	writeLocalForgeOverride(t, root, "github")
+
+	if got := forgeOverride(root); got != "github" {
+		t.Errorf("forgeOverride = %q, want %q (no managed file needed)", got, "github")
+	}
+}
+
+func TestForgeOverride_MalformedLocalFallsThroughToManaged(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	writeForgeOverride(t, root, "gitlab")
+	local := filepath.Join(root, ".moai", "statusline.local.yaml")
+	if err := os.WriteFile(local, []byte("statusline:\n  forge: ["), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := forgeOverride(root); got != "gitlab" {
+		t.Errorf("forgeOverride = %q, want %q (an unreadable local file must not void the managed one)", got, "gitlab")
+	}
+}
