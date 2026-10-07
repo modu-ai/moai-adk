@@ -1,0 +1,493 @@
+package cli
+
+// factory_card_pr.go — the github-flow card delivery edge of
+// `moai factory complete` (SPEC-GITHUB-FLOW-DEFAULT-001 M2-B, REQ-GFD-004/005/006,
+// design D-1, D-4, D-20).
+//
+// Under github-flow `complete` does not merge locally and does not take the
+// integration window. It checks merge-readiness against the integration target
+// (the condition triple, before anything is pushed or opened), pushes the card
+// branch to origin, opens a pull request whose base is the target and whose
+// head is the card branch, asks for auto-merge with the configured merge
+// method, and records `pr-open`. A later `complete` reads the PR through
+// `gh pr view`; only when it reads MERGED — from the card's own tip, with the
+// merge commit on origin's integration branch — does the record move to
+// `merged-pr`. Every gh failure, timeout or unreadable answer is "cannot
+// confirm": the verb reports it and the record keeps what it had.
+//
+// git-flow never reaches this file: factoryCompleteCard hands over only when
+// the active git strategy's workflow is github-flow. The merge queue stays
+// deferred (design D-3): one PR per card, no merge_group.
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/factorylane"
+	"github.com/modu-ai/moai-adk/internal/homestate"
+)
+
+// factoryGHTimeout bounds one `gh` call of the delivery edge (design D-5: 10 s,
+// no retry; the delivery edge uses the bound the landing predicate uses).
+var factoryGHTimeout = 10 * time.Second
+
+// factoryGH is the `gh` execution seam of the delivery edge: it runs `gh` in
+// dir under ctx and returns stdout. Tests replace it with a double; nothing in
+// the test binary may reach the real gh CLI or the network.
+var factoryGH = func(ctx context.Context, dir string, args ...string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, "gh", args...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "GH_PROMPT_DISABLED=1")
+	// A gh that ignores the kill must not hold the call past its bound.
+	cmd.WaitDelay = 2 * time.Second
+	return cmd.Output()
+}
+
+// factoryPRFields is the `gh pr view --json` field list the edge reads.
+const factoryPRFields = "number,url,state,baseRefName,headRefName,headRefOid,mergeCommit"
+
+// factoryPR is the subset of a pull request the delivery edge reads.
+type factoryPR struct {
+	Number      int    `json:"number"`
+	URL         string `json:"url"`
+	State       string `json:"state"`
+	BaseRefName string `json:"baseRefName"`
+	HeadRefName string `json:"headRefName"`
+	HeadRefOid  string `json:"headRefOid"`
+	MergeCommit *struct {
+		Oid string `json:"oid"`
+	} `json:"mergeCommit"`
+}
+
+// factoryGitHubFlow reports whether the project's active git strategy is
+// github-flow — the only configuration the delivery edge is live under. An
+// absent or unreadable git-strategy.yaml, and every other workflow, is not.
+func factoryGitHubFlow(root string) bool {
+	return config.LoadGitFlowIntegrationConfig(root).Workflow == config.WorkflowGitHubFlow
+}
+
+// factoryPRMergeFlag maps git_strategy.<mode>.merge_method to the `gh pr merge`
+// flag. An absent or unrecognized method is the default, squash (spec-workflow
+// § SPEC Phase Discipline: the configured merge_method, default squash).
+func factoryPRMergeFlag(method string) string {
+	switch strings.ToLower(strings.TrimSpace(method)) {
+	case "merge":
+		return "--merge"
+	case "rebase":
+		return "--rebase"
+	default:
+		return "--squash"
+	}
+}
+
+// factoryGHCall runs one gh call under the bound and returns stdout. A timeout
+// and a non-zero exit are both errors; gh's own stderr rides in the message so
+// a caller can tell "no pull requests found" from a failure.
+func factoryGHCall(dir string, args ...string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), factoryGHTimeout)
+	defer cancel()
+	out, err := factoryGH(ctx, dir, args...)
+	name := "gh " + strings.Join(args[:min(2, len(args))], " ")
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return nil, fmt.Errorf("%s did not answer within %s: %w", name, factoryGHTimeout, ctxErr)
+	}
+	if err != nil {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) && len(ee.Stderr) > 0 {
+			return nil, fmt.Errorf("%s: %w: %s", name, err, strings.TrimSpace(string(ee.Stderr)))
+		}
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+	return out, nil
+}
+
+// factoryReadPR reads the pull request whose head is branch. found is false
+// only when gh says there is none; every other failure is an error ("cannot
+// confirm").
+func factoryReadPR(dir, branch string) (pr *factoryPR, found bool, err error) {
+	out, err := factoryGHCall(dir, "pr", "view", branch, "--json", factoryPRFields)
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "no pull requests found") {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	var got factoryPR
+	if err := json.Unmarshal(out, &got); err != nil {
+		return nil, false, fmt.Errorf("gh pr view for %s: unreadable answer: %w", branch, err)
+	}
+	if got.Number <= 0 || strings.TrimSpace(got.URL) == "" {
+		return nil, false, fmt.Errorf("gh pr view for %s: the answer carries no pull request number and URL", branch)
+	}
+	return &got, true, nil
+}
+
+// factoryGitRead runs `git -C dir <args>` and returns trimmed stdout.
+func factoryGitRead(dir string, args ...string) (string, error) {
+	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	out, err := cmd.Output()
+	if err != nil {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) && len(ee.Stderr) > 0 {
+			return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(ee.Stderr)))
+		}
+		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// factoryCompleteGitHubFlow is the github-flow body of `moai factory complete`
+// (called from factoryCompleteCard once the Codex refusal has passed). It takes
+// no integration window and never merges locally.
+func factoryCompleteGitHubFlow(ctx context.Context, out io.Writer, root, cardID, remeasure, run, lane string) error {
+	if strings.TrimSpace(remeasure) != "" {
+		return fmt.Errorf("factory complete: the re-measure positional is the git-flow merge record; under github-flow the delivery evidence is the pull request, so none is taken")
+	}
+	runID, err := resolveFactoryCardRun(ctx, root, run)
+	if err != nil {
+		return fmt.Errorf("factory complete: %w", err)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return fmt.Errorf("factory complete: %w", err)
+	}
+	defer func() { _ = db.Close() }()
+	card, err := db.LoadCard(ctx, runID, cardID)
+	if err != nil {
+		return fmt.Errorf("factory complete: %w", err)
+	}
+	cfg := config.LoadGitFlowIntegrationConfig(root)
+	target := cfg.IntegrationTarget
+	if target == "" {
+		return fmt.Errorf("factory complete: no integration target is configured, so the pull request's base would be a guess: %s", cfg.EmptyTargetGuidance(root, "set the workflow"))
+	}
+	cardBranch := factoryBranchOfWorktree(card.WorktreePath)
+	if cardBranch == "" || cardBranch == "HEAD" || cardBranch == target {
+		return fmt.Errorf("factory complete: refused — card %s's worktree %q is not on a card branch (reads %q, integration target %q)", card.CardID, card.WorktreePath, cardBranch, target)
+	}
+	// A lane completes only its own card (card-review r1): the pr-open and
+	// merged-pr edges have no lease-holder seam of their own, so the
+	// ownership check lives here — ahead of every transition and every queue
+	// write this verb performs.
+	if card.OwnerLabel != lane && card.LeaseHolder != lane {
+		return fmt.Errorf("factory complete: refused — card %s belongs to %s (lease %s), not %s; a lane completes only its own card", card.CardID, dash(card.OwnerLabel), dash(card.LeaseHolder), lane)
+	}
+
+	switch card.State {
+	case homestate.CardPROpen:
+		return factoryObservePRMerge(ctx, out, db, root, runID, card, cardBranch, target, lane)
+	case homestate.CardMergedPR:
+		_, _ = fmt.Fprintf(out, "%s %s merge=%s — nothing to do\n", card.CardID, card.State, card.MergeSHA)
+		// The merged-pr state IS the mechanical landing answer; a queue card
+		// an earlier run failed to close is reconciled here (card t1542).
+		factoryCloseLaneCard(out, root, runID, card, lane, target)
+		return nil
+	case homestate.CardMergeReady, homestate.CardMerging:
+		return factoryDeliverByPR(ctx, out, db, root, runID, card, cardBranch, target, cfg.MergeMethod, lane)
+	}
+	return fmt.Errorf("factory complete: card %s is %s; complete takes a merge-ready, merging or pr-open card", card.CardID, card.State)
+}
+
+// factoryPRReadiness runs the condition triple (sync audit PASS record,
+// conflict-free merge-tree, tree identity) against the integration target's
+// remote ref — the ref the PR will merge into — and records the run. It never
+// merges and takes no window.
+func factoryPRReadiness(out io.Writer, root string, card homestate.Card, lane, cardBranch, target string) (factorylane.MergeCheckRun, error) {
+	wt := card.WorktreePath
+	ref := target
+	if _, err := factoryGitRead(wt, "fetch", "origin", target); err != nil {
+		_, _ = fmt.Fprintf(out, "  note: could not fetch origin/%s (%v); probing the last fetched ref\n", target, err)
+	}
+	if _, err := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+target); err == nil {
+		ref = "origin/" + target
+	}
+	specDir := ""
+	if card.SpecID != "" { // a SPEC-less card reads its verdict file (empty SpecDir)
+		specDir = filepath.Join(wt, ".moai", "specs", card.SpecID)
+	}
+	run, err := factorylane.EvaluateMergeTriple(factorylane.MergeTripleInput{
+		Lane:    lane,
+		Card:    card.CardID,
+		SpecDir: specDir,
+		Branch:  cardBranch,
+		Develop: ref,
+		RepoDir: wt,
+	}, factorylane.ExecGitRunner{Dir: wt})
+	if err != nil {
+		return run, err
+	}
+	return factorylane.NewStore(root, nil).RecordMergeCheckRun(run)
+}
+
+// factoryDeliverByPR is the merge-ready/merging half: check, push, open, ask
+// for auto-merge, record pr-open. Everything that can refuse without changing a
+// record runs before the first record change.
+func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.FactoryDB, root, runID string, card homestate.Card, cardBranch, target, method, lane string) error {
+	wt := card.WorktreePath
+	if _, err := factoryGitRead(wt, "config", "--get", "remote.origin.url"); err != nil {
+		return fmt.Errorf("factory complete: refused — the repository has no remote named origin to push %s to", cardBranch)
+	}
+	// The deliver half performs EXTERNAL mutations (push, pull request,
+	// auto-merge), so a retry on a card whose lease has lapsed must refuse
+	// before any of them runs — an expired lease is no authority to touch
+	// the remote (card-review r5). The observation half (pr-open) is
+	// different by design: the lease is released there, and reading the PR
+	// mutates nothing.
+	if card.LeaseHolder != lane || card.LeaseExpired(factoryCardNow()) {
+		return fmt.Errorf("factory complete: refused — card %s's lease is held by %s and %s; delivering to the remote needs a live lease of the calling lane's own card",
+			card.CardID, dash(card.LeaseHolder), func() string {
+				if card.LeaseExpired(factoryCardNow()) {
+					return "has expired"
+				}
+				return "is not this lane"
+			}())
+	}
+	// The tip is pinned BEFORE the readiness triple runs (card-review r7):
+	// a SHA read after the check would let a commit landing mid-check become
+	// the auto-merge target. The post-check re-read below turns any such
+	// movement into a refusal.
+	verifiedTip, err := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
+	if err != nil {
+		return fmt.Errorf("factory complete: cannot read the branch tip before the readiness check: %w", err)
+	}
+	// REQ-GFD-005: the readiness check precedes the PR; a failing check opens nothing.
+	run, err := factoryPRReadiness(out, root, card, lane, cardBranch, target)
+	if err != nil {
+		return fmt.Errorf("factory complete: the merge-readiness check could not run: %w", err)
+	}
+	if !run.AllPassed {
+		_, _ = fmt.Fprintf(out, "merge-readiness: REFUSED — failing condition: %s\nno pull request was opened\n", run.FailedCondition)
+		printMergeChecks(out, run.Checks)
+		return fmt.Errorf("factory complete: refused — merge-readiness failed on %s against %s; no branch was pushed and no pull request was opened", run.FailedCondition, target)
+	}
+
+	stays := fmt.Sprintf("card %s stays in merging", card.CardID)
+
+	// Stop-on-change (AGENTS.md §2, card-review r6/r7): a commit that landed
+	// while the readiness triple ran was never judged — refuse rather than
+	// pin it.
+	if moved, err := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", "HEAD^{commit}"); err != nil {
+		return fmt.Errorf("factory complete: %s; cannot re-read the branch tip after the readiness check: %w", stays, err)
+	} else if moved != verifiedTip {
+		return fmt.Errorf("factory complete: refused — %s's branch moved during the readiness check (%s → %s); re-run complete to judge the new tip",
+			card.CardID, verifiedTip, moved)
+	}
+
+	cur := card
+	if card.State == homestate.CardMergeReady {
+		// T14 — the lease holder's edge, refused by F1 verbatim for any other lane.
+		cur, err = db.Transition(ctx, homestate.TransitionRequest{
+			RunID: runID, CardID: card.CardID, To: homestate.CardMerging,
+			ExpectedVersion: card.Version, Actor: lane, Now: factoryCardNow(),
+		})
+		if err != nil {
+			return fmt.Errorf("factory complete: %w", err)
+		}
+	}
+
+	// Re-validate the card immediately before each external mutation (card
+	// review r6/r7): a lease that lapses between the entry check and the gh
+	// calls is no authority to touch the remote, and a card that moved state
+	// or version (a concurrent abandon preserves the lease fields, so the
+	// lease predicates alone cannot see it) must not ride the request either.
+	// The re-load is the fresh truth; cur.Version is the version this
+	// invocation's record writes ride on.
+	revalidateLease := func(where string) error {
+		fresh, err := db.LoadCard(ctx, runID, card.CardID)
+		if err != nil {
+			return fmt.Errorf("factory complete: %s; %s: cannot re-read the card: %w", stays, where, err)
+		}
+		if fresh.LeaseHolder != lane || fresh.LeaseExpired(factoryCardNow()) {
+			return fmt.Errorf("factory complete: %s; %s: card %s's lease is no longer live for %s (holder %s) — the remote was left untouched",
+				stays, where, card.CardID, lane, dash(fresh.LeaseHolder))
+		}
+		if fresh.State != homestate.CardMergeReady && fresh.State != homestate.CardMerging {
+			return fmt.Errorf("factory complete: %s; %s: card %s is %s, no longer deliverable — the remote was left untouched",
+				stays, where, card.CardID, fresh.State)
+		}
+		if fresh.Version != cur.Version {
+			return fmt.Errorf("factory complete: %s; %s: card %s moved to v%d while this run judged v%d — the remote was left untouched",
+				stays, where, card.CardID, fresh.Version, cur.Version)
+		}
+		return nil
+	}
+
+	if err := revalidateLease("before the push"); err != nil {
+		return err
+	}
+	if _, err := factoryGitRead(wt, "push", "origin", cardBranch); err != nil {
+		return fmt.Errorf("factory complete: %s; the push of %s failed: %w", stays, cardBranch, err)
+	}
+	if err := revalidateLease("before the pull request"); err != nil {
+		return err
+	}
+	pr, found, err := factoryReadPR(wt, cardBranch)
+	if err != nil {
+		return fmt.Errorf("factory complete: %s; the pull request could not be read, so none is opened: %w", stays, err)
+	}
+	if !found {
+		if err := revalidateLease("before pr create"); err != nil {
+			return err
+		}
+		title, body := factoryPRText(wt, card, target)
+		if _, err := factoryGHCall(wt, "pr", "create", "--base", target, "--head", cardBranch, "--title", title, "--body", body); err != nil {
+			return fmt.Errorf("factory complete: %s; opening the pull request failed: %w", stays, err)
+		}
+		if pr, found, err = factoryReadPR(wt, cardBranch); err != nil || !found {
+			return fmt.Errorf("factory complete: %s; the pull request was opened but could not be read back (re-run complete): %v", stays, errOr(err, "no pull request found"))
+		}
+	}
+	if strings.EqualFold(pr.State, "CLOSED") {
+		return fmt.Errorf("factory complete: %s; pull request #%d is closed without merging — an operator decides", stays, pr.Number)
+	}
+	if pr.BaseRefName != target {
+		return fmt.Errorf("factory complete: %s; pull request #%d targets %q, not the integration target %q", stays, pr.Number, pr.BaseRefName, target)
+	}
+	mergeFlag := factoryPRMergeFlag(method)
+	if !strings.EqualFold(pr.State, "MERGED") {
+		if err := revalidateLease("before the auto-merge request"); err != nil {
+			return err
+		}
+		// --match-head-commit pins the auto-merge to the tip the readiness
+		// triple judged: a commit pushed to the branch in the meantime makes
+		// GitHub hold (not silently merge) the request.
+		if _, err := factoryGHCall(wt, "pr", "merge", strconv.Itoa(pr.Number), "--auto", mergeFlag, "--match-head-commit", verifiedTip); err != nil {
+			return fmt.Errorf("factory complete: %s; pull request #%d is open but the auto-merge request failed: %w", stays, pr.Number, err)
+		}
+	}
+	open, err := db.Transition(ctx, homestate.TransitionRequest{
+		RunID: runID, CardID: card.CardID, To: homestate.CardPROpen,
+		ExpectedVersion: cur.Version, Actor: lane, IntegrationBranch: target,
+		PRNumber: strconv.Itoa(pr.Number), PRURL: pr.URL, Now: factoryCardNow(),
+	})
+	if err != nil {
+		return fmt.Errorf("factory complete: %s; pull request #%d is open but the F1 record refused pr-open: %w", stays, pr.Number, err)
+	}
+	_, _ = fmt.Fprintf(out, "%s %s pr=%s branch=%s base=%s\n", open.CardID, open.State, pr.URL, cardBranch, target)
+	_, _ = fmt.Fprintf(out, "  auto-merge requested (%s); run moai factory complete %s again once the pull request merges to record merged-pr\n", mergeFlag, open.CardID)
+	if strings.EqualFold(pr.State, "MERGED") {
+		return factoryObservePRMerge(ctx, out, db, root, runID, open, cardBranch, target, lane)
+	}
+	return nil
+}
+
+func errOr(err error, fallback string) string {
+	if err != nil {
+		return err.Error()
+	}
+	return fallback
+}
+
+// factoryPRText composes the pull request's title and body: the card id leads
+// the title (the traceability carrier), the body names the evidence path and
+// closes with the attribution line.
+func factoryPRText(wt string, card homestate.Card, target string) (title, body string) {
+	subject, err := factoryGitRead(wt, "log", "-1", "--format=%s")
+	if err != nil || subject == "" {
+		subject = "card " + card.CardID
+	}
+	title = "[" + card.CardID + "] " + subject
+	var b strings.Builder
+	fmt.Fprintf(&b, "Card: %s\n", card.CardID)
+	if card.SpecID != "" {
+		fmt.Fprintf(&b, "SPEC: %s\n", card.SpecID)
+	}
+	fmt.Fprintf(&b, "Evidence: .moai/reports/%s/verdict.md\n\n", card.CardID)
+	fmt.Fprintf(&b, "Opened by `moai factory complete` after the merge-readiness check against %s (sync audit PASS record, conflict-free merge, tree identity).\n\n", target)
+	b.WriteString("🗿 MoAI")
+	return title, b.String()
+}
+
+// factoryObservePRMerge is the pr-open half: read the PR; record merged-pr only
+// when it reads MERGED from exactly this card's tip and the merge commit is on
+// origin's integration branch. An open PR is a clean "not yet"; every other
+// answer is "cannot confirm" and records nothing.
+func factoryObservePRMerge(ctx context.Context, out io.Writer, db *homestate.FactoryDB, root, runID string, card homestate.Card, cardBranch, target, lane string) error {
+	wt := card.WorktreePath
+	stays := fmt.Sprintf("card %s stays pr-open", card.CardID)
+	pr, found, err := factoryReadPR(wt, cardBranch)
+	if err != nil {
+		return fmt.Errorf("factory complete: %s; cannot confirm the pull request: %w", stays, err)
+	}
+	if !found {
+		return fmt.Errorf("factory complete: %s; no pull request is found for %s — cannot confirm", stays, cardBranch)
+	}
+	switch strings.ToUpper(pr.State) {
+	case "OPEN":
+		_, _ = fmt.Fprintf(out, "%s %s pr=%s — the pull request is still open; nothing recorded, run complete again after it merges\n", card.CardID, card.State, pr.URL)
+		return nil
+	case "MERGED":
+	default:
+		return fmt.Errorf("factory complete: %s; pull request #%d is %s without merging — an operator decides", stays, pr.Number, strings.ToLower(pr.State))
+	}
+	tip, err := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
+	if err != nil {
+		return fmt.Errorf("factory complete: %s; cannot read the card tip: %w", stays, err)
+	}
+	if pr.HeadRefOid != tip {
+		return fmt.Errorf("factory complete: %s; pull request #%d merged head %s but the card worktree holds %s — what merged is not what the card holds, cannot confirm", stays, pr.Number, pr.HeadRefOid, tip)
+	}
+	if pr.MergeCommit == nil || strings.TrimSpace(pr.MergeCommit.Oid) == "" {
+		return fmt.Errorf("factory complete: %s; pull request #%d reads MERGED but names no merge commit — cannot confirm", stays, pr.Number)
+	}
+	if _, err := factoryGitRead(wt, "fetch", "origin", target); err != nil {
+		return fmt.Errorf("factory complete: %s; cannot fetch origin/%s to verify the merge commit: %w", stays, target, err)
+	}
+	merged, err := db.Transition(ctx, homestate.TransitionRequest{
+		RunID: runID, CardID: card.CardID, To: homestate.CardMergedPR,
+		ExpectedVersion: card.Version, Actor: lane, MergeSHA: pr.MergeCommit.Oid, IntegrationBranch: target,
+		PRNumber: strconv.Itoa(pr.Number), Now: factoryCardNow(),
+	})
+	if err != nil {
+		return fmt.Errorf("factory complete: %s; the F1 record refused merged-pr: %w", stays, err)
+	}
+	_, _ = fmt.Fprintf(out, "%s %s merge=%s pr=%s branch=%s base=%s\n", merged.CardID, merged.State, merged.MergeSHA, pr.URL, cardBranch, target)
+	// The runtime completion's archive authority (card t1542): the record
+	// just moved to merged-pr, which IS the mechanical landing answer — the
+	// pull request merged from this card's tip into the integration target —
+	// so the lane closes its own queue card here instead of leaving every
+	// completion to a leader `todo done`.
+	factoryCloseLaneCard(out, root, runID, merged, lane, target)
+	factoryPrintClearPolicyLine(out, root)
+	return nil
+}
+
+// factoryCloseLaneCard closes the lane's own queue card at completion
+// authority (card t1542): one locked archive write with the verdict the
+// delivery edge answered, then the runtime completion row. Each step is
+// fail-open against the caller — the factory record already carries
+// merged-pr, a failure prints a note naming the card, and the next complete
+// run reconciles (the store method reads already-closed as closed).
+func factoryCloseLaneCard(out io.Writer, root, runID string, card homestate.Card, lane, target string) {
+	// Ownership: a lane closes only its own card. Another lane's card that
+	// somehow reached this edge (a mis-dispatch, a shared worktree) is
+	// reported, never archived.
+	if card.OwnerLabel != lane && card.LeaseHolder != lane {
+		_, _ = fmt.Fprintf(out, "  note: queue card %s belongs to %s (lease %s), not %s — not closed\n",
+			card.CardID, dash(card.OwnerLabel), dash(card.LeaseHolder), lane)
+		return
+	}
+	verdict := factory.LandingVerdict{Verdict: factory.LandingLanded, Ref: target, At: time.Now().UTC().Format(time.RFC3339)}
+	// The caller's root decides the queue: the MCP surface passes a
+	// project_root that need not match this process's working directory, and
+	// closing the session's own queue instead would archive a stranger's
+	// card and leave the requested project's card live.
+	if err := factory.NewBacklogStore(todoBacklogPath(root)).ArchiveOnRuntimeCompletion(card.CardID, verdict); err != nil {
+		_, _ = fmt.Fprintf(out, "  note: queue card %s was not closed (%v); a re-run of complete reconciles it\n", card.CardID, err)
+		return
+	}
+	if err := factory.RecordFactoryCardState(root, runID, card.CardID, lane, card.SpecID, "completed", "card.completed"); err != nil {
+		_, _ = fmt.Fprintf(out, "  note: the runtime completion row for %s was not recorded (%v)\n", card.CardID, err)
+	}
+}

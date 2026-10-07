@@ -418,6 +418,16 @@ func LoadHarnessConfig(path string) (*HarnessConfig, error) {
 		}
 	}
 
+	// Step 5 (retired): the ceiling policy value is NOT validated here.
+	// The SPEC-AUDIT-CEILING-002 config matrix (TestSpecCeilingConfigMatrix
+	// M2/M12) pins pass-through: an unknown on_final_hit NAME is not a
+	// config error — the string loads verbatim and the enforcing engine
+	// reads it at evaluation level, where any name other than
+	// hold-and-split fails closed (never a granted delta round). The
+	// load-time rejection this spot once carried (SPEC-AUDIT-CEILING-001
+	// REQ-ACE-002's strict reading) broke that pinned convention and is
+	// removed, not weakened.
+
 	return cfg, nil
 }
 

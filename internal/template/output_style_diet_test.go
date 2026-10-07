@@ -6,8 +6,10 @@
 //   - TestOutputStyleHandoffUnitsFrozen   the handoff sections stay byte-identical (REQ-PFD-005)
 //   - TestOutputStyleLocalizationTableParity   localization tables stay cell-identical (REQ-PFD-006)
 //
-// The fixtures live in testdata/output_style_*.json, recorded at anchor 5d5ff1aae. They are test
-// inputs only and never ship in the binary.
+// The fixtures live in testdata/output_style_*.json, recorded at anchor 5d5ff1aae and re-frozen
+// at 3dd2d2f98 (card t1545: the deliberate §8 ultrathink-opener removal updated the frozen
+// "Session Handoff [HARD]" text and sha256, four edited ledger rows, and the moai.md meta).
+// They are test inputs only and never ship in the binary.
 package template
 
 import (
@@ -22,7 +24,7 @@ import (
 // Whole-file UTF-16 budgets of the deployed output styles. A constant may only go down: it never
 // exceeds the anchor size recorded in the ledger (REQ-PFD-002).
 const (
-	dietBudgetMoai      = 61362
+	dietBudgetMoai      = 61044
 	dietBudgetMoaiEasy  = 23586
 	dietBudgetMoaiLearn = 28517
 )

@@ -86,13 +86,15 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 			}
 			if strings.TrimSpace(developRef) == "" {
 				// The target is resolved exactly as the integration window
-				// resolves it (the configured git-flow develop branch), but
+				// resolves it (the configured integration target), but
 				// with NO caller fallback: a merge-readiness check must not
 				// guess its target — the caller's own card branch is never a
 				// merge target.
-				developRef = config.LoadGitFlowIntegrationConfig(integrationLockRoot()).DevelopBranch
+				targetRoot := integrationLockRoot()
+				targetCfg := config.LoadGitFlowIntegrationConfig(targetRoot)
+				developRef = targetCfg.IntegrationTarget
 				if developRef == "" {
-					return fmt.Errorf("factory merge ready: no integration branch configured (git_strategy.manual.develop_branch) and no --branch given — the merge target would be a guess")
+					return fmt.Errorf("factory merge ready: no integration branch configured — the merge target would be a guess: %s", targetCfg.EmptyTargetGuidance(targetRoot, "pass --develop <branch>"))
 				}
 			}
 
@@ -134,6 +136,15 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 				})
 			}
 
+			// github-flow delivers by pull request: the integration window is
+			// no prerequisite (REQ-GFD-006), so a cleared triple takes none.
+			if factoryGitHubFlow(integrationLockRoot()) {
+				const detail = "github-flow takes no integration window — run moai factory complete to push the card branch and open the pull request"
+				_, _ = fmt.Fprintf(human, "merge-readiness: CLEARED — three checks recorded; %s\n", detail)
+				return emitFactoryMergeVerdict(cmd, asJSON, factoryMergeVerdict{
+					Verdict: "cleared", Lane: lane, Card: card, Detail: detail,
+				})
+			}
 			sessionID := integrationSessionID(sessionFlag)
 			if sessionID == "" {
 				return fmt.Errorf("factory merge ready: cannot resolve this session's id; pass --session <id> (a window with an invented holder can be neither released by its holder nor recognized by the guard)")

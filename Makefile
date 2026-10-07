@@ -24,14 +24,14 @@ LOCAL_RELEASE_DIR ?= $(HOME)/.moai/releases
 PLATFORM := $(shell go env GOOS)-$(shell go env GOARCH)
 RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)
 
-.PHONY: all build test lint fix clean install verify-local-install generate templ-generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short agents-emit agents-emit-check commands-emit commands-emit-check embed-check fmt-check tool-policy-drift-check
+.PHONY: all build test lint fix clean install verify-local-install generate templ-generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short agents-emit agents-emit-check commands-emit commands-emit-check embed-manifest embed-manifest-check embed-check fmt-check tool-policy-drift-check
 
 all: lint test build ## Run lint, test, and build
 
 templ-generate: ## Generate *_templ.go from *.templ sources (pure-Go codegen, no Node)
 	go run github.com/a-h/templ/cmd/templ generate -path ./internal/web
 
-build: agents-emit-check commands-emit-check tool-policy-drift-check templ-generate ## Build the binary
+build: agents-emit-check commands-emit-check tool-policy-drift-check embed-manifest-check templ-generate ## Build the binary
 	@go run ./internal/template/scripts/gen-catalog-hashes.go --all
 	go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/moai
 
@@ -58,6 +58,20 @@ commands-emit: ## Regenerate the .agents/skills/moai-<command> SKILL.md artifact
 commands-emit-check: ## Verify the committed published command skills match the command source layer (read-only; never regenerates)
 	@COMMAND_EMIT_UPDATE= go test ./internal/template/commandemit/... -run TestGoldenCommittedArtifactsMatchEmission -count=1 \
 		|| { printf 'command-skill drift: committed .agents/skills/moai-*/SKILL.md differ from the command source layer — run `make commands-emit`\n' >&2; exit 1; }
+
+embed-manifest: ## Regenerate the template embed allowlist manifest from the tracked template file set
+	EMBED_MANIFEST_UPDATE=1 go test ./internal/template/embedemit/... -run TestGoldenCommittedArtifactsMatchEmission
+
+# Read-only drift check for the embed allowlist (card t1539), in the same
+# position as agents-emit-check: the committed per-file manifest must match a
+# fresh emission from the tracked template set, and the templates/ tree must
+# carry no ignored/untracked additions beyond it. It NEVER writes:
+# regeneration stays behind the explicit `embed-manifest` verb, and
+# EMBED_MANIFEST_UPDATE is scrubbed so an inherited value cannot flip this
+# into the regeneration branch.
+embed-manifest-check: ## Verify the committed embed manifest matches the tracked template set and the templates/ tree (read-only; never regenerates)
+	@EMBED_MANIFEST_UPDATE= go test ./internal/template/embedemit/... -run 'Test(GoldenCommittedArtifactsMatchEmission|TemplatesDiskMatchesManifest)$$' -count=1 \
+		|| { printf 'embed-manifest drift: committed embed_manifest_gen.go differs from the tracked template set, or templates/ carries unapproved files — run `make embed-manifest`\n' >&2; exit 1; }
 
 # Read-only drift check between tool-policy.yaml and the permissions block of
 # the working-tree .claude/settings.json, in the same position as

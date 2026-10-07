@@ -43,6 +43,8 @@ func hmpShellPostToolPayload(t *testing.T, tool, command, stdout string) string 
 
 // TestHMPHarnessObservePowerShellEvidence pins site 10 against its Bash control.
 func TestHMPHarnessObservePowerShellEvidence(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	hmpIsolateHome(t)
 	for _, tool := range []string{"Bash", "PowerShell"} {
 		t.Run(tool, func(t *testing.T) {
