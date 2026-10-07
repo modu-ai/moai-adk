@@ -54,8 +54,8 @@ related_specs: [SPEC-CODEX-AUDIT-GATE-AXES-001]
 
 ## 2. 요구사항 (GEARS)
 
-#### REQ-RR-001 (이벤트 감지 — 결함 본체)
-**When** an auditor instance ends with a PASS whose cited receipts were all minted during the lifetime of an earlier auditor instance of the same session and agent role — whether that earlier instance ended with an accepted PASS, a refusal, a FAIL, or without a verdict at all — the audit receipt guard shall refuse the PASS instead of accepting it.
+#### REQ-RR-001 (이벤트 감지 — 결함 본체, 재범위: 단일-생존 선행 종료)
+**When** a same-session same-role auditor instance is the only one outstanding as it terminally ends — whether that end is an accepted PASS, a refusal, a FAIL, or an end without a verdict — and a later instance of the same session and role ends with a PASS citing receipts minted before that end, the audit receipt guard shall refuse the PASS instead of accepting it. 종료 시점에 같은 세션·역할의 다른 인스턴스가 살아 있어(겹침 구간) 종료를 특정 인스턴스에 귀속할 수 없으면 인스턴스 경계는 anonymous 이벤트만으로 판정 불가능하다(plan.md §D.3 반례) — 그 재사용 창은 REQ-RR-004의 경계 동결과 함께 명명된 잔여이며, M2 의미는 AC-RR-009가 못박는다.
 
 #### REQ-RR-002 (이벤트 구동 — 오탐 방지)
 **When** an auditor instance cites only receipts minted after the receipt boundary applicable to its own generation — no earlier same-session same-role instance's receipts included — the audit receipt guard shall accept the PASS without blocking. 수리가 인스턴스 자신의 영수증을 증명 못하게 해서는 안 된다.
@@ -63,8 +63,8 @@ related_specs: [SPEC-CODEX-AUDIT-GATE-AXES-001]
 #### REQ-RR-003 (이벤트 감지 — 거부 지속과 진입 차단)
 **When** the guard refuses a PASS for receipt reuse, it shall persist the refusal with a cause distinguishing the reuse from the other refusal causes, and the outstanding refusal shall keep the phase-entry spawns (manager-develop / manager-docs / manager-git) denied until a PASS citing a qualifying receipt is recorded.
 
-#### REQ-RR-004 (상태 구동 — 동시성 보존)
-**While** multiple same-role auditor instances of one session are live, the audit receipt guard shall keep every live instance able to prove a receipt of its own — 수리가 미증명-PASS 교착(카드 t1544 card-review P2)을 재연해서는 안 된다.
+#### REQ-RR-004 (상태 구동 — 동시성 보존, 재범위: 모호 종료 경계 동결)
+**While** multiple same-role auditor instances of one session are live, the audit receipt guard shall keep every live instance able to prove a receipt minted after the applicable boundary, and a terminal end arriving while more than one such instance is outstanding shall not advance that boundary — 수리가 미증명-PASS 교착(카드 t1544 card-review P2)을 재연해서는 안 되며, 동시성 구간의 판정은 수리 전과 등가로 유지된다.
 
 #### REQ-RR-005 (상태 구동 — 첫 정지 연속성 보존)
 **While** an auditor instance is blocked at its first stop, the audit receipt guard shall keep that instance able to prove the receipt it mints after continuing — 첫 정지 차단 시 표식을 의도적으로 남기는 현행 동작(guard.go:199-201)은 유지된다.
