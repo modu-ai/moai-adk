@@ -113,6 +113,8 @@ type stubRunner struct {
 	creates  []createCall
 	comments []commentCall
 
+	createErr error // when set, CreateIssue fails (the retry-shape fixture)
+
 	onSearch func(s *stubRunner)
 	block    chan struct{} // when non-nil, SearchIssues parks until ctx is done
 }
@@ -154,6 +156,13 @@ func (s *stubRunner) SearchIssues(ctx context.Context, repo, token string) ([]Re
 }
 
 func (s *stubRunner) CreateIssue(_ context.Context, repo, title string, body io.Reader) error {
+	s.mu.Lock()
+	if s.createErr != nil {
+		err := s.createErr
+		s.mu.Unlock()
+		return err
+	}
+	s.mu.Unlock()
 	buf := new(bytes.Buffer)
 	_, _ = buf.ReadFrom(body)
 	s.mu.Lock()
