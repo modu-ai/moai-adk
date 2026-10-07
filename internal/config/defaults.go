@@ -594,6 +594,12 @@ const (
 	DefaultBugreportSpoolMaxLines = 200
 	DefaultBugreportSpoolMaxBytes = 64 * 1024
 
+	// DefaultBugreportSpoolReadTimeBox bounds ONE spool-file read: the drain
+	// reads the spool through it, so a file that blocks (a swapped-in FIFO)
+	// must read as a refusal within a bound instead of stalling the drain
+	// past its own deadline.
+	DefaultBugreportSpoolReadTimeBox = 100 * time.Millisecond
+
 	// DefaultBugreportCaptureTimeBox bounds one capture call on the hook
 	// path (time-boxed, fail-open, network-free by construction).
 	DefaultBugreportCaptureTimeBox = 50 * time.Millisecond

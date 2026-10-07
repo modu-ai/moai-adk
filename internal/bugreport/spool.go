@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -81,17 +82,47 @@ func ReadSpool() ([]SpoolEntry, error) {
 // ReadSpoolConsumable is ReadSpool plus the exact bytes the entries were
 // parsed from: the batch a consumer may later hand to ConsumeSpoolPrefix.
 // Capture keeps appending beyond those bytes while the consumer works.
+//
+// The read is BOUNDED (review gate finding, P2): a non-regular spool file is
+// refused WITHOUT opening it — a FIFO swapped in at the spool path used to
+// park a plain os.ReadFile indefinitely, ignoring the drain's deadline — and
+// the open+read runs under DefaultBugreportSpoolReadTimeBox with the
+// DefaultBugreportSpoolMaxBytes size cap (the spool is capped at capture; a
+// larger file is out of contract). A missing file is still an empty spool.
+// On deadline the helper goroutine is left parked on the blocked handle; it
+// exits when the blocking writer closes, and the caller never waits for it.
 func ReadSpoolConsumable() ([]SpoolEntry, []byte, error) {
 	path, err := SpoolPath()
 	if err != nil {
 		return nil, nil, err
 	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil, nil
+	if info, serr := os.Stat(path); serr == nil && !info.Mode().IsRegular() {
+		return nil, nil, fmt.Errorf("bugreport: spool is not a regular file: %s", path)
+	}
+	type readResult struct {
+		raw []byte
+		err error
+	}
+	done := make(chan readResult, 1)
+	go func() {
+		raw, err := os.ReadFile(path)
+		done <- readResult{raw: raw, err: err}
+	}()
+	var raw []byte
+	select {
+	case r := <-done:
+		if r.err != nil {
+			if os.IsNotExist(r.err) {
+				return nil, nil, nil
+			}
+			return nil, nil, r.err
 		}
-		return nil, nil, err
+		raw = r.raw
+	case <-time.After(config.DefaultBugreportSpoolReadTimeBox):
+		return nil, nil, fmt.Errorf("bugreport: spool read exceeded its %s time box", config.DefaultBugreportSpoolReadTimeBox)
+	}
+	if len(raw) > config.DefaultBugreportSpoolMaxBytes {
+		return nil, nil, fmt.Errorf("bugreport: spool is %d bytes, over the %d cap — purge required", len(raw), config.DefaultBugreportSpoolMaxBytes)
 	}
 	return parseSpoolLines(raw), raw, nil
 }
