@@ -69,6 +69,7 @@ import "embed"
 //go:embed templates/.claude/commands/moai/todo.md
 //go:embed templates/.claude/hooks/moai/chain-event.sh
 //go:embed templates/.claude/hooks/moai/handle-agent-hook.sh.tmpl
+//go:embed templates/.claude/hooks/moai/handle-codex-review-entry.sh
 //go:embed templates/.claude/hooks/moai/handle-codex-review-gate.sh
 //go:embed templates/.claude/hooks/moai/handle-compact.sh.tmpl
 //go:embed templates/.claude/hooks/moai/handle-config-change.sh.tmpl

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -48,6 +49,11 @@ func TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey(t *testing.T) {
 
 	// Fixture: a temp git repo with a committed clean seed, plus an uncommitted
 	// file holding (a) a command-injection sink and (b) a hardcoded AWS key.
+	// The committed .gitignore excludes .moai/ — the receipt write must not
+	// move the tree key between the producer's record and the entry hook's
+	// consult (the cacheTestRoot lesson; an untracked receipt snapshot would
+	// make the delayed verdict unreadable and the entry arm would silently
+	// allow).
 	repo := t.TempDir()
 	git := func(args ...string) {
 		t.Helper()
@@ -59,10 +65,13 @@ func TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey(t *testing.T) {
 	git("init")
 	git("config", "user.email", "t@t.test")
 	git("config", "user.name", "Test")
+	if err := os.WriteFile(filepath.Join(repo, ".gitignore"), []byte(".moai/\n"), 0o644); err != nil {
+		t.Fatalf("write gitignore: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(repo, "seed.go"), []byte("package main\n"), 0o644); err != nil {
 		t.Fatalf("write seed: %v", err)
 	}
-	git("add", "seed.go")
+	git("add", ".gitignore", "seed.go")
 	git("commit", "-m", "seed")
 	if err := os.WriteFile(filepath.Join(repo, "vuln.go"), []byte(fixtureVulnGo()), 0o644); err != nil {
 		t.Fatalf("write vuln: %v", err)
@@ -92,40 +101,46 @@ func TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey(t *testing.T) {
 			prevLook, prevSess, prevDet, prevTO
 	})
 
-	out, err := HandleCodexReviewGate(&hook.HookInput{}, true /* enabled */, repo)
+	// M2 (SPEC-GATE-BOTTLENECK-001 REQ-GBN-002): the review runs in the
+	// receipt PRODUCER now — the live security assertion rides it, and the
+	// recorded verdict's enforcement is the NEXT-turn-entry hook.
+	r, rErr := produceCodexReviewReceipt(context.Background(), repo)
+	if rErr != nil {
+		t.Fatalf("the producer must record against the fixture (reviewer present): %v", rErr)
+	}
 	// Two legitimate outcomes, one fatal shape:
 	//
-	//  1. The review turn COMPLETED (err == nil): codex really evaluated the
-	//     fixture, and an injection+AWS-key change MUST produce finding bullets
-	//     ⇒ BLOCK. This is the security assertion and it is not negotiable.
-	//  2. The review turn itself FAILED (err != nil — e.g. the codex account is
-	//     usage-limited, as observed live on codex-cli 0.147.0: the turn dies
-	//     with usageLimitExceeded BEFORE the diff is evaluated): the gate must
-	//     fail open (ALLOW) WITH the error surfaced — never fabricate a pass.
+	//  1. The review turn COMPLETED (a fail receipt): codex really evaluated
+	//     the fixture, and an injection+AWS-key change MUST produce finding
+	//     bullets ⇒ FAIL. This is the security assertion and it is not
+	//     negotiable. The enforcement assertion rides with it: the fresh FAIL
+	//     receipt must BLOCK at the next turn entry (the delayed point).
+	//  2. The review turn itself FAILED (inconclusive — e.g. the codex account
+	//     is usage-limited, as observed live on codex-cli 0.147.0: the turn
+	//     dies with usageLimitExceeded BEFORE the diff is evaluated): the
+	//     producer records inconclusive with the error on its stderr — never a
+	//     fabricated pass.
 	//
-	// The fatal shape is err == nil AND non-BLOCK: that is a "review happened
-	// and found nothing" claim no real review produced (card t52 — the gate used
-	// to launder codex's "Reviewer failed to output a response." placeholder
-	// into verdict pass with err == nil).
-	if err == nil {
-		if out == nil || out.Decision != hook.DecisionBlock {
-			decision := "<nil>"
-			if out != nil {
-				decision = string(out.Decision)
-			}
-			t.Fatalf("expected BLOCK on injection+AWS-key fixture; got decision=%q err=%v\n"+
-				"NOTE: the review turn COMPLETED, so codex really evaluated the fixture — "+
-				"a non-BLOCK here means codex passed this fixture (a real result — report it).",
-				decision, err)
+	// The fatal shape is verdict pass: a "review happened and found nothing"
+	// claim no real review produced (card t52 — the pipeline used to launder
+	// codex's "Reviewer failed to output a response." placeholder into pass).
+	switch {
+	case r.Verdict == codexReviewVerdictFail:
+		entry, entryErr := HandleCodexReviewEntry(&hook.HookInput{CWD: repo}, true /* enabled */, repo)
+		if entryErr != nil {
+			t.Fatalf("entry error: %v", entryErr)
 		}
-		t.Logf("BLOCK reached. reason=%q", out.Reason)
-		return
+		if entry == nil || entry.Decision != hook.DecisionBlock {
+			t.Fatalf("a fresh FAIL receipt must BLOCK at turn entry (the delayed enforcement point), got %+v", entry)
+		}
+		t.Logf("BLOCK reached at turn entry. reason=%q", entry.Reason)
+	case r.Verdict == codexReviewVerdictInconclusive:
+		t.Skipf("codex review turn did not complete — the producer recorded inconclusive with the error surfaced (correct behavior)")
+	default:
+		t.Fatalf("expected a FAIL receipt on injection+AWS-key fixture; got verdict=%q\n"+
+			"NOTE: the review turn COMPLETED, so codex really evaluated the fixture — "+
+			"a pass here means codex passed this fixture (a real result — report it).", r.Verdict)
 	}
-	// Turn failed: fail-open must hold AND the failure must be visible.
-	if out != nil && out.Decision == hook.DecisionBlock {
-		t.Fatalf("a failed review turn must not BLOCK (fail-open), got %+v err=%v", out, err)
-	}
-	t.Skipf("codex review turn did not complete — gate failed open with the error surfaced (correct behavior): %v", err)
 }
 
 // liveCodexGateTimeout gives the live codex review turn enough room to run the

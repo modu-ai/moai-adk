@@ -1040,7 +1040,7 @@ func codexReviewSessionParams(method string, params map[string]any) map[string]a
 	for k, v := range params {
 		out[k] = v
 	}
-	out["developerInstructions"] = codexNativeReviewFormatPin
+	out["developerInstructions"] = codexNativeReviewFormatPin + " " + codexReviewReproductionNote
 	return out
 }
 
@@ -1921,6 +1921,21 @@ const codexNativeReviewFormatPin = "Use exactly this output format so the review
 	"other text before it; then each finding on its own line as `" + codexAdversarialFindingFormat +
 	"`, with the severity tag P0 to P3 in brackets, and any further detail, confidence, or " +
 	"recommendation on indented lines below it. Do not put findings in a table."
+
+// codexReviewReproductionNote is the conditional-reproduction directive of the
+// review-request contract (SPEC-GATE-BOTTLENECK-001 REQ-GBN-003). The review's
+// verdict is reused verbatim from the tree-keyed receipt cache (REQ-GBN-001),
+// and a zero-findings verdict is accepted as-is, so the reproduction suite is
+// skipped in both arms — and the request says so: the reviewer must not spend
+// the review's wall time (the measured bottleneck this SPEC removes) running
+// the project's tests, builds, or reproduction commands. It rides the SAME
+// developerInstructions channel the format pin rides — an existing,
+// live-consumed protocol field, not a new request parameter — appended AFTER
+// the pin so the parser-pinned format text stays byte-identical at the head.
+const codexReviewReproductionNote = "Reproduction policy: this review's verdict is cached " +
+	"by tree key and reused verbatim, and a zero-findings verdict is accepted as-is " +
+	"(conditional reproduction, REQ-GBN-003) — do NOT run the project's tests, builds, " +
+	"or reproduction commands; review the changed code only."
 
 // codexAdversarialReviewPrompt builds the adversarial-review prompt text the
 // adversarial mode sends to codex turn/start (design.md §3 M2 / report §3.4).

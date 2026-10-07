@@ -13,6 +13,7 @@ package cli
 // shared with the policy tests in codex_review_ownership_test.go.
 
 import (
+	"context"
 	"os/exec"
 	"strings"
 	"testing"
@@ -94,31 +95,26 @@ func newWTNoBaseTree(t *testing.T) string {
 
 // TestCodexReviewGate_WTBranchWithoutBaseReviewsWholeTree pins, at the GATE
 // level, that a WT- branch session whose merge base is unavailable is reviewed
-// as a whole uncommitted tree: the reviewer is consulted once, the request is
-// {target: uncommittedChanges, cwd: <tree>}, and the scope log row names the
-// unavailable merge base. This is the behaviour the tree_scope policy must
-// never swallow (REQ-CRO-004): an unidentifiable card base is not licence to
-// stop reviewing.
+// as a whole uncommitted tree: M2 (REQ-GBN-002) moves the review itself to the
+// background kick — the gate allows and kicks, the scope log row still names
+// the unavailable merge base, and the REQUEST shape is asserted on the receipt
+// producer (the shared reviewRequestParams the background review sends). This
+// is the behaviour the tree_scope policy must never swallow (REQ-CRO-004): an
+// unidentifiable card base is not licence to stop reviewing.
 func TestCodexReviewGate_WTBranchWithoutBaseReviewsWholeTree(t *testing.T) {
 	tree := newWTNoBaseTree(t)
 	p := newOwnershipProbe(t)
+	kicked := withKickRecorder(t)
 
 	out, err := HandleCodexReviewGate(&hook.HookInput{SessionID: "wt-nobase", CWD: tree}, true /* enabled */, tree)
 	if err != nil {
 		t.Fatalf("gate error: %v", err)
 	}
-	if out == nil || out.Decision != hook.DecisionBlock {
-		t.Fatalf("the probe review fails, so a reviewed turn must BLOCK; got %+v", out)
+	if out == nil || out.Decision == hook.DecisionBlock {
+		t.Fatalf("a reviewed turn must ALLOW (the review is kicked in the background), got %+v", out)
 	}
-	if p.lookups != 1 {
-		t.Errorf("the reviewer must be consulted exactly once, got %d lookups", p.lookups)
-	}
-	cwd, target := p.request(t)
-	if cwd != tree {
-		t.Errorf("thread/start cwd = %q, want the session tree %q", cwd, tree)
-	}
-	if got, _ := target["type"].(string); got != codexTargetUncommitted {
-		t.Errorf("target.type = %q, want %q (whole-tree request)", got, codexTargetUncommitted)
+	if len(*kicked) != 1 {
+		t.Fatalf("the tree-scope session must kick exactly one background review, got %d", len(*kicked))
 	}
 	if len(p.scopes) != 1 {
 		t.Fatalf("exactly one scope log row expected, got %d (%+v)", len(p.scopes), p.scopes)
@@ -129,5 +125,17 @@ func TestCodexReviewGate_WTBranchWithoutBaseReviewsWholeTree(t *testing.T) {
 	}
 	if !strings.Contains(row.Basis, "merge base unavailable") {
 		t.Errorf("scope basis %q must name the unavailable merge base", row.Basis)
+	}
+	// The request shape is the producer's now (the shared reviewRequestParams
+	// the background review sends).
+	if _, err := produceCodexReviewReceipt(context.Background(), tree); err != nil {
+		t.Fatalf("receipt producer: %v", err)
+	}
+	cwd, target := p.request(t)
+	if cwd != tree {
+		t.Errorf("thread/start cwd = %q, want the session tree %q", cwd, tree)
+	}
+	if got, _ := target["type"].(string); got != codexTargetUncommitted {
+		t.Errorf("target.type = %q, want %q (whole-tree request)", got, codexTargetUncommitted)
 	}
 }

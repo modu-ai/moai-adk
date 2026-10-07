@@ -127,9 +127,12 @@ func newTreeSession(t *testing.T, variant string) string {
 }
 
 // gatePath drives the Claude Stop-hook handler for a session sitting in dir
-// whose config root is rooted at projectDir.
+// whose config root is rooted at projectDir. The background-kick seam is
+// swapped for a recorder first (SPEC-GATE-BOTTLENECK-001 REQ-GBN-002): no
+// policy test may reach the production kick, which execs the real binary.
 func gatePath(t *testing.T, dir, projectDir string) *hook.HookOutput {
 	t.Helper()
+	withKickRecorder(t)
 	out, err := HandleCodexReviewGate(&hook.HookInput{SessionID: "own", CWD: dir}, true, projectDir)
 	if err != nil {
 		t.Fatalf("gate error: %v", err)
@@ -357,6 +360,11 @@ func TestCodexReviewGate_TreeScopeSkip(t *testing.T) {
 				t.Errorf("%s/review: the self-gate must run once, got %d detector calls", variant, c.detects)
 			}
 			if variant != "non-git" {
+				// M2 (REQ-GBN-002): the review itself runs in the background —
+				// the request shape is the producer's to send now.
+				if _, err := produceCodexReviewReceipt(context.Background(), root); err != nil {
+					t.Fatalf("%s/review receipt producer: %v", variant, err)
+				}
 				cwd, target := c.request(t)
 				if got, _ := target["type"].(string); got != codexTargetUncommitted || cwd != root {
 					t.Errorf("%s/review: request = {%v, %q}, want {%s, %q}", variant, target["type"], cwd, codexTargetUncommitted, root)
@@ -433,9 +441,20 @@ func TestTreeScope_NonSkipValuesKeepTreeRequest(t *testing.T) {
 			f.write(t, filepath.Join(".moai", "config", "sections", "workflow.yaml"), tc.body)
 			p := newOwnershipProbe(t)
 
+			// M2 (REQ-GBN-002): the gate no longer runs the review in-hook —
+			// a cache-miss Stop kicks the background review and allows. The
+			// scope row is still the gate's; the REQUEST shape is now the
+			// receipt producer's (the same shared reviewRequestParams the
+			// background review sends).
 			out := gatePath(t, f.root, f.root)
-			if out == nil || out.Decision != hook.DecisionBlock {
-				t.Fatalf("the probe review fails, so the turn must BLOCK; got %+v", out)
+			if out == nil || out.Decision == hook.DecisionBlock {
+				t.Fatalf("a cache-miss Stop must ALLOW (the review is kicked), got %+v", out)
+			}
+			if len(p.scopes) != 1 {
+				t.Fatalf("the gate must log exactly one scope row, got %d (%+v)", len(p.scopes), p.scopes)
+			}
+			if _, err := produceCodexReviewReceipt(context.Background(), f.root); err != nil {
+				t.Fatalf("receipt producer: %v", err)
 			}
 			cwd, target := p.request(t)
 			if got, _ := target["type"].(string); got != codexTargetUncommitted {
@@ -464,8 +483,11 @@ func TestTreeScopeSkip_WTSessionsStillReviewed(t *testing.T) {
 		p := newOwnershipProbe(t)
 		skips := captureTreeScopeSkips(t)
 		out := gatePath(t, f.card, f.card)
-		if out == nil || out.Decision != hook.DecisionBlock {
-			t.Fatalf("a card session under skip must still be reviewed and BLOCK on the probe finding; got %+v", out)
+		if out == nil || out.Decision == hook.DecisionBlock {
+			t.Fatalf("a card session under skip must still be reviewed (kicked in the background) and ALLOW; got %+v", out)
+		}
+		if _, err := produceCodexReviewReceipt(context.Background(), f.card); err != nil {
+			t.Fatalf("receipt producer: %v", err)
 		}
 		requireCardRequest(t, p.sess.sent, f)
 		if len(*skips) != 0 {
@@ -484,8 +506,11 @@ func TestTreeScopeSkip_WTSessionsStillReviewed(t *testing.T) {
 		p := newOwnershipProbe(t)
 		skips := captureTreeScopeSkips(t)
 		out := gatePath(t, tree, tree)
-		if out == nil || out.Decision != hook.DecisionBlock {
-			t.Fatalf("a WT- session without a base under skip must still be reviewed; got %+v", out)
+		if out == nil || out.Decision == hook.DecisionBlock {
+			t.Fatalf("a WT- session without a base under skip must still be reviewed (kicked); got %+v", out)
+		}
+		if _, err := produceCodexReviewReceipt(context.Background(), tree); err != nil {
+			t.Fatalf("receipt producer: %v", err)
 		}
 		cwd, target := p.request(t)
 		if got, _ := target["type"].(string); got != codexTargetUncommitted || cwd != tree {

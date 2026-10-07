@@ -50,4 +50,32 @@ r10 수리 판정 통과(리뷰어 명시: 캐시 회귀 테스트 3개 통과).
 - **CI**: 29 pass·0 fail·0 pending — Test (ubuntu-latest) 12m37s·Race Test 1/2 (17m17s/18m40s)·Build×5·Lint·Constitution·Integration×3·spec-lint·spec-status-sync·graph-freshness-conflict-guard·CodeRabbit 포함. CodeRabbit 판독은 리더 몫(AH §4 병합 판정).
 - **CI 수리 이력**: 골든 2 leg 계약 갱신(7986851b9) → LiveAxis 오탐 제거(1a3bf99a7) → inconclusive exit 2(92897ca84, 쌍둥이 포함).
 - **게이트 라운드 원장 (r12~r17)**: 본 카드 diff 발견 0건 6라운드 연속. 전부 기존 원장 계열의 재관측/신규 인스턴스 — integration 병합 창 재검증 4건·factory_card/bundle 선행의존성 5건·todo_issuance 4건·backlog relation/store 2건·todo.go 2건·landing_predicate 공백 1건·audit_receipt_guard 재시작 표식 1건·todo_auto_lane 1건·integration remeasure 2건. 소관: t1538/t1542 원장·t1561·t1562·t1559·t1454·t1554·t1509.
-- **잔여(M2/M3, 체크포인트)**: 지연 블록(Stop 백그라운드 기동 → 다음 턴 진입 훅 집행)·라이브 리뷰 0건 조건부 재현(reviewRequestParams 확장) — 신선 세션 continuation 권장.
+- **잔여(M2/M3, 체크포인트)**: → 아래 M2 세션 기록으로 이어짐.
+
+## M2 세션 (2026-10-07, lane-6 신세션 — 체크포인트 continuation)
+
+- **전제 이행**: origin/main 흡수 병합 `c6cbfa60e`(M1 착지 PR #1793 = d5fe44c42 포함, progress.md add/add 충돌은 ours-superset으로 해소 — ours가 유일 신규 7줄 추가, theirs 소실 0건 실측). plan.md 병합 M2(재현 계약)/M3(지연 블록) 번호와 체크포인트 호칭(M2=지연 블록) 엇갈림은 남은 작업 집합이 동일하여 체크포인트 명칭으로 진행.
+- **§F 모드 재확인**: 기록된 direct(lane-direct) 유지 — 체크포인트 설계가 완결된 continuation이므로 재위임 없이 직접 구현.
+- **REQ-GBN-002 구현 (지연 블록)**: `codex_review_gate.go` — 캐시 미스 arm을 라이브 RPC에서 `codexReviewBackgroundKick`(= `os.Executable() verify codex-review --project-root <scope>`, detached, 로그 `.moai/logs/codex-review-bg.log`) 기동 + ALLOW로 교체. 기동 실패도 ALLOW(AC-GBN-004). 캐시 히트 블록 경로 불변. `recordCodexReviewReceipt`는 호출자 소실로 삭제 — 처분 논리는 프로듀서가 단일 소유(7-pre 재분류 포함, fail 상세 보존을 `produceCodexReviewReceipt`로 이동 — r10 수리의 "무엇을 고칠지" 유지).
+- **진입 훅 신설**: `codex_review_delay.go` — `HandleCodexReviewEntry`(신선 FAIL → 차단+보존 상세, 그 외 전부 ALLOW/fail-open) + `runCodexReviewEntry`. 래퍼 `handle-codex-review-entry.sh`(repo+template 쌍생, 동일 awk 셀프게이트 — 꺼짐 시 0비용). settings.json.tmpl + 리포 settings UserPromptSubmit 등록(timeout 5). 등록 가드 테스트 확장(TestReviewEntryRegisteredIn{Template,Repo}Settings).
+- **parity 골든 갱신**: "no receipt"/"stale receipt" 2 leg를 REQ-GBN-002의 선언된 §D3.4 편차 leg로 갱신(Claude=ALLOW+kick 1회, Codex=unmeasured continuation 불변) — M1이 세운 "Claude가 라이브 판정 기록" 전제는 지연 블록으로 대체. "FAIL receipt" leg는 produce-first 순서로 수정(구 순서는 라이브 경로 전제).
+- **테스트 이전 원장**: 라이브 경로 소멸로 요청-형태·재분류·failed-turn 계약을 프로듀서 수준으로 이전 — gate 6종 삭제/재작성·cache 3종 재작성·ownership/gatePath 5곳·wiring(BlockVerdict receipt 기반, HandlerError 은퇴)·scope 6종·live(보안 단정 producer+진입 차단)·rpc_error(producer inconclusive/2)·selfreview(기준 요청=producer). gatePath에 kick 시임 보호 내장.
+- **REQ-GBN-003 구현 (조건부 재현)**: `codexReviewReproductionNote` — `codexReviewSessionParams`가 review/start의 `developerInstructions`에 형식 핀 뒤에 부기. codex 측 지원 근거: developerInstructions는 오늘도 산 채로 소비되는 기존 프로토콜 필드(형식 핀이 같은 경로로 실림, mcp_codex.go codexReviewSessionParams) — 새 파라미터 키가 아닌 기존 문자열 확장이므로 지원이 구조적으로 확정. 캐시 히트 스킵(REQ-GBN-001)·0건 판정 수용 모두 요청 계약에 명시.
+- **테스트 실측 (family3, 이 트리 커밋 전 기준)**: `go test ./internal/cli/ -run '<게이트 패밀리 14종 필터>' -count=1 -timeout 25m` → **ok (751.2s)** — 라이브 codex 리뷰(실제 fail receipt → 진입 훅 차단까지 end-to-end)·parity 골든·지연 블록·진입 훅·재분류 전 부속 포함 전부 초록. 라이브 픽스처에 `.moai/` gitignore 추가(미포함 시 receipt 쓰기가 키를 이동 — cacheTestRoot 교훈 클래스 재현).
+- **턴종료 게이트 발견 처분 (M2 세션 r1 — 본 카드 diff 2건 수리, 타 소관 1건)**:
+  - **본 소관 ① (P1) embed manifest 누락**: 새 진입 래퍼가 untracked라 allowlist("git-tracked file set"에서 생성, embedemit.go)에 미포함 → `git add` 후 `make embed-manifest`로 수리, grep 1행 관측. 수리 전 상태에서는 `moai init/update` 배포물에 래퍼 부재 → hook-missing 폴백이 조용히 무시(진입 집행 사망).
+  - **본 소관 ② (P2) 중복 kick**: 동일 트리 상태에서 연속 Stop 시 백그라운드 리뷰 중복 기동 — 트리 키별 진행 마커(`kickInFlight`, `.moai/state/verify/codex-review/<head>-<digest>.kick`, 리뷰 예산 만료 시 사판정 재기동, 기동 실패 시 마커 제거로 재시도 허용) 구현 + 테스트 3종(InFlightKickNotRepeated·StaleKickMarkerRekicks·FailedKickIsRetryable). 마커 계열 테스트 `-run 'TestReviewGate_|TestReviewEntry_'` → ok (25.6s).
+  - **타 소관 1건 (P2)**: `internal/hook/quality/gate_node_pm.go` bun `x`에 `--bun` 미부착(Node shebang 따라 Bun 전용 환경 실패, gate_typecheck.go 동일) — 본 카드 diff 아님(`git diff --name-only | grep -c gate_node_pm` = 0 실측). t1572(bun runtime exec, 6c1bd84cd) 계통의 신규 인스턴스 — 원장 행 소관, 본 카드 수리 소관 아님.
+- **턴종료 게이트 발견 처분 (M2 세션 r2 — 본 카드 diff 2건 수리)**:
+  - **(P2) hook 서브커맨드 개수 원장**: `codex-review-entry` 추가로 TestHookCmd_SubcommandCount·TestHookCmd_PrePushSubcommandCount 기대 45→46(원장 행 추가), TestHookValidEventTypes_AllHaveSubcommands의 도메인 훅 유틸 목록에 진입 훅 등록.
+  - **(P2) 템플릿 내부 추적 ID 누출**: 배포 템플릿 래퍼 주석의 SPEC-GATE-BOTTLENECK-001·REQ-GBN-002·AC-GBN-004를 일반 동작 서술로 교체(TestTemplateNoInternalContentLeak — 템플릿 무결성 규칙, AGENTS.local.md §내부 ID 금지). 리포 로컬 쌍은 추적 ID 유지(템플릿 검사 대상 아님). 수리 후 TestTemplateNoInternalContentLeak·TestReviewGate*·TestReviewEntry* → ok (5.8s), 개수 원장 3종 → ok (2.6s).
+- **벽시간 실측 (AC-GBN-003 + 체크포인트 전후 비교 — bin/moai 실측, 2026-10-07)**:
+  - 측정 설계: /tmp 픽스처 리포(uncommitted 소스 변경 1건, gate enabled + primary_scope: review)에 `bin/moai hook codex-review-gate`·`hook codex-review-entry`를 실제 페이로드로 실행. 리뷰 엔진은 실제 codex(shim, codex-cli 0.160.1).
+  - **arm1 kick 경로 Stop: 2,526ms** — "background review started" 관측. moai 콜드 스타트가 지배(기존 동기 경로의 리뷰 대기 시간이 Stop에서 소거됨).
+  - **arm2 cache-hit Stop: 4,567ms** — "reusing the cached pass verdict for the unchanged tree (skip #1)" 관측.
+  - **arm3 진입 훅: 4,740ms** — "background verdict pass for the unchanged tree — allowing" 관측.
+  - 배경 리뷰 자체는 백그라운드에서 완주(receipt 스냅숏 기록 관측, verdict pass) — 어느 턴도 리뷰를 대기하지 않음. 비교 기준: 변경 전 동기 리뷰는 리더 실태 조사 기준 11/12 Stop 차단·누적 14m13s.
+  - 부수 관측(2차 측정): P2 중복 방지가 실환 동작 — "a background review for this tree state is already in flight; not re-kicking". 2차의 arm2/3이 조기 실행된 것은 측정 스크립트 폴링이 `.kick` 마커를 receipt로 오독한 스크립트 결함(3차에서 snapshots/*.json으로 수정) — 게이트 코드 결함 아님.
+
+
+

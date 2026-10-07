@@ -190,6 +190,14 @@ func produceCodexReviewReceipt(ctx context.Context, root string) (verify.Receipt
 	if err := verify.RecordReceipt(root, r); err != nil {
 		return r, fmt.Errorf("codex review receipt: %w", err)
 	}
+	// SPEC-GATE-BOTTLENECK-001 REQ-GBN-002: the receipt store carries no free
+	// text, so a fail's summary and findings ride the local detail file — the
+	// delayed verdict (the next-turn entry hook) and the next Stop's cached
+	// block must still say WHAT to fix. Mirrors the gate's former recorder;
+	// a preservation failure loses only the detail text (fail-open).
+	if verdict == codexReviewVerdictFail {
+		codexReviewPreserveFindings(scope.Dir, state, out)
+	}
 	// The receipt store carries no free text, so the findings reach the
 	// working agent here, on the runner's stderr.
 	switch {

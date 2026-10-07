@@ -17,10 +17,10 @@ package cli
 //	internal/template/hook_gate_reports_scan_parity_test.go.)
 
 import (
+	"context"
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/hook"
 )
 
 // titleBodyDriftReviewText is the M1 shape: the finding's HEADLINE names the
@@ -58,25 +58,29 @@ func TestCodexFindingsOfTitleBodyCrossCandidatesLeaveAnchorUnset(t *testing.T) {
 }
 
 // TestCodexReviewGateTitleBodyCrossCandidateKeepsStrictDisposition pins M1 end
-// to end on the Claude Stop path: the cross-candidate finding must keep the
-// gate's only block path, and no reclassification row may be recorded for it.
+// to end at its M2 home, the receipt producer (the gate's live arm moved with
+// the review — REQ-GBN-002): the cross-candidate finding must keep the strict
+// disposition in the recorded receipt, and no reclassification row may be
+// recorded for it.
 func TestCodexReviewGateTitleBodyCrossCandidateKeepsStrictDisposition(t *testing.T) {
 	prem := synthesizeReviewOutput(titleBodyDriftReviewText, codexMethodReviewStart)
 	if prem.Verdict != "fail" || len(prem.Findings) != 1 {
 		t.Fatalf("premise: the fixture must synthesize fail with one finding, got verdict %q findings %+v", prem.Verdict, prem.Findings)
 	}
 
-	withChangeDetector(t, true)
+	root := cacheTestRoot(t)
+	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
+	withCodexRunner(t, &fakeCodexRunner{stdoutByCmd: map[string]string{"--version": "9.9.9\n"}})
 	withCodexSession(t, codexSessionScript(titleBodyDriftReviewText))
 
 	read := captureGateDiagnostics(t)
-	out, err := HandleCodexReviewGate(gateInput(false), true, "/proj")
+	r, err := produceCodexReviewReceipt(context.Background(), root)
 	if err != nil {
-		t.Fatalf("gate error: %v", err)
+		t.Fatalf("receipt producer error: %v", err)
 	}
 	diagnostics := read()
-	if out == nil || out.Decision != hook.DecisionBlock {
-		t.Errorf("a fail finding whose headline and body pin different files must keep the gate's block, got %+v", out)
+	if r.Verdict != codexReviewVerdictFail {
+		t.Errorf("a fail finding whose headline and body pin different files must keep the strict disposition, got %q", r.Verdict)
 	}
 	if strings.Contains(diagnostics, "runtime-managed") {
 		t.Errorf("no reclassification may be recorded for a cross-candidate finding; diagnostics: %q", diagnostics)

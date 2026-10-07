@@ -28,6 +28,7 @@ package cli
 // (REQ-CGSC-005 / AC-CGSC-009).
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -117,26 +118,38 @@ func TestTreeScopedSelfGateSkipsConfigOnlyTree(t *testing.T) {
 // un-normalized prefix comparison let it keep the block.
 const absoluteDriftReviewText = "- [P1] `/proj/.claude/settings.json:13` personal PATH entry drifted\n"
 
-// TestCodexReviewGateRuntimeDriftFindingsAbsolutePathsReclassified pins R3 on
-// the Claude Stop path: the finding anchor is normalized against the reviewed
+// TestCodexReviewGateRuntimeDriftFindingsAbsolutePathsReclassified pins R3 at
+// its M2 home, the receipt producer (the gate's live arm moved with the review
+// — REQ-GBN-002): the finding anchor is normalized against the reviewed
 // scope's tree before the exclusion comparison, so an absolute-path config
-// finding reclassifies exactly as its relative twin does.
+// finding reclassifies exactly as its relative twin does. The fixture composes
+// the anchor from its resolved root (macOS temp dirs sit behind a symlink).
 func TestCodexReviewGateRuntimeDriftFindingsAbsolutePathsReclassified(t *testing.T) {
-	prem := synthesizeReviewOutput(absoluteDriftReviewText, codexMethodReviewStart)
-	if prem.Verdict != "fail" || len(prem.Findings) != 1 || prem.Findings[0].File != "/proj/.claude/settings.json" {
+	root := cacheTestRoot(t)
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatalf("eval fixture root: %v", err)
+	}
+	absoluteText := "- [P1] `" + filepath.ToSlash(filepath.Join(resolvedRoot, ".claude", "settings.json")) +
+		":13` personal PATH entry drifted\n"
+
+	prem := synthesizeReviewOutput(absoluteText, codexMethodReviewStart)
+	if prem.Verdict != "fail" || len(prem.Findings) != 1 ||
+		prem.Findings[0].File != filepath.ToSlash(filepath.Join(resolvedRoot, ".claude", "settings.json")) {
 		t.Fatalf("premise: the fixture must synthesize fail with the absolute config path, got verdict %q findings %+v", prem.Verdict, prem.Findings)
 	}
 
-	withChangeDetector(t, true)
-	withCodexSession(t, codexSessionScript(absoluteDriftReviewText))
+	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
+	withCodexRunner(t, &fakeCodexRunner{stdoutByCmd: map[string]string{"--version": "9.9.9\n"}})
+	withCodexSession(t, codexSessionScript(absoluteText))
 	read := captureGateDiagnostics(t)
-	out, err := HandleCodexReviewGate(gateInput(false), true, "/proj")
+	r, err := produceCodexReviewReceipt(context.Background(), root)
 	if err != nil {
-		t.Fatalf("gate error: %v", err)
+		t.Fatalf("receipt producer error: %v", err)
 	}
 	diagnostics := read()
-	if out == nil || out.Decision == hook.DecisionBlock {
-		t.Errorf("an absolute-path config finding must normalize into the reclassification, got %+v", out)
+	if r.Verdict != codexReviewVerdictPass {
+		t.Errorf("an absolute-path config finding must normalize into the reclassification, got verdict %q", r.Verdict)
 	}
 	if !strings.Contains(diagnostics, "runtime-managed") || !strings.Contains(diagnostics, ".claude/settings.json") {
 		t.Errorf("the reclassification row must name the normalized target; diagnostics: %q", diagnostics)
