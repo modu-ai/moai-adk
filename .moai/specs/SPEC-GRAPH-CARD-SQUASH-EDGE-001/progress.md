@@ -26,6 +26,24 @@ spec: SPEC-GRAPH-CARD-SQUASH-EDGE-001
   5fb7baf88, plan §C.1 absorbed-state precondition. Lane spot-verified the hunks on disk
   (stale-text sweep 0 hits; `-- internal/`, `-v`, card-t1561 contrast all present). Delta
   re-audit (iter 2/2, reread_hunks) dispatched by the lane.
+- 2026-10-07 (plan→run Kickoff gate): **MET — autonomous form.** Evidence: plan-auditor iter-2
+  delta verdict **PASS** (score 0.97 ≥ Tier M 0.80, blocking 0, audited_sha 122c83085, artifact
+  hash 6dfcd9e2…53ab3 pinned, receipt rcpt-e8ccfe80a979d3060d61cf30), no open blocker, SPEC
+  artifacts unchanged since the verdict. Verdict file:
+  `.moai/reports/t1559/plan-audit-verdict.md`. Ladder step ① (disk evidence) resolved the
+  gate; the card names no operator gate. SPEC bodies are hash-frozen from here — any body
+  edit re-invalidates the audit.
+
+## §F Phase 4 Mode Selection
+
+- Inputs: tier M, scope = 2 files (internal/graph/card_file.go + card_file_test.go),
+  domains = 1 (Go source), language mix = Go, concurrency benefit = LOW (coding-heavy).
+- Evaluation: direct — not trivial, no. fanout — not multi-domain research, no.
+  sweep — not ≥30-file mechanical, no. agent-team — no operator request, excluded.
+- **Decision: serial** — one manager-develop spawn, cycle_type=tdd per the SPEC,
+  coding-heavy per Anthropic's parallelism caveat.
+- Gate confirmation: plan→run Kickoff gate met in autonomous form (recorded above);
+  no outstanding user preferences (card dispatched by the leader, lenses fixed).
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
