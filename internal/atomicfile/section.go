@@ -111,8 +111,10 @@ func ClaimSection(ctx context.Context, path string, perm os.FileMode, retries in
 		}
 		// Contention: check whether the holder is a verified-dead owner. A
 		// live owner blocks through the budget; a verified-dead one is
-		// broken and the claim retried immediately.
-		if BreakStaleLock(path) {
+		// broken and the claim retried immediately. The caller's context
+		// reaches the recursive reclaim, so a cancelled claim does not
+		// re-walk a deep guard chain.
+		if BreakStaleLockContext(ctx, path) {
 			lastErr = err
 			continue
 		}
@@ -193,7 +195,19 @@ func writeOwnerLabel(path string, perm os.FileMode) error {
 // file; the next breaker's ClaimSection contention path reclaims it through
 // the same verified-dead rule (the .reclaim-guarded path below), so the
 // marker cannot wedge the break.
+// BreakStaleLock is BreakStaleLockContext under the caller's background
+// context.
 func BreakStaleLock(path string) bool {
+	return BreakStaleLockContext(context.Background(), path)
+}
+
+// BreakStaleLockContext is BreakStaleLock under a caller's context: the
+// cancellation reaches EVERY level of the recursive guard reclaim — each
+// level's guard ClaimSection selects on it — so a cancelled caller's walk
+// stops at the next claim boundary instead of re-walking the chain through
+// the retry loops (each level's loop re-walks the chain below it, which is
+// what makes an uncancelled deep walk expensive).
+func BreakStaleLockContext(ctx context.Context, path string) bool {
 	if strings.HasSuffix(path, reclaimSuffix) || strings.HasSuffix(path, breakingSuffix) {
 		// Reclaiming a marker — a breaker's (.breaking) or a reclaimer's
 		// (.reclaim): hold ITS OWN guard marker first — delete only on
@@ -209,16 +223,16 @@ func BreakStaleLock(path string) bool {
 				"lock", path, "depth", strings.Count(path, reclaimSuffix))
 			return false
 		}
-		release, err := ClaimSection(context.Background(), path+reclaimSuffix, 0o600, 2, 2*time.Millisecond)
+		release, err := ClaimSection(ctx, path+reclaimSuffix, 0o600, 2, 2*time.Millisecond)
 		if err != nil {
-			return false // a live reclaimer owns the disposal; the caller's retry loop re-runs
+			return false // a live reclaimer owns the disposal, or the caller's context is done
 		}
 		defer func() { _ = release() }()
 		return breakStaleLockBare(path)
 	}
-	release, err := ClaimSection(context.Background(), path+breakingSuffix, 0o600, 2, 2*time.Millisecond)
+	release, err := ClaimSection(ctx, path+breakingSuffix, 0o600, 2, 2*time.Millisecond)
 	if err != nil {
-		return false // a live breaker owns the break; the caller's retry loop re-runs
+		return false // a live breaker owns the break, or the caller's context is done
 	}
 	defer func() { _ = release() }()
 	return breakStaleLockBare(path)

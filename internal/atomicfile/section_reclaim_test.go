@@ -93,6 +93,46 @@ func TestDeepDeadReclaimChainRefuses(t *testing.T) {
 	}
 }
 
+// TestBreakHonorsCallerCancellation pins the budget half of the hardening
+// round: the recursive guard reclaim must honor the CALLER's cancellation —
+// a cancelled reclaim refuses before it walks, never re-entering the chain
+// through ClaimSection's retry loops (each level's loop re-walks the chain
+// below it, so an uncancelled walk of a deep chain costs exponentially many
+// chain reads).
+func TestBreakHonorsCallerCancellation(t *testing.T) {
+	dir := t.TempDir()
+	markerPath := filepath.Join(dir, "queue.lock.breaking")
+	previousBootFixture(t, markerPath)
+	p := markerPath
+	for i := 0; i < maxReclaimDepth; i++ { // a max-depth dead chain
+		p += reclaimSuffix
+		previousBootFixture(t, p)
+	}
+
+	// The verdict-read seam counts how far the walk got: a cancelled
+	// caller's reclaim must refuse BEFORE reading anything.
+	reads := 0
+	prevRead := sectionRereadFn
+	t.Cleanup(func() { sectionRereadFn = prevRead })
+	sectionRereadFn = func(path string) ([]byte, error) {
+		reads++
+		return prevRead(path)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	start := time.Now()
+	if BreakStaleLockContext(ctx, markerPath) {
+		t.Fatal("a cancelled reclaim broke the lock")
+	}
+	if elapsed := time.Since(start); elapsed > 100*time.Millisecond {
+		t.Fatalf("a cancelled reclaim ran %s — cancellation was not honored", elapsed)
+	}
+	if reads != 0 {
+		t.Fatalf("a cancelled reclaim made %d verdict reads — it walked the chain", reads)
+	}
+}
+
 // TestOrphanedReclaimMarkerDoesNotWedgeTheBreak: a reclaimer that died
 // holding its .reclaim marker must not wedge the break — the dead
 // reclaimer's marker is reclaimable through the guarded verified-dead rule,
