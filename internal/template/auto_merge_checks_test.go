@@ -65,6 +65,11 @@ func TestAutoMergeRequiredChecks(t *testing.T) {
 		{"pending status without pending checks", `[{"name":"Lint","state":"SUCCESS","bucket":"pass"}]`, "false", "8"},
 		{"missing state", `[{"name":"Lint","bucket":"pass"}]`, "false", "0"},
 		{"failed status", `[{"name":"Lint","bucket":"fail"}]`, "false", "1"},
+		{"failed state cannot pass", `[{"name":"Lint","state":"FAILURE","bucket":"pass"}]`, "false", "0"},
+		{"pending state cannot pass", `[{"name":"Lint","state":"PENDING","bucket":"pass"}]`, "false", "0"},
+		{"unknown state cannot pass", `[{"name":"Lint","state":"NOT_A_STATE","bucket":"pass"}]`, "false", "0"},
+		{"neutral skips", `[{"name":"Lint","state":"NEUTRAL","bucket":"skipping"}]`, "false", "0"},
+		{"skipped skips", `[{"name":"Lint","state":"SKIPPED","bucket":"skipping"}]`, "false", "0"},
 		{"passed", `[{"name":"Lint","state":"SUCCESS","bucket":"pass"}]`, "true", "0"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -89,6 +94,9 @@ func TestAutoMergeRequiredChecks(t *testing.T) {
 			out, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("step failed: %v\n%s", err, out)
+			}
+			if strings.HasSuffix(tc.name, "skips") && !strings.Contains(string(out), "Some checks did not pass") {
+				t.Fatalf("valid skipping state was not classified: %s", out)
 			}
 			result, err := os.ReadFile(output)
 			if err != nil {

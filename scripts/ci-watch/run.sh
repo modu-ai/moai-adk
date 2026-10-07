@@ -218,10 +218,18 @@ while true; do
     # gh may return 1 for failed checks or 8 for pending checks. Accept
     # those verdict statuses only with a valid, corresponding check array;
     # authentication/network errors and malformed output remain fatal.
-    if ! jq -e 'type == "array" and all(.[];
+    if ! jq -e '        def state_bucket:
+          if . == "SUCCESS" then "pass"
+          elif IN("SKIPPED", "NEUTRAL") then "skipping"
+          elif IN("ERROR", "FAILURE", "TIMED_OUT", "ACTION_REQUIRED") then "fail"
+          elif . == "CANCELLED" then "cancel"
+          elif IN("EXPECTED", "REQUESTED", "WAITING", "QUEUED", "PENDING", "IN_PROGRESS", "STALE") then "pending"
+          else null end;
+        type == "array" and all(.[];
         type == "object" and (.name | type == "string" and length > 0) and
         (.state | type == "string" and length > 0) and
-        (.bucket | IN("pass", "fail", "pending", "skipping", "cancel")))' "$TMP_JSON" >/dev/null 2>&1; then
+        (.bucket | IN("pass", "fail", "pending", "skipping", "cancel")) and
+        (.bucket == (.state | state_bucket)))' "$TMP_JSON" >/dev/null 2>&1; then
         abort "gh pr checks returned invalid check data for PR #${PR_NUMBER}" 1
     fi
     if [ "$checks_exit" = 1 ] && ! jq -e 'any(.[]; .bucket == "fail" or .bucket == "cancel")' "$TMP_JSON" >/dev/null; then

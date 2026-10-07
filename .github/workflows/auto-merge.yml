@@ -124,10 +124,18 @@ jobs:
             # A nonempty response string can still contain an empty array
             # or an unrelated object. Require actual, well-formed checks
             # before an all-pass observation can authorize a merge.
-            if ! printf '%s' "$CHECKS_JSON" | jq -e 'type == "array" and length > 0 and all(.[];
+            if ! printf '%s' "$CHECKS_JSON" | jq -e '              def state_bucket:
+                if . == "SUCCESS" then "pass"
+                elif IN("SKIPPED", "NEUTRAL") then "skipping"
+                elif IN("ERROR", "FAILURE", "TIMED_OUT", "ACTION_REQUIRED") then "fail"
+                elif . == "CANCELLED" then "cancel"
+                elif IN("EXPECTED", "REQUESTED", "WAITING", "QUEUED", "PENDING", "IN_PROGRESS", "STALE") then "pending"
+                else null end;
+              type == "array" and length > 0 and all(.[];
                 type == "object" and (.name | type == "string" and length > 0) and
                 (.state | type == "string" and length > 0) and
-                (.bucket | IN("pass", "fail", "pending", "skipping", "cancel")))' >/dev/null 2>&1; then
+                (.bucket | IN("pass", "fail", "pending", "skipping", "cancel")) and
+              (.bucket == (.state | state_bucket)))' >/dev/null 2>&1; then
               echo "::warning::invalid or empty required-checks observation - withholding auto-merge"
               echo "should_merge=false" >> "$GITHUB_OUTPUT"
               exit 0

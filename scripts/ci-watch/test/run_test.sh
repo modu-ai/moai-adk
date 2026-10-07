@@ -416,6 +416,45 @@ test_checks_exit_statuses() {
         sh "$CIWATCH_DIR/run.sh" 785
 }
 
+# State and bucket must agree with gh's aggregateChecks mapping.
+test_check_state_bucket_contract() {
+    for state in FAILURE PENDING NOT_A_STATE; do
+        fixture_all_pass
+        jq --arg state "$state" '.[0].state = $state' "$MOCK_DIR/checks_all_pass.json" > "$MOCK_DIR/checks_contradictory.json"
+        make_mock_gh "contradictory"
+        assert_exit 1 "contradictory $state/pass is rejected" \
+            env MOAI_CIWATCH_GH="$MOCK_DIR/gh" MOAI_CIWATCH_NO_SLEEP=1 \
+            MOAI_CIWATCH_REQUIRED_CHECKS_FILE="$REPO_ROOT/.github/required-checks.yml" \
+            sh "$CIWATCH_DIR/run.sh" 785
+    done
+    while read -r state bucket expected; do
+        fixture_all_pass
+        jq --arg state "$state" --arg bucket "$bucket" \
+            '.[0].state = $state | .[0].bucket = $bucket' "$MOCK_DIR/checks_all_pass.json" > "$MOCK_DIR/checks_valid_state.json"
+        make_mock_gh "valid_state"
+        assert_exit "$expected" "legitimate $state/$bucket is classified" \
+            env MOAI_CIWATCH_GH="$MOCK_DIR/gh" MOAI_CIWATCH_NO_SLEEP=1 \
+            MOAI_CIWATCH_REQUIRED_CHECKS_FILE="$REPO_ROOT/.github/required-checks.yml" \
+            sh "$CIWATCH_DIR/run.sh" 785
+    done <<'STATES'
+SUCCESS pass 0
+NEUTRAL skipping 0
+SKIPPED skipping 0
+ERROR fail 2
+FAILURE fail 2
+TIMED_OUT fail 2
+ACTION_REQUIRED fail 2
+CANCELLED cancel 2
+EXPECTED pending 0
+REQUESTED pending 0
+WAITING pending 0
+QUEUED pending 0
+PENDING pending 0
+IN_PROGRESS pending 0
+STALE pending 0
+STATES
+}
+
 # The real clock command crosses the deadline during a successful poll;
 # a pre-poll-only timeout check must not authorize its late green verdict.
 test_deadline_after_poll() {
@@ -451,6 +490,7 @@ test_polling_aux_only_fail
 test_field_contract_regression
 test_missing_required_pending
 test_checks_exit_statuses
+test_check_state_bucket_contract
 test_deadline_after_poll
 
 printf '\n=== Results: %d pass, %d fail ===\n' "$PASS" "$FAIL"
