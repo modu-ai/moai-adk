@@ -215,3 +215,55 @@ FAIL
   resolution'" — pinning the resolution arm this SPEC's M2 repairs. Cited as
   independent corroboration of the M1 RED; the binding RED observations remain
   `RED-HZB-001`/`RED-HZB-002`/`RED-HZB-003` above.
+
+### RED-HZB-004 — converted-absoluteness vector (appended at run phase, 2026-10-07; leader-forwarded gate round 8)
+
+The turn-end gate round 8 (relayed by the leader mid-run; the lane's
+gate-turnend files record rounds 1-6, so this relayed note is carried here as
+its record surface) measured ONE MORE vector on this card's named surface: the
+cwd-prepend decision in `resolveZoneTarget` reads the slash-CONVERTED spelling,
+so a POSIX relative raw `\alias/secret.md` converts to a "/"-leading form and
+`C:\alias/secret.md` to a drive-letter form — both wrongly judged absolute, the
+prepend is skipped, and no arm follows the literal component into the zone
+(gate-measured: forms=[], decision allow, the write reached the protected
+file). Same named instance, same root cause (rewrite-before-decision), same
+file — repaired in this card's M2 amendment, not a new card.
+
+Two-cell adoption (measured here after the relay, per baseline attribution):
+
+- **RED-now cell** — test
+  `TestCheckProtectedZonePosixBackslashConvertedAbsoluteness`
+  (`internal/hook/protected_zone_backslash_repro_test.go`), run against the
+  PRE-AMENDMENT resolver (Go code exactly `7945a442a`, checked out via
+  `git show 7945a442a:` into the working tree; the working tree differed from
+  `7945a442a` only by this uncommitted test file):
+  - **Command**: `go test -count=1 ./internal/hook/ -run 'TestCheckProtectedZonePosixBackslashConvertedAbsoluteness'`
+  - **Observed stdout (verbatim)**:
+
+```
+--- FAIL: TestCheckProtectedZonePosixBackslashConvertedAbsoluteness (0.83s)
+    protected_zone_backslash_repro_test.go:185: leading backslash relative: BYPASS — decision="allow" reason="", want deny; the write through the literal component landed INSIDE the protected zone (zone_dir/secret.md="bypass")
+    protected_zone_backslash_repro_test.go:185: drive-letter prefixed relative: BYPASS — decision="allow" reason="", want deny; the write through the literal component landed INSIDE the protected zone (zone_dir/secret.md="bypass")
+    protected_zone_backslash_repro_test.go:209: resolver: no returned form resolves inside the protected zone for the leading-backslash relative raw (want a folded form under zone_dir/): []
+    protected_zone_backslash_repro_test.go:228: swept=4
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	1.681s
+FAIL
+```
+
+  - **Exit code**: 1
+  - **Tree SHA**: Go code under test = `7945a442a` (the M2 commit, pre-amendment
+    resolver; stated equivalence per the two-cell rule — the working tree
+    carried only the uncommitted vector test).
+  - **RED reason (observed)**: both shapes returned `decision="allow"` and the
+    demonstration write through the SAME literal component the raw names
+    (`\alias`, `C:\alias` — each its own symlink to `zone_dir`) landed inside
+    the protected zone; the resolver returned zero forms (the gate's measured
+    `forms=[]` shape). The fourth row (backslash-free `c:/x.zonefile` → no
+    forms) PASSED in the same run, pinning that the amendment must not change
+    backslash-free drive-letter-form behavior.
+- **Green path cell**: the M2 amendment (the walk receives its own
+  platform-correct cwd prepend when the conversion changed the spelling) flips
+  it — measured: exit 0, both shapes deny via `wantZoneDeny`, resolver yields a
+  `zone_dir/`-prefixed form, protected file absent, and the `c:/x.zonefile`
+  regression row still holds.

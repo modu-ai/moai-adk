@@ -31,11 +31,18 @@ const hzbLinkName = `lnk\dir`
 // gracefully where the platform cannot create directory symlinks unprivileged.
 func hzbNewBackslashZoneRoot(t *testing.T) string {
 	t.Helper()
+	return hzbNewZoneRootWithLink(t, hzbLinkName)
+}
+
+// hzbNewZoneRootWithLink is hzbNewBackslashZoneRoot with the link name chosen
+// by the caller.
+func hzbNewZoneRootWithLink(t *testing.T, linkName string) string {
+	t.Helper()
 	root := newZoneRoot(t, zoneShippedDoc(hzbBackslashManifest), "")
 	if err := os.MkdirAll(filepath.Join(root, "zone_dir"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(filepath.Join(root, "zone_dir"), filepath.Join(root, hzbLinkName)); err != nil {
+	if err := os.Symlink(filepath.Join(root, "zone_dir"), filepath.Join(root, linkName)); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 	return root
@@ -124,6 +131,99 @@ func TestCheckProtectedZonePosixBackslashLinkBypass(t *testing.T) {
 
 	if swept != 3 {
 		t.Fatalf("swept %d rows, want exactly 3 (2 bypass shapes + 1 positive control)", swept)
+	}
+	t.Logf("swept=%d", swept)
+}
+
+// TestCheckProtectedZonePosixBackslashConvertedAbsoluteness — the absoluteness
+// vector of the same named instance (gate round 8, leader-forwarded): the cwd
+// prepend decision reads the slash-CONVERTED spelling, so a POSIX relative raw
+// `\alias/secret.md` converts to a "/"-leading form and a `C:\alias/secret.md`
+// to a drive-letter form — both wrongly judged absolute, the cwd prepend is
+// skipped, and no arm resolves the literal `\alias` (or `C:\alias`) symlink the
+// OS would follow into the zone. Measured pre-amendment: forms=[], decision
+// allow, the write landed inside the protected zone. The backslash-free
+// drive-letter row pins REQ-HZB-003: `c:/x` (no backslash) keeps its
+// pre-existing outside-root reading.
+func TestCheckProtectedZonePosixBackslashConvertedAbsoluteness(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX-specific: on Windows a backslash is a separator and the rewrite is correct")
+	}
+	const aliasName = `\alias`
+	swept := 0
+
+	for _, shape := range []struct {
+		name string
+		link string // the literal component the raw names — the symlink's name
+		raw  func(link string) string
+	}{
+		{"leading backslash relative", aliasName, func(link string) string {
+			return filepath.Join(link, "secret.md")
+		}},
+		{"drive-letter prefixed relative", `C:\alias`, func(link string) string {
+			return filepath.Join(link, "secret.md")
+		}},
+	} {
+		swept++
+		root := hzbNewZoneRootWithLink(t, shape.link)
+		h := zoneTestHandler(t, root)
+		d, r := zoneCall(t, h, "Write", harnessLearnerIdentity, zoneWrite(shape.raw(shape.link)))
+		if d != DecisionDeny {
+			// RED demonstration: the guard did not deny — the actual write
+			// follows the literal component the OS names and lands inside the
+			// protected zone.
+			literal := filepath.Join(root, shape.link, "secret.md")
+			if werr := os.WriteFile(literal, []byte("bypass"), 0o644); werr != nil {
+				t.Errorf("%s: decision=%q reason=%q, want deny; and the demonstration write failed: %v", shape.name, d, r, werr)
+				continue
+			}
+			landed, rerr := os.ReadFile(filepath.Join(root, "zone_dir", "secret.md"))
+			if rerr != nil {
+				t.Errorf("%s: decision=%q reason=%q, want deny; the write did not land inside the zone: %v", shape.name, d, r, rerr)
+				continue
+			}
+			t.Errorf("%s: BYPASS — decision=%q reason=%q, want deny; the write through the literal component landed INSIDE the protected zone (zone_dir/secret.md=%q)", shape.name, d, r, landed)
+			continue
+		}
+		wantZoneDeny(t, shape.name, d, r, harnessLearnerIdentity, "category", "probe_zone")
+		if _, err := os.Lstat(filepath.Join(root, "zone_dir", "secret.md")); !os.IsNotExist(err) {
+			t.Errorf("%s: deny observed but zone_dir/secret.md exists anyway", shape.name)
+		}
+	}
+
+	// resolver level: the leading-backslash relative raw must yield an in-zone
+	// form once the walk receives its own platform-correct cwd prepend.
+	swept++
+	root := hzbNewZoneRootWithLink(t, aliasName)
+	prev := zoneGetwd
+	zoneGetwd = func() (string, error) { return root, nil }
+	t.Cleanup(func() { zoneGetwd = prev })
+	forms := resolveZoneTarget(root, filepath.Join(aliasName, "secret.md"))
+	inZone := false
+	for _, f := range forms {
+		if strings.HasPrefix(f.Folded, "zone_dir/") {
+			inZone = true
+		}
+	}
+	if !inZone {
+		t.Errorf("resolver: no returned form resolves inside the protected zone for the leading-backslash relative raw (want a folded form under zone_dir/): %+v", forms)
+	}
+
+	// REQ-HZB-003 regression: a backslash-free drive-letter-form raw keeps its
+	// pre-existing reading — treated absolute by the shared rule, outside the
+	// root, no forms, left to the outside-project check.
+	swept++
+	plainRoot := newZoneRoot(t, zoneShippedDoc(hzbBackslashManifest), "")
+	if err := os.MkdirAll(filepath.Join(plainRoot, "zone_dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	plainForms := resolveZoneTarget(plainRoot, "c:/x.zonefile")
+	if len(plainForms) != 0 {
+		t.Errorf("backslash-free drive-letter raw: resolveZoneTarget returned %+v, want no forms (pre-existing outside-root reading must not change)", plainForms)
+	}
+
+	if swept != 4 {
+		t.Fatalf("swept %d rows, want exactly 4 (2 bypass shapes + 1 resolver + 1 regression)", swept)
 	}
 	t.Logf("swept=%d", swept)
 }

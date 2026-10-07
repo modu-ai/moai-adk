@@ -119,14 +119,153 @@ FAIL
 
 ## M2 — Minimal Repair (run phase)
 
-*(populated by the implementer.)*
+- **Repair commit**: `7945a442a` — `fix(hook): resolve native backslash paths
+  for protected-zone target resolution (card t1566)`. Mechanism: a new
+  `zoneNativeSlash` helper (`internal/hook/protected_zone_path.go`) carries the
+  input's component identity into the filesystem-facing steps — the symlink
+  arm's walk input and the project-root resolution — while `zoneSlash` keeps
+  the comparison arm's slash-normalized matching semantics. On Windows the two
+  coincide byte-for-byte (`zoneNativeSlash` = `zoneSlash`); the
+  `zoneResolve` walk body and its fail-closed branches are untouched
+  (REQ-HZB-004).
+- **GREEN evidence (commit 7945a442a)**: both M1 tests exit 0 (deny observed via
+  `wantZoneDeny`, `zone_dir/secret.md` absence asserted); `TestProtectedZone`
+  subtest group fully PASS (6.42s); `go vet` clean; `golangci-lint` 0 issues;
+  `GOOS=windows go build ./...` exit 0. Full package `go test -count=1 -timeout
+  30m ./internal/hook/` on this tree → failing set EXACTLY the M1-BASELINE four
+  (TestAstgrepCorpusRunDoesNotSkip + TestStaleRunNotice* ×3) — countable delta
+  0, the two RED tests flipped GREEN (833.8s run).
+
+### M2 amendment — converted-absoluteness vector (leader-forwarded gate round 8)
+
+- **Vector**: the cwd-prepend decision read the CONVERTED spelling — a POSIX
+  relative `\alias/secret.md` (→ "/"-leading) or `C:\alias/secret.md` (→
+  drive-letter) was wrongly judged absolute, the prepend was skipped, no arm
+  followed the literal component into the zone; gate-measured forms=[],
+  decision allow, the write landed in the protected file. Same named instance,
+  same root cause, same file — repaired here, not a new card. RED first
+  measured on the commit-7945a442a resolver with the fixed fixture
+  (`RED-HZB-004` in acceptance.md: exit 1, both shapes BYPASS, resolver forms
+  []; the backslash-free `c:/x.zonefile` row passed, pinning REQ-HZB-003 for
+  the amendment).
+- **Amendment**: when the conversion changed the spelling (`walk != abs`) and
+  the native spelling is relative, the walk receives its own platform-correct
+  cwd prepend; when the conversion is the identity (every backslash-free
+  input) the branch is a no-op — pre-existing absoluteness semantics
+  byte-identical. No Windows change (`walk == abs` always there).
+- **Fixture honesty note**: the vector test's first cut had a fixture bug (both
+  rows symlinked `\alias` while the drive-letter row's raw names the component
+  `C:\alias`); the RED recorded in `RED-HZB-004` was re-measured with the fixed
+  per-shape fixture against the pre-amendment resolver — the drive-letter
+  demonstration write goes through the same literal component its raw names.
+- **GREEN evidence (amendment)**: the vector test + both M1 tests exit 0 in one
+  run (`ok ... 1.759s`); `TestProtectedZone` group PASS; vet clean; lint 0
+  issues; `GOOS=windows go build ./...` exit 0. Final full-package verdict on
+  the amended tree: see §E E2.
 
 ## M3 — Family Re-check Sweep (run phase)
 
-*(populated by the implementer — the 3-surface table with per-surface state, owner,
-evidence; the repo-wide grep with its swept count and per-hit classification; the
-package re-measurement verdict against the M1 baseline.)*
+Swept on `7945a442a` (this tree, post-M2), 2026-10-07. Observation only for the
+sibling surfaces — this card adds no repair there (spec.md §F).
+
+### Three-surface table (AC-HZB-005)
+
+| Surface | Site | This tree's observed state | Owner card | Evidence |
+|---|---|---|---|---|
+| 1 — zone target resolution | `internal/hook/protected_zone_path.go` (`zoneSlash` boundary + `resolveZoneTarget` filesystem-facing steps) | **REPAIRED** by this card: `zoneNativeSlash` carries component identity into the walk and the root resolution; the comparison arm keeps slash-normalized matching | t1566 (this card) | `TestCheckProtectedZonePosixBackslashLinkBypass` + `TestResolveZoneTargetPosixBackslashLinkDivergence` GREEN flip (exit 0, deny observed, protected file absent) — M2 evidence above |
+| 2 — landing predicate | `internal/cli/worktree/landing_predicate.go:161` | **NO backslash-rewrite pattern at this site** — measured: `grep -c 'ReplaceAll'` over the whole file = **0 hits**; line :161 is the patch-id comparison (`if id == cardIDs[0]`). The ledgered t1561 defect here is the **patch-id whitespace class** (`git patch-id --stable` ignoring whitespace inside strings), a different class from this card's separator rewrite | t1561 | grep count 0 (this run, this tree) + the file read at :140-:166 |
+| 3 — project-boundary walk | `internal/hook/pre_tool.go:1397` | **Backslash-rewrite class site, PRESENT in this tree** (pre-repair form): `strings.Split(strings.ReplaceAll(filepath.ToSlash(p), "\\", "/"), "/")` inside `resolvePhysicalWalk` — the same rewrite-before-resolution class this card repaired in the zone path. Adjacent same-file sites :1596-:1597 normalize for deny/ask REGEX matching (non-resolution consumer; rewrite can only ADD pattern matches, i.e. more deny/ask — fail-closed direction, no bypass instance demonstrated) | t1556 (fix in flight, PR open, touches ONLY pre_tool.go — disjoint from this card's surface) | file read at :1387-:1424 and :1595-:1611 (this run, this tree); grep hits recorded below |
+
+### Repo-wide rewrite-pattern grep — swept count and per-hit classification
+
+Two grep forms, unioned and deduplicated (the plan's example form
+`grep -rn 'ReplaceAll' internal/ --include='*.go' | grep -F '\\\\'` matches only
+4-backslash literals and misses the actual rewrite sites — recorded so the next
+sweep uses both forms):
+
+- Form A (plan example, 4-backslash literal): **4 hits** — all four are the
+  `glmcred`/`jevcred` TOML-escaping lines below.
+- Form B (2-backslash literal `"\\"`, the actual rewrite literal): **21 hits**.
+- **Union swept count: 21 unique lines** (the TOML lines carry both literals).
+  Scope: `internal/ pkg/ cmd/` `--include='*.go'` (pkg/ and cmd/ contributed 0).
+
+Per-hit classification (counts close: 2 + 7 + 1 + 1 + 6 + 4 = 21):
+
+| Class | Hits | Disposition |
+|---|---|---|
+| **In-family surfaces** (2) | `protected_zone_path.go:37` (surface 1 — repaired this card); `pre_tool.go:1397` (surface 3 — owner t1556) | surface 1 REPAIRED (M1 tests GREEN); surface 3 recorded read-only, owner t1556 |
+| **Same-text class, non-resolution consumer, fail-closed direction** (7) | `pre_tool.go:1596`, `:1597` (deny/ask regex matching); `update_namespace_protect.go:132`, `:265`, `:335`; `update/plan/plan.go:100`, `:154` (update-path comparison) | rewriting can only ADD pattern/namespace matches → over-broad deny direction, never an allow path; no bypass instance demonstrated; out of the 3 named surfaces — recorded for the family ledger; any issuance is the leader's disposition |
+| **Template rendering helper** (1) | `internal/template/renderer.go:28` (`posixPath`) | init-time `.sh.tmpl` rendering (shell scripts need forward slashes); not a user-path resolution surface; out of family |
+| **Opposite direction** (1) | `internal/shell/config.go:180` (`/`→`\`, Windows-targeted) | not the `\`→`/` class; out of family |
+| **Comments / test fixtures** (6) | `codex_config_path.go:44` (comment documenting the repo's own SEPARATOR-AWARE repair, REQ-CSPS-010); `codex_skills_disable_path_test.go:150`; `codex_config_path_test.go:47`; `doctor_codex_seam_use_guard_test.go:18`, `:77`; `update_namespace_protect_test.go:151` (test code) | not production resolution code; dismissed |
+| **TOML escaping (plan's named out-of-family)** (4) | `glmcred.go:140`, `:150`; `jevcred.go:195`, `:205` | TOML string escaping/unescaping of credential values, not path rewriting; classified and dismissed per plan.md M3 |
+
+Zone-adjacent helpers (`protected_zone_shell.go`, `protected_zone_guard.go`,
+`protected_zone_path.go`): the only hit in the zone trio is the repaired
+`zoneSlash` line itself — **0** same-class rewrite-before-resolution hits
+elsewhere in the zone guard files (stated zero, measured by Form B over
+`internal/hook/`).
+
+### Package re-measurement verdict against the M1 baseline
+
+*(populated below when the `go test -count=1 -timeout 30m ./internal/hook/`
+post-change run completed — see §E.)*
 
 ## §E — Self-Verification Evidence (run phase)
 
-*(populated by the implementer — E1-E7 of plan.md §E.)*
+Attribution per manager-develop-prompt-template.md §E: every item names (a) the
+command, (b) the observed output, (c) the baseline attribution — this run, this
+tree.
+
+- **E1 — RED cells observed (AC-HZB-001/002/003)**: four-element observations in
+  acceptance.md § Evidence Ledger (`RED-HZB-001`/`RED-HZB-002`/`RED-HZB-003` +
+  reinforcement `RED-HZB-X1`/`X2`), mirrored in §M1 above. (a) two single
+  `go test -run` invocations; (b) verbatim FAIL bytes with the BYPASS/in-zone
+  landing and the single fictional resolver form; (c) run 2026-10-07 on
+  `da2d74eef` (code-identical to pinned `f97edcc55`).
+- **E2 — GREEN cells (M2 flip) + affected-package verdict**:
+  - (a) `go test -count=1 ./internal/hook/ -run
+    'TestCheckProtectedZonePosixBackslashLinkBypass|TestResolveZoneTargetPosixBackslashLinkDivergence'`
+    → (b) `ok  	github.com/modu-ai/moai-adk/internal/hook	1.588s`, exit 0; deny
+    observed via `wantZoneDeny` and `zone_dir/secret.md` absence asserted inside
+    the tests. (c) run 2026-10-07 on `7945a442a` (post-M2).
+  - `TestProtectedZone` regression group: `-run 'TestProtectedZone'` → `--- PASS:
+    TestProtectedZone (6.42s)` / `ok ... 7.262s` — every subtest green
+    (FileTools incl. symlinks, ShellMutation, ManifestStates, NonRegression,
+    DenyReason, NoManifestReadForOthers, AuditRow, BaselineCovered, Liveness).
+  - Full affected package: `go test -count=1 -timeout 30m ./internal/hook/` →
+    **AC-HZB-004 verdict**: *(appended below when the post-change run
+    completed — countable delta against the M1-BASELINE set.)*
+- **E3 — Windows compile surface**: (a) `GOOS=windows go build ./...` → (b) exit
+  0 (no output). (c) run 2026-10-07 on `7945a442a`. Also
+  `GOOS=windows go build ./internal/hook/` exit 0 at the same tree.
+- **E4 — vet + lint**: (a) `go vet ./internal/hook/...` → (b) no output, exit 0;
+  (a) `golangci-lint run ./internal/hook/...` → (b) `0 issues.`, exit 0. (c) run
+  2026-10-07 on `7945a442a`.
+- **E5 — landing demonstration**: pre-fix the in-zone landing is OBSERVED (RED
+  failure line reads the bytes back from `zone_dir/secret.md="bypass"` — file
+  read, not asserted); post-fix the deny branch runs and the file-existence
+  assert inside the tests verifies absence (Lstat IsNotExist).
+- **E6 — family sweep**: §M3 table above — per-surface state + owner + evidence;
+  grep swept count 21 unique lines with per-hit classification closing to 21.
+- **E7 — diff scope**: (a) `git diff --name-only f97edcc55..HEAD` → (b) exactly
+  `internal/hook/protected_zone_path.go` + `internal/hook/protected_zone_backslash_repro_test.go`
+  + this SPEC's 4 artifacts; **no sibling-file repairs** (pre_tool.go and
+  landing_predicate.go untouched). (c) measured on `7945a442a` before the M3
+  evidence commit.
+- **Commits**: `f4f0e3f7d` (M1 RED + evidence), `7945a442a` (M2 repair), M3
+  evidence commit SHA recorded in the M3 section once landed. Branch
+  `WT-protected-zone-backslash`; nothing pushed (lane discipline — integration
+  is the leader's window).
+- **Gaps**: the turn-end codex gate re-flags known ledger defects on this base
+  every turn (gate-turnend-1/2/3 record rounds 1-6); those are existing-
+  attribution items owned by t1556/t1561 and this card's own base defect — none
+  names a NEW defect in this card's changed files. Full-suite judgment is CI's
+  (origin/main after merge); local measurement is the affected package only
+  (AGENTS.local.md §4).
+- **Residual-risk**: the repair narrows the zone resolver's input normalization;
+  the Bash branch (`checkProtectedZoneShell`) inherits it through the shared
+  resolver (REQ-HZB-005) but this card's RED was measured on the Write/Edit
+  branch (the measured surface) — the shell branch's own quote-parsing defects
+  (gate-turnend-2 item 5, unattributed, leader disposition) are a different
+  class and untouched.

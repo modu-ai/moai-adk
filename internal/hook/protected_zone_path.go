@@ -217,6 +217,19 @@ func resolveZoneTarget(root, raw string) []zoneForm {
 			walk = zoneNativeSlash(cwd) + "/" + walk
 		}
 	}
+	// The prepend decision above reads the CONVERTED spelling: on POSIX a raw
+	// `\alias/x` converts to a "/"-leading form and `C:\alias/x` to a
+	// drive-letter form — both wrongly judged absolute, so the walk never
+	// received the cwd and no arm followed the literal backslash component into
+	// the zone (gate round 8 vector). When the conversion changed the spelling,
+	// give the walk its own platform-correct prepend; when it did not
+	// (walk == abs, every backslash-free input), this is a no-op and the
+	// pre-existing absoluteness semantics are byte-identical.
+	if walk != abs && !filepath.IsAbs(walk) {
+		if cwd, err := zoneGetwd(); err == nil && cwd != "" {
+			walk = zoneNativeSlash(cwd) + "/" + walk
+		}
+	}
 	var forms []zoneForm
 	add := func(rel string) {
 		f := zoneForm{Display: rel, Folded: config.FoldZoneText(rel)}
