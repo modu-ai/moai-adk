@@ -11,6 +11,7 @@
 package outbox
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -201,7 +202,12 @@ var buildIdentity = func() (ver, commit string) {
 	return version.GetVersion(), version.GetCommit()
 }
 
-// Drain consumes the user-scoped spool and runs each recorded signal through
+// Drain is DrainContext under the caller's background context.
+func Drain() error {
+	return DrainContext(context.Background())
+}
+
+// DrainContext consumes the user-scoped spool and runs each recorded signal through
 // the local pipeline (design.md section 6):
 //
 //   - consent off → every unsent queue item and the spool are discarded,
@@ -213,8 +219,11 @@ var buildIdentity = func() (ver, commit string) {
 //
 // Each stage that stops a signal appends exactly one row naming the reason.
 // Drain is network-free by construction (this package cannot import the
-// network) and makes no model call (there is no model seam here).
-func Drain() error {
+// network) and makes no model call (there is no model seam here). The
+// context is accepted for the flush time box the CLI call site applies;
+// the drain's own work is local file IO bounded by the spool's ceilings.
+func DrainContext(ctx context.Context) error {
+	_ = ctx
 	// Withdrawal first: consent off discards everything unsent and stops.
 	if !config.ReadUserParticipation().Enabled {
 		return discardAll()

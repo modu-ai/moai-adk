@@ -8,9 +8,13 @@ package cli
 // of flush is M5's publication package; DEC-2's trigger set gains it there).
 
 import (
+	"context"
 	"fmt"
+	"io"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/feedback/outbox"
+	"github.com/modu-ai/moai-adk/internal/feedback/publish"
 	"github.com/spf13/cobra"
 )
 
@@ -77,13 +81,35 @@ func runParticipationPurge(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// runParticipationFlush drains the user-scoped spool into the queue
-// (DEC-2's flush trigger set; time-boxed inside the drain). Never fatal: a
-// flush failure warns and returns nil — the command's own work is done.
-// M5 wires the publication send after the drain at this call site.
+// runParticipationFlush drains the user-scoped spool into the queue and
+// sends through the user's own gh (DEC-2's flush trigger set; the whole
+// run under one time box). Never fatal: a flush failure warns and returns
+// nil — the command's own work is done. The sender refuses on the hook
+// path and re-checks consent per item (REQ-ANON-015).
 func runParticipationFlush(cmd *cobra.Command, _ []string) error {
-	if err := outbox.Drain(); err != nil {
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "warn: participation drain failed:", err.Error())
-	}
+	runParticipationFlushWork(cmd.ErrOrStderr())
 	return nil
+}
+
+// runParticipationFlushWork is the flush work shared by the CLI command
+// and the end-of-update trigger: drain, then send, each failure warning
+// without failing its caller. The context bounds the WHOLE flush at the
+// configured time box (design.md section 10).
+func runParticipationFlushWork(errOut io.Writer) {
+	ctx, cancel := context.WithTimeout(context.Background(), config.DefaultBugreportFlushTimeBox)
+	defer cancel()
+	if err := outbox.DrainContext(ctx); err != nil {
+		_, _ = fmt.Fprintln(errOut, "warn: participation drain failed:", err.Error())
+	}
+	if err := publish.FlushContext(ctx); err != nil {
+		_, _ = fmt.Fprintln(errOut, "warn: participation send failed:", err.Error())
+	}
+}
+
+// runParticipationFlushAtUpdate is the end-of-plain-update flush trigger
+// (DEC-2): beside the ask, after every step that writes project state. It
+// runs even when the ask did not fire (asked already true): the trigger
+// set is about flushing, not about asking.
+func runParticipationFlushAtUpdate(errOut io.Writer) {
+	runParticipationFlushWork(errOut)
 }

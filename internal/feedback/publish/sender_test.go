@@ -1,0 +1,451 @@
+package publish
+
+import (
+	"bytes"
+	"context"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/feedback"
+	"github.com/modu-ai/moai-adk/internal/feedback/outbox"
+)
+
+// ---- fixtures ----
+
+// payloadFixture returns a valid payload and the queue item the drain
+// would have created from it (outbox.RenderReport — the one render
+// function).
+func payloadFixture(t *testing.T) (bugreport.Payload, feedback.QueueItem) {
+	t.Helper()
+	payload, err := bugreport.Build(bugreport.KindPanic, []string{"internal/cli.Execute"}, nil, bugreport.BuildIdentity{
+		Version: "v3.2.0",
+		Commit:  "abcdef1234567",
+	})
+	if err != nil {
+		t.Fatalf("build payload: %v", err)
+	}
+	title, body := outbox.RenderReport(payload)
+	item := feedback.QueueItem{
+		ID:          "f1",
+		Title:       title,
+		Body:        body,
+		QueuedAt:    time.Now().UTC().Format(time.RFC3339),
+		Fingerprint: payload.Fingerprint,
+		Kind:        string(payload.Kind),
+	}
+	return payload, item
+}
+
+// seedQueue writes items into the user-scoped bugreport queue.
+func seedQueue(t *testing.T, items ...feedback.QueueItem) {
+	t.Helper()
+	store := outbox.BugreportQueueStore()
+	err := store.Mutate(func(rec *feedback.QueueRecord) error {
+		for _, it := range items {
+			rec.LastSeq++
+			next := it
+			next.ID = it.ID
+			rec.Items = append(rec.Items, next)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("seed queue: %v", err)
+	}
+}
+
+func queuedItems(t *testing.T) []feedback.QueueItem {
+	t.Helper()
+	rec, err := outbox.BugreportQueueStore().Load()
+	if err != nil {
+		t.Fatalf("load queue: %v", err)
+	}
+	return rec.Items
+}
+
+// consentOn/Off write the user-scoped consent file under the test's
+// MOAI_HOME.
+func consentOn(t *testing.T) {
+	t.Helper()
+	seedConsentFile(t, "participation:\n  enabled: true\n  asked: true\n")
+}
+
+func consentOff(t *testing.T) {
+	t.Helper()
+	seedConsentFile(t, "participation:\n  enabled: false\n  asked: true\n")
+}
+
+func seedConsentFile(t *testing.T, body string) {
+	t.Helper()
+	home := os.Getenv("MOAI_HOME")
+	if home == "" {
+		home = t.TempDir()
+		t.Setenv("MOAI_HOME", home)
+	}
+	configDir := filepath.Join(home, "config")
+	if err := os.MkdirAll(configDir, 0o700); err != nil {
+		t.Fatalf("mkdir config: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "participation.yaml"), []byte(body), 0o600); err != nil {
+		t.Fatalf("seed consent: %v", err)
+	}
+}
+
+// stubRunner is the gh seam's test double: scripted search results, every
+// call recorded, ctx respected (the production runner is ctx-bound too).
+type stubRunner struct {
+	mu        sync.Mutex
+	available bool
+	issues    []RemoteIssue
+	searchErr error
+
+	searches []string
+	repos    []string
+	creates  []createCall
+	comments []commentCall
+
+	onSearch func(s *stubRunner)
+	block    chan struct{} // when non-nil, SearchIssues parks until ctx is done
+}
+
+type createCall struct {
+	Repo  string
+	Title string
+	Body  string
+}
+
+type commentCall struct {
+	Repo   string
+	Number int
+	Body   string
+}
+
+func newStubRunner(available bool) *stubRunner {
+	return &stubRunner{available: available}
+}
+
+func (s *stubRunner) Available(_ context.Context) bool { return s.available }
+
+func (s *stubRunner) SearchIssues(ctx context.Context, repo, token string) ([]RemoteIssue, error) {
+	if s.block != nil {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-s.block:
+		}
+	}
+	s.mu.Lock()
+	s.searches = append(s.searches, token)
+	hook := s.onSearch
+	s.mu.Unlock()
+	if hook != nil {
+		hook(s)
+	}
+	return s.issues, s.searchErr
+}
+
+func (s *stubRunner) CreateIssue(_ context.Context, repo, title string, body io.Reader) error {
+	buf := new(bytes.Buffer)
+	_, _ = buf.ReadFrom(body)
+	s.mu.Lock()
+	s.repos = append(s.repos, repo)
+	s.creates = append(s.creates, createCall{Repo: repo, Title: title, Body: buf.String()})
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *stubRunner) CommentIssue(_ context.Context, repo string, number int, body io.Reader) error {
+	buf := new(bytes.Buffer)
+	_, _ = buf.ReadFrom(body)
+	s.mu.Lock()
+	s.repos = append(s.repos, repo)
+	s.comments = append(s.comments, commentCall{Repo: repo, Number: number, Body: buf.String()})
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *stubRunner) recorded() (searches int, creates int, comments int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.searches), len(s.creates), len(s.comments)
+}
+
+// ---- AC-015: sender discipline ----
+
+func TestSenderChecksConsentPerItem(t *testing.T) {
+	consentOn(t)
+	_, item1 := payloadFixture(t)
+	item2 := item1
+	item2.ID = "f2"
+	seedQueue(t, item1, item2)
+
+	stub := newStubRunner(true)
+	stub.onSearch = func(s *stubRunner) {
+		// The user withdraws consent the moment the first item is processed.
+		consentOff(t)
+	}
+
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+
+	searches, creates, comments := stub.recorded()
+	if searches != 1 || creates != 1 || comments != 0 {
+		t.Fatalf("after the consent flip: searches=%d creates=%d comments=%d, want exactly item one's search+create and nothing for item two", searches, creates, comments)
+	}
+	rest := queuedItems(t)
+	if len(rest) != 1 || rest[0].ID != "f2" {
+		t.Fatalf("item two did not stay queued: %+v", rest)
+	}
+}
+
+func TestSenderQuietWithoutGh(t *testing.T) {
+	consentOn(t)
+	_, item := payloadFixture(t)
+	seedQueue(t, item)
+
+	stub := newStubRunner(false) // gh missing or unauthenticated
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send with gh absent must be quiet, got: %v", err)
+	}
+	searches, creates, comments := stub.recorded()
+	if searches != 0 || creates != 0 || comments != 0 {
+		t.Fatalf("gh absent: searches=%d creates=%d comments=%d, want zero", searches, creates, comments)
+	}
+	if rest := queuedItems(t); len(rest) != 1 {
+		t.Fatalf("the item did not stay queued: %+v", rest)
+	}
+}
+
+func TestSenderNeverRunsOnHookPath(t *testing.T) {
+	consentOn(t)
+	_, item := payloadFixture(t)
+	seedQueue(t, item)
+	t.Setenv(config.EnvHookDispatch, "1")
+
+	stub := newStubRunner(true)
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send on the hook path must be refused quietly, got: %v", err)
+	}
+	searches, creates, comments := stub.recorded()
+	if searches != 0 || creates != 0 || comments != 0 {
+		t.Fatalf("hook path: searches=%d creates=%d comments=%d, want zero", searches, creates, comments)
+	}
+	if rest := queuedItems(t); len(rest) != 1 {
+		t.Fatalf("the item did not stay queued: %+v", rest)
+	}
+}
+
+func TestSenderTimeBox(t *testing.T) {
+	consentOn(t)
+	_, item := payloadFixture(t)
+	seedQueue(t, item)
+
+	stub := newStubRunner(true)
+	stub.block = make(chan struct{}) // never closed: a stub wedged like a hung gh
+
+	start := time.Now()
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	if err := NewSender(stub).Send(ctx); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("send ran %s on a blocking gh, want it to end within the box", elapsed)
+	}
+}
+
+// ---- AC-016: existing fingerprint ----
+
+func TestExistingFingerprintGetsOccurrenceComment(t *testing.T) {
+	consentOn(t)
+	payload, item := payloadFixture(t)
+	seedQueue(t, item)
+
+	stub := newStubRunner(true)
+	stub.issues = []RemoteIssue{{
+		Number: 7,
+		Title:  item.Title, // the exact title key
+		State:  "open",
+		Comments: []RemoteComment{
+			{Body: OccurrenceMarkerForTest(payload)},
+			{Body: OccurrenceMarkerForTest(payload)},
+			{Body: OccurrenceMarkerForTest(payload)},
+		},
+	}}
+
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	_, creates, comments := stub.recorded()
+	if creates != 0 {
+		t.Fatalf("an existing issue must never be re-created (%d creates)", creates)
+	}
+	if comments != 1 {
+		t.Fatalf("comments = %d, want exactly one occurrence comment", comments)
+	}
+	if stub.comments[0].Number != 7 {
+		t.Fatalf("commented issue #%d, want #7", stub.comments[0].Number)
+	}
+	if !IsOccurrenceComment(stub.comments[0].Body) {
+		t.Fatalf("the comment does not carry the occurrence marker: %q", stub.comments[0].Body)
+	}
+	if rest := queuedItems(t); len(rest) != 0 {
+		t.Fatalf("a sent item stayed queued: %+v", rest)
+	}
+}
+
+func TestExactTitleKeyOnly(t *testing.T) {
+	consentOn(t)
+	payload, item := payloadFixture(t)
+	seedQueue(t, item)
+
+	stub := newStubRunner(true)
+	stub.issues = []RemoteIssue{
+		{Number: 1, Title: item.Title + " (duplicate report)", State: "open"},
+		{Number: 2, Title: "re: " + item.Title, State: "open"},
+		{Number: 3, Title: strings.Replace(item.Title, string(payload.Kind), "other", 1), State: "open"},
+	}
+
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	_, creates, comments := stub.recorded()
+	if comments != 0 {
+		t.Fatalf("a near-title match was treated as the same issue (%d comments)", comments)
+	}
+	if creates != 1 {
+		t.Fatalf("creates = %d, want a new issue for the exact-key miss", creates)
+	}
+}
+
+func TestClosedIssueStillCounts(t *testing.T) {
+	consentOn(t)
+	payload, item := payloadFixture(t)
+	seedQueue(t, item)
+
+	stub := newStubRunner(true)
+	stub.issues = []RemoteIssue{{
+		Number: 9,
+		Title:  item.Title,
+		State:  "closed",
+		Comments: []RemoteComment{
+			{Body: OccurrenceMarkerForTest(payload)},
+		},
+	}}
+
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	_, creates, comments := stub.recorded()
+	if creates != 0 || comments != 1 {
+		t.Fatalf("a closed issue still counts: creates=%d comments=%d, want 0/1", creates, comments)
+	}
+}
+
+func TestOccurrenceCapSkipsComment(t *testing.T) {
+	consentOn(t)
+	payload, item := payloadFixture(t)
+	seedQueue(t, item)
+
+	comments := make([]RemoteComment, config.DefaultBugreportOccurrenceCommentsPerIssue)
+	for i := range comments {
+		comments[i] = RemoteComment{Body: OccurrenceMarkerForTest(payload)}
+	}
+	stub := newStubRunner(true)
+	stub.issues = []RemoteIssue{{Number: 11, Title: item.Title, State: "open", Comments: comments}}
+
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	_, creates, gotComments := stub.recorded()
+	if creates != 0 || gotComments != 0 {
+		t.Fatalf("at the cap: creates=%d comments=%d, want the sender to add nothing", creates, gotComments)
+	}
+	if rest := queuedItems(t); len(rest) != 1 {
+		t.Fatalf("the capped item must stay queued: %+v", rest)
+	}
+}
+
+// ---- AC-003: the off/tracked-only arms at the sender ----
+
+func TestSenderNoopWhenParticipationOff(t *testing.T) {
+	consentOff(t)
+	_, item := payloadFixture(t)
+	seedQueue(t, item)
+
+	stub := newStubRunner(true)
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	searches, creates, comments := stub.recorded()
+	if searches != 0 || creates != 0 || comments != 0 {
+		t.Fatalf("participation off: searches=%d creates=%d comments=%d, want zero gh calls", searches, creates, comments)
+	}
+	if rest := queuedItems(t); len(rest) != 1 {
+		t.Fatalf("the item did not stay queued: %+v", rest)
+	}
+}
+
+func TestSenderIgnoresTrackedFileConsentAndRepository(t *testing.T) {
+	// (a) A cloned repository ships participation: true and
+	// repository: attacker/x in its tracked section file; the user's own
+	// consent file is ABSENT. Nothing may run.
+	home := t.TempDir()
+	t.Setenv("MOAI_HOME", home)
+	project := t.TempDir()
+	sections := filepath.Join(project, ".moai", "config", "sections")
+	if err := os.MkdirAll(sections, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	hostile := "feedback:\n  repository: attacker/x\n  participation: true\n  participation_asked: true\n"
+	if err := os.WriteFile(filepath.Join(sections, "feedback.yaml"), []byte(hostile), 0o644); err != nil {
+		t.Fatalf("write hostile file: %v", err)
+	}
+	// The user tier section file carries the hostile repository too: the
+	// reader resolves participation ONLY from participation.yaml.
+	userSections := filepath.Join(home, "config", "sections")
+	if err := os.MkdirAll(userSections, 0o700); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(userSections, "feedback.yaml"), []byte(hostile), 0o600); err != nil {
+		t.Fatalf("write hostile user file: %v", err)
+	}
+	t.Chdir(project)
+
+	_, item := payloadFixture(t)
+	seedQueue(t, item)
+	stub := newStubRunner(true)
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	searches, creates, comments := stub.recorded()
+	if searches != 0 || creates != 0 || comments != 0 {
+		t.Fatalf("tracked-only consent: searches=%d creates=%d comments=%d, want zero", searches, creates, comments)
+	}
+
+	// (b) The user consents via participation.yaml (no repository key);
+	// the hostile repository keys stay where they are. The target must be
+	// the compiled default, never attacker/x.
+	consentOn(t)
+	stub = newStubRunner(true)
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	_, creates, _ = stub.recorded()
+	if creates != 1 {
+		t.Fatalf("creates = %d, want the consenting item sent", creates)
+	}
+	for _, repo := range stub.repos {
+		if repo != config.DefaultFeedbackRepository {
+			t.Fatalf("gh targeted %q, want only %q (a cloned repository must not redirect the user's account)", repo, config.DefaultFeedbackRepository)
+		}
+	}
+}

@@ -554,6 +554,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if err := runParticipationStep(cmd, out); err != nil {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Participation ask", "failed", err.Error(), &th))
 		}
+		runParticipationFlushAtUpdate(cmd.ErrOrStderr())
 		return nil
 	}
 
@@ -603,10 +604,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// the end of a finished plain template-sync run, after every step that
 	// writes project state. Its own gates (mode flags, terminal, CI, asked)
 	// decide whether anything prompts; a failure warns and never fails the
-	// update. (M5 adds the participation flush beside this call site.)
+	// update. Beside it, the participation flush is DEC-2's second trigger:
+	// the end of a plain update drains the spool and sends (time-boxed,
+	// warn-only — it never fails the update).
 	if err := runParticipationStep(cmd, out); err != nil {
 		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Participation ask", "failed", err.Error(), &th))
 	}
+	runParticipationFlushAtUpdate(cmd.ErrOrStderr())
 
 	return nil
 }
