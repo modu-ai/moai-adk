@@ -1220,3 +1220,56 @@ func testZoneLiveness(t *testing.T) {
 		wantZoneDeny(t, "end to end", d, r, harnessLearnerIdentity, "category", "probe_zone")
 	})
 }
+
+// testZoneShellQuoting drives the quoting matrix (card t1570): bash resolves
+// each quoting form to a real path and the guard must check the same path
+// bash writes. The named regressions are the gate rounds 8-9 leaks — :121
+// collapsed a double-quoted backslash before a non-special character, and
+// :113 matched ANSI-C source text without decoding its escapes.
+func testZoneShellQuoting(t *testing.T) {
+	root := newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n"), "")
+	h := zoneTestHandler(t, root)
+	swept := 0
+
+	// The literal-name directory is symlinked onto the zone: a command that
+	// writes through `lnk\dir/` (backslash preserved) really lands inside
+	// zone_dir/, so the guard must deny it.
+	if err := os.Symlink(filepath.Join(root, "zone_dir"), filepath.Join(root, `lnk\dir`)); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	denying := []struct {
+		name string
+		cmd  string
+	}{
+		{"single quotes verbatim", `echo x > 'zone_dir/q1.log'`},
+		{"plain double quotes", `echo x > "zone_dir/q2.log"`},
+		{"unquoted literal", `echo x > zone_dir/q3.log`},
+		{"double-quote backslash before non-special", `echo x > "lnk\dir/q4.log"`},
+		{"ANSI-C defined escape decodes", `echo x > $'lnk\\dir/q5.log'`},
+		{"ANSI-C hex escape decodes", `echo x > $'zone_dir/q6\x2elog'`},
+		{"ANSI-C escape-free text", `echo x > $'zone_dir/q7.log'`},
+	}
+	for _, tc := range denying {
+		swept++
+		d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": tc.cmd})
+		wantZoneDeny(t, tc.name, d, r, harnessLearnerIdentity, "category", "probe_zone")
+	}
+
+	// Allow controls: bash writes these outside the zone too, so the guard
+	// must stay open — a repair that flips them over-approximates.
+	allowing := []struct {
+		name string
+		cmd  string
+	}{
+		{"double-quote escape of dollar", `echo x > "zone_dir_out/q\$8.log"`},
+		{"outside path untouched", `echo x > other_dir/q9.log`},
+	}
+	for _, tc := range allowing {
+		swept++
+		if d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": tc.cmd}); d == DecisionDeny {
+			t.Errorf("%s: decision=%q reason=%q, want allow", tc.name, d, r)
+		}
+	}
+	t.Logf("swept=%d", swept)
+}
