@@ -48,7 +48,7 @@ func TestSyncBackupDeployedVerifier(t *testing.T) {
 		}
 		return string(out)
 	}
-	for _, scenario := range []string{"valid", "corrupt", "missing-file", "missing-manifest", "missing-input", "malformed", "omitted-row", "extra-file", "duplicate-row", "unsafe-input", "symlink-input"} {
+	for _, scenario := range []string{"valid", "corrupt", "missing-file", "missing-manifest", "missing-input", "malformed", "omitted-row", "extra-file", "duplicate-row", "unsafe-input", "symlink-input", "newline-inventory"} {
 		t.Run(scenario, func(t *testing.T) {
 			root := t.TempDir()
 			docs := filepath.Join(root, "docs")
@@ -63,6 +63,13 @@ func TestSyncBackupDeployedVerifier(t *testing.T) {
 			backup := filepath.Join(t.TempDir(), "backup with spaces")
 			inputs := []string{"README.md", "docs"}
 			switch scenario {
+			case "newline-inventory":
+				inputs = []string{"a.txt", "b.txt"}
+				for _, path := range inputs {
+					if err := os.WriteFile(filepath.Join(root, path), []byte("original\n"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
 			case "missing-input":
 				inputs = append(inputs, "absent.md")
 			case "unsafe-input":
@@ -84,6 +91,14 @@ func TestSyncBackupDeployedVerifier(t *testing.T) {
 				t.Fatal(err)
 			}
 			switch scenario {
+			case "newline-inventory":
+				// Use the manifest's actual order: an unchecked filename can
+				// otherwise match two newline-delimited inventory entries.
+				var names []string
+				for _, row := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+					names = append(names, strings.Split(row, "\t")[2])
+				}
+				err = os.WriteFile(filepath.Join(backup, strings.Join(names, "\n")), []byte("unrecorded"), 0o600)
 			case "corrupt":
 				err = os.WriteFile(filepath.Join(backup, "README.md"), []byte("changed"), 0o600)
 			case "missing-file":
@@ -104,6 +119,9 @@ func TestSyncBackupDeployedVerifier(t *testing.T) {
 				t.Fatal(err)
 			}
 			out := run(t, scenario == "valid", "verify", backup)
+			if scenario == "newline-inventory" && !strings.Contains(out, "unsupported relative path:") {
+				t.Fatalf("newline filename was not rejected by path validation: %s", out)
+			}
 			if scenario == "valid" && !strings.Contains(out, "PASS:") {
 				t.Fatalf("verification lacks PASS: %s", out)
 			}

@@ -112,6 +112,7 @@ verify_backup() {
     while IFS= read -r -d '' actual; do
         path=${actual#"$backup_dir/"}
         [ "$path" != manifest.tsv ] || continue
+        relative_path "$path"
         case "$seen" in *$'\n'"$path"$'\n'*) ;; *) fail "unrecorded backup file: $path" ;; esac
     done < <(find "$backup_dir" -type f -print0)
     printf 'PASS: backup manifest verified (%s files)\n' "$entries"
