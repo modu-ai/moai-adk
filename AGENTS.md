@@ -317,6 +317,11 @@ sessions follow the startup rule in §0. A Claude Code session that needs local 
 Codex Web sessions read `AGENTS.md` but run no local hooks or launcher injection; treat them as
 read-and-review first.
 
+For every local launch form, `moai codex` reads non-empty regular common local guidance
+from `AGENTS.local.md` first, followed by the legacy harness-specific local file. It injects
+the combined bodies as `developer_instructions`, with a source header for each file.
+Linked and non-regular inputs are refused; an operator override collision fails before launch.
+
 ## 9. Hook Event Coverage
 
 Codex currently wires SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, Stop,

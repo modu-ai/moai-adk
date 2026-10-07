@@ -162,17 +162,16 @@ const rxdReadOnlySentence = "The agent never sets the write argument, so a deleg
 
 var rxdListMarker = regexp.MustCompile(`^\s*([-*]|[0-9]+\.)\s`)
 
-// rxdPairs are the four mirrored pairs that differ by design (the live copy
-// and the template copy are NOT byte-identical), with the multiset line
-// difference measured on the tree before the delegation change. A hunk applied
-// to one copy only, or worded differently in the two, moves the measure.
+// rxdPairs pin the intended multiset delta for each mirrored pair. The
+// instruction-file cutover aligned fix/loop with the same AGENTS.md contract,
+// so those pairs now require exact line parity; other deliberate forks remain.
 var rxdPairs = []struct {
 	path  string
 	delta int
 }{
 	{".claude/agents/moai/manager-develop.md", 5},
-	{".claude/skills/moai/workflows/fix.md", 4},
-	{".claude/skills/moai/workflows/loop.md", 2},
+	{".claude/skills/moai/workflows/fix.md", 0},
+	{".claude/skills/moai/workflows/loop.md", 0},
 	{".claude/rules/moai/development/agent-authoring.md", 4},
 }
 
@@ -664,6 +663,9 @@ func TestRunExternalDelegationDoctrine(t *testing.T) {
 			live := rxdRead(t, root, p.path)
 			tmpl := rxdRead(t, filepath.Join(root, filepath.FromSlash(rxdTemplateRoot)), p.path)
 			got := rxdMultisetDelta(live, tmpl)
+			if p.delta == 0 && live != tmpl {
+				t.Errorf("%s: the aligned instruction contract requires byte-identical copies", p.path)
+			}
 			t.Logf("%s: multiset line difference live vs template = %d (constant %d)", p.path, got, p.delta)
 			if got != p.delta {
 				t.Errorf("%s: live/template multiset line difference is %d, want %d (the by-design difference grew or shrank: a hunk reached one copy only or was worded differently)", p.path, got, p.delta)
