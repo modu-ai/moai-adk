@@ -11,6 +11,7 @@ package outbox
 
 import (
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/bugreport"
 )
@@ -112,5 +113,112 @@ func TestSentFingerprintStillDedupes(t *testing.T) {
 	}
 	if remaining := spoolKinds(t, spoolPath); len(remaining) != 0 {
 		t.Fatalf("the deduped report stayed in the spool (remaining: %v)", remaining)
+	}
+}
+
+// The adopt-or-cancel tests (review-gate findings 5 and 9, P2): the
+// orphaned reservation already occupies a rolling-cap slot. The recovery
+// used to judge the caps INCLUDING that slot and then RecordQueued a SECOND
+// entry — at the daily cap the recovery target was cap-judged and DELETED
+// from the spool (count-and-discard), and below it the report counted twice
+// into the caps. The recovery now ADOPTS the orphan's slot: the caps
+// judgment excludes the orphan's own reservation, and the re-queue replaces
+// the orphan's QueuedAt entry instead of appending.
+
+// TestOrphanRecoveryAtTheCapAdoptsItsSlot (finding 9's fixture): the
+// orphaned reservation plus two other reports fill the DAILY CAP of 3. The
+// recovery target must not be cap-judged by its own orphan slot and
+// consumed — it re-queues into that slot.
+func TestOrphanRecoveryAtTheCapAdoptsItsSlot(t *testing.T) {
+	spoolPath := spoolFixture(t, bugreport.KindPanic)
+	consentOn(t)
+	validBuildForTest(t)
+
+	now := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
+	SetClockForTest(func() time.Time { return now })
+	t.Cleanup(func() { SetClockForTest(nil) })
+
+	entries, err := bugreport.ReadSpool()
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("read spool: %v (%d entries)", err, len(entries))
+	}
+	fp := fingerprintOf(entries[0])
+	ledger, err := loadLedger()
+	if err != nil {
+		t.Fatalf("load ledger: %v", err)
+	}
+	ledger.RecordQueued(fp, now) // the orphan's slot
+	ledger.QueuedAt = append(ledger.QueuedAt, // two other reports' slots
+		now.Add(-1*time.Hour).UTC().Format(time.RFC3339),
+		now.Add(-2*time.Hour).UTC().Format(time.RFC3339))
+	if err := saveLedger(ledger); err != nil {
+		t.Fatalf("seed ledger: %v", err)
+	}
+
+	// The recovery runs an hour later: the three seeded slots are still
+	// inside the rolling 24-hour window.
+	now = now.Add(time.Hour)
+	if err := Drain(); err != nil {
+		t.Fatalf("drain: %v", err)
+	}
+
+	if got := queuedBugreportCount(t); got != 1 {
+		t.Fatalf("queue holds %d items — the recovery target was cap-judged against its own orphan slot and deleted from the spool", got)
+	}
+	if remaining := spoolKinds(t, spoolPath); len(remaining) != 0 {
+		t.Fatalf("the spool kept %v — the report should have been re-queued", remaining)
+	}
+	ledger, err = loadLedger()
+	if err != nil {
+		t.Fatalf("load ledger: %v", err)
+	}
+	if len(ledger.QueuedAt) != 3 {
+		t.Fatalf("the ledger carries %d QueuedAt entries, want 3 — the adopted slot must not add a second reservation for one report", len(ledger.QueuedAt))
+	}
+	if got := ledger.FingerprintSeen[fp]; got != now.UTC().Format(time.RFC3339) {
+		t.Fatalf("the adopted record kept the orphan's stamp %q, want the recovery's own stamp %q", got, now.UTC().Format(time.RFC3339))
+	}
+}
+
+// TestOrphanRecoveryBelowTheCapDoesNotDoubleCount (finding 5's shape): with
+// only the orphan's slot in the ledger, the re-queue must REUSE that slot —
+// one report, one reservation.
+func TestOrphanRecoveryBelowTheCapDoesNotDoubleCount(t *testing.T) {
+	spoolFixture(t, bugreport.KindPanic)
+	consentOn(t)
+	validBuildForTest(t)
+
+	now := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
+	SetClockForTest(func() time.Time { return now })
+	t.Cleanup(func() { SetClockForTest(nil) })
+
+	entries, err := bugreport.ReadSpool()
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("read spool: %v (%d entries)", err, len(entries))
+	}
+	fp := fingerprintOf(entries[0])
+	ledger, err := loadLedger()
+	if err != nil {
+		t.Fatalf("load ledger: %v", err)
+	}
+	ledger.RecordQueued(fp, now)
+	if err := saveLedger(ledger); err != nil {
+		t.Fatalf("seed ledger: %v", err)
+	}
+
+	now = now.Add(time.Hour)
+	if err := Drain(); err != nil {
+		t.Fatalf("drain: %v", err)
+	}
+
+	if got := queuedBugreportCount(t); got != 1 {
+		t.Fatalf("queue holds %d items, want the orphan re-queued", got)
+	}
+	ledger, err = loadLedger()
+	if err != nil {
+		t.Fatalf("load ledger: %v", err)
+	}
+	if len(ledger.QueuedAt) != 1 {
+		t.Fatalf("the ledger carries %d QueuedAt entries for ONE report — the recovery double-counted into the caps", len(ledger.QueuedAt))
 	}
 }

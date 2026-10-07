@@ -532,6 +532,7 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 	var ledgerBroken bool
 	var droppedIDs []string
 	var queued feedback.QueueItem
+	var orphanStamp string // set when this attempt ADOPTS an orphaned reservation (findings 5/9)
 	err = store.MutateContext(ctx, func(rec *feedback.QueueRecord) error {
 		ledger, lerr := loadLedger()
 		if lerr != nil {
@@ -565,10 +566,19 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 				outcome = &drainOutcome{outcome: "deduped", reason: "fingerprint was terminally discarded (send attempt limit)"}
 				return nil
 			}
+			// The genuine orphan: ADOPT its reservation (review-gate
+			// findings 5 and 9, P2) — the slot it already occupies belongs
+			// to the report being re-queued. The caps judgment below
+			// excludes the orphan's own entry (a report must not be
+			// cap-judged against its own slot and consumed), and the record
+			// below REPLACES the orphan's QueuedAt entry instead of
+			// appending a second reservation for one report.
+			orphanStamp = ledger.FingerprintSeen[fp]
 		}
 
-		// Rolling global caps.
-		if capped, why := ledger.GlobalCapsAllowed(clock()); !capped {
+		// Rolling global caps. The adopted orphan slot counts for its
+		// re-queued report, not against it.
+		if capped, why := ledger.GlobalCapsAllowedExcluding(clock(), orphanStamp); !capped {
 			outcome = &drainOutcome{outcome: "capped", reason: why}
 			return nil
 		}
@@ -594,7 +604,11 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 			droppedIDs = append(droppedIDs, oldest.ID)
 		}
 
-		ledger.RecordQueued(payload.Fingerprint, at)
+		if orphanStamp != "" {
+			ledger.RecordQueuedAdopting(payload.Fingerprint, at, orphanStamp)
+		} else {
+			ledger.RecordQueued(payload.Fingerprint, at)
+		}
 		if serr := saveLedger(ledger); serr != nil {
 			// Aborting the callback leaves the queue file unchanged: a
 			// signal whose ledger commit failed is never queued.

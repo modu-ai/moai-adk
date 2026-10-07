@@ -110,8 +110,24 @@ func (l *Ledger) FingerprintAllowed(fp string, now time.Time, windowDays int) bo
 // GlobalCapsAllowed reports whether one more report may be queued under the
 // rolling daily and weekly caps, with the cap name when not.
 func (l *Ledger) GlobalCapsAllowed(now time.Time) (bool, string) {
+	return l.globalCapsAllowed(now, "")
+}
+
+// GlobalCapsAllowedExcluding is GlobalCapsAllowed with one QueuedAt entry
+// (matched by its exact timestamp) excluded from the count — the orphan-
+// recovery adoption (review-gate findings 5 and 9): the orphaned
+// reservation's slot belongs to the report being re-queued, so the caps
+// must not judge the report against its own slot.
+func (l *Ledger) GlobalCapsAllowedExcluding(now time.Time, exceptStamp string) (bool, string) {
+	return l.globalCapsAllowed(now, exceptStamp)
+}
+
+func (l *Ledger) globalCapsAllowed(now time.Time, exceptStamp string) (bool, string) {
 	dayCount, weekCount := 0, 0
 	for _, ts := range l.QueuedAt {
+		if exceptStamp != "" && ts == exceptStamp {
+			continue
+		}
 		at, err := time.Parse(time.RFC3339, ts)
 		if err != nil {
 			continue
@@ -136,6 +152,26 @@ func (l *Ledger) GlobalCapsAllowed(now time.Time) (bool, string) {
 func (l *Ledger) RecordQueued(fp string, now time.Time) {
 	l.FingerprintSeen[fp] = now.UTC().Format(time.RFC3339)
 	l.QueuedAt = append(l.QueuedAt, now.UTC().Format(time.RFC3339))
+}
+
+// RecordQueuedAdopting stamps the fingerprint and REPLACES the old stamp's
+// QueuedAt entry with the new one instead of appending — the orphan-
+// recovery adoption: one report, one reservation (review-gate findings 5
+// and 9). When no entry matches the old stamp (a malformed ledger), it
+// falls back to appending so the reservation is never silently lost. (A
+// same-second collision with another fingerprint's entry is below RFC3339's
+// resolution and is accepted, matching the rollback's exact-timestamp
+// match.)
+func (l *Ledger) RecordQueuedAdopting(fp string, now time.Time, oldStamp string) {
+	stamp := now.UTC().Format(time.RFC3339)
+	l.FingerprintSeen[fp] = stamp
+	for i, ts := range l.QueuedAt {
+		if ts == oldStamp {
+			l.QueuedAt[i] = stamp
+			return
+		}
+	}
+	l.QueuedAt = append(l.QueuedAt, stamp)
 }
 
 // MarkDiscarded records that the fingerprint's reservation ended TERMINALLY
