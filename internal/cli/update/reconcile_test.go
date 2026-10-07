@@ -25,7 +25,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -1044,9 +1043,7 @@ func TestClassifyNonRegularTargetDoesNotHang(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(fifo), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	if err := syscall.Mkfifo(fifo, 0o644); err != nil {
-		t.Fatalf("mkfifo: %v", err)
-	}
+	makeFifo(t, fifo)
 
 	done := make(chan error, 1)
 	go func() {
