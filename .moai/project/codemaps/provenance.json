@@ -2,7 +2,7 @@
   "schema_version": 1,
   "tree_root": "/Users/goos/.codex/worktrees/pr1772-format-fix/moai-adk-go",
   "commit_sha": "ff7722d2d157dd4e3cffd88ebb644e0f8ead83fa",
-  "dirty": true,
+  "dirty": false,
   "described_roots": [
     "internal",
     "cmd",
