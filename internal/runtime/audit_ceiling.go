@@ -584,9 +584,18 @@ func appendProgressRecord(specDir, line string) error {
 		return err
 	}
 	content := progressWithRecord(string(raw), line)
-	// The mode-preserving atomic writer keeps an existing progress.md's
-	// permission bits and creates a new one at 0644 — the pre-repair
-	// os.WriteFile semantics — while the replace itself is atomic.
+	// Mode posture (sync-audit-1 F2): an existing progress.md keeps its
+	// pre-write permission bits — the atomic replace preserves the
+	// destination's mode. A brand-new progress.md takes the mode the
+	// pre-repair os.WriteFile gave it, 0644 with the process umask applied,
+	// so a not-yet-existing file is pre-created empty through os.WriteFile
+	// itself and the kernel applies the umask at create time; handing 0644
+	// verbatim to the atomic writer's explicit chmod would bypass it.
+	if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
+		if err := os.WriteFile(path, nil, 0o644); err != nil {
+			return err
+		}
+	}
 	return atomicfile.Write(path, []byte(content), 0o644)
 }
 

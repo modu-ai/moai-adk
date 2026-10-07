@@ -139,6 +139,39 @@ diff's only engine files are the four §C files).
   serialization per plan §D.7), no fan_in changes on tagged functions.
   Existing tags (EvaluateCeiling ANCHOR, CountAuditRounds NOTE) unchanged.
 
+### F2 repair addendum (sync-audit-1, blocking — umask regression in the D3 atomic replace)
+
+RED observed pre-fix at HEAD `8a8c97d2d` (new test,
+`TestAppendProgressRecordNewFileModeAppliesUmask`, `//go:build darwin || linux`,
+`syscall.Umask(0o077)`):
+`audit_ceiling_umask_test.go:31: new progress.md mode 0644, want 0600 (0644
+with the umask applied — the pre-repair os.WriteFile semantics)` — matching
+the verdict's `/tmp` probe byte-for-byte. Fix at the CALL SITE
+(`appendProgressRecord`): a not-yet-existing progress.md is pre-created
+empty through `os.WriteFile(path, nil, 0o644)` — the kernel applies the
+umask at create time, the exact pre-repair semantics — and the atomic
+replace then stat-preserves that mode; `config/atomicfile.Write` itself is
+UNTOUCHED (11 other callers keep their verbatim-defaultMode semantics —
+zero caller impact). The existing-file arm
+(`TestAppendProgressRecordExistingFileModePreserved`: 0600 stays 0600
+through the replace) passed pre- and post-fix.
+
+Mode matrix (new-file progress.md):
+
+| umask | pre-repair `os.WriteFile` 0644 | broken (`atomicfile.Write` 0644 verbatim) | repaired (call-site pre-create) |
+|---|---|---|---|
+| 0022 | 0644 | 0644 | 0644 |
+| 0077 | 0600 | 0644 (the regression) | 0600 |
+
+Existing-file progress.md: mode preserved through the replace, both before
+and after (0600 stays 0600) — unchanged arm.
+
+Re-measurement: `go test -race -count=1 -timeout 30m ./internal/runtime/...`
+→ `ok … 37.711s`; umask + §G pairs `-count=3 -race` → `ok … 2.615s`; vet
+clean; `golangci-lint run ./internal/runtime/...` → `0 issues.`. F1/F3
+untouched per leader-pending ruling; F3's aside on `persist.go`
+`atomicWrite` (new files stay 0600) is observed and NOT acted on this round.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07
