@@ -59,6 +59,8 @@ const (
 	codexAuditReportsDir    = ".moai/reports"
 	codexAuditRecordSubdir  = "codex-audit"
 	codexAuditRecordVersion = 1
+	codexAuditDisabledURL   = "https://mcp-disabled.invalid"
+	codexAuditDisabledCmd   = "__moai_audit_mcp_disabled__"
 	codexAuditCovers        = "The read-only guarantee covers the commands and edits the model issues, which the Codex sandbox governs; it does not cover writers outside that sandbox."
 )
 
@@ -192,7 +194,7 @@ func prepareCodexAudit(ctx context.Context, req codexAuditRequest) *codexAuditPl
 			return fail("codex binary not found: %v", err)
 		}
 	}
-	names, err := codexAuditMCPServerNames(ctx, program, root)
+	disableArgs, err := codexAuditMCPDisableArgs(ctx, program, root)
 	if err != nil {
 		return fail("cannot list MCP servers to disable: %v", err)
 	}
@@ -216,9 +218,7 @@ func prepareCodexAudit(ctx context.Context, req codexAuditRequest) *codexAuditPl
 		argv = append(argv, "-c", `model_reasoning_effort="`+effort+`"`)
 	}
 	argv = append(argv, "-c", instrToken)
-	for _, n := range names {
-		argv = append(argv, "-c", "mcp_servers."+n+".enabled=false")
-	}
+	argv = append(argv, disableArgs...)
 	argv = append(argv, "-C", root, "--json", "-")
 
 	started := codexAuditNow().UTC()
@@ -603,9 +603,13 @@ func codexAuditParseRoleTOML(src string) (map[string]string, error) {
 	return out, nil
 }
 
-// codexAuditMCPServerNames asks codex which MCP servers are declared, across
-// every configuration layer codex itself resolves for root.
-func codexAuditMCPServerNames(ctx context.Context, program, root string) ([]string, error) {
+// codexAuditMCPDisableArgs disables every server Codex resolves for root.
+// Plugin transports are resolved after bootstrap config validation: an
+// enabled=false override alone creates an invalid, transport-less table.
+// Preserve the transport kind with inert descriptors for bootstrap validation.
+// Never forward real URLs or commands: these may contain credentials and would
+// leak through process arguments even when launch records redact them.
+func codexAuditMCPDisableArgs(ctx context.Context, program, root string) ([]string, error) {
 	lctx, cancel := context.WithTimeout(ctx, config.DefaultCodexAuditListTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(lctx, program, "mcp", "list", "--json")
@@ -619,23 +623,48 @@ func codexAuditMCPServerNames(ctx context.Context, program, root string) ([]stri
 		return nil, fmt.Errorf("mcp list: %w: %s", err, strings.TrimSpace(stderr.String()))
 	}
 	var servers []struct {
-		Name string `json:"name"`
+		Name      string `json:"name"`
+		Transport struct {
+			Type    string `json:"type"`
+			Command string `json:"command"`
+			URL     string `json:"url"`
+		} `json:"transport"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &servers); err != nil {
 		return nil, fmt.Errorf("mcp list output is not a JSON server list: %w", err)
 	}
 	seen := map[string]bool{}
-	names := make([]string, 0, len(servers))
+	args := make([]string, 0, len(servers)*4)
 	for _, s := range servers {
 		if !codexAuditServerName.MatchString(s.Name) {
 			return nil, fmt.Errorf("mcp list names server %q, which cannot be disabled by name", s.Name)
 		}
-		if !seen[s.Name] {
-			seen[s.Name] = true
-			names = append(names, s.Name)
+		field, value := "", ""
+		switch s.Transport.Type {
+		case "stdio":
+			field, value = "command", s.Transport.Command
+		case "streamable_http":
+			field, value = "url", s.Transport.URL
+		default:
+			return nil, fmt.Errorf("mcp list server %q has an unsupported transport", s.Name)
 		}
+		if value == "" || strings.ContainsRune(value, 0) {
+			return nil, fmt.Errorf("mcp list server %q has an invalid transport", s.Name)
+		}
+		if seen[s.Name] {
+			return nil, fmt.Errorf("mcp list duplicates server %q", s.Name)
+		}
+		seen[s.Name] = true
+		if field == "command" {
+			value = codexAuditDisabledCmd
+		} else {
+			value = codexAuditDisabledURL
+		}
+		encoded, _ := json.Marshal(value)
+		prefix := "mcp_servers." + s.Name
+		args = append(args, "-c", prefix+"."+field+"="+string(encoded), "-c", prefix+".enabled=false")
 	}
-	return names, nil
+	return args, nil
 }
 
 // codexAuditReserveRecord creates the launch record exclusively before the
@@ -763,13 +792,16 @@ func codexAuditWriteVerdict(root, dest string, data []byte, recDir *os.Root) (st
 	return filepath.ToSlash(rel), nil
 }
 
-// codexAuditRedactArgv replaces the instruction token with its digest.
+// codexAuditRedactArgv replaces instructions and transport values with digests.
 func codexAuditRedactArgv(argv []string, token, instructions string) []string {
 	sum := sha256.Sum256([]byte(instructions))
 	out := make([]string, len(argv))
 	for i, a := range argv {
 		if a == token {
 			a = fmt.Sprintf("developer_instructions=<redacted sha256=%s bytes=%d>", hex.EncodeToString(sum[:]), len(instructions))
+		} else if key, value, ok := strings.Cut(a, "="); ok && strings.HasPrefix(key, "mcp_servers.") && (strings.HasSuffix(key, ".url") || strings.HasSuffix(key, ".command")) {
+			digest := sha256.Sum256([]byte(value))
+			a = fmt.Sprintf("%s=<redacted sha256=%s bytes=%d>", key, hex.EncodeToString(digest[:]), len(value))
 		}
 		out[i] = a
 	}

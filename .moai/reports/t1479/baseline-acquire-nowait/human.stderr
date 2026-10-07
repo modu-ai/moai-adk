@@ -1,0 +1,6 @@
+time=<T> level=WARN msg="config sections directory not found, using defaults" path=<FIXTURE>/.moai/config/sections
+          
+   ERROR  
+          
+  Release integration window held by another session: lane-a (pid 1) since 2026-10-03T00:00:00Z on develop.           
+

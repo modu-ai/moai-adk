@@ -409,12 +409,32 @@ func assertSingleLineExitFrame(t *testing.T, m *previewModel) {
 // AC-TUIM-013 (structural half) — the fallback's class column is uniform
 // -------------------------------------------------------------------
 
+// Card t1527 D3: the fallback lists CONFLICT rows only — the full-dump form
+// buried the rows needing a human decision under 700+ managed re-deploys.
+// The uniform-column property (AC-TUIM-013) is scoped to the listed rows, and
+// the collapsed classes appear as counts in the summary card instead.
 func TestPreviewFallbackClassColumnHasUniformWidth(t *testing.T) {
 	classes := classifyAll(allFourClassesInputs(), allFourClassesPredicate())
 	out := renderFallback(classes, true)
 
-	offsets := make(map[int][]string)
+	var conflicts []FileClassification
 	for _, c := range classes {
+		if c.Class == ClassConflict {
+			conflicts = append(conflicts, c)
+			continue
+		}
+		for _, line := range strings.Split(out, "\n") {
+			if strings.Contains(line, c.RelPath) {
+				t.Errorf("non-conflict row %q must collapse into the counts card (card t1527 D3), but it is listed:\n%s", c.RelPath, out)
+			}
+		}
+	}
+	if len(conflicts) == 0 {
+		t.Fatalf("fixture expected at least one conflict row; got none")
+	}
+
+	offsets := make(map[int][]string)
+	for _, c := range conflicts {
 		line := fallbackLineFor(t, out, c.RelPath)
 		idx := strings.Index(line, c.RelPath)
 		if idx < 0 {

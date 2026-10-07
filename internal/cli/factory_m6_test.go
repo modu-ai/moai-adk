@@ -244,6 +244,9 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 		sdClearLaneEnv(t)
 		root, integWT, cards := sdMergeFixture(t, true, true, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
+		if _, err := factory.RunRemeasure(root, cards[0].wt, "develop", "true"); err != nil {
+			t.Fatalf("place candidate re-measure: %v", err)
+		}
 		sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
 		sdLaneEnv(t, "lane-1", "")
 		t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")

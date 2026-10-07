@@ -63,6 +63,12 @@ type TransitionRequest struct {
 	// transaction, right before the commit; its reading replaces QueueHold
 	// so a hold set after an earlier read still refuses.
 	QueueHoldRead func() string
+	// VerifyRemeasure (card t1479, REQ-MWQ-021), when set, replaces the
+	// re-measure FILE read at T16: the caller verifies the RECORD keyed to
+	// the merge commit's tree — a file merely naming the merge SHA as text
+	// is no longer sufficient. Nil keeps the pre-t1479 file read (callers
+	// that predate the record store).
+	VerifyRemeasure func(treeSHA, mergeSHA string) error
 	// Now is the injected clock; zero means time.Now().
 	Now time.Time
 }
@@ -572,7 +578,7 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		plan.evidence["sha"] = full
 	case guardLeaseValid, guardNone:
 	case guardMerge:
-		ev, err := verifyMerge(ctx, cur.WorktreePath, req.MergeSHA, req.RemeasurePath, req.IntegrationBranch)
+		ev, err := verifyMerge(ctx, cur.WorktreePath, req.MergeSHA, req.RemeasurePath, req.IntegrationBranch, req.VerifyRemeasure)
 		if err != nil {
 			return plan, err
 		}

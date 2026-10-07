@@ -211,9 +211,10 @@ local/main
 
 Factory(리더 `moai cc -f` · 레인 `moai cc -l`) 모드에서 레인은 카드 작업이 끝나면 **반드시 리더에게 `main` 반영을 요청한다.** 레인이 스스로 병합 창을 잡지 않는다.
 
-- **self-dispatch lane 예외 — 병합 창.** Claude self-dispatch 팩토리 run의 레인은 위 요청을 하지 않는다 — `moai factory complete`의 통합 절차로 스스로 통합 창을 잡고 자기 카드를 `main`에 반영한다(OD-2). Codex 레인은 예외가 아니다 — merge-ready에서 정지한다(REQ-SD-025). 이 예외도 위의 다른 큐 변경(`add`, `drop`, `done`, `edit` 등) 금지와 `moai contract sign` 금지는 바꾸지 않는다(카드 임대만 `moai factory next`로 허용 — OD-1; `.claude/rules/local/gitflow-lane-protocol.md` §6).
+- **self-dispatch lane 예외 — 병합 창.** Claude self-dispatch 팩토리 run의 레인은 위 요청을 하지 않는다 — `moai integration merge --card`를 부르는 `moai factory complete`의 통합 절차로 스스로 통합 창을 잡고 자기 카드를 `main`에 반영한다(OD-2). Codex 레인은 예외가 아니다 — merge-ready에서 정지한다(REQ-SD-025). 이 예외도 위의 다른 큐 변경(`add`, `drop`, `done`, `edit` 등) 금지와 `moai contract sign` 금지는 바꾸지 않는다(카드 임대만 `moai factory next`로 허용 — OD-1; `.claude/rules/local/gitflow-lane-protocol.md` §6).
 - 완료 보고에 담을 것: 카드 id · 브랜치와 HEAD · 로컬 병합 SHA · 미푸시 커밋 수 · 증거 경로(primary 반출 여부) · 재측정 범위
-- `moai integration status`가 `free`인 것은 **승인이 아니다.** 리더의 창 지명만이 근거다.
+- `moai integration status`가 `free`인 것은 **승인이 아니다.** open 정책에서 대기열 맨 앞으로 승격되어 창을 쥔 레인은 리더 지명 없이 병합한다.
+- **레인은 `main`에 손으로 git merge 하지 않고 moai integration merge --card 또는 그것을 부르는 moai factory complete 로만 병합한다.** 창은 대기열이 스케줄하고, 리더는 `moai integration policy open|hold`로 정책만 잡는다(창을 받으면 acquire --wait로 대기열에 선다 — 재측정은 대기 전, 창 안은 병합뿐이다).
 - 창을 받으면: `moai integration acquire --name <lane> --card <card-id>` → 본인 워크트리에서 `git merge main` 흡수(대상은 **로컬** `main` — 원격이 아니다. 흡수 **전에** 그 로컬 main 이 최신인지부터 본다 — 판정식과 갱신 경로는 `.claude/rules/local/gitflow-lane-protocol.md` §11, 아직 develop 서술 — drift) → **병합 트리에서 재측정** → 통합 워크트리 진입 → `main` 반영(카드 PR base `main` 병합 또는 `--no-ff` 병합 — 세부 형태는 이관 문서가 정한다) → `moai integration release` → `ExitWorktree keep` → 완료 보고(반영 SHA를 리더에게 보고 — push·병합은 리더가 일괄로 한다)
 - **[HARD] 카드 PR(base `main`)이 유일한 공개 경로다 (2026-10-05 전환 개정).** 카드가 마감되면 레인은 카드 브랜치를 push해 PR(base `main`)을 열되 **직접 병합하지 않는다** — 병합·push는 리더가 일괄로 수행하고 레인은 그 주체가 아니다. 레인은 `gh run rerun`/`workflow dispatch` 등 CI를 직접 요청·재요청하지도 않는다 — CI 판정은 `main` 반영이 일으키는 실행에 맡기고, 판독은 리더 몫이다. (종전 금지 — 운영자 지시 2026-09-01, WT 브랜치 push 금지·develop 일괄 push 체제 — 는 develop 체인과 함께 역사가 됐다; 당일 lane-2가 `WT-version-stamp-predicate`를 origin에 push한 전례로 추가됐던 조항이다)
 - **[HARD] `acquire`는 창을 기록하기 전에 호출자 트리를 먼저 단정한다.** tracked `.claude/settings.json`의 워킹 사본이 수정돼 있는지 `git --no-optional-locks status --porcelain -- .claude/settings.json`으로 재고, 적중이면 그 사본을 primary 체크아웃의 `.moai/state/settings-drift/` 아래로 보존한 뒤 같은 자리 `ledger.jsonl`에 한 줄을 남기고 보존 경로·sha256을 출력한다. **검출·보존·원장은 설정과 무관하게 매번 돈다**(9일 동안 아무도 보지 않아서 놓친 것이 문제였지 막지 않아서가 아니다). 거절만 opt-in이며(`workflow.settings_drift_gate.enabled`, 이 저장소는 켠다) 우회는 `--allow-settings-drift`다 — `--force`는 "살아 있는 보유자에게서 창을 빼앗는다"는 다른 축이라 우회로 쓰지 않는다. 창과 무관하게 손으로 확인할 때는 `moai integration preflight [경로]`. **어떤 경우에도 자동 복원하지 않는다** — 그 파일은 런타임이 쓰고 토큰·절대경로·tmux pane id를 담을 수 있어 자동 복원 자체가 데이터 파괴다. 적중 보고를 받으면 리더가 처분을 정한다.
@@ -440,7 +441,7 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 
 ## 29. Jev (TypeSafe System One) — 로컬 전용
 
-[HARD] `scripts/jev/`는 이 저장소의 로컬 도구이며 제품에 배선되지 않았다. `-f` 리더는 묵은 카드 배차 전에 `scripts/jev/triage.sh <id>`, 레인 질문으로 멈췄을 때 `scripts/jev/route.sh < 질문`을 자율 실행한다. 출력은 판단 자료일 뿐이다. 완료·병합·큐 변경·운영자 게이트에는 Jev를 판정 근거로 쓰지 않는다. 키는 `~/.moai/.env.typesafe`에만 두고, 외부 전송 전에 카드의 비밀·고객 데이터를 확인한다. 키나 네트워크가 없으면 독트린과 직접 읽은 증거로 판단한다. 0.50 신뢰도 문턱은 잠정값이다. 등급·명령·측정 한계는 `.moai/docs/jev-local-operations.md`에 있다.
+[HARD] `scripts/jev/`는 이 저장소의 로컬 도구이며 제품에 배선되지 않았다. **Jev는 카드 내 의사결정 자문이다(카드 t1542, 2026-10-07 개정):** 레인은 `workflow.jev.enabled`면 `jev_ask`를, 아니면 로컬 스크립트(`scripts/jev/route.sh` 등)를 리더 왕복 없이 직접 호출한다. 출력은 레인이 저울질할 **자문 입력**이지 판정이 아니므로, 레인은 그 입력으로 스스로 판단하고 결정 기록(auto-semantics.md §10)을 진행 기록에 남긴다. **완료·병합·큐 변경·운영자 keep-set 게이트는 여전히 Jev 단독 판정 금지다** — 그 경계는 자문 입력 + 레인 판단으로 재정의됐을 뿐 없어지지 않았고, keep-set 3범주는 운영자 직답을 유지한다. 키는 `~/.moai/.env.typesafe`에만 두고, 외부 전송 전에 카드의 비밀·고객 데이터를 확인한다. 키나 네트워크가 없으면 독트린과 직접 읽은 증거로 판단한다. 0.50 신뢰도 문턱은 잠정값이다. 등급·명령·측정 한계는 `.moai/docs/jev-local-operations.md`에 있다.
 
 ## 30. 배차 전 전제 판정 (며칠 지난 카드)
 
