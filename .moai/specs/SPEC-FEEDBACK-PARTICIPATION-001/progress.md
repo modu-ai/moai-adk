@@ -91,7 +91,24 @@ Gate item 3 (re-verify at the new HEAD): the double-ClaimSection dead-owner repr
 - D35: the `REQ-ANON-` token family is UNCHANGED — no requirement token was renamed or removed in any run-phase commit; the open operator decision stands.
 - D38 (post-summary preview identity): the M5-owned half is IMPLEMENTED — TestPreviewMatchesCreateBytes (AC-020) pins the preview bytes equal to the create bytes the sender hands to gh. The summary-augmented body is AC-017's subject, M6-owned per the plan: M6's sender path slots the validated summary AHEAD of CreateBody and the AC-017 tests pin it; the preview keeps printing the queued render (the pre-summary text) by the design sentence. Disposition: satisfied as split by plan M5/M6; no design change needed.
 
-### Resume block (next session, M6)
+### Resume block (next session: the M6 review-gate stack, then M7)
+
+```
+✂──── 여기부터 복사 ────✂
+ultrathink. SPEC-FEEDBACK-PARTICIPATION-001 run resuming: the M6 review-gate stack (7 findings, RECEIVED NOT FIXED), then M7.
+mode: serial
+applied lessons: feedback_glm_lane_env_pollutes_claude_audit (scrub MOAI_KANBAN_* before suites)
+
+Preconditions:
+1) git rev-parse --short HEAD → 20e3ea022-or-later on WT-feedback-optin-anon; tree clean; M6 LANDED at c011045ab (publish ok; 3 builds 0; lint ineffassign fixed at 20e3ea022)
+2) go test ./internal/feedback/publish/ ./internal/feedback/outbox/ -count=1 → ok
+
+Run: RED-first, own commit each — (1) P1 sender.go: itemSummary REUSES a stored Summary WITHOUT validateSummary (a saved summary carrying a token goes public; validate the reused summary, template-fallback on failure); (3) P2 budget resets per Sender instance (persist reservations in the user-scoped store, atomic cross-process); (4) P2 rollback fires for lock-acquisition errors that created NO reservation → verify-before-rollback (a prior success's record gets deleted → double enqueue); (5) P2 orphan recovery leaves the FAILED reservation in QueuedAt → the recovery target gets capped+consumed (reuse or exclude the reservation); (2) P2 gh auth status (network) runs before the Send consent check; (6) P2 scrubClaudeAuditEnv(nil) builds an empty env — use os.Environ(); (7) P2 model byte caps are local 8192/4096, diverging from config/defaults.go — centralize. THEN M7 per the earlier resume block (skill bodies x3 Template-First + make build; docs-site 4 locales E18/E19; auto_repair guard + wizard coexistence guard; AC-023/024). The M6 live-CLI record (claudeAuditArgs-minus-schema accepted; unauthenticated → template) was NOT taken — carry it into M7's §E evidence or record a disposition. Then §E.3 + the E1-E8 batch.
+
+After merge: /moai sync SPEC-FEEDBACK-PARTICIPATION-001
+✂──── 여기까지 복사 ────✂
+```
+
 
 ```
 ✂──── 여기부터 복사 ────✂
