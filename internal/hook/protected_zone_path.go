@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -34,6 +35,23 @@ type zoneForm struct {
 // zoneSlash rewrites backslashes to slashes.
 func zoneSlash(p string) string {
 	return strings.ReplaceAll(filepath.ToSlash(p), "\\", "/")
+}
+
+// zoneNativeSlash converts p for the filesystem-facing steps of the zone target
+// resolution: on Windows a "\" is a separator and is normalized exactly like
+// zoneSlash; on every POSIX platform it is an ordinary filename character and
+// rides through untouched. Rewriting it before the walk validates a fictional
+// path the OS never names — a literal `lnk\dir` symlink into the zone resolved
+// as `lnk/dir` misses the real link and the guard allowed a Write that the OS
+// landed inside the zone. The lexical comparison arm keeps zoneSlash's
+// slash-normalized matching semantics.
+//
+// @MX:SPEC:SPEC-HOOK-ZONE-BACKSLASH-001
+func zoneNativeSlash(p string) string {
+	if runtime.GOOS == "windows" {
+		return zoneSlash(p)
+	}
+	return p
 }
 
 // zoneIsAbs reports whether a slash-normalized path is absolute under the rules
@@ -181,6 +199,14 @@ func zoneResolveDepth(p string, depth int) (string, bool) {
 // target is outside the project root on every reading.
 func resolveZoneTarget(root, raw string) []zoneForm {
 	abs := zoneSlash(raw)
+	// walk carries the same input with its POSIX component identity preserved
+	// for the symlink arm: the filesystem steps must follow the components the
+	// OS actually names, and on POSIX a "\" inside a component is an ordinary
+	// filename character (zoneSlash would destroy a literal `lnk\dir` symlink
+	// into the zone — SPEC-HOOK-ZONE-BACKSLASH-001). On Windows both spellings
+	// coincide. Relative input joins against the cwd the same way abs does,
+	// without the rewrite.
+	walk := zoneNativeSlash(raw)
 	if !zoneIsAbs(abs) {
 		if cwd, err := zoneGetwd(); err == nil && cwd != "" {
 			// concatenated, never path.Join: the symlink arm must see the raw
@@ -188,6 +214,7 @@ func resolveZoneTarget(root, raw string) []zoneForm {
 			// filesystem resolves "deep" (merge-gate round 1 P1-4). The lexical
 			// arm cleans inside zoneLexicalRel, which is its own semantics.
 			abs = zoneSlash(cwd) + "/" + abs
+			walk = zoneNativeSlash(cwd) + "/" + walk
 		}
 	}
 	var forms []zoneForm
@@ -203,11 +230,11 @@ func resolveZoneTarget(root, raw string) []zoneForm {
 	if rel, inside := zoneLexicalRel(root, abs); inside {
 		add(rel)
 	}
-	native := filepath.FromSlash(abs)
+	native := filepath.FromSlash(walk)
 	if root != "" && filepath.IsAbs(native) {
-		realRoot, ok := zoneResolve(filepath.FromSlash(zoneSlash(root)))
+		realRoot, ok := zoneResolve(filepath.FromSlash(zoneNativeSlash(root)))
 		if !ok {
-			realRoot = filepath.FromSlash(zoneSlash(root))
+			realRoot = filepath.FromSlash(zoneNativeSlash(root))
 		}
 		if realTarget, ok := zoneResolve(native); ok {
 			if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
