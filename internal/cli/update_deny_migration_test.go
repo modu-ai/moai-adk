@@ -410,6 +410,120 @@ func TestRunUpdate_V3Path_CleanSettingsUntouched(t *testing.T) {
 	}
 }
 
+// legacyRootDenySpecifiers lists the 9 pre-t1569 template root-denial deny
+// specifiers in their POST-JSON-UNMARSHAL Go form — each backslash here is one
+// literal byte in the string the deny list carries after json.Unmarshal. The
+// JSON fixtures below escape each of those backslashes as \\, mirroring how
+// the deployed settings.json stores them.
+//
+// This list is deliberately defined IN THE TEST (not imported from the
+// implementation) so the normalization map cannot silently drift: a map keyed
+// on the wrong form yields zero matches, the legacy entries survive, and these
+// tests fail.
+var legacyRootDenySpecifiers = []string{
+	"Bash(rm -rf /:*)",
+	"Bash(rm -rf /\\* *)",
+	"Bash(rm -rf ~:*)",
+	"Bash(rm -rf ~/\\* *)",
+	"Bash(rm -rf C:/:*)",
+	"Bash(rm -rf C:/\\* *)",
+	"Bash(del /S /Q C:/:*)",
+	"Bash(rmdir /S /Q C:/:*)",
+	"Bash(Remove-Item -Recurse -Force C:/:*)",
+}
+
+// canonicalRootDenySpecifiers are the replacement forms, index-aligned with
+// legacyRootDenySpecifiers.
+var canonicalRootDenySpecifiers = []string{
+	"Bash(rm -rf /)",
+	"Bash(rm -rf /*)",
+	"Bash(rm -rf ~)",
+	"Bash(rm -rf ~/*)",
+	"Bash(rm -rf C:/)",
+	"Bash(rm -rf C:/*)",
+	"Bash(del /S /Q C:/*)",
+	"Bash(rmdir /S /Q C:/*)",
+	"Bash(Remove-Item -Recurse -Force C:/*)",
+}
+
+// legacyRootDenyFixture: all 9 legacy root-denial specifiers, interleaved with
+// two user-custom rules that must survive at their positions. The top-level
+// keys must round-trip like in the v2 strip fixture.
+const legacyRootDenyFixture = `{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "outputStyle": "MoAI",
+  "permissions": {
+    "allow": [
+      "Bash(go build:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /:*)",
+      "Bash(./my-own-guard/**)",
+      "Bash(rm -rf /\\* *)",
+      "Bash(rm -rf ~:*)",
+      "Bash(rm -rf ~/\\* *)",
+      "Bash(rm -rf C:/:*)",
+      "Bash(rm -rf C:/\\* *)",
+      "Bash(del /S /Q C:/:*)",
+      "Bash(rmdir /S /Q C:/:*)",
+      "Bash(Remove-Item -Recurse -Force C:/:*)",
+      "Bash(rm -rf /var/log/keep-me/**)"
+    ]
+  },
+  "env": {
+    "MOAI_CONFIG_SOURCE": "template"
+  }
+}`
+
+// TestRunUpdate_V3Path_NormalizesLegacyRootDenyEntries pins the reachability
+// of the legacy->canonical root-denial deny-rule normalization from the plain
+// v3 update path (card t1569 M2). Pre-t1569 templates shipped the over-broad
+// ":*" / escaped-glob specifiers in legacyRootDenySpecifiers; the canonical
+// template now ships the bare root forms. An already-deployed project
+// merge-preserves its settings.json on every update, so without an in-place
+// normalization the legacy forms survive forever.
+//
+// Falsifiability: with the normalize call stubbed out of runUpdate, the
+// legacy forms remain and this test fails on the "survived" assertions
+// (verified during the RED run).
+func TestRunUpdate_V3Path_NormalizesLegacyRootDenyEntries(t *testing.T) {
+	root := t.TempDir()
+	writeV3ProjectFixture(t, root)
+	settingsPath := writeSettingsFixture(t, root, legacyRootDenyFixture)
+
+	out := runUpdateInFixture(t, root)
+
+	deny, _ := readDenyList(t, settingsPath)
+
+	for _, legacy := range legacyRootDenySpecifiers {
+		if slices.Contains(deny, legacy) {
+			t.Errorf("legacy deny entry %q survived the v3 update path; deny=%v\n--- output ---\n%s",
+				legacy, deny, out)
+		}
+	}
+	for _, canon := range canonicalRootDenySpecifiers {
+		if !slices.Contains(deny, canon) {
+			t.Errorf("canonical deny entry %q missing after the v3 update path; deny=%v", canon, deny)
+		}
+	}
+
+	// The user's own rules must be untouched (exact-match only).
+	for _, custom := range []string{"Bash(./my-own-guard/**)", "Bash(rm -rf /var/log/keep-me/**)"} {
+		if !slices.Contains(deny, custom) {
+			t.Errorf("user-custom deny entry %q was removed; deny=%v", custom, deny)
+		}
+	}
+
+	// Neutral prefix on the v3 path; never a clean-reinstall label
+	// (AC-CRR-009(c) constraint).
+	if !strings.Contains(out, "[settings] Normalized") {
+		t.Errorf("expected the neutral-prefix normalization log on the v3 path; output:\n%s", out)
+	}
+	if strings.Contains(out, "[clean-reinstall] Removed") {
+		t.Errorf("deny normalization emitted a clean-reinstall label on the v3 path; output:\n%s", out)
+	}
+}
+
 // keysOf returns m's keys for failure messages.
 func keysOf(m map[string]any) []string {
 	out := make([]string, 0, len(m))
