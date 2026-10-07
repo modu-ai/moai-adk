@@ -255,11 +255,10 @@ func factoryHubChainFields(queueRec *factory.BacklogRecord, cards []homestate.Ca
 		return homestate.CardFields{}
 	}
 	recorded := make(map[string]bool, len(cards))
-	rowOf := make(map[string]homestate.Card, len(cards))
 	for _, c := range cards {
 		recorded[c.CardID] = true
-		rowOf[c.CardID] = c
 	}
+	deps := factoryHubDependencies(queueRec, cards, factoryMergedCards(cards))
 	var tail *string
 	for i := range queueRec.Items {
 		it := &queueRec.Items[i]
@@ -268,11 +267,11 @@ func factoryHubChainFields(queueRec *factory.BacklogRecord, cards []homestate.Ca
 		}
 		// The generated edge never reverses or closes an existing after
 		// relation (card t1533, review-gate r16 — the generation side of the
-		// r14 rule): a sharer whose own hint chain reaches the candidate is
+		// r14 rule): a sharer whose combined dependency path reaches the candidate is
 		// ordered BEHIND it, so naming it as the candidate's predecessor
 		// stored the exact reversal and the cycle went into the record with
 		// the row.
-		if predRow, ok := rowOf[it.ID]; ok && factoryAfterChainReaches(rowOf, predRow.CardID, cardID) {
+		if factoryDependencyReaches(deps, it.ID, cardID) {
 			continue
 		}
 		shares := false
@@ -347,19 +346,58 @@ func factoryMergedCards(rows []homestate.Card) map[string]bool {
 	return merged
 }
 
-// factoryAfterChainReaches reports whether the stored after chain that
-// opens at start reaches cardID — start is ordered behind cardID, directly
-// or through the chain its hint opens. The walk is bounded by a visited set,
-// so a cycle already present in the stored rows cannot spin it.
-func factoryAfterChainReaches(rowOf map[string]homestate.Card, start, cardID string) bool {
-	seen := make(map[string]bool, len(rowOf))
-	cur, ok := rowOf[start]
-	for ok && !seen[cur.CardID] {
-		if cur.HintAfter == cardID {
+// factoryHubDependencies gives stored relations priority over inferred hub waits.
+// Inferred edges are added in queue order, with in-flight predecessors first;
+// an edge that would close a combined after/hub cycle is never added.
+// @MX:NOTE: Stored after and bundle order outrank inferred waits; actual
+// in-flight hub predecessors outrank idle queue ordering.
+func factoryHubDependencies(queueRec *factory.BacklogRecord, cards []homestate.Card, merged map[string]bool) map[string][]string {
+	deps := make(map[string][]string, len(cards))
+	for _, c := range cards {
+		if c.HintAfter != "" {
+			deps[c.CardID] = append(deps[c.CardID], c.HintAfter)
+		}
+		for _, pred := range cards {
+			if c.BundleID != "" && c.BundleID == pred.BundleID && pred.BundleOrder < c.BundleOrder {
+				deps[c.CardID] = append(deps[c.CardID], pred.CardID)
+			}
+		}
+	}
+	if queueRec == nil {
+		return deps
+	}
+	inFlight := make(map[string]bool, len(cards))
+	for _, c := range cards {
+		inFlight[c.CardID] = homestate.IsLeaseHoldingState(c.State)
+	}
+	for _, flightFirst := range []bool{true, false} {
+		for _, candidate := range queueRec.Items {
+			for _, pred := range factoryHubWaitCandidates(queueRec, cards, merged, candidate.ID) {
+				if inFlight[pred] != flightFirst || factoryDependencyReaches(deps, pred, candidate.ID) {
+					continue
+				}
+				deps[candidate.ID] = append(deps[candidate.ID], pred)
+			}
+		}
+	}
+	return deps
+}
+
+// @MX:ANCHOR: [AUTO] Bounded traversal of combined after, bundle, and hub dependencies.
+// @MX:REASON: Generation, inferred-edge insertion, and selection share the same cycle boundary.
+func factoryDependencyReaches(deps map[string][]string, start, target string) bool {
+	seen := make(map[string]bool, len(deps))
+	pending := []string{start}
+	for len(pending) > 0 {
+		cur := pending[len(pending)-1]
+		pending = pending[:len(pending)-1]
+		if cur == target {
 			return true
 		}
-		seen[cur.CardID] = true
-		cur, ok = rowOf[cur.HintAfter]
+		if !seen[cur] {
+			seen[cur] = true
+			pending = append(pending, deps[cur]...)
+		}
 	}
 	return false
 }
@@ -378,8 +416,20 @@ func factoryAfterChainReaches(rowOf map[string]homestate.Card, start, cardID str
 // factoryHubChainFields reads, and like it a read-only predicate: selection
 // consults it on every pass, it writes nothing.
 func factoryHubWaitUnmerged(queueRec *factory.BacklogRecord, cards []homestate.Card, mergedLocal map[string]bool, cardID string) (string, bool) {
+	deps := factoryHubDependencies(queueRec, cards, mergedLocal)
+	for _, pred := range factoryHubWaitCandidates(queueRec, cards, mergedLocal, cardID) {
+		if !factoryDependencyReaches(deps, pred, cardID) {
+			return pred, true
+		}
+	}
+	return "", false
+}
+
+// factoryHubWaitCandidates enumerates eligible hub predecessors before combined
+// dependency ordering. It retains the merge, bundle, and in-flight boundaries.
+func factoryHubWaitCandidates(queueRec *factory.BacklogRecord, cards []homestate.Card, mergedLocal map[string]bool, cardID string) []string {
 	if queueRec == nil {
-		return "", false
+		return nil
 	}
 	hub := make(map[string]bool)
 	for _, p := range homestate.HubFiles() {
@@ -403,7 +453,7 @@ func factoryHubWaitUnmerged(queueRec *factory.BacklogRecord, cards []homestate.C
 		break
 	}
 	if candIdx < 0 || len(candHub) == 0 {
-		return "", false
+		return nil
 	}
 	recorded := make(map[string]bool, len(cards))
 	rowOf := make(map[string]homestate.Card, len(cards))
@@ -412,6 +462,7 @@ func factoryHubWaitUnmerged(queueRec *factory.BacklogRecord, cards []homestate.C
 		rowOf[c.CardID] = c
 	}
 	candRow := rowOf[cardID]
+	var predecessors []string
 	for i := range queueRec.Items {
 		if i == candIdx {
 			continue
@@ -440,16 +491,6 @@ func factoryHubWaitUnmerged(queueRec *factory.BacklogRecord, cards []homestate.C
 				continue
 			}
 		}
-		// The wait never contradicts an EXISTING after relation (card
-		// t1533, review-gate r11-r15): a sharer whose own hint chain opens
-		// at the candidate — an explicit --after, a generated chain edge, or
-		// a hop further down the chain — is ordered BEHIND the candidate by
-		// that relation, directly or transitively. The candidate leads;
-		// adding the wait on its behalf would only close a cycle into an
-		// acyclic chain, and no card ever leased again when it did.
-		if predRow, ok := rowOf[it.ID]; ok && factoryAfterChainReaches(rowOf, predRow.CardID, cardID) {
-			continue
-		}
 		// A queue-LATER sharer holds the candidate only while it is actually
 		// in flight (card t1533, review-gate r10): the wait no longer scans
 		// queue-earlier entries alone, and a later card still waiting its
@@ -461,9 +502,10 @@ func factoryHubWaitUnmerged(queueRec *factory.BacklogRecord, cards []homestate.C
 		}
 		for _, f := range it.Issuance.Files {
 			if candHub[f] {
-				return it.ID, true
+				predecessors = append(predecessors, it.ID)
+				break
 			}
 		}
 	}
-	return "", false
+	return predecessors
 }
