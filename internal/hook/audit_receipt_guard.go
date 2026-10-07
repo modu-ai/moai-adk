@@ -353,16 +353,12 @@ func recordAuditorEnd(store, key string) {
 	if key == "" || !auditreceipt.IsDerivedMarkerKey(key) {
 		return
 	}
-	now := auditreceipt.Now()
-	if err := auditreceipt.RecordInstanceEnd(store, key, now); err != nil {
+	if err := auditreceipt.RecordInstanceEnd(store, key, auditreceipt.Now()); err != nil {
+		// RecordInstanceEnd parks the end as a pending record carrying the
+		// judgment made at end time (post-sync repair r5 supplement 3); a
+		// pending whose own mark fails is lost to the ledger — the documented
+		// no-record residual, logged here as the only trace.
 		slog.Warn("auditor end not counted", "agent_id", key, "error", err)
-		// The dropped end must still seal the era: mark it pending so the next
-		// ledger operation replays it under the lock and the boundary advances
-		// to the end time (post-sync review, dropped END mirror). Best-effort —
-		// if even the mark fails, only this log remains.
-		if perr := auditreceipt.MarkInstanceEndPending(store, key, now); perr != nil {
-			slog.Warn("auditor end not marked pending", "agent_id", key, "error", perr)
-		}
 	}
 }
 

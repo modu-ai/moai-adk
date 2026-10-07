@@ -336,30 +336,41 @@ func releaseLedgerLock(lockPath, token string) {
 // block file creation inside a directory on Windows — post-sync repair r5).
 var ledgerSave = writeJSON
 
+// endJudgment is the attribution a ledger op derived for one terminal end:
+// whether the end was counted into this ledger at all (a foreign end — an
+// instance whose start this ledger never counted — contributes nothing), and
+// whether it was single-live at its own time.
+type endJudgment struct {
+	known      bool
+	counted    bool
+	singleLive bool
+}
+
 // updateInstanceLedger applies mutate to the key's ledger under the lock, so
 // concurrent starts and ends of one session cannot lose a count. Every end
-// whose own write was dropped earlier is replayed first, under the same lock
-// and with the same single-live rule — pending ends happened before this
-// operation. Ordering is apply → SAVE → consume: a pending file is removed
-// only after the save that folded it in succeeded, so a failed save leaves
-// the end recoverable by the next operation (post-sync review r2, remove-
-// before-save). Re-application after a save-succeeded-but-remove-lost crash
-// is idempotent by pending-entry id — the ledger remembers the ids it folded
-// in and skips them.
-func updateInstanceLedger(treeRoot, key string, at time.Time, mutate func(*InstanceLedger)) error {
+// whose own write was dropped earlier is replayed first, under the same lock —
+// and the replay re-applies the judgment each end carried when it happened,
+// not a re-derivation from a count that has moved on (post-sync repair r5
+// supplement 3). Ordering is apply → SAVE → consume: a pending file is
+// removed only after the save that folded it in succeeded, so a failed save
+// leaves the end recoverable by the next operation (post-sync review r2,
+// remove-before-save). Re-application after a save-succeeded-but-remove-lost
+// crash is idempotent by pending-entry id — the ledger remembers the ids it
+// folded in and skips them.
+func updateInstanceLedger(treeRoot, key string, at time.Time, mutate func(*InstanceLedger) endJudgment) (endJudgment, error) {
 	path := ledgerPath(treeRoot, key)
 	release, err := lockLedger(path)
 	if err != nil {
-		return err
+		return endJudgment{}, err
 	}
 	defer release()
 	l, err := ReadInstanceLedger(treeRoot, key)
 	if err != nil {
-		return err
+		return endJudgment{}, err
 	}
 	pendings, err := readEndPendings(treeRoot, key)
 	if err != nil {
-		return err
+		return endJudgment{}, err
 	}
 	consumed := make([]string, 0, len(pendings))
 	for _, p := range pendings {
@@ -368,49 +379,32 @@ func updateInstanceLedger(treeRoot, key string, at time.Time, mutate func(*Insta
 			consumed = append(consumed, p.path)
 			continue
 		}
-		applyEnd(&l, p.pending.EndedAt, treeRoot, key)
-		l.AppliedEnds = append(l.AppliedEnds, p.pending.PendingID)
+		// The replay re-applies the judgment the end carried when it
+		// happened. A pending foreign to this ledger at replay time (no
+		// uncounted start left) contributes nothing and is consumed.
+		if l.Ends < l.Starts {
+			if p.pending.EndedAt.After(l.LastEndedAt) {
+				l.LastEndedAt = p.pending.EndedAt
+			}
+			l.Ends++
+			if p.pending.SingleLive && !startCountUncertain(treeRoot, key) &&
+				(l.EndedAt.IsZero() || l.LastEndedAt.After(l.EndedAt)) {
+				l.EndedAt = l.LastEndedAt
+			}
+			l.AppliedEnds = append(l.AppliedEnds, p.pending.PendingID)
+		}
 		consumed = append(consumed, p.path)
 	}
-	mutate(&l)
+	j := mutate(&l)
+	j.known = true
 	l.UpdatedAt = at
 	if err := ledgerSave(path, &l); err != nil {
-		return err // every pending file survives; the next operation retries
+		return j, err // every pending file survives; the next operation retries
 	}
 	for _, p := range consumed {
 		_ = os.Remove(p)
 	}
-	return nil
-}
-
-// applyEnd counts one terminal end on the ledger. The boundary advances only
-// when the end is single-live AND the start count is not known to be
-// incomplete (MarkInstanceStartUncertain's freeze outranks every advance) —
-// but it then catches up to the attribution-free watermark: an ambiguous end
-// discarded at its own arrival still happened, and once the era closes the
-// seal never sits before the last terminal end the era actually had
-// (post-sync repair r5). The watermark also keeps the boundary monotonic —
-// lock order is not event order, so an earlier end can arrive after a later
-// one was already applied (post-sync review r3).
-func applyEnd(l *InstanceLedger, at time.Time, treeRoot, key string) {
-	if l.Ends >= l.Starts {
-		// An end the ledger never counted a start for is not attributable to
-		// this background era: a foreground instance whose marker save failed
-		// resolves its end key to this derived ledger too (post-sync repair
-		// r5 supplement 2), and counting it would fabricate a seal — or flip
-		// a genuinely ambiguous end into a single-live one — that refuses a
-		// live auditor's own receipts. Skip entirely: no count, no
-		// watermark, no seal.
-		return
-	}
-	if at.After(l.LastEndedAt) {
-		l.LastEndedAt = at
-	}
-	eligible := l.Starts-l.Ends <= 1 && !startCountUncertain(treeRoot, key)
-	l.Ends++
-	if eligible && (l.EndedAt.IsZero() || l.LastEndedAt.After(l.EndedAt)) {
-		l.EndedAt = l.LastEndedAt
-	}
+	return j, nil
 }
 
 // EnsureStartMarker writes an auditor start marker for a derived session-era
@@ -455,9 +449,11 @@ func ReadInstanceLedger(treeRoot, key string) (InstanceLedger, error) {
 // (starts minus terminal ends) is what tells a single-live end from an
 // ambiguous one.
 func RecordInstanceStart(treeRoot, key string, at time.Time) error {
-	return updateInstanceLedger(treeRoot, key, at, func(l *InstanceLedger) {
+	_, err := updateInstanceLedger(treeRoot, key, at, func(l *InstanceLedger) endJudgment {
 		l.Starts++
+		return endJudgment{known: true, counted: true}
 	})
+	return err
 }
 
 // uncertainPath is the durable trace of a start whose ledger write was
@@ -512,10 +508,65 @@ func startCountUncertain(treeRoot, key string) bool {
 // stays citable (card t1544's concurrency semantics). An end computed while a
 // start is known dropped (MarkInstanceStartUncertain) is frozen too: the
 // single-live reading rests on a count that is short (post-sync review P2-2).
+// An end foreign to this ledger (its start was never counted here) contributes
+// nothing (post-sync repair r5 supplement 2).
+//
+// When the save of the updated ledger fails, the end is durably parked as a
+// pending record carrying the judgment made at end time — so the replay
+// re-applies THAT judgment instead of re-deriving it from a count that has
+// moved on since (post-sync repair r5 supplement 3). A failure before the
+// judgment (the lock never came, the ledger is unreadable) parks the end
+// without one: its replay counts it only if it is not foreign, and the
+// approval path holds while it is unapplied.
 func RecordInstanceEnd(treeRoot, key string, at time.Time) error {
-	return updateInstanceLedger(treeRoot, key, at, func(l *InstanceLedger) {
-		applyEnd(l, at, treeRoot, key)
+	j, err := updateInstanceLedger(treeRoot, key, at, func(l *InstanceLedger) endJudgment {
+		if l.Ends >= l.Starts {
+			// An end the ledger never counted a start for is not attributable
+			// to this background era: a foreground instance whose marker save
+			// failed resolves its end key to this derived ledger too (post-
+			// sync repair r5 supplement 2), and counting it would fabricate a
+			// seal — or flip a genuinely ambiguous end into a single-live one
+			// — that refuses a live auditor's own receipts. Skip entirely: no
+			// count, no watermark, no seal.
+			return endJudgment{known: true, counted: false}
+		}
+		if at.After(l.LastEndedAt) {
+			l.LastEndedAt = at
+		}
+		singleLive := l.Starts-l.Ends <= 1 && !startCountUncertain(treeRoot, key)
+		l.Ends++
+		if singleLive && (l.EndedAt.IsZero() || l.LastEndedAt.After(l.EndedAt)) {
+			l.EndedAt = l.LastEndedAt
+		}
+		return endJudgment{known: true, counted: true, singleLive: singleLive}
 	})
+	if err != nil {
+		// Park the end with the judgment made at end time. A failure after
+		// the judgment (the save failed) carries it; a failure before it (the
+		// lock never came) re-derives the judgment from a lock-free snapshot
+		// of the ledger — the read needs no lock (atomic rename), so the
+		// end-time state is knowable even then. A read that itself fails
+		// parks the end judgment-less: its replay counts it only if it is
+		// not foreign, and PendingEndHold holds the approval while it is
+		// unapplied. A foreign end is not parked at all — it contributes
+		// nothing to this ledger.
+		counted, singleLive := j.counted, j.singleLive
+		if !j.known {
+			if snap, rerr := ReadInstanceLedger(treeRoot, key); rerr == nil {
+				counted = snap.Ends < snap.Starts
+				singleLive = counted && snap.Starts-snap.Ends <= 1 && !startCountUncertain(treeRoot, key)
+			}
+		}
+		if counted {
+			if perr := markInstanceEndPending(treeRoot, key, at, singleLive); perr != nil {
+				// Both the save and the mark failed: nothing durable remains
+				// and the end is lost to the ledger — the documented
+				// no-record residual; the caller's log is the only trace.
+				return err
+			}
+		}
+	}
+	return err
 }
 
 // endPendingPath is the durable record one dropped end: one file per instance
@@ -526,10 +577,15 @@ func endPendingPath(treeRoot, key, id string) string {
 	return ledgerPath(treeRoot, key) + ".end-pending-" + id
 }
 
-// endPending is the payload of one dropped end's durable mark.
+// endPending is the payload of one dropped end's durable mark. SingleLive is
+// the judgment made when the end happened — whether the ender was the only
+// outstanding instance — and the replay re-applies THAT judgment instead of
+// re-deriving it from a count that has moved on since (post-sync repair r5
+// supplement 3).
 type endPending struct {
-	PendingID string    `json:"pending_id"`
-	EndedAt   time.Time `json:"ended_at"`
+	PendingID  string    `json:"pending_id"`
+	EndedAt    time.Time `json:"ended_at"`
+	SingleLive bool      `json:"single_live"`
 }
 
 // pendingEndFile pairs a pending mark with the file it was read from.
@@ -538,12 +594,12 @@ type pendingEndFile struct {
 	pending endPending
 }
 
-// MarkInstanceEndPending records an end whose ledger write was dropped, so a
+// markInstanceEndPending records an end whose ledger write was dropped, so a
 // later ledger operation replays it and the boundary still seals at the end
 // time. Unlike a dropped START — permanent freeze, the count can never be
 // re-derived — a dropped END is recoverable: the end's own timestamp is known,
 // only its write was lost (post-sync review, dropped END mirror).
-func MarkInstanceEndPending(treeRoot, key string, at time.Time) error {
+func markInstanceEndPending(treeRoot, key string, at time.Time, singleLive bool) error {
 	id, err := newRandomToken()
 	if err != nil {
 		return err
@@ -552,7 +608,7 @@ func MarkInstanceEndPending(treeRoot, key string, at time.Time) error {
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		return err
 	}
-	return writeJSON(p, &endPending{PendingID: id, EndedAt: at})
+	return writeJSON(p, &endPending{PendingID: id, EndedAt: at, SingleLive: singleLive})
 }
 
 // ErrPendingEndUnreadable reports that a pending end mark of the key exists

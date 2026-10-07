@@ -275,7 +275,7 @@ func TestInstanceLedgerPendingEndReplaysUnderLock(t *testing.T) {
 	// end time.
 	endAt := t0.Add(2 * time.Second)
 	pending := ledgerPath(root, key) + ".end-pending-idPend"
-	body := `{"pending_id":"idPend","ended_at":"` + endAt.Format(time.RFC3339Nano) + `"}`
+	body := `{"pending_id":"idPend","ended_at":"` + endAt.Format(time.RFC3339Nano) + `","single_live":true}`
 	if err := os.WriteFile(pending, []byte(body), 0o644); err != nil {
 		t.Fatalf("write pending mark: %v", err)
 	}
@@ -310,7 +310,7 @@ func TestInstanceLedgerPendingEndReplaysUnderLock(t *testing.T) {
 	if err := os.WriteFile(ledgerPath(root, key2)+".uncertain", []byte("start-count uncertain\n"), 0o644); err != nil {
 		t.Fatalf("mark uncertain: %v", err)
 	}
-	if err := os.WriteFile(ledgerPath(root, key2)+".end-pending-idPend2", []byte(`{"pending_id":"idPend2","ended_at":"`+endAt.Format(time.RFC3339Nano)+`"}`), 0o644); err != nil {
+	if err := os.WriteFile(ledgerPath(root, key2)+".end-pending-idPend2", []byte(`{"pending_id":"idPend2","ended_at":"`+endAt.Format(time.RFC3339Nano)+`","single_live":true}`), 0o644); err != nil {
 		t.Fatalf("write pending mark key2: %v", err)
 	}
 	if err := RecordInstanceEnd(root, key2, t0.Add(4*time.Second)); err != nil {
@@ -344,13 +344,13 @@ func TestMarkInstanceStartUncertainIdempotent(t *testing.T) {
 	}
 }
 
-// MarkInstanceEndPending writes the mark the next ledger operation replays.
+// markInstanceEndPending writes the mark the next ledger operation replays.
 func TestMarkInstanceEndPendingRoundTrip(t *testing.T) {
 	root := t.TempDir()
 	key := StartMarkerKey("", "sess-ledger-pmark", AgentPlanAuditor)
 	endAt := t0.Add(2 * time.Second)
-	if err := MarkInstanceEndPending(root, key, endAt); err != nil {
-		t.Fatalf("MarkInstanceEndPending: %v", err)
+	if err := markInstanceEndPending(root, key, endAt, true); err != nil {
+		t.Fatalf("markInstanceEndPending: %v", err)
 	}
 	marks, err := readEndPendings(root, key)
 	if err != nil {
@@ -581,6 +581,60 @@ func TestInstanceLedgerBoundarySealsAtLastEndWhenReordered(t *testing.T) {
 	r25 := seedLedgerTestReceipt(t, root, t0.Add(2500*time.Millisecond))
 	if ok, cause := CheckCitedReceiptsSince(root, start, l.EndedAt, []string{r25}); ok {
 		t.Errorf("a receipt minted after the earlier end but before the true last end was accepted")
+	} else if cause != CauseReceiptReused {
+		t.Errorf("cause = %q, want %q", cause, CauseReceiptReused)
+	}
+}
+
+// Post-sync repair r5 supplement 3 (gate round 33, P1): the pending replay
+// must judge with the survivor state AT END TIME, not at replay time. A's
+// single-live end write fails (its pending mark carries the judgment made
+// then — A was the only instance outstanding), B's start is recorded before
+// the replay, and the next ledger operation re-plays the end: re-deriving
+// the judgment from the current count (B live, two outstanding) would
+// misread it as ambiguous, consume the mark, and leave the boundary
+// unsealed — the successor passes on A's receipt with no audit.
+func TestInstanceLedgerPendingReplayKeepsEndTimeJudgment(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-r53", AgentPlanAuditor)
+	if err := RecordInstanceStart(root, key, t0); err != nil {
+		t.Fatalf("RecordInstanceStart (A): %v", err)
+	}
+	// B is recorded BEFORE A's dropped end mark lands.
+	if err := RecordInstanceStart(root, key, t0.Add(time.Second)); err != nil {
+		t.Fatalf("RecordInstanceStart (B): %v", err)
+	}
+	// A's end happened at t0.5; its ledger save failed and the pending mark
+	// carries the end-time judgment (single-live — A was alone).
+	endAt := t0.Add(500 * time.Millisecond)
+	pending := ledgerPath(root, key) + ".end-pending-idR53"
+	body := `{"pending_id":"idR53","ended_at":"` + endAt.Format(time.RFC3339Nano) + `","single_live":true}`
+	if err := os.WriteFile(pending, []byte(body), 0o644); err != nil {
+		t.Fatalf("write pending mark: %v", err)
+	}
+
+	// The next ledger operation (C's start) replays the pending end: the
+	// end-time judgment holds and A's era seals at t0.5, B live or not.
+	if err := RecordInstanceStart(root, key, t0.Add(2*time.Second)); err != nil {
+		t.Fatalf("RecordInstanceStart (replay carrier): %v", err)
+	}
+	l, err := ReadInstanceLedger(root, key)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if l.Ends != 1 {
+		t.Errorf("Ends = %d, want 1 — the replayed end must be counted", l.Ends)
+	}
+	if !l.EndedAt.Equal(endAt) {
+		t.Errorf("EndedAt = %v, want the end-time-sealed %v — the replay must keep the end-time judgment, not re-derive it as ambiguous", l.EndedAt, endAt)
+	}
+
+	// A receipt minted during A's lifetime is predecessor-era for any later
+	// instance: refused.
+	start := &StartMarker{AgentID: "a1", AgentType: AgentPlanAuditor, TreeRoot: root, StartedAt: t0}
+	rA := seedLedgerTestReceipt(t, root, t0.Add(250*time.Millisecond))
+	if ok, cause := CheckCitedReceiptsSince(root, start, l.EndedAt, []string{rA}); ok {
+		t.Errorf("a receipt minted during A's lifetime was accepted after A's era sealed")
 	} else if cause != CauseReceiptReused {
 		t.Errorf("cause = %q, want %q", cause, CauseReceiptReused)
 	}
