@@ -108,8 +108,8 @@ func applyPerfTierEdits(projectRoot, perfTier string) error {
 // .claude/agents/harness/ 에 위치한다 (namespace doctrine). 하니스 행은
 // 스캔만 하고 렌더하지 않는다 (REQ-AFR-001).
 //
-// SPEC-USER-ASSET-INSTALL-001 (JD-20): the retained agents install under the
-// USER folder (~/.claude/agents) now — the scan prefers the user folder so
+// SPEC-USER-ASSET-INSTALL-001 (decision JD-20) moves installation to the
+// USER folder (~/.claude/agents) — the scan prefers that folder so
 // the console rows do not vanish after the migration; the project dirs stay
 // in the list for pre-migration projects and harness specialists.
 var homeAgentsDir = func() string {
