@@ -241,6 +241,35 @@ func TestRenderUpdateOutcome_NoColor(t *testing.T) {
 	}
 }
 
+// --- Card t1527 D3: the outcome carries the add/update/conflict breakdown ---
+
+func TestRenderUpdateOutcome_CarriesClassCounts(t *testing.T) {
+	th := tui.LightTheme()
+	var buf bytes.Buffer
+	renderUpdateOutcome(&buf, 24, updateOutcomeDetail{
+		AddFiles:      3,
+		UpdatedFiles:  19,
+		ConflictFiles: 2,
+	}, "", th)
+	out := stripSGR(buf.String())
+	for _, want := range []string{"+ 3 add", "~ 19 update", "! 2 conflict"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("outcome must carry class count %q, got:\n%q", want, out)
+		}
+	}
+}
+
+// A zero-count detail renders no breakdown line — the legacy outcome shape is
+// unchanged for a run whose analysis carried no files.
+func TestRenderUpdateOutcome_ZeroClassCountsNoBreakdown(t *testing.T) {
+	var buf bytes.Buffer
+	renderUpdateOutcome(&buf, 0, updateOutcomeDetail{}, "", tui.LightTheme())
+	out := stripSGR(buf.String())
+	if strings.Contains(out, "add") || strings.Contains(out, "conflict") {
+		t.Errorf("zero-count detail must render no class breakdown, got:\n%q", out)
+	}
+}
+
 // stripSGR removes ANSI SGR sequences so text assertions are colour-agnostic.
 func stripSGR(s string) string {
 	return sgrColor.ReplaceAllString(s, "")

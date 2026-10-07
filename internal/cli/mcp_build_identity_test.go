@@ -714,9 +714,13 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// the same family as :839), and the comparison itself moved 836→875.
 		// Same single comparison, one more doc-comment mention — same count of
 		// actual ancestry comparisons.
+		// PR #1754's cleanup repair removes the obsolete third-arm comment
+		// and requires exact Git objects after cumulative patch matching.
+		// Re-measured hits: the arm (i) comment stays at 839, its one actual
+		// ancestry comparison moves to 876, and the removed comment at 844
+		// is no longer a hit. This remains a disposal check, not binary lag.
 		"session_worktree.go:839": true,
-		"session_worktree.go:844": true,
-		"session_worktree.go:875": true,
+		"session_worktree.go:876": true,
 		// SPEC-TODO-CARD-ISSUANCE-001 (card t1454): the in-flight lane
 		// changed-files probe — productionLaneFilesProbe resolves the fork
 		// point between the integration branch and the card's lane branch

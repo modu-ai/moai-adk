@@ -88,7 +88,9 @@ func TestCleanReinstall_SnapshotWarningGoesToErrOut(t *testing.T) {
 	writeTestFile(t, root, ".moai/cache/template-snapshot/sections", "a file where a directory belongs")
 
 	out, errOut := snapRunCleanReinstall(t, root, &stubDeployer{})
-	const prefix = "Warning: template snapshot write failed:"
+	// Card t1527 D4 (repair round 2): the ! severity glyph replaces the raw
+	// "Warning: " prefix; the body text is unchanged.
+	const prefix = "template snapshot write failed:"
 	if n := snapCountPrefixed(errOut, prefix); n != 1 {
 		t.Errorf("snapshot warnings on ErrOut = %d, want 1\nerrOut:\n%s", n, errOut)
 	}
