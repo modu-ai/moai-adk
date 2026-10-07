@@ -222,7 +222,7 @@ Run-phase gaps carried from earlier generations (unchanged, CI owns the verdicts
 
 ```yaml
 sync_complete_at: 2026-10-08
-sync_commit_sha: "pending-backfill-sync"   # D3 placeholder — a commit cannot cite its own SHA; the real sync SHA is backfilled in the follow-up commit
+sync_commit_sha: "52e1b2fdb"   # the sync-phase commit (backfilled per D3; subject: chore(SPEC-FEEDBACK-PARTICIPATION-001): sync-phase artifacts + 3-phase close (card t1498))
 sync_status: complete
 ac_pass_count: 25                          # unchanged from §E.3 — the sync phase adds no criteria; five plan-artifact bodies stayed frozen (only the spec.md frontmatter status/updated transition rode this commit)
 ac_fail_count: 0
