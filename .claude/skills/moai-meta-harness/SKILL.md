@@ -77,7 +77,7 @@ Adaptations: 7-Phase workflow integrated with MoAI agent ecosystem (manager-*, e
 NOTICE: This file contains modifications. See the harness policy for derivation history. The 7-Phase workflow below is superseded by the v4 Builder; it is retained as the redirect source for backward-compat.
 -->
 
-> **Apache 2.0 Attribution**: Adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache License 2.0). The 7-Phase workflow below is a MoAI adaptation of the upstream 6-Phase + Evolution Mechanism. See `.claude/rules/moai/NOTICE.md` for the full third-party notices and the harness policy for derivation history. **The v4 Builder (the replacement) is documented in `.claude/skills/moai/workflows/harness-builder.md`.**
+> **Apache 2.0 Attribution**: Adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache License 2.0). The 7-Phase workflow below is a MoAI adaptation of the upstream 6-Phase + Evolution Mechanism. See `.claude/rules/moai/NOTICE.md` for the full third-party notices and the harness policy for derivation history. **The v4 Builder (the replacement) is documented in `~/.claude/skills/moai/workflows/harness-builder.md`.**
 
 ---
 
@@ -244,15 +244,15 @@ Both fields are enforced at runtime by the Phase-6 post-generation smoke gate (`
 
 | Namespace / Path | Location | Source | `moai update` behavior |
 |------------------|----------|--------|------------------------|
-| `moai-*` skills (incl. `moai-harness-*` builders) | `.claude/skills/moai-*/` | template | Removed and reinstalled (overwrite) |
+| `moai-*` skills (incl. `moai-harness-*` builders) | `~/.claude/skills/moai-*/` | template | Removed and reinstalled (overwrite) |
 | **`hns-*` skills** (legacy: `harness-*`, `my-harness-*`) | `.claude/skills/hns-*/` | **user project (this meta-harness emits — intent declaration)** | **Never deleted or modified; backed up** |
-| MoAI agents (retained catalog, FLAT) | `.claude/agents/moai/` | template | Removed and reinstalled (overwrite) |
+| MoAI agents (retained catalog, FLAT) | `~/.claude/agents/` | template | Removed and reinstalled (overwrite) |
 | **Generated harness agents** | `.claude/agents/harness/` | **user project (this meta-harness emits)** | **Never deleted or modified; backed up** |
 | Harness config | `.moai/harness/` | user project | Never deleted; backed up |
 
 ### Cross-References
 
-- `.claude/skills/moai-meta-harness/SKILL.md` § Namespace Separation (this file — canonical generator-side namespace contract)
+- `~/.claude/skills/moai-meta-harness/SKILL.md` § Namespace Separation (this file — canonical generator-side namespace contract)
 - `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy
 - `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention
 

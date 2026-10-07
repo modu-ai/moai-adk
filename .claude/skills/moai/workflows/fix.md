@@ -65,7 +65,7 @@ The loop taxonomy is re-expressed as **goal engine + preset**: the quadrants are
 - **How it ends**: Phase 5 verification completes with claim/evidence rows — success, or residue persisted (§ Phase 8) plus a `/moai loop` recommendation.
 - **When it fits**: a one-off diagnostic sweep or a quick CI-triggered patch, not driving toward a completion condition across many iterations.
 
-Sibling presets (same **goal engine + preset** framing, different quadrant): **goal-based** iteration is `.claude/skills/moai/workflows/loop.md` (the project-wide sweep preset that arms the goal engine); **time-based** cadence recipes are `.claude/rules/moai/workflow/cadence-bridge.md`.
+Sibling presets (same **goal engine + preset** framing, different quadrant): **goal-based** iteration is `~/.claude/skills/moai/workflows/loop.md` (the project-wide sweep preset that arms the goal engine); **time-based** cadence recipes are `.claude/rules/moai/workflow/cadence-bridge.md`.
 
 ## Phase 1: Parallel Scan
 
@@ -140,7 +140,7 @@ Normalize all scanner output into a unified issue record format regardless of la
 
 This normalization enables language-agnostic fix agents to work without language-specific logic.
 
-Language auto-detection uses indicator files and covers all 16 MoAI-supported languages equally (C++, C#, Elixir, Flutter, Go, Java, JavaScript, Kotlin, PHP, Python, R, Ruby, Rust, Scala, Swift, TypeScript). Each language has its own marker files (for example `go.mod` for Go, `pyproject.toml` for Python, `tsconfig.json` for TypeScript, `Cargo.toml` for Rust, `pubspec.yaml` for Flutter); the scanner inspects project root and activates the corresponding toolchain. See `.claude/skills/moai/workflows/sync/quality-gates-quality.md` Step 0.6.1 for the complete Language Detection table.
+Language auto-detection uses indicator files and covers all 16 MoAI-supported languages equally (C++, C#, Elixir, Flutter, Go, Java, JavaScript, Kotlin, PHP, Python, R, Ruby, Rust, Scala, Swift, TypeScript). Each language has its own marker files (for example `go.mod` for Go, `pyproject.toml` for Python, `tsconfig.json` for TypeScript, `Cargo.toml` for Rust, `pubspec.yaml` for Flutter); the scanner inspects project root and activates the corresponding toolchain. See `~/.claude/skills/moai/workflows/sync/quality-gates-quality.md` Step 0.6.1 for the complete Language Detection table.
 
 Error handling: If any scanner fails, continue with results from successful scanners. Note the failed scanner in the report.
 
@@ -193,7 +193,7 @@ Execution order:
 - Level 3 fixes require AskUserQuestion approval, then delegated to agent
 - Level 4 fixes listed in report as manual action items
 
-A Level 2 fix that is a bounded mechanical subtask may use the optional external-model delegation described in `.claude/skills/moai/workflows/run/external-delegation.md` § External Model Delegation.
+A Level 2 fix that is a bounded mechanical subtask may use the optional external-model delegation described in `~/.claude/skills/moai/workflows/run/external-delegation.md` § External Model Delegation.
 
 If --dry flag: Display preview of all classified issues and exit without changes.
 
@@ -268,7 +268,7 @@ After fixes are applied and verified, scan for dead code exposed by the fixes:
 
 <!-- @MX:NOTE - One-shot residue handoff to the /moai loop persistence schema (see loop.md § Remaining-Issue Persistence). Extends exit_kind with "one-shot-residue" for this one-shot pipeline's exit path — the base ceiling|manual-residue enum stays owned by that schema's source. -->
 
-**When** the fix workflow exits with residual issues — Level 4 manual items (Phase 4), unresolved errors, or a Phase 5 regression-guard failure (Step 3, an unreverted-and-reported regression) — the fix workflow persists the residue to `.moai/state/loop-verdict-<id>.json` using the schema `.claude/skills/moai/workflows/loop.md` § Remaining-Issue Persistence defines: `spec_or_scope`, `exit_kind`, `iterations_used`, `ceiling_applied` + its source, `conditions` final state, `remaining_issues[]`, `vci_report_ref`, `created_at`.
+**When** the fix workflow exits with residual issues — Level 4 manual items (Phase 4), unresolved errors, or a Phase 5 regression-guard failure (Step 3, an unreverted-and-reported regression) — the fix workflow persists the residue to `.moai/state/loop-verdict-<id>.json` using the schema `~/.claude/skills/moai/workflows/loop.md` § Remaining-Issue Persistence defines: `spec_or_scope`, `exit_kind`, `iterations_used`, `ceiling_applied` + its source, `conditions` final state, `remaining_issues[]`, `vci_report_ref`, `created_at`.
 
 For this one-shot pipeline exit path, set `exit_kind: "one-shot-residue"` (a third value alongside the base `ceiling | manual-residue` enum) and `iterations_used: 1`.
 

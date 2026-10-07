@@ -64,11 +64,13 @@ type catalogTierSection struct {
 }
 
 type catalogEntry struct {
-	Name    string `yaml:"name"`
-	Tier    string `yaml:"tier"`
-	Path    string `yaml:"path"`
-	Hash    string `yaml:"hash"`
-	Version string `yaml:"version"`
+	Name          string   `yaml:"name"`
+	Tier          string   `yaml:"tier"`
+	Path          string   `yaml:"path"`
+	Hash          string   `yaml:"hash"`
+	Version       string   `yaml:"version"`
+	DependsSkills []string `yaml:"depends_skills,omitempty"`
+	DependsAgents []string `yaml:"depends_agents,omitempty"`
 }
 
 type catalogPack struct {

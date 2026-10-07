@@ -35,8 +35,8 @@ func TestTodoSkillDocumentsHistoryVerb(t *testing.T) {
 		name string
 		doc  []byte
 	}{{"live", liveDoc}, {"template mirror", mirrorDoc}} {
-		if n := strings.Count(string(tc.doc), "moai gtd history"); n < 1 {
-			t.Errorf("%s gtd.md mentions `moai gtd history` %d times, want >= 1", tc.name, n)
+		if n := strings.Count(string(tc.doc), "moai todo history"); n < 1 {
+			t.Errorf("%s gtd.md mentions `moai todo history` %d times, want >= 1", tc.name, n)
 		}
 	}
 

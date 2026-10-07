@@ -58,23 +58,21 @@ import (
 // policy is None: REQ-019 holds the .agents/skills entries STABLE on update
 // runs — the re-home belongs to the fresh plugin deploy (init), and the
 // update never adds, restores, or rewrites mirror entries.
-var newTemplateSyncDeployer = func(embedded fs.FS, deployMode template.DeployMode) (template.Deployer, error) {
+var newTemplateSyncDeployer = func(embedded fs.FS, _ template.DeployMode) (template.Deployer, error) {
 	renderer := template.NewRenderer(embedded)
 	cat, catErr := template.LoadEmbeddedCatalog()
 	if catErr != nil {
 		return nil, fmt.Errorf("load harness catalog: %w", catErr)
 	}
-	modeOpts := []template.DeployerOption{template.WithDeployMode(deployMode)}
-	if deployMode == template.DeployModePlugin {
-		modeOpts = append(modeOpts, template.WithPluginMirrorPolicy(template.MirrorPolicyNone))
-	}
+	// SPEC-USER-ASSET-INSTALL-001 (M7): no deploy-mode options — the
+	// deployer carries a single project payload shape.
 	switch config.ReadHarness(".") {
 	case "gpt":
-		return template.NewCodexOnlyDeployerWithRendererAndForceUpdate(cat, renderer, modeOpts...)
+		return template.NewCodexOnlyDeployerWithRendererAndForceUpdate(cat, renderer)
 	case "both":
-		return template.NewDualHarnessDeployerWithRendererAndForceUpdate(cat, renderer, modeOpts...)
+		return template.NewDualHarnessDeployerWithRendererAndForceUpdate(cat, renderer)
 	default:
-		return template.NewClaudeHarnessDeployerWithRendererAndForceUpdate(cat, renderer, modeOpts...)
+		return template.NewClaudeHarnessDeployerWithRendererAndForceUpdate(cat, renderer)
 	}
 }
 
@@ -86,15 +84,12 @@ var newTemplateSyncDeployer = func(embedded fs.FS, deployMode template.DeployMod
 // untouched, and the opted-out arm deploys the full local payload.
 func resolveUpdateDeployMode(projectRoot string, noPlugin bool) template.DeployMode {
 	switch config.ReadDeployMode(projectRoot) {
-	case "plugin":
-		return template.DeployModePlugin
 	case "local":
 		return template.DeployModeLocal
 	}
-	if noPlugin {
-		return template.DeployModeLocal
-	}
-	return template.DeployModePlugin
+	// SPEC-USER-ASSET-INSTALL-001 (M7): every arm resolves LOCAL — the
+	// plugin payload is retired with its carrier.
+	return template.DeployModeLocal
 }
 
 // runTemplateSync synchronizes embedded templates with the project directory.
@@ -192,7 +187,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// SPEC-INIT-SHRINK-001: the deploy mode and the opt-out resolve before
 	// the deployer is constructed; the migration trigger (below) reads the
 	// same opt-out.
-	updateNoPlugin := getBoolFlag(cmd, "no-plugin") || pluginOptOutFromEnv()
+	updateNoPlugin := getBoolFlag(cmd, "no-plugin") || updatePluginOptedOut()
 	deployMode := resolveUpdateDeployMode(".", updateNoPlugin)
 
 	// REQ-018: a recorded project is mode-aware, and update never flips the
@@ -340,7 +335,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// record reads at the end of the run.
 	var migration *migrationPlan
 	if config.ReadDeployMode(projectRoot) == "" {
-		plan, migErr := runUpdateMigrationTrigger(projectRoot, updateNoPlugin, pluginRunner, out, errOut)
+		plan, migErr := runUpdateMigrationTrigger(projectRoot, updateNoPlugin, out, errOut)
 		if migErr != nil {
 			// The abort-before-removal contract: nothing was removed, the
 			// record is unwritten, the next update re-triggers.

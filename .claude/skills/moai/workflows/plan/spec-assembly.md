@@ -81,7 +81,7 @@ File generation — **single writer, single-turn parallel Write**: `manager-spec
 - .moai/specs/SPEC-{ID}/spec.md
   - YAML frontmatter with **12 required fields** (canonical schema — see checklist below and `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields)
   - HISTORY section immediately after frontmatter
-  - Complete GEARS structure with the 5 GEARS patterns (Ubiquitous, Event-driven `When`, State-driven `While`, Capability-gate `Where`, Event-detected unwanted — see `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format). EARS legacy form is accepted for pre-v3 SPECs until 2026-11-22 per the GEARS migration policy.
+  - Complete GEARS structure with the 5 GEARS patterns (Ubiquitous, Event-driven `When`, State-driven `While`, Capability-gate `Where`, Event-detected unwanted — see `~/.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format). EARS legacy form is accepted for pre-v3 SPECs until 2026-11-22 per the GEARS migration policy.
   - Content written in conversation_language
   - **Epic reference**: when the SPEC belongs to a multi-SPEC grouping, `plan.md §A Context` references the **Epic** (not the retired `Sprint`/`cohort`/`Wave` aliases) per `.claude/rules/moai/development/sprint-round-naming.md`. A standalone SPEC with no grouping is also valid.
 
@@ -282,7 +282,7 @@ Harness configuration reference (harness.yaml):
 - `standard`: plan_audit.enabled: true, tier-resolved ceiling, require_must_pass: true
 - `thorough`: plan_audit.enabled: true, tier-resolved ceiling, require_must_pass: true, cross_validate_with_evaluator_active: true
 
-For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, invoke plan-auditor again as an independent re-review — a fresh spawn that receives the SPEC artifacts but not the first pass's verdict, score, or findings — to cross-validate must-pass criteria. If the re-review does not also PASS, treat the iteration as FAIL and trigger one additional iteration. sync-auditor is not used here: it audits implemented code against acceptance criteria and never reviews plan-phase documents (role boundary: `.claude/agents/moai/sync-auditor.md`).
+For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, invoke plan-auditor again as an independent re-review — a fresh spawn that receives the SPEC artifacts but not the first pass's verdict, score, or findings — to cross-validate must-pass criteria. If the re-review does not also PASS, treat the iteration as FAIL and trigger one additional iteration. sync-auditor is not used here: it audits implemented code against acceptance criteria and never reviews plan-phase documents (role boundary: `~/.claude/agents/sync-auditor.md`).
 
 ### Phase 12: GitHub Issue Creation (Conditional, opt-in)
 
@@ -370,7 +370,7 @@ Before evaluating any of the paths below (Worktree / Branch / Current Branch), t
 
 - When `auto_enabled == true`: continue to the Worktree/Branch/Current Branch path evaluation below (existing behavior, unchanged).
 
-Reference: see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern for the 4-phase procedure (A→D) the user follows after this skill defers branch creation.
+Reference: see `~/.claude/agents/manager-git.md` § Late-Branch Invocation Pattern for the 4-phase procedure (A→D) the user follows after this skill defers branch creation.
 
 #### Phase 13: BODP Gate (공통)
 

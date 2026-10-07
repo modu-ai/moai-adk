@@ -284,6 +284,16 @@ func Registry() []Site {
 
 		// ── Subsets by design ──────────────────────────────────────────────
 		{
+			ID:   "catalog-user-install-default-flow-fixtures",
+			Path: "internal/template/catalog_user_install_view_test.go",
+			Axis: AxisSubsetByDesign,
+			Note: "The user-install tests derive the default plan/run/sync closure " +
+				"from catalog core agent bodies and loading/delegation sites. " +
+				"Their L0 core-agent fixture is pinned separately against catalog core.agents; " +
+				"factory dependency, conditional/remediation roles, parser vocabulary and " +
+				"non-matrix role fixtures do not claim a complete retained roster or its size.",
+		},
+		{
 			ID:           "delegation-map-count-citation",
 			Path:         ".moai/config/sections/delegation.yaml",
 			Axis:         AxisSubsetByDesign,

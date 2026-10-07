@@ -41,12 +41,7 @@ func (w *operationalPromptWriter) Write(p []byte) (int, error) {
 
 func TestFactoryOperationalFixtureUsesProductionInit(t *testing.T) {
 	root := t.TempDir()
-	bin := filepath.Join(t.TempDir(), "moai")
-	cmd := exec.Command("go", "build", "-o", bin, "./cmd/moai")
-	cmd.Dir = "../.."
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build: %v %s", err, out)
-	}
+	bin := buildMoaiBinary(t)
 	t.Setenv("MOAI_HOME", t.TempDir())
 	t.Setenv("CLAUDE_CONFIG_DIR", t.TempDir())
 	env := append(os.Environ(), "PATH="+filepath.Dir(bin)+string(os.PathListSeparator)+os.Getenv("PATH"))

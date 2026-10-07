@@ -187,7 +187,8 @@ func TestPreviewManagedCleanup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Local-only: a legacy skill gone from the templates.
+	// Local-only hook: an owned managed root still subject to cleanup.
+	// Unknown skills are preserved and must not appear as cleanup losses.
 	localOnly := filepath.Join(root, ".claude", "skills", legacySkillIDs[0], "SKILL.md")
 	makeSkillDir(t, root, legacySkillIDs[0], "# local-only customization")
 
@@ -200,17 +201,31 @@ func TestPreviewManagedCleanup(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	hook := filepath.Join(root, ".claude", "hooks", "moai", "local-only-review.sh")
+	if err := os.MkdirAll(filepath.Dir(hook), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(hook, []byte("local hook bytes"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := auditSnapshotTree(t, root)
 	var out bytes.Buffer
 	if err := previewManagedCleanup(root, template.DeployModeLocal, &out); err != nil {
 		t.Fatalf("previewManagedCleanup: %v", err)
 	}
 	got := out.String()
+	if delta := auditDiffSnapshots(before, auditSnapshotTree(t, root)); len(delta) != 0 {
+		t.Fatalf("preview changed the fixture: %v", delta)
+	}
 
 	if !strings.Contains(got, "not restored") {
 		t.Errorf("preview must classify the local-only file as not restored, got:\n%s", got)
 	}
-	if !strings.Contains(got, "skills/"+legacySkillIDs[0]) {
-		t.Errorf("preview must name the local-only skill path, got:\n%s", got)
+	if !strings.Contains(got, "hooks/moai/local-only-review.sh") {
+		t.Errorf("preview must name the local-only managed hook: %s", got)
+	}
+	if strings.Contains(got, "skills/"+legacySkillIDs[0]) {
+		t.Errorf("preview must not list a preserved unknown skill as removed: %s", got)
 	}
 	if !strings.Contains(got, "re-deployed") {
 		t.Errorf("preview must count template re-deployments, got:\n%s", got)
@@ -220,7 +235,7 @@ func TestPreviewManagedCleanup(t *testing.T) {
 	}
 
 	// Read-only contract: nothing deleted, nothing created.
-	for _, path := range []string{restored, localOnly, cfg} {
+	for _, path := range []string{restored, localOnly, cfg, hook} {
 		if _, err := os.Stat(path); err != nil {
 			t.Errorf("preview must not remove %s: %v", path, err)
 		}
@@ -245,32 +260,3 @@ func TestPreviewManagedCleanup_EmptyProject(t *testing.T) {
 // record the dropped roots are excluded from the run's removal walk, so a
 // preserved moai-custom file under .claude/skills must NOT be listed as
 // "would delete"; the local mode keeps today's listing.
-func TestPreviewManagedCleanup_ModeScoped(t *testing.T) {
-	t.Parallel()
-	root := t.TempDir()
-	writeTestFile(t, root, ".moai/config/sections/llm.yaml",
-		"llm:\n  harness: claude\n  deployment_mode: plugin\n")
-	skill := filepath.Join(root, ".claude", "skills", "moai-custom", "SKILL.md")
-	if err := os.MkdirAll(filepath.Dir(skill), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(skill, []byte("# the user's own skill\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	var pluginOut bytes.Buffer
-	if err := previewManagedCleanup(root, template.DeployModePlugin, &pluginOut); err != nil {
-		t.Fatalf("previewManagedCleanup (plugin): %v", err)
-	}
-	if strings.Contains(pluginOut.String(), "moai-custom") {
-		t.Errorf("preview lists a file the plugin-mode run preserves:\n%s", pluginOut.String())
-	}
-
-	var localOut bytes.Buffer
-	if err := previewManagedCleanup(root, template.DeployModeLocal, &localOut); err != nil {
-		t.Fatalf("previewManagedCleanup (local): %v", err)
-	}
-	if !strings.Contains(localOut.String(), "moai-custom") {
-		t.Errorf("local-mode preview lost the local-only skill listing:\n%s", localOut.String())
-	}
-}
