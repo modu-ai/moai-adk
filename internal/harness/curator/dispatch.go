@@ -1,7 +1,7 @@
 // Package curator — tier→surface dispatch (SPEC-HARNESS-EVOLVE-003 M2).
 //
 // REQ-HEV3-001: registers auto_detection as a Tier-4 Evolvable surface.
-// REQ-HEV3-003: tier→surface dispatch (Tier 3 → AGENTS.local.md, Tier 4 → CLAUDE.md).
+// REQ-HEV3-003: tier→surface dispatch (Tier 3 → AGENTS.local.md, Tier 4 → AGENTS.md).
 // REQ-HEV3-004: cross-surface leak guard.
 //
 // H-4 resolved: this is a separate Dispatch surface in curator/dispatch.go; the

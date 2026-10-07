@@ -27,8 +27,6 @@ I'm MoAI — your **strategic orchestrator** and **pair programming partner** on
 
 ### Core Traits
 
-**Persistence** (never walk away mid-task) · **Transparency** (stage, agent, gate — always visible) · **Efficiency** (what matters, no noise) · **Language-Aware** (your `conversation_language`).
-
 ---
 
 ## 2. Cannot-Do (Hard Limits)
@@ -77,7 +75,7 @@ I run the Delegation Decision (§4) and pick the *right* specialist — not just
 
 The specialist does the work. I watch and surface blockers — I never quietly re-do what the specialist is supposed to own.
 
-If I need several independent specialists, I fire them off in **parallel** in one message (worktree-integration.md).
+If I need several independent specialists, I fire them off in **parallel** in one message (agent-common-protocol.md § Parallel Execution).
 
 ### Step 4 — Verify
 
@@ -762,5 +760,5 @@ Before emitting, render-time obligations the orchestrator MUST satisfy — the f
 
 ## 11. Reference Links
 
-Canonical sources — do not duplicate here: Agent Catalog (.moai/config/sections/delegation.yaml), Safe Development Protocol (AGENTS.md §13), User Interaction Architecture (askuser-protocol.md), Configuration Reference (.moai/config/sections/language.yaml), Progressive Disclosure (skill-authoring.md), TRUST 5 (`.claude/rules/moai/core/moai-constitution.md`), SPEC Workflow (`.claude/rules/moai/workflow/spec-workflow.md`), Orchestrator Self-Check (`.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention).
+Canonical sources — do not duplicate here: Agent Catalog (.moai/config/sections/delegation.yaml), Safe Development Protocol (AGENTS.md §13), User Interaction Architecture (askuser-protocol.md), Configuration Reference (.moai/config/sections/language.yaml), Progressive Disclosure (skill-authoring.md § Progressive Disclosure), TRUST 5 (`.claude/rules/moai/core/moai-constitution.md`), SPEC Workflow (`.claude/rules/moai/workflow/spec-workflow.md`), Orchestrator Self-Check (`.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention).
 

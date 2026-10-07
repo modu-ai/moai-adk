@@ -1029,17 +1029,6 @@ func codexTestExecImports(t *testing.T, path, directive string) int {
 	return n
 }
 
-// codexTestRawOccurrences counts raw substring occurrences (the I6/I7
-// companion count).
-func codexTestRawOccurrences(t *testing.T, path, needle string) int {
-	t.Helper()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read %s: %v", path, err)
-	}
-	return strings.Count(string(data), needle)
-}
-
 // ─── SPEC-CODEX-TEST-GAPS-001 M7 (REQ-CTG-005 / AC-CTG-005) ───────────────
 
 // t501ErrWriter is an io.Writer whose every write fails — the diagnostic

@@ -22,6 +22,8 @@ MoAI delegates specialist tasks to **13 retained agents**: 12 MoAI-custom agents
 | `super-advisor` | On-demand high-reasoning consultation (non-binding, E1-E4 escalation) |
 | `manager-design` | Design-phase collaboration (Claude Design bidirectional sync) |
 | `e2e-tester` | E2E test execution across web/mobile/desktop (CLI-first, token-minimized) |
+| `manager-lead` | Multi-milestone coordination and cross-session dispatch |
+| `manager-todo` | Todo-queue lifecycle and dispatch guidance |
 | `Explore` | Read-only codebase exploration (Anthropic built-in) |
 
 Agent Selection:

@@ -1,5 +1,7 @@
 package rosterguard
 
+import "strings"
+
 // Registry is the declared set of roster-listing sites in this tree.
 //
 // Every row was measured at base 26243ea86 (card t922) — none was written from
@@ -17,7 +19,8 @@ package rosterguard
 // fails the guard with "delete the marker", and further drift fails it with the
 // new gap.
 func Registry() []Site {
-	return []Site{
+	sites := []Site{
+		{ID: "deployed-file-manifest", Path: ".moai/manifest.json", Axis: AxisSubsetByDesign, Note: "Deployment inventory paths enumerate installed files, not a retained-roster claim."},
 		// ── The canonical source ───────────────────────────────────────────
 		{
 			ID:         "retained-agent-roster",
@@ -167,32 +170,6 @@ func Registry() []Site {
 
 		// ── Retained-roster sites that are currently consistent ────────────
 		{
-			ID:           "claude-md-section-4",
-			Path:         "CLAUDE.md",
-			Axis:         AxisRetainedRoster,
-			Claims:       ClaimMembership | ClaimCount,
-			BlockStart:   "**Retained agents (",
-			CountPattern: `\*\*Retained agents \((\d+)\)\*\*`,
-			NumeralUnreachable: "the §4 count is the heading form `**Retained agents (N)**`: rosterNounRe is case-sensitive, " +
-				"so the capitalized `Retained agents` is outside its noun class, and the numeral follows the " +
-				"noun rather than preceding it. The prose " +
-				"sentence the layer used to reach (\"consists of exactly N retained agents\") duplicated this " +
-				"heading and was removed by the always-loaded diet; the count claim itself is still asserted " +
-				"here through CountPattern.",
-			Note: "Single-line block: the §4 enumeration sentence. Repaired by card t909; count anchor " +
-				"re-pointed to the heading form by card t1175.",
-		},
-		{
-			ID:                 "claude-md-section-4-mirror",
-			Path:               "internal/template/templates/CLAUDE.md",
-			Axis:               AxisRetainedRoster,
-			Claims:             ClaimMembership | ClaimCount,
-			BlockStart:         "**Retained agents (",
-			CountPattern:       `\*\*Retained agents \((\d+)\)\*\*`,
-			NumeralUnreachable: "same heading-form count as the row above; template mirror",
-			Note:               "Template mirror of the row above; both copies are registered so a repair to one cannot leave the other behind.",
-		},
-		{
 			ID:           "agent-authoring-catalog",
 			Path:         ".claude/rules/moai/development/agent-authoring.md",
 			Axis:         AxisRetainedRoster,
@@ -290,12 +267,6 @@ func Registry() []Site {
 			BlockStart:   "| Agent | Phase scope |",
 			BlockEnd:     "| `Explore` | Read-only codebase exploration",
 			CountPattern: `\*\*(\d+) retained agents\*\*`,
-			KnownStale: &Staleness{
-				Reason:        "Claims completeness (\"11 retained agents: 10 MoAI-custom plus the Anthropic built-in Explore\"); manager-lead and manager-todo are absent.",
-				FollowUp:      "repair scoped OUT of card t922 by the lead; unassigned",
-				MissingNames:  []string{"manager-lead", "manager-todo"},
-				DeclaredCount: 11,
-			},
 		},
 		{
 			ID:           "agents-reference-catalog-mirror",
@@ -305,12 +276,6 @@ func Registry() []Site {
 			BlockStart:   "| Agent | Phase scope |",
 			BlockEnd:     "| `Explore` | Read-only codebase exploration",
 			CountPattern: `\*\*(\d+) retained agents\*\*`,
-			KnownStale: &Staleness{
-				Reason:        "Template mirror of the row above, stale identically.",
-				FollowUp:      "repair scoped OUT of card t922 by the lead; unassigned",
-				MissingNames:  []string{"manager-lead", "manager-todo"},
-				DeclaredCount: 11,
-			},
 		},
 		readmeSite("readme-en", "README.md", `### The (\d+)-agent catalog`, ""),
 		readmeSite("readme-ko", "README.ko.md", `### (\d+)-에이전트 카탈로그`, localizedHeadingUnreachable),
@@ -323,7 +288,7 @@ func Registry() []Site {
 			Path:         ".moai/config/sections/delegation.yaml",
 			Axis:         AxisSubsetByDesign,
 			Claims:       ClaimCount,
-			CountPattern: `the (\d+) retained agents \(CLAUDE\.md section 4\)`,
+			CountPattern: `the (\d+) retained agents \([^\n)]+\)`,
 			Note: "The CONTENT is a subset by design — the per-subcommand `agents:` lists are " +
 				"partial, and manager-design, manager-lead, super-advisor and " +
 				"manager-todo are all legitimately absent from every designation. Only " +
@@ -337,7 +302,7 @@ func Registry() []Site {
 			Path:         "internal/template/templates/.moai/config/sections/delegation.yaml",
 			Axis:         AxisSubsetByDesign,
 			Claims:       ClaimCount,
-			CountPattern: `the (\d+) retained agents \(CLAUDE\.md section 4\)`,
+			CountPattern: `the (\d+) retained agents \([^\n)]+\)`,
 			// KnownStale deleted with the row above: both copies were repaired
 			// together, which is what registering the mirror separately was for.
 		},
@@ -368,11 +333,6 @@ func Registry() []Site {
 			Axis:             AxisRetainedRoster,
 			Claims:           ClaimCount,
 			CountPattern:     `(\d+)-agent retained catalog`,
-			KnownStale: &Staleness{
-				Reason:        "Cites an 11-agent retained catalog (10 MoAI-custom + Explore) where the roster carries 13.",
-				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
-				DeclaredCount: 11,
-			},
 		},
 		{
 			ID:               "foundation-core-skill-catalog-size-mirror",
@@ -381,11 +341,6 @@ func Registry() []Site {
 			Axis:             AxisRetainedRoster,
 			Claims:           ClaimCount,
 			CountPattern:     `(\d+)-agent retained catalog`,
-			KnownStale: &Staleness{
-				Reason:        "Template mirror of the row above, stale identically.",
-				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
-				DeclaredCount: 11,
-			},
 		},
 
 		// INDEX.md states the same size THREE times, in three different
@@ -463,11 +418,6 @@ func Registry() []Site {
 			Axis:             AxisRetainedRoster,
 			Claims:           ClaimCount,
 			CountPattern:     `for the (\d+)-agent catalog`,
-			KnownStale: &Staleness{
-				Reason:        "Cites an 11-agent catalog where the roster carries 13.",
-				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
-				DeclaredCount: 11,
-			},
 		},
 		{
 			ID:               "foundation-quality-skill-catalog-size-mirror",
@@ -476,11 +426,6 @@ func Registry() []Site {
 			Axis:             AxisRetainedRoster,
 			Claims:           ClaimCount,
 			CountPattern:     `for the (\d+)-agent catalog`,
-			KnownStale: &Staleness{
-				Reason:        "Template mirror of the row above, stale identically.",
-				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
-				DeclaredCount: 11,
-			},
 		},
 
 		// manager-design cites the roster size and is CURRENTLY CORRECT. It is
@@ -494,7 +439,7 @@ func Registry() []Site {
 			Path:             ".claude/agents/moai/manager-design.md",
 			Axis:             AxisRetainedRoster,
 			Claims:           ClaimCount,
-			CountPattern:     `§ 4 \((\d+) retained agents`,
+			CountPattern:     "(?:§ 4|delegation\\.yaml`) \\((\\d+) retained agents",
 		},
 		{
 			ID:               "manager-design-catalog-citation-mirror",
@@ -502,7 +447,7 @@ func Registry() []Site {
 			Path:             "internal/template/templates/.claude/agents/moai/manager-design.md",
 			Axis:             AxisRetainedRoster,
 			Claims:           ClaimCount,
-			CountPattern:     `§ 4 \((\d+) retained agents`,
+			CountPattern:     "(?:§ 4|delegation\\.yaml`) \\((\\d+) retained agents",
 		},
 		{
 			ID:               "manager-design-catalog-citation-codex",
@@ -510,7 +455,7 @@ func Registry() []Site {
 			Path:             "internal/template/templates/.codex/agents/moai/manager-design.toml",
 			Axis:             AxisRetainedRoster,
 			Claims:           ClaimCount,
-			CountPattern:     `§ 4 \((\d+) retained agents`,
+			CountPattern:     "(?:§ 4|delegation\\.yaml`) \\((\\d+) retained agents",
 			Note: "Emitted from the .claude mirror by internal/template/agentemit and never hand-edited. " +
 				"Registered anyway: registering is a read, not an edit, and a stale emission is still a stale claim on disk.",
 		},
@@ -556,6 +501,19 @@ func Registry() []Site {
 		// widening the noun class or quietly dropping the equality — is what
 		// keeps AC-RNA-006(b) strict instead of unsatisfiable.
 	}
+	for _, site := range sites {
+		if strings.HasPrefix(site.Path, ".claude/rules/moai/") {
+			site.ID += "-policy"
+			site.Path = strings.Replace(site.Path, ".claude/rules/moai/", ".moai/policies/", 1)
+			sites = append(sites, site)
+		}
+		if strings.HasPrefix(site.Path, "internal/template/templates/.codex/agents/") {
+			site.ID += "-live"
+			site.Path = strings.TrimPrefix(site.Path, "internal/template/templates/")
+			sites = append(sites, site)
+		}
+	}
+	return sites
 }
 
 // indexCatalogStale builds the staleness marker shared by the INDEX.md rows,
@@ -579,11 +537,6 @@ func agentCatalogSizeSite(id, path string) Site {
 		Axis:             AxisRetainedRoster,
 		Claims:           ClaimCount,
 		CountPattern:     `(\d+)-agent catalog in \[agents-reference\.md\]`,
-		KnownStale: &Staleness{
-			Reason:        "The module banner cites an 11-agent catalog where the roster carries 13.",
-			FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
-			DeclaredCount: 11,
-		},
 	}
 }
 
@@ -649,7 +602,7 @@ func NumeralExemptions() []NumeralExempt {
 		"Only machine-local paths were rewritten to neutral placeholders; the roster wording is kept as " +
 		"captured, and editing it would invalidate the capture. The live sources are exempted above on their own rows."
 
-	return []NumeralExempt{
+	exemptions := []NumeralExempt{
 		// ── Historical citations ───────────────────────────────────────────
 		{
 			ID:   "git-workflow-doctrine-retain-matrix",
@@ -710,16 +663,6 @@ func NumeralExemptions() []NumeralExempt {
 			Reason: "Template mirror of the row above; same two hits, same reason.",
 		},
 		{
-			ID:     "foundation-quality-reference-section-marker",
-			Path:   ".claude/skills/moai-foundation-quality/references/reference.md",
-			Reason: "MEASURED FALSE POSITIVE: the numeral is the section marker in \"CLAUDE.md §4 retained-agent catalog\".",
-		},
-		{
-			ID:     "foundation-quality-reference-section-marker-mirror",
-			Path:   "internal/template/templates/.claude/skills/moai-foundation-quality/references/reference.md",
-			Reason: "Template mirror of the row above; same section marker.",
-		},
-		{
 			ID:   "template-isolation-doctrine-forbidden-example",
 			Path: ".moai/docs/template-internal-isolation-doctrine.md",
 			Reason: "MEASURED FALSE POSITIVE: the hit is inside a table cell that QUOTES a forbidden-content " +
@@ -743,4 +686,17 @@ func NumeralExemptions() []NumeralExempt {
 		{ID: "rosterguard-registry-self", Path: "internal/harness/rosterguard/registry.go", Reason: "SELF-DESCRIPTION: the registry's own comments quote the claims its rows assert."},
 		{ID: "rosterguard-test-self", Path: "internal/harness/rosterguard/rosterguard_test.go", Reason: "SELF-DESCRIPTION: the control probe's deliberately-wrong input includes roster count claims."},
 	}
+	for _, exemption := range exemptions {
+		if strings.HasPrefix(exemption.Path, ".claude/rules/moai/") {
+			exemption.ID += "-policy"
+			exemption.Path = strings.Replace(exemption.Path, ".claude/rules/moai/", ".moai/policies/", 1)
+			exemptions = append(exemptions, exemption)
+		}
+		if strings.HasPrefix(exemption.Path, "internal/template/templates/.codex/agents/") {
+			exemption.ID += "-live"
+			exemption.Path = strings.TrimPrefix(exemption.Path, "internal/template/templates/")
+			exemptions = append(exemptions, exemption)
+		}
+	}
+	return exemptions
 }
