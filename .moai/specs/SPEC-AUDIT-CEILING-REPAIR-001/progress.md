@@ -230,6 +230,22 @@ arm): `TestReqACSetsUnchangedAcceptanceCorruptionFailsClosed`. The
 Tier S both-absent case still returns true (sealed `TestDeltaGitHelpers`
 stays green), and one-end-failure keeps returning false.
 
+### §G next-heading scan fence-fold record (round-2 leader-ruled fold)
+
+RED observed pre-fix at HEAD `634cb7c9b`:
+`audit_ceiling_test.go:1651: the line immediately before the next real
+heading is "", want the record` — the §G next-heading scan treated a
+`## `-prefixed line INSIDE an open fenced code block as a section boundary,
+so the record was inserted into the middle of the fence instead of ending
+the §G block. Fix: the scan tracks fence state (`opensFence`/`closesFence`
+— at least three backticks or tildes, the fence character and run length
+deciding which line closes, whitespace-tailed closes allowed) while walking;
+a `## ` line inside an open fence is code, not a boundary. Regression test
+`TestAppendProgressRecordSkipsHeadingInsideFence`
+(`internal/runtime/audit_ceiling_fence_test.go`): backtick and tilde
+variants, including a ``` line inside a tilde fence as content — the record
+lands immediately before the first real heading after the fence closes.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07

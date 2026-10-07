@@ -664,8 +664,27 @@ func progressWithRecord(content, line string) string {
 		out = append(lines, "", progressSectionHeading, "", line)
 	} else {
 		at := len(lines) // §G is the last section: append at end-of-file
+		// A `## `-prefixed line inside an open fenced code block is code,
+		// not a section boundary — the scan tracks fence state so the
+		// record lands at the §G block's end, after the fence closes
+		// (round-2 leader-ruled fold).
+		inFence := false
+		var fenceChar byte
+		fenceLen := 0
 		for i := heading + 1; i < len(lines); i++ {
-			if strings.HasPrefix(lines[i], "## ") {
+			l := lines[i]
+			if inFence {
+				if closesFence(l, fenceChar, fenceLen) {
+					inFence = false
+				}
+				continue
+			}
+			if c, n, opened := opensFence(l); opened {
+				inFence = true
+				fenceChar, fenceLen = c, n
+				continue
+			}
+			if strings.HasPrefix(l, "## ") {
 				at = i // a section follows §G: the record ends the §G block
 				break
 			}
@@ -674,6 +693,36 @@ func progressWithRecord(content, line string) string {
 		out = append(out, lines[at:]...)
 	}
 	return strings.Join(out, "\n") + "\n"
+}
+
+// opensFence reports the fence a line OPENS: a line whose leading run is at
+// least three backticks or three tildes (CommonMark fenced code blocks; the
+// fence character and its run length decide which line can close it).
+func opensFence(line string) (c byte, n int, ok bool) {
+	trimmed := strings.TrimLeft(line, " \t")
+	if trimmed == "" {
+		return 0, 0, false
+	}
+	c = trimmed[0]
+	if c != '`' && c != '~' {
+		return 0, 0, false
+	}
+	for n < len(trimmed) && trimmed[n] == c {
+		n++
+	}
+	return c, n, n >= 3
+}
+
+// closesFence reports whether line closes a fence opened with n of the
+// fence character c: at least n of that character, then nothing but
+// whitespace.
+func closesFence(line string, c byte, n int) bool {
+	trimmed := strings.TrimLeft(line, " \t")
+	i := 0
+	for i < len(trimmed) && trimmed[i] == c {
+		i++
+	}
+	return i >= n && strings.TrimSpace(trimmed[i:]) == ""
 }
 
 // RecordRequiredBackendRefusal persists a required-backend refusal
