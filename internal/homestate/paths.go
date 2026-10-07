@@ -91,7 +91,7 @@ func contextGitOutput(ctx context.Context, dir string, args ...string) ([]byte, 
 		return nil, err
 	}
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)
-	cmd.Env = gitenv.Env()
+	cmd.Env = append(gitenv.Env(), "LC_ALL=C", "LANGUAGE=C")
 	cmd.WaitDelay = config.DefaultGitPathWaitDelay
 	out, err := cmd.Output()
 	if ctx.Err() != nil {
@@ -102,7 +102,16 @@ func contextGitOutput(ctx context.Context, dir string, args ...string) ([]byte, 
 
 func notGitRepository(err error) bool {
 	var exit *exec.ExitError
-	return errors.As(err, &exit) && strings.Contains(string(exit.Stderr), "not a git repository")
+	if !errors.As(err, &exit) || exit.ExitCode() != 128 {
+		return false
+	}
+	diagnostic := strings.TrimSpace(string(exit.Stderr))
+	if diagnostic == "fatal: not a git repository (or any of the parent directories): .git" {
+		return true
+	}
+	first, second, multiline := strings.Cut(diagnostic, "\n")
+	return multiline && strings.HasPrefix(first, "fatal: not a git repository (or any parent up to mount point ") &&
+		strings.HasSuffix(first, ")") && second == "Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set)."
 }
 
 func canonicalProjectRoot(projectRoot string, resolve func(string) (*gitcore.GitDirs, error), output func(string, ...string) ([]byte, error), strict bool) (string, error) {
