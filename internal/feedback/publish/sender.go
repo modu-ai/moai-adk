@@ -247,7 +247,7 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 	// deterministic template text (design section 8; D38), bounded per
 	// item (REQ-ANON-017/018) and by the daily cap.
 	summary, _ := s.itemSummary(ctx, store, item, payload)
-	_, body = outbox.RenderReportWithSummary(payload, summary)
+	_, body := outbox.RenderReportWithSummary(payload, summary)
 	if err := s.Runner.CreateIssue(ctx, repo, title, strings.NewReader(body)); err != nil {
 		s.fail(ctx, store, item, err)
 		return false
