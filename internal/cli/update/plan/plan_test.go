@@ -448,9 +448,50 @@ func TestAnalyzeFiles(t *testing.T) {
 	}
 }
 
+// TestAnalyzeFilesDedupesRenderedPairs — SPEC-UPDATE-MIGRATION-001 (card
+// t1547, gate round 20): a `.sh`/`.sh.tmpl` deployment pair is ONE rendered
+// target — both list entries converge on the stripped path, and the analysis
+// (the counted total's source) must not double-count the pair.
+func TestAnalyzeFilesDedupesRenderedPairs(t *testing.T) {
+	tempDir := t.TempDir()
+	templates := []string{
+		".claude/hooks/moai/stop-goal.sh",
+		".claude/hooks/moai/stop-goal.sh.tmpl",
+		".claude/hooks/moai/task-completed.sh",
+		".claude/hooks/moai/task-completed.sh.tmpl",
+		".claude/hooks/moai/teammate-idle.sh",
+		".claude/hooks/moai/teammate-idle.sh.tmpl",
+		".claude/hooks/moai/user-prompt.sh",
+		".claude/hooks/moai/user-prompt.sh.tmpl",
+		"user-file.md",
+	}
+	got := AnalyzeFiles(templates, tempDir)
+	// 9 list entries → 5 rendered targets (4 pairs collapse to their .sh).
+	if len(got) != 5 {
+		t.Errorf("AnalyzeFiles() count = %d, want 5 (each pair counted once)", len(got))
+	}
+	seen := map[string]bool{}
+	for _, analysis := range got {
+		if seen[analysis.Path] {
+			t.Errorf("rendered target %s analyzed twice", analysis.Path)
+		}
+		seen[analysis.Path] = true
+	}
+	for _, want := range []string{
+		".claude/hooks/moai/stop-goal.sh",
+		".claude/hooks/moai/task-completed.sh",
+		".claude/hooks/moai/teammate-idle.sh",
+		".claude/hooks/moai/user-prompt.sh",
+		"user-file.md",
+	} {
+		if !seen[want] {
+			t.Errorf("rendered target %s missing from the analysis", want)
+		}
+	}
+}
+
 // TestGetProjectConfigVersion verifies config version retrieval.
 func TestGetProjectConfigVersion(t *testing.T) {
-	// Create .moai/config/sections directory (the correct path for system.yaml)
 	tempDir := t.TempDir()
 	sectionsDir := filepath.Join(tempDir, ".moai", "config", "sections")
 	err := os.MkdirAll(sectionsDir, 0755)

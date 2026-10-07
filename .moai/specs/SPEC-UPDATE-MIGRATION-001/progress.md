@@ -261,6 +261,8 @@ The merged-write `theirs` read follows a swapped link when a base exists
 (read-side only; writes stay root-pinned) — flagged here for the gate's
 disposition, not silently ignored.
 
+| 13 | r20 P2 | managed-file count double-counted `.sh`/`.sh.tmpl` pairs (607 analyzed vs 603 unique rendered targets — the summary overstated) | `plan.AnalyzeFiles` dedupes by rendered target path (the same accounting rule `managedRedeployCount` applies) — REPRODUCED on this tree before repair: templates=607 analysis=607 uniqueTargets=603 → after: analysis=603 | `TestAnalyzeFilesDedupesRenderedPairs` (plan pkg; pair-counts-once semantics — the real-tree 603 number is a measured run, not a pinned test: a pinned template count would rot on every template change) |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: complete

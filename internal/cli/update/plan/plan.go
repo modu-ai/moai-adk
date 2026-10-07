@@ -62,12 +62,26 @@ func DetermineChangeType(exists bool) string {
 }
 func AnalyzeFiles(templates []string, projectRoot string) []merge.FileAnalysis {
 	var files []merge.FileAnalysis
+	// Gate round 20 (card t1547): each rendered deployment target counts
+	// ONCE. A `.sh`/`.sh.tmpl` deployment pair — both list entries converging
+	// on the same stripped target — is one deployed file, not two; without
+	// the dedupe the analysis (and the counted total downstream) inflated by
+	// every pair (607 analyzed vs 603 targets on the current template). The
+	// dedupe key is the rendered target path, the same accounting rule the
+	// cli's managedRedeployCount already applies.
+	seenTargets := make(map[string]bool, len(templates))
 	for _, tmpl := range templates {
 		// Strip .tmpl suffix first - display and filter using rendered target path
 		displayPath := tmpl
 		if before, ok := strings.CutSuffix(tmpl, ".tmpl"); ok {
 			displayPath = before
 		}
+
+		target := filepath.ToSlash(displayPath)
+		if seenTargets[target] {
+			continue
+		}
+		seenTargets[target] = true
 
 		// SPEC-UPDATE-MIGRATION-001 (card t1547, REQ-UPM-032): MoAI-managed
 		// files join the analysis and the counted total. The exclusion here
