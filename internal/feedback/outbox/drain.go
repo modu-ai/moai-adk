@@ -225,9 +225,11 @@ func Drain() error {
 // context bounds the whole run — the CLI's flush time box: the per-item
 // loop stops on cancellation and the queue-lock acquisition selects on it
 // (review-gate P2: lock waits used to accumulate per item, so a
-// 50ms-deadline drain ran thirteen seconds against a live lock holder). A
-// cancelled drain returns nil with the spool batch unconsumed — the next
-// drain retries it — matching the flush contract (warn-only, quiet).
+// 50ms-deadline drain ran thirteen seconds against a live lock holder).
+// Consumption is prefix-scoped: only the entries handled to a terminal
+// state leave the spool; a cancelled or retryably-failed item and
+// everything after it stay for the next drain (whose ledger dedupe window
+// makes reprocessing the tail safe).
 func DrainContext(ctx context.Context) error {
 	// Withdrawal first: consent off discards everything unsent and stops.
 	if !config.ReadUserParticipation().Enabled {
@@ -248,11 +250,17 @@ func DrainContext(ctx context.Context) error {
 		spoolAfterReadForTest()
 	}
 
-	for _, entry := range entries {
+	// processed counts the entries the drain handled to a terminal state —
+	// queued, or decided and logged. ONLY that prefix leaves the spool
+	// (review-gate finding: a retryable failure on any item used to consume
+	// the whole batch, losing the failed item and everything after it — a
+	// lost report).
+	processed := 0
+	for i, entry := range entries {
 		if err := ctx.Err(); err != nil {
-			// The deadline or cancellation arrived: stop with the batch
-			// unconsumed (nothing below removes the consumed bytes).
-			return nil
+			// The deadline or cancellation arrived: the decided prefix
+			// leaves the spool, the rest stays for the next drain.
+			return consumeProcessed(consumed, len(entries), processed)
 		}
 		switch bugreport.Verdict(entry.Verdict) {
 		case bugreport.VerdictAmbiguous:
@@ -260,27 +268,54 @@ func DrainContext(ctx context.Context) error {
 				Outcome: "ambiguous",
 				Reason:  "retained locally (DEC-7): no model call, nothing queued or sent",
 			})
+			processed = i + 1
 			continue
 		case bugreport.VerdictMoai:
 			// continue below
 		default:
 			// user/environment verdicts never reach the spool (capture
-			// drops them); a hostile line saying so is ignored.
+			// drops them); a hostile line saying so is inert and consumed
+			// with the prefix.
+			processed = i + 1
 			continue
 		}
 
-		if reason, stop := drainMoai(ctx, entry); stop {
-			_ = AppendOutbox(OutboxRow{Outcome: reason.outcome, Reason: reason.reason, Fingerpr: reason.fp})
+		outcome, retry := drainMoai(ctx, entry)
+		if retry {
+			// A retryable failure — context expiry, a lost lock budget, an
+			// unreadable ledger: the failed item and everything after it
+			// stay in the spool for the next drain (the ledger's dedupe
+			// window makes reprocessing the tail safe).
+			if outcome != nil {
+				_ = AppendOutbox(OutboxRow{Outcome: outcome.outcome, Reason: outcome.reason, Fingerpr: outcome.fp})
+			}
+			return consumeProcessed(consumed, len(entries), i)
+		}
+		if outcome != nil {
+			_ = AppendOutbox(OutboxRow{Outcome: outcome.outcome, Reason: outcome.reason, Fingerpr: outcome.fp})
+			processed = i + 1
 			continue
 		}
+		processed = i + 1
 	}
 
-	// Only the consumed batch is removed (bugreport.ConsumeSpoolPrefix,
+	// Only the processed prefix is removed (bugreport.ConsumeSpoolPrefix,
 	// under the spool's own cross-process section): entries captured after
 	// the drain's read survive for the next drain. The predecessor
 	// whole-file ClearSpool deleted every capture that landed mid-drain —
 	// a lost report.
-	if err := bugreport.ConsumeSpoolPrefix(consumed); err != nil {
+	return consumeProcessed(consumed, len(entries), processed)
+}
+
+// consumeProcessed removes exactly the spool prefix covering the first
+// processed valid entries — the successfully handled part of the batch the
+// drain read.
+func consumeProcessed(consumed []byte, entries, processed int) error {
+	prefix := consumed
+	if processed < entries {
+		prefix = consumed[:bugreport.PrefixLenForEntries(consumed, processed)]
+	}
+	if err := bugreport.ConsumeSpoolPrefix(prefix); err != nil {
 		return fmt.Errorf("outbox: consume spool: %w", err)
 	}
 	return nil
@@ -297,9 +332,19 @@ type drainOutcome struct {
 	fp      string
 }
 
+// queueWriteBlockForTest, when set and returning true for an entry, makes
+// drainMoai report a queue-write failure for that entry without touching
+// the lock — the deterministic driver for the partial-consumption tests (a
+// real cross-process contention would be timing-dependent).
+var queueWriteBlockForTest func(entry bugreport.SpoolEntry) bool
+
 // drainMoai runs one moai verdict through fingerprint → payload → tripwire
 // → ONE queue-lock critical section covering dedupe → caps → append →
-// bound → ledger-record. A nil outcome means the signal was queued.
+// bound → ledger-record. A nil outcome means the signal was queued. The
+// second result separates RETRYABLE failures (queue-write boundary: the
+// item and the spool tail stay for the next drain) from DECIDED outcomes
+// (deterministic refusals — withheld, deduped, capped, build refused —
+// which are consumed, since re-deciding them changes nothing).
 //
 // The critical section is the review-gate serialization finding: the dedupe
 // check and the ledger update used to bracket the queue mutation as
@@ -311,7 +356,7 @@ type drainOutcome struct {
 // the append, and a ledger save failure aborts the whole mutation (the
 // queue file stays unchanged — a signal whose ledger commit failed is
 // never queued).
-func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (drainOutcome, bool) {
+func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, bool) {
 	fp := fingerprintOf(entry)
 
 	// Build the validated payload from the spool's closed fields — pure,
@@ -324,7 +369,7 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (drainOutcome, b
 		var derr error
 		detail, derr = bugreport.ParseDetail(entry.Kind, entry.Detail)
 		if derr != nil {
-			return drainOutcome{outcome: "withheld", reason: "detail failed read-back validation: " + derr.Error(), fp: fp}, true
+			return &drainOutcome{outcome: "withheld", reason: "detail failed read-back validation: " + derr.Error(), fp: fp}, false
 		}
 	}
 	versionID, commitID := entryIdentity(entry)
@@ -333,7 +378,7 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (drainOutcome, b
 		Commit:  commitID,
 	})
 	if err != nil {
-		return drainOutcome{outcome: "dropped", reason: "payload build refused: " + err.Error(), fp: fp}, true
+		return &drainOutcome{outcome: "dropped", reason: "payload build refused: " + err.Error(), fp: fp}, false
 	}
 
 	// The scrub tripwire: the rendered title and body must pass the existing
@@ -341,7 +386,12 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (drainOutcome, b
 	// validator gap, and the payload is WITHHELD, never masked and sent
 	// (REQ-ANON-012). The path-traversal token is always withheld.
 	if reason, withheld := tripwire(payload, entry); withheld {
-		return drainOutcome{outcome: "withheld", reason: reason, fp: fp}, true
+		return &drainOutcome{outcome: "withheld", reason: reason, fp: fp}, false
+	}
+
+	// The deterministic driver for the partial-consumption tests.
+	if queueWriteBlockForTest != nil && queueWriteBlockForTest(entry) {
+		return &drainOutcome{outcome: "dropped", reason: "queue write failed: (test contention)", fp: fp}, true
 	}
 
 	// ONE cross-process critical section: dedupe check → rolling caps →
@@ -349,12 +399,14 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (drainOutcome, b
 	store := BugreportQueueStore()
 	title, body := RenderReport(payload)
 	var outcome *drainOutcome
+	var ledgerBroken bool
 	var droppedIDs []string
 	var queued feedback.QueueItem
 	err = store.MutateContext(ctx, func(rec *feedback.QueueRecord) error {
 		ledger, lerr := loadLedger()
 		if lerr != nil {
 			outcome = &drainOutcome{outcome: "dropped", reason: "ledger unreadable: " + lerr.Error()}
+			ledgerBroken = true
 			return nil
 		}
 
@@ -400,11 +452,16 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (drainOutcome, b
 		return nil
 	})
 	if err != nil {
-		return drainOutcome{outcome: "dropped", reason: "queue write failed: " + err.Error(), fp: fp}, true
+		// EVERY queue-write failure is retryable — context expiry, a lock
+		// budget lost to contention, a failed save: the item stays in the
+		// spool for the next drain rather than being consumed as lost
+		// (review-gate finding: the failed item used to leave with the
+		// batch — a lost report).
+		return &drainOutcome{outcome: "dropped", reason: "queue write failed: " + err.Error(), fp: fp}, true
 	}
 	if outcome != nil {
 		outcome.fp = fp
-		return *outcome, true
+		return outcome, ledgerBroken
 	}
 	for _, id := range droppedIDs {
 		_ = AppendOutbox(OutboxRow{
@@ -418,7 +475,7 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (drainOutcome, b
 		Body:     body,
 		Fingerpr: payload.Fingerprint,
 	})
-	return drainOutcome{}, false
+	return nil, false
 }
 
 // tripwireInputForTest overrides what the tripwire screens (the withheld

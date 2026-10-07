@@ -181,6 +181,40 @@ func ConsumeSpoolPrefix(consumed []byte) error {
 	return os.Rename(tmpName, path)
 }
 
+// PrefixLenForEntries returns the byte length of the raw spool prefix that
+// covers the first n valid entries — any malformed or blank lines among
+// them included, the span always ending on a line boundary. It is the
+// exact prefix a partial drain may hand ConsumeSpoolPrefix: only the
+// entries it actually processed leave the spool (review-gate finding: a
+// retryable queue-write failure used to consume the whole batch, losing
+// the failed item and everything after it). An n greater than the valid
+// count returns the whole read.
+func PrefixLenForEntries(raw []byte, n int) int {
+	if n <= 0 {
+		return 0
+	}
+	valid := 0
+	offset := 0
+	for offset < len(raw) {
+		lineEnd := len(raw) // EOF without a trailing newline
+		if end := bytes.IndexByte(raw[offset:], '\n'); end >= 0 {
+			lineEnd = offset + end + 1 // include the newline
+		}
+		line := strings.TrimSpace(string(raw[offset:lineEnd]))
+		if line != "" {
+			var entry SpoolEntry
+			if json.Unmarshal([]byte(line), &entry) == nil && entry.Kind.Valid() && Verdict(entry.Verdict).Valid() {
+				valid++
+				if valid == n {
+					return lineEnd
+				}
+			}
+		}
+		offset = lineEnd
+	}
+	return len(raw)
+}
+
 // ClearSpool empties the spool (the drain consumed every line). Removing
 // the file rather than truncating keeps the store directory tidy; the next
 // capture recreates it.
