@@ -451,8 +451,13 @@ func TestLandingPredicateCommitCap(t *testing.T) {
 		f := newGFDFixture(t)
 		f.cardCommit(t, 5, "card")
 		sq := f.squash(t)
+		// Advance the commit count without changing the card's exact objects.
 		for i := 0; i < 4; i++ {
-			f.mainCommit(t, 18, "pad"+itoa(i))
+			if err := os.WriteFile(filepath.Join(f.repo, "padding.txt"), []byte(itoa(i)), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			landingGit(t, f.repo, "add", "padding.txt")
+			landingGit(t, f.repo, "commit", "-q", "-m", "unrelated padding")
 		}
 		f.pushMain(t)
 		return f, sq
