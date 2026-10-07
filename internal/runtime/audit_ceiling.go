@@ -624,15 +624,28 @@ func appendProgressRecord(specDir, line string) error {
 			return err
 		}
 	}
+	// Write-denial check (sync-audit-4 F8): the replace must not bypass the
+	// original's write restriction — the pre-repair os.WriteFile failed
+	// with permission denied on a read-only progress.md, while a rename
+	// never opens it. Open the original for writing first; a denial is a
+	// clean error with the file untouched and no temp created.
+	if f, oerr := os.OpenFile(path, os.O_WRONLY, 0); oerr != nil {
+		return oerr
+	} else {
+		_ = f.Close()
+	}
 	// Atomic same-directory replace, seeded with the original's file
 	// metadata (round-3 repair 3): rename(2) swaps the directory entry, so
 	// the replacement carries the TEMP file's access-control entries — a
-	// bare rename drops an ACL the pre-repair os.WriteFile preserved. cp -p
-	// seeds the original's mode, ACL, and extended attributes onto the temp
-	// before the new content is written (its content is then truncated over
-	// and its mtime rides the write); where cp is unavailable the chmod
-	// fallback keeps the F2 mode posture. The shared atomicfile helper is
-	// untouched — this is the call-site preservation path.
+	// bare rename drops an ACL the pre-repair os.WriteFile preserved. The
+	// seeder copies the original's metadata onto the temp before the new
+	// content is written. A seeding failure ABORTS the replace — the temp
+	// is removed and the original untouched; there is NO mode-only
+	// fallback, which dropped the ACL and silently rewrote a
+	// write-restricted file (the two F8 faces). The mode is applied
+	// explicitly either way (the F2 posture: existing-file mode preserved,
+	// new-file umask-adjusted 0644 — the pre-create above already put the
+	// umask into the original's mode).
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".progress-*.tmp")
 	if err != nil {
@@ -644,32 +657,44 @@ func appendProgressRecord(specDir, line string) error {
 		return err
 	}
 	defer func() { _ = os.Remove(tmpName) }() // no-op once the rename succeeds
-	seeded := seedFileMetadata(tmpName, path)
+	if serr := seedFileMetadataFn(tmpName, path); serr != nil {
+		_ = os.Remove(tmpName)
+		return fmt.Errorf("seed progress.md metadata: %w", serr)
+	}
 	if werr := os.WriteFile(tmpName, []byte(content), 0); werr != nil {
 		return werr
 	}
-	if !seeded {
-		mode := os.FileMode(0o644)
-		if info, serr := os.Stat(path); serr == nil {
-			mode = info.Mode().Perm()
-		}
-		if cerr := os.Chmod(tmpName, mode); cerr != nil {
-			return cerr
-		}
+	mode := os.FileMode(0o644)
+	if info, serr := os.Stat(path); serr == nil {
+		mode = info.Mode().Perm()
+	}
+	if cerr := os.Chmod(tmpName, mode); cerr != nil {
+		return cerr
 	}
 	return os.Rename(tmpName, path)
 }
 
+// seedFileMetadataFn is the metadata-seeding seam (a package var so the
+// abort contract is testable by injection); it points at the platform
+// implementation below.
+var seedFileMetadataFn = seedFileMetadata
+
 // seedFileMetadata copies the original's mode, access-control entries, and
 // extended attributes onto the temp file via cp -p — the preservation a
-// bare rename cannot provide (round-3 repair 3). Best-effort: any failure
-// (cp unavailable, unsupported metadata) reports false and the caller
-// falls back to the plain mode-preserving temp path.
-func seedFileMetadata(tmp, original string) bool {
+// bare rename cannot provide (round-3 repair 3). A failure is an ERROR and
+// the caller aborts the replace: there is no mode-only fallback, which
+// dropped the ACL and bypassed a write restriction (sync-audit-4 F8). On
+// Windows there is no cp and no explicit-file ACL axis to copy — the seeder
+// is a documented no-op success (the temp file inherits the directory's ACL
+// at creation); flagged for leader review.
+func seedFileMetadata(tmp, original string) error {
 	if runtime.GOOS == "windows" {
-		return false
+		return nil
 	}
-	return exec.Command("cp", "-p", original, tmp).Run() == nil
+	if out, err := exec.Command("cp", "-p", original, tmp).CombinedOutput(); err != nil {
+		return fmt.Errorf("cp -p %s %s: %v (%s)", original, tmp, err, out)
+	}
+	return nil
 }
 
 // progressWithRecord returns content with one record line inserted at the

@@ -304,6 +304,31 @@ test `TestAppendProgressRecordPreservesACL`
 (`internal/runtime/audit_ceiling_acl_test.go`, darwin-only — chmod +a is
 a macOS ACL verb): the `deny read` entry survives the record append.
 
+### Round-4 F8 repair record — seed-failure fallback dropped the ACL and bypassed write restrictions (blocking)
+
+RED observed pre-fix at HEAD `6eb6262fb` (PATH-stripped probes driving the
+cp-unavailable fallback; verbatim, `zz_red_probe_test.go` — the probe file
+is removed at commit and its contract pinned by the landed seam tests):
+`zz_red_probe_test.go:25: RED-EXPECTED (pass here means no defect): a 0444
+progress.md was rewritten through the fallback` and
+`zz_red_probe_test.go:43: RED-EXPECTED (pass here means no defect): a
+seeding failure fell back to a mode-only rewrite instead of aborting` — the
+fallback restored only the POSIX mode and forced the rename, so (a) the
+ACL vanished and (b) a 0444 progress.md was silently rewritten where the
+pre-repair os.WriteFile returned permission denied. Fix (both faces, the
+mode-only fallback branch deleted): (i) the replace verifies the original
+is writable first (`os.OpenFile(path, os.O_WRONLY, 0)`) — a denial is a
+clean error, the file untouched, no temp created (os.WriteFile's failure
+mode restored); (ii) a seeding failure ABORTS the replace — temp removed,
+original untouched, error returned (the best-effort posture holds: an
+admission decision is never affected, AC-ACR-009); (iii) the mode is now
+applied unconditionally (the F2 posture), never as a substitute for
+metadata. Landed tests (seam `seedFileMetadataFn`, deterministic beyond
+the closure):
+`TestAppendProgressRecordWriteDeniedKeepsFile`,
+`TestAppendProgressRecordSeedFailureAborts`
+(`internal/runtime/audit_ceiling_replace_test.go`, darwin||linux).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07
