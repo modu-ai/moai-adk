@@ -136,12 +136,3 @@ func TestAppendProgressRecordOverwritesInheritedDefaultAcl(t *testing.T) {
 		}
 	}
 }
-
-func containsPerm(perms []uint16, want uint16) bool {
-	for _, p := range perms {
-		if p == want {
-			return true
-		}
-	}
-	return false
-}
