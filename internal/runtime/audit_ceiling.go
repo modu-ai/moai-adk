@@ -459,13 +459,37 @@ func reqACSetsUnchanged(projectRoot, specID, fromSHA, toSHA string) bool {
 	accRel := filepath.ToSlash(filepath.Join(".moai", "specs", specID, "acceptance.md"))
 	fromAcc, errA := auditreceipt.RunScrubbedGit(projectRoot, "show", fromSHA+":"+accRel)
 	toAcc, errB := auditreceipt.RunScrubbedGit(projectRoot, "show", toSHA+":"+accRel)
-	if errA != nil && errB != nil {
+	if errA == nil && errB == nil {
+		return equalStringSets(reqACSet(fromAcc), reqACSet(toAcc))
+	}
+	// At least one end failed to read. Only the CLEAN absence shape may
+	// read as "unchanged empty at both ends" — a corrupt or unreadable
+	// object also fails git-show, and equating it with absence admitted the
+	// delta fail-open (sync-audit-2 F5). git ls-tree separates the shapes
+	// without matching git's error prose: exit 0 with output when the path
+	// is in the tree, exit 0 with empty output when it is not, non-zero
+	// when the object cannot be read at all — only the middle shape is
+	// absence; anything else fails closed.
+	absentA, errLA := gitPathAbsent(projectRoot, fromSHA, accRel)
+	absentB, errLB := gitPathAbsent(projectRoot, toSHA, accRel)
+	if errLA != nil || errLB != nil {
+		return false // absence undecidable — fail closed
+	}
+	if absentA && absentB {
 		return true // no acceptance.md at either end — nothing to compare
 	}
-	if errA != nil || errB != nil {
-		return false // it appeared or disappeared — fail closed
+	return false // appeared, disappeared, or an unreadable object
+}
+
+// gitPathAbsent reports whether rel is absent from sha's tree — and only
+// that. A non-zero ls-tree (corrupt or unreadable object) is an error, not
+// absence: the caller fails closed on it.
+func gitPathAbsent(projectRoot, sha, rel string) (bool, error) {
+	out, err := auditreceipt.RunScrubbedGit(projectRoot, "ls-tree", sha, "--", rel)
+	if err != nil {
+		return false, err
 	}
-	return equalStringSets(reqACSet(fromAcc), reqACSet(toAcc))
+	return strings.TrimSpace(out) == "", nil
 }
 
 func reqACSet(raw string) map[string]bool {

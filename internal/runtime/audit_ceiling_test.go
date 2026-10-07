@@ -1586,3 +1586,51 @@ func TestPersistOutcomeRecordFailureKeepsAdmission(t *testing.T) {
 		t.Fatalf("outcome %+v override %v, want debt-admit admitting despite the record failure", oc, override)
 	}
 }
+
+// TestReqACSetsUnchangedAcceptanceCorruptionFailsClosed (sync-audit-2 F5)
+// — a double git-show failure on the acceptance arm is NOT "absent at both
+// ends": with the acceptance.md object unreadable (a corruption shape) the
+// delta is refused. Only the clean absence shape may read as unchanged.
+func TestReqACSetsUnchangedAcceptanceCorruptionFailsClosed(t *testing.T) {
+	root := t.TempDir()
+	git := func(args ...string) string {
+		t.Helper()
+		out, err := auditreceipt.RunScrubbedGit(root, args...)
+		if err != nil {
+			t.Fatalf("git %v: %v", args, err)
+		}
+		return strings.TrimSpace(out)
+	}
+	specID := "SPEC-ACC-CORRUPT-001"
+	specDir := filepath.Join(root, ".moai", "specs", specID)
+	if err := os.MkdirAll(specDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	git("init", "-q")
+	git("config", "user.email", "t@example.com")
+	git("config", "user.name", "t")
+	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte("# spec\nREQ-ACR-001\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(specDir, "acceptance.md"), []byte("# acceptance\nAC-R-001 repro arm\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "-A")
+	git("commit", "-q", "-m", "base")
+
+	// Corrupt ONLY the acceptance.md blob, so the spec.md arm still reads
+	// at both ends and the double failure lands in the acceptance arm —
+	// the corruption shape, distinct from clean absence (the tree entry
+	// still exists; the object behind it is unreadable).
+	blob := git("rev-parse", "HEAD:.moai/specs/"+specID+"/acceptance.md")
+	blobPath := filepath.Join(root, ".git", "objects", blob[:2], blob[2:])
+	if err := os.Remove(blobPath); err != nil {
+		t.Fatalf("loose blob %s not removable: %v", blob, err)
+	}
+	if reqACSetsUnchanged(root, specID, "HEAD", "HEAD") {
+		t.Fatal("a double git failure (unreadable acceptance object) admitted the delta — only the clean absence shape may read as unchanged")
+	}
+}
+
+// TestReqACSetsUnchangedAcceptanceCorruptionFailsClosed lives above; the
+// round-2 fence-position regression lives in audit_ceiling_fence_test.go.

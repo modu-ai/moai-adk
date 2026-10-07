@@ -212,6 +212,24 @@ test `TestAppendProgressRecordWritesThroughSymlink`
 target carries both records, the path is still a symlink, the target lives
 outside the SPEC directory.
 
+### F5 repair record (sync-audit-2, blocking — double git failure read as absence)
+
+RED observed pre-fix at HEAD `634cb7c9b`:
+`audit_ceiling_test.go:1631: a double git failure (unreadable acceptance
+object) admitted the delta — only the clean absence shape may read as
+unchanged` — the acceptance arm equated `errA != nil && errB != nil` with
+"absent at both ends", but git-show object corruption exits 128 exactly
+like path absence, so an unreadable object admitted the delta fail-open.
+Fix: the only-absence discriminator moved to `gitPathAbsent`
+(`git ls-tree <sha> -- <path>`) — exit 0 with output = present, exit 0
+with empty output = cleanly absent (the ONLY shape that may read as
+unchanged-empty at both ends), non-zero = object unreadable → fail closed.
+The regression fixture surgically corrupts the acceptance.md blob (the
+spec.md arm still reads, so the double failure lands in the acceptance
+arm): `TestReqACSetsUnchangedAcceptanceCorruptionFailsClosed`. The
+Tier S both-absent case still returns true (sealed `TestDeltaGitHelpers`
+stays green), and one-end-failure keeps returning false.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07
