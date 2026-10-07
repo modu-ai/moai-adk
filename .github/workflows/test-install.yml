@@ -10,8 +10,9 @@ on:
       - 'docs-site/static/install.sh'
       - 'docs-site/static/install.ps1'
       - 'scripts/test-plugin-install-step.sh'
+      - 'scripts/test-install-main.ps1'
       - 'scripts/protected-set-hash.sh'
-      - 'internal/cli/plugin_install*.go'
+      - 'internal/cli/root.go'
       - '.github/workflows/test-install.yml'
   pull_request:
     branches: [main]
@@ -22,8 +23,9 @@ on:
       - 'docs-site/static/install.sh'
       - 'docs-site/static/install.ps1'
       - 'scripts/test-plugin-install-step.sh'
+      - 'scripts/test-install-main.ps1'
       - 'scripts/protected-set-hash.sh'
-      - 'internal/cli/plugin_install*.go'
+      - 'internal/cli/root.go'
       - '.github/workflows/test-install.yml'
   workflow_dispatch:
 
@@ -84,11 +86,8 @@ jobs:
           bash -n install.sh
           echo "Bash syntax validation passed"
 
-      # The offline stub harness (SPEC-PLUGIN-MARKETPLACE-001, REQ-025): it runs the
-      # real `moai plugin install` verb and install.sh against stub claude, codex,
-      # go and curl, so it needs the binary under test and never a network. Being
-      # a CI step is its continued-firing answer: it runs on every push that
-      # touches the installers, the harness or the install step.
+      # Offline binary-installation contract: no host plugin invocation or
+      # project asset deployment. Stubs and protected-root checks isolate the run.
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
@@ -97,7 +96,7 @@ jobs:
       - name: Build moai
         run: go build -o bin/moai ./cmd/moai
 
-      - name: Install-step harness (stub tools, offline)
+      - name: Binary-only install harness (stub tools, offline)
         run: sh scripts/test-plugin-install-step.sh bin/moai
 
       - name: Display script info
@@ -140,6 +139,9 @@ jobs:
             exit 1
           }
           Write-Host "PowerShell syntax validation passed"
+
+      - name: Test isolated binary-only Main flow
+        run: ./scripts/test-install-main.ps1
 
       - name: Test irm pipe iex compatibility
         run: |
