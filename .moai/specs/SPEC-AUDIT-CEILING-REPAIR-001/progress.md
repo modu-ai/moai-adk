@@ -167,7 +167,7 @@ _<pending run-phase — manager-develop owns this section.>_
 
 - sync_status: complete (manager-docs sync-phase deliverables done; spec.md transitions to `implemented` on this sync commit — `completed` held for its own gate per the dispatching leader's instruction, card t1560)
 - sync_complete_at: 2026-10-07
-- sync_commit_sha: pending-backfill-sync (placeholder — a commit cannot cite its own hash; backfilled in a following commit per the D3 backfill window, spec-frontmatter-schema § SHA placeholder backfill exemption)
+- sync_commit_sha: 14a6956a8 (sync commit `docs(SPEC-AUDIT-CEILING-REPAIR-001): sync-phase CHANGELOG entry, implemented transition, §E.4 signal (card t1560)`; backfilled in this follow-up commit — the sync commit could not cite its own hash, per the D3 backfill window, spec-frontmatter-schema § SHA placeholder backfill exemption)
 - changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Fixed` — first entry (SPEC-AUDIT-CEILING-REPAIR-001; five repair behaviors: D1 legacy-family latest delta round, D2 debt inventory in §G/trail records, D3 atomic §G append + insertion position, D4 round counting base/overflow identity, REQ-ACR-010 both-definition-files delta gate)
 - frontmatter_status_transitions:
   - spec.md: in-progress → implemented (this sync commit)
