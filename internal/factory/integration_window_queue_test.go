@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 func fixedClock(t *testing.T) func() time.Time {
@@ -184,5 +186,50 @@ func TestWindowPolicyRecord(t *testing.T) {
 	// directory, and does not collide with the record file name.
 	if _, err := os.Stat(filepath.Join(root, ".moai", "state", "integration-window-policy.json")); err != nil {
 		t.Fatalf("policy record not beside the window record: %v", err)
+	}
+}
+
+func TestWindowWaiterIdentityInterpretation(t *testing.T) {
+	for _, tc := range []struct {
+		name, fingerprint, start string
+		state                    homestate.ProcessIdentityState
+		want                     bool
+	}{
+		{"matching live", "same", "same", homestate.ProcessIdentityLive, true},
+		{"recycled pid", "new", "old", homestate.ProcessIdentityLive, false},
+		{"dead", "", "old", homestate.ProcessIdentityDead, false},
+		{"indeterminate", "", "old", homestate.ProcessIdentityIndeterminate, true},
+		{"live without recorded start", "same", "", homestate.ProcessIdentityLive, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			probe := func(int) (string, homestate.ProcessIdentityState) { return tc.fingerprint, tc.state }
+			if got := waiterProcessAliveWithProbe(5002, tc.start, probe); got != tc.want {
+				t.Fatalf("waiter live=%v, want %v", got, tc.want)
+			}
+		})
+	}
+	if got := waiterProcessAliveWithProbe(0, "", func(int) (string, homestate.ProcessIdentityState) {
+		t.Fatal("invalid pid must not be probed")
+		return "", homestate.ProcessIdentityDead
+	}); got {
+		t.Fatal("invalid pid must not be live")
+	}
+
+}
+
+func TestWindowQueuePreservesIndeterminateWaiter(t *testing.T) {
+	_, now := opsClock()
+	lock := baseHolder(4001, now())
+	ticket := baseTicket(now())
+	lock.Queue = []IntegrationTicket{ticket}
+	probe := WindowProcProbe{
+		OwnerAlive: func(int) bool { return true },
+		WaiterAlive: func(pid int, start string) bool {
+			return waiterProcessAliveWithProbe(pid, start, func(int) (string, homestate.ProcessIdentityState) { return "", homestate.ProcessIdentityIndeterminate })
+		},
+	}
+	report := RefreshWindow(lock, openPolicy(), probe, now(), IntegrationLeaseDefault)
+	if len(lock.Queue) != 1 || lock.Queue[0].SessionID != ticket.SessionID || len(report.Dropped) != 0 {
+		t.Fatalf("indeterminate waiter lost position: queue=%+v report=%+v", lock.Queue, report)
 	}
 }

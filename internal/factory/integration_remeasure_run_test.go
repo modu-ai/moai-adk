@@ -179,3 +179,49 @@ func recTreeOf(root string) string {
 	}
 	return strings.TrimSpace(string(out))
 }
+
+// AC-MWQ-015 explicitly rejects output containing [no test files], even
+// when another package has executed tests. Keep that conservative contract.
+func TestRemeasureMixedTestAndEmptyPackageRemainsInvalid(t *testing.T) {
+	root, _ := remeasureFixtureRepo(t)
+	for rel, body := range map[string]string{
+		"go.mod":           "module example.com/mixed\n\ngo 1.23\n",
+		"tested/p_test.go": "package tested\nimport \"testing\"\nfunc TestPass(t *testing.T) {}\n",
+		"empty/p.go":       "package empty\n",
+	} {
+		path := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, args := range [][]string{{"add", "go.mod", "tested/p_test.go", "empty/p.go"}, {"commit", "-q", "-m", "mixed packages"}} {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = root
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git: %v, %s", err, out)
+		}
+	}
+	cmd := exec.Command("go", "test", "-json", "./...")
+	cmd.Dir = root
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("real go test: %v, %s", err, output)
+	}
+	if !strings.Contains(string(output), `"Test":"TestPass"`) || !strings.Contains(string(output), "[no test files]") {
+		t.Fatalf("positive control: not a mixed report: %s", output)
+	}
+	t.Logf("positive control: real mixed report includes TestPass and [no test files]")
+	if _, _, err := ClassifyStructuredOutput("go test -json ./...", strings.NewReader(string(output))); err == nil {
+		t.Fatal("mixed output must remain invalid under AC-MWQ-015")
+	}
+	rec, err := RunRemeasure(root, root, "develop", "go test -json ./...")
+	if rec == nil || err == nil {
+		t.Fatalf("mixed report must be recorded and refused: record=%+v err=%v", rec, err)
+	}
+	if err := ValidateRemeasureRecord(rec); err == nil {
+		t.Fatal("mixed report record must remain invalid")
+	}
+}

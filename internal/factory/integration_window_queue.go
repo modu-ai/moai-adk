@@ -267,10 +267,19 @@ func DefaultWindowProcProbe() WindowProcProbe {
 // process reads LIVE, the asymmetry the holder's own Stale() states: an
 // unprobeable waiter must not cost a lane its queue position.
 func waiterProcessAlive(pid int, start string) bool {
+	return waiterProcessAliveWithProbe(pid, start, homestate.ProbeProcessIdentity)
+}
+
+func waiterProcessAliveWithProbe(pid int, start string, probe func(int) (string, homestate.ProcessIdentityState)) bool {
 	if pid <= 0 {
 		return false
 	}
-	fp, state := homestate.ProbeProcessIdentity(pid)
+	fp, state := probe(pid)
+	// Uncertainty must not evict a waiter; only confirmed death or a
+	// confirmed fingerprint mismatch can establish that this waiter is gone.
+	if state == homestate.ProcessIdentityIndeterminate {
+		return true
+	}
 	if state != homestate.ProcessIdentityLive {
 		return false
 	}
