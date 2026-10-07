@@ -331,6 +331,16 @@ func drainMoai(entry bugreport.SpoolEntry) (drainOutcome, bool) {
 		}
 		rec.Items = append(rec.Items, queued)
 
+		// The queue bound shares this mutation (review-gate finding:
+		// EnforceQueueBound existed but nothing called it — repeated runs
+		// grew the queue past the configured cap). Oldest dropped first,
+		// each recorded once the mutation commits.
+		for len(rec.Items) > config.DefaultBugreportQueueBound {
+			oldest := rec.Items[0]
+			rec.Items = rec.Items[1:]
+			droppedIDs = append(droppedIDs, oldest.ID)
+		}
+
 		ledger.RecordQueued(payload.Fingerprint, clock())
 		if serr := saveLedger(ledger); serr != nil {
 			// Aborting the callback leaves the queue file unchanged: a
