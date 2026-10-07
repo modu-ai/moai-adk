@@ -22,7 +22,7 @@
 
 ## §E.2 Run-phase Evidence
 
-_run in progress — M1..M4 + eight review-gate fixes landed; M5 is the resume point (see the resume block at the end of this section)_
+_run in progress — M1..M5 + the full review-gate fix stack (13 commits) landed; M6 is the resume point (see the resume block at the end of this section)_
 
 ### Landed commits (this run, branch WT-feedback-optin-anon)
 
@@ -42,37 +42,85 @@ _run in progress — M1..M4 + eight review-gate fixes landed; M5 is the resume p
 | 90d3f1754 | fix #4: spool ceiling check+append under one Claim section (RED: >200 lines) | ceiling pin 3x green; pkg ok |
 | f045c530d | M4 local pipeline/preview/log/withdrawal | outbox 10/10, cli 3/3, feedback+bugreport ok, 3 builds 0 |
 
+### Review-gate fix stack (generation 2, lane-directed; each RED-first)
+
+| SHA | What | Verification tail |
+|---|---|---|
+| f0ffd0252 | #7 purge propagates the spool removal error (RED: nil with the spool surviving) | outbox pkg ok |
+| 9448ad690 | capture takes the CALLER's stack on the caller's goroutine (P1; RED: a real panic produced NO spool line) | bugreport pkg ok; probe pkg added for the frame-filter-shaped test |
+| 62910fc91 | the D37 lock-owner machinery moves to internal/atomicfile (pure move; enabler for the spool lock) | feedback+atomicfile+bugreport+outbox ok; 3 builds 0 |
+| 446032f5d | pid liveness treats os.ErrProcessDone as death (RED: finished reaped child judged alive — reproduced exactly) | atomicfile ok; 3 builds 0 |
+| b6dc3791f | stale-lock break: rename + moved-bytes verify (superseded by c5040efd6; RED: rival's live lock disposed) | atomicfile+feedback+bugreport+outbox ok |
+| 0999542b8 | the spool section lock gains the owner-verified reclaim (RED: claim budget exhausted on a dead-owner lock) | bugreport pkg ok; 3 builds 0 |
+| c5040efd6 | the breaker's verdict-to-disposal span is ONE O_EXCL section (P1 rename race per the gate's B/C repro: RED "C acquired while B held") | atomicfile ok under -count=3 -race; feedback 16x50 reclaim pin ok under -race x3; 3 builds 0 |
+| 60de8bfc0 | the FIFO deadline fixture compiles only on unix (P1; GOOS=windows go test -c failed) | GOOS=windows AND GOOS=linux `go vet ./internal/bugreport/...` exit 0; FIFO test passes on darwin |
+| 9236c5cd6 | hook_timeout routes to its ambiguous verdict before the chain rows (P2; RED: Attribute returned environment, the signal was silently discarded) | attribution family + full internal/hook suite ok (294s, env-scrubbed — TestStaleRunNotice lanes are this session's MOAI_KANBAN_*/MOAI_FACTORY_* env, not the change) |
+| 5e9d7e1d0 | dedupe check through ledger record is ONE queue-lock section (RED: 2 concurrent drains double-enqueued; caps breached) | both green -count=3 -race; outbox ok; vet clean |
+| e07abc38e | the drain enforces the queue bound at enqueue (RED: queue grew to 21 over the cap) | green -count=3 -race; outbox ok |
+| 728a1904b | the drain consumes only the spool batch it read (RED: compile-RED on the seams, then the late capture survived) | outbox+bugreport ok; outbox -count=3 -race ok; 3 builds 0 |
+| 65380b6e8 | the spool entry carries the CAPTURE-TIME build identity (RED: a v3.2.0 capture flushed by a v9.9.9 binary queued the v9.9.9 fingerprint) | outbox+bugreport ok; 3 builds 0. Note for sync: design section 1's bugreport import sentence gains pkg/version (cycle-free, outside AC-025's guard set) and the spool schema gains version/commit — for manager-spec to fold into the design body |
+| d6613a015 | M5 publication through the user's gh, deterministic text | publish 15/15; AC-003 four names PASS; outbox+feedback+cli families ok; 3 builds 0; lint 0 issues on touched packages |
+
+Gate item 3 (re-verify at the new HEAD): the double-ClaimSection dead-owner repro family at HEAD 9236c5cd6 — TestBreakerExcludesRivals..., TestBreakNeverDisposes..., TestBreakAborts..., TestBreakStillFires..., TestBreakGateAborts... x -count=3 -race = 15/15 PASS; TestStaleLockReclaimDoesNotDeleteTheNewLock (16 concurrent ClaimSection callers against a dead-owner fixture, no release) x -count=3 -race = 3/3 PASS.
+
 ### Gaps (explicitly unobserved)
 
-- internal/cli FULL suite: two local runs hit the go-test wall (601s default; 1801s at `-timeout 30m`) on a machine with three other lanes running suites; a 6-minute verbose diagnostic showed 918 tests progressing normally (no hang; the timeout fired mid `TestCodexReviewScope...`, unrelated to this SPEC). All M2/M3-affected cli families pass under targeted selectors. CI owns the repository-wide verdict.
-- internal/hook FULL suite: 972s FAIL in a background run — 1324 PASS with 3 failures (TestAstgrepCorpusRunDoesNotSkip 120s timeout; TestSessionStart_DeferredScanJoinsWithinBound timing; TestStaleRunNoticeFactoryLegacyLabel "context deadline exceeded"). Env-scrubbed re-run (the lane-env lesson: MOAI_KANBAN_ID pollutes run-state-gated tests) turned the two stale-run notice tests GREEN; the remaining two are load-correlated timing tests in files M3 never touched (empty diff 640859ed8..22ec5871e for stale_run_gate.go, session_stale_run.go, internal/factory). CI owns the verdict.
+- internal/cli FULL suite: two local runs hit the go-test wall (601s default; 1801s at `-timeout 30m`) on a machine with three other lanes running suites; a 6-minute verbose diagnostic showed 918 tests progressing normally (no hang; the timeout fired mid `TestCodexReviewScope...`, unrelated to this SPEC). All M2/M3-affected cli families pass under targeted selectors, and the M5-affected families (TestParticipation*, flush/update wiring) pass. CI owns the repository-wide verdict.
+- internal/hook FULL suite: 972s FAIL in a background run — 1324 PASS with 3 failures (TestAstgrepCorpusRunDoesNotSkip 120s timeout; TestSessionStart_DeferredScanJoinsWithinBound timing; TestStaleRunNoticeFactoryLegacyLabel "context deadline exceeded"). Env-scrubbed re-run (the lane-env lesson: MOAI_KANBAN_ID pollutes run-state-gated tests) turned the two stale-run notice tests GREEN; the remaining two are load-correlated timing tests in files M3 never touched (empty diff 640859ed8..22ec5871e for stale_run_gate.go, session_stale_run.go, internal/factory). At generation 2's HEAD the FULL env-scrubbed hook suite ran ok (294s) including those timing tests. CI owns the verdict.
 - TestWeb TodoGraphView flaked once in a full-web run, passes in isolation and in a later full run (89.6s ok).
+- D23 (gh title-token search): the read-only half is measured — `gh issue list --repo modu-ai/moai-adk --state all --search "<16-hex> in:title" --json number,title --limit 10` round-trips in ~0.7s and returns `[]` for an absent token (probe token ee5e69700339b582, 2026-10-07). The fresh-issue index-latency half requires a throwaway PUBLIC issue — an irreversible external-shared action, operator-held — so the acceptance-stated edge stands as the recorded decision: two concurrent first filers may create two issues; the consumer merges by fingerprint; comments are append-only so counts do not lose updates.
 
-### Resume block (next session, M5)
+### M5 disposition notes (binding conditions)
+
+- D35: the `REQ-ANON-` token family is UNCHANGED — no requirement token was renamed or removed in any run-phase commit; the open operator decision stands.
+- D38 (post-summary preview identity): the M5-owned half is IMPLEMENTED — TestPreviewMatchesCreateBytes (AC-020) pins the preview bytes equal to the create bytes the sender hands to gh. The summary-augmented body is AC-017's subject, M6-owned per the plan: M6's sender path slots the validated summary AHEAD of CreateBody and the AC-017 tests pin it; the preview keeps printing the queued render (the pre-summary text) by the design sentence. Disposition: satisfied as split by plan M5/M6; no design change needed.
+
+### Resume block (next session, M6)
 
 ```
 ✂──── 여기부터 복사 ────✂
-ultrathink. SPEC-FEEDBACK-PARTICIPATION-001 run M5 resuming.
+ultrathink. SPEC-FEEDBACK-PARTICIPATION-001 run M6 resuming.
 mode: serial
-applied lessons: feedback_glm_lane_env_pollutes_claude_audit, verification-claim-integrity §3.1 refusal recording
+applied lessons: feedback_glm_lane_env_pollutes_claude_audit (scrub MOAI_KANBAN_*/MOAI_FACTORY_* before hook/cli suites), feedback_codex_task_turn_bound_use_raw_exec
 
 Preconditions:
-1) git rev-parse --short HEAD → M4 tip f045c530d on WT-feedback-optin-anon; tree clean
+1) git rev-parse --short HEAD → M5 tip d6613a015 on WT-feedback-optin-anon; tree clean
 2) go build ./... && GOOS=linux GOARCH=amd64 go build ./... && GOOS=windows GOARCH=amd64 go build ./... → all exit 0
-3) go test ./internal/feedback/outbox/ -count=1 → ok (10 tests)
+3) go test ./internal/feedback/publish/ ./internal/feedback/outbox/ -count=1 → ok (15 + 14 tests)
 
-Run: RED-first M5 per acceptance.md — create internal/feedback/publish tests first
-(TestSenderChecksConsentPerItem, TestSenderQuietWithoutGh, TestSenderNeverRunsOnHookPath,
-TestSenderTimeBox, TestExistingFingerprintGetsOccurrenceComment, TestExactTitleKeyOnly,
-TestClosedIssueStillCounts, TestOccurrenceCapSkipsComment, TestIssueContractRoundTrip,
-TestSameFingerprintSameTitleKey, TestNoLabelsNoBodyEdit, TestOccurrenceMarkersAreUntrustedInput,
-TestPreviewMatchesCreateBytes, TestSenderNoopWhenParticipationOff,
-TestSenderIgnoresTrackedFileConsentAndRepository), capture the verbatim RED, then implement
-ghrunner.go (os/exec ONLY there), sender.go, lookup.go, contract.go, template.go,
-testdata/bugreport_issue_v1.golden; wire publish.Flush into the flush call site in
-internal/cli/feedback_participation.go runParticipationFlush (drain exists); M6: model.go,
-budget.go, cli/feedback_participation_model.go + AC-017/018/019/025 tests; M7: skill bodies
-x3, docs-site 4 locales, auto_repair + coexistence guards, make build.
+Run: RED-first M6 per acceptance.md — in internal/feedback/publish create
+model.go (the Summarizer interface owned by publish) + budget.go (daily cap 6
+from DEC-3) and internal/cli/feedback_participation_model.go (the production
+implementation over the existing headless claude runner — claudeAuditArgs flag
+set minus the audit --json-schema; injected at the flush call in
+internal/cli/feedback_participation.go runParticipationFlushWork). Tests:
+TestPublishCallsModelOnceAndValidates, TestPublishFallsBackToTemplate,
+TestModelInputIsPayloadFieldsOnly (AC-017; model input golden = payload fields
+only), TestSummaryPersistedBeforeCreateAndReusedOnRetry,
+TestModelCallBoundPerQueueItem, TestMarkerBoundsCrashWindowRecall,
+TestKillMidMutateLeavesQueueWritable, TestLiveOwnerOfAgeExceededLockStillBlocks
+(AC-018; the stale-lock pieces of the fixture family are already green —
+verify which names exist and add only the missing ones),
+TestLLMBudgetZeroCalls, TestLLMBudgetPositiveControl, TestDailyModelCallCap
+(AC-019), TestBugreportAndOutboxImportAllowlist,
+TestPublishImportAllowlist, TestModelSeamIsInjectedNotImported +
+internal/cli TestFlushWiresClaudeSummarizer (AC-025). M6 first test: record
+that the claudeAuditArgs flag set is accepted by the installed claude for a
+summary prompt, and that an unauthenticated session yields the template
+fallback. The summary_requested marker lands here (D28). The channel is
+decided (DEC-6); ambiguous stays LOCAL-ONLY (DEC-7 — no model call, no send;
+the path must not exist). Then M7 (mechanical): skill bodies x3
+(Template-First: author internal/template/templates/.claude/skills/moai/
+workflows/feedback.md, sync .claude/skills/ + plugins/moai/ copies, make
+build; make agents-emit/commands-emit ONLY if command/agent definitions
+change — none should), docs-site 4 locales
+(docs-site/content/{en,ko,ja,zh}/utility-commands/moai-feedback.md: remove
+the "created automatically" wording per E18, add the per-locale positive
+pattern per E19), internal/template/auto_repair_guard_test.go
+(TestNoAutoRepairArtifactsShipped + canary Test), internal/cli/wizard/
+participation_guard_test.go (TestParticipationQuestionRequiresSender +
+synthetic-tree canary), make build, AC-023/024 verify lines. Then §E.2 rows
+for M6/M7 + §E.3 Run-phase Audit-Ready Signal, E1-E8 verification batch.
 
 After merge: /moai sync SPEC-FEEDBACK-PARTICIPATION-001
 ✂──── 여기까지 복사 ────✂
