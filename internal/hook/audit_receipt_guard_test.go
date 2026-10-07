@@ -1177,6 +1177,67 @@ func TestSubagentStop_ForegroundEndDoesNotSealBackgroundLedger(t *testing.T) {
 	}
 }
 
+// Post-sync repair r5 supplement 3 (gate round 33, P2 — the survivors-live
+// variant): the SAME foreground marker-save failure, but the FAIL end arrives
+// while TWO background auditors are already live. Ends < Starts, so the
+// foreign-end room guard does not catch it: the phantom end is counted, and
+// the first background end then seals single-live while its sibling is still
+// live, refusing the sibling's own receipt. The foreground-failure trace left
+// at start time keeps the end out of the background ledger entirely.
+func TestSubagentStop_ForegroundEndWithSurvivorsDoesNotCount(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-fgsurv"
+	now := freezeClock(t)
+	fgID := "id-fg-surv"
+	fgMarker := filepath.Join(auditreceipt.StateDir(root), "starts", fgID+".json")
+
+	// Foreground auditor: its marker save fails.
+	if err := os.MkdirAll(fgMarker, 0o755); err != nil {
+		t.Fatalf("MkdirAll (marker path sabotage): %v", err)
+	}
+	runStart(t, &HookInput{CWD: root, AgentID: fgID, AgentType: auditreceipt.AgentPlanAuditor, SessionID: session, HookEventName: string(EventSubagentStart)})
+	// The failed save leaves its trace (one file per identity, named by the
+	// agent id the failed marker would have used).
+	fgTrace := filepath.Join(auditreceipt.StateDir(root), "starts", fgID+".json.foreground-failed")
+	if _, err := os.Stat(fgTrace); err != nil {
+		t.Fatalf("the foreground marker failure left no trace: %v", err)
+	}
+
+	// Two background auditors go live, then the foreground FAIL end arrives.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+	if out := runStop(t, stopInput(root, auditreceipt.AgentPlanAuditor, fgID, "AUDIT-VERDICT: FAIL spec=SPEC-RR-030 receipts=none", false)); out.Decision != "" || out.SystemMessage != "" {
+		t.Fatalf("setup: foreground FAIL end output = %+v, want silence", out)
+	}
+	l, err := auditreceipt.ReadInstanceLedger(root, auditreceipt.StartMarkerKey("", session, auditreceipt.AgentPlanAuditor))
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if l.Ends != 0 {
+		t.Errorf("Ends = %d, want 0 — a foreground end must contribute nothing to the background ledger even with survivors live", l.Ends)
+	}
+
+	// A terminally ends (accepted PASS citing its own receipt) while B is
+	// live: ambiguous, never single-live.
+	advanceClock(now, time.Second)
+	rA := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+	advanceClock(now, time.Second)
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-030 receipts="+rA, false)); out.Decision != "" {
+		t.Fatalf("setup: A's accepted end blocked: %q (%s)", out.Decision, out.Reason)
+	}
+
+	// B's own receipt (minted during the overlap) stays provable.
+	advanceClock(now, time.Second)
+	rB := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+	advanceClock(now, time.Second)
+	out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-030 receipts="+rB, false))
+	if out.Decision != "" {
+		t.Fatalf("decision = %q, want none — the live sibling's own receipt must not be refused by a foreground end counted with survivors live (reason %q)", out.Decision, out.Reason)
+	}
+}
+
 // Post-sync repair r5 supplement 2 (gate rounds 31-32, P1): a readable but
 // UNAPPLIED pending end holds the approval — the ledger's boundary is older
 // than the true last terminal end, and approving against it lets a successor

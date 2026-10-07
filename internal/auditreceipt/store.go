@@ -407,6 +407,48 @@ func updateInstanceLedger(treeRoot, key string, at time.Time, mutate func(*Insta
 	return j, nil
 }
 
+// foregroundFailedPath is the durable trace of a foreground (agent-id
+// bearing) start whose marker save failed: it records that an instance is
+// live WITHOUT a background ledger start, so its end is not attributed to
+// the background era (post-sync repair r5 supplement 3, gate round 33).
+func foregroundFailedPath(treeRoot, agentID string) string {
+	return filepath.Join(StateDir(treeRoot), startsRel, markerFileName(agentID)) + ".foreground-failed"
+}
+
+// MarkForegroundMarkerFailure leaves that trace. Best-effort: if even the
+// mark fails, the end-time attribution falls back to the room test — the
+// documented double-failure residual.
+func MarkForegroundMarkerFailure(treeRoot, agentID string) error {
+	p := foregroundFailedPath(treeRoot, agentID)
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(p, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		if os.IsExist(err) {
+			return nil
+		}
+		return err
+	}
+	if _, werr := f.WriteString("foreground start marker save failed\n"); werr != nil {
+		_ = f.Close()
+		return werr
+	}
+	return f.Close()
+}
+
+// ForegroundMarkerFailed reports whether that trace exists for the agent id.
+func ForegroundMarkerFailed(treeRoot, agentID string) (bool, error) {
+	_, err := os.Stat(foregroundFailedPath(treeRoot, agentID))
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
+
 // EnsureStartMarker writes an auditor start marker for a derived session-era
 // key only when none exists yet — the keep-earliest anchor write as one
 // critical section. The exists-check and the write share the key's ledger

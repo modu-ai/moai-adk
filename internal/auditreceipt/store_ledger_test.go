@@ -849,3 +849,22 @@ func TestPendingEndHoldFlavors(t *testing.T) {
 		t.Fatalf("hold = %v, want nil after the pending end was applied", hold)
 	}
 }
+
+// MarkForegroundMarkerFailure is idempotent and the trace is visible to
+// ForegroundMarkerFailed.
+func TestForegroundMarkerFailureTrace(t *testing.T) {
+	root := t.TempDir()
+	id := "id-fg-trace"
+	if failed, err := ForegroundMarkerFailed(root, id); err != nil || failed {
+		t.Fatalf("before marking: (%v, %v), want (false, nil)", failed, err)
+	}
+	if err := MarkForegroundMarkerFailure(root, id); err != nil {
+		t.Fatalf("MarkForegroundMarkerFailure: %v", err)
+	}
+	if err := MarkForegroundMarkerFailure(root, id); err != nil {
+		t.Fatalf("second MarkForegroundMarkerFailure: %v", err)
+	}
+	if failed, err := ForegroundMarkerFailed(root, id); err != nil || !failed {
+		t.Fatalf("after marking: (%v, %v), want (true, nil)", failed, err)
+	}
+}

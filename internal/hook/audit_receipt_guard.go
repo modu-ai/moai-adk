@@ -152,6 +152,14 @@ func recordAuditorStart(input *HookInput) {
 	}
 	if err := auditreceipt.WriteStartMarker(g.store, &m); err != nil {
 		slog.Warn("auditor start marker not recorded", "agent_id", key, "tree_root", g.tree, "error", err)
+		// The failed marker save leaves a durable trace for this agent id: an
+		// id-bearing (foreground) instance is live WITHOUT a background
+		// ledger start, and its end must contribute nothing to that ledger
+		// even when background survivors leave the room test unguarded
+		// (post-sync repair r5 supplement 3). Best-effort.
+		if merr := auditreceipt.MarkForegroundMarkerFailure(g.store, m.AgentID); merr != nil {
+			slog.Warn("foreground marker failure not traced", "agent_id", key, "error", merr)
+		}
 	}
 }
 
@@ -173,7 +181,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 		if !g.assumed() {
 			_, key := readStartMarker(g.store, input)
 			consumeStartMarker(g.store, key)
-			recordAuditorEnd(g.store, endAggregationKey(input, key))
+			recordAuditorEnd(g.store, endAggregationKey(g.store, input, key))
 		}
 		return nil
 	}
@@ -220,7 +228,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 				slog.Warn("audit rejections not cleared", "agent_type", input.AgentType, "tree_root", g.tree, "error", err)
 			}
 			consumeStartMarker(g.store, foundKey)
-			recordAuditorEnd(g.store, endAggregationKey(input, foundKey))
+			recordAuditorEnd(g.store, endAggregationKey(g.store, input, foundKey))
 			return nil
 		}
 		cause = failure
@@ -237,7 +245,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 		if !g.assumed() {
 			_, key := readStartMarker(g.store, input)
 			consumeStartMarker(g.store, key)
-			recordAuditorEnd(g.store, endAggregationKey(input, key))
+			recordAuditorEnd(g.store, endAggregationKey(g.store, input, key))
 		}
 		return &HookOutput{SystemMessage: fmt.Sprintf(
 			"%s: this %s PASS is not accepted — %s. Phase-entry spawns (manager-develop / manager-docs / manager-git) stay denied in %s until a PASS citing a valid audit receipt is recorded.",
@@ -334,12 +342,22 @@ func consumeStartMarker(store, key string) {
 // key the start's LEDGER record was filed under. The ledger start record does
 // not depend on the marker file, so a marker whose save failed must not
 // orphan the instance's end: a marker-less end would leave a phantom survivor
-// that froze the boundary forever (post-sync repair r5).
-func endAggregationKey(input *HookInput, foundKey string) string {
-	if foundKey != "" {
-		return foundKey
+// that froze the boundary forever (post-sync repair r5). A stop carrying an
+// agent id whose own marker is missing while a foreground-failure trace
+// exists is a foreground instance whose marker save failed: its start was
+// never counted in the background ledger, so its end contributes nothing —
+// not even when background survivors leave the Ends >= Starts room test
+// unguarded (post-sync repair r5 supplement 3, gate round 33).
+func endAggregationKey(store string, input *HookInput, foundKey string) string {
+	if foundKey == "" {
+		return auditreceipt.StartMarkerKey("", input.SessionID, input.AgentType)
 	}
-	return auditreceipt.StartMarkerKey("", input.SessionID, input.AgentType)
+	if id := strings.TrimSpace(input.AgentID); id != "" && foundKey != id {
+		if failed, err := auditreceipt.ForegroundMarkerFailed(store, id); err == nil && failed {
+			return ""
+		}
+	}
+	return foundKey
 }
 
 // recordAuditorEnd counts a terminal instance end on the derived key's
