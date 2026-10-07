@@ -6,9 +6,9 @@ package outbox
 // queue uses.
 
 import (
-	"io"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"

@@ -2,12 +2,24 @@ package outbox
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"github.com/modu-ai/moai-adk/internal/feedback"
 )
+
+// isQueueCorruptionError reports whether the queue mutation failed because
+// the queue file did not parse — the only failure a purge may ignore.
+// Unparsable JSON surfaces as *json.SyntaxError or *json.UnmarshalTypeError
+// wrapped by the queue's load step.
+func isQueueCorruptionError(err error) bool {
+	var syn *json.SyntaxError
+	var typ *json.UnmarshalTypeError
+	return errors.As(err, &syn) || errors.As(err, &typ)
+}
 
 // PurgeStores removes every user-scoped participation store: the queue, the
 // capture spool, the dedupe ledger, and the outbox log (REQ-ANON-021's
@@ -28,17 +40,20 @@ func PurgeStores() error {
 		return fmt.Errorf("outbox: purge spool: %w", err)
 	}
 	store := BugreportQueueStore()
-	// A CORRUPTED queue must not block the purge (review gate finding, P2):
-	// the mutation's load step fails on unparsable JSON, but the user asked
-	// for the store GONE — the removal below proceeds regardless of the
-	// parse verdict. The mutation still takes the queue's lock, so an
-	// in-flight writer stays serialized against this removal (the finding
-	// this call path was added for is unchanged); only the parse outcome is
-	// ignored.
-	_ = store.MutateContext(context.Background(), func(rec *feedback.QueueRecord) error {
+	// Only a CORRUPTED queue (the mutation's load step failing to parse) is
+	// ignored here — the user asked for the store GONE, so the removal
+	// below proceeds on a parse failure. Every OTHER mutation failure
+	// propagates (review gate finding, P2): a lock-acquire failure
+	// swallowed here would remove the file under the lock's holder, and the
+	// holder's save would resurrect the purged report — exactly the
+	// resurrection the lock-serialized queue step exists to prevent.
+	merr := store.MutateContext(context.Background(), func(rec *feedback.QueueRecord) error {
 		rec.Items = []feedback.QueueItem{}
 		return nil
 	})
+	if merr != nil && !isQueueCorruptionError(merr) {
+		return fmt.Errorf("outbox: purge queue: %w", merr)
+	}
 	queuePath, err := StorePath(QueueFileName)
 	if err != nil {
 		return err

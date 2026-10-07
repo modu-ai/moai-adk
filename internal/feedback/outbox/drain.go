@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -96,9 +97,35 @@ func AppendOutbox(row OutboxRow) error {
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, outboxFilePerm)
-	if err != nil {
-		return err
+	// The open is BOUNDED (review gate finding, P2): a non-regular outbox
+	// log is refused WITHOUT opening it — a FIFO swapped in at the log path
+	// parked the append's open past every deadline, hanging the flush AND
+	// `moai update`, the same defect class the read path was hardened
+	// against — and the open runs under DefaultFeedbackQueueReadTimeBox. On
+	// deadline the helper goroutine is left parked on the blocked handle;
+	// it exits when the blocking reader closes, and the caller never waits
+	// for it.
+	if info, serr := os.Stat(path); serr == nil && !info.Mode().IsRegular() {
+		return fmt.Errorf("outbox: append target is not a regular file: %s", path)
+	}
+	type openResult struct {
+		f   *os.File
+		err error
+	}
+	done := make(chan openResult, 1)
+	go func() {
+		f, oerr := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, outboxFilePerm)
+		done <- openResult{f: f, err: oerr}
+	}()
+	var f *os.File
+	select {
+	case r := <-done:
+		if r.err != nil {
+			return r.err
+		}
+		f = r.f
+	case <-time.After(config.DefaultFeedbackQueueReadTimeBox):
+		return fmt.Errorf("outbox: append open exceeded its %s time box", config.DefaultFeedbackQueueReadTimeBox)
 	}
 	defer func() { _ = f.Close() }()
 	_, err = f.Write(append(line, '\n'))
@@ -417,14 +444,17 @@ func sentHistoryHasFingerprint(fp string, now time.Time, windowDays int) bool {
 	if err != nil {
 		return false
 	}
-	// The read is BOUNDED (review gate finding, P2): a non-regular outbox
-	// log is refused WITHOUT opening it — a FIFO swapped in at the log path
-	// parked this read past every deadline, hanging the auto-flush AND
-	// `moai update`, the same defect class the queue read was hardened
-	// against — and the open+read runs under
-	// DefaultFeedbackQueueReadTimeBox with the DefaultFeedbackQueueMaxBytes
-	// size cap. Every refusal answers "no history": the boolean API has no
-	// error channel, and a refused read must suppress nothing.
+	// The read is BOUNDED twice (review gate findings, P2). A non-regular
+	// outbox log is refused WITHOUT opening it — a FIFO swapped in at the
+	// log path parked this read past every deadline, hanging the auto-flush
+	// AND `moai update`, the same defect class the queue read was hardened
+	// against. And a log grown past the cap costs one cap-sized read of its
+	// TAIL, never a full-file allocation: the tail is the part the dedupe
+	// window can still use, older rows fall outside the window check
+	// anyway, and a row cut in half at the read offset fails JSON parsing
+	// like any malformed line. Every refusal answers "no history": the
+	// boolean API has no error channel, and a refused read must suppress
+	// nothing.
 	if info, serr := os.Stat(path); serr == nil && !info.Mode().IsRegular() {
 		return false
 	}
@@ -434,7 +464,19 @@ func sentHistoryHasFingerprint(fp string, now time.Time, windowDays int) bool {
 	}
 	done := make(chan readResult, 1)
 	go func() {
-		raw, rerr := os.ReadFile(path)
+		f, oerr := os.Open(path)
+		if oerr != nil {
+			done <- readResult{err: oerr}
+			return
+		}
+		defer func() { _ = f.Close() }()
+		if st, serr := f.Stat(); serr == nil && st.Size() > int64(config.DefaultFeedbackQueueMaxBytes) {
+			if _, serr := f.Seek(st.Size()-int64(config.DefaultFeedbackQueueMaxBytes), io.SeekStart); serr != nil {
+				done <- readResult{err: serr}
+				return
+			}
+		}
+		raw, rerr := io.ReadAll(io.LimitReader(f, int64(config.DefaultFeedbackQueueMaxBytes)+1))
 		done <- readResult{raw: raw, err: rerr}
 	}()
 	var raw []byte
@@ -445,9 +487,6 @@ func sentHistoryHasFingerprint(fp string, now time.Time, windowDays int) bool {
 		}
 		raw = r.raw
 	case <-time.After(config.DefaultFeedbackQueueReadTimeBox):
-		return false
-	}
-	if len(raw) > config.DefaultFeedbackQueueMaxBytes {
 		return false
 	}
 	for _, line := range strings.Split(string(raw), "\n") {
