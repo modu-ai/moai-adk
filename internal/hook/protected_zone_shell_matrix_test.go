@@ -11,7 +11,9 @@ package hook
 // a selector that matches nothing cannot pass for a sweep.
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -246,5 +248,41 @@ func TestProtectedZoneShellReadOnlyFastPath(t *testing.T) {
 	}
 	if loads == 0 {
 		t.Errorf("unbounded command bypassed the manifest step; the deny must still be evaluated")
+	}
+}
+
+// TestProtectedZoneShellInvalidManifestReason pins the REQ-SIPZ-009 error
+// contract (gate round 2, card t1574): a fail-closed deny under an INVALID
+// manifest must tell the operator WHICH manifest file to repair — the
+// manifest=invalid reason and the InvalidFile path precede the per-candidate
+// and unbounded deny reasons, for any walk that reached the load. Boundary
+// stated: no frozen-family cell pins a candidate reason on an invalid
+// manifest (all five family invalid expectations pin manifest=invalid).
+func TestProtectedZoneShellInvalidManifestReason(t *testing.T) {
+	root := newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n"), "")
+	h := zoneTestHandler(t, root)
+	h.zoneLoader = func(string) config.ProtectedZoneLoad {
+		return config.ProtectedZoneLoad{State: config.ZoneStateInvalid, InvalidFile: "protected-zone.yaml", Err: errors.New("invalid")}
+	}
+
+	// a mutating command whose candidate is baseline-covered (the frozen
+	// .claude/hooks/ prefix): the candidate deny must not outrank the
+	// manifest=invalid reason
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{
+		"command": "rm .claude/hooks/a.sh",
+	})
+	wantZoneDeny(t, "rm .claude/hooks/a.sh (invalid manifest)", d, r, harnessLearnerIdentity, "manifest", "invalid")
+	if !strings.Contains(r, "protected-zone.yaml") {
+		t.Errorf("invalid-manifest deny %q does not name the failing file protected-zone.yaml", r)
+	}
+
+	// the unbounded walk under the same invalid manifest: the manifest
+	// reason likewise precedes the loop-unbounded deny
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{
+		"command": zoneMatrixWidthStress + "; rm zone_dir/a.log",
+	})
+	wantZoneDeny(t, "unbounded walk (invalid manifest)", d, r, harnessLearnerIdentity, "manifest", "invalid")
+	if !strings.Contains(r, "protected-zone.yaml") {
+		t.Errorf("invalid-manifest deny %q does not name the failing file protected-zone.yaml", r)
 	}
 }

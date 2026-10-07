@@ -1255,6 +1255,22 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	}
 
 	load := h.loadZone(root)
+	if load.State == config.ZoneStateInvalid {
+		// Fail closed: a mutating command cannot be checked against a zone of
+		// unknown extent (REQ-SIPZ-009). The reason precedence is the parent
+		// SPEC's error contract (gate round 2, card t1574): the operator must
+		// learn WHICH manifest file to repair, so this branch precedes the
+		// per-candidate denies and the unbounded deny — every such walk still
+		// answers deny, and the surviving reason is the one that names the
+		// repair. The read-only fast path above already returned for commands
+		// with no mutating form and a completed walk.
+		reason := zoneDenyReason(agentID, "manifest", "invalid", load.InvalidFile)
+		h.recordZoneAudit(root, zoneAuditRow{
+			Identity: agentID, Tool: "Bash", Path: load.InvalidFile,
+			Decision: "deny", ManifestState: config.ZoneStateInvalid,
+		})
+		return reason
+	}
 
 	for _, cand := range w.cands {
 		forms := resolveZoneTarget(root, cand)
@@ -1292,17 +1308,6 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 		h.recordZoneAudit(root, zoneAuditRow{
 			Identity: agentID, Tool: "Bash", Path: "loop",
 			Category: "loop-unbounded", Decision: "deny", ManifestState: load.State,
-		})
-		return reason
-	}
-
-	if load.State == config.ZoneStateInvalid {
-		// Fail closed: a mutating command cannot be checked against a zone of
-		// unknown extent (REQ-SIPZ-009).
-		reason := zoneDenyReason(agentID, "manifest", "invalid", load.InvalidFile)
-		h.recordZoneAudit(root, zoneAuditRow{
-			Identity: agentID, Tool: "Bash", Path: load.InvalidFile,
-			Decision: "deny", ManifestState: config.ZoneStateInvalid,
 		})
 		return reason
 	}
