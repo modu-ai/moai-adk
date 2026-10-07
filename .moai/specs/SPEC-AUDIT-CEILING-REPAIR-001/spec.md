@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUDIT-CEILING-REPAIR-001
 title: "Audit-ceiling engine defect repair — legacy-family latest-verdict resolution and debt-inventory persistence"
-version: "0.3.3"
+version: "0.3.4"
 status: draft
 created: 2026-10-07
 updated: 2026-10-07
@@ -151,7 +151,10 @@ round; the numeric-but-overflowing suffix is the one spelling that collapses.
   completely): Every record line written survives exactly once (no lost
   updates — the measured defect lost 17 of 24 parallel records), and
   pre-existing progress.md content — the §G heading included — is never
-  destroyed, truncated, or duplicated by a racing write.
+  destroyed, truncated, or duplicated by a racing write. A record appends
+  at the END of the §G block — immediately before the next same-level
+  heading when a section follows §G, falling back to end-of-file only when
+  §G is the last section — never inside a later section.
 
 - **REQ-ACR-009** (When a convention-family evidence file carries an
   iteration suffix that does not parse as an in-range integer — an Atoi range
@@ -186,16 +189,16 @@ round; the numeric-but-overflowing suffix is the one spelling that collapses.
 
 ## §C Success Criteria
 
-Acceptance criteria live in `acceptance.md` (AC-ACR-001 … AC-ACR-015, Tier
-M). The six release-blocking RED-first criteria — AC-ACR-001 (D1), AC-ACR-004
-(D1 end-to-end), AC-ACR-005 (D2), AC-ACR-013 (D3), AC-ACR-014 (D4), and
-AC-ACR-015 (delta-gate widening) — each carry the family-convention
-declaration **"RED is a new test (E8 evidence required)"**
-(SPEC-AUDIT-CEILING-001 acceptance.md §A:11-18): the seven repro tests are
-M1 deliverables authored against the still-pristine `903ccd028` code, and
-each RED (verbatim stdout + exit code) is recorded in `progress.md` §E.2 at
-M1. AC-ACR-003 is a preserve-behavior check (passes on unmodified main and
-must keep passing) — deliberately not a RED observation.
+Acceptance criteria live in `acceptance.md` (AC-ACR-001 … AC-ACR-016, Tier
+M). The seven release-blocking RED-first criteria — AC-ACR-001 (D1), AC-ACR-004
+(D1 end-to-end), AC-ACR-005 (D2), AC-ACR-013 (D3), AC-ACR-014 (D4),
+AC-ACR-015 (delta-gate widening), and AC-ACR-016 (§G insertion position) —
+each carry the family-convention declaration **"RED is a new test (E8
+evidence required)"** (SPEC-AUDIT-CEILING-001 acceptance.md §A:11-18): the
+eight repro tests are M1 deliverables authored against the still-pristine
+`903ccd028` code, and each RED (verbatim stdout + exit code) is recorded in
+`progress.md` §E.2 at M1. AC-ACR-003 is a preserve-behavior check (passes on
+unmodified main and must keep passing) — deliberately not a RED observation.
 
 ## §D Non-Functional Constraints and Security
 
@@ -234,9 +237,11 @@ scope for card t1560 and must ride its own card or SPEC.
 - No refactor of `audit_ceiling.go` / `audit_counter.go` beyond the named
   repair sites (D1-D4) — no restructuring of the outcome ladder, no signature
   or naming changes beyond the minimum the fixes need.
-- No change to `DeltaEligible`'s predicate, the diff-in-anchors check, the
-  REQ/AC-set comparison, or the tier-ceiling / delta-round configuration
-  semantics.
+- No change to `DeltaEligible`'s predicate, the diff-in-anchors check, or
+  the tier-ceiling / delta-round configuration semantics; the REQ/AC-set
+  comparison changes only per REQ-ACR-010 (both definition files, fail-closed
+  — the C3 fold) — its blocking direction is untouched and remains out of
+  bounds for every other change.
 - No change to the admission predicate package (`internal/auditverdict`), the
   verdict file format, or the `Debt` struct.
 - No migration, backfill, or re-parse layer for existing §G or trail lines —
@@ -268,6 +273,18 @@ scope for card t1560 and must ride its own card or SPEC.
 
 ## HISTORY
 
+- v0.3.4 (2026-10-07): leader rulings, round-internal completion of the
+  fifth delta (no new round). Token A: §H Q-range Q1-Q6 → Q1-Q7 (Q7 exists).
+  Token B: the Out-of-Scope REQ/AC-set-comparison exclusion reworded — the
+  legitimate boundary stays and REQ-ACR-010's both-definition-files
+  requirement is explicitly carved out as required. §G insertion position
+  (same-function adjacent fold, `appendProgressRecord`
+  `audit_ceiling.go:479-496`): a record must land at the END of the §G
+  block (immediately before the next same-level heading; EOF only when §G
+  is last) — today the append writes to file end and a following section
+  absorbs the record (gate-reproduced). REQ-ACR-008 extended + new
+  AC-ACR-016 (RED repro `TestAppendProgressRecordInsertsAtSectionEnd`,
+  bound by name); budgets REQ 10/16, AC 16/16 — AT the Tier M AC ceiling.
 - v0.3.3 (2026-10-07): final operator-approved delta (a fifth FAIL closes
   the card with a recorded debt unconditionally — decision-index Q7).
   C1: explicit-0 parity pinned — an explicitly 0-numbered convention file

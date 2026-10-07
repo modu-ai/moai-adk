@@ -12,7 +12,7 @@ plan_complete_at: 2026-10-07
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — manager-develop owns this section. M1 records the six RB criteria's RED evidences (AC-ACR-001/004/005/013/014/015; seven repro tests) plus AC-ACR-003's keep-green guard run here verbatim (command + output + exit code, tree 903ccd028); M2-M4 record the green runs, the consistency notes (AC-ACR-010/011), and the §E matrix results.>_
+_<pending run-phase — manager-develop owns this section. M1 records the seven RB criteria's RED evidences (AC-ACR-001/004/005/013/014/015/016; eight repro tests) plus AC-ACR-003's keep-green guard run here verbatim (command + output + exit code, tree 903ccd028); M2-M4 record the green runs, the consistency notes (AC-ACR-010/011), and the §E matrix results.>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 

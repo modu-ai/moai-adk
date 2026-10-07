@@ -227,11 +227,24 @@ artifact-only).
   M2. Test: `TestReqACSetsUnchangedReadsAcceptance`
   (`audit_ceiling_test.go`, beside `TestDeltaGitHelpers`).
 
+- **AC-ACR-016 (§G insertion position, RED, release-blocking)** — Given a
+  progress.md whose §G Override and Refusal Record section is followed by a
+  later section (e.g. `## §E.2 Run-phase Evidence`), When
+  `appendProgressRecord` appends a record, Then the record lands at the END
+  of the §G block — the last line immediately before the next same-level
+  heading — not inside the later section; and When §G is the last section,
+  Then the record appends at end-of-file. RED: `go test -run
+  '^TestAppendProgressRecordInsertsAtSectionEnd$' ./internal/runtime/`
+  fails on `903ccd028` — the append writes to file end, so a following
+  section absorbs the record (gate-reproduced). **RED is a new test (E8
+  evidence required).** Green at M3 (the persistence milestone). Test:
+  `TestAppendProgressRecordInsertsAtSectionEnd` (`audit_ceiling_test.go`).
+
 ## §D.1 Severity classification
 
 | AC | Severity | Rationale |
 |---|---|---|
-| AC-ACR-001, 004, 005, 013, 014, 015 | Release-blocking (RB) | RED-first defect proofs — each declared "RED is a new test (E8 evidence required)", observed at M1 |
+| AC-ACR-001, 004, 005, 013, 014, 015, 016 | Release-blocking (RB) | RED-first defect proofs — each declared "RED is a new test (E8 evidence required)", observed at M1 |
 | AC-ACR-012 | Release-blocking (RB, no-RED) | No-regression gate: evidence is the full-family green run (`-race -count=1`), never a RED cell |
 | AC-ACR-002, 006, 007, 008, 009 | Normal | Contract completion arms of the fixes |
 | AC-ACR-003 | Regression-guard (RG) | Preserve-behavior check — passes on unmodified main and must keep passing |
@@ -248,7 +261,7 @@ artifact-only).
 | REQ-ACR-005 | AC-ACR-007 |
 | REQ-ACR-006 | AC-ACR-008 |
 | REQ-ACR-007 | AC-ACR-009 |
-| REQ-ACR-008 | AC-ACR-013 |
+| REQ-ACR-008 | AC-ACR-013, AC-ACR-016 |
 | REQ-ACR-009 | AC-ACR-014 |
 | REQ-ACR-010 | AC-ACR-015 |
 
@@ -282,6 +295,8 @@ repair's constraint layer, not to a single REQ.
     `LatestPath` = base (AC-ACR-014 arm f).
 14. Acceptance-only AC rename between audited SHAs — blocks the delta
     (fail-closed; AC-ACR-015).
+15. §G followed by a later section — the record lands at the §G block's
+    end, never inside the later section; §G last → EOF (AC-ACR-016).
 
 ## §D.4 Indirect verification
 
@@ -293,8 +308,8 @@ repair's constraint layer, not to a single REQ.
 
 ## §D.5 Quality gates (TRUST 5)
 
-- **Tested**: AC-ACR-012 suite green; the six RB criteria's RED evidences
-  recorded (seven repro tests).
+- **Tested**: AC-ACR-012 suite green; the seven RB criteria's RED evidences
+  recorded (eight repro tests).
 - **Readable**: new tests follow the existing fixture/comment style of their
   host files (`newCeilingFixture`, `writeAuditFixture`, the F-series comment
   convention of `audit_counter_review_test.go`).
@@ -306,7 +321,7 @@ repair's constraint layer, not to a single REQ.
 
 ## §D.6 Closure gates (Definition of Done)
 
-1. All ACs green with §E.2 evidence; the six RED cells observed and recorded.
+1. All ACs green with §E.2 evidence; the seven RED cells observed and recorded.
 2. Consistency notes (AC-ACR-010/011) recorded in progress.md.
 3. Affected-package measurement green (`go test -timeout 30m
    ./internal/runtime/...`); vet + lint clean.

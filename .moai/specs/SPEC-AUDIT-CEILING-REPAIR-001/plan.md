@@ -113,8 +113,8 @@ Pre-flight checks (all observed at plan phase):
 
 ## §D Constraints
 
-1. **Reproduction-first (HARD)**: run phase begins with the seven reproduction
-   tests (covering the six RB RED-first criteria), each observed failing on
+1. **Reproduction-first (HARD)**: run phase begins with the eight reproduction
+   tests (covering the seven RB RED-first criteria), each observed failing on
    unmodified main `903ccd028` for the stated reason (record verbatim output
    + exit code in progress.md §E.2), then the minimal fix, then green.
 2. **Minimal diff**: no refactor, no renames, no doc-comment sweeps, no
@@ -169,8 +169,8 @@ Pre-flight checks (all observed at plan phase):
 
 ## §E Self-Verification (run-phase exit matrix)
 
-- E1 AC matrix — every AC-ACR-001..015 green, with the RED-first evidences
-  (AC-ACR-001/004/005/013/014/015, each declared "RED is a new test") recorded
+- E1 AC matrix — every AC-ACR-001..016 green, with the RED-first evidences
+  (AC-ACR-001/004/005/013/014/015/016, each declared "RED is a new test") recorded
   verbatim in §E.2, plus AC-ACR-003's pre-and-post keep-green guard run.
 - E2 Reproduction integrity — each RED evidence shows the test failing on
   unmodified main for the stated reason, then passing after the fix.
@@ -192,11 +192,12 @@ Pre-flight checks (all observed at plan phase):
 
 ## §F Milestones (priority-ordered; no time estimates)
 
-- **M1 (Priority High) — RED: the seven reproduction tests (six RB RED-first
+- **M1 (Priority High) — RED: the eight reproduction tests (seven RB RED-first
   criteria).** Author `TestPreviousAuditedSHALatestLegacyRound` and
   `TestEvaluateCeilingLegacyLatestDeltaGranted` (D1),
   `TestPersistOutcomeDebtAdmitCarriesDebtInventory` (D2),
-  `TestAppendProgressRecordConcurrentSurvival` (D3),
+  `TestAppendProgressRecordConcurrentSurvival` and
+  `TestAppendProgressRecordInsertsAtSectionEnd` (D3),
   `TestCountAuditRoundsOverflowOwnRound` and
   `TestPreviousAuditedSHABaseRoundBaseline` (D4), and
   `TestReqACSetsUnchangedReadsAcceptance` (delta-gate widening). Observe
@@ -204,12 +205,13 @@ Pre-flight checks (all observed at plan phase):
   `""` returned because `iterationOf` parses only the convention family /
   nil not returned at the delta gate; D2: record line carries no debt
   tokens; D3: concurrent §G appends lose records — the gate measured 24→7
-  survivors + heading lost; D4: two files count 1, want 2 / previous=`""`
-  on the base+iter1 stream; delta-gate: acceptance-only AC rename returns
-  true, want false). Each is declared "RED is a new test (E8 evidence
-  required)" in acceptance.md §A — no repro test exists at plan phase by
-  design; record the verbatim RED outputs in progress.md §E.2. Separately,
-  run `TestPreviousAuditedSHAUnparseableLatestStaysEmpty` as a **pre-and-post
+  survivors + heading lost / the record lands inside a later section; D4:
+  two files count 1, want 2 / previous=`""` on the base+iter1 stream;
+  delta-gate: acceptance-only AC rename returns true, want false). Each is
+  declared "RED is a new test (E8 evidence required)" in acceptance.md §A —
+  no repro test exists at plan phase by design; record the verbatim RED
+  outputs in progress.md §E.2. Separately, run
+  `TestPreviousAuditedSHAUnparseableLatestStaysEmpty` as a **pre-and-post
   green guard** (AC-ACR-003, preserve-behavior — it passes on unmodified
   main and must keep passing; NOT part of the RED obligation, per
   plan-audit-1 D3).
@@ -232,7 +234,9 @@ Pre-flight checks (all observed at plan phase):
   append atomic and complete under concurrency (decision-index Q4 — default
   direction: serialize the read-modify-write in-process + atomic
   temp-file-and-rename; broader hardening excluded per spec.md Out of
-  Scope). Green: AC-ACR-005..009, AC-ACR-013.
+  Scope) and land each record at the END of the §G block (immediately
+  before the next same-level heading; EOF only when §G is last — v0.3.4).
+  Green: AC-ACR-005..009, AC-ACR-013, AC-ACR-016.
   The D2 record-format decision is the highest-change-likelihood decision in
   this plan — if the lane adjusts the encoding, only M3's tests and the
   decision-index row move; the ACs are format-agnostic (tokens recoverable).
@@ -267,8 +271,8 @@ Pre-flight checks (all observed at plan phase):
 
 ## §H Cross-References
 
-- `spec.md` REQ-ACR-001..010 · `acceptance.md` AC-ACR-001..015 ·
-  `decision-index.md` Q1-Q6 · `progress.md` §E
+- `spec.md` REQ-ACR-001..010 · `acceptance.md` AC-ACR-001..016 ·
+  `decision-index.md` Q1-Q7 · `progress.md` §E
 - fix_scope anchor → repair location (v0.3.0, for the iteration-2 delta
   re-audit; anchors from `.moai/reports/t1560/plan-audit-1.md`):
   - `acceptance.md#§A` — §A rewritten: classification + per-criterion
@@ -326,6 +330,14 @@ Pre-flight checks (all observed at plan phase):
   - C3 (delta-gate widening, leader-approved fold) → `spec.md` REQ-ACR-010
     + §D C5 sentence, `acceptance.md` AC-ACR-015 (RED: acceptance-only AC
     rename admits a delta today, `audit_ceiling.go:416`), `plan.md` §F M2
+- v0.3.4 (leader rulings, round-internal completion of the fifth delta):
+  - Token A (Q-range) → `plan.md` §H header Q1-Q7
+  - Token B (REQ/AC-set exclusion) → `spec.md` Out of Scope first-H3
+    bullet reworded — boundary kept, REQ-ACR-010 carved out as required
+  - §G insertion position (same-function adjacent fold,
+    `audit_ceiling.go:479-496`) → `spec.md` REQ-ACR-008 extended +
+    `acceptance.md` AC-ACR-016 (RED: record lands inside a following
+    section today), `plan.md` §F M1/M3 extended
 
 **Count/version sweep guard (class-level, plan-audit-3 B3 — mechanical,
 run before the lane commits):** (1) `spec.md` frontmatter `version:` MUST
