@@ -57,7 +57,12 @@ func recordCodexReviewReceipt(scope reviewScope, state verify.ReceiptState, stat
 			verdict, exit = codexReviewVerdictFail, 1
 		}
 	} else if !strings.HasPrefix(strings.ToLower(strings.TrimSpace(out.Verdict)), codexReviewVerdictPass) {
-		verdict = codexReviewVerdictInconclusive
+		// Inconclusive must not read as success evidence either: HasLocalPass
+		// keys on ExitCode == 0, so an inconclusive receipt stored with the
+		// zero value invents a local pass for the escalation detector's
+		// contradiction limb. Exit 2 (the system-error class) keeps the
+		// gate's fail-open allow while the RECORD reads "no verdict".
+		verdict, exit = codexReviewVerdictInconclusive, 2
 	}
 	r := verify.Receipt{
 		CheckID:      codexReviewCheckID,

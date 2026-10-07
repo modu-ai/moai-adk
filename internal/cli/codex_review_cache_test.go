@@ -213,3 +213,47 @@ func TestReviewGate_LiveFailPreservesDetailForCachedBlock(t *testing.T) {
 		t.Fatalf("the cached block must carry the preserved finding text, got %q", second.Reason)
 	}
 }
+
+// TestReviewGate_InconclusiveReceiptIsNotPassEvidence — an inconclusive review
+// must allow (fail-open, unchanged) but its receipt must NOT read as local-pass
+// evidence: HasLocalPass keys on ExitCode == 0, so the zero value would feed
+// the escalation detector's local-pass|ci-failure contradiction limb a pass
+// the reviewer never produced.
+func TestReviewGate_InconclusiveReceiptIsNotPassEvidence(t *testing.T) {
+	root := cacheTestRoot(t)
+	withFixedVersionProbe(t)
+	withPrimaryScopeReview(t)
+	withChangeDetector(t, true)
+	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
+	runner := &fakeCodexRunner{stdoutByCmd: map[string]string{"--version": "9.9.9\n"}}
+	withCodexRunner(t, runner)
+	// Post-#1718 parser: prose approval carries no pinned Verdict line, so the
+	// live review records inconclusive.
+	withCodexSession(t, codexSessionScript("Looks good to me — no blocking findings."))
+
+	out, err := HandleCodexReviewGate(gateInput(false), true, root)
+	if err != nil {
+		t.Fatalf("inconclusive gate must not error; got %v", err)
+	}
+	// Fail-open unchanged: an empty HookOutput IS the allow.
+	if out == nil || out.Decision != "" {
+		t.Fatalf("an inconclusive review must allow (fail-open), got %+v", out)
+	}
+
+	ctx := context.Background()
+	scope := reviewScopeResolver(root)
+	state, err := codexReviewReceiptStateForScope(ctx, scope, "/fake/codex")
+	if err != nil {
+		t.Fatalf("receipt state: %v", err)
+	}
+	rec := verify.LoadReceipt(root, state)
+	if rec == nil {
+		t.Fatal("the inconclusive review must record a receipt")
+	}
+	if rec.Verdict != codexReviewVerdictInconclusive {
+		t.Fatalf("premise: receipt verdict = %q, want inconclusive", rec.Verdict)
+	}
+	if rec.ExitCode == 0 {
+		t.Fatal("an inconclusive receipt must not carry exit 0 — HasLocalPass would read it as a local pass the reviewer never produced")
+	}
+}
