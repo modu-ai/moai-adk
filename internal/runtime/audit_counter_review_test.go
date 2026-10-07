@@ -416,3 +416,33 @@ func TestPreviousAuditedSHABaseRoundBaseline(t *testing.T) {
 		t.Fatalf("latest %q, want iter1", ev.LatestPath)
 	}
 }
+
+// F1 (sync-audit-1, leader ruling #2 adopted) — CountAuditRounds: a
+// legacy-family file whose numeric suffix overflows the integer range is
+// fail-counted as its own round, exactly like a convention-family overflow
+// (the same REQ-ACR-009 semantics) — never clamped into seen[MaxInt] (which
+// merged distinct overflow files into one round) and never elected
+// LatestPath over a legit round.
+func TestCountAuditRoundsLegacyOverflowOwnRound(t *testing.T) {
+	specID := "SPEC-ACE-LEGOF-001"
+	dir := t.TempDir()
+	writeReview := func(name, sha string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("# review\nverdict: FAIL\naudited_sha: "+sha+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeReview(specID+"-review-99999999999999999998.md", "sha-of1")
+	writeReview(specID+"-review-99999999999999999999.md", "sha-of2")
+	writeReview(specID+"-review-1.md", "sha-rev1")
+	ev, err := CountAuditRounds(specID, []string{dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ev.Count != 3 {
+		t.Fatalf("count %d, want 3 (two overflow legacy suffixes fail-count their own rounds + one normal)", ev.Count)
+	}
+	if ev.LatestPath == "" || !strings.HasSuffix(ev.LatestPath, "-review-1.md") {
+		t.Fatalf("latest %q, want -review-1.md — an overflow legacy suffix never becomes LatestPath", ev.LatestPath)
+	}
+}

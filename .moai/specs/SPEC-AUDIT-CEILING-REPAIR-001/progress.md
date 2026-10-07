@@ -172,6 +172,25 @@ clean; `golangci-lint run ./internal/runtime/...` → `0 issues.`. F1/F3
 untouched per leader-pending ruling; F3's aside on `persist.go`
 `atomicWrite` (new files stay 0600) is observed and NOT acted on this round.
 
+### F1 repair record (sync-audit-1, leader ruling #2 adopted — legacy-branch Atoi clamp)
+
+RED observed pre-fix: `audit_counter_review_test.go:443: count 2, want 3
+(two overflow legacy suffixes fail-count their own rounds + one normal)` —
+the discarded Atoi range error clamped both overflow legacy files into
+`seen[math.MaxInt]` (one merged round) with one of them elected `LatestPath`
+over the legit round. Fix (audit_counter.go legacy branch): the Atoi error
+routes to the fail-counted path — own round, never `LatestPath` — the same
+REQ-ACR-009 semantics the convention-family overflow fix already applies;
+legit small legacy numbers unchanged. Regression test:
+`TestCountAuditRoundsLegacyOverflowOwnRound` (two distinct overflow legacy
+suffixes + one normal → count 3, `LatestPath` = `-review-1.md`). Whole
+touched-function family re-run green (18 tests: TestCountAuditRounds*,
+TestPreviousAuditedSHA*, TestRoundReportDirs*, TestCountPlanAuditRounds*,
+the D1 end-to-end), full package `go test -race -count=1` → `ok … 27.477s`,
+vet clean, golangci-lint `0 issues.`. `evidenceRoundOf` already respected
+the range error (M2), so `previousAuditedSHA` was never fail-open here —
+the counter and the baseline helper now agree.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07

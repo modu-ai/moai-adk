@@ -129,7 +129,18 @@ func CountAuditRounds(specID string, reportDirs []string) (RoundEvidence, error)
 					fail = true
 				}
 			} else if m := legacyFile.FindStringSubmatch(name); m != nil {
-				n, _ = strconv.Atoi(m[1])
+				if v, perr := strconv.Atoi(m[1]); perr == nil {
+					n = v
+				} else {
+					// A legacy numeric suffix outside the integer range
+					// fails counted like any unreadable iteration number —
+					// Go's Atoi range clamp (math.MaxInt) would otherwise
+					// merge distinct overflow files into one seen[MaxInt]
+					// round and elect one of them LatestPath (sync-audit-1
+					// F1, leader ruling #2: the REQ-ACR-009 semantics on
+					// the legacy branch).
+					fail = true
+				}
 			} else if conventionUnnumbered.MatchString(name) {
 				convention = true
 				fail = true
