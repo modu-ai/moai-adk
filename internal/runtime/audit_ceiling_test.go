@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
@@ -1132,4 +1133,290 @@ func TestEvaluatePlanAuditCeiling(t *testing.T) {
 			t.Error("1 round against a Tier M ceiling of 2 must not hit")
 		}
 	})
+}
+
+// SPEC-AUDIT-CEILING-REPAIR-001 reproduction tests (card t1560). Each RED
+// test below was observed failing on unmodified main 903ccd028 for its
+// stated reason before its fix, per the engine family convention
+// ("RED is a new test — E8 evidence required").
+
+// AC-ACR-004 (D1 end-to-end RED) — EvaluateCeiling: a legacy-family latest
+// verdict with every delta condition holding (fix_scope anchors, no STOP,
+// the diff between the two audited SHAs touching only .moai/reports/
+// paths, REQ/AC id sets unchanged) grants the delta round — a nil outcome.
+// With the D1 defect prevSHA is empty, deltaOK is false, and the same
+// fixture routes to the outcome ladder as a final hit (non-nil).
+func TestEvaluateCeilingLegacyLatestDeltaGranted(t *testing.T) {
+	root := t.TempDir()
+	git := func(args ...string) string {
+		t.Helper()
+		out, err := auditreceipt.RunScrubbedGit(root, args...)
+		if err != nil {
+			t.Fatalf("git %v: %v", args, err)
+		}
+		return strings.TrimSpace(out)
+	}
+	specID := "SPEC-ACE-LEGD-001"
+	specDir := filepath.Join(root, ".moai", "specs", specID)
+	cfgDir := filepath.Join(root, ".moai", "config", "sections")
+	reports := filepath.Join(root, ".moai", "reports", specID)
+	for _, d := range []string{specDir, cfgDir, reports} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git("init", "-q")
+	git("config", "user.email", "t@example.com")
+	git("config", "user.name", "t")
+	// tier M + ceiling 2 + auto_delta_rounds 1: count 2 reaches the ceiling
+	// and grants the delta when the eligibility check verifies.
+	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte("---\ntier: M\n---\n# spec\nREQ-ACR-001 AC-ACR-001\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	harness := "harness:\n  evaluator:\n    memory_scope: per_iteration\n  plan_audit_tier_ceilings:\n    S: 1\n    M: 2\n    L: 1\n  plan_audit_ceiling_policy:\n    auto_delta_rounds: 1\n    on_final_hit: hold-and-split\n"
+	if err := os.WriteFile(filepath.Join(cfgDir, "harness.yaml"), []byte(harness), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "-A")
+	git("commit", "-q", "-m", "base")
+	base := git("rev-parse", "HEAD")
+
+	// Round 1: legacy family, audited at the base commit.
+	rev1Path := filepath.Join(reports, specID+"-review-1.md")
+	if err := os.WriteFile(rev1Path, []byte("# review\nverdict: FAIL\naudited_sha: "+base+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "-A")
+	git("commit", "-q", "-m", "review-1")
+
+	// Round 2 (latest): legacy family, fix_scope anchor, audited at a later
+	// commit whose diff touches only .moai/reports/ paths. The audited_sha
+	// line needs that commit's SHA, so the file is committed with a
+	// placeholder and rewritten with the real one (the counter reads the
+	// working tree; the diff machinery reads the committed trees).
+	rev2Path := filepath.Join(reports, specID+"-review-2.md")
+	body := "# SPEC Review Report: " + specID + "\nverdict: FAIL\nOverall Score: 0.90\nmust_pass_failed: 0\nblocking_count: 0\nplan_artifact_hash: stale\naudited_sha: PLACEHOLDER\nfix_scope: .moai/specs/" + specID + "/spec.md#REQ-ACR-001\n- debt: D1 dispose_in=run fixture debt\n"
+	if err := os.WriteFile(rev2Path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "-A")
+	git("commit", "-q", "-m", "review-2")
+	rev2 := git("rev-parse", "HEAD")
+	if err := os.WriteFile(rev2Path, []byte(strings.Replace(body, "PLACEHOLDER", rev2, 1)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	fields := auditverdict.Parse([]byte(strings.Replace(body, "PLACEHOLDER", rev2, 1)))
+	in := VerdictCeilingInput{SpecID: specID, SpecDir: specDir, ProjectRoot: root}
+	oc, override, err := EvaluateCeiling(in, fields, false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if oc != nil {
+		t.Fatalf("outcome %+v (override %v), want nil — the delta round is granted: count 2 reaches the tier ceiling 2 and the eligibility conditions hold", oc, override)
+	}
+}
+
+// AC-ACR-005/006 (D2 RED) — persistOutcome: a debt-admit outcome's §G
+// record line and its audit-trail line each carry the admitted debt
+// inventory (the debt's ID and dispose_in recoverable), each a single
+// line. With the defect both lines serialize kind/outcome/reasons/evidence
+// only.
+func TestPersistOutcomeDebtAdmitCarriesDebtInventory(t *testing.T) {
+	f := newCeilingFixture(t)
+	path := f.writeIter(t, 1, "FAIL")
+	f.appendLine(t, path, "- debt: D1 dispose_in=run fixture debt")
+	fields, hashOK := f.fieldsFromHash(t, path)
+	oc, override, err := EvaluateCeiling(f.input(), fields, hashOK, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if oc == nil || oc.Outcome != OutcomeDebtAdmit || oc.Blocked || !override {
+		t.Fatalf("outcome %+v override %v, want debt-admit admitting", oc, override)
+	}
+	progressRaw, err := os.ReadFile(filepath.Join(f.specDir, "progress.md"))
+	if err != nil {
+		t.Fatalf("progress.md not written: %v", err)
+	}
+	var gLine string
+	for _, l := range strings.Split(string(progressRaw), "\n") {
+		if strings.Contains(l, "outcome="+OutcomeDebtAdmit) {
+			gLine = l
+			break
+		}
+	}
+	if gLine == "" {
+		t.Fatalf("no debt-admit §G record line: %.400s", progressRaw)
+	}
+	for _, token := range []string{"debts=", `"id":"D1"`, `"dispose_in":"run"`} {
+		if !strings.Contains(gLine, token) {
+			t.Fatalf("§G record carries no %s token: %s", token, gLine)
+		}
+	}
+	trailRaw, err := os.ReadFile(filepath.Join(f.root, ".moai", "state", "audit-enforcement.log"))
+	if err != nil {
+		t.Fatalf("trail not written: %v", err)
+	}
+	var tLine string
+	for _, l := range strings.Split(string(trailRaw), "\n") {
+		if strings.Contains(l, "outcome="+OutcomeDebtAdmit) {
+			tLine = l
+			break
+		}
+	}
+	if tLine == "" {
+		t.Fatalf("no debt-admit trail line: %s", trailRaw)
+	}
+	for _, token := range []string{"debts=", `"id":"D1"`, `"dispose_in":"run"`} {
+		if !strings.Contains(tLine, token) {
+			t.Fatalf("trail line carries no %s token: %s", token, tLine)
+		}
+	}
+}
+
+// AC-ACR-013 (D3 RED) — appendProgressRecord: 24 concurrent records all
+// survive exactly once, the §G heading is created exactly once, and no
+// pre-existing line is lost. Judged over repeated runs with -race, never
+// one green (concurrency discipline).
+func TestAppendProgressRecordConcurrentSurvival(t *testing.T) {
+	specDir := t.TempDir()
+	pre := "# progress\n\n## §E.2 Run-phase Evidence\npre-existing line\n"
+	if err := os.WriteFile(filepath.Join(specDir, "progress.md"), []byte(pre), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	const n = 24
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func(i int) {
+			defer wg.Done()
+			_ = appendProgressRecord(specDir, fmt.Sprintf("- record %02d outcome=x", i))
+		}(i)
+	}
+	wg.Wait()
+	raw, err := os.ReadFile(filepath.Join(specDir, "progress.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(raw)
+	if !strings.Contains(content, "pre-existing line") {
+		t.Fatalf("pre-existing progress content lost:\n%s", content)
+	}
+	if got := strings.Count(content, progressSectionHeading); got != 1 {
+		t.Fatalf("§G heading appears %d times, want 1 (created exactly once under the race)", got)
+	}
+	for i := 0; i < n; i++ {
+		want := fmt.Sprintf("- record %02d outcome=x", i)
+		if got := strings.Count(content, want); got != 1 {
+			t.Fatalf("record %q appears %d times, want 1\n%s", want, got, content)
+		}
+	}
+}
+
+// AC-ACR-016 (D3 §G insertion position RED) — appendProgressRecord: a
+// record lands at the END of the §G block, immediately before the next
+// same-level heading; §G last appends at end-of-file. With the defect the
+// append writes to file end, so a following section absorbs the record.
+func TestAppendProgressRecordInsertsAtSectionEnd(t *testing.T) {
+	specDir := t.TempDir()
+	pre := "# progress\n\n## §G Override and Refusal Record\n\n- old record\n\n## §E.2 Run-phase Evidence\nlater section body\n"
+	if err := os.WriteFile(filepath.Join(specDir, "progress.md"), []byte(pre), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := appendProgressRecord(specDir, "- new record"); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(specDir, "progress.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(raw)
+	gIdx := strings.Index(content, progressSectionHeading)
+	eIdx := strings.Index(content, "## §E.2 Run-phase Evidence")
+	if gIdx < 0 || eIdx < 0 {
+		t.Fatalf("fixture headings missing:\n%s", content)
+	}
+	if !strings.Contains(content[gIdx:eIdx], "- new record") {
+		t.Fatalf("record did not land inside the §G block:\n%s", content)
+	}
+	if strings.Contains(content[eIdx:], "- new record") {
+		t.Fatalf("record landed inside the later section:\n%s", content)
+	}
+	lines := strings.Split(content, "\n")
+	for i, l := range lines {
+		if strings.HasPrefix(l, "## §E.2") {
+			if lines[i-1] != "- new record" {
+				t.Fatalf("the line immediately before the next same-level heading is %q, want the record", lines[i-1])
+			}
+		}
+	}
+
+	// §G last → end-of-file append.
+	specDir2 := t.TempDir()
+	pre2 := "# progress\n\n## §G Override and Refusal Record\n\n- old record\n"
+	if err := os.WriteFile(filepath.Join(specDir2, "progress.md"), []byte(pre2), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := appendProgressRecord(specDir2, "- tail record"); err != nil {
+		t.Fatal(err)
+	}
+	raw2, err := os.ReadFile(filepath.Join(specDir2, "progress.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(string(raw2), "- tail record\n") {
+		t.Fatalf("record did not append at end-of-file when §G is last:\n%s", raw2)
+	}
+}
+
+// AC-ACR-015 (delta-gate widening RED) — reqACSetsUnchanged derives the
+// REQ/AC id sets from BOTH definition files: spec.md byte-identical at both
+// audited SHAs while acceptance.md renames an AC id between them refuses
+// the delta (false). With the defect the comparison reads only spec.md, so
+// the acceptance-only rename verifies as unchanged (true).
+func TestReqACSetsUnchangedReadsAcceptance(t *testing.T) {
+	root := t.TempDir()
+	git := func(args ...string) string {
+		t.Helper()
+		out, err := auditreceipt.RunScrubbedGit(root, args...)
+		if err != nil {
+			t.Fatalf("git %v: %v", args, err)
+		}
+		return strings.TrimSpace(out)
+	}
+	specID := "SPEC-ACC-GATE-001"
+	specDir := filepath.Join(root, ".moai", "specs", specID)
+	if err := os.MkdirAll(specDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	git("init", "-q")
+	git("config", "user.email", "t@example.com")
+	git("config", "user.name", "t")
+	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte("# spec\nREQ-ACR-001\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(specDir, "acceptance.md"), []byte("# acceptance\nAC-R-001 repro arm\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "-A")
+	git("commit", "-q", "-m", "base")
+	first := git("rev-parse", "HEAD")
+
+	// spec.md byte-identical; acceptance.md renames the AC id.
+	if err := os.WriteFile(filepath.Join(specDir, "acceptance.md"), []byte("# acceptance\nAC-R-002 repro arm\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "-A")
+	git("commit", "-q", "-m", "rename")
+	second := git("rev-parse", "HEAD")
+	if reqACSetsUnchanged(root, specID, first, second) {
+		t.Fatal("an acceptance-only AC id rename verified as unchanged — the delta must be refused (fail-closed)")
+	}
+
+	// Both definition files identical between SHAs verifies unchanged (the
+	// spec.md-only contract is preserved).
+	third := second
+	if !reqACSetsUnchanged(root, specID, second, third) {
+		t.Fatal("identical definition files verified as changed")
+	}
 }
