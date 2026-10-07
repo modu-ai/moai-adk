@@ -548,10 +548,20 @@ func TestLandingPredicatePreservesWhitespaceDistinctContent(t *testing.T) {
 		name, card, remote string
 	}{
 		{"string_spaces", "package fixture\nconst value = \"a  b\"\n", "package fixture\nconst value = \"a b\"\n"},
+		{"configured_textconv", "package fixture\nconst value = \"a  b\"\n", "package fixture\nconst value = \"a b\"\n"},
 		{"string_tab", "package fixture\nconst value = `a\tb`\n", "package fixture\nconst value = `a b`\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newGFDFixture(t)
+			if tc.name == "configured_textconv" {
+				if _, err := exec.LookPath("sed"); err != nil {
+					t.Skip("textconv fixture needs sed")
+				}
+				landingGit(t, f.repo, "config", "diff.landing-fold.textconv", "sed -e 's/ //g'")
+				if err := os.WriteFile(filepath.Join(f.repo, ".git", "info", "attributes"), []byte("value.go diff=landing-fold\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
 			for _, change := range []struct{ dir, content string }{{f.tree, tc.card}, {f.repo, tc.remote}} {
 				if err := os.WriteFile(filepath.Join(change.dir, "value.go"), []byte(change.content), 0o644); err != nil {
 					t.Fatal(err)
@@ -610,6 +620,14 @@ func TestLandingPredicatePreservesUnconfirmableState(t *testing.T) {
 	if landed, err := LandedByPatchID(f.repo, f.branch, "origin/main"); landed || err == nil {
 		t.Fatalf("empty card must remain unconfirmed: landed=%v err=%v", landed, err)
 	}
+	t.Run("missing_card_tip", func(t *testing.T) {
+		if landed, err := LandedByPatchID(f.repo, "missing-card-tip", "origin/main"); landed || err == nil {
+			t.Fatalf("missing tip must remain unconfirmed: landed=%v err=%v", landed, err)
+		}
+		if landed, err := landedByMergedPR(f.repo, "missing-card-tip", "origin/main"); landed || err == nil {
+			t.Fatalf("PR layer must reject an unresolved local tip: landed=%v err=%v", landed, err)
+		}
+	})
 	t.Run("git_unavailable", func(t *testing.T) {
 		t.Setenv("PATH", t.TempDir())
 		if _, err := landingPatchIDs(f.repo, "unreadable patch"); err == nil {

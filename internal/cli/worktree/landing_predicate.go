@@ -106,9 +106,9 @@ func landingPatchIDs(dir, stream string) ([]string, error) {
 }
 
 // landingDiffFlags keep a diff and a `git log -p` stream comparable: no
-// external diff drivers, no colour, no rename detection (it is configuration
+// external diff drivers or text conversions, no colour, no rename detection (it is configuration
 // dependent and changes the hunk shape), binary content included.
-var landingDiffFlags = []string{"--no-ext-diff", "--no-color", "--no-renames", "--binary"}
+var landingDiffFlags = []string{"--no-ext-diff", "--no-textconv", "--no-color", "--no-renames", "--binary"}
 
 // LandedByPatchID is layer 2 — and the only layer past ancestry that session-exit
 // cleanup may use. It reports whether the cumulative patch of tip (relative to
