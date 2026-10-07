@@ -262,6 +262,8 @@ The merged-write `theirs` read follows a swapped link when a base exists
 disposition, not silently ignored.
 
 | 13 | r20 P2 | managed-file count double-counted `.sh`/`.sh.tmpl` pairs (607 analyzed vs 603 unique rendered targets — the summary overstated) | `plan.AnalyzeFiles` dedupes by rendered target path (the same accounting rule `managedRedeployCount` applies) — REPRODUCED on this tree before repair: templates=607 analysis=607 uniqueTargets=603 → after: analysis=603 | `TestAnalyzeFilesDedupesRenderedPairs` (plan pkg; pair-counts-once semantics — the real-tree 603 number is a measured run, not a pinned test: a pinned template count would rot on every template change) |
+| 14 | semantic conflict (post-absorption, leader-approved option A) | `TestNotDemonstratedPreservationEndsAtNextLocalUpdate` pinned SPEC-INIT-SHRINK-001's D-16 narrowed promise (foreign file under the moai* glob removed-with-backup at the next local update) — retired by this SPEC's REQ-UPM-002/013 + AC-UPM-001 (user-owned forever, the D-15 closure); NOT a t1527 absorption defect | test contract updated to the preservation form (renamed `TestNotDemonstratedPreservationHoldsAtNextLocalUpdate`: foreign skill survives byte-for-byte + listed in the summary's preserved set); blocker reply preceded the rewrite per instruction | the rewritten test (flow-level AC-UPM-001 form) |
+| 15 | r21 P3 | stale-only archived removals rendered as "all re-deployed" (a recovery copy ≠ redeployment in place) | `updateOutcomeDetail.ArchivedForRecovery` + honest breakdown wording "N stale file(s) archived for recovery — not redeployed" when the archived set is the removal source | `TestRenderUpdateOutcome_ArchivedRemovalsNotRedeployed` |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
