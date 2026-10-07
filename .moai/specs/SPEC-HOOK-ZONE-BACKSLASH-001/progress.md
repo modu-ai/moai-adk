@@ -370,7 +370,7 @@ gaps: >-
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-10-07
-sync_commit_sha: pending-backfill-sync   # D3 backfill window (spec-frontmatter-schema.md § SHA placeholder backfill exemption) — a commit cannot cite its own SHA; the landed SHA is backfilled in the follow-up commit
+sync_commit_sha: c16c26905   # the sync commit above (backfilled from the pending-backfill-sync placeholder per the D3 backfill window)
 files_changed:
   - CHANGELOG.md   # Unreleased § Fixed — sync-phase close entry prepended at the top of the first Fixed list (newest-first, t1510/t1515 precedent); B12 duplicate check `grep -c SPEC-HOOK-ZONE-BACKSLASH-001 CHANGELOG.md` = 0 pre-emission
   - .moai/specs/SPEC-HOOK-ZONE-BACKSLASH-001/spec.md   # frontmatter status: in-progress → completed (3-phase close, completed rides the sync commit); updated: 2026-10-07 (already the current date — no byte change)
