@@ -271,9 +271,14 @@ coordination signal without enabling refusal.`,
 }
 
 // configuredIntegrationBranch resolves the integration branch the re-measure
-// names as its absorbed base — the same branch acquire resolves.
+// names as its absorbed base — the same branch acquire resolves. The
+// flow-scoped target is what reads (t1576 review round 3): under
+// `workflow: github-flow` DevelopBranch is empty by design, and the empty
+// base died with `merge-base ..HEAD … exit status 128`; IntegrationTarget
+// carries the git-flow DevelopBranch unchanged and resolves github-flow to
+// main.
 func configuredIntegrationBranch() string {
-	return config.LoadGitFlowIntegrationConfig(resolveProjectDir()).DevelopBranch
+	return config.LoadGitFlowIntegrationConfig(resolveProjectDir()).IntegrationTarget
 }
 
 func newIntegrationStatusCmd() *cobra.Command {
