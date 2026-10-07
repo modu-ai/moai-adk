@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -78,8 +79,30 @@ func resetUpdateFlagValue(t *testing.T, names ...string) {
 }
 
 func newBareUpdateCmd() *cobra.Command {
+	// The participation gates read these flags from a PRIVATE set (review
+	// finding, r7): AddFlagSet shares the pflag.Flag POINTERS, so a value
+	// another test left on the package-level updateCmd — a Set survives the
+	// test that made it — leaked into a "bare" command and tripped the
+	// mode-flag gate for every subtest (the CI-only divergence: prompt
+	// opens = 0 in the full suite, green under -run). Each flag is
+	// re-registered here with the ORIGINAL's type and DEFAULT value, so the
+	// gates read fresh defaults whatever the shared set holds.
+	names := append(append([]string{}, updateParticipationModeFlags...), updateParticipationModifierFlags...)
+	fs := pflag.NewFlagSet("update", pflag.ContinueOnError)
+	for _, name := range names {
+		orig := updateCmd.Flags().Lookup(name)
+		if orig == nil {
+			continue
+		}
+		if orig.Value.Type() == "bool" {
+			def, _ := strconv.ParseBool(orig.DefValue)
+			_ = fs.Bool(name, def, "")
+		} else {
+			_ = fs.String(name, orig.DefValue, "")
+		}
+	}
 	c := &cobra.Command{Use: "update"}
-	c.Flags().AddFlagSet(updateCmd.Flags())
+	c.Flags().AddFlagSet(fs)
 	return c
 }
 
@@ -158,12 +181,19 @@ func TestUpdateParticipationStep(t *testing.T) {
 		modeFlag := modeFlag
 		t.Run("mode_flag_"+modeFlag+"_never_prompts", func(t *testing.T) {
 			opens, path := updateParticipationFixture(t)
-			resetUpdateFlagValue(t, modeFlag)
-			f := updateCmd.Flags().Lookup(modeFlag)
+			// The flag is set on THIS subtest's own bare command: the bare
+			// command's flag set is private (r7), so setting the shared
+			// updateCmd's flag would not reach the gates — and would
+			// re-create the leak the private set exists to prevent.
+			cmd := newBareUpdateCmd()
+			f := cmd.Flags().Lookup(modeFlag)
+			if f == nil {
+				t.Fatalf("bare command has no flag %q", modeFlag)
+			}
 			if err := f.Value.Set(boolOrText(modeFlag, "on")); err != nil {
 				t.Fatalf("set --%s: %v", modeFlag, err)
 			}
-			if err := runParticipationStep(newBareUpdateCmd(), os.Stdout); err != nil {
+			if err := runParticipationStep(cmd, os.Stdout); err != nil {
 				t.Fatalf("runParticipationStep: %v", err)
 			}
 			if *opens != 0 {
@@ -179,12 +209,17 @@ func TestUpdateParticipationStep(t *testing.T) {
 		modFlag := modFlag
 		t.Run("modifier_flag_"+modFlag+"_still_prompts", func(t *testing.T) {
 			opens, _ := updateParticipationFixture(t, "n\n")
-			resetUpdateFlagValue(t, modFlag)
-			f := updateCmd.Flags().Lookup(modFlag)
+			// Same private-set rule as the mode flags above: the modifier
+			// is set on this subtest's own bare command.
+			cmd := newBareUpdateCmd()
+			f := cmd.Flags().Lookup(modFlag)
+			if f == nil {
+				t.Fatalf("bare command has no flag %q", modFlag)
+			}
 			if err := f.Value.Set(boolOrText(modFlag, "on")); err != nil {
 				t.Fatalf("set --%s: %v", modFlag, err)
 			}
-			if err := runParticipationStep(newBareUpdateCmd(), os.Stdout); err != nil {
+			if err := runParticipationStep(cmd, os.Stdout); err != nil {
 				t.Fatalf("runParticipationStep: %v", err)
 			}
 			if *opens != 1 {
@@ -195,11 +230,15 @@ func TestUpdateParticipationStep(t *testing.T) {
 
 	t.Run("yes_never_sets_enabled_true", func(t *testing.T) {
 		opens, path := updateParticipationFixture(t)
-		resetUpdateFlagValue(t, "yes")
-		if err := updateCmd.Flags().Set("yes", "true"); err != nil {
+		cmd := newBareUpdateCmd()
+		f := cmd.Flags().Lookup("yes")
+		if f == nil {
+			t.Fatal("bare command has no flag \"yes\"")
+		}
+		if err := f.Value.Set("true"); err != nil {
 			t.Fatalf("set --yes: %v", err)
 		}
-		if err := runParticipationStep(newBareUpdateCmd(), os.Stdout); err != nil {
+		if err := runParticipationStep(cmd, os.Stdout); err != nil {
 			t.Fatalf("runParticipationStep: %v", err)
 		}
 		if *opens != 0 {
