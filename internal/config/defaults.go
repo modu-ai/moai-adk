@@ -619,6 +619,17 @@ const (
 	DefaultBugreportModelInputMaxBytes  = 4096
 	DefaultBugreportModelOutputMaxBytes = 2048
 
+	// DefaultParticipationConsentReadTimeBox bounds ONE consent-file read in
+	// the user-scoped reader: the drain, the sender, and every other consumer
+	// read consent through it directly, so a file that blocks (a swapped-in
+	// FIFO) must read as no consent within a bound instead of stalling the
+	// caller past its own time box.
+	DefaultParticipationConsentReadTimeBox = 100 * time.Millisecond
+
+	// DefaultParticipationConsentMaxBytes caps the consent file's size; the
+	// file is a handful of lines, and anything larger is not a consent file.
+	DefaultParticipationConsentMaxBytes = 4096
+
 	// DefaultHandoffMode is the compiled default for HandoffConfig.Mode.
 	// SPEC-HANDOFF-AUTORESUME-001: auto-resume is opt-in — the default is
 	// "manual" (pure no-op), preserving the unchanged baseline UX.

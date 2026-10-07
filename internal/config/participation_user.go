@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"gopkg.in/yaml.v3"
@@ -75,8 +76,8 @@ func ReadUserParticipation() UserParticipation {
 	if err != nil {
 		return UserParticipation{}
 	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
+	raw, ok := readConsentFile(path)
+	if !ok {
 		return UserParticipation{}
 	}
 	// Exactly ONE YAML document is admitted. yaml.Unmarshal decodes only the
@@ -114,4 +115,49 @@ func UserParticipationRepository() string {
 		return repo
 	}
 	return DefaultFeedbackRepository
+}
+
+// readConsentFile reads the consent file, BOUNDED. Two gates:
+//
+//  1. A non-regular file is refused WITHOUT opening it — a FIFO swapped in
+//     at the consent path would otherwise park a plain read indefinitely,
+//     stalling the drain and the sender past their own time boxes (review
+//     gate finding, P2).
+//  2. The open+read runs under DefaultParticipationConsentReadTimeBox and a
+//     DefaultParticipationConsentMaxBytes size cap — the same bounded-read
+//     shape the capture box exercises — so anything that still blocks or
+//     over-grows reads as no consent. On deadline the helper goroutine is
+//     left parked on the blocked file handle; it exits when the blocking
+//     writer closes (fixture writers close), and the caller never waits for
+//     it.
+//
+// ok is false for every failure shape: the caller reads no consent.
+func readConsentFile(path string) ([]byte, bool) {
+	info, err := os.Stat(path)
+	if err != nil || !info.Mode().IsRegular() {
+		return nil, false
+	}
+	type readResult struct {
+		raw []byte
+	}
+	done := make(chan readResult, 1)
+	go func() {
+		f, err := os.Open(path)
+		if err != nil {
+			done <- readResult{}
+			return
+		}
+		defer func() { _ = f.Close() }()
+		raw, _ := io.ReadAll(io.LimitReader(f, DefaultParticipationConsentMaxBytes+1))
+		done <- readResult{raw: raw}
+	}()
+	select {
+	case r := <-done:
+		if len(r.raw) == 0 || len(r.raw) > DefaultParticipationConsentMaxBytes {
+			return nil, false
+		}
+		return r.raw, true
+	case <-time.After(DefaultParticipationConsentReadTimeBox):
+		return nil, false
+	}
 }
