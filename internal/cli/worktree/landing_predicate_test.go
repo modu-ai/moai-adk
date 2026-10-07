@@ -653,29 +653,34 @@ func TestLandingPredicatePreservesUnconfirmableState(t *testing.T) {
 
 // A local diff preference must not conceal an unlanded gitlink from disposal.
 func TestLandingPredicatePreservesHiddenGitlink(t *testing.T) {
-	f := newGFDFixture(t)
-	seed := landingGit(t, f.repo, "rev-parse", "HEAD")
-	landingGit(t, f.repo, "update-index", "--add", "--cacheinfo", "160000,"+strings.TrimSpace(seed)+",module")
-	landingGit(t, f.repo, "commit", "-q", "-m", "seed gitlink")
-	landingGit(t, f.tree, "merge", "--ff-only", "main")
-	f.cardCommit(t, 15, "shared")
-	tip := f.cardTip(t)
-	landingGit(t, f.tree, "update-index", "--cacheinfo", "160000,"+tip+",module")
-	landingGit(t, f.tree, "commit", "-q", "-m", "unlanded gitlink")
-	f.mainCommit(t, 15, "shared")
-	f.pushMain(t)
-	landingGit(t, f.repo, "config", "diff.ignoreSubmodules", "all")
-	installGH(t, &ghDouble{})
-	if landed, err := LandedByPatchID(f.repo, f.branch, "origin/main"); err != nil || landed {
-		t.Errorf("unlanded gitlink must preserve: landed=%v err=%v", landed, err)
-	}
-	if landed, verdict, reason := f.sweepLanded(t); landed == staleStateYes || verdict == sweepDispose {
-		t.Errorf("sweep must preserve gitlink: landed=%q verdict=%q reason=%q", landed, verdict, reason)
-	}
-	if gone, err := f.doneLanded(t); gone || err == nil {
-		t.Errorf("done must refuse gitlink: gone=%v err=%v", gone, err)
-	}
-	if _, err := os.Stat(f.tree); err != nil {
-		t.Errorf("gitlink worktree must survive: %v", err)
+	for _, format := range []string{"short", "log", "diff"} {
+		t.Run(format, func(t *testing.T) {
+			f := newGFDFixture(t)
+			landingGit(t, f.repo, "config", "diff.submodule", format)
+			seed := landingGit(t, f.repo, "rev-parse", "HEAD")
+			landingGit(t, f.repo, "update-index", "--add", "--cacheinfo", "160000,"+strings.TrimSpace(seed)+",module")
+			landingGit(t, f.repo, "commit", "-q", "-m", "seed gitlink")
+			landingGit(t, f.tree, "merge", "--ff-only", "main")
+			f.cardCommit(t, 15, "shared")
+			tip := f.cardTip(t)
+			landingGit(t, f.tree, "update-index", "--cacheinfo", "160000,"+tip+",module")
+			landingGit(t, f.tree, "commit", "-q", "-m", "unlanded gitlink")
+			f.mainCommit(t, 15, "shared")
+			f.pushMain(t)
+			landingGit(t, f.repo, "config", "diff.ignoreSubmodules", "all")
+			installGH(t, &ghDouble{})
+			if landed, err := LandedByPatchID(f.repo, f.branch, "origin/main"); err != nil || landed {
+				t.Errorf("unlanded gitlink must preserve: landed=%v err=%v", landed, err)
+			}
+			if landed, verdict, reason := f.sweepLanded(t); landed == staleStateYes || verdict == sweepDispose {
+				t.Errorf("sweep must preserve gitlink: landed=%q verdict=%q reason=%q", landed, verdict, reason)
+			}
+			if gone, err := f.doneLanded(t); gone || err == nil {
+				t.Errorf("done must refuse gitlink: gone=%v err=%v", gone, err)
+			}
+			if _, err := os.Stat(f.tree); err != nil {
+				t.Errorf("gitlink worktree must survive: %v", err)
+			}
+		})
 	}
 }
