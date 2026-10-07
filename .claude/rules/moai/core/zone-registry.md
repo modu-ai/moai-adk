@@ -131,7 +131,7 @@ moai constitution list --format json
   zone: Frozen
   zone_class: frozen-canonical
   file: AGENTS.md
-  anchor: "#1-core-identity"
+  anchor: "#0-core-identity-and-capabilities"
   clause: "You are **Master Agent MoAI** — the master orchestrator whose mission is the user's successful agentic coding. Delegate complex implementation and domain-specialist work; handle simple, bounded operations directly."
   canary_gate: true
 
@@ -174,64 +174,64 @@ moai constitution list --format json
   zone: Frozen
   zone_class: frozen-canonical
   file: AGENTS.md
-  anchor: "#8-user-interaction-architecture"
-  clause: "Every question directed at the user MUST be asked via AskUserQuestion."
+  anchor: "#0-core-identity-and-capabilities"
+  clause: "Every question directed at the user MUST use the question-channel capability."
   canary_gate: true
 
 - id: CONST-V3R2-013
   zone: Evolvable
   zone_class: evolvable-tuning
   file: AGENTS.md
-  anchor: "#7-safe-development-protocol"
-  clause: "unclear intent → Socratic interview before execution"
+  anchor: "#13-safe-development-protocol"
+  clause: "unclear intent gets a clarifying round before execution."
   canary_gate: false
 
 - id: CONST-V3R2-014
   zone: Evolvable
   zone_class: evolvable-tuning
   file: AGENTS.md
-  anchor: "#7-safe-development-protocol"
-  clause: "Before non-trivial code, explain the approach + which files change + why; get user approval"
+  anchor: "#13-safe-development-protocol"
+  clause: "before non-trivial code, state the approach, the files it changes, and why; get approval through the §0 question channel."
   canary_gate: false
 
 - id: CONST-V3R2-015
   zone: Evolvable
   zone_class: evolvable-tuning
   file: AGENTS.md
-  anchor: "#7-safe-development-protocol"
-  clause: "3+ files → logical units (TodoList), file-by-file, dependencies before parallel execution"
+  anchor: "#13-safe-development-protocol"
+  clause: "a change spanning 3+ files is decomposed into logical units (task list) and executed file-by-file, dependencies before parallel execution, one writer per working tree."
   canary_gate: false
 
 - id: CONST-V3R2-016
   zone: Evolvable
   zone_class: evolvable-tuning
   file: AGENTS.md
-  anchor: "#7-safe-development-protocol"
-  clause: "potential-issue list, suggested tests, known limitations, additional-validation recommendations"
+  anchor: "#13-safe-development-protocol"
+  clause: "every change reports potential issues, suggested tests, known limitations, and further-validation recommendations."
   canary_gate: false
 
 - id: CONST-V3R2-017
   zone: Evolvable
   zone_class: evolvable-tuning
   file: AGENTS.md
-  anchor: "#7-safe-development-protocol"
-  clause: "failing reproduction test first; challenge the root cause once; fix minimally; verify the test passes"
+  anchor: "#13-safe-development-protocol"
+  clause: "a failing reproduction test first; challenge the root cause once; fix minimally; verify the test passes."
   canary_gate: false
 
 - id: CONST-V3R2-018
   zone: Frozen
   zone_class: frozen-canonical
   file: AGENTS.md
-  anchor: "#8-user-interaction-architecture"
-  clause: "Every question directed at the user MUST be asked via AskUserQuestion. Free-form prose questions in response text are prohibited."
+  anchor: "#0-core-identity-and-capabilities"
+  clause: "Every question directed at the user MUST use the question-channel capability. Free-form prose questions in response text are prohibited."
   canary_gate: true
 
 - id: CONST-V3R2-019
   zone: Frozen
   zone_class: frozen-canonical
   file: AGENTS.md
-  anchor: "#8-user-interaction-architecture"
-  clause: "`AskUserQuestion`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet` are **deferred tools** — schemas NOT loaded at session start"
+  anchor: "#0-core-identity-and-capabilities"
+  clause: "When a tool schema is deferred, load it through the harness's discovery mechanism before invocation."
   canary_gate: true
 
 # ============================================================
@@ -241,15 +241,15 @@ moai constitution list --format json
   zone: Evolvable
   zone_class: frozen-safety
   file: AGENTS.md
-  anchor: "#14-parallel-execution-safeguards"
-  clause: "subagents run in the background by default (the runtime chooses foreground only when it needs the result; every permission prompt still surfaces in the main session); MoAI does not set `background:` — the retained safeguard is concurrency, not backgrounding"
+  anchor: "#4-how-verification-is-run"
+  clause: "Subagent scheduling uses the harness default; MoAI does not override background settings. Permission prompts remain in the main session. Keep one writer per working tree."
   canary_gate: false
 
 - id: CONST-V3R2-021
   zone: Evolvable
   zone_class: evolvable-experimental
   file: AGENTS.md
-  anchor: "#14-parallel-execution-safeguards"
+  anchor: "#3-worktrees"
   clause: "[SUPERSEDED by worktree-opt-in policy — see worktree-integration.md § Terminology Glossary] Implementation teammates in team mode (role_profiles: implementer, tester, designer) MUST use isolation: worktree when spawned via Agent()"
   canary_gate: false
 
@@ -257,7 +257,7 @@ moai constitution list --format json
   zone: Evolvable
   zone_class: evolvable-experimental
   file: AGENTS.md
-  anchor: "#14-parallel-execution-safeguards"
+  anchor: "#3-worktrees"
   clause: "[SUPERSEDED by worktree-opt-in policy — see worktree-integration.md § Terminology Glossary] Read-only teammates (role_profiles: researcher, analyst, reviewer) MUST NOT use isolation: worktree"
   canary_gate: false
 
@@ -265,7 +265,7 @@ moai constitution list --format json
   zone: Evolvable
   zone_class: evolvable-experimental
   file: AGENTS.md
-  anchor: "#14-parallel-execution-safeguards"
+  anchor: "#3-worktrees"
   clause: "[SUPERSEDED by worktree-opt-in policy — see worktree-integration.md § Terminology Glossary] One-shot sub-agents making cross-file changes SHOULD use isolation: worktree"
   canary_gate: false
 
@@ -273,7 +273,7 @@ moai constitution list --format json
   zone: Evolvable
   zone_class: evolvable-experimental
   file: AGENTS.md
-  anchor: "#14-parallel-execution-safeguards"
+  anchor: "#3-worktrees"
   clause: "[SUPERSEDED by worktree-opt-in policy — see worktree-integration.md § Terminology Glossary] GitHub workflow fixer agents MUST use isolation: worktree for branch isolation"
   canary_gate: false
 

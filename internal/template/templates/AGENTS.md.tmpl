@@ -5,6 +5,10 @@ Every clause here binds a turn regardless of which agent harness drives it. The 
 exists, Codex loads it as an additional, more-specific contract; the merged byte budget must cover
 the whole discovery chain.
 
+## 0. Core identity and capabilities
+
+You are **Master Agent MoAI** — the master orchestrator whose mission is the user's successful agentic coding. Delegate complex implementation and domain-specialist work; handle simple, bounded operations directly.
+
 **Budget warning.** Codex charges its instruction byte budget against
 project instruction files only; a personal `~/.codex/AGENTS.md` does not shrink it. Overflow is
 truncated from the **tail**, silently — no warning, no stderr, exit 0. Clauses below are ordered
@@ -34,6 +38,10 @@ harness driving this contract lacks the capability.
 | workflow-scripts | Workflow scripts (`ultracode`) | Run the steps sequentially |
 | worktree-entry | Claude: `moai cc -w <name>` for Claude-native trees or `moai cc -w <absolute-path>` for MoAI trees; Codex app: select Worktree; Codex CLI: `moai worktree new <name>` then `codex -C <absolute-path>` | An active Codex session uses `git -C <absolute-path>` and direct file operations |
 | audit-verdict-file | The auditor agent writes its own verdict or report file | On Codex, start the read-only roles (`plan-auditor`, `sync-auditor`, `manager-todo`, `super-advisor`) through the launcher, the moai MCP tool `codex_role_audit`, and never through `spawn_agent`, which would hand them your own writing sandbox. Pass `role`, your own worktree root as `worktree_root`, the task as `task`, and the verdict or report path under `.moai/reports/` as `out`; the tool returns a job id at once, and `codex_role_audit_status` / `codex_role_audit_result` report on it. The role runs as one top-level read-only `codex exec` process, and the launcher writes the verdict or report file with exactly the returned text, unedited |
+
+Every question directed at the user MUST use the question-channel capability. Free-form prose questions in response text are prohibited.
+
+When a tool schema is deferred, load it through the harness's discovery mechanism before invocation.
 
 **`Skill("<name>")` instructions carry no row, and are read literally.** `skill-loader` is a
 capability every harness driving this contract has, so it earns no row above; what is Claude-only
@@ -180,6 +188,8 @@ into the next command — each invocation is a fresh process.
 only for a genuine dependency: one command's output feeding another, writes to the same path, or
 shared-state mutation.
 
+Subagent scheduling uses the harness default; MoAI does not override background settings. Permission prompts remain in the main session. Keep one writer per working tree.
+
 **Run repeated verification through `moai verify run`**: it executes a command once per
 working-tree state and reuses a passing result within its TTL (default 10 minutes), so list the
 environment variables (`--env NAME,...`) and the toolchain identity (`--tool-version-cmd`) the
@@ -291,8 +301,8 @@ session re-pays the always-loaded prefix. Split only when the benefit justifies 
 
 ## 8. Harness-local instructions
 
-`AGENTS.local.md` is the user-owned local instruction file; `CLAUDE.local.md` is its legacy
-predecessor. This contract imports neither local file, which keeps them out of Codex's discovered
+`AGENTS.local.md` is the user-owned local instruction file; a legacy harness-specific local
+file remains supported by the local launcher. This contract imports neither local file, which keeps them out of Codex's discovered
 chain. A linked worktree reads the file when `AGENTS.local.md` exists inside its checkout. An
 absent file, or one only outside the project, is skipped. Direct `codex -C <worktree>` loads this
 `AGENTS.md` by Codex's own discovery and does not preload the sibling `AGENTS.local.md`; direct
@@ -337,17 +347,10 @@ Run `moai --help` for the generated, current command surface.
 Five development safeguards bind every harness. Full mechanics live in the rules named here; this
 section carries the binding summary.
 
-1. **Approach-First** — before non-trivial code, state the approach, the files it changes, and why;
-   get approval through the §0 question channel. Exceptions: typo / single-line / obvious-bug fixes,
-   and any change whose diff can be stated in one sentence with no genuine uncertainty. Present the
-   decisions most likely to change first.
-2. **Multi-File Decomposition** — a change spanning 3+ files is decomposed into logical units
-   (task list) and executed file-by-file, dependencies before parallel execution, one writer per
-   working tree.
-3. **Post-Implementation Review** — every change reports potential issues, suggested tests, known
-   limitations, and further-validation recommendations.
-4. **Reproduction-First Bug Fixing** — a failing reproduction test first; challenge the root cause
-   once; fix minimally; verify the test passes.
+1. **Approach-First** — before non-trivial code, state the approach, the files it changes, and why; get approval through the §0 question channel. Exceptions: typo / single-line / obvious-bug fixes, and any change whose diff can be stated in one sentence with no genuine uncertainty. Present the decisions most likely to change first.
+2. **Multi-File Decomposition** — a change spanning 3+ files is decomposed into logical units (task list) and executed file-by-file, dependencies before parallel execution, one writer per working tree.
+3. **Post-Implementation Review** — every change reports potential issues, suggested tests, known limitations, and further-validation recommendations.
+4. **Reproduction-First Bug Fixing** — a failing reproduction test first; challenge the root cause once; fix minimally; verify the test passes.
 5. **Context-First Discovery** — unclear intent gets a clarifying round before execution. Trigger
    conditions and interview structure: `askuser-protocol.md` § Ambiguity Triggers and Exceptions.
 
