@@ -11,7 +11,7 @@ name: workflow-parse-guard
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
     paths:
       - '.claude/workflows/**'

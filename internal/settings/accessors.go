@@ -5,11 +5,21 @@ package settings
 // 순회한다.
 
 // AllFields는 6개 섹션의 34개 정규 필드를 렌더 순서대로 반환한다.
+//
+// @MX:ANCHOR: [AUTO] the full-field traversal both settings surfaces share.
+// @MX:REASON: [AUTO] fan_in >= 3 (5 non-test caller files across internal/web
+// and internal/jevcred); TUI and web renders enumerate exactly this order, so
+// a reorder here visibly reshuffles both surfaces at once.
 func AllFields() []FieldDef {
 	return allFields()
 }
 
 // SectionFields는 주어진 섹션에 속한 필드를 렌더 순서대로 반환한다.
+//
+// @MX:ANCHOR: [AUTO] per-section field ordering for both settings surfaces.
+// @MX:REASON: [AUTO] fan_in >= 3 (7 non-test caller files: settings schema
+// sections plus web jevkey/settings-shell/agenttierpanel/fieldsets); section
+// grouping and order are decided here, never at the render sites.
 func SectionFields(section SectionID) []FieldDef {
 	var out []FieldDef
 	for _, f := range allFields() {

@@ -373,7 +373,44 @@ func planAuditCheck(in DecideInput, dir string) (*contract.ReceiptFileRef, strin
 	fields := auditverdict.Parse(data)
 	cur, err := runtime.NewInMemoryCache().ComputeHash(dir)
 	hashOK := err == nil && fields.PlanArtifactHash != "" && fields.PlanArtifactHash == cur
-	if ok, reason := auditverdict.Admit(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(dir), hashOK); !ok {
+	// SPEC-AUDIT-CEILING-001 REQ-ACE-009/010 (D21): resolve the tree's
+	// required-backend set with the error-vs-empty contract — an audit
+	// configuration that exists but cannot be read or parsed refuses, never
+	// folds into the empty set.
+	gates, err := runtime.ResolveRequiredBackends(in.Root)
+	if err != nil {
+		return ref, fmt.Sprintf("audit configuration error: %v", err)
+	}
+	// SPEC-AUDIT-CEILING-001 REQ-ACE-003/013: the ceiling-policy engine
+	// evaluates before the verdict reaches the admitting consumer. A blocked
+	// outcome refuses here; a debt-admit outcome substitutes its
+	// PASS-WITH-DEBT for the raw label in the label check alone (D20).
+	oc, override, cerr := runtime.EvaluateCeiling(runtime.VerdictCeilingInput{
+		SpecID: in.SpecID, SpecDir: dir, ProjectRoot: in.Root, CardID: in.Card,
+	}, fields, hashOK, gates.Required)
+	if cerr != nil {
+		return ref, fmt.Sprintf("audit ceiling evaluation error: %v", cerr)
+	}
+	if oc != nil {
+		if oc.Blocked {
+			return ref, fmt.Sprintf("plan-audit ceiling refusal (%s): %s", oc.Outcome, strings.Join(oc.Reasons, "; "))
+		}
+		if override {
+			fields.Label = auditverdict.LabelPassWithDebt
+		}
+	}
+	if ok, reason := auditverdict.AdmitWithRequired(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(dir), hashOK, gates.Required); !ok {
+		// REQ-ACE-007/012 (card-review F7): a required-backend refusal is
+		// recorded regardless of the ceiling state — the ladder persists its
+		// own outcomes, so only a below-ceiling receipt refusal is recorded
+		// here.
+		if oc == nil {
+			if _, receiptRefused := auditverdict.ReceiptRefusal(fields, gates.Required); receiptRefused {
+				runtime.RecordRequiredBackendRefusal(runtime.VerdictCeilingInput{
+					SpecID: in.SpecID, SpecDir: dir, ProjectRoot: in.Root, CardID: in.Card,
+				}, reason)
+			}
+		}
 		return ref, reason
 	}
 	return ref, ""
