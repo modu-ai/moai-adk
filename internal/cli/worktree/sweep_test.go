@@ -1746,10 +1746,11 @@ func TestSweepDoneCoreKeptNotice(t *testing.T) {
 // TestSweepL1RemoveErrorWarning pins the L1 apply path's removal failure: a
 // warning notice, the tree survives, hoist already ran (evidence safe).
 func TestSweepL1RemoveErrorWarning(t *testing.T) {
-	l1Path := "/repo/.claude/worktrees/swepl1fail"
+	mainRoot := t.TempDir()
+	l1Path := filepath.Join(mainRoot, ".claude", "worktrees", "swepl1fail")
 	m := sweepMockEnv(t, []git.Worktree{{Path: l1Path, Branch: "feature/l1fail"}})
 	m.landed["feature/l1fail"] = true
-	m.lockPorcelain = sweepLockPorcelain("/repo") // the fallback main-root resolver reads this
+	m.lockPorcelain = sweepLockPorcelain(mainRoot) // the fallback main-root resolver reads this
 	m.removeErr[l1Path] = errors.New("git worktree remove refused")
 
 	out, err := runSweepCmd(t, map[string]string{"yes": "true"})

@@ -48,6 +48,14 @@ const (
 	LeaseNone          LeaseProtection = "none"
 )
 
+func profileLeaseDSN(path string, query url.Values) string {
+	p := filepath.ToSlash(path)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return (&url.URL{Scheme: "file", Path: p, RawQuery: query.Encode()}).String()
+}
+
 func OpenProfileLeases() (*ProfileLeaseStore, error) {
 	home, err := paths.MoaiHome()
 	if err != nil {
@@ -65,7 +73,7 @@ func OpenProfileLeases() (*ProfileLeaseStore, error) {
 	v.Add("_pragma", "journal_mode(WAL)")
 	v.Add("_pragma", "busy_timeout(5000)")
 	v.Add("_txlock", "immediate")
-	db, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: v.Encode()}).String())
+	db, err := sql.Open("sqlite", profileLeaseDSN(path, v))
 	if err != nil {
 		return nil, err
 	}
