@@ -255,5 +255,31 @@ func resolveZoneTarget(root, raw string) []zoneForm {
 			}
 		}
 	}
+	// Backslash-literal arm (card t1570): on a POSIX host a backslash is an
+	// ordinary filename character, but zoneSlash has already folded the
+	// candidate to slashes — `lnk\dir` became `lnk/dir`, and the symlink the
+	// command writes through is invisible to both arms above. Resolve the
+	// raw candidate too, with every backslash intact. On Windows the raw
+	// form carries separators already, so the arm re-derives the native
+	// forms and the dedup drops the duplicates.
+	if root != "" {
+		absRaw := raw
+		if !zoneIsAbs(zoneSlash(raw)) {
+			if cwd, err := zoneGetwd(); err == nil && cwd != "" {
+				absRaw = zoneSlash(cwd) + "/" + raw
+			}
+		}
+		if zoneIsAbs(zoneSlash(absRaw)) {
+			realRoot, ok := zoneResolve(filepath.FromSlash(zoneSlash(root)))
+			if !ok {
+				realRoot = filepath.FromSlash(zoneSlash(root))
+			}
+			if realTarget, ok := zoneResolve(absRaw); ok {
+				if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
+					add(rel)
+				}
+			}
+		}
+	}
 	return forms
 }
