@@ -367,8 +367,7 @@ func TestDailyModelCallCap(t *testing.T) {
 	// The persisted seam (review-gate finding 3): the cap state lives in the
 	// user-scoped store, counted atomically cross-process — the in-process
 	// budget a new Sender instance reset is gone.
-	home := t.TempDir()
-	t.Setenv("MOAI_HOME", home)
+	freshTestHome(t)
 	now := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
 	outbox.SetClockForTest(func() time.Time { return now })
 	t.Cleanup(func() { outbox.SetClockForTest(nil) })

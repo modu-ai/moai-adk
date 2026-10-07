@@ -21,17 +21,9 @@ import (
 // separate, correctly-versioned issues, and a report flushed by a later
 // binary never masquerades as that binary's build.
 func TestDrainUsesCaptureTimeIdentity(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("MOAI_HOME", home)
+	home := freshTestHome(t)
 	t.Setenv("CI", "")
-	configDir := filepath.Join(home, "config")
-	if err := os.MkdirAll(configDir, 0o700); err != nil {
-		t.Fatalf("mkdir config: %v", err)
-	}
-	consent := "participation:\n  enabled: true\n  asked: true\n"
-	if err := os.WriteFile(filepath.Join(configDir, "participation.yaml"), []byte(consent), 0o600); err != nil {
-		t.Fatalf("seed consent: %v", err)
-	}
+	consentOn(t)
 
 	dir := filepath.Join(home, filepath.FromSlash(bugreport.BugreportStoreDir))
 	if err := os.MkdirAll(dir, 0o700); err != nil {

@@ -72,8 +72,35 @@ func queuedItems(t *testing.T) []feedback.QueueItem {
 	return rec.Items
 }
 
-// consentOn/Off write the user-scoped consent file under the test's
-// MOAI_HOME.
+// moaiHomes tracks each test's ESTABLISHED moai home (card-review finding,
+// P1): fixtures must never fall back to the ambient MOAI_HOME — a suite
+// run under a real user home used to inherit it, flip its consent, and
+// create store files in it (measured on a canary home before this fix).
+var moaiHomes sync.Map // *testing.T → established home path
+
+// freshTestHome establishes a FRESH temporary moai home for this test —
+// for arms that need a clean slate mid-test.
+func freshTestHome(t *testing.T) string {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("MOAI_HOME", home)
+	moaiHomes.Store(t, home)
+	t.Cleanup(func() { moaiHomes.Delete(t) })
+	return home
+}
+
+// testHome returns the test's established home, creating one on first use.
+// It NEVER reads the ambient MOAI_HOME.
+func testHome(t *testing.T) string {
+	t.Helper()
+	if v, ok := moaiHomes.Load(t); ok {
+		return v.(string)
+	}
+	return freshTestHome(t)
+}
+
+// consentOn/Off write the user-scoped consent file under the test's own
+// isolated moai home (never the ambient MOAI_HOME).
 func consentOn(t *testing.T) {
 	t.Helper()
 	seedConsentFile(t, "participation:\n  enabled: true\n  asked: true\n")
@@ -86,11 +113,7 @@ func consentOff(t *testing.T) {
 
 func seedConsentFile(t *testing.T, body string) {
 	t.Helper()
-	home := os.Getenv("MOAI_HOME")
-	if home == "" {
-		home = t.TempDir()
-		t.Setenv("MOAI_HOME", home)
-	}
+	home := testHome(t)
 	configDir := filepath.Join(home, "config")
 	if err := os.MkdirAll(configDir, 0o700); err != nil {
 		t.Fatalf("mkdir config: %v", err)
@@ -403,7 +426,7 @@ func TestOccurrenceCapSkipsComment(t *testing.T) {
 func TestSenderRevalidatesStoredBodyBeforeCreate(t *testing.T) {
 	payload, item := payloadFixture(t)
 	freshHome := func() {
-		t.Setenv("MOAI_HOME", t.TempDir())
+		freshTestHome(t)
 		consentOn(t)
 	}
 
@@ -743,8 +766,7 @@ func TestSenderIgnoresTrackedFileConsentAndRepository(t *testing.T) {
 	// (a) A cloned repository ships participation: true and
 	// repository: attacker/x in its tracked section file; the user's own
 	// consent file is ABSENT. Nothing may run.
-	home := t.TempDir()
-	t.Setenv("MOAI_HOME", home)
+	home := freshTestHome(t)
 	project := t.TempDir()
 	sections := filepath.Join(project, ".moai", "config", "sections")
 	if err := os.MkdirAll(sections, 0o755); err != nil {

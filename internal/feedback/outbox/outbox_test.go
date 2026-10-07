@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,6 +13,34 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/feedback"
 )
+
+// moaiHomes tracks each test's ESTABLISHED moai home (card-review finding,
+// P1): fixtures must never fall back to the ambient MOAI_HOME — a suite run
+// under a real user home used to inherit it, flip its consent, and create
+// store files in it (measured on a canary home before this fix). Every
+// home a test touches is one these helpers minted.
+var moaiHomes sync.Map // *testing.T → established home path
+
+// freshTestHome establishes a FRESH temporary moai home for this test —
+// for arms that need a clean slate mid-test.
+func freshTestHome(t *testing.T) string {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("MOAI_HOME", home)
+	moaiHomes.Store(t, home)
+	t.Cleanup(func() { moaiHomes.Delete(t) })
+	return home
+}
+
+// testHome returns the test's established home, creating one on first use.
+// It NEVER reads the ambient MOAI_HOME.
+func testHome(t *testing.T) string {
+	t.Helper()
+	if v, ok := moaiHomes.Load(t); ok {
+		return v.(string)
+	}
+	return freshTestHome(t)
+}
 
 // jsonMarshal / jsonUnmarshalObj are tiny wrappers so the fixture helpers
 // keep one import block.
@@ -26,16 +55,12 @@ func jsonUnmarshalObj(line string) (map[string]any, error) {
 }
 
 // spoolFixture seeds the user-scoped spool with one entry per kind. The
-// FIRST call in a test establishes a temporary MOAI_HOME; later calls reuse
-// it (a fresh home per call would wipe the consent, ledger, and queue the
-// earlier drains wrote).
+// FIRST call in a test establishes the test's isolated moai home (testHome
+// — never the ambient MOAI_HOME); later calls reuse it (a fresh home per
+// call would wipe the consent, ledger, and queue the earlier drains wrote).
 func spoolFixture(t *testing.T, entries ...bugreport.Kind) string {
 	t.Helper()
-	home := os.Getenv("MOAI_HOME")
-	if home == "" {
-		home = t.TempDir()
-		t.Setenv("MOAI_HOME", home)
-	}
+	home := testHome(t)
 	t.Setenv("CI", "")
 	dir := filepath.Join(home, filepath.FromSlash(bugreport.BugreportStoreDir))
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -67,7 +92,7 @@ func spoolFixture(t *testing.T, entries ...bugreport.Kind) string {
 
 func consentOn(t *testing.T) {
 	t.Helper()
-	home := os.Getenv("MOAI_HOME")
+	home := testHome(t)
 	configDir := filepath.Join(home, "config")
 	if err := os.MkdirAll(configDir, 0o700); err != nil {
 		t.Fatalf("mkdir config: %v", err)
@@ -80,7 +105,7 @@ func consentOn(t *testing.T) {
 
 func outboxRows(t *testing.T) []map[string]any {
 	t.Helper()
-	home := os.Getenv("MOAI_HOME")
+	home := testHome(t)
 	raw, err := os.ReadFile(filepath.Join(home, filepath.FromSlash(bugreport.BugreportStoreDir), "outbox.log"))
 	if err != nil {
 		return nil
