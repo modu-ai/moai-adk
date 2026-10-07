@@ -178,25 +178,15 @@ const (
 )
 
 // claimSpoolSection takes the spool's critical section, returning its
-// release func.
+// release func. The lock is the SAME owner-verified claim the queue uses
+// (atomicfile.ClaimSection, the D37 machinery): labelled with the owner's
+// pid and boot identity on acquire, and its contention path breaks the lock
+// ONLY on a verified-dead owner. Before this wiring the lock was a bare
+// exclusive create with no owner record and no reclaim — a process dying
+// while it held the section left the lock forever, every later capture
+// write failed its claim budget, and purge did not remove the artifact, so
+// the spool went silently dead for the life of the boot.
 func claimSpoolSection(spoolPath string) (func() error, error) {
 	lockPath := filepath.Join(filepath.Dir(spoolPath), spoolSectionClaim)
-	var lastErr error
-	for attempt := 0; attempt <= spoolSectionRetries; attempt++ {
-		err := atomicfile.Claim(lockPath, 0o600)
-		if err == nil {
-			return func() error {
-				if rmErr := os.Remove(lockPath); rmErr != nil && !errors.Is(rmErr, os.ErrNotExist) {
-					return rmErr
-				}
-				return nil
-			}, nil
-		}
-		if !errors.Is(err, os.ErrExist) {
-			return nil, err
-		}
-		lastErr = err
-		time.Sleep(spoolSectionDelay)
-	}
-	return nil, lastErr
+	return atomicfile.ClaimSection(lockPath, 0o600, spoolSectionRetries, spoolSectionDelay)
 }
