@@ -562,6 +562,44 @@ axis-by-axis) is recorded in this §E.2 block (items 1/6 above) and noted
 for SPEC wording — the lane routes SPEC-text changes through manager-spec
 if the auditor requires more than this progress note.
 
+### Final scoped repair (leader ruling β) — F10 tag table + default-ACL fixture (gate round-39)
+
+**F10 (P1, merge-blocking)** — `setMinimalAcl` used `aclOtherObj = 16`
+(0x10 = ACL_MASK) where POSIX requires ACL_OTHER = 0x20: the kernel
+rejected every constructed minimal ACL with EINVAL, so EVERY progress.md
+without extended ACLs failed to save on Linux (the §G durable carrier
+dead; the gate observed `TestAppendProgressRecordInsertsAtSectionEnd`
+failing on linux). RED observed on the darwin lane via the extracted pure
+builder: `progress_metadata_acl_test.go:30: entry 2 tag 16 (0x10), want
+32 (0x20) — ACL_OTHER is 0x20, not ACL_MASK 0x10` — the runnable RED face
+of the linux-only defect. Fix: the POSIX tag vocabulary moved to the
+shared, non-tagged `progress_metadata_acl.go`
+(aclUserObj=1, aclUser=2, aclGroupObj=4, aclGroup=8, aclMaskObj=0x10,
+aclOtherObj=0x20, corrected) with `minimalAclBlob(mode)` as the pure
+builder; `setMinimalAcl` writes its blob. Regression test
+`TestMinimalAclBlobUsesPosixOtherTag` (no build tag — runnable everywhere)
+asserts the decoded tag table [1, 4, 0x20], the mode's permission thirds
+(rw-/r--/--- for 0640), ACL_UNDEFINED_ID ids, and the constants
+themselves. **CI-linux-owned**: the kernel-facing Setxattr/EINVAL face is
+covered by the extended
+`TestAppendProgressRecordOverwritesInheritedDefaultAcl` decode assertion
+(tags exactly [1, 4, 0x20], perms [6, 4, 0]) — unmeasured on this darwin
+lane.
+
+**Item 2 (default-ACL fixture tags)** — the fixture's default-ACL blob
+used the INVALID tag values 0x8002/0x8008/0x8010/0x8020 (the default ACL
+is selected by the XATTR NAME — system.posix_acl_default — not by the tag
+values; tags stay in the 1/4/16/32 vocabulary), so Setxattr failed with
+EINVAL and the test SKIPped even on ACL-capable filesystems. Fixed:
+`defaultAclBlob` now writes tags [1, 4, 0x10, 0x20] (user_obj/group_obj/
+mask/other, permissive mask+other 6), and the test ASSERTS the F9
+inheritance precondition instead of skipping on it: the fresh original
+must carry the inherited permissive ACL (mask 0x10 + other 6 present) —
+skip only when the filesystem truly lacks default-ACL support — and after
+the replace the access ACL must decode to exactly USER_OBJ/GROUP_OBJ/OTHER
+[1, 4, 0x20] with perms [6, 4, 0] (mode 0640), proving the inheritance was
+fully overwritten. Decisive run: CI linux (Gap).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07

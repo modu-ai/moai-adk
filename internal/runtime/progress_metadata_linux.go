@@ -3,7 +3,6 @@
 package runtime
 
 import (
-	"encoding/binary"
 	"fmt"
 	"os"
 	"strings"
@@ -71,38 +70,13 @@ func seedFileMetadata(tmp, original string) error {
 	return preserveOwnership(tmp, original)
 }
 
-// setMinimalAcl writes the minimal POSIX access ACL — user_obj/group_obj/
-// other entries derived from the mode — as system.posix_acl_access,
-// REPLACING whatever inherited ACL the temp carries. The binary form is
-// the kernel's: uint32 version (2), then per entry {uint16 tag, uint16
-// perm, uint32 id}, little-endian; 0xFFFFFFFF is ACL_UNDEFINED_ID.
+// setMinimalAcl writes the minimal POSIX access ACL for the mode to the
+// path as system.posix_acl_access, REPLACING whatever inherited ACL the
+// temp carries (F9). The blob comes from minimalAclBlob — the POSIX tag
+// vocabulary it uses is documented on the shared constants (progress_
+// metadata_acl.go): USER_OBJ 1, GROUP_OBJ 4, OTHER 0x20.
 func setMinimalAcl(path string, mode os.FileMode) error {
-	const (
-		aclVersion2 = 2
-		aclUserObj  = 1
-		aclGroupObj = 4
-		aclOtherObj = 16
-		undefinedID = 0xFFFFFFFF
-	)
-	m := uint32(mode & 0o777)
-	type entry struct {
-		tag, perm uint16
-		id        uint32
-	}
-	entries := []entry{
-		{aclUserObj, uint16(m >> 6), undefinedID},
-		{aclGroupObj, uint16(m>>3) & 0x7, undefinedID},
-		{aclOtherObj, uint16(m) & 0x7, undefinedID},
-	}
-	b := make([]byte, 4+8*len(entries))
-	binary.LittleEndian.PutUint32(b[0:4], aclVersion2)
-	for i, e := range entries {
-		off := 4 + 8*i
-		binary.LittleEndian.PutUint16(b[off:], e.tag)
-		binary.LittleEndian.PutUint16(b[off+2:], e.perm)
-		binary.LittleEndian.PutUint32(b[off+4:], e.id)
-	}
-	if err := unix.Setxattr(path, posixAclAccess, b, 0); err != nil {
+	if err := unix.Setxattr(path, posixAclAccess, minimalAclBlob(mode), 0); err != nil {
 		return fmt.Errorf("write minimal access acl: %w", err)
 	}
 	return nil
