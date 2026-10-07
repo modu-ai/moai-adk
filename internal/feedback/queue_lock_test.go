@@ -7,6 +7,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 )
 
 // previousBootFixture writes a lock file whose recorded owner ran on a
@@ -15,11 +17,11 @@ import (
 // pid today. The current pid keeps the record self-consistent otherwise.
 func previousBootFixture(t *testing.T, path string) {
 	t.Helper()
-	identity := bootIDIdentity()
+	identity := atomicfile.BootIDIdentity()
 	if identity == "" {
 		t.Skip("no boot identity on this platform; the boot-comparison path is not exercised")
 	}
-	owner := lockOwner{PID: os.Getpid(), BootID: "previous-boot-" + identity}
+	owner := atomicfile.LockOwner{PID: os.Getpid(), BootID: "previous-boot-" + identity}
 	raw, err := json.Marshal(owner)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
@@ -38,11 +40,9 @@ func previousBootFixture(t *testing.T, path string) {
 // reclaimer removes a lock another reclaimer already re-acquired, and the
 // concurrent-holder detector fires.
 //
-// The fix makes verify+break+reacquire ONE critical section: the reclaimer
-// does not remove the stale lock — it RENAMES it away (atomic; only the
-// first reclaimer's rename succeeds) and loops to Claim the now-free lock
-// under its own label. A second reclaimer's rename fails (the stale lock
-// is gone) and it re-loops, finding a live labelled lock it must block on.
+// The break machinery's deterministic pins live beside the machinery in
+// internal/config/atomicfile/section_test.go; this test drives the QUEUE
+// level, where the finding manifests as a lost update.
 func TestStaleLockReclaimDoesNotDeleteTheNewLock(t *testing.T) {
 	dir := t.TempDir()
 	store := NewQueueStore(filepath.Join(dir, "queue.json"))
@@ -86,79 +86,5 @@ func TestStaleLockReclaimDoesNotDeleteTheNewLock(t *testing.T) {
 	}
 	if _, err := os.Stat(store.LockPath()); !os.IsNotExist(err) {
 		t.Fatalf("the lock survived every release: %v", err)
-	}
-}
-
-// TestBreakAbortsWhenTheFileChangedUnderneath is the DETERMINISTIC form of
-// review-gate finding #6: a reclaimer that verified a stale snapshot must
-// not remove whatever sits at the lock path NOW. The repro drives
-// breakStaleLock against a snapshot of the stale bytes while the file at
-// the path has already been replaced by a fresh labelled lock — exactly the
-// A-claimed-B-removed interleaving the concurrent repro widens for.
-// Before the fix, breakStaleLock removed by path and deleted the FRESH
-// lock; with the fix it re-reads and aborts unless the bytes are still the
-// ones it verified.
-func TestBreakAbortsWhenTheFileChangedUnderneath(t *testing.T) {
-	dir := t.TempDir()
-	store := NewQueueStore(filepath.Join(dir, "queue.json"))
-	if err := os.MkdirAll(dir, queueDirPerm); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	lockPath := store.LockPath()
-
-	// (1) The stale record the reclaimer verifies.
-	previousBootFixture(t, lockPath)
-	staleBytes, err := os.ReadFile(lockPath)
-	if err != nil {
-		t.Fatalf("read stale fixture: %v", err)
-	}
-	var staleOwner lockOwner
-	if err := json.Unmarshal(staleBytes, &staleOwner); err != nil {
-		t.Fatalf("decode stale: %v", err)
-	}
-	if !lockOwnerIsDead(staleOwner) {
-		t.Fatal("fixture: the previous-boot owner must verify dead")
-	}
-
-	// (2) Meanwhile, another reclaimer already reclaimed and acquired: the
-	// path now holds a FRESH, labelled, live lock.
-	fresh := lockOwner{PID: os.Getpid(), BootID: bootIDIdentity()}
-	freshBytes, err := json.Marshal(fresh)
-	if err != nil {
-		t.Fatalf("marshal fresh: %v", err)
-	}
-	if err := os.WriteFile(lockPath, freshBytes, queueFilePerm); err != nil {
-		t.Fatalf("write fresh lock: %v", err)
-	}
-
-	// (3) The stale-armed reclaimer acts. The fix aborts: the bytes at the
-	// path are not the ones it verified.
-	if breakStaleLock(lockPath) {
-		t.Fatal("breakStaleLock removed a lock whose bytes had changed under it")
-	}
-	after, err := os.ReadFile(lockPath)
-	if err != nil {
-		t.Fatalf("the fresh lock was destroyed: %v", err)
-	}
-	if string(after) != string(freshBytes) {
-		t.Fatalf("the fresh lock's bytes were altered: %s", after)
-	}
-}
-
-// TestBreakStillFiresOnUnchangedStaleLock pins the other half: the re-read
-// abort must not disarm the break against the lock it verified.
-func TestBreakStillFiresOnUnchangedStaleLock(t *testing.T) {
-	dir := t.TempDir()
-	store := NewQueueStore(filepath.Join(dir, "queue.json"))
-	if err := os.MkdirAll(dir, queueDirPerm); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	lockPath := store.LockPath()
-	previousBootFixture(t, lockPath)
-	if !breakStaleLock(lockPath) {
-		t.Fatal("breakStaleLock did not fire on an unchanged verified-dead lock")
-	}
-	if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
-		t.Fatalf("the stale lock survived the break: %v", err)
 	}
 }

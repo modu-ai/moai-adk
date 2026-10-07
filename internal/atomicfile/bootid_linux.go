@@ -1,6 +1,6 @@
 //go:build linux
 
-package feedback
+package atomicfile
 
 // Linux exposes the boot id as a plain file read — no syscall surface, so
 // no build-tag hazard beyond this file itself.

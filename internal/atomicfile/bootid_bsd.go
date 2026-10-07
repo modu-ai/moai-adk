@@ -1,6 +1,6 @@
 //go:build darwin || freebsd || netbsd || openbsd || dragonfly
 
-package feedback
+package atomicfile
 
 // The BSD family (darwin included) exposes the boot time as a sysctl. The
 // raw bytes are stable for the boot's lifetime, which is all the identity

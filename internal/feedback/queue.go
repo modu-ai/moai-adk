@@ -23,7 +23,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -230,173 +229,31 @@ func (s *QueueStore) Resolve(id string) (bool, error) {
 	return removed, nil
 }
 
-// lockOwner is what the lock file records: the owner's process id, the boot
-// the owner ran on, and when the lock was taken. The boot-unique id is what
-// makes a stale-break SAFE: a pid alone can be recycled across a reboot, so
-// a previous boot's lock breaks even when some live process now carries that
-// pid (it is not the owner), and a same-boot lock breaks only when the pid
-// is verifiably dead.
-type lockOwner struct {
-	PID       int    `json:"pid"`
-	BootID    string `json:"boot_id"`
-	CreatedAt string `json:"created_at"`
-}
-
 // acquireLock takes the sibling advisory lock, returning its release func.
 //
-// The primitive is atomicfile.Claim — an exclusive create, atomic on POSIX
-// (O_CREATE|O_EXCL) and on Windows (CREATE_NEW) — which is the repository's
-// existing answer to "exactly one caller proceeds". Contention retries within
-// a bounded window; it never blocks indefinitely.
-//
-// SPEC-FEEDBACK-PARTICIPATION-001 (D37, D40): the reused lock had no orphan
-// recovery — a kill between acquire and release (the same crash the summary
-// marker covers) left the lock file behind and wedged every later mutation
-// permanently. The acquire path now performs an OWNER-VERIFIED stale-lock
-// break: the lock file records the owner's pid and a boot-unique process
-// identity, and the break fires ONLY when that recorded identity no longer
-// identifies a live process — a recorded boot different from the current
-// one, or a pid that no longer names a live process. A live owner always
-// blocks, however long its mutation runs: there is NO age-based break and
-// none may be added, because the acquire budget governs acquisition retries
-// and Mutate enforces no hold-time bound — an age-only break could discard a
+// The primitive is atomicfile.ClaimSection — the owner-verified claim
+// machinery (SPEC-FEEDBACK-PARTICIPATION-001 D37/D40): an exclusive create
+// labelled with the owner's pid and boot identity, contention retried
+// within a bounded window, and a stale-lock break that fires ONLY on a
+// verified-dead owner (a recorded boot different from the current one, or
+// a pid that no longer names a live process). A live owner always blocks,
+// however long its mutation runs: there is NO age-based break and none may
+// be added, because the retry budget governs acquisition retries and
+// Mutate enforces no hold-time bound — an age-only break could discard a
 // live slow owner's committed mutation, the lost-update defect this repair
 // closes. The invariant is absolute: verified owner death, nothing else.
+// The machinery lives in internal/config/atomicfile so the capture spool's
+// section lock shares the same implementation.
 func (s *QueueStore) acquireLock() (func() error, error) {
 	dir := filepath.Dir(s.path)
 	if err := os.MkdirAll(dir, queueDirPerm); err != nil {
 		return nil, fmt.Errorf("mutate feedback queue %s: creating dir: %w", s.path, err)
 	}
-
-	lockPath := s.LockPath()
-	var lastErr error
-	for attempt := 0; attempt <= queueLockRetries; attempt++ {
-		err := atomicfile.Claim(lockPath, queueFilePerm)
-		if err == nil {
-			if werr := s.writeLockOwner(lockPath); werr != nil {
-				// The lock is HELD but unlabelled: release immediately and
-				// report — an unlabelled lock could never be verified, and
-				// wedging on write failure beats breaking the invariant.
-				_ = os.Remove(lockPath)
-				return nil, fmt.Errorf("mutate feedback queue %s: labelling lock: %w", s.path, werr)
-			}
-			return func() error {
-				// SPEC-FEEDBACK-PARTICIPATION-001 (finding #6, harm bound):
-				// the release removes the lock only when the label at the
-				// path is STILL THIS PROCESS'S identity (pid + boot). A freak
-				// interleaving — a stale-armed reclaimer's remove landing on
-				// this lock, another writer re-claiming — must not let this
-				// release delete the OTHER writer's lock. CreatedAt is
-				// deliberately not compared: the identity fields are what
-				// ownership means.
-				raw, rerr := os.ReadFile(lockPath)
-				if rerr != nil {
-					return nil // gone: nothing to remove
-				}
-				var atPath lockOwner
-				if err := json.Unmarshal(raw, &atPath); err != nil ||
-					atPath.PID != os.Getpid() || atPath.BootID != bootIDIdentity() {
-					return nil // not ours: remove nothing
-				}
-				if rmErr := os.Remove(lockPath); rmErr != nil && !errors.Is(rmErr, os.ErrNotExist) {
-					// A surviving artifact blocks every later writer, so the
-					// failure is reported rather than swallowed.
-					return fmt.Errorf("mutate feedback queue %s: lock release failed: %w", s.path, rmErr)
-				}
-				return nil
-			}, nil
-		}
-		if !errors.Is(err, os.ErrExist) {
-			return nil, fmt.Errorf("mutate feedback queue %s: lock %s: %w", s.path, lockPath, err)
-		}
-		// Contention: check whether the holder is a verified-dead owner. A
-		// live owner blocks through the budget; a verified-dead one is
-		// broken and the claim retried immediately.
-		if breakStaleLock(lockPath) {
-			lastErr = err
-			continue
-		}
-		lastErr = err
-		time.Sleep(queueLockRetryDelay)
-	}
-	return nil, fmt.Errorf("mutate feedback queue %s: lock %s held: %w", s.path, lockPath, lastErr)
-}
-
-// writeLockOwner labels a just-acquired lock with this process's identity.
-func (s *QueueStore) writeLockOwner(lockPath string) error {
-	owner := lockOwner{
-		PID:       os.Getpid(),
-		BootID:    bootIDIdentity(),
-		CreatedAt: time.Now().UTC().Format(time.RFC3339),
-	}
-	raw, err := json.Marshal(owner)
+	release, err := atomicfile.ClaimSection(s.LockPath(), queueFilePerm, queueLockRetries, queueLockRetryDelay)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("mutate feedback queue %s: %w", s.path, err)
 	}
-	// The file exists (Claim created it); write the label in place. The
-	// window between Claim and this write is the crash window the break
-	// cannot classify — an unlabelled lock reads as LIVE (conservative: it
-	// wedges until the boot changes, never breaks a possibly-live owner).
-	return os.WriteFile(lockPath, raw, queueFilePerm)
-}
-
-// breakStaleLock removes the lock file when its recorded owner is verifiably
-// dead, reporting whether a break happened.
-//
-// The verdict is made from a FRESH read of the file at the path — never a
-// carried-over snapshot — and the removal is gated on an immediate re-read:
-// if the bytes changed between the verdict and the remove, another reclaimer
-// has already reclaimed and acquired (its fresh, labelled, live lock now
-// sits at the path), and removing by path would delete THEIR lock. That
-// re-read gate is what keeps two concurrent reclaimers from entering the
-// section together (review-gate finding #6); the residual gap between the
-// re-read and the remove is nanoseconds-wide and documented as
-// residual-risk in the fix's commit.
-// staleLockRereadFn is the re-read seam (the gate test injects the second
-// reclaimer's re-acquire between the verdict and the re-read).
-var staleLockRereadFn = os.ReadFile
-
-// staleLockRemoveFn is the removal seam.
-var staleLockRemoveFn = os.Remove
-
-// breakStaleLock removes the lock file when its recorded owner is
-// verifiably dead, reporting whether a break happened.
-//
-// The verdict is made from a FRESH read of the file at the path — never a
-// carried-over snapshot — and the removal is gated on an immediate re-read:
-// if the bytes changed between the verdict and the remove, another
-// reclaimer has already reclaimed and acquired (its fresh, labelled, live
-// lock now sits at the path), and removing by path would delete THEIR lock
-// (review-gate finding #6). The residual nanosecond window between the
-// re-read and the remove is bounded on the harm side by the release path's
-// own self-label check (a release whose label is no longer at the path
-// removes nothing), so a freak interleaving degrades to one extra lock
-// cycle, never to two writers inside one section by construction of the
-// next acquire.
-func breakStaleLock(lockPath string) bool {
-	raw, err := staleLockRereadFn(lockPath)
-	if err != nil {
-		return false // unreadable: cannot verify death, never break
-	}
-	var owner lockOwner
-	if err := json.Unmarshal(raw, &owner); err != nil {
-		return false // unlabelled (a crash between Claim and label): live
-	}
-	if !lockOwnerIsDead(owner) {
-		return false
-	}
-	// The re-read gate: the bytes at the path must STILL be the bytes the
-	// verdict was made on.
-	now, err := os.ReadFile(lockPath)
-	if err != nil || string(now) != string(raw) {
-		return false // someone reclaimed between verdict and remove
-	}
-	if err := staleLockRemoveFn(lockPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return false
-	}
-	slog.Warn("feedback queue: broke a stale lock (verified-dead owner)",
-		"lock", lockPath, "owner_pid", owner.PID, "owner_boot", owner.BootID)
-	return true
+	return release, nil
 }
 
 // writeAtomic persists rec through same-directory temp + atomic rename, so a

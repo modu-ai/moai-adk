@@ -1,6 +1,6 @@
 //go:build !darwin && !freebsd && !netbsd && !openbsd && !dragonfly && !linux
 
-package feedback
+package atomicfile
 
 // Platforms without a stdlib boot identity (windows among them): current-
 // BootID returns empty, boot comparison is unavailable, and the stale-lock
