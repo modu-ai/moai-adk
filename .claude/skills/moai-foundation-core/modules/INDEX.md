@@ -175,7 +175,7 @@ Use Cases:
 # Load specific module
 from pathlib import Path
 
-skill_path = Path(".claude/skills/moai-foundation-core")
+skill_path = Path("~/.claude/skills/moai-foundation-core")
 module_path = skill_path / "modules" / "trust-5-framework.md"
 
 with open(module_path) as f:
@@ -209,7 +209,7 @@ class ModuleLoader:
 class ModuleSearch:
  def search_topic(self, query: str) -> list:
  """Search for topic across all modules."""
- modules_dir = Path(".claude/skills/moai-foundation-core/modules")
+ modules_dir = Path("~/.claude/skills/moai-foundation-core/modules")
  results = []
  
  for module_file in modules_dir.glob("*.md"):

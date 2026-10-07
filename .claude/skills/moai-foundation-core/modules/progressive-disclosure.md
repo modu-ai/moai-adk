@@ -476,7 +476,7 @@ class SKILLMDValidator:
 validator = SKILLMDValidator()
 
 # Validate skill
-result = validator.validate_skill(".claude/skills/moai-foundation-core")
+result = validator.validate_skill("~/.claude/skills/moai-foundation-core")
 
 if not result["valid"]:
  print(f" SKILL.md exceeds limit: {result['line_count']} lines")
@@ -484,7 +484,7 @@ if not result["valid"]:
  print(f" Recommendation: {result['recommendation']}")
  
  # Auto-split
- validator.auto_split_skill(".claude/skills/moai-foundation-core")
+ validator.auto_split_skill("~/.claude/skills/moai-foundation-core")
  print(" Skill automatically split into modules")
 ```
 
@@ -570,7 +570,7 @@ class ProgressiveContentLoader:
  )
 
 # Usage
-loader = ProgressiveContentLoader(".claude/skills/moai-foundation-core")
+loader = ProgressiveContentLoader("~/.claude/skills/moai-foundation-core")
 
 # User with 30 seconds
 quick_help = loader.load_level_1() # ~1K tokens

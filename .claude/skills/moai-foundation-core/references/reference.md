@@ -407,7 +407,7 @@ diagnose.verify_module_structure()
 
 - MoAI-ADK Documentation: See project README
 - Claude Code Skills Guide: https://docs.anthropic.com/claude-code/skills
-- GEARS Specification Format (current; canonical authoring guide): `.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format"
+- GEARS Specification Format (current; canonical authoring guide): `~/.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format"
 - EARS Specification Format (legacy reference, 6-month backward-compat): See `modules/spec-first-ddd.md` + `modules/spec-ears-format.md`
 
 ### Module References

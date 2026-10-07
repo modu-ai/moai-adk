@@ -42,7 +42,7 @@ EARS Patterns (legacy reference, 6-month backward-compat — expires 2026-11-22)
 - Optional: WHERE possible, system SHOULD...
 
 Extended Documentation:
-- Canonical GEARS authoring guide: `.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format" (current)
+- Canonical GEARS authoring guide: `~/.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format" (current)
 - [EARS Format Reference (legacy reference, deprecated — see GEARS Format guide)](spec-ears-format.md) - Detailed EARS patterns and examples for legacy SPECs
 - [DDD Implementation](spec-ddd-implementation.md) - ANALYZE-PRESERVE-IMPROVE workflows
 
@@ -159,7 +159,7 @@ Workflow:
 
 For comprehensive implementation patterns including MFA examples, iterative SPEC refinement, and CI/CD integration, see:
 
-- Canonical GEARS authoring guide: `.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format" (current notation)
+- Canonical GEARS authoring guide: `~/.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format" (current notation)
 - [EARS Format Reference (legacy reference, deprecated — see GEARS Format guide)](spec-ears-format.md) - All EARS patterns with examples for the 88 legacy SPECs
 - [DDD Implementation](spec-ddd-implementation.md) - Advanced DDD workflows
 
