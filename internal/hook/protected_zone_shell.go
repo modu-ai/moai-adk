@@ -679,6 +679,15 @@ func (w *zoneWalker) zoneWalkDeclared(name string, def *zoneFuncBodies) {
 		}
 	}
 	w.funcs = result
+	if def.conditional {
+		// card-review P1 (t1574), the transitive instance of REQ-ZSP-002:
+		// the call itself may not have executed — the declaring branch may
+		// not have run, and real bash answers command-not-found — so every
+		// declaration the bodies INSTALLED (absent from the pre-call entry)
+		// keeps the possibility of absence. A certain call's bodies keep
+		// the straight-line replacement semantics unchanged.
+		w.funcs = mergeZoneWorlds(entry, result)
+	}
 	if prevCalling {
 		// restore the OUTER frame's accounting: the inner frame's exit must
 		// not erase it (card t1574 K5, REQ-ZSP-005)
@@ -1134,10 +1143,37 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 		// the same shape). The zero-iteration world keeps the pre-loop
 		// function registry too (round 14 P1).
 		preFuncs := cloneZoneFuncs(w.funcs)
+		// gate round 3 (card t1574): the condition list ALWAYS executes at
+		// least once — walk it once up front so the names it declares are
+		// snapshotted and stay CERTAIN post-loop. The fixed point below
+		// restarts from the pre-loop registry and re-walks condition and
+		// body together, which only unions more worlds. Only the BODY may
+		// run zero times: the join downgrades body-only declarations to
+		// conditional, and the pass below un-downgrades every name the
+		// condition snapshot holds.
+		for _, s := range cmd.Cond {
+			w.zoneWalkStmt(s)
+		}
+		condDeclared := cloneZoneFuncs(w.funcs)
+		// a FRESH copy, never preFuncs itself: the fixed point's live map
+		// must stay a distinct object from the entry world the join below
+		// treats as immutable, or the fixed point's declarations would
+		// masquerade as pre-loop certainties and the absent-world marking
+		// would never fire
+		w.funcs = cloneZoneFuncs(preFuncs)
 		w.walkBodyFixedPoint(cmd.Cond, cmd.Do)
 		// the zero-iteration world may skip the body: a name declared only
 		// inside it keeps the possibility of absence (card t1574 K2)
 		w.funcs = mergeZoneWorlds(preFuncs, w.funcs)
+		for name, def := range w.funcs {
+			if def.conditional {
+				if _, was := condDeclared[name]; was {
+					// declared by the condition list: every condition
+					// evaluation defines it — certain whatever the body did
+					def.conditional = false
+				}
+			}
+		}
 	case *syntax.CaseClause:
 		entry := append([]string(nil), w.cwds...)
 		entryFuncs := cloneZoneFuncs(w.funcs)

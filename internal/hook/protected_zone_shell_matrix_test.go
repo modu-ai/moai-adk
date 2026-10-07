@@ -71,9 +71,24 @@ func zoneParsingMatrixCells() []zoneMatrixCell {
 	add("conditional_decl_if_branch", "if false; then rm() { :; }; fi; rm zone_dir/x", zoneMatrixDenyProbe)
 	add("conditional_decl_for_body", "for i in 1; do rm() { :; }; done; rm zone_dir/x", zoneMatrixDenyProbe)
 	add("conditional_decl_while_body", "while false; do rm() { :; }; done; rm zone_dir/x", zoneMatrixDenyProbe)
+	// gate round 3 (card t1574): the while/until CONDITION list always
+	// executes at least once, so a declaration there is CERTAIN post-loop —
+	// the final rm resolves to the no-op shadow (allow, as at base). Only
+	// BODY-declared names are conditional (the body may run zero times); the
+	// third cell pins that body side inside the very same loop shape.
+	add("while_cond_decl_certain", "while rm() { :; }; false; do :; done; rm zone_dir/x", zoneMatrixAllow)
+	add("until_cond_decl_certain", "until rm() { :; }; false; do :; done; rm zone_dir/x", zoneMatrixAllow)
+	add("while_body_decl_conditional_same_loop", "while ls() { :; }; false; do rm() { :; }; done; rm zone_dir/x", zoneMatrixDenyProbe)
 	add("conditional_decl_case_arm", "case x in x) rm() { :; };; esac; rm zone_dir/x", zoneMatrixDenyProbe)
 	add("certain_shadow_control_paren", "rm() { :; }; rm zone_dir/x", zoneMatrixAllow)
 	add("certain_shadow_control_kw", "function rm { :; }; rm zone_dir/x", zoneMatrixAllow)
+	// card-review P1 (lane disposition: fold into the card): a CONDITIONAL
+	// call's body-installed declarations keep the possibility of absence —
+	// real bash answers command-not-found for f, so rm is never shadowed and
+	// the protected file is deleted for real. The control pins the CERTAIN
+	// chain (f declared straight-line: real bash really does shadow rm).
+	add("transitive_conditional_decl", "false && f() { rm() { :; }; }; f; rm zone_dir/x", zoneMatrixDenyProbe)
+	add("certain_chain_shadow_control", "f() { rm() { :; }; }; f; rm zone_dir/x", zoneMatrixAllow)
 
 	// -- static wrapper prefixes (REQ-ZSP-003/007): verbs under the
 	// enumerated set, zone and non-zone targets, the controls.
