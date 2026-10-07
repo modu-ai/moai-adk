@@ -19,11 +19,13 @@ related_specs: [SPEC-AUDIT-CEILING-001, SPEC-AUDIT-CEILING-002]
 
 ## §A Background and Motivation
 
-Card t1560 (lane-2, run tmhxo0, in-lane plan→run→sync) repairs two defects in
-the audit-ceiling outcome engine (`internal/runtime/audit_ceiling.go`, the
-SPEC-AUDIT-CEILING-001 deliverable that reached main via card t1500's chain).
-Both defects were measured by the dispatching lane and re-verified line-by-line
-against source at `903ccd028` in this tree before this SPEC was authored.
+Card t1560 (lane-2, run tmhxo0, in-lane plan→run→sync) repairs four defect
+sites (D1-D4) in the audit-ceiling outcome engine
+(`internal/runtime/audit_ceiling.go`) and its round counter
+(`internal/runtime/audit_counter.go`) — the SPEC-AUDIT-CEILING-001 deliverable
+that reached main via card t1500's chain. Each defect site was measured by the
+dispatching lane or the leader rulings and re-verified line-by-line against
+source at `903ccd028` in this tree before this SPEC was authored.
 
 **D1 — `previousAuditedSHA` early exit on a legacy-family latest verdict**
 (`internal/runtime/audit_ceiling.go:274-277`). The function resolves the latest
@@ -153,13 +155,19 @@ round; the numeric-but-overflowing suffix is the one spelling that collapses.
 
 - **REQ-ACR-009** (When a convention-family evidence file carries an
   iteration suffix that does not parse as an in-range integer — an Atoi range
-  error — the round counter shall count it as its own round): An unparseable
-  iteration number is never collapsed into another round's number (round 1
-  included); it counts via the counter's existing fail-counted path, never
-  becomes the latest verdict, and never merges with a same-numbered file
-  into one round. Semantics note (leader-carried, one line): round-counting
-  semantics change — unparseable iteration numbers count as their own round
-  rather than collapsing to 1.
+  error — or is a base report matching the convention with no number, the
+  round counter shall count it as its own round): An unparseable iteration
+  number is never collapsed into another round's number (round 1 included);
+  it counts via the counter's existing fail-counted path and never becomes
+  the latest verdict. A base report (`plan-audit.md`, no number) counts as
+  its own round and never merges with numbered rounds via the n=1 default
+  (`audit_counter.go:109` initializes `n = 1` before the Atoi attempt — the
+  collapse mechanism the leader's gate measured); the base report remains
+  eligible as latest evidence. Parsed-number dedupe (within and across
+  families) is unchanged. Semantics note (leader-carried, one line):
+  round-counting semantics change — unparseable iteration numbers and base
+  reports count as their own rounds rather than collapsing via the n=1
+  default.
 
 ## §C Success Criteria
 
@@ -199,7 +207,7 @@ unmodified main and must keep passing) — deliberately not a RED observation.
 The exclusions below bound this repair SPEC; anything named here is out of
 scope for card t1560 and must ride its own card or SPEC.
 
-### Out of Scope — engine surface beyond the two defects
+### Out of Scope — engine surface beyond the four defect sites (D1-D4)
 
 - No refactor of `audit_ceiling.go` / `audit_counter.go` beyond the named
   repair sites (D1-D4) — no restructuring of the outcome ladder, no signature
@@ -238,6 +246,18 @@ scope for card t1560 and must ride its own card or SPEC.
 
 ## HISTORY
 
+- v0.3.1 (2026-10-07): leader rulings #3, both approved, no new IDs. R1
+  sweep (iter-2's only blocking finding — the stale-count cluster, verdict
+  `.moai/reports/t1560/plan-audit-2.md` FAIL 0.96): all five count-bearing
+  tokens recomputed against the final artifact set (plan.md §C heading (4),
+  E5 four-path list, spec.md §A opening four defect sites with both engine
+  files named, acceptance.md DoD #1 five RED cells, §D.5 the five
+  RED-first evidences). AC-ACR-014 + REQ-ACR-009 extended per the
+  base-report fold (third mode of the same n=1-init mechanism,
+  `audit_counter.go:109`): base + numbered → 2, one normal + N unparseable
+  → 1+N (gate measured sources=3 count=1), bare base alone unchanged;
+  semantics note extended. plan.md §H mapping gains the v0.3.1 rows;
+  decision-index Q6 records the ruling.
 - v0.3.0 (2026-10-07): plan-audit-1 repair revision (verdict FAIL 0.81,
   iteration 1/2, receipt rcpt-136dc402f67a6b1d93bf69bf,
   `.moai/reports/t1560/plan-audit-1.md`) + leader ruling #2. MP-8 closed by

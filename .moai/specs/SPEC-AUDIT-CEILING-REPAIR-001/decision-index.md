@@ -103,3 +103,21 @@ Operator verdict: ADOPTED — leader ruling #2 2026-10-07:
 / AC-ACR-014, M2 extended, the leader-required one-line semantics note
 carried in the AC wording (recorded by manager-spec per the leader's
 instruction)
+
+### Q6: Does the base report (plan-audit.md, convention match with no number) fold into the same D4 round-counting fix as the overflow suffix?
+
+Label: FOUNDER
+Class: product-level (same round-counting semantics axis as Q5 — the base
+report's round identity changes)
+Authority anchor: none in the committed register — the settling act is the
+leader ruling #3 of 2026-10-07 (base-report fold approved; same 주제당 한 장
+basis as Q4/Q5)
+Why unresolved at authoring: the base-report collapse is the third mode of
+the same n=1-init mechanism (`audit_counter.go:109` initializes `n = 1`
+before the Atoi attempt) but was not named in ruling #2; the leader's gate
+measured sources=3, count=1 on `903ccd028` (one normal + two overflow files)
+Operator verdict: ADOPTED — leader ruling #3 2026-10-07: base-report
+parity folded into REQ-ACR-009 / AC-ACR-014 (same IDs, cells extended — base
++ numbered → 2, one normal + N unparseable → 1+N, bare base alone
+unchanged); no new IDs; the R1 stale-count sweep executed in the same pass
+(recorded by manager-spec per the leader's instruction)

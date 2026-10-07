@@ -165,18 +165,27 @@ artifact-only).
   (the persistence milestone). Test:
   `TestAppendProgressRecordConcurrentSurvival` (`audit_ceiling_test.go`).
 
-- **AC-ACR-014 (D4 RED, release-blocking)** — Given a report directory with
-  `plan-audit.md` (round 1) and `plan-audit-iter99999999999999999999.md` (a
-  20-digit suffix that overflows the integer range), When `CountAuditRounds`
-  runs, Then the count is 2 — the overflow file is fail-counted as its own
-  round, not merged into round 1, and does not become `LatestPath`. RED:
-  `go test -run '^TestCountAuditRoundsOverflowOwnRound$' ./internal/runtime/`
-  fails on `903ccd028` with count 1, want 2 — the Atoi range error at
-  `audit_counter.go:111` leaves `n` at its initialized 1, so the two files
-  dedupe into one round. **Semantics note (one line, leader-carried,
+- **AC-ACR-014 (D4 RED, release-blocking)** — Given convention-family report
+  files, When `CountAuditRounds` runs, Then every file counts as its own
+  round under the leader-ruled parity (all cases RED on unmodified main
+  `903ccd028`). RED: `go test -run
+  '^TestCountAuditRoundsOverflowOwnRound$' ./internal/runtime/`. Cases:
+  (a) `plan-audit.md` + `plan-audit-iter99999999999999999999.md` (20-digit
+  overflow) → count 2 — RED today: 1, because the Atoi range error at
+  `audit_counter.go:111` leaves `n` at its initialized 1 and the two files
+  dedupe into one round; the overflow file is fail-counted and never becomes
+  `LatestPath`. (b) `plan-audit.md` + `plan-audit-iter1.md` → count 2 — RED
+  today: 1, because the convention branch initializes `n = 1` at
+  `audit_counter.go:109` BEFORE the Atoi attempt, so the base report and a
+  numbered file collapse into `seen[1]`. (c) one normal + N unparseable
+  files → 1+N — the leader's gate measured the collapse on `903ccd028` as
+  sources=3, count=1 (ruling #3 evidence material). (d) non-regression arm:
+  a bare `plan-audit.md` alone still counts 1 and remains the selected
+  `LatestPath` evidence. **Semantics note (one line, leader-carried,
   non-blocking auditor note): round-counting semantics change — unparseable
-  iteration numbers count as their own round rather than collapsing to 1.**
-  **RED is a new test (E8 evidence required).** Green at M2. Test:
+  iteration numbers and base reports count as their own rounds rather than
+  collapsing via the n=1 default.** **RED is a new test (E8 evidence
+  required).** Green at M2. Test:
   `TestCountAuditRoundsOverflowOwnRound` (`audit_counter_review_test.go`).
 
 ## §D.1 Severity classification
@@ -240,7 +249,7 @@ repair's constraint layer, not to a single REQ.
 
 ## §D.5 Quality gates (TRUST 5)
 
-- **Tested**: AC-ACR-012 suite green; both RED-first evidences recorded.
+- **Tested**: AC-ACR-012 suite green; the five RED-first evidences recorded.
 - **Readable**: new tests follow the existing fixture/comment style of their
   host files (`newCeilingFixture`, `writeAuditFixture`, the F-series comment
   convention of `audit_counter_review_test.go`).
@@ -252,7 +261,7 @@ repair's constraint layer, not to a single REQ.
 
 ## §D.6 Closure gates (Definition of Done)
 
-1. All ACs green with §E.2 evidence; the three RED cells observed and recorded.
+1. All ACs green with §E.2 evidence; the five RED cells observed and recorded.
 2. Consistency notes (AC-ACR-010/011) recorded in progress.md.
 3. Affected-package measurement green (`go test -timeout 30m
    ./internal/runtime/...`); vet + lint clean.

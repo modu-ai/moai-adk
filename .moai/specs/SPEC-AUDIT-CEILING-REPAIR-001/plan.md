@@ -74,13 +74,13 @@ updated: 2026-10-07
 
 ## §C Pre-flight
 
-Files affected (3):
+Files affected (4):
 
 | File | Change |
 |---|---|
 | `internal/runtime/audit_ceiling.go` | D1: dual-family resolution of the latest round number in `previousAuditedSHA`. D2: debt inventory in the two record lines `persistOutcome` writes. D3: atomic §G append in `appendProgressRecord`. |
 | `internal/runtime/audit_counter.go` | D4: Atoi range error at `:111` counts as its own (fail-counted) round instead of collapsing to 1. |
-| `internal/runtime/audit_counter_review_test.go` | D1 reproduction + preservation tests and the D4 overflow test (next to the F4 sibling `TestPreviousAuditedSHALegacyPriorRound`). |
+| `internal/runtime/audit_counter_review_test.go` | D1 reproduction + preservation tests and the D4 overflow + base-report parity test (next to the F4 sibling `TestPreviousAuditedSHALegacyPriorRound`). |
 | `internal/runtime/audit_ceiling_test.go` | D2 reproduction + escaping + negative tests (next to `TestCeilingPolicyDebtAdmit`), the D1 engine-level delta test (git-based, pattern of `TestDiffInsideAnchorsHunkScope`), and the D3 concurrency test. |
 
 Pre-flight checks (all observed at plan phase):
@@ -143,11 +143,12 @@ Pre-flight checks (all observed at plan phase):
    progress.md writers and cross-process flock stay out unless the lane
    finds them required for this fix (spec.md Out of Scope).
 8. **D4 fix scope**: the Atoi range error at `audit_counter.go:111` routes to
-   the counter's existing fail-counted path (mirroring the
-   `conventionUnnumbered` handling) — the overflow file counts as its own
-   round, never becomes `LatestPath`, and no other counting semantics
-   change. The leader-required one-line semantics note is carried in
-   AC-ACR-014's wording.
+   the counter's existing fail-counted path (own round, never `LatestPath`),
+   and the base report's round identity stops flowing through the `n = 1`
+   initialization at `:109` (own round; still eligible as `LatestPath`;
+   parsed-number dedupe within and across families unchanged) — leader
+   ruling #3, both modes of the same n=1-init mechanism. The leader-required
+   one-line semantics note is carried in AC-ACR-014's wording.
 
 ## §E Self-Verification (run-phase exit matrix)
 
@@ -163,9 +164,10 @@ Pre-flight checks (all observed at plan phase):
   ceiling/card-review tests named in AC-ACR-012 all pass unchanged.
 - E4 Lint/format — `go vet ./internal/runtime/...` and `golangci-lint run`
   clean on the changed package; gofmt clean.
-- E5 Scope grep — the diff touches exactly the three files of §C; no
-  `auditverdict`, `DeltaEligible`, or JSON-path (`RecordCeilingOutcome`)
-  changes.
+- E5 Scope grep — the diff touches exactly the four files of §C
+  (`audit_ceiling.go`, `audit_counter.go`, `audit_counter_review_test.go`,
+  `audit_ceiling_test.go`); no `auditverdict`, `DeltaEligible`, or JSON-path
+  (`RecordCeilingOutcome`) changes.
 - E6 Record grammar spot-check — §G record for a no-debt outcome is
   byte-identical to the pre-repair grammar (AC-ACR-008).
 - E7 Consistency notes — the t1500/t1538 read-and-note records present in
@@ -257,13 +259,27 @@ Pre-flight checks (all observed at plan phase):
   - `plan.md#§H` — ranges updated (REQ 001..009, AC 001..014, Q1-Q5) + this
     mapping (D6)
   - `spec.md#frontmatter-version` — `version: "0.3.0"` (D5)
+- v0.3.1 (leader rulings #3; iter-2 verdict `.moai/reports/t1560/plan-audit-2.md`,
+  FAIL 0.96, receipt rcpt-2146b6cf92f676039aae9490 — fix_scope:
+  `plan.md#§C-heading`, `plan.md#§E5`, `plan.md#§H-mapping`,
+  `spec.md#§A-opening`, `acceptance.md#§D.6-DoD1`, `acceptance.md#§D.5-Tested`):
+  - `plan.md#§C-heading` — "Files affected (4)" (R1 token 1)
+  - `plan.md#§E5` — explicit four-path list (R1 token 2)
+  - `spec.md#§A-opening` — four defect sites D1-D4, both engine files named (R1 token 3)
+  - `acceptance.md#§D.6-DoD1` — five RED cells (R1 token 4)
+  - `acceptance.md#§D.5-Tested` — the five RED-first evidences (R1 token 5)
+  - `acceptance.md#AC-ACR-014` + `spec.md#REQ-ACR-009` — base-report parity
+    extension (leader ruling #3 R2)
+  - iteration-2 audit targets named per R2: REQ-ACR-009 / AC-ACR-014
+    (audited in full by iteration 2 per its delta-scope note)
 - SPEC-AUDIT-CEILING-001 (`REQ-ACE-003/004/007/012` — the postures this
   repair restores), SPEC-AUDIT-CEILING-002 (JSON path, untouched)
 - Card t1560 intake: `.moai/reports/t1560/intake.md`
 - plan-audit-1 verdict: `.moai/reports/t1560/plan-audit-1.md` (FAIL 0.81,
   receipt rcpt-136dc402f67a6b1d93bf69bf)
-- Leader rulings: scope extension (2026-10-07, decision-index Q4) and D4
-  fold-in (2026-10-07, decision-index Q5) — both on the 주제당 한 장 basis
+- Leader rulings: scope extension (2026-10-07, decision-index Q4), D4
+  fold-in (2026-10-07, decision-index Q5), R1 sweep + base-report fold
+  (2026-10-07, decision-index Q6) — all on the 주제당 한 장 basis
 - t1500 seal: excerpt at `references/t1500-seal-excerpt.md` (source:
   primary checkout
   `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1500/.moai/reports/t1500/lane28-wait-claude-gate.md`)
