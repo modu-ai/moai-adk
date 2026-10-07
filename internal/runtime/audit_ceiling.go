@@ -835,14 +835,26 @@ func progressWithRecord(content, line string) string {
 	return strings.Join(out, "\n") + "\n"
 }
 
+// listItemMarker matches a list-item marker at the start of a line: a
+// bullet (-, *, +) or an ordered number with . or ).
+var listItemMarker = regexp.MustCompile(`^([-*+]|\d{1,9}[.)])[ \t]+(\S.*)$`)
+
 // opensFence reports the fence a line OPENS: a line whose leading run is at
-// least three backticks or three tildes, indented 0-3 columns (round-4
-// edge 5 — Markdown's fenced code blocks; a deeper indent makes the line an
-// INDENTED CODE BLOCK, not a fence; the fence character and its run length
-// decide which line can close it).
+// least three backticks or three tildes, indented 0-3 columns — either
+// bare (round-4 edge 5: a deeper indent makes the line an INDENTED CODE
+// BLOCK, not a fence) or inside a LIST ITEM ("- ```text", "1. ~~~go":
+// Markdown lets list markers carry fences, and their indented closers must
+// CLOSE them rather than open phantoms — consolidated item 4). The fence
+// character and its run length decide which line can close it.
 func opensFence(line string) (c byte, n int, ok bool) {
 	indent, trimmed := fenceIndent(line)
 	if indent > 3 || trimmed == "" {
+		return 0, 0, false
+	}
+	if m := listItemMarker.FindStringSubmatch(trimmed); m != nil {
+		trimmed = m[2]
+	}
+	if trimmed == "" {
 		return 0, 0, false
 	}
 	c = trimmed[0]

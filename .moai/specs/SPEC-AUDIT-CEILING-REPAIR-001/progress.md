@@ -531,6 +531,18 @@ the test fixture itself initially pre-cleaned the referent with
 filepath.Join before creating the symlink — the kernel stores the raw
 string; the fixture now preserves it.)
 
+**Item 4 — list-item fences (gate round-38)**: RED observed pre-fix at
+HEAD `e54ef43ab`: `§G heading appears 2 times, want 1 (the list-item fence
+swallowed the real one)` — "- ```text" (a fence INSIDE a list item) was
+not recognized as an opener, so its indented closer "  ```" was misread as
+an OPENER and the phantom swallowed the real §G. Fix: opensFence
+recognizes the list-item form via `listItemMarker` (bullet - * + or an
+ordered 1. / 1) marker followed by the fence run — the item's fence opens,
+its indented closer closes it, and the real §G after it is found.
+Regression test `TestAppendProgressRecordStartHeadingSkipsListFence`
+(`audit_ceiling_fence_test.go`): one §G, no duplicate, record at the
+block's end.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07
