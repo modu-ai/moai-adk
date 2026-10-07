@@ -220,7 +220,23 @@ Run-phase gaps carried from earlier generations (unchanged, CI owns the verdicts
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+```yaml
+sync_complete_at: 2026-10-08
+sync_commit_sha: "pending-backfill-sync"   # D3 placeholder — a commit cannot cite its own SHA; the real sync SHA is backfilled in the follow-up commit
+sync_status: complete
+ac_pass_count: 25                          # unchanged from §E.3 — the sync phase adds no criteria; five plan-artifact bodies stayed frozen (only the spec.md frontmatter status/updated transition rode this commit)
+ac_fail_count: 0
+b12_self_test_a: "pre-emission grep: grep -c 'SPEC-FEEDBACK-PARTICIPATION-001' CHANGELOG.md → 0 (exit 1) — no duplicate entry existed before emission"
+b12_self_test_b: "AC count: MOAI-AC-COUNTER on acceptance.md → live=25 excluded=0 ambiguous=0; the CHANGELOG entry references the same 25 criteria (AC-001..025)"
+b12_self_test_c: "file-path verification: every path named in the entry verified by ls — internal/bugreport/, internal/feedback/, internal/feedback/outbox/, internal/feedback/publish/, internal/feedback/publish/model.go, internal/cli/feedback_participation.go, internal/cli/feedback_participation_model.go, 3 skill-body copies (internal/template/templates/.claude/skills/moai/workflows/feedback.md + .claude/skills/ + plugins/moai/), docs-site/content/{en,ko}/utility-commands/moai-feedback.md"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → Added, first entry (above SPEC-MEMORY-FOLD-BUDGET-001)"
+frontmatter_status_transitions:
+  spec_md_status: "in-progress → completed"   # merged 3-phase close on this single sync commit (no separate implemented-staging commit; draft→in-progress was M1's sanctioned run-phase edit)
+  spec_md_updated: "2026-10-07 → 2026-10-08"
+  plan_acceptance_updated: "n/a — plan.md and acceptance.md carry no frontmatter block at all (Artifact Statelessness permits omission); no updated: field exists to refresh"
+canary_compliance_check:
+  shipped: true   # this SPEC defines forward-looking policies its own sync-shipped tests guard: the no-auto-repair-artifact guard and TestParticipationQuestionRequiresSender (AC-024) hold the release-ordering invariant; both green in §E.2 M7 and untouched by the sync phase
+```
 
 ## §F Phase 4 Mode Selection
 
