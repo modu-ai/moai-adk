@@ -92,7 +92,10 @@ r10 수리 판정 통과(리뷰어 명시: 캐시 회귀 테스트 3개 통과).
   - **타 소관 3건 — r5와 같은 develop-기저 재유입(main 착지분)**: ① P2 windows 획득 가드 중단 복구(t1509) ② P2 bundle 제거 전 journal 복구(`8e85f26ec`/`840826fa6` 대역) ③ P2 doctor_harness skillsDir 사용자 경로 전환 과잉(`840826fa6` 대역). 원장 행 소관.
 - **턴종료 게이트 발견 처분 (M2 세션 r9 — 본 카드 파일 0건·타 소관 5건 전부)**: install.go 저널 해시·lock_guard_windows 복구·init 재시도·doctor_user_install 역방향 검사·deployer ListTemplates 제외 필터 — 5건 전부 main 착지분(마지막 커밋 관측: `717480602`/`edb6e3fe1`/`840826fa6`/`d16fcaa2b` — t1509 SPEC-USER-ASSET-INSTALL-001 라운드 + PR1772 통합). **본 카드 파일(codex_review_*)은 이번 라운드 0건 — r7 버킷 수리는 리뷰 통과.** r5/r7 보고의 develop-기저 재유입이 계속되어 **게이트 수렴이 기저 갱신 전에는 불가** — 리더의 기저 갱신(git-strategy main 기준) 또는 게이트 회선 처분 결정 필요. CI 판정면은 GitHub check-runs이므로 로컬 게이트 루프와 독립.
 - **수렴 처분 결정 (2026-10-08, 리더 회신)**: (b) 임시 처분 채택 — 전략 기저 갱신은 발행된 전략 분기 카드 소관으로 우선순위 상향(3레인 동일 관찰 보고, 근원 후보 확정). 그 착지까지의 턴종료 게이트 루프 규칙: **매핑된 재유입 행(t1509/PR1772 대역 — r5·r7·r9 원장 행)은 '기지 클래스 참조' 1행 처리(신규 발견 아님)**, 새 좌표·새 클래스만 보고. CI 감시는 r9 헤드 `d50979f95`로 리더 재무장 완료.
-- **명시적 대기 (2026-10-08 — 수렴 처분 기록 푸시로 갱신)**: PR #1802 head = 본 원장 푸시. 대기 사유: PR CI 최종·CodeRabbit 판독·병합·done = **리더 소관**. 재확인 지점: 리더 응답 또는 PR #1802 체크 완료.
+- **턴종료 게이트 발견 처분 (M2 세션 r10 — head `fab2d8e2f` 리뷰, 기지 클래스 4건·신규 좌표 1건)**:
+  - **기지 클래스 참조 4건(1행 처리 — 리더 처분 규칙)**: init.go:946 사용자 자산 설치 실패 후 재시도 거절(`edb6e3fe1` PR1772)·doctor_harness.go:58 skillsDir 사용자 전환 과잉(`840826fa6` PR1772, r7 원장 행과 동일 좌표)·agentfm.go:126 이름별 중복 행·agentfm.go:458 저장 불가 에이전트 편집 폐기(`4192dc7ca` PR1772) — 전부 t1509/PR1772 main 대역.
+  - **신규 좌표 1건 — 보고(리더 배차 대상)**: Codex Stop 체인 `codexReviewMember`의 영수증 조회 루트(`c.root`)가 프로듀서의 앵커된 저장 루트(git toplevel)와 불일치 — 하위 디렉터리/내포 프로젝트 세션에서 `receipt absent` 오판. 본 SPEC의 Non-Goal("The Codex Stop chain (already receipt-based)")이라 본 카드 수리 소관 아니며, 크로스-하네스 상태 루트 정준 계약(프로젝트 루트 vs git 루트)이 필요 — Codex 체인 소관 카드로 배차 요청.
+- **명시적 대기 (2026-10-08 — r10 푸시로 갱신)**: PR #1802 head = r10 원장 푸시. 대기 사유: PR CI 최종·CodeRabbit 판독·병합·done = **리더 소관**. 재확인 지점: 리더 응답 또는 PR #1802 체크 완료.
 
 
 
