@@ -21,8 +21,6 @@ import (
 
 const cardChildWatchdog = 90 * time.Second
 
-func strPtr(s string) *string { return &s }
-
 type cardChildCall struct{ dir string }
 type cardChildOpts struct {
 	cards     int

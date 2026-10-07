@@ -259,13 +259,6 @@ var managedFactoryCodexLaunchFunc = func(bin string, args, env []string, dir str
 	return runManagedFactoryCodex(bin, args, env, dir, os.Stdin)
 }
 
-// managedCodexCardLaunchFunc is the lane loop's managed-launch seam
-// (SPEC-FACTORY-MANAGED-CARD-CHILD-001): same four arguments as the plain
-// divert seam above, but a separate variable — its default body owns the
-// operator-input sharing between the loop's successive managed sessions, and
-// the plain divert's stdin stays untouched.
-var managedCodexCardLaunchFunc = defaultManagedCodexCardLaunch
-
 // defaultCodexSpawnLaunch opens a detached tmux window running codex
 // directly. The command string is shell-quoted token-by-token so a tail
 // containing spaces, quotes, or $ survives the round trip.
@@ -1166,10 +1159,8 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	// managed Codex owner — the launcher keeps its PID and owns the App Server
 	// child (REQ-MS-012) — instead of the doors below. Stamps alone or the
 	// switch alone stay on the ordinary doors, and the tmux --spawn door never
-	// diverts. `moai codex -l` card children never reach this code:
-	// runCodexFactoryLane starts them itself, through the lane managed seam
-	// (managedCodexCardLaunchFunc) when the same switch is on and through the
-	// direct door otherwise.
+	// diverts. `moai codex -l` returns through runCodexFactoryLane before this
+	// path; its single parent session uses the direct door.
 	if !spawn && factoryManagedRequested(os.Environ()) && factoryLaunchEnabled(os.Environ()) {
 		if worktree.present {
 			// Same anchor discipline as the direct door: the lock names the
