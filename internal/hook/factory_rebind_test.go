@@ -11,9 +11,11 @@ package hook
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -614,4 +616,65 @@ func TestRebindPathStaysInsideBindBudget(t *testing.T) { // AC-SRH-014, REQ-SRH-
 			t.Fatal("a spent budget registered a peer or wrote a marker")
 		}
 	})
+}
+
+// A busy broker must not replace the hook caller's budget with Open's default.
+func TestRebindBrokerInitializationHonorsCallerBudget(t *testing.T) {
+	rebindEnv(t, "runX", "lane-3", "claude")
+	root := rebindRoot(t, "runX=retired", "runY=active")
+	path, err := factorymsg.BrokerPath(root, "runY")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = lock.Exec("ROLLBACK")
+		_ = lock.Close()
+	})
+	if _, err := lock.Exec("PRAGMA journal_mode=WAL"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := lock.Exec("BEGIN IMMEDIATE"); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	notice, run := registerReboundLane(ctx, laneRebindRequest{root: root}, "runY", "claude")
+	elapsed := time.Since(started)
+	t.Logf("locked initialization elapsed=%v notice=%q", elapsed, notice)
+	if run != "" || !strings.Contains(notice, "factory messaging degraded:") {
+		t.Fatalf("unexpected registration run=%q notice=%q", run, notice)
+	}
+	if elapsed > 500*time.Millisecond {
+		t.Fatalf("broker initialization exceeded caller budget allowance: %v", elapsed)
+	}
+	var peers int
+	if err := lock.QueryRow("SELECT count(*) FROM sqlite_master WHERE name='peers'").Scan(&peers); err != nil {
+		t.Fatal(err)
+	}
+	if peers != 0 {
+		t.Fatalf("failed initialization registered %d peers", peers)
+	}
+	if _, err := lock.Exec("ROLLBACK"); err != nil {
+		t.Fatal(err)
+	}
+	retryCtx, retryCancel := context.WithTimeout(context.Background(), time.Second)
+	defer retryCancel()
+	retry, err := factorymsg.OpenWithContext(retryCtx, root, "runY")
+	if err != nil {
+		t.Fatalf("initialization was not retryable after releasing the lock: %v", err)
+	}
+	if err := retry.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if retry.HandleStats().OpenConnections != 0 {
+		t.Fatal("closed retry retained broker connections")
+	}
 }

@@ -171,7 +171,14 @@ func brokerDSN(path string, query url.Values) string {
 }
 
 func Open(projectRoot, runID string) (*Store, error) {
-	return OpenWithDeadline(projectRoot, runID, 5*time.Second)
+	return OpenWithContext(context.Background(), projectRoot, runID)
+}
+
+// OpenWithContext keeps initialization and SQLite lock waits inside the caller's budget.
+// @MX:ANCHOR: [AUTO] context-bound broker initialization for ordinary and rebound hook registration
+// @MX:REASON: Open and both hook registration paths share the caller-budget clamp and connection cleanup.
+func OpenWithContext(ctx context.Context, projectRoot, runID string) (*Store, error) {
+	return openWithContext(ctx, projectRoot, runID, 5*time.Second)
 }
 
 // ValidateActiveRun rejects stale or invented run identifiers without
@@ -246,6 +253,21 @@ func OpenExistingWithDeadline(projectRoot, runID string, deadline time.Duration)
 
 // OpenWithDeadline bounds SQLite initialization and lock wait for hook paths.
 func OpenWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store, error) {
+	return openWithContext(context.Background(), projectRoot, runID, deadline)
+}
+
+func openWithContext(parent context.Context, projectRoot, runID string, deadline time.Duration) (*Store, error) {
+	if err := parent.Err(); err != nil {
+		return nil, err
+	}
+	if end, ok := parent.Deadline(); ok && time.Until(end) < deadline {
+		deadline = time.Until(end)
+	}
+	if deadline <= 0 {
+		return nil, errors.New("factory broker deadline must be positive")
+	}
+	ctx, cancel := context.WithTimeout(parent, deadline)
+	defer cancel()
 	path, err := BrokerPath(projectRoot, runID)
 	if err != nil {
 		return nil, err
@@ -254,9 +276,6 @@ func OpenWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store
 		return nil, err
 	}
 	v := url.Values{}
-	if deadline <= 0 {
-		return nil, errors.New("factory broker deadline must be positive")
-	}
 	// Leave half of the caller's budget for path setup, schema execution, and
 	// cleanup. Some SQLite drivers do not interrupt a busy wait immediately
 	// when the Go context expires, so using the full deadline here would make
@@ -279,8 +298,6 @@ func OpenWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store
 		return state == homestate.ProcessIdentityLive && fp == start
 	}
 	s.recordReject = s.recordDead
-	ctx, cancel := context.WithTimeout(context.Background(), deadline)
-	defer cancel()
 	if _, err = db.ExecContext(ctx, schema); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("initialize factory message broker: %w", err)
