@@ -5,7 +5,7 @@
 기준은 `48fa94b99023bb252a9731fbbd5ebc6dcc7472ab`다. 아래는15개 수정 소스의 호출·저장 흐름을 대조한 결과이며 런타임 보안이나 원격 실행 성공 주장은 아니다.
 
 1. `internal/cli/factory_card.go`가 현재 큐 상태를 읽어 assigned 카드의 재임대·지명 거절을 판단한다. queued 승격에서 이미 assigned인 행은 빈 `CardFields`로 전이해 기존 배정 입력을 유지한다.
-2. done·sweep·발행 probe가 Factory의 설정 우선 landed-ref 체인을 공유한다. done/sweep는 선택한 단계의 출처도 받으며 명시적 sweep `--base`는 이 기본값보다 우선한다.
+2. done·sweep·발행 probe가 Factory의 설정 우선 landed-ref 체인을 공유한다. done은 선택한 단계의 출처도 반환하고 sweep는 ref만 반환하며 명시적 sweep `--base`는 이 기본값보다 우선한다.
 3. update의 바이너리·dry-run 조기 종료 뒤 또는 clean install의 설정 보존 뒤, `internal/cli/update_deny_migration.go`가 정확히 일치하는 root deny 문자열만 치환한다. 알 수 없는 항목과 목록 순서는 유지한다.
 4. `internal/graph/card_file.go`가 도달 가능한 카드 귀속 커밋을 수집하고 native Git batch의 첫 부모 차이를 NUL 경계로 해석한다. 끝 sentinel까지 확인하지 못하면 커밋별 수집으로 돌아가며 batch의 부분 결과를 완성된 그래프로 사용하지 않는다.
 5. shell word의 quote 종류에 맞춰 escape를 해석한 뒤 `internal/hook/protected_zone_path.go`가 native 파일시스템 경로와 lexical 비교형을 만든다. POSIX literal backslash를 Windows 구분자로 바꾸지 않는 경로 처리가 이번 창의 변경이다.
