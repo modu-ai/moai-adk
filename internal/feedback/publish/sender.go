@@ -144,6 +144,11 @@ func (s *Sender) Send(ctx context.Context) error {
 // (nil in production).
 var beforeClaimForTest func()
 
+// afterSummaryForTest runs between the model call and the create — the
+// exact interleave the post-summary generation re-check must survive
+// (review gate finding, P1).
+var afterSummaryForTest func()
+
 // sendOne carries one item from its ownership claim through the outcome
 // record, and reports whether the RUN continues (false: stop — the caller
 // returns and the remaining items stay queued). A claim the sender cannot
@@ -296,6 +301,18 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 		return true
 	}
 	summary, _ := s.itemSummary(ctx, store, item, payload)
+	if afterSummaryForTest != nil {
+		afterSummaryForTest()
+	}
+
+	// The model call can take seconds, and the create is the LAST public
+	// act: the generation is re-checked AFTER the summary too — a purge
+	// landing during the model call stops the create (review gate finding,
+	// P1).
+	if storePurgedMidSend() {
+		_ = outbox.AppendOutbox(outbox.OutboxRow{Outcome: "dropped", Reason: "store purged mid-send", Fingerpr: item.Fingerprint})
+		return true
+	}
 	_, body := outbox.RenderReportWithSummary(payload, summary)
 	if err := s.Runner.CreateIssue(ctx, repo, title, strings.NewReader(body)); err != nil {
 		s.fail(ctx, store, item, err)

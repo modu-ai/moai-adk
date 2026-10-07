@@ -834,6 +834,14 @@ func tripwire(payload bugreport.Payload, entry bugreport.SpoolEntry) (reason str
 // withdrawal reporting success while untransmitted capture data survives on
 // disk is a false success.
 func discardAll(ctx context.Context) error {
+	// The withdrawal invalidates in-flight work the same way the purge
+	// does (review gate finding, P1): another flush's already-read batch
+	// re-enqueues a discarded report, and a sender mid-search publishes
+	// one, until the generation advances. The bump is the first act, before
+	// any removal.
+	if err := bugreport.BumpSpoolGeneration(); err != nil {
+		return fmt.Errorf("outbox: discard generation: %w", err)
+	}
 	spoolHadContent := spoolFileNonEmpty()
 
 	store := BugreportQueueStore()
