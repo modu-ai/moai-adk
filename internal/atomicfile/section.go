@@ -67,6 +67,21 @@ const breakingSuffix = ".breaking"
 // so a late delete can never land on a live marker.
 const reclaimSuffix = ".reclaim"
 
+// maxReclaimDepth bounds how deep a chain of nested dead guards is
+// followed. Each level of a chain is one historical process death (a
+// reclaimer that died holding its guard), so a chain deeper than a couple
+// of levels is a pathological accumulation, not a working state. The cap
+// is deliberately small for a second reason: each level's contention retry
+// loop re-walks the chain below it (the recursion re-enters through
+// ClaimSection's own attempts), so the walk cost grows exponentially with
+// the cap — at 3 the worst case is a bounded handful of chain walks. Past
+// the cap the reclaim REFUSES — no delete ever runs without its guard
+// claim — and the caller's budget backs off; a wedge beats a race, and the
+// store then needs an operator's cleanup. The depth is read from the path
+// itself (the number of reclaimSuffix occurrences), because the recursion
+// re-enters through ClaimSection's contention path.
+const maxReclaimDepth = 3
+
 // ClaimSection takes the advisory lock at path, returning its release
 // func. Contention retries within the given budget, breaking the lock only
 // on a verified-dead owner, then errors naming the path. The context is
@@ -179,21 +194,21 @@ func writeOwnerLabel(path string, perm os.FileMode) error {
 // the same verified-dead rule (the .reclaim-guarded path below), so the
 // marker cannot wedge the break.
 func BreakStaleLock(path string) bool {
-	if strings.HasSuffix(path, reclaimSuffix) {
-		// Reclaiming a dead reclaimer's own marker: bare. The downstream
-		// Claim of the breaker marker being disposed is the real
-		// arbitration — a raced double-dispose of a dead .reclaim marker is
-		// idempotent (one delete lands, the other reports success), and the
-		// claim's O_EXCL decides which reclaimer proceeds. Nesting a
-		// further marker here would recurse without bound.
-		return breakStaleLockBare(path)
-	}
-	if strings.HasSuffix(path, breakingSuffix) {
-		// Reclaiming an orphaned breaker marker: hold OUR OWN reclaim
-		// marker first — delete only on creation success. While this
-		// disposal holds .reclaim, no rival disposal can run and no rival
-		// can re-create the breaker marker as its live section, so this
-		// delete can never remove a live re-acquired marker.
+	if strings.HasSuffix(path, reclaimSuffix) || strings.HasSuffix(path, breakingSuffix) {
+		// Reclaiming a marker — a breaker's (.breaking) or a reclaimer's
+		// (.reclaim): hold ITS OWN guard marker first — delete only on
+		// creation success, at EVERY level (review-gate residual: the
+		// .reclaim path's verify-and-delete was bare, so a reclaimer
+		// pausing between its check and its delete could remove a rival's
+		// LIVE re-acquired guard). The recursion re-enters through
+		// ClaimSection's contention path when the guard is itself a dead
+		// marker; the chain depth read from the path bounds it — past
+		// maxReclaimDepth the reclaim refuses and nothing is deleted.
+		if strings.Count(path, reclaimSuffix) >= maxReclaimDepth {
+			slog.Warn("lock section: reclaim chain too deep; refusing to break",
+				"lock", path, "depth", strings.Count(path, reclaimSuffix))
+			return false
+		}
 		release, err := ClaimSection(context.Background(), path+reclaimSuffix, 0o600, 2, 2*time.Millisecond)
 		if err != nil {
 			return false // a live reclaimer owns the disposal; the caller's retry loop re-runs

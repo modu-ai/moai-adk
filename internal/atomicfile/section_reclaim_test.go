@@ -41,9 +41,61 @@ func TestMarkerReclaimRefusesWhileAReclaimerHoldsTheReclaimMarker(t *testing.T) 
 	}
 }
 
+// TestReclaimMarkerReclaimIsGuardedToo pins the residual: the .reclaim
+// marker's OWN reclaim was a bare verify-and-delete, so a reclaimer pausing
+// between its check and its delete could remove a rival's LIVE re-acquired
+// guard — the same defect the breaker-marker guard closed, one level down.
+// The .reclaim reclaim takes its own guard first, exactly like the main
+// path.
+func TestReclaimMarkerReclaimIsGuardedToo(t *testing.T) {
+	dir := t.TempDir()
+	reclaimPath := filepath.Join(dir, "queue.lock.breaking.reclaim")
+	previousBootFixture(t, reclaimPath) // a dead reclaimer's orphaned guard
+
+	// A rival holds the reclaim marker's OWN guard: it owns this disposal.
+	release, err := ClaimSection(context.Background(), reclaimPath+reclaimSuffix, 0o600, 0, time.Millisecond)
+	if err != nil {
+		t.Fatalf("the test rival could not claim the guard: %v", err)
+	}
+	defer func() { _ = release() }()
+
+	if BreakStaleLock(reclaimPath) {
+		t.Fatal("the reclaim disposed a .reclaim marker while a rival reclaimer held its guard — the disposal is not mutually excluded")
+	}
+	if _, serr := os.Stat(reclaimPath); serr != nil {
+		t.Fatal("the orphaned reclaim marker was disposed while a rival held its guard")
+	}
+}
+
+// TestDeepDeadReclaimChainRefuses: a chain of dead nested guards deeper
+// than the cap is refused outright — no delete ever runs without its guard
+// claim, so nothing is removed and the caller's budget backs off (a wedge
+// beats a race).
+func TestDeepDeadReclaimChainRefuses(t *testing.T) {
+	dir := t.TempDir()
+	markerPath := filepath.Join(dir, "queue.lock.breaking")
+	previousBootFixture(t, markerPath)
+	chain := []string{markerPath}
+	p := markerPath
+	for i := 0; i < maxReclaimDepth+1; i++ {
+		p += reclaimSuffix
+		previousBootFixture(t, p)
+		chain = append(chain, p)
+	}
+
+	if BreakStaleLock(markerPath) {
+		t.Fatal("a deeper-than-cap dead chain was broken instead of refused")
+	}
+	for _, path := range chain {
+		if _, serr := os.Stat(path); serr != nil {
+			t.Fatalf("a chain marker was deleted despite the refusal: %s", path)
+		}
+	}
+}
+
 // TestOrphanedReclaimMarkerDoesNotWedgeTheBreak: a reclaimer that died
 // holding its .reclaim marker must not wedge the break — the dead
-// reclaimer's marker is reclaimable through the bare verified-dead rule,
+// reclaimer's marker is reclaimable through the guarded verified-dead rule,
 // after which the breaker marker's own reclaim proceeds.
 func TestOrphanedReclaimMarkerDoesNotWedgeTheBreak(t *testing.T) {
 	dir := t.TempDir()
