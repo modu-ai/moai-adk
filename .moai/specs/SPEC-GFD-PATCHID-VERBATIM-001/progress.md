@@ -136,7 +136,7 @@ m1_to_mn_commit_strategy: 3 커밋 — M1 5f952f509(술어 전환+RED 게이트+
 
 ```yaml
 sync_complete_at: 2026-10-07
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own SHA; backfilled in the immediately following commit (spec-frontmatter-schema.md § D3 placeholder backfill exemption)
+sync_commit_sha: 3263dfee3   # backfilled; the sync commit cannot cite its own SHA (spec-frontmatter-schema.md § D3 placeholder backfill exemption)
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-GFD-PATCHID-VERBATIM-001' CHANGELOG.md -> 0 (pre-emission; no duplicate entry from a parallel session)"
 b12_self_test_b: "AC counter (manager-docs.md B12, MOAI-AC-COUNTER sentinels) on acceptance.md -> stdout 12, rc=0, stderr 'live=12 excluded=0 ambiguous=0'. The 12 decomposes into the 7 declared criteria AC-GPV-001..007 + the 5 dispatch-alias tokens AC-01..AC-05 of the §A mapping row (배차 지시의 AC-01..AC-05 대응 — each alias names an already-counted AC-GPV row: a cross-reference, not a criterion). The SPEC declares 7 criteria — spec.md HISTORY 'REQ 5개·AC 7개', §A table 7 rows, §E.3 ac_pass_count: 7 — and the CHANGELOG entry states 7. The canonical remedy ([REF] marks on the alias tokens) would be an acceptance.md body edit, outside manager-docs' forbidden-crossings boundary, so the aliasing is recorded here rather than marked in the body"
