@@ -206,12 +206,18 @@ func Drain() error {
 		return discardAll()
 	}
 
-	entries, err := bugreport.ReadSpool()
+	entries, consumed, err := bugreport.ReadSpoolConsumable()
 	if err != nil {
 		return fmt.Errorf("outbox: read spool: %w", err)
 	}
-	if len(entries) == 0 {
+	if len(entries) == 0 && len(consumed) == 0 {
 		return nil
+	}
+
+	// Test seam: a capture landing between the drain's read and its
+	// consume — the interleaving the batch-clear contract must survive.
+	if spoolAfterReadForTest != nil {
+		spoolAfterReadForTest()
 	}
 
 	for _, entry := range entries {
@@ -236,9 +242,20 @@ func Drain() error {
 		}
 	}
 
-	// The spool is consumed: every line is now either logged or queued.
-	return bugreport.ClearSpool()
+	// Only the consumed batch is removed (bugreport.ConsumeSpoolPrefix,
+	// under the spool's own cross-process section): entries captured after
+	// the drain's read survive for the next drain. The predecessor
+	// whole-file ClearSpool deleted every capture that landed mid-drain —
+	// a lost report.
+	if err := bugreport.ConsumeSpoolPrefix(consumed); err != nil {
+		return fmt.Errorf("outbox: consume spool: %w", err)
+	}
+	return nil
 }
+
+// spoolAfterReadForTest runs between the drain's read and its consume (nil
+// in production); the batch-clear test interposes a capture there.
+var spoolAfterReadForTest func()
 
 // drainOutcome is the reason a moai signal stopped before the queue.
 type drainOutcome struct {

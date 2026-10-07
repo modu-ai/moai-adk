@@ -67,17 +67,31 @@ func marshalSpoolEntry(entry SpoolEntry) ([]byte, error) {
 // same distrust the read-back rule applies to the queue's detail), never a
 // drain failure.
 func ReadSpool() ([]SpoolEntry, error) {
+	entries, _, err := ReadSpoolConsumable()
+	return entries, err
+}
+
+// ReadSpoolConsumable is ReadSpool plus the exact bytes the entries were
+// parsed from: the batch a consumer may later hand to ConsumeSpoolPrefix.
+// Capture keeps appending beyond those bytes while the consumer works.
+func ReadSpoolConsumable() ([]SpoolEntry, []byte, error) {
 	path, err := SpoolPath()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil
+			return nil, nil, nil
 		}
-		return nil, err
+		return nil, nil, err
 	}
+	return parseSpoolLines(raw), raw, nil
+}
+
+// parseSpoolLines parses a spool snapshot, skipping malformed lines
+// (untrusted local input).
+func parseSpoolLines(raw []byte) []SpoolEntry {
 	var out []SpoolEntry
 	for _, line := range strings.Split(string(raw), "\n") {
 		line = strings.TrimSpace(line)
@@ -93,7 +107,71 @@ func ReadSpool() ([]SpoolEntry, error) {
 		}
 		out = append(out, entry)
 	}
-	return out, nil
+	return out
+}
+
+// ConsumeSpoolPrefix removes exactly the consumed prefix from the spool —
+// the batch a drain read and processed — under the spool's cross-process
+// section, the same claim the capture append takes. Inside the section the
+// file is re-read and replaced only when it STILL begins with the consumed
+// bytes: entries capture appended after the drain's read survive for the
+// next drain (the review-gate lost-entry finding — a whole-file clear
+// deleted every capture that landed mid-drain). A file that no longer
+// starts with the batch — withdrawn, purged, or already consumed — is left
+// untouched: reprocessing is safe because the ledger dedupes, and failing
+// open here only delays a cleanup that the next drain retries.
+func ConsumeSpoolPrefix(consumed []byte) error {
+	path, err := SpoolPath()
+	if err != nil {
+		return err
+	}
+	release, err := claimSpoolSection(path)
+	if err != nil {
+		// Fail-open: the batch stays; the next drain retries the consume.
+		return nil
+	}
+	defer func() { _ = release() }()
+
+	now, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // nothing left to consume
+		}
+		return nil // unreadable: leave it for the next drain
+	}
+	if len(consumed) == 0 || !bytes.HasPrefix(now, consumed) {
+		return nil // not the batch this consumer read: touch nothing
+	}
+	rest := now[len(consumed):]
+	if len(rest) == 0 {
+		// Nothing unconsumed: removing the file keeps the store directory
+		// tidy; the next capture recreates it.
+		if rmErr := os.Remove(path); rmErr != nil && !os.IsNotExist(rmErr) {
+			return rmErr
+		}
+		return nil
+	}
+	// Replace with the unconsumed remainder, atomically, inside the section.
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".spool-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	if _, err := tmp.Write(rest); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+		return err
+	}
+	if err := tmp.Chmod(0o600); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpName)
+		return err
+	}
+	return os.Rename(tmpName, path)
 }
 
 // ClearSpool empties the spool (the drain consumed every line). Removing
