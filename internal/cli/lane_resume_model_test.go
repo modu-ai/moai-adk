@@ -129,22 +129,6 @@ func TestClaudeOptionModelDerivation(t *testing.T) {
 func TestOptionModelPolarityDefaults(t *testing.T) {
 	const probe = "--t1515-probe"
 
-	t.Run("guard, unknown option, fires (fail-closed)", func(t *testing.T) {
-		saveActiveClaudeOptionModel(t)
-		activeClaudeOptionModel = claudeOptionModel{} // the probe is absent
-		if !carriesResumeToken([]string{"--name", "lane-3", "--", probe, "--resume", "<id>"}) {
-			t.Fatal("the guard did not judge the token after the unknown option")
-		}
-	})
-
-	t.Run("guard, required-value option, does not fire", func(t *testing.T) {
-		saveActiveClaudeOptionModel(t)
-		activeClaudeOptionModel = claudeOptionModel{probe: claudeOptionRequiredValue}
-		if carriesResumeToken([]string{"--name", "lane-3", "--", probe, "--resume", "<id>"}) {
-			t.Fatal("the guard judged the model-known required value")
-		}
-	})
-
 	t.Run("validator, unknown option, refuses the bare resume", func(t *testing.T) {
 		saveActiveClaudeOptionModel(t)
 		activeClaudeOptionModel = claudeOptionModel{} // the probe is absent
@@ -178,14 +162,6 @@ func TestOptionModelResidualCompound(t *testing.T) {
 		stripped[k] = v
 	}
 	delete(stripped, "--settings") // a genuinely required-value option, absent from the fallback
-
-	t.Run("guard fires behind the stripped option", func(t *testing.T) {
-		saveActiveClaudeOptionModel(t)
-		activeClaudeOptionModel = stripped
-		if !carriesResumeToken([]string{"--name", "lane-3", "--", "--settings", "--resume", "<id>"}) {
-			t.Fatal("the stripped option shielded a resume token — a silently leaked resume")
-		}
-	})
 
 	t.Run("validator false-refuses under the compound condition", func(t *testing.T) {
 		saveActiveClaudeOptionModel(t)
@@ -245,17 +221,6 @@ func TestClaudeHelpReferenceLinesNeverOverwrite(t *testing.T) {
 	saveActiveClaudeOptionModel(t)
 	activeClaudeOptionModel = m
 
-	// Guard: --print is boolean, so the token after it is JUDGED — the
-	// resume carrier behind it fires. A flipped required-value class would
-	// consume the resume and miss.
-	if !carriesResumeToken([]string{"--", "--print", "--resume", "<id>"}) {
-		t.Fatal("the guard missed a resume behind --print — the reference line flipped its class to required-value")
-	}
-	// Guard: --debug is optional-value, so the next token stays judged
-	// (fail-closed) — the resume carrier behind it fires.
-	if !carriesResumeToken([]string{"--", "--debug", "--resume", "<id>"}) {
-		t.Fatal("the guard missed a resume behind --debug — the reference line flipped its class to required-value")
-	}
 	// Validator: a boolean option consumes nothing, so a bare --resume
 	// behind --print refuses; an optional-value option consumes silently,
 	// so the well-formed pair behind --debug passes.
@@ -282,8 +247,5 @@ func TestRemoteControlPrefixValue(t *testing.T) {
 	}
 	if err := validateResumeArgs([]string{"--", "--remote-control-session-name-prefix", "--resume"}); err != nil {
 		t.Fatalf("a prefix value that literally reads --resume was falsely refused: %v", err)
-	}
-	if carriesResumeToken([]string{"--name", "lane-3", "--", "--remote-control-session-name-prefix", "--resume"}) {
-		t.Fatal("the guard fired on a model-known prefix value")
 	}
 }

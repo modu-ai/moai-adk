@@ -806,6 +806,10 @@ func qasAcquire(t *testing.T, root string, extra ...string) qasAcquireOutcome {
 	}
 	if rec != nil {
 		rec.AcquiredAt = ""
+		// REQ-MWQ-008 (card t1479) stamps the lease too — another
+		// wall-clock field that differs between two runs of the same
+		// acquire, exactly like AcquiredAt.
+		rec.LeaseExpiresAt = ""
 	}
 	raw, marshalErr := json.Marshal(rec)
 	if marshalErr != nil {

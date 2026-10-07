@@ -62,6 +62,15 @@ func (h *postToolGuardianHandler) Handle(ctx context.Context, input *HookInput) 
 		return nil, nil
 	}
 
+	// A file outside the project (a scratchpad or /tmp script) is not scanned:
+	// the advisory about it is noise (card t1507, re-landing card t1499's
+	// reverted M4). The scope check fails closed toward scanning — an unknown
+	// root keeps the scan on, so a payload with no resolvable location is
+	// scanned as before.
+	if postToolTargetOutsideProject(input) {
+		return nil, nil
+	}
+
 	content := security.ExtractToolInputContent(input.ToolInput)
 	if content == "" {
 		return nil, nil

@@ -6,12 +6,12 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: da3ffb7cc254b5e41211cd2f300563cb1ad6191e1d2113b7123c91f3b3f0556a
+              hash: e65143b7443db9be36ba32e08b072cdaf2c02b4505378a4fa0b40a26921ef1d2
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
               path: templates/.claude/skills/moai-foundation-cc/
-              hash: e898e5afb95a10565ab8937294fc3d7a9eb7f2f46af2eff851bbd3664a77c80e
+              hash: bb29b631ef1c66f3f75792386101bf6423fb506498a9f979155d27604b5f9388
               version: 1.0.0
             - name: moai-foundation-core
               tier: core
@@ -116,7 +116,7 @@ catalog:
             - name: moai-domain-html-report
               tier: core
               path: templates/.claude/skills/moai-domain-html-report/
-              hash: a7f209bad14101bbaccfa09f3b808b7d6f2237f7732facfe2109ef8a5be56974
+              hash: 7ea8d361d84632ce15d66c5f6eef8d3d757bf8f66884348f286b4d1399a76403
               version: 1.0.0
             - name: moai-domain-svg-infographic
               tier: core

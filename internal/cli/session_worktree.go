@@ -844,7 +844,10 @@ func sessionLandingRefLabel(wtPath string) string {
 //	(iii) the branch's CUMULATIVE patch-id equals a commit on the ref since
 //	     the merge-base (worktree.LandedByPatchID), which also covers a
 //	     squash merge of a card with several commits — the case `git cherry`
-//	     reads as every commit "+".
+//	     reads as every commit "+". A patch-id match is only a prefilter:
+//	     the exact changed-path confirmation inside the shared predicate
+//	     decides, because `git cherry` cannot authorize deletion —
+//	     whitespace may be part of a string literal.
 //
 // The integration ref is the configured target (sessionWorktreeIntegrationRefFor),
 // not a literal develop. No network runs, and in particular no `gh` call: the
@@ -887,7 +890,10 @@ func gitBranchLandedReal(wtPath string) (bool, error) {
 	// not parameterizable and normalized away whitespace and hunk line
 	// numbers, so a remote squash amended with a whitespace-only reformat
 	// read every card commit as equivalent and the exit disposed a tree
-	// whose bytes the remote does not carry. An unsupported git or a git
+	// whose bytes the remote does not carry — whitespace may be part of a
+	// string literal, so cherry cannot authorize disposal. Inside the
+	// predicate a patch-id match is only a prefilter: the exact
+	// changed-path confirmation decides. An unsupported git or a git
 	// failure is an error — the caller preserves (REQ-WSS-302).
 	perCommitLanded, err := worktree.LandedByCommitPatchIDs(wtPath, "HEAD", ref)
 	if err != nil {

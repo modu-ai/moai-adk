@@ -777,6 +777,16 @@ type BranchGuardConfig struct {
 // DENY layer is gated, exactly as BranchGuard gates only its deny.
 type IntegrationLockConfig struct {
 	Enabled bool `yaml:"enabled"`
+
+	// LeaseMinutes is the window lease duration in minutes (card t1479,
+	// REQ-MWQ-008). A pointer because ABSENT and ZERO mean different
+	// things: absent ships the 30-minute factory default, and an explicit
+	// zero DISABLES the lease — validity then decided by owning-session
+	// liveness alone, as before the lease existed. M0's measurement
+	// (.moai/reports/t1479/m0-window-duration.md) found the in-window
+	// section sub-second, so the default stays 30 until a measurement
+	// legitimately lowers it.
+	LeaseMinutes *int `yaml:"lease_minutes,omitempty"`
 }
 
 // SettingsDriftGateConfig mirrors workflow.settings_drift_gate.* — the opt-in

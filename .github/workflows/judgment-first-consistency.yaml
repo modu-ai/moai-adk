@@ -31,7 +31,7 @@ on:
       - 'internal/template/templates/.moai/config/sections/interview.yaml'
       - '.github/workflows/judgment-first-consistency.yaml'
   push:
-    branches: [main, develop]
+    branches: [main]
     paths:
       - '.claude/rules/moai/core/askuser-protocol.md'
       - '.claude/output-styles/moai/moai.md'

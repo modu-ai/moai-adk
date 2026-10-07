@@ -6,22 +6,23 @@ on:
   # widened the same statement without a recorded decision; naming the integration
   # branches here declares the firing set already in force rather than changing it.
   pull_request:
-    branches: [main, develop]
+    branches: [main]
   # Card t1298 — the conflict-guard job needs a fire on conflicting PRs,
   # whose merge ref (and therefore pull_request event) does not exist.
   # pull_request_target runs in the base context and needs no merge ref;
   # the guard job alone consumes this event (job-level if: below).
   pull_request_target:
-    branches: [main, develop]
+    branches: [main]
   push:
-    branches: [main, develop]
+    branches: [main]
 
 permissions:
   contents: read
 
-# Cancel in-progress runs for the same ref (the check is idempotent per head).
+# Cancel superseded runs for the same event and PR (or push ref).
+# Keep pull_request and pull_request_target runs independent for the same PR.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -120,14 +121,14 @@ jobs:
   # community workflow's trigger, which DID fire on reopen, is the same
   # shape). It executes no PR-provided code and checks out nothing: it only
   # queries the PR's mergeable state and turns the silent skip into an
-  # explicit, reasoned red. Separate concurrency group — the target ref is
-  # the same refs/pull/N/merge and would otherwise cancel the real run.
+  # explicit, reasoned red. Group by PR because pull_request_target uses a
+  # shared base ref; updates to another PR must not cancel this guard.
   graph-freshness-conflict-guard:
     if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     concurrency:
-      group: ${{ github.workflow }}-guard-${{ github.ref }}
+      group: ${{ github.workflow }}-guard-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
     steps:
       - name: Surface a conflict-skipped graph-freshness as an explicit failure
