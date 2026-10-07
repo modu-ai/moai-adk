@@ -96,7 +96,7 @@ func (s *Sender) Send(ctx context.Context) error {
 			return nil
 		}
 		if outbox.AttemptLimitReached(item) {
-			s.drop(store, item, "attempt limit reached")
+			s.drop(ctx, store, item, "attempt limit reached")
 			continue
 		}
 		if !s.sendOne(ctx, store, item, repo) {
@@ -158,7 +158,7 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 	// report). The sent history is the completion record: reconcile the
 	// surviving item out of the queue instead.
 	if item.Fingerprint != "" && outbox.SentHistoryHasFingerprint(item.Fingerprint) {
-		_ = store.Mutate(func(rec *feedback.QueueRecord) error {
+		_ = store.MutateContext(ctx, func(rec *feedback.QueueRecord) error {
 			kept := rec.Items[:0]
 			for _, it := range rec.Items {
 				if it.ID == item.ID {
@@ -183,7 +183,7 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 	// body — never the stored text as-is.
 	payload, title, body, ok := revalidatedItem(item)
 	if !ok {
-		s.fail(store, item, errUnvalidatedBody)
+		s.fail(ctx, store, item, errUnvalidatedBody)
 		return true
 	}
 
@@ -191,7 +191,7 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 	if err != nil {
 		// A gh failure is environmental (network, rate limit): stop
 		// the run rather than hammering, leave everything queued.
-		s.fail(store, item, err)
+		s.fail(ctx, store, item, err)
 		return false
 	}
 
@@ -209,20 +209,20 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 		}
 		comment := OccurrenceCommentFromPayload(payload)
 		if err := s.Runner.CommentIssue(ctx, repo, issue.Number, strings.NewReader(comment)); err != nil {
-			s.fail(store, item, err)
+			s.fail(ctx, store, item, err)
 			return false
 		}
-		s.complete(store, item, "occurrence comment on #"+itoa(issue.Number), comment)
+		s.complete(ctx, store, item, "occurrence comment on #"+itoa(issue.Number), comment)
 		return true
 	}
 
 	// No match: the create path. M5 files the deterministic template
 	// text; M6 slots the summarizer ahead of CreateBody.
 	if err := s.Runner.CreateIssue(ctx, repo, title, strings.NewReader(body)); err != nil {
-		s.fail(store, item, err)
+		s.fail(ctx, store, item, err)
 		return false
 	}
-	s.complete(store, item, "issue created", body)
+	s.complete(ctx, store, item, "issue created", body)
 	return true
 }
 
@@ -246,7 +246,7 @@ func itoa(i int) string {
 // payload FIRST (the completion record must survive a cleanup failure —
 // the sender's reconcile rule then removes a surviving item on the next
 // flush instead of publishing again), and the item leaves the queue.
-func (s *Sender) complete(store *feedback.QueueStore, item feedback.QueueItem, reason, body string) {
+func (s *Sender) complete(ctx context.Context, store *feedback.QueueStore, item feedback.QueueItem, reason, body string) {
 	_ = outbox.AppendOutbox(outbox.OutboxRow{
 		Outcome:  "sent",
 		Reason:   reason,
@@ -254,7 +254,7 @@ func (s *Sender) complete(store *feedback.QueueStore, item feedback.QueueItem, r
 		Body:     body,
 		Fingerpr: item.Fingerprint,
 	})
-	_ = store.Mutate(func(rec *feedback.QueueRecord) error {
+	_ = store.MutateContext(ctx, func(rec *feedback.QueueRecord) error {
 		kept := rec.Items[:0]
 		for _, it := range rec.Items {
 			if it.ID == item.ID {
@@ -269,8 +269,8 @@ func (s *Sender) complete(store *feedback.QueueStore, item feedback.QueueItem, r
 
 // drop removes an exhausted item with a decision row (no payload for
 // non-queued outcomes).
-func (s *Sender) drop(store *feedback.QueueStore, item feedback.QueueItem, reason string) {
-	_ = store.Mutate(func(rec *feedback.QueueRecord) error {
+func (s *Sender) drop(ctx context.Context, store *feedback.QueueStore, item feedback.QueueItem, reason string) {
+	_ = store.MutateContext(ctx, func(rec *feedback.QueueRecord) error {
 		kept := rec.Items[:0]
 		for _, it := range rec.Items {
 			if it.ID == item.ID {
@@ -290,8 +290,8 @@ func (s *Sender) drop(store *feedback.QueueStore, item feedback.QueueItem, reaso
 
 // fail leaves the item queued, bumps its attempt count, and records the
 // failure. The caller decides whether to continue or stop the run.
-func (s *Sender) fail(store *feedback.QueueStore, item feedback.QueueItem, cause error) {
-	_ = store.Mutate(func(rec *feedback.QueueRecord) error {
+func (s *Sender) fail(ctx context.Context, store *feedback.QueueStore, item feedback.QueueItem, cause error) {
+	_ = store.MutateContext(ctx, func(rec *feedback.QueueRecord) error {
 		for i := range rec.Items {
 			if rec.Items[i].ID == item.ID {
 				rec.Items[i].Attempts++

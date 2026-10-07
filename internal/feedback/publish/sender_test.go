@@ -638,6 +638,34 @@ func TestRecordedSendIsReconciledNotResent(t *testing.T) {
 	}
 }
 
+// TestSendHonorsDeadlineOnResultSaves: the result saves (complete, drop,
+// fail) used plain Mutate — a contended queue lock made a 25ms-deadline
+// Send return after ~1.22s at the gate. The whole flush honors its
+// deadline: the result saves select on the caller's context like every
+// other lock wait.
+func TestSendHonorsDeadlineOnResultSaves(t *testing.T) {
+	consentOn(t)
+	_, item := payloadFixture(t)
+	seedQueue(t, item)
+
+	// A LIVE queue-lock holder: the result save contends against it.
+	store := outbox.BugreportQueueStore()
+	release, err := atomicfile.ClaimSection(context.Background(), store.LockPath(), 0o600, 0, time.Millisecond)
+	if err != nil {
+		t.Fatalf("claim the live holder lock: %v", err)
+	}
+	defer func() { _ = release() }()
+
+	stub := newStubRunner(true)
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	_ = NewSender(stub).Send(ctx)
+	if elapsed := time.Since(start); elapsed > 700*time.Millisecond {
+		t.Fatalf("a 200ms-deadline Send ran %s on a contended result save — the deadline was not honored", elapsed)
+	}
+}
+
 // ---- AC-003: the off/tracked-only arms at the sender ----
 
 func TestSenderNoopWhenParticipationOff(t *testing.T) {
