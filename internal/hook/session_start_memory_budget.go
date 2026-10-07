@@ -87,6 +87,10 @@ func memoryBudgetAdvisory(ctx context.Context, dir string, async bool) string {
 		return ""
 	}
 
+	// Capture the read dependency before starting a goroutine: an abandoned
+	// scan must not observe a later caller replacing the package-level seam.
+	readFile := memoryBudgetReadFile
+
 	// read walks the candidate stores until one yields a MEMORY.md. It checks
 	// ctx between candidates, so an abandoned scan (the bound fired, the
 	// caller cancelled) stops issuing reads instead of continuing through the
@@ -97,7 +101,7 @@ func memoryBudgetAdvisory(ctx context.Context, dir string, async bool) string {
 			if ctx.Err() != nil {
 				return memoryBudgetSample{}
 			}
-			data, err := memoryBudgetReadFile(filepath.Join(store, "MEMORY.md"))
+			data, err := readFile(filepath.Join(store, "MEMORY.md"))
 			if err != nil {
 				continue
 			}

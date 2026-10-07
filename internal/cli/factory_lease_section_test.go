@@ -87,12 +87,15 @@ func TestFactoryLeaseSectionExcludesWorktreeStep(t *testing.T) {
 	}
 }
 
-// flArmCase is one success row of AC-FAL-009's table.
+// flArmCase is one row of AC-FAL-009's table. refused non-empty marks the one
+// refusal row (card t1516): the nomination is refused with that token before
+// any write — no lease, no promotion, no record write.
 type flArmCase struct {
 	name                       string
 	itemState                  factory.BacklogState
 	row                        *homestate.Card
 	nominated                  bool
+	refused                    string
 	promotions, restores, wrts int
 }
 
@@ -107,17 +110,20 @@ func flArmCases() []flArmCase {
 		{name: "arm-b2", itemState: factory.BacklogStatePicked, wrts: 3},
 		{name: "arm-c", itemState: factory.BacklogStateQueued, promotions: 1, wrts: 3},
 		{name: "nominated-queued", itemState: factory.BacklogStateQueued, nominated: true, promotions: 1, wrts: 3},
-		{name: "nominated-queued-assigned", itemState: factory.BacklogStateQueued, row: assigned(), nominated: true, promotions: 1, wrts: 1},
+		// Card t1516: the queued stale-row shape is refused, not leased (the
+		// row carried promotions: 1, wrts: 1 before the supersession).
+		{name: "nominated-queued-assigned", itemState: factory.BacklogStateQueued, row: assigned(), nominated: true, refused: "recorded"},
 		{name: "nominated-picked", itemState: factory.BacklogStatePicked, nominated: true, wrts: 3},
 		{name: "nominated-picked-assigned", itemState: factory.BacklogStatePicked, row: assigned(), nominated: true, wrts: 1},
 	}
 }
 
-// TestFactoryLeaseSectionRecordWritesPerArm — AC-FAL-009 (ii): for every success
-// row of the table, the lease issues exactly the row's queue promotions, queue
-// restores and factory-record write transactions, and at every record write the
-// queue's lock is held (an operator write started there stays pending for
-// 100 ms): writes_before_lock is 0.
+// TestFactoryLeaseSectionRecordWritesPerArm — AC-FAL-009 (ii): for every
+// success row of the table, the lease issues exactly the row's queue
+// promotions, queue restores and factory-record write transactions, and at
+// every record write the queue's lock is held (an operator write started there
+// stays pending for 100 ms): writes_before_lock is 0. The table's one refusal
+// row (card t1516) writes nothing at all.
 func TestFactoryLeaseSectionRecordWritesPerArm(t *testing.T) {
 	for _, c := range flArmCases() {
 		t.Run(c.name, func(t *testing.T) {
@@ -127,6 +133,11 @@ func TestFactoryLeaseSectionRecordWritesPerArm(t *testing.T) {
 			}
 			nmLaneEnv(t, "lane-1", "")
 			nmIsolatedWorktrees(t, "t1")
+			var rowBefore *homestate.Card
+			if c.row != nil {
+				b := fcCard(t, root, "t1")
+				rowBefore = &b
+			}
 
 			var mu sync.Mutex
 			writes, beforeLock := 0, 0
@@ -161,13 +172,31 @@ func TestFactoryLeaseSectionRecordWritesPerArm(t *testing.T) {
 			if c.nominated {
 				args = append(args, "--card", "t1")
 			}
-			_, stderr, err := qasRunNext(t, args...)
+			out, stderr, err := qasRunNext(t, args...)
 			factoryCardNow = prevNow
 			mu.Lock()
 			ops := append([]*flOp(nil), probes...)
 			gotWrites, gotBefore, first := writes, beforeLock, stateAtFirstWrite
 			mu.Unlock()
 			flJoin(t, ops)
+			if c.refused != "" {
+				// Card t1516: the refusal is decided before any write — no
+				// promotion, no record write, no lease, and the stores do not
+				// move (the placed row stays assigned, version unchanged).
+				nmAssertRefused(t, out, stderr, err, c.refused)
+				if gotWrites != 0 {
+					t.Errorf("%s: record writes=%d under a refusal, want 0", c.name, gotWrites)
+				}
+				if rowBefore != nil {
+					if got := fcCard(t, root, "t1"); got.State != rowBefore.State || got.OwnerLabel != rowBefore.OwnerLabel || got.Version != rowBefore.Version {
+						t.Errorf("%s: row = %s owner=%q version=%d, want %s owner=%q version=%d unchanged", c.name, got.State, got.OwnerLabel, got.Version, rowBefore.State, rowBefore.OwnerLabel, rowBefore.Version)
+					}
+				}
+				if q := nmQueueState(t, store, "t1"); q != c.itemState {
+					t.Errorf("%s: queue state = %s after the refusal, want still %s", c.name, q, c.itemState)
+				}
+				return
+			}
 			if err != nil {
 				t.Fatalf("next: %v (stderr %q)", err, stderr)
 			}

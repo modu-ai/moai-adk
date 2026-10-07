@@ -26,15 +26,15 @@ import (
 // so the fall-through had nothing to find. These tests populate EVERY tier,
 // which is what makes the count observable.
 
-// stopGoalWrapperCopies returns the repo-relative paths of the three shipped
-// copies of the wrapper. They are byte-identical by contract (CLAUDE.local.md
-// §2.3 — the .tmpl is the one that actually deploys, so a fix applied to only
-// one copy is reverted by the next `moai update`). Running all three is also
-// the parity lock.
+// stopGoalWrapperCopies returns the repo-relative paths of the two shipped
+// copies of the wrapper (the deployed root .sh this repo executes, and the
+// template .sh.tmpl `moai update` renders). They are byte-identical by
+// contract (CLAUDE.local.md §2.3 — the .tmpl is the one that actually deploys,
+// so a fix applied to only one copy is reverted by the next `moai update`).
+// Card t1540 retired the former middle copy (a template-source .sh twin).
 func stopGoalWrapperCopies() []string {
 	return []string{
 		".claude/hooks/moai/handle-stop-goal.sh",
-		"internal/template/templates/.claude/hooks/moai/handle-stop-goal.sh",
 		"internal/template/templates/.claude/hooks/moai/handle-stop-goal.sh.tmpl",
 	}
 }
@@ -127,8 +127,10 @@ func TestStopGoalWrapperFiresEvaluatorExactlyOnce(t *testing.T) {
 }
 
 // TestStopGoalWrapperCopiesStayIdentical locks the Template-First contract: the
-// deployed copy is the .tmpl, so a fix landing on only one copy is silently
-// reverted by the next `moai update`.
+// deployed root copy and the template .sh.tmpl must stay byte-identical, so a
+// fix landing on only one copy is silently reverted by the next `moai update`.
+// Card t1540 retired the former middle copy (a template-source .sh twin) —
+// each hook ships exactly ONE template original, the .sh.tmpl.
 func TestStopGoalWrapperCopiesStayIdentical(t *testing.T) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -147,7 +149,7 @@ func TestStopGoalWrapperCopiesStayIdentical(t *testing.T) {
 			t.Fatalf("read %s: %v", rel, err)
 		}
 		if string(b) != string(first) {
-			t.Errorf("%s differs from %s — the three copies must stay byte-identical, or `moai update` reverts the deployed one", rel, copies[0])
+			t.Errorf("%s differs from %s — the deployed copy and the template .sh.tmpl must stay byte-identical, or `moai update` reverts the deployed one", rel, copies[0])
 		}
 	}
 }

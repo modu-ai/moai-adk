@@ -95,8 +95,8 @@ func migrateLocalInstructions(root string, out io.Writer, now time.Time) error {
 	}
 
 	_, _ = fmt.Fprintf(out, "Migrated %s to %s (backup: %s).\n", codexClaudeLocalName, codexLocalInstructionName, backupRel)
-	_, _ = fmt.Fprintf(out, "Claude Code reads %s through the @%s import in CLAUDE.md; Codex reads it through `moai codex`.\n",
-		codexLocalInstructionName, codexLocalInstructionName)
+	_, _ = fmt.Fprintf(out, "Claude Code reads %s through the `moai cc` launcher injection; Codex reads it through `moai codex`.\n",
+		codexLocalInstructionName)
 	return nil
 }
 

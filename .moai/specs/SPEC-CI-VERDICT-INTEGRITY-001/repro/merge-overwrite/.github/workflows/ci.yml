@@ -1,0 +1,14 @@
+name: ci
+on: [push]
+jobs:
+  Check:
+    name: "Check (${{ matrix.os }}, ${{ matrix.color }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        include:
+          - color: green
+          - color: pink
+    steps:
+      - run: "true"

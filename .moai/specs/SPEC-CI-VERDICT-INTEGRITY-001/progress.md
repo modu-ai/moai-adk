@@ -1,0 +1,364 @@
+# progress.md — SPEC-CI-VERDICT-INTEGRITY-001
+
+Card: t1534 · Branch: WT-ci-verdict-integrity · Plan-phase tree: a158b4b5f
+
+## §E.1 Plan-phase Audit-Ready Signal
+
+- plan_status: audit-ready-with-recorded-debt (operator disposition, 2026-10-06)
+- plan_complete_at: 2026-10-06 (operator AskUserQuestion, lane-24 terminal)
+- admission_record: 6 audit rounds (0.62 → 0.76 → 0.78 → 0.79 → 0.78 → 0.70); final 0.70 < 0.80
+  routed to the operator per the pre-agreed rule. Operator disposition: **debt closure +
+  conditional run entry** — the plan body (13 REQ, 14 AC, M1–M3, keep-set structure) has had
+  ZERO findings since iteration-2; the 7-item residual lives entirely in the repro/evidence
+  infrastructure.
+- run_entry_conditions (STEP-0, mandatory): the hold-record fix list
+  (`.moai/reports/t1534/hold-record.md`) must be landed BEFORE M1 flip evidence is measured —
+  D1 held ✓ (amendment-6, iter-5 re-verified); remaining: P2-L stub log-write/mktemp exit
+  semantics, P2-M real-merge-body observation with recorded stub (fixture SHA + served time),
+  P2-O single-run mid-run clock progression + re-evaluation hold case, P2-N 25-case matrix +
+  acceptance.md P3 wording, P2-Q boundary-limited extractor across E2/E4/E7, P2-S residual
+  `${{ }}` = harness error, P2-T runner-options parity (`bash -e`, no pipefail). M1 flip
+  evidence measured with unfixed probes is INVALID (P2-L/M/O/P/Q each demonstrably produce
+  false verdicts — gate-measured).
+- checkpoint: M2 keep-set apply package delivery requires the STEP-0 fixes landed AND any new
+  evidence-infra finding from M1 measurement closed or surfaced; unresolved infra findings at
+  that point → hold re-enters (operator re-judged checkpoint, not lane discretion).
+- decision record: decided_by=lane-24 (orchestrating lane) relaying operator AskUserQuestion
+  (terminal, 2026-10-06) evidence_refs=.moai/reports/t1534/{plan-audit.md,hold-record.md,
+  plan-audit-iter1..5-*} ladder_path=operator keep-set direct (autonomy policy keep-set
+  channel)
+
+## §E.2 Run-phase Evidence
+
+### M1 — five gate mis-judgment repairs (flip evidence; measured post-M1 on WT-ci-verdict-integrity)
+
+| AC | RED (pre-M1, pinned a158b4b5f) | M1 flip observation (verbatim) |
+|----|-----|--------------------------------|
+| AC-CI-001/002 | L-E2 (cancelled read as PASSED, exit 0) | E2 re-run: `::error::Release PR multi-OS verification concluded 'cancelled' …` exit 1; exclusion A (detect=skipped) → `exclusion=non-release-pr` exit 0; exclusion B (docs-only, go_code=false) → `exclusion=docs-only-release-pr` exit 0 — three shapes measured |
+| AC-CI-004 | L-E4 (lookup failure → should_merge=true) | E4 re-run: `::warning::required-checks lookup failed (gh exit 1) - withholding auto-merge` + `--- GITHUB_OUTPUT --- should_merge=false` — the repaired JSON step (name/state/bucket + explicit rc handling, exit 8 = wait) withholds |
+| AC-CI-006/007 | L-E7 (25-case matrix) + L-E8 | E7 re-run post-M1 (measured): control exit 0; 5 `failure` variants exit 1 (kept — regression guard); `install-script-parity-failure` + all 18 non-success variants exit non-zero (flipped); compatibility probes are hard checks (measured parity-failure visibility via the needs-list repair) |
+| AC-CI-005 | L-E26 (merge served post-crossing, exit 0) | E26 re-run on the repaired body: head re-query observed → served clock read 1200 (past deadline) → merge WITHHELD → **exit 2 FLIP OBSERVED** (213dd949e added the post-head-query re-evaluation — the pre-fix tree measured exit 0 RED through the same probe); GATE-4 control PROBE_DEADLINE=1300 observes the legal in-deadline merge |
+| AC-CI-011/012 | E14 (grep 'branch-protection.json.gtmpl' ci.yml = 0, exit 1) | AC-CI-011: validator Dimension D publishes-verification (measured exit 0, all 9 contexts publishable). AC-CI-012: ci.yml go_code filter gained `.github/branch-protection.json.gtmpl` + correspondence guard `TestBranchProtectionDetectFilterCoversParityInput` PASS (internal/template/branch_protection_detect_filter_test.go — re-derives if the parity test stops reading the covered input) |
+
+STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored DEFECT exit 0 — late_calls counted the head re-query; fixed: late flag judged only on `gh pr merge` lines), LG-2 CONFIRMED (`CROSSED` marker line corrupted cat-based integer comparisons; fixed: clock file numeric-only), LG-3 CONFIRMED (same-indent next-step boundary missed; fixed: dedent test `<=` across all four extractors; verified LG-1 now exit 2 and LG-3 now exit 9 on regenerated probes). Incident recorded: the first LG-1/LG-3 fixture runs invoked the REAL `gh` binary (HERE-detached /tmp probe copy missed the recording stub) — `gh pr merge 1` attempted against modu-ai/moai-adk and REFUSED (PR 1 CLOSED, never merged, no state change; verified read-only).
+
+## §E.3 Run-phase Audit-Ready Signal
+
+- run_status: complete (STEP-0 + M1 + M2 + M3 all landed)
+- run_complete_at: 2026-10-06 (lane-24 direct completion after the run
+  delegate was stopped output-silent at 2h27m; M1 landed by the delegate as
+  d74707a9e before the stop; M2/M3 completed lane-direct per the
+  consecutive-stall rule — zombie delegate TaskStopped, work checkpointed on
+  disk, zero loss)
+- run_commits: d74707a9e (M1 five gate repairs + STEP-0) → 845e9a20c (M2 SSoT
+  correction + validator publishability) → 6a8107f41 (M3 ci-watch
+  supported-field repair + harness transition)
+- verification: ci-watch test harness 12 pass / 0 fail (incl. field-contract
+  regression + missing-required-pending); validator exit 0 — all 9 main
+  contexts publishable incl. per-combination Build x5 and Analyze (Go) (go);
+  E26 RED exit 0 (merge served 1200 past deadline 1140 through the real
+  merge body) + GATE-4 control PROBE_DEADLINE=1300 observes the legal
+  in-deadline merge; sh -n clean on all touched scripts; blank-line variant
+  repro exits 0 identically (GATE-2 closed)
+- M2 keep-set package: PENDING — the branch-protection apply payload,
+  pre-apply live-diff command, and post-apply GET command are packaged at
+  `.moai/worktrees/t1534/.moai/reports/t1534/` for the operator
+  (AskUserQuestion delivery per the keep-set channel; delivery due next)
+- debt conditions status: D1 held through iter-5/6 (fixture byte-conformance,
+  not re-raised); the 7-item repro-infra list landed via amendments 5-7 and
+  is VERIFIED by the STEP-0/E26 measurements above
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+- sync_status: complete (single sync commit: CHANGELOG [Unreleased] Fixed entry +
+  spec.md frontmatter `in-progress → implemented → completed` + this §E.4;
+  `sync_commit_sha` backfilled in the follow-up commit)
+- sync_complete_at: 2026-10-06
+- sync_commit_sha: eaf2e34f4
+- b12_self_test_a: pre-emission grep `grep -c 'SPEC-CI-VERDICT-INTEGRITY-001'
+  CHANGELOG.md` → 0 (exit 1) — no duplicate entry from a parallel sync
+- b12_self_test_b: AC count match — the counter on acceptance.md (tier M AC
+  source) reports live=14, excluded=0, ambiguous=0; the CHANGELOG entry
+  references the same 14 (AC-CI-001..014)
+- b12_self_test_c: file path verification — every path named in the entry
+  verified present via `ls` at write time (11 paths, 0 misses)
+- changelog_entry_position: CHANGELOG.md `## [Unreleased]` → `### Fixed` —
+  first entry (reverse-chronological house order)
+- frontmatter_status_transitions: in-progress → implemented → completed on the
+  single sync commit (manager-docs, per the Status Transition Ownership Matrix;
+  `status:` + `updated:` only, no body change — `updated:` already 2026-10-06)
+- canary_compliance_check: n/a — this SPEC defines no forward-looking policy
+  gated by its own sync tests
+- ac_ci_012_resolution: Path A (implement-flip, coordinator disposition) —
+  amendment `f6fbc0d9e` added the ci.yml filter entry + the correspondence
+  guard `TestBranchProtectionDetectFilterCoversParityInput`; flip re-measured
+  by manager-docs (E14 probe grep 0→1, guard test PASS `ok 0.406s`)
+- ac_ci_009_evidence_path_note: acceptance.md names
+  `.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/apply-package.md` as the keep-set
+  delivery surface; the actual package lives at
+  `.moai/reports/t1534/keep-set-package.md` (card evidence path is
+  authoritative) — resolved by this note, no manager-spec wording touch
+- codemaps: omitted — `ci-watch` has zero representation in
+  `.moai/project/codemaps/` (0 hits incl. modules.md); `scripts/` shell
+  tooling is not a codemap fold unit. Recorded as omission; scope not expanded
+- mx_tag_check: zero `@MX` tags present on the touched surfaces (4 workflows +
+  2 scripts + the new guard test) — none stale, none owed
+- sync_delegate: manager-docs (card t1534, lane-24 orchestration)
+- gate_round_4 (post-CI-no-publish hold, lane-direct): 4 repairs, all probe-verified
+  before commit `ef8ebd702` — (1) run.sh GH/POLL init moved before the PR
+  base-branch block (gate caught $GH used-when-unset); (2) run.sh worse()
+  aggregates cancel as FAIL in every entry order ([pass,cancel]→fail,
+  [cancel,pass]→fail, [pass,pass]→pass observed); (3) validator
+  matrix.exclude subtraction — repro `run-matrix-exclude.sh` RED exit 0
+  (excluded combo counted publishable) → GREEN exit 1 naming the phantom,
+  positive controls intact (phantom=1 / phantom-control=0 / malformed=1 /
+  repo-root=0); (4) AC-CI-012 guard scoped to the go_code filter block —
+  mutant probe (entry relocated to top level) FAILs, restored tree passes.
+  Pushed a3febc2dd..ef8ebd702; CI publication still platform-blocked
+  (04:17Z+ no-publish gap — leader watching).
+- gate_round_5 (codex review gate findings, lane-direct): 5 repairs, RED
+  observed on the committed ef8ebd702 code before each GREEN on this tree
+  (commit `fd98058a1`) — (1) run.sh `pr view` failure aborts after retry
+  instead of falling back to a non-SSoT head key (RED: 0/0 pass, advisory
+  Lint=fail, exit 0 / GREEN: abort 1); (2) a missing SSoT branch key aborts
+  too (empty contexts list stays legal via key-presence grep); (3) worse()
+  aggregates skipping as PENDING in every order (RED: 1 pass vs 0 pass
+  across orders / GREEN: 2 pending both); (4) validator strips
+  single-quoted names (octal \047); (5) exclude no longer applies to
+  include tuples (GitHub order: exclude then include) and a bare matrix
+  job name gets the per-tuple suffix. Regression suite re-run after an
+  in-round syntax incident (apostrophes in new awk comments broke the
+  single-quoted program; phantom=0 readings from that window are noise):
+  phantom=1 control=0 malformed=1 matrix-exclude=1 repo-root=0 all hold.
+  Pushed ef8ebd702..fd98058a1; CI publication still platform-blocked.
+- gate_round_6 (codex review gate findings, lane-direct): 5 repairs, RED
+  observed on the committed a236ac8b3 code before each GREEN on this tree
+  (commit `c5f5ff229`) — (1) run.sh verifies the SSoT key BEFORE the loop
+  (the loader's bare newline for an unknown key defeated the loop's
+  file-size check; unkeyed base + Lint=fail scored all-passed exit 0 RED,
+  abort 1 GREEN; release/* bases resolve to the release/* pattern key);
+  (2) both gh test mocks serve `pr view` — the test harness was 5 pass /
+  7 fail against the base-resolution step, now 12 pass / 0 fail; (3)
+  validator parses block-form matrix arrays; (4) include tuples whose
+  in-matrix keys all match a combination merge into it (merged tuples
+  stop emitting standalone; merge runs after the exclude check); (5) a
+  job without `name:` publishes its job ID as the default check name.
+  Regression suite: phantom=1 control=0 malformed=1 matrix-exclude=1
+  repo-root=0. CI publication still platform-blocked.
+- gate_round_7 (codex review gate findings, lane-direct): 4 repairs, RED
+  observed on the committed c5f5ff229 code before each GREEN on this tree
+  (commit `084bb13fd`) — (1) a merged include tuple applies to EVERY
+  compatible combination (merged[t] now marks only standalone
+  suppression; os:[ubuntu,windows]+include[{color:green}} judged the
+  real windows check phantom RED); (2) a later include tuple overwrites
+  an earlier value for the same key — pink now passes AND the superseded
+  green is correctly rejected (merge-green-gone negative probe); (3)
+  comments/blank lines are structural at NO indent — an ind-2 comment
+  between name: and strategy: reset matrix memory via the job-boundary
+  rule (column-0-only guard extended); (4) SSoT key presence is judged
+  by yq when available (quoted `"main":` key aborted a watchable PR via
+  the raw grep). Regression: phantom=1 control=0 malformed=1
+  matrix-exclude=1 repo-root=0, test harness 12 pass / 0 fail. CI
+  publication still platform-blocked.
+- gate_round_8 (codex review gate findings, lane-direct): 4 repairs, RED
+  observed on the committed 8d1b66b51 code before each GREEN on this tree
+  (commit `922557958`) — (1) yq is REQUIRED and the awk fallback retired
+  (the fallback ignored flow-form `contexts: [Lint]` and an injected
+  Lint=fail scored all-passed exit 0 under a yq-less PATH; GREEN aborts 1
+  without yq, scores exit 2 with it; the raw-grep key check is yq-only
+  too — yq-less aborts surface via the key-precheck first); (2) the T3
+  handoff logUrl points at the worst-verdict run (RED pointed at the
+  passing run's log; GREEN at the failing one); (3) a trailing unquoted
+  comment on a job name is stripped quote-aware AND rtrims (the first
+  cut left `Lint ` with a trailing space — the GREEN probe caught it
+  before commit); (4) matrix expression whitespace is optional
+  (`${{matrix.os}}`), applied to all three substitution sites and
+  had_ref. Regression: phantom=1 control=0 malformed=1 matrix-exclude=1
+  repo-root=0, harness 12 pass / 0 fail. CI publication still
+  platform-blocked.
+- gate_round_9 (codex review gate findings, lane-direct): 3 repairs,
+  RED observed on the committed d98812e39 code then GREEN on this tree
+  (commit `891f18932`) — (1) validator parses YAML STRUCTURE: the
+  workflow is re-rendered to canonical block form by yq before the line
+  parser (flow-form matrices expand; yq failure fails the dimension),
+  dim keys accept hyphens (`go-version`), and matrix values keep spaces
+  (the value store joins on SUBSEP — the block-path strip and the
+  space-joined store were both caught by the GREEN probe before
+  commit); (2) every RED observer extracts its baseline from the
+  committed tree inside the script (git show <round-commit>:<path> +
+  lib; prep failure exits 9) — six observers rewritten and re-run to
+  identical results; (3) observation logs moved to mktemp paths with
+  cleanup traps (fixed /tmp paths let a planted symlink rewrite an
+  outside sentinel at exit 0). Regression: phantom=1 control=0
+  malformed=1 matrix-exclude=1 repo-root=0, harness 12 pass / 0 fail.
+  CI publication still platform-blocked.
+- gate_round_10 (codex review gate finding, lane-direct): 1 repair, RED
+  observed on the committed 82d5a6e66 code then GREEN on this tree
+  (commit `ba14eb726`) — the bare-mapping test treated ANY colon in a
+  block list item as a mapping, but YAML makes `- node:20` a STRING
+  scalar (no space after the colon); `image: ["node:20"]` mis-routed
+  into the tuple path and its real check was judged phantom. The
+  mapping test now requires a space (or EOL) after the colon.
+  Regression: phantom=1 control=0 malformed=1 matrix-exclude=1
+  repo-root=0. CI publication still platform-blocked.
+- gate_round_11 (codex review gate findings, lane-direct): 3 repairs,
+  RED observed on the committed ba824499f code then GREEN on this tree
+  (commit `a6677a782`) — (1) include out-of-matrix fields feed ONLY the
+  expression substitution; the auto suffix keeps the original matrix
+  axes alone (os:[ubuntu]+include[extra:smoke] is `Test (ubuntu-latest)`);
+  (2) a QUOTED block item is a scalar by node type — the quoted value's
+  inner colon+space is literal text, not a mapping separator; (3) matrix
+  values enter substitution as literal data — all three sites use
+  split-based subst_literal() because the gsub escape dance is a
+  self-referential trap on BSD awk (unit probe measured the escaped
+  replacement recovered as a bare ampersand). Two in-round comment
+  hazards (apostrophes; an inline quoted example) were caught by the
+  syntax/probe checks before commit. Regression: phantom=1 control=0
+  malformed=1 matrix-exclude=1 repo-root=0; round-6/7/10 probes green;
+  harness 12 pass / 0 fail. CI publication still platform-blocked.
+- gate_round_12 (codex review gate findings, lane-direct): 2 repairs,
+  RED observed on the committed 058a7fe6a code then GREEN on this tree
+  (commit `291ac13f2`) — (1) subst_literal() now declares n as a local
+  (it clobbered the product-loop combination counter and dropped the
+  macOS legs of an os-3 x version-2 workflow); (2) the auto suffix
+  joins multiple matrix values with comma+space (`Test (ubuntu-latest,
+  18)`) at both suffix sites. Regression: phantom=1 control=0
+  malformed=1 matrix-exclude=1 repo-root=0; round-6/11 probes green;
+  harness 12 pass / 0 fail. CI publication still platform-blocked.
+- gate_round_13 (codex review gate findings, lane-direct): 2 repairs,
+  RED observed on the committed 6aa294541 code then GREEN on this tree
+  (commit `72f2be54f`) — (1) the yq normalization is now
+  `explode(.)` so YAML aliases (`os: *oses`) resolve to their anchor
+  values before the line parser runs; (2) YAML single-quote escapes
+  are decoded before the name comparison (an inner apostrophe is two
+  apostrophes), and quote stripping is PAIRED — the trailing-only
+  strip bit the apostrophe off an unquoted escaped name, which the
+  GREEN probe caught before commit. Regression: phantom=1 control=0
+  malformed=1 matrix-exclude=1 repo-root=0; round-5/11/12 probes
+  green; harness 12 pass / 0 fail. CI publication still
+  platform-blocked.
+- gate_round_14 (codex review gate findings, lane-direct): 3 repairs,
+  RED observed on the committed ca15eceda code then GREEN on this tree
+  (commit `478032c4d`) — (1) value quote-stripping is PAIRED (a bare
+  trailing apostrophe is value text — flavor:["rock'"] publishes
+  Test (rock')); (2) the bracket reference form matrix["os"]
+  normalizes to the dot form before parsing (BSD awk has no gsub
+  backreferences — manual match/substr capture); (3) a list item under
+  a declared axis key belongs to that axis, never to include — object
+  items record sub-fields and the template reads matrix.target.os
+  through them, with the substitution consuming the WHOLE expression
+  frame (the bare-pattern residue `${{ value }}` was caught by the
+  GREEN probe before commit). Multi-object object axes resolve their
+  first value (documented approximation). Regression: phantom=1
+  control=0 malformed=1 matrix-exclude=1 repo-root=0; round-12/13
+  probes green; harness 12 pass / 0 fail. CI publication still
+  platform-blocked.
+- gate_round_15 (codex review gate findings, lane-direct): 3 repairs
+  (commit `5f3fab757`) — (1) strip_quotes decodes the single-quote
+  escape (inner apostrophe = two apostrophes; RED on 166882a89);
+  (2) object-axis FOLLOW-UP fields at ind 12 collect into the axis
+  sub-fields (matrix.target.version resolves; RED on 166882a89);
+  (3) include presence tracked by incset — an explicit empty value
+  substitutes as empty (REGRESSION-GUARD: already green on the
+  baseline — the merge path substitutes empty values; the gate's
+  "current=1" reading was on an intermediate working state of this
+  repair). In-round comment hazard (AXIS's) caught by syntax check.
+  Regression: phantom=1 control=0 malformed=1 matrix-exclude=1
+  repo-root=0; round-14 probes green; harness 12 pass / 0 fail. CI
+  publication still platform-blocked. Leader drain notice received —
+  session ends after this round.
+- gate_round_16 (codex review gate findings, lane-direct): 2 repairs,
+  RED observed on the committed 85ec666c8 code then GREEN on this tree
+  (commit `6200e910a`) — (1) the exclude/include follow-up fields at
+  ind 12 use strip_quotes (the trailing-quote strip deleted a real
+  apostrophe from tag:"docs'" so the exclude never matched and an
+  EXCLUDED combination passed as required — inverted probe: pre-repair
+  exit 0 false approval, repaired exit 1 correct rejection); (2) the
+  matrix value store tracks membership by COUNT not string emptiness
+  (option:["", race] publishes `Test ()` first — pre-repair collapsed
+  the empty value into the uninitialized slot). Regression: phantom=1
+  control=0 malformed=1 matrix-exclude=1 repo-root=0; round-15 probes
+  green; harness 12 pass / 0 fail. CI publication still
+  platform-blocked.
+- gate_round_17 (codex review gate findings, lane-direct): 2 repairs,
+  RED observed on the committed 284c7d1dd code then GREEN on this tree
+  (commit `8a05d1af9`) — (1) an object matrix axis expands PER ITEM
+  (the sub-field-keyed store mixed fields across items and approved
+  the mixed `Test (windows-latest/amd64)`; the sole-object-axis path
+  builds one combination per item and resolves every REFERENCED
+  sub-field on GitHub semantics — a field an item lacks evaluates as
+  empty, so windows publishes `Test (windows-latest/)`; inverted
+  probe rejects the mixed combination); (2) a whole-empty value list
+  and a stored empty value each split to zero parts and dropped their
+  combination — both preserve the empty combination now
+  (`option: [""]` publishes `Test ()`). Combined object axes resolve
+  the first item (documented approximation). Regression: phantom=1
+  control=0 malformed=1 matrix-exclude=1 repo-root=0; round-14/15/16
+  probes green; harness 12 pass / 0 fail. CI publication still
+  platform-blocked.
+- gate_round_18 (card t1546, lane-10 direct — the final-round conditional:
+  ONE delta re-audit follows; a 0.80 miss routes to the operator, no
+  further repair rounds): 4 repairs, RED observed on the committed
+  2eb41ec31 code then GREEN on this tree (commit `d4a239c27`) — (1)
+  object-axis exclude: the nested exclude group field renders at ind 14
+  in the yq-normalized form and never stored the dotted pair (target.os),
+  and the per-item object path never subtracted the exclude; bare-key
+  groups store dotted paths (the RAW value separates a group opener from
+  an explicit empty string) and object combinations subtract before
+  publishing (inverted probes obj-exclude/first-empty-excl/empty-array:
+  pre-repair exit 0 false approval, repaired exit 1); (2) positional
+  pair count: a leading EMPTY value (`os: ["", ubuntu]`) left the suffix
+  string empty and the nsuf == nk gate under-counted, skipping the
+  exclude check; the per-combination count moved to a side array copied
+  after generation — the first in-place write corrupted the
+  not-yet-read rows and regressed round-4 matrix-exclude (caught by the
+  GREEN suite before commit); (3) unset-field fill: the product path
+  printed the residual `${{ matrix.extra }}` raw and judged the real
+  context phantom (missing-include-field: pre-repair exit 1, repaired
+  exit 0); remaining references substitute as empty after the include
+  merge; (4) zero-value array: `os: []` was promoted by the GATE-17
+  whole-empty fixup to one empty combination; the promotion now requires
+  a non-empty raw list (empty-array: pre-repair exit 0, repaired exit 1)
+  and `[""]` keeps publishing `Test ()`. Regression: phantom=1 control=0
+  malformed=1 matrix-exclude=1 repo-root=0; round-17 probes green;
+  harness 12 pass / 0 fail.
+- gate_round_18 addendum (same round, codex advisory finding — FAIL P1,
+  measured): an EXPRESSION-declared axis (`os: ${{ fromJSON(...) }}`) is
+  unparseable for this line parser, fell out of the dimension set, and
+  the unset-field fill fabricated `Test (/18)` — RED exit 0
+  over-approval observed on repro `repro/expr-axis/` before the fix.
+  The fill now parks expression-axis references on a SUBSEP frame and
+  restores them raw (GREEN exit 1 — a raw name never matches a concrete
+  required context, the conservative direction). Absorb re-measure:
+  origin/main merged into the card branch (`013f717fa`, CHANGELOG.md
+  [Unreleased] append-collision resolved keeping both sides) and the
+  full observation suite re-run GREEN in the absorbed tree incl.
+  repo-root against the real main SSoT.
+- gate_round_18 addendum 2 (turn-end codex gate, 3 P2 findings, each
+  RED-then-GREEN on this tree): (1) object-axis partial combinations —
+  the per-axis expansion kept pre-expansion partials, so a name
+  referencing only earlier axes published while exclude wiped every
+  real combination (obj-partial-axis RED exit 0 → GREEN exit 1;
+  expansion now REPLACES the working set); (2) a standalone include
+  tuple missing a referenced field dropped its whole published name
+  and a real context was judged phantom (inc-missing-field RED exit 1
+  → GREEN exit 0; the product-path empty fill applies to the tuple
+  path, expression-axis refs parked raw); (3) the tuple suffix
+  `tv != ""` test collapsed an explicitly EMPTY value out of its
+  positional slot (inc-empty-suffix RED exit 1 vs `Test (, 18)` →
+  GREEN exit 0; presence is the incset key test with a positional
+  counter). Full suite 16 probes + harness 12 pass / 0 fail.
+- gate_round_18 addendum 3 (turn-end codex gate, 2 P2 findings, each
+  RED-then-GREEN on this tree): (1) n_oaxes leaked across jobs — the
+  reset cleared the object arrays but not the counter; a plain job
+  after an object-matrix job expanded a phantom empty axis, emitted
+  nothing and was judged phantom (obj-axis-reset RED exit 1 → GREEN
+  exit 0; the counter resets with the arrays); (2) mixed matrices
+  resolved only the FIRST object item — later items were judged
+  phantom and the scalar exclude could not reach object combinations
+  (mixed-matrix RED exit 1 → GREEN exit 0; mixed-matrix-excluded RED
+  exit 0 approving the excluded combination → GREEN exit 1; the
+  product path multiplies each object axis per item before the dim
+  loop and carries per-combination assignments through substitution
+  and the dotted exclude matcher). Full suite 19 probes + harness
+  12 pass / 0 fail.

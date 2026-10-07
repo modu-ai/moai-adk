@@ -1,0 +1,15 @@
+name: ci
+on: [push]
+jobs:
+  Test:
+    name: "Test (${{ matrix.os }}, ${{ matrix.tag }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        tag: ["docs'", "other"]
+        exclude:
+          - os: ubuntu-latest
+            tag: "docs'"
+    steps:
+      - run: "true"

@@ -1,13 +1,9 @@
 # Quality Mechanism Reference
 
-The authoritative mapping for MoAI's quality model: harness levels, language
-toolchains, agent roles, and the sync-auditor scoring model.
-
-**MoAI ships no quality-validation library.** There is no package to import and
-no orchestrator class to construct — quality is enforced by agents and by the
-`/moai` gate commands. A reference that documents importable APIs for this skill
-is describing something that does not exist; this file documents the mechanisms
-that do.
+The authoritative mapping for MoAI's quality model: harness levels,
+language toolchains, agent roles, and the sync-auditor scoring model. MoAI
+enforces quality through agents and gate commands — there is no quality
+library to import.
 
 ## Quality Enforcement Components
 
@@ -37,9 +33,9 @@ misjudges scope. See `.moai/config/sections/harness.yaml` and
 ## Language-Aware Toolchains
 
 `/moai gate` auto-detects the project language and runs the appropriate
-toolchain. Tools that are not installed are skipped gracefully. Projects with no
-recognized language marker pass the gate silently. The 16 supported languages
-are treated equally — no language is "primary".
+toolchain. Tools that are not installed are skipped gracefully. Projects
+with no recognized language marker pass the gate silently. The 16 supported
+languages are treated equally — no language is "primary".
 
 | Language | Lint | Format | Type check | Test |
 |----------|------|--------|-----------|------|
@@ -66,14 +62,14 @@ whichever is configured in the project. Detection is by project markers
 
 ## Agent Roles in Quality
 
-The quality-bearing roles from the CLAUDE.md §4 retained-agent catalog. That
+The quality-bearing roles from the .moai/config/sections/delegation.yaml retained-agent catalog. That
 section is the roster's single source of truth — read the count and the full
 membership there rather than from this table, which lists only the agents with
 a quality responsibility:
 
 | Agent | Quality responsibility |
 |-------|----------------------|
-| `manager-develop` | Run-phase implementation; owns Tested + Unified via cycle_type; must hit zero lint/type errors and the coverage threshold |
+| `manager-develop` | Run-phase implementation; owns Tested + Unified via cycle_type; must hit zero lint/type errors and coverage threshold |
 | `manager-docs` | Sync-phase; ensures lint clean (≤10 warnings) and docs/CHANGELOG updated |
 | `sync-auditor` | Independent 4-dimension scoring (Functionality / Security / Craft / Consistency); fresh-judgment, harmonic mean |
 | `plan-auditor` | Independent plan-phase audit (bias prevention, GEARS compliance) |
@@ -81,18 +77,17 @@ a quality responsibility:
 
 Archived agents that MUST NOT be spawned for quality work: `manager-quality`,
 `expert-security`, `expert-backend`, `expert-frontend`, `expert-performance`,
-`expert-refactoring`. When a paste-ready message references one, consult
-`.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the
-retained-agent replacement.
+`expert-refactoring`. When a paste-ready message references one, consult the
+archived-agent-rejection rule for the retained-agent replacement.
 
 ## sync-auditor Scoring Model
 
-`sync-auditor` scores a change on four dimensions as a fresh-judgment auditor.
-The stance (from agent-common-protocol-reference § Skeptical Evaluation Stance): treat
-every claim as suspect until evidence is shown; demand reproducible
-verification; consider the null hypothesis; score as the harmonic mean of
-dimensions, not the average; reject when must-pass criteria fail regardless of
-nice-to-have scores.
+`sync-auditor` scores a change on four dimensions as a fresh-judgment
+auditor. The stance (from agent-common-protocol §Skeptical Evaluation
+Stance): treat every claim as suspect until evidence is shown; demand
+reproducible verification; consider the null hypothesis; score as the
+harmonic mean of dimensions, not the average; reject when must-pass
+criteria fail regardless of nice-to-have scores.
 
 | Dimension | Maps to TRUST 5 | What it measures |
 |-----------|-----------------|------------------|
@@ -101,10 +96,11 @@ nice-to-have scores.
 | Craft | Readable + Unified | Is it well-structured, readable, consistent? |
 | Consistency | Unified + Trackable | Does it match conventions and the traceable trail? |
 
-**Harmonic mean, not average**: the harmonic mean penalizes lopsided quality. A
-change scoring (0.9, 0.9, 0.9, 0.3) averages 0.75 but harmonics much lower,
-correctly signaling that the failing dimension is a blocker. All four dimensions
-matter — you cannot trade security for functionality.
+**Harmonic mean, not average**: the harmonic mean penalizes lopsided
+quality. A change scoring (0.9, 0.9, 0.9, 0.3) averages 0.75 but harmonics
+much lower, correctly signaling that the failing dimension is a blocker.
+This reflects that all four dimensions matter — you cannot trade security
+for functionality.
 
 ## LSP Quality Gate Thresholds (per phase)
 
@@ -114,9 +110,8 @@ matter — you cannot trade security for functionality.
 | run | Zero errors, zero type-errors, zero lint-errors |
 | sync | Zero errors, max 10 warnings, clean LSP |
 
-These are enforced by the harness during the SPEC lifecycle. A run-phase that
-leaves lint errors does not pass the run gate. Threshold values live in
-`.moai/config/sections/lsp.yaml`, the LSP-gate SSOT.
+These are enforced by the harness during the SPEC lifecycle. A run-phase
+that leaves lint errors does not pass the run gate.
 
 ## Quality and the SPEC Lifecycle
 
@@ -124,42 +119,45 @@ The 3-phase close (plan → run → sync) embeds quality at each boundary:
 
 - **plan** — LSP baseline captured; acceptance criteria defined as
   machine-verifiable where possible.
-- **run** — manager-develop hits the run gate (zero errors/type/lint; coverage
-  threshold; tests green).
+- **run** — manager-develop hits the run gate (zero errors/type/lint;
+  coverage threshold; tests green).
 - **sync** — manager-docs hits the sync gate (≤10 warnings; docs updated);
   sync-auditor scores independently at the thorough level.
 
 MX Tag validation is a cross-cutting concern validated during sync, not a
-separate phase. Tag types: `@MX:NOTE`, `@MX:WARN`, `@MX:ANCHOR`, `@MX:TODO`,
-`@MX:DEBT`.
+separate phase. Tag types: `@MX:NOTE`, `@MX:WARN`, `@MX:ANCHOR`,
+`@MX:TODO`, `@MX:DEBT`.
 
 ## Best-Practices Documentation Lookup
 
 For best-practices validation against live framework documentation, use
 WebSearch / WebFetch against the official documentation:
 
-1. Search: `WebSearch("<framework> official documentation <topic>")` to find the
-   authoritative docs URL.
+1. Search: `WebSearch("<framework> official documentation <topic>")` to find the authoritative docs URL.
 2. Fetch: `WebFetch(<url>)` to read the relevant section.
 
-Confirm the URL at validation time — do not hardcode docs links. If a source is
-unreachable, fall back to established best-practice patterns (see
-agent-common-protocol § MCP Fallback Strategy).
+Confirm the URL at validation time — do not hardcode docs links. If a source
+is unreachable, fall back to established best-practice patterns (see
+agent-common-protocol §MCP Fallback Strategy).
 
 ## Coverage Thresholds
 
 | Scope | Threshold |
 |-------|-----------|
-| Package-level (default) | 85% — `test_coverage_target` in `.moai/config/sections/quality.yaml` |
-| Critical packages (cli, template, hook) | 90%+ |
+| Module-level (default) | 85% — `test_coverage_target` in `.moai/config/sections/quality.yaml` |
+| Critical modules | 90%+ — the project names which modules those are |
 
-A coverage figure is only valid when the coverage command was actually run and
-its output observed in the current run — not carried over from a prior unrelated
-measurement (verification-claim-integrity §2 Baseline-Integrity Attribution).
+"Module" is whatever unit the project's language groups code into (package,
+module, crate, assembly); the threshold is unit-agnostic.
+
+A coverage figure is only valid when the coverage command was actually run
+and its output observed in the current run — not carried over from a prior
+unrelated measurement (verification-claim-integrity §2 Baseline-Integrity
+Attribution).
 
 ## Cross-References
 
-- CLAUDE.md §6 (Quality Gates) — the harness + LSP gate policy
+- the quality-gate sections (harness.yaml, quality.yaml) — the harness + LSP gate policy
 - `.claude/rules/moai/core/moai-constitution.md` § Quality Gates — TRUST 5 principles
 - `.claude/rules/moai/core/agent-common-protocol-reference.md` § Skeptical Evaluation Stance — the auditor stance sync-auditor adopts
 - `.claude/rules/moai/core/verification-claim-integrity.md` — no unobserved verification claims

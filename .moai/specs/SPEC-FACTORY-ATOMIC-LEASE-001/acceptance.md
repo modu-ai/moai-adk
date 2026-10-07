@@ -600,7 +600,7 @@ as `lane-1`: `queue=hold record=leased`, 3 of 3 runs. This is the behavior REQ-F
 ### L21 — the new test names of the override round sweep nothing at the pin
 
 ```
-$ go test ./internal/homestate ./internal/cli -run '^(TestFactoryLeaseDriftLogStallBounded|TestRecordWriteReconcileBoundedSkipsOnContention|TestRecordWriteReconcileDefaultStillWaits|TestFactoryLeaseArmAKeepsHeldAssignedCard)$' -count=1 -v -timeout 25m
+$ go test ./internal/homestate ./internal/cli -run '^(TestFactoryLeaseDriftLogStallBounded|TestRecordWriteReconcileBoundedSkipsOnContention|TestRecordWriteReconcileDefaultStillWaits|TestFactoryLeaseArmAExcludesHeldAssignedCard)$' -count=1 -v -timeout 25m
 testing: warning: no tests to run
 PASS
 ok  	github.com/modu-ai/moai-adk/internal/homestate	0.480s [no tests to run]
@@ -776,7 +776,7 @@ REQ-FAL-003's second clause — in a third fixture a card whose queue item is `h
 today (spec §F R17): the assertion exists so that a later change making arm (a) read the queue item is made
 on purpose and amends the SPEC.
 
-- **Command**: `go test ./internal/cli -run '^(TestFactoryLeaseArmCOperatorHold|TestFactoryLeaseArmAKeepsHeldAssignedCard)$' -count=20 -race -v -timeout 25m`. Pass condition: S4, N = 20 for each of the two names (clauses (i) and (ii) are tested by the first, clause (iii) by the second).
+- **Command**: `go test ./internal/cli -run '^(TestFactoryLeaseArmCOperatorHold|TestFactoryLeaseArmAExcludesHeldAssignedCard)$' -count=20 -race -v -timeout 25m`. Pass condition: S4, N = 20 for each of the two names (clauses (i) and (ii) are tested by the first, clause (iii) by the second).
 - **RED-now cell**: L11, second test: `completed at claim point = true` at the pin, same control as AC-FAL-002.
   L3's arm (c) hold probe is context only, for the reason given under L1. Clause (iii) is **green at the
   pin** (L20: `queue=hold record=leased`, 3 of 3) by design — it is a guard and is not what makes the

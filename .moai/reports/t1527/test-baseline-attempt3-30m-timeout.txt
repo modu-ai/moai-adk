@@ -1,0 +1,1260 @@
+# t1527 test baseline (pre-change characterization)
+base_sha: d0e54b322
+branch: WT-tui-tux-overhaul
+split invocation under factory-lane load 20-25/16 cores (attempts 1-2 preserved as
+test-baseline-attempt1-timeout.txt / -attempt2-partial.txt):
+  1) go test -count=1 -timeout 10m ./internal/tui/... ./internal/cli/update/...  -> /tmp/t1527-baseline-small.txt (ok x9, exit 0)
+  2) go test -count=1 -timeout 30m ./internal/cli                                -> below
+lease: moai slot acquire --resource go-test-internal-cli --max-duration 60m
+
+ok  	github.com/modu-ai/moai-adk/internal/tui	0.331s
+ok  	github.com/modu-ai/moai-adk/internal/tui/golden	0.295s
+ok  	github.com/modu-ai/moai-adk/internal/tui/internal	0.300s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	0.347s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	1.275s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	0.719s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	1.000s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	0.283s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	0.295s
+
+== package 2: internal/cli (root) ==
+2026/10/05 17:45:58 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+moai-cli-test: userHomeDirFn redirected real home to sandbox /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-cli-home-473492780
+2026/10/05 17:45:59 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInitDeprecatedModelFlags_WriteNothing4260649090/001/.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+2026/10/05 17:45:59 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+2026/10/05 17:46:00 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+2026/10/05 17:46:01 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+2026/10/05 17:46:02 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+2026/10/05 17:46:06 INFO session started session_id=sess-seam cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBinaryLag_OneSeamServesBothSurfaces2330545624/001 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBinaryLag_OneSeamServesBothSurfaces2330545624/001
+2026/10/05 17:46:07 WARN configuration not available, proceeding with defaults session_id=sess-seam
+2026/10/05 17:46:07 INFO teammateMode updated mode=auto in_tmux=false
+2026/10/05 17:46:09 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCCCmd_Execution_NoDeps1309982098/001/.moai/config/sections
+Launching Claude Code...
+Launching Claude Code...
+Notice: profile "work" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+moai cg is retired; run moai migrate cg to preview an explicit teammate-role migration
+moai cg is retired; run moai migrate cg to preview an explicit teammate-role migration
+moai cg is retired; run moai migrate cg to preview an explicit teammate-role migration
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainStatus1880636808/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainLineage1139635735/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainBack3339104742/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainBackAtRoot187108519/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainList2805876070/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainList2805876070/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainStatusNoContext3608035952/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainPruneDryRun1582011946/001
+2026/10/05 17:46:11 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLaunchClaudeDefault_LaunchesPinnedBinary3525981431/001/proj/.moai/config/sections
+2026/10/05 17:46:11 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLaunchClaudeDefault_UnsetPinFallsBackToPATH2454535742/001/proj/.moai/config/sections
+warn: skipping symlink /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateSymlinkSkip_Repro137881324/001/src/link.txt
+2026/10/05 17:47:54 INFO pre-compact context preservation session_id=codex-compact-1 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexCompactCheckpointRoundTrip1257625983/001
+2026/10/05 17:47:54 INFO pre-compact: session memo written path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexCompactCheckpointRoundTrip1257625983/001/.moai/state/session-memo.md
+2026/10/05 17:47:54 INFO post-compact recovery session_id=codex-compact-1
+2026/10/05 17:47:54 INFO post-compact: session memo restored project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexCompactCheckpointRoundTrip1257625983/001
+codex-adapter: dropped "systemMessage" on PostCompact (243 bytes): no delivery channel on this event
+2026/10/05 17:47:54 INFO permission requested session_id=codex-perm-1 tool_name=Bash
+2026/10/05 17:47:54 WARN denying permission: tool input contains updated_input_marker session_id=codex-perm-1 tool_name=Bash
+2026/10/05 17:47:54 INFO handler blocked action event=PermissionRequest handler_index=0 reason="tool input was modified by a previous hook (updatedInput re-verification)"
+2026/10/05 17:47:54 INFO permission requested session_id=codex-perm-2 tool_name=Bash
+codex-adapter: dropped "hook-fault" on PermissionRequest (40 bytes): hook fault on a decision-bearing event answered with a fail-closed deny
+2026/10/05 17:49:14 INFO session started session_id=codex-lane cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerlane4217449968/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerlane4217449968/002
+2026/10/05 17:49:15 WARN configuration not available, proceeding with defaults session_id=codex-lane
+2026/10/05 17:49:15 INFO teammateMode updated mode=auto in_tmux=false
+2026/10/05 17:49:15 INFO user prompt submitted session_id=codex-lane prompt_preview="t1242 probe"
+2026/10/05 17:49:15 INFO session started session_id=claude-lane cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerlane4217449968/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerlane4217449968/002
+2026/10/05 17:49:16 WARN configuration not available, proceeding with defaults session_id=claude-lane
+<system-reminder>
+Multi-Session Coordination: 1 other active session(s) on this host
+(this session claude-l):
+  - codex-la spec=(none) phase=(none) age=0m pid=63863 cwd=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli
+</system-reminder>
+2026/10/05 17:49:17 INFO user prompt submitted session_id=claude-lane prompt_preview="t1242 probe"
+2026/10/05 17:49:22 INFO session started session_id=codex-leader cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerleader1358431422/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerleader1358431422/002
+2026/10/05 17:49:23 WARN configuration not available, proceeding with defaults session_id=codex-leader
+2026/10/05 17:49:23 INFO teammateMode updated mode=auto in_tmux=false
+2026/10/05 17:49:23 INFO user prompt submitted session_id=codex-leader prompt_preview="t1242 probe"
+2026/10/05 17:49:23 INFO session started session_id=claude-leader cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerleader1358431422/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerleader1358431422/002
+2026/10/05 17:49:23 WARN configuration not available, proceeding with defaults session_id=claude-leader
+<system-reminder>
+Multi-Session Coordination: 1 other active session(s) on this host
+(this session claude-l):
+  - codex-le spec=(none) phase=(none) age=0m pid=63863 cwd=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli
+</system-reminder>
+2026/10/05 17:49:27 INFO user prompt submitted session_id=claude-leader prompt_preview="t1242 probe"
+2026/10/05 17:49:33 INFO session started session_id=codex-lane-uuid cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexFactoryHarnessHookBindsLane962830899/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexFactoryHarnessHookBindsLane962830899/002
+2026/10/05 17:49:34 WARN configuration not available, proceeding with defaults session_id=codex-lane-uuid
+2026/10/05 17:49:34 INFO teammateMode updated mode=auto in_tmux=false
+2026/10/05 17:49:35 INFO user prompt submitted session_id=codex-lane-uuid prompt_preview="factory lane probe"
+codex-adapter: dropped "codex-stop-chain/goal/unverified" on Stop (0 bytes): goal: unverified — 3 consecutive Stops found no receipt for this tree and the goal condition was never measured. The stop is allowed to bound the loop; the goal is NOT satisfied (its state is unchanged). Run `moai verify record`, then end the turn again — or re-arm the goal.
+codex review: pass: Verdict: pass
+
+The change introduces no blocking issues.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+codex-adapter: dropped "codex-stop-chain/multi-review/result-missing" on Stop (0 bytes): multi review gate: result missing (no multi-model review result is recorded for this session); the stop was allowed (fail-open, as on Claude)
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+codex-adapter: dropped "codex-stop-chain/multi-review/result-missing" on Stop (0 bytes): multi review gate: result missing (no multi-model review result is recorded for this session); the stop was allowed (fail-open, as on Claude)
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+codex-adapter: dropped "codex-stop-chain/goal/unverified" on Stop (0 bytes): moai hook stop-goal: unverified — 3 consecutive Stops found no valid receipt for this tree (the member did not finish within its internal budget), and `moai verify record` was never run for it. The stop is allowed to bound the loop; the gate is NOT passed.
+codex-adapter: dropped "codex-stop-chain/multi-review/result-missing" on Stop (0 bytes): multi review gate: result missing (no multi-model review result is recorded for this session); the stop was allowed (fail-open, as on Claude)
+install the desktop app from https://example.invalid/codex-desktop
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+2026/10/05 17:52:29 WARN failed to load workflow config, using defaults error="parse workflow.yaml: config: invalid YAML syntax"
+{"basis":"no card branch: develop","gate":"codex-review-gate","scope":"tree","tree_scope":"skip"}
+codex review: fail: - [P1] ownership probe finding
+codex review: fail: - [P1] found issues
+- [P2] more
+codex review: pass: Verdict: pass
+
+The change introduces no blocking issues.
+codex review: inconclusive (review call failed: fake: session start failed)
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"branch match: WT-fixture-card","branch":"WT-fixture-card","gate":"codex-review-gate","scope":"card"}
+{"basis":"no card branch: develop","branch":"develop","env":{"MOAI_FACTORY_WORKER":"orca-lane-77"},"gate":"codex-review-gate","scope":"tree"}
+{"basis":"branch match: WT-fixture-card","branch":"WT-fixture-card","gate":"codex-review-gate","scope":"card"}
+{"basis":"branch match: WT-fixture-empty","branch":"WT-fixture-empty","gate":"codex-review-gate","scope":"card"}
+codex review: fail: - [P1] card findings
+{"basis":"branch match: WT-fixture-card","branch":"WT-fixture-card","gate":"codex-review-gate","scope":"card"}
+codex review: fail: - [P1] card findings
+{"basis":"branch match: WT-fixture-card","branch":"WT-fixture-card","gate":"codex-review-gate","scope":"card"}
+codex review: fail: - [P1] card findings
+BEHAVIOUR_FIELDS_MUTATED 2 OF 2
+COUPLED_MUTANT_DIVERGED 24
+CONTRACT_NEUTRAL_LOAD_TRUE 12 NONCE_TRUE 10
+FINGERPRINT_POSITIVE_MATCHES 12
+PARENT_SESSIONS_FALSE 14
+SELECTED_BY_LABEL 14 OF 28
+PARSE_LEADING_DELTA 1 0x0a
+TABLE_DISTINCT_REASONS 3
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+sync gate: go vet failed: fake vet
+sync gate: go vet failed: fake vet
+sync gate: go vet failed: fake vet
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex review: pass: Verdict: pass
+
+The change introduces no blocking issues.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex review: inconclusive: Looks good to me — no blocking findings.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex review: fail: - [P1] found issues
+- [P2] more issues
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex review: pass: Verdict: pass
+
+The change introduces no blocking issues.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex-adapter: dropped "codex-stop-chain/sync-gate/unverified" on Stop (0 bytes): sync-phase quality gate: unverified — 3 consecutive Stops found no valid receipt for this tree (receipt absent), and `moai verify sync-gate` was never run for it. The stop is allowed to bound the loop; the gate is NOT passed.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex-adapter: dropped "codex-stop-chain/codex-review/unverified" on Stop (0 bytes): moai hook codex-review-gate: unverified — 3 consecutive Stops found no valid receipt for this tree (receipt absent), and `moai verify codex-review` was never run for it. The stop is allowed to bound the loop; the gate is NOT passed.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex review: pass: Verdict: pass
+
+The change introduces no blocking issues.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+2026/10/05 17:55:35 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+sync gate: go vet failed: fake vet
+codex review: fail: - [P1] found issues
+- [P2] more
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex stop chain: advisory member 4 (moai hook security-turn) failed: injected advisory failure
+codex stop chain: advisory member 5 (moai hook security-commit) failed: cut off at its internal budget 50ms
+codex review: pass: Verdict: pass
+
+The change introduces no blocking issues.
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+codex-adapter: dropped "codex-stop-chain/multi-review/result-missing" on Stop (0 bytes): multi review gate: result missing (the multi review gate did not finish within its internal budget); the stop was allowed (fail-open, as on Claude)
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex stop chain: advisory member 4 (moai hook security-turn) failed: cut off at its internal budget 100ms
+codex review: pass: Verdict: pass
+
+The change introduces no blocking issues.
+2026/10/05 17:55:49 INFO stop requested session_id=timing-s stop_hook_active=false
+2026/10/05 17:55:49 INFO stop requested session_id=timing-s stop_hook_active=false
+2026/10/05 17:55:49 INFO stop requested session_id=timing-s stop_hook_active=false
+2026/10/05 17:55:49 INFO stop requested session_id=timing-s stop_hook_active=false
+2026/10/05 17:55:49 INFO stop requested session_id=timing-s stop_hook_active=false
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+2026/10/05 17:56:09 INFO stop requested session_id=timing-s stop_hook_active=false
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+2026/10/05 17:56:10 INFO stop requested session_id=timing-s stop_hook_active=false
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+2026/10/05 17:56:12 INFO stop requested session_id=timing-s stop_hook_active=false
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+2026/10/05 17:56:13 INFO stop requested session_id=timing-s stop_hook_active=false
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+2026/10/05 17:56:15 INFO stop requested session_id=timing-s stop_hook_active=false
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+--- FAIL: TestStopChainMemberCostWithinBudget (29.79s)
+    codex_stop_timing_test.go:112: stop-timing member=1 max=8ms budget=2.2s
+    codex_stop_timing_test.go:112: stop-timing member=2 max=968ms budget=1s
+    codex_stop_timing_test.go:112: stop-timing member=3 max=1.295s budget=1s
+    codex_stop_timing_test.go:114: member 3 (moai hook stop-goal) observed max 1.294527209s exceeds its declared budget 1s
+    codex_stop_timing_test.go:112: stop-timing member=4 max=369ms budget=500ms
+    codex_stop_timing_test.go:112: stop-timing member=5 max=461ms budget=500ms
+    codex_stop_timing_test.go:112: stop-timing member=6 max=1.927s budget=1s
+    codex_stop_timing_test.go:114: member 6 (moai hook codex-review-gate) observed max 1.926704416s exceeds its declared budget 1s
+    codex_stop_timing_test.go:112: stop-timing member=7 max=196ms budget=500ms
+    codex_stop_timing_test.go:112: stop-timing member=8 max=5ms budget=500ms
+    codex_stop_timing_test.go:136: stop-timing chain max=1.929s deadline=7.2s
+sync gate: go vet failed: fake vet
+Spawned pane %7 running `CODEX_HOME=/Users/goos/.codex CLAUDE_CODE_SESSION_ID= MOAI_SESSION_PID= MOAI_KANBAN= MOAI_KANBAN_ID= MOAI_KANBAN_SPEC= MOAI_KANBAN_LABEL= MOAI_KANBAN_LEAD_ADDR= MOAI_KANBAN_LEAD_NAME= MOAI_KANBAN_BACKEND= MOAI_KANBAN_CARD= MOAI_KANBAN_SETTINGS_INJECTED= MOAI_FACTORY_WORKER= MOAI_FACTORY_WORKERS= MOAI_FACTORY_ROLE= MOAI_HOME=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-cli-moai-home-4192464930 exec /test/codex` in /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexSpawnAnchorsToPanePID3349388581/001
+Switch to it with: tmux select-window -t %7
+Spawned pane %7 running `CODEX_HOME=/Users/goos/.codex CLAUDE_CODE_SESSION_ID= MOAI_SESSION_PID= MOAI_KANBAN= MOAI_KANBAN_ID= MOAI_KANBAN_SPEC= MOAI_KANBAN_LABEL= MOAI_KANBAN_LEAD_ADDR= MOAI_KANBAN_LEAD_NAME= MOAI_KANBAN_BACKEND= MOAI_KANBAN_CARD= MOAI_KANBAN_SETTINGS_INJECTED= MOAI_FACTORY_WORKER= MOAI_FACTORY_WORKERS= MOAI_FACTORY_ROLE= MOAI_HOME=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexSpawnAnchorsToPanePIDUnderLaneEnv2784841470/001 exec /test/codex` in /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexSpawnAnchorsToPanePIDUnderLaneEnv2784841470/002
+Switch to it with: tmux select-window -t %7
+2026/10/05 17:57:47 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_0011417885476/001/primary/.moai/config/sections
+2026/10/05 17:57:48 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_0011417885476/001/primary/.moai/config/sections
+2026/10/05 17:57:48 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_0011417885476/001/primary/.moai/config/sections
+2026/10/05 17:57:49 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_019ready3405104991/001/primary/.moai/config/sections
+2026/10/05 17:57:52 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_019not_ready_names_the_SPEC_and_codes1782390992/001/primary/.moai/config/sections
+2026/10/05 17:57:54 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_019refspec_from_another_tree618842185/001/primary/.moai/config/sections
+2026/10/05 17:57:59 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_020agent_marker_refuses1020039019/001/primary/.moai/config/sections
+2026/10/05 17:58:00 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_020not_a_terminal_refuses3877945811/001/primary/.moai/config/sections
+2026/10/05 17:58:01 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_020wrong_confirmation_refuses1741210722/001/primary/.moai/config/sections
+2026/10/05 17:58:04 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_020records_on_the_terminal_path3291813759/001/primary/.moai/config/sections
+2026/10/05 17:58:06 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_024287310825/001/primary/.moai/config/sections
+2026/10/05 17:58:06 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_024287310825/001/primary/.moai/config/sections
+2026/10/05 17:58:06 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_024287310825/001/primary/.moai/config/sections
+2026/10/05 17:58:13 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResetTeamModeForCC_ConfigLoadError4021419368/001/.moai/config/sections
+2026/10/05 17:58:20 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoctor_WithExport4187676228/001/.moai/config/sections
+2026/10/05 17:58:25 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoctor_WithFix1956457902/001/.moai/config/sections
+2026/10/05 17:58:29 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoctor_Verbose3781721413/001/.moai/config/sections
+2026/10/05 17:58:29 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_SuccessfulExecution3228066628/001/.moai/config/sections
+Launching Claude Code...
+2026/10/05 17:58:29 INFO gopls bridge disabled (lsp.yaml: enabled=false)
+2026/10/05 17:58:29 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_WithProjectRoot2631115108/001/.moai/config/sections
+Launching Claude Code...
+2026/10/05 17:58:30 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+
+╭─────────────────────────────────────────────────╮
+│                                                 │
+│  ✓ MoAI project initialized                     │
+│   13 dirs    2 files                            │
+│                                                 │
+│  Next steps:                                    │
+│    1. cd test-project                           │
+│    2. moai cc                                   │
+│    3. /moai plan "describe your first feature"  │
+│                                                 │
+╰─────────────────────────────────────────────────╯
+  Pre-push hook installed (.git/hooks/pre-push)
+  Pre-commit hook installed (.git/hooks/pre-commit)
+2026/10/05 17:58:31 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_DotArg_NonInteractive4006811290/001/.moai/config/sections
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+
+╭─────────────────────────────────────────────────╮
+│                                                 │
+│  ✓ MoAI project initialized                     │
+│   13 dirs    2 files                            │
+│                                                 │
+│  Next steps:                                    │
+│    1. cd dot-project                            │
+│    2. moai cc                                   │
+│    3. /moai plan "describe your first feature"  │
+│                                                 │
+╰─────────────────────────────────────────────────╯
+  Pre-push hook installed (.git/hooks/pre-push)
+  Pre-commit hook installed (.git/hooks/pre-commit)
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ Shared Flag Slot
+  ✓ Shared Flag Slot
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Provider Duplicates
+  ✓ MCP Provider Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Hook Missing Log
+  ✓ Hook Missing Log
+  ○ Served Model
+  ✓ Served Model
+  ○ Todo Store Divergence
+  ✓ Todo Store Divergence
+  ○ Todo Ghost Inventory
+  ✓ Todo Ghost Inventory
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Settings DefaultMode
+  ✓ Settings DefaultMode
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ Git Strategy Workflow
+  ✓ Git Strategy Workflow
+  ○ Factory Run
+  ✓ Factory Run
+  ○ Owner Label Drift
+  ✓ Owner Label Drift
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+  ○ Jev
+  ✓ Jev
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ Shared Flag Slot
+  ✓ Shared Flag Slot
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Provider Duplicates
+  ✓ MCP Provider Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Hook Missing Log
+  ✓ Hook Missing Log
+  ○ Served Model
+  ✓ Served Model
+  ○ Todo Store Divergence
+  ✓ Todo Store Divergence
+  ○ Todo Ghost Inventory
+  ✓ Todo Ghost Inventory
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Settings DefaultMode
+  ✓ Settings DefaultMode
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ Git Strategy Workflow
+  ✓ Git Strategy Workflow
+  ○ Factory Run
+  ✓ Factory Run
+  ○ Owner Label Drift
+  ✓ Owner Label Drift
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+  ○ Jev
+2026/10/05 17:58:39 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoctor_WithFixFlag1917713433/001/.moai/config/sections
+  ✓ Jev
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ Shared Flag Slot
+  ✓ Shared Flag Slot
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Provider Duplicates
+  ✓ MCP Provider Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Hook Missing Log
+  ✓ Hook Missing Log
+  ○ Served Model
+  ✓ Served Model
+  ○ Todo Store Divergence
+  ✓ Todo Store Divergence
+  ○ Todo Ghost Inventory
+  ✓ Todo Ghost Inventory
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Settings DefaultMode
+  ✓ Settings DefaultMode
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ Git Strategy Workflow
+  ✓ Git Strategy Workflow
+  ○ Factory Run
+  ✓ Factory Run
+  ○ Owner Label Drift
+  ✓ Owner Label Drift
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+  ○ Jev
+  ✓ Jev
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Version Check: Checking template version......
+  ✓ Version check complete
+  ○ Loading Templates: Reading embedded templates......
+  ✓ Templates loaded
+  ○ Loading Manifest: Reading project manifest......
+  ✓ Manifest loaded
+· Found 190 files to sync
+2026/10/05 17:58:46 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_NamedDirectoryArg497553129/001/.moai/config/sections
+2026/10/05 17:58:47 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+Team mode disabled (was: glm)
+Launching Claude Code...
+Team mode disabled (was: glm)
+Launching Claude Code...
+2026/10/05 17:58:48 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+2026/10/05 17:58:48 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_WithPositionalArg2535092344/001/.moai/config/sections
+2026/10/05 17:58:49 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_WithDotArg96278515/001/.moai/config/sections
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ Shared Flag Slot
+  ✓ Shared Flag Slot
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Provider Duplicates
+  ✓ MCP Provider Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Hook Missing Log
+  ✓ Hook Missing Log
+  ○ Served Model
+  ✓ Served Model
+  ○ Todo Store Divergence
+  ✓ Todo Store Divergence
+  ○ Todo Ghost Inventory
+  ✓ Todo Ghost Inventory
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Settings DefaultMode
+  ✓ Settings DefaultMode
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ Git Strategy Workflow
+  ✓ Git Strategy Workflow
+  ○ Factory Run
+  ✓ Factory Run
+  ○ Owner Label Drift
+  ✓ Owner Label Drift
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+  ○ Jev
+2026/10/05 17:58:56 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoctor_AllFlags1745277440/001/.moai/config/sections
+  ✓ Jev
+2026/10/05 17:59:01 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoctor_VerboseAndDetail4089002022/001/.moai/config/sections
+2026/10/05 17:59:06 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoctor_FixMode281218125/001/.moai/config/sections
+2026/10/05 17:59:09 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoctor_ExportMode2358449085/001/.moai/config/sections
+2026/10/05 17:59:09 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResetTeamModeForCC_NoConfig1474924666/001/.moai/config/sections
+2026/10/05 17:59:09 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+2026/10/05 17:59:10 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_PositionalArg382855553/001/.moai/config/sections
+2026/10/05 17:59:10 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_DotArg1841404074/001/.moai/config/sections
+moai hook PostToolUse: invalid stdin JSON (invalid JSON); emitting default output
+Launching Claude Code...
+2026/10/05 17:59:11 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_NilConfig2535315848/001/.moai/config/sections
+Launching Claude Code...
+Z.AI MCP tools auto-enabled (Vision, Web Search, Web Reader)
+  Disable: moai glm tools disable all
+Launching Claude Code with GLM backend...
+Launching Claude Code with GLM backend...
+Launching Claude Code with GLM backend...
+2026/10/05 17:59:20 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoctor_FixFlag4105341952/001/.moai/config/sections
+2026/10/05 17:59:21 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+2026/10/05 17:59:22 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+2026/10/05 18:00:19 INFO gopls bridge disabled (lsp.yaml: enabled=false)
+2026/10/05 18:00:19 INFO gopls bridge disabled (lsp.yaml: enabled=false)
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+WARN: validation skipped (MOAI_CONSTITUTION_SKIP_VALIDATE=1)
+--- FAIL: TestDoctorExitCode_CodexEnabledFatal (2.21s)
+    doctor_exitcode_codex_test.go:94: go build moai: exit status 1
+        # github.com/modu-ai/moai-adk/internal/cli
+        ./worktree_advisory.go:4:2: "fmt" imported and not used
+--- FAIL: TestDoctorExitCode_CodexCleanStaysZero (1.86s)
+    doctor_exitcode_codex_test.go:111: go build moai: exit status 1
+        # github.com/modu-ai/moai-adk/internal/cli
+        ./worktree_advisory.go:4:2: "fmt" imported and not used
+--- FAIL: TestDoctorExitCode_CodexAdvisoryOnlyStaysZero (1.51s)
+    doctor_exitcode_codex_test.go:135: go build moai: exit status 1
+        # github.com/modu-ai/moai-adk/internal/cli
+        ./worktree_advisory.go:4:2: "fmt" imported and not used
+{
+  "epic": "X",
+  "epic_token": "T",
+  "milestones": [
+    {
+      "id": "M0",
+      "label": "M0",
+      "status": "in-progress",
+      "covered": true,
+      "spec_id": "SPEC-X-001",
+      "spec_status": "completed",
+      "sync_commit_sha": ""
+    }
+  ],
+  "done": 0,
+  "total": 1,
+  "pct": 0,
+  "extra_mx": [],
+  "untracked_specs": [],
+  "baseline_attribution": ""
+}
+panic: test timed out after 30m0s
+	running tests:
+		TestQAS_AC011_NonClaudeBackendsNeverHeld (1s)
+		TestQAS_AC011_NonClaudeBackendsNeverHeld/backend_"gpt" (1s)
+
+goroutine 297583 [running]:
+testing.(*M).startAlarm.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2802 +0x2cc
+created by time.goFunc
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/time/sleep.go:215 +0x38
+
+goroutine 1 [chan receive]:
+testing.(*T).Run(0x4337dc247688, {0x1067aed1b?, 0x32e3aa0804f60fc0?}, 0x10a141340)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2109 +0x3bc
+testing.runTests.func1(0x4337dc247688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2585 +0x40
+testing.tRunner(0x4337dc247688, 0x4337dc33fb68)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+testing.runTests({0x106744a5f, 0x1b}, {0x1067afeeb, 0x28}, 0x4337dbf07c50, {0x10a37f3c0, 0x1330, 0x1330}, {0xf?, 0xd?, ...})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2583 +0x3f0
+testing.(*M).Run(0x4337dc03cc80)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2443 +0x578
+github.com/modu-ai/moai-adk/internal/cli.TestMain(0x4337dc03cc80)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/main_test.go:385 +0x138
+main.main()
+	_testmain.go:9876 +0x88
+
+goroutine 246 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc050b48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestOutputText_NoFindings(0x4337dc050b48)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/astgrep_output_test.go:28 +0x28
+testing.tRunner(0x4337dc050b48, 0x10a140b18)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 255 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc246fc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestFilterBySeverity_EmptyInput(0x4337dc246fc8)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/astgrep_output_test.go:183 +0x20
+testing.tRunner(0x4337dc246fc8, 0x10a13e780)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 258 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc247b08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestAstGrepCmdRulesDirFlagNoDefault(0x4337dc247b08)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/astgrep_rulesdir_test.go:111 +0x28
+testing.tRunner(0x4337dc247b08, 0x10a13b548)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 254 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc051d48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestFilterBySeverity_UnknownLevel(0x4337dc051d48)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/astgrep_output_test.go:168 +0x28
+testing.tRunner(0x4337dc051d48, 0x10a13e798)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 257 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc2478c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestResolveRulesDir(0x4337dc2478c8)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/astgrep_rulesdir_test.go:32 +0x20
+testing.tRunner(0x4337dc2478c8, 0x10a1419c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 256 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc247208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestFilterBySeverity_CaseInsensitive(0x4337dc247208)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/astgrep_output_test.go:193 +0x28
+testing.tRunner(0x4337dc247208, 0x10a13e778)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 253 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc051b08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestFilterBySeverity_InfoLevel(0x4337dc051b08)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/astgrep_output_test.go:152 +0x28
+testing.tRunner(0x4337dc051b08, 0x10a13e790)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 251 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc051688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestFilterBySeverity_ErrorLevel(0x4337dc051688)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/astgrep_output_test.go:117 +0x28
+testing.tRunner(0x4337dc051688, 0x10a13e788)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 252 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc0518c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestFilterBySeverity_WarningLevel(0x4337dc0518c8)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/astgrep_output_test.go:136 +0x28
+testing.tRunner(0x4337dc0518c8, 0x10a13e7a0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 19744 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x4337dd1c1688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestIsLocalPath(0x4337dd1c1688)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/deps_env_trust_test.go:164 +0x28
+testing.tRunner(0x4337dd1c1688, 0x10a13fba8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 11 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc60ab48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestClaudeJSONGuard_ConcurrentForceNoLostUpdate(0x4337dc60ab48)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/clifix_concurrency_m2_test.go:94 +0x20
+testing.tRunner(0x4337dc60ab48, 0x10a13c4e8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 250 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc051448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestOutputJSON_WithFindings(0x4337dc051448)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/astgrep_output_test.go:93 +0x28
+testing.tRunner(0x4337dc051448, 0x10a140b10)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 1237 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc86eb48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_WriteFileAtomic_NoPartialContent(0x4337dc86eb48)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/clifix_concurrency_m3_test.go:79 +0x24
+testing.tRunner(0x4337dc86eb48, 0x10a13be58)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 249 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc051208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestOutputJSON_EmptyFindings(0x4337dc051208)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/astgrep_output_test.go:75 +0x28
+testing.tRunner(0x4337dc051208, 0x10a140b08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 1235 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc86e488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_WriteFileAtomic_Perm0600(0x4337dc86e488)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/clifix_concurrency_m3_test.go:31 +0x24
+testing.tRunner(0x4337dc86e488, 0x10a13be60)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 248 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc050fc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestOutputText_WithNote(0x4337dc050fc8)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/astgrep_output_test.go:57 +0x28
+testing.tRunner(0x4337dc050fc8, 0x10a140b28)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 12 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc60ad88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestClaudeJSONGuard_ConcurrentIdempotentNoLostUpdate(0x4337dc60ad88)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/clifix_concurrency_m2_test.go:104 +0x20
+testing.tRunner(0x4337dc60ad88, 0x10a13c4f0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 247 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc050d88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestOutputText_WithFindings(0x4337dc050d88)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/astgrep_output_test.go:40 +0x28
+testing.tRunner(0x4337dc050d88, 0x10a140b20)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 271 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc0de248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestLoadWorkflowAuditSection(0x4337dc0de248)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/audit_pin_test.go:16 +0x20
+testing.tRunner(0x4337dc0de248, 0x10a1401b8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 172 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc60a008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestApplyBranchProtection_URLEncodesBranchSlash(0x4337dc60a008)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/branch_protection_test.go:74 +0x28
+testing.tRunner(0x4337dc60a008, 0x10a13b300)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 20341 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x4337dc050488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestClassifySkill_HNS(0x4337dc050488)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/doctor_hns_test.go:24 +0x24
+testing.tRunner(0x4337dc050488, 0x10a13c470)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 1239 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc86efc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_SaveMergeHistoryLedger_JSONTrailingNewline(0x4337dc86efc8)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/clifix_concurrency_m3_test.go:131 +0x24
+testing.tRunner(0x4337dc86efc8, 0x10a13be30)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 19734 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x4337db97dd48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestBuildSessionEndHandler_NoTraceDir(0x4337db97dd48)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/deps_coverage_test.go:148 +0x20
+testing.tRunner(0x4337db97dd48, 0x10a13bb18)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 20953 [chan receive, 14 minutes]:
+testing.(*T).Parallel(0x4337dc86e248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestDoctorSandbox_BackendUnavailableMessage(0x4337dc86e248)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/doctor_sandbox_test.go:102 +0x24
+testing.tRunner(0x4337dc86e248, 0x10a13dd68)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 297285 [chan receive]:
+testing.(*T).Run(0x4337dc247d48, {0x4337e3100630?, 0x5?}, 0x4337dbbbf620)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2109 +0x3bc
+github.com/modu-ai/moai-adk/internal/cli.TestQAS_AC011_NonClaudeBackendsNeverHeld(0x4337dc247d48)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/factory_quota_test.go:625 +0x98
+testing.tRunner(0x4337dc247d48, 0x10a141340)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 14 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc60b208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_SaveWorkflowMuteConfig_Perm0644(0x4337dc60b208)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/clifix_concurrency_m3_test.go:168 +0x28
+testing.tRunner(0x4337dc60b208, 0x10a13be38)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 1236 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc86e6c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_WriteFileAtomic_Perm0644(0x4337dc86e6c8)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/clifix_concurrency_m3_test.go:59 +0x24
+testing.tRunner(0x4337dc86e6c8, 0x10a13be68)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 20983 [chan receive, 14 minutes]:
+testing.(*T).Parallel(0x4337dc60a908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestDoctorSandbox_AvailabilityReport(0x4337dc60a908)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/doctor_sandbox_test.go:15 +0x28
+testing.tRunner(0x4337dc60a908, 0x10a13dd60)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 12834 [chan receive, 18 minutes]:
+testing.(*T).Parallel(0x4337dc0dfb08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestRenderValidateTextReportsCheckedCount(0x4337dc0dfb08)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/constitution_validate_count_test.go:16 +0x24
+testing.tRunner(0x4337dc0dfb08, 0x10a141680)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 15 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc60b448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_SaveLLMSection_WritesLLMYaml(0x4337dc60b448)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/clifix_concurrency_m3_test.go:204 +0x28
+testing.tRunner(0x4337dc60b448, 0x10a13be28)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 1238 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc86ed88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_WriteFileAtomic_CreatesParentDir(0x4337dc86ed88)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/clifix_concurrency_m3_test.go:107 +0x24
+testing.tRunner(0x4337dc86ed88, 0x10a13be50)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 12835 [chan receive, 18 minutes]:
+testing.(*T).Parallel(0x4337dc0dfd48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestRenderValidateTextReportsZeroForEmptyRegistry(0x4337dc0dfd48)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/constitution_validate_count_test.go:39 +0x24
+testing.tRunner(0x4337dc0dfd48, 0x10a141688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 20342 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x4337dc0506c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCheckLayer1Triggers_HNSDirScanned(0x4337dc0506c8)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/doctor_hns_test.go:54 +0x24
+testing.tRunner(0x4337dc0506c8, 0x10a13c268)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 19743 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x4337dd1c1448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestValidateUpdateURL(0x4337dd1c1448)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/deps_env_trust_test.go:132 +0x28
+testing.tRunner(0x4337dd1c1448, 0x10a1444a8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 20952 [chan receive, 14 minutes]:
+testing.(*T).Parallel(0x4337dc86e008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestDoctorSandbox_ProfileFlag(0x4337dc86e008)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/doctor_sandbox_test.go:79 +0x24
+testing.tRunner(0x4337dc86e008, 0x10a13dd78)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 16 [chan receive, 29 minutes]:
+testing.(*T).Parallel(0x4337dc60b688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_WriteClaudeJSONBytes_NoTrailingNewline(0x4337dc60b688)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/clifix_concurrency_m3_test.go:232 +0x24
+testing.tRunner(0x4337dc60b688, 0x10a13be48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 19735 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x4337dd1c0008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestBuildSessionEndHandler_WithTraceDir(0x4337dd1c0008)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/deps_coverage_test.go:160 +0x20
+testing.tRunner(0x4337dd1c0008, 0x10a13bb20)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6038 [syscall, 19 minutes]:
+os/signal.signal_recv()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/runtime/sigqueue.go:149 +0x108
+os/signal.loop()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/os/signal/signal_unix.go:23 +0x1c
+created by os/signal.Notify.func1.1 in goroutine 11640
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/os/signal/signal.go:152 +0x28
+
+goroutine 12801 [chan receive, 18 minutes]:
+testing.(*T).Parallel(0x4337dd1c0fc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestInitConsoleNoop(0x4337dd1c0fc8?)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/console_test.go:9 +0x1c
+testing.tRunner(0x4337dd1c0fc8, 0x10a13f7a8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 19730 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x4337db97d448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestEnableObservabilityIfConfigured_NoConfigFile(0x4337db97d448)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/deps_coverage_test.go:39 +0x20
+testing.tRunner(0x4337db97d448, 0x10a13df28)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 297286 [runnable]:
+syscall.readlen(0xc?, 0x4337dd272350?, 0x8?)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/syscall/syscall_darwin.go:247 +0xd4
+syscall.forkExec({0x4337dd02b5c0?, 0x104f9d07c?}, {0x4337dbb70e70, 0x7, 0x7}, 0x2?)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/syscall/exec_unix.go:220 +0x388
+syscall.StartProcess(...)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/syscall/exec_unix.go:258
+os.startProcess({0x4337dd02b5c0, 0xc}, {0x4337dbb70e70, 0x7, 0x7}, 0x4337dd2725c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/os/exec_posix.go:55 +0x1ec
+os.StartProcess({0x4337dd02b5c0, 0xc}, {0x4337dbb70e70, 0x7, 0x7}, 0x4337dd2725c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/os/exec.go:272 +0x50
+os/exec.(*Cmd).Start(0x4337dced8d00)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/os/exec/exec.go:733 +0x40c
+os/exec.(*Cmd).Run(0x4337dced8d00)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/os/exec/exec.go:629 +0x20
+github.com/modu-ai/moai-adk/internal/core/git.runGitRevParse({0x4337dc6d5c00, 0x7a}, {0x4337dd272868, 0x3, 0x3})
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/core/git/checkout.go:155 +0x1b4
+github.com/modu-ai/moai-adk/internal/core/git.ResolveGitDirs({0x4337dc6d5c00, 0x7a})
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/core/git/checkout.go:62 +0x78
+github.com/modu-ai/moai-adk/internal/homestate.CanonicalProjectRoot({0x4337dc6d5c00?, 0x104e82538?})
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/homestate/paths.go:66 +0x70
+github.com/modu-ai/moai-adk/internal/homestate.EnsureProjectLayout({0x4337dc6d5c00, 0x7a})
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/homestate/paths.go:299 +0x2c
+github.com/modu-ai/moai-adk/internal/homestate.OpenFactory({0x4337dc6d5c00, 0x7a})
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/homestate/factory.go:150 +0x24
+github.com/modu-ai/moai-adk/internal/cli.factoryNextLeaseOnceGated({_, _}, {_, _}, {_, _}, {_, _}, _)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/factory_card.go:300 +0x88
+github.com/modu-ai/moai-adk/internal/cli.newFactoryNextCommand.func1(0x4337dccf8008, {0x4337dbba0a40?, 0x4?, 0x1066bdcaa?})
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/factory_card.go:1105 +0x520
+github.com/spf13/cobra.(*Command).execute(0x4337dccf8008, {0x4337dbba0a00, 0x2, 0x2})
+	/Users/goos/go/pkg/mod/github.com/spf13/cobra@v1.10.2/command.go:1015 +0x814
+github.com/spf13/cobra.(*Command).ExecuteC(0x4337dc874008)
+	/Users/goos/go/pkg/mod/github.com/spf13/cobra@v1.10.2/command.go:1148 +0x350
+github.com/spf13/cobra.(*Command).Execute(...)
+	/Users/goos/go/pkg/mod/github.com/spf13/cobra@v1.10.2/command.go:1071
+github.com/modu-ai/moai-adk/internal/cli.qasRunNext(0x4337dc60a488?, {0x4337dd273ee8, 0x2, 0x1066bc49b?})
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/factory_quota_test.go:124 +0x19c
+github.com/modu-ai/moai-adk/internal/cli.TestQAS_AC011_NonClaudeBackendsNeverHeld.func1(0x4337dc60a488, {0x1066bc49b, 0x3}, {0x1066bc49b, 0x3})
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/factory_quota_test.go:615 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestQAS_AC011_NonClaudeBackendsNeverHeld.func2(0x4337dc60a488?)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/factory_quota_test.go:625 +0x30
+testing.tRunner(0x4337dc60a488, 0x4337dbbbf620)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 297285
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 19736 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x4337dd1c0248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestBuildAutoUpdateFunc_ReturnsNonNilFunc(0x4337dd1c0248?)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/deps_coverage_test.go:176 +0x1c
+testing.tRunner(0x4337dd1c0248, 0x10a13ba80)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 20343 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x4337dc050908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCheckLayer6AgentActivation_HNSDanglingRef(0x4337dc050908)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/doctor_hns_test.go:75 +0x28
+testing.tRunner(0x4337dc050908, 0x10a13c278)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 20344 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x4337dc60a248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCheckLayer6AgentActivation_HNSResolvedRef(0x4337dc60a248)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/doctor_hns_test.go:104 +0x28
+testing.tRunner(0x4337dc60a248, 0x10a13c280)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 21013 [chan receive, 14 minutes]:
+testing.(*T).Parallel(0x4337db97db08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestClassifySkill(0x4337db97db08)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/doctor_skills_test.go:99 +0x28
+testing.tRunner(0x4337db97db08, 0x10a13c460)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1801.389s
+FAIL

@@ -1,0 +1,8 @@
+version: 1
+branches:
+  main:
+    contexts:
+      - Lint
+      - "Test (ubuntu-latest)"
+auxiliary:
+  - docs-i18n-check

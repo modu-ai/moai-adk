@@ -1,0 +1,30 @@
+# t1527 test baseline (pre-change characterization)
+base_sha: d0e54b322  branch: WT-tui-tux-overhaul
+lease: moai slot acquire --resource go-test-internal-cli --max-duration 60m (held)
+load at launch: 33.53 44.61 39.77
+
+== package 1: go test -count=1 -timeout 10m ./internal/tui/... ./internal/cli/update/... (exit 0) ==
+
+ok  	github.com/modu-ai/moai-adk/internal/tui	0.331s
+ok  	github.com/modu-ai/moai-adk/internal/tui/golden	0.295s
+ok  	github.com/modu-ai/moai-adk/internal/tui/internal	0.300s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	0.347s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	1.275s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	0.719s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	1.000s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	0.283s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	0.295s
+
+== package 2: go test -count=1 -timeout 45m ./internal/cli ==
+NOT a baseline: this run launched AFTER the D1-D5 edits landed, so it
+compiles the edited tree — it is the POST-CHANGE whole-package verification.
+The PRE-CHANGE baseline for this package is attempt 3
+(test-baseline-attempt3-30m-timeout.txt): its binary was compiled before the
+first edit; under factory-lane load 20-48/16 cores it hit the 30m binary
+timeout near the end of the suite, recording exactly 4 pre-change FAILs
+(recorded, not fixed):
+  TestStopChainMemberCostWithinBudget (timing-budget, contention-sensitive)
+  TestDoctorExitCode_CodexEnabledFatal / _CodexCleanStaysZero / _CodexAdvisoryOnlyStaysZero
+The suite tail those three runs never reached is declared a Gap in the card
+verdict.
+

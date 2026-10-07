@@ -10,22 +10,19 @@ metadata:
 
 When the run phase is invoked from plan.md Decision Point 3.5 or moai.md step 11.5, the gate passes these parameters:
 - `execution_mode`: worktree | team | sub-agent
-- `active_mode`: cc | glm | cg
+- `active_mode`: cc | glm; legacy cg is rejected before dispatch
 - `tmux_available`: true | false
 
 **If execution_mode == "worktree":**
 This run invocation is already inside the isolated tmux session and worktree.
 Proceed with standard sub-agent run phase in the current environment.
-No additional routing needed — CC/GLM/CG env is already configured by the Gate.
+The explicitly selected supported launcher prepares the environment. Legacy CG configuration must stop at the migration guard before this branch; do not infer or replace mixed roles.
 
 **If execution_mode == "team":**
-Resolve the request through `.claude/rules/moai/workflow/team-capability-resolver.md`
-before spawning. An explicit request plus a passed current-runtime probe is
-required for `TEAM_AVAILABLE`; a failed or indeterminate probe returns
-`MODE_TEAM_UNAVAILABLE` with a blocker report. The historical retired sentinel
-and fallback are genealogy, not current capability evidence. The `active_mode`
-(cc / glm / cg) still selects the backend; native `moai cg` teammate runtime is
-unaffected.
+The `team` execution mode is experimental (Agent Teams layer, re-allowed; flag
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships on). Run the team-orchestrated
+phase per `orchestration-mode-selection.md` §C.1 constraints (explicit-request
+only; one team per session; no nesting). The explicit supported launcher selects the session backend. A stored `team_mode: cg` blocks execution pending `moai migrate cg`; it must not fall back to a different provider.
 
 **If execution_mode == "sub-agent":**
 Proceed directly to Phase 5 (Strategy).
@@ -39,8 +36,7 @@ the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to `autopilot`.
 
 # Mode Dispatch (team experimental)
 
-The `--mode team` dispatch value is experimental (explicit operator request),
-but its current availability is decided only by the team capability resolver:
+The `--mode team` dispatch value is experimental (re-allowed, operator decision):
 `agent-team` of the Phase
 0.95 catalog is selectable by explicit request
 (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1). Historical:
@@ -48,8 +44,7 @@ the retired era emitted the canonical sentinel `MODE_TEAM_UNAVAILABLE` (per
 `.claude/rules/moai/workflow/spec-workflow.md` § Mode Dispatch) and fell
 back to `autopilot` with a `[mode-auto-downgrade]` info log — the sentinel is
 retained as documented history.
-The native Claude Code teammate runtime (`moai cg` GLM panes, `moai cc -w <name>
---spawn` teammate windows) is unaffected and sanctioned.
+Native Claude Code Agent Teams remain experimental. Their availability does not verify mixed-provider roles or bypass the legacy CG migration gate.
 
 All worktree path rules from context-loading.md "Worktree Path Rules [HARD] (All
 Modes)" continue to apply to every execution mode.
@@ -148,7 +143,6 @@ A `DEGRADED` rung (single-pass, no voter panel) is surfaced both in the chain tr
 ---
 
 Version: 2.11.0
-Updated: 2026-03-30
 Changes: Added Phase 3 JIT Language Detection, Phase 4 Scale-Based Mode Selection, test scenarios.
 
 ---

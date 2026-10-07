@@ -26,9 +26,9 @@ triggers:
   phases: ["sync"]
 ---
 
-<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
-<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
-<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
+<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
+<!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
 
 # Sync Workflow Entry Router
 
@@ -139,16 +139,16 @@ Where `workflow.autonomy.mode: contract` — the sync phase carries the last thr
 
 ```
 # Phase 1 (Pre-Sync Quality Gate) 진입 시
-Read .claude/skills/moai/workflows/sync/quality-gates-context.md
+Read ~/.claude/skills/moai/workflows/sync/quality-gates-context.md
 
 # Phase 7 (Quality Verification) 진입 시
-Read .claude/skills/moai/workflows/sync/quality-gates-quality.md
+Read ~/.claude/skills/moai/workflows/sync/quality-gates-quality.md
 
 # Phase 11 (Analysis and Planning) 진입 시
-Read .claude/skills/moai/workflows/sync/doc-execution.md
+Read ~/.claude/skills/moai/workflows/sync/doc-execution.md
 
 # Phase 13 (Git Operations) 진입 시
-Read .claude/skills/moai/workflows/sync/delivery.md
+Read ~/.claude/skills/moai/workflows/sync/delivery.md
 ```
 
 ## Custom Harness Extension

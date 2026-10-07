@@ -94,10 +94,14 @@ func newFactoryLiveFixture(t *testing.T, leadBackend, laneBackend string) *facto
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Live model sessions can invoke updating commands, so keep their executable
+	// private while allowing Go to reuse the inherited compilation cache.
 	moai := filepath.Join(t.TempDir(), "moai")
-	cmd := exec.Command("go", "build", "-o", moai, "./cmd/moai")
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "go", "build", "-o", moai, "./cmd/moai")
 	cmd.Dir = repoRoot
-	cmd.Env = append(os.Environ(), "GOCACHE="+filepath.Join(t.TempDir(), "gocache"))
+	cmd.WaitDelay = time.Second
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build live moai: %v: %s", err, out)
 	}

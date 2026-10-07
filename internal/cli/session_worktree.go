@@ -837,13 +837,17 @@ func sessionLandingRefLabel(wtPath string) string {
 //
 //	 (i) the branch tip is an ancestor of the remote-tracking integration
 //	     ref (`git merge-base --is-ancestor`), or
-//	(ii) every patch the branch carries already exists upstream — `git
-//	     cherry` answers with no "+" line (patch-id equivalence of each
-//	     commit), which covers a one-commit squash merge, or
+//	(ii) every patch the branch carries already exists upstream — the
+//	     commit-level verbatim equivalence predicate
+//	     (worktree.LandedByCommitPatchIDs, SPEC-GFD-PATCHID-VERBATIM-001)
+//	     answers yes, which covers a one-commit squash merge, or
 //	(iii) the branch's CUMULATIVE patch-id equals a commit on the ref since
 //	     the merge-base (worktree.LandedByPatchID), which also covers a
 //	     squash merge of a card with several commits — the case `git cherry`
-//	     reads as every commit "+".
+//	     reads as every commit "+". A patch-id match is only a prefilter:
+//	     the exact changed-path confirmation inside the shared predicate
+//	     decides, because `git cherry` cannot authorize deletion —
+//	     whitespace may be part of a string literal.
 //
 // The integration ref is the configured target (sessionWorktreeIntegrationRefFor),
 // not a literal develop. No network runs, and in particular no `gh` call: the
@@ -879,27 +883,23 @@ func gitBranchLandedReal(wtPath string) (bool, error) {
 	} else if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 1 {
 		return false, err
 	}
-	// Arm (ii): per-commit patch-id equivalence. `git cherry` lists the
-	// head-side commits, prefixing each with "-" when its patch matches an
-	// upstream commit and "+" when it does not — so empty output only happens
-	// when the head side is empty (the ancestry case above). Landed = every
-	// listed patch is equivalent: no "+" line. Measured against the squash
-	// fixture in session_worktree_landing_test.go: the naive "empty output"
-	// reading never fires on a squash (the equivalent commit still prints as
-	// "- <sha>").
-	cherry, err := exec.Command("git", "-C", wtPath, "cherry",
-		ref, "HEAD").Output()
+	// Arm (ii): per-commit patch-id equivalence, computed by
+	// worktree.LandedByCommitPatchIDs in the same whitespace-faithful mode
+	// the cumulative layer compares in (SPEC-GFD-PATCHID-VERBATIM-001,
+	// decision Q3). `git cherry` stood here: its internal equivalence is
+	// not parameterizable and normalized away whitespace and hunk line
+	// numbers, so a remote squash amended with a whitespace-only reformat
+	// read every card commit as equivalent and the exit disposed a tree
+	// whose bytes the remote does not carry — whitespace may be part of a
+	// string literal, so cherry cannot authorize disposal. Inside the
+	// predicate a patch-id match is only a prefilter: the exact
+	// changed-path confirmation decides. An unsupported git or a git
+	// failure is an error — the caller preserves (REQ-WSS-302).
+	perCommitLanded, err := worktree.LandedByCommitPatchIDs(wtPath, "HEAD", ref)
 	if err != nil {
 		return false, err
 	}
-	cherryLanded := true
-	for _, ln := range strings.Split(string(cherry), "\n") {
-		if strings.HasPrefix(strings.TrimSpace(ln), "+") {
-			cherryLanded = false
-			break
-		}
-	}
-	if cherryLanded {
+	if perCommitLanded {
 		return true, nil
 	}
 	// Arm (iii): the cumulative patch-id (layer 2 of the shared predicate).

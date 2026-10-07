@@ -9,7 +9,7 @@ added_in: "v3.1"
 {{< new-badge v3.1 >}}
 
 {{< callout type="info" >}}
-`/moai todo`와 `moai todo`는 기존 자동화와 스크립트를 위한 **호환 표면**입니다. 정식 이름은 [`/moai gtd`](/ko/utility-commands/moai-gtd)와 `moai gtd`이며, 두 이름은 같은 SQLite 대기열과 카드 ID, 순서, 보관·복원 동작을 사용합니다.
+`moai gtd`와 [`/moai gtd`](/ko/utility-commands/moai-gtd)는 기존 자동화와 스크립트를 위한 **호환 표면**으로 계속 완전히 지원됩니다. 정식 이름은 `/moai todo`와 `moai todo`이며, 두 이름은 같은 SQLite 대기열과 카드 ID, 순서, 보관·복원 동작을 사용합니다.
 {{< /callout >}}
 
 다음에 할 일을 한 줄씩 쌓아 두는 **백로그 대기열**입니다. 팩토리 큐의 `backlog`에는 맡은 세션이 없어서 아무도 일을 밀어 넣지 못합니다. 그래서 카드를 큐에 들이는 일은 언제나 사람의 판단이고, `/moai todo`가 그 창구입니다.

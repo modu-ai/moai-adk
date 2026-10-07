@@ -10,9 +10,11 @@ package cli
 // preserved, user-owned entries untouched, absent files skipped.
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/manifest"
@@ -163,7 +165,9 @@ func TestRetrackSectionFilesCoversSectionDirectory(t *testing.T) {
 		t.Fatalf("rewrite: %v", err)
 	}
 
-	retrackSectionFiles(root, os.Stderr)
+	if err := retrackSectionFiles(root, os.Stderr); err != nil {
+		t.Fatalf("retrackSectionFiles on a writable tree: %v", err)
+	}
 
 	reloaded := manifest.NewManager()
 	if _, err := reloaded.Load(root); err != nil {
@@ -182,67 +186,49 @@ func TestRetrackSectionFilesCoversSectionDirectory(t *testing.T) {
 	}
 }
 
-// --- card t1276 F2: skill-mirror repair retracks the published files it restores.
-
-func TestRepairSkillMirrorRetracksPublished(t *testing.T) {
-	root := mirrorHealDeployedProject(t)
-
-	// Pick the lexicographically first published artifact the deploy produced.
-	published := embeddedPublishedSKILLs(t)
-	var rel string
-	for r := range published {
-		if rel == "" || r < rel {
-			rel = r
-		}
-	}
-	if rel == "" {
-		t.Skip("embedded template set carries no published skills")
-	}
-
-	// Simulate a stale manifest hash for that path (the pre-t1275 state any
-	// real project can carry), then delete the file so the repair restores it.
-	mgr := manifest.NewManager()
-	if _, err := mgr.Load(root); err != nil {
-		t.Fatalf("load manifest: %v", err)
-	}
-	if _, ok := mgr.GetEntry(rel); !ok {
-		t.Fatalf("fixture precondition: %s not tracked by the deploy", rel)
-	}
-	files := mgr.Manifest().Files
-	entry := files[rel]
-	entry.CurrentHash = "sha256:stale-pre-t1275"
-	files[rel] = entry
+// TestRetrackSectionFiles_FailureReturnsErrorAndPrintsNothing pins the
+// card t1527 repair-round-3 contract on the FAILURE path: the save error is
+// RETURNED for the caller's collector (the init tail routes it into the
+// warning summary panel) and the helper itself prints nothing on its writer —
+// a regression that printed its own diagnostic would break the init
+// ordering contract (nothing after the completion card but the panel) and
+// double-surface the failure.
+func TestRetrackSectionFiles_FailureReturnsErrorAndPrintsNothing(t *testing.T) {
+	root := t.TempDir()
+	mgr := retrackFixture(t, root)
+	retrackWriteTracked(t, root, mgr, ".moai/config/sections/user.yaml", "user:\n  name: a\n")
 	if err := mgr.Save(); err != nil {
-		t.Fatalf("poison manifest: %v", err)
+		t.Fatalf("save: %v", err)
+	}
+	// Dirty the tracked file so the retrack is dirty and Save actually runs.
+	sections := filepath.Join(root, ".moai", "config", "sections", "user.yaml")
+	if err := os.WriteFile(sections, []byte("user:\n  name: b\n"), 0o644); err != nil {
+		t.Fatalf("rewrite: %v", err)
 	}
 
-	if err := os.Remove(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
-		t.Fatalf("delete published skill: %v", err)
+	// Break the SAVE, not the load: .moai goes read-only so the helper's own
+	// Load still succeeds (a broken load is the documented no-op escape) but
+	// mgr.Save's write into .moai fails.
+	if runtime.GOOS == "windows" {
+		t.Skip("a 0500 directory does not deny writes on Windows; the failure injection cannot reproduce there")
 	}
+	if os.Geteuid() == 0 {
+		t.Skip("running as root bypasses directory permission checks")
+	}
+	moaiDir := filepath.Join(root, ".moai")
+	if err := os.Chmod(moaiDir, 0o500); err != nil {
+		t.Fatalf("chmod .moai read-only: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(moaiDir, 0o755) })
 
-	runRepairAt(t, root)
+	var errOut bytes.Buffer
+	err := retrackSectionFiles(root, &errOut)
 
-	path := filepath.Join(root, filepath.FromSlash(rel))
-	if _, err := os.Stat(path); err != nil {
-		t.Fatalf("repair did not restore %s: %v", rel, err)
+	if err == nil {
+		t.Fatal("a failed manifest save must return an error for the caller's collector")
 	}
-	reloaded := manifest.NewManager()
-	if _, err := reloaded.Load(root); err != nil {
-		t.Fatalf("reload manifest: %v", err)
-	}
-	got, ok := reloaded.GetEntry(rel)
-	if !ok {
-		t.Fatal("entry vanished from the manifest")
-	}
-	if got.Provenance != manifest.TemplateManaged {
-		t.Errorf("provenance = %q, want template_managed", got.Provenance)
-	}
-	current, err := manifest.HashFile(path)
-	if err != nil {
-		t.Fatalf("hash restored file: %v", err)
-	}
-	if got.CurrentHash != current {
-		t.Errorf("CurrentHash = %q after repair, want the restored on-disk %q — mirror repair must retrack what it restores (t1276 F2)", got.CurrentHash, current)
+	if errOut.Len() != 0 {
+		t.Errorf("the helper must not print the failure (one-surface rule), writer=%q", errOut.String())
 	}
 }
 

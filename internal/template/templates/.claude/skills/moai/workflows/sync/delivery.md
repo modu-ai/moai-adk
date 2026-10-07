@@ -2,8 +2,8 @@
 description: "Sync Phase 13~14 — Git Operations and Delivery (CI mirror, push/PR, auto-merge), Completion, Graceful Exit, Test Scenarios, and Custom Harness."
 user-invocable: false
 metadata:
-  parent: moai-workflow-sync
-  phase: "Phase 13~14: Git Delivery, Completion, and Auxiliary"
+ parent: moai-workflow-sync
+ phase: "Phase 13~14: Git Delivery, Completion, and Auxiliary"
 ---
 
 <!-- TRACE PROBE: workflow-split baseline trace mechanism -->
@@ -47,7 +47,7 @@ When both the canonical key and the legacy key are present, the canonical key wi
 **Tier-based Route gate** (per `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline): read the SPEC's `tier` field (S/M/L) and whether `--pr` was passed.
 
 - **Route A (Tier S/M default, no `--pr`)**: Agent: manager-docs subagent. manager-docs creates the single sync commit directly on `main` — no `manager-git` spawn, no feature branch, no PR.
-- **Route B (Tier L OR explicit `--pr`)**: Agent: manager-git subagent. manager-git creates the same single sync commit on the sync feature branch (`sync/SPEC-XXX` or `chore/SPEC-XXX-sync`), delivered via PR in Step 3.2.
+- **Route B (Tier L OR explicit `--pr`)**: Agent: manager-git subagent. ENTRY PRECONDITION: manager-git's role body ships in the opt-in `delivery` bundle, not L0 — verify it is installed (`~/.claude/agents/manager-git.md` for Claude, `~/.codex/agents/manager-git.toml` for Codex) BEFORE delegating; when it is absent, refuse with the named remediation `moai bundle add delivery` (C4: actionable report — never a missing-file error mid-flow). With the bundle installed, manager-git creates the same single sync commit on the sync feature branch (`sync/SPEC-XXX` or `chore/SPEC-XXX-sync`), delivered via PR in Step 3.2.
 
 Both routes:
 - Stage all changed document files, reports, README, docs/
@@ -62,28 +62,28 @@ Purpose: Embed structured context within git commit operations to enable seamles
 **Context Collection Process:**
 
 1. **Decision Tracking**: Gather all decisions made during the sync phase
-   - Documentation choices and rationale
-   - SPEC update approach and divergence handling
-   - Project improvement selections
-   - Quality trade-offs accepted or deferred
+  - Documentation choices and rationale
+  - SPEC update approach and divergence handling
+  - Project improvement selections
+  - Quality trade-offs accepted or deferred
 
 2. **Constraint Discovery**: Record any constraints identified
-   - Formatting requirements discovered
-   - API documentation standards applied
-   - Platform-specific considerations
-   - Technology limitations encountered
+  - Formatting requirements discovered
+  - API documentation standards applied
+  - Platform-specific considerations
+  - Technology limitations encountered
 
 3. **Gotcha Documentation**: Note issues found during documentation review
-   - Outdated references in existing documentation
-   - Missing API documentation sections
-   - Inconsistencies between code and docs
-   - Breaking changes requiring user notification
+  - Outdated references in existing documentation
+  - Missing API documentation sections
+  - Inconsistencies between code and docs
+  - Breaking changes requiring user notification
 
 4. **Pattern Usage**: Document patterns applied during sync
-   - Documentation templates used
-   - Code-to-doc mapping strategies
-   - Mermaid diagram patterns for architecture
-   - README.md structure improvements
+  - Documentation templates used
+  - Code-to-doc mapping strategies
+  - Mermaid diagram patterns for architecture
+  - README.md structure improvements
 
 **Commit Format for Sync Phase:**
 
@@ -149,16 +149,16 @@ go test -race -coverprofile=coverage.out -covermode=atomic ./...
 # Check 3: golangci-lint (mirrors CI lint job)
 # Auto-detect if golangci-lint is available
 which golangci-lint && golangci-lint run --timeout=5m \
-  || echo "SKIP: golangci-lint not installed (install via your project's pinned version)"
+ || echo "SKIP: golangci-lint not installed (install via your project's pinned version)"
 
 # Check 4: Cross-compile all CI targets (mirrors CI build job)
 # Replace <your-module> with your main package path (e.g. ./cmd/<your-binary>/).
 # Replicate whatever GOOS/GOARCH targets your CI build matrix declares; the
 # example below shows the common 5-target matrix — run them in parallel, CGO_ENABLED=0 for all.
-GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-amd64     ./<your-module>/ &
-GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-arm64     ./<your-module>/ &
-GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-amd64    ./<your-module>/ &
-GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-arm64    ./<your-module>/ &
+GOOS=linux  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-amd64   ./<your-module>/ &
+GOOS=linux  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-arm64   ./<your-module>/ &
+GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-amd64  ./<your-module>/ &
+GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-arm64  ./<your-module>/ &
 GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-windows-amd64.exe ./<your-module>/ &
 wait
 ```
@@ -231,8 +231,8 @@ Behavior varies based on the strategy resolved in Step 3.0 from `git_strategy.{m
 **Base Branch Resolution** (applies to all strategies below):
 1. Read `git_strategy.mode` from `.moai/config/sections/git-strategy.yaml`
 2. Resolve `main_branch`:
-   - If `git_strategy.{mode}.main_branch` exists: use that value
-   - If missing (e.g., `manual` mode): default to `main`
+  - If `git_strategy.{mode}.main_branch` exists: use that value
+  - If missing (e.g., `manual` mode): default to `main`
 3. Use `{main_branch}` in all branch checkout and PR creation commands below
 
 ##### Strategy: github-flow
@@ -243,11 +243,11 @@ Detect current branch:
 1. Push branch to remote: `git push -u origin <branch>`
 2. Check if PR already exists: `gh pr list --head <branch> --json number`
 3. If no PR exists: Create PR via `gh pr create`
-   - Title: Derived from SPEC title or branch name
-   - Body: Include sync summary, files changed, quality report, deployment readiness notes (migrations, env changes, breaking changes)
-   - If SPEC metadata contains `issue_number` (non-zero): Include `Fixes #{issue_number}` in PR body footer for automatic Issue closure on merge
-   - Base: {main_branch}
-   - Labels: auto-detected from changed files
+  - Title: Derived from SPEC title or branch name
+  - Body: Include sync summary, files changed, quality report, deployment readiness notes (migrations, env changes, breaking changes)
+  - If SPEC metadata contains `issue_number` (non-zero): Include `Fixes #{issue_number}` in PR body footer for automatic Issue closure on merge
+  - Base: {main_branch}
+  - Labels: auto-detected from changed files
 4. If PR exists: Update with comment summarizing sync changes
 5. Display PR URL to user
 
@@ -356,9 +356,9 @@ Condition: Auto-merge succeeded AND `workflow.worktree.auto_cleanup == true`
 Steps:
 1. Detect worktree path for current SPEC-ID from registry
 2. Execute cleanup equivalent to `moai worktree done SPEC-{ID} --auto --delete-branch`:
-   - Remove worktree directory
-   - Remove feature branch (already deleted by --delete-branch in merge)
-   - Update worktree registry
+  - Remove worktree directory
+  - Remove feature branch (already deleted by --delete-branch in merge)
+  - Update worktree registry
 3. Log cleanup result
 
 Error handling:

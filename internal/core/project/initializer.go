@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -83,8 +82,9 @@ type InitOptions struct {
 	// Harness is the resolved agent-harness selection (SPEC-INIT-HARNESS-001
 	// REQ-IH-005): one of {claude, codex, both}, empty meaning claude. While
 	// "codex" the initializer deploys no claude surface at all — the .claude/
-	// directory scaffold (Step 2) and CLAUDE.md (Step 4) are skipped, so the
-	// project root carries zero .claude/** paths.
+	// directory scaffold (Step 2) is skipped, so the project root carries zero
+	// .claude/** paths. The instruction file is AGENTS.md for every harness
+	// value; the initializer never writes CLAUDE.md.
 	Harness string // llm.harness axis; "gpt" suppresses claude-surface writes
 
 	// DeployMode is the resolved deploy-mode record (SPEC-INIT-SHRINK-001
@@ -300,19 +300,10 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		i.logger.Warn("workflow toggles write failed", "error", err)
 	}
 
-	// Step 4: Create CLAUDE.md. Skipped on the codex-only harness — the
-	// deployer already hid the CLAUDE.md template (REQ-IH-005), and without
-	// this guard the stub fallback below would write one anyway.
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	if opts.Harness != "gpt" {
-		if err := i.createClaudeMD(opts, result); err != nil {
-			return nil, fmt.Errorf("create CLAUDE.md: %w", err)
-		}
-	}
-
-	// Step 5: Initialize manifest
+	// Step 4: Initialize manifest. (The former "Create CLAUDE.md" step is
+	// retired with the AGENTS.md-primary product: every harness value of
+	// `moai init --llm` receives AGENTS.md from the template deployer
+	// (AGENTS.md.tmpl) and no CLAUDE.md is ever written.)
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -321,7 +312,7 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		i.logger.Warn("manifest initialization failed", "error", err)
 	}
 
-	// Step 6: Configure shell environment (REQ-SHELL-001)
+	// Step 5: Configure shell environment (REQ-SHELL-001)
 	// Adds CLAUDE_DISABLE_PATH_WARNING and PATH to appropriate shell config file
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -595,48 +586,6 @@ func (i *projectInitializer) writeReportConfig(opts InitOptions, result *InitRes
 	return nil
 }
 
-// createClaudeMD generates the CLAUDE.md file.
-// If the deployer already deployed the full CLAUDE.md from embedded templates,
-// this step is skipped to avoid overwriting it with the minimal stub.
-func (i *projectInitializer) createClaudeMD(opts InitOptions, result *InitResult) error {
-	claudeMDPath := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.ClaudeMD))
-
-	// Skip if CLAUDE.md was already deployed by the template deployer (REQ-E-034)
-	if _, err := os.Stat(claudeMDPath); err == nil {
-		i.logger.Info("CLAUDE.md already exists (deployed from templates), skipping stub generation")
-		return nil
-	}
-
-	// Fallback: generate minimal stub when no deployer is available
-	content := buildClaudeMDContent(opts)
-
-	if err := os.WriteFile(claudeMDPath, []byte(content), defs.FilePerm); err != nil {
-		return fmt.Errorf("write CLAUDE.md: %w", err)
-	}
-
-	result.CreatedFiles = append(result.CreatedFiles, defs.ClaudeMD)
-	return nil
-}
-
-// buildClaudeMDContent generates CLAUDE.md content from options.
-func buildClaudeMDContent(opts InitOptions) string {
-	var b strings.Builder
-	b.WriteString("# MoAI Execution Directive\n\n")
-	fmt.Fprintf(&b, "Project: %s\n", opts.ProjectName)
-	fmt.Fprintf(&b, "Language: %s\n", opts.Language)
-	if opts.Framework != "" && opts.Framework != "none" {
-		fmt.Fprintf(&b, "Framework: %s\n", opts.Framework)
-	}
-	fmt.Fprintf(&b, "Development Mode: %s\n\n", opts.DevelopmentMode)
-	b.WriteString("## Configuration\n\n")
-	b.WriteString("Configuration files are located in `.moai/config/sections/`.\n\n")
-	b.WriteString("## Quick Start\n\n")
-	b.WriteString("- Run `moai doctor` to check project health\n")
-	b.WriteString("- Run `moai status` to view project status\n")
-	b.WriteString("- Run `moai plan \"description\"` to create a SPEC\n")
-	return b.String()
-}
-
 // initManifest initializes the manifest.json file.
 func (i *projectInitializer) initManifest(root string, result *InitResult) error {
 	if i.manifestMgr == nil {
@@ -674,11 +623,11 @@ func (i *projectInitializer) initManifest(root string, result *InitResult) error
 	return nil
 }
 
-// ConfigureShellEnvFn performs the Step 6 shell-config write. Production uses
-// defaultConfigureShellEnv; tests swap in a spy so they can observe that Step 6
+// ConfigureShellEnvFn performs the Step 5 shell-config write. Production uses
+// defaultConfigureShellEnv; tests swap in a spy so they can observe that Step 5
 // was reached without writing the user's real shell rc files.
 //
-// @MX:NOTE: [AUTO] Step 6 shell-config write goes through this variable; the production default writes real rc files, tests swap in a counting spy.
+// @MX:NOTE: [AUTO] Step 5 shell-config write goes through this variable; the production default writes real rc files, tests swap in a counting spy.
 // @MX:SPEC: SPEC-INIT-QUIET-WIZARD-001
 // @MX:WARN: [AUTO] Package-global seam swapped by tests; a test that swaps it must not call t.Parallel and must restore it with t.Cleanup.
 // @MX:REASON: The shell configurator resolves HOME directly, so a test that bypasses this seam (or leaves the real function in place) writes the developer's real home rc files.
@@ -698,7 +647,7 @@ func defaultConfigureShellEnv(logger *slog.Logger) (*shell.ConfigResult, error) 
 	})
 }
 
-// configureShellEnv runs the Step 6 shell-config write through the
+// configureShellEnv runs the Step 5 shell-config write through the
 // ConfigureShellEnvFn seam.
 func (i *projectInitializer) configureShellEnv() (*shell.ConfigResult, error) {
 	return ConfigureShellEnvFn(i.logger)

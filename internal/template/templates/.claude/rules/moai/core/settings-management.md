@@ -167,7 +167,7 @@ Loads the following 15 sections in fixed order. All return defaults on absent fi
 **New loaders** (`internal/config/loader_{constitution,context,interview,design}.go`):
 
 - `LoadConstitutionConfig(path)` — constitution.yaml; exposes `ForbiddenPatterns` (ForbiddenLibraries alias) policy enforcement.
-- `LoadContextConfig(path)` — context.yaml; provides `TokenBudget.MaxInjectionTokens` and `Search.DateRangeDays` for CLAUDE.md §16 Context Search.
+- `LoadContextConfig(path)` — context.yaml; provides `TokenBudget.MaxInjectionTokens` and `Search.DateRangeDays` for verification-claim-integrity.md §2 Context Search.
 - `LoadInterviewConfig(path)` — interview.yaml; provides `ClarityThreshold`, `Plan.MaxRounds`, `SkipConditions`.
 - `LoadDesignConfig(path)` — design.yaml; provides `GanLoop.PassThreshold` (FROZEN floor 0.60), `GanLoop.SprintContract.Enabled`, `Adaptation.IterationLimits` for GAN loop runtime.
 
@@ -184,7 +184,7 @@ acknowledged as-is — `security.yaml`, `observability.yaml`, `report.yaml`, `su
 (DORMANT by design), `archive.yaml`, `cache.yaml` (dedicated `LoadCacheConfig`),
 `feedback.yaml`, `project.yaml`. Maintainer-only surfaces (`tool-policy.yaml`,
 `mcp-matrix.yaml`) are not distributed to user projects; `lsp.yaml` is the LSP-gate
-threshold SSOT referenced from CLAUDE.md §6. The Go-side registry of these dispositions
+threshold SSOT referenced from harness.yaml. The Go-side registry of these dispositions
 is `internal/config/audit_registry.go` + the loader-completeness allowlist.
 
 **Adding a new YAML section** (5-step procedure):
@@ -303,6 +303,18 @@ When `outputStyle` is set in multiple places, the first match wins:
 | 4 (lowest) | Hardcoded default | — | `"MoAI"` |
 
 The **local** scope (`.claude/settings.local.json`) is the highest-priority resolver source and is where the Claude Code `/config` → Output style menu writes a user's selection (official docs: code.claude.com/docs/en/output-styles — "Your selection is saved to `.claude/settings.local.json`"). This is why the project-scope pin MoAI-ADK ships as the product default never traps a user: any `/config` choice lands in scope 1, which outranks the project pin. The setting is read once at session start — a change takes effect after `/clear` or a new session.
+
+### In-session switching — `/config` and `/output-style`
+
+Two surfaces select a style in-session, and both persist the choice to `.claude/settings.local.json`:
+
+| Form | Behavior |
+|---|---|
+| `/config` → Output style | menu pick |
+| `/output-style` | lists available styles, marking the current one; changes nothing |
+| `/output-style <style>` | switches, custom MoAI styles included |
+
+Upstream sources disagree on whether `/output-style` still exists — a CHANGELOG entry deprecates it in favour of `/config`, a later one re-adds it. Resolve that by measurement, never by the documents: on Claude Code **2.1.275** (darwin/arm64) a bare call printed `Available styles:` with `(current)`, and `/output-style <name>` printed `Output style set to <name>` and wrote `{"outputStyle": "<name>"}`. Whether a mid-session switch takes effect before `/clear` was NOT measured. `/config` stays the surface to document for users, because it is present on every version.
 
 ### In-session switching — `/config` and `/output-style`
 
