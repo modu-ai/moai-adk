@@ -596,3 +596,711 @@ func TestSubagentStart_NoIdentityNoMarker(t *testing.T) {
 		t.Errorf("a marker was written for a payload with no agent id and no session id")
 	}
 }
+
+// runStart feeds a SubagentStart input to its handler, failing the test on a
+// handler error.
+func runStart(t *testing.T, input *HookInput) {
+	t.Helper()
+	if _, err := NewSubagentStartHandler().Handle(context.Background(), input); err != nil {
+		t.Fatalf("SubagentStart Handle: %v", err)
+	}
+}
+
+// bgStopInput builds the SubagentStop payload shape of a background Agent()
+// spawn (SPEC-RECEIPT-REUSE-001): session id carried, agent id absent, so the
+// marker lookup resolves the derived session-era key.
+func bgStopInput(root, agentType, sessionID, message string, reentry bool) *HookInput {
+	return &HookInput{
+		CWD:                  root,
+		AgentType:            agentType,
+		SessionID:            sessionID,
+		LastAssistantMessage: message,
+		StopHookActive:       reentry,
+		HookEventName:        string(EventSubagentStop),
+	}
+}
+
+// freezeClock replaces the store clock with one the test advances explicitly,
+// so the relative order of receipts, markers, and end records is deterministic.
+// Restores the previous clock on test end (same pattern as
+// wsr_audit_receipt_tree_test.go). Not for use with t.Parallel tests.
+func freezeClock(t *testing.T) *time.Time {
+	t.Helper()
+	prev := auditreceipt.Now
+	now := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
+	auditreceipt.Now = func() time.Time { return now }
+	t.Cleanup(func() { auditreceipt.Now = prev })
+	return &now
+}
+
+// advanceClock moves a freezeClock clock forward.
+func advanceClock(now *time.Time, d time.Duration) {
+	*now = now.Add(d)
+}
+
+// endAcceptedPass ends the live instance with an accepted PASS citing r1
+// (SPEC-RECEIPT-REUSE-001 AC-RR-001 arm a).
+func endAcceptedPass(t *testing.T, now *time.Time, root, session, r1 string) {
+	t.Helper()
+	advanceClock(now, time.Second)
+	msg := "AUDIT-VERDICT: PASS spec=SPEC-RR-000 receipts=" + r1
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, msg, false)); out.Decision != "" {
+		t.Fatalf("setup: predecessor accepted-PASS end blocked: %q (%s)", out.Decision, out.Reason)
+	}
+}
+
+// endReentryRefusal ends the live instance with a first-stop block followed by
+// a re-entry refusal (arm b).
+func endReentryRefusal(t *testing.T, now *time.Time, root, session, _ string) {
+	t.Helper()
+	advanceClock(now, time.Second)
+	unproven := "AUDIT-VERDICT: PASS spec=SPEC-RR-000 receipts=none"
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, unproven, false)); out.Decision != "block" {
+		t.Fatalf("setup: first stop decision = %q, want block", out.Decision)
+	}
+	advanceClock(now, time.Second)
+	out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, unproven, true))
+	if out.Decision != "" || !strings.Contains(out.SystemMessage, "not accepted") {
+		t.Fatalf("setup: re-entry refusal end output = %+v, want a non-blocking not-accepted message", out)
+	}
+}
+
+// endFailVerdict ends the live instance with a FAIL verdict (arm c).
+func endFailVerdict(t *testing.T, now *time.Time, root, session, _ string) {
+	t.Helper()
+	advanceClock(now, time.Second)
+	msg := "AUDIT-VERDICT: FAIL spec=SPEC-RR-000 receipts=none"
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, msg, false)); out.Decision != "" || out.SystemMessage != "" {
+		t.Fatalf("setup: FAIL end output = %+v, want silence", out)
+	}
+}
+
+// endNoVerdictReentry ends the live instance with a re-entry stop that carries
+// no parseable verdict line (arm d).
+func endNoVerdictReentry(t *testing.T, now *time.Time, root, session, _ string) {
+	t.Helper()
+	advanceClock(now, time.Second)
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "   \n ", false)); out.Decision != "block" {
+		t.Fatalf("setup: no-verdict first stop = %+v, want block", out)
+	}
+	advanceClock(now, time.Second)
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "   \n ", true)); out.Decision != "" {
+		t.Fatalf("setup: no-verdict re-entry end = %+v, want non-block", out)
+	}
+}
+
+// SPEC-RECEIPT-REUSE-001 AC-RR-001/AC-RR-002: the derived background start
+// marker is a session-era anchor, so without an instance boundary a SECOND
+// sequential auditor of the same session and role proves its PASS with a
+// receipt minted during a PREDECESSOR instance's lifetime, with zero audit-tool
+// calls. All four predecessor end shapes must seal the era they leave behind,
+// and the resulting refusal must carry the reuse-dedicated cause, deny the
+// phase-entry spawns, and be clearable by a PASS citing a qualifying receipt.
+func TestSubagentStop_SequentialAuditorReceiptReuseIsRefused(t *testing.T) {
+	for _, arm := range []struct {
+		name string
+		end  func(t *testing.T, now *time.Time, root, session, r1 string)
+	}{
+		{"accepted-pass-end", endAcceptedPass},
+		{"reentry-refusal-end", endReentryRefusal},
+		{"fail-end", endFailVerdict},
+		{"no-verdict-reentry-end", endNoVerdictReentry},
+	} {
+		t.Run(arm.name, func(t *testing.T) {
+			root := newGateTree(t, "required")
+			session := "sess-rr-seq"
+			now := freezeClock(t)
+
+			// Instance 1 begins and mints r1 during its lifetime.
+			runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+			advanceClock(now, time.Second)
+			r1 := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+			arm.end(t, now, root, session, r1)
+
+			// Instance 2: same session and role, starts after instance 1 has
+			// terminally ended, cites r1 without calling the audit tool.
+			runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+			advanceClock(now, time.Second)
+			msg := "AUDIT-VERDICT: PASS spec=SPEC-RR-001 receipts=" + r1
+			out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, msg, false))
+			if out.Decision != "block" {
+				t.Fatalf("decision = %q, want block — a PASS resting on a predecessor-era receipt must be refused (reason %q)", out.Decision, out.Reason)
+			}
+			if !strings.Contains(out.Reason, auditreceipt.CauseReceiptReused) {
+				t.Errorf("reason = %q, want it to name %q", out.Reason, auditreceipt.CauseReceiptReused)
+			}
+
+			// AC-RR-002: the persisted refusal carries the reuse-dedicated
+			// cause and denies every phase-entry spawn...
+			rj, err := auditreceipt.ReadRejection(root, auditreceipt.AgentPlanAuditor, "SPEC-RR-001")
+			if err != nil {
+				t.Fatalf("rejection record missing: %v", err)
+			}
+			if rj.Cause != auditreceipt.CauseReceiptReused {
+				t.Errorf("rejection cause = %q, want %q", rj.Cause, auditreceipt.CauseReceiptReused)
+			}
+			for _, agent := range []string{"manager-develop", "manager-docs", "manager-git"} {
+				isDenied, reason := denied(runSpawn(t, receiptSpawnInput(root, agent, "Agent")))
+				if !isDenied {
+					t.Errorf("%s spawn was not denied while the reuse refusal is outstanding", agent)
+					continue
+				}
+				if !strings.HasPrefix(reason, "AUDIT_RECEIPT_VIOLATION") {
+					t.Errorf("%s denial reason = %q, want the AUDIT_RECEIPT_VIOLATION prefix", agent, reason)
+				}
+			}
+
+			// ...and a PASS citing a receipt minted after the boundary clears
+			// the refusal and re-opens the spawns.
+			advanceClock(now, time.Second)
+			r2 := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+			out = runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-001 receipts="+r2, false))
+			if out.Decision != "" {
+				t.Fatalf("clearing PASS decision = %q, want none (reason %q)", out.Decision, out.Reason)
+			}
+			if isDenied, reason := denied(runSpawn(t, receiptSpawnInput(root, "manager-develop", "Agent"))); isDenied && strings.HasPrefix(reason, "AUDIT_RECEIPT_VIOLATION") {
+				t.Errorf("manager-develop spawn still denied after a qualifying PASS: %q", reason)
+			}
+		})
+	}
+}
+
+// SPEC-RECEIPT-REUSE-001 AC-RR-009: the end-event boundary semantics, pinned as
+// two named sequences. Counts include the ender. (i) A terminal end arriving
+// while exactly one instance is outstanding advances the boundary, so a later
+// instance citing a receipt minted before that end is refused. (ii) A terminal
+// end arriving while MORE THAN ONE instance is outstanding is ambiguous and
+// does NOT advance the boundary — a later instance citing a receipt minted in
+// the overlap is still judged against the existing anchor and accepted, the
+// concurrency semantics card t1544 pinned.
+func TestSubagentStop_ReceiptBoundaryAmbiguitySemantics(t *testing.T) {
+	t.Run("single-live-end-advances-boundary", func(t *testing.T) {
+		root := newGateTree(t, "required")
+		session := "sess-rr-bnd-1"
+		now := freezeClock(t)
+
+		// X starts t0, mints r t1, terminally ends t2 as the only instance.
+		runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+		advanceClock(now, time.Second)
+		r := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+		advanceClock(now, time.Second)
+		if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: FAIL spec=SPEC-RR-009 receipts=none", false)); out.Decision != "" {
+			t.Fatalf("setup: X's FAIL end output = %+v, want silence", out)
+		}
+
+		// Y starts t3 and cites r (t1 < t2): refused, the boundary advanced.
+		runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+		advanceClock(now, time.Second)
+		out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-009 receipts="+r, false))
+		if out.Decision != "block" || !strings.Contains(out.Reason, auditreceipt.CauseReceiptReused) {
+			t.Fatalf("output = %+v, want a block naming %q", out, auditreceipt.CauseReceiptReused)
+		}
+	})
+
+	t.Run("ambiguous-end-freezes-boundary", func(t *testing.T) {
+		root := newGateTree(t, "required")
+		session := "sess-rr-bnd-2"
+		now := freezeClock(t)
+
+		// A starts t0, B starts t1, B mints r t2, B terminally ends t3 while
+		// two instances are outstanding (ender + surviving sibling): ambiguous.
+		runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+		advanceClock(now, time.Second)
+		runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+		advanceClock(now, time.Second)
+		r := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+		advanceClock(now, time.Second)
+		if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: FAIL spec=SPEC-RR-009 receipts=none", false)); out.Decision != "" {
+			t.Fatalf("setup: B's FAIL end output = %+v, want silence", out)
+		}
+
+		// C starts t4 and cites r (t2 > t0): the boundary stayed frozen at the
+		// anchor, so the citation qualifies and the PASS is accepted.
+		runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+		advanceClock(now, time.Second)
+		out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-009 receipts="+r, false))
+		if out.Decision != "" {
+			t.Fatalf("decision = %q, want none — an ambiguous end must not advance the boundary (reason %q)", out.Decision, out.Reason)
+		}
+	})
+}
+
+// SPEC-RECEIPT-REUSE-001 AC-RR-004 (REQ-RR-005): the first-stop block keeps the
+// start marker on purpose — the instance continues, mints a receipt, and the
+// receipt it cites must still prove its PASS.
+func TestSubagentStop_FirstStopBlockThenOwnReceiptProvable(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-firststop"
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+
+	unproven := "AUDIT-VERDICT: PASS spec=SPEC-RR-004 receipts=none"
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, unproven, false)); out.Decision != "block" {
+		t.Fatalf("first stop decision = %q, want block", out.Decision)
+	}
+	// The instance continues after the block and mints a receipt.
+	id := seedReceipt(t, root, auditreceipt.Receipt{
+		Tool:      auditreceipt.ToolCodexAudit,
+		TreeRoot:  root,
+		CreatedAt: time.Now().UTC().Add(2 * time.Second),
+	})
+	out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-004 receipts="+id, false))
+	if out.Decision != "" {
+		t.Fatalf("decision = %q, want none — the post-block receipt must prove the PASS (reason %q)", out.Decision, out.Reason)
+	}
+}
+
+// SPEC-RECEIPT-REUSE-001 AC-RR-006 (REQ-RR-002): a trailing instance that cites
+// only receipts it minted during its OWN lifetime — after a predecessor has
+// terminally ended — must remain provable. The repair fences predecessor-era
+// receipts, never the instance's own.
+func TestSubagentStop_SequentialOwnReceiptStillProvable(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-own"
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	id1 := seedReceipt(t, root, auditreceipt.Receipt{
+		Tool:      auditreceipt.ToolCodexAudit,
+		TreeRoot:  root,
+		CreatedAt: time.Now().UTC().Add(2 * time.Second),
+	})
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-006 receipts="+id1, false)); out.Decision != "" {
+		t.Fatalf("setup: predecessor accepted end blocked: %q (%s)", out.Decision, out.Reason)
+	}
+
+	// Instance 2 starts after the predecessor ended and cites only its own
+	// receipt.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	id2 := seedReceipt(t, root, auditreceipt.Receipt{
+		Tool:      auditreceipt.ToolCodexAudit,
+		TreeRoot:  root,
+		CreatedAt: time.Now().UTC().Add(4 * time.Second),
+	})
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-006 receipts="+id2, false)); out.Decision != "" {
+		t.Fatalf("decision = %q, want none — the instance's own receipt must stay provable (reason %q)", out.Decision, out.Reason)
+	}
+}
+
+// SPEC-RECEIPT-REUSE-001 (--security --deep review repair, card t1562): a
+// ledger that exists but cannot be read makes the end-event boundary
+// unknowable — the PASS is REFUSED (fail closed), not waved through with zero
+// vision, and the refusal names the condition the operator fixes.
+func TestSubagentStop_UnreadableInstanceLedgerFailsClosed(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-ledger"
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	// Corrupt the ledger file directly: the boundary is now unreadable.
+	ledgerFile := filepath.Join(auditreceipt.StateDir(root), "ledgers",
+		auditreceipt.StartMarkerKey("", session, auditreceipt.AgentPlanAuditor)+".json")
+	if err := os.WriteFile(ledgerFile, []byte("{broken"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	msg := "AUDIT-VERDICT: PASS spec=SPEC-RR-002 receipts=rcpt-ffffffffffffffffffff"
+	out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, msg, false))
+	if out.Decision != "block" || !strings.Contains(out.Reason, auditreceipt.CauseInstanceLedgerUnreadable) {
+		t.Fatalf("output = %+v, want a block naming %q", out, auditreceipt.CauseInstanceLedgerUnreadable)
+	}
+	rj, err := auditreceipt.ReadRejection(root, auditreceipt.AgentPlanAuditor, "SPEC-RR-002")
+	if err != nil {
+		t.Fatalf("rejection record missing: %v", err)
+	}
+	if rj.Cause != auditreceipt.CauseInstanceLedgerUnreadable {
+		t.Errorf("rejection cause = %q, want %q", rj.Cause, auditreceipt.CauseInstanceLedgerUnreadable)
+	}
+}
+
+// Post-sync repair (P2-2, card t1562 mid-flight review) — the gate's
+// reproduction end to end: B's start-record write is discarded (the ledger
+// lock is held past the start-record wait budget), so the outstanding count is
+// short when A terminally ends. Without the repair the boundary advances on
+// the incomplete count and B's OWN freshly-minted receipt is refused as
+// predecessor-era — a false positive AC-RR-002 forbids. With it, the dropped
+// start marks the key uncertain, A's end freezes the boundary, and B's own
+// receipt stays provable.
+func TestSubagentStop_DroppedStartFreezesBoundary(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-drop"
+	now := freezeClock(t)
+	key := auditreceipt.StartMarkerKey("", session, auditreceipt.AgentPlanAuditor)
+	lockFile := filepath.Join(auditreceipt.StateDir(root), "ledgers", key+".json.lock")
+
+	// A begins and stays live.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+
+	// Hold the ledger lock past the start-record wait budget, so B's
+	// start-record write is discarded.
+	if err := os.MkdirAll(filepath.Dir(lockFile), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	lf, err := os.OpenFile(lockFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatalf("hold the ledger lock: %v", err)
+	}
+	_ = lf.Close()
+	// B begins: its marker write proceeds, its ledger count does not.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	// The dropped start must leave its durable uncertainty mark.
+	uncertainFile := filepath.Join(auditreceipt.StateDir(root), "ledgers", key+".json.uncertain")
+	if _, err := os.Stat(uncertainFile); err != nil {
+		t.Errorf("the dropped start left no uncertainty mark: %v", err)
+	}
+	// Release the fake hold so later ledger writes succeed.
+	if err := os.Remove(lockFile); err != nil {
+		t.Fatalf("release the fake lock hold: %v", err)
+	}
+
+	// B mints its own receipt during its lifetime; A mints and cites its own.
+	advanceClock(now, time.Second)
+	rb := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+	advanceClock(now, time.Second)
+	rA := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+	advanceClock(now, time.Second)
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-003 receipts="+rA, false)); out.Decision != "" {
+		t.Fatalf("setup: A's accepted end blocked: %q (%s)", out.Decision, out.Reason)
+	}
+
+	// B ends citing its own receipt: accepted — the uncertain count froze the
+	// boundary.
+	out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-003 receipts="+rb, false))
+	if out.Decision != "" {
+		t.Fatalf("decision = %q, want none — B's own receipt must not be refused as predecessor-era on a count known to be incomplete (reason %q)", out.Decision, out.Reason)
+	}
+}
+
+// Post-sync repair (P2-2 mirror, card t1562 gate round 19): the END-record
+// side of the wait budget. A's terminal end is real but its ledger write is
+// discarded (the lock is held past the budget) — without the repair the
+// boundary never seals, and the NEXT auditor of the session accepts A's
+// receipt with zero audit calls. With it, the lost end is marked pending and
+// the next ledger operation replays it under the lock, so the boundary seals
+// at the end time and the successor's reuse is REFUSED.
+func TestSubagentStop_DroppedEndStillSealsBoundary(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-dropend"
+	now := freezeClock(t)
+	key := auditreceipt.StartMarkerKey("", session, auditreceipt.AgentPlanAuditor)
+	lockFile := filepath.Join(auditreceipt.StateDir(root), "ledgers", key+".json.lock")
+
+	// A begins, mints rA, and terminally ends — while the ledger lock is held
+	// past the end-record budget, so the end-record write is discarded.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+	rA := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+	advanceClock(now, time.Second)
+	if err := os.MkdirAll(filepath.Dir(lockFile), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	lf, err := os.OpenFile(lockFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatalf("hold the ledger lock: %v", err)
+	}
+	_ = lf.Close()
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-019 receipts="+rA, false)); out.Decision != "" {
+		t.Fatalf("setup: A's accepted end blocked: %q (%s)", out.Decision, out.Reason)
+	}
+	// The dropped end must leave its durable pending mark (one file per
+	// instance, named by an id the test cannot predict).
+	pendingMarks, _ := filepath.Glob(filepath.Join(auditreceipt.StateDir(root), "ledgers", key+".json.end-pending-*"))
+	if len(pendingMarks) == 0 {
+		t.Errorf("the dropped end left no pending mark")
+	}
+	if err := os.Remove(lockFile); err != nil {
+		t.Fatalf("release the fake lock hold: %v", err)
+	}
+
+	// B begins after A's end and cites A's receipt with zero audit calls.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+	out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-019 receipts="+rA, false))
+	if out.Decision != "block" || !strings.Contains(out.Reason, auditreceipt.CauseReceiptReused) {
+		t.Fatalf("output = %+v, want a block naming %q — the replayed end must seal the boundary against the successor's reuse", out, auditreceipt.CauseReceiptReused)
+	}
+}
+
+// Post-sync repair r4 (gate round 25, card t1562) — the documented r2
+// residual, now demonstrated: a pending end mark that exists but cannot be
+// READ leaves the previous boundary in force, and a successor ACCEPTS the
+// predecessor's receipt. The approval path must fail closed — refuse while a
+// pending end is unreadable, never silently skip to the old boundary.
+func TestSubagentStop_UnreadablePendingEndFailsClosed(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-pendcorrupt"
+	now := freezeClock(t)
+	key := auditreceipt.StartMarkerKey("", session, auditreceipt.AgentPlanAuditor)
+	lockFile := filepath.Join(auditreceipt.StateDir(root), "ledgers", key+".json.lock")
+
+	// A begins, mints rA, and terminally ends while the ledger lock is held:
+	// the end-record write is discarded and a pending mark is left behind.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+	rA := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+	advanceClock(now, time.Second)
+	if err := os.MkdirAll(filepath.Dir(lockFile), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	lf, err := os.OpenFile(lockFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatalf("hold the ledger lock: %v", err)
+	}
+	_ = lf.Close()
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-025 receipts="+rA, false)); out.Decision != "" {
+		t.Fatalf("setup: A's accepted end blocked: %q (%s)", out.Decision, out.Reason)
+	}
+	if err := os.Remove(lockFile); err != nil {
+		t.Fatalf("release the fake lock hold: %v", err)
+	}
+
+	// Corrupt the pending mark: it exists but cannot be read.
+	marks, err := filepath.Glob(filepath.Join(auditreceipt.StateDir(root), "ledgers", key+".json.end-pending-*"))
+	if err != nil || len(marks) == 0 {
+		t.Fatalf("setup: no pending mark to corrupt (glob err %v, marks %v)", err, marks)
+	}
+	if err := os.WriteFile(marks[0], []byte("{broken"), 0o644); err != nil {
+		t.Fatalf("corrupt the pending mark: %v", err)
+	}
+
+	// B begins after A's end and cites A's receipt with zero audit calls:
+	// REFUSED — the boundary is unknowable while the pending end is
+	// unreadable, and unknowable is not the old boundary.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+	out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-025 receipts="+rA, false))
+	if out.Decision != "block" || !strings.Contains(out.Reason, auditreceipt.CauseInstancePendingUnreadable) {
+		t.Fatalf("output = %+v, want a block naming an unreadable end record — not a silent skip to the old boundary", out)
+	}
+	rj, err := auditreceipt.ReadRejection(root, auditreceipt.AgentPlanAuditor, "SPEC-RR-025")
+	if err != nil {
+		t.Fatalf("rejection record missing: %v", err)
+	}
+	if rj.Cause != auditreceipt.CauseInstancePendingUnreadable {
+		t.Errorf("rejection cause = %q, want %q", rj.Cause, auditreceipt.CauseInstancePendingUnreadable)
+	}
+}
+
+// Post-sync repair r5 (gate round 25, P2): the start's LEDGER record and the
+// start MARKER are two writes — when the marker save fails after the ledger
+// record succeeded, the end-time marker lookup finds nothing and the end was
+// skipped entirely, leaving a phantom survivor that froze the boundary
+// forever. The end aggregates on the derived key the ledger start record
+// used, marker or no marker: no phantom freeze.
+func TestSubagentStop_MarkerlessEndStillAggregates(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-markless"
+	now := freezeClock(t)
+	key := auditreceipt.StartMarkerKey("", session, auditreceipt.AgentPlanAuditor)
+
+	// The marker file's path is pre-taken by a directory, so the marker save
+	// fails while every ledger write succeeds.
+	markerPath := filepath.Join(auditreceipt.StateDir(root), "starts", key+".json")
+	if err := os.MkdirAll(markerPath, 0o755); err != nil {
+		t.Fatalf("MkdirAll (marker path sabotage): %v", err)
+	}
+
+	// Instance 1 begins: its ledger start record succeeds, its marker does not.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+
+	// Instance 1 terminally ends (FAIL — terminal, needs no citation): the
+	// end must aggregate even though the marker lookup finds nothing.
+	advanceClock(now, time.Second)
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: FAIL spec=SPEC-RR-027 receipts=none", false)); out.Decision != "" || out.SystemMessage != "" {
+		t.Fatalf("setup: FAIL end output = %+v, want silence", out)
+	}
+	l, err := auditreceipt.ReadInstanceLedger(root, key)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if l.Starts != 1 || l.Ends != 1 {
+		t.Fatalf("ledger = %d starts / %d ends, want 1 / 1 — a marker-less end must still aggregate, or the instance stays a phantom survivor", l.Starts, l.Ends)
+	}
+	if l.EndedAt.IsZero() {
+		t.Errorf("EndedAt zero — the marker-less single-live end must seal the boundary (no phantom freeze)")
+	}
+}
+
+// Post-sync repair r5 supplement (gate round 31): a FOREGROUND auditor whose
+// marker save failed has no background ledger start — its terminal end must
+// not be counted into the background ledger either, or the phantom end makes
+// the first genuinely-ambiguous background end misread as single-live and a
+// LIVE auditor's own receipt is refused.
+func TestSubagentStop_ForegroundEndDoesNotSealBackgroundLedger(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-fgend"
+	now := freezeClock(t)
+	fgID := "id-fg-broken"
+	fgMarker := filepath.Join(auditreceipt.StateDir(root), "starts", fgID+".json")
+
+	// Foreground auditor: its marker save fails (path pre-taken by a
+	// directory); the background ledger knows nothing about it.
+	if err := os.MkdirAll(fgMarker, 0o755); err != nil {
+		t.Fatalf("MkdirAll (marker path sabotage): %v", err)
+	}
+	runStart(t, &HookInput{CWD: root, AgentID: fgID, AgentType: auditreceipt.AgentPlanAuditor, SessionID: session, HookEventName: string(EventSubagentStart)})
+	advanceClock(now, time.Second)
+	// Its terminal FAIL end: not attributable to the background era. The stop
+	// carries the session id (real payload shape), so the end-key fallback
+	// resolves the derived key — which is exactly the pollution path.
+	advanceClock(now, time.Second)
+	fgStop := &HookInput{
+		CWD:                  root,
+		AgentID:              fgID,
+		AgentType:            auditreceipt.AgentPlanAuditor,
+		SessionID:            session,
+		LastAssistantMessage: "AUDIT-VERDICT: FAIL spec=SPEC-RR-028 receipts=none",
+		HookEventName:        string(EventSubagentStop),
+	}
+	if out := runStop(t, fgStop); out.Decision != "" || out.SystemMessage != "" {
+		t.Fatalf("setup: foreground FAIL end output = %+v, want silence", out)
+	}
+
+	// Two overlapping background auditors of the same session follow.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+	// A mints its own receipt; B mints its own DURING the overlap (before A's
+	// end) — that overlap receipt is what a phantom seal would refuse.
+	rA := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+	advanceClock(now, time.Second)
+	rB := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+	// A terminally ends (accepted PASS citing its own receipt) while B is live.
+	advanceClock(now, time.Second)
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-028 receipts="+rA, false)); out.Decision != "" {
+		t.Fatalf("setup: A's accepted end blocked: %q (%s)", out.Decision, out.Reason)
+	}
+
+	// B's own receipt (minted during the overlap) must stay provable: A's end
+	// was ambiguous, never single-live — the phantom foreground end must not
+	// have flipped it.
+	advanceClock(now, time.Second)
+	out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-028 receipts="+rB, false))
+	if out.Decision != "" {
+		t.Fatalf("decision = %q, want none — the live auditor's own receipt must not be refused by a phantom foreground end (reason %q)", out.Decision, out.Reason)
+	}
+}
+
+// Post-sync repair r5 supplement 3 (gate round 33, P2 — the survivors-live
+// variant): the SAME foreground marker-save failure, but the FAIL end arrives
+// while TWO background auditors are already live. Ends < Starts, so the
+// foreign-end room guard does not catch it: the phantom end is counted, and
+// the first background end then seals single-live while its sibling is still
+// live, refusing the sibling's own receipt. The foreground-failure trace left
+// at start time keeps the end out of the background ledger entirely.
+func TestSubagentStop_ForegroundEndWithSurvivorsDoesNotCount(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-fgsurv"
+	now := freezeClock(t)
+	fgID := "id-fg-surv"
+	fgMarker := filepath.Join(auditreceipt.StateDir(root), "starts", fgID+".json")
+
+	// Foreground auditor: its marker save fails.
+	if err := os.MkdirAll(fgMarker, 0o755); err != nil {
+		t.Fatalf("MkdirAll (marker path sabotage): %v", err)
+	}
+	runStart(t, &HookInput{CWD: root, AgentID: fgID, AgentType: auditreceipt.AgentPlanAuditor, SessionID: session, HookEventName: string(EventSubagentStart)})
+	// The failed save leaves its trace (one file per identity, named by the
+	// agent id the failed marker would have used).
+	fgTrace := filepath.Join(auditreceipt.StateDir(root), "starts", fgID+".json.foreground-failed")
+	if _, err := os.Stat(fgTrace); err != nil {
+		t.Fatalf("the foreground marker failure left no trace: %v", err)
+	}
+
+	// Two background auditors go live, then the foreground FAIL end arrives.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+	if out := runStop(t, stopInput(root, auditreceipt.AgentPlanAuditor, fgID, "AUDIT-VERDICT: FAIL spec=SPEC-RR-030 receipts=none", false)); out.Decision != "" || out.SystemMessage != "" {
+		t.Fatalf("setup: foreground FAIL end output = %+v, want silence", out)
+	}
+	l, err := auditreceipt.ReadInstanceLedger(root, auditreceipt.StartMarkerKey("", session, auditreceipt.AgentPlanAuditor))
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if l.Ends != 0 {
+		t.Errorf("Ends = %d, want 0 — a foreground end must contribute nothing to the background ledger even with survivors live", l.Ends)
+	}
+
+	// A terminally ends (accepted PASS citing its own receipt) while B is
+	// live: ambiguous, never single-live.
+	advanceClock(now, time.Second)
+	rA := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+	advanceClock(now, time.Second)
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-030 receipts="+rA, false)); out.Decision != "" {
+		t.Fatalf("setup: A's accepted end blocked: %q (%s)", out.Decision, out.Reason)
+	}
+
+	// B's own receipt (minted during the overlap) stays provable.
+	advanceClock(now, time.Second)
+	rB := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+	advanceClock(now, time.Second)
+	out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-030 receipts="+rB, false))
+	if out.Decision != "" {
+		t.Fatalf("decision = %q, want none — the live sibling's own receipt must not be refused by a foreground end counted with survivors live (reason %q)", out.Decision, out.Reason)
+	}
+}
+
+// Post-sync repair r5 supplement 2 (gate rounds 31-32, P1): a readable but
+// UNAPPLIED pending end holds the approval — the ledger's boundary is older
+// than the true last terminal end, and approving against it lets a successor
+// pass on the predecessor's receipt with no new audit. The scenario: the
+// predecessor's end-record write was dropped, the successor's start was
+// recorded before the pending mark landed, and the successor then stopped
+// citing the predecessor's receipt.
+func TestSubagentStop_UnappliedPendingEndHoldsApproval(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-pendhold"
+	now := freezeClock(t)
+	key := auditreceipt.StartMarkerKey("", session, auditreceipt.AgentPlanAuditor)
+
+	// A begins and mints rA.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+	rA := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+
+	// B's start is recorded before A's dropped end mark lands.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+
+	// A's end (t1.5) happened but its ledger write was dropped; the pending
+	// mark only lands now — after B's start.
+	advanceClock(now, time.Second)
+	pending := filepath.Join(auditreceipt.StateDir(root), "ledgers", key+".json.end-pending-idHold")
+	body := `{"pending_id":"idHold","ended_at":"` + auditreceipt.Now().Add(-500*time.Millisecond).Format(time.RFC3339Nano) + `"}`
+	if err := os.WriteFile(pending, []byte(body), 0o644); err != nil {
+		t.Fatalf("write the late pending mark: %v", err)
+	}
+
+	// B stops citing A's receipt (no new audit): the readable-but-unapplied
+	// pending end must HOLD the approval.
+	advanceClock(now, time.Second)
+	out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-029 receipts="+rA, false))
+	if out.Decision != "block" || !strings.Contains(out.Reason, auditreceipt.CauseInstancePendingUnresolved) {
+		t.Fatalf("output = %+v, want a block naming %q — an unapplied pending end must hold the approval", out, auditreceipt.CauseInstancePendingUnresolved)
+	}
+}
+
+// SPEC-RECEIPT-REUSE-001 AC-RR-007 (REQ-RR-002): the foreground path —
+// agent-id-keyed markers, consumed at the instance's own stop — is unchanged:
+// a foreground successor citing a predecessor foreground instance's receipt is
+// refused with the before-start cause, and citing its own receipt is accepted.
+func TestSubagentStop_ForegroundSequentialUnchanged(t *testing.T) {
+	root := newGateTree(t, "required")
+	start := time.Now().UTC()
+	seedStart(t, root, "fg-1", auditreceipt.AgentPlanAuditor, start)
+	r1 := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: start.Add(time.Second)})
+	if out := runStop(t, stopInput(root, auditreceipt.AgentPlanAuditor, "fg-1", "AUDIT-VERDICT: PASS spec=SPEC-RR-007 receipts="+r1, false)); out.Decision != "" {
+		t.Fatalf("setup: foreground predecessor accepted end blocked: %q (%s)", out.Decision, out.Reason)
+	}
+
+	// Foreground instance 2 owns its own marker: instance 1's receipt predates
+	// it and is refused with the existing before-start cause.
+	seedStart(t, root, "fg-2", auditreceipt.AgentPlanAuditor, start.Add(2*time.Second))
+	out := runStop(t, stopInput(root, auditreceipt.AgentPlanAuditor, "fg-2", "AUDIT-VERDICT: PASS spec=SPEC-RR-007 receipts="+r1, false))
+	if out.Decision != "block" || !strings.Contains(out.Reason, auditreceipt.CauseReceiptBeforeStart) {
+		t.Fatalf("output = %+v, want a block naming %q", out, auditreceipt.CauseReceiptBeforeStart)
+	}
+
+	// Its own receipt is accepted.
+	r2 := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: start.Add(3 * time.Second)})
+	if out := runStop(t, stopInput(root, auditreceipt.AgentPlanAuditor, "fg-2", "AUDIT-VERDICT: PASS spec=SPEC-RR-007 receipts="+r2, false)); out.Decision != "" {
+		t.Fatalf("decision = %q, want none (reason %q)", out.Decision, out.Reason)
+	}
+}

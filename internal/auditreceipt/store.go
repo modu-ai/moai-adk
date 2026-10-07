@@ -22,10 +22,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -41,6 +43,7 @@ const (
 	receiptsRel   = "receipts"
 	startsRel     = "starts"
 	rejectionsRel = "rejections"
+	ledgersRel    = "ledgers"
 )
 
 // Tool names recorded on a receipt.
@@ -68,15 +71,19 @@ const UnknownSpec = "unknown-spec"
 
 // Failure causes, in the order CheckCitedReceipts reports them.
 const (
-	CauseStartMarkerMissing    = "start marker missing"
-	CauseNoReceiptCited        = "no receipt cited"
-	CauseReceiptUnreadable     = "receipt unreadable"
-	CauseReceiptUnknown        = "receipt unknown to the store"
-	CauseReceiptOtherTree      = "receipt recorded for a different tree"
-	CauseReceiptBeforeStart    = "receipt created before the auditor started"
-	CauseReceiptNotACodexAudit = "receipt is not a codex audit"
-	CauseReceiptAuditNotRun    = "receipt records an audit that never produced a verdict"
-	CauseVerdictLineMissing    = "verdict line missing"
+	CauseStartMarkerMissing        = "start marker missing"
+	CauseNoReceiptCited            = "no receipt cited"
+	CauseReceiptUnreadable         = "receipt unreadable"
+	CauseReceiptUnknown            = "receipt unknown to the store"
+	CauseReceiptOtherTree          = "receipt recorded for a different tree"
+	CauseReceiptBeforeStart        = "receipt created before the auditor started"
+	CauseReceiptReused             = "receipt created before the previous auditor instance of this session ended"
+	CauseReceiptNotACodexAudit     = "receipt is not a codex audit"
+	CauseInstanceLedgerUnreadable  = "instance ledger unreadable"
+	CauseInstancePendingUnreadable = "instance end record unreadable"
+	CauseInstancePendingUnresolved = "instance end record unresolved"
+	CauseReceiptAuditNotRun        = "receipt records an audit that never produced a verdict"
+	CauseVerdictLineMissing        = "verdict line missing"
 )
 
 // Served-model refusal causes. The served-model gate appends the expected
@@ -187,6 +194,558 @@ const derivedMarkerKeyPrefix = "bg_"
 // keep-earliest and never deleted by a single instance's stop.
 func IsDerivedMarkerKey(key string) bool {
 	return strings.HasPrefix(key, derivedMarkerKeyPrefix)
+}
+
+// InstanceLedger counts the anonymous instance lifecycle of one derived
+// session-era key: how many same-session same-role auditor instances started,
+// how many terminally ended, and the end-event boundary those ends sealed
+// (SPEC-RECEIPT-REUSE-001). Instance identity is absent from the hook
+// payloads, so the ledger is deliberately anonymous — it answers "how many
+// instances are outstanding" and "when did the last single-live era end",
+// never "which instance was this". It rides the derived key, so it goes stale
+// with its session id and carries no TTL of its own.
+type InstanceLedger struct {
+	Key    string `json:"key"`
+	Starts int    `json:"starts"`
+	Ends   int    `json:"ends"`
+	// EndedAt is the end-event boundary: receipts minted before it were
+	// minted during a predecessor instance's lifetime. Zero while no
+	// single-live end has sealed an era.
+	EndedAt time.Time `json:"ended_at,omitempty"`
+	// LastEndedAt is the attribution-free watermark of every terminal end the
+	// key has seen — including ambiguous ends whose single-live advance was
+	// discarded at their own arrival. Once the era closes (a single-live
+	// seal), the boundary catches up to it: the boundary never sits before
+	// the last terminal end the era actually had (post-sync repair r5).
+	LastEndedAt time.Time `json:"last_ended_at,omitempty"`
+	// AppliedEnds holds the pending-entry ids already folded into a saved
+	// ledger, so a pending file whose remove was lost after its save is
+	// skipped on replay instead of counted twice. Bounded by the ends of one
+	// session — auditor instances of one session are few.
+	AppliedEnds []string  `json:"applied_ends,omitempty"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+func ledgerPath(treeRoot, key string) string {
+	return filepath.Join(StateDir(treeRoot), ledgersRel, markerFileName(key))
+}
+
+// Ledger lock discipline — the store's cross-process serialization point.
+//
+// The store's other records are single-writer-per-file in practice (one
+// receipt id, one agent id, one role+spec pair), so their atomic per-file
+// rename suffices. The ledger is different: several hook processes of one
+// session read-modify-write the SAME file, and a lost interleaving silently
+// drops a start or an end — a dropped start makes a later end look single-live
+// and seals an era that is actually still alive. Writers therefore take a
+// lockfile (O_EXCL create) around each read→modify→write; readers stay
+// lock-free, because the atomic rename guarantees they see a whole file.
+//
+// The wait is bounded well inside the hook time budget (5s policy, 10s
+// PreToolUse) and a lock left by a dead holder ages out. Release is
+// TOKEN-AWARE: each holder writes a random token into its lockfile and a
+// release removes the file only when it still carries that token — a holder
+// that stalled past the stale age, had its lock broken and taken by a
+// successor, cannot take the successor's lock down with it when it finally
+// finishes (post-sync review P2-1). The chosen trade-off against a kernel
+// flock: the token keeps the lock on the pure-os path all 16 supported
+// platforms build unchanged (a Windows flock would need a second LockFileEx
+// implementation), and it makes the ownership semantics deterministically
+// testable without real 5s stalls. The accepted residual is the break corner
+// itself: a stalling-but-alive holder finishing after a break lands its write
+// as a normal last-writer via the atomic rename.
+
+// ledgerLockWait bounds one lock acquisition: 250ms is the production hook
+// budget. A var so tests under full-suite parallel load can widen it — an
+// exhausted budget is a CLEAN give-up (the dropped record is handled
+// downstream), not a lost count, and the default timeout behavior has its own
+// pin (TestLedgerLockTimesOutWhenHeld).
+var ledgerLockWait = 250 * time.Millisecond
+
+const (
+	ledgerLockStale  = 5 * time.Second
+	ledgerLockPoll   = 5 * time.Millisecond
+	ledgerLockSuffix = ".lock"
+)
+
+// lockLedger acquires the ledger's lockfile, returning its release func. A
+// held lock is polled until the wait budget runs out; a lock older than the
+// stale age is presumed abandoned by a dead process and broken.
+func lockLedger(path string) (func(), error) {
+	lockPath := path + ledgerLockSuffix
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
+		return nil, err
+	}
+	token, err := newRandomToken()
+	if err != nil {
+		return nil, err
+	}
+	deadline := time.Now().Add(ledgerLockWait)
+	for {
+		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		if err == nil {
+			if _, werr := f.WriteString(token + "\n"); werr != nil {
+				_ = f.Close()
+				_ = os.Remove(lockPath)
+				return nil, werr
+			}
+			if cerr := f.Close(); cerr != nil {
+				_ = os.Remove(lockPath)
+				return nil, cerr
+			}
+			return func() { releaseLedgerLock(lockPath, token) }, nil
+		}
+		if !os.IsExist(err) {
+			return nil, err
+		}
+		if fi, statErr := os.Stat(lockPath); statErr == nil && time.Since(fi.ModTime()) > ledgerLockStale {
+			_ = os.Remove(lockPath)
+			continue
+		}
+		if time.Now().After(deadline) {
+			return nil, fmt.Errorf("ledger lock %s still held after %v", lockPath, ledgerLockWait)
+		}
+		time.Sleep(ledgerLockPoll)
+	}
+}
+
+// newRandomToken mints a random hex id: the per-holder lock token a release
+// matches against, and the pending-entry id that makes a dropped end's replay
+// idempotent.
+func newRandomToken() (string, error) {
+	buf := make([]byte, 12)
+	if _, err := rand.Read(buf); err != nil {
+		return "", fmt.Errorf("ledger token: %w", err)
+	}
+	return hex.EncodeToString(buf), nil
+}
+
+// releaseLedgerLock removes the lockfile only when it still carries this
+// holder's token: a successor that broke the stale lock and acquired its own
+// wrote its own token, and this holder's release must leave the successor's
+// lock alone.
+func releaseLedgerLock(lockPath, token string) {
+	data, err := os.ReadFile(lockPath)
+	if err == nil && strings.TrimSpace(string(data)) == token {
+		_ = os.Remove(lockPath)
+	}
+}
+
+// ledgerSave is the save seam of a ledger update: a var so tests can inject a
+// save failure without platform-specific permission games (os.Chmod does not
+// block file creation inside a directory on Windows — post-sync repair r5).
+var ledgerSave = writeJSON
+
+// endJudgment is the attribution a ledger op derived for one terminal end:
+// whether the end was counted into this ledger at all (a foreign end — an
+// instance whose start this ledger never counted — contributes nothing), and
+// whether it was single-live at its own time.
+type endJudgment struct {
+	known      bool
+	counted    bool
+	singleLive bool
+}
+
+// updateInstanceLedger applies mutate to the key's ledger under the lock, so
+// concurrent starts and ends of one session cannot lose a count. Every end
+// whose own write was dropped earlier is replayed first, under the same lock —
+// and the replay re-applies the judgment each end carried when it happened,
+// not a re-derivation from a count that has moved on (post-sync repair r5
+// supplement 3). Ordering is apply → SAVE → consume: a pending file is
+// removed only after the save that folded it in succeeded, so a failed save
+// leaves the end recoverable by the next operation (post-sync review r2,
+// remove-before-save). Re-application after a save-succeeded-but-remove-lost
+// crash is idempotent by pending-entry id — the ledger remembers the ids it
+// folded in and skips them.
+func updateInstanceLedger(treeRoot, key string, at time.Time, mutate func(*InstanceLedger) endJudgment) (endJudgment, error) {
+	path := ledgerPath(treeRoot, key)
+	release, err := lockLedger(path)
+	if err != nil {
+		return endJudgment{}, err
+	}
+	defer release()
+	l, err := ReadInstanceLedger(treeRoot, key)
+	if err != nil {
+		return endJudgment{}, err
+	}
+	pendings, err := readEndPendings(treeRoot, key)
+	if err != nil {
+		return endJudgment{}, err
+	}
+	consumed := make([]string, 0, len(pendings))
+	for _, p := range pendings {
+		if slices.Contains(l.AppliedEnds, p.pending.PendingID) {
+			// A previous save folded this entry in but its remove was lost.
+			consumed = append(consumed, p.path)
+			continue
+		}
+		// The replay re-applies the judgment the end carried when it
+		// happened. A pending foreign to this ledger at replay time (no
+		// uncounted start left) contributes nothing and is consumed.
+		if l.Ends < l.Starts {
+			if p.pending.EndedAt.After(l.LastEndedAt) {
+				l.LastEndedAt = p.pending.EndedAt
+			}
+			l.Ends++
+			if p.pending.SingleLive && !startCountUncertain(treeRoot, key) &&
+				(l.EndedAt.IsZero() || l.LastEndedAt.After(l.EndedAt)) {
+				l.EndedAt = l.LastEndedAt
+			}
+			l.AppliedEnds = append(l.AppliedEnds, p.pending.PendingID)
+		}
+		consumed = append(consumed, p.path)
+	}
+	j := mutate(&l)
+	j.known = true
+	l.UpdatedAt = at
+	if err := ledgerSave(path, &l); err != nil {
+		return j, err // every pending file survives; the next operation retries
+	}
+	for _, p := range consumed {
+		_ = os.Remove(p)
+	}
+	return j, nil
+}
+
+// foregroundFailedPath is the durable trace of a foreground (agent-id
+// bearing) start whose marker save failed: it records that an instance is
+// live WITHOUT a background ledger start, so its end is not attributed to
+// the background era (post-sync repair r5 supplement 3, gate round 33).
+func foregroundFailedPath(treeRoot, agentID string) string {
+	return filepath.Join(StateDir(treeRoot), startsRel, markerFileName(agentID)) + ".foreground-failed"
+}
+
+// MarkForegroundMarkerFailure leaves that trace. Best-effort: if even the
+// mark fails, the end-time attribution falls back to the room test — the
+// documented double-failure residual.
+func MarkForegroundMarkerFailure(treeRoot, agentID string) error {
+	p := foregroundFailedPath(treeRoot, agentID)
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(p, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		if os.IsExist(err) {
+			return nil
+		}
+		return err
+	}
+	if _, werr := f.WriteString("foreground start marker save failed\n"); werr != nil {
+		_ = f.Close()
+		return werr
+	}
+	return f.Close()
+}
+
+// ForegroundMarkerFailed reports whether that trace exists for the agent id.
+func ForegroundMarkerFailed(treeRoot, agentID string) (bool, error) {
+	_, err := os.Stat(foregroundFailedPath(treeRoot, agentID))
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
+
+// EnsureStartMarker writes an auditor start marker for a derived session-era
+// key only when none exists yet — the keep-earliest anchor write as one
+// critical section. The exists-check and the write share the key's ledger
+// lock, so two concurrent same-session same-role starts cannot both observe
+// the marker absent and let the later write overwrite the earliest StartedAt
+// (post-sync review r3: the racy check-then-write refused a legitimate
+// receipt minted between the two starts with "before start"). An existing
+// anchor is never touched.
+func EnsureStartMarker(treeRoot string, m *StartMarker) error {
+	p := filepath.Join(StateDir(treeRoot), startsRel, markerFileName(m.AgentID))
+	release, err := lockLedger(ledgerPath(treeRoot, m.AgentID))
+	if err != nil {
+		return err
+	}
+	defer release()
+	if _, err := ReadStartMarker(treeRoot, m.AgentID); err == nil {
+		return nil
+	}
+	if m.StartedAt.IsZero() {
+		m.StartedAt = Now()
+	}
+	return writeJSON(p, m)
+}
+
+// ReadInstanceLedger loads the ledger of a derived key. A ledger never written
+// reads as the zero ledger — no recorded start, no boundary. A ledger that
+// exists but cannot be parsed returns the error: the caller decides whether
+// zero-vision is acceptable (no — the guard fails closed on it).
+func ReadInstanceLedger(treeRoot, key string) (InstanceLedger, error) {
+	var l InstanceLedger
+	err := readJSON(ledgerPath(treeRoot, key), &l)
+	if err != nil && os.IsNotExist(err) {
+		return InstanceLedger{Key: key}, nil
+	}
+	return l, err
+}
+
+// RecordInstanceStart counts one instance start. Every start counts, including
+// one that leaves the anchor's earliest start untouched: the outstanding count
+// (starts minus terminal ends) is what tells a single-live end from an
+// ambiguous one.
+func RecordInstanceStart(treeRoot, key string, at time.Time) error {
+	_, err := updateInstanceLedger(treeRoot, key, at, func(l *InstanceLedger) endJudgment {
+		l.Starts++
+		return endJudgment{known: true, counted: true}
+	})
+	return err
+}
+
+// uncertainPath is the durable trace of a start whose ledger write was
+// dropped: its presence tells the end path the outstanding count is short by
+// at least one.
+func uncertainPath(treeRoot, key string) string {
+	return ledgerPath(treeRoot, key) + ".uncertain"
+}
+
+// MarkInstanceStartUncertain leaves the trace a dropped start needs: the
+// start's write failed, so every end computed from the ledger is unreliable.
+// While the flag exists, RecordInstanceEnd freezes the key's boundary — ends
+// still count, but nothing advances EndedAt — because refusing a live
+// instance's own receipt as predecessor-era (AC-RR-002) is the wrong error to
+// make here, and the audited reading is fail-closed on the ADVANCE. A dropped
+// start can never be re-derived from anonymous events, so the freeze is
+// permanent for the key and goes stale with its session id; the reuse
+// protection for that session simply stays at whatever the last trusted end
+// sealed.
+func MarkInstanceStartUncertain(treeRoot, key string) error {
+	p := uncertainPath(treeRoot, key)
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(p, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		if os.IsExist(err) {
+			return nil
+		}
+		return err
+	}
+	if _, werr := f.WriteString("start-count uncertain\n"); werr != nil {
+		_ = f.Close()
+		return werr
+	}
+	return f.Close()
+}
+
+// startCountUncertain reports whether a start of this key was dropped.
+func startCountUncertain(treeRoot, key string) bool {
+	_, err := os.Stat(uncertainPath(treeRoot, key))
+	return err == nil
+}
+
+// RecordInstanceEnd counts one terminal instance end. When the ender is the
+// only outstanding start (starts minus ends at most 1 — the ender is counted
+// in starts, not yet in ends), the end is single-live and the boundary
+// advances to the end time: receipts minted before it belong to a lifetime
+// that has terminally ended. An end arriving while MORE THAN ONE instance is
+// outstanding is ambiguous — anonymous events cannot say who ended — so the
+// boundary stays frozen at its existing value and the era the overlap minted
+// stays citable (card t1544's concurrency semantics). An end computed while a
+// start is known dropped (MarkInstanceStartUncertain) is frozen too: the
+// single-live reading rests on a count that is short (post-sync review P2-2).
+// An end foreign to this ledger (its start was never counted here) contributes
+// nothing (post-sync repair r5 supplement 2).
+//
+// When the save of the updated ledger fails, the end is durably parked as a
+// pending record carrying the judgment made at end time — so the replay
+// re-applies THAT judgment instead of re-deriving it from a count that has
+// moved on since (post-sync repair r5 supplement 3). A failure before the
+// judgment (the lock never came, the ledger is unreadable) parks the end
+// without one: its replay counts it only if it is not foreign, and the
+// approval path holds while it is unapplied.
+func RecordInstanceEnd(treeRoot, key string, at time.Time) error {
+	j, err := updateInstanceLedger(treeRoot, key, at, func(l *InstanceLedger) endJudgment {
+		if l.Ends >= l.Starts {
+			// An end the ledger never counted a start for is not attributable
+			// to this background era: a foreground instance whose marker save
+			// failed resolves its end key to this derived ledger too (post-
+			// sync repair r5 supplement 2), and counting it would fabricate a
+			// seal — or flip a genuinely ambiguous end into a single-live one
+			// — that refuses a live auditor's own receipts. Skip entirely: no
+			// count, no watermark, no seal.
+			return endJudgment{known: true, counted: false}
+		}
+		if at.After(l.LastEndedAt) {
+			l.LastEndedAt = at
+		}
+		singleLive := l.Starts-l.Ends <= 1 && !startCountUncertain(treeRoot, key)
+		l.Ends++
+		if singleLive && (l.EndedAt.IsZero() || l.LastEndedAt.After(l.EndedAt)) {
+			l.EndedAt = l.LastEndedAt
+		}
+		return endJudgment{known: true, counted: true, singleLive: singleLive}
+	})
+	if err != nil {
+		// Park the end with the judgment made at end time. A failure after
+		// the judgment (the save failed) carries it; a failure before it (the
+		// lock never came) re-derives the judgment from a lock-free snapshot
+		// of the ledger — the read needs no lock (atomic rename), so the
+		// end-time state is knowable even then. A read that itself fails
+		// parks the end judgment-less: its replay counts it only if it is
+		// not foreign, and PendingEndHold holds the approval while it is
+		// unapplied. A foreign end is not parked at all — it contributes
+		// nothing to this ledger.
+		counted, singleLive := j.counted, j.singleLive
+		if !j.known {
+			if snap, rerr := ReadInstanceLedger(treeRoot, key); rerr == nil {
+				counted = snap.Ends < snap.Starts
+				singleLive = counted && snap.Starts-snap.Ends <= 1 && !startCountUncertain(treeRoot, key)
+			}
+		}
+		if counted {
+			if perr := markInstanceEndPending(treeRoot, key, at, singleLive); perr != nil {
+				// Both the save and the mark failed: nothing durable remains
+				// and the end is lost to the ledger — the documented
+				// no-record residual; the caller's log is the only trace.
+				return err
+			}
+		}
+	}
+	return err
+}
+
+// endPendingPath is the durable record one dropped end: one file per instance
+// (post-sync review r2 — a single per-key file let two same-role failed
+// writers overwrite each other and lose an end), named by the entry id so
+// concurrent writers never collide.
+func endPendingPath(treeRoot, key, id string) string {
+	return ledgerPath(treeRoot, key) + ".end-pending-" + id
+}
+
+// endPending is the payload of one dropped end's durable mark. SingleLive is
+// the judgment made when the end happened — whether the ender was the only
+// outstanding instance — and the replay re-applies THAT judgment instead of
+// re-deriving it from a count that has moved on since (post-sync repair r5
+// supplement 3).
+type endPending struct {
+	PendingID  string    `json:"pending_id"`
+	EndedAt    time.Time `json:"ended_at"`
+	SingleLive bool      `json:"single_live"`
+}
+
+// pendingEndFile pairs a pending mark with the file it was read from.
+type pendingEndFile struct {
+	path    string
+	pending endPending
+}
+
+// markInstanceEndPending records an end whose ledger write was dropped, so a
+// later ledger operation replays it and the boundary still seals at the end
+// time. Unlike a dropped START — permanent freeze, the count can never be
+// re-derived — a dropped END is recoverable: the end's own timestamp is known,
+// only its write was lost (post-sync review, dropped END mirror).
+func markInstanceEndPending(treeRoot, key string, at time.Time, singleLive bool) error {
+	id, err := newRandomToken()
+	if err != nil {
+		return err
+	}
+	p := endPendingPath(treeRoot, key, id)
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		return err
+	}
+	return writeJSON(p, &endPending{PendingID: id, EndedAt: at, SingleLive: singleLive})
+}
+
+// ErrPendingEndUnreadable reports that a pending end mark of the key exists
+// but cannot be read: the end-event boundary is then unknowable, and every
+// consumer fails closed — ledger updates give up rather than apply a partial
+// pending set, and the approval path refuses rather than silently judging
+// against the old boundary (post-sync repair r4). The remedy is the
+// operator's: repair or remove the mark.
+var ErrPendingEndUnreadable = errors.New(CauseInstancePendingUnreadable)
+
+// ErrPendingEndUnresolved reports that a readable pending end mark of the key
+// has not been folded into the ledger yet: the boundary the ledger holds is
+// older than the true last terminal end, and the approval path must hold
+// rather than judge against it (post-sync repair r5 supplement 2). The mark
+// is applied by the next ledger operation — the hold resolves itself.
+var ErrPendingEndUnresolved = errors.New(CauseInstancePendingUnresolved)
+
+// scanEndPendings separates the key's pending end marks into the readable
+// ones (in end-time order — the order the ends really happened in, which is
+// what the single-live rule reads them in) and the unreadable flag. Discovery
+// is a directory read with a literal filename prefix, never a glob over the
+// project path: a directory named project[1] would be pattern-interpreted and
+// hide every pending mark (post-sync review r3 supplement). An unreadable
+// mark is never silently consumed.
+func scanEndPendings(treeRoot, key string) (readable []pendingEndFile, unreadable bool, err error) {
+	dir := filepath.Dir(ledgerPath(treeRoot, key))
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	prefix := markerFileName(key) + ".end-pending-"
+	readable = make([]pendingEndFile, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasPrefix(e.Name(), prefix) {
+			continue
+		}
+		p := filepath.Join(dir, e.Name())
+		var pe endPending
+		if err := readJSON(p, &pe); err != nil || pe.EndedAt.IsZero() || pe.PendingID == "" {
+			return nil, true, nil
+		}
+		readable = append(readable, pendingEndFile{path: p, pending: pe})
+	}
+	sort.Slice(readable, func(i, j int) bool {
+		return readable[i].pending.EndedAt.Before(readable[j].pending.EndedAt)
+	})
+	return readable, false, nil
+}
+
+// readEndPendings loads every pending end of a key, in end-time order. An
+// unreadable mark fails the read with ErrPendingEndUnreadable — a partial
+// pending set must never be applied, and the old boundary must never be
+// silently trusted over an end that exists but cannot be judged.
+func readEndPendings(treeRoot, key string) ([]pendingEndFile, error) {
+	readable, unreadable, err := scanEndPendings(treeRoot, key)
+	if err != nil {
+		return nil, err
+	}
+	if unreadable {
+		return nil, fmt.Errorf("%w (%s)", ErrPendingEndUnreadable, key)
+	}
+	return readable, nil
+}
+
+// PendingEndHold returns the sentinel error the approval path must fail
+// closed on — ErrPendingEndUnreadable (a mark exists but cannot be judged;
+// the remedy is the operator's) or ErrPendingEndUnresolved (a readable mark
+// is not yet folded into the ledger; the next ledger operation applies it,
+// so the hold resolves itself) — or nil when no pending end holds the
+// approval. Either way the boundary the ledger holds is not trustworthy as
+// the true last terminal end (post-sync repair r4 + r5 supplement 2).
+func PendingEndHold(treeRoot, key string) error {
+	readable, unreadable, err := scanEndPendings(treeRoot, key)
+	if err != nil {
+		return err
+	}
+	if unreadable {
+		return ErrPendingEndUnreadable
+	}
+	if len(readable) == 0 {
+		return nil
+	}
+	l, err := ReadInstanceLedger(treeRoot, key)
+	if err != nil {
+		return err
+	}
+	for _, p := range readable {
+		if !slices.Contains(l.AppliedEnds, p.pending.PendingID) {
+			return ErrPendingEndUnresolved
+		}
+	}
+	return nil
 }
 
 // Rejection records a refused auditor PASS. It outlives the subagent: the
@@ -623,6 +1182,16 @@ func ParseVerdictLine(message string) (VerdictLine, bool) {
 // condition that failed in the documented order, so the reason names the
 // nearest fixable thing rather than the last one checked.
 func CheckCitedReceipts(treeRoot string, start *StartMarker, cited []string) (bool, string) {
+	return CheckCitedReceiptsSince(treeRoot, start, time.Time{}, cited)
+}
+
+// CheckCitedReceiptsSince is CheckCitedReceipts with the instance end-event
+// boundary (SPEC-RECEIPT-REUSE-001): a receipt minted before endBoundary was
+// minted during a predecessor instance's lifetime — the citing instance can
+// be a reuse of that lifetime — and is refused with CauseReceiptReused. A
+// zero endBoundary means no single-live predecessor end has sealed an era,
+// and the check is the original one.
+func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary time.Time, cited []string) (bool, string) {
 	if start == nil {
 		return false, CauseStartMarkerMissing
 	}
@@ -636,6 +1205,7 @@ func CheckCitedReceipts(treeRoot string, start *StartMarker, cited []string) (bo
 			CauseReceiptUnknown,
 			CauseReceiptOtherTree,
 			CauseReceiptBeforeStart,
+			CauseReceiptReused,
 			CauseReceiptNotACodexAudit,
 			CauseReceiptAuditNotRun,
 		} {
@@ -657,6 +1227,13 @@ func CheckCitedReceipts(treeRoot string, start *StartMarker, cited []string) (bo
 			cause = CauseReceiptOtherTree
 		case !r.CreatedAt.After(start.StartedAt):
 			cause = CauseReceiptBeforeStart
+		case !endBoundary.IsZero() && !r.CreatedAt.After(endBoundary):
+			// The receipt predates a single-live predecessor end: it was
+			// minted during a lifetime the citing instance could only have
+			// inherited, not lived through (the boundary advanced when no
+			// other instance was outstanding, so any instance starting after
+			// it mints its receipts after it).
+			cause = CauseReceiptReused
 		case r.Tool != ToolCodexAudit && r.Tool != ToolAuditMulti:
 			cause = CauseReceiptNotACodexAudit
 		case strings.TrimSpace(r.GateUnmet) != "",
