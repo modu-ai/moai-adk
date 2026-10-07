@@ -131,6 +131,7 @@ func writeRetainedKeyAdvisoryLines(w io.Writer, refs []backup.RetainedKeyRef) {
 		if ref.KeptOverDefault {
 			continue
 		}
-		_, _ = fmt.Fprintf(w, "advisory: retained key %q absent from new template (preserved from user config)\n", ref.Key)
+		// Card t1527 D4: · note line replaces the raw "advisory:" prefix.
+		emitSeverityLine(w, sevNote, resolveTheme(), "retained key %q absent from new template (preserved from user config)", ref.Key)
 	}
 }

@@ -61,13 +61,14 @@ func TestMergeHistory_ThirdFallbackEmitsAdvisory(t *testing.T) {
 		recordMergeFallback(projectRoot, "quality.yaml", false, false, &buf)
 	}
 
-	out := buf.String()
-	expected := "hint: 'moai update -c' to resync templates for quality.yaml\n"
+	out := stripSGR(buf.String())
+	// Card t1527 D4: the · note line replaces the raw "hint:" prefix.
+	expected := "· 'moai update -c' to resync templates for quality.yaml\n"
 	if !strings.Contains(out, expected) {
 		t.Errorf("advisory missing or wrong wording.\n got: %q\nwant: contains %q", out, expected)
 	}
 	// Exactly one advisory line — defensive parse.
-	if got := strings.Count(out, "hint: 'moai update -c'"); got != 1 {
+	if got := strings.Count(out, "'moai update -c' to resync templates"); got != 1 {
 		t.Errorf("advisory must appear exactly once across 3 failures, got %d (output=%q)", got, out)
 	}
 
@@ -148,13 +149,14 @@ func TestMergeHistory_VerboseBypass(t *testing.T) {
 		recordMergeFallback(projectRoot, "quality.yaml", false, true, &buf)
 	}
 
-	out := buf.String()
-	// Legacy message should appear 4 times — one per failure.
-	if got := strings.Count(out, "Warning: 3-way merge failed for quality.yaml, falling back to 2-way"); got != 4 {
-		t.Errorf("verbose mode must emit legacy warning per-failure: got %d, want 4 (out=%q)", got, out)
+	out := stripSGR(buf.String())
+	// Legacy message should appear 4 times — one per failure. Card t1527 D4:
+	// the ! severity line replaces the raw "Warning:" prefix.
+	if got := strings.Count(out, "! 3-way merge failed for quality.yaml, falling back to 2-way"); got != 4 {
+		t.Errorf("verbose mode must emit the warning per-failure: got %d, want 4 (out=%q)", got, out)
 	}
 	// Advisory must NOT appear under verbose path.
-	if strings.Contains(out, "hint: 'moai update -c'") {
+	if strings.Contains(out, "'moai update -c' to resync templates") {
 		t.Errorf("advisory must not appear under verbose mode, got: %q", out)
 	}
 }

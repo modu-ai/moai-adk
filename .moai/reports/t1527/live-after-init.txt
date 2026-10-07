@@ -1,0 +1,25 @@
+Deploying core templates only (slim mode). Use --all or MOAI_DISTRIBUTE_ALL=1 for full deploy. Note: builder-harness agent is omitted (see SPEC-V3R4-CATALOG-005 for bootstrap).
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+[38;2;91;191;154m✓[m Pre-push hook installed (.git/hooks/pre-push)
+[38;2;91;191;154m✓[m Pre-commit hook installed (.git/hooks/pre-commit)
+[38;2;107;115;112m·[m this checkout is shared across concurrent sessions; for branch-changing work (switch/reset/rebase), use a worktree for isolation — `moai cc -w` / `moai glm -w`, or `claude --worktree`. See .claude/rules/moai/workflow/main-checkout-branch-guard.md.
+
+╭─────────────────────────────────────────────────╮
+│                                                 │
+│  ✓ MoAI project initialized                     │
+│   13 dirs    2 files                            │
+│                                                 │
+│  Next steps:                                    │
+│    1. cd /tmp/t1527-sandbox-after               │
+│    2. moai cc                                   │
+│    3. /moai plan "describe your first feature"  │
+│                                                 │
+╰─────────────────────────────────────────────────╯

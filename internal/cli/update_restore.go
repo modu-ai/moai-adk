@@ -68,8 +68,11 @@ func runUpdateRestore(projectRoot, backupDir string, out io.Writer) error {
 	// backup, while the failed run's deploy step may already have saved a
 	// manifest carrying the NEW hashes — re-record the restored content so the
 	// manifest matches the tree and the restored files are not frozen
-	// user_modified on the next init --force.
-	retrackSectionFiles(projectRoot, out)
+	// user_modified on the next init --force. Card t1527 repair round 3: the
+	// failure returns; the ! line is this path's surface.
+	if retrackErr := retrackSectionFiles(projectRoot, out); retrackErr != nil {
+		emitSeverityLine(out, sevWarn, resolveTheme(), "manifest retrack (config sections) failed: %v", retrackErr)
+	}
 
 	_, _ = fmt.Fprintf(out, "Restored .moai/config from %s\n", absBackup)
 	return nil
