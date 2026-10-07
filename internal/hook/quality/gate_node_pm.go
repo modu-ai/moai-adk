@@ -38,8 +38,12 @@ package quality
 //   - scripts.lint / scripts.typecheck run via `bun run`, mandatory;
 //   - config-gated linters (eslint/biome/oxlint) and tsc resolve ONLY
 //     locally-installed binaries from the nearest node_modules/.bin up to
-//     (and including) the repository root — bare `bunx` is never used (it
-//     can install from the network) and no PATH/global fallback exists;
+//     (and including) the repository root — no PATH/global fallback exists.
+//     A resolved tool execs through the bun runtime (`bun x <tool>`, tool
+//     carried in args): the entry carries a node shebang, so a direct exec
+//     needs node — absent on bun-only machines (card t1572). An unresolved
+//     tool keeps the expected-path exec, so bunx never gets the chance to
+//     download from the network;
 //   - a missing bun binary or a missing required local binary FAILS the
 //     axis rather than skipping it to green;
 //   - gate.typecheck.command is honoured verbatim on bun projects too —
@@ -142,7 +146,7 @@ func readNodeManifest(path string) (nodeManifest, bool) {
 // exec refuses to launch directly; only the plain name and .exe shapes are
 // candidates, so a bun-declared project on Windows may fail a config-gated
 // linter step that macOS/Linux resolves — a known limitation of the
-// direct-binary form, not a PATH fallback (none exists on any platform).
+// plain/.exe candidate set, not a PATH fallback (none exists on any platform).
 func resolveNodeLocalBin(dir, tool string) (string, bool) {
 	if dir == "" {
 		return "", false
@@ -232,22 +236,30 @@ func bunTestStep(scripts map[string]string) gateStep {
 }
 
 // bunConfigLintSteps rewrites the config-gated lint table entries
-// (eslint/biome/oxlint) for a bun-declared project: the npx invocation
-// becomes the locally-installed binary with the tool token dropped from the
-// args, and the step becomes mandatory. The configFiles guard is preserved
-// verbatim — a project without the linter's config still skips the entry;
-// only a project whose config EXISTS but whose local binary is absent fails.
+// (eslint/biome/oxlint) for a bun-declared project: a locally-resolved tool
+// execs through the bun runtime with the tool carried in args (the
+// node_modules/.bin entry carries a node shebang — a direct exec needs
+// node, absent on bun-only machines), an unresolved one keeps the
+// expected-path binary, and the step becomes mandatory either way. The
+// configFiles guard is preserved verbatim — a project without the linter's
+// config still skips the entry; only a project whose config EXISTS but
+// whose local binary is absent fails.
 func bunConfigLintSteps(steps []gateStep, dir string) []gateStep {
 	resolved := make([]gateStep, len(steps))
 	for i, step := range steps {
 		if step.binary == "npx" && len(step.args) > 0 {
 			tool := step.args[0]
-			bin, ok := resolveNodeLocalBin(dir, tool)
-			if !ok {
-				bin = expectedNodeLocalBin(dir, tool)
+			if _, ok := resolveNodeLocalBin(dir, tool); ok {
+				// Bun-runtime exec: bun substitutes its own runtime for the
+				// entry's node shebang (measured, card t1572).
+				step.binary = "bun"
+				step.args = append([]string{"x", tool}, step.args[1:]...)
+			} else {
+				// Unresolved tool keeps the expected-path form: the failed
+				// exec names the location, and bunx never downloads.
+				step.binary = expectedNodeLocalBin(dir, tool)
+				step.args = step.args[1:]
 			}
-			step.binary = bin
-			step.args = step.args[1:]
 			step.optional = false
 		}
 		resolved[i] = step
