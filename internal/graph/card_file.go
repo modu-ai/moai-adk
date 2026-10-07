@@ -178,7 +178,9 @@ func cardFileBatch(root string, commits []commitInfo, sentinel string) (map[stri
 	tokens := strings.Split(string(out), "\x00")
 	var lastSHA string
 	for i := 0; i < len(tokens)-1; {
-		if tokens[i] != "" || i+2 >= len(tokens) {
+		// The parent field needs its own terminator; Split's final empty
+		// token alone cannot prove a complete empty-parent root header.
+		if tokens[i] != "" || i+3 >= len(tokens) {
 			return nil, fmt.Errorf("card_file: invalid batch header")
 		}
 		sha, parents := tokens[i+1], tokens[i+2]
