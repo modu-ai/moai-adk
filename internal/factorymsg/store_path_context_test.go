@@ -312,3 +312,23 @@ func TestBrokerOpenContextPinsGitErrorLocaleOnlyInChildren(t *testing.T) {
 		}
 	}
 }
+
+// A broker creates its own state, not a caller's missing project directory.
+func TestBrokerOpenContextRejectsMissingProjectRoot(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("MOAI_HOME", home)
+	root := filepath.Join(t.TempDir(), "missing-project")
+	store, err := OpenWithContext(context.Background(), root, "run-missing")
+	if store != nil {
+		_ = store.Close()
+		t.Fatal("missing project returned a broker")
+	}
+	if err == nil {
+		t.Fatal("missing project was accepted")
+	}
+	for _, path := range []string{root, filepath.Join(home, "db")} {
+		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("missing project created %s: %v", path, err)
+		}
+	}
+}
