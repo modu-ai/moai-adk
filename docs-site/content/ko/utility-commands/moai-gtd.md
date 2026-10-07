@@ -7,7 +7,7 @@ new: true
 
 # /moai gtd
 
-`/moai gtd`와 `moai gtd`는 작업을 수집하고 실행 가능성을 판단한 뒤 기존 개발 대기열로 연결하는 정식 GTD 표면입니다. 기존 `todo`의 SQLite DB, 카드 ID, 순서, `queued`·`picked`·`dropped` 상태와 보관·복원 의미는 바뀌지 않습니다. `todo`는 같은 명령 트리를 쓰는 호환 이름으로 남습니다.
+`/moai gtd`와 `moai gtd`는 작업을 수집하고 실행 가능성을 판단한 뒤 기존 개발 대기열로 연결하는 GTD 표면입니다. 정식 이름은 `/moai todo`와 `moai todo`이며, `moai gtd`는 같은 명령 트리를 쓰는 호환 이름으로 계속 완전히 지원됩니다. SQLite DB, 카드 ID, 순서, `queued`·`picked`·`dropped` 상태와 보관·복원 의미는 바뀌지 않습니다.
 
 ```bash
 moai gtd add "인증 오류 경로 정리"
@@ -16,7 +16,7 @@ moai gtd next t1 --spec SPEC-AUTH-001
 moai gtd done t1 --expect "인증"
 ```
 
-기존 `moai todo ...` 호출도 같은 결과를 냅니다. 전체 대기열 동사와 플래그는 [todo 호환 명령 참고서](/ko/utility-commands/moai-todo)를 확인하세요.
+정식 이름 `moai todo ...`도 같은 결과를 냅니다. 전체 대기열 동사와 플래그는 [todo 명령 참고서](/ko/utility-commands/moai-todo)를 확인하세요.
 
 GTD 전용 다섯 동사는 실제 SQLite 상태를 이어서 사용합니다.
 

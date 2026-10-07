@@ -250,10 +250,10 @@ func TestFR_EvidenceReaderRefusals(t *testing.T) {
 	if _, err := readAuditVerdict(repo.Dir, "prefix", "plan-audit", repo.Commit); err != nil {
 		t.Fatalf("12-char audited_sha prefix: %v", err)
 	}
-	if _, err := verifyMerge(ctx, repo.Dir, repo.Merge, repo.Remeasure, "-bad"); !errors.Is(err, ErrEvidence) {
+	if _, err := verifyMerge(ctx, repo.Dir, repo.Merge, repo.Remeasure, "-bad", nil); !errors.Is(err, ErrEvidence) {
 		t.Fatalf("bad integration branch: %v", err)
 	}
-	if _, err := verifyMerge(ctx, repo.Dir, repo.Merge, "", repo.Integration); !errors.Is(err, ErrEvidence) {
+	if _, err := verifyMerge(ctx, repo.Dir, repo.Merge, "", repo.Integration, nil); !errors.Is(err, ErrEvidence) {
 		t.Fatalf("missing remeasure: %v", err)
 	}
 	if _, err := verifyPushed(ctx, repo.Dir, repo.Merge, "no-such-branch"); !errors.Is(err, ErrEvidence) {

@@ -20,32 +20,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
 )
-
-// buildMoaiForDoctorExit builds the moai binary under the test's own temp dir
-// and returns its path.
-//
-// The package path is given as an IMPORT path rather than a relative one, so
-// the build does not depend on how far `internal/cli` sits from the module
-// root — a relative "./cmd/moai" would be wrong the moment this file moved.
-func buildMoaiForDoctorExit(t *testing.T) string {
-	t.Helper()
-	bin := filepath.Join(t.TempDir(), "moai")
-	if runtime.GOOS == "windows" {
-		bin += ".exe"
-	}
-	cmd := exec.Command("go", "build", "-o", bin, "github.com/modu-ai/moai-adk/cmd/moai")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("go build moai: %v\n%s", err, out)
-	}
-	return bin
-}
 
 // runDoctorProcess executes `moai doctor` in projRoot with CODEX_HOME pinned
 // to codexHome, and returns the OBSERVED process exit status plus the combined
@@ -91,7 +71,7 @@ func codexHomeDirOf(home string) string { return filepath.Join(home, codexHomeDi
 // the `moai doctor` PROCESS exit 1. Codex itself exits 1 on this config; a
 // doctor that exits 0 tells every CI wrapper the machine is fine.
 func TestDoctorExitCode_CodexEnabledFatal(t *testing.T) {
-	bin := buildMoaiForDoctorExit(t)
+	bin := buildMoaiBinary(t)
 	root := wireProjectForDoctor(t)
 	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
 		{Path: liveSkillFile(t)}, // no EnabledKey: the fatal shape
@@ -108,7 +88,7 @@ func TestDoctorExitCode_CodexEnabledFatal(t *testing.T) {
 // same wiring with a bare boolean `enabled` must keep the process at 0.
 // Without it, a doctor that exits 1 unconditionally passes the case above.
 func TestDoctorExitCode_CodexCleanStaysZero(t *testing.T) {
-	bin := buildMoaiForDoctorExit(t)
+	bin := buildMoaiBinary(t)
 	root := wireProjectForDoctor(t)
 	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
 		{Path: liveSkillFile(t), EnabledKey: "true"},
@@ -132,7 +112,7 @@ func TestDoctorExitCode_CodexCleanStaysZero(t *testing.T) {
 // modify) and no fatal one, then asserts BOTH halves: the in-package status is
 // CheckWarn, and the process exits 0.
 func TestDoctorExitCode_CodexAdvisoryOnlyStaysZero(t *testing.T) {
-	bin := buildMoaiForDoctorExit(t)
+	bin := buildMoaiBinary(t)
 	root := wireProjectForDoctor(t)
 	if err := os.Remove(filepath.Join(root, codexwiring.HooksRelPath)); err != nil {
 		t.Fatalf("removing hooks.json from the wired fixture: %v", err)

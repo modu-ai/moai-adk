@@ -11,7 +11,7 @@ Parent: [spec-first-ddd.md](spec-first-ddd.md)
 >
 > Backward-compatibility for legacy EARS REQs is supported for 6 months from v3.0.0 release. The lint engine emits a `LegacyEARSKeyword` warning on residual `IF/THEN` modality in NEW SPECs per the canonical GEARS migration policy.
 >
-> The canonical GEARS authoring guide lives in `.claude/skills/moai-workflow-spec/SKILL.md` "GEARS Format" section. This file is retained as legacy reference for the 6-month backward-compatibility window.
+> The canonical GEARS authoring guide lives in `~/.claude/skills/moai-workflow-spec/SKILL.md` "GEARS Format" section. This file is retained as legacy reference for the 6-month backward-compatibility window.
 
 ---
 

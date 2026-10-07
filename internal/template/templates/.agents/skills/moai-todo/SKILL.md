@@ -6,7 +6,7 @@ description: "Compatibility alias for the canonical GTD task-management entry po
 
 Dispatch the moai workflow `gtd` with: $ARGUMENTS
 - Harness with the Skill tool (Claude Code): invoke `Skill("moai")` with arguments: `gtd` $ARGUMENTS
-- Harness without a skill loader (Codex CLI): read `.agents/skills/moai/SKILL.md` (the mirrored dispatcher body) and follow its routing for the `gtd` subcommand with the same arguments
+- Harness without a skill loader (Codex CLI): read `~/.agents/skills/moai/SKILL.md` (the mirrored dispatcher body) and follow its routing for the `gtd` subcommand with the same arguments
 
 The queue carries four states: `queued`, `picked`, `dropped`, `hold`.
 `gtd hold <n>` parks a queued card out of every machine selector's reach —

@@ -37,17 +37,16 @@ import (
 // (moai doctor) can pattern-match on them. See SPEC-V3R4-CATALOG-002 REQ-021
 // and acceptance scenario S1.
 //
-// SPEC-INIT-SHRINK-001 (REQ-021): the notice also names the plugin carrier —
-// on the default path skills and commands deploy no local copies and ride
-// the moai plugin instead; --no-plugin and --all keep a full local deploy.
+// Common skills and agents install into user folders; optional bundles require
+// an explicit selection and do not follow the project template --all switch.
 func emitSlimModeNotice(out io.Writer) {
 	_, _ = fmt.Fprintln(out,
 		"Deploying core templates only (slim mode). "+
-			"Use --all or MOAI_DISTRIBUTE_ALL=1 for full deploy. "+
+			"Use --all or MOAI_DISTRIBUTE_ALL=1 for all project harness templates. "+
 			"Note: builder-harness agent is omitted (see SPEC-V3R4-CATALOG-005 for bootstrap).")
 	_, _ = fmt.Fprintln(out,
-		"Skills and commands ride the moai plugin on the default path (no local copies). "+
-			"Use --no-plugin or --all for a full local deploy.")
+		"Common skills and agents install into your user folders. "+
+			"Use --bundles to opt into optional user assets.")
 }
 
 var initCmd = &cobra.Command{
@@ -65,7 +64,7 @@ Examples:
   moai init my-app           Creates ./my-app/ and initializes MoAI inside
   moai init .                Initializes MoAI in the current directory
   moai init --mode tdd       Initialize with specific development mode (default: tdd)
-  moai init --all            Deploy all catalog entries (default is core-only slim mode; SPEC-V3R4-CATALOG-002)
+  moai init --all            Select all project harness templates; optional user assets require --bundles
 
 Note: moai init / moai update do NOT auto-enter a worktree. To work inside a
 worktree, enter one with the launcher flag (moai cc -w <name>).`,
@@ -89,8 +88,12 @@ func init() {
 	initCmd.Flags().Bool("non-interactive", false, "Skip interactive wizard; use flags and defaults")
 	initCmd.Flags().Bool("force", false, "Reinitialize an existing project (backs up current .moai/)")
 	initCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
-	initCmd.Flags().Bool("no-plugin", false, "Skip the moai plugin and deploy the FULL local payload (skills, commands, .mcp.json moai entry, Codex mirror). Also MOAI_SKIP_PLUGIN_INSTALL=1. Default (plugin mode) deploys no local skills or commands — they ride the moai plugin")
-	initCmd.Flags().Bool("all", false, "Deploy all catalog tiers locally (a full local deploy: the --no-plugin payload plus optional-pack entries). Bypasses slim mode (SPEC-V3R4-CATALOG-002)")
+	initCmd.Flags().Bool("no-plugin", false, "Deprecated compatibility flag; init always deploys locally and installs common assets into user folders")
+	initCmd.Flags().Bool("all", false, "Select all project harness templates; optional user assets still require --bundles")
+	// SPEC-USER-ASSET-INSTALL-001 (REQ-004, iter2 D18): the initial opt-in
+	// bundle selection, recorded in the per-user manifest. L0 installs
+	// regardless; each named bundle adds its catalog entries.
+	initCmd.Flags().String("bundles", "", "Comma-separated opt-in bundle names to install into your user folders on first init (e.g. devops,frontend)")
 
 	// The two wizard mode flags are retired (REQ-WIZ-018): the wizard presents
 	// the same three pages to every user, so there is no mode to select.
@@ -202,7 +205,9 @@ func wireCodexUnlessClaude(cmd *cobra.Command, wiring agentWiring, projectRoot s
 		return
 	}
 	if _, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: Codex wiring failed: %v\n", err)
+		// Card t1527 D4 (repair round): ! severity line replaces the raw
+		// "warning:" prefix.
+		emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Codex wiring failed: %v", err)
 	}
 }
 
@@ -256,19 +261,22 @@ func getBoolFlag(cmd *cobra.Command, name string) bool {
 // The write goes through the shared atomic-config seam
 // (provisionMoaiMCPServerEntryAt -> mutateClaudeJSONAtomic), so it inherits the
 // same lock + backup + idempotent-skip behaviour the other entry writers use.
-// Provisioning is best-effort: a failure warns and is swallowed, so a broken or
-// unwritable config can never fail an init. The user's explicit decline is
-// honored absolutely (C-A-5): default-on is a default, not a mandate.
-func provisionMCPEntryUnlessDeclined(out, errOut io.Writer, projectRoot string, declined bool) {
+// Provisioning is best-effort: a failure is RETURNED, not printed — the caller
+// records it into the warning collector and the exit summary panel renders it
+// exactly once (card t1527 D5 + repair round: one surface per failure), so a
+// broken or unwritable config can never fail an init. The user's explicit
+// decline is honored absolutely (C-A-5): default-on is a default, not a
+// mandate.
+func provisionMCPEntryUnlessDeclined(out io.Writer, projectRoot string, declined bool) error {
 	if declined {
-		return
+		return nil
 	}
 	configPath := filepath.Join(projectRoot, ".mcp.json")
 	if err := provisionMoaiMCPServerEntryAt(configPath); err != nil {
-		_, _ = fmt.Fprintf(errOut, "warning: MCP server entry provisioning failed: %v\n", err)
-		return
+		return err
 	}
 	_, _ = fmt.Fprintln(out, "Provisioned the moai MCP server entry in .mcp.json (default-on).")
+	return nil
 }
 
 // applyWizardPage3ToOpts applies the wizard result's fixed Page-3 seeds to
@@ -422,38 +430,13 @@ func shouldDistributeAll(cmd *cobra.Command) bool {
 	return v == "1" || strings.EqualFold(v, "true")
 }
 
-// resolveInitDeployMode resolves the run's deploy mode (SPEC-INIT-SHRINK-001
-// REQ-001/REQ-003/REQ-007, OD-5/OD-7 settled (a)): the opt-out surface
-// (--no-plugin flag or MOAI_SKIP_PLUGIN_INSTALL, the t1435 OD-5 pin) and the
-// --all flag (a local full deploy — OD-7 settled (a)) select the local
-// payload; everything else is the default plugin path.
+// resolveInitDeployMode resolves the run's deploy mode. SPEC-USER-ASSET-
+// INSTALL-001 (REQ-017, D4): the plugin carrier is retired — init NEVER
+// invokes a plugin marketplace or install command, and the deploy is the
+// local (slim) payload in every case; the common skills and agents install
+// into the user folders (REQ-005). M7 removes the mode split entirely.
 func resolveInitDeployMode(cmd *cobra.Command) template.DeployMode {
-	if getBoolFlag(cmd, "no-plugin") || pluginOptOutFromEnv() || shouldDistributeAll(cmd) {
-		return template.DeployModeLocal
-	}
-	return template.DeployModePlugin
-}
-
-// emitShrinkInstallGuidance prints the one guidance block of REQ-004: the
-// post-install probe did not demonstrate this run's install, so both
-// recourses are named. Recourse 1 names the flags that actually work — a
-// plain re-run fails "project already initialized", so --force is required
-// alongside --no-plugin, and the block states what force re-initialization
-// moves (card t1438 review finding 6). Fail-open — it never changes the
-// init result.
-func emitShrinkInstallGuidance(errOut io.Writer) {
-	_, _ = fmt.Fprintln(errOut, "note: the moai plugin install could not be demonstrated for this run.")
-	_, _ = fmt.Fprintln(errOut, "      Skills and commands are NOT deployed locally on the plugin path;")
-	_, _ = fmt.Fprintln(errOut, "      pick a recourse to keep them available:")
-	_, _ = fmt.Fprintln(errOut, "        1. re-run with --no-plugin --force for a full local deploy (a plain")
-	_, _ = fmt.Fprintln(errOut, "           re-run fails: the project already counts as initialized). --force")
-	_, _ = fmt.Fprintln(errOut, "           re-initialization moves the existing .moai/ to .moai-backups/<timestamp>/")
-	_, _ = fmt.Fprintln(errOut, "           and redeploys the MoAI-managed template files from scratch; your")
-	_, _ = fmt.Fprintln(errOut, "           manifest is carried forward, so user-modified files keep their")
-	_, _ = fmt.Fprintln(errOut, "           user_modified protection, or")
-	_, _ = fmt.Fprintln(errOut, "        2. install the plugin manually:")
-	_, _ = fmt.Fprintln(errOut, "           claude plugin marketplace add "+pluginMarketplaceSource+" ; claude plugin install "+pluginRef)
-	_, _ = fmt.Fprintln(errOut, "           codex  plugin marketplace add "+pluginMarketplaceSource+" ; codex  plugin add "+pluginRef)
+	return template.DeployModeLocal
 }
 
 // @MX:ANCHOR: [AUTO] runInit is the main entry point for project initialization
@@ -803,25 +786,23 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// Codex's actual execution of plugin-borne skills is verified (OD-6
 	// settled (a) + condition; the REQ-008 measurement proves listing, not
 	// execution).
-	// deployMode is resolved once above (beside opts.Harness); the deployer
-	// family receives it as an option — the split is an option, not a
-	// constructor axis.
-	modeOpts := []template.DeployerOption{template.WithDeployMode(deployMode)}
+	// SPEC-USER-ASSET-INSTALL-001 (M7): no deploy-mode options — the split
+	// is retired with the plugin carrier.
 	switch agentWiringSelection {
 	case agentWiringGPT:
-		deployer, err = template.NewCodexOnlyDeployerWithRenderer(cat, renderer, modeOpts...)
+		deployer, err = template.NewCodexOnlyDeployerWithRenderer(cat, renderer)
 	case agentWiringBoth:
 		if shouldDistributeAll(cmd) {
-			deployer, err = template.NewDualHarnessDeployerWithRenderer(cat, renderer, modeOpts...)
+			deployer, err = template.NewDualHarnessDeployerWithRenderer(cat, renderer)
 		} else {
-			deployer, err = template.NewDualHarnessSlimDeployerWithRenderer(cat, renderer, modeOpts...)
+			deployer, err = template.NewDualHarnessSlimDeployerWithRenderer(cat, renderer)
 			emitSlimModeNotice(cmd.OutOrStdout())
 		}
 	default:
 		if shouldDistributeAll(cmd) {
-			deployer, err = template.NewClaudeHarnessDeployerWithRenderer(cat, renderer, modeOpts...)
+			deployer, err = template.NewClaudeHarnessDeployerWithRenderer(cat, renderer)
 		} else {
-			deployer, err = template.NewClaudeHarnessSlimDeployerWithRenderer(cat, renderer, modeOpts...)
+			deployer, err = template.NewClaudeHarnessSlimDeployerWithRenderer(cat, renderer)
 			emitSlimModeNotice(cmd.OutOrStdout())
 		}
 	}
@@ -853,6 +834,26 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	if getBoolFlag(cmd, "force") && agentWiringSelection != agentWiringClaude {
 		probe, probeErr := validator.Validate(opts.ProjectRoot)
 		emitAddCodexReinitGuidance(cmd.ErrOrStderr(), agentWiringSelection, probeErr == nil && !probe.Valid)
+	}
+
+	// B7 (review-fix round 2 addendum): validate --bundle names EARLY — a
+	// typo must fail before the deploy, not after the project is already
+	// initialized (where the re-run refuses with 'already initialized' and
+	// the missing install has no path forward).
+	if raw := getStringFlag(cmd, "bundles"); strings.TrimSpace(raw) != "" {
+		cat, catErr := template.LoadEmbeddedCatalog()
+		if catErr != nil {
+			return fmt.Errorf("load catalog for bundle validation: %w", catErr)
+		}
+		var unknown []string
+		for _, name := range parseBundleSelection(raw) {
+			if _, ok := cat.Catalog.OptionalPacks[name]; !ok {
+				unknown = append(unknown, name)
+			}
+		}
+		if len(unknown) > 0 {
+			return fmt.Errorf("unknown bundle(s) %s — valid bundles: run 'moai bundle add --help' or check catalog.yaml", strings.Join(unknown, ", "))
+		}
 	}
 
 	p.Info("Initializing MoAI project...")
@@ -932,6 +933,23 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		return fmt.Errorf("initialize private MoAI home layout: %w", err)
 	}
 
+	// SPEC-USER-ASSET-INSTALL-001 (REQ-024): the first-install trigger. Init
+	// ensures every L0 and opted-in-bundle asset is present user-side before
+	// the run reports success — the judgment is PER-ASSET-STATE applying the
+	// REQ-023 truth table exactly as update does (a user-edited file's bytes
+	// are never clobbered; an untracked target is a REQ-010 collision; a
+	// partial install's manifest does not suppress the run). Systemic
+	// failures fail the init; per-file failures continue and surface in the
+	// summary (REQ-013).
+	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+		selection := parseBundleSelection(getStringFlag(cmd, "bundles"))
+		if err := ensureUserAssetsLocked(homeDir, selection, cmd.OutOrStdout()); err != nil {
+			return fmt.Errorf("user-asset install failed: %w\n  Fix the cause and re-run 'moai init' — the ensure is idempotent and completes the shortfall", err)
+		}
+	} else {
+		p.Warn("Could not resolve the user home; the user-folder asset install was skipped: %v", homeErr)
+	}
+
 	// Chain ① consumer link (SPEC-INIT-WIZARD-REPAIR-001 REQ-003): wire the
 	// persisted tier selection into the deployed settings immediately after
 	// the initializer returns. Paths are resolved here and passed in (no new
@@ -969,20 +987,14 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	backup.SettleMCPSnapshot(opts.ProjectRoot, false, cmd.ErrOrStderr())
 
 	// Route executor result warnings into the collector (they surface once,
-	// in the exit summary panel — REQ-TUX2-013) and display the completion
-	// card with the next-action sequence (REQ-TUX2-016). Human-facing status
-	// belongs on stderr (internal/cli/CLAUDE.md Output streams; REQ-CTX-012).
+	// in the exit summary panel — REQ-TUX2-013). Human-facing status belongs
+	// on stderr (internal/cli/CLAUDE.md Output streams; REQ-CTX-012).
+	// Card t1527 D5: the completion card itself MOVED below the tail — the
+	// profile/Jev/harness/hooks/MCP tail steps used to print their lines after
+	// the card, so the card did not read as the end of the run.
 	for _, w := range result.Warnings {
 		p.Collect(w)
 	}
-	cardName := opts.ProjectName
-	if cardName == "" {
-		cardName = filepath.Base(opts.ProjectRoot)
-	}
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
-		buildInitSuccessCard(cardName, len(result.CreatedDirs), len(result.CreatedFiles), p.Count(), string(deployMode)))
-
 	// Sync profile preferences to project config (after template deployment)
 	if err := profile.SyncToProjectConfig(opts.ProjectRoot, prefs); err != nil {
 		p.Warn("Failed to sync profile to project config: %v", err)
@@ -1035,11 +1047,17 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// Install pre-push hook (REQ-CIAUT-002). Non-fatal; --no-hooks opts out.
-	// Status/warning lines are human-facing -> stderr (REQ-CTX-016).
-	installPrePushHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr())
+	// Status/warning lines are human-facing -> stderr (REQ-CTX-016). Card
+	// t1527 D5: an install failure reaches the warning collector, so the
+	// terminal summary panel carries it.
+	if pushErr := installPrePushHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr()); pushErr != nil {
+		p.Warn("Pre-push hook installation failed: %v", pushErr)
+	}
 
 	// Install pre-commit hook (REQ-PC-001). Fast-subset commit tier; --no-hooks opts out.
-	installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr())
+	if commitErr := installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr()); commitErr != nil {
+		p.Warn("Pre-commit hook installation failed: %v", commitErr)
+	}
 
 	// SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-009): surface the shared-checkout
 	// worktree advisory. Phrased per workflow.worktree.auto_create; rides stdout
@@ -1066,17 +1084,10 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// probe (design §2.4): install the moai plugin into the tool(s) the
 	// harness selects, after the deployment is complete, and read the
 	// observable outcome from the post-install list-surface probe. Fail-open
-	// (REQ-013/014): guidance and skip lines go to stderr and never change
-	// the init result; --no-plugin and MOAI_SKIP_PLUGIN_INSTALL opt out.
-	installOutcome := runInitPluginInstallProbed(cmd.ErrOrStderr(), agentWiringSelection, opts.ProjectRoot, getBoolFlag(cmd, "no-plugin"))
-
-	// SPEC-INIT-SHRINK-001 REQ-004: on the default path, an install whose
-	// diff does not demonstrate success gets the one guidance block naming
-	// both recourses. The opt-out path is REQ-003's full local deploy and
-	// never triggers guidance; the exit status is unchanged either way.
-	if deployMode == template.DeployModePlugin && installOutcome == probeOutcomeNotDemonstrated {
-		emitShrinkInstallGuidance(cmd.ErrOrStderr())
-	}
+	// SPEC-USER-ASSET-INSTALL-001 (REQ-017): the plugin install step is
+	// retired with its carrier — init invokes no marketplace or plugin
+	// install command for either harness; the user-folder installer (M2)
+	// is the distribution.
 
 	// SPEC-MCP-DEFAULT-ON-001 (default-on, REQ-A-3): turn opts.MCPProvision
 	// into the single neutral .mcp.json entry. The interactive path sets it
@@ -1110,10 +1121,13 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	case agentWiringBoth:
 		mcpDeclined = false
 	}
-	if deployMode == template.DeployModePlugin && installOutcome == probeOutcomeConfirmed {
-		mcpDeclined = true
+	// SPEC-USER-ASSET-INSTALL-001 (REQ-017): the plugin probe arm is
+	// retired with its carrier — no plugin install can confirm or decline
+	// the MCP entry, so only the wizard answer decides mcpDeclined.
+	// The returned failure joins the warning collector exactly once.
+	if mcpErr := provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), opts.ProjectRoot, mcpDeclined); mcpErr != nil {
+		p.Collect("MCP server entry provisioning failed: " + mcpErr.Error())
 	}
-	provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), cmd.ErrOrStderr(), opts.ProjectRoot, mcpDeclined)
 
 	// SPEC-CODEX-WIRING-001 (REQ-CW-002/004/008/013): wire the Codex side for
 	// --llm gpt|both — hooks.json (EventTable-derived, whitelist-gated),
@@ -1124,18 +1138,42 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 
 	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
 	// with the `moai update` hint; a failed or in-flight check never affects
-	// the init result.
+	// the init result. Card t1527 repair round: this runs BEFORE the
+	// completion card, so the card is followed only by the deferred warning
+	// summary panel — the terminal surface by design (REQ-TUX2-013: the
+	// collector re-emits every warning exactly once when the run terminates;
+	// the card's own pointer text reads "see the warning summary on stderr
+	// below", which is only true with the panel last).
 	flushUpdateNotice(p)
 
 	// card t1277: every post-deploy rewrite above (WritePhase1Configs patching
-	// lsp/quality/design, ApplyHarness
-	// rewriting llm.yaml) happens AFTER the deploy tracked the rendered
-	// sections, so the manifest saves the pre-answer hashes and the next
-	// init --force reads the drifted files as user edits. Re-record the
-	// section hashes here — the LAST writer wins, so one retrack at the tail
-	// covers the whole family. template_managed-only filtering keeps
-	// user-owned entries untouched (two-way invariant).
-	retrackSectionFiles(opts.ProjectRoot, cmd.ErrOrStderr())
+	// lsp/quality/design, ApplyHarness rewriting llm.yaml) happens AFTER the
+	// deploy tracked the rendered sections, so the manifest saves the
+	// pre-answer hashes and the next init --force reads the drifted files as
+	// user edits. Re-record the section hashes here — the LAST writer wins, so
+	// one retrack at the tail covers the whole family. template_managed-only
+	// filtering keeps user-owned entries untouched (two-way invariant).
+	// Card t1527 repair round 3: a retrack FAILURE routes into the warning
+	// collector (per-file skip notes still stream to stderr — bookkeeping
+	// noise, not the failure verdict). Card t1527 repair round 4: the whole
+	// block runs BEFORE the completion card, so the card's warning count and
+	// its "see the warning summary" hint include the retrack failure, and
+	// nothing but the deferred summary panel ever follows the card.
+	if retrackErr := retrackSectionFiles(opts.ProjectRoot, cmd.ErrOrStderr()); retrackErr != nil {
+		p.Collect("manifest retrack (config sections) failed: " + retrackErr.Error())
+	}
+
+	// Card t1527 D5: the completion card prints after every tail step above —
+	// its "initialized" verdict is the last thing the operator reads before
+	// the collected warning summary panel (see the comment above). The card's
+	// warning count is taken HERE, after every collector source above.
+	cardName := opts.ProjectName
+	if cardName == "" {
+		cardName = filepath.Base(opts.ProjectRoot)
+	}
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
+		buildInitSuccessCard(cardName, len(result.CreatedDirs), len(result.CreatedFiles), p.Count(), string(deployMode)))
 
 	// The template snapshot is written by opts.AfterTemplateDeploy (set before
 	// executor.Execute), not here: by this point the section files carry the

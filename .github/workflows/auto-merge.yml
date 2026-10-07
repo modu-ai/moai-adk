@@ -38,6 +38,10 @@ jobs:
           echo "state=$PR_STATE" >> "$GITHUB_OUTPUT"
           echo "merged=$PR_MERGED" >> "$GITHUB_OUTPUT"
           echo "PR #$PR_NUMBER ($PR_HEAD_BRANCH) - State: $PR_STATE, Merged: $PR_MERGED"
+          # AC-CI-005: record the job start once; the merge step derives its
+          # single overall deadline from this timestamp (start + 17 min,
+          # inside the 20-minute job timeout).
+          echo "merge_deadline=$(( $(date +%s) + 1020 ))" >> "$GITHUB_ENV"
 
       - name: Skip if not open or already merged
         if: >
@@ -88,38 +92,79 @@ jobs:
         id: checks
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
         run: |
-          PR_NUMBER="${{ steps.pr.outputs.number }}"
           echo "Checking required CI checks for PR #$PR_NUMBER..."
 
-          # Wait for all checks to complete (max 10 minutes)
+          # AC-CI-004: the required-checks observation is a structured JSON
+          # query with explicit failure handling — a lookup failure, an empty
+          # response, or a partial check set withholds the merge instead of
+          # being read as completion. Exit code 8 means "checks pending" (a
+          # valid JSON body accompanies it) and is a WAIT signal, not an
+          # error; any other non-zero exit is a lookup failure.
           MAX_WAIT=60
           WAIT=0
 
-          while [ $WAIT -lt $MAX_WAIT ]; do
-            # Get required checks status
-            CHECKS_OUTPUT=$(gh pr checks "$PR_NUMBER" --required 2>&1) || true
+          while [ "$WAIT" -lt "$MAX_WAIT" ]; do
+            rc=0
+            CHECKS_JSON="$(gh pr checks "$PR_NUMBER" --required --json name,state,bucket 2>/dev/null)" || rc=$?
 
-            # Count pending/running checks
-            PENDING=$(echo "$CHECKS_OUTPUT" | grep -c "pending\|running" || true)
-            FAILED=$(echo "$CHECKS_OUTPUT" | grep -c "fail\|error" || true)
-            PASSED=$(echo "$CHECKS_OUTPUT" | grep -c "pass" || true)
-
-            echo "Check status: passed=$PASSED, pending=$PENDING, failed=$FAILED"
-
-            if [ "$FAILED" -gt 0 ]; then
-              echo "Some checks failed, skipping auto-merge"
+            if [ "$rc" -ne 0 ] && [ "$rc" -ne 8 ]; then
+              echo "::warning::required-checks lookup failed (gh exit $rc) - withholding auto-merge"
               echo "should_merge=false" >> "$GITHUB_OUTPUT"
               exit 0
             fi
 
-            if [ "$PENDING" -eq 0 ]; then
+            if [ -z "$CHECKS_JSON" ]; then
+              echo "::warning::empty required-checks response - withholding auto-merge"
+              echo "should_merge=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            # A nonempty response string can still contain an empty array
+            # or an unrelated object. Require actual, well-formed checks
+            # before an all-pass observation can authorize a merge.
+            if ! printf '%s' "$CHECKS_JSON" | jq -e '              def state_bucket:
+                if . == "SUCCESS" then "pass"
+                elif IN("SKIPPED", "NEUTRAL") then "skipping"
+                elif IN("ERROR", "FAILURE", "TIMED_OUT", "ACTION_REQUIRED") then "fail"
+                elif . == "CANCELLED" then "cancel"
+                elif IN("EXPECTED", "REQUESTED", "WAITING", "QUEUED", "PENDING", "IN_PROGRESS", "STALE") then "pending"
+                else null end;
+              type == "array" and length > 0 and all(.[];
+                type == "object" and (.name | type == "string" and length > 0) and
+                (.state | type == "string" and length > 0) and
+                (.bucket | IN("pass", "fail", "pending", "skipping", "cancel")) and
+              (.bucket == (.state | state_bucket)))' >/dev/null 2>&1; then
+              echo "::warning::invalid or empty required-checks observation - withholding auto-merge"
+              echo "should_merge=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            pending="$(printf '%s' "$CHECKS_JSON" | jq '[.[] | select(.bucket == "pending")] | length')"
+            nonpass="$(printf '%s' "$CHECKS_JSON" | jq '[.[] | select(.bucket != "pass" and .bucket != "pending")] | length')"
+
+            if [ "$rc" -eq 8 ] && [ "$pending" -eq 0 ]; then
+              echo "::warning::pending exit status without pending checks - withholding auto-merge"
+              echo "should_merge=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            echo "Check status: total=$(printf '%s' "$CHECKS_JSON" | jq 'length') pending=$pending nonpass=$nonpass"
+
+            if [ "${nonpass:-0}" -gt 0 ]; then
+              echo "Some checks did not pass - withholding auto-merge"
+              echo "should_merge=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            if [ "${pending:-0}" -eq 0 ]; then
               echo "All checks completed!"
               echo "should_merge=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
 
-            echo "Waiting for checks to complete... ($WAIT/$MAX_WAIT)"
+            echo "Waiting for checks to complete... ($WAIT/$MAX_WAIT, pending=$pending)"
             sleep 10
             WAIT=$((WAIT + 1))
           done
@@ -255,9 +300,41 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_BRANCH: ${{ steps.pr.outputs.branch }}
+          TESTED_SHA: ${{ steps.head.outputs.sha }}
         run: |
           PR_NUMBER="${{ steps.pr.outputs.number }}"
           echo "Auto-merging PR #$PR_NUMBER ($PR_BRANCH)..."
+
+          # AC-CI-005: the single overall deadline is RE-EVALUATED at merge
+          # time — never a comparison against a start-captured snapshot. The
+          # merge proceeds only while the wall clock is still inside the
+          # deadline (start + 17 min, recorded when the job started).
+          now="$(date +%s)"
+          if [ "$now" -gt "${merge_deadline:-9999999999}" ]; then
+            echo "::notice::Overall deadline passed before merge (now=$now deadline=${merge_deadline:-unset}) - leaving PR #$PR_NUMBER open for review"
+            exit 0
+          fi
+
+          # AC-CI-003: re-verify the head IMMEDIATELY before merging and pin
+          # the merge to the CI-tested commit, so a push landing between the
+          # guards and this call can never be merged unverified.
+          HEAD_NOW="$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')"
+          if [ -z "$HEAD_NOW" ] || [ "$HEAD_NOW" != "$TESTED_SHA" ]; then
+            echo "::notice::PR head moved (tested=${TESTED_SHA:-<empty>} now=${HEAD_NOW:-<empty>}) - leaving PR #$PR_NUMBER open for review"
+            exit 0
+          fi
+
+          # AC-CI-005 re-evaluation (post-head-query): the head query itself
+          # takes wall-clock time — the deadline can cross BETWEEN the check
+          # above and the merge call. Re-read the clock here; merging with a
+          # stale pre-query evaluation is the defect this second check
+          # closes (E26's served-time observation targets exactly this
+          # window).
+          now="$(date +%s)"
+          if [ "$now" -gt "${merge_deadline:-9999999999}" ]; then
+            echo "::notice::Overall deadline passed during head verification (now=$now deadline=${merge_deadline:-unset}) - leaving PR #$PR_NUMBER open for review"
+            exit 0
+          fi
 
           # Release/hotfix PRs preserve individual SPEC history via --merge.
           # All other branches use --squash (Enhanced GitHub Flow §18.3).
@@ -272,7 +349,10 @@ jobs:
           # No --auto fallback: a deferred merge lands at a later moment, against
           # whatever the head is by then, without re-running the guards above.
           # A failed merge here is left for a human rather than deferred.
-          if gh pr merge "$PR_NUMBER" $MERGE_FLAG --delete-branch; then
+          # --match-head-commit makes the merge fail server-side if the head
+          # moved in the window between the re-check above and GitHub applying
+          # the merge (the pinned AC-CI-003 precondition).
+          if gh pr merge "$PR_NUMBER" $MERGE_FLAG --match-head-commit "$TESTED_SHA" --delete-branch; then
             echo "Successfully merged PR #$PR_NUMBER"
           else
             echo "::notice::Merge command failed - leaving PR #$PR_NUMBER open for review"

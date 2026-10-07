@@ -47,13 +47,35 @@ func loadSlimFS(t *testing.T) (fs.FS, *Catalog) {
 // Expected hidden count: 25 (17 optional skills + 7 optional agents + 1 harness-generated).
 //
 // Sentinel: CATALOG_SLIM_LEAK
+// coreSharedPaths returns the entry paths that are BOTH core entries and
+// non-core entries (the E3 shared-asset case — the devops pack's L0 trio):
+// core membership wins, so the slim FS never hides them and the hide/walk
+// audits skip them.
+func coreSharedPaths(cat *Catalog) map[string]bool {
+	shared := map[string]bool{}
+	coreSet := map[string]bool{}
+	for _, e := range cat.Catalog.Core.Skills {
+		coreSet[e.Path] = true
+	}
+	for _, e := range cat.Catalog.Core.Agents {
+		coreSet[e.Path] = true
+	}
+	for _, e := range cat.AllEntries() {
+		if e.Tier != TierCore && coreSet[e.Path] {
+			shared[e.Path] = true
+		}
+	}
+	return shared
+}
+
 func TestSlimFS_HidesNonCoreEntries(t *testing.T) {
 	t.Parallel()
 	slim, cat := loadSlimFS(t)
 
 	audited := 0
+	shared := coreSharedPaths(cat)
 	for _, e := range cat.AllEntries() {
-		if e.Tier == TierCore {
+		if e.Tier == TierCore || shared[e.Path] {
 			continue
 		}
 		// entry.Path = "templates/.claude/skills/foo/" → caller view = ".claude/skills/foo/"
@@ -120,7 +142,7 @@ func TestSlimFS_PreservesCoreEntries(t *testing.T) {
 // T3.4 path verification (pre-checked against templates/ tree):
 //   - .claude/output-styles/moai/moai.md         → OK
 //   - .moai/config/sections/harness.yaml         → OK
-//   - CLAUDE.md                                  → OK
+//   - AGENTS.md.tmpl                             → OK
 //   - .gitignore                                 → OK
 //
 // Note: .moai/config/sections/quality.yaml is only present as quality.yaml.tmpl
@@ -136,7 +158,7 @@ func TestSlimFS_PreservesNonCatalogFiles(t *testing.T) {
 	nonCatalogPaths := []string{
 		".claude/output-styles/moai/moai.md",
 		".moai/config/sections/harness.yaml",
-		"CLAUDE.md",
+		"AGENTS.md.tmpl",
 		".gitignore",
 	}
 
@@ -160,9 +182,10 @@ func TestSlimFS_WalkDirNoLeak(t *testing.T) {
 	slim, cat := loadSlimFS(t)
 
 	// Reconstruct deny set in caller-view namespace (templates/ stripped).
+	shared := coreSharedPaths(cat)
 	denyCallerView := make(map[string]struct{})
 	for _, e := range cat.AllEntries() {
-		if e.Tier == TierCore {
+		if e.Tier == TierCore || shared[e.Path] {
 			continue
 		}
 		callerPath := strings.TrimPrefix(strings.TrimSuffix(e.Path, "/"), "templates/")

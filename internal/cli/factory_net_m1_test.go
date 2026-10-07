@@ -27,6 +27,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -137,8 +138,7 @@ type netCodexLane struct {
 
 // netCodexLaneChild runs `moai codex -l` over a one-card queue with the
 // codex binary and child launch substituted, and returns the first child's
-// full environment. The substituted session moves its own card to merge-ready
-// and exits 0, so the supervising loop ends.
+// full environment. Boot opens one parent session and leaves cards untouched.
 func netCodexLaneChild(t *testing.T) netCodexLane {
 	t.Helper()
 	return netCodexLaneChildFor(t, "-l")
@@ -160,7 +160,23 @@ func netCodexLaneChildFor(t *testing.T, args ...string) netCodexLane {
 		if childEnv == nil {
 			childEnv = sdEnvOf(t, c.Env)
 		}
-		sdCodexSessionWork(t, root, sdEnvOf(t, c.Env)[config.EnvFactoryCard])
+		if got := childEnv[config.EnvFactoryCard]; got != "" {
+			t.Errorf("lane boot carries card %q; consumption belongs to todo --auto", got)
+		}
+		primary, err := filepath.EvalSymlinks(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.Dir != primary || c.Args[len(c.Args)-1] != codexLaneAutoPrompt {
+			t.Errorf("lane launch dir=%q args=%q, want parent checkout and auto directive", c.Dir, c.Args)
+		}
+		record, err := store.LoadPure()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(record.Items) != 1 || record.Items[0].State != factory.BacklogStatePicked {
+			t.Errorf("lane boot changed queue before todo --auto: %+v", record.Items)
+		}
 		return nil
 	}
 	t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })

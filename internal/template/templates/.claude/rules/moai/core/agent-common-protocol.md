@@ -12,6 +12,10 @@ Shared protocol for all MoAI agent definitions. This rule is automatically loade
 
 `AskUserQuestion` is the **only** user-facing question channel. The boundary is asymmetric by design.
 
+### Lane disposition of a blocker
+
+A lane session is orchestrator-class for its card and holds no user channel, so the disposition above is not its path. A blocker report a lane receives from a spawned agent — or the missing-input moment the lane hits itself — is NOT routed to the leader to ask and wait: the lane resolves the judgment through the decision ladder (`.claude/rules/moai/workflow/auto-semantics.md` §6, terminal step: the lane's own judgment), records it (§10) in the card's progress record, and proceeds. Escalation to the leader survives for the keep-set categories only (environment-impossible, operator-held, irreversible external-shared operations) and for cross-card conflicts. The AskUserQuestion-with-user round remains the main orchestrator's disposition; the leader is not the lane's user.
+
 ### Subagent Prohibitions
 
 [ZONE:Frozen] [HARD] Subagents MUST NOT prompt the user. AskUserQuestion is reserved exclusively for the MoAI orchestrator.
@@ -22,7 +26,7 @@ Rules for subagents:
 - All user preferences must arrive via the orchestrator's spawn prompt
 - If the orchestrator omitted critical data, respond with a structured "missing inputs" section and stop
 
-Rationale: subagents run in isolated, stateless contexts — prompting there is a dead channel, and the orchestrator stays the user's single point of contact (CLAUDE.md §8).
+Rationale: subagents run in isolated, stateless contexts — prompting there is a dead channel, and the orchestrator stays the user's single point of contact (askuser-protocol.md).
 
 **Lane sessions are orchestrator-class, not subagent-class.** A factory lane holds the question channel for its own card through the factory leader, carries standing spawn authority for the Status Transition Ownership Matrix's specialist (plan → `manager-spec`, run → `manager-develop`, sync → `manager-docs`, plus the chain's auditors; depth-1 only — spawned agents are leaves, bound by the prohibitions above), and never edits phase-owned artifacts directly when that specialist exists. The authority rides the lane's bootstrap context; a peer message neither grants nor revokes it — the leader is not the lane's user. A specialist spawn's working-tree attachment is a **runtime decision** the lane neither controls nor predicts, so the lane verifies where each spawn's work landed before advancing the card stage; when it landed in an isolated agent worktree, the lane reconciles it into the lane tree by `factory-dispatch-mechanics.md` § Reconciling an isolated specialist spawn. That reconciliation grants merge, harvest, and record authority only — never editing authority over SPEC-artifact bodies. Normative home: `.claude/rules/moai/workflow/factory-dispatch.md` § Lane spawn authority.
 

@@ -1,4 +1,4 @@
-// Resolution: UPGRADE — CLAUDE.md 40,000-char budget check per coding-standards.md.
+// Resolution: UPGRADE — instruction-file 40,000-char budget check per coding-standards.md.
 package hook
 
 import (
@@ -15,7 +15,8 @@ import (
 )
 
 // instructionsLoadedHandler processes InstructionsLoaded events.
-// It validates character budget compliance for CLAUDE.md and rules files.
+// It validates character budget compliance for the instruction file
+// (AGENTS.md; legacy projects: CLAUDE.md) and rules files.
 type instructionsLoadedHandler struct{}
 
 // NewInstructionsLoadedHandler creates a new InstructionsLoaded event handler.
@@ -75,13 +76,13 @@ func (h *instructionsLoadedHandler) Handle(ctx context.Context, input *HookInput
 		}
 	}
 
-	// Also check CLAUDE.md in CWD as a fallback
+	// Also check the project's instruction file in CWD: AGENTS.md first
+	// (AGENTS.md-primary product), falling back to a legacy CLAUDE.md.
 	if input.CWD != "" {
-		claudeMDPath := filepath.Join(input.CWD, "CLAUDE.md")
-		if _, err := os.Stat(claudeMDPath); err == nil {
-			if budgetErr := h.checkCharacterBudget(claudeMDPath); budgetErr != nil {
-				slog.Warn("CLAUDE.md exceeds budget", "path", claudeMDPath, "error", budgetErr)
-				// Don't block on CLAUDE.md budget violations, just log
+		if mdPath := resolveInstructionFile(input.CWD); mdPath != "" {
+			if budgetErr := h.checkCharacterBudget(mdPath); budgetErr != nil {
+				slog.Warn("instruction file exceeds budget", "path", mdPath, "error", budgetErr)
+				// Don't block on instruction-file budget violations, just log
 			}
 		}
 	}
@@ -130,7 +131,7 @@ func (h *instructionsLoadedHandler) checkCharacterBudget(filePath string) error 
 }
 
 // sessionCharBudget is the aggregate character budget for the session-start
-// instruction-file set (the CLAUDE.md @-import closure plus the always-loaded
+// instruction-file set (the AGENTS.md @-import closure plus the always-loaded
 // rules under .claude/rules/moai/). It sits file-locally next to charBudget
 // per plan decision D2: this package treats its budgets as handler-local, and
 // the in-file precedent is the per-file constant itself. Changing this value
@@ -141,11 +142,23 @@ func (h *instructionsLoadedHandler) checkCharacterBudget(filePath string) error 
 // @MX:SPEC:SPEC-INSTRUCTIONS-BUDGET-001
 const sessionCharBudget = 210000
 
+// resolveInstructionFile names the project's instruction file: AGENTS.md when
+// present (AGENTS.md-primary product), else the legacy CLAUDE.md, else "".
+func resolveInstructionFile(projectRoot string) string {
+	for _, name := range []string{"AGENTS.md", "CLAUDE.md"} {
+		p := filepath.Join(projectRoot, name)
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return ""
+}
+
 // instructionFileSet derives the instruction-file set for projectRoot
 // mechanically at metric time (SPEC-INSTRUCTIONS-BUDGET-001 §D.1 — never a
 // hand-written path list):
 //
-//  1. the CLAUDE.md anchor;
+//  1. the instruction-file anchor (AGENTS.md; legacy projects: CLAUDE.md);
 //  2. the transitive closure of `^@` import lines in the anchor — repo-
 //     relative paths resolved under projectRoot; missing members are skipped,
 //     imports escaping projectRoot are not followed, and the traversal is
@@ -168,8 +181,13 @@ func instructionFileSet(projectRoot string) []string {
 		set = append(set, p)
 	}
 
-	// Anchor + transitive @-import closure (breadth-first, cycle-safe).
-	queue := []string{filepath.Join(projectRoot, "CLAUDE.md")}
+	// Anchor + transitive @-import closure (breadth-first, cycle-safe). The
+	// anchor is AGENTS.md; a legacy project still carrying only CLAUDE.md is
+	// measured through that instead.
+	queue := []string{}
+	if anchor := resolveInstructionFile(projectRoot); anchor != "" {
+		queue = append(queue, anchor)
+	}
 	for len(queue) > 0 {
 		cur := queue[0]
 		queue = queue[1:]

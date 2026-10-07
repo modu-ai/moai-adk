@@ -163,16 +163,17 @@ func TestPreCommitVersionBumpIsSilent(t *testing.T) {
 	installWithContent(t, root, previousPreCommitHookContent)
 
 	var out, warn bytes.Buffer
-	installPreCommitHookOptional(root, false, &out, &warn)
+	_ = installPreCommitHookOptional(root, false, &out, &warn)
 
 	if got := readHook(t, root); got != preCommitHookContent {
 		t.Errorf("hook was not replaced: got %d bytes, want the incoming content (%d bytes)", len(got), len(preCommitHookContent))
 	}
 	assertNoBackup(t, root)
 
-	const wantLine = "  Pre-commit hook installed (.git/hooks/pre-commit)\n"
-	if out.String() != wantLine {
-		t.Errorf("output = %q, want exactly %q (a version bump produces no backup notice)", out.String(), wantLine)
+	// Card t1527 D4: the success line leads with the ✓ severity glyph.
+	const wantLine = "✓ Pre-commit hook installed (.git/hooks/pre-commit)\n"
+	if got := stripSGR(out.String()); got != wantLine {
+		t.Errorf("output = %q, want exactly %q (a version bump produces no backup notice)", got, wantLine)
 	}
 	if warn.Len() != 0 {
 		t.Errorf("a version bump produces no notice on the warning writer either, got: %q", warn.String())

@@ -3,10 +3,8 @@ package cli
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"testing"
 
@@ -78,28 +76,6 @@ func codexSnapshot(t *testing.T, root string) map[string]string {
 	return out
 }
 
-// recordedCodexTemplates lists the .codex/ paths the manifest records as
-// template deployments (not generated wiring).
-func recordedCodexTemplates(t *testing.T, root string) []string {
-	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(root, ".moai", "manifest.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var mf manifest.Manifest
-	if err := json.Unmarshal(raw, &mf); err != nil {
-		t.Fatal(err)
-	}
-	var out []string
-	for p, e := range mf.Files {
-		if strings.HasPrefix(p, ".codex/") && e.Provenance != manifest.GeneratedManaged {
-			out = append(out, p)
-		}
-	}
-	sort.Strings(out)
-	return out
-}
-
 // simulateOlderDeployment makes the project look deployed by an older binary:
 // wiring files without part records (the sidecar is the only trace), and a
 // .codex/ template file the newer templates no longer ship.
@@ -164,13 +140,14 @@ func TestHarnessProfileTransitionPreservesUserData(t *testing.T) {
 				t.Fatal(err)
 			}
 			before := codexSnapshot(t, root)
+			// SPEC-USER-ASSET-INSTALL-001 (REQ-005): the project tree no
+			// longer carries .codex/agents/moai/ templates, so the
+			// undeployed-templates half of the fixture has no material in
+			// the post-M4 shape — the preservation invariant this row once
+			// exercised there now rides the older_binary arm's
+			// manifest-seeded retired entry, and the claude-target arms
+			// keep their orphaned-wiring assertions below.
 			undeployed := []string{}
-			if row.to == "claude" {
-				undeployed = recordedCodexTemplates(t, root)
-				if len(undeployed) == 0 {
-					t.Fatalf("fixture: the %s deployment recorded no .codex/ templates", row.from)
-				}
-			}
 			if row.older {
 				undeployed = []string{transitionRetired}
 			}
@@ -201,9 +178,14 @@ func TestHarnessProfileTransitionPreservesUserData(t *testing.T) {
 				if cfgAfter != cfgBefore {
 					t.Errorf("orphaned wiring rewritten:\nbefore=%q\nafter =%q", cfgBefore, cfgAfter)
 				}
-				if !strings.Contains(out, codexwiring.ConfigRelPath+" is Codex wiring") || !strings.Contains(out, codexwiring.DisableCommand) {
-					t.Errorf("orphaned wiring not reported with %q:\n%s", codexwiring.DisableCommand, lastLines(out, 20))
-				}
+				// SPEC-USER-ASSET-INSTALL-001 (REQ-005): the .codex/agents/
+				// moai/ TOML placement no longer deploys, so deployments
+				// carry ONLY GeneratedManaged wiring entries — the
+				// orphaned-wiring report (keyed on non-GeneratedManaged
+				// .codex/ entries) legitimately stays silent in every arm
+				// of this table now; the older_binary arm's retired entry
+				// is still covered by the undeployed loop's preservation
+				// assertions above. Wiring files stay byte-identical.
 			} else if strings.Contains(out, codexwiring.DisableCommand) {
 				t.Errorf("wiring the %s profile uses was reported orphaned:\n%s", row.to, lastLines(out, 20))
 			}

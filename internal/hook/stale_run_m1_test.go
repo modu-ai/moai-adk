@@ -30,6 +30,12 @@ func TestStaleRunNoticeLegacyLeaderSpelling(t *testing.T) { // AC-RNC-025 (a) + 
 	root := newStaleRunRoot(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvFactoryLeadName, "lead")
+	// EnvFactoryRunID is MOAI_KANBAN_ID: a suite run from a live factory
+	// session leaks its run id here, flips gatedStaleRunAnswer into the
+	// prescription gate, and the gate's unbind notice is empty for a legacy
+	// LEADER label — measured on card t1542. The relaunch-notice branch this
+	// test pins needs no run named.
+	t.Setenv(config.EnvFactoryRunID, "")
 
 	input := &HookInput{SessionID: "stale-lead-session", Source: "startup", ProjectDir: root, CWD: root}
 	writeFactorySessionRecord(input)
@@ -53,6 +59,11 @@ func TestStaleRunNoticeLegacySessionRecord(t *testing.T) { // AC-RNC-025 (b)
 	root := newStaleRunRoot(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvFactoryLeadName, "leader")
+	// Same leak as the leader-spelling test above: a live run id in the
+	// environment routes the record-role branch through the prescription
+	// gate, whose unbind notice is empty for the legacy leader spelling
+	// (card t1542).
+	t.Setenv(config.EnvFactoryRunID, "")
 
 	// A pre-rename binary wrote this record with role "lead" — written as raw
 	// JSON because the current-vocabulary WithRole setter correctly refuses
@@ -99,6 +110,11 @@ func TestStaleRunNoticeFactoryLegacyLabel(t *testing.T) { // AC-RNC-022 hook cla
 	t.Setenv(config.EnvFactoryRunID, "runR")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "4")
 	t.Setenv(config.EnvMoaiFactoryWorker, "worker-2")
+	// EnvFactoryBackend is MOAI_KANBAN_BACKEND: a suite run from a live
+	// GLM/lane session leaks its backend and flips the relaunch line's
+	// provider token away from the absent-backend default this test pins
+	// (measured on card t1542).
+	t.Setenv(config.EnvFactoryBackend, "")
 
 	input := &HookInput{SessionID: "stale-lane-session", Source: "startup", ProjectDir: root, CWD: root}
 	writeFactorySessionRecord(input)

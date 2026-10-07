@@ -227,6 +227,38 @@ var workflowOptMirroredPaths = []string{
 	// single-tree edit is caught at CI rather than after a release.
 	".claude/rules/moai/workflow/factory-dispatch-cards.md",
 	".claude/rules/moai/workflow/factory-dispatch-gates.md",
+	// card t1525 mirror re-sync: settings-management gained the in-session
+	// style-switching section; cache-aware-execution directive 4 now delegates
+	// its /clear decision to context-clear-policy.md (shipped in the same
+	// commit). Both local copies are clean of internal tokens, so byte-parity
+	// is the right invariant. factory-dispatch.md stays UNENROLLED here: its
+	// live copy carries one live-only sentence (the worktree-sweep disposal
+	// sentence), a declared fork owned by TestAutoPickMirrorParity in
+	// internal/cli, which requires exactly that one-line difference —
+	// byte-parity here would re-absorb the sentence (the t1525 CI defect).
+	".claude/rules/moai/core/settings-management.md",
+	".claude/rules/moai/workflow/cache-aware-execution.md",
+	// card t1525: 15 deployed rules existed only in the working tree — the
+	// mirror never shipped them. Two are referenced by shipped rules
+	// (context-clear-policy.md via cache-aware-execution directive 4;
+	// team-capability-resolver.md via orchestration-mode-selection §C.1), so
+	// their absence left dangling references in user projects. All 15 are
+	// token-clean (measured), so they ship byte-identically.
+	".claude/rules/moai/core/security-decision-contract.md",
+	".claude/rules/moai/workflow/context-clear-policy.md",
+	".claude/rules/moai/workflow/delivery-policy.md",
+	".claude/rules/moai/workflow/graceful-exit-mutation-contract.md",
+	".claude/rules/moai/workflow/language-routing-contract.md",
+	".claude/rules/moai/workflow/phase-id-contract.md",
+	".claude/rules/moai/workflow/read-only-status-contract.md",
+	".claude/rules/moai/workflow/resource-budget-contract.md",
+	".claude/rules/moai/workflow/rule-loading-budget.md",
+	".claude/rules/moai/workflow/snapshot-consumer-contract.md",
+	".claude/rules/moai/workflow/sync-backup-integrity.md",
+	".claude/rules/moai/workflow/sync-coverage-scope-contract.md",
+	".claude/rules/moai/workflow/tdd-result-contract.md",
+	".claude/rules/moai/workflow/team-capability-resolver.md",
+	".claude/rules/moai/workflow/verification-plan-contract.md",
 	// Layer G — evaluator profile D7/D8 weight registration
 	".moai/config/evaluator-profiles/default.md",
 	".moai/config/evaluator-profiles/frontend.md",

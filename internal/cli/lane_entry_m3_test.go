@@ -69,7 +69,7 @@ func m3CodexRefusal(t *testing.T, args []string) string {
 // (the claim row exists afterwards, held by the launching process) and no Codex
 // leader starts (the run rows stay the one leader run the fixture recorded, and
 // the child carries no leader marker).
-func TestCodexLaneEntryStartsRelaunchLane(t *testing.T) {
+func TestCodexLaneEntryStartsParentSession(t *testing.T) {
 	for _, spelling := range []string{"-l", "--lane"} {
 		lane := netCodexLaneChildFor(t, spelling)
 		label := lane.env[config.EnvMoaiFactoryWorker]
@@ -79,8 +79,11 @@ func TestCodexLaneEntryStartsRelaunchLane(t *testing.T) {
 		if got := lane.env[config.EnvFactoryBackend]; got != factory.BackendGPT {
 			t.Errorf("codex %s: child %s = %q, want %q", spelling, config.EnvFactoryBackend, got, factory.BackendGPT)
 		}
-		if card := lane.env[config.EnvFactoryCard]; card == "" {
-			t.Errorf("codex %s: the relaunch loop handed the child no card id", spelling)
+		if card := lane.env[config.EnvFactoryCard]; card != "" {
+			t.Errorf("codex %s: boot preselected card %q before todo --auto", spelling, card)
+		}
+		if run := lane.env[config.EnvFactoryRunID]; run != fcRun {
+			t.Errorf("codex %s: run id = %q, want %q", spelling, run, fcRun)
 		}
 		// No leader: the leader markers never reach a lane child, and the only
 		// run row is the leader run the fixture recorded.

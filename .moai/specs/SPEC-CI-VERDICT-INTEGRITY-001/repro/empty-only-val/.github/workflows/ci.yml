@@ -1,0 +1,11 @@
+name: ci
+on: [push]
+jobs:
+  Test:
+    name: "Test (${{ matrix.option }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        option: [""]
+    steps:
+      - run: "true"

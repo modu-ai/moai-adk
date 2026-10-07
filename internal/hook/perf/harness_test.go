@@ -1,6 +1,7 @@
 package perf
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -53,7 +54,10 @@ func TestPreToolProfilingBaseline(t *testing.T) {
 	)
 
 	// Cold run: no cache exists. This is the M0 baseline scenario.
-	results := runProfilingBatches(t, binaryPath, fixtureDir, stdinPayload, parallelism, batches)
+	results, err := runProfilingBatches(t, binaryPath, fixtureDir, stdinPayload, parallelism, batches)
+	if err != nil {
+		t.Fatal(err)
+	}
 	report := aggregateResults(results, parallelism, batches)
 	t.Log(report.format())
 
@@ -83,7 +87,11 @@ func TestPreToolProfilingWarmCache(t *testing.T) {
 	stdinPayload := `{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"echo hello"}}`
 
 	// Pre-warm the cache: run ONE invocation to populate config-cache.json.
-	runSingleHook(t, binaryPath, fixtureDir, stdinPayload)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	if _, _, err := runSingleHook(ctx, binaryPath, fixtureDir, stdinPayload); err != nil {
+		t.Fatal(err)
+	}
 	t.Log("cache pre-warmed")
 
 	const (
@@ -91,7 +99,10 @@ func TestPreToolProfilingWarmCache(t *testing.T) {
 		batches     = 5
 	)
 
-	results := runProfilingBatches(t, binaryPath, fixtureDir, stdinPayload, parallelism, batches)
+	results, err := runProfilingBatches(t, binaryPath, fixtureDir, stdinPayload, parallelism, batches)
+	if err != nil {
+		t.Fatal(err)
+	}
 	report := aggregateResults(results, parallelism, batches)
 	t.Log(report.format())
 
@@ -221,7 +232,7 @@ func (r report) markdownPostChange() string {
 
 // runProfilingBatches runs N batches of P parallel invocations, collecting
 // per-phase timing from stderr JSON.
-func runProfilingBatches(t *testing.T, binaryPath, fixtureDir, stdinPayload string, parallelism, batches int) []batchResult {
+func runProfilingBatches(t *testing.T, binaryPath, fixtureDir, stdinPayload string, parallelism, batches int) ([]batchResult, error) {
 	t.Helper()
 	var allBatches []batchResult
 
@@ -229,32 +240,43 @@ func runProfilingBatches(t *testing.T, binaryPath, fixtureDir, stdinPayload stri
 		type jobResult struct {
 			idx    int
 			result timingResult
+			err    error
 		}
 		results := make(chan jobResult, parallelism)
+		ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 
 		for i := 0; i < parallelism; i++ {
 			go func(idx int) {
-				ext, internal := runSingleHook(t, binaryPath, fixtureDir, stdinPayload)
-				results <- jobResult{idx: idx, result: mergeTiming(ext, internal)}
+				ext, internal, err := runSingleHook(ctx, binaryPath, fixtureDir, stdinPayload)
+				results <- jobResult{idx: idx, result: mergeTiming(ext, internal), err: err}
 			}(i)
 		}
 
 		br := batchResult{}
+		var batchErr error
 		for i := 0; i < parallelism; i++ {
 			jr := <-results
+			if jr.err != nil && batchErr == nil {
+				batchErr = fmt.Errorf("batch %d worker %d: %w", b+1, jr.idx, jr.err)
+				cancel()
+			}
 			br.results = append(br.results, jr.result)
+		}
+		cancel()
+		if batchErr != nil {
+			return nil, batchErr
 		}
 		allBatches = append(allBatches, br)
 		t.Logf("batch %d/%d complete (%d results)", b+1, batches, len(br.results))
 	}
-	return allBatches
+	return allBatches, nil
 }
 
 // runSingleHook runs one `moai hook pre-tool` invocation, returning the
 // external wall-time (ms) and the parsed internal timing JSON.
-func runSingleHook(t *testing.T, binaryPath, fixtureDir, stdinPayload string) (extMs float64, internal map[string]any) {
-	t.Helper()
-	cmd := exec.Command(binaryPath, "hook", "pre-tool")
+func runSingleHook(ctx context.Context, binaryPath, fixtureDir, stdinPayload string) (extMs float64, internal map[string]any, runErr error) {
+	cmd := exec.CommandContext(ctx, binaryPath, "hook", "pre-tool")
+	cmd.WaitDelay = time.Second
 	cmd.Dir = fixtureDir
 	cmd.Env = append(os.Environ(),
 		"MOAI_HOOK_PERF_TIMING=1",
@@ -270,12 +292,12 @@ func runSingleHook(t *testing.T, binaryPath, fixtureDir, stdinPayload string) (e
 	extMs = float64(elapsed.Microseconds()) / 1000.0
 
 	if err != nil {
-		t.Fatalf("moai hook pre-tool failed: %v\nstderr:\n%s", err, stderr.String())
+		return extMs, nil, fmt.Errorf("moai hook pre-tool failed: %w\nstderr:\n%s", err, stderr.String())
 	}
 
 	// Parse the timing JSON line from stderr.
 	internal = parseTimingJSON(stderr.String())
-	return extMs, internal
+	return extMs, internal, nil
 }
 
 // parseTimingJSON extracts the perf_timing JSON line from stderr output.
@@ -369,25 +391,6 @@ func percentile(sorted []float64, p int) float64 {
 		idx = len(sorted) - 1
 	}
 	return sorted[idx]
-}
-
-// buildMoaiBinary builds the moai CLI binary to a temp path and returns it.
-func buildMoaiBinary(t *testing.T) string {
-	t.Helper()
-	root := projectRoot(t)
-	tmpDir := t.TempDir()
-	binaryPath := filepath.Join(tmpDir, "moai")
-	if runtime.GOOS == "windows" {
-		binaryPath += ".exe"
-	}
-	cmd := exec.Command("go", "build", "-o", binaryPath, "./cmd/moai")
-	cmd.Dir = root
-	var buildErr strings.Builder
-	cmd.Stderr = &buildErr
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("go build moai binary: %v\n%s", err, buildErr.String())
-	}
-	return binaryPath
 }
 
 // projectRoot returns the git repository root (the parent of internal/).

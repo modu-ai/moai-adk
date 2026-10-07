@@ -17,7 +17,10 @@ package quality
 //     from a value that does not declare it;
 //   - config-gated linters and tsc resolve ONLY locally-installed binaries
 //     (nearest node_modules/.bin up to the repository boundary; no PATH or
-//     global fallback), and their absence FAILS the axis rather than skipping.
+//     global fallback), and their absence FAILS the axis rather than skipping;
+//   - a RESOLVED tool execs through the bun runtime (`bun x <tool>`, tool
+//     carried in args): the local entry carries a node shebang, so a direct
+//     exec needs node — absent on bun-only machines (card t1572).
 //
 // Real-bun execution cells (bun >= 1.4 verified semantics: `bun run test --
 // --flag` forwards the flag after stripping `--`, exactly like npm) skip when
@@ -255,9 +258,9 @@ func makeBinTool(t *testing.T, dir, tool string) string {
 func TestResolveNodeLintSteps_BunConfigLintLocalBin(t *testing.T) {
 	steps := nodeToolchain(t).lintSteps
 
-	t.Run("local eslint replaces npx, args drop the tool token, mandatory", func(t *testing.T) {
+	t.Run("local eslint execs through the bun runtime, tool carried in args, mandatory", func(t *testing.T) {
 		dir := writeBunPackageJSON(t, `{"build": "vite build"}`)
-		eslintBin := makeBinTool(t, dir, "eslint")
+		makeBinTool(t, dir, "eslint")
 
 		resolved, _, _ := resolveNodeLintSteps(steps, dir)
 		if len(resolved) != len(steps) {
@@ -267,10 +270,14 @@ func TestResolveNodeLintSteps_BunConfigLintLocalBin(t *testing.T) {
 		if es.name != "eslint" {
 			t.Fatalf("first resolved step = %q, want eslint", es.name)
 		}
-		if es.binary != eslintBin {
-			t.Errorf("eslint binary = %q, want local %q", es.binary, eslintBin)
+		// Same node-shebang hazard as tsc (card t1572): the local eslint
+		// entry is a node-shebang script, so exec-ing it directly needs node
+		// — absent on bun-only machines. The runner must be the bun runtime
+		// with the tool carried in args, never the binary path.
+		if es.binary != "bun" {
+			t.Errorf("eslint binary = %q, want the bun runtime (direct local-binary exec needs node)", es.binary)
 		}
-		if want := []string{"."}; !reflect.DeepEqual(es.args, want) {
+		if want := []string{"x", "eslint", "."}; !reflect.DeepEqual(es.args, want) {
 			t.Errorf("eslint args = %v, want %v", es.args, want)
 		}
 		if es.optional {
@@ -285,7 +292,7 @@ func TestResolveNodeLintSteps_BunConfigLintLocalBin(t *testing.T) {
 		// exercises end to end.
 	})
 
-	t.Run("nested package resolves the nested node_modules first", func(t *testing.T) {
+	t.Run("nested package: a nested-local eslint selects the bun-runtime exec", func(t *testing.T) {
 		repo := t.TempDir()
 		if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
 			t.Fatal(err)
@@ -295,17 +302,18 @@ func TestResolveNodeLintSteps_BunConfigLintLocalBin(t *testing.T) {
 			t.Fatal(err)
 		}
 		writeFile(t, nested, "package.json", `{"packageManager": "bun@1.4.2", "scripts": {"build": "vite build"}}`)
-		nestedBin := makeBinTool(t, nested, "eslint")
-		repoBin := makeBinTool(t, repo, "eslint")
+		makeBinTool(t, nested, "eslint")
 
 		resolved, _, _ := resolveNodeLintSteps(steps, nested)
-		if resolved[0].binary != nestedBin {
-			t.Errorf("nested package resolved %q, want the nearest %q (repo bin was %q)",
-				resolved[0].binary, nestedBin, repoBin)
+		if resolved[0].binary != "bun" {
+			t.Errorf("nested-local eslint resolved binary %q, want the bun runtime", resolved[0].binary)
+		}
+		if want := []string{"x", "eslint", "."}; !reflect.DeepEqual(resolved[0].args, want) {
+			t.Errorf("args = %v, want %v", resolved[0].args, want)
 		}
 	})
 
-	t.Run("hoisted bin at the repository root resolves for a nested package", func(t *testing.T) {
+	t.Run("hoisted bin at the repository root selects the bun-runtime exec", func(t *testing.T) {
 		repo := t.TempDir()
 		if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
 			t.Fatal(err)
@@ -315,11 +323,14 @@ func TestResolveNodeLintSteps_BunConfigLintLocalBin(t *testing.T) {
 			t.Fatal(err)
 		}
 		writeFile(t, nested, "package.json", `{"packageManager": "bun@1.4.2", "scripts": {"build": "vite build"}}`)
-		repoBin := makeBinTool(t, repo, "eslint")
+		makeBinTool(t, repo, "eslint")
 
 		resolved, _, _ := resolveNodeLintSteps(steps, nested)
-		if resolved[0].binary != repoBin {
-			t.Errorf("nested package resolved %q, want hoisted repo bin %q", resolved[0].binary, repoBin)
+		if resolved[0].binary != "bun" {
+			t.Errorf("hoisted eslint resolved binary %q, want the bun runtime", resolved[0].binary)
+		}
+		if want := []string{"x", "eslint", "."}; !reflect.DeepEqual(resolved[0].args, want) {
+			t.Errorf("args = %v, want %v", resolved[0].args, want)
 		}
 	})
 
@@ -376,20 +387,22 @@ func TestResolveTypecheckStep_BunTiers(t *testing.T) {
 		}
 	})
 
-	t.Run("tsconfig resolves the local tsc binary, mandatory", func(t *testing.T) {
+	t.Run("tsconfig runs tsc through the bun runtime, mandatory", func(t *testing.T) {
 		dir := writeBunPackageJSON(t, `{"build": "vite build"}`)
 		writeFile(t, dir, "tsconfig.json", `{"include": ["src"]}`)
-		tscBin := makeBinTool(t, dir, "tsc")
+		makeBinTool(t, dir, "tsc")
 
 		step, reason, ok := resolveTypecheckStep(nodeTypecheckStep(), dir, "")
 		if !ok {
 			t.Fatalf("typecheck skipped: %s", reason)
 		}
-		if step.binary != tscBin {
-			t.Errorf("tsc binary = %q, want local %q", step.binary, tscBin)
-		}
-		if want := []string{"--noEmit"}; !reflect.DeepEqual(step.args, want) {
-			t.Errorf("tsc args = %v, want %v", step.args, want)
+		// The local tsc entry carries a node shebang, so exec-ing it directly
+		// needs node — absent on bun-only machines (card t1572). The runner
+		// must be the bun runtime with the tool carried in args, never the
+		// binary path.
+		want := gateStep{name: typecheckStepName, binary: "bun", args: []string{"x", "tsc", "--noEmit"}}
+		if !reflect.DeepEqual(step, want) {
+			t.Errorf("step = %+v, want %+v", step, want)
 		}
 		if step.optional {
 			t.Error("bun tsc step must be mandatory")
@@ -457,6 +470,18 @@ func TestResolveTypecheckStep_BunTiers(t *testing.T) {
 		}
 		if step.binary != "npx" {
 			t.Errorf("npm-declared tsc binary = %q, want npx", step.binary)
+		}
+	})
+
+	t.Run("pnpm-declared project keeps the npx tsc vector", func(t *testing.T) {
+		dir := writePackageJSON(t, `{"packageManager": "pnpm@9.1.0", "scripts": {"build": "vite build"}}`)
+		writeFile(t, dir, "tsconfig.json", `{"include": ["src"]}`)
+		step, reason, ok := resolveTypecheckStep(nodeTypecheckStep(), dir, "")
+		if !ok {
+			t.Fatalf("typecheck skipped: %s", reason)
+		}
+		if step.binary != "npx" {
+			t.Errorf("pnpm-declared tsc binary = %q, want npx", step.binary)
 		}
 	})
 }

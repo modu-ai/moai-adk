@@ -22,10 +22,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/verify"
 
 	"github.com/spf13/cobra"
 )
@@ -134,6 +136,40 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 	// budget. The moai-default 5s hook timeout does NOT apply (AC-MCP-010).
 	ctx, cancel := context.WithTimeout(context.Background(), config.DefaultCodexReviewGateTimeout)
 	defer cancel()
+
+	// (4a) SPEC-GATE-BOTTLENECK-001 REQ-GBN-001 — the tree-keyed reuse cache:
+	// a FRESH receipt for the resolved scope's key (HEAD + tree digest or the
+	// card-scope binding) is the same reviewer judging the same code, so its
+	// verdict is reused without the RPC. The key covers HEAD, the porcelain
+	// digest, the review selection config, and the reviewer version — an
+	// untouched tree cannot shed a fail, and any edit (or a reviewer upgrade)
+	// makes the key stale. Miss → the live review below records a receipt.
+	state, stateErr := codexReviewReceiptStateForScope(ctx, scope, binaryPath)
+	if stateErr == nil {
+		if chk := verify.CheckReceipt(verify.LoadReceipt(scope.Dir, state), state, time.Now(), codexReviewCacheTTL); chk.Run {
+			codexReviewCacheSkips.Add(1)
+			if isBlockVerdict(chk.Receipt.Verdict) {
+				// The cached block still says WHAT to fix: the fail's summary
+				// and findings were preserved at record time (the receipt
+				// store carries no free text). An unreadable detail file keeps
+				// the bare verdict — fail-open, never invented.
+				reason := "codex review gate (cached verdict): " + chk.Receipt.Verdict
+				if detail := codexReviewCachedDetail(scope.Dir, *chk.Receipt); detail != "" {
+					reason += "\n\n" + detail
+				}
+				return &hook.HookOutput{
+					Decision: hook.DecisionBlock,
+					Reason:   reason,
+				}, nil
+			}
+			_, _ = fmt.Fprintf(os.Stderr, "codex review gate: reusing the cached %s verdict for the unchanged tree (skip #%d)\n",
+				chk.Receipt.Verdict, codexReviewCacheSkips.Load())
+			return allow, nil
+		}
+	}
+	// A state or cache-read failure falls through to the live review — the
+	// cache is an accelerator, never an authority (fail-open, REQ-GBN-004).
+
 	// The review request carries the scope: tree scope stays shape-identical
 	// to its pre-SPEC form (REQ-CGS-003 / REQ-CRT-006), card scope names the
 	// card diff (REQ-CGS-002). projectDir is the CONFIG root only (it feeds
@@ -148,6 +184,13 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 		// like a gate that had reviewed the change and found nothing wrong.
 		return allow, rpcErr
 	}
+	// (4b) record the verdict as a receipt so the next Stop over the same
+	// tree key reuses it (REQ-GBN-001). The stored verdict is the GATE's
+	// disposition — a tree-scope fail whose findings are all runtime-config
+	// drift was already allowed in step 7-pre and stores as a pass, mirroring
+	// produceCodexReviewReceipt. A store failure is fail-open: the verdict
+	// below stands, only the reuse is lost.
+	recordCodexReviewReceipt(scope, state, stateErr, out)
 	if isBlockVerdict(out.Verdict) {
 		// (7-pre) REQ-CGSC-008: a TREE-scope review whose every finding targets
 		// only the runtime-managed configuration surfaces is known local drift

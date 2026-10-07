@@ -77,7 +77,7 @@ Adaptations: 7-Phase workflow integrated with MoAI agent ecosystem (manager-*, e
 NOTICE: This file contains modifications. See the harness policy for derivation history. The 7-Phase workflow below is superseded by the v4 Builder; it is retained as the redirect source for backward-compat.
 -->
 
-> **Apache 2.0 Attribution**: Adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache License 2.0). The 7-Phase workflow below is a MoAI adaptation of the upstream 6-Phase + Evolution Mechanism. See `.claude/rules/moai/NOTICE.md` for the full third-party notices and the harness policy for derivation history. **The v4 Builder (the replacement) is documented in `.claude/skills/moai/workflows/harness-builder.md`.**
+> **Apache 2.0 Attribution**: Adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache License 2.0). The 7-Phase workflow below is a MoAI adaptation of the upstream 6-Phase + Evolution Mechanism. See `.claude/rules/moai/NOTICE.md` for the full third-party notices and the harness policy for derivation history. **The v4 Builder (the replacement) is documented in `~/.claude/skills/moai/workflows/harness-builder.md`.**
 
 ---
 
@@ -122,7 +122,7 @@ Meta-factory skill that architects and generates project-specific agent teams. A
 ### When to Use
 
 - `/moai project` Phase 5+ runs and detects an absent `.moai/harness/main.md`
-- CLAUDE.md contains `<!-- moai:harness-start -->` markers (installed by the project-harness generation policy, not this skill)
+- AGENTS.md contains `<!-- moai:harness-start -->` markers (installed by the project-harness generation policy, not this skill)
 - User explicitly requests harness generation for their project domain
 
 ### Key Outputs
@@ -244,15 +244,15 @@ Both fields are enforced at runtime by the Phase-6 post-generation smoke gate (`
 
 | Namespace / Path | Location | Source | `moai update` behavior |
 |------------------|----------|--------|------------------------|
-| `moai-*` skills (incl. `moai-harness-*` builders) | `.claude/skills/moai-*/` | template | Removed and reinstalled (overwrite) |
+| `moai-*` skills (incl. `moai-harness-*` builders) | `~/.claude/skills/moai-*/` | template | Removed and reinstalled (overwrite) |
 | **`hns-*` skills** (legacy: `harness-*`, `my-harness-*`) | `.claude/skills/hns-*/` | **user project (this meta-harness emits — intent declaration)** | **Never deleted or modified; backed up** |
-| MoAI agents (retained catalog, FLAT) | `.claude/agents/moai/` | template | Removed and reinstalled (overwrite) |
+| MoAI agents (retained catalog, FLAT) | `~/.claude/agents/` | template | Removed and reinstalled (overwrite) |
 | **Generated harness agents** | `.claude/agents/harness/` | **user project (this meta-harness emits)** | **Never deleted or modified; backed up** |
 | Harness config | `.moai/harness/` | user project | Never deleted; backed up |
 
 ### Cross-References
 
-- `.claude/skills/moai-meta-harness/SKILL.md` § Namespace Separation (this file — canonical generator-side namespace contract)
+- `~/.claude/skills/moai-meta-harness/SKILL.md` § Namespace Separation (this file — canonical generator-side namespace contract)
 - `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy
 - `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention
 
@@ -263,7 +263,7 @@ Both fields are enforced at runtime by the Phase-6 post-generation smoke gate (`
 **Auto-load Conditions**:
 
 1. `/moai project` Phase 5+ runs and `.moai/harness/main.md` is absent
-2. CLAUDE.md contains `<!-- moai:harness-start -->` markers. These markers are installed by the project-harness generation policy during project initialization; this skill does not install them.
+2. AGENTS.md contains `<!-- moai:harness-start -->` markers. These markers are installed by the project-harness generation policy during project initialization; this skill does not install them.
 
 **Frontmatter Triggers**:
 
@@ -286,7 +286,7 @@ This skill provides the workflow recipe and agent cross-references. It does NOT 
 
 The following capabilities are explicitly NOT implemented by this skill:
 
-- **5-layer integration mechanism** — owned by the project-harness generation policy. The integration with `/moai project` phases, hook installation, and CLAUDE.md marker management are all delegated to that SPEC.
+- **5-layer integration mechanism** — owned by the project-harness generation policy. The integration with `/moai project` phases, hook installation, and AGENTS.md marker management are all delegated to that SPEC.
 - **16-question Socratic interview** — owned by the project-harness generation policy. The `manager-spec` conducts the interview under that SPEC's control.
 - **Auto-evolution loop** — owned by the harness-learning policy. The learning feedback mechanism (Phase 7) and delta capture are separate work items outside Wave A.
 - **Modification of `.claude/agents/{moai,harness}/` or static `moai-*` skills** — this meta-harness generates only `hns-*` prefixed artifacts and has no write access to MoAI's own agent/skill directories.

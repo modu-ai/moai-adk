@@ -34,8 +34,12 @@ func nodeTypecheckStep() *gateStep {
 //
 // A valid packageManager "bun@<version>" declaration swaps the npm/npx arm
 // for the bun arm on tiers (b)/(c): `bun run typecheck`, or the
-// locally-installed tsc binary (node_modules/.bin up to the repository
-// boundary — no bunx, no PATH fallback, mandatory). Tier (a) is honoured
+// locally-installed tsc run through the bun runtime (`bun x tsc` — the
+// node_modules/.bin entry carries a node shebang, so a direct exec needs
+// node, absent on bun-only machines; resolution walks node_modules/.bin up
+// to the repository boundary, no PATH fallback, and an unresolved tool
+// keeps the expected-path exec so the step fails deterministically instead
+// of letting bunx reach the network). Tier (a) is honoured
 // verbatim either way; translating an explicit npm/npx override for a bun
 // project is a separate contract decision this resolver does not make.
 //
@@ -109,15 +113,23 @@ func resolveTypecheckStep(base *gateStep, dir, override string) (gateStep, strin
 	}
 
 	if manifest.pm == nodePMBun {
-		// Mandatory local binary: unresolved tsc carries the expected path,
-		// so the failed exec names it and nothing on PATH can stand in.
-		bin, ok := resolveNodeLocalBin(dir, "tsc")
-		if !ok {
-			bin = expectedNodeLocalBin(dir, "tsc")
+		// Bun-runtime exec: the local tsc entry carries a node shebang, so a
+		// bun-only machine (no node) cannot exec it directly. A resolved tool
+		// runs through `bun x` (bun substitutes its own runtime for the node
+		// shebang — measured, card t1572), and an unresolved one keeps the
+		// expected-path form so the failed exec names the location and bunx
+		// never gets the chance to download from the network. Either way the
+		// step stays mandatory.
+		if _, ok := resolveNodeLocalBin(dir, "tsc"); ok {
+			return gateStep{
+				name:   typecheckStepName,
+				binary: "bun",
+				args:   []string{"x", "tsc", "--noEmit"},
+			}, "", true
 		}
 		return gateStep{
 			name:   typecheckStepName,
-			binary: bin,
+			binary: expectedNodeLocalBin(dir, "tsc"),
 			args:   []string{"--noEmit"},
 		}, "", true
 	}

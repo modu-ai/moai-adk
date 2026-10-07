@@ -167,11 +167,37 @@ type updateOutcomeDetail struct {
 	// ArchiveDriftRoots lists the archive-drift backup roots the run created
 	// (empty when none) — REQ-ICU-004 full-root accounting.
 	ArchiveDriftRoots []string
+	// Card t1527 D3: the merge-classification counts (from the SAME
+	// classifyUpdateCounts derivation the pre-confirm card uses) so the
+	// end-of-run summary carries the add/update/conflict breakdown instead of
+	// a bare file total. ConflictFiles > 0 is what the terminal ACTION
+	// REQUIRED block keys on.
+	AddFiles int
+	// UpdatedFiles counts non-conflicting updates to existing files.
+	UpdatedFiles int
+	// ConflictFiles counts high-risk (conflict-class) files the merge flagged.
+	ConflictFiles int
 }
 
 func renderUpdateOutcome(w io.Writer, fileCount int, detail updateOutcomeDetail, backupPath string, th tui.Theme) {
 	header := report.RenderOutcome(report.OutcomeUpdatedFiles, fileCount+detail.ManagedRedeployed, "")
 	_, _ = fmt.Fprintln(w, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: true, Label: header, Theme: &th}))
+	// Card t1527 D3: carry the merge-class breakdown (add/update/conflict) to
+	// the end-of-run summary — the pre-confirm classification card previously
+	// was the only place these counts appeared, so a --yes run never saw them.
+	if detail.AddFiles > 0 || detail.UpdatedFiles > 0 || detail.ConflictFiles > 0 {
+		var parts []string
+		if detail.AddFiles > 0 {
+			parts = append(parts, fmt.Sprintf("+ %d add", detail.AddFiles))
+		}
+		if detail.UpdatedFiles > 0 {
+			parts = append(parts, fmt.Sprintf("~ %d update", detail.UpdatedFiles))
+		}
+		if detail.ConflictFiles > 0 {
+			parts = append(parts, fmt.Sprintf("! %d conflict", detail.ConflictFiles))
+		}
+		_, _ = fmt.Fprintln(w, paintToken(strings.Join(parts, " · "), th.Dim, false))
+	}
 	if detail.ManagedRedeployed > 0 || detail.RemovedManaged > 0 {
 		var breakdown string
 		if detail.ManagedRedeployed > 0 {

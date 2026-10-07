@@ -111,6 +111,7 @@ import "embed"
 //go:embed templates/.claude/hooks/moai/sync-phase-quality-gate.sh
 //go:embed templates/.claude/hooks/moai/team-ac-verify.sh
 //go:embed templates/.claude/hooks/moai/trace-ledger.sh
+//go:embed templates/.claude/hooks/moai/verify-sync-backup.sh
 //go:embed templates/.claude/loop.md
 //go:embed templates/.claude/output-styles/moai/moai-easy.md
 //go:embed templates/.claude/output-styles/moai/moai-learn.md
@@ -130,6 +131,7 @@ import "embed"
 //go:embed templates/.claude/rules/moai/core/native-idiom-and-register-detail.md
 //go:embed templates/.claude/rules/moai/core/native-idiom-and-register.md
 //go:embed templates/.claude/rules/moai/core/output-style-localization-catalogue.md
+//go:embed templates/.claude/rules/moai/core/security-decision-contract.md
 //go:embed templates/.claude/rules/moai/core/settings-management.md
 //go:embed templates/.claude/rules/moai/core/verification-claim-integrity-detail.md
 //go:embed templates/.claude/rules/moai/core/verification-claim-integrity.md
@@ -175,12 +177,14 @@ import "embed"
 //go:embed templates/.claude/rules/moai/workflow/cache-aware-execution.md
 //go:embed templates/.claude/rules/moai/workflow/cadence-bridge.md
 //go:embed templates/.claude/rules/moai/workflow/ci-autofix-protocol.md
+//go:embed templates/.claude/rules/moai/workflow/context-clear-policy.md
 //go:embed templates/.claude/rules/moai/workflow/context-window-management-detail.md
 //go:embed templates/.claude/rules/moai/workflow/context-window-management.md
 //go:embed templates/.claude/rules/moai/workflow/contract-autonomy.md
 //go:embed templates/.claude/rules/moai/workflow/contract-sign-guard.md
 //go:embed templates/.claude/rules/moai/workflow/cross-session-messaging-detail.md
 //go:embed templates/.claude/rules/moai/workflow/cross-session-messaging.md
+//go:embed templates/.claude/rules/moai/workflow/delivery-policy.md
 //go:embed templates/.claude/rules/moai/workflow/dynamic-workflows.md
 //go:embed templates/.claude/rules/moai/workflow/factory-dispatch-cards.md
 //go:embed templates/.claude/rules/moai/workflow/factory-dispatch-detail.md
@@ -189,6 +193,8 @@ import "embed"
 //go:embed templates/.claude/rules/moai/workflow/factory-dispatch.md
 //go:embed templates/.claude/rules/moai/workflow/goal-directive-detail.md
 //go:embed templates/.claude/rules/moai/workflow/goal-directive.md
+//go:embed templates/.claude/rules/moai/workflow/graceful-exit-mutation-contract.md
+//go:embed templates/.claude/rules/moai/workflow/language-routing-contract.md
 //go:embed templates/.claude/rules/moai/workflow/main-checkout-branch-guard-detail.md
 //go:embed templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md
 //go:embed templates/.claude/rules/moai/workflow/moai-memory.md
@@ -196,16 +202,26 @@ import "embed"
 //go:embed templates/.claude/rules/moai/workflow/native-invocation-model.md
 //go:embed templates/.claude/rules/moai/workflow/nav-tokens.md
 //go:embed templates/.claude/rules/moai/workflow/orchestration-mode-selection.md
+//go:embed templates/.claude/rules/moai/workflow/phase-id-contract.md
+//go:embed templates/.claude/rules/moai/workflow/read-only-status-contract.md
+//go:embed templates/.claude/rules/moai/workflow/resource-budget-contract.md
 //go:embed templates/.claude/rules/moai/workflow/resource-slot-lease.md
+//go:embed templates/.claude/rules/moai/workflow/rule-loading-budget.md
 //go:embed templates/.claude/rules/moai/workflow/runtime-recovery-doctrine.md
 //go:embed templates/.claude/rules/moai/workflow/session-handoff-examples.md
 //go:embed templates/.claude/rules/moai/workflow/session-handoff-format.md
 //go:embed templates/.claude/rules/moai/workflow/session-handoff.md
 //go:embed templates/.claude/rules/moai/workflow/skill-routing-detail.md
 //go:embed templates/.claude/rules/moai/workflow/skill-routing.md
+//go:embed templates/.claude/rules/moai/workflow/snapshot-consumer-contract.md
 //go:embed templates/.claude/rules/moai/workflow/spec-workflow.md
+//go:embed templates/.claude/rules/moai/workflow/sync-backup-integrity.md
+//go:embed templates/.claude/rules/moai/workflow/sync-coverage-scope-contract.md
+//go:embed templates/.claude/rules/moai/workflow/tdd-result-contract.md
+//go:embed templates/.claude/rules/moai/workflow/team-capability-resolver.md
 //go:embed templates/.claude/rules/moai/workflow/trace-ledger-contract.md
 //go:embed templates/.claude/rules/moai/workflow/verification-batch-pattern.md
+//go:embed templates/.claude/rules/moai/workflow/verification-plan-contract.md
 //go:embed templates/.claude/rules/moai/workflow/worktree-integration-ops.md
 //go:embed templates/.claude/rules/moai/workflow/worktree-integration.md
 //go:embed templates/.claude/rules/moai/workflow/worktree-state-guard.md
@@ -624,5 +640,4 @@ import "embed"
 //go:embed templates/.moai/workflows/README.md
 //go:embed templates/.worktreeinclude
 //go:embed templates/AGENTS.md.tmpl
-//go:embed templates/CLAUDE.md
 var embeddedRaw embed.FS

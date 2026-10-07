@@ -145,7 +145,7 @@ evidence; verify per session through the resolver before relying on them.
 
 | # | Limit | Binds | Value | Grounding |
 |---|-------|-------|-------|-----------|
-| 1 | Subagent fan-out — **HARD bound** | Concurrent subagents per turn: every `Agent()` spawn surface, incl. `fanout` and any fan-out from a team lead or factory leader | `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, default **20** per turn (env-tunable; per-session total cap removed) | Claude Code runtime default, recorded in `CLAUDE.md` §14 and `moai-constitution.md` § Parallel Execution |
+| 1 | Subagent fan-out — **HARD bound** | Concurrent subagents per turn: every `Agent()` spawn surface, incl. `fanout` and any fan-out from a team lead or factory leader | `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, default **20** per turn (env-tunable; per-session total cap removed) | Claude Code runtime default, recorded in `agent-common-protocol.md` § Parallel Execution |
 | 2 | Workflow agent concurrency | Agents within ONE dynamic workflow (`sweep` only) | **16** concurrent per workflow — runtime-documented as `min(16, available CPUs − 2)`; repo-recorded as "up to 16 concurrent agents (fewer on machines with limited CPU cores)" — plus the 1,000-total per-run backstop | `.claude/rules/moai/workflow/dynamic-workflows.md` |
 | 3 | Team size — **ADVISORY** | Named teammates in ONE Agent Team (`agent-team`, experimental) | **3-5** teammates | Anthropic Agent Teams guidance: *"Start with 3-5 teammates for most workflows."* — team-composition advice, not a subagent cap. Second, independent ground: each teammate carries a standing I/O cost (below) |
 

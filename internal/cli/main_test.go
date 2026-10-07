@@ -440,6 +440,10 @@ func TestMain(m *testing.M) {
 		}
 	}
 
+	if err := cleanupCLIBinaryFixture(); err != nil {
+		fmt.Fprintf(os.Stderr, "TestMain: remove CLI binary fixture: %v\n", err)
+		code = 1
+	}
 	restoreReceiptRoot()
 	restoreUserHomeDir()
 	restoreProfileBaseDir()

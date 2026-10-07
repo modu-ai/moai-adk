@@ -1,0 +1,6 @@
+version: 1
+branches:
+  main:
+    contexts:
+      - "Build (windows-latest, 18)"
+auxiliary: []

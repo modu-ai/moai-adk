@@ -155,5 +155,5 @@ Map each concern — testing, coverage, static analysis/style, security,
 performance — to the standard tool for the target language. When unsure, use
 WebSearch/WebFetch (`mcp__docs__resolve-library-id`) to look up the current
 recommended testing/profiling library for the language. If a recognized tool is
-not installed, the quality gate skips it gracefully (per CLAUDE.md §7
+not installed, the quality gate skips it gracefully (per AGENTS.md §13
 Language-Specific Guidelines).

@@ -32,7 +32,7 @@ progressive_disclosure:
 
 One unattended pass of the factory foreman: watch the backlog queue, dispatch
 the next operator-picked card to an isolated worker, collect completion
-evidence, report. The queue surface is `moai gtd`; the dispatch protocol and
+evidence, report. The queue surface is `moai todo` (the `moai gtd` spelling serves the same queue); the dispatch protocol and
 card classes live in the factory dispatch rule (`.claude/rules/moai/workflow/factory-dispatch.md`).
 `foreman` — an auxiliary role of the leader: the unattended watcher that dispatches the already-picked card to an isolated worker when no leader session is holding the queue.
 

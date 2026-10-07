@@ -2,7 +2,7 @@ name: CodeQL
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
     branches: [main]
   schedule:
@@ -34,17 +34,13 @@ jobs:
       go_code: ${{ steps.f.outputs.go_code }}
     steps:
       - uses: actions/checkout@v7
+      # Shared go_code classifier — single source at .github/test-input-filters.yml,
+      # the same file ci.yml and release-pr-multi-os.yml consume, so the three
+      # classifiers cannot drift (card t1536).
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: f
         with:
-          filters: |
-            go_code:
-              - '**/*.go'
-              - 'go.mod'
-              - 'go.sum'
-              - 'Makefile'
-              - '.github/workflows/ci.yml'
-              - '.github/workflows/codeql.yml'
+          filters: .github/test-input-filters.yml
 
   # ---------------------------------------------------------------------------
   # Analyze: Full CodeQL analysis — runs when go_code present OR push/schedule

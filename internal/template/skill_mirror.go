@@ -139,16 +139,6 @@ func WithSkillMirror(enabled bool) DeployerOption {
 	return func(d *deployer) { d.skillMirrorDisabled = !enabled }
 }
 
-// withSymlinkFunc replaces the symlink syscall (test seam).
-func withSymlinkFunc(fn func(oldname, newname string) error) DeployerOption {
-	return func(d *deployer) { d.symlinkFn = fn }
-}
-
-// withMirrorCopyFunc replaces the copy fallback (test seam).
-func withMirrorCopyFunc(fn func(srcDir, dstDir string) error) DeployerOption {
-	return func(d *deployer) { d.mirrorCopyFn = fn }
-}
-
 // skillNameFromDeployPath extracts the skill directory name from a
 // deploy-relative path under the canonical skills directory. It returns false
 // for any path outside that directory, and for the directory itself.
