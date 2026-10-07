@@ -82,11 +82,10 @@ jobs:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         # The develop-tip snapshot match and the develop push path died with
         # the develop ref (GitHub Flow cutover); the release/* relaxation was
-        # re-keyed to origin/main and kept conditional on SPEC-input changes.
-        # The develop push elif remains as unreachable text under the
-        # main-only push trigger — harmless, awaiting the release
-        # discipline's own re-design (the cutover card's call, not this
-        # gate's).
+        # re-keyed to origin/main and stays conditional on SPEC-input changes.
+        # The unreachable develop-push elif was removed (card t1535,
+        # REQ-GFC-007): a main-only push trigger can never set
+        # REF_NAME=develop, so the branch was dead code.
         run: |
           set -euo pipefail
           strict=true
@@ -97,45 +96,39 @@ jobs:
               echo "::error::release snapshot PR must target main (got ${BASE_REF:-<empty>})"
               exit 1
             fi
-            # The develop-tip snapshot match died with the develop ref (GitHub
-            # Flow cutover): a release/* PR now targets main directly, and the
-            # release discipline's own re-design belongs to the cutover card,
-            # not to this lint gate. The relaxation is NOT a branch-name
-            # bypass: a release PR that changes SPEC inputs or the linter gets
-            # the full baseline gate; one that does not keeps the
-            # inherited-warning reporting (same case list as the push branch).
+            # The relaxation is NOT a branch-name bypass: a release PR that
+            # changes SPEC inputs or the linter gets the full baseline gate;
+            # one that does not keeps the inherited-warning reporting.
+            # card t1535 leader repair #32: the diff is computed into a
+            # variable FIRST — inside a here-string a failing command
+            # substitution does not propagate under set -e, so an
+            # unmeasurable diff (a bad object, a missing SHA) used to read
+            # as "no SPEC inputs changed" and select the relaxed policy.
+            # Unmeasurable now stops the policy selection with strict kept.
+            # The -z paths round-trip through a TEMP FILE, not a shell
+            # variable: command substitution strips NUL bytes, which would
+            # leave read -d '' with no delimiter and silently skip every
+            # path (the same relaxed-policy outcome through another door).
             base_sha=$(git rev-parse origin/main)
+            spec_paths_file=$(mktemp "$RUNNER_TEMP/spec-paths.XXXXXX")
+            if ! git -c core.quotepath=false diff --name-only -z --no-renames "$base_sha" "$PR_HEAD_SHA" >"$spec_paths_file"; then
+              rm -f "$spec_paths_file"
+              echo "::error::release PR diff ${base_sha}..${PR_HEAD_SHA} could not be computed — refusing to select a relaxed lint policy on an unmeasurable diff"
+              exit 1
+            fi
             spec_changed=false
-            while IFS= read -r path; do
+            while IFS= read -r -d '' path; do
               case "$path" in
                 .moai/specs/*|internal/spec/*|.moai/spec-lint-baseline.json) spec_changed=true ;;
               esac
-            done <<< "$(git diff --name-only --no-renames "$base_sha" "$PR_HEAD_SHA")"
+            done <"$spec_paths_file"
+            rm -f "$spec_paths_file"
             if [[ "$spec_changed" == "true" ]]; then
               strict=true
               reason="release PR changes SPEC inputs or the spec linter; baseline gate applies"
             else
               strict=false
               reason="release PR leaves SPEC inputs and the spec linter unchanged; report inherited warnings while blocking errors"
-            fi
-          elif [[ "$EVENT_NAME" == "push" && "$REF_NAME" == "develop" ]]; then
-            if [[ -z "$EVENT_BEFORE" || "$EVENT_BEFORE" =~ ^0+$ ]]; then
-              reason="develop comparison base is unavailable; fail closed with strict lint"
-            else
-              changed_paths=$(git diff --name-only --no-renames "$EVENT_BEFORE" "$EVENT_SHA")
-              spec_changed=false
-              while IFS= read -r path; do
-                case "$path" in
-                  .moai/specs/*|internal/spec/*|.moai/spec-lint-baseline.json) spec_changed=true ;;
-                esac
-              done <<< "$changed_paths"
-              if [[ "$spec_changed" == "true" ]]; then
-                strict=true
-                reason="develop push changes SPEC inputs or the spec linter"
-              else
-                strict=false
-                reason="develop push leaves SPEC inputs and the spec linter unchanged"
-              fi
             fi
           fi
 
