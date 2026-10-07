@@ -2,6 +2,14 @@
 
 ## 현재 main의 재측정
 
+`067fdced2dd8f38812d4c36ec17ceb8d2ca3e263`와 소스가 같은 트리에서 `go list -deps -json ./...`를 다시 실행했다. 내부 import 엣지는 480개, 최상위 패키지로 접고 self-edge를 뺀 고유 쌍은 304개다. `081899adb825935d5263b1699fe730373deaa4fd` 이후 추가된 소스 import 쌍은 `internal/factory` → `internal/factorylane`, `internal/factory` → `pkg/version` 두 개이며 제거는 없다. 각각 병합 단계와 재측정 도구 신원에 쓰인다. 두 기준 사이 `go.mod`·`go.sum` 차이는 없다.
+
+현재 최상위 fan-out은 `internal/cli` 75, `internal/hook` 40, `internal/web` 16이다. fan-in은 `internal/config` 30, `internal/paths` 14, `internal/atomicfile` 14, `internal/defs` 13이다. 이 값은 같은 `go list` 출력의 Imports를 최상위로 접어 계산했다.
+
+`internal/cli/integration_merge.go`와 `internal/cli/factory_card.go`가 `internal/factory/integration_merge_step.go`의 `RunMergeStep`으로 합류한다. merge-ready와 complete는 `internal/homestate/card_evidence_readers.go`의 merge-tree 검증을 통해 같은 재측정 기록을 확인한다. 이러한 호출 관계는 import 엣지와 별도로 소스에서 대조했다.
+
+## 이전 081899 기준의 재측정
+
 `081899adb825935d5263b1699fe730373deaa4fd`에서 `go list -deps -json ./...`를 실행했다. 모듈 내부 Imports 엣지는 478개이고, 최상위 패키지로 접어 self-edge를 뺀 고유 쌍은 302개다. 아래 이전 기록의 그래프 수치는 각 시점의 관측으로 남긴다.
 
 현재 최상위 fan-out은 `internal/cli` 75, `internal/hook` 40, `internal/web` 16이다. fan-in은 `internal/config` 30, `internal/paths` 14, `internal/atomicfile` 14, `internal/defs` 13이다. 신규 빌드 도구 `internal/template/embedemit`은 표준 라이브러리만 사용하고 비테스트 fan-in은 0이다. 런타임에서 호출하지 않는 점은 `agentemit`·`commandemit`·`pluginemit`과 같다.
