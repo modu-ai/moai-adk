@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -1394,7 +1395,7 @@ func resolvePhysicalWalk(p string, depth int) (string, bool) {
 			return real, true
 		}
 	}
-	parts := strings.Split(strings.ReplaceAll(filepath.ToSlash(p), "\\", "/"), "/")
+	parts := pathSegments(p, runtime.GOOS == "windows")
 	resolved := ""
 	if len(parts) > 0 {
 		switch {
@@ -1459,6 +1460,28 @@ func resolvePhysicalWalk(p string, depth int) (string, bool) {
 		}
 	}
 	return filepath.Clean(resolved), true
+}
+
+// pathSegments splits an absolute path into its components using the
+// platform's actual separators only (SPEC-HOOK-BACKSLASH-SYMLINK-001
+// REQ-HBS-001): on Windows `\` and `/` are interchangeable separators, so
+// both split; everywhere else `/` alone separates and every `\` in a
+// component is an ordinary filename character that must survive the split
+// verbatim — converting it would validate a FICTIONAL path (a POSIX
+// component literally named `innocent\dir` and symlinked outside the project
+// used to be split into a non-existent `innocent`, letting the boundary
+// check pass while the Write landed outside, CWE-61). The platform choice is
+// an argument rather than a runtime.GOOS read inside the body so the Windows
+// branch stays unit-testable at the string level on every platform
+// (AC-HBS-005); the single production caller passes runtime.GOOS == "windows".
+func pathSegments(p string, windows bool) []string {
+	if windows {
+		// The explicit ReplaceAll is load-bearing: filepath.ToSlash is a
+		// runtime no-op wherever the host separator is already "/", so it
+		// would leave the Windows branch untested on every CI runner.
+		return strings.Split(strings.ReplaceAll(p, "\\", "/"), "/")
+	}
+	return strings.Split(p, "/")
 }
 
 // pathHasDotDotSegment reports whether p contains a ".." PATH SEGMENT (not a
