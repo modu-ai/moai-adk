@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"os"
 	"path/filepath"
 	"slices"
@@ -123,6 +125,7 @@ func memoryBudgetAdvisory(ctx context.Context, dir string, async bool) string {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
+				bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 				slog.Debug("session start: memory budget read panicked (non-blocking)", "recover", r)
 			}
 		}()

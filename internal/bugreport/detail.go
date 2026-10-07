@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -190,6 +191,33 @@ func RegisteredHandlerCount() int {
 	hookIdentityRegistry.Lock()
 	defer hookIdentityRegistry.Unlock()
 	return len(hookIdentityRegistry.handlers)
+}
+
+// RegisteredEventNames returns the registered event names, sorted, for the
+// internal/cli guard that asserts the table equals internal/hook's declared
+// EventType constants.
+func RegisteredEventNames() []string {
+	hookIdentityRegistry.Lock()
+	defer hookIdentityRegistry.Unlock()
+	out := make([]string, 0, len(hookIdentityRegistry.events))
+	for name := range hookIdentityRegistry.events {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// RegisteredHandlerNames returns the registered handler names, sorted, for
+// the same guard's wiring-vs-table set equality.
+func RegisteredHandlerNames() []string {
+	hookIdentityRegistry.Lock()
+	defer hookIdentityRegistry.Unlock()
+	out := make([]string, 0, len(hookIdentityRegistry.handlers))
+	for name := range hookIdentityRegistry.handlers {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // ErrDetailRejected is the sentinel every detail rejection wraps, so a caller

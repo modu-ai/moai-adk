@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/spf13/cobra"
 )
@@ -218,7 +219,13 @@ func runDecayScan(stdout, stderr io.Writer, flags *decayScanFlags) error {
 	}
 	fs, ok := storeIface.(*fileStore)
 	if !ok {
-		return fmt.Errorf("preference: internal error: store is not *fileStore (got %T)", storeIface)
+		// SPEC-FEEDBACK-PARTICIPATION-001 (design.md section 2): a violated
+		// internal invariant is a moai defect. The error is wrapped by the
+		// bugreport internal marker — the explicit, non-textual attribution
+		// signal — and captured before the caller sees it.
+		err := bugreport.MarkInternal(fmt.Errorf("preference: internal error: store is not *fileStore (got %T)", storeIface))
+		bugreport.Capture(bugreport.KindInternalError, err, "", nil)
+		return err
 	}
 
 	report, err := fs.DecayScan(now)

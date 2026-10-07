@@ -285,6 +285,10 @@ func EnsureHomeLayout() error {
 		filepath.Join(home, "config"),
 		filepath.Join(home, "credentials"),
 		filepath.Join(home, "db"),
+		// SPEC-FEEDBACK-PARTICIPATION-001 (design.md section 6, D36): the
+		// bugreport stores are user-scoped — <moai home>/state/bugreport/ —
+		// so the state directory joins the private 0700 set.
+		filepath.Join(home, "state"),
 		filepath.Join(home, "cache", "search"),
 		filepath.Join(home, "run"),
 		filepath.Join(home, "logs"),

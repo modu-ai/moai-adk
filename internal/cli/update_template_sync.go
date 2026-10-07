@@ -436,6 +436,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				pl := tui.ProgressLine(out, "Validating templates...", nil)
 				if validateErr := deployer.ValidateAll(ctx, tmplCtx); validateErr != nil {
 					pl.Fail(fmt.Sprintf("Template validation failed: %v", validateErr))
+					captureHarnessDefect(validateErr)
 					return fmt.Errorf("template validation: %w", validateErr)
 				}
 				pl.Done("All templates validated")
@@ -532,6 +533,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 				if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {
 					pl.Fail(fmt.Sprintf("Deployment failed: %v", deployErr))
+					captureTemplateDeployFailure(deployErr)
 					return fmt.Errorf("deploy templates: %w", deployErr)
 				}
 				// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-001): stage the
