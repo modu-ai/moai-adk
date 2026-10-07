@@ -1,0 +1,62 @@
+Current version   moai-adk archive/t1401
+[1;38;2;217;119;87m◆ MoAI-ADK[m  archive/t1401  [38;2;154;163;160mgo1.26.8 · claude[m
+●  Syncing templates  from embedded filesystem
+  ○ Checking template version...
+  ✓ Version check complete
+  ○ Loading embedded templates...
+  ✓ Templates loaded
+  ○ Loading project manifest...
+  ✓ Manifest loaded
+[38;2;107;115;112m·[m Found 190 files to sync
+
+Proceeding with template deployment ---
+
+  ○ Backing up .moai/config...
+  ✓ .moai/config backed up
+  ○ Backing up user-owned namespace...
+  ✓ User-owned namespace backed up: .moai/backups/update-2026-10-05T12-22-47Z
+  ○ Validating templates...
+  ✓ All templates validated
+ total: 0 skills archived, 0 user customizations modified 
+  ○ Removing .claude/settings.json...
+  ✓ Removed .claude/settings.json (backed up 1 unmanaged file(s))
+  ○ Removing .claude/commands/moai...
+  ✓ Removed .claude/commands/moai (backed up 15 unmanaged file(s))
+  ○ Removing .claude/agents/moai...
+  ✓ Removed .claude/agents/moai
+  ○ Removing .claude/skills/moai*...
+  ✓ Removed .claude/skills/moai*
+  ○ Removing .claude/rules/moai...
+  ✓ Removed .claude/rules/moai
+  ○ Removing .claude/output-styles/moai...
+  ✓ Removed .claude/output-styles/moai
+  ○ Removing .claude/hooks/moai...
+  ✓ Removed .claude/hooks/moai (backed up 31 unmanaged file(s))
+  ○ Removing .moai/config...
+  ✓ Removed .moai/config (backed up 7 unmanaged file(s))
+  ○ Deploying templates...
+  ✓ Templates deployed
+  ○ Restoring user settings...
+  ✓ User settings restored
+  ✓ .gitignore user patterns preserved
+  [38;2;91;191;154m✓[m ██████████ 5/5 steps
+
+ ✓ Updated 722 files 
+[38;2;154;163;160m~ 188 update · ! 2 conflict[m
+[38;2;154;163;160m190 merged/added + 532 managed re-deployed · removed 483 under managed paths (all re-deployed)[m
+[38;2;154;163;160mBackup: .moai-backups/20261005_212247[m                       
+[38;2;154;163;160mRecover: moai update --restore .moai-backups/20261005_212247[m
+[38;2;154;163;160mNamespace backup: .moai/backups/update-2026-10-05T12-22-47Z (user-owned — copy back manually)[m
+[38;2;154;163;160mConfig restore covers .moai/config/sections/*.yaml only — customizations under evaluator-profiles/ and astgrep-rules/ are not merge-restored; recover them from the backup[m
+[38;2;91;191;154m✓[m Pre-push hook installed (.git/hooks/pre-push)
+[38;2;91;191;154m✓[m Pre-commit hook installed (.git/hooks/pre-commit)
+
+
+Post-update actions ---
+[1;38;2;216;222;219mAction required[m
+[1;38;2;237;125;107m✗[m 2 conflicting file(s) flagged by the 3-way merge — resolve them before the next template sync (see the backup at .moai-backups/20261005_212247)
+[1;38;2;227;161;74m![m Hooks: running Claude Code sessions need a /hooks review (or a Claude Code restart) for new or changed hooks to take effect.
+[1;38;2;216;222;219mReference[m
+[38;2;107;115;112m·[m worktree migration failed: git worktree list --porcelain: fatal: not a git repository (or any of the parent directories): .git: exit status 128
+[38;2;107;115;112m·[m Reconfigure project settings (development mode, git, model policy): moai update -c
+[38;2;107;115;112m·[m this checkout is shared across concurrent sessions; for branch-changing work (switch/reset/rebase), use a worktree for isolation — `moai cc -w` / `moai glm -w`, or `claude --worktree`. See .claude/rules/moai/workflow/main-checkout-branch-guard.md.

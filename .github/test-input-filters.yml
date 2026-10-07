@@ -1,0 +1,61 @@
+# Single source of the "did this diff change a Go test-suite input?"
+# classification (dorny/paths-filter `go_code` filter), consumed by:
+#   .github/workflows/ci.yml                  detect job         (test / race / skip-marker)
+#   .github/workflows/codeql.yml              detect job         (analyze)
+#   .github/workflows/release-pr-multi-os.yml detect-release job (full-matrix-test)
+# Each consumer passes this file to dorny/paths-filter's `filters` input in
+# path mode (single-line input without a colon is read as a file path — see
+# the action's isPathInput), so the three classifiers cannot drift apart.
+#
+# Card t1536: release-pr-multi-os.yml carried a stale narrow copy of this list
+# (`**/*.go`, go.mod, go.sum, Makefile, two workflow files), so a release PR
+# whose diff touched only the inputs below read as "docs-only" and skipped the
+# 3-OS race matrix — while ci.yml excludes release/* heads from its own Race
+# Test jobs precisely because this matrix supersedes them, so NO race
+# verification ran on exactly the release PRs that carry template or config
+# changes into a release.
+#
+# go_code covers BOTH Go sources AND the non-Go repo inputs the Go test
+# suite reads (`go test ./...`). A PR that moves or edits any of the non-Go
+# roots below can turn the suite red with zero .go files changed; without
+# them in the filter a skip-marker stub satisfies a required check over a
+# broken tree — exactly what #1557 did (moved .moai/config/astgrep-rules/ →
+# .moai/astgrep-rules/, three internal/astgrep tests went FAIL, filter read
+# "no Go changes", stub reported green). Evidence per root — the test file
+# that reads it:
+#   .moai/**                        internal/astgrep/gar_rule_test.go (shipped rule file, fail-loud)
+#   internal/template/templates/**  internal/spec/catalog_hash_test.go + internal/template parity tests
+#   internal/template/catalog.yaml  internal/spec/catalog_hash_test.go (fail-loud)
+#   .claude/agents/**               internal/template/agent_askuser_audit_test.go (walks .claude/agents/**)
+#                                    + manager_lead_depth_test.go + haiku_effort_guard_test.go
+#   .claude/rules/moai/**           internal/config/token_budget_guard.go (always-loaded budget walk)
+#   .claude/output-styles/moai/**   internal/config/token_budget_guard.go (fixed surface slot)
+#   CLAUDE.md                       internal/config/token_budget_guard.go (fixed surface slot)
+#   .claude/settings.json           internal/config/toolpolicy/drift_check_test.go (permissions block vs tool-policy.yaml, fail-loud)
+#   scripts/ci-census/**            the ci/release test steps shell out to it;
+#                                    without it here, a PR that edits the
+#                                    census alone gets the skip-marker
+#                                    stub and the edit is never exercised
+# The three CI workflow files and this file itself are inputs too: editing
+# the verification harness must re-run the verification — when classification
+# is uncertain, the matrix runs.
+# dorny/paths-filter matches with picomatch {dot: true}, so `**` also
+# traverses the dot-directories inside templates/ (.claude/, .moai/).
+go_code:
+  - '**/*.go'
+  - 'go.mod'
+  - 'go.sum'
+  - 'Makefile'
+  - '.github/workflows/ci.yml'
+  - '.github/workflows/codeql.yml'
+  - '.github/workflows/release-pr-multi-os.yml'
+  - '.github/test-input-filters.yml'
+  - '.moai/**'
+  - 'internal/template/templates/**'
+  - 'internal/template/catalog.yaml'
+  - '.claude/agents/**'
+  - '.claude/rules/moai/**'
+  - '.claude/output-styles/moai/**'
+  - '.claude/settings.json'
+  - 'CLAUDE.md'
+  - 'scripts/ci-census/**'
