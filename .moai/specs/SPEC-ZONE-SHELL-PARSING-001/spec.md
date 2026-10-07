@@ -2,9 +2,9 @@
 id: SPEC-ZONE-SHELL-PARSING-001
 title: "Protected-zone shell guard — close five shell-parsing bypasses in the mutation-verb walk (-- operands, conditional declarations, wrapper prefixes, executable-path function absorption, recursion state reset)"
 version: "0.5.0"
-status: in-progress
+status: completed
 created: 2026-10-07
-updated: 2026-10-07
+updated: 2026-10-08
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"

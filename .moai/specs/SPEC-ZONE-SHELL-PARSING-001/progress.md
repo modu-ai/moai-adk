@@ -1,6 +1,6 @@
 # SPEC-ZONE-SHELL-PARSING-001 — progress
 
-Card t1574 · Tier M · branch WT-shell-parsing-guard · status: in-progress (run-phase closed 2026-10-08; sync-phase pending)
+Card t1574 · Tier M · branch WT-shell-parsing-guard · status: completed (3-phase close 2026-10-08)
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -100,7 +100,22 @@ m1_to_mN_commit_strategy: M1 five fixes + spec.md draft→in-progress transition
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase (manager-docs)_
+sync_complete_at: 2026-10-08T01:48:44+09:00
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+sync_agent: manager-docs
+sync_scope: CHANGELOG-only (internal security fix; no README/docs-site surface — recorded in the report)
+changelog_entry_position: "[Unreleased] › Fixed — first entry (prepended)"
+changelog_duplicate_grep: 0
+b12_self_test_a: pass — pre-emission `grep -c 'SPEC-ZONE-SHELL-PARSING-001' CHANGELOG.md` returned 0 (exit 1, no match) before writing
+b12_self_test_b: pass — declared live AC set = 6 (`### AC-ZSP-001..006` headings in acceptance.md :99-139); the B12 counter returned live=8 because two prose short-forms matched the grammar (`AC-001..006` range shorthand at :161, `(AC-005)` cross-reference at :166) — neither is a declaration; the CHANGELOG entry references 6
+b12_self_test_c: pass — `ls` verified `internal/hook/protected_zone_shell.go`, `internal/hook/protected_zone_shell_parsing_test.go`, `internal/hook/protected_zone_shell_matrix_test.go`, `.moai/specs/SPEC-ZONE-SHELL-PARSING-001/spec.md`, `.moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/spec.md` before writing
+frontmatter_status_transitions.in-progress→implemented→completed: single sync commit (spec.md `status:` + `updated: 2026-10-08` only; no body edits, no blocker)
+plan_acceptance_artifacts: untouched (no sync-phase body edits; no `updated:` refresh owed — files unmodified in sync)
+mx_tag_validation: sync diff is docs-only (CHANGELOG.md + spec.md frontmatter + progress.md §E.4/header); zero tag changes
+matrix_cells_reobserved: 56 (`parsing-matrix sweep: 56 cells`, `ok github.com/modu-ai/moai-adk/internal/hook 0.798s`, this run, sync tree)
+commit_plan: one sync commit (`chore(SPEC-ZONE-SHELL-PARSING-001): sync-phase artifacts — 3-phase close`, card t1574 in body, `Authored-By-Agent: manager-docs` + `🗿 MoAI` trailers) + one backfill commit replacing this §E.4 placeholder with the real sync-commit SHA
+backfill: pending (owed immediately after the sync commit lands)
 
 ## §F Phase 4 Mode Selection
 
