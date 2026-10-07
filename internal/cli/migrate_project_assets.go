@@ -199,12 +199,22 @@ func userCounterpartConfirmed(userManifest *userassets.Manifest, embedded fs.FS,
 		userKey, sourceRel = "claude-skills/"+rest, projectRel
 	case strings.HasPrefix(projectRel, ".agents/skills/"):
 		rest := strings.TrimPrefix(projectRel, ".agents/skills/")
-		userKey, sourceRel = "agents-skills/"+rest, projectRel
+		// The installer lands the SAME catalog bytes in BOTH skill roots
+		// (userassets installTargets: one .claude/skills source dir →
+		// RootClaudeSkills + RootAgentsSkills), so an .agents/skills copy is
+		// a RELOCATION of the .claude/skills original — the embedded lookup
+		// maps to the true source (gate round 11 finding 1: the project-path
+		// lookup failed even for a healthy current install, because the
+		// embedded tree carries no .agents/skills content at all).
+		userKey, sourceRel = "agents-skills/"+rest, ".claude/skills/"+rest
 	case strings.HasPrefix(projectRel, ".claude/agents/moai/"):
 		rest := strings.TrimPrefix(projectRel, ".claude/agents/moai/")
 		userKey, sourceRel = "claude-agents/"+rest, projectRel
 	case strings.HasPrefix(projectRel, ".codex/agents/moai/"):
 		rest := strings.TrimPrefix(projectRel, ".codex/agents/moai/")
+		// The Codex agent TOML is EMITTED into the template tree at its own
+		// path (installTargets reads .codex/agents/moai/<name>.toml
+		// directly) — no relocation.
 		userKey, sourceRel = "codex-agents/"+rest, projectRel
 	default:
 		return false

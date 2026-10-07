@@ -996,3 +996,126 @@ func TestRecordlessBranchTallyCountsReconcileRemovals(t *testing.T) {
 		t.Errorf("deletion tally did not count the reconciliation's archived removal:\n%s", out)
 	}
 }
+
+// seedStaleManagedRule plants a managed-root file the templates do not
+// carry, tracked template_managed — the reconcile's stale shape. Shared by
+// the tally, record-drop, and post-removal-survival repros.
+func seedStaleManagedRule(t *testing.T, root string) string {
+	t.Helper()
+	const staleRel = ".claude/rules/moai/zzz-stale-never-in-template.md"
+	const staleBytes = "# stale rule the templates dropped\n"
+	writeFixtureFile(t, root, staleRel, staleBytes)
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Track(staleRel, manifest.TemplateManaged, manifest.HashBytes([]byte(staleBytes))); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Save(); err != nil {
+		t.Fatal(err)
+	}
+	return staleRel
+}
+
+// TestAgentsSkillsCounterpartMapsToClaudeSource is gate round 11 finding 1
+// (card t1547 repair round): the installer lands the SAME catalog bytes in
+// BOTH skill roots (installTargets: one .claude/skills source dir →
+// RootClaudeSkills + RootAgentsSkills), so an existing Codex project's
+// .agents/skills copy is a RELOCATION of the .claude/skills original. The
+// counterpart gate must map it to the true source — the old project-path
+// lookup read .agents/skills/... from the embedded FS, which carries no such
+// tree, and refused every healthy relocated install (safe, but the copy was
+// never confirmable). The Gate-B current-version check rides the MAPPED
+// source: a stale relocated counterpart still refuses.
+func TestAgentsSkillsCounterpartMapsToClaudeSource(t *testing.T) {
+	home := t.TempDir()
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const claudeRel = ".claude/skills/moai-foundation-core/SKILL.md"
+	current, err := fs.ReadFile(embedded, claudeRel)
+	if err != nil {
+		t.Fatalf("embedded source: %v", err)
+	}
+	sum := sha256.Sum256(current)
+	um := &userassets.Manifest{Files: map[string]userassets.FileEntry{
+		"agents-skills/moai-foundation-core/SKILL.md": {
+			SHA256: hex.EncodeToString(sum[:]), Bundle: "core",
+			InstalledAt: "t1", MoaiVersion: "vCurrent",
+		},
+	}}
+	dir := userassets.RootBySlugDir(home, userassets.RootSlug("agents-skills"))
+	if dir == "" {
+		t.Fatal("agents-skills root dir unresolved")
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "moai-foundation-core"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	userCopy := filepath.Join(dir, "moai-foundation-core", "SKILL.md")
+	if err := os.WriteFile(userCopy, current, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// The healthy relocated counterpart CONFIRMS against the mapped source.
+	const agentsRel = ".agents/skills/moai-foundation-core/SKILL.md"
+	if !userCounterpartConfirmed(um, embedded, home, agentsRel) {
+		t.Error("a healthy relocated counterpart did not confirm — the mapping reads the wrong embedded source")
+	}
+
+	// Gate B rides the mapped source: a STALE relocated copy refuses.
+	stale := append([]byte(nil), current...)
+	stale = append(stale, []byte("\n<!-- stale old-version body -->\n")...)
+	if err := os.WriteFile(userCopy, stale, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if userCounterpartConfirmed(um, embedded, home, agentsRel) {
+		t.Error("a stale relocated counterpart confirmed — the current-version gate broke with the remap")
+	}
+}
+
+// TestReconcileDropsStaleManifestRecord is gate round 11 finding 2, arm 1
+// (card t1547 repair round): a successfully archive-then-removed stale
+// file's manifest record must NOT survive the removal — a surviving record
+// re-classifies whatever the user later creates at the same path as stale,
+// and the next update deletes the user's file.
+func TestReconcileDropsStaleManifestRecord(t *testing.T) {
+	root := buildMigrationFixture(t)
+	staleRel := seedStaleManagedRule(t, root)
+
+	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
+	assertFileAbsent(t, root, staleRel)
+
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatal(err)
+	}
+	if _, found := mgr.GetEntry(staleRel); found {
+		t.Error("the removed file's manifest record survived the removal — a new local file at the path would be deleted by the next update")
+	}
+}
+
+// TestPostRemovalUserFileSurvivesNextUpdate is finding 2, arm 2: after the
+// record drop, a NEW local file the user creates at the removed path
+// classifies user-owned and survives the next update byte-for-byte.
+func TestPostRemovalUserFileSurvivesNextUpdate(t *testing.T) {
+	root := buildMigrationFixture(t)
+	staleRel := seedStaleManagedRule(t, root)
+
+	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
+
+	// The user creates a NEW local file at the removed path.
+	const userBytes = "# the operator's new local rule\n"
+	writeFixtureFile(t, root, staleRel, userBytes)
+
+	out, _ := runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "force": "true"})
+	if data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(staleRel))); err != nil {
+		t.Errorf("the next update deleted the user's post-removal local file: %v", err)
+	} else if string(data) != userBytes {
+		t.Errorf("the next update rewrote the user's post-removal local file: %q", data)
+	}
+	if !strings.Contains(out, "zzz-stale-never-in-template") {
+		t.Errorf("the preserved post-removal file never reached the summary:\n%s", out)
+	}
+}

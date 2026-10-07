@@ -8,6 +8,7 @@ package cli
 // v1→v2 fresh-install case, behind the REQ-UPM-015 guard.
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -140,6 +141,25 @@ func reconcileManagedRoots(projectRoot string, out io.Writer, tmplFS fs.FS, mgr 
 	}
 	*summary = s
 	*pending = p
+	// Gate round 11 (card t1547): an archive-then-removed stale file's
+	// manifest record must NOT survive the removal. A surviving record
+	// carries managed provenance for a path the template does not carry, so
+	// whatever the user later creates at that path re-classifies stale on
+	// the next update and the reconcile deletes the USER'S file
+	// (REQ-UPM-002). Dropping the records lets a post-removal local file
+	// classify user-owned. The preview path never reaches here (it classifies
+	// through the read-only loader and writes nothing).
+	dropped := 0
+	for _, rel := range s.ArchivedRemoved {
+		if err := mgr.Remove(rel); err == nil {
+			dropped++
+		}
+	}
+	if dropped > 0 {
+		if err := mgr.Save(); err != nil {
+			return fmt.Errorf("drop stale records after reconcile: %w", err)
+		}
+	}
 	// The legacy .moai/memory migration (finding 4): unchanged contract, now
 	// carried by the reconcile path instead of the wholesale walk's tail.
 	return deploy.MigrateLegacyMemoryDir(projectRoot, out)
