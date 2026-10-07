@@ -862,3 +862,44 @@ func TestConsentCheckedBeforeGhAuthStatus(t *testing.T) {
 		t.Fatalf("gh auth status ran %d time(s) with participation OFF — no network probe may precede the consent check", calls)
 	}
 }
+
+// TestAttemptLimitRecheckedOnTheLiveItem (review-gate finding, P2): the
+// attempt-limit gate ran against the SNAPSHOT before the claim; a rival
+// flush's fail() could exhaust the item in between, and the post-claim live
+// re-check adopted the exhausted copy without re-judging it — one search +
+// one create past the limit. The limit must be re-checked on the FRESH item
+// after the claim.
+func TestAttemptLimitRecheckedOnTheLiveItem(t *testing.T) {
+	consentOn(t)
+	_, item := payloadFixture(t)
+	item.Attempts = config.DefaultBugreportAttemptLimit - 1
+	seedQueue(t, item)
+
+	// The rival flush: between this run's snapshot and its claim, another
+	// flush fails the item once — the live item exhausts its limit.
+	prev := beforeClaimForTest
+	t.Cleanup(func() { beforeClaimForTest = prev })
+	beforeClaimForTest = func() {
+		_ = outbox.BugreportQueueStore().MutateContext(context.Background(), func(rec *feedback.QueueRecord) error {
+			for i := range rec.Items {
+				if rec.Items[i].ID == item.ID {
+					rec.Items[i].Attempts++
+					break
+				}
+			}
+			return nil
+		})
+	}
+
+	stub := newStubRunner(true)
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	searches, creates, _ := stub.recorded()
+	if searches != 0 || creates != 0 {
+		t.Fatalf("searches=%d creates=%d — an item exhausted between the snapshot and the claim was sent anyway (one search + one create past the attempt limit)", searches, creates)
+	}
+	if rest := queuedItems(t); len(rest) != 0 {
+		t.Fatalf("the exhausted item stayed queued: %+v", rest)
+	}
+}

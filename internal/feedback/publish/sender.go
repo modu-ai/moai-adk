@@ -183,6 +183,16 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 		return true
 	}
 
+	// The attempt limit was judged against the SNAPSHOT before the claim
+	// (review-gate finding, P2): a rival flush's fail() can exhaust the
+	// item in between, and the fresh copy this walk now holds is the
+	// exhausted one — sending it would burn one more search + create past
+	// the limit. Re-judge on the live copy.
+	if outbox.AttemptLimitReached(item) {
+		s.drop(ctx, store, item, "attempt limit reached (re-checked on the live item)")
+		return true
+	}
+
 	// A recorded send whose queue cleanup failed leaves the item in the
 	// queue with the sent row already recorded — the next flush must not
 	// publish again (review-gate hardening round, P2: the first run created
