@@ -24,11 +24,11 @@ argument-hint: "[subcommand] [args] | \"natural language task\""
 
 Rules and constraints governing all workflows are always loaded from these sources. Do NOT duplicate their content here:
 
-- Core identity, orchestration principles, agent catalog: CLAUDE.md
+- Core identity, orchestration principles, agent catalog: AGENTS.md + `.moai/config/sections/delegation.yaml`
 - Quality gates, security boundaries: .claude/rules/moai/core/moai-constitution.md
 - SPEC workflow phases, token budgets: .claude/rules/moai/workflow/spec-workflow.md
 - Development methodologies (DDD/TDD): .claude/rules/moai/workflow/spec-workflow.md (Run Phase section)
-- Agent definitions: See CLAUDE.md Section 4. For agent creation, use builder-harness subagent (artifact_type=agent).
+- Agent definitions: See `.moai/config/sections/delegation.yaml`. For agent creation, use builder-harness subagent (artifact_type=agent).
 - @MX tag rules and protocol: .claude/rules/moai/workflow/mx-tag-protocol.md
 
 ---
@@ -78,8 +78,8 @@ The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-fr
 - **e2e** (aliases: e2e-test, end-to-end): Multi-platform end-to-end testing (web/mobile/desktop) with project-type auto-detection and CLI-first toolchain selection
 - **harness** (aliases: hrn): harness lifecycle management — learning-lifecycle verbs (status / apply / rollback &lt;date&gt; / disable) + v4-lifecycle verbs (list / edit / remove / doctor), all dispatching through the unified `moai harness` Go-binary Cobra subcommand tree; the slash command is the documented user-facing entry point
 - **goal**: Two compatible modes — a condition goal (`/moai goal "<condition>"`) or an approved auto mission (`/moai goal --auto "<mission>"`) with `approve`, `run`, `status`, `revoke`, and `resume` lifecycle verbs
-- **gtd**: Canonical GTD task-management workflow
-- **todo** (aliases: backlog): Compatibility alias — route to the canonical **gtd** workflow while preserving the supplied arguments
+- **todo** (aliases: backlog): Canonical queue workflow — the operator's backlog queue (GTD task management)
+- **gtd**: Compatibility alias — route to the canonical **todo** workflow while preserving the supplied arguments
 
 ### Priority 2: SPEC-ID Detection
 
@@ -103,7 +103,7 @@ Only if BOTH Priority 1 AND Priority 2 did not match: Classify the intent of the
 - Architecture-map language (architecture map, code maps, dependency graph, structure documentation) routes to **codemaps**
 - Feedback and bug report language (report, feedback, suggestion, issue) routes to **feedback**
 - MX tag language (mx tag, annotation, code context, legacy annotate) routes to **mx**
-- Backlog language (add to the backlog, note this for later, what should I work on next, remind me to) routes to **gtd** — semantic exemplars; a request in any conversation_language expressing "queue this, do not start it now" routes identically
+- Backlog language (add to the backlog, note this for later, what should I work on next, remind me to) routes to **todo** — semantic exemplars; a request in any conversation_language expressing "queue this, do not start it now" routes identically
 - Implementation language (implement, build, create, add, develop) with clear scope routes to **moai** (default autonomous)
 
 ### Priority 4: Default Behavior
@@ -123,7 +123,7 @@ Phases: Deep Research (research.md) -> SPEC Planning -> Annotation Cycle (1-6 it
 Agents: manager-spec (primary), Explore (research), plan-auditor (quality gate), manager-git (conditional)
 Skills: moai-workflow-spec, moai-foundation-thinking (per delegation.yaml)
 Flags: --branch, --resume SPEC-XXX, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md
+For detailed orchestration: Read workflows/plan.md
 
 ### run - DDD/TDD Implementation
 
@@ -131,7 +131,7 @@ Purpose: Implement SPEC requirements through configured development methodology.
 Agents: manager-develop (cycle_type=ddd|tdd per quality.yaml, primary), manager-git
 Skills: moai-workflow-tdd, moai-workflow-ddd (per delegation.yaml; cycle_type-selected) + domain moai-ref-* injected per mission
 Flags: --resume SPEC-XXX, --team (experimental — Agent Teams re-allowed; see Execution Mode Flags)
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md
+For detailed orchestration: Read workflows/run.md
 
 ### sync - Documentation Sync and PR
 
@@ -139,7 +139,7 @@ Purpose: Synchronize documentation with code changes and prepare pull requests.
 Agents: manager-docs (primary), sync-auditor (quality gate), manager-git
 Skills: moai-workflow-project (per delegation.yaml)
 Modes: auto, force, status, project. Flags: --auto-merge, --merge (deprecated alias of --auto-merge), --skip-mx
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/sync.md
+For detailed orchestration: Read workflows/sync.md
 
 ### gate - Pre-Commit Quality Gate
 
@@ -147,7 +147,7 @@ Purpose: Lightweight pre-commit quality check running lint, format, type-check, 
 Agents: Direct execution (no agent delegation)
 Flags: --fix, --staged, --file PATH
 Integration: Automatically invoked by run workflow (Phase 15) and sync workflow (Phase 1) with --fix behavior.
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gate.md
+For detailed orchestration: Read workflows/gate.md
 
 ### e2e - Multi-Platform End-to-End Testing
 
@@ -155,7 +155,7 @@ Purpose: Create and run E2E tests across web, mobile, and desktop applications w
 Agents: e2e-tester (primary — detection, journey mapping, script creation, execution, recording)
 Skills: moai-foundation-quality, moai-ref-testing-pyramid (per delegation.yaml)
 Flags: --tool, --platform, --record, --url, --journey, --headless, --browser, --timeout, --retry
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
+For detailed orchestration: Read workflows/e2e.md
 
 ### goal - Condition Goal and Approved Auto Mission
 
@@ -164,22 +164,22 @@ Condition goal: `/moai goal "<condition>"` (register + arm), `status [--all]`, `
 Auto mission: `/moai goal --auto "<mission>"`, followed by `approve`, `run`, `status`, `revoke`, or `resume`.
 Flags: `--auto` selects `mission_mode=auto`; it does not mean `progression_mode=autonomous`. Shared metadata flags include `--session` and `--json`.
 Progression mode: autonomous (default) vs. semi-autonomous — chosen at Implementation Kickoff Approval; the gate stays mandatory in both modes.
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/goal.md
+For detailed orchestration: Read workflows/goal.md
 
 <!-- moai:contract-mode-start id="contract-signing-router" -->
 Where `workflow.autonomy.mode: contract` — the Kickoff approval named here is the contract signature checked by `moai contract kickoff-check`; the progression mode is chosen when a goal is armed after that check passes. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
 
 <!-- moai:contract-mode-end -->
-### gtd - GTD Workflow and Backlog Queue
+### todo - Queue Workflow and Backlog Queue
 
 Purpose: Carry captured work through Capture, Clarify, Organize, Reflect, and Engage, and hold what the operator wants to work on next. `backlog` has no owning session, so admission to the board is always an operator act — this is that surface.
-Verbs — slash surface: `/moai gtd "<description>"` (append), bare `/moai gtd` (list). CLI only: `moai gtd next` (print queued cards; `moai gtd next <n> [--spec <SPEC-ID>]` marks one picked — the pick itself is presented through AskUserQuestion), `moai gtd done <n>` (remove).
+Verbs — slash surface: `/moai todo "<description>"` (append), bare `/moai todo` (list). CLI only: `moai todo next` (print queued cards; `moai todo next <n> [--spec <SPEC-ID>]` marks one picked — the pick itself is presented through AskUserQuestion), `moai todo done <n>` (remove).
 GTD stages: `capture`, `clarify`, `organize`, `reflect`, `engage`, plus `answer` for a gate-blocked card. Captured items stay separate from the established development queue until an explicitly approved Engage publishes one.
-Compatibility: `/moai todo` and `moai todo` are the compat alias of the canonical `/moai gtd` and `moai gtd` — same database, same card identities, same ordering, archive, and restore path.
+Compatibility: `/moai gtd` and `moai gtd` are the compat alias of the canonical `/moai todo` and `moai todo` — same database, same card identities, same ordering, archive, and restore path.
 State: `~/.moai/db/<project-key>/todo/backlog.db` — home-scoped, project-keyed, not committed, a SQLite database every mutation takes a cross-process lock over. A `backlog.json` beside an existing database is an export or a legacy leftover; the read verbs report that distinction. Before migration, a legacy JSON-only queue remains readable.
 The pick is the operator's: never preselect, never reorder by inferred priority (the `--auto` cycle's own candidate ranking is the one auto-scoped ranking exception — selection order only), never auto-populate from TODO comments or issues.
-Enablement: when `workflow.todo.enabled` is `false` in `.moai/config/sections/workflow.yaml`, do NOT route to this workflow by inference — a backlog-shaped phrase the operator did not name a subcommand for is answered directly instead of being queued. The gate binds AUTOMATIC routing only: an explicit `/moai gtd` or `/moai gtd "<description>"` still runs normally, exactly as it does when the key is absent or `true`. The flag suppresses guidance, not the feature — the queue verbs stay registered and every one of them keeps working, so refusing or silently ignoring a named invocation is a defect, not the intended behavior.
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gtd.md
+Enablement: when `workflow.todo.enabled` is `false` in `.moai/config/sections/workflow.yaml`, do NOT route to this workflow by inference — a backlog-shaped phrase the operator did not name a subcommand for is answered directly instead of being queued. The gate binds AUTOMATIC routing only: an explicit `/moai todo` or `/moai todo "<description>"` still runs normally, exactly as it does when the key is absent or `true`. The flag suppresses guidance, not the feature — the queue verbs stay registered and every one of them keeps working, so refusing or silently ignoring a named invocation is a defect, not the intended behavior.
+For detailed orchestration: Read workflows/gtd.md
 
 ### fix - Auto-Fix Errors
 
@@ -187,7 +187,7 @@ Purpose: Autonomously detect and fix LSP errors, linting issues, and type errors
 Agents: manager-develop (cycle_type=autofix), Agent(general-purpose) with domain whitelist (fixes)
 Skills: moai-workflow-ddd (per delegation.yaml) + domain moai-ref-* injected per mission
 Flags: --dry, --sequential, --level N, --resume, --team (experimental — Agent Teams re-allowed; see Execution Mode Flags)
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
+For detailed orchestration: Read workflows/fix.md
 
 ### loop - Iterative Auto-Fix
 
@@ -195,14 +195,14 @@ Purpose: Repeatedly fix issues until completion conditions are satisfied or max 
 Agents: manager-develop (cycle_type=autofix), Agent(general-purpose) with domain whitelist
 Skills: moai-workflow-loop (per delegation.yaml) + domain moai-ref-* injected per mission
 Flags: --max N, --auto-fix, --seq
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/loop.md
+For detailed orchestration: Read workflows/loop.md
 
 ### mx - MX Tag Scan and Annotation
 
 Purpose: Scan codebase and add @MX code-level annotations for AI agent context.
 Agents: Explore (scan), Agent(general-purpose) with backend scope (annotation)
 Flags: --all, --dry, --priority P1-P4, --force, --team (experimental — Agent Teams re-allowed; see Execution Mode Flags)
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/mx.md
+For detailed orchestration: Read workflows/mx.md
 
 ### review - Code Review
 
@@ -210,7 +210,7 @@ Purpose: Multi-perspective code review with security, performance, quality, and 
 Agents: sync-auditor (review), Agent(general-purpose) with security scope
 Skills: moai-foundation-quality, moai-ref-owasp-checklist (per delegation.yaml; per-perspective ref skills injected per lens)
 Flags: --staged, --branch, --security, --team (experimental — Agent Teams re-allowed; see Execution Mode Flags)
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/review.md
+For detailed orchestration: Read workflows/review.md
 
 ### clean - Dead Code Removal
 
@@ -218,14 +218,14 @@ Purpose: Identify and safely remove unused code with test verification.
 Agents: manager-develop, Agent(general-purpose) with refactoring scope
 Skills: moai-workflow-ddd (per delegation.yaml)
 Flags: --dry, --safe-only, --file PATH
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/clean.md
+For detailed orchestration: Read workflows/clean.md
 
 ### codemaps - Architecture Documentation
 
 Purpose: Scan codebase and generate architecture documentation.
 Agents: Explore, manager-docs
 Flags: --force, --area AREA
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/codemaps.md
+For detailed orchestration: Read workflows/codemaps.md
 
 ### (default) - MoAI Autonomous Workflow
 
@@ -234,7 +234,7 @@ Phases: Parallel Exploration (research.md) -> SPEC Generation -> Annotation Cycl
 Agents: Explore, manager-spec, plan-auditor (quality gate), manager-develop, manager-docs, manager-git, sync-auditor (quality gate)
 Skills: moai-workflow-spec, moai-workflow-tdd (per delegation.yaml) + domain moai-ref-* injected per mission
 Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team (experimental — Agent Teams re-allowed; see Execution Mode Flags), --solo, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/moai.md
+For detailed orchestration: Read workflows/moai.md
 
 ### project - Project Documentation
 
@@ -242,13 +242,13 @@ Purpose: Generate project documentation by analyzing the existing codebase.
 Agents: Explore, manager-docs, Agent(general-purpose) with devops scope (optional)
 Skills: moai-workflow-project (per delegation.yaml)
 Output: product.md, structure.md, tech.md in .moai/project/
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/project.md
+For detailed orchestration: Read workflows/project.md
 
 ### feedback - GitHub Issue Creation
 
 Purpose: Collect user feedback and create GitHub issues.
 Agents: orchestrator-direct (records feedback via gh CLI)
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/feedback.md
+For detailed orchestration: Read workflows/feedback.md
 
 ### harness - Harness Lifecycle + Natural-Language Build (argument-branching)
 
@@ -265,7 +265,7 @@ Skills: moai-harness-learner (Tier-4 surfacing companion). Project-specific harn
 Verbs: status (tier distribution + telemetry) | apply (next Tier-4 proposal → AskUserQuestion → 5-layer pipeline → snapshot + write) | rollback &lt;YYYY-MM-DD&gt; (restore snapshot) | disable (set learning.enabled: false)
 Artifacts: `.moai/harness/usage-log.jsonl`, `.moai/harness/proposals/`, `.moai/harness/learning-history/snapshots/`, `.moai/harness/learning-history/applied/`, `.moai/harness/learning-history/frozen-guard-violations.jsonl`
 Authoritative SPEC: the harness foundation policy (supersedes V3R3-HARNESS-001, V3R3-HARNESS-LEARNING-001, V3R3-PROJECT-HARNESS-001)
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness.md
+For detailed orchestration: Read workflows/harness.md
 
 #### Branch A.1 — harness-v4 lifecycle (reserved verbs: list / edit / remove / doctor)
 
@@ -279,8 +279,8 @@ Namespace: `.claude/commands/harness/`, `.claude/workflows/hns-*.js`, `.claude/a
 
 Purpose: Turn a natural-language harness-creation request into a concrete harness via Context-First Discovery (extract domain / goal / constraints / scope), harness `<name>` derivation (the name is derived from the request — NOT statically supplied by the user), explicit orchestrator-issued approval, then transition into the orchestrator-direct Builder (4 signal-driven phases: ANALYZE / PLAN / GENERATE / ACTIVATE). The orchestrator MUST conduct AskUserQuestion Socratic rounds (max 4 questions per round) when intent clarity is below 100%.
 Agent: builder-harness (v4 Builder — project-specific harness generation)
-Builder: orchestrator-direct processing (NOT a dynamic-workflow script) — the entry's Phases 0-3 hand off to `${CLAUDE_SKILL_DIR}/workflows/harness-builder.md` for the 4-phase creation logic. The orchestrator holds the PLAN→GENERATE AskUserQuestion approval gate directly; that gate round also carries the recurrence question (optional manifest `schedule`, discovery-only scheduled runs), and ACTIVATE registers a declared schedule after the smoke gate. A request referencing an EXISTING harness together with scheduling intent routes to the entry workflow's Schedule Retrofit branch (evaluated before name-collision handling) instead of the creation pipeline.
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness-build-entry.md
+Builder: orchestrator-direct processing (NOT a dynamic-workflow script) — the entry's Phases 0-3 hand off to `workflows/harness-builder.md` for the 4-phase creation logic. The orchestrator holds the PLAN→GENERATE AskUserQuestion approval gate directly; that gate round also carries the recurrence question (optional manifest `schedule`, discovery-only scheduled runs), and ACTIVATE registers a declared schedule after the smoke gate. A request referencing an EXISTING harness together with scheduling intent routes to the entry workflow's Schedule Retrofit branch (evaluated before name-collision handling) instead of the creation pipeline.
+For detailed orchestration: Read workflows/harness-build-entry.md
 
 ---
 
@@ -326,7 +326,7 @@ Retired-flag message (`--worktree`):
 
 격리된 공간에서 작업하려면 먼저 들어간 뒤 plan 을 실행하세요:
   moai cc -w <이름>              (그 자리에서 진입)
-  moai cg -w <이름> --spawn      (새 tmux 창, 현재 세션 유지)
+  moai cc -w <이름> --spawn      (새 Claude 세션을 tmux 창으로 열고 현재 세션 유지)
   /moai plan "<설명>"
 ```
 
@@ -398,4 +398,3 @@ Use AskUserQuestion to present the user with logical next actions based on the c
 ---
 
 Version: 2.8.0
-Last Updated: 2026-07-07

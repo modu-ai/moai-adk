@@ -99,6 +99,7 @@ var requiredGoCodeRoots = []string{
 	".github/workflows/codeql.yml",
 	".github/workflows/release-pr-multi-os.yml",
 	".github/test-input-filters.yml",
+	".github/branch-protection.json.gtmpl",
 	".moai/**",
 	"internal/template/templates/**",
 	"internal/template/catalog.yaml",

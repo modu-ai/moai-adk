@@ -26,7 +26,7 @@ Generate GEARS-notation SPEC documents for implementation planning (EARS legacy 
 
 GEARS (current) is the canonical SPEC authoring notation as of v3.0.0; EARS legacy syntax is supported during a 6-month backward-compatibility window, and the lint engine emits a `LegacyEARSKeyword` warning on residual `IF/THEN` in NEW SPECs.
 
-The GEARS patterns (Ubiquitous / event-driven `When` / state-driven `While` / capability-gate `Where` / unwanted `shall not`), the unified compound clause, the generalized `<subject>` rule, and the legacy EARS equivalents are enumerated in `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format and § EARS Format (the SSOT). Invoke `Skill("moai-workflow-spec")` to load them when authoring requirements rather than working from a copy.
+The GEARS patterns (Ubiquitous / event-driven `When` / state-driven `While` / capability-gate `Where` / unwanted `shall not`), the unified compound clause, the generalized `<subject>` rule, and the legacy EARS equivalents are enumerated in `~/.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format and § EARS Format (the SSOT). Invoke `Skill("moai-workflow-spec")` to load them when authoring requirements rather than working from a copy.
 
 Scope boundaries — what this agent does and does NOT own — are stated once in the frontmatter `description` (its `NOT for:` clause) and are not restated here.
 

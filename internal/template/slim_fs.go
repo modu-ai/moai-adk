@@ -38,13 +38,25 @@ var _ fs.StatFS = (*slimFS)(nil)
 var _ fs.ReadDirFS = (*slimFS)(nil)
 
 // computeDenySet builds the set of catalog entry paths that must be hidden.
-// Only non-core entries are added. Paths are kept as-is from catalog.yaml
-// (already "templates/"-prefixed). Both directory entries (ending with "/")
-// and single-file entries are supported.
+// Only non-core entries are added. A path that is ALSO a core entry (the
+// E3 shared-asset case — e.g. the devops pack's L0 trio) is never denied:
+// core membership wins. Paths are kept as-is from catalog.yaml (already
+// "templates/"-prefixed). Both directory entries (ending with "/") and
+// single-file entries are supported.
 func computeDenySet(cat *Catalog) map[string]struct{} {
+	corePaths := make(map[string]struct{})
+	for _, e := range cat.Catalog.Core.Skills {
+		corePaths[e.Path] = struct{}{}
+	}
+	for _, e := range cat.Catalog.Core.Agents {
+		corePaths[e.Path] = struct{}{}
+	}
 	deny := make(map[string]struct{})
 	for _, e := range cat.AllEntries() {
 		if e.Tier == TierCore {
+			continue
+		}
+		if _, shared := corePaths[e.Path]; shared {
 			continue
 		}
 		// Path is already "templates/"-prefixed per catalog.yaml convention.

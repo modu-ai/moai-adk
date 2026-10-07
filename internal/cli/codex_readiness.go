@@ -212,9 +212,16 @@ func codexPathExists(path string) bool {
 	return err == nil
 }
 
-// countCodexAgentTOMLs counts the generated agent TOMLs under
-// .codex/agents/moai/. Read-only; an unreadable directory is a count of 0.
+// countCodexAgentTOMLs counts the generated agent TOMLs. SPEC-USER-ASSET-
+// INSTALL-001 (M4 repoint, REQ-014): the agents install under the USER
+// folder (~/.codex/agents) now — prefer the user folder; a project-root
+// count alone would read a correct user install as zero drift.
 func countCodexAgentTOMLs(projectRoot string) int {
+	if home, err := os.UserHomeDir(); err == nil {
+		if matches, globErr := filepath.Glob(filepath.Join(home, ".codex", "agents", "*.toml")); globErr == nil && len(matches) > 0 {
+			return len(matches)
+		}
+	}
 	matches, err := filepath.Glob(filepath.Join(projectRoot, filepath.FromSlash(codexAgentsRelDir), "*.toml"))
 	if err != nil {
 		return 0

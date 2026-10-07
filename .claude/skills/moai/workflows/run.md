@@ -103,16 +103,16 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 4-mode catalog
 
 ```
 # Phase 0: Context loading 및 mode dispatch 시작 시
-Read .claude/skills/moai/workflows/run/context-loading.md
+Read ~/.claude/skills/moai/workflows/run/context-loading.md
 
 # Phase 1 (Plan Audit Gate) 진입 시
-Read .claude/skills/moai/workflows/run/phase-execution.md
+Read ~/.claude/skills/moai/workflows/run/phase-execution.md
 
 # Phase 11 (Implementation) 진입 시
-Read .claude/skills/moai/workflows/run/task-decomposition.md
+Read ~/.claude/skills/moai/workflows/run/task-decomposition.md
 
 # Mode dispatch 또는 completion criteria 확인 시
-Read .claude/skills/moai/workflows/run/mode-orchestration.md
+Read ~/.claude/skills/moai/workflows/run/mode-orchestration.md
 ```
 
 ## Custom Harness Extension

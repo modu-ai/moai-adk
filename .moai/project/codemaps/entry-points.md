@@ -1,6 +1,45 @@
 # 진입점
 
-## 현재 main의 추가 표면
+## 현재 최종 통합 트리의 진입점 — e65b3b
+
+기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. 비테스트 소스에서 literal `AddCommand(` 호출 줄은 250개(78개 파일), `rootCmd.AddCommand(` 줄은 68개다. 앞선840826 이후 이 수는 변하지 않았다. 호출 줄 수를 실행 가능한 명령 개수로 취급하지 않는다.
+
+- `internal/hook/user_prompt_submit.go`는 기본 2초 bind context를 만들어 일반 peer 등록에 전달한다. `internal/hook/factory_messages.go`와 `internal/hook/factory_rebind.go`가 `OpenWithContext`를 사용한다. inbox open은 기존 inspection 계약을 별도로 사용한다.
+- `internal/core/project/initializer.go`는 모든 harness의 기본 AGENTS.md를 template deployer에서 받는다. `internal/cli/harness/install.go`와 `internal/cli/doctor_harness.go`의 marker 대상 선택은 AGENTS 우선, 존재하는 legacy CLAUDE fallback이다. validator와 Codex contract의 새 기본 파일 요구를 이 fallback으로 대체하지 않는다.
+- `internal/cli/codex_launcher.go`의 local instruction producer는 AGENTS.local.md 다음 CLAUDE.local.md를 둘 다 읽고 provenance header와 함께 하나의 developer_instructions override로 연결한다. root instruction의 우선·fallback과 다른 계약이다.
+- `internal/cli/init.go`의 `ensureUserAssetsLocked`, `internal/cli/update.go`의 `runUserAssetUpdatePhase`, `internal/cli/bundle.go`의 add/remove 진입은 유지된다. AGENTS 전환은 사용자 공통 자산을 프로젝트 폴더로 되돌리는 흐름이 아니다.
+- `internal/cli/factory_card.go`의 selection·nomination은 공통 다중 hub wait를 거친다. `internal/cli/factory_card_pr.go`는 고정한 tip과 원격 변경 직전 재검사를 묶는다. 기존 candidate-tip remeasure와 complete T16의 실제 merge-tree remeasure는 구분한다.
+
+- `internal/cli/codex_review_gate.go`의 `HandleCodexReviewGate`는 RPC 전에 scope-key 영수증을 조회한다. accepted cached fail은 상세와 함께 차단하고 다른 accepted receipt는 RPC 없이 allow한다. miss·stale은 기존 live review를 거친다.
+- `internal/cli/codex_review_receipt.go`의 `produceCodexReviewReceipt`와 `verify codex-review` 등록은 같은 scope key의 공유 영수증을 생산한다. inconclusive는 exit2로 기록하며 pass 증거로 세지 않는다.
+
+## 이전 c572 기준의 진입점
+
+기준은 `c572e7baceaa6fd0cd3c78a9335b4baabd320347`다. 비테스트 소스의 literal `AddCommand(` 호출 줄은 이전 ff7722 기준 249개에서 250개로 늘었고, `rootCmd.AddCommand(` 줄은 68개로 같다. 이는 호출 줄 수이며 실행 가능한 명령 개수와 같다는 뜻은 아니다.
+
+- `internal/cli/integration.go`가 policy·remeasure·merge를 등록하고 acquire의 대기 경로를 `internal/cli/integration_wait.go`로 연결한다. `internal/cli/integration_merge.go`는 primary 통합 체크아웃에서 병합을 거절한다.
+- `internal/cli/todo.go`의 레인 `--auto`는 `internal/cli/todo_auto_lane.go`의 `runAutoLaneCycle`로 이어진다. `internal/cli/codex_launcher.go`는 부모 체크아웃의 대화형 세션 하나에 이 지시를 전달한다.
+- `internal/cli/codex_audit_launch.go`의 `codexAuditMCPDisableArgs`는 감사 프로세스를 시작하기 전에 MCP 전송 선언을 검증하고 비활성 인자를 구성한다.
+- `internal/cli/update.go`는 출력 원장을 초기화하고 종료 시 action/reference 블록을 렌더링한다. `internal/cli/init.go`의 MCP provisioning 오류는 collector로 전달된다.
+- `internal/cli/update.go`는 binary/dry-run 반환 뒤, 같은 버전의 조기 반환 전에 `internal/cli/update_deny_migration.go`의 정규화를 호출한다. `internal/cli/update_clean_install.go`도 설정 보존 뒤 이를 호출한다. 기존 사용자 자산 설치 진입점은 아래에 유지한다.
+
+## 이전 ff7722 기준의 공통 진입 경로
+
+기준은 `ff7722d2d157dd4e3cffd88ebb644e0f8ead83fa`다. 아래는 소스 호출 대조이며 원격 정리나 오류 주입을 실제 실행했다는 뜻은 아니다.
+
+- `internal/cli/worktree/done.go`·`internal/cli/worktree/sweep.go`와 CLI의 `session_worktree.go`의 gitBranchLandedReal은 `internal/cli/worktree/landing_predicate.go`의 LandedByPatchID를 공유한다. ancestry 성공이면 즉시 반환하며, ancestry가 아닌 경우 patch-id 후보 일치 뒤 native object·mode와 삭제 상태를 확인한다. done/sweep은 뒤이어 merged PR도 확인하지만 세션 종료는 gh를 호출하지 않는다.
+- `internal/graph/graph.go`의 카드·파일 edge와 `internal/graph/meta.go`의 fingerprint는 `internal/graph/card_file.go`의 공통 커밋 열거를 사용한다. HEAD의 모든 부모 경로에서 merge와 squash를 함께 읽는다.
+- `internal/cli/init.go`의 MCP provisioning 오류는 p.Collect를 거쳐 deferred emitSummary로 전달한다. 이 오류를 init 실패로 승격하지 않는다. 사용자 자산 설치 오류의 실패 반환과는 처리 결과가 다르다.
+- `internal/cli/update.go`는 실행별 action registry를 초기화하고 defer로 마지막 Require/Reference 블록을 렌더한다. 표시 구현은 `internal/cli/update_action_block.go`와 `internal/cli/severity_line.go`에 있다.
+
+## PR #1772의 설치 진입점
+
+- `internal/cli/init.go` → `ensureUserAssetsLocked`: 프로젝트 배포가 완료된 뒤, init 성공을 보고하기 전에 사용자 공통 자산을 설치한다. 이 단계의 오류로 init이 실패해도 프로젝트 배포 결과는 이미 남아 있다.
+- `internal/cli/update.go` → `runUserAssetUpdatePhase` → `migrateProjectCommonAssets`: 사용자 쪽 설치·갱신과 대응 파일 확인이 프로젝트 쪽 제거에 앞선다.
+- `internal/cli/bundle.go`: `moai bundle add/remove`가 사용자 번들 선택을 변경한다.
+- `internal/cli/doctor.go` → `internal/cli/doctor_user_install.go`: User Install·Project Lock·Plugin Migration 진단을 등록한다. 기존 Plugin Deployment·Plugin Version 행은 등록에서 빠졌다.
+
+## 이전 081899 기준의 추가 표면
 
 기준은 `081899adb825935d5263b1699fe730373deaa4fd`다. 다음은 소스 배선을 확인한 표면이며 실제 원격 실행의 성공 주장은 아니다.
 

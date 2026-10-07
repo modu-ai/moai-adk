@@ -88,6 +88,23 @@ func TestRender_ForgePairFourStateContract(t *testing.T) {
 			},
 			wantSub: "",
 		},
+		{
+			name: "a child-written suppression verdict keeps the counts it rides with hidden",
+			setup: func(t *testing.T, root string) {
+				t.Helper()
+				// The refresh child carries the previous counts through its
+				// suppression write, so the cache can serialize counts AND
+				// suppressed: true together (RefreshGitHubCounts writes prev
+				// on a no-forge verdict). A valid override must not
+				// resurrect them — Suppressed governs the render (card
+				// t1583 ②): the contradiction state stays invisible.
+				writeForgeOverride(t, root, "github")
+				if err := writeGitHubCache(root, GitHubCounts{OpenIssues: 2, OpenPRs: 5, Suppressed: true, FetchedAt: time.Now().Unix()}); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantSub: "",
+		},
 	}
 
 	for _, tt := range tests {

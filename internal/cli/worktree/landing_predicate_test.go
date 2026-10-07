@@ -96,7 +96,12 @@ func editLine(t *testing.T, dir string, n int, suffix string) {
 		t.Fatal(err)
 	}
 	lines := strings.Split(string(raw), "\n")
-	lines[n-1] = lines[n-1] + " " + suffix
+	// Keep CRLF checkout endings intact while changing only the line's content.
+	ending := ""
+	if strings.HasSuffix(lines[n-1], "\r") {
+		ending = "\r"
+	}
+	lines[n-1] = strings.TrimSuffix(lines[n-1], ending) + " " + suffix + ending
 	if err := os.WriteFile(p, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -299,6 +304,35 @@ func (f *gfdFixture) driftSquash(t *testing.T, push bool) (squashSHA string) {
 		f.pushMain(t)
 	}
 	return squashSHA
+}
+
+// The fixture must edit file content without changing the checkout's line endings.
+func TestLandingFixtureCRLFEditsSquash(t *testing.T) {
+	f := newGFDFixture(t)
+	runGit(t, f.repo, "config", "core.autocrlf", "true")
+	for _, dir := range []string{f.repo, f.tree} {
+		if err := os.Remove(filepath.Join(dir, "f.txt")); err != nil {
+			t.Fatal(err)
+		}
+		runGit(t, dir, "checkout-index", "-f", "--all")
+		raw, err := os.ReadFile(filepath.Join(dir, "f.txt"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Count(string(raw), "\r\n") != gfdSeedLines {
+			t.Fatal("fixture did not produce CRLF checkout")
+		}
+	}
+	f.cardCommit(t, 5, "card")
+	raw, err := os.ReadFile(filepath.Join(f.tree, "f.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "line 5 card\r\n") || strings.Count(string(raw), "\r\n") != gfdSeedLines {
+		t.Fatalf("edit must preserve CRLF and append inside the line: %q", raw)
+	}
+	f.mainCommit(t, 15, "main")
+	f.squash(t)
 }
 
 // TestLandingPredicateSquashSafe is AC-GFD-002: nine fixtures, each answered by
@@ -800,4 +834,152 @@ func TestLandingExactChangedPathObjects(t *testing.T) {
 			t.Fatalf("unreadable tree must refuse: %v %v", got, err)
 		}
 	}
+}
+
+// TestLandingPredicateWhitespaceDivergenceKeepsTree is card t1561: the
+// patch-id layer must not confirm a landing whose bytes are not on the ref.
+// `git patch-id` normalizes away whitespace (and hunk line numbers), so a
+// squash commit amended with a whitespace-only reformat carries the same
+// patch-id as the card's cumulative patch and the sweep disposes a tree
+// whose tip content the remote does not carry. Whitespace is not always
+// cosmetic — a Makefile recipe tab or a Markdown indent is semantics — so
+// the case is the whitespace sibling of F5: there the context drift broke
+// the match and layer 3 rescued; here the normalization hides the drift and
+// layer 2 falsely confirms.
+func TestLandingPredicateWhitespaceDivergenceKeepsTree(t *testing.T) {
+	f := newGFDFixture(t)
+	f.cardCommit(t, 7, "card")
+	f.squash(t)
+
+	// The remote reformat: a whitespace-only rewrite of the card's own
+	// line, folded into the squash commit, so main's squash content
+	// differs from the card's cumulative patch by whitespace alone.
+	p := filepath.Join(f.repo, "f.txt")
+	raw, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inflated := strings.Replace(string(raw), "line 7 card", "line 7     card", 1)
+	if inflated == string(raw) {
+		t.Fatal("fixture invalid: the whitespace rewrite did not apply")
+	}
+	if err := os.WriteFile(p, []byte(inflated), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	landingGit(t, f.repo, "commit", "-q", "-a", "--amend", "--no-edit")
+	f.pushMain(t) // the divergent squash IS the remote landing state under test
+
+	// Premise: the divergence is real — the card tip's bytes are not on
+	// main; only the patch-id comparison can confuse the two.
+	cardRaw, err := os.ReadFile(filepath.Join(f.tree, "f.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(cardRaw) == string(inflated) {
+		t.Fatal("fixture invalid: the card tip must differ from main byte-wise")
+	}
+
+	// No PR exists: the PR layer must not rescue the patch-id match.
+	installGH(t, &ghDouble{prs: []ghPR{}})
+
+	landed, verdict, reason := f.sweepLanded(t)
+	if landed == staleStateYes || verdict == sweepDispose {
+		t.Errorf("sweep: landed=%q verdict=%q reason=%q, want preserve — a whitespace-divergent tip is not on the ref and the patch-id normalization must not read it as landed", landed, verdict, reason)
+	}
+}
+
+// TestLandingPredicateWhitespaceDivergenceMultiCommitKeepsTree is the
+// two-commit sibling of the whitespace gate above: a multi-commit card's
+// CUMULATIVE patch must be compared whitespace-faithfully too, so a squash
+// commit carrying the card's changes but not its bytes cannot confirm the
+// landing (the F2 shape under the whitespace rewrite — the RED-remaining
+// risk of the single-commit gate, closed here).
+func TestLandingPredicateWhitespaceDivergenceMultiCommitKeepsTree(t *testing.T) {
+	f := newGFDFixture(t)
+	f.cardCommit(t, 5, "card")
+	f.cardCommit(t, 15, "card")
+	f.squash(t)
+
+	// The remote reformat: whitespace-only rewrites of both card lines,
+	// folded into the squash commit, so main's squash content differs from
+	// the card's cumulative patch by whitespace alone.
+	p := filepath.Join(f.repo, "f.txt")
+	raw, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inflated := strings.Replace(string(raw), "line 5 card", "line 5     card", 1)
+	inflated = strings.Replace(inflated, "line 15 card", "line 15     card", 1)
+	if inflated == string(raw) {
+		t.Fatal("fixture invalid: the whitespace rewrite did not apply")
+	}
+	if err := os.WriteFile(p, []byte(inflated), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	landingGit(t, f.repo, "commit", "-q", "-a", "--amend", "--no-edit")
+	f.pushMain(t) // the divergent squash IS the remote landing state under test
+
+	// Premise: the divergence is real — the card tip's bytes are not on
+	// main; only the patch-id comparison can confuse the two.
+	cardRaw, err := os.ReadFile(filepath.Join(f.tree, "f.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(cardRaw) == string(inflated) {
+		t.Fatal("fixture invalid: the card tip must differ from main byte-wise")
+	}
+
+	// No PR exists: the PR layer must not rescue the patch-id match.
+	installGH(t, &ghDouble{prs: []ghPR{}})
+
+	landed, verdict, reason := f.sweepLanded(t)
+	if landed == staleStateYes || verdict == sweepDispose {
+		t.Errorf("sweep: landed=%q verdict=%q reason=%q, want preserve — a whitespace-divergent multi-commit tip is not on the ref and the patch-id normalization must not read it as landed", landed, verdict, reason)
+	}
+}
+
+// TestLandingPredicateVerbatimUnsupportedIsFailClosed pins REQ-GPV-003: a git
+// without the whitespace-faithful mode can never answer, and the landing
+// decision still lands on its feet — the cumulative layer reports a
+// cannot-answer error, the sweep preserves when no PR exists, and layer 3
+// still disposes when one does. The quiet fallback to the normalizing mode
+// (the t1561 defect path) is what this gate exists to refuse.
+func TestLandingPredicateVerbatimUnsupportedIsFailClosed(t *testing.T) {
+	orig := landingVerbatimSupport
+	landingVerbatimSupport = func(string) (bool, error) { return false, nil }
+	t.Cleanup(func() { landingVerbatimSupport = orig })
+
+	t.Run("landedbypatchid_errors", func(t *testing.T) {
+		f := newGFDFixture(t)
+		f.cardCommit(t, 5, "card")
+		f.squash(t)
+		f.pushMain(t)
+		if _, err := LandedByPatchID(f.repo, f.cardTip(t), "origin/main"); err == nil {
+			t.Error("LandedByPatchID answered without the whitespace-faithful mode; want a cannot-answer error")
+		}
+	})
+
+	t.Run("sweep_preserves_without_pr", func(t *testing.T) {
+		f := newGFDFixture(t)
+		f.cardCommit(t, 5, "card")
+		f.squash(t)
+		f.pushMain(t)
+		installGH(t, &ghDouble{prs: []ghPR{}})
+		landed, verdict, reason := f.sweepLanded(t)
+		if landed == staleStateYes || verdict == sweepDispose {
+			t.Errorf("sweep: landed=%q verdict=%q reason=%q, want preserve on an unsupported git", landed, verdict, reason)
+		}
+	})
+
+	t.Run("layer3_still_decides", func(t *testing.T) {
+		f := newGFDFixture(t)
+		f.cardCommit(t, 5, "card")
+		sq := f.squash(t)
+		f.pushMain(t)
+		installGH(t, &ghDouble{prs: []ghPR{mergedPR(f.cardTip(t), sq)}})
+		landed, verdict, reason := f.sweepLanded(t)
+		if landed != staleStateYes || verdict != sweepDispose {
+			t.Errorf("sweep: landed=%q verdict=%q reason=%q, want dispose via layer 3 on an unsupported git", landed, verdict, reason)
+		}
+	})
 }

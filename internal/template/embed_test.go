@@ -28,9 +28,9 @@ func TestEmbeddedTemplates_PathStripping(t *testing.T) {
 	}
 
 	// Paths should NOT require "templates/" prefix
-	_, err = fs.ReadFile(fsys, "CLAUDE.md")
+	_, err = fs.ReadFile(fsys, "AGENTS.md.tmpl")
 	if err != nil {
-		t.Errorf("expected CLAUDE.md at root (no templates/ prefix), got error: %v", err)
+		t.Errorf("expected AGENTS.md.tmpl at root (no templates/ prefix), got error: %v", err)
 	}
 }
 
@@ -150,7 +150,7 @@ func TestEmbeddedTemplates_OutputStyles(t *testing.T) {
 	}
 }
 
-func TestEmbeddedTemplates_CLAUDEmd(t *testing.T) {
+func TestEmbeddedTemplates_AGENTSmd(t *testing.T) {
 	t.Parallel()
 
 	fsys, err := EmbeddedTemplates()
@@ -158,17 +158,22 @@ func TestEmbeddedTemplates_CLAUDEmd(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
 
-	data, err := fs.ReadFile(fsys, "CLAUDE.md")
+	// AGENTS.md-primary product: AGENTS.md.tmpl is the sole instruction-file
+	// payload; CLAUDE.md is no longer embedded.
+	data, err := fs.ReadFile(fsys, "AGENTS.md.tmpl")
 	if err != nil {
-		t.Fatalf("read CLAUDE.md: %v", err)
+		t.Fatalf("read AGENTS.md.tmpl: %v", err)
 	}
 
 	content := string(data)
 	if len(content) < 5000 {
-		t.Errorf("CLAUDE.md should be at least 5000 characters, got %d", len(content))
+		t.Errorf("AGENTS.md.tmpl should be at least 5000 characters, got %d", len(content))
 	}
-	if !strings.Contains(content, "MoAI Execution Directive") {
-		t.Error("CLAUDE.md should contain 'MoAI Execution Directive'")
+	if !strings.Contains(content, "MoAI") {
+		t.Error("AGENTS.md.tmpl should contain 'MoAI'")
+	}
+	if _, err := fs.ReadFile(fsys, "CLAUDE.md"); err == nil {
+		t.Error("CLAUDE.md must not ship in the embedded templates")
 	}
 }
 

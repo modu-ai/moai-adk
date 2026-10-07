@@ -334,21 +334,14 @@ func diff(want, got []string) (missing, extra []string) {
 // per machine, so a hit there is not a property of the tree CI checks;
 // .moai/cache and .moai/logs are untracked for the same reason (a cached
 // template snapshot and the agent-model audit log both list the roster).
-// plugins/moai/ is a machine-emitted, byte-identical copy of template-tree
-// files (internal/template/pluginemit; `make plugin-emit` writes it and the
-// read-only plugin-emit-check plus the pluginemit golden tests fail on any
-// divergence). Every roster site in it is therefore the copy of a template
-// site this guard already registers: a repair lands in the template and
-// reaches the payload only through regeneration, so walking the copy would
-// demand a second declaration for a file no one may edit by hand.
 var sweepSkipPrefixes = []string{
 	"docs-site/",
-	"plugins/moai/",
 	".moai/specs/",
 	".moai/state/",
 	".moai/cache/",
 	".moai/logs/",
 	".moai/reports/",
+	"reports/", // Dated audit records, like .moai/reports; not live doctrine.
 	".moai/release-notes/",
 	".claude/worktrees/",
 	".git/",

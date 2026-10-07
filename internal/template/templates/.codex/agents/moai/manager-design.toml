@@ -41,7 +41,7 @@ pinning one here.
 ## Design Pipeline (D1 → D5)
 
 The full D1-D5 prose lives in the workflow skill
-`.claude/skills/moai/workflows/design.md` (D1-D5 step headings). Summary:
+`~/.claude/skills/moai/workflows/design.md` (D1-D5 step headings). Summary:
 
 - **D1 Connection setup (login + project setup)** — claude.ai login absent →
   `/design-login` guidance (user-only); `list_projects` → writable
@@ -194,7 +194,7 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 ## Cross-References
 
 - **Design authority**: `.moai/reports/agent-architecture-redesign-v2-20260709.html` §04.
-- **Design pipeline skill**: `.claude/skills/moai/workflows/design.md` (D1-D5).
+- **Design pipeline skill**: `~/.claude/skills/moai/workflows/design.md` (D1-D5).
 - **Conditional route**: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline (plan → design → run for UI-surfaced SPECs).
 - **Re-delegation template**: `.claude/rules/moai/development/manager-develop-prompt-template.md` § 1 (Section A-E).
 - **Agent catalog**: `CLAUDE.md` § 4 (13 retained agents — manager-design is row 6 of the Selection Decision Tree).

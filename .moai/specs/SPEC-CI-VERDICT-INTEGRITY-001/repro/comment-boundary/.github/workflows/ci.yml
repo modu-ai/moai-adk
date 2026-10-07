@@ -1,0 +1,12 @@
+name: ci
+on: [push]
+jobs:
+  Test:
+    name: "Test (${{ matrix.os }})"
+  # a two-space-indented comment between name: and strategy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - run: "true"

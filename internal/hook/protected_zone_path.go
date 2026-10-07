@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -34,6 +35,23 @@ type zoneForm struct {
 // zoneSlash rewrites backslashes to slashes.
 func zoneSlash(p string) string {
 	return strings.ReplaceAll(filepath.ToSlash(p), "\\", "/")
+}
+
+// zoneNativeSlash converts p for the filesystem-facing steps of the zone target
+// resolution: on Windows a "\" is a separator and is normalized exactly like
+// zoneSlash; on every POSIX platform it is an ordinary filename character and
+// rides through untouched. Rewriting it before the walk validates a fictional
+// path the OS never names — a literal `lnk\dir` symlink into the zone resolved
+// as `lnk/dir` misses the real link and the guard allowed a Write that the OS
+// landed inside the zone. The lexical comparison arm keeps zoneSlash's
+// slash-normalized matching semantics.
+//
+// @MX:SPEC:SPEC-HOOK-ZONE-BACKSLASH-001
+func zoneNativeSlash(p string) string {
+	if runtime.GOOS == "windows" {
+		return zoneSlash(p)
+	}
+	return p
 }
 
 // zoneIsAbs reports whether a slash-normalized path is absolute under the rules
@@ -111,11 +129,9 @@ func zoneResolveDepth(p string, depth int) (string, bool) {
 	if real, err := filepath.EvalSymlinks(p); err == nil {
 		return real, true
 	}
-	parts := strings.Split(p, "/")
-	resolved := ""
-	if len(parts) > 0 && parts[0] == "" {
-		resolved = "/"
-	}
+	volume := filepath.VolumeName(p)
+	parts := pathSegments(strings.TrimPrefix(p, volume), runtime.GOOS == "windows")
+	resolved := filepath.ToSlash(volume) + "/"
 	skipped := 0
 	for i := 1; i < len(parts); i++ {
 		part := parts[i]
@@ -165,11 +181,11 @@ func zoneResolveDepth(p string, depth int) (string, bool) {
 				}
 				// the link's resolution takes the component's place; what
 				// remains of the original path rejoins onto it
-				resolved = strings.TrimSuffix(sub, "/") + "/"
+				resolved = strings.TrimSuffix(filepath.ToSlash(sub), "/") + "/"
 				skipped++
 				continue
 			}
-			resolved = strings.TrimSuffix(real, "/") + "/"
+			resolved = strings.TrimSuffix(filepath.ToSlash(real), "/") + "/"
 			skipped++
 		}
 	}
@@ -181,6 +197,14 @@ func zoneResolveDepth(p string, depth int) (string, bool) {
 // target is outside the project root on every reading.
 func resolveZoneTarget(root, raw string) []zoneForm {
 	abs := zoneSlash(raw)
+	// walk carries the same input with its POSIX component identity preserved
+	// for the symlink arm: the filesystem steps must follow the components the
+	// OS actually names, and on POSIX a "\" inside a component is an ordinary
+	// filename character (zoneSlash would destroy a literal `lnk\dir` symlink
+	// into the zone — SPEC-HOOK-ZONE-BACKSLASH-001). On Windows both spellings
+	// coincide. Relative input joins against the cwd the same way abs does,
+	// without the rewrite.
+	walk := zoneNativeSlash(raw)
 	if !zoneIsAbs(abs) {
 		if cwd, err := zoneGetwd(); err == nil && cwd != "" {
 			// concatenated, never path.Join: the symlink arm must see the raw
@@ -188,6 +212,20 @@ func resolveZoneTarget(root, raw string) []zoneForm {
 			// filesystem resolves "deep" (merge-gate round 1 P1-4). The lexical
 			// arm cleans inside zoneLexicalRel, which is its own semantics.
 			abs = zoneSlash(cwd) + "/" + abs
+			walk = zoneNativeSlash(cwd) + "/" + walk
+		}
+	}
+	// The prepend decision above reads the CONVERTED spelling: on POSIX a raw
+	// `\alias/x` converts to a "/"-leading form and `C:\alias/x` to a
+	// drive-letter form — both wrongly judged absolute, so the walk never
+	// received the cwd and no arm followed the literal backslash component into
+	// the zone (gate round 8 vector). When the conversion changed the spelling,
+	// give the walk its own platform-correct prepend; when it did not
+	// (walk == abs, every backslash-free input), this is a no-op and the
+	// pre-existing absoluteness semantics are byte-identical.
+	if walk != abs && !filepath.IsAbs(walk) {
+		if cwd, err := zoneGetwd(); err == nil && cwd != "" {
+			walk = zoneNativeSlash(cwd) + "/" + walk
 		}
 	}
 	var forms []zoneForm
@@ -203,15 +241,41 @@ func resolveZoneTarget(root, raw string) []zoneForm {
 	if rel, inside := zoneLexicalRel(root, abs); inside {
 		add(rel)
 	}
-	native := filepath.FromSlash(abs)
+	native := filepath.FromSlash(walk)
 	if root != "" && filepath.IsAbs(native) {
-		realRoot, ok := zoneResolve(filepath.FromSlash(zoneSlash(root)))
+		realRoot, ok := zoneResolve(filepath.FromSlash(zoneNativeSlash(root)))
 		if !ok {
-			realRoot = filepath.FromSlash(zoneSlash(root))
+			realRoot = filepath.FromSlash(zoneNativeSlash(root))
 		}
 		if realTarget, ok := zoneResolve(native); ok {
 			if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
 				add(rel)
+			}
+		}
+	}
+	// Backslash-literal arm (card t1570): on a POSIX host a backslash is an
+	// ordinary filename character, but zoneSlash has already folded the
+	// candidate to slashes — `lnk\dir` became `lnk/dir`, and the symlink the
+	// command writes through is invisible to both arms above. Resolve the
+	// raw candidate too, with every backslash intact. On Windows the raw
+	// form carries separators already, so the arm re-derives the native
+	// forms and the dedup drops the duplicates.
+	if root != "" {
+		absRaw := raw
+		if !zoneIsAbs(zoneSlash(raw)) {
+			if cwd, err := zoneGetwd(); err == nil && cwd != "" {
+				absRaw = zoneSlash(cwd) + "/" + raw
+			}
+		}
+		if zoneIsAbs(zoneSlash(absRaw)) {
+			realRoot, ok := zoneResolve(filepath.FromSlash(zoneSlash(root)))
+			if !ok {
+				realRoot = filepath.FromSlash(zoneSlash(root))
+			}
+			if realTarget, ok := zoneResolve(absRaw); ok {
+				if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
+					add(rel)
+				}
 			}
 		}
 	}

@@ -75,7 +75,7 @@ Obtain the raw CC changelog text (priority order):
 **Option A — `/release-notes` session command** (preferred): an interactive CC
 session command. Since this specialist is a subagent, surface a blocker report
 requesting the orchestrator to ask the user to paste `/release-notes` output
-(subagents cannot prompt the user per CLAUDE.md §8; the question channel is orchestrator-exclusive).
+(subagents cannot prompt the user per askuser-protocol.md; the question channel is orchestrator-exclusive).
 
 **Option B — Cache file**: check `~/.claude/RELEASE_NOTES.md` or
 `~/.claude/release-notes.txt`; read directly if present and recent (mtime within 7 days).
@@ -121,7 +121,7 @@ Output a structured Markdown table (Version | Category | Tier | Summary | Impact
 
 ### Phase 3 — Cross-Reference Official Docs
 
-[HARD] Execute ALL doc-fetch calls in parallel (CLAUDE.md §1). Which tool performs the fetch depends on the session backend:
+[HARD] Execute ALL doc-fetch calls in parallel (AGENTS.md §5). Which tool performs the fetch depends on the session backend:
 
 | Backend | Fetch tool |
 |---------|-----------|

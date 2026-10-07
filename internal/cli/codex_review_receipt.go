@@ -150,7 +150,10 @@ func produceCodexReviewReceipt(ctx context.Context, root string) (verify.Receipt
 	drift := false
 	switch {
 	case rpcErr != nil:
-		verdict = codexReviewVerdictInconclusive
+		// Inconclusive records a non-zero exit (2): HasLocalPass keys on
+		// ExitCode == 0, so the zero value would read the failed call as
+		// local-pass evidence (the same class the gate's recorder fixes).
+		verdict, exit = codexReviewVerdictInconclusive, 2
 	case isBlockVerdict(out.Verdict):
 		// REQ-CGSC-008 (card-review repair R2): BOTH automatic paths take the
 		// one reclassification decision. On a TREE-scope review whose every
@@ -169,7 +172,9 @@ func produceCodexReviewReceipt(ctx context.Context, root string) (verify.Receipt
 			verdict, exit = codexReviewVerdictFail, 1
 		}
 	case !strings.HasPrefix(strings.ToLower(strings.TrimSpace(out.Verdict)), codexReviewVerdictPass):
-		verdict = codexReviewVerdictInconclusive
+		// Same non-zero rule as the error arm above: a review that ran but
+		// produced no verdict is not local-pass evidence.
+		verdict, exit = codexReviewVerdictInconclusive, 2
 	}
 	r := verify.Receipt{
 		CheckID:      codexReviewCheckID,
