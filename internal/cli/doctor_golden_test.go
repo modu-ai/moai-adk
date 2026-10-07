@@ -453,8 +453,9 @@ func TestRunGroupedChecks_Structure(t *testing.T) {
 
 // TestDoctorGolden_IgnoresCallerCodexHome pins AC-023 (d): a CODEX_HOME in the
 // caller's environment that names a home with a registered moai plugin must not
-// change the golden output, so captureDoctorCmd scrubs it. It also requires the
-// "Plugin Version" row, so a check that is never registered fails here too.
+// change the golden output, so captureDoctorCmd scrubs it. (The retired
+// "Plugin Version" row this test once also required went with the carrier —
+// SPEC-USER-ASSET-INSTALL-001 M6 — so only the scrub is pinned now.)
 func TestDoctorGolden_IgnoresCallerCodexHome(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
@@ -481,9 +482,6 @@ func TestDoctorGolden_IgnoresCallerCodexHome(t *testing.T) {
 	// output comparison alone cannot see the scrub; pin the scrub itself.
 	if v := os.Getenv(codexHomeEnvVar); v != "" {
 		t.Errorf("captureDoctorCmd left CODEX_HOME = %q, want it scrubbed", v)
-	}
-	if !strings.Contains(got, pluginVersionCheckName) {
-		t.Fatalf("doctor output has no %q row", pluginVersionCheckName)
 	}
 	checkDoctorGolden(t, "doctor-nocolor", got)
 }

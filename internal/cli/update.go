@@ -355,7 +355,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 		// t40 defect 3: preview the managed-cleanup deletion list. A preview
 		// failure degrades to a warning — a dry run must not fail the command.
-		previewMode := resolveUpdateDeployMode(cwd, getBoolFlag(cmd, "no-plugin") || pluginOptOutFromEnv())
+		previewMode := resolveUpdateDeployMode(cwd, getBoolFlag(cmd, "no-plugin") || updatePluginOptedOut())
 		if previewErr := previewManagedCleanup(cwd, previewMode, out); previewErr != nil {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Cleanup preview", "failed", previewErr.Error(), &th))
 		}
@@ -497,6 +497,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 					len(result.Inventory.Files), len(result.RemovedPaths)),
 				Theme: &th,
 			}))
+			// SPEC-USER-ASSET-INSTALL-001 (gate sharpening: v2-path install
+			// hookup): the clean-reinstall early return previously skipped
+			// the user-asset phase — a v2 project's first update never got
+			// its user-folder install. Run the same ensure the v3 path runs.
+			if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+				if err := runUserAssetUpdatePhase(homeDir, out); err != nil {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: user-asset phase failed (continuing): %v\n", err)
+				}
+			}
 			return nil
 		}
 
@@ -536,6 +545,30 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// before its version-match early return so an up-to-date project heals too.
 	healManifestBestEffort(".", out, cmd.ErrOrStderr())
 
+	// SPEC-USER-ASSET-INSTALL-001 (M3): the user-asset phase — refresh
+	// (REQ-008), the selection-based prune (REQ-009), REQ-023 divergence
+	// handling, the REQ-011 summary. It runs BEFORE the project phase so the
+	// upgrade first-install precedes the migration removal (REQ-024's
+	// upgrade-arm ordering; design §2.4).
+	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+		if err := runUserAssetUpdatePhase(homeDir, out); err != nil {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: user-asset phase failed (continuing with the project phase): %v\n", err)
+		}
+	}
+
+	// Item 5 (fix round 3): the migration runs AFTER the user-asset phase —
+	// on a first update the counterpart cannot be verified until the install
+	// has landed, so install + verification MUST precede the per-file
+	// removal (the gate's real-runUpdate repro: old project skills survived
+	// because the migration ran first and saw no counterparts).
+	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+		if err := migrateProjectCommonAssets(".", homeDir, nil, func(format string, args ...interface{}) {
+			_, _ = fmt.Fprintf(out, format+"\n", args...)
+		}); err != nil {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: migration warning: %v\n", err)
+		}
+	}
+
 	// Legacy skills are archived inside the template sync, before its managed
 	// cleanup removes .claude/skills/moai*; a skipped sync archives nothing,
 	// which keeps REQ-UAC-004.
@@ -555,16 +588,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	refreshCodexWiringBestEffort(out, cmd.ErrOrStderr())
 
 	// SPEC-UPDATE-MIRROR-HEAL-001 (REQ-UMH-001): restore a deleted
-	// .agents/skills mirror. Both of its producers live inside Deploy, which
-	// the version-match branch of runTemplateSyncWithProgress returns before
-	// reaching — so without this call a deleted mirror is permanent for a
-	// version-matched project. Deliberately BESIDE the early return, at the
-	// same position as the wiring refresh above and for the same reason: the
-	// repair does not depend on a template redeploy, and the optimization
-	// stays exactly where it is (C-2). Existence-gated on the project's
-	// recorded template_version, so a pre-mirror project gets nothing created
-	// (C-1).
-	repairSkillMirrorBestEffort(out, cmd.ErrOrStderr())
+	// .agents/skills mirror. SPEC-USER-ASSET-INSTALL-001 (final-class item 6,
+	// AC-011 repeated-update arm): this repair path is TERMINATED — Path B of
+	// RepairSkillMirror re-created the seventeen published copies
+	// restore-missing-only, actively re-growing the project placement the
+	// migration removed on every repeated update. The mirror concept retires
+	// with the project-side placement: the user folders are the primary
+	// (the M2 installer), not a mirror, so no user-side equivalent is needed.
 
 	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-004: when the template sync
 	// branch short-circuits (version match + !forceUpdate, or user cancelled

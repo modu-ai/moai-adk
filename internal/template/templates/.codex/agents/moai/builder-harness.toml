@@ -29,7 +29,7 @@ Create standards-compliant Claude Code artifacts (agents, skills, plugins, comma
 
 | artifact_type | Output Location | Key Standards |
 |---------------|----------------|---------------|
-| `agent` | `.claude/agents/` or `.claude/agents/moai/` (with `--moai`) | Frontmatter: name, description, tools, permissionMode, memory, skills (no `model` / `effort`) |
+| `agent` | `.claude/agents/` or `~/.claude/agents/` (with `--moai`) | Frontmatter: name, description, tools, permissionMode, memory, skills (no `model` / `effort`) |
 | `skill` | `.claude/skills/{skill-name}/SKILL.md` | 500-line limit, progressive disclosure, YAML frontmatter schema |
 | `plugin` | `{plugin-name}/.claude-plugin/plugin.json` + components at root | manifest + component directories at plugin root |
 | `command` | `.claude/commands/{name}.md` | Frontmatter: allowed-tools, argument-hint, description |
@@ -146,7 +146,7 @@ apply the canonical MoAI agent model policy per
 
 Additionally, every generated agent body MUST include the canonical
 one-line "Model/effort escalation" cross-reference at body tail — see
-`.claude/agents/moai/manager-spec.md` for the verbatim line:
+`~/.claude/agents/manager-spec.md` for the verbatim line:
 
 ```text
 ## Model/effort escalation

@@ -1,6 +1,7 @@
 package perf
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 const (
@@ -168,16 +170,21 @@ func TestPerfReportWriteGuard(t *testing.T) {
 // its combined output and exit code. gateOn selects the positive leg.
 func runGuardChild(t *testing.T, root string, gateOn bool) (string, int) {
 	t.Helper()
-	args := []string{"test", "./internal/hook/perf/...", "-count=1"}
+	args := []string{"test", "-p=1", "./internal/hook/perf/...", "-count=1", "-timeout=5m"}
 	if gateOn {
 		// The positive leg only has to observe that a write happens, so it is
 		// narrowed to save cost. The negative leg keeps the package glob,
 		// because that is the shape under which CI rewrites the fixtures.
 		args = append(args, "-run", "^TestPreToolProfiling")
 	}
-	cmd := exec.Command("go", args...)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "go", args...)
+	cmd.WaitDelay = time.Second
 	cmd.Dir = root
-	cmd.Env = guardChildEnvironment(gateOn)
+	// Both legs test this same immutable executable; rebuilding it in each
+	// child adds no coverage. Keep the package-glob/positive selectors intact.
+	cmd.Env = append(guardChildEnvironment(gateOn), perfBinaryEnv+"="+buildMoaiBinary(t))
 	out, err := cmd.CombinedOutput()
 	return string(out), guardChildExitCode(t, err)
 }

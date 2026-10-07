@@ -96,7 +96,7 @@ GEARS Format (5 patterns; current notation):
 - Where (capability gate): "Where <capability or feature flag>, the <subject> shall <behavior>"
 - Event-detected (replaces the deprecated conditional modality): "When <undesired-condition-detected>, the <subject> shall <response>"
 
-Unified compound clause: `[Where ...][While ...][When ...] The <subject> shall <behavior>` — any subset may chain. `<subject>` is generalized (any noun: system, component, service, agent, function, artifact). See `.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format" for the canonical authoring guide.
+Unified compound clause: `[Where ...][While ...][When ...] The <subject> shall <behavior>` — any subset may chain. `<subject>` is generalized (any noun: system, component, service, agent, function, artifact). See `~/.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format" for the canonical authoring guide.
 
 EARS Format (legacy reference, 6-month backward-compat — expires 2026-11-22):
 - WHEN (trigger conditions)

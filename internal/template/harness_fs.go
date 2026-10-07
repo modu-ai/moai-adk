@@ -428,9 +428,12 @@ func newCodexOnlyDeployer(cat *Catalog, renderer Renderer, forceUpdate bool, opt
 	if err != nil {
 		return nil, fmt.Errorf("codex-only deployer: slim base: %w", err)
 	}
-	// The catalog root is the same package-local embed, sub-paths to
-	// .claude/skills. fs.Sub on a pre-computed FS is cheap and read-only.
-	catalogRoot, err := fs.Sub(embeddedRaw, "templates/"+CanonicalSkillsRelDir)
+	// The relocation catalog root is the SLIM-FILTERED skills root, not the
+	// raw embed: reading the raw tree re-homed every skill directory into
+	// .agents/skills regardless of tier, deploying newly-optional bundle
+	// skills with no bundle selection (SPEC-USER-ASSET-INSTALL-001 leader
+	// mid-run finding P2). fs.Sub of a filtered FS stays filtered.
+	catalogRoot, err := fs.Sub(baseFS, CanonicalSkillsRelDir)
 	if err != nil {
 		return nil, fmt.Errorf("codex-only deployer: catalog root: %w", err)
 	}
@@ -484,7 +487,15 @@ func newProfileDeployer(cat *Catalog, renderer Renderer, slim, hideClaude, hideC
 	if err != nil {
 		return nil, fmt.Errorf("harness deployer: base: %w", err)
 	}
-	catalogRoot, err := fs.Sub(embeddedRaw, "templates/"+CanonicalSkillsRelDir)
+	// The relocation catalog root is ALWAYS the catalog-filtered skills
+	// root — the same fix as newCodexOnlyDeployer (SPEC-USER-ASSET-INSTALL-001
+	// P2): a distribute-all base must not leak bundle skills through the
+	// .agents/skills relocation either.
+	slimSkills, err := SlimFS(embeddedRaw, cat)
+	if err != nil {
+		return nil, fmt.Errorf("harness deployer: slim skills root: %w", err)
+	}
+	catalogRoot, err := fs.Sub(slimSkills, CanonicalSkillsRelDir)
 	if err != nil {
 		return nil, fmt.Errorf("harness deployer: catalog: %w", err)
 	}

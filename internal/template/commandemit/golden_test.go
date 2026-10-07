@@ -264,7 +264,7 @@ func TestBoundaryFlagsRecorded(t *testing.T) {
 		if !ok {
 			t.Fatalf("report path %s not in publication", rep.Path)
 		}
-		for _, branch := range []string{"invoke `Skill(\"moai\")` with arguments", "read `.agents/skills/moai/SKILL.md`"} {
+		for _, branch := range []string{"invoke `Skill(\"moai\")` with arguments", "read `~/.agents/skills/moai/SKILL.md`"} {
 			if !strings.Contains(string(data), branch) {
 				t.Errorf("%s: published body lost the dispatch branch %q", rep.Path, branch)
 			}

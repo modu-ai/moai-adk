@@ -320,9 +320,17 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 		// already carries initCodexAdvice, whose deploy creates the mirror; a
 		// second directive there would double-nag a project that never opted
 		// in.
-		mirrorProblems, mirrorDetail := codexMirrorObservations(inspectSkillMirror(root))
-		problems = append(problems, mirrorProblems...)
-		extraDetail = append(extraDetail, mirrorDetail...)
+		// SPEC-USER-ASSET-INSTALL-001 (M4 repoint, REQ-014): the project
+		// mirror retires with the project-side placement — when the USER
+		// install is present ($HOME/.agents/skills/moai), the mirror
+		// observation passes clean instead of raising a false drift finding
+		// against a healthy install. Pre-migration projects (no user
+		// install) still get the legacy observation.
+		if !userCodexInstallPresent() {
+			mirrorProblems, mirrorDetail := codexMirrorObservations(inspectSkillMirror(root))
+			problems = append(problems, mirrorProblems...)
+			extraDetail = append(extraDetail, mirrorDetail...)
+		}
 	}
 
 	// User-layer skill registrations. Reached only when Codex is in play at

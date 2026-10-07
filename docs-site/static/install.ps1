@@ -470,24 +470,7 @@ function Main {
     # Verify installation
     Verify-Installation -TargetPath $targetPath
 
-    # Install the moai plugin into the Claude Code and Codex found on PATH.
-    # The call goes through the install path (the install directory need not be
-    # on PATH) and is fail-open: the binary is installed, so a verb that fails or
-    # does not exist (an older binary) must not abort the installer, which
-    # $ErrorActionPreference = "Stop" would do for a thrown error.
-    # MOAI_SKIP_PLUGIN_INSTALL=1 is inherited by the verb, which then runs nothing.
-    Print-Info "Installing the moai plugin (set MOAI_SKIP_PLUGIN_INSTALL=1 to skip)..."
-    try {
-        & $targetPath plugin install
-        if ($LASTEXITCODE -ne 0) {
-            Print-Warning "The moai plugin was not installed (exit $LASTEXITCODE). Install it yourself:"
-            Write-Host "    claude plugin marketplace add modu-ai/moai-adk"
-            Write-Host "    claude plugin install moai@moai-adk"
-        }
-    }
-    catch {
-        Print-Warning "The moai plugin was not installed: $_"
-    }
+    # Project assets are installed only by moai init/update in the chosen project.
 
     Write-Host ""
     Print-Success "Installation complete!"
