@@ -9,9 +9,8 @@ package cli
 //
 // The decided predicate (decision-index Q1) is fetch-less remote-tracking
 // reachability: the branch tip is an ancestor of refs/remotes/origin/develop,
-// OR `git cherry refs/remotes/origin/develop <branch>` is empty (patch-id
-// equivalence — covers squash merges, the SPEC-WORKTREE-SQUASH-MERGE-001
-// lesson). A stale remote-tracking ref can only misjudge toward "not landed"
+// OR its cumulative verbatim patch matches a commit on the configured ref
+// (covers squash merges, the SPEC-WORKTREE-SQUASH-MERGE-001 lesson). A stale remote-tracking ref can only misjudge toward "not landed"
 // → preserve (fail-open, the safe direction).
 //
 // These tests drive the REAL cleanup function against REAL temporary git
@@ -147,10 +146,10 @@ func TestCleanupSessionWorktree_MergedIntoDevelopRemoved(t *testing.T) {
 	}
 }
 
-// TestCleanupSessionWorktree_SquashMergedPatchIdRemoved pins the git-cherry
+// TestCleanupSessionWorktree_SquashMergedPatchIdRemoved pins the cumulative-patch
 // arm of the decided predicate: a SQUASH merge leaves no commit ancestry
 // (the branch tip is NOT an ancestor of origin/develop), but the patches are
-// upstream — `git cherry` answers empty and the disposal proceeds.
+// upstream — the verbatim cumulative patch matches and disposal proceeds.
 // SPEC-WORKTREE-SQUASH-MERGE-001: reachability alone cannot see a squash.
 func TestCleanupSessionWorktree_SquashMergedPatchIdRemoved(t *testing.T) {
 	repoDir, wtPath := realLandingRepo(t, true)

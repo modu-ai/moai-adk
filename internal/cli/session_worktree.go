@@ -837,13 +837,13 @@ func sessionLandingRefLabel(wtPath string) string {
 //
 //	 (i) the branch tip is an ancestor of the remote-tracking integration
 //	     ref (`git merge-base --is-ancestor`), or
-//	(ii) every patch the branch carries already exists upstream — `git
-//	     cherry` answers with no "+" line (patch-id equivalence of each
-//	     commit), which covers a one-commit squash merge, or
-//	(iii) the branch's CUMULATIVE patch-id equals a commit on the ref since
-//	     the merge-base (worktree.LandedByPatchID), which also covers a
-//	     squash merge of a card with several commits — the case `git cherry`
-//	     reads as every commit "+".
+//	(ii) the branch's cumulative verbatim patch-id equals a commit on the
+//	     ref since the merge-base (worktree.LandedByPatchID), covering
+//	     both one-commit and several-commit squash merges.
+//
+// A rebase whose per-commit patches match but whose cumulative patch cannot
+// be confirmed is preserved. Whitespace-folding git cherry cannot authorize
+// deletion, because whitespace may be part of a string literal.
 //
 // The integration ref is the configured target (sessionWorktreeIntegrationRefFor),
 // not a literal develop. No network runs, and in particular no `gh` call: the
@@ -879,30 +879,9 @@ func gitBranchLandedReal(wtPath string) (bool, error) {
 	} else if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 1 {
 		return false, err
 	}
-	// Arm (ii): per-commit patch-id equivalence. `git cherry` lists the
-	// head-side commits, prefixing each with "-" when its patch matches an
-	// upstream commit and "+" when it does not — so empty output only happens
-	// when the head side is empty (the ancestry case above). Landed = every
-	// listed patch is equivalent: no "+" line. Measured against the squash
-	// fixture in session_worktree_landing_test.go: the naive "empty output"
-	// reading never fires on a squash (the equivalent commit still prints as
-	// "- <sha>").
-	cherry, err := exec.Command("git", "-C", wtPath, "cherry",
-		ref, "HEAD").Output()
-	if err != nil {
-		return false, err
-	}
-	cherryLanded := true
-	for _, ln := range strings.Split(string(cherry), "\n") {
-		if strings.HasPrefix(strings.TrimSpace(ln), "+") {
-			cherryLanded = false
-			break
-		}
-	}
-	if cherryLanded {
-		return true, nil
-	}
-	// Arm (iii): the cumulative patch-id (layer 2 of the shared predicate).
+	// Arm (ii): the shared cumulative predicate compares original bytes.
+	// git cherry folds whitespace, including string data, so it cannot
+	// authorize disposal. An unconfirmed rebase is preserved for later sweep.
 	return worktree.LandedByPatchID(wtPath, "HEAD", ref)
 }
 
