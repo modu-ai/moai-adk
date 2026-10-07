@@ -37,7 +37,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
 )
 
 // --- N1: the parser claims no anchor it cannot defend ----------------------

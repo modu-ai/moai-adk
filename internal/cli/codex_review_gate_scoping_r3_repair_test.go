@@ -20,7 +20,6 @@ import (
 	"context"
 	"strings"
 	"testing"
-
 )
 
 // titleBodyDriftReviewText is the M1 shape: the finding's HEADLINE names the
