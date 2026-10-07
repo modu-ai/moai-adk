@@ -13,6 +13,8 @@ package hook
 import (
 	"fmt"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // zoneMatrixVerdict is the disposition one matrix cell asserts.
@@ -86,6 +88,13 @@ func zoneParsingMatrixCells() []zoneMatrixCell {
 	add("wrapper_command_ls_control", "command ls zone_dir", zoneMatrixAllow)
 	add("wrapper_bare_env_control", "env X=1", zoneMatrixAllow)
 	add("wrapper_nohup_cat_control", "nohup cat zone_dir/a.log", zoneMatrixAllow)
+	// wrapped cd heads resolve as EXTERNAL executions — env/nohup exec their
+	// argument in a child process whose cd cannot move the parent shell, so
+	// the directory-tracking branch fires for a BARE cd head only. The bare
+	// control proves the tracking itself stays live (gate round, card t1574).
+	add("wrapped_cd_env_not_tracked", "env cd zone_dir; rm harmless", zoneMatrixAllow)
+	add("wrapped_cd_nohup_not_tracked", "nohup cd zone_dir; rm harmless", zoneMatrixAllow)
+	add("bare_cd_tracking_control", "cd zone_dir; rm harmless", zoneMatrixDenyProbe)
 
 	// -- the audit-D1 cross: a declared function shadowing a mutation verb,
 	// invoked through EACH enumerated wrapper — the stripped head never
@@ -200,5 +209,42 @@ func TestProtectedZoneShellParsingMatrix(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestProtectedZoneShellReadOnlyFastPath pins the read-only zero-access
+// baseline (gate round, card t1574): a command with no mutating form and a
+// completed walk must return BEFORE the manifest is loaded — the K7
+// unbounded denial keeps its place ahead of the mutating-only short-circuit,
+// but the common read-only case keeps its zero-file-access cost.
+func TestProtectedZoneShellReadOnlyFastPath(t *testing.T) {
+	root := newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n"), "")
+	h := zoneTestHandler(t, root)
+
+	loads := 0
+	h.zoneLoader = func(string) config.ProtectedZoneLoad {
+		loads++
+		return config.ProtectedZoneLoad{State: config.ZoneStateAbsent}
+	}
+
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "echo hello"})
+	if d == DecisionDeny {
+		t.Errorf("echo hello: decision=%q reason=%q, want allow", d, r)
+	}
+	if loads != 0 {
+		t.Errorf("read-only command performed %d zone loads, want 0", loads)
+	}
+
+	// the K7 path stays intact: an unbounded read-only-tail command must
+	// NOT take the fast path — the incomplete walk denies regardless.
+	loads = 0
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{
+		"command": zoneMatrixWidthStress + "; echo hello",
+	})
+	if d != DecisionDeny {
+		t.Errorf("unbounded read-only tail: decision=%q reason=%q, want deny", d, r)
+	}
+	if loads == 0 {
+		t.Errorf("unbounded command bypassed the manifest step; the deny must still be evaluated")
 	}
 }

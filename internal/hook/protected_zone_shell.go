@@ -475,7 +475,7 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 	// body (REQ-ZSP-003). `builtin` over-matches by design — bash rejects
 	// `builtin rm` and deletes nothing, so judging it as the verb is the
 	// safe direction (spec D3).
-	args := zoneStripWrapperPrefix(cmd.Args)
+	args, stripped := zoneStripWrapperPrefix(cmd.Args)
 	name, literal := zoneFirstArgWord(args)
 	if !literal {
 		return // the stripped head is dynamic: under-match as today
@@ -488,7 +488,13 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		// binary folds to a base that matches no verb, exactly as before
 		name = path.Base(name)
 	}
-	if name == "cd" {
+	if name == "cd" && !stripped {
+		// BARE cd only (gate round, card t1574): a wrapper-stripped cd
+		// resolves as an EXTERNAL execution — `env cd` is not a working cd
+		// at all and `nohup cd` runs in a child process — so its directory
+		// argument cannot move the parent shell and must not be tracked.
+		// Wrapped-cd shapes stay the documented under-matches they were
+		// before the strip existed.
 		// card t1574 K8: every cd unions the pre-cd set into the next set,
 		// so a chain of n cds squares the possible-directory set toward 2^n
 		// states. A set past the bound is a walk that cannot complete: the
@@ -692,15 +698,21 @@ func (w *zoneWalker) zoneWalkDeclared(name string, def *zoneFuncBodies) {
 // nohup); wrapper forms outside it (exec, nice, timeout, xargs, sudo, ...)
 // stay the documented under-matches (spec D2). The loop is bounded by the
 // argument list itself and handles nested forms (`env command rm x`); an
-// empty stripped head under-matches exactly as today.
-func zoneStripWrapperPrefix(args []*syntax.Word) []*syntax.Word {
+// empty stripped head under-matches exactly as today. The second result
+// reports whether ANY wrapper was stripped — a stripped head resolves as an
+// external execution, so the cd-tracking branch must not process it (gate
+// round: `env cd zone_dir` runs a child process whose cd cannot move the
+// parent shell).
+func zoneStripWrapperPrefix(args []*syntax.Word) ([]*syntax.Word, bool) {
+	stripped := false
 	for len(args) > 0 {
 		head, literal := zoneWordText(args[0])
 		if !literal {
-			return args
+			return args, stripped
 		}
 		switch head {
 		case "command":
+			stripped = true
 			if len(args) > 1 {
 				if t, lit := zoneWordText(args[1]); lit && t == "-p" {
 					args = args[2:]
@@ -709,6 +721,7 @@ func zoneStripWrapperPrefix(args []*syntax.Word) []*syntax.Word {
 			}
 			args = args[1:]
 		case "env":
+			stripped = true
 			args = args[1:]
 			for len(args) > 0 {
 				t, lit := zoneWordText(args[0])
@@ -718,12 +731,13 @@ func zoneStripWrapperPrefix(args []*syntax.Word) []*syntax.Word {
 				args = args[1:]
 			}
 		case "nohup", "builtin":
+			stripped = true
 			args = args[1:]
 		default:
-			return args
+			return args, stripped
 		}
 	}
-	return args
+	return args, stripped
 }
 
 // zoneEnvAssignment reports whether t is a NAME=VALUE assignment word — the
@@ -1232,6 +1246,13 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	for _, stmt := range file.Stmts {
 		w.zoneWalkStmt(stmt)
 	}
+	if !w.mutating && !w.unbounded {
+		// the read-only fast path (gate round, card t1574): no mutating form
+		// and a COMPLETED walk never reaches the manifest (REQ-SIPZ-008) —
+		// the common case keeps its zero-file-access baseline. The unbounded
+		// denial below stays ahead of every allow answer.
+		return ""
+	}
 
 	load := h.loadZone(root)
 
@@ -1255,9 +1276,9 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 
 	if w.unbounded {
 		// card t1574 K7: the unbounded denial precedes the mutating-only
-		// short-circuit — the work budget can abort the walk BEFORE the
+		// fast path above — the work budget can abort the walk BEFORE the
 		// mutating statement is ever reached, leaving `mutating` false, and
-		// the early return would answer allow while real bash deletes
+		// the fast path would answer allow while real bash deletes
 		// (REQ-ZSP-006, audit D5). A walk that flagged a bound AFTER
 		// collecting a covered candidate answered at the loop above, whose
 		// more specific category stays the recorded verdict (the preserved
@@ -1265,16 +1286,14 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 		// manifest state — an aborted walk is an incomplete walk and an
 		// incomplete walk may not answer allow, so the ZoneStateAbsent
 		// degrade below keeps its COMPLETED-walk meaning only (REQ-ZSP-006,
-		// audit D9a).
+		// audit D9a). Past this branch a mutating command is guaranteed:
+		// the fast path returned early on `!mutating && !unbounded`.
 		reason := zoneDenyReason(agentID, "category", "loop-unbounded", "loop")
 		h.recordZoneAudit(root, zoneAuditRow{
 			Identity: agentID, Tool: "Bash", Path: "loop",
 			Category: "loop-unbounded", Decision: "deny", ManifestState: load.State,
 		})
 		return reason
-	}
-	if !w.mutating {
-		return ""
 	}
 
 	if load.State == config.ZoneStateInvalid {
