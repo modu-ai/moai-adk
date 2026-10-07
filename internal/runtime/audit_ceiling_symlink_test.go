@@ -81,3 +81,41 @@ func TestAppendProgressRecordWritesThroughDanglingSymlink(t *testing.T) {
 		t.Fatalf("the created target does not carry the record:\n%s", content)
 	}
 }
+
+// TestAppendProgressRecordWritesThroughSymlinkChain (gate finding 7) — a
+// symlink CHAIN (progress.md → alias.md → target) resolves to the FINAL
+// referent: the record lands in the target created through the chain, and
+// every intermediate link survives as a symlink — resolving one hop would
+// replace the midlink with a regular file and strand the record.
+func TestAppendProgressRecordWritesThroughSymlinkChain(t *testing.T) {
+	specDir := t.TempDir()
+	targetDir := t.TempDir()
+	target := filepath.Join(targetDir, "real.md") // deliberately absent
+	alias := filepath.Join(specDir, "alias.md")
+	if err := os.Symlink(target, alias); err != nil {
+		t.Skipf("symlinks unavailable here: %v", err)
+	}
+	link := filepath.Join(specDir, "progress.md")
+	if err := os.Symlink(alias, link); err != nil {
+		t.Skipf("symlinks unavailable here: %v", err)
+	}
+	if err := appendProgressRecord(specDir, "- first record"); err != nil {
+		t.Fatalf("the symlink chain refused the record: %v", err)
+	}
+	for _, p := range []string{link, alias} {
+		info, err := os.Lstat(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode()&os.ModeSymlink == 0 {
+			t.Fatalf("%s was replaced by a regular file — the chain was not followed to the end", p)
+		}
+	}
+	raw, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("the final target was not created through the chain: %v", err)
+	}
+	if !strings.Contains(string(raw), progressSectionHeading) || !strings.Contains(string(raw), "- first record") {
+		t.Fatalf("the final target does not carry the record:\n%s", raw)
+	}
+}

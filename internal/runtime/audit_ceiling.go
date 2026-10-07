@@ -18,10 +18,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -600,29 +598,9 @@ func appendProgressRecord(specDir, line string) error {
 	// replacing the resolved target; the link itself is never replaced. A
 	// dangling link cannot be written through and fails closed — a
 	// best-effort warning upstream, never an admission change.
-	if info, lerr := os.Lstat(path); lerr == nil && info.Mode()&os.ModeSymlink != 0 {
-		resolved, rerr := filepath.EvalSymlinks(path)
-		if rerr != nil {
-			// A dangling link — the target does not exist yet. Resolve the
-			// link's parent and append the target name, so the record
-			// writes through to the target the next append will find,
-			// exactly as the pre-repair os.WriteFile followed the link and
-			// created it (round-4 edge 4); the link survives. A parent that
-			// itself does not exist fails closed, the same ENOENT the
-			// in-place write would have raised.
-			ref, rlerr := os.Readlink(path)
-			if rlerr != nil {
-				return rlerr
-			}
-			if !filepath.IsAbs(ref) {
-				ref = filepath.Join(filepath.Dir(path), ref)
-			}
-			parent, perr := filepath.EvalSymlinks(filepath.Dir(ref))
-			if perr != nil {
-				return perr
-			}
-			resolved = filepath.Join(parent, filepath.Base(ref))
-		}
+	if resolved, rerr := resolveProgressPath(path); rerr != nil {
+		return rerr
+	} else {
 		path = resolved
 	}
 	raw, err := os.ReadFile(path)
@@ -656,14 +634,14 @@ func appendProgressRecord(specDir, line string) error {
 	// metadata (round-3 repair 3): rename(2) swaps the directory entry, so
 	// the replacement carries the TEMP file's access-control entries — a
 	// bare rename drops an ACL the pre-repair os.WriteFile preserved. The
-	// seeder copies the original's metadata onto the temp before the new
-	// content is written. A seeding failure ABORTS the replace — the temp
-	// is removed and the original untouched; there is NO mode-only
-	// fallback, which dropped the ACL and silently rewrote a
-	// write-restricted file (the two F8 faces). The mode is applied
-	// explicitly either way (the F2 posture: existing-file mode preserved,
-	// new-file umask-adjusted 0644 — the pre-create above already put the
-	// umask into the original's mode).
+	// seeder makes the temp carry the original's metadata — mode, ACL, and
+	// extended attributes together (the F2 posture rides the pre-created
+	// original's umask-adjusted mode). A seeding failure ABORTS the
+	// replace — the temp is removed and the original untouched; there is
+	// NO mode-only fallback, which dropped the ACL and silently rewrote a
+	// write-restricted file (the two F8 faces). The caller never chmods:
+	// on macOS a chmod DELETES the file's ACL, so the mode must ride the
+	// seeding, never follow it.
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".progress-*.tmp")
 	if err != nil {
@@ -682,13 +660,6 @@ func appendProgressRecord(specDir, line string) error {
 	if werr := os.WriteFile(tmpName, []byte(content), 0); werr != nil {
 		return werr
 	}
-	mode := os.FileMode(0o644)
-	if info, serr := os.Stat(path); serr == nil {
-		mode = info.Mode().Perm()
-	}
-	if cerr := os.Chmod(tmpName, mode); cerr != nil {
-		return cerr
-	}
 	return os.Rename(tmpName, path)
 }
 
@@ -697,23 +668,56 @@ func appendProgressRecord(specDir, line string) error {
 // implementation below.
 var seedFileMetadataFn = seedFileMetadata
 
-// seedFileMetadata copies the original's mode, access-control entries, and
-// extended attributes onto the temp file via cp -p — the preservation a
-// bare rename cannot provide (round-3 repair 3). A failure is an ERROR and
-// the caller aborts the replace: there is no mode-only fallback, which
-// dropped the ACL and bypassed a write restriction (sync-audit-4 F8). On
-// Windows there is no cp and no explicit-file ACL axis to copy — the seeder
-// is a documented no-op success (the temp file inherits the directory's ACL
-// at creation); flagged for leader review.
-func seedFileMetadata(tmp, original string) error {
-	if runtime.GOOS == "windows" {
-		return nil
+// resolveProgressPath follows a progress.md symlink CHAIN to its final
+// referent (round-4 edge 4 + gate finding 7): each hop's parent directory
+// is resolved through EvalSymlinks and the hop re-examined, so a chain
+// progress.md → alias.md → target writes through to the target and every
+// intermediate link survives as a link — resolving one hop would replace
+// the midlink with a regular file. A dangling FINAL referent is returned
+// as the not-yet-existing path the pre-repair os.WriteFile write-through
+// would have created; a cycle or a missing intermediate directory fails
+// closed.
+func resolveProgressPath(path string) (string, error) {
+	seen := map[string]bool{}
+	for hops := 0; hops < 16; hops++ { // a bounded walk; 16 links is generous
+		if seen[path] {
+			return "", fmt.Errorf("progress.md symlink cycle at %s", path)
+		}
+		seen[path] = true
+		info, lerr := os.Lstat(path)
+		if lerr != nil {
+			if os.IsNotExist(lerr) {
+				return path, nil // the dangling final referent — write creates it
+			}
+			return "", lerr
+		}
+		if info.Mode()&os.ModeSymlink == 0 {
+			return path, nil // a regular file: the final referent
+		}
+		ref, rerr := os.Readlink(path)
+		if rerr != nil {
+			return "", rerr
+		}
+		if !filepath.IsAbs(ref) {
+			ref = filepath.Join(filepath.Dir(path), ref)
+		}
+		parent, perr := filepath.EvalSymlinks(filepath.Dir(ref))
+		if perr != nil {
+			return "", perr // the intermediate's directory does not exist
+		}
+		path = filepath.Join(parent, filepath.Base(ref))
 	}
-	if out, err := exec.Command("cp", "-p", original, tmp).CombinedOutput(); err != nil {
-		return fmt.Errorf("cp -p %s %s: %v (%s)", original, tmp, err, out)
-	}
-	return nil
+	return "", fmt.Errorf("progress.md symlink chain too deep")
 }
+
+// seedFileMetadata — the platform implementations live in
+// progress_metadata_darwin.go (copyfile(2) COPYFILE_METADATA),
+// progress_metadata_linux.go (the xattr family, POSIX ACLs included), and
+// progress_metadata_other.go (a documented no-op for platforms with no
+// explicit-file metadata axis to copy). The contract is identical
+// everywhere: a failure is an ERROR and the caller aborts the replace —
+// there is no mode-only fallback, which dropped the ACL and bypassed a
+// write restriction (sync-audit-4 F8).
 
 // progressWithRecord returns content with one record line inserted at the
 // end of the §G block. The heading-absent and §G-last shapes are

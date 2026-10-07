@@ -360,6 +360,61 @@ bounds BOTH open and close detection to indent 0-3. Regression test
 (`internal/runtime/audit_ceiling_fence_test.go`): the real §G is found and
 the record lands inside its block.
 
+### Round-4 gate findings 6+7 record — ACL-guaranteeing seeder and symlink-chain resolution
+
+**Finding 6 (P1, ACL-guaranteeing clone)** — the in-flight clonefileat
+seeder DROPPED the original's ACL (measured:
+`TestAppendProgressRecordPreservesACL` FAIL on the working tree; a direct
+probe showed clonefileat carrying the com.apple.provenance xattr but not
+the `group:_guest deny read` entry), and a second factor made every
+caller-side chmod an ACL destroyer: on macOS a chmod DELETES the file's
+ACL, so the mode must ride the seeding and never follow it. Resolution:
+the darwin seeder is restored to cp -p — the mechanism whose replace
+provably carries the original's ACL (the control test the finding cited;
+`TestAppendProgressRecordPreservesACL` PASS on the working tree) — and the
+caller's chmod was removed entirely: the seeder contract is now "make the
+temp carry the original's metadata (mode, ACL, xattrs)", per-platform.
+
+**Finding 7 (P2, full symlink-chain resolution)** — RED observed on the
+edge-4 working tree:
+`audit_ceiling_symlink_test.go:111: …/alias.md was replaced by a regular
+file — the chain was not followed to the end` — resolving ONE hop treated
+the midlink (alias.md) as the final target and replaced it with a regular
+file while the real target stayed empty. Fix: `resolveProgressPath` walks
+the CHAIN (each hop's parent resolved through EvalSymlinks, the hop
+re-examined until a non-symlink, cycle-guarded, 16-hop bound): a dangling
+FINAL referent returns as the path the write-through creates, a cycle or a
+missing intermediate directory fails closed. Regression test
+`TestAppendProgressRecordWritesThroughSymlinkChain`
+(`internal/runtime/audit_ceiling_symlink_test.go`, darwin||linux): both
+links survive as symlinks and the record lands in the created final
+target.
+
+### Round-4 class closure — PARTIAL; darwin ACL axis is a structured blocker
+
+Landed Go-native: **Linux closes fully** — mode (stat/chmod, applied
+before the xattr family because a Linux chmod rewrites the POSIX ACL mask)
+plus the extended attributes through x/sys's xattr family, POSIX ACLs
+included (they ARE the system.posix_acl_access attribute);
+**other platforms** carry the mode through a plain stat/chmod (the no-op
+documented posture). **The darwin ACL axis is blocked on the kernel
+surface, measured end to end**: clonefileat(2) copies xattrs but NOT
+explicit ACLs (probe above); the raw SYS_COPYFILE trap returns EINVAL (the
+libc copyfile is userspace on modern macOS); and setattrlist cannot write
+the ACL — ATTR_CMN_EXTENDED_SECURITY (0x00400000) is excluded from
+ATTR_CMN_SETMASK (0x51C7FF00, SDK sys/attr.h). The only remaining route is
+reimplementing the kauth_filesec wire format no syscall accepts — its own
+SPEC, not a repair fold-in. **Darwin therefore keeps cp -p** (the
+ACL-guaranteeing seeder, finding 6) with the blocker documented in the
+source. The three-axis family (`TestAppendProgressRecordPreservesAllMetadataAxes`,
+PATH-stripped, umask+ACL+xattr in one seeded file) is AUTHORED and held at
+`.moai/state/verify/t1560/held-audit_ceiling_axes_test.go` — it is RED on
+darwin for the blocked axis and lands (green, Go-native) only when the
+leader adjudicates the darwin axis; landing it red is refused. Leader
+decision requested: (i) accept cp -p as the permanent documented darwin
+exception, (ii) authorize a follow-up SPEC for the kauth_filesec route, or
+(iii) narrow the darwin ACL axis out of the contract.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07
