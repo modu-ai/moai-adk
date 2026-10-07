@@ -1,6 +1,12 @@
 # 의존성 그래프
 
-**현재 부분 재측정 — t1524, worktree `.claude/worktrees/develop`, 브랜치 `develop`, base `d0378d37c` (2026-10-05).**
+## 현재 main의 재측정
+
+`081899adb825935d5263b1699fe730373deaa4fd`에서 `go list -deps -json ./...`를 실행했다. 모듈 내부 Imports 엣지는 478개이고, 최상위 패키지로 접어 self-edge를 뺀 고유 쌍은 302개다. 아래 이전 기록의 그래프 수치는 각 시점의 관측으로 남긴다.
+
+현재 최상위 fan-out은 `internal/cli` 75, `internal/hook` 40, `internal/web` 16이다. fan-in은 `internal/config` 30, `internal/paths` 14, `internal/atomicfile` 14, `internal/defs` 13이다. 신규 빌드 도구 `internal/template/embedemit`은 표준 라이브러리만 사용하고 비테스트 fan-in은 0이다. 런타임에서 호출하지 않는 점은 `agentemit`·`commandemit`·`pluginemit`과 같다.
+
+**이전 부분 재측정 — t1524, worktree `.claude/worktrees/develop`, 브랜치 `develop`, base `d0378d37c` (2026-10-05).**
 문서의 산출 명령으로 내부 import를 다시 쟀다 — 패키지 단위 470→**476**, 최상위 접기 + self-edge 제거 고유 쌍 295→**301**. 신규 패키지 `internal/hygiene`(card t1518)은 내부 import `internal/config` 하나, 소비자 `internal/cli`·`internal/hook` 둘. 움직인 엣지는 전부 이번 창 몫이다 — `cli→hygiene`·`hook→hygiene`·`hygiene→config`(card t1518), `runtime→auditverdict`·`runtime→config`·`cli→auditverdict`(card t1500 — `audit_ceiling.go`와 `spec_ceiling.go`). fan-in 상위에서 움직인 행: `internal/config` 28→30(`hygiene`·`runtime` 합류). fan-out 상위: `internal/cli` 73→75, `internal/hook` 39→40. 작은 fan-in 표에 `internal/auditverdict` 4(`contract`·`homestate`에 `cli`·`runtime` 합류)와 `internal/hygiene` 2가 들어왔다. § 순환은 재확인 결과 변동 없음(신규 엣지는 전부 일방향 — leaf 방향). go.mod는 앵커 이후에도 한 줄도 바뀌지 않았다.
 
 **이전 부분 재측정 — t1485, 브랜치 `WT-codemaps-regen3`, base `83086bec5` (2026-10-04).**
@@ -199,44 +205,43 @@ admission 계약을 공유합니다.
 
 ## 외부 의존성
 
-`go.mod`에서 `// indirect` 표시가 없는 require 32개 항목입니다(첫 require 블록 28개, `github.com/gorilla/websocket` 단독 블록 1개, 둘째 블록의 `github.com/google/uuid` · `github.com/santhosh-tekuri/jsonschema/v6` · `modernc.org/sqlite` 3개 — t1443 판 재측정). 항목 구성과 버전은 이번 재측정에서
-아래 표와 한 줄씩 대조해 바뀐 것이 없었습니다. 다만 표에 없는 직접 사용이 하나 있습니다 —
-§ 이례적인 것 7.
+현재 `go.mod`의 직접 require는 33개다. 아래 버전은 현재 커밋에서 다시 대조했다. 이전 판의 의존성 불변 설명은 현재 기준으로 적용하지 않는다. 용도와 사용처는 기존 모듈 설명을 유지한다.
 
 | 모듈 | 용도 | 사용처 |
 |---|---|---|
 | `github.com/gorilla/websocket` v1.5.3 | **t1443 판 신규 직접 의존** — Codex App-Server stream 전송 | `internal/cli/managed_codex_factory.go` (card t1375) |
-| `github.com/santhosh-tekuri/jsonschema/v6` v6.0.2 | **t1443 판 indirect→직접 승격** — JSON Schema 검증 | `internal/codextools/registry.go` |
+| `github.com/santhosh-tekuri/jsonschema/v6` v6.0.3 | **t1443 판 indirect→직접 승격** — JSON Schema 검증 | `internal/codextools/registry.go` |
 | `github.com/spf13/cobra` v1.10.2 | CLI 명령 트리 | `internal/cli` 전역 |
 | `github.com/spf13/pflag` v1.0.10 | cobra 플래그 | 동상 |
 | `charm.land/fang/v2` v2.0.1 | cobra 위 help/error/version/completion 렌더러 | `internal/cli/fang.go` |
-| `charm.land/bubbletea/v2` v2.0.9 | TUI 이벤트 루프 | `internal/cli/wizard` |
+| `charm.land/bubbletea/v2` v2.0.10 | TUI 이벤트 루프 | `internal/cli/wizard` |
 | `charm.land/bubbles/v2` v2.2.1 | TUI 컴포넌트 | 동상 |
 | `charm.land/huh/v2` v2.0.3 | 폼/프롬프트 | `internal/cli/wizard` 4개 파일, `internal/cli/ptycaptest/formdriver.go` |
 | `charm.land/lipgloss/v2` v2.0.6 | 스타일링 | `internal/tui` |
-| `github.com/charmbracelet/lipgloss` v1.1.1-… | **v2와 병존하는 v1 스타일링** | `internal/statusline`, `internal/cli` |
+| `github.com/charmbracelet/lipgloss` v1.1.1-0.20250404203927-76690c660834 | **v2와 병존하는 v1 스타일링** | `internal/statusline`, `internal/cli` |
 | `github.com/charmbracelet/glamour` v1.0.0 | 마크다운 터미널 렌더 | `internal/cli/spec_view.go` |
 | `github.com/charmbracelet/colorprofile` v0.4.3 | 컬러 프로파일 감지 | tui |
 | `github.com/charmbracelet/x/powernap` v0.1.6 | LSP JSON-RPC 전송 | `internal/lsp/transport`, `lsp/core` |
 | `github.com/muesli/termenv` v0.16.0 | 터미널 능력 감지 | tui / statusline |
 | `github.com/mattn/go-isatty` v0.0.24 | TTY 판별 | 출력 분기 |
-| `github.com/mattn/go-runewidth` v0.0.29 | 동아시아 문자폭 계산 | 테이블 / statusline 정렬 |
-| `github.com/mark3labs/mcp-go` v0.58.0 | MCP 서버 SDK (stdio 전송) | `internal/cli/mcp_server.go` |
+| `github.com/mattn/go-runewidth` v0.0.30 | 동아시아 문자폭 계산 | 테이블 / statusline 정렬 |
+| `github.com/mark3labs/mcp-go` v1.1.1 | MCP 서버 SDK (stdio 전송) | `internal/cli/mcp_server.go` |
 | `github.com/a-h/templ` v0.3.1020 | 타입 세이프 HTML 템플릿 컴파일러 | `internal/web/*.templ` |
-| `golang.org/x/net` v0.58.0 | HTML 파싱 | **비테스트 사용처 0 — 테스트 전용** |
+| `golang.org/x/net` v0.59.0 | HTML 파싱 | **비테스트 사용처 0 — 테스트 전용** |
 | `github.com/smacker/go-tree-sitter` | 16개 언어 AST 심볼 추출 | `internal/navigator/astx`, `internal/hook/mx/complexity` |
-| `mvdan.cc/sh/v3` v3.14.0 | 셸 명령 파싱 | `internal/permission/stack.go` — 유일 사용처 |
-| `github.com/go-playground/validator/v10` v10.30.4 | 구조체 태그 기반 설정 검증 | `internal/config/validation.go` — 유일 사용처 |
+| `mvdan.cc/sh/v3` v3.14.1 | 셸 명령 파싱 | `internal/permission/stack.go` — 유일 사용처 |
+| `github.com/go-playground/validator/v10` v10.30.5 | 구조체 태그 기반 설정 검증 | `internal/config/validation.go` — 유일 사용처 |
 | `github.com/fsnotify/fsnotify` v1.10.1 | 파일 변경 감시 | `internal/web/events.go`, `internal/hook/config_change.go` |
-| `golang.org/x/tools` v0.49.0 | Go 패키지/AST 로딩 | `internal/lsp/config` |
+| `golang.org/x/tools` v0.50.0 | Go 패키지/AST 로딩 | `internal/lsp/config` |
 | `gopkg.in/yaml.v3` v3.0.1 | 설정·카탈로그·프론트매터 파싱 + **노드 트리 수술**(`internal/settings/yamlpatch`) | 트리 전역 |
-| `golang.org/x/sync` v0.22.0 | errgroup 등 동시성 유틸 | 병렬 스캔 경로 |
-| `golang.org/x/sys` v0.47.0 | syscall 래퍼 (파일 락, PID 조회) | `*_unix.go` / `*_windows.go` |
-| `golang.org/x/text` v0.41.0 | 유니코드 / 인코딩 | 정규화 경로 |
+| `golang.org/x/sync` v0.23.0 | errgroup 등 동시성 유틸 | 병렬 스캔 경로 |
+| `golang.org/x/sys` v0.48.0 | syscall 래퍼 (파일 락, PID 조회) | `*_unix.go` / `*_windows.go` |
+| `golang.org/x/term` v0.46.0 | 터미널 제어 | CLI 터미널 경로 |
+| `golang.org/x/text` v0.42.0 | 유니코드 / 인코딩 | 정규화 경로 |
 | `github.com/stretchr/testify` v1.12.1 | 테스트 단언 | 테스트 전용 |
 | `go.uber.org/goleak` v1.3.0 | 고루틴 누수 검출 | `internal/hook` 등 |
 | `github.com/google/uuid` v1.6.0 | UUID 생성 | 세션·에이전트 식별자 발급 경로 |
-| `modernc.org/sqlite` v1.57.0 | CGO 없는 SQLite 드라이버 | `internal/factory`, `internal/homestate` |
+| `modernc.org/sqlite` v1.60.1 | CGO 없는 SQLite 드라이버 | `internal/factory`, `internal/homestate` |
 
 ### 이례적인 것
 
