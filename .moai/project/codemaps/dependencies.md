@@ -6,7 +6,7 @@
 
 현재 최상위 fan-out은 `internal/cli` 75, `internal/hook` 40, `internal/web` 16이다. fan-in은 `internal/config` 30, `internal/paths` 14, `internal/atomicfile` 14, `internal/defs` 13이다. 이 값은 같은 `go list` 출력의 Imports를 최상위로 접어 계산했다.
 
-`internal/cli/integration_merge.go`와 `internal/cli/factory_card.go`가 `internal/factory/integration_merge_step.go`의 `RunMergeStep`으로 합류한다. merge-ready와 complete는 `internal/homestate/card_evidence_readers.go`의 merge-tree 검증을 통해 같은 재측정 기록을 확인한다. 이러한 호출 관계는 import 엣지와 별도로 소스에서 대조했다.
+`internal/cli/integration_merge.go`와 `internal/cli/factory_card.go`가 `internal/factory/integration_merge_step.go`의 `RunMergeStep`으로 합류한다. merge-ready는 `internal/cli/factory_merge.go`의 콜백을 통해 `internal/factorylane/merge.go`가 읽은 후보 브랜치의 tip tree를 검증한다. complete의 T16은 `internal/homestate/card_evidence_readers.go`가 실제 병합 커밋의 tree를 검증한다. 두 경로는 `ReadRemeasureRecord`와 `ValidateRemeasureRecord`를 공유하며 검사 시점과 트리의 출처가 다르다. 이러한 호출 관계는 import 엣지와 별도로 소스에서 대조했다.
 
 ## 이전 081899 기준의 재측정
 
