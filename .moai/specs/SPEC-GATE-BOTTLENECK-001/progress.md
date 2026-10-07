@@ -34,3 +34,7 @@ run_status: partial — M1 착지, M2(지연 블록)·라이브 리뷰 0건 조�
 
 - **본 소관 2건 수리(커밋 대상)**: ① fail receipt에 ExitCode=1 기록(기존 produceCodexReviewReceipt와 동일 매핑 — pass형 0이 다른 소비자에게 성공 증거로 읽히는 결함) ② 캐시 차단 메시지가 "무엇을 고칠지"를 잃는 문제 — fail 시 요약·발견을 `.moai/state/verify/codex-review/<head>-<digest>.md`(트리키 동일·런타임 관리 영역)에 보존하고 캐시 차단 이유에 첨부. 판별 테스트 TestReviewGate_LiveFailPreservesDetailForCachedBlock 추가. `go test ./internal/cli/ -run 'TestReviewGate' -count=1` → ok (24.0s).
 - **타 소관 11건 재관측**: protected_zone_shell(1·t1500/1510 계열)·todo_issuance(4·t1559)·factory_bundle(3·t1561/62)·todo.go(1·t1554)·backlog_relation/store(2·t1542 card-review 원장). 전부 r9 원장 행의 재관측 — 본 카드 수리 소관 아님.
+
+## 턴종료 게이트 발견 처분 (r11 — 본 카드 diff 발견 0건 연속)
+
+r10 수리 판정 통과(리뷰어 명시: 캐시 회귀 테스트 3개 통과). 13건 전부 기존 원장 행의 재관측 — factory_card 3·factory_bundle 3·todo_issuance 4·todo.go 2·backlog_store/relation 2의 계열 분포는 r9/r10과 동일. 소관 카드(t1542 원장·t1561·t1562·t1559·t1454·t1554)가 소유하며 본 카드 수리 소관 아님.
