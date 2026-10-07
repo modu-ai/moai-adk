@@ -66,7 +66,36 @@ func shellJoinArgs(args []string) string {
 	for i, arg := range args {
 		quoted[i] = shellQuoteArg(arg)
 	}
+	// Leading NAME=value arguments are assignments, not words: quoting the
+	// whole argument made sh read it as a command name and the test never
+	// started (t1576 review round 13). The assignment form survives; only
+	// the value is quoted when it needs it.
+	for i := 0; i < len(args); i++ {
+		name, value, ok := strings.Cut(args[i], "=")
+		if !ok || !isShellName(name) {
+			break
+		}
+		quoted[i] = name + "=" + shellQuoteArg(value)
+	}
 	return strings.Join(quoted, " ")
+}
+
+// isShellName reports whether name is a valid shell identifier — the NAME
+// half of an assignment argument.
+func isShellName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		switch {
+		case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c == '_':
+		case i > 0 && c >= '0' && c <= '9':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 const shellMetachars = " \t\n" + "|&;<>()$`\\\"'*?[]#~"

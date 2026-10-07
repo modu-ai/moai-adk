@@ -108,6 +108,11 @@ func TestShellJoinArgsPreservesBoundaries(t *testing.T) {
 	if got := shellJoinArgs([]string{"printf", "[%s]", "a b"}); !strings.Contains(got, "'a b'") {
 		t.Fatalf("a multi-argument space keeps its boundary: %q", got)
 	}
+	// A leading NAME=value argument is an assignment, not a word: the form
+	// survives and only the value is quoted.
+	if got := shellJoinArgs([]string{"GOPRIVATE=example.com/*", "go", "test", "-json", "./pkg/..."}); got != "GOPRIVATE='example.com/*' go test -json ./pkg/..." {
+		t.Fatalf("a leading assignment keeps its form: %q", got)
+	}
 	count, structured, err := factory.ClassifyStructuredOutput(joined, strings.NewReader(`{"Action":"pass","Package":"p"}`+"\n"))
 	if err != nil || !structured {
 		t.Fatalf("the joined command must still classify as a go test run: count=%d structured=%v err=%v", count, structured, err)
