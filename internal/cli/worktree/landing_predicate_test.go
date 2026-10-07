@@ -745,7 +745,10 @@ func TestLandingExactChangedPathObjects(t *testing.T) {
 	tree := func(entries map[string]string) string {
 		var input strings.Builder
 		for path, object := range entries {
-			input.WriteString(object + "\t" + path + "\x00")
+			input.WriteString(object)
+			input.WriteByte('\t')
+			input.WriteString(path)
+			input.WriteByte(0)
 		}
 		out, _, err := runLandingGit(f.repo, input.String(), "mktree", "-z")
 		if err != nil {
