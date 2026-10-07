@@ -159,6 +159,17 @@ func projectKeyFromBrokerPath(path string) string {
 	return filepath.Base(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path)))))
 }
 
+// brokerDSN encodes the broker path and connection settings as a file URI.
+func brokerDSN(path string, query url.Values) string {
+	// Drive paths need a leading slash so C: remains a path, not URI authority.
+	// Preserve an existing leading double slash for UNC paths.
+	p := filepath.ToSlash(path)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return (&url.URL{Scheme: "file", Path: p, RawQuery: query.Encode()}).String()
+}
+
 func Open(projectRoot, runID string) (*Store, error) {
 	return OpenWithDeadline(projectRoot, runID, 5*time.Second)
 }
@@ -208,7 +219,7 @@ func OpenExistingWithDeadline(projectRoot, runID string, deadline time.Duration)
 	v := url.Values{}
 	v.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", busyMillis))
 	v.Add("_txlock", "immediate")
-	db, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: v.Encode()}).String())
+	db, err := sql.Open("sqlite", brokerDSN(path, v))
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +268,7 @@ func OpenWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store
 	v.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", busyMillis))
 	v.Add("_pragma", "journal_mode(WAL)")
 	v.Add("_txlock", "immediate")
-	db, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: v.Encode()}).String())
+	db, err := sql.Open("sqlite", brokerDSN(path, v))
 	if err != nil {
 		return nil, err
 	}
