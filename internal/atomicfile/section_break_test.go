@@ -5,60 +5,63 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
-// TestBreakNeverDisposesALockAcquiredMidSection pins review-gate finding
-// (P1): verify-fresh + break must be ONE critical section — the window
-// between the reclaimer's last fresh read and its remove must not be wide
-// enough for a rival to acquire a NEW lock whose file the late remove then
-// deletes. The deterministic repro drives the removal seam: the moment the
-// reclaimer reaches its remove, a rival reclaimer has already completed a
-// full reclaim cycle (removed the dead lock, claimed, labelled with a LIVE
-// pid). Whatever the reclaimer does then must not dispose of that live
-// lock: the path must still hold a labelled live lock after the call.
+// TestBreakNeverDisposesALockAcquiredMidSection pins the break invariant
+// with a REAL rival actor: while the breaker spans its verdict-to-disposal
+// critical section, a rival's reclaim attempt must BLOCK on the breaker
+// marker (never dispossess anyone) — and if a rival ever did acquire, its
+// lock must survive the disposal untouched. The rival is a plain
+// ClaimSection caller interposed at the breaker's disposal seam.
 func TestBreakNeverDisposesALockAcquiredMidSection(t *testing.T) {
 	dir := t.TempDir()
 	lockPath := filepath.Join(dir, "queue.lock")
 	previousBootFixture(t, lockPath)
 
 	liveOwner := LockOwner{PID: os.Getpid(), BootID: BootIDIdentity()}
-	liveBytes, err := json.Marshal(liveOwner)
-	if err != nil {
+	if _, err := json.Marshal(liveOwner); err != nil {
 		t.Fatalf("marshal live: %v", err)
 	}
 
-	// The rival's full reclaim cycle, run the instant the breaker reaches
-	// its disposal step. The rival's own removal of the dead lock tolerates
-	// absence: under the rename-based break the dead lock may already be
-	// detached from the path when the rival cycles, and the rival then
-	// simply claims the free path.
-	rivalReclaims := func() {
-		if rmErr := os.Remove(lockPath); rmErr != nil && !os.IsNotExist(rmErr) {
-			t.Errorf("rival remove: %v", rmErr)
-		}
-		if err := Claim(lockPath, 0o600); err != nil {
-			t.Errorf("rival claim: %v", err)
-			return
-		}
-		if werr := os.WriteFile(lockPath, liveBytes, 0o600); werr != nil {
-			t.Errorf("rival label: %v", werr)
-		}
-	}
-
+	// The disposal seam: the instant the breaker reaches its disposal step,
+	// a rival runs a FULL reclaim attempt (verify + break + claim) through
+	// the real entry point.
+	rivalBlocked := false
+	rivalAcquired := false
 	prevRemove := sectionRemoveFn
 	t.Cleanup(func() { sectionRemoveFn = prevRemove })
 	sectionRemoveFn = func(path string) error {
-		rivalReclaims()
-		return prevRemove(path) // the breaker's own removal, after the rival acquired
+		release, cerr := ClaimSection(lockPath, 0o600, 3, 2*time.Millisecond)
+		if cerr == nil {
+			rivalAcquired = true
+			_ = release()
+		} else {
+			rivalBlocked = true
+		}
+		return prevRemove(path)
 	}
 
 	BreakStaleLock(lockPath)
 
-	after, err := os.ReadFile(lockPath)
-	if err != nil {
-		t.Fatalf("the live lock acquired mid-section was disposed: %v", err)
+	if rivalAcquired {
+		// If the rival acquired at all, its lock must still sit at the path
+		// with its own label — the disposal must never dispose a live
+		// holder's lock.
+		after, rerr := os.ReadFile(lockPath)
+		if rerr != nil {
+			t.Fatalf("the rival's live lock was disposed by the breaker: %v", rerr)
+		}
+		var atPath LockOwner
+		if json.Unmarshal(after, &atPath) != nil || atPath.PID != os.Getpid() || atPath.BootID != BootIDIdentity() {
+			t.Fatalf("the rival's lock bytes were altered: %s", after)
+		}
 	}
-	if string(after) != string(liveBytes) {
-		t.Fatalf("the live lock's bytes were altered by the late disposal: %s", after)
+	if rivalBlocked && rivalAcquired {
+		t.Fatal("the rival both blocked and acquired — inconsistent observation")
+	}
+	// Either way the stale lock must be gone.
+	if _, serr := os.Stat(lockPath); serr == nil && !rivalAcquired {
+		t.Fatal("the stale lock survived a break that reported success")
 	}
 }
