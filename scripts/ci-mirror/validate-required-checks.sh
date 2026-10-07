@@ -39,6 +39,13 @@ if ! yq eval '.' "$REQUIRED_CHECKS_FILE" >/dev/null 2>&1; then
 	exit 1
 fi
 
+# Required branch declarations and contexts must be explicit, even when empty.
+# Missing/null values must never masquerade as an intentionally empty array.
+if ! yq -e '.branches | ((tag == "!!map") and (has("main")) and (has("release/*")))' "$REQUIRED_CHECKS_FILE" >/dev/null 2>&1; then
+	echo "✗ branches must be a mapping declaring main and release/*" >&2
+	exit 1
+fi
+
 exit_code=0
 fail() {
 	echo "✗ $*" >&2
@@ -801,8 +808,29 @@ sort -u -o "$published" "$published"
 
 # ---- Dimension D: every required context must be publishable ---------------
 echo "=== Dimension D: every required context must be workflow-publishable ==="
-branch_keys="$(yq -r '.branches | keys | .[]' "$REQUIRED_CHECKS_FILE" 2>/dev/null || true)"
+if ! branch_keys="$(yq -r '.branches | keys | .[]' "$REQUIRED_CHECKS_FILE")"; then
+	fail "cannot extract required branch keys"
+	exit 1
+fi
+main_contexts=""
+release_contexts=""
 for branch_key in $branch_keys; do
+	if ! BRANCH_KEY="$branch_key" yq -e '.branches[strenv(BRANCH_KEY)] | ((tag == "!!map") and (.contexts | tag == "!!seq"))' "$REQUIRED_CHECKS_FILE" >/dev/null 2>&1; then
+		fail "[$branch_key] contexts must be an explicit array"
+		continue
+	fi
+	if ! BRANCH_KEY="$branch_key" yq -e '[.branches[strenv(BRANCH_KEY)].contexts[] | select(tag != "!!str" or . == "")] | length == 0' "$REQUIRED_CHECKS_FILE" >/dev/null 2>&1; then
+		fail "[$branch_key] contexts must contain non-empty strings"
+		continue
+	fi
+	if ! contexts="$(BRANCH_KEY="$branch_key" yq -r '.branches[strenv(BRANCH_KEY)].contexts[]' "$REQUIRED_CHECKS_FILE")"; then
+		fail "[$branch_key] cannot extract required contexts"
+		continue
+	fi
+	case "$branch_key" in
+		main) main_contexts="$contexts" ;;
+		'release/*') release_contexts="$contexts" ;;
+	esac
 	while IFS= read -r context; do
 		[ -n "$context" ] || continue
 		if grep -qxF "$context" "$published"; then
@@ -811,13 +839,16 @@ for branch_key in $branch_keys; do
 			fail "[$branch_key] required context '$context' is NOT publishable by any workflow (phantom context)"
 		fi
 	done <<EOF
-$(yq -r ".branches[\"$branch_key\"].contexts // [] | .[]" "$REQUIRED_CHECKS_FILE" 2>/dev/null || true)
+$contexts
 EOF
 done
 
 # ---- Dimension A: auxiliary items must correspond to workflow files --------
 echo "=== Dimension A: Validating auxiliary → workflow name mapping ==="
-auxiliary_items="$(yq -r '.auxiliary // [] | .[]' "$REQUIRED_CHECKS_FILE" 2>/dev/null || true)"
+if ! auxiliary_items="$(yq -r '.auxiliary // [] | .[]' "$REQUIRED_CHECKS_FILE")"; then
+	fail "cannot extract auxiliary contexts"
+	exit 1
+fi
 while IFS= read -r aux_item; do
 	[ -n "$aux_item" ] || continue
 	if [ -f ".github/workflows/${aux_item}.yml" ] || [ -f ".github/workflows/${aux_item}.yaml" ]; then
@@ -833,7 +864,7 @@ EOF
 echo "=== Dimension B: branches.main.contexts ∩ auxiliary = ∅ ==="
 while IFS= read -r aux_item; do
 	[ -n "$aux_item" ] || continue
-	if yq -r '.branches.main.contexts // [] | .[]' "$REQUIRED_CHECKS_FILE" 2>/dev/null | grep -qxF "$aux_item"; then
+	if printf '%s\n' "$main_contexts" | grep -qxF "$aux_item"; then
 		fail "auxiliary item '$aux_item' found in branches.main.contexts"
 	else
 		echo "✓ $aux_item not in branches.main.contexts"
@@ -845,7 +876,7 @@ EOF
 echo "=== Dimension C: branches.release/*.contexts ∩ auxiliary = ∅ ==="
 while IFS= read -r aux_item; do
 	[ -n "$aux_item" ] || continue
-	if yq -r '.branches["release/*"].contexts // [] | .[]' "$REQUIRED_CHECKS_FILE" 2>/dev/null | grep -qxF "$aux_item"; then
+	if printf '%s\n' "$release_contexts" | grep -qxF "$aux_item"; then
 		fail "auxiliary item '$aux_item' found in branches.release/*.contexts"
 	else
 		echo "✓ $aux_item not in branches.release/*.contexts"
