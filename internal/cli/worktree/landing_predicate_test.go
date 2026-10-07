@@ -540,3 +540,105 @@ func TestLandingPredicateGHFailureIsFailClosed(t *testing.T) {
 		})
 	}
 }
+
+// TestLandingPredicateWhitespaceDivergenceKeepsTree is card t1561: the
+// patch-id layer must not confirm a landing whose bytes are not on the ref.
+// `git patch-id` normalizes away whitespace (and hunk line numbers), so a
+// squash commit amended with a whitespace-only reformat carries the same
+// patch-id as the card's cumulative patch and the sweep disposes a tree
+// whose tip content the remote does not carry. Whitespace is not always
+// cosmetic — a Makefile recipe tab or a Markdown indent is semantics — so
+// the case is the whitespace sibling of F5: there the context drift broke
+// the match and layer 3 rescued; here the normalization hides the drift and
+// layer 2 falsely confirms.
+func TestLandingPredicateWhitespaceDivergenceKeepsTree(t *testing.T) {
+	f := newGFDFixture(t)
+	f.cardCommit(t, 7, "card")
+	f.squash(t)
+
+	// The remote reformat: a whitespace-only rewrite of the card's own
+	// line, folded into the squash commit, so main's squash content
+	// differs from the card's cumulative patch by whitespace alone.
+	p := filepath.Join(f.repo, "f.txt")
+	raw, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inflated := strings.Replace(string(raw), "line 7 card", "line 7     card", 1)
+	if inflated == string(raw) {
+		t.Fatal("fixture invalid: the whitespace rewrite did not apply")
+	}
+	if err := os.WriteFile(p, []byte(inflated), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	landingGit(t, f.repo, "commit", "-q", "-a", "--amend", "--no-edit")
+	f.pushMain(t) // the divergent squash IS the remote landing state under test
+
+	// Premise: the divergence is real — the card tip's bytes are not on
+	// main; only the patch-id comparison can confuse the two.
+	cardRaw, err := os.ReadFile(filepath.Join(f.tree, "f.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(cardRaw) == string(inflated) {
+		t.Fatal("fixture invalid: the card tip must differ from main byte-wise")
+	}
+
+	// No PR exists: the PR layer must not rescue the patch-id match.
+	installGH(t, &ghDouble{prs: []ghPR{}})
+
+	landed, verdict, reason := f.sweepLanded(t)
+	if landed == staleStateYes || verdict == sweepDispose {
+		t.Errorf("sweep: landed=%q verdict=%q reason=%q, want preserve — a whitespace-divergent tip is not on the ref and the patch-id normalization must not read it as landed", landed, verdict, reason)
+	}
+}
+
+// TestLandingPredicateWhitespaceDivergenceMultiCommitKeepsTree is the
+// two-commit sibling of the whitespace gate above: a multi-commit card's
+// CUMULATIVE patch must be compared whitespace-faithfully too, so a squash
+// commit carrying the card's changes but not its bytes cannot confirm the
+// landing (the F2 shape under the whitespace rewrite — the RED-remaining
+// risk of the single-commit gate, closed here).
+func TestLandingPredicateWhitespaceDivergenceMultiCommitKeepsTree(t *testing.T) {
+	f := newGFDFixture(t)
+	f.cardCommit(t, 5, "card")
+	f.cardCommit(t, 15, "card")
+	f.squash(t)
+
+	// The remote reformat: whitespace-only rewrites of both card lines,
+	// folded into the squash commit, so main's squash content differs from
+	// the card's cumulative patch by whitespace alone.
+	p := filepath.Join(f.repo, "f.txt")
+	raw, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inflated := strings.Replace(string(raw), "line 5 card", "line 5     card", 1)
+	inflated = strings.Replace(inflated, "line 15 card", "line 15     card", 1)
+	if inflated == string(raw) {
+		t.Fatal("fixture invalid: the whitespace rewrite did not apply")
+	}
+	if err := os.WriteFile(p, []byte(inflated), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	landingGit(t, f.repo, "commit", "-q", "-a", "--amend", "--no-edit")
+	f.pushMain(t) // the divergent squash IS the remote landing state under test
+
+	// Premise: the divergence is real — the card tip's bytes are not on
+	// main; only the patch-id comparison can confuse the two.
+	cardRaw, err := os.ReadFile(filepath.Join(f.tree, "f.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(cardRaw) == string(inflated) {
+		t.Fatal("fixture invalid: the card tip must differ from main byte-wise")
+	}
+
+	// No PR exists: the PR layer must not rescue the patch-id match.
+	installGH(t, &ghDouble{prs: []ghPR{}})
+
+	landed, verdict, reason := f.sweepLanded(t)
+	if landed == staleStateYes || verdict == sweepDispose {
+		t.Errorf("sweep: landed=%q verdict=%q reason=%q, want preserve — a whitespace-divergent multi-commit tip is not on the ref and the patch-id normalization must not read it as landed", landed, verdict, reason)
+	}
+}
