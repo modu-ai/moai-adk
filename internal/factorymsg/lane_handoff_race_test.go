@@ -183,6 +183,9 @@ const raceSlot = "lane-1"
 func newRaceFixture(t *testing.T, notCurrentSource bool) *raceFixture {
 	t.Helper()
 	f := &raceFixture{root: filepath.Join(t.TempDir(), "project"), run: "run-race", pid: os.Getpid(), start: currentOwnerStart(t)}
+	if err := os.MkdirAll(f.root, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	var err error
 	if f.seed, err = Open(f.root, f.run); err != nil {
 		t.Fatal(err)

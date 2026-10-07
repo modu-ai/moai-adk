@@ -3,6 +3,7 @@ package hook
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -179,10 +180,17 @@ func newLaunchRaceFixture(t *testing.T, hookReady bool, ownerPID int, ownerStart
 		recordActiveFactoryRun(t, f.root, f.run)
 	}
 	var err error
-	if f.seed, err = factorymsg.Open(f.root, f.run); err != nil {
+	// Cold fixture setup is outside the races below; their registration,
+	// ownership and transaction assertions do not measure Open's default limit.
+	if f.seed, err = factorymsg.OpenWithDeadline(f.root, f.run, 30*time.Second); err != nil {
 		t.Fatal(err)
 	}
-	closeOnCleanup(t, "seed broker", f.seed)
+	// Capture the setup handle now; it closes before any caller can race.
+	defer func(setup *factorymsg.Store) {
+		if err := setup.Close(); err != nil {
+			t.Errorf("close setup broker: %v", err)
+		}
+	}(f.seed)
 	key := homestate.ProjectKey(f.root)
 	f.lead = bindThroughLauncher(t, f.seed, factorymsg.Peer{ProjectKey: key, RunID: f.run, Backend: "claude", Role: "leader", Slot: "leader", PID: ownerPID, ProcessStart: ownerStart}, "lead-uuid")
 	f.source = bindThroughLauncher(t, f.seed, factorymsg.Peer{ProjectKey: key, RunID: f.run, Backend: "codex", Role: "lane", Slot: launchRaceSlot, PID: os.Getpid(), ProcessStart: "fake-source-start"}, "src-uuid")
@@ -222,6 +230,9 @@ func newLaunchRaceFixture(t *testing.T, hookReady bool, ownerPID int, ownerStart
 		t.Fatal(err)
 	}
 	closeOnCleanup(t, "read-only observer", f.db)
+	// All callers, including the unforced racer that reuses seed, get the
+	// ordinary connection budget. f.open registers cleanup for this new handle.
+	f.seed = f.open(t)
 	return f
 }
 
@@ -620,10 +631,22 @@ func TestFactoryLaneHandoffRebindVsLaunchBindRace(t *testing.T) {
 	t.Run("unforced_200_iterations", func(t *testing.T) {
 		launcher, rebind := 0, 0
 		for i := 0; i < 200; i++ {
-			if runUnforcedLaunchVsRebind(t, i, storeFixture) {
-				launcher++
-			} else {
-				rebind++
+			var current *launchRaceFixture
+			iterationFixture := func(t *testing.T) *launchRaceFixture {
+				current = storeFixture(t)
+				return current
+			}
+			if !t.Run(fmt.Sprintf("iteration_%03d", i), func(t *testing.T) {
+				if runUnforcedLaunchVsRebind(t, i, iterationFixture) {
+					launcher++
+				} else {
+					rebind++
+				}
+			}) {
+				return
+			}
+			if current != nil && (current.seed.HandleStats().OpenConnections != 0 || current.db.Stats().OpenConnections != 0) {
+				t.Fatalf("iteration %d retained broker or observer connections after completion", i)
 			}
 		}
 		t.Logf("UNFORCED_OUTCOMES launcher_first=%d rebind_first=%d", launcher, rebind)

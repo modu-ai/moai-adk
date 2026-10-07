@@ -39,9 +39,9 @@ type CardFileEdge struct {
 	SHA  string // the landing commit's abbreviated SHA (the evidence pointer)
 }
 
-// commitInfo is one commit of the reachable walk: full SHA and subject.
+// commitInfo is one commit of the reachable walk: full SHA, subject, and parents.
 type commitInfo struct {
-	sha, subject string
+	sha, subject, parents string
 }
 
 // walkCardCommits lists every commit reachable from HEAD by ANY parent path —
@@ -52,7 +52,7 @@ type commitInfo struct {
 // NUL-separated so a subject carrying spaces or format metacharacters still
 // parses.
 func walkCardCommits(repoRoot string) ([]commitInfo, error) {
-	out, err := gitIn(repoRoot, "log", "--format=%H%x00%s", "HEAD")
+	out, err := gitIn(repoRoot, "log", "--format=%H%x00%s%x00%P", "HEAD")
 	if err != nil {
 		return nil, fmt.Errorf("card_file: log: %w", err)
 	}
@@ -61,11 +61,11 @@ func walkCardCommits(repoRoot string) ([]commitInfo, error) {
 		if line == "" {
 			continue
 		}
-		sha, subject, ok := strings.Cut(line, "\x00")
-		if !ok || sha == "" {
+		fields := strings.SplitN(line, "\x00", 3)
+		if len(fields) != 3 || fields[0] == "" {
 			continue
 		}
-		commits = append(commits, commitInfo{sha: sha, subject: subject})
+		commits = append(commits, commitInfo{sha: fields[0], subject: fields[1], parents: fields[2]})
 	}
 	return commits, nil
 }
@@ -74,9 +74,10 @@ func walkCardCommits(repoRoot string) ([]commitInfo, error) {
 // merge and single-parent (squash) commits alike — keeps those whose subject
 // the attributor maps to exactly one card, and returns one edge per
 // (landing, changed file) pair against the landing's FIRST PARENT — the
-// contribution the landing brought in. The ^1 diff of a parentless (root)
-// commit fails, and the per-commit guard below turns that into no edge and
-// no error. Deterministic: two runs over the same tree and reachable history
+// contribution the landing brought in. A parentless (root) commit contributes
+// no edge and no error, matching the failed ^1 diff. Native Git batches the
+// independent landing diffs; a batch failure falls back to isolated per-commit
+// diffs. Deterministic: two runs over the same tree and reachable history
 // return byte-identical output. Absorb-direction merges attribute nothing
 // through the attributor.
 //
@@ -90,12 +91,22 @@ func CardFileEdges(repoRoot, landedBranch string, attribute CardFileAttributor) 
 	if err != nil {
 		return nil, err
 	}
-	var edges []CardFileEdge
+	var selected []commitInfo
+	cards := make(map[string]string)
+	var sentinel string
 	for _, m := range commits {
-		cardID := attribute(m.subject, landedBranch)
-		if cardID == "" {
-			continue
+		if m.parents == "" {
+			sentinel = m.sha
 		}
+		if card := attribute(m.subject, landedBranch); card != "" {
+			selected = append(selected, m)
+			cards[m.sha] = card
+		}
+	}
+	filesBySHA, batchErr := cardFileBatch(repoRoot, selected, sentinel)
+	var edges []CardFileEdge
+	for _, m := range selected {
+		cardID := cards[m.sha]
 		// First-parent diff: the contribution THIS landing brought in,
 		// independent of which path it was reached by. For a parentless root
 		// the ^1 revision fails and the guard below skips the commit — no
@@ -103,9 +114,14 @@ func CardFileEdges(repoRoot, landedBranch string, attribute CardFileAttributor) 
 		// C-escapes a non-ASCII path in the line output, and splitting on
 		// newlines stored the escape as the file (card t1454 card-review r2
 		// finding 16).
-		files, err := gitIn(repoRoot, "diff", "--name-only", "-z", m.sha+"^1", m.sha)
-		if err != nil {
-			continue // an unreachable, shallow-clone, or parentless commit contributes no edges
+		files := filesBySHA[m.sha]
+		if batchErr != nil {
+			// Preserve per-commit failure isolation when batch Git is unavailable
+			// or its output is incomplete (including older Git versions).
+			files, err = gitIn(repoRoot, "diff", "--name-only", "-z", m.sha+"^1", m.sha)
+			if err != nil {
+				continue
+			}
 		}
 		for _, f := range strings.Split(files, "\x00") {
 			if f == "" {
@@ -124,6 +140,79 @@ func CardFileEdges(repoRoot, landedBranch string, attribute CardFileAttributor) 
 		return edges[i].SHA < edges[j].SHA
 	})
 	return edges, nil
+}
+
+// cardFileBatch asks native Git for independent first-parent diffs without
+// walking again or spawning one process per landing. The empty NUL token marks
+// a commit boundary; paths are never trimmed or split on newlines. A root's
+// files are deliberately ignored, matching the failed ^1 diff in the fallback.
+// A reachable root is appended last as an ignored terminal record: seeing its
+// complete header proves all preceding landing records reached the reader.
+func cardFileBatch(root string, commits []commitInfo, sentinel string) (map[string]string, error) {
+	files := make(map[string]string, len(commits))
+	if len(commits) == 0 {
+		return files, nil
+	}
+	if sentinel == "" {
+		return nil, fmt.Errorf("card_file: missing batch sentinel")
+	}
+	var input strings.Builder
+	for _, c := range commits {
+		if c.sha == sentinel {
+			continue
+		}
+		input.WriteString(c.sha)
+		input.WriteByte('\n')
+	}
+	input.WriteString(sentinel + "\n")
+	cmd := exec.Command("git", "-C", root, "log", "--no-walk=unsorted", "--stdin",
+		"--diff-merges=first-parent", "--name-only", "-z", "--format=%x00%H%x00%P")
+	cmd.Stdin = strings.NewReader(input.String())
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	if len(out) == 0 || out[len(out)-1] != 0 {
+		return nil, fmt.Errorf("card_file: unterminated batch output")
+	}
+	tokens := strings.Split(string(out), "\x00")
+	var lastSHA string
+	for i := 0; i < len(tokens)-1; {
+		// The parent field needs its own terminator; Split's final empty
+		// token alone cannot prove a complete empty-parent root header.
+		if tokens[i] != "" || i+3 >= len(tokens) {
+			return nil, fmt.Errorf("card_file: invalid batch header")
+		}
+		sha, parents := tokens[i+1], tokens[i+2]
+		lastSHA = sha
+		i += 3
+		var paths []string
+		for first := true; i < len(tokens) && tokens[i] != ""; i++ {
+			path := tokens[i]
+			if first {
+				if !strings.HasPrefix(path, "\n") {
+					return nil, fmt.Errorf("card_file: invalid batch path separator")
+				}
+				path = strings.TrimPrefix(path, "\n")
+				first = false
+			}
+			paths = append(paths, path)
+		}
+		if parents != "" && len(paths) != 0 {
+			files[sha] = strings.Join(paths, "\x00")
+		} else {
+			files[sha] = ""
+		}
+	}
+	if lastSHA != sentinel {
+		return nil, fmt.Errorf("card_file: missing terminal batch sentinel")
+	}
+	for _, c := range commits {
+		if _, ok := files[c.sha]; !ok {
+			return nil, fmt.Errorf("card_file: incomplete batch output")
+		}
+	}
+	return files, nil
 }
 
 // CardAttributedMergeSHAs returns the sorted, deduplicated full SHAs of the

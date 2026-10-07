@@ -92,7 +92,7 @@ silently stopping.
 
 ## Team Mode Quality (native Claude Code teammate runtime)
 
-Native Claude Code Agent Teams (see CLAUDE.md §15) bind two hooks that enforce per-teammate quality. Their experimental availability does not verify mixed-provider routing:
+Native Claude Code Agent Teams (see model-policy.md § Legacy CG Configuration) bind two hooks that enforce per-teammate quality. Their experimental availability does not verify mixed-provider routing:
 
 - **TeammateIdle hook** — validates a teammate's work before accepting idle
   state. If LSP errors exceed the threshold, the teammate is kept working.

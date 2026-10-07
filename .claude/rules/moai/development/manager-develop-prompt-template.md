@@ -119,7 +119,7 @@ Mandatory to state:
 - Do not touch parallel-session research/audit artifacts (`.moai/research/*`)
 
 **B11. AskUserQuestion Prohibited (Subagent Boundary)**
-- Subagents must not interact with the user directly (CLAUDE.md §8 + askuser-protocol.md §Orchestrator–Subagent Boundary)
+- Subagents must not interact with the user directly (askuser-protocol.md + askuser-protocol.md §Orchestrator–Subagent Boundary)
 - On finding a blocker, return a structured blocker report (the orchestrator runs AskUserQuestion + re-delegates)
 - Blocker report format: 4 options + each option's change/impact/risk/ETA stated
 - Never ask free-form prose questions (no "? how should we proceed?" pattern in the response body)
@@ -168,7 +168,7 @@ Explicit list in each delegation prompt:
 
 > Each E-item is reported per the verification-claim-integrity 5-section format (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) — see `.claude/rules/moai/core/verification-claim-integrity.md` §3.
 
-**Attribution discipline (SPEC-SYNC-PARALLEL-DOCS-001 A9).** Each §E item (E1-E8) is a formal attributable artifact, not a self-report summary. For every item, the manager-develop MUST name, verbatim:
+**Attribution discipline (the attributable diff-check pattern).** Each §E item (E1-E8) is a formal attributable artifact, not a self-report summary. For every item, the manager-develop MUST name, verbatim:
 - **(a) the command** — the exact invocation that produced the evidence (e.g. `go test ./internal/<pkg>/...`);
 - **(b) the observed output** — the verbatim result block the invocation produced in this run, against this tree (summarized evidence like "all tests passed" is NOT acceptable);
 - **(c) the baseline-attribution** — `(this run, this tree)` plus the HEAD SHA the evidence was captured against, so a later consumer can diff-check the attribution chain.

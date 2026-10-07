@@ -1,0 +1,11 @@
+version: 1
+branches:
+  main:
+    contexts:
+      - "Test (ubuntu-latest, 18)"
+      - "Test (ubuntu-latest, 20)"
+      - "Test (macos-latest, 18)"
+      - "Test (macos-latest, 20)"
+      - "Test (windows-latest, 18)"
+      - "Test (windows-latest, 20)"
+auxiliary: []

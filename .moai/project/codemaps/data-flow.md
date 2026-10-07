@@ -1,6 +1,55 @@
 # 데이터 흐름
 
-## 현재 main의 흐름 보충
+## 현재 최종 통합 트리의 흐름 — e65b3b
+
+기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. 다음은 실제 호출부와 저장 경로의 소스 대조이며 외부 실행·OS 런타임의 성공 판정이 아니다.
+
+1. UserPromptSubmit의 기본 2초 bind context → `registerFactoryHookPeerRun` → 일반 등록 또는 rebound 등록의 `OpenWithContext` → `FactoryDirContext` → `ProjectDirContext` → `CanonicalProjectRootContext` → `internal/core`의 checkout.go에 있는 `ResolveGitDirsContext`로 예산이 전달된다. broker는 caller 잔여 예산과 기본 5초 중 작은 값을 사용하고 경로 탐색 뒤 남은 예산으로 DB busy timeout을 구성한다. inbox의 200ms inspection open은 별도다. 기존 contextless API도 남아 있다.
+2. initializer의 template 배포 → 기본 AGENTS.md → validator의 존재 진단으로 이어진다. InstructionsLoaded는 AGENTS 우선·legacy CLAUDE fallback으로 anchor와 import closure를 관측한다. Codex contract는 AGENTS.md·AGENTS.local.md를 보호하며 legacy root 파일을 읽거나 쓰지 않는다. Codex launcher의 local producer는 AGENTS.local.md와 CLAUDE.local.md를 순서대로 둘 다 읽어 하나의 override로 연결한다.
+3. Factory는 저장된 after·bundle 순서를 먼저 보존하고 여러 hub의 dependency를 합친다. 순환을 닫는 추론 edge는 넣지 않는다. 같은 wait 판정이 selection과 direct nomination으로 이어지고, 현재 hold/queued 상태의 assigned row는 바로 임대하지 않는다. 기존 hint는 생성 필드로 덮지 않는다.
+4. PR 전달은 readiness 전후 tip 대조 → merging 재시도의 holder·expiry 검사 → 원격 변경 직전 state·version·holder·expiry 재확인 → 확인한 SHA push → PR head 대조 → match-head auto-merge 요청으로 이어진다. candidate-tip remeasure와 complete T16의 실제 merge-tree remeasure는 기존의 서로 다른 증거 시점을 유지한다.
+5. init/update → `internal/cli/user_asset_phase.go` → 사용자 잠금·기록된 bundle selection·embedded catalog/tree → `internal/userassets` Installer로 이어진다. 네 사용자 루트 설치와 프로젝트 자산 이행 확인이 먼저이며, project deployer는 네 공통 skill/agent 루트를 제외한다. AGENTS 기본 instruction 배포와 사용자 자산 설치는 서로 다른 단계다.
+6. protected-zone 판정은 shell quote 문법별 literal 복원 → OS별 native 경로와 lexical 비교형 분리 → 실제 구성요소 walk로 이어진다. POSIX literal backslash와 Windows separator를 같은 것으로 바꾸지 않는다. roster sweep은 dated reports를 live roster에서 제외한다.
+
+7. Stop review gate의 resolved scope → tree key → 공유 영수증 Load·CheckReceipt(24시간 TTL) → cached block/allow 또는 live RPC로 갈라진다. live 결과는 RecordReceipt로 기록하고 fail 상세를 같은 key의 로컬 파일에 보존한다. 일반 fail은 exit1, inconclusive는 exit2로 기록한다. runtime-config-only tree finding의 통과 처리는 게이트의 별도 disposition이며 producer와 모든 매핑이 같다고 보지 않는다.
+8. SPEC 없는 카드의 verdict 파일 → `internal/auditverdict`의 Parse → backend·손상 receipt 거부 → 공통 Admit의 PhaseSync 판정으로 이어진다. convergence overall fail도 공통 술어에서 거부하며, HEAD 또는 evidence-directory-only drift의 SHA 증거는 `internal/factorylane`에서 별도로 확인한다.
+9. packageManager의 Bun 선언 → repository 경계까지 로컬 node_modules tool 확인 → 해결된 tool은 `bun x` argv(타입 검사는 `tsc --noEmit`)로 실행한다. 미해결 tool은 예상 로컬 경로의 mandatory 실행으로 실패하고, 명시 override와 비Bun npx 흐름은 바꾸지 않는다.
+
+> `internal/template/templates/CLAUDE.md`와 plugin 운반체는 퇴역했다. 아래 이전 미러·생산자 설명은 현재 제공 흐름이 아닌 이력이다.
+
+## 이전 c572 기준의 흐름
+
+기준은 `c572e7baceaa6fd0cd3c78a9335b4baabd320347`다. 아래는 호출부·저장 경로의 소스 대조이며 외부 프로세스나 원격 병합을 실제 실행했다는 주장은 아니다.
+
+1. `internal/cli/integration.go`의 acquire/wait가 `internal/factory/integration_window_queue.go`의 직렬 RMW와 `internal/factory/integration_window_ops.go`의 FIFO 승격으로 이어진다.
+2. `internal/factory/integration_remeasure.go`가 트리에 묶인 실행 기록을 만들고 검증한다. `internal/factory/integration_merge_step.go`는 고정한 SHA와 소유권·임대·작업 트리·충돌을 재확인해 병합한다.
+3. `internal/cli/factory_card.go`의 complete가 T14/T16 전이를 만들고, `TransitionRequest.VerifyRemeasure` 콜백을 통해 `internal/homestate/card_evidence_readers.go`가 병합 트리의 재측정 기록을 확인한다. 단순 merge SHA 텍스트 파일을 검증 근거로 대신 읽는 흐름이 아니다.
+4. Codex의 대화형 부모가 `moai todo --auto`를 수행하면 `internal/cli/todo_auto_lane.go`가 순위 결정 → 지명 임대 → 카드 워크트리 → 증거 인계를 수행한다. 공유 순환의 quota hold는 Claude 레인에만 적용되고, 이때는 자기 할당 카드만 임대 관문을 거친다. Codex/GPT의 할당량 평가는 false를 반환한다. 이는 T8a 감사 승인에서 사용하는 별도의 `QueueHold`와 구분한다.
+5. 워크트리 착지 판정은 `internal/cli/worktree/landing_predicate.go`의 `landingExactChangedPaths`에서 native object/mode를 확인한다. CLI의 `session_worktree.go`도 같은 helper를 호출한다.
+6. `internal/graph/card_file.go`가 모든 도달 가능한 부모의 카드 귀속을 모으고 native Git 배치로 각 착지 커밋의 첫 부모와 파일 차이를 계산한다. NUL 구분 경로와 마지막 root sentinel이 완전하지 않으면 개별 diff로 돌아간다. 결과는 `internal/graph/graph.go`의 그래프와 `internal/graph/meta.go`의 fingerprint에 쓰인다.
+
+`internal/cli/init.go`의 MCP provisioning 실패는 collector에 전달되고, `internal/hook/session_start_memory_budget.go`는 goroutine 시작 전에 읽기 의존성을 고정한다. 기존 흐름의 과거 구현 설명은 아래에 당시 기준과 함께 남긴다.
+
+update의 이전 루트 거부 규칙 정규화는 `internal/cli/update_deny_migration.go`의 정확한 9종 치환으로 수행한다. binary/dry-run 반환 뒤 같은 버전의 조기 반환 전에 호출하며, clean-install에서는 보존한 설정에 적용한다. 사용자 자산 설치 → 프로젝트 자산 이행의 기존 흐름은 아래 설명대로 유지된다.
+
+## 이전 ff7722 기준의 판정과 관측 흐름
+
+기준은 `ff7722d2d157dd4e3cffd88ebb644e0f8ead83fa`다. 사용자 폴더 설치 흐름은 이전 PR 기준과 같고, 다음 경로를 소스에서 추가 대조했다.
+
+- 착지: ancestry 성공이면 즉시 반영된 것으로 판정한다. ancestry가 아닌 경우 누적 patch-id 후보 일치 → `internal/cli/worktree/landing_predicate.go`의 landingExactChangedPaths → base·tip·ref의 NUL 구분 ls-tree → 변경 경로의 native object/type/mode·삭제 상태 비교로 이어진다. done/sweep은 이 경로로 확인되지 않으면 gh의 merged PR 확인도 사용한다. 세션 종료는 gh를 호출하지 않고 확인되지 않은 트리를 보존한다.
+- 카드·파일: `internal/graph/card_file.go`의 walkCardCommits가 HEAD에서 도달 가능한 모든 부모 경로의 커밋 subject를 attribution → merge·squash landing의 first parent와 NUL 구분 파일 diff → CardFileEdges → `internal/graph/graph.go`의 edge 계층. 같은 landing 목록은 CardAttributedMergeSHAs → CardMergeFingerprint → `internal/graph/meta.go`의 freshness 값으로 흐른다. root 또는 비교 실패 커밋은 파일 edge를 만들지 않는다.
+- init MCP 오류: `internal/cli/init.go`의 provisionMCPEntryUnlessDeclined 오류 반환 → runInit의 p.Collect → deferred emitSummary 한 번. 이 오류는 요약으로 전달하고 init 실패로 승격하지 않는다.
+- update 표시: 진입 시 registry reset → 실행 중 Require/Reference 행 수집 → defer로 `internal/cli/update_action_block.go` 종료 블록 출력. severity glyph는 `internal/cli/severity_line.go`가 tui.StatusIcon에서 가져온다.
+
+## PR #1772의 사용자 폴더 설치 흐름
+
+`internal/cli/user_asset_phase.go`는 카탈로그와 임베드 템플릿을 `internal/userassets/install.go`의 Installer에 전달한다. `paths.go`의 설치 루트는 `~/.claude/skills`, `~/.claude/agents`, `~/.agents/skills`, `~/.codex/agents` 네 곳이다. 사용자 manifest는 `~/.moai/user-assets.json`에 두며, 설치 중단 기록과 백업 경로도 같은 사용자 상태 영역에서 관리한다.
+
+update는 사용자 잠금 획득 → 기록된 번들 선택으로 Install → 새 manifest의 PruneUnselected → manifest 저장 순서다. 그 뒤 `internal/cli/migrate_project_assets.go`가 프로젝트 파일의 현재 hash·provenance·사용자 대응 파일을 확인하고 프로젝트 템플릿 동기화로 넘어간다. 수정되거나 대응 파일을 확인하지 못한 항목은 프로젝트에 남긴다. 프로젝트 배포기는 공통 자산 루트를 제외하며 버전 일치 조기 반환에서 프로젝트 스킬 미러를 다시 만들지 않는다.
+
+> 아래의 과거 미러 생산자 설명 중 `internal/cli/update_mirror_heal.go`와 `internal/template/skill_mirror_repair.go` 경로는 폐기됐다. 현재 사용자 폴더 설치와 별개의 이전 구현 이력이다.
+
+## 이전 081899 기준의 흐름 보충
 
 기준은 `081899adb825935d5263b1699fe730373deaa4fd`다. 다음은 호출부와 저장 경로의 소스 대조이며 외부 프로세스·원격 병합을 실제 실행했다는 뜻은 아니다.
 
@@ -188,11 +237,7 @@ internal/cli/update/report/report.go    사용자 대상 advisory 출력
 internal/manifest/*                     provenance 기록
 
 ── 버전이 일치해 Deploy 앞에서 조기 반환하는 경로 ──
-internal/cli/update_mirror_heal.go      그 조기 반환 자리 옆에서 실행
-  └ internal/template/skill_mirror_repair.go
-                                        Deploy 없이 .agents/skills 두 생산자 결과를 복구
-                                        (패키지 수준 함수 — DeployerOption 이었다면 배포 경로에서도
-                                         살아나 수리 기능의 부작용으로 배포 동작이 바뀐다)
+프로젝트 스킬 미러 복구 없음            사용자 폴더 설치가 공통 자산을 담당
 ```
 
 **`.mcp.json` 스냅샷이 settings.json의 형제가 된 갈래.** 배포가 자기가 쓴 렌더를

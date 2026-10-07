@@ -278,3 +278,14 @@ func TestParseLockCardID(t *testing.T) {
 		}
 	}
 }
+
+func TestProjectRootOfRegistryNativePath(t *testing.T) {
+	root := t.TempDir()
+	registry := filepath.Join(root, DefaultRegistryPath)
+	if got := projectRootOfRegistry(registry); got != root {
+		t.Fatalf("projectRootOfRegistry(%q) = %q, want %q", registry, got, root)
+	}
+	if got := projectRootOfRegistry(registry + ".backup"); got != "" {
+		t.Fatalf("non-registry suffix must not claim a project: %q", got)
+	}
+}

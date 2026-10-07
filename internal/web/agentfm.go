@@ -20,6 +20,7 @@ package web
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -106,11 +107,28 @@ func applyPerfTierEdits(projectRoot, perfTier string) error {
 // moai agents는 .claude/agents/moai/ 에, harness specialists는
 // .claude/agents/harness/ 에 위치한다 (namespace doctrine). 하니스 행은
 // 스캔만 하고 렌더하지 않는다 (REQ-AFR-001).
+//
+// SPEC-USER-ASSET-INSTALL-001 (decision JD-20) moves installation to the
+// USER folder (~/.claude/agents) — the scan prefers that folder so
+// the console rows do not vanish after the migration; the project dirs stay
+// in the list for pre-migration projects and harness specialists.
+var homeAgentsDir = func() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".claude", "agents")
+}()
+
 func agentDirsFor(projectRoot string) []string {
-	return []string{
+	dirs := []string{}
+	if homeAgentsDir != "" {
+		dirs = append(dirs, homeAgentsDir)
+	}
+	return append(dirs,
 		filepath.Join(projectRoot, ".claude", "agents", "moai"),
 		filepath.Join(projectRoot, ".claude", "agents", "harness"),
-	}
+	)
 }
 
 // agentGroupRank classifies an agent name into one of 5 display buckets for
@@ -431,6 +449,14 @@ type agentFMGridRow struct {
 // from the source directory path — harness rows are scanned but never
 // rendered (REQ-AFR-001).
 func agentIsMoaiCore(info agentfm.AgentInfo) bool {
+	// F11 (review-fix round 2): the USER-install root (~/.claude/agents —
+	// flat, SPEC-USER-ASSET-INSTALL-001) carries the retained agents now;
+	// a path under it is core unless it is a harness specialist. The
+	// project-side /moai/ namespace check stays for pre-migration
+	// projects.
+	if homeAgentsDir != "" && strings.HasPrefix(info.Path, homeAgentsDir+string(filepath.Separator)) {
+		return !strings.Contains(info.Path, string(filepath.Separator)+"harness"+string(filepath.Separator))
+	}
 	return strings.Contains(info.Path, string(filepath.Separator)+"moai"+string(filepath.Separator))
 }
 

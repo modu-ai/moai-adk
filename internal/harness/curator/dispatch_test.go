@@ -24,7 +24,7 @@ func TestSurfaceForTier_Tier3(t *testing.T) {
 	}
 }
 
-// TestSurfaceForTier_Tier4 verifies REQ-HEV3-003: Tier 4 → CLAUDE.md (BlockTypeLearnedWorkflow).
+// TestSurfaceForTier_Tier4 verifies REQ-HEV3-003: Tier 4 → AGENTS.md (BlockTypeLearnedWorkflow).
 func TestSurfaceForTier_Tier4(t *testing.T) {
 	t.Parallel()
 
@@ -35,8 +35,8 @@ func TestSurfaceForTier_Tier4(t *testing.T) {
 	if surface.BlockType != BlockTypeLearnedWorkflow {
 		t.Errorf("Tier 4 BlockType = %d, want BlockTypeLearnedWorkflow (%d)", surface.BlockType, BlockTypeLearnedWorkflow)
 	}
-	if surface.Path != "CLAUDE.md" {
-		t.Errorf("Tier 4 Path = %q, want CLAUDE.md", surface.Path)
+	if surface.Path != "AGENTS.md" {
+		t.Errorf("Tier 4 Path = %q, want AGENTS.md", surface.Path)
 	}
 }
 
@@ -102,7 +102,7 @@ func TestPrepareTierDispatch_Tier4(t *testing.T) {
 	t.Parallel()
 
 	input := CuratorProposalInput{
-		TargetPath:   "CLAUDE.md",
+		TargetPath:   "AGENTS.md",
 		PatternKey:   "feature+plan+autopilot+success",
 		Observations: 10,
 		BlockType:    BlockTypeLearnedWorkflow,

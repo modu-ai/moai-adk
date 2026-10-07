@@ -262,51 +262,6 @@ func runAudit(t *testing.T, req codexAuditRequest) auditRun {
 	return auditRun{res: res, err: err, stdout: out.String(), stderr: errb.String()}
 }
 
-// auditSnapshotTree maps every path under root to a content fingerprint.
-func auditSnapshotTree(t *testing.T, root string) map[string]string {
-	t.Helper()
-	snap := map[string]string{}
-	err := filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		switch {
-		case info.Mode()&os.ModeSymlink != 0:
-			target, _ := os.Readlink(p)
-			snap[p] = "link:" + target
-		case info.IsDir():
-			snap[p] = "dir"
-		default:
-			b, err := os.ReadFile(p)
-			if err != nil {
-				return err
-			}
-			snap[p] = sha256Hex(b)
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return snap
-}
-
-func auditDiffSnapshots(before, after map[string]string) []string {
-	var d []string
-	for k, v := range after {
-		if before[k] != v {
-			d = append(d, "changed/added "+k)
-		}
-	}
-	for k := range before {
-		if _, ok := after[k]; !ok {
-			d = append(d, "removed "+k)
-		}
-	}
-	sort.Strings(d)
-	return d
-}
-
 func auditFileSHA(t *testing.T, p string) string {
 	t.Helper()
 	b, err := os.ReadFile(p)

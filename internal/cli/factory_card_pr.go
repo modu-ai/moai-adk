@@ -202,8 +202,10 @@ func factoryCompleteGitHubFlow(ctx context.Context, out io.Writer, root, cardID,
 // factoryPRReadiness runs the condition triple (sync audit PASS record,
 // conflict-free merge-tree, tree identity) against the integration target's
 // remote ref — the ref the PR will merge into — and records the run. It never
-// merges and takes no window.
-func factoryPRReadiness(out io.Writer, root string, card homestate.Card, lane, cardBranch, target string) (factorylane.MergeCheckRun, error) {
+// merges and takes no window. A seam var so tests can act at the check
+// moment (card t1533, review-gate r10: the merge pins to the tip THIS check
+// verified).
+var factoryPRReadiness = func(out io.Writer, root string, card homestate.Card, lane, cardBranch, target string) (factorylane.MergeCheckRun, error) {
 	wt := card.WorktreePath
 	ref := target
 	if _, err := factoryGitRead(wt, "fetch", "origin", target); err != nil {
@@ -234,6 +236,22 @@ func factoryPRReadiness(out io.Writer, root string, card homestate.Card, lane, c
 // for auto-merge, record pr-open. Everything that can refuse without changing a
 // record runs before the first record change.
 func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.FactoryDB, root, runID string, card homestate.Card, cardBranch, target, method, lane string) error {
+	// A card already at merging is a delivery RETRY: the merge-ready entry
+	// took the T14 lease-holder edge, but this path ran the push, the pull
+	// request, and the auto-merge request with no owner check at all — a
+	// foreign lane's work landed before the record refused it (card t1533,
+	// review-gate r2 finding c). Only the recorded lease holder re-enters a
+	// mutating path, and only on a lease that has not expired — an expired
+	// holder's retry ran the same remote mutations before the F1 expiry
+	// refusal (review-gate r5) — and the refusal precedes the push.
+	if card.State == homestate.CardMerging {
+		if holder := strings.TrimSpace(card.LeaseHolder); holder == "" || holder != lane {
+			return fmt.Errorf("factory complete: refused — card %s is merging under lease holder %s; %s cannot retry the delivery", card.CardID, dash(holder), dash(lane))
+		}
+		if card.LeaseExpired(factoryCardNow()) {
+			return fmt.Errorf("factory complete: refused — card %s's merging lease held by %s expired at %s; the expiry must be collected before the delivery is retried", card.CardID, dash(card.LeaseHolder), card.LeaseExpiresAt)
+		}
+	}
 	wt := card.WorktreePath
 	if _, err := factoryGitRead(wt, "config", "--get", "remote.origin.url"); err != nil {
 		return fmt.Errorf("factory complete: refused — the repository has no remote named origin to push %s to", cardBranch)
@@ -253,15 +271,15 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 				return "is not this lane"
 			}())
 	}
-	// The tip is pinned BEFORE the readiness triple runs (card-review r7):
-	// a SHA read after the check would let a commit landing mid-check become
-	// the auto-merge target. The post-check re-read below turns any such
-	// movement into a refusal.
-	verifiedTip, err := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
-	if err != nil {
-		return fmt.Errorf("factory complete: cannot read the branch tip before the readiness check: %w", err)
-	}
 	// REQ-GFD-005: the readiness check precedes the PR; a failing check opens nothing.
+	// The card tip is captured AT the check (card t1533, review-gate r10):
+	// the merge request pins to the commit the triple verified, and a
+	// commit that lands afterwards is refused, never auto-merged.
+	checkedTip, err := factoryGitRead(wt, "rev-parse", "HEAD")
+	if err != nil {
+		return fmt.Errorf("factory complete: read the card tip: %w", err)
+	}
+	checkedTip = strings.TrimSpace(checkedTip)
 	run, err := factoryPRReadiness(out, root, card, lane, cardBranch, target)
 	if err != nil {
 		return fmt.Errorf("factory complete: the merge-readiness check could not run: %w", err)
@@ -279,9 +297,9 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 	// pin it.
 	if moved, err := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", "HEAD^{commit}"); err != nil {
 		return fmt.Errorf("factory complete: %s; cannot re-read the branch tip after the readiness check: %w", stays, err)
-	} else if moved != verifiedTip {
+	} else if strings.TrimSpace(moved) != checkedTip {
 		return fmt.Errorf("factory complete: refused — %s's branch moved during the readiness check (%s → %s); re-run complete to judge the new tip",
-			card.CardID, verifiedTip, moved)
+			card.CardID, checkedTip, moved)
 	}
 
 	cur := card
@@ -296,40 +314,54 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 		}
 	}
 
-	// Re-validate the card immediately before each external mutation (card
-	// review r6/r7): a lease that lapses between the entry check and the gh
-	// calls is no authority to touch the remote, and a card that moved state
-	// or version (a concurrent abandon preserves the lease fields, so the
-	// lease predicates alone cannot see it) must not ride the request either.
-	// The re-load is the fresh truth; cur.Version is the version this
-	// invocation's record writes ride on.
-	revalidateLease := func(where string) error {
-		fresh, err := db.LoadCard(ctx, runID, card.CardID)
+	// The lease is re-verified IMMEDIATELY BEFORE every remote mutation
+	// (card t1533, review-gate r13): the entry check guarded only the
+	// readiness stage, and a lease that expired mid-delivery still ran the
+	// push, the pull-request create, and the auto-merge request before the
+	// state write refused. Owner, version, and expiry must hold at the
+	// moment of each mutation.
+	baseline := cur.Version
+	verifyLease := func(stage string) error {
+		now, err := db.LoadCard(ctx, runID, card.CardID)
 		if err != nil {
-			return fmt.Errorf("factory complete: %s; %s: cannot re-read the card: %w", stays, where, err)
+			return fmt.Errorf("factory complete: %s; re-read the card: %w", stage, err)
 		}
-		if fresh.LeaseHolder != lane || fresh.LeaseExpired(factoryCardNow()) {
-			return fmt.Errorf("factory complete: %s; %s: card %s's lease is no longer live for %s (holder %s) — the remote was left untouched",
-				stays, where, card.CardID, lane, dash(fresh.LeaseHolder))
+		if now.State != homestate.CardMergeReady && now.State != homestate.CardMerging {
+			return fmt.Errorf("factory complete: %s; card %s is %s, no longer deliverable — the remote was left untouched", stage, card.CardID, now.State)
 		}
-		if fresh.State != homestate.CardMergeReady && fresh.State != homestate.CardMerging {
-			return fmt.Errorf("factory complete: %s; %s: card %s is %s, no longer deliverable — the remote was left untouched",
-				stays, where, card.CardID, fresh.State)
+		if now.Version != baseline {
+			return fmt.Errorf("factory complete: %s; card %s moved to v%d under another writer — re-run complete", stage, card.CardID, now.Version)
 		}
-		if fresh.Version != cur.Version {
-			return fmt.Errorf("factory complete: %s; %s: card %s moved to v%d while this run judged v%d — the remote was left untouched",
-				stays, where, card.CardID, fresh.Version, cur.Version)
+		if holder := strings.TrimSpace(now.LeaseHolder); holder == "" || holder != lane {
+			return fmt.Errorf("factory complete: %s; card %s is merging under lease holder %s; %s cannot retry the delivery", stage, card.CardID, dash(holder), dash(lane))
+		}
+		if now.LeaseExpired(factoryCardNow()) {
+			return fmt.Errorf("factory complete: %s; card %s's merging lease held by %s expired at %s; the expiry must be collected before the delivery is retried", stage, card.CardID, dash(now.LeaseHolder), now.LeaseExpiresAt)
 		}
 		return nil
 	}
-
-	if err := revalidateLease("before the push"); err != nil {
+	if err := verifyLease("the push"); err != nil {
 		return err
 	}
-	if _, err := factoryGitRead(wt, "push", "origin", cardBranch); err != nil {
+
+	// Every remote mutation re-checks the tip first AND is pinned to the
+	// verified commit (card t1533, review-gate r17): a commit landing after
+	// the readiness check was pushed and opened as a pull request before the
+	// late merge check refused it. The push re-reads the tip, refuses a
+	// moved one, and sends exactly checkedTip — a newer local commit stays
+	// local.
+	nowTip, err := factoryGitRead(wt, "rev-parse", "HEAD")
+	if err != nil {
+		return fmt.Errorf("factory complete: %s; read the card tip: %w", stays, err)
+	}
+	nowTip = strings.TrimSpace(nowTip)
+	if nowTip != checkedTip {
+		return fmt.Errorf("factory complete: %s; the card tip moved to %s after the readiness check verified %s — re-run complete", stays, dash(nowTip), checkedTip)
+	}
+	if _, err := factoryGitRead(wt, "push", "origin", checkedTip+":refs/heads/"+cardBranch); err != nil {
 		return fmt.Errorf("factory complete: %s; the push of %s failed: %w", stays, cardBranch, err)
 	}
-	if err := revalidateLease("before the pull request"); err != nil {
+	if err := verifyLease("before the pull request"); err != nil {
 		return err
 	}
 	pr, found, err := factoryReadPR(wt, cardBranch)
@@ -337,7 +369,7 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 		return fmt.Errorf("factory complete: %s; the pull request could not be read, so none is opened: %w", stays, err)
 	}
 	if !found {
-		if err := revalidateLease("before pr create"); err != nil {
+		if err := verifyLease("the pull request"); err != nil {
 			return err
 		}
 		title, body := factoryPRText(wt, card, target)
@@ -354,15 +386,28 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 	if pr.BaseRefName != target {
 		return fmt.Errorf("factory complete: %s; pull request #%d targets %q, not the integration target %q", stays, pr.Number, pr.BaseRefName, target)
 	}
+	// The merge request is pinned to the tip the readiness check verified
+	// (card t1533, review-gate r7/r10): a pull request whose head moved off
+	// that commit, or a card tip that moved after the check, is refused —
+	// never merged — and the request itself carries --match-head-commit so a
+	// change landing between the check and the merge is refused by gh too.
+	nowTip, err = factoryGitRead(wt, "rev-parse", "HEAD")
+	if err != nil {
+		return fmt.Errorf("factory complete: %s; read the card tip: %w", stays, err)
+	}
+	nowTip = strings.TrimSpace(nowTip)
+	if nowTip != checkedTip {
+		return fmt.Errorf("factory complete: %s; the card tip moved to %s after the readiness check verified %s — re-run complete", stays, dash(nowTip), checkedTip)
+	}
+	if pr.HeadRefOid != checkedTip {
+		return fmt.Errorf("factory complete: %s; pull request #%d heads %s, not the verified card tip %s", stays, pr.Number, dash(pr.HeadRefOid), checkedTip)
+	}
+	if err := verifyLease("the auto-merge request"); err != nil {
+		return err
+	}
 	mergeFlag := factoryPRMergeFlag(method)
 	if !strings.EqualFold(pr.State, "MERGED") {
-		if err := revalidateLease("before the auto-merge request"); err != nil {
-			return err
-		}
-		// --match-head-commit pins the auto-merge to the tip the readiness
-		// triple judged: a commit pushed to the branch in the meantime makes
-		// GitHub hold (not silently merge) the request.
-		if _, err := factoryGHCall(wt, "pr", "merge", strconv.Itoa(pr.Number), "--auto", mergeFlag, "--match-head-commit", verifiedTip); err != nil {
+		if _, err := factoryGHCall(wt, "pr", "merge", strconv.Itoa(pr.Number), "--auto", mergeFlag, "--match-head-commit", checkedTip); err != nil {
 			return fmt.Errorf("factory complete: %s; pull request #%d is open but the auto-merge request failed: %w", stays, pr.Number, err)
 		}
 	}

@@ -580,11 +580,15 @@ func TestQAS_AC010_WaitLatchReleasesOnlyBelowMarginOrResetOrUnknown(t *testing.T
 		}
 	})
 	t.Run("assigned_card_leased_during_wait", func(t *testing.T) {
-		root, _ := onlyQueued(t)
+		root, store := onlyQueued(t)
 		qasWriteRecord(t, root, "sess-live", fcNow, qasWin(92, qasReset5), nil)
 		sleeps := qasFakeClock(t, nil, func(n int) {
 			if n == 1 {
+				// The mid-flight shape (card t1516): the row arrives with the
+				// queue item picked — an assigned row under a queued item is
+				// excluded from arm (a) and would spin the wait to the bound.
 				fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+				nmSetState(t, store, "t1", factory.BacklogStatePicked)
 			}
 		})
 		out, stderr, err := qasRunNext(t, "--wait", "--wait-bound", "1h", "--run", fcRun)
@@ -596,6 +600,9 @@ func TestQAS_AC010_WaitLatchReleasesOnlyBelowMarginOrResetOrUnknown(t *testing.T
 			t.Errorf("wait slept %d times, want 1 (the assigned card is leased at the next re-check)", *sleeps)
 		}
 		assertLeased(t, root)
+		if q := nmQueueState(t, store, "t1"); q != factory.BacklogStatePicked {
+			t.Errorf("t1 queue state = %s, want picked (leased through the row's edge, never while queued)", q)
+		}
 	})
 }
 

@@ -620,6 +620,24 @@ type tuiFake struct {
 func newTUIFake(t *testing.T, run string, extraEnv ...string) *tuiFake {
 	t.Helper()
 	program := tuiFakeScript(t)
+	// Keep the child environment isolated: broker identity resolution needs real
+	// Git, while every Codex process still uses the absolute fake program.
+	gitPath, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	gitPath, err = filepath.Abs(gitPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gitDir := filepath.Join(t.TempDir(), "git tools")
+	if err := os.Mkdir(gitDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	gitShim := "#!/bin/sh\nexec " + shellQuote(gitPath) + " \"$@\"\n"
+	if err := os.WriteFile(filepath.Join(gitDir, "git"), []byte(gitShim), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("MOAI_HOME", t.TempDir())
 	root := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
@@ -645,6 +663,7 @@ func newTUIFake(t *testing.T, run string, extraEnv ...string) *tuiFake {
 		t.Fatal(err)
 	}
 	f.env = append([]string{
+		"PATH=" + gitDir,
 		config.EnvFactoryRunID + "=" + run,
 		config.EnvFactoryBackend + "=" + BackendCodex,
 		config.EnvMoaiFactoryWorker + "=" + factory.FactoryLaneLabel(1),

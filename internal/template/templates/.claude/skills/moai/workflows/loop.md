@@ -59,7 +59,7 @@ The loop taxonomy is re-expressed as **goal engine + preset**: the four quadrant
 - **How it ends**: success-exit when the goal engine confirms "queue drained + diagnostics clean" via the independent final pass (Step 1/1.5), or a ceiling exit that emits the 5-section verdict and persists residue per § Ceiling-Exit Verdict Contract.
 - **When it fits**: sweeping a project-wide finite issue queue to zero across many iterations — not a one-off turn, not a schedule.
 
-Sibling presets (same **goal engine + preset** framing, different quadrant): **turn-based** one-shot fixing is `.claude/skills/moai/workflows/fix.md` (its unresolved residue persists to the same verdict schema and recommends re-entry here); **time-based** cadence recipes are `.claude/rules/moai/workflow/cadence-bridge.md`. The `goal engine + preset` framing is consistent across the `loop.md`/`fix.md` sibling quadrant notes.
+Sibling presets (same **goal engine + preset** framing, different quadrant): **turn-based** one-shot fixing is `~/.claude/skills/moai/workflows/fix.md` (its unresolved residue persists to the same verdict schema and recommends re-entry here); **time-based** cadence recipes are `.claude/rules/moai/workflow/cadence-bridge.md`. The `goal engine + preset` framing is consistent across the `loop.md`/`fix.md` sibling quadrant notes.
 
 ## Goal-Preset Composition — how the sweep is built ON the goal engine
 
@@ -93,7 +93,7 @@ Before arming the goal preset, the scan stage builds a **FINITE** issue queue fr
 
 ## Relationship to /moai review and /moai fix
 
-**`/moai review` (read-only, report-only)**: standalone `/moai review` REMAINS read-only and report-only — it produces findings and modifies nothing. This SPEC does not change its behavior. `/moai loop` **consumes review** lenses (security, `@MX`) as queue SUPPLIERS: the review lens produces findings, the loop enqueues them and drives the queue to drain. Run a review to SEE findings; run a loop to FIX the finite set the scan (including review lenses) found. The layering is documented from the review side in `.claude/skills/moai/workflows/review.md`.
+**`/moai review` (read-only, report-only)**: standalone `/moai review` REMAINS read-only and report-only — it produces findings and modifies nothing. This SPEC does not change its behavior. `/moai loop` **consumes review** lenses (security, `@MX`) as queue SUPPLIERS: the review lens produces findings, the loop enqueues them and drives the queue to drain. Run a review to SEE findings; run a loop to FIX the finite set the scan (including review lenses) found. The layering is documented from the review side in `~/.claude/skills/moai/workflows/review.md`.
 
 **`/moai fix` (turn-based sibling preset)**: `/moai fix` is UNCHANGED (single-pass Agentless pipeline). Its residue-handoff persists to the same `loop-verdict-<id>.json` schema, and that residue **enters the loop queue** when the user re-enters `/moai loop`.
 
@@ -183,7 +183,7 @@ Agent selection by issue type (domain expertise injected per-spawn per `.claude/
 - Type errors, logic bugs: manager-develop subagent (or orchestrator verification batch)
 - Import/module issues: manager-develop (or per-spawn `Agent(general-purpose)` backend/frontend specialist) — inject `At start, invoke Skill("moai-ref-api-patterns")` for backend import/module work
 - Test failures: manager-develop subagent — inject `At start, invoke Skill("moai-ref-testing-pyramid")` for test-suite structure
-- A bounded mechanical subtask may use the optional external-model delegation described in `.claude/skills/moai/workflows/run/external-delegation.md` § External Model Delegation
+- A bounded mechanical subtask may use the optional external-model delegation described in `~/.claude/skills/moai/workflows/run/external-delegation.md` § External Model Delegation
 - Security issues: per-spawn `Agent(general-purpose)` security reviewer — inject `At start, invoke Skill("moai-ref-owasp-checklist") for the OWASP Top 10 baseline.`
 - Performance issues: per-spawn `Agent(general-purpose)` performance specialist
 
@@ -362,10 +362,10 @@ Send any message to interrupt the loop. State is automatically saved via session
 
 ## Safe Development Protocol
 
-All fixes within the loop follow CLAUDE.md Section 7 Safe Development Protocol:
+All fixes within the loop follow AGENTS.md §13 Safe Development Protocol:
 - Reproduction-first: Write failing tests before fixing bugs
 - Post-fix review: List potential side effects after each fix cycle
-- Maximum 3 retries per individual operation (per CLAUDE.md constitution)
+- Maximum 3 retries per individual operation (per moai-constitution.md)
 
 ## Execution Summary
 

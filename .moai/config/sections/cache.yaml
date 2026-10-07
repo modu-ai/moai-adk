@@ -1,7 +1,7 @@
 # Anthropic Prompt Caching strategy.
 #
 # Controls ephemeral cache_control breakpoint injection on outgoing Anthropic
-# API requests. A 1h breakpoint caches the session-start context (CLAUDE.md +
+# API requests. A 1h breakpoint caches the session-start context (AGENTS.md +
 # always-loaded rules + output style); a 5m breakpoint caches the SPEC body on
 # `/moai run SPEC-XXX`.
 #
