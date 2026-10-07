@@ -339,10 +339,6 @@ func SpoolGeneration() (uint64, error) {
 // before this bump. The purge calls it before removing the stores; a lost
 // race between two concurrent bumps only skips a number.
 func BumpSpoolGeneration() error {
-	gen, err := SpoolGeneration()
-	if err != nil {
-		gen = 0 // an unreadable marker still bumps past itself
-	}
 	path, err := SpoolGenerationPath()
 	if err != nil {
 		return err
@@ -350,7 +346,46 @@ func BumpSpoolGeneration() error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
-	return os.WriteFile(path, []byte(strconv.FormatUint(gen+1, 10)), 0o600)
+	// The read-increment-write is SERIALIZED under the marker's own section
+	// lock (review gate finding, P1): two concurrent purges read the SAME
+	// counter and wrote the SAME next number, so the second purge's
+	// withdrawal was invisible to a sender that had already read the first
+	// purge's generation — and it published. A lock-acquire failure
+	// propagates: an unbumped generation is a withdrawal that did not
+	// happen, and every in-flight reader treating the store as live is the
+	// failure this bump exists to prevent.
+	release, err := atomicfile.ClaimSection(context.Background(), path+".lock", 0o600, spoolSectionRetries, spoolSectionDelay)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = release() }()
+	gen, err := SpoolGeneration()
+	if err != nil {
+		gen = 0 // an unreadable marker still bumps past itself
+	}
+	// Atomic replacement (tmp + rename): a concurrent reader never sees a
+	// half-written number — a partial read already degrades safely (the
+	// drain passes through, the sender stops), but the store never writes
+	// one in the first place.
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".generation-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	if _, werr := tmp.Write([]byte(strconv.FormatUint(gen+1, 10))); werr != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+		return werr
+	}
+	if cerr := tmp.Close(); cerr != nil {
+		_ = os.Remove(tmpName)
+		return cerr
+	}
+	if cerr := os.Chmod(tmpName, 0o600); cerr != nil {
+		_ = os.Remove(tmpName)
+		return cerr
+	}
+	return os.Rename(tmpName, path)
 }
 
 // boundedSpoolReread re-reads the spool under the same bounds as the first
