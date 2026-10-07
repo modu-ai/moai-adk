@@ -79,7 +79,7 @@ m1_to_mN_commit_strategy: M1 RED · M2 수리 · M2 리뷰 수리 · M3 증거 �
 
 ```
 sync_complete_at: 2026-10-07T14:58+09:00
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 127d87ac4
 sync_status: complete
 b12_self_test_a: pre_emission_grep=0 — grep -c 'SPEC-RECEIPT-REUSE-001' CHANGELOG.md → 0 (exit 1, 중복 엔트리 없음, emission 허용)
 b12_self_test_b: ac_count=9 — acceptance.md (tier M AC 원천) 카운터 live=9 excluded=0 ambiguous=0; CHANGELOG 엔트리의 9 기재와 일치
