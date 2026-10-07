@@ -137,7 +137,13 @@ func produceCodexReviewReceipt(ctx context.Context, root string) (verify.Receipt
 	// One discriminator for both paths (plan §C [HARD]): root IS the session
 	// tree here — the command runs inside the session's working tree, so the
 	// scope resolves from it exactly as the Stop chain resolves from c.root.
+	// The state root anchors on the git toplevel (the same anchoring the Stop
+	// and entry hooks apply): the receipt must land where the entry hook
+	// reads it, even when the caller named a subdirectory.
 	scope := reviewScopeResolver(root)
+	if scope.Class == reviewScopeTree {
+		scope.Dir = reviewExclusionRoot(scope.Dir)
+	}
 	state, err := codexReviewReceiptStateForScope(ctx, scope, binaryPath)
 	if err != nil {
 		return verify.Receipt{}, fmt.Errorf("codex review receipt: %w", err)

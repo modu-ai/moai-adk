@@ -76,6 +76,11 @@ r10 수리 판정 통과(리뷰어 명시: 캐시 회귀 테스트 3개 통과).
   - **arm3 진입 훅: 4,740ms** — "background verdict pass for the unchanged tree — allowing" 관측.
   - 배경 리뷰 자체는 백그라운드에서 완주(receipt 스냅숏 기록 관측, verdict pass) — 어느 턴도 리뷰를 대기하지 않음. 비교 기준: 변경 전 동기 리뷰는 리더 실태 조사 기준 11/12 Stop 차단·누적 14m13s.
   - 부수 관측(2차 측정): P2 중복 방지가 실환 동작 — "a background review for this tree state is already in flight; not re-kicking". 2차의 arm2/3이 조기 실행된 것은 측정 스크립트 폴링이 `.kick` 마커를 receipt로 오독한 스크립트 결함(3차에서 snapshots/*.json으로 수정) — 게이트 코드 결함 아님.
+- **턴종료 게이트 발견 처분 (M2 세션 r3 — 커밋된 카드 diff 리뷰, 본 소관 2건 수리)**:
+  - **(P1) 상태 경로 git 루트 앵커**: 하위 디렉터리 세션의 scope.Dir로는 `.moai/state`가 하위 디렉터리 안에 생겨(템플릿 .gitignore 미커버) receipt 쓰기 자체가 트리 키를 이동 → 진입 훅이 판정을 못 읽음. 게이트·진입 훅·프로듀서 3곳 모두 tree 클래스 scope.Dir를 `reviewExclusionRoot`(git toplevel, 실패 시 원값)로 앵커 — 실행·저장·조회 동일 루트. 회귀 테스트 TestReviewEntry_SubdirSessionReadsRootReceipt 추가.
+  - **(P2) 마커 배타적 획득**: stat-then-write 경합으로 겹치는 Stop 둘이 모두 기동권을 얻을 수 있음 — `O_CREATE|O_EXCL` 원자 획득으로 교체(신규=기동권, 기존+신선=in-flight, 기존+만료=제거 후 1회 재경합, 패배 시 in-flight). 회귀 테스트 TestKickInFlight_ExclusiveAcquisition 추가.
+  - 부수 수리: 앵커로 git toplevel이 `/private/var`(`EvalSymlinks`) 해석되는 macOS 심링크로 문자열 비교 4곳(CacheMissKicks·WTBranch·NonSkipValues·WTSessions) 조정. 수리 후 영향계열 `-run 'TestReviewGate_|TestReviewEntry_|TestKickInFlight|TestProduceCodexReviewReceipt|TestCodexReviewGate_WTBranch|TestTreeScope|TestCodexReviewGateNonGitDir'` → **ok (95.6s)**.
+
 
 
 

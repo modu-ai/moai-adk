@@ -115,6 +115,14 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 	// serves both execution paths (REQ-CGS-009).
 	scope := reviewScopeResolver(reviewScopeSessionDir(input, projectDir))
 	reviewGateScopeLogger(scope, reviewGateEnvContext())
+	// The state root anchors on the git toplevel for a tree-scope session: a
+	// subdirectory CWD would root .moai/state inside the subdirectory, where
+	// the repo's .gitignore does not cover it — the receipt write itself would
+	// then move the tree key and the next turn entry could never match the
+	// verdict. Run, store, and consult all use the same git root.
+	if scope.Class == reviewScopeTree {
+		scope.Dir = reviewExclusionRoot(scope.Dir)
+	}
 	// (3a-0) The binary-age policy (card t1528): a gate binary whose build
 	// commit predates the session tree judges the tree with policy older than
 	// the code under review — skip before any scope-dependent policy runs.

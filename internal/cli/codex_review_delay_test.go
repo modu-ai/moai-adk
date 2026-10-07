@@ -101,8 +101,14 @@ func TestReviewGate_CacheMissKicksBackgroundReview(t *testing.T) {
 	if out == nil || out.Decision == hook.DecisionBlock {
 		t.Fatalf("a cache-miss Stop must ALLOW (the review runs in the background), got %+v", out)
 	}
-	if len(*kicked) != 1 || (*kicked)[0] != root {
-		t.Fatalf("the gate must kick exactly one background review for the scope dir, got %v", *kicked)
+	// M2 anchoring: the kick carries the git toplevel (macOS temp dirs sit
+	// behind a /var → /private/var symlink — resolve before comparing).
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatalf("eval fixture root: %v", err)
+	}
+	if len(*kicked) != 1 || (*kicked)[0] != resolvedRoot {
+		t.Fatalf("the gate must kick exactly one background review for the git root, got %v", *kicked)
 	}
 	if runner.calls != 0 {
 		t.Errorf("the Stop must not run a codex RPC in-hook; got %d calls", runner.calls)
@@ -145,6 +151,81 @@ func TestReviewGate_MissingCodexDoesNotKick(t *testing.T) {
 }
 
 // --- the in-flight kick marker (the turn-end gate's P2) ---------------------
+
+// TestReviewEntry_SubdirSessionReadsRootReceipt — the state root anchors on
+// the git toplevel: a session sitting in a SUBDIRECTORY must consult (and the
+// producer must write) the receipt at <gitroot>/.moai/state, or the receipt
+// write itself would move the tree key and the delayed verdict would never
+// match (the turn-end gate's P1, overlay-reproduced pre-fix).
+func TestReviewEntry_SubdirSessionReadsRootReceipt(t *testing.T) {
+	root := cacheTestRoot(t)
+	sub := filepath.Join(root, "internal", "cli")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	entrySeams(t)
+	// The receipt is recorded the way the producer would: bound to the
+	// git-root scope state, stored under the git root.
+	rootScope := reviewScopeResolver(root)
+	if rootScope.Class != reviewScopeTree {
+		t.Fatalf("premise: the fixture must resolve tree-scope, got %+v", rootScope)
+	}
+	state, err := codexReviewReceiptStateForScope(context.Background(), rootScope, "/fake/codex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := verify.RecordReceipt(root, verify.Receipt{
+		CheckID:      codexReviewCheckID,
+		Head:         state.Head,
+		TreeDigest:   state.TreeDigest,
+		ConfigDigest: state.ConfigDigest,
+		Command:      state.Command,
+		ToolVersion:  state.ToolVersion,
+		Verdict:      codexReviewVerdictFail,
+		ExitCode:     1,
+		RecordedAt:   time.Now(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := HandleCodexReviewEntry(&hook.HookInput{CWD: sub}, true, root)
+	if err != nil {
+		t.Fatalf("entry hook must not error; got %v", err)
+	}
+	if out == nil || out.Decision != hook.DecisionBlock {
+		t.Fatalf("a subdir session must read the root-anchored FAIL receipt and BLOCK, got %+v", out)
+	}
+}
+
+// TestKickInFlight_ExclusiveAcquisition — the marker is acquired atomically:
+// the first caller wins the exclusive create and owns the kick; the second
+// caller on the same fresh marker reads in-flight; a dead marker is replaced
+// and re-acquired.
+func TestKickInFlight_ExclusiveAcquisition(t *testing.T) {
+	root := cacheTestRoot(t)
+	state, err := codexReviewReceiptStateForScope(context.Background(), reviewScopeResolver(root), "/fake/codex")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	inFlight, markerPath := kickInFlight(root, state)
+	if inFlight || markerPath == "" {
+		t.Fatalf("the first acquisition must own the kick, got inFlight=%v path=%q", inFlight, markerPath)
+	}
+	inFlight, _ = kickInFlight(root, state)
+	if !inFlight {
+		t.Fatal("a concurrent second acquisition on the fresh marker must read in-flight")
+	}
+
+	stale := time.Now().Add(-2 * config.DefaultCodexReviewGateTimeout)
+	if err := os.Chtimes(markerPath, stale, stale); err != nil {
+		t.Fatal(err)
+	}
+	inFlight, markerPath2 := kickInFlight(root, state)
+	if inFlight || markerPath2 == "" {
+		t.Fatalf("a dead marker must be replaced and re-acquired, got inFlight=%v path=%q", inFlight, markerPath2)
+	}
+}
 
 // TestReviewGate_InFlightKickNotRepeated — consecutive Stops over the SAME
 // tree state must not start a second background review while the first is in

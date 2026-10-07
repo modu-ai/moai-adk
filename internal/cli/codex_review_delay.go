@@ -78,25 +78,40 @@ func codexReviewKickMarkerPath(dir, head, digest string) string {
 
 // kickInFlight reports whether a kick for this exact tree state is already in
 // flight, and otherwise records the marker for the kick the caller is about
-// to start. A marker older than the review budget reads as a dead review (the
-// kick it stood for never recorded) and is re-kicked. An unkeyed state (the
-// key itself unmeasurable) and an unwritable marker are both fail-open toward
+// to start. Acquisition is ATOMIC (exclusive create): two overlapping Stops
+// on the same tree race on O_EXCL, and exactly one of them wins the marker —
+// the loser reads it as in-flight and does not start a second review. A
+// marker older than the review budget reads as a dead review (the kick it
+// stood for never recorded) and is replaced for the re-kick; a replace lost
+// to a concurrent re-creator reads as in-flight. An unkeyed state (the key
+// itself unmeasurable) and an unwritable marker are both fail-open toward
 // reviewing: the kick proceeds undeduplicated.
 func kickInFlight(dir string, state verify.ReceiptState) (bool, string) {
 	if state.Head == "" || state.TreeDigest == "" {
 		return false, "" // unkeyed ⇒ no marker; the kick proceeds undeduplicated
 	}
 	path := codexReviewKickMarkerPath(dir, state.Head, state.TreeDigest)
-	if fi, err := os.Stat(path); err == nil && time.Since(fi.ModTime()) < config.DefaultCodexReviewGateTimeout {
-		return true, path
-	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return false, ""
 	}
-	if err := os.WriteFile(path, []byte(time.Now().UTC().Format(time.RFC3339)), 0o644); err != nil {
-		return false, ""
+	for attempt := 0; attempt < 2; attempt++ {
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		if err == nil {
+			_, _ = f.WriteString(time.Now().UTC().Format(time.RFC3339))
+			_ = f.Close()
+			return false, path // we own the kick
+		}
+		if !os.IsExist(err) {
+			return false, "" // unwritable ⇒ fail-open toward reviewing
+		}
+		// The marker exists: fresh means in-flight; stale means dead.
+		if fi, statErr := os.Stat(path); statErr == nil && time.Since(fi.ModTime()) < config.DefaultCodexReviewGateTimeout {
+			return true, path
+		}
+		_ = os.Remove(path) // dead — race the exclusive create once more
 	}
-	return false, path
+	// The replace race was lost to a concurrent re-creator: treat as in-flight.
+	return true, path
 }
 
 // HandleCodexReviewEntry is the NEXT-TURN-ENTRY enforcement half of the
@@ -130,6 +145,11 @@ func HandleCodexReviewEntry(input *hook.HookInput, enabled bool, projectDir stri
 	}
 	scope := reviewScopeResolver(reviewScopeSessionDir(input, projectDir))
 	reviewGateScopeLogger(scope, reviewGateEnvContext())
+	// Same git-root anchoring as the Stop gate: the entry hook must read the
+	// receipt from the state root the producer wrote it to.
+	if scope.Class == reviewScopeTree {
+		scope.Dir = reviewExclusionRoot(scope.Dir)
+	}
 	if staleBinarySkipApplies(scope.Dir) {
 		return allow, nil
 	}

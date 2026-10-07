@@ -15,6 +15,7 @@ package cli
 import (
 	"context"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -127,13 +128,18 @@ func TestCodexReviewGate_WTBranchWithoutBaseReviewsWholeTree(t *testing.T) {
 		t.Errorf("scope basis %q must name the unavailable merge base", row.Basis)
 	}
 	// The request shape is the producer's now (the shared reviewRequestParams
-	// the background review sends).
+	// the background review sends); the producer anchors the tree scope on
+	// the git toplevel — resolve before comparing (macOS /var symlink).
+	resolvedTree, err := filepath.EvalSymlinks(tree)
+	if err != nil {
+		t.Fatalf("eval fixture tree: %v", err)
+	}
 	if _, err := produceCodexReviewReceipt(context.Background(), tree); err != nil {
 		t.Fatalf("receipt producer: %v", err)
 	}
 	cwd, target := p.request(t)
-	if cwd != tree {
-		t.Errorf("thread/start cwd = %q, want the session tree %q", cwd, tree)
+	if cwd != resolvedTree {
+		t.Errorf("thread/start cwd = %q, want the resolved session tree %q", cwd, resolvedTree)
 	}
 	if got, _ := target["type"].(string); got != codexTargetUncommitted {
 		t.Errorf("target.type = %q, want %q (whole-tree request)", got, codexTargetUncommitted)
