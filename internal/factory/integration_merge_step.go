@@ -22,6 +22,8 @@ package factory
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -86,6 +88,7 @@ func mergeStepErr(code int, format string, args ...any) *MergeStepError {
 // complete's gate, so "version as read" is one read in both.
 type MergeCardState struct {
 	Stage          string // homestate.CardMergeReady or later is required
+	State          string // the card's CURRENT state — a moved-on card keeps its stage fields (t1576 review round 5)
 	LeaseUnexpired bool   // the caller holds the card's unexpired lease
 	Version        int    // the card version AS READ — the gate never bumps it
 	WorktreePath   string // where the card's tree lives (branch resolution)
@@ -162,7 +165,7 @@ type MergeStepInput struct {
 // promoted) and escapes with its own exit code; the holder refusals leave
 // the record untouched and release nothing.
 //
-// @MX:WARN: [AUTO] an ordered 13-cause gate table read in one body — measured 39 decision points (if/case/for/&&/||), well over the complexity-15 warn bar
+// @MX:WARN: [AUTO] an ordered 13-cause gate table read in one body — decision points well over the complexity-15 warn bar (measured 39 at the t1479 landing; the t1576 in-section card re-gate adds an if chain of its own, and the next mx scan re-measures the [AUTO] count)
 // @MX:REASON: the complexity is inherent to REQ-MWQ-017/018's prescribed gate ORDER (holder → card gate → clean check → collision → pinned SHA → merge → post-merge); reordering or rewriting it is the data-loss and double-merge hazard, so changes go gate-by-gate with the cause table in view.
 // @MX:SPEC: SPEC-MERGE-WINDOW-QUEUE-001
 func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
@@ -197,7 +200,10 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	// the one read O4 shares with complete's step 1).
 	card, err := readCardState(seams, in.CardID)
 	if err != nil {
-		return "", mergeStepErr(MergeExitOther, "integration merge: read card %s: %v", in.CardID, err)
+		// t1576 review round 1: a store read failure is a pre-merge cause
+		// like any other — the window releases so the next live ticket is
+		// promoted, instead of the hold parking until the lease lapses.
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: read card %s: %v", in.CardID, err))
 	}
 	if cardErr := validateCardGate(card, in.CardID, lock.Card); cardErr != nil {
 		return "", releaseWindow(in, seams, cardErr)
@@ -349,6 +355,48 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			recheckErr = mergeStepErr(MergeExitNotHolder, "integration merge: refused — the window was taken mid-step; the merge will not proceed on ownership it does not hold")
 			return nil
 		}
+		// t1576 review round 1: the session id alone is not the acquisition —
+		// the same session re-acquiring the window for another branch or
+		// worktree mid-check passed a session comparison while the merge ran
+		// on targets the record no longer names. The merge inputs must still
+		// be the acquisition's.
+		// t1576 review round 5: the worktree comparison reads DIRECTORIES,
+		// not strings — macOS presents /var/... and /private/var/... for one
+		// directory, and the string form refused a window the caller
+		// legitimately acquired.
+		if w.Branch != in.IntegrationBranch || !sameIntegrationTree(w.Worktree, in.IntegrationWorktree) {
+			recheckErr = mergeStepErr(MergeExitNotHolder, "integration merge: refused — the window now names branch %s at %s, not the %s at %s the merge was acquired for; re-acquire", w.Branch, w.Worktree, in.IntegrationBranch, in.IntegrationWorktree)
+			return nil
+		}
+		// t1576 review round 2: the record and the inputs are both
+		// bookkeeping — the merge lands on whatever branch the integration
+		// worktree has CHECKED OUT, and on whatever its branch tip has moved
+		// to. A checkout switched after the pre-checks merged onto the wrong
+		// branch while the step returned success. Both are re-read inside
+		// the section and either drift aborts before the merge (the tip
+		// drift takes cause 2 — the same re-measure-and-re-acquire remedy).
+		checkedOut, checkoutErr := git("symbolic-ref", "HEAD")
+		if checkoutErr != nil {
+			recheckErr = mergeStepErr(MergeExitOther, "integration merge: read the integration worktree's checkout (a detached checkout is its own refusal): %v", checkoutErr)
+			return nil
+		}
+		// t1576 review round 14: the FULL ref is what compares — with a tag
+		// named like the integration branch, the abbreviated name
+		// disambiguates to heads/<branch> and the string comparison refused
+		// a correct checkout.
+		if checkedOut = strings.TrimSpace(checkedOut); checkedOut != "refs/heads/"+in.IntegrationBranch {
+			recheckErr = mergeStepErr(MergeExitOther, "integration merge: refused — the integration worktree is on %q, not %s; restore the checkout, re-measure, and re-acquire", checkedOut, in.IntegrationBranch)
+			return nil
+		}
+		tipNow, tipErr := git("rev-parse", "refs/heads/"+in.IntegrationBranch)
+		if tipErr != nil {
+			recheckErr = mergeStepErr(MergeExitOther, "integration merge: re-read the integration tip: %v", tipErr)
+			return nil
+		}
+		if tipNow = strings.TrimSpace(tipNow); tipNow != tip {
+			recheckErr = mergeStepErr(MergeExitBaseMoved, "integration merge: refused — the integration branch moved mid-step (tip %s as gated, %s now); re-measure against the new tip, then re-acquire", tip[:12], tipNow[:12])
+			return nil
+		}
 		recheckNow := seams.now()
 		if w.LeaseExpired(recheckNow) {
 			recheckErr = mergeStepErr(MergeExitExpiredLease, "integration merge: refused — your lease expired mid-step; re-acquire with --wait")
@@ -371,9 +419,51 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			recheckErr = mergeStepErr(MergeExitCollision, "integration merge: refused — the candidate would overwrite ignored/untracked bytes at %s; remove or commit them, then re-measure", strings.Join(colliding, ", "))
 			return nil
 		}
+		// t1576: the card gate re-runs INSIDE the section, immediately
+		// before the merge — the gate at the top read the card once, and a
+		// card-lease invalidation (or a record mutation) landing between
+		// that read and the merge still produced the merge commit (the
+		// lane-9 turn-end gate overlay reproduction; t1572's tree base
+		// 067fdced2). The section already closes the holder and collision
+		// gaps (F4/F5); the card gate is the deliver-half chain's remaining
+		// member (t1542 r5-7's principle: re-check what you act on at the
+		// point of effect). The version rides in the state as read and the
+		// step never bumps it, so a drift between the two reads is the
+		// record changing mid-step — the same cause-11 refusal class.
+		recheckCard, err := readCardState(seams, in.CardID)
+		if err != nil {
+			recheckErr = mergeStepErr(MergeExitOther, "integration merge: re-read card %s: %v", in.CardID, err)
+			return nil
+		}
+		if cardErr := validateCardGate(recheckCard, in.CardID, w.Card); cardErr != nil {
+			var gateErr *MergeStepError
+			if !errors.As(cardErr, &gateErr) {
+				gateErr = mergeStepErr(MergeExitCardGate, "integration merge: the card gate re-run refused %s: %v", in.CardID, cardErr)
+			}
+			recheckErr = gateErr
+			return nil
+		}
+		if recheckCard.Version != card.Version {
+			recheckErr = mergeStepErr(MergeExitCardGate, "integration merge: refused — card %s's record changed mid-step (version %d as gated, %d as re-read); re-acquire", in.CardID, card.Version, recheckCard.Version)
+			return nil
+		}
 		// The merge, of the PINNED SHA never the branch name (REQ-MWQ-017),
 		// inside the section (F4).
-		if _, err := git("merge", "--no-ff", "-q", "-m", mergeMsg, pinned); err != nil {
+		//
+		// t1576 review round 1 asked for --no-overwrite-ignore at the effect
+		// point. It is passed — and probed INEFFECTIVE on the path this step
+		// always takes: current git enforces it on the fast-forward update
+		// only, while --no-ff (REQ-MWQ-017's merge-commit contract) forces
+		// the three-way (ort) path, which overwrites an ignored byte at an
+		// added path whatever the flag says (probe: ff rc=1 refused;
+		// --no-ff and true-3way both rc=0, byte overwritten). The in-section
+		// re-probe above catches every byte present before the merge
+		// subprocess starts; the residual below is what remains.
+		//
+		// @MX:DEBT: an ignored byte at an added path created inside the re-probe→merge span is overwritten by the three-way merge — the flag does not reach the ort path on current git
+		// @MX:CEILING: the window is one git-subprocess spawn inside a flock-serialized section in a policy-protected integration worktree; the post-merge tree check cannot see it (a worktree-only loss, the commit's tree is unchanged)
+		// @MX:UPGRADE: a git whose ort path honors --no-overwrite-ignore (then this flag starts refusing), or an in-process merge that checks ignored paths atomically with the write
+		if _, err := git("merge", "--no-ff", "--no-overwrite-ignore", "-q", "-m", mergeMsg, pinned); err != nil {
 			mergeErr = err
 			// (6)/(7): abort, then decide by the worktree the abort left —
 			// inside the section, so no acquisition can interleave between
@@ -444,6 +534,24 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: the worktree is not clean after the merge (autostash residue included)"), mergeSHA)
 	}
 
+	// t1576 review round 1 (F1): the section's card re-gate reads BEFORE the
+	// merge; a card transition landing between that read and the merge
+	// commit still lands — the integration lock does not serialize the card
+	// store. What the step refuses to do is let it land silently: the
+	// post-merge re-read surfaces the drift as the post-merge class — the
+	// commit stays, the hold names it, the leader decides.
+	//
+	// @MX:DEBT: the card gate is a point-of-effect re-check, not a cross-store serialization — a transition landing inside the read→merge span is detected and held post-merge (cause 8), not prevented
+	// @MX:CEILING: the drift window is one in-section git merge subprocess; anything landing outside it is refused pre-merge by the re-gate
+	// @MX:UPGRADE: expose the card-store lock (or an atomic merge reservation) and hold it across the merge — a lock-order design (queue→record, see factory_step_lock.go's @MX:REASON) audited before wiring
+	mergedCard, cardErr := readCardState(seams, in.CardID)
+	if cardErr != nil {
+		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: re-read card %s after the merge: %v", in.CardID, cardErr), mergeSHA)
+	}
+	if mergedCard.Version != card.Version {
+		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: card %s's record changed mid-merge (version %d as gated, %d as merged) — the commit stays for the leader", in.CardID, card.Version, mergedCard.Version), mergeSHA)
+	}
+
 	// Success. The verb releases here; complete (DeferRelease) takes the
 	// window's fate with it — its transitions run first, and ITS failure
 	// path holds with cause post-merge-transition-conflict naming this
@@ -482,6 +590,50 @@ func minStrLen(s string, max int) int {
 	return max
 }
 
+// sameIntegrationTree compares two worktree paths as DIRECTORIES, not
+// strings — macOS presents /var/... and /private/var/... for one directory,
+// and the string form refused a window the caller legitimately acquired
+// (t1576 review round 5). The cli package's factorySameTree carries the
+// same semantics across its own boundary; the dependency direction keeps
+// this package from importing it, so the shape is mirrored here.
+func sameIntegrationTree(a, b string) bool {
+	a, b = strings.TrimSpace(a), strings.TrimSpace(b)
+	if a == "" || b == "" {
+		return false
+	}
+	if a == b {
+		return true
+	}
+	sa, ea := os.Stat(a)
+	sb, eb := os.Stat(b)
+	if ea == nil && eb == nil {
+		if os.SameFile(sa, sb) {
+			return true
+		}
+	}
+	// t1576 review round 16: an acquire from a subdirectory records the
+	// subdirectory, while the merge passes the worktree root — the same git
+	// worktree under two paths. Both sides resolve to their git worktree
+	// root before the final comparison.
+	if ra := gitToplevelOf(a); ra != "" {
+		a = ra
+	}
+	if rb := gitToplevelOf(b); rb != "" {
+		b = rb
+	}
+	return filepath.Clean(a) == filepath.Clean(b)
+}
+
+// gitToplevelOf resolves the git worktree root containing path, or "" when
+// path is not inside a git worktree (the caller keeps its original value).
+func gitToplevelOf(path string) string {
+	out, err := execGitIn(path, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out)
+}
+
 // readCardState calls the gate read and wraps its absence.
 func readCardState(seams MergeStepSeams, cardID string) (MergeCardState, error) {
 	if seams.ReadCard == nil {
@@ -502,6 +654,14 @@ func validateCardGate(card MergeCardState, requestedCard, windowCard string) err
 	}
 	if card.Stage != "merge-ready" {
 		return mergeStepErr(MergeExitCardGate, "integration merge: refused — card %s is %q, not merge-ready (11b)", requestedCard, card.Stage)
+	}
+	// t1576 review round 5: the stage lingers on a card the operator moved
+	// on from — an abandoned card kept stage=merge-ready with its lease
+	// fields and merged. The CURRENT state is the authority; empty reads as
+	// a reader that does not populate it (the scripted tests) and stays
+	// admitted.
+	if card.State != "" && card.State != "merge-ready" {
+		return mergeStepErr(MergeExitCardGate, "integration merge: refused — card %s's current state is %q, not merge-ready (11b; a moved-on card keeps its stage fields)", requestedCard, card.State)
 	}
 	if !card.LeaseUnexpired {
 		return mergeStepErr(MergeExitCardGate, "integration merge: refused — the caller does not hold card %s's unexpired lease (11a)", requestedCard)

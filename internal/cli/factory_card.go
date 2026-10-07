@@ -1881,6 +1881,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// Hold the window as the lane: the same record acquire writes, resolved
 	// the same way (the owner pid, never this process's). A window already
 	// ours is not re-written — the recorded branch choice stands.
+	acquiredHere := false
 	if !heldByUs {
 		ownerPID, _ := session.ResolveOwnerPID()
 		replaced, err := factory.AcquireIntegrationWindow(lockRoot, factory.IntegrationLock{
@@ -1896,6 +1897,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 		if err != nil {
 			return fmt.Errorf("factory complete: %w", err)
 		}
+		acquiredHere = true
 		if replaced != nil {
 			// Never silent, exactly like acquire: the next lane must be able
 			// to say what was cleared.
@@ -1944,11 +1946,26 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// REQ-MWQ-019 step 3 — no valid re-measure record for the CURRENT
 	// candidate tree refuses with the integration branch and the card state
 	// unchanged, under the re-measure-and-re-acquire code.
+	//
+	// t1576 review round 2: the refusals also release the window complete
+	// acquired in THIS invocation — returning with it held parked the next
+	// lane until the lease lapsed. A hold the lane brought (heldByUs) is
+	// its deliberate place and stays.
+	releaseOwnAcquisition := func() {
+		if !acquiredHere {
+			return
+		}
+		if _, err := factory.ReleaseIntegrationLock(lockRoot, sessionID, 0, false); err != nil {
+			_, _ = fmt.Fprintf(out, "  releasing the window failed (%v) — moai integration release by hand\n", err)
+		}
+	}
 	candidateTree := factoryTreeOf(card.WorktreePath, cardBranch)
 	if candidateTree == "" {
+		releaseOwnAcquisition()
 		return fmt.Errorf("factory complete: card %s's candidate tree cannot be read from %s — everything is unchanged (REQ-MWQ-019 step 3)", cardID, card.WorktreePath)
 	}
 	if _, err := factory.ReadRemeasureRecord(lockRoot, candidateTree); err != nil {
+		releaseOwnAcquisition()
 		return &exitCodeError{code: factory.MergeExitBaseMoved, msg: fmt.Sprintf("factory complete: refused — no valid re-measure record for the candidate tree %s (%v); run moai integration remeasure, then re-acquire --wait — the re-measure-and-re-acquire code", candidateTree[:12], err)}
 	}
 

@@ -662,6 +662,13 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	want := map[string]bool{
 		"graph_stamp.go:68":  true,
 		"graph_stamp.go:131": true,
+		// Card t1576 (leader anchor): the configuredIntegrationBranch doc
+		// comment quotes the pre-fix failure message ("merge-base ..HEAD …
+		// exit status 128") verbatim. The sweep's text matcher sees the
+		// primitive name in that COMMENT — a doc mention, the same class as
+		// the t1561 lane-12 doc-block precedent: no ancestry call executes
+		// here, so binlag.Evaluate stays the one binary-lag comparison.
+		"integration.go:277": true,
 		// Re-measured at card t948: the coverage-budget constant and its
 		// deadline attribution were added above these two comparisons, moving
 		// them from 245/253. Same two comparisons, same count — only the
