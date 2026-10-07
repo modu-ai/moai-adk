@@ -41,6 +41,7 @@ trap 'rm -rf "$MOCK_DIR"' EXIT
 
 make_mock_gh() {
     scenario="$1"
+    checks_exit="${2:-0}"
     mock_script="$MOCK_DIR/gh"
     cat > "$mock_script" << SCRIPT
 #!/bin/sh
@@ -52,7 +53,7 @@ if [ "\$1" = "pr" ] && [ "\$2" = "view" ]; then
 fi
 if [ "\$1" = "pr" ] && [ "\$2" = "checks" ]; then
     cat "$MOCK_DIR/checks_${scenario}.json"
-    exit 0
+    exit $checks_exit
 fi
 # Unknown command — error
 printf 'mock: unknown command: %s\n' "\$*" >&2
@@ -372,6 +373,71 @@ JSON
     rm -f "$tmp_err"
 }
 
+# A checks command can publish valid state with a documented nonzero
+# verdict exit status. Transport failures must still abort.
+test_checks_exit_statuses() {
+    fixture_required_fail
+    make_mock_gh "required_fail" 1
+    assert_exit 2 "checks failure status preserves required-failure handoff" \
+        env MOAI_CIWATCH_GH="$MOCK_DIR/gh" MOAI_CIWATCH_NO_SLEEP=1 \
+        MOAI_CIWATCH_REQUIRED_CHECKS_FILE="$REPO_ROOT/.github/required-checks.yml" \
+        sh "$CIWATCH_DIR/run.sh" 785
+
+    fixture_all_pass
+    jq '.[0].bucket = "pending" | .[0].state = "PENDING"' \
+        "$MOCK_DIR/checks_all_pass.json" > "$MOCK_DIR/checks_pending.json"
+    make_mock_gh "pending" 8
+    tmp_err="$(mktemp)"
+    set +e
+    MOAI_CIWATCH_GH="$MOCK_DIR/gh" MOAI_CIWATCH_NO_SLEEP=1 \
+        MOAI_CIWATCH_REQUIRED_CHECKS_FILE="$REPO_ROOT/.github/required-checks.yml" \
+        sh "$CIWATCH_DIR/run.sh" 785 > /dev/null 2> "$tmp_err"
+    rc=$?
+    set -e
+    if [ "$rc" = 0 ] && grep -q '1 pending' "$tmp_err"; then
+        pass "checks pending status reaches pending classification"
+    else
+        fail "checks pending status aborted or lost pending state (exit=$rc)"
+    fi
+    rm -f "$tmp_err"
+
+    printf 'authentication failed\n' > "$MOCK_DIR/checks_error.json"
+    make_mock_gh "error" 1
+    assert_exit 1 "checks transport failure remains fatal" \
+        env MOAI_CIWATCH_GH="$MOCK_DIR/gh" MOAI_CIWATCH_NO_SLEEP=1 \
+        MOAI_CIWATCH_REQUIRED_CHECKS_FILE="$REPO_ROOT/.github/required-checks.yml" \
+        sh "$CIWATCH_DIR/run.sh" 785
+
+    printf '{}\n' > "$MOCK_DIR/checks_error.json"
+    make_mock_gh "error" 0
+    assert_exit 1 "checks wrong JSON shape remains fatal" \
+        env MOAI_CIWATCH_GH="$MOCK_DIR/gh" MOAI_CIWATCH_NO_SLEEP=1 \
+        MOAI_CIWATCH_REQUIRED_CHECKS_FILE="$REPO_ROOT/.github/required-checks.yml" \
+        sh "$CIWATCH_DIR/run.sh" 785
+}
+
+# The real clock command crosses the deadline during a successful poll;
+# a pre-poll-only timeout check must not authorize its late green verdict.
+test_deadline_after_poll() {
+    fixture_all_pass
+    make_mock_gh "all_pass"
+    mkdir -p "$MOCK_DIR/clock-bin"
+    cat > "$MOCK_DIR/clock-bin/date" << 'CLOCK'
+#!/bin/sh
+n=0
+[ ! -f "$CIWATCH_TEST_CLOCK" ] || n="$(cat "$CIWATCH_TEST_CLOCK")"
+n=$((n + 1))
+printf '%s\n' "$n" > "$CIWATCH_TEST_CLOCK"
+if [ "$n" -le 2 ]; then printf '100\n'; else printf '110\n'; fi
+CLOCK
+    chmod +x "$MOCK_DIR/clock-bin/date"
+    assert_exit 3 "deadline crossed during poll rejects late success" \
+        env PATH="$MOCK_DIR/clock-bin:$PATH" CIWATCH_TEST_CLOCK="$MOCK_DIR/clock-state" \
+        CIWATCH_TIMEOUT_SECONDS=10 MOAI_CIWATCH_GH="$MOCK_DIR/gh" MOAI_CIWATCH_NO_SLEEP=1 \
+        MOAI_CIWATCH_REQUIRED_CHECKS_FILE="$REPO_ROOT/.github/required-checks.yml" \
+        sh "$CIWATCH_DIR/run.sh" 785
+}
+
 # ─── run all tests ────────────────────────────────────────────────────────────
 
 printf '=== ci-watch shell tests ===\n'
@@ -384,6 +450,8 @@ test_polling_required_fail
 test_polling_aux_only_fail
 test_field_contract_regression
 test_missing_required_pending
+test_checks_exit_statuses
+test_deadline_after_poll
 
 printf '\n=== Results: %d pass, %d fail ===\n' "$PASS" "$FAIL"
 if [ "$FAIL" -gt 0 ]; then

@@ -209,8 +209,26 @@ while true; do
     # ONLY name/state/bucket/link — the pre-M3 field list asked for
     # status/conclusion/detailsUrl, which made every poll abort instantly
     # with "Unknown JSON field: 'status'" (the card's repro).
-    if ! "$GH" pr checks "$PR_NUMBER" --json "name,state,bucket,link" >"$TMP_JSON" 2>/dev/null; then
-        abort "gh pr checks failed for PR #${PR_NUMBER} — check gh auth and PR number" 1
+    checks_exit=0
+    "$GH" pr checks "$PR_NUMBER" --json "name,state,bucket,link" >"$TMP_JSON" 2>/dev/null || checks_exit=$?
+    case "$checks_exit" in
+        0|1|8) ;;
+        *) abort "gh pr checks failed for PR #${PR_NUMBER} (exit=$checks_exit)" 1 ;;
+    esac
+    # gh may return 1 for failed checks or 8 for pending checks. Accept
+    # those verdict statuses only with a valid, corresponding check array;
+    # authentication/network errors and malformed output remain fatal.
+    if ! jq -e 'type == "array" and all(.[];
+        type == "object" and (.name | type == "string" and length > 0) and
+        (.state | type == "string" and length > 0) and
+        (.bucket | IN("pass", "fail", "pending", "skipping", "cancel")))' "$TMP_JSON" >/dev/null 2>&1; then
+        abort "gh pr checks returned invalid check data for PR #${PR_NUMBER}" 1
+    fi
+    if [ "$checks_exit" = 1 ] && ! jq -e 'any(.[]; .bucket == "fail" or .bucket == "cancel")' "$TMP_JSON" >/dev/null; then
+        abort "gh pr checks failed without a failed check verdict for PR #${PR_NUMBER}" 1
+    fi
+    if [ "$checks_exit" = 8 ] && ! jq -e 'any(.[]; .bucket == "pending")' "$TMP_JSON" >/dev/null; then
+        abort "gh pr checks returned pending status without pending checks for PR #${PR_NUMBER}" 1
     fi
 
     _load_required_contexts "$SSOT_BRANCH" > "$TMP_SSOT"
@@ -274,6 +292,10 @@ while true; do
 
     # Emit status update to stderr.
     log_step "PR #${PR_NUMBER}: required ${required_pass}/${total_required} pass, ${required_pending} pending, ${required_fail} failed; advisory ${aux_fail} fail"
+
+    # Fetching and classifying checks can consume the remaining budget.
+    # Re-read the wall clock before publishing any terminal verdict.
+    ciwatch_check_timeout
 
     # State machine transitions.
     if [ "$required_fail" -gt 0 ]; then
