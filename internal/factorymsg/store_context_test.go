@@ -89,3 +89,38 @@ func TestBrokerExplicitSetupDeadlinePreservesDefaultLimit(t *testing.T) {
 	t.Cleanup(func() { _ = store.Close() })
 	t.Logf("explicit setup elapsed=%v", time.Since(started))
 }
+
+func TestBrokerReopenRestoresDefaultConnectionBudget(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root := t.TempDir()
+	setup, err := OpenWithDeadline(root, "run-reopen-budget", 30*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var setupBusy int
+	if err := setup.db.QueryRow("PRAGMA busy_timeout").Scan(&setupBusy); err != nil {
+		_ = setup.Close()
+		t.Fatal(err)
+	}
+	if err := setup.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if setup.HandleStats().OpenConnections != 0 {
+		t.Fatal("setup retained a connection after close")
+	}
+	for _, name := range []string{"A", "B"} {
+		racer, err := Open(root, "run-reopen-budget")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = racer.Close() })
+		var busy int
+		if err := racer.db.QueryRow("PRAGMA busy_timeout").Scan(&busy); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("setup busy_timeout=%d default racer %s busy_timeout=%d", setupBusy, name, busy)
+		if setupBusy <= 2500 || busy <= 0 || busy > 2500 {
+			t.Fatalf("setup/default connection budgets not separated: setup=%d %s=%d", setupBusy, name, busy)
+		}
+	}
+}

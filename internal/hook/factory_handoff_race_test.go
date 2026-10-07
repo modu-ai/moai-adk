@@ -185,7 +185,12 @@ func newLaunchRaceFixture(t *testing.T, hookReady bool, ownerPID int, ownerStart
 	if f.seed, err = factorymsg.OpenWithDeadline(f.root, f.run, 30*time.Second); err != nil {
 		t.Fatal(err)
 	}
-	closeOnCleanup(t, "seed broker", f.seed)
+	// Capture the setup handle now; it closes before any caller can race.
+	defer func(setup *factorymsg.Store) {
+		if err := setup.Close(); err != nil {
+			t.Errorf("close setup broker: %v", err)
+		}
+	}(f.seed)
 	key := homestate.ProjectKey(f.root)
 	f.lead = bindThroughLauncher(t, f.seed, factorymsg.Peer{ProjectKey: key, RunID: f.run, Backend: "claude", Role: "leader", Slot: "leader", PID: ownerPID, ProcessStart: ownerStart}, "lead-uuid")
 	f.source = bindThroughLauncher(t, f.seed, factorymsg.Peer{ProjectKey: key, RunID: f.run, Backend: "codex", Role: "lane", Slot: launchRaceSlot, PID: os.Getpid(), ProcessStart: "fake-source-start"}, "src-uuid")
@@ -225,6 +230,9 @@ func newLaunchRaceFixture(t *testing.T, hookReady bool, ownerPID int, ownerStart
 		t.Fatal(err)
 	}
 	closeOnCleanup(t, "read-only observer", f.db)
+	// All callers, including the unforced racer that reuses seed, get the
+	// ordinary connection budget. f.open registers cleanup for this new handle.
+	f.seed = f.open(t)
 	return f
 }
 
