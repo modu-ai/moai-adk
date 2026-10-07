@@ -101,7 +101,7 @@ m1_to_mN_commit_strategy: M1 five fixes + spec.md draft→in-progress transition
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-10-08T01:48:44+09:00
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 800ffe0bd
 sync_status: complete
 sync_agent: manager-docs
 sync_scope: CHANGELOG-only (internal security fix; no README/docs-site surface — recorded in the report)
@@ -115,7 +115,7 @@ plan_acceptance_artifacts: untouched (no sync-phase body edits; no `updated:` re
 mx_tag_validation: sync diff is docs-only (CHANGELOG.md + spec.md frontmatter + progress.md §E.4/header); zero tag changes
 matrix_cells_reobserved: 56 (`parsing-matrix sweep: 56 cells`, `ok github.com/modu-ai/moai-adk/internal/hook 0.798s`, this run, sync tree)
 commit_plan: one sync commit (`chore(SPEC-ZONE-SHELL-PARSING-001): sync-phase artifacts — 3-phase close`, card t1574 in body, `Authored-By-Agent: manager-docs` + `🗿 MoAI` trailers) + one backfill commit replacing this §E.4 placeholder with the real sync-commit SHA
-backfill: pending (owed immediately after the sync commit lands)
+backfill: done (sync commit 800ffe0bd resolved into the field above; this backfill commit follows it)
 
 ## §F Phase 4 Mode Selection
 
