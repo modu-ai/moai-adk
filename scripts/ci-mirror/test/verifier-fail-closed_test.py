@@ -14,13 +14,17 @@ if not YQ:
 
 
 class VerifierFailClosed(unittest.TestCase):
-    def gate(self, detect, matrix, code):
+    def gate(self, detect, matrix, code, platform=False):
+        workflow = "pr-multi-os-gate.yml" if platform else "release-pr-multi-os.yml"
+        job = "multi-os-runtime-gate" if platform else "release-pr-gate"
+        detector = "detect-platform" if platform else "detect-release"
+        matrix_job = "multi-os-test" if platform else "full-matrix-test"
         script = subprocess.check_output(
-            [YQ, "-r", '.jobs.release-pr-gate.steps[0].run',
-             str(ROOT / ".github/workflows/release-pr-multi-os.yml")], text=True)
-        for key, value in (("needs.detect-release.result", detect),
-                           ("needs.full-matrix-test.result", matrix),
-                           ("needs.detect-release.outputs.go_code", code)):
+            [YQ, "-r", f'.jobs.{job}.steps[0].run',
+             str(ROOT / '.github/workflows' / workflow)], text=True)
+        for key, value in ((f"needs.{detector}.result", detect),
+                           (f"needs.{matrix_job}.result", matrix),
+                           (f"needs.{detector}.outputs.go_code", code)):
             script = script.replace("${{ " + key + " }}", value)
         with tempfile.TemporaryDirectory() as directory:
             env = dict(os.environ, GITHUB_OUTPUT=str(Path(directory) / "output"))
@@ -45,6 +49,17 @@ class VerifierFailClosed(unittest.TestCase):
                 result = self.gate(detect, matrix, code)
                 self.assertEqual(result.returncode == 0, passed,
                                  result.stdout + result.stderr)
+
+    def test_platform_gate(self):
+        for detect in ("success", "failure", "cancelled", "skipped", "unknown", ""):
+            for matrix in ("success", "failure", "cancelled", "skipped", "unknown", ""):
+                for code in ("true", "false", "", "malformed"):
+                    with self.subTest(detect=detect, matrix=matrix, code=code):
+                        passed = detect == "success" and (matrix == "success" or
+                                  (matrix == "skipped" and code == "false"))
+                        result = self.gate(detect, matrix, code, platform=True)
+                        self.assertEqual(result.returncode == 0, passed,
+                                         result.stdout + result.stderr)
 
     def validator(self, branches, fail_query=False, auxiliary="[]"):
         with tempfile.TemporaryDirectory() as directory:
