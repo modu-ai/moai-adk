@@ -69,16 +69,17 @@ const UnknownSpec = "unknown-spec"
 
 // Failure causes, in the order CheckCitedReceipts reports them.
 const (
-	CauseStartMarkerMissing    = "start marker missing"
-	CauseNoReceiptCited        = "no receipt cited"
-	CauseReceiptUnreadable     = "receipt unreadable"
-	CauseReceiptUnknown        = "receipt unknown to the store"
-	CauseReceiptOtherTree      = "receipt recorded for a different tree"
-	CauseReceiptBeforeStart    = "receipt created before the auditor started"
-	CauseReceiptReused         = "receipt created before the previous auditor instance of this session ended"
-	CauseReceiptNotACodexAudit = "receipt is not a codex audit"
-	CauseReceiptAuditNotRun    = "receipt records an audit that never produced a verdict"
-	CauseVerdictLineMissing    = "verdict line missing"
+	CauseStartMarkerMissing       = "start marker missing"
+	CauseNoReceiptCited           = "no receipt cited"
+	CauseReceiptUnreadable        = "receipt unreadable"
+	CauseReceiptUnknown           = "receipt unknown to the store"
+	CauseReceiptOtherTree         = "receipt recorded for a different tree"
+	CauseReceiptBeforeStart       = "receipt created before the auditor started"
+	CauseReceiptReused            = "receipt created before the previous auditor instance of this session ended"
+	CauseReceiptNotACodexAudit    = "receipt is not a codex audit"
+	CauseInstanceLedgerUnreadable = "instance ledger unreadable"
+	CauseReceiptAuditNotRun       = "receipt records an audit that never produced a verdict"
+	CauseVerdictLineMissing       = "verdict line missing"
 )
 
 // Served-model refusal causes. The served-model gate appends the expected
@@ -214,8 +215,78 @@ func ledgerPath(treeRoot, key string) string {
 	return filepath.Join(StateDir(treeRoot), ledgersRel, markerFileName(key))
 }
 
+// Ledger lock discipline — the store's cross-process serialization point.
+//
+// The store's other records are single-writer-per-file in practice (one
+// receipt id, one agent id, one role+spec pair), so their atomic per-file
+// rename suffices. The ledger is different: several hook processes of one
+// session read-modify-write the SAME file, and a lost interleaving silently
+// drops a start or an end — a dropped start makes a later end look single-live
+// and seals an era that is actually still alive. Writers therefore take a
+// lockfile (O_EXCL create) around each read→modify→write; readers stay
+// lock-free, because the atomic rename guarantees they see a whole file.
+//
+// The wait is bounded well inside the hook time budget (5s policy, 10s
+// PreToolUse) and a lock left by a dead holder ages out.
+
+const (
+	ledgerLockWait   = 250 * time.Millisecond
+	ledgerLockStale  = 5 * time.Second
+	ledgerLockPoll   = 5 * time.Millisecond
+	ledgerLockSuffix = ".lock"
+)
+
+// lockLedger acquires the ledger's lockfile, returning its release func. A
+// held lock is polled until the wait budget runs out; a lock older than the
+// stale age is presumed abandoned by a dead process and broken.
+func lockLedger(path string) (func(), error) {
+	lockPath := path + ledgerLockSuffix
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
+		return nil, err
+	}
+	deadline := time.Now().Add(ledgerLockWait)
+	for {
+		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		if err == nil {
+			_ = f.Close()
+			return func() { _ = os.Remove(lockPath) }, nil
+		}
+		if !os.IsExist(err) {
+			return nil, err
+		}
+		if fi, statErr := os.Stat(lockPath); statErr == nil && time.Since(fi.ModTime()) > ledgerLockStale {
+			_ = os.Remove(lockPath)
+			continue
+		}
+		if time.Now().After(deadline) {
+			return nil, fmt.Errorf("ledger lock %s still held after %v", lockPath, ledgerLockWait)
+		}
+		time.Sleep(ledgerLockPoll)
+	}
+}
+
+// updateInstanceLedger applies mutate to the key's ledger under the lock, so
+// concurrent starts and ends of one session cannot lose a count.
+func updateInstanceLedger(treeRoot, key string, at time.Time, mutate func(*InstanceLedger)) error {
+	path := ledgerPath(treeRoot, key)
+	release, err := lockLedger(path)
+	if err != nil {
+		return err
+	}
+	defer release()
+	l, err := ReadInstanceLedger(treeRoot, key)
+	if err != nil {
+		return err
+	}
+	mutate(&l)
+	l.UpdatedAt = at
+	return writeJSON(path, &l)
+}
+
 // ReadInstanceLedger loads the ledger of a derived key. A ledger never written
-// reads as the zero ledger — no recorded start, no boundary.
+// reads as the zero ledger — no recorded start, no boundary. A ledger that
+// exists but cannot be parsed returns the error: the caller decides whether
+// zero-vision is acceptable (no — the guard fails closed on it).
 func ReadInstanceLedger(treeRoot, key string) (InstanceLedger, error) {
 	var l InstanceLedger
 	err := readJSON(ledgerPath(treeRoot, key), &l)
@@ -230,13 +301,9 @@ func ReadInstanceLedger(treeRoot, key string) (InstanceLedger, error) {
 // (starts minus terminal ends) is what tells a single-live end from an
 // ambiguous one.
 func RecordInstanceStart(treeRoot, key string, at time.Time) error {
-	l, err := ReadInstanceLedger(treeRoot, key)
-	if err != nil {
-		return err
-	}
-	l.Starts++
-	l.UpdatedAt = at
-	return writeJSON(ledgerPath(treeRoot, key), &l)
+	return updateInstanceLedger(treeRoot, key, at, func(l *InstanceLedger) {
+		l.Starts++
+	})
 }
 
 // RecordInstanceEnd counts one terminal instance end. When the ender is the
@@ -248,16 +315,12 @@ func RecordInstanceStart(treeRoot, key string, at time.Time) error {
 // boundary stays frozen at its existing value and the era the overlap minted
 // stays citable (card t1544's concurrency semantics).
 func RecordInstanceEnd(treeRoot, key string, at time.Time) error {
-	l, err := ReadInstanceLedger(treeRoot, key)
-	if err != nil {
-		return err
-	}
-	if l.Starts-l.Ends <= 1 {
-		l.EndedAt = at
-	}
-	l.Ends++
-	l.UpdatedAt = at
-	return writeJSON(ledgerPath(treeRoot, key), &l)
+	return updateInstanceLedger(treeRoot, key, at, func(l *InstanceLedger) {
+		if l.Starts-l.Ends <= 1 {
+			l.EndedAt = at
+		}
+		l.Ends++
+	})
 }
 
 // Rejection records a refused auditor PASS. It outlives the subagent: the

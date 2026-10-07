@@ -172,7 +172,19 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 		cause = auditreceipt.GateAssumedRequiredNote + ", so no audit receipt can be recorded or checked for this tree"
 	case parsed:
 		start, foundKey := readStartMarker(g.store, input)
-		ok, failure := auditreceipt.CheckCitedReceiptsSince(g.store, start, endBoundary(g.store, foundKey), cited)
+		boundary, err := instanceEndBoundary(g.store, foundKey)
+		if err != nil {
+			// Fail closed (SPEC-RECEIPT-REUSE-001, --security --deep): a
+			// ledger that exists but cannot be read makes the boundary
+			// unknowable, and unknowable is not zero — zero would wave the
+			// predecessor era through. The refusal names the condition the
+			// operator fixes, the same reading checkAuditReceiptSpawn applies
+			// to unreadable rejection records.
+			slog.Warn("instance ledger unreadable", "agent_id", foundKey, "error", err)
+			cause = auditreceipt.CauseInstanceLedgerUnreadable
+			break
+		}
+		ok, failure := auditreceipt.CheckCitedReceiptsSince(g.store, start, boundary, cited)
 		if ok {
 			// A proven PASS clears this role's outstanding refusals in THIS tree —
 			// the other SPECs' and the unknown-spec one included (operator
@@ -308,22 +320,22 @@ func recordAuditorEnd(store, key string) {
 	}
 }
 
-// endBoundary returns the end-event boundary a citation judged against the
-// marker found under key must respect (SPEC-RECEIPT-REUSE-001): the time a
-// single-live predecessor end sealed the era, or zero while none did — in
-// which case the anchor's own StartedAt is the only fence, as before. Only a
-// derived key carries one: an agent-id-keyed marker starts with its instance,
-// so its before-start fence already covers predecessor receipts.
-func endBoundary(store, key string) time.Time {
+// instanceEndBoundary returns the end-event boundary a citation judged against
+// the marker found under key must respect (SPEC-RECEIPT-REUSE-001), or the
+// error when the ledger exists but cannot be read — the caller fails closed on
+// that. A zero boundary with no error means no single-live predecessor end has
+// sealed the era, and the anchor's own StartedAt is the only fence, as before.
+// Only a derived key carries a ledger: an agent-id-keyed marker starts with
+// its instance, so its before-start fence already covers predecessor receipts.
+func instanceEndBoundary(store, key string) (time.Time, error) {
 	if key == "" || !auditreceipt.IsDerivedMarkerKey(key) {
-		return time.Time{}
+		return time.Time{}, nil
 	}
 	l, err := auditreceipt.ReadInstanceLedger(store, key)
 	if err != nil {
-		slog.Warn("instance ledger unreadable", "agent_id", key, "error", err)
-		return time.Time{}
+		return time.Time{}, err
 	}
-	return l.EndedAt
+	return l.EndedAt, nil
 }
 
 // checkAuditReceiptSpawn is the PreToolUse consumer (REQ-CAG-014). It returns

@@ -879,6 +879,34 @@ func TestSubagentStop_SequentialOwnReceiptStillProvable(t *testing.T) {
 	}
 }
 
+// SPEC-RECEIPT-REUSE-001 (--security --deep review repair, card t1562): a
+// ledger that exists but cannot be read makes the end-event boundary
+// unknowable — the PASS is REFUSED (fail closed), not waved through with zero
+// vision, and the refusal names the condition the operator fixes.
+func TestSubagentStop_UnreadableInstanceLedgerFailsClosed(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-ledger"
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	// Corrupt the ledger file directly: the boundary is now unreadable.
+	ledgerFile := filepath.Join(auditreceipt.StateDir(root), "ledgers",
+		auditreceipt.StartMarkerKey("", session, auditreceipt.AgentPlanAuditor)+".json")
+	if err := os.WriteFile(ledgerFile, []byte("{broken"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	msg := "AUDIT-VERDICT: PASS spec=SPEC-RR-002 receipts=rcpt-ffffffffffffffffffff"
+	out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, msg, false))
+	if out.Decision != "block" || !strings.Contains(out.Reason, auditreceipt.CauseInstanceLedgerUnreadable) {
+		t.Fatalf("output = %+v, want a block naming %q", out, auditreceipt.CauseInstanceLedgerUnreadable)
+	}
+	rj, err := auditreceipt.ReadRejection(root, auditreceipt.AgentPlanAuditor, "SPEC-RR-002")
+	if err != nil {
+		t.Fatalf("rejection record missing: %v", err)
+	}
+	if rj.Cause != auditreceipt.CauseInstanceLedgerUnreadable {
+		t.Errorf("rejection cause = %q, want %q", rj.Cause, auditreceipt.CauseInstanceLedgerUnreadable)
+	}
+}
+
 // SPEC-RECEIPT-REUSE-001 AC-RR-007 (REQ-RR-002): the foreground path —
 // agent-id-keyed markers, consumed at the instance's own stop — is unchanged:
 // a foreground successor citing a predecessor foreground instance's receipt is
