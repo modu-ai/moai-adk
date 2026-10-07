@@ -101,7 +101,9 @@ func runParticipationFlushWork(errOut io.Writer) {
 	if err := outbox.DrainContext(ctx); err != nil {
 		_, _ = fmt.Fprintln(errOut, "warn: participation drain failed:", err.Error())
 	}
-	if err := publish.FlushContext(ctx); err != nil {
+	// The model seam is injected HERE (DEC-6, REQ-ANON-025): the
+	// production summarizer over the headless claude runner.
+	if err := publish.FlushContextWith(ctx, claudeParticipationSummarizer{}); err != nil {
 		_, _ = fmt.Fprintln(errOut, "warn: participation send failed:", err.Error())
 	}
 }

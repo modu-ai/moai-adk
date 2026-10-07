@@ -28,6 +28,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/feedback"
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"github.com/modu-ai/moai-adk/internal/feedback/outbox"
 )
 
@@ -38,25 +39,47 @@ func onHookPath() bool {
 	return os.Getenv(config.EnvHookDispatch) == "1"
 }
 
-// Sender files queued reports through one Runner.
+// The summary decision constants stored on the queue item (design.md
+// section 8): which text the create path used — the model's or the
+// deterministic template's.
+const (
+	summaryDecisionModel    = "model"
+	summaryDecisionTemplate = "template"
+)
+
+// Sender files queued reports through one Runner. The Summarizer is
+// INJECTED by internal/cli at the flush call (REQ-ANON-025); nil means the
+// deterministic template only.
 type Sender struct {
-	Runner Runner
+	Runner     Runner
+	Summarizer Summarizer
+	budget     *ModelCallBudget
 }
 
 // NewSender returns a sender over r.
 func NewSender(r Runner) *Sender {
-	return &Sender{Runner: r}
+	return &Sender{Runner: r, budget: NewModelCallBudget()}
 }
 
 // FlushContext is the production entry the CLI's flush call drives: the
-// send half of flush, over the real gh, under the caller's context.
+// send half of flush, over the real gh, under the caller's context — no
+// summarizer (template only).
 //
 // @MX:ANCHOR: [AUTO] FlushContext — the CLI flush and the update-end trigger both enter the sender here
 // @MX:REASON: a second sender entry could skip the hook-path refusal or the consent re-checks this walk enforces (REQ-ANON-015)
 // @MX:WARN: [AUTO] every gh call is a public side effect from the user's account
 // @MX:REASON: the sender's caps, consent checks, and refusal gates are the only things standing between a queue and a public post (REQ-ANON-015/016)
 func FlushContext(ctx context.Context) error {
-	return NewSender(newExecRunner()).Send(ctx)
+	return FlushContextWith(ctx, nil)
+}
+
+// FlushContextWith is FlushContext with the model seam INJECTED (DEC-6,
+// REQ-ANON-025): internal/cli passes the production summarizer here, so
+// publish imports no model helper and no internal/cli.
+func FlushContextWith(ctx context.Context, s Summarizer) error {
+	sender := NewSender(newExecRunner())
+	sender.Summarizer = s
+	return sender.Send(ctx)
 }
 
 // Flush is FlushContext under the flush time box (design section 10: the
@@ -182,8 +205,10 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 	// Send-time trust boundary (review-gate finding, P1): the queue
 	// file is a local file, so the stored body is untrusted. Validate
 	// BEFORE any gh call and publish only the regenerated title and
-	// body — never the stored text as-is.
-	payload, title, body, ok := revalidatedItem(item)
+	// body — never the stored text as-is. The create body is rendered
+	// again below WITH the item's summary; the stored text itself is
+	// never sent.
+	payload, title, _, ok := revalidatedItem(item)
 	if !ok {
 		s.fail(ctx, store, item, errUnvalidatedBody)
 		return true
@@ -218,14 +243,80 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 		return true
 	}
 
-	// No match: the create path. M5 files the deterministic template
-	// text; M6 slots the summarizer ahead of CreateBody.
+	// No match: the create path. M6 slots the summarizer ahead of the
+	// deterministic template text (design section 8; D38), bounded per
+	// item (REQ-ANON-017/018) and by the daily cap.
+	summary, _ := s.itemSummary(ctx, store, item, payload)
+	_, body = outbox.RenderReportWithSummary(payload, summary)
 	if err := s.Runner.CreateIssue(ctx, repo, title, strings.NewReader(body)); err != nil {
 		s.fail(ctx, store, item, err)
 		return false
 	}
 	s.complete(ctx, store, item, "issue created", body)
 	return true
+}
+
+// itemSummary carries the per-item model-call bound (REQ-ANON-017/018,
+// design section 8): a stored summary is REUSED on every retry; a template
+// decision is final; the durable summary_requested marker lands BEFORE the
+// call so a crash in the persist window takes the template — one call per
+// queue item across any number of retries (D28). Every call counts against
+// the rolling daily cap, at attempt time.
+func (s *Sender) itemSummary(ctx context.Context, store *feedback.QueueStore, item feedback.QueueItem, payload bugreport.Payload) (string, bool) {
+	if item.Summary != "" {
+		return item.Summary, true
+	}
+	if item.SummaryDecision == summaryDecisionTemplate {
+		return "", false
+	}
+	if item.SummaryRequested {
+		// The marker without an outcome: a crash between the call and the
+		// persist — the template decision, no second call (D28).
+		s.persistSummaryOutcome(ctx, store, item, "", summaryDecisionTemplate)
+		return "", false
+	}
+	if s.Summarizer == nil || !s.budget.Allow() {
+		s.persistSummaryOutcome(ctx, store, item, "", summaryDecisionTemplate)
+		return "", false
+	}
+	// The durable marker: a crash after the call but before the outcome
+	// leaves the marker without a summary, and recovery takes the template.
+	if err := store.MutateContext(ctx, func(rec *feedback.QueueRecord) error {
+		for i := range rec.Items {
+			if rec.Items[i].ID == item.ID {
+				rec.Items[i].SummaryRequested = true
+				break
+			}
+		}
+		return nil
+	}); err != nil {
+		return "", false // the marker could not land: template, never an unbounded call
+	}
+	s.budget.Record()
+	out, err := s.Summarizer.Summarize(ctx, payload)
+	if err != nil || validateSummary(out) != nil {
+		s.persistSummaryOutcome(ctx, store, item, "", summaryDecisionTemplate)
+		return "", false
+	}
+	s.persistSummaryOutcome(ctx, store, item, out, summaryDecisionModel)
+	return out, true
+}
+
+// persistSummaryOutcome stores the summary (or the template decision) on
+// the live item — the retry-reuse record.
+func (s *Sender) persistSummaryOutcome(ctx context.Context, store *feedback.QueueStore, item feedback.QueueItem, summary, decision string) {
+	_ = store.MutateContext(ctx, func(rec *feedback.QueueRecord) error {
+		for i := range rec.Items {
+			if rec.Items[i].ID != item.ID {
+				continue
+			}
+			rec.Items[i].Summary = summary
+			rec.Items[i].SummaryDecision = decision
+			rec.Items[i].SummaryRequested = true
+			break
+		}
+		return nil
+	})
 }
 
 type errorString string

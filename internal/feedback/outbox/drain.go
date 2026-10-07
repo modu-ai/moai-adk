@@ -142,6 +142,27 @@ func RenderReport(p bugreport.Payload) (title, body string) {
 	return title, body
 }
 
+// RenderReportWithSummary renders the report with the model summary's
+// section slotted AHEAD of the deterministic template text (design section
+// 8; D38's M6 half — the preview keeps printing the queued pre-summary
+// render). An empty summary renders BYTE-IDENTICAL to RenderReport — the
+// template path never drifts from the one render.
+func RenderReportWithSummary(p bugreport.Payload, summary string) (title, body string) {
+	title = IssueTitle(p)
+	if strings.TrimSpace(summary) == "" {
+		return RenderReport(p)
+	}
+	var b strings.Builder
+	b.WriteString(IssueMarker(p))
+	b.WriteString("\n\n")
+	b.WriteString(strings.TrimSpace(summary))
+	b.WriteString("\n\n")
+	b.WriteString("A moai-adk user opted into automatic improvement participation and hit this defect.\n")
+	b.WriteString("This report is machine-generated from closed fixed fields: no error text, no paths,\n")
+	b.WriteString("no project or session data. The fingerprint family key is in the title.\n")
+	return title, b.String()
+}
+
 // IssueTitle is the contract title: `[auto-report] <kind> <fingerprint>` —
 // the exact title key the duplicate lookup matches (REQ-ANON-019).
 func IssueTitle(p bugreport.Payload) string {
