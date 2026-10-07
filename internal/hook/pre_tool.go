@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -1354,36 +1355,167 @@ func argumentListItems(value string) []string {
 	return out
 }
 
-// resolveThroughExistingParent resolves the symlinks of the nearest EXISTING
-// ancestor of absPath and rejoins the not-yet-existing remainder onto it.
+// resolveThroughExistingParent resolves absPath through symlinks with
+// PHYSICAL ".." semantics, mirroring the zoneResolve walk (t1510,
+// protected_zone_path.go), which was rewritten for the same hole.
 //
-// It exists for the new-file case that plain EvalSymlinks cannot serve: a Write
-// to a path whose leaf does not exist yet fails EvalSymlinks outright, which
-// hides a directory symlink in the path's parents. Resolving the deepest
-// ancestor that DOES exist makes such an escape visible without denying a
-// legitimate new file (the resolved ancestor of an in-project new file is still
-// in-project).
+// filepath.EvalSymlinks alone is not enough twice over: it fails when the
+// leaf does not exist yet, and — measured on go1.26 — it collapses a ".."
+// that follows a symlink against the LEXICAL parent, so with
+// `linked -> /outside` the path `<project>/linked/../leaf` reads as
+// `<project>/leaf` (in-project) while the shell walks the symlink and the
+// write lands outside (CWE-61, card t1530). This walk resolves each existing
+// component as the shell would encounter it, and a ".." pops the RESOLVED
+// prefix; the not-yet-existing tail rejoins onto the deepest resolved
+// prefix (nothing below a missing component exists for the shell to walk
+// either). Resolving every existing component keeps a legitimate in-project
+// new file resolving to an in-project path (the new-file case plain
+// EvalSymlinks cannot serve).
 //
-// absPath must already be absolute. The second return is false when no ancestor
-// could be resolved, in which case the caller keeps its unresolved fallback.
+// absPath must already be absolute and NOT lexically cleaned — a ".."
+// segment cleaned away by filepath.Abs/Join before this call is a ".." this
+// walk can no longer resolve physically. The second return is false when
+// the path cannot be vouched for (".." above anything resolved, an
+// unreadable entry, or a symlink chain past the depth bound), in which case
+// the caller keeps its unresolved fallback.
 func resolveThroughExistingParent(absPath string) (string, bool) {
-	remainder := ""
-	dir := absPath
-	for {
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			// Reached the filesystem root without resolving anything.
-			return "", false
-		}
-		remainder = filepath.Join(filepath.Base(dir), remainder)
-		dir = parent
+	return resolvePhysicalWalk(absPath, 0)
+}
 
-		realDir, err := filepath.EvalSymlinks(dir)
-		if err != nil {
-			continue
+// resolvePhysicalWalk carries the symlink-following depth; a chain deeper
+// than the bound reads as unresolvable (fail closed), standing in for the
+// kernel's ELOOP. The bound is shared with the protected-zone walk.
+func resolvePhysicalWalk(p string, depth int) (string, bool) {
+	// EvalSymlinks stays the cheap fast path for a ".."-free path, but a
+	// ".."-bearing path must take the walk: measured on go1.26, EvalSymlinks
+	// resolves "deep/../x" via the LEXICAL parent, silently wrong whenever
+	// the lexical form happens to exist.
+	if !pathHasDotDotSegment(p) {
+		if real, err := filepath.EvalSymlinks(p); err == nil {
+			return real, true
 		}
-		return filepath.Join(realDir, remainder), true
 	}
+	parts := pathSegments(p, runtime.GOOS == "windows")
+	resolved := ""
+	if len(parts) > 0 {
+		switch {
+		case parts[0] == "":
+			resolved = "/"
+		case isWindowsVolumePrefix(parts[0]):
+			resolved = parts[0] + "/"
+		}
+	}
+	skipped := 0
+	for i := 1; i < len(parts); i++ {
+		switch parts[i] {
+		case "", ".":
+			// repeated or trailing separators, and the dot itself
+		case "..":
+			if skipped == 0 {
+				// ".." over a prefix that never resolved: the path walks
+				// outside anything this function can vouch for
+				return "", false
+			}
+			trimmed := strings.TrimSuffix(resolved, "/")
+			if idx := strings.LastIndex(trimmed, "/"); idx >= 0 {
+				resolved = trimmed[:idx+1]
+			}
+			skipped--
+		default:
+			probe := resolved + parts[i]
+			real, err := filepath.EvalSymlinks(probe)
+			if err != nil {
+				// EvalSymlinks fails for a MISSING component and equally for
+				// an EXISTING symlink whose target is missing — only the
+				// first is an unresolved tail. The second is a real link the
+				// shell would still follow (a Write through it creates the
+				// destination), so its destination rejoins the walk.
+				if _, lerr := os.Lstat(probe); lerr != nil {
+					// the first genuinely missing component starts the
+					// unresolved tail
+					return filepath.Join(resolved, strings.Join(parts[i:], "/")), true
+				}
+				dest, rerr := os.Readlink(probe)
+				if rerr != nil {
+					return "", false // an unreadable existing entry: fail closed
+				}
+				if !filepath.IsAbs(dest) {
+					dest = resolved + dest
+				}
+				if depth >= zoneSymlinkDepthBound {
+					return "", false // chain too deep: fail closed
+				}
+				sub, ok := resolvePhysicalWalk(dest, depth+1)
+				if !ok {
+					return "", false
+				}
+				// the link's resolution takes the component's place; what
+				// remains of the original path rejoins onto it
+				resolved = strings.TrimSuffix(sub, "/") + "/"
+				skipped++
+				continue
+			}
+			resolved = strings.TrimSuffix(real, "/") + "/"
+			skipped++
+		}
+	}
+	return filepath.Clean(resolved), true
+}
+
+// pathSegments splits an absolute path into its components using the
+// platform's actual separators only (SPEC-HOOK-BACKSLASH-SYMLINK-001
+// REQ-HBS-001): on Windows `\` and `/` are interchangeable separators, so
+// both split; everywhere else `/` alone separates and every `\` in a
+// component is an ordinary filename character that must survive the split
+// verbatim — converting it would validate a FICTIONAL path (a POSIX
+// component literally named `innocent\dir` and symlinked outside the project
+// used to be split into a non-existent `innocent`, letting the boundary
+// check pass while the Write landed outside, CWE-61). The platform choice is
+// an argument rather than a runtime.GOOS read inside the body so the Windows
+// branch stays unit-testable at the string level on every platform
+// (AC-HBS-005); the single production caller passes runtime.GOOS == "windows".
+func pathSegments(p string, windows bool) []string {
+	if windows {
+		// The explicit ReplaceAll is load-bearing: filepath.ToSlash is a
+		// runtime no-op wherever the host separator is already "/", so it
+		// would leave the Windows branch untested on every CI runner.
+		return strings.Split(strings.ReplaceAll(p, "\\", "/"), "/")
+	}
+	return strings.Split(p, "/")
+}
+
+// pathHasDotDotSegment reports whether p contains a ".." PATH SEGMENT (not a
+// substring like "a..b"), on either separator.
+func pathHasDotDotSegment(p string) bool {
+	for _, seg := range strings.FieldsFunc(p, func(r rune) bool { return r == '/' || r == '\\' }) {
+		if seg == ".." {
+			return true
+		}
+	}
+	return false
+}
+
+// isWindowsVolumePrefix reports whether seg is a drive-letter prefix ("C:"),
+// which seeds the walk prefix on Windows the way "/" seeds it on POSIX.
+func isWindowsVolumePrefix(seg string) bool {
+	return len(seg) == 2 && seg[1] == ':' &&
+		((seg[0] >= 'a' && seg[0] <= 'z') || (seg[0] >= 'A' && seg[0] <= 'Z'))
+}
+
+// absoluteUncleaned makes filePath absolute WITHOUT lexical cleaning.
+// filepath.Abs and Join both Clean, and Clean deletes "linked/.." against
+// the lexical parent — destroying the segment a physical walk must resolve
+// through the symlink. The concatenated form is what the shell itself would
+// walk, which is what resolveThroughExistingParent mirrors.
+func absoluteUncleaned(filePath string) (string, error) {
+	if filepath.IsAbs(filePath) {
+		return filePath, nil
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	return cwd + string(os.PathSeparator) + filePath, nil
 }
 
 // checkFileAccess checks file path and content against security patterns.
@@ -1399,7 +1531,9 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 		return "", ""
 	}
 
-	// Resolve path to prevent path traversal attacks
+	// Resolve path to prevent path traversal attacks. resolvedPath keeps the
+	// Abs-cleaned form as the fallback; the physical walk below replaces it
+	// when it can vouch for the path.
 	resolvedPath, err := filepath.Abs(filePath)
 	if err != nil {
 		return DecisionDeny, "Invalid file path: cannot resolve"
@@ -1410,15 +1544,15 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 	// symlink (e.g. notes.txt -> ~/.ssh/id_rsa) passes the lexical boundary
 	// check and matches no deny pattern on its unresolved form, but the Write
 	// tool then follows the link and overwrites the real secret (CWE-61).
-	// EvalSymlinks resolves the real target so both downstream checks see the
-	// actual destination. This mirrors the file_changed.go resolve-recheck
-	// pattern (SPEC-SEC-HARDEN-004 / REQ-SEC4-004).
+	// Resolving the real target lets both downstream checks see the actual
+	// destination. This mirrors the file_changed.go resolve-recheck pattern
+	// (SPEC-SEC-HARDEN-004 / REQ-SEC4-004).
 	//
 	// Unlike file_changed.go (which fails-closed on EvalSymlinks error), this
 	// is the CRITICAL path: a Write to a not-yet-existing path (new file) MUST
-	// still succeed. When EvalSymlinks returns an error (not-exist for a
-	// new-file Write, or otherwise unresolvable), fall back to the unresolved
-	// path and do NOT deny (NFR-SEC-003 behavior preservation, AC-SEC-007c).
+	// still succeed. When nothing can be resolved, fall back to the
+	// Abs-cleaned path and do NOT deny (NFR-SEC-003 behavior preservation,
+	// AC-SEC-007c).
 	//
 	// Falling back to the FULL unresolved path, however, loses the boundary
 	// check for a new file whose PARENT escapes: with `linked -> /outside`, the
@@ -1426,16 +1560,22 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 	// lexical check sees the in-project relative form `linked/new.txt` and
 	// allows a Write that lands outside the project (CWE-61 on the parent
 	// rather than on the leaf). resolveThroughExistingParent narrows the
-	// fallback: it resolves the nearest EXISTING ancestor and rejoins the
+	// fallback: it resolves every existing component and rejoins the
 	// not-yet-existing remainder, so the escape is visible while a plain new
 	// file still resolves to an in-project path.
+	//
+	// The walk input is made absolute by CONCATENATION, never by Abs/Join:
+	// both Clean "linked/../x" against the LEXICAL parent, deleting the exact
+	// segment the walk must resolve through the symlink, so an escape via
+	// `<symlink-to-outside>/../leaf` read as an in-project path (card t1530).
+	// The walk pops ".." against the RESOLVED prefix, as the shell does —
+	// the same physical-walk fix t1510 applied to zoneResolve.
 	resolvedSymlink := false
-	if realPath, evalErr := filepath.EvalSymlinks(resolvedPath); evalErr == nil {
-		resolvedPath = realPath
-		resolvedSymlink = true
-	} else if realPath, ok := resolveThroughExistingParent(resolvedPath); ok {
-		resolvedPath = realPath
-		resolvedSymlink = true
+	if walkPath, walkErr := absoluteUncleaned(filePath); walkErr == nil {
+		if realPath, ok := resolveThroughExistingParent(walkPath); ok {
+			resolvedPath = realPath
+			resolvedSymlink = true
+		}
 	}
 
 	// Check if path is within project directory

@@ -540,6 +540,19 @@ const (
 	DefaultMemoryFoldOnDone       = false
 	DefaultMemoryFoldOnDoneBound  = 2 * time.Second
 
+	// DefaultMemoryBudgetJoinBound caps how long the SessionStart hook waits
+	// for the MEMORY.md budget read before giving up on the advisory for that
+	// session (SPEC-MEMORY-FOLD-BUDGET-001 follow-up card, REQ-MFB-011 — a
+	// join bound is a configuration constant per spec C-3). The bounded work
+	// is one small-file read that normally finishes in well under a
+	// millisecond; the bound exists for the pathological store that blocks on
+	// read. The value is its own, not a reuse of DefaultHookAsyncJoinTimeout
+	// or the hook package's binaryLagJoinBound, because the join-bound half
+	// of audit finding D23 requires the constant to carry its own value and a
+	// ceiling strictly below the 5s per-event hook timeout policy
+	// (internal/hook/CLAUDE.md); the test asserts both by name.
+	DefaultMemoryBudgetJoinBound = 250 * time.Millisecond
+
 	// DefaultFeedbackRepository is the default target repository for the /moai
 	// feedback workflow (SPEC-INVOCATION-MODEL-001). Feedback targets the remote
 	// MoAI-ADK tool repository (bug reports about the tool itself), NOT the user's

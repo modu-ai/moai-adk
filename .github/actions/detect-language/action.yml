@@ -1,9 +1,12 @@
 name: 'Detect Programming Language'
-description: 'Detects the primary programming language from repository files'
+description: 'Detects the primary programming language from project manifests and repository files'
 outputs:
   language:
-    description: 'Detected language (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift)'
+    description: 'Primary language — the first manifest-declared language when a manifest exists, else the language with the most source files; unknown when nothing matches (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift)'
     value: ${{ steps.detect.outputs.language }}
+  languages:
+    description: 'All detected languages, comma-separated (manifest hits first, then file-scan hits by match count); empty when nothing matches'
+    value: ${{ steps.detect.outputs.languages }}
 
 runs:
   using: 'composite'
@@ -11,41 +14,146 @@ runs:
     - id: detect
       shell: bash
       run: |
-        # Detect the first source file in the repo and map its extension to a
-        # canonical language name. `find -print -quit` returns after the first
-        # match (single process, no pipe), so there is no downstream consumer
-        # to close stdin early on — this avoids the broken-pipe failure that
-        # `head -1` or `awk 'NR==1{print;exit}'` would produce under
-        # `set -o pipefail`.
-        LANG_FILE=$(find . \( \
-            -name "*.go" -o -name "*.py" -o -name "*.ts" -o -name "*.js" \
-            -o -name "*.rs" -o -name "*.java" -o -name "*.kt" -o -name "*.cs" \
-            -o -name "*.rb" -o -name "*.php" -o -name "*.ex" -o -name "*.exs" -o -name "*.cpp" \
-            -o -name "*.scala" -o -name "*.r" -o -name "*.dart" -o -name "*.swift" \
-          \) \
-          -not -path './node_modules/*' \
-          -not -path './vendor/*' \
-          -not -path './.git/*' \
-          -print -quit 2>/dev/null)
-        LANG_EXT="${LANG_FILE##*.}"
+        # Detect the repository's programming language(s) in two passes.
+        #
+        # Pass 1 — project manifests (go.mod, mix.exs, Cargo.toml, ...). A
+        # manifest declares the project's own intent, so it is stronger
+        # evidence than any single source file and wins the primary-language
+        # pick. All root-level manifest hits are recorded: a repository can
+        # legitimately carry several (e.g. go.mod next to package.json), and
+        # for those the primary is the first hit in the check order below —
+        # which is alphabetical by language name except that a tsconfig.json
+        # makes the package a TypeScript project and suppresses the
+        # package.json -> javascript hit (it then describes tooling, not a
+        # second source language). Shared Gradle manifests use Java/Kotlin
+        # source counts to resolve their language. The source scan is
+        # computed first for this purpose. The manifest check order is a
+        # deterministic tie-break, not a
+        # capability ranking — all languages are supported equally.
+        # Pass 2 — source files. Every matching file is enumerated (no
+        # -print -quit), so a mixed repository reports every language it
+        # contains instead of whichever file the filesystem happened to
+        # return first, and the no-manifest primary pick is decided by match
+        # count rather than by traversal order.
+        #
+        # No command downstream of a producer exits early (no `head`, no
+        # `awk 'NR==1{exit}'`, no `grep -q`): the runner shell runs with
+        # pipefail, and an early-exiting consumer kills its producer with
+        # SIGPIPE (exit 141) once the producer outgrows the pipe buffer — a
+        # passing check would then report failure.
 
-        case "$LANG_EXT" in
-          go) echo "language=go" >> $GITHUB_OUTPUT ;;
-          py) echo "language=python" >> $GITHUB_OUTPUT ;;
-          ts) echo "language=typescript" >> $GITHUB_OUTPUT ;;
-          js) echo "language=javascript" >> $GITHUB_OUTPUT ;;
-          rs) echo "language=rust" >> $GITHUB_OUTPUT ;;
-          java) echo "language=java" >> $GITHUB_OUTPUT ;;
-          kt) echo "language=kotlin" >> $GITHUB_OUTPUT ;;
-          cs) echo "language=csharp" >> $GITHUB_OUTPUT ;;
-          rb) echo "language=ruby" >> $GITHUB_OUTPUT ;;
-          php) echo "language=php" >> $GITHUB_OUTPUT ;;
-          ex) echo "language=elixir" >> $GITHUB_OUTPUT ;;
-          cpp) echo "language=cpp" >> $GITHUB_OUTPUT ;;
-          scala) echo "language=scala" >> $GITHUB_OUTPUT ;;
-          r) echo "language=r" >> $GITHUB_OUTPUT ;;
-          dart) echo "language=flutter" >> $GITHUB_OUTPUT ;;
-          flutter) echo "language=flutter" >> $GITHUB_OUTPUT ;;
-          swift) echo "language=swift" >> $GITHUB_OUTPUT ;;
-          *) echo "language=unknown" >> $GITHUB_OUTPUT ;;
-        esac
+        LANGS=''            # ordered unique languages, comma-separated
+        MANIFEST_PRIMARY='' # first manifest-declared language, '' if none
+
+        # add_lang appends a language to LANGS unless already present.
+        add_lang() {
+          case ",$LANGS," in
+            *",$1,"*) ;;
+            *) LANGS="$LANGS${LANGS:+,}$1" ;;
+          esac
+        }
+
+        # manifest records a root-level manifest hit: <language> <file>.
+        manifest() {
+          if [ -f "$2" ]; then
+            add_lang "$1"
+            MANIFEST_PRIMARY="${MANIFEST_PRIMARY:-$1}"
+          fi
+        }
+
+        # lang_of echoes the canonical language for a file's extension, and
+        # nothing for an unknown one. It is a function — not an inline case
+        # inside the command substitution below — because macOS runners ship
+        # bash 3.2, whose parser rejects a case statement inside $( ).
+        lang_of() {
+          case "${1##*.}" in
+            go) echo go ;;
+            py) echo python ;;
+            ts) echo typescript ;;
+            js) echo javascript ;;
+            rs) echo rust ;;
+            java) echo java ;;
+            kt) echo kotlin ;;
+            cs) echo csharp ;;
+            rb) echo ruby ;;
+            php) echo php ;;
+            ex|exs) echo elixir ;;
+            cpp) echo cpp ;;
+            scala) echo scala ;;
+            r) echo r ;;
+            dart) echo flutter ;;
+            swift) echo swift ;;
+          esac
+        }
+
+        # File scan: map every source file's extension to its language and
+        # count matches per language. The pipeline's consumers all read to
+        # EOF (sort/uniq), and `|| true` tolerates a find error on an
+        # unreadable directory the same way the previous version's
+        # `2>/dev/null` did.
+        SCAN_REPORT=$(find . \( -name node_modules -o -name vendor -o -name .git \) -prune -o \( \
+            -name '*.go' -o -name '*.py' -o -name '*.ts' -o -name '*.js' \
+            -o -name '*.rs' -o -name '*.java' -o -name '*.kt' -o -name '*.cs' \
+            -o -name '*.rb' -o -name '*.php' -o -name '*.ex' -o -name '*.exs' -o -name '*.cpp' \
+            -o -name '*.scala' -o -name '*.r' -o -name '*.dart' -o -name '*.swift' \
+          \) -print 2>/dev/null | while read -r f; do
+            lang_of "$f"
+          done | LC_ALL=C sort | LC_ALL=C uniq -c | LC_ALL=C sort -k1,1rn -k2,2 || true)
+
+        manifest cpp CMakeLists.txt
+        for f in *.csproj *.sln; do
+          [ -f "$f" ] || continue
+          add_lang csharp
+          MANIFEST_PRIMARY="${MANIFEST_PRIMARY:-csharp}"
+          break
+        done
+        manifest elixir mix.exs
+        manifest flutter pubspec.yaml
+        manifest go go.mod
+        manifest java pom.xml
+        # Groovy Gradle manifests are shared by Java and Kotlin. Reuse the pruned,
+        # count-ordered source scan to resolve them, with Java as the
+        # source-less fallback; the build-script DSL is not the language.
+        if [ -f build.gradle ]; then
+          GRADLE_LANGUAGE=$(printf '%s\n' "$SCAN_REPORT" | awk '
+            ($2 == "java" || $2 == "kotlin") && lang == "" { lang = $2 }
+            END { print (lang == "" ? "java" : lang) }')
+          add_lang "$GRADLE_LANGUAGE"
+          MANIFEST_PRIMARY="${MANIFEST_PRIMARY:-$GRADLE_LANGUAGE}"
+        fi
+        if [ -f tsconfig.json ]; then
+          manifest typescript tsconfig.json
+        else
+          manifest javascript package.json
+        fi
+        manifest php composer.json
+        manifest python pyproject.toml
+        manifest python setup.py
+        manifest python requirements.txt
+        manifest ruby Gemfile
+        manifest rust Cargo.toml
+        manifest scala build.sbt
+        manifest swift Package.swift
+
+        # Merge scan hits into LANGS in count order (most files first, ties
+        # by name), keeping manifest hits ahead of scan-only hits.
+        SCAN_PRIMARY=''
+        while read -r _count lang; do
+          [ -n "$lang" ] || continue
+          add_lang "$lang"
+          SCAN_PRIMARY="${SCAN_PRIMARY:-$lang}"
+        done <<< "$SCAN_REPORT"
+
+        if [ -n "$MANIFEST_PRIMARY" ]; then
+          DETECTED="$MANIFEST_PRIMARY"
+        elif [ -n "$SCAN_PRIMARY" ]; then
+          DETECTED="$SCAN_PRIMARY"
+        else
+          DETECTED='unknown'
+        fi
+
+        GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}"
+        {
+          echo "language=$DETECTED"
+          echo "languages=$LANGS"
+        } >> "$GITHUB_OUTPUT"

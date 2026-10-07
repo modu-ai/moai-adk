@@ -248,6 +248,8 @@ func factorySerialSlotFree(state string) bool {
 		homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone, homestate.CardFailed,
 		homestate.CardAbandoned:
 		return true
+	case homestate.CardPROpen, homestate.CardMergedPR: // github-flow delivery: the PR edge ended the lane's work on the card
+		return true
 	default:
 		return false
 	}
@@ -280,11 +282,13 @@ func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
 // against DISTINCT cards (REQ-TCD-008). The unnominated arms and the nominated
 // lease read the slot through this one function.
 //
-// ignoreAssigned is arm (a)'s read (operator ruling 2026-10-03, card t1407): a
-// lane leasing the card assigned TO ITSELF does not count sibling cards that
-// are merely `assigned`, which would otherwise wedge every leader-assigned
-// serial card against the others with nothing in flight. Every path that takes
-// a NEW card, the nominated lease included, passes false.
+// ignoreAssigned is arm (a)'s read (operator ruling 2026-10-03, card t1407):
+// a lane leasing the card assigned TO ITSELF does not count sibling cards
+// that are merely `assigned`, which would otherwise wedge every
+// leader-assigned serial card against the others with nothing in flight. The
+// unnominated arm and — since card t1542 — the nominated lease of the lane's
+// own assigned card pass true; every path that takes a NEW card passes
+// false.
 //
 // A `picked` row carrying a bundle identity is excluded the same way (card
 // t1454 card-review r2 P1-2): it is a chain member waiting on its head, not
@@ -714,7 +718,8 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	mergedLocal := make(map[string]bool, len(allRuns))
 	for _, c := range allRuns {
 		switch c.State {
-		case homestate.CardMergedLocal, homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone:
+		case homestate.CardMergedLocal, homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone,
+			homestate.CardMergedPR: // github-flow's terminal delivery state — a merged PR frees its successor
 			mergedLocal[c.CardID] = true
 		}
 	}
@@ -1170,7 +1175,15 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 		}
 	}
 	classOf := func(id string) factory.CardClassification { return factoryQueueClassification(queueRec, id) }
-	nom.serialHeld = classOf(cardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(cards, classOf, cardID, now, false)
+	// Arm (a) through the nominated door (card t1542): a lane nominating the
+	// card assigned TO ITSELF takes the same read the unnominated arm takes —
+	// sibling rows that are merely `assigned` hold nothing against it, or the
+	// leader's own batch pre-assignment would wedge every assigned card out
+	// of its lane (measured 2026-10-07: nine assigned rows in run tmhxo0
+	// refused the one lease a lane was dispatched to run). A nomination of a
+	// card NOT assigned to this lane is a NEW card and still passes false.
+	assignedHere := nom.row != nil && nom.row.State == homestate.CardAssigned && nom.row.OwnerLabel == lane
+	nom.serialHeld = classOf(cardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(cards, classOf, cardID, now, assignedHere)
 	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld); r != nil {
 		return nom, r, nil
 	}
@@ -1212,7 +1225,6 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 	}
 	// The quota hold leaves only a card already assigned to this lane leasable
 	// (arm (a) is not a new lease).
-	assignedHere := nom.row != nil && nom.row.State == homestate.CardAssigned && nom.row.OwnerLabel == lane
 	if quotaHold != "" && !assignedHere {
 		return nom, factoryRefusal(factoryRefuseQuotaHold, "%s", quotaHold), nil
 	}
@@ -1426,6 +1438,8 @@ func cardStageAtOrAfterMergeReady(s string) bool {
 	switch s {
 	case homestate.CardMergeReady, homestate.CardMerging, homestate.CardMergedLocal,
 		homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone:
+		return true
+	case homestate.CardPROpen, homestate.CardMergedPR: // github-flow delivery states sit past merge-ready
 		return true
 	}
 	return false
@@ -1668,7 +1682,7 @@ func newFactoryCompleteCommand() *cobra.Command {
 	var run string
 	cmd := &cobra.Command{
 		Use:   "complete <card> [remeasure]",
-		Short: "Take a merge-ready card through merging to merged-local (lane session)",
+		Short: "Take a merge-ready card through merging to merged-local; under github-flow, to pr-open then merged-pr (lane session)",
 		Args:  cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !factoryLaneAdmission() {
@@ -1705,6 +1719,11 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// body, so the CLI verb and the MCP tool refuse identically.
 	if err := factoryRefuseCodexMergeEdge("complete"); err != nil {
 		return err
+	}
+	// github-flow delivers by pull request, takes no integration window and
+	// never merges locally (factory_card_pr.go, REQ-GFD-004/005/006).
+	if factoryGitHubFlow(root) {
+		return factoryCompleteGitHubFlow(ctx, out, root, cardID, remeasure, run, lane)
 	}
 	// The same session identity acquire resolves: a window whose holder is
 	// unresolvable can be neither taken nor re-taken, so an empty id is a
@@ -1754,7 +1773,11 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// tree, which for a lane is its card worktree — never an integration
 	// branch. The remedy is acquire's --branch.
 	if source == factory.BranchSourceCaller {
-		return fmt.Errorf("factory complete: refused — the integration window's branch %q is the caller's own tree (source %s); re-acquire with --branch <integration-target> (a card's own tree is not its integration branch)", branch, factory.BranchSourceCaller)
+		fix := "re-acquire with --branch <integration-target>"
+		if g := config.LoadGitFlowIntegrationConfig(root).EmptyTargetGuidance(root, fix); g != "" {
+			fix = g
+		}
+		return fmt.Errorf("factory complete: refused — the integration window's branch %q is the caller's own tree (source %s); %s (a card's own tree is not its integration branch)", branch, factory.BranchSourceCaller, fix)
 	}
 	// (2) A card's own branch never serves as its integration branch.
 	cardBranch := factoryBranchOfWorktree(card.WorktreePath)
@@ -1901,12 +1924,13 @@ func factoryPrintClearPolicyLine(out io.Writer, root string) {
 }
 
 // factoryResolveIntegrationBranch mirrors acquire's branch resolution
-// (resolveIntegrationTarget) without its $PWD legs: the configured git-flow
-// develop branch decides; with none configured the caller's own tree decided
-// the window, which complete refuses, so the branch is the caller's — taken
-// from the card worktree, the lane's own tree, never from the process cwd.
+// (resolveIntegrationTarget) without its $PWD legs: the configured integration
+// target decides (git-flow: the develop branch; github-flow: main); with none
+// configured the caller's own tree decided the window, which complete refuses,
+// so the branch is the caller's — taken from the card worktree, the lane's own
+// tree, never from the process cwd.
 func factoryResolveIntegrationBranch(root string, card homestate.Card) (string, string) {
-	if branch := strings.TrimSpace(config.LoadGitFlowIntegrationConfig(root).DevelopBranch); branch != "" {
+	if branch := strings.TrimSpace(config.LoadGitFlowIntegrationConfig(root).IntegrationTarget); branch != "" {
 		return branch, factory.BranchSourceConfig
 	}
 	return factoryBranchOfWorktree(card.WorktreePath), factory.BranchSourceCaller
@@ -2191,7 +2215,7 @@ func newFactoryAssignCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&to, "to", "", "assign the card to this lane label (picked → assigned)")
 	cmd.Flags().StringVar(&prefer, "prefer", "", "assignment preference hint, key=value (reported, never enforced)")
-	cmd.Flags().StringVar(&after, "after", "", "predecessor card that must reach merged-local first (\"\" clears)")
+	cmd.Flags().StringVar(&after, "after", "", "predecessor card that must reach merged-local (git-flow) or merged-pr (github-flow) first (\"\" clears)")
 	cmd.Flags().StringVar(&spec, "spec", "", "SPEC identifier for the card")
 	cmd.Flags().StringVar(&worktree, "worktree", "", "card worktree path")
 	cmd.Flags().StringVar(&contractRef, "contract-ref", "", "contract pointer <spec-id>,<sha256>,<signed-at>[,<event>]")
@@ -2472,6 +2496,8 @@ func decideOne(ctx context.Context, db *homestate.FactoryDB, runID, cardID, gate
 		if choice == "reject" {
 			to = homestate.CardBlocked
 		}
+	case gate == "push" && cur.State == homestate.CardMergedPR:
+		to = homestate.CardDone // github-flow: the merge is already on the remote — the gate closes the card, nothing is pushed
 	case gate == "push":
 		if err := want(homestate.CardMergedLocal); err != nil {
 			return cur, err

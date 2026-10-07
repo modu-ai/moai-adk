@@ -9,9 +9,8 @@ package cli
 //
 // The decided predicate (decision-index Q1) is fetch-less remote-tracking
 // reachability: the branch tip is an ancestor of refs/remotes/origin/develop,
-// OR `git cherry refs/remotes/origin/develop <branch>` is empty (patch-id
-// equivalence — covers squash merges, the SPEC-WORKTREE-SQUASH-MERGE-001
-// lesson). A stale remote-tracking ref can only misjudge toward "not landed"
+// OR its cumulative verbatim patch matches a commit on the configured ref
+// (covers squash merges, the SPEC-WORKTREE-SQUASH-MERGE-001 lesson). A stale remote-tracking ref can only misjudge toward "not landed"
 // → preserve (fail-open, the safe direction).
 //
 // These tests drive the REAL cleanup function against REAL temporary git
@@ -69,6 +68,18 @@ func realLandingRepo(t *testing.T, withDevelop bool) (repoDir, wtPath string) {
 	if withDevelop {
 		git("-C", repoDir, "branch", "-q", "develop", "main")
 		git("-C", repoDir, "push", "-q", "origin", "develop")
+	}
+
+	// The landing predicate reads the CONFIGURED integration target (card
+	// t1453 M2-A; before it, a literal origin/develop): seed the git-flow
+	// configuration these cells exercise, untracked like the M1 fixtures.
+	cfgDir := filepath.Join(repoDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatalf("mkdir config: %v", err)
+	}
+	gitFlowYAML := "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n        develop_branch: develop\n"
+	if err := os.WriteFile(filepath.Join(cfgDir, "git-strategy.yaml"), []byte(gitFlowYAML), 0o644); err != nil {
+		t.Fatalf("write git-strategy.yaml: %v", err)
 	}
 
 	wtPath = filepath.Join(tmp, "wt")
@@ -135,10 +146,10 @@ func TestCleanupSessionWorktree_MergedIntoDevelopRemoved(t *testing.T) {
 	}
 }
 
-// TestCleanupSessionWorktree_SquashMergedPatchIdRemoved pins the git-cherry
+// TestCleanupSessionWorktree_SquashMergedPatchIdRemoved pins the cumulative-patch
 // arm of the decided predicate: a SQUASH merge leaves no commit ancestry
 // (the branch tip is NOT an ancestor of origin/develop), but the patches are
-// upstream — `git cherry` answers empty and the disposal proceeds.
+// upstream — the verbatim cumulative patch matches and disposal proceeds.
 // SPEC-WORKTREE-SQUASH-MERGE-001: reachability alone cannot see a squash.
 func TestCleanupSessionWorktree_SquashMergedPatchIdRemoved(t *testing.T) {
 	repoDir, wtPath := realLandingRepo(t, true)
