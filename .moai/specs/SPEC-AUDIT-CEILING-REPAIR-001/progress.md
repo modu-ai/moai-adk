@@ -469,6 +469,36 @@ there). Regression test `TestAppendProgressRecordPreservesHardlink`
 (`internal/runtime/audit_ceiling_replace_test.go`, darwin||linux): both
 paths show the record, `os.SameFile` holds.
 
+### Consolidated repair (sync-audit-5 + gate rounds 36-38) — six items, one pass
+
+**Item 1 — F9 (High, linux default-ACL inheritance)**: the linux seeder
+copied the original's xattrs but never REMOVED the temp's INHERITED
+default ACL — an original with only the minimal ACL (mode bits, which
+listxattr does not enumerate) replaced inside a permissive-default-ACL
+directory came out WIDER than the original (auditor/codex probe: UID 65534
+denied before, allowed after). Fix: the linux seeder ALWAYS writes the
+original's effective access ACL — the copied extended ACL when
+system.posix_acl_access exists, otherwise `setMinimalAcl` constructing the
+minimal 3-entry ACL (user_obj/group_obj/other from the mode, kernel binary
+form, little-endian, ACL_UNDEFINED_ID ids) via Setxattr, which REPLACES
+the inherited value. Regression test
+`TestAppendProgressRecordOverwritesInheritedDefaultAcl`
+(`progress_metadata_linux_test.go`, //go:build linux): default-ACL
+directory fixture (default blob granting other rw via Setxattr), original
+mode 0640 with no extended ACL → the replaced file's access ACL is the
+28-byte minimal blob with other-perm 0. **CI-linux-owned: this test
+cannot execute on the darwin lane; GOOS=linux go vet compiles it clean,
+and the decisive red/green run belongs to CI linux.**
+
+**Item 6 — metadata contract sentence (leader+auditor aligned)**: "the
+temp file must carry ONLY the original's metadata" — one mechanism, not
+axis-by-axis. This pass closes the F2→F6→F8→F9 axis-hunting sequence: the
+F8 abort posture, the F6 darwin cp -p exception (leader ruling i), and
+the F9 full-overwrite seeding are one contract; the seeder is its single
+mechanism. Noted for SPEC wording — the lane routes SPEC-text changes
+through manager-spec if the auditor requires more than this progress
+note.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07
