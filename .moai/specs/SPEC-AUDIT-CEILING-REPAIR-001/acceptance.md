@@ -197,6 +197,11 @@ artifact-only).
     codex-measured green via the `conventionUnnumbered` path); a bare
     `plan-audit.md` alone counts 1 and remains the selected `LatestPath`
     evidence.
+  - (f) explicit-0 parity (preserve arm) — `plan-audit.md` +
+    `plan-audit-0.md` stays count 2 with the base as `LatestPath` (today's
+    behavior: the explicit 0-numbered file keeps its own `seen[0]` identity;
+    a naive base≡round-0 merge would drop the count to 1 and flip
+    `LatestPath` — codex-measured regression target).
   - **Semantics note (one line, leader-carried, non-blocking auditor
     note): round-counting semantics change — the base report becomes round
     0 (own counted round, earliest order, eligible as previous-round
@@ -207,11 +212,26 @@ artifact-only).
     `TestPreviousAuditedSHABaseRoundBaseline`
     (`audit_counter_review_test.go`).
 
+- **AC-ACR-015 (delta-gate widening, RED, release-blocking)** — Given a
+  git-initialized temp project (pattern of `TestDeltaGitHelpers`) whose
+  `spec.md` is byte-identical at both audited SHAs while `acceptance.md`
+  renames an AC id (AC-R-001 → AC-R-002) between them, When
+  `reqACSetsUnchanged` runs, Then it returns false — the delta is refused
+  (fail-closed widening: a mismatch in either definition file blocks the
+  delta, never admits it). RED: `go test -run
+  '^TestReqACSetsUnchangedReadsAcceptance$' ./internal/runtime/` fails on
+  `903ccd028` returning true — the comparison reads only `spec.md`
+  (`audit_ceiling.go:415-423`, the `specRel` line at `:416`), so an
+  acceptance-only AC rename admits a delta despite AC-set drift
+  (gate-reproduced). **RED is a new test (E8 evidence required).** Green at
+  M2. Test: `TestReqACSetsUnchangedReadsAcceptance`
+  (`audit_ceiling_test.go`, beside `TestDeltaGitHelpers`).
+
 ## §D.1 Severity classification
 
 | AC | Severity | Rationale |
 |---|---|---|
-| AC-ACR-001, 004, 005, 013, 014 | Release-blocking (RB) | RED-first defect proofs — each declared "RED is a new test (E8 evidence required)", observed at M1 |
+| AC-ACR-001, 004, 005, 013, 014, 015 | Release-blocking (RB) | RED-first defect proofs — each declared "RED is a new test (E8 evidence required)", observed at M1 |
 | AC-ACR-012 | Release-blocking (RB, no-RED) | No-regression gate: evidence is the full-family green run (`-race -count=1`), never a RED cell |
 | AC-ACR-002, 006, 007, 008, 009 | Normal | Contract completion arms of the fixes |
 | AC-ACR-003 | Regression-guard (RG) | Preserve-behavior check — passes on unmodified main and must keep passing |
@@ -230,6 +250,7 @@ artifact-only).
 | REQ-ACR-007 | AC-ACR-009 |
 | REQ-ACR-008 | AC-ACR-013 |
 | REQ-ACR-009 | AC-ACR-014 |
+| REQ-ACR-010 | AC-ACR-015 |
 
 Non-REQ criteria (deliberate, repair-SPEC bookkeeping — stated per
 plan-audit-1 D7): AC-ACR-010 and AC-ACR-011 are process gates (dispatch
@@ -257,6 +278,10 @@ repair's constraint layer, not to a single REQ.
 12. Overflow iteration file (`-iter999…9`) never becomes `LatestPath` — the
     fail-counted path skips the best-N update, mirroring the existing
     unnumbered-file handling (AC-ACR-014 arm).
+13. Explicit-0 parity: base + `plan-audit-0.md` — two distinct rounds,
+    `LatestPath` = base (AC-ACR-014 arm f).
+14. Acceptance-only AC rename between audited SHAs — blocks the delta
+    (fail-closed; AC-ACR-015).
 
 ## §D.4 Indirect verification
 
@@ -268,7 +293,8 @@ repair's constraint layer, not to a single REQ.
 
 ## §D.5 Quality gates (TRUST 5)
 
-- **Tested**: AC-ACR-012 suite green; the five RED-first evidences recorded.
+- **Tested**: AC-ACR-012 suite green; the six RB criteria's RED evidences
+  recorded (seven repro tests).
 - **Readable**: new tests follow the existing fixture/comment style of their
   host files (`newCeilingFixture`, `writeAuditFixture`, the F-series comment
   convention of `audit_counter_review_test.go`).
@@ -280,7 +306,7 @@ repair's constraint layer, not to a single REQ.
 
 ## §D.6 Closure gates (Definition of Done)
 
-1. All ACs green with §E.2 evidence; the five RED cells observed and recorded.
+1. All ACs green with §E.2 evidence; the six RED cells observed and recorded.
 2. Consistency notes (AC-ACR-010/011) recorded in progress.md.
 3. Affected-package measurement green (`go test -timeout 30m
    ./internal/runtime/...`); vet + lint clean.

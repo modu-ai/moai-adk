@@ -130,3 +130,19 @@ parity folded into REQ-ACR-009 / AC-ACR-014 (same IDs, cells extended — base
 + numbered → 2, one normal + N unparseable → 1+N, bare base alone
 unchanged); no new IDs; the R1 stale-count sweep executed in the same pass
 (recorded by manager-spec per the leader's instruction)
+
+### Q7: Does the card proceed to a fifth audit round, and on what closure rule?
+
+Label: FOUNDER
+Class: implementation-level (process scope of the card's closure — no shipped
+behavior change)
+Authority anchor: none in the committed register — the settling act is the
+operator's approval relayed by the leader, 2026-10-07 (per the Q4-Q6
+convention)
+Why unresolved at authoring: iteration 3/3 reached the ceiling (final hit);
+whether a fifth round runs, and what happens if it fails again, is a
+ceiling-policy disposition no committed rule settles for this card
+Operator verdict: ADOPTED — operator approval 2026-10-07: a fifth delta
+round is authorized; a fifth FAIL closes the card with a recorded debt
+unconditionally (no further repair rounds after it; the debt inventory is
+recorded per the ceiling policy's final-hit record)

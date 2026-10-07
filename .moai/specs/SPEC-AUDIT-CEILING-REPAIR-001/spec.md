@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUDIT-CEILING-REPAIR-001
 title: "Audit-ceiling engine defect repair — legacy-family latest-verdict resolution and debt-inventory persistence"
-version: "0.3.2"
+version: "0.3.3"
 status: draft
 created: 2026-10-07
 updated: 2026-10-07
@@ -167,36 +167,51 @@ round; the numeric-but-overflowing suffix is the one spelling that collapses.
   — round 0, preceding every numbered round — and it participates in the
   previous-round baseline selection: a numbered latest resolves the base as
   its previous audited round when no numbered round orders between them
-  (today the scan returns no baseline for that stream). Parsed-number dedupe
-  (within and across families) is unchanged. Semantics note (leader-carried, one line):
+  (today the scan returns no baseline for that stream). An explicitly
+  0-numbered convention file (`plan-audit-0.md` shape, parsed 0) keeps its
+  own round identity and never merges with the bare base report — the base
+  never acquires a dedupe number. Parsed-number dedupe (within and across
+  families) is unchanged. Semantics note (leader-carried, one line):
   round-counting semantics change — unparseable iteration numbers and base
   reports count as their own rounds rather than collapsing via the n=1
   default.
 
+- **REQ-ACR-010** (When the delta-eligibility check compares the REQ/AC
+  identifier sets between the two audited SHAs, the engine shall derive both
+  sets from BOTH plan definition files — the SPEC's `spec.md` AND its
+  `acceptance.md`): An identifier change confined to `acceptance.md` (an AC
+  rename, an AC id added or removed) blocks the delta exactly as a
+  `spec.md` change does — the widening is fail-closed: a mismatch in either
+  file's set refuses the delta round, never admits it.
+
 ## §C Success Criteria
 
-Acceptance criteria live in `acceptance.md` (AC-ACR-001 … AC-ACR-014, Tier
-M). The release-blocking RED-first criteria — AC-ACR-001 (D1), AC-ACR-004
-(D1 end-to-end), AC-ACR-005 (D2), AC-ACR-013 (D3), AC-ACR-014 (D4) — each
-carry the family-convention declaration **"RED is a new test (E8 evidence
-required)"** (SPEC-AUDIT-CEILING-001 acceptance.md §A:11-18): the repro
-tests are M1 deliverables authored against the still-pristine `903ccd028`
-code, and each RED (verbatim stdout + exit code) is recorded in
-`progress.md` §E.2 at M1. AC-ACR-003 is a preserve-behavior check (passes on
-unmodified main and must keep passing) — deliberately not a RED observation.
+Acceptance criteria live in `acceptance.md` (AC-ACR-001 … AC-ACR-015, Tier
+M). The six release-blocking RED-first criteria — AC-ACR-001 (D1), AC-ACR-004
+(D1 end-to-end), AC-ACR-005 (D2), AC-ACR-013 (D3), AC-ACR-014 (D4), and
+AC-ACR-015 (delta-gate widening) — each carry the family-convention
+declaration **"RED is a new test (E8 evidence required)"**
+(SPEC-AUDIT-CEILING-001 acceptance.md §A:11-18): the seven repro tests are
+M1 deliverables authored against the still-pristine `903ccd028` code, and
+each RED (verbatim stdout + exit code) is recorded in `progress.md` §E.2 at
+M1. AC-ACR-003 is a preserve-behavior check (passes on unmodified main and
+must keep passing) — deliberately not a RED observation.
 
 ## §D Non-Functional Constraints and Security
 
 - **Scope discipline**: the defect sites across the two engine files only
-  (`audit_ceiling.go` D1-D3, `audit_counter.go` D4) and their tests. No
-  engine refactor, no renaming, no drive-by cleanup of adjacent code.
+  (`audit_ceiling.go`: D1-D3 and the REQ-ACR-010 delta-gate widening;
+  `audit_counter.go`: D4) and their tests. No engine refactor, no renaming,
+  no drive-by cleanup of adjacent code.
 - **C5 posture inherited**: admission thresholds, the admission predicate
   (`internal/auditverdict`), and the outcome ladder's rung order keep their
   meaning; this SPEC changes no admission decision — it changes what the
   previous-round baseline resolves from, what the record carries, and — for
   base-report and overflow-suffix-containing evidence streams — the round
   count itself (the D4 semantics change alters ceiling timing on those
-  streams; that is the undercount fix's own purpose).
+  streams; that is the undercount fix's own purpose); it also widens the
+  delta gate's set-comparison inputs fail-closed to both definition files
+  (REQ-ACR-010).
 - **Security lens (card lens: --security --deep)**: evidence file names are
   untrusted input — the legacy parse stays anchored
   (`^<QuoteMeta(SpecID)>-review-([0-9]+)\.md$`, full-line anchors, digits
@@ -253,6 +268,19 @@ scope for card t1560 and must ride its own card or SPEC.
 
 ## HISTORY
 
+- v0.3.3 (2026-10-07): final operator-approved delta (a fifth FAIL closes
+  the card with a recorded debt unconditionally — decision-index Q7).
+  C1: explicit-0 parity pinned — an explicitly 0-numbered convention file
+  (`plan-audit-0.md`, parsed 0) keeps its own dedupe identity and never
+  merges with the bare base report (REQ-ACR-009 sentence; plan §D.8 edge
+  row; AC-ACR-014 preserve arm — base+iter0 stays count 2, LatestPath=base).
+  C2: M1 carries the previously-missing
+  `TestPreviousAuditedSHABaseRoundBaseline` entry; count wordings
+  recomputed (six RB criteria, seven repro tests). C3 (leader-approved
+  fold): new REQ-ACR-010 + AC-ACR-015 — the delta gate's REQ/AC set
+  comparison reads BOTH definition files (spec.md AND acceptance.md),
+  fail-closed (an acceptance-only AC rename no longer admits a delta;
+  gate-reproduced at `audit_ceiling.go:416`).
 - v0.3.2 (2026-10-07): plan-audit-3 blocking repairs (verdict FAIL 0.75,
   iteration 3/3 — ceiling final hit, receipt rcpt-a6fb7c9d03b341c573bf2fb4,
   `.moai/reports/t1560/plan-audit-3.md`), exactly inside its fix_scope. B1:

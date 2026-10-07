@@ -113,8 +113,8 @@ Pre-flight checks (all observed at plan phase):
 
 ## §D Constraints
 
-1. **Reproduction-first (HARD)**: run phase begins with the five reproduction
-   tests (the five RB RED-first criteria's tests), each observed failing on
+1. **Reproduction-first (HARD)**: run phase begins with the seven reproduction
+   tests (covering the six RB RED-first criteria), each observed failing on
    unmodified main `903ccd028` for the stated reason (record verbatim output
    + exit code in progress.md §E.2), then the minimal fix, then green.
 2. **Minimal diff**: no refactor, no renames, no doc-comment sweeps, no
@@ -158,12 +158,19 @@ Pre-flight checks (all observed at plan phase):
    numbered round orders between them — today the scan skips the base
    (`n >= latestN`, `audit_ceiling.go:294`) and returns `""` (codex
    overlay-measured at HEAD: Count=2, previous=`""`). The leader-required
-   one-line semantics note is carried in AC-ACR-014's wording.
+   one-line semantics note is carried in AC-ACR-014's wording. Explicit-0
+   parity (plan-audit-4 C1): an explicitly 0-numbered convention file
+   (`plan-audit-0.md`, parsed 0 via `conventionFile`) keeps its own dedupe
+   identity (`seen[0]`) and never merges with the bare base report — the
+   base always counts in its own bucket, never through a parsed number — so
+   base+iter0 remains two distinct rounds with the base as `LatestPath`,
+   exactly as today (codex-measured regression target of a naive
+   base≡round-0 reassignment).
 
 ## §E Self-Verification (run-phase exit matrix)
 
-- E1 AC matrix — every AC-ACR-001..014 green, with the RED-first evidences
-  (AC-ACR-001/004/005/013/014, each declared "RED is a new test") recorded
+- E1 AC matrix — every AC-ACR-001..015 green, with the RED-first evidences
+  (AC-ACR-001/004/005/013/014/015, each declared "RED is a new test") recorded
   verbatim in §E.2, plus AC-ACR-003's pre-and-post keep-green guard run.
 - E2 Reproduction integrity — each RED evidence shows the test failing on
   unmodified main for the stated reason, then passing after the fix.
@@ -185,31 +192,38 @@ Pre-flight checks (all observed at plan phase):
 
 ## §F Milestones (priority-ordered; no time estimates)
 
-- **M1 (Priority High) — RED: the five RED-first reproduction tests.** Author
-  `TestPreviousAuditedSHALatestLegacyRound` and
+- **M1 (Priority High) — RED: the seven reproduction tests (six RB RED-first
+  criteria).** Author `TestPreviousAuditedSHALatestLegacyRound` and
   `TestEvaluateCeilingLegacyLatestDeltaGranted` (D1),
   `TestPersistOutcomeDebtAdmitCarriesDebtInventory` (D2),
-  `TestAppendProgressRecordConcurrentSurvival` (D3), and
-  `TestCountAuditRoundsOverflowOwnRound` (D4). Observe each failing on
-  unmodified main `903ccd028` for its stated reason (D1: `""` returned
-  because `iterationOf` parses only the convention family / nil not
-  returned at the delta gate; D2: record line carries no debt tokens; D3:
-  concurrent §G appends lose records — the gate measured 24→7 survivors +
-  heading lost; D4: two files count 1, want 2). Each is declared "RED is a
-  new test (E8 evidence required)" in acceptance.md §A — no repro test
-  exists at plan phase by design; record the verbatim RED outputs in
-  progress.md §E.2. Separately, run
-  `TestPreviousAuditedSHAUnparseableLatestStaysEmpty` as a **pre-and-post
+  `TestAppendProgressRecordConcurrentSurvival` (D3),
+  `TestCountAuditRoundsOverflowOwnRound` and
+  `TestPreviousAuditedSHABaseRoundBaseline` (D4), and
+  `TestReqACSetsUnchangedReadsAcceptance` (delta-gate widening). Observe
+  each failing on unmodified main `903ccd028` for its stated reason (D1:
+  `""` returned because `iterationOf` parses only the convention family /
+  nil not returned at the delta gate; D2: record line carries no debt
+  tokens; D3: concurrent §G appends lose records — the gate measured 24→7
+  survivors + heading lost; D4: two files count 1, want 2 / previous=`""`
+  on the base+iter1 stream; delta-gate: acceptance-only AC rename returns
+  true, want false). Each is declared "RED is a new test (E8 evidence
+  required)" in acceptance.md §A — no repro test exists at plan phase by
+  design; record the verbatim RED outputs in progress.md §E.2. Separately,
+  run `TestPreviousAuditedSHAUnparseableLatestStaysEmpty` as a **pre-and-post
   green guard** (AC-ACR-003, preserve-behavior — it passes on unmodified
   main and must keep passing; NOT part of the RED obligation, per
   plan-audit-1 D3).
-- **M2 (Priority High) — D1 + D4 minimal fix + green.** Resolve the latest round
-  number through dual-family parsing (convention OR legacy, same regex shape
-  the prior-round loop uses: `^<QuoteMeta(SpecID)>-review-([0-9]+)\.md$`),
-  keeping `latestN <= 0 → no prior round` for genuinely unparseable names;
-  and route the `audit_counter.go:111` Atoi range error to the existing
-  fail-counted path (own round, never `LatestPath`). Green: AC-ACR-001..004,
-  AC-ACR-014.
+- **M2 (Priority High) — D1 + D4 + delta-gate minimal fix + green.** Resolve
+  the latest round number through dual-family parsing (convention OR legacy,
+  same regex shape the prior-round loop uses:
+  `^<QuoteMeta(SpecID)>-review-([0-9]+)\.md$`), keeping
+  `latestN <= 0 → no prior round` for genuinely unparseable names; make the
+  previous-round scan base-aware per §D.8/§G (base = round 0, explicit-0
+  parity); route the `audit_counter.go:111` Atoi range error to the existing
+  fail-counted path (own round, never `LatestPath`); and derive the delta
+  gate's REQ/AC sets from both definition files (`spec.md` AND
+  `acceptance.md`, fail-closed). Green: AC-ACR-001..004, AC-ACR-014,
+  AC-ACR-015.
 - **M3 (Priority High) — D2 + D3 minimal fix + green (persistence milestone).**
   Extend the two record lines `persistOutcome` writes with the debt inventory
   when non-empty (default encoding: a `debts=` field carrying a JSON array of
@@ -253,7 +267,7 @@ Pre-flight checks (all observed at plan phase):
 
 ## §H Cross-References
 
-- `spec.md` REQ-ACR-001..009 · `acceptance.md` AC-ACR-001..014 ·
+- `spec.md` REQ-ACR-001..010 · `acceptance.md` AC-ACR-001..015 ·
   `decision-index.md` Q1-Q6 · `progress.md` §E
 - fix_scope anchor → repair location (v0.3.0, for the iteration-2 delta
   re-audit; anchors from `.moai/reports/t1560/plan-audit-1.md`):
@@ -303,6 +317,15 @@ Pre-flight checks (all observed at plan phase):
   - B3 (token class) → `spec.md` frontmatter `version: "0.3.2"`,
     `plan.md` §D.1 constraint 1 ("five reproduction tests"), §H header
     Q1-Q6, plus the class-level sweep guard below
+- v0.3.3 (final operator-approved delta, decision-index Q7):
+  - C1 (explicit-0 parity) → `spec.md` REQ-ACR-009 sentence, `plan.md` §D.8
+    edge row, `acceptance.md` AC-ACR-014 preserve arm (f)
+  - C2 (M1 test inventory) → `plan.md` §F M1 (seven tests — the previously
+    missing `TestPreviousAuditedSHABaseRoundBaseline` added), §D.1
+    constraint 1, §D.5/DoD #1 counts, `progress.md` §E.2 placeholder
+  - C3 (delta-gate widening, leader-approved fold) → `spec.md` REQ-ACR-010
+    + §D C5 sentence, `acceptance.md` AC-ACR-015 (RED: acceptance-only AC
+    rename admits a delta today, `audit_ceiling.go:416`), `plan.md` §F M2
 
 **Count/version sweep guard (class-level, plan-audit-3 B3 — mechanical,
 run before the lane commits):** (1) `spec.md` frontmatter `version:` MUST
