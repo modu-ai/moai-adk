@@ -148,11 +148,13 @@ func IssueTitle(p bugreport.Payload) string {
 }
 
 // IssueMarker is the body's opening machine-readable block: the fields
-// REQ-ANON-019 names, no more.
+// REQ-ANON-019 names, no more. A value that itself carries a space — the
+// hook detail's canonical token — is quoted so the marker's field
+// tokenizer keeps it as one value (the marker round-trip, outbox/marker.go).
 func IssueMarker(p bugreport.Payload) string {
 	detail := ""
 	if p.Detail != nil {
-		detail = " detail=" + p.Detail.Token()
+		detail = " detail=" + QuoteMarkerValue(p.Detail.Token())
 	}
 	return fmt.Sprintf("%sschema=%s fingerprint=%s kind=%s version=%s commit=%s os_arch=%s/%s frames=%s%s -->",
 		issueMarkerV1, p.Schema, p.Fingerprint, string(p.Kind), p.Version, p.Commit, p.OS, p.Arch,

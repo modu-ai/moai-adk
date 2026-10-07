@@ -100,6 +100,62 @@ func TestIssueContractRoundTrip(t *testing.T) {
 	}
 }
 
+// hookDetailPayload is a platform-independent payload carrying the
+// multi-field hook detail: the one closed-set field whose canonical token
+// contains a space ("event=<E> handler=<H>").
+func hookDetailPayload() bugreport.Payload {
+	p := fixedPayload()
+	p.Kind = bugreport.KindHookHandlerFailure
+	p.Detail = bugreport.HookDetail{EventID: "PreToolUse", HandlerID: "preToolHandler"}
+	return p
+}
+
+// TestMarkerRoundTripsMultiFieldDetail pins the review-gate finding: the
+// marker's space-separated field format used to split the hook detail's
+// canonical token on its inner space, dropping the handler half into a
+// stray key and leaving a truncated detail that ParseDetail rejects. The
+// marker format and its parser must round-trip every closed-set field
+// losslessly — the body block and the occurrence comment both.
+func TestMarkerRoundTripsMultiFieldDetail(t *testing.T) {
+	p := hookDetailPayload()
+	if err := bugreport.ValidatePayload(p); err != nil {
+		t.Fatalf("fixture payload invalid: %v", err)
+	}
+	title, body := outbox.RenderReport(p)
+
+	// The issue body's marker carries the FULL detail token...
+	fields, ok := ParseMarker(body)
+	if !ok {
+		t.Fatalf("no marker block: %q", body)
+	}
+	want := "event=PreToolUse handler=preToolHandler"
+	if fields["detail"] != want {
+		t.Fatalf("body marker detail = %q, want the full token %q", fields["detail"], want)
+	}
+	if _, err := bugreport.ParseDetail(p.Kind, fields["detail"]); err != nil {
+		t.Fatalf("the parsed detail fails read-back validation: %v", err)
+	}
+	// ...and nothing leaked into stray keys (the handler half must not
+	// become its own marker field).
+	if _, stray := fields["handler"]; stray {
+		t.Fatalf("the handler half of the detail leaked into a separate marker field: %v", fields)
+	}
+
+	// The occurrence comment re-renders the detail losslessly.
+	item := feedback.QueueItem{ID: "f1", Title: title, Body: body, Fingerprint: p.Fingerprint, Kind: string(p.Kind)}
+	occ := OccurrenceComment(item)
+	occFields, ok := ParseMarker(occ)
+	if !ok {
+		t.Fatalf("the occurrence comment carries no marker block: %q", occ)
+	}
+	if occFields["detail"] != want {
+		t.Fatalf("occurrence marker detail = %q, want the full token %q", occFields["detail"], want)
+	}
+	if _, err := bugreport.ParseDetail(p.Kind, occFields["detail"]); err != nil {
+		t.Fatalf("the occurrence comment's detail fails read-back validation: %v", err)
+	}
+}
+
 func TestSameFingerprintSameTitleKey(t *testing.T) {
 	p1 := fixedPayload()
 	p2 := p1 // same fingerprint, rendered twice

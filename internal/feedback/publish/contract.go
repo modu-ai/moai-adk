@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/feedback"
+	"github.com/modu-ai/moai-adk/internal/feedback/outbox"
 )
 
 // markerPrefix opens every machine-readable block the pipeline renders.
@@ -45,8 +46,11 @@ type MarkerFields map[string]string
 
 // ParseMarker parses one `<!-- moai-bugreport:v1 ... -->` block out of a
 // body: the first field may be the bare occurrence token; the rest are
-// key=value pairs. Ok is false when no well-formed block exists — untrusted
-// input never parses into partial truth.
+// key=value pairs. The field tokenizer honors quoting (outbox.SplitMarkerTokens),
+// so a quoted multi-field value — the hook detail's canonical token —
+// arrives as ONE value and the marker round-trips losslessly. Ok is false
+// when no well-formed block exists — untrusted input never parses into
+// partial truth.
 func ParseMarker(body string) (MarkerFields, bool) {
 	start := strings.Index(body, markerPrefix)
 	if start < 0 {
@@ -57,8 +61,12 @@ func ParseMarker(body string) (MarkerFields, bool) {
 	if end < 0 {
 		return nil, false
 	}
+	toks, ok := outbox.SplitMarkerTokens(rest[:end])
+	if !ok {
+		return nil, false
+	}
 	fields := MarkerFields{}
-	for i, tok := range strings.Fields(rest[:end]) {
+	for i, tok := range toks {
 		if i == 0 && tok == occurrenceToken {
 			continue
 		}
@@ -92,7 +100,10 @@ func IsOccurrenceComment(body string) bool {
 	if end < 0 {
 		return false
 	}
-	toks := strings.Fields(rest[:end])
+	toks, ok := outbox.SplitMarkerTokens(rest[:end])
+	if !ok {
+		return false
+	}
 	return len(toks) > 0 && toks[0] == occurrenceToken && fields != nil
 }
 
@@ -125,7 +136,7 @@ func OccurrenceComment(item feedback.QueueItem) string {
 	b.WriteString(occurrenceToken)
 	for _, k := range markerFieldOrder {
 		if v, ok := fields[k]; ok {
-			b.WriteString(" " + k + "=" + v)
+			b.WriteString(" " + k + "=" + outbox.QuoteMarkerValue(v))
 		}
 	}
 	b.WriteString(" -->")
