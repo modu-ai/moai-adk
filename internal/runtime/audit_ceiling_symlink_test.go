@@ -180,3 +180,98 @@ func TestAppendProgressRecordResolvesDotDotThroughSymlink(t *testing.T) {
 		}
 	}
 }
+
+// TestAppendProgressRecordPopsResolvedPosition (sync-audit-7 F11) — the
+// codex repro: `alias → real/deep` and the record addressed at
+// `alias/spec/progress.md` whose referent is `../../actual.md`. The
+// resolver must expand the MIDDLE symlink (alias) so the `..` pops apply
+// to the Dir of the RESOLVED position (real/) — a resolver that returns
+// the spelled path for regular components pops against the spelling and
+// strands the record at real/deep/actual.md.
+func TestAppendProgressRecordPopsResolvedPosition(t *testing.T) {
+	root := t.TempDir()
+	alias := filepath.Join(root, "alias")
+	realDeep := filepath.Join(root, "real", "deep")
+	realSpec := filepath.Join(realDeep, "spec")
+	if err := os.MkdirAll(realSpec, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(realDeep, alias); err != nil {
+		t.Skipf("symlinks unavailable here: %v", err)
+	}
+	// The REAL target: ../../actual.md from real/deep/spec = real/actual.md.
+	real := filepath.Join(root, "real", "actual.md")
+	if err := os.WriteFile(real, []byte("# progress\n\n## §G Override and Refusal Record\n\n- old record\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// progress.md addressed through the alias, referent `../../actual.md`.
+	link := filepath.Join(alias, "spec", "progress.md")
+	if err := os.Symlink(filepath.Join("..", "..", "actual.md"), link); err != nil {
+		t.Skipf("symlinks unavailable here: %v", err)
+	}
+	specDir := filepath.Join(alias, "spec")
+	if err := appendProgressRecord(specDir, "- new record"); err != nil {
+		t.Fatalf("the aliased progress.md refused the record: %v", err)
+	}
+	raw, err := os.ReadFile(real)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "- new record") {
+		t.Fatalf("the record did not land in the resolved real target (the middle alias was not expanded):\n%s", raw)
+	}
+	stray := filepath.Join(realDeep, "actual.md")
+	if _, serr := os.Stat(stray); !os.IsNotExist(serr) {
+		t.Fatalf("an unrelated actual.md was modified/created at real/deep/actual.md")
+	}
+}
+
+// TestAppendProgressRecordMidComponentAbsenceFailsClosed (sync-audit-7
+// F12) — absence is only allowed for the FINAL component: a referent
+// naming `missing/../victim.md` (or `file/../victim.md` where file is a
+// regular file) must fail closed like the kernel's ENOENT/ENOTDIR — never
+// record into victim.md.
+func TestAppendProgressRecordMidComponentAbsenceFailsClosed(t *testing.T) {
+	specDir := t.TempDir()
+	victim := filepath.Join(specDir, "victim.md")
+	victimData := "# progress\n\nvictim data — must stay intact\n"
+	if err := os.WriteFile(victim, []byte(victimData), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(specDir, "progress.md")
+	// Raw referent — filepath.Join would pre-clean the `..` before the
+	// kernel stores it, hiding the defect (same trap as the dotdot fixture).
+	if err := os.Symlink("missing/../victim.md", link); err != nil {
+		t.Skipf("symlinks unavailable here: %v", err)
+	}
+	if err := appendProgressRecord(specDir, "- new record"); err == nil {
+		t.Fatal("missing/../victim.md recorded into victim.md — the kernel would return ENOENT")
+	}
+	raw, err := os.ReadFile(victim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != victimData {
+		t.Fatalf("the victim was modified:\n%s", raw)
+	}
+
+	// Shape 2: a regular FILE as a mid-component is ENOTDIR, not a path.
+	plain := filepath.Join(specDir, "plainfile")
+	if err := os.WriteFile(plain, []byte("plain\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link2 := filepath.Join(specDir, "progress2.md")
+	if err := os.Symlink("plainfile/../victim.md", link2); err != nil {
+		t.Skipf("symlinks unavailable here: %v", err)
+	}
+	if err := appendProgressRecord(specDir, "- newer record"); err == nil {
+		t.Fatal("plainfile/../victim.md recorded — the kernel would return ENOTDIR")
+	}
+	raw, err = os.ReadFile(victim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != victimData {
+		t.Fatalf("the victim was modified by the non-directory shape:\n%s", raw)
+	}
+}
