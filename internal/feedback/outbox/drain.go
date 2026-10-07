@@ -214,11 +214,6 @@ func Drain() error {
 		return nil
 	}
 
-	ledger, err := loadLedger()
-	if err != nil {
-		return fmt.Errorf("outbox: load ledger: %w", err)
-	}
-
 	for _, entry := range entries {
 		switch bugreport.Verdict(entry.Verdict) {
 		case bugreport.VerdictAmbiguous:
@@ -235,15 +230,12 @@ func Drain() error {
 			continue
 		}
 
-		if reason, stop := drainMoai(ledger, entry); stop {
+		if reason, stop := drainMoai(entry); stop {
 			_ = AppendOutbox(OutboxRow{Outcome: reason.outcome, Reason: reason.reason, Fingerpr: reason.fp})
 			continue
 		}
 	}
 
-	if err := saveLedger(ledger); err != nil {
-		return fmt.Errorf("outbox: save ledger: %w", err)
-	}
 	// The spool is consumed: every line is now either logged or queued.
 	return bugreport.ClearSpool()
 }
@@ -255,25 +247,28 @@ type drainOutcome struct {
 	fp      string
 }
 
-// drainMoai runs one moai verdict through fingerprint → dedupe → caps →
-// payload → tripwire → queue. A nil outcome means the signal was queued.
-func drainMoai(ledger *Ledger, entry bugreport.SpoolEntry) (drainOutcome, bool) {
+// drainMoai runs one moai verdict through fingerprint → payload → tripwire
+// → ONE queue-lock critical section covering dedupe → caps → append →
+// bound → ledger-record. A nil outcome means the signal was queued.
+//
+// The critical section is the review-gate serialization finding: the dedupe
+// check and the ledger update used to bracket the queue mutation as
+// separate steps, so two concurrent drains both read an empty ledger, both
+// passed the dedupe window and the caps, and both enqueued the same
+// fingerprint — the queue lock alone did not cover the ledger. The ledger
+// now lives INSIDE the queue lock: its load, the checks, the record, and
+// its save are one read-modify-write under the same cross-process lock as
+// the append, and a ledger save failure aborts the whole mutation (the
+// queue file stays unchanged — a signal whose ledger commit failed is
+// never queued).
+func drainMoai(entry bugreport.SpoolEntry) (drainOutcome, bool) {
 	fp := fingerprintOf(entry)
 
-	// Per-fingerprint window (design section 10): no re-queue inside it.
-	if !ledger.FingerprintAllowed(fp, clock(), config.DefaultBugreportFingerprintWindowDays) {
-		return drainOutcome{outcome: "deduped", reason: "fingerprint already queued or sent inside the window", fp: fp}, true
-	}
-
-	// Rolling global caps.
-	if capped, why := ledger.GlobalCapsAllowed(clock()); !capped {
-		return drainOutcome{outcome: "capped", reason: why, fp: fp}, true
-	}
-
-	// Build the validated payload from the spool's closed fields. An absent
-	// detail is absent — only a non-empty token goes through the read-back
-	// validator (kinds whose register rows carry no closed set accept no
-	// detail at all, which ParseDetail would rightly refuse).
+	// Build the validated payload from the spool's closed fields — pure,
+	// lock-free work. An absent detail is absent — only a non-empty token
+	// goes through the read-back validator (kinds whose register rows carry
+	// no closed set accept no detail at all, which ParseDetail would
+	// rightly refuse).
 	var detail bugreport.Detail
 	if entry.Detail != "" {
 		var derr error
@@ -299,11 +294,32 @@ func drainMoai(ledger *Ledger, entry bugreport.SpoolEntry) (drainOutcome, bool) 
 		return drainOutcome{outcome: "withheld", reason: reason, fp: fp}, true
 	}
 
-	// Enqueue through the reused QueueStore at the user-scoped path.
+	// ONE cross-process critical section: dedupe check → rolling caps →
+	// append → queue bound → ledger record, all under the queue lock.
 	store := BugreportQueueStore()
 	title, body := RenderReport(payload)
+	var outcome *drainOutcome
+	var droppedIDs []string
 	var queued feedback.QueueItem
 	err = store.Mutate(func(rec *feedback.QueueRecord) error {
+		ledger, lerr := loadLedger()
+		if lerr != nil {
+			outcome = &drainOutcome{outcome: "dropped", reason: "ledger unreadable: " + lerr.Error()}
+			return nil
+		}
+
+		// Per-fingerprint window (design section 10): no re-queue inside it.
+		if !ledger.FingerprintAllowed(fp, clock(), config.DefaultBugreportFingerprintWindowDays) {
+			outcome = &drainOutcome{outcome: "deduped", reason: "fingerprint already queued or sent inside the window"}
+			return nil
+		}
+
+		// Rolling global caps.
+		if capped, why := ledger.GlobalCapsAllowed(clock()); !capped {
+			outcome = &drainOutcome{outcome: "capped", reason: why}
+			return nil
+		}
+
 		rec.LastSeq++
 		queued = feedback.QueueItem{
 			ID:          fmt.Sprintf("f%d", rec.LastSeq),
@@ -314,12 +330,28 @@ func drainMoai(ledger *Ledger, entry bugreport.SpoolEntry) (drainOutcome, bool) 
 			Kind:        string(payload.Kind),
 		}
 		rec.Items = append(rec.Items, queued)
+
+		ledger.RecordQueued(payload.Fingerprint, clock())
+		if serr := saveLedger(ledger); serr != nil {
+			// Aborting the callback leaves the queue file unchanged: a
+			// signal whose ledger commit failed is never queued.
+			return serr
+		}
 		return nil
 	})
 	if err != nil {
 		return drainOutcome{outcome: "dropped", reason: "queue write failed: " + err.Error(), fp: fp}, true
 	}
-	ledger.RecordQueued(payload.Fingerprint, clock())
+	if outcome != nil {
+		outcome.fp = fp
+		return *outcome, true
+	}
+	for _, id := range droppedIDs {
+		_ = AppendOutbox(OutboxRow{
+			Outcome: "dropped",
+			Reason:  fmt.Sprintf("queue bound of %d reached; oldest item %s dropped", config.DefaultBugreportQueueBound, id),
+		})
+	}
 	_ = AppendOutbox(OutboxRow{
 		Outcome:  "queued",
 		Title:    title,
