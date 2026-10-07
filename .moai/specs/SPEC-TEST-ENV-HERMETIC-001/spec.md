@@ -2,9 +2,9 @@
 id: SPEC-TEST-ENV-HERMETIC-001
 title: "Test env hermeticity sweep — tests that read the factory/kanban lane gate axes must not change verdict with the ambient env of the session that runs them"
 version: "0.8.1"
-status: in-progress
+status: completed
 created: 2026-10-03
-updated: 2026-10-06
+updated: 2026-10-08
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"
