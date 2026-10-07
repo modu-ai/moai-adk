@@ -1,0 +1,14 @@
+#!/bin/sh
+# t1534 round-6 P1 stub — pr view SUCCEEDS returning develop (an unkeyed
+# base), pr checks publishes a FAILED Lint. The pre-repair loop scored the
+# empty required list all-passed (exit 0); the repaired loop aborts.
+if [ "$1" = "pr" ] && [ "$2" = "view" ]; then
+  printf '%s\n' 'develop'
+  exit 0
+fi
+if [ "$1" = "pr" ] && [ "$2" = "checks" ]; then
+  printf '%s\n' '[{"name":"Lint","state":"FAILURE","bucket":"fail","link":"http://example.invalid/lint"}]'
+  exit 0
+fi
+echo "stub: unexpected invocation: $*" >&2
+exit 1

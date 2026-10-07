@@ -2,7 +2,7 @@ name: Test Installation Scripts
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
     paths:
       - 'install.sh'
       - 'install.ps1'
@@ -305,16 +305,28 @@ jobs:
 
       - name: Check for platform-specific issues
         run: |
+          set -e
           echo "=== Checking install.sh ==="
-          grep -q "MOAI_INSTALL_DIR" install.sh && echo "✓ MOAI_INSTALL_DIR support found" || echo "✗ MOAI_INSTALL_DIR support missing"
-          grep -q "\-\-help" install.sh && echo "✓ Help flag support found" || echo "✗ Help flag support missing"
-          grep -q "darwin\|linux" install.sh && echo "✓ Platform detection found" || echo "✗ Platform detection missing"
+          # AC-CI-007: every required feature probe is a HARD check — a missing
+          # target fails the step (exit 1); printing a missing marker with a
+          # zero exit is not a verdict. The probe set matches the scripts'
+          # real surface (install.sh: --install-dir/--help/platform detection;
+          # install.ps1: IsWindows/GetTempPath/MOAI_INSTALL_DIR).
+          grep -q "MOAI_INSTALL_DIR" install.ps1 || { echo "✗ install.ps1: MOAI_INSTALL_DIR support missing"; exit 1; }
+          echo "✓ install.ps1: MOAI_INSTALL_DIR support found"
+          grep -q "\-\-help" install.sh || { echo "✗ install.sh: Help flag support missing"; exit 1; }
+          echo "✓ install.sh: Help flag support found"
+          grep -q "darwin\|linux" install.sh || { echo "✗ install.sh: Platform detection missing"; exit 1; }
+          echo "✓ install.sh: Platform detection found"
+          grep -q "\-\-install-dir" install.sh || { echo "✗ install.sh: --install-dir support missing"; exit 1; }
+          echo "✓ install.sh: --install-dir support found"
 
           echo ""
           echo "=== Checking install.ps1 ==="
-          grep -q "IsWindows" install.ps1 && echo "✓ IsWindows variable found" || echo "✗ IsWindows variable missing"
-          grep -q "GetTempPath" install.ps1 && echo "✓ GetTempPath found" || echo "✗ GetTempPath missing"
-          grep -q "MOAI_INSTALL_DIR" install.ps1 && echo "✓ MOAI_INSTALL_DIR support found" || echo "✗ MOAI_INSTALL_DIR support missing"
+          grep -q "IsWindows" install.ps1 || { echo "✗ install.ps1: IsWindows variable missing"; exit 1; }
+          echo "✓ install.ps1: IsWindows variable found"
+          grep -q "GetTempPath" install.ps1 || { echo "✗ install.ps1: GetTempPath missing"; exit 1; }
+          echo "✓ install.ps1: GetTempPath found"
 
       - name: Verify shebang and encoding
         run: |
@@ -335,7 +347,7 @@ jobs:
   summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [test-sh, test-ps1-pwsh, test-ps1-powershell, test-bat, compatibility-check]
+    needs: [install-script-parity, test-sh, test-ps1-pwsh, test-ps1-powershell, test-bat, compatibility-check]
     if: always()
     timeout-minutes: 5
 
@@ -343,19 +355,24 @@ jobs:
       - name: Check test results
         run: |
           echo "=== Test Results Summary ==="
+          echo "install-script-parity: ${{ needs.install-script-parity.result }}"
           echo "test-sh: ${{ needs.test-sh.result }}"
           echo "test-ps1-pwsh: ${{ needs.test-ps1-pwsh.result }}"
           echo "test-ps1-powershell: ${{ needs.test-ps1-powershell.result }}"
           echo "test-bat: ${{ needs.test-bat.result }}"
           echo "compatibility-check: ${{ needs.compatibility-check.result }}"
 
-          if [[ "${{ needs.test-sh.result }}" == "failure" ]] || \
-             [[ "${{ needs.test-ps1-pwsh.result }}" == "failure" ]] || \
-             [[ "${{ needs.test-ps1-powershell.result }}" == "failure" ]] || \
-             [[ "${{ needs.test-bat.result }}" == "failure" ]] || \
-             [[ "${{ needs.compatibility-check.result }}" == "failure" ]]; then
+          # AC-CI-006: the summary requires `success` from EVERY needed job.
+          # cancelled / timed_out / skipped are NON-success conclusions — an
+          # all-cancelled run can never print "All tests passed".
+          if [[ "${{ needs.install-script-parity.result }}" != "success" ]] || \
+             [[ "${{ needs.test-sh.result }}" != "success" ]] || \
+             [[ "${{ needs.test-ps1-pwsh.result }}" != "success" ]] || \
+             [[ "${{ needs.test-ps1-powershell.result }}" != "success" ]] || \
+             [[ "${{ needs.test-bat.result }}" != "success" ]] || \
+             [[ "${{ needs.compatibility-check.result }}" != "success" ]]; then
             echo ""
-            echo "❌ Some tests failed!"
+            echo "❌ Some tests did not succeed!"
             exit 1
           fi
 

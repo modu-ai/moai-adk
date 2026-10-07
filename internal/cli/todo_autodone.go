@@ -1,7 +1,7 @@
 // todo_autodone.go — `moai todo auto-done` (SPEC-TODO-LAND-AUTO-DONE-001):
 // the evidence-gated landing scan the LEADER runs immediately after its
-// post-push remote-landing confirmation (`git fetch origin develop` +
-// `git rev-parse origin/develop`).
+// post-push remote-landing confirmation (git fetch + git rev-parse of the
+// landed ref — the resolved integration base, never a literal branch name).
 //
 // The scan closes landed cards at the moment landing is confirmed, with
 // three misfire guards and full reversibility:
@@ -127,7 +127,7 @@ func newTodoAutoDoneCmd() *cobra.Command {
 func todoAutoDoneLong(landedRef string) string {
 	return `Close queued and picked cards whose landing is EVIDENCED on ` + landedRef + ` —
 the step the LEADER runs immediately after the post-push remote-landing
-confirmation (git fetch origin develop + git rev-parse origin/develop).
+confirmation (git fetch + git rev-parse of ` + landedRef + `).
 Lanes never run this scan: lanes never push, and a local merge is not a
 landing.
 
@@ -255,6 +255,9 @@ func runTodoAutoDone(cmd *cobra.Command, fetch, dryRun, jsonOut bool) error {
 	for _, o := range applied {
 		if o.closed {
 			recordFactoryCardState(o.id, o.specID, "completed", "card.completed")
+			// One gated, bounded, fail-open fold per closed card
+			// (AC-MFB-008; the bound is per card, plan.md §G).
+			foldClosedCardMemoryFn(o.id)
 		}
 	}
 	appendAutoDoneRows(autoDoneLogPathFor(root), autoDoneLogRowsFor(ref, refHead, applied))

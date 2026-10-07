@@ -277,13 +277,16 @@ func TestCodexLocalInstructions_LargeBodySlicesAndFreshRead(t *testing.T) {
 	}
 }
 
-func TestCodexLocalInstructions_ExactlyThreeContractPaths(t *testing.T) {
+func TestCodexLocalInstructions_ExactlyTwoContractPaths(t *testing.T) {
 	previous := codexInstructionRelPathsFn
 	t.Cleanup(func() { codexInstructionRelPathsFn = previous })
-	for _, count := range []int{2, 4} {
+	if got, want := defaultCodexInstructionRelPaths(), []string{"AGENTS.md", "AGENTS.local.md"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("instruction paths = %v, want %v", got, want)
+	}
+	for _, count := range []int{0, 1, 3, 4} {
 		codexInstructionRelPathsFn = func() []string { return make([]string, count) }
 		err := secureCodexInstructionContract(codexContractRequest{ProjectRoot: t.TempDir()})
-		if err == nil || err.Error() != fmt.Sprintf("instruction path table must name exactly three paths, got %d", count) {
+		if err == nil || err.Error() != fmt.Sprintf("instruction path table must name exactly two paths, got %d", count) {
 			t.Fatalf("count %d: %v", count, err)
 		}
 	}
@@ -430,8 +433,13 @@ func TestCodexLocalInstructions_TemplateDescribesCommonAndSpecificInputs(t *test
 		t.Fatal("missing harness-local contract")
 	}
 	section, _, _ = strings.Cut(section, "## 9.")
-	if strings.Contains(section, codexClaudeLocalName) || strings.Contains(section, codexLocalInstructionName) || !strings.Contains(section, "common local guidance") || !strings.Contains(section, "Codex-specific") {
-		t.Fatal("template must describe common and Codex-specific inputs without enumerating local filenames")
+	for _, want := range []string{"`AGENTS.local.md`", "user-owned local instruction file", "common local guidance", "first, followed by the legacy", "`developer_instructions`", "source header for each file", "non-regular inputs are refused", "operator override collision", "does not preload", "Codex Web sessions"} {
+		if !strings.Contains(section, want) {
+			t.Errorf("harness-local contract must disclose %q", want)
+		}
+	}
+	if strings.Contains(section, codexClaudeLocalName) {
+		t.Error("template enumerates a legacy local filename")
 	}
 }
 
@@ -442,7 +450,7 @@ func TestCodexLocalInstructions_AllFunnelsPreserveInputs(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".claude", "worktrees", "fixture"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	names := []string{codexClaudeLocalName, codexLocalInstructionName, codexAgentsRelPath, codexClaudeRelPath}
+	names := []string{codexClaudeLocalName, codexLocalInstructionName, codexAgentsRelPath, "CLAUDE.md"}
 	before := make(map[string]os.FileInfo)
 	bodies := make(map[string][]byte)
 	for _, name := range names {

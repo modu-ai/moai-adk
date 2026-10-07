@@ -1,0 +1,15 @@
+name: ci
+on: [push]
+jobs:
+  Build:
+    name: "Build (${{ matrix.target.os }}, ${{ matrix.version }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [{os: ubuntu-latest}, {os: windows-latest}]
+        version: [18]
+        exclude:
+          - target:
+              os: ubuntu-latest
+    steps:
+      - run: "true"

@@ -216,8 +216,8 @@ func TestFR_AC001_MigrationV3ToV4(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open migrated factory: %v", err)
 	}
-	if got := frSchemaVersion(t, db.DB); got != "5" {
-		t.Fatalf("schema_version = %q, want \"5\"", got)
+	if got := frSchemaVersion(t, db.DB); got != "6" {
+		t.Fatalf("schema_version = %q, want \"6\"", got)
 	}
 	for table, cols := range tables {
 		if got := frDump(t, db.DB, table, cols); !reflect.DeepEqual(got, before[table]) {
@@ -246,8 +246,8 @@ func TestFR_AC001_MigrationV3ToV4(t *testing.T) {
 			t.Fatalf("%s rows changed by second open: %v", table, got)
 		}
 	}
-	if got := frSchemaVersion(t, again.DB); got != "5" {
-		t.Fatalf("schema_version after second open = %q, want \"5\"", got)
+	if got := frSchemaVersion(t, again.DB); got != "6" {
+		t.Fatalf("schema_version after second open = %q, want \"6\"", got)
 	}
 	_ = again.Close()
 
@@ -270,26 +270,26 @@ func TestFR_AC001_MigrationV3ToV4(t *testing.T) {
 	if len(missing) != 0 {
 		t.Fatalf("fresh cards table is missing columns %v", missing)
 	}
-	if got := frSchemaVersion(t, fresh.DB); got != "5" {
-		t.Fatalf("fresh schema_version = %q, want \"5\"", got)
+	if got := frSchemaVersion(t, fresh.DB); got != "6" {
+		t.Fatalf("fresh schema_version = %q, want \"6\"", got)
 	}
 	freshPath := fresh.Path
 	_ = fresh.Close()
 
-	// A database from the future (version 6) is refused — 5 is the current
-	// schema (the lane-capacity step, SPEC-CODEX-LANE-SLOTS-001).
+	// A database from the future (version 7) is refused — 6 is the current
+	// schema (the bundle columns, SPEC-TODO-CARD-ISSUANCE-001).
 	future, err := sql.Open("sqlite", "file:"+filepath.ToSlash(freshPath))
 	if err != nil {
 		t.Fatalf("open raw fresh: %v", err)
 	}
-	if _, err := future.Exec(`UPDATE meta SET value='6' WHERE key='schema_version'`); err != nil {
+	if _, err := future.Exec(`UPDATE meta SET value='7' WHERE key='schema_version'`); err != nil {
 		t.Fatalf("bump version: %v", err)
 	}
 	_ = future.Close()
 	if db, err := OpenFactoryPath(freshPath); err == nil {
 		_ = db.Close()
-		t.Fatal("schema version 6 was accepted; want an unsupported-version error")
+		t.Fatal("schema version 7 was accepted; want an unsupported-version error")
 	} else if !strings.Contains(err.Error(), "unsupported factory schema version") {
-		t.Fatalf("schema version 6 error = %v, want unsupported-version", err)
+		t.Fatalf("schema version 7 error = %v, want unsupported-version", err)
 	}
 }

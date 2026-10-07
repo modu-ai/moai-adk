@@ -301,7 +301,7 @@ On Opus 4.7+: Adaptive Thinking handles reasoning depth automatically — no fix
 
 ### Steering thinking down (optional)
 
-A large system prompt (loading CLAUDE.md plus many rule files) can cause the model to think more than a routine turn warrants. To suppress over-triggered reasoning on simple turns, you may add a steer such as: "Thinking adds latency and should only be used when it will meaningfully improve answer quality — typically for problems that require multi-step reasoning. When in doubt, respond directly." The `ultrathink` keyword still overrides this to force deeper reasoning when needed.
+A large system prompt (loading AGENTS.md plus many rule files) can cause the model to think more than a routine turn warrants. To suppress over-triggered reasoning on simple turns, you may add a steer such as: "Thinking adds latency and should only be used when it will meaningfully improve answer quality — typically for problems that require multi-step reasoning. When in doubt, respond directly." The `ultrathink` keyword still overrides this to force deeper reasoning when needed.
 
 ---
 

@@ -23,7 +23,8 @@ func codexDirectAnchorPID() int { return os.Getpid() }
 // defaultCodexDirectLaunch replaces this process with Codex, so the process
 // identity the -w lock recorded stays the Codex session's for its lifetime.
 // A lane-loop card session (the leased card's id in the card-identifier
-// variable, which only codexCardLaunchEnv sets — the direct path scrubs it) is
+// variable, which only the removed lane loop's card children carried — the
+// direct path scrubs it) is
 // the exception: the `moai codex -l` loop must outlive each card child to lease
 // the next card, so that launch runs Codex as a child and waits (card t1488).
 func defaultCodexDirectLaunch(cmd *exec.Cmd) error {

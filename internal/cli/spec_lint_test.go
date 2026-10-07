@@ -1010,7 +1010,7 @@ func TestSpecLintBaseline_CrossProcessBothDirections(t *testing.T) {
 	if testing.Short() {
 		t.Skip("cross-process test builds the CLI binary; skipped under -short")
 	}
-	bin := slBuildMoaiBinary(t)
+	bin := buildMoaiBinary(t)
 	root := slNewCorpus(t)
 
 	baselinePath := filepath.Join(t.TempDir(), "baseline.json")
@@ -1038,17 +1038,6 @@ func TestSpecLintBaseline_CrossProcessBothDirections(t *testing.T) {
 	if cleanCode != 0 {
 		t.Fatalf("cross-process: removal must return rc=0, got %d\n%s", cleanCode, cleanOut)
 	}
-}
-
-func slBuildMoaiBinary(t *testing.T) string {
-	t.Helper()
-	bin := filepath.Join(t.TempDir(), "moai-test-bin")
-	cmd := exec.Command("go", "build", "-o", bin, "github.com/modu-ai/moai-adk/cmd/moai")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("build moai binary: %v\n%s", err, out)
-	}
-	return bin
 }
 
 func slRunBinary(t *testing.T, bin, dir string, args ...string) (string, int) {

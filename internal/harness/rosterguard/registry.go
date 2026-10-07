@@ -1,5 +1,7 @@
 package rosterguard
 
+import "strings"
+
 // Registry is the declared set of roster-listing sites in this tree.
 //
 // Every row was measured at base 26243ea86 (card t922) — none was written from
@@ -17,7 +19,8 @@ package rosterguard
 // fails the guard with "delete the marker", and further drift fails it with the
 // new gap.
 func Registry() []Site {
-	return []Site{
+	sites := []Site{
+		{ID: "deployed-file-manifest", Path: ".moai/manifest.json", Axis: AxisSubsetByDesign, Note: "Deployment inventory paths enumerate installed files, not a retained-roster claim."},
 		// ── The canonical source ───────────────────────────────────────────
 		{
 			ID:         "retained-agent-roster",
@@ -148,34 +151,24 @@ func Registry() []Site {
 			Claims: ClaimMembership,
 			Note:   "An inventory of templates/.claude/agents/moai/*.md — the file population by construction.",
 		},
+		{
+			// Card t1539: the generated embed allowlist carries one
+			// //go:embed path per tracked template file, so the
+			// templates/.claude/agents/moai/*.md paths inside it are the
+			// definition-file population by construction — generated from the
+			// git-tracked file set by internal/template/embedemit, never
+			// hand-edited. Membership only: the manifest states no roster size
+			// and no roster policy; the names appear solely as path components.
+			// Registered so a generator regression that drops agent definitions
+			// from the embed set is a guard finding, not a silent shipping gap.
+			ID:     "embed-manifest-definition-paths",
+			Path:   "internal/template/embed_manifest_gen.go",
+			Axis:   AxisDefinitionFiles,
+			Claims: ClaimMembership,
+			Note:   "Whole-file: the //go:embed path lines enumerate the tracked template tree, whose templates/.claude/agents/moai/*.md members are the definition-file population by construction.",
+		},
 
 		// ── Retained-roster sites that are currently consistent ────────────
-		{
-			ID:           "claude-md-section-4",
-			Path:         "CLAUDE.md",
-			Axis:         AxisRetainedRoster,
-			Claims:       ClaimMembership | ClaimCount,
-			BlockStart:   "**Retained agents (",
-			CountPattern: `\*\*Retained agents \((\d+)\)\*\*`,
-			NumeralUnreachable: "the §4 count is the heading form `**Retained agents (N)**`: rosterNounRe is case-sensitive, " +
-				"so the capitalized `Retained agents` is outside its noun class, and the numeral follows the " +
-				"noun rather than preceding it. The prose " +
-				"sentence the layer used to reach (\"consists of exactly N retained agents\") duplicated this " +
-				"heading and was removed by the always-loaded diet; the count claim itself is still asserted " +
-				"here through CountPattern.",
-			Note: "Single-line block: the §4 enumeration sentence. Repaired by card t909; count anchor " +
-				"re-pointed to the heading form by card t1175.",
-		},
-		{
-			ID:                 "claude-md-section-4-mirror",
-			Path:               "internal/template/templates/CLAUDE.md",
-			Axis:               AxisRetainedRoster,
-			Claims:             ClaimMembership | ClaimCount,
-			BlockStart:         "**Retained agents (",
-			CountPattern:       `\*\*Retained agents \((\d+)\)\*\*`,
-			NumeralUnreachable: "same heading-form count as the row above; template mirror",
-			Note:               "Template mirror of the row above; both copies are registered so a repair to one cannot leave the other behind.",
-		},
 		{
 			ID:           "agent-authoring-catalog",
 			Path:         ".claude/rules/moai/development/agent-authoring.md",
@@ -274,12 +267,6 @@ func Registry() []Site {
 			BlockStart:   "| Agent | Phase scope |",
 			BlockEnd:     "| `Explore` | Read-only codebase exploration",
 			CountPattern: `\*\*(\d+) retained agents\*\*`,
-			KnownStale: &Staleness{
-				Reason:        "Claims completeness (\"11 retained agents: 10 MoAI-custom plus the Anthropic built-in Explore\"); manager-lead and manager-todo are absent.",
-				FollowUp:      "repair scoped OUT of card t922 by the lead; unassigned",
-				MissingNames:  []string{"manager-lead", "manager-todo"},
-				DeclaredCount: 11,
-			},
 		},
 		{
 			ID:           "agents-reference-catalog-mirror",
@@ -289,12 +276,6 @@ func Registry() []Site {
 			BlockStart:   "| Agent | Phase scope |",
 			BlockEnd:     "| `Explore` | Read-only codebase exploration",
 			CountPattern: `\*\*(\d+) retained agents\*\*`,
-			KnownStale: &Staleness{
-				Reason:        "Template mirror of the row above, stale identically.",
-				FollowUp:      "repair scoped OUT of card t922 by the lead; unassigned",
-				MissingNames:  []string{"manager-lead", "manager-todo"},
-				DeclaredCount: 11,
-			},
 		},
 		readmeSite("readme-en", "README.md", `### The (\d+)-agent catalog`, ""),
 		readmeSite("readme-ko", "README.ko.md", `### (\d+)-에이전트 카탈로그`, localizedHeadingUnreachable),
@@ -307,7 +288,7 @@ func Registry() []Site {
 			Path:         ".moai/config/sections/delegation.yaml",
 			Axis:         AxisSubsetByDesign,
 			Claims:       ClaimCount,
-			CountPattern: `the (\d+) retained agents \(CLAUDE\.md section 4\)`,
+			CountPattern: `the (\d+) retained agents \([^\n)]+\)`,
 			Note: "The CONTENT is a subset by design — the per-subcommand `agents:` lists are " +
 				"partial, and manager-design, manager-lead, super-advisor and " +
 				"manager-todo are all legitimately absent from every designation. Only " +
@@ -321,7 +302,7 @@ func Registry() []Site {
 			Path:         "internal/template/templates/.moai/config/sections/delegation.yaml",
 			Axis:         AxisSubsetByDesign,
 			Claims:       ClaimCount,
-			CountPattern: `the (\d+) retained agents \(CLAUDE\.md section 4\)`,
+			CountPattern: `the (\d+) retained agents \([^\n)]+\)`,
 			// KnownStale deleted with the row above: both copies were repaired
 			// together, which is what registering the mirror separately was for.
 		},
@@ -352,11 +333,6 @@ func Registry() []Site {
 			Axis:             AxisRetainedRoster,
 			Claims:           ClaimCount,
 			CountPattern:     `(\d+)-agent retained catalog`,
-			KnownStale: &Staleness{
-				Reason:        "Cites an 11-agent retained catalog (10 MoAI-custom + Explore) where the roster carries 13.",
-				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
-				DeclaredCount: 11,
-			},
 		},
 		{
 			ID:               "foundation-core-skill-catalog-size-mirror",
@@ -365,11 +341,6 @@ func Registry() []Site {
 			Axis:             AxisRetainedRoster,
 			Claims:           ClaimCount,
 			CountPattern:     `(\d+)-agent retained catalog`,
-			KnownStale: &Staleness{
-				Reason:        "Template mirror of the row above, stale identically.",
-				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
-				DeclaredCount: 11,
-			},
 		},
 
 		// INDEX.md states the same size THREE times, in three different
@@ -447,11 +418,6 @@ func Registry() []Site {
 			Axis:             AxisRetainedRoster,
 			Claims:           ClaimCount,
 			CountPattern:     `for the (\d+)-agent catalog`,
-			KnownStale: &Staleness{
-				Reason:        "Cites an 11-agent catalog where the roster carries 13.",
-				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
-				DeclaredCount: 11,
-			},
 		},
 		{
 			ID:               "foundation-quality-skill-catalog-size-mirror",
@@ -460,11 +426,6 @@ func Registry() []Site {
 			Axis:             AxisRetainedRoster,
 			Claims:           ClaimCount,
 			CountPattern:     `for the (\d+)-agent catalog`,
-			KnownStale: &Staleness{
-				Reason:        "Template mirror of the row above, stale identically.",
-				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
-				DeclaredCount: 11,
-			},
 		},
 
 		// manager-design cites the roster size and is CURRENTLY CORRECT. It is
@@ -478,7 +439,7 @@ func Registry() []Site {
 			Path:             ".claude/agents/moai/manager-design.md",
 			Axis:             AxisRetainedRoster,
 			Claims:           ClaimCount,
-			CountPattern:     `§ 4 \((\d+) retained agents`,
+			CountPattern:     "(?:§ 4|delegation\\.yaml`) \\((\\d+) retained agents",
 		},
 		{
 			ID:               "manager-design-catalog-citation-mirror",
@@ -486,7 +447,7 @@ func Registry() []Site {
 			Path:             "internal/template/templates/.claude/agents/moai/manager-design.md",
 			Axis:             AxisRetainedRoster,
 			Claims:           ClaimCount,
-			CountPattern:     `§ 4 \((\d+) retained agents`,
+			CountPattern:     "(?:§ 4|delegation\\.yaml`) \\((\\d+) retained agents",
 		},
 		{
 			ID:               "manager-design-catalog-citation-codex",
@@ -494,7 +455,7 @@ func Registry() []Site {
 			Path:             "internal/template/templates/.codex/agents/moai/manager-design.toml",
 			Axis:             AxisRetainedRoster,
 			Claims:           ClaimCount,
-			CountPattern:     `§ 4 \((\d+) retained agents`,
+			CountPattern:     "(?:§ 4|delegation\\.yaml`) \\((\\d+) retained agents",
 			Note: "Emitted from the .claude mirror by internal/template/agentemit and never hand-edited. " +
 				"Registered anyway: registering is a read, not an edit, and a stale emission is still a stale claim on disk.",
 		},
@@ -539,30 +500,20 @@ func Registry() []Site {
 		// the layer is expected not to see them. Declaring that — rather than
 		// widening the noun class or quietly dropping the equality — is what
 		// keeps AC-RNA-006(b) strict instead of unsatisfiable.
-
-		// ── Cutover preservation snapshots (PR #1748 transition M2) ────────
-		// The github-flow cutover preserved deployed policies, manifests and
-		// audit captures into the tracked tree. Each enumerates the agent
-		// names as they stood at capture — a legitimate partial listing, not
-		// a roster claim. The rows assert nothing — a subset-by-design axis
-		// carries no membership assertion (check.go's registry-contradiction
-		// rule) — and the numeral layer's citations for the overlapping paths
-		// are carried by the NumeralExemptions rows.
-		// Removing the preservation copies removes these rows with them.
-		{ID: "cutover-manifest-listing", Path: ".moai/manifest.json", Axis: AxisSubsetByDesign, Note: "HISTORICAL CAPTURE: the cutover-preserved manifest enumerates the agent definitions as deployed."},
-		{ID: "cutover-policy-agent-authoring-listing", Path: ".moai/policies/development/agent-authoring.md", Axis: AxisSubsetByDesign, Note: "HISTORICAL CAPTURE: preserved policy copy quoting the agent names as deployed."},
-		{ID: "cutover-policy-agent-patterns-listing", Path: ".moai/policies/development/agent-patterns.md", Axis: AxisSubsetByDesign, Note: "HISTORICAL CAPTURE: preserved policy copy quoting the agent names as deployed."},
-		{ID: "cutover-policy-spec-workflow-listing", Path: ".moai/policies/workflow/spec-workflow.md", Axis: AxisSubsetByDesign, Note: "HISTORICAL CAPTURE: preserved policy copy quoting the agent names as deployed."},
-		{ID: "cutover-audit-cards-before-listing", Path: "reports/hooks-audit-20260911-01a08e35/cards-before.json", Axis: AxisSubsetByDesign, Note: "HISTORICAL CAPTURE: a 2026-09-11 hooks-audit card capture, listing agents as they stood."},
-		{ID: "cutover-audit-cards-after-listing", Path: "reports/hooks-audit-20260911-01a08e35/cards-after.json", Axis: AxisSubsetByDesign, Note: "HISTORICAL CAPTURE: a 2026-09-11 hooks-audit card capture, listing agents as they stood."},
-		{ID: "cutover-audit-agent-inventory-listing", Path: "reports/workflow-performance-audit-20260911/agent-inventory.json", Axis: AxisSubsetByDesign, Note: "HISTORICAL CAPTURE: a 2026-09-11 audit inventory of agent files as they stood."},
-		{ID: "cutover-audit-baseline-listing", Path: "reports/workflow-performance-audit-20260911/baseline.json", Axis: AxisSubsetByDesign, Note: "HISTORICAL CAPTURE: a 2026-09-11 audit baseline capture listing agents as measured."},
-		{ID: "cutover-audit-evidence-listing", Path: "reports/workflow-performance-audit-20260911/evidence.json", Axis: AxisSubsetByDesign, Note: "HISTORICAL CAPTURE: a 2026-09-11 audit evidence capture listing agents as measured."},
-		{ID: "cutover-audit-print-check-listing", Path: "reports/workflow-performance-audit-20260911/print-check.pdf", Axis: AxisSubsetByDesign, Note: "HISTORICAL CAPTURE: the audit's print-check PDF, quoting the report's listings."},
-		{ID: "cutover-audit-report-html-listing", Path: "reports/workflow-performance-audit-20260911/report.html", Axis: AxisSubsetByDesign, Note: "HISTORICAL CAPTURE: the audit report's HTML rendering, quoting the agent listings."},
-		{ID: "cutover-audit-report-md-listing", Path: "reports/workflow-performance-audit-20260911/report.md", Axis: AxisSubsetByDesign, Note: "HISTORICAL CAPTURE: the audit report, quoting the agent listings it measured."},
-		{ID: "cutover-audit-rules-inventory-listing", Path: "reports/workflow-performance-audit-20260911/rules-inventory.json", Axis: AxisSubsetByDesign, Note: "HISTORICAL CAPTURE: a 2026-09-11 audit capture whose rule inventory quotes the agent names."},
 	}
+	for _, site := range sites {
+		if strings.HasPrefix(site.Path, ".claude/rules/moai/") {
+			site.ID += "-policy"
+			site.Path = strings.Replace(site.Path, ".claude/rules/moai/", ".moai/policies/", 1)
+			sites = append(sites, site)
+		}
+		if strings.HasPrefix(site.Path, "internal/template/templates/.codex/agents/") {
+			site.ID += "-live"
+			site.Path = strings.TrimPrefix(site.Path, "internal/template/templates/")
+			sites = append(sites, site)
+		}
+	}
+	return sites
 }
 
 // indexCatalogStale builds the staleness marker shared by the INDEX.md rows,
@@ -586,11 +537,6 @@ func agentCatalogSizeSite(id, path string) Site {
 		Axis:             AxisRetainedRoster,
 		Claims:           ClaimCount,
 		CountPattern:     `(\d+)-agent catalog in \[agents-reference\.md\]`,
-		KnownStale: &Staleness{
-			Reason:        "The module banner cites an 11-agent catalog where the roster carries 13.",
-			FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
-			DeclaredCount: 11,
-		},
 	}
 }
 
@@ -656,7 +602,7 @@ func NumeralExemptions() []NumeralExempt {
 		"Only machine-local paths were rewritten to neutral placeholders; the roster wording is kept as " +
 		"captured, and editing it would invalidate the capture. The live sources are exempted above on their own rows."
 
-	return []NumeralExempt{
+	exemptions := []NumeralExempt{
 		// ── Historical citations ───────────────────────────────────────────
 		{
 			ID:   "git-workflow-doctrine-retain-matrix",
@@ -717,16 +663,6 @@ func NumeralExemptions() []NumeralExempt {
 			Reason: "Template mirror of the row above; same two hits, same reason.",
 		},
 		{
-			ID:     "foundation-quality-reference-section-marker",
-			Path:   ".claude/skills/moai-foundation-quality/references/reference.md",
-			Reason: "MEASURED FALSE POSITIVE: the numeral is the section marker in \"CLAUDE.md §4 retained-agent catalog\".",
-		},
-		{
-			ID:     "foundation-quality-reference-section-marker-mirror",
-			Path:   "internal/template/templates/.claude/skills/moai-foundation-quality/references/reference.md",
-			Reason: "Template mirror of the row above; same section marker.",
-		},
-		{
 			ID:   "template-isolation-doctrine-forbidden-example",
 			Path: ".moai/docs/template-internal-isolation-doctrine.md",
 			Reason: "MEASURED FALSE POSITIVE: the hit is inside a table cell that QUOTES a forbidden-content " +
@@ -749,25 +685,18 @@ func NumeralExemptions() []NumeralExempt {
 		{ID: "rosterguard-numeral-test-self", Path: "internal/harness/rosterguard/numeral_test.go", Reason: "SELF-DESCRIPTION: the layer's fixtures ARE roster count claims, synthetic and live-quoted."},
 		{ID: "rosterguard-registry-self", Path: "internal/harness/rosterguard/registry.go", Reason: "SELF-DESCRIPTION: the registry's own comments quote the claims its rows assert."},
 		{ID: "rosterguard-test-self", Path: "internal/harness/rosterguard/rosterguard_test.go", Reason: "SELF-DESCRIPTION: the control probe's deliberately-wrong input includes roster count claims."},
-		//
-		// ── Cutover preservation snapshots (PR #1748 transition M2) ────────
-		// The github-flow cutover preserved deployed assets and audit reports
-		// into the tracked tree (commits 82677fd27, 24cd42160). They quote the
-		// roster counts as the deployed copies stood at capture — historical
-		// citations of the live surfaces, which remain exempted on their own
-		// rows. If the preservation copies are later removed, these rows must
-		// go with them: an exemption for a path the layer no longer reaches
-		// fails the breadth-set test by design.
-		{ID: "cutover-preserved-codex-agent-manager-design", Path: ".codex/agents/moai/manager-design.toml", Reason: "HISTORICAL CITATION: cutover-preserved emitted codex agent definition, quoting roster counts as deployed."},
-		{ID: "cutover-preserved-codex-agent-manager-docs", Path: ".codex/agents/moai/manager-docs.toml", Reason: "HISTORICAL CITATION: cutover-preserved emitted codex agent definition, quoting roster counts as deployed."},
-		{ID: "cutover-preserved-codex-agent-manager-spec", Path: ".codex/agents/moai/manager-spec.toml", Reason: "HISTORICAL CITATION: cutover-preserved emitted codex agent definition, quoting roster counts as deployed."},
-		{ID: "cutover-preserved-policy-agent-authoring", Path: ".moai/policies/development/agent-authoring.md", Reason: "HISTORICAL CITATION: cutover-preserved policy copy, quoting agent counts as deployed."},
-		{ID: "cutover-preserved-policy-agent-patterns", Path: ".moai/policies/development/agent-patterns.md", Reason: "HISTORICAL CITATION: cutover-preserved policy copy, quoting agent counts as deployed."},
-		{ID: "cutover-preserved-policy-spec-frontmatter", Path: ".moai/policies/development/spec-frontmatter-schema.md", Reason: "HISTORICAL CITATION: cutover-preserved policy copy, quoting counts as deployed."},
-		{ID: "cutover-preserved-policy-notice", Path: ".moai/policies/NOTICE.md", Reason: "HISTORICAL CITATION: cutover-preserved policy copy, quoting counts as deployed."},
-		{ID: "cutover-preserved-policy-spec-workflow", Path: ".moai/policies/workflow/spec-workflow.md", Reason: "HISTORICAL CITATION: cutover-preserved policy copy, quoting counts as deployed."},
-		{ID: "cutover-preserved-audit-agent-inventory", Path: "reports/workflow-performance-audit-20260911/agent-inventory.json", Reason: "HISTORICAL CITATION: a 2026-09-11 audit capture — an inventory of agent files as they stood at capture."},
-		{ID: "cutover-preserved-audit-report", Path: "reports/workflow-performance-audit-20260911/report.md", Reason: "HISTORICAL CITATION: a 2026-09-11 audit report, quoting the counts it measured."},
-		{ID: "cutover-preserved-audit-rules-inventory", Path: "reports/workflow-performance-audit-20260911/rules-inventory.json", Reason: "HISTORICAL CITATION: a 2026-09-11 audit capture — an inventory of rule files as they stood at capture."},
 	}
+	for _, exemption := range exemptions {
+		if strings.HasPrefix(exemption.Path, ".claude/rules/moai/") {
+			exemption.ID += "-policy"
+			exemption.Path = strings.Replace(exemption.Path, ".claude/rules/moai/", ".moai/policies/", 1)
+			exemptions = append(exemptions, exemption)
+		}
+		if strings.HasPrefix(exemption.Path, "internal/template/templates/.codex/agents/") {
+			exemption.ID += "-live"
+			exemption.Path = strings.TrimPrefix(exemption.Path, "internal/template/templates/")
+			exemptions = append(exemptions, exemption)
+		}
+	}
+	return exemptions
 }

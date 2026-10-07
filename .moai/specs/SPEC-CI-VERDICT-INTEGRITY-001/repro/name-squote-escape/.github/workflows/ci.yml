@@ -1,0 +1,8 @@
+name: ci
+on: [push]
+jobs:
+  Lint:
+    name: 'Lint ''strict'''
+    runs-on: ubuntu-latest
+    steps:
+      - run: "true"

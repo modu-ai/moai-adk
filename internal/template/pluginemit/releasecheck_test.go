@@ -13,8 +13,6 @@ import (
 	"strings"
 	"testing"
 
-	"gopkg.in/yaml.v3"
-
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -93,52 +91,29 @@ func TestPluginVersionScript(t *testing.T) {
 	})
 }
 
-// TestReleaseWorkflowCallsPluginVersionCheck parses release.yml and requires a
-// non-comment line, inside a step of job verify-provenance, that runs the
+// TestReleaseWorkflowCallsPluginVersionCheck verifies the release coupling
+// keeps running inside verify-provenance. Since the provenance gate moved to
+// scripts/verify-release-provenance.sh (SPEC-GITHUB-FLOW-DEFAULT-001 M3), that
+// script is what the workflow's verify-provenance step invokes, so the call to
+// the plugin version check must live there: a non-comment line running the
 // script with the tag.
 func TestReleaseWorkflowCallsPluginVersionCheck(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join(repoRoot, ".github", "workflows", "release.yml"))
+	raw, err := os.ReadFile(filepath.Join(repoRoot, "scripts", "verify-release-provenance.sh"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var wf struct {
-		Jobs map[string]struct {
-			Steps []struct {
-				Name string `yaml:"name"`
-				Run  string `yaml:"run"`
-			} `yaml:"steps"`
-		} `yaml:"jobs"`
-	}
-	if err := yaml.Unmarshal(raw, &wf); err != nil {
-		t.Fatalf("parse release.yml: %v", err)
-	}
-	job, ok := wf.Jobs["verify-provenance"]
-	if !ok || len(job.Steps) == 0 {
-		t.Fatal("job verify-provenance is missing or has no steps; an empty sweep asserts nothing")
-	}
-	calls := func(steps []struct {
-		Name string `yaml:"name"`
-		Run  string `yaml:"run"`
-	}) bool {
-		for _, s := range steps {
-			for _, line := range strings.Split(s.Run, "\n") {
-				line = strings.TrimSpace(line)
-				if strings.HasPrefix(line, "#") {
-					continue
-				}
-				if strings.Contains(line, "scripts/check-plugin-version.sh") && strings.Contains(line, "${TAG}") {
-					return true
-				}
-			}
+	calls := false
+	for _, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "#") {
+			continue
 		}
-		return false
-	}
-	if !calls(job.Steps) {
-		t.Error("no non-comment line of a verify-provenance step runs scripts/check-plugin-version.sh with ${TAG}")
-	}
-	for name, j := range wf.Jobs {
-		if name != "verify-provenance" && calls(j.Steps) {
-			t.Logf("note: job %s also calls the script", name)
+		if strings.Contains(line, "scripts/check-plugin-version.sh") && strings.Contains(line, "${TAG}") {
+			calls = true
+			break
 		}
+	}
+	if !calls {
+		t.Error("no non-comment line of scripts/verify-release-provenance.sh runs scripts/check-plugin-version.sh with ${TAG}")
 	}
 }

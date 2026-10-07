@@ -200,13 +200,15 @@ func TestAstgrepCorpusTablePinned(t *testing.T) {
 }
 
 func TestAstgrepCorpusRunDoesNotSkip(t *testing.T) {
-	goBin, err := exec.LookPath("go")
+	t.Setenv("GOPROXY", "off")
+	t.Setenv("GOMODCACHE", t.TempDir())
+	testBin, err := os.Executable()
 	if err != nil {
-		t.Skipf("go toolchain not on PATH; cannot re-run the differential test (%v)", err)
+		t.Fatalf("locate compiled differential test binary: %v", err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, goBin, "test", "-count=1", "-run", "^TestScanWriteContentDifferential$", "-v", "./internal/hook/")
+	cmd := exec.CommandContext(ctx, testBin, "-test.count=1", "-test.run=^TestScanWriteContentDifferential$", "-test.v", "-test.timeout=120s")
 	cmd.Dir = repoRootForTest(t)
 	out, err := cmd.CombinedOutput()
 	output := string(out)
@@ -214,6 +216,9 @@ func TestAstgrepCorpusRunDoesNotSkip(t *testing.T) {
 
 	if ctx.Err() == context.DeadlineExceeded {
 		t.Fatalf("nested differential re-run timed out; output tail:\n%s", tailBytes(output, 2000))
+	}
+	if err != nil {
+		t.Errorf("nested differential process failed: %v\n%s", err, tailBytes(output, 4000))
 	}
 	if !strings.Contains(output, "--- PASS: TestScanWriteContentDifferential") {
 		t.Errorf("differential re-run did not report --- PASS; the validity gate may have silenced all assertions.\nrc=%v\n%s", err, tailBytes(output, 4000))

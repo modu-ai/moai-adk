@@ -25,7 +25,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -33,40 +32,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 )
-
-// buildMoaiBinary builds cmd/moai into this test's own temp dir and returns
-// the binary path. Built per test rather than once per package so cleanup is
-// t.TempDir()'s job; Go's build cache makes the repeat builds link-only.
-func buildMoaiBinary(t *testing.T) string {
-	t.Helper()
-
-	gomod, err := exec.Command("go", "env", "GOMOD").Output()
-	if err != nil {
-		t.Fatalf("go env GOMOD: %v", err)
-	}
-	modFile := strings.TrimSpace(string(gomod))
-	if modFile == "" || modFile == os.DevNull {
-		t.Fatalf("go env GOMOD did not name a module file (got %q)", modFile)
-	}
-	moduleRoot := filepath.Dir(modFile)
-
-	bin := filepath.Join(t.TempDir(), "moai")
-	if runtime.GOOS == "windows" {
-		bin += ".exe"
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-	build := exec.CommandContext(ctx, "go", "build", "-o", bin, "./cmd/moai")
-	build.Dir = moduleRoot
-	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("go build -o %s ./cmd/moai (in %s): %v\n%s", bin, moduleRoot, err, out)
-	}
-	if _, err := os.Stat(bin); err != nil {
-		t.Fatalf("built binary is not present at %s: %v", bin, err)
-	}
-	return bin
-}
 
 // runIntegrationChild execs the built binary as a child process and returns
 // its combined output plus the run error.

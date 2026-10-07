@@ -32,6 +32,17 @@ func nodeTypecheckStep() *gateStep {
 //	(b) script:    package.json scripts.typecheck  -> npm run typecheck
 //	(c) tsconfig:  tsconfig.json present           -> npx --no-install tsc --noEmit
 //
+// A valid packageManager "bun@<version>" declaration swaps the npm/npx arm
+// for the bun arm on tiers (b)/(c): `bun run typecheck`, or the
+// locally-installed tsc run through the bun runtime (`bun x tsc` — the
+// node_modules/.bin entry carries a node shebang, so a direct exec needs
+// node, absent on bun-only machines; resolution walks node_modules/.bin up
+// to the repository boundary, no PATH fallback, and an unresolved tool
+// keeps the expected-path exec so the step fails deterministically instead
+// of letting bunx reach the network). Tier (a) is honoured
+// verbatim either way; translating an explicit npm/npx override for a bun
+// project is a separate contract decision this resolver does not make.
+//
 // The third return reports whether a step was produced. When it is false the
 // second return explains why, and that explanation is surfaced rather than
 // dropped: a silent skip is the exact failure this axis repairs, where a
@@ -65,18 +76,25 @@ func resolveTypecheckStep(base *gateStep, dir, override string) (gateStep, strin
 		return gateStep{}, fmt.Sprintf("%s: skipped (project directory unknown)", typecheckStepName), false
 	}
 
+	manifest, manifestOK := readNodeManifest(filepath.Join(dir, "package.json"))
+
 	// Tier (b): the project's own script. It outranks the tsconfig shape check
 	// below, so a monorepo root that delegates to turbo is not penalised for
 	// having a solution-style tsconfig.
-	if scripts, ok := readPackageJSONScripts(filepath.Join(dir, "package.json")); ok {
-		if strings.TrimSpace(scripts[nodeTypecheckScript]) != "" {
+	if manifestOK && strings.TrimSpace(manifest.scripts[nodeTypecheckScript]) != "" {
+		if manifest.pm == nodePMBun {
 			return gateStep{
-				name:     typecheckStepName,
-				binary:   "npm",
-				args:     []string{"run", nodeTypecheckScript},
-				optional: true,
+				name:   typecheckStepName,
+				binary: "bun",
+				args:   []string{"run", nodeTypecheckScript},
 			}, "", true
 		}
+		return gateStep{
+			name:     typecheckStepName,
+			binary:   "npm",
+			args:     []string{"run", nodeTypecheckScript},
+			optional: true,
+		}, "", true
 	}
 
 	// Tier (c): tsc against the project's tsconfig.
@@ -92,6 +110,28 @@ func resolveTypecheckStep(base *gateStep, dir, override string) (gateStep, strin
 			"%s: skipped (solution-style tsconfig type-checks nothing and would pass vacuously; "+
 				"add a scripts.typecheck that builds the referenced projects, or set gate.typecheck.command)",
 			typecheckStepName), false
+	}
+
+	if manifest.pm == nodePMBun {
+		// Bun-runtime exec: the local tsc entry carries a node shebang, so a
+		// bun-only machine (no node) cannot exec it directly. A resolved tool
+		// runs through `bun x` (bun substitutes its own runtime for the node
+		// shebang — measured, card t1572), and an unresolved one keeps the
+		// expected-path form so the failed exec names the location and bunx
+		// never gets the chance to download from the network. Either way the
+		// step stays mandatory.
+		if _, ok := resolveNodeLocalBin(dir, "tsc"); ok {
+			return gateStep{
+				name:   typecheckStepName,
+				binary: "bun",
+				args:   []string{"x", "tsc", "--noEmit"},
+			}, "", true
+		}
+		return gateStep{
+			name:   typecheckStepName,
+			binary: expectedNodeLocalBin(dir, "tsc"),
+			args:   []string{"--noEmit"},
+		}, "", true
 	}
 
 	return gateStep{

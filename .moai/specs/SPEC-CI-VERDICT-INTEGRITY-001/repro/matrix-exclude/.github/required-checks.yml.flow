@@ -1,0 +1,5 @@
+version: 1
+branches:
+  main:
+    contexts: [Lint, "Test (windows-latest, 1.23)"]
+auxiliary: []

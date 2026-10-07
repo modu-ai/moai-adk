@@ -17,6 +17,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,6 +25,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -264,8 +266,14 @@ The deny layer is opt-in (workflow.integration_lock.enabled, default false);
 these verbs work regardless, so a project may keep the record as a
 coordination signal without enabling refusal.`,
 	}
-	cmd.AddCommand(newIntegrationStatusCmd(), newIntegrationAcquireCmd(), newIntegrationReleaseCmd(), newIntegrationPreflightCmd())
+	cmd.AddCommand(newIntegrationStatusCmd(), newIntegrationAcquireCmd(), newIntegrationReleaseCmd(), newIntegrationPolicyCmd(), newIntegrationRemeasureCmd(), newIntegrationMergeCmd(), newIntegrationPreflightCmd())
 	return cmd
+}
+
+// configuredIntegrationBranch resolves the integration branch the re-measure
+// names as its absorbed base — the same branch acquire resolves.
+func configuredIntegrationBranch() string {
+	return config.LoadGitFlowIntegrationConfig(resolveProjectDir()).DevelopBranch
 }
 
 func newIntegrationStatusCmd() *cobra.Command {
@@ -275,20 +283,49 @@ func newIntegrationStatusCmd() *cobra.Command {
 		Short: "Report who holds the release-integration window",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			root := integrationLockRoot()
+			initWindowLeaseOverride(root) // class E: the refresh stamps the configured lease too
+			// REQ-MWQ-009 (card t1479): status is a queue mutation — the
+			// liveness drops and the promotion apply BEFORE it prints, and
+			// each dropped ticket is named in the output (REQ-MWQ-003).
+			report, err := factory.RefreshIntegrationWindowAt(root)
+			if err != nil {
+				return err
+			}
+			policy, err := factory.ReadIntegrationWindowPolicy(root)
+			if err != nil {
+				return err
+			}
 			lock, err := factory.ReadIntegrationLock(root)
 			if err != nil {
 				return err
 			}
+			for _, dropped := range report.Dropped {
+				// Class G (card-review r2): on --json the dropped-ticket
+				// lines ride STDERR — the stdout stays one parseable
+				// document (the release-verb precedent).
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "dropped ticket: %s\n", dropped)
+			}
 			if jsonOut {
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{
-					"held":  lock.Held(),
-					"stale": lock.Stale(),
-					"lock":  lock,
-					"root":  root,
+					"held":    lock.Held(),
+					"stale":   lock.Stale(),
+					"lock":    lock,
+					"root":    root,
+					"policy":  policy,
+					"dropped": report.Dropped,
 				})
+			}
+			// The policy and the lease are the two new lines the queue
+			// report adds; a record and a policy that predate both keep the
+			// pre-queue shape on their original lines.
+			policyLine := fmt.Sprintf("  policy:   %s\n", policy.Policy)
+			if policy.Policy == factory.PolicyHold {
+				policyLine = fmt.Sprintf("  policy:   hold (%s)\n", policy.Reason)
 			}
 			if !lock.Held() {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "release-integration window: free")
+				_, _ = fmt.Fprint(cmd.OutOrStdout(), policyLine)
+				factoryPrintQueue(cmd.OutOrStdout(), lock)
 				return nil
 			}
 			state := "held"
@@ -313,8 +350,17 @@ func newIntegrationStatusCmd() *cobra.Command {
 			if lock.BranchSource != "" {
 				branch = fmt.Sprintf("%s (source: %s)", lock.Branch, lock.BranchSource)
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "release-integration window: %s\n  holder:   %s\n%s  branch:   %s\n  worktree: %s\n  since:    %s\n",
-				state, holder, card, branch, lock.Worktree, lock.AcquiredAt)
+			leaseLine := ""
+			if lock.LeaseExpiresAt != "" {
+				leaseLine = fmt.Sprintf("  lease:    until %s\n", lock.LeaseExpiresAt)
+			}
+			displacedLine := ""
+			if lock.Displaced != nil {
+				displacedLine = fmt.Sprintf("  displaced: %s (pid %d) — %s\n", holderLabel(lock.Displaced), lock.Displaced.PID, lock.DisplacedReason)
+			}
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "release-integration window: %s\n  holder:   %s\n%s%s  branch:   %s\n  worktree: %s\n  since:    %s\n%s%s",
+				state, holder, card, leaseLine, branch, lock.Worktree, lock.AcquiredAt, policyLine, displacedLine)
+			factoryPrintQueue(cmd.OutOrStdout(), lock)
 			return nil
 		},
 	}
@@ -322,8 +368,37 @@ func newIntegrationStatusCmd() *cobra.Command {
 	return cmd
 }
 
+// factoryPrintQueue renders the queued tickets in order with their position
+// and liveness (REQ-MWQ-009). An empty or absent queue prints nothing — the
+// pre-queue status shape is byte-preserved when nothing is queued.
+func factoryPrintQueue(out io.Writer, lock *factory.IntegrationLock) {
+	if lock == nil || len(lock.Queue) == 0 {
+		return
+	}
+	probe := factory.DefaultWindowProcProbe()
+	_, _ = fmt.Fprintln(out, "  queue:")
+	for i, ticket := range lock.Queue {
+		live := "live"
+		switch {
+		case ticket.OwnerPID > 0 && !probe.OwnerAlive(ticket.OwnerPID):
+			live = "owner gone"
+		case !probe.WaiterAlive(ticket.WaiterPID, ticket.WaiterStart):
+			live = "waiter gone"
+		}
+		_, _ = fmt.Fprintf(out, "    %d. %s (card %s, since %s, %s)\n", i+1, ticketLabelForQueue(ticket), ticket.Card, ticket.EnqueuedAt, live)
+	}
+}
+
+// ticketLabelForQueue prefers the human-facing lane name.
+func ticketLabelForQueue(ticket factory.IntegrationTicket) string {
+	if ticket.SessionName != "" {
+		return ticket.SessionName
+	}
+	return ticket.SessionID
+}
+
 func newIntegrationAcquireCmd() *cobra.Command {
-	var sessionFlag, nameFlag, branchFlag, cardFlag string
+	var sessionFlag, nameFlag, branchFlag, cardFlag, waitFlag string
 	var force, jsonOut, allowSettingsDrift bool
 	cmd := &cobra.Command{
 		Use:   "acquire",
@@ -334,6 +409,15 @@ func newIntegrationAcquireCmd() *cobra.Command {
 				return fmt.Errorf("cannot resolve this session's id; pass --session <id> (a lock with an invented holder can be neither released by its holder nor recognized by the guard)")
 			}
 			root := integrationLockRoot()
+			initWindowLeaseOverride(root)
+
+			// --wait (card t1479, REQ-MWQ-002): parse the optional bound — a
+			// bare --wait is the 60-minute default, --wait=2m is two minutes.
+			// An empty --wait value reads as the bare form.
+			waitBound, waitRequested, waitErr := parseAcquireWait(waitFlag)
+			if waitErr != nil {
+				return waitErr
+			}
 
 			// The settings-drift precondition runs BEFORE the record is
 			// written (card t488). Its detection, preservation and ledger row
@@ -359,7 +443,8 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			// failure direction is "an operator must ask the holder to release"
 			// rather than "two lanes merge at once".
 			ownerPID, _ := session.ResolveOwnerPID()
-			replaced, err := factory.AcquireIntegrationLock(root, factory.IntegrationLock{
+			opts := &factory.AcquireWindowOptions{ViaWait: waitRequested, LeaseDuration: integrationLeaseDuration(root)}
+			replaced, err := factory.AcquireIntegrationWindow(root, factory.IntegrationLock{
 				SessionID:    sessionID,
 				SessionName:  nameFlag,
 				PID:          ownerPID,
@@ -373,8 +458,35 @@ func newIntegrationAcquireCmd() *cobra.Command {
 				// the record.
 				SettingsDriftBypass:    drift.Bypassed,
 				SettingsDriftPreserved: settingsDriftBypassPreservedPath(drift),
-			}, force)
+			}, force, opts)
 			if err != nil {
+				// Under hold, a --wait acquire enqueues (REQ-MWQ-012); behind
+				// a live holder, it joins the queue (REQ-MWQ-002). Both take
+				// the waiting loop. A no-wait refusal keeps its pre-queue
+				// exit and byte shape (REQ-MWQ-010).
+				if waitRequested && (factory.IsIntegrationWindowHold(err) || factory.IsIntegrationLockHeld(err)) {
+					// Class G (card-review r2): the ticket records the
+					// waiter's process fingerprint — id AND start — so a
+					// later live process with the same pid cannot count as
+					// this waiter (REQ-MWQ-003's id-AND-start matching).
+					waiterStart := ""
+					if fp, state := homestate.ProbeProcessIdentity(os.Getpid()); state == homestate.ProcessIdentityLive {
+						waiterStart = fp
+					}
+					ticket := factory.IntegrationTicket{
+						SessionID:    sessionID,
+						SessionName:  nameFlag,
+						Card:         cardFlag,
+						OwnerPID:     ownerPID,
+						PIDSource:    factory.PIDSourceSessionOwner,
+						Branch:       branch,
+						BranchSource: source,
+						Worktree:     wt,
+						WaiterPID:    os.Getpid(),
+						WaiterStart:  waiterStart,
+					}
+					return integrationWaitInQueue(root, sessionID, ticket, waitBound, cmd.OutOrStdout())
+				}
 				// A refused acquire recorded nothing, so there is no
 				// fallback to warn about.
 				return err
@@ -434,6 +546,13 @@ func newIntegrationAcquireCmd() *cobra.Command {
 	cmd.Flags().StringVar(&nameFlag, "name", "", "Human-facing lane name recorded alongside the id")
 	cmd.Flags().StringVar(&branchFlag, "branch", "", "The integration target branch the merge lands on, not the card branch being merged (default: the configured git-flow develop branch, else the current branch)")
 	cmd.Flags().StringVar(&cardFlag, "card", "", "Card id this integration belongs to")
+	cmd.Flags().StringVar(&waitFlag, "wait", "", "Queue behind a live holder instead of refusing, with this bound (bare --wait is 60m from the enqueue instant; --wait=2m is two minutes)")
+	// P2-4 (card-review r1): a BARE --wait carries the 60-minute default —
+	// without NoOptDefVal the flag parser refuses a value-less --wait with
+	// "flag needs an argument" before the verb ever sees it.
+	if wf := cmd.Flags().Lookup("wait"); wf != nil {
+		wf.NoOptDefVal = "true"
+	}
 	cmd.Flags().BoolVar(&force, "force", false, "Take the window over from a live holder (recorded, never silent)")
 	cmd.Flags().BoolVar(&allowSettingsDrift, "allow-settings-drift", false, "Record the window despite a refused settings-drift verdict (recorded in the lock, never silent). Deliberately separate from --force, which is a different decision")
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "Emit machine-readable JSON")
@@ -469,7 +588,9 @@ func newIntegrationReleaseCmd() *cobra.Command {
 			// the refusal named the refused process's own pid. An unresolvable
 			// owner yields 0, which matches nothing and leaves the id key alone.
 			callerOwnerPID, _ := session.ResolveOwnerPID()
-			released, err := factory.ReleaseIntegrationLock(integrationLockRoot(), sessionID, callerOwnerPID, force)
+			releaseRoot := integrationLockRoot()
+			initWindowLeaseOverride(releaseRoot) // class E: the promotion stamps the configured lease too
+			released, err := factory.ReleaseIntegrationLock(releaseRoot, sessionID, callerOwnerPID, force)
 			if err != nil {
 				return err
 			}

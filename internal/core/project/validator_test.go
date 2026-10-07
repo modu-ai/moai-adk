@@ -71,13 +71,21 @@ func TestValidate(t *testing.T) {
 			wantWarnings: []string{".claude/ directory already exists"},
 		},
 		{
-			name: "existing CLAUDE.md triggers warning",
+			name: "existing AGENTS.md triggers warning",
+			setup: func(t *testing.T, root string) {
+				t.Helper()
+				writeFile(t, root, "AGENTS.md", "# test\n")
+			},
+			wantValid:    true,
+			wantWarnings: []string{"AGENTS.md already exists"},
+		},
+		{
+			name: "legacy CLAUDE.md is inert",
 			setup: func(t *testing.T, root string) {
 				t.Helper()
 				writeFile(t, root, "CLAUDE.md", "# test\n")
 			},
-			wantValid:    true,
-			wantWarnings: []string{"CLAUDE.md already exists"},
+			wantValid: true,
 		},
 		{
 			name: "no git directory triggers warning",
@@ -163,7 +171,7 @@ func TestValidateMoAI(t *testing.T) {
 				for _, dir := range requiredClaudeDirs {
 					mkDir(t, root, filepath.Join(".claude", dir))
 				}
-				writeFile(t, root, "CLAUDE.md", "# test\n")
+				writeFile(t, root, "AGENTS.md", "# test\n")
 			},
 			wantValid: true,
 		},
@@ -284,7 +292,7 @@ func TestValidateMoAI_MissingClaudeDir(t *testing.T) {
 	}
 	writeFile(t, root, ".moai/manifest.json", `{"version":"1.0.0","deployed_at":"","files":{}}`)
 	writeFile(t, root, ".moai/config/sections/user.yaml", "user:\n  name: test\n")
-	writeFile(t, root, "CLAUDE.md", "# test\n")
+	writeFile(t, root, "AGENTS.md", "# test\n")
 
 	v := NewValidator(nil)
 	result, err := v.ValidateMoAI(root)
@@ -298,14 +306,14 @@ func TestValidateMoAI_MissingClaudeDir(t *testing.T) {
 	}
 }
 
-func TestValidateMoAI_MissingCLAUDEMD(t *testing.T) {
+func TestValidateMoAI_MissingAgentsMD(t *testing.T) {
 	root := t.TempDir()
 
 	for _, dir := range requiredMoAIDirs {
 		mkDir(t, root, filepath.Join(".moai", dir))
 	}
 	writeFile(t, root, ".moai/manifest.json", `{"version":"1.0.0","deployed_at":"","files":{}}`)
-	// No CLAUDE.md
+	// No AGENTS.md
 
 	v := NewValidator(nil)
 	result, err := v.ValidateMoAI(root)
@@ -313,8 +321,37 @@ func TestValidateMoAI_MissingCLAUDEMD(t *testing.T) {
 		t.Fatalf("ValidateMoAI() error = %v", err)
 	}
 
-	if !containsSubstring(result.Warnings, "CLAUDE.md not found") {
-		t.Errorf("expected warning about missing CLAUDE.md, got %v", result.Warnings)
+	if !containsSubstring(result.Warnings, "AGENTS.md not found") {
+		t.Errorf("expected warning about missing AGENTS.md, got %v", result.Warnings)
+	}
+}
+
+// TestValidateMoAI_LegacyClaudeMDIsInert pins the AGENTS.md-primary conversion:
+// a legacy CLAUDE.md in an existing project is neither an error nor a warning
+// target — the validator steers users to AGENTS.md only.
+func TestValidateMoAI_LegacyClaudeMDIsInert(t *testing.T) {
+	root := t.TempDir()
+
+	for _, dir := range requiredMoAIDirs {
+		mkDir(t, root, filepath.Join(".moai", dir))
+	}
+	writeFile(t, root, ".moai/manifest.json", `{"version":"1.0.0","deployed_at":"","files":{}}`)
+	writeFile(t, root, "AGENTS.md", "# test\n")
+	writeFile(t, root, "CLAUDE.md", "# legacy\n")
+
+	v := NewValidator(nil)
+	result, err := v.ValidateMoAI(root)
+	if err != nil {
+		t.Fatalf("ValidateMoAI() error = %v", err)
+	}
+
+	for _, w := range result.Warnings {
+		if strings.Contains(w, "CLAUDE.md") {
+			t.Errorf("legacy CLAUDE.md should be inert, got warning %q", w)
+		}
+	}
+	if containsSubstring(result.Warnings, "AGENTS.md not found") {
+		t.Error("AGENTS.md exists; the not-found warning must be absent")
 	}
 }
 
@@ -348,7 +385,7 @@ func TestValidateMoAI_NonYAMLFilesSkipped(t *testing.T) {
 	writeFile(t, root, ".moai/config/sections/user.yaml", "user:\n  name: test\n")
 	// Non-YAML file should be skipped
 	writeFile(t, root, ".moai/config/sections/readme.txt", "not yaml\n")
-	writeFile(t, root, "CLAUDE.md", "# test\n")
+	writeFile(t, root, "AGENTS.md", "# test\n")
 
 	for _, dir := range requiredClaudeDirs {
 		mkDir(t, root, filepath.Join(".claude", dir))
@@ -372,7 +409,7 @@ func TestValidateMoAI_ClaudeDirMissingSubdir(t *testing.T) {
 		mkDir(t, root, filepath.Join(".moai", dir))
 	}
 	writeFile(t, root, ".moai/manifest.json", `{"version":"1.0.0","deployed_at":"","files":{}}`)
-	writeFile(t, root, "CLAUDE.md", "# test\n")
+	writeFile(t, root, "AGENTS.md", "# test\n")
 
 	// Create .claude but only some subdirs
 	mkDir(t, root, ".claude/skills")

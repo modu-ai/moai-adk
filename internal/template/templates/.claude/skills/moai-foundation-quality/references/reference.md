@@ -62,7 +62,7 @@ whichever is configured in the project. Detection is by project markers
 
 ## Agent Roles in Quality
 
-The quality-bearing roles from the CLAUDE.md §4 retained-agent catalog. That
+The quality-bearing roles from the .moai/config/sections/delegation.yaml retained-agent catalog. That
 section is the roster's single source of truth — read the count and the full
 membership there rather than from this table, which lists only the agents with
 a quality responsibility:
@@ -157,7 +157,7 @@ Attribution).
 
 ## Cross-References
 
-- CLAUDE.md §6 (Quality Gates) — the harness + LSP gate policy
+- the quality-gate sections (harness.yaml, quality.yaml) — the harness + LSP gate policy
 - `.claude/rules/moai/core/moai-constitution.md` § Quality Gates — TRUST 5 principles
 - `.claude/rules/moai/core/agent-common-protocol-reference.md` § Skeptical Evaluation Stance — the auditor stance sync-auditor adopts
 - `.claude/rules/moai/core/verification-claim-integrity.md` — no unobserved verification claims

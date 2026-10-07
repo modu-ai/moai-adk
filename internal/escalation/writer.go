@@ -113,6 +113,11 @@ func ContractLine(data []byte, keyPath ...string) int {
 
 // ContractItemLine returns the line of the sequence item equal to value under
 // keyPath (for example a glob in ownership.never), or 0 when absent.
+//
+// @MX:ANCHOR: [AUTO] sequence-item line mapping for contract_ref output.
+// @MX:REASON: [AUTO] fan_in >= 3 (operational.go, classes_paths.go, newapi.go);
+// all escalation writer branches map contract references to source lines
+// through this one walker, so its yaml traversal is the shared line contract.
 func ContractItemLine(data []byte, value string, keyPath ...string) int {
 	node := contractNode(data, keyPath...)
 	if node == nil || node.value.Kind != yaml.SequenceNode {

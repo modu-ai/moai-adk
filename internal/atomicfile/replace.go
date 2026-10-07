@@ -17,6 +17,12 @@ import "os"
 //
 // The returned error is the underlying *os.LinkError from os.Rename, so
 // callers may keep matching on os.IsNotExist / errors.Is as before.
+//
+// @MX:ANCHOR: [AUTO] the atomic-rename step every state writer shares.
+// @MX:REASON: [AUTO] fan_in >= 3 (20 non-test caller files across contract,
+// sessionmsg, factorylane, cli and more); every durable state file lands
+// through this one primitive, so its platform semantics (POSIX rename vs
+// the Windows open-handle retry in replace_windows.go) are a shared contract.
 func Replace(oldpath, newpath string) error {
 	return replace(oldpath, newpath)
 }
@@ -28,6 +34,11 @@ func Replace(oldpath, newpath string) error {
 //
 // Use it for any read that can race a writer of the same file; a read fully
 // serialized against writers does not need it.
+//
+// @MX:ANCHOR: [AUTO] the read-side twin of Replace for files a Replace can race.
+// @MX:REASON: [AUTO] fan_in >= 3 (7 non-test caller files); it exists so a
+// concurrent atomic replace never surfaces as a spurious read error, and
+// dropping it for plain os.ReadFile reintroduces that race on Windows.
 func ReadFile(path string) ([]byte, error) {
 	return readFile(path)
 }

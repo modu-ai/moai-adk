@@ -1,0 +1,18 @@
+#!/bin/sh
+# t1546 clock stub (P2-V) — the auto-merge merge body reads its time source
+# as `date +%s`; this PATH stub makes that read serve the MOCKED clock (the
+# contents of $MOAI_CLOCK_FILE) instead of the real wall clock, so the E26
+# repro can drive the body across the deadline boundary deterministically.
+# Any arguments (e.g. `+%s`) are accepted and ignored; the served value is
+# always emitted as bare epoch seconds, matching what `date +%s` prints.
+MOAI_CLOCK_FILE="${MOAI_CLOCK_FILE:?MOAI_CLOCK_FILE not set}"
+if [ -r "$MOAI_CLOCK_FILE" ]; then
+  served="$(sed -n 1p "$MOAI_CLOCK_FILE" 2>/dev/null || true)"
+  case "$served" in
+    ''|*[!0-9]*) echo "${MOCK_CLOCK_START:-1100}" ;;
+    *) echo "$served" ;;
+  esac
+else
+  echo "${MOCK_CLOCK_START:-1100}"
+fi
+exit 0

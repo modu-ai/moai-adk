@@ -15,6 +15,9 @@ func TestBindLaunchPendingCannotOverwriteConcurrentAuthoritativePeer(t *testing.
 	t.Setenv("MOAI_HOME", t.TempDir())
 	for i := 0; i < 8; i++ {
 		root := filepath.Join(t.TempDir(), "project")
+		if err := os.MkdirAll(root, 0o700); err != nil {
+			t.Fatal(err)
+		}
 		run := "run-bind-race"
 		sessionStore, err := Open(root, run)
 		if err != nil {

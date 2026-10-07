@@ -135,6 +135,40 @@ func (lv autoLiveness) ownerAlive(root, cardID string) (alive bool, degraded boo
 	return registryLive || processLive, degraded, nil
 }
 
+// autoQueuedCandidates is the queued pickup arm both cycles share (the
+// operator's serial cycle and the lane lease cycle): the queued cards in
+// queue order, skipping the relation-blocked ones with one labelled
+// non-finding per skip (SPEC-RELATION-PICKUP-FILTER-001 REQ-RPF-001/002: a
+// card on the blocked side of a live sequencing finding waits for its
+// predecessor — it is not a pickup candidate while the finding exists in the
+// live record). The dead-owner rescue arm is deliberately NOT gated on
+// relations (REQ-RPF-006), so it lives in autoPickTargets, not here.
+func autoQueuedCandidates(rec *factory.BacklogRecord) (queued []factory.BacklogItem, notes []string) {
+	for _, it := range rec.Items {
+		// REQ-THS-012: positive enumeration — the state this arm admits is
+		// named, and every other state (a state added later included) falls
+		// through.
+		if it.State == factory.BacklogStateQueued {
+			// REQ-RPF-004: one labelled non-finding per skipped card, naming
+			// the card id, the relation, and the blocking predecessor id.
+			// FindingsBlocking returns only findings whose blocked side (the
+			// waits-on waiter) IS this card, so the edge's target is always
+			// the predecessor.
+			if blockers := rec.FindingsBlocking(it.ID); len(blockers) > 0 {
+				for _, f := range blockers {
+					_, predecessor, _ := factory.WaitsOnOf(f)
+					notes = append(notes, fmt.Sprintf(
+						"non-finding: %s skipped (relation-blocked: %s %s %s) — waiting for predecessor %s",
+						it.ID, f.SubjectID, f.Relation, f.RelatedID, predecessor))
+				}
+				continue
+			}
+			queued = append(queued, it)
+		}
+	}
+	return queued, notes
+}
+
 // autoPickTargets selects the cycle's pickup targets (REQ-MT-008/010):
 // first the unfinished already-picked cards whose owner measures dead, then
 // the unpicked cards in queue order. The predicate is written in POSITIVE
@@ -162,32 +196,9 @@ func autoPickTargets(rec *factory.BacklogRecord, lv autoLiveness, root string) (
 			targets = append(targets, it)
 		}
 	}
-	for _, it := range rec.Items {
-		if it.State == factory.BacklogStateQueued {
-			// SPEC-RELATION-PICKUP-FILTER-001 (REQ-RPF-001/002): a queued
-			// card on the blocked side of a live sequencing finding waits
-			// for its predecessor — it is not a pickup candidate while the
-			// finding exists in the live record (the predecessor's done
-			// archives the finding, resolving the block with no relation
-			// bookkeeping). The dead-owner rescue arm above is deliberately
-			// NOT gated on relations (REQ-RPF-006).
-			if blockers := rec.FindingsBlocking(it.ID); len(blockers) > 0 {
-				// REQ-RPF-004: one labelled non-finding per skipped card,
-				// naming the card id, the relation, and the blocking
-				// predecessor id. FindingsBlocking returns only findings
-				// whose blocked side (the waits-on waiter) IS this card, so
-				// the edge's target is always the predecessor.
-				for _, f := range blockers {
-					_, predecessor, _ := factory.WaitsOnOf(f)
-					notes = append(notes, fmt.Sprintf(
-						"non-finding: %s skipped (relation-blocked: %s %s %s) — waiting for predecessor %s",
-						it.ID, f.SubjectID, f.Relation, f.RelatedID, predecessor))
-				}
-				continue
-			}
-			targets = append(targets, it)
-		}
-	}
+	queuedTargets, queuedNotes := autoQueuedCandidates(rec)
+	notes = append(notes, queuedNotes...)
+	targets = append(targets, queuedTargets...)
 	return targets, notes, nil
 }
 
@@ -218,6 +229,22 @@ type autoOptions struct {
 // autoQuotaLine returns the quota-pressure steering line for the project root,
 // or "" while pressure is off. It is evaluated afresh before every accept line.
 type autoQuotaLine func(root string) string
+
+// autoWaitForEvidence polls the evidence file until it carries readable
+// content or the per-card deadline passes, then reports whether the evidence
+// was collected. Both cycles share it (the operator's serial cycle and the
+// lane lease cycle): completion is judged by reading the file, never by any
+// worker claim.
+func autoWaitForEvidence(evidence string, opts autoOptions) bool {
+	deadline := opts.now().Add(opts.wait)
+	for opts.now().Before(deadline) {
+		if body, readErr := os.ReadFile(evidence); readErr == nil && len(strings.TrimSpace(string(body))) > 0 {
+			return true
+		}
+		opts.sleep(5 * time.Second)
+	}
+	return false
+}
 
 // runAutoCycle executes the serial cycle against the store, writing the
 // narrated output (accept → directive → evidence → done/unpick → guidance)
@@ -309,15 +336,7 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 		// One worker in flight: wait for the evidence the directive named,
 		// polling until the per-card deadline. Completion is judged by
 		// reading the file, never by any worker claim.
-		collected := false
-		deadline := opts.now().Add(opts.wait)
-		for opts.now().Before(deadline) {
-			if body, readErr := os.ReadFile(evidence); readErr == nil && len(strings.TrimSpace(string(body))) > 0 {
-				collected = true
-				break
-			}
-			opts.sleep(5 * time.Second)
-		}
+		collected := autoWaitForEvidence(evidence, opts)
 
 		if collected {
 			_, _ = fmt.Fprintf(out, "evidence collected: %s\n", evidence)
@@ -342,6 +361,11 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 				continue
 			}
 			_, _ = fmt.Fprintf(out, "done %s\n", card.ID)
+			// The archive Mutate returned nil — the queue write is
+			// committed and the lock released: the gated, bounded,
+			// fail-open memory fold runs outside the mutation window
+			// (AC-MFB-008 (iv)).
+			foldClosedCardMemoryFn(card.ID)
 			writeAutoClearGuidance(out, card.ID, opts.sessionID)
 			continue
 		}

@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/hook"
@@ -710,7 +711,7 @@ func cleanupSessionWorktree(cfg *config.Config, wtPath string, cleanExit bool, o
 		return
 	}
 	if !landed {
-		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (remote merge landing unconfirmed): worktree %s preserved (dispose manually via 'moai worktree remove' once %s carries the merge; a locally merged but not-yet-pushed develop lands here too — by design)\n", wtPath, sessionWorktreeIntegrationRef)
+		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (remote merge landing unconfirmed): worktree %s preserved (dispose manually via 'moai worktree remove' once %s carries the merge; a locally merged but not-yet-pushed integration branch lands here too — by design)\n", wtPath, sessionLandingRefLabel(wtPath))
 		return
 	}
 	// Clean worktree + clean exit -> remove. A removal failure is non-blocking
@@ -794,35 +795,74 @@ func gitWorktreeRemoveReal(wtPath string) error {
 	return nil
 }
 
-// sessionWorktreeIntegrationRef is the remote-tracking integration branch the
-// landing predicate reads (decision-index Q1 DECIDED — fixed to
-// refs/remotes/origin/develop). A repository whose integration branch is
-// named differently has no ref to confirm against and fails open to
-// preserve; the misjudgment direction of a stale ref is also always
-// "not landed" → preserve (landing is monotonic).
-const sessionWorktreeIntegrationRef = "refs/remotes/origin/develop"
+// sessionWorktreeIntegrationRefFor resolves the remote-tracking integration ref
+// the landing predicate reads: refs/remotes/origin/<configured integration
+// target> of the project that owns wtPath (the interpretation table behind
+// config.LoadGitFlowIntegrationConfig — develop under git-flow, main under
+// github-flow). It replaces the literal refs/remotes/origin/develop of the
+// original decision (decision-index Q1). An empty target is an error naming the
+// key to set (config.EmptyTargetGuidance): the caller preserves the tree, it is
+// never handed a substituted branch. A stale remote-tracking ref still misjudges
+// only toward "not landed" → preserve (landing is monotonic).
+func sessionWorktreeIntegrationRefFor(wtPath string) (string, error) {
+	out, err := exec.Command("git", "-C", wtPath, "rev-parse", "--path-format=absolute", "--git-common-dir").Output()
+	if err != nil {
+		return "", fmt.Errorf("resolve the project root of %s: %w", wtPath, err)
+	}
+	commonDir := strings.TrimSpace(string(out))
+	if commonDir == "" {
+		return "", fmt.Errorf("resolve the project root of %s: empty git-common-dir", wtPath)
+	}
+	root := filepath.Dir(commonDir)
+	cfg := config.LoadGitFlowIntegrationConfig(root)
+	target := strings.TrimSpace(cfg.IntegrationTarget)
+	if target == "" {
+		return "", fmt.Errorf("no integration target configured under %s: %s", root, cfg.EmptyTargetGuidance(root, ""))
+	}
+	return "refs/remotes/origin/" + target, nil
+}
+
+// sessionLandingRefLabel names the integration ref for the "landing unconfirmed"
+// notice, falling back to a generic phrase when the target cannot be resolved.
+func sessionLandingRefLabel(wtPath string) string {
+	if ref, err := sessionWorktreeIntegrationRefFor(wtPath); err == nil {
+		return ref
+	}
+	return "the configured integration branch"
+}
 
 // gitBranchLandedReal reports whether the worktree's branch has landed on
 // the remote integration branch, per the decided fetch-less predicate
-// (decision-index Q1):
+// (decision-index Q1, extended by SPEC-GITHUB-FLOW-DEFAULT-001 REQ-GFD-002):
 //
 //	 (i) the branch tip is an ancestor of the remote-tracking integration
 //	     ref (`git merge-base --is-ancestor`), or
-//	(ii) every patch the branch carries already exists upstream — `git
-//	     cherry` answers with no "+" line (patch-id equivalence), which
-//	     covers squash merges where no commit ancestry survives (the
-//	     SPEC-WORKTREE-SQUASH-MERGE-001 lesson: reachability alone cannot
-//	     see a squash).
+//	(ii) the branch's cumulative verbatim patch-id matches a commit on the
+//	     ref and every card-changed path has the exact card Git object/mode
+//	     on that ref (worktree.LandedByPatchID), covering unchanged-path
+//	     one-commit and several-commit squash merges.
 //
-// No network runs: both checks read the remote-tracking refs the repository
-// already holds, so the shared exit path stays cheap (REQ-WSS-304). Any
-// anomaly — a check error, a missing integration ref, a detached HEAD with
-// no branch to confirm — returns an error so the caller fails open to
-// preserve (REQ-WSS-302), matching the dirty and unpushed guards' contract.
+// A rebase whose per-commit patches match but whose cumulative patch cannot
+// be confirmed, or whose touched path differs, is preserved. git cherry cannot authorize
+// deletion, because whitespace may be part of a string literal.
+//
+// The integration ref is the configured target (sessionWorktreeIntegrationRefFor),
+// not a literal develop. No network runs, and in particular no `gh` call: the
+// PR-state layer belongs to `moai worktree done` and `moai worktree sweep`
+// only, so the shared exit path stays cheap (REQ-WSS-304 / REQ-GFD-002 second
+// clause); a squash-merged card these arms cannot confirm preserves and the
+// next sweep decides. Any anomaly — a check error, a missing integration ref,
+// an empty target, a detached HEAD with no branch to confirm — returns an
+// error so the caller fails open to preserve (REQ-WSS-302), matching the dirty
+// and unpushed guards' contract.
 func gitBranchLandedReal(wtPath string) (bool, error) {
+	ref, err := sessionWorktreeIntegrationRefFor(wtPath)
+	if err != nil {
+		return false, err
+	}
 	if err := exec.Command("git", "-C", wtPath, "rev-parse", "--verify", "--quiet",
-		sessionWorktreeIntegrationRef).Run(); err != nil {
-		return false, fmt.Errorf("remote-tracking integration ref %s not found", sessionWorktreeIntegrationRef)
+		ref).Run(); err != nil {
+		return false, fmt.Errorf("remote-tracking integration ref %s not found", ref)
 	}
 	branchOut, err := exec.Command("git", "-C", wtPath, "rev-parse", "--abbrev-ref", "HEAD").Output()
 	if err != nil {
@@ -834,31 +874,16 @@ func gitBranchLandedReal(wtPath string) (bool, error) {
 	// Arm (i): ancestry. Exit code 1 means "not an ancestor" — a verdict,
 	// not a failure; only other exits are anomalies.
 	ancestor := exec.Command("git", "-C", wtPath, "merge-base", "--is-ancestor",
-		"HEAD", sessionWorktreeIntegrationRef)
+		"HEAD", ref)
 	if err := ancestor.Run(); err == nil {
 		return true, nil
 	} else if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 1 {
 		return false, err
 	}
-	// Arm (ii): patch-id equivalence. `git cherry` lists the head-side
-	// commits, prefixing each with "-" when its patch matches an upstream
-	// commit and "+" when it does not — so empty output only happens when the
-	// head side is empty (the ancestry case above). Landed = every listed
-	// patch is equivalent: no "+" line. Measured against the squash fixture
-	// in session_worktree_landing_test.go: the naive "empty output" reading
-	// never fires on a squash (the equivalent commit still prints as
-	// "- <sha>").
-	cherry, err := exec.Command("git", "-C", wtPath, "cherry",
-		sessionWorktreeIntegrationRef, "HEAD").Output()
-	if err != nil {
-		return false, err
-	}
-	for _, ln := range strings.Split(string(cherry), "\n") {
-		if strings.HasPrefix(strings.TrimSpace(ln), "+") {
-			return false, nil
-		}
-	}
-	return true, nil
+	// Arm (ii): the shared cumulative predicate compares original bytes.
+	// git cherry folds whitespace, including string data, so it cannot
+	// authorize disposal. An unconfirmed rebase is preserved for later sweep.
+	return worktree.LandedByPatchID(wtPath, "HEAD", ref)
 }
 
 // gitStatusPorcelainReal runs `git -C <wtPath> status --porcelain` and returns

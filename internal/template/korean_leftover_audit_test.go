@@ -36,7 +36,7 @@ func TestNoKoreanRecommendedMarkerInEnglishInstructionDocs(t *testing.T) {
 	}
 
 	targets := []string{
-		"CLAUDE.md",
+		"AGENTS.md.tmpl",
 		".claude/rules/moai/core/moai-constitution.md",
 	}
 

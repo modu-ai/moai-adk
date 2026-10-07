@@ -153,6 +153,42 @@ type StartMarker struct {
 	StartedAt time.Time `json:"started_at"`
 }
 
+// StartMarkerKey returns the store key identifying one auditor instance's
+// start marker: the agent id when the hook payload carried one, else the
+// session_id + agent_type pair (prefixed "bg_" so a derived key can never
+// collide with a real agent id). A background Agent() spawn delivers a
+// SubagentStart payload without agent_id, so for those spawns the pair is the
+// only identity both events of the spawn carry; keyed by agent id alone the
+// marker was a structural no-op and every later PASS permanently unprovable
+// (card t1544). Two same-role background auditors of one session share the
+// derived key, so a derived-keyed marker is a session-era anchor, not one
+// instance's: it keeps the EARLIEST start (the writer does not overwrite an
+// existing derived marker) and no single stop deletes it — deleting it would
+// destroy the other live instance's marker and re-create the unprovable-PASS
+// deadlock for it. The anchor goes stale with its session id and is never
+// read again. Neither identity present returns "": no key, no marker.
+func StartMarkerKey(agentID, sessionID, agentType string) string {
+	if id := strings.TrimSpace(agentID); id != "" {
+		return id
+	}
+	if s := strings.TrimSpace(sessionID); s != "" {
+		return derivedMarkerKeyPrefix + s + "_" + strings.TrimSpace(agentType)
+	}
+	return ""
+}
+
+// derivedMarkerKeyPrefix marks a start-marker key derived from the
+// session_id + agent_type pair rather than carried by the payload.
+const derivedMarkerKeyPrefix = "bg_"
+
+// IsDerivedMarkerKey reports whether key was derived by StartMarkerKey for an
+// agent-id-less background spawn. Such markers are session-era anchors shared
+// by every same-role background auditor of the session: they are written
+// keep-earliest and never deleted by a single instance's stop.
+func IsDerivedMarkerKey(key string) bool {
+	return strings.HasPrefix(key, derivedMarkerKeyPrefix)
+}
+
 // Rejection records a refused auditor PASS. It outlives the subagent: the
 // PreToolUse guard reads it to keep phase-entry spawns denied.
 type Rejection struct {

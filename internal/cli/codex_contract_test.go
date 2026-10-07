@@ -1,8 +1,8 @@
 package cli
 
 // codex_contract_test.go — SPEC-CODEX-INIT-001 run-phase tests, contract
-// side. This file holds the path-containment axis (AC-CI-011: 84 + 60 + 36
-// = 180 cells); the link-creation, idempotency, and reachability cells
+// side. This file holds the path-containment axis (AC-CI-011: 56 + 40 + 24
+// = 120 cells); the creation, idempotency, and reachability cells
 // (AC-CI-005/006/007) live in codex_contract_link_test.go.
 //
 // Disciplines: refusal is judged by STRUCTURE (closed-set IsRegular, not a
@@ -77,7 +77,7 @@ func (f codexFakeFileInfo) IsDir() bool        { return f.mode.IsDir() }
 func (f codexFakeFileInfo) Sys() any           { return nil }
 
 // TestCodexPathGuardInjectedModes: every non-regular mode bit × each of the
-// three instruction paths × 2 verbs × 2 spawn. The judgement must be the
+// instruction paths × 2 verbs × 2 spawn. The judgement must be the
 // CLOSED SET (IsRegular) — any enumeration of refused kinds leaves one of
 // these seven alive.
 func TestCodexPathGuardInjectedModes(t *testing.T) {
@@ -215,8 +215,9 @@ func codexMakeRealFixture(t *testing.T, sbx, proj, name string, kind codexRealKi
 	}
 }
 
-// TestCodexPathGuardRealFixtures: five real path kinds × 3 files × 2 verbs
-// × 2 spawn. Kinds the platform cannot create are skipped AND listed.
+// TestCodexPathGuardRealFixtures: five real path kinds × the instruction
+// paths × 2 verbs × 2 spawn. Kinds the platform cannot create are skipped
+// AND listed.
 func TestCodexPathGuardRealFixtures(t *testing.T) {
 	kinds := []codexRealKind{kindExternalSymlink, kindInternalSymlink, kindDirectory, kindFIFO, kindSocket}
 	files := defaultCodexInstructionRelPaths()
@@ -285,9 +286,9 @@ func skippedOrNone(list []string) []string {
 // TestCodexPathGuardParentEscape: the leaf name alone does not bound the
 // path. Three batches — a parent symlink to outside, a `..` escape through
 // plain directories, and the lexical trap (parent symlink + `..` that only
-// LOOKS inside if cleaned before resolution) — each × 3 files × 2 verbs ×
-// 2 spawn. The variant paths travel through the path-table seam; the cells
-// still run the real launch verbs end to end.
+// LOOKS inside if cleaned before resolution) — each × the instruction paths
+// × 2 verbs × 2 spawn. The variant paths travel through the path-table seam;
+// the cells still run the real launch verbs end to end.
 func TestCodexPathGuardParentEscape(t *testing.T) {
 	batches := []struct {
 		name    string
@@ -389,44 +390,6 @@ func TestCodexPathGuardParentEscape(t *testing.T) {
 }
 
 // ─── SPEC-CODEX-TEST-GAPS-001 M4 (REQ-CTG-004 / AC-CTG-004) ───────────────
-
-// TestCodexCountExecutingImports pins the HTML-comment arm of the executing-
-// import scanner, which the fence/blockquote axes elsewhere in this file do
-// not reach: a directive AFTER a multi-line comment's `-->` close counts,
-// a directive after an inline single-line `<!-- ... -->` counts, and a
-// directive INSIDE a comment never counts — counting a commented example
-// would let prose satisfy the "already linked" contract.
-func TestCodexCountExecutingImports(t *testing.T) {
-	const directive = codexTestLocalImportDirective
-	cases := []struct {
-		name string
-		body string
-		want int
-	}{
-		{
-			name: "multi-line comment — directive after the --> close",
-			body: "<!-- provenance notes\nspanning lines -->\n" + directive + "\n",
-			want: 1,
-		},
-		{
-			name: "inline single-line comment — directive after <!-- ... -->",
-			body: "<!-- hidden example -->\n" + directive + "\n",
-			want: 1,
-		},
-		{
-			name: "directive inside a comment is not an executing import",
-			body: "<!-- " + directive + " is documented here -->\n",
-			want: 0,
-		},
-		{
-			name: "directive inside a multi-line comment is not counted either",
-			body: "<!-- first line\n" + directive + " inside\nlast line -->\n",
-			want: 0,
-		},
-	}
-	for _, tc := range cases {
-		if got := codexCountExecutingImports([]byte(tc.body), directive); got != tc.want {
-			t.Errorf("%s: codexCountExecutingImports = %d, want %d", tc.name, got, tc.want)
-		}
-	}
-}
+// The executing-import scanner tests retired with the CLAUDE.md link branch:
+// the AGENTS.md-primary contract writes no import lines, so the scanner has
+// no production user left.

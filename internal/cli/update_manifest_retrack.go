@@ -85,16 +85,21 @@ func retrackPaths(projectRoot string, errOut io.Writer, rels []string) error {
 // a hardcoded set) keeps new section files covered without touching this
 // call site; the template_managed filter inside retrackManifestFiles is what
 // keeps user-owned files out.
-func retrackSectionFiles(projectRoot string, errOut io.Writer) {
+//
+// Card t1527 repair round 3: the failure is RETURNED, not printed — the
+// caller owns the surface (the init tail routes it into the warning summary
+// panel so nothing prints after the completion card; the update callers keep
+// their immediate line).
+func retrackSectionFiles(projectRoot string, errOut io.Writer) error {
 	mgr := manifest.NewManager()
 	if _, err := mgr.Load(projectRoot); err != nil {
 		// No loadable manifest means nothing to retrack against; the deploy
 		// step's own Save is the one that matters for a fresh project.
-		return
+		return nil
 	}
 	matches, err := filepath.Glob(filepath.Join(projectRoot, ".moai", "config", "sections", "*.yaml"))
 	if err != nil || len(matches) == 0 {
-		return
+		return nil
 	}
 	rels := make([]string, 0, len(matches))
 	for _, m := range matches {
@@ -104,7 +109,5 @@ func retrackSectionFiles(projectRoot string, errOut io.Writer) {
 		}
 		rels = append(rels, filepath.ToSlash(rel))
 	}
-	if err := retrackManifestFiles(projectRoot, mgr, errOut, rels); err != nil {
-		_, _ = fmt.Fprintf(errOut, "  manifest retrack (config sections): %v\n", err)
-	}
+	return retrackManifestFiles(projectRoot, mgr, errOut, rels)
 }

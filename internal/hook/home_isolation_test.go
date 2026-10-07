@@ -59,6 +59,48 @@ func TestResolveCaptureMemoryDir_DoesNotEscapeToRealHome(t *testing.T) {
 	}
 }
 
+// TestMemoryBudgetStoreCandidates_DoNotEscapeToRealHome guards the third
+// home-join derivation of this package: the SessionStart memory-budget
+// advisory's store candidates (internal/hook/session_start_memory_budget.go,
+// SPEC-MEMORY-FOLD-BUDGET-001 follow-up card). Same shape as the capture-dir
+// guard above — the test isolates BOTH key roots (the CLAUDE_CONFIG_DIR
+// profile key and the HOME default key), so a candidate landing inside the
+// ambient home's project store means the derivation ignored the isolated
+// environment.
+//
+// Falsifiability: deleting either t.Setenv line below makes this test fail,
+// because the matching candidate then derives inside the ambient home.
+func TestMemoryBudgetStoreCandidates_DoNotEscapeToRealHome(t *testing.T) {
+	// Cannot run in parallel: t.Setenv mutates process-wide state.
+	realHome, err := os.UserHomeDir() // captured BEFORE the overrides
+	if err != nil {
+		t.Fatalf("os.UserHomeDir(): %v", err)
+	}
+
+	tmp := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", tmp)
+	t.Setenv("HOME", tmp)
+	// os.UserHomeDir reads USERPROFILE on Windows and HOME elsewhere, so both
+	// have to be redirected for the isolation to hold on every platform.
+	t.Setenv("USERPROFILE", tmp)
+
+	candidates := memoryBudgetStoreCandidates(tmp)
+	if len(candidates) == 0 {
+		t.Fatal("memoryBudgetStoreCandidates derived no candidates")
+	}
+	realProjects := filepath.Join(realHome, ".claude", "projects")
+	for _, c := range candidates {
+		rel, err := filepath.Rel(realProjects, c)
+		if err == nil && rel != ".." && !filepath.IsAbs(rel) &&
+			len(rel) > 0 && rel[0] != '.' {
+			t.Errorf("memoryBudgetStoreCandidates() derived %q\n"+
+				"that path is inside the ambient home's project store (%q), so a\n"+
+				"handler test run would point the budget advisory at the real store",
+				c, realProjects)
+		}
+	}
+}
+
 // homeJoinSiteAllowlist pins exactly WHICH files build a path of the form
 // <home>/.claude/projects/<slug>. It is an explicit set, not a bare count:
 // a bare count told the reader that something moved but not whether the list
@@ -84,6 +126,12 @@ var homeJoinSiteAllowlist = []string{
 	"internal/cli/preference/cmd.go",
 	"internal/cli/tokens.go", // glob READ of the real home (session transcript lookup)
 	"internal/hook/session_end.go",
+	// READ of the real home (SessionStart memory-budget advisory's default
+	// store key, SPEC-MEMORY-FOLD-BUDGET-001 follow-up card); its behavioural
+	// guards are TestMemoryBudgetStoreCandidates_DoNotEscapeToRealHome below,
+	// TestSessionStartMemoryBudget_StaysUnderTempHome, and the package
+	// TestMain read-seam containment assertion.
+	"internal/hook/session_start_memory_budget.go",
 	"internal/hygiene/settings.go", // READ of the real home (transcript profile roots; never written)
 }
 

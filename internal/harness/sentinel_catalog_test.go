@@ -1,5 +1,5 @@
 // Package harness_test — M6 sentinel catalog CI guard.
-// Verifies that all 10 HARNESS_LEARNING_* and 8 HARNESS_FROZEN_* sentinel strings are
+// Verifies that all 10 HARNESS_LEARNING_* and 9 HARNESS_FROZEN_* sentinel strings are
 // reachable from the compiled binary (plan.md §5.2 sentinel catalog exhaustiveness check).
 // Failure here means a sentinel was renamed or removed without updating this test.
 package harness_test
@@ -55,7 +55,7 @@ func TestSentinelCatalog_LearningSet(t *testing.T) {
 	}
 }
 
-// TestSentinelCatalog_FrozenSet verifies the 8 HARNESS_FROZEN_* sentinel constants.
+// TestSentinelCatalog_FrozenSet verifies the 9 HARNESS_FROZEN_* sentinel constants.
 // These are exported from the hook package (internal/hook/pre_tool.go).
 func TestSentinelCatalog_FrozenSet(t *testing.T) {
 	t.Parallel()
@@ -72,6 +72,7 @@ func TestSentinelCatalog_FrozenSet(t *testing.T) {
 		{"HARNESS_FROZEN_OUTPUTSTYLE_VIOLATION", hook.SentinelHarnessFrozenOutputStyle},
 		{"HARNESS_FROZEN_INSTRUCTION_VIOLATION", hook.SentinelHarnessFrozenInstruction},
 		{"HARNESS_FROZEN_CONFIG_VIOLATION", hook.SentinelHarnessFrozenConfig},
+		{"HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION", hook.SentinelHarnessFrozenProtectedZone},
 	}
 
 	for _, s := range frozenSentinels {

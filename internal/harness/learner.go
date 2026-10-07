@@ -44,6 +44,17 @@ func NewLearner(promotionPath string) *Learner {
 // @MX:ANCHOR: [AUTO] Used by multiple callers as the first step of the learning pipeline.
 // @MX:REASON: [AUTO] fan_in >= 3: learner_test.go, CLI harness status, Phase 5 IT-01
 func AggregatePatterns(logPath string) (map[string]*Pattern, error) {
+	return AggregatePatternsSince(logPath, time.Time{})
+}
+
+// AggregatePatternsSince is AggregatePatterns restricted to the retention
+// window: events whose Timestamp is before cutoff are skipped before
+// aggregation (SPEC-HARNESS-DETACHED-PRUNE-001 REQ-DP-009). A zero cutoff
+// aggregates every event (the AggregatePatterns behavior). Pattern carries no
+// per-event timestamps (types.go), so the window can only be applied at this
+// read — a post-aggregate filter cannot distinguish vintages — and the
+// classifier never relies on the asynchronous prune child having run.
+func AggregatePatternsSince(logPath string, cutoff time.Time) (map[string]*Pattern, error) {
 	patterns := make(map[string]*Pattern)
 
 	f, err := os.Open(logPath)
@@ -66,6 +77,12 @@ func AggregatePatterns(logPath string) (map[string]*Pattern, error) {
 		var evt Event
 		if err := json.Unmarshal([]byte(line), &evt); err != nil {
 			// Skip parsing failure lines (prevent data loss)
+			continue
+		}
+
+		// Retention window (REQ-DP-009): retention-expired events never reach
+		// the aggregation input.
+		if !cutoff.IsZero() && evt.Timestamp.Before(cutoff) {
 			continue
 		}
 

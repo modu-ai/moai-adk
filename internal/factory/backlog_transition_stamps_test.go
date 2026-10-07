@@ -126,11 +126,11 @@ func TestTransitionStampColumns_FreshUpgradedConverge(t *testing.T) {
 	// pin additively again (same cascade as the freeze re-record): the lease
 	// columns append AFTER the classification, preserving the old columns as
 	// an exact prefix in original order.
-	const wantItems = "seq id text added_at spec_id state landing picked_at dropped_at classification picked_by lease_expires_at"
+	const wantItems = "seq id text added_at spec_id state landing picked_at dropped_at classification picked_by lease_expires_at issuance"
 	if got := strings.Join(columnNames(t, freshEng, "items"), " "); got != wantItems {
 		t.Errorf("items columns = %q, want %q (old columns as a prefix, in order)", got, wantItems)
 	}
-	const wantArchived = "seq id text added_at spec_id state position landing picked_at dropped_at archived_at landing_verdict classification picked_by lease_expires_at"
+	const wantArchived = "seq id text added_at spec_id state position landing picked_at dropped_at archived_at landing_verdict classification picked_by lease_expires_at issuance"
 	if got := strings.Join(columnNames(t, freshEng, "archived_items"), " "); got != wantArchived {
 		t.Errorf("archived_items columns = %q, want %q (old columns as a prefix, in order)", got, wantArchived)
 	}

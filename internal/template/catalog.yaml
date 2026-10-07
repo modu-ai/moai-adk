@@ -6,22 +6,22 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: da3ffb7cc254b5e41211cd2f300563cb1ad6191e1d2113b7123c91f3b3f0556a
+              hash: cb6a5d0bb02ad3970358c4120a25d3ed479f74356d778aa700970ada67dc5bf1
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
               path: templates/.claude/skills/moai-foundation-cc/
-              hash: e898e5afb95a10565ab8937294fc3d7a9eb7f2f46af2eff851bbd3664a77c80e
+              hash: bb29b631ef1c66f3f75792386101bf6423fb506498a9f979155d27604b5f9388
               version: 1.0.0
             - name: moai-foundation-core
               tier: core
               path: templates/.claude/skills/moai-foundation-core/
-              hash: 6c5cc32c1d2ddeeac4b0b32415e36e55f751cf120e6429529ea4dd016806a971
+              hash: 06184bb2f951812e3620ecf1b630ff3dd5ddbd762e3bcb9891fc6c09877fa8df
               version: 1.0.0
             - name: moai-foundation-quality
               tier: core
               path: templates/.claude/skills/moai-foundation-quality/
-              hash: 957d89cb3193d4ca39ff70c53186fee3deb5066cf922d3760774999bf5320aca
+              hash: b47c1d4a523f95c60cb9c78984faa5007f5323a2ab599952e2d0abb365ffa770
               version: 1.0.0
             - name: moai-foundation-thinking
               tier: core
@@ -106,7 +106,7 @@ catalog:
             - name: moai-workflow-testing
               tier: core
               path: templates/.claude/skills/moai-workflow-testing/
-              hash: 0640a0057482e20697b0e53272b82b7f8d4e06e573f041f3f8008c9a7e0b3f92
+              hash: 11fea1a4abc3fc24e2e70aed1142be1b01fd2f28ca7783d4a4ea9183c84fa5dd
               version: 1.0.0
             - name: moai-workflow-worktree
               tier: core
@@ -116,7 +116,7 @@ catalog:
             - name: moai-domain-html-report
               tier: core
               path: templates/.claude/skills/moai-domain-html-report/
-              hash: a7f209bad14101bbaccfa09f3b808b7d6f2237f7732facfe2109ef8a5be56974
+              hash: 7ea8d361d84632ce15d66c5f6eef8d3d757bf8f66884348f286b4d1399a76403
               version: 1.0.0
             - name: moai-domain-svg-infographic
               tier: core
@@ -162,7 +162,7 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: 72a03289d7dea8c27cfdb889226c924b52df754efff4170730f6026e0146c4dc
+              hash: 307c0ac9d7e3018f15c4d5301124e9ee06d27b9fcfa0d2f6d3e85f7aecfed5a9
               version: 1.0.0
             - name: super-advisor
               tier: core

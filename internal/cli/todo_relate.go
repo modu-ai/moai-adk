@@ -35,14 +35,30 @@ import (
 
 // newTodoRelateCmd — `moai todo relate <a> <b> --relation <r> [--note <text>]`
 // (REQ-TA-008): record one agent-sourced finding between two existing cards.
+// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-011: `--disposition <value>` turns the
+// verb into the disposition recorder — it sets the disposition of the
+// matching finding pair (either order) and records no new relation.
 func newTodoRelateCmd() *cobra.Command {
-	var relation, note string
+	var relation, note, disposition string
 	cmd := &cobra.Command{
 		Use:   "relate <a> <b> --relation <contains|absorbs|replaces|conflicts|blocks|depends>",
 		Short: "Record a relation between two cards (records only — changes no card)",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			subject, related := normalizeTodoRef(args[0]), normalizeTodoRef(args[1])
+			if disposition != "" {
+				if relation != "" {
+					err := fmt.Errorf("todo relate: --disposition and --relation are mutually exclusive")
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+					return err
+				}
+				if err := factory.RecordFindingDisposition(newTodoStore(), subject, related, disposition); err != nil {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+					return err
+				}
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "disposition %s recorded on the %s/%s finding\n", disposition, subject, related)
+				return nil
+			}
 			if err := runTodoRelate(cmd, subject, related, relation, note); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
@@ -51,21 +67,29 @@ func newTodoRelateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&relation, "relation", "",
-		"One of: "+strings.Join(factory.BacklogSemanticRelations, ", "))
+		"One of: "+strings.Join(factory.BacklogWriteableRelations, ", "))
 	cmd.Flags().StringVar(&note, "note", "",
 		"Free text recorded with the finding")
+	cmd.Flags().StringVar(&disposition, "disposition", "",
+		"One of: "+strings.Join(factory.IssuanceDispositionValues, ", ")+" — set the finding's disposition instead of recording a relation")
 	return cmd
 }
 
 // runTodoRelate validates the relation and both ids, then appends exactly
 // one agent finding under the lock.
 func runTodoRelate(cmd *cobra.Command, subject, related, relation, note string) error {
-	if !isSemanticRelation(relation) {
+	if !isWriteableRelation(relation) {
 		return fmt.Errorf("todo relate: --relation must be one of %s (got %q)",
-			strings.Join(factory.BacklogSemanticRelations, ", "), relation)
+			strings.Join(factory.BacklogWriteableRelations, ", "), relation)
 	}
 	if subject == related {
 		return fmt.Errorf("todo relate: a card cannot be related to itself (%s)", subject)
+	}
+	// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-013: symmetric kinds normalize the
+	// pair (smaller id first) BEFORE the dedup check, so an opposite-order
+	// re-record maps onto the first finding instead of creating a second.
+	if factory.BacklogRelationIsSymmetricForDedup(relation) {
+		subject, related, _ = factory.NormalizeRelationPair(subject, related)
 	}
 	var index int
 	err := newTodoStore().Mutate(func(rec *factory.BacklogRecord) error {
@@ -90,6 +114,16 @@ func runTodoRelate(cmd *cobra.Command, subject, related, relation, note string) 
 					subject, relation, related, waiter, target)
 			}
 		}
+		// REQ-TCI-013: supersedes cycles are refused the same way — the
+		// mapped walk sees legacy replaces rows as supersedes edges. The
+		// guard keys on the MAPPED kind (card t1454 card-review r2c finding
+		// C3): `replaces` is the legacy spelling of the same edges, and
+		// checking the input name alone let a replaces input bypass it.
+		if kind, _ := factory.MapLegacyRelation(relation); kind == factory.CardRelationSupersedes {
+			if rec.RelationKindClosesCycle(subject, related, "supersedes", "replaces") {
+				return fmt.Errorf("todo relate: %s supersedes %s would close a supersedes cycle", subject, related)
+			}
+		}
 		finding := factory.BacklogFinding{
 			SubjectID: subject,
 			RelatedID: related,
@@ -98,9 +132,13 @@ func runTodoRelate(cmd *cobra.Command, subject, related, relation, note string) 
 			Note:      note,
 			At:        time.Now().UTC().Format(time.RFC3339),
 		}
-		if !rec.AppendFindingOnce(finding) {
+		// REQ-TCI-013 (card t1454 card-review r2 finding 15): the stored rows
+		// are normalized in the dedup too — a pair an older writer recorded
+		// in the opposite order still maps onto the first record.
+		if rec.HasNormalizedFindingTuple(finding) {
 			return fmt.Errorf("todo relate: %s %s %s is already recorded", subject, relation, related)
 		}
+		rec.Findings = append(rec.Findings, finding)
 		index = len(rec.Findings)
 		return nil
 	})
@@ -150,11 +188,11 @@ func newTodoUnrelateCmd() *cobra.Command {
 	}
 }
 
-// isSemanticRelation reports whether r is one of the four relations `relate`
-// accepts. The mechanical relations are deliberately excluded: a hand-written
-// `near-duplicate` would claim a measurement nobody measured.
-func isSemanticRelation(r string) bool {
-	for _, allowed := range factory.BacklogSemanticRelations {
+// isWriteableRelation — SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-013: relate's
+// writable set widens to the three new kinds; the projection kinds stay
+// refused (they are add-time attribute projections or todo merge's output).
+func isWriteableRelation(r string) bool {
+	for _, allowed := range factory.BacklogWriteableRelations {
 		if r == allowed {
 			return true
 		}

@@ -57,6 +57,10 @@ type GitFlowIntegrationConfig struct {
 	// Disposition is the three-way classification of Workflow
 	// (loader_workflow_disposition.go). The zero value means unknown.
 	Disposition WorkflowDisposition
+	// Mode is the raw git_strategy.mode value (card t1453 M1b), set whenever
+	// the file loaded; it names the profile a refusal tells the reader to fix
+	// (EmptyTargetGuidance). Empty only when the file is unreadable or sets none.
+	Mode string
 	// IntegrationTarget is the flow-scoped integration target projected from
 	// the D2 interpretation table: github-flow → "main", git-flow → the
 	// gated DevelopBranch, gitlab-flow → environment, release-flow →
@@ -64,6 +68,11 @@ type GitFlowIntegrationConfig struct {
 	// Manual && GitFlowWorkflow gate (REQ-GWS-005) — a non-manual git-flow
 	// profile resolves no target, exactly as DevelopBranch stays empty today.
 	IntegrationTarget string
+	// MergeMethod is the ACTIVE mode profile's raw merge_method, trimmed (card
+	// t1453 M2-B): the github-flow delivery edge maps it to the `gh pr merge`
+	// method flag. Empty when the profile sets none or the file is unreadable;
+	// the caller applies the squash default.
+	MergeMethod string
 }
 
 // IsGitFlow reports whether the project's git strategy is git-flow: manual
@@ -93,6 +102,7 @@ func LoadGitFlowIntegrationConfig(projectRoot string) GitFlowIntegrationConfig {
 	cfg := GitFlowIntegrationConfig{
 		Manual:          wrapper.GitStrategy.Mode == "manual",
 		GitFlowWorkflow: ok && profile.Workflow == gitFlowWorkflow,
+		Mode:            wrapper.GitStrategy.Mode,
 	}
 	if ok {
 		// Card t656: carry the raw value and its three-way disposition.
@@ -100,6 +110,7 @@ func LoadGitFlowIntegrationConfig(projectRoot string) GitFlowIntegrationConfig {
 		// stays reserved for "unknown" (unreadable file / no active profile).
 		cfg.Workflow = profile.Workflow
 		cfg.Disposition = ClassifyWorkflowDisposition(profile.Workflow)
+		cfg.MergeMethod = strings.TrimSpace(profile.MergeMethod)
 	}
 	if cfg.Manual && cfg.GitFlowWorkflow {
 		cfg.DevelopBranch = strings.TrimSpace(profile.DevelopBranch)

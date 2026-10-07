@@ -1,10 +1,44 @@
 # 데이터 흐름
 
+## 현재 main48의 변경 흐름
+
+기준은 `48fa94b99023bb252a9731fbbd5ebc6dcc7472ab`다. 아래는15개 수정 소스의 호출·저장 흐름을 대조한 결과이며 런타임 보안이나 원격 실행 성공 주장은 아니다.
+
+1. `internal/cli/factory_card.go`가 현재 큐 상태를 읽어 assigned 카드의 재임대·지명 거절을 판단한다. queued 승격에서 이미 assigned인 행은 빈 `CardFields`로 전이해 기존 배정 입력을 유지한다.
+2. done·sweep·발행 probe가 Factory의 설정 우선 landed-ref 체인을 공유한다. done은 선택한 단계의 출처도 반환하고 sweep는 ref만 반환하며 명시적 sweep `--base`는 이 기본값보다 우선한다.
+3. update의 바이너리·dry-run 조기 종료 뒤 또는 clean install의 설정 보존 뒤, `internal/cli/update_deny_migration.go`가 정확히 일치하는 root deny 문자열만 치환한다. 알 수 없는 항목과 목록 순서는 유지한다.
+4. `internal/graph/card_file.go`가 도달 가능한 카드 귀속 커밋을 수집하고 native Git batch의 첫 부모 차이를 NUL 경계로 해석한다. 끝 sentinel까지 확인하지 못하면 커밋별 수집으로 돌아가며 batch의 부분 결과를 완성된 그래프로 사용하지 않는다.
+5. shell word의 quote 종류에 맞춰 escape를 해석한 뒤 `internal/hook/protected_zone_path.go`가 native 파일시스템 경로와 lexical 비교형을 만든다. POSIX literal backslash를 Windows 구분자로 바꾸지 않는 경로 처리가 이번 창의 변경이다.
+
+## 이전067 기준의 통합·카드 증거 흐름
+
+기준은 `067fdced2dd8f38812d4c36ec17ceb8d2ca3e263`다. 아래는 호출부·저장 경로의 소스 대조이며 외부 프로세스나 원격 병합을 실제 실행했다는 주장은 아니다.
+
+1. `internal/cli/integration.go`의 acquire/wait가 `internal/factory/integration_window_queue.go`의 직렬 RMW와 `internal/factory/integration_window_ops.go`의 FIFO 승격으로 이어진다.
+2. `internal/factory/integration_remeasure.go`가 트리에 묶인 실행 기록을 만들고 검증한다. `internal/factory/integration_merge_step.go`는 고정한 SHA와 소유권·임대·작업 트리·충돌을 재확인해 병합한다.
+3. `internal/cli/factory_card.go`의 complete가 T14/T16 전이를 만들고, `TransitionRequest.VerifyRemeasure` 콜백을 통해 `internal/homestate/card_evidence_readers.go`가 병합 트리의 재측정 기록을 확인한다. 단순 merge SHA 텍스트 파일을 검증 근거로 대신 읽는 흐름이 아니다.
+4. Codex의 대화형 부모가 `moai todo --auto`를 수행하면 `internal/cli/todo_auto_lane.go`가 순위 결정 → 지명 임대 → 카드 워크트리 → 증거 인계를 수행한다. 공유 순환의 quota hold는 Claude 레인에만 적용되고, 이때는 자기 할당 카드만 임대 관문을 거친다. Codex/GPT의 할당량 평가는 false를 반환한다. 이는 T8a 감사 승인에서 사용하는 별도의 `QueueHold`와 구분한다.
+5. 워크트리 착지 판정은 `internal/cli/worktree/landing_predicate.go`의 `landingExactChangedPaths`에서 native object/mode를 확인한다. CLI의 `session_worktree.go`도 같은 helper를 호출한다.
+6. `internal/graph/card_file.go`가 모든 도달 가능한 부모의 카드 귀속을 모으고 각 착지 커밋의 첫 부모와 파일 차이를 계산한다. 결과는 `internal/graph/graph.go`의 그래프와 `internal/graph/meta.go`의 fingerprint에 쓰인다.
+
+`internal/cli/init.go`의 MCP provisioning 실패는 collector에 전달되고, `internal/hook/session_start_memory_budget.go`는 goroutine 시작 전에 읽기 의존성을 고정한다. 기존 흐름의 과거 구현 설명은 아래에 당시 기준과 함께 남긴다.
+
+## 이전 081899 기준의 흐름 보충
+
+기준은 `081899adb825935d5263b1699fe730373deaa4fd`다. 다음은 호출부와 저장 경로의 소스 대조이며 외부 프로세스·원격 병합을 실제 실행했다는 뜻은 아니다.
+
+- `internal/hook/post_tool_scope.go`가 프로젝트와 CWD의 가장 가까운 Git 루트를 물리 경로로 비교한다. 외부임이 확인된 Write/Edit 대상은 `post_tool.go`·`post_tool_guardian.go`의 LSP·AST·guardian 스캔을 생략하고, 판정이 불확실하면 스캔을 유지한다.
+- Factory 병합 관측은 `factoryCloseLaneCard`와 `BacklogStore.ArchiveOnRuntimeCompletion`을 거쳐 호출자 루트의 큐 카드 보관과 runtime `completed`로 이어진다. 이미 보관된 카드도 닫힌 상태로 재관측한다.
+- 훅 이벤트 append 뒤 `MaybeSpawnRetentionPruner`가 stamp를 읽고, 오래됐거나 없을 때 같은 바이너리의 `hook retention-prune`를 분리 실행한다. 플랫폼별 실행은 `retention_spawn_unix.go`·`retention_spawn_windows.go`가 맡는다.
+- 감사 시작 키는 `auditreceipt.StartMarkerKey`가 agent ID 우선으로 만들고, 없으면 session/role에서 파생한다. 파생 키는 가장 이른 시작을 유지하며 단일 stop으로 삭제하지 않는다.
+- `internal/graph/card_file.go`의 카드·파일 연결은 `graph.go`의 그래프 생성과 `meta.go`의 병합 출처 fingerprint에 쓰인다. 웹 `TodoGraph`는 별도로 `internal/web/todo_queue_read.go`의 `readTodoGraph`를 통해 큐·보관 카드와 findings의 카드 간 관계를 읽는다.
+
+> **t1510 판(card t1510)** — § N이 하나 더 붙었다: **보호 구역 거부 흐름**. PreToolUse(`moai hook pre-tool`)가 `harness-learner` identity의 Write·Edit·Bash를 받으면 `protected_zone_guard.go`(파일 도구)와 `protected_zone_shell.go`(Bash — mvdan/sh AST 위의 가능-디렉터리-집합 워커)가 대상 경로를 `protected_zone_path.go`의 물리 해석(끊긴 심링크 목적지 추종 포함)으로 정규화해 shipped+overlay 매니페스트와 compiled baseline에 대조하고, 적중 시 `HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION` sentinel과 사람 회송 이유로 거부하며 감사 행을 `.moai/logs/protected-zone-audit.jsonl`에 남긴다. 매니페스트가 invalid면 변이 명령을 읽지 않고 거부한다(fail-closed).
 > **t1524 판(card t1518)** — § N이 새로 붙었다: `.moai` 위생 엔진의 두 흐름(감사 로그 회전 한 판, 끝난 세션 상태 GC의 생존 판정→연대→재판정→삭제). 신규 패키지 `internal/hygiene`(card t1518, SPEC-MOAI-HYGIENE-001) — SessionStart 자동 경로는 `internal/hook/session_start_hygiene.go`가 best-effort로 운반하고(기동을 막지 않는다), 수동 표면은 `moai clean --audit-logs|--session-state`다. 두 경로 다 기본은 report — 파일을 하나도 바꾸지 않는다. 같은 창의 세션 비상 재개 경로(`lane_resume.go` · card t1465)는 § F 계열 런처의 예비 경로고, 감사 상한(card t1500)은 § I의 판정 위에 반복 상한을 얹는다.
 
 > **t1443 판(card t1347·t1375)** — Factory 흐름에 두 관문이 더했다: ① **할당량 게이트** — `factory next` 임대 전 `internal/cli/factory_quota.go`가 상태 디렉터리의 사용량 창 원장으로 보유 창·압력을 평가한다(원장은 `internal/statusline/context_usage.go`가 스키마 v3로 쓰고 `internal/statusline/quota.go`의 `AggregateQuota`가 읽는 것과 같은 것). 판정은 배차 스티어링 행(`factory_quota_lanes.go`)과 `--auto` 사이클 안내 줄로 흘러 임대 보유를 설명한다. 게이트 설정은 `workflow.quota_gate.*`(`loader_quota_gate.go` — 모든 실패에서 꺼짐 기본). ② **관리 세션 divert** — `MOAI_FACTORY_MANAGED`가 명시적으로 켜진 런치는 `launcher.go`·`codex_launcher.go`의 게이트에서 관리 소유자로 갈라진다(`managed_factory_session.go`의 stream-json Claude 자식 · `managed_codex_factory.go`의 websocket Codex App-Server 자식 — 런처가 대화를 소유한다). 기본은 꺼짐이다. ③ **llm.yaml 셋째 쓰기 경로**(card t1411) — § G의 두 갈래 밖에 `internal/settings/llmoverrides.go`가 더했다: 웹 에이전트 설정 탭의 저장이 llm.yaml 프로파일·에이전트별 model/effort를 원자 쓰기+스냅샷/복원으로 쓴다. ④ **할당량 판독 확장**(card t1442 — t1347 부채 F1) — 게이트 판독이 primary 하나가 아니라 primary+링크된 워크트리 상태 디렉터리 전부로 넓었다(`internal/statusline/quota_dirs.go`의 `QuotaStateDirs` — git 메타데이터 파일 읽기만으로 열거, `workflow.quota_gate.max_scan_dirs` 바운드; 다른 형태의 상태 디렉터리는 단독 판독 — fail-open). ⑤ **스테일 런 리바인딩**(card t1345) — 프롬프트마다 env 네임 런의 활성을 재측정해 비활성이면 레인을 살아 있는 런으로 재결합하거나(`internal/hook/factory_rebind.go`) `moai factory relaunch` 실행 명령줄을 운영자에게 안내한다.
 
-**현재 갱신 — t1295, `develop` `cee197917` (2026-09-28).**
+**이전 갱신 — t1295, `develop` `cee197917` (2026-09-28).**
 MoAI가 만드는 L1 워크트리 경로와 기존 트리의 이전 경로를 § M에 추가했다.
 Factory 런 은퇴의 `lead` 표기는 이전 런의 저장 역할값이다. 현재 런은 `leader/lane`을 쓰며,
 옛 역할을 가진 세션은 `internal/hook/session_stale_run.go`에서 재등록하지 않고 안내한다.
@@ -122,8 +156,10 @@ internal/escalation 패키지의 `Active` 게이트(contract 모드인가?)를 �
 ### 빌드 타임
 
 ```
-internal/template/embed.go                            //go:embed all:templates   (588개 파일)
-internal/template/embed.go                            //go:embed catalog.yaml
+internal/template/embedemit                          Git 추적 경로 ApprovedPaths → Render
+internal/template/embed_manifest_gen.go               개별 템플릿 지시문 604개 + catalog.yaml
+                                                      → embeddedRaw
+internal/template/embed.go                            → EmbeddedTemplates
 internal/template/scripts/gen-catalog-hashes.go       별도 main — 카탈로그 해시 사전 생성
 internal/template/agentemit                           make agents-emit
                                                         .claude/agents/moai/*.md × agents-codex.yaml
@@ -134,7 +170,7 @@ internal/template/commandemit                         make commands-emit
                                                         (본문 바이트 동일 verbatim)
 ```
 
-두 방출기는 **빌드 타임에만** 돕니다. 런타임 배포 경로는 그 산물을 다른 템플릿 파일과
+방출기는 **빌드 타임에만** 돕니다. 런타임 배포 경로는 그 산물을 다른 템플릿 파일과
 구분하지 않고 나릅니다 — 그래서 발행 스킬 경로에 별도 보호가 필요해집니다(아래).
 
 ### 런타임 — `moai init`

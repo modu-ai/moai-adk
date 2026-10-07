@@ -166,17 +166,59 @@ func mappingPathNamesClaudeBinary(path string) bool {
 // ("conversions/") from matching.
 var versionSegmentRe = regexp.MustCompile(`(?:^|/)(?:versions|claude-code)/([0-9]+(?:\.[0-9]+)*)`)
 
-// versionSegmentFromPath extracts the version segment from an install path,
-// or "" when the path carries none — the caller renders unknown, never an
-// inferred value.
-//
-// @MX:DEBT: version segment is the FIRST versions/<n> match, not anchored to the claude install root — /opt/versions/9/tools/claude/versions/2.1.281 reads as "9" (r5 overlay repro), so a stale process can escape the doctor warn
-// @MX:CEILING: correct for install-root-shaped paths (~/.local/share/claude/versions, npm claude-code/); exotic prefixes misreport
-// @MX:UPGRADE: t1515 — anchor extraction to the claude install root
+// trailingBinaryVersionRe matches the binary-name shape's tail: a version-
+// named directory carrying the claude binary itself (…/<X.Y.Z>/claude) —
+// the file IS the product binary, so its version-named parent anchors the
+// read without any product-directory prefix upstream.
+var trailingBinaryVersionRe = regexp.MustCompile(`/([0-9]+(?:\.[0-9]+)*)/` + regexp.QuoteMeta(claudeBinaryName) + `$`)
+
+// versionSegmentFromPath extracts the version segment from an install path
+// anchored on the claude product-directory shapes
+// mappingPathNamesClaudeBinary recognizes (REQ-SCV-016) — …/claude/versions/
+// <v>, the …/claude-code/<v> product directory itself, and the trailing
+// …/<v>/claude binary-name shape — or "" when the path carries none, the
+// caller rendering unknown, never an inferred value (REQ-SCV-017). An
+// unrelated versions/ or claude-code/ prefix outside a claude product
+// directory can no longer satisfy the read: /opt/versions/9/tools/claude/
+// versions/2.1.281 reads 2.1.281, not 9 (the r5 overlay repro). The shapes
+// are judged in PREFERENCE order, not candidate order — the native
+// …/claude/versions/<v> shape outranks the npm …/claude-code/<v> shape, and
+// within a shape the candidate closest to the path end wins — so an early
+// decoy directory upstream of the real install root shadows nothing
+// (card-review r1, P2②): /opt/claude-code/9/tools/claude/versions/2.1.281
+// reads 2.1.281.
 func versionSegmentFromPath(path string) string {
-	m := versionSegmentRe.FindStringSubmatch(path)
-	if m == nil {
-		return ""
+	// The binary-name shape: the path ENDS in the claude binary inside a
+	// version-named directory — the anchor is the product binary itself.
+	if m := trailingBinaryVersionRe.FindStringSubmatch(path); m != nil {
+		return m[1]
 	}
-	return m[1]
+	// The product-directory shapes, two passes so the first HIT of the
+	// preferred shape wins over any hit of the other shape regardless of
+	// where in the path each candidate sits. Within a pass, left-to-right
+	// iteration makes the LAST assignment the candidate closest to the end.
+	locs := versionSegmentRe.FindAllStringSubmatchIndex(path, -1)
+	for _, shape := range [...]struct {
+		prefix        string
+		needClaudeDir bool
+	}{
+		{prefix: "/versions/", needClaudeDir: true}, // native …/claude/versions/<v>
+		{prefix: "/claude-code/"},                   // npm-style …/claude-code/<v>
+	} {
+		best := ""
+		for _, loc := range locs {
+			tail := path[loc[0]:]
+			if !strings.HasPrefix(tail, shape.prefix) {
+				continue
+			}
+			if shape.needClaudeDir && !strings.HasSuffix(path[:loc[0]], "/"+claudeBinaryName) {
+				continue
+			}
+			best = path[loc[2]:loc[3]]
+		}
+		if best != "" {
+			return best
+		}
+	}
+	return ""
 }

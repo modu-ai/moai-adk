@@ -24,11 +24,11 @@ argument-hint: "[subcommand] [args] | \"natural language task\""
 
 Rules and constraints governing all workflows are always loaded from these sources. Do NOT duplicate their content here:
 
-- Core identity, orchestration principles, agent catalog: CLAUDE.md
+- Core identity, orchestration principles, agent catalog: AGENTS.md + `.moai/config/sections/delegation.yaml`
 - Quality gates, security boundaries: .claude/rules/moai/core/moai-constitution.md
 - SPEC workflow phases, token budgets: .claude/rules/moai/workflow/spec-workflow.md
 - Development methodologies (DDD/TDD): .claude/rules/moai/workflow/spec-workflow.md (Run Phase section)
-- Agent definitions: See CLAUDE.md Section 4. For agent creation, use builder-harness subagent (artifact_type=agent).
+- Agent definitions: See `.moai/config/sections/delegation.yaml`. For agent creation, use builder-harness subagent (artifact_type=agent).
 - @MX tag rules and protocol: .claude/rules/moai/workflow/mx-tag-protocol.md
 
 ---
