@@ -255,6 +255,18 @@ func TestClassifyQuotedSemicolonStaysOneCommand(t *testing.T) {
 	}
 }
 
+func TestClassifyEscapedQuoteStaysOneCommand(t *testing.T) {
+	// t1576 card-review: an escaped quote must not flip the scanner's quote
+	// state — the semicolon behind the embed is argument data, not a second
+	// command. The double-quote escape is the demonstrable shape: the old
+	// scanner closed the quotes on \" and split at the semicolon.
+	command := `printf "%s\"; go test -json" x`
+	_, structured, err := ClassifyStructuredOutput(command, strings.NewReader(""))
+	if err != nil || structured {
+		t.Fatalf("the escaped quote must not mint a phantom go test segment: structured=%v err=%v", structured, err)
+	}
+}
+
 func TestRemeasureRecordValidity(t *testing.T) {
 	// REQ-MWQ-014 (local form): a record is valid when it keys the candidate
 	// tree, carries build identity, and its command classification accepts

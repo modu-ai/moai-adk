@@ -212,11 +212,37 @@ func shellSegments(command string) []string {
 	}
 	for i := 0; i < len(command); i++ {
 		c := command[i]
-		if quote != 0 {
-			if c == quote {
+		if quote == '\'' {
+			// Single quotes honor no escapes; only the closing quote ends
+			// them.
+			if c == '\'' {
 				quote = 0
 			}
 			cur.WriteByte(c)
+			continue
+		}
+		if quote == '"' {
+			// Inside double quotes a backslash escapes the next byte — the
+			// embedded \" must not close the quotes (t1576 card-review).
+			if c == '\\' && i+1 < len(command) {
+				cur.WriteByte(c)
+				cur.WriteByte(command[i+1])
+				i++
+				continue
+			}
+			if c == '"' {
+				quote = 0
+			}
+			cur.WriteByte(c)
+			continue
+		}
+		// Outside quotes a backslash escapes the next byte: the `'\''`
+		// embed shellJoinArgs generates is a literal quote, not a boundary
+		// (t1576 card-review).
+		if c == '\\' && i+1 < len(command) {
+			cur.WriteByte(c)
+			cur.WriteByte(command[i+1])
+			i++
 			continue
 		}
 		if c == '\'' || c == '"' {
@@ -252,26 +278,56 @@ func shellFields(segment string) []string {
 	var quote byte
 	for i := 0; i < len(segment); i++ {
 		c := segment[i]
-		switch {
-		case quote != 0:
-			if c == quote {
+		if quote == '\'' {
+			// Single quotes honor no escapes; only the closing quote ends
+			// them.
+			if c == '\'' {
 				quote = 0
 			} else {
 				cur.WriteByte(c)
 			}
-		case c == '\'' || c == '"':
+			continue
+		}
+		if quote == '"' {
+			// Inside double quotes a backslash escapes the next byte — the
+			// embedded \" must not close the quotes (t1576 card-review).
+			if c == '\\' && i+1 < len(segment) {
+				cur.WriteByte(c)
+				cur.WriteByte(segment[i+1])
+				i++
+				continue
+			}
+			if c == '"' {
+				quote = 0
+			} else {
+				cur.WriteByte(c)
+			}
+			continue
+		}
+		// Outside quotes a backslash escapes the next byte: the `'\''`
+		// embed is a literal quote, not a boundary (t1576 card-review).
+		if c == '\\' && i+1 < len(segment) {
+			cur.WriteByte(c)
+			cur.WriteByte(segment[i+1])
+			i++
+			inField = true
+			continue
+		}
+		if c == '\'' || c == '"' {
 			quote = c
 			inField = true
-		case c == ' ' || c == '\t' || c == '\n':
+			continue
+		}
+		if c == ' ' || c == '\t' || c == '\n' {
 			if inField {
 				fields = append(fields, cur.String())
 				cur.Reset()
 				inField = false
 			}
-		default:
-			cur.WriteByte(c)
-			inField = true
+			continue
 		}
+		cur.WriteByte(c)
+		inField = true
 	}
 	if inField {
 		fields = append(fields, cur.String())
