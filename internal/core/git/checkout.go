@@ -16,11 +16,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
+
+// DefaultGitPathWaitDelay bounds inherited output pipes after a Git path probe exits or is canceled.
+const DefaultGitPathWaitDelay = 100 * time.Millisecond
 
 // ExecCommand is the package-level indirection over exec.Command. Tests inject
 // a mock runner here to force the older-git fallback branch through the
@@ -69,7 +72,7 @@ func ResolveGitDirsContext(ctx context.Context, dir string) (*GitDirs, error) {
 		cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir, "rev-parse"}, args...)...)
 		cmd.Env = append(gitenv.Env(), "LC_ALL=C", "LANGUAGE=C")
 		// Do not wait on inherited pipes after Git exits or is canceled.
-		cmd.WaitDelay = config.DefaultGitPathWaitDelay
+		cmd.WaitDelay = DefaultGitPathWaitDelay
 		out, err := cmd.Output()
 		if ctx.Err() != nil {
 			return "", ctx.Err()

@@ -9,9 +9,6 @@ import (
 
 // Default value constants to avoid magic numbers and strings.
 const (
-	// DefaultGitPathWaitDelay bounds inherited output pipes after a Git path probe exits or is canceled.
-	DefaultGitPathWaitDelay = 100 * time.Millisecond
-
 	DefaultConversationLanguage     = "en"
 	DefaultConversationLanguageName = "English"
 	DefaultAgentPromptLanguage      = "en"
