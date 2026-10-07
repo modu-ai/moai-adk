@@ -41,6 +41,7 @@ const (
 	receiptsRel   = "receipts"
 	startsRel     = "starts"
 	rejectionsRel = "rejections"
+	ledgersRel    = "ledgers"
 )
 
 // Tool names recorded on a receipt.
@@ -74,6 +75,7 @@ const (
 	CauseReceiptUnknown        = "receipt unknown to the store"
 	CauseReceiptOtherTree      = "receipt recorded for a different tree"
 	CauseReceiptBeforeStart    = "receipt created before the auditor started"
+	CauseReceiptReused         = "receipt created before the previous auditor instance of this session ended"
 	CauseReceiptNotACodexAudit = "receipt is not a codex audit"
 	CauseReceiptAuditNotRun    = "receipt records an audit that never produced a verdict"
 	CauseVerdictLineMissing    = "verdict line missing"
@@ -187,6 +189,75 @@ const derivedMarkerKeyPrefix = "bg_"
 // keep-earliest and never deleted by a single instance's stop.
 func IsDerivedMarkerKey(key string) bool {
 	return strings.HasPrefix(key, derivedMarkerKeyPrefix)
+}
+
+// InstanceLedger counts the anonymous instance lifecycle of one derived
+// session-era key: how many same-session same-role auditor instances started,
+// how many terminally ended, and the end-event boundary those ends sealed
+// (SPEC-RECEIPT-REUSE-001). Instance identity is absent from the hook
+// payloads, so the ledger is deliberately anonymous — it answers "how many
+// instances are outstanding" and "when did the last single-live era end",
+// never "which instance was this". It rides the derived key, so it goes stale
+// with its session id and carries no TTL of its own.
+type InstanceLedger struct {
+	Key    string `json:"key"`
+	Starts int    `json:"starts"`
+	Ends   int    `json:"ends"`
+	// EndedAt is the end-event boundary: receipts minted before it were
+	// minted during a predecessor instance's lifetime. Zero while no
+	// single-live end has sealed an era.
+	EndedAt   time.Time `json:"ended_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func ledgerPath(treeRoot, key string) string {
+	return filepath.Join(StateDir(treeRoot), ledgersRel, markerFileName(key))
+}
+
+// ReadInstanceLedger loads the ledger of a derived key. A ledger never written
+// reads as the zero ledger — no recorded start, no boundary.
+func ReadInstanceLedger(treeRoot, key string) (InstanceLedger, error) {
+	var l InstanceLedger
+	err := readJSON(ledgerPath(treeRoot, key), &l)
+	if err != nil && os.IsNotExist(err) {
+		return InstanceLedger{Key: key}, nil
+	}
+	return l, err
+}
+
+// RecordInstanceStart counts one instance start. Every start counts, including
+// one that leaves the anchor's earliest start untouched: the outstanding count
+// (starts minus terminal ends) is what tells a single-live end from an
+// ambiguous one.
+func RecordInstanceStart(treeRoot, key string, at time.Time) error {
+	l, err := ReadInstanceLedger(treeRoot, key)
+	if err != nil {
+		return err
+	}
+	l.Starts++
+	l.UpdatedAt = at
+	return writeJSON(ledgerPath(treeRoot, key), &l)
+}
+
+// RecordInstanceEnd counts one terminal instance end. When the ender is the
+// only outstanding start (starts minus ends at most 1 — the ender is counted
+// in starts, not yet in ends), the end is single-live and the boundary
+// advances to the end time: receipts minted before it belong to a lifetime
+// that has terminally ended. An end arriving while MORE THAN ONE instance is
+// outstanding is ambiguous — anonymous events cannot say who ended — so the
+// boundary stays frozen at its existing value and the era the overlap minted
+// stays citable (card t1544's concurrency semantics).
+func RecordInstanceEnd(treeRoot, key string, at time.Time) error {
+	l, err := ReadInstanceLedger(treeRoot, key)
+	if err != nil {
+		return err
+	}
+	if l.Starts-l.Ends <= 1 {
+		l.EndedAt = at
+	}
+	l.Ends++
+	l.UpdatedAt = at
+	return writeJSON(ledgerPath(treeRoot, key), &l)
 }
 
 // Rejection records a refused auditor PASS. It outlives the subagent: the
@@ -623,6 +694,16 @@ func ParseVerdictLine(message string) (VerdictLine, bool) {
 // condition that failed in the documented order, so the reason names the
 // nearest fixable thing rather than the last one checked.
 func CheckCitedReceipts(treeRoot string, start *StartMarker, cited []string) (bool, string) {
+	return CheckCitedReceiptsSince(treeRoot, start, time.Time{}, cited)
+}
+
+// CheckCitedReceiptsSince is CheckCitedReceipts with the instance end-event
+// boundary (SPEC-RECEIPT-REUSE-001): a receipt minted before endBoundary was
+// minted during a predecessor instance's lifetime — the citing instance can
+// be a reuse of that lifetime — and is refused with CauseReceiptReused. A
+// zero endBoundary means no single-live predecessor end has sealed an era,
+// and the check is the original one.
+func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary time.Time, cited []string) (bool, string) {
 	if start == nil {
 		return false, CauseStartMarkerMissing
 	}
@@ -636,6 +717,7 @@ func CheckCitedReceipts(treeRoot string, start *StartMarker, cited []string) (bo
 			CauseReceiptUnknown,
 			CauseReceiptOtherTree,
 			CauseReceiptBeforeStart,
+			CauseReceiptReused,
 			CauseReceiptNotACodexAudit,
 			CauseReceiptAuditNotRun,
 		} {
@@ -657,6 +739,13 @@ func CheckCitedReceipts(treeRoot string, start *StartMarker, cited []string) (bo
 			cause = CauseReceiptOtherTree
 		case !r.CreatedAt.After(start.StartedAt):
 			cause = CauseReceiptBeforeStart
+		case !endBoundary.IsZero() && !r.CreatedAt.After(endBoundary):
+			// The receipt predates a single-live predecessor end: it was
+			// minted during a lifetime the citing instance could only have
+			// inherited, not lived through (the boundary advanced when no
+			// other instance was outstanding, so any instance starting after
+			// it mints its receipts after it).
+			cause = CauseReceiptReused
 		case r.Tool != ToolCodexAudit && r.Tool != ToolAuditMulti:
 			cause = CauseReceiptNotACodexAudit
 		case strings.TrimSpace(r.GateUnmet) != "",

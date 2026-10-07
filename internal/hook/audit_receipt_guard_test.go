@@ -597,12 +597,6 @@ func TestSubagentStart_NoIdentityNoMarker(t *testing.T) {
 	}
 }
 
-// reuseCause is the refusal-cause literal the reuse tests pin
-// (SPEC-RECEIPT-REUSE-001 REQ-RR-003): a cause distinguishing receipt reuse
-// from every existing cause. M2 declares it in the store as
-// CauseReceiptReused with exactly this value.
-const reuseCause = "receipt created before the previous auditor instance of this session ended"
-
 // runStart feeds a SubagentStart input to its handler, failing the test on a
 // handler error.
 func runStart(t *testing.T, input *HookInput) {
@@ -732,8 +726,8 @@ func TestSubagentStop_SequentialAuditorReceiptReuseIsRefused(t *testing.T) {
 			if out.Decision != "block" {
 				t.Fatalf("decision = %q, want block — a PASS resting on a predecessor-era receipt must be refused (reason %q)", out.Decision, out.Reason)
 			}
-			if !strings.Contains(out.Reason, reuseCause) {
-				t.Errorf("reason = %q, want it to name %q", out.Reason, reuseCause)
+			if !strings.Contains(out.Reason, auditreceipt.CauseReceiptReused) {
+				t.Errorf("reason = %q, want it to name %q", out.Reason, auditreceipt.CauseReceiptReused)
 			}
 
 			// AC-RR-002: the persisted refusal carries the reuse-dedicated
@@ -742,8 +736,8 @@ func TestSubagentStop_SequentialAuditorReceiptReuseIsRefused(t *testing.T) {
 			if err != nil {
 				t.Fatalf("rejection record missing: %v", err)
 			}
-			if rj.Cause != reuseCause {
-				t.Errorf("rejection cause = %q, want %q", rj.Cause, reuseCause)
+			if rj.Cause != auditreceipt.CauseReceiptReused {
+				t.Errorf("rejection cause = %q, want %q", rj.Cause, auditreceipt.CauseReceiptReused)
 			}
 			for _, agent := range []string{"manager-develop", "manager-docs", "manager-git"} {
 				isDenied, reason := denied(runSpawn(t, receiptSpawnInput(root, agent, "Agent")))
@@ -798,8 +792,8 @@ func TestSubagentStop_ReceiptBoundaryAmbiguitySemantics(t *testing.T) {
 		runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
 		advanceClock(now, time.Second)
 		out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-009 receipts="+r, false))
-		if out.Decision != "block" || !strings.Contains(out.Reason, reuseCause) {
-			t.Fatalf("output = %+v, want a block naming %q", out, reuseCause)
+		if out.Decision != "block" || !strings.Contains(out.Reason, auditreceipt.CauseReceiptReused) {
+			t.Fatalf("output = %+v, want a block naming %q", out, auditreceipt.CauseReceiptReused)
 		}
 	})
 

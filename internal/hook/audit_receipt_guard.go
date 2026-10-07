@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 )
@@ -113,6 +114,12 @@ func recordAuditorStart(input *HookInput) {
 		// background auditor of the session: an existing marker keeps the
 		// earliest start, so a second concurrent spawn does not move
 		// StartedAt forward past receipts the first instance will cite.
+		// Every start still counts on the instance ledger
+		// (SPEC-RECEIPT-REUSE-001): the outstanding count is what tells a
+		// single-live end from an ambiguous one.
+		if err := auditreceipt.RecordInstanceStart(g.store, key, auditreceipt.Now()); err != nil {
+			slog.Warn("auditor start not counted", "agent_id", key, "error", err)
+		}
 		if _, err := auditreceipt.ReadStartMarker(g.store, key); err == nil {
 			return
 		}
@@ -146,6 +153,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 		if !g.assumed() {
 			_, key := readStartMarker(g.store, input)
 			consumeStartMarker(g.store, key)
+			recordAuditorEnd(g.store, key)
 		}
 		return nil
 	}
@@ -164,7 +172,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 		cause = auditreceipt.GateAssumedRequiredNote + ", so no audit receipt can be recorded or checked for this tree"
 	case parsed:
 		start, foundKey := readStartMarker(g.store, input)
-		ok, failure := auditreceipt.CheckCitedReceipts(g.store, start, cited)
+		ok, failure := auditreceipt.CheckCitedReceiptsSince(g.store, start, endBoundary(g.store, foundKey), cited)
 		if ok {
 			// A proven PASS clears this role's outstanding refusals in THIS tree —
 			// the other SPECs' and the unknown-spec one included (operator
@@ -175,6 +183,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 				slog.Warn("audit rejections not cleared", "agent_type", input.AgentType, "tree_root", g.tree, "error", err)
 			}
 			consumeStartMarker(g.store, foundKey)
+			recordAuditorEnd(g.store, foundKey)
 			return nil
 		}
 		cause = failure
@@ -191,6 +200,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 		if !g.assumed() {
 			_, key := readStartMarker(g.store, input)
 			consumeStartMarker(g.store, key)
+			recordAuditorEnd(g.store, key)
 		}
 		return &HookOutput{SystemMessage: fmt.Sprintf(
 			"%s: this %s PASS is not accepted — %s. Phase-entry spawns (manager-develop / manager-docs / manager-git) stay denied in %s until a PASS citing a valid audit receipt is recorded.",
@@ -280,6 +290,40 @@ func consumeStartMarker(store, key string) {
 	if err := auditreceipt.RemoveStartMarker(store, key); err != nil {
 		slog.Debug("start marker not removed", "agent_id", key, "error", err)
 	}
+}
+
+// recordAuditorEnd counts a terminal instance end on the derived key's
+// instance ledger (SPEC-RECEIPT-REUSE-001). Only a derived key carries the
+// ledger: an agent-id-keyed marker is the instance's own boundary, consumed at
+// its own stop. A first-stop block is deliberately NOT terminal — the
+// instance continues and must stay able to prove the receipt it mints then
+// (REQ-RR-005) — so the call sites are exactly the accepted PASS, the FAIL
+// verdict, and the re-entry refusal.
+func recordAuditorEnd(store, key string) {
+	if key == "" || !auditreceipt.IsDerivedMarkerKey(key) {
+		return
+	}
+	if err := auditreceipt.RecordInstanceEnd(store, key, auditreceipt.Now()); err != nil {
+		slog.Warn("auditor end not counted", "agent_id", key, "error", err)
+	}
+}
+
+// endBoundary returns the end-event boundary a citation judged against the
+// marker found under key must respect (SPEC-RECEIPT-REUSE-001): the time a
+// single-live predecessor end sealed the era, or zero while none did — in
+// which case the anchor's own StartedAt is the only fence, as before. Only a
+// derived key carries one: an agent-id-keyed marker starts with its instance,
+// so its before-start fence already covers predecessor receipts.
+func endBoundary(store, key string) time.Time {
+	if key == "" || !auditreceipt.IsDerivedMarkerKey(key) {
+		return time.Time{}
+	}
+	l, err := auditreceipt.ReadInstanceLedger(store, key)
+	if err != nil {
+		slog.Warn("instance ledger unreadable", "agent_id", key, "error", err)
+		return time.Time{}
+	}
+	return l.EndedAt
 }
 
 // checkAuditReceiptSpawn is the PreToolUse consumer (REQ-CAG-014). It returns

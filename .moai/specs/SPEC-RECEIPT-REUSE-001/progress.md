@@ -9,7 +9,41 @@
 
 ## §E.2 Run-phase Evidence
 
-_pending run-phase — M1의 RED 재현 관측(명령 + 원문 출력 + exit code + 트리 SHA)이 여기 기록된다._
+### M1 — 행위적 RED 관측 (2026-10-07, 트리 `62574ab3a`, 브랜치 `WT-receipt-reuse`)
+
+**명령**:
+
+```
+go test -count=1 -run '^(TestSubagentStop_SequentialAuditorReceiptReuseIsRefused|TestSubagentStop_ReceiptBoundaryAmbiguitySemantics)$' -v ./internal/hook
+```
+
+**exit code**: `1`
+
+**원문 출력** (실패 단정 행 전문):
+
+```
+    audit_receipt_guard_test.go:733: decision = "", want block — a PASS resting on a predecessor-era receipt must be refused (reason "")
+    audit_receipt_guard_test.go:733: decision = "", want block — a PASS resting on a predecessor-era receipt must be refused (reason "")
+    audit_receipt_guard_test.go:733: decision = "", want block — a PASS resting on a predecessor-era receipt must be refused (reason "")
+    audit_receipt_guard_test.go:733: decision = "", want block — a PASS resting on a predecessor-era receipt must be refused (reason "")
+--- FAIL: TestSubagentStop_SequentialAuditorReceiptReuseIsRefused (0.63s)
+    --- FAIL: TestSubagentStop_SequentialAuditorReceiptReuseIsRefused/accepted-pass-end (0.22s)
+    --- FAIL: TestSubagentStop_SequentialAuditorReceiptReuseIsRefused/reentry-refusal-end (0.13s)
+    --- FAIL: TestSubagentStop_SequentialAuditorReceiptReuseIsRefused/fail-end (0.10s)
+    --- FAIL: TestSubagentStop_SequentialAuditorReceiptReuseIsRefused/no-verdict-reentry-end (0.17s)
+    audit_receipt_guard_test.go:802: output = &{Continue:<nil> StopReason: SystemMessage: SuppressOutput:false Decision: Reason: HookSpecificOutput:<nil> UpdatedInput: Retry:false ExitCode:0 WorktreePath: Data:[]}, want a block naming "receipt created before the previous auditor instance of this session ended"
+--- FAIL: TestSubagentStop_ReceiptBoundaryAmbiguitySemantics (0.27s)
+    --- FAIL: TestSubagentStop_ReceiptBoundaryAmbiguitySemantics/single-live-end-advances-boundary (0.11s)
+    --- PASS: TestSubagentStop_ReceiptBoundaryAmbiguitySemantics/ambiguous-end-freezes-boundary (0.15s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	1.680s
+```
+
+**RED 적색 이유 (올바른 이유)**: 네 종료 형태 팔 전부와 AC-RR-009 시퀀스 (i)에서 재사용 PASS가 **수락**(`decision = ""`)됐다 — 결함 본체 그 자체. `reason = ""`는 수락(거부 원인 부재)의 표기다. 모호 종료 동결 팔(`ambiguous-end-freezes-boundary`)은 보존 팔이라 M1에서 PASS — 수리 뒤에도 문장 불변으로 유지된다. swept-count 상관: `-list` 0일치(저작 전, LEDGER-RRR-A/E-H) → 5일치(M1 착수 시 재측정).
+
+**하네스 정정 기록 (투명성)**: 첫 RED 시도에서 stop 입력이 `SessionID`를 실지 않아 "start marker missing"으로 적었던 원문은 **틀린 이유의 적색**(하네스 결함)이었고, `bgStopInput` 헬퍼(세션 실은 배경 stop 페이로드)로 정정한 뒤의 위 원문이 올바른 이유의 적색이다. 테스트 문장(단정 내용)은 변하지 않았다.
+
+**기저 측정 (B5 — 사전 존재 vs 신규 분리, 트리 `62574ab3a`)**: `go test -count=1 -timeout 30m ./internal/hook/ ./internal/auditreceipt/` → `internal/auditreceipt` **ok** (4.670s), `internal/hook` **FAIL 796.944s, 사전 존재 실패 4건** — `TestAstgrepCorpusRunDoesNotSkip`·`TestStaleRunNoticeLegacyLeaderSpelling`·`TestStaleRunNoticeLegacySessionRecord`·`TestStaleRunNoticeFactoryLegacyLabel` — 감사 영수증 표면과 무관. 기저 601초 시도는 기본 10분 타임아웃 도달(패닉 스택)이었고 `-timeout 30m` 재측정으로 위 4건이 전부다. 이 SPEC이 추가하는 신규 적색은 M1의 재현 테스트뿐이다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
