@@ -26,9 +26,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/feedback"
-	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"github.com/modu-ai/moai-adk/internal/feedback/outbox"
 )
 
@@ -371,8 +371,11 @@ func (s *Sender) complete(ctx context.Context, store *feedback.QueueStore, item 
 }
 
 // drop removes an exhausted item with a decision row (no payload for
-// non-queued outcomes).
+// non-queued outcomes). The terminal discard marker lands FIRST (review
+// gate finding 8): the item's reservation ends here, and the drain's
+// recovery must never re-enroll it inside the dedupe window.
 func (s *Sender) drop(ctx context.Context, store *feedback.QueueStore, item feedback.QueueItem, reason string) {
+	outbox.RecordTerminalDiscard(ctx, item.Fingerprint)
 	_ = store.MutateContext(ctx, func(rec *feedback.QueueRecord) error {
 		kept := rec.Items[:0]
 		for _, it := range rec.Items {

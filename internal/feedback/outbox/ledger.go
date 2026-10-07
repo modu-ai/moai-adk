@@ -23,6 +23,12 @@ type Ledger struct {
 	// QueuedAt records the timestamps of every queued report inside the
 	// rolling windows; entries older than a week are pruned on load.
 	QueuedAt []string `json:"queued_at"`
+	// Discarded maps a fingerprint to the time its reservation ended
+	// TERMINALLY (review-gate finding 8: a send-attempt-exhausted discard).
+	// The orphan recovery re-queues only genuinely unfinished reservations;
+	// a discarded fingerprint inside the dedupe window is finished work, not
+	// an orphan.
+	Discarded map[string]string `json:"discarded,omitempty"`
 }
 
 // loadLedger reads the user-scoped ledger; an absent file is an empty
@@ -47,6 +53,9 @@ func loadLedger() (*Ledger, error) {
 	}
 	if l.FingerprintSeen == nil {
 		l.FingerprintSeen = map[string]string{}
+	}
+	if l.Discarded == nil {
+		l.Discarded = map[string]string{}
 	}
 	return &l, nil
 }
@@ -127,4 +136,24 @@ func (l *Ledger) GlobalCapsAllowed(now time.Time) (bool, string) {
 func (l *Ledger) RecordQueued(fp string, now time.Time) {
 	l.FingerprintSeen[fp] = now.UTC().Format(time.RFC3339)
 	l.QueuedAt = append(l.QueuedAt, now.UTC().Format(time.RFC3339))
+}
+
+// MarkDiscarded records that the fingerprint's reservation ended TERMINALLY
+// — the send-attempt-exhausted discard (review-gate finding 8). Inside the
+// dedupe window the recovery path treats a discarded fingerprint as decided
+// work; past the window a recurring capture is a new report, so the marker
+// is consulted only inside the recovery branch and never gates a fresh,
+// window-expired queue.
+func (l *Ledger) MarkDiscarded(fp string, now time.Time) {
+	if l.Discarded == nil {
+		l.Discarded = map[string]string{}
+	}
+	l.Discarded[fp] = now.UTC().Format(time.RFC3339)
+}
+
+// TerminallyDiscarded reports whether the fingerprint carries a terminal
+// discard marker.
+func (l *Ledger) TerminallyDiscarded(fp string) bool {
+	_, ok := l.Discarded[fp]
+	return ok
 }

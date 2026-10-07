@@ -11,11 +11,11 @@
 package outbox
 
 import (
-	"errors"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -552,6 +552,17 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 			// fall through and queue it (RecordQueued re-stamps below).
 			if queueHasFingerprint(rec.Items, fp) || sentHistoryHasFingerprint(fp, clock(), config.DefaultBugreportFingerprintWindowDays) {
 				outcome = &drainOutcome{outcome: "deduped", reason: "fingerprint already queued or sent inside the window"}
+				return nil
+			}
+			// Terminal discard (review-gate finding 8, P2): a record whose
+			// reservation ended at the send-attempt limit is FINISHED work
+			// — without this check the record read exactly like the crash
+			// orphan above and the recovery re-enrolled the discarded
+			// report, resetting its attempts and re-spending the model
+			// budget. Recovery re-queues only genuinely unfinished
+			// reservations.
+			if ledger.TerminallyDiscarded(fp) {
+				outcome = &drainOutcome{outcome: "deduped", reason: "fingerprint was terminally discarded (send attempt limit)"}
 				return nil
 			}
 		}

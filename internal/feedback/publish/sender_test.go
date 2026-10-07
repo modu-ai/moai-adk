@@ -787,3 +787,49 @@ func TestSenderIgnoresTrackedFileConsentAndRepository(t *testing.T) {
 		}
 	}
 }
+
+// TestAttemptLimitDropRecordsTerminalDiscard (review-gate finding 8, P2):
+// the attempt-limit drop must record a TERMINAL discard in the ledger, so
+// the drain's orphan recovery never re-enrolls the discarded report inside
+// the dedupe window (which would reset its attempts and re-spend the model
+// budget). The test reads the ledger file directly — the write is the
+// production surface, the file the durable record.
+func TestAttemptLimitDropRecordsTerminalDiscard(t *testing.T) {
+	consentOn(t)
+	_, item := payloadFixture(t)
+	item.Attempts = config.DefaultBugreportAttemptLimit
+	seedQueue(t, item)
+
+	stub := newStubRunner(true)
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if rest := queuedItems(t); len(rest) != 0 {
+		t.Fatalf("the exhausted item stayed queued: %+v", rest)
+	}
+	if !terminalDiscardRecorded(t, item.Fingerprint) {
+		t.Fatalf("the attempt-limit drop left no terminal discard marker — the next drain re-enrolls the discarded report")
+	}
+}
+
+// terminalDiscardRecorded reads the user-scoped ledger file and reports
+// whether the fingerprint carries a terminal discard marker.
+func terminalDiscardRecorded(t *testing.T, fp string) bool {
+	t.Helper()
+	path, err := outbox.StorePath(outbox.LedgerFileName)
+	if err != nil {
+		t.Fatalf("store path: %v", err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var l struct {
+		Discarded map[string]string `json:"discarded"`
+	}
+	if json.Unmarshal(raw, &l) != nil {
+		return false
+	}
+	_, ok := l.Discarded[fp]
+	return ok
+}

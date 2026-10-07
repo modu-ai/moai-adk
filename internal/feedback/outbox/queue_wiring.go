@@ -6,6 +6,7 @@ package outbox
 // (<project>/.moai/state/feedback/queue.json) is untouched.
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -54,4 +55,27 @@ func EnforceQueueBound() int {
 // attempts; the sender drops it with a log row when true.
 func AttemptLimitReached(item feedback.QueueItem) bool {
 	return item.Attempts >= config.DefaultBugreportAttemptLimit
+}
+
+// RecordTerminalDiscard marks the fingerprint's reservation TERMINALLY
+// discarded in the ledger (review-gate finding 8, P2): the
+// send-attempt-exhausted drop. The sender calls this BEFORE removing the
+// item — a crash between the marker and the removal leaves the item queued
+// (the next flush retries the removal) — while the reverse order would let
+// a crash re-expose the report to the orphan recovery's re-enrollment,
+// resetting the attempts and the model budget. One queue-locked mutation:
+// the marker counts atomically cross-process like every ledger write.
+func RecordTerminalDiscard(ctx context.Context, fp string) {
+	if fp == "" {
+		return
+	}
+	store := BugreportQueueStore()
+	_ = store.MutateContext(ctx, func(rec *feedback.QueueRecord) error {
+		ledger, lerr := loadLedger()
+		if lerr != nil {
+			return nil // unreadable: the drop proceeds; the orphan recovery handles the retry
+		}
+		ledger.MarkDiscarded(fp, clock())
+		return saveLedger(ledger)
+	})
 }
