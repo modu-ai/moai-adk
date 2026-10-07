@@ -1,6 +1,15 @@
 # decision-index.md — SPEC-AUDIT-CEILING-REPAIR-001
 
 Decision gate: `interview.decision_gate: on` (`.moai/config/sections/interview.yaml` §interview).
+
+## Ceiling note (plan-audit-3 — status, not a decision)
+
+Iteration 3/3 reached — the Tier M audit ceiling is a final hit (verdict
+`.moai/reports/t1560/plan-audit-3.md`, FAIL 0.75, receipt
+rcpt-a6fb7c9d03b341c573bf2fb4). A leader ruling on an iteration-4 delta
+round is PENDING — noted here as pending, NOT decided; closure rides the
+ceiling policy's delta route or the leader's recorded exception.
+
 In-lane plan phase (card t1560): the operator's dispatch settled the WHAT (two
 defects, reproduction-first, record-format constraints, consistency reads);
 the rows below are the decisions surfaced during assembly that the dispatch

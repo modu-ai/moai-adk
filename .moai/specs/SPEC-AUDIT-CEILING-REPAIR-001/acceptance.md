@@ -165,28 +165,47 @@ artifact-only).
   (the persistence milestone). Test:
   `TestAppendProgressRecordConcurrentSurvival` (`audit_ceiling_test.go`).
 
-- **AC-ACR-014 (D4 RED, release-blocking)** — Given convention-family report
-  files, When `CountAuditRounds` runs, Then every file counts as its own
-  round under the leader-ruled parity (all cases RED on unmodified main
-  `903ccd028`). RED: `go test -run
-  '^TestCountAuditRoundsOverflowOwnRound$' ./internal/runtime/`. Cases:
-  (a) `plan-audit.md` + `plan-audit-iter99999999999999999999.md` (20-digit
-  overflow) → count 2 — RED today: 1, because the Atoi range error at
-  `audit_counter.go:111` leaves `n` at its initialized 1 and the two files
-  dedupe into one round; the overflow file is fail-counted and never becomes
-  `LatestPath`. (b) `plan-audit.md` + `plan-audit-iter1.md` → count 2 — RED
-  today: 1, because the convention branch initializes `n = 1` at
-  `audit_counter.go:109` BEFORE the Atoi attempt, so the base report and a
-  numbered file collapse into `seen[1]`. (c) one normal + N unparseable
-  files → 1+N — the leader's gate measured the collapse on `903ccd028` as
-  sources=3, count=1 (ruling #3 evidence material). (d) non-regression arm:
-  a bare `plan-audit.md` alone still counts 1 and remains the selected
-  `LatestPath` evidence. **Semantics note (one line, leader-carried,
-  non-blocking auditor note): round-counting semantics change — unparseable
-  iteration numbers and base reports count as their own rounds rather than
-  collapsing via the n=1 default.** **RED is a new test (E8 evidence
-  required).** Green at M2. Test:
-  `TestCountAuditRoundsOverflowOwnRound` (`audit_counter_review_test.go`).
+- **AC-ACR-014 (D4 RED, release-blocking)** — **RED modes** (each observed
+  failing on unmodified main `903ccd028`; the base report and
+  unparseable-suffix files count as their own rounds; parsed-number dedupe
+  is unchanged). RED commands: `go test -run
+  '^TestCountAuditRoundsOverflowOwnRound$' ./internal/runtime/` (counter
+  arms a-c) and `go test -run
+  '^TestPreviousAuditedSHABaseRoundBaseline$' ./internal/runtime/` (arm e).
+  - (a) base + overflow suffix — `plan-audit.md` +
+    `plan-audit-iter99999999999999999999.md` → count 2. RED today: 1 — the
+    Atoi range error at `audit_counter.go:111` leaves `n` at its initialized
+    1, deduping into `seen[1]`; the overflow file is fail-counted and never
+    becomes `LatestPath`.
+  - (b) base vs numbered — `plan-audit.md` + `plan-audit-iter1.md` → count
+    2. RED today: 1 — the convention branch initializes `n = 1` at
+    `audit_counter.go:109` BEFORE the Atoi attempt, so base and numbered
+    collapse into `seen[1]`.
+  - (c) RED input pinned to OVERFLOW suffixes — one normal + two overflow
+    files → 1+N = 3. RED today: 1, sources=3 (the leader's gate measured
+    exactly this collapse at `903ccd028`).
+  - (e) previous-round baseline (plan-audit-3 B1) — base + iter1 (iter1
+    latest, an `audited_sha` line on both files) → `previousAuditedSHA`
+    returns the base's audited_sha. RED today: `""` — Count=2 but the scan
+    skips the base at `audit_ceiling.go:294` (`n >= latestN`; codex
+    overlay-measured at HEAD: Count=2, previous=`""`).
+  - **Preserve arms (non-RED — pass today and must keep passing):** the
+    sealed parsed-number dedupe — `plan-audit-iter1.md` in two directories
+    counts ONE round (pins the sealed `TestCountAuditRounds`: parsed n=1 vs
+    parsed n=1 across directories, unchanged); unnumbered NON-report files
+    (`iterX`-style) fail-count their own rounds today (sources=3, count=3 —
+    codex-measured green via the `conventionUnnumbered` path); a bare
+    `plan-audit.md` alone counts 1 and remains the selected `LatestPath`
+    evidence.
+  - **Semantics note (one line, leader-carried, non-blocking auditor
+    note): round-counting semantics change — the base report becomes round
+    0 (own counted round, earliest order, eligible as previous-round
+    baseline and latest evidence) and overflow suffixes count as their own
+    rounds; parsed-number dedupe is unchanged.**
+  - **RED is a new test (E8 evidence required).** Green at M2. Tests:
+    `TestCountAuditRoundsOverflowOwnRound` and
+    `TestPreviousAuditedSHABaseRoundBaseline`
+    (`audit_counter_review_test.go`).
 
 ## §D.1 Severity classification
 

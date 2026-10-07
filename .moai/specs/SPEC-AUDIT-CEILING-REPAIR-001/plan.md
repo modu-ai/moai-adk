@@ -113,10 +113,10 @@ Pre-flight checks (all observed at plan phase):
 
 ## §D Constraints
 
-1. **Reproduction-first (HARD)**: run phase begins with the two reproduction
-   tests, each observed failing on unmodified main `903ccd028` for the stated
-   reason (record verbatim output + exit code in progress.md §E.2), then the
-   minimal fix, then green.
+1. **Reproduction-first (HARD)**: run phase begins with the five reproduction
+   tests (the five RB RED-first criteria's tests), each observed failing on
+   unmodified main `903ccd028` for the stated reason (record verbatim output
+   + exit code in progress.md §E.2), then the minimal fix, then green.
 2. **Minimal diff**: no refactor, no renames, no doc-comment sweeps, no
    drive-by cleanups. The default D1 mechanism resolves the latest round
    number at the `previousAuditedSHA` site, leaving `iterationOf`'s
@@ -147,7 +147,17 @@ Pre-flight checks (all observed at plan phase):
    and the base report's round identity stops flowing through the `n = 1`
    initialization at `:109` (own round; still eligible as `LatestPath`;
    parsed-number dedupe within and across families unchanged) — leader
-   ruling #3, both modes of the same n=1-init mechanism. The leader-required
+   ruling #3, both modes of the same n=1-init mechanism. Round ordering and
+   baseline selection (plan-audit-3 B1): the base report orders EARLIEST —
+   round 0, per the engine's own plan-round convention (`planAuditRoundFile`,
+   `audit_ceiling.go:560-565`, where `plan-audit.md` already ranks as
+   iteration 0) — preceding every numbered round; and the previous-round
+   scan in `previousAuditedSHA` becomes base-aware (scan-local dual-family
+   parse, per §D.2's D1 default mechanism and §G's sanctioned exception) so
+   a numbered latest resolves the base as its previous audited round when no
+   numbered round orders between them — today the scan skips the base
+   (`n >= latestN`, `audit_ceiling.go:294`) and returns `""` (codex
+   overlay-measured at HEAD: Count=2, previous=`""`). The leader-required
    one-line semantics note is carried in AC-ACR-014's wording.
 
 ## §E Self-Verification (run-phase exit matrix)
@@ -224,9 +234,13 @@ Pre-flight checks (all observed at plan phase):
 - Do NOT make persistence strict — no error return, no panic, no admission
   flip on record failure.
 - Do NOT rewrite or normalize historical §G/trail lines (append-only record).
-- Do NOT extend `iterationOf`'s contract or rename helpers (default
-  mechanism keeps it untouched; both its callers live in
-  `previousAuditedSHA`).
+- Do NOT rewrite `iterationOf`'s exported contract or other helpers — with
+  the ONE sanctioned exception (plan-audit-3 B1): the previous-round scan in
+  `previousAuditedSHA` may carry a scan-local dual-family, base-aware parse
+  (base report = round 0, earliest order) so a numbered latest resolves the
+  base as its previous audited round; `iterationOf`'s own convention-only
+  contract and signature stay untouched, and no broader helper rewrite is
+  in scope.
 - Do NOT add a second recording path — `RecordCeilingOutcome` stays the ONE
   JSON-path writer; `persistOutcome` stays the §G/trail writer.
 - Do NOT touch `internal/auditverdict` (predicate, `Debt` struct, parsing).
@@ -240,7 +254,7 @@ Pre-flight checks (all observed at plan phase):
 ## §H Cross-References
 
 - `spec.md` REQ-ACR-001..009 · `acceptance.md` AC-ACR-001..014 ·
-  `decision-index.md` Q1-Q5 · `progress.md` §E
+  `decision-index.md` Q1-Q6 · `progress.md` §E
 - fix_scope anchor → repair location (v0.3.0, for the iteration-2 delta
   re-audit; anchors from `.moai/reports/t1560/plan-audit-1.md`):
   - `acceptance.md#§A` — §A rewritten: classification + per-criterion
@@ -272,6 +286,32 @@ Pre-flight checks (all observed at plan phase):
     extension (leader ruling #3 R2)
   - iteration-2 audit targets named per R2: REQ-ACR-009 / AC-ACR-014
     (audited in full by iteration 2 per its delta-scope note)
+- v0.3.2 (plan-audit-3 blocking repairs; verdict FAIL 0.75, iteration 3/3 —
+  ceiling final hit, receipt rcpt-a6fb7c9d03b341c573bf2fb4 — fix_scope:
+  `spec.md#REQ-ACR-009`, `acceptance.md#AC-ACR-014`, `plan.md#§D.8`,
+  `spec.md#§D-C5`, `spec.md#frontmatter-version`, `plan.md#§D.1-constraint-1`,
+  `plan.md#§H-Q-range`):
+  - B1 (base-round ordering + baseline selection) → `spec.md` REQ-ACR-009
+    (round-0 ordering + previous-baseline sentences), `plan.md` §D.8 (two
+    fix sites + round-0 precedent), `plan.md` §G (sanctioned scan-local
+    base-aware parse exception), `spec.md` §D C5 sentence (round-count /
+    ceiling-timing scope corrected), `acceptance.md` AC-ACR-014 arm (e)
+  - B2 (headline re-scope) → `acceptance.md` AC-ACR-014: headline scoped to
+    the two fail-counted RED modes; (c) RED input pinned to overflow
+    suffixes; sealed parsed-number dedupe, iterX fail-counting, and
+    base-stays-LatestPath reclassified as preserve arms
+  - B3 (token class) → `spec.md` frontmatter `version: "0.3.2"`,
+    `plan.md` §D.1 constraint 1 ("five reproduction tests"), §H header
+    Q1-Q6, plus the class-level sweep guard below
+
+**Count/version sweep guard (class-level, plan-audit-3 B3 — mechanical,
+run before the lane commits):** (1) `spec.md` frontmatter `version:` MUST
+equal the top `## HISTORY` entry's version; (2) the §H header ranges line
+MUST equal the live counts (REQ count, AC count, decision-index Q count);
+(3) grep the count-bearing phrase inventory — `two defects|three files|
+three RED|both RED|two reproduction|both evidences|(3)|Q1-Q5` — over the
+SPEC directory and resolve every hit against the final artifact set (a
+historical mapping row is exempt only where its revision block dates it).
 - SPEC-AUDIT-CEILING-001 (`REQ-ACE-003/004/007/012` — the postures this
   repair restores), SPEC-AUDIT-CEILING-002 (JSON path, untouched)
 - Card t1560 intake: `.moai/reports/t1560/intake.md`

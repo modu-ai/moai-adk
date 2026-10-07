@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUDIT-CEILING-REPAIR-001
 title: "Audit-ceiling engine defect repair — legacy-family latest-verdict resolution and debt-inventory persistence"
-version: "0.3.0"
+version: "0.3.2"
 status: draft
 created: 2026-10-07
 updated: 2026-10-07
@@ -163,8 +163,12 @@ round; the numeric-but-overflowing suffix is the one spelling that collapses.
   its own round and never merges with numbered rounds via the n=1 default
   (`audit_counter.go:109` initializes `n = 1` before the Atoi attempt — the
   collapse mechanism the leader's gate measured); the base report remains
-  eligible as latest evidence. Parsed-number dedupe (within and across
-  families) is unchanged. Semantics note (leader-carried, one line):
+  eligible as latest evidence. In round ordering the base report is EARLIEST
+  — round 0, preceding every numbered round — and it participates in the
+  previous-round baseline selection: a numbered latest resolves the base as
+  its previous audited round when no numbered round orders between them
+  (today the scan returns no baseline for that stream). Parsed-number dedupe
+  (within and across families) is unchanged. Semantics note (leader-carried, one line):
   round-counting semantics change — unparseable iteration numbers and base
   reports count as their own rounds rather than collapsing via the n=1
   default.
@@ -188,8 +192,11 @@ unmodified main and must keep passing) — deliberately not a RED observation.
   engine refactor, no renaming, no drive-by cleanup of adjacent code.
 - **C5 posture inherited**: admission thresholds, the admission predicate
   (`internal/auditverdict`), and the outcome ladder's rung order keep their
-  meaning; this SPEC changes no admission decision — only what the previous-
-  round baseline resolves from, and what the record carries.
+  meaning; this SPEC changes no admission decision — it changes what the
+  previous-round baseline resolves from, what the record carries, and — for
+  base-report and overflow-suffix-containing evidence streams — the round
+  count itself (the D4 semantics change alters ceiling timing on those
+  streams; that is the undercount fix's own purpose).
 - **Security lens (card lens: --security --deep)**: evidence file names are
   untrusted input — the legacy parse stays anchored
   (`^<QuoteMeta(SpecID)>-review-([0-9]+)\.md$`, full-line anchors, digits
@@ -246,6 +253,22 @@ scope for card t1560 and must ride its own card or SPEC.
 
 ## HISTORY
 
+- v0.3.2 (2026-10-07): plan-audit-3 blocking repairs (verdict FAIL 0.75,
+  iteration 3/3 — ceiling final hit, receipt rcpt-a6fb7c9d03b341c573bf2fb4,
+  `.moai/reports/t1560/plan-audit-3.md`), exactly inside its fix_scope. B1:
+  base-report round ordering and previous-SHA selection defined — round 0,
+  earliest order, selectable as the previous-round baseline for a numbered
+  latest (REQ-ACR-009 extended; plan §D.8 carries the two fix sites; plan §G
+  amended to sanction the scan-local dual-family base-aware parse;
+  §D C5 sentence corrected to name the round-count/ceiling-timing change).
+  B2: AC-ACR-014 headline re-scoped to the two fail-counted RED modes with
+  the RED input pinned to overflow suffixes; sealed parsed-number dedupe,
+  iterX fail-counting, and base-stays-LatestPath reclassified as preserve
+  arms; new (e) previous-baseline RED arm. B3: frontmatter version 0.3.2
+  (regression of D5 cured), §D.1 constraint 1 count token, §H Q-range
+  Q1-Q6, and the class-level count/version sweep guard added to plan §H.
+  Iteration-4 leader ruling pending (noted, not decided — decision-index
+  ceiling note).
 - v0.3.1 (2026-10-07): leader rulings #3, both approved, no new IDs. R1
   sweep (iter-2's only blocking finding — the stale-count cluster, verdict
   `.moai/reports/t1560/plan-audit-2.md` FAIL 0.96): all five count-bearing
