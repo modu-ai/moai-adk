@@ -28,11 +28,12 @@ Two-cell adoption (verification-completeness.md §2):
 
 - **RED-now cell** — recorded at M1 execution, evidence ledger `RED-HZB-001`:
   - **Command**: `go test -count=1 ./internal/hook/ -run 'TestCheckProtectedZonePosixBackslashLinkBypass'`
-  - **Observed stdout (verbatim)**: *(populated at M1 — the expected pre-repair shape
-    is the guard returning allow and the fixture reporting the in-zone landing;
-    the raw bytes decide)*
-  - **Exit code**: *(populated at M1 — expected `1` pre-repair)*
-  - **Tree SHA**: `f97edcc55` (or stated code-identical delta)
+  - **Observed stdout (verbatim)**: *(populated at M1 — measured; raw bytes in
+    ledger entry `RED-HZB-001` below)*
+  - **Exit code**: `1` (measured at M1)
+  - **Tree SHA**: `da2d74eef` — code-identical to the pinned `f97edcc55`
+    (verified: `git show --stat da2d74eef` = the four SPEC artifact files only,
+    parent `f97edcc55`; zero Go-code delta)
   - **RED reason (stated)**: pre-repair, `zoneSlash` rewrites `lnk\dir` to
     `lnk/dir` before resolution; both arms classify the fictional spelling outside
     `zone_dir/`; zero forms match; the guard allows — while the actual write lands
@@ -74,9 +75,11 @@ Two-cell adoption:
 
 - **RED-now cell** — recorded at M1 execution, evidence ledger `RED-HZB-003`:
   - **Command**: `go test -count=1 ./internal/hook/ -run 'TestResolveZoneTargetPosixBackslashLinkDivergence'`
-  - **Observed stdout (verbatim)**: *(populated at M1)*
-  - **Exit code**: *(populated at M1 — expected `1` pre-repair)*
-  - **Tree SHA**: `f97edcc55` (or stated code-identical delta)
+  - **Observed stdout (verbatim)**: *(populated at M1 — measured; raw bytes in
+    ledger entry `RED-HZB-003` below)*
+  - **Exit code**: `1` (measured at M1)
+  - **Tree SHA**: `da2d74eef` — code-identical to the pinned `f97edcc55`
+    (SPEC-docs-only delta, verified as above)
   - **RED reason (stated)**: pre-repair, both arms resolve the rewritten spelling;
     the resolver returns zero in-zone forms for a path that actually resolves inside
     the zone.
@@ -123,3 +126,92 @@ code as its own field, tree SHA). The round-8 gate record
 (`.moai/reports/t1556/codex-review-gate-1.md` § 라운드 8, delta commit `9d78421a4`,
 in the t1556 card worktree) is the motivating measurement — cited for motivation,
 never as a substitute for the M1 observation on this tree.
+
+### RED-HZB-001 — guard-level backslash-link bypass (appended at M1, 2026-10-07)
+
+- **Command**: `go test -count=1 ./internal/hook/ -run 'TestCheckProtectedZonePosixBackslashLinkBypass'`
+- **Observed stdout (verbatim)**:
+
+```
+--- FAIL: TestCheckProtectedZonePosixBackslashLinkBypass (0.71s)
+    protected_zone_backslash_repro_test.go:87: absolute raw path: BYPASS — decision="allow" reason="", want deny; the write through the literal backslash link landed INSIDE the protected zone (zone_dir/secret.md="bypass")
+    protected_zone_backslash_repro_test.go:87: relative raw path: BYPASS — decision="allow" reason="", want deny; the write through the literal backslash link landed INSIDE the protected zone (zone_dir/secret.md="bypass")
+    protected_zone_backslash_repro_test.go:128: swept=3
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	1.584s
+FAIL
+```
+
+- **Exit code**: 1
+- **Tree SHA**: `da2d74eef` (code-identical to pinned `f97edcc55` — SPEC-docs-only
+  delta, verified `git show --stat da2d74eef`)
+- **RED reason (observed, matches the stated mechanism)**: both shapes returned
+  `decision="allow"` and the demonstration write through the literal
+  `<project>/lnk\dir/secret.md` landed inside the protected zone
+  (`zone_dir/secret.md` contains `bypass`) — the round-8 shape (allow + protected
+  file changed) reproduced on this tree. The positive-control row (ordinary
+  `lnk\dir` directory outside the zone) PASSED in the same run — the RED is the
+  bypass mechanism, not a fixture error.
+
+### RED-HZB-002 — the byte demonstrably lands inside the protected zone (appended at M1, 2026-10-07)
+
+- **Command / exit code / tree SHA**: as `RED-HZB-001` (same solo run).
+- **Observed evidence (verbatim line)**:
+
+```
+    protected_zone_backslash_repro_test.go:87: absolute raw path: BYPASS — decision="allow" reason="", want deny; the write through the literal backslash link landed INSIDE the protected zone (zone_dir/secret.md="bypass")
+```
+
+- **RED reason (observed)**: the failure line itself is the in-zone landing
+  observation — the fixture wrote through the literal backslash path after the
+  allow decision and read the bytes back from `<project>/zone_dir/secret.md`,
+  proving the OS followed the `lnk\dir` symlink into the zone while the guard
+  allowed.
+
+### RED-HZB-003 — resolver-level divergence (appended at M1, 2026-10-07)
+
+- **Command**: `go test -count=1 ./internal/hook/ -run 'TestResolveZoneTargetPosixBackslashLinkDivergence'`
+- **Observed stdout (verbatim)**:
+
+```
+--- FAIL: TestResolveZoneTargetPosixBackslashLinkDivergence (0.07s)
+    protected_zone_backslash_repro_test.go:175: absolute raw path: no returned form resolves inside the protected zone for a path that goes through the backslash-named symlink (want a folded form under zone_dir/): [{Display:lnk/dir/secret.md Folded:lnk/dir/secret.md}]
+    protected_zone_backslash_repro_test.go:175: relative raw path: no returned form resolves inside the protected zone for a path that goes through the backslash-named symlink (want a folded form under zone_dir/): [{Display:lnk/dir/secret.md Folded:lnk/dir/secret.md}]
+    protected_zone_backslash_repro_test.go:198: swept=3
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.829s
+FAIL
+```
+
+- **Exit code**: 1
+- **Tree SHA**: `da2d74eef` (code-identical to pinned `f97edcc55`)
+- **RED reason (observed, pins the truth over the §B narrative)**: the resolver
+  returned ONLY the fictional `lnk/dir/secret.md` form — zero in-zone forms for a
+  path that physically resolves inside the zone. Measured note: the §B hypothesis
+  guessed the unresolved-tail rejoin would mint `dir/secret.md`; the observed
+  rejoin starts at the FIRST missing component (`lnk`), yielding the single
+  fictional form `lnk/dir/secret.md`. The core mechanism (the rewritten spelling
+  misses the real link; both arms classify outside the zone; allow) is confirmed
+  exactly; the narrative's intermediate spelling was a hypothesis and the RED
+  pins the measured one.
+
+### RED-HZB-X1 — reinforcement: gate-turnend-1 independent reproduction (appended at M1, 2026-10-07)
+
+- **Evidence**: `.moai/reports/t1566/gate-turnend-1.md` (turn-end codex review
+  gate verdict 1, measured on the same tree base `f97edcc55`/"f97ec555", no lane
+  work committed). The gate independently reproduced this card's defect class via
+  a temporary Go overlay: "The same rewrite in `protected_zone_path.go:36`
+  allowed Write/Edit/Bash through a backslash alias into the protected zone."
+  Stronger than the round-8 cross-tree record because it is same-tree. Gate
+  overlay reproduction; no repository files changed by the gate.
+
+### RED-HZB-X2 — reinforcement: gate-turnend-2 richer statement (appended at M1, 2026-10-07)
+
+- **Evidence**: `.moai/reports/t1566/gate-turnend-2.md` (turn-end codex review
+  gate verdict 2, measured at the same base). Richer statement of this card's
+  defect: backslash alias `alias\dir → zone_dir` symlink — "Write and Bash both
+  allowed into the protected zone; the backslash→slash rewrite before filesystem
+  lookup misses the real link; 'separate comparison normalization from real-path
+  resolution'" — pinning the resolution arm this SPEC's M2 repairs. Cited as
+  independent corroboration of the M1 RED; the binding RED observations remain
+  `RED-HZB-001`/`RED-HZB-002`/`RED-HZB-003` above.

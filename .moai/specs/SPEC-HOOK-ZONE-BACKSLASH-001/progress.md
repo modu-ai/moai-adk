@@ -60,9 +60,62 @@
 
 ## M1 — RED Reproduction (run phase)
 
-*(populated by the implementer — the four-element RED observations for
-`RED-HZB-001`/`RED-HZB-002`/`RED-HZB-003` land here and in acceptance.md's evidence
-ledger, plus the affected-package pre-change baseline.)*
+- **Executed**: 2026-10-07, tree `da2d74eef` (branch `WT-protected-zone-backslash`;
+  code-identical to the pinned base `f97edcc55` — `git show --stat da2d74eef`
+  verifies the commit carries only the four SPEC artifact files, parent
+  `f97edcc55`).
+- **Test authored**: `internal/hook/protected_zone_backslash_repro_test.go` —
+  `TestCheckProtectedZonePosixBackslashLinkBypass` (guard level, table-driven:
+  absolute + relative raw path shapes; non-deny branch performs the ACTUAL write
+  through the literal `lnk\dir` path and reads it back from `zone_dir/`) and
+  `TestResolveZoneTargetPosixBackslashLinkDivergence` (resolver level). Both
+  POSIX-gated (`runtime.GOOS` check) with graceful symlink-unavailable skips;
+  `t.TempDir()`-based roots throughout.
+- **Auditor non-blocking #2 honored**: the positive-control row is in — a literal
+  `lnk\dir` ORDINARY directory (non-symlink) outside the zone stays ALLOWED, at
+  both guard level and resolver level. It passed in the same RED run, proving the
+  RED is the bypass mechanism and closing the character-blacklist mutant gap.
+- **Auditor non-blocking #3 honored**: reinforcement rows `RED-HZB-X1`
+  (gate-turnend-1) and `RED-HZB-X2` (gate-turnend-2) appended to acceptance.md's
+  evidence ledger — same-tree (`f97edcc55`) independent codex-gate reproductions
+  of the defect class, cited as corroboration under the binding RED cells.
+- **Four-element RED observations** (full raw bytes in acceptance.md § Evidence
+  Ledger):
+  - `RED-HZB-001` — `go test -count=1 ./internal/hook/ -run
+    'TestCheckProtectedZonePosixBackslashLinkBypass'` → exit 1; both shapes:
+    `BYPASS — decision="allow" ... the write through the literal backslash link
+    landed INSIDE the protected zone (zone_dir/secret.md="bypass")`.
+  - `RED-HZB-002` — same run; the verbatim failure line IS the in-zone landing
+    observation (allow + protected file changed — the measured round-8 shape).
+  - `RED-HZB-003` — `go test -count=1 ./internal/hook/ -run
+    'TestResolveZoneTargetPosixBackslashLinkDivergence'` → exit 1; resolver
+    returns ONLY `lnk/dir/secret.md` (zero in-zone forms).
+- **Measured note (RED pins the truth over the §B narrative)**: the §B hypothesis
+  guessed the fictional rejoin form would be `dir/secret.md`; the measured rejoin
+  starts at the FIRST missing component (`lnk`), yielding the single fictional
+  form `lnk/dir/secret.md`. The core mechanism (rewritten spelling misses the
+  real link; both arms classify outside the zone; allow; the OS write lands
+  inside the zone) is confirmed exactly.
+- **Affected-package pre-change baseline (M1-BASELINE)**: `go test -count=1
+  -timeout 30m ./internal/hook/` on `da2d74eef` → exit 1 (804.0s). Failing set:
+  `TestAstgrepCorpusRunDoesNotSkip` (120.01s), `TestStaleRunNoticeLegacyLeaderSpelling`,
+  `TestStaleRunNoticeLegacySessionRecord`, `TestStaleRunNoticeFactoryLegacyLabel`
+  — all pre-existing, unrelated to the zone path (environmental corpus + legacy
+  stale-run-notice spelling) — PLUS the two new RED tests above (expected RED).
+  The AC-HZB-004 post-fix verdict is the countable delta against this set: the
+  only allowed post-M2 failures are exactly these four pre-existing tests.
+- **Pre-change baseline raw tail (verbatim)**:
+
+```
+--- FAIL: TestAstgrepCorpusRunDoesNotSkip (120.01s)
+--- FAIL: TestCheckProtectedZonePosixBackslashLinkBypass (0.23s)
+--- FAIL: TestResolveZoneTargetPosixBackslashLinkDivergence (0.02s)
+--- FAIL: TestStaleRunNoticeLegacyLeaderSpelling (0.06s)
+--- FAIL: TestStaleRunNoticeLegacySessionRecord (0.08s)
+--- FAIL: TestStaleRunNoticeFactoryLegacyLabel (0.59s)
+FAIL	github.com/modu-ai/moai-adk/internal/hook	804.025s
+FAIL
+```
 
 ## M2 — Minimal Repair (run phase)
 

@@ -2,7 +2,7 @@
 id: SPEC-HOOK-ZONE-BACKSLASH-001
 title: "Protected-zone target resolution preserves POSIX component identity — zoneSlash must not invent separators"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-07
 updated: 2026-10-07
 author: manager-spec
