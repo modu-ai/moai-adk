@@ -154,9 +154,15 @@ func ClaimSection(ctx context.Context, path string, perm os.FileMode, retries in
 func releaseSectionFunc(path string) func() error {
 	lockPath := path
 	return func() error {
-		raw, rerr := os.ReadFile(lockPath)
+		// The release read is BOUNDED (review gate finding, P2): the
+		// release runs in the caller's defer, so no caller deadline reaches
+		// it — a path swapped for a FIFO after the claim parked the read
+		// forever. sectionRereadFn refuses a non-regular path without
+		// opening it and costs one small capped read; an unreadable path is
+		// remove-nothing, the same safe direction as a foreign owner.
+		raw, rerr := sectionRereadFn(lockPath)
 		if rerr != nil {
-			return nil // gone: nothing to remove
+			return nil // gone, swapped, or unreadable: remove nothing
 		}
 		var atPath LockOwner
 		if err := json.Unmarshal(raw, &atPath); err != nil ||

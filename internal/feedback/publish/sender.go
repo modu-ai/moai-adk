@@ -233,6 +233,22 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 		return true
 	}
 
+	// The store generation at the start of this send (review gate finding,
+	// P1): the duplicate search is a gh round-trip, and a purge completing
+	// DURING it leaves this send holding a withdrawn report. The generation
+	// is re-checked right before every public act below — the occurrence
+	// comment, the model call, and the create — so a purge that advanced it
+	// mid-search stops the send instead of filing over the user's
+	// withdrawal. An unreadable generation degrades to pass-through.
+	sendGen, gerr := bugreport.SpoolGeneration()
+	if gerr != nil {
+		sendGen = 0
+	}
+	storePurgedMidSend := func() bool {
+		gen, gerr := bugreport.SpoolGeneration()
+		return gerr == nil && gen != sendGen
+	}
+
 	issue, markerCount, err := findIssue(ctx, s.Runner, repo, item)
 	if err != nil {
 		// A gh failure is environmental (network, rate limit): stop
@@ -253,6 +269,13 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 			})
 			return true
 		}
+		if storePurgedMidSend() {
+			// The purge completed while the search ran: the user withdrew
+			// the store — no comment over the withdrawn report. The item
+			// is already gone with the store; nothing stays to clean up.
+			_ = outbox.AppendOutbox(outbox.OutboxRow{Outcome: "dropped", Reason: "store purged mid-send", Fingerpr: item.Fingerprint})
+			return true
+		}
 		comment := OccurrenceCommentFromPayload(payload)
 		if err := s.Runner.CommentIssue(ctx, repo, issue.Number, strings.NewReader(comment)); err != nil {
 			s.fail(ctx, store, item, err)
@@ -264,7 +287,14 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 
 	// No match: the create path. M6 slots the summarizer ahead of the
 	// deterministic template text (design section 8; D38), bounded per
-	// item (REQ-ANON-017/018) and by the daily cap.
+	// item (REQ-ANON-017/018) and by the daily cap. The model call and the
+	// create are BOTH public acts — the generation is re-checked before
+	// them, so a purge landing mid-search stops the send (review gate
+	// finding, P1).
+	if storePurgedMidSend() {
+		_ = outbox.AppendOutbox(outbox.OutboxRow{Outcome: "dropped", Reason: "store purged mid-send", Fingerpr: item.Fingerprint})
+		return true
+	}
 	summary, _ := s.itemSummary(ctx, store, item, payload)
 	_, body := outbox.RenderReportWithSummary(payload, summary)
 	if err := s.Runner.CreateIssue(ctx, repo, title, strings.NewReader(body)); err != nil {

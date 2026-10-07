@@ -293,10 +293,11 @@ func DrainContext(ctx context.Context) error {
 		return nil
 	}
 	// The batch's generation (review gate finding, P2): re-checked before
-	// each item below — a purge completing mid-batch bumps it, and a stale
-	// in-memory batch must STOP instead of enqueueing reports the user
-	// withdrew. An unreadable generation reads as 0 and the check degrades
-	// to pass-through.
+	// each item below AND again inside the queue lock (the enqueue's own
+	// critical section) — a purge completing mid-batch bumps it, and a
+	// stale in-memory batch must STOP instead of enqueueing reports the
+	// user withdrew. An unreadable generation reads as 0 and the checks
+	// degrade to pass-through.
 	batchGen, gerr := bugreport.SpoolGeneration()
 	if gerr != nil {
 		batchGen = 0
@@ -345,7 +346,7 @@ func DrainContext(ctx context.Context) error {
 			continue
 		}
 
-		outcome, retry := drainMoai(ctx, entry)
+		outcome, retry := drainMoai(ctx, entry, batchGen)
 		if retry {
 			// A retryable failure — context expiry, a lost lock budget, an
 			// unreadable ledger: the failed item and everything after it
@@ -538,6 +539,11 @@ type drainOutcome struct {
 	fp      string
 }
 
+// beforeQueueMutationForTest runs after the generation checks, at the
+// queue mutation's doorstep — the exact interleave the in-lock
+// generation re-check must survive (review gate finding, P2).
+var beforeQueueMutationForTest func()
+
 // queueWriteBlockForTest, when set and returning true for an entry, makes
 // drainMoai report a queue-write failure for that entry without touching
 // the lock — the deterministic driver for the partial-consumption tests (a
@@ -568,7 +574,13 @@ var queueCommitFailForTest bool
 // the append, and a ledger save failure aborts the whole mutation (the
 // queue file stays unchanged — a signal whose ledger commit failed is
 // never queued).
-func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, bool) {
+// errPurgedMidBatch aborts the queue mutation when the generation
+// advanced under the queue lock: nothing is saved, and — the check being
+// the callback's first act — nothing was recorded, so there is no
+// rollback.
+var errPurgedMidBatch = errors.New("outbox: store purged mid-batch")
+
+func drainMoai(ctx context.Context, entry bugreport.SpoolEntry, batchGen uint64) (*drainOutcome, bool) {
 	fp := fingerprintOf(entry)
 
 	// Build the validated payload from the spool's closed fields — pure,
@@ -606,6 +618,10 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 		return &drainOutcome{outcome: "dropped", reason: "queue write failed: (test contention)", fp: fp}, true
 	}
 
+	if beforeQueueMutationForTest != nil {
+		beforeQueueMutationForTest()
+	}
+
 	// ONE cross-process critical section: dedupe check → rolling caps →
 	// append → queue bound → ledger record, all under the queue lock.
 	store := BugreportQueueStore()
@@ -618,6 +634,16 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 	var queued feedback.QueueItem
 	var orphanStamp string // set when this attempt ADOPTS an orphaned reservation (findings 5/9)
 	err = store.MutateContext(ctx, func(rec *feedback.QueueRecord) error {
+		// The in-lock generation re-check (review gate finding, P2): the
+		// pre-loop checks alone left a window — a purge completing after
+		// them and BEFORE this critical section let the stale batch
+		// enqueue a withdrawn report over the removed store. This check is
+		// the callback's first act, so its abort records nothing and rolls
+		// nothing back. An unreadable generation degrades to pass-through.
+		if gen, gerr := bugreport.SpoolGeneration(); gerr == nil && gen != batchGen {
+			outcome = &drainOutcome{outcome: "dropped", reason: "store purged mid-batch (generation advanced under the queue lock)"}
+			return errPurgedMidBatch
+		}
 		ledger, lerr := loadLedger()
 		if lerr != nil {
 			outcome = &drainOutcome{outcome: "dropped", reason: "ledger unreadable: " + lerr.Error()}
@@ -704,6 +730,11 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 		return nil
 	})
 	if err != nil {
+		if errors.Is(err, errPurgedMidBatch) {
+			// The check is the callback's first act: no ledger record, no
+			// rollback — and the store this batch belonged to is gone.
+			return outcome, false
+		}
 		// EVERY queue-write failure is retryable — context expiry, a lock
 		// budget lost to contention, a failed save: the item stays in the
 		// spool for the next drain rather than being consumed as lost

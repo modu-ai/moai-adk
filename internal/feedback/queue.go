@@ -252,9 +252,12 @@ func (s *QueueStore) EnqueueMasked(res Result) (*QueueItem, error) {
 		// refuses a queue past DefaultFeedbackQueueMaxBytes, so a save that
 		// would CROSS the cap is rejected here instead — otherwise a
 		// manually-enqueued store could grow unreadable, and every resend,
-		// remove, and add on it would fail with the load.
-		if raw, merr := json.Marshal(rec); merr == nil && len(raw) > config.DefaultFeedbackQueueMaxBytes {
-			return fmt.Errorf("%w: %d bytes would exceed the %d cap", ErrQueueFull, len(raw), config.DefaultFeedbackQueueMaxBytes)
+		// remove, and add on it would fail with the load. The cap is
+		// measured in the ACTUAL stored shape (review gate finding, P2):
+		// writeAtomic writes MarshalIndent plus a trailing newline, so a
+		// compact-Marshal check let a boundary report in over the read cap.
+		if raw, merr := json.MarshalIndent(rec, "", "  "); merr == nil && len(raw)+1 > config.DefaultFeedbackQueueMaxBytes {
+			return fmt.Errorf("%w: %d bytes would exceed the %d cap", ErrQueueFull, len(raw)+1, config.DefaultFeedbackQueueMaxBytes)
 		}
 		return nil
 	})
