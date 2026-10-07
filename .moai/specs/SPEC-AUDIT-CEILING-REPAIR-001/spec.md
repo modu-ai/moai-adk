@@ -2,7 +2,7 @@
 id: SPEC-AUDIT-CEILING-REPAIR-001
 title: "Audit-ceiling engine defect repair — legacy-family latest-verdict resolution and debt-inventory persistence"
 version: "0.3.4"
-status: in-progress
+status: implemented
 created: 2026-10-07
 updated: 2026-10-07
 author: "Goos Kim"

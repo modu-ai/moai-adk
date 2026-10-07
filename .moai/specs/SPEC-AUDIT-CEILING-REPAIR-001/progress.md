@@ -1,6 +1,6 @@
 # SPEC-AUDIT-CEILING-REPAIR-001 — progress
 
-status: in-progress
+status: implemented
 card: t1560 (lane-2, run tmhxo0) · tree .moai/worktrees/t1560 · branch WT-internal-runtime-audit @ 903ccd028
 evidence: this file (§G carries any ceiling records for THIS spec if the engine ever evaluates it) + .moai/reports/t1560/
 
@@ -165,4 +165,19 @@ _<pending run-phase — manager-develop owns this section.>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs owns this section. sync_commit_sha is written pending-backfill at the sync commit and backfilled in a follow-up commit.>_
+- sync_status: complete (manager-docs sync-phase deliverables done; spec.md transitions to `implemented` on this sync commit — `completed` held for its own gate per the dispatching leader's instruction, card t1560)
+- sync_complete_at: 2026-10-07
+- sync_commit_sha: pending-backfill-sync (placeholder — a commit cannot cite its own hash; backfilled in a following commit per the D3 backfill window, spec-frontmatter-schema § SHA placeholder backfill exemption)
+- changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Fixed` — first entry (SPEC-AUDIT-CEILING-REPAIR-001; five repair behaviors: D1 legacy-family latest delta round, D2 debt inventory in §G/trail records, D3 atomic §G append + insertion position, D4 round counting base/overflow identity, REQ-ACR-010 both-definition-files delta gate)
+- frontmatter_status_transitions:
+  - spec.md: in-progress → implemented (this sync commit)
+  - plan.md: no `status:` field (Artifact Statelessness) — `updated:` confirmed 2026-10-07, no byte change needed
+  - acceptance.md: no `status:` field (Artifact Statelessness) — `updated:` confirmed 2026-10-07, no byte change needed
+  - progress.md: status line in-progress → implemented (this sync commit)
+- updated_field_refresh: 2026-10-07 (spec.md/plan.md/acceptance.md already dated 2026-10-07 from plan/run phase — confirmed present, no byte change)
+- b12_self_test_a (pre-emission grep): `grep -c 'SPEC-AUDIT-CEILING-REPAIR-001' CHANGELOG.md` = 0 (pre-emission, exit 1) → no duplicate entry, emission safe
+- b12_self_test_b (AC count match): ac_source=acceptance.md (tier: M); counter live=18 — 16 declared criteria AC-ACR-001..016 (`grep -c '^- \*\*AC-ACR-'` = 16 matrix rows) + 2 prose-example tokens `AC-R-001`/`AC-R-002` at acceptance.md:218 inside AC-ACR-010's fixture prose (example identifier shapes, declare no criterion, ownerless); CHANGELOG entry cites "16 acceptance criteria AC-ACR-001..016" matching the declared set; no AMBIGUOUS halt (both extra tokens uniformly unmarked → live by the mechanical rule, excluded from the cited count by inspection); `[REF]` marker placement is an acceptance.md body edit — manager-spec's surface, recorded as observation, not performed here
+- b12_self_test_c (file path verification): paths claimed in the CHANGELOG entry verified — `.moai/specs/SPEC-AUDIT-CEILING-REPAIR-001/spec.md`, `.moai/specs/SPEC-AUDIT-CEILING-REPAIR-001/progress.md` (§E.2 evidence section present)
+- canary_compliance_check: N/A (this SPEC defines no forward-looking policy with its own sync tests)
+- mx_tag_validation: sync sub-step — no tag changes (§E.2 M4: no new exported functions, no new dangerous patterns; EvaluateCeiling ANCHOR + CountAuditRounds NOTE unchanged)
+- 비고: progress.md carries a duplicate empty `## §E.3` placeholder below the filled §E.3 (lines 162-164) — §E.2/§E.3 are manager-develop's surface, left untouched per ownership; era classification reads literal heading presence so the duplicate is inert for lint/audit.
