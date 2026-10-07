@@ -1416,5 +1416,5 @@ evidence: this §E.2 + machine-local scratch `.moai/state/verify/t1356/` (arm JS
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: d93c56e53
 sync_scope: test-only SPEC — no CHANGELOG entry per plan M5; this sync commit touches the SPEC directory only (spec.md frontmatter completed transition + this §E.4 signal).
