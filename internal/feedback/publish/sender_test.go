@@ -544,6 +544,64 @@ func TestDeadOwnerSendClaimIsReclaimed(t *testing.T) {
 	}
 }
 
+// TestStaleSnapshotDoesNotResendADeletedItem pins the residual of the
+// ownership fix: the claim excludes concurrent holders, but a second flush
+// that LOADED its snapshot before the first finished still iterates the
+// item — and after the first flush's release it acquires the now-free
+// claim and re-sends the already-sent (deleted) item. After acquiring the
+// claim the item must be re-checked against the LIVE queue: gone means
+// skip.
+func TestStaleSnapshotDoesNotResendADeletedItem(t *testing.T) {
+	consentOn(t)
+	_, item := payloadFixture(t)
+	seedQueue(t, item)
+
+	// Flush B parks just before it takes the item's claim; flush A fully
+	// sends the item in that window. When B proceeds on its stale
+	// snapshot, the item is already gone.
+	arrived := make(chan struct{})
+	proceed := make(chan struct{})
+	prev := beforeClaimForTest
+	t.Cleanup(func() { beforeClaimForTest = prev })
+	// Only the FIRST caller parks — flush B, whose goroutine reaches the
+	// seam before the main test invokes flush A (the main test blocks on
+	// the arrival signal before starting A).
+	firstCall := true
+	beforeClaimForTest = func() {
+		if !firstCall {
+			return
+		}
+		firstCall = false
+		close(arrived)
+		<-proceed
+	}
+
+	stubB := newStubRunner(true)
+	doneB := make(chan error, 1)
+	go func() { doneB <- NewSender(stubB).Send(context.Background()) }()
+	<-arrived
+
+	// Flush A runs to completion: the item is sent and removed.
+	stubA := newStubRunner(true)
+	if err := NewSender(stubA).Send(context.Background()); err != nil {
+		t.Fatalf("flush A: %v", err)
+	}
+	if _, createsA, _ := stubA.recorded(); createsA != 1 {
+		t.Fatalf("flush A creates = %d, want the one send", createsA)
+	}
+	close(proceed)
+
+	if err := <-doneB; err != nil {
+		t.Fatalf("flush B: %v", err)
+	}
+	if _, createsB, _ := stubB.recorded(); createsB != 0 {
+		t.Fatalf("flush B re-sent the item flush A already sent (creates=%d) — the stale snapshot was published twice", createsB)
+	}
+	if rest := queuedItems(t); len(rest) != 0 {
+		t.Fatalf("the queue is not empty after both flushes: %+v", rest)
+	}
+}
+
 // ---- AC-003: the off/tracked-only arms at the sender ----
 
 func TestSenderNoopWhenParticipationOff(t *testing.T) {

@@ -106,12 +106,20 @@ func (s *Sender) Send(ctx context.Context) error {
 	return nil
 }
 
+// beforeClaimForTest parks the sender just before it takes an item's
+// claim — the deterministic interleave point for the stale-snapshot tests
+// (nil in production).
+var beforeClaimForTest func()
+
 // sendOne carries one item from its ownership claim through the outcome
 // record, and reports whether the RUN continues (false: stop — the caller
 // returns and the remaining items stay queued). A claim the sender cannot
 // take means another flush owns the item right now: skip it and keep
 // running.
 func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item feedback.QueueItem, repo string) bool {
+	if beforeClaimForTest != nil {
+		beforeClaimForTest()
+	}
 	// Cross-process item ownership (review-gate finding, P2): the claim
 	// spans the duplicate lookup through the outcome record, so two
 	// concurrent flushes can no longer each send the same item.
@@ -120,6 +128,28 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 		return true // another flush owns this item: skip it, keep running
 	}
 	defer func() { _ = release() }()
+
+	// The claim excluded the concurrent holders but not the SEQUENTIAL
+	// one: this flush's snapshot was loaded before the owning flush
+	// finished, and that flush's complete() may already have sent and
+	// removed the item (review-gate residual, P2). Re-check against the
+	// LIVE queue and carry the current copy — gone means our snapshot is
+	// stale and the item was already handled: skip.
+	live, lerr := store.Load()
+	if lerr != nil {
+		return true // an unreadable queue is never a reason to send blind
+	}
+	found := false
+	for i := range live.Items {
+		if live.Items[i].ID == item.ID {
+			item = live.Items[i]
+			found = true
+			break
+		}
+	}
+	if !found {
+		return true
+	}
 
 	// Send-time trust boundary (review-gate finding, P1): the queue
 	// file is a local file, so the stored body is untrusted. Validate
