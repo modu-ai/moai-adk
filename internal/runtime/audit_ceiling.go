@@ -603,7 +603,25 @@ func appendProgressRecord(specDir, line string) error {
 	if info, lerr := os.Lstat(path); lerr == nil && info.Mode()&os.ModeSymlink != 0 {
 		resolved, rerr := filepath.EvalSymlinks(path)
 		if rerr != nil {
-			return rerr
+			// A dangling link — the target does not exist yet. Resolve the
+			// link's parent and append the target name, so the record
+			// writes through to the target the next append will find,
+			// exactly as the pre-repair os.WriteFile followed the link and
+			// created it (round-4 edge 4); the link survives. A parent that
+			// itself does not exist fails closed, the same ENOENT the
+			// in-place write would have raised.
+			ref, rlerr := os.Readlink(path)
+			if rlerr != nil {
+				return rlerr
+			}
+			if !filepath.IsAbs(ref) {
+				ref = filepath.Join(filepath.Dir(path), ref)
+			}
+			parent, perr := filepath.EvalSymlinks(filepath.Dir(ref))
+			if perr != nil {
+				return perr
+			}
+			resolved = filepath.Join(parent, filepath.Base(ref))
 		}
 		path = resolved
 	}

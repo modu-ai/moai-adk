@@ -329,6 +329,22 @@ the closure):
 `TestAppendProgressRecordSeedFailureAborts`
 (`internal/runtime/audit_ceiling_replace_test.go`, darwin||linux).
 
+### Round-4 edge 4 record — dangling-symlink write-through (leader-approved)
+
+RED observed pre-fix at HEAD `6eb6262fb`:
+`audit_ceiling_symlink_test.go:66: a dangling-symlink progress.md refused
+the record the pre-repair write-through would have created: lstat …
+progress.md: no such file or directory` — filepath.EvalSymlinks fails for
+a link whose target does not exist yet, so no record was written, while
+the pre-repair os.WriteFile followed the link and CREATED the target. Fix:
+when Lstat confirms a symlink and EvalSymlinks fails, the link's own
+referent is read (os.Readlink), its parent directory is resolved via
+EvalSymlinks, and the target name joined — the record writes through to
+the newly created target and the link survives. A parent that itself does
+not exist fails closed (the same ENOENT the in-place write would raise).
+Regression test `TestAppendProgressRecordWritesThroughDanglingSymlink`
+(`internal/runtime/audit_ceiling_symlink_test.go`, darwin||linux).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07

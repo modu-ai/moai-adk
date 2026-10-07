@@ -48,3 +48,36 @@ func TestAppendProgressRecordWritesThroughSymlink(t *testing.T) {
 		t.Fatalf("the record did not append at the target's end:\n%s", content)
 	}
 }
+
+// TestAppendProgressRecordWritesThroughDanglingSymlink (round-4 edge 4) —
+// a symlink whose TARGET does not exist yet (its parent directory does):
+// the record writes through to the newly created target, exactly as the
+// pre-repair os.WriteFile followed the link and created it, and the link
+// survives as a symlink.
+func TestAppendProgressRecordWritesThroughDanglingSymlink(t *testing.T) {
+	specDir := t.TempDir()
+	targetDir := t.TempDir()
+	target := filepath.Join(targetDir, "progress.md") // deliberately absent
+	link := filepath.Join(specDir, "progress.md")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlinks unavailable here: %v", err)
+	}
+	if err := appendProgressRecord(specDir, "- first record"); err != nil {
+		t.Fatalf("a dangling-symlink progress.md refused the record the pre-repair write-through would have created: %v", err)
+	}
+	info, err := os.Lstat(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("the progress.md symlink was replaced by a regular file (mode %v)", info.Mode())
+	}
+	raw, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("the target was not created through the link: %v", err)
+	}
+	content := string(raw)
+	if !strings.Contains(content, progressSectionHeading) || !strings.Contains(content, "- first record") {
+		t.Fatalf("the created target does not carry the record:\n%s", content)
+	}
+}
