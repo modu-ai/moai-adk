@@ -163,6 +163,43 @@ func TestFactoryLeaseArmAExcludesHeldAssignedCard(t *testing.T) {
 	}
 }
 
+// Re-promoting a queued assigned card reuses its original ordering hints.
+// A newly held hub peer must not rewrite that already-assigned record.
+func TestFactoryNextQueuedAssignedCardPreservesHubHints(t *testing.T) {
+	root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateHold)
+	for _, id := range []string{"t1", "t2"} {
+		fbSeedFiles(t, store, id, "internal/template/catalog.yaml")
+	}
+	fcPlace(t, root,
+		homestate.Card{CardID: "t0", State: homestate.CardMergedLocal},
+		homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun, HintAfter: "t0"},
+		homestate.Card{CardID: "t2", State: homestate.CardPicked},
+	)
+	before := fcCard(t, root, "t2")
+	nmIsolatedWorktrees(t, "t1")
+	nmLaneEnv(t, "lane-1", "")
+	out, stderr, err := qasRunNext(t, "--run", fcRun)
+	if err != nil {
+		t.Fatalf("queued assigned card: %v (stderr %q)", err, stderr)
+	}
+	if head := nmLeasedHead(out); !strings.HasPrefix(head, "t1 stage=") {
+		t.Fatalf("leased %q, want assigned t1", head)
+	}
+	nmAssertLeased(t, root, "t1", "lane-1")
+	if got := fcCard(t, root, "t1"); got.HintAfter != "t0" || got.OwnerLabel != "lane-1" {
+		t.Errorf("original assignment changed: after=%q owner=%q", got.HintAfter, got.OwnerLabel)
+	}
+	if got := nmQueueState(t, store, "t1"); got != factory.BacklogStatePicked {
+		t.Errorf("promoted card queue=%s, want picked", got)
+	}
+	if got := nmQueueState(t, store, "t2"); got != factory.BacklogStateHold {
+		t.Errorf("held peer queue=%s, want hold", got)
+	}
+	if got := fcCard(t, root, "t2"); got != before {
+		t.Errorf("held peer changed: got %+v, want %+v", got, before)
+	}
+}
+
 // TestFactoryLeaseCompensationKeepsOperatorPick — AC-FAL-004: a queued nominee,
 // a seam that fails the claim, and an operator goroutine started from the seam
 // that writes the queue item to `queued` and then to `picked` (an unpick and a

@@ -897,7 +897,13 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		if err := factoryLeaseBeforeClaim("c", promoted); err != nil {
 			return homestate.Card{}, false, false, err
 		}
-		return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane, hubFields(promoted))
+		fields := hubFields(promoted)
+		if row, exists := rowByID[promoted]; exists && row.State == homestate.CardAssigned {
+			// Reuse the assignment unchanged, then re-select through arm (a).
+			// Hub hints are creation inputs, not edits to an assigned row.
+			fields = homestate.CardFields{}
+		}
+		return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane, fields)
 	case sawQueued > 0:
 		// Queued cards existed but none was eligible (blocked, or serial with
 		// the slot held). That is the no-card answer, not a race: re-selecting
