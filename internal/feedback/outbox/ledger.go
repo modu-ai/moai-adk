@@ -31,25 +31,55 @@ type Ledger struct {
 	Discarded map[string]string `json:"discarded,omitempty"`
 }
 
-// loadLedger reads the user-scoped ledger; an absent file is an empty
-// ledger. A malformed ledger reads as EMPTY rather than erroring: the
-// ledger gates publication, and failing closed here means never publishing
-// again until the user purges — the conservative direction.
+// loadLedger reads the user-scoped ledger. An ABSENT file is an empty
+// ledger. Every other failure is an ERROR, never silent amnesia (card-review
+// finding, P2 — reversing the earlier empty-on-corrupt reading): a
+// corrupted ledger used to read as empty history, resetting the dedupe
+// window and the send caps so extra reports enqueued past an exhausted cap.
+// The drain treats an unreadable ledger as a RETRYABLE failure — the item
+// and the spool tail stay for the next drain — so the error preserves the
+// spool where the fake-empty read consumed it. The read itself is bounded
+// like the consent and spool reads: non-regular files are refused without
+// opening, and the open+read runs under DefaultBugreportLedgerReadTimeBox
+// with the DefaultBugreportLedgerMaxBytes size cap. On deadline the helper
+// goroutine is left parked on the blocked handle; it exits when the
+// blocking writer closes, and the caller never waits for it.
 func loadLedger() (*Ledger, error) {
 	path, err := StorePath(LedgerFileName)
 	if err != nil {
 		return nil, err
 	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return &Ledger{FingerprintSeen: map[string]string{}}, nil
+	if info, serr := os.Stat(path); serr == nil && !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("outbox: ledger is not a regular file: %s", path)
+	}
+	type readResult struct {
+		raw []byte
+		err error
+	}
+	done := make(chan readResult, 1)
+	go func() {
+		raw, err := os.ReadFile(path)
+		done <- readResult{raw: raw, err: err}
+	}()
+	var raw []byte
+	select {
+	case r := <-done:
+		if r.err != nil {
+			if os.IsNotExist(r.err) {
+				return &Ledger{FingerprintSeen: map[string]string{}, Discarded: map[string]string{}}, nil
+			}
+			return nil, r.err
 		}
-		return &Ledger{FingerprintSeen: map[string]string{}}, nil
+		raw = r.raw
+	case <-time.After(config.DefaultBugreportLedgerReadTimeBox):
+		return nil, fmt.Errorf("outbox: ledger read exceeded its %s time box", config.DefaultBugreportLedgerReadTimeBox)
+	}
+	if len(raw) > config.DefaultBugreportLedgerMaxBytes {
+		return nil, fmt.Errorf("outbox: ledger is %d bytes, over the %d cap — purge required", len(raw), config.DefaultBugreportLedgerMaxBytes)
 	}
 	var l Ledger
 	if err := json.Unmarshal(raw, &l); err != nil {
-		return &Ledger{FingerprintSeen: map[string]string{}}, nil
+		return nil, fmt.Errorf("outbox: ledger is corrupt: %w", err)
 	}
 	if l.FingerprintSeen == nil {
 		l.FingerprintSeen = map[string]string{}

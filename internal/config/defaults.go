@@ -600,6 +600,15 @@ const (
 	// past its own deadline.
 	DefaultBugreportSpoolReadTimeBox = 100 * time.Millisecond
 
+	// DefaultBugreportLedgerReadTimeBox bounds ONE ledger-file read — the
+	// same blocking-file defense the spool read carries.
+	DefaultBugreportLedgerReadTimeBox = 100 * time.Millisecond
+
+	// DefaultBugreportLedgerMaxBytes caps the ledger file's size; the store
+	// holds fingerprints and window stamps, and anything larger is out of
+	// contract (purge required).
+	DefaultBugreportLedgerMaxBytes = 256 * 1024
+
 	// DefaultBugreportCaptureTimeBox bounds one capture call on the hook
 	// path (time-boxed, fail-open, network-free by construction).
 	DefaultBugreportCaptureTimeBox = 50 * time.Millisecond
