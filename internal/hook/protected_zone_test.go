@@ -13,6 +13,7 @@ func TestProtectedZone(t *testing.T) {
 	t.Run("Normalization", testZoneNormalization)
 	t.Run("FileTools", testZoneFileTools)
 	t.Run("ShellMutation", testZoneShellMutation)
+	t.Run("ShellQuoting", testZoneShellQuoting)
 	t.Run("ManifestStates", testZoneManifestStates)
 	t.Run("NonRegression", testZoneNonRegression)
 	t.Run("DenyReason", testZoneDenyReason)
