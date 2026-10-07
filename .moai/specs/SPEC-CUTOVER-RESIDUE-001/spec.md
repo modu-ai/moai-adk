@@ -2,7 +2,7 @@
 id: SPEC-CUTOVER-RESIDUE-001
 title: "GitHub Flow cutover residue cleanup: sweep base fallback, git-strategy config completion, workflow branch filters"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-07
 updated: 2026-10-07
 author: t1564 card worker

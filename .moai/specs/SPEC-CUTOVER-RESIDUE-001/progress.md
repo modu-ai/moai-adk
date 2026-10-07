@@ -31,3 +31,27 @@ plan_complete_at: 2026-10-07
 - Survival doc §2.3 re-keyed to `--source=main` with the two verification greps; §0.1 provenance line updated to the main tree.
 - Template `lead_push_threshold` comment neutralized; `make build` green.
 
+### M3 — workflow filters (done)
+
+- 8 workflows `branches: [main, develop]` → `[main]`; docs-i18n-check push trigger + comment aligned. `grep -rn 'branches:.*develop' .github/workflows/` → 0. All 9 edited YAMLs parse.
+
+### M4 — verify, push, PR (done)
+
+- Build unblock: main-tip embed manifest defect repaired (`make embed-manifest`) — measured, committed as `a54c6ab60`.
+- vet 0 · lint `0 issues.` (worktree, config, template) · affected suites green · spec-lint baseline gate exit 0 · guard PASS disarmed after the revert.
+- Final live sweep: 71 DISPOSE / 120 PRESERVE, 0 fetch-failed, fallback notice (preview only).
+- Commits `a54c6ab60` `642a662d9` `723b0272b` `ed7b7c6e4` `8302697f7` on `WT-cutover-residue`, pushed; **PR #1786** (base main). Card-review run (raw fail with base anomaly — advisory disposition, `card-review.md`).
+
+## §E.2 Run-phase Evidence
+
+- RED: unit compile-failure output captured pre-implementation (`undefined: sweepEffectiveBase`); live pre-fix sweep `--json` → 185/187 `cause=fetch-failed; fetch origin develop: exit status 128` (evidence: `.moai/reports/t1564/t1564-sweep-red.json`).
+- GREEN: post-fix `--json` → 0 fetch-failed (69/118 then 71/120 across two runs), stderr fallback notice; explicit `--base origin/develop` → 185 fetch-failed preserved (evidence: `t1564-sweep-green.json`, `t1564-sweep-final.json`).
+- AC matrix + baselines: `.moai/reports/t1564/verdict.md` (AC roll-up PASS ×8, one criterion revised per the §A amendment).
+
+## §E.3 Run-phase Audit-Ready Signal
+
+run_status: audit-ready (self-tree mode; all 8 ACs pass, RED evidence recorded, card-review filed with attribution analysis)
+
+run_complete_at: 2026-10-07
+
+
