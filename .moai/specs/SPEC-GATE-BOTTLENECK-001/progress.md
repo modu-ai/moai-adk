@@ -91,7 +91,8 @@ r10 수리 판정 통과(리뷰어 명시: 캐시 회귀 테스트 3개 통과).
   - **본 소관 (P1) 마커 영구화 회귀**: r5의 인수 제거가 기존 마커를 무기한 in-flight로 읽게 만들어(성공 리뷰도 마커를 지우지 않음) dead 리뷰 뒤 동일 트리가 영구 재리뷰 불가. **버킷 경로 회전** 설계로 수리 — 마커 경로에 리뷰 예산 버킷을 포용(`kick-<bucket>`), 동일 버킷 내엔 excl-create dedup(경합 불가 — 경로가 절대 비지 않음), 버킷 교체 시 경로가 바뀌어 자연 재기동(r7 P1의 재시도 계약). prev 버킷 GC는 다른 경로라 create와 경합 불가. 테스트: ExclusiveAcquisition rolled-bucket arm(다음 버킷 재획득+경로 분리)·SweptMarkerAgesOut→SweptMarkerRekicks(스윕 후 재기동). LiveSteal/StaleAgesOut는 인수 부재로 삭제. 영향계열 → **ok (19.8s)**.
   - **타 소관 3건 — r5와 같은 develop-기저 재유입(main 착지분)**: ① P2 windows 획득 가드 중단 복구(t1509) ② P2 bundle 제거 전 journal 복구(`8e85f26ec`/`840826fa6` 대역) ③ P2 doctor_harness skillsDir 사용자 경로 전환 과잉(`840826fa6` 대역). 원장 행 소관.
 - **턴종료 게이트 발견 처분 (M2 세션 r9 — 본 카드 파일 0건·타 소관 5건 전부)**: install.go 저널 해시·lock_guard_windows 복구·init 재시도·doctor_user_install 역방향 검사·deployer ListTemplates 제외 필터 — 5건 전부 main 착지분(마지막 커밋 관측: `717480602`/`edb6e3fe1`/`840826fa6`/`d16fcaa2b` — t1509 SPEC-USER-ASSET-INSTALL-001 라운드 + PR1772 통합). **본 카드 파일(codex_review_*)은 이번 라운드 0건 — r7 버킷 수리는 리뷰 통과.** r5/r7 보고의 develop-기저 재유입이 계속되어 **게이트 수렴이 기저 갱신 전에는 불가** — 리더의 기저 갱신(git-strategy main 기준) 또는 게이트 회선 처분 결정 필요. CI 판정면은 GitHub check-runs이므로 로컬 게이트 루프와 독립.
-- **명시적 대기 (2026-10-08 — r9 푸시로 갱신)**: PR #1802 head = r9 원장 푸시. 대기 사유: PR CI 최종·CodeRabbit 판독·병합·done = **리더 소관**. 재확인 지점: 리더 응답 또는 PR #1802 체크 완료.
+- **수렴 처분 결정 (2026-10-08, 리더 회신)**: (b) 임시 처분 채택 — 전략 기저 갱신은 발행된 전략 분기 카드 소관으로 우선순위 상향(3레인 동일 관찰 보고, 근원 후보 확정). 그 착지까지의 턴종료 게이트 루프 규칙: **매핑된 재유입 행(t1509/PR1772 대역 — r5·r7·r9 원장 행)은 '기지 클래스 참조' 1행 처리(신규 발견 아님)**, 새 좌표·새 클래스만 보고. CI 감시는 r9 헤드 `d50979f95`로 리더 재무장 완료.
+- **명시적 대기 (2026-10-08 — 수렴 처분 기록 푸시로 갱신)**: PR #1802 head = 본 원장 푸시. 대기 사유: PR CI 최종·CodeRabbit 판독·병합·done = **리더 소관**. 재확인 지점: 리더 응답 또는 PR #1802 체크 완료.
 
 
 
