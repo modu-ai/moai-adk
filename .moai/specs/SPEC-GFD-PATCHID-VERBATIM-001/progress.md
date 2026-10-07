@@ -116,8 +116,8 @@ manager-develop (card t1561) — 2026-10-07. 트리 `.moai/worktrees/t1561` (카
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_complete_at: <M3 커밋 시각 — 커밋 후 기재>
-run_commit_sha: <M3 커밋 SHA — 커밋 후 기재>
+run_complete_at: 2026-10-07T04:15:13Z
+run_commit_sha: ac44966f7   # M-final (M3 증거 커밋) — M1 5f952f509 · M2 0ecbf3a21
 run_status: complete
 ac_pass_count: 7
 ac_fail_count: 0
