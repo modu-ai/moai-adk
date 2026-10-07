@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
@@ -374,6 +375,8 @@ func TestSD_AC018_ParentCheckoutUntouched(t *testing.T) {
 		t.Skip("the §B fixture family is POSIX-verified (the TestSD_AC006 sibling)")
 	}
 	root, store := fcFixture(t)
+	// Completion checks lease liveness against the real clock.
+	factoryCardNow = time.Now
 	fcQueue(t, store, factory.BacklogStateQueued)
 	sdRegisterLane(t, root, "lane-1")
 	fcGit(t, root, "branch", "develop")
@@ -444,6 +447,9 @@ func TestSD_AC018_ParentCheckoutUntouched(t *testing.T) {
 		t.Fatalf("stage merge-ready: %v", err)
 	}
 
+	if _, err := factory.RunRemeasure(root, card.WorktreePath, "develop", "true"); err != nil {
+		t.Fatalf("place candidate re-measure: %v", err)
+	}
 	sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
 	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
 	if _, _, err := runFactory(t, "complete", "t1", "--run", fcRun); err != nil {

@@ -106,6 +106,19 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 				Develop:     developRef,
 				RepoDir:     root,
 				MergeCommit: mergeCommit,
+				// REQ-MWQ-021's fourth condition: the re-measure record keyed
+				// to the candidate tree, with the recorded command printed
+				// verbatim in the condition's detail.
+				VerifyRemeasure: func(treeSHA string) (string, error) {
+					rec, err := factory.ReadRemeasureRecord(integrationLockRoot(), treeSHA)
+					if err != nil {
+						return "", err
+					}
+					if err := factory.ValidateRemeasureRecord(rec); err != nil {
+						return "", err
+					}
+					return rec.Command, nil
+				},
 			}, factorylane.ExecGitRunner{Dir: root})
 			if err != nil {
 				return err

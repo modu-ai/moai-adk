@@ -20,7 +20,7 @@ related_specs: [SPEC-WORKTREE-SWEEP-001, SPEC-GITSTRAT-WORKFLOW-READER-001, SPEC
 ## §A — History
 
 - **2026-10-07** — plan-phase v0.1.0 authored from card t1564 (factory run tmhxo0). The 2026-10-05 GitHub Flow cutover moved the integration base to `main` and deleted `origin/develop`, but three measured surfaces still carry the git-flow-era shape. Card class C (design change across subsystems), Tier M, cycle tdd for the code component.
-- **2026-10-07, run-phase M2 amendment** — the plan's REQ-CR-005 (flip the local config to github-flow, drop the git-flow-era keys) collided at verification with a designed tripwire: `TestGitHubFlowSweepGuard` (SPEC-GITHUB-FLOW-DEFAULT-001, card t1453 M4) arms ONLY when the local git_strategy workflow resolves github-flow, and its armed assertions cover exactly the develop-era live text this card's §E.1 defers to the residue-sweep card. Flipping the value without that sweep turned the guard red (observed: `--- FAIL: TestGitHubFlowSweepGuard` on the flipped tree). The value's flip therefore belongs to that card's own M5; REQ-CR-005 is revised to keep the operator keys + a branch-neutral counting comment and leave the workflow untouched. The sweep is value-independent through the M1 fallback (measured GREEN live with the git-flow config before the flip was attempted).
+- **2026-10-07, run-phase M2 amendment** — the plan's REQ-CR-005 (flip the local config to github-flow, drop the git-flow-era keys) collided at verification with a designed tripwire: `TestGitHubFlowSweepGuard` (SPEC-GITHUB-FLOW-DEFAULT-001, card t1453 M4) arms ONLY when the local git_strategy workflow resolves github-flow, and its armed assertions cover exactly the develop-era live text this card's §E.1 defers to the residue-sweep card. Flipping the value without that sweep turned the guard red (observed: `--- FAIL: TestGitHubFlowSweepGuard ` on the flipped tree). The value's flip therefore belongs to that card's own M5; REQ-CR-005 is revised to keep the operator keys + a branch-neutral counting comment and leave the workflow untouched. The sweep is value-independent through the M1 fallback (measured GREEN live with the git-flow config before the flip was attempted).
 
 ## §B — Problem
 
@@ -57,12 +57,12 @@ The sweep resolves its landing base resiliently: when the derived default ref do
 
 ## §E — Out of Scope
 
-### E.1 Deferred
+### Out of Scope — E.1 Deferred
 - Sweeping every historical comment that mentions a dead "develop run" ID in ci.yml / release-pr-multi-os.yml (cosmetic; comments do not alter behavior).
 - Migrating `.claude/rules/local/gitflow-lane-protocol.md` and `.moai/docs/gitflow-integration-chain.md` (both already carry the cutover drift notice in `AGENTS.local.md` §4.1 — a separate card's scope if the operator wants the bodies rewritten).
 - Changing the primary checkout's deployed (untracked) `.moai/config/sections/git-strategy.yaml` — runtime-managed, shared-tree; the re-apply doctrine lands here and the operator/next `moai update` cycle applies it.
 
-### E.2 Explicitly excluded
+### Out of Scope — E.2 Explicitly excluded
 - Any change to `develop_branch`'s loader semantics (`LoadGitFlowIntegrationConfig` gating) — the gating is correct; only the local config's declared value is the residue.
 - Branch deletion on the remote or in local trees.
 
