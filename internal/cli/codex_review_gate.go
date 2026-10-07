@@ -149,9 +149,17 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 		if chk := verify.CheckReceipt(verify.LoadReceipt(scope.Dir, state), state, time.Now(), codexReviewCacheTTL); chk.Run {
 			codexReviewCacheSkips.Add(1)
 			if isBlockVerdict(chk.Receipt.Verdict) {
+				// The cached block still says WHAT to fix: the fail's summary
+				// and findings were preserved at record time (the receipt
+				// store carries no free text). An unreadable detail file keeps
+				// the bare verdict — fail-open, never invented.
+				reason := "codex review gate (cached verdict): " + chk.Receipt.Verdict
+				if detail := codexReviewCachedDetail(scope.Dir, *chk.Receipt); detail != "" {
+					reason += "\n\n" + detail
+				}
 				return &hook.HookOutput{
 					Decision: hook.DecisionBlock,
-					Reason:   "codex review gate (cached verdict): " + chk.Receipt.Verdict,
+					Reason:   reason,
 				}, nil
 			}
 			_, _ = fmt.Fprintf(os.Stderr, "codex review gate: reusing the cached %s verdict for the unchanged tree (skip #%d)\n",

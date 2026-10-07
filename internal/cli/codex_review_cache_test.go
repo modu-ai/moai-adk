@@ -10,6 +10,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -158,5 +159,57 @@ func TestReviewGate_StaleKeyRunsLiveReview(t *testing.T) {
 	}
 	if out == nil || out.Decision != hook.DecisionBlock {
 		t.Fatalf("a stale receipt must fall through to the live review (fixture verdict fail ⇒ BLOCK), got %+v", out)
+	}
+}
+
+// TestReviewGate_LiveFailPreservesDetailForCachedBlock — the two record-side
+// repairs of the first cached-block round: a LIVE fail receipt records the
+// fail exit code (not a pass-shaped 0, which the receipt's other consumers
+// read as success evidence), and preserves the summary so the SECOND Stop's
+// cached block still says what to fix instead of a bare "cached verdict: fail".
+func TestReviewGate_LiveFailPreservesDetailForCachedBlock(t *testing.T) {
+	root := cacheTestRoot(t)
+	withFixedVersionProbe(t)
+	withPrimaryScopeReview(t)
+	withChangeDetector(t, true)
+	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
+	runner := &fakeCodexRunner{stdoutByCmd: map[string]string{"--version": "9.9.9\n"}}
+	withCodexRunner(t, runner)
+	withCodexSession(t, codexSessionScript("Verdict: fail\n\nblocking finding on shared file."))
+
+	// First Stop: the live review fails, blocks, and records.
+	first, err := HandleCodexReviewGate(gateInput(false), true, root)
+	if err != nil {
+		t.Fatalf("live-fail gate must not error; got %v", err)
+	}
+	if first == nil || first.Decision != hook.DecisionBlock {
+		t.Fatalf("a live fail must BLOCK, got %+v", first)
+	}
+	// The recorded receipt carries the fail exit code (1), not 0.
+	ctx := context.Background()
+	scope := reviewScopeResolver(root)
+	state, err := codexReviewReceiptStateForScope(ctx, scope, "/fake/codex")
+	if err != nil {
+		t.Fatalf("receipt state: %v", err)
+	}
+	rec := verify.LoadReceipt(root, state)
+	if rec == nil {
+		t.Fatal("the live review must record a receipt")
+	}
+	if rec.Verdict != codexReviewVerdictFail || rec.ExitCode != 1 {
+		t.Fatalf("fail receipt must carry verdict=fail exit=1, got verdict=%q exit=%d", rec.Verdict, rec.ExitCode)
+	}
+
+	// Second Stop over the unchanged tree: the cache hits and the block
+	// message carries the preserved finding text.
+	second, err := HandleCodexReviewGate(gateInput(false), true, root)
+	if err != nil {
+		t.Fatalf("cache-hit gate must not error; got %v", err)
+	}
+	if second == nil || second.Decision != hook.DecisionBlock {
+		t.Fatalf("a cached FAIL must BLOCK, got %+v", second)
+	}
+	if !strings.Contains(second.Reason, "blocking finding on shared file.") {
+		t.Fatalf("the cached block must carry the preserved finding text, got %q", second.Reason)
 	}
 }

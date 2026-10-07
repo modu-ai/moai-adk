@@ -29,3 +29,8 @@ run_status: partial — M1 착지, M2(지연 블록)·라이브 리뷰 0건 조�
 ## 턴종료 게이트 발견 처분 (r9 — 본 카드 diff 발견 0건)
 
 턴종료 게이트가 merge-ref 전체 diff를 보며 보고한 14건(patch-id P1=t1561 발행·after 힌트 재계산·bundle 3건·picked 스킵·todo_issuance 6건·todo.go 2건·backlog_store/relation)은 **전부 t1542 card-review 원장과 리더 원장(t1533 라인·t1561·t1562·t1559)에 기재된 기존 행의 재관측**이다. 본 M1 diff(codex_review_cache.go·gate 조회/기록·테스트)에서의 발견은 0건. 본 카드는 이들 수리의 소관이 아니며 원장 행이 소유한다.
+
+## 턴종료 게이트 발견 처분 (r10 — 본 카드 diff 2건 수리, 타 소관 11건 재관측)
+
+- **본 소관 2건 수리(커밋 대상)**: ① fail receipt에 ExitCode=1 기록(기존 produceCodexReviewReceipt와 동일 매핑 — pass형 0이 다른 소비자에게 성공 증거로 읽히는 결함) ② 캐시 차단 메시지가 "무엇을 고칠지"를 잃는 문제 — fail 시 요약·발견을 `.moai/state/verify/codex-review/<head>-<digest>.md`(트리키 동일·런타임 관리 영역)에 보존하고 캐시 차단 이유에 첨부. 판별 테스트 TestReviewGate_LiveFailPreservesDetailForCachedBlock 추가. `go test ./internal/cli/ -run 'TestReviewGate' -count=1` → ok (24.0s).
+- **타 소관 11건 재관측**: protected_zone_shell(1·t1500/1510 계열)·todo_issuance(4·t1559)·factory_bundle(3·t1561/62)·todo.go(1·t1554)·backlog_relation/store(2·t1542 card-review 원장). 전부 r9 원장 행의 재관측 — 본 카드 수리 소관 아님.
