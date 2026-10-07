@@ -12,6 +12,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/bugreport"
@@ -38,12 +39,22 @@ func claudeSummaryArgs(model, effort string) []string {
 	return args
 }
 
+// claudeParticipationEnv builds the summarizer's subprocess environment:
+// the CALLER'S real environment through the same audit scrubber the audit
+// path uses — the base env (HOME, PATH, the auth store's lookup path)
+// survives, the risky keys (ANTHROPIC_*, CLAUDECODE_*, the audit scrub set)
+// are dropped (review-gate finding 6: the nil-environ construction built an
+// EMPTY env, leaving the claude child without HOME or PATH).
+func claudeParticipationEnv() []string {
+	return scrubClaudeAuditEnv(os.Environ())
+}
+
 func (claudeParticipationSummarizer) Summarize(ctx context.Context, p bugreport.Payload) (string, error) {
 	binary, err := claudeLookPath(claudeBinaryName)
 	if err != nil {
 		return "", err
 	}
-	env := scrubClaudeAuditEnv(nil)
+	env := claudeParticipationEnv()
 	if err := validateClaudeAuditEnv(env); err != nil {
 		return "", err
 	}
