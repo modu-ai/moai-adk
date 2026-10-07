@@ -80,6 +80,12 @@ r10 수리 판정 통과(리뷰어 명시: 캐시 회귀 테스트 3개 통과).
   - **(P1) 상태 경로 git 루트 앵커**: 하위 디렉터리 세션의 scope.Dir로는 `.moai/state`가 하위 디렉터리 안에 생겨(템플릿 .gitignore 미커버) receipt 쓰기 자체가 트리 키를 이동 → 진입 훅이 판정을 못 읽음. 게이트·진입 훅·프로듀서 3곳 모두 tree 클래스 scope.Dir를 `reviewExclusionRoot`(git toplevel, 실패 시 원값)로 앵커 — 실행·저장·조회 동일 루트. 회귀 테스트 TestReviewEntry_SubdirSessionReadsRootReceipt 추가.
   - **(P2) 마커 배타적 획득**: stat-then-write 경합으로 겹치는 Stop 둘이 모두 기동권을 얻을 수 있음 — `O_CREATE|O_EXCL` 원자 획득으로 교체(신규=기동권, 기존+신선=in-flight, 기존+만료=제거 후 1회 재경합, 패배 시 in-flight). 회귀 테스트 TestKickInFlight_ExclusiveAcquisition 추가.
   - 부수 수리: 앵커로 git toplevel이 `/private/var`(`EvalSymlinks`) 해석되는 macOS 심링크로 문자열 비교 4곳(CacheMissKicks·WTBranch·NonSkipValues·WTSessions) 조정. 수리 후 영향계열 `-run 'TestReviewGate_|TestReviewEntry_|TestKickInFlight|TestProduceCodexReviewReceipt|TestCodexReviewGate_WTBranch|TestTreeScope|TestCodexReviewGateNonGitDir'` → **ok (95.6s)**.
+- **턴종료 게이트 발견 처분 (M2 세션 r4 — r3 수리 커밋 리뷰, 본 소관 2건 수리)**:
+  - **(P2) 프로듀서 저장 루트 미앵커**: 키는 앵커된 git 루트에서 계산되지만 `RecordReceipt(root, r)`가 원래 `--project-root`(하위 디렉터리)에 저장 → 진입 훅이 루트에서 조회해 FAIL을 놓침. 앵커 후 `root = scope.Dir`로 저장 루트 통일. 회귀 테스트 TestProduceCodexReviewReceipt_SubdirRootStoresAtGitRoot(하위 dir에서 produce → 루트 receipt 조회 → 하위 dir 세션 진입 차단 end-to-end).
+  - **(P2) 만료 마커 교체 경합**: stat(stale)→remove→create 경합에서 두 호출이 모두 기동권 획득 가능(한쪽의 remove가 다른 쪽의 신선 마커를 지움). 교체를 **원자 rename 절차**로 교체: path를 고유 톰브스톤으로 이동(경합 시 ENOENT→재시도) → 이동 파일이 신선이면 동일 파일 복원+in-flight, 만료면 폐기 후 excl-create로 소유권 결정. 회귀 테스트 TestKickInFlight_LiveStealIsRestored(도난된 신선 마커의 byte-identical 복원).
+  - 부수: 신규 테스트의 entrySeams 스텁 누락 수정. 수리 후 영향계열 → **ok (83.4s)**.
+- **명시적 대기 (2026-10-08, 레인 종료 시점 — r4 푸시로 갱신)**: 레인 소관 전부 착지(PR #1802 open, head = r4 수리 푸시). 대기 사유: PR CI 최종·CodeRabbit 판독·병합·done = **리더 소관**. 재확인 지점: 리더 응답 또는 PR #1802 체크 완료. 팩토리 기록 거부(t1575 트리 미결속)는 리더 참고 사항으로 메모리 `project_card_t1575_landing.md`에 기록.
+
 
 
 

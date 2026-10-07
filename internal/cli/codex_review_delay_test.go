@@ -227,6 +227,77 @@ func TestKickInFlight_ExclusiveAcquisition(t *testing.T) {
 	}
 }
 
+// TestKickInFlight_LiveStealIsRestored — a takeover rename that moved a FRESH
+// marker (a live steal mid-protocol) puts the identical file back and reads
+// in-flight: the previous owner's marker survives the thief untouched.
+func TestKickInFlight_LiveStealIsRestored(t *testing.T) {
+	root := cacheTestRoot(t)
+	state, err := codexReviewReceiptStateForScope(context.Background(), reviewScopeResolver(root), "/fake/codex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	inFlight, markerPath := kickInFlight(root, state)
+	if inFlight || markerPath == "" {
+		t.Fatalf("premise: the first acquisition must own, got %v %q", inFlight, markerPath)
+	}
+	before, err := os.ReadFile(markerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	inFlight, _ = kickInFlight(root, state)
+	if !inFlight {
+		t.Fatal("a fresh marker must read in-flight")
+	}
+	after, err := os.ReadFile(markerPath)
+	if err != nil {
+		t.Fatalf("the live marker must survive a stealing takeover, got %v", err)
+	}
+	if string(before) != string(after) {
+		t.Fatalf("the restored marker must be byte-identical, got %q want %q", after, before)
+	}
+}
+
+// TestProduceCodexReviewReceipt_SubdirRootStoresAtGitRoot — the producer's
+// storage root follows the anchored git toplevel: a caller that named a
+// subdirectory gets its receipt stored where the entry hook reads it (the
+// turn-end gate's P2 overlay repro).
+func TestProduceCodexReviewReceipt_SubdirRootStoresAtGitRoot(t *testing.T) {
+	root := cacheTestRoot(t)
+	sub := filepath.Join(root, "internal", "cli")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	entrySeams(t)
+	withCodexSession(t, codexSessionScript("Verdict: fail\n\nblocking finding on shared file."))
+
+	if _, err := produceCodexReviewReceipt(context.Background(), sub); err != nil {
+		t.Fatalf("receipt producer: %v", err)
+	}
+	// The root-anchored state — the same binding the entry hook consults —
+	// must hold the recorded receipt.
+	rootScope := reviewScopeResolver(root)
+	state, err := codexReviewReceiptStateForScope(context.Background(), rootScope, "/fake/codex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := verify.LoadReceipt(root, state)
+	if rec == nil {
+		t.Fatal("the receipt must be stored at the git root's state, where the entry hook reads it")
+	}
+	if rec.Verdict != codexReviewVerdictFail {
+		t.Fatalf("receipt verdict = %q, want fail", rec.Verdict)
+	}
+	// And the delayed enforcement blocks the subdir session end to end.
+	entry, err := HandleCodexReviewEntry(&hook.HookInput{CWD: sub}, true, root)
+	if err != nil {
+		t.Fatalf("entry error: %v", err)
+	}
+	if entry == nil || entry.Decision != hook.DecisionBlock {
+		t.Fatalf("the subdir session's entry must BLOCK on the root-stored fail, got %+v", entry)
+	}
+}
+
 // TestReviewGate_InFlightKickNotRepeated — consecutive Stops over the SAME
 // tree state must not start a second background review while the first is in
 // flight: the per-key marker deduplicates them.

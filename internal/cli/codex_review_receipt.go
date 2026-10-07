@@ -139,10 +139,12 @@ func produceCodexReviewReceipt(ctx context.Context, root string) (verify.Receipt
 	// scope resolves from it exactly as the Stop chain resolves from c.root.
 	// The state root anchors on the git toplevel (the same anchoring the Stop
 	// and entry hooks apply): the receipt must land where the entry hook
-	// reads it, even when the caller named a subdirectory.
+	// reads it, even when the caller named a subdirectory — so the storage
+	// root follows the anchored scope, not the raw --project-root.
 	scope := reviewScopeResolver(root)
 	if scope.Class == reviewScopeTree {
 		scope.Dir = reviewExclusionRoot(scope.Dir)
+		root = scope.Dir
 	}
 	state, err := codexReviewReceiptStateForScope(ctx, scope, binaryPath)
 	if err != nil {

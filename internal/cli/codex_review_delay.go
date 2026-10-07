@@ -78,14 +78,14 @@ func codexReviewKickMarkerPath(dir, head, digest string) string {
 
 // kickInFlight reports whether a kick for this exact tree state is already in
 // flight, and otherwise records the marker for the kick the caller is about
-// to start. Acquisition is ATOMIC (exclusive create): two overlapping Stops
-// on the same tree race on O_EXCL, and exactly one of them wins the marker —
-// the loser reads it as in-flight and does not start a second review. A
-// marker older than the review budget reads as a dead review (the kick it
-// stood for never recorded) and is replaced for the re-kick; a replace lost
-// to a concurrent re-creator reads as in-flight. An unkeyed state (the key
-// itself unmeasurable) and an unwritable marker are both fail-open toward
-// reviewing: the kick proceeds undeduplicated.
+// to start. Both races are decided atomically: ACQUISITION is an exclusive
+// create (two overlapping Stops race on O_EXCL; exactly one wins), and the
+// DEAD-MARKER TAKEOVER is an atomic RENAME of whatever sits at the path to a
+// unique tombstone — a second caller's takeover rename loses with ENOENT
+// instead of deleting the winner's fresh marker, so the remove-and-recreate
+// race can never yield two owners. A takeover that moved a FRESH marker (a
+// live steal) renames the byte-identical file back and reads in-flight. An
+// unkeyed state and an unwritable marker are fail-open toward reviewing.
 func kickInFlight(dir string, state verify.ReceiptState) (bool, string) {
 	if state.Head == "" || state.TreeDigest == "" {
 		return false, "" // unkeyed ⇒ no marker; the kick proceeds undeduplicated
@@ -94,7 +94,7 @@ func kickInFlight(dir string, state verify.ReceiptState) (bool, string) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return false, ""
 	}
-	for attempt := 0; attempt < 2; attempt++ {
+	for attempt := 0; attempt < 3; attempt++ {
 		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 		if err == nil {
 			_, _ = f.WriteString(time.Now().UTC().Format(time.RFC3339))
@@ -108,9 +108,22 @@ func kickInFlight(dir string, state verify.ReceiptState) (bool, string) {
 		if fi, statErr := os.Stat(path); statErr == nil && time.Since(fi.ModTime()) < config.DefaultCodexReviewGateTimeout {
 			return true, path
 		}
-		_ = os.Remove(path) // dead — race the exclusive create once more
+		// Dead (or gone mid-protocol): attempt the atomic takeover.
+		tombstone := path + ".taking-" + fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
+		if rerr := os.Rename(path, tombstone); rerr != nil {
+			continue // ENOENT — another caller is mid-takeover; retry the create
+		}
+		if fi, serr := os.Stat(tombstone); serr == nil && time.Since(fi.ModTime()) < config.DefaultCodexReviewGateTimeout {
+			// We stole a LIVE marker — put the identical file back; we are
+			// not the owner. (A concurrent excl-create since our rename would
+			// be replaced by the identical file it wrote — no drift.)
+			_ = os.Rename(tombstone, path)
+			return true, path
+		}
+		_ = os.Remove(tombstone) // the dead marker is disposed; path is now empty
+		// Fall through: the next exclusive create decides ownership.
 	}
-	// The replace race was lost to a concurrent re-creator: treat as in-flight.
+	// Every race lost: read in-flight rather than re-kicking blind.
 	return true, path
 }
 
