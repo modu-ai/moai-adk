@@ -87,20 +87,27 @@ func TestProductionLaneFilesProbeFollowsConfiguredBase(t *testing.T) {
 // not against the flow's develop.
 func TestProductionLaneFilesProbeConfiguredBaseWins(t *testing.T) {
 	base := t.TempDir()
+	origin := filepath.Join(base, "origin.git")
 	repo := filepath.Join(base, "repo")
 	tree := filepath.Join(repo, ".moai", "worktrees", "probe-card2")
 	if err := os.MkdirAll(repo, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	probeGit(t, base, "init", "-q", "--bare", origin)
 	probeGit(t, repo, "init", "-q", "-b", "main")
 	probeGit(t, repo, "config", "user.email", "probe-test@example.com")
 	probeGit(t, repo, "config", "user.name", "Probe Test")
 	probeGit(t, repo, "config", "commit.gpgsign", "false")
+	probeGit(t, repo, "remote", "add", "origin", origin)
 	if err := os.WriteFile(filepath.Join(repo, "seed.txt"), []byte("seed\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	probeGit(t, repo, "add", ".")
 	probeGit(t, repo, "commit", "-q", "-m", "seed")
+	// The chain answers origin/<configured base>, so the remote-tracking ref
+	// must exist for the level-1 answer to be measurable — same fixture step
+	// as the sibling test above.
+	probeGit(t, repo, "push", "-q", "-u", "origin", "main")
 	// develop exists but is UNRELATED to the card's fork point (an orphan
 	// commit on a fresh branch): merge-base with it would measure nothing.
 	probeGit(t, repo, "checkout", "-q", "--orphan", "develop")

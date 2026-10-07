@@ -99,13 +99,30 @@ jobs:
             # The relaxation is NOT a branch-name bypass: a release PR that
             # changes SPEC inputs or the linter gets the full baseline gate;
             # one that does not keeps the inherited-warning reporting.
+            # card t1535 leader repair #32: the diff is computed into a
+            # variable FIRST — inside a here-string a failing command
+            # substitution does not propagate under set -e, so an
+            # unmeasurable diff (a bad object, a missing SHA) used to read
+            # as "no SPEC inputs changed" and select the relaxed policy.
+            # Unmeasurable now stops the policy selection with strict kept.
+            # The -z paths round-trip through a TEMP FILE, not a shell
+            # variable: command substitution strips NUL bytes, which would
+            # leave read -d '' with no delimiter and silently skip every
+            # path (the same relaxed-policy outcome through another door).
             base_sha=$(git rev-parse origin/main)
+            spec_paths_file=$(mktemp "$RUNNER_TEMP/spec-paths.XXXXXX")
+            if ! git -c core.quotepath=false diff --name-only -z --no-renames "$base_sha" "$PR_HEAD_SHA" >"$spec_paths_file"; then
+              rm -f "$spec_paths_file"
+              echo "::error::release PR diff ${base_sha}..${PR_HEAD_SHA} could not be computed — refusing to select a relaxed lint policy on an unmeasurable diff"
+              exit 1
+            fi
             spec_changed=false
-            while IFS= read -r path; do
+            while IFS= read -r -d '' path; do
               case "$path" in
                 .moai/specs/*|internal/spec/*|.moai/spec-lint-baseline.json) spec_changed=true ;;
               esac
-            done <<< "$(git diff --name-only --no-renames "$base_sha" "$PR_HEAD_SHA")"
+            done <"$spec_paths_file"
+            rm -f "$spec_paths_file"
             if [[ "$spec_changed" == "true" ]]; then
               strict=true
               reason="release PR changes SPEC inputs or the spec linter; baseline gate applies"
