@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -105,7 +106,17 @@ func ReadSpoolConsumable() ([]SpoolEntry, []byte, error) {
 	}
 	done := make(chan readResult, 1)
 	go func() {
-		raw, err := os.ReadFile(path)
+		// Bound the read AT the cap (card-review finding, P2): os.ReadFile
+		// loaded the whole file before the size judgment — an 8MiB spool
+		// allocated ~8.4MB on its way to being refused, and larger files
+		// scale to OOM. The reader reads at most cap+1 bytes, ever.
+		f, err := os.Open(path)
+		if err != nil {
+			done <- readResult{err: err}
+			return
+		}
+		defer func() { _ = f.Close() }()
+		raw, err := io.ReadAll(io.LimitReader(f, config.DefaultBugreportSpoolMaxBytes+1))
 		done <- readResult{raw: raw, err: err}
 	}()
 	var raw []byte
