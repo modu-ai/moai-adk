@@ -63,7 +63,7 @@ measured_branch: WT-github-flow-ci-residue
 
 - sync_complete_at: 2026-10-07
 - sync_status: audit-ready
-- sync_commit_sha: "pending-backfill-sync"  # D3-exempt placeholder — a commit cannot cite its own hash; the real SHA is backfilled in a following commit (spec-frontmatter-schema § SHA placeholder backfill exemption)
+- sync_commit_sha: "fbe98865b"  # backfilled from the pending-backfill-sync placeholder (D3 exemption: the sync commit cannot cite its own hash; backfill commit follows)
 - sync scope (single sync commit): CHANGELOG.md `### Fixed` entry (card t1535,
   B12 duplicate pre-check measured 0) + spec.md frontmatter
   `in-progress → implemented → completed` merged transition (status only —
