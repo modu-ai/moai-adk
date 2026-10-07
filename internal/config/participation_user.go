@@ -18,7 +18,9 @@ package config
 // mishandle: the caller cannot accidentally treat a read failure as consent.
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 
@@ -77,8 +79,17 @@ func ReadUserParticipation() UserParticipation {
 	if err != nil {
 		return UserParticipation{}
 	}
+	// Exactly ONE YAML document is admitted. yaml.Unmarshal decodes only the
+	// first document and silently ignores a tail — so `enabled: true` followed
+	// by `---` and a damaged document would read as consent with its broken
+	// remainder unseen. The fail-closed contract refuses that shape outright:
+	// the second decode must reach EOF or the file reads as no consent.
+	dec := yaml.NewDecoder(bytes.NewReader(raw))
 	var doc userParticipationYAML
-	if err := yaml.Unmarshal(raw, &doc); err != nil {
+	if err := dec.Decode(&doc); err != nil {
+		return UserParticipation{}
+	}
+	if err := dec.Decode(&struct{}{}); err != io.EOF {
 		return UserParticipation{}
 	}
 	up := UserParticipation{}

@@ -91,6 +91,26 @@ func TestUserParticipationDefaultsOff(t *testing.T) {
 	if up.Enabled || up.Asked {
 		t.Fatalf("unreadable home read %+v, want both false", up)
 	}
+
+	// A multi-document file whose FIRST document consents but whose tail is
+	// broken: yaml.Unmarshal decodes only the first document, so the damaged
+	// tail would be ignored and the file would read as consent. The
+	// fail-closed contract admits exactly one well-formed document; anything
+	// else reads as no consent.
+	t.Setenv("MOAI_HOME", t.TempDir())
+	writeParticipationFile(t, "participation:\n  enabled: true\n  asked: true\n---\nbroken: [yaml\n")
+	up = ReadUserParticipation()
+	if up.Enabled || up.Asked {
+		t.Fatalf("multi-document file with a broken tail read %+v, want no consent", up)
+	}
+
+	// The benign second-document shape is rejected for the same reason: the
+	// file must be exactly one document, consent or not.
+	writeParticipationFile(t, "participation:\n  enabled: true\n---\nparticipation:\n  enabled: false\n")
+	up = ReadUserParticipation()
+	if up.Enabled {
+		t.Fatalf("two-document file read enabled: %+v, want no consent", up)
+	}
 }
 
 func TestUserParticipationIgnoresTrackedProjectFile(t *testing.T) {
