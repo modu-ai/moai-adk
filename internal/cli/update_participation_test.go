@@ -63,21 +63,6 @@ func updateParticipationFixture(t *testing.T, answers ...string) (promptOpens *i
 	return &opens, consentPath
 }
 
-// resetUpdateFlags restores every update flag to its zero value after a
-// subtest that set one.
-func resetUpdateFlagValue(t *testing.T, names ...string) {
-	t.Helper()
-	for _, name := range names {
-		name := name
-		f := updateCmd.Flags().Lookup(name)
-		if f == nil {
-			t.Fatalf("update command has no flag %q", name)
-		}
-		prev := f.Value.String()
-		t.Cleanup(func() { _ = f.Value.Set(prev) })
-	}
-}
-
 func newBareUpdateCmd() *cobra.Command {
 	// The participation gates read these flags from a PRIVATE set (review
 	// finding, r7): AddFlagSet shares the pflag.Flag POINTERS, so a value

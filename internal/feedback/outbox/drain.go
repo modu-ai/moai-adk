@@ -285,22 +285,26 @@ func DrainContext(ctx context.Context) error {
 		return discardAll(ctx)
 	}
 
+	// The batch's generation baseline is taken BEFORE the read (review
+	// gate finding, P1 — the read-before-baseline order let a purge that
+	// landed between the two stamp the withdrawn batch with the NEW
+	// generation, and every later check passed it). It is re-checked before
+	// each item below AND again inside the queue lock (the enqueue's own
+	// critical section) — a purge completing anywhere after this baseline
+	// shows up as an advance, and a stale in-memory batch STOPS instead of
+	// enqueueing reports the user withdrew. An unreadable generation reads
+	// as 0 and the checks degrade to pass-through.
+	batchGen, gerr := bugreport.SpoolGeneration()
+	if gerr != nil {
+		batchGen = 0
+	}
+
 	entries, consumed, err := bugreport.ReadSpoolConsumable()
 	if err != nil {
 		return fmt.Errorf("outbox: read spool: %w", err)
 	}
 	if len(entries) == 0 && len(consumed) == 0 {
 		return nil
-	}
-	// The batch's generation (review gate finding, P2): re-checked before
-	// each item below AND again inside the queue lock (the enqueue's own
-	// critical section) — a purge completing mid-batch bumps it, and a
-	// stale in-memory batch must STOP instead of enqueueing reports the
-	// user withdrew. An unreadable generation reads as 0 and the checks
-	// degrade to pass-through.
-	batchGen, gerr := bugreport.SpoolGeneration()
-	if gerr != nil {
-		batchGen = 0
 	}
 
 	// Test seam: a capture landing between the drain's read and its

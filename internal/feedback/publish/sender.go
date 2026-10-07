@@ -144,6 +144,11 @@ func (s *Sender) Send(ctx context.Context) error {
 // (nil in production).
 var beforeClaimForTest func()
 
+// afterLiveQueueReadForTest runs right after the live queue re-read —
+// between the data read and the generation baseline, the interleave the
+// read-before-baseline ordering must survive (review gate finding, P1).
+var afterLiveQueueReadForTest func()
+
 // afterSummaryForTest runs between the model call and the create — the
 // exact interleave the post-summary generation re-check must survive
 // (review gate finding, P1).
@@ -167,6 +172,17 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 	}
 	defer func() { _ = release() }()
 
+	// The store generation is read BEFORE the queue data (review gate
+	// finding, P1): a purge completing between the queue read and the
+	// generation read used to stamp the withdrawn report with the NEW
+	// generation, and every later check passed it. The baseline comes
+	// first, so a purge that lands anywhere after this line shows up as an
+	// advance and the checks below stop the send.
+	sendGen, gerr := bugreport.SpoolGeneration()
+	if gerr != nil {
+		sendGen = 0
+	}
+
 	// The claim excluded the concurrent holders but not the SEQUENTIAL
 	// one: this flush's snapshot was loaded before the owning flush
 	// finished, and that flush's complete() may already have sent and
@@ -187,6 +203,9 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 	}
 	if !found {
 		return true
+	}
+	if afterLiveQueueReadForTest != nil {
+		afterLiveQueueReadForTest()
 	}
 
 	// The attempt limit was judged against the SNAPSHOT before the claim
@@ -238,20 +257,24 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 		return true
 	}
 
-	// The store generation at the start of this send (review gate finding,
-	// P1): the duplicate search is a gh round-trip, and a purge completing
-	// DURING it leaves this send holding a withdrawn report. The generation
-	// is re-checked right before every public act below — the occurrence
-	// comment, the model call, and the create — so a purge that advanced it
-	// mid-search stops the send instead of filing over the user's
-	// withdrawal. An unreadable generation degrades to pass-through.
-	sendGen, gerr := bugreport.SpoolGeneration()
-	if gerr != nil {
-		sendGen = 0
-	}
+	// The generation re-checks below compare against the pre-read baseline:
+	// the duplicate search is a gh round-trip, and a purge completing
+	// DURING it leaves this send holding a withdrawn report — the checks
+	// stop the send instead of filing over the user's withdrawal.
 	storePurgedMidSend := func() bool {
+		// The check is FAIL-CLOSED in front of a public act (review
+		// finding, r8 — the ubuntu-only creates=0/green-locally class): a
+		// generation read that FAILS cannot tell "not purged" from
+		// "unreadable", and the old pass-through let that ambiguity open
+		// the gate. The purge bump lives on disk — a purged store reads
+		// fine — so an unreadable store is exactly the state the send must
+		// not publish over. Unreadable stops the send with a dropped row,
+		// like a confirmed purge.
 		gen, gerr := bugreport.SpoolGeneration()
-		return gerr == nil && gen != sendGen
+		if gerr != nil {
+			return true
+		}
+		return gen != sendGen
 	}
 
 	issue, markerCount, err := findIssue(ctx, s.Runner, repo, item)
