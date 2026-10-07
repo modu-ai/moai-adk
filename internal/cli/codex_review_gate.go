@@ -194,7 +194,7 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 	// `async:true` is deliberately not adopted — an async hook can only
 	// deliver additionalContext and would surrender the block capability
 	// (REQ-GBN-002).
-	inFlight, markerPath := kickInFlight(scope.Dir, state)
+	inFlight, markerPath := kickInFlight(scope.Dir, state, time.Now())
 	if inFlight {
 		_, _ = fmt.Fprintln(os.Stderr, "codex review gate: a background review for this tree state is already in flight; not re-kicking")
 		return allow, nil
