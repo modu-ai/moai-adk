@@ -191,6 +191,27 @@ vet clean, golangci-lint `0 issues.`. `evidenceRoundOf` already respected
 the range error (M2), so `previousAuditedSHA` was never fail-open here —
 the counter and the baseline helper now agree.
 
+### F4 repair record (sync-audit-2, blocking — symlinked progress.md materialized as a regular file)
+
+RED observed pre-fix at HEAD `634cb7c9b`:
+`audit_ceiling_symlink_test.go:37: the progress.md symlink was replaced by
+a regular file (mode -rw-r--r--)` — os.ReadFile followed the link but the
+atomic rename swapped the directory entry, converting the link into a
+regular file and materializing the target's content inside the tracked SPEC
+directory. Fix at the call site (leader-adopted direction, F2 precedent —
+restore the pre-repair write-through posture): `os.Lstat` detects the
+symlink, `filepath.EvalSymlinks` resolves it once, and the read + atomic
+replace act on the RESOLVED TARGET — the record lands in the target file
+and the link survives as a link. A dangling link cannot be written through
+and fails closed (best-effort warning upstream, never an admission change).
+Product framing (one line, per the verdict's residual-risk note): the leader
+chose write-through over fail-closed refusal so dotfiles-managed progress.md
+workflows keep working — materialization is blocked either way. Regression
+test `TestAppendProgressRecordWritesThroughSymlink`
+(`internal/runtime/audit_ceiling_symlink_test.go`, darwin||linux): the
+target carries both records, the path is still a symlink, the target lives
+outside the SPEC directory.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07

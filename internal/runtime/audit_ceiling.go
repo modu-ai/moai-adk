@@ -579,6 +579,22 @@ func appendProgressRecord(specDir, line string) error {
 	progressRecordMu.Lock()
 	defer progressRecordMu.Unlock()
 	path := filepath.Join(specDir, "progress.md")
+	// A progress.md that is itself a symlink (a dotfiles-managed file, for
+	// example) must stay one: the atomic replace swaps the directory entry,
+	// so replacing `path` would convert the link into a regular file and
+	// materialize the target's content inside the tracked SPEC directory
+	// (sync-audit-2 F4). The pre-repair os.WriteFile wrote THROUGH the
+	// link — restore that posture by resolving the link once and reading +
+	// replacing the resolved target; the link itself is never replaced. A
+	// dangling link cannot be written through and fails closed — a
+	// best-effort warning upstream, never an admission change.
+	if info, lerr := os.Lstat(path); lerr == nil && info.Mode()&os.ModeSymlink != 0 {
+		resolved, rerr := filepath.EvalSymlinks(path)
+		if rerr != nil {
+			return rerr
+		}
+		path = resolved
+	}
 	raw, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
 		return err
