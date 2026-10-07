@@ -7,10 +7,7 @@ package cli
 //
 // Routing facts the Codex tests rest on (measured on this tree):
 //   - `moai codex -l` routes to runCodexFactoryLane and returns before
-//     runCodexLaunch; its per-card children launch through
-//     launchCodexCardSession → managedCodexCardLaunchFunc when the switch and
-//     the stamps are on, and → codexDirectLaunchFn otherwise (never the plain
-//     divert; SPEC-FACTORY-MANAGED-CARD-CHILD-001, managed_card_child_test.go).
+//     runCodexLaunch; its single parent session uses codexDirectLaunchFn.
 //   - every other `-f` form is refused before any launch, so runCodexLaunch
 //     never sees factoryEntry.Enabled from the real flag entry.
 //   - the only reachable Codex divert shape is a plain `moai codex` run
