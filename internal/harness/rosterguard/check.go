@@ -341,6 +341,7 @@ var sweepSkipPrefixes = []string{
 	".moai/cache/",
 	".moai/logs/",
 	".moai/reports/",
+	"reports/", // Dated audit records, like .moai/reports; not live doctrine.
 	".moai/release-notes/",
 	".claude/worktrees/",
 	".git/",

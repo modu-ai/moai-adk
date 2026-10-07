@@ -57,6 +57,9 @@ func newBindSeed(t *testing.T) *bindFixture {
 	t.Helper()
 	t.Setenv("MOAI_HOME", t.TempDir())
 	f := &bindFixture{root: filepath.Join(t.TempDir(), "project"), run: "run-bind"}
+	if err := os.MkdirAll(f.root, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	var err error
 	f.s, err = Open(f.root, f.run)
 	if err != nil {

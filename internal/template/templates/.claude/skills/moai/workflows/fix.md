@@ -283,7 +283,7 @@ When the fix report is generated with non-empty residue, the report recommends `
 
 ## Safe Development Protocol
 
-All fixes follow CLAUDE.md Section 7 Safe Development Protocol:
+All fixes follow AGENTS.md §13 Safe Development Protocol:
 - Reproduction-first: Write a failing test that reproduces the bug before fixing
 - Approach-first: For Level 3+ fixes, explain approach before applying
 - Post-fix review: List potential side effects after each fix

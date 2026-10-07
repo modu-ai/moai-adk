@@ -244,7 +244,7 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 		// Existing file protection: skip files that already exist at the
 		// destination. This prevents overwriting user-created or
 		// programmatically-generated files (e.g., config YAMLs from Step 2
-		// of init, or pre-existing CLAUDE.md).
+		// of init, or a pre-existing AGENTS.md).
 		// Skip this check in forceUpdate mode (used for template updates) —
 		// EXCEPT on published-skill paths (R-011): update mode exists to
 		// refresh template-managed content, not to overwrite a user-owned

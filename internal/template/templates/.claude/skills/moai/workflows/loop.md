@@ -362,10 +362,10 @@ Send any message to interrupt the loop. State is automatically saved via session
 
 ## Safe Development Protocol
 
-All fixes within the loop follow CLAUDE.md Section 7 Safe Development Protocol:
+All fixes within the loop follow AGENTS.md §13 Safe Development Protocol:
 - Reproduction-first: Write failing tests before fixing bugs
 - Post-fix review: List potential side effects after each fix cycle
-- Maximum 3 retries per individual operation (per CLAUDE.md constitution)
+- Maximum 3 retries per individual operation (per moai-constitution.md)
 
 ## Execution Summary
 

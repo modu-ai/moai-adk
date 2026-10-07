@@ -187,12 +187,11 @@ func TestHarnessProfilesResolveSharedReferences(t *testing.T) {
 	profiles := []struct {
 		name        string
 		newDeployer func() (Deployer, error)
-		wantClaude  bool
 		wantCodex   bool
 	}{
-		{"claude", func() (Deployer, error) { return NewClaudeHarnessDeployerWithRenderer(cat, renderer) }, true, false},
-		{"gpt", func() (Deployer, error) { return NewCodexOnlyDeployerWithRenderer(cat, renderer) }, false, true},
-		{"both", func() (Deployer, error) { return NewDualHarnessDeployerWithRenderer(cat, renderer) }, true, true},
+		{"claude", func() (Deployer, error) { return NewClaudeHarnessDeployerWithRenderer(cat, renderer) }, false},
+		{"gpt", func() (Deployer, error) { return NewCodexOnlyDeployerWithRenderer(cat, renderer) }, true},
+		{"both", func() (Deployer, error) { return NewDualHarnessDeployerWithRenderer(cat, renderer) }, true},
 	}
 	for _, tc := range profiles {
 		t.Run(tc.name, func(t *testing.T) {
@@ -223,8 +222,14 @@ func TestHarnessProfilesResolveSharedReferences(t *testing.T) {
 					t.Errorf("required shared reference %s: %v", rel, err)
 				}
 			}
-			if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); (err == nil) != tc.wantClaude {
-				t.Errorf("CLAUDE.md presence = %v, want %v", err == nil, tc.wantClaude)
+			// AGENTS.md-primary product: AGENTS.md (deployed from
+			// AGENTS.md.tmpl) is the sole instruction file for every harness
+			// value; CLAUDE.md is never deployed on any profile.
+			if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
+				t.Errorf("AGENTS.md presence = %v, want true on every profile", err == nil)
+			}
+			if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); err == nil {
+				t.Error("CLAUDE.md presence = true, want false on every profile")
 			}
 			// SPEC-USER-ASSET-INSTALL-001 (REQ-005): NO common agent or
 			// skill lands project-side in any profile — the user installer

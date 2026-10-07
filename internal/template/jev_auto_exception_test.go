@@ -113,7 +113,7 @@ var jaeGroups = []struct {
 	{"spec-core", 4},
 	{"spec-manager-todo", 2},
 	{"local-guide", 1},
-	{"extension-rows", 8},
+	{"extension-rows", 6},
 }
 
 // jaeSurfaces is the confirmed surface list; the marker registry derives from
@@ -186,9 +186,6 @@ func jaeSurfaces() []jaeSurface {
 		}},
 		{group: "extension-rows", path: ".claude/skills/moai/SKILL.md", mirror: true, locate: func(s string) []jaePassage {
 			return []jaePassage{{"pick line", grLineWith(s, "never reorder by inferred priority"), jaeRule{closed: []string{"never reorder by inferred priority"}}}}
-		}},
-		{group: "extension-rows", path: "CLAUDE.md", mirror: true, locate: func(s string) []jaePassage {
-			return []jaePassage{{"retained-agents line", grLineWith(s, "Jev display-only consultation"), jaeRule{closed: []string{"display-only"}}}}
 		}},
 		{group: "extension-rows", path: ".claude/skills/moai-ref-jev-question-design/SKILL.md", mirror: true, locate: func(s string) []jaePassage {
 			r := jaeRule{

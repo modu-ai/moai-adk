@@ -333,8 +333,7 @@ Results reported to user
 | Total          | 145-175K       | 250K per feature                      |
 
 Optimization:
-- Use Haiku 4.5 for `/moai run` (fast, cost-effective)
-- Use Sonnet 4.5 for `/moai plan` (high-quality SPEC)
+- Model selection is not per-task: subagents inherit the session's model (model-policy.md § Inherit-by-Default Convention). Cost routing happens at the session level (`/model`, launcher).
 - Execute `/clear` between phases (critical)
 
 ---

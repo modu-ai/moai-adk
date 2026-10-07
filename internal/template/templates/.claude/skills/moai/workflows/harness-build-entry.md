@@ -41,7 +41,7 @@ This workflow is reached when the `harness` subcommand dispatcher (in `SKILL.md`
 
 - AskUserQuestion contract: `.claude/rules/moai/core/askuser-protocol.md` (canonical reference — preload procedure, Socratic interview structure, option-description standards, bias prevention)
 - Orchestrator-subagent boundary: `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary
-- Context-First Discovery: CLAUDE.md §7 Rule 5 (trigger conditions + Socratic interview)
+- Context-First Discovery: AGENTS.md §13 (Context-First Discovery) (trigger conditions + Socratic interview)
 - Skill namespace policy: `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy (`hns-*` user-owned vs `moai-harness-*` template-builder)
 - Companion learning-lifecycle workflow: `~/.claude/skills/moai/workflows/harness.md` (Branch A — reserved verbs)
 - Builder module (orchestrator-direct 4 phases): `~/.claude/skills/moai/workflows/harness-builder.md` (ANALYZE / PLAN / GENERATE / ACTIVATE — the orchestrator-side logic Phase 8 below transitions into)
@@ -56,7 +56,7 @@ This workflow is reached when the `harness` subcommand dispatcher (in `SKILL.md`
 
 ## Phase 2: Context-First Discovery (extract domain / goal / constraints / scope)
 
-Apply CLAUDE.md §7 Rule 5 (Context-First Discovery). The orchestrator extracts a preliminary profile from the raw request:
+Apply AGENTS.md §13 (Context-First Discovery) (Context-First Discovery). The orchestrator extracts a preliminary profile from the raw request:
 
 1. **Domain** — the primary subject area the harness will serve (e.g., "CLI template development", "research", "code review"). Extracted from the noun phrase following "for" / "to" / "that" in the request.
 2. **Goal** — the outcome the user wants from the harness (e.g., "automate template generation", "parallelize research fan-out"). Extracted from the action verb + object.
@@ -164,4 +164,4 @@ After the Builder's ACTIVATE phase completes, render a one-paragraph summary in 
 - moai SKILL.md § harness (dispatcher — argument-branching routing rule)
 - AskUserQuestion canonical: `.claude/rules/moai/core/askuser-protocol.md`
 - Orchestrator-subagent boundary: `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary
-- Context-First Discovery: CLAUDE.md §7 Rule 5
+- Context-First Discovery: AGENTS.md §13 (Context-First Discovery)

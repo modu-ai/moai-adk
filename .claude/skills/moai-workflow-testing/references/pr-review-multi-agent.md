@@ -20,7 +20,7 @@ Skip conditions:
 
 Before launching review agents:
 
-- Find CLAUDE.md files in directories containing modified code to understand project-specific coding standards
+- Find AGENTS.md files in directories containing modified code to understand project-specific coding standards
 - Generate a concise summary of PR changes (files modified, lines added/removed, overall impact)
 
 ### Parallel Review Agents (5 Sonnet instances)
@@ -29,7 +29,7 @@ Five Sonnet agents run in parallel, each focusing on a specific review dimension
 
 | Agent | Focus |
 |-------|-------|
-| Agent 1 | CLAUDE.md compliance — violations of documented coding standards and conventions |
+| Agent 1 | AGENTS.md compliance — violations of documented coding standards and conventions |
 | Agent 2 | Obvious bugs — logic errors, null reference risks, resource leaks |
 | Agent 3 | Git blame and history context — recent changes, evolving patterns |
 | Agent 4 | Previous PR comments — recurring issues, unresolved feedback |
@@ -65,7 +65,7 @@ Output format:
 
 Found 3 issues:
 
-1. CLAUDE.md compliance — `internal/auth/login.go:45-52` violates the
+1. AGENTS.md compliance — `internal/auth/login.go:45-52` violates the
    error-wrapping convention (Section 7). Use `fmt.Errorf("auth: %w", err)`.
    [link](https://github.com/org/repo/pull/123/files#diff-abc#L45-L52)
 

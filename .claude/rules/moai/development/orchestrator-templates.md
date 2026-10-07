@@ -1,6 +1,6 @@
 ---
 description: "Orchestrator templates for task coordination in MoAI-ADK workflows"
-paths: ".claude/rules/moai/core/moai-constitution.md,CLAUDE.md"
+paths: ".claude/rules/moai/core/moai-constitution.md,AGENTS.md"
 ---
 
 <!-- Source: revfactory/harness — Apache License 2.0 — see .claude/rules/moai/NOTICE.md -->

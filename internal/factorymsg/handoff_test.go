@@ -25,6 +25,9 @@ func TestLaneHandoffStoreLifecycle(t *testing.T) {
 	t.Setenv("MOAI_HOME", t.TempDir())
 	ctx := context.Background()
 	root := filepath.Join(t.TempDir(), "project")
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	s, err := Open(root, "run-lifecycle")
 	if err != nil {
 		t.Fatal(err)

@@ -74,8 +74,16 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 		failures = append(failures, "L2 "+l2Detail)
 	}
 
-	// L3: CLAUDE.md marker block paired.
-	l3, l3Detail := checkLayer3Marker(filepath.Join(projectRoot, "CLAUDE.md"))
+	// L3: instruction-file marker block paired. AGENTS.md is the instruction
+	// file of the AGENTS.md-primary product; a legacy project still carrying
+	// only CLAUDE.md is read through that instead.
+	l3Target := filepath.Join(projectRoot, "AGENTS.md")
+	if _, err := os.Stat(l3Target); err != nil {
+		if _, lerr := os.Stat(filepath.Join(projectRoot, "CLAUDE.md")); lerr == nil {
+			l3Target = filepath.Join(projectRoot, "CLAUDE.md")
+		}
+	}
+	l3, l3Detail := checkLayer3Marker(l3Target)
 	statuses = append(statuses, "L3:"+l3)
 	if l3 == "FAIL" {
 		failures = append(failures, "L3 "+l3Detail)
@@ -184,12 +192,13 @@ func checkLayer2Workflow(yamlPath string) (string, string) {
 	return "PASS", "ok"
 }
 
-// checkLayer3Marker verifies CLAUDE.md has a paired marker block (1 start + 1 end).
+// checkLayer3Marker verifies the instruction file has a paired marker block
+// (1 start + 1 end).
 func checkLayer3Marker(claudeMdPath string) (string, string) {
 	data, err := os.ReadFile(claudeMdPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "FAIL", "CLAUDE.md missing"
+			return "FAIL", "instruction file missing"
 		}
 		return "FAIL", err.Error()
 	}

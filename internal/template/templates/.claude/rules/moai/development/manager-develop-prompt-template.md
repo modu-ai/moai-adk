@@ -119,7 +119,7 @@ Mandatory to state:
 - Do not touch parallel-session research/audit artifacts (`.moai/research/*`)
 
 **B11. AskUserQuestion Prohibited (Subagent Boundary)**
-- Subagents must not interact with the user directly (CLAUDE.md §8 + askuser-protocol.md §Orchestrator–Subagent Boundary)
+- Subagents must not interact with the user directly (askuser-protocol.md + askuser-protocol.md §Orchestrator–Subagent Boundary)
 - On finding a blocker, return a structured blocker report (the orchestrator runs AskUserQuestion + re-delegates)
 - Blocker report format: 4 options + each option's change/impact/risk/ETA stated
 - Never ask free-form prose questions (no "? how should we proceed?" pattern in the response body)

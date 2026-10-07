@@ -104,18 +104,18 @@ func TestRunInstall_Idempotent(t *testing.T) {
 	}
 }
 
-// TestRunInstall_MissingClaudeMd verifies REQ-HAW-004: when CLAUDE.md cannot be
+// TestRunInstall_MissingAgentsMd verifies REQ-HAW-004: when AGENTS.md cannot be
 // read, install returns a non-nil wrapped error and does NOT report success.
-func TestRunInstall_MissingClaudeMd(t *testing.T) {
+func TestRunInstall_MissingAgentsMd(t *testing.T) {
 	root := t.TempDir()
-	// No CLAUDE.md created — InjectMarker's os.ReadFile must fail.
+	// No AGENTS.md created — InjectMarker's os.ReadFile must fail.
 	opts := InstallOptions{ProjectRoot: root, SpecID: "SPEC-A", Domain: "d1"}
 	err := RunInstall(opts)
 	if err == nil {
-		t.Fatal("expected error when CLAUDE.md is absent, got nil")
+		t.Fatal("expected error when AGENTS.md is absent, got nil")
 	}
-	if !strings.Contains(err.Error(), "CLAUDE.md") {
-		t.Errorf("error should mention CLAUDE.md, got: %v", err)
+	if !strings.Contains(err.Error(), "AGENTS.md") {
+		t.Errorf("error should mention AGENTS.md, got: %v", err)
 	}
 }
 

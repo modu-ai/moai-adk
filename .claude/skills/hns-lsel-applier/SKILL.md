@@ -102,7 +102,7 @@ hook is:
   report instead.
 - **Confirm the approval marker's provenance.** The `synchronous_approval` object must
   carry a real orchestrator-produced approval artifact (the synchronous user-question
-  channel the orchestrator owns per CLAUDE.md §8). A marker the loop fabricated for
+  channel the orchestrator owns per askuser-protocol.md). A marker the loop fabricated for
   itself is the self-amending-handcuffs failure mode (REQ-LSEL-002); the hook's
   mechanical check is the floor, your provenance judgment is the ceiling. This skill
   is a subagent mechanism and NEVER invokes the orchestrator-only user-question
@@ -117,14 +117,14 @@ hook is:
   `internal/harness/applier.go:22` stays `false` (REQ-LSEL-003). The bypass is
   parallel and user-owned; the frozen applier is reference-only.
 - **No edits to frozen doctrine** — `internal/template/templates/**`,
-  `.claude/rules/moai/**`, `CLAUDE.md`, retained agents, `moai-*` skills, the frozen
+  `.claude/rules/moai/**`, `AGENTS.md`, retained agents, `moai-*` skills, the frozen
   Go applier / `curator_dispatch.go`, and `.moai/config/sections/**` are
   byte-for-byte untouched. The allowlist hard-rejects them (step 1).
 - **No new-apply / self-approve / allowlist-amend primitive** in `lsel-apply.sh`
   (REQ-LSEL-008). The hook only consumes already-approved decisions; it does not
   author proposals or bless them. The M4 `verify.sh` runs only AFTER an apply has
   committed — it does not create a new apply; it never self-approves.
-- **No user-question invocation** — subagent boundary (CLAUDE.md §8). Return a
+- **No user-question invocation** — subagent boundary (askuser-protocol.md). Return a
   blocker report; the orchestrator runs the synchronous gate.
 
 ---
