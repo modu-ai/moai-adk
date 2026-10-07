@@ -119,3 +119,64 @@ func TestAppendProgressRecordWritesThroughSymlinkChain(t *testing.T) {
 		t.Fatalf("the final target does not carry the record:\n%s", raw)
 	}
 }
+
+// TestAppendProgressRecordResolvesDotDotThroughSymlink (consolidated item
+// 3, gate round-38) — a referent carrying `..` must apply filesystem
+// order: resolve `hop` (a symlink into another directory) FIRST, then
+// apply `..` to the RESOLVED location, then the final name. A resolver
+// that pre-cleans `hop/../actual.md` against the link's own directory
+// selects the wrong file and materializes a stray.
+func TestAppendProgressRecordResolvesDotDotThroughSymlink(t *testing.T) {
+	root := t.TempDir()
+	specDir := filepath.Join(root, "spec")
+	otherDir := filepath.Join(root, "other")
+	if err := os.MkdirAll(specDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(otherDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// The REAL actual.md: `hop` points into otherDir, so `hop/../actual.md`
+	// means PARENT-of-otherDir/actual.md — applying `..` to the RESOLVED
+	// hop lands here.
+	real := filepath.Join(root, "actual.md")
+	if err := os.WriteFile(real, []byte("# progress\n\n## §G Override and Refusal Record\n\n- old record\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hop := filepath.Join(specDir, "hop")
+	if err := os.Symlink(otherDir, hop); err != nil {
+		t.Skipf("symlinks unavailable here: %v", err)
+	}
+	link := filepath.Join(specDir, "progress.md")
+	// The referent is the RAW string "hop/../actual.md" — filepath.Join
+	// would pre-clean the `..` away before the kernel ever stored it, and
+	// the defect (pre-cleaning inside the resolver) would never fire.
+	if err := os.Symlink("hop/../actual.md", link); err != nil {
+		t.Skipf("symlinks unavailable here: %v", err)
+	}
+	if err := appendProgressRecord(specDir, "- new record"); err != nil {
+		t.Fatalf("the hop/../ referent refused the record: %v", err)
+	}
+	// The record landed in the REAL actual.md.
+	raw, err := os.ReadFile(real)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "- new record") {
+		t.Fatalf("the real actual.md does not carry the record:\n%s", raw)
+	}
+	// Nothing stray appeared in the spec directory.
+	stray := filepath.Join(specDir, "actual.md")
+	if _, serr := os.Stat(stray); !os.IsNotExist(serr) {
+		t.Fatalf("a stray actual.md was materialized in the spec directory (pre-cleaned resolution)")
+	}
+	for _, p := range []string{hop, link} {
+		info, lerr := os.Lstat(p)
+		if lerr != nil {
+			t.Fatal(lerr)
+		}
+		if info.Mode()&os.ModeSymlink == 0 {
+			t.Fatalf("%s was replaced by a regular file", p)
+		}
+	}
+}

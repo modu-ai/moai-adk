@@ -689,36 +689,67 @@ var seedFileMetadataFn = seedFileMetadata
 // would have created; a cycle or a missing intermediate directory fails
 // closed.
 func resolveProgressPath(path string) (string, error) {
-	seen := map[string]bool{}
-	for hops := 0; hops < 16; hops++ { // a bounded walk; 16 links is generous
-		if seen[path] {
-			return "", fmt.Errorf("progress.md symlink cycle at %s", path)
-		}
-		seen[path] = true
-		info, lerr := os.Lstat(path)
-		if lerr != nil {
-			if os.IsNotExist(lerr) {
-				return path, nil // the dangling final referent — write creates it
-			}
-			return "", lerr
-		}
-		if info.Mode()&os.ModeSymlink == 0 {
-			return path, nil // a regular file: the final referent
-		}
-		ref, rerr := os.Readlink(path)
-		if rerr != nil {
-			return "", rerr
-		}
-		if !filepath.IsAbs(ref) {
-			ref = filepath.Join(filepath.Dir(path), ref)
-		}
-		parent, perr := filepath.EvalSymlinks(filepath.Dir(ref))
-		if perr != nil {
-			return "", perr // the intermediate's directory does not exist
-		}
-		path = filepath.Join(parent, filepath.Base(ref))
+	return resolveProgress(path, 0)
+}
+
+// maxResolveDepth bounds nested component resolution (a symlink referent
+// naming further symlinks, directories of symlinks, and `..` mixes).
+const maxResolveDepth = 8
+
+// resolveProgress resolves one path fully: symlink hops are walked with a
+// cycle guard, and a referent naming MULTIPLE components (hop/../x.md,
+// a/b/c.md) is applied in FILESYSTEM ORDER — each leading component is
+// resolved through this same walk before any later `..` pops it
+// (consolidated item 3). Pre-cleaning the whole referent first
+// (filepath.Join) would apply `..` against the link's own directory and
+// select the wrong file: hop/../actual.md must resolve `hop` first, THEN
+// pop, then look for actual.md in the popped directory.
+func resolveProgress(path string, depth int) (string, error) {
+	if depth > maxResolveDepth {
+		return "", fmt.Errorf("progress.md symlink resolution too deep at %s", path)
 	}
-	return "", fmt.Errorf("progress.md symlink chain too deep")
+	info, lerr := os.Lstat(path)
+	if lerr != nil {
+		if os.IsNotExist(lerr) {
+			return path, nil // the dangling final referent — write creates it
+		}
+		return "", lerr
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		return path, nil // a regular file: the final referent
+	}
+	ref, rerr := os.Readlink(path)
+	if rerr != nil {
+		return "", rerr
+	}
+	// Base = the link's PARENT resolved (relative referents) or the
+	// filesystem root (absolute referents); referent components then apply
+	// in order. Cycles recurse through the depth cap and fail closed.
+	var cur string
+	if filepath.IsAbs(ref) {
+		cur = string(filepath.Separator)
+	} else {
+		var err error
+		if cur, err = resolveProgress(filepath.Dir(path), depth+1); err != nil {
+			return "", err
+		}
+	}
+	for _, part := range strings.Split(strings.Trim(filepath.ToSlash(ref), "/"), "/") {
+		if part == "" || part == "." {
+			continue
+		}
+		if part == ".." {
+			cur = filepath.Dir(cur)
+			continue
+		}
+		cur = filepath.Join(cur, part)
+		r, err := resolveProgress(cur, depth+1)
+		if err != nil {
+			return "", err
+		}
+		cur = r
+	}
+	return cur, nil
 }
 
 // seedFileMetadata — the platform implementations live in

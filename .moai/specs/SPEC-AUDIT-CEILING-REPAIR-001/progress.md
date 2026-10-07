@@ -513,6 +513,24 @@ applied after the strip. Regression test
 (`audit_ceiling_acl_test.go`, darwin): replaced file carries no
 `group:_guest` entry, record lands.
 
+**Item 3 — `hop/../actual.md` resolution order (two gate repros)**: RED
+observed pre-fix at HEAD `e54ef43ab`: `the real actual.md does not carry
+the record` — filepath.Join pre-cleans `..` BEFORE symlink resolution, so
+`hop/../actual.md` (hop → other-dir) selected actual.md in the LINK's own
+directory and materialized a stray there while the real file went
+untouched. Fix: `resolveProgress` applies the referent COMPONENT-WISE in
+filesystem order — the base is the link's parent resolved (relative
+referents) or the filesystem root (absolute referents), each named
+component resolves through the same walk before any later `..` pops it,
+and cycles/depth fail closed (depth cap 8; the vestigial 16-hop loop whose
+counter never changed is gone, staticcheck SA4008). Regression test
+`TestAppendProgressRecordResolvesDotDotThroughSymlink`
+(`audit_ceiling_symlink_test.go`, darwin||linux): the record lands in the
+REAL actual.md, no stray materializes, both symlinks survive. (Probe note:
+the test fixture itself initially pre-cleaned the referent with
+filepath.Join before creating the symlink — the kernel stores the raw
+string; the fixture now preserves it.)
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07
