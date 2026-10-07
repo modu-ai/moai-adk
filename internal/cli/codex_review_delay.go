@@ -25,6 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/verify"
 )
@@ -63,35 +64,40 @@ func kickCodexBackgroundReview(dir string) error {
 
 // codexReviewKickMarkerPath is the per-tree-key in-flight marker a Stop
 // writes before launching the background review — the same key the receipt
-// binds (HEAD + porcelain digest), under the runtime-managed state dir. Its
-// presence within the review budget means a kick for THIS exact tree state is
-// already running, and a second Stop over the unchanged tree must not start a
-// second review (the turn-end gate's own P2: duplicated RPCs on consecutive
-// Stops). The marker is advisory state: it expires by mtime at the review
-// budget, a failed start removes it (retryable), and the fresh receipt makes
-// it irrelevant — the cache-hit path answers before the marker is consulted.
-func codexReviewKickMarkerPath(dir, head, digest string) string {
+// binds (HEAD + porcelain digest), under the runtime-managed state dir, with
+// the review budget BUCKET in the name. Deduplication works within one
+// bucket: the same tree state in the same budget window maps to the same
+// path, so the exclusive create is the only mutation and the dedup cannot
+// race. When the bucket rolls over (the budget elapsed) the path name
+// changes and the create naturally succeeds — a dead review re-kicks within
+// one budget without any take-over-and-recreate protocol, whose empty-path
+// window let two callers own the kick (the turn-end gate's r5, then the
+// marker-never-expires regression its removal caused, r7).
+func codexReviewKickMarkerPath(dir, head, digest string, now time.Time) string {
+	bucket := now.Unix() / int64(config.DefaultCodexReviewGateTimeout.Seconds())
 	return filepath.Join(dir, ".moai", "state", "verify", "codex-review",
-		fmt.Sprintf("%s-%s.kick", head, digest))
+		fmt.Sprintf("%s-%s.kick-%d", head, digest, bucket))
 }
 
 // kickInFlight reports whether a kick for this exact tree state is already in
-// flight, and otherwise records the marker for the kick the caller is about
-// to start. Acquisition is a single exclusive create — the ONLY mutation the
-// marker ever takes. An existing marker (fresh or stale) reads in-flight: a
-// fresh one is a live kick, and a stale one ages out by mtime within one
-// review budget, after which the next Stop re-kicks. There is deliberately NO
-// in-place takeover: every take-over-and-recreate protocol opens an
-// empty-path window in which a third caller acquires while the first owner
-// already kicked — two owners, the race the turn-end gate's r5 reproduced.
-// The ≤-one-budget re-kick delay after a dead review is the price of that
-// closure. An unkeyed state and an unwritable marker are fail-open toward
-// reviewing: the kick proceeds undeduplicated.
-func kickInFlight(dir string, state verify.ReceiptState) (bool, string) {
+// flight in the CURRENT budget bucket, and otherwise records the marker for
+// the kick the caller is about to start. Acquisition is a single exclusive
+// create — the only mutation the marker ever takes; the previous bucket's
+// marker is garbage-collected best-effort (a different path, so the removal
+// cannot race the current bucket's create). An unkeyed state and an
+// unwritable marker are fail-open toward reviewing: the kick proceeds
+// undeduplicated.
+func kickInFlight(dir string, state verify.ReceiptState, now time.Time) (bool, string) {
 	if state.Head == "" || state.TreeDigest == "" {
 		return false, "" // unkeyed ⇒ no marker; the kick proceeds undeduplicated
 	}
-	path := codexReviewKickMarkerPath(dir, state.Head, state.TreeDigest)
+	path := codexReviewKickMarkerPath(dir, state.Head, state.TreeDigest, now)
+	// Garbage-collect the aged-out bucket's marker: a different path, so this
+	// removal never races the create below (best-effort; a missed sweep only
+	// leaves state-dir litter).
+	prev := codexReviewKickMarkerPath(dir, state.Head, state.TreeDigest,
+		now.Add(-config.DefaultCodexReviewGateTimeout))
+	_ = os.Remove(prev)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return false, ""
 	}
@@ -100,7 +106,7 @@ func kickInFlight(dir string, state verify.ReceiptState) (bool, string) {
 		if !os.IsExist(err) {
 			return false, "" // unwritable ⇒ fail-open toward reviewing
 		}
-		return true, path // owned by another Stop: fresh kick or aging-out stale
+		return true, path // a kick for this tree state is in flight this bucket
 	}
 	_, _ = f.WriteString(time.Now().UTC().Format(time.RFC3339))
 	_ = f.Close()

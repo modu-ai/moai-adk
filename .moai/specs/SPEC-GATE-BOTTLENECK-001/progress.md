@@ -87,7 +87,10 @@ r10 수리 판정 통과(리뷰어 명시: 캐시 회귀 테스트 3개 통과).
 - **턴종료 게이트 발견 처분 (M2 세션 r5 — CI 수리 + main 흡수 병합 커밋 리뷰, 본 소관 1건·타 소관 3건)**:
   - **타 소관 3건 — main 착지분의 재유입**: ① P1 `moai todo capture`가 inbox 대신 queued 카드 생성(GTD 단계 명령이 NewGTDCommand에만 등록) — t1573 #1798(`37eab44b6`) ② P2 codex 사용자 자산 TOML의 하네스 경로 변환 우회 ③ P2 windows 획득 가드 비정상 종료 복구 — ②③은 t1509 라운드(`717480602`/`63cefcf6d`) 착지물. **재유입 원인(관측)**: 카드 스코프 diff 기저가 `develop`(=`48a96cbb`, GitHub Flow 전환 전)에 고정 → merge-base(main↔HEAD)=0754e1e2와 달리 main 진행분 전체가 매 라운드 "카드 diff"에 재유입. git-strategy 기저 갱신(main 기준)은 리더/설정 이관 — 본 카드 수리 소관 아님.
   - **본 소관 1건 (P2) 만료 마커 교체 경합**: stale 관측→rename→재획득 사이 빈 경로 창에서 제3 호출이 획득하면 소유자 2명(첫 소유자+제3자). **인수(takeover) 기계를 제거**하는 구조 수리 — 마커의 유일 변이는 excl-create 하나로 고정, 기존 마커(신선·만료 무관)는 전부 in-flight 판독, 만료 마커는 mtime으로 예산 내 자동 소멸(다음 Stop이 소멸된 마커 위에서 재기동). dead 리뷰 후 재기동이 ≤1예산 지연되는 것이 경합 클래스 제거의 대가. 테스트 갱신: StaleKickMarkerRekicks→StaleMarkerAgesOut(재기동 없음 단언)·ExclusiveAcquisition 만료 arm 변경·LiveStealIsRestored 삭제(인수 부재). 영향계열 → **ok (29.2s)**.
-- **명시적 대기 (2026-10-08, 레인 종료 시점 — r5 푸시로 갱신)**: 레인 소관 전부 착지(PR #1802 open, head = r5 푸시). 대기 사유: PR CI 최종·CodeRabbit 판독·병합·done = **리더 소관**. 재확인 지점: 리더 응답 또는 PR #1802 체크 완료. 팩토리 기록 거부(t1575 트리 미결속)는 리더 참고 사항으로 메모리 `project_card_t1575_landing.md`에 기록.
+- **턴종료 게이트 발견 처분 (M2 세션 r7 — 본 소관 1건·타 소관 3건)**:
+  - **본 소관 (P1) 마커 영구화 회귀**: r5의 인수 제거가 기존 마커를 무기한 in-flight로 읽게 만들어(성공 리뷰도 마커를 지우지 않음) dead 리뷰 뒤 동일 트리가 영구 재리뷰 불가. **버킷 경로 회전** 설계로 수리 — 마커 경로에 리뷰 예산 버킷을 포용(`kick-<bucket>`), 동일 버킷 내엔 excl-create dedup(경합 불가 — 경로가 절대 비지 않음), 버킷 교체 시 경로가 바뀌어 자연 재기동(r7 P1의 재시도 계약). prev 버킷 GC는 다른 경로라 create와 경합 불가. 테스트: ExclusiveAcquisition rolled-bucket arm(다음 버킷 재획득+경로 분리)·SweptMarkerAgesOut→SweptMarkerRekicks(스윕 후 재기동). LiveSteal/StaleAgesOut는 인수 부재로 삭제. 영향계열 → **ok (19.8s)**.
+  - **타 소관 3건 — r5와 같은 develop-기저 재유입(main 착지분)**: ① P2 windows 획득 가드 중단 복구(t1509) ② P2 bundle 제거 전 journal 복구(`8e85f26ec`/`840826fa6` 대역) ③ P2 doctor_harness skillsDir 사용자 경로 전환 과잉(`840826fa6` 대역). 원장 행 소관.
+- **명시적 대기 (2026-10-08 — r7 푸시로 갱신)**: PR #1802 head = r7 푸시. 대기 사유: PR CI 최종·CodeRabbit 판독·병합·done = **리더 소관**. 재확인 지점: 리더 응답 또는 PR #1802 체크 완료.
 
 
 

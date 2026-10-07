@@ -198,35 +198,34 @@ func TestReviewEntry_SubdirSessionReadsRootReceipt(t *testing.T) {
 }
 
 // TestKickInFlight_ExclusiveAcquisition — the marker takes exactly ONE
-// mutation (the exclusive create): the first caller owns the kick, every
-// later caller on the same marker — fresh OR stale — reads in-flight, and the
-// stale one ages out by mtime within the review budget (the next Stop then
-// re-kicks through the expired marker). No takeover path exists to race.
+// mutation (the exclusive create) per budget bucket: the first caller owns
+// the kick, a later caller in the SAME bucket reads in-flight, and a caller
+// in the NEXT bucket acquires again — the dead-review retry the r7 finding
+// demanded, with no takeover path left to race on.
 func TestKickInFlight_ExclusiveAcquisition(t *testing.T) {
 	root := cacheTestRoot(t)
 	state, err := codexReviewReceiptStateForScope(context.Background(), reviewScopeResolver(root), "/fake/codex")
 	if err != nil {
 		t.Fatal(err)
 	}
+	now := time.Now()
 
-	inFlight, markerPath := kickInFlight(root, state)
+	inFlight, markerPath := kickInFlight(root, state, now)
 	if inFlight || markerPath == "" {
 		t.Fatalf("the first acquisition must own the kick, got inFlight=%v path=%q", inFlight, markerPath)
 	}
-	inFlight, _ = kickInFlight(root, state)
+	inFlight, _ = kickInFlight(root, state, now)
 	if !inFlight {
-		t.Fatal("a concurrent second acquisition on the fresh marker must read in-flight")
+		t.Fatal("a concurrent second acquisition in the same bucket must read in-flight")
 	}
 
-	// A stale marker ALSO reads in-flight — it ages out by mtime; there is no
-	// takeover to race on.
-	stale := time.Now().Add(-2 * config.DefaultCodexReviewGateTimeout)
-	if err := os.Chtimes(markerPath, stale, stale); err != nil {
-		t.Fatal(err)
+	nextBucket := now.Add(config.DefaultCodexReviewGateTimeout + time.Minute)
+	inFlight, markerPath2 := kickInFlight(root, state, nextBucket)
+	if inFlight || markerPath2 == "" {
+		t.Fatalf("the rolled bucket must re-acquire (the dead-review retry), got inFlight=%v path=%q", inFlight, markerPath2)
 	}
-	inFlight, _ = kickInFlight(root, state)
-	if !inFlight {
-		t.Fatal("a stale marker must read in-flight (it ages out by mtime; no takeover exists)")
+	if markerPath2 == markerPath {
+		t.Fatal("the next bucket must map to a different marker path")
 	}
 }
 
@@ -292,11 +291,12 @@ func TestReviewGate_InFlightKickNotRepeated(t *testing.T) {
 	}
 }
 
-// TestReviewGate_StaleMarkerAgesOut — a marker older than the review budget
-// reads as a dead review that ages out by mtime: the next Stop does NOT
-// re-kick while it sits there (no takeover, no race), and the marker's
-// expiry restores the kick within one budget.
-func TestReviewGate_StaleMarkerAgesOut(t *testing.T) {
+// TestReviewGate_SweptMarkerRekicks — a marker whose dedup window is over
+// (swept, as the bucket rotation sweeps aged markers) does not block the
+// next Stop: the create succeeds and the kick fires again. The bucket-
+// rotation retry itself is pinned at unit level by
+// TestKickInFlight_ExclusiveAcquisition's rolled-bucket arm.
+func TestReviewGate_SweptMarkerRekicks(t *testing.T) {
 	root := cacheTestRoot(t)
 	entrySeams(t)
 	kicked := withKickRecorder(t)
@@ -304,20 +304,23 @@ func TestReviewGate_StaleMarkerAgesOut(t *testing.T) {
 	if _, err := HandleCodexReviewGate(gateInput(false), true, root); err != nil {
 		t.Fatalf("first Stop error: %v", err)
 	}
-	matches, err := filepath.Glob(filepath.Join(root, ".moai", "state", "verify", "codex-review", "*.kick"))
+	if len(*kicked) != 1 {
+		t.Fatalf("premise: the first Stop kicks, got %v", *kicked)
+	}
+	// Simulate the aged marker's sweep (the bucket rotation removes it).
+	matches, err := filepath.Glob(filepath.Join(root, ".moai", "state", "verify", "codex-review", "*.kick-*"))
 	if err != nil || len(matches) != 1 {
 		t.Fatalf("premise: exactly one kick marker expected, got %v (%v)", matches, err)
 	}
-	stale := time.Now().Add(-2 * config.DefaultCodexReviewGateTimeout)
-	if err := os.Chtimes(matches[0], stale, stale); err != nil {
+	if err := os.Remove(matches[0]); err != nil {
 		t.Fatal(err)
 	}
 
 	if _, err := HandleCodexReviewGate(gateInput(false), true, root); err != nil {
 		t.Fatalf("second Stop error: %v", err)
 	}
-	if len(*kicked) != 1 {
-		t.Fatalf("a stale marker must NOT re-kick (it ages out; no takeover exists); got %v", *kicked)
+	if len(*kicked) != 2 {
+		t.Fatalf("a swept marker must not block the re-kick; got %v", *kicked)
 	}
 }
 
