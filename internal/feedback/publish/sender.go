@@ -264,7 +264,17 @@ func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item f
 // the rolling daily cap, at attempt time.
 func (s *Sender) itemSummary(ctx context.Context, store *feedback.QueueStore, item feedback.QueueItem, payload bugreport.Payload) (string, bool) {
 	if item.Summary != "" {
-		return item.Summary, true
+		// Send-time trust boundary (review-gate P1): the queue file is a
+		// local file, so a STORED summary is untrusted exactly like the
+		// stored body — validate it again before it can reach a public
+		// body. A failure discards the text for the deterministic template
+		// and records the template decision, so retries never re-ask the
+		// model for the bad text.
+		if validateSummary(item.Summary) == nil {
+			return item.Summary, true
+		}
+		s.persistSummaryOutcome(ctx, store, item, "", summaryDecisionTemplate)
+		return "", false
 	}
 	if item.SummaryDecision == summaryDecisionTemplate {
 		return "", false
