@@ -43,14 +43,20 @@ func SpoolPath() (string, error) {
 
 // SpoolEntry is one spool line (design.md section 6): the kind, the verdict
 // fixed at capture, the reason token, the moai-internal frames, and the
-// optional closed-set detail. No error text, no paths, no timestamp — the
-// payload the pipeline later builds derives only from these closed fields.
+// optional closed-set detail — plus the CAPTURE-TIME build identity
+// (review-gate finding: an error captured by v3.2.0 and flushed by a
+// v3.2.1 binary must be reported as v3.2.0; the payload and the
+// fingerprint both derive from these fields at drain time, never from the
+// flushing binary's). No error text, no paths, no timestamp — the payload
+// the pipeline later builds derives only from these closed fields.
 type SpoolEntry struct {
 	Kind    Kind     `json:"kind"`
 	Verdict Verdict  `json:"verdict"`
 	Reason  string   `json:"reason,omitempty"`
 	Frames  []string `json:"frames"`
 	Detail  string   `json:"detail,omitempty"`
+	Version string   `json:"version,omitempty"`
+	Commit  string   `json:"commit,omitempty"`
 }
 
 // marshalSpoolEntry renders the JSONL line with its trailing newline.

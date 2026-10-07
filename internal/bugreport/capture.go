@@ -113,6 +113,10 @@ func captureWork(kind Kind, err error, reason Reason, detail Detail, frames []st
 		Reason:  string(decided),
 		Frames:  frames,
 	}
+	// The capture-time build identity rides the entry (review-gate P2): a
+	// later binary flushing this line must report the build that observed
+	// the defect, not its own.
+	entry.Version, entry.Commit = buildIdentity()
 	if detail != nil {
 		entry.Detail = detail.Token()
 	}

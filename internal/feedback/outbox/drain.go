@@ -158,13 +158,27 @@ func IssueMarker(p bugreport.Payload) string {
 		strings.Join(p.Frames, ","), detail)
 }
 
+// entryIdentity is the build identity a spool line carries: the
+// CAPTURE-TIME version and commit stamped by the binary that observed the
+// defect (review-gate P2). Entries written before that field existed fall
+// back to the flushing binary's identity — the old behavior — rather than
+// dropping the signal.
+func entryIdentity(entry bugreport.SpoolEntry) (string, string) {
+	if entry.Version != "" && entry.Commit != "" {
+		return entry.Version, entry.Commit
+	}
+	return buildIdentity()
+}
+
 // fingerprintOf derives the dedupe key from the spool entry: the same
 // canonical inputs the payload's fingerprint uses, computed from the spool
 // line (design section 4). Frames carry the moai-internal names; the
-// version/commit inputs come from the compiled build identity so two
-// signals from one build collide and one defect yields one issue.
+// version/commit inputs are the entry's CAPTURE-TIME identity so two
+// signals from one build collide and one defect yields one issue — and a
+// signal flushed by a different binary still keys on the build that
+// observed it.
 func fingerprintOf(entry bugreport.SpoolEntry) string {
-	version, commit := buildIdentity()
+	version, commit := entryIdentity(entry)
 	lines := []string{
 		bugreport.SchemaV1,
 		version,
@@ -294,7 +308,7 @@ func drainMoai(entry bugreport.SpoolEntry) (drainOutcome, bool) {
 			return drainOutcome{outcome: "withheld", reason: "detail failed read-back validation: " + derr.Error(), fp: fp}, true
 		}
 	}
-	versionID, commitID := buildIdentity()
+	versionID, commitID := entryIdentity(entry)
 	payload, err := bugreport.Build(entry.Kind, entry.Frames, detail, bugreport.BuildIdentity{
 		Version: versionID,
 		Commit:  commitID,
