@@ -127,9 +127,21 @@ func recordAuditorStart(input *HookInput) {
 				slog.Warn("auditor start uncertainty not marked", "agent_id", key, "error", merr)
 			}
 		}
-		if _, err := auditreceipt.ReadStartMarker(g.store, key); err == nil {
-			return
+		// The anchor write is a keep-earliest CAS under the key's lock: two
+		// concurrent same-session starts cannot both observe the marker
+		// absent and let the later write overwrite the earliest StartedAt
+		// (post-sync review r3 — the race refused a legitimate receipt
+		// minted between the two starts).
+		m := auditreceipt.StartMarker{
+			AgentID:   key,
+			AgentType: input.AgentType,
+			SessionID: input.SessionID,
+			TreeRoot:  g.tree,
 		}
+		if err := auditreceipt.EnsureStartMarker(g.store, &m); err != nil {
+			slog.Warn("auditor start marker not recorded", "agent_id", key, "tree_root", g.tree, "error", err)
+		}
+		return
 	}
 	m := auditreceipt.StartMarker{
 		AgentID:   key,

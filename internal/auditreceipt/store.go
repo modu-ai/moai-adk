@@ -246,8 +246,14 @@ func ledgerPath(treeRoot, key string) string {
 // itself: a stalling-but-alive holder finishing after a break lands its write
 // as a normal last-writer via the atomic rename.
 
+// ledgerLockWait bounds one lock acquisition: 250ms is the production hook
+// budget. A var so tests under full-suite parallel load can widen it — an
+// exhausted budget is a CLEAN give-up (the dropped record is handled
+// downstream), not a lost count, and the default timeout behavior has its own
+// pin (TestLedgerLockTimesOutWhenHeld).
+var ledgerLockWait = 250 * time.Millisecond
+
 const (
-	ledgerLockWait   = 250 * time.Millisecond
 	ledgerLockStale  = 5 * time.Second
 	ledgerLockPoll   = 5 * time.Millisecond
 	ledgerLockSuffix = ".lock"
@@ -365,12 +371,40 @@ func updateInstanceLedger(treeRoot, key string, at time.Time, mutate func(*Insta
 
 // applyEnd counts one terminal end on the ledger, advancing the boundary only
 // when the end is single-live AND the start count is not known to be
-// incomplete (MarkInstanceStartUncertain's freeze outranks every advance).
+// incomplete (MarkInstanceStartUncertain's freeze outranks every advance) AND
+// the end is later than the current boundary — the boundary is a watermark
+// and never regresses: lock order is not event order, so an earlier end can
+// arrive after a later one was already applied, and lowering the seal would
+// re-open receipts the true last end had sealed (post-sync review r3).
 func applyEnd(l *InstanceLedger, at time.Time, treeRoot, key string) {
-	if l.Starts-l.Ends <= 1 && !startCountUncertain(treeRoot, key) {
+	if l.Starts-l.Ends <= 1 && !startCountUncertain(treeRoot, key) && (l.EndedAt.IsZero() || at.After(l.EndedAt)) {
 		l.EndedAt = at
 	}
 	l.Ends++
+}
+
+// EnsureStartMarker writes an auditor start marker for a derived session-era
+// key only when none exists yet — the keep-earliest anchor write as one
+// critical section. The exists-check and the write share the key's ledger
+// lock, so two concurrent same-session same-role starts cannot both observe
+// the marker absent and let the later write overwrite the earliest StartedAt
+// (post-sync review r3: the racy check-then-write refused a legitimate
+// receipt minted between the two starts with "before start"). An existing
+// anchor is never touched.
+func EnsureStartMarker(treeRoot string, m *StartMarker) error {
+	p := filepath.Join(StateDir(treeRoot), startsRel, markerFileName(m.AgentID))
+	release, err := lockLedger(ledgerPath(treeRoot, m.AgentID))
+	if err != nil {
+		return err
+	}
+	defer release()
+	if _, err := ReadStartMarker(treeRoot, m.AgentID); err == nil {
+		return nil
+	}
+	if m.StartedAt.IsZero() {
+		m.StartedAt = Now()
+	}
+	return writeJSON(p, m)
 }
 
 // ReadInstanceLedger loads the ledger of a derived key. A ledger never written
@@ -493,20 +527,32 @@ func MarkInstanceEndPending(treeRoot, key string, at time.Time) error {
 
 // readEndPendings loads every pending end of a key, in end-time order — the
 // order the ends really happened in, which is what the single-live rule reads
-// them in. A mark that cannot be read stays on disk and is retried by later
-// passes; an unreadable mark is never silently consumed.
+// them in. Discovery is a directory read with a literal filename prefix,
+// never a glob over the project path: a directory named project[1] would be
+// pattern-interpreted and hide every pending mark (post-sync review r3
+// supplement). A mark that cannot be read stays on disk and is retried by
+// later passes; an unreadable mark is never silently consumed.
 func readEndPendings(treeRoot, key string) ([]pendingEndFile, error) {
-	matches, err := filepath.Glob(ledgerPath(treeRoot, key) + ".end-pending-*")
+	dir := filepath.Dir(ledgerPath(treeRoot, key))
+	entries, err := os.ReadDir(dir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
-	out := make([]pendingEndFile, 0, len(matches))
-	for _, m := range matches {
-		var p endPending
-		if err := readJSON(m, &p); err != nil || p.EndedAt.IsZero() || p.PendingID == "" {
+	prefix := markerFileName(key) + ".end-pending-"
+	out := make([]pendingEndFile, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasPrefix(e.Name(), prefix) {
 			continue
 		}
-		out = append(out, pendingEndFile{path: m, pending: p})
+		p := filepath.Join(dir, e.Name())
+		var pe endPending
+		if err := readJSON(p, &pe); err != nil || pe.EndedAt.IsZero() || pe.PendingID == "" {
+			continue
+		}
+		out = append(out, pendingEndFile{path: p, pending: pe})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		return out[i].pending.EndedAt.Before(out[j].pending.EndedAt)

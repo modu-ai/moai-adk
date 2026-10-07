@@ -143,6 +143,12 @@ func TestInstanceLedgerConcurrentCountsSurvive(t *testing.T) {
 	root := t.TempDir()
 	key := StartMarkerKey("", "sess-ledger-conc", AgentPlanAuditor)
 	const n = 32
+	// Widen the lock budget: 64 serialized updates must all land even while
+	// the full suite loads the machine (an exhausted budget is a clean
+	// give-up, and its own pin is TestLedgerLockTimesOutWhenHeld).
+	prevWait := ledgerLockWait
+	ledgerLockWait = 5 * time.Second
+	t.Cleanup(func() { ledgerLockWait = prevWait })
 	var wg sync.WaitGroup
 	errs := make(chan error, 2*n)
 	for i := 0; i < n; i++ {
@@ -368,6 +374,165 @@ func TestLedgerLockTimesOutWhenHeld(t *testing.T) {
 	}()
 	if _, err := lockLedger(p); err == nil {
 		t.Fatal("lockLedger acquired a lock held by another holder")
+	}
+}
+
+// Post-sync repair r3 (gate round 21, P1): the end-event boundary is a
+// watermark — it must never regress. Two ends landing out of order (the 4s
+// end applied before the 3s end; lock order is not event order) used to drag
+// EndedAt back to 3s, and a successor could then reuse a receipt minted at
+// 3.5s — after the true last end, before the regressed boundary.
+func TestInstanceLedgerEndBoundaryIsMonotonic(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-mono", AgentPlanAuditor)
+	if err := RecordInstanceStart(root, key, t0); err != nil {
+		t.Fatalf("RecordInstanceStart: %v", err)
+	}
+	// The later event is applied first; the earlier one lands afterwards.
+	if err := RecordInstanceEnd(root, key, t0.Add(4*time.Second)); err != nil {
+		t.Fatalf("first RecordInstanceEnd: %v", err)
+	}
+	if err := RecordInstanceEnd(root, key, t0.Add(3*time.Second)); err != nil {
+		t.Fatalf("second RecordInstanceEnd: %v", err)
+	}
+	l, err := ReadInstanceLedger(root, key)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if !l.EndedAt.Equal(t0.Add(4 * time.Second)) {
+		t.Errorf("EndedAt = %v, want %v — the boundary must not regress", l.EndedAt, t0.Add(4*time.Second))
+	}
+
+	// A receipt minted between the two ends is predecessor-era: the seal holds.
+	start := &StartMarker{AgentID: "a1", AgentType: AgentPlanAuditor, TreeRoot: root, StartedAt: t0}
+	r35 := seedLedgerTestReceipt(t, root, t0.Add(3500*time.Millisecond))
+	if ok, cause := CheckCitedReceiptsSince(root, start, l.EndedAt, []string{r35}); ok {
+		t.Errorf("a receipt minted after the true last end but before the boundary was accepted — the boundary regressed")
+	} else if cause != CauseReceiptReused {
+		t.Errorf("cause = %q, want %q", cause, CauseReceiptReused)
+	}
+}
+
+// Post-sync repair r3 (gate round 21, P2): the first start-marker write is a
+// keep-earliest CAS — the first writer's anchor wins and LATER starts never
+// overwrite it. The RED was observed through the pre-fix seam (8 concurrent
+// plain WriteStartMarker calls kept the LATEST anchor: "REGRESSED anchor:
+// StartedAt = ...340808, want ...280808"): the racy check-then-write then
+// refused a legitimate receipt minted between the two starts with "receipt
+// created before the auditor started". With claims racing, the deterministic
+// property is first-writer-wins: an existing anchor survives any number of
+// concurrent ensure calls.
+func TestEnsureStartMarkerConcurrentKeepsExisting(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ensure-race", AgentPlanAuditor)
+	anchor := time.Now().UTC()
+	if err := WriteStartMarker(root, &StartMarker{AgentID: key, AgentType: AgentPlanAuditor, TreeRoot: root, StartedAt: anchor}); err != nil {
+		t.Fatalf("seed anchor: %v", err)
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		i := i
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			m := StartMarker{AgentID: key, AgentType: AgentPlanAuditor, TreeRoot: root, StartedAt: anchor.Add(time.Duration(i+1) * 20 * time.Millisecond)}
+			if err := EnsureStartMarker(root, &m); err != nil {
+				t.Errorf("EnsureStartMarker %d: %v", i, err)
+			}
+		}()
+	}
+	wg.Wait()
+	m, err := ReadStartMarker(root, key)
+	if err != nil {
+		t.Fatalf("marker missing: %v", err)
+	}
+	if !m.StartedAt.Equal(anchor) {
+		t.Errorf("StartedAt = %v, want the untouched anchor %v — a later start overwrote it", m.StartedAt, anchor)
+	}
+}
+
+// The CAS is serialized on the key's ledger lock: a marker ensure attempted
+// while the lock is held past the wait budget gives up instead of writing
+// outside the critical section.
+func TestEnsureStartMarkerRespectsLedgerLock(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ensure-lock", AgentPlanAuditor)
+	p := ledgerPath(root, key)
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	lf, err := os.OpenFile(p+ledgerLockSuffix, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatalf("hold the lock: %v", err)
+	}
+	defer func() {
+		_ = lf.Close()
+		_ = os.Remove(p + ledgerLockSuffix)
+	}()
+	m := StartMarker{AgentID: key, AgentType: AgentPlanAuditor, TreeRoot: root}
+	if err := EnsureStartMarker(root, &m); err == nil {
+		t.Fatal("EnsureStartMarker wrote while the key's ledger lock was held — the CAS is not serialized")
+	}
+	if _, err := ReadStartMarker(root, key); err == nil {
+		t.Error("a marker was written despite the held lock")
+	}
+}
+
+// An existing anchor is never touched, whatever the new start claims.
+func TestEnsureStartMarkerKeepsExistingAnchor(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ensure-keep", AgentPlanAuditor)
+	if err := WriteStartMarker(root, &StartMarker{AgentID: key, AgentType: AgentPlanAuditor, TreeRoot: root, StartedAt: t0}); err != nil {
+		t.Fatalf("seed marker: %v", err)
+	}
+	later := StartMarker{AgentID: key, AgentType: AgentPlanAuditor, TreeRoot: root, StartedAt: t0.Add(time.Minute)}
+	if err := EnsureStartMarker(root, &later); err != nil {
+		t.Fatalf("EnsureStartMarker: %v", err)
+	}
+	m, err := ReadStartMarker(root, key)
+	if err != nil {
+		t.Fatalf("ReadStartMarker: %v", err)
+	}
+	if !m.StartedAt.Equal(t0) {
+		t.Errorf("StartedAt = %v, want the untouched earliest anchor %v", m.StartedAt, t0)
+	}
+}
+
+// Post-sync repair r3 supplement (gate round 22): pending-file discovery must
+// not interpret the project path as a glob pattern — a tree at
+// .../project[1] made the discovery match nothing, so a dropped end was never
+// recovered and predecessor receipts stayed unsealed. Discovery is a
+// directory read with a literal filename prefix.
+func TestInstanceLedgerPendingRecoveredUnderGlobMetacharPath(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "project[1]")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	key := StartMarkerKey("", "sess-ledger-glob", AgentPlanAuditor)
+	if err := RecordInstanceStart(root, key, t0); err != nil {
+		t.Fatalf("RecordInstanceStart: %v", err)
+	}
+	pending := ledgerPath(root, key) + ".end-pending-idGlob"
+	body := `{"pending_id":"idGlob","ended_at":"` + t0.Add(time.Second).Format(time.RFC3339Nano) + `"}`
+	if err := os.WriteFile(pending, []byte(body), 0o644); err != nil {
+		t.Fatalf("write pending mark: %v", err)
+	}
+
+	// The next operation discovers the pending mark despite the
+	// metacharacter in the project path; its own end (2s, later than the
+	// pending 1s) then seals the boundary as the watermark.
+	if err := RecordInstanceEnd(root, key, t0.Add(2*time.Second)); err != nil {
+		t.Fatalf("RecordInstanceEnd: %v", err)
+	}
+	l, err := ReadInstanceLedger(root, key)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if l.Ends != 2 {
+		t.Errorf("Ends = %d, want 2 — the pending end was not discovered under a glob-metacharacter path", l.Ends)
+	}
+	if !l.EndedAt.Equal(t0.Add(2 * time.Second)) {
+		t.Errorf("EndedAt = %v, want the watermark %v (the recovered end 1s, superseded by the later 2s)", l.EndedAt, t0.Add(2*time.Second))
 	}
 }
 
