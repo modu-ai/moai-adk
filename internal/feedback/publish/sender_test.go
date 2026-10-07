@@ -3,6 +3,7 @@ package publish
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/feedback"
@@ -458,6 +460,87 @@ func TestSenderRevalidatesStoredBodyBeforeComment(t *testing.T) {
 	}
 	if rest := queuedItems(t); len(rest) != 1 {
 		t.Fatalf("the tampered item did not stay queued: %+v", rest)
+	}
+}
+
+// ---- review-gate P2: per-item cross-process send ownership ----
+
+// TestSendSkipsItemOwnedByLiveClaim pins the ownership contract: from the
+// duplicate lookup through the outcome record, one item belongs to ONE
+// flush. A second flush whose snapshot still carries the item must skip it
+// — the live claim says another flush owns it — and send it only after the
+// owner releases. Without ownership, two concurrent flushes each searched
+// and EACH created the issue (searches=2, creates=2).
+func TestSendSkipsItemOwnedByLiveClaim(t *testing.T) {
+	consentOn(t)
+	_, item := payloadFixture(t)
+	seedQueue(t, item)
+
+	// Another flush holds the item's claim, live (this is exactly the
+	// artifact ClaimItemSend leaves behind — the store-relative path shape
+	// is pinned here by construction, not by importing the helper).
+	claimPath := filepath.Join(os.Getenv("MOAI_HOME"), filepath.FromSlash(bugreport.BugreportStoreDir), "send-"+item.ID+".claim")
+	release, err := atomicfile.ClaimSection(context.Background(), claimPath, 0o600, 0, time.Millisecond)
+	if err != nil {
+		t.Fatalf("the test flush could not claim the item: %v", err)
+	}
+
+	stub := newStubRunner(true)
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if searches, creates, comments := stub.recorded(); searches != 0 || creates != 0 || comments != 0 {
+		t.Fatalf("a flush sent an item another flush owned: searches=%d creates=%d comments=%d", searches, creates, comments)
+	}
+	if rest := queuedItems(t); len(rest) != 1 {
+		t.Fatalf("the owned item did not stay queued: %+v", rest)
+	}
+
+	// The owning flush finishes and releases: the next flush sends it.
+	_ = release()
+	stub = newStubRunner(true)
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send after release: %v", err)
+	}
+	if _, creates, _ := stub.recorded(); creates != 1 {
+		t.Fatalf("creates = %d, want the released item sent", creates)
+	}
+	if rest := queuedItems(t); len(rest) != 0 {
+		t.Fatalf("the sent item stayed queued: %+v", rest)
+	}
+}
+
+// TestDeadOwnerSendClaimIsReclaimed: a flush that died holding its claim
+// must not wedge the item — the dead owner's claim is reclaimed through
+// the same verified-dead rule, and the item sends.
+func TestDeadOwnerSendClaimIsReclaimed(t *testing.T) {
+	consentOn(t)
+	_, item := payloadFixture(t)
+	seedQueue(t, item)
+
+	claimPath := filepath.Join(os.Getenv("MOAI_HOME"), filepath.FromSlash(bugreport.BugreportStoreDir), "send-"+item.ID+".claim")
+	identity := atomicfile.BootIDIdentity()
+	if identity == "" {
+		t.Skip("no boot identity on this platform")
+	}
+	dead := atomicfile.LockOwner{PID: os.Getpid(), BootID: "previous-boot-" + identity}
+	raw, err := json.Marshal(dead)
+	if err != nil {
+		t.Fatalf("marshal dead owner: %v", err)
+	}
+	if err := os.WriteFile(claimPath, raw, 0o600); err != nil {
+		t.Fatalf("write dead claim: %v", err)
+	}
+
+	stub := newStubRunner(true)
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if _, creates, _ := stub.recorded(); creates != 1 {
+		t.Fatalf("creates = %d, want the dead owner's claim reclaimed and the item sent", creates)
+	}
+	if rest := queuedItems(t); len(rest) != 0 {
+		t.Fatalf("the sent item stayed queued: %+v", rest)
 	}
 }
 

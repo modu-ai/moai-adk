@@ -99,55 +99,75 @@ func (s *Sender) Send(ctx context.Context) error {
 			s.drop(store, item, "attempt limit reached")
 			continue
 		}
-
-		// Send-time trust boundary (review-gate finding, P1): the queue
-		// file is a local file, so the stored body is untrusted. Validate
-		// BEFORE any gh call and publish only the regenerated title and
-		// body — never the stored text as-is.
-		payload, title, body, ok := revalidatedItem(item)
-		if !ok {
-			s.fail(store, item, errUnvalidatedBody)
-			continue
-		}
-
-		issue, markerCount, err := findIssue(ctx, s.Runner, repo, item)
-		if err != nil {
-			// A gh failure is environmental (network, rate limit): stop
-			// the run rather than hammering, leave everything queued.
-			s.fail(store, item, err)
+		if !s.sendOne(ctx, store, item, repo) {
 			return nil
 		}
-
-		if issue != nil {
-			// Existing fingerprint: one occurrence comment below the cap,
-			// nothing at the cap, never a body edit, never a label, and
-			// never a model call (AC-016).
-			if markerCount >= config.DefaultBugreportOccurrenceCommentsPerIssue {
-				_ = outbox.AppendOutbox(outbox.OutboxRow{
-					Outcome:  "capped_remote",
-					Reason:   "occurrence comment cap reached on the remote issue",
-					Fingerpr: item.Fingerprint,
-				})
-				continue
-			}
-			comment := OccurrenceCommentFromPayload(payload)
-			if err := s.Runner.CommentIssue(ctx, repo, issue.Number, strings.NewReader(comment)); err != nil {
-				s.fail(store, item, err)
-				return nil
-			}
-			s.complete(store, item, "occurrence comment on #"+itoa(issue.Number), comment)
-			continue
-		}
-
-		// No match: the create path. M5 files the deterministic template
-		// text; M6 slots the summarizer ahead of CreateBody.
-		if err := s.Runner.CreateIssue(ctx, repo, title, strings.NewReader(body)); err != nil {
-			s.fail(store, item, err)
-			return nil
-		}
-		s.complete(store, item, "issue created", body)
 	}
 	return nil
+}
+
+// sendOne carries one item from its ownership claim through the outcome
+// record, and reports whether the RUN continues (false: stop — the caller
+// returns and the remaining items stay queued). A claim the sender cannot
+// take means another flush owns the item right now: skip it and keep
+// running.
+func (s *Sender) sendOne(ctx context.Context, store *feedback.QueueStore, item feedback.QueueItem, repo string) bool {
+	// Cross-process item ownership (review-gate finding, P2): the claim
+	// spans the duplicate lookup through the outcome record, so two
+	// concurrent flushes can no longer each send the same item.
+	release, err := outbox.ClaimItemSend(ctx, item.ID)
+	if err != nil {
+		return true // another flush owns this item: skip it, keep running
+	}
+	defer func() { _ = release() }()
+
+	// Send-time trust boundary (review-gate finding, P1): the queue
+	// file is a local file, so the stored body is untrusted. Validate
+	// BEFORE any gh call and publish only the regenerated title and
+	// body — never the stored text as-is.
+	payload, title, body, ok := revalidatedItem(item)
+	if !ok {
+		s.fail(store, item, errUnvalidatedBody)
+		return true
+	}
+
+	issue, markerCount, err := findIssue(ctx, s.Runner, repo, item)
+	if err != nil {
+		// A gh failure is environmental (network, rate limit): stop
+		// the run rather than hammering, leave everything queued.
+		s.fail(store, item, err)
+		return false
+	}
+
+	if issue != nil {
+		// Existing fingerprint: one occurrence comment below the cap,
+		// nothing at the cap, never a body edit, never a label, and
+		// never a model call (AC-016).
+		if markerCount >= config.DefaultBugreportOccurrenceCommentsPerIssue {
+			_ = outbox.AppendOutbox(outbox.OutboxRow{
+				Outcome:  "capped_remote",
+				Reason:   "occurrence comment cap reached on the remote issue",
+				Fingerpr: item.Fingerprint,
+			})
+			return true
+		}
+		comment := OccurrenceCommentFromPayload(payload)
+		if err := s.Runner.CommentIssue(ctx, repo, issue.Number, strings.NewReader(comment)); err != nil {
+			s.fail(store, item, err)
+			return false
+		}
+		s.complete(store, item, "occurrence comment on #"+itoa(issue.Number), comment)
+		return true
+	}
+
+	// No match: the create path. M5 files the deterministic template
+	// text; M6 slots the summarizer ahead of CreateBody.
+	if err := s.Runner.CreateIssue(ctx, repo, title, strings.NewReader(body)); err != nil {
+		s.fail(store, item, err)
+		return false
+	}
+	s.complete(store, item, "issue created", body)
+	return true
 }
 
 type errorString string
