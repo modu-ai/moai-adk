@@ -20,9 +20,18 @@ git_strategy:
         required_reviews: 0
         branch_protection: false
         merge_method: squash
-        # SPEC-MAIN-COMMIT-BAN-001 (card t1337): lead closes the develop push
-        # batch when `git rev-list --count origin/develop..develop` reaches
-        # this count. Operator-given initial value 20 — recorded, not derived.
+        # Lead closes the push batch when
+        # `git rev-list --count origin/<integration-branch>..<integration-branch>`
+        # reaches this count. Operator-given initial value 20 — recorded, not
+        # derived.
+        #
+        # workflow stays git-flow until the GitHub Flow residue sweep lands
+        # (SPEC-GITHUB-FLOW-DEFAULT-001 M5): flipping it to github-flow ARMS
+        # TestGitHubFlowSweepGuard, whose live-text assertions cover the
+        # develop-era rules and docs this repository still carries. The
+        # worktree sweep no longer depends on this value either way — it
+        # falls back to the remote default branch when the derived ref is
+        # absent (SPEC-CUTOVER-RESIDUE-001).
         lead_push_threshold: 20
         automation:
             auto_branch: false
