@@ -292,6 +292,18 @@ func TestMergeTripleSpecLessVerdict(t *testing.T) {
 			pass:  false,
 			wants: []string{wantPath, "inconclusive"},
 		},
+		{
+			// A receipt whose convergence overall reads fail is a failed audit
+			// even when every backend line reads pass — the record says so
+			// itself (gate round 2, card t1571).
+			name: "specless_convergence_overall_fail_refuses_despite_pass_label",
+			setup: func(t *testing.T, r specLessRepo, head string) string {
+				r.write(t, r.verdictRel(), "verdict: PASS\naudited_sha: "+head+"\nconvergence_overall: fail\nrequired_backend: codex pass\n")
+				return ""
+			},
+			pass:  false,
+			wants: []string{wantPath, "overall fail"},
+		},
 	}
 	visited := 0
 	for _, tc := range cases {
