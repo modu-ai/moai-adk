@@ -1015,6 +1015,66 @@ func TestSubagentStop_DroppedEndStillSealsBoundary(t *testing.T) {
 	}
 }
 
+// Post-sync repair r4 (gate round 25, card t1562) — the documented r2
+// residual, now demonstrated: a pending end mark that exists but cannot be
+// READ leaves the previous boundary in force, and a successor ACCEPTS the
+// predecessor's receipt. The approval path must fail closed — refuse while a
+// pending end is unreadable, never silently skip to the old boundary.
+func TestSubagentStop_UnreadablePendingEndFailsClosed(t *testing.T) {
+	root := newGateTree(t, "required")
+	session := "sess-rr-pendcorrupt"
+	now := freezeClock(t)
+	key := auditreceipt.StartMarkerKey("", session, auditreceipt.AgentPlanAuditor)
+	lockFile := filepath.Join(auditreceipt.StateDir(root), "ledgers", key+".json.lock")
+
+	// A begins, mints rA, and terminally ends while the ledger lock is held:
+	// the end-record write is discarded and a pending mark is left behind.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+	rA := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolCodexAudit, TreeRoot: root, CreatedAt: auditreceipt.Now()})
+	advanceClock(now, time.Second)
+	if err := os.MkdirAll(filepath.Dir(lockFile), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	lf, err := os.OpenFile(lockFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatalf("hold the ledger lock: %v", err)
+	}
+	_ = lf.Close()
+	if out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-025 receipts="+rA, false)); out.Decision != "" {
+		t.Fatalf("setup: A's accepted end blocked: %q (%s)", out.Decision, out.Reason)
+	}
+	if err := os.Remove(lockFile); err != nil {
+		t.Fatalf("release the fake lock hold: %v", err)
+	}
+
+	// Corrupt the pending mark: it exists but cannot be read.
+	marks, err := filepath.Glob(filepath.Join(auditreceipt.StateDir(root), "ledgers", key+".json.end-pending-*"))
+	if err != nil || len(marks) == 0 {
+		t.Fatalf("setup: no pending mark to corrupt (glob err %v, marks %v)", err, marks)
+	}
+	if err := os.WriteFile(marks[0], []byte("{broken"), 0o644); err != nil {
+		t.Fatalf("corrupt the pending mark: %v", err)
+	}
+
+	// B begins after A's end and cites A's receipt with zero audit calls:
+	// REFUSED — the boundary is unknowable while the pending end is
+	// unreadable, and unknowable is not the old boundary.
+	runStart(t, backgroundStartInput(root, auditreceipt.AgentPlanAuditor, session))
+	advanceClock(now, time.Second)
+	out := runStop(t, bgStopInput(root, auditreceipt.AgentPlanAuditor, session, "AUDIT-VERDICT: PASS spec=SPEC-RR-025 receipts="+rA, false))
+	if out.Decision != "block" || !strings.Contains(out.Reason, auditreceipt.CauseInstancePendingUnreadable) {
+		t.Fatalf("output = %+v, want a block naming an unreadable end record — not a silent skip to the old boundary", out)
+	}
+	rj, err := auditreceipt.ReadRejection(root, auditreceipt.AgentPlanAuditor, "SPEC-RR-025")
+	if err != nil {
+		t.Fatalf("rejection record missing: %v", err)
+	}
+	if rj.Cause != auditreceipt.CauseInstancePendingUnreadable {
+		t.Errorf("rejection cause = %q, want %q", rj.Cause, auditreceipt.CauseInstancePendingUnreadable)
+	}
+}
+
 // SPEC-RECEIPT-REUSE-001 AC-RR-007 (REQ-RR-002): the foreground path —
 // agent-id-keyed markers, consumed at the instance's own stop — is unchanged:
 // a foreground successor citing a predecessor foreground instance's receipt is

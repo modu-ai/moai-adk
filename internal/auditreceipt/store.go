@@ -22,6 +22,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -70,17 +71,18 @@ const UnknownSpec = "unknown-spec"
 
 // Failure causes, in the order CheckCitedReceipts reports them.
 const (
-	CauseStartMarkerMissing       = "start marker missing"
-	CauseNoReceiptCited           = "no receipt cited"
-	CauseReceiptUnreadable        = "receipt unreadable"
-	CauseReceiptUnknown           = "receipt unknown to the store"
-	CauseReceiptOtherTree         = "receipt recorded for a different tree"
-	CauseReceiptBeforeStart       = "receipt created before the auditor started"
-	CauseReceiptReused            = "receipt created before the previous auditor instance of this session ended"
-	CauseReceiptNotACodexAudit    = "receipt is not a codex audit"
-	CauseInstanceLedgerUnreadable = "instance ledger unreadable"
-	CauseReceiptAuditNotRun       = "receipt records an audit that never produced a verdict"
-	CauseVerdictLineMissing       = "verdict line missing"
+	CauseStartMarkerMissing        = "start marker missing"
+	CauseNoReceiptCited            = "no receipt cited"
+	CauseReceiptUnreadable         = "receipt unreadable"
+	CauseReceiptUnknown            = "receipt unknown to the store"
+	CauseReceiptOtherTree          = "receipt recorded for a different tree"
+	CauseReceiptBeforeStart        = "receipt created before the auditor started"
+	CauseReceiptReused             = "receipt created before the previous auditor instance of this session ended"
+	CauseReceiptNotACodexAudit     = "receipt is not a codex audit"
+	CauseInstanceLedgerUnreadable  = "instance ledger unreadable"
+	CauseInstancePendingUnreadable = "instance end record unreadable"
+	CauseReceiptAuditNotRun        = "receipt records an audit that never produced a verdict"
+	CauseVerdictLineMissing        = "verdict line missing"
 )
 
 // Served-model refusal causes. The served-model gate appends the expected
@@ -525,24 +527,32 @@ func MarkInstanceEndPending(treeRoot, key string, at time.Time) error {
 	return writeJSON(p, &endPending{PendingID: id, EndedAt: at})
 }
 
-// readEndPendings loads every pending end of a key, in end-time order — the
-// order the ends really happened in, which is what the single-live rule reads
-// them in. Discovery is a directory read with a literal filename prefix,
-// never a glob over the project path: a directory named project[1] would be
-// pattern-interpreted and hide every pending mark (post-sync review r3
-// supplement). A mark that cannot be read stays on disk and is retried by
-// later passes; an unreadable mark is never silently consumed.
-func readEndPendings(treeRoot, key string) ([]pendingEndFile, error) {
+// ErrPendingEndUnreadable reports that a pending end mark of the key exists
+// but cannot be read: the end-event boundary is then unknowable, and every
+// consumer fails closed — ledger updates give up rather than apply a partial
+// pending set, and the approval path refuses rather than silently judging
+// against the old boundary (post-sync repair r4). The remedy is the
+// operator's: repair or remove the mark.
+var ErrPendingEndUnreadable = errors.New(CauseInstancePendingUnreadable)
+
+// scanEndPendings separates the key's pending end marks into the readable
+// ones (in end-time order — the order the ends really happened in, which is
+// what the single-live rule reads them in) and the unreadable flag. Discovery
+// is a directory read with a literal filename prefix, never a glob over the
+// project path: a directory named project[1] would be pattern-interpreted and
+// hide every pending mark (post-sync review r3 supplement). An unreadable
+// mark is never silently consumed.
+func scanEndPendings(treeRoot, key string) (readable []pendingEndFile, unreadable bool, err error) {
 	dir := filepath.Dir(ledgerPath(treeRoot, key))
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil
+			return nil, false, nil
 		}
-		return nil, err
+		return nil, false, err
 	}
 	prefix := markerFileName(key) + ".end-pending-"
-	out := make([]pendingEndFile, 0, len(entries))
+	readable = make([]pendingEndFile, 0, len(entries))
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasPrefix(e.Name(), prefix) {
 			continue
@@ -550,14 +560,37 @@ func readEndPendings(treeRoot, key string) ([]pendingEndFile, error) {
 		p := filepath.Join(dir, e.Name())
 		var pe endPending
 		if err := readJSON(p, &pe); err != nil || pe.EndedAt.IsZero() || pe.PendingID == "" {
-			continue
+			return nil, true, nil
 		}
-		out = append(out, pendingEndFile{path: p, pending: pe})
+		readable = append(readable, pendingEndFile{path: p, pending: pe})
 	}
-	sort.Slice(out, func(i, j int) bool {
-		return out[i].pending.EndedAt.Before(out[j].pending.EndedAt)
+	sort.Slice(readable, func(i, j int) bool {
+		return readable[i].pending.EndedAt.Before(readable[j].pending.EndedAt)
 	})
-	return out, nil
+	return readable, false, nil
+}
+
+// readEndPendings loads every pending end of a key, in end-time order. An
+// unreadable mark fails the read with ErrPendingEndUnreadable — a partial
+// pending set must never be applied, and the old boundary must never be
+// silently trusted over an end that exists but cannot be judged.
+func readEndPendings(treeRoot, key string) ([]pendingEndFile, error) {
+	readable, unreadable, err := scanEndPendings(treeRoot, key)
+	if err != nil {
+		return nil, err
+	}
+	if unreadable {
+		return nil, fmt.Errorf("%w (%s)", ErrPendingEndUnreadable, key)
+	}
+	return readable, nil
+}
+
+// HasUnreadablePendingEnd reports whether any pending end mark of the key
+// exists that cannot be read. The approval path fails closed on it: the
+// boundary is unknowable, and unknowable is not the old boundary.
+func HasUnreadablePendingEnd(treeRoot, key string) (bool, error) {
+	_, unreadable, err := scanEndPendings(treeRoot, key)
+	return unreadable, err
 }
 
 // Rejection records a refused auditor PASS. It outlives the subagent: the

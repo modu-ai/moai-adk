@@ -1,6 +1,7 @@
 package hook
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -191,16 +192,19 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 		cause = auditreceipt.GateAssumedRequiredNote + ", so no audit receipt can be recorded or checked for this tree"
 	case parsed:
 		start, foundKey := readStartMarker(g.store, input)
-		boundary, err := instanceEndBoundary(g.store, foundKey)
-		if err != nil {
-			// Fail closed (SPEC-RECEIPT-REUSE-001, --security --deep): a
-			// ledger that exists but cannot be read makes the boundary
+		boundary, berr := instanceEndBoundary(g.store, foundKey)
+		if berr != nil {
+			// Fail closed (SPEC-RECEIPT-REUSE-001, --security --deep): an
+			// unreadable ledger or pending end record makes the boundary
 			// unknowable, and unknowable is not zero — zero would wave the
 			// predecessor era through. The refusal names the condition the
 			// operator fixes, the same reading checkAuditReceiptSpawn applies
 			// to unreadable rejection records.
-			slog.Warn("instance ledger unreadable", "agent_id", foundKey, "error", err)
+			slog.Warn("instance boundary unknowable", "agent_id", foundKey, "error", berr)
 			cause = auditreceipt.CauseInstanceLedgerUnreadable
+			if errors.Is(berr, auditreceipt.ErrPendingEndUnreadable) {
+				cause = auditreceipt.CauseInstancePendingUnreadable
+			}
 			break
 		}
 		ok, failure := auditreceipt.CheckCitedReceiptsSince(g.store, start, boundary, cited)
@@ -357,6 +361,15 @@ func recordAuditorEnd(store, key string) {
 func instanceEndBoundary(store, key string) (time.Time, error) {
 	if key == "" || !auditreceipt.IsDerivedMarkerKey(key) {
 		return time.Time{}, nil
+	}
+	// A pending end mark that exists but cannot be read leaves the boundary
+	// unknowable — fail closed rather than silently judging against the old
+	// boundary (post-sync repair r4): the successor's reuse would be accepted
+	// exactly as if the end had never happened.
+	if unreadable, err := auditreceipt.HasUnreadablePendingEnd(store, key); err != nil {
+		return time.Time{}, err
+	} else if unreadable {
+		return time.Time{}, auditreceipt.ErrPendingEndUnreadable
 	}
 	l, err := auditreceipt.ReadInstanceLedger(store, key)
 	if err != nil {

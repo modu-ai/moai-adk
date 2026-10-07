@@ -536,6 +536,33 @@ func TestInstanceLedgerPendingRecoveredUnderGlobMetacharPath(t *testing.T) {
 	}
 }
 
+// Post-sync repair r4 (gate round 25): a pending end mark that exists but
+// cannot be read makes the boundary bookkeeping unknowable — a ledger update
+// must give up (and the approval path must refuse), never apply a partial
+// pending set or skip to the old boundary.
+func TestInstanceLedgerUpdateGivesUpOnUnreadablePending(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-corrupt", AgentPlanAuditor)
+	if err := RecordInstanceStart(root, key, t0); err != nil {
+		t.Fatalf("RecordInstanceStart: %v", err)
+	}
+	pending := ledgerPath(root, key) + ".end-pending-idBad"
+	if err := os.WriteFile(pending, []byte("{broken"), 0o644); err != nil {
+		t.Fatalf("write corrupt pending: %v", err)
+	}
+
+	if err := RecordInstanceEnd(root, key, t0.Add(time.Second)); err == nil {
+		t.Fatal("the ledger update proceeded over an unreadable pending end")
+	}
+	l, err := ReadInstanceLedger(root, key)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if l.Ends != 0 || !l.EndedAt.IsZero() {
+		t.Errorf("ledger = %+v, want untouched — no partial pending set may be applied", l)
+	}
+}
+
 // Post-sync supplement (gate round 20, P1): two same-role auditors can BOTH
 // fail their end-record under lock contention. A single .end-pending file
 // lets the second writer overwrite the first, so recovery loses an end and
