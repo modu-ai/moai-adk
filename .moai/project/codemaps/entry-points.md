@@ -1,6 +1,16 @@
 # 진입점
 
-## main 통합 뒤의 공통 진입 경로
+## PR #1772 최신 통합 트리의 진입점
+
+기준은 `c572e7baceaa6fd0cd3c78a9335b4baabd320347`다. 비테스트 소스의 literal `AddCommand(` 호출 줄은 이전 ff7722 기준 249개에서 250개로 늘었고, `rootCmd.AddCommand(` 줄은 68개로 같다. 이는 호출 줄 수이며 실행 가능한 명령 개수와 같다는 뜻은 아니다.
+
+- `internal/cli/integration.go`가 policy·remeasure·merge를 등록하고 acquire의 대기 경로를 `internal/cli/integration_wait.go`로 연결한다. `internal/cli/integration_merge.go`는 primary 통합 체크아웃에서 병합을 거절한다.
+- `internal/cli/todo.go`의 레인 `--auto`는 `internal/cli/todo_auto_lane.go`의 `runAutoLaneCycle`로 이어진다. `internal/cli/codex_launcher.go`는 부모 체크아웃의 대화형 세션 하나에 이 지시를 전달한다.
+- `internal/cli/codex_audit_launch.go`의 `codexAuditMCPDisableArgs`는 감사 프로세스를 시작하기 전에 MCP 전송 선언을 검증하고 비활성 인자를 구성한다.
+- `internal/cli/update.go`는 출력 원장을 초기화하고 종료 시 action/reference 블록을 렌더링한다. `internal/cli/init.go`의 MCP provisioning 오류는 collector로 전달된다.
+- `internal/cli/update.go`는 binary/dry-run 반환 뒤, 같은 버전의 조기 반환 전에 `internal/cli/update_deny_migration.go`의 정규화를 호출한다. `internal/cli/update_clean_install.go`도 설정 보존 뒤 이를 호출한다. 기존 사용자 자산 설치 진입점은 아래에 유지한다.
+
+## 이전 ff7722 기준의 공통 진입 경로
 
 기준은 `ff7722d2d157dd4e3cffd88ebb644e0f8ead83fa`다. 아래는 소스 호출 대조이며 원격 정리나 오류 주입을 실제 실행했다는 뜻은 아니다.
 
@@ -16,7 +26,7 @@
 - `internal/cli/bundle.go`: `moai bundle add/remove`가 사용자 번들 선택을 변경한다.
 - `internal/cli/doctor.go` → `internal/cli/doctor_user_install.go`: User Install·Project Lock·Plugin Migration 진단을 등록한다. 기존 Plugin Deployment·Plugin Version 행은 등록에서 빠졌다.
 
-## 현재 main의 추가 표면
+## 이전 081899 기준의 추가 표면
 
 기준은 `081899adb825935d5263b1699fe730373deaa4fd`다. 다음은 소스 배선을 확인한 표면이며 실제 원격 실행의 성공 주장은 아니다.
 

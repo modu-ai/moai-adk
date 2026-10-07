@@ -1,6 +1,21 @@
 # 데이터 흐름
 
-## main 통합 뒤의 판정과 관측 흐름
+## PR #1772 최신 통합 트리의 흐름
+
+기준은 `c572e7baceaa6fd0cd3c78a9335b4baabd320347`다. 아래는 호출부·저장 경로의 소스 대조이며 외부 프로세스나 원격 병합을 실제 실행했다는 주장은 아니다.
+
+1. `internal/cli/integration.go`의 acquire/wait가 `internal/factory/integration_window_queue.go`의 직렬 RMW와 `internal/factory/integration_window_ops.go`의 FIFO 승격으로 이어진다.
+2. `internal/factory/integration_remeasure.go`가 트리에 묶인 실행 기록을 만들고 검증한다. `internal/factory/integration_merge_step.go`는 고정한 SHA와 소유권·임대·작업 트리·충돌을 재확인해 병합한다.
+3. `internal/cli/factory_card.go`의 complete가 T14/T16 전이를 만들고, `TransitionRequest.VerifyRemeasure` 콜백을 통해 `internal/homestate/card_evidence_readers.go`가 병합 트리의 재측정 기록을 확인한다. 단순 merge SHA 텍스트 파일을 검증 근거로 대신 읽는 흐름이 아니다.
+4. Codex의 대화형 부모가 `moai todo --auto`를 수행하면 `internal/cli/todo_auto_lane.go`가 순위 결정 → 지명 임대 → 카드 워크트리 → 증거 인계를 수행한다. 공유 순환의 quota hold는 Claude 레인에만 적용되고, 이때는 자기 할당 카드만 임대 관문을 거친다. Codex/GPT의 할당량 평가는 false를 반환한다. 이는 T8a 감사 승인에서 사용하는 별도의 `QueueHold`와 구분한다.
+5. 워크트리 착지 판정은 `internal/cli/worktree/landing_predicate.go`의 `landingExactChangedPaths`에서 native object/mode를 확인한다. CLI의 `session_worktree.go`도 같은 helper를 호출한다.
+6. `internal/graph/card_file.go`가 모든 도달 가능한 부모의 카드 귀속을 모으고 native Git 배치로 각 착지 커밋의 첫 부모와 파일 차이를 계산한다. NUL 구분 경로와 마지막 root sentinel이 완전하지 않으면 개별 diff로 돌아간다. 결과는 `internal/graph/graph.go`의 그래프와 `internal/graph/meta.go`의 fingerprint에 쓰인다.
+
+`internal/cli/init.go`의 MCP provisioning 실패는 collector에 전달되고, `internal/hook/session_start_memory_budget.go`는 goroutine 시작 전에 읽기 의존성을 고정한다. 기존 흐름의 과거 구현 설명은 아래에 당시 기준과 함께 남긴다.
+
+update의 이전 루트 거부 규칙 정규화는 `internal/cli/update_deny_migration.go`의 정확한 9종 치환으로 수행한다. binary/dry-run 반환 뒤 같은 버전의 조기 반환 전에 호출하며, clean-install에서는 보존한 설정에 적용한다. 사용자 자산 설치 → 프로젝트 자산 이행의 기존 흐름은 아래 설명대로 유지된다.
+
+## 이전 ff7722 기준의 판정과 관측 흐름
 
 기준은 `ff7722d2d157dd4e3cffd88ebb644e0f8ead83fa`다. 사용자 폴더 설치 흐름은 이전 PR 기준과 같고, 다음 경로를 소스에서 추가 대조했다.
 
@@ -17,7 +32,7 @@ update는 사용자 잠금 획득 → 기록된 번들 선택으로 Install → 
 
 > 아래의 과거 미러 생산자 설명 중 `internal/cli/update_mirror_heal.go`와 `internal/template/skill_mirror_repair.go` 경로는 폐기됐다. 현재 사용자 폴더 설치와 별개의 이전 구현 이력이다.
 
-## 현재 main의 흐름 보충
+## 이전 081899 기준의 흐름 보충
 
 기준은 `081899adb825935d5263b1699fe730373deaa4fd`다. 다음은 호출부와 저장 경로의 소스 대조이며 외부 프로세스·원격 병합을 실제 실행했다는 뜻은 아니다.
 

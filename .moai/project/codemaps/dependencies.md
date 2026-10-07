@@ -1,12 +1,20 @@
 # 의존성 그래프
 
-## PR #1772 반영 트리의 import 대조
+## PR #1772 최신 통합 트리의 의존성
+
+기준은 `c572e7baceaa6fd0cd3c78a9335b4baabd320347`다. `go list -deps -json ./...`에서 내부 import 엣지 480개, 최상위로 접고 self-edge를 뺀 고유 쌍 305개를 측정했다. 이전 ff7722 이후 `internal/cli/worktree` → `internal/factory`, `internal/factory` → `internal/factorylane`, `internal/factory` → `pkg/version`이 추가됐고, `internal/cli/worktree` → `internal/config`는 제거됐다. `go.mod`·`go.sum` 차이는 없다.
+
+현재 최상위 fan-out은 `internal/cli` 76, `internal/hook` 40, `internal/web` 16, `internal/factory` 9다. fan-in은 `internal/config` 30, `internal/atomicfile` 14, `internal/paths` 14, `internal/defs` 13, `internal/template` 7이다. 사용자 자산 패키지의 소스와 기존 설치 배선은 이번 창에서 바뀌지 않았다.
+
+merge-ready는 `internal/cli/factory_merge.go`의 콜백으로 `internal/factorylane/merge.go`가 읽은 후보 tip tree의 기록을 검증한다. complete T16은 `internal/homestate/card_evidence_readers.go`가 실제 병합 tree의 기록을 검증한다. 공통으로 `ReadRemeasureRecord`와 `ValidateRemeasureRecord`를 쓰며 시점과 트리 출처가 다르다.
+
+## 이전 ff7722 기준의 import 대조
 
 `ff7722d2d157dd4e3cffd88ebb644e0f8ead83fa`에서 `go list -deps -json ./...`를 실행했다. 모듈 내부 패키지 170개, 내부 import 엣지 478개, 최상위로 접고 self-edge를 제거한 고유 쌍 303개다. `internal/userassets`는 `internal/template`을 import하며 비테스트 소비자는 `internal/cli` 하나다. 아래 main 기준 fan-in/out과 이전 기록은 각각 명시된 시점의 관측값이다.
 
 > `internal/template/pluginemit`은 PR #1772에서 폐기됐다. 현재 빌드 방출기는 agentemit·commandemit·embedemit이며, 아래 이전 pluginemit 수치는 이력이다.
 
-## 현재 main의 재측정
+## 이전 081899 기준의 재측정
 
 `081899adb825935d5263b1699fe730373deaa4fd`에서 `go list -deps -json ./...`를 실행했다. 모듈 내부 Imports 엣지는 478개이고, 최상위 패키지로 접어 self-edge를 뺀 고유 쌍은 302개다. 아래 이전 기록의 그래프 수치는 각 시점의 관측으로 남긴다.
 
