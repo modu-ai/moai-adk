@@ -600,3 +600,35 @@ func TestLandingPredicateRecognizesRelocatedSquash(t *testing.T) {
 		t.Fatalf("byte-identical relocated squash must be landed: landed=%v err=%v", landed, err)
 	}
 }
+
+// Tool failures and incomplete merge metadata must never authorize deleting a
+// worktree, including when a Git version cannot compute verbatim patch IDs.
+func TestLandingPredicatePreservesUnconfirmableState(t *testing.T) {
+	f := newGFDFixture(t)
+	f.mainCommit(t, 5, "unrelated")
+	f.pushMain(t)
+	if landed, err := LandedByPatchID(f.repo, f.branch, "origin/main"); landed || err == nil {
+		t.Fatalf("empty card must remain unconfirmed: landed=%v err=%v", landed, err)
+	}
+	t.Run("git_unavailable", func(t *testing.T) {
+		t.Setenv("PATH", t.TempDir())
+		if _, err := landingPatchIDs(f.repo, "unreadable patch"); err == nil {
+			t.Fatal("missing Git must fail patch-ID computation")
+		}
+	})
+	for _, tc := range []struct {
+		name    string
+		pr      ghPR
+		wantErr bool
+	}{
+		{"missing_merge_commit", ghPR{State: "MERGED", HeadRefOid: f.cardTip(t)}, false},
+		{"unknown_merge_commit", mergedPR(f.cardTip(t), strings.Repeat("f", 40)), true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			installGH(t, &ghDouble{prs: []ghPR{tc.pr}})
+			if landed, err := landedByMergedPR(f.repo, f.branch, "origin/main"); landed || (err != nil) != tc.wantErr {
+				t.Fatalf("unconfirmable PR must preserve the tree: landed=%v err=%v", landed, err)
+			}
+		})
+	}
+}
