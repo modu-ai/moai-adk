@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/modu-ai/moai-adk/internal/config"
 	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/paths"
@@ -92,7 +91,7 @@ func contextGitOutput(ctx context.Context, dir string, args ...string) ([]byte, 
 	}
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)
 	cmd.Env = append(gitenv.Env(), "LC_ALL=C", "LANGUAGE=C")
-	cmd.WaitDelay = config.DefaultGitPathWaitDelay
+	cmd.WaitDelay = gitcore.DefaultGitPathWaitDelay
 	out, err := cmd.Output()
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
