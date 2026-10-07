@@ -308,20 +308,24 @@ func previousAuditedSHA(in VerdictCeilingInput, ev RoundEvidence) string {
 
 // evidenceRoundOf is the scan-local dual-family, base-aware parse of one
 // evidence file name (plan.md §G sanctioned exception): the convention
-// family through iterationOf's existing parse, with the bare base report
-// ranking as round 0 — the engine's own plan-round convention
-// (planAuditRoundFile) — and the legacy family (<SpecID>-review-<N>.md).
-// ok is false when the name parses under neither family or its number does
-// not parse: a name the caller cannot order must not yield a baseline.
+// family, with the bare base report ranking as round 0 — the engine's own
+// plan-round convention (planAuditRoundFile) — and an explicitly
+// 0-numbered convention file equally valid, and the legacy family
+// (<SpecID>-review-<N>.md) with identical round-0 validity and ordering:
+// renaming the same history between families must not change the
+// previous-SHA selection (round-3 repair 2). ok is false when the name
+// parses under neither family or its number does not parse: a name the
+// caller cannot order must not yield a baseline.
 func evidenceRoundOf(name, specID string) (n int, ok bool) {
 	if m := conventionFile.FindStringSubmatch(name); m != nil {
 		if m[1] == "" {
 			return 0, true // the bare base report — round 0, earliest
 		}
-		if v := iterationOf(name, specID); v > 0 {
-			return v, true
+		v, err := strconv.Atoi(m[1])
+		if err != nil {
+			return 0, false // a convention shape whose number does not parse
 		}
-		return 0, false // a convention shape whose number does not parse
+		return v, true // a parsed 0 is a valid round 0 — family parity
 	}
 	legacyFile := regexp.MustCompile(`^` + regexp.QuoteMeta(specID) + `-review-([0-9]+)\.md$`)
 	if m := legacyFile.FindStringSubmatch(name); m != nil {
@@ -332,23 +336,6 @@ func evidenceRoundOf(name, specID string) (n int, ok bool) {
 		return v, true
 	}
 	return 0, false
-}
-
-// iterationOf returns the iteration number a convention-family file name
-// carries (1 for the bare plan-audit.md shape), 0 when the name is not a
-// convention shape.
-func iterationOf(name, _ string) int {
-	m := conventionFile.FindStringSubmatch(name)
-	if m == nil {
-		return 0
-	}
-	if m[1] == "" {
-		return 1
-	}
-	if v, err := strconv.Atoi(m[1]); err == nil {
-		return v
-	}
-	return 0
 }
 
 // diffInsideAnchors reports whether every change git names between the two

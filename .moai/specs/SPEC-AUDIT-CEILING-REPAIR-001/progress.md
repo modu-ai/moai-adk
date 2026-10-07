@@ -262,6 +262,28 @@ the real `## §G Override and Refusal Record` is selected. Regression test
 batch is being updated by manager-spec in parallel; the tests bind to the
 behavior.
 
+### Round-3 repair 2 record — round-0 family parity (leader-approved)
+
+RED observed pre-fix at HEAD `ccd1603af`:
+`audit_counter_review_test.go:491: previous SHA differs across families:
+convention "" legacy "sha-round0", want sha-round0 in both (round-0 family
+parity)` — evidenceRoundOf's convention branch filtered on `iterationOf >
+0`, so a parsed `plan-audit-0.md` (a VALID round 0) was treated as
+unparseable and skipped in the previous-round scan, while the legacy branch
+honored `-review-0.md` as a valid round 0. Renaming the same (round 0,
+round 2) history between families lost the baseline and could flip an
+admitted delta to a final hit. Fix (audit_ceiling.go:321 region): the
+convention branch parses its own numeric suffix and treats a parsed 0 as a
+valid round 0 — identical round-0 validity and ordering across both
+families, matching the sealed planAuditRoundFile ranking (base = iteration
+0); the counter's buckets were already at parity (seen[0] both families,
+untouched). `iterationOf` lost its last caller (its "1 for the bare
+plan-audit.md shape" default is exactly the n=1-collapse mechanism the M2
+fix removed) and is deleted — the minimum the fix needs. Regression test
+`TestPreviousAuditedSHARoundZeroFamilyParity`
+(`internal/runtime/audit_counter_review_test.go`): same history in both
+families → same previous SHA and same count.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07

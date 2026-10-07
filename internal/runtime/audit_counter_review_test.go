@@ -446,3 +446,51 @@ func TestCountAuditRoundsLegacyOverflowOwnRound(t *testing.T) {
 		t.Fatalf("latest %q, want -review-1.md — an overflow legacy suffix never becomes LatestPath", ev.LatestPath)
 	}
 }
+
+// Round-3 repair 2 — round-0 family parity: the same (round 0, round 2)
+// history expressed in the convention family and in the legacy family must
+// yield the SAME previous audited SHA and the SAME count. With the defect,
+// evidenceRoundOf treats a parsed plan-audit-0.md as unparseable while the
+// legacy branch honors -review-0.md, so renaming the history between
+// families loses the previous-round baseline and can flip an admitted
+// delta to a final hit.
+func TestPreviousAuditedSHARoundZeroFamilyParity(t *testing.T) {
+	specID := "SPEC-ACE-R0PAR-001"
+
+	// Convention family: an explicit round 0 (plan-audit-0.md) + round 2.
+	convDir := t.TempDir()
+	zero := writeAuditFixture(t, convDir, "plan-audit-0.md", specID, "FAIL", 0)
+	if err := os.WriteFile(zero, []byte(replaceSHA(t, zero, "sha-round0")), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	iter2 := writeAuditFixture(t, convDir, "plan-audit-iter2.md", specID, "FAIL", 0)
+	if err := os.WriteFile(iter2, []byte(replaceSHA(t, iter2, "sha-round2")), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	evConv, err := CountAuditRounds(specID, []string{convDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	prevConv := previousAuditedSHA(VerdictCeilingInput{SpecID: specID, ProjectRoot: t.TempDir()}, evConv)
+
+	// The same history renamed into the legacy family.
+	legDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(legDir, specID+"-review-0.md"), []byte("# review\nverdict: FAIL\naudited_sha: sha-round0\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(legDir, specID+"-review-2.md"), []byte("# review\nverdict: FAIL\naudited_sha: sha-round2\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	evLeg, err := CountAuditRounds(specID, []string{legDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	prevLeg := previousAuditedSHA(VerdictCeilingInput{SpecID: specID, ProjectRoot: t.TempDir()}, evLeg)
+
+	if prevConv != prevLeg || prevConv != "sha-round0" {
+		t.Fatalf("previous SHA differs across families: convention %q legacy %q, want sha-round0 in both (round-0 family parity)", prevConv, prevLeg)
+	}
+	if evConv.Count != evLeg.Count {
+		t.Fatalf("count differs across families: convention %d, legacy %d", evConv.Count, evLeg.Count)
+	}
+}
