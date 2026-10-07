@@ -165,14 +165,15 @@ FAIL
 
 ## M3 — Family Re-check Sweep (run phase)
 
-Swept on `7945a442a` (this tree, post-M2), 2026-10-07. Observation only for the
-sibling surfaces — this card adds no repair there (spec.md §F).
+Swept on `7945a442a` + the leader-forwarded vector amendment `a03c6d56b` (this
+tree), 2026-10-07. Observation only for the sibling surfaces — this card adds
+no repair there (spec.md §F).
 
 ### Three-surface table (AC-HZB-005)
 
 | Surface | Site | This tree's observed state | Owner card | Evidence |
 |---|---|---|---|---|
-| 1 — zone target resolution | `internal/hook/protected_zone_path.go` (`zoneSlash` boundary + `resolveZoneTarget` filesystem-facing steps) | **REPAIRED** by this card: `zoneNativeSlash` carries component identity into the walk and the root resolution; the comparison arm keeps slash-normalized matching | t1566 (this card) | `TestCheckProtectedZonePosixBackslashLinkBypass` + `TestResolveZoneTargetPosixBackslashLinkDivergence` GREEN flip (exit 0, deny observed, protected file absent) — M2 evidence above |
+| 1 — zone target resolution | `internal/hook/protected_zone_path.go` (`zoneSlash` boundary + `resolveZoneTarget` filesystem-facing steps, cwd-prepend gate included) | **REPAIRED** by this card, two commits: `7945a442a` (component identity into the walk + root resolution) and `a03c6d56b` (the converted-absoluteness vector — the walk's own platform-correct cwd prepend); the comparison arm keeps slash-normalized matching | t1566 (this card) | M1 tests + `TestCheckProtectedZonePosixBackslashConvertedAbsoluteness` GREEN (exit 0, deny observed, protected file absent); `RED-HZB-004` for the vector |
 | 2 — landing predicate | `internal/cli/worktree/landing_predicate.go:161` | **NO backslash-rewrite pattern at this site** — measured: `grep -c 'ReplaceAll'` over the whole file = **0 hits**; line :161 is the patch-id comparison (`if id == cardIDs[0]`). The ledgered t1561 defect here is the **patch-id whitespace class** (`git patch-id --stable` ignoring whitespace inside strings), a different class from this card's separator rewrite | t1561 | grep count 0 (this run, this tree) + the file read at :140-:166 |
 | 3 — project-boundary walk | `internal/hook/pre_tool.go:1397` | **Backslash-rewrite class site, PRESENT in this tree** (pre-repair form): `strings.Split(strings.ReplaceAll(filepath.ToSlash(p), "\\", "/"), "/")` inside `resolvePhysicalWalk` — the same rewrite-before-resolution class this card repaired in the zone path. Adjacent same-file sites :1596-:1597 normalize for deny/ask REGEX matching (non-resolution consumer; rewrite can only ADD pattern matches, i.e. more deny/ask — fail-closed direction, no bypass instance demonstrated) | t1556 (fix in flight, PR open, touches ONLY pre_tool.go — disjoint from this card's surface) | file read at :1387-:1424 and :1595-:1611 (this run, this tree); grep hits recorded below |
 
@@ -208,8 +209,12 @@ elsewhere in the zone guard files (stated zero, measured by Form B over
 
 ### Package re-measurement verdict against the M1 baseline
 
-*(populated below when the `go test -count=1 -timeout 30m ./internal/hook/`
-post-change run completed — see §E.)*
+- Tree `7945a442a` (M2): failing set EXACTLY the baseline four — countable
+  delta 0, both RED tests GREEN inside the full run (833.8s; §E E2 verbatim).
+- Final tree content `a03c6d56b`: baseline four + six contention-attributed
+  timing tests (load-attribution chain in §E E2; quiet-window re-run recorded
+  in §E E2 when it fired). AC-HZB-004 verdict **PASS** on the countable-delta
+  reading — no failure attributable to the change; CI is the integrated judge.
 
 ## §E — Self-Verification Evidence (run phase)
 
@@ -233,9 +238,54 @@ tree.
     TestProtectedZone (6.42s)` / `ok ... 7.262s` — every subtest green
     (FileTools incl. symlinks, ShellMutation, ManifestStates, NonRegression,
     DenyReason, NoManifestReadForOthers, AuditRow, BaselineCovered, Liveness).
-  - Full affected package: `go test -count=1 -timeout 30m ./internal/hook/` →
-    **AC-HZB-004 verdict**: *(appended below when the post-change run
-    completed — countable delta against the M1-BASELINE set.)*
+  - Full affected package, tree `7945a442a` (the M2 commit): `go test -count=1
+    -timeout 30m ./internal/hook/` → exit 1 (833.8s), failing set EXACTLY the
+    M1-BASELINE four (`TestAstgrepCorpusRunDoesNotSkip`, `TestStaleRunNoticeLegacyLeaderSpelling`,
+    `TestStaleRunNoticeLegacySessionRecord`, `TestStaleRunNoticeFactoryLegacyLabel`)
+    — **countable delta 0; both M1 RED tests flipped GREEN inside the full run**.
+    Verbatim tail:
+
+```
+--- FAIL: TestAstgrepCorpusRunDoesNotSkip (120.01s)
+--- FAIL: TestStaleRunNoticeLegacyLeaderSpelling (0.05s)
+--- FAIL: TestStaleRunNoticeLegacySessionRecord (0.05s)
+--- FAIL: TestStaleRunNoticeFactoryLegacyLabel (0.36s)
+FAIL	github.com/modu-ai/moai-adk/internal/hook	833.807s
+FAIL
+```
+
+  - Full affected package, final tree content = `a03c6d56b`: exit 1 (1170.9s) —
+    the same baseline four PLUS six Factory/SessionStart hook tests
+    (`TestFactoryUserPromptSubmitRecoversAfterFirstTurnFailure`,
+    `TestFactoryUserPromptSubmitRebindsLaunchPendingPeer`,
+    `TestFactoryHookContextAndContinuationSafety`,
+    `TestFactoryHookZeroTurnAndCapabilityTruth`,
+    `TestSessionStart_DeferredScanDoesNotBlockReturn`,
+    `TestSessionStart_DeferredScanJoinsWithinBound`). **Load-attribution
+    evidence chain**: (1) `git diff 7945a442a..a03c6d56b -- internal/hook/` =
+    ONLY `protected_zone_path.go` (+13 lines) and the repro test file — the six
+    failures' subject code (factory/session_start handlers) is byte-identical
+    between the two commits; (2) the observed failure mode is a wall-clock
+    bound ("Handle blocked 1.436523375s; expected return near the 250ms bound")
+    exceeded ~5.7x; (3) measured load during the run window: load average
+    ~207-226 with 9 concurrent `go test` processes (the 2026-08-15 multi-lane
+    contention pattern; the same tree's earlier run took 833.8s vs 1170.9s);
+    (4) the isolated re-run of the six under the same load still tripped the
+    bound. A quiet-window re-run of the six is recorded below when it fired.
+    Per repo discipline the integrated verdict is CI's (origin/main after
+    merge); this local record attributes the six to contention, not to the
+    change. **AC-HZB-004 verdict: PASS** — on the countable-delta reading of
+    the criterion: no failure attributable to the change exists in either full
+    run; the only delta vs baseline is the six contention-attributed timing
+    tests whose subject code the change does not touch.
+  - **Quiet-window re-run of the six (load-watch Monitor fired on go-test
+    storm end)**: (a) `go test -count=1 ./internal/hook/ -run
+    'TestFactoryUserPromptSubmitRecoversAfterFirstTurnFailure|TestFactoryUserPromptSubmitRebindsLaunchPendingPeer|TestFactoryHookContextAndContinuationSafety|TestFactoryHookZeroTurnAndCapabilityTruth|TestSessionStart_DeferredScanDoesNotBlockReturn|TestSessionStart_DeferredScanJoinsWithinBound'`
+    → (b) `ok  	github.com/modu-ai/moai-adk/internal/hook	6.897s`, exit 0;
+    measured load at fire time `load averages: 91.65 55.53 35.65` (uptime
+    verbatim; the fleet go-test storm had ended). The contention attribution
+    holds — the same six subject-code-identical tests pass on the final tree
+    outside the storm window.
 - **E3 — Windows compile surface**: (a) `GOOS=windows go build ./...` → (b) exit
   0 (no output). (c) run 2026-10-07 on `7945a442a`. Also
   `GOOS=windows go build ./internal/hook/` exit 0 at the same tree.
@@ -251,10 +301,10 @@ tree.
 - **E7 — diff scope**: (a) `git diff --name-only f97edcc55..HEAD` → (b) exactly
   `internal/hook/protected_zone_path.go` + `internal/hook/protected_zone_backslash_repro_test.go`
   + this SPEC's 4 artifacts; **no sibling-file repairs** (pre_tool.go and
-  landing_predicate.go untouched). (c) measured on `7945a442a` before the M3
-  evidence commit.
-- **Commits**: `f4f0e3f7d` (M1 RED + evidence), `7945a442a` (M2 repair), M3
-  evidence commit SHA recorded in the M3 section once landed. Branch
+  landing_predicate.go untouched). (c) re-measured on `a03c6d56b`.
+- **Commits**: `f4f0e3f7d` (M1 RED + evidence), `7945a442a` (M2 repair),
+  `a03c6d56b` (M2 amendment — converted-absoluteness vector), M3 evidence
+  commit SHA recorded in the M3 section once landed. Branch
   `WT-protected-zone-backslash`; nothing pushed (lane discipline — integration
   is the leader's window).
 - **Gaps**: the turn-end codex gate re-flags known ledger defects on this base
@@ -263,6 +313,29 @@ tree.
   names a NEW defect in this card's changed files. Full-suite judgment is CI's
   (origin/main after merge); local measurement is the affected package only
   (AGENTS.local.md §4).
+- **E8 — gate-silence discriminator basis (leader request, relayed; the
+  template-E8 RED-output content is carried inside E1)**: the
+  observation "the turn-end gate went quiet on protected_zone_path.go after the
+  repairs" is judged REPAIR SUCCESS, not a gate-repro gap, on this basis:
+  - **Sensitivity (measured, this card's evidence dir)**: every recorded
+    pre-repair gate round DID flag this file — gate-turnend-1
+    (`protected_zone_path.go:36`, P1), gate-turnend-2 (resolution arm, P1,
+    richer statement), gate-turnend-3 (`:183` apply-site, P1, with the
+    line-wobble note) — plus the cross-tree t1556 gate round 8. The gate's
+    overlay probes demonstrably reach this file when the defect is present.
+  - **Repair success (measured natively, load-bearing signal)**: the three
+    in-tree reproduction tests exit 0 on `a03c6d56b` (deny observed, protected
+    file absent) — positive evidence the defect is gone, independent of the
+    gate.
+  - **Caveat (stated honestly)**: the gate runs original-function copies via
+    overlay for its probes, so per-round coverage of our exact function body is
+    INFERRED from the rounds 1-8 history, not re-proven each round; and the
+    post-repair silence itself is not the load-bearing signal — silence is
+    never evidence of success (verification-claim-integrity.md §1). The native
+    tests carry the verdict; the gate's quiet is consistent with them, no more.
+  - **Leader ruling received**: gate `:624` finding → card t1574 (operand
+    parsing; repro material at `.moai/reports/t1574/repro-material.md`) — no
+    action for this card.
 - **Residual-risk**: the repair narrows the zone resolver's input normalization;
   the Bash branch (`checkProtectedZoneShell`) inherits it through the shared
   resolver (REQ-HZB-005) but this card's RED was measured on the Write/Edit
