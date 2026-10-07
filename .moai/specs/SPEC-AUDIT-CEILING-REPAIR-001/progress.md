@@ -677,6 +677,57 @@ coordinator's state summary: F11/F12 fixes restored uncommitted, F13 in
 flight at the seeder-signature step). Recorded per the leader's ledger
 request; the resume did not re-order any committed work.
 
+### Gate round-46 consolidated repair — items 1-6 (one pass, one commit)
+
+**Item 1 (P1, darwin seeder race — measured victim overwrite)**: the
+darwin seeder now re-validates the temp IMMEDIATELY before and after its
+path-based steps — Lstat rejects a swapped-in SYMLINK outright (chmod/cp
+must never write through an attacker-planted link) and fdMatchesName
+re-confirms the held inode — shrinking the F13 window to the
+verify→cp-open microsecond pair. **FLAGGED to the leader per instructions
+(ruling (i) constraint)**: darwin's platform cannot close that last pair
+without cgo (copyfile(3) is userspace; no fd-anchored ACL copy exists) —
+the measured victim-overwrite may warrant revisiting the darwin approach
+(fcopyfile is libc-only; a kauth_filesec/copyfile route is follow-up-SPEC
+material). The existing `TestAppendProgressRecordTempSwapFailsClosed` is
+the shrink's regression (RED face: the gate's measured victim became
+`# progress\n` before the post-check errored).
+
+**Item 2 (P1, F9 fixture order)**: the original is created FIRST (clean,
+mode-only), the directory default ACL set AFTER — the regression now
+exercises the TEMP's inheritance during the replace, not the original's
+creation-time inheritance (gate-measured linux run: `has 4 entries ([1 4
+16 32]), want the 3-entry minimal`). The precondition became
+`Getxattr(original) must FAIL` (clean original); the post-replace decode
+asserts the 3-entry minimal [1, 4, 0x20] with perms [6, 4, 0]. CI-linux
+owns the decisive run.
+
+**Item 3 (P1, windows separator comparison)**: both sides normalize —
+`filepath.ToSlash(resolved) != filepath.ToSlash(target)`; unmeasured on
+windows runtime (CI windows owns it).
+
+**Item 4 (P2, tmp fd never closed)**: the held descriptor closes on EVERY
+path — explicit close before the rename (normal path), deferred close on
+all error paths (idempotent after the explicit close).
+
+**Item 5 (P2, swapped temp excluded from cleanup)**: RED observed at
+`e055710e0` + item-4 state: `the swapped-in foreign regular file was
+deleted by the cleanup` — the deferred remove deleted a foreign REGULAR
+file swapped in by the attacker. Fix: a `swapped` flag set by every
+inode-mismatch path EXCLUDES the name from the deferred cleanup — it is
+no longer ours to touch. Regression test
+`TestAppendProgressRecordSwapKeepsForeignFile` (the attacker swaps in a
+foreign regular file; it survives the abort byte-identical).
+
+**Item 6 (P2, list fence relative indent)**: RED observed pre-fix: `§G
+heading appears 2 times, want 1 (the ordered-list fence swallowed the
+real one)` — the closer of a `10. ```text` opener sits at the ITEM's
+content column (marker 3 + one space = indent 4) and was rejected by the
+absolute 0-3 window. Fix: opensFence reports the OPENER's content column
+(marker + trailing whitespace, Goldmark-consistent) and closesFence judges
+the closer's indent RELATIVE to it (≤ content column + 3). Regression
+test `TestAppendProgressRecordClosesOrderedListFence`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07

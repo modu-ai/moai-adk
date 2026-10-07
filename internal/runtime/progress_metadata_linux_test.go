@@ -93,41 +93,30 @@ func TestAppendProgressRecordOverwritesInheritedDefaultAcl(t *testing.T) {
 		t.Skip("running as root bypasses permission checks — probe meaningless")
 	}
 	specDir := t.TempDir()
-	// Permissive default ACL on the directory: every new file inherits a
-	// group/mask/other shape granting rw beyond the mode.
-	if err := unix.Setxattr(specDir, "system.posix_acl_default", defaultAclBlob(6), 0); err != nil {
-		t.Skipf("filesystem does not support default ACLs here: %v", err)
-	}
 	path := filepath.Join(specDir, "progress.md")
 	pre := "# progress\n\n## §G Override and Refusal Record\n\n- old record\n"
-	// Mode 0640: other users get NOTHING.
+	// The ORIGINAL is created FIRST — clean, mode-only, no inherited
+	// entries (gate round-46 item 2: the dir default ACL is set AFTER, so
+	// the regression exercises the TEMP's inheritance during the replace,
+	// not the original's own creation-time inheritance).
 	if err := os.WriteFile(path, []byte(pre), 0o640); err != nil {
 		t.Fatal(err)
 	}
-	// Precondition (not a skip target on ACL-capable filesystems): the
-	// original INHERITED the permissive access ACL — it carries the mask
-	// entry (0x10) and the permissive other (6), which is exactly the
-	// over-grant F9 removes.
-	buf := make([]byte, 128)
-	n, err := unix.Getxattr(path, posixAclAccess, buf)
-	if err != nil {
-		t.Skipf("the filesystem did not apply the default ACL to the new file: %v", err)
+	if _, err := unix.Getxattr(path, posixAclAccess, nil); err == nil {
+		t.Skipf("the original unexpectedly carries an access ACL")
 	}
-	inheritedTags, inheritedPerms := decodeAclEntries(t, buf[:n])
-	hasMask := false
-	for _, tag := range inheritedTags {
-		if tag == uint16(aclMaskObj) {
-			hasMask = true
-		}
-	}
-	if !hasMask || !containsPerm(inheritedPerms, 6) {
-		t.Skipf("the inherited ACL does not carry the permissive shape (tags %v perms %v)", inheritedTags, inheritedPerms)
+	// Permissive default ACL on the directory: every NEW file (the temp
+	// the replace creates) inherits a group/mask/other shape granting rw
+	// beyond the mode.
+	if err := unix.Setxattr(specDir, "system.posix_acl_default", defaultAclBlob(6), 0); err != nil {
+		t.Skipf("filesystem does not support default ACLs here: %v", err)
 	}
 
 	if err := appendProgressRecord(specDir, "- new record"); err != nil {
 		t.Fatal(err)
 	}
-	n, err = unix.Getxattr(path, posixAclAccess, buf)
+	buf := make([]byte, 128)
+	n, err := unix.Getxattr(path, posixAclAccess, buf)
 	if err != nil {
 		// No access ACL on the result == the minimal-from-mode state the
 		// kernel reports as absent when the file carries only mode bits —

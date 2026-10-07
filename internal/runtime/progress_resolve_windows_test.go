@@ -26,14 +26,16 @@ func TestResolveProgressPathWindowsVolumeRoot(t *testing.T) {
 		t.Skip("no volume name on the temp path")
 	}
 	// A dangling FINAL component returns the walk result — volume root
-	// included, never a bare-separator-prefixed first component.
+	// included, never a bare-separator-prefixed first component. Both
+	// sides normalize: the walker returns filepath.Join's native
+	// separators (gate round-46 item 3).
 	target := filepath.Join(sub, "progress.md")
 	resolved, err := resolveProgressPath(target)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolved != filepath.ToSlash(target) {
-		t.Fatalf("resolved %q, want %q (volume root preserved, components applied in order)", resolved, filepath.ToSlash(target))
+	if got, want := filepath.ToSlash(resolved), filepath.ToSlash(target); got != want {
+		t.Fatalf("resolved %q, want %q (volume root preserved, components applied in order)", got, want)
 	}
 	if strings.HasPrefix(resolved, "/"+vol[:1]) || strings.HasPrefix(resolved, "/"+filepath.VolumeName(resolved)) {
 		t.Fatalf("the volume root was not preserved: %q", resolved)

@@ -672,21 +672,30 @@ func appendProgressRecord(specDir, line string) error {
 	// behind an inode verification.
 	tmpName := tmp.Name()
 	renamed := false
+	swapped := false
 	defer func() {
-		if !renamed {
-			// A mismatch path deliberately does NOT remove the swapped
-			// name — it is no longer ours to touch.
+		_ = tmp.Close() // every path closes the held descriptor (gate round-46 item 4)
+		if !renamed && !swapped {
+			// A swap-mismatch path deliberately does NOT remove the
+			// swapped name — it is no longer ours to touch (gate round-46
+			// item 5: a swapped-in foreign file must survive).
 			_ = os.Remove(tmpName)
 		}
 	}()
 	if !fdMatchesName(tmp, tmpName) {
+		swapped = true
 		return fmt.Errorf("progress.md replace: temp %s was swapped before seeding", tmpName)
 	}
 	if serr := seedFileMetadataFn(tmp, tmpName, path); serr != nil {
-		_ = os.Remove(tmpName)
+		if fdMatchesName(tmp, tmpName) {
+			_ = os.Remove(tmpName)
+		} else {
+			swapped = true
+		}
 		return fmt.Errorf("seed progress.md metadata: %w", serr)
 	}
 	if !fdMatchesName(tmp, tmpName) {
+		swapped = true
 		return fmt.Errorf("progress.md replace: temp %s was swapped during seeding", tmpName)
 	}
 	// Content through the HELD descriptor: truncate + write on the fd —
@@ -701,7 +710,13 @@ func appendProgressRecord(specDir, line string) error {
 		return werr
 	}
 	if !fdMatchesName(tmp, tmpName) {
+		swapped = true
 		return fmt.Errorf("progress.md replace: temp %s was swapped before the rename", tmpName)
+	}
+	// Normal close BEFORE the rename: the descriptor's work is done and
+	// the held-inode guarantee has been verified (gate round-46 item 4).
+	if cerr := tmp.Close(); cerr != nil {
+		return cerr
 	}
 	if rerr := os.Rename(tmpName, path); rerr != nil {
 		return rerr
@@ -827,16 +842,17 @@ func progressWithRecord(content, line string) string {
 	inFence := false
 	var fenceChar byte
 	fenceLen := 0
+	fenceCol := 0
 	for i, l := range lines {
 		if inFence {
-			if closesFence(l, fenceChar, fenceLen) {
+			if closesFence(l, fenceChar, fenceLen, fenceCol) {
 				inFence = false
 			}
 			continue
 		}
-		if c, n, opened := opensFence(l); opened {
+		if c, n, cc, opened := opensFence(l); opened {
 			inFence = true
-			fenceChar, fenceLen = c, n
+			fenceChar, fenceLen, fenceCol = c, n, cc
 			continue
 		}
 		if strings.HasPrefix(l, progressSectionHeading) {
@@ -856,17 +872,19 @@ func progressWithRecord(content, line string) string {
 		inFence := false
 		var fenceChar byte
 		fenceLen := 0
+		fenceCol := 0
 		for i := heading + 1; i < len(lines); i++ {
 			l := lines[i]
 			if inFence {
-				if closesFence(l, fenceChar, fenceLen) {
+				if closesFence(l, fenceChar, fenceLen, fenceCol) {
 					inFence = false
 				}
 				continue
 			}
-			if c, n, opened := opensFence(l); opened {
+			if c, n, cc, opened := opensFence(l); opened {
 				inFence = true
 				fenceChar, fenceLen = c, n
+				fenceCol = cc
 				continue
 			}
 			if strings.HasPrefix(l, "## ") {
@@ -882,7 +900,7 @@ func progressWithRecord(content, line string) string {
 
 // listItemMarker matches a list-item marker at the start of a line: a
 // bullet (-, *, +) or an ordered number with . or ).
-var listItemMarker = regexp.MustCompile(`^([-*+]|\d{1,9}[.)])[ \t]+(\S.*)$`)
+var listItemMarker = regexp.MustCompile(`^([-*+]|\d{1,9}[.)])([ \t]+)(\S.*)$`)
 
 // opensFence reports the fence a line OPENS: a line whose leading run is at
 // least three backticks or three tildes, indented 0-3 columns — either
@@ -891,26 +909,31 @@ var listItemMarker = regexp.MustCompile(`^([-*+]|\d{1,9}[.)])[ \t]+(\S.*)$`)
 // Markdown lets list markers carry fences, and their indented closers must
 // CLOSE them rather than open phantoms — consolidated item 4). The fence
 // character and its run length decide which line can close it.
-func opensFence(line string) (c byte, n int, ok bool) {
+func opensFence(line string) (c byte, n int, contentCol int, ok bool) {
 	indent, trimmed := fenceIndent(line)
 	if indent > 3 || trimmed == "" {
-		return 0, 0, false
+		return 0, 0, 0, false
 	}
+	contentCol = indent
 	if m := listItemMarker.FindStringSubmatch(trimmed); m != nil {
-		trimmed = m[2]
+		// The fence lives at the ITEM's content column (marker + its
+		// trailing whitespace) — gate round-46 item 6: the closer is
+		// judged RELATIVE to that column, not to the line start.
+		contentCol = indent + len(m[1]) + len(m[2])
+		trimmed = m[3]
 	}
 	if trimmed == "" {
-		return 0, 0, false
+		return 0, 0, 0, false
 	}
 	c = trimmed[0]
 	if c != '`' && c != '~' {
-		return 0, 0, false
+		return 0, 0, 0, false
 	}
 	for n < len(trimmed) && trimmed[n] == c {
 		n++
 	}
 	if n < 3 {
-		return 0, 0, false
+		return 0, 0, 0, false
 	}
 	// CommonMark: a BACKTICK fence's info string cannot contain a backtick
 	// — such a line is an inline code span, not a fence open, and treating
@@ -918,17 +941,20 @@ func opensFence(line string) (c byte, n int, ok bool) {
 	// (round-4 edge 7b / gate round-37 item 8). Tilde fences may carry any
 	// info string.
 	if c == '`' && strings.Contains(trimmed[n:], "`") {
-		return 0, 0, false
+		return 0, 0, 0, false
 	}
-	return c, n, true
+	return c, n, contentCol, true
 }
 
 // closesFence reports whether line closes a fence opened with n of the
-// fence character c: indented 0-3 columns (the same Markdown rule), at
-// least n of that character, then nothing but whitespace.
-func closesFence(line string, c byte, n int) bool {
+// fence character c at the opener's content column: the closer's indent
+// is judged RELATIVE to that column (a list item's closer sits at the
+// item's content column — `10. ```text` closes at 4 spaces — gate
+// round-46 item 6), at least n of the same character, then nothing but
+// whitespace.
+func closesFence(line string, c byte, n, contentCol int) bool {
 	indent, trimmed := fenceIndent(line)
-	if indent > 3 {
+	if indent > contentCol+3 {
 		return false
 	}
 	i := 0

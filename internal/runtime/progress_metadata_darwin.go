@@ -27,16 +27,34 @@ func seedFileMetadata(tmp *os.File, tmpPath, original string) error {
 	// the replaced file's ACL is EXACTLY the original's (sync-audit-5
 	// item 2 — the inverse face of F6).
 	//
-	// F13 note: cp -p / chmod are PATH-based — the caller verifies the
-	// held fd against the name immediately before and after this call, and
-	// the CONTENT write is fully fd-based; the residual between those
-	// verifications and cp's internal writes is the flagged darwin
-	// conflict (see the round report).
+	// F13 shrink (gate round-46 item 1 — as far as darwin allows): the
+	// seeder re-validates the temp IMMEDIATELY before its path-based steps
+	// and rejects a swapped-in SYMLINK outright — chmod/cp must never
+	// write through an attacker-planted link — then re-checks after them.
+	// The residual between the re-check and cp's own open is a
+	// microsecond race that darwin's platform constraints cannot close
+	// without cgo (copyfile(3) is userspace; no fd-anchored ACL copy
+	// exists) — FLAGGED to the leader per ruling (i): the measured
+	// victim-overwrite may warrant revisiting the darwin approach.
+	if info, lerr := os.Lstat(tmpPath); lerr != nil {
+		return lerr
+	} else if info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("darwin seeder: temp %s was swapped for a symlink", tmpPath)
+	} else if !fdMatchesName(tmp, tmpPath) {
+		return fmt.Errorf("darwin seeder: temp %s no longer matches the held fd", tmpPath)
+	}
 	if out, err := exec.Command("chmod", "-N", tmpPath).CombinedOutput(); err != nil {
 		return fmt.Errorf("chmod -N %s: %v (%s)", tmpPath, err, out)
 	}
 	if out, err := exec.Command("cp", "-p", original, tmpPath).CombinedOutput(); err != nil {
 		return fmt.Errorf("cp -p %s %s: %v (%s)", original, tmpPath, err, out)
+	}
+	if info, lerr := os.Lstat(tmpPath); lerr != nil {
+		return lerr
+	} else if info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("darwin seeder: temp %s was swapped for a symlink during the copy", tmpPath)
+	} else if !fdMatchesName(tmp, tmpPath) {
+		return fmt.Errorf("darwin seeder: temp %s no longer matches the held fd after the copy", tmpPath)
 	}
 	// Ownership rides the contract too (round-4 edge 6b): cp -p usually
 	// chowns as it copies, and preserveOwnership no-ops when it already

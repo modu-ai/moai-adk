@@ -212,6 +212,58 @@ func TestAppendProgressRecordTempSwapFailsClosed(t *testing.T) {
 	}
 }
 
+// TestAppendProgressRecordSwapKeepsForeignFile (gate round-46 item 5) —
+// when the inode check detects a swap, the swapped-in entry is EXCLUDED
+// from cleanup: it is no longer ours to touch. A foreign REGULAR file
+// swapped in by the attacker must survive the abort (the F8 posture
+// already preserves the original progress.md).
+func TestAppendProgressRecordSwapKeepsForeignFile(t *testing.T) {
+	specDir := t.TempDir()
+	path := filepath.Join(specDir, "progress.md")
+	pre := "# progress\n\n## §G Override and Refusal Record\n\n- old record\n"
+	if err := os.WriteFile(path, []byte(pre), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	foreign := filepath.Join(specDir, "foreign.md")
+	foreignData := "foreign data — the attacker's file, not ours to delete\n"
+	if err := os.WriteFile(foreign, []byte(foreignData), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	orig := seedFileMetadataFn
+	var swappedInPath string
+	seedFileMetadataFn = func(tmp *os.File, tmpPath, original string) error {
+		// The dir-writer swap: move our temp away, replace the name with a
+		// REGULAR file of the attacker's own (not a symlink — deletion
+		// would destroy it).
+		if err := os.Rename(tmpPath, tmpPath+".attacker"); err != nil {
+			return err
+		}
+		swappedInPath = tmpPath
+		return os.WriteFile(tmpPath, []byte(foreignData), 0o644)
+	}
+	t.Cleanup(func() {
+		seedFileMetadataFn = orig
+		_ = os.Remove(path + ".attacker")
+		_ = os.Remove(path)
+	})
+
+	if err := appendProgressRecord(specDir, "- new record"); err == nil {
+		t.Fatal("the swapped temp silently completed the replace")
+	}
+	if swappedInPath == "" {
+		t.Fatal("the swap never ran")
+	}
+	// The swapped-in foreign file must SURVIVE the abort: it is no longer
+	// ours to touch (gate round-46 item 5).
+	raw, rerr := os.ReadFile(swappedInPath)
+	if rerr != nil {
+		t.Fatalf("the swapped-in foreign regular file was deleted by the cleanup: %v", rerr)
+	}
+	if string(raw) != foreignData {
+		t.Fatalf("the foreign file was modified:\n%s", raw)
+	}
+}
+
 // TestAppendProgressRecordPreservesHardlink (round-4 edge 7c) — a
 // hardlinked progress.md keeps the link relationship across the append: a
 // rename would replace only this directory entry's inode and the other

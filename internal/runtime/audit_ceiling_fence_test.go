@@ -197,6 +197,41 @@ func TestAppendProgressRecordStartHeadingSkipsListFence(t *testing.T) {
 	t.Fatalf("no §E.2 heading found:\n%s", content)
 }
 
+// TestAppendProgressRecordClosesOrderedListFence (gate round-46 item 6)
+// — the closer of a `10. ```text` opener sits at the ITEM's content
+// column (marker width 3 + one space = indent 4): the closer's indent is
+// judged RELATIVE to the opener's content column, or the never-closed
+// fence swallows the real §G and duplicates the section at end-of-file
+// (Goldmark renders the block correctly — match that).
+func TestAppendProgressRecordClosesOrderedListFence(t *testing.T) {
+	specDir := t.TempDir()
+	pre := "# progress\n\n10. ```text\n    fenced item content\n    ```\n\n## §G Override and Refusal Record\n\n- old record\n\n## §E.2 Run-phase Evidence\nbody\n"
+	if err := os.WriteFile(filepath.Join(specDir, "progress.md"), []byte(pre), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := appendProgressRecord(specDir, "- new record"); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(specDir, "progress.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(raw)
+	if got := strings.Count(content, progressSectionHeading); got != 1 {
+		t.Fatalf("§G heading appears %d times, want 1 (the ordered-list fence swallowed the real one):\n%s", got, content)
+	}
+	lines := strings.Split(content, "\n")
+	for i, l := range lines {
+		if strings.HasPrefix(l, "## §E.2") {
+			if lines[i-1] != "- new record" {
+				t.Fatalf("the line immediately before the next real heading is %q, want the record:\n%s", lines[i-1], content)
+			}
+			return
+		}
+	}
+	t.Fatalf("no §E.2 heading found:\n%s", content)
+}
+
 // TestAppendProgressRecordStartHeadingSkipsIndentedCodeBlock (round-4
 // edge 5) — a fence marker indented 4+ spaces is an INDENTED CODE BLOCK in
 // Markdown, not a fence: the fence-state tracker must not treat it as a
