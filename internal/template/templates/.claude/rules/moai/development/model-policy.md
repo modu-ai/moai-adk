@@ -150,7 +150,7 @@ The `model_policy` preference (`high` / `medium` / `low`, set with `moai profile
 
 ## Harness-Agent Model Policy
 
-Generated harness specialists (`/moai:harness`, `.claude/agents/harness/`) pin `model:` / `effort:` deliberately, matched to each specialist's purpose (operator decision, 2026-10-05 — e.g. `model: opus` + `effort: high` on the dev-maintainer specialists). A harness v4 manifest may omit a specialist's `model` / `effort`; an omitted field resolves to session inheritance, and an existing manifest that names them still validates. Harness agents are user-owned — `moai update` never rewrites them.
+Generated harness specialists (`/moai:harness`, `.claude/agents/harness/`) pin `model:` / `effort:` deliberately, matched to each specialist's purpose (operator decision — e.g. `model: opus` + `effort: high` on the dev-maintainer specialists). A harness v4 manifest may omit a specialist's `model` / `effort`; an omitted field resolves to session inheritance, and an existing manifest that names them still validates. Harness agents are user-owned — `moai update` never rewrites them.
 
 ## Legacy CG Configuration
 
