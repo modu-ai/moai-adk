@@ -18,6 +18,7 @@ package outbox
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
@@ -32,9 +33,21 @@ const (
 	claimSendRetryDelay = time.Millisecond
 )
 
+// queueItemIDPattern is the only shape an item ID may take: the drain mints
+// IDs as f<sequence digits> and nothing else reaches a path (card-review
+// finding, P2): a tampered queue ID carrying a traversal used to resolve
+// the claim path OUTSIDE the user-scoped store, where a lookalike file was
+// treated as a stale lock and deleted.
+var queueItemIDPattern = regexp.MustCompile(`^f[0-9]+$`)
+
 // ItemSendClaimPath returns the per-item send-ownership claim file's path
-// under the user-scoped store (diagnostics and tests).
+// under the user-scoped store (diagnostics and tests). The ID must pass the
+// f<digits> allowlist BEFORE any path is constructed — a traversal-shaped
+// ID is an error, never a path.
 func ItemSendClaimPath(itemID string) (string, error) {
+	if !queueItemIDPattern.MatchString(itemID) {
+		return "", fmt.Errorf("outbox: queue item id %q fails the f<digits> allowlist", itemID)
+	}
 	return StorePath("send-" + itemID + ".claim")
 }
 
