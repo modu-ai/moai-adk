@@ -322,6 +322,33 @@ func consumeProcessed(consumed []byte, entries, processed int) error {
 	return nil
 }
 
+// rollbackLedgerRecord removes the ledger reservation a FAILED queue
+// mutation left behind: the fingerprint's stamp and exactly the QueuedAt
+// entry this attempt appended (matched by its exact timestamp). Best-effort
+// under its own SHORT queue-lock section — bounded by the caller's context
+// and a quarter-second of its own, so the rollback never turns one failed
+// wait into another full budget; a failure here leaves the orphan shape,
+// which the dedupe check's recovery path re-queues.
+func rollbackLedgerRecord(ctx context.Context, fp, stamp string) {
+	rctx, cancel := context.WithTimeout(ctx, 250*time.Millisecond)
+	defer cancel()
+	store := BugreportQueueStore()
+	_ = store.MutateContext(rctx, func(rec *feedback.QueueRecord) error {
+		ledger, lerr := loadLedger()
+		if lerr != nil {
+			return nil // unreadable: leave it; the orphan recovery handles the retry
+		}
+		delete(ledger.FingerprintSeen, fp)
+		for i, ts := range ledger.QueuedAt {
+			if ts == stamp {
+				ledger.QueuedAt = append(ledger.QueuedAt[:i], ledger.QueuedAt[i+1:]...)
+				break
+			}
+		}
+		return saveLedger(ledger)
+	})
+}
+
 // queueHasFingerprint reports whether a live queue item already carries the
 // fingerprint.
 func queueHasFingerprint(items []feedback.QueueItem, fp string) bool {
@@ -331,6 +358,15 @@ func queueHasFingerprint(items []feedback.QueueItem, fp string) bool {
 		}
 	}
 	return false
+}
+
+// SentHistoryHasFingerprint reports whether the outbox log carries a sent
+// row for the fingerprint — the send-completion record. The drain's orphan
+// recovery discriminates with it, and the sender reconciles a surviving
+// queue item whose send already landed (review-gate hardening round: a
+// send whose queue cleanup failed must not publish again).
+func SentHistoryHasFingerprint(fp string) bool {
+	return sentHistoryHasFingerprint(fp)
 }
 
 // sentHistoryHasFingerprint reports whether the outbox log carries a sent
@@ -444,6 +480,8 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 	// append → queue bound → ledger record, all under the queue lock.
 	store := BugreportQueueStore()
 	title, body := RenderReport(payload)
+	at := clock()
+	stamp := at.UTC().Format(time.RFC3339)
 	var outcome *drainOutcome
 	var ledgerBroken bool
 	var droppedIDs []string
@@ -483,7 +521,7 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 			ID:          fmt.Sprintf("f%d", rec.LastSeq),
 			Title:       title,
 			Body:        body,
-			QueuedAt:    clock().UTC().Format(time.RFC3339),
+			QueuedAt:    stamp,
 			Fingerprint: payload.Fingerprint,
 			Kind:        string(payload.Kind),
 		}
@@ -499,7 +537,7 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 			droppedIDs = append(droppedIDs, oldest.ID)
 		}
 
-		ledger.RecordQueued(payload.Fingerprint, clock())
+		ledger.RecordQueued(payload.Fingerprint, at)
 		if serr := saveLedger(ledger); serr != nil {
 			// Aborting the callback leaves the queue file unchanged: a
 			// signal whose ledger commit failed is never queued.
@@ -516,6 +554,19 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 		// spool for the next drain rather than being consumed as lost
 		// (review-gate finding: the failed item used to leave with the
 		// batch — a lost report).
+		//
+		// The ledger reservation the failed mutation recorded is rolled
+		// back: a save that did not land must not count into the rolling
+		// caps, or N retries reach the daily cap with an empty queue and
+		// the next run classifies the report `capped` — and consumes it
+		// (review-gate residual, P2). A crash between record and rollback
+		// leaves the ORPHAN shape, which the dedupe check's recovery path
+		// re-queues. A cancelled context skips the rollback — the orphan
+		// recovery is the net for that shape too, and the rollback must
+		// never extend the drain past its own deadline.
+		if ctx.Err() == nil {
+			rollbackLedgerRecord(ctx, fp, stamp)
+		}
 		return &drainOutcome{outcome: "dropped", reason: "queue write failed: " + err.Error(), fp: fp}, true
 	}
 	if outcome != nil {
