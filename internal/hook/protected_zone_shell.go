@@ -1154,6 +1154,41 @@ func mergeZoneWorlds(entry, post map[string]*zoneFuncBodies) map[string]*zoneFun
 	return out
 }
 
+// mergeBranchJoin joins an if-chain's EXHAUSTIVE branch worlds over the
+// pre-branch entry with the certain-intersection rule (gate round 4, card
+// t1574): real bash executes exactly one branch, so a name declared
+// certainly in EVERY contributing world is certain post-join — the
+// then/else chain is the only such join in this walker. The entry world
+// (the post-condition registry) holds the names defined before the branch:
+// present in every reachable world by definition. A name missing from any
+// reachable world, or conditional in any contributing world (an inner join
+// already found a world lacking it), keeps the possibility of absence
+// (REQ-ZSP-002, spec D1). The sibling joins must NOT use this: &&/||'s
+// entry is the always-ran left side (mergeZoneWorlds is already exact
+// there), and case plus the loops keep a may-skip world where the
+// possibility of absence stays sound.
+func mergeBranchJoin(entry map[string]*zoneFuncBodies, worlds ...map[string]*zoneFuncBodies) map[string]*zoneFuncBodies {
+	out := mergeZoneFuncs(append([]map[string]*zoneFuncBodies{entry}, worlds...)...)
+	for name, def := range out {
+		if _, was := entry[name]; was {
+			// defined before the branch: certain whatever the bodies did —
+			// they only redefine it
+			def.conditional = false
+			continue
+		}
+		allCertain := true
+		for _, world := range worlds {
+			wdef, ok := world[name]
+			if !ok || wdef.conditional {
+				allCertain = false
+				break
+			}
+		}
+		def.conditional = !allCertain
+	}
+	return out
+}
+
 // zoneWalkStmt walks one statement. Every branch's mutations and redirections
 // are real; the working directory is a SET of possible values, and the walk
 // unions the worlds control flow can produce (round 8, the operator-approved
@@ -1388,15 +1423,35 @@ func (w *zoneWalker) walkIfChain(clause *syntax.IfClause) {
 	thenFuncs := w.funcs
 	w.setCwds(afterCond)
 	w.funcs = cloneZoneFuncs(branchFuncs)
-	w.walkIfChain(clause.Else)
-	afterElse := append([]string(nil), w.cwds...)
-	elseFuncs := w.funcs
+	var elseFuncs map[string]*zoneFuncBodies
+	var afterElse []string
+	if clause.Else != nil && len(clause.Else.Cond) == 0 {
+		// the TERMINAL else list (gate round 4, card t1574): mvdan folds a
+		// plain `else` into an IfClause carrying no condition — its
+		// statements are EXHAUSTIVE, exactly one of then/else runs and
+		// there is no skip world at this level. Walk it as a plain world.
+		for _, s := range clause.Else.Then {
+			w.zoneWalkStmt(s)
+		}
+		elseFuncs = w.funcs
+		afterElse = append([]string(nil), w.cwds...)
+	} else {
+		// an elif level (or no else at all): another conditional world whose
+		// condition may fail — the skip world is the pre-branch registry
+		// the recursion starts from (a nil Else returns immediately,
+		// leaving that clone in place)
+		w.walkIfChain(clause.Else)
+		elseFuncs = w.funcs
+		afterElse = append([]string(nil), w.cwds...)
+	}
 	// union: the then world, the else world, the condition-false world —
 	// directories and function definitions alike (round 14 P1); a name
 	// declared only inside a branch keeps the possibility of absence (card
-	// t1574 K2)
-	joined := mergeZoneWorlds(branchFuncs, thenFuncs)
-	w.funcs = mergeZoneWorlds(joined, elseFuncs)
+	// t1574 K2), while a name declared certainly in EVERY branch world is
+	// certain — the then/else pair is exhaustive (gate round 4, card
+	// t1574). The recursive elif side folds its own chain first, so its
+	// certainty flags already encode the deeper intersection.
+	w.funcs = mergeBranchJoin(branchFuncs, thenFuncs, elseFuncs)
 	w.cwds = append(pre, afterThen...)
 	w.cwds = append(w.cwds, afterElse...)
 	w.setCwds(w.cwds)

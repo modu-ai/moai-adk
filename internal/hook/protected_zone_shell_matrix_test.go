@@ -69,6 +69,19 @@ func zoneParsingMatrixCells() []zoneMatrixCell {
 	add("conditional_decl_paren_form", "false && rm() { :; }; rm zone_dir/x", zoneMatrixDenyProbe)
 	add("conditional_decl_kw_form", "false && function rm { :; }; rm zone_dir/x", zoneMatrixDenyProbe)
 	add("conditional_decl_if_branch", "if false; then rm() { :; }; fi; rm zone_dir/x", zoneMatrixDenyProbe)
+	// gate round 4 (card t1574): the then/else worlds are EXHAUSTIVE — real
+	// bash executes exactly one branch — so a name declared certainly in
+	// EVERY branch world is certain post-join and the final rm resolves to
+	// the no-op shadow (allow, as at base). A name declared in only some
+	// worlds keeps the possibility of absence (deny); the elif form pins the
+	// recursive chain.
+	add("if_else_all_branches_declare", "if true; then rm() { :; }; else rm() { :; }; fi; rm zone_dir/secret.md", zoneMatrixAllow)
+	add("elif_all_branches_declare", "if false; then rm() { :; }; elif true; then rm() { :; }; else rm() { :; }; fi; rm zone_dir/secret.md", zoneMatrixAllow)
+	// three reachable worlds (top-then, elif-then, else) and rm declared in
+	// only two: the world that lacks it keeps the possibility of absence —
+	// sound over-denial, the walker cannot evaluate the conditions
+	add("elif_partial_declare_stays_conditional", "if false; then :; elif true; then rm() { :; }; else rm() { :; }; fi; rm zone_dir/secret.md", zoneMatrixDenyProbe)
+	add("if_one_branch_declares_control", "if true; then rm() { :; }; else :; fi; rm zone_dir/secret.md", zoneMatrixDenyProbe)
 	add("conditional_decl_for_body", "for i in 1; do rm() { :; }; done; rm zone_dir/x", zoneMatrixDenyProbe)
 	add("conditional_decl_while_body", "while false; do rm() { :; }; done; rm zone_dir/x", zoneMatrixDenyProbe)
 	// gate round 3 (card t1574): the while/until CONDITION list always
