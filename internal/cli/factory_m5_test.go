@@ -20,7 +20,6 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
-	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // sdCardLaunchCapture is one substituted Codex child: the argv the launcher
@@ -79,13 +78,12 @@ func sdCodexSessionWork(t *testing.T, root, cardID string) {
 	}
 }
 
-// AC-SD-003 — `moai codex -l` is a supervising loop: two operator-picked
-// cards, a substituted Codex session that exits 0 after moving its card to
-// merge-ready, then one more invocation per card with that card's worktree as
-// the child's working directory and the marker, the lane label, the Codex
-// backend value, and that card's id in the card-identifier variable — and the
-// launcher exits 0 once `next` reports no card.
-func TestSD_AC003_CodexRelaunchPerCard(t *testing.T) {
+// AC-SD-003 (card t1554) — `moai codex -l` starts ONE lane session: the
+// boot auto-lease loop is removed, so the launcher leases nothing and the
+// session runs in the parent checkout carrying the marker, the lane label,
+// and the Codex backend value, with the `moai todo --auto` initiation prompt
+// as its directive — the session consumes the queue itself.
+func TestSD_AC003_CodexLaneSessionOneShot(t *testing.T) {
 	root, store := fcFixture(t)
 	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
@@ -98,15 +96,11 @@ func TestSD_AC003_CodexRelaunchPerCard(t *testing.T) {
 	codexLookPath = func(string) (string, error) { return "/sentinel/codex", nil }
 	prevDirect := codexDirectLaunchFn
 	codexDirectLaunchFn = func(c *exec.Cmd) error {
-		cap := sdCardLaunchCapture{
+		got = append(got, sdCardLaunchCapture{
 			argv: append([]string(nil), c.Args...),
 			dir:  c.Dir,
 			env:  sdEnvOf(t, c.Env),
-		}
-		got = append(got, cap)
-		// The substituted session moves ITS OWN card (the id the launcher
-		// handed it) to merge-ready, then exits 0.
-		sdCodexSessionWork(t, root, cap.env[config.EnvFactoryCard])
+		})
 		return nil
 	}
 	t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })
@@ -115,44 +109,55 @@ func TestSD_AC003_CodexRelaunchPerCard(t *testing.T) {
 		t.Fatalf("codex lane: %v", err)
 	}
 
-	if len(got) != 2 {
-		t.Fatalf("the substituted Codex session was invoked %d times, want 2 (once per operator-picked card)", len(got))
+	// The launcher's root resolves through the queue-root resolver, which
+	// evaluates symlinks (/var → /private/var on darwin temp dirs) — compare
+	// the evaluated spelling.
+	primary, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatalf("evaluate fixture root: %v", err)
 	}
-	for i, cardID := range []string{"t1", "t2"} {
-		card := fcCard(t, root, cardID)
-		if card.State != homestate.CardMergeReady {
-			t.Errorf("%s ended at %s, want merge-ready (the substitute moved it)", cardID, card.State)
+	if len(got) != 1 {
+		t.Fatalf("the launcher started %d sessions, want 1 (the lane session)", len(got))
+	}
+	rec := got[0]
+	// The session runs in the parent checkout — the lease machinery's own
+	// precondition (REQ-SD-010) — and argv carries it through -C.
+	if !sameDirPath(rec.dir, primary) {
+		t.Errorf("session working directory = %q, want the parent checkout %q", rec.dir, primary)
+	}
+	if !containsPair(rec.argv, "-C", primary) {
+		t.Errorf("argv %v does not carry -C with the parent checkout", rec.argv)
+	}
+	// The --auto initiation prompt is the session's directive.
+	prompted := false
+	for _, a := range rec.argv {
+		if strings.Contains(a, "moai todo --auto") {
+			prompted = true
 		}
-		if card.WorktreePath == "" {
-			t.Fatalf("%s recorded no worktree", cardID)
+	}
+	if !prompted {
+		t.Errorf("argv %v carries no `moai todo --auto` initiation prompt", rec.argv)
+	}
+	if rec.env[config.EnvFactoryRole] != config.FactoryRoleLane {
+		t.Errorf("session env %s = %q, want the value constant %q", config.EnvFactoryRole, rec.env[config.EnvFactoryRole], config.FactoryRoleLane)
+	}
+	if rec.env[config.EnvMoaiFactoryWorker] != wantLabel {
+		t.Errorf("session env %s = %q, want the lane label %q", config.EnvMoaiFactoryWorker, rec.env[config.EnvMoaiFactoryWorker], wantLabel)
+	}
+	if rec.env[config.EnvFactoryBackend] != factory.BackendGPT {
+		t.Errorf("session env %s = %q, want the Codex harness value %q", config.EnvFactoryBackend, rec.env[config.EnvFactoryBackend], factory.BackendGPT)
+	}
+	// The card-identifier variable stays unset: no card is leased at boot.
+	if rec.env[config.EnvFactoryCard] != "" {
+		t.Errorf("session env carries %s=%q; the launcher leases nothing", config.EnvFactoryCard, rec.env[config.EnvFactoryCard])
+	}
+	// The queue is untouched: no lease, no record rows.
+	for _, cardID := range []string{"t1", "t2"} {
+		if fcHasCard(t, root, cardID) {
+			t.Errorf("%s gained a factory record row; the launcher must not lease", cardID)
 		}
-		rec := got[i]
-		if rec.dir != card.WorktreePath {
-			t.Errorf("invocation %d: child working directory = %q, want card %s's own worktree %q", i, rec.dir, cardID, card.WorktreePath)
-		}
-		if !containsPair(rec.argv, "-C", card.WorktreePath) {
-			t.Errorf("invocation %d: argv %v does not carry -C with the card worktree", i, rec.argv)
-		}
-		if rec.env[config.EnvFactoryRole] != config.FactoryRoleLane {
-			t.Errorf("invocation %d: child env %s = %q, want the value constant %q", i, config.EnvFactoryRole, rec.env[config.EnvFactoryRole], config.FactoryRoleLane)
-		}
-		if rec.env[config.EnvMoaiFactoryWorker] != wantLabel {
-			t.Errorf("invocation %d: child env %s = %q, want the lane label %q", i, config.EnvMoaiFactoryWorker, rec.env[config.EnvMoaiFactoryWorker], wantLabel)
-		}
-		// The factory card verbs the owned-card session runs read the lane
-		// label from MOAI_FACTORY_WORKER alone; the retired MOAI_KANBAN_LABEL
-		// carrier is no longer stamped (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-012).
-		if v := rec.env[retiredLaneLabelMarker]; v != "" {
-			t.Errorf("invocation %d: child env carries the retired %s=%q", i, retiredLaneLabelMarker, v)
-		}
-		if rec.env[config.EnvFactoryBackend] != factory.BackendGPT {
-			t.Errorf("invocation %d: child env %s = %q, want the Codex harness value %q", i, config.EnvFactoryBackend, rec.env[config.EnvFactoryBackend], factory.BackendGPT)
-		}
-		if rec.env[config.EnvFactoryCard] != cardID {
-			t.Errorf("invocation %d: child env %s = %q, want card %s's id", i, config.EnvFactoryCard, rec.env[config.EnvFactoryCard], cardID)
-		}
-		if rec.env[config.EnvFactoryRunID] != "" {
-			t.Errorf("invocation %d: child env carries the run id %s=%q; the eleven-key scrub holds on the lane path too", i, config.EnvFactoryRunID, rec.env[config.EnvFactoryRunID])
+		if s := nmQueueState(t, store, cardID); s != factory.BacklogStatePicked {
+			t.Errorf("%s queue state = %s, want picked (the seeded operator pick stands)", cardID, s)
 		}
 	}
 }

@@ -14,6 +14,7 @@ package cli
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -101,9 +102,9 @@ func laneKeyNames(env map[string]string) []string {
 	return names
 }
 
-// TestCodexLaneChildEnvOmitsLabelMarker — AC-013, first half: the per-card
-// child of the Codex relaunch loop carries the lane role, the lane label under
-// MOAI_FACTORY_WORKER, the backend, the card id and the dispatch mode the
+// TestCodexLaneChildEnvOmitsLabelMarker — AC-013, first half: the parent
+// lane session carries the lane role, the lane label under
+// MOAI_FACTORY_WORKER, the backend, the run id and the dispatch mode the
 // launcher's own lane stamp exports, and no other lane-family key — in
 // particular no MOAI_KANBAN_LABEL, under that name or any other.
 func TestCodexLaneChildEnvOmitsLabelMarker(t *testing.T) {
@@ -116,7 +117,7 @@ func TestCodexLaneChildEnvOmitsLabelMarker(t *testing.T) {
 		config.EnvFactoryRole,
 		config.EnvMoaiFactoryWorker,
 		config.EnvFactoryBackend,
-		config.EnvFactoryCard,
+		config.EnvFactoryRunID,
 	}
 	sort.Strings(want)
 	if got := laneKeyNames(lane.env); !slices.Equal(got, want) {
@@ -124,6 +125,9 @@ func TestCodexLaneChildEnvOmitsLabelMarker(t *testing.T) {
 	}
 	if lane.env[config.EnvFactoryRole] != config.FactoryRoleLane || lane.env[config.EnvMoaiFactoryWorker] == "" {
 		t.Errorf("the child does not identify itself as a lane: role=%q worker=%q", lane.env[config.EnvFactoryRole], lane.env[config.EnvMoaiFactoryWorker])
+	}
+	if lane.env[config.EnvFactoryRunID] != fcRun {
+		t.Errorf("lane run = %q, want %q", lane.env[config.EnvFactoryRunID], fcRun)
 	}
 }
 
@@ -161,7 +165,8 @@ func adoptChildLaneEnv(child map[string]string) func() {
 // TestFactoryCardVerbsResolveLaneFromWorkerMarker — AC-013, second half: with
 // the process environment set to exactly the Codex lane child's, the factory
 // card verbs resolve the lane label and admission from MOAI_FACTORY_WORKER and
-// MOAI_FACTORY_ROLE alone and the card reaches merge-ready. A launcher that
+// MOAI_FACTORY_ROLE alone. The session leases its own card and advances it
+// to merge-ready; the launcher never leases at boot. A launcher that
 // stopped publishing the worker marker along with the label fails here.
 func TestFactoryCardVerbsResolveLaneFromWorkerMarker(t *testing.T) {
 	root, store := fcFixture(t)
@@ -169,6 +174,10 @@ func TestFactoryCardVerbsResolveLaneFromWorkerMarker(t *testing.T) {
 	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 	t.Chdir(root)
 	netScrubLaneEnv(t)
+	primary, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatalf("evaluate fixture root: %v", err)
+	}
 
 	sessions := 0
 	prevLook, prevDirect := codexLookPath, codexDirectLaunchFn
@@ -176,6 +185,15 @@ func TestFactoryCardVerbsResolveLaneFromWorkerMarker(t *testing.T) {
 	codexDirectLaunchFn = func(c *exec.Cmd) error {
 		sessions++
 		child := sdEnvOf(t, c.Env)
+		if c.Dir != primary {
+			t.Fatalf("lane session directory = %q, want parent checkout %q", c.Dir, primary)
+		}
+		if child[config.EnvFactoryCard] != "" || fcHasCard(t, root, "t1") {
+			t.Fatal("the launcher leased a card before the lane session requested one")
+		}
+		if state := nmQueueState(t, store, "t1"); state != factory.BacklogStatePicked {
+			t.Fatalf("boot changed t1 queue state to %s, want picked", state)
+		}
 		restore := adoptChildLaneEnv(child)
 		defer restore()
 
@@ -183,10 +201,17 @@ func TestFactoryCardVerbsResolveLaneFromWorkerMarker(t *testing.T) {
 			t.Errorf("lane admission is false in the child environment (role=%q)", child[config.EnvFactoryRole])
 		}
 		label, err := factoryLaneLabelFromEnv("stage")
-		if err != nil || label != child[config.EnvMoaiFactoryWorker] {
-			t.Errorf("lane label from the child environment = (%q, %v), want %q", label, err, child[config.EnvMoaiFactoryWorker])
+		if err != nil || label == "" || label != child[config.EnvMoaiFactoryWorker] {
+			t.Fatalf("lane label from the child environment = (%q, %v), want %q", label, err, child[config.EnvMoaiFactoryWorker])
 		}
-		sdCodexSessionWork(t, root, child[config.EnvFactoryCard])
+		if _, _, err := runFactory(t, "next", "--card", "t1", "--run", fcRun); err != nil {
+			t.Fatalf("lane session leases t1: %v", err)
+		}
+		card := fcCard(t, root, "t1")
+		if card.OwnerLabel != label || card.LeaseHolder != label {
+			t.Fatalf("t1 owner=%q lease holder=%q, want worker marker %q", card.OwnerLabel, card.LeaseHolder, label)
+		}
+		sdCodexSessionWork(t, root, card.CardID)
 		return nil
 	}
 	t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })

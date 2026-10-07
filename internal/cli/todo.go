@@ -273,13 +273,21 @@ mentions an id later in the sentence still falls through, and
 				if len(args) > 0 {
 					return fmt.Errorf("--auto takes no card arguments; the invocation is the operator's batch approval of the queue, never an admission")
 				}
-				return runAutoCycle(cmd.OutOrStdout(), newTodoStore(), resolveTodoQueueRoot(), autoOptions{
+				opts := autoOptions{
 					wait:     todoAutoWait,
 					liveness: newAutoLiveness(),
 					landed:   todoAutoLandedLookup,
 					jevRank:  todoAutoJevRanker,
 					quota:    todoAutoQuotaLine,
-				})
+				}
+				if todoLaneSession() {
+					// Card t1554: a lane session's --auto invocation IS the
+					// cycle — the lease-based lane form. Its only queue write
+					// is the nominated lease edge, so the REQ-SD-015 queue
+					// guarantee holds by construction.
+					return runAutoLaneCycle(cmd.Context(), resolveTodoQueueRoot(), cmd.OutOrStdout(), cmd.ErrOrStderr(), opts)
+				}
+				return runAutoCycle(cmd.OutOrStdout(), newTodoStore(), resolveTodoQueueRoot(), opts)
 			}
 			if len(args) == 0 {
 				return runTodoList(cmd, false, false, todoListDefaultLimit)
@@ -313,7 +321,7 @@ mentions an id later in the sentence still falls through, and
 		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd(),
 		newTodoShowCmd(), newTodoTriageCmd())
 	cmd.Flags().BoolVar(&todoAutoFlag, "auto", false,
-		"process the queue serially: pick one card, dispatch one isolated worker, judge completion on disk evidence, then accept the next; the invocation is the operator's batch approval of the queue and nothing else; the queued candidates are ranked first (a Jev signal when available, else recorded priority and readiness), and only a card whose text begins with the [보류 marker is demoted — a hold stated in prose without the marker is not (the structural hold is moai todo hold)")
+		"process the queue serially: pick one card, dispatch one isolated worker, judge completion on disk evidence, then accept the next; the invocation is the operator's batch approval of the queue and nothing else; the queued candidates are ranked first (a Jev signal when available, else recorded priority and readiness), and only a card whose text begins with the [보류 marker is demoted — a hold stated in prose without the marker is not (the structural hold is moai todo hold); a lane session runs the same cycle through the lease edges — its only queue write is the nominated lease, and completion stays with the existing completion path")
 	cmd.Flags().DurationVar(&todoAutoWait, "auto-wait", 30*time.Minute,
 		"per-card deadline for the worker evidence file before the card is unpicked with a labelled non-finding")
 	return cmd
@@ -377,6 +385,15 @@ func todoTreeRoot(run *cobra.Command) *cobra.Command {
 // `add`, a mutation. root is the tree the hook was defined on; run is the
 // command actually executing.
 //
+// Card t1554 replaced the dedicated `--auto` lane refusal this guard once
+// carried (SPEC-TODO-AUTO-PICK-001 REQ-TAU-008): a lane session's `--auto`
+// invocation now runs the lease-based lane cycle (runAutoLaneCycle, dispatched
+// from RunE on todoLaneSession), whose only queue write is the nominated
+// lease edge — the queue guarantee that refusal carried holds by construction,
+// and the REQ-SD-015 mutation refusal below is unchanged for every other
+// form. The bare-parent allowance below is what lets the `--auto` invocation
+// reach RunE.
+//
 // @MX:NOTE: [AUTO] SPEC-TODO-CLAIM-LEASE-001 C6 flag-form guard extension:
 // `todo claim` is deliberately NOT exempted from this guard in either form.
 // A bare claim from a lane session and a `--lane <label>` claim while
@@ -387,16 +404,6 @@ func todoTreeRoot(run *cobra.Command) *cobra.Command {
 // governance remains t1338's decision; this guard is where that decision
 // would land if it ever widens the allowlist.
 func todoRefuseLaneMutation(root, run *cobra.Command, args []string) error {
-	// SPEC-TODO-AUTO-PICK-001 REQ-TAU-008: a LANE session — role marker `lane`,
-	// or a non-empty lane label; the Codex backend marker alone does not make a
-	// session a lane here, a Codex-backend leader keeps its batch approval — is
-	// refused the serial cycle: the lease (`moai factory next [--card <id>]`)
-	// is its only pick path. The guard sits ahead of the bare-parent allowance
-	// below, which would otherwise let `--auto` through, and ahead of the cycle,
-	// so the queue file stays byte-identical.
-	if run == root && todoAutoFlag && todoLaneSession() {
-		return fmt.Errorf("%s", todoLaneAutoRefusalText())
-	}
 	if !factoryLaneRefusal() {
 		return nil
 	}
@@ -411,22 +418,13 @@ func todoRefuseLaneMutation(root, run *cobra.Command, args []string) error {
 }
 
 // todoLaneSession reports whether this process is a lane session for the
-// `--auto` refusal: the lane role marker equals the role value, or the lane
+// `--auto` dispatch: the lane role marker equals the role value, or the lane
 // label variable is non-empty. It is deliberately narrower than
-// factoryLaneRefusal, whose Codex-backend clause would also refuse a non-lane
+// factoryLaneRefusal, whose Codex-backend clause would also capture a non-lane
 // Codex-backend session — one with no lease alternative (`moai factory next`
 // refuses outside a lane) and whose batch approval must stay usable.
 func todoLaneSession() bool {
 	return factoryLaneAdmission() || os.Getenv(config.EnvMoaiFactoryWorker) != ""
-}
-
-// todoLaneAutoRefusalText is the dedicated wording of the lane `--auto`
-// refusal. It is not the queue-mutation text: it tells the lane what to do —
-// the `--auto` authorization is exercised through the lease, so a lane that
-// reads it proceeds instead of stopping to ask.
-func todoLaneAutoRefusalText() string {
-	return fmt.Sprintf("moai todo --auto: refused — %s: a lane session does not run the serial cycle; the --auto authorization is exercised through moai factory next --card <id> (bare moai factory next takes the priority-order card): read the queue with moai todo list, why, pr and show, nominate the card you judged, and re-select on a refusal",
-		factoryLaneBoundarySentinel)
 }
 
 // todoLaneMutationRefusalText is the one wording source for the REQ-SD-015
