@@ -1,0 +1,8 @@
+#!/bin/sh
+# t1534 probe stub — gh pr checks lookup failure with an output that carries
+# none of the substrings the auto-merge loop greps for (pending/running/fail/
+# error/pass). Mirrors the real "no checks reported on the '<branch>' branch"
+# shape gh emits when a PR has no check runs yet. Committed canonical copy;
+# invoked by run-checks-loop.sh via PATH.
+echo "no checks reported on the 'develop' branch" >&2
+exit 1

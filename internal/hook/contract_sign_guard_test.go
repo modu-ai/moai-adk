@@ -163,16 +163,21 @@ func TestContractSignUnclassifiedDeniedClosed(t *testing.T) {
 // decide in a worker session. PreToolUse runs before execution, so no
 // command failure can produce the deny.
 func TestContractSignDeniedBeforeVerbExists(t *testing.T) {
+	requireBash(t)
 	stubDir := t.TempDir()
 	stub := filepath.Join(stubDir, "moai")
 	script := "#!/bin/sh\necho 'Unknown command \"contract\"' >&2\nexit 1\n"
 	if err := os.WriteFile(stub, []byte(script), 0o755); err != nil {
 		t.Fatalf("write stub moai binary: %v", err)
 	}
+	bash, err := exec.LookPath("bash")
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("PATH", stubDir)
 
 	// The precondition is a measured value, not an assumption.
-	help := exec.Command("moai", "contract", "--help")
+	help := exec.Command(bash, stub, "contract", "--help")
 	var stderr strings.Builder
 	help.Stderr = &stderr
 	if err := help.Run(); err == nil {
