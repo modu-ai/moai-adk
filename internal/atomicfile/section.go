@@ -39,6 +39,10 @@ import (
 // reclaimer's swap between the verdict and the gate).
 var sectionRereadFn = os.ReadFile
 
+// sectionRenameFn is the break's critical-section seam: the atomic rename
+// that detaches the verified-dead lock from its shared path.
+var sectionRenameFn = os.Rename
+
 // sectionRemoveFn is the removal seam.
 var sectionRemoveFn = os.Remove
 
@@ -121,16 +125,30 @@ func writeOwnerLabel(path string, perm os.FileMode) error {
 // BreakStaleLock removes the lock file at path when its recorded owner is
 // verifiably dead, reporting whether a break happened.
 //
-// The verdict is made from a FRESH read of the file at the path — never a
-// carried-over snapshot — and the removal is gated on an immediate re-read:
-// if the bytes changed between the verdict and the remove, another reclaimer
-// has already reclaimed and acquired (its fresh, labelled, live lock now
-// sits at the path), and removing by path would delete THEIR lock. That
-// re-read gate keeps two concurrent reclaimers from entering the section
-// together; the residual gap between the re-read and the remove is bounded
-// on the harm side by the release path's own self-label check, so a freak
-// interleaving degrades to one extra lock cycle, never to two writers
-// inside one section by construction of the next acquire.
+// Verify-fresh and break are ONE cross-process critical section, and its
+// boundary is an atomic RENAME: the breaker renames the dead lock to a
+// unique break-name, verifies the MOVED bytes are still the ones its
+// verdict was made on, and disposes of the detached file. The rename is the
+// serialization: only one renamer succeeds (every other contender's rename
+// fails because the file is gone), so no rival can interleave a reclaim
+// between this breaker's verdict and its disposal, and the disposal
+// targets the breaker's own detached copy — never whatever a rival may
+// have acquired at the now-free path. The predecessor scheme (verify, then
+// remove by path) left exactly that window: a rival's reclaim landing in it
+// had its fresh, live lock deleted by the late remove, and the next acquirer
+// entered the section beside the rival's still-running writer.
+//
+// A mismatch after the rename — the moved bytes differing from the verdict
+// bytes — is impossible by construction under this scheme (changing the
+// file's bytes at the path requires a prior successful rename, which would
+// have made this breaker's rename fail), but it is handled rather than
+// assumed: the moved lock is restored to the path best-effort and the break
+// reports no break, never deleting bytes it cannot attribute.
+//
+// A breaker that dies between the rename and the remove leaves a tiny
+// detached `*.break-*` debris file: it is unlabelled bytes nobody claims,
+// harmless to every later acquirer, and bounded by the microsecond window
+// it takes to crash in.
 func BreakStaleLock(path string) bool {
 	raw, err := sectionRereadFn(path)
 	if err != nil {
@@ -143,14 +161,33 @@ func BreakStaleLock(path string) bool {
 	if !OwnerIsDead(owner) {
 		return false
 	}
-	// The re-read gate: the bytes at the path must STILL be the bytes the
-	// verdict was made on.
-	now, err := os.ReadFile(path)
-	if err != nil || string(now) != string(raw) {
-		return false // someone reclaimed between verdict and remove
-	}
-	if err := sectionRemoveFn(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+
+	// The critical-section boundary: atomically detach the verified-dead
+	// lock from its shared path. Losing the rename means another breaker
+	// (or a self-label release) already moved or removed the lock — this
+	// breaker re-loops and finds whoever acquired at the path now.
+	breakPath := path + ".break-" + fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
+	if err := sectionRenameFn(path, breakPath); err != nil {
 		return false
+	}
+
+	// Verify INSIDE the section: the bytes this breaker moved must still be
+	// the bytes its verdict was made on.
+	moved, err := os.ReadFile(breakPath)
+	if err != nil || string(moved) != string(raw) {
+		// Not attributable to this verdict: restore best-effort and report
+		// no break — deleting would dispose of a lock this breaker never
+		// verified.
+		_ = sectionRenameFn(breakPath, path)
+		return false
+	}
+
+	if err := sectionRemoveFn(breakPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		// The dead lock is detached either way; a surviving break-file is
+		// debris, not a wedge. Report the break: the path is free.
+		slog.Warn("lock section: broke a stale lock, break-file removal failed",
+			"lock", path, "break_file", breakPath, "owner_pid", owner.PID)
+		return true
 	}
 	slog.Warn("lock section: broke a stale lock (verified-dead owner)",
 		"lock", path, "owner_pid", owner.PID, "owner_boot", owner.BootID)
