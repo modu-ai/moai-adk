@@ -187,9 +187,21 @@ func (l *Ledger) MarkDiscarded(fp string, now time.Time) {
 	l.Discarded[fp] = now.UTC().Format(time.RFC3339)
 }
 
-// TerminallyDiscarded reports whether the fingerprint carries a terminal
-// discard marker.
-func (l *Ledger) TerminallyDiscarded(fp string) bool {
-	_, ok := l.Discarded[fp]
-	return ok
+// TerminallyDiscardedWithin reports whether the fingerprint carries a
+// terminal discard marker INSIDE the window. Existence alone is not
+// authority: a marker can outlive its window (the queue-bound drop of a
+// re-queued item removes the item without re-stamping the marker), and an
+// expired marker must not suppress a genuinely unfinished reservation —
+// scoped exactly like the sent-record reconcile, an unreadable stamp
+// suppresses nothing.
+func (l *Ledger) TerminallyDiscardedWithin(fp string, now time.Time, windowDays int) bool {
+	stamp, ok := l.Discarded[fp]
+	if !ok {
+		return false
+	}
+	at, err := time.Parse(time.RFC3339, stamp)
+	if err != nil {
+		return false
+	}
+	return now.Sub(at) < time.Duration(windowDays)*24*time.Hour
 }

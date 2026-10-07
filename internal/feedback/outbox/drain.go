@@ -562,7 +562,7 @@ func drainMoai(ctx context.Context, entry bugreport.SpoolEntry) (*drainOutcome, 
 			// report, resetting its attempts and re-spending the model
 			// budget. Recovery re-queues only genuinely unfinished
 			// reservations.
-			if ledger.TerminallyDiscarded(fp) {
+			if ledger.TerminallyDiscardedWithin(fp, clock(), config.DefaultBugreportFingerprintWindowDays) {
 				outcome = &drainOutcome{outcome: "deduped", reason: "fingerprint was terminally discarded (send attempt limit)"}
 				return nil
 			}
