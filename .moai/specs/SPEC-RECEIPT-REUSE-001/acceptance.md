@@ -75,6 +75,15 @@ LEDGER-RRR-H
   why:  패키지 전수 상관 — 앵커화 선택자 0-일치: AC-RR-009(iter1 D2의 M2
         의미 못박기)의 신규 테스트는 미창출이며 M1이 창출한다.
   tree: 77fc999c5
+
+LEDGER-RRR-I
+  cmd:  go test -count=1 -run '^TestSubagentStop_BlocksUnprovenPassAndPersistsRejection$' ./internal/hook
+  out:  ok  	github.com/modu-ai/moai-adk/internal/hook	1.945s
+  exit: 0
+  why:  현존 전경 before-start 펜스의 시작 관측(agent_id a1이 개시 이전 주조
+        영수증을 인용해 거부되는 팔 포함) — AC-RR-007의 보존-행동 기준 셀이
+        인용한다. (iter2 D6 수리 — 보존 행동의 행위적 RED 청구 제거.)
+  tree: 77fc999c5
 ```
 
 ## §C Acceptance Criteria
@@ -84,12 +93,12 @@ LEDGER-RRR-H
 | AC-RR-001 | REQ-RR-001 | Given 같은 세션+역할의 선행 감사 인스턴스가 단일-생존(종료 시 생존 개시 1개)으로 종료했고, 후행 인스턴스가 감사 도구 호출 없이 그 선행 시절 영수증 r1만 인용한 PASS로 끝날 때, when SubagentStop 가드가 판정하면, then PASS는 거부된다(첫 정지 block, 재진입 시 거부 지속) — 네 종료 형태 팔 전부: (a) 수락 PASS로 종료, (b) 첫 정지 차단 뒤 재진입 거부로 종료, (c) FAIL 판정으로 종료, (d) 판정 줄 없이 재진입 종료. | A(테스트 부재) + **M1 행위적 RED**(현재 네 팔 모두 수락 → 재현 테스트 적색, 원문 출력 §E.2 기록) + C(결함 존재) | swept-count 우선: `go test -list '^TestSubagentStop_SequentialAuditorReceiptReuseIsRefused$' ./internal/hook` 1개 상관, THEN `go test -run '^TestSubagentStop_SequentialAuditorReceiptReuseIsRefused$' ./internal/hook` exit 0 — 네 팔 전부 (M2) |
 | AC-RR-002 | REQ-RR-003 | Given AC-RR-001의 재사용 거부가 지속될 때, when 거부 기록을 읽으면, then 원인이 기존 원인 어휘와 구별되는 재사용 전용 상수로 기록되고, phase-entry 세 스폰 각각 — `manager-develop`·`manager-docs`·`manager-git` — 이 `AUDIT_RECEIPT_VIOLATION` 접두사로 거부되며, 자격 영수증을 인용한 PASS가 그 거부를 해제한다(세 에이전트 모두 재허용). | B(원인 상수 부재) | 재사용 상수명으로 `grep -n` ≥ 1 (store.go의 원인 상수 선언), THEN 재현 테스트의 거부-기록·스폰-거부(세 에이전트 파라미터화)·해제 arm exit 0 (M2) |
 | AC-RR-003 | REQ-RR-004 | Given 한 세션+역할에 동시 살아 있는 두 배경 감사 인스턴스가 있고 각자 자신이 주조한(앵커 시작 이후의) 상이한 영수증을 인용할 때, when 각자의 stop이 판정되면, then 둘 다 수락된다 — 수리가 동시성 증명 가능성을 깨지 않는다. | D (해당 1개 GREEN 시작 관측 — `ConcurrentBackgroundAuditorsShareEraAnchor`) | 문장 변경 없이 `go test -run '^TestSubagentStop_ConcurrentBackgroundAuditorsShareEraAnchor$' ./internal/hook` exit 0 유지 (M2·M3 재관측) |
-| AC-RR-004 | REQ-RR-005 | Given 감사 인스턴스가 첫 stop에서 차단됐을 때(표식 유지), when 인스턴스가 계속 진행해 영수증을 주조하고 그것을 인용한 PASS로 다시 끝나면, then 수락된다 — 첫 정지 연속성이 보존된다. | E (0-일치 실측 §B) + **M1 행위적 RED**(§E.2 기록) | swept-count 우선 `-list` 1개, THEN `-run` exit 0 (M2) |
+| AC-RR-004 | REQ-RR-005 | Given 감사 인스턴스가 첫 stop에서 차단됐을 때(표식 유지 — guard.go:199-201), when 인스턴스가 계속 진행해 영수증을 주조하고 그것을 인용한 PASS로 다시 끝나면, then 수락된다 — 첫 정지 연속성이 보존된다. | 보존 행동 — 시작 관측: D(`BackgroundSpawnAuditorPassIsProvable` — 수락 PASS 뒤 파생 표식 유지·배경 PASS 증명 실측 GREEN) + E(확장 테스트 0-일치 실측 — 미창출) | M1 착수 시 확장 테스트 추가: swept-count 우선 `-list` 1개, THEN `-run` exit 0, 이후 문장 불변으로 M2·M3 재관측까지 유지 |
 | AC-RR-005 | REQ-RR-006 | Given 감사자가 자기 시작 경계 이전에 주조된 영수증을 인용할 때, when stop이 판정되면, then `CauseReceiptBeforeStart` 원인으로 거부된다 — 수리 전과 동일. | D (해당 1개 GREEN 시작 관측 — `BackgroundSpawnRecycledReceiptStillRefused`) | 문장 변경 없이 `-run '^TestSubagentStop_BackgroundSpawnRecycledReceiptStillRefused$'` exit 0 유지 (M2·M3 재관측) |
-| AC-RR-006 | REQ-RR-002 | Given 선행 인스턴스가 종료한 뒤 시작한 후행 인스턴스가 **자기 수명 동안 주조한** 영수증만 인용할 때, when stop이 판정되면, then 수락된다 — 수리가 자기 영수증 증명을 막지 않는다(오탐 펜스). | F (0-일치 실측 §B) + **M1 행위적 RED**(§E.2 기록) | swept-count 우선 `-list` 1개, THEN `-run` exit 0 (M2) |
-| AC-RR-007 | REQ-RR-002 | Given agent_id를 실은 전경 인스턴스 2가(자기 표식 소유) 선행 전경 인스턴스 1의 영수증을 인용할 때, when stop이 판정되면, then before-start 원인으로 거부되고, 자기 영수증 인용은 수락된다 — 전경 경로는 수리로 변하지 않는다. | G (0-일치 실측 §B) + **M1 행위적 RED**(§E.2 기록) | swept-count 우선 `-list` 1개, THEN `-run` exit 0 (M2) |
+| AC-RR-006 | REQ-RR-002 | Given 선행 인스턴스가 종료한 뒤 시작한 후행 인스턴스가 **자기 수명 동안 주조한** 영수증만 인용할 때, when stop이 판정되면, then 수락된다 — 수리가 자기 영수증 증명을 막지 않는다(오탐 펜스). | 보존 행동 — 시작 관측: D(자기 수명 영수증 수락의 현존 핀 `BackgroundSpawnAuditorPassIsProvable` GREEN) + F(확장 테스트 0-일치 실측 — 미창출) | M1 착수 시 확장 테스트 추가: swept-count 우선 `-list` 1개, THEN `-run` exit 0, 이후 문장 불변으로 M2·M3 재관측까지 유지 |
+| AC-RR-007 | REQ-RR-002 | Given agent_id를 실은 전경 인스턴스 2가(자기 표식 소유) 선행 전경 인스턴스 1의 영수증을 인용할 때, when stop이 판정되면, then before-start 원인으로 거부되고, 자기 영수증 인용은 수락된다 — 전경 경로는 수리로 변하지 않는다. | 보존 행동 — 시작 관측: I(현존 전경 before-start 펜스 `BlocksUnprovenPassAndPersistsRejection` GREEN) + G(확장 테스트 0-일치 실측 — 미창출) | M1 착수 시 확장 테스트 추가: swept-count 우선 `-list` 1개, THEN `-run` exit 0, 이후 문장 불변으로 M2·M3 재관측까지 유지 |
 | AC-RR-008 | REQ-RR-007 | Given codex gate가 `required`가 아닌 트리(off/advisory/무설정)일 때, when 감사자 start·stop이 발생하면, then 저장소 쓰기도 거부도 없다 — 수리로 변하지 않는다. | D (해당 1개 GREEN 시작 관측 — `NonRequiredTreesAreInert`) | 문장 변경 없이 `-run '^TestAuditReceiptGuard_NonRequiredTreesAreInert$'` exit 0 유지 (M2·M3 재관측) |
-| AC-RR-009 | REQ-RR-001, REQ-RR-004 | Given 동일한 사건열(세션 S+역할 R: A 시작 t0, B 시작 t1, B가 r 주조 t2, 종료 stop t3)에 대해, when 종료 t3 시점의 생존 개시 수가 1개면(단일-생존 — 종료가 특정 인스턴스에 귀속) 이후 r 인용 stop은 거부되고(경계 전진), when 2개면(겹침 — 모호 종료) 이후 r 인용 stop은 기존 경계(앵커)로 판정된다(수락 — 경계 동결, 동시성 의미 수리 전과 등가). | H (0-일치 실측 §B) + **M1 행위적 RED**(단일-생존 팔이 현재 수락 → 적색, §E.2 기록) | swept-count 우선: `go test -list '^TestSubagentStop_ReceiptBoundaryAmbiguitySemantics$' ./internal/hook` 1개 상관, THEN `go test -run '^TestSubagentStop_ReceiptBoundaryAmbiguitySemantics$' ./internal/hook` exit 0 — 두 팔 대조 전부 (M2) |
+| AC-RR-009 | REQ-RR-001, REQ-RR-004 | 두 개의 명명된 시퀀스로 경계 의미를 못박는다(개수는 종료자를 포함해 센다 — plan.md §D.3·REQ-RR-004와 같은 판독). (i) 단일-생존 시퀀스: Given 세션 S+역할 R에 인스턴스 X만 시작하고(t0) X가 r을 주조한 뒤(t1) 터미널 종료할 때(t2 — 종료 시점 생존 개시 1개, 곧 종료자 혼자), when 이후 인스턴스 Y가 시작해(t3) r(t1 < t2)을 인용한 PASS로 끝나면, then 거부된다(경계가 t2로 전진). (ii) 겹침 시퀀스: Given A 시작(t0), B 시작(t1), B가 r 주조(t2), 터미널 종료(t3 — 생존 개시 2개, 곧 종료자+생존 형제, 모호 종료)일 때, when r 인용 stop이 이후 도착하면, then 기존 경계(앵커 t0)로 판정된다 — r(t2 > t0)은 수락된다(경계 동결, 동시성 의미 수리 전과 등가). | H (0-일치 실측 §B) + **M1 행위적 RED**(시퀀스 (i)가 현재 수락 → 적색, §E.2 기록; (ii)는 현행과 등가인 보존 팔) | swept-count 우선: `go test -list '^TestSubagentStop_ReceiptBoundaryAmbiguitySemantics$' ./internal/hook` 1개 상관, THEN `go test -run '^TestSubagentStop_ReceiptBoundaryAmbiguitySemantics$' ./internal/hook` exit 0 — 두 시퀀스 대조 전부 (M2) |
 
 ## §D Traceability (AC → REQ)
 
