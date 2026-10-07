@@ -98,7 +98,7 @@ func TestCaptureNeverPanicsOrBlocks(t *testing.T) {
 	t.Run("blocking_write_returns_within_the_box", func(t *testing.T) {
 		var mu sync.Mutex
 		calls := 0
-		spoolAppendFn = func(e spoolEntry) error {
+		spoolAppendFn = func(e SpoolEntry) error {
 			mu.Lock()
 			calls++
 			mu.Unlock()
@@ -133,8 +133,15 @@ func TestCaptureNeverPanicsOrBlocks(t *testing.T) {
 	})
 
 	t.Run("panicking_write_never_propagates", func(t *testing.T) {
-		spoolAppendFn = func(e spoolEntry) error { panic("hostile filesystem") }
-		Capture(KindPanic, nil, "", nil) // must not panic out of Capture
+		// Review-gate finding #7: a panic in the WORKER goroutine kills the
+		// process before the caller's deferred recover could see it, so the
+		// worker carries its own recover — and this stub panics at the real
+		// write path, not a phase the box skips. The consent store is
+		// seeded, so the signal reaches the spool seam.
+		seedConsent(t)
+		spoolAppendFn = func(e SpoolEntry) error { panic("hostile filesystem") }
+		Capture(KindHookTimeout, errString("deadline"), "", nil) // must not panic out of Capture
+		Capture(KindHookHandlerFailure, errString("x"), "", nil) // and a second kind, same guarantee
 	})
 
 	t.Run("unwritable_spool_directory", func(t *testing.T) {
@@ -184,7 +191,7 @@ func TestCaptureSpoolsMoaiAndAmbiguous(t *testing.T) {
 	// A hook timeout carries no frame requirement (it captures from a moai
 	// call site; in the production wiring the frames come from the registry).
 	// Spooling it here exercises the ambiguous-retention line the drain logs.
-	spoolAppendFn = func(e spoolEntry) error { return appendSpoolLine(e) }
+	spoolAppendFn = func(e SpoolEntry) error { return appendSpoolLine(e) }
 	Capture(KindHookTimeout, errors.New("deadline"), "", nil)
 	if got := spoolLineCount(t, path); got != 1 {
 		t.Fatalf("ambiguous capture spooled %d line(s), want 1", got)
