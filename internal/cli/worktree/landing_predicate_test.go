@@ -540,3 +540,63 @@ func TestLandingPredicateGHFailureIsFailClosed(t *testing.T) {
 		})
 	}
 }
+
+// Patch-id's default whitespace folding is unsafe for a deletion predicate:
+// whitespace inside a literal is data, even when Git considers the patches equal.
+func TestLandingPredicatePreservesWhitespaceDistinctContent(t *testing.T) {
+	for _, tc := range []struct {
+		name, card, remote string
+	}{
+		{"string_spaces", "package fixture\nconst value = \"a  b\"\n", "package fixture\nconst value = \"a b\"\n"},
+		{"string_tab", "package fixture\nconst value = `a\tb`\n", "package fixture\nconst value = `a b`\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newGFDFixture(t)
+			for _, change := range []struct{ dir, content string }{{f.tree, tc.card}, {f.repo, tc.remote}} {
+				if err := os.WriteFile(filepath.Join(change.dir, "value.go"), []byte(change.content), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				landingGit(t, change.dir, "add", "value.go")
+				landingGit(t, change.dir, "commit", "-q", "-m", "add distinct literal")
+			}
+			f.pushMain(t)
+			installGH(t, &ghDouble{})
+			if !f.cumulativeMatches(t) {
+				t.Fatal("fixture must collide under whitespace-folding patch-id")
+			}
+			if landed, err := LandedByPatchID(f.repo, f.branch, "origin/main"); err != nil || landed {
+				t.Errorf("distinct literal must not be landed: landed=%v err=%v", landed, err)
+			}
+			if landed, verdict, reason := f.sweepLanded(t); landed == staleStateYes || verdict == sweepDispose {
+				t.Errorf("sweep must preserve distinct content: landed=%q verdict=%q reason=%q", landed, verdict, reason)
+			}
+			if gone, err := f.doneLanded(t); gone || err == nil {
+				t.Errorf("done must refuse distinct content: gone=%v err=%v", gone, err)
+			}
+			if raw, err := os.ReadFile(filepath.Join(f.tree, "value.go")); err != nil || string(raw) != tc.card {
+				t.Errorf("card bytes must survive: content=%q err=%v", raw, err)
+			}
+		})
+	}
+}
+
+// Relocating a byte-identical patch must remain squash-safe even when another
+// integration commit changes its hunk line numbers.
+func TestLandingPredicateRecognizesRelocatedSquash(t *testing.T) {
+	f := newGFDFixture(t)
+	f.cardCommit(t, 15, "card")
+	p := filepath.Join(f.repo, "f.txt")
+	raw, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, append([]byte("unrelated prefix\n"), raw...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	landingGit(t, f.repo, "commit", "-q", "-a", "-m", "move card hunk down")
+	f.squash(t)
+	f.pushMain(t)
+	if landed, err := LandedByPatchID(f.repo, f.branch, "origin/main"); err != nil || !landed {
+		t.Fatalf("byte-identical relocated squash must be landed: landed=%v err=%v", landed, err)
+	}
+}

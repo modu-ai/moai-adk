@@ -87,10 +87,12 @@ func runLandingGit(dir, stdin string, args ...string) (stdout string, exit int, 
 	return out.String(), -1, runErr
 }
 
-// landingPatchIDs runs `git patch-id --stable` over stream (a diff or a
-// `git log -p` stream) and returns the patch-ids in order.
+// landingPatchIDs runs `git patch-id --verbatim` over stream (a diff or a
+// `git log -p` stream) and returns the patch-ids in order. Whitespace is data:
+// folding it can equate distinct string literals and authorize deleting work.
+// Verbatim IDs still ignore hunk line numbers, preserving relocated patches.
 func landingPatchIDs(dir, stream string) ([]string, error) {
-	out, _, err := runLandingGit(dir, stream, "patch-id", "--stable")
+	out, _, err := runLandingGit(dir, stream, "patch-id", "--verbatim")
 	if err != nil {
 		return nil, fmt.Errorf("git patch-id: %w", err)
 	}
