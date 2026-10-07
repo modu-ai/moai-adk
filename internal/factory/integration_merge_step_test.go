@@ -737,3 +737,218 @@ func TestMergeStepRecheckReadsTheClockInsideTheSection(t *testing.T) {
 		t.Fatalf("the section must read the clock itself, got %d Now calls", calls)
 	}
 }
+
+func TestMergeStepCardLeaseInvalidatedMidstepRefusesMerge(t *testing.T) {
+	// t1576: the card gate read the card ONCE at the top, so a card-lease
+	// invalidation landing between that read and the merge still produced
+	// the merge commit — the lane-9 turn-end gate overlay shape (t1572's
+	// tree base 067fdced2). The serialized section re-verified holdership
+	// (F4) and collisions (F5) but not the card; the re-run immediately
+	// before the merge closes the gap, and the refusal is a pre-merge
+	// cause: the window releases and C is promoted, no commit exists.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	reads := 0
+	seams := f.seams(card)
+	baseReadCard := seams.ReadCard
+	seams.ReadCard = func(id string) (MergeCardState, error) {
+		reads++
+		state, err := baseReadCard(id)
+		if err != nil {
+			return state, err
+		}
+		if reads >= 2 {
+			state.LeaseUnexpired = false // the mid-step invalidation
+		}
+		return state, nil
+	}
+	_, err := RunMergeStep(f.input(), seams)
+	requireCode(t, err, MergeExitCardGate)
+	requireWindowReleasedAndCPromoted(t, f)
+	if tip := strings.TrimSpace(stepMustGit(t, f.integ, "rev-parse", "HEAD")); tip != f.record.Base {
+		t.Fatalf("no merge commit may exist after a mid-step card-gate refusal, tip %s != base %s", tip, f.record.Base)
+	}
+}
+
+func TestMergeStepCardRecordMutatedMidstepRefusesMerge(t *testing.T) {
+	// t1576: the version rides in the state as read (the step never bumps
+	// it), so a version drift between the early gate's read and the
+	// section's re-read is the record changing mid-step — the deliver-half
+	// chain (t1542 r5-7) requires re-checking what you act on at the point
+	// of effect. Same cause-11 class, same release-and-promote handling.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	reads := 0
+	seams := f.seams(card)
+	baseReadCard := seams.ReadCard
+	seams.ReadCard = func(id string) (MergeCardState, error) {
+		reads++
+		state, err := baseReadCard(id)
+		if err != nil {
+			return state, err
+		}
+		if reads >= 2 {
+			state.Version = state.Version + 1 // the record mutated mid-step
+		}
+		return state, nil
+	}
+	_, err := RunMergeStep(f.input(), seams)
+	requireCode(t, err, MergeExitCardGate)
+	requireWindowReleasedAndCPromoted(t, f)
+	if tip := strings.TrimSpace(stepMustGit(t, f.integ, "rev-parse", "HEAD")); tip != f.record.Base {
+		t.Fatalf("no merge commit may exist after a mid-step version-drift refusal, tip %s != base %s", tip, f.record.Base)
+	}
+}
+
+func TestMergeStepFirstCardReadFailureReleasesWindow(t *testing.T) {
+	// t1576 review round 1: the first card read's failure returned WITHOUT
+	// releasing the window — the holder kept the window parked until its
+	// lease lapsed (or a manual release), while the function's own contract
+	// says every pre-merge failure releases so the next live ticket is
+	// promoted. A store read failure is a pre-merge cause like any other.
+	f := newMergeFixture(t)
+	seams := MergeStepSeams{
+		ReadCard: func(string) (MergeCardState, error) { return MergeCardState{}, errors.New("card store unavailable") },
+		Now:      func() time.Time { return time.Date(2026, 10, 5, 9, 1, 0, 0, time.UTC) },
+	}
+	_, err := RunMergeStep(f.input(), seams)
+	requireCode(t, err, MergeExitOther)
+	requireWindowReleasedAndCPromoted(t, f)
+}
+
+func TestMergeStepMidstepWindowRetargetRefusesMerge(t *testing.T) {
+	// t1576 review round 1: the section's recheck compared only the session
+	// id — the same session re-acquiring the window for another branch or
+	// worktree mid-check passed the comparison while the merge ran on
+	// targets the record no longer names. The merge inputs must still be
+	// the acquisition's.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	seams := f.seams(card)
+	seams.AfterPrecheck = func() {
+		if err := UpdateIntegrationWindow(f.root, func(w *IntegrationLock) error {
+			w.Branch = "release/v9.9.9"
+			w.Worktree = filepath.Join(f.root, "elsewhere")
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, err := RunMergeStep(f.input(), seams)
+	requireCode(t, err, MergeExitNotHolder)
+	requireWindowReleasedAndCPromoted(t, f)
+}
+
+func TestMergeStepMidstepCheckoutSwitchRefusesMerge(t *testing.T) {
+	// t1576 review round 2: the record and the inputs are both bookkeeping —
+	// the merge lands on whatever branch the integration worktree has
+	// CHECKED OUT. A branch switched after the pre-checks merged onto that
+	// branch while the step still returned success. The checkout is re-read
+	// inside the section and a drift aborts before the merge.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	seams := f.seams(card)
+	// A second branch to switch to, cut from the base so the switch itself
+	// leaves the worktree clean (cause 12 must not fire first).
+	stepMustGit(t, f.integ, "branch", "detour", f.record.Base)
+	seams.AfterPrecheck = func() {
+		stepMustGit(t, f.integ, "checkout", "-q", "detour")
+	}
+	_, err := RunMergeStep(f.input(), seams)
+	requireCode(t, err, MergeExitOther)
+	requireWindowReleasedAndCPromoted(t, f)
+	if tip := strings.TrimSpace(stepMustGit(t, f.integ, "rev-parse", "HEAD")); tip != f.record.Base {
+		t.Fatalf("the merge must not land on the switched branch, detour tip %s != base %s", tip, f.record.Base)
+	}
+}
+
+func TestMergeStepMidstepBranchTipMoveRefusesMerge(t *testing.T) {
+	// t1576 review round 2: the branch REF can also move mid-step — the
+	// pre-section base==tip check compared against the tip as read then.
+	// The tip is re-read inside the section and a move takes the same
+	// re-measure-and-re-acquire code the pre-section check uses (cause 2).
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	seams := f.seams(card)
+	seams.AfterPrecheck = func() {
+		stepMustGit(t, f.integ, "update-ref", "refs/heads/develop", f.cardSHA)
+	}
+	_, err := RunMergeStep(f.input(), seams)
+	requireCode(t, err, MergeExitBaseMoved)
+	requireWindowReleasedAndCPromoted(t, f)
+}
+
+func TestSameIntegrationTreeReadsAliasedPaths(t *testing.T) {
+	// t1576 review round 5: /var/... and /private/var/... are one directory
+	// on macOS — the string comparison in the section's target check refused
+	// a window the caller legitimately acquired (the TestMWQ19_Scenario5
+	// regression this fixes).
+	dir := t.TempDir()
+	aliased := dir
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		aliased = resolved
+	}
+	if aliased == dir {
+		t.Skip("this platform does not alias the temp dir; the string comparison already agrees")
+	}
+	if !sameIntegrationTree(aliased, dir) {
+		t.Fatalf("the same directory under both path spellings must read as one tree: %q vs %q", aliased, dir)
+	}
+	if sameIntegrationTree(dir, filepath.Join(dir, "elsewhere")) {
+		t.Fatalf("two different directories must not read as one tree")
+	}
+}
+
+func TestMergeStepRefusesACardWhoseStateMovedOn(t *testing.T) {
+	// t1576 review round 5: the operator's abandoned transition keeps the
+	// card's stage fields — stage=merge-ready, lease intact — and the gate
+	// that read only the stage merged a cancelled card. The CURRENT state
+	// is the authority.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	card.State = "abandoned"
+	_, err := RunMergeStep(f.input(), f.seams(card))
+	requireCode(t, err, MergeExitCardGate)
+	requireWindowReleasedAndCPromoted(t, f)
+}
+
+func TestMergeStepCardDriftAfterMergeHoldsNamingSHA(t *testing.T) {
+	// t1576 review round 1: the section's card re-gate reads BEFORE the
+	// merge; a card transition landing between that read and the merge
+	// commit still lands — the integration lock does not serialize the card
+	// store (the cross-store serialization is a design of its own). What
+	// the step refuses to do is let it land silently: the post-merge
+	// re-read surfaces the drift as the post-merge class — the commit
+	// stays, the hold names it, the leader decides.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	reads := 0
+	seams := f.seams(card)
+	baseReadCard := seams.ReadCard
+	seams.ReadCard = func(id string) (MergeCardState, error) {
+		reads++
+		state, err := baseReadCard(id)
+		if err != nil {
+			return state, err
+		}
+		if reads >= 3 {
+			state.Version = state.Version + 1 // a transition landed mid-merge
+		}
+		return state, nil
+	}
+	_, err := RunMergeStep(f.input(), seams)
+	requireCode(t, err, MergeExitPostMerge)
+	if tip := strings.TrimSpace(stepMustGit(t, f.integ, "rev-parse", "HEAD")); tip == f.record.Base {
+		t.Fatalf("the merge commit must stay in place for the leader, but HEAD is still the base")
+	}
+	policy, policyErr := ReadIntegrationWindowPolicy(f.root)
+	if policyErr != nil {
+		t.Fatal(policyErr)
+	}
+	if policy.Policy != PolicyHold {
+		t.Fatalf("the window policy must be held after a mid-merge card drift, got %+v", policy)
+	}
+	if !strings.Contains(policy.Reason, "changed mid-merge") {
+		t.Fatalf("the hold must name the mid-merge drift, got %q", policy.Reason)
+	}
+}

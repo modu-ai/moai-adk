@@ -234,6 +234,31 @@ func TestMWQ19_Scenario5_AdoptionRefusedAfterNewCommit(t *testing.T) {
 	}
 }
 
+func TestMWQ19_Step3RefusalReleasesCompleteOwnAcquisition(t *testing.T) {
+	// t1576 review round 2: on the path where the lane does not hold the
+	// window yet, complete ACQUIRES it itself before the flow reaches step
+	// 3 — and the step-3 refusal (no valid re-measure record for the
+	// candidate tree) returned with the window still held, parking the next
+	// lane until the lease lapsed. The acquisition complete made in this
+	// invocation is released by the refusal.
+	root, _, cardWT := mwq19Fixture(t)
+	// Invalidate the record by gaining a commit: the candidate tree changes
+	// and no record keys the new tree (the scenario-5 shape without a prior
+	// verb merge, so no adoption applies and the lane holds no window).
+	if err := os.WriteFile(filepath.Join(cardWT.wt, "late.txt"), []byte("late\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fcGit(t, cardWT.wt, "add", "late.txt")
+	fcGit(t, cardWT.wt, "commit", "-q", "-m", "late card commit")
+	_, _, err := runFactory(t, "complete", "t1", "--run", fcRun)
+	if err == nil {
+		t.Fatalf("a complete with no record for the candidate tree must refuse")
+	}
+	if lock := sdWindow(t, root); lock.Held() {
+		t.Fatalf("complete's own acquisition must be released by the step-3 refusal: %+v", lock)
+	}
+}
+
 // runIntegrationMerge runs the integration merge verb in-process.
 func runIntegrationMerge(t *testing.T, args ...string) (string, string, error) {
 	t.Helper()

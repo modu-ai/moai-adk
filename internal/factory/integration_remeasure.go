@@ -176,10 +176,147 @@ func ClassifyStructuredOutput(command string, output io.Reader) (count int, stru
 }
 
 // isGoTestCommand reports whether the command runs go test — the only tool
-// with a recognized structured report in this repository.
+// with a recognized structured report in this repository. The tool is
+// recognized INSIDE a compound command: the env-scrub form AGENTS.md
+// prescribes (`unset VARS && go test ...`) is one invocation whose tool is
+// go test, and classifying it by its first token read the scrubbed sweep as
+// a non-test command whose zero-test record passed as valid (t1576 review
+// round 1). Segments split on && / || / ; verbatim — a separator inside a
+// quoted argument would over-split, which only ever widens recognition to a
+// segment that still must name `go test` as its own first two words.
 func isGoTestCommand(command string) bool {
-	fields := strings.Fields(strings.TrimSpace(command))
-	return len(fields) >= 2 && fields[0] == "go" && fields[1] == "test"
+	for _, segment := range shellSegments(command) {
+		fields := stripLeadingEnv(shellFields(segment))
+		// t1576 review round 4: the subcommand can sit behind go's global
+		// flags (`go -C . test -json ...`) — recognize the tool behind them,
+		// so the zero-test refusal reaches the -C form.
+		if sub := goSubcommand(fields); len(sub) > 0 && sub[0] == "test" {
+			return true
+		}
+	}
+	return false
+}
+
+// shellSegments splits a command into its compound segments at the shell's
+// command separators (&&, ||, ;) OUTSIDE quoted words — a separator inside
+// quotes is data, not a second command (t1576 review round 12: the quoted
+// argument 'note; go test -json is useful' must not mint a phantom go test
+// segment).
+func shellSegments(command string) []string {
+	var segments []string
+	var cur strings.Builder
+	var quote byte
+	flush := func() {
+		segments = append(segments, cur.String())
+		cur.Reset()
+	}
+	for i := 0; i < len(command); i++ {
+		c := command[i]
+		if quote != 0 {
+			if c == quote {
+				quote = 0
+			}
+			cur.WriteByte(c)
+			continue
+		}
+		if c == '\'' || c == '"' {
+			quote = c
+			cur.WriteByte(c)
+			continue
+		}
+		if c == ';' {
+			flush()
+			continue
+		}
+		if (c == '&' || c == '|') && i+1 < len(command) && command[i+1] == c {
+			flush()
+			i++
+			continue
+		}
+		cur.WriteByte(c)
+	}
+	flush()
+	return segments
+}
+
+// shellFields splits a segment into fields the way sh splits words: quotes
+// group characters into one field and are themselves dropped
+// (`GOFLAGS='-count=1 -v'` is ONE field), so the env-prefix scan sees the
+// tool behind a quoted value (t1576 review round 10). Backslash escapes are
+// not honored — the classifier needs the word boundaries, not the exact
+// bytes.
+func shellFields(segment string) []string {
+	var fields []string
+	var cur strings.Builder
+	inField := false
+	var quote byte
+	for i := 0; i < len(segment); i++ {
+		c := segment[i]
+		switch {
+		case quote != 0:
+			if c == quote {
+				quote = 0
+			} else {
+				cur.WriteByte(c)
+			}
+		case c == '\'' || c == '"':
+			quote = c
+			inField = true
+		case c == ' ' || c == '\t' || c == '\n':
+			if inField {
+				fields = append(fields, cur.String())
+				cur.Reset()
+				inField = false
+			}
+		default:
+			cur.WriteByte(c)
+			inField = true
+		}
+	}
+	if inField {
+		fields = append(fields, cur.String())
+	}
+	return fields
+}
+
+// goSubcommand strips the leading `go` and the global flags that precede
+// the subcommand, returning the subcommand and the rest. Only flags with a
+// documented argument are consumed (`-C dir`); anything else ends the scan,
+// so an unrecognized shape stays unrecognized rather than over-matching.
+func goSubcommand(fields []string) []string {
+	if len(fields) == 0 || fields[0] != "go" {
+		return nil
+	}
+	rest := fields[1:]
+	if len(rest) >= 2 && rest[0] == "-C" {
+		rest = rest[2:]
+	}
+	return rest
+}
+
+// stripLeadingEnv drops the env-assignment prefix and any `env` invocation
+// head a command may carry (`GOMAXPROCS=2 go test ...`, `env GOMAXPROCS=2
+// go test ...`, `env -u NAME go test ...`) so the tool behind the prefix is
+// what classifies (t1576 review rounds 2-3). Shell semantics: assignments
+// are only assignments before the command word, so the scan stops at the
+// first token without `=`; env's own option forms (-u NAME, -i,
+// --ignore-environment, --) are consumed with their arguments.
+func stripLeadingEnv(fields []string) []string {
+	for len(fields) > 0 {
+		switch {
+		case fields[0] == "env":
+			fields = fields[1:]
+		case fields[0] == "-u" && len(fields) >= 2:
+			fields = fields[2:]
+		case fields[0] == "-i" || fields[0] == "--ignore-environment" || fields[0] == "--":
+			fields = fields[1:]
+		case strings.Index(fields[0], "=") > 0:
+			fields = fields[1:]
+		default:
+			return fields
+		}
+	}
+	return fields
 }
 
 // requestsGoTestJSON reports whether the go test command carries the -json
@@ -209,10 +346,18 @@ func countGoTestJSONTests(text string) (count int, structured bool, err error) {
 	}
 	structured = true
 	decoder := json.NewDecoder(strings.NewReader(text))
+	// t1576 review round 4: a pipe into `head` truncates the stream — EOF
+	// alone reads as completion and the passes seen so far stand for a
+	// finished sweep while later failures never arrive. Every package whose
+	// start event is seen must also report its terminal event before the
+	// stream may stand for a re-measure.
+	started := map[string]bool{}
+	finished := map[string]bool{}
 	for {
 		var event struct {
-			Action string `json:"Action"`
-			Test   string `json:"Test"`
+			Action  string `json:"Action"`
+			Test    string `json:"Test"`
+			Package string `json:"Package"`
 		}
 		if decErr := decoder.Decode(&event); decErr != nil {
 			if errors.Is(decErr, io.EOF) {
@@ -222,9 +367,37 @@ func countGoTestJSONTests(text string) (count int, structured bool, err error) {
 			// not a recognized report: refuse rather than count the prefix.
 			return 0, true, fmt.Errorf("go test -json stream is not a recognized report: %v", decErr)
 		}
-		if event.Action == "pass" && event.Test != "" {
-			count++
+		// t1576 review round 1: `go test -json ./... | cat` reports the
+		// pipe's exit 0 while a test failed — the stream is the verdict the
+		// exit code cannot carry. Any fail event (per-test, or package-level
+		// — a build or setup failure behind which no per-test event may
+		// exist) invalidates the record.
+		if event.Action == "fail" {
+			name := event.Test
+			if name == "" {
+				name = event.Package + " (package-level)"
+			}
+			return 0, true, fmt.Errorf("go test -json stream reports a failing test %q — a failing sweep cannot stand for a re-measure", name)
 		}
+		switch {
+		case event.Action == "start" && event.Package != "":
+			started[event.Package] = true
+			// t1576 review round 8: a package the stream runs AGAIN (a `;`
+			// compound of two go test invocations) must re-arm its
+			// completion — the first run's finished entry otherwise masks
+			// the second run's truncation.
+			delete(finished, event.Package)
+		case event.Action == "pass" && event.Test != "":
+			count++
+		// A package without tests ends in a package-level skip, not a pass —
+		// the terminal event all the same (t1576 review round 12), or every
+		// mixed ./... sweep with one no-test package reads as truncated.
+		case (event.Action == "pass" || event.Action == "skip") && event.Test == "" && event.Package != "":
+			finished[event.Package] = true
+		}
+	}
+	if missing := len(started) - len(finished); missing > 0 {
+		return 0, true, fmt.Errorf("go test -json stream ended with %d started package(s) unreported — a truncated capture (a pipe into head/tail, a killed runner) cannot stand for a re-measure", missing)
 	}
 	return count, structured, nil
 }
