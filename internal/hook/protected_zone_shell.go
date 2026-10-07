@@ -493,6 +493,17 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		name = path.Base(name)
 	}
 	if name == "cd" {
+		// card t1574 K8: every cd unions the pre-cd set into the next set,
+		// so a chain of n cds squares the possible-directory set toward 2^n
+		// states. A set past the bound is a walk that cannot complete: the
+		// unbounded flag is set — deny fail-closed, never silent truncation
+		// (REQ-ZSP-006). A set already past the bound stops growing here:
+		// the verdict is already fail-closed, and a loop's remaining passes
+		// must not square the set further.
+		if len(w.cwds) > zoneCwdsBound {
+			w.unbounded = true
+			return
+		}
 		var dirs []string
 		for _, a := range args[1:] {
 			if t, lit := zoneWordText(a); lit {
@@ -510,14 +521,8 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		// (round 8 P1)
 		next = append(next, w.cwds...)
 		w.setCwds(next)
-		// card t1574 K8: every cd unions the pre-cd set into the next set,
-		// so a chain of n cds squares the possible-directory set toward 2^n
-		// states. A set past the bound is a walk that cannot complete: the
-		// unbounded flag is set and the walk aborts — deny fail-closed,
-		// never silent truncation (REQ-ZSP-006).
 		if len(w.cwds) > zoneCwdsBound {
 			w.unbounded = true
-			return
 		}
 		return
 	}
