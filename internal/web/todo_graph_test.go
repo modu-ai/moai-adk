@@ -271,34 +271,44 @@ func TestTodoGraphViewDoesNotWaitOnQueueLock(t *testing.T) {
 
 	store := factory.NewBacklogStore(path)
 	release := make(chan struct{})
+	acquired := make(chan struct{})
 	holderDone := make(chan error, 1)
+	var requests sync.WaitGroup
+	// TempDir cleanup must run only after the holder's write and every
+	// request finish, including requests that exceeded the assertion limit.
+	t.Cleanup(func() {
+		close(release)
+		if err := <-holderDone; err != nil {
+			t.Errorf("queue lock holder: %v", err)
+		}
+		requests.Wait()
+	})
 	go func() {
 		holderDone <- store.Mutate(func(rec *factory.BacklogRecord) error {
+			close(acquired)
 			<-release
 			return nil
 		})
 	}()
-	// Give the holder the lock: the Mutate grabs it before blocking, and a
-	// bounded wait keeps the test honest without sleeping past the point.
-	deadline := time.Now().Add(2 * time.Second)
-	for !graphQueueLockHeld(t, path) && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
+	// Mutate invokes its callback only after acquiring the actual lock.
+	select {
+	case <-acquired:
+	case <-time.After(2 * time.Second):
+		t.Fatal("queue lock holder did not acquire the lock within 2s")
 	}
-	defer close(release)
 
 	a := newApp(Config{ProjectRoot: root, ProfileName: "default"})
 	a.recordLastProfile = func(string) error { return nil }
 
-	var wg sync.WaitGroup
 	check := func(path_ string, wantNode bool) {
-		wg.Add(1)
-		defer wg.Done()
 		type result struct {
 			code int
 			body string
 		}
 		done := make(chan result, 1)
+		requests.Add(1)
 		go func() {
+			defer requests.Done()
 			rec := serveGet(t, a.routes(), path_)
 			done <- result{rec.Code, rec.Body.String()}
 		}()
@@ -316,24 +326,4 @@ func TestTodoGraphViewDoesNotWaitOnQueueLock(t *testing.T) {
 	}
 	check("/todo?view=graph", true)
 	check("/todo", false)
-	wg.Wait()
-}
-
-// graphQueueLockHeld probes whether the queue lock is currently taken, by
-// trying a non-blocking mutation attempt on a THROWAWAY copy of the lock
-// semantics: a second Mutate that gives up immediately. It reports held only
-// on a positive refusal.
-func graphQueueLockHeld(t *testing.T, path string) bool {
-	t.Helper()
-	probe := make(chan error, 1)
-	store := factory.NewBacklogStore(path)
-	go func() {
-		probe <- store.Mutate(func(rec *factory.BacklogRecord) error { return nil })
-	}()
-	select {
-	case <-probe:
-		return false // the probe took and released the lock: it was free
-	case <-time.After(150 * time.Millisecond):
-		return true // the probe is still waiting: the lock is held
-	}
 }
