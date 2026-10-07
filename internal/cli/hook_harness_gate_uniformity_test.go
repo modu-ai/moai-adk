@@ -18,6 +18,8 @@ type handlerFunc func(cmd *cobra.Command, args []string) error
 // when learning.enabled=false, none of the four handlers create usage-log.jsonl.
 // REQ-HRN-FND-009: the isHarnessLearningEnabled gate applies uniformly to every handler.
 func TestGateUniformity_AllHandlersNoOpWhenDisabled(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	cases := []struct {
 		name    string
 		handler handlerFunc

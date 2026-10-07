@@ -105,8 +105,8 @@ func TestFR_AfterGuardAcrossRuns(t *testing.T) {
 }
 
 func TestFR_StateHelpersAndResumeTarget(t *testing.T) {
-	if len(CardStates()) != 19 {
-		t.Fatalf("CardStates = %d, want 19", len(CardStates()))
+	if len(CardStates()) != 21 {
+		t.Fatalf("CardStates = %d, want 21", len(CardStates()))
 	}
 	for resume, want := range map[string]string{
 		CardAssigned: CardAssigned, CardRun: CardAssigned, CardMerging: CardAssigned,

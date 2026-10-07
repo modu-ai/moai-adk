@@ -91,6 +91,8 @@ func readTelemetryRecords(t *testing.T, root string) []telemetry.UsageRecord {
 // every tool; this test drives that handler with the real Bash payload and
 // asserts a telemetry record with is_test_pass actually lands.
 func TestHarnessObserve_BashEvidenceRecorded(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	root := t.TempDir()
 	writeHarnessYAML(t, root, "learning:\n  enabled: true\n")
 	writeConfig(t, root, "system.yaml", "hook:\n  opt_in:\n    enabled: true\n")
@@ -123,6 +125,8 @@ func TestHarnessObserve_BashEvidenceRecorded(t *testing.T) {
 // real payload carries no exit_code (M0 probe), so this exercises the
 // output-text fallback rather than the structured exit-code path.
 func TestHarnessObserve_BashEvidenceTestFail(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	root := t.TempDir()
 	writeHarnessYAML(t, root, "learning:\n  enabled: true\n")
 	writeConfig(t, root, "system.yaml", "hook:\n  opt_in:\n    enabled: true\n")
@@ -149,6 +153,8 @@ func TestHarnessObserve_BashEvidenceTestFail(t *testing.T) {
 // discipline visible: a non-test Bash command produces no evidence record, so
 // the carve-out cannot quietly turn every shell call into a telemetry line.
 func TestHarnessObserve_NonTestBashWritesNoEvidence(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	root := t.TempDir()
 	writeHarnessYAML(t, root, "learning:\n  enabled: true\n")
 	writeConfig(t, root, "system.yaml", "hook:\n  opt_in:\n    enabled: true\n")
@@ -173,6 +179,8 @@ func TestHarnessObserve_NonTestBashWritesNoEvidence(t *testing.T) {
 // them. Without this scoping every Edit would produce two telemetry records
 // (plan.md §G AP-8).
 func TestHarnessObserve_NonBashToolWritesNoEvidence(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	root := t.TempDir()
 	writeHarnessYAML(t, root, "learning:\n  enabled: true\n")
 	writeConfig(t, root, "system.yaml", "hook:\n  opt_in:\n    enabled: true\n")
@@ -197,6 +205,8 @@ func TestHarnessObserve_NonBashToolWritesNoEvidence(t *testing.T) {
 // TestHarnessObserve_BashEvidenceGated pins REQ-HLE-013 for the carve-out: with
 // either observation gate closed, no telemetry file is written at all.
 func TestHarnessObserve_BashEvidenceGated(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	cases := []struct {
 		name       string
 		systemYAML string
@@ -253,6 +263,8 @@ func TestHarnessObserve_BashEvidenceGated(t *testing.T) {
 // being enabled locally. No CI-runnable assertion can cover that link
 // (acceptance.md §F R1); it needs a manual dogfood check.
 func TestRoutingLedger_TerminalCloseEndToEnd(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	cases := []struct {
 		name        string
 		stdout      string

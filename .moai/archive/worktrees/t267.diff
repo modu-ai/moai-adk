@@ -1,0 +1,12 @@
+diff --git a/.moai/config/sections/feedback.yaml b/.moai/config/sections/feedback.yaml
+index 66279c23c..c61339936 100644
+--- a/.moai/config/sections/feedback.yaml
++++ b/.moai/config/sections/feedback.yaml
+@@ -4,7 +4,6 @@ feedback:
+     # requests about the MoAI-ADK tool itself, NOT the user's own project.
+     # Fork maintainers override this to redirect feedback to their own fork.
+     repository: modu-ai/moai-adk
+-
+     # Whether the /moai feedback workflow may create the issue without asking
+     # first. Default false: before anything leaves the machine the workflow
+     # shows the masked title, the masked body in full, and a summary of what

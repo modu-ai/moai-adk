@@ -94,8 +94,10 @@ func TestIntegration_SampleSessionReplay(t *testing.T) {
 	}
 }
 
-// TestIntegration_RetentionWithObserver verifies the full flow where Observer integrates
-// with retention to prune stale events.
+// TestIntegration_RetentionWithObserver verifies the full flow where Observer records
+// and Retention prunes stale events. Since SPEC-HARNESS-DETACHED-PRUNE-001
+// (REQ-DP-001) the record path performs no prune, so the prune runs explicitly
+// through Retention here — the same entry the retention-prune child verb uses.
 // T-P1-05: integration test.
 func TestIntegration_RetentionWithObserver(t *testing.T) {
 	if runtime.GOOS == "windows" {
@@ -126,12 +128,16 @@ func TestIntegration_RetentionWithObserver(t *testing.T) {
 	now := time.Date(2026, 4, 27, 0, 0, 0, 0, time.UTC)
 	retention := NewRetention(logPath, archiveDir, func() time.Time { return now })
 
-	// With defaultRetentionDays (30 days), 2026-01-01 is a pruning target
+	// With DefaultRetentionDays (30 days), 2026-01-01 is a pruning target
 	obs := NewObserverWithRetention(logPath, retention)
 
-	// Record a new event — lazy pruning runs at this point
+	// Record a new event, then prune explicitly through Retention — the record
+	// path no longer prunes (SPEC-HARNESS-DETACHED-PRUNE-001 REQ-DP-001).
 	if err := obs.RecordEvent(EventTypeAgentInvocation, "expert-backend", "new-hash"); err != nil {
 		t.Fatalf("RecordEvent failed: %v", err)
+	}
+	if err := retention.PruneStaleEntries(DefaultRetentionDays); err != nil {
+		t.Fatalf("PruneStaleEntries failed: %v", err)
 	}
 
 	// Verify the old event was removed

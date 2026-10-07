@@ -45,7 +45,7 @@ This skill is invocable via two equivalent routes:
 Both routes invoke this skill body unchanged. Behavioral equivalence is enforced by a CI audit
 that verifies this skill documents the `/moai run --mode loop` cross-reference.
 
-See [Subcommand Classification matrix](../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent) for the full pipeline-vs-multi-agent + mode-axis contract.
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent + mode-axis contract.
 
 ## Relationship to the Pipeline-Level Agentic Completion Loop
 
@@ -380,4 +380,4 @@ All fixes within the loop follow CLAUDE.md Section 7 Safe Development Protocol:
 ---
 
 Version: 2.6.0
-Updated: 2026-07-12. Redefined `/moai loop` as a **goal preset** — a project-wide improvement sweep built ON the goal engine. Added the Goal-Preset Composition section (delegates the iterate-until-done decision to the goal engine via `stop-goal`), the Scan Stage finite-issue-queue section (default LSP + lint + test + review lenses [security, @MX], opt-in `--lens clean|simplify|coverage`, no-invented-improvements HARD boundary, empty-queue immediate exit), the /moai review + /moai fix layering section, and the additive `sweep-residue` exit_kind value. PRESERVED: the mechanical predicate + independent final pass (Step 1/1.5), the ceiling-exit 5-section verdict contract with `.moai/state/loop-verdict-<id>.json` persistence, the iteration-ceiling precedence rule, and the memory-pressure guard. Previous: 2.3.0 (2026-07-09) replaced sentinel-string success-exit with mechanical predicate; 2.2.0 (2026-03-02) expanded Language-Specific Commands to 16 languages.
+Changes: Redefined `/moai loop` as a **goal preset** — a project-wide improvement sweep built ON the goal engine. Added the Goal-Preset Composition section (delegates the iterate-until-done decision to the goal engine via `stop-goal`), the Scan Stage finite-issue-queue section (default LSP + lint + test + review lenses [security, @MX], opt-in `--lens clean|simplify|coverage`, no-invented-improvements HARD boundary, empty-queue immediate exit), the /moai review + /moai fix layering section, and the additive `sweep-residue` exit_kind value. PRESERVED: the mechanical predicate + independent final pass (Step 1/1.5), the ceiling-exit 5-section verdict contract with `.moai/state/loop-verdict-<id>.json` persistence, the iteration-ceiling precedence rule, and the memory-pressure guard. Previous: 2.3.0 replaced sentinel-string success-exit with mechanical predicate; 2.2.0 expanded Language-Specific Commands to 16 languages.

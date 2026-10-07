@@ -1,4 +1,5 @@
 ---
+isolation: worktree
 name: e2e-tester
 description: |
   End-to-end test execution specialist for web, mobile, and desktop applications.
@@ -142,5 +143,5 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 ## Subagent Boundary
 
 - The `tools` list excludes nested agent spawning and user-question channels by design; results return to the orchestrator, which owns all user interaction.
-- Task tracking: each journey is tracked via TaskCreate/TaskUpdate (pending → in_progress → completed; failed journeys stay in_progress with failure details).
+- Task tracking: each journey is tracked through the harness's `task-list` capability across pending → in_progress → completed; failed journeys stay in_progress with failure details. Where the harness has no `task-list`, report the same per-journey states as prose in the run report.
 - Scope discipline: touch only `e2e/` artifact directories and toolchain config files the workflow names; never modify application source as a side effect of test authoring.

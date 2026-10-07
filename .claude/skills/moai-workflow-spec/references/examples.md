@@ -239,7 +239,7 @@ Success Response (204 No Content)
 ### Security Constraints
 - OWASP Authentication Cheat Sheet compliance
 - TLS 1.3 required for all authentication endpoints
-- Rate Limiting: 10 login attempts per minute per IP adddess
+- Rate Limiting: 10 login attempts per minute per IP address
 - CORS: Whitelist approved frontend domains only
 - Token Rotation: Access token 24h, refresh token 7 days
 
@@ -319,7 +319,7 @@ Value: user_id
 TTL: refresh_token_expiry
 
 # Rate limiting
-Key: ratelimit:login:{ip_adddess}
+Key: ratelimit:login:{ip_address}
 Value: attempt_count
 TTL: 60 seconds
 
@@ -952,4 +952,3 @@ export const LoadingStates = () => (
 ---
 
 Version: 1.0.0
-Last Updated: 2025-12-07

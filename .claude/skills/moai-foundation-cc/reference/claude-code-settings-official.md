@@ -39,7 +39,7 @@ Enterprise Policy → User Settings → Project Settings → Local Settings
 Base Settings Framework (valid top-level fields):
 ```json
 {
- "model": "claude-sonnet-4-5-20250929",
+ "model": "claude-sonnet-5",
  "permissions": {},
  "hooks": {},
  "disableAllHooks": false,
@@ -74,7 +74,7 @@ The `model` field sets the default model. Only this single field is valid in set
 
 ```json
 {
- "model": "claude-sonnet-4-5-20250929"
+ "model": "claude-sonnet-5"
 }
 ```
 

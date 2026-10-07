@@ -139,6 +139,22 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	}
 	endEntry := debugTiming.beginDebug(launchStepEntryParse, "")
 
+	// REQ-SCV-012 (SPEC-SESSION-CC-VERSION-002): the option model the resume
+	// interpreters read is derived once per process from the claude binary on
+	// PATH. Every derivation failure degrades silently to the compile-time
+	// snapshot and changes no exit status; the scan below stays a pure argv
+	// walk over package state.
+	refreshActiveClaudeOptionModel()
+
+	// REQ-SCV-009 (SPEC-SESSION-CC-VERSION-001): a --resume token with no
+	// session id is a broken launch — refuse before any launch side effect,
+	// including the --spawn window. Pure argv scan: no environment, no
+	// filesystem, no lane claim.
+	if err := validateResumeArgs(args); err != nil {
+		endEntry()
+		return err
+	}
+
 	if err := guardCGLaunchMode(mode); err != nil {
 		endEntry()
 		return err
@@ -240,9 +256,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 			settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
 			endSettings()
 			defer settingsCleanup()
-			if len(settingsFlag) > 0 {
-				filteredArgs = append(filteredArgs, settingsFlag...)
-			}
+			filteredArgs = laneJoinChildArgv(filteredArgs, finalLabel, settingsFlag)
 			if debugRequested {
 				// The relaunch loop replaces the one-shot launch: the dump is
 				// this launcher's pre-exec trace, printed before the loop's
@@ -254,9 +268,10 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 		settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
 		endSettings()
-		if len(settingsFlag) > 0 {
-			filteredArgs = append(filteredArgs, settingsFlag...)
-		}
+		// REQ-SCV-008: the lane-join child argv is assembled by the one pure
+		// assembler (lane_resume.go) — name pair, settings, and pass-through
+		// tokens, in a deterministic order.
+		filteredArgs = laneJoinChildArgv(filteredArgs, finalLabel, settingsFlag)
 		defer settingsCleanup()
 	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: validate absolute-path -w values

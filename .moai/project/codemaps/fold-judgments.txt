@@ -101,3 +101,25 @@ omission internal/cli/wizard/questions.go
 # (cli·todo*·doctor*·kanban·config·homestate)에 이름과 함께 서술됐다 — 이름이 문서에
 # 있으므로 fold 성립 안 한다. 위 기존 판정들은 이번 판에서 문서 본문과 대조해 그대로
 # 성립함을 확인했다.
+
+# --- 2026-10-05 refresh (worktree develop, base d0378d37c, card t1524) ---
+# 이번 판도 새 fold/omission 판정이 없다. 창 안 신규 23파일 전부(internal/hygiene 12 ·
+# internal/session ccversion 4 · internal/cli 3 · internal/harness retention_open 쌍 ·
+# internal/hook session_start_hygiene · internal/runtime audit_ceiling)는 modules.md 의
+# 패키지·클러스터 행과 entry-points.md·data-flow.md 의 표면·흐름 절에 이름과 함께
+# 서술됐다 — 이름이 문서에 있으므로 fold 성립 안 한다.
+# 판정 — 플랫폼 쌍은 부모 설명에 접지 않고 개별 이름으로 적는 기존 선례를 따랐다:
+# probe_pid_unix.go·probe_pid_windows.go, rotate_lock_unix.go·rotate_lock_windows.go,
+# ccversion_darwin.go·ccversion_linux.go·ccversion_other.go,
+# retention_open_unix.go·retention_open_windows.go — 전부 named row(codex_local_file_* ·
+# process_fingerprint_* · sweep_cwd_* 선례). fold 로 적으면 검사기의 창에서
+# 이름 없는 변경으로 남는 것이 이유다.
+# 위 기존 fold/omission 판정들은 이번 판에서 문서 본문과 대조해 그대로 성립함을 확인했다.
+
+# --- t1510 판 (2026-10-06, 창 d0378d37c..HEAD) ---
+# 이번 창의 신규 유닛은 전부 named row로 문서 본문에 실렸다 — fold/omission 신규 판정 없음:
+# protected_zone_guard.go · protected_zone_shell.go · protected_zone_path.go (card t1510),
+# todo_issuance.go · factory_bundle.go · codex_review_binary_age.go · memory_fold.go
+# (t1454·t1528·t1502 창 몫) — 전부 named row(modules.md 각 카드 단락).
+# taxonomy/budget.go · taxonomy/reach.go는 기존 패키지의 +2 파일로 modules.md t1510 판이 이름을 운반한다.
+# 위 기존 fold/omission 판정들은 이번 판에서 문서 본문과 대조해 그대로 성립함을 확인했다.

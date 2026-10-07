@@ -178,12 +178,12 @@ Detailed Reference: Refer to Integration Patterns Module at modules/integration-
 
 Purpose: start a Claude or GLM session in a worktree **without giving up the session you are in**.
 
-The launch commands (`moai cc`, `moai glm`, `moai cg`) normally replace the running shell, which is right for "work here now" but cannot express "keep going and start a teammate alongside me". `--spawn` re-issues the same command in a new tmux window instead, then returns so the caller keeps working.
+The launch commands (`moai cc`, `moai glm`) normally replace the running shell, which is right for "work here now" but cannot express "keep going and start a teammate alongside me". `--spawn` re-issues the same command in a new tmux window instead, then returns so the caller keeps working.
 
 Combined with `-w <name>`, one command opens a teammate in an isolated worktree:
 
 ```bash
-moai cg -w feat-auth --spawn    # GLM teammate in .claude/worktrees/feat-auth
+moai glm -w feat-auth --spawn   # Explicit all-GLM session in .claude/worktrees/feat-auth
 moai cc -w feat-auth --spawn    # Claude teammate, same worktree
 moai glm -w feat-auth --spawn   # all-GLM teammate
 ```

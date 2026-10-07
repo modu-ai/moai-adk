@@ -26,12 +26,14 @@ var parseOnlyStatusLineAliases = []string{
 	"context-usage", "session-id",
 }
 
-// TestStatusLineDefaultIsCanonicalEight verifies the operator-selected
-// 2026-09-10 default is exactly the 8 canonical tokens in the chosen order.
-func TestStatusLineDefaultIsCanonicalEight(t *testing.T) {
+// TestStatusLineDefaultIsCanonicalFourteen verifies the operator-selected
+// 2026-09-22 default is exactly the 14 canonical tokens in the chosen order.
+func TestStatusLineDefaultIsCanonicalFourteen(t *testing.T) {
 	want := []string{
-		"model-with-reasoning", "context-remaining", "git-branch", "current-dir",
-		"branch-changes", "five-hour-limit", "weekly-limit", "thread-title",
+		"model-with-reasoning", "codex-version", "context-remaining",
+		"five-hour-limit", "weekly-limit", "current-dir", "git-branch",
+		"branch-changes", "pull-request-number", "run-state", "task-progress",
+		"approval-mode", "fast-mode", "thread-title",
 	}
 	got := DefaultStatusLine()
 	if len(got) != len(want) {

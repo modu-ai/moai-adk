@@ -128,6 +128,67 @@ func todoSortOptions(current, selectedID string) []TodoSortVM {
 	return opts
 }
 
+// todoGraphMaxNodes is the relation view's node bound (REQ-TCI-023): the
+// value the M0 baseline sized — the union of the 214 cards its findings
+// name and the 39 open cards, with headroom for the same distribution to
+// grow before the bound trims anything (baseline.md threshold table, QB04).
+// Beyond the bound the view names the omitted count instead of rendering an
+// unbounded SVG.
+const todoGraphMaxNodes = 300
+
+// TodoGraphVM is the relation view behind /todo?view=graph: every card the
+// queue still names (live, dropped, held) plus its archive, and the recorded
+// findings as edges. Omitted counts the nodes the bound left undrawn.
+type TodoGraphVM struct {
+	Root        string
+	Nodes       []TodoGraphNode
+	Edges       []TodoGraphEdge
+	Omitted     int
+	Unavailable bool
+}
+
+// TodoGraphNode is one card the graph draws. Index is the node's position in
+// the deterministic layout (the store's order, gridded).
+type TodoGraphNode struct {
+	ID    string
+	Text  string
+	State string
+	Index int
+}
+
+// TodoGraphEdge is one recorded finding drawn between two drawn nodes. An
+// edge naming a node the bound omitted is left out with it.
+type TodoGraphEdge struct {
+	From     string
+	To       string
+	Relation string
+	Source   string
+}
+
+// todoGraphX is the node grid's column position: six columns, fixed pitch —
+// the same input always lands on the same point (REQ-TCI-023 determinism).
+func todoGraphX(index int) int { return 60 + (index%6)*130 }
+
+// todoGraphY is the node grid's row position.
+func todoGraphY(index int) int { return 60 + (index/6)*90 }
+
+// todoGraphWidth and todoGraphHeight size the SVG for the drawn node count —
+// one row past the last occupied row, never zero.
+func todoGraphWidth(nodes int) int  { return 60 + 6*130 }
+func todoGraphHeight(nodes int) int { return todoGraphY(nodes) + 40 }
+
+// todoGraphNodeIndex looks one drawn node's grid index up by id — the edge
+// renderer needs both endpoints' positions, and an id the bound omitted has
+// none.
+func todoGraphNodeIndex(g TodoGraphVM, id string) (int, bool) {
+	for _, n := range g.Nodes {
+		if n.ID == id {
+			return n.Index, true
+		}
+	}
+	return 0, false
+}
+
 // TodoSortVM is one option of the segmented sort control. Label is the
 // server-rendered English fallback; LabelKey is the i18n key the client swaps
 // in, mirroring every other data-i18n surface.

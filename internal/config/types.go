@@ -474,6 +474,14 @@ type WorkflowConfig struct {
 	// Config.ProjectContinuation, never directly: the resolver supplies the
 	// absent-key default and reports an unmatched value rather than applying it.
 	Project WorkflowProjectConfig `yaml:"project"`
+	// Hygiene carries the .moai hygiene engine's thresholds and mode
+	// (SPEC-MOAI-HYGIENE-001 REQ-HYG-013/016). The CLI mutates only with
+	// --apply on its own invocation — this config block governs the
+	// SessionStart auto path's mode alone. Defaults live in defaults.go's
+	// Hygiene* constants; hygiene.Settings validation enforces the D30
+	// floors (kept-rotations pinned to 1, positive windows, unknown mode ⇒
+	// report).
+	Hygiene WorkflowHygieneConfig `yaml:"hygiene"`
 	// SessionWorktree gates the automatic worktree isolation for
 	// moai init / moai profile / moai web (SPEC-SESSION-WORKTREE-001 REQ-SW-001 /
 	// REQ-SW-002). Default false: the feature ships INERT (byte-identical
@@ -706,7 +714,6 @@ type WorkflowWorktreeConfig struct {
 	AutoCreate         bool   `yaml:"auto_create"`
 	AutoMerge          bool   `yaml:"auto_merge"`
 	SessionNamePattern string `yaml:"session_name_pattern"`
-	TmuxPreferred      bool   `yaml:"tmux_preferred"`
 }
 
 // WorkflowTodoConfig mirrors workflow.todo.* — the backlog-queue guidance gate
@@ -1371,18 +1378,9 @@ type HarnessConfig struct {
 	Evaluator EvaluatorConfig `yaml:"evaluator"`
 }
 
-// PlanAuditCeilingPolicyConfig is the configuration struct for the
-// plan_audit_ceiling_policy block: what happens when a plan audit reaches its
-// tier ceiling without an admitted verdict.
-type PlanAuditCeilingPolicyConfig struct {
-	// AutoDeltaRounds is the count of delta audits that run without asking
-	// when the fix stays inside fix_scope. Parsed and carried here; the
-	// eligibility computation stays prose-consumed (SPEC-AUDIT-CEILING-002 §E).
-	AutoDeltaRounds int `yaml:"auto_delta_rounds"`
-	// OnFinalHit is the policy value applied when the final ceiling hit
-	// reaches no admitted verdict. Shipped value: hold-and-split.
-	OnFinalHit string `yaml:"on_final_hit"`
-}
+// PlanAuditCeilingPolicyConfig is declared once below, next to its
+// Defaults() — the SPEC-AUDIT-CEILING-002 merge kept this site for the
+// on_final_hit value set only.
 
 // The on_final_hit policy values the ceiling evaluation selects on (the closed
 // set; any other value — or an empty/unreadable one — fails closed to `hold`).
@@ -1498,6 +1496,46 @@ type PlanAuditGlobalConfig struct {
 	EnforceGateOnSpecCreation bool `yaml:"enforce_gate_on_spec_creation"`
 	// Rationale describes the reason for these settings.
 	Rationale string `yaml:"rationale,omitempty"`
+}
+
+// PlanAuditTierCeilingsConfig is the configuration struct for the
+// plan_audit_tier_ceilings block — the per-Tier plan-auditor retry ceiling
+// SSOT (SPEC-AUDIT-CEILING-001 REQ-ACE-002).
+type PlanAuditTierCeilingsConfig struct {
+	// S is the Tier S ceiling (single-pass audit, no iteration 2+).
+	S int `yaml:"S"`
+	// M is the Tier M ceiling (up to two spawns).
+	M int `yaml:"M"`
+	// L is the Tier L ceiling and the backward-compatible default when a
+	// SPEC's frontmatter carries no tier: field.
+	L int `yaml:"L"`
+}
+
+// PlanAuditCeilingPolicyConfig is the configuration struct for the
+// plan_audit_ceiling_policy block — what happens when a plan audit reaches
+// its tier ceiling without an admitted verdict (REQ-ACE-002).
+type PlanAuditCeilingPolicyConfig struct {
+	// AutoDeltaRounds is the count of delta audits that run without asking,
+	// when the fix stays inside the verdict's fix_scope anchors.
+	AutoDeltaRounds int `yaml:"auto_delta_rounds"`
+	// OnFinalHit names the final-hit policy. The documented value — the only
+	// one the prose policy and the CLI ladder implement — is hold-and-split;
+	// any other explicitly-set value is a config error, because a reader that
+	// silently accepts a policy name it does not enforce would read the key
+	// while ignoring its meaning.
+	OnFinalHit string `yaml:"on_final_hit"`
+}
+
+// Defaults returns the canonical ceiling defaults, matching the template
+// harness.yaml SSOT map.
+func (c PlanAuditTierCeilingsConfig) Defaults() PlanAuditTierCeilingsConfig {
+	return PlanAuditTierCeilingsConfig{S: 1, M: 2, L: 3}
+}
+
+// Defaults returns the canonical ceiling-policy defaults, matching the
+// template harness.yaml.
+func (c PlanAuditCeilingPolicyConfig) Defaults() PlanAuditCeilingPolicyConfig {
+	return PlanAuditCeilingPolicyConfig{AutoDeltaRounds: 1, OnFinalHit: "hold-and-split"}
 }
 
 // EvaluatorConfig is the sub-configuration struct for the evaluator.
@@ -1899,6 +1937,28 @@ type archiveFileWrapper struct {
 // gateFileWrapper handles the gate.yaml section file.
 type gateFileWrapper struct {
 	Gate GateConfig `yaml:"gate"`
+}
+
+// WorkflowHygieneConfig mirrors workflow.hygiene.* — the .moai hygiene
+// engine's thresholds and mode (SPEC-MOAI-HYGIENE-001 REQ-HYG-016). The
+// D30 validation floors live in hygiene.Settings.Validate; this type is
+// the yaml surface only.
+type WorkflowHygieneConfig struct {
+	// Mode governs the SessionStart auto path: "report" (default) or
+	// "apply". An unrecognizable string falls back to report (D30). The
+	// CLI ignores this for its own mutation decision — --apply only.
+	Mode string `yaml:"mode"`
+	// AuditLogMaxBytes is the sink rotation threshold.
+	AuditLogMaxBytes int64 `yaml:"audit_log_max_bytes"`
+	// AuditLogKeptRotations is PINNED to 1 (D30): any other value is a
+	// config-invalid refusal.
+	AuditLogKeptRotations int `yaml:"audit_log_kept_rotations"`
+	// TranscriptActivityWindow bounds transcript recency.
+	TranscriptActivityWindow time.Duration `yaml:"transcript_activity_window"`
+	// HeartbeatStaleWindow bounds registry heartbeat recency.
+	HeartbeatStaleWindow time.Duration `yaml:"heartbeat_stale_window"`
+	// MinAgeDays is the deletion age floor.
+	MinAgeDays int `yaml:"min_age_days"`
 }
 
 // systemFileWrapper handles the system.yaml section file.

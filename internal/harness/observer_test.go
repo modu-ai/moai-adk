@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -447,4 +448,81 @@ func writeEventsToFile(path string, events []Event) error {
 // listFilesInDir returns the list of files in the directory.
 func listFilesInDir(dir string) []string {
 	return listDir(dir)
+}
+
+// ─────────────────────────────────────────────
+// SPEC-HARNESS-DETACHED-PRUNE-001 REQ-DP-001:
+// the observer records without pruning
+// ─────────────────────────────────────────────
+
+// seedExpiredEvent writes one retention-expired event (40 days old) to the log at
+// path and returns its subject, so a prune attempt is observable: the prune would
+// archive and remove the line and write the attempt stamp.
+func seedExpiredEvent(t *testing.T, path string) string {
+	t.Helper()
+	stale := Event{
+		Timestamp:     time.Now().UTC().AddDate(0, 0, -40),
+		EventType:     EventTypeAgentInvocation,
+		Subject:       "req-dp-001-stale",
+		ContextHash:   "h",
+		TierIncrement: 0,
+		SchemaVersion: LogSchemaVersion,
+	}
+	if err := appendEventsJSONL(path, []Event{stale}); err != nil {
+		t.Fatalf("stale event 시드 실패: %v", err)
+	}
+	return stale.Subject
+}
+
+// assertUnpruned asserts the record path left the seeded retention-expired event
+// on the log and wrote no prune stamp — REQ-DP-001 (no log rewrite, no archive
+// append, and no stamp write on the record path).
+func assertUnpruned(t *testing.T, logPath, staleSubject string) {
+	t.Helper()
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("로그 읽기 실패: %v", err)
+	}
+	if !strings.Contains(string(data), staleSubject) {
+		t.Errorf("record path pruned the retention-expired event — REQ-DP-001 violation (the observer must record without pruning)")
+	}
+	if _, err := os.Stat(logPath + pruneStateSuffix); !os.IsNotExist(err) {
+		t.Errorf("record path wrote the prune stamp — REQ-DP-001 violation (no stamp write on the record path)")
+	}
+}
+
+// TestRecordExtendedEventDoesNotPrune verifies RecordExtendedEvent appends the
+// event without pruning: a retention-expired event seeded before the record must
+// survive on the log, and no prune stamp may appear (REQ-DP-001).
+func TestRecordExtendedEventDoesNotPrune(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "usage-log.jsonl")
+	staleSubject := seedExpiredEvent(t, logPath)
+
+	retention := NewRetention(logPath, filepath.Join(dir, "archive"), nil)
+	obs := NewObserverWithRetention(logPath, retention)
+
+	evt := Event{EventType: EventTypeAgentInvocation, Subject: "req-dp-001-fresh-extended"}
+	if err := obs.RecordExtendedEvent(evt); err != nil {
+		t.Fatalf("RecordExtendedEvent 실패: %v", err)
+	}
+
+	assertUnpruned(t, logPath, staleSubject)
+}
+
+// TestRecordEventDoesNotPrune verifies RecordEvent likewise records without
+// pruning (REQ-DP-001).
+func TestRecordEventDoesNotPrune(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "usage-log.jsonl")
+	staleSubject := seedExpiredEvent(t, logPath)
+
+	retention := NewRetention(logPath, filepath.Join(dir, "archive"), nil)
+	obs := NewObserverWithRetention(logPath, retention)
+
+	if err := obs.RecordEvent(EventTypeAgentInvocation, "req-dp-001-fresh-record", ""); err != nil {
+		t.Fatalf("RecordEvent 실패: %v", err)
+	}
+
+	assertUnpruned(t, logPath, staleSubject)
 }
