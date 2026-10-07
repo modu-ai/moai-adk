@@ -99,3 +99,44 @@ func TestAppendProgressRecordStartHeadingSkipsFence(t *testing.T) {
 		t.Fatalf("the line immediately before the next real heading is %q, want the record:\n%s", lines[eIdx-1], raw)
 	}
 }
+
+// TestAppendProgressRecordStartHeadingSkipsIndentedCodeBlock (round-4
+// edge 5) — a fence marker indented 4+ spaces is an INDENTED CODE BLOCK in
+// Markdown, not a fence: the fence-state tracker must not treat it as a
+// fence open, or the real §G heading after it is swallowed by a never-
+// closed "fence" and the record lands at end-of-file.
+func TestAppendProgressRecordStartHeadingSkipsIndentedCodeBlock(t *testing.T) {
+	specDir := t.TempDir()
+	pre := "# progress\n\n    ```\n    indented code block content\n\n## §G Override and Refusal Record\n\n- old record\n\n## §E.2 Run-phase Evidence\nlater section body\n"
+	if err := os.WriteFile(filepath.Join(specDir, "progress.md"), []byte(pre), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := appendProgressRecord(specDir, "- new record"); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(specDir, "progress.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(string(raw), "\n")
+	realIdx, recordIdx, eIdx := -1, -1, -1
+	for i, l := range lines {
+		switch {
+		case l == progressSectionHeading && realIdx < 0:
+			realIdx = i
+		case l == "- new record" && recordIdx < 0:
+			recordIdx = i
+		case strings.HasPrefix(l, "## §E.2") && eIdx < 0:
+			eIdx = i
+		}
+	}
+	if realIdx < 0 || recordIdx < 0 || eIdx < 0 {
+		t.Fatalf("fixture anchors missing (real %d record %d e2 %d):\n%s", realIdx, recordIdx, eIdx, raw)
+	}
+	if recordIdx < realIdx {
+		t.Fatalf("the record landed before the real §G heading (record %d < real %d) — the indented code block swallowed it:\n%s", recordIdx, realIdx, raw)
+	}
+	if lines[eIdx-1] != "- new record" {
+		t.Fatalf("the line immediately before the next real heading is %q, want the record:\n%s", lines[eIdx-1], raw)
+	}
+}

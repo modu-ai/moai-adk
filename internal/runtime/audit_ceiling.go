@@ -790,11 +790,13 @@ func progressWithRecord(content, line string) string {
 }
 
 // opensFence reports the fence a line OPENS: a line whose leading run is at
-// least three backticks or three tildes (CommonMark fenced code blocks; the
-// fence character and its run length decide which line can close it).
+// least three backticks or three tildes, indented 0-3 columns (round-4
+// edge 5 — Markdown's fenced code blocks; a deeper indent makes the line an
+// INDENTED CODE BLOCK, not a fence; the fence character and its run length
+// decide which line can close it).
 func opensFence(line string) (c byte, n int, ok bool) {
-	trimmed := strings.TrimLeft(line, " \t")
-	if trimmed == "" {
+	indent, trimmed := fenceIndent(line)
+	if indent > 3 || trimmed == "" {
 		return 0, 0, false
 	}
 	c = trimmed[0]
@@ -808,15 +810,36 @@ func opensFence(line string) (c byte, n int, ok bool) {
 }
 
 // closesFence reports whether line closes a fence opened with n of the
-// fence character c: at least n of that character, then nothing but
-// whitespace.
+// fence character c: indented 0-3 columns (the same Markdown rule), at
+// least n of that character, then nothing but whitespace.
 func closesFence(line string, c byte, n int) bool {
-	trimmed := strings.TrimLeft(line, " \t")
+	indent, trimmed := fenceIndent(line)
+	if indent > 3 {
+		return false
+	}
 	i := 0
 	for i < len(trimmed) && trimmed[i] == c {
 		i++
 	}
 	return i >= n && strings.TrimSpace(trimmed[i:]) == ""
+}
+
+// fenceIndent counts the line's leading indentation in columns (a space
+// counts one, a tab advances to the next multiple-of-four column — the
+// CommonMark rule) and returns the line without it.
+func fenceIndent(line string) (int, string) {
+	col := 0
+	for i := 0; i < len(line); i++ {
+		switch line[i] {
+		case ' ':
+			col++
+		case '\t':
+			col = (col/4 + 1) * 4
+		default:
+			return col, line[i:]
+		}
+	}
+	return col, ""
 }
 
 // RecordRequiredBackendRefusal persists a required-backend refusal

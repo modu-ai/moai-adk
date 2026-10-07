@@ -345,6 +345,21 @@ not exist fails closed (the same ENOENT the in-place write would raise).
 Regression test `TestAppendProgressRecordWritesThroughDanglingSymlink`
 (`internal/runtime/audit_ceiling_symlink_test.go`, darwin||linux).
 
+### Round-4 edge 5 record — indented fence markers are not fences (leader-approved)
+
+RED observed pre-fix at HEAD `6eb6262fb`:
+`audit_ceiling_fence_test.go:140: the line immediately before the next real
+heading is "", want the record` — opensFence/closesFence trimmed ALL
+leading whitespace, so a backtick line indented 4+ spaces (an INDENTED CODE
+BLOCK in Markdown, not a fence) opened a phantom fence whose never-closed
+state hid the real §G heading after it, and the record landed at
+end-of-file. Fix: a shared `fenceIndent` helper (space counts one column, a
+tab advances to the next multiple-of-four column — the CommonMark rule)
+bounds BOTH open and close detection to indent 0-3. Regression test
+`TestAppendProgressRecordStartHeadingSkipsIndentedCodeBlock`
+(`internal/runtime/audit_ceiling_fence_test.go`): the real §G is found and
+the record lands inside its block.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07
