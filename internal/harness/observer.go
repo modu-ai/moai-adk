@@ -20,6 +20,9 @@ type Observer struct {
 	logPath string
 
 	// retention is the lazy pruning component (nil means pruning disabled).
+	// Since SPEC-HARNESS-DETACHED-PRUNE-001 REQ-DP-001 the record path no longer
+	// prunes; the field and its constructor stay because the CLI wiring hands
+	// the same paths to the spawn gate and the constructor is public API.
 	retention *Retention
 
 	// nowFn is a function that returns current time (overridable in tests).
@@ -87,12 +90,6 @@ func (o *Observer) RecordEvent(eventType EventType, subject, contextHash string)
 		return fmt.Errorf("observer: 파일 쓰기 실패 %s: %w", o.logPath, err)
 	}
 
-	// lazy pruning: attempt pruning if retention is set (includes 1-hour skip logic)
-	if o.retention != nil {
-		// pruning failure does not cause recording failure (non-blocking)
-		_ = o.retention.PruneStaleEntries(defaultRetentionDays)
-	}
-
 	return nil
 }
 
@@ -136,17 +133,15 @@ func (o *Observer) RecordExtendedEvent(evt Event) error {
 		return fmt.Errorf("observer: 파일 쓰기 실패 %s: %w", o.logPath, err)
 	}
 
-	// lazy pruning: attempt pruning if retention is set (non-blocking)
-	if o.retention != nil {
-		_ = o.retention.PruneStaleEntries(defaultRetentionDays)
-	}
-
 	return nil
 }
 
-// defaultRetentionDays is the default log retention period in days.
+// DefaultRetentionDays is the default log retention period in days.
 // This value will be replaced when config file integration occurs in Phase 4.
-const defaultRetentionDays = 30
+// Exported since SPEC-HARNESS-DETACHED-PRUNE-001: the spawn gate and the
+// retention-prune child verb share this one source instead of duplicating the
+// literal.
+const DefaultRetentionDays = 30
 
 // ─────────────────────────────────────────────
 // Context-Governance Axis weight estimation (SPEC-V3R6-CONTEXT-GOV-AXIS-001)

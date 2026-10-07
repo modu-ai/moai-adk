@@ -162,6 +162,8 @@ func TestIsHarnessLearningEnabled(t *testing.T) {
 // creates nor appends to .moai/harness/usage-log.jsonl and exits with no
 // error. This is the AC-HRN-FND-007 happy path.
 func TestRunHarnessObserve_NoOpWhenLearningDisabled(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
 
@@ -200,6 +202,8 @@ func TestRunHarnessObserve_NoOpWhenLearningDisabled(t *testing.T) {
 // truncated when learning.enabled is false. The no-op semantics protect
 // the historical record.
 func TestRunHarnessObserve_PreservesExistingLogWhenDisabled(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
 
@@ -245,6 +249,8 @@ func TestRunHarnessObserve_PreservesExistingLogWhenDisabled(t *testing.T) {
 // Together with TestIsHarnessLearningEnabled this constitutes the T-C3 schema
 // verification in tasks.md: every observation entry has the four required keys.
 func TestRunHarnessObserve_RecordsWhenEnabled(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 

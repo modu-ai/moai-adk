@@ -397,8 +397,14 @@ func TestSD_AC015_LaneQueueAllowlistWalk(t *testing.T) {
 		"export-json": nil,
 		"history":     nil,
 		"triage":      {"t1"},
+		// merge — SPEC-TODO-CARD-ISSUANCE-001 M4: a mutation the lane guard
+		// refuses like every other queue write; the args name two seeded ids.
+		"merge": {"t1", "t2"},
+		// trace — SPEC-TODO-CARD-ISSUANCE-001 M3: read-only in a lane (it is
+		// on todoLaneReadOnlyVerbs), so it walks allowlisted.
+		"trace": {"t1"},
 	}
-	allow := map[string]bool{"list": true, "history": true, "why": true, "pr": true, "triage": true, "show": true}
+	allow := map[string]bool{"list": true, "history": true, "why": true, "pr": true, "triage": true, "show": true, "trace": true}
 
 	todoRoot := newTodoCmd()
 	walked := 0

@@ -31,7 +31,11 @@ import (
 const (
 	cardChildSentinelBin = "/sentinel/codex"
 	cardChildLocalBody   = "local rule\n"
-	cardChildWatchdog    = 30 * time.Second
+	// 90s: the 30s binding watchdog expired on CI (run 37316159953), where the
+	// -race shard ran this loop under full-shard load — the endpoint bound
+	// locally in 7.3s and on main's run, but not within 30.75s there. 3x the
+	// observed breach point, still far under the job's 35m -timeout.
+	cardChildWatchdog = 90 * time.Second
 )
 
 // cardChildCall is one launch observed at the managed lane seam.

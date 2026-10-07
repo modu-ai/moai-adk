@@ -148,6 +148,22 @@ func Registry() []Site {
 			Claims: ClaimMembership,
 			Note:   "An inventory of templates/.claude/agents/moai/*.md — the file population by construction.",
 		},
+		{
+			// Card t1539: the generated embed allowlist carries one
+			// //go:embed path per tracked template file, so the
+			// templates/.claude/agents/moai/*.md paths inside it are the
+			// definition-file population by construction — generated from the
+			// git-tracked file set by internal/template/embedemit, never
+			// hand-edited. Membership only: the manifest states no roster size
+			// and no roster policy; the names appear solely as path components.
+			// Registered so a generator regression that drops agent definitions
+			// from the embed set is a guard finding, not a silent shipping gap.
+			ID:     "embed-manifest-definition-paths",
+			Path:   "internal/template/embed_manifest_gen.go",
+			Axis:   AxisDefinitionFiles,
+			Claims: ClaimMembership,
+			Note:   "Whole-file: the //go:embed path lines enumerate the tracked template tree, whose templates/.claude/agents/moai/*.md members are the definition-file population by construction.",
+		},
 
 		// ── Retained-roster sites that are currently consistent ────────────
 		{

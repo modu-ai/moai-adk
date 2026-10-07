@@ -1,6 +1,6 @@
 # moai update와 로컬 전용 파일 — 관리 대상 삭제의 실측과 생존 규칙
 
-> CLAUDE.local.md §2.3 에서 이관했다(card t750, 2026-09-14). **로컬 전용 문서** — 템플릿에 미러하지 않는다(내부 카드 id·SPEC id·내부 날짜를 포함하므로 템플릿 중립성 §25 의 금지 클래스에 해당). 이 문서의 정본은 develop 트리의 이 사본이다(CLAUDE.local.md §0.1 판별식 준용) — 갱신은 카드 워크트리에서 한 뒤 develop 으로 병합한다.
+> CLAUDE.local.md §2.3 에서 이관했다(card t750, 2026-09-14). **로컬 전용 문서** — 템플릿에 미러하지 않는다(내부 카드 id·SPEC id·내부 날짜를 포함하므로 템플릿 중립성 §25 의 금지 클래스에 해당). 이 문서의 정본은 main 트리의 이 사본이다(CLAUDE.local.md §0.1 판별식 준용 — 2026-10-05 GitHub Flow 전환 후 분기 트리는 `main` 이다) — 갱신은 카드 워크트리에서 한 뒤 main 으로 PR을 낸다.
 > CLAUDE.local.md 쪽에는 이 요지만 남는다: `CleanMoaiManagedPaths` 가 관리 대상 뿌리를 통째로 삭제하며 보호 목록이 없다는 사실, 로컬 전용 파일 배치 [HARD], update 후 검증·git-strategy 재적용 [HARD].
 
 ---
@@ -35,22 +35,24 @@ git status --porcelain | grep '^ D'                   # 삭제된 파일 — 0�
 git status --porcelain | grep '^ D' | sed 's/^...//' | tr '\n' '\0' | xargs -0 git restore --
 ```
 
-**[HARD] update 후 `git-strategy.yaml`의 git-flow 키를 반드시 재적용한다.** `.moai/config`는 위 wipe 대상이므로, `moai update` 는 `.moai/config/sections/git-strategy.yaml` 을 템플릿 기본값(`workflow: github-flow`, develop/release 키 없음)으로 되돌린다. 이 파일은 **템플릿에 미러하지 않는다** — 미러하면 16개 언어 배포판 전체에 이 프로젝트의 사설 워크플로가 실려 나간다(§15). 그러니 매 update 후 로컬에서 다시 넣는다:
+**[HARD] update 후 `git-strategy.yaml`의 운영자 키를 반드시 재적용한다.** `.moai/config`는 위 wipe 대상이므로, `moai update` 는 `.moai/config/sections/git-strategy.yaml` 을 템플릿 기본값(`workflow: github-flow`, `worktree_base_branch: ""`)으로 되돌린다. 이 파일은 **템플릿에 미러하지 않는다** — 미러하면 16개 언어 배포판 전체에 이 프로젝트의 사설 워크플로가 실려 나간다(§15). 그러니 매 update 후 로컬에서 다시 넣는다:
 
 ```bash
 # 확인 — 두 키를 함께 본다. 하나만 보면 나머지가 되돌아간 것을 놓친다 (card t1159)
-grep -n 'workflow: git-flow' .moai/config/sections/git-strategy.yaml || echo 'REVERTED(workflow) — 재적용 필요'
-grep -n 'worktree_base_branch: develop' .moai/config/sections/git-strategy.yaml || echo 'REVERTED(worktree_base_branch) — 재적용 필요'
-# 재적용 — **--source=develop 이다. HEAD 가 아니다** (card t1159)
-git restore --source=develop -- .moai/config/sections/git-strategy.yaml
+grep -n 'workflow: github-flow' .moai/config/sections/git-strategy.yaml || echo 'REVERTED(workflow) — 재적용 필요'
+grep -n 'worktree_base_branch: main' .moai/config/sections/git-strategy.yaml || echo 'REVERTED(worktree_base_branch) — 재적용 필요'
+# 재적용 — **원천은 main의 커밋 사본이다** (2026-10-05 GitHub Flow 전환; §0.1 판별식)
+git restore --source=main -- .moai/config/sections/git-strategy.yaml
 ```
 
-**[HARD] `--source=HEAD` 를 쓰지 않는다.** primary 체크아웃은 `main` 에 체크아웃돼 있고, `main` 커밋본에는 `worktree_base_branch` 키가 **아예 없으며** 세 블록 모두 `workflow: github-flow` 다(2026-09-24 실측: `git show main:.moai/config/sections/git-strategy.yaml`). `HEAD` 에서 복원하면 두 키가 함께 되돌아간다 — 확인 grep 은 실패하는데 복원은 고쳐 주지 않는 순환이 된다. 정본은 `develop` 이다(§0.1 과 같은 판별식: 레인이 분기하는 트리가 지배한다).
+**[HARD] 복원 원천은 「레인이 분기하는 트리」의 커밋 사본이다(§0.1) — 현재 그 트리는 `main` 이므로 `--source=main` 이다.** 이전 판(develop 시대)의 `--source=develop` 경고는 develop 체인과 함께 폐기됐다: main 커밋본이 운영자 키 두 개(`worktree_base_branch: main`, `lead_push_threshold`)를 모두 운반하므로 restore 한 번이면 재적용이 끝난다. `--source=HEAD` 는 primary 체크아웃(`main` 체크아웃)에서 `--source=main` 과 같지만, 표기는 후자를 쓴다 — HEAD 가 무엇인지는 세션마다 다를 수 있다.
 
-`git restore` 가 통하지 않는 상황(커밋 전 상태)이면 `git_strategy` 아래를 손으로 되돌린다 — **네 줄이 아니라 다섯 줄이다**:
+`git restore` 가 통하지 않는 상황(커밋 전 상태)이면 `git_strategy` 아래를 손으로 되돌린다 — **운영자 키는 두 개다**:
 
-- `git_strategy.manual`: `workflow: git-flow` [2026-08-27 감사 정정], 그리고 `main_branch:` 바로 아래에 `develop_branch: develop` / `release_branch_prefix: release/` / `rc_version_format: vX.Y.Z-rc.N` 세 줄.
-- `git_strategy` 최상위: `worktree_base_branch: develop` — **이 줄이 목록에서 빠져 있어 2026-09-24 에 카드 트리 6개가 develop 이 아니라 main 에서 났다**(t1154·t1153·t1075·t1157·t1158·t1159). 빈 값은 `SPEC-WORKTREE-BASEREF-001` 의 중립 기본값이라 `moai worktree new` 가 base 오퍼랜드 없이 `git worktree add` 를 돌리고, git 은 호출 트리의 HEAD(= primary 의 `main`)에서 판다. 손실이 조용하다 — 확인 grep 이 `workflow` 만 보면 이 되돌림은 통과한다. 근거: `.moai/reports/t1159/measurement.md`.
+- `git_strategy` 최상위: `worktree_base_branch: main` — **이 줄이 빠지면 카드 트리가 기저 브랜치 없이 판다**(2026-09-24 실측: 카드 트리 6건이 되돌려진 채 생성됐다 — t1154·t1153·t1075·t1157·t1158·t1159). 빈 값은 `SPEC-WORKTREE-BASEREF-001` 의 중립 기본값이라 `moai worktree new` 가 base 오퍼랜드 없이 `git worktree add` 를 돌리고, git 은 호출 트리의 HEAD에서 판다. 손실이 조용하다 — 확인 grep 이 `workflow` 만 보면 이 되돌림은 통과한다. 근거: `.moai/reports/t1159/measurement.md`.
+- `git_strategy.manual.lead_push_threshold`: 운영자 값(현재 20 — 기록값이며 유도값이 아니다).
+
+히스토리: 2026-08-27~2026-10-05 의 develop GitFlow 체인에서는 `manual.workflow: git-flow` + `develop_branch: develop` 등 다섯 키를 매 update 후 재적용했다. 2026-10-05 GitHub Flow 전환(card t1522)으로 그 키들은 폐기됐고, 이 절의 구 지시(`--source=develop`, `worktree_base_branch: develop`)는 card t1564 가 main 기준으로 갱신했다.
 
 **[HARD] AC 스냅숏 커밋 가드의 무장 상태는 세션 시작마다 읽는다 (card t1161).** t1150 이
 넣은 가드(`git config hook.ac-baseline-guard.{event,command}` + `scripts/ac-baseline/check-staged.sh`)는

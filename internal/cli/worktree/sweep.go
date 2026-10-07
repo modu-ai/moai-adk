@@ -32,6 +32,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
@@ -208,7 +209,12 @@ landed, and ANY other exit (fetch failure, unresolvable base) means the
 sweep cannot answer, which PRESERVES the tree. A stale remote-tracking ref
 never satisfies the predicate on its own.
 
-The default base is origin/develop — this diverges from clean --stale,
+The default base is origin/<the configured integration target> —
+origin/develop under git-flow, origin/main under github-flow; with no target
+configured the sweep stops and asks for --base. When the configured ref does
+not exist on its remote (an integration-branch cutover deleted it), the
+derived base falls back to the remote's own default branch, with a notice on
+stderr. This diverges from clean --stale,
 whose default is origin/main (that flag sweeps stale references, not
 landings). Override with --base.
 
@@ -221,8 +227,93 @@ Previews by default; pass --yes to remove.`,
 	}
 	cmd.Flags().Bool("yes", false, "Actually perform the disposals instead of previewing them")
 	cmd.Flags().Bool("json", false, "Report every non-protected worktree's evaluation as JSON; removes nothing")
-	cmd.Flags().String("base", "origin/develop", "Remote integration base the landing check compares against (default diverges from clean --stale's origin/main)")
+	cmd.Flags().String("base", "", "Remote integration base the landing check compares against (default: origin/<configured integration target>)")
 	return cmd
+}
+
+// sweepRemoteRefExists probes whether refs/heads/<ref> exists on the remote
+// (REQ-CR-001): `git ls-remote --exit-code` answers structurally — exit 0
+// present, exit 2 absent, anything else undeterminable — instead of parsing
+// fetch stderr text, which is not stable across git versions.
+var sweepRemoteRefExists = func(repoRoot, remote, ref string) (bool, error) {
+	_, err := gitWorktreeCmd("-C", repoRoot, "ls-remote", "--exit-code", remote, "refs/heads/"+ref)
+	if err == nil {
+		return true, nil
+	}
+	if sweepProcessExitCode(err) == 2 {
+		return false, nil
+	}
+	return false, err
+}
+
+// sweepRemoteHead resolves the remote's default branch name from the remote
+// itself (REQ-CR-003): the first `ref: refs/heads/<name>` line of
+// `git ls-remote --symref <remote> HEAD` — the same answer `git clone` uses
+// to pick its initial branch, so no branch name is hardcoded here.
+var sweepRemoteHead = func(repoRoot, remote string) (string, error) {
+	out, err := gitWorktreeCmd("-C", repoRoot, "ls-remote", "--symref", remote, "HEAD")
+	if err != nil {
+		return "", err
+	}
+	for _, line := range strings.Split(out, "\n") {
+		const prefix = "ref: refs/heads/"
+		if !strings.HasPrefix(line, prefix) {
+			continue
+		}
+		rest := strings.TrimPrefix(line, prefix)
+		if i := strings.IndexAny(rest, "\t "); i >= 0 {
+			rest = rest[:i]
+		}
+		if rest != "" {
+			return rest, nil
+		}
+	}
+	return "", fmt.Errorf("ls-remote --symref %s HEAD: no symbolic ref line", remote)
+}
+
+// sweepEffectiveBase resolves the DERIVED default base against the remote
+// (SPEC-CUTOVER-RESIDUE-001 REQ-CR-002/003): a derived ref the remote no
+// longer carries (a workflow cutover deleting the old integration branch)
+// makes every tree's landing predicate fail with cause=fetch-failed, so the
+// absent-ref case falls back to the remote's own default branch. Every case
+// the probe cannot answer affirmatively keeps the derived base — the
+// existing three-way landing contract then renders it honestly (fetch
+// failure → PRESERVE). The second return reports that a fallback engaged;
+// the caller surfaces it so the switch is never silent. An explicit --base
+// never reaches this function: the operator's word is the base (REQ-CR-004).
+func sweepEffectiveBase(repoRoot, base string) (string, bool) {
+	i := strings.Index(base, "/")
+	if i <= 0 || i == len(base)-1 {
+		return base, false
+	}
+	remote, ref := base[:i], base[i+1:]
+	exists, err := sweepRemoteRefExists(repoRoot, remote, ref)
+	if err != nil || exists {
+		return base, false
+	}
+	head, err := sweepRemoteHead(repoRoot, remote)
+	if err != nil || head == "" || head == ref {
+		return base, false
+	}
+	return remote + "/" + head, true
+}
+
+// sweepConfigRoot names the project root the default --base is derived from.
+// A seam in the file's style (sweepFetchBase, sweepAncestor) so tests whose
+// provider root is a fake path can point it at a fixture root.
+var sweepConfigRoot = func() string { return WorktreeProvider.Root() }
+
+// sweepDefaultBase derives the default --base from the configured integration
+// target of the project rooted at root (the interpretation table behind
+// config.LoadGitFlowIntegrationConfig). With no target the answer is an error,
+// never a substituted branch: the sweep cannot name what it compares against.
+func sweepDefaultBase(root string) (string, error) {
+	cfg := config.LoadGitFlowIntegrationConfig(root)
+	target := strings.TrimSpace(cfg.IntegrationTarget)
+	if target == "" {
+		return "", fmt.Errorf("sweep: no integration target configured under %s: %s", root, cfg.EmptyTargetGuidance(root, "pass --base origin/<branch>"))
+	}
+	return "origin/" + target, nil
 }
 
 func runSweep(cmd *cobra.Command, _ []string) error {
@@ -233,6 +324,18 @@ func runSweep(cmd *cobra.Command, _ []string) error {
 	base, _ := cmd.Flags().GetString("base")
 	apply, _ := cmd.Flags().GetBool("yes")
 	asJSON, _ := cmd.Flags().GetBool("json")
+
+	if strings.TrimSpace(base) == "" {
+		derived, err := sweepDefaultBase(sweepConfigRoot())
+		if err != nil {
+			return err
+		}
+		effective, fellBack := sweepEffectiveBase(WorktreeProvider.Root(), derived)
+		if fellBack {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "base %s is absent on its remote; using the remote default branch %s as the sweep base\n", derived, effective)
+		}
+		base = effective
+	}
 
 	worktrees, err := WorktreeProvider.List()
 	if err != nil {
@@ -364,6 +467,13 @@ func sweepEvaluate(wt git.Worktree, in sweepEvalInputs) sweepVerdict {
 		v.Landed = staleStateUndetermined
 		v.Reason = fmt.Sprintf("cause=%s; %v", causeLandedCheckFailed, err)
 		return v
+	}
+	if !landed {
+		// Ancestry said "no" — the one negative. A squash-merged card is
+		// never an ancestor, so the shared predicate's layers 2-3 get the
+		// last word (landing_predicate.go); nothing confirmed keeps the
+		// verdict exactly as it was.
+		landed, _ = landedBeyondAncestry(wt.Path, wt.Branch, in.base)
 	}
 	if !landed {
 		v.Landed = staleStateNo

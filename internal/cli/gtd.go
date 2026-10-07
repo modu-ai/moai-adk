@@ -266,6 +266,12 @@ func newGTDEngageCmd() *cobra.Command {
 				return err
 			}
 		}
+		// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-005: engage carries the same
+		// presentation — read-only, after the admission, recording no finding
+		// and refusing nothing.
+		if result.CardID != "" {
+			todoEngagePresentation(cmd, store, result.CardID)
+		}
 		return printGTD(cmd, result, jsonOutput)
 	}}
 	cmd.Flags().BoolVar(&approved, "approve", false, "explicitly approve queue effects")

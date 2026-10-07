@@ -22,7 +22,9 @@ git_strategy:
     push_to_remote: false
     merge_method: merge        # PR merge method: squash, merge, rebase
     # Batch-push trigger for manual-mode leads: close the push batch when
-    # `git rev-list --count origin/<develop>..<develop>` reaches this count.
+    # `git rev-list --count origin/<integration-branch>..<integration-branch>`
+    # reaches this count, where <integration-branch> is the repository's own
+    # integration branch (the target the worktree and sweep commands derive).
     # 0 disables the trigger (the default — manual mode also ships
     # push_to_remote: false, so a push threshold would be meaningless).
 

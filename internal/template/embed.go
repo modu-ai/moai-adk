@@ -1,7 +1,11 @@
 // Package template provides template deployment and rendering for MoAI projects.
 //
 // The templates/ subdirectory contains curated template content that is embedded
-// into the moai binary at compile time via //go:embed. This includes agent
+// into the moai binary at compile time. The embedded set is bounded by a
+// GENERATED per-file embed allowlist (embed_manifest_gen.go, emitted by
+// internal/template/embedemit from the git-tracked file set) — not by
+// //go:embed all:templates, which embedded every file on disk including
+// git-ignored and untracked additions (card t1539). This includes agent
 // definitions, skill files, rules, output styles, configuration references,
 // and root files (AGENTS.md, .gitignore).
 //
@@ -13,21 +17,8 @@
 package template
 
 import (
-	"embed"
 	"io/fs"
 )
-
-// embeddedRaw holds the raw embedded filesystem with the "templates/" prefix.
-// The all: prefix ensures dot-prefixed directories (.claude/, .moai/) and
-// dot-prefixed files (.gitignore) are included.
-//
-// catalog.yaml is a sibling of the templates/ directory (not inside templates/)
-// so it requires an explicit separate embed directive.
-// Added in SPEC-V3R4-CATALOG-001 T-023 (embed gap confirmation).
-//
-//go:embed all:templates
-//go:embed catalog.yaml
-var embeddedRaw embed.FS
 
 // @MX:ANCHOR: [AUTO] go:embed template filesystem access point - depended on by 6 or more callers including init/update/deployer
 // @MX:REASON: [AUTO] fan_in=6, sole embedded template source in the binary; the "templates/" prefix strip rule maps 1:1 to deployment paths
