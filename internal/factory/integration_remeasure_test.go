@@ -267,6 +267,23 @@ func TestClassifyEscapedQuoteStaysOneCommand(t *testing.T) {
 	}
 }
 
+func TestClassifyQuotedWordsAndGOFLAGSCarryJSON(t *testing.T) {
+	// t1576 review round 14: the -json read must share the shell-aware
+	// parsing — quoted words and a GOFLAGS assignment carry the flag too.
+	for _, command := range []string{
+		"'go' 'test' '-json' ./p/...",
+		"GOFLAGS=-json go test ./p/...",
+	} {
+		count, structured, err := ClassifyStructuredOutput(command, strings.NewReader(`{"Action":"pass","Package":"p"}` + "\n"))
+		if err != nil {
+			t.Fatalf("%q must classify: %v", command, err)
+		}
+		if !structured {
+			t.Fatalf("%q must read as a go test -json run: structured=%v count=%d", command, structured, count)
+		}
+	}
+}
+
 func TestRemeasureRecordValidity(t *testing.T) {
 	// REQ-MWQ-014 (local form): a record is valid when it keys the candidate
 	// tree, carries build identity, and its command classification accepts

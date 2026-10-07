@@ -376,11 +376,24 @@ func stripLeadingEnv(fields []string) []string {
 }
 
 // requestsGoTestJSON reports whether the go test command carries the -json
-// flag.
+// flag — in its own words, in a quoted word, or in a leading GOFLAGS
+// assignment. The scan sees the fields BEFORE the env-prefix strip: the
+// assignment IS the carrier being looked for, and stripping it first hid
+// the flag behind the very check meant to find it (t1576 review round 15).
+// The tool recognition keeps its own strip (isGoTestCommand).
 func requestsGoTestJSON(command string) bool {
-	for _, f := range strings.Fields(command) {
-		if f == "-json" || strings.HasPrefix(f, "-json=") {
-			return true
+	for _, segment := range shellSegments(command) {
+		for _, f := range shellFields(segment) {
+			if f == "-json" || strings.HasPrefix(f, "-json=") {
+				return true
+			}
+			if name, value, ok := strings.Cut(f, "="); ok && name == "GOFLAGS" {
+				for _, g := range strings.Fields(value) {
+					if g == "-json" || strings.HasPrefix(g, "-json=") {
+						return true
+					}
+				}
+			}
 		}
 	}
 	return false

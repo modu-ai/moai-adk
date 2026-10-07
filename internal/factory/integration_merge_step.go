@@ -375,12 +375,16 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		// branch while the step returned success. Both are re-read inside
 		// the section and either drift aborts before the merge (the tip
 		// drift takes cause 2 — the same re-measure-and-re-acquire remedy).
-		checkedOut, checkoutErr := git("rev-parse", "--abbrev-ref", "HEAD")
+		checkedOut, checkoutErr := git("symbolic-ref", "HEAD")
 		if checkoutErr != nil {
-			recheckErr = mergeStepErr(MergeExitOther, "integration merge: read the integration worktree's checkout: %v", checkoutErr)
+			recheckErr = mergeStepErr(MergeExitOther, "integration merge: read the integration worktree's checkout (a detached checkout is its own refusal): %v", checkoutErr)
 			return nil
 		}
-		if checkedOut = strings.TrimSpace(checkedOut); checkedOut != in.IntegrationBranch {
+		// t1576 review round 14: the FULL ref is what compares — with a tag
+		// named like the integration branch, the abbreviated name
+		// disambiguates to heads/<branch> and the string comparison refused
+		// a correct checkout.
+		if checkedOut = strings.TrimSpace(checkedOut); checkedOut != "refs/heads/"+in.IntegrationBranch {
 			recheckErr = mergeStepErr(MergeExitOther, "integration merge: refused — the integration worktree is on %q, not %s; restore the checkout, re-measure, and re-acquire", checkedOut, in.IntegrationBranch)
 			return nil
 		}

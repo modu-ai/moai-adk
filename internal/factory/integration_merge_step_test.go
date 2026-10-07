@@ -912,6 +912,19 @@ func TestMergeStepRefusesACardWhoseStateMovedOn(t *testing.T) {
 	requireWindowReleasedAndCPromoted(t, f)
 }
 
+func TestMergeStepCheckoutCheckReadsTheFullRef(t *testing.T) {
+	// t1576 review round 14: with a tag named like the integration branch,
+	// `rev-parse --abbrev-ref HEAD` disambiguates to heads/develop and the
+	// string comparison refused a correct checkout. The full ref from
+	// symbolic-ref is what compares.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	stepMustGit(t, f.integ, "tag", "develop", "HEAD")
+	if _, err := RunMergeStep(f.input(), f.seams(card)); err != nil {
+		t.Fatalf("a tag shadowing the branch name must not refuse the merge: %v", err)
+	}
+}
+
 func TestMergeStepCardDriftAfterMergeHoldsNamingSHA(t *testing.T) {
 	// t1576 review round 1: the section's card re-gate reads BEFORE the
 	// merge; a card transition landing between that read and the merge
