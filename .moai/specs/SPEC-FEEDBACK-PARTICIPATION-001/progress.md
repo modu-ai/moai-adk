@@ -60,6 +60,21 @@ _run in progress — M1..M5 + the full review-gate fix stack (14 commits) landed
 | 728a1904b | the drain consumes only the spool batch it read (RED: compile-RED on the seams, then the late capture survived) | outbox+bugreport ok; outbox -count=3 -race ok; 3 builds 0 |
 | 65380b6e8 | the spool entry carries the CAPTURE-TIME build identity (RED: a v3.2.0 capture flushed by a v9.9.9 binary queued the v9.9.9 fingerprint) | outbox+bugreport ok; 3 builds 0. Note for sync: design section 1's bugreport import sentence gains pkg/version (cycle-free, outside AC-025's guard set) and the spool schema gains version/commit — for manager-spec to fold into the design body |
 | d6613a015 | M5 publication through the user's gh, deterministic text | publish 15/15; AC-003 four names PASS; outbox+feedback+cli families ok; 3 builds 0; lint 0 issues on touched packages |
+| 131aeb712 | the drain honors its context through every lock wait (gen-2's final review-gate fix, landed during the gen-3 handoff window) | atomicfile+feedback+bugreport+publish+outbox ok; 3 builds 0; the 200ms-deadline repro 13.31s → 0.20s |
+| 9bb474a1f | docs: record the drain-context fix + refresh the M6 resume block | docs commit |
+| acfeb7259 | review-gate 1/5: the breaker-marker reclaim is a CAS guarded by its own .reclaim marker | atomicfile ok + ok -race; consumers ok; 3 builds 0 |
+| 1b3735ce3 | review-gate 5/5: the marker format round-trips the multi-field detail losslessly (QuoteMarkerValue/SplitMarkerTokens) | publish+outbox ok (golden byte-identical); 3 builds 0 |
+| c309681a1 | review-gate 1/5 (P1): the sender re-validates the stored body and regenerates what it publishes (revalidate.go) | publish+outbox+feedback ok; 3 builds 0; RED: tampered body reached gh |
+| 58cec539c | review-gate 3/5 (P2): per-item cross-process send ownership (outbox.ClaimItemSend) | publish+outbox ok; ownership pair -count=3; 3 builds 0; RED: two flushes each sent |
+| 60deba377 | review-gate 4/5 (P2): the drain consumes only the prefix it processed (PrefixLenForEntries) | outbox+bugreport ok; drain family -count=3; 3 builds 0 |
+| e397ec59d | review-gate residual 1: the sender re-checks the live queue after taking an item's claim | publish ok; 3 builds 0; RED: flush B re-sent flush A's item |
+| 026c7ef7d | review-gate residual 2: an orphaned ledger record re-queues instead of deduping the report away | outbox+feedback ok; RED both shapes: report deduped away and lost |
+| 1159d38ea | review-gate residual 3: every marker reclaim takes its own guard — the .reclaim path included, depth-capped | atomicfile ok + ok -race; 3 builds 0; RED: rival's live guard deleted |
+| 5f00c7aac | hardening 1 (P1): the recursive reclaim honors the caller's cancellation (BreakStaleLockContext) | atomicfile ok; 3 builds 0; pre-cancelled reclaim = 0 verdict reads |
+| 270e91599 | hardening 2 (P2): a failed queue save no longer double-counts into the rolling caps (rollbackLedgerRecord, ctx-bounded) | outbox ok; RED: 3 phantom QueuedAt after 3 failed saves |
+| 834930afd | hardening 3 (P2): a recorded send is reconciled, never re-sent (sent-first ordering + reconcile rule) | publish ok; RED: creates=0 comments=1 re-sent |
+| 5dc638bbc | hardening 4 (P2): the whole flush honors its deadline — complete/drop/fail take MutateContext | publish+outbox ok; RED: 1.15s on a 200ms deadline |
+| 9693fcab9 | hardening amendment: a past sent record suppresses only inside the DEC-3 window (SentHistoryHasFingerprintWithin) | publish+outbox+feedback ok; 3 builds 0; RED: 8-day-old row suppressed a new report |
 | 131aeb712 | the drain honors its context through every lock wait (RED: a 200ms-deadline drain ran 13.31s against a live holder — the gate measured 13.36) | green in 0.20s, 3/3 -race; all five touched suites ok; 3 builds 0; ClaimSection/MutateContext carry ctx |
 
 Gate item 3 (re-verify at the new HEAD): the double-ClaimSection dead-owner repro family at HEAD 9236c5cd6 — TestBreakerExcludesRivals..., TestBreakNeverDisposes..., TestBreakAborts..., TestBreakStillFires..., TestBreakGateAborts... x -count=3 -race = 15/15 PASS; TestStaleLockReclaimDoesNotDeleteTheNewLock (16 concurrent ClaimSection callers against a dead-owner fixture, no release) x -count=3 -race = 3/3 PASS.
