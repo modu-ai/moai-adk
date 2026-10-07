@@ -1294,22 +1294,49 @@ var nmLaneVariants = []struct {
 	}},
 }
 
-// TestTodoLaneRefusesAutoCycle — a lane session, however it is identified, is
-// refused `moai todo --auto` and the queue file is byte-identical; the
-// read-only forms still run.
-func TestTodoLaneRefusesAutoCycle(t *testing.T) {
+// TestTodoLaneRunsAutoCycleThroughLeaseEdges — card t1554 replaced the
+// dedicated `--auto` lane refusal (SPEC-TODO-AUTO-PICK-001 REQ-TAU-008): a
+// fully-stamped lane session now RUNS the cycle — the lease-based lane form,
+// whose only queue write is the nominated lease edge. The leased card is
+// picked, never archived; the read-only forms still run. A partial stamp
+// cannot run the cycle: the cycle is never wider than the lane verbs it
+// replaces, so a label-only session (no role marker) is refused "not a lane
+// session" exactly as `factory next` refuses it, and a role marker without a
+// lane label is refused with the label requirement (the label is the lease
+// identity) — configuration errors, never the operator cycle.
+func TestTodoLaneRunsAutoCycleThroughLeaseEdges(t *testing.T) {
 	for _, v := range nmLaneVariants {
 		t.Run(v.name, func(t *testing.T) {
 			store := nmAutoFixture(t)
+			sdRegisterLane(t, factoryCardRoot(), "lane-1")
+			nmIsolatedWorktrees(t, "t1", "t2")
+			origRun := autoLaneRunResolveFn
+			t.Cleanup(func() { autoLaneRunResolveFn = origRun })
+			autoLaneRunResolveFn = func(context.Context, string) (string, error) { return fcRun, nil }
 			v.set(t)
-			before := sdQueueBytes(t, store)
 			out, _, err := runTodo(t, "--auto", "--auto-wait", "1ms")
-			if err == nil {
-				t.Fatalf("a lane session ran `moai todo --auto`: output %q", out)
+			switch v.name {
+			case "label-only":
+				if err == nil || !strings.Contains(err.Error(), "not a lane session") {
+					t.Fatalf("label-only lane `--auto` = %v, want the lane-boundary refusal", err)
+				}
+				return
+			case "role-only":
+				if err == nil || !strings.Contains(err.Error(), "MOAI_FACTORY_WORKER is empty") {
+					t.Fatalf("role-only lane `--auto` = %v, want the lane-label requirement", err)
+				}
+				return
 			}
-			if after := sdQueueBytes(t, store); after != before {
-				t.Errorf("the refused lane `--auto` changed the queue file")
+			if err != nil {
+				t.Fatalf("a lane session's `moai todo --auto`: %v", err)
 			}
+			if !strings.Contains(out, "t1 stage=") {
+				t.Errorf("lane `--auto` output shows no lease: %q", out)
+			}
+			if s := nmQueueState(t, store, "t1"); s != factory.BacklogStatePicked {
+				t.Errorf("t1 queue state = %s, want picked (the lease is the only queue write)", s)
+			}
+			nmAssertLeased(t, factoryCardRoot(), "t1", "lane-1")
 		})
 	}
 	t.Run("read-only forms still run", func(t *testing.T) {
@@ -1324,27 +1351,29 @@ func TestTodoLaneRefusesAutoCycle(t *testing.T) {
 	})
 }
 
-// TestTodoLaneAutoRefusalText — the refusal is the dedicated text: it names
-// the lease path and says the --auto authorization is exercised through it,
-// so a lane that reads it proceeds instead of asking.
-func TestTodoLaneAutoRefusalText(t *testing.T) {
-	for _, v := range nmLaneVariants {
-		t.Run(v.name, func(t *testing.T) {
-			nmAutoFixture(t)
-			v.set(t)
-			_, _, err := runTodo(t, "--auto", "--auto-wait", "1ms")
-			if err == nil {
-				t.Fatal("a lane session ran `moai todo --auto`")
-			}
-			for _, want := range []string{"the --auto authorization is exercised through", "moai factory next --card <id>"} {
-				if !strings.Contains(err.Error(), want) {
-					t.Errorf("refusal = %q, want it to contain %q", err.Error(), want)
-				}
-			}
-			if strings.Contains(err.Error(), "cannot mutate the queue") {
-				t.Errorf("refusal reuses the queue-mutation text: %q", err.Error())
-			}
-		})
+// TestTodoLaneAutoWritesLeaseOnly — the queue-integrity half of the replaced
+// refusal, through the real flag surface: the lane cycle records no done and
+// never unpicks, so the queue close belongs to the existing completion path
+// and a missed deadline leaves the lease to the F1 expiry machinery.
+func TestTodoLaneAutoWritesLeaseOnly(t *testing.T) {
+	store := nmAutoFixture(t)
+	sdRegisterLane(t, factoryCardRoot(), "lane-1")
+	nmIsolatedWorktrees(t, "t1", "t2")
+	origRun := autoLaneRunResolveFn
+	t.Cleanup(func() { autoLaneRunResolveFn = origRun })
+	autoLaneRunResolveFn = func(context.Context, string) (string, error) { return fcRun, nil }
+	t.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
+
+	out, _, err := runTodo(t, "--auto", "--auto-wait", "1ms")
+	if err != nil {
+		t.Fatalf("a lane session's `moai todo --auto`: %v", err)
+	}
+	if strings.Contains(out, "\ndone t") {
+		t.Errorf("the lane cycle recorded a done:\n%s", out)
+	}
+	if s := nmQueueState(t, store, "t1"); s != factory.BacklogStatePicked {
+		t.Errorf("t1 queue state = %s, want picked (no unpick past a missed deadline)", s)
 	}
 }
 

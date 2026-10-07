@@ -2065,6 +2065,13 @@ func factoryCommitParents(dir, tip string) []string {
 	return strings.Fields(out)
 }
 
+// factoryRelaunchSupersededNote is the one line the relaunch policy prints
+// before degrading to the one-shot lane session (card t1554): the
+// supervising lease loop is removed — card consumption moved to the unified
+// `moai todo --auto` engine — so the launcher starts one lane session, which
+// consumes the queue itself.
+const factoryRelaunchSupersededNote = "moai: --clear-policy relaunch is superseded (card t1554): card consumption moved to the unified `moai todo --auto` engine; starting one lane session"
+
 // factoryClearPolicySelected reads the lane's clear policy from the carrier
 // constant. Absence — and any value that is not one of the three policies —
 // reads as the default clear-each (REQ-SD-020), matching the hook's

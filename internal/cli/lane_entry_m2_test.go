@@ -266,9 +266,8 @@ func TestLaneEntryEnvParity(t *testing.T) {
 		}
 	}
 
-	// The codex row (M3): the per-card child environment of the relaunch loop
-	// `-l` / `--lane` starts. The golden row carries MOAI_KANBAN_LABEL (today's
-	// child stamps it); the comparison excludes exactly that key.
+	// Codex now boots one parent session. Keep the historical lane marker
+	// golden, adjusting only the card/run boundary changed by that contract.
 	for _, spelling := range []string{"-l", "--lane"} {
 		got := laneMarkerEnv(netCodexLaneChildFor(t, spelling).env)
 		delete(got, retiredLaneLabelMarker)
@@ -278,6 +277,8 @@ func TestLaneEntryEnvParity(t *testing.T) {
 				want[k] = v
 			}
 		}
+		delete(want, config.EnvFactoryCard)
+		want[config.EnvFactoryRunID] = fcRun
 		if formatMarkerRow(got) != formatMarkerRow(want) {
 			t.Errorf("codex %s markers differ from the `-f lane` golden\n got: %s\nwant: %s", spelling, formatMarkerRow(got), formatMarkerRow(want))
 		}
