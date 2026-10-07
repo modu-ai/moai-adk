@@ -12,7 +12,7 @@ module: "internal/cli, internal/template/templates/.claude/hooks/moai"
 lifecycle: spec-anchored
 tags: "review-gate, cache, async, stop-hook, bottleneck"
 card: t1575
-tier: M
+tier: S
 ---
 
 # SPEC-GATE-BOTTLENECK-001 — turn-end review gate bottleneck
@@ -55,19 +55,21 @@ only.
 
 ## Acceptance Criteria
 
-- AC-GBN-001: two consecutive Stop invocations over an unchanged tree make
+- AC-GBN-001 (REQ-GBN-001): two consecutive Stop invocations over an unchanged tree make
   exactly ONE codex RPC; the second reuses the receipt verdict and records
   the skip.
-- AC-GBN-002: a stored FAIL verdict for the current tree key blocks at the
+- AC-GBN-002 (REQ-GBN-001, REQ-GBN-004): a stored FAIL verdict for the current tree key blocks at the
   gate without an RPC; editing a tracked file (porcelain change) makes the
   key stale and the next Stop runs a live review.
-- AC-GBN-003: the wall-clock of a cache-hit Stop is bounded by local
+- AC-GBN-003 (REQ-GBN-001): the wall-clock of a cache-hit Stop is bounded by local
   receipt lookup (sub-second class), versus the pre-change synchronous
   review.
-- AC-GBN-004: fail-open holds on every new path: a corrupt/absent cache
+- AC-GBN-004 (REQ-GBN-002, REQ-GBN-004): fail-open holds on every new path: a corrupt/absent cache
   entry and a failed background start both allow.
 
-## 3.x Out of Scope
+## 3. Non-Goals
+
+### 3.1 Out of Scope
 
 - The card-diff scope axis (t1383). The Codex Stop chain (already
   receipt-based). Changing the codex reviewer itself.

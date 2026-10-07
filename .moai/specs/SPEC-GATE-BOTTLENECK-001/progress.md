@@ -25,3 +25,7 @@ run_status: partial — M1 착지, M2(지연 블록)·라이브 리뷰 0건 조�
 - M2 지연 블록: Stop에서 수신 영수증 부재 시 백그라운드 리뷰 기동(`moai verify codex-review` 재사용) + ALLOW, 판정은 다음 턴 진입 훅(UserPromptSubmit/PreToolUse 신설 배선 — settings.json.tmpl + 훅 매니페스트 M4)에서 receipt 조회해 집행. async:true 불채택(블록 능력 상실).
 - 라이브 리뷰 0건 조건부: reviewRequestParams에 재현 지시자 추가(codex 측 지원 확인 선행).
 - 검증 남은 것: 턴당 벽시간 전후 비교 실측, no-edit 자체허용 회귀 없음(기존 TestReviewGate_NoEditTurnAllows가 계속 green으로 보호 중), fail-open 불변(신규 테스트 2종이 담보).
+
+## 턴종료 게이트 발견 처분 (r9 — 본 카드 diff 발견 0건)
+
+턴종료 게이트가 merge-ref 전체 diff를 보며 보고한 14건(patch-id P1=t1561 발행·after 힌트 재계산·bundle 3건·picked 스킵·todo_issuance 6건·todo.go 2건·backlog_store/relation)은 **전부 t1542 card-review 원장과 리더 원장(t1533 라인·t1561·t1562·t1559)에 기재된 기존 행의 재관측**이다. 본 M1 diff(codex_review_cache.go·gate 조회/기록·테스트)에서의 발견은 0건. 본 카드는 이들 수리의 소관이 아니며 원장 행이 소유한다.
