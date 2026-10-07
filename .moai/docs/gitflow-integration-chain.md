@@ -11,8 +11,7 @@
 moai cc -w develop                # 재진입
 moai cc -w develop --branch develop  # 최초 provisioning (기존 develop 브랜치 체크아웃)
 
-# 창 안에서
-moai integration acquire --name <lane> --card <card-id>
+# 창 밖에서 (재측정은 창 밖 — 카드 t1479, SPEC-MERGE-WINDOW-QUEUE-001)
 # 흡수 전에 로컬 develop 을 먼저 최신화한다. 판정식(ref 비교)과 갱신 경로는
 # `.claude/rules/local/gitflow-lane-protocol.md` §11 이 소유한다 — 여기 복사하지 않는다(두 벌이 되면 갈라진다).
 git -C <카드워크트리> merge develop            # 흡수 — 대상은 로컬 develop
@@ -20,9 +19,14 @@ git -C <카드워크트리> merge develop            # 흡수 — 대상은 로�
 #   앞설 때: 다른 레인이 로컬 병합을 마쳤고 리드가 아직 push 하지 않은 구간 — 원격을 흡수하면 그 착지분이 빠진 베이스에서 재측정한다.
 #   뒤처질 때: 다른 레인의 병합이 이미 원격에 올라간 뒤 — 최신화 없이 로컬을 흡수하면 낡은 베이스에서 재측정한다.
 # 거울상이므로 한쪽만 막으면 다른 쪽으로 새어 나간다.
-# 병합 트리에서 재측정 후
-git merge --no-ff <카드브랜치>                  # develop 워크트리 안에서
-moai integration release
+# 병합 트리(카드 브랜치가 develop 흡수 후의 트리)에서 재측정 — 기록은 candidate 트리 SHA 키
+moai integration remeasure -- go test -json ./...     # 기록: .moai/state/remeasure/<트리SHA>.json
+
+# 창 진입 — 창 안은 초 단위(신분 확인 + --no-ff 병합)다
+moai integration acquire --wait --name <lane> --card <card-id>   # 홀더가 있으면 대기열 진입
+moai integration merge --card <card-id>       # 창 안의 유일한 병합 단계 (git merge --no-ff <핀된 SHA>)
+#   factory complete도 이 단계를 부른다 — 병합 경로는 하나다.
+moai integration release                      # 병합 성공 후 — 대기열 다음 티켓이 승격된다
 # push는 창 밖 — 리드가 레인 병합 SHA를 모아 일괄로 한다 (아래 절차)
 ```
 
