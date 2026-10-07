@@ -1,6 +1,7 @@
 package auditreceipt
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
@@ -73,10 +74,12 @@ func TestInstanceLedgerAmbiguousEndFreezesBoundary(t *testing.T) {
 	}
 }
 
-// A ledger never written reads as the zero ledger, and an end recorded with no
-// start on file still seals forward (a later instance's own receipts are
-// minted after its start, which is after the end).
-func TestInstanceLedgerAbsentReadsZeroAndEndSealsForward(t *testing.T) {
+// A ledger never written reads as the zero ledger, and an end recorded with
+// no start on file is NOT counted into it: an end the ledger has no start for
+// is not attributable to this background era (a foreground instance whose
+// marker save failed resolves its end key here too — post-sync repair r5
+// supplement 2) — counting it would fabricate a seal over a live era.
+func TestInstanceLedgerAbsentReadsZeroAndEndWithoutStartIsNotCounted(t *testing.T) {
 	root := t.TempDir()
 	key := StartMarkerKey("", "sess-ledger-3", AgentSyncAuditor)
 	l, err := ReadInstanceLedger(root, key)
@@ -93,8 +96,8 @@ func TestInstanceLedgerAbsentReadsZeroAndEndSealsForward(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadInstanceLedger: %v", err)
 	}
-	if l.Ends != 1 || !l.EndedAt.Equal(t0.Add(time.Second)) {
-		t.Errorf("ledger = %+v, want 1 end at the end time", l)
+	if l.Ends != 0 || !l.EndedAt.IsZero() {
+		t.Errorf("ledger = %+v, want untouched — an end without a recorded start must not aggregate into this ledger", l)
 	}
 }
 
@@ -300,6 +303,9 @@ func TestInstanceLedgerPendingEndReplaysUnderLock(t *testing.T) {
 	key2 := StartMarkerKey("", "sess-ledger-pend-unc", AgentPlanAuditor)
 	if err := RecordInstanceStart(root, key2, t0); err != nil {
 		t.Fatalf("RecordInstanceStart key2: %v", err)
+	}
+	if err := RecordInstanceStart(root, key2, t0.Add(500*time.Millisecond)); err != nil {
+		t.Fatalf("second RecordInstanceStart key2: %v", err)
 	}
 	if err := os.WriteFile(ledgerPath(root, key2)+".uncertain", []byte("start-count uncertain\n"), 0o644); err != nil {
 		t.Fatalf("mark uncertain: %v", err)
@@ -509,8 +515,10 @@ func TestInstanceLedgerPendingRecoveredUnderGlobMetacharPath(t *testing.T) {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 	key := StartMarkerKey("", "sess-ledger-glob", AgentPlanAuditor)
-	if err := RecordInstanceStart(root, key, t0); err != nil {
-		t.Fatalf("RecordInstanceStart: %v", err)
+	for i := 0; i < 2; i++ { // two recorded starts, two ends to account for
+		if err := RecordInstanceStart(root, key, t0.Add(time.Duration(i)*time.Second)); err != nil {
+			t.Fatalf("RecordInstanceStart %d: %v", i, err)
+		}
 	}
 	pending := ledgerPath(root, key) + ".end-pending-idGlob"
 	body := `{"pending_id":"idGlob","ended_at":"` + t0.Add(time.Second).Format(time.RFC3339Nano) + `"}`
@@ -533,6 +541,48 @@ func TestInstanceLedgerPendingRecoveredUnderGlobMetacharPath(t *testing.T) {
 	}
 	if !l.EndedAt.Equal(t0.Add(2 * time.Second)) {
 		t.Errorf("EndedAt = %v, want the watermark %v (the recovered end 1s, superseded by the later 2s)", l.EndedAt, t0.Add(2*time.Second))
+	}
+}
+
+// Post-sync repair r5 (gate round 25, P2): two ends saved in reverse time
+// order — the later end arrives while a sibling is still unaccounted for
+// (ambiguous, discarded) and the earlier end then seals single-live. The
+// boundary must still sit at the TRUE last terminal end: an ambiguous end
+// that was discarded at its own arrival still happened, and once the era
+// closes its timestamp bounds the seal — receipts minted between the two
+// ends are predecessor-era.
+func TestInstanceLedgerBoundarySealsAtLastEndWhenReordered(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-r5", AgentPlanAuditor)
+	if err := RecordInstanceStart(root, key, t0); err != nil {
+		t.Fatalf("first RecordInstanceStart: %v", err)
+	}
+	if err := RecordInstanceStart(root, key, t0.Add(time.Second)); err != nil {
+		t.Fatalf("second RecordInstanceStart: %v", err)
+	}
+	// The 3s end is applied first (two outstanding: ambiguous, discarded),
+	// then the 2s end seals single-live.
+	if err := RecordInstanceEnd(root, key, t0.Add(3*time.Second)); err != nil {
+		t.Fatalf("first RecordInstanceEnd: %v", err)
+	}
+	if err := RecordInstanceEnd(root, key, t0.Add(2*time.Second)); err != nil {
+		t.Fatalf("second RecordInstanceEnd: %v", err)
+	}
+	l, err := ReadInstanceLedger(root, key)
+	if err != nil {
+		t.Fatalf("ReadInstanceLedger: %v", err)
+	}
+	if !l.EndedAt.Equal(t0.Add(3 * time.Second)) {
+		t.Errorf("EndedAt = %v, want the true last end %v — the boundary must not sit before the last terminal end of the era", l.EndedAt, t0.Add(3*time.Second))
+	}
+
+	// A receipt minted between the two ends is predecessor-era: refused.
+	start := &StartMarker{AgentID: "a1", AgentType: AgentPlanAuditor, TreeRoot: root, StartedAt: t0}
+	r25 := seedLedgerTestReceipt(t, root, t0.Add(2500*time.Millisecond))
+	if ok, cause := CheckCitedReceiptsSince(root, start, l.EndedAt, []string{r25}); ok {
+		t.Errorf("a receipt minted after the earlier end but before the true last end was accepted")
+	} else if cause != CauseReceiptReused {
+		t.Errorf("cause = %q, want %q", cause, CauseReceiptReused)
 	}
 }
 
@@ -620,8 +670,10 @@ func TestInstanceLedgerAllPendingEndsRecovered(t *testing.T) {
 func TestInstanceLedgerPendingSurvivesFailedSave(t *testing.T) {
 	root := t.TempDir()
 	key := StartMarkerKey("", "sess-ledger-savefail", AgentPlanAuditor)
-	if err := RecordInstanceStart(root, key, t0); err != nil {
-		t.Fatalf("RecordInstanceStart: %v", err)
+	for i := 0; i < 2; i++ { // two recorded starts, two ends to account for
+		if err := RecordInstanceStart(root, key, t0.Add(time.Duration(i)*time.Second)); err != nil {
+			t.Fatalf("RecordInstanceStart %d: %v", i, err)
+		}
 	}
 	pending := ledgerPath(root, key) + ".end-pending-idS"
 	body := `{"pending_id":"idS","ended_at":"` + t0.Add(time.Second).Format(time.RFC3339Nano) + `"}`
@@ -629,15 +681,15 @@ func TestInstanceLedgerPendingSurvivesFailedSave(t *testing.T) {
 		t.Fatalf("write pending: %v", err)
 	}
 
-	// Make the ledger save fail: the ledgers directory loses write permission,
-	// so writeJSON's temp file cannot be created.
-	dir := filepath.Dir(ledgerPath(root, key))
-	if err := os.Chmod(dir, 0o500); err != nil {
-		t.Fatalf("chmod ledgers dir: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+	// Make the ledger save fail: swap the save seam. Platform-independent —
+	// os.Chmod does not block file creation inside a directory on Windows, so
+	// the previous permission-based injection never failed the save there
+	// (post-sync repair r5).
+	prevSave := ledgerSave
+	ledgerSave = func(string, any) error { return errors.New("injected ledger save failure") }
+	t.Cleanup(func() { ledgerSave = prevSave })
 	if err := RecordInstanceEnd(root, key, t0.Add(2*time.Second)); err == nil {
-		t.Fatal("the ledger save unexpectedly succeeded in a read-only directory")
+		t.Fatal("the ledger save unexpectedly succeeded with the failing seam")
 	}
 
 	// The pending file survived the failed save...
@@ -646,9 +698,7 @@ func TestInstanceLedgerPendingSurvivesFailedSave(t *testing.T) {
 	}
 
 	// ...and the next operation recovers it.
-	if err := os.Chmod(dir, 0o700); err != nil {
-		t.Fatalf("restore ledgers dir: %v", err)
-	}
+	ledgerSave = prevSave
 	if err := RecordInstanceEnd(root, key, t0.Add(3*time.Second)); err != nil {
 		t.Fatalf("retrying RecordInstanceEnd: %v", err)
 	}
@@ -697,5 +747,51 @@ func TestInstanceLedgerPendingEndIdempotentByEntryID(t *testing.T) {
 	}
 	if _, err := os.Stat(pending); !os.IsNotExist(err) {
 		t.Errorf("the already-applied pending mark was not consumed: %v", err)
+	}
+}
+
+// PendingEndHold's three flavors: no pending holds nothing, a readable
+// unapplied mark holds with ErrPendingEndUnresolved, a corrupted mark holds
+// with ErrPendingEndUnreadable, and the applied mark (folded in by the next
+// ledger operation) releases the hold.
+func TestPendingEndHoldFlavors(t *testing.T) {
+	root := t.TempDir()
+	key := StartMarkerKey("", "sess-ledger-hold", AgentPlanAuditor)
+	if hold := PendingEndHold(root, key); hold != nil {
+		t.Fatalf("no pending end on file, got a hold: %v", hold)
+	}
+
+	if err := RecordInstanceStart(root, key, t0); err != nil {
+		t.Fatalf("RecordInstanceStart: %v", err)
+	}
+	pending := ledgerPath(root, key) + ".end-pending-idHold"
+	body := `{"pending_id":"idHold","ended_at":"` + t0.Add(time.Second).Format(time.RFC3339Nano) + `"}`
+	if err := os.WriteFile(pending, []byte(body), 0o644); err != nil {
+		t.Fatalf("write pending: %v", err)
+	}
+	hold := PendingEndHold(root, key)
+	if !errors.Is(hold, ErrPendingEndUnresolved) {
+		t.Fatalf("hold = %v, want ErrPendingEndUnresolved for a readable unapplied mark", hold)
+	}
+
+	// A corrupted mark holds with the unreadable flavor.
+	if err := os.WriteFile(pending, []byte("{broken"), 0o644); err != nil {
+		t.Fatalf("corrupt pending: %v", err)
+	}
+	hold = PendingEndHold(root, key)
+	if !errors.Is(hold, ErrPendingEndUnreadable) {
+		t.Fatalf("hold = %v, want ErrPendingEndUnreadable for a corrupted mark", hold)
+	}
+
+	// The next ledger operation applies the (repaired) mark and consumes it:
+	// the hold releases.
+	if err := os.WriteFile(pending, []byte(body), 0o644); err != nil {
+		t.Fatalf("repair pending: %v", err)
+	}
+	if err := RecordInstanceEnd(root, key, t0.Add(2*time.Second)); err != nil {
+		t.Fatalf("RecordInstanceEnd (replay carrier): %v", err)
+	}
+	if hold := PendingEndHold(root, key); hold != nil {
+		t.Fatalf("hold = %v, want nil after the pending end was applied", hold)
 	}
 }

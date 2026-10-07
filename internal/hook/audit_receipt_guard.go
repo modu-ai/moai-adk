@@ -173,7 +173,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 		if !g.assumed() {
 			_, key := readStartMarker(g.store, input)
 			consumeStartMarker(g.store, key)
-			recordAuditorEnd(g.store, key)
+			recordAuditorEnd(g.store, endAggregationKey(input, key))
 		}
 		return nil
 	}
@@ -204,6 +204,8 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 			cause = auditreceipt.CauseInstanceLedgerUnreadable
 			if errors.Is(berr, auditreceipt.ErrPendingEndUnreadable) {
 				cause = auditreceipt.CauseInstancePendingUnreadable
+			} else if errors.Is(berr, auditreceipt.ErrPendingEndUnresolved) {
+				cause = auditreceipt.CauseInstancePendingUnresolved
 			}
 			break
 		}
@@ -218,7 +220,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 				slog.Warn("audit rejections not cleared", "agent_type", input.AgentType, "tree_root", g.tree, "error", err)
 			}
 			consumeStartMarker(g.store, foundKey)
-			recordAuditorEnd(g.store, foundKey)
+			recordAuditorEnd(g.store, endAggregationKey(input, foundKey))
 			return nil
 		}
 		cause = failure
@@ -235,7 +237,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 		if !g.assumed() {
 			_, key := readStartMarker(g.store, input)
 			consumeStartMarker(g.store, key)
-			recordAuditorEnd(g.store, key)
+			recordAuditorEnd(g.store, endAggregationKey(input, key))
 		}
 		return &HookOutput{SystemMessage: fmt.Sprintf(
 			"%s: this %s PASS is not accepted — %s. Phase-entry spawns (manager-develop / manager-docs / manager-git) stay denied in %s until a PASS citing a valid audit receipt is recorded.",
@@ -327,6 +329,19 @@ func consumeStartMarker(store, key string) {
 	}
 }
 
+// endAggregationKey resolves the key a terminal end is counted on: the key
+// the marker was found under when there is one — else the derived session-era
+// key the start's LEDGER record was filed under. The ledger start record does
+// not depend on the marker file, so a marker whose save failed must not
+// orphan the instance's end: a marker-less end would leave a phantom survivor
+// that froze the boundary forever (post-sync repair r5).
+func endAggregationKey(input *HookInput, foundKey string) string {
+	if foundKey != "" {
+		return foundKey
+	}
+	return auditreceipt.StartMarkerKey("", input.SessionID, input.AgentType)
+}
+
 // recordAuditorEnd counts a terminal instance end on the derived key's
 // instance ledger (SPEC-RECEIPT-REUSE-001). Only a derived key carries the
 // ledger: an agent-id-keyed marker is the instance's own boundary, consumed at
@@ -362,14 +377,14 @@ func instanceEndBoundary(store, key string) (time.Time, error) {
 	if key == "" || !auditreceipt.IsDerivedMarkerKey(key) {
 		return time.Time{}, nil
 	}
-	// A pending end mark that exists but cannot be read leaves the boundary
-	// unknowable — fail closed rather than silently judging against the old
-	// boundary (post-sync repair r4): the successor's reuse would be accepted
-	// exactly as if the end had never happened.
-	if unreadable, err := auditreceipt.HasUnreadablePendingEnd(store, key); err != nil {
-		return time.Time{}, err
-	} else if unreadable {
-		return time.Time{}, auditreceipt.ErrPendingEndUnreadable
+	// A pending end mark that exists but is not yet folded into the ledger —
+	// readable or not — leaves the boundary older than the true last terminal
+	// end: hold the approval rather than judge against the stale boundary
+	// (post-sync repair r4 + r5 supplement 2). An unreadable mark cannot be
+	// applied at all; a readable one is applied by the next ledger operation,
+	// so that hold resolves itself.
+	if hold := auditreceipt.PendingEndHold(store, key); hold != nil {
+		return time.Time{}, hold
 	}
 	l, err := auditreceipt.ReadInstanceLedger(store, key)
 	if err != nil {

@@ -81,6 +81,7 @@ const (
 	CauseReceiptNotACodexAudit     = "receipt is not a codex audit"
 	CauseInstanceLedgerUnreadable  = "instance ledger unreadable"
 	CauseInstancePendingUnreadable = "instance end record unreadable"
+	CauseInstancePendingUnresolved = "instance end record unresolved"
 	CauseReceiptAuditNotRun        = "receipt records an audit that never produced a verdict"
 	CauseVerdictLineMissing        = "verdict line missing"
 )
@@ -211,6 +212,12 @@ type InstanceLedger struct {
 	// minted during a predecessor instance's lifetime. Zero while no
 	// single-live end has sealed an era.
 	EndedAt time.Time `json:"ended_at,omitempty"`
+	// LastEndedAt is the attribution-free watermark of every terminal end the
+	// key has seen — including ambiguous ends whose single-live advance was
+	// discarded at their own arrival. Once the era closes (a single-live
+	// seal), the boundary catches up to it: the boundary never sits before
+	// the last terminal end the era actually had (post-sync repair r5).
+	LastEndedAt time.Time `json:"last_ended_at,omitempty"`
 	// AppliedEnds holds the pending-entry ids already folded into a saved
 	// ledger, so a pending file whose remove was lost after its save is
 	// skipped on replay instead of counted twice. Bounded by the ends of one
@@ -324,6 +331,11 @@ func releaseLedgerLock(lockPath, token string) {
 	}
 }
 
+// ledgerSave is the save seam of a ledger update: a var so tests can inject a
+// save failure without platform-specific permission games (os.Chmod does not
+// block file creation inside a directory on Windows — post-sync repair r5).
+var ledgerSave = writeJSON
+
 // updateInstanceLedger applies mutate to the key's ledger under the lock, so
 // concurrent starts and ends of one session cannot lose a count. Every end
 // whose own write was dropped earlier is replayed first, under the same lock
@@ -362,7 +374,7 @@ func updateInstanceLedger(treeRoot, key string, at time.Time, mutate func(*Insta
 	}
 	mutate(&l)
 	l.UpdatedAt = at
-	if err := writeJSON(path, &l); err != nil {
+	if err := ledgerSave(path, &l); err != nil {
 		return err // every pending file survives; the next operation retries
 	}
 	for _, p := range consumed {
@@ -371,18 +383,34 @@ func updateInstanceLedger(treeRoot, key string, at time.Time, mutate func(*Insta
 	return nil
 }
 
-// applyEnd counts one terminal end on the ledger, advancing the boundary only
+// applyEnd counts one terminal end on the ledger. The boundary advances only
 // when the end is single-live AND the start count is not known to be
-// incomplete (MarkInstanceStartUncertain's freeze outranks every advance) AND
-// the end is later than the current boundary — the boundary is a watermark
-// and never regresses: lock order is not event order, so an earlier end can
-// arrive after a later one was already applied, and lowering the seal would
-// re-open receipts the true last end had sealed (post-sync review r3).
+// incomplete (MarkInstanceStartUncertain's freeze outranks every advance) —
+// but it then catches up to the attribution-free watermark: an ambiguous end
+// discarded at its own arrival still happened, and once the era closes the
+// seal never sits before the last terminal end the era actually had
+// (post-sync repair r5). The watermark also keeps the boundary monotonic —
+// lock order is not event order, so an earlier end can arrive after a later
+// one was already applied (post-sync review r3).
 func applyEnd(l *InstanceLedger, at time.Time, treeRoot, key string) {
-	if l.Starts-l.Ends <= 1 && !startCountUncertain(treeRoot, key) && (l.EndedAt.IsZero() || at.After(l.EndedAt)) {
-		l.EndedAt = at
+	if l.Ends >= l.Starts {
+		// An end the ledger never counted a start for is not attributable to
+		// this background era: a foreground instance whose marker save failed
+		// resolves its end key to this derived ledger too (post-sync repair
+		// r5 supplement 2), and counting it would fabricate a seal — or flip
+		// a genuinely ambiguous end into a single-live one — that refuses a
+		// live auditor's own receipts. Skip entirely: no count, no
+		// watermark, no seal.
+		return
 	}
+	if at.After(l.LastEndedAt) {
+		l.LastEndedAt = at
+	}
+	eligible := l.Starts-l.Ends <= 1 && !startCountUncertain(treeRoot, key)
 	l.Ends++
+	if eligible && (l.EndedAt.IsZero() || l.LastEndedAt.After(l.EndedAt)) {
+		l.EndedAt = l.LastEndedAt
+	}
 }
 
 // EnsureStartMarker writes an auditor start marker for a derived session-era
@@ -535,6 +563,13 @@ func MarkInstanceEndPending(treeRoot, key string, at time.Time) error {
 // operator's: repair or remove the mark.
 var ErrPendingEndUnreadable = errors.New(CauseInstancePendingUnreadable)
 
+// ErrPendingEndUnresolved reports that a readable pending end mark of the key
+// has not been folded into the ledger yet: the boundary the ledger holds is
+// older than the true last terminal end, and the approval path must hold
+// rather than judge against it (post-sync repair r5 supplement 2). The mark
+// is applied by the next ledger operation — the hold resolves itself.
+var ErrPendingEndUnresolved = errors.New(CauseInstancePendingUnresolved)
+
 // scanEndPendings separates the key's pending end marks into the readable
 // ones (in end-time order — the order the ends really happened in, which is
 // what the single-live rule reads them in) and the unreadable flag. Discovery
@@ -585,12 +620,34 @@ func readEndPendings(treeRoot, key string) ([]pendingEndFile, error) {
 	return readable, nil
 }
 
-// HasUnreadablePendingEnd reports whether any pending end mark of the key
-// exists that cannot be read. The approval path fails closed on it: the
-// boundary is unknowable, and unknowable is not the old boundary.
-func HasUnreadablePendingEnd(treeRoot, key string) (bool, error) {
-	_, unreadable, err := scanEndPendings(treeRoot, key)
-	return unreadable, err
+// PendingEndHold returns the sentinel error the approval path must fail
+// closed on — ErrPendingEndUnreadable (a mark exists but cannot be judged;
+// the remedy is the operator's) or ErrPendingEndUnresolved (a readable mark
+// is not yet folded into the ledger; the next ledger operation applies it,
+// so the hold resolves itself) — or nil when no pending end holds the
+// approval. Either way the boundary the ledger holds is not trustworthy as
+// the true last terminal end (post-sync repair r4 + r5 supplement 2).
+func PendingEndHold(treeRoot, key string) error {
+	readable, unreadable, err := scanEndPendings(treeRoot, key)
+	if err != nil {
+		return err
+	}
+	if unreadable {
+		return ErrPendingEndUnreadable
+	}
+	if len(readable) == 0 {
+		return nil
+	}
+	l, err := ReadInstanceLedger(treeRoot, key)
+	if err != nil {
+		return err
+	}
+	for _, p := range readable {
+		if !slices.Contains(l.AppliedEnds, p.pending.PendingID) {
+			return ErrPendingEndUnresolved
+		}
+	}
+	return nil
 }
 
 // Rejection records a refused auditor PASS. It outlives the subagent: the
