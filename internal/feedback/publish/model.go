@@ -16,6 +16,7 @@ import (
 	"unicode"
 
 	"github.com/modu-ai/moai-adk/internal/bugreport"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/feedback"
 )
 
@@ -28,12 +29,13 @@ type Summarizer interface {
 	Summarize(ctx context.Context, p bugreport.Payload) (string, error)
 }
 
-// Model input and output caps (design.md section 10; values fixed in the
-// run phase): the input is the fixed prompt plus closed fields, the output
-// a short paragraph.
+// Model input and output caps (design.md section 10): the input is the
+// fixed prompt plus closed fields, the output a short paragraph. The values
+// REFERENCE the central constants (review-gate finding 7 — the local
+// 8 KiB / 4 KiB literals diverged from internal/config/defaults.go).
 const (
-	modelInputMaxBytes  = 8 * 1024
-	modelOutputMaxBytes = 4 * 1024
+	modelInputMaxBytes  = config.DefaultBugreportModelInputMaxBytes
+	modelOutputMaxBytes = config.DefaultBugreportModelOutputMaxBytes
 )
 
 // ModelInputMaxBytes reports the input cap (the production summarizer

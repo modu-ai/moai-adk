@@ -191,6 +191,23 @@ func TestMarkerBoundsCrashWindowRecall(t *testing.T) {
 	}
 }
 
+// TestModelByteCapsReferenceTheCentralConstants (review-gate finding 7,
+// P2): the model input and output caps were LOCAL literals (8 KiB / 4 KiB)
+// diverging from the central constants in internal/config/defaults.go
+// (4096 / 2048) — two answers to "how big can a summary be". The package
+// constants must reference the central ones.
+func TestModelByteCapsReferenceTheCentralConstants(t *testing.T) {
+	if modelInputMaxBytes != config.DefaultBugreportModelInputMaxBytes {
+		t.Fatalf("model input cap = %d, want the central %d", modelInputMaxBytes, config.DefaultBugreportModelInputMaxBytes)
+	}
+	if modelOutputMaxBytes != config.DefaultBugreportModelOutputMaxBytes {
+		t.Fatalf("model output cap = %d, want the central %d", modelOutputMaxBytes, config.DefaultBugreportModelOutputMaxBytes)
+	}
+	if ModelInputMaxBytes() != config.DefaultBugreportModelInputMaxBytes {
+		t.Fatalf("ModelInputMaxBytes() = %d, want the central %d", ModelInputMaxBytes(), config.DefaultBugreportModelInputMaxBytes)
+	}
+}
+
 // TestStoredSummaryIsRevalidatedBeforePublish (review-gate P1): the queue
 // file is a local file, so a STORED summary is untrusted at send time — the
 // reuse path must run it through validateSummary and fall back to the
