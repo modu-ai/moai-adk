@@ -18,8 +18,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -29,7 +31,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/auditverdict"
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 )
 
 // Outcome vocabulary (design.md §2).
@@ -617,13 +618,58 @@ func appendProgressRecord(specDir, line string) error {
 	// pre-repair os.WriteFile gave it, 0644 with the process umask applied,
 	// so a not-yet-existing file is pre-created empty through os.WriteFile
 	// itself and the kernel applies the umask at create time; handing 0644
-	// verbatim to the atomic writer's explicit chmod would bypass it.
+	// verbatim to an atomic writer's explicit chmod would bypass it.
 	if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
 		if err := os.WriteFile(path, nil, 0o644); err != nil {
 			return err
 		}
 	}
-	return atomicfile.Write(path, []byte(content), 0o644)
+	// Atomic same-directory replace, seeded with the original's file
+	// metadata (round-3 repair 3): rename(2) swaps the directory entry, so
+	// the replacement carries the TEMP file's access-control entries — a
+	// bare rename drops an ACL the pre-repair os.WriteFile preserved. cp -p
+	// seeds the original's mode, ACL, and extended attributes onto the temp
+	// before the new content is written (its content is then truncated over
+	// and its mtime rides the write); where cp is unavailable the chmod
+	// fallback keeps the F2 mode posture. The shared atomicfile helper is
+	// untouched — this is the call-site preservation path.
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, ".progress-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpName)
+		return err
+	}
+	defer func() { _ = os.Remove(tmpName) }() // no-op once the rename succeeds
+	seeded := seedFileMetadata(tmpName, path)
+	if werr := os.WriteFile(tmpName, []byte(content), 0); werr != nil {
+		return werr
+	}
+	if !seeded {
+		mode := os.FileMode(0o644)
+		if info, serr := os.Stat(path); serr == nil {
+			mode = info.Mode().Perm()
+		}
+		if cerr := os.Chmod(tmpName, mode); cerr != nil {
+			return cerr
+		}
+	}
+	return os.Rename(tmpName, path)
+}
+
+// seedFileMetadata copies the original's mode, access-control entries, and
+// extended attributes onto the temp file via cp -p — the preservation a
+// bare rename cannot provide (round-3 repair 3). Best-effort: any failure
+// (cp unavailable, unsupported metadata) reports false and the caller
+// falls back to the plain mode-preserving temp path.
+func seedFileMetadata(tmp, original string) bool {
+	if runtime.GOOS == "windows" {
+		return false
+	}
+	return exec.Command("cp", "-p", original, tmp).Run() == nil
 }
 
 // progressWithRecord returns content with one record line inserted at the

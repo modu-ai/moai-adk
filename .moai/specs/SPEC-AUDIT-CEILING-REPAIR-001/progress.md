@@ -284,6 +284,26 @@ fix removed) and is deleted — the minimum the fix needs. Regression test
 (`internal/runtime/audit_counter_review_test.go`): same history in both
 families → same previous SHA and same count.
 
+### Round-3 repair 3 record — ACL preservation on the atomic replace (F6, leader-approved)
+
+RED observed pre-fix at HEAD `ccd1603af`:
+`audit_ceiling_acl_test.go:46: the original's ACL did not survive the
+atomic replace` — rename(2) swaps the directory entry, so the replacement
+file carries the TEMP file's access-control entries (none): a
+`group:_guest deny read` ACL line on progress.md vanished through the
+replace, while the pre-repair os.WriteFile preserved it (the auditor's
+macOS probe, reproduced in-repo). Fix at the call site (shared
+`config/atomicfile` helper untouched): the atomic replace now seeds the
+temp file from the original with `cp -p` (mode + ACL + xattrs) BEFORE the
+new content is written — the content is then truncated over (its mtime
+rides the write, so no stale-mtime exposure) and the rename lands a
+replacement carrying the original's ACL. Where cp is unavailable
+(Windows) or fails, the chmod fallback keeps the F2 mode posture
+(existing-file mode preserved, new-file umask-adjusted 0644). Regression
+test `TestAppendProgressRecordPreservesACL`
+(`internal/runtime/audit_ceiling_acl_test.go`, darwin-only — chmod +a is
+a macOS ACL verb): the `deny read` entry survives the record append.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-07
