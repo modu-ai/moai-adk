@@ -302,6 +302,36 @@ func TestTamperedPathTraversalTokenDoesNotPublish(t *testing.T) {
 	}
 }
 
+// TestRegeneratedBodyIsScrubbedBeforePublish (review gate, P1): the
+// revalidation checked field FORMAT only — a token-shaped string smuggled
+// into the queue's frames passed every field allowlist and landed verbatim
+// in the CreateIssue input. The regenerated title and body must pass the
+// scrub check pre-send exactly like the drain's tripwire; a detected report
+// is HELD, not published.
+func TestRegeneratedBodyIsScrubbedBeforePublish(t *testing.T) {
+	consentOn(t)
+	_, item := payloadFixture(t)
+	// Tamper the stored marker's frames with a credential-shaped string:
+	// symbol-allowlist characters only, so field validation passes.
+	item.Body = strings.Replace(item.Body,
+		"frames=internal/cli.Execute",
+		"frames=internal/cli.Execute,"+"ghp_"+"a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8",
+		1)
+	seedQueue(t, item)
+
+	stub := newStubRunner(true)
+	if err := NewSender(stub).Send(context.Background()); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	searches, creates, _ := stub.recorded()
+	if searches != 0 || creates != 0 {
+		t.Fatalf("searches=%d creates=%d — a scrub-detected report was published from the queue", searches, creates)
+	}
+	if rest := queuedItems(t); len(rest) != 1 {
+		t.Fatalf("the held item did not stay queued (items: %d)", len(rest))
+	}
+}
+
 // ---- AC-019: the budget ----
 
 func TestLLMBudgetZeroCalls(t *testing.T) {

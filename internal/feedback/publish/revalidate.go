@@ -89,5 +89,18 @@ func revalidatedItem(item feedback.QueueItem) (payload bugreport.Payload, title,
 	if regenTitle != item.Title {
 		return bugreport.Payload{}, "", "", false
 	}
+	// The regenerated text is screened exactly like the drain's tripwire
+	// (review gate, P1): format-valid frames can still smuggle a
+	// scrub-detected string (a credential-shaped token rides the symbol
+	// allowlist), so the title and body the send paths will publish pass
+	// the scrubber here. A blocked verdict or ANY masking finding holds the
+	// report — it stays queued for the attempt limit, never reaching gh.
+	res, err := feedback.Scrub(feedback.Input{Title: regenTitle, Body: regenBody}, feedback.Options{})
+	if err != nil {
+		return bugreport.Payload{}, "", "", false
+	}
+	if res.Verdict == feedback.VerdictBlocked || len(res.Findings) > 0 {
+		return bugreport.Payload{}, "", "", false
+	}
 	return p, regenTitle, regenBody, true
 }
