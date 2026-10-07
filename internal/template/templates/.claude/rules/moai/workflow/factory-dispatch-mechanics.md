@@ -118,6 +118,65 @@ Two measured constraints make the lane enter the release worktree rather than dr
 
 The completion signal is the branch name, merge SHA, and evidence path.
 
+## The lane's standard landing
+
+A lane lands its own card. The sequence is fixed, and every step leaves a
+file the completion report names:
+
+1. **Verify lane-locally** — the affected packages only, env-scrubbed, one
+   compound invocation (§ Verification load is lane-local).
+2. **Card-review** — `codex_review` with `scope: "card"` into
+   `.moai/reports/<card-id>/card-review.md` (`factory-dispatch-detail.md` §
+   The card-review stage). The receipt the review returns is the mechanical
+   basis of the lane's own completion verdict — a completion carrying
+   neither a review receipt nor a recorded reason for its absence is a gap.
+3. **Deliver** — `moai factory complete`: under github-flow (the
+   distributed default) the verb runs the merge-readiness triple against
+   the integration target, pushes the card branch, opens the pull request
+   (its title carries the card id — the traceability carrier), and requests
+   auto-merge; a re-run after the PR merges records `merged-pr`. The
+   git-flow variant (integration window, `--no-ff` merge, release-branch
+   push) is the section above and applies only where the project's git
+   strategy names git-flow.
+4. **Close** — the merged-pr record closes the lane's own queue card by the
+   runtime-completion archive authority (`auto-semantics.md` §13): the
+   archive lands with the landing verdict the edge answered, and the
+   runtime completion row is recorded. No leader `todo done` is needed.
+5. **Read the review on the pull request** — a `gh pr checks` row naming
+   CodeRabbit is not evidence (`factory-dispatch.md` § CodeRabbit is not
+   read from `gh pr checks`): the combined commit-status API must show
+   `state == "success"` with description `Review completed`, AND a
+   `Merge Risk:` line whose commit prefix matches the current
+   `headRefOid`. Anything else is a gap.
+6. **Sweep** — once the remote landing is confirmed, `moai worktree sweep`
+   disposes the card tree (owner check, dirty trees skipped — the
+   `worktree-integration.md` disposal contract).
+
+The landing writes one decision record (`auto-semantics.md` §10) in the
+card's progress record, and the completion report to the leader carries the
+PR URL and the merge SHA — information, not a gate. The lane's verdict is
+its own, evidenced by the review receipt, CI, and the readiness triple.
+
+## The leader's remaining role
+
+Lane autonomy moved the per-card judgment and landing duties to the lanes.
+What the leader keeps is enumerated, and the enumeration is the boundary —
+a duty not listed is a lane's:
+
+| Retained | Why it stays |
+|---|---|
+| Queue production and issuance | translating operator requests into cards; nothing enters the queue the operator did not ask for |
+| Dispatch | routing whole cards to lanes, with the pre-dispatch cross-check |
+| Cross-lane conflict coordination | semantic clashes a lane cannot resolve alone; dispute coordination |
+| Serial-slot policy | the ordering gate on new leases, and its recorded wedge repairs |
+| Keep-set gate relay | environment-impossible, operator-held, and irreversible external-shared decisions reach the operator through the leader |
+
+Everything that used to sit with the leader per card — the completion
+verdict, the merge approval, the `todo done`, the stage advancement — is
+the lane's now, under the same evidence discipline: the lane self-verifies
+with a receipt, and a completion is still read, never trusted — by the lane
+itself.
+
 ## Boundaries
 
 - **No session spawning.** The leader addresses sessions the operator launched — it never creates one (sub-agents are not sessions).

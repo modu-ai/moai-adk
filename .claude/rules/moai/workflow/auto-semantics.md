@@ -128,15 +128,19 @@ kept until the completion report.
 ## 6. The decision ladder
 
 When a lane needs a judgment to proceed, it resolves through the ladder IN
-ORDER — the lead chat is the LAST step, not the first:
+ORDER — and the ladder ENDS at the lane's own judgment. The operator
+principle: the lane calls `jev_ask` directly when configured,
+judges for itself otherwise, and never asks the leader and waits. The lead
+chat is NOT a ladder step; reaching the leader is a gate boundary (a keep-set
+category, or a cross-card conflict), never a judgment request.
 
 | Step | Carrier | Autonomous? |
 |---|---|---|
 | ① disk evidence | read the deciding artifact directly: audit verdict files, the card's progress record, plan-audit verdicts, evidence paths | yes |
-| ② decision board | poll the shared decision store (§11) — the lead/orchestrator records judgments there instead of replying | yes |
+| ② decision board | poll the shared decision store (§11) — leader-level rulings land there | yes |
 | ③ audit cross | the `moai` MCP audit tools (`codex_audit` / `glm_audit` / `claude_audit` / `audit_multi`) for an independent second opinion; fail-open on tool absence | yes |
-| ④ jev_ask | the MCP judgment tool for a bounded proceed / retry / wait call — ONLY while `workflow.jev.enabled` is true (ships false); repeatable, side-effect-free parameters; never for completion, merge, or queue decisions | yes, gated |
-| ⑤ lead chat | the reply path — only when ①–④ are all unavailable or unresolved; the wait is explicit (§14) | last resort |
+| ④ jev_ask | the MCP judgment tool, ONLY while `workflow.jev.enabled` is true (ships false); repeatable, side-effect-free parameters; its answer is ADVISORY INPUT (§12) | yes, gated |
+| ⑤ self-judgment | the lane decides from ①–④ and writes the decision record (§10) in the card's progress record; it proceeds on its own authority | yes, terminal |
 
 ## 7. Outcome → action transitions
 
@@ -145,11 +149,11 @@ NEVER auto-proceed:
 
 | Step | positive outcome | negative outcome | inconclusive / unavailable |
 |---|---|---|---|
-| ① | evidence shows proceed → resume | evidence shows do-not-proceed → record wait / escalate; NEVER proceed against evidence | unreadable / absent → ② |
-| ② | board judgment recorded → follow it | board judgment says wait → explicit wait record | board empty / not yet filled → ③ (never wait on the board being filled) |
-| ③ | verdict positive → proceed per verdict | verdict negative → **fail-closed: no proceed**; record + escalate to ⑤ | tool absent → ④; verdict inconclusive → record it, → ④ |
-| ④ | proceed / retry / wait per judgment | retry / wait per judgment | gated off or unavailable → ⑤ (fail-open by design) |
-| ⑤ | — | — | explicit wait record (§14); recheck per awaken |
+| ① | evidence shows proceed → resume | evidence shows do-not-proceed → record wait / treat as keep-set boundary; NEVER proceed against evidence | unreadable / absent → ② |
+| ② | leader-level ruling recorded → follow it | ruling says wait → explicit wait record | board empty / not yet filled → ③ (never wait on the board being filled) |
+| ③ | verdict positive → proceed per verdict | verdict negative → **fail-closed: no proceed**; record + treat as gate boundary | tool absent → ④; verdict inconclusive → record it, → ④ |
+| ④ | advisory input recorded, → ⑤ | advisory input recorded, → ⑤ | gated off or unavailable → ⑤ (fail-open by design) |
+| ⑤ | the lane decides, writes the record (§10), proceeds | the lane decides against, writes the record, and does not proceed against evidence | — |
 
 **Authority-gate invariant**: where the ladder adjudicates an AUTHORITY gate
 (the plan→run Kickoff, the sync blocking approval), a NEGATIVE or
@@ -171,7 +175,7 @@ Every ladder step carries a per-runner path. The Claude runner is `moai cc`
 | ② decision board + native view | disk SSOT (§11); view: TaskCreate / TaskUpdate | same disk SSOT; view: `update_plan` (the codex native plan tool; shape `update_plan(explanation?, plan: [{step, status}])` — a reported premise; re-verify against current Codex documentation before relying on it) |
 | ③ audit cross | `moai` MCP audit tools | the same MCP server wires into codex sessions; `codex_audit` is codex-native |
 | ④ jev_ask | MCP tool — harness-indifferent | same |
-| ⑤ reply path | the session messaging tool | NO session-messaging tool on codex — cross-harness notice only via the session messaging broker (`session_msg_register` / `session_msg_send` + poll) and the queue-on-disk delegation channel; the wait reason is recorded on disk |
+| ⑤ self-judgment + decision record | the card's progress record on disk (§10) | same disk record — harness-indifferent |
 
 A step impossible on a runner names its substitute — never implicitly
 impossible. The awaken carrier on the Claude runner is the standing recheck
@@ -251,7 +255,7 @@ The batch gate summary is a presentation form for operator-form decisions, not a
 - A row is approvable only when all four hold: its most recent independent plan-audit verdict is admitted by the plan-phase admission predicate (§9.1 — `PASS` or `PASS-WITH-DEBT`), the plan phase records audit-ready status, the plan-artifact hashes are unchanged since that verdict, and no blocker is open. Every other row is reported as blocked and excluded from the single approval.
 - The verdict must be independent, produced by the plan-auditor; a PASS stated by the session that authored the plan artifacts is blocked.
 - Blocked states are: PASS-WITH-DEBT not admitted by the predicate, BYPASSED, FAIL, INCONCLUSIVE, an absent verdict, audit-ready status not recorded, a plan-artifact hash changed since the verdict, and an open blocker.
-- A row is reserved, and handled individually outside the single approval, when it falls in a keep-set category (environment-impossible, operator-held, or an irreversible operation on an external shared system) or in a power the leader session keeps: final PASS/FAIL verdicts, final merge approval, operator gates, card issuance and `done` through queue mutations, CodeRabbit slot-wait adjudication, and cross-session dispute coordination. The operator gates item does not include the operator-form plan→run Kickoff row: that row is reserved only when it falls in a keep-set category, and otherwise it is a summary row classified by the approvability rule above.
+- A row is reserved, and handled individually outside the single approval, when it falls in a keep-set category (environment-impossible, operator-held, or an irreversible operation on an external shared system) or in a power the leader session keeps: card issuance and queue admissions, cross-card conflict coordination, and the serial-slot policy (the full remaining-role list lives in `factory-dispatch-mechanics.md` § The leader's remaining role). In-card judgment, the landing sequence, and the lane's own card closure at completion are the lane's, not reserved rows. The operator gates item does not include the operator-form plan→run Kickoff row: that row is reserved only when it falls in a keep-set category, and otherwise it is a summary row classified by the approvability rule above.
 
 **Records**
 
@@ -332,19 +336,27 @@ plan document is reference material, never the board.
 
 ## 12. The Jev boundary
 
-The single Jev surface the watchdog consumes is the `jev_ask` MCP tool, and
-only while `workflow.jev.enabled` is true (ships false — enabling is the
-operator's act). jev_ask is a **display-only** judgment query: it observes
-state and returns a bounded proceed / retry / wait verdict. The lane passes
-only repeatable, side-effect-free parameters, and never uses it to decide
-completion, merge, or queue outcomes.
+Jev is the lane's **in-card decision advisory**: when
+`workflow.jev.enabled` is true (ships false — enabling is the operator's
+act), the lane calls the `jev_ask` MCP tool DIRECTLY, with no leader
+round-trip, on any judgment the ladder surfaces — not only proceed / retry /
+wait calls. Its answer is INPUT the lane weighs, never the verdict: the lane
+judges, writes the decision record (§10), and owns the call. A Jev answer is
+never the SOLE basis of a completion, merge, queue-change, or operator
+keep-set gate decision — those are advisory-input-plus-lane-judgment, or the
+operator's own answer where a keep-set category holds.
 
 ## 13. The queue read-only boundary
 
-The watchdog and the remedies read evidence and state surfaces only. Queue
-mutation verbs (add, drop, done, edit, relate/unrelate) and contract signing
-stay prohibited for lanes. A blocked-by remedy resolves by evidence, never
-by relation bookkeeping.
+Queue mutation verbs (`add`, `drop`, `edit`, `relate`/`unrelate`) and
+contract signing stay prohibited for lanes, and queue ADMISSION stays the
+leader's and the operator's. The ONE closure a lane performs is its own
+card's at completion: the runtime-completion archive authority
+closes the lane's own queue card when the mechanical landing edge answers —
+under github-flow, `moai factory complete` archives it at the merged-pr
+record with the landing verdict — so `done` for one's own card needs no
+leader round-trip. A card the lane does not own is never touched. A
+blocked-by remedy resolves by evidence, never by relation bookkeeping.
 
 ## 14. Explicit waits
 
@@ -384,5 +396,5 @@ progress resumes only on evidence.
 
 ---
 
-Version: 1.0.0
+Version: 1.1.0 (the ladder's terminal step is the lane's own judgment; Jev promoted to in-card advisory; the lane closes its own card at completion)
 Classification: Canonical reference — the lane-surface `--auto` SSOT.

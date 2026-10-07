@@ -20,15 +20,15 @@ var psDenyExclusions = map[string]string{
 	// Filesystem-root removals: Claude Code's built-in Remove-Item / cmd
 	// system-path and wildcard checks already deny these on the PowerShell
 	// tool in every permission mode.
-	"Bash(rm -rf /:*)":                        "builtin",
-	"Bash(rm -rf /\\* *)":                     "builtin",
-	"Bash(rm -rf ~:*)":                        "builtin",
-	"Bash(rm -rf ~/\\* *)":                    "builtin",
-	"Bash(rm -rf C:/:*)":                      "builtin",
-	"Bash(rm -rf C:/\\* *)":                   "builtin",
-	"Bash(del /S /Q C:/:*)":                   "builtin",
-	"Bash(rmdir /S /Q C:/:*)":                 "builtin",
-	"Bash(Remove-Item -Recurse -Force C:/:*)": "builtin",
+	"Bash(rm -rf /)":                         "builtin",
+	"Bash(rm -rf /*)":                        "builtin",
+	"Bash(rm -rf ~)":                         "builtin",
+	"Bash(rm -rf ~/*)":                       "builtin",
+	"Bash(rm -rf C:/)":                       "builtin",
+	"Bash(rm -rf C:/*)":                      "builtin",
+	"Bash(del /S /Q C:/*)":                   "builtin",
+	"Bash(rmdir /S /Q C:/*)":                 "builtin",
+	"Bash(Remove-Item -Recurse -Force C:/*)": "builtin",
 	// "kill" is a PowerShell alias of Stop-Process on Windows; after alias
 	// canonicalization a rule written as "kill -9" may never match.
 	"Bash(kill -9:*)": "alias head, unmeasured",

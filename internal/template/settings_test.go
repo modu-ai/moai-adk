@@ -49,27 +49,36 @@ func testContext(platform string) *TemplateContext {
 
 // --- settings.json.tmpl tests ---
 
-// Claude Code treats a Bash pattern containing "*" plus a trailing ":*" as a
-// literal prefix and warns on startup. Keep one syntax per rule while
-// preserving the literal-"*" scope of the root, home, and Windows variants.
+// The official permission semantics (code.claude.com/docs/en/permissions)
+// make the ":*" suffix equivalent to a trailing " *". The legacy
+// "rm -rf /:*" rule therefore matched only "rm -rf / " plus trailing text
+// and never caught "rm -rf /usr"; the escaped "\*" forms kept a literal
+// backslash and matched effectively nothing (and the mixed "/*:*" shape
+// warned on startup). The canonical rules use one syntax per rule: an exact
+// root form plus a trailing "/*" wildcard covering root-level contents,
+// which is the destructive scope the deny list exists for.
 func TestSettingsTemplateDenyWildcardSyntax(t *testing.T) {
-	// The legacy "/*:*" rules matched a literal "*" (Claude Code reports the
-	// middle "*" as unexpanded). "\*" keeps that literal match in the
-	// space-suffix syntax; an unescaped "/*" would widen the rule to every
-	// absolute or home path.
 	want := []string{
+		"Bash(rm -rf /)",
+		"Bash(rm -rf /*)",
+		"Bash(rm -rf ~)",
+		"Bash(rm -rf ~/*)",
+		"Bash(rm -rf C:/)",
+		"Bash(rm -rf C:/*)",
+		"Bash(del /S /Q C:/*)",
+		"Bash(rmdir /S /Q C:/*)",
+		"Bash(Remove-Item -Recurse -Force C:/*)",
+	}
+	legacy := []string{
+		"Bash(rm -rf /:*)",
 		"Bash(rm -rf /\\* *)",
+		"Bash(rm -rf ~:*)",
 		"Bash(rm -rf ~/\\* *)",
 		"Bash(rm -rf C:/:*)",
 		"Bash(rm -rf C:/\\* *)",
 		"Bash(del /S /Q C:/:*)",
 		"Bash(rmdir /S /Q C:/:*)",
 		"Bash(Remove-Item -Recurse -Force C:/:*)",
-	}
-	widened := []string{
-		"Bash(rm -rf /*)",
-		"Bash(rm -rf ~/*)",
-		"Bash(rm -rf C:/*)",
 	}
 	for _, platform := range []string{"darwin", "linux", "windows"} {
 		t.Run(platform, func(t *testing.T) {
@@ -101,9 +110,9 @@ func TestSettingsTemplateDenyWildcardSyntax(t *testing.T) {
 					t.Errorf("missing Bash deny rule %q", rule)
 				}
 			}
-			for _, rule := range widened {
+			for _, rule := range legacy {
 				if present[rule] {
-					t.Errorf("Bash deny rule %q widens the literal-* scope to every path", rule)
+					t.Errorf("Bash deny rule %q is a legacy misform (\":*\" suffix or literal backslash) and cannot match real paths", rule)
 				}
 			}
 		})

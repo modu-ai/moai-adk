@@ -441,7 +441,7 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 
 ## 29. Jev (TypeSafe System One) — 로컬 전용
 
-[HARD] `scripts/jev/`는 이 저장소의 로컬 도구이며 제품에 배선되지 않았다. `-f` 리더는 묵은 카드 배차 전에 `scripts/jev/triage.sh <id>`, 레인 질문으로 멈췄을 때 `scripts/jev/route.sh < 질문`을 자율 실행한다. 출력은 판단 자료일 뿐이다. 완료·병합·큐 변경·운영자 게이트에는 Jev를 판정 근거로 쓰지 않는다. 키는 `~/.moai/.env.typesafe`에만 두고, 외부 전송 전에 카드의 비밀·고객 데이터를 확인한다. 키나 네트워크가 없으면 독트린과 직접 읽은 증거로 판단한다. 0.50 신뢰도 문턱은 잠정값이다. 등급·명령·측정 한계는 `.moai/docs/jev-local-operations.md`에 있다.
+[HARD] `scripts/jev/`는 이 저장소의 로컬 도구이며 제품에 배선되지 않았다. **Jev는 카드 내 의사결정 자문이다(카드 t1542, 2026-10-07 개정):** 레인은 `workflow.jev.enabled`면 `jev_ask`를, 아니면 로컬 스크립트(`scripts/jev/route.sh` 등)를 리더 왕복 없이 직접 호출한다. 출력은 레인이 저울질할 **자문 입력**이지 판정이 아니므로, 레인은 그 입력으로 스스로 판단하고 결정 기록(auto-semantics.md §10)을 진행 기록에 남긴다. **완료·병합·큐 변경·운영자 keep-set 게이트는 여전히 Jev 단독 판정 금지다** — 그 경계는 자문 입력 + 레인 판단으로 재정의됐을 뿐 없어지지 않았고, keep-set 3범주는 운영자 직답을 유지한다. 키는 `~/.moai/.env.typesafe`에만 두고, 외부 전송 전에 카드의 비밀·고객 데이터를 확인한다. 키나 네트워크가 없으면 독트린과 직접 읽은 증거로 판단한다. 0.50 신뢰도 문턱은 잠정값이다. 등급·명령·측정 한계는 `.moai/docs/jev-local-operations.md`에 있다.
 
 ## 30. 배차 전 전제 판정 (며칠 지난 카드)
 

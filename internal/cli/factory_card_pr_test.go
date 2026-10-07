@@ -61,6 +61,11 @@ func ghfWriteConfig(t *testing.T, root, mergeMethod string) {
 // ghfNew builds a github-flow project with one card on its own worktree branch.
 func ghfNew(t *testing.T, o ghfOpts) ghfFixture {
 	t.Helper()
+	// The fixture seeds the queue with `todo add`, which the lane guard
+	// refuses when the test PROCESS carries lane variables — a lane session
+	// running the suite locally (measured on card t1542). Clear before any
+	// seeding; ghfNew re-arms the lane env itself for the complete verb.
+	sdClearLaneEnv(t)
 	root, store := fcFixture(t)
 	fcQueue(t, store, factory.BacklogStatePicked)
 	ghfWriteConfig(t, root, o.mergeCfg)
@@ -309,8 +314,8 @@ func TestFactoryCompleteGitHubFlowPR(t *testing.T) {
 			t.Errorf("PR body does not end with the line 🗿 MoAI:\n%s", body)
 		}
 		merge := d.last("pr", "merge")
-		if merge == nil || strings.Join(merge, " ") != "pr merge 7 --auto --squash" {
-			t.Errorf("auto-merge request = %v, want `pr merge 7 --auto --squash`", merge)
+		if merge == nil || strings.Join(merge, " ") != "pr merge 7 --auto --squash --match-head-commit "+f.tip {
+			t.Errorf("auto-merge request = %v, want `pr merge 7 --auto --squash --match-head-commit %s` (the readiness-judged tip, card-review r6)", merge, f.tip)
 		}
 		c := fcCard(t, f.root, "t1")
 		if c.State != homestate.CardPROpen {
@@ -448,8 +453,8 @@ func TestFactoryCompleteGitHubFlowMergeMethod(t *testing.T) {
 			if _, err := ghfComplete(t); err != nil {
 				t.Fatalf("complete: %v", err)
 			}
-			if got := strings.Join(d.last("pr", "merge"), " "); got != "pr merge 7 --auto "+want {
-				t.Errorf("merge request = %q, want %q", got, "pr merge 7 --auto "+want)
+			if got := strings.Join(d.last("pr", "merge"), " "); got != "pr merge 7 --auto "+want+" --match-head-commit "+f.tip {
+				t.Errorf("merge request = %q, want %q", got, "pr merge 7 --auto "+want+" --match-head-commit "+f.tip)
 			}
 		})
 	}
@@ -674,5 +679,153 @@ func TestFactoryGitHubFlowStatesAreConsumedAsPostMergeReady(t *testing.T) {
 	}
 	if factorySerialSlotFree(homestate.CardRun) {
 		t.Error("factorySerialSlotFree(run) = true: the slot must stay held while a card is being worked")
+	}
+}
+
+// TestFactoryCompleteGitHubFlowClosesTheQueueCard — the runtime completion's
+// archive authority (card t1542, the audit P1): a card the record moves to
+// merged-pr has mechanically answered the landing question, so the delivery
+// edge closes the lane's own queue card (archive + landing verdict) and
+// records the runtime completion row — the lane lands its own card without a
+// leader `todo done`. A re-run reconciles: already closed reads as closed.
+func TestFactoryCompleteGitHubFlowClosesTheQueueCard(t *testing.T) {
+	f := ghfNew(t, ghfOpts{syncStatus: "complete"})
+	d := newGHDouble(t, f)
+	if _, err := ghfComplete(t); err != nil {
+		t.Fatalf("first complete: %v", err)
+	}
+	d.state, d.mergeOid = "MERGED", f.squashOnMain(t)
+	if _, err := ghfComplete(t); err != nil {
+		t.Fatalf("complete after the merge: %v", err)
+	}
+	if c := fcCard(t, f.root, "t1"); c.State != homestate.CardMergedPR {
+		t.Fatalf("card = %s, want merged-pr", c.State)
+	}
+	rec, err := factory.NewBacklogStore(todoBacklogPath(f.root)).LoadPure()
+	if err != nil {
+		t.Fatalf("load queue: %v", err)
+	}
+	if len(rec.Items) != 0 {
+		t.Fatalf("the queue still holds %d live card(s) after merged-pr", len(rec.Items))
+	}
+	if len(rec.Archived) != 1 || rec.Archived[0].Item.ID != "t1" {
+		t.Fatalf("archive holds %d entries, want exactly t1", len(rec.Archived))
+	}
+	if v := rec.Archived[0].LandingVerdict; v == nil || v.Verdict != factory.LandingLanded || v.Ref != "main" {
+		t.Fatalf("landing verdict = %+v, want landed against main", v)
+	}
+	found := false
+	for _, a := range rec.Runtime.Assignments {
+		if a.CardID == "t1" && a.EventKind == "card.completed" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("no runtime completion row for t1: %+v", rec.Runtime.Assignments)
+	}
+	// Reconciliation: a re-run of complete stays green and changes nothing.
+	if _, err := ghfComplete(t); err != nil {
+		t.Fatalf("reconciling re-run: %v", err)
+	}
+	rec, err = factory.NewBacklogStore(todoBacklogPath(f.root)).LoadPure()
+	if err != nil {
+		t.Fatalf("reload queue: %v", err)
+	}
+	if len(rec.Items) != 0 || len(rec.Archived) != 1 {
+		t.Fatalf("reconcile moved the queue: live=%d archived=%d", len(rec.Items), len(rec.Archived))
+	}
+}
+
+// TestFactoryCompleteRefusesExpiredLeaseOnDelivery — card-review r5: the
+// deliver half pushes, opens the PR, and asks for auto-merge — EXTERNAL
+// mutations a retry must not run on a lapsed lease. An expired-lease card
+// at merge-ready is refused before anything reaches the remote; the
+// observation half (pr-open, lease released) is unaffected by design.
+func TestFactoryCompleteRefusesExpiredLeaseOnDelivery(t *testing.T) {
+	f := ghfNew(t, ghfOpts{syncStatus: "complete"})
+	d := newGHDouble(t, f)
+	// fcFixture pins factoryCardNow to 2026-09-26; the fixture lease
+	// (2026-10-01) is therefore live — expire it in place.
+	db := fcOpen(t, f.root)
+	if _, err := db.DB.Exec(`UPDATE cards SET lease_expires_at='2026-09-01T00:00:00Z' WHERE card_id='t1'`); err != nil {
+		t.Fatalf("expire the lease: %v", err)
+	}
+	_ = db.Close()
+	sdLaneEnv(t, ghfLane, "")
+	if _, err := ghfComplete(t); err == nil {
+		t.Fatal("complete delivered to the remote on an expired lease")
+	}
+	if d.count("pr", "create") != 0 || d.count("pr", "merge") != 0 {
+		t.Errorf("the refused run still called gh: create=%d merge=%d", d.count("pr", "create"), d.count("pr", "merge"))
+	}
+	if got := f.remoteBranchTip(t); got != "" {
+		t.Errorf("the refused run pushed %s to origin (tip %q)", ghfBranch, got)
+	}
+	if c := fcCard(t, f.root, "t1"); c.State != homestate.CardMergeReady {
+		t.Fatalf("the refused run moved the card to %s", c.State)
+	}
+}
+
+// TestFactoryCompleteRefusesAnotherLanesCard — card-review r1: a lane
+// completes only its own card. lane-2 running complete on lane-1's card is
+// refused at entry, and lane-1's queue card stays live.
+func TestFactoryCompleteRefusesAnotherLanesCard(t *testing.T) {
+	f := ghfNew(t, ghfOpts{syncStatus: "complete"})
+	newGHDouble(t, f)
+	sdLaneEnv(t, "lane-2", "")
+	if _, err := ghfComplete(t); err == nil {
+		t.Fatal("lane-2 completed lane-1's card")
+	}
+	rec, err := factory.NewBacklogStore(todoBacklogPath(f.root)).LoadPure()
+	if err != nil {
+		t.Fatalf("load queue: %v", err)
+	}
+	if len(rec.Items) != 1 {
+		t.Fatalf("lane-1's queue card did not stay live: live=%d archived=%d", len(rec.Items), len(rec.Archived))
+	}
+	if c := fcCard(t, f.root, "t1"); c.State == homestate.CardPROpen || c.State == homestate.CardMergedPR {
+		t.Fatalf("lane-2's complete moved the card to %s", c.State)
+	}
+}
+
+// TestFactoryCloseLaneCardUsesTheCallerRoot — card-review r1: the close
+// path archives the queue of the ROOT THE CALLER NAMED, not the queue this
+// process's working directory resolves to (the MCP surface passes a
+// project_root that differs from the server cwd).
+func TestFactoryCloseLaneCardUsesTheCallerRoot(t *testing.T) {
+	// Seeding runs `todo add`, refused when the test process carries lane
+	// variables (a lane session running the suite locally — card t1542).
+	sdClearLaneEnv(t)
+	// Project A owns the card and receives the close; the process cwd will
+	// name project B, whose same-id card must stay live.
+	rootA, storeA := todoFixture(t)
+	if _, _, err := runTodo(t, "add", "project A card"); err != nil {
+		t.Fatalf("seed A: %v", err)
+	}
+	rootB := t.TempDir()
+	initGitRepo(t, rootB)
+	storeB := factory.NewBacklogStore(todoBacklogPath(rootB))
+	t.Setenv("CLAUDE_PROJECT_DIR", rootB)
+	if _, _, err := runTodo(t, "add", "project B card"); err != nil {
+		t.Fatalf("seed B: %v", err)
+	}
+
+	var out strings.Builder
+	card := homestate.Card{CardID: "t1", OwnerLabel: "lane-1", LeaseHolder: "lane-1"}
+	factoryCloseLaneCard(&out, rootA, fcRun, card, "lane-1", "main")
+
+	recA, err := storeA.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recA.Items) != 0 || len(recA.Archived) != 1 || recA.Archived[0].Item.ID != "t1" {
+		t.Fatalf("project A queue after close: live=%d archived=%d, want t1 archived", len(recA.Items), len(recA.Archived))
+	}
+	recB, err := storeB.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recB.Items) != 1 || len(recB.Archived) != 0 {
+		t.Fatalf("project B queue changed: live=%d archived=%d, want untouched", len(recB.Items), len(recB.Archived))
 	}
 }

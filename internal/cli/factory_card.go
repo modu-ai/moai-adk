@@ -282,11 +282,13 @@ func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
 // against DISTINCT cards (REQ-TCD-008). The unnominated arms and the nominated
 // lease read the slot through this one function.
 //
-// ignoreAssigned is arm (a)'s read (operator ruling 2026-10-03, card t1407): a
-// lane leasing the card assigned TO ITSELF does not count sibling cards that
-// are merely `assigned`, which would otherwise wedge every leader-assigned
-// serial card against the others with nothing in flight. Every path that takes
-// a NEW card, the nominated lease included, passes false.
+// ignoreAssigned is arm (a)'s read (operator ruling 2026-10-03, card t1407):
+// a lane leasing the card assigned TO ITSELF does not count sibling cards
+// that are merely `assigned`, which would otherwise wedge every
+// leader-assigned serial card against the others with nothing in flight. The
+// unnominated arm and — since card t1542 — the nominated lease of the lane's
+// own assigned card pass true; every path that takes a NEW card passes
+// false.
 //
 // A `picked` row carrying a bundle identity is excluded the same way (card
 // t1454 card-review r2 P1-2): it is a chain member waiting on its head, not
@@ -716,7 +718,8 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	mergedLocal := make(map[string]bool, len(allRuns))
 	for _, c := range allRuns {
 		switch c.State {
-		case homestate.CardMergedLocal, homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone:
+		case homestate.CardMergedLocal, homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone,
+			homestate.CardMergedPR: // github-flow's terminal delivery state — a merged PR frees its successor
 			mergedLocal[c.CardID] = true
 		}
 	}
@@ -1152,7 +1155,15 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 		}
 	}
 	classOf := func(id string) factory.CardClassification { return factoryQueueClassification(queueRec, id) }
-	nom.serialHeld = classOf(cardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(cards, classOf, cardID, now, false)
+	// Arm (a) through the nominated door (card t1542): a lane nominating the
+	// card assigned TO ITSELF takes the same read the unnominated arm takes —
+	// sibling rows that are merely `assigned` hold nothing against it, or the
+	// leader's own batch pre-assignment would wedge every assigned card out
+	// of its lane (measured 2026-10-07: nine assigned rows in run tmhxo0
+	// refused the one lease a lane was dispatched to run). A nomination of a
+	// card NOT assigned to this lane is a NEW card and still passes false.
+	assignedHere := nom.row != nil && nom.row.State == homestate.CardAssigned && nom.row.OwnerLabel == lane
+	nom.serialHeld = classOf(cardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(cards, classOf, cardID, now, assignedHere)
 	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld); r != nil {
 		return nom, r, nil
 	}
@@ -1194,7 +1205,6 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 	}
 	// The quota hold leaves only a card already assigned to this lane leasable
 	// (arm (a) is not a new lease).
-	assignedHere := nom.row != nil && nom.row.State == homestate.CardAssigned && nom.row.OwnerLabel == lane
 	if quotaHold != "" && !assignedHere {
 		return nom, factoryRefusal(factoryRefuseQuotaHold, "%s", quotaHold), nil
 	}
