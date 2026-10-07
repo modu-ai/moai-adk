@@ -345,11 +345,17 @@ func consumeProcessed(consumed []byte, entries, processed int) error {
 
 // rollbackLedgerRecord removes the ledger reservation a FAILED queue
 // mutation left behind: the fingerprint's stamp and exactly the QueuedAt
-// entry this attempt appended (matched by its exact timestamp). Best-effort
-// under its own SHORT queue-lock section — bounded by the caller's context
-// and a quarter-second of its own, so the rollback never turns one failed
-// wait into another full budget; a failure here leaves the orphan shape,
-// which the dedupe check's recovery path re-queues.
+// entry this attempt appended (matched by its exact timestamp). The removal
+// is OWNERSHIP-VERIFIED (review-gate finding 4, P2): a mutation that failed
+// at lock acquisition ran no callback and wrote no reservation, so the
+// recorded stamp must EQUAL this attempt's stamp before anything is
+// touched — a prior success's record (a different stamp) survives, or the
+// next drain would re-open the dedupe window of an already-queued report
+// and publish it twice. Best-effort under its own SHORT queue-lock section
+// — bounded by the caller's context and a quarter-second of its own, so the
+// rollback never turns one failed wait into another full budget; a failure
+// here leaves the orphan shape, which the dedupe check's recovery path
+// re-queues.
 func rollbackLedgerRecord(ctx context.Context, fp, stamp string) {
 	rctx, cancel := context.WithTimeout(ctx, 250*time.Millisecond)
 	defer cancel()
@@ -358,6 +364,15 @@ func rollbackLedgerRecord(ctx context.Context, fp, stamp string) {
 		ledger, lerr := loadLedger()
 		if lerr != nil {
 			return nil // unreadable: leave it; the orphan recovery handles the retry
+		}
+		if cur, ok := ledger.FingerprintSeen[fp]; !ok || cur != stamp {
+			// The record on disk is not this attempt's — either a prior
+			// success's (leave it: it carries the dedupe window) or the
+			// failed save never landed (nothing to roll back). (A
+			// same-second collision with a prior record's stamp is below
+			// RFC3339's resolution and is accepted, matching the QueuedAt
+			// exact-timestamp match.)
+			return nil
 		}
 		delete(ledger.FingerprintSeen, fp)
 		for i, ts := range ledger.QueuedAt {
