@@ -23,6 +23,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -1295,60 +1296,93 @@ func newTodoDoneCmd() *cobra.Command {
 			// nothing were known.
 			verdict := factory.LandingUnknown
 			var landing *factory.LandingEvidence
-			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
-				// Refused mutations below: Mutate writes nothing, so the
-				// record stays byte-identical on every one of them.
-				at := -1
-				for i := range rec.Items {
-					if rec.Items[i].ID == id {
-						at = i
-						break
+			if err := store.WithLock(func(l *factory.LockedBacklog) error {
+				// The leader-approval gate (SPEC-FACTORY-COMPLETION-RECOVERY-001
+				// REQ-FCR-002a): a factory-linked card's manual done verifies
+				// the receipt at the close moment. The gate's factory write
+				// transaction is held across verification AND the queue
+				// write's persistence — LockedBacklog.Mutate saves before it
+				// returns, and the gate releases only after — so no factory
+				// transition can interleave between the archive-moment
+				// recheck and the record landing. A card with no factory
+				// database and no factory row keeps its receipt-less
+				// completion — the gate does not apply.
+				root := resolveProjectDir()
+				gate, gateErr := holdDoneApprovalGate(context.Background(), root)
+				if gateErr != nil {
+					return gateErr
+				}
+				mutErr := l.Mutate(func(rec *factory.BacklogRecord) error {
+					// Refused mutations below: the write is discarded, so the
+					// record stays byte-identical on every one of them.
+					at := -1
+					for i := range rec.Items {
+						if rec.Items[i].ID == id {
+							at = i
+							break
+						}
 					}
-				}
-				if at < 0 {
-					return fmt.Errorf("no backlog item %s", id)
-				}
-				if rec.Items[at].SpecID != nil {
-					specID = *rec.Items[at].SpecID
-				}
-				// Read BEFORE ArchiveCard moves the row: the archive copies
-				// the item, so the record survives either way, but reading it
-				// here keeps the verdict and the line derived from the same
-				// row the mutation addressed.
-				landing = rec.Items[at].Landing
-				if expect != "" && !strings.HasPrefix(rec.Items[at].Text, expect) {
-					return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
-						id, todoTextPrefix(rec.Items[at].Text), expect)
-				}
-				if requireLanded {
-					answer, err := todoRequireLanded(cmd, id, ref, refLevel)
-					if err != nil {
+					if at < 0 {
+						return fmt.Errorf("no backlog item %s", id)
+					}
+					if rec.Items[at].SpecID != nil {
+						specID = *rec.Items[at].SpecID
+					}
+					// Read BEFORE ArchiveCard moves the row: the archive copies
+					// the item, so the record survives either way, but reading it
+					// here keeps the verdict and the line derived from the same
+					// row the mutation addressed.
+					landing = rec.Items[at].Landing
+					if expect != "" && !strings.HasPrefix(rec.Items[at].Text, expect) {
+						return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
+							id, todoTextPrefix(rec.Items[at].Text), expect)
+					}
+					if requireLanded {
+						answer, err := todoRequireLanded(cmd, id, ref, refLevel)
+						if err != nil {
+							return err
+						}
+						verdict = answer
+					}
+					// A first dispatch racing in after the pre-read makes the
+					// card factory-linked under this very queue lock: re-check
+					// at archive moment (review round-5 P2).
+					refreshed, rerr := refreshDoneApprovalGate(context.Background(), root, gate)
+					if rerr != nil {
+						return rerr
+					}
+					gate = refreshed
+					if err := gate.verifyForClose(cmd.Context(), id, todoCardUUID(&rec.Items[at])); err != nil {
 						return err
 					}
-					verdict = answer
-				}
-				if err := rec.ArchiveCard(id); err != nil {
-					return err
-				}
-				if requireLanded {
-					// REQ-TST-008: the answering path persists what the query
-					// said — verdict, answering ref, verdict time — onto the
-					// entry ArchiveCard just appended, alongside (never
-					// instead of) any operator-recorded evidence the row
-					// already carried (REQ-TST-009). Without the flag nothing
-					// is persisted here: no query ran, so no invented answer
-					// and no fabricated record. The record carries no SHA —
-					// a query-derived SHA is outside the evidence store's
-					// write authority, and the delivering SHA is re-derived
-					// at re-adjudication by re-running the predicate against
-					// the recorded ref (REQ-TST-013).
-					rec.Archived[len(rec.Archived)-1].LandingVerdict = &factory.LandingVerdict{
-						Verdict: verdict,
-						Ref:     ref,
-						At:      time.Now().UTC().Format(time.RFC3339),
+					if err := rec.ArchiveCard(id); err != nil {
+						return err
 					}
-				}
-				return nil
+					if requireLanded {
+						// REQ-TST-008: the answering path persists what the query
+						// said — verdict, answering ref, verdict time — onto the
+						// entry ArchiveCard just appended, alongside (never
+						// instead of) any operator-recorded evidence the row
+						// already carried (REQ-TST-009). Without the flag nothing
+						// is persisted here: no query ran, so no invented answer
+						// and no fabricated record. The record carries no SHA —
+						// a query-derived SHA is outside the evidence store's
+						// write authority, and the delivering SHA is re-derived
+						// at re-adjudication by re-running the predicate against
+						// the recorded ref (REQ-TST-013).
+						rec.Archived[len(rec.Archived)-1].LandingVerdict = &factory.LandingVerdict{
+							Verdict: verdict,
+							Ref:     ref,
+							At:      time.Now().UTC().Format(time.RFC3339),
+						}
+					}
+					return nil
+				})
+				// Release the factory lock only after the queue write it
+				// guarded has persisted (LockedBacklog.Mutate saved above);
+				// the refreshed gate, when one was opened, settles here too.
+				gate.release()
+				return mutErr
 			}); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
@@ -1546,51 +1580,82 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 
 			id := normalizeTodoRef(args[0])
 			var pickedText string
-			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
-				for i := range rec.Items {
-					if rec.Items[i].ID == id {
-						// The pick gate enumerates POSITIVELY
-						// (SPEC-TODO-HOLD-STATE-001 REQ-THS-011/012): only a
-						// queued card is pickable, and every other state —
-						// including any state added after this code was
-						// written — is refused by the switch's default rather
-						// than admitted by a negative's fall-through. This
-						// gate was the SPEC's one behavioral red-now: it used
-						// to refuse only `dropped`, so a held card (and any
-						// future state) was pickable.
-						switch rec.Items[i].State {
-						case factory.BacklogStateQueued:
-							// the only pickable state
-						case factory.BacklogStateDropped:
-							return fmt.Errorf("backlog item %s is dropped — use moai todo undrop %s before picking", id, id)
-						case factory.BacklogStateHold:
-							return fmt.Errorf("backlog item %s is held — use moai todo unhold %s before picking", id, id)
-						case factory.BacklogStatePicked:
-							return fmt.Errorf("backlog item %s is already picked — use moai todo unpick %s before picking it again", id, id)
-						default:
-							return fmt.Errorf("backlog item %s is %q — not a pickable state", id, rec.Items[i].State)
+			// Selection-through-binding runs under the SAME queue lock the
+			// completion path holds, and the binding write happens INSIDE
+			// the mutate callback (review round-15 P1-1/P1-2): a refused
+			// selection never touches the binding, and a binding-update
+			// failure aborts the queue write — LockedBacklog.Mutate persists
+			// only when its callback returns nil, so the card can never be
+			// left stuck in picked with the old approval armed.
+			queueRoot := resolveTodoQueueRoot()
+			if err := store.WithLock(func(l *factory.LockedBacklog) error {
+				mutErr := l.Mutate(func(rec *factory.BacklogRecord) error {
+					for i := range rec.Items {
+						if rec.Items[i].ID == id {
+							// The pick gate enumerates POSITIVELY
+							// (SPEC-TODO-HOLD-STATE-001 REQ-THS-011/012): only a
+							// queued card is pickable, and every other state —
+							// including any state added after this code was
+							// written — is refused by the switch's default rather
+							// than admitted by a negative's fall-through. This
+							// gate was the SPEC's one behavioral red-now: it used
+							// to refuse only `dropped`, so a held card (and any
+							// future state) was pickable.
+							switch rec.Items[i].State {
+							case factory.BacklogStateQueued:
+								// the only pickable state
+							case factory.BacklogStateDropped:
+								return fmt.Errorf("backlog item %s is dropped — use moai todo undrop %s before picking", id, id)
+							case factory.BacklogStateHold:
+								return fmt.Errorf("backlog item %s is held — use moai todo unhold %s before picking", id, id)
+							case factory.BacklogStatePicked:
+								return fmt.Errorf("backlog item %s is already picked — use moai todo unpick %s before picking it again", id, id)
+							default:
+								return fmt.Errorf("backlog item %s is %q — not a pickable state", id, rec.Items[i].State)
+							}
+							if expect != "" && !strings.HasPrefix(rec.Items[i].Text, expect) {
+								// Refused mutation: Mutate writes nothing, so the
+								// file stays byte-identical on a mismatch.
+								return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
+									id, todoTextPrefix(rec.Items[i].Text), expect)
+							}
+							rec.Items[i].State = factory.BacklogStatePicked
+							// REQ-TST-004: the current picked episode begins now;
+							// any stamp from a previous episode is overwritten.
+							rec.Items[i].PickedAt = todoStampNow()
+							pickedText = rec.Items[i].Text
+							if specID != "" {
+								// Recorded as-is: the store is not a SPEC registry;
+								// normalization is out of scope (acceptance.md §C).
+								spec := specID
+								rec.Items[i].SpecID = &spec
+							}
+							// The dispatch binding re-point runs INSIDE the
+							// mutate callback (review round-15 P1-1/P1-2): a
+							// binding-update failure returns an error from the
+							// callback, which aborts the queue write — the card
+							// is never left stuck in picked with the old run's
+							// approval armed, and a refused selection never
+							// touches the binding. Non-factory selections (no
+							// run env) skip the axis.
+							if runID := os.Getenv(config.EnvFactoryRunID); runID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+								// The queue's current-dispatch record is written
+								// FIRST (the selection claims no owner; turn-end
+								// gate, card t1538): a record that cannot be written
+								// stops the selection before the binding moves.
+								if err := l.RefreshDispatchCurrent(id, runID, ""); err != nil {
+									return err
+								}
+								if err := recordDispatchBindingAtRoot(id, runID, queueRoot); err != nil {
+									return err
+								}
+							}
+							return nil
 						}
-						if expect != "" && !strings.HasPrefix(rec.Items[i].Text, expect) {
-							// Refused mutation: Mutate writes nothing, so the
-							// file stays byte-identical on a mismatch.
-							return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
-								id, todoTextPrefix(rec.Items[i].Text), expect)
-						}
-						rec.Items[i].State = factory.BacklogStatePicked
-						// REQ-TST-004: the current picked episode begins now;
-						// any stamp from a previous episode is overwritten.
-						rec.Items[i].PickedAt = todoStampNow()
-						pickedText = rec.Items[i].Text
-						if specID != "" {
-							// Recorded as-is: the store is not a SPEC registry;
-							// normalization is out of scope (acceptance.md §C).
-							spec := specID
-							rec.Items[i].SpecID = &spec
-						}
-						return nil
 					}
-				}
-				return fmt.Errorf("no backlog item %s", id)
+					return fmt.Errorf("no backlog item %s", id)
+				})
+				return mutErr
 			}); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
@@ -1670,6 +1735,19 @@ func recordFactoryCardState(cardID, specID, state, eventKind string) {
 	// describe the lane checkout that actually selected and executed the card.
 	// OpenFactory canonicalizes only the DB routing after capture.
 	_ = factory.RecordFactoryCardState(resolveProjectDir(), runID, cardID, owner, specID, state, eventKind)
+}
+
+// recordDispatchBindingAtRoot records the card's dispatch binding — THIS run
+// is the card's current factory engagement — against the named project root.
+// The scope sentence (REQ-FCR-002's, review round-18 P2, tightened by the
+// round-19 edge) and the write live in one place,
+// factory.RecordDispatchBindingIfEngaged: the dispatch operation engine's
+// partial-failure repair reuses the same implementation, so the binding the
+// gate verifies is the binding every writer wrote. The caller decides the
+// root (the selection's own queue root, never a server-cwd fallback —
+// review round-14 P1-2).
+func recordDispatchBindingAtRoot(cardID, runID, root string) error {
+	return factory.RecordDispatchBindingIfEngaged(root, cardID, runID)
 }
 
 // normalizeTodoRef maps a bare <n> argument to the item id t<n>; an explicit

@@ -35,7 +35,8 @@ import (
 	"time"
 )
 
-// The skip-reason vocabulary is CLOSED at exactly four tokens (REQ-AD-010).
+// The skip-reason vocabulary is CLOSED at exactly five tokens (REQ-AD-010;
+// the fifth added by SPEC-FACTORY-COMPLETION-RECOVERY-001 REQ-FCR-003).
 // They are constants, and AutoDoneSkipReasons is the enumeration every reader
 // and the `--help` body render from — a new reason is a one-place change that
 // makes the closed-set test go red.
@@ -56,14 +57,20 @@ const (
 	// git, an unresolvable ref, a malformed stream). LandingUnknown is not
 	// evidence of landed, so the card skips.
 	AutoDoneSkipQueryInconclusive = "query-inconclusive"
+	// AutoDoneSkipLeaderUnapproved — guard M4 (SPEC-FACTORY-COMPLETION-RECOVERY-001
+	// REQ-FCR-003): the card is factory-linked and no leader approval receipt
+	// verified against its current factory row, so the leader's evidence
+	// review has not (or no longer) cleared this close.
+	AutoDoneSkipLeaderUnapproved = "leader-unapproved"
 )
 
 // AutoDoneSkipReasons returns the closed skip-reason vocabulary in its
 // canonical order. The scan's `--help` body and the closed-set test render
 // from this one enumeration.
 //
-// @MX:NOTE: [AUTO] the vocabulary is CLOSED at four tokens (SPEC-TODO-LAND-AUTO-DONE-001
-// REQ-AD-010); a new skip reason is a one-place change here plus the
+// @MX:NOTE: [AUTO] the vocabulary is CLOSED at five tokens (SPEC-TODO-LAND-AUTO-DONE-001
+// REQ-AD-010; five since SPEC-FACTORY-COMPLETION-RECOVERY-001 REQ-FCR-003);
+// a new skip reason is a one-place change here plus the
 // closed-set test — never a new literal at a call site.
 func AutoDoneSkipReasons() []string {
 	return []string{
@@ -71,6 +78,7 @@ func AutoDoneSkipReasons() []string {
 		AutoDoneSkipSpecNotCompleted,
 		AutoDoneSkipNotLanded,
 		AutoDoneSkipQueryInconclusive,
+		AutoDoneSkipLeaderUnapproved,
 	}
 }
 
@@ -126,7 +134,35 @@ type AutoDoneFacts struct {
 	// reads `completed`; AutoDoneNo when the SPEC reads anything else or could
 	// not be read; AutoDoneUnknown when the read itself was impossible.
 	SpecSyncGate AutoDoneTri
+	// ReceiptGate is the leader-approval receipt state a FACTORY-LINKED
+	// candidate carries at scan time (SPEC-FACTORY-COMPLETION-RECOVERY-001
+	// REQ-FCR-003): ReceiptGateVerified when a leader receipt verified
+	// against the card's current factory row, ReceiptGateUnverified when one
+	// is absent or does not bind, ReceiptGateUnknown when the factory state
+	// could not be read. A non-factory candidate assembles none — the zero
+	// value ReceiptGateNone — and the receipt axis does not apply to it.
+	ReceiptGate ReceiptGateState
 }
+
+// ReceiptGateState is the leader-approval receipt axis of AutoDoneFacts.
+// The zero value means the axis was never assembled: a card with no factory
+// row is not factory-linked and completes exactly as before.
+type ReceiptGateState int
+
+const (
+	// ReceiptGateNone — the card has no factory row; the receipt axis does
+	// not apply.
+	ReceiptGateNone ReceiptGateState = iota
+	// ReceiptGateVerified — a leader approval receipt verified against the
+	// card's current factory row.
+	ReceiptGateVerified
+	// ReceiptGateUnverified — the card is factory-linked but its receipt is
+	// absent or does not bind the current row.
+	ReceiptGateUnverified
+	// ReceiptGateUnknown — the factory state could not be read; an
+	// unanswerable question is a skip, never a close.
+	ReceiptGateUnknown
+)
 
 // AutoDoneDecision is one card's scan outcome: a close carrying its evidence
 // form, or a skip carrying its closed-vocabulary reason.
@@ -161,7 +197,7 @@ func AutoDoneDecide(f AutoDoneFacts) AutoDoneDecision {
 	if strings.TrimSpace(f.RecordedSHA) != "" {
 		switch f.SHAReachable {
 		case AutoDoneYes:
-			return AutoDoneDecision{Close: true, Form: AutoDoneFormSHA}
+			return receiptGated(f, AutoDoneDecision{Close: true, Form: AutoDoneFormSHA})
 		case AutoDoneUnknown:
 			return AutoDoneDecision{Reason: AutoDoneSkipQueryInconclusive}
 		case AutoDoneNo:
@@ -178,9 +214,25 @@ func AutoDoneDecide(f AutoDoneFacts) AutoDoneDecision {
 		if f.DistinctTexts > 1 {
 			return AutoDoneDecision{Reason: AutoDoneSkipAmbiguousID}
 		}
-		return AutoDoneDecision{Close: true, Form: AutoDoneFormSubject}
+		return receiptGated(f, AutoDoneDecision{Close: true, Form: AutoDoneFormSubject})
 	}
 	return AutoDoneDecision{Reason: AutoDoneSkipNotLanded}
+}
+
+// receiptGated applies the leader-approval gate (REQ-FCR-003) to a decision
+// that would otherwise close: a factory-linked candidate closes only on a
+// verified receipt; an unreadable factory state is an unanswerable question
+// (query-inconclusive), never a close. ReceiptGateNone passes — a
+// non-factory candidate assembles no receipt state at all.
+func receiptGated(f AutoDoneFacts, decision AutoDoneDecision) AutoDoneDecision {
+	switch f.ReceiptGate {
+	case ReceiptGateUnverified:
+		return AutoDoneDecision{Reason: AutoDoneSkipLeaderUnapproved}
+	case ReceiptGateUnknown:
+		return AutoDoneDecision{Reason: AutoDoneSkipQueryInconclusive}
+	default:
+		return decision
+	}
 }
 
 // AutoDoneDistinctTexts counts the distinct card texts the id has carried

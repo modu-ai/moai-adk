@@ -299,13 +299,70 @@ func TestAutoDoneDecide(t *testing.T) {
 	}
 }
 
-// TestAutoDoneSkipVocabularyClosed — the four-token skip vocabulary is the
-// closed set REQ-AD-010 canonically enumerates. A fifth token, a renamed
-// token, or a missing one breaks every reader that renders skip reasons.
+// TestAutoDoneSkipVocabularyClosed — the five-token skip vocabulary is the
+// closed set REQ-AD-010 canonically enumerates (the fifth token,
+// leader-unapproved, added by SPEC-FACTORY-COMPLETION-RECOVERY-001
+// REQ-FCR-003). A sixth token, a renamed token, or a missing one breaks
+// every reader that renders skip reasons.
 func TestAutoDoneSkipVocabularyClosed(t *testing.T) {
-	want := []string{"ambiguous-id", "spec-not-completed", "not-landed", "query-inconclusive"}
+	want := []string{"ambiguous-id", "spec-not-completed", "not-landed", "query-inconclusive", "leader-unapproved"}
 	if got := AutoDoneSkipReasons(); !slicesEqual(got, want) {
 		t.Errorf("skip vocabulary = %v, want %v (closed set, canonical order)", got, want)
+	}
+}
+
+// TestAutoDoneDecideReceiptGate — the leader-approval axis (REQ-FCR-003):
+// a would-be close only lands on a verified receipt; an unverified receipt
+// skips leader-unapproved and an unreadable factory state skips
+// query-inconclusive. A non-factory candidate assembles no receipt state at
+// all (the zero value) and closes exactly as before.
+func TestAutoDoneDecideReceiptGate(t *testing.T) {
+	hit := &LandedCommit{Subject: "Merge branch 'WT-x' into develop (card t900)", SHA: "aa11"}
+	base := AutoDoneFacts{
+		SubjectKnown:  true,
+		DistinctTexts: 1,
+		SpecSyncGate:  AutoDoneYes,
+		SubjectHit:    hit,
+	}
+	if d := AutoDoneDecide(base); !d.Close {
+		t.Fatalf("no receipt state assembled: decision = %+v, want close", d)
+	}
+	verified := base
+	verified.ReceiptGate = ReceiptGateVerified
+	if d := AutoDoneDecide(verified); !d.Close || d.Form != AutoDoneFormSubject {
+		t.Fatalf("verified receipt: decision = %+v, want close", d)
+	}
+	unverified := base
+	unverified.ReceiptGate = ReceiptGateUnverified
+	if d := AutoDoneDecide(unverified); d.Close || d.Reason != AutoDoneSkipLeaderUnapproved {
+		t.Fatalf("unverified receipt: decision = %+v, want skip %s", d, AutoDoneSkipLeaderUnapproved)
+	}
+	unknown := base
+	unknown.ReceiptGate = ReceiptGateUnknown
+	if d := AutoDoneDecide(unknown); d.Close || d.Reason != AutoDoneSkipQueryInconclusive {
+		t.Fatalf("unknown factory state: decision = %+v, want skip %s", d, AutoDoneSkipQueryInconclusive)
+	}
+	// The gate binds the recorded-SHA close too, not just subject evidence.
+	sha := base
+	sha.RecordedSHA = "bb22"
+	sha.SHAReachable = AutoDoneYes
+	sha.SubjectHit = nil
+	sha.ReceiptGate = ReceiptGateUnverified
+	if d := AutoDoneDecide(sha); d.Close || d.Reason != AutoDoneSkipLeaderUnapproved {
+		t.Fatalf("sha-form unverified receipt: decision = %+v, want skip %s", d, AutoDoneSkipLeaderUnapproved)
+	}
+	shaOK := sha
+	shaOK.ReceiptGate = ReceiptGateVerified
+	if d := AutoDoneDecide(shaOK); !d.Close || d.Form != AutoDoneFormSHA {
+		t.Fatalf("sha-form verified receipt: decision = %+v, want close", d)
+	}
+	// The axis never overrides a skip: an unlanded card still reads
+	// not-landed, whatever the receipt says.
+	notLanded := base
+	notLanded.SubjectHit = nil
+	notLanded.ReceiptGate = ReceiptGateUnverified
+	if d := AutoDoneDecide(notLanded); d.Close || d.Reason != AutoDoneSkipNotLanded {
+		t.Fatalf("not-landed with unverified receipt: decision = %+v, want skip %s", d, AutoDoneSkipNotLanded)
 	}
 }
 
