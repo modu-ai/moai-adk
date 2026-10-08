@@ -540,19 +540,37 @@ func bundleLabel(e template.Entry) string {
 }
 
 // collectEntries gathers the L0 core entries plus every named selection's
-// entries. Unknown bundle names are an error (C4: the report must be
+// entries, expanded through each pack's DependsOn closure (M6, REQ-SRF-005):
+// a selected bundle's dependencies install with it, cycle-safe (a pack that
+// is already gathered, or currently being walked, is not re-walked).
+// Unknown bundle names are an error (C4: the report must be
 // actionable — a typo'd bundle name must not silently install nothing).
 func (in *Installer) collectEntries(selection []string) []template.Entry {
 	var entries []template.Entry
 	entries = append(entries, in.Catalog.Catalog.Core.Skills...)
 	entries = append(entries, in.Catalog.Catalog.Core.Agents...)
-	for _, name := range selection {
+	// REQ-SRF-005: the gathered set doubles as the cycle guard — a pack
+	// already gathered (directly or as a dependency) is not re-walked, so
+	// a depends_on cycle among packs terminates instead of recursing.
+	gathered := map[string]bool{}
+	var walk func(name string)
+	walk = func(name string) {
+		if gathered[name] {
+			return
+		}
+		gathered[name] = true
 		pack, ok := in.Catalog.Catalog.OptionalPacks[name]
 		if !ok {
-			continue // reported by the caller-level command surface (C4)
+			return // reported by the caller-level command surface (C4)
 		}
 		entries = append(entries, pack.Skills...)
 		entries = append(entries, pack.Agents...)
+		for _, dep := range pack.DependsOn {
+			walk(dep)
+		}
+	}
+	for _, name := range selection {
+		walk(name)
 	}
 	return entries
 }

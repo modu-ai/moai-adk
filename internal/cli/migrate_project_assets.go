@@ -119,6 +119,12 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 			if !hasEntry || entry == nil {
 				untouched++
 				migrationPreservedProjectFiles[p] = true
+				// M6 (REQ-SRF-001): an unregistered mirror copy is
+				// CLASSIFIED + REPORTED per file — a hash match with the
+				// template is not creation provenance, so the copy stays
+				// and the removal question is named for the user (the
+				// audited round-8 contract: preservation is the default).
+				report("  migration: unregistered mirror copy (kept — removal needs creation provenance or your approval): %s", relSlash)
 				return nil
 			}
 			if provenance == string(manifest.UserCreated) {

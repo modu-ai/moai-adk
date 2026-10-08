@@ -116,6 +116,20 @@ type codexSkillDisableOptions struct {
 	Force       bool
 }
 
+// userInstallSkillFaces names the USER-INSTALL skill roots the disable
+// verb's fallback resolves against when the project mirror is absent
+// (M6, REQ-SRF-003): the moai init/update install faces in the user's
+// home.
+func userInstallSkillFaces(homeDir string) []string {
+	if homeDir == "" {
+		return nil
+	}
+	return []string{
+		filepath.Join(homeDir, ".claude", "skills"),
+		filepath.Join(homeDir, template.MirrorSkillsRelDir),
+	}
+}
+
 // resolveCodexSkillMirrorPath turns a skill NAME into the absolute literal
 // mirror path to publish.
 //
@@ -142,7 +156,22 @@ func resolveCodexSkillMirrorPath(projectRoot, homeDir, skill string) codexSkillR
 	}
 
 	projMirror := filepath.Join(projectRoot, template.MirrorSkillsRelDir)
-	if st, err := osStatFn(projMirror); err != nil || !st.IsDir() {
+	projMirrorPresent := false
+	if st, err := osStatFn(projMirror); err == nil && st.IsDir() {
+		projMirrorPresent = true
+	}
+	// M6 (REQ-SRF-003): the USER-INSTALL faces are the fallback when the
+	// project mirror is absent — a skill installed by moai init/update into
+	// the user's home (the userassets install roots) is disable-able
+	// through its user face; the retired project mirror no longer gates a
+	// user-installed skill into "nothing to disable".
+	if !projMirrorPresent {
+		for _, face := range userInstallSkillFaces(homeDir) {
+			file := filepath.Join(face, skill, "SKILL.md")
+			if st, err := osStatFn(file); err == nil && st.Mode().IsRegular() {
+				return codexSkillResolution{Outcome: codexSkillResolved, Path: file}
+			}
+		}
 		return codexSkillResolution{
 			Outcome: codexSkillMirrorAbsent,
 			Reason:  fmt.Sprintf("the project skill mirror %s does not exist, so nothing reaches Codex through it (it is created by a deployment run, not by a checkout)", projMirror),

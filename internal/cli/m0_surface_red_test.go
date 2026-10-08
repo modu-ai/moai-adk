@@ -195,18 +195,26 @@ func TestInitResumeAfterUserAssetEnsureFailure(t *testing.T) {
 	if err2 != nil && strings.Contains(err2.Error(), "already initialized") {
 		t.Fatalf("RED (intended): the re-run after an ensure failure is refused with %q — no resume path exists (init.go:905); stderr: %s", firstLineStr(err2.Error()), err2b.String())
 	}
-	// GREEN-path shape (post-M6): the shortfall completed and the post-step
-	// outputs exist. At HEAD this arm is unreachable past the refusal above.
+	// GREEN-path shape (post-M6): the shortfall completed and the
+	// not-yet-run setup steps ran. DEBT R4: judged by CONTENT —
+	// ApplyHarness's output (the llm.yaml harness line the failed attempt
+	// never wrote) and the MCP entry (.mcp.json), not directory existence.
 	if err2 != nil {
 		t.Fatalf("run 2 failed (post-refusal shape): %v", err2)
 	}
-	for _, rel := range []string{
-		filepath.Join(".moai", "harness"),
-		filepath.Join(".mcp.json"),
-	} {
-		if _, err := os.Stat(filepath.Join(projectDir, rel)); err != nil {
-			t.Errorf("post-step output %s missing after resume: %v", rel, err)
-		}
+	llmData, err := os.ReadFile(filepath.Join(projectDir, ".moai", "config", "sections", "llm.yaml"))
+	if err != nil {
+		t.Fatalf("llm.yaml missing after resume: %v", err)
+	}
+	if !strings.Contains(string(llmData), "harness:") {
+		t.Fatalf("the resumed llm.yaml carries no harness line (ApplyHarness did not run):\n%s", llmData)
+	}
+	mcpData, err := os.ReadFile(filepath.Join(projectDir, ".mcp.json"))
+	if err != nil {
+		t.Fatalf(".mcp.json missing after resume (MCP provisioning did not run): %v", err)
+	}
+	if !strings.Contains(string(mcpData), "moai") {
+		t.Fatalf("the resumed .mcp.json carries no moai entry:\n%s", mcpData)
 	}
 }
 

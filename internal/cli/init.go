@@ -902,8 +902,20 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// REQ-TUX2-015: re-running init on an initialized project without
 		// --force is usually a template-refresh intent — redirect to
 		// `moai update` alongside the existing --force guidance.
+		// M6 (SPEC: init resume, REQ-SRF-007 + audit DEBT R4): when the
+		// PRIOR attempt died at the user-asset ensure (initialized but
+		// incomplete), the re-run RESUMES instead of refusing: the ensure
+		// shortfall completes, and the setup steps the failed attempt never
+		// reached (ApplyHarness, the MCP entry, the Codex wiring) run now.
+		// DEBT R4: the resume is judged by CONTENT — the harness config the
+		// resume writes is asserted, not merely the directory's existence.
 		if !getBoolFlag(cmd, "force") && strings.Contains(err.Error(), "already initialized") {
-			return fmt.Errorf("initialization failed: %w\n  Hint: this directory already contains a MoAI project — did you mean 'moai update' (refresh templates in place)? Re-run with --force only to reinitialize from scratch", err)
+			if resumeErr := resumeInitializedProject(cmd, &opts, agentWiringSelection); resumeErr != nil {
+				return fmt.Errorf("initialization resume failed: %w\n  Hint: this directory already contains a MoAI project — 'moai update' refreshes templates in place; --force reinitializes from scratch", resumeErr)
+			}
+			p.Info("Initialized MoAI project (resumed: user-asset shortfall completed, setup steps finished).")
+			flushUpdateNotice(p)
+			return nil
 		}
 		// SPEC-INIT-DEPLOY-EXIT-001 (REQ-IDE-003): a deployment failure aborts
 		// the template walk partway, so files after the failing one were never

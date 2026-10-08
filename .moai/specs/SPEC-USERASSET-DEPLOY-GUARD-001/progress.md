@@ -508,6 +508,50 @@ GREEN 유지.
 test compile OK, hook/config/template 전체 GREEN (hook 305s), cli DoctorUserLock GREEN,
 userassets 잔여 RED 1건 (AC-016 번들 클로저 — M6 소관).
 
+### M6 — 배포·번들 표면 (원장 4/5-잔여/8a/8b/8d/11a/11b + 부채 R4, 2026-10-09)
+
+프로덕션 변경: `migrate_project_assets.go`(무등록 미러 사본 파일 단위 분류·보고) +
+`install.go` collectEntries(**DependsOn 클로저 전개** — 순환 안전 gathered 가드) +
+`codex_skills_disable.go`(**프로젝트 미러 부재 시 사용자 설치 면 폴백** — userassets
+설치 면 2종) + `web/agentfm.go`(**동명 행 통합** — 다중 디렉터리 스캔의 동명 행을 첫
+히트 하나로; 이름 기반 폼 키의 이중 제출 덮어쓰기 제거) + `init.go`/**init_resume.go**
+신설(**init 재개** — ensure 실패 후 재실행이 "already initialized" 대신 ensure 부족분
++ 미실행 후속 단계를 완료).
+
+**AC 전환 — RED→GREEN 5종 + 확인 2종 (userassets 잔여 RED 4건 → 0건)**
+
+| AC | 테스트 | M0 관측 | M6 관측 |
+|---|---|---|---|
+| AC-012 (4) | TestMigrationClassifiesUnregisteredMirrorCopy | RED — 무보고 방치 | **GREEN** — 무등록 미러 사본이 파일 단위로 분류·보고 (kept — provenance/approval 명시) |
+| AC-013 (5-잔여) | TestDoctorAgentEmissionUncomparedNotOK | GREEN (회귀 가드) | **GREEN 유지** — CheckFail 불변 확인 (변경 없음) |
+| AC-014 (8d) | TestSkillsDisableResolvesUserInstalledSkill | RED — MirrorAbsent 무시 | **GREEN** — 프로젝트 미러 부재 시 사용자 설치 면(~/.claude/skills 등)으로 resolve |
+| AC-015 (8a) | TestAgentFormSameNameConsolidatedEndToEnd | RED — 2행 중복 렌더 | **GREEN** — 동명 행 1행 통합 + 2단계 저장-재독록에서 저장소가 항상 마지막 제출과 일치 |
+| AC-016 (8b) | TestBundleDependsOnClosureInstall | RED — 클로저 부재 | **GREEN** — depends_on 순환 안전 전개로 의존 번들 동시 설치 |
+| AC-017 (11a) | TestUpdateCancelKeepsProjectAssetsIntact | GREEN (회귀 가드) | **GREEN 유지** — 취소 불변 확인만 (재수리 없음) |
+| AC-018 (11b+R4) | TestInitResumeAfterUserAssetEnsureFailure | RED — already initialized 거절 | **GREEN + DEBT R4 폐쇄** — 재개가 ensure 부족분을 완료하고 후속 단계 실행; 단정을 존재성에서 **내용으로 강화** (llm.yaml harness 라인 + .mcp.json moai 엔트리) |
+
+**DEBT R4 폐쇄 (AC-018 내용 단정)**: ApplyHarness의 실제 산출물은 llm.yaml의 harness
+라인 재작성이고 MCP 등록의 산출물은 .mcp.json의 moai 엔트리 — 존재성 단정을 이 두
+내용 단정으로 교체. (`.moai/harness/`는 런타임 아티팩트로 init 산출이 아니어서 단정
+대상에서 제외 — 기존 단정의 오류 정정.)
+
+**init 재개 설계**: `init_resume.go` 신설 — resumeInitializedProject가 (1) 파손된
+사용자 매니페스트를 quarantine (timestamped .corrupt-* — doctor의 rebuild-from-fresh-
+init 회복 경로), (2) ensureUserAssetsLocked로 부족분 완성, (3) ApplyHarness → MCP →
+Codex 배선을 생산 순서대로 실행. runInit의 already-initialized 분기가 이 재개를
+호출하고 성공 시 nil 반환.
+
+**AC-023 커버리지 (unix, 전체 스위트 결합)**
+
+| 파일 | 문 커버리지 | 게이트 |
+|---|---|---|
+| install.go | 349/423 = **82.5%** | 미달 — 클로저 전개 팔 실행, 신설 분기로 분모 증가; 잔여 미커버는 M6/M7 표면의 나머지 오류·경합 팔 |
+| journal.go **93.8%** / lock_guard_unix.go **90.0%** | | PASS |
+| 패키지 합계 | **82.5%** | FAIL (85%) — M7 + 나머지 오류 팔이 해소 |
+
+**게이트**: lint 0, gofmt 청결, windows build + 6패키지 test compile OK, web 에이전트
+패밀리 GREEN, userassets **RED 0건**.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop 소관.)_
