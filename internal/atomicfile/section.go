@@ -296,6 +296,12 @@ func claimGuard(ctx context.Context, guardPath string) (func() error, bool) {
 		// The disposal cleared the path — claim it NOW, outside the attempt
 		// budget: an attempt that ends here with a false would waste the
 		// caller's budget round-trip on a path this call just cleared.
+		// (review-gate finding on card t1606, round 4: the walk may have
+		// consumed time while the caller's context was cancelled — a
+		// cancelled caller stops here like every other retry boundary.)
+		if cerr := ctx.Err(); cerr != nil {
+			return nil, false
+		}
 		if err := Claim(guardPath, 0o600); err != nil {
 			continue // a rival re-claimed between disposal and this claim
 		}
