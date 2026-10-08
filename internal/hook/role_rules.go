@@ -131,13 +131,80 @@ func buildRoleCore(root string, rule roleRuleFile) (string, error) {
 	return strings.Join(regions, "\n\n"), nil
 }
 
+// roleRuleLocaleTable carries the operator-facing warnings by locale. The
+// operator warning is user-facing output, so it renders in the settings
+// conversation language the factory notices already use; an unknown locale
+// resolves to English (fail-open, per the shared locale-helper contract).
+type roleRuleLocaleTable struct {
+	// InjectionFailed renders the REQ-ALB-009 failure warning: the session
+	// role name and the joined failure causes.
+	InjectionFailed func(session, detail string) string
+	// OverflowUnavailable renders the overflow-delivery-unavailable retreat
+	// warning: the session role name, the measured total, and the cap.
+	OverflowUnavailable func(session string, total, limit int) string
+	// Overflow renders the deliberate overflow-file delivery warning.
+	Overflow func(session string, total, limit int) string
+}
+
+var roleRuleLocales = map[string]roleRuleLocaleTable{
+	"ko": {
+		InjectionFailed: func(session, detail string) string {
+			return fmt.Sprintf("역할 규칙 주입이 %s 세션에서 실패했습니다: %s. 에이전트에는 두 규칙 파일을 경로로 읽으라는 지시가 전달됐습니다.", session, detail)
+		},
+		OverflowUnavailable: func(session string, total, limit int) string {
+			return fmt.Sprintf("역할 규칙 주입 초과(%s 세션): 조립된 맥락(%d자)이 %d자 전달 한도를 넘는데 넘침 파일 전달을 쓸 수 없어, 역할 core 대신 읽기 지시를 보냈습니다.", session, total, limit)
+		},
+		Overflow: func(session string, total, limit int) string {
+			return fmt.Sprintf("역할 규칙 주입 초과(%s 세션): 조립된 맥락(%d자)이 세션 시작 전달 한도 %d자를 넘습니다. 역할 core는 잘리지 않고 그대로 보냈으며, 런타임이 넘친 출력을 세션 디렉터리 파일로 저장해 처음 2,000자 미리보기와 함께 경로를 전달합니다.", session, total, limit)
+		},
+	},
+	"ja": {
+		InjectionFailed: func(session, detail string) string {
+			return fmt.Sprintf("ロールルールの注入が %s セッションで失敗しました: %s。エージェントには両ルールファイルをパスで読むよう指示を送りました。", session, detail)
+		},
+		OverflowUnavailable: func(session string, total, limit int) string {
+			return fmt.Sprintf("ロールルール注入のオーバーフロー(%s セッション): 組み立てたコンテキスト(%d文字)が %d文字の配信上限を超えていますが、オーバーフローファイル配信が使えないため、ロール core の代わりに読み取り指示を送りました。", session, total, limit)
+		},
+		Overflow: func(session string, total, limit int) string {
+			return fmt.Sprintf("ロールルール注入のオーバーフロー(%s セッション): 組み立てたコンテキスト(%d文字)がセッション開始の配信上限 %d文字を超えました。ロール core は切り詰めずそのまま送信し、ランタイムが超過出力をセッションディレクトリのファイルに保存して、先頭 2,000 文字のプレビュー付きでパスを渡します。", session, total, limit)
+		},
+	},
+	langEnglish: {
+		InjectionFailed: func(session, detail string) string {
+			return fmt.Sprintf(
+				"Role-rule injection failed for the %s session: %s. The agent was directed to read both rule files by path.",
+				session, detail)
+		},
+		OverflowUnavailable: func(session string, total, limit int) string {
+			return fmt.Sprintf(
+				"Role-rule injection overflow for the %s session: the assembled context (%d characters) exceeds the %d-character delivery cap and overflow file delivery is unavailable; the read directive was emitted instead of the core.",
+				session, total, limit)
+		},
+		Overflow: func(session string, total, limit int) string {
+			return fmt.Sprintf(
+				"Role-rule injection overflow for the %s session: the assembled context (%d characters) exceeds the %d-character session-start delivery cap. The role core was emitted intact; the runtime saves oversized output to a session-directory file and passes its path with a 2,000-character preview.",
+				session, total, limit)
+		},
+	},
+}
+
+// roleRuleLocaleFor resolves the operator-locale table, failing open to
+// English for an unknown locale.
+func roleRuleLocaleFor(lang string) roleRuleLocaleTable {
+	if t, ok := roleRuleLocales[lang]; ok {
+		return t
+	}
+	return roleRuleLocales[langEnglish]
+}
+
 // roleRuleInjectionFor decides the role-rules injection for one SessionStart
 // event. root is the project root the deployed rule files resolve under;
 // source is input.Source; existing is the additionalContext every earlier
 // producer already assembled — the 10,000-character cap applies to the
 // FINAL string, so the measurement runs over it plus the core plus the
-// directive (REQ-ALB-010).
-func roleRuleInjectionFor(root, source, existing string) roleRuleInjection {
+// directive (REQ-ALB-010); lang is the operator-facing conversation locale
+// the two operator warnings render in.
+func roleRuleInjectionFor(root, source, existing, lang string) roleRuleInjection {
 	// Role session detection through the registry (REQ-ALB-011).
 	role, ok := detectRegisteredRole(os.Getenv)
 	if !ok {
@@ -168,11 +235,10 @@ func roleRuleInjectionFor(root, source, existing string) roleRuleInjection {
 		parts = append(parts, core)
 	}
 	if len(failures) > 0 {
+		loc := roleRuleLocaleFor(lang)
 		return roleRuleInjection{
 			Context: roleRulesReadDirective(""),
-			OperatorNotice: fmt.Sprintf(
-				"Role-rule injection failed for the %s session: %s. The agent was directed to read both rule files by path.",
-				role.Name, strings.Join(failures, "; ")),
+			OperatorNotice: loc.InjectionFailed(role.Name, strings.Join(failures, "; ")),
 		}
 	}
 
@@ -196,11 +262,10 @@ func roleRuleInjectionFor(root, source, existing string) roleRuleInjection {
 	if !roleRulesOverflowDelivery() {
 		// Overflow delivery unavailable or truncating: REQ-ALB-009 retreat —
 		// warning plus read directive, no core, zero truncated units.
+		loc := roleRuleLocaleFor(lang)
 		return roleRuleInjection{
-			Context: roleRulesReadDirective(""),
-			OperatorNotice: fmt.Sprintf(
-				"Role-rule injection overflow for the %s session: the assembled context (%d characters) exceeds the %d-character delivery cap and overflow file delivery is unavailable; the read directive was emitted instead of the core.",
-				role.Name, total, roleRulesContextLimit),
+			Context:        roleRulesReadDirective(""),
+			OperatorNotice: loc.OverflowUnavailable(role.Name, total, roleRulesContextLimit),
 		}
 	}
 
@@ -208,10 +273,8 @@ func roleRuleInjectionFor(root, source, existing string) roleRuleInjection {
 	// truncated units); the runtime saves it to a session file and passes
 	// the path plus a 2,000-character preview.
 	context += "\n\n" + roleRulesOverflowDirective()
-	operator := fmt.Sprintf(
-		"Role-rule injection overflow for the %s session: the assembled context (%d characters) exceeds the %d-character session-start delivery cap. The role core was emitted intact; the runtime saves oversized output to a session-directory file and passes its path with a 2,000-character preview.",
-		role.Name, total, roleRulesContextLimit)
-	return roleRuleInjection{Context: context, OperatorNotice: operator}
+	loc := roleRuleLocaleFor(lang)
+	return roleRuleInjection{Context: context, OperatorNotice: loc.Overflow(role.Name, total, roleRulesContextLimit)}
 }
 
 // detectRegisteredRole walks the registry seam and returns the first role

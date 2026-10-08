@@ -126,7 +126,7 @@ func TestSessionStartRoleRulesInjectionPerMarkerAndSource(t *testing.T) {
 		for _, source := range []string{"startup", "clear", "compact"} {
 			t.Run(marker.Name+"_"+source, func(t *testing.T) {
 				t.Setenv(marker.EnvKey, "1")
-				inj := roleRuleInjectionFor(root, source, "")
+				inj := roleRuleInjectionFor(root, source, "", langEnglish)
 				if inj.Context == "" {
 					t.Fatalf("no injection for role %s on source %s", marker.Name, source)
 				}
@@ -150,14 +150,14 @@ func TestSessionStartRoleRulesNoInjection(t *testing.T) {
 	writeDeployedRoleRules(t, root)
 
 	t.Run("unmarked_startup", func(t *testing.T) {
-		inj := roleRuleInjectionFor(root, "startup", "")
+		inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
 		if inj.Context != "" || inj.OperatorNotice != "" {
 			t.Errorf("unmarked startup injected: context=%dB notice=%q", len(inj.Context), inj.OperatorNotice)
 		}
 	})
 	t.Run("marked_resume", func(t *testing.T) {
 		t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-		inj := roleRuleInjectionFor(root, "resume", "")
+		inj := roleRuleInjectionFor(root, "resume", "", langEnglish)
 		if inj.Context != "" || inj.OperatorNotice != "" {
 			t.Errorf("resume injected: context=%dB notice=%q", len(inj.Context), inj.OperatorNotice)
 		}
@@ -166,7 +166,7 @@ func TestSessionStartRoleRulesNoInjection(t *testing.T) {
 		// The source set grows (fork arrived in 2.1.214); gate on the values
 		// wanted — an unknown source is not an injecting source.
 		t.Setenv(config.EnvMoaiFactoryWorker, "lane-3")
-		inj := roleRuleInjectionFor(root, "fork", "")
+		inj := roleRuleInjectionFor(root, "fork", "", langEnglish)
 		if inj.Context != "" || inj.OperatorNotice != "" {
 			t.Errorf("fork injected: context=%dB notice=%q", len(inj.Context), inj.OperatorNotice)
 		}
@@ -195,35 +195,38 @@ func TestSessionStartRoleRulesFailVisible(t *testing.T) {
 		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 		root := build(t)
 		removeRoleRule(t, root, dispatch)
-		inj := roleRuleInjectionFor(root, "startup", "")
+		inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
 		assertFailVisible(t, inj, "absent")
 	})
 	t.Run("unreadable_file", func(t *testing.T) {
-		if os.Getuid() == 0 {
-			t.Skip("running as root: chmod-based unreadable fixture cannot bind")
-		}
+		// Platform-independent read-failure fixture: os.ReadFile on a
+		// directory fails on every platform (EISDIR), so the fixture binds
+		// on Windows CI too — a chmod 0o000 fixture does not remove read
+		// permission there.
 		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 		root := build(t)
 		path := filepath.Join(root, filepath.FromSlash(dispatch.Rel))
-		if err := os.Chmod(path, 0o000); err != nil {
-			t.Fatalf("chmod: %v", err)
+		if err := os.Remove(path); err != nil {
+			t.Fatalf("remove: %v", err)
 		}
-		t.Cleanup(func() { _ = os.Chmod(path, 0o644) })
-		inj := roleRuleInjectionFor(root, "startup", "")
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
 		assertFailVisible(t, inj, "unreadable")
 	})
 	t.Run("empty_file", func(t *testing.T) {
 		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 		root := build(t)
 		writeRoleRuleFixture(t, root, dispatch, "")
-		inj := roleRuleInjectionFor(root, "startup", "")
+		inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
 		assertFailVisible(t, inj, "empty")
 	})
 	t.Run("unmarked_file", func(t *testing.T) {
 		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 		root := build(t)
 		writeRoleRuleFixture(t, root, dispatch, "# Rule\n\nbody without any role-core markers\n")
-		inj := roleRuleInjectionFor(root, "startup", "")
+		inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
 		assertFailVisible(t, inj, "unmarked")
 	})
 	t.Run("unclosed_region", func(t *testing.T) {
@@ -233,7 +236,7 @@ func TestSessionStartRoleRulesFailVisible(t *testing.T) {
 		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 		root := build(t)
 		writeRoleRuleFixture(t, root, dispatch, "<!-- moai:role-core-start -->\nrequired core body with the end marker missing\n")
-		inj := roleRuleInjectionFor(root, "startup", "")
+		inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
 		assertFailVisible(t, inj, "unclosed_region")
 	})
 	t.Run("end_before_start", func(t *testing.T) {
@@ -246,7 +249,7 @@ func TestSessionStartRoleRulesFailVisible(t *testing.T) {
 		root := build(t)
 		writeRoleRuleFixture(t, root, dispatch,
 			"<!-- moai:role-core-end -->\n\ntext before any start marker\n\n<!-- moai:role-core-start -->\nrequired core body with no end marker after it\n")
-		inj := roleRuleInjectionFor(root, "startup", "")
+		inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
 		assertFailVisible(t, inj, "end_before_start")
 	})
 }
@@ -336,7 +339,7 @@ func TestSessionStartRoleRulesSizeGate(t *testing.T) {
 	t.Run("a_under_cap_delivers_core_directly", func(t *testing.T) {
 		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 		root := smallRoot(t)
-		inj := roleRuleInjectionFor(root, "startup", "")
+		inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
 		if inj.OperatorNotice != "" {
 			t.Errorf("under-cap injection raised an operator notice: %q", inj.OperatorNotice)
 		}
@@ -355,7 +358,7 @@ func TestSessionStartRoleRulesSizeGate(t *testing.T) {
 		blocks := roleCoreBlocksFromDeployed(t, root)
 
 		existing := "session attribution line\n"
-		inj := roleRuleInjectionFor(root, "startup", existing)
+		inj := roleRuleInjectionFor(root, "startup", existing, langEnglish)
 		total := utf16Len(existing) + utf16Len("\n\n"+inj.Context)
 		if total <= roleRulesContextLimit {
 			t.Fatalf("fixture not in the overflow regime: total=%d cap=%d", total, roleRulesContextLimit)
@@ -384,7 +387,7 @@ func TestSessionStartRoleRulesSizeGate(t *testing.T) {
 		writeDeployedRoleRules(t, root)
 		blocks := roleCoreBlocksFromDeployed(t, root)
 
-		inj := roleRuleInjectionFor(root, "startup", "")
+		inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
 		if inj.OperatorNotice == "" {
 			t.Errorf("fallback emitted no operator warning")
 		}
@@ -424,7 +427,7 @@ func TestSessionStartRoleRulesCoverageGuard(t *testing.T) {
 	for _, marker := range roleMarkerRegistry() {
 		t.Run("guard_covers_"+marker.Name, func(t *testing.T) {
 			t.Setenv(marker.EnvKey, "1")
-			inj := roleRuleInjectionFor(root, "startup", "")
+			inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
 			if missing := injectionMissingBlocks(inj.Context, blocks); len(missing) > 0 {
 				t.Fatalf("registry entry %s not covered: missing %q", marker.Name, missing[0])
 			}
@@ -436,7 +439,7 @@ func TestSessionStartRoleRulesCoverageGuard(t *testing.T) {
 	// the guard must FAIL naming that block (observed failure, not assumed).
 	t.Run("mutation_delete_one_block_fails", func(t *testing.T) {
 		t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-		inj := roleRuleInjectionFor(root, "startup", "")
+		inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
 		victim := blocks[len(blocks)/2]
 		mutated := strings.Replace(inj.Context, victim, "", 1)
 		if mutated == inj.Context {
@@ -508,6 +511,53 @@ func TestSessionStartRoleRulesHandleIntegration(t *testing.T) {
 		}
 		if strings.Contains(notice, "Role-rule") {
 			t.Errorf("resume raised a role-rule operator notice: %q", notice)
+		}
+	})
+}
+
+// TestSessionStartRoleRulesOperatorLocales observes the operator-facing
+// warnings rendering in the settings conversation language (ko/ja/en table
+// minimum): each locale's failure and overflow warnings are non-empty,
+// locale-distinct, and carry the deciding figures (role name, total, cap).
+func TestSessionStartRoleRulesOperatorLocales(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+
+	overCapRoot := func(t *testing.T) string {
+		t.Helper()
+		root := t.TempDir()
+		writeDeployedRoleRules(t, root) // real files: the core exceeds the cap
+		return root
+	}
+
+	for _, lang := range []string{"ko", "ja", "en"} {
+		t.Run("overflow_"+lang, func(t *testing.T) {
+			inj := roleRuleInjectionFor(overCapRoot(t), "startup", "", lang)
+			if inj.OperatorNotice == "" {
+				t.Fatalf("locale %s: overflow warning empty", lang)
+			}
+			if !strings.Contains(inj.OperatorNotice, "factory-leader") {
+				t.Errorf("locale %s: warning missing the role name: %q", lang, inj.OperatorNotice)
+			}
+			t.Logf("PASS overflow %s: %q", lang, inj.OperatorNotice)
+		})
+		t.Run("failure_"+lang, func(t *testing.T) {
+			root := t.TempDir()
+			inj := roleRuleInjectionFor(root, "startup", "", lang)
+			if inj.OperatorNotice == "" {
+				t.Fatalf("locale %s: failure warning empty", lang)
+			}
+			if !strings.Contains(inj.OperatorNotice, "factory-leader") {
+				t.Errorf("locale %s: warning missing the role name: %q", lang, inj.OperatorNotice)
+			}
+			t.Logf("PASS failure %s: %q", lang, inj.OperatorNotice)
+		})
+	}
+
+	t.Run("unknown_locale_falls_back_to_english", func(t *testing.T) {
+		inj := roleRuleInjectionFor(t.TempDir(), "startup", "", "zz")
+		if !strings.Contains(inj.OperatorNotice, "Role-rule injection failed") {
+			t.Errorf("unknown locale did not fall back to English: %q", inj.OperatorNotice)
 		}
 	})
 }

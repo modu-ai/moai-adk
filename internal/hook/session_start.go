@@ -656,7 +656,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	if roleRulesRoot == "" {
 		roleRulesRoot = input.ProjectDir
 	}
-	inj := roleRuleInjectionFor(roleRulesRoot, input.Source, accumulatedAdditionalContext(out))
+	inj := roleRuleInjectionFor(roleRulesRoot, input.Source, accumulatedAdditionalContext(out), operatorLang(h.cfg))
 	if inj.Context != "" {
 		appendAdditionalContext(out, inj.Context)
 	}
