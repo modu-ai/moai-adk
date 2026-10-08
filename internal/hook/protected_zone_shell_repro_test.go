@@ -1180,3 +1180,22 @@ func categoryOf(reason string) string {
 	}
 	return ""
 }
+
+// TestCheckProtectedZoneShellInvalidManifestRedirectAllow — gate round 31
+// P2 (:635, over-block pin): with an INVALID manifest, a never-executed
+// generation's redirect reading must not flip the mutating flag — the
+// fail-closed invalid-manifest denial (REQ-SIPZ-009) requires a MUTATING
+// command, and `f(){ printf read-only >& $'1'; }; $'f'` mutates nothing
+// in either world (the fd duplication writes nothing). The row asserts
+// the ALLOW the fail-closed gate must not swallow.
+func TestCheckProtectedZoneShellInvalidManifestRedirectAllow(t *testing.T) {
+	invalidManifest := "version: 1\ncategories:\n  probe_zone:\n    paths: []\n"
+	root := newZoneRoot(t, invalidManifest, "")
+	h := zoneTestHandler(t, root)
+	const invCmd = "f(){ printf read-only >& $'1'; }; $'f'"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": invCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("invalid manifest redirect allow: decision=%q reason=%q, want allowed — the fd-duplicating function mutates nothing in either world, so the fail-closed invalid-manifest denial must not fire", invCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}

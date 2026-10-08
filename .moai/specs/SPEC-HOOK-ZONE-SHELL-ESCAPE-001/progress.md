@@ -1354,6 +1354,15 @@ candidates collapse first and a plain 2,050-file command fits the cap.
   `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
   clean; family coverage `13.5%` (all-rows selector).
 
+**Gate-31 :635 pin (green-now, appended post-M2.12):**
+TestCheckProtectedZoneShellInvalidManifestRedirectAllow — with an INVALID
+manifest, a never-executed generation's redirect reading must not flip the
+mutating flag: the fail-closed invalid-manifest denial (REQ-SIPZ-009)
+requires a MUTATING command, and the fd-duplicating function mutates
+nothing in either world. Measured ALLOW on the M2.12 tip (the
+numeric-descriptor skip plus the w.world filter already cover it) —
+recorded as a green-now regression pin, not a flip.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
