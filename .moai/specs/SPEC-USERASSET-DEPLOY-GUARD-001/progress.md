@@ -74,7 +74,7 @@ plan_status: audit-ready
 plan_complete_at: 2026-10-09
 - 아티팩트 셋: Tier L 5종 (spec.md, plan.md, acceptance.md, design.md, research.md) + progress.md — 동시 발행 완료.
 - 사전 검증: SPEC ID 정규식 `PASS` (Bash verbatim), frontmatter 12 필수 필드 적합, ID 유일성 확인(`SPEC-USERASSET-*` 0건).
-- 이 신호는 아티팩트 완결성의 증명이며 plan-audit PASS의 증명이 아니다 — 독립 감사(plan-auditor) 대기.
+- 독립 감사 종결 — plan-audit iter3+Addendum 5 **PASS-WITH-DEBT 0.94**(기준 0.85 상회·blocking 0·audited_sha 7d2e2a36e·receipts rcpt-cf62fd3b4adf15332e74b11e, rcpt-9941027c067ed9cab2bcf821)·부채 2건(R4→run M6, R5→sync).
 
 ## §E.2 Run-phase Evidence
 
@@ -87,3 +87,11 @@ _(pending run-phase — manager-develop 소관.)_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _(pending sync-phase — manager-docs 소관. sync_commit_sha: )_
+
+## §F Phase 4 Mode Selection
+
+- 입력 파라미터: tier L · 범위 약 15-20 파일(구현+신규 재현 테스트) · 도메인 4(internal/userassets, internal/cli, internal/template, internal/web) · 언어 혼합 Go 100% · 병렬 이득 LOW(coding-heavy) · agent-team 전제 N/A(미요청).
+- 모드 평가: direct 미해당(다중 파일·의미 변경) / fanout 미선택(coding-heavy — Anthropic coding-task 병렬성 유의) / sweep 미선택(기계 균일 변환 아님·파일 30 미만·상호 의존 마일스톤) / **serial 선택** / agent-team 미요청(실험적 명시 전용).
+- **Decision: serial** — 마일스톤 M0→M7 순서에 1회 1개 manager-develop 스폰(트리 내 단일 작성자 — 팩토리 레인 one-writer 규율과 합치).
+- 근거: Anthropic coding-task caveat(코딩 과업의 순차 기본) + 결정 가역성 순서(plan §F)가 마일스톤 간 의존을 만드는 구조. 팩토리 레인 크론+태스크 규율이 연속성 담당 — ac_converge goal 미무장(중복 감시자 방지).
+- Boundary Case 해당 없음(기준 여유 있음).
