@@ -731,3 +731,30 @@ func TestSessionStartRoleRulesRootFromSubdirectoryCWD(t *testing.T) {
 	}
 	t.Logf("PASS nested cwd %q resolved to %q; all %d blocks delivered", nested, resolved, len(blocks))
 }
+
+// TestSessionStartRoleRulesOverflowDirectiveSurvivesPrefixCut is the
+// save-failure scenario: when the runtime's oversized-output save fails it
+// delivers only the FIRST 10,000 characters of the emission, so a
+// tail-placed read directive would be cut exactly when the primary
+// delivery channel dies. The over-cap emission therefore carries the
+// directive at its head — observed present within the prefix here.
+func TestSessionStartRoleRulesOverflowDirectiveSurvivesPrefixCut(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	root := t.TempDir()
+	writeDeployedRoleRules(t, root)
+
+	inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
+	if inj.Context == "" {
+		t.Fatal("no over-cap emission")
+	}
+	const prefix = 10000
+	head := inj.Context
+	if len(head) > prefix {
+		head = head[:prefix]
+	}
+	if !strings.Contains(head, "NOTE: the output above exceeds") {
+		t.Fatalf("over-cap emission's first %d characters carry no read directive — a save failure would deliver a truncated core with no directive:\n%.200q", prefix, inj.Context)
+	}
+	t.Logf("PASS save-failure prefix cut: read directive present within the first %d characters (emission %d chars)", prefix, len(inj.Context))
+}

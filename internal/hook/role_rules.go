@@ -334,10 +334,14 @@ func roleRuleInjectionFor(root, source, existing, lang string) roleRuleInjection
 
 	// Deliberate overflow-file delivery: the core goes out INTACT (zero
 	// truncated units); the runtime saves it to a session file and passes
-	// the path plus a 2,000-character preview.
-	context += "\n\n" + roleRulesOverflowDirective(root)
+	// the path plus a 2,000-character preview. The read directive rides at
+	// the HEAD of the emission, not the tail: when the runtime's save
+	// itself fails it delivers only the first 10,000 characters, and a
+	// tail-placed directive would be cut exactly when the primary delivery
+	// channel dies — any truncation still leaves the directive.
+	directive := roleRulesOverflowDirective(root)
 	loc := roleRuleLocaleFor(lang)
-	return roleRuleInjection{Context: context, OperatorNotice: loc.Overflow(role.Name, total, roleRulesContextLimit)}
+	return roleRuleInjection{Context: directive + "\n\n" + context, OperatorNotice: loc.Overflow(role.Name, total, roleRulesContextLimit)}
 }
 
 // roleRulesRootFromCWD resolves the project root the deployed role-gated
