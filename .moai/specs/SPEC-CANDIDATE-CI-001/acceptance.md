@@ -192,7 +192,12 @@ creates `TestCandidateRecord`).
 
 - When: the partition check runs after M6 (the milestone lands the exact one-command form;
   shape: `go test -list` over ./... diffed against the union and intersection of the four
-  internal/cli shard selectors, the rosterguard selector, and the remainder leg).
+  internal/cli shard selectors, the rosterguard selector, and the remainder leg — the
+  remainder leg's set computed by explicit set difference from the full list, never as
+  `-list -skip`: measured 2026-10-09, `-list` honors `-run` but ignores `-skip`
+  (internal/factory: `-list '.*' -skip '^TestMergeStep'` still lists all 22
+  `TestMergeStep*` names while `-list '^TestMergeStep'` lists exactly those 22); see
+  plan.md M5's recorded measurement and set-difference form).
 - Then: union == full test set, pairwise intersections empty. RED-now (ledger EV-CCI-F,
   tree c47aeda2d): command `grep -c "name: Race Test" .github/workflows/ci.yml` → stdout
   `2`, exit code 0 — the split is the 2-way form; the 4-way internal/cli split and the

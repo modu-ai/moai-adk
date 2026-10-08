@@ -250,9 +250,23 @@ Verification commands:
 - Ordinary scope runs without guards: `go test -skip '<guard-selector>' -count=1 ./internal/cli/`
   green, and `go test -skip '<guard-selector>' -count=1 -v ./internal/cli/ | grep -c "=== RUN <sample-guard-name>"`
   reads 0 — a guard name absent from the ordinary scope's output.
-- Partition exactness: the ordinary scope's `-list` plus the bundle `-list` equals the
-  full `go test -list '.*' ./internal/cli/` set, intersections empty (same property
-  form as AC-CCI-009-1).
+- MEASURED (2026-10-09, this tree — the `-list`/`-skip` interaction): 
+  `go test -list '.*' -skip '^TestMergeStep' ./internal/factory/` STILL lists all 22
+  `TestMergeStep*` names, while `go test -list '^TestMergeStep' ./internal/factory/`
+  lists exactly those 22 — **`-list` honors `-run` but IGNORES `-skip`**. The ordinary
+  set is therefore NEVER computed as `-list -skip`; it is the explicit set difference
+  below.
+- Partition exactness by explicit set difference (ordinary = full − guards):
+  ```
+  go test -list '.*' ./internal/cli/ | grep '^Test' | sort > /tmp/m5-all.txt
+  go test -list '<guard-selector>' ./internal/cli/ | grep '^Test' | sort > /tmp/m5-guard.txt
+  comm -23 /tmp/m5-all.txt /tmp/m5-guard.txt > /tmp/m5-ordinary.txt        # full − guards
+  comm -12 /tmp/m5-all.txt /tmp/m5-guard.txt | wc -l                       # 0 — intersection empty
+  sort -u /tmp/m5-ordinary.txt /tmp/m5-guard.txt | diff - /tmp/m5-all.txt  # no output — union == full
+  ```
+  and the ordinary-scope RUN's observed test set matches `/tmp/m5-ordinary.txt` (the
+  `-v` `=== RUN` names contain no guard name — the grep -c 0 check above is its quick
+  form).
 - Census fixture: `bash scripts/ci-census/census-check.sh` exits 0.
 - Workflow: `git grep -n "guard-bundle" .github/workflows/ci.yml` shows the job and the
   test job's complementary skip.
