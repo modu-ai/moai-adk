@@ -2,7 +2,7 @@
 id: SPEC-HOOK-ZONE-SHELL-ESCAPE-001
 title: "Protected-zone ANSI-C shell decoding judges the bytes bash executes — NUL part-terminator, raw-byte \\x, bounded no-digit escapes"
 version: "0.1.4"
-status: draft
+status: in-progress
 created: 2026-10-09
 updated: 2026-10-09
 author: manager-spec
@@ -163,7 +163,8 @@ carrying none of the three defect shapes: every existing `internal/hook` test
 stays green — the t1570 quoting matrix (`testZoneShellQuoting`,
 `protected_zone_guard_test.go:1238`: 7 deny rows + 2 allow controls), the zone
 suites, and the full package family (the family re-run is run-phase scope; the
-plan-phase baseline is green except the three RED defect rows).
+M1-final baseline is green except its six RED rows — ①②③ plus the
+M1-authored 006/009/010).
 
 ## D. Constraints
 
@@ -224,7 +225,9 @@ plan-phase baseline is green except the three RED defect rows).
    non-ASCII outside-zone allow controls (AC-HZS-011) — all GREEN after M2
    (AC-HZS-006/009/010 under their §2.1 conditionals).
 4. The affected package family is green: `go test -count=1 ./internal/hook/`
-   (only the three RED defect rows flip; countable delta, no new failure), and
+   (the M1-final baseline's six RED rows flip: ①②③ — AC-HZS-001/003/005 —
+   plus 006/009/010; the controls 002/004/011 and the pin 007 stay green;
+   countable delta, no new failure), and
    `GOOS=windows go build ./...` exits 0.
 
 ## F. Scope Boundary

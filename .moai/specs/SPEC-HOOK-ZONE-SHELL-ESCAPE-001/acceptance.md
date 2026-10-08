@@ -199,16 +199,19 @@ Maps REQ-HZS-006
 **Given** the M2 repair,
 **When** `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 ./internal/hook/` runs,
 **Then** the package is green: the t1570 quoting matrix (7 deny + 2 allow),
-all zone suites, and the finalized instrument — the ONLY delta vs the M1
-baseline is the three defect rows flipping green (countable, no new failure);
-and `GOOS=windows go build ./...` exits 0.
+all zone suites, and the finalized instrument — the ONLY delta vs the
+M1-FINAL baseline is its six RED rows flipping green — ①②③
+(AC-HZS-001/003/005) + the guard no-crash (006), part-level (009),
+octal-origin (010) rows; the controls (002/004/011) and the code-point pin
+(007) stay green on both sides (007 green-now by design) — countable, no
+new failure; and `GOOS=windows go build ./...` exits 0.
 
 - **Cell 1**: the plan-time measured scope is the 3-test selected run (exit
   1, only the three defect rows failing — tracked record
   `evidence-red-repro.md`); the package-wide green baseline is recorded at
   M1's own instrument-confirmation run (full
   `go test -count=1 ./internal/hook/`, four elements, pre-repair).
-- **Cell 2**: M3 — full green + windows build, verbatim outputs in §E.2.
+- **Cell 2**: M3 — full green (the M1-final six RED rows flipped; controls 002/004/011 + pin 007 still green) + windows build, verbatim outputs in §E.2.
 
 ### AC-HZS-009 — Part-level NUL truncation shape pinned (release-blocking; REQ-HZS-001)
 
@@ -304,8 +307,10 @@ rows), and the GREEN flip records appended at M2/M3.
 ### RED confirmation at the committed baseline (appended at M1)
 
 - **Command**: the AC-HZS-001 command, run at `9dbe40c0a`.
-- **Expected**: exit 1, the three defect rows failing exactly as
-  red-repro.md records them; controls green.
+- **Expected**: exit 1, the M1-final baseline's six RED rows failing — the
+  three original defect rows exactly as the tracked record shows them + the
+  M1-authored rows (006/009/010) per their expected RED; the controls
+  (002/004/011) and the pin (007) green.
 - **Observed**: *(populated at M1)*
 
 ### CONTROLS at `7be9f41b5` — pre-repair green, MEASURED (review-gate round 1, 2026-10-09)

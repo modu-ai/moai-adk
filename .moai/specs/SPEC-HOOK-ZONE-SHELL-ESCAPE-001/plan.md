@@ -25,7 +25,9 @@ author: manager-spec
   (round-2 repair). Ordering attribution satisfied: the RED baseline
   precedes every repair commit.
 - Development mode: `tdd` (quality.yaml `constitution.development_mode`) —
-  RED is already in place; run phase is GREEN-first on the three defect rows.
+  RED is already in place; run phase is GREEN-first on the M1-final
+  baseline's six RED rows (the three measured defects + the M1-authored
+  three).
 - SPEC artifacts: `.moai/specs/SPEC-HOOK-ZONE-SHELL-ESCAPE-001/{spec,plan,acceptance,progress}.md`.
 - Evidence: `evidence-red-repro.md` in the SPEC directory (canonical TRACKED
   record, committed — corrected and fully re-measured 2026-10-09 on bash
@@ -101,7 +103,8 @@ unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go t
   zsh residual; instrument finalize-only; lane-local verification
   (`go test -count=1 ./internal/hook/`); TRUST 5; English comments.
 - The repair must keep every existing `internal/hook` test green — the ONLY
-  expected flips are the three RED defect rows going green.
+  expected flips are the M1-final baseline's six RED rows going green
+  (①②③ + the M1-authored 006/009/010).
 - **The `\u`/`\U` host-variance bypass class is NOT this card's repair
   scope**: on a pre-4.2 bash — this host renders BOTH `\u` and `\U` literally
   (decisive od-proven re-measurement) —
@@ -136,7 +139,7 @@ re-runs of M3).
 
 ### M1 — Instrument finalization + RED baseline re-confirmation
 
-- Re-run the three defect rows at the committed baseline; record the verbatim
+- Re-run the RED rows at the committed baseline; record the verbatim
   output in progress.md §E.2 (pre-GREEN evidence).
 - ADD instrument rows: (a) guard-level no-crash — a Bash call carrying
   `$'\x'` judged with the panic contained in the test helper
@@ -171,12 +174,15 @@ re-runs of M3).
   loop; the split is in the RENDER, not the scan.
 - ③ No-digit arm: render `\` + prefix letter, advance over the letter only,
   never index past the end — all three prefixes covered.
-- Flip the three RED rows green; both controls stay green.
+- Flip the M1-final baseline's six RED rows green — ①②③ (AC-HZS-001/003/005)
+  + the M1-authored guard no-crash (006), part-level (009), octal-origin
+  (010); the controls (002/004/011) and the code-point pin (007) stay green.
 
 ### M3 — Family re-run + regression confirmation
 
 - `go test -count=1 ./internal/hook/` — full package green (countable delta:
-  the three flips; no new failure).
+  the M1-final baseline's six RED rows flip — 001/003/005 + 006/009/010;
+  the controls 002/004/011 and the pin 007 stay green; no new failure).
 - `GOOS=windows go build ./...` exit 0; gofmt clean; coverage ≥ pre-change.
 - progress.md §E.2 evidence + §E.3 audit-ready signal.
 
