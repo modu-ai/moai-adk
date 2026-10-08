@@ -29,10 +29,15 @@ import (
 	"testing"
 )
 
-// sectionRefPattern matches `<file>.md § <heading>` references. The heading
-// ends at the first closing delimiter (backtick, paren, bracket, table pipe)
-// or line end; trailing punctuation is trimmed by the caller.
-var sectionRefPattern = regexp.MustCompile(`([A-Za-z0-9][A-Za-z0-9._/-]*\.md) § ([^\n` + "`" + `)|\]]+)`)
+// sectionRefPattern matches `<file>.md § <heading>` references in both the
+// bare form (`file.md § Heading`) and the backtick-quoted form
+// (`file.md` § Heading — the form project-root-relative citations use, e.g.
+// context-window-management.md's askuser-protocol.md SSOT pointer; before
+// the backtick allowance that reference went UNMATCHED, so a broken
+// reference there passed the sweep unseen). The heading ends at the first
+// closing delimiter (backtick, paren, bracket, table pipe) or line end;
+// trailing punctuation is trimmed by the caller.
+var sectionRefPattern = regexp.MustCompile(`([A-Za-z0-9][A-Za-z0-9._/-]*\.md)` + "`?" + ` § ([^\n` + "`" + `)|\]]+)`)
 
 // placeholderHeading reports a format placeholder like `<Doctrine Section>`.
 func placeholderHeading(h string) bool {
@@ -49,6 +54,52 @@ func normHeading(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
 
+// commonPrefixLen returns the length of the longest common prefix of a and b.
+func commonPrefixLen(a, b string) int {
+	n := 0
+	for n < len(a) && n < len(b) && a[n] == b[n] {
+		n++
+	}
+	return n
+}
+
+// capturedHeadingMatches decides whether a captured § reference text names a
+// real heading of the target file. The pointer convention varies: a capture
+// can truncate a real heading ("§ Attributable diff-check" for "Attributable
+// diff-check detail"), run past it into prose ("§ Parallel Execution applies
+// to all commands"), stop at a list separator ("§ Design intent, § The
+// leader…"), or sit inside a sentence whose common prefix with the heading
+// ends at a word boundary in both strings. The capture names the heading when
+// the common prefix covers the whole capture (its trailing separators
+// trimmed), covers the whole heading, or spans two or more words ending at a
+// non-alphanumeric boundary in both strings; a capture sharing no such
+// prefix is the broken case the sweep exists to catch.
+func capturedHeadingMatches(headings map[string]bool, want string) bool {
+	if headings[want] {
+		return true
+	}
+	wt := strings.Trim(want, " \t.,;:()[]|·→-/\\\"'`*")
+	if wt == "" {
+		return false
+	}
+	for h := range headings {
+		n := commonPrefixLen(wt, h)
+		if n == 0 {
+			continue
+		}
+		if n == len(wt) || n == len(h) {
+			return true
+		}
+		// Two or more shared words name the same section even when the
+		// capture runs on into prose whose next character is a letter
+		// ("… § Pre-Spawn Sync Check to keep the always-loaded file…").
+		if len(strings.Fields(wt[:n])) >= 2 {
+			return true
+		}
+	}
+	return false
+}
+
 // trimmedRefHeading trims trailing punctuation the regex cannot exclude.
 func trimmedRefHeading(h string) string {
 	h = strings.TrimSpace(h)
@@ -63,8 +114,14 @@ func trimmedRefHeading(h string) string {
 	return h
 }
 
-// headingSet extracts the normalized heading texts of a markdown file.
-func headingSet(content string) map[string]bool {
+// headingSetForRefs extracts the normalized heading texts of a markdown file
+// for the §-reference sweep: markdown headings PLUS the bold lead-ins the
+// pointer convention also addresses ("**Hoist a tree's evidence before
+// disposing it.**" as a paragraph opener, "> **SHA placeholder backfill
+// exemption (D3)** —" as a blockquote lead) — real § targets that no #
+// line carries. (The shared headingSet stays untouched: the binding-ledger
+// checks read it too, and its shape is ledger-versioned.)
+func headingSetForRefs(content string) map[string]bool {
 	out := map[string]bool{}
 	for _, line := range strings.Split(content, "\n") {
 		if !isHeadingLine(line) {
@@ -73,10 +130,31 @@ func headingSet(content string) map[string]bool {
 		t := strings.TrimSpace(line)
 		t = strings.TrimLeft(t, "#")
 		t = strings.TrimSpace(t)
-		if t == "" {
+		if t != "" {
+			out[normHeading(t)] = true
+		}
+	}
+	for _, line := range strings.Split(content, "\n") {
+		t := strings.TrimSpace(line)
+		t = strings.TrimPrefix(t, ">")
+		t = strings.TrimSpace(t)
+		// A [HARD]-tagged paragraph opens with the tag before its bold
+		// lead-in ("[HARD] **Hoist a tree's evidence before disposing it.**").
+		t = strings.TrimPrefix(t, "[HARD] ")
+		t = strings.TrimSpace(t)
+		if !strings.HasPrefix(t, "**") {
 			continue
 		}
-		out[normHeading(t)] = true
+		end := strings.Index(t[2:], "**")
+		if end <= 0 {
+			continue
+		}
+		inner := strings.TrimSpace(t[2 : 2+end])
+		inner = strings.TrimRight(inner, ".:—-")
+		if inner == "" {
+			continue
+		}
+		out[normHeading(inner)] = true
 	}
 	return out
 }
@@ -136,7 +214,7 @@ func TestDeployedRuleSectionRefsResolve(t *testing.T) {
 			t.Fatalf("read deployed rule %s: %v", f, err)
 		}
 		contents[f] = string(data)
-		headings[f] = headingSet(string(data))
+		headings[f] = headingSetForRefs(string(data))
 		byBase[filepath.Base(f)] = append(byBase[filepath.Base(f)], f)
 	}
 
@@ -164,12 +242,12 @@ func TestDeployedRuleSectionRefsResolve(t *testing.T) {
 				want := normHeading(head)
 				ok := false
 				for _, tgt := range targets {
-					if headings[tgt][want] {
+					if capturedHeadingMatches(headings[tgt], want) {
 						ok = true
 						break
 					}
 					for _, fam := range companionFamilyOf(base, dir, files) {
-						if headings[fam][want] {
+						if capturedHeadingMatches(headings[fam], want) {
 							ok = true
 							break
 						}

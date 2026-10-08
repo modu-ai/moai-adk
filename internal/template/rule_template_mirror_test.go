@@ -306,7 +306,13 @@ var workflowOptMirroredPaths = []string{
 	".claude/rules/moai/core/native-idiom-and-register.md",
 	".claude/rules/moai/core/native-idiom-and-register-detail.md",
 	".claude/rules/moai/core/verification-claim-integrity-detail.md",
-	".claude/rules/moai/development/agent-authoring.md",
+	// agent-authoring.md is deliberately NOT here: it is a declared
+	// live-vs-template difference pair owned by
+	// TestRunExternalDelegationDoctrine/pairdelta (4 differing lines — the
+	// live dogfood copy carries the SPEC-AGENT-ARCH-V2-001 token and the
+	// moai-cg teammate-runtime wording). A byte-parity enrollment would
+	// re-absorb that drift, the same shape as the factory-dispatch.md note
+	// above.
 	".claude/rules/moai/workflow/cache-aware-execution-reference.md",
 	".claude/rules/moai/workflow/context-window-management.md",
 	".claude/rules/moai/workflow/context-window-management-detail.md",
