@@ -769,6 +769,78 @@ PASS
 ok  	github.com/modu-ai/moai-adk/internal/cli	2.132s
 ```
 
+### EL-025 — TestReviewFindingAbandonedFoldReleasesLockOnApplyReads (RED → GREEN — post-report finding 1, unix-only)
+
+- trees: RED against HEAD 2f000f923's bytes (only the initial snapshot
+  cancellation-guarded); GREEN after `readFileBounded` threading; the test
+  and the fix land together in the post-report repair commit
+- command (RED observation): `go test ./internal/cli -run '^TestReviewFindingAbandonedFoldReleasesLockOnApplyReads$' -count=1 -v`
+- RED exit code: 1 — stdout (verbatim, the combined RED run with the
+  preview test):
+
+```
+=== RUN   TestReviewFindingAbandonedFoldReleasesLockOnApplyReads
+memory fold-on-done: t9001: abandoned after 300ms — the store did not answer in time; the step will begin no write
+    review_observation_fifo_unix_test.go:76: the store lock stayed held after the bounded fold was abandoned — a blocking read inside the apply pins the lock past its caller's timeout
+--- FAIL: TestReviewFindingAbandonedFoldReleasesLockOnApplyReads (3.56s)
+```
+
+- command (GREEN): the same anchored selector; exit code 0 — stdout
+  (verbatim, the combined GREEN run):
+
+```
+=== RUN   TestReviewFindingAbandonedFoldReleasesLockOnApplyReads
+memory fold-on-done: t9001: abandoned after 300ms — the store did not answer in time; the step will begin no write
+--- PASS: TestReviewFindingAbandonedFoldReleasesLockOnApplyReads (0.60s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.745s
+```
+
+### EL-026 — TestReviewFindingPreviewNeedsNoWriteAccess (RED → GREEN — post-report finding 2)
+
+- trees: as EL-025
+- command (RED observation): `go test ./internal/cli -run '^TestReviewFindingPreviewNeedsNoWriteAccess$' -count=1 -v`
+- RED exit code: 1 — stdout (verbatim; long fixture paths elided with …
+  for width, the refusal text verbatim):
+
+```
+=== RUN   TestReviewFindingPreviewNeedsNoWriteAccess
+    review_observation_test.go:394: memory fold --card t9001 --dir …/001 exited with error: memory fold: open the store lock …/001/.moai-store-lock: open …/001/.moai-store-lock: permission denied
+        stderr: Error: memory fold: open the store lock …/001/.moai-store-lock: open …/001/.moai-store-lock: permission denied
+--- FAIL: TestReviewFindingPreviewNeedsNoWriteAccess (0.00s)
+```
+
+- command (GREEN): the same anchored selector; exit code 0 — stdout
+  (verbatim):
+
+```
+=== RUN   TestReviewFindingPreviewNeedsNoWriteAccess
+    review_observation_test.go:397: preview on a read-only store: store: …/001 (--dir)
+        card: t9001
+        archive index: project_card_archive_2026_10.md
+        would file 1 line(s)
+--- PASS: TestReviewFindingPreviewNeedsNoWriteAccess (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.955s
+```
+
+### EL-027 — TestReviewFindingAbandonedFoldExitsLockWait (RED → GREEN — post-report finding 3, the abandonment trio's third member)
+
+- trees: as EL-025/EL-026; the RED state is the compile refusal against
+  the one-arg `acquireFoldStoreLock` signature (the abandonment-aware
+  acquisition the fix introduces did not exist): `go vet ./internal/cli`
+  → `too many arguments in call to acquireFoldStoreLock have (string, nil) want (string)` — the test cannot compile, therefore cannot pass, on the
+  pre-fix tree; the green path is the fix itself
+- command (GREEN): `go test ./internal/cli -run '^TestReviewFindingAbandonedFoldExitsLockWait$' -count=1 -v`
+- GREEN exit code: 0 — stdout (verbatim, the combined trio run):
+
+```
+=== RUN   TestReviewFindingAbandonedFoldExitsLockWait
+--- PASS: TestReviewFindingAbandonedFoldExitsLockWait (0.53s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.379s
+```
+
 ## Quality gates and closure
 
 - TRUST 5: Tested (every AC above; 85%+ on touched packages per repo

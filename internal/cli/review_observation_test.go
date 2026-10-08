@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
@@ -379,6 +380,74 @@ func foldSubprocess(t *testing.T, dir, card string) *exec.Cmd {
 	return cmd
 }
 
+// TestReviewFindingPreviewNeedsNoWriteAccess is the post-report gate's
+// finding 2 (SPEC-DISPATCH-INTEGRITY-001 M4): a preview without --yes is a
+// READ-ONLY invocation — it must compute the plan from the snapshot without
+// acquiring the store's write lock, so a readable-but-not-writable store
+// (no lock-file creation, no write-mode open) still previews. The baseline
+// implementation previewed the same store; the locked verb regressed it.
+func TestReviewFindingPreviewNeedsNoWriteAccess(t *testing.T) {
+	files := minimalFiles()
+	files[fixtureArchive] = minimalArchive()
+	dir := seedFoldStore(t, minimalMemory(line9001), files)
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	out := runFoldOK(t, "--card", "t9001", "--dir", dir)
+	t.Logf("preview on a read-only store: %.200s", out)
+	if !strings.Contains(out, line9001) {
+		t.Errorf("the preview on a readable-but-not-writable store did not print the plan (missing %q)", line9001)
+	}
+}
+
+// TestReviewFindingAbandonedFoldExitsLockWait is the abandonment trio's
+// third member (post-report gate finding 3): the blocking lock-ACQUISITION
+// wait must be abandonment-aware. A bounded fold whose worker waits for a
+// long-held store lock must exit when its caller abandons it — not stay
+// stuck inside the blocking wait until some external release (over an
+// auto-done batch close, abandoned workers and their file descriptors
+// accumulated for as long as the holder lived).
+func TestReviewFindingAbandonedFoldExitsLockWait(t *testing.T) {
+	root, _ := todoFixture(t)
+	cfgDir := t.TempDir()
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("USERPROFILE", t.TempDir())
+	t.Setenv(config.EnvClaudeConfigDir, cfgDir)
+	memDir := filepath.Join(cfgDir, "projects", memoryProjectSlug(root), "memory")
+	if err := os.MkdirAll(memDir, 0o700); err != nil {
+		t.Fatalf("memory dir: %v", err)
+	}
+	copyFixtureStore(t, memDir)
+
+	// A long-term holder — another fold's process equivalent — holds the
+	// store's lock and never releases during the fold's bound.
+	release, err := acquireFoldStoreLock(memDir, nil)
+	if err != nil {
+		t.Fatalf("holder acquire: %v", err)
+	}
+	defer release()
+
+	// The bounded fold's worker waits at the acquisition; the caller's
+	// abandonment must end it without the lock being released.
+	run := &foldOnDoneRun{}
+	done := make(chan error, 1)
+	go func() {
+		_, err := foldOnDoneStep("t9001", run)
+		done <- err
+	}()
+	time.Sleep(300 * time.Millisecond)
+	run.abandoned.Store(true)
+	select {
+	case err := <-done:
+		if err == nil || !strings.Contains(err.Error(), "abandoned") {
+			t.Errorf("the abandoned fold's worker exited with %v, want the abandonment error", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("the fold worker stayed stuck in the lock acquisition after abandonment — the blocking lock wait ignores the deadline")
+	}
+}
+
 // TestReviewFindingStoreLockIndependentOfTempDir is the run-gate finding 1
 // (SPEC-DISPATCH-INTEGRITY-001 M4): the store lock's path must derive from
 // the STORE, never from the process's temp-dir environment. Two processes
@@ -387,7 +456,7 @@ func foldSubprocess(t *testing.T, dir, card string) *exec.Cmd {
 // different lock and let it enter the first's critical section.
 func TestReviewFindingStoreLockIndependentOfTempDir(t *testing.T) {
 	dir := t.TempDir()
-	release, err := acquireFoldStoreLock(dir)
+	release, err := acquireFoldStoreLock(dir, nil)
 	if err != nil {
 		t.Fatalf("acquire the store lock: %v", err)
 	}
@@ -397,7 +466,7 @@ func TestReviewFindingStoreLockIndependentOfTempDir(t *testing.T) {
 	t.Setenv("TMPDIR", t.TempDir())
 	acquired := make(chan error, 1)
 	go func() {
-		r, err := acquireFoldStoreLock(dir)
+		r, err := acquireFoldStoreLock(dir, nil)
 		if err == nil {
 			defer r()
 		}

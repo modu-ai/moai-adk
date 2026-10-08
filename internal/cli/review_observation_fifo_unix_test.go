@@ -14,6 +14,69 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
+// TestReviewFindingAbandonedFoldReleasesLockOnApplyReads is the
+// post-report gate's finding 1: the abandonment cancellation must cover
+// EVERY read inside the lock hold, not just the initial snapshot. A fold
+// whose in-apply validation read blocks (here: MEMORY.md becomes a
+// blocking FIFO mid-apply, at the archive write's seam) must release the
+// store lock when its caller abandons it — a worker parked in a later
+// read pins the lock past the caller's timeout exactly like the initial
+// read did.
+func TestReviewFindingAbandonedFoldReleasesLockOnApplyReads(t *testing.T) {
+	root, _ := todoFixture(t)
+	cfgDir := t.TempDir()
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("USERPROFILE", t.TempDir())
+	t.Setenv(config.EnvClaudeConfigDir, cfgDir)
+	t.Setenv(config.EnvMemoryFoldOnDone, "1")
+	memDir := filepath.Join(cfgDir, "projects", memoryProjectSlug(root), "memory")
+	if err := os.MkdirAll(memDir, 0o700); err != nil {
+		t.Fatalf("memory dir: %v", err)
+	}
+	copyFixtureStore(t, memDir)
+	prev := memoryFoldSeam
+	t.Cleanup(func() { memoryFoldSeam = prev })
+	fifoCh := make(chan *wireFIFO, 1)
+	memoryFoldSeam.orderProbe = func(stage string) {
+		if stage != "bytes-done" {
+			return
+		}
+		// The archive write's pre-rename position: swap MEMORY.md — the
+		// file the apply's NEXT reads must open — for a blocking FIFO.
+		memoryFoldSeam = foldTestSeam{}
+		if fx, err := blockOnReadRaw(filepath.Join(memDir, "MEMORY.md")); err == nil {
+			fifoCh <- fx
+		}
+	}
+	savedBound := memoryFoldOnDoneBound
+	memoryFoldOnDoneBound = 300 * time.Millisecond
+	t.Cleanup(func() { memoryFoldOnDoneBound = savedBound })
+
+	foldClosedCardMemory("t9001") // returns at the bound; the worker parks in the apply's read
+	select {
+	case fx := <-fifoCh:
+		t.Cleanup(fx.release) // unblock the worker after the probe; the abandoned step refuses its write
+	default:
+	}
+
+	probe := make(chan error, 1)
+	go func() {
+		r, err := acquireFoldStoreLock(memDir, nil)
+		if err == nil {
+			defer r()
+		}
+		probe <- err
+	}()
+	select {
+	case err := <-probe:
+		if err != nil {
+			t.Fatalf("the follow-up locker failed to acquire the abandoned store's lock: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("the store lock stayed held after the bounded fold was abandoned — a blocking read inside the apply pins the lock past its caller's timeout")
+	}
+}
+
 // TestReviewFindingAbandonedFoldReleasesStoreLock is the run-gate finding 2:
 // when the bounded auto-fold worker blocks on the store read and its caller
 // abandons it, the worker must RELEASE the store lock. A worker that keeps
@@ -45,7 +108,7 @@ func TestReviewFindingAbandonedFoldReleasesStoreLock(t *testing.T) {
 	// fold acquires it within a bounded wait.
 	probe := make(chan error, 1)
 	go func() {
-		r, err := acquireFoldStoreLock(memDir)
+		r, err := acquireFoldStoreLock(memDir, nil)
 		if err == nil {
 			defer r()
 		}

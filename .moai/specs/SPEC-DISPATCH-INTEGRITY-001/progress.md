@@ -313,6 +313,66 @@ iterations green, **0 data races** reported, 0 test failures, swept set
 5 + subtests + the two finding tests × 5). The full-suite verdict remains
 CI's job (C2) and is PENDING at report time.
 
+### Post-report repair pass (turn-end gate round on 2f000f923 — 2 + 1 findings, all folded)
+
+The turn-end codex gate re-judged the final tree and returned findings in
+the abandonment family; each was RED-first tested, minimally fixed, and
+flipped green:
+
+- **Finding 1 — only the initial snapshot was cancellation-guarded.** The
+  reads INSIDE the lock hold (applyFold's archive re-read, the
+  checkFoldUnchanged comparisons, verifyArchiveEffectiveState's store
+  snapshot) could still block and pin the lock past the caller's timeout.
+  Fix: `readFileBounded` (polling read, nil-forbidden = plain) threaded
+  through `checkFoldUnchanged`, `verifyArchiveEffectiveState`, and the
+  apply re-read — every in-lock read on the bounded path is
+  abandonment-polled; the verb path passes nil and reads plainly.
+  RED `TestReviewFindingAbandonedFoldReleasesLockOnApplyReads` (unix FIFO
+  swapped in at the archive write's seam): "the store lock stayed held
+  after the bounded fold was abandoned — a blocking read inside the apply
+  pins the lock past its caller's timeout" → GREEN 0.56s.
+- **Finding 2 — the read-only preview required write access.** The locked
+  verb opened the lock file (O_CREATE|O_RDWR) before the preview decision:
+  a readable-but-not-writable store failed the preview with
+  `permission denied` where the baseline previewed. Fix: a preview without
+  `--yes` computes the plan from the snapshot WITHOUT acquiring the write
+  lock or creating the lock file; the apply path re-computes the plan
+  INSIDE the lock (the applied plan is always computed post-wait).
+  RED `TestReviewFindingPreviewNeedsNoWriteAccess` (0555 store):
+  "open …/.moai-store-lock: permission denied" → GREEN (the plan prints).
+- **Finding 3 (same round, third member of the abandonment trio) — the
+  blocking lock-ACQUISITION wait ignored the deadline.** A bounded fold
+  whose worker waited for a long-held lock stayed stuck inside blocking
+  flock/LockFileEx after its caller's timeout; over an auto-done batch
+  close abandoned workers and descriptors accumulated. Fix: a non-nil
+  forbidden makes `acquireFoldStoreLock` poll a non-blocking try
+  (LOCK_NB / LOCKFILE_FAIL_IMMEDIATELY) and abandon — releasing the
+  descriptor, holding nothing; nil keeps the plain blocking wait (verb,
+  C5's cross-process symmetry on both GOOS implementations).
+  RED `TestReviewFindingAbandonedFoldExitsLockWait` (long-holder +
+  timed-out acquirer; the compile refusal against the one-arg signature is
+  the pre-fix API state the fix introduces) → GREEN 0.53s (the worker
+  exits with the abandonment error, no external release).
+
+Re-measure judgment (recorded per the gate's instruction): the lock
+mechanism itself (acquire/release primitives' happy paths) is unchanged
+for the blocking form, but the bounded path now spawns polling goroutines
+inside the lock hold and the acquisition wait changed shape — the FULL
+`-count=5 -race` gate is re-run (new goroutines inside the hold are
+exactly race-detector territory), with an explicit `-timeout=30m` after
+the interim gate run was killed by the 10m default mid-iteration
+("panic: test timed out after 10m0s" while the 60s interleaved member was
+at 25s of an iteration — a budget problem, recorded as the failed
+measurement it is; single-pass family runs before it were green:
+103.8s, 100.0s).
+
+**Post-report AC-DI-011 gate outcome (final run)**: PASS — `ok
+github.com/modu-ai/moai-adk/internal/cli 608.171s`, exit 0, all 5
+iterations green, **0 data races**, 0 test failures, swept set 265
+`=== RUN` lines (the fold family, both post-report finding tests, and the
+abandonment trio × 5). The full-suite verdict remains CI's job (C2) and is
+PENDING at report time.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-09T21:30+09:00
