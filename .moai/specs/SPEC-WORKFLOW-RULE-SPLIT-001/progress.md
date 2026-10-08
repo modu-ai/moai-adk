@@ -68,3 +68,14 @@ evidence: this file §E.2 (all 10 AC observed PASS in this run, tree `c8a6f6fe2`
 commits: 524c9c190 (plan artifacts), 4ddf0e871 (M1 split + draft→in-progress), c8a6f6fe2 (M2 mirror/enrollment/citations), M3 evidence commit (this one)
 blockers: none
 residual-risk: (1) CI on `origin/develop` is the full-suite verdict surface and has not run yet — local families are the lane-local scope only; (2) AC-07's verbatim guarantee rests on the byte battery run here + sync-phase review against the original L-ranges (the compensating controls acceptance.md names); (3) `go test ./internal/spec/` took 480s wall under concurrent machine load (another session's suite was running) — no flake signal, single run.
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+sync_status: audit-ready
+sync_date: 2026-10-08
+card: t1586
+pr_surface: github-flow — push + PR to origin/main, lane-executed landing. No CHANGELOG/docs-site surface in this card's scope: the split rules are product-internal deployed assets (`.claude/rules/moai/workflow/` + template mirrors), not user-facing product behavior — release notes carry them.
+card_review: advisory fail, 0/3 findings attributable to card scope (all 3 on PR #1772 content / pre-existing content; relays issued t1591-1, t1587-1, t1594) — see `.moai/reports/t1586/card-review.md`
+landing_plan: lane pushes the branch and opens the PR to origin/main after this commit
+pr: pending
+sync_commit_sha: pending-backfill-sync (real SHA backfilled in a follow-up commit — spec-frontmatter-schema.md § SHA placeholder backfill exemption)

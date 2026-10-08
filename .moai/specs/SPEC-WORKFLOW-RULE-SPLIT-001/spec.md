@@ -2,7 +2,7 @@
 id: SPEC-WORKFLOW-RULE-SPLIT-001
 title: "spec-workflow.md 40k 예산 초과 수리 — core + detail companion 분할"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-08
 updated: 2026-10-08
 author: manager-spec
