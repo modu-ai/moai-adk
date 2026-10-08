@@ -10,9 +10,11 @@ package cli
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/spf13/cobra"
@@ -172,18 +174,16 @@ func integrationReadMergeCardForRun(ctx context.Context, root, runID, cardID, la
 	}, nil
 }
 
-// candidateCIEnabled reports whether the shared landing check is wired.
-// SPEC-CANDIDATE-CI-001 (card t1478) owns the workflow.candidate_ci.enabled
-// key and has not landed: absent reads FALSE, so the landing check is the
-// absent no-op seam (spec.md §F), and whichever card lands second wires
-// this read to the real key and assigns the LandingCheck seam its real
-// implementation.
-//
-// @MX:DEBT: constant-false placeholder for the landing-check gate
-// @MX:CEILING: only until SPEC-CANDIDATE-CI-001 lands its key
-// @MX:UPGRADE: t1478's landing — replace with the real config read and
-// wire factory.MergeStepSeams.LandingCheck
+// candidateCIEnabled reports whether the candidate-CI path is enabled:
+// the config key workflow.candidate_ci.enabled (SPEC-CANDIDATE-CI-001,
+// REQ-CCI-006). An absent key and an unreadable config both read FALSE —
+// the path never enables itself on uncertainty — so the landing check
+// stays the absent no-op seam and the candidate verb refuses until a
+// maintainer opts in.
 func candidateCIEnabled(root string) bool {
-	_ = root // the key arrives with t1478; absent reads false today
-	return false
+	cfg, err := config.NewLoader().Load(filepath.Join(root, ".moai"))
+	if err != nil || cfg == nil {
+		return false
+	}
+	return cfg.Workflow.CandidateCI.Enabled
 }

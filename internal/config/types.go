@@ -525,6 +525,14 @@ type WorkflowConfig struct {
 	// meant to turn off.
 	SettingsDriftGate SettingsDriftGateConfig `yaml:"settings_drift_gate"`
 
+	// CandidateCI carries the pre-landing candidate-CI settings
+	// (SPEC-CANDIDATE-CI-001). Enabled gates the `moai integration candidate`
+	// verb and the merge step's shared landing check; default false ships the
+	// whole path inert. GuardBundleRequired (default true) decides whether a
+	// red guard-bundle check reds the candidate verdict — preserving today's
+	// gating where those guards ride the ordinary required suite.
+	CandidateCI CandidateCIConfig `yaml:"candidate_ci"`
+
 	// ServedModelGate gates the ADOPTION-REFUSAL layer of the SubagentStop
 	// served-model observer: when the model that actually answered a gate
 	// auditor (plan-auditor / sync-auditor) differs from the expected one, or
@@ -799,6 +807,24 @@ type IntegrationLockConfig struct {
 // the default-OFF posture was chosen for, and would pass every other check.
 type SettingsDriftGateConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+// CandidateCIConfig mirrors workflow.candidate_ci.* (SPEC-CANDIDATE-CI-001,
+// card t1478, REQ-CCI-006/008). Enabled gates the candidate-CI path: the
+// `moai integration candidate` verb and the merge step's shared landing
+// check. Default FALSE — the path ships inert (no candidate is built, no
+// landing check runs) and a maintainer opts in via local config, the same
+// default-OFF neutrality as the BranchGuard/SettingsDriftGate siblings.
+//
+// GuardBundleRequired governs whether a red guard-bundle job reds the
+// candidate verdict. Default TRUE — it preserves today's gating, where the
+// three drift-prone guard families ride the ordinary required test suite
+// (design.md D6): bundling changes attribution only, never admission. The
+// operator may flip it after observing guard-drift rates; the flag exists
+// so that decision is data-driven, not structural.
+type CandidateCIConfig struct {
+	Enabled             bool `yaml:"enabled"`
+	GuardBundleRequired bool `yaml:"guard_bundle_required"`
 }
 
 // SlotLeaseConfig mirrors workflow.slot_lease.* (card t607). Enabled gates the

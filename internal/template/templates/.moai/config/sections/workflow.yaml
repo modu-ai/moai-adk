@@ -321,3 +321,13 @@ workflow:
         transcript_activity_window: 48h
         heartbeat_stale_window: 24h
         min_age_days: 7
+    # candidate_ci (SPEC-CANDIDATE-CI-001): the pre-landing candidate-CI
+    # path. enabled gates `moai integration candidate` and the merge step's
+    # shared landing check — ships OFF: the whole path is inert until a
+    # maintainer opts in. guard_bundle_required decides whether a red
+    # guard-bundle CI check reds the candidate verdict; ships TRUE because
+    # it preserves the default gating, where the drift-prone guard families
+    # ride the ordinary required test suite.
+    candidate_ci:
+        enabled: false
+        guard_bundle_required: true

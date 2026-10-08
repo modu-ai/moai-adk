@@ -18,7 +18,18 @@ open_clarifications: none — the operator approval embedded in the card text re
 
 ## §E.2 Run-phase Evidence
 
-_pending run-phase_
+### M1 — Config gate + candidate record (card t1478)
+
+| Item | What changed |
+|------|--------------|
+| Files | `.moai/config/sections/workflow.yaml`, `internal/template/templates/.moai/config/sections/workflow.yaml` (candidate_ci block, both mirrors); `internal/config/types.go` (CandidateCIConfig + WorkflowConfig field); `internal/config/defaults.go` (Enabled false, GuardBundleRequired true); `internal/factory/candidate_record.go` (new — record type + store, keyed (card, pinned SHA), atomic writes); `internal/cli/integration_merge.go` (candidateCIEnabled reads the real key); tests: `internal/config/workflow_candidate_ci_test.go`, `internal/factory/candidate_record_test.go`, `internal/cli/integration_candidate_gate_test.go` |
+
+- RED (tree a4944fb3f, this run): `go test -list '^TestCandidateRecord$' ./internal/factory/` → `ok  	github.com/modu-ai/moai-adk/internal/factory	0.195s` (zero test names; same shape for `^(TestWorkflowCandidateCIDefaultFalse|TestWorkflowCandidateCILoaderRoundTrip|TestCandidateCIEnabled)$` across config/cli). After writing the tests, pre-implementation RED: `cfg.Workflow.CandidateCI undefined (type WorkflowConfig has no field or method CandidateCI)`, `undefined: ReadCandidateRecord`, and `--- FAIL: TestCandidateCIEnabled/explicit_true_reads_true ... candidateCIEnabled: got false, want true with enabled: true` (the constant-false placeholder refuses the key).
+- GREEN (this run): `go test ./internal/config/ -run '^(TestAuditLoaderCompleteness|TestWorkflowConfigFields|TestNewDefaultWorkflowConfig|TestNewDefaultWorkflowConfigNestedDefaults)$' -count=1` → `ok  ...  0.145s`; `go test ./internal/factory/ -run '^TestCandidateRecord$' -count=1` → `ok  ...  0.155s`; `go vet ./internal/cli/` exit 0; gofmt clean on all touched files.
+
+### Mid-run plan amendment observed (absorbed)
+
+While M1 was in flight, the SPEC artifacts gained the landing-check TARGET BINDING amendment, landed by the spawner lane as commit 11c169028 (`docs(spec): M5 pipeline hygiene and the candidate-to-merge-target binding (card t1478)`, applied by manager-spec): design.md D10 (branch identity refuses outright; tip advance voids with re-candidate guidance), spec.md REQ-CCI-010/011 additions, plan.md M4 (+ `TestLandingCheckRefusesTargetMismatch`), acceptance.md AC-CCI-011-2 (target-mismatch class), M5 pipeline hygiene (pipefail + mktemp -d). The same commit carries spec.md's draft → in-progress transition. Coordinator confirmed: applies at M4; no impact on M1/M2 in flight. M4 below implements the amended contract.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

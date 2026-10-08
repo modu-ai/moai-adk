@@ -1504,6 +1504,17 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		SettingsDriftGate: SettingsDriftGateConfig{
 			Enabled: false,
 		},
+		// The candidate-CI path ships inert (SPEC-CANDIDATE-CI-001 REQ-CCI-006):
+		// no candidate verb operates and the merge step's landing check stays
+		// the absent no-op seam while Enabled is false. GuardBundleRequired
+		// ships TRUE deliberately — it preserves today's gating, where the
+		// drift-prone guard families ride the ordinary required test suite
+		// (design.md D6). This entry is load-bearing for that TRUE: the zero
+		// value would ship guard-bundle reds silently admitted.
+		CandidateCI: CandidateCIConfig{
+			Enabled:             false,
+			GuardBundleRequired: true,
+		},
 		// The slot-lease guard ships inert: a project that never runs several
 		// sessions against one machine has nothing to serialize. The `moai
 		// slot` verbs work regardless. No resources ship by default — any

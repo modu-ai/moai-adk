@@ -302,3 +302,14 @@ workflow:
             enabled: true
         task:
             allow_write: true
+    # candidate_ci (SPEC-CANDIDATE-CI-001, card t1478): the pre-landing
+    # candidate-CI path. enabled gates `moai integration candidate` and the
+    # merge step's shared landing check — default false ships the whole
+    # path inert. guard_bundle_required decides whether a red guard-bundle
+    # CI check reds the candidate verdict; default true preserves today's
+    # gating, where the drift-prone guard families ride the ordinary
+    # required test suite. Flip enabled after the operator reviews the
+    # candidate-path rollout.
+    candidate_ci:
+        enabled: false
+        guard_bundle_required: true
