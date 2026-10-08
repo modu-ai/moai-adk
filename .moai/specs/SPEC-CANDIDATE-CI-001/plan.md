@@ -1,0 +1,243 @@
+---
+id: SPEC-CANDIDATE-CI-001
+title: "Pre-landing candidate CI — implementation plan"
+version: "0.1.0"
+created: 2026-10-09
+updated: 2026-10-09
+author: manager-spec
+card: t1478
+---
+
+# plan.md — SPEC-CANDIDATE-CI-001 (card t1478, Tier L)
+
+## §A. Context
+
+The card lands a pre-landing candidate CI path for the factory: `moai integration
+candidate` builds the would-be merge commit with `git merge-tree --write-tree` +
+`git commit-tree`, pushes it to `ci/<card>`, and the CI workflow (trigger extended with
+`ci/**`) judges it. The merge step's pre-allocated gate-5 seam
+(`MergeStepSeams.LandingCheck`) then admits a merge only on a green candidate for the
+same pinned SHA. Two anchors are already in the tree at HEAD db0c514d3:
+`candidateCIEnabled` (internal/cli/integration_merge.go:186-189, constant-false
+placeholder owning the key name `workflow.candidate_ci.enabled`) and the LandingCheck
+seam declaration (internal/factory/integration_merge_step.go:104-106). The card also
+restructures the CI workflow itself: guard bundle job, race 4+1 split with the ~369s test
+repaired, known-flaky single retry, integration-branch cancel-in-progress exception, and
+linux/windows vet on candidates.
+
+Milestone order below follows decision-reversibility: the config key and record schema
+(the decisions most likely to be revised by review) first, the verb and gate next, the
+workflow YAML last (each YAML change is a single revert).
+
+## §B. Known Issues
+
+- B1: The `CCI` REQ mnemonic collides with SPEC-V3R6-CLI-CONFIG-INTEGRITY-001
+  (internal/cli/update.go:113). Disclosed in spec.md §D/§H; not fixable here without
+  dangling the committed anchors.
+- B2: The ~369s test figure is operator-provided (investigation C, card text); the tree
+  carries the corroborating "internal/cli ~379s/70%" measurement
+  (.github/workflows/ci.yml:281) but no per-test 369s record. M6 re-measures before
+  repairing; the repair target is whatever the re-measure names as the dominant single
+  test.
+- B3: The 12 guard-drift kinds are investigation-C counts, not an in-tree registry. M5
+  bundles the three families the card names; enumerating the exact 12 is repair work the
+  bundle makes attributable, not a deliverable of this SPEC.
+- B4: `go run ./cmd/moai integration candidate --help` on db0c514d3 exits 0 printing the
+  PARENT command's help (cobra fall-through; measured 2026-10-09). AC-CCI-001-1's RED-now
+  is therefore "no candidate usage line in the help output", not a non-zero exit.
+- B5: The `pushed → ci-green` reserved edge refuses with "owned by F3"
+  (internal/homestate/card_transition.go:294-295). This SPEC leaves that refusal intact
+  (spec.md §G); if the plan-auditor reads the auto-hold as requiring that edge, the answer
+  is no — the auto-hold is the window policy hold (REQ-CCI-012), not a card-state
+  transition.
+- B6: CI runs triggered from `ci/**` push events carry no `head_ref`; any job step
+  branching on `startsWith(github.head_ref, ...)` (ci.yml:261, :320) reads false on
+  candidates — the release/* skip conditions stay harmless, but M3 must re-read each
+  `if:` after adding the trigger.
+
+## §C. Pre-flight
+
+- [ ] Confirm HEAD is the integration base this plan pinned: `git rev-parse --short HEAD`
+      → db0c514d3 (re-read at run start; never trust this file's value).
+- [ ] `go build ./... && go test ./internal/cli/ ./internal/factory/ ./internal/config/ -count=1`
+      green before the first edit (baseline attribution).
+- [ ] `git grep -n "candidateCIEnabled" internal/` → exactly the placeholder and its two
+      call sites (integration_merge.go:95, :186) before M1 replaces it.
+- [ ] Confirm the active integration branch resolves as the config says:
+      `go run ./cmd/moai integration status` (git-strategy.yaml:9 still `workflow:
+      git-flow`, `develop_branch: develop` — the code path is the resolver
+      internal/cli/integration.go:280-282, never a literal `develop`).
+
+## §D. Constraints
+
+- [HARD] Template-First for the config key: `.moai/config/sections/workflow.yaml` AND
+  `internal/template/templates/.moai/config/sections/workflow.yaml` change together; the
+  struct side must satisfy the existing YAML-symmetry audit
+  (internal/config/audit_struct_yaml_symmetry_test.go).
+- [HARD] No integration-window gate reordering; the landing check joins at gate 5
+  exactly where the seam already sits (integration_merge_step.go:303-309).
+- [HARD] The candidate verb never mutates the integration window record and never merges.
+- [HARD] ci.yml edits keep the required-check NAME sets stable (the test-skip-marker
+  parity contract, ci.yml:379-384) unless a milestone explicitly renames a check.
+- [HARD] No `git push --force` to any protected ref; candidate branch replacement is
+  scoped to `ci/**` refs only (AGENTS.md destructive-primitive rule).
+- Every workflow YAML change passes the repo's workflow parse validation (yamllint /
+  actionlint, whichever the repo's tooling carries; verify the exact validator in M3
+  pre-flight, do not assume).
+
+## §E. Self-Verification
+
+Each milestone's verification command is run and its output observed before the milestone
+is reported complete; the §E.2 run-phase evidence table records command + verbatim output
+per the evidence-bearing report format. Coverage claims name the package and are
+re-measured in the run phase, not carried from this plan.
+
+## §F. Milestones
+
+Priority labels: all milestones P1 unless marked; ordering is by dependency and
+decision-reversibility, never by time.
+
+### M1 — Config gate + candidate record schema (P1, decision-bearing first)
+
+Files touched:
+- `.moai/config/sections/workflow.yaml` — add `candidate_ci:` block (`enabled: false`,
+  `guard_bundle_required: true`) following the section's existing key-comment style.
+- `internal/template/templates/.moai/config/sections/workflow.yaml` — mirror (Template-First).
+- `internal/config/types.go` — `CandidateCIConfig` struct + `yaml:"candidate_ci"` on the
+  Workflow struct; defaults in `internal/config/defaults.go`.
+- `internal/factory/candidate_record.go` (new) — the candidate record type + store
+  (read/write/lookup keyed card+pinned SHA) in the primary checkout's state store, the
+  same root resolution the integration lock uses.
+- `internal/cli/integration_merge.go` — replace the constant-false `candidateCIEnabled`
+  body with the real config read (the @MX:UPGRADE this landing fulfills); keep the verb's
+  LandingCheck wiring a LOUD refusal until M4 replaces it.
+
+Test families: `go test ./internal/config/...` (loader + YAML symmetry audits),
+`go test ./internal/factory/ -run '^CandidateRecord$'` (record round-trip, key lookup,
+absent-key = refuse), `go test ./internal/cli/ -run '^TestCandidateCIEnabled$'`.
+
+Verification command:
+`go test ./internal/config/... ./internal/factory/ -run '^(CandidateRecord|StructYAML)$' -count=1 && go vet ./internal/cli/`
+
+### M2 — The candidate verb (P1)
+
+Files touched:
+- `internal/cli/integration_candidate.go` (new) — the verb: config gate → card read →
+  REQ-CCI-004 resolution (reuse/extend the merge step's resolver contract) →
+  `git merge-tree --write-tree` → conflict refusal → `git commit-tree -p <tip> -p <pinned>`
+  → push to `ci/<card>` (replace-in-place) → candidate record write (verdict `pending`).
+- `internal/cli/integration.go` — register the subcommand in the existing AddCommand list
+  (:269).
+- `internal/factory/candidate_record.go` — push-failure path leaves a prior verdict
+  untouched (REQ-CCI-017).
+
+Test families: `go test ./internal/cli/ -run '^TestIntegrationCandidate$'` (verb gating,
+conflict refusal, id validation, push-failure path), reusing the package's temporary-origin
+test helper (internal/factory/temp_origin.go pattern) for a fake remote; the merge-tree
+two-parent shape asserted from `git cat-file -p` in the temp repo.
+
+Verification command:
+`go test ./internal/cli/ -run '^TestIntegrationCandidate$' -count=1 -v` plus one manual
+temp-clone smoke: `moai integration candidate --card <test-card>` against a scratch remote.
+
+### M3 — CI trigger + concurrency policy (P1)
+
+Files touched:
+- `.github/workflows/ci.yml` — `push.branches` gains `ci/**` (:16-18); concurrency block
+  becomes ref-conditional: integration branch ref never cancelled, `ci/**` refs supersede
+  (:35-37); re-read every `if: startsWith(github.head_ref, ...)` for candidate pushes (B6).
+
+Test families: workflow parse validation (the repo's YAML/Actions validator — confirm the
+exact tool in pre-flight); `go test` untouched. The observable is one real `ci/*` push run
+after this milestone lands on the integration branch.
+
+Verification command:
+`yamllint -s .github/workflows/ci.yml` (or the repo's parse guard equivalent) plus
+`git grep -n "ci/\*\*" .github/workflows/ci.yml` showing the trigger and concurrency rows.
+
+### M4 — Landing gate + red auto-hold (P1)
+
+Files touched:
+- `internal/cli/integration_merge.go` — replace the LOUD-refusal LandingCheck placeholder
+  (:95-99) with the real check: read the candidate record for (card, pinned SHA), require
+  green + ancestry; refuse cause 5 otherwise.
+- `internal/factory/candidate_record.go` — verdict observation update path (REQ-CCI-010):
+  read CI run state via the gh surface, write verdict + run identity + observed-at.
+- `internal/factory/integration_window_policy.go` (or the policy record's existing home) —
+  red-verdict auto-hold writer (REQ-CCI-012), the CompletePostMergeHold shape.
+
+Test families: `go test ./internal/factory/ -run '^(LandingCheck|CandidateVerdict)$'`
+(green admits past gate 5; red/missing/stale refuse with MergeExitLandingRefused; red
+writes the policy hold naming the card); `go test ./internal/cli/ -run '^TestIntegrationMerge$'`
+(regression: the 13-cause gate order unchanged, exit codes 1-15 stable).
+
+Verification command:
+`go test ./internal/factory/ ./internal/cli/ -run '^(Landing|CandidateVerdict|IntegrationMerge)$' -count=1`
+
+### M5 — Guard bundle job + candidate vet legs (P2)
+
+Files touched:
+- `.github/workflows/ci.yml` — new `guard-bundle` job running the three guard families
+  (source-scan static-parse guards, line-key guards, census scripts) as one named check;
+  its gating reads `workflow.candidate_ci.guard_bundle_required` semantics at the WORKFLOW
+  layer (a required-check name is static — the key governs whether the bundle's result is
+  admitted into the candidate verdict; run phase implements the exact mechanism, likely a
+  tiny verdict-collecting step rather than dynamic `if:`).
+- Confirm the build job's vet matrix (:577-582) runs on candidate pushes (trigger-only
+  change; assert in the same milestone's verification).
+
+Test families: the guard families themselves (they run inside the bundle); the census
+fixture check (`bash scripts/ci-census/census-check.sh`).
+
+Verification command:
+`bash scripts/ci-census/census-check.sh && git grep -n "guard-bundle" .github/workflows/ci.yml`
+
+### M6 — Race split restructure + flaky single retry (P2)
+
+Files touched:
+- `.github/workflows/ci.yml` — replace the 2-way race split (:258-374) with four
+  internal/cli shards + one rosterguard standalone shard + remainder leg, selectors formed
+  as a partition measured from `go test -list`; keep the ceiling-headroom discipline in
+  each step comment (ci.yml:291-297 style).
+- The ~369s internal/cli test (B2: re-measure first) — repair per its measured cause.
+- `scripts/ci/flaky-registry.txt` (new) + the retry wrapper the race/test jobs call —
+  exactly-one recorded retry for registry tests (REQ-CCI-013).
+
+Test families: the repartitioned shards (each exercised in CI), the repaired test and its
+package suite, the retry wrapper unit-checked against a fixture stream
+(scripts/ci-census/test-census.sh precedent).
+
+Verification command:
+partition check — `go test -list '.*' ./... | sort` diffed against the union of shard
+selectors (the milestone records the exact one-command form it lands);
+`bash scripts/ci/census-check.sh`-style fixture run for the retry wrapper.
+
+### M7 (sync phase, not a run milestone) — Doctrine amendment
+
+`.claude/rules/local/gitflow-lane-protocol.md` §2/§4 and the untracked CLAUDE.local.md
+§4.1 gain the candidate-path exception (REQ-CCI-016), recording the 2026-10-03 operator
+approval. Owned by manager-docs in sync; listed here so the landing is not judged
+incomplete without it (the local rule file is the doctrine the lanes actually read).
+
+## §G. Anti-Patterns
+
+- Do NOT resolve the integration branch by literal name (`develop`/`main`) anywhere — the
+  resolver is the contract (internal/cli/integration.go:280-282); the GitHub Flow cutover
+  must not silently break the candidate path.
+- Do NOT let the candidate verb acquire or touch the integration window.
+- Do NOT widen the §4.1 amendment beyond the candidate path — integration-branch push
+  stays leader-batched.
+- Do NOT retry non-registry test failures (masks real regressions; the card allows exactly
+  one recorded retry for KNOWN flaky tests).
+- Do NOT add a `paths:` filter that would skip ci.yml changes from CI on candidates —
+  a workflow-only candidate still must run (B6 family).
+- Do NOT delete or repurpose the existing race-job census steps when re-sharding; the
+  census rides every shard.
+
+## §H. Cross-References
+
+- spec.md §D (requirements), acceptance.md (AC matrix), design.md (D1-D9 decisions),
+  research.md (file:line evidence for every existing-behavior claim).
+- internal/factory/integration_merge_step.go (the 13-cause gate order), internal/cli/integration.go
+  (the verb family), .github/workflows/ci.yml (the workflow this card restructures),
+  .claude/rules/local/gitflow-lane-protocol.md (the doctrine this card amends).
