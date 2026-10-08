@@ -870,3 +870,36 @@ func TestCheckProtectedZoneShellCandidateCapAfterDedup(t *testing.T) {
 	}
 	t.Logf("swept=%d", 1)
 }
+
+// TestCheckProtectedZoneShellDualWorldGitNameBeforeCdDispatch — the
+// git/sed SPECIALIZED dispatch had the same early-return hole the mutation
+// classification had: the modern reading truncates to "cd" (the walker
+// takes the cd branch and returns) while the pre-4.2 path executes git
+// through the literally-named entry. ALL name-driven dispatches classify
+// across both worlds before any single-world branch runs.
+func TestCheckProtectedZoneShellDualWorldGitNameBeforeCdDispatch(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	if err := os.MkdirAll(filepath.Join(root, "cd\\u0000"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	h := zoneTestHandler(t, root)
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "$'cd\\u0000/../git' rm -f zone_dir/marker.md"})
+	wantZoneDeny(t, "dual world git name before cd dispatch", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellDeclaredFunctionShadowsVerb — a declared
+// read-only function SHADOWS the external verb: bash runs ONLY the
+// function and the protected file survives, so registering the arguments
+// as rm targets is a FALSE DENY — an over-block, the inverse direction.
+// The row asserts the ALLOW.
+func TestCheckProtectedZoneShellDeclaredFunctionShadowsVerb(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	const shadowCmd = "rm() { printf 'read-only\\n'; }; rm zone_dir/marker.md"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": shadowCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("declared function shadows verb: decision=%q reason=%q, want allowed — the function shadows the external rm and is read-only", shadowCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}

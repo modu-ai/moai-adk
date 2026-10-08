@@ -891,6 +891,46 @@ against the pre-fix source by temporarily restoring
 working tree; restored after the capture). Inputs transport-verified:
 whole-file NUL-byte scan zero, doubled backslash.
 
+### Gate round 21 — M2.7 full dispatch pre-classification + function shadowing (2026-10-09)
+
+Two findings on the M2.6 tip (`fd3738f42`, overlay-verified, base-PASS →
+current-FAIL): (1) P1 the git/sed SPECIALIZED dispatch carried the same
+early-return hole the mutation classification had just fixed —
+`$'cd\u0000/../git' rm -f zone_dir/marker.md` truncates to the name "cd",
+the cd branch dispatches and returns, and the pre-4.2 world's git analysis
+never runs; (2) P2 a declared read-only function SHADOWS the external verb
+— `rm() { printf 'read-only\n'; }; rm zone_dir/marker.md` executes only the
+function in every world, but the mutation targets were registered before
+the function registry was consulted (an M2.6 regression, over-block
+inverse). The completing principle: ALL name-driven dispatches — mutation
+verbs, git, sed, cd, AND declared functions — classify across both worlds
+BEFORE any single-world branch runs, and a name SHADOWED by a declared
+function executes the function in that world, dropping out of every other
+dispatch.
+
+**Two regression rows — RED under the M2.6 tip (`fd3738f42` + the rows,
+uncommitted at measurement):**
+
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellDualWorldGitNameBeforeCdDispatch|TestCheckProtectedZoneShellDeclaredFunctionShadowsVerb' -count=1 -v`
+- **Exit code**: `1`
+- **Observed (verbatim)**:
+
+```
+    protected_zone_shell_repro_test.go:887: dual world git name before cd dispatch: decision="allow" reason="", want deny
+    protected_zone_shell_repro_test.go:888: swept=1
+--- FAIL: TestCheckProtectedZoneShellDualWorldGitNameBeforeCdDispatch (0.00s)
+    protected_zone_shell_repro_test.go:902: declared function shadows verb: decision="rm() { printf 'read-only\\n'; }; rm zone_dir/marker.md" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=zone_dir/marker.md", want allowed — the function shadows the external rm and is read-only
+    protected_zone_shell_repro_test.go:904: swept=1
+--- FAIL: TestCheckProtectedZoneShellDeclaredFunctionShadowsVerb (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.618s
+```
+
+Row 1 is a deny-miss; row 2 is an OVER-BLOCK inverse row (false deny
+observed verbatim on the protected marker). Fixture: the narrowed
+marker-file manifest; inputs transport-verified (whole-file NUL-byte scan
+zero, doubled backslash).
+
 **M2.6 remedy — dispatch order, per-generation joins, dedup-before-cap
 (GREEN record).** Shape: (1) the dual-world verb classification moved BEFORE
 any branch dispatch — `zoneMutationVerbName` fires at the top of the
