@@ -16,7 +16,7 @@
 | 5a | deployer.go:192 | 동일 | observed-at-HEAD | `if isCommonAssetRoot(path) { return nil }` — 배포 워크 스킵(원인 축) |
 | 5b | deployer.go:347 (ListTemplates) | :341-366 | repaired-at-HEAD | `// card t1547 repair round, gate r4 finding 1` … `if isCommonAssetRoot(path) { return nil }` — 제외 적용됨(코멘트에 758→414 측정 기록). 재수리 금지 |
 | 5c | (구) template/bundle.go:145 | 파일 부재 | coordinate-retired | `internal/template/bundle.go` 없음. 생 근접면 `internal/cli/bundle.go`(RemoveBundle 영역) — ListTemplates 행 없음 |
-| 5d | "compared 0/12" | doctor_agentemit_embed.go:135-160 | observed-at-HEAD | `compared, differing, uncompared, err := compareEmission(committed, dir)` + `if compared < len(committed) {` — 미비교 집계 존재(OK 여부는 본문 세부 — 재현에서 확정) |
+| 5d | "compared 0/12" | doctor_agentemit_embed.go:150-165 | repaired-at-HEAD/회귀 가드 | `compared, differing, uncompared, err := compareEmission(committed, dir)` + `if compared < len(committed) {` — 미달 CheckFail 경로가 이미 존재(라운드 3 재독 확정). 결함이 아니라 불변 — AC-013·REQ-SRF-002 가드화 |
 | 5e | skills disable "Nothing to disable" | internal/cli/skills.go:54-100 | observed-at-HEAD | `defaultSkillsProjectRoot() = os.Getwd` + Long 문서: `absent 0  the project has no skill mirror, ... Nothing to act on is not an error` — 프로젝트 미러 전용 해석, 사용자 설치 스킬 미도달 |
 | 6a | install.go:297 | 동일 | observed-at-HEAD | `stage.Entries = append(stage.Entries, e)` — 반입이 구 `ExpectedSHA256` 그대로, refresh 반영 없음 |
 | 6b | install.go:743 | 동일 | observed-at-HEAD | `if err := os.Chmod(tmpName, 0o644); err != nil {` — confinedWrite가 전 파일 0644, .sh 실행권 상실 |
@@ -45,13 +45,16 @@
 
 ## §3 구조 관측 (설계 입력)
 
-- `harnessFS`(internal/template/harness_fs.go): "sole codex-only deployment filter surface" — 배포 파일 집합 필터이지 내용 변환기가 아니다. userassets 설치 경로는 이를 쓰지 않는다.
+- `harnessFS`(internal/template/harness_fs.go): 초기 관측 "배포 필터이지 변환기가 아니다"는 라운드 3 부록에서 **반박**됐다 — 같은 파일의 `NormalizeCodexRoleForDeploy`(:180)·`normalizedOpen`(:209, :271-277 배선)이 참조 변환을 수행하며 doctor도 변환 바이트와 비교한다(:297). 유지되는 관측: userassets 설치 경로가 이 변환면을 쓰지 않고 원문 복사한다는 것. 헤더 주석만으로 파일 성격을 결론 내린 초기 관측의 불완전을 정정 기록한다.
 - `internal/hook` → `internal/userassets` 임포트 없음 — 동결 가드 집합 반영은 config 목록+패리티 테스트 방향(design.md §5).
 - `agentDirsFor`(web/agentfm.go:123-132): 홈 디렉터리 선두 + 프로젝트 2 디렉터리 — 동명 중복 행의 구조적 원인.
 - `collectEntries`와 `catalog_loader.go:70` `DependsOn []string \`yaml:"depends_on"\``: 필드는 적재되나 설치·prune 경로 소비자 없음(graph/navigator/gtd의 동명 필드는 무관).
 - `remove.go`: R-f-② 의존 유예 팔 존재(RF2 주석, `DeferredDeps`) — 8b prune 절반의 현지 판정 필요.
 
 ## §4 미관측 (Gaps — 정직 목록)
+
+- 라운드 3 재독 추가 관측: doctor_user_install.go:24-38의 checkUserInstallIntegrity는 CorruptError를 CheckWarn·기타 적재 오류를 CheckFail로 정직 보고한다 — 원장 2a의 도달 가능한 RED 앵커는 프로젝트 측 checkProjectVsLock(:134-137)이다 (AC-019a/b 분할 근거).
+- 라운드 8 게이트 실측(릴레이 — 본 트리 미재현, 설계 반영): (i) 일시중단 생존 프로세스의 빈 마커가 연령 조건 통과 → 제2 소유자 인수 → 제1 소유자 release가 제2 소유자 마커 삭제("A release deleted B marker: true") — 연령 기반 무소유 마커 회수의 UNSAFE 증명, design.md §3 재정의 근거. (ii) 보존 가드 테스트 TestRF2F3b_MigrationPreservesUntracked·TestRF5_IdenticalUntrackedNotJournaled 존재·통과(cli/review_fix2_test.go·userassets/review_fix_test.go 관측) — 해시 일치의 소유권 증명 부적격 근거. (iii) 비windows 실행에서 `go list` IgnoredGoFiles = `[lock_guard_windows.go lock_owner_windows.go]` 본 머신 재현 — AC-023 플랫폼별 판정 분리 근거.
 
 - 어떤 Go 테스트도 실행하지 않았다(런 M0 소관). 본 문서의 RED 예상은 전부 재현 예고다.
 - `internal/cli/codex_skills_disable.go` 본문 미독 — skills.go Long 문서·해석 구조로 갈음 관측.

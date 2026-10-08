@@ -48,7 +48,7 @@
 ### M0 — RED-first 재현 기준선 (Priority High)
 - 목표: 13개 원장 항목 전체의 재현 테스트를 **본 트리**에서 작성하고, HEAD에서의 RED/GREEN 여부를 verbatim 관측한다.
 - 산출: 재현 테스트 파일(가족별), 관측 기록 → progress.md §E.2, acceptance.md RED-now 칸 확정.
-- 판정: 항목별 `EXPECTED_RED` 관측. 이미 수리 관측 항목(11a, 5-ListTemplates)은 회귀 가드 테스트로 전환 기록.
+- 판정: 항목별 분류 확정 — RED-first는 `EXPECTED_RED` 관측, born-green 가드(11a·5-ListTemplates·5d-emission·2a-사용자 측)는 GREEN 상륙 기록, 게이트(AC-023/024)는 절차 판정.
 - 위험: FIFO/잠금/중단 재현은 타이밍 민감 — 표 테스트+시임 주입으로 결정화.
 
 ### M1 — 저널 영속화·복구 무결성 (원장 3, 6a, 10, 10a-재정식) (Priority High)
@@ -66,10 +66,10 @@
 - 위험: CI windows 매트릭스 미검증(릴레이 선언) — 로컬 판정은 플랫폼 중립 표 테스트로.
 
 ### M3 — Codex 정규화 3-지점 변환 (원장 7a, 13a, 13b) (Priority High — P1)
-- 좌표: `internal/userassets/install.go`(373, 392, 584 경유), 변환 시임 신설 위치는 design.md §4.
-- 과업: Codex 루트 설치 시 하니스 고유 참조 변환(REQ-CNV-001), 미배포 참조의 파일 단위 보고(REQ-CNV-002).
+- 좌표: `internal/userassets/install.go`(373, 392, 584 경유) + 기존 변환면 `internal/template/harness_fs.go`(`NormalizeCodexRoleForDeploy` :180·`normalizedOpen` :209)의 설치 경로 배선 — 신규 변환기 아님(design.md §4).
+- 과업: 기존 변환기의 설치 경로 배선 — 기록과 해시가 동일 변환 바이트를 쓰게 한다(REQ-CNV-001), 미배포 참조의 파일 단위 보고(REQ-CNV-002).
 - 선행 조건: **M0에서 13a/13b 재현 확정 후에만 착수** — 반박 시 범위 축소(7a만).
-- 판정: AC-006~008 (TestCodexAgentTOMLReferencesConverted, TestCodexUserSkillInstallNoClaudeOnlyRefs, TestCodexRoleTOMLNotVerbatim).
+- 판정: AC-006, AC-007(13b 좌표 확정 팔 포함), AC-026 (TestCodexAgentTOMLReferencesConverted, TestCodexUserSkillInstallNoClaudeOnlyRefs, TestCodexRoleTOMLNotVerbatim, TestCodexUnconvertibleReferenceReported).
 - 위험: 변환 규칙의 과잉 일반화 — 재현이 보인 참조 좌표만 변환, 나머지는 보고.
 
 ### M4 — 동결 가드 사용자 경로 보호 (원장 9a) (Priority High — P1)
@@ -80,25 +80,25 @@
 
 ### M5 — 충돌 판정·confined 쓰기 안전화 (원장 8c, 12, 6b) (Priority Medium, 12=P1)
 - 좌표: `internal/userassets/install.go`(211, 715-755).
-- 과업: 충돌 사전 판정의 Lstat 선행(REQ-COL-001), rename 직전 부모 재검증(REQ-COL-002), 설치 스크립트 실행 권한 보존(REQ-COL-003).
-- 판정: AC-010, AC-011, AC-025 (TestCollisionPrecheckSkipsFifoWithoutBlock, TestConfinedWriteRevalidatesParentBeforeRename, TestConfinedWritePreservesExecBit).
+- 과업: 충돌 사전 판정의 Lstat 선행(REQ-COL-001), 부모 핸들 고정 쓰기로의 전환(REQ-COL-002 — 경로 재검증 설계는 TOCTOU를 못 닫아 폐기, design.md §6), 설치 스크립트 실행 권한 보존(REQ-COL-003).
+- 판정: AC-010, AC-011, AC-025 (TestCollisionPrecheckSkipsFifoWithoutBlock, TestConfinedWritePinnedToValidatedParent, TestConfinedWritePreservesExecBit).
 - 위험: FIFO 재현은 mkfifo 플랫폼 차 — unix 표 테스트 + windows 빌드 게이트.
 
 ### M6 — 배포·번들 표면 정합화 (원장 4, 5-잔여, 8a, 8b, 8d, 11a-가드, 11b) (Priority Medium)
 - 좌표: `internal/cli/migrate_project_assets.go`(89, 119-122), `internal/cli/doctor_agentemit_embed.go`(135-160), `internal/cli/skills.go`+`codex_skills_disable.go`, `internal/web/agentfm.go`(123-132, 278-285), `internal/userassets/install.go`(455-468)+`remove.go`, `internal/cli/update_template_sync.go`(회귀 가드 대상), `internal/cli/init.go`(905, 944-948).
-- 과업: (a) 미등록 미러 사본 분류·보고·제거(REQ-SRF-001), (b) emission 미비교 집계 수정(REQ-SRF-002), (c) skills disable의 사용자 계층 폴백(REQ-SRF-003), (d) 동명 에이전트 행 분리·양 행 적용(REQ-SRF-004), (e) depends_on 클로저 설치+보존 집합(REQ-SRF-005 — prune 절반은 M0 변별 후), (f) 취소 불변 회귀 가드(REQ-SRF-006), (g) init 재개 경로(REQ-SRF-007).
+- 과업: (a) 미등록 미러 사본 분류·보고·제거(REQ-SRF-001), (b) emission 미비보고 불변 가드 상륙(REQ-SRF-002 — CheckFail 유지, design.md §7), (c) skills disable의 사용자 계층 폴백(REQ-SRF-003), (d) 동명 에이전트 행의 단일 설정 통합(REQ-SRF-004 — 저장 계약 design.md §7, end-to-end AC-015), (e) depends_on 클로저 설치+보존 집합(REQ-SRF-005 — prune 절반은 M0 변별 후), (f) 취소 불변 회귀 가드(REQ-SRF-006), (g) init 재개 경로(REQ-SRF-007).
 - 판정: AC-012~018.
 - 위험: (d)는 web 폼 계약 변경 — 폼 키 스코프화가 기존 소비자(post 핸들러)와 정합하는지 회귀. (g)는 UX 문구·재개 범위의 설계 판단 포함.
 
 ### M7 — doctor 진단 정합화 (원장 2, 7b, 9b) (Priority Medium)
 - 좌표: `internal/cli/doctor_user_install.go`(130-187), `internal/cli/doctor_harness.go`(52-62).
-- 과업: 읽기 전용 적재+실패 등급 별도 보고(REQ-DOC-001), 공허 일치 위장 제거(REQ-DOC-002), 필수 파일 존재 기반 루트 선택(REQ-DOC-003), 폴백 시 L1 프로젝트 유지(REQ-DOC-004).
-- 판정: AC-019~022.
+- 과업: 프로젝트 측 적재 위장 수리 + 사용자 측 정직성 가드(REQ-DOC-001 — AC-019a RED / AC-019b 가드), 공허 일치 위장 제거(REQ-DOC-002), 필수 파일 존재 기반 루트 선택(REQ-DOC-003), 폴백 시 L1 프로젝트 유지(REQ-DOC-004).
+- 판정: AC-019a/b, AC-020~022.
 - 위험: 가장 기계적 — 진단 출력 형식 변경이 기존 doctor 테스트와 충돌할 수 있음.
 
 ## §G Anti-Patterns
 
-- RED 없이 GREEN 구현 금지 — 모든 AC는 M0 관측 RED를 전제로 전환된다.
+- 분류 없는 GREEN 금지 — 모든 AC는 M0에서 RED-first / born-green 회귀 가드 / 빌드·측정 게이트로 분류 확정되며, RED-first만 관측 RED를 전제로 전환된다(가드의 RED 관측은 퇴행 결함 보고).
 - 이미 수리된 좌표(11a, 5-ListTemplates)의 재수리 금지 — 회귀 가드만.
 - 스테일 오버레이(`/tmp/t1547-review-overlay.json`) 참조 금지.
 - 원장 좌표를 문자 그대로 믿고 표류 좌표(:584, bundle.go:145)를 구현 금지 — M0 재확정 좌표만.

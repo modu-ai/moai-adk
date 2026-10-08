@@ -3,7 +3,7 @@
 ## §A 범위와 판정 원칙
 
 - 모든 AC는 기계 판정 가능하다: 판정 명령(Go 테스트 또는 빌드 게이트)과 기대 결과를 명시한다.
-- **두 칸 채택 규율**(`verification-completeness.md` §2): 각 AC는 RED-now 칸(구현 전 관측될 실패 — 런 페이즈 M0에서 본 트리에서 관측하고 verbatim 출력을 progress.md §E.2에 기록)과 green-path 칸(어느 마일스톤이 무엇으로 뒤집는가)을 함께 가진다. 본 문서 작성 시점(2026-10-09, HEAD db0c514d3)에는 **어떤 재현 테스트도 실행하지 않았다** — RED-now 칸의 "관측 예정" 표기는 미실행을 정직하게 뜬다.
+- **두 칸 채택 규율 + 삼분류**(`verification-completeness.md` §2): 각 AC는 RED-now 칸과 green-path 칸을 가지되, M0에서 세 분류 중 하나로 판정된다 — **RED-first**(재현 관측 후 수리 마일스톤에서 GREEN 전환), **born-green 회귀 가드**(현행 불변의 고정 — RED 관측 시 그 자체가 퇴행 결함이며 리더 보고 대상), **빌드·측정 게이트**(RED 개념이 적용되지 않는 절차 판정). 분류는 각 AC 표기로 확정된다. 본 문서 작성 시점(2026-10-09, HEAD db0c514d3)에는 **어떤 재현 테스트도 실행하지 않았다** — "관측 예정" 표기는 미실행을 정직하게 뜬다.
 - RED는 바른 이유로 적색이어야 한다: 각 AC의 RED-now 칸은 실패 이유(어느 단정이 깨지는가)를 명시한다 — 공구 실패(TOOL_FAILURE)나 무관 회귀는 RED가 아니다.
 - 원장 1:1 추적: §D 매트릭스. 원장 항목→REQ→AC→테스트→마일스톤.
 
@@ -12,7 +12,7 @@
 - Tested: 아래 AC 전부 + 영향 패키지 회귀 스위트.
 - 판정 명령(레인-로컬, 영향 패키지 한정):
   - `go test ./internal/userassets -count=1`
-  - `go test ./internal/cli -run '^(TestMigrationClassifiesUnregisteredMirrorCopy|TestDoctorAgentEmissionUncomparedNotOK|TestSkillsDisableResolvesUserInstalledSkill|TestInitResumeAfterUserAssetEnsureFailure|TestUpdateCancelKeepsProjectAssetsIntact|TestDoctorUserInstallLoadFailureReportedSeparately|TestDoctorLockCheckVacuousNotReportedMatch|TestDoctorWorkflowRootSelectedByRequiredFile|TestDoctorFallbackKeepsProjectScopeL1)$' -count=1`
+  - `go test ./internal/cli -run '^(TestMigrationClassifiesUnregisteredMirrorCopy|TestDoctorAgentEmissionUncomparedNotOK|TestSkillsDisableResolvesUserInstalledSkill|TestInitResumeAfterUserAssetEnsureFailure|TestUpdateCancelKeepsProjectAssetsIntact|TestDoctorProjectManifestLoadFailureNotDisguised|TestDoctorUserInstallHonestFailureAndReadOnly|TestDoctorLockCheckVacuousNotReportedMatch|TestDoctorWorkflowRootSelectedByRequiredFile|TestDoctorFallbackKeepsProjectScopeL1)$' -count=1`
   - `go test ./internal/template -count=1`
   - `go test ./internal/web -count=1`
   - `go test ./internal/hook -count=1`
@@ -29,6 +29,7 @@
 - **When** `go test ./internal/userassets -run '^TestGuardMarkerReclaimAfterOwnerDeath$' -count=1`
 - **Then** 새 획득자가 소유자 사망을 확인하고 마커를 회수해 획득이 성공한다 (exit 0)
 - RED-now: 현재 마커는 무소유권·무회수라 획득이 타임아웃 실패로 RED (관측 예정 — M0)
+- 사례 2 (레거시 무소유 마커 — 분류 born-green/행위 가드): **Given** pid 기록이 없는 마커(현행 windows 형태; 일시중단 생존 프로세스의 마커가 이 형태가 될 수 있음 — 게이트 재현) — **When** 같은 테스트의 레거시 케이스 실행 — **Then** 연령 기반 자동 회수가 아니다: 획득은 거부·대기하고, 잔존 마커는 사용자 가시 보고(doctor) + 명시적 확인 제거 절차로만 해소된다 (연령 자동 회수 금지 — design.md §3 라운드 8 재정의)
 - green path: M2 — PID 기록+회수 구현 후 GREEN
 
 ### AC-002 — 첫 스테이징 전 회수 항목 병합 (원장 3 · REQ-JRN-001 · M1)
@@ -64,21 +65,14 @@
 - **When** `go test ./internal/userassets -run '^TestCodexAgentTOMLReferencesConverted$' -count=1`
 - **Then** 설치된 TOML의 참조가 대상 하니스 배포 면으로 변환되어 있다 (원문 복사 아님)
 - RED-now: 현행 fileTarget은 원문 복사라 RED (관측 예정 — 메커니즘 관측됨, 내용 주장은 재현에서 확정)
-- green path: M3
+- green path: M3 — 기존 변환기(`NormalizeCodexRoleForDeploy`)의 설치 경로 배선 (변환 바이트 기록·해시)
 
-### AC-007 — Codex 사용자 스킬의 Claude 전용 참조 제거 (원장 13a · REQ-CNV-001 · M3, 재현 조건부)
-- **Given** CLAUDE.md·`.claude/rules/moai/` 참조를 포함하는 스킬 디렉터리 소스
-- **When** `go test ./internal/userassets -run '^TestCodexUserSkillInstallNoClaudeOnlyRefs$' -count=1`
-- **Then** Codex 루트에 설치된 스킬 사본에 미배포 참조가 없다 (또는 REQ-CNV-002의 파일 단위 보고가 나온다)
+### AC-007 — Codex 변환 좌표 확정·변환 (원장 13a+13b · REQ-CNV-001 · M3, 재현 조건부)
+- **Given** CLAUDE.md·`.claude/rules/moai/` 참조를 포함하는 스킬 디렉터리 소스(13a) 및 역할 TOML 소스(13b — :584 표류, 실 복사 경로 :392)
+- **When** `go test ./internal/userassets -run '^TestCodexUserSkillInstallNoClaudeOnlyRefs$' -count=1` 및 `go test ./internal/userassets -run '^TestCodexRoleTOMLNotVerbatim$' -count=1`
+- **Then** Codex 루트 설치물에 미배포 참조가 없다(또는 AC-026의 파일 단위 보고) — 13b가 AC-006과 동일 결함으로 확정되면 역할 TOML 판정은 AC-006에 흡수된다
 - RED-now/적용 여부: **미검증 릴레이** — M0 재현이 확정할 때까지 구현 착수 금지. 재현이 반박하면 본 AC는 범위 조정(plan-audit 회신) 대상
 - green path: M3 (재현 확정 시)
-
-### AC-008 — Codex 역할 TOML 무변환 좌표 확정 (원장 13b · REQ-CNV-001 · M3, 재현 조건부)
-- **Given** 원장 13b의 주장 좌표(install.go:584 표류 — 실제 복사 경로는 :392)
-- **When** M0 재현 재확정 후 `go test ./internal/userassets -run '^TestCodexRoleTOMLNotVerbatim$' -count=1`
-- **Then** :392 경로 설치물이 변환된다 — AC-006과 동일 결함으로 확정되면 본 AC는 AC-006에 병합·소관 종료로 표기
-- 상태: relayed-unverified — 좌표 표류 명시(카드 본문). 재현이 동일 결함으로 확정하는 것이 본 AC의 1차 목적
-- green path: M3 (병합 확정 시 AC-006의 GREEN으로 갈음)
 
 ### AC-009 — 동결 가드의 사용자 경로 삭제 거절 (원장 9a · REQ-GRD-001/002 · M4)
 - **Given** 보호 집합에 포함된 사용자 설치 루트 아래의 관리 파일(예: plan-auditor.md)
@@ -94,26 +88,26 @@
 - RED-now: 현행 `os.ReadFile`(211)은 FIFO에서 무한 블록해 타임아웃 RED (관측 예정)
 - green path: M5
 
-### AC-011 — rename 직전 부모 재검증 (원장 12 · REQ-COL-002 · M5)
-- **Given** confined 쓰기의 검증-이후-rename 사이에 부모 symlink 교체 주입
-- **When** `go test ./internal/userassets -run '^TestConfinedWriteRevalidatesParentBeforeRename$' -count=1`
-- **Then** rename이 거부되고 외부 경로에 기록이 발생하지 않는다
-- RED-now: 현행 재검증(725-728)은 CreateTemp(729) 전이라 swap 창이 열려 RED (관측 예정)
-- green path: M5
+### AC-011 — 검증된 부모로의 고정 기록 (원장 12 · REQ-COL-002 · M5, 분류 RED-first)
+- **Given** confined 쓰기가 검증을 통과한 직후 부모 디렉터리가 symlink로 교체되는 주입 (경로 기반 현행 코드 대상 외부 기록 프로브)
+- **When** `go test ./internal/userassets -run '^TestConfinedWritePinnedToValidatedParent$' -count=1`
+- **Then** 외부 경로에 기록이 발생하지 않는다 — 기록은 검증된 부모 inode에 고정되거나 거부된다 (핸들 기반 설계; 경로 재검증 설계는 폐기 — design.md §6)
+- RED-now: 현행 경로 기반 코드는 swap 후 rename이 새 부모를 따라가 외부 기록이 관측되어 RED (관측 예정)
+- green path: M5 — 부모 핸들 고정 쓰기로 전환
 
 ### AC-012 — 미등록 미러 사본의 분류·보고 (원장 4 · REQ-SRF-001 · M6)
 - **Given** 매니페스트 항목 없는 `.agents/skills` 미러 사본 + 확인된 사용자 측 대응물
 - **When** `go test ./internal/cli -run '^TestMigrationClassifiesUnregisteredMirrorCopy$' -count=1`
-- **Then** 사본이 분류·보고되고 사용자 대응물 확인 시 제거된다 (영구 보존 아님)
-- RED-now: 현행 미등록 항목은 untouched 보존(:119-122)이라 RED (관측 예정)
+- **Then** 사본이 분류·보고되어 가시화된다; 제거는 생성 출처 입증 또는 명시적 승인 하에서만 발생한다 — 해시 일치·사용자 대응물 확인 단독으로는 제거하지 않는다 (보존 가드 계약 유지)
+- RED-now: 현행은 보고 없는 무보존 방치(untouched, :119-122)라 가시화 부재로 RED (관측 예정)
 - green path: M6
 
-### AC-013 — doctor emission 미비교 집계 수정 (원장 5-잔여 · REQ-SRF-002 · M6)
+### AC-013 — doctor emission 미비보고 불변 (원장 5-잔여 · REQ-SRF-002 · M6, 분류 born-green 회귀 가드)
 - **Given** 구 `.codex/agents` 배출물 비교에서 비교 불가 항목 존재
 - **When** `go test ./internal/cli -run '^TestDoctorAgentEmissionUncomparedNotOK$' -count=1`
-- **Then** compared 0/12 상태가 OK로 보고되지 않는다 (누락 보고)
-- RED-now: 현행 집계가 미비교를 허용해 RED (관측 예정 — doctor_agentemit_embed.go:135-160)
-- green path: M6
+- **Then** compared 미달 상태가 CheckFail로 보고된다 (OK 집계 금지)
+- 상태: HEAD에서 이미 CheckFail이 관측된다(doctor_agentemit_embed.go:150-165 — checkAgentEmitEmbedAgainst 재독 확정) — 본 AC는 처음부터 GREEN이어야 하는 회귀 가드다. RED 관측 시 퇴행 결함으로 리더 보고
+- green path: M6 (가드 테스트 상륙)
 
 ### AC-014 — skills disable의 사용자 계층 폴백 (원장 8d+5-증상 · REQ-SRF-003 · M6)
 - **Given** 프로젝트 미러가 없고 사용자 설치 스킬만 존재
@@ -122,12 +116,13 @@
 - RED-now: 생 면(skills.go)의 미러 전용 해석으로 RED (관측 예정 — 좌표 퇴역 재표현분)
 - green path: M6
 
-### AC-015 — 동명 에이전트 행의 분리·양 행 적용 (원장 8a · REQ-SRF-004 · M6)
-- **Given** 같은 이름의 사용자 에이전트와 프로젝트 에이전트
-- **When** `go test ./internal/web -run '^TestAgentFormDuplicateNameRowsBothApplied$' -count=1`
-- **Then** 폼 행이 스코프 구분되어 렌더되고 POST가 두 행의 편집을 모두 적용한다
-- RED-now: 홈 우선 스캔(:123-132)+이름 키 PostFormValue(:282-283)로 둘째 편집 소실 RED (관측 예정)
-- green path: M6
+### AC-015 — 동명 에이전트의 단일 설정 통합 end-to-end (원장 8a · REQ-SRF-004 · M6, 분류 RED-first)
+- **Given** 같은 이름의 사용자 에이전트와 프로젝트 에이전트 (양 스코프 동시 존재)
+- **When** `go test ./internal/web -run '^TestAgentFormSameNameConsolidatedEndToEnd$' -count=1`
+- **Then** 폼이 동명 행을 스코프 출처 병기 단일 행으로 렌더하고, 편집 1건이 파싱(`pins[a.Name]`)→저장(`applyAgentOverrides` → `llm.agent_overrides`)→재독록까지 일관한다 (조용한 덮어쓰기·소실 없음)
+- 재조회 검증 팔: 서로 다른 값을 잇따라 제출하는 2단계 저장-재독록 절차(초기값 제출→재독록→변경값 제출→재독록)에서 저장소는 항상 마지막 제출 단일 값과 정직히 일치한다 — 두 값이 별도로 생존하는 관측(스코프 키 분할 형태)은 계약 위반으로 판정한다
+- RED-now: 현행은 중복 행 렌더 + 이름 키 PostFormValue 첫 행 우선(:123-132·:282-283)으로 RED (관측 예정)
+- green path: M6 — 단일 설정 통합 계약(design.md §7)
 
 ### AC-016 — depends_on 클로저 설치 (원장 8b · REQ-SRF-005 · M6)
 - **Given** `depends_on`을 선언한 선택 번들
@@ -150,12 +145,9 @@
 - RED-now: :944-948 실패 후 재실행이 :905에서 거절되는 흐름으로 RED (관측 예정)
 - green path: M6
 
-### AC-019 — doctor의 적재 실패 별도 보고+읽기 전용 (원장 2a · REQ-DOC-001 · M7)
-- **Given** 파손된 사용자 매니페스트
-- **When** `go test ./internal/cli -run '^TestDoctorUserInstallLoadFailureReportedSeparately$' -count=1`
-- **Then** 실패 등급이 별도 행으로 보고되고 복구 사본이 덮어쓰이지 않는다 (OK 위장 없음)
-- RED-now: 임의 적재 오류가 CheckOK로 위장(:134-137)해 RED (관측 예정)
-- green path: M7
+### AC-019 — doctor 적재 실패 보고 정직성 (원장 2a · REQ-DOC-001 · M7) — 논리 AC 1건, 하위 2팔
+- **AC-019a** (프로젝트 측 — 분류 RED-first): **Given** 파손된 프로젝트 매니페스트 — **When** `go test ./internal/cli -run '^TestDoctorProjectManifestLoadFailureNotDisguised$' -count=1` — **Then** checkProjectVsLock의 임의 적재 오류가 CheckOK로 위장되지 않고 실패 등급으로 별도 보고된다 (RED-now: :134-137 OK 위장 관측 — 관측 예정). green path: M7
+- **AC-019b** (사용자 측 — 분류 born-green 회귀 가드): **Given** 파손된 사용자 매니페스트 — **When** `go test ./internal/cli -run '^TestDoctorUserInstallHonestFailureAndReadOnly$' -count=1` — **Then** checkUserInstallIntegrity가 실패 등급을 정직히 보고하고 복구 사본을 덮어쓰지 않는다 (현행 :24-38 정직 관측 — RED 관측 시 퇴행 보고). green path: M7 (가드 테스트 상륙)
 
 ### AC-020 — 공허 잠금 비교의 정직 보고 (원장 2b · REQ-DOC-002 · M7)
 - **Given** 잠금 비교 가능한 면이 없는 프로젝트 트리(예: .claude/settings.json만 존재)
@@ -178,13 +170,14 @@
 - RED-now: 통째 교체(:58)로 RED (관측 예정)
 - green path: M7
 
-### AC-023 — 커버리지 게이트 (REQ-NFR-001 · 전 마일스톤)
-- **When** §B의 스코프 명령에 `-cover`를 결합해 측정한다 — 예: `go test -cover ./internal/userassets ./internal/template ./internal/web -count=1` (internal/cli는 위 스코프 명령에 `-cover` 결합)
-- **Then** 영향 패키지 85% 이상, 저널·잠금·변환 critical 경로 90% 이상
+### AC-023 — 커버리지 게이트 (REQ-NFR-001 · 전 마일스톤, 분류 빌드·측정 게이트)
+- **측정 절차(플랫폼별 대상 명시)**: (1) critical 경로 집합과 판정 플랫폼 — **unix 실행**(darwin/linux): install.go·journal.go·lock.go·lock_guard_unix.go + M3 변환기 파일(internal/template, 착지명은 런에서 확정) @90% — **windows 실행**(CI windows 잡 또는 windows 실행 커버리지 수집 환경): lock_guard_windows.go·lock_owner_windows.go @90% — build 제외로 비windows 실행에서 `go list` IgnoredGoFiles가 되는 파일(본 머신 재현: `[lock_guard_windows.go lock_owner_windows.go]`)은 비windows 판정 대상에서 제외되며, 그 미판정 공백은 progress.md §E.2 Gaps로 선언한다 — (2) 측정 = 각 파일 소속 패키지에 `go test -coverprofile=<tmp>/<pkg>.out` 실행(§B 스코프 명령에 결합) 후 `go tool cover -func=<tmp>/<pkg>.out`으로 파일별 행 커버리지 산출 — (3) 판정 = 해당 플랫폼의 판정 대상 파일 중 하나라도 90% 미만이면 FAIL, 영향 패키지(패키지 합계) 중 하나라도 85% 미만이면 FAIL
+- **Then** 위 절차의 통과 — 커버리지 수치는 이 절차의 산출물로만 주장된다 (REQ-NFR-001)
 
 ### AC-024 — windows 패리티 빌드 게이트 (REQ-LOCK-002 · M2)
 - **When** `GOOS=windows go build ./internal/userassets ./internal/cli`
 - **Then** 빌드 성공 (exit 0) — windows 전용 잠금 가족 수정이 크로스 컴파일로 판정 가능
+- 한계 명시: 크로스 빌드는 컴파일 판정이지 실행 커버리지가 아니다 — lock_guard_windows.go·lock_owner_windows.go의 90% 판정은 AC-023의 windows 실행 커버리지 수집에 속한다
 
 ### AC-025 — 설치 스크립트 실행 권한 보존 (원장 6b · REQ-COL-003 · M5)
 - **Given** 설치 대상에 실행 가능한 스크립트 자산(navigator-audit.sh 재현 형태)이 포함
@@ -193,12 +186,19 @@
 - RED-now: 현행 confinedWrite의 0o644 하드코딩(install.go:743, 관측됨)으로 RED (관측 예정 — M0)
 - green path: M5
 
+### AC-026 — 미변환 참조의 필수 보고 (원장 7a/13 · REQ-CNV-002 · M3, 분류 RED-first)
+- **Given** Codex 측 대응물이 없는 하니스 고유 참조를 포함한 설치 자산
+- **When** `go test ./internal/userassets -run '^TestCodexUnconvertibleReferenceReported$' -count=1`
+- **Then** 설치 결과 보고가 해당 파일을 파일 단위로 나열한다 (조용한 dangling 참조 잔존 없음 — 보고 생략 변이는 본 AC로 차단)
+- RED-now: 현행 사용자 자산 설치 경로에는 변환 배선과 파일 단위 보고가 없어 RED (배포 경로의 기존 변환기와는 무관 — 관측 예정)
+- green path: M3 (REQ-CNV-002 구현)
+
 ## §D 추적성 매트릭스 (원장 → REQ → AC → 테스트 → 마일스톤)
 
 | 원장 | REQ | AC | 테스트 | 마일스톤 |
 |---|---|---|---|---|
 | 1, 10-P1 | REQ-LOCK-001, 002 | AC-001, AC-024 | TestGuardMarkerReclaimAfterOwnerDeath | M2 |
-| 2 | REQ-DOC-001, 002 | AC-019, AC-020 | TestDoctorUserInstallLoadFailureReportedSeparately, TestDoctorLockCheckVacuousNotReportedMatch | M7 |
+| 2 | REQ-DOC-001, 002 | AC-019a/b, AC-020 | TestDoctorProjectManifestLoadFailureNotDisguised, TestDoctorUserInstallHonestFailureAndReadOnly, TestDoctorLockCheckVacuousNotReportedMatch | M7 |
 | 3 | REQ-JRN-001 | AC-002 | TestJournalStageCarriesRecoveredEntries | M1 |
 | 4 | REQ-SRF-001 | AC-012 | TestMigrationClassifiesUnregisteredMirrorCopy | M6 |
 | 5-잔여 | REQ-SRF-002, 003 | AC-013, AC-014 | TestDoctorAgentEmissionUncomparedNotOK, TestSkillsDisableResolvesUserInstalledSkill | M6 |
@@ -207,7 +207,7 @@
 | (커버리지 게이트) | REQ-NFR-001 | AC-023 | go test -cover (§B 결합) | 전 마일스톤 |
 | 7a | REQ-CNV-001, 002 | AC-006 | TestCodexAgentTOMLReferencesConverted | M3 |
 | 7b | REQ-DOC-004 | AC-022 | TestDoctorFallbackKeepsProjectScopeL1 | M7 |
-| 8a | REQ-SRF-004 | AC-015 | TestAgentFormDuplicateNameRowsBothApplied | M6 |
+| 8a | REQ-SRF-004 | AC-015 | TestAgentFormSameNameConsolidatedEndToEnd | M6 |
 | 8b | REQ-SRF-005 | AC-016 | TestBundleDependsOnClosureInstall | M6 |
 | 8c | REQ-COL-001 | AC-010 | TestCollisionPrecheckSkipsFifoWithoutBlock | M5 |
 | 8d | REQ-SRF-003 | AC-014 | TestSkillsDisableResolvesUserInstalledSkill | M6 |
@@ -217,9 +217,8 @@
 | 10a | REQ-JRN-004 (재정식) | AC-005 | TestJournalUnknownSchemaRefused | M1 |
 | 11a | REQ-SRF-006 (가드) | AC-017 | TestUpdateCancelKeepsProjectAssetsIntact | M6 |
 | 11b | REQ-SRF-007 | AC-018 | TestInitResumeAfterUserAssetEnsureFailure | M6 |
-| 12 | REQ-COL-002 | AC-011 | TestConfinedWriteRevalidatesParentBeforeRename | M5 |
-| 13a | REQ-CNV-001, 002 | AC-007 | TestCodexUserSkillInstallNoClaudeOnlyRefs | M3 (조건부) |
-| 13b | REQ-CNV-001 | AC-008 | TestCodexRoleTOMLNotVerbatim | M3 (조건부·병합 후보) |
+| 12 | REQ-COL-002 | AC-011 | TestConfinedWritePinnedToValidatedParent | M5 |
+| 13a+13b | REQ-CNV-001, 002 | AC-007, AC-026 | TestCodexUserSkillInstallNoClaudeOnlyRefs, TestCodexRoleTOMLNotVerbatim, TestCodexUnconvertibleReferenceReported | M3 (조건부) |
 | (windows 패리티 게이트) | REQ-LOCK-002 | AC-024 | GOOS=windows go build | M2 |
 
 ## §E 간접 검증과 폐쇄 게이트
