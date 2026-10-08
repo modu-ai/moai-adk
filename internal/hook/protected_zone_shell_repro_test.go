@@ -786,6 +786,30 @@ func TestCheckProtectedZoneShellGitWorkTreeOverwriteWins(t *testing.T) {
 	t.Logf("swept=%d", 1)
 }
 
+// hzsMarkerFileManifest declares the single protected FILE the narrowed
+// fixture protects — the cross-generation join lands on exactly this file
+// and nothing else (gate round 20 P2: the wholesale zone_dir/ manifest let
+// the modern reading trip on zone_dir/x for the wrong reason).
+const hzsMarkerFileManifest = "  probe_zone:\n    paths: [\"zone_dir/marker.md\"]\n"
+
+// hzsMarkerFileFixture builds the narrowed-manifest root with the protected
+// marker. POSIX-specific skip: the rows sharing it create literally-named
+// backslash entries.
+func hzsMarkerFileFixture(t *testing.T) string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX-specific: the literally-named fixture entries carry backslashes, a separator on windows")
+	}
+	root := newZoneRoot(t, zoneShippedDoc(hzsMarkerFileManifest), "")
+	if err := os.MkdirAll(filepath.Join(root, "zone_dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "zone_dir", "marker.md"), []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
 // The three gate-round-19 regression rows (card t1585): branch dispatch
 // must not preempt the dual-world verb classification, git file arguments
 // must join their OWN generation's directory, and the candidate cap applies
@@ -798,7 +822,7 @@ func TestCheckProtectedZoneShellGitWorkTreeOverwriteWins(t *testing.T) {
 // cd+u0000 entry. A word truncating to a DECLARED FUNCTION name is the
 // same class — the verb classification completes BEFORE any dispatch.
 func TestCheckProtectedZoneShellDualWorldVerbBeforeDispatch(t *testing.T) {
-	root := hzsLiteralNameFixture(t)
+	root := hzsMarkerFileFixture(t)
 	if err := os.MkdirAll(filepath.Join(root, "cd\\u0000"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -812,14 +836,14 @@ func TestCheckProtectedZoneShellDualWorldVerbBeforeDispatch(t *testing.T) {
 // join their OWN generation's directory: the cross-generation join
 // (modern dir × pre-4.2 file text) is a path NO generation executes, and
 // landing it is a FALSE DENY — an over-block. The row asserts the ALLOW:
-// generation 0 reads zone_dir/x (outside the zone), generation 1 reads
-// zone\u0005fdir/marker.md against the literally-named zone\u0005fdir
-// entry (which does not exist) — only the crossed join collapses into
-// zone_dir/marker.md.
+// generation 0 reads zone_dir/other.txt (not the protected marker — the
+// narrowed manifest does not cover it), generation 1 reads
+// zone\u0005fdir/marker.md against a literally-named entry that does not
+// exist — only the crossed join lands on the protected marker.
 func TestCheckProtectedZoneShellGitFileArgsOwnGeneration(t *testing.T) {
-	root := hzsLiteralNameFixture(t)
+	root := hzsMarkerFileFixture(t)
 	h := zoneTestHandler(t, root)
-	const crossCmd = "git -C $'zone\\u005fdir' rm -f $'x\\u0000/../marker.md'"
+	const crossCmd = "git -C $'zone\\u005fdir' rm -f $'other.txt\\u0000/../marker.md'"
 	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": crossCmd})
 	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
 		t.Errorf("git file args own generation: decision=%q reason=%q, want allowed — only the cross-generation join lands in the zone, and no generation executes it", crossCmd, r)
@@ -833,7 +857,7 @@ func TestCheckProtectedZoneShellGitFileArgsOwnGeneration(t *testing.T) {
 // deduped set is 2,050. Capping before dedup false-denies the plain
 // command (an over-block). The row asserts the ALLOW.
 func TestCheckProtectedZoneShellCandidateCapAfterDedup(t *testing.T) {
-	root := hzsLiteralNameFixture(t)
+	root := hzsMarkerFileFixture(t)
 	h := zoneTestHandler(t, root)
 	var b strings.Builder
 	b.WriteString("git rm -f")

@@ -856,31 +856,40 @@ file text) is a path no generation executes and landing it is a FALSE DENY;
 path from both worlds (2,050 files → 4,100 candidates → past the 4,096 cap
 → a loop-unbounded FALSE DENY on a plain command).
 
-**Three regression rows — RED under the M2.5 tip (`474a99e92` + the rows,
-uncommitted at measurement):**
+**Three regression rows — RED under the M2.5 tip (`474a99e92`; measured
+against the pre-fix source restored from HEAD, with the rows uncommitted at
+measurement).** The rows' fixture narrows the manifest to the single
+protected file `zone_dir/marker.md` (gate round 20 P2: the wholesale
+`zone_dir/` manifest let the modern reading trip on `zone_dir/other.txt` for
+the wrong reason).
 
 - **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellDualWorldVerbBeforeDispatch|TestCheckProtectedZoneShellGitFileArgsOwnGeneration|TestCheckProtectedZoneShellCandidateCapAfterDedup' -count=1 -v`
 - **Exit code**: `1`
-- **Observed (verbatim, decision lines)**:
+- **Observed (verbatim, decision lines; row 3's f-file enumeration
+  abbreviated, carried in full by the run)**:
 
 ```
-    protected_zone_shell_repro_test.go:807: dual world verb before dispatch: decision="allow" reason="", want deny
+    protected_zone_shell_repro_test.go:831: dual world verb before dispatch: decision="allow" reason="", want deny
 --- FAIL: TestCheckProtectedZoneShellDualWorldVerbBeforeDispatch (0.01s)
-    protected_zone_shell_repro_test.go:825: git file args own generation: decision="git -C $'zone\\u005fdir' rm -f $'x\\u0000/../marker.md'" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=zone_dir/x", want allowed — only the cross-generation join lands in the zone, and no generation executes it
+    protected_zone_shell_repro_test.go:849: git file args own generation: decision="git -C $'zone\\u005fdir' rm -f $'other.txt\\u0000/../marker.md'" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=zone_dir/other.txt/marker.md", want allowed — only the cross-generation join lands on the protected marker
 --- FAIL: TestCheckProtectedZoneShellGitFileArgsOwnGeneration (0.01s)
-    protected_zone_shell_repro_test.go:845: candidate cap after dedup: decision="git rm -f f0000.txt … f2049.txt" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=loop-unbounded route=human next=return-blocker-report path=loop", want allowed — the deduped candidate set (2,050) fits the cap
---- FAIL: TestCheckProtectedZoneShellCandidateCapAfterDedup (0.56s)
+    protected_zone_shell_repro_test.go:869: candidate cap after dedup: decision="git rm -f f0000.txt … f2049.txt" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=loop-unbounded route=human next=return-blocker-report path=loop", want allowed — the deduped candidate set (2,050) fits the cap
+--- FAIL: TestCheckProtectedZoneShellCandidateCapAfterDedup (3.19s)
 FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/hook	1.091s
+FAIL	github.com/modu-ai/moai-adk/internal/hook	3.891s
 ```
 
-Rows 1 is a deny-miss; rows 2-3 are OVER-BLOCK inverse rows (false deny
-observed verbatim). The cross-generation row's first draft
-(`$'../other.txt\u0000/../marker.md'`) was Clean-neutralized (the leading
-`..` popped the joined dir) and was rewritten BEFORE the fix commit to the
-committed shape whose escape text contributes its own component
-(`x\u0000`), so the crossed join collapses into the zone. Inputs
-transport-verified: whole-file NUL-byte scan zero, doubled backslash.
+Row 1 is a deny-miss; rows 2-3 are OVER-BLOCK inverse rows (false deny
+observed verbatim — row 2's deny path is the crossed join landing on the
+protected marker). Design iteration disclosed: the cross row's first two
+drafts were unadoptable — the wholesale-manifest draft tripped on
+`zone_dir/other.txt` (a true generation-0 path) and the `../`-climbing draft
+was Clean-neutralized (the climb popped the joined dir); the committed shape
+pairs the NARROWED manifest with the simple pop-to-marker word. Measured
+against the pre-fix source by temporarily restoring
+`HEAD:internal/hook/protected_zone_shell.go` (the M2.6 fix sat in the
+working tree; restored after the capture). Inputs transport-verified:
+whole-file NUL-byte scan zero, doubled backslash.
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
