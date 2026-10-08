@@ -300,7 +300,7 @@ func roleRuleInjectionFor(root, source, existing, lang string) roleRuleInjection
 	if len(failures) > 0 {
 		loc := roleRuleLocaleFor(lang)
 		return roleRuleInjection{
-			Context: roleRulesReadDirective(root, ""),
+			Context:        roleRulesReadDirective(root, ""),
 			OperatorNotice: loc.InjectionFailed(role.Name, strings.Join(failures, "; ")),
 		}
 	}
