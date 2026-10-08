@@ -191,6 +191,17 @@ var workflowOptMirroredPaths = []string{
 	".claude/rules/moai/core/hooks-system.md",
 	// Layer E — Phase Transitions skip policy
 	".claude/rules/moai/workflow/spec-workflow.md",
+	// card t1586 core+detail split: spec-workflow-detail.md is the lazy detail
+	// companion of spec-workflow.md (Route A/B step tables + merge_method
+	// footnote, [SHOULD] anti-patterns, DDD/TDD methodology bodies, Phase 1
+	// Depends_on Pre-flight, Report Persistence). Both trees are byte-identical;
+	// token-cleanliness adjudication: the only internal SPEC token the move
+	// carries is SPEC-AUDIT-SNAPSHOT-001 (allowlisted for this file in
+	// internal_content_leak_test.go — the move cannot be made token-free because
+	// the Report Persistence hash-subject prose cites its origin). Enrolled at
+	// creation so a future single-tree edit on either half of the split is
+	// caught at CI rather than after a release.
+	".claude/rules/moai/workflow/spec-workflow-detail.md",
 	// SPEC-SESSION-HANDOFF-ALIGN-001 — session-handoff.md mirror parity (REQ-SHA-007).
 	// Both trees are byte-identical post-neutralization (Diet/V0/`/cd` blocks ported +
 	// internal SPEC-IDs stripped per CLAUDE.local.md §25). Enrolled here so future
