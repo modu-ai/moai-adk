@@ -648,15 +648,14 @@ func (env *ledgerCheckEnv) checkCompanionRowsPathsScoped() {
 		}
 		path := strings.TrimPrefix(r.Location, "companion:")
 		data, err := env.readFile(path)
-		switch {
-		case err == nil:
+		if err == nil {
 			if !frontmatterPathsScoped(data) {
 				env.errf("companion: row %s path %s is a deployed file without a top-level paths: key", r.ID, path)
 				defects++
 				continue
 			}
 			existsStrict++
-		default:
+		} else {
 			if r.Kind == "rationale" && r.AfterText == r.BeforeText {
 				missingPending++ // planned companion, origin-hold placeholder state
 				continue

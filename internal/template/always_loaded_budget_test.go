@@ -451,7 +451,7 @@ func TestDeployedAlwaysLoadedSurfaceDerivation(t *testing.T) {
 		mechanicalGrew := surfaceTotal(mechanical) > surfaceTotal(hardcoded)
 		hardcodedMissed := !memberExists(hardcoded, fixtureRuleRel) && memberExists(mechanical, fixtureRuleRel)
 
-		if !(mechanicalGrew && hardcodedMissed) {
+		if !mechanicalGrew || !hardcodedMissed {
 			t.Errorf("expected the hardcoded-list derivation to fail the growth property: mechanicalGrew=%v hardcodedMissed=%v",
 				mechanicalGrew, hardcodedMissed)
 		}
