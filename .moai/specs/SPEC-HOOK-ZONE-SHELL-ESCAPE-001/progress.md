@@ -1186,6 +1186,81 @@ the deny sound and the row unadoptable; the committed executable IS the
 dual word itself. Fixture: narrowed marker manifest. Inputs
 transport-verified: whole-file NUL-byte scan zero, doubled backslash.
 
+### Gate rounds 29/30/31 — M2.12 subcommand binding, linear dedup, immediate cap (2026-10-09)
+
+Five findings folded: (1) P1 git SUBCOMMAND word generation binding —
+`git $'rm\u0000bogus' -f $'docs\u0000/../zone_dir/marker.md'`: modern
+`git rm -f docs` (docs ∉ zone) vs pre-4.2 nonexistent subcommand — the
+pooled modern subcommand × the pre-4.2 file reading false-denied
+(superseding the earlier exact-string single-world exception, whose
+cross-generation join was the defect); (2) P2 the sed in-place binding's
+plain-file call shape pinned (confirmation); (3) P2 the git NAME word
+dual shape — `$'printf\u0000/../git' $'rm\u0000' -f zone_dir/marker.md`:
+the pre-4.2 git subcommand is the nonexistent literal text — pooled
+modern "rm" false-denied; (4) P1/P2 dedup linearization (hash-set; the
+per-candidate scan was O(n²): 80,000-arg repro measured 11.89s in-suite)
++ IMMEDIATE fail-closed on the unique-candidate cap (no resolution of
+over-cap sets); (5) P2 zoneRedirects' mutating flag respects `w.world`
+(a never-executed generation's redirect reading must not flip it).
+
+**Rows — measured under the M2.11 tip (`103de893d` + the rows, uncommitted
+at measurement):**
+
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellGitSubOwnGeneration|TestCheckProtectedZoneShellGitNameSubOwnGeneration|TestCheckProtectedZoneShellSedInPlacePlainFileShape|TestCheckProtectedZoneShellGitMassFileArgsBounded' -count=1 -v`
+- **Exit code**: `1`
+- **Observed (verbatim, decision/measurement lines)**:
+
+```
+    protected_zone_shell_repro_test.go:1097: git sub own generation: decision="git $'rm\\u0000bogus' -f $'docs\\u0000/../zone_dir/marker.md'" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=docs/zone_dir/marker.md", want allowed — modern git rm joins only the modern file reading (docs, outside the zone), and the pre-4.2 subcommand is nonexistent
+--- FAIL: TestCheckProtectedZoneShellGitSubOwnGeneration (0.01s)
+    protected_zone_shell_repro_test.go:1114: git name sub own generation: decision="$'printf\\u0000/../git' $'rm\\u0000' -f zone_dir/marker.md" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=zone_dir/marker.md", want allowed — the pre-4.2 world's git subcommand is the nonexistent literal rm\u0000 text, and the modern world's name is printf
+--- FAIL: TestCheckProtectedZoneShellGitNameSubOwnGeneration (0.00s)
+--- PASS: TestCheckProtectedZoneShellSedInPlacePlainFileShape (0.00s)
+    protected_zone_shell_repro_test.go:1160: elapsed=11.893514125s (bounded-run measurement; before/after in progress.md §E.2)
+--- PASS: TestCheckProtectedZoneShellGitMassFileArgsBounded (11.90s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	14.174s
+```
+
+Rows 1-2 are OVER-BLOCK inverse rows (false deny observed verbatim). Row 3
+is a GREEN-NOW confirmation pin (the M2.11 binding covers the plain-file
+shape). Row 4 is a MEASUREMENT pin: the pre-fix duration 11.89s in-suite
+(the reviewer's deployment measurement: 11.70s vs 0.97s base, over the
+deployed hook's 10s limit); the row asserts only the bounded deny and
+logs the duration.
+
+**M2.12 remedy — GREEN record.** Shape: (1) the git SUBCOMMAND word binds
+its own generation (`sub = readings[world]` via zoneWordWorldReadings —
+superseding the earlier exact-string single-world exception, whose
+cross-generation join was the defect); the option-structure scan stays on
+the modern reading (bounded residual: a dual word whose readings disagree
+on option-vs-subcommand classification); (2) `zoneDedupStrings` is
+hash-set based (linear — the O(n²) scan dominated over-cap inputs);
+(3) the unique-candidate cap fires fail-closed IMMEDIATELY — an over-cap
+set skips per-candidate resolution entirely; (4) `zoneRedirects`' mutating
+flag respects `w.world` — during a generation-scoped function execution
+only that world's redirect readings flip it.
+
+- **Command** (all 40 instrument tests): `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test
+  ./internal/hook -run 'TestCheckProtectedZoneShell|TestZoneUnescapeAnsiC|TestZoneWordText' -count=1`
+- **Exit code**: `0`
+- **Observed (verbatim)**: `ok  	github.com/modu-ai/moai-adk/internal/hook	2.354s`
+  (40/40 PASS — the two git over-block rows flipped to ALLOW; the
+  plain-file pin and the measurement pin hold; the 36 earlier rows hold).
+- **Bounded-run measurement**: post-fix elapsed 1.43s for the 80,000-arg
+  shape (was 11.89s pre-fix in-suite — 8.3×), fail-closed via
+  `loop-unbounded` (the immediate cap).
+- **Full package regression (M2.12, final tree)**: `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1
+  -timeout=25m -v ./internal/hook/` — exit 0, verbatim tail `PASS` / `ok
+  github.com/modu-ai/moai-adk/internal/hook	320.117s` /
+  `PACKAGE_POST31_EXIT=0`; 3669 RUN lines, ZERO `--- FAIL` lines. Slot
+  lease `hook-suite` held for the run, released after.
+- Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
+  `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
+  clean; family coverage `13.8%` (all-rows selector).
+
 **M2.11 remedy — sed in-place generation binding (GREEN record).** Shape:
 `zoneSedInPlace(world, args)` reads each option word through the PASSED
 generation's reading (`readings[world]` via zoneWordWorldReadings) — the

@@ -428,18 +428,15 @@ func zoneWordWorldReadings(w *syntax.Word) ([2]string, bool) {
 	return r, true
 }
 
-// zoneDedupStrings drops duplicate readings, keeping the order.
+// zoneDedupStrings drops duplicate readings, keeping the order — hash-set
+// based (linear; the per-candidate scan of all prior candidates was O(n²)
+// and dominated over-cap inputs, gate rounds 29/30 P2).
 func zoneDedupStrings(in []string) []string {
+	seen := make(map[string]bool, len(in))
 	out := in[:0]
 	for _, s := range in {
-		dup := false
-		for _, have := range out {
-			if have == s {
-				dup = true
-				break
-			}
-		}
-		if !dup {
+		if !seen[s] {
+			seen[s] = true
 			out = append(out, s)
 		}
 	}
@@ -630,9 +627,15 @@ func isZoneDigits(s string) bool {
 }
 
 // zoneRedirects judges a statement's write redirections against every
-// possible working directory.
+// possible working directory. During a generation-scoped function
+// execution only THAT generation's redirect readings flip the mutating
+// flag — a never-executed world's reading must not (gate round 31 P2).
 func (w *zoneWalker) zoneRedirects(redirs []*syntax.Redirect) {
-	if hits, targets := zoneRedirectTargets(redirs); hits {
+	hits, targets := zoneRedirectTargets(redirs)
+	if w.world >= 0 {
+		hits = len(targets[w.world]) > 0
+	}
+	if hits {
 		w.mutating = true
 		w.zoneCands(targets)
 	}
@@ -1086,7 +1089,15 @@ func (w *zoneWalker) zoneGitArgs(world int, cmd *syntax.CallExpr) bool {
 			}
 			continue
 		}
-		sub = t
+		// the subcommand word binds its own generation: the sub drives the
+		// analysis only for the world whose reading it is (gate round 29
+		// P1) — superseding the earlier exact-string exception, whose
+		// cross-generation join false-denied no-generation executions
+		if readings, wl := zoneWordWorldReadings(cmd.Args[j]); wl {
+			sub = readings[world]
+		} else {
+			sub = t
+		}
 		subIdx = j
 		break
 	}
@@ -1569,28 +1580,32 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	// path from both worlds, and capping before dedup would false-deny a
 	// plain command whose deduped set fits (gate round 19 P2)
 	w.cands = zoneDedupStrings(w.cands)
-	if len(w.cands) > zoneCandidateCap {
+	overCap := len(w.cands) > zoneCandidateCap
+	if overCap {
 		// a candidate set beyond the cap cannot be judged soundly at this
 		// scale — denied fail-closed, the bounded-walk philosophy (gate
-		// round 17 P2)
+		// round 17 P2). Fail-closed fires IMMEDIATELY: no per-candidate
+		// resolution of an over-cap set (gate rounds 29/30 P2)
 		w.unbounded = true
 	}
-	for _, cand := range w.cands {
-		forms := resolveZoneTarget(root, cand)
-		category, covered := zoneShellCovered(forms, load, root)
-		if !covered {
-			continue
+	if !overCap {
+		for _, cand := range w.cands {
+			forms := resolveZoneTarget(root, cand)
+			category, covered := zoneShellCovered(forms, load, root)
+			if !covered {
+				continue
+			}
+			display := cand
+			if len(forms) > 0 {
+				display = forms[0].Display
+			}
+			reason := zoneDenyReason(agentID, "category", category, display)
+			h.recordZoneAudit(root, zoneAuditRow{
+				Identity: agentID, Tool: "Bash", Path: display,
+				Category: category, Decision: "deny", ManifestState: load.State,
+			})
+			return reason
 		}
-		display := cand
-		if len(forms) > 0 {
-			display = forms[0].Display
-		}
-		reason := zoneDenyReason(agentID, "category", category, display)
-		h.recordZoneAudit(root, zoneAuditRow{
-			Identity: agentID, Tool: "Bash", Path: display,
-			Category: category, Decision: "deny", ManifestState: load.State,
-		})
-		return reason
 	}
 
 	if w.unbounded && load.State != config.ZoneStateAbsent {
