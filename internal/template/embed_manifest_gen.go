@@ -215,6 +215,7 @@ import "embed"
 //go:embed templates/.claude/rules/moai/workflow/skill-routing-detail.md
 //go:embed templates/.claude/rules/moai/workflow/skill-routing.md
 //go:embed templates/.claude/rules/moai/workflow/snapshot-consumer-contract.md
+//go:embed templates/.claude/rules/moai/workflow/spec-workflow-detail.md
 //go:embed templates/.claude/rules/moai/workflow/spec-workflow.md
 //go:embed templates/.claude/rules/moai/workflow/sync-backup-integrity.md
 //go:embed templates/.claude/rules/moai/workflow/sync-coverage-scope-contract.md
