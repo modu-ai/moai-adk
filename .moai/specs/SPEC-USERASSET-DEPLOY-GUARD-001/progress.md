@@ -258,6 +258,18 @@ run에 남는다. 각 마일스톤이 자기 가족을 GREEN으로 전환하며,
 **게이트**: lint 0 issues (userassets+hook), gofmt 청결, userassets 전체 스위트 = 의도
 RED 8건(M2-M7 소관)만 잔존, M1 GREEN 4종+버킷 B 1종 유지.
 
+### 게이트 15 — 쓰기 증폭 게이트 (design §2 제약, 2026-10-09)
+
+- **install.go 플래그 영속화 게이트**: per-file WriteCompleted 영속화는 **실제 쓰기가
+  발생한 대상에만** 발화한다(applyTarget의 `wrote` 신호 — confinedWrite 팔 한정).
+  up-to-date 재실행은 대상당 저널 재직렬화를 지불하지 않는다(게이트 실측: 미변경 6파일이
+  저널 쓰기를 2→7로 증폭). stateManifestStale(기록만 수리, 무기록)은 플래그 없음·해시
+  동기화는 유지 — 디스크 바이트가 이미 shipped라 반입 항목과 일치해야 하기 때문.
+- 검증: TestJournalFlagPersistOnlyForWrittenFiles GREEN — up-to-date 재실행에서
+  "persist completion flag" 실패 0건 + installed=0/refreshed=0 확인. AC-004
+  (TestWriteCompletedPersistedPerFile) GREEN 유지 — 실제 쓰기 파일의 플래그는 계속
+  즉시 영속된다. 전체 스위트 의도 RED 8건 유지, lint 0, gofmt 청결.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop 소관.)_
