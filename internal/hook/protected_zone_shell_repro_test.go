@@ -16,9 +16,17 @@ package hook
 //   $'a\0b'             -> 61                 (octal NUL truncates too)
 //   $'\xec\xa1\x80'     -> ec a1 80           (\xHH is ONE RAW BYTE, not a
 //                                               re-encoded code point)
-//   $'⊇'           -> e2 8a 87           (\u renders the code point as
-//                                               UTF-8 — the current decoder
-//                                               is right for \u/\U only)
+//   $'⊇'           -> (decoder: e2 8a 87) — the DECODER renders code
+//                                               points per Go string(rune);
+//                                               this host's bash 3.2.57
+//                                               expands NEITHER \u NOR \U
+//                                               (both stay literal —
+//                                               decisive 2026-10-09, see
+//                                               the card's evidence record;
+//                                               an earlier "expansion"
+//                                               reading was glyph-poisoned:
+//                                               the probe had carried the
+//                                               glyph, not the escape text)
 //
 //   ① P1 NUL truncation: zoneUnescapeAnsiC keeps the NUL and everything
 //      after it, so the guard checks `zone_dir\x00/sub` against the zone
