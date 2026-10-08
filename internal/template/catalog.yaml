@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 9c4d6c0d03112992d15f7c44d37e869e11b603d9e912dc92206b703f87256104
+              hash: 9f1711f16fa89d2b8a51b2bcee01eab7351df7bc2d0a3c9ab22b93eee912cfc1
               version: 1.0.0
               depends_skills:
                 - moai-workflow-spec
@@ -183,7 +183,7 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: a27f35b938e0d0029a727146addb7468efd99885be142aa04595e9e604590107
+              hash: 38a6f17a362990019f819d227174c748d94e81163ad7d3812f06d58a5669f83a
               version: 1.0.0
             - name: sync-auditor
               tier: core
