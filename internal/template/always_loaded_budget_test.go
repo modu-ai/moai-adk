@@ -20,16 +20,18 @@ import (
 	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
-// deployedAlwaysLoadedCharBudget caps the deployed always-loaded instruction
-// surface at 115000 UTF-16 code units (REQ-ALB-002). It sits 5000 units under
-// the 120000-character runtime limit for 200K-context models (1M-context
-// models carry a 150000-character limit), and the headroom is sized by the
-// measured drift between diet periods: +4669 units over 7 days
-// (b1ec8602c..b69cfe7ec) and +2627 units over 2 days (f4aa9bf99..b5815ca80)
-// — the largest observed non-diet growth interval fits the headroom once, so
-// this guard breaks in CI before a user-facing runtime limit is crossed
-// (research.md §3; ledger head of binding_ledger.json).
-const deployedAlwaysLoadedCharBudget = 115000
+// deployedRulesOnlyCharBudget caps the deployed always-loaded RULES-ONLY
+// subtotal at 150000 UTF-16 code units (REQ-ALB-002, amended: the measured
+// axis is the 13-rule subtotal — AGENTS.md and its import closure stay in
+// the member log but leave the guarded total). The value is the runtime
+// instruction budget for the rules axis itself, adopted by the operator's
+// 2026-10-08 disposition (a) re-deriving the constant on the rules-only
+// axis; the former whole-axis constant 115000 is retired wholesale — the
+// measured obligation-preserving floor for the current member set sits at
+// ~122000-126000 (M3 finding), so the old constant was unreachable, not
+// merely tight (research.md §3 records the drift-period derivation the old
+// headroom was sized by).
+const deployedRulesOnlyCharBudget = 150000
 
 // deployedAlwaysLoadedPerFileCharBudget caps any single always-loaded rule
 // file at 40000 UTF-16 code units (REQ-ALB-003, narrowed to always-surface
@@ -251,8 +253,11 @@ func deriveDeployedAlwaysLoadedMembers(t *testing.T, root string) []deployedSurf
 // the production path, derives the always-loaded surface mechanically, and
 // enforces the total and per-file char budgets (REQ-ALB-001..004).
 //
-// Expected state after M1: RED (anchor surface 180901 > 115000) and red until
-// M3 lands — that is the deliverable, not a defect (plan.md M1).
+// Expected state after M1: RED (anchor surface 180901 > the then-whole-axis
+// budget 115000) and red until M3 lands — that is the deliverable, not a
+// defect (plan.md M1). After the 2026-10-08 operator disposition (a) the
+// guarded axis is the rules-only subtotal and the guard is expected GREEN
+// (rules-only ~114600 ≤ 150000).
 func TestDeployedAlwaysLoadedCharBudget(t *testing.T) {
 	root := deployEmbeddedTemplatesForTest(t)
 	members := deriveDeployedAlwaysLoadedMembers(t, root)
@@ -262,15 +267,23 @@ func TestDeployedAlwaysLoadedCharBudget(t *testing.T) {
 	}
 
 	total := 0
+	rulesOnly := 0
 	for _, m := range members {
 		t.Logf("deployed-surface-member=%s %d", m.Path, m.UTF16)
 		total += m.UTF16
+		if strings.HasPrefix(m.Path, ".claude/rules/") {
+			rulesOnly += m.UTF16
+		}
 	}
 	t.Logf("deployed-surface-total=%d", total)
+	t.Logf("deployed-rules-only-subtotal=%d", rulesOnly)
 
-	// REQ-ALB-002: total budget failure names total, budget, file count, and
-	// the five largest members with sizes.
-	if total > deployedAlwaysLoadedCharBudget {
+	// REQ-ALB-002 (amended): the guarded axis is the RULES-ONLY subtotal —
+	// the 13 always-loaded rule members. AGENTS.md and its import closure
+	// stay in the member log above but are excluded from the guarded total.
+	// A budget failure names the axis, the subtotal, the budget, the file
+	// count, and the five largest members with sizes.
+	if rulesOnly > deployedRulesOnlyCharBudget {
 		largest := append([]deployedSurfaceMember(nil), members...)
 		sort.Slice(largest, func(i, j int) bool { return largest[i].UTF16 > largest[j].UTF16 })
 		if len(largest) > 5 {
@@ -280,8 +293,8 @@ func TestDeployedAlwaysLoadedCharBudget(t *testing.T) {
 		for _, m := range largest {
 			sb.WriteString(" " + m.Path + "=" + strconv.Itoa(m.UTF16) + ";")
 		}
-		t.Errorf("deployed always-loaded surface exceeds budget: total=%d budget=%d files=%d; five largest:%s",
-			total, deployedAlwaysLoadedCharBudget, len(members), sb.String())
+		t.Errorf("deployed always-loaded rules-only subtotal exceeds budget: rules-only=%d budget=%d (axis: rules-only subtotal; AGENTS.md excluded) files=%d; five largest:%s",
+			rulesOnly, deployedRulesOnlyCharBudget, len(members), sb.String())
 	}
 
 	// REQ-ALB-003: any always-surface member over the per-file budget fails
