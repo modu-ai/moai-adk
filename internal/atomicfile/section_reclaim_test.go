@@ -116,6 +116,37 @@ func TestDeepDeadReclaimChainIsReclaimable(t *testing.T) {
 	}
 }
 
+// TestClaimGuardRivalDisposalIsGuardedToo pins the review-gate finding on
+// card t1606 (P1): the guard claim's disposal of a DEAD rival guard must
+// run through the guarded path — a bare verify-and-delete lets two
+// reclaimers of the same dead guard interleave so one's late delete
+// removes the other's LIVE re-acquired guard. While a rival holds the dead
+// rival guard's OWN guard, this claim must refuse and touch nothing.
+func TestClaimGuardRivalDisposalIsGuardedToo(t *testing.T) {
+	dir := t.TempDir()
+	markerPath := filepath.Join(dir, "queue.lock.breaking")
+	previousBootFixture(t, markerPath) // the dead marker being reclaimed
+	rivalGuard := markerPath + reclaimSuffix
+	previousBootFixture(t, rivalGuard) // the dead rival guard blocking the claim
+
+	// A rival reclaimer holds the dead rival guard's OWN guard: that
+	// disposal is owned.
+	release, err := ClaimSection(context.Background(), rivalGuard+reclaimSuffix, 0o600, 0, time.Millisecond)
+	if err != nil {
+		t.Fatalf("the test rival could not claim the disposal: %v", err)
+	}
+	defer func() { _ = release() }()
+
+	if BreakStaleLock(markerPath) {
+		t.Fatal("the claim disposed a dead rival guard while a rival held ITS guard — the disposal is not serialized")
+	}
+	for _, p := range []string{markerPath, rivalGuard} {
+		if _, serr := os.Stat(p); serr != nil {
+			t.Fatalf("an owned disposal removed a marker: %s", p)
+		}
+	}
+}
+
 // TestBreakHonorsCallerCancellation pins the budget half of the hardening
 // round: the guard reclaim must honor the CALLER's cancellation — a
 // cancelled reclaim refuses before it reads anything, never entering the

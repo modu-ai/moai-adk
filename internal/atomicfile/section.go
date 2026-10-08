@@ -86,19 +86,17 @@ const breakingSuffix = ".breaking"
 // so a late delete can never land on a live marker.
 const reclaimSuffix = ".reclaim"
 
-// maxReclaimGuardAttempts bounds the non-recursive guard claim's attempts
-// (card t1606): one initial O_EXCL and one after breaking a verified-dead
-// rival guard. The guard claim NEVER recurses — a rival guard that is
-// itself dead is disposed by breakStaleLockBare's own verified-dead gate,
-// and a live rival simply owns its disposal — so nested guard chains are
-// never created by contention and every historical dead chain, however
-// deep, reclaims in bounded time. The former depth cap refused a chain at
-// 3, and the refusal was permanent: the recursion that read the depth from
-// the path self-propagated under contention (each level's guard went
-// through ClaimSection, whose own contention path spawned the next
-// .reclaim level), and past the cap no later walk could ever collect the
-// chain — a single dead reclaimer wedged the lock for the life of the
-// boot.
+// maxReclaimGuardAttempts bounds the guard claim's attempts (card t1606):
+// one initial O_EXCL and one after a blocked rival guard was disposed. The
+// former design claimed the guard through ClaimSection, whose contention
+// path spawned the next .reclaim level for EVERY blocked rival — live ones
+// included — so contention self-propagated the chain and the depth-3 cap
+// refused it permanently: a single dead reclaimer wedged the lock for the
+// life of the boot. The non-recursive guard claim kills the
+// self-propagation: a live rival owns its disposal (at most ONE transient
+// guard level spawns, and a fresh guard claims immediately), and a dead
+// rival's disposal goes through the guarded path, so concurrent disposers
+// stay serialized and any dead chain unwinds one level per walk.
 const maxReclaimGuardAttempts = 2
 
 // ClaimSection takes the advisory lock at path, returning its release
@@ -226,13 +224,15 @@ func BreakStaleLock(path string) bool {
 	return BreakStaleLockContext(context.Background(), path)
 }
 
-// claimGuard takes a break's guard marker WITHOUT recursing (card t1606):
-// one O_EXCL attempt, and on contention a verified-dead rival guard is
-// disposed through breakStaleLockBare's own gate and the claim retried —
-// never through ClaimSection, whose contention path would spawn the next
-// guard level and let the chain self-propagate under contention. A live
-// rival guard owns its disposal: the caller refuses and its own retry
-// budget backs off, exactly as a live section holder blocks a claim.
+// claimGuard takes a break's guard marker WITHOUT the ClaimSection
+// recursion that once self-propagated the chain (card t1606): one O_EXCL
+// attempt, and on contention the rival guard's disposal runs through the
+// GUARDED path (BreakStaleLockContext — the rival's own guard is claimed
+// first, so two reclaimers of the same dead guard can never interleave a
+// verdict with the other's live re-acquisition) and the claim retried. A
+// live rival guard owns its disposal: the caller refuses and its own
+// retry budget backs off, exactly as a live section holder blocks a
+// claim.
 func claimGuard(ctx context.Context, guardPath string) (func() error, bool) {
 	for range maxReclaimGuardAttempts {
 		if err := ctx.Err(); err != nil {
@@ -251,7 +251,17 @@ func claimGuard(ctx context.Context, guardPath string) (func() error, bool) {
 		if !errors.Is(err, os.ErrExist) {
 			return nil, false
 		}
-		if !breakStaleLockBare(guardPath) {
+		// A rival guard blocks the claim. Its disposal must be SERIALIZED
+		// (review-gate finding on card t1606, P1): a bare verify-and-delete
+		// lets two reclaimers of the same dead guard interleave so one's
+		// late delete removes the other's LIVE re-acquired guard. Route the
+		// disposal through the guarded path — the rival's OWN guard is
+		// claimed first, exactly like every other delete here. For a live
+		// rival this still spawns at most ONE transient guard level (the
+		// fresh guard claims immediately, the live rival refuses), so the
+		// former self-propagation stays gone; a dead chain unwinds one
+		// level per walk.
+		if !BreakStaleLockContext(ctx, guardPath) {
 			select {
 			case <-ctx.Done():
 				return nil, false
@@ -310,8 +320,12 @@ func breakStaleLockBare(path string) bool {
 		return false
 	}
 	// The disposal gate: the bytes at the path must STILL be the bytes the
-	// verdict was made on, immediately before the unlink.
-	now, err := os.ReadFile(path)
+	// verdict was made on, immediately before the unlink. The re-check reads
+	// through the same BOUNDED read as the verdict (review-gate finding on
+	// card t1606, P2): a plain os.ReadFile here parked forever on a FIFO
+	// swapped in after the first read — the caller's context never reached
+	// it. sectionRereadFn refuses a non-regular path without opening it.
+	now, err := sectionRereadFn(path)
 	if err != nil || string(now) != string(raw) {
 		return false // someone replaced the lock between verdict and disposal
 	}
