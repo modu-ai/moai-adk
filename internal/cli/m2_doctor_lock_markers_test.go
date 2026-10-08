@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
@@ -73,29 +72,6 @@ func TestDoctorUserLockMarkersUnixFlockLeftoverIsOK(t *testing.T) {
 	check := checkUserLockMarkers(home, false)
 	if check.Status != uikit.CheckOK {
 		t.Fatalf("a clean unix flock leftover produced %s (want ok): %q", check.Status, check.Message)
-	}
-}
-
-// TestDoctorUserLockMarkersIrregularIsSurfaced — gate round 19: a FIFO at
-// a marker path is warned, never read (this test returning is the proof
-// the row did not hang).
-func TestDoctorUserLockMarkersIrregularIsSurfaced(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("FIFO semantics are unix")
-	}
-	home := t.TempDir()
-	if err := os.MkdirAll(filepath.Dir(userassets.GuardMarkerPath(home)), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := syscall.Mkfifo(userassets.GuardMarkerPath(home), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	check := checkUserLockMarkers(home, false)
-	if check.Status != uikit.CheckWarn {
-		t.Fatalf("an irregular marker produced %s (want warn): %q", check.Status, check.Message)
-	}
-	if !strings.Contains(check.Message, "irregular object") {
-		t.Errorf("the row does not name the irregular object: %q", check.Message)
 	}
 }
 

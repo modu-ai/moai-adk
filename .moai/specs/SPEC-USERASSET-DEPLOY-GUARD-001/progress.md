@@ -398,6 +398,17 @@ UnixFlockLeftoverIsOK, (C) IsNotExist-only + Irregular 노출, (D) stale window 
 **게이트**: lint 0, gofmt 청결, windows build+test compile OK, userassets 잔여 RED 4건
 (M5/M6 소관), cli 배터리 의도 RED 8건 변화 없음, 저널 가족 6종 + Codex 가족 4종 GREEN.
 
+### 게이트 21/22 — 해시 판별자 정정 + 컴파일 클래스 4번째 인스턴스 (2026-10-09)
+
+| # | 수리 | 검증 |
+|---|---|---|
+| 21(a) | **컴파일 클래스 4번째**: cli m2_doctor_lock_markers_test.go의 syscall.Mkfifo를 `//go:build unix` 파일(m2_doctor_lock_markers_unix_test.go)로 이동 — 런타임 가드는 컴파일을 못 막는 정정. **상설 규칙 선포: unix 전용 syscall(Mkfifo·Flock 등)은 첫 작성부터 빌드태그 파일+windows 스텁으로 — M4-M7 테스트 전부 적용** | `GOOS=windows go test -c ./internal/cli` OK (userassets도 OK) |
+| 21(b)/22-1 [P1] | **중단 갱신 오판 정정 — 해시 판별자**: case 3의 분류기를 `tracked` 플래그만 쓰던 형태에서 **해시 비교 판별자**로 정정 — (i) 디스크 바이트 == 기존 manifest 해시 = 미완료 pending refresh → 무분류로 일반 refresh 경로 위임 (applyTarget이 stateManifestMatch로 v2 완성; manifest를 여기서 건드리지 않음), (ii) 바이트 변경 = 사용자 수정 → divergence, 단 **이번 런이 쓰지 않은 파일의 기존 기록은 verbatim 보존** (저널 해시는 플래그 완결 런 자기 설치에만 권한). v2 해시를 v1 바이트에 못박아 갱신이 영구 막히던 결함(게이트 재현: 2차 재시도까지 v1 고착) 차단 | TestJournalIncompletePendingRefreshCompletes GREEN — 재시도가 v2로 refresh + divergence/collision 0 + manifest=v2 + 3차 런 멱등(고착 없음); 게이트 18 divergence 테스트도 GREEN 유지 |
+| 22-2 | 저널 테스트 중단점 — **이미 d90df83f0에 착지** (단일 판독 설계의 read-park 소멸 → afterTargetPersist 시음 이관, 두 테스트 재조준). 게이트 실측은 커밋 중간 트리 기준 | 현재 HEAD에서 두 테스트 GREEN (전체 스위트 관측) |
+
+**게이트**: lint 0, gofmt 청결, windows build + userassets/cli test compile OK, 의도 RED
+세트 불변 (userassets 4건 = M5/M6, cli 8건 = M6/M7).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop 소관.)_

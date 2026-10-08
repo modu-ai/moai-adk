@@ -601,16 +601,27 @@ func (in *Installer) reconcileJournal(j *PendingJournal, manifest *Manifest, roo
 		}
 		// Case 3: never reinstall on a mismatch. The classification is
 		// recorded so the RF5 collision pre-pass does not re-count it.
+		currentSHA := sha256Hex(data)
+		record, tracked := manifest.Files[e.Path]
+		// Gate rounds 21(b)/22 — the HASH discriminator: a flag-less entry
+		// is "not written THIS run", which alone says nothing about
+		// ownership. Compare the EXISTING manifest hash against the current
+		// on-disk bytes:
+		//   bytes == manifest hash → the file is exactly what the last
+		//   successful run left — the journal entry is an INCOMPLETE
+		//   PENDING REFRESH (a new version recorded, never written). Hand
+		//   the target to the normal refresh path (un-classified: the
+		//   per-asset pass refreshes it to shipped) and leave the manifest
+		//   record alone — rewriting it here would pin v2 onto a v1 file
+		//   and wedge the update forever.
+		//   bytes != manifest hash → the user edited it after the last
+		//   successful run → REQ-023 divergence (backup + preserve), and
+		//   the EXISTING record is kept verbatim — the journal's hash has
+		//   no authority over a file this run never wrote.
+		if !e.WriteCompleted && tracked && record.SHA256 != "" && currentSHA == record.SHA256 {
+			continue
+		}
 		classified[e.Path] = true
-		// Gate round 18: a flag-less entry is "not written THIS run", not
-		// "not owned" — an ALREADY-TRACKED target (a record an earlier
-		// successful run wrote; e.g. the failed-save up-to-date-run repro)
-		// carries its ownership in the manifest, and a user edit on it is
-		// REQ-023 divergence (backup + preserve + report), never a
-		// collision. Only an UNTRACKED mismatching target reads as
-		// collision: no manifest record AND no completion flag is the
-		// foreign-file shape RF5 guards against.
-		_, tracked := manifest.Files[e.Path]
 		if e.WriteCompleted || tracked {
 			// REQ-023 divergence: preserve + backup + report — the backup
 			// arm fires HERE (not in applyTarget) because the classified
@@ -625,17 +636,21 @@ func (in *Installer) reconcileJournal(j *PendingJournal, manifest *Manifest, roo
 					res.Failures = append(res.Failures, FileOutcome{Path: e.Path, Reason: backupErr.Error()})
 				}
 			}
-			// Item 7 (fix round 3): KEEP the manifest record carrying the
-			// journal's original hash + install source — the user's edit is
-			// preserved on disk AND the file stays tracked, so future runs
-			// classify it as REQ-023 divergence (with backup) instead of
-			// flipping to a collision after the journal cleanup. B6 merge:
-			// unknown fields survive.
+			// Item 7 (fix round 3): keep the manifest record so the file
+			// stays tracked and future runs classify the preserved edit as
+			// REQ-023 divergence. Gate round 22: WHICH record survives is
+			// ownership-scoped — the journal's hash has authority only over
+			// the run's OWN install (the flag-complete interrupted-install
+			// case); a tracked file the run never wrote keeps its EXISTING
+			// record verbatim, so a pending v2 is never pinned onto v1
+			// bytes.
 			fe := manifest.Files[e.Path]
-			fe.SHA256 = e.ExpectedSHA256
-			fe.Bundle = e.Bundle
-			fe.InstalledAt = e.InstalledAt
-			fe.MoaiVersion = e.MoaiVersion
+			if e.WriteCompleted || !tracked {
+				fe.SHA256 = e.ExpectedSHA256
+				fe.Bundle = e.Bundle
+				fe.InstalledAt = e.InstalledAt
+				fe.MoaiVersion = e.MoaiVersion
+			}
 			manifest.Files[e.Path] = fe
 			res.DivergencePreserved++
 			res.Divergences = append(res.Divergences, e.Path)
