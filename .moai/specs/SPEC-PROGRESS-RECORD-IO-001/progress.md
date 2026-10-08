@@ -330,7 +330,13 @@ commit carries (byte-identical to this commit's tree).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: complete (route (ii) adopted; substance commits 3f1f942b4 + e6eb6da2f —
+AC-PRI-005/006/008 PASS, AC-PRI-003/004/009 dispositioned via the §E.2 Q2 record,
+AC-CI-007 landing-flow pending)
+governing_audit: plan-audit-4 + plan-audit-5 (PASS-WITH-DEBT 0.94; the round-5 delta
+re-affirmation carries a zero hash-subject diff through a2fcca6c3; receipt
+rcpt-5bbbb0b8650328de4d6b115f)
+operator_override: §G row-level ceiling override recorded at a2fcca6c3
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
