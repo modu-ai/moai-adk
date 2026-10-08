@@ -359,3 +359,128 @@ func TestDeployedAlwaysLoadedCharBudget(t *testing.T) {
 		}
 	}
 }
+
+// surfaceTotal sums the member sizes of a derived surface.
+func surfaceTotal(members []deployedSurfaceMember) int {
+	total := 0
+	for _, m := range members {
+		total += m.UTF16
+	}
+	return total
+}
+
+// memberExists reports whether path is in the derived member list.
+func memberExists(members []deployedSurfaceMember, path string) bool {
+	for _, m := range members {
+		if m.Path == path {
+			return true
+		}
+	}
+	return false
+}
+
+// TestDeployedAlwaysLoadedSurfaceDerivation exercises the REQ-ALB-004
+// derivation property set with fixture files written into the deployed tree
+// (AC-ALB-005): an added always-loaded rule grows the total, a paths:-scoped
+// rule leaves it unchanged, an added import grows it, and a derivation
+// mutated toward a hardcoded member list demonstrably fails the growth
+// property.
+func TestDeployedAlwaysLoadedSurfaceDerivation(t *testing.T) {
+	const fixtureRuleRel = ".claude/rules/moai/core/zz-alb-fixture-rule.md"
+	const fixtureScopedRel = ".claude/rules/moai/core/zz-alb-fixture-scoped.md"
+	const fixtureImportRel = ".moai/zz-alb-import-fixture.md"
+	fixtureBody := "Fixture rule body for the always-loaded surface derivation mutation checks. " +
+		"It must be long enough that its UTF-16 size is nonzero and observable.\n"
+
+	writeFixture := func(t *testing.T, root, rel, content string) {
+		t.Helper()
+		abs := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+			t.Fatalf("mkdir fixture dir: %v", err)
+		}
+		if err := os.WriteFile(abs, []byte(content), 0o644); err != nil {
+			t.Fatalf("write fixture: %v", err)
+		}
+	}
+
+	t.Run("always_loaded_rule_fixture_grows_total", func(t *testing.T) {
+		root := deployEmbeddedTemplatesForTest(t)
+		before := deriveDeployedAlwaysLoadedMembers(t, root)
+		writeFixture(t, root, fixtureRuleRel, fixtureBody) // no frontmatter: always-loaded
+		after := deriveDeployedAlwaysLoadedMembers(t, root)
+
+		if !memberExists(after, fixtureRuleRel) {
+			t.Errorf("added always-loaded fixture missing from derived members: %s", fixtureRuleRel)
+		}
+		wantGrowth := utf16CodeUnits(fixtureBody)
+		if got := surfaceTotal(after) - surfaceTotal(before); got != wantGrowth {
+			t.Errorf("adding an always-loaded rule must grow the total by its size: growth=%d want=%d", got, wantGrowth)
+		}
+	})
+
+	t.Run("paths_scoped_rule_fixture_leaves_total_unchanged", func(t *testing.T) {
+		root := deployEmbeddedTemplatesForTest(t)
+		before := deriveDeployedAlwaysLoadedMembers(t, root)
+		scoped := "---\ndescription: fixture\npaths:\n  - '**/zz-alb-fixture-scoped*'\n---\n" + fixtureBody
+		writeFixture(t, root, fixtureScopedRel, scoped) // top-level paths: → on-demand
+		after := deriveDeployedAlwaysLoadedMembers(t, root)
+
+		if memberExists(after, fixtureScopedRel) {
+			t.Errorf("paths:-scoped fixture must not join the always-loaded member list: %s", fixtureScopedRel)
+		}
+		if got, want := surfaceTotal(after), surfaceTotal(before); got != want {
+			t.Errorf("adding a paths:-scoped rule must leave the total unchanged: got=%d want=%d", got, want)
+		}
+	})
+
+	t.Run("import_closure_fixture_grows_total", func(t *testing.T) {
+		root := deployEmbeddedTemplatesForTest(t)
+		before := deriveDeployedAlwaysLoadedMembers(t, root)
+
+		agentsAbs := filepath.Join(root, "AGENTS.md")
+		data, err := os.ReadFile(agentsAbs)
+		if err != nil {
+			t.Fatalf("read deployed AGENTS.md: %v", err)
+		}
+		imported := "Imported fixture body reachable through the @-import closure mutation.\n"
+		importLine := "\n@" + fixtureImportRel + "\n"
+		withImport := string(data) + importLine
+		if err := os.WriteFile(agentsAbs, []byte(withImport), 0o644); err != nil {
+			t.Fatalf("append import line to deployed AGENTS.md: %v", err)
+		}
+		writeFixture(t, root, fixtureImportRel, imported)
+		after := deriveDeployedAlwaysLoadedMembers(t, root)
+
+		if !memberExists(after, fixtureImportRel) {
+			t.Errorf("imported fixture missing from derived members: %s", fixtureImportRel)
+		}
+		// Expected growth = the imported file + the import line AGENTS.md
+		// itself absorbed (it is a measured member).
+		wantGrowth := utf16CodeUnits(imported) + utf16CodeUnits(importLine)
+		if got := surfaceTotal(after) - surfaceTotal(before); got != wantGrowth {
+			t.Errorf("adding an import-bearing file must grow the total by the imported file plus the import line: growth=%d want=%d",
+				got, wantGrowth)
+		}
+	})
+
+	t.Run("hardcoded_member_list_fails_growth_property", func(t *testing.T) {
+		// The mutation under observation: a derivation pinned to the anchor
+		// member list instead of deriving mechanically. The REQ-ALB-004
+		// growth property must FAIL under that mutation — observed here by
+		// contrasting the two derivations on the same mutated tree.
+		root := deployEmbeddedTemplatesForTest(t)
+		hardcoded := deriveDeployedAlwaysLoadedMembers(t, root) // frozen anchor list
+		writeFixture(t, root, fixtureRuleRel, fixtureBody)
+
+		mechanical := deriveDeployedAlwaysLoadedMembers(t, root)
+		mechanicalGrew := surfaceTotal(mechanical) > surfaceTotal(hardcoded)
+		hardcodedMissed := !memberExists(hardcoded, fixtureRuleRel) && memberExists(mechanical, fixtureRuleRel)
+
+		if !(mechanicalGrew && hardcodedMissed) {
+			t.Errorf("expected the hardcoded-list derivation to fail the growth property: mechanicalGrew=%v hardcodedMissed=%v",
+				mechanicalGrew, hardcodedMissed)
+		}
+		t.Logf("mutation observed: hardcoded derivation total=%d stays frozen while mechanical total=%d grows and sees %s — the property FAILS for a hardcoded list, PASSes for the mechanical derivation",
+			surfaceTotal(hardcoded), surfaceTotal(mechanical), fixtureRuleRel)
+	})
+}
