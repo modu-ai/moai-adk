@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-ZONE-SHELL-ESCAPE-001
 title: "Protected-zone ANSI-C shell decoding judges the bytes bash executes — NUL part-terminator, raw-byte \\x, bounded no-digit escapes"
-version: "0.1.2"
+version: "0.1.3"
 status: draft
 created: 2026-10-09
 updated: 2026-10-09
@@ -22,8 +22,9 @@ tags: "hook, security, protected-zone, ansi-c, shell-quoting, nul-truncation, ra
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-10-09 | 0.1.0 | Initial draft. Authored by manager-spec for card t1585 (t1570 follow-up), from the lane-19 RED reproduction measured 2026-10-08 (`.moai/reports/t1585/red-repro.md`; instrument committed baseline-first as `9dbe40c0a` on `WT-zone-gate-defects`). Three measured defects in the ANSI-C (`$'...'`) half of the shell decoder: a P1 protected-path bypass and two P2 decoder defects. |
-| 2026-10-09 | 0.1.1 | Review-gate rounds 1-2 + plan-audit iter-1 repair: `\u` pin bytes corrected `e2 a8 87` → `e2 8a 87` (the old value is U+2A07, a different character), pin input restated as the escape texts `⊇`/`\U00002287`, host-bash 3.2.57 footnote + full ground-truth re-measurement (all seven rows, `od`), evidence custody corrected and the canonical record TRACKED as `evidence-red-repro.md` (gitignored duplicate demoted), controls cited MEASURED at `7be9f41b5`, AC-HZS-006 §2.1 conditional-demotion sentence, new AC-HZS-009 (part-level shape) / AC-HZS-010 (octal origin) / AC-HZS-011 (non-ASCII outside-zone control), AC-HZS-008 cell 1 re-scoped to the recorded run. |
+| 2026-10-09 | 0.1.1 | Review-gate rounds 1-2 + plan-audit iter-1 repair: `\u` pin bytes corrected `e2 a8 87` → `e2 8a 87` (the old value is U+2A07, a different character), pin input restated as the escape texts `\\u2287`/`\U00002287`, host-bash 3.2.57 footnote + full ground-truth re-measurement (all seven rows, `od`), evidence custody corrected and the canonical record TRACKED as `evidence-red-repro.md` (gitignored duplicate demoted), controls cited MEASURED at `7be9f41b5`, AC-HZS-006 §2.1 conditional-demotion sentence, new AC-HZS-009 (part-level shape) / AC-HZS-010 (octal origin) / AC-HZS-011 (non-ASCII outside-zone control), AC-HZS-008 cell 1 re-scoped to the recorded run. |
 | 2026-10-09 | 0.1.2 | Gate round 3: the prior deny-safe claim about `\U` on old bash DELETED (false — a literal-named entry, symlink included, is live and reaches the zone unjudged while the guard judges the decoded path; gate-measured: allow + protected file deleted); replaced with a support-boundary + residual statement (decoder models bash ≥ 4.2 semantics; version-variance family alongside zsh; follow-up-card material; candidate closures noted without decision). Host split pinned: `\u` renders / `\U` literal on `/bin/bash` 3.2.57 (three pinned re-measurements). |
+| 2026-10-09 | 0.1.3 | Gate round 4 (verbatim gate-shaped texts): ground-truth `\u` row labeled "input is the escape TEXT, bash-measured"; §B host note replaced verbatim (SUPPORT BOUNDARY + RESIDUAL RISK — the literal-named-entry bypass measured twice; fail-closed alternative recorded as an undecided run-phase design option); the round-3 "accepted as a documented residual" acceptance claim and the "sound over-approximation" candidate removed; AC-HZS-007 When/Then carries the mutant-fail clause (maxDigits 4→2 must FAIL); plan M1(b) aligned. |
 
 ## B. Problem Statement
 
@@ -48,29 +49,22 @@ tests) demonstrates each. The bash ground truth — fully re-measured
 | `zone_dir$'\x00/sub'` | `7a 6f 6e 65 5f 64 69 72` ("zone_dir") | whole word = the pre-NUL text |
 | `$'a\0b'` | `61` ("a") | octal NUL truncates identically |
 | `$'\xec\xa1\x80'` | `ec a1 80` | `\xHH` emits ONE RAW BYTE (no code-point re-encoding) |
-| `$'⊇'` | `e2 8a 87` | `\u` renders the code point as UTF-8 (current decoder correct here) |
+| `$'\\u2287'` | `e2 8a 87` | `\u` renders the code point as UTF-8 (current decoder correct here; input is the escape TEXT, bash-measured) |
 | `$'⊇'` (literal char) | `e2 8a 87` | a non-ASCII literal passes through byte for byte |
 
-Host-bash note (measured 2026-10-09 with `od` on this host's bash 3.2.57 —
-`bash` and `/bin/bash` identical; the `\u`/`\U` split confirmed by three
-pinned re-measurements the same day): `$'⊇'` renders `e2 8a 87` (`\u`
-IS supported on 3.2.57); `$'\U00002287'` renders the literal text
-`\U00002287` (`\U` is not).
-
-The decoder models the modern `\u`/`\U` set (bash ≥ 4.2 ANSI-C semantics).
-SUPPORT BOUNDARY + RESIDUAL — explicitly NOT claimed safe: on a host whose
-bash lacks `\U` (measured here), the decoded word diverges from the
-executing shell's argument, and a filesystem entry named with that literal
-escape text — a symlink included — is a REAL bypass class: the guard judges
-the decoded path while the shell reaches the literal-named entry.
-Review-gate round 3 measured this class on this host (relayed lane
-measurement: guard allow + the protected file deleted through a
-literal-named entry). Accepted as a documented residual — the
-version-variance family, alongside the zsh residual (§D, §F); the repair
-belongs to a follow-up card. Candidate closures noted WITHOUT decision:
-judging both the decoded and the literal spellings of a word (a sound
-over-approximation, consistent with the walker's possible-directory-set
-semantics), or failing closed on `\u`/`\U` escapes.
+Host-bash note (re-measured 2026-10-09 with `od` on this host's bash 3.2.57
+— `bash` and `/bin/bash` identical): `$'\\u2287'` renders `e2 8a 87` (`\u`
+IS supported); `$'\U00002287'` renders the literal text `\U00002287` (`\U`
+is not supported at 3.2). The decoder models the modern `\u`/`\U` set.
+SUPPORT BOUNDARY + RESIDUAL RISK — NOT deny-safe: where the executing bash
+renders `\U` literally, the guard judges the decoded code-point path while
+the shell touches the LITERAL `\U00002287/...` name, and a filesystem entry
+with that literal name (e.g. a symlink into the protected zone) is then
+reachable unjudged — the review gate measured exactly this bypass on this
+host (guard `allow`, protected file deleted by real bash, twice). This
+divergence is a documented residual of modeling bash ≥4.2 ANSI-C semantics;
+a fail-closed design alternative (deny on any `\u`/`\U` escape) is recorded
+as a run-phase design option, not decided here.
 
 ### Defect ① (P1) — decoded NUL kept: protected-path bypass
 
@@ -128,7 +122,7 @@ those same bytes the shell places in the executed argument.
 ### REQ-HZS-003 — `\u`/`\U` code-point rendering preserved (Unwanted)
 
 The repair shall not change the rendering of `\u`/`\U` escapes: the code point
-shall keep rendering as UTF-8 — measured rows: the escape texts `⊇` and
+shall keep rendering as UTF-8 — measured rows: the escape texts `\\u2287` and
 `\U00002287` both decode to `e2 8a 87` (re-measured 2026-10-09; host-bash
 note in §B: on bash 3.2.57 `\u` renders but `\U` renders literally, so the
 decoder's `\U` output diverges from that shell's argument — a documented
@@ -216,7 +210,7 @@ plan-phase baseline is green except the three RED defect rows).
    NUL-bearing or non-ASCII commands fails them.
 3. The run-phase-finalized instrument carries the M1 rows — the guard-level
    no-crash row (AC-HZS-006), the `\u`/`\U` code-point pin rows (AC-HZS-007,
-   escape texts `⊇`/`\U00002287`), the part-level NUL row (AC-HZS-009:
+   escape texts `\\u2287`/`\U00002287`), the part-level NUL row (AC-HZS-009:
    `$'a\x00b'X` → `aX`), the octal-origin command row (AC-HZS-010), and the
    non-ASCII outside-zone allow controls (AC-HZS-011) — all GREEN after M2
    (AC-HZS-006/009/010 under their §2.1 conditionals).
@@ -256,9 +250,8 @@ This SPEC repairs the three measured ANSI-C decoder defects and nothing else.
   literal-named entry — symlink included — reaches the zone unjudged
   (gate-measured bypass class, review-gate round 3). Documented residual,
   explicitly NOT claimed safe; repair is follow-up-card material.
-- Candidate closures noted WITHOUT decision: judge both the decoded and the
-  literal spellings (sound over-approximation, consistent with the walker's
-  possible-directory-set semantics), or fail closed on `\u`/`\U` escapes.
+- A fail-closed design alternative (deny on any `\u`/`\U` escape) is
+  recorded as a run-phase design option, not decided here.
 
 ### Out of Scope — sibling guard surfaces
 

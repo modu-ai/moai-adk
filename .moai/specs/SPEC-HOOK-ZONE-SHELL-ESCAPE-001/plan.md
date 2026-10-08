@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-ZONE-SHELL-ESCAPE-001
 title: "Plan — ANSI-C shell decoder repair (NUL part-terminator, raw-byte \\x, bounded no-digit escapes)"
-version: "0.1.2"
+version: "0.1.3"
 created: 2026-10-09
 updated: 2026-10-09
 author: manager-spec
@@ -139,10 +139,11 @@ re-runs of M3).
   `$'\x'` judged with the panic contained in the test helper
   (`hzsDecodeAnsiC` pattern extended to the guard call): RED pre-fix (the
   walk panics), decision post-fix; (b) `\u`/`\U` code-point pin — the
-  ESCAPE TEXTS `⊇` and `\U00002287` (the decoder receives the inner
+  ESCAPE TEXTS `\\u2287` and `\U00002287` (the decoder receives the inner
   text, so the rows name the escapes, not the literal character) both decode
   to bytes `e2 8a 87` (green-now by design; pins fix ②'s split from
-  regressing the code-point arm); (c) part-level NUL row — `zoneWordText`
+  regressing the code-point arm — a mutant that breaks the `\u` branch,
+  e.g. maxDigits 4→2, must FAIL here); (c) part-level NUL row — `zoneWordText`
   over `$'a\x00b'X` yields `aX` (RED pre-fix: the current decode keeps the
   NUL, `a\x00bX`; fails a word-level-truncation mutant that satisfies the
   command rows); (d) octal-origin command row — `rm -r zone_dir$'\0/sub'`

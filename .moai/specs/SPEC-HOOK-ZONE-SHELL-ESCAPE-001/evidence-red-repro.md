@@ -12,7 +12,7 @@ the original's text is never silently re-read.
 
 1. The `\u` ground-truth row's bytes: the 2026-10-08 record transcribed
    `e2 a8 87` (= U+2A07, a DIFFERENT character). Re-measured with `od`:
-   `$'⊇'` → `e2 8a 87` (= U+2287, ⊇). Every quoting artifact now pins
+   `$'\\u2287'` → `e2 8a 87` (= U+2287, ⊇). Every quoting artifact now pins
    `e2 8a 87`.
 2. The row labeled "\u renders the code point" used the LITERAL character
    `$'⊇'` — no `\u` escape, a pass-through that never reaches the decoder's
@@ -47,7 +47,7 @@ Measured with `od -An -tx1` (rows 1-5, 7 on 2026-10-08; ALL rows re-measured
 | `zone_dir$'\x00/sub'` | `7a 6f 6e 65 5f 64 69 72` ("zone_dir") | whole word = the pre-NUL text |
 | `$'a\0b'` | `61` ("a") | octal NUL truncates identically |
 | `$'\xec\xa1\x80'` | `ec a1 80` | `\xHH` emits ONE RAW BYTE (no code-point re-encoding) |
-| `$'⊇'` | `e2 8a 87` | `\u` renders the code point as UTF-8 (current decoder correct here; supported even on bash 3.2.57) |
+| `$'\\u2287'` | `e2 8a 87` | `\u` renders the code point as UTF-8 (current decoder correct here; supported even on bash 3.2.57) |
 | `$'\U00002287'` | `5c 55 30 30 30 30 32 32 38 37` (`\U00002287` literal) | `\U` is NOT supported on bash 3.2.57 — rendered literally; the decoder models the modern set (host-variance residual — on such hosts a literal-named entry is a real bypass class, gate-measured; see spec.md §B, NOT claimed safe) |
 | `$'⊇'` (literal char) | `e2 8a 87` | a non-ASCII literal passes through byte for byte (pass-through — NOT the `\u` branch) |
 

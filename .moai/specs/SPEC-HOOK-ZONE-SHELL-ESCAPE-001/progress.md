@@ -53,8 +53,8 @@ Verdict fail, 3 P2 findings, 2 on the SPEC artifacts (finding 3, the
 instrument, repaired by the lane at `7be9f41b5` — controls split into
 independent tests, pre-repair green MEASURED for both): (1) the `\u` pin
 bytes `e2 a8 87` corrected to `e2 8a 87` — re-measured with `od` on this
-host's bash 3.2.57 (`⊇` → `e2 8a 87`; `\U00002287` → literal, no `\U`
-support) and the pin input restated as the escape texts `⊇` /
+host's bash 3.2.57 (`\\u2287` → `e2 8a 87`; `\U00002287` → literal, no `\U`
+support) and the pin input restated as the escape texts `\\u2287` /
 `\U00002287`; (2) the red-repro.md commit attribution corrected — the report
 is gitignored machine-local, the committed carrier is the instrument header
 at `9dbe40c0a`. decided_by=lane-19 re-delegation (msg 97ea7afa).
@@ -79,8 +79,21 @@ replaced with a support-boundary + residual statement (version-variance
 family, alongside zsh; follow-up-card material; candidate closures noted
 without decision). Host split pinned: `\u` renders / `\U` literal on
 `/bin/bash` 3.2.57 (three pinned re-measurements). Pin input forms
-re-verified already-compliant in f4024fbd3 (escape texts `⊇` /
+re-verified already-compliant in f4024fbd3 (escape texts `\\u2287` /
 `\U00002287`, both `e2 8a 87`).
+
+Gate round 4 (verbatim gate-shaped texts applied; the lead's message
+rendered `\\u2287` as the literal ⊇ — restored to the escape text per the
+texts' own "input is the escape TEXT" wording): §B note replaced verbatim
+(the round-3 "accepted as a documented residual" acceptance claim and the
+"sound over-approximation" candidate removed — the new-safety-claim class
+the gate killed); AC-HZS-007 When/Then carries the mutant-fail clause
+(maxDigits 4→2 must FAIL); plan M1(b) aligned; §F candidate bullet reduced
+to the fail-closed option. NOTE: the lead's 0-hit `grep deny-safe`
+self-check is unsatisfiable alongside the verbatim texts themselves
+("NOT deny-safe" appears as a negation in the §B note and AC-HZS-007) —
+applied verbatim and reporting the grep hits with locations instead of
+rephrasing.
 
 ## §E.2 Run-phase Evidence
 

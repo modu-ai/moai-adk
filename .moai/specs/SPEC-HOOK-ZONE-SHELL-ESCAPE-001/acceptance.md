@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-ZONE-SHELL-ESCAPE-001
 title: "Acceptance — ANSI-C shell decoder repair"
-version: "0.1.2"
+version: "0.1.3"
 created: 2026-10-09
 updated: 2026-10-09
 author: manager-spec
@@ -170,13 +170,15 @@ Maps REQ-HZS-003
 **Given** the decoder surface `zoneUnescapeAnsiC`, which receives the INNER
 TEXT of a `$'...'` part (the pin therefore names the ESCAPE TEXTS, not the
 literal character — a literal `⊇` would exercise only the pass-through path),
-**When** the escape texts `⊇` and `\U00002287` decode,
-**Then** both render the three UTF-8 bytes `e2 8a 87` (U+2287; `⊇`
-bash-measured on this host and re-measured 2026-10-09 with `od`) — the M1 pin
-rows make the code-point path explicit so M2's `\x` split cannot regress it.
-Host-bash note: `\U00002287` renders LITERALLY on this host's bash 3.2.57
-(no `\U` support); the decoder models the modern set — the divergence is a
-documented host-variance residual, explicitly NOT claimed safe (spec.md §B).
+**When** the escape texts `\\u2287` and `\U00002287` decode (the raw
+backslash-letter TEXT forms fed to zoneUnescapeAnsiC — a literal `⊇`
+character returns via the backslash-free early path and pins nothing: a
+mutant that breaks the `\u` branch, e.g. maxDigits 4→2, must FAIL here),
+**Then** both render the three UTF-8 bytes `e2 8a 87` (U+2287; bash-measured
+on this host, re-measured 2026-10-09 with `od`). Host-bash note:
+`\U00002287` renders LITERALLY on this host's bash 3.2.57; the divergence
+carries a support-boundary + residual-risk statement (spec.md §B) — it is
+documented residual, not deny-safe.
 Green-now by design (the current decoder is correct for
 `\u`/`\U`); the pin's value is POST-repair, verified again at M3.
 
