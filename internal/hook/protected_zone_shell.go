@@ -321,6 +321,80 @@ func zoneFirstArgWord(args []*syntax.Word) (string, bool) {
 	return zoneWordText(args[0])
 }
 
+// zoneWordRawText returns the word's text as a PRE-4.2 shell reads it:
+// identical to zoneWordText except that ANSI-C parts keep their escape text
+// undecoded. \u/\U support is version-variant (bash 3.2 renders the escape
+// text literally — the card's both-literal measurement), so a word carrying
+// \u/\U escapes is judged in BOTH worlds and denied when EITHER lands in
+// the zone (gate round 13 P1, card t1585): the mixed word decodes to a
+// short modern-world text while the old shell acts on the full literal path
+// through a literally-named entry. Parts without \u/\U decode identically
+// on every bash generation and never need this second candidate.
+func zoneWordRawText(w *syntax.Word) (string, bool) {
+	if w == nil {
+		return "", false
+	}
+	var b strings.Builder
+	for _, part := range w.Parts {
+		switch p := part.(type) {
+		case *syntax.Lit:
+			b.WriteString(zoneUnescapeLit(p.Value))
+		case *syntax.SglQuoted:
+			// both quoting forms keep their source text in the raw
+			// world: plain single quotes decode nothing on any bash,
+			// and the ANSI-C part's escapes stay text pre-4.2.
+			b.WriteString(p.Value)
+		case *syntax.DblQuoted:
+			for _, dp := range p.Parts {
+				lit, ok := dp.(*syntax.Lit)
+				if !ok {
+					return "", false
+				}
+				b.WriteString(zoneUnescapeDbl(lit.Value))
+			}
+		default:
+			return "", false
+		}
+	}
+	return b.String(), true
+}
+
+// zoneWordDual reports whether the word needs BOTH candidates judged: an
+// ANSI-C part carrying \u or \U is the one escape family whose rendering
+// differs across bash generations.
+func zoneWordDual(w *syntax.Word) bool {
+	if w == nil {
+		return false
+	}
+	for _, part := range w.Parts {
+		if p, ok := part.(*syntax.SglQuoted); ok && p.Dollar {
+			if strings.Contains(p.Value, `\u`) || strings.Contains(p.Value, `\U`) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// zoneWordCandidates returns the candidate texts one word contributes to
+// judgment: the decoded text, plus the raw pre-4.2 reading when the word
+// carries \u/\U escapes (gate round 13 P1). The bool is false when the word
+// is dynamic.
+func zoneWordCandidates(w *syntax.Word) ([]string, bool) {
+	t, literal := zoneWordText(w)
+	if !literal {
+		return nil, false
+	}
+	if !zoneWordDual(w) {
+		return []string{t}, true
+	}
+	raw, lit := zoneWordRawText(w)
+	if !lit || raw == t {
+		return []string{t}, true
+	}
+	return []string{t, raw}, true
+}
+
 // zoneWalker carries one shell-policy walk. cwds is the set of POSSIBLE
 // working directories at this point — control flow multiplies them, and a
 // candidate is denied when any of them covers it (round 6 P1). unbounded
@@ -421,12 +495,12 @@ func zoneRedirectTargets(redirs []*syntax.Redirect) (bool, []string) {
 				continue
 			}
 		}
-		t, literal := zoneWordText(rd.Word)
-		if !literal || t == "" {
+		worlds, literal := zoneWordCandidates(rd.Word)
+		if !literal || len(worlds) == 0 || worlds[0] == "" {
 			continue // dynamic target: under-match
 		}
 		mutating = true
-		targets = append(targets, t)
+		targets = append(targets, worlds...)
 	}
 	return mutating, targets
 }
@@ -749,9 +823,11 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		w.mutating = true
 		var fileArgs []string
 		for _, a := range cmd.Args[subIdx+1:] {
-			if ft, flit := zoneWordText(a); flit && ft != "--" && !strings.HasPrefix(ft, "-") {
-				fileArgs = append(fileArgs, ft)
+			worlds, flit := zoneWordCandidates(a)
+			if !flit || len(worlds) == 0 || worlds[0] == "" || worlds[0] == "--" || strings.HasPrefix(worlds[0], "-") {
+				continue
 			}
+			fileArgs = append(fileArgs, worlds...)
 		}
 		// every possible directory is a base the subcommand's file arguments
 		// can resolve against (round 6 P1); a -C moves that base — an absolute
@@ -796,10 +872,11 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 func zonePathCandidates(args []*syntax.Word) []string {
 	out := make([]string, 0, len(args))
 	for _, a := range args {
-		t, literal := zoneWordText(a)
-		if !literal || t == "" {
+		worlds, literal := zoneWordCandidates(a)
+		if !literal || len(worlds) == 0 || worlds[0] == "" {
 			continue
 		}
+		t := worlds[0]
 		if strings.HasPrefix(t, "--") {
 			if idx := strings.Index(t, "="); idx >= 0 && idx+1 < len(t) {
 				out = append(out, t[idx+1:])
@@ -809,7 +886,7 @@ func zonePathCandidates(args []*syntax.Word) []string {
 		if strings.HasPrefix(t, "-") {
 			continue
 		}
-		out = append(out, t)
+		out = append(out, worlds...)
 	}
 	return out
 }

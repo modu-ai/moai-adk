@@ -505,6 +505,56 @@ rm-arg+U00000000+octal; each fixture carries the literally-named symlinks
 `link\u0000` / `link\U00000000` → zone_dir/marker.md. Inputs
 transport-verified: whole-file NUL-byte scan zero; the escape literals carry
 the doubled backslash.
+
+**M2.2 remedy — dual-candidate judgment (GREEN record).** Shape: three new
+word-text helpers — `zoneWordDual` (does the word carry `\u`/`\U` in a
+Dollar-single-quoted part — the one version-variant escape family),
+`zoneWordRawText` (the pre-4.2 reading: ANSI-C parts keep their source text,
+Lit/DblQuoted decode as usual — identical across generations), and
+`zoneWordCandidates` (the decoded text plus the raw reading when dual). The
+three PATH-CANDIDATE funnels — `zonePathCandidates` (mutation-verb
+arguments), `zoneRedirectTargets` (write redirections), and the git
+`-C`/`--work-tree` file-argument loop — now append BOTH worlds, so a
+deny on EITHER candidate denies (the guard's sound possible-worlds
+over-approximation; `zoneFirstArgWord` stays single-world: it extracts the
+VERB, not a path). Fail-closed-on-`\u` was the narrower alternative and is
+NOT taken — it would over-block legal modern-bash paths.
+
+- **Command** (all 15 instrument tests): `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test
+  ./internal/hook -run '<the 11 names above>|TestCheckProtectedZoneShellMixedOriginNulDenied' -count=1 -v`
+- **Exit code**: `0`
+- **Observed (verbatim)**:
+
+```
+--- PASS: TestCheckProtectedZoneShellMixedOriginNulDeniedRedirect (0.01s)
+--- PASS: TestCheckProtectedZoneShellMixedOriginNulDeniedOctalTerm (0.01s)
+--- PASS: TestCheckProtectedZoneShellMixedOriginNulDeniedUpperHex (0.00s)
+--- PASS: TestCheckProtectedZoneShellMixedOriginNulDeniedUpperOctal (0.00s)
+--- PASS: TestCheckProtectedZoneShellCodePointNulDoesNotTruncate (0.01s)
+--- PASS: TestCheckProtectedZoneShellAnsiCNulTruncationOutsideZoneControl (0.01s)
+--- PASS: TestCheckProtectedZoneShellHexDirectSpellingControl (0.00s)
+--- PASS: TestCheckProtectedZoneShellNonAsciiOutsideZoneStaysAllowed (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.746s
+```
+
+All 15 green: the four mixed rows flipped DENY, the eleven earlier rows
+(including the M2.1 scoping row and the non-ASCII raw-byte allow controls)
+stay green — the dual world adds no deny pressure on words without
+`\u`/`\U`.
+
+- **Full package regression (M2.2)**: `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1
+  -timeout=25m -v ./internal/hook/` — exit 0, verbatim tail `PASS` / `ok
+  github.com/modu-ai/moai-adk/internal/hook	324.657s` /
+  `PACKAGE_POST22_EXIT=0`; 3644 RUN lines, ZERO `--- FAIL` lines; the four
+  mixed rows pass inside the package run. Slot lease `hook-suite` held for
+  the run, released after.
+- Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
+  `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
+  clean; family coverage `12.6%` (all-rows selector — the new rows exercise
+  the dual-world paths; pre-change family pair baseline was 12.2%).
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
