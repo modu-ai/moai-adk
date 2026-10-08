@@ -116,6 +116,54 @@ func TestDeepDeadReclaimChainIsReclaimable(t *testing.T) {
 	}
 }
 
+// TestLiveGuardChainRefusesWithoutADeepWalk pins the round-2 review-gate
+// finding: a chain of LIVE guards must be refused with a bounded number
+// of verdict reads — the rival disposal must stop at a live owner, not
+// descend level after level (the claimGuard → BreakStaleLockContext →
+// claimGuard walk multiplied the wait exponentially when several guards
+// were concurrently held: 1.4s at 8 levels vs the base's 107ms).
+func TestLiveGuardChainRefusesWithoutADeepWalk(t *testing.T) {
+	dir := t.TempDir()
+	liveOwnerFixture := func(path string) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
+			t.Fatalf("seed %s: %v", path, err)
+		}
+		if werr := writeOwnerLabel(path, 0o600); werr != nil {
+			t.Fatalf("label %s: %v", path, werr)
+		}
+	}
+	markerPath := filepath.Join(dir, "queue.lock.breaking")
+	liveOwnerFixture(markerPath)
+	chain := []string{markerPath}
+	p := markerPath
+	for range 8 {
+		p += reclaimSuffix
+		liveOwnerFixture(p)
+		chain = append(chain, p)
+	}
+
+	reads := 0
+	prevRead := sectionRereadFn
+	t.Cleanup(func() { sectionRereadFn = prevRead })
+	sectionRereadFn = func(path string) ([]byte, error) {
+		reads++
+		return prevRead(path)
+	}
+
+	if BreakStaleLock(markerPath) {
+		t.Fatal("a live guard chain read as breakable — a live owner must block")
+	}
+	if reads > 10 {
+		t.Fatalf("refusing a live guard chain cost %d verdict reads — the walk must stop at a live owner instead of descending", reads)
+	}
+	for _, path := range chain {
+		if _, serr := os.Stat(path); serr != nil {
+			t.Fatalf("a live guard was deleted despite the refusal: %s", path)
+		}
+	}
+}
+
 // TestClaimGuardRivalDisposalIsGuardedToo pins the review-gate finding on
 // card t1606 (P1): the guard claim's disposal of a DEAD rival guard must
 // run through the guarded path — a bare verify-and-delete lets two

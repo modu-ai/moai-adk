@@ -251,16 +251,31 @@ func claimGuard(ctx context.Context, guardPath string) (func() error, bool) {
 		if !errors.Is(err, os.ErrExist) {
 			return nil, false
 		}
-		// A rival guard blocks the claim. Its disposal must be SERIALIZED
-		// (review-gate finding on card t1606, P1): a bare verify-and-delete
-		// lets two reclaimers of the same dead guard interleave so one's
-		// late delete removes the other's LIVE re-acquired guard. Route the
-		// disposal through the guarded path — the rival's OWN guard is
-		// claimed first, exactly like every other delete here. For a live
-		// rival this still spawns at most ONE transient guard level (the
-		// fresh guard claims immediately, the live rival refuses), so the
-		// former self-propagation stays gone; a dead chain unwinds one
-		// level per walk.
+		// A LIVE rival guard owns its disposal: refuse at once, without
+		// entering the deeper reclaim walk (review-gate finding on card
+		// t1606, round 2 — with concurrently-held guards the walk through
+		// claimGuard → BreakStaleLockContext → claimGuard multiplied the
+		// wait exponentially, 1.4s at 8 levels vs the base's 107ms). The
+		// read is the same bounded one every verdict uses.
+		if raw, rerr := sectionRereadFn(guardPath); rerr == nil {
+			if owner, ok := OwnerFromBytes(raw); ok && !OwnerIsDead(owner) {
+				select {
+				case <-ctx.Done():
+					return nil, false
+				case <-time.After(2 * time.Millisecond):
+				}
+				continue
+			}
+		}
+		// A rival guard that is not verifiably live blocks the claim. Its
+		// disposal must be SERIALIZED (review-gate finding on card t1606,
+		// P1): a bare verify-and-delete lets two reclaimers of the same
+		// dead guard interleave so one's late delete removes the other's
+		// LIVE re-acquired guard. Route the disposal through the guarded
+		// path — the rival's OWN guard is claimed first, exactly like
+		// every other delete here. A dead chain unwinds one level per
+		// walk, and the guarded path's own verified-bytes gate aborts if
+		// the rival re-acquired between this pre-check and the disposal.
 		if !BreakStaleLockContext(ctx, guardPath) {
 			select {
 			case <-ctx.Done():
