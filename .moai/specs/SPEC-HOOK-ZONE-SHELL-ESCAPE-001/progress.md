@@ -798,6 +798,48 @@ reviewer's 262,144-for-2 measurement cited alongside); a decision inversion
 is not constructible from -C crossings (they only deepen the anchor path),
 so the row pins the deny through the per-world accumulation rather than a
 pre-fix decision flip.
+
+**M2.5 remedy — per-world funnel semantics (GREEN record).** Shape: (1) the
+git file-arg funnel filters emptiness/options PER CANDIDATE (an empty modern
+reading no longer discards the old-bash candidate); (2) the executable
+word's possible names drive the SPECIALIZED analyses — `sedWorld`/`gitWorld`
+computed from every world's base name fire the extracted `zoneSedInPlace` /
+`zoneGitArgs` analyses (the old `switch name` is gone); (3) `-C`
+accumulation is PER WORLD via `zoneWordWorldReadings` (world-indexed
+[2]string readings): the modern reading extends the modern chain, the
+pre-4.2 reading the pre-4.2 chain, never crossed, deduped — and the
+CANDIDATE SET is capped (`zoneCandidateCap` = 4096) at judgment: beyond the
+cap the walk is denied fail-closed (`w.unbounded`), the bounded-walk
+philosophy; (4) `--work-tree` (both forms) is OVERWRITE-WINS per world — the
+option's readings REPLACE the anchor slots, so an already-overwritten anchor
+is never judged (the false-deny inverse is pinned by the over-block row).
+
+Row-4 redesign disclosure (in-flight, before the M2.5 commit): the first
+draft of the accumulation row pinned its deny to `/tmp`-rooted anchors,
+which no world's semantics can walk into the zone — the row was rewritten
+BEFORE the fix commit to the self-consistent absolute-replacement shape
+above (modern reading = the project root; the deny lands through it). The
+first draft's pre-fix measurement (13.53s allow) stands as the boundedness
+evidence for the /tmp shape; the committed row carries the corrected shape.
+
+- **Command** (all 26 instrument tests): `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test
+  ./internal/hook -run 'TestCheckProtectedZoneShell|TestZoneUnescapeAnsiC|TestZoneWordText' -count=1`
+- **Exit code**: `0`
+- **Observed (verbatim)**: `ok  	github.com/modu-ai/moai-adk/internal/hook	0.916s`
+  (26/26 PASS — the five gate-17 rows flipped: git funnel, git-name, sed-name,
+  accumulation-bounded now DENY; the over-block row now ALLOWs — and the
+  accumulation row dropped from 13.53s to 0.00s, the boundedness fix
+  observable in-suite).
+- **Full package regression (M2.5)**: `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1
+  -timeout=25m -v ./internal/hook/` — exit 0, verbatim tail `PASS` / `ok
+  github.com/modu-ai/moai-adk/internal/hook	283.276s` /
+  `PACKAGE_POST25_EXIT=0`; 3655 RUN lines, ZERO `--- FAIL` lines. Slot
+  lease `hook-suite` held for the run, released after.
+- Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
+  `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
+  clean; family coverage `13.5%` (all-rows selector).
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

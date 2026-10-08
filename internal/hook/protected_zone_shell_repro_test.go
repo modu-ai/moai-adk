@@ -746,15 +746,29 @@ func TestCheckProtectedZoneShellDualWorldSedNameSpecialized(t *testing.T) {
 
 // TestCheckProtectedZoneShellGitAnchorAccumulationBounded — eighteen -C
 // options whose values carry two bash readings must accumulate PER WORLD
-// (two chains, never crossed) and stay bounded. Regression-guard class:
-// the blowup itself is the reviewer's measurement (262,144 candidates for
-// 2 unique paths at 18 options); a decision inversion is not constructible
-// from -C crossings (they only deepen the anchor path), so the row pins the
-// deny through the per-world accumulation and the §2.1 demotion is stated
-// in progress.md §E.2.
+// (two chains, never crossed) and stay bounded. An ABSOLUTE -C replaces
+// the anchor, so the per-world accumulation holds exactly two anchors —
+// the modern reading truncates to the project root itself (the deny lands
+// through it) while the pre-4.2 reading keeps the escape text as an
+// ordinary component — where the cartesian product held 262,144
+// candidates for 2 unique paths (reviewer-measured; the pre-fix crawl
+// measured 13.53s in-suite). Escape texts are written with the doubled
+// backslash (transport-safe source syntax for the single 0x5C byte at
+// runtime).
 func TestCheckProtectedZoneShellGitAnchorAccumulationBounded(t *testing.T) {
-	hzsWantLiteralDeny(t, "git anchor accumulation bounded",
-		"git -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' rm -f zone_dir/marker.md")
+	root := hzsLiteralNameFixture(t)
+	h := zoneTestHandler(t, root)
+	anchor := "$'" + root + "/\\u0000x'"
+	var b strings.Builder
+	b.WriteString("git")
+	for i := 0; i < 18; i++ {
+		b.WriteString(" -C ")
+		b.WriteString(anchor)
+	}
+	b.WriteString(" rm -f zone_dir/marker.md")
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": b.String()})
+	wantZoneDeny(t, "git anchor accumulation bounded", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	t.Logf("swept=%d", 1)
 }
 
 // TestCheckProtectedZoneShellGitWorkTreeOverwriteWins — git's LAST

@@ -427,6 +427,49 @@ func zoneWordCandidates(w *syntax.Word) ([]string, bool) {
 	return []string{t, old}, true
 }
 
+// zoneWordWorldReadings returns the word's text PER BASH GENERATION:
+// [0] the modern reading, [1] the pre-4.2 reading — identical when the word
+// carries no \u/\U (a generation-identical word contributes its one reading
+// to both worlds). false when the word is dynamic. Funnel semantics that
+// must not cross the worlds (anchor accumulation) index this pair (gate
+// round 17 P2).
+func zoneWordWorldReadings(w *syntax.Word) ([2]string, bool) {
+	t, literal := zoneWordText(w)
+	if !literal {
+		return [2]string{}, false
+	}
+	r := [2]string{t, t}
+	if zoneWordDual(w) {
+		if old, lit := zoneWordTextPre42(w); lit {
+			r[1] = old
+		}
+	}
+	return r, true
+}
+
+// zoneDedupStrings drops duplicate readings, keeping the order.
+func zoneDedupStrings(in []string) []string {
+	out := in[:0]
+	for _, s := range in {
+		dup := false
+		for _, have := range out {
+			if have == s {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// zoneCandidateCap bounds the candidate set: a walk naming more candidates
+// than the cap cannot be judged soundly at this scale and is denied
+// fail-closed — the bounded-walk philosophy (gate round 17 P2).
+const zoneCandidateCap = 4096
+
 // zoneWalker carries one shell-policy walk. cwds is the set of POSSIBLE
 // working directories at this point — control flow multiplies them, and a
 // candidate is denied when any of them covers it (round 6 P1). unbounded
@@ -809,142 +852,35 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		w.setCwds(next)
 		return
 	}
-	switch name {
-	case "sed":
+	// the executable word's possible names: the shell path-resolves the
+	// executable, so the pre-4.2 reading's base name is what an OLD shell
+	// executes — the specialized analyses fire per world (gate round 17 P1)
+	sedWorld, gitWorld := false, false
+	if worlds, lit := zoneWordCandidates(cmd.Args[0]); lit {
+		for _, t := range worlds {
+			if t == "" {
+				continue
+			}
+			if strings.Contains(t, "/") {
+				t = path.Base(t)
+			}
+			switch t {
+			case "sed":
+				sedWorld = true
+			case "git":
+				gitWorld = true
+			}
+		}
+	}
+	if sedWorld && zoneSedInPlace(cmd.Args) {
 		// in-place is decided by THIS command's options alone — an earlier
 		// mutating command must not turn a read-only sed into a denial
 		// (round 6 P2)
-		inPlace := false
-		for _, a := range cmd.Args[1:] {
-			if t, lit := zoneWordText(a); lit {
-				// GNU sed's suffixed form (--in-place=.bak) is in-place too
-				// (round 13 P1)
-				if t == "--in-place" || strings.HasPrefix(t, "--in-place=") || (strings.HasPrefix(t, "-") && !strings.HasPrefix(t, "--") && strings.Contains(strings.TrimPrefix(t, "-"), "i")) {
-					inPlace = true
-				}
-			}
-		}
-		if !inPlace {
-			return
-		}
 		w.mutating = true
 		w.zoneCands(zonePathCandidates(cmd.Args[1:]))
-		return
-	case "git":
-		// only the FIRST non-option word is the subcommand — a later argument
-		// that merely names a mutating verb (a grep pattern, a path) must not
-		// trip the guard (round 7 P2). Valued global options consume their
-		// argument; a -C <dir> records the directory the subcommand's file
-		// arguments resolve against, relative values accumulating across
-		// consecutive -C options, quoted spellings included (rounds 4–5 P1).
-		// The anchor VALUES may carry multiple readings (\u/\U words: gate
-		// round 15 P1) — each reading is a possible anchor and the
-		// anchoring loop unions them.
-		dirOpts := []string{""}
-		wtOpts := []string{""}
-		sub := ""
-		subIdx := -1
-		for j := 1; j < len(cmd.Args); j++ {
-			t, lit := zoneWordText(cmd.Args[j])
-			if !lit {
-				break // dynamic global argument: under-match
-			}
-			if strings.HasPrefix(t, "--work-tree=") {
-				// the attached form's value has readings too: every
-				// world's spelling carrying the prefix anchors (gate
-				// round 15 P1)
-				if worlds, wl := zoneWordCandidates(cmd.Args[j]); wl {
-					for _, wText := range worlds {
-						if len(wText) > len("--work-tree=") && strings.HasPrefix(wText, "--work-tree=") {
-							wtOpts = append(wtOpts, strings.TrimPrefix(wText, "--work-tree="))
-						}
-					}
-				}
-				continue
-			}
-			if strings.HasPrefix(t, "-") {
-				if t == "-C" || t == "-c" || t == "--git-dir" || t == "--work-tree" || t == "--namespace" || t == "--super-prefix" {
-					if t == "-C" && j+1 < len(cmd.Args) {
-						if worlds, lit2 := zoneWordCandidates(cmd.Args[j+1]); lit2 {
-							next := make([]string, 0, len(dirOpts)*len(worlds))
-							for _, d := range dirOpts {
-								for _, dir := range worlds {
-									if dir == "" {
-										continue
-									}
-									if d == "" || zoneIsAbs(dir) {
-										next = append(next, dir)
-									} else {
-										next = append(next, d+"/"+dir)
-									}
-								}
-							}
-							if len(next) > 0 {
-								dirOpts = next
-							}
-						}
-					}
-					if t == "--work-tree" && j+1 < len(cmd.Args) {
-						if worlds, lit2 := zoneWordCandidates(cmd.Args[j+1]); lit2 {
-							for _, wt := range worlds {
-								if wt != "" {
-									wtOpts = append(wtOpts, wt)
-								}
-							}
-						}
-					}
-					j++ // the option's value is consumed
-				}
-				continue
-			}
-			sub = t
-			subIdx = j
-			break
-		}
-		if subIdx == -1 || !zoneGitMutating[sub] {
-			return
-		}
-		w.mutating = true
-		var fileArgs []string
-		for _, a := range cmd.Args[subIdx+1:] {
-			worlds, flit := zoneWordCandidates(a)
-			if !flit || len(worlds) == 0 || worlds[0] == "" || worlds[0] == "--" || strings.HasPrefix(worlds[0], "-") {
-				continue
-			}
-			fileArgs = append(fileArgs, worlds...)
-		}
-		// every possible directory is a base the subcommand's file arguments
-		// can resolve against (round 6 P1); a -C moves that base — an absolute
-		// -C replaces it, a relative one accumulates (round 5 P1); a
-		// --work-tree is its own anchor, so both anchorings are judged when
-		// both are present (round 12 P1). Every anchor READING is judged
-		// (gate round 15 P1).
-		for _, base := range w.cwds {
-			for _, dirOpt := range dirOpts {
-				gitDir := base
-				if dirOpt != "" {
-					if zoneIsAbs(dirOpt) || gitDir == "" || gitDir == "." {
-						gitDir = dirOpt
-					} else {
-						gitDir = gitDir + "/" + dirOpt
-					}
-				}
-				w.cands = append(w.cands, zoneRelativeTo(gitDir, fileArgs)...)
-				for _, wtOpt := range wtOpts {
-					if wtOpt == "" {
-						continue
-					}
-					wtDir := base
-					if zoneIsAbs(wtOpt) || wtDir == "" || wtDir == "." {
-						wtDir = wtOpt
-					} else {
-						wtDir = wtDir + "/" + wtOpt
-					}
-					w.cands = append(w.cands, zoneRelativeTo(wtDir, fileArgs)...)
-				}
-			}
-		}
-		return
+	}
+	if gitWorld {
+		w.zoneGitArgs(cmd)
 	}
 	if !zoneMutationVerbs[name] && zoneMutationVerbName(cmd.Args) == "" {
 		return
@@ -1021,6 +957,143 @@ func zonePathCandidates(args []*syntax.Word) []string {
 		out = append(out, kept...)
 	}
 	return out
+}
+
+// zoneSedInPlace reports whether the argument list makes sed in-place:
+// --in-place, GNU's suffixed --in-place=.bak form, or a short cluster
+// carrying i (rounds 6 P2 / 13 P1).
+func zoneSedInPlace(args []*syntax.Word) bool {
+	for _, a := range args[1:] {
+		if t, lit := zoneWordText(a); lit {
+			if t == "--in-place" || strings.HasPrefix(t, "--in-place=") || (strings.HasPrefix(t, "-") && !strings.HasPrefix(t, "--") && strings.Contains(strings.TrimPrefix(t, "-"), "i")) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// zoneGitArgs judges a git command's mutating subcommand against the
+// possible anchors. Every funnel semantic applies PER WORLD: -C
+// accumulates per world — the modern reading extends the modern chain, the
+// pre-4.2 reading the pre-4.2 chain, never crossed (the cartesian product
+// blew up exponentially: 262,144 candidates for 2 unique paths at 18
+// options, gate round 17 P2) — and --work-tree is OVERWRITE-WINS per
+// world: git's LAST --work-tree replaces the anchor, and judging an
+// already-overwritten anchor is a false deny (gate round 17 P2). Only the
+// FIRST non-option word is the subcommand (round 7 P2); valued global
+// options consume their argument (rounds 4-5 P1).
+func (w *zoneWalker) zoneGitArgs(cmd *syntax.CallExpr) {
+	dirOpts := [2][]string{{""}, {""}}
+	wtOpts := [2][]string{{""}, {""}}
+	sub := ""
+	subIdx := -1
+	for j := 1; j < len(cmd.Args); j++ {
+		t, lit := zoneWordText(cmd.Args[j])
+		if !lit {
+			break // dynamic global argument: under-match
+		}
+		if strings.HasPrefix(t, "--work-tree=") {
+			if readings, wl := zoneWordWorldReadings(cmd.Args[j]); wl {
+				for world := 0; world < 2; world++ {
+					wtOpts[world] = []string{""}
+					if wText := readings[world]; len(wText) > len("--work-tree=") && strings.HasPrefix(wText, "--work-tree=") {
+						wtOpts[world] = append(wtOpts[world], strings.TrimPrefix(wText, "--work-tree="))
+					}
+				}
+			}
+			continue
+		}
+		if strings.HasPrefix(t, "-") {
+			if t == "-C" || t == "-c" || t == "--git-dir" || t == "--work-tree" || t == "--namespace" || t == "--super-prefix" {
+				if t == "-C" && j+1 < len(cmd.Args) {
+					if readings, lit2 := zoneWordWorldReadings(cmd.Args[j+1]); lit2 {
+						for world := 0; world < 2; world++ {
+							dir := readings[world]
+							if dir == "" {
+								continue
+							}
+							next := make([]string, 0, len(dirOpts[world]))
+							for _, d := range dirOpts[world] {
+								if d == "" || zoneIsAbs(dir) {
+									next = append(next, dir)
+								} else {
+									next = append(next, d+"/"+dir)
+								}
+							}
+							dirOpts[world] = zoneDedupStrings(next)
+						}
+					}
+				}
+				if t == "--work-tree" && j+1 < len(cmd.Args) {
+					if readings, lit2 := zoneWordWorldReadings(cmd.Args[j+1]); lit2 {
+						for world := 0; world < 2; world++ {
+							wtOpts[world] = []string{""}
+							if readings[world] != "" {
+								wtOpts[world] = append(wtOpts[world], readings[world])
+							}
+						}
+					}
+				}
+				j++ // the option's value is consumed
+			}
+			continue
+		}
+		sub = t
+		subIdx = j
+		break
+	}
+	if subIdx == -1 || !zoneGitMutating[sub] {
+		return
+	}
+	w.mutating = true
+	var fileArgs []string
+	for _, a := range cmd.Args[subIdx+1:] {
+		worlds, flit := zoneWordCandidates(a)
+		if !flit {
+			continue
+		}
+		// per-candidate emptiness/option checks: an empty MODERN reading
+		// must not discard the word's old-bash candidate (gate round 17 P1)
+		for _, wText := range worlds {
+			if wText == "" || wText == "--" || strings.HasPrefix(wText, "-") {
+				continue
+			}
+			fileArgs = append(fileArgs, wText)
+		}
+	}
+	// every possible directory is a base the subcommand's file arguments
+	// can resolve against (round 6 P1); a -C moves that base — an absolute
+	// -C replaces it, a relative one accumulates (round 5 P1); a
+	// --work-tree is its own anchor (round 12 P1). Every anchor reading is
+	// judged per world (gate rounds 15/17).
+	for _, base := range w.cwds {
+		for world := 0; world < 2; world++ {
+			for _, dirOpt := range dirOpts[world] {
+				gitDir := base
+				if dirOpt != "" {
+					if zoneIsAbs(dirOpt) || gitDir == "" || gitDir == "." {
+						gitDir = dirOpt
+					} else {
+						gitDir = gitDir + "/" + dirOpt
+					}
+				}
+				w.cands = append(w.cands, zoneRelativeTo(gitDir, fileArgs)...)
+				for _, wtOpt := range wtOpts[world] {
+					if wtOpt == "" {
+						continue
+					}
+					wtDir := base
+					if zoneIsAbs(wtOpt) || wtDir == "" || wtDir == "." {
+						wtDir = wtOpt
+					} else {
+						wtDir = wtDir + "/" + wtOpt
+					}
+					w.cands = append(w.cands, zoneRelativeTo(wtDir, fileArgs)...)
+				}
+			}
+		}
+	}
 }
 
 // zoneLoopCount returns the exact iteration count of a for loop whose item
@@ -1404,6 +1477,12 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 		return reason
 	}
 
+	if len(w.cands) > zoneCandidateCap {
+		// a candidate set beyond the cap cannot be judged soundly at this
+		// scale — denied fail-closed, the bounded-walk philosophy (gate
+		// round 17 P2)
+		w.unbounded = true
+	}
 	for _, cand := range w.cands {
 		forms := resolveZoneTarget(root, cand)
 		category, covered := zoneShellCovered(forms, load, root)
