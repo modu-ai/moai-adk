@@ -405,6 +405,45 @@ races**, 0 failures, 108 `=== RUN` lines (the fold family + the new
 publish-guard test × 2). Builds native + windows green; gofmt/vet/lint
 clean. The full-suite verdict remains CI's job (C2) and is PENDING.
 
+### Post-close repair row 2 (gate finding 4 — the lock file must not follow symlinks)
+
+The same turn-end gate round, queued mid-repair and folded as the second
+post-close row:
+
+- **Finding — the lock open followed symlinks.** `os.OpenFile` with
+  O_CREATE on `.moai-store-lock` followed a symlink placed at the path and
+  created/locked the TARGET outside the store (gate repro: the symlink
+  pointed at another repository's `.git/index.lock`; the fold succeeded
+  and the target repo's `git add` then failed with `File exists`, exit
+  128). Fix (unix): the open carries `syscall.O_NOFOLLOW` and the opened
+  file is fstat-verified REGULAR — a symlinked lock is refused (ELOOP),
+  and every other non-regular shape (a FIFO standing in for the lock, a
+  device node) refuses the same way.
+  RED `TestReviewFindingLockFileRefusesSymlink`: verbatim RED "the lock
+  acquisition followed a symlinked lock file and locked the target outside
+  the store" (exit 1) → GREEN ×2 ("symlinked lock refused: … too many
+  levels of symbolic links"; the target never created; a regular lock
+  file still acquires). unix-only test (the O_NOFOLLOW surface).
+- **Windows path statement** (named, not silent): `os.OpenFile` on Windows
+  passes no `OPEN_REPARSE_POINT` flag, so the open WOULD follow a symlink
+  the same way; the Windows half guards the acquisition with a preceding
+  `os.Lstat` symlink refusal. A narrow TOCTOU tail remains between the
+  lstat and the open on that platform (the unix half is O_NOFOLLOW-exact);
+  the Windows test surface is compile-verified only — the race gates run
+  on darwin.
+
+Re-measure judgment: the change is INSIDE the lock acquisition's open path
+— lock internals — so the fold family sweep re-ran at `-count=2 -race`;
+outcome below.
+
+**Finding-4 sweep outcome**: PASS — single-pass family green first
+(`ok … 110.652s`), then `-count=2 -race -v`: `ok
+github.com/modu-ai/moai-adk/internal/cli 280.254s`, exit 0, **0 data
+races**, 0 failures, 110 `=== RUN` lines (the fold family + the publish
+guard + the symlink refusal × 2). Builds native + windows green;
+gofmt/vet/lint clean (0 issues). The full-suite verdict remains CI's job
+(C2) and is PENDING.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-09T22:30+09:00

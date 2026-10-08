@@ -27,6 +27,13 @@ import (
 // by the caller's defer.
 func acquireFoldStoreLock(dir string, forbidden func() bool) (func(), error) {
 	path := foldLockPath(dir)
+	// Windows: os.OpenFile passes no OPEN_REPARSE_POINT flag, so an open
+	// WOULD follow a symlink at this path; the Lstat guard refuses one
+	// first (a narrow TOCTOU tail remains between the lstat and the open —
+	// named in the SPEC's run record; the unix half is O_NOFOLLOW-exact).
+	if fi, statErr := os.Lstat(path); statErr == nil && fi.Mode()&os.ModeSymlink != 0 {
+		return nil, fmt.Errorf("memory fold: the store lock %s is a symlink — refusing", path)
+	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o666)
 	if err != nil {
 		return nil, fmt.Errorf("memory fold: open the store lock %s: %w", path, err)
