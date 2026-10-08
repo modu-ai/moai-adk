@@ -494,4 +494,18 @@ gaps: >-
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+```yaml
+sync_status: complete
+sync_complete_at: 2026-10-09
+sync_commit_sha: "pending-backfill-sync"   # D3 placeholder — a commit cannot cite its own SHA; backfilled in the following commit
+changelog_entry_position: CHANGELOG.md [Unreleased] › ### Fixed › first entry (SPEC-HOOK-ZONE-SHELL-ESCAPE-001)
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed"   # single sync commit, 3-phase close; updated: 2026-10-09 (already current)
+  plan_md: "no status field (stateless artifact); updated: 2026-10-09 already current — no edit"
+  acceptance_md: "no status field (stateless artifact); updated: 2026-10-09 already current — no edit"
+b12_self_test_a: pass   # pre-emission `grep -c 'SPEC-HOOK-ZONE-SHELL-ESCAPE-001' CHANGELOG.md` → 0 (exit 1) before append — no duplicate entry
+b12_self_test_b: pass   # AC counter (manager-docs § B12 awk grammar on acceptance.md): live=11 excluded=0 ambiguous=0 — matches the entry's 11건 AC-HZS-001..011
+b12_self_test_c: pass   # entry file paths verified via ls internal/hook/: protected_zone_shell.go + protected_zone_shell_repro_test.go both present; the entry cites these two only
+mx_tag_validation: "added=1 removed=0 updated=0"   # @MX:DEBT(+CEILING/UPGRADE) on zoneUnescapeAnsiC — the \u/\U host-variance residual (spec §B/§F follow-up-card material); existing @MX:SPEC on checkProtectedZoneShell untouched
+readme_docs_site: no-op   # internal guard repair — the protected-zone ANSI-C decoder has no README feature-list or docs-site surface
+```

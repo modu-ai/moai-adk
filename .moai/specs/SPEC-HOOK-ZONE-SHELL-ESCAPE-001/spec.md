@@ -2,7 +2,7 @@
 id: SPEC-HOOK-ZONE-SHELL-ESCAPE-001
 title: "Protected-zone ANSI-C shell decoding judges the bytes bash executes — NUL part-terminator, raw-byte \\x, bounded no-digit escapes"
 version: "0.1.4"
-status: in-progress
+status: completed
 created: 2026-10-09
 updated: 2026-10-09
 author: manager-spec

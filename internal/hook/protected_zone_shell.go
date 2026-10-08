@@ -142,6 +142,15 @@ func zoneUnescapeDbl(v string) string {
 // host-variance residual (spec §B; gate round 10 P1, card t1585). Before
 // this decoder ANSI-C words were matched on their raw source text, so any
 // defined escape (`\\`, `\x2e`, ...) hid the real path (card t1570).
+//
+// @MX:DEBT: models bash >=4.2 \u/\U semantics — on a host whose bash renders
+// the escape texts literally (measured: 3.2.57, both families), the judged
+// path diverges from the argument the executing shell acts on and a
+// literal-named zone entry (symlink included) is a measured bypass class
+// (spec §B; card t1585).
+// @MX:CEILING: hosts running bash >= 4.2
+// @MX:UPGRADE: deny fail-closed on any \u/\U escape when the follow-up card
+// lands (spec §F run-phase design option)
 func zoneUnescapeAnsiC(v string) string {
 	if !strings.Contains(v, "\\") {
 		return v
