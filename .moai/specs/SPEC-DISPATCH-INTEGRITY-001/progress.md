@@ -444,6 +444,41 @@ guard + the symlink refusal × 2). Builds native + windows green;
 gofmt/vet/lint clean (0 issues). The full-suite verdict remains CI's job
 (C2) and is PENDING.
 
+### Post-close repair row 3 (gate finding — the --yes no-op path required the lock to discover nothing to do)
+
+The preview fix's mirror on the apply path:
+
+- **Finding — a no-op fold on a read-only store failed at lock creation.**
+  With no lock file on a readable-but-not-writable store, `--yes` failed
+  with `permission denied` at `.moai-store-lock` creation BEFORE checking
+  whether the target card's line even exists; the baseline answered the
+  same repro with the no-fold line and exit 0.
+  RED `TestReviewFindingNoOpFoldSucceedsOnReadOnlyStore`: verbatim RED
+  "open …/.moai-store-lock: permission denied" (exit 1) → GREEN (the
+  no-fold line prints; exit 0).
+- **Fix — optimistic-outside / authoritative-inside double-read.** The
+  no-change discovery is read-only: the plan is computed from the snapshot
+  OUTSIDE the lock and a fold with nothing to do answers there (preview
+  and `--yes` alike). Only when actual application is needed does the
+  write transaction acquire the lock and RE-COMPUTE the plan inside it —
+  the plan the apply executes is always computed from the post-wait
+  store; the optimistic snapshot is discarded. The double-read under the
+  lock is the authoritative plan computation every apply now performs
+  (one extra SnapshotStore per changing fold, the cost of the unlocked
+  discovery).
+
+Re-measure judgment: the lock internals are unchanged (acquisition,
+release, hold span identical); the verb's flow around them changed —
+every `--yes` invocation now double-reads — so the family sweep re-ran at
+`-count=2 -race`; outcome below.
+
+**Row-3 sweep outcome**: PASS — single-pass family green first
+(`ok … 111.095s`), then `-count=2 -race -v`: `ok
+github.com/modu-ai/moai-adk/internal/cli 246.668s`, exit 0, **0 data
+races**, 0 failures, 112 `=== RUN` lines (the fold family + the no-op and
+preview tests × 2). Builds native + windows green; gofmt/vet/lint clean
+(0 issues). The full-suite verdict remains CI's job (C2) and is PENDING.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-09T22:30+09:00

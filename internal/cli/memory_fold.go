@@ -160,18 +160,29 @@ func newMemoryFoldCmd() *cobra.Command {
 				renderFoldKept(out, comp.kept)
 				return nil
 			}
+			// The no-change discovery is a READ-ONLY act: the plan is
+			// computed from the snapshot OUTSIDE the lock, and a fold with
+			// nothing to do answers here — on a readable-but-not-writable
+			// store too, where lock-file creation would fail (the preview
+			// fix's mirror on the --yes path, post-close gate finding).
+			// Only when actual application is needed does the write
+			// transaction take the lock and re-compute the plan inside it:
+			// optimistic outside, authoritative inside — the plan the apply
+			// executes is always computed from the post-wait store. The
+			// optimistic snapshot is discarded here; the apply re-reads
+			// inside the lock.
+			plan, comp, _, err := computeFoldPlan()
+			if err != nil {
+				return err
+			}
+			if len(comp.plan.Removed) == 0 {
+				return renderNoFold(plan, comp)
+			}
 			// A preview without --yes is a READ-ONLY invocation: it takes no
 			// write lock and creates no lock file — a readable but not
 			// writable store must still preview (the baseline behavior; the
 			// locked verb regressed it, post-report gate finding 2).
 			if !yes {
-				plan, comp, _, err := computeFoldPlan()
-				if err != nil {
-					return err
-				}
-				if len(comp.plan.Removed) == 0 {
-					return renderNoFold(plan, comp)
-				}
 				if jsonOutput {
 					return renderFoldPlanJSON(out, plan)
 				}

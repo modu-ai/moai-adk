@@ -380,6 +380,28 @@ func foldSubprocess(t *testing.T, dir, card string) *exec.Cmd {
 	return cmd
 }
 
+// TestReviewFindingNoOpFoldSucceedsOnReadOnlyStore is the preview fix's
+// mirror on the --yes apply path (post-close gate finding): a no-op fold —
+// no line names the target card — is a read-only DISCOVERY and must
+// succeed on a readable-but-not-writable store before any lock is taken.
+// The baseline implementation answered the same repro with the no-fold
+// line; the locked verb failed at lock-file creation without ever
+// discovering there was nothing to do.
+func TestReviewFindingNoOpFoldSucceedsOnReadOnlyStore(t *testing.T) {
+	files := minimalFiles()
+	files[fixtureArchive] = minimalArchive()
+	dir := seedFoldStore(t, minimalMemory(line9001), files)
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	out := runFoldOK(t, "--card", "t9900", "--yes", "--dir", dir)
+	t.Logf("no-op fold on a read-only store: %.200s", out)
+	if !strings.Contains(out, "no line to fold for t9900") {
+		t.Errorf("the no-op fold on a readable-but-not-writable store did not answer as a no-op (missing the no-fold line)")
+	}
+}
+
 // TestReviewFindingPreviewNeedsNoWriteAccess is the post-report gate's
 // finding 2 (SPEC-DISPATCH-INTEGRITY-001 M4): a preview without --yes is a
 // READ-ONLY invocation — it must compute the plan from the snapshot without
