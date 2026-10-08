@@ -63,3 +63,31 @@ are not calques; the prohibition binds figurative and structural carry-over only
 - [ ] Artifact: clean native written register — no calqued metaphors (축 / 기둥 / 검증경제 type), no English-syntax carry-over?
 - [ ] Heavy artifact: has the `moai-domain-humanize` final pass run (or is it scheduled)?
 
+
+## Migrated from the core body
+
+
+### Native-Idiom & Register Policy (Non-English Locales)
+
+
+> The language-quality invariant for non-English output. Always-loaded.
+> Owns: the anti-calque invariant and the humanize trigger. Cross-references `moai-constitution.md` § Response Language and the `moai-domain-humanize` skill.
+
+
+### The Invariant
+
+
+English is the source language. This policy is **conditional**: it imposes zero overhead on English sessions, because the calque hazard exists only on the source→target direction.
+
+
+### Cross-references
+
+
+- `.claude/rules/moai/core/moai-constitution.md` § Response Language — the conversation_language requirement this policy specializes.
+- `.claude/skills/moai-domain-humanize/` — the per-locale calque catalogue (Category A) and the post-edit pass machinery.
+- `native-idiom-and-register-detail.md` — the lazy companion. Load it for § Why calques survive (the mechanism) · § Calque hazard list · § Two registers — do not conflate (the per-surface register table) · § Pre-emit self-check (non-English output only).
+
+
+Version: 1.0.0
+Classification: Always-loaded language-quality invariant — non-English conditional.
+
