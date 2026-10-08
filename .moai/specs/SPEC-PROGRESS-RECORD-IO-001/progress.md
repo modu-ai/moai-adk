@@ -360,6 +360,14 @@ run URL + per-family counts); the completed transition re-lands via a follow-up
 manager-docs commit once the run URL is recorded — plan-audit-4 hash binding
 unaffected (progress.md is a non-subject).
 
+Card-review record (2026-10-09, lane-5): `codex_review` scope=card → **pass** (base
+a2a184ad3 recomputed, findings 0; advisory surface). Recorded at
+`.moai/reports/t1598/card-review.md` (local artifact path, gitignored by the
+audit-artifact convention). Lane-local verification refreshed at fa1f04b9f:
+`go test -timeout 30m ./internal/runtime/` → `ok ... 12.143s` exit 0 (this run,
+this tree); `gofmt -l internal/runtime/` → empty; F2's CEILING rewording
+re-verified in source (:43).
+
 AC final matrix (route-(ii) close posture — evidence in §E.2): AC-PRI-001 PASS (standing) ·
 AC-PRI-002 PASS (standing — recorded measurement) · AC-PRI-005 PASS · AC-PRI-006 PASS ·
 AC-PRI-008 PASS · AC-PRI-003/004/009 NOT-EVIDENCE (dispositioned by the §E.2 Q2 record) ·
