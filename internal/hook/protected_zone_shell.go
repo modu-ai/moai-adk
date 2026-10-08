@@ -756,55 +756,87 @@ func zoneShellCovered(forms []zoneForm, load config.ProtectedZoneLoad, root stri
 }
 
 // zoneCall judges one simple command: a mutating verb, an in-place sed, a
-// mutating git subcommand. The statement's redirections are judged by the
-// walker before this runs — the shell opens them before the command executes,
-// for every statement shape (round 8).
+// mutating git subcommand, a declared function, a cd. The statement's
+// redirections are judged by the walker before this runs — the shell opens
+// them before the command executes, for every statement shape (round 8).
+// The executable word is classified across ALL bash generations first
+// (gate rounds 19-21), every name-driven analysis fires per its world, and
+// a cd world's directory move applies last.
 func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
-	name, literal := zoneFirstArgWord(cmd.Args)
-	if !literal {
+	if _, literal := zoneFirstArgWord(cmd.Args); !literal {
 		return // a dynamic command word under-matches
 	}
-	if strings.Contains(name, "/") {
-		// a literal executable path (/bin/rm, ./rm) names the verb through
-		// its base (round 13 P1); a path to some OTHER binary folds to a
-		// base that matches no verb, exactly as before
-		name = path.Base(name)
+	// Per-world classification of the executable word: the shell
+	// path-resolves it, so each bash generation may produce a different
+	// name, and a name SHADOWED by a declared function executes the
+	// function in that world, dropping out of every other dispatch (gate
+	// round 21 P2). ALL name-driven dispatches classify across the worlds
+	// here, before any single-world branch runs — this command's arg
+	// analyses run BEFORE the cd move, whose directory change applies to
+	// subsequent statements, never to this command's other worlds (gate
+	// round 21 P1).
+	var verbName, cdName, sedName, gitName string
+	var funcNames []string
+	for _, n := range zoneExecNames(cmd.Args) {
+		if _, shadowed := w.funcs[n]; shadowed {
+			// that world executes the declared function, not this name
+			funcNames = append(funcNames, n)
+			continue
+		}
+		switch {
+		case zoneMutationVerbs[n]:
+			verbName = n
+		case n == "cd":
+			cdName = n
+		case n == "sed":
+			sedName = n
+		case n == "git":
+			gitName = n
+		}
 	}
-	// the dual-world verb classification completes BEFORE any branch
-	// dispatch: a word whose PRE-4.2 reading names a mutating executable is
-	// judged as that verb regardless of what the modern reading alone would
-	// dispatch — the cd branch's early return used to skip it, and a word
-	// truncating to a declared-function name is the same class (gate round
-	// 19 P1). The modern world's own dispatch still runs below: both
-	// worlds' effects are possible and the candidate set unions them.
-	verbWorld := zoneMutationVerbName(cmd.Args)
-	if verbWorld != "" {
+	fired := false
+	if verbName != "" {
 		w.mutating = true
 		w.zoneCands(zonePathCandidates(cmd.Args[1:]))
+		fired = true
 	}
-	if bodies, declared := w.funcs[name]; declared {
-		// a call to a function declared in this command runs every body the
-		// name may have (round 10 P2). Each body is a separate WORLD, not a
-		// sequence: one body's inner declarations must not replace another's
-		// (round 16 P1), and the call's RESULT is the union of the bodies'
-		// own outcomes — a body that certainly redefines a name retires the
-		// pre-call definition instead of keeping it alive alongside (round
-		// 17 P2). The directory set needs no such isolation — a candidate
-		// is judged against the whole accumulated set anyway.
-		if w.calling[name] {
+	if sedName != "" && zoneSedInPlace(cmd.Args) {
+		// in-place is decided by THIS command's options alone — an earlier
+		// mutating command must not turn a read-only sed into a denial
+		// (round 6 P2)
+		w.mutating = true
+		w.zoneCands(zonePathCandidates(cmd.Args[1:]))
+		fired = true
+	}
+	if gitName != "" && w.zoneGitArgs(cmd) {
+		fired = true
+	}
+	// declared functions: a shadowing world executes its bodies — per
+	// world, each body seeing the pre-command walker state. A call to a
+	// function declared in this command runs every body the name may have
+	// (round 10 P2): each body is a separate WORLD, not a sequence — one
+	// body's inner declarations must not replace another's (round 16 P1) —
+	// and the call's RESULT is the union of the bodies' own outcomes — a
+	// body that certainly redefines a name retires the pre-call definition
+	// instead of keeping it alive alongside (round 17 P2). The directory
+	// set needs no such isolation — a candidate is judged against the
+	// whole accumulated set anyway.
+	for _, n := range funcNames {
+		bodies := w.funcs[n]
+		if w.calling[n] {
 			// a recursive call re-enters bounded: each re-entry walks the
 			// body from the walker's CURRENT state (the recursion's
 			// directory moves are real), and past the bound the command is
 			// fail-closed like any other walk that cannot complete (round
 			// 17 P1)
-			if w.calls[name] >= zoneRecursionBound {
+			if w.calls[n] >= zoneRecursionBound {
 				w.unbounded = true
 				return
 			}
-			w.calls[name]++
+			w.calls[n]++
 		} else {
-			w.calling[name] = true
-			w.calls[name] = 1
+			w.calling[n] = true
+			w.calls[n] = 1
 		}
 		entry := cloneZoneFuncs(w.funcs)
 		var result map[string][]*syntax.Stmt
@@ -818,16 +850,16 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 			}
 		}
 		w.funcs = result
-		delete(w.calling, name)
-		return
+		delete(w.calling, n)
 	}
-	if name == "cd" {
+	if cdName != "" {
 		// The cd's ONE argument may carry multiple readings (\u/\U words:
 		// gate round 15 P1) — each non-empty reading is a POSSIBLE
 		// destination and the possible-directory set unions them, the same
 		// structure as the control-flow set. Several arguments still fail
 		// the cd (bash rejects them) and a dynamic argument under-matches,
-		// exactly as before.
+		// exactly as before. The move applies LAST: subsequent statements
+		// see it, this command's other worlds never did (gate round 21 P1).
 		multi := len(cmd.Args) != 2
 		var readings []string
 		if multi {
@@ -864,71 +896,44 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		w.setCwds(next)
 		return
 	}
-	// the executable word's possible names: the shell path-resolves the
-	// executable, so the pre-4.2 reading's base name is what an OLD shell
-	// executes — the specialized analyses fire per world (gate round 17 P1)
-	sedWorld, gitWorld := false, false
-	if worlds, lit := zoneWordCandidates(cmd.Args[0]); lit {
-		for _, t := range worlds {
-			if t == "" {
-				continue
-			}
-			if strings.Contains(t, "/") {
-				t = path.Base(t)
-			}
-			switch t {
-			case "sed":
-				sedWorld = true
-			case "git":
-				gitWorld = true
-			}
-		}
-	}
-	if sedWorld && zoneSedInPlace(cmd.Args) {
-		// in-place is decided by THIS command's options alone — an earlier
-		// mutating command must not turn a read-only sed into a denial
-		// (round 6 P2)
-		w.mutating = true
-		w.zoneCands(zonePathCandidates(cmd.Args[1:]))
-	}
-	if gitWorld {
-		w.zoneGitArgs(cmd)
-	}
-	if verbWorld == "" {
-		if !zoneMutationVerbs[name] {
-			return
-		}
-		w.mutating = true
-		w.zoneCands(zonePathCandidates(cmd.Args[1:]))
+	if !fired && len(funcNames) == 0 {
+		return
 	}
 }
 
-// zoneMutationVerbName returns the mutation verb the command's EXECUTABLE
-// word names in ANY world, or "" when none does. The shell path-resolves
-// the executable, so the pre-4.2 reading's base name is what an old shell
-// executes — a word whose modern reading truncates away the verb
-// (`$'docs\u0000/../rm'`) is still judged as that verb (gate round 15 P1).
-func zoneMutationVerbName(args []*syntax.Word) string {
+// zoneExecNames returns the possible BASE NAMES of the executable word —
+// one per bash generation, deduped, order-stable (the modern reading
+// first). The shell path-resolves the executable, so each generation may
+// produce a different name; every name-driven dispatch classifies across
+// this set (gate rounds 17-21).
+func zoneExecNames(args []*syntax.Word) []string {
 	if len(args) == 0 {
-		return ""
+		return nil
 	}
 	worlds, literal := zoneWordCandidates(args[0])
 	if !literal {
-		return ""
+		return nil
 	}
+	var out []string
 	for _, t := range worlds {
 		if t == "" {
 			continue
 		}
-		name := t
-		if strings.Contains(name, "/") {
-			name = path.Base(name)
+		if strings.Contains(t, "/") {
+			t = path.Base(t)
 		}
-		if zoneMutationVerbs[name] {
-			return name
+		dup := false
+		for _, have := range out {
+			if have == t {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			out = append(out, t)
 		}
 	}
-	return ""
+	return out
 }
 
 // zonePathCandidates collects the candidates an argument list names: plain
@@ -997,7 +1002,7 @@ func zoneSedInPlace(args []*syntax.Word) bool {
 // already-overwritten anchor is a false deny (gate round 17 P2). Only the
 // FIRST non-option word is the subcommand (round 7 P2); valued global
 // options consume their argument (rounds 4-5 P1).
-func (w *zoneWalker) zoneGitArgs(cmd *syntax.CallExpr) {
+func (w *zoneWalker) zoneGitArgs(cmd *syntax.CallExpr) bool {
 	dirOpts := [2][]string{{""}, {""}}
 	wtOpts := [2][]string{{""}, {""}}
 	sub := ""
@@ -1058,7 +1063,7 @@ func (w *zoneWalker) zoneGitArgs(cmd *syntax.CallExpr) {
 		break
 	}
 	if subIdx == -1 || !zoneGitMutating[sub] {
-		return
+		return false
 	}
 	w.mutating = true
 	var fileArgs [2][]string
@@ -1111,6 +1116,7 @@ func (w *zoneWalker) zoneGitArgs(cmd *syntax.CallExpr) {
 			}
 		}
 	}
+	return true
 }
 
 // zoneLoopCount returns the exact iteration count of a for loop whose item

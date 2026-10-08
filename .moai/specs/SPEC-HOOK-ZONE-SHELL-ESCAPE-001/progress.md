@@ -931,6 +931,40 @@ observed verbatim on the protected marker). Fixture: the narrowed
 marker-file manifest; inputs transport-verified (whole-file NUL-byte scan
 zero, doubled backslash).
 
+**M2.7 remedy — full dispatch pre-classification + function shadowing
+(GREEN record).** Shape: `zoneExecNames` (the possible base names of the
+executable word, one per generation, deduped) classifies EVERY name-driven
+dispatch up front — `verbName`/`cdName`/`sedName`/`gitName` plus
+`funcNames` for names SHADOWED by a declared function (a shadowed world
+executes the function, dropping out of every other dispatch — fixing the
+M2.6-introduced over-block where the mutation targets registered before
+the function registry was consulted). The analyses fire per world in
+order: mutation candidates → sed in-place → git analysis (now
+`zoneGitArgs` returns whether it recognized a mutating subcommand) →
+function-body walks per shadowing world → the cd move LAST (its directory
+change applies to subsequent statements, never to this command's other
+worlds — the generalization of the gate-19 fix; the git/sed dispatch no
+longer early-returns behind the cd branch). `zoneMutationVerbName` is
+folded into `zoneExecNames` (removed).
+
+- **Command** (all 31 instrument tests): `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test
+  ./internal/hook -run 'TestCheckProtectedZoneShell|TestZoneUnescapeAnsiC|TestZoneWordText' -count=1`
+- **Exit code**: `0`
+- **Observed (verbatim)**: `ok  	github.com/modu-ai/moai-adk/internal/hook	1.340s`
+  (31/31 PASS — the two gate-21 rows flipped: the git-name shape now DENIES
+  through the per-world git analysis; the shadowing shape now ALLOWs).
+- **Full package regression (M2.7)**: `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1
+  -timeout=25m -v ./internal/hook/` — exit 0, verbatim tail `PASS` / `ok
+  github.com/modu-ai/moai-adk/internal/hook	296.738s` /
+  `PACKAGE_POST27_EXIT=0`; 3660 RUN lines, ZERO `--- FAIL` lines. Slot
+  lease `hook-suite` held for the run, released after.
+- Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
+  `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
+  clean; family coverage `13.6%` (all-rows selector).
+
+
 **M2.6 remedy — dispatch order, per-generation joins, dedup-before-cap
 (GREEN record).** Shape: (1) the dual-world verb classification moved BEFORE
 any branch dispatch — `zoneMutationVerbName` fires at the top of the
