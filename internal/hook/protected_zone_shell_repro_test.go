@@ -53,8 +53,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"mvdan.cc/sh/v3/syntax"
 )
@@ -1076,4 +1078,105 @@ func TestCheckProtectedZoneShellSedInPlaceOwnGeneration(t *testing.T) {
 		t.Errorf("sed in place own generation: decision=%q reason=%q, want allowed — the executing generation's option reading is the literal escape text, an invalid option: sed touches nothing", sedCmd, r)
 	}
 	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellGitSubOwnGeneration — gate round 29 P1
+// (over-block): the git SUBCOMMAND word binds its own generation. Modern
+// reads `git rm -f docs` (docs is outside the zone — harmless); pre-4.2
+// reads the subcommand as the literal rm\u0000bogus text (a nonexistent
+// subcommand — git exits, harmless). The pooled modern subcommand joined
+// with the pre-4.2 file reading false-denied. The row asserts the ALLOW.
+// Escape texts are written with the doubled backslash (transport-safe
+// source syntax for the single 0x5C byte at runtime).
+func TestCheckProtectedZoneShellGitSubOwnGeneration(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	const subCmd = "git $'rm\\u0000bogus' -f $'docs\\u0000/../zone_dir/marker.md'"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": subCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("git sub own generation: decision=%q reason=%q, want allowed — modern git rm joins only the modern file reading (docs, outside the zone), and the pre-4.2 subcommand is nonexistent", subCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellGitNameSubOwnGeneration — gate round 30 P2
+// (over-block): the executable word is dual (modern printf, harmless;
+// pre-4.2 resolves to git) AND the subcommand word is dual (modern rm,
+// mutating; pre-4.2 reads the literal rm\u0000 text — a nonexistent
+// subcommand, harmless). The guard joined the pre-4.2 git execution with
+// the modern rm subcommand → false deny. The row asserts the ALLOW.
+func TestCheckProtectedZoneShellGitNameSubOwnGeneration(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	const nameSubCmd = "$'printf\\u0000/../git' $'rm\\u0000' -f zone_dir/marker.md"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": nameSubCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("git name sub own generation: decision=%q reason=%q, want allowed — the pre-4.2 world's git subcommand is the nonexistent literal rm\\u0000 text, and the modern world's name is printf", nameSubCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellSedInPlacePlainFileShape — gate round 29 P2
+// confirmation pin: the sed in-place generation binding (zoneSedInPlace
+// takes the executing generation) covers the plain-file call shape —
+// modern decodes the in-place option and edits a PLAIN file (harmless);
+// pre-4.2 exits on the literal option text. The row asserts the ALLOW
+// (green-now: the M2.11 binding already covers this shape).
+func TestCheckProtectedZoneShellSedInPlacePlainFileShape(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	if err := os.WriteFile(filepath.Join(root, "docs_a"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h := zoneTestHandler(t, root)
+	const plainCmd = "sed $'\\u002di' 's/a/b/' docs_a"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": plainCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("sed in place plain file shape: decision=%q reason=%q, want allowed — the modern world edits the plain file docs_a, outside the zone", plainCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellGitMassFileArgsBounded — gate round 29 P3 /
+// gate round 30 P3 / gate round 31 P1 (measurement pin): 80,000 file
+// arguments must run BOUNDED — hash-set dedup (linear) and the
+// unique-candidate cap firing fail-closed immediately, no per-candidate
+// resolution of over-cap sets. The row asserts the deny (the marker file
+// is among the arguments) and MEASURES the duration (logged; before/after
+// recorded in progress.md §E.2 — not asserted, per the gate's directive).
+func TestCheckProtectedZoneShellGitMassFileArgsBounded(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	var b strings.Builder
+	b.WriteString("git rm -f zone_dir/marker.md")
+	for i := 0; i < 80000; i++ {
+		b.WriteString(" f")
+		b.WriteString(strconv.Itoa(i))
+		b.WriteString(".txt")
+	}
+	start := time.Now()
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": b.String()})
+	elapsed := time.Since(start)
+	// the marker file is among the arguments: the per-generation join
+	// denies; an over-cap set fails closed IMMEDIATELY (loop-unbounded) —
+	// both are bounded outcomes; the row MEASURES the duration (logged;
+	// before/after in progress.md §E.2 — not asserted, per the gate's
+	// directive)
+	if d != DecisionDeny || !strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("git mass file args bounded: decision=%q reason=%q, want a bounded deny", b.String(), r)
+	}
+	t.Logf("elapsed=%v category=%q (bounded-run measurement; before/after in progress.md §E.2)", elapsed, categoryOf(r))
+	t.Logf("swept=%d", 1)
+}
+
+// categoryOf extracts the category token from a zone deny reason for
+// bounded-outcome assertions.
+func categoryOf(reason string) string {
+	if i := strings.Index(reason, "category="); i >= 0 {
+		rest := reason[i+len("category="):]
+		if j := strings.Index(rest, " "); j >= 0 {
+			return rest[:j]
+		}
+		return rest
+	}
+	return ""
 }
