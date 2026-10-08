@@ -147,9 +147,12 @@ func (e ZoneEntry) Match(foldedRel string) bool {
 		if !ok {
 			return false
 		}
+		// Gate round 27-5: a DIRECTORY candidate arrives without the
+		// trailing slash (rm -rf …/moai-alpha), while the dir-form entry
+		// carries it — judge both spellings, like the shell judgment does.
 		switch e.Sub {
 		case ZoneDir, ZonePrefix:
-			return strings.HasPrefix(rest, e.Pattern)
+			return strings.HasPrefix(rest, e.Pattern) || strings.HasPrefix(rest+"/", e.Pattern)
 		default:
 			return rest == e.Pattern
 		}

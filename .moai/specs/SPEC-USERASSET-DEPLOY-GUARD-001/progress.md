@@ -447,6 +447,67 @@ scoping·AC-009 이중 형태) GREEN. **게이트**: lint 0, gofmt 청결, windo
 4패키지 test compile OK, hook/config/userassets 전체 스위트 GREEN (userassets 의도
 RED 4건 = M5/M6 소관).
 
+### 게이트 23-26 — 잠금 판독·doctor 인용·저널 주입·user-root 경계 (2026-10-09)
+
+| # | 수리 | 검증 |
+|---|---|---|
+| 23-1 [P1] | **readLockRecord 플랫폼 분할**: unix는 O_NONBLOCK 오픈 → **핸들 fstat** → 핸들 read — Lstat→read 스왑 창(path가 FIFO로 교체되면 read가 hang)을 fd 레벨 봉쇄. windows는 Lstat+ReadFile (FIFO 경로 위험 없음) | FIFO 마커 → Irregular 판정, hang 없음 (정책 표 irregular 팔 GREEN) |
+| 23-2 | doctor 제거 절차 **POSIX 단일 인용** (`rm '<path>'`, 내부 `'\''` 이스케이프) — 이중 인용의 `$(...)` 실행 재현 차단 | TestDoctorUserLockMarkersReportsOwnerless — `rm '` 포함 + `rm "` 부재 단정 |
+| 24-2 | 저널 테스트 실패 주입 3건을 **플랫폼 독립 디렉터리-스wap**으로 교체 (경로를 디렉터리가 점유 → 모든 OS rename 실패; windows 무효 dir-Chmod 제거) | 저널 가족 전부 GREEN (windows 포함) |
+| 25-2 [P1] | **템플릿 source에 user-root 4항목 착지** (moai_managed/runtime_paths, 뉴트럴 코멘트) + runtime allowlist 승인 + **dogfood 매니페스트 byte-identical 동기화** | TestProtectedZone 3subtest GREEN |
+| 26-1 [P1] | user-root 매치를 **resolved 대상**으로 판정 (zoneResolve + home resolve — macOS /var→/private/var 우회 봉쇄); /./·/../ 표기 수렴 단정 | TestUserRootFormsEmitNamespacedForm GREEN |
+| 26-2 [P1] | **디렉터리 포함 검사**: 정확 매치 + 접두 컨테인먼트 (`rm -rf` 부모 변형 커버) | TestUserRootFormTrackedScoping (dir/root containment) GREEN |
+| 26-3 [P2] | user-root 형태를 **독립 분기**로 분리 — 베이스라인·프로젝트 규칙이 user-root 형태를 못 보고, 프로젝트 형태도 ZoneUserRoot와 매치 불가 (무추적 basename 차단 누수 제거) | hook 전체 스위트 GREEN |
+
+### 게이트 27-30 — user-root 경계 6건 + 매니페스트 FIFO (2026-10-09)
+
+| # | 수리 | 검증 |
+|---|---|---|
+| 27-1 | 배포 yaml의 4개 user-root 항목 — 25-2로 착지 (현재 HEAD 재검증) | TestProtectedZone GREEN |
+| 27-2 [P1] | **루트 자체 보호**: rest=="" naked-root 형태 발행 + 디렉터리 포함 검사로 tracked 하위 커버 (`rm -rf ~/.claude/skills` 차단) | TestUserRootFormTrackedScoping (dir/root containment) GREEN |
+| 27-3 [P1] | **케이스 별칭**: 형태 키와 매니페스트 키 **양쪽 fold** 후 비교 — case-insensitive FS의 skill.md 별칭 봉쇄 | 동일 테스트 GREEN |
+| 27-4 [P1] | **설치 루트 자체 zoneResolve**: dotfile-manager 심링크(~/.claude → 외부) 재배치 대응 | AC-009 probe GREEN (심링크 홈) |
+| 27-5 [P1] | **디렉터리 후보 슬래시 없음**: ZoneDir/Prefix 매치가 rest와 rest+"/" 양쪽 판정 (shell 판정과 동일) | config Match 테스트 |
+| 27-6 | 패리티 dot-path 테스트 — 원형 결합으로 수정 (Join이 .·..을 정규화하는 버그) | GREEN |
+| 29-NEW-1 [P1] | 템플릿 코멘트의 SPEC 식별자 제거 (뉴트럴 재작성 — C1-spec-id-prefix 차단) | TestProtectedZone/Neutrality GREEN |
+| 29-NEW-2 | **백슬래시 보존**: userRootZoneForms가 zoneSlash 사전 변환 없이 **원형 후보를 zoneResolve** (POSIX에서 \은 파일명 문자 — `alias\dir` 심링크가 잘못된 경로를 검사하던 누수) | 코드 정정 |
+| 30 | **사용자 매니페스트 FIFO**: userRootTracksAny 판독을 비차단 오픈+핸들 fstat으로 (zone_user_read_{unix,windows}.go 신설 — 게이트 23 패턴) | FIFO 매니페스트 → untracked 판정, hang 없음 |
+
+### M5 — 충돌 안전 (원장 8c/12/6b, REQ-COL-001/002/003, 2026-10-09)
+
+프로덕션 변경: `install.go` — (a) RF5 충돌 사전 판정 + reconcile 판독의 **Lstat 선행
+타입 판정** (비정규 대상은 읽지 않고 collision 분류), (b) **confinedWrite 핸들 고정** —
+검증된 부모를 `os.OpenRoot`로 핀하고 temp-create·write·chmod·rename을 전부 핸들 경유로
+(경로 재해석 제거 — C2 선언 경합 봉쇄; 기존 C2 검사 전부 존속, 핀은 rename의 경로
+재해석을 대체할 뿐 약화가 아님), (c) `installMode(rel)` 신설 (.sh → 0755, 나머지 0644).
+**M1 상호작용 검증**: 플래그 영속은 실쓰기 대상 한정(게이트 15 게이트) 불변 — 저널 가족
+GREEN 유지.
+
+**AC 전환 — RED→GREEN 3종 (잔여 RED 4건 → 1건)**
+
+| AC | 테스트 | M0 관측 | M5 관측 |
+|---|---|---|---|
+| AC-010 (8c) | TestCollisionPrecheckSkipsFifoWithoutBlock | RED — FIFO에서 10s+ 블록 | **GREEN (0.01s)** — Lstat가 FIFO를 읽지 않고 collision-skip |
+| AC-011 (12) | TestConfinedWritePinnedToValidatedParent | RED — 외부 센티널 탈출 | **GREEN (probeHeld)** — os.Root 핀이 검증 inode에 고정, 스왑 후 rename도 핸들 경유 |
+| AC-025 (6b) | TestConfinedWritePreservesExecBit | RED — .sh 0644 하락 | **GREEN** — 설치 .sh 0755 (installMode) |
+
+3-way probe 판정 유지: 탈출=RED / 고정·안전거절=GREEN / 미관측=재시도. 핀은 재검증을
+**대체**하는 것이 아니라 rename 경로를 핸들로 바꾼 것 — C2 검사 전부 존속.
+
+**AC-023 커버리지 (unix, 전체 스위트 결합)**
+
+| 파일 | 문 커버리지 | 게이트 |
+|---|---|---|
+| install.go | 341/414 = **82.4%** | 미달 — M5 팔(선입검사·핀·모드)은 실행되나 신설 가드문으로 분모 증가; 잔여 미커버는 M6 번들·prune 상호 팔 |
+| lock.go | 83/101 = **82.2%** | ClassifyGuardMarker 재배선 분모 증가 |
+| lock_guard_unix.go | 36/40 = **90.0%** | **PASS** (readLockRecord 포함) |
+| journal.go | 30/32 = **93.8%** | PASS |
+| 패키지 합계 | **82.5%** | FAIL (85%) — M6/M7 착지분이 해소 |
+
+**게이트**: lint 0, gofmt 청결, windows build + 5패키지(userassets/hook/config/cli/template)
+test compile OK, hook/config/template 전체 GREEN (hook 305s), cli DoctorUserLock GREEN,
+userassets 잔여 RED 1건 (AC-016 번들 클로저 — M6 소관).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop 소관.)_

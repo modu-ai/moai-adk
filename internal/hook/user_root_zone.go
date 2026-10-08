@@ -54,49 +54,54 @@ func userRootZoneForms(cand string) []zoneForm {
 	if err != nil || home == "" {
 		return nil
 	}
-	// Gate round 26 #1: BOTH sides are resolved — the target through
-	// zoneResolve (symlinks, physical ".."), and the home through the same
-	// walk. On macOS /var is a symlink to /private/var: an unresolved home
-	// would never prefix-match a resolved target and every spelling would
-	// bypass the match.
-	homeResolved, ok := zoneResolve(home)
-	if !ok {
-		homeResolved = home
-	}
-	homeSlash := filepath.ToSlash(homeResolved)
 	abs := cand
 	switch {
 	case strings.HasPrefix(cand, "~/"):
-		abs = homeSlash + cand[1:]
+		abs = home + cand[1:]
 	case strings.HasPrefix(cand, "$HOME/"):
-		abs = homeSlash + cand[len("$HOME"):]
+		abs = home + cand[len("$HOME"):]
 	case strings.HasPrefix(cand, "${HOME}/"):
-		abs = homeSlash + cand[len("${HOME}"):]
+		abs = home + cand[len("${HOME}"):]
 	}
+	// Gate round 29-2: the RAW candidate spelling is preserved for
+	// resolution — zoneSlash would convert a literal backslash to a
+	// separator on POSIX, where a backslash is an ordinary filename
+	// character (an `alias\dir` symlink would check a nonexistent path).
+	// zoneResolve walks the raw path exactly like the interpreting process.
 	if !zoneIsAbs(zoneSlash(abs)) {
 		if cwd, cwdErr := zoneGetwd(); cwdErr == nil && cwd != "" {
-			abs = zoneSlash(cwd) + "/" + abs
+			abs = cwd + "/" + abs
 		}
 	}
 	if !zoneIsAbs(zoneSlash(abs)) {
 		return nil
 	}
-	resolved, ok := zoneResolve(filepath.FromSlash(zoneSlash(abs)))
-	if !ok {
-		// Unresolvable — the tracking evidence cannot be judged on the
-		// real path, so no user-root match is formed (the over-protection
-		// guard's fail direction is allow).
-		return nil
-	}
-	slash := filepath.ToSlash(resolved)
+	// Gate round 27-4: EACH INSTALL ROOT is resolved through the same walk
+	// as the target — a dotfile-manager symlink on ~/.claude relocates the
+	// root, and only root-resolved prefixes can match a target-resolved
+	// path.
 	var out []zoneForm
 	for slug, dir := range userRootSlugDirs {
-		under := homeSlash + "/" + dir + "/"
-		rest, ok := strings.CutPrefix(slash, under)
-		if !ok || rest == "" {
+		resolvedRoot, ok := zoneResolve(filepath.Join(home, filepath.FromSlash(dir)))
+		if !ok {
+			continue // root absent — nothing of it is on disk to protect
+		}
+		resolvedTarget, ok := zoneResolve(abs)
+		if !ok {
+			return nil // unresolvable target: no evidence, fail to allow
+		}
+		under := filepath.ToSlash(resolvedRoot) + "/"
+		rest, ok := strings.CutPrefix(filepath.ToSlash(resolvedTarget), under)
+		if !ok {
 			continue
 		}
-		display := userRootFormPrefix + slug + "/" + rest
+		// Gate round 27-2: the ROOT ITSELF (rest == "") is a protected form
+		// — removing it removes every tracked descendant. The bare form
+		// matches via the entry's dir semantics and the tracked containment.
+		display := userRootFormPrefix + slug
+		if rest != "" {
+			display += "/" + rest
+		}
 		out = append(out, zoneForm{Display: display, Folded: config.FoldZoneText(display)})
 	}
 	return out
@@ -115,13 +120,18 @@ func userRootKey(display string) (string, bool) {
 // userRootTracksAny reports whether the user manifest tracks the keyed
 // file OR anything UNDER it (gate round 26 #2: the manifest records
 // FILES, but a mutation can target a DIRECTORY — the prefix containment
-// closes that escape). An unreadable manifest reads as untracked (the
-// over-protection guard's fail direction).
+// closes that escape). Gate round 27-3: BOTH sides fold before comparing —
+// on a case-insensitive filesystem `skill.md` names the same inode as
+// `SKILL.md`, and a case-alias write must not bypass the tracked judgment.
+// An unreadable or non-regular manifest reads as untracked (the
+// over-protection guard's fail direction; gate round 30: a FIFO at the
+// manifest path must not hang the read).
 func userRootTracksAny(home, display string) bool {
 	key, ok := userRootKey(display)
 	if !ok {
 		return false
 	}
+	foldedKey := config.FoldZoneText(strings.TrimSuffix(key, "/"))
 	if home == "" {
 		if h, err := zoneHomeFn(); err == nil {
 			home = h
@@ -130,8 +140,8 @@ func userRootTracksAny(home, display string) bool {
 	if home == "" {
 		return false
 	}
-	data, err := os.ReadFile(filepath.Join(home, ".moai", "user-assets.json"))
-	if err != nil {
+	data, ok := readRegularFile(filepath.Join(home, ".moai", "user-assets.json"))
+	if !ok {
 		return false
 	}
 	var m struct {
@@ -140,12 +150,9 @@ func userRootTracksAny(home, display string) bool {
 	if json.Unmarshal(data, &m) != nil {
 		return false
 	}
-	if _, ok := m.Files[key]; ok {
-		return true
-	}
-	prefix := key + "/"
 	for k := range m.Files {
-		if strings.HasPrefix(k, prefix) {
+		folded := config.FoldZoneText(strings.TrimSuffix(k, "/"))
+		if folded == foldedKey || strings.HasPrefix(folded, foldedKey+"/") {
 			return true
 		}
 	}

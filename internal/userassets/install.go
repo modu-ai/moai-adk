@@ -236,6 +236,15 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 			// target).
 			continue
 		}
+		// M5 (REQ-COL-001): the target's TYPE is judged BEFORE any read —
+		// a non-regular entry (FIFO, device, socket) is classified as a
+		// collision-skip without reading, because os.ReadFile here would
+		// block forever on a FIFO with no writer (the M0 RED repro).
+		if info, statErr := os.Lstat(abs); statErr == nil && !info.Mode().IsRegular() {
+			res.CollisionSkipped++
+			res.Collisions = append(res.Collisions, tgt.manifestKey)
+			continue
+		}
 		if current, readErr := os.ReadFile(abs); readErr == nil {
 			_, tracked := manifest.Files[tgt.manifestKey]
 			if !tracked {
@@ -580,6 +589,15 @@ func (in *Installer) reconcileJournal(j *PendingJournal, manifest *Manifest, roo
 			continue
 		}
 		abs := filepath.Join(root.dir, filepath.FromSlash(rel))
+		// M5 (REQ-COL-001): a non-regular journal target is never read
+		// (the FIFO-hang hazard) and never claimed — classified as a
+		// collision so the RF5 pre-pass does not re-count it.
+		if info, statErr := os.Lstat(abs); statErr == nil && !info.Mode().IsRegular() {
+			classified[e.Path] = true
+			res.CollisionSkipped++
+			res.Collisions = append(res.Collisions, e.Path)
+			continue
+		}
 		data, err := os.ReadFile(abs)
 		if err != nil {
 			continue // case 1: absent — the install pass installs it
@@ -849,32 +867,61 @@ func (in *Installer) confinedWrite(root resolvedRoot, rel string, data []byte, m
 	if err != nil || !withinRoot(root.dir, parentResolvedFinal) {
 		return fmt.Errorf("userassets: parent re-validation failed before rename — refused (C2 posture)")
 	}
-	tmp, err := os.CreateTemp(parentResolvedFinal, ".ua-write-*")
+	// M5 (REQ-COL-002, design §6): PIN THE PARENT — the validated parent is
+	// opened as an os.Root handle and the temp-create, write, chmod, and
+	// rename all go THROUGH the handle. The handle pins the verified inode:
+	// a parent swapped to a symlink after validation cannot reroute the
+	// write or the rename (the declared C2 race limitation — the path-based
+	// rename following a swapped parent — is closed). The earlier C2 checks
+	// above are unchanged; the pin REPLACES the pre-rename path
+	// re-interpretation, it does not weaken it.
+	pinned, err := os.OpenRoot(parentResolvedFinal)
+	if err != nil {
+		return fmt.Errorf("userassets: pin destination parent: %w", err)
+	}
+	defer func() { _ = pinned.Close() }()
+	leaf := filepath.Base(dest)
+	tmpName := fmt.Sprintf(".ua-write-%d-%d", os.Getpid(), time.Now().UnixNano())
+	tmp, err := pinned.Create(tmpName)
 	if err != nil {
 		return err
 	}
-	tmpName := tmp.Name()
 	if _, err := tmp.Write(data); err != nil {
 		_ = tmp.Close()
-		_ = os.Remove(tmpName)
+		_ = pinned.Remove(tmpName)
+		return err
+	}
+	// M5 (REQ-COL-003): script assets keep their exec bit — the former
+	// 0o644 hardcode stripped it from every installed file.
+	if err := tmp.Chmod(in.installMode(rel)); err != nil {
+		_ = tmp.Close()
+		_ = pinned.Remove(tmpName)
 		return err
 	}
 	if err := tmp.Close(); err != nil {
-		_ = os.Remove(tmpName)
+		_ = pinned.Remove(tmpName)
 		return err
 	}
-	if err := os.Chmod(tmpName, 0o644); err != nil {
-		_ = os.Remove(tmpName)
-		return err
-	}
-	// rename(2) does not follow a symlink on the destination's final
-	// component — a leaf swapped in after validation is replaced, not
-	// followed (C2 edge 3 posture).
-	if err := os.Rename(tmpName, dest); err != nil {
-		_ = os.Remove(tmpName)
+	// The rename resolves WITHIN the pinned parent — a leaf swapped in
+	// after validation is replaced, not followed (C2 edge 3 posture), and
+	// a parent swapped after validation is irrelevant: the handle, not the
+	// path, names the directory the rename lands in.
+	if err := pinned.Rename(tmpName, leaf); err != nil {
+		_ = pinned.Remove(tmpName)
 		return err
 	}
 	return nil
+}
+
+// installMode decides the file mode an installed asset carries (M5,
+// REQ-COL-003): script assets keep their exec bit (0755 — the
+// navigator-audit.sh repro class); everything else keeps the previous
+// minimal permission (0644).
+func (in *Installer) installMode(rel string) os.FileMode {
+	if strings.HasSuffix(rel, ".sh") {
+		return 0o755
+	}
+	return 0o644
 }
 
 // confinedMkdir creates relDir under the resolved root one segment at a
