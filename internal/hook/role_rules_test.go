@@ -768,3 +768,33 @@ func TestSessionStartRoleRulesOverflowDirectiveSurvivesPrefixCut(t *testing.T) {
 	}
 	t.Logf("PASS save-failure prefix cut at composite level: composite %d chars, directive opens it, prior context %d chars", len(composite), utf16Len(existing))
 }
+
+// TestSessionStartRoleRulesCompositeNilGuard is the panic regression: a
+// compact event WITH the role marker and NO prior producer context leaves
+// out.HookSpecificOutput nil — the composite-head assignment dereferenced
+// it and panicked (the warning and the read directive were lost with the
+// session-start output). The handler must create the struct first; the
+// fixture observes warning + directive delivered, no panic.
+func TestSessionStartRoleRulesCompositeNilGuard(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv("ANTHROPIC_BASE_URL", "")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+
+	h := NewSessionStartHandler(nil)
+	input := &HookInput{
+		SessionID: "role-rules-nil-guard",
+		CWD:       "", // no cwd: the root falls back to ProjectDir, also empty — fail-visible path
+		Source:    "compact",
+	}
+	out, err := h.Handle(t.Context(), input)
+	if err != nil {
+		t.Fatalf("Handle panicked or errored: %v", err)
+	}
+	if out == nil || out.SystemMessage == "" {
+		t.Fatal("nil-guard composite delivered no operator warning")
+	}
+	if out.HookSpecificOutput == nil || !strings.Contains(out.HookSpecificOutput.AdditionalContext, roleRuleFiles[0].Rel) {
+		t.Fatalf("nil-guard composite delivered no read directive: %+v", out.HookSpecificOutput)
+	}
+	t.Logf("PASS nil guard: compact + role marker + no prior context delivered warning + directive, no panic")
+}

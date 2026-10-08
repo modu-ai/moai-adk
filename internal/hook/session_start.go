@@ -663,7 +663,14 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// The recovery directive opens the FINAL composite — ahead of every
 		// earlier producer's text — so a runtime side-channel cut (save
 		// failure → first 10,000 characters) still delivers it regardless of
-		// how much context the producers above accumulated.
+		// how much context the producers above accumulated. Nil guard: when
+		// no earlier producer wrote additionalContext the output struct is
+		// still nil — create it before the composite assignment.
+		if out.HookSpecificOutput == nil {
+			out.HookSpecificOutput = &HookSpecificOutput{
+				HookEventName: string(EventSessionStart),
+			}
+		}
 		out.HookSpecificOutput.AdditionalContext = assembleInjectionComposite(accumulatedAdditionalContext(out), inj)
 	} else if inj.Context != "" {
 		appendAdditionalContext(out, inj.Context)
