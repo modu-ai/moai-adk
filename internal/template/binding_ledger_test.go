@@ -16,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // ---------------------------------------------------------------------------
@@ -376,9 +378,14 @@ func newLedgerCheckEnv(t *testing.T, root string, led *bindingLedger, members []
 		return os.ReadFile(filepath.Join(root, filepath.FromSlash(relPath)))
 	}
 
-	// Role-core seam (M1 form): resolve each ledger role-core: rule-relative
-	// path against the deployed rules tree and return the full deployed file
-	// content. Named seam — M2's role-core builder output replaces this.
+	// Role-core seam (M2 form): resolve each ledger role-core: rule-relative
+	// path against the deployed rules tree and return the BUILDER OUTPUT —
+	// the regions the neutral moai:role-core markers enclose in the deployed
+	// file (config.ExtractRoleCoreRegions, the extraction the SessionStart
+	// hook's role-core builder runs; REQ-ALB-023). An unmarked or unreadable
+	// file resolves to "" so the row falls to the after-text failure paths —
+	// this seam is the marker-accuracy check: every role-core row's
+	// after-text must live inside a marked region.
 	resolved := map[string]string{}
 	roleSuffixes := map[string]bool{}
 	for _, row := range led.Rows {
@@ -403,6 +410,7 @@ func newLedgerCheckEnv(t *testing.T, root string, led *bindingLedger, members []
 		return nil
 	})
 	roleSweepCount := 0
+	roleUnmarked := 0
 	env.roleCoreContent = func(ruleRel string) string {
 		roleSweepCount++
 		deployed, ok := resolved[ruleRel]
@@ -413,10 +421,16 @@ func newLedgerCheckEnv(t *testing.T, root string, led *bindingLedger, members []
 		if err != nil {
 			return ""
 		}
-		return string(data)
+		regions, marked := config.ExtractRoleCoreRegions(string(data))
+		if !marked {
+			roleUnmarked++
+			return ""
+		}
+		return strings.Join(regions, "\n\n")
 	}
 	t.Cleanup(func() {
-		t.Logf("[role-core seam] sweep count: %d rows checked against deployed rule content (M1 form; M2 replaces the seam with the role-core builder output)", roleSweepCount)
+		t.Logf("[role-core seam] sweep count: %d rows checked against builder output (M2 form: marker-enclosed regions of the deployed file); unmarked=%d",
+			roleSweepCount, roleUnmarked)
 	})
 	return env
 }
@@ -850,26 +864,40 @@ func (env *ledgerCheckEnv) checkAC021FragmentRule() {
 	// Skill files. The deployer excludes the project .claude/skills/ tree from
 	// the deployed project, so sweeping env.root/.claude/skills is void — the
 	// skills sweep must walk the deployment ORIGIN (the embedded template
-	// source) instead. Rules-vs-skills counts are reported separately so
-	// neither sweep can go silently empty.
-	skillFiles := 0
-	skillsRoot := filepath.Join(repoRootFromTemplatePkg(env.t), "internal", "template", "templates", ".claude", "skills")
-	_ = filepath.Walk(skillsRoot, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() || !strings.HasSuffix(info.Name(), ".md") {
-			return nil //nolint:nilerr
-		}
-		rel, relErr := filepath.Rel(repoRootFromTemplatePkg(env.t), path)
-		if relErr != nil {
-			return nil //nolint:nilerr
-		}
-		data, readErr := os.ReadFile(path)
-		if readErr != nil {
-			return nil //nolint:nilerr
-		}
-		files = append(files, onDemandFile{rel: filepath.ToSlash(rel), lines: trimmedLineSet(string(data))})
-		skillFiles++
-		return nil
-	})
+	// source) instead. The catalog installs TWO skill origins — .claude/skills
+	// and .agents/skills (the command skills moai-plan/moai-run/moai-sync
+	// among them) — so both template-source trees are swept; rules, .claude
+	// skill, and .agents skill counts are reported separately so no sweep can
+	// go silently empty (M1-inheritance repair: the .agents/skills origin was
+	// entirely unswept).
+	skillRoot := filepath.Join(repoRootFromTemplatePkg(env.t), "internal", "template", "templates")
+	claudeSkillFiles, agentsSkillFiles := 0, 0
+	for _, skillOrigin := range []struct {
+		dir   string
+		count *int
+	}{
+		{".claude/skills", &claudeSkillFiles},
+		{".agents/skills", &agentsSkillFiles},
+	} {
+		skillsRoot := filepath.Join(skillRoot, filepath.FromSlash(skillOrigin.dir))
+		_ = filepath.Walk(skillsRoot, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() || !strings.HasSuffix(info.Name(), ".md") {
+				return nil //nolint:nilerr
+			}
+			rel, relErr := filepath.Rel(repoRootFromTemplatePkg(env.t), path)
+			if relErr != nil {
+				return nil //nolint:nilerr
+			}
+			data, readErr := os.ReadFile(path)
+			if readErr != nil {
+				return nil //nolint:nilerr
+			}
+			files = append(files, onDemandFile{rel: filepath.ToSlash(rel), lines: trimmedLineSet(string(data))})
+			*skillOrigin.count++
+			return nil
+		})
+	}
+	skillFiles := claudeSkillFiles + agentsSkillFiles
 	for j := range files {
 		files[j].anchorLines = map[string]bool{}
 		anchorRel := files[j].rel
@@ -882,10 +910,11 @@ func (env *ledgerCheckEnv) checkAC021FragmentRule() {
 	}
 
 	linesChecked, hits, exemptAtAnchor := env.sweepFragmentLines(files)
-	env.t.Logf("[AC-ALB-021(2)] fragment sweep: binding/normative qualifying lines=%d on-demand rule files=%d skill files=%d violations=%d lines exempt (already in anchor copy)=%d",
-		linesChecked, len(files)-skillFiles, skillFiles, hits, exemptAtAnchor)
+	env.t.Logf("[AC-ALB-021(2)] fragment sweep: binding/normative qualifying lines=%d on-demand rule files=%d .claude skill files=%d .agents skill files=%d violations=%d lines exempt (already in anchor copy)=%d",
+		linesChecked, len(files)-skillFiles, claudeSkillFiles, agentsSkillFiles, hits, exemptAtAnchor)
 	if linesChecked == 0 || len(files) == 0 || skillFiles == 0 {
-		env.errf("AC-ALB-021(2) fragment sweep empty (lines=%d files=%d skill files=%d) — empty sweep is a failure, not a pass", linesChecked, len(files), skillFiles)
+		env.errf("AC-ALB-021(2) fragment sweep empty (lines=%d files=%d skill files=%d: .claude=%d .agents=%d) — empty sweep is a failure, not a pass",
+			linesChecked, len(files), skillFiles, claudeSkillFiles, agentsSkillFiles)
 	}
 }
 
@@ -1179,6 +1208,34 @@ func TestBindingLedgerIntegrity(t *testing.T) {
 				t.Fatalf("fixture (j): planted skill-surface fragment of row %s was NOT caught", row.ID)
 			}
 			t.Logf("fixture (j) observed red: planted skill-surface fragment of row %s caught (hits=%d)", row.ID, hits)
+		})
+
+		// (j2) the same fragment planted on the SECOND skill origin the
+		// catalog installs (.agents/skills — the command skills) must also be
+		// caught (M1-inheritance repair: that origin was entirely unswept and
+		// a planted fragment passed with hits=0).
+		t.Run("j2_fragment_in_agents_skill_origin_caught", func(t *testing.T) {
+			row := firstRowOfKind(led, "binding")
+			fragment := ""
+			for _, line := range strings.Split(row.AfterText, "\n") {
+				if utf16CodeUnits(strings.TrimSpace(line)) >= 40 {
+					fragment = strings.TrimSpace(line)
+					break
+				}
+			}
+			if fragment == "" {
+				t.Skipf("row %s has no 40+ unit line; this fixture needs a multi-line binding row", row.ID)
+			}
+			mutated := newLedgerCheckEnv(t, root, led, members, anchor)
+			files := []onDemandFile{{
+				rel:   "internal/template/templates/.agents/skills/moai-plan/planted-fixture.md",
+				lines: map[string]bool{fragment: true},
+			}}
+			_, hits, _ := mutated.sweepFragmentLines(files)
+			if hits == 0 {
+				t.Fatalf("fixture (j2): planted .agents/skills-origin fragment of row %s was NOT caught", row.ID)
+			}
+			t.Logf("fixture (j2) observed red: planted .agents/skills-origin fragment of row %s caught (hits=%d)", row.ID, hits)
 		})
 	})
 }

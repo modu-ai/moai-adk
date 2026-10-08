@@ -95,23 +95,28 @@ func utf16CodeUnits(s string) int {
 // rules-tree markdown file carries a top-level `paths:` key. Mirrors the
 // runtime rule (internal/hook/instructions_loaded.go ruleFileAlwaysLoaded):
 // an indented `paths:` (leading whitespace) does NOT match the top-level
-// prefix, so the file stays always-loaded; a missing closing `---` is also
-// always-loaded (no top-level paths: is observable); no frontmatter at all is
-// always-loaded.
+// prefix, so the file stays always-loaded; no frontmatter at all is
+// always-loaded; and a frontmatter block that never closes is ALSO
+// always-loaded (acceptance §D.2 boundary case 「닫는 --- 가 없는 frontmatter:
+// 상시 로드로 판정한다」) — a `paths:` line without a closing delimiter is
+// malformed metadata, not a scope grant, so the file must be counted, not
+// silently excluded from the budget (M1-inheritance repair: the early
+// return-on-paths: excluded exactly that shape).
 func frontmatterPathsScoped(content []byte) bool {
 	lines := strings.Split(string(content), "\n")
 	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "---" {
 		return false // no frontmatter block: always-loaded
 	}
+	sawPaths := false
 	for i := 1; i < len(lines); i++ {
 		if strings.TrimSpace(lines[i]) == "---" {
-			return false // closing delimiter reached: no top-level paths:
+			return sawPaths // closing delimiter reached: scoped only when a top-level paths: preceded it
 		}
 		if strings.HasPrefix(lines[i], "paths:") {
-			return true // paths:-scoped: loads on demand
+			sawPaths = true // keep scanning: the closing --- must still be observed
 		}
 	}
-	return false // unterminated frontmatter: always-loaded
+	return false // closing --- never found: always-loaded
 }
 
 // importTargets parses the @-import lines of a root-instruction file and
@@ -406,6 +411,45 @@ func TestDeployedAlwaysLoadedSurfaceDerivation(t *testing.T) {
 		if got, want := surfaceTotal(after), surfaceTotal(before); got != want {
 			t.Errorf("adding a paths:-scoped rule must leave the total unchanged: got=%d want=%d", got, want)
 		}
+	})
+
+	// Boundary pair for the §D.2 case 「닫는 --- 가 없는 frontmatter: 상시
+	// 로드로 판정한다」: a paths: line whose frontmatter block never closes
+	// is malformed metadata, not a scope grant — the file must be COUNTED
+	// (increase observed), while the same paths: behind a closing delimiter
+	// stays excluded (unchanged observed). The pre-repair early
+	// return-on-paths: excluded the unclosed shape from the budget entirely.
+	const fixtureUnclosedRel = ".claude/rules/moai/core/zz-alb-fixture-unclosed.md"
+	t.Run("unclosed_frontmatter_paths_rule_counts_as_member", func(t *testing.T) {
+		root := deployEmbeddedTemplatesForTest(t)
+		before := deriveDeployedAlwaysLoadedMembers(t, root)
+		unclosed := "---\ndescription: fixture\npaths:\n  - '**/zz-alb-fixture-unclosed*'\n" + fixtureBody // no closing ---
+		writeFixture(t, root, fixtureUnclosedRel, unclosed)
+		after := deriveDeployedAlwaysLoadedMembers(t, root)
+
+		if !memberExists(after, fixtureUnclosedRel) {
+			t.Errorf("unclosed-frontmatter paths: fixture must join the always-loaded member list (§D.2): %s", fixtureUnclosedRel)
+		}
+		wantGrowth := utf16CodeUnits(unclosed)
+		if got := surfaceTotal(after) - surfaceTotal(before); got != wantGrowth {
+			t.Errorf("unclosed-frontmatter fixture must grow the total by its size: growth=%d want=%d", got, wantGrowth)
+		}
+		t.Logf("boundary observed: unclosed-frontmatter paths: rule counted as member (total +%d)", wantGrowth)
+	})
+	t.Run("closed_frontmatter_paths_rule_still_excluded", func(t *testing.T) {
+		root := deployEmbeddedTemplatesForTest(t)
+		before := deriveDeployedAlwaysLoadedMembers(t, root)
+		scoped := "---\ndescription: fixture\npaths:\n  - '**/zz-alb-fixture-unclosed*'\n---\n" + fixtureBody
+		writeFixture(t, root, fixtureUnclosedRel, scoped)
+		after := deriveDeployedAlwaysLoadedMembers(t, root)
+
+		if memberExists(after, fixtureUnclosedRel) {
+			t.Errorf("closed-frontmatter paths: fixture must stay excluded: %s", fixtureUnclosedRel)
+		}
+		if got, want := surfaceTotal(after), surfaceTotal(before); got != want {
+			t.Errorf("closed-frontmatter control must leave the total unchanged: got=%d want=%d", got, want)
+		}
+		t.Logf("boundary control observed: same paths: behind a closing --- stays excluded (total unchanged)")
 	})
 
 	t.Run("import_closure_fixture_grows_total", func(t *testing.T) {
