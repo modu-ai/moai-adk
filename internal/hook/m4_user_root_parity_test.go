@@ -36,6 +36,8 @@ func TestUserRootSlugDirsMatchUserassetsRoots(t *testing.T) {
 // TestUserRootFormsEmitNamespacedForm pins the resolver's user-root forms:
 // an absolute path under a user root emits exactly one namespaced form,
 // the ~ alias emits the same form, and a project-relative path emits none.
+// Gate round 26 #1: a /./ spelling resolves to the same form as the plain
+// path — the judgment runs on the resolved target, not the raw input.
 func TestUserRootFormsEmitNamespacedForm(t *testing.T) {
 	home := t.TempDir()
 	prev := zoneHomeFn
@@ -43,7 +45,7 @@ func TestUserRootFormsEmitNamespacedForm(t *testing.T) {
 	t.Cleanup(func() { zoneHomeFn = prev })
 
 	target := filepath.Join(home, ".claude", "agents", "moai", "plan-auditor.md")
-	forms := userRootForms(target)
+	forms := userRootZoneForms(target)
 	if len(forms) != 1 {
 		t.Fatalf("forms = %v (want exactly the claude-agents form)", forms)
 	}
@@ -52,14 +54,25 @@ func TestUserRootFormsEmitNamespacedForm(t *testing.T) {
 		t.Fatalf("form display = %q, want %q", forms[0].Display, want)
 	}
 
-	alias := userRootForms(home + "/.claude/agents/moai/plan-auditor.md")
-	tilde := userRootForms("~/.claude/agents/moai/plan-auditor.md")
+	tilde := userRootZoneForms("~/.claude/agents/moai/plan-auditor.md")
 	if len(tilde) != 1 || tilde[0].Display != want {
 		t.Fatalf("the ~ alias form = %v, want [%s]", tilde, want)
 	}
-	_ = alias
 
-	if got := userRootForms(".claude/agents/moai/plan-auditor.md"); got != nil {
+	// Gate round 26 #1: the dot-path and parent-path spellings resolve to
+	// the SAME namespaced form — the match judges the resolved target.
+	// (Raw concatenation, NOT filepath.Join: Join would clean the spellings
+	// away before the resolver ever sees them.)
+	dotted := userRootZoneForms(home + "/./.claude/agents/moai/plan-auditor.md")
+	if len(dotted) != 1 || dotted[0].Display != want {
+		t.Fatalf("the /./ spelling form = %v, want [%s]", dotted, want)
+	}
+	parent := userRootZoneForms(home + "/.claude/agents/moai/../moai/plan-auditor.md")
+	if len(parent) != 1 || parent[0].Display != want {
+		t.Fatalf("the /../ spelling form = %v, want [%s]", parent, want)
+	}
+
+	if got := userRootZoneForms(".claude/agents/moai/plan-auditor.md"); got != nil {
 		t.Fatalf("a relative (project-relative) target produced user forms: %v", got)
 	}
 }
@@ -67,7 +80,8 @@ func TestUserRootFormsEmitNamespacedForm(t *testing.T) {
 // TestUserRootFormTrackedScoping pins the REQ-GRD-002 limitation at the
 // helper level: a manifest-tracked key reads tracked, an untracked key
 // does not, and an unreadable manifest reads untracked (fail toward
-// allowing the user's own file).
+// allowing the user's own file). Gate round 26 #2: a DIRECTORY key is
+// covered when any tracked file lives under it (prefix containment).
 func TestUserRootFormTrackedScoping(t *testing.T) {
 	home := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(home, ".moai"), 0o755); err != nil {
@@ -81,10 +95,20 @@ func TestUserRootFormTrackedScoping(t *testing.T) {
 	zoneHomeFn = func() (string, error) { return home, nil }
 	t.Cleanup(func() { zoneHomeFn = prev })
 
-	if !userRootFormTracked(home, "user-root:claude-agents/moai/plan-auditor.md") {
+	if !userRootTracksAny(home, "user-root:claude-agents/moai/plan-auditor.md") {
 		t.Fatal("a tracked file read untracked")
 	}
-	if userRootFormTracked(home, "user-root:claude-agents/moai/user-own-note.md") {
+	if userRootTracksAny(home, "user-root:claude-agents/moai/user-own-note.md") {
 		t.Fatal("an untracked file read tracked — the over-protection guard is open")
+	}
+	// Gate round 26 #2: the directory containment.
+	if !userRootTracksAny(home, "user-root:claude-agents/moai") {
+		t.Fatal("a directory containing a tracked file read uncovered — the prefix containment is missing")
+	}
+	if !userRootTracksAny(home, "user-root:claude-agents") {
+		t.Fatal("the root directory containing a tracked file read uncovered")
+	}
+	if userRootTracksAny(home, "user-root:claude-agents/other") {
+		t.Fatal("a directory with no tracked content read covered")
 	}
 }

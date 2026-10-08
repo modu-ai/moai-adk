@@ -206,21 +206,37 @@ func (h *preToolHandler) checkProtectedZone(agentID, toolName, rawPath string) (
 	for _, form := range forms {
 		for i := range load.Zone.Entries {
 			entry := load.Zone.Entries[i]
-			if !entry.Match(form.Folded) {
-				continue
+			if entry.Match(form.Folded) {
+				reason := zoneDenyReason(agentID, "category", entry.Category, form.Display)
+				h.recordZoneAudit(root, zoneAuditRow{
+					Identity: agentID, Tool: toolName, Path: form.Display,
+					Category: entry.Category, Decision: "deny", ManifestState: config.ZoneStateOK,
+				})
+				return SentinelHarnessFrozenProtectedZone, reason
 			}
-			// M4 (REQ-GRD-002): a user-root match protects only
-			// MANIFEST-TRACKED files — a user-created file in a managed
-			// directory stays editable.
-			if entry.Kind == config.ZoneUserRoot && !userRootFormTracked("", form.Display) {
-				continue
+		}
+	}
+	// M4 (SPEC-USERASSET-DEPLOY-GUARD-001): the user-root arm — its OWN
+	// branch (gate round 26 #3): user-root forms match only ZoneUserRoot
+	// entries, filtered by the manifest-tracked containment check; the
+	// baseline and project rules above never see them.
+	if load.State == config.ZoneStateOK {
+		for _, uf := range userRootZoneForms(rawPath) {
+			for i := range load.Zone.Entries {
+				entry := &load.Zone.Entries[i]
+				if entry.Kind != config.ZoneUserRoot || !entry.Match(uf.Folded) {
+					continue
+				}
+				if !userRootTracksAny("", uf.Display) {
+					continue
+				}
+				reason := zoneDenyReason(agentID, "category", entry.Category, uf.Display)
+				h.recordZoneAudit(root, zoneAuditRow{
+					Identity: agentID, Tool: toolName, Path: uf.Display,
+					Category: entry.Category, Decision: "deny", ManifestState: config.ZoneStateOK,
+				})
+				return SentinelHarnessFrozenProtectedZone, reason
 			}
-			reason := zoneDenyReason(agentID, "category", entry.Category, form.Display)
-			h.recordZoneAudit(root, zoneAuditRow{
-				Identity: agentID, Tool: toolName, Path: form.Display,
-				Category: entry.Category, Decision: "deny", ManifestState: config.ZoneStateOK,
-			})
-			return SentinelHarnessFrozenProtectedZone, reason
 		}
 	}
 	return "", ""

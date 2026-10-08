@@ -64,6 +64,36 @@ func acquireGuard(path string, timeout time.Duration) (func(), error) {
 	return release, nil
 }
 
+// lockRecord statuses for readLockRecord (mirrored in lock.go).
+const (
+	recordAbsent = iota
+	recordIrregular
+	recordOK
+)
+
+// readLockRecord reads one ownership record on windows: the unix FIFO
+// open-hang hazard has no windows-path equivalent (named pipes live under
+// \\.\\pipe\\ spellings a literal lock path never reaches), so the Lstat +
+// ReadFile form suffices and the handle-binding refinement stays unix-
+// only. The type judgment still fails closed on non-regular files.
+func readLockRecord(path string) lockRecord {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return lockRecord{status: recordAbsent}
+		}
+		return lockRecord{status: recordIrregular}
+	}
+	if !info.Mode().IsRegular() {
+		return lockRecord{status: recordIrregular}
+	}
+	data, readErr := os.ReadFile(path)
+	if readErr != nil {
+		return lockRecord{status: recordIrregular}
+	}
+	return lockRecord{data: data, status: recordOK}
+}
+
 // classifyPidlessMarker decides a pid-less guard file's state on windows
 // (SPEC-USERASSET-DEPLOY-GUARD-001 M2, gate rounds 18/19): on windows the
 // marker's EXISTENCE is the held evidence — there is no flock fallback —

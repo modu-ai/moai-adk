@@ -55,27 +55,30 @@ func TestClearJournalNonRemovableTargetIsAnError(t *testing.T) {
 	}
 }
 
-// TestWriteJournalUnwritableHomeIsAnError — a journal persist into an
-// unwritable home must error: the per-file flag persistence (M1,
+// TestWriteJournalBlockedPathIsAnError — a journal persist whose target
+// cannot be written must error: the per-file flag persistence (M1,
 // REQ-JRN-003) records a per-file failure from this error, and a silent
 // success would leave the interruption contract claiming flags it never
-// wrote.
-func TestWriteJournalUnwritableHomeIsAnError(t *testing.T) {
+// wrote. Gate round 24: the failure injection is PLATFORM-INDEPENDENT —
+// the journal path is occupied by a directory, which fails the final
+// rename on EVERY platform (a directory-Chmod injection is a no-op on
+// windows, where dir modes do not gate child creation).
+func TestWriteJournalBlockedPathIsAnError(t *testing.T) {
 	home := t.TempDir()
-	moai := filepath.Join(home, ".moai")
-	if err := os.MkdirAll(moai, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(home, ".moai"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(moai, 0o555); err != nil {
+	jp := JournalPath(home)
+	if err := os.Remove(jp); err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(moai, 0o755) })
+	if err := os.Mkdir(jp, 0o755); err != nil {
+		t.Fatal(err)
+	}
 
-	// The contract is the error itself — its wording (mkdir vs create-temp)
-	// is the failing site's choice, not part of the contract.
-	err := WriteJournal(JournalPath(home), &PendingJournal{SchemaVersion: SchemaVersion})
+	err := WriteJournal(jp, &PendingJournal{SchemaVersion: SchemaVersion})
 	if err == nil {
-		t.Fatal("WriteJournal reported success into an unwritable home")
+		t.Fatal("WriteJournal reported success over a directory occupying the journal path")
 	}
 }
 

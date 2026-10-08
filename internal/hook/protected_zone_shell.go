@@ -528,17 +528,9 @@ func zoneShellCovered(forms []zoneForm, load config.ProtectedZoneLoad, root stri
 		for _, form := range forms {
 			for _, folded := range []string{form.Folded, form.Folded + "/"} {
 				for i := range load.Zone.Entries {
-					entry := &load.Zone.Entries[i]
-					if !entry.Match(folded) {
-						continue
+					if load.Zone.Entries[i].Match(folded) {
+						return load.Zone.Entries[i].Category, true
 					}
-					// M4 (REQ-GRD-002): a user-root match protects only
-					// MANIFEST-TRACKED files — a user-created file in a
-					// managed directory stays editable.
-					if entry.Kind == config.ZoneUserRoot && !userRootFormTracked("", form.Display) {
-						continue
-					}
-					return entry.Category, true
 				}
 			}
 		}
@@ -1522,12 +1514,23 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	for _, cand := range w.cands {
 		forms := resolveZoneTarget(root, cand)
 		category, covered := zoneShellCovered(forms, load, root)
-		if !covered {
-			continue
-		}
 		display := cand
 		if len(forms) > 0 {
 			display = forms[0].Display
+		}
+		// M4 (SPEC-USERASSET-DEPLOY-GUARD-001): the user-root arm — its OWN
+		// branch (gate round 26 #3): user-root forms match only ZoneUserRoot
+		// entries, filtered by the manifest-tracked containment check (the
+		// manifest records files; a directory mutation is covered when any
+		// tracked key lives under it). The project/baseline rules above
+		// never see the user-root forms.
+		if !covered && load.State == config.ZoneStateOK {
+			if uCat, uDisplay, uCovered := zoneUserRootCovered(cand, load); uCovered {
+				category, covered, display = uCat, true, uDisplay
+			}
+		}
+		if !covered {
+			continue
 		}
 		reason := zoneDenyReason(agentID, "category", category, display)
 		h.recordZoneAudit(root, zoneAuditRow{

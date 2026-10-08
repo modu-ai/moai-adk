@@ -41,70 +41,87 @@ const userRootFormPrefix = "user-root:"
 // Tests replace it.
 var zoneHomeFn = os.UserHomeDir
 
-// userRootForms returns the user-root forms of a raw target: when the
-// target (after ~ / $HOME expansion, or as an absolute path under the
-// home) lands under one of the user-install roots, the form is the
-// namespaced "user-root:<slug>/<rest>" spelling the ZoneUserRoot entries
-// match. Relative targets are project-relative and produce nothing here.
-func userRootForms(raw string) []zoneForm {
+// userRootZoneForms is the deny sites' user-root entry point (gate round
+// 26 #1/#3): it judges the RESOLVED target — the candidate is absolutized
+// against the hook cwd, ~/$HOME spellings are expanded, and the whole path
+// goes through zoneResolve (symlinks and physical ".." follow the same
+// walk the shell would) — so /./, /../ and symlink spellings of a tracked
+// file all land on the same resolved inode path and produce the same
+// namespaced form. The forms match ONLY ZoneUserRoot entries; the
+// project/baseline streams never see them.
+func userRootZoneForms(cand string) []zoneForm {
 	home, err := zoneHomeFn()
 	if err != nil || home == "" {
 		return nil
 	}
-	homeSlash := filepath.ToSlash(home)
-	expanded := raw
-	switch {
-	case strings.HasPrefix(raw, "~/"):
-		expanded = homeSlash + raw[1:]
-	case strings.HasPrefix(raw, "$HOME/"):
-		expanded = homeSlash + raw[len("$HOME"):]
-	case strings.HasPrefix(raw, "${HOME}/"):
-		expanded = homeSlash + raw[len("${HOME}"):]
+	// Gate round 26 #1: BOTH sides are resolved — the target through
+	// zoneResolve (symlinks, physical ".."), and the home through the same
+	// walk. On macOS /var is a symlink to /private/var: an unresolved home
+	// would never prefix-match a resolved target and every spelling would
+	// bypass the match.
+	homeResolved, ok := zoneResolve(home)
+	if !ok {
+		homeResolved = home
 	}
-	if expanded == "" || !filepath.IsAbs(expanded) {
+	homeSlash := filepath.ToSlash(homeResolved)
+	abs := cand
+	switch {
+	case strings.HasPrefix(cand, "~/"):
+		abs = homeSlash + cand[1:]
+	case strings.HasPrefix(cand, "$HOME/"):
+		abs = homeSlash + cand[len("$HOME"):]
+	case strings.HasPrefix(cand, "${HOME}/"):
+		abs = homeSlash + cand[len("${HOME}"):]
+	}
+	if !zoneIsAbs(zoneSlash(abs)) {
+		if cwd, cwdErr := zoneGetwd(); cwdErr == nil && cwd != "" {
+			abs = zoneSlash(cwd) + "/" + abs
+		}
+	}
+	if !zoneIsAbs(zoneSlash(abs)) {
 		return nil
 	}
-	slash := filepath.ToSlash(expanded)
+	resolved, ok := zoneResolve(filepath.FromSlash(zoneSlash(abs)))
+	if !ok {
+		// Unresolvable — the tracking evidence cannot be judged on the
+		// real path, so no user-root match is formed (the over-protection
+		// guard's fail direction is allow).
+		return nil
+	}
+	slash := filepath.ToSlash(resolved)
 	var out []zoneForm
 	for slug, dir := range userRootSlugDirs {
-		rest, ok := cutUserRootRest(homeSlash, slash, dir)
-		if !ok {
+		under := homeSlash + "/" + dir + "/"
+		rest, ok := strings.CutPrefix(slash, under)
+		if !ok || rest == "" {
 			continue
 		}
 		display := userRootFormPrefix + slug + "/" + rest
-		f := zoneForm{Display: display, Folded: config.FoldZoneText(display)}
-		out = append(out, f)
+		out = append(out, zoneForm{Display: display, Folded: config.FoldZoneText(display)})
 	}
 	return out
 }
 
-// cutUserRootRest reports rest when the slash path lies under
-// <home>/<homeRelDir>/ — the home is joined HERE: a raw absolute path
-// already lives under the home, and an expanded ~ path was joined above.
-func cutUserRootRest(homeSlash, slashPath, homeRelDir string) (string, bool) {
-	under := homeSlash + "/" + homeRelDir + "/"
-	rest, ok := strings.CutPrefix(slashPath, under)
-	if !ok {
-		return "", false
-	}
-	if rest == "" {
+// userRootKey parses a namespaced form into the manifest key
+// "<slug>/<rest>".
+func userRootKey(display string) (string, bool) {
+	rest, ok := strings.CutPrefix(display, userRootFormPrefix)
+	if !ok || rest == "" {
 		return "", false
 	}
 	return rest, true
 }
 
-// userRootFormTracked reports whether the file a user-root form names is
-// TRACKED by the user-assets manifest — the REQ-GRD-002 limitation that
-// keeps the protection on moai-managed assets only. An unreadable manifest
-// reads as untracked (fail toward allowing a user's own file, never
-// toward protecting it): the recovery surface for a corrupt manifest is
-// the doctor row, not a guard denial.
-func userRootFormTracked(home string, display string) bool {
-	rest, ok := strings.CutPrefix(display, userRootFormPrefix)
+// userRootTracksAny reports whether the user manifest tracks the keyed
+// file OR anything UNDER it (gate round 26 #2: the manifest records
+// FILES, but a mutation can target a DIRECTORY — the prefix containment
+// closes that escape). An unreadable manifest reads as untracked (the
+// over-protection guard's fail direction).
+func userRootTracksAny(home, display string) bool {
+	key, ok := userRootKey(display)
 	if !ok {
 		return false
 	}
-	key := config.FoldZoneText(rest)
 	if home == "" {
 		if h, err := zoneHomeFn(); err == nil {
 			home = h
@@ -123,13 +140,34 @@ func userRootFormTracked(home string, display string) bool {
 	if json.Unmarshal(data, &m) != nil {
 		return false
 	}
-	// The manifest keys are written in the canonical slug/rest spelling;
-	// compare on both the folded form and the raw spelling so a canonical
-	// manifest matches case-exactly while a case-variant form still finds
-	// its record.
 	if _, ok := m.Files[key]; ok {
 		return true
 	}
-	_, ok = m.Files[rest]
-	return ok
+	prefix := key + "/"
+	for k := range m.Files {
+		if strings.HasPrefix(k, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// zoneUserRootCovered judges the user-root arm for one shell candidate:
+// the resolved target's namespaced forms are matched against ZoneUserRoot
+// entries only, filtered by the manifest-tracked containment. Returns the
+// entry's category, the namespaced display form, and whether covered.
+func zoneUserRootCovered(cand string, load config.ProtectedZoneLoad) (string, string, bool) {
+	for _, uf := range userRootZoneForms(cand) {
+		for i := range load.Zone.Entries {
+			e := &load.Zone.Entries[i]
+			if e.Kind != config.ZoneUserRoot || !e.Match(uf.Folded) {
+				continue
+			}
+			if !userRootTracksAny("", uf.Display) {
+				continue
+			}
+			return e.Category, uf.Display, true
+		}
+	}
+	return "", "", false
 }

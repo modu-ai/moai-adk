@@ -8,7 +8,6 @@ package userassets
 
 import (
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -21,19 +20,21 @@ func TestJournalFlagPersistOnlyForWrittenFiles(t *testing.T) {
 	if _, err := f.installer(t).Install(nil); err != nil {
 		t.Fatalf("run 1: %v", err)
 	}
-	moaiHome := filepath.Join(f.home, ".moai")
 
-	// The watcher makes ~/.moai read-only the moment the staging write of
-	// run 2 lands — the FIRST journal write. Any LATER journal write
-	// (a per-target flag persist) then fails and is recorded as a
-	// per-file failure naming "persist completion flag". With the
+	// The watcher occupies the JOURNAL path with a directory the moment the
+	// staging write of run 2 lands — the FIRST journal write. Any LATER
+	// journal write (a per-target flag persist) then fails and is recorded
+	// as a per-file failure naming "persist completion flag". With the
 	// amplification gate in place there is nothing between staging and the
 	// manifest save on an up-to-date tree, so no such failure may exist.
+	// Gate round 24: the injection is PLATFORM-INDEPENDENT — a directory
+	// occupying the path fails the rename on every OS, where a directory
+	// Chmod is a no-op on windows.
 	stop := make(chan struct{})
 	watcherDone := make(chan struct{})
+	jp := JournalPath(f.home)
 	go func() {
 		defer close(watcherDone)
-		jp := JournalPath(f.home)
 		for {
 			select {
 			case <-stop:
@@ -41,7 +42,8 @@ func TestJournalFlagPersistOnlyForWrittenFiles(t *testing.T) {
 			default:
 			}
 			if _, err := os.Stat(jp); err == nil {
-				_ = os.Chmod(moaiHome, 0o555)
+				_ = os.Remove(jp)
+				_ = os.Mkdir(jp, 0o755)
 				return
 			}
 			time.Sleep(200 * time.Microsecond)
@@ -51,7 +53,9 @@ func TestJournalFlagPersistOnlyForWrittenFiles(t *testing.T) {
 	res, installErr := f.installer(t).Install(nil)
 	close(stop)
 	<-watcherDone
-	_ = os.Chmod(moaiHome, 0o755)
+	// Restore: drop the occupying directory so later assertions/cleanup
+	// see a clean home.
+	_ = os.Remove(jp)
 
 	// Run 2 saw every target up-to-date.
 	if res.Installed != 0 || res.Refreshed != 0 {

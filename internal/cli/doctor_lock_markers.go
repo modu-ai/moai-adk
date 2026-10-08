@@ -17,6 +17,15 @@ import (
 	"github.com/modu-ai/moai-adk/internal/userassets"
 )
 
+// shellSingleQuoted renders p as a POSIX single-quoted shell word — the
+// only quoting under which a copied path can never execute command
+// substitution or glob (gate round 23: rm "<path>" fired $(...) inside a
+// crafted home path). An embedded single quote closes the word, escapes
+// the quote, and reopens.
+func shellSingleQuoted(p string) string {
+	return "'" + strings.ReplaceAll(p, "'", `'\''`) + "'"
+}
+
 func checkUserLockMarkers(homeDir string, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "User Lock"}
 
@@ -76,9 +85,12 @@ func checkUserLockMarkers(homeDir string, verbose bool) DiagnosticCheck {
 	case ownerless != "":
 		// REQ-LOCK-001: the marker is never auto-reclaimed — the explicit
 		// confirmed removal is the resolution, gated on the user's own
-		// check that no moai process is running.
+		// check that no moai process is running. Gate round 23: the path
+		// is printed SINGLE-QUOTED with POSIX escaping — a double-quoted
+		// path executes command substitution when the user copies it
+		// (gate repro: `$(touch probe)` fired inside rm "...").
 		check.Status = uikit.CheckWarn
-		check.Message = fmt.Sprintf("an ownerless %s (%s) cannot be proven abandoned (no pid record) and is never auto-reclaimed — after confirming no moai process is running, remove it explicitly: rm \"%s\"", ownerless, ownerlessPath, ownerlessPath)
+		check.Message = fmt.Sprintf("an ownerless %s (%s) cannot be proven abandoned (no pid record) and is never auto-reclaimed — after confirming no moai process is running, remove it explicitly: rm %s", ownerless, ownerlessPath, shellSingleQuoted(ownerlessPath))
 		if verbose {
 			check.Detail = "the marker predates PID ownership records (or was created by a foreign tool); the guard refuses and waits rather than guessing. Removing it while a process holds the lock opens a second-writer window."
 		}

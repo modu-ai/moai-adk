@@ -27,6 +27,13 @@ var zoneRuntimeAllowed = map[string]bool{
 	"**/CLAUDE.md":                                         true,
 	"**/AGENTS.md":                                         true,
 	"**/AGENTS.local.md":                                   true,
+	// The USER install roots: created at init/update time under the user's
+	// home, never shipped as template files. The guard scopes their
+	// protection to manifest-tracked files at match time.
+	"user-root:claude-skills/": true,
+	"user-root:claude-agents/": true,
+	"user-root:agents-skills/": true,
+	"user-root:codex-agents/":  true,
 }
 
 // zoneShippedFloor is the number of paths and runtime_paths entries the shipped

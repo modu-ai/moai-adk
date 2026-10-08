@@ -239,7 +239,6 @@ func TestJournalRefreshUpdatesCarriedHash(t *testing.T) {
 // (the save succeeded and cleared the journal — retry).
 func attemptRefreshHashRepro(t *testing.T, recoveredKey string) (string, bool) {
 	f := newFixture(t)
-	moaiHome := filepath.Join(f.home, ".moai")
 
 	oldBytes := []byte("name = \"manager-x\"\nversion = \"old\"\n")
 	newShipped := []byte("name = \"manager-x\"\nversion = \"new\"\n")
@@ -269,14 +268,17 @@ func attemptRefreshHashRepro(t *testing.T, recoveredKey string) (string, bool) {
 	}
 
 	// Watcher: the moment the journal carries the REFRESHED hash ON THE
-	// RECOVERED ENTRY, make ~/.moai read-only so the manifest save fails
-	// and the journal survives with its synced state. The condition parses
-	// the journal and inspects the recovered entry's hash specifically
-	// (gate round 14: a raw substring match over the whole file also hits
-	// staged NEW entries carrying the same bytes under other roots — the
-	// watcher then fires before the hash sync even ran).
+	// RECOVERED ENTRY, occupy the MANIFEST path with a directory so the
+	// manifest save fails on EVERY platform (gate round 24: a directory-
+	// Chmod injection is a no-op on windows) and the journal survives with
+	// its synced state. The condition parses the journal and inspects the
+	// recovered entry's hash specifically (gate round 14: a raw substring
+	// match over the whole file also hits staged NEW entries carrying the
+	// same bytes under other roots — the watcher then fires before the
+	// hash sync even ran).
 	stop := make(chan struct{})
 	watcherDone := make(chan struct{})
+	manifestPath := ManifestPath(f.home)
 	go func() {
 		defer close(watcherDone)
 		jp := JournalPath(f.home)
@@ -291,7 +293,8 @@ func attemptRefreshHashRepro(t *testing.T, recoveredKey string) (string, bool) {
 				if json.Unmarshal(data, &probe) == nil {
 					for _, e := range probe.Entries {
 						if e.Path == recoveredKey && e.ExpectedSHA256 == newSHA {
-							_ = os.Chmod(moaiHome, 0o555)
+							_ = os.Remove(manifestPath)
+							_ = os.Mkdir(manifestPath, 0o755)
 							return
 						}
 					}
@@ -305,9 +308,10 @@ func attemptRefreshHashRepro(t *testing.T, recoveredKey string) (string, bool) {
 	_, installErr := inst.Install(nil)
 	close(stop)
 	<-watcherDone
-	// Restore writability no matter how the attempt ends.
-	if err := os.Chmod(moaiHome, 0o755); err != nil {
-		t.Fatalf("restore .moai perms: %v", err)
+	// Restore the manifest path no matter how the attempt ends (the
+	// watcher may have swapped it for a directory).
+	if fi, statErr := os.Lstat(manifestPath); statErr == nil && fi.IsDir() {
+		_ = os.Remove(manifestPath)
 	}
 
 	// The save must have FAILED (journal survives). A nil error means the

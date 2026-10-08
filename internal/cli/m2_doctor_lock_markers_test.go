@@ -36,8 +36,13 @@ func TestDoctorUserLockMarkersReportsOwnerless(t *testing.T) {
 	if !strings.Contains(check.Message, "never auto-reclaimed") {
 		t.Errorf("the row does not state the never-auto-reclaim contract: %q", check.Message)
 	}
-	if !strings.Contains(check.Message, "rm \"") {
+	// Gate round 23: the removal procedure is SINGLE-quoted — a double-
+	// quoted path executes command substitution when copied.
+	if !strings.Contains(check.Message, "rm '") {
 		t.Errorf("the row does not name the explicit removal procedure: %q", check.Message)
+	}
+	if strings.Contains(check.Message, `rm "`) {
+		t.Errorf("the removal procedure must not double-quote the path (substitution hazard): %q", check.Message)
 	}
 	if !strings.Contains(check.Message, marker) {
 		t.Errorf("the row does not name the marker path: %q", check.Message)
