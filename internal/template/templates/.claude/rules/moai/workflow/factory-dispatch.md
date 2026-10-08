@@ -5,17 +5,15 @@ paths: "**/factory-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claud
 
 # Factory Dispatch Protocol
 
-How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the operator is asked to `/clear`.
+> Moved to the detail companion: `factory-dispatch-mechanics.md` ("Factory Dispatch Protocol").
 
-> **Loading scope**: Intentionally always-loaded. A session learns it is the factory leader from the SessionStart context, not from a file path, so a `paths:`-restricted rule would never reach it. Cost to a session that never dispatches: the stub below, restated once per turn; every procedure body lives in the lazy companions.
+> **Loading scope**: Role-gated — delivered by injection, not session-start loading. Factory leader and lane sessions receive this rule's role core through the SessionStart hook (sources startup, clear, compact); the unmarked leader-grade entry points — the manager-lead agent, the factory foreman skill, the todo `--auto` path — carry a read-first directive for this full body. The always-loaded stub is `factory-dispatch-core.md`; the top-level `paths:` key is a non-delivery placement.
 
 > **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, and coordination rationale — also per-card sub-agent execution, the Factory in-lane 3-stage, and the `manager-lead` working mode. Sibling companions: `factory-dispatch-cards.md` (card classification, traceability, the pre-dispatch cross-check) and `factory-dispatch-gates.md` (sync-gate review lenses, the CodeRabbit measurement, the settings-drift assertion, the verification-load incident record). The stub keeps every [HARD] rule and pointer; load a companion when classifying a card, routing one, or choosing review lenses.
 
-> **Mechanics companion**: `factory-dispatch-mechanics.md` owns the lane-and-lens bodies relocated from this file — § Review lens selection · § Serializing a heavy run across lanes (`moai slot` lease) · § Factory Mode mechanics · § Isolation (launcher table, worktree tiers, `WT-` branch naming, the traceability carriers) · § Verification-load detail · § Integration into the release branch (the self-serve window procedure) · § Boundaries · § Cross-references. Load it when classifying a card, provisioning or disposing a card worktree, running lane-local verification, or entering the integration window.
-
 ## Scope — when this rule is live
 
-This rule binds a session whose SessionStart context declares **Factory Mode**. The dispatch clauses bind the `leader` role; the lane clauses (the stage task list, explicit waits, spawn authority, isolation, verification load, integration) bind a lane session. A session outside Factory Mode has no lanes to route to.
+> Moved to the detail companion: `factory-dispatch-mechanics.md` ("Scope — when this rule is live").
 
 Factory Mode is entered with `moai cc -f` (or `moai glm -f`), which elects one leader; lane sessions join one at a time with `moai cc -l` (or `moai glm -l`) and are labelled `lane-<n>`. Lane sessions are launched **by hand, one per terminal** — a session cannot launch another, and no peer-spawning mechanism exists or is wanted.
 
@@ -27,7 +25,7 @@ One boundary: nudge delivery rides on cross-session messaging, absent on native 
 
 ## Entry into the queue is an operator act
 
-`backlog` has no owning session, so a leader admitting cards on its own initiative would be **generating** work rather than scheduling it. Every card's origin is the operator's request.
+> Moved to the detail companion: `factory-dispatch-mechanics.md` ("Entry into the queue is an operator act").
 
 <!-- moai:role-core-start -->
 [HARD] **The leader is the queue's sole producer.** The operator asks; the leader turns the request into a card with `moai gtd add "<description>"` (`moai gtd` alone lists the queue). Production is the one queue mutation the leader performs on its own authority — translation, not invention: nothing enters the queue the operator did not ask for.
@@ -128,7 +126,7 @@ lens: --security --deep
 [HARD] A lane session tracks its card's execution on the session's task tools. At card intake it registers the card's execution stages via `TaskCreate` before beginning the first stage; at every stage transition it keeps the list current via `TaskUpdate` so the list always shows the stage in flight; and it reports completion only while the list reflects the end state — or carries an explicit annotation naming why it does not. A task list that contradicts its completion report is the same gap as a missing evidence file (§ Completion is read, never trusted).
 <!-- moai:role-core-end -->
 
-The measured precedent this rule codifies: lane-1 card t1330 held a 7-task list through the card's whole run, one `TaskCreate` per stage at intake and one `TaskUpdate` per transition. The clause above is the rule; that card is its evidence, not an instance list to extend.
+> Moved to the detail companion: `factory-dispatch-mechanics.md` ("The lane's task list carries the card's stages").
 
 <!-- moai:role-core-start -->
 [HARD] Between run-exit verification and integration every lane runs a `card-review` stage: a card-scope self-review through `codex_review` (`glm_review` optional) whose result is written to `.moai/reports/<card-id>/card-review.md` — advisory only, never a replacement for the leader's evidence read or an independent audit. With `tree_scope: skip` configured for the leader's checkout, the leader session carries no turn-end codex review gate and reviews its own internal output directly with the same tools. Stage order, evidence fields, and the re-review ceiling: `factory-dispatch-detail.md` § The card-review stage.
@@ -251,11 +249,11 @@ unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go t
 ```
 <!-- moai:role-core-end -->
 
-Subshell and `env -u` variants, their measured refusal shapes, and the script-file bypass hazard: `factory-dispatch-mechanics.md` § Verification load is lane-local.
+> Moved to the detail companion: `factory-dispatch-mechanics.md` ("The env-isolated verification form").
 
 ## Integration into the release branch is self-served
 
-This section is the **git-flow variant**. Under github-flow — the distributed default — the delivery is `moai factory complete`'s pull-request edge, and the full sequence is `factory-dispatch-mechanics.md` § The lane's standard landing.
+> Moved to the detail companion: `factory-dispatch-mechanics.md` ("Integration into the release branch is self-served").
 
 <!-- moai:role-core-start -->
 [HARD] A lane whose card has passed verification does not wait for the leader to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. The window is taken with `moai integration acquire --name <lane> --card <card-id>` BEFORE entering the release worktree, released after the completion report is sent; the lane enters the release worktree with `EnterWorktree` (a cross-tree `git -C` is refused), merges `--no-ff`, re-reads `HEAD` before the commit and again before the push, pushes `release/vX.Y.Z` (never force), and leaves the batch pull request with the leader. The full window procedure: `factory-dispatch-mechanics.md` § Integration into the release branch is self-served · the `acquire` settings-drift assertion: `factory-dispatch-gates.md` § The pre-merge settings-drift assertion.
@@ -272,14 +270,10 @@ This section is the **git-flow variant**. Under github-flow — the distributed 
 - **No gate bypass.** Approval gates keep their evidence standard inside a dispatch cycle. The plan→run Kickoff's default form is the autonomous transition — independent audit cross + evidence criteria + a written decision record (`.claude/rules/moai/workflow/auto-semantics.md` §9.1) — which is the gate's new default form, not a bypass; keep-set gates (environment-impossible, operator-held, irreversible external-shared operations) still require the operator, and operator-form Kickoff rows that wait together are presented through the batch gate summary (`.claude/rules/moai/workflow/auto-semantics.md` §9.2).
 - **No question delegation.** Lane sessions return blocker reports; the operator is asked by the leader, through `AskUserQuestion`.
 
-The two remaining boundaries — no session spawning, and a lane with no live session being a fault rather than a wait: `factory-dispatch-mechanics.md` § Boundaries.
+> Moved to the detail companion: `factory-dispatch-mechanics.md` ("Boundaries — what this protocol does not do").
 
 ## Cross-references
 
-- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and `/clear` prompts
-- `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted
-- The remaining four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `factory-dispatch-mechanics.md` § Cross-references
+> Moved to the detail companion: `factory-dispatch-mechanics.md` ("Cross-references").
 
 ---
-
-Classification: Evolvable operational rule — applies to the leader session of Factory Mode. Detail companions: `factory-dispatch-detail.md`, `factory-dispatch-cards.md`, `factory-dispatch-gates.md` (stub + lazy-companion split).
