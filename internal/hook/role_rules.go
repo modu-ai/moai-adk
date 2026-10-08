@@ -80,12 +80,46 @@ var (
 
 // roleRuleInjection is the SessionStart injection decision for one event.
 type roleRuleInjection struct {
-	// Context is the agent-facing text to append to additionalContext
-	// ("" when nothing is injected).
+	// Context is the agent-facing core text ("" when nothing is injected).
 	Context string
+	// RecoveryHead is a recovery directive that must open the FINAL
+	// composite additionalContext — placed ahead of every earlier producer's
+	// text by the assembler, because a runtime side-channel cut (save
+	// failure → first 10,000 characters delivered) keeps the composite HEAD
+	// but would drop a directive appended after 10,000+ characters of prior
+	// context ("" when none).
+	RecoveryHead string
 	// OperatorNotice is the operator-facing warning for systemMessage
 	// ("" when the session needs none).
 	OperatorNotice string
+}
+
+// assembleInjectionComposite builds the final additionalContext from the
+// accumulated context and an injection decision: the recovery directive
+// (when present) opens the composite, the earlier producers' text follows,
+// and the core comes last. The order is the save-failure guarantee — see
+// RecoveryHead.
+func assembleInjectionComposite(existing string, inj roleRuleInjection) string {
+	if inj.RecoveryHead == "" {
+		if existing == "" {
+			return inj.Context
+		}
+		if inj.Context == "" {
+			return existing
+		}
+		return existing + "\n\n" + inj.Context
+	}
+	var sb strings.Builder
+	sb.WriteString(inj.RecoveryHead)
+	if existing != "" {
+		sb.WriteString("\n\n")
+		sb.WriteString(existing)
+	}
+	if inj.Context != "" {
+		sb.WriteString("\n\n")
+		sb.WriteString(inj.Context)
+	}
+	return sb.String()
 }
 
 // roleRulePoliciesRel projects a Claude-layout rule path onto the
@@ -311,7 +345,7 @@ func roleRuleInjectionFor(root, source, existing, lang string) roleRuleInjection
 	if len(failures) > 0 {
 		loc := roleRuleLocaleFor(lang)
 		return roleRuleInjection{
-			Context:        roleRulesReadDirective(root, ""),
+			RecoveryHead:   roleRulesReadDirective(root, ""),
 			OperatorNotice: loc.InjectionFailed(role.Name, strings.Join(failures, "; ")),
 		}
 	}
@@ -338,7 +372,7 @@ func roleRuleInjectionFor(root, source, existing, lang string) roleRuleInjection
 		// warning plus read directive, no core, zero truncated units.
 		loc := roleRuleLocaleFor(lang)
 		return roleRuleInjection{
-			Context:        roleRulesReadDirective(root, ""),
+			RecoveryHead:   roleRulesReadDirective(root, ""),
 			OperatorNotice: loc.OverflowUnavailable(role.Name, total, roleRulesContextLimit),
 		}
 	}
@@ -346,13 +380,17 @@ func roleRuleInjectionFor(root, source, existing, lang string) roleRuleInjection
 	// Deliberate overflow-file delivery: the core goes out INTACT (zero
 	// truncated units); the runtime saves it to a session file and passes
 	// the path plus a 2,000-character preview. The read directive rides at
-	// the HEAD of the emission, not the tail: when the runtime's save
-	// itself fails it delivers only the first 10,000 characters, and a
-	// tail-placed directive would be cut exactly when the primary delivery
-	// channel dies — any truncation still leaves the directive.
-	directive := roleRulesOverflowDirective(root)
+	// the HEAD of the FINAL composite (the assembler places it ahead of the
+	// earlier producers' text): when the runtime's save itself fails it
+	// delivers only the first 10,000 characters of the composite, and a
+	// directive placed after 10,000+ characters of prior context would be
+	// cut exactly when the primary delivery channel dies.
 	loc := roleRuleLocaleFor(lang)
-	return roleRuleInjection{Context: directive + "\n\n" + context, OperatorNotice: loc.Overflow(role.Name, total, roleRulesContextLimit)}
+	return roleRuleInjection{
+		RecoveryHead:   roleRulesOverflowDirective(root),
+		Context:        context,
+		OperatorNotice: loc.Overflow(role.Name, total, roleRulesContextLimit),
+	}
 }
 
 // roleRulesRootFromCWD resolves the project root the deployed role-gated

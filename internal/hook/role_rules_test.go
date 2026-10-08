@@ -321,8 +321,8 @@ func assertFailVisible(t *testing.T, inj roleRuleInjection, fixture string) {
 	if inj.OperatorNotice == "" {
 		t.Errorf("%s fixture: no operator-visible warning (silent failure)", fixture)
 	}
-	if !strings.Contains(inj.Context, roleRuleFiles[0].Rel) || !strings.Contains(inj.Context, roleRuleFiles[1].Rel) {
-		t.Errorf("%s fixture: read directive does not name both rule files: %q", fixture, inj.Context)
+	if !strings.Contains(inj.RecoveryHead, roleRuleFiles[0].Rel) || !strings.Contains(inj.RecoveryHead, roleRuleFiles[1].Rel) {
+		t.Errorf("%s fixture: read directive does not name both rule files: %q", fixture, inj.RecoveryHead)
 	}
 	if !strings.Contains(inj.OperatorNotice, roleRuleFiles[0].Name) {
 		t.Errorf("%s fixture: warning does not name the failing rule: %q", fixture, inj.OperatorNotice)
@@ -376,8 +376,8 @@ func TestSessionStartRoleRulesSizeGate(t *testing.T) {
 			t.Fatalf("over-cap emission truncated units: %d of %d blocks missing; first: %q",
 				len(missing), len(blocks), missing[0])
 		}
-		if !strings.Contains(inj.Context, "preview of the first 2,000 characters") {
-			t.Errorf("over-cap emission lacks the overflow directive")
+		if !strings.Contains(inj.RecoveryHead, "preview of the first 2,000 characters") {
+			t.Errorf("over-cap emission lacks the overflow directive as the recovery head")
 		}
 		if inj.OperatorNotice == "" || !strings.Contains(inj.OperatorNotice, "intact") {
 			t.Errorf("over-cap emission lacks the operator overflow warning: %q", inj.OperatorNotice)
@@ -400,8 +400,8 @@ func TestSessionStartRoleRulesSizeGate(t *testing.T) {
 		if inj.OperatorNotice == "" {
 			t.Errorf("fallback emitted no operator warning")
 		}
-		if !strings.Contains(inj.Context, roleRuleFiles[0].Rel) {
-			t.Errorf("fallback context is not the read directive: %q", inj.Context)
+		if !strings.Contains(inj.RecoveryHead, roleRuleFiles[0].Rel) {
+			t.Errorf("fallback recovery head is not the read directive: %q", inj.RecoveryHead)
 		}
 		for i, b := range blocks {
 			if strings.Contains(inj.Context, blockLabel(b)) {
@@ -733,28 +733,38 @@ func TestSessionStartRoleRulesRootFromSubdirectoryCWD(t *testing.T) {
 }
 
 // TestSessionStartRoleRulesOverflowDirectiveSurvivesPrefixCut is the
-// save-failure scenario: when the runtime's oversized-output save fails it
-// delivers only the FIRST 10,000 characters of the emission, so a
-// tail-placed read directive would be cut exactly when the primary
-// delivery channel dies. The over-cap emission therefore carries the
-// directive at its head — observed present within the prefix here.
+// save-failure scenario at the COMPOSITE level: when the runtime's
+// oversized-output save fails it delivers only the FIRST 10,000 characters
+// of the final additionalContext — so with a full 10,000-character prior
+// context, an appended directive would start at position 10,000 and be cut.
+// The recovery directive opens the COMPOSITE (position 0) — observed here.
 func TestSessionStartRoleRulesOverflowDirectiveSurvivesPrefixCut(t *testing.T) {
 	clearFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 	root := t.TempDir()
 	writeDeployedRoleRules(t, root)
 
-	inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
-	if inj.Context == "" {
-		t.Fatal("no over-cap emission")
+	const existingFull = "existing producer context that alone fills the whole delivery window."
+	existing := existingFull[:1] + strings.Repeat("producer context line — fills the delivery window. ", 220) // ≥ 10,000 chars
+	if utf16Len(existing) < roleRulesContextLimit {
+		t.Fatalf("fixture existing context %d < cap %d — not in the cut regime", utf16Len(existing), roleRulesContextLimit)
 	}
+
+	inj := roleRuleInjectionFor(root, "startup", existing, langEnglish)
+	if inj.RecoveryHead == "" {
+		t.Fatal("over-cap injection carries no recovery head")
+	}
+	composite := assembleInjectionComposite(existing, inj)
 	const prefix = 10000
-	head := inj.Context
+	head := composite
 	if len(head) > prefix {
 		head = head[:prefix]
 	}
-	if !strings.Contains(head, "NOTE: the output above exceeds") {
-		t.Fatalf("over-cap emission's first %d characters carry no read directive — a save failure would deliver a truncated core with no directive:\n%.200q", prefix, inj.Context)
+	if !strings.HasPrefix(composite, "NOTE: the output above exceeds") {
+		t.Fatalf("composite does not OPEN with the recovery directive (starts %.120q) — a save failure with a full prior context delivers no directive", composite[:min(120, len(composite))])
 	}
-	t.Logf("PASS save-failure prefix cut: read directive present within the first %d characters (emission %d chars)", prefix, len(inj.Context))
+	if !strings.Contains(head, "NOTE: the output above exceeds") {
+		t.Fatalf("composite's first %d characters carry no read directive", prefix)
+	}
+	t.Logf("PASS save-failure prefix cut at composite level: composite %d chars, directive opens it, prior context %d chars", len(composite), utf16Len(existing))
 }

@@ -659,7 +659,13 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		roleRulesRoot = input.ProjectDir
 	}
 	inj := roleRuleInjectionFor(roleRulesRoot, input.Source, accumulatedAdditionalContext(out), operatorLang(h.cfg))
-	if inj.Context != "" {
+	if inj.RecoveryHead != "" {
+		// The recovery directive opens the FINAL composite — ahead of every
+		// earlier producer's text — so a runtime side-channel cut (save
+		// failure → first 10,000 characters) still delivers it regardless of
+		// how much context the producers above accumulated.
+		out.HookSpecificOutput.AdditionalContext = assembleInjectionComposite(accumulatedAdditionalContext(out), inj)
+	} else if inj.Context != "" {
 		appendAdditionalContext(out, inj.Context)
 	}
 	if inj.OperatorNotice != "" {
