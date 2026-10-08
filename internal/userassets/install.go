@@ -128,7 +128,7 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	if journalErr != nil {
 		var schemaErr *JournalSchemaError
 		if errors.As(journalErr, &schemaErr) {
-			return nil, fmt.Errorf("pending-install journal at %s carries schema_version %d, this binary writes %d — the run refuses and the journal is preserved in place until a compatible binary recovers it", JournalPath(in.Home), schemaErr.Found, SchemaVersion)
+			return nil, fmt.Errorf("pending-install journal at %s carries schema_version %d, this binary writes %d — the run refuses and the journal is preserved in place until a compatible binary recovers it: %w", JournalPath(in.Home), schemaErr.Found, SchemaVersion, journalErr)
 		}
 		sidecar := JournalPath(in.Home) + ".corrupt-" + time.Now().UTC().Format("20060102T150405")
 		if renameErr := os.Rename(JournalPath(in.Home), sidecar); renameErr != nil {

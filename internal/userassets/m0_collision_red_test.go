@@ -220,23 +220,22 @@ func attemptParentSwapProbe(t *testing.T) (int, string) {
 	if externalStatErr == nil {
 		return probeEscaped, destExternal
 	}
-	// No escape: the contract holds when the write landed in the pinned
-	// parent, or confinedWrite refused (both are safe dispositions). A write
-	// error that is neither (an internal failure) and a no-write attempt are
-	// unobserved windows — the caller retries.
-	if _, pinnedErr := os.Stat(filepath.Join(subDir, "file.txt")); pinnedErr == nil {
-		return probeHeld, "the write landed in the pinned parent"
-	}
-	if writeErr != nil && armed {
-		return probeHeld, "the write was refused under the swap: " + writeErr.Error()
-	}
+	// Gate round 17: the armed check precedes every success verdict — a
+	// run where the watcher never caught the window did not observe the
+	// race at all, and reading its in-parent write as "held" would grade
+	// an untested attempt as a pass (the delayed-watcher repro).
 	if !armed {
 		return probeLost, "the watcher never caught the temp-file window"
 	}
-	detail := "the swap armed but neither an escape nor a pinned write was observed"
-	if writeErr != nil {
-		detail += "; write error: " + writeErr.Error()
+	// Armed and no escape: the contract holds when the write landed in the
+	// pinned parent, or confinedWrite refused (both are safe dispositions).
+	if _, pinnedErr := os.Stat(filepath.Join(subDir, "file.txt")); pinnedErr == nil {
+		return probeHeld, "the write landed in the pinned parent"
 	}
+	if writeErr != nil {
+		return probeHeld, "the write was refused under the swap: " + writeErr.Error()
+	}
+	detail := "the swap armed but neither an escape nor a pinned write was observed"
 	return probeLost, detail
 }
 

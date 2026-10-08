@@ -60,6 +60,49 @@ func TestJournalUnsupportedSchemaPreservedInPlace(t *testing.T) {
 	}
 }
 
+// TestJournalFutureSchemaTypeConflictPreservedInPlace — gate round 17: the
+// version header is validated BEFORE the body decode. A future schema may
+// change body field TYPES; the body decode would fail such a journal into
+// the corrupt sidecar and hide it from the binary that could recover it.
+// The header peek routes it to the preserve-in-place refusal instead.
+func TestJournalFutureSchemaTypeConflictPreservedInPlace(t *testing.T) {
+	f := newFixture(t)
+	moai := filepath.Join(f.home, ".moai")
+	raw := `{
+  "schema_version": 99,
+  "bundles_selection": ["extras"],
+  "entries": "not-an-array-in-a-future-schema",
+  "started_at": "2026-10-08T00:00:00Z"
+}
+`
+	if err := os.MkdirAll(moai, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(JournalPath(f.home), []byte(raw), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := f.installer(t).Install(nil)
+	if err == nil {
+		t.Fatal("a future-schema journal was silently decoded")
+	}
+	var schemaErr *JournalSchemaError
+	if !AsJournalSchemaError(err, &schemaErr) {
+		t.Fatalf("the type-conflicting future schema routed to the corrupt path instead of the in-place schema refusal: %v", err)
+	}
+	if schemaErr.Found != 99 {
+		t.Fatalf("schema diagnosis carries the wrong version: %d", schemaErr.Found)
+	}
+	if _, readErr := os.ReadFile(JournalPath(f.home)); readErr != nil {
+		t.Fatalf("the journal left its original path: %v", readErr)
+	}
+	for _, e := range moaiEntries(t, moai) {
+		if strings.HasPrefix(e, "user-assets-journal.json.corrupt-") {
+			t.Fatalf("the future-schema journal was routed to the corrupt sidecar %s", e)
+		}
+	}
+}
+
 // moaiEntries lists the .moai directory's entry names.
 func moaiEntries(t *testing.T, dir string) []string {
 	t.Helper()

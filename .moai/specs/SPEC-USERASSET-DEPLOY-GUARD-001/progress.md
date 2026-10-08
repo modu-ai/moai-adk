@@ -270,6 +270,23 @@ RED 8건(M2-M7 소관)만 잔존, M1 GREEN 4종+버킷 B 1종 유지.
   (TestWriteCompletedPersistedPerFile) GREEN 유지 — 실제 쓰기 파일의 플래그는 계속
   즉시 영속된다. 전체 스위트 의도 RED 8건 유지, lint 0, gofmt 청결.
 
+### 게이트 17 — 버전 헤더 선검사·armed 순서 정정 (2026-10-09)
+
+- **journal.go 버전 헤더 선검사**: schema_version 헤더를 본문 디코드 **전에** 검증한다.
+  미래 스키마가 본문 필드 **타입**을 바꾸면 본문 디코드가 먼저 실패해 corrupt 사이드카로
+  라우팅되어 원본 경로가 사라지는 결함(게이트 재현)을 차단 — 헤더 peek은 미지 필드를
+  타입 검사 없이 건너뛰므로, 타입 충돌 본문도 원본 경로 보존+재거절로 간다. 헤더 자체가
+  파싱 불가인 본문은 복원 가능한 버전이 없으므로 corrupt가 옳다. 검증:
+  TestJournalFutureSchemaTypeConflictPreservedInPlace GREEN (entries를 문자열로 타입
+  충돌시킨 schema_version=99 저널 → JournalSchemaError + 원본 경로 유지 + 사이드카
+  부재). 수리 과정에서 Install의 스키마 거절 래핑에 %w 누락이 발견되어 함께 수리
+  (errors.As 체인 복원).
+- **TOCTOU probe armed 순서 정정**: 판정 순서를 escape → **!armed (probeLost — 재시도)**
+  → pinned/refused (probeHeld) 로 재배치. 지연 watcher가 arm에 실패한 시도의 부모 내
+  기록을 성공으로 grading하던 결함 제거 — 관측되지 않은 경쟁 창은 성공이 아니라
+  재시도 대상이다. HEAD에서 RED 유지(탈출 관측), M5 수리 시 arm→pinned 경로로 GREEN.
+- 게이트: lint 0, gofmt 청결, 전체 스위트 의도 RED 8건 유지, 스키마 가족 6종 GREEN.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop 소관.)_
