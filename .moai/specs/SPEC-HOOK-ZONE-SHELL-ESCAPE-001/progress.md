@@ -292,11 +292,121 @@ The acceptance.md Evidence Ledger GREEN-flips section is populated by
 manager-spec (run-phase ownership boundary — reported to the orchestrator
 with the exact wording above).
 
+### M3 — family re-run + regression confirmation (2026-10-09)
+
+**Full package, post-repair** (slot lease `hook-suite` held for the run):
+
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 -timeout=25m -v ./internal/hook/`
+- **Exit code**: `0`
+- **Observed (verbatim tail)**:
+
+```
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	463.797s
+PACKAGE_POST_EXIT=0
+```
+
+- Counts from the same run: 3638 `=== RUN` lines, 1364 top-level `--- PASS`,
+  ZERO `--- FAIL` lines. The suite COMPLETES inside the budget on a warm
+  build cache (the M1-era 10m/12m cuts were cold-compile + load, not a hang —
+  the only running test at the 12m cut had 0s elapsed).
+- The ten instrument tests in that run (verbatim):
+
+```
+--- PASS: TestCheckProtectedZoneShellAnsiCNulTruncationBypass (0.00s)
+--- PASS: TestCheckProtectedZoneShellAnsiCNulTruncationOutsideZoneControl (0.00s)
+--- PASS: TestCheckProtectedZoneShellHexRawByteBypass (0.00s)
+--- PASS: TestCheckProtectedZoneShellHexDirectSpellingControl (0.00s)
+--- PASS: TestZoneUnescapeAnsiCNoDigitHexStaysLiteral (0.00s)
+--- PASS: TestCheckProtectedZoneShellGuardCompletesOnNoDigitEscape (0.00s)
+--- PASS: TestZoneUnescapeAnsiCCodePointRenderingPinned (0.00s)
+--- PASS: TestZoneWordTextAnsiCPartTruncatesAtNul (0.00s)
+--- PASS: TestCheckProtectedZoneShellOctalNulTruncationDenied (0.00s)
+--- PASS: TestCheckProtectedZoneShellNonAsciiOutsideZoneStaysAllowed (0.00s)
+```
+
+- `TestStaleRunNoticeFactoryLegacyLabel` PASS (0.48s) in this run — consistent
+  with the M1 isolation-green + interference classification.
+- **Countable delta vs the M1 baseline**: the six M1-final RED rows flipped
+  green; zero new failures; the seventh (stale-run) row green in the quiet
+  window. AC-HZS-007 re-verified green post-repair (the pin held — the \x
+  split did not regress the code-point arm).
+
+**Coverage pair (family selector identical pre/post — the comparable delta):**
+
+- Post-repair WITH the M1 skip set (same executed set as the pre-change
+  figure): `go test -count=1 -cover -run 'TestProtectedZone|TestCheckProtectedZone|TestZoneUnescape|TestZoneWordText' -skip '<the six-row skip set above>' ./internal/hook/` → `ok  	github.com/modu-ai/moai-adk/internal/hook	5.030s	coverage: 12.2% of statements` — **identical to the pre-change 12.2%** (no regression).
+- Post-repair WITHOUT skip (all rows executing): same selector →
+  `ok  	github.com/modu-ai/moai-adk/internal/hook	3.224s	coverage: 12.4% of statements`.
+- The package-wide figure is owned by the completing full-package run above
+  plus remote CI; a `-cover` figure is not printable from the M1-era failing
+  baseline (noted as the measurement limit of the pre/post pair — the
+  family-scoped pair is the regression evidence).
+
+**Regression guards (M3):** `gofmt -l internal/hook/` empty; `go vet
+./internal/hook/` clean; `go build ./...` exit 0; `GOOS=windows go build
+./...` exit 0 (post-repair tree, verbatim in the M2 record's build line).
+
+**E4 boundary grep (post-repair tree):** `grep -rn 'AskUserQuestion'
+internal/hook | grep -v "_test.go" | grep -v "// "` → **1 match**
+`internal/hook/pre_tool.go:856: if input.ToolName == "AskUserQuestion" {` —
+PRE-EXISTING (the plan-audit frozen tip `9b6ae0da5` carries 4 raw occurrences
+in the same file; this line is the hook's AskUserQuestion observation branch,
+which the adjacent comment documents as never-denying — it observes the tool
+NAME, it does not invoke the question channel). Reported as a deviation from
+the dispatch's 0-match expectation; not introduced by this run.
+
+**E5 lint (post-repair tree):** `golangci-lint run internal/hook/...
+--timeout=2m` → `0 issues.` exit 0 — no new warnings or lints vs the M1
+baseline (`0 issues.`).
+
+**Run-phase acceptance.md findings reported to the orchestrator (manager-spec
+owns that artifact):** (1) the M1-final baseline confirmation command in the
+Evidence Ledger (`-run '^(TestCheckProtectedZoneShell|TestZoneUnescapeAnsiC)$'`)
+sweeps ZERO tests — measured: `testing: warning: no tests to run` / `ok ...
+[no tests to run]`, exit 0 — the anchored full-name form cannot match the
+long test names; the unanchored selector forms used in §E.2 above are the
+measured-working set; (2) the GREEN-flips ledger entries may cite this §E.2
+per the ledger's citation convention (as the M1-final entry already does).
+
+
 
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-10-09
+run_commit_sha:
+  M1: c34021856   # instrument finalization + RED baseline re-confirmation (five new rows; verbatim §E.2)
+  M2: f4a0227f3   # decoder repair — NUL part-terminator (part-level), raw-byte \x render, bounded no-digit arm
+  M3: pending-backfill-m3   # family re-run + regression confirmation (self-referential SHA; backfill per D3)
+ac_pass_count: 11/11   # AC-HZS-001..011 — 001/003/005 RED→GREEN flips; 006/009/010 RED earned at M1 then flipped; 007 pin green both sides; 002/004/011 controls green both sides; 008 family green + windows build
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # measured: `git diff 9b6ae0da5..HEAD -- internal/hook/protected_zone_guard_test.go internal/hook/protected_zone_path.go internal/hook/pre_tool.go internal/hook/protected_zone_guard.go` EMPTY
+l44_pre_commit_fetch: not-run (card worktree lane flow — origin/develop sync is the leader's batch act; the card branch merges locally via the integration window)
+l44_post_push_fetch: n/a (no push from the lane)
+new_warnings_or_lints_introduced: 0   # golangci-lint internal/hook 0 issues both sides; gofmt clean; vet clean
+cross_platform_build:
+  darwin: exit 0   # go build ./... (M1 pre-repair and M2/M3 post-repair trees)
+  windows: exit 0  # GOOS=windows go build ./... (same trees)
+total_run_phase_files: 3   # internal/hook/protected_zone_shell.go, internal/hook/protected_zone_shell_repro_test.go, progress.md — the spec.md draft→in-progress transition landed absorbed in manager-spec's concurrent gate round 8 commit 89d52e86f (attribution deviation reported; the transition VALUE is in-progress at HEAD)
+m1_to_mN_commit_strategy: per-milestone commits (M1 instrument+evidence, M2 repair+flip record, M3 family re-run+signal); no fixup/amend; card id in every subject
+gaps: >-
+  (1) The M1 package-wide baseline was measured on a run CUT at 12m (cold
+  build cache + load; fail inventory recorded verbatim); the completing
+  package-wide green run is the M3 one above (warm cache, 463.797s, exit 0) —
+  remote CI remains the integrated judge per lane protocol. (2) The E4
+  boundary grep measures 1 pre-existing match (pre_tool.go:856 observation
+  branch, present at the frozen tip) vs the dispatch's 0-match expectation —
+  not introduced by this run. (3) acceptance.md's M1-final confirmation
+  selector sweeps zero tests (measured [no tests to run]) — manager-spec's
+  artifact, finding reported not edited. (4) Concurrent manager-spec gate
+  rounds 8/9 (89d52e86f, 28c03f10c) committed to this tree mid-run — disjoint
+  file sets, verified no absorption (the spec.md transition absorption in
+  gate round 8 is the exception, itemized above).
+```
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
