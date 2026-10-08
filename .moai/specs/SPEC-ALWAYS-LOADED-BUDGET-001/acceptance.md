@@ -1,9 +1,9 @@
 ---
 id: SPEC-ALWAYS-LOADED-BUDGET-001
 title: "acceptance — 배포 표면 상시 로드 지시문 예산"
-version: "0.7.0"
+version: "0.8.0"
 created: 2026-10-03
-updated: 2026-10-04
+updated: 2026-10-08
 ---
 
 # acceptance.md — SPEC-ALWAYS-LOADED-BUDGET-001
@@ -30,7 +30,7 @@ updated: 2026-10-04
 | AC-ALB-009 | REQ-ALB-007 | RB | 역할 세션 주입 | `grep -l -e role-core -e factory-dispatch internal/hook/session_start_factory.go internal/hook/factory_messages.go internal/hook/subagent_start.go` → (출력 없음) (exit 1) — 구 `session_start_kanban.go` 는 t1399 M5b 에서 제거됨 | 훅 테스트 `--- PASS`: 레지스트리의 리더·레인 표지 × source `startup`/`clear`/`compact` 각각에서 주입 맥락에 역할 core 블록 |
 | AC-ALB-010 | REQ-ALB-008 | RG | 비역할 세션·`resume` 무주입 | 현재 훅은 역할 core 를 주입하지 않음(AC-ALB-009 RED-now) | 훅 테스트 `--- PASS`: 표지 없는 환경 `startup` 과 역할 환경 `resume` 에서 역할 core 블록 0회 |
 | AC-ALB-011 | REQ-ALB-009 | RB | 실패 가시화 | AC-ALB-009 와 같음(경로 부재) | 훅 테스트 `--- PASS`: 파일 부재·빈 파일·영역 표지 없음 픽스처 각각에서 `systemMessage` 경고와 Read 지시가 함께 있음 |
-| AC-ALB-012 | REQ-ALB-010 | RB | 크기 상한 처리 — 최종 `additionalContext` 합본 기준 | AC-ALB-009 와 같음(경로 부재) | 훅 테스트 `--- PASS`: (a) 기존 맥락(세션 귀속문·공지) + core 합본이 상한 초과, 단위 합본은 이하 → `binding`·`normative` 단위 전부 + Read 지시, 최종 출력 길이 ≤ 상한; (b) core 단독은 상한 이하지만 기존 맥락과 합치면 초과하는 경계 픽스처 → (a) 와 같은 축소가 일어남; (c) 단위 합본도 초과 → 경고 + Read 지시. 모든 경우 잘린 단위 0 |
+| AC-ALB-012 | REQ-ALB-010 | RB | 크기 상한 처리 — 최종 `additionalContext` 합본 기준 | AC-ALB-009 와 같음(경로 부재) | 훅 테스트 `--- PASS`: (a) 기존 맥락(세션 귀속문·공지) + core 합본이 10,000 이하 → 주입 맥락에 역할 core 전체가 그대로 실림; (b) 합본이 10,000 초과(core 단독은 이하인 경계 픽스처 포함) → 훅 출력이 역할 core 를 단 하나도 자르지 않고 전부 담고, 운영자 경고와 오버플로 안내 지시(런타임이 전체 출력을 세션 파일로 저장해 경로 + 2,000자 미리보기를 전달한다는 안내)를 함께 냄 — 파일 저장·경로 전달은 훅 테스트보다 상류 런타임 행위라 이 검사는 훅 출력만 단정; (c) 오버플로 전달 불가(시뮬레이션) → REQ-ALB-009 의 운영자 경고 + Read 지시. 모든 경우 잘린 단위 0 |
 | AC-ALB-013 | REQ-ALB-011 | RB | 역할 가드 — 리더가 규칙 없이 뜨지 못함 | AC-ALB-009 와 같음(가드 부재) | 가드 `--- PASS`. 역할 core 블록 하나를 지운 변이 → `--- FAIL`. 레지스트리에 표지 하나를 더한 픽스처 → 가드가 그 표지도 검사(하위 테스트 이름에 표지 출현) |
 | AC-ALB-014 | REQ-ALB-023 | RB | 역할 core 는 배포 파일에서만 만든다 | `grep -rl 'moai:role-core-start' internal/template/templates` → (출력 없음) (exit 1) | 같은 명령이 역할 한정 규칙 2개 출력. 테스트 `--- PASS`: 원장 고정물이 없는 `t.TempDir()` 배포 트리에서 생성 함수가 비어 있지 않은 역할 core 를 반환 |
 | AC-ALB-015 | REQ-ALB-024 | RB | 진입점 — `manager-lead`(deputy 포함) | `/usr/bin/grep -c moai:role-rules-required internal/template/templates/.claude/agents/moai/manager-lead.md internal/template/templates/.claude/skills/moai-factory-foreman/SKILL.md internal/template/templates/.claude/skills/moai/workflows/gtd.md` → `internal/template/templates/.claude/agents/moai/manager-lead.md:0` `internal/template/templates/.claude/skills/moai-factory-foreman/SKILL.md:0` `internal/template/templates/.claude/skills/moai/workflows/gtd.md:0` (exit 1) | `internal/template/templates/.claude/agents/moai/manager-lead.md` 에 표지 1개 이상과 두 규칙 Read 지시, `make agents-emit` 뒤 `internal/template/agentemit` 테스트 `--- PASS` |

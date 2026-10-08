@@ -1,9 +1,9 @@
 ---
 id: SPEC-ALWAYS-LOADED-BUDGET-001
 title: "design — 역할 주입 경로와 분할 배치"
-version: "0.7.0"
+version: "0.8.0"
 created: 2026-10-03
-updated: 2026-10-04
+updated: 2026-10-08
 ---
 
 # design.md — SPEC-ALWAYS-LOADED-BUDGET-001
@@ -68,7 +68,7 @@ updated: 2026-10-04
 ### 실패와 크기
 
 - 역할 core 를 만들 수 없으면(파일 부재·읽기 실패·빈 본문·영역 표지 없음) 운영자용 `systemMessage` 경고와 에이전트용 Read 지시를 함께 낸다(REQ-ALB-009).
-- 상한은 훅이 내보낼 최종 `additionalContext` 전체에 건다. 같은 출력에는 이미 세션 귀속문(`internal/hook/session_start.go` 의 귀속 줄), 칸반·팩토리 공지, 레인 규칙이 들어간다. 합본이 Q4 실측 한도를 넘으면 역할 core 를 그 `binding`·`normative` 단위와 Read 지시로 바꾼다. 그래도 넘으면 경고와 Read 지시만 낸다. 어떤 단위도 중간에서 자르지 않는다(REQ-ALB-010).
+- 상한은 훅이 내보낼 최종 `additionalContext` 전체에 건다. 같은 출력에는 이미 세션 귀속문(`internal/hook/session_start.go` 의 귀속 줄), 칸반·팩토리 공지, 레인 규칙이 들어간다. 한도는 Q4 실측으로 문서화된 문자열당 10,000자이고 올릴 방법이 없으며, 이 채널 변경을 강제한 측정은 `factory-dispatch.md` 역할 core 36행(전부 `binding`) 17,341 UTF-16이다(`decision-index.md` Q4, `internal/template/testdata/binding_ledger.json`). 합본이 한도를 넘으면 훅은 역할 core 를 단 하나도 자르지 않고 그대로 내보내며 운영자 경고와 에이전트용 안내 지시를 함께 낸다. 런타임은 한도 초과 출력을 세션 디렉터리 파일로 저장하고 경로 + 2,000자 미리보기를 전달하므로(CC 2.1.89 문서화 동작) 그 파일이 전달 통로가 된다. 오버플로 전달이 불가하거나 잘릴 것으로 판단되면 REQ-ALB-009 의 경고 + Read 지시로 후퇴한다. 합본이 한도 이하인 core — cross-session-messaging 규모 — 는 여전히 곧장 주입한다(REQ-ALB-010).
 
 ### 역할 표지 레지스트리
 
