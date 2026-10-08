@@ -1,3 +1,8 @@
+---
+description: "Role-gated dispatch protocol for Factory Mode. The full body stays in place for role-injection delivery: factory leader and lane sessions receive the role core through the SessionStart hook, and the unmarked leader-grade entry points carry a read-first directive for this file. The always-loaded stub is factory-dispatch-core.md"
+paths: "**/factory-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai-factory-foreman/SKILL.md,**/.claude/skills/moai/workflows/gtd.md"
+---
+
 # Factory Dispatch Protocol
 
 How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the operator is asked to `/clear`.

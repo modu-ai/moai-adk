@@ -162,11 +162,19 @@ func importTargets(importingFileRel string, content []byte) []string {
 //     note);
 //   - the @-import transitive closure of the root instruction file,
 //     interpreted in the deployed tree (project-external imports and
-//     @AGENTS.local.md skipped);
-//   - the AC-ALB-008 carve-out: the role-gated rules named by the binding
-//     ledger's role-core: row locations count as surface members at their
-//     deployed size (full body at this milestone, stub after M3), so the
-//     budget keeps guarding them after M2/M3 gives them a top-level paths:.
+//     @AGENTS.local.md skipped).
+//
+// The M2-era AC-ALB-008 carve-out (role-gated rules re-added as members at
+// their full-body size) was an M2 accommodation — the role files carried no
+// top-level paths: yet. M3 gives them the non-delivery paths: placement
+// (decision-index Q5), so the derivation reverts to the pure REQ-ALB-004
+// shape: the full bodies leave the member list, and the always-loaded
+// representative of each role-gated rule is its stub file (no top-level
+// paths: — a natural member at stub size), which is what AC-ALB-008's green
+// condition requires (two full bodies absent from the member log, two stubs
+// present). The role-core content stays guarded by the hook role guard and
+// by the ledger test's role-core seam, both of which resolve the marked
+// regions of the deployed full bodies.
 //
 // Members are returned sorted by path, deduplicated.
 func deriveDeployedAlwaysLoadedMembers(t *testing.T, root string) []deployedSurfaceMember {
@@ -228,15 +236,6 @@ func deriveDeployedAlwaysLoadedMembers(t *testing.T, root string) []deployedSurf
 		}
 	}
 
-	// 4. AC-ALB-008 carve-out: role-gated rules from the ledger's role-core:
-	// row locations stay surface members at their deployed size.
-	for _, rulePath := range roleCoreRulePaths(t, root) {
-		if _, ok := members[rulePath]; ok {
-			continue
-		}
-		add(rulePath)
-	}
-
 	out := make([]deployedSurfaceMember, 0, len(members))
 	for path, size := range members {
 		out = append(out, deployedSurfaceMember{Path: path, UTF16: size})
@@ -247,50 +246,6 @@ func deriveDeployedAlwaysLoadedMembers(t *testing.T, root string) []deployedSurf
 
 // bindingLedger, loadBindingLedger, and the ledger row types live in
 // binding_ledger_test.go (full fixture shape shared by both test files).
-
-// roleCoreRulePaths resolves the ledger's role-core: row locations to
-// deployed rule paths (project-root-relative slash paths) inside the deployed
-// tree at root. The ledger writes role-core locations as rule-relative paths
-// (e.g. workflow/factory-dispatch.md); they resolve by suffix match against
-// the deployed rules tree.
-func roleCoreRulePaths(t *testing.T, root string) []string {
-	t.Helper()
-	led := loadBindingLedger(t)
-	var suffixes []string
-	for _, row := range led.Rows {
-		if strings.HasPrefix(row.Location, "role-core:") {
-			suffixes = append(suffixes, strings.TrimPrefix(row.Location, "role-core:"))
-		}
-	}
-	if len(suffixes) == 0 {
-		t.Logf("role-core carve-out sweep: 0 role-core rows in ledger (empty sweep is named, not silent)")
-		return nil
-	}
-	var out []string
-	seen := map[string]bool{}
-	_ = filepath.WalkDir(filepath.Join(root, ".claude", "rules"), func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil //nolint:nilerr
-		}
-		rel, relErr := filepath.Rel(root, path)
-		if relErr != nil {
-			return nil //nolint:nilerr
-		}
-		slash := filepath.ToSlash(rel)
-		for _, suf := range suffixes {
-			if strings.HasSuffix(slash, "/"+suf) && !seen[suf] {
-				out = append(out, slash)
-				seen[suf] = true
-			}
-		}
-		return nil
-	})
-	if len(out) < len(seen) { //nolint:staticcheck // defensive; seen dedupes by suffix
-		t.Logf("role-core carve-out: %d of %d role-core suffixes unresolved in deployed tree", len(suffixes)-len(seen), len(suffixes))
-	}
-	t.Logf("role-core carve-out sweep: %d role-core rows -> %d deployed rule paths kept as surface members", len(suffixes), len(out))
-	return out
-}
 
 // TestDeployedAlwaysLoadedCharBudget deploys the embedded template set through
 // the production path, derives the always-loaded surface mechanically, and

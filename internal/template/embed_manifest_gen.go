@@ -183,11 +183,13 @@ import "embed"
 //go:embed templates/.claude/rules/moai/workflow/context-window-management.md
 //go:embed templates/.claude/rules/moai/workflow/contract-autonomy.md
 //go:embed templates/.claude/rules/moai/workflow/contract-sign-guard.md
+//go:embed templates/.claude/rules/moai/workflow/cross-session-messaging-core.md
 //go:embed templates/.claude/rules/moai/workflow/cross-session-messaging-detail.md
 //go:embed templates/.claude/rules/moai/workflow/cross-session-messaging.md
 //go:embed templates/.claude/rules/moai/workflow/delivery-policy.md
 //go:embed templates/.claude/rules/moai/workflow/dynamic-workflows.md
 //go:embed templates/.claude/rules/moai/workflow/factory-dispatch-cards.md
+//go:embed templates/.claude/rules/moai/workflow/factory-dispatch-core.md
 //go:embed templates/.claude/rules/moai/workflow/factory-dispatch-detail.md
 //go:embed templates/.claude/rules/moai/workflow/factory-dispatch-gates.md
 //go:embed templates/.claude/rules/moai/workflow/factory-dispatch-mechanics.md

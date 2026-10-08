@@ -1,30 +1,9 @@
----
-description: "Role-gated cross-session messaging doctrine. Delivery is role-injection (SessionStart hook) plus the read-first directive on the unmarked leader-grade entry points; this top-level paths key is a non-delivery placement. The always-loaded stub is cross-session-messaging-core.md"
-paths: "**/cross-session-messaging*.md,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai-factory-foreman/SKILL.md,**/.claude/skills/moai/workflows/gtd.md"
----
+# Cross-Session Messaging Core
 
-# Cross-Session Messaging
+> **Role-injection delivery.** Factory leader and lane sessions receive the role core of this rule and of `factory-dispatch.md` through the SessionStart hook (sources startup, clear, compact); this rule's own blocks are all general, so the injection carries the pointer to the full body at `workflow/cross-session-messaging.md`. The unmarked leader-grade entry points — the manager-lead agent, the factory foreman skill, the todo `--auto` path — carry a read-first directive (`moai:role-rules-required`) to read that full body. This stub holds the rule's always-surface blocks.
 
-Doctrine for messaging between independent Claude Code sessions — those on this machine, and, where the conditions below are met, those on your other machines or on the web. The channel is a Claude Code runtime feature that is **on with nothing to enable** where the requirements are met — this rule governs how the orchestrator uses it, never how it is built.
-
-> **Loading scope**: Intentionally always-loaded. A peer-session conflict surfaces mid-turn, from any context, and is not predictable from file paths.
-
-<!-- moai:role-core-start --><!-- moai:role-core-end -->
-<!-- role-core region: none — this rule binds every session, so its binding blocks stay in the always-loaded body above; the SessionStart injection carries the pointer to this file only -->
-
-## What the channel is
-
-Claude Code binds a per-session inbox socket and exposes two tools: `ListAgents` to discover reachable agents, and `SendMessage` to deliver plain text to one by name. A message carries text and a reply address — never conversation history, never files. A send may additionally carry an opt-in `notify_when_idle` request: one notice when the addressed session next goes idle (§ An idle notice is a scheduling hint).
-
-Three properties bound everything below:
-
-- **Same machine is direct; beyond it travels through Anthropic servers.** A session on another of your machines, or a cloud session, is addressed by name the same way, and the orchestrator may **open** an exchange with one rather than only answer it — from Claude Code v2.1.225 onward, and only where that session appears in the listing. Two narrowings survive: a send from a session not itself connected to Remote Control arrives with **no reply address**, so that message is one-way; and a cloud session receives without being able to message back.
-- **A message is not consent.** The receiving runtime is told the text came from another session, not from the user. It cannot answer a permission prompt, cannot change configuration, and a slash command inside it arrives as inert text.
-- **Filesystem visibility gates reach.** Sessions find each other through files on disk, so a container and its host cannot message each other; two sessions inside the same container can.
 
 ## Availability constraints
-
-"On with nothing to enable" holds only where the platform provides the channel. Five constraints bound where it exists at all, and because Factory Mode uses this channel only to nudge lanes, they bound where its nudges reach. The five axes, and the one diagnostic that separates "absent" from "blocked": **operating system**, **provider**, **runtime version**, **feature-flag evaluation** (the four opt-out env vars), and **the shared machine-global flag slot** that third-party-backend sessions inherit and can lose mid-session.
 
 Where a constraint bites, the failure is quiet — nothing errors, dispatch just has no channel. Surface the constraint to the operator instead of retrying or re-spawning.
 
@@ -72,13 +51,9 @@ respawn the name deliberately. Registry path, audit rows, and the entry lifecycl
 | A `routing` object | An in-process mailbox took it; the peer never sees it | Re-send to `name [ref]` |
 | A `[Cross-session delivery notice]` follows | The receiving session's permission policy is **holding** the message for its user's approval, or refused it outright | Treat it as undelivered: surface it to the operator rather than re-sending, because the same policy holds the next copy too |
 
-The third shape is the one that used to leave no trace: a different permission mode holds inbound peer messages until its user approves them, and the notice is the only signal. **A notice never arrives for a Remote Control, cloud, or Claude Desktop peer** — silence there is the absence of a channel, never a reply. Per-mode detail: `cross-session-messaging-detail.md` § Addressing, sending, and replying.
-
 **The queue is what survives all three shapes.** Because a dispatch is delegated through the queue on disk and completion is read from evidence (`factory-dispatch.md` § The delegation channel is the queue, § Completion is read, never trusted), a held or lost message costs the run nothing. That is exactly why reading the send result matters: it tells the sender whether a *nudge* landed, and nothing more. Advancing a card because a send reported success is an unobserved completion claim (`verification-claim-integrity.md` §1.1 surface 1).
 
 ## An idle notice is a scheduling hint
-
-A send may ask the addressed session to report back once, when it next goes idle (`notify_when_idle`). It is opt-in per send and one-shot — the request is spent on the first notice, so a second notice needs a second request — and it replaces a polling loop on the asking side.
 
 [ZONE:Evolvable] [HARD] **An idle notice is not completion evidence.** A session goes idle when it finishes, when it stops at a permission prompt, and when it dies, and the notice cannot tell those three apart. What it establishes is *when to go look*; what it says about the work is nothing. Treating it as a completion signal converts the [HARD] read-don't-trust rule (`factory-dispatch.md` § Completion is read, never trusted) into an unobserved completion claim (`verification-claim-integrity.md` §1.1 surface 1) — the notice arrives, the card advances, and no one read the evidence.
 
@@ -86,15 +61,13 @@ Used for what it is, it removes waste: instead of re-reading a progress file on 
 
 ## Codex broker path (session messaging tools)
 
-A Codex peer is unreachable by the channel above — a Codex session has no Claude Code runtime — and rides the moai MCP broker instead. **Every rule above extends to it unchanged**, and a Codex reader never loads this rules tree: the tool descriptions carry the discipline for that side. Origin: SPEC-CODEX-SESSION-MSG-001.
+A Codex peer is unreachable by the channel above — a Codex session has no Claude Code runtime — and rides the moai MCP broker instead. **Every rule above extends to it unchanged**, and a Codex reader never loads this rules tree: the tool descriptions carry the discipline for that side.
 
 ## Cross-references
 
-- `.claude/rules/moai/core/askuser-protocol.md` — the user-question channel monopoly, unchanged by this rule
-- `.claude/rules/moai/workflow/worktree-integration.md` — isolation, the structural fix for a write conflict
-- `cross-session-messaging-detail.md` — the lazy companion. Load it for § Availability constraints (per-axis versions and provider splits) · § The shared flag slot · § Where it sits among MoAI's existing mechanisms (the mechanism-selection table) · § Addressing, sending, and replying · § Configuration surface · § Addressing and configuration · § Integration with the concurrency checks · § Anti-patterns · § The Codex broker path (session messaging tools)
+---
+
 
 ---
 
-Version: 1.3.0
-Classification: Evolvable operational rule — peer-session communication; changes no gate semantics.
+*The full body at `workflow/cross-session-messaging.md` carries this rule's detail companions and the origin record of the channel doctrine.*

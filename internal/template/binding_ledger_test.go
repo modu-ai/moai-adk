@@ -743,14 +743,22 @@ func (env *ledgerCheckEnv) checkAfterTextPresence() {
 				continue
 			}
 		}
-		// M0-baseline pending branch: the anchor text still lives in the
-		// row's source file (planned move/rewrite not yet executed).
-		srcRel := deployedRelOfTemplate(r.Source.File)
-		if env.containsDeployedNorm(srcRel, r.BeforeText) {
-			pending++
-			continue
+		// M0-baseline pending branch — companion: rows only. A planned
+		// rationale relocation passes while its anchor text still lives in
+		// the row's source file. always: rows take no pending branch: since
+		// M3 the canonical always-surface home of a role-gated rule's general
+		// blocks is its stub, while the paths:-scoped full body keeps a
+		// delivery copy of the same text — letting source presence rescue an
+		// always: row would excuse a lost always-surface obligation
+		// (mutation fixture (b) depends on this distinction).
+		if prefix == "companion" {
+			srcRel := deployedRelOfTemplate(r.Source.File)
+			if env.containsDeployedNorm(srcRel, r.BeforeText) {
+				pending++
+				continue
+			}
 		}
-		env.errf("after-text absent for row %s: after_text not at %s and before_text no longer in source %s (obligation lost)", r.ID, r.Location, srcRel)
+		env.errf("after-text absent for row %s: after_text not at %s and before_text no longer in source %s (obligation lost)", r.ID, r.Location, deployedRelOfTemplate(r.Source.File))
 		failures++
 	}
 	env.t.Logf("[after-text presence] swept %d rows (always=%d companion=%d role-core=%d): direct=%d pending-M0-baseline=%d failures=%d",
@@ -974,20 +982,27 @@ func TestBindingLedgerIntegrity(t *testing.T) {
 	t.Run("mutation_fixtures", func(t *testing.T) {
 		// (a) deleting one token-less continuation line of a binding block
 		// must fail the ledger test naming that block ID (AC-ALB-020b).
+		// M3 form: the mutation lands on the row's canonical location file
+		// (an always: member post-split, not the row's anchor source), and
+		// the deleted line comes from the row's after-text — the text the
+		// ledger actually holds at that location.
 		t.Run("a_binding_continuation_line_delete_names_block", func(t *testing.T) {
 			row, line := findBindingRowTokenlessLine(led)
 			if row == nil {
 				t.Fatal("no multi-line binding row with a token-less line found for fixture (a)")
 			}
-			srcRel := deployedRelOfTemplate(row.Source.File)
+			locRel, ok := rowLocationRel(row)
+			if !ok {
+				t.Fatalf("fixture (a): row %s has no file-backed location", row.ID)
+			}
 			mutated := newLedgerCheckEnv(t, root, led, members, anchor)
-			base, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(srcRel)))
+			base, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(locRel)))
 			if err != nil {
-				t.Fatalf("read source for mutation: %v", err)
+				t.Fatalf("read location for mutation: %v", err)
 			}
 			content := strings.Replace(string(base), "\n"+line, "", 1)
 			mutated.readFile = func(relPath string) ([]byte, error) {
-				if relPath == srcRel {
+				if relPath == locRel {
 					return []byte(content), nil
 				}
 				return os.ReadFile(filepath.Join(root, filepath.FromSlash(relPath)))
@@ -996,21 +1011,28 @@ func TestBindingLedgerIntegrity(t *testing.T) {
 		})
 
 		// (b) deleting the STOPPED_TEAMMATE_VIOLATION normative paragraph in
-		// cross-session-messaging must fail (AC-ALB-020c first half).
+		// cross-session-messaging must fail (AC-ALB-020c first half). M3
+		// form: the paragraph's canonical always-surface home is the
+		// cross-session-messaging stub, so the deletion lands there; the
+		// paths:-scoped full body keeps a delivery copy, which must NOT
+		// excuse the lost always-surface obligation.
 		t.Run("b_stopped_teammate_delete_fails", func(t *testing.T) {
 			row := findRowByText(led, "STOPPED_TEAMMATE_VIOLATION", "workflow/cross-session-messaging.md")
 			if row == nil {
 				t.Fatal("STOPPED_TEAMMATE_VIOLATION row not found for fixture (b)")
 			}
-			srcRel := deployedRelOfTemplate(row.Source.File)
-			mutated := newLedgerCheckEnv(t, root, led, members, anchor)
-			base, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(srcRel)))
-			if err != nil {
-				t.Fatalf("read source for mutation: %v", err)
+			locRel, ok := rowLocationRel(row)
+			if !ok {
+				t.Fatalf("fixture (b): row %s has no file-backed location", row.ID)
 			}
-			content := strings.Replace(string(base), row.BeforeText, "", 1)
+			mutated := newLedgerCheckEnv(t, root, led, members, anchor)
+			base, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(locRel)))
+			if err != nil {
+				t.Fatalf("read location for mutation: %v", err)
+			}
+			content := strings.Replace(string(base), row.AfterText, "", 1)
 			mutated.readFile = func(relPath string) ([]byte, error) {
-				if relPath == srcRel {
+				if relPath == locRel {
 					return []byte(content), nil
 				}
 				return os.ReadFile(filepath.Join(root, filepath.FromSlash(relPath)))
@@ -1039,21 +1061,25 @@ func TestBindingLedgerIntegrity(t *testing.T) {
 
 		// (c) deleting the "Arming a goal does not authorize..." paragraph in
 		// goal-directive must fail; moving it to a companion must fail
-		// (AC-ALB-020d).
+		// (AC-ALB-020d). M3 form: the deletion lands on the row's canonical
+		// location file using its after-text.
 		t.Run("c_goal_directive_delete_fails", func(t *testing.T) {
 			row := findRowByText(led, "Arming a goal does not authorize", "workflow/goal-directive.md")
 			if row == nil {
 				t.Fatal("goal-directive arming-authorization row not found for fixture (c)")
 			}
-			srcRel := deployedRelOfTemplate(row.Source.File)
-			mutated := newLedgerCheckEnv(t, root, led, members, anchor)
-			base, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(srcRel)))
-			if err != nil {
-				t.Fatalf("read source for mutation: %v", err)
+			locRel, ok := rowLocationRel(row)
+			if !ok {
+				t.Fatalf("fixture (c): row %s has no file-backed location", row.ID)
 			}
-			content := strings.Replace(string(base), row.BeforeText, "", 1)
+			mutated := newLedgerCheckEnv(t, root, led, members, anchor)
+			base, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(locRel)))
+			if err != nil {
+				t.Fatalf("read location for mutation: %v", err)
+			}
+			content := strings.Replace(string(base), row.AfterText, "", 1)
 			mutated.readFile = func(relPath string) ([]byte, error) {
-				if relPath == srcRel {
+				if relPath == locRel {
 					return []byte(content), nil
 				}
 				return os.ReadFile(filepath.Join(root, filepath.FromSlash(relPath)))
@@ -1262,17 +1288,37 @@ func observeMutationFailure(t *testing.T, env *ledgerCheckEnv, label string, wan
 	t.Logf("mutation observed RED (%s): %s", label, firstN(errs[0], 200))
 }
 
+// rowLocationRel returns the project-root-relative file a row's obligation
+// canonically lives in after the M3 split — the location path for always:/
+// companion: rows, the deployed source file for role-core: rows (the marked
+// regions the builder reads live there). Returns false for rows whose
+// location carries no file path.
+func rowLocationRel(r *bindingLedgerRow) (string, bool) {
+	prefix, path, ok := splitLocation(r.Location)
+	if !ok || path == "" {
+		return "", false
+	}
+	if prefix == "role-core" {
+		return deployedRelOfTemplate(r.Source.File), true
+	}
+	return path, true
+}
+
 // findBindingRowTokenlessLine returns the first (by ID order is not
-// guaranteed — first match in row order) binding row whose before_text spans
-// multiple lines and contains at least one continuation line carrying no
-// constraint token, plus that line.
+// guaranteed — first match in row order) file-backed binding row whose
+// after_text spans multiple lines and contains at least one continuation line
+// carrying no constraint token, plus that line. The after-text is the row's
+// canonical current content at its location (M3 form).
 func findBindingRowTokenlessLine(led *bindingLedger) (*bindingLedgerRow, string) {
 	for i := range led.Rows {
 		r := &led.Rows[i]
-		if r.Kind != "binding" || !strings.Contains(r.BeforeText, "\n") {
+		if r.Kind != "binding" || !strings.Contains(r.AfterText, "\n") {
 			continue
 		}
-		for _, line := range strings.Split(r.BeforeText, "\n") {
+		if _, ok := rowLocationRel(r); !ok {
+			continue
+		}
+		for _, line := range strings.Split(r.AfterText, "\n") {
 			if line == "" || strings.Contains(line, "[HARD]") || strings.Contains(line, "MUST") || strings.Contains(line, "shall ") {
 				continue
 			}

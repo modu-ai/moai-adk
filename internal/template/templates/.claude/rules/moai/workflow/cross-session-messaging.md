@@ -1,3 +1,8 @@
+---
+description: "Role-gated cross-session messaging doctrine. Delivery is role-injection (SessionStart hook) plus the read-first directive on the unmarked leader-grade entry points; this top-level paths key is a non-delivery placement. The always-loaded stub is cross-session-messaging-core.md"
+paths: "**/cross-session-messaging*.md,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai-factory-foreman/SKILL.md,**/.claude/skills/moai/workflows/gtd.md"
+---
+
 # Cross-Session Messaging
 
 Doctrine for messaging between independent Claude Code sessions — those on this machine, and, where the conditions below are met, those on your other machines or on the web. The channel is a Claude Code runtime feature that is **on with nothing to enable** where the requirements are met — this rule governs how the orchestrator uses it, never how it is built.
