@@ -610,6 +610,39 @@ func TestSessionStartRoleRulesRootStopsAtProjectBoundary(t *testing.T) {
 	t.Logf("PASS lane worktree without rules: root=%q, missing warning fired, 0 parent blocks delivered", resolved)
 }
 
+// TestSessionStartRoleRulesRootStopsAtNestedMoAIProject is the nested-
+// project boundary: a nested MoAI project carries its own `.moai/` but no
+// `.git` — the walk must treat that directory as a project root too. A
+// child whose rules are missing takes the REQ-ALB-009 missing path; the
+// parent project's rules (one level up) are never injected silently.
+func TestSessionStartRoleRulesRootStopsAtNestedMoAIProject(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+
+	parent := t.TempDir()
+	writeDeployedRoleRules(t, parent)
+	child := filepath.Join(parent, "examples", "nested-moai-project")
+	if err := os.MkdirAll(filepath.Join(child, ".moai"), 0o755); err != nil {
+		t.Fatalf("mkdir child .moai: %v", err)
+	}
+	// No .git in the child — the boundary is the .moai directory itself.
+
+	resolved := roleRulesRootFromCWD(filepath.Join(child, "docs"))
+	if resolved != child {
+		t.Fatalf("nested-project cwd resolved to %q, want the child project root %q (no parent-tree reach)", resolved, child)
+	}
+	inj := roleRuleInjectionFor(resolved, "startup", "", langEnglish)
+	if inj.OperatorNotice == "" {
+		t.Fatal("nested project without the rules injected silently — the REQ-ALB-009 missing path did not fire")
+	}
+	for _, b := range roleCoreBlocksFromDeployed(t, parent) {
+		if strings.Contains(inj.Context, blockLabel(b)) {
+			t.Fatalf("parent-tree block leaked into the nested project: %q", blockLabel(b))
+		}
+	}
+	t.Logf("PASS nested MoAI project without rules: root=%q, missing warning fired, 0 parent blocks delivered", resolved)
+}
+
 // TestSessionStartRoleRulesMarkerSequence is the full sequence validation: a
 // START END END START file passes the count balance AND the first-marker
 // checks, yet its second start region is never closed — the injected core

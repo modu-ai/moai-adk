@@ -398,13 +398,14 @@ func roleRuleInjectionFor(root, source, existing, lang string) roleRuleInjection
 // the tree: it walks the cwd's ancestors outward and returns the first
 // ancestor carrying the deployed dispatch rule, and the cwd itself when no
 // ancestor does — leaving the REQ-ALB-009 fail-visible path to name what is
-// missing. The walk STOPS at the project boundary: a directory entry
-// carrying a .git marker (a checkout directory, or a worktree's repository
-// pointer file) ends the walk at that directory rather than reaching into a
-// parent checkout — a lane worktree that lacks the deployed rules takes the
-// REQ-ALB-009 missing path, never its parent tree's rules. Pure path
-// arithmetic, no git subprocess: the SessionStart hook runs under a 5s
-// budget (the same reasoning as cardIDFromPath).
+// missing. The walk STOPS at the project boundary: a directory carrying a
+// .git marker (a checkout directory, or a worktree's repository pointer
+// file) OR its own .moai/ directory (a nested MoAI project, which may have
+// no .git) ends the walk at that directory rather than reaching into a
+// parent project — a lane worktree or nested project that lacks the
+// deployed rules takes the REQ-ALB-009 missing path, never its parent
+// tree's rules. Pure path arithmetic, no git subprocess: the SessionStart
+// hook runs under a 5s budget (the same reasoning as cardIDFromPath).
 func roleRulesRootFromCWD(cwd string) string {
 	if strings.TrimSpace(cwd) == "" {
 		return ""
@@ -428,6 +429,14 @@ func roleRulesRootFromCWD(cwd string) string {
 			// Project boundary: this directory is the checkout root — the
 			// session's project root even when its rules are missing. No
 			// reach beyond this checkout.
+			return dir
+		}
+		if fi, err := os.Stat(filepath.Join(dir, ".moai")); err == nil && fi.IsDir() {
+			// MoAI project boundary: a directory carrying its own .moai/ is
+			// a project root even without .git (a nested MoAI project) — the
+			// walk stops here rather than climbing into the parent project
+			// and injecting the parent's rules for a child that lacks its
+			// own (REQ-ALB-009 missing path names what the child lacks).
 			return dir
 		}
 		parent := filepath.Dir(dir)
