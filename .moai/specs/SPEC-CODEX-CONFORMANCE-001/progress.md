@@ -65,6 +65,42 @@ $ grep -rn "codex-0.160.0" internal/cli | wc -l
 - 바이너리 버전: codex-cli 0.161.0
 - 판정 재료: 이 출력은 stage 2 전체라인 문법 `logged in using (chatgpt|api key)`와 불일치 → `parseCodexAuthLine`은 `codexAuthUnknown`(갭)이어야 하며, "미인증" 판정을 내선 안 된다 — REQ-CONF-006 계약과 정합. M2가 이 포획본을 vendored 샘플로 삼아 분류 시험으로 봉인한다.
 
+### M2 — auth/keyring 정합 (2026-10-09, tree 0d42ec4f3 이후)
+
+**AC-CONF-004 부재-하강 명시 시험 확인 (기존 시험 재확인 — 추가 불요)**:
+
+- `TestClassifyCodexAuth_LadderIntegration`(`internal/cli/codex_auth_ladder_test.go:523`)의 서브시험 "no auth.json + stderr-only probe"(:539)과 "no auth.json + stdout-only probe"(:553)이 **부재 auth.json → stage 2 하강**을 명시 단언한다(`stub.calls == 1` — 프로브가 정확히 1회 호출). `TestClassifyCodexAuth_RejectedAuthFileFallsBackToProbe`(:568)가 존재-기각 3형(빈 토큰·미지 모드·파스 실패)의 하강을, `TestClassifyCodexAuth_UnreadableProbeIsAGap`(:595)가 4축 갭(양 스트림 빈송출·러너 오류·비영exit 무문법·파스 실패+무음 프로브)을 각각 담는다. REQ-CONF-006의 계약이 이미 시험으로 봉인돼 있어 신규 RED/GREEN 쌍 불요 — plan §F M2의 "없으면 추가" 조건 불발.
+
+**AC-CONF-005 봉인 — vendored 샘플 + 분류 시험 (TDD RED/GREEN)**:
+
+- 신규 시험 `TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap`(`codex_auth_ladder_test.go` 말미): vendored 포획본(`testdata/codex-0.161.0-auth/login-status-not-logged-in.txt`, `cp` 바이트 동일 복사 + README에 캡처 출처 기록)을 바이트 단정한 뒤 ① 순수 파서 `combineCodexStreams(nil, raw)` → `parseCodexAuthLine(combined, 1)` ② 전체 사다리(부재 auth.json + 포획 스트림을 그대로 돌려주는 러너 스텁) 두 경로 모두 `codexAuthUnknown`을 단언.
+- **RED 원문 (vendoring 전)**:
+
+```text
+$ go test ./internal/cli -run '^TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap$' -count=1
+--- FAIL: TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap (0.00s)
+    codex_auth_ladder_test.go:644: read vendored 0.161.0 login-status sample: open testdata/codex-0.161.0-auth/login-status-not-logged-in.txt: no such file or directory
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.949s
+```
+
+- **GREEN 원문 (vendoring 후)**:
+
+```text
+$ go test ./internal/cli -run '^TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap$' -count=1 -v
+--- PASS: TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap (0.00s)
+    --- PASS: TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap/pure_parser_on_combined_capture (0.00s)
+    --- PASS: TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap/full_ladder_on_captured_streams (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.880s
+```
+
+- 사다리 계열 전체 재실행: `go test ./internal/cli -run '^(TestClassifyCodexAuth|TestParseCodexAuthLine|TestCodexLoginStatusRunner|TestCombineCodexStreams|TestReadCodexAuthFile|TestCodexTokenSet|TestCodexAuthFileTypes|TestCodexAuthLadder)' -count=1` → `ok ... 1.780s`. `go test ./internal/cli -run 'TestMcpCodexAuth|TestCodexAuth' -count=1` → `ok ... 0.902s`.
+
+**기록 갭 (REQ-CONF-007가 허용하는 유일한 것)**: keyring 로그인 변형("Logged in using …" 실측 형태의 keyring 저장 시 출력)은 포획 불가 — 생성 환경에 자격증명이 없어 로그인 자체가 불가능. 미인증 형태 포획(최소 필수 관측)은 성립했으므로 AC-CONF-005는 자동 PASS; keyring 변형은 수동 검증 대기 항목으로 남는다(증거 없는 갭 기록이 아니라 포획 불가능성이 기록된 갭).
+
+**결론**: stage 2 전체라인 문법은 0.161.0 출력(미인증 형태)에 대해 0.160 세대와 동일 규칙으로 분류한다 — 문법 일치 라인이 없으면 `codexAuthUnknown`(갭), 어느 경우에도 "미인증" 판정 아님. `internal/cli/mcp_codex.go` 어댑터 본문 변경 0건(PRESERVE 준수).
+
+
 
 ## §E.3 Run-phase Audit-Ready Signal
 
