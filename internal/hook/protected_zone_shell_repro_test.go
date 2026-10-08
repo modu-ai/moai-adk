@@ -713,3 +713,61 @@ func TestCheckProtectedZoneShellDualWorldGitAnchor(t *testing.T) {
 	hzsWantLiteralDeny(t, "dual world git anchor",
 		"git -C $'docs\\u0000/../zone_dir' rm marker.md")
 }
+
+// The five gate-round-17 regression rows (card t1585): each candidate
+// funnel's EXISTING semantics — emptiness filters, verb/specialized
+// recognition, anchor accumulation, overwrite-wins — must apply PER WORLD,
+// not just to worlds[0].
+
+// TestCheckProtectedZoneShellGitFunnelEmptyModernKept — the git file-arg
+// funnel's empty-modern filter dropped the word's old-bash candidate (the
+// same class zonePathCandidates had): git rm -f must judge the pre-4.2
+// reading of the path.
+func TestCheckProtectedZoneShellGitFunnelEmptyModernKept(t *testing.T) {
+	hzsWantLiteralDeny(t, "git funnel empty modern kept",
+		"git rm -f $'\\u0000/../zone_dir/marker.md'")
+}
+
+// TestCheckProtectedZoneShellDualWorldGitNameSpecialized — a world whose
+// base name is GIT drives the git analysis: the modern reading truncates to
+// "docs" (no verb, no git) while the pre-4.2 path executes git through the
+// literally-named entry.
+func TestCheckProtectedZoneShellDualWorldGitNameSpecialized(t *testing.T) {
+	hzsWantLiteralDeny(t, "dual world git name specialized",
+		"$'docs\\u0000/../git' rm -f zone_dir/marker.md")
+}
+
+// TestCheckProtectedZoneShellDualWorldSedNameSpecialized — the sed variant:
+// a world whose base name is SED drives the in-place analysis.
+func TestCheckProtectedZoneShellDualWorldSedNameSpecialized(t *testing.T) {
+	hzsWantLiteralDeny(t, "dual world sed name specialized",
+		"$'docs\\u0000/../sed' -i zone_dir/marker.md")
+}
+
+// TestCheckProtectedZoneShellGitAnchorAccumulationBounded — eighteen -C
+// options whose values carry two bash readings must accumulate PER WORLD
+// (two chains, never crossed) and stay bounded. Regression-guard class:
+// the blowup itself is the reviewer's measurement (262,144 candidates for
+// 2 unique paths at 18 options); a decision inversion is not constructible
+// from -C crossings (they only deepen the anchor path), so the row pins the
+// deny through the per-world accumulation and the §2.1 demotion is stated
+// in progress.md §E.2.
+func TestCheckProtectedZoneShellGitAnchorAccumulationBounded(t *testing.T) {
+	hzsWantLiteralDeny(t, "git anchor accumulation bounded",
+		"git -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' -C $'/tmp/\\u0000x' rm -f zone_dir/marker.md")
+}
+
+// TestCheckProtectedZoneShellGitWorkTreeOverwriteWins — git's LAST
+// --work-tree wins: judging the earlier (already-overwritten) anchor is a
+// FALSE DENY — an over-block, the inverse direction of the same defect
+// class. The row asserts the ALLOW the real option semantics produce.
+func TestCheckProtectedZoneShellGitWorkTreeOverwriteWins(t *testing.T) {
+	root := hzsLiteralNameFixture(t)
+	h := zoneTestHandler(t, root)
+	const overBlockCmd = "git --git-dir=docs/.git --work-tree=zone_dir --work-tree=docs rm -f marker.md"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": overBlockCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("git work-tree overwrite wins: decision=%q reason=%q, want allowed — the last --work-tree replaces the earlier anchor", overBlockCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}

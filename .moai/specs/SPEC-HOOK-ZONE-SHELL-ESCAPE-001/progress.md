@@ -752,6 +752,52 @@ was not directed).
 - Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
   `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
   clean; family coverage `13.2%` (all-rows selector).
+
+### Gate round 17 — M2.5 per-world funnel semantics: four findings (2026-10-09)
+
+The systemic principle extends one layer: each candidate funnel's EXISTING
+semantics — emptiness filters, verb/specialized recognition, anchor
+accumulation, overwrite-wins — must apply PER WORLD, not just to worlds[0].
+Reviewer overlay-verified at `c125ff334`: (1) P1 the git file-arg funnel's
+empty-modern filter still dropped the word's old-bash candidate
+(`git rm -f $'\u0000/../zone_dir/marker.md'`); (2) P1 the specialized
+analyses did not connect to the world names (`$'docs\u0000/../git' rm -f
+zone_dir/marker.md` and the sed variant: the modern name truncates to
+"docs", no verb, no git/sed analysis); (3) P2 each `-C` built the cartesian
+product of the two bash readings — 18× `-C` produced 262,144 candidates for
+2 unique paths; (4) P2 appended `--work-tree` candidates kept judging
+already-overwritten anchors — git's LAST --work-tree wins, so judging the
+earlier anchor is a FALSE DENY (an over-block, the inverse direction).
+
+**Five regression rows — RED under the M2.4 tip (`c125ff334` + the rows,
+uncommitted at measurement):**
+
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellGitFunnelEmptyModernKept|TestCheckProtectedZoneShellDualWorldGitNameSpecialized|TestCheckProtectedZoneShellDualWorldSedNameSpecialized|TestCheckProtectedZoneShellGitAnchorAccumulationBounded|TestCheckProtectedZoneShellGitWorkTreeOverwriteWins' -count=1 -v`
+- **Exit code**: `1`
+- **Observed (verbatim)**:
+
+```
+    protected_zone_shell_repro_test.go:727: git funnel empty modern kept: decision="allow" reason="", want deny
+--- FAIL: TestCheckProtectedZoneShellGitFunnelEmptyModernKept (0.00s)
+    protected_zone_shell_repro_test.go:736: dual world git name specialized: decision="allow" reason="", want deny
+--- FAIL: TestCheckProtectedZoneShellDualWorldGitNameSpecialized (0.00s)
+    protected_zone_shell_repro_test.go:743: dual world sed name specialized: decision="allow" reason="", want deny
+--- FAIL: TestCheckProtectedZoneShellDualWorldSedNameSpecialized (0.00s)
+    protected_zone_shell_repro_test.go:756: git anchor accumulation bounded: decision="allow" reason="", want deny
+--- FAIL: TestCheckProtectedZoneShellGitAnchorAccumulationBounded (13.53s)
+    protected_zone_shell_repro_test.go:770: git work-tree overwrite wins: decision="git --git-dir=docs/.git --work-tree=zone_dir --work-tree=docs rm -f marker.md" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=zone_dir/marker.md", want allowed — the last --work-tree replaces the earlier anchor
+--- FAIL: TestCheckProtectedZoneShellGitWorkTreeOverwriteWins (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	14.174s
+```
+
+Rows 1-3 and 5 are decision-inverting REDs. Row 4 (the 18× -C shape) is
+REGRESSION-GUARD with the §2.1 demotion stated: the boundedness defect's
+mechanical in-suite reproduction is the row's own 13.53s crawl (the
+reviewer's 262,144-for-2 measurement cited alongside); a decision inversion
+is not constructible from -C crossings (they only deepen the anchor path),
+so the row pins the deny through the per-world accumulation rather than a
+pre-fix decision flip.
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
