@@ -2,7 +2,7 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-plan_status: repair-round-2 (iter-2 delta 0.90 — D1–D8 RESOLVED; D9/D10 repairs applied; flip to audit-ready on a PASS re-audit)
+plan_status: repair-round-3 (iter-3 delta — D12/D13/D14 + gate-P2 applied; ceiling-policy round; flip to audit-ready on a PASS re-audit)
 plan_complete_at: 2026-10-09
 tier: M
 artifact_set: spec.md, plan.md, acceptance.md, progress.md, decision-index.md

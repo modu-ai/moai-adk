@@ -1,7 +1,7 @@
 ---
 id: SPEC-DISPATCH-INTEGRITY-001
 title: "Factory dispatch and bundle integrity — eight P1 review findings"
-version: "0.1.2"
+version: "0.1.3"
 status: draft
 created: 2026-10-09
 updated: 2026-10-09
@@ -55,6 +55,18 @@ tier: M
   `owned-tests/` (mirror + drop-in procedure), closing the replay hazard
   (`no tests to run`, exit 0, demonstrated by the codex gate); new ledger
   captures use anchored selectors.
+- v0.1.3 (2026-10-09) — plan-audit round-3 repairs (the ceiling policy's
+  single automatic delta round; D12–D14 + gate-P2): AC-DI-009's committed
+  test body asserts the preserved concurrent-author bytes, not an error
+  value alone (the detect-then-overwrite mutant class — D12), mirrored in
+  `owned-tests/`; AC-DI-005's guard observes the runFactory error AND the
+  card state in a two-arm assertion, with the positive-control test
+  `TestReviewFindingNominatedLeasesAfterPredecessorMerges` proving the
+  merged-predecessor path actually leases (D13); AC-DI-012's family
+  enumeration adds `factory_nominate_test.go` and derives from the
+  touched functions' callers at fix time (D14); the AC-DI-010 test
+  rewrite + RED measurement move from M4 to M0 — M4 keeps the
+  implementation fix + GREEN verification (gate-P2 sequencing).
 
 ## Requirements
 

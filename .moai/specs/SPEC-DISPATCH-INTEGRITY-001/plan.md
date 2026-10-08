@@ -116,11 +116,16 @@ M1 first.
   pass per package, compare per-test against §B, re-classify any divergence
   (the tree may have absorbed develop since 81786284e), record the
   classification into `progress.md` §E.2, then trim the drop-ins to the
-  owned subset before any commit. Exit: classification table re-affirmed on
-  the current tree, and every baseline cell — including the re-authored
-  AC-DI-010 body's RED-now — captured into the acceptance.md evidence
-  ledger in the §2.1 four-element form (single-invocation command, raw
-  stdout, exit code, tree SHA), with anchored selectors
+  owned subset before any commit — INCLUDING the re-authoring of
+  `TestReviewFindingFoldInterleavedArchiveLoss` to the serialized shape
+  AC-DI-010 pins (fold B a separate process completing after A releases
+  the lock; strengthened-assertion duty per AC-DI-010) and the measurement
+  of that re-authored body's RED-now into the ledger. Exit:
+  classification table re-affirmed on the current tree, and every baseline
+  cell — including the re-authored AC-DI-010 body's RED-now and the
+  strengthened AC-DI-005/009 bodies — captured into the acceptance.md
+  evidence ledger in the §2.1 four-element form (single-invocation
+  command, raw stdout, exit code, tree SHA), with anchored selectors
   (`-run '^TestName$'`, D11) and the measurement input named — the
   canonical committed drop-in per `owned-tests/README.md`, never the tree
   SHA alone (D10).
@@ -140,7 +145,10 @@ M1 first.
   not-reproduced evidence from §B re-affirmed on the current tree. Author
   the (6) characterization RED-first (b2 unmerged-sharer skip while a ready
   card progresses), classify — expected regression guard (pre-filter
-  present). Re-measure the `factory_card_test.go` family.
+  present). Re-measure the `factory_card_test.go` (10 tests) AND
+  `factory_nominate_test.go` families — the nomination path's own family,
+  which the codex gate's injection flipped to FAIL while the listed
+  families passed (D14).
 - **M3 — Merging-retry lease validation, defect (7)** (P1). Author the
   characterization RED-first from the `factory_card_pr_test.go` delivery
   fixtures (local-remote pattern): a foreign-lane retry and an expired-lease
@@ -155,15 +163,10 @@ M1 first.
   comparison (cmp1) → seam probe → NEW final byte comparison → rename —
   the post-probe comparison being the last check before each rename (D9;
   it is the only defense against a non-cooperating writer — the
-  FoldConcurrentWrite author writes without any lock). Re-author the committed
-  `TestReviewFindingFoldInterleavedArchiveLoss` body to the serialized
-  shape AC-DI-010 now pins: fold B runs as a separate process with its own
-  lock acquisition, its wait and completion are observed from B's own
-  process result, B completes only after A releases the lock, and data
-  retention (every completed fold's line present exactly once) is verified
-  after both terminate — the original body ran B inside A's seam window,
-  which the lock makes impossible (plan-audit D1). Capture the re-authored
-  body's RED-now into the ledger in M0. Guarantee scope: the lock closes
+  FoldConcurrentWrite author writes without any lock). The serialized
+  AC-DI-010 test body was re-authored and RED-measured in M0 (gate-P2
+  sequencing); M4 delivers the lock that flips it green and verifies
+  GREEN. Guarantee scope: the lock closes
   the write window for cooperating writers; for non-cooperating writers the
   detection at the last observable byte comparison is the defense, and the
   irreducible TOCTOU tail between that comparison and the rename is stated

@@ -9,11 +9,31 @@ archive, and the codex gate demonstrated the hazard concretely
 selectors against the cited revision's checkout). Every ledger cell binds
 to the tree SHA AND this input.
 
-- `owned_red_tests.go.txt` — the four test functions verbatim:
+- `owned_red_tests.go.txt` — the owned test functions:
   `TestReviewFindingMergedPRPredecessor`,
   `TestReviewFindingNominatedOverwritesDependency`,
+  `TestReviewFindingNominatedLeasesAfterPredecessorMerges` (round-3
+  positive control, D13 — no EL cell; baseline captured at M0 intake),
   `TestReviewFindingFoldConcurrentWrite`,
   `TestReviewFindingFoldInterleavedArchiveLoss`.
+
+## Assertion strength vs the EL-measured originals (round-3, D12/D13)
+
+EL-001 and EL-004 recorded the ORIGINAL overlay bodies. The mirror now
+carries STRENGTHENED bodies — the canonical M0 intake forms — whose
+RED-now is captured at M0 (the strengthened assertions are strictly
+richer; under today's unfixed code both bodies are RED):
+
+- `TestReviewFindingFoldConcurrentWrite` asserts `err != nil` AND that
+  the final bytes equal the concurrent author's content AND that the
+  error is the change-detection error — closing the detect-then-overwrite
+  mutant (D12).
+- `TestReviewFindingNominatedOverwritesDependency` is a two-arm
+  assertion: the refusal must NAME the unmerged predecessor and `t3`
+  must stay picked with the stored hint (a nil-error or non-naming
+  refusal — the `nomination unavailable` mutant class — fails); the
+  sibling positive control proves the merged-predecessor path actually
+  leases (D13).
 
 ## Drop-in procedure
 

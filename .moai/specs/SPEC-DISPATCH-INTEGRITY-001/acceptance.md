@@ -79,9 +79,20 @@ REQ-DISPATCH-002.
 **When** `factory next --card t3` runs,
 **Then** the verb either refuses on the unmerged explicit predecessor or
 leases `t3` with `HintAfter` still `"t1"` — never a recomputed hint.
-Baseline cell: observed PASS at 81786284e (`after="t1"`, refusal observed);
-green path: stays green through close (M2 commits it as a regression
-guard). Trace: REQ-DISPATCH-004.
+Committed-test body duty (D13): the regression guard observes BOTH the
+`runFactory` error AND the resulting card state — a two-arm assertion:
+(A) the refusal NAMES the unmerged predecessor (`t1`) and `t3` stays
+picked with `HintAfter="t1"` — a nil error, or any refusal that does not
+name the predecessor (the injected `nomination unavailable` mutant class),
+fails, because the dependency check provably did not run; (B) the
+positive control `TestReviewFindingNominatedLeasesAfterPredecessorMerges`
+places `t1` at merged-pr and requires the nomination to actually lease
+`t3` with `HintAfter="t1"`, proving the refusal comes from the dependency
+check and not a dead path.
+Baseline cell: EL-004 (observed PASS at 81786284e/544462a8d, original
+body); the strengthened bodies' baselines are captured at M0; green path:
+stays green through close (M2 commits them as regression guards). Trace:
+REQ-DISPATCH-004.
 
 ## AC-DI-006 — Defect (5): merged-pr predecessor releases successor (regression guard)
 
@@ -131,6 +142,16 @@ geometry, a byte comparison follows the probe and is the last check
 before the rename. (`TestReviewFindingFoldConcurrentWrite`; evidence
 ledger EL-001.)
 
+Committed-test body duty (D12): the committed body asserts BOTH clauses
+of the Then — `err != nil` AND the final file bytes equal the concurrent
+author's content (`bytes.Equal` against `concurrent author's new
+memory\n`) — plus, ideally, that the error is the change-detection error
+rather than an unrelated failure. `err != nil` alone is mutant-passable
+(a mutant that detects the change, overwrites with the fold output
+anyway, and returns an error passes it). The mirror at
+`owned-tests/owned_red_tests.go.txt` carries the strengthened body; the
+strengthened body's RED-now is captured at M0.
+
 Guarantee scope — residual risk, stated explicitly rather than
 absolutized: the guarantee extends to the comparison that follows the
 probe, not to the rename itself. An irreducible TOCTOU tail remains
@@ -159,7 +180,12 @@ present in `MEMORY.md` or the archive exactly once — no line lost, no
 duplicate.
 
 Committed-test note: `TestReviewFindingFoldInterleavedArchiveLoss` is
-RE-AUTHORED to this serialized shape (plan M4 owns the re-authoring). The
+RE-AUTHORED to this serialized shape — M0 owns the re-authoring and its
+RED-now measurement (the canonical source is otherwise still the
+synchronous in-callback form; M4 delivers the lock that flips it green).
+The re-authored body carries the D12 strengthened-assertion duty — every
+completing fold's retention claim is asserted on the resulting file
+CONTENT, not on an error value alone. The
 original body ran B synchronously inside A's seam window — under the
 mandated lock B can only wait or refuse there, so that criterion was
 impossible under the design it accompanies (verification-completeness §2,
@@ -187,11 +213,15 @@ run does not satisfy this AC. Trace: REQ-DISPATCH-008.
 **Given** any production fix in this SPEC,
 **When** the fix lands,
 **Then** the owning package's full test family containing that function's
-tests re-runs green in the same verification pass: `factory_bundle_test.go`
-(13 tests), `factory_card_test.go` (10), `factory_card_pr_test.go` (15) +
-`factory_card_pr_guard_test.go`, `memory_fold_test.go` (14) +
-`memory_fold_wiring_test.go` — per family actually entered by the change,
-with the family list recorded per milestone in §E.2.
+tests — and the families housing that function's CALLERS — re-runs green
+in the same verification pass: `factory_bundle_test.go` (13 tests),
+`factory_card_test.go` (10), `factory_nominate_test.go` (the
+nomination-path family, `TestFactoryNextNominateLeasesNominee`),
+`factory_card_pr_test.go` (15) + `factory_card_pr_guard_test.go`,
+`memory_fold_test.go` (14) + `memory_fold_wiring_test.go` — per family
+actually entered by the change, with the family list recorded per
+milestone in §E.2 BEFORE the run (the list is re-derived from the touched
+functions' callers at fix time, not only from this enumeration).
 
 ## AC-DI-013 — Methodology control stays green
 

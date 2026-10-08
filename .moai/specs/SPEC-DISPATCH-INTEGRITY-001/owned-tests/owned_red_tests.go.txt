@@ -13,6 +13,7 @@
 package cli
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,8 +54,50 @@ func TestReviewFindingNominatedOverwritesDependency(t *testing.T) {
 	_, _, err := runFactory(t, "next", "--card", "t3", "--run", fcRun)
 	c := fcCard(t, root, "t3")
 	t.Logf("err=%v t3 state=%s after=%q; original t1 state=%s", err, c.State, c.HintAfter, fcCard(t, root, "t1").State)
-	if c.HintAfter != "t1" {
-		t.Error("nominated lease replaced the existing dependency with its computed hub hint")
+	// AC-DI-005 two-arm assertion (plan-audit iter-3 D13): the dependency
+	// check must PROVABLY have run. Arm A (this fixture, t1 unmerged): the
+	// refusal names the unmerged predecessor and t3 stays picked with
+	// HintAfter "t1". A nil error with a non-leased card — or any refusal
+	// that does not name the predecessor — means an unrelated failure
+	// short-circuited before the check (the `nomination unavailable` mutant
+	// class) and must fail. Arm B (positive control) is
+	// TestReviewFindingNominatedLeasesAfterPredecessorMerges below.
+	if err == nil {
+		if c.State != homestate.CardLeased || c.HintAfter != "t1" {
+			t.Errorf("no error and no clean lease: state=%s after=%q", c.State, c.HintAfter)
+		}
+		return
+	}
+	if !strings.Contains(err.Error(), "has not reached") || !strings.Contains(err.Error(), "t1") {
+		t.Errorf("refusal does not name the unmerged predecessor t1: %v", err)
+	}
+	if c.State != homestate.CardPicked || c.HintAfter != "t1" {
+		t.Errorf("t3 moved on refusal: state=%s after=%q", c.State, c.HintAfter)
+	}
+}
+
+// TestReviewFindingNominatedLeasesAfterPredecessorMerges is AC-DI-005's
+// positive control (plan-audit iter-3 D13): the same nomination with the
+// predecessor at merged-pr must actually lease t3 with the stored hint —
+// proving the refusal in the sibling test comes from the dependency check,
+// not from a dead path.
+func TestReviewFindingNominatedLeasesAfterPredecessorMerges(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStateHold, factory.BacklogStateHold, factory.BacklogStatePicked)
+	for _, id := range []string{"t1", "t2", "t3"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	}
+	fbSeedFiles(t, store, "t2", "internal/template/catalog.yaml")
+	fbSeedFiles(t, store, "t3", "internal/template/catalog.yaml")
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardMergedPR}, homestate.Card{CardID: "t2", State: homestate.CardMergedPR}, homestate.Card{CardID: "t3", State: homestate.CardPicked, HintAfter: "t1"})
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+	sdLaneEnv(t, "lane-1", "")
+	_, _, err := runFactory(t, "next", "--card", "t3", "--run", fcRun)
+	c := fcCard(t, root, "t3")
+	t.Logf("positive control: err=%v t3 state=%s after=%q", err, c.State, c.HintAfter)
+	if err != nil || c.State != homestate.CardLeased || c.HintAfter != "t1" {
+		t.Errorf("merged predecessor did not release the nomination: err=%v state=%s after=%q", err, c.State, c.HintAfter)
 	}
 }
 
@@ -80,8 +123,18 @@ func TestReviewFindingFoldConcurrentWrite(t *testing.T) {
 		t.Fatal(e)
 	}
 	t.Logf("err=%v final bytes=%q", err, got)
+	// Both clauses of AC-DI-009 (plan-audit iter-3 D12): the write is
+	// REFUSED and the concurrent author's bytes are what remains on disk.
+	// A mutant that detects the change but overwrites anyway before
+	// returning an error fails the byte assertion.
 	if err == nil {
 		t.Error("concurrent update between recheck and rename lost without refusal")
+	}
+	if !bytes.Equal(got, []byte("concurrent author's new memory\n")) {
+		t.Errorf("concurrent author's bytes were not preserved after refusal; final = %q", got)
+	}
+	if err != nil && !strings.Contains(err.Error(), "changed since the plan") {
+		t.Errorf("refusal is not the change-detection error: %v", err)
 	}
 }
 
