@@ -9,7 +9,6 @@ package template
 
 import (
 	"context"
-	"encoding/json"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -117,8 +116,13 @@ func frontmatterPathsScoped(content []byte) bool {
 
 // importTargets parses the @-import lines of a root-instruction file and
 // returns the resolvable, in-project import paths (relative to the importing
-// file's directory, slash form). Project-external imports (absolute, ~-,
-// ..-escaping) and the AGENTS.local.md local instruction file are skipped.
+// file's directory, slash form). Project-external imports (absolute, ~-)
+// and the AGENTS.local.md local instruction file are skipped. A `..`-bearing
+// import is resolved against the importing file's directory FIRST and
+// excluded only when the resolved path genuinely escapes the project
+// boundary: a nested file's `@../shared.md` lands inside the project
+// (acceptance.md §D.2 — 「@-import가 프로젝트 밖을 가리키면 따라가지 않는다」
+// is about the resolved target, not the literal spelling).
 func importTargets(importingFileRel string, content []byte) []string {
 	dir := filepath.Dir(importingFileRel)
 	var out []string
@@ -132,11 +136,12 @@ func importTargets(importingFileRel string, content []byte) []string {
 		case p == "", p == "AGENTS.local.md":
 			continue
 		case strings.HasPrefix(p, "/"), strings.HasPrefix(p, "~"):
-			continue // project-external
-		case p == ".." || strings.HasPrefix(p, "../"):
-			continue // escapes the project
+			continue // project-external: absolute or home-anchored
 		}
 		resolved := filepath.ToSlash(filepath.Join(dir, p))
+		if resolved == ".." || strings.HasPrefix(resolved, "../") {
+			continue // resolved path escapes the project boundary
+		}
 		out = append(out, resolved)
 	}
 	return out
@@ -235,38 +240,8 @@ func deriveDeployedAlwaysLoadedMembers(t *testing.T, root string) []deployedSurf
 	return out
 }
 
-// bindingLedgerHead is the subset of the ledger head the derivation reads.
-type bindingLedgerHead struct {
-	AnchorSHA string `json:"anchor_sha"`
-}
-
-// bindingLedger is the parsed fixture shape the tests need.
-type bindingLedger struct {
-	Head bindingLedgerHead `json:"head"`
-	Rows []struct {
-		ID         string `json:"id"`
-		Kind       string `json:"kind"`
-		AnchorKind string `json:"anchor_kind"`
-		Location   string `json:"location"`
-	} `json:"rows"`
-}
-
-// loadBindingLedger parses the committed ledger fixture.
-func loadBindingLedger(t *testing.T) *bindingLedger {
-	t.Helper()
-	data, err := os.ReadFile(alwaysLoadedLedgerPath)
-	if err != nil {
-		t.Fatalf("read binding ledger fixture: %v", err)
-	}
-	var led bindingLedger
-	if err := json.Unmarshal(data, &led); err != nil {
-		t.Fatalf("parse binding ledger fixture: %v", err)
-	}
-	if len(led.Rows) == 0 {
-		t.Fatalf("binding ledger fixture carries no rows")
-	}
-	return &led
-}
+// bindingLedger, loadBindingLedger, and the ledger row types live in
+// binding_ledger_test.go (full fixture shape shared by both test files).
 
 // roleCoreRulePaths resolves the ledger's role-core: row locations to
 // deployed rule paths (project-root-relative slash paths) inside the deployed
@@ -482,5 +457,68 @@ func TestDeployedAlwaysLoadedSurfaceDerivation(t *testing.T) {
 		}
 		t.Logf("mutation observed: hardcoded derivation total=%d stays frozen while mechanical total=%d grows and sees %s — the property FAILS for a hardcoded list, PASSes for the mechanical derivation",
 			surfaceTotal(hardcoded), surfaceTotal(mechanical), fixtureRuleRel)
+	})
+
+	t.Run("nested_parent_import_resolves_inside_project", func(t *testing.T) {
+		// Boundary pair (i): a `../` import from a nested file resolves
+		// against the importing file's directory and lands INSIDE the
+		// project — it must be aggregated into the surface (a false-pass
+		// here would hide budget growth).
+		root := deployEmbeddedTemplatesForTest(t)
+		before := deriveDeployedAlwaysLoadedMembers(t, root)
+
+		const entryRel = ".moai/docs/zz-alb-entry.md"
+		const sharedRel = ".moai/zz-alb-shared.md"
+		entryBody := "Entry file whose parent-relative import stays inside the project boundary.\n"
+		sharedBody := "Shared body reached through a parent-relative import from a nested directory.\n"
+		entryLine := "\n@" + entryRel + "\n"
+		nestedImportLine := "\n@../zz-alb-shared.md\n"
+
+		writeFixture(t, root, entryRel, entryBody+nestedImportLine)
+		writeFixture(t, root, sharedRel, sharedBody)
+		agentsAbs := filepath.Join(root, "AGENTS.md")
+		data, err := os.ReadFile(agentsAbs)
+		if err != nil {
+			t.Fatalf("read deployed AGENTS.md: %v", err)
+		}
+		if err := os.WriteFile(agentsAbs, []byte(string(data)+entryLine), 0o644); err != nil {
+			t.Fatalf("append import line: %v", err)
+		}
+
+		after := deriveDeployedAlwaysLoadedMembers(t, root)
+		if !memberExists(after, entryRel) || !memberExists(after, sharedRel) {
+			t.Errorf("transitive parent-relative import must aggregate both files: entry=%v shared=%v",
+				memberExists(after, entryRel), memberExists(after, sharedRel))
+		}
+		wantGrowth := utf16CodeUnits(entryBody+nestedImportLine) + utf16CodeUnits(sharedBody) + utf16CodeUnits(entryLine)
+		if got := surfaceTotal(after) - surfaceTotal(before); got != wantGrowth {
+			t.Errorf("nested ../ import must grow the total by both files plus import lines: growth=%d want=%d", got, wantGrowth)
+		}
+	})
+
+	t.Run("escaping_import_excluded", func(t *testing.T) {
+		// Boundary pair (ii): an import whose RESOLVED path leaves the
+		// project is not followed — the only total change is the import
+		// line AGENTS.md itself absorbs.
+		root := deployEmbeddedTemplatesForTest(t)
+		before := deriveDeployedAlwaysLoadedMembers(t, root)
+
+		agentsAbs := filepath.Join(root, "AGENTS.md")
+		data, err := os.ReadFile(agentsAbs)
+		if err != nil {
+			t.Fatalf("read deployed AGENTS.md: %v", err)
+		}
+		escLine := "\n@../outside-the-project.md\n"
+		if err := os.WriteFile(agentsAbs, []byte(string(data)+escLine), 0o644); err != nil {
+			t.Fatalf("append escaping import line: %v", err)
+		}
+
+		after := deriveDeployedAlwaysLoadedMembers(t, root)
+		if memberExists(after, "../outside-the-project.md") {
+			t.Errorf("project-escaping import must not join the member list")
+		}
+		if got, want := surfaceTotal(after)-surfaceTotal(before), utf16CodeUnits(escLine); got != want {
+			t.Errorf("escaping import must leave only the import-line growth: growth=%d want=%d", got, want)
+		}
 	})
 }
