@@ -172,9 +172,37 @@ a locale with no corresponding row pre-edit is either updated per the chain or r
 **Given** all docs-site edits, **When** running:
 1. `scripts/docs-i18n-check.sh` — covers file-path parity, frontmatter title, H1, and
    glossary terms ONLY (script read in full: :6-11, :93-241). Expected: exit 0.
-2. Body-emoji scan — the hns-oss-docs-verify recipe's inlined emoji scan over
-   `docs-site/content/` (counter-example that flips it red: any body line carrying an emoji
-   codepoint, e.g. `✅`). Expected: 0 hits.
+2. Body-emoji scan — a perl-based scan (NOT the recipe's `grep -P` form: macOS
+   `/usr/bin/grep` rejects `-P` with `grep: invalid option -- P`, exit 2, which an
+   empty-output read mistakes for 0 hits). Run once per locale over the pages THIS SPEC
+   modifies (the plan M4 page list, 8 pages; `<loc>` ∈ ko/en/ja/zh; plain explicit paths —
+   brace/computed forms are guard-refused in a worktree-isolated session):
+
+   `perl -CSD -ne 'print "$ARGV:$.:$_" if /[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]/' docs-site/content/<loc>/multi-llm/model-policy.md docs-site/content/<loc>/multi-llm/_index.md docs-site/content/<loc>/advanced/token-budget.md docs-site/content/<loc>/cost-optimization/prompt-caching.md docs-site/content/<loc>/claude-code/context-memory/context-window.md docs-site/content/<loc>/claude-code/foundations/commands.md docs-site/content/<loc>/claude-code/foundations/how-claude-code-works.md docs-site/content/<loc>/claude-code/_index.md`
+
+   **Execution guard** (report-not-verdict, verification-completeness §1.1): any checker
+   usage/option error — exit ≥ 2, or stderr carrying `invalid option` / `usage:` — FAILS the
+   check; it is never read as 0 hits. The checker must work identically on macOS and Linux
+   (perl one-liner; an `rg` fallback `rg -n '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]' <files>`
+   is acceptable if perl is absent, same guard applies).
+
+   **Scope**: the 32 in-scope files above only. A tree-wide 0-hit is NOT required —
+   out-of-scope pages this card does not touch (e.g. statusline output-example pages such as
+   `ja/advanced/statusline.md`, which carry emoji by design) are not in this gate.
+
+   **Allow-list** (mirroring the recipe's own allowances) — a scan candidate line passes if
+   it is one of: (i) the session-handoff cut-line marker lines (`✂──── ... ────✂`);
+   (ii) `Generated with [Claude Code]` attribution lines; (iii) ✓/✗/decorative symbols the
+   recipe permits. **Pass condition**: after removing allow-listed lines, the candidate set
+   is empty — any emoji-bearing body line in an in-scope page that is none of the three
+   classes fails the check (counter-example that flips it red: a `✅` in a new body
+   paragraph).
+
+   **Observed baseline (measured on this tree, 2026-10-08, base `81786284e`)**: the scan
+   returns exactly 8 candidate lines — the ✂ cut-line markers at
+   `ko/advanced/token-budget.md:536,549`, `en/...:512,525`, `ja/...:410,423`,
+   `zh/...:396,409` — all allow-list class (i); every other in-scope page is 0-hit. Exit 0
+   on all four locale runs.
 3. Mermaid direction grep — `grep -rnE "graph (LR|RL)|flowchart (LR|RL)" docs-site/content/`
    (counter-example: a `flowchart LR` block). Expected: exit 1, 0 hits.
 4. URL stale-domain blacklist — the hns-oss-docs-verify recipe's URL grep over
