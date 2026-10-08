@@ -109,6 +109,8 @@ Gaps: (1) E8's first capture predates the lint fix; the post-fix re-run re-obser
 
 Residual-risk: none new beyond the M0 items; the import-boundary pair is now a standing regression guard.
 
+M1 addendum (2026-10-08, turn-gate review round): three defects in `TestBindingLedgerIntegrity` found by the session's turn-end codex review, repaired lane-direct in `b3a520d6b`, each closed with an observed-failure fixture — (h) the row-coverage check now enumerates the DECLARED scope (`Head.LedgerScope.Members`) so a file whose rows were all deleted stays swept (repro: 45-row delete → `errors=[]` before, uncovered-units failure naming the member after); (i) duplicate unit claims are rejected, not overwritten (repro: duplicated row passed → "duplicates a claim" failure); (j) the AC-ALB-021(2) skill sweep walks the deployment origin (template source `.claude/skills`) instead of the project path the deployer excludes (repro: planted fragment → 0 violations before, caught hits=1 after), with rules/skills swept counts reported separately. Verified this run: family 15 PASS / 0 FAIL, lint 0, guard RED intact (total=180901).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
