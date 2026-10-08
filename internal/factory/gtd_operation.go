@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
 type GTDOperationState string
@@ -231,21 +232,50 @@ var errGTDReconcileSuperseded = errors.New("gtd dispatch reconcile: superseded b
 // on.
 var errGTDReconcileUnadjudicated = errors.New("gtd dispatch reconcile: the binding names another run and the queue records no current dispatch for the card — re-dispatch to adjudicate")
 
-// gtdDispatchOwnerOfRecord resolves the authoritative owner for a dispatch
-// from the queue's runtime assignment — the owner of record the factory
-// row's owner must match (review round-23 P1-a, card t1538). "" means the
-// queue holds no assignment for the pair.
+// gtdDispatchIdentity resolves a dispatch's identity from the queue record
+// (review round-24 V3, card t1538): the queue's current-dispatch record is the
+// source of both the run and the owner of the card's engagement. A runtime
+// assignment row is not — RecordFactoryCardState overwrites it with whatever
+// owner a state report carries, so after a same-run re-dispatch lane-1 ->
+// lane-2 a late lane-1 report would otherwise make recovery restore the
+// superseded owner.
+//
+// superseded reports that the record names ANOTHER run as the card's current
+// dispatch. owner is the record's owner when it names runID and carries one,
+// and "" when superseded. Only where the queue holds no record for the card
+// (it predates the record) or the record carries no owner (an engagement made
+// before any owner existed) does the runtime assignment's owner stand in.
+func gtdDispatchIdentity(record *BacklogRecord, cardID, runID string) (superseded bool, owner string) {
+	for _, c := range record.Runtime.DispatchCurrent {
+		if c.CardID != cardID {
+			continue
+		}
+		if c.RunID != runID {
+			return true, ""
+		}
+		if c.OwnerLabel != "" {
+			return false, c.OwnerLabel
+		}
+		break
+	}
+	for _, a := range record.Runtime.Assignments {
+		if a.CardID == cardID && a.RunID == runID {
+			return false, a.OwnerLabel
+		}
+	}
+	return false, ""
+}
+
+// gtdDispatchOwnerOfRecord is the owner the factory row must carry for the
+// (card, run) dispatch, per gtdDispatchIdentity — "" when the queue holds none
+// or the run is superseded (review round-23 P1-a).
 func gtdDispatchOwnerOfRecord(store *BacklogStore, cardID, runID string) (string, error) {
 	record, err := store.LoadPure()
 	if err != nil {
 		return "", err
 	}
-	for _, a := range record.Runtime.Assignments {
-		if a.CardID == cardID && a.RunID == runID {
-			return a.OwnerLabel, nil
-		}
-	}
-	return "", nil
+	_, owner := gtdDispatchIdentity(record, cardID, runID)
+	return owner, nil
 }
 
 // reconcileGTDDispatchBinding verifies — and repairs — the factory record's
@@ -300,8 +330,8 @@ func reconcileGTDDispatchBinding(ctx context.Context, store *BacklogStore, cardI
 // under the authoritative assignment's owner when it sits at picked (the
 // mirror's T2), and the dispatch binding. The mirror's shape, driven from
 // the operation engine: the same queue-lock discipline, a picked queue item
-// as the only precondition, and the runtime assignment as the owner of
-// record. The completion gate reads the repaired triple as one binding: the
+// as the only precondition, and the queue's current-dispatch record as the
+// owner of record (gtdDispatchIdentity). The completion gate reads the repaired triple as one binding: the
 // row resolves the bound run, the owner names the engaged lane, and the
 // binding re-targets the gate away from the superseded approval.
 //
@@ -352,18 +382,14 @@ func repairGTDDispatchRecord(ctx context.Context, store *BacklogStore, factoryDB
 			}
 		}
 		picked := false
-		owner := ""
 		for _, item := range record.Items {
 			if item.ID == cardID {
 				picked = item.State == BacklogStatePicked
 			}
 		}
-		for _, a := range record.Runtime.Assignments {
-			if a.CardID == cardID && a.RunID == runID {
-				owner = a.OwnerLabel
-				break
-			}
-		}
+		// The owner of record is the current-dispatch record's (V3), not the
+		// runtime assignment row a late state report may have overwritten.
+		_, owner := gtdDispatchIdentity(record, cardID, runID)
 		if !picked {
 			return fmt.Errorf("queue item %s is not picked", cardID)
 		}
@@ -379,28 +405,22 @@ func repairGTDDispatchRecord(ctx context.Context, store *BacklogStore, factoryDB
 		} else if err != nil {
 			return err
 		}
-		switch {
-		case card.State == homestate.CardPicked:
+		if card.State == homestate.CardPicked {
 			// The mirror's T2: the authoritative assignment owns the row.
 			if _, err := db.Transition(ctx, homestate.TransitionRequest{RunID: runID, CardID: cardID, To: homestate.CardAssigned, ExpectedVersion: card.Version, Actor: "dispatch", Owner: owner, Now: now}); err != nil {
 				return err
 			}
-		case canonicalOwnerLabel(card.OwnerLabel) == canonicalOwnerLabel(owner):
-			// Assigned — or progressed past it (leased/running) — under
-			// the dispatch's owner: the assignment half landed and the
-			// card's progress is orthogonal to the binding this repair
-			// restores (review round-22 cont.).
-		default:
-			// A row assigned-or-later under a DIFFERENT owner is the prior
-			// dispatch's residue (review round-23 P1-a): the queue's
-			// assignment is the owner of record, and the completion gate
-			// selects the approval by this row's owner — leaving the
-			// mismatch keeps the prior owner's approval armed.
-			if _, err := db.RestampDispatchOwner(ctx, runID, cardID, canonicalOwnerLabel(owner), now); err != nil {
-				return err
-			}
 		}
-		return db.RecordDispatchBinding(ctx, cardID, runID, now)
+		// A row assigned-or-later under the dispatch's owner needs no move —
+		// the assignment half landed and the card's progress is orthogonal to
+		// the binding this repair restores (review round-22 cont.). A row
+		// under a DIFFERENT owner is the prior dispatch's residue (review
+		// round-23 P1-a): the engagement write moves the owner and re-points
+		// the binding in one transaction, refusing while the row holds a
+		// valid lease (round-24 P1-4) — the completion gate selects the
+		// approval by the row's owner, so a left-behind mismatch would keep
+		// the prior owner's approval armed.
+		return db.RecordDispatchEngagement(ctx, cardID, runID, owner, canonicalOwnerLabel, now)
 	})
 }
 
@@ -429,6 +449,17 @@ func gtdRecordDispatchCurrent(record *BacklogRecord, cardID string) (string, boo
 // approval. A missing factory database is a no-op: the first real dispatch
 // records the binding through the mirror path instead.
 func RecordDispatchBindingIfEngaged(root, cardID, runID string) error {
+	return RecordDispatchEngagementIfEngaged(root, cardID, runID, "")
+}
+
+// RecordDispatchEngagementIfEngaged is RecordDispatchBindingIfEngaged for a
+// dispatch that knows its owner (review round-24 V1, card t1538): the binding
+// and the row's owner move land in ONE factory transaction, so a reassignment
+// refused for a valid lease (homestate.RecordDispatchEngagement) commits
+// neither — the queue rolls the assignment back with the hook error, and the
+// binding is never left naming a run the queue no longer points at. owner ""
+// is the binding alone.
+func RecordDispatchEngagementIfEngaged(root, cardID, runID, owner string) error {
 	path, err := homestate.FactoryDBPath(root)
 	if err != nil {
 		return err
@@ -451,7 +482,7 @@ func RecordDispatchBindingIfEngaged(root, cardID, runID string) error {
 	if existing == 0 {
 		return nil
 	}
-	return db.RecordDispatchBinding(context.Background(), cardID, runID, time.Now())
+	return db.RecordDispatchEngagement(context.Background(), cardID, runID, owner, canonicalOwnerLabel, time.Now())
 }
 
 // gtdDispatchBindingCurrent reports whether the card's recorded dispatch
@@ -540,7 +571,20 @@ func gtdDispatchBindingCurrent(ctx context.Context, store *BacklogStore, cardID,
 // <home>/db/<key>/{todo,factory} produces). "" means no factory database is
 // reachable and the dispatch-binding axis stays vacuous for the engine
 // check.
+//
+// A queue in the MoAI home layout (<home>/.moai/db/<key>/todo) is answered by
+// its own sibling alone (review relay #3 F4, card t1538): the project-root walk
+// from there climbs to the home directory, which carries a .moai of its own,
+// and would take the home directory for the project — selecting the home
+// project's factory database over the queue's.
 func gtdFactoryDBForStore(store *BacklogStore) string {
+	sibling := filepath.Join(filepath.Dir(filepath.Dir(store.path)), "factory", "factory.db")
+	if gtdQueueInHomeLayout(store) {
+		if _, err := os.Stat(sibling); err == nil {
+			return sibling
+		}
+		return ""
+	}
 	if root := gtdProjectRootForStore(store); root != "" {
 		if path, err := homestate.FactoryDBPath(root); err == nil {
 			if _, statErr := os.Stat(path); statErr == nil {
@@ -548,11 +592,27 @@ func gtdFactoryDBForStore(store *BacklogStore) string {
 			}
 		}
 	}
-	sibling := filepath.Join(filepath.Dir(filepath.Dir(store.path)), "factory", "factory.db")
 	if _, err := os.Stat(sibling); err == nil {
 		return sibling
 	}
 	return ""
+}
+
+// gtdQueueInHomeLayout reports whether the queue lives under <moai-home>/db —
+// the layout whose project directory holds both todo/ and factory/.
+func gtdQueueInHomeLayout(store *BacklogStore) bool {
+	home, err := paths.MoaiHome()
+	if err != nil || home == "" {
+		return false
+	}
+	resolve := func(p string) string {
+		if r, rerr := filepath.EvalSymlinks(p); rerr == nil {
+			return r
+		}
+		return filepath.Clean(p)
+	}
+	rel, err := filepath.Rel(resolve(filepath.Join(home, "db")), resolve(filepath.Dir(store.path)))
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // gtdProjectRootForStore walks up from the queue store to the project root —

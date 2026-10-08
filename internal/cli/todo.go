@@ -1642,6 +1642,11 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 								if err := recordDispatchBindingAtRoot(id, runID, queueRoot); err != nil {
 									return err
 								}
+								// The queue's current-dispatch record follows the
+								// binding (the selection claims no owner).
+								if err := l.RefreshDispatchCurrent(id, runID, ""); err != nil {
+									return err
+								}
 							}
 							return nil
 						}

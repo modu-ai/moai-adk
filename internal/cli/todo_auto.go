@@ -348,6 +348,11 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 							if berr := recordDispatchBindingAtRoot(card.ID, envRunID, root); berr != nil {
 								return berr
 							}
+							// Mutate holds the queue lock; the current-dispatch
+							// record follows the binding (no owner is claimed).
+							if cerr := store.RefreshDispatchCurrentLockHeld(card.ID, envRunID, ""); cerr != nil {
+								return cerr
+							}
 						}
 						return nil
 					}

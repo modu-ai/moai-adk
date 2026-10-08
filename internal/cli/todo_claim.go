@@ -204,7 +204,13 @@ func runTodoClaimRoot(root string, cmd *cobra.Command, lane, renew string) error
 		}
 		result = res
 		if envRunID := os.Getenv(config.EnvFactoryRunID); envRunID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
-			if berr := recordDispatchBindingAtRoot(result.Item.ID, envRunID, root); berr != nil {
+			berr := recordDispatchBindingAtRoot(result.Item.ID, envRunID, root)
+			if berr == nil {
+				// The queue's current-dispatch record follows the binding
+				// under the same held lock (no owner is claimed).
+				berr = l.RefreshDispatchCurrent(result.Item.ID, envRunID, "")
+			}
+			if berr != nil {
 				// Roll the claim back under the same held lock: no
 				// selection stands unbound (review round-15 P1-3).
 				if rerr := l.Mutate(revertClaimMutation(result.Item.ID, holder)); rerr != nil {

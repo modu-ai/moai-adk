@@ -42,6 +42,18 @@ func writeFactoryAssignment(ctx context.Context, root string, store *factory.Bac
 		if !picked {
 			return fmt.Errorf("queue item %s is not picked", cardID)
 		}
+		// A mirror that arrives after a LATER dispatch completed is stale
+		// (turn-end gate relay #4): the queue's current-dispatch record, read
+		// here under the same lock the dispatch writers hold, names another
+		// run, and writing the factory half now would drag the binding back
+		// to this one. Nothing is written; the later dispatch owns the card.
+		// The record itself is the dispatch hook's to write — it already names
+		// this run (or none exists) by the time its mirror gets here.
+		for _, cur := range record.Runtime.DispatchCurrent {
+			if cur.CardID == cardID && cur.RunID != runID {
+				return nil
+			}
+		}
 		db, err := homestate.OpenFactory(root)
 		if err != nil {
 			return err

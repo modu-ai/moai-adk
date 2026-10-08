@@ -71,7 +71,10 @@ func RecordFactoryCardAssignment(root, runID, cardID, owner, specID string) erro
 		// and no caller can forget the re-point. REQ-FCR-002's scope
 		// sentence holds inside — a card with no factory row in ANY run is
 		// an ordinary card and the write skips silently.
-		return RecordDispatchBindingIfEngaged(root, cardID, runID)
+		// A same-run reassignment moves the row's owner in the same
+		// factory transaction as the binding (review round-24 P1-2/P1-4,
+		// V1): a refusal commits neither.
+		return RecordDispatchEngagementIfEngaged(root, cardID, runID, owner)
 	})
 }
 

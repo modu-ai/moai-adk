@@ -995,6 +995,21 @@ func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, root, runID 
 			return homestate.Card{}, false, false, err
 		}
 	}
+	// T2 and T3 each re-point the factory binding onto this run in their own
+	// transaction, so the queue's current-dispatch record names the run FIRST
+	// (turn-end gate relay #4, after review round-24 V2): the claim runs
+	// inside the lease section, which holds the queue lock on this same
+	// store, and a record that cannot be written fails the claim closed —
+	// before any lease exists. Recording after the transition would leave a
+	// committed lease and binding ahead of a stale record, where a retried
+	// older dispatch reads the record as current and drags the binding back.
+	// A transition that is then refused leaves the record ahead of the
+	// binding instead, the safe direction: an older operation reads as
+	// superseded and moves nothing. The owner is the row's own — empty for a
+	// picked card, which claims none until T2 names the lane.
+	if err := todoStoreAt(root).RefreshDispatchCurrentLockHeld(c.CardID, runID, c.OwnerLabel); err != nil {
+		return homestate.Card{}, false, false, err
+	}
 	if c.State == homestate.CardPicked {
 		next, err := db.Transition(ctx, homestate.TransitionRequest{
 			RunID: runID, CardID: c.CardID, To: homestate.CardAssigned,
@@ -2475,7 +2490,10 @@ func newFactoryAssignCommand() *cobra.Command {
 							return fmt.Errorf("factory assign: refused — %s: dispatch-binding recovery is the leader path's act (%s=%s marks a lane)",
 								factoryLaneBoundarySentinel, config.EnvFactoryRole, config.FactoryRoleLane)
 						}
-						return db.RecordDispatchBinding(ctx, cardID, runID, now)
+						if err := db.RecordDispatchBinding(ctx, cardID, runID, now); err != nil {
+							return err
+						}
+						return l.RefreshDispatchCurrent(cardID, runID, card.OwnerLabel)
 					}
 					return fmt.Errorf("factory assign: card %s is %s (owner %q); only a picked card can move to assigned%s", cardID, card.State, dash(card.OwnerLabel), func() string {
 						if !card.Legacy() && toTrim != "" && toTrim != card.OwnerLabel {
@@ -2486,11 +2504,19 @@ func newFactoryAssignCommand() *cobra.Command {
 				}
 				if toTrim != "" {
 					card, err = db.Transition(ctx, homestate.TransitionRequest{RunID: runID, CardID: cardID, To: homestate.CardAssigned, ExpectedVersion: card.Version, Actor: "assign", Owner: to, Now: now})
-					return err
+					if err != nil {
+						return err
+					}
+					// The queue's current-dispatch identity follows every
+					// assignment path (review round-24 P1-3).
+					return l.RefreshDispatchCurrent(cardID, runID, toTrim)
 				}
 				// A --to-less successful assign records THIS run as the
 				// current dispatch at any version (review round-7 P1-1).
-				return db.RecordDispatchBinding(ctx, cardID, runID, now)
+				if err := db.RecordDispatchBinding(ctx, cardID, runID, now); err != nil {
+					return err
+				}
+				return l.RefreshDispatchCurrent(cardID, runID, card.OwnerLabel)
 			})
 			if err != nil {
 				return fmt.Errorf("factory assign: %w", err)

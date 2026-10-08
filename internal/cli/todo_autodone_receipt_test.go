@@ -314,6 +314,7 @@ func TestAutoReselectRebindsAndRefusesOldApproval(t *testing.T) {
 	// holds a picked row (the dispatch record the re-selection binds to).
 	fcPlace(t, root, homestate.Card{CardID: "t970", RunID: "run-old", State: homestate.CardDone, OwnerLabel: "worker-1", Version: 1, EvidenceSHA: "sha-old", UpdatedAt: "2026-09-26T01:00:00Z"})
 	fcPlaceFactoryCard(t, root, "t970", 1, "sha-new", "2026-09-26T02:00:00Z")
+	seedOlderDispatch(t, root, store, "t970")
 	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
 		CardUUID: "uuid-970", RunID: "run-old", CardID: "t970", FactoryVersion: 1,
 		EvidenceHash: "sha-old", Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
@@ -365,6 +366,9 @@ func TestAutoReselectRebindsAndRefusesOldApproval(t *testing.T) {
 	if row.RunID != fcRun {
 		t.Fatalf("binding run = %s, want %s (the re-selection run)", row.RunID, fcRun)
 	}
+	// The queue's current-dispatch record followed the re-selection (relay
+	// #3): the older dispatch it named is no longer the card's engagement.
+	fcWantCurrent(t, store, "t970", fcRun, "")
 }
 
 // Regression pin for round-18 P1 (card t1538): a dead-owner PICKED card

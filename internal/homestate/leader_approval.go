@@ -325,52 +325,83 @@ func (f *FactoryDB) RecordDispatchBinding(ctx context.Context, cardID, runID str
 	})
 }
 
-// RestampDispatchOwner rewrites an existing card row's owner to the
-// dispatch's authoritative owner (review round-23, card t1538,
-// SPEC-FACTORY-COMPLETION-RECOVERY-001): the queue's runtime assignment is
-// the owner of record, and a factory row still carrying a prior dispatch's
-// owner is that engagement's residue — the completion gate reads the row's
-// owner to select the approval, so an unrepaired mismatch keeps the prior
-// owner's approval armed against the current dispatch's work. Idempotent: a
-// row already carrying the owner returns unchanged. The state, lease, and
-// evidence columns are untouched — only the ownership identity moves, with
-// a version bump and a card.dispatch-owner event.
-func (f *FactoryDB) RestampDispatchOwner(ctx context.Context, runID, cardID, owner string, now time.Time) (Card, error) {
-	owner = strings.TrimSpace(owner)
-	if strings.TrimSpace(runID) == "" || !ValidCardID(cardID) || owner == "" {
-		return Card{}, fmt.Errorf("%w: run id, a valid card id, and an owner label are required", ErrInvalidCardInput)
+// RecordDispatchEngagement records, in ONE factory transaction, that cardID is
+// engaged in runID under owner (review rounds 23-24, card t1538,
+// SPEC-FACTORY-COMPLETION-RECOVERY-001): the run row exists, the dispatch
+// binding names runID, and — when the card's row in runID already carries a
+// DIFFERENT owner — the row's owner moves to owner. The queue's current
+// dispatch is the owner of record; a row still carrying a prior dispatch's
+// owner is that engagement's residue, and the completion gate reads the row's
+// owner to select the approval, so the owner move (a version bump and a
+// card.dispatch-owner event) leaves the prior owner's approval stale in the
+// same commit that re-points the binding.
+//
+// A row that still holds a valid lease refuses the whole write: nothing is
+// committed — neither the owner move nor the binding — so a refused
+// reassignment cannot leave the binding on a run the queue rolled back from.
+// The lease must end (expiry, release, the old owner's termination) before
+// the owner moves; an unparsable expiry reads as valid. The state, lease and
+// evidence columns of a restamped row are untouched. owner "" is the binding
+// alone (no owner is claimed). canon maps a label into the caller's canonical
+// owner vocabulary (nil = identity); rows compare equal under it.
+func (f *FactoryDB) RecordDispatchEngagement(ctx context.Context, cardID, runID, owner string, canon func(string) string, now time.Time) error {
+	cardID, runID, owner = strings.TrimSpace(cardID), strings.TrimSpace(runID), strings.TrimSpace(owner)
+	if cardID == "" || runID == "" {
+		return fmt.Errorf("%w: card id and run id are required", ErrInvalidCardInput)
+	}
+	if canon == nil {
+		canon = func(label string) string { return label }
 	}
 	if now.IsZero() {
 		now = time.Now()
 	}
 	now = now.UTC()
-	var result Card
-	err := f.withCardTx(ctx, runID, func(tx *sql.Tx) (func(), error) {
-		cur, err := loadCard(ctx, tx, runID, cardID)
+	nowText := now.Format(time.RFC3339Nano)
+	return retryFactoryBusy(ctx, func() error {
+		tx, err := f.DB.BeginTx(ctx, nil)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		if cur.OwnerLabel == owner {
-			result = cur
-			return nil, nil
+		defer func() { _ = tx.Rollback() }()
+		if err := ensureRunRowTx(ctx, tx, runID, nowText); err != nil {
+			return err
 		}
-		next := cur
-		next.OwnerLabel = owner
-		next.Version = cur.Version + 1
-		next.UpdatedAt = now.Format(time.RFC3339Nano)
-		if err := updateCardRow(ctx, tx, next, cur.Version); err != nil {
-			return nil, err
+		if owner != "" {
+			cur, lerr := loadCard(ctx, tx, runID, cardID)
+			switch {
+			case errors.Is(lerr, ErrCardNotFound):
+				// No row in this run yet: nothing carries a prior owner.
+			case lerr != nil:
+				return lerr
+			case strings.TrimSpace(cur.OwnerLabel) != "" && canon(cur.OwnerLabel) != canon(owner):
+				if err := restampOwnerTx(ctx, tx, cur, canon(owner), now); err != nil {
+					return err
+				}
+			}
 		}
-		if err := appendEvent(ctx, tx, runID, "card.dispatch-owner", map[string]any{"card_id": cardID, "from": cur.OwnerLabel, "to": owner, "version": next.Version, "actor": "dispatch"}, now); err != nil {
-			return nil, err
+		if err := upsertDispatchBindingTx(ctx, tx, cardID, runID, nowText); err != nil {
+			return err
 		}
-		result = next
-		return nil, nil
+		return tx.Commit()
 	})
-	if err != nil {
-		return Card{}, err
+}
+
+// restampOwnerTx moves cur's owner to owner inside the caller's transaction,
+// refusing while the row holds a valid lease (RecordDispatchEngagement).
+func restampOwnerTx(ctx context.Context, tx *sql.Tx, cur Card, owner string, now time.Time) error {
+	if strings.TrimSpace(cur.LeaseHolder) != "" {
+		if exp, perr := time.Parse(time.RFC3339Nano, cur.LeaseExpiresAt); perr != nil || exp.After(now) {
+			return fmt.Errorf("%w: card %s holds a valid lease for %q; owner %q cannot replace it until the lease ends", ErrLeaseHolder, cur.CardID, cur.LeaseHolder, owner)
+		}
 	}
-	return result, nil
+	next := cur
+	next.OwnerLabel = owner
+	next.Version = cur.Version + 1
+	next.UpdatedAt = now.Format(time.RFC3339Nano)
+	if err := updateCardRow(ctx, tx, next, cur.Version); err != nil {
+		return err
+	}
+	return appendEvent(ctx, tx, cur.RunID, "card.dispatch-owner", map[string]any{"card_id": cur.CardID, "from": cur.OwnerLabel, "to": owner, "version": next.Version, "actor": "dispatch"}, now)
 }
 
 // VerifyApprovalReadonly is the scan-time counterpart of the gate: the same
