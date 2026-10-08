@@ -10,6 +10,7 @@ package template
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -622,10 +623,64 @@ func (env *ledgerCheckEnv) checkEntryPoints() {
 			identifiers[ep.Delivery+" "+ep.EntryPoint]++
 		}
 	}
-	env.t.Logf("[entry_points] swept binding+normative rows: present=%d missing=%d empty=%d role-core delivery=always violations=%d; distinct identifiers=%d (REQ-ALB-007/024 identifier resolution is the named M2 seam — registry + moai:role-rules-required markers land with M2)",
+	env.t.Logf("[entry_points] swept binding+normative rows: present=%d missing=%d empty=%d role-core delivery=always violations=%d; distinct identifiers=%d",
 		present, missing, empty, roleCoreAlways, len(identifiers))
 	if present+missing+empty == 0 {
 		env.errf("entry_points check swept 0 binding/normative rows — empty sweep is a failure, not a pass")
+	}
+	// Identifier resolution (gate finding): checking the delivery TYPE alone
+	// let a never-registered role and an undeployed entry-point file pass.
+	// Every identifier resolves against its real surface — REQ-ALB-007 names
+	// a registry marker, REQ-ALB-024 names a deployed file carrying the
+	// moai:role-rules-required marker (the M2 seam this check named, now
+	// closed: both landed).
+	registry := map[string]bool{}
+	for _, m := range config.RoleMarkerRegistry() {
+		registry[m.Name] = true
+	}
+	resolved, unresolved := 0, 0
+	for id := range identifiers {
+		delivery, ident, found := strings.Cut(id, " ")
+		if !found {
+			continue // the empty-identifier error already fired per row
+		}
+		switch delivery {
+		case "REQ-ALB-007":
+			if registry[ident] {
+				resolved++
+				continue
+			}
+			env.errf("entry_point %q (REQ-ALB-007) is not a role-marker registry name", ident)
+			unresolved++
+		case "REQ-ALB-024":
+			// The entry-point files live outside the test deployment (the
+			// deployer excludes .claude/agents and .claude/skills), so the
+			// marker resolves against the deployment ORIGIN — the embedded
+			// template set, the same surface role_entry_points_test.go
+			// sweeps.
+			efs, ferr := EmbeddedTemplates()
+			if ferr != nil {
+				env.errf("entry_point %q (REQ-ALB-024): embedded templates unavailable: %v", ident, ferr)
+				unresolved++
+				continue
+			}
+			data, rerr := fs.ReadFile(efs, filepath.FromSlash(ident))
+			if rerr != nil {
+				env.errf("entry_point %q (REQ-ALB-024) is not a shipped template file: %v", ident, rerr)
+				unresolved++
+				continue
+			}
+			if !strings.Contains(string(data), config.RoleCoreMarkerRequired) {
+				env.errf("entry_point %q (REQ-ALB-024) is shipped but carries no %s marker", ident, config.RoleCoreMarkerRequired)
+				unresolved++
+				continue
+			}
+			resolved++
+		}
+	}
+	env.t.Logf("[entry_points] identifier resolution: resolved=%d unresolved=%d", resolved, unresolved)
+	if unresolved > 0 {
+		env.errf("entry_points carried %d unresolved identifiers — delivery type alone is not REQ-ALB-015 conformance", unresolved)
 	}
 }
 
@@ -736,6 +791,15 @@ func (env *ledgerCheckEnv) checkAfterTextPresence() {
 			continue // vocabulary check already failed this row
 		}
 		perClass[prefix]++
+		// An empty after_text matches every strings.Contains probe — a
+		// deleted directive with its after_text blanked passed the whole
+		// integrity sweep (gate finding). Binding/normative rows must carry
+		// the deployed obligation's text.
+		if (r.Kind == "binding" || r.Kind == "normative") && strings.TrimSpace(r.AfterText) == "" {
+			env.errf("after-text empty on %s row %s — an empty after_text contains-matches everything and hides a deleted obligation", r.Kind, r.ID)
+			failures++
+			continue
+		}
 		var target string
 		switch prefix {
 		case "always", "companion":
@@ -1353,6 +1417,45 @@ func TestBindingLedgerIntegrity(t *testing.T) {
 				t.Fatalf("fixture (k): planted fragment in the anchor-absent companion was NOT caught (exempt=%d) — the anchor-absent case is leaking current content as anchor content", exempt)
 			}
 			t.Logf("fixture (k) observed red: planted fragment of row %s caught in %s (hits=%d, exempt-at-anchor=%d)", row.ID, companionRel, hits, exempt)
+		})
+
+		// (m) blanking a binding row's after_text must fail: an empty
+		// after_text contains-matches every probe, so a deleted directive
+		// with its after_text blanked passed the whole sweep (gate finding).
+		t.Run("m_empty_after_text_fails", func(t *testing.T) {
+			row := firstRowOfKind(led, "binding")
+			mutatedLedger := cloneLedger(led)
+			for i := range mutatedLedger.Rows {
+				if mutatedLedger.Rows[i].ID == row.ID {
+					mutatedLedger.Rows[i].AfterText = "   \n  "
+				}
+			}
+			mutated := newLedgerCheckEnv(t, root, mutatedLedger, members, anchor)
+			observeMutationFailure(t, mutated, "fixture (m): a blanked binding after_text must fail — empty matches every Contains probe", row.ID, "after-text empty")
+		})
+
+		// (n) an entry_point that resolves to nothing must fail: a
+		// never-registered REQ-ALB-007 role name passed delivery-type
+		// checking alone (gate finding).
+		t.Run("n_unresolved_entry_point_fails", func(t *testing.T) {
+			row := firstRowOfKind(led, "binding")
+			var target *bindingLedgerRow
+			mutatedLedger := cloneLedger(led)
+			for i := range mutatedLedger.Rows {
+				r := &mutatedLedger.Rows[i]
+				if r.ID == row.ID && r.EntryPoints != nil && len(*r.EntryPoints) > 0 {
+					target = r
+					break
+				}
+			}
+			if target == nil {
+				t.Fatal("no binding row with entry_points found for fixture (n)")
+			}
+			eps := *target.EntryPoints
+			eps[0].Delivery = "REQ-ALB-007"
+			eps[0].EntryPoint = "never-registered-role"
+			mutated := newLedgerCheckEnv(t, root, mutatedLedger, members, anchor)
+			observeMutationFailure(t, mutated, "fixture (n): a never-registered role name must fail identifier resolution", "never-registered-role", "not a role-marker registry name")
 		})
 	})
 }

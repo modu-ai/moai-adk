@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
@@ -66,7 +67,13 @@ func sweepRoleRuleCitations(fsys fs.FS) (missing []string, swept int) {
 			return nil
 		}
 		swept++
-		if !strings.Contains(content, config.RoleCoreMarkerRequired) {
+		// The marker alone is not the delivery path: for an entry point
+		// running without the role environment markers, the read-first
+		// DIRECTIVE is what carries the rules (gate finding — a file with
+		// the marker plus rule references but no directive passed with
+		// missing=[]). REQ-ALB-024's contract phrase is the invariant.
+		hasDirective := strings.Contains(content, "read BOTH role-gated rule files")
+		if !strings.Contains(content, config.RoleCoreMarkerRequired) || !hasDirective {
 			missing = append(missing, path)
 		}
 		return nil
@@ -94,6 +101,37 @@ func TestDeployedRoleRuleEntryPointMarkers(t *testing.T) {
 		t.Errorf("deployed entry point %s cites a role-gated rule without the %s marker", m, config.RoleCoreMarkerRequired)
 	}
 	t.Logf("swept %d citing entry-point files; %d missing the marker", swept, len(missing))
+}
+
+// TestSweepRoleRuleCitationsRequiresReadFirstDirective pins the sweep's
+// second half (gate finding): the marker alone is not the delivery path for
+// an entry point running without the role environment markers — the
+// read-first directive is. A file carrying the marker plus rule references
+// but no directive is MISSING, and a directive-carrying file is not.
+func TestSweepRoleRuleCitationsRequiresReadFirstDirective(t *testing.T) {
+	marker := "<!-- " + config.RoleCoreMarkerRequired + " -->\n"
+	refs := "See .claude/rules/moai/workflow/factory-dispatch.md and cross-session-messaging.md.\n"
+	directive := "[HARD] Before the first action of any session running this file, read BOTH role-gated rule files in full.\n"
+	fsys := fstest.MapFS{
+		".claude/skills/moai/workflows/with-directive.md": &fstest.MapFile{Data: []byte(marker + directive + refs)},
+		".claude/skills/moai/workflows/marker-only.md":    &fstest.MapFile{Data: []byte(marker + refs)},
+	}
+	missing, swept := sweepRoleRuleCitations(fsys)
+	if swept != 2 {
+		t.Fatalf("swept %d citing files, want 2 — the sweep set is wrong", swept)
+	}
+	sawDirectiveOnly := false
+	for _, m := range missing {
+		if strings.Contains(m, "with-directive") {
+			t.Errorf("the directive-carrying file was flagged missing: %s", m)
+		}
+		if strings.Contains(m, "marker-only") {
+			sawDirectiveOnly = true
+		}
+	}
+	if !sawDirectiveOnly {
+		t.Error("the marker-only file without the read-first directive was NOT flagged — the directive requirement is not wired")
+	}
 }
 
 // TestDeployedRoleRuleEntryPointMutation is the AC-ALB-018 observed-failure
