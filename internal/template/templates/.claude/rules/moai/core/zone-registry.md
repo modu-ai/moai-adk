@@ -798,7 +798,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/context-window-management.md
   anchor: "#context-window-targets"
-  clause: "Operational threshold is **model-specific**. Larger windows tolerate higher percentage utilization before stall risk dominates"
+  clause: "Operational threshold is **model-specific**. Match the row for the window the session actually runs with"
   canary_gate: false
 
 - id: CONST-V3R5-023
@@ -814,7 +814,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/context-window-management.md
   anchor: "#user-responsibilities"
-  clause: "The next action MUST be `/clear` — no further large work in the current session"
+  clause: "Run `/clear` next — start no further large work in the session"
   canary_gate: false
 
 - id: CONST-V3R5-025
@@ -822,7 +822,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/context-window-management.md
   anchor: "#orchestrator-responsibilities"
-  clause: "Pre-clear announcement: When the orchestrator detects accumulated context (input + output) approaching the model-specific threshold"
+  clause: "Pre-clear announcement: when accumulated context (input + output) nears the model-specific threshold"
   canary_gate: false
 
 - id: CONST-V3R5-026
@@ -830,7 +830,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/context-window-management.md
   anchor: "#orchestrator-responsibilities"
-  clause: "Resume message format: include all of the following so the next session is self-sufficient"
+  clause: "Resume message format — include all of the following so the next session is self-sufficient"
   canary_gate: false
 
 # --- spec-workflow.md (2 new entries: V3R5-027..028; CONST-V3R2-001 covers the third) ---
@@ -893,7 +893,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/session-handoff.md
   anchor: "#worktree-anchored-resume-pattern"
-  clause: "When the work happened inside a worktree, the resume message MUST prepend **Block 0 (cwd anchoring)** before the standard 6-block structure"
+  clause: "Work inside a worktree: the resume message MUST prepend **Block 0 (cwd anchoring)** before the standard 6 blocks"
   canary_gate: false
 
 # --- glm-web-tooling.md (2 entries: V3R5-040 mandate + V3R5-041 prohibition) ---
