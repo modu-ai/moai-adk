@@ -321,7 +321,7 @@ func assertFailVisible(t *testing.T, inj roleRuleInjection, fixture string) {
 	if inj.OperatorNotice == "" {
 		t.Errorf("%s fixture: no operator-visible warning (silent failure)", fixture)
 	}
-	if !strings.Contains(inj.RecoveryHead, roleRuleFiles[0].Rel) || !strings.Contains(inj.RecoveryHead, roleRuleFiles[1].Rel) {
+	if !strings.Contains(slashNorm(inj.RecoveryHead), roleRuleFiles[0].Rel) || !strings.Contains(slashNorm(inj.RecoveryHead), roleRuleFiles[1].Rel) {
 		t.Errorf("%s fixture: read directive does not name both rule files: %q", fixture, inj.RecoveryHead)
 	}
 	if !strings.Contains(inj.OperatorNotice, roleRuleFiles[0].Name) {
@@ -400,7 +400,7 @@ func TestSessionStartRoleRulesSizeGate(t *testing.T) {
 		if inj.OperatorNotice == "" {
 			t.Errorf("fallback emitted no operator warning")
 		}
-		if !strings.Contains(inj.RecoveryHead, roleRuleFiles[0].Rel) {
+		if !strings.Contains(slashNorm(inj.RecoveryHead), roleRuleFiles[0].Rel) {
 			t.Errorf("fallback recovery head is not the read directive: %q", inj.RecoveryHead)
 		}
 		for i, b := range blocks {
@@ -688,8 +688,8 @@ func TestSessionStartRoleRulesCodexOnlyDeploymentLayout(t *testing.T) {
 	// The recovery directive names the paths the rules are actually deployed
 	// at — in this tree, the .moai/policies projections.
 	directive := roleRulesReadDirective(root, "")
-	if !strings.Contains(directive, ".moai/policies/workflow/factory-dispatch.md") ||
-		!strings.Contains(directive, ".moai/policies/workflow/cross-session-messaging.md") {
+	if !strings.Contains(slashNorm(directive), ".moai/policies/workflow/factory-dispatch.md") ||
+		!strings.Contains(slashNorm(directive), ".moai/policies/workflow/cross-session-messaging.md") {
 		t.Errorf("Codex-only layout recovery directive does not name the deployed policies paths: %q", directive)
 	}
 	t.Logf("PASS Codex-only deployment: all %d blocks delivered from .moai/policies, recovery directive names the deployed paths", len(blocks))
@@ -734,6 +734,14 @@ func directiveBacktickedPaths(s string) []string {
 		out = append(out, s[:j])
 		s = s[j+1:]
 	}
+}
+
+// slashNorm normalizes Windows backslash separators to forward slashes so
+// path-shape assertions hold on every platform: the recovery directive names
+// paths via filepath.Join, whose separator is platform detail — the
+// assertion cares about which FILE is named, not the separator.
+func slashNorm(s string) string {
+	return strings.ReplaceAll(s, "\\", "/")
 }
 
 // TestSessionStartRoleRulesRootFromSubdirectoryCWD is the subdirectory-CWD
@@ -826,7 +834,7 @@ func TestSessionStartRoleRulesCompositeNilGuard(t *testing.T) {
 	if out == nil || out.SystemMessage == "" {
 		t.Fatal("nil-guard composite delivered no operator warning")
 	}
-	if out.HookSpecificOutput == nil || !strings.Contains(out.HookSpecificOutput.AdditionalContext, roleRuleFiles[0].Rel) {
+	if out.HookSpecificOutput == nil || !strings.Contains(slashNorm(out.HookSpecificOutput.AdditionalContext), roleRuleFiles[0].Rel) {
 		t.Fatalf("nil-guard composite delivered no read directive: %+v", out.HookSpecificOutput)
 	}
 	t.Logf("PASS nil guard: compact + role marker + no prior context delivered warning + directive, no panic")
