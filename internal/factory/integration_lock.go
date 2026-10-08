@@ -436,9 +436,13 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 			case force:
 				// The recorded --force seizure (pre-queue shape kept): the
 				// queue order survives untouched (REQ-MWQ-011) and the
-				// displaced holder is recorded.
+				// displaced holder is recorded. The snapshot keeps the LAST
+				// holder only (t1576 review round 9's class) — the force
+				// path nested the previous Displaced chain the same way.
 				want.Queue = current.Queue
 				displaced := *current
+				displaced.Displaced = nil
+				displaced.Queue = nil
 				want.Displaced = &displaced
 				want.DisplacedReason = fmt.Sprintf("taken by force from %s at %s", displaced.SessionID, WindowClock().Format(time.RFC3339))
 				replaced = current
