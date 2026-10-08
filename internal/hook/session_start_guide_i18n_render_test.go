@@ -180,6 +180,54 @@ func TestFactoryGuideFallbackCompleteNotice(t *testing.T) {
 	}
 }
 
+// TestFactoryGuideStaleRunStaysEnglishOnAgentChannel (sync-audit repair,
+// REQ-ACR-005): the conversation-language wiring of the additionalContext
+// channel localizes the bootstrap GUIDE only. Under a ko configuration, a
+// legacy worker label routes through the stale-run recovery gate — that
+// notice stays English on the agent-facing channel
+// (factoryBootstrapNoticeForSource pins the stale-run locale to English), the
+// operator copy (factoryBootstrapNotice) keeps localizing it, and the normal
+// lane join notice renders ko.
+func TestFactoryGuideStaleRunStaysEnglishOnAgentChannel(t *testing.T) {
+	root := t.TempDir()
+	recordActiveFactoryRun(t, root, "guideStaleRun")
+	srlGateEnv(t, "guideStaleRun", "worker-1")
+
+	// The agent channel's stale-run notice ignores the conversation locale:
+	// the ko rendering is byte-identical to the en rendering, and the seeded
+	// active run yields the deterministic English prescription (not the
+	// load-dependent degraded form). The prescription gate fires once per
+	// session, so each rendering uses its own session id.
+	agentKo := factoryBootstrapNoticeForSource("startup", root, "stale-guide-ko", "ko")
+	agentEn := factoryBootstrapNoticeForSource("startup", root, "stale-guide-en", langEnglish)
+	if agentKo == "" {
+		t.Fatal("legacy worker label with an active run must emit the stale-run prescription notice")
+	}
+	if agentKo != agentEn {
+		t.Errorf("agent-channel stale-run notice must stay English regardless of conversation_language:\nko:\n%s\nen:\n%s", agentKo, agentEn)
+	}
+	if !strings.Contains(agentKo, "moai factory relaunch") {
+		t.Errorf("agent-channel stale-run notice lost the prescription command:\n%s", agentKo)
+	}
+
+	// The operator copy localizes the same stale-run notice as before (the
+	// REQ-SRH bootstrap/ko surface): it carries the same command line and is
+	// NOT the English prose the agent channel prints.
+	operatorKo := factoryBootstrapNotice(root, "stale-guide-operator", "ko")
+	if !strings.Contains(operatorKo, "moai factory relaunch") {
+		t.Errorf("operator stale-run notice lost the prescription command:\n%s", operatorKo)
+	}
+	if operatorKo == agentKo {
+		t.Errorf("operator stale-run notice must stay localized under ko, matched the English agent copy byte-for-byte")
+	}
+
+	// The normal lane join notice keeps rendering ko — the stale-run pin must
+	// not leak into the guidance locale.
+	if join := factoryLaneNotice("lane-1", 2, "ko"); !strings.Contains(join, "팩토리 모드") {
+		t.Errorf("ko lane join notice lost the ko locale prose:\n%s", join)
+	}
+}
+
 // TestFactoryGuideNewFieldsLayoutInvariants (AC-008): the new fields carry no
 // leading or trailing newline and no internal blank-line separator (the
 // builders join lines within a block and blank-separate the blocks), and the

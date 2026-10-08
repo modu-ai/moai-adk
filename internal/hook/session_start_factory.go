@@ -48,19 +48,31 @@ import (
 // the session start, and an unknown lang degrades to English, never to an
 // empty notice.
 func factoryBootstrapNotice(root, sessionID, lang string) string {
+	return factoryBootstrapNoticeLang(root, sessionID, lang, lang)
+}
+
+// factoryBootstrapNoticeLang is factoryBootstrapNotice with the stale-run
+// recovery notice's locale pinned separately from the guidance locale. The
+// operator-facing copy passes lang twice (stale-run recovery localizes like
+// the rest of the operator notice); the agent-facing channel pins the
+// stale-run recovery notice to English — that surface names relaunch
+// commands and recovery state, and sits outside the bootstrap-guide surface
+// the conversation-language rule localizes
+// (SPEC-SESSION-START-GUIDE-I18N-001 § Out of Scope).
+func factoryBootstrapNoticeLang(root, sessionID, lang, staleRunLang string) string {
 	if label := os.Getenv(config.EnvMoaiFactoryWorker); label != "" {
 		if factory.IsLegacyFactoryRoleValue(label) {
 			// Run-state gated: an active run prescribes once, a dead run
 			// unbinds once, an unmeasurable one degrades — never an
 			// unconditional prescription (SPEC-STALE-RUN-LABEL-001).
-			return staleRunPrescriptionGate(context.Background(), root, sessionID, label, os.Getenv(config.EnvFactoryRunID), lang)
+			return staleRunPrescriptionGate(context.Background(), root, sessionID, label, os.Getenv(config.EnvFactoryRunID), staleRunLang)
 		}
 		return factoryLaneNotice(label, factoryLanesEnv(), lang)
 	}
 	if os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
 		return ""
 	}
-	if notice := staleRunNoticeFor(root, sessionID, lang); notice != "" {
+	if notice := staleRunNoticeFor(root, sessionID, staleRunLang); notice != "" {
 		return notice
 	}
 	return factoryLeaderNotice(os.Getenv(config.EnvFactoryRunID), factoryLanesEnv(), lang)
@@ -79,7 +91,13 @@ func factoryBootstrapNoticeForSource(source, root, sessionID, lang string) strin
 	if source != "" && source != "startup" {
 		return ""
 	}
-	return factoryBootstrapNotice(root, sessionID, lang)
+	// The agent-facing channel (additionalContext) localizes the bootstrap
+	// GUIDE per conversation_language (card t1603, decision-index Q1) and
+	// keeps the stale-run recovery notice English — that recovery surface is
+	// outside the guide surface the card localizes. The operator-facing copy
+	// (factoryBootstrapNotice, called separately by the handler) localizes
+	// both as before.
+	return factoryBootstrapNoticeLang(root, sessionID, lang, langEnglish)
 }
 
 // factoryLaneRuleForSource returns the lane SessionStart rule
