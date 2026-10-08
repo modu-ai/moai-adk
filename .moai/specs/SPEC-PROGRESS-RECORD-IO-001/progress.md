@@ -1,9 +1,10 @@
 # SPEC-PROGRESS-RECORD-IO-001 — progress record
 
-status: in-progress (route-(ii) run body complete 2026-10-08 — M2 gate verified; M3 sweep, F16
-close-hygiene probe (mutant-observed RED), and AC-PRI-008 source-level re-documentation landed;
-M4 CI protocol recorded; open: section-b-stale-cells debt (plan-phase edit), AC-CI-007 (landing
-flow); card t1598, base a2a184ad3)
+status: implemented (spec.md implemented 2026-10-09 — close pending AC-CI-007 landing-flow CI
+evidence; route-(ii) run body complete 2026-10-08 — M2 gate verified; M3 sweep, F16 close-hygiene
+probe (mutant-observed RED), and AC-PRI-008 source-level re-documentation landed; M4 CI protocol
+recorded; open: section-b-stale-cells debt (plan-phase edit), AC-CI-007 (landing flow); card
+t1598, base a2a184ad3)
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -341,8 +342,10 @@ operator_override: §G row-level ceiling override recorded at a2fcca6c3
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_status: complete (3-phase close — route (ii) operative, card t1598)
-sync_complete_at: 2026-10-08T12:44:19Z
+sync_status: sync-ready-pending-CI (implemented held until AC-CI-007's landing-flow run URL +
+per-family counts are recorded; the completed transition re-lands via the follow-up
+manager-docs commit citing that evidence — sync-audit r1 F1 arm A, card t1598)
+sync_complete_at: 2026-10-08T12:44:19Z (first close attempt, reverted 2026-10-09 per r1 F1)
 sync_commit_sha: 8d10007ca9804eeb58bcb0a34aca922989603198
 governing_audit: plan-audit-4 PASS-WITH-DEBT 0.94 (audited_sha 6abc63d30e4bb133fead8fc24b5b1013c00581a9, must_pass_failed=0, blocking_count=0) — re-affirmed unchanged by plan-audit-5 (receipt rcpt-5bbbb0b8650328de4d6b115f; the seven hash-subject paths carry a zero diff 6abc63d30..a2fcca6c3)
 frontmatter_status_transitions:
