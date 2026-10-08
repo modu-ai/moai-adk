@@ -105,7 +105,7 @@ func TestDeepDeadReclaimChainIsReclaimable(t *testing.T) {
 		if _, serr := os.Stat(deeper); serr != nil {
 			continue // already swept as a rival guard by an upper reclaim
 		}
-		if _, serr := os.Stat(deeper); serr == nil && !BreakStaleLock(deeper) {
+		if !BreakStaleLock(deeper) {
 			t.Fatalf("an orphaned deep guard is not reclaimable: %s", deeper)
 		}
 	}
@@ -124,22 +124,13 @@ func TestDeepDeadReclaimChainIsReclaimable(t *testing.T) {
 // were concurrently held: 1.4s at 8 levels vs the base's 107ms).
 func TestLiveGuardChainRefusesWithoutADeepWalk(t *testing.T) {
 	dir := t.TempDir()
-	liveOwnerFixture := func(path string) {
-		t.Helper()
-		if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
-			t.Fatalf("seed %s: %v", path, err)
-		}
-		if werr := writeOwnerLabel(path, 0o600); werr != nil {
-			t.Fatalf("label %s: %v", path, werr)
-		}
-	}
 	markerPath := filepath.Join(dir, "queue.lock.breaking")
-	liveOwnerFixture(markerPath)
+	liveOwnerFixture(t, markerPath)
 	chain := []string{markerPath}
 	p := markerPath
 	for range 8 {
 		p += reclaimSuffix
-		liveOwnerFixture(p)
+		liveOwnerFixture(t, p)
 		chain = append(chain, p)
 	}
 
@@ -173,26 +164,16 @@ func TestLiveGuardChainRefusesWithoutADeepWalk(t *testing.T) {
 // once.
 func TestDeadChainBlockedByLiveTailWalksLinearly(t *testing.T) {
 	dir := t.TempDir()
-	deadFixture := func(path string) { previousBootFixture(t, path) }
-	liveFixture := func(path string) {
-		t.Helper()
-		if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
-			t.Fatalf("seed %s: %v", path, err)
-		}
-		if werr := writeOwnerLabel(path, 0o600); werr != nil {
-			t.Fatalf("label %s: %v", path, werr)
-		}
-	}
 	markerPath := filepath.Join(dir, "queue.lock.breaking")
-	deadFixture(markerPath)
+	previousBootFixture(t, markerPath)
 	chain := []string{markerPath}
 	p := markerPath
 	for range 8 {
 		p += reclaimSuffix
-		deadFixture(p)
+		previousBootFixture(t, p)
 		chain = append(chain, p)
 	}
-	liveFixture(p + reclaimSuffix) // the live tail blocking the chain
+	liveOwnerFixture(t, p+reclaimSuffix) // the live tail blocking the chain
 	chain = append(chain, p+reclaimSuffix)
 
 	reads := 0

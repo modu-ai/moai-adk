@@ -360,12 +360,19 @@ func BumpSpoolGeneration() error {
 	// propagates: an unbumped generation is a withdrawal that did not
 	// happen, and every in-flight reader treating the store as live is the
 	// failure this bump exists to prevent.
-	release, err := atomicfile.ClaimSection(context.Background(), path+".lock", 0o600, spoolSectionRetries, spoolSectionDelay)
+	release, err := atomicfile.ClaimSection(context.Background(), path+".lock", 0o600, generationSectionRetries, generationSectionDelay)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = release() }()
 	gen, err := spoolGenerationFn()
+	if err != nil {
+		// One retry: the bounded read's time box trips on transient
+		// scheduler starvation under a loaded machine, not on a persistent
+		// condition — a fresh read gets a fresh goroutine and a calm
+		// scheduler. A persistent failure (a corrupt marker) fails both.
+		gen, err = spoolGenerationFn()
+	}
 	if err != nil {
 		// An unreadable marker must NOT silently rewind the counter to 1
 		// (card t1606, the residual lost-update path): under a loaded
@@ -500,6 +507,19 @@ const spoolSectionClaim = "spool.lock"
 const (
 	spoolSectionRetries = 8
 	spoolSectionDelay   = 5 * time.Millisecond
+)
+
+// generationSectionRetries / generationSectionDelay bound the generation
+// bump's wait for the marker's own section. Unlike the capture append, a
+// failed bump FAILS THE PURGE — dropping is not the acceptable outcome —
+// so the budget is generous. Under 32-way contention with the race
+// detector a live holder's section runs tens of ms, and the old 8×5ms
+// budget exhausted while every holder was alive, failing concurrent bumps
+// whose only defect was arriving during a rush (4-dim audit major, card
+// t1606: 6 of 8 repeated -race -count=5 runs failed on claim exhaustion).
+const (
+	generationSectionRetries = 40
+	generationSectionDelay   = 10 * time.Millisecond
 )
 
 // claimSpoolSection takes the spool's critical section, returning its

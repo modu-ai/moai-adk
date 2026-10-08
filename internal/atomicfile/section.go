@@ -87,7 +87,9 @@ const breakingSuffix = ".breaking"
 const reclaimSuffix = ".reclaim"
 
 // maxReclaimGuardAttempts bounds the guard claim's attempts (card t1606):
-// one initial O_EXCL and one after a blocked rival guard was disposed. The
+// one initial O_EXCL and one more — after a blocked rival guard was
+// disposed, or after a live-rival backoff, whichever consumed the first.
+// A successful disposal claims immediately outside this budget. The
 // former design claimed the guard through ClaimSection, whose contention
 // path spawned the next .reclaim level for EVERY blocked rival — live ones
 // included — so contention self-propagated the chain and the depth-3 cap
@@ -98,6 +100,11 @@ const reclaimSuffix = ".reclaim"
 // rival's disposal goes through the guarded path, so concurrent disposers
 // stay serialized and any dead chain unwinds one level per walk.
 const maxReclaimGuardAttempts = 2
+
+// reclaimBackoff is the guard claim's pause between attempts — the same
+// delay ClaimSection's callers pass for a guard claim, named here because
+// claimGuard's live-rival backoff uses it inline.
+const reclaimBackoff = 2 * time.Millisecond
 
 // ClaimSection takes the advisory lock at path, returning its release
 // func. Contention retries within the given budget, breaking the lock only
@@ -114,14 +121,11 @@ func ClaimSection(ctx context.Context, path string, perm os.FileMode, retries in
 		}
 		err := Claim(path, perm)
 		if err == nil {
-			if werr := writeOwnerLabel(path, perm); werr != nil {
-				// The lock is HELD but unlabelled: release immediately and
-				// report — an unlabelled lock could never be verified, and
-				// wedging on write failure beats breaking the invariant.
-				_ = os.Remove(path)
-				return nil, fmt.Errorf("claim section %s: labelling lock: %w", path, werr)
+			release, lerr := claimAndLabel(path, perm)
+			if lerr != nil {
+				return nil, lerr
 			}
-			return releaseSectionFunc(path), nil
+			return release, nil
 		}
 		if !errors.Is(err, os.ErrExist) {
 			return nil, fmt.Errorf("claim section %s: lock: %w", path, err)
@@ -240,13 +244,11 @@ func claimGuard(ctx context.Context, guardPath string) (func() error, bool) {
 		}
 		err := Claim(guardPath, 0o600)
 		if err == nil {
-			if werr := writeOwnerLabel(guardPath, 0o600); werr != nil {
-				// Held but unlabelled: remove and refuse — the same
-				// conservative direction ClaimSection takes.
-				_ = os.Remove(guardPath)
+			release, lerr := claimAndLabel(guardPath, 0o600)
+			if lerr != nil {
 				return nil, false
 			}
-			return releaseSectionFunc(guardPath), true
+			return release, true
 		}
 		if !errors.Is(err, os.ErrExist) {
 			return nil, false
@@ -262,7 +264,7 @@ func claimGuard(ctx context.Context, guardPath string) (func() error, bool) {
 				select {
 				case <-ctx.Done():
 					return nil, false
-				case <-time.After(2 * time.Millisecond):
+				case <-time.After(reclaimBackoff):
 				}
 				continue
 			}
@@ -273,7 +275,9 @@ func claimGuard(ctx context.Context, guardPath string) (func() error, bool) {
 		// dead guard interleave so one's late delete removes the other's
 		// LIVE re-acquired guard. Route the disposal through the guarded
 		// path — the rival's OWN guard is claimed first, exactly like
-		// every other delete here. A dead chain unwinds one level per
+		// every other delete here. That guarded claim is itself the one
+		// place a deeper guard marker is created (transient: released as
+		// soon as the disposal ends); a dead chain unwinds one level per
 		// walk, and the guarded path's own verified-bytes gate aborts if
 		// the rival re-acquired between this pre-check and the disposal.
 		if !BreakStaleLockContext(ctx, guardPath) {
@@ -285,10 +289,38 @@ func claimGuard(ctx context.Context, guardPath string) (func() error, bool) {
 			// 1,022 reads / 2.6s at 8 dead guards + a live tail). Return at
 			// once; the caller's own retry budget re-enters later, against
 			// whatever the state has become.
+			slog.Warn("lock section: guard reclaim walk failed; refusing",
+				"guard", guardPath)
 			return nil, false
 		}
+		// The disposal cleared the path — claim it NOW, outside the attempt
+		// budget: an attempt that ends here with a false would waste the
+		// caller's budget round-trip on a path this call just cleared.
+		if err := Claim(guardPath, 0o600); err != nil {
+			continue // a rival re-claimed between disposal and this claim
+		}
+		release, lerr := claimAndLabel(guardPath, 0o600)
+		if lerr != nil {
+			return nil, false
+		}
+		return release, true
 	}
+	slog.Warn("lock section: guard claim exhausted its attempts", "guard", guardPath)
 	return nil, false
+}
+
+// claimAndLabel labels a just-claimed lock file, removing it on label
+// failure. It is the acquire tail ClaimSection and claimGuard share — one
+// label write, one conservative failure direction.
+func claimAndLabel(path string, perm os.FileMode) (func() error, error) {
+	if werr := writeOwnerLabel(path, perm); werr != nil {
+		// The lock is HELD but unlabelled: release immediately and report —
+		// an unlabelled lock could never be verified, and wedging on write
+		// failure beats breaking the invariant.
+		_ = os.Remove(path)
+		return nil, fmt.Errorf("claim section %s: labelling lock: %w", path, werr)
+	}
+	return releaseSectionFunc(path), nil
 }
 
 // BreakStaleLockContext is BreakStaleLock under a caller's context: the
@@ -302,12 +334,14 @@ func BreakStaleLockContext(ctx context.Context, path string) bool {
 		// creation success (review-gate residual: the .reclaim path's
 		// verify-and-delete was bare, so a reclaimer pausing between its
 		// check and its delete could remove a rival's LIVE re-acquired
-		// guard). The guard is claimed through the non-recursive
-		// claimGuard: when the guard is itself a dead marker it is
-		// disposed through breakStaleLockBare's verified-dead gate, never
-		// by spawning a deeper guard — the self-propagating recursion that
-		// once rigidified chains at the depth cap is gone, so a dead chain
-		// of ANY depth reclaims.
+		// guard). The guard is claimed through claimGuard, whose rival
+		// disposal may itself claim ONE deeper guard level (transient —
+		// released when that disposal ends): what is gone is the old
+		// ClaimSection recursion that spawned a new level for EVERY
+		// blocked contender, live ones included, until the depth cap
+		// refused permanently. A dead chain now unwinds one level per
+		// walk, bounded by the filesystem path length the suffix chain
+		// can occupy.
 		release, ok := claimGuard(ctx, path+reclaimSuffix)
 		if !ok {
 			return false // a live reclaimer owns the disposal, or the caller's context is done
