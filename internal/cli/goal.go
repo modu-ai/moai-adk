@@ -862,6 +862,11 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 			})
 		}}
 	} else if action == mission.ActionDispatch && linkedCardID != "" {
+		// The dispatch operation's factory reconciliation keys on the
+		// ASSIGNED card and its run (review round-21) — the op's own
+		// Target/MissionID stay in the supervisor lineage's vocabulary
+		// (the gtd item ref and the session), so the owner carries the
+		// factory identifiers to the engine.
 		owner = gtdCLIOwner{readback: func() (bool, error) {
 			record, err := store.LoadPure()
 			if err != nil {
@@ -893,7 +898,7 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 			}
 			mirrorFactoryAssignment(cmd.Context(), cmd.ErrOrStderr(), root, store, gitOpts.RunID, linkedCardID, gitOpts.Lane)
 			return nil
-		}}
+		}, reconcileCardID: linkedCardID, reconcileRunID: gitOpts.RunID}
 	} else if action == mission.ActionCommit || action == mission.ActionLocalMerge {
 		owner = gtdCLIOwner{readback: func() (bool, error) { return gitOwner.Readback(cmd.Context(), receipt.OperationID) }, apply: func() error { return gitOwner.Apply(cmd.Context(), receipt.OperationID) }}
 	} else {

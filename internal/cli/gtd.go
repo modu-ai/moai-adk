@@ -18,12 +18,25 @@ var gtdIDPattern = regexp.MustCompile(`^gtd-[0-9a-f]{16}$`)
 type gtdCLIOwner struct {
 	readback func() (bool, error)
 	apply    func() error
+	// The dispatch reconciliation identifiers (review round-21): the
+	// assigned card and its run, when this owner performs a dispatch whose
+	// operation Target/MissionID name another vocabulary (the goal
+	// mission's gtd item ref and session). Empty leaves the engine on the
+	// op's own identifiers.
+	reconcileCardID string
+	reconcileRunID  string
 }
 
 func (o gtdCLIOwner) Readback(_ context.Context, _ factory.GTDOperation) (bool, error) {
 	return o.readback()
 }
 func (o gtdCLIOwner) Apply(_ context.Context, _ factory.GTDOperation) error { return o.apply() }
+
+// DispatchReconcileIdentifiers is factory.DispatchIdentifiers (review
+// round-21): the assigned card and its run for a dispatch owner.
+func (o gtdCLIOwner) DispatchReconcileIdentifiers() (string, string) {
+	return o.reconcileCardID, o.reconcileRunID
+}
 
 func printGTD(cmd *cobra.Command, value any, jsonOutput bool) error {
 	if jsonOutput {

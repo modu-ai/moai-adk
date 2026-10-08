@@ -50,6 +50,30 @@ func validGTDOperation(op GTDOperation) bool {
 	return strings.TrimSpace(op.OperationID) != "" && strings.TrimSpace(op.MissionID) != "" && strings.TrimSpace(op.Action) != "" && strings.TrimSpace(op.Target) != "" && strings.TrimSpace(op.SnapshotHash) != "" && len(op.ReceiptJSON) > 0
 }
 
+// DispatchIdentifiers is an optional GTDOperationOwner capability: the
+// assigned card and its run a dispatch operation's factory reconciliation
+// keys on (review round-21, card t1538). The op's own Target/MissionID are
+// the supervisor lineage's identifiers and may name another vocabulary —
+// the goal mission's gtd item ref and session id — so the owner that
+// actually performed the assignment carries the factory vocabulary to the
+// engine. An owner without the capability reconciles against the op's own
+// identifiers.
+type DispatchIdentifiers interface {
+	DispatchReconcileIdentifiers() (cardID, runID string)
+}
+
+// gtdDispatchReconcileIdentifiers resolves the reconcile identifiers for a
+// dispatch operation: the owner's revealed assignment when it carries one,
+// else the operation's own Target and MissionID.
+func gtdDispatchReconcileIdentifiers(ctx context.Context, owner GTDOperationOwner, op GTDOperation) (string, string) {
+	if reveal, ok := owner.(DispatchIdentifiers); ok {
+		if cardID, runID := reveal.DispatchReconcileIdentifiers(); cardID != "" && runID != "" {
+			return cardID, runID
+		}
+	}
+	return op.Target, op.MissionID
+}
+
 func scanGTDOperation(row interface{ Scan(...any) error }) (GTDOperation, error) {
 	var op GTDOperation
 	var state string
@@ -135,8 +159,16 @@ func ExecuteGTDOperation(ctx context.Context, store *BacklogStore, candidate GTD
 	// rather than declared reconciled over: re-running the owner's apply
 	// would repeat the save that already committed, and the binding write
 	// alone is what went missing.
-	if applied && stored.Action == GTDActionDispatch {
-		if rerr := reconcileGTDDispatchBinding(ctx, store, stored.Target, stored.MissionID); rerr != nil {
+	// A COMPLETED (reconciled) operation must never move the binding on
+	// replay: its assignment row persists in the queue record, so the
+	// replay's readback proves history, not a current engagement — and
+	// re-running the reconcile would regress the binding to the replayed
+	// operation's run, arming the old run's approval against the new run's
+	// work (review round-21 P1). Only an operation still in flight
+	// (prepared or invoking) reconciles the factory record's half.
+	if applied && stored.Action == GTDActionDispatch && stored.State != GTDOperationReconciled {
+		cardID, runID := gtdDispatchReconcileIdentifiers(ctx, owner, stored)
+		if rerr := reconcileGTDDispatchBinding(ctx, store, cardID, runID); rerr != nil {
 			return stored, rerr
 		}
 	}
@@ -167,7 +199,8 @@ func ExecuteGTDOperation(ctx context.Context, store *BacklogStore, candidate GTD
 		return stored, errors.New("gtd operation: authoritative_readback_missing")
 	}
 	if stored.Action == GTDActionDispatch {
-		if rerr := reconcileGTDDispatchBinding(ctx, store, stored.Target, stored.MissionID); rerr != nil {
+		cardID, runID := gtdDispatchReconcileIdentifiers(ctx, owner, stored)
+		if rerr := reconcileGTDDispatchBinding(ctx, store, cardID, runID); rerr != nil {
 			return stored, rerr
 		}
 	}
@@ -192,11 +225,11 @@ func reconcileGTDDispatchBinding(ctx context.Context, store *BacklogStore, cardI
 	if current {
 		return nil
 	}
-	root := gtdProjectRootForStore(store)
-	if root == "" {
-		return fmt.Errorf("gtd operation: dispatch target %s does not name run %s and the project root is unresolvable for the binding repair", cardID, runID)
+	path := gtdFactoryDBForStore(store)
+	if path == "" {
+		return fmt.Errorf("gtd operation: dispatch target %s does not name run %s and no factory database is reachable for the binding repair", cardID, runID)
 	}
-	if err := repairGTDDispatchRecord(ctx, store, root, cardID, runID); err != nil {
+	if err := repairGTDDispatchRecord(ctx, store, path, cardID, runID); err != nil {
 		return err
 	}
 	current, err = gtdDispatchBindingCurrent(ctx, store, cardID, runID)
@@ -211,40 +244,64 @@ func reconcileGTDDispatchBinding(ctx context.Context, store *BacklogStore, cardI
 
 // repairGTDDispatchRecord completes the factory-record half of a dispatch
 // whose apply landed the assignment save but failed the factory writes
-// (review round-20 P1): the card row — RecordPicked when the run holds none,
-// the mirror's T1 — and the dispatch binding. The mirror's shape, driven from
+// (review round-20 P1, T2 half added by round-21): the card row —
+// RecordPicked when the run holds none, the mirror's T1 — moved to assigned
+// under the authoritative assignment's owner when it sits at picked (the
+// mirror's T2), and the dispatch binding. The mirror's shape, driven from
 // the operation engine: the same queue-lock discipline, a picked queue item
-// as the only precondition, and an already-recorded row left exactly as it
-// stands. The completion gate reads the repaired pair as one binding: the
-// row resolves the bound run, and the binding re-targets the gate away from
-// the superseded approval.
-func repairGTDDispatchRecord(ctx context.Context, store *BacklogStore, root, cardID, runID string) error {
+// as the only precondition, and the runtime assignment as the owner of
+// record. The completion gate reads the repaired triple as one binding: the
+// row resolves the bound run, the owner names the engaged lane, and the
+// binding re-targets the gate away from the superseded approval.
+func repairGTDDispatchRecord(ctx context.Context, store *BacklogStore, factoryDBPath, cardID, runID string) error {
 	return store.WithLock(func(l *LockedBacklog) error {
 		record, err := l.LoadPure()
 		if err != nil {
 			return fmt.Errorf("read queue: %w", err)
 		}
 		picked := false
+		owner := ""
 		for _, item := range record.Items {
 			if item.ID == cardID {
 				picked = item.State == BacklogStatePicked
 			}
 		}
+		for _, a := range record.Runtime.Assignments {
+			if a.CardID == cardID && a.RunID == runID {
+				owner = a.OwnerLabel
+				break
+			}
+		}
 		if !picked {
 			return fmt.Errorf("queue item %s is not picked", cardID)
 		}
-		db, err := homestate.OpenFactory(root)
+		if owner == "" {
+			return fmt.Errorf("queue item %s carries no runtime assignment for run %s — the authoritative owner is unknown", cardID, runID)
+		}
+		db, err := homestate.OpenFactoryPath(factoryDBPath)
 		if err != nil {
 			return err
 		}
 		defer func() { _ = db.Close() }()
 		now := time.Now().UTC()
-		if _, err := db.LoadCard(ctx, runID, cardID); errors.Is(err, homestate.ErrCardNotFound) {
-			if _, err := db.RecordPicked(ctx, runID, cardID, homestate.CardFields{}, "dispatch", now); err != nil {
+		card, err := db.LoadCard(ctx, runID, cardID)
+		if errors.Is(err, homestate.ErrCardNotFound) {
+			if card, err = db.RecordPicked(ctx, runID, cardID, homestate.CardFields{}, "dispatch", now); err != nil {
 				return err
 			}
 		} else if err != nil {
 			return err
+		}
+		switch {
+		case card.State == homestate.CardPicked:
+			// The mirror's T2: the authoritative assignment owns the row.
+			if _, err := db.Transition(ctx, homestate.TransitionRequest{RunID: runID, CardID: cardID, To: homestate.CardAssigned, ExpectedVersion: card.Version, Actor: "dispatch", Owner: owner, Now: now}); err != nil {
+				return err
+			}
+		case card.State == homestate.CardAssigned && card.OwnerLabel == owner:
+			// Already the authoritative assignment.
+		default:
+			return fmt.Errorf("factory record for %s is %s (owner %q), not assignable to %s", cardID, card.State, card.OwnerLabel, owner)
 		}
 		return db.RecordDispatchBinding(ctx, cardID, runID, now)
 	})
@@ -288,33 +345,21 @@ func RecordDispatchBindingIfEngaged(root, cardID, runID string) error {
 }
 
 // gtdDispatchBindingCurrent reports whether the card's recorded dispatch
-// binding names the operation's run — the factory record's half of a dispatch
-// reconciliation (review round-20 P1). Scope follows REQ-FCR-002's sentence:
-// a missing factory database, a missing card_dispatch table, or a card with
-// no factory row leaves the axis vacuous (the completion gate does not
-// apply); a binding naming another run — or factory rows orphaned from any
-// binding, which apply's binding write repairs — reads stale.
+// binding names the operation's run AND the card row that run resolves
+// against — the factory record's whole half of a dispatch reconciliation
+// (review round-20 P1, completed by round-21). Scope follows REQ-FCR-002's
+// sentence: a missing factory database, a missing card_dispatch table, or a
+// card with no factory row leaves the axis vacuous (the completion gate does
+// not apply); a binding naming another run, or factory rows orphaned from
+// any binding, reads stale — repairGTDDispatchRecord recovers both.
 //
-// The factory database resolves through homestate's own canonical path from
-// the project root located above the queue store (see
-// gtdProjectRootForStore) — the same resolution the dispatch writers and the
-// completion gate use. A queue with no project ancestor leaves the axis
-// vacuous here; the completion gate resolves the project root
-// authoritatively on the done side.
+// The factory database is located by gtdFactoryDBForStore — homestate's
+// canonical resolution when a project root sits above the queue, and the
+// queue directory's state-directory sibling for a home-resolved queue.
 func gtdDispatchBindingCurrent(ctx context.Context, store *BacklogStore, cardID, runID string) (bool, error) {
-	root := gtdProjectRootForStore(store)
-	if root == "" {
+	path := gtdFactoryDBForStore(store)
+	if path == "" {
 		return true, nil
-	}
-	path, err := homestate.FactoryDBPath(root)
-	if err != nil {
-		return false, err
-	}
-	if _, statErr := os.Stat(path); statErr != nil {
-		if os.IsNotExist(statErr) {
-			return true, nil
-		}
-		return false, statErr
 	}
 	db, err := homestate.OpenFactoryReadonly(path)
 	if err != nil {
@@ -360,12 +405,37 @@ func gtdDispatchBindingCurrent(ctx context.Context, store *BacklogStore, cardID,
 	return row > 0, nil
 }
 
+// gtdFactoryDBForStore locates the project factory database for a queue
+// store. The project layout resolves through homestate's canonical
+// FactoryDBPath from the project root found above the queue (see
+// gtdProjectRootForStore) — the same resolution every dispatch writer and
+// the completion gate use. A queue resolved to a home state directory has no
+// project .moai above it, and its factory database is the queue directory's
+// state-directory sibling (<state>/factory/factory.db — the layout
+// <home>/db/<key>/{todo,factory} produces). "" means no factory database is
+// reachable and the dispatch-binding axis stays vacuous for the engine
+// check.
+func gtdFactoryDBForStore(store *BacklogStore) string {
+	if root := gtdProjectRootForStore(store); root != "" {
+		if path, err := homestate.FactoryDBPath(root); err == nil {
+			if _, statErr := os.Stat(path); statErr == nil {
+				return path
+			}
+		}
+	}
+	sibling := filepath.Join(filepath.Dir(filepath.Dir(store.path)), "factory", "factory.db")
+	if _, err := os.Stat(sibling); err == nil {
+		return sibling
+	}
+	return ""
+}
+
 // gtdProjectRootForStore walks up from the queue store to the project root —
 // the directory whose .moai carries the queue — so the factory database
 // resolves through homestate's canonical FactoryDBPath, the same resolution
 // every dispatch writer and the completion gate use. The walk is bounded; a
 // queue with no project .moai ancestor (the home-queue fallback) yields ""
-// and the dispatch-binding axis stays vacuous for the engine check.
+// and the caller falls back to the state-directory sibling.
 func gtdProjectRootForStore(store *BacklogStore) string {
 	dir := filepath.Dir(store.path)
 	for i := 0; i < 6; i++ {
