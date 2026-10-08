@@ -662,6 +662,47 @@ func TestSessionStartRoleRulesCodexOnlyDeploymentLayout(t *testing.T) {
 	t.Logf("PASS Codex-only deployment: all %d blocks delivered from .moai/policies, recovery directive names the deployed paths", len(blocks))
 }
 
+// TestSessionStartRoleRulesDirectivePathsResolveFromDisk pins the recovery
+// directive's path form: a session whose cwd sits in a subdirectory receives
+// paths that EXIST on disk — the directive joins the names to the resolved
+// root instead of emitting cwd-relative fragments that resolve to nothing.
+func TestSessionStartRoleRulesDirectivePathsResolveFromDisk(t *testing.T) {
+	clearFactoryEnv(t)
+	root := t.TempDir()
+	writeDeployedRoleRules(t, root)
+
+	directive := roleRulesReadDirective(root, "")
+	paths := directiveBacktickedPaths(directive)
+	if len(paths) < 2 {
+		t.Fatalf("directive names %d paths, want both rule files: %q", len(paths), directive)
+	}
+	for _, p := range paths {
+		if _, err := os.Stat(p); err != nil {
+			t.Errorf("directive path %q does not exist on disk (cwd-relative fragment?): %v", p, err)
+		}
+	}
+	t.Logf("PASS recovery directive: %d named paths all resolve on disk (first: %q)", len(paths), paths[0])
+}
+
+// directiveBacktickedPaths extracts the backticked path tokens of the
+// directive text.
+func directiveBacktickedPaths(s string) []string {
+	var out []string
+	for {
+		i := strings.Index(s, "`")
+		if i < 0 {
+			return out
+		}
+		s = s[i+1:]
+		j := strings.Index(s, "`")
+		if j < 0 {
+			return out
+		}
+		out = append(out, s[:j])
+		s = s[j+1:]
+	}
+}
+
 // TestSessionStartRoleRulesRootFromSubdirectoryCWD is the subdirectory-CWD
 // root resolution: a session whose cwd sits DEEP inside the tree (e.g.
 // internal/deep) still receives the core — the root is resolved by walking

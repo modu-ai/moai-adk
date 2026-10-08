@@ -415,7 +415,10 @@ func utf16Len(s string) int {
 }
 
 // roleRulesReadDirective is the agent-facing REQ-ALB-009 directive: read the
-// full rule files by path before acting.
+// full rule files by path before acting. The named paths are joined to the
+// resolved root — a session whose cwd sits in a subdirectory must receive
+// paths that exist on disk, not root-relative fragments that resolve to
+// nothing from where the session stands.
 func roleRulesReadDirective(root, reason string) string {
 	rel0 := roleRuleDeployRel(root, roleRuleFiles[0])
 	rel1 := roleRuleDeployRel(root, roleRuleFiles[1])
@@ -425,18 +428,21 @@ func roleRulesReadDirective(root, reason string) string {
 		sb.WriteString(" ")
 	}
 	sb.WriteString("[HARD] Read both role-gated rule files in full before your first action: `")
-	sb.WriteString(rel0)
+	sb.WriteString(filepath.Join(root, filepath.FromSlash(rel0)))
 	sb.WriteString("` and `")
-	sb.WriteString(rel1)
+	sb.WriteString(filepath.Join(root, filepath.FromSlash(rel1)))
 	sb.WriteString("`.")
 	return sb.String()
 }
 
 // roleRulesOverflowDirective is the agent-facing REQ-ALB-010 directive that
 // rides an intact over-cap emission: the runtime file is the delivery
-// channel, and the rule files are the fallback read.
+// channel, and the rule files are the fallback read — named root-joined for
+// the same reason the read directive's paths are.
 func roleRulesOverflowDirective(root string) string {
 	return fmt.Sprintf(
 		"NOTE: the output above exceeds the session-start delivery cap (%d characters). The runtime saves the intact output to a file in the session directory and passes its path with a preview of the first 2,000 characters — read the role core from that file, or read the rule files by path: `%s`, `%s`.",
-		roleRulesContextLimit, roleRuleDeployRel(root, roleRuleFiles[0]), roleRuleDeployRel(root, roleRuleFiles[1]))
+		roleRulesContextLimit,
+		filepath.Join(root, filepath.FromSlash(roleRuleDeployRel(root, roleRuleFiles[0]))),
+		filepath.Join(root, filepath.FromSlash(roleRuleDeployRel(root, roleRuleFiles[1]))))
 }
