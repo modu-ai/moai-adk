@@ -1,8 +1,9 @@
 # SPEC-PROGRESS-RECORD-IO-001 — progress record
 
-status: in-progress (M1 probe + route-(ii) run body complete 2026-10-08 — M2 gate verified, M3
-sweep + pinned disposition note landed, M4 CI protocol recorded; open items: F16 probe test
-unauthored, AC-PRI-008 source-level note, section-b-stale-cells debt; card t1598, base a2a184ad3)
+status: in-progress (route-(ii) run body complete 2026-10-08 — M2 gate verified; M3 sweep, F16
+close-hygiene probe (mutant-observed RED), and AC-PRI-008 source-level re-documentation landed;
+M4 CI protocol recorded; open: section-b-stale-cells debt (plan-phase edit), AC-CI-007 (landing
+flow); card t1598, base a2a184ad3)
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -236,6 +237,57 @@ carrier for the dispositioned ACs. The M1 evidence above is manager-develop's, u
 - No local darwin run is cited as evidence for GOOS-tagged families (REQ-CI-008); the darwin
   runs above are early local signals for the darwin leg only.
 
+### F16 close-hygiene probe + AC-PRI-008 source re-documentation (2026-10-08; coordinator-authorized after 3f1f942b4)
+
+Both items were outside the records-only run body's envelope and were explicitly authorized by
+the coordinator. Measurements ran on the working tree = 3f1f942b4 + the two Go changes this
+commit carries (byte-identical to this commit's tree).
+
+- **F16 probe authored**: `internal/runtime/audit_ceiling_close_hygiene_test.go`
+  (`//go:build darwin || linux`, matching `audit_ceiling_replace_test.go`) —
+  `TestAppendProgressRecordSeedCloseHygiene`, two subtests: a `seedFileMetadataFn` wrapper
+  captures the held descriptor and delegates to the real seeder (success path — the replace
+  completes) or injects `errSeedInjected` (abort path — the deferred close is the only closer);
+  after `appendProgressRecord` returns, a second `Close` must satisfy
+  `errors.Is(err, os.ErrClosed)`.
+- **Observed-failure completion (verification-completeness §1.1)** — born-green is not
+  completion: with both closes temporarily dropped (the deferred `:677` close AND the
+  close-before-rename `:718` block), the probe ran RED — exit 1, BOTH subtests FAIL:
+  `audit_ceiling_close_hygiene_test.go:45: the held descriptor survived the successful replace
+  (second Close: <nil>)` and `:78: … the held descriptor survived the aborted replace (second
+  Close: <nil>) …`. The mutations were reverted byte-identically (`git diff --stat
+  internal/runtime/audit_ceiling.go` → empty) and the probe re-ran green on both subtests.
+  Non-vacuous on both paths. Evidence: `evidence/f16-probe-mutant-red.txt`.
+- **AC-PRI-005 formal family re-run (now with the probe)**:
+  `go test -race -count=2 -v -run '^TestAppendProgressRecord' -skip '^TestAppendProgressRecordPreservesAllMetadataAxes$' ./internal/runtime/`
+  → exit 0, `ok  	github.com/modu-ai/moai-adk/internal/runtime	4.039s`; **64 RUN (27 darwin
+  parents + 5 subtests) × 2, ZERO FAIL, ZERO SKIP**. The M2 curated 7-name selector re-run →
+  exit 0, `ok  	github.com/modu-ai/moai-adk/internal/runtime	1.544s`, 9 RUN (7/7 parents incl.
+  the new probe + 2 probe subtests), ZERO SKIP — the previous 6/7 swept-set gap is closed.
+  Evidence: `evidence/r4-family-formal.txt`, `evidence/r4-m2-guard-family-7of7.txt`.
+- **AC-PRI-008 source-level re-documentation landed** (comment-only; zero behavior change; the
+  pre/post Lstat+fdMatchesName checks untouched): the seeder header + F13-paragraph trailing
+  sentence re-documented under the ADOPTED Q2 ruling (a) — the exec-based seeder KEPT
+  (OVERRIDABLE by an operator ruling), the `fd-verify→rename` window named LIVE
+  (victim-overwrite stays possible), the `delete-denied` rename residual (decision-index Q5),
+  kauth_filesec as the named future-fix direction. Re-measurement (verbatim):
+  ```
+  [1] stale exec-exception token count → 0 (exit 1, zero rows)   — was 1 (:13)
+  [2] fd-verify       → 2 hits (:23, :57)                        — was 0
+  [3] kauth_filesec   → 1 hit  (:34)                             — was 1 (:18), retained
+  [4] delete-denied   → 2 hits (:28-29)                          — was 0
+  [5] route (ii)      → 2 hits (:22, :55)                        — was 0
+  [6] victim-overwrite → 2 hits (:25, :56), named LIVE           — honest residual kept
+  ```
+  All AC-PRI-008 route-(ii) source predicates now MET; M3 step 3(d)'s delete-denied note is
+  landed in source and stands in the §E.2 pinned note above.
+- **Package regression re-run**: `go test -race -count=1 -timeout 30m ./internal/runtime/...`
+  → exit 0, `ok  	github.com/modu-ai/moai-adk/internal/runtime	26.548s` +
+  `ok  	github.com/modu-ai/moai-adk/internal/runtime/gobin	1.875s`, ZERO SKIP. Evidence:
+  `evidence/r4-package-regression.txt`.
+- **vet + gofmt**: darwin / GOOS=windows / GOOS=linux `go vet ./internal/runtime/...` all exit
+  0; `gofmt -l internal/runtime/` → empty (both touched files formatted).
+
 ### Open items + run-phase debts (route-(ii) run body, 2026-10-08)
 
 1. **`section-b-stale-cells` (N5, plan-audit-4) — OPEN.** plan.md §B :24/:27 carry route-(i)
@@ -244,23 +296,17 @@ carrier for the dispositioned ACs. The M1 evidence above is manager-develop's, u
    Disposal owner: **plan-phase artifact edit, lane-routed post-run** (manager-spec
    re-delegation) — this round does NOT edit plan.md or any plan-phase artifact. Non-operative
    (summary-table cells only; §A / M2 / M3 step 3 / AC-PRI-008 are correct per plan-audit-4).
-2. **F16 close-hygiene probe unauthored — OPEN (orchestrator disposition).**
-   `TestAppendProgressRecordSeedCloseHygiene` (plan M3 step 4; AC-PRI-005 scenario member;
-   round-1 audit repair D4) has ZERO Go-code occurrences (repo-wide sweep this round:
-   SPEC-artifact mentions only — plan.md:135, acceptance.md:78, progress.md:29; zero
-   close-hygiene coverage under any other name). The landed F16 behavior (deferred close
-   `audit_ceiling.go:676-684`; close-before-rename `:716-720`) therefore has NO committed
-   regression guard, and both family commands above swept 6/7 named and 26/27 declared members
-   respectively. Authoring it is a test-file addition inside internal/runtime — outside this
-   round's records-only envelope; the runs above are decisive for the guards that exist. Needs
-   an orchestrator decision: focused test-authoring re-delegation, landing-flow follow-up, or
-   explicit debt disposition.
-3. **AC-PRI-008 source-level re-documentation — OPEN (same envelope).** The seeder doc comment
-   (`progress_metadata_darwin.go:11-20`) still carries the stale exec-exception framing
-   (grep -c → 1, verbatim block above); the route-(ii) content keys are carried by the pinned
-   note in §E.2. A comment-only edit inside internal/runtime was outside this round's envelope;
-   the close-phase reviewer owns the pinned-content review (the `ac-content-enforcement` debt,
-   plan-audit-4).
+2. **F16 close-hygiene probe — RESOLVED** (coordinator-authorized follow-up; the F16
+   sub-section above). `TestAppendProgressRecordSeedCloseHygiene` authored at
+   `internal/runtime/audit_ceiling_close_hygiene_test.go` (`darwin || linux`), both subtests
+   green on the current tree, its RED observed on the double-close-drop mutant before the
+   byte-identical revert (verification-completeness §1.1). The family now sweeps 7/7 curated
+   names and 27/27 darwin parents; the linux leg stays CI-owned (M4).
+3. **AC-PRI-008 source-level re-documentation — RESOLVED** (coordinator-authorized follow-up;
+   the F16 sub-section above). The seeder comment is re-documented under the adopted Q2 ruling
+   (a); the stale exec-exception token count is 0 (was 1 at :13) and all five route-(ii)
+   content keys measure ≥1 in source (verbatim re-measurement above). The close-phase reviewer
+   still owns the pinned-content review (the `ac-content-enforcement` debt, plan-audit-4).
 4. **AC-CI-007 — PENDING the landing flow** (M4 protocol above). The repository-wide test
    verdict is owned by CI on the project's integration branch and is PENDING at this record
    time.
@@ -273,10 +319,10 @@ carrier for the dispositioned ACs. The M1 evidence above is manager-develop's, u
 | AC-PRI-002 | PASS (standing — recorded measurement) | Q2 record: overlay RED exit 1 (`exec: "chmod": executable file not found in $PATH`), tree c404a0af4 |
 | AC-PRI-003 | NOT-EVIDENCE (dispositioned) | Q2 record |
 | AC-PRI-004 | NOT-EVIDENCE (dispositioned) | Q2 record |
-| AC-PRI-005 | PASS-WITH-DEBT | Formal run exit 0, 58 RUN, zero FAIL/SKIP, `-skip` anchor per N3; open member: close-hygiene probe unauthored (open item 2) |
+| AC-PRI-005 | PASS | Formal re-run exit 0, 64 RUN (27/27 darwin parents incl. the probe + 5 subtests), zero FAIL/SKIP; probe RED observed on the drop-both-closes mutant; linux leg CI-owned (M4) |
 | AC-PRI-006 | PASS | Package regression exit 0, ok ×2 (subsumes the AC's named command, stricter flags) |
 | AC-CI-007 | PENDING (CI-only) | M4 protocol recorded; decisive runs from landing flow; verdict PENDING at record time |
-| AC-PRI-008 | PASS-WITH-DEBT (record-level) | Pinned note (all content keys ≥1; victim-overwrite named live; stale framing absent from note); as-is source greps verbatim; source-level open (open item 3) |
+| AC-PRI-008 | PASS | Source-level predicates met: stale token 0 (was 1); fd-verify / kauth_filesec / delete-denied / route (ii) / victim-overwrite (LIVE) all ≥1 in source (verbatim re-measurement); §E.2 pinned note stands |
 | AC-PRI-009 | NOT-EVIDENCE (dispositioned) | Q2 record |
 
 ## §E.3 Run-phase Audit-Ready Signal

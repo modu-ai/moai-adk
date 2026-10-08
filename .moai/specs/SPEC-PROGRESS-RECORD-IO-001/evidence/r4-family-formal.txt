@@ -1,0 +1,130 @@
+=== RUN   TestAppendProgressRecordPreservesACL
+--- PASS: TestAppendProgressRecordPreservesACL (0.14s)
+=== RUN   TestAppendProgressRecordAclExactlyOriginal
+--- PASS: TestAppendProgressRecordAclExactlyOriginal (0.06s)
+=== RUN   TestAppendProgressRecordPreservesXattr
+--- PASS: TestAppendProgressRecordPreservesXattr (0.02s)
+=== RUN   TestAppendProgressRecordSeedCloseHygiene
+=== RUN   TestAppendProgressRecordSeedCloseHygiene/success_path_closes_before_rename
+=== RUN   TestAppendProgressRecordSeedCloseHygiene/abort_path_closes_through_the_defer
+--- PASS: TestAppendProgressRecordSeedCloseHygiene (0.02s)
+    --- PASS: TestAppendProgressRecordSeedCloseHygiene/success_path_closes_before_rename (0.02s)
+    --- PASS: TestAppendProgressRecordSeedCloseHygiene/abort_path_closes_through_the_defer (0.00s)
+=== RUN   TestAppendProgressRecordSkipsHeadingInsideFence
+--- PASS: TestAppendProgressRecordSkipsHeadingInsideFence (0.05s)
+=== RUN   TestAppendProgressRecordStartHeadingSkipsFence
+--- PASS: TestAppendProgressRecordStartHeadingSkipsFence (0.02s)
+=== RUN   TestAppendProgressRecordGateInputsSingleSectionG
+=== RUN   TestAppendProgressRecordGateInputsSingleSectionG/backtick_info_string_with_backtick_is_inline_code
+=== RUN   TestAppendProgressRecordGateInputsSingleSectionG/inline_triple_backtick_code_is_not_a_fence_open
+=== RUN   TestAppendProgressRecordGateInputsSingleSectionG/closed_list_item_fence
+--- PASS: TestAppendProgressRecordGateInputsSingleSectionG (0.08s)
+    --- PASS: TestAppendProgressRecordGateInputsSingleSectionG/backtick_info_string_with_backtick_is_inline_code (0.03s)
+    --- PASS: TestAppendProgressRecordGateInputsSingleSectionG/inline_triple_backtick_code_is_not_a_fence_open (0.03s)
+    --- PASS: TestAppendProgressRecordGateInputsSingleSectionG/closed_list_item_fence (0.02s)
+=== RUN   TestAppendProgressRecordStartHeadingSkipsListFence
+--- PASS: TestAppendProgressRecordStartHeadingSkipsListFence (0.02s)
+=== RUN   TestAppendProgressRecordClosesOrderedListFence
+--- PASS: TestAppendProgressRecordClosesOrderedListFence (0.02s)
+=== RUN   TestAppendProgressRecordStartHeadingSkipsIndentedCodeBlock
+--- PASS: TestAppendProgressRecordStartHeadingSkipsIndentedCodeBlock (0.03s)
+=== RUN   TestAppendProgressRecordWriteDeniedKeepsFile
+--- PASS: TestAppendProgressRecordWriteDeniedKeepsFile (0.00s)
+=== RUN   TestAppendProgressRecordSeedFailureAborts
+--- PASS: TestAppendProgressRecordSeedFailureAborts (0.00s)
+=== RUN   TestAppendProgressRecordPreservesOwnership
+--- PASS: TestAppendProgressRecordPreservesOwnership (0.02s)
+=== RUN   TestAppendProgressRecordTempSwapFailsClosed
+--- PASS: TestAppendProgressRecordTempSwapFailsClosed (0.00s)
+=== RUN   TestAppendProgressRecordSwapKeepsForeignFile
+--- PASS: TestAppendProgressRecordSwapKeepsForeignFile (0.00s)
+=== RUN   TestAppendProgressRecordPreservesHardlink
+--- PASS: TestAppendProgressRecordPreservesHardlink (0.00s)
+=== RUN   TestAppendProgressRecordLandsInUnwritableDir
+--- PASS: TestAppendProgressRecordLandsInUnwritableDir (0.00s)
+=== RUN   TestAppendProgressRecordWritesThroughSymlink
+--- PASS: TestAppendProgressRecordWritesThroughSymlink (0.02s)
+=== RUN   TestAppendProgressRecordWritesThroughDanglingSymlink
+--- PASS: TestAppendProgressRecordWritesThroughDanglingSymlink (0.02s)
+=== RUN   TestAppendProgressRecordWritesThroughSymlinkChain
+--- PASS: TestAppendProgressRecordWritesThroughSymlinkChain (0.02s)
+=== RUN   TestAppendProgressRecordResolvesDotDotThroughSymlink
+--- PASS: TestAppendProgressRecordResolvesDotDotThroughSymlink (0.02s)
+=== RUN   TestAppendProgressRecordPopsResolvedPosition
+--- PASS: TestAppendProgressRecordPopsResolvedPosition (0.02s)
+=== RUN   TestAppendProgressRecordMidComponentAbsenceFailsClosed
+--- PASS: TestAppendProgressRecordMidComponentAbsenceFailsClosed (0.00s)
+=== RUN   TestAppendProgressRecordConcurrentSurvival
+--- PASS: TestAppendProgressRecordConcurrentSurvival (0.68s)
+=== RUN   TestAppendProgressRecordInsertsAtSectionEnd
+--- PASS: TestAppendProgressRecordInsertsAtSectionEnd (0.04s)
+=== RUN   TestAppendProgressRecordNewFileModeAppliesUmask
+--- PASS: TestAppendProgressRecordNewFileModeAppliesUmask (0.03s)
+=== RUN   TestAppendProgressRecordExistingFileModePreserved
+--- PASS: TestAppendProgressRecordExistingFileModePreserved (0.02s)
+=== RUN   TestAppendProgressRecordPreservesACL
+--- PASS: TestAppendProgressRecordPreservesACL (0.12s)
+=== RUN   TestAppendProgressRecordAclExactlyOriginal
+--- PASS: TestAppendProgressRecordAclExactlyOriginal (0.09s)
+=== RUN   TestAppendProgressRecordPreservesXattr
+--- PASS: TestAppendProgressRecordPreservesXattr (0.02s)
+=== RUN   TestAppendProgressRecordSeedCloseHygiene
+=== RUN   TestAppendProgressRecordSeedCloseHygiene/success_path_closes_before_rename
+=== RUN   TestAppendProgressRecordSeedCloseHygiene/abort_path_closes_through_the_defer
+--- PASS: TestAppendProgressRecordSeedCloseHygiene (0.03s)
+    --- PASS: TestAppendProgressRecordSeedCloseHygiene/success_path_closes_before_rename (0.02s)
+    --- PASS: TestAppendProgressRecordSeedCloseHygiene/abort_path_closes_through_the_defer (0.00s)
+=== RUN   TestAppendProgressRecordSkipsHeadingInsideFence
+--- PASS: TestAppendProgressRecordSkipsHeadingInsideFence (0.05s)
+=== RUN   TestAppendProgressRecordStartHeadingSkipsFence
+--- PASS: TestAppendProgressRecordStartHeadingSkipsFence (0.02s)
+=== RUN   TestAppendProgressRecordGateInputsSingleSectionG
+=== RUN   TestAppendProgressRecordGateInputsSingleSectionG/backtick_info_string_with_backtick_is_inline_code
+=== RUN   TestAppendProgressRecordGateInputsSingleSectionG/inline_triple_backtick_code_is_not_a_fence_open
+=== RUN   TestAppendProgressRecordGateInputsSingleSectionG/closed_list_item_fence
+--- PASS: TestAppendProgressRecordGateInputsSingleSectionG (0.07s)
+    --- PASS: TestAppendProgressRecordGateInputsSingleSectionG/backtick_info_string_with_backtick_is_inline_code (0.02s)
+    --- PASS: TestAppendProgressRecordGateInputsSingleSectionG/inline_triple_backtick_code_is_not_a_fence_open (0.03s)
+    --- PASS: TestAppendProgressRecordGateInputsSingleSectionG/closed_list_item_fence (0.02s)
+=== RUN   TestAppendProgressRecordStartHeadingSkipsListFence
+--- PASS: TestAppendProgressRecordStartHeadingSkipsListFence (0.02s)
+=== RUN   TestAppendProgressRecordClosesOrderedListFence
+--- PASS: TestAppendProgressRecordClosesOrderedListFence (0.02s)
+=== RUN   TestAppendProgressRecordStartHeadingSkipsIndentedCodeBlock
+--- PASS: TestAppendProgressRecordStartHeadingSkipsIndentedCodeBlock (0.03s)
+=== RUN   TestAppendProgressRecordWriteDeniedKeepsFile
+--- PASS: TestAppendProgressRecordWriteDeniedKeepsFile (0.01s)
+=== RUN   TestAppendProgressRecordSeedFailureAborts
+--- PASS: TestAppendProgressRecordSeedFailureAborts (0.01s)
+=== RUN   TestAppendProgressRecordPreservesOwnership
+--- PASS: TestAppendProgressRecordPreservesOwnership (0.02s)
+=== RUN   TestAppendProgressRecordTempSwapFailsClosed
+--- PASS: TestAppendProgressRecordTempSwapFailsClosed (0.00s)
+=== RUN   TestAppendProgressRecordSwapKeepsForeignFile
+--- PASS: TestAppendProgressRecordSwapKeepsForeignFile (0.01s)
+=== RUN   TestAppendProgressRecordPreservesHardlink
+--- PASS: TestAppendProgressRecordPreservesHardlink (0.01s)
+=== RUN   TestAppendProgressRecordLandsInUnwritableDir
+--- PASS: TestAppendProgressRecordLandsInUnwritableDir (0.00s)
+=== RUN   TestAppendProgressRecordWritesThroughSymlink
+--- PASS: TestAppendProgressRecordWritesThroughSymlink (0.02s)
+=== RUN   TestAppendProgressRecordWritesThroughDanglingSymlink
+--- PASS: TestAppendProgressRecordWritesThroughDanglingSymlink (0.03s)
+=== RUN   TestAppendProgressRecordWritesThroughSymlinkChain
+--- PASS: TestAppendProgressRecordWritesThroughSymlinkChain (0.04s)
+=== RUN   TestAppendProgressRecordResolvesDotDotThroughSymlink
+--- PASS: TestAppendProgressRecordResolvesDotDotThroughSymlink (0.05s)
+=== RUN   TestAppendProgressRecordPopsResolvedPosition
+--- PASS: TestAppendProgressRecordPopsResolvedPosition (0.05s)
+=== RUN   TestAppendProgressRecordMidComponentAbsenceFailsClosed
+--- PASS: TestAppendProgressRecordMidComponentAbsenceFailsClosed (0.00s)
+=== RUN   TestAppendProgressRecordConcurrentSurvival
+--- PASS: TestAppendProgressRecordConcurrentSurvival (0.54s)
+=== RUN   TestAppendProgressRecordInsertsAtSectionEnd
+--- PASS: TestAppendProgressRecordInsertsAtSectionEnd (0.08s)
+=== RUN   TestAppendProgressRecordNewFileModeAppliesUmask
+--- PASS: TestAppendProgressRecordNewFileModeAppliesUmask (0.02s)
+=== RUN   TestAppendProgressRecordExistingFileModePreserved
+--- PASS: TestAppendProgressRecordExistingFileModePreserved (0.02s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/runtime	4.039s
