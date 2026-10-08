@@ -195,7 +195,7 @@ residual_risks: 전체 internal/cli 스위트 등판면은 본 카드의 main �
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-10-09
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "c602ae901"
 sync_status: complete
 b12_self_test_a: pre-emission grep `grep -c 'SPEC-CODEX-CONFORMANCE-001' CHANGELOG.md` → 0 적중(exit 1) — 중복 항목 위험 없음
 b12_self_test_b: AC counter on acceptance.md → live=8 excluded=0 ambiguous=0 — CHANGELOG 항목의 8건(AC-CONF-001..008)과 일치
