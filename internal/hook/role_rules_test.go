@@ -561,3 +561,86 @@ func TestSessionStartRoleRulesOperatorLocales(t *testing.T) {
 		}
 	})
 }
+
+// TestSessionStartRoleRulesRootStopsAtProjectBoundary pins the walk
+// boundary: a lane worktree (its own git-dir pointer file) nested UNDER a
+// tree that carries the rules must NOT inherit the parent tree's rules —
+// the walk stops at the worktree root, the injection takes the REQ-ALB-009
+// missing path, and no parent-tree block reaches the session.
+func TestSessionStartRoleRulesRootStopsAtProjectBoundary(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+
+	parent := t.TempDir()
+	writeDeployedRoleRules(t, parent)
+	lane := filepath.Join(parent, ".claude", "worktrees", "lane-2")
+	if err := os.MkdirAll(lane, 0o755); err != nil {
+		t.Fatalf("mkdir lane: %v", err)
+	}
+	// The worktree's repository pointer is a FILE (the git worktree shape).
+	if err := os.WriteFile(filepath.Join(lane, ".git"), []byte("gitdir: /somewhere/else\n"), 0o644); err != nil {
+		t.Fatalf("write repository pointer: %v", err)
+	}
+
+	resolved := roleRulesRootFromCWD(filepath.Join(lane, "internal", "deep"))
+	if resolved != lane {
+		t.Fatalf("lane cwd resolved to %q, want the lane tree itself %q (no parent-tree reach)", resolved, lane)
+	}
+	inj := roleRuleInjectionFor(resolved, "startup", "", langEnglish)
+	if inj.OperatorNotice == "" {
+		t.Fatal("lane tree without the rules injected silently — the REQ-ALB-009 missing path did not fire")
+	}
+	if !strings.Contains(inj.OperatorNotice, "absent") {
+		t.Errorf("missing warning does not name the absent rule: %q", inj.OperatorNotice)
+	}
+	for _, b := range roleCoreBlocksFromDeployed(t, parent) {
+		if strings.Contains(inj.Context, blockLabel(b)) {
+			t.Fatalf("parent-tree block leaked into the lane session: %q", blockLabel(b))
+		}
+	}
+	t.Logf("PASS lane worktree without rules: root=%q, missing warning fired, 0 parent blocks delivered", resolved)
+}
+
+// TestSessionStartRoleRulesMarkerSequence is the full sequence validation: a
+// START END END START file passes the count balance AND the first-marker
+// checks, yet its second start region is never closed — the injected core
+// would silently drop it. The sequence must fail visible.
+func TestSessionStartRoleRulesMarkerSequence(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	root := t.TempDir()
+	writeRoleRuleFixture(t, root, roleRuleFiles[0],
+		config.RoleCoreMarkerStart+"\nclosed block\n"+config.RoleCoreMarkerEnd+"\n"+config.RoleCoreMarkerEnd+"\n"+config.RoleCoreMarkerStart+"\nunclosed tail block\n")
+	writeRoleRuleFixture(t, root, roleRuleFiles[1], smallMarkedRule("messaging"))
+	inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
+	assertFailVisible(t, inj, "marker_sequence")
+}
+
+// TestSessionStartRoleRulesRootFromSubdirectoryCWD is the subdirectory-CWD
+// root resolution: a session whose cwd sits DEEP inside the tree (e.g.
+// internal/deep) still receives the core — the root is resolved by walking
+// the cwd's ancestors outward until the deployed rule files appear, not
+// taken as the raw cwd. Both a root-level and a nested cwd deliver the same
+// blocks.
+func TestSessionStartRoleRulesRootFromSubdirectoryCWD(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+
+	root := t.TempDir()
+	writeDeployedRoleRules(t, root)
+	blocks := roleCoreBlocksFromDeployed(t, root)
+	nested := filepath.Join(root, "internal", "deep", "worker")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	resolved := roleRulesRootFromCWD(nested)
+	if resolved != root {
+		t.Fatalf("nested cwd %q resolved to root %q, want %q", nested, resolved, root)
+	}
+	inj := roleRuleInjectionFor(resolved, "startup", "", langEnglish)
+	if missing := injectionMissingBlocks(inj.Context, blocks); len(missing) > 0 {
+		t.Fatalf("nested-cwd injection misses %d of %d blocks; first: %q", len(missing), len(blocks), missing[0])
+	}
+	t.Logf("PASS nested cwd %q resolved to %q; all %d blocks delivered", nested, resolved, len(blocks))
+}

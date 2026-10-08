@@ -29,6 +29,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -127,6 +128,37 @@ func buildRoleCore(root string, rule roleRuleFile) (string, error) {
 	// guarantee both indexes exist at this point.
 	if strings.Index(content, config.RoleCoreMarkerEnd) < strings.Index(content, config.RoleCoreMarkerStart) {
 		return "", fmt.Errorf("role rule file carries a %s marker before any %s marker (malformed marker order): %s", config.RoleCoreMarkerEnd, config.RoleCoreMarkerStart, rule.Rel)
+	}
+	// Full sequence validation: every start marker must be closed by its own
+	// end marker BEFORE the next start marker. Count balance plus first-
+	// marker order still pass a START … END END … START file (two of each,
+	// first marker a start), yet its second start region is never closed and
+	// the extractor silently discards it — the injected core would be
+	// missing a region without any warning. Any open-at-next-start or
+	// close-without-open shape takes the REQ-ALB-009 failure path.
+	{
+		depth := 0
+		rest := content
+		for {
+			si := strings.Index(rest, config.RoleCoreMarkerStart)
+			ei := strings.Index(rest, config.RoleCoreMarkerEnd)
+			if si < 0 && ei < 0 {
+				break
+			}
+			if si >= 0 && (ei < 0 || si < ei) {
+				if depth > 0 {
+					return "", fmt.Errorf("role rule file has a %s marker before its enclosing region is closed: %s", config.RoleCoreMarkerStart, rule.Rel)
+				}
+				depth = 1
+				rest = rest[si+len(config.RoleCoreMarkerStart):]
+				continue
+			}
+			depth = 0
+			rest = rest[ei+len(config.RoleCoreMarkerEnd):]
+		}
+		if depth != 0 {
+			return "", fmt.Errorf("role rule file has an unclosed %s region (marker sequence ends inside a region): %s", config.RoleCoreMarkerStart, rule.Rel)
+		}
 	}
 	return strings.Join(regions, "\n\n"), nil
 }
@@ -275,6 +307,41 @@ func roleRuleInjectionFor(root, source, existing, lang string) roleRuleInjection
 	context += "\n\n" + roleRulesOverflowDirective()
 	loc := roleRuleLocaleFor(lang)
 	return roleRuleInjection{Context: context, OperatorNotice: loc.Overflow(role.Name, total, roleRulesContextLimit)}
+}
+
+// roleRulesRootFromCWD resolves the project root the deployed role-gated
+// rule files resolve under for a session whose cwd may sit anywhere inside
+// the tree: it walks the cwd's ancestors outward and returns the first
+// ancestor carrying the deployed dispatch rule, and the cwd itself when no
+// ancestor does — leaving the REQ-ALB-009 fail-visible path to name what is
+// missing. The walk STOPS at the project boundary: a directory entry
+// carrying a .git marker (a checkout directory, or a worktree's repository
+// pointer file) ends the walk at that directory rather than reaching into a
+// parent checkout — a lane worktree that lacks the deployed rules takes the
+// REQ-ALB-009 missing path, never its parent tree's rules. Pure path
+// arithmetic, no git subprocess: the SessionStart hook runs under a 5s
+// budget (the same reasoning as cardIDFromPath).
+func roleRulesRootFromCWD(cwd string) string {
+	if strings.TrimSpace(cwd) == "" {
+		return ""
+	}
+	probe := filepath.Join(roleRuleFiles[0].Rel)
+	for dir := filepath.Clean(cwd); ; {
+		if fi, err := os.Stat(filepath.Join(dir, filepath.FromSlash(probe))); err == nil && !fi.IsDir() {
+			return dir
+		}
+		if _, err := os.Lstat(filepath.Join(dir, ".git")); err == nil {
+			// Project boundary: this directory is the checkout root — the
+			// session's project root even when its rules are missing. No
+			// reach beyond this checkout.
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return cwd
+		}
+		dir = parent
+	}
 }
 
 // detectRegisteredRole walks the registry seam and returns the first role

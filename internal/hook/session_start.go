@@ -643,16 +643,18 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// assembled; over the cap the core goes out INTACT with the
 	// overflow-file directive (REQ-ALB-010).
 	//
-	// The root is the SESSION CWD first, ProjectDir as the fallback:
-	// deployed rule files live per working tree, and a worktree session's
-	// CWD is its own tree while CLAUDE_PROJECT_DIR keeps pointing at the
-	// primary checkout — the ProjectDir-first resolution the factory notice
-	// uses would deliver the primary tree's role rules (or miss the
-	// worktree's markers entirely). The factory notice block above keeps its
-	// ProjectDir-first resolution deliberately: the queue it reads is one
-	// repository-wide channel resolved against the primary checkout from
-	// every linked worktree.
-	roleRulesRoot := input.CWD
+	// The root is resolved from the SESSION CWD — walked outward from the
+	// cwd until the deployed rule files appear, so a cwd sitting deep inside
+	// the tree resolves the same root as one at the tree top — with
+	// ProjectDir as the fallback when the cwd is empty: deployed rule files
+	// live per working tree, and a worktree session's CWD is its own tree
+	// while CLAUDE_PROJECT_DIR keeps pointing at the primary checkout — the
+	// ProjectDir-first resolution the factory notice uses would deliver the
+	// primary tree's role rules (or miss the worktree's markers entirely).
+	// The factory notice block above keeps its ProjectDir-first resolution
+	// deliberately: the queue it reads is one repository-wide channel
+	// resolved against the primary checkout from every linked worktree.
+	roleRulesRoot := roleRulesRootFromCWD(input.CWD)
 	if roleRulesRoot == "" {
 		roleRulesRoot = input.ProjectDir
 	}
