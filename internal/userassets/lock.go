@@ -125,3 +125,87 @@ func lockOwnerGone(path string) bool {
 	}
 	return false
 }
+
+// guardMarkerDead reports whether the guard marker at path records an owner
+// PROVEN dead — the reclaim license of REQ-LOCK-001 (SPEC-USERASSET-
+// DEPLOY-GUARD-001 M2). It is the lockOwnerGone posture applied to the
+// marker: a marker carrying no pid record (a legacy or foreign marker) is
+// never proven dead, and unreadable or malformed records fail closed. The
+// platform-neutral home is deliberate: both platform guards decide their
+// reclaim through this one predicate, so the marker-state × owner-liveness
+// table judges the shared policy on every platform.
+func guardMarkerDead(markerPath string) bool {
+	return lockOwnerGone(markerPath)
+}
+
+// reclaimGuardMarker moves a death-proven marker aside. It re-proves the
+// owner itself (fail closed): an unproven marker is never moved, whatever
+// the caller assumed. rename(2) makes exactly one racing acquirer the
+// winner; the losers see ENOENT and re-run their create loop (the lock
+// file's F5 posture). Reports whether THIS caller reclaimed the marker.
+func reclaimGuardMarker(markerPath string) bool {
+	if !guardMarkerDead(markerPath) {
+		return false // never move a marker whose owner is not PROVEN dead
+	}
+	reclaim := markerPath + ".reclaim-" + fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
+	if err := os.Rename(markerPath, reclaim); err != nil {
+		return false
+	}
+	_ = os.Remove(reclaim)
+	return true
+}
+
+// GuardMarkerState is the doctor-visible classification of a lock marker
+// (REQ-LOCK-001's visible-recovery path — the doctor reports; only a
+// death-PROVEN marker is auto-reclaimed, by the next acquisition).
+type GuardMarkerState int
+
+const (
+	GuardMarkerAbsent     GuardMarkerState = iota // no marker on disk
+	GuardMarkerOwnerDead                          // pid record + owner proven dead — reclaimable
+	GuardMarkerOwnerAlive                         // pid record + owner still running
+	GuardMarkerOwnerless                          // no pid record — NEVER auto-reclaimed (design §3)
+)
+
+// String renders the state for reports.
+func (s GuardMarkerState) String() string {
+	switch s {
+	case GuardMarkerAbsent:
+		return "absent"
+	case GuardMarkerOwnerDead:
+		return "owner-dead"
+	case GuardMarkerOwnerAlive:
+		return "owner-alive"
+	case GuardMarkerOwnerless:
+		return "ownerless"
+	}
+	return "unknown"
+}
+
+// ClassifyGuardMarker classifies the marker at path for the doctor's
+// visible-recovery row. The pid-less form is Ownerless — the suspended-
+// process shape age alone can never refute — and the returned pid is 0
+// whenever no readable pid record exists.
+func ClassifyGuardMarker(markerPath string) (GuardMarkerState, int) {
+	raw, err := os.ReadFile(markerPath)
+	if err != nil {
+		return GuardMarkerAbsent, 0
+	}
+	pid := 0
+	hasPID := false
+	for _, field := range strings.Fields(string(raw)) {
+		if strings.HasPrefix(field, "pid=") {
+			if parsed, convErr := strconv.Atoi(strings.TrimPrefix(field, "pid=")); convErr == nil && parsed > 0 && int64(parsed) <= 2147483647 {
+				pid = parsed
+				hasPID = true
+			}
+		}
+	}
+	if !hasPID {
+		return GuardMarkerOwnerless, 0
+	}
+	if lockProcessGone(pid) {
+		return GuardMarkerOwnerDead, pid
+	}
+	return GuardMarkerOwnerAlive, pid
+}

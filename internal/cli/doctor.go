@@ -257,6 +257,19 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 			return checkUserInstallIntegrity(home, v)
 		}},
 		{"Project Lock", func(v bool) DiagnosticCheck { return checkProjectVsLock(cwd, v) }},
+		// SPEC-USERASSET-DEPLOY-GUARD-001 (M2, REQ-LOCK-001): the user-lock
+		// marker's visible-recovery row — an ownerless marker is never
+		// auto-reclaimed and resolves through this report + explicit
+		// confirmed removal. Read-only.
+		{"User Lock", func(v bool) DiagnosticCheck {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				c := DiagnosticCheck{Name: "User Lock", Status: uikit.CheckWarn}
+				c.Message = fmt.Sprintf("cannot resolve home: %v", err)
+				return c
+			}
+			return checkUserLockMarkers(home, v)
+		}},
 		{"Plugin Migration", func(v bool) DiagnosticCheck { return checkPluginMigrationAdvisory(v) }},
 		// SPEC-USER-ASSET-INSTALL-001 (REQ-019): the Plugin Deployment and
 		// Plugin Version carrier rows are REMOVED with the retired carrier

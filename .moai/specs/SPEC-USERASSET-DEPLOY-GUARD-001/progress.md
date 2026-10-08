@@ -287,6 +287,49 @@ RED 8건(M2-M7 소관)만 잔존, M1 GREEN 4종+버킷 B 1종 유지.
   재시도 대상이다. HEAD에서 RED 유지(탈출 관측), M5 수리 시 arm→pinned 경로로 GREEN.
 - 게이트: lint 0, gofmt 청결, 전체 스위트 의도 RED 8건 유지, 스키마 가족 6종 GREEN.
 
+### M2 — 잠금 가드 복구: proven-death reclaim (2026-10-09, HEAD c41e67817 기반)
+
+프로덕션 변경: `internal/userassets/lock.go`(guardMarkerDead·reclaimGuardMarker —
+lockOwnerGone 자세 재사용 + ClassifyGuardMarker·GuardMarkerPath 신설) +
+`lock_guard_windows.go`(마커에 PID 기록 + 사망 입증 회수 루프) +
+`internal/cli/doctor_lock_markers.go` 신설(User Lock 행 — 가시 회복 경로) + doctor 등록.
+`lock_guard_unix.go` 무변경 — unix는 flock 기반으로 커널이 사망을 증명하며, windows 마커가
+unix 자세로 수렴하는 것이 REQ-LOCK-002의 방향이다(design §3).
+
+**AC 전환 (AC-001 + AC-024)**
+
+| 팔 | M0 관측 | M2 관측 |
+|---|---|---|
+| AC-001 windows dead-owner (pid 기록) | SKIP (darwin 미실행) | 정책 표 GREEN — pid 기록+사망 확인 마커가 회수 가능 판정+실제 회수 (플랫폼 중립, darwin 판정 가능). windows 런타임 팔은 windows 실행 환경 소관 (darwin Gap 선언) |
+| AC-001 windows ownerless (무 pid 기록) | SKIP | 계약 전환: **자동 회수 금지** — 정책 표 GREEN (ownerless≠사망, 재시도도 거부) + windows 런타임 팔은 거부·마커 생존 단정 (skip, Gap) |
+| AC-001 unix orphan guard | born-green | GREEN 유지 |
+| AC-001 case 2 (무 pid 마커 — 연령 회수 금지) | born-green (거부 팔) | 거부 팔 GREEN 유지 + **보고·명시 제거 팔 착지**: doctor User Lock 행 (ownerless → never-auto-reclaimed 명시 + rm 절차 + report-only 단정), dead-owner → 자동 회수 안내, alive → 보유 경고 |
+| AC-024 windows 빌드 | exit 0 | **exit 0 유지 + `GOOS=windows go test -c ./internal/userassets` OK + windows vet OK** |
+
+**정책 표 (마커 상태 × 소유자 생존 — design §3, 플랫폼 중립)**: pid+사망=회수 가능·실제
+회수 / ownerless=회수 불가·파일 생존 / 생존 pid=회수 불가 / 기형 기록(pid=invalid·0·-1·
+4294967296)=실패 폐쇄 / 판독 불가(디렉터리)=실패 폐쇄. reclaimGuardMarker는 자체 재입증
+(fail closed) — 미입증 마커를 옮기는 호출 자체를 불가능하게 한다. 실측 dead pid는
+helper-process 재확인 방식(헬퍼 종료 후 pid). .lock 파일 자체의 stale 인수 경로
+(TestLockStaleDeadOwnerTakenOver)도 착지 — 인수가 신규 소유자로 재기록하는 것까지 단정.
+
+**AC-023 커버리지 (unix, 전체 스위트 결합)**
+
+| 파일 | 문 커버리지 | 90% 게이트 |
+|---|---|---|
+| lock.go | 65/73 = **89.0%** (81.8%→89.0%) | 미달 1.0%p — 잔여 8문은 환경적 오류 臂 (mkdir 실패·deadline·release 오류·rename 경합 패배 — Gaps 선언) |
+| lock_guard_unix.go | 15/16 = **93.8%** | PASS |
+| journal.go | 30/32 = **93.8%** | PASS |
+| install.go | 308/373 = **82.6%** | FAIL — M3/M5 착지가 상승 수단 |
+| 패키지 합계 | **82.7%** | FAIL (85%) — 위 상승분이 해소 |
+
+**Gaps**: lock_guard_windows.go의 런타임 커버리지는 windows 실행 환경 소관 (darwin에서
+IgnoredGoFiles — AC-023의 windows 판정 절차에 속함). lock.go의 환경적 오류 臂 8문.
+
+**게이트**: lint 0 (userassets+cli), gofmt 청결, windows build+test compile+vet OK,
+전체 스위트 의도 RED 8건(M2 제외 — 이 마일스톤 RED는 darwin-skip 팔) 유지, doctor
+가족 3종 GREEN, 정책 표 7종 GREEN.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop 소관.)_

@@ -46,9 +46,9 @@ func TestGuardMarkerReclaimAfterOwnerDeath(t *testing.T) {
 		release()
 	})
 
-	t.Run("windows_orphan_marker_is_confirmed_dead_and_reclaimed", func(t *testing.T) {
+	t.Run("windows_dead_owner_marker_is_confirmed_dead_and_reclaimed", func(t *testing.T) {
 		if runtime.GOOS != "windows" {
-			t.Skip("windows marker semantics (lock_guard_windows.go) — darwin cannot execute this arm; covered by the GOOS=windows build gate here and a windows execution environment for the runtime RED")
+			t.Skip("windows marker semantics (lock_guard_windows.go) — darwin cannot execute this arm; the shared policy is judged by TestGuardMarkerReclaimPolicy here and the runtime by a windows execution environment (darwin gap declared in §E.2)")
 		}
 		home := t.TempDir()
 		path := LockPath(home)
@@ -56,16 +56,43 @@ func TestGuardMarkerReclaimAfterOwnerDeath(t *testing.T) {
 			t.Fatal(err)
 		}
 		// A windows owner died holding the guard marker: the file remains,
-		// carrying NO ownership record at all. The next acquirer must confirm
-		// the owner's death and reclaim the marker.
-		if err := os.WriteFile(path+".guard", []byte("orphaned marker — owner process is gone\n"), 0o644); err != nil {
+		// carrying the PID record M2 stamps at create time (the fixture
+		// writes the same shape a crashed owner leaves).
+		if err := os.WriteFile(path+".guard", []byte("pid="+itoaTest(deadProcessPID(t))+" acquired=2026-10-08T00:00:00Z\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		release, err := acquireGuard(path, 2*time.Second)
 		if err != nil {
-			t.Fatalf("RED (intended, windows execution): the orphaned windows marker has no ownership record and no reclaim path — acquisition timed out: %v", err)
+			t.Fatalf("the death-proven marker was not reclaimed — REQ-LOCK-001's recovery arm broke on windows: %v", err)
 		}
 		release()
+	})
+
+	t.Run("windows_ownerless_marker_is_never_reclaimed", func(t *testing.T) {
+		if runtime.GOOS != "windows" {
+			t.Skip("windows marker semantics — the ownerless contract is judged platform-neutrally by TestGuardMarkerReclaimPolicy/ownerless on every platform")
+		}
+		home := t.TempDir()
+		path := LockPath(home)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		// AC-001 case 2 (design §3 round-8 redefinition): a marker with NO
+		// pid record — the suspended-process shape — is NEVER auto-
+		// reclaimed. Acquisition is refused within the timeout and the
+		// marker survives for the doctor's visible-recovery row (doctor
+		// report + explicit confirmed removal).
+		if err := os.WriteFile(path+".guard", []byte("orphaned marker — owner process is gone\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		release, err := acquireGuard(path, 400*time.Millisecond)
+		if err == nil {
+			release()
+			t.Fatal("an ownerless marker was auto-reclaimed — REQ-LOCK-001 forbids reclaim without ownership evidence (the suspended-process shape)")
+		}
+		if _, statErr := os.Stat(path + ".guard"); statErr != nil {
+			t.Fatalf("the ownerless marker must survive for the visible-recovery path: %v", statErr)
+		}
 	})
 
 	t.Run("legacy_marker_without_pid_is_never_age_reclaimed", func(t *testing.T) {
