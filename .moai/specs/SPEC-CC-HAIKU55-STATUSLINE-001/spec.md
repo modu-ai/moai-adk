@@ -2,9 +2,9 @@
 id: "SPEC-CC-HAIKU55-STATUSLINE-001"
 title: "Haiku 5.5 documentation sync (GD-1) + subagentStatusLine agentType badge"
 version: "0.1.0"
-status: completed
+status: in-progress
 created: 2026-10-08
-updated: 2026-10-08
+updated: 2026-10-09
 author: manager-spec
 priority: P1
 phase: "v3.2.0"
@@ -12,6 +12,7 @@ module: "internal/statusline"
 lifecycle: spec-anchored
 tags: "docs-sync,haiku-5-5,statusline,agenttype,claude-code-2-1-293,i18n"
 tier: M
+amendment_of: SPEC-CC-HAIKU55-STATUSLINE-001
 ---
 
 # SPEC-CC-HAIKU55-STATUSLINE-001
@@ -25,7 +26,9 @@ Claude Code 2.1.293 introduced two upstream changes that touch MoAI-ADK surfaces
    default ~967K. Alias resolution stays provider-split: Anthropic API → Haiku 5.5;
    AWS Bedrock / GCP Agent Platform / Microsoft Foundry → Haiku 4.5 (200K kept). Effort:
    `low/medium/high/xhigh/max` all supported, default `medium` (same as Opus 5.5 / Sonnet 5.5);
-   thinking cannot be disabled (always adaptive reasoning). Rates per Mtok: input $0.10 /
+   adaptive reasoning is on by default and can be disabled with
+   `thinking: {"type": "disabled"}` at `high` effort or below (low/medium/high) — effort is
+   the better lever. Rates per Mtok: input $0.10 /
    output $0.50; prompts over 100K tokens: input $0.50 / output $2.50.
 2. **`subagentStatusLine.agentType`** — the `subagentStatusLine` `tasks[]` payload gained an
    `agentType` field (the custom subagent's type name; distinct from the existing `type`
@@ -49,6 +52,13 @@ config-code change is required or permitted for the Haiku axis.
 |------|---------|--------|
 | 2026-10-08 | 0.1.0 | Initial draft — plan-phase artifacts authored (Tier M: spec/plan/acceptance/progress) from the 2026-10-08 release-update canon. |
 
+### Amendments
+
+- **2026-10-09 — in-place amendment (thinking-disable fact correction).**
+  - Prior completed version: v0.1.0, status `completed` at close; `prior_completed_sha: 9fe1e0e6280454460d34a58187db8a711b1aaa52` (equals the prior close's `sync_commit_sha` in progress.md §E.4).
+  - Rationale: post-close factual correction — the close carried the r3-era claim "thinking cannot be disabled (always adaptive reasoning)", which the official Haiku 5.5 whats-new/model-config page contradicts: thinking CAN be disabled with `thinking: {"type": "disabled"}` at `high` effort or below (low/medium/high), effort being the better lever. The same retraction already landed in acceptance.md (AC-015 cond 4) and plan.md (M3 step 2d) at commit 7a6522121; this amendment closes the cross-layer revision sweep (verification-completeness §3) by fixing the surviving spec.md copies.
+  - Scope: §1 fact clause + REQ-CC-HAIKU55-001 fact statement only (frontmatter `status`/`updated`/`amendment_of` ride the transition). No other body section, no acceptance.md/plan.md change, no code change.
+
 ## 3. Requirements (GEARS)
 
 ### D1 — Haiku 5.5 documentation sync
@@ -56,7 +66,9 @@ config-code change is required or permitted for the Haiku axis.
 - REQ-CC-HAIKU55-001: The MoAI documentation surfaces shall state the Haiku 5.5 facts as
   measured in §1 (model id `claude-haiku-5-5`, 1M context on all plans, CC v2.1.293+,
   auto-compact ~967K, provider-split alias resolution, effort set `low/medium/high/xhigh/max`
-  with default `medium`, always-on adaptive thinking, rates $0.10/$0.50 per Mtok and
+  with default `medium`, adaptive reasoning on by default and disableable with
+  `thinking: {"type": "disabled"}` at `high` effort or below (low/medium/high) — effort is
+  the better lever, rates $0.10/$0.50 per Mtok and
   $0.50/$2.50 above a 100K prompt).
 
 - REQ-CC-HAIKU55-002: The context-window threshold table in
