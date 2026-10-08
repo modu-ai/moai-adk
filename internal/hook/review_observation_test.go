@@ -20,7 +20,7 @@ func TestReviewFindingZoneExistingDotDot(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(filepath.Join(root, "zone_dir", "sub"), filepath.Join(root, "deep")); err != nil {
-		t.Fatal(err)
+		t.Skipf("symlinks unavailable: %v", err)
 	}
 	for _, p := range []string{"secret.md", "zone_dir/secret.md"} {
 		if err := os.WriteFile(filepath.Join(root, p), []byte("safe"), 0644); err != nil {
