@@ -276,20 +276,42 @@ func renderSubagentOutput(tasks []SubagentTaskInfo) string {
 	return out.String()
 }
 
+// sanitizeSubagentText strips C0/C1 control characters and DEL from a
+// subagent row text field (name / label / description / agentType / status).
+// The official contract renders row content as-is, so an ESC, BEL, or
+// newline smuggled through a crafted task name could corrupt the statusline
+// display or forge ANSI/OSC sequences; the JSONL framing itself stays
+// parseable regardless (json.Marshal escapes what remains).
+func sanitizeSubagentText(s string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r < 0x20: // C0 controls (ESC, BEL, newline, tab, ...)
+			return -1
+		case r == 0x7f: // DEL
+			return -1
+		case r >= 0x80 && r <= 0x9f: // C1 controls
+			return -1
+		}
+		return r
+	}, s)
+}
+
 // formatSubagentTaskRow renders one subagent row body:
 // "⚙ [agentType] display (status) · N tokens", each element omitted when its
-// source is absent. The display name falls back name → label → description →
-// #<id-prefix> so two unnamed tasks never render identically (the optional
-// name field is absent on most rows).
+// source is absent. Text fields are control-character-sanitized before
+// composition. The display name falls back name → label → description →
+// "#"+full-id (the optional name field is absent on most rows; the full id
+// keeps distinct ids distinct — a truncated 8-char prefix let task-1234 and
+// task-1235 both render as #task-123).
 func formatSubagentTaskRow(task SubagentTaskInfo) string {
 	var b strings.Builder
 	b.WriteString("⚙ ")
-	if task.AgentType != nil && *task.AgentType != "" {
-		b.WriteString("[" + *task.AgentType + "] ")
+	if badge := sanitizeSubagentText(agentTypeValue(task)); badge != "" {
+		b.WriteString("[" + badge + "] ")
 	}
-	b.WriteString(subagentTaskDisplayName(task))
-	if task.Status != "" {
-		b.WriteString(" (" + task.Status + ")")
+	b.WriteString(sanitizeSubagentText(subagentTaskDisplayName(task)))
+	if status := sanitizeSubagentText(task.Status); status != "" {
+		b.WriteString(" (" + status + ")")
 	}
 	if task.TokenCount > 0 {
 		b.WriteString(fmt.Sprintf(" · %s tokens", formatTokenCount(task.TokenCount)))
@@ -297,10 +319,18 @@ func formatSubagentTaskRow(task SubagentTaskInfo) string {
 	return b.String()
 }
 
+// agentTypeValue dereferences the optional agentType, or "" when absent/null.
+func agentTypeValue(task SubagentTaskInfo) string {
+	if task.AgentType == nil {
+		return ""
+	}
+	return *task.AgentType
+}
+
 // subagentTaskDisplayName resolves the row's display name through the
 // null-fallback chain: name (optional, pointer-nil) → label → description →
-// "#"+id-prefix. The id prefix is truncated to 8 characters so a long UUID
-// never dominates the row.
+// "#"+full-id. The full id (not a truncated prefix) is used so two distinct
+// task ids never render identically.
 func subagentTaskDisplayName(task SubagentTaskInfo) string {
 	switch {
 	case task.Name != nil && *task.Name != "":
@@ -310,11 +340,7 @@ func subagentTaskDisplayName(task SubagentTaskInfo) string {
 	case task.Description != "":
 		return task.Description
 	default:
-		id := task.ID
-		if len(id) > 8 {
-			id = id[:8]
-		}
-		return "#" + id
+		return "#" + task.ID
 	}
 }
 

@@ -107,8 +107,9 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 x2, M2, M3, M4, M5) on the c
 P1 AC matrix (observed, this run): AC-001 PASS · AC-002 PASS · AC-003 PASS · AC-004 PASS ·
 AC-005 PASS · AC-007 PASS · AC-008 PASS · AC-009 PASS · AC-010 PASS · AC-014 PASS · AC-015
 PASS · AC-016 PASS. P2: AC-006 re-executed green at M3 step 4 + M5 (regression-guard, never
-recorded from baseline); AC-011 PASS (edited pairs) + recorded 0-hit findings for the 10
-page-locale pairs with no pre-edit row; AC-012 PASS (4/4 checks); AC-013 closes on the recorded
+recorded from baseline); AC-011 PASS (edited pairs) + recorded 0-hit findings for the 11
+page-locale pairs with no pre-edit row (commands ja/zh = 2; context-window / how-claude-code-works
+/ claude-code _index en/ja/zh = 9; audit-corrected count); AC-012 PASS (4/4 checks); AC-013 closes on the recorded
 README 0-hit finding (the AC's own enumerated escape).
 
 ## §E.4 Sync-phase Audit-Ready Signal

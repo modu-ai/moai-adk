@@ -142,15 +142,15 @@ func TestAgentType(t *testing.T) {
 		if !strings.Contains(rows[1].Content, "reading test files") {
 			t.Errorf("second row should fall back to description, got %q", rows[1].Content)
 		}
-		// With no label, no description, and no name: the truncated id prefix.
+		// With no label, no description, and no name: the full id fallback.
 		out2 := renderSubagentOutput([]SubagentTaskInfo{
 			{ID: "abcdefgh-1234", AgentType: strPtr("Explore")},
 			{ID: "task-x", AgentType: strPtr("Explore"), Name: strPtr("big runner"), TokenCount: 1_234_567},
 			{ID: "task-y", AgentType: strPtr("Explore"), Name: strPtr("small runner"), TokenCount: 850},
 		})
 		rows2 := parseSubagentRows(t, out2)
-		if !strings.Contains(rows2[0].Content, "#abcdefgh") {
-			t.Errorf("fully unnamed row should fall back to the id prefix, got %q", rows2[0].Content)
+		if !strings.Contains(rows2[0].Content, "#abcdefgh-1234") {
+			t.Errorf("fully unnamed row should fall back to the full id, got %q", rows2[0].Content)
 		}
 		if !strings.Contains(rows2[1].Content, "1.2M tokens") {
 			t.Errorf("M-scale token count should format as 1.2M, got %q", rows2[1].Content)
@@ -170,6 +170,55 @@ func TestAgentType(t *testing.T) {
 		rows := parseSubagentRows(t, out)
 		if len(rows) != 1 || rows[0].ID != "task-9" {
 			t.Fatalf("empty-id row must be skipped, got %v", rows)
+		}
+	})
+
+	t.Run("control_characters_stripped_from_row_text", func(t *testing.T) {
+		// A crafted task name / agentType carrying ESC, BEL, or newline must
+		// not reach the rendered content — the contract renders content
+		// as-is, so raw control bytes could corrupt the statusline display
+		// or forge ANSI sequences. The visible text stays; the JSONL framing
+		// stays parseable.
+		name := "in" + "\x1b" + "ject" + "\a" + "ed" + "\u009b" + "\nname"
+		out := renderSubagentOutput([]SubagentTaskInfo{
+			{ID: "task-10", AgentType: strPtr("ma\x1bnager"), Name: &name, Status: "run\x07ning"},
+		})
+		rows := parseSubagentRows(t, out)
+		if len(rows) != 1 {
+			t.Fatalf("expected 1 JSONL row, got %d", len(rows))
+		}
+		for _, bad := range []string{"\x1b", "\a", "\n", "\x7f", "\x9b"} {
+			if strings.Contains(rows[0].Content, bad) {
+				t.Errorf("content must not carry control byte %q, got %q", bad, rows[0].Content)
+			}
+		}
+		if !strings.Contains(rows[0].Content, "injectedname") {
+			t.Errorf("visible text should survive sanitization (C0+C1+newline stripped), got %q", rows[0].Content)
+		}
+		if !strings.Contains(rows[0].Content, "[manager]") {
+			t.Errorf("sanitized agentType badge should render, got %q", rows[0].Content)
+		}
+	})
+
+	t.Run("full_id_fallback_avoids_prefix_collision", func(t *testing.T) {
+		// A truncated 8-char id prefix let task-1234 and task-1235 both
+		// render as #task-123; the full-id fallback keeps them distinct.
+		out := renderSubagentOutput([]SubagentTaskInfo{
+			{ID: "task-1234", AgentType: strPtr("Explore")},
+			{ID: "task-1235", AgentType: strPtr("Explore")},
+		})
+		rows := parseSubagentRows(t, out)
+		if len(rows) != 2 {
+			t.Fatalf("expected 2 JSONL rows, got %d", len(rows))
+		}
+		if rows[0].Content == rows[1].Content {
+			t.Fatalf("distinct ids must not render identically, both %q", rows[0].Content)
+		}
+		if !strings.Contains(rows[0].Content, "#task-1234") {
+			t.Errorf("first row should carry its full id, got %q", rows[0].Content)
+		}
+		if !strings.Contains(rows[1].Content, "#task-1235") {
+			t.Errorf("second row should carry its full id, got %q", rows[1].Content)
 		}
 	})
 }
