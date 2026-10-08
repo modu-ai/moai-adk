@@ -1067,13 +1067,10 @@ func TestCheckProtectedZoneShellFunctionRedirectsOwnGeneration(t *testing.T) {
 func TestCheckProtectedZoneShellSedInPlaceOwnGeneration(t *testing.T) {
 	root := hzsMarkerFileFixture(t)
 	h := zoneTestHandler(t, root)
-	const sedCmd = "sed $'no\\u0005f/../sed' $'-i\\u0000' 's/a/b/' zone_dir/marker.md"
 	// the name word: the modern reading truncates to "no" (nothing
 	// dispatches), the pre-4.2 reading resolves to sed through the
-	// literally-named no+u0005f entry.
-	if err := os.MkdirAll(filepath.Join(root, "no\\u005f"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	// literally-named no+u0000p entry.
+	const sedCmd = "$'no\\u0000p/../sed' $'\\u002di' 's/a/b/' zone_dir/marker.md"
 	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": sedCmd})
 	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
 		t.Errorf("sed in place own generation: decision=%q reason=%q, want allowed — the executing generation's option reading is the literal escape text, an invalid option: sed touches nothing", sedCmd, r)
