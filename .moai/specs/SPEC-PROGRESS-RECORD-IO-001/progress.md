@@ -42,7 +42,17 @@ stopped before M2; card t1598, base a2a184ad3)
   default-applied). MP-1~MP-9 clean results preserved. AC-PRI-008 made branch-conditional (the
   `victim-overwrite` → 0 predicate is route-(i)-only; route (ii) requires the honest harm class
   named).
-- Ready for plan-audit: plan-audit-3 delta re-audit pending (before run re-entry).
+- **Plan-audit round 3: FAIL 0.94 — single blocking finding N4** (`.moai/reports/t1598/plan-audit-3.md`,
+  HEAD e2eaaa918): the amendment's cross-layer sweep missed plan.md itself — §A Context and
+  §F M2 still instructed the route-(i) work verbatim (Go-native no-exec seeder; AC-PRI-009
+  wiring; the measured-unachievable family+grep gate). N4 fix applied: §A corrected to the
+  measured state (route (ii) adopted via Q2; probe ad9ba32b2 measured no writable pure-Go
+  fd-xattr route; honest residuals named), §F M2 re-scoped to the route-(ii) disposition record
+  + F15/F16 guard maintenance under the `-skip` anchor (no implementation, no promotion, no
+  exec-count grep; the implementation ACs dispositioned NOT-EVIDENCE, not restated as tasks).
+  Everything else verified sound by round 3 — untouched.
+- Ready for plan-audit: plan-audit-4 delta re-audit pending (N4 hunks only, before run
+  re-entry).
 
 ## §E.2 Run-phase Evidence
 

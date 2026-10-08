@@ -7,11 +7,15 @@
   (`internal/runtime/progress_metadata_darwin.go`) shells out (`chmod -N` + `cp -p`) to seed
   mode/ACL/xattr, opening a name-swap→symlink→victim-overwrite window that the post-checks can
   only detect, not prevent.
-- The fix must be Go-native and fd-anchored; the acceptance target is the held three-axis family
-  executed with `PATH=""`. Everything else about the replace (fd holding, swap semantics, close
-  hygiene) is landed on the base and is preserved, not redesigned.
-- The darwin route is UNMEASURED — the plan's first milestone exists to measure it before any
-  implementation decision is made.
+- **Route (ii) is ADOPTED (decision-index Q2, leader ruling (a) — overridable by an operator
+  ruling)**: the exec-based darwin seeder is KEPT; the residual is re-documented at its measured
+  harm class. The M1 probe (ad9ba32b2) measured no writable pure-Go fd-xattr route — the
+  `com.apple.system.*` xattr namespace is EPERM-gated for non-root, and the inert
+  `kauth-filesec` name carries no enforced ACL on APFS. The honest residuals: the exec-based
+  seeder's name-swap→symlink→victim-overwrite microsecond window (bounded by the pre/post
+  checks) and the delete-denied rename residual per decision-index Q5. Everything else about the
+  replace (fd holding, swap semantics, close hygiene) is landed on the base and is preserved,
+  not redesigned.
 
 ## §B Known Issues
 
@@ -90,33 +94,27 @@ artifact exists).
 Gate: the fork branch is selected WITH recorded evidence, or Q2 is escalated. No implementation
 starts on an unmeasured route.
 
-### M2 — RED then GREEN: Go-native darwin seeder (cycle_type: tdd, Priority High)
+### M2 — Route-(ii) disposition record (cycle_type: tdd, Priority High)
 
-- **RED**: promote the held family into `internal/runtime` verbatim (darwin build tag). Run
-  `go test -run TestAppendProgressRecordPreservesAllMetadataAxes ./internal/runtime/` on the
-  PRE-fix tree; capture verbatim FAIL + exit code + tree SHA into `progress.md` §E.2. RED is
-  red-by-construction (empty `PATH` defeats `exec.Command` lookup of `chmod`/`cp`); the
-  observation confirms it for the right reason.
-- **GREEN**: implement the seeder per M1's measured route — fd-anchored, Go-native, no exec.
-  Preserve the strip-inherited-ACL-first ordering (the Go analogue of `chmod -N`, or the
-  blob-overwrite posture mirroring the linux seeder), the abort/fail-closed contract (no
-  mode-only fallback), and the `swapped`-flag semantics untouched.
-- **fd-anchoring guard (AC-PRI-009 — mutant-killer, D1)**: `TestAppendProgressRecordRealSeedMidSwap`
-  — a `seedFileMetadataFn` wrapper performs a MID-SEED name swap (rename the temp away, plant a
-  symlink to a victim file at the temp's name) and then delegates to the REAL darwin seeder.
-  Assert: the replace fails closed AND the victim's content AND metadata are untouched. Unlike
-  `TestAppendProgressRecordTempSwapFailsClosed` (`audit_ceiling_replace_test.go:174-182`), which
-  stubs the seeder, this observes the REAL implementation: a Go-native seeder that re-opens the
-  swapped NAME for its writes (`unix.Setxattr` is path-based — the natural mutant shape) follows
-  the symlink and is caught here. Characterization posture — it passes on the current seeder
-  (the pre-check rejects the symlink) and MUST keep passing post-fix; wired into M2's GREEN gate
-  and M3's sweep.
-- **Refactor**: remove the exec path and the pre/post name-based re-checks it required (the
-  window they guarded is eliminated by construction); update the ruling (i) comment per M3
-  step 3's pinned note content.
+Adopted Q2 ruling (a): keep the exec-based darwin seeder; re-document the residual at its
+measured harm class. M2 records the disposition — NO seeder implementation, NO held-family
+promotion, NO exec-count grep. The RED observation already exists as the recorded §E.2
+measurement (the plan-audit round-1 overlay re-execution, tree c404a0af4); the in-package
+landing is dispositioned alongside the family.
 
-Gate: the promoted family passes with `-race -count=2`; `grep -c "exec.Command"
-internal/runtime/progress_metadata_darwin.go` returns 0.
+- **Disposition record**: the Q2 verdict record stands in `progress.md` §E.2 (landed at the
+  plan-phase amendment; M2 verifies it is present and cites it) — leader ruling (a), overridable
+  by an operator ruling; M1 probe citation ad9ba32b2; the dispositioned AC set
+  AC-PRI-003/004/009 per the acceptance §D table. The implementation ACs are NOT tasks here.
+- **F15/F16 guard maintenance under the `-skip` anchor (AC-PRI-005)**:
+  `go test -race -count=2 -v -run '^TestAppendProgressRecord'
+  -skip '^TestAppendProgressRecordPreservesAllMetadataAxes$' ./internal/runtime/` → ok, zero
+  SKIP; the held-family content hash + tree SHA stay recorded in §E.2 (round-2 debt).
+- Hands to M3 (the re-documentation, step 3) and M4 (GOOS-tagged observation).
+
+Gate: the disposition record is present in §E.2 AND the F15/F16 guard family passes with the
+`-skip` anchor. The implementation ACs (AC-PRI-003/004/009) are dispositioned NOT-EVIDENCE per
+the acceptance §D table — they are not tasks in this milestone.
 
 ### M3 — Regression sweep + disposition (cycle_type: tdd, Priority Medium)
 
