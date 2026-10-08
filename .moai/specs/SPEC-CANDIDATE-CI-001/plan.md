@@ -165,7 +165,7 @@ Verification command:
 `yamllint -s .github/workflows/ci.yml` (or the repo's parse guard equivalent) plus
 `git grep -n "ci/\*\*" .github/workflows/ci.yml` showing the trigger and concurrency rows.
 
-### M4 — Landing gate + red auto-hold (P1)
+### M4 — Landing gate + red per-card hold (P1)
 
 Files touched:
 - `internal/cli/integration_merge.go` — replace the LOUD-refusal LandingCheck placeholder
@@ -173,19 +173,32 @@ Files touched:
   green + ancestry; refuse cause 5 otherwise.
 - `internal/factory/candidate_record.go` — verdict observation update path (REQ-CCI-010):
   read CI run state via the gh surface, write verdict + run identity + observed-at.
-- `internal/factory/integration_window_policy.go` (or the policy record's existing home) —
-  red-verdict auto-hold writer (REQ-CCI-012), the CompletePostMergeHold shape.
+- `internal/cli/integration.go` (acquire verb) — the card-aware candidate precondition
+  (REQ-CCI-012's per-card hold): when the ACQUIRING card's candidate record reads red,
+  refuse naming card + verdict + pinned SHA BEFORE any window-record mutation — the
+  settings-drift precondition's position and shape (integration.go:427-436). NO shared
+  `IntegrationWindowPolicy` write: the policy hold is card-blind by measurement
+  (integration_lock.go:416 refuses every acquire regardless of `want.Card`;
+  TestAcquireUnderHoldRefusesNamingReason and
+  TestAcquireWaitUnderHoldOnEmptyWindowMustEnqueueNotGrant both PASS), so a global hold
+  would freeze green-candidate cards against AGENTS.local.md:197. The signature needs NO
+  extension — `want.Card` already travels; extending the factory hold branch on
+  `want.Card` is the sanctioned fallback only.
 
 Test families: `go test ./internal/factory/ -run '^(TestLandingCheck|TestCandidateVerdict)$'`
-(green admits past gate 5; red/missing/stale refuse with MergeExitLandingRefused; red
-writes the policy hold naming the card — the run phase creates `TestLandingCheck` and
-`TestCandidateVerdict` beside the existing family); `go test ./internal/factory/ -run '^(TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepPreMergeCausesReleaseWithDistinctCodes)$'`
+(green admits past gate 5; red/missing/stale refuse with MergeExitLandingRefused — the
+run phase creates `TestLandingCheck` and `TestCandidateVerdict` beside the existing
+family); `go test ./internal/cli/ -run '^TestCandidateAcquirePrecondition$'` (the per-card
+hold: card A red → A's acquire refused with record+policy byte-unchanged; card B green
+acquires and merges unaffected in the same state; a green re-candidate clears the hold —
+the run phase creates `TestCandidateAcquirePrecondition` following the
+`acquireSettingsDriftPrecondition` test shape); `go test ./internal/factory/ -run '^(TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepPreMergeCausesReleaseWithDistinctCodes)$'`
 (regression: the 13-cause gate order unchanged, exit codes 1-15 stable — the two EXISTING
 contract tests at internal/factory/integration_merge_step_test.go:210 and :320; the full
 `TestMergeStep*` family of 22 runs in the ordinary suite).
 
 Verification command:
-`go test ./internal/factory/ ./internal/cli/ -run '^(TestLandingCheck|TestCandidateVerdict|TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepPreMergeCausesReleaseWithDistinctCodes|TestIntegrationCandidate)$' -count=1`
+`go test ./internal/factory/ ./internal/cli/ -run '^(TestLandingCheck|TestCandidateVerdict|TestCandidateAcquirePrecondition|TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepPreMergeCausesReleaseWithDistinctCodes|TestIntegrationCandidate)$' -count=1`
 
 ### M5 — Guard bundle job + candidate vet legs (P2)
 

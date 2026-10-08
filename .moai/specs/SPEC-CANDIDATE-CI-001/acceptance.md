@@ -205,14 +205,26 @@ creates `TestCandidateRecord`).
   internal/factory/integration_merge_step.go:43) and the window releases (pre-merge
   cause class).
 
-## AC-CCI-012-1 — Red candidate auto-holds (release-blocking)
+## AC-CCI-012-1 — Red candidate holds the OWNING card only (release-blocking; per-card)
 
-- When: a candidate verdict is observed red.
-- Then: the integration window policy record reads hold, its reason names the card and
-  the red verdict, and a subsequent `integration merge --card <id>` is refused by the
-  landing gate (AC-CCI-011-2) until a re-candidate for the same pinned SHA reads green.
-  Proven by the policy-writer test in M4's family; the policy-record shape is
-  `CompletePostMergeHold`'s (integration_merge_step.go:575-582).
+- When: a candidate verdict is observed red for card A.
+- Then:
+  (a) card A's `integration acquire --card A` refuses naming card A, the red verdict,
+  and the pinned SHA, with the window record AND the window policy byte-unchanged
+  (the shared hold is never written by a candidate verdict);
+  (b) NON-INTERFERENCE: a second card B whose candidate is green acquires the window and
+  merges unaffected in the same state — one card's red must not freeze another card's
+  green (AGENTS.local.md:197: 락은 병합을 직렬화하는 장치이지 수리를 직렬화하는 장치가
+  아니다);
+  (c) card A's own merge attempt refuses with cause 5 (AC-CCI-011-2);
+  (d) a re-candidate for card A producing a green verdict clears the hold.
+- Why not the shared policy: the policy-hold refusal is card-blind by measurement —
+  internal/factory/integration_lock.go:416 refuses every acquisition regardless of
+  `want.Card`, and TestAcquireUnderHoldRefusesNamingReason +
+  TestAcquireWaitUnderHoldOnEmptyWindowMustEnqueueNotGrant (both PASS) pin that
+  blanket-refusal shape. Proven by `TestCandidateAcquirePrecondition` in M4's family
+  (the run phase creates it following the `acquireSettingsDriftPrecondition` test
+  shape).
 
 ## AC-CCI-013-1 — Single recorded retry (release-blocking)
 

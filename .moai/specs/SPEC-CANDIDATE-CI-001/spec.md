@@ -210,13 +210,36 @@ still descends from that pinned SHA, and whose verdict is `green`. A red, missin
 stale candidate shall refuse the merge with cause 5 (`MergeExitLandingRefused`,
 internal/factory/integration_merge_step.go:43).
 
-### REQ-CCI-012 — Red-candidate auto-hold (Event-driven)
+### REQ-CCI-012 — Red-candidate per-card hold (Event-driven)
 
-When the candidate verdict for a card is observed red, the card shall be held out of the
-integration window automatically: the integration window policy record shall read `hold`
-naming the card and the candidate verdict, and the card shall not enter the window until a
-re-candidate produces a green verdict (the same policy-record shape
-`CompletePostMergeHold` writes, internal/factory/integration_merge_step.go:575-582).
+When the candidate verdict for a card is observed red, the hold shall be PER-CARD state
+carried by the card's own candidate record — never a mutation of the shared integration
+window policy. Enforcement:
+
+- The owning card's merge shall refuse (REQ-CCI-011's landing check — per-card by
+  construction, keyed to the card and its pinned SHA).
+- The owning card's window acquisition shall refuse while its candidate reads red: the
+  acquire path shall run a card-aware candidate precondition, in the same position and
+  shape as the existing settings-drift precondition that runs before any window-record
+  mutation (internal/cli/integration.go:427-436), and its refusal shall name the card,
+  the red verdict, and the pinned SHA — writing neither the window record nor the window
+  policy.
+- The shared `IntegrationWindowPolicy` hold (the card-blind refusal at
+  internal/factory/integration_lock.go:416, which rejects every acquisition regardless of
+  `want.Card`; measured green by TestAcquireUnderHoldRefusesNamingReason and
+  TestAcquireWaitUnderHoldOnEmptyWindowMustEnqueueNotGrant, both PASS) shall remain
+  reserved for existing integration failures (the post-merge holds,
+  integration_merge_step.go:575-582). A candidate verdict shall never write it: a global
+  hold would freeze cards whose candidates are green, colliding with the serialization
+  discipline AGENTS.local.md:197 (락은 병합을 직렬화하는 장치이지 수리를 직렬화하는
+  장치가 아니다).
+- A re-candidate for the card producing a green verdict clears the per-card hold.
+
+Seam note (measured): the card argument already reaches the acquire path
+(`want.Card`, internal/cli/integration.go:460), so the precondition needs NO
+`AcquireIntegrationWindow` signature extension. Where the run phase instead extends the
+factory hold branch itself to discriminate on `want.Card`, that extension is the
+sanctioned fallback — the requirement is the per-card observable, not the seam.
 
 ### REQ-CCI-013 — Known-flaky single retry (Ubiquitous)
 

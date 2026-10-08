@@ -114,3 +114,28 @@ owns.
 Reason: the anchors are already in the tree, cited by SPEC ID. Honoring them costs one
 disclosure paragraph; renaming costs a follow-up edit to committed factory code and a
 review round. All citations stay SPEC-scoped, which is the convention anyway.
+
+## D10 — The red-candidate hold is per-card record state, never the shared window policy
+
+Decision: a red candidate holds ONLY its owning card, enforced at two per-card points —
+the landing check (already keyed to card + pinned SHA) and a card-aware acquire
+precondition in the verb layer, in the settings-drift precondition's position
+(internal/cli/integration.go:427-436). The shared `IntegrationWindowPolicy` is never
+written by a candidate verdict.
+
+Alternatives: (a) flipping the shared policy to hold on a red candidate (the original
+REQ-CCI-012 shape) — REJECTED on measurement: the policy-hold refusal is card-blind
+(internal/factory/integration_lock.go:416 rejects every acquisition regardless of
+`want.Card`; TestAcquireUnderHoldRefusesNamingReason and
+TestAcquireWaitUnderHoldOnEmptyWindowMustEnqueueNotGrant both PASS = global hold is a
+blanket refusal), so one card's red candidate would freeze cards holding green
+candidates — colliding with AGENTS.local.md:197 (락은 병합을 직렬화하는 장치이지 수리를
+직렬화하는 장치가 아니다); (b) extending the factory hold branch to discriminate on
+`want.Card` — workable (the field already travels, integration.go:460) but it couples
+the window lock to candidate-record reads inside a serialized mutation; kept as the
+sanctioned fallback, not the seam.
+
+Reason: the candidate record IS the per-card state — keyed (card, pinned SHA), it
+answers "is THIS card held" without touching anything shared. The precondition seam
+reuses the one card-aware pre-record-mutation shape the acquire verb already has, so
+the window record, the window policy, and the queue are untouched by candidate verdicts.
