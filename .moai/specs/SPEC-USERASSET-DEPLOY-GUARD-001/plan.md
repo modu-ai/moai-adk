@@ -37,7 +37,7 @@
 
 ## §E Self-Verification
 
-- 각 마일스톤 완료 판정: 해당 AC의 재현 테스트 GREEN + 영향 패키지 회귀 스위트 GREEN + 커버리지 기준(REQ-NFR-003).
+- 각 마일스톤 완료 판정: 해당 AC의 재현 테스트 GREEN + 영향 패키지 회귀 스위트 GREEN + 커버리지 기준(REQ-NFR-001).
 - M0 산출물(RED 배터리 관측 기록)이 acceptance.md의 RED-now 칸을 채운다 — verbatim 출력은 progress.md §E.2로.
 - 리팩터 드리프트 가드: 계획 파일 대비 실제 수정 30% 초과 시 재계획.
 

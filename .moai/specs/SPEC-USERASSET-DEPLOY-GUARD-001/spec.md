@@ -85,7 +85,7 @@ related_specs: [SPEC-USER-ASSET-INSTALL-001, SPEC-PROGRESS-RECORD-IO-001]
 
 ### 3.8 비기능 요구사항
 
-- REQ-NFR-003: **While** 본 SPEC의 수리가 착지하는 동안, the codebase shall 영향 패키지(internal/userassets, internal/cli 해당 파일, internal/template, internal/web)의 커버리지를 85% 이상으로, 저널·잠금·변환의 critical 경로를 90% 이상으로 유지한다.
+- REQ-NFR-001: **While** 본 SPEC의 수리가 착지하는 동안, the codebase shall 영향 패키지(internal/userassets, internal/cli 해당 파일, internal/template, internal/web, internal/hook)의 커버리지를 85% 이상으로, 저널·잠금·변환의 critical 경로를 90% 이상으로 유지한다.
 
 ## 4. 좌표 상태 — 관측 vs 릴레이 (요약)
 
@@ -116,7 +116,7 @@ related_specs: [SPEC-USER-ASSET-INSTALL-001, SPEC-PROGRESS-RECORD-IO-001]
 ## 5. 성공 기준
 
 - §3의 모든 REQ에 1:1 대응하는 기계 판정 가능한 AC가 acceptance.md에 존재하고, 각 AC의 재현 테스트가 M0에서 RED로 관측된 뒤 해당 마일스톤에서 GREEN으로 전환된다.
-- REQ-NFR-003의 커버리지 기준 충족.
+- REQ-NFR-001의 커버리지 기준 충족.
 - 열린 질문(§7)이 plan-audit에서 회신·기록된다.
 
 ## 6. Out of Scope
@@ -126,7 +126,7 @@ related_specs: [SPEC-USER-ASSET-INSTALL-001, SPEC-PROGRESS-RECORD-IO-001]
 - 형제 카드 t1594 (t1547 r5–r12 잔여 축) — "발행 단위 분리"로 인접 분할된 카드다. 본 SPEC이 흡수하지 않는다.
 
 ### Out of Scope — 타 원장 이관분
-- t1560 게이트 이관분 — SPEC-PROGRESS-RECORD-IO-001 원장에 상호참조로 존속하며 본 SPEC이 중복 소관을 만들지 않는다.
+- t1560 게이트 이관분 — SPEC-PROGRESS-RECORD-IO-001 원장에 상호참조로 존속하며 본 SPEC이 중복 소관을 만들지 않는다. 참고: 그 SPEC은 카드 t1598에서 발급 진행 중(in-flight)이며 아직 main에 미착지라 본 트리 카탈로그에는 없다 — 착지 전까지 상호참조는 명목상 참조다.
 - t1547 r10 회람 중 `agentfm.go:126` — :128 동일 결함의 좌표 이동으로 원장에서 중복 제외되었다(각주 승계).
 
 ### Out of Scope — 기능 확장 및 부활
