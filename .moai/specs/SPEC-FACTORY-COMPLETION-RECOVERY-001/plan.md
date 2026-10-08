@@ -30,8 +30,8 @@ go build ./... && GOOS=windows GOARCH=amd64 go build ./...
 
 # 3. 소관 패키지 기준선 (신규 결함과 기존 baseline 구분)
 # pipefail 필수: `| tail -5` 단독은 테스트 FAIL을 tail의 exit 0으로 가린다(게이트 실측 — FAIL 출력+pipeline_exit=0).
-set -o pipefail; go test ./internal/cli -run 'TestAutoDone|TestTodo' 2>&1 | tail -5
-set -o pipefail; go test ./internal/homestate -run 'TestFR_|TestLease|TestTransition|TestReconcile' 2>&1 | tail -5
+set -o pipefail; go test ./internal/cli -run '^(TestAutoDone.*|TestTodo.*)$' 2>&1 | tail -5
+set -o pipefail; go test ./internal/homestate -run '^(TestFR_.*|TestLease.*|TestTransition.*|TestReconcile.*)$' 2>&1 | tail -5
 
 # 4. t1513 충돌 사전 확인 — 슬롯 술어 관련 기존 테스트 목록
 grep -rln 'factorySerialSlotHeld\|SerialSlot' internal/cli internal/homestate --include='*_test.go'
@@ -104,7 +104,7 @@ manager-develop-prompt-template.md §E 형식 — E1 AC 매트릭스(acceptance.
 
 ## §G — Anti-patterns to avoid
 
-- `go test -run <새 테스트>`가 `[no tests to run]`으로 exit 0 — 미측정을 통과로 읽는 것(verification-completeness §1.1). 기준 판정은 스윕 카운트 확인을 포함한다.
+- `go test -run '^<새 테스트 이름>$'`가 `[no tests to run]`으로 exit 0 — 미측정을 통과로 읽는 것(verification-completeness §1.1). 기준 판정은 스윕 카운트 확인을 포함한다.
 - 만료 재검증을 transaction 밖에서 하고 lock 안에서 결과만 적용 — 재검증은 transaction 안에서(REQ-FCR-015).
 - reaper를 run 선택용 reconciler(`ReconcileActiveRuns`)에 붙이는 것 — 감사 리포트가 명시한 금지다. 리더 유지관리 경로에 둔다.
 - watchdog을 자동 완료·자동 해제로 구현 — 리더 재판정 요구까지다(REQ-FCR-009/016).

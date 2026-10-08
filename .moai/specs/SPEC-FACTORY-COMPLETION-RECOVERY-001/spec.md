@@ -118,7 +118,7 @@ assigned 28·picked 5 중 정상 진행이 끊긴 행이 수동 복구(abandon·
 
 ## §F — Verification sample
 
-`go test ./internal/cli -run 'TestLeaderReceiptGate'`와 `go test ./internal/homestate -run 'TestExpiredLeaseReaperAllRuns'`가 각각 M1·M2의 대표 판정이다. 전체 기준은 acceptance.md — `[no tests to run]`은 통과가 아니라 미측정이다(§0).
+`go test ./internal/cli -run '^(TestLeaderReceiptGate.*)$'`와 `go test ./internal/homestate -run '^TestExpiredLeaseReaperAllRuns$'`가 각각 M1·M2의 대표 판정이다. 전체 기준은 acceptance.md — `[no tests to run]`은 통과가 아니라 미측정이다(§0).
 
 ## §G — Out of Scope
 
