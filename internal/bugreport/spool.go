@@ -367,10 +367,13 @@ func BumpSpoolGeneration() error {
 	defer func() { _ = release() }()
 	gen, err := spoolGenerationFn()
 	if err != nil {
-		// One retry: the bounded read's time box trips on transient
-		// scheduler starvation under a loaded machine, not on a persistent
-		// condition — a fresh read gets a fresh goroutine and a calm
-		// scheduler. A persistent failure (a corrupt marker) fails both.
+		// One retry with a yielding pause: the bounded read's time box
+		// trips on transient scheduler starvation under a loaded machine,
+		// not on a persistent condition — the pause surrenders the core
+		// the starved read goroutine needs, so the fresh read starts on a
+		// calmer scheduler. A persistent failure (a corrupt marker) fails
+		// both attempts and propagates.
+		time.Sleep(5 * time.Millisecond)
 		gen, err = spoolGenerationFn()
 	}
 	if err != nil {
@@ -514,12 +517,14 @@ const (
 // failed bump FAILS THE PURGE — dropping is not the acceptable outcome —
 // so the budget is generous. Under 32-way contention with the race
 // detector a live holder's section runs tens of ms, and the old 8×5ms
-// budget exhausted while every holder was alive, failing concurrent bumps
-// whose only defect was arriving during a rush (4-dim audit major, card
-// t1606: 6 of 8 repeated -race -count=5 runs failed on claim exhaustion).
+// budget exhausted while every holder was alive (4-dim audit, card t1606:
+// 6 of 8 repeated -race -count=5 runs failed on claim exhaustion); even
+// the 40×10ms follow-up failed once under a fully loaded machine, so the
+// budget is a full second — the bump is operator-triggered, and waiting
+// costs nothing next to a failed purge.
 const (
-	generationSectionRetries = 40
-	generationSectionDelay   = 10 * time.Millisecond
+	generationSectionRetries = 50
+	generationSectionDelay   = 20 * time.Millisecond
 )
 
 // claimSpoolSection takes the spool's critical section, returning its

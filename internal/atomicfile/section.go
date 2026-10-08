@@ -108,16 +108,29 @@ const reclaimSuffix = ".reclaim"
 // included — so contention self-propagated the chain and the depth-3 cap
 // refused it permanently: a single dead reclaimer wedged the lock for the
 // life of the boot. The non-recursive guard claim kills the
-// self-propagation: a live rival owns its disposal (at most ONE transient
-// guard level spawns, and a fresh guard claims immediately), and a dead
-// rival's disposal goes through the guarded path, so concurrent disposers
-// stay serialized and any dead chain unwinds one level per walk.
+// self-propagation: a single walk spawns at most one transient guard
+// level PER blocked rival disposal (a live rival spawns none — it owns
+// its disposal and the walk refuses; a dead rival's disposal claims its
+// own guard, one level deeper, released as soon as that disposal ends),
+// and under N concurrent walkers those levels can stack N deep — the
+// bound that matters is maxReclaimWalkDepth, read from the path, not
+// this attempt count.
 const maxReclaimGuardAttempts = 2
 
 // reclaimBackoff is the guard claim's pause between attempts — the same
-// delay ClaimSection's callers pass for a guard claim, named here because
-// claimGuard's live-rival backoff uses it inline.
+// delay ClaimSection's callers pass for a guard claim, named so both call
+// sites share one value.
 const reclaimBackoff = 2 * time.Millisecond
+
+// maxReclaimWalkDepth bounds how deep a marker chain the reclaim walk
+// follows (round-3 4-dim finding: the former maxReclaimDepth(3) removal
+// left the recursion bounded only by filesystem path length — a
+// pathological on-disk chain drives equally deep synchronous recursion
+// before ENAMETOOLONG refuses). 32 levels ≈ 256 path bytes of suffix:
+// far past any chain real process deaths accumulate, and a chain past it
+// is an operator-cleanup wedge exactly like the old cap's, without
+// capping the reclaimable ones.
+const maxReclaimWalkDepth = 32
 
 // ClaimSection takes the advisory lock at path, returning its release
 // func. Contention retries within the given budget, breaking the lock only
@@ -259,6 +272,10 @@ func claimGuard(ctx context.Context, guardPath string) (func() error, bool) {
 		if err == nil {
 			release, lerr := claimAndLabel(guardPath, 0o600)
 			if lerr != nil {
+				// A label-write failure is not diagnosable from a bare
+				// false — surface it (round-3 4-dim finding: the silent
+				// swallow left this path invisible in logs).
+				slog.Warn("lock section: guard claim failed to label the guard", "guard", guardPath, "err", lerr)
 				return nil, false
 			}
 			return release, true
@@ -320,11 +337,16 @@ func claimGuard(ctx context.Context, guardPath string) (func() error, bool) {
 		}
 		release, lerr := claimAndLabel(guardPath, 0o600)
 		if lerr != nil {
+			slog.Warn("lock section: guard claim failed to label the guard", "guard", guardPath, "err", lerr)
 			return nil, false
 		}
 		return release, true
 	}
-	slog.Warn("lock section: guard claim exhausted its attempts", "guard", guardPath)
+	// Attempt exhaustion is normally the benign live-rival case — normal
+	// contention the caller is designed to back off from — so it stays
+	// silent; logging it here wrote a Warn per refusal under sustained
+	// contention (round-3 4-dim finding). Genuine failures Warn where they
+	// happen (the failed walk above, the label failure).
 	return nil, false
 }
 
@@ -348,6 +370,11 @@ func claimAndLabel(path string, perm os.FileMode) (func() error, error) {
 // burning its whole budget.
 func BreakStaleLockContext(ctx context.Context, path string) bool {
 	if strings.HasSuffix(path, reclaimSuffix) || strings.HasSuffix(path, breakingSuffix) {
+		if depth := strings.Count(path, reclaimSuffix); depth >= maxReclaimWalkDepth {
+			slog.Warn("lock section: reclaim chain past the walk depth; refusing",
+				"lock", path, "depth", depth)
+			return false
+		}
 		// Reclaiming a marker — a breaker's (.breaking) or a reclaimer's
 		// (.reclaim): hold ITS OWN guard marker first — delete only on
 		// creation success (review-gate residual: the .reclaim path's
@@ -368,7 +395,7 @@ func BreakStaleLockContext(ctx context.Context, path string) bool {
 		defer func() { _ = release() }()
 		return breakStaleLockBare(path)
 	}
-	release, err := ClaimSection(ctx, path+breakingSuffix, 0o600, 2, 2*time.Millisecond)
+	release, err := ClaimSection(ctx, path+breakingSuffix, 0o600, 2, reclaimBackoff)
 	if err != nil {
 		return false // a live breaker owns the break, or the caller's context is done
 	}

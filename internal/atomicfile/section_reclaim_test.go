@@ -168,15 +168,12 @@ func TestDeadChainBlockedByLiveTailWalksLinearly(t *testing.T) {
 	dir := t.TempDir()
 	markerPath := filepath.Join(dir, "queue.lock.breaking")
 	previousBootFixture(t, markerPath)
-	chain := []string{markerPath}
 	p := markerPath
 	for range 8 {
 		p += reclaimSuffix
 		previousBootFixture(t, p)
-		chain = append(chain, p)
 	}
 	liveOwnerFixture(t, p+reclaimSuffix) // the live tail blocking the chain
-	chain = append(chain, p+reclaimSuffix)
 
 	reads := 0
 	prevRead := sectionRereadFn
