@@ -392,7 +392,20 @@ notes: 13/13 ACs PASS (5 as committed regression guards with recorded not-reprod
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_Pending sync-phase (manager-docs)._
+sync_complete_at: 2026-10-09T06:42+09:00
+sync_commit_sha: pending-backfill
+sync_status: complete
+changelog_entry_position: [Unreleased] §Fixed — single SPEC-DISPATCH-INTEGRITY-001 entry (newest-first), covering the four user-observable behaviors (duplicate-member bundle refusal, cross-process `.moai-store-lock` + abandonment-aware waits, read-only preview without write access, merging-retry lease validation)
+b12_self_test_a: PASS — pre-emission `grep -c 'SPEC-DISPATCH-INTEGRITY-001' CHANGELOG.md` = 0 (exit 1) before the append; one entry emitted, no duplicate
+b12_self_test_b: PASS — reserved-token-aware AC counter on acceptance.md returned live=13 excluded=0 ambiguous=0; the entry cites 13 acceptance criteria AC-DI-001..013 (matches §E.3 ac_pass_count 13; acceptance.md is the SSOT)
+b12_self_test_c: PASS — every file path claimed in the entry verified by `ls`/`git diff --name-only 81786284e..HEAD`: internal/cli/factory_bundle.go, internal/cli/memory_fold.go, internal/cli/memory_fold_lock_unix.go, internal/cli/memory_fold_lock_windows.go, internal/cli/review_observation_test.go (guard test for the merging-retry lease validation; the validation itself landed pre-card in c8a41a583/card t1533 and has 0 prior CHANGELOG mentions)
+frontmatter_status_transitions.in_progress_to_implemented: merged into the sync commit (3-phase close)
+frontmatter_status_transitions.implemented_to_completed: merged into the sync commit (3-phase close — no separate Mx commit)
+spec_frontmatter: status in-progress → completed; updated 2026-10-09 (unchanged — already the sync date)
+plan_acceptance_frontmatter: neither artifact carries a frontmatter block (stateless per the schema; omission permitted), so no `updated:` refresh was applicable
+canary_compliance_check: N/A (this SPEC defines no forward-looking policy carrying its own sync tests)
+mx_tag_validation: sync sub-step — the touched production files carry @MX:WARN on withFoldStoreLock (with @MX:REASON, cross-process file lock) and @MX:NOTE/@MX:ANCHOR annotations from the run phase; no new tags owed by the sync edit (docs-only change), no stale tags found on the changed symbols
+readme_docs_judgment: no README/docs-site staleness — the 4-locale command tables list `moai memory <doctor|archive>` only (`moai memory fold` and the factory verbs are not README-documented), and none of the four behaviors changes a documented surface; no edit emitted (edit-for-its-own-sake avoided)
 
 ## §F Phase 4 Mode Selection
 
