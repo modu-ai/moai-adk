@@ -1,7 +1,8 @@
 # SPEC-PROGRESS-RECORD-IO-001 — progress record
 
-status: in-progress (M1 probe complete 2026-10-08, route (ii) measured — Q2 fired, milestone
-stopped before M2; card t1598, base a2a184ad3)
+status: in-progress (M1 probe + route-(ii) run body complete 2026-10-08 — M2 gate verified, M3
+sweep + pinned disposition note landed, M4 CI protocol recorded; open items: F16 probe test
+unauthored, AC-PRI-008 source-level note, section-b-stale-cells debt; card t1598, base a2a184ad3)
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -122,6 +123,161 @@ carrier for the dispositioned ACs. The M1 evidence above is manager-develop's, u
   not committed).
 - AC-PRI-005 on route (ii) runs with `-skip '^TestAppendProgressRecordPreservesAllMetadataAxes$'`
   (N3 disposal).
+
+### M2 — route-(ii) gate verification (2026-10-08, measurements at tree 6abc63d30)
+
+- **Q2 disposition record: verified present in §E.2** — the sub-section "Q2 verdict record —
+  route (ii) ADOPTED (plan-phase amendment, 2026-10-08)" above carries ruling (a), the
+  OVERRIDABLE status, the M1 probe citation ad9ba32b2, and the dispositioned set
+  (AC-PRI-003/004/009 NOT-EVIDENCE). M2 cites it; it is not re-authored here.
+- **Held-family content hash + tree SHA duty (round-2 debt carrier) — both halves now
+  recorded**: `shasum -a 256 .moai/state/verify/t1598-prework/held-audit_ceiling_axes_test.go`
+  → `7b97c796d0243774a3781c52db9e0bd2463787f7ae30026c5d35a887a64ff381` (exit 0). Byte-identical
+  to M1's recorded value (M1 pinned tree f60b42fa8); re-verified this round at tree 6abc63d30 —
+  the file is unchanged across the plan-phase delta, and this re-verification tree SHA
+  (6abc63d30) completes the hash+tree pair.
+- **F15/F16 guard family (dispatch command, decisive)**:
+  `go test -race -count=1 -v -run 'TestAppendProgressRecordSwapKeepsForeignFile|TestAppendProgressRecordTempSwapFailsClosed|TestAppendProgressRecordPreservesACL|TestAppendProgressRecordPreservesXattr|TestAppendProgressRecordAclExactlyOriginal|TestAppendProgressRecordSeedCloseHygiene|TestAppendProgressRecordNewFileModeAppliesUmask' ./internal/runtime`
+  → exit 0; `ok  	github.com/modu-ai/moai-adk/internal/runtime	2.127s`; **6 RUN / 6 PASS /
+  ZERO SKIP lines**. Swept-set accounting (verification-completeness §1.1): the selector names
+  7 tests, 6 matched — `TestAppendProgressRecordSeedCloseHygiene` matched **zero** tests (the
+  name exists only in SPEC artifacts; see open items). The run is decisive for the 6 swept
+  guards and is NOT evidence for the unauthored probe. Full log:
+  `evidence/m2-guard-family-r1.txt`.
+- **Formal AC-PRI-005 decisive run (plan M2 guard-maintenance / M3 step 1 command)**:
+  `go test -race -count=2 -v -run '^TestAppendProgressRecord' -skip '^TestAppendProgressRecordPreservesAllMetadataAxes$' ./internal/runtime/`
+  → exit 0; `ok  	github.com/modu-ai/moai-adk/internal/runtime	3.882s`; **58 RUN (26 darwin
+  parent tests × count=2 + 3 subtests × 2), ZERO FAIL, ZERO SKIP**. The `-skip` anchor excluded
+  only the dispositioned RED family (zero matches — not committed, per the Q2 record). Platform
+  note: the family's 27th declared member `TestAppendProgressRecordOverwritesInheritedDefaultAcl`
+  is `//go:build linux`-tagged (`progress_metadata_linux_test.go:1`) and structurally cannot
+  execute on darwin — its decisive verdict is CI-owned (see M4). Full log:
+  `evidence/m3-family-formal-r2.txt`.
+
+### M3 — regression sweep + pinned disposition note (2026-10-08, measurements at tree 6abc63d30)
+
+- **Package regression (affected packages only)**:
+  `go test -race -count=1 -timeout 30m ./internal/runtime/...` → exit 0;
+  `ok  	github.com/modu-ai/moai-adk/internal/runtime	20.320s` +
+  `ok  	github.com/modu-ai/moai-adk/internal/runtime/gobin	1.535s`; ZERO SKIP. Subsumes
+  AC-PRI-006's named command (`go test -timeout 30m ./internal/runtime/`) — same suite under
+  stricter flags (`-race -count=1`) plus the gobin subpackage. Full log:
+  `evidence/m3-package-regression-r3.txt`.
+- **go vet matrix** (each exit 0, no output): `go vet ./internal/runtime/...` (darwin);
+  `GOOS=windows GOARCH=amd64 go vet ./internal/runtime/...`;
+  `GOOS=linux GOARCH=amd64 go vet ./internal/runtime/...`.
+- **gofmt**: `gofmt -l internal/runtime/` → empty list, exit 0 — all formatted. NO files touched
+  this round (records phase).
+- **Pinned disposition note (AC-PRI-008 route-(ii) branch — §E.2 carrier)**. The exec-based
+  darwin seeder is KEPT (Q2 ruling (a)); the following is the operative route-(ii) record:
+  - **Residual window `fd-verify→rename`**: the seeder's path-based steps (`chmod -N`, `cp -p`)
+    sit behind the held-fd pre-checks (`audit_ceiling.go:685/697/712`) and the seeder's own
+    immediate Lstat+fd-match pre/post checks (`progress_metadata_darwin.go:39-45, :52-58`). The
+    microsecond gap between the post-copy re-check and `cp`'s own open remains a
+    name-swap→symlink race in which **victim-overwrite stays possible** — named here as the
+    LIVE residual harm class (route-(ii) honesty: naming it is required, not stale). The window
+    cannot close on darwin without cgo (copyfile(3) is userspace; no fd-anchored ACL copy
+    exists).
+  - **kauth_filesec follow-up disposition**: M1 (ad9ba32b2) measured the inert
+    `kauth_filesec`-class name — a nil-error fd-set write to it leaves the enforced ACL
+    unchanged (the kernel ignores it on APFS) — and the EPERM-gated `com.apple.system.*`
+    namespace for non-root. A kauth_filesec reimplementation remains a follow-up-SPEC candidate
+    (source :18); excluded from this SPEC by decision-index Q4.
+  - **Rename-permission residual (`delete-denied`)**: a write-allowed/**delete-denied** ACL on
+    progress.md makes the atomic rename (`audit_ceiling.go:721`) fail EPERM where the
+    pre-repair in-place `os.WriteFile` (`:664`) succeeded, so no §G record lands. The
+    unwritable-dir/hardlink in-place fallback (`:641-643`, `:664`) is the noted future fix
+    shape (decision-index Q5, default-applied).
+  - **Route**: `route (ii)` is the adopted branch (decision-index Q2, leader ruling (a),
+    OVERRIDABLE by an operator 상위 전결; probe citation ad9ba32b2; §E.2 Q2 record above).
+- **AC-PRI-008 as-is source measurement** (the AC's greps against the kept seeder, verbatim —
+  the source comment is NOT edited this round; records-phase envelope. Command [1]'s pattern is
+  elided here to keep this §E.2 free of the stale token per the route-(ii) →0 predicate; the
+  byte-exact command text is acceptance.md §C AC-PRI-008 command [1], re-runnable as written):
+  ```
+  $ grep -c "<acceptance.md AC-PRI-008 command [1] pattern: the stale exec-exception token>" internal/runtime/progress_metadata_darwin.go
+  1                (exit 0 — stale framing still in source at :13)
+  $ grep -n "fd-verify" internal/runtime/progress_metadata_darwin.go
+  (no output, exit 1 — key absent)
+  $ grep -n "kauth_filesec" internal/runtime/progress_metadata_darwin.go
+  18:// seeder on darwin; a kauth_filesec reimplementation is a follow-up-SPEC
+  $ grep -n "delete-denied" internal/runtime/progress_metadata_darwin.go
+  (no output, exit 1 — key absent)
+  $ grep -n "route (ii)" internal/runtime/progress_metadata_darwin.go
+  (no output, exit 1 — key absent)
+  $ grep -c "victim-overwrite" internal/runtime/progress_metadata_darwin.go
+  1                (exit 0 — the F13-flagged residual at :38)
+  ```
+  The source-level predicate set (keys ≥1 each, stale count → 0) is therefore NOT met in source
+  as-is; the pinned note above carries the route-(ii) content at the record level — which is
+  the DoD's named evidence surface for AC-PRI-008 ("carry observed evidence in progress.md
+  §E.2"). Source-comment re-documentation stays OPEN (see open items).
+
+### M4 — GOOS-tagged CI observation protocol (recorded 2026-10-08, tree 6abc63d30; no runs dispatched)
+
+- **Decisive surface** (plan M4 / AC-CI-007): the `release-pr-multi-os.yml` 3-OS leg —
+  `go test -json -race -timeout 35m ./...` (linux+macos+windows). Surface verified present this
+  round: `.github/workflows/release-pr-multi-os.yml` exists; `workflow_dispatch:` trigger at
+  :16; the json/race/35m leg at :217. The justifying exclusions stand as measured in plan
+  phase: `ci.yml` is ubuntu-only (:94) and `pr-multi-os-gate.yml` tests only hook +
+  cli/worktree packages (:112) — no card-level CI surface runs the GOOS-tagged runtime
+  families.
+- **Trigger**: a `release/*`→`main` PR, or `workflow_dispatch` on the card branch. **This round
+  dispatches NOTHING and pushes NOTHING** — the decisive runs arrive via the landing flow
+  (card branch → local develop integration → leader batch push → release PR), and AC-CI-007's
+  run URL + per-family executed/skipped counts are recorded at that point.
+- **Recording rule** (restated for the landing flow): read the `-json` stream per family —
+  decisive-PASS requires an explicit per-test pass Action for EVERY test in the family; a
+  `skip` Action is recorded as SKIP and is NOT a PASS. Platform composition note from this
+  round's measurement: the family's linux-tagged member
+  (`TestAppendProgressRecordOverwritesInheritedDefaultAcl`, `//go:build linux`) executes ONLY
+  on the linux leg — per-OS executed counts differ by exactly that member, and each OS's count
+  is judged against its own platform's family set.
+- No local darwin run is cited as evidence for GOOS-tagged families (REQ-CI-008); the darwin
+  runs above are early local signals for the darwin leg only.
+
+### Open items + run-phase debts (route-(ii) run body, 2026-10-08)
+
+1. **`section-b-stale-cells` (N5, plan-audit-4) — OPEN.** plan.md §B :24/:27 carry route-(i)
+   vocabulary residue ("The core work item (M1 probe → M2 fix)" on the F14 row; "Re-documented
+   post-fix at the reduced harm class" on the residual row) against the operative route (ii).
+   Disposal owner: **plan-phase artifact edit, lane-routed post-run** (manager-spec
+   re-delegation) — this round does NOT edit plan.md or any plan-phase artifact. Non-operative
+   (summary-table cells only; §A / M2 / M3 step 3 / AC-PRI-008 are correct per plan-audit-4).
+2. **F16 close-hygiene probe unauthored — OPEN (orchestrator disposition).**
+   `TestAppendProgressRecordSeedCloseHygiene` (plan M3 step 4; AC-PRI-005 scenario member;
+   round-1 audit repair D4) has ZERO Go-code occurrences (repo-wide sweep this round:
+   SPEC-artifact mentions only — plan.md:135, acceptance.md:78, progress.md:29; zero
+   close-hygiene coverage under any other name). The landed F16 behavior (deferred close
+   `audit_ceiling.go:676-684`; close-before-rename `:716-720`) therefore has NO committed
+   regression guard, and both family commands above swept 6/7 named and 26/27 declared members
+   respectively. Authoring it is a test-file addition inside internal/runtime — outside this
+   round's records-only envelope; the runs above are decisive for the guards that exist. Needs
+   an orchestrator decision: focused test-authoring re-delegation, landing-flow follow-up, or
+   explicit debt disposition.
+3. **AC-PRI-008 source-level re-documentation — OPEN (same envelope).** The seeder doc comment
+   (`progress_metadata_darwin.go:11-20`) still carries the stale exec-exception framing
+   (grep -c → 1, verbatim block above); the route-(ii) content keys are carried by the pinned
+   note in §E.2. A comment-only edit inside internal/runtime was outside this round's envelope;
+   the close-phase reviewer owns the pinned-content review (the `ac-content-enforcement` debt,
+   plan-audit-4).
+4. **AC-CI-007 — PENDING the landing flow** (M4 protocol above). The repository-wide test
+   verdict is owned by CI on the project's integration branch and is PENDING at this record
+   time.
+
+**Route-(ii) AC status matrix (this round's evidence)**:
+
+| AC | Status under route (ii) | Evidence (this §E.2) |
+|----|-------------------------|----------------------|
+| AC-PRI-001 | PASS (standing) | M1 record: probe artifact + fork decision `route (ii)` + verbatim decisive output (landed ad9ba32b2) |
+| AC-PRI-002 | PASS (standing — recorded measurement) | Q2 record: overlay RED exit 1 (`exec: "chmod": executable file not found in $PATH`), tree c404a0af4 |
+| AC-PRI-003 | NOT-EVIDENCE (dispositioned) | Q2 record |
+| AC-PRI-004 | NOT-EVIDENCE (dispositioned) | Q2 record |
+| AC-PRI-005 | PASS-WITH-DEBT | Formal run exit 0, 58 RUN, zero FAIL/SKIP, `-skip` anchor per N3; open member: close-hygiene probe unauthored (open item 2) |
+| AC-PRI-006 | PASS | Package regression exit 0, ok ×2 (subsumes the AC's named command, stricter flags) |
+| AC-CI-007 | PENDING (CI-only) | M4 protocol recorded; decisive runs from landing flow; verdict PENDING at record time |
+| AC-PRI-008 | PASS-WITH-DEBT (record-level) | Pinned note (all content keys ≥1; victim-overwrite named live; stale framing absent from note); as-is source greps verbatim; source-level open (open item 3) |
+| AC-PRI-009 | NOT-EVIDENCE (dispositioned) | Q2 record |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
