@@ -646,6 +646,129 @@ PASS
 ok  	github.com/modu-ai/moai-adk/internal/cli	5.161s
 ```
 
+### EL-019 — TestReviewFindingFoldConcurrentWrite (GREEN post-M4 — defect 8a closed)
+
+- tree: c0a0d7cbd working tree with the M4 fix applied uncommitted; the fix
+  and this cell land together in the M4 commit (the replayable form from
+  that commit onward)
+- command: `go test ./internal/cli -run '^TestReviewFindingFoldConcurrentWrite$' -count=1 -v`
+- exit code: 0
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingFoldConcurrentWrite
+    review_observation_test.go:126: err=memory fold: MEMORY.md changed since the plan was computed — aborting without writing final bytes="concurrent author's new memory\n"
+--- PASS: TestReviewFindingFoldConcurrentWrite (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.137s
+```
+
+### EL-020 — TestReviewFindingFoldArchiveConcurrentWrite (GREEN post-M4 — arch-coverage debt, archive write path)
+
+- tree: c0a0d7cbd working tree with the M4 fix applied uncommitted (as
+  EL-019)
+- command: `go test ./internal/cli -run '^TestReviewFindingFoldArchiveConcurrentWrite$' -count=1 -v`
+- exit code: 0
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingFoldArchiveConcurrentWrite
+    review_observation_test.go:267: fold A err=memory fold: project_card_archive_2026_10.md changed since the plan was computed — aborting without writing archive="concurrent author's archive bytes\n"
+--- PASS: TestReviewFindingFoldArchiveConcurrentWrite (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.137s
+```
+
+### EL-021 — TestReviewFindingFoldGuardArchiveChange (GREEN post-M4 — arch-coverage debt, guard post-probe recheck)
+
+- tree: c0a0d7cbd working tree with the M4 fix applied uncommitted (as
+  EL-019)
+- command: `go test ./internal/cli -run '^TestReviewFindingFoldGuardArchiveChange$' -count=1 -v`
+- exit code: 0
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingFoldGuardArchiveChange
+    review_observation_test.go:321: fold A err=memory fold: project_card_archive_2026_10.md changed since the plan was computed — aborting without writing; card line in MEMORY=true archive=false
+--- PASS: TestReviewFindingFoldGuardArchiveChange (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.137s
+```
+
+### EL-022 — TestReviewFindingFoldInterleavedArchiveLoss (GREEN post-M4 — defect 8b closed, cross-process serialization)
+
+- tree: c0a0d7cbd working tree with the M4 fix applied uncommitted (as
+  EL-019); fold B's process made NO progress inside A's window (the bounded
+  wait expired with in-window=false — the lock held it), then completed
+  normally against the post-A store after A released; both completed folds'
+  lines are present exactly once and B's exit was observed after A's
+  transaction closed
+- command: `go test ./internal/cli -run '^TestReviewFindingFoldInterleavedArchiveLoss$' -count=1 -v`
+- exit code: 0
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingFoldInterleavedArchiveLoss
+    review_observation_test.go:215: fold A err=<nil>; fold B err=<nil> in-window=false; line t9003 in MEMORY=false archive=true; line t9001 in MEMORY=false archive=true
+--- PASS: TestReviewFindingFoldInterleavedArchiveLoss (60.02s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	60.993s
+```
+
+### EL-023 — TestReviewFindingStoreLockIndependentOfTempDir (RED → GREEN — gate finding 1)
+
+- RED tree: the M4 working tree at HEAD c0a0d7cbd with the temp-dir lock
+  applied, the test uncommitted; GREEN tree: the same working tree with the
+  in-store lock fix applied (the fix and the test land together in the M4
+  commit)
+- command (RED observation): `go test ./internal/cli -run '^TestReviewFindingStoreLockIndependentOfTempDir$' -count=1 -v`
+- RED exit code: 1 — stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingStoreLockIndependentOfTempDir
+    review_observation_test.go:408: a different-TMPDIR locker entered the store's critical section while it was held (err=<nil>) — the lock path follows the process temp dir, not the store
+--- FAIL: TestReviewFindingStoreLockIndependentOfTempDir (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	4.986s
+```
+
+- command (GREEN): the same anchored selector; exit code 0 — stdout
+  (verbatim, the combined run with the finding-2 test):
+
+```
+=== RUN   TestReviewFindingStoreLockIndependentOfTempDir
+--- PASS: TestReviewFindingStoreLockIndependentOfTempDir (0.70s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.132s
+```
+
+### EL-024 — TestReviewFindingAbandonedFoldReleasesStoreLock (RED → GREEN — gate finding 2, unix-only)
+
+- trees: as EL-023 (RED against the lock without the abandonment-polled
+  read; GREEN after `snapshotStoreBounded`)
+- command (RED observation): `go test ./internal/cli -run '^TestReviewFindingAbandonedFoldReleasesStoreLock$' -count=1 -v`
+- RED exit code: 1 — stdout (verbatim, the combined RED run with the
+  finding-1 test; the fold's own stderr line carried in the merged
+  capture):
+
+```
+=== RUN   TestReviewFindingAbandonedFoldReleasesStoreLock
+memory fold-on-done: t9001: abandoned after 300ms — the store did not answer in time; the step will begin no write
+    review_observation_fifo_unix_test.go:60: the store lock stayed held after the bounded fold was abandoned — the blocked worker pins the lock past its caller's timeout
+--- FAIL: TestReviewFindingAbandonedFoldReleasesStoreLock (3.53s)
+```
+
+- command (GREEN): the same anchored selector; exit code 0 — stdout
+  (verbatim, from the combined GREEN run):
+
+```
+=== RUN   TestReviewFindingAbandonedFoldReleasesStoreLock
+memory fold-on-done: t9001: abandoned after 300ms — the store did not answer in time; the step will begin no write
+--- PASS: TestReviewFindingAbandonedFoldReleasesStoreLock (0.57s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.132s
+```
+
 ## Quality gates and closure
 
 - TRUST 5: Tested (every AC above; 85%+ on touched packages per repo

@@ -199,6 +199,11 @@ func storeHashes(t *testing.T, dir string) map[string]string {
 		if e.IsDir() {
 			continue
 		}
+		// The store's cross-process lock file (foldLockName) is durable
+		// named infrastructure, not store content.
+		if e.Name() == foldLockName {
+			continue
+		}
 		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
 		if err != nil {
 			t.Fatalf("read %s: %v", e.Name(), err)

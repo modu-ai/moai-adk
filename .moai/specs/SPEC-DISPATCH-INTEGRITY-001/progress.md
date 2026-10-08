@@ -195,6 +195,124 @@ family sweep ran as confirmation: `factory_card_pr_test.go` (15 tests) +
 exit 0, `ok … 79.079s`, all green. Slot lease: the M1
 `internal-cli-suite` lease still held (15m window).
 
+### M4 — Memory-fold cross-process serialization, defect (8) (fix landed)
+
+Fix (M4, plan §F; the run-phase lock-mechanism design the SPEC deferred):
+
+- **Cross-process store lock** (C5): `withFoldStoreLock(dir, fn)` spans the
+  fold's WHOLE transaction — snapshot read, plan, and both index writes —
+  in BOTH fold paths (the verb's RunE and `foldOnDoneStep`). The lock is
+  flock(2) on `<store>/.moai-fold-lock` (unix,
+  `memory_fold_lock_unix.go`) / LockFileEx (windows,
+  `memory_fold_lock_windows.go`, x/sys) — exclusive, blocking, kernel-
+  released on process exit (a crashed fold leaves no stale lock). The lock
+  file is dot-prefixed non-.md: invisible to SnapshotStore and the index
+  guard. A second fold's process waits at the lock and re-plans against
+  the post-transaction store. The bounded on-done step keeps its own
+  discipline: the lock wait happens inside the acquire and the abandoned
+  step's forbidden() checks still refuse the write after it.
+- **Write geometry** (D9, plan §G): `atomicWriteFoldFile` now runs the
+  FINAL byte comparison AFTER the pinned `orderProbe("bytes-done")` seam
+  and before the rename — re-judging BOTH the file being written and the
+  guard file. Geometry: cmp1 → seam probe → NEW final byte comparison →
+  rename; "final byte comparison" is the role the post-probe comparison
+  takes. This is the defense against a non-cooperating writer; the
+  irreducible TOCTOU tail between it and the rename is AC-DI-009's stated
+  residual risk — the lock closes the window for cooperating writers only.
+
+GREEN verification (env-scrubbed, anchored, HEAD `c0a0d7cbd` + this fix
+uncommitted — the fix and cells land together in the M4 commit):
+
+- `TestReviewFindingFoldConcurrentWrite` → PASS (refused at the new final
+  comparison, the concurrent author's bytes preserved).
+- `TestReviewFindingFoldArchiveConcurrentWrite` → PASS (the archive write's
+  final comparison detected the author's bytes — the arch-coverage debt's
+  archive-write path closed).
+- `TestReviewFindingFoldGuardArchiveChange` → PASS (the guard file's
+  post-probe recheck detected the stripped line — the codex gate's
+  data-loss mutant closed).
+- `TestReviewFindingFoldInterleavedArchiveLoss` → PASS (60.02s: fold B's
+  process made NO progress inside A's window — the bounded wait expired
+  with in-window=false — then completed normally against the post-A store
+  after A released; both lines exactly once; B's exit observed after A's
+  transaction closed).
+
+AC-DI-011 selector, recorded BEFORE the race run: the memory-fold family
+sweep is
+
+`-run '^(TestMemoryFold_|TestMemoryFoldOnDone_|TestReviewArchiveUpdateDuringEffectiveScan|TestReviewSequentialAbandonedTempOwnership|TestReviewFindingFold|TestFoldSubprocessHelper)$'
+-count=5 -race`
+
+covering `memory_fold_test.go`'s 14 tests (`TestMemoryFold_*` ×13 +
+`TestReviewArchiveUpdateDuringEffectiveScan`), `memory_fold_wiring_test.go`'s
+15 (`TestMemoryFoldOnDone_*` ×14 + `TestReviewSequentialAbandonedTempOwnership`),
+and the owned fold instruments (`TestReviewFindingFold*` ×5 +
+`TestFoldSubprocessHelper`, which skips outside the interleaved test's
+child). Outcome recorded below the run.
+
+Repair round (in-gate, first race run): the first `-count=5 -race` gate
+run FAILED — zero data races, but `TestReviewArchiveUpdateDuringEffectiveScan`
+failed all 5 iterations: the lock file's original name `.moai-fold-lock`
+collided with the temp-file sweep's `.moai-fold` prefix
+(`requireNoTempFiles` — the namespace reserved for the fold's leak-check of
+actual temporaries). Repair: the lock renamed to `.moai-store-lock`, the
+prefix stays reserved, and the sweep keeps reading a leftover lock as a
+foreign file, not as a leaked temp.
+
+Selector-defect record (found because the repair run finished in 3.018s —
+impossibly fast for a family whose interleaved member alone bounds at 60s):
+the FIRST two gate selectors were `$`-anchored alternations whose
+alternatives are PREFIXES (`^…(TestMemoryFold_|…)$`), so the pattern
+matched only whole-name equals — the two runs swept just 3 tests
+(`TestReviewArchiveUpdateDuringEffectiveScan`,
+`TestReviewSequentialAbandonedTempOwnership`, the skipping
+`TestFoldSubprocessHelper`) × 5 and never reached the 60s interleaved
+member. Both runs are VOID as family measurements — recorded here as the
+failed measurements they are, per the selector discipline (a selector
+sweeping less than the family is a failed measurement, not a pass). The
+corrected selector drops the `$`: front-anchored prefix alternation
+`^(TestMemoryFold_|TestMemoryFoldOnDone_|TestReviewFindingFold|TestFoldSubprocessHelper|TestReviewArchiveUpdateDuringEffectiveScan|TestReviewSequentialAbandonedTempOwnership)`
+— and the corrected gate runs with `-v`, so the output file itself carries
+the swept `=== RUN` set as the measurement's own swept-count evidence.
+
+Gate-finding repairs (the turn-end codex gate reviewed the in-progress
+lock and found 2 defects, folded into M4 as its own deliverable; both
+RED-first measured, both fixed, both flipped green):
+
+- **Finding 1 — the lock path followed the process TMPDIR.** The temp-dir
+  lock keyed by the store path gave two processes with different TMPDIR
+  env different lock files: serialization silently broke
+  (`TestReviewFindingStoreLockIndependentOfTempDir` RED: "a
+  different-TMPDIR locker entered the store's critical section while it
+  was held"). Fix: the lock file is `.moai-store-lock` BESIDE the store's
+  index — derived from the store alone. Store-shape helpers
+  (`storeHashes`, `requireNoTempFiles`) exempt the lock by name as durable
+  named infrastructure.
+- **Finding 2 — an abandoned bounded fold pinned the store lock.** The
+  on-done worker blocked on the store read kept holding the lock after its
+  caller's timeout (`TestReviewFindingAbandonedFoldReleasesStoreLock`,
+  unix-only FIFO fixture, RED: "the store lock stayed held after the
+  bounded fold was abandoned"). Fix: the locked section's snapshot read is
+  abandonment-polled (`snapshotStoreBounded`, 100ms poll) — the abandoned
+  step releases the lock and returns; the blocked read's goroutine holds
+  nothing and its result is discarded.
+- Both GREEN re-measured (EL-023/EL-024 below). The gate's external probe
+  scenarios (TestReviewProbeDifferentTempLock,
+  TestReviewProbeAbandonedStoreLock) are covered on-tree by these two
+  committed tests.
+
+AC-DI-011 selector, FINAL (recorded BEFORE the closing race run — extends
+the corrected selector with the two finding tests):
+`^(TestMemoryFold_|TestMemoryFoldOnDone_|TestReviewFindingFold|TestReviewFindingStoreLock|TestReviewFindingAbandonedFold|TestFoldSubprocessHelper|TestReviewArchiveUpdateDuringEffectiveScan|TestReviewSequentialAbandonedTempOwnership)`
+`-count=5 -race -v`. Outcome below.
+
+**AC-DI-011 gate outcome (closing run)**: PASS — `ok
+github.com/modu-ai/moai-adk/internal/cli 461.530s`, exit 0, all 5
+iterations green, **0 data races** reported, 0 test failures, swept set
+180 `=== RUN` lines in the run's own output (the fold family's 29 tests ×
+5 + subtests + the two finding tests × 5). The full-suite verdict remains
+CI's job (C2) and is PENDING at report time.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _Pending run-phase (manager-develop)._

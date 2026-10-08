@@ -206,7 +206,8 @@ func requireSameStore(t *testing.T, before, after map[string]string) {
 }
 
 // requireNoTempFiles asserts the fold left no temporary file behind
-// (AC-MFB-001, AC-MFB-007).
+// (AC-MFB-001, AC-MFB-007). The store's cross-process lock file
+// (foldLockName) is durable named infrastructure, not a temporary.
 func requireNoTempFiles(t *testing.T, dir string) {
 	t.Helper()
 	entries, err := os.ReadDir(dir)
@@ -214,6 +215,9 @@ func requireNoTempFiles(t *testing.T, dir string) {
 		t.Fatalf("read store %s: %v", dir, err)
 	}
 	for _, e := range entries {
+		if e.Name() == foldLockName {
+			continue
+		}
 		if strings.HasPrefix(e.Name(), ".moai-fold") {
 			t.Errorf("temporary file %s remained after the fold", e.Name())
 		}

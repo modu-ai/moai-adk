@@ -379,6 +379,42 @@ func foldSubprocess(t *testing.T, dir, card string) *exec.Cmd {
 	return cmd
 }
 
+// TestReviewFindingStoreLockIndependentOfTempDir is the run-gate finding 1
+// (SPEC-DISPATCH-INTEGRITY-001 M4): the store lock's path must derive from
+// the STORE, never from the process's temp-dir environment. Two processes
+// addressing one store but carrying different TMPDIR values must serialize
+// on the SAME lock file; a temp-dir-derived path gave the second process a
+// different lock and let it enter the first's critical section.
+func TestReviewFindingStoreLockIndependentOfTempDir(t *testing.T) {
+	dir := t.TempDir()
+	release, err := acquireFoldStoreLock(dir)
+	if err != nil {
+		t.Fatalf("acquire the store lock: %v", err)
+	}
+	// The second locker carries a DIFFERENT temp dir — the identity a second
+	// process with its own TMPDIR would have — and must wait at the store's
+	// lock: one store, one lock, whatever the environment says.
+	t.Setenv("TMPDIR", t.TempDir())
+	acquired := make(chan error, 1)
+	go func() {
+		r, err := acquireFoldStoreLock(dir)
+		if err == nil {
+			defer r()
+		}
+		acquired <- err
+	}()
+	select {
+	case err := <-acquired:
+		t.Fatalf("a different-TMPDIR locker entered the store's critical section while it was held (err=%v) — the lock path follows the process temp dir, not the store", err)
+	case <-time.After(700 * time.Millisecond):
+		// Still blocked after the grace: the two lockers serialize.
+	}
+	release()
+	if err := <-acquired; err != nil {
+		t.Errorf("the waiting locker failed after the lock was released: %v", err)
+	}
+}
+
 // The M1 bundle-predecessor characterizations (SPEC-DISPATCH-INTEGRITY-001,
 // defects (1)(2)(3); AC-DI-002/003/004). RED-first on the run-entry tree;
 // a GREEN baseline classifies the defect not-reproduced and the test becomes

@@ -126,58 +126,66 @@ func newMemoryFoldCmd() *cobra.Command {
 			if !jsonOutput {
 				_, _ = fmt.Fprintf(out, "store: %s (%s)\n", store.Dir, store.Origin)
 			}
-			before, err := taxonomy.SnapshotStore(store.Dir)
-			if err != nil {
-				return err
-			}
-			comp, err := buildFoldPlan(before, cardID)
-			if err != nil {
-				return err
-			}
-			plan := memoryFoldPlan{
-				Store:    store,
-				Card:     cardID,
-				Archive:  comp.archive,
-				Removed:  comp.plan.Removed,
-				Appended: comp.plan.Appended,
-				Kept:     comp.kept,
-				Unlinked: comp.unlinked,
-			}
+			// REQ-DISPATCH-008: the whole transaction — snapshot read, plan,
+			// and both index writes — runs inside the store's cross-process
+			// lock, so a concurrent fold's process waits and re-plans
+			// against the post-transaction store. The preview and no-fold
+			// paths release the lock with nothing written, exactly as they
+			// returned nothing before.
+			return withFoldStoreLock(store.Dir, func() error {
+				before, err := taxonomy.SnapshotStore(store.Dir)
+				if err != nil {
+					return err
+				}
+				comp, err := buildFoldPlan(before, cardID)
+				if err != nil {
+					return err
+				}
+				plan := memoryFoldPlan{
+					Store:    store,
+					Card:     cardID,
+					Archive:  comp.archive,
+					Removed:  comp.plan.Removed,
+					Appended: comp.plan.Appended,
+					Kept:     comp.kept,
+					Unlinked: comp.unlinked,
+				}
 
-			if len(comp.plan.Removed) == 0 {
-				// Nothing to fold: no line names the card, or every STRONG
-				// line is kept under REQ-MFB-005 (REQ-MFB-006).
+				if len(comp.plan.Removed) == 0 {
+					// Nothing to fold: no line names the card, or every STRONG
+					// line is kept under REQ-MFB-005 (REQ-MFB-006).
+					if jsonOutput {
+						return renderFoldPlanJSON(out, plan)
+					}
+					_, _ = fmt.Fprintf(out, "no line to fold for %s — nothing remains to fold\n", cardID)
+					renderFoldKept(out, comp.kept)
+					return nil
+				}
+				if !yes {
+					if jsonOutput {
+						return renderFoldPlanJSON(out, plan)
+					}
+					renderFoldPreview(out, plan)
+					return nil
+				}
+				if memoryFoldSeam.mutateDisk != nil {
+					// Test seam (AC-MFB-007 iii): a concurrent writer lands
+					// between the plan and the apply; the content re-checks
+					// below must catch it.
+					memoryFoldSeam.mutateDisk(store.Dir)
+				}
+				if err := applyFold(store.Dir, before, comp, nil, nil); err != nil {
+					return err
+				}
+				plan.Applied = true
 				if jsonOutput {
 					return renderFoldPlanJSON(out, plan)
 				}
-				_, _ = fmt.Fprintf(out, "no line to fold for %s — nothing remains to fold\n", cardID)
+				_, _ = fmt.Fprintf(out, "filed %d line(s) into %s\n", len(comp.plan.Removed), comp.archive)
+				renderFoldUnlinked(out, comp.unlinked)
 				renderFoldKept(out, comp.kept)
 				return nil
-			}
-			if !yes {
-				if jsonOutput {
-					return renderFoldPlanJSON(out, plan)
-				}
-				renderFoldPreview(out, plan)
-				return nil
-			}
-			if memoryFoldSeam.mutateDisk != nil {
-				// Test seam (AC-MFB-007 iii): a concurrent writer lands
-				// between the plan and the apply; the content re-checks
-				// below must catch it.
-				memoryFoldSeam.mutateDisk(store.Dir)
-			}
-			if err := applyFold(store.Dir, before, comp, nil, nil); err != nil {
-				return err
-			}
-			plan.Applied = true
-			if jsonOutput {
-				return renderFoldPlanJSON(out, plan)
-			}
-			_, _ = fmt.Fprintf(out, "filed %d line(s) into %s\n", len(comp.plan.Removed), comp.archive)
-			renderFoldUnlinked(out, comp.unlinked)
-			renderFoldKept(out, comp.kept)
-			return nil
+			})
 		},
 	}
 	cmd.Flags().StringVar(&card, "card", "", "Card id whose open-work lines to fold (t<digits> or bare digits)")
@@ -644,6 +652,22 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRen
 	if writesForbidden != nil && writesForbidden() {
 		return fmt.Errorf("memory fold: %s: the step was abandoned — not writing", name)
 	}
+	// The FINAL byte comparison (REQ-DISPATCH-008, AC-DI-009; plan-audit
+	// D9): a byte comparison FOLLOWS the probe and is the last check before
+	// the rename. Whatever a non-cooperating concurrent author wrote in the
+	// probe's window — into THIS file or into the guard file — is detected
+	// here and refused, never published over. The irreducible tail between
+	// this comparison and the rename is AC-DI-009's stated residual risk
+	// against a writer that bypasses every protocol; the store lock
+	// (withFoldStoreLock) closes the window for cooperating writers.
+	if err := checkFoldUnchanged(dir, name, planTime); err != nil {
+		return err
+	}
+	if guard != nil {
+		if err := checkFoldUnchanged(dir, guard.name, guard.want); err != nil {
+			return err
+		}
+	}
 	if err := os.Rename(tmpName, filepath.Join(dir, name)); err != nil {
 		return fmt.Errorf("memory fold: rename %s: %w", name, err)
 	}
@@ -654,9 +678,52 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRen
 	return nil
 }
 
+// foldLockName is the store's cross-process lock file (REQ-DISPATCH-008,
+// SPEC-DISPATCH-INTEGRITY-001): a dot-prefixed non-.md resident BESIDE the
+// store's index. The path must derive from the store alone — never from a
+// process-local environment value such as TMPDIR — or two processes
+// addressing one store under different environments would resolve different
+// lock files and stop serializing (run-gate finding 1). The lock is durable
+// named infrastructure of the store: the store-shape helpers
+// (storeHashes, requireNoTempFiles) exempt it by name.
+const foldLockName = ".moai-store-lock"
+
+// foldLockPath is the lock file's path for one store.
+func foldLockPath(dir string) string {
+	return filepath.Join(dir, foldLockName)
+}
+
+// withFoldStoreLock runs fn inside the store's cross-process lock
+// (REQ-DISPATCH-008): the lock spans the fold's whole transaction — the
+// snapshot read, the plan, and both index writes — so a second fold's
+// PROCESS waits at the lock and re-plans against the post-transaction store
+// instead of interleaving its writes with the holder's renames. Two
+// `moai memory fold` invocations are separate OS processes; an in-process
+// mutex cannot serialize them (constraint C5).
+//
+// The bounded on-done step keeps its own discipline under the lock: the
+// wait for the lock happens inside acquire, and the step's forbidden()
+// checks still refuse the write of an abandoned step after the wait.
+//
+// @MX:WARN: [AUTO] Cross-process file lock — while held it blocks every
+// other fold process on this store until released or the holder exits.
+// @MX:REASON: a concurrent fold's process must serialize its whole
+// transaction (read, plan, both index writes) against the holder's; without
+// it a fold completing inside the holder's window lost its line to the
+// holder's pre-window snapshot rename (EL-009/EL-002).
+func withFoldStoreLock(dir string, fn func() error) error {
+	release, err := acquireFoldStoreLock(dir)
+	if err != nil {
+		return err
+	}
+	defer release()
+	return fn()
+}
+
 // resolveFoldStore resolves the one store a fold acts on (§1.6): --dir, or
 // the first candidate from memoryCandidateStores whose directory carries
 // MEMORY.md.
+
 func resolveFoldStore(dirOverride string) (memoryStore, error) {
 	if dirOverride != "" {
 		abs, err := filepath.Abs(dirOverride)
@@ -1155,23 +1222,72 @@ func foldOnDoneStep(cardID string, run *foldOnDoneRun) (string, error) {
 	if rec != nil {
 		rec.fileOpen(filepath.Join(chosen.Dir, memoryIndexName))
 	}
-	before, err := taxonomy.SnapshotStore(chosen.Dir)
+	// REQ-DISPATCH-008: the on-done step's transaction takes the store's
+	// cross-process lock like the verb. The wait happens inside the
+	// acquire; an abandoned step's forbidden() checks still refuse the
+	// write after the wait — and the read itself is abandonment-polled
+	// (run-gate finding 2): a read that blocks past the bound releases the
+	// lock instead of pinning it for every follow-up fold.
+	var summary string
+	err = withFoldStoreLock(chosen.Dir, func() error {
+		before, err := snapshotStoreBounded(chosen.Dir, forbidden)
+		if err != nil {
+			return err
+		}
+		comp, err := buildFoldPlan(before, cardID)
+		if err != nil {
+			return err
+		}
+		if len(comp.plan.Removed) == 0 {
+			return nil
+		}
+		if forbidden() {
+			return fmt.Errorf("the step was abandoned before its write")
+		}
+		if err := applyFold(chosen.Dir, before, comp, forbidden, run); err != nil {
+			return err
+		}
+		summary = fmt.Sprintf("filed %d line(s) of %s into %s (store: %s)",
+			len(comp.plan.Removed), cardID, comp.archive, chosen.Dir)
+		return nil
+	})
 	if err != nil {
 		return "", err
 	}
-	comp, err := buildFoldPlan(before, cardID)
-	if err != nil {
-		return "", err
+	return summary, nil
+}
+
+// foldAbandonedReadPoll is how often a bounded step's blocking read checks
+// the abandonment flag while it waits.
+const foldAbandonedReadPoll = 100 * time.Millisecond
+
+// snapshotStoreBounded runs SnapshotStore for a bounded on-done step,
+// polling the step's abandonment flag while the read runs: a read that
+// blocks — a FIFO standing in for the index, a hung filesystem — must not
+// pin the store lock past the step's own bound. On abandonment the caller
+// releases the lock and returns; the read's own goroutine (still blocked)
+// holds nothing and its result is discarded.
+func snapshotStoreBounded(dir string, forbidden func() bool) (taxonomy.StoreSnapshot, error) {
+	type foldReadResult struct {
+		snap taxonomy.StoreSnapshot
+		err  error
 	}
-	if len(comp.plan.Removed) == 0 {
-		return "", nil
+	ch := make(chan foldReadResult, 1)
+	go func() {
+		snap, err := taxonomy.SnapshotStore(dir)
+		ch <- foldReadResult{snap, err}
+	}()
+	tick := time.NewTimer(foldAbandonedReadPoll)
+	defer tick.Stop()
+	for {
+		select {
+		case res := <-ch:
+			return res.snap, res.err
+		case <-tick.C:
+			if forbidden() {
+				return nil, fmt.Errorf("memory fold: the step was abandoned while reading the store")
+			}
+			tick.Reset(foldAbandonedReadPoll)
+		}
 	}
-	if forbidden() {
-		return "", fmt.Errorf("the step was abandoned before its write")
-	}
-	if err := applyFold(chosen.Dir, before, comp, forbidden, run); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("filed %d line(s) of %s into %s (store: %s)",
-		len(comp.plan.Removed), cardID, comp.archive, chosen.Dir), nil
 }
