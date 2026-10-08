@@ -9,15 +9,40 @@ import (
 )
 
 // seedFileMetadata copies the original's mode, access-control entries, and
-// extended attributes onto the temp file via cp -p. This is the
-// LEADER-ACCEPTED darwin exception to the round-4 class closure (ruling
-// i): the kernel surface structurally blocks explicit-ACL copy —
+// extended attributes onto the temp file via cp -p. Route (ii) disposition
+// (decision-index Q2, leader ruling (a) — OVERRIDABLE by an operator
+// ruling, SPEC-PROGRESS-RECORD-IO-001): the exec-based seeder is KEPT —
+// the kernel surface structurally blocks explicit-ACL copy —
 // clonefileat/SYS_COPYFILE/setattrlist measured (clonefileat copies xattrs
 // but not ACLs; the SYS_COPYFILE trap returns EINVAL; the ACL bit is
 // excluded from ATTR_CMN_SETMASK) — and cp -p is the ACL-guaranteeing
-// seeder on darwin; a kauth_filesec reimplementation is a follow-up-SPEC
-// candidate. A failure is an error and the caller aborts the replace —
-// there is no mode-only fallback (sync-audit-4 F8).
+// seeder on darwin. A failure is an error and the caller aborts the
+// replace — there is no mode-only fallback (sync-audit-4 F8).
+//
+// Live residuals under route (ii), named at their measured harm class:
+//   - fd-verify→rename: the pre/post Lstat+fdMatchesName checks bound the
+//     spans around the path-based steps, but the unprotected swap window
+//     from the immediate pre-seed verification to cp's own open remains —
+//     a name-swap→symlink race there keeps victim-overwrite possible
+//     (darwin has no fd-anchored ACL copy; copyfile(3) is userspace); the
+//     post-copy re-check bounds the post-copy span before the rename and
+//     fails closed.
+//   - delete-denied rename (decision-index Q5): a write-allowed/
+//     delete-denied ACL on the target makes the caller's atomic rename
+//     fail EPERM where the pre-repair in-place write succeeded, so no
+//     record lands; the unwritable-dir/hardlink in-place fallback is the
+//     noted future fix shape.
+//
+// A kauth_filesec reimplementation remains the named future-fix direction
+// (follow-up-SPEC candidate): the M1 probe (card t1598, ad9ba32b2)
+// measured the inert kauth-filesec xattr name — a nil-error write leaves
+// the enforced ACL unchanged on APFS — and the com.apple.system.*
+// namespace EPERM-gated for non-root.
+//
+// @MX:DEBT: [AUTO] route-(ii) kept exec seeder (decision-index Q2, leader ruling (a) — OVERRIDABLE by an operator ruling): cp -p shells out, so the fd-verify→rename microsecond race keeps victim-overwrite possible; kept because darwin offers no fd-anchored ACL copy without cgo
+// @MX:CEILING: victim-overwrite is bounded to the unprotected swap window from the immediate pre-seed verification to cp's own open; the post-copy re-check bounds the post-copy span before the rename and fails closed, behind the pre/post Lstat+fdMatchesName symlink rejection named in the header above
+// @MX:UPGRADE: a kauth_filesec fd-anchored ACL seeder measured writable as non-root, or an operator ruling reverses Q2 to route (i)
+// @MX:SPEC: SPEC-PROGRESS-RECORD-IO-001
 func seedFileMetadata(tmp *os.File, tmpPath, original string) error {
 	// The temp was created in the original's directory, so os.CreateTemp
 	// handed it the PARENT's inherited ACL entries at birth. Strip them
@@ -31,11 +56,13 @@ func seedFileMetadata(tmp *os.File, tmpPath, original string) error {
 	// seeder re-validates the temp IMMEDIATELY before its path-based steps
 	// and rejects a swapped-in SYMLINK outright — chmod/cp must never
 	// write through an attacker-planted link — then re-checks after them.
-	// The residual between the re-check and cp's own open is a
+	// The residual between the pre-step re-check and cp's own open is a
 	// microsecond race that darwin's platform constraints cannot close
 	// without cgo (copyfile(3) is userspace; no fd-anchored ACL copy
-	// exists) — FLAGGED to the leader per ruling (i): the measured
-	// victim-overwrite may warrant revisiting the darwin approach.
+	// exists) — dispositioned LIVE under route (ii) (decision-index Q2,
+	// ruling (a)): victim-overwrite stays possible in this window, and
+	// the fd-verify→rename residual is re-documented in the header
+	// comment above.
 	if info, lerr := os.Lstat(tmpPath); lerr != nil {
 		return lerr
 	} else if info.Mode()&os.ModeSymlink != 0 {

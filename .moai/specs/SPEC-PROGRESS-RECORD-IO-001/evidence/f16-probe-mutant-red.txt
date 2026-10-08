@@ -1,0 +1,11 @@
+=== RUN   TestAppendProgressRecordSeedCloseHygiene
+=== RUN   TestAppendProgressRecordSeedCloseHygiene/success_path_closes_before_rename
+    audit_ceiling_close_hygiene_test.go:45: the held descriptor survived the successful replace (second Close: <nil>) — a close was dropped on the success path
+=== RUN   TestAppendProgressRecordSeedCloseHygiene/abort_path_closes_through_the_defer
+    audit_ceiling_close_hygiene_test.go:78: the held descriptor survived the aborted replace (second Close: <nil>) — the deferred close was dropped on the abort path
+--- FAIL: TestAppendProgressRecordSeedCloseHygiene (0.05s)
+    --- FAIL: TestAppendProgressRecordSeedCloseHygiene/success_path_closes_before_rename (0.04s)
+    --- FAIL: TestAppendProgressRecordSeedCloseHygiene/abort_path_closes_through_the_defer (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/runtime	0.482s
+FAIL
