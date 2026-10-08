@@ -525,8 +525,8 @@ func TestSessionStartRoleRulesHandleIntegration(t *testing.T) {
 }
 
 // TestSessionStartRoleRulesOperatorLocales observes the operator-facing
-// warnings rendering in the settings conversation language (ko/ja/en table
-// minimum): each locale's failure and overflow warnings are non-empty,
+// warnings rendering in the settings conversation language (ko/ja/zh/en
+// table): each locale's failure and overflow warnings are non-empty,
 // locale-distinct, and carry the deciding figures (role name, total, cap).
 func TestSessionStartRoleRulesOperatorLocales(t *testing.T) {
 	clearFactoryEnv(t)
@@ -539,7 +539,7 @@ func TestSessionStartRoleRulesOperatorLocales(t *testing.T) {
 		return root
 	}
 
-	for _, lang := range []string{"ko", "ja", "en"} {
+	for _, lang := range []string{"ko", "ja", "zh", "en"} {
 		t.Run("overflow_"+lang, func(t *testing.T) {
 			inj := roleRuleInjectionFor(overCapRoot(t), "startup", "", lang)
 			if inj.OperatorNotice == "" {

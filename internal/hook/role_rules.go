@@ -231,6 +231,17 @@ var roleRuleLocales = map[string]roleRuleLocaleTable{
 			return fmt.Sprintf("ロールルール注入のオーバーフロー(%s セッション): 組み立てたコンテキスト(%d文字)がセッション開始の配信上限 %d文字を超えました。ロール core は切り詰めずそのまま送信し、ランタイムが超過出力をセッションディレクトリのファイルに保存して、先頭 2,000 文字のプレビュー付きでパスを渡します。", session, total, limit)
 		},
 	},
+	"zh": {
+		InjectionFailed: func(session, detail string) string {
+			return fmt.Sprintf("角色规则注入在 %s 会话中失败:%s。已指示代理按路径完整读取两个规则文件。", session, detail)
+		},
+		OverflowUnavailable: func(session string, total, limit int) string {
+			return fmt.Sprintf("角色规则注入溢出(%s 会话):组装后的上下文(%d 字符)超出 %d 字符的传递上限,且溢出文件传递不可用,因此以读取指示代替角色 core。", session, total, limit)
+		},
+		Overflow: func(session string, total, limit int) string {
+			return fmt.Sprintf("角色规则注入溢出(%s 会话):组装后的上下文(%d 字符)超出会话启动传递上限 %d 字符。角色 core 未截断、完整发出;运行时会把超长输出保存到会话目录文件,并附前 2,000 字符预览传递其路径。", session, total, limit)
+		},
+	},
 	langEnglish: {
 		InjectionFailed: func(session, detail string) string {
 			return fmt.Sprintf(
