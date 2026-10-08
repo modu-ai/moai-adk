@@ -339,6 +339,14 @@ func SpoolGeneration() (uint64, error) {
 // before this bump. The purge calls it before removing the stores; a lost
 // race between two concurrent bumps only skips a number.
 func BumpSpoolGeneration() error {
+	return BumpSpoolGenerationContext(context.Background())
+}
+
+// BumpSpoolGenerationContext is BumpSpoolGeneration with the caller's
+// cancellation: the claim retry loop honors ctx (a withdrawal with a
+// deadline must not wait out the full bump claim deadline behind a held
+// lock — gate finding, the DrainContext withdrawal path).
+func BumpSpoolGenerationContext(ctx context.Context) error {
 	path, err := SpoolGenerationPath()
 	if err != nil {
 		return err
@@ -358,18 +366,28 @@ func BumpSpoolGeneration() error {
 	// Contention beyond one ClaimSection retry budget (CI, Race Test 2:
 	// 32 concurrent purges under -race exhausted the 8×5ms budget — "lock
 	// held" skips a bump) retries on the lock-held shape until the bump
-	// deadline: every purge's withdrawal must land, serialized.
+	// deadline — or until the CALLER's ctx cancels, whichever comes first
+	// (gate finding: the retry loop originally used context.Background(),
+	// so a DrainContext deadline behind a held lock waited the full bump
+	// deadline out).
 	deadline := time.Now().Add(spoolBumpClaimDeadline)
 	var release func() error
 	for {
-		release, err = atomicfile.ClaimSection(context.Background(), path+".lock", 0o600, spoolSectionRetries, spoolSectionDelay)
+		release, err = atomicfile.ClaimSection(ctx, path+".lock", 0o600, spoolSectionRetries, spoolSectionDelay)
 		if err == nil {
 			break
 		}
-		if !errors.Is(err, os.ErrExist) || !time.Now().Before(deadline) {
+		if !errors.Is(err, os.ErrExist) {
 			return err
 		}
-		time.Sleep(spoolSectionDelay)
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("bugreport: bump claim canceled: %w", ctx.Err())
+		case <-time.After(spoolSectionDelay):
+		}
+		if !time.Now().Before(deadline) {
+			return err
+		}
 	}
 	defer func() { _ = release() }()
 	gen, err := SpoolGeneration()
