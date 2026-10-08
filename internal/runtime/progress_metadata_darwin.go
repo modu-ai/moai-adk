@@ -36,6 +36,11 @@ import (
 // measured the inert kauth-filesec xattr name — a nil-error write leaves
 // the enforced ACL unchanged on APFS — and the com.apple.system.*
 // namespace EPERM-gated for non-root.
+//
+// @MX:DEBT: [AUTO] route-(ii) kept exec seeder (decision-index Q2, leader ruling (a) — OVERRIDABLE by an operator ruling): cp -p shells out, so the fd-verify→rename microsecond race keeps victim-overwrite possible; kept because darwin offers no fd-anchored ACL copy without cgo
+// @MX:CEILING: victim-overwrite is bounded to the window between the post-copy re-check and cp's own open, behind the pre/post Lstat+fdMatchesName symlink rejection named in the header above
+// @MX:UPGRADE: a kauth_filesec fd-anchored ACL seeder measured writable as non-root, or an operator ruling reverses Q2 to route (i)
+// @MX:SPEC: SPEC-PROGRESS-RECORD-IO-001
 func seedFileMetadata(tmp *os.File, tmpPath, original string) error {
 	// The temp was created in the original's directory, so os.CreateTemp
 	// handed it the PARENT's inherited ACL entries at birth. Strip them

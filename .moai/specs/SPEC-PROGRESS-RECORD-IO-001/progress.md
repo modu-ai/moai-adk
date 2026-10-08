@@ -224,9 +224,12 @@ carrier for the dispositioned ACs. The M1 evidence above is manager-develop's, u
   cli/worktree packages (:112) — no card-level CI surface runs the GOOS-tagged runtime
   families.
 - **Trigger**: a `release/*`→`main` PR, or `workflow_dispatch` on the card branch. **This round
-  dispatches NOTHING and pushes NOTHING** — the decisive runs arrive via the landing flow
-  (card branch → local develop integration → leader batch push → release PR), and AC-CI-007's
-  run URL + per-family executed/skipped counts are recorded at that point.
+  dispatches NOTHING and pushes NOTHING** — the decisive runs arrive via the main-based landing
+  flow (card branch → card PR merge to `main`; the CI subject is the `release-pr-multi-os.yml`
+  leg — a `release/*`→`main` PR or a `workflow_dispatch` on the branch), and AC-CI-007's run URL
+  + per-family executed/skipped counts are recorded at that point. (Sync-phase wording fix, card
+  t1598 §E.4: the retired develop-integration citation removed per plan-audit-5's P2; the
+  plan-audit-4 hash binding is unaffected — progress.md is a non-hash-subject.)
 - **Recording rule** (restated for the landing flow): read the `-json` stream per family —
   decisive-PASS requires an explicit per-test pass Action for EVERY test in the family; a
   `skip` Action is recorded as SKIP and is NOT a PASS. Platform composition note from this
@@ -331,7 +334,49 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: complete (3-phase close — route (ii) operative, card t1598)
+sync_complete_at: 2026-10-08T12:44:19Z
+sync_commit_sha: pending-backfill-sync
+governing_audit: plan-audit-4 PASS-WITH-DEBT 0.94 (audited_sha 6abc63d30e4bb133fead8fc24b5b1013c00581a9, must_pass_failed=0, blocking_count=0) — re-affirmed unchanged by plan-audit-5 (receipt rcpt-5bbbb0b8650328de4d6b115f; the seven hash-subject paths carry a zero diff 6abc63d30..a2fcca6c3)
+frontmatter_status_transitions:
+  in-progress→implemented→completed: manager-docs, the single sync commit (merged close per the Status Transition Ownership Matrix; trailer Authored-By-Agent: manager-docs)
+changelog_entry_position: CHANGELOG.md `## [Unreleased]` → `### Added` → first bullet
+b12_self_test_a: PASS — `grep -c "SPEC-PROGRESS-RECORD-IO-001" CHANGELOG.md` → 0 (exit 1) before emission (no duplicate from a parallel BATCH-SYNC session)
+b12_self_test_b: PASS — live AC count = 9 (AC-PRI-001..006, 008, 009 + AC-CI-007; reserved-token marks 0, ambiguous=0); the CHANGELOG entry references the same 9-criterion set with the route-(ii) disposition
+b12_self_test_c: PASS — every path claimed in the CHANGELOG entry ls-verified this round (internal/runtime/{audit_ceiling.go, progress_metadata_darwin.go, progress_fd_unix.go, progress_metadata_acl.go, audit_ceiling_close_hygiene_test.go, audit_ceiling_acl_test.go, audit_ceiling_umask_test.go, audit_ceiling_replace_test.go, progress_metadata_acl_test.go, progress_metadata_linux_test.go}, .moai/specs/SPEC-PROGRESS-RECORD-IO-001/progress.md)
+canary_compliance_check: n/a — this SPEC defines no forward-looking policy exercised by its own sync tests
+mx_tag_validation: 1 @MX:DEBT added on seedFileMetadata (internal/runtime/progress_metadata_darwin.go) with @MX:CEILING + @MX:UPGRADE + @MX:SPEC sub-lines — the route-(ii) kept exec seeder recorded as a deliberate working simplification; 0 tags removed; audit_ceiling.go's 3 existing tags validated unchanged (at the per-file ANCHOR cap); the new probe test file needs no tag (test-only surface)
+
+AC final matrix (route-(ii) close posture — evidence in §E.2): AC-PRI-001 PASS (standing) ·
+AC-PRI-002 PASS (standing — recorded measurement) · AC-PRI-005 PASS · AC-PRI-006 PASS ·
+AC-PRI-008 PASS · AC-PRI-003/004/009 NOT-EVIDENCE (dispositioned by the §E.2 Q2 record) ·
+AC-CI-007 PENDING (CI-only — the `release-pr-multi-os.yml` decisive runs ride the landing flow;
+run URL + per-family counts recorded at that point).
+
+Open-items ledger (honest carry-forward at close):
+
+1. `section-b-stale-cells` (N5, plan-audit-4) — OPEN. plan.md §B :24/:27 two-cell
+   route-(i)-vocabulary residue; the disposal owner is a plan-phase artifact edit (manager-spec
+   re-delegation, lane-routed post-run) — non-operative summary cells; §A / M2 / M3 step 3 /
+   AC-PRI-008 are correct per plan-audit-4.
+2. AC-CI-007 — PENDING the landing flow (CI-only; M4 protocol above). The repository-wide
+   verdict is owned by CI on the project's integration branch and is PENDING at this record.
+3. The receipt-fence admission wedge (plan-audit-4 Gaps-4 / plan-audit-5 Gaps-3 — the
+   Start-marker advance on refusal-spawn, `internal/auditreceipt/store.go:1254` vs
+   `internal/hook/audit_receipt_guard.go:153`) and the ceiling §G-release reader gap —
+   issuance-ledger items for the operator/leader queue, not sync-phase work.
+4. progress.md §E.2 M4 Trigger wording (plan-audit-5's backend P2 against :228 — the retired
+   develop-integration citation) — FIXED this close in the §E.4-adjacent pass (re-worded to the
+   main-based landing + release-pr-multi-os/dispatch CI subject). The plan-audit-4 hash binding
+   is unaffected: progress.md is a non-hash-subject run-phase record (plan-audit-5 evidence
+   item 2).
+5. `ac-content-enforcement` debt (plan-audit-4, reviewer-enforced) — carried: the close-phase
+   reviewer owns the AC-PRI-008 pinned-content review; AC-PRI-001's §E.2 verbatim-quote duty is
+   met by the M1 record (the decisive raw output quoted above).
+
+§G ceiling-release record: intact and untouched by this close — the 3 ceiling-refusal holds, the
+LEADER-RULING release (receipts rcpt-ce322e7663362a796bf14bde + rcpt-f8998a6b0b8f1acd2b23d016),
+and the OPERATOR row-level override row stand as recorded.
 
 ## §G Override and Refusal Record
 

@@ -2,7 +2,7 @@
 id: SPEC-PROGRESS-RECORD-IO-001
 title: "Progress record I/O semantics — Go-native darwin metadata seeding (F14 exec-window closure)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-08
 updated: 2026-10-08
 author: lane-5 (MoAI factory)
