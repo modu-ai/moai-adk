@@ -304,14 +304,27 @@ This ledger adds the rest: the measured control observations (`7be9f41b5`),
 the M1 instrument-confirmation observations (including AC-HZS-009/010/011's
 rows), and the GREEN flip records appended at M2/M3.
 
-### RED confirmation at the committed baseline (appended at M1)
+### Original RED confirmation (plan-time baseline, appended at M1)
 
-- **Command**: the AC-HZS-001 command, run at `9dbe40c0a`.
-- **Expected**: exit 1, the M1-final baseline's six RED rows failing — the
-  three original defect rows exactly as the tracked record shows them + the
-  M1-authored rows (006/009/010) per their expected RED; the controls
-  (002/004/011) and the pin (007) green.
+- **Command**: the AC-HZS-001 command (the 3-test selector), run at
+  `9dbe40c0a`.
+- **Expected**: exit 1, the three defect rows failing exactly as the tracked
+  record `evidence-red-repro.md` shows them; controls green. At this
+  revision only the three original instrument tests exist — the six-row
+  expectation does NOT apply here (see the next entry).
 - **Observed**: *(populated at M1)*
+
+### M1-final baseline confirmation (appended at M1)
+
+- **Command**: `go test ./internal/hook -run '^(TestCheckProtectedZoneShell|TestZoneUnescapeAnsiC)$' -count=1 -v` — the instrument-only full selector (anchored per this SPEC's re-run convention), matching all ten instrument functions.
+- **Revision**: the M1 commit `c34021856` (instrument finalization; the
+  M1-final baseline the gate-8 wording unified on).
+- **Expected**: exit 1, SIX rows failing — ①②③ (AC-HZS-001/003/005) + the
+  M1-authored guard no-crash (006), part-level (009), octal-origin (010) —
+  and FOUR passing (controls 002/004/011 + the code-point pin 007).
+- **Observed at M1, recorded in progress.md §E.2** (manager-develop's M1
+  pre-flight run) — this ledger cites that observation record per the
+  ledger's citation convention.
 
 ### CONTROLS at `7be9f41b5` — pre-repair green, MEASURED (review-gate round 1, 2026-10-09)
 
