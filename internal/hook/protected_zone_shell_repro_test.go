@@ -502,3 +502,87 @@ func TestCheckProtectedZoneShellCodePointNulDoesNotTruncate(t *testing.T) {
 	}
 	t.Logf("swept=%d", 1)
 }
+
+// hzsMixedNulFixture builds the zone root plus the literally-named symlinks
+// the pre-4.2 shell's argument walks through: the names are TEXT — backslash
+// followed by u (or U) and hex digits — each pointing at the protected
+// marker (the reviewer's measured landing: the write goes through the
+// literal-named entry into the zone).
+func hzsMixedNulFixture(t *testing.T) string {
+	t.Helper()
+	root := newZoneRoot(t, zoneShippedDoc(hzsShellManifest), "")
+	if err := os.MkdirAll(filepath.Join(root, "zone_dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(root, "zone_dir", "marker.md")
+	if err := os.WriteFile(marker, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"link\\u0000", "link\\U00000000"} {
+		if err := os.Symlink("zone_dir/marker.md", filepath.Join(root, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return root
+}
+
+// hzsWantMixedDeny drives one mixed-origin NUL row and asserts the zone
+// deny with the marker intact — the shared assertion body of the four
+// gate-round-13 rows.
+func hzsWantMixedDeny(t *testing.T, name, cmd string) {
+	t.Helper()
+	root := hzsMixedNulFixture(t)
+	marker := filepath.Join(root, "zone_dir", "marker.md")
+	h := zoneTestHandler(t, root)
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+	wantZoneDeny(t, name, d, r, harnessLearnerIdentity, "category", "probe_zone")
+	if _, err := os.Stat(marker); err != nil {
+		t.Errorf("%s: deny observed but the protected marker is gone: %v", name, err)
+	}
+	t.Logf("swept=%d", 1)
+}
+
+// The four gate-round-13 regression rows (card t1585): MIXED-origin NUL
+// words. The part carries an EARLIER code-point-origin NUL (\u0000 or
+// \U00000000) and a LATER hex/octal-origin NUL; the origin-scoped
+// termination fires at the hex/octal NUL, so the part returns only the
+// prefix before it and the judged candidate stops short of the zone —
+// while the pre-4.2 shell acts on the FULL literal path through the
+// literally-named symlink into the zone (reviewer confidence 1.00, real
+// bash). Green at the audit baseline (the whole NUL-bearing text
+// Clean-collapsed into the zone), RED under the origin-scoped refinement,
+// DENY under the dual-candidate remedy: for a word carrying \u/\U escapes
+// the guard judges BOTH the modern-decoded candidate AND the raw
+// source-text candidate — the raw text Clean-collapses into the zone on
+// the lexical arm and the t1566 raw arm resolves literal-named entries
+// through symlinks. Escape texts are written with the doubled backslash
+// (transport-safe source syntax for the single 0x5C byte at runtime).
+
+// TestCheckProtectedZoneShellMixedOriginNulDeniedRedirect — the reviewer's
+// exact shape: \u0000 then \x00, a write REDIRECT through the literal-named
+// symlink.
+func TestCheckProtectedZoneShellMixedOriginNulDeniedRedirect(t *testing.T) {
+	hzsWantMixedDeny(t, "mixed origin nul redirect",
+		"printf changed > $'link\\u0000\\x00/../zone_dir/marker.md'")
+}
+
+// TestCheckProtectedZoneShellMixedOriginNulDeniedOctalTerm — \u0000 then the
+// OCTAL NUL, an rm argument candidate.
+func TestCheckProtectedZoneShellMixedOriginNulDeniedOctalTerm(t *testing.T) {
+	hzsWantMixedDeny(t, "mixed origin nul octal term",
+		"rm -r $'link\\u0000\\0/../zone_dir'")
+}
+
+// TestCheckProtectedZoneShellMixedOriginNulDeniedUpperHex — \U00000000 then
+// \x00, a write REDIRECT.
+func TestCheckProtectedZoneShellMixedOriginNulDeniedUpperHex(t *testing.T) {
+	hzsWantMixedDeny(t, "mixed origin nul upper hex",
+		"printf changed > $'link\\U00000000\\x00/../zone_dir/marker.md'")
+}
+
+// TestCheckProtectedZoneShellMixedOriginNulDeniedUpperOctal — \U00000000
+// then the OCTAL NUL, an rm argument candidate.
+func TestCheckProtectedZoneShellMixedOriginNulDeniedUpperOctal(t *testing.T) {
+	hzsWantMixedDeny(t, "mixed origin nul upper octal",
+		"rm -r $'link\\U00000000\\0/../zone_dir'")
+}

@@ -451,11 +451,60 @@ measured at the comparison commit.
   `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
   clean; family coverage unchanged post-M2.1 (`12.4%`, all-rows selector).
 
+### Gate round 13 — M2.2 dual-candidate judgment for mixed-origin NUL words (2026-10-09)
 
+The review gate fired a P1 on the M2.1 refinement itself (reviewer confidence
+1.00, real-bash repro): MIXED-origin NUL words break the origin-scoped
+termination. A part carrying an EARLIER code-point-origin NUL (`\u0000` /
+`\U00000000`) and a LATER hex/octal-origin NUL terminates at the latter — so
+the part returns only the prefix and the judged candidate stops short of the
+zone, while the pre-4.2 shell acts on the FULL literal path through a
+literally-named symlink into the zone (`printf changed > $'link\u0000\x00/
+../zone_dir/marker.md'` overwrites the marker; the audit baseline DENIED the
+same input — the whole NUL-bearing text Clean-collapsed into the zone). The
+remedy judges BOTH worlds for any word carrying `\u`/`\U` escapes: the
+modern-decoded candidate AND the raw source-text candidate (the t1566 raw
+arm resolves literal-named entries through symlinks; the raw text
+Clean-collapses into the zone on the lexical arm) — consonant with the
+guard's possible-worlds design, and narrower than failing closed every
+`\u`/`\U`-bearing word.
 
+**Four mixed-origin regression rows — RED under the M2.1 tip (`4bdc4469a` +
+the rows, uncommitted at measurement).** Command, verbatim output, exit
+code, tree — the four elements:
 
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellMixedOriginNulDenied' -count=1 -v`
+- **Exit code**: `1`
+- **Observed (verbatim)**:
 
+```
+=== RUN   TestCheckProtectedZoneShellMixedOriginNulDeniedRedirect
+    protected_zone_shell_repro_test.go:565: mixed origin nul redirect: decision="allow" reason="", want deny
+    protected_zone_shell_repro_test.go:565: swept=1
+--- FAIL: TestCheckProtectedZoneShellMixedOriginNulDeniedRedirect (0.00s)
+=== RUN   TestCheckProtectedZoneShellMixedOriginNulDeniedOctalTerm
+    protected_zone_shell_repro_test.go:572: mixed origin nul octal term: decision="allow" reason="", want deny
+    protected_zone_shell_repro_test.go:572: swept=1
+--- FAIL: TestCheckProtectedZoneShellMixedOriginNulDeniedOctalTerm (0.00s)
+=== RUN   TestCheckProtectedZoneShellMixedOriginNulDeniedUpperHex
+    protected_zone_shell_repro_test.go:579: mixed origin nul upper hex: decision="allow" reason="", want deny
+    protected_zone_shell_repro_test.go:579: swept=1
+--- FAIL: TestCheckProtectedZoneShellMixedOriginNulDeniedUpperHex (0.00s)
+=== RUN   TestCheckProtectedZoneShellMixedOriginNulDeniedUpperOctal
+    protected_zone_shell_repro_test.go:586: mixed origin nul upper octal: decision="allow" reason="", want deny
+    protected_zone_shell_repro_test.go:586: swept=1
+--- FAIL: TestCheckProtectedZoneShellMixedOriginNulDeniedUpperOctal (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.690s
+FAIL
+```
 
+Row matrix (both judgment channels covered): redirect+u0000+x00 (the
+reviewer's exact command), rm-arg+u0000+octal, redirect+U00000000+x00,
+rm-arg+U00000000+octal; each fixture carries the literally-named symlinks
+`link\u0000` / `link\U00000000` → zone_dir/marker.md. Inputs
+transport-verified: whole-file NUL-byte scan zero; the escape literals carry
+the doubled backslash.
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
