@@ -36,6 +36,13 @@ import (
 type sessionStartHandler struct {
 	cfg ConfigProvider
 
+	// pendingRoleRule carries the role core whose REQ-ALB-010 size gate is
+	// deferred to FinalizeSessionStartOutput (dispatch-finalize — the gate
+	// must measure the composite AFTER every SessionStart handler's
+	// contribution merges). Nil when nothing is pending or the failure path
+	// already delivered its own recovery composite.
+	pendingRoleRule *pendingRoleRuleInjection
+
 	// syncDeferredScans records that this handler's constructor was given
 	// WithSynchronousDeferredScans. Per-handler rather than a package-level
 	// setter: a process-global toggle would be mutable shared state and would
@@ -43,6 +50,43 @@ type sessionStartHandler struct {
 	// TestMain seam exists to prevent (SPEC-TEMPDIR-CLEANUP-RACE-001
 	// REQ-TCR-001).
 	syncDeferredScans bool
+}
+
+// pendingRoleRuleInjection is the deferred size-gate state.
+type pendingRoleRuleInjection struct {
+	core string
+	root string
+	role string
+	lang string
+}
+
+// FinalizeSessionStartOutput applies the deferred REQ-ALB-010 size gate to
+// the FINAL merged additionalContext — after every SessionStart handler's
+// contribution has merged (REQ-ALB-010 measures the final string, and the
+// handoff/compact handlers merge after the role-rules producer). Over the
+// cap, the overflow read directive opens the composite (save-failure safe)
+// and the operator warning rides systemMessage; without overflow delivery
+// the core is removed (REQ-ALB-009 retreat). Consumed once.
+func (h *sessionStartHandler) FinalizeSessionStartOutput(merged *HookOutput) {
+	if merged == nil || h.pendingRoleRule == nil {
+		return
+	}
+	p := h.pendingRoleRule
+	h.pendingRoleRule = nil
+	composite, operator := roleRuleSizeGate(merged.HookSpecificOutput.AdditionalContext, p.core, p.root, p.role, p.lang)
+	if merged.HookSpecificOutput == nil {
+		merged.HookSpecificOutput = &HookSpecificOutput{
+			HookEventName: string(EventSessionStart),
+		}
+	}
+	merged.HookSpecificOutput.AdditionalContext = composite
+	if operator != "" {
+		if merged.SystemMessage == "" {
+			merged.SystemMessage = operator
+		} else {
+			merged.SystemMessage += "\n\n" + operator
+		}
+	}
 }
 
 // Option configures a SessionStart handler at construction time.
@@ -658,14 +702,16 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	if roleRulesRoot == "" {
 		roleRulesRoot = input.ProjectDir
 	}
-	inj := roleRuleInjectionFor(roleRulesRoot, input.Source, accumulatedAdditionalContext(out), operatorLang(h.cfg))
+	inj := roleRuleInjectionFor(roleRulesRoot, input.Source, operatorLang(h.cfg))
 	if inj.RecoveryHead != "" {
 		// The recovery directive opens the FINAL composite — ahead of every
 		// earlier producer's text — so a runtime side-channel cut (save
 		// failure → first 10,000 characters) still delivers it regardless of
 		// how much context the producers above accumulated. Nil guard: when
 		// no earlier producer wrote additionalContext the output struct is
-		// still nil — create it before the composite assignment.
+		// still nil — create it before the composite assignment. The failure
+		// path is size-independent, so it assembles here; the SIZE gate is
+		// deferred to FinalizeSessionStartOutput (dispatch-finalize).
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{
 				HookEventName: string(EventSessionStart),
@@ -673,7 +719,18 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 		out.HookSpecificOutput.AdditionalContext = assembleInjectionComposite(accumulatedAdditionalContext(out), inj)
 	} else if inj.Context != "" {
+		// The core appends now so a direct-Handle caller sees it; the SIZE
+		// gate runs at dispatch-finalize against the merged composite (REQ-
+		// ALB-010 measures the FINAL string — other SessionStart handlers
+		// merge their contributions after this producer).
 		appendAdditionalContext(out, inj.Context)
+		role, _ := detectRegisteredRole(os.Getenv)
+		h.pendingRoleRule = &pendingRoleRuleInjection{
+			core: inj.Context,
+			root: roleRulesRoot,
+			role: role.Name,
+			lang: operatorLang(h.cfg),
+		}
 	}
 	if inj.OperatorNotice != "" {
 		if out.SystemMessage == "" {

@@ -39,7 +39,7 @@ func TestSessionStartRoleRulesFifoFailVisible(t *testing.T) {
 	// injection returns the REQ-ALB-009 pair — and this test COMPLETING is
 	// itself the no-hang proof: os.ReadFile on a FIFO would block until the
 	// test deadline.
-	inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
+	inj := roleRuleInjectionFor(root, "startup", langEnglish)
 	assertFailVisible(t, inj, "fifo")
 }
 

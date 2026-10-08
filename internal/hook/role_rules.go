@@ -320,14 +320,18 @@ func roleRuleLocaleFor(lang string) roleRuleLocaleTable {
 	return roleRuleLocales[langEnglish]
 }
 
-// roleRuleInjectionFor decides the role-rules injection for one SessionStart
-// event. root is the project root the deployed rule files resolve under;
-// source is input.Source; existing is the additionalContext every earlier
-// producer already assembled — the 10,000-character cap applies to the
-// FINAL string, so the measurement runs over it plus the core plus the
-// directive (REQ-ALB-010); lang is the operator-facing conversation locale
-// the two operator warnings render in.
-func roleRuleInjectionFor(root, source, existing, lang string) roleRuleInjection {
+// roleRuleInjectionFor builds the role-rules injection pieces for one
+// SessionStart event. root is the project root the deployed rule files
+// resolve under; source is input.Source; lang is the operator-facing
+// conversation locale the operator warnings render in.
+//
+// The 10,000-character size gate is NOT decided here: REQ-ALB-010 measures
+// the FINAL additionalContext, and other SessionStart handlers (handoff,
+// compact) merge their contributions after this one — a gate at build time
+// would measure a prefix of the delivered string. The gate runs at
+// dispatch-finalize time (roleRuleSizeGate, called from
+// FinalizeSessionStartOutput) against the merged composite.
+func roleRuleInjectionFor(root, source, lang string) roleRuleInjection {
 	// Role session detection through the registry (REQ-ALB-011).
 	role, ok := detectRegisteredRole(os.Getenv)
 	if !ok {
@@ -375,38 +379,52 @@ func roleRuleInjectionFor(root, source, existing, lang string) roleRuleInjection
 	}
 	context := sb.String()
 
-	// Size gate over the FINAL additional context (REQ-ALB-010). The unit
-	// is the runtime's string-length unit — UTF-16 code units (Q4), not Go
-	// bytes: CJK prose and supplementary-plane runes count 2 per rune.
-	total := utf16Len(existing) + utf16Len("\n\n"+context)
+	// The size gate is deferred to dispatch-finalize time — see the function
+	// comment above.
+	return roleRuleInjection{Context: context}
+}
+
+// roleRuleSizeGate applies the REQ-ALB-010 ladder to the FINAL merged
+// additionalContext with the role core pending delivery. The unit is the
+// runtime's string-length unit — UTF-16 code units (Q4), not Go bytes. It
+// returns the composite to install and the operator warning to append (""
+// when the composite fits the cap and no warning is owed):
+//
+//   - at or under the cap: the core appends after the earlier producers'
+//     text, no warning.
+//   - over the cap with overflow delivery available: the overflow read
+//     directive OPENS the composite (the runtime's save-failure cut keeps
+//     the head), the earlier producers' text and the intact core follow,
+//     and the operator warning rides systemMessage.
+//   - over the cap without overflow delivery: REQ-ALB-009 retreat — the
+//     read directive opens the composite, the core is removed (zero
+//     truncated units), and the operator warning rides systemMessage.
+//
+// roleRuleSizeGate judges the ALREADY-ASSEMBLED context — assembled carries
+// the earlier producers' text AND the role core exactly once (the session-start
+// producer appended it) — and only decides shrink/warn/directive. It never
+// re-appends the core: under the cap the composite is returned unchanged; over
+// the cap with overflow delivery the overflow read directive OPENS the
+// composite (the runtime's save-failure cut keeps the head) and the intact
+// core follows inside; over the cap without overflow delivery the core is
+// REMOVED (REQ-ALB-009 retreat — zero truncated units) and the read directive
+// opens the composite. The operator warning rides systemMessage in both
+// over-cap branches. The core parameter is the exact string the producer
+// appended — used only for the retreat removal.
+func roleRuleSizeGate(assembled, core, root, roleName, lang string) (composite, operator string) {
+	total := utf16Len(assembled)
 	if total <= roleRulesContextLimit {
-		return roleRuleInjection{Context: context}
+		return assembled, ""
 	}
-
-	if !roleRulesOverflowDelivery() {
-		// Overflow delivery unavailable or truncating: REQ-ALB-009 retreat —
-		// warning plus read directive, no core, zero truncated units.
-		loc := roleRuleLocaleFor(lang)
-		return roleRuleInjection{
-			RecoveryHead:   roleRulesReadDirective(root, ""),
-			OperatorNotice: loc.OverflowUnavailable(role.Name, total, roleRulesContextLimit),
-		}
-	}
-
-	// Deliberate overflow-file delivery: the core goes out INTACT (zero
-	// truncated units); the runtime saves it to a session file and passes
-	// the path plus a 2,000-character preview. The read directive rides at
-	// the HEAD of the FINAL composite (the assembler places it ahead of the
-	// earlier producers' text): when the runtime's save itself fails it
-	// delivers only the first 10,000 characters of the composite, and a
-	// directive placed after 10,000+ characters of prior context would be
-	// cut exactly when the primary delivery channel dies.
 	loc := roleRuleLocaleFor(lang)
-	return roleRuleInjection{
-		RecoveryHead:   roleRulesOverflowDirective(root),
-		Context:        context,
-		OperatorNotice: loc.Overflow(role.Name, total, roleRulesContextLimit),
+	if !roleRulesOverflowDelivery() {
+		retreated := strings.Replace(assembled, "\n\n"+core, "", 1)
+		composite := roleRulesReadDirective(root, "") + "\n\n" + retreated
+		return composite, loc.OverflowUnavailable(roleName, total, roleRulesContextLimit)
 	}
+	head := roleRulesOverflowDirective(root)
+	return head + "\n\n" + assembled,
+		loc.Overflow(roleName, total, roleRulesContextLimit)
 }
 
 // roleRulesRootFromCWD resolves the project root the deployed role-gated
