@@ -170,7 +170,11 @@ Verification command:
 Files touched:
 - `internal/cli/integration_merge.go` — replace the LOUD-refusal LandingCheck placeholder
   (:95-99) with the real check: read the candidate record for (card, pinned SHA), require
-  green + ancestry; refuse cause 5 otherwise.
+  green + ancestry + TARGET BINDING (design.md D10) — the record's integration branch
+  equals the merge's resolved integration branch, and the candidate commit's first
+  parent equals that branch's current tip; a branch mismatch refuses outright, a tip
+  advance voids with re-candidate guidance; otherwise refuse cause 5 on
+  red/missing/stale.
 - `internal/cli/factory_card.go` — wire the SAME shared LandingCheck at the complete
   call site (:1977-1988, the self-issued merge path): its seams today carry ONLY
   `ReadCard`, and the step gates on `seams.LandingCheck != nil`
@@ -199,7 +203,12 @@ Test families: `go test ./internal/factory/ -run '^(TestLandingCheck|TestCandida
 (green admits past gate 5; red/missing/stale refuse with MergeExitLandingRefused; the
 stale-run observation — an older green arriving for a superseded candidate on the same
 ref — writes nothing; the run phase creates `TestLandingCheck` and `TestCandidateVerdict`
-beside the existing family); `go test ./internal/cli/ -run '^TestCompleteRefusesRedCandidate$'`
+beside the existing family); `go test ./internal/factory/ -run '^TestLandingCheckRefusesTargetMismatch$'`
+(target binding: candidate verified against target A, merge resolved to target B —
+e.g. the record built on the config target while the window record names
+`--branch <other>` — refuses cause 5; the target tip advanced past the candidate's
+first parent refuses cause 5 with re-candidate guidance; the run phase creates
+`TestLandingCheckRefusesTargetMismatch` beside `TestLandingCheck`); `go test ./internal/cli/ -run '^TestCompleteRefusesRedCandidate$'`
 (the complete call site refuses a red/missing candidate with cause 5 when the key is
 true — the run phase creates `TestCompleteRefusesRedCandidate` in the factory_card test
 family); `go test ./internal/cli/ -run '^TestCandidateAcquirePrecondition$'` (the per-card
@@ -212,7 +221,7 @@ contract tests at internal/factory/integration_merge_step_test.go:210 and :320; 
 `TestMergeStep*` family of 22 runs in the ordinary suite).
 
 Verification command:
-`go test ./internal/factory/ ./internal/cli/ -run '^(TestLandingCheck|TestCandidateVerdict|TestCandidateAcquirePrecondition|TestCompleteRefusesRedCandidate|TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepPreMergeCausesReleaseWithDistinctCodes|TestIntegrationCandidate)$' -count=1`
+`go test ./internal/factory/ ./internal/cli/ -run '^(TestLandingCheck|TestCandidateVerdict|TestLandingCheckRefusesTargetMismatch|TestCandidateAcquirePrecondition|TestCompleteRefusesRedCandidate|TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepPreMergeCausesReleaseWithDistinctCodes|TestIntegrationCandidate)$' -count=1`
 
 ### M5 — Guard bundle job, guard/ordinary separation, candidate vet legs (P2)
 
@@ -256,17 +265,32 @@ Verification commands:
   lists exactly those 22 — **`-list` honors `-run` but IGNORES `-skip`**. The ordinary
   set is therefore NEVER computed as `-list -skip`; it is the explicit set difference
   below.
-- Partition exactness by explicit set difference (ordinary = full − guards):
+- Partition exactness by explicit set difference (ordinary = full − guards), hardened:
+  `set -euo pipefail` so any collection-stage failure (a broken build, a selector
+  matching nothing) aborts non-zero instead of comparing empty lists to a clean verdict,
+  a per-run `mktemp -d` directory with trap cleanup instead of fixed `/tmp/m5-*.txt`
+  paths (the fixed form measured hazardous twice: parallel runs clobber each other's
+  lists, and a symlink planted at the fixed path redirects the write onto a user file —
+  gate reproduction; temp dirs under /tmp with automatic cleanup per AGENTS.local.md
+  Test Isolation), and named-reason empty guards on both collected lists before any
+  comparison (verification-completeness.md §1.1: the swept count is established before
+  the verdict is read):
   ```
-  go test -list '.*' ./internal/cli/ | grep '^Test' | sort > /tmp/m5-all.txt
-  go test -list '<guard-selector>' ./internal/cli/ | grep '^Test' | sort > /tmp/m5-guard.txt
-  comm -23 /tmp/m5-all.txt /tmp/m5-guard.txt > /tmp/m5-ordinary.txt        # full − guards
-  comm -12 /tmp/m5-ordinary.txt /tmp/m5-guard.txt | wc -l                  # 0 — ordinary ∩ guard empty (guards ⊆ all, so the operands are the derived ordinary set and the guard set)
-  sort -u /tmp/m5-ordinary.txt /tmp/m5-guard.txt | diff - /tmp/m5-all.txt  # no output — union == full
+  set -euo pipefail
+  d="$(mktemp -d)"; trap 'rm -rf "$d"' EXIT
+  go test -list '.*' ./internal/cli/ | grep '^Test' | sort > "$d/all.txt"
+  go test -list '<guard-selector>' ./internal/cli/ | grep '^Test' | sort > "$d/guard.txt"
+  test -s "$d/all.txt"   || { echo "FAIL: empty full test list — a broken build or a bad selector is not evidence"; exit 1; }
+  test -s "$d/guard.txt" || { echo "FAIL: empty guard list — selector matched nothing (empty-sweep prohibition)"; exit 1; }
+  comm -23 "$d/all.txt" "$d/guard.txt" > "$d/ordinary.txt"        # full − guards
+  comm -12 "$d/ordinary.txt" "$d/guard.txt" | wc -l               # 0 — ordinary ∩ guard empty (guards ⊆ all, so the operands are the derived ordinary set and the guard set)
+  sort -u "$d/ordinary.txt" "$d/guard.txt" | diff - "$d/all.txt"  # no output — union == full
   ```
-  and the ordinary-scope RUN's observed test set matches `/tmp/m5-ordinary.txt` (the
-  `-v` `=== RUN` names contain no guard name — the grep -c 0 check above is its quick
-  form).
+  Verified in isolation on 2026-10-09 (toy fixture): green path reads inter=0 /
+  union-ok; a build-error stream (grep matches nothing) refuses with the named reason
+  and a non-zero exit. The ordinary-scope RUN's observed test set additionally matches
+  `$d/ordinary.txt` (the `-v` `=== RUN` names contain no guard name — the grep -c 0
+  check above is its quick form).
 - Census fixture: `bash scripts/ci-census/census-check.sh` exits 0.
 - Workflow: `git grep -n "guard-bundle" .github/workflows/ci.yml` shows the job and the
   test job's complementary skip.

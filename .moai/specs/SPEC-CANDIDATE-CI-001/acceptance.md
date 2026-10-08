@@ -239,6 +239,9 @@ creates `TestCandidateRecord`).
   the current candidate's verdict. Verification expression (the stale-run case): after
   a re-candidate produces candidate SHA C2, an observed green for the prior candidate
   C1 on the same ref writes NOTHING to C2's record — C2's verdict stays `pending`.
+  The record's integration target (branch + tip) is the binding the landing check
+  compares the merge against (AC-CCI-011-2's target-mismatch case) — a verdict without
+  a matching target is not admissible evidence for any merge.
   Proven in the test family with a scripted run-state double; no live-CI dependency in
   unit tests.
 - RED-now (ledger EV-CCI-H, tree c47aeda2d): command
@@ -262,14 +265,23 @@ creates `TestCandidateRecord`).
   (no-op); the complete call site wires no seam at all; the NEW behavior only exists
   after M4. Flips at M4.
 
-## AC-CCI-011-2 — Red/missing/stale refuse with cause 5 (release-blocking; BOTH call sites)
+## AC-CCI-011-2 — Red/missing/stale/target-mismatch refuse with cause 5 (release-blocking; BOTH call sites)
 
 - When: the record verdict is `red`, or no record exists for (card, P), or the record's
-  candidate commit no longer descends from P.
+  candidate commit no longer descends from P, or the record's integration target does
+  not match the merge destination — the record's integration branch differs from the
+  merge's resolved branch (e.g. the candidate was built on the config target while the
+  window record names `--branch <other>`), or the target's current tip has advanced
+  past the candidate commit's first parent (verification-completeness: the verified
+  tree is no longer the tree about to be merged).
 - Then: `MergeExitCode(err)` == 5 (`MergeExitLandingRefused`,
   internal/factory/integration_merge_step.go:43) and the window releases (pre-merge
   cause class) — observed at BOTH call sites, `integration merge --card` and
-  `factory complete`, the self-issued path included.
+  `factory complete`, the self-issued path included. A BRANCH MISMATCH refuses outright
+  (a candidate verified against another target never admits, whatever its verdict); a
+  TIP ADVANCE refuses with re-candidate guidance (the cause-2 re-measure-and-re-acquire
+  discipline). The target-mismatch refusals are proven by
+  `TestLandingCheckRefusesTargetMismatch` in M4's family (the run phase creates it).
 - RED-now (ledger EV-CCI-I, tree c47aeda2d): command
   `go test -list '^TestLandingCheck$' ./internal/factory/` → stdout
   `ok  github.com/modu-ai/moai-adk/internal/factory	0.193s` (zero test names listed),

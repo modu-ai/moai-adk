@@ -115,7 +115,39 @@ Reason: the anchors are already in the tree, cited by SPEC ID. Honoring them cos
 disclosure paragraph; renaming costs a follow-up edit to committed factory code and a
 review round. All citations stay SPEC-scoped, which is the convention anyway.
 
-## D10 — The red-candidate hold is per-card record state, never the shared window policy
+## D10 — The candidate's verified tree is bound to its integration target: branch identity refuses, tip advance voids
+
+Decision: the landing check enforces two target bindings on the candidate record.
+(i) BRANCH IDENTITY — the record's integration branch must equal the merge's resolved
+integration branch (window record first, config fallback — the merge step's own
+resolution, internal/cli/integration_merge.go:52-61); a mismatch refuses outright
+(cause-5 class). A candidate verified against another target is evidence about a
+different merge and no re-candidate against the wrong target repairs that — the branch
+itself must change, so refusal is the only sound outcome.
+(ii) TIP EQUALITY — the candidate commit's first parent (the recorded integration tip)
+must equal the target branch's current tip; an advance VOIDS the verification and
+requires a re-candidate — the same re-measure-and-re-acquire discipline the merge step
+already applies to the remeasure record's base (cause 2,
+internal/factory/integration_merge_step.go:283-288).
+
+Alternatives: (a) target-immutable binding only (freeze the target at candidate time) —
+rejected: the integration target is config-resolved and legitimately moves (the
+git-flow → github-flow cutover, D5); freezing would wedge every pre-cutover candidate.
+(b) Relying on the existing remeasure gate alone — rejected by reproduction: the
+remeasure record and the candidate record are separate stores, and the auditor's
+temp-repo attack built a state where every EXISTING base/tree condition held and the
+candidate's tests exited 0 while the actual merge tree's tests exited 1 — the two
+records must be cross-bound at the landing check.
+
+Reason (read from the tree): acquire records the caller's `--branch` into the window
+record (internal/cli/integration.go:442-466, `want.Branch`), and the merge step takes
+its target from the WINDOW RECORD first (integration_merge.go:52-61) — so
+`acquire --branch <other>` legitimately retargets a merge, and only an explicit
+record-vs-destination comparison closes the gap. Branch identity + tip equality
+together pin the invariant this SPEC sells: the tree CI verified IS the tree about to
+be merged.
+
+## D11 — The red-candidate hold is per-card record state, never the shared window policy
 
 Decision: a red candidate holds ONLY its owning card, enforced at two per-card points —
 the landing check (already keyed to card + pinned SHA) and a card-aware acquire

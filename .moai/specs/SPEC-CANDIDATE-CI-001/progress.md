@@ -1,6 +1,6 @@
 # progress.md — SPEC-CANDIDATE-CI-001
 
-status: draft
+status: in-progress
 card: t1478
 phase: plan
 

@@ -2,7 +2,7 @@
 id: SPEC-CANDIDATE-CI-001
 title: "Pre-landing candidate CI — merge-tree candidate commits pushed to ci/<card> with a green-gated landing check"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-09
 updated: 2026-10-09
 author: manager-spec
@@ -202,7 +202,14 @@ protocols use), never assumed from the push alone. A run's verdict may be record
 candidate only when the observed run's head SHA equals the record's candidate commit SHA
 AND the run's ref equals the record's candidate branch; a completed run matching neither
 — a late-arriving run from a superseded candidate on the same `ci/<card>` ref — shall be
-discarded and never recorded as the current candidate's verdict.
+discarded and never recorded as the current candidate's verdict. The record's integration
+target (the branch name and tip it was built against, REQ-CCI-005) is part of the
+verdict's meaning: the landing check (REQ-CCI-011) shall admit a merge only when that
+target matches the merge's ACTUAL destination — the record's integration branch equals
+the merge step's resolved integration branch, and the candidate commit's first parent
+(the recorded tip) equals that branch's current tip. A verdict verified against one
+target is evidence about that target's merge only; this SPEC does not transfer it across
+targets.
 
 ### REQ-CCI-011 — The shared landing check (Ubiquitous — pre-allocated anchor)
 
@@ -217,8 +224,13 @@ on `seams.LandingCheck != nil` (:305), so BOTH of its call sites — the integra
 verb (internal/cli/integration_merge.go:100) and the factory complete self-issued merge
 path (internal/cli/factory_card.go:1977-1988, whose seams today carry only `ReadCard`) —
 shall wire the same shared check, and the step shall refuse (fail closed) when the key
-is enabled and no LandingCheck is wired, so no current or future caller merges without
-the gate.
+is enabled and no LandingCheck is wired, or when the candidate's recorded integration
+target does not match the actual merge destination — a branch mismatch refuses outright
+(a candidate verified against another target never admits), and a target tip advanced
+past the candidate's first parent voids the verification (re-candidate required, the
+same re-measure-and-re-acquire discipline as cause 2,
+integration_merge_step.go:283-288) — so no current or future caller merges without the
+gate or across a target mismatch.
 
 ### REQ-CCI-012 — Red-candidate per-card hold (Event-driven)
 
