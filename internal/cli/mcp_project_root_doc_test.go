@@ -22,11 +22,14 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-// projectRootDocFiles are the two copies of the rule: the one this repository
-// loads, and the mirror shipped to every project by `moai init` / `moai update`.
+// projectRootDocFiles are the two copies of the catalogue document that
+// carries the project_root enumerating sentence: the one this repository
+// loads, and the mirror shipped to every project by `moai init` / `moai
+// update`. (SPEC-ALWAYS-LOADED-BUDGET-001 M3 moved the sentence from the
+// always-loaded stub to the catalogue companion; re-pointed, never dropped.)
 var projectRootDocFiles = []string{
-	"../../.claude/rules/moai/core/moai-mcp-tools.md",
-	"../../internal/template/templates/.claude/rules/moai/core/moai-mcp-tools.md",
+	"../../.claude/rules/moai/core/moai-mcp-tools-catalogue.md",
+	"../../internal/template/templates/.claude/rules/moai/core/moai-mcp-tools-catalogue.md",
 }
 
 // The docs site repeats the project_root tool inventory in four languages.
