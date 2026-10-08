@@ -1001,3 +1001,55 @@ func TestCheckProtectedZoneShellVerbBindsOwnArgsNoop(t *testing.T) {
 	}
 	t.Logf("swept=%d", 1)
 }
+
+// The three gate-round-27 regression rows (card t1585): the isolation
+// principle applied one funnel at a time — the numeric-FD decision, the
+// git candidate generation, and the function-body redirections all bind
+// to the world that executes them.
+
+// TestCheckProtectedZoneShellNumericFdPerWorld — gate round 27 P1: the
+// numeric-FD decision is PER WORLD. The modern reading of the >& word is
+// "1" (a descriptor — writes nothing) while the pre-4.2 reading is a real
+// path through the literally-named 1u0000 entry that old bash WRITES. The
+// row asserts the DENY the pre-4.2 world's file write produces.
+func TestCheckProtectedZoneShellNumericFdPerWorld(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	const fdCmd = "printf changed >& $'1\\u0000/../zone_dir/marker.md'"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": fdCmd})
+	wantZoneDeny(t, "numeric fd per world", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellGitCandidatesConfinedToCaller — gate round
+// 27 P2 (over-block): the git candidates confine to the CALLING
+// generation. Modern reads `git rm -f docs` (harmless), pre-4.2 reads
+// printf (harmless) — pooling both generations' file readings judged the
+// protected path under the modern git → FALSE DENY. The row asserts the
+// ALLOW.
+func TestCheckProtectedZoneShellGitCandidatesConfinedToCaller(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	const gitCmd = "$'git\\u0000/../printf' rm -f $'docs\\u0000/../zone_dir/marker.md'"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": gitCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("git candidates confined to caller: decision=%q reason=%q, want allowed — modern git joins only the modern file reading, and no world deletes", gitCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellFunctionRedirectsOwnGeneration — gate round
+// 27 P2 (over-block): the function executes only in the modern world
+// (writing to docs, harmless) — judging the pre-4.2 redirect reading's
+// protected path during that execution is a FALSE DENY. The row asserts
+// the ALLOW.
+func TestCheckProtectedZoneShellFunctionRedirectsOwnGeneration(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	const fnCmd = "f(){ printf changed > $'docs\\u0000/../zone_dir/marker.md'; }; $'f\\u0000/../printf'"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": fnCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("function redirects own generation: decision=%q reason=%q, want allowed — the function executes only in the modern world, whose redirect lands on docs", fnCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}

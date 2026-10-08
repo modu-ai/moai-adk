@@ -1080,6 +1080,44 @@ folded away — every consumer reads per-world now.
   `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
   clean; family coverage `13.8%` (all-rows selector).
 
+### Gate round 27 — M2.10 funnel-scoped world binding (2026-10-09)
+
+Three findings on the M2.9 tip (`5065e16ae`, overlay 4 repros
+base-PASS/current-FAIL, existing suites PASS): (1) P1 the numeric-FD
+decision read the MODERN reading only — `printf changed >& $'1\u0000/../
+zone_dir/marker.md'`: "1" is a descriptor in the modern world (writes
+nothing) while the pre-4.2 reading is a real path old bash WRITES through
+the literally-named 1u0000 entry; (2) P2 the git funnel's inner world loop
+SHADOWED the passed generation, generating both worlds' candidates
+(`$'git\u0000/../printf' rm -f $'docs\u0000/../zone_dir/marker.md'` —
+modern git × the pre-4.2 file reading = false deny); (3) P2 function-body
+redirections ignored `w.world` — a function executing only in the modern
+world (`f(){ printf changed > $'docs\u0000/../zone_dir/marker.md'; };
+$'f\u0000/../printf'`) still judged the pre-4.2 reading's protected path.
+Findings 2-3 are OVER-BLOCK inverse rows.
+
+**Three regression rows — RED under the M2.9 tip (`5065e16ae` + the rows,
+uncommitted at measurement):**
+
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellNumericFdPerWorld|TestCheckProtectedZoneShellGitCandidatesConfinedToCaller|TestCheckProtectedZoneShellFunctionRedirectsOwnGeneration' -count=1 -v`
+- **Exit code**: `1`
+- **Observed (verbatim, decision lines)**:
+
+```
+    protected_zone_shell_repro_test.go:1020: numeric fd per world: decision="allow" reason="", want deny
+--- FAIL: TestCheckProtectedZoneShellNumericFdPerWorld (0.00s)
+    protected_zone_shell_repro_test.go:1036: git candidates confined to caller: decision="$'git\\u0000/../printf' rm -f $'docs\\u0000/../zone_dir/marker.md'" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=docs/zone_dir/marker.md", want allowed — modern git joins only the modern file reading, and no world deletes
+--- FAIL: TestCheckProtectedZoneShellGitCandidatesConfinedToCaller (0.00s)
+    protected_zone_shell_repro_test.go:1052: function redirects own generation: decision="f(){ printf changed > $'docs\\u0000/../zone_dir/marker.md'; }; $'f\\u0000/../printf'" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=docs/zone_dir/marker.md", want allowed — the function executes only in the modern world, whose redirect lands on docs
+--- FAIL: TestCheckProtectedZoneShellFunctionRedirectsOwnGeneration (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.636s
+```
+
+Row 1 is a deny-miss (the bypass); rows 2-3 are OVER-BLOCK inverse rows.
+Fixture: the narrowed marker manifest; inputs transport-verified
+(whole-file NUL-byte scan zero, doubled backslash).
+
 
 **M2.7 remedy — full dispatch pre-classification + function shadowing
 (GREEN record).** Shape: `zoneExecNames` (the possible base names of the
