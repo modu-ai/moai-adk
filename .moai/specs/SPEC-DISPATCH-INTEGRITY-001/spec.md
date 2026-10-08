@@ -1,7 +1,7 @@
 ---
 id: SPEC-DISPATCH-INTEGRITY-001
 title: "Factory dispatch and bundle integrity — eight P1 review findings"
-version: "0.1.3"
+version: "0.1.4"
 status: draft
 created: 2026-10-09
 updated: 2026-10-09
@@ -67,6 +67,14 @@ tier: M
   touched functions' callers at fix time (D14); the AC-DI-010 test
   rewrite + RED measurement move from M4 to M0 — M4 keeps the
   implementation fix + GREEN verification (gate-P2 sequencing).
+- v0.1.4 (2026-10-09) — micro-followup (leader disposition, operator
+  decision A): D15 — the nomination negative fixture's nil-error branch
+  fails unconditionally ("leased past an unmerged predecessor — dependency
+  check did not run"); the positive control is the only place a lease
+  outcome is asserted. D16 — every EL cell binds its measurement input to
+  the mirror as of 5ae7d6ebc (the original bodies the cells executed);
+  strengthened-body outcomes remain post-M0 evidence, not retrofitted
+  into the ledger.
 
 ## Requirements
 

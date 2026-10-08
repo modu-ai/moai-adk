@@ -263,6 +263,10 @@ over-selection only, and each recorded output shows exactly one test ran).
 
 - tree: 544462a8d (Go bytes identical to 81786284e — the plan commit
   touched only `.moai/specs`, verified via `git show --stat`)
+- input: `owned-tests/owned_red_tests.go.txt` as of 5ae7d6ebc — the
+  original overlay bodies these cells executed; the strengthened bodies
+  now in the mirror are post-M0 intake forms (README § Assertion
+  strength)
 - command: `go test ./internal/cli -run 'TestReviewFindingFoldConcurrentWrite' -count=1 -v`
 - exit code: 1
 - stdout (verbatim):
@@ -280,6 +284,7 @@ FAIL
 ### EL-002 — TestReviewFindingFoldInterleavedArchiveLoss (RED — original body)
 
 - tree: 544462a8d (as EL-001)
+- input: the mirror as of 5ae7d6ebc (as EL-001 — original bodies)
 - command: `go test ./internal/cli -run 'TestReviewFindingFoldInterleavedArchiveLoss' -count=1 -v`
 - exit code: 1
 - stdout (verbatim):
@@ -300,6 +305,7 @@ note). The re-authored body's RED-now entry is captured in M0.
 ### EL-003 — TestReviewFindingMergedPRPredecessor (PASS — regression guard)
 
 - tree: 544462a8d (as EL-001)
+- input: the mirror as of 5ae7d6ebc (as EL-001 — original bodies)
 - command: `go test ./internal/cli -run 'TestReviewFindingMergedPRPredecessor' -count=1 -v`
 - exit code: 0
 - stdout (verbatim):
@@ -315,6 +321,7 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	4.887s
 ### EL-004 — TestReviewFindingNominatedOverwritesDependency (PASS — regression guard)
 
 - tree: 544462a8d (as EL-001)
+- input: the mirror as of 5ae7d6ebc (as EL-001 — original bodies)
 - command: `go test ./internal/cli -run 'TestReviewFindingNominatedOverwritesDependency' -count=1 -v`
 - exit code: 0
 - stdout (verbatim):

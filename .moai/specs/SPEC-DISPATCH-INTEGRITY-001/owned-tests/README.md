@@ -33,7 +33,16 @@ richer; under today's unfixed code both bodies are RED):
   must stay picked with the stored hint (a nil-error or non-naming
   refusal — the `nomination unavailable` mutant class — fails); the
   sibling positive control proves the merged-predecessor path actually
-  leases (D13).
+  leases (D13). In the negative fixture a nil error fails unconditionally
+  (micro-followup D15: a lease there means the guard was removed) — the
+  positive control is the only place a lease outcome is asserted.
+
+Revision binding (micro-followup D16): the measured EL-001..004 cells cite
+the mirror AS OF 5ae7d6ebc — the revision whose tracked mirror carried the
+original overlay bodies those runs executed. The strengthened bodies
+entered the mirror at 05f020362 (round 3), with the D15 nil-error
+tightening after it; their outcomes are post-M0 evidence and are NOT
+retrofitted into EL-001..004.
 
 ## Drop-in procedure
 

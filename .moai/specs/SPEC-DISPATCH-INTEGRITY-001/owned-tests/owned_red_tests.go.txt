@@ -54,19 +54,14 @@ func TestReviewFindingNominatedOverwritesDependency(t *testing.T) {
 	_, _, err := runFactory(t, "next", "--card", "t3", "--run", fcRun)
 	c := fcCard(t, root, "t3")
 	t.Logf("err=%v t3 state=%s after=%q; original t1 state=%s", err, c.State, c.HintAfter, fcCard(t, root, "t1").State)
-	// AC-DI-005 two-arm assertion (plan-audit iter-3 D13): the dependency
-	// check must PROVABLY have run. Arm A (this fixture, t1 unmerged): the
-	// refusal names the unmerged predecessor and t3 stays picked with
-	// HintAfter "t1". A nil error with a non-leased card — or any refusal
-	// that does not name the predecessor — means an unrelated failure
-	// short-circuited before the check (the `nomination unavailable` mutant
-	// class) and must fail. Arm B (positive control) is
-	// TestReviewFindingNominatedLeasesAfterPredecessorMerges below.
+	// AC-DI-005 negative arm (plan-audit iter-3 D13; micro-followup D15):
+	// in this fixture t1 is UNMERGED, so a nil error is itself the failure —
+	// the lease was granted past a live dependency check, i.e. the guard was
+	// removed. It fails unconditionally; the only lease outcome this test
+	// family tolerates is asserted by the positive control below
+	// (TestReviewFindingNominatedLeasesAfterPredecessorMerges).
 	if err == nil {
-		if c.State != homestate.CardLeased || c.HintAfter != "t1" {
-			t.Errorf("no error and no clean lease: state=%s after=%q", c.State, c.HintAfter)
-		}
-		return
+		t.Fatalf("leased past an unmerged predecessor — dependency check did not run: state=%s after=%q", c.State, c.HintAfter)
 	}
 	if !strings.Contains(err.Error(), "has not reached") || !strings.Contains(err.Error(), "t1") {
 		t.Errorf("refusal does not name the unmerged predecessor t1: %v", err)
