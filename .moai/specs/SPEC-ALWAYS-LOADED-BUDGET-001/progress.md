@@ -208,8 +208,24 @@ Residual-risk: (1) if the runtime's oversized-output behavior changes upstream, 
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_status: complete — M0–M5 all landed on `WT-always-loaded-char-budget` (run commits `881f5ef56` to `be6155e61`). This section is the signal; the evidence per milestone is §E.2 above and is not duplicated here.
+- **M0** re-anchor + ledger baseline: anchor moved to the post-cutover trunk `a2a184ad3` (develop-era pin `2771626b5` superseded); the 363-row binding ledger fixture landed before any template edit (commit ordering witnessed); Q4 (10,000-char `additionalContext` cap, documented bound) and Q8 (role-marker registry seed) measured; REQ-ALB-022 floor 111,280 ≤ the then-budget — M1 proceeded.
+- **M1** budget guard RED observed verbatim (`total=180901 budget=115000`, templates untouched); ledger-integrity family green with mutation fixtures.
+- **M2** role injection: markers, registry, builder + SessionStart injection (startup/clear/compact; never `resume`; never truncation) — hook role family 47 PASS / 0 FAIL.
+- **M3** rule split: role stubs + `paths:` placement + rationale migration landed; the floor finding (~122,000–126,000 > the then-constant 115,000) reported per the REQ-ALB-022 stop clause and dispositioned by the operator.
+- **M4** entry points + mirror: 4 entry-point markers + read-first directives (sweep test added; the 4th citing file found by its own sweep), mirror byte-sync with 23 pairs registered, doc pins moved, 9 turn-gate findings repaired each with an observed-failure fixture; the M4 addendum repaired the directives' deployment-layout gap (both `.claude/rules/` and `.moai/policies/` named).
+- **M5** measurements + disposition: REQ-ALB-021 before/after recorded and reconciled (180,901 → 138,278; −42,623, all rules-side); the M3 record's 139,320 superseded as a mis-attribution (138,278 reproduces byte-identical at both pins); issues #1717/#1746 goal MET on the rules-only axis; operator disposition (a) implemented — constant 150,000 on the rules-only axis (v0.9.0 amendment, `decision-index.md` Q2/Q6).
+- **Final guard state: GREEN — rules-only subtotal 114,594 ≤ 150,000; deployed-surface total 138,278** (axis per the amended REQ-ALB-002; `AGENTS.md` 23,684 on the measured surface outside the axis, t1450 account). The M1-era and M3-era RED figures are historical records.
+- Repair loop: 14 `fix(...)` commits from the turn-gate/card-review rounds (M1 import-boundary + the 3-defect ledger repairs, M2 fail-visible, M4's nine findings, the section-ref sweep extension, the deployment-layout addendum), each closed with an observed-failure fixture.
+- Verification batch (M4 final, tree `b50bdfadf`): `go test ./internal/template/ -count=1` full package ok; `go build ./...` and `GOOS=windows GOARCH=amd64 go build ./...` exit 0; vet, scoped golangci-lint (0 issues), gofmt clean.
+- plan-audit: iter6 PASS 0.91 (v0.9.0 amendment landed mid-run; skip-eligibility resets noted — both mid-run amendments changed the artifact-hash subject set, so the cache is invalidated; the sync-phase audit is the fresh-eyes pass for the amended artifacts).
+- Gaps carried to sync: the live first-turn probe is recorded by method, not runtime observation (§E.2 M5 Gaps); `AGENTS.md` growth is unwatched by this SPEC's guard (t1450's account).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: complete — the single sync commit carries the 3-phase close: the `spec.md` frontmatter transition `in-progress → completed` (the sync commit carries the terminal `completed` transition per the ownership matrix; `status` + `updated` only), the CHANGELOG `[Unreleased]` entry, and this §E.4 signal.
+- CHANGELOG B12 checks (observed before appending): `grep -c 'SPEC-ALWAYS-LOADED-BUDGET-001' CHANGELOG.md` → `0` (exit 1 — no prior entry, no duplicate-entry risk); the cited AC count is 25 (AC-ALB-001..025 — 23 release-blocking green + 2 regression-guard), all 25 identifiers LIVE in `acceptance.md` (zero `[RETIRED]`/`[REF]` markers observed); every cited path verified by `ls` (`internal/template/testdata/binding_ledger.json`, `internal/hook/session_start_factory.go`, `internal/hook/role_rules.go`, `internal/template/always_loaded_budget_test.go`, the four entry-point files).
+- Sync-phase scope discipline: SPEC-artifact bodies untouched (frontmatter `status:`/`updated:` only); no code, template, test, or ledger-fixture change in this phase; `.moai/reports/t1469/` and `.moai/state/` untouched.
+- sync_commit_sha: "pending-backfill-sync"
+  - Placeholder per the D3 backfill exemption — a commit cannot cite its own hash. The resolved SHA is backfilled in the immediately following commit (`docs(SPEC-ALWAYS-LOADED-BUDGET-001): backfill sync_commit_sha (card t1469)`).
+- Sync verification (performed at close): the sync commit's `git show --stat HEAD` names exactly CHANGELOG.md + spec.md + progress.md; builds untouched — `go build ./...` exit 0 observed after the sync commits; final `git status --short` clean; NO push, NO PR (the lane integrates via moai factory complete).
