@@ -42,7 +42,7 @@ description: メインセッションが使うモデルと推論深度を決め�
 > **Haiku 5.5 ファクト (Claude Code v2.1.293+)**: Anthropic API では `haiku` エイリアスは Haiku
 > 5.5(`claude-haiku-5-5`、全プランで 1M コンテキスト、`[1m]` 接尾辞不要)に解決されます。auto-compact
 > の既定は ~967K。料金は input $0.10 / output $0.50 per Mtok で、プロンプトが over 100K(10万トークン
-> 超過)だと input $0.50 / output $2.50 に上がります。adaptive thinking は常時有効で無効化できません。
+> 超過)だと input $0.50 / output $2.50 に上がります。adaptive thinking は既定で有効ですが、`high` effort 以下(low/medium/high)では `thinking: {"type": "disabled"}` で無効化できます。品質とコストの調整は effort パラメータが望ましい手段です。
 > 一方、AWS Bedrock・GCP Agent Platform・Microsoft Foundry では `haiku` は Haiku 4.5(200K)に解決されます
 > — エイリアス解決はプロバイダー別です。
 
