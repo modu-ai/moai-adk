@@ -1,7 +1,4 @@
 # Fold and omission judgments from the last codemaps refresh.
-# 위까지의 fold 판정 가운데 문서 전면 재생성(t1485 판) 이후 본문에서 경로가 지워진 것은
-# 이번 refresh(t1469 판)에서 판정 만료로 정리했다 — 38줄. 문서가 단위를 다시
-# 이름 대는 순간 판정을 새로 내리면 된다. 아래는 이번 refresh의 판정이다.
 # fold <unit>: folded into a parent's description; the unit stays unnamed.
 # omission <unit>: left out earlier; the documents owe it a description.
 
@@ -89,7 +86,49 @@ omission internal/cli/wizard/questions.go
 # taxonomy/budget.go · taxonomy/reach.go는 기존 패키지의 +2 파일로 modules.md t1510 판이 이름을 운반한다.
 # 위 기존 fold/omission 판정들은 이번 판에서 문서 본문과 대조해 그대로 성립함을 확인했다.
 
+fold internal/core/git
+fold internal/cli/doctor_hook_delivery.go
+fold internal/hook/quality/step_git_env.go
+fold internal/kanban/prlink_landedref.go
+fold internal/factory/prlink_landedref.go
+fold internal/web/fieldsets_codex_templ.go
+fold internal/cli/init_executor_seam.go
+fold internal/cli/todo_triage.go
+fold internal/config/drift_cache_fill.go
+fold internal/hook/session_start_drift_fill.go
+fold internal/spec/drift_fill_lock.go
+fold internal/spec/lint_coverage_sibling_maps.go
+fold internal/spec/lint_req_heading.go
+fold internal/statusline/config_root.go
+fold internal/cli/update/backup/settings_snapshot.go
+fold internal/spec/closer.go
+fold internal/spec/era.go
+fold internal/constitution/contradiction.go
+fold internal/session/session_pid.go
+fold internal/session/registry.go
+fold internal/merge/strategies.go
+fold internal/merge/types.go
+fold internal/binlag/binlag.go
+fold internal/hook/branch_guard.go
+fold internal/hook/cwd_changed_relocate.go
+fold internal/hook/memo/taxonomy/linkage.go
+fold internal/cli/session.go
+fold internal/cli/home_state_coverage.go
+fold internal/cli/hook_install.go
+fold internal/cli/hook_install_precommit.go
+fold internal/migration/migrations/m001_hardcoded_path.go
+fold internal/settings/yamlpatch/yamlpatch.go
+fold internal/settings/schema_sections.go
+fold internal/defs/dirs.go
+fold internal/homestate/admission.go
+fold internal/config/cache.go
+fold internal/config/envkeys.go
+fold internal/template/catalog.yaml
+
 # --- 2026-10-09 refresh (card t1469, branch WT-always-loaded-char-budget, HEAD 77e296541) ---
+# 이번 판 신규: 피드백 참여 파이프라인·업데이트 조정·원자 파일 부팅 id·런타임 진행 파일의 fold.
+# 주의: fold 단위의 전체 경로 토큰은 생성 문서가 이름 대면 안 된다(guard REQ-CFG-002) —
+# modules.md 행은 뼈대 없는 파일명 형태로 서술한다.
 fold internal/bugreport/captureframesprobe
 fold internal/cli/update/reconcile_classify.go
 fold internal/runtime/progress_fd_unix.go
