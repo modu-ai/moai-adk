@@ -353,11 +353,12 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if archiveErr := dryRunArchiveLegacySkills(cwd, out); archiveErr != nil {
 			return archiveErr
 		}
-		// t40 defect 3: preview the managed-cleanup deletion list. A preview
-		// failure degrades to a warning — a dry run must not fail the command.
+		// t40 defect 3 → SPEC-UPDATE-MIGRATION-001 (card t1547): preview the
+		// reconciliation plan. A preview failure degrades to a warning — a
+		// dry run must not fail the command.
 		previewMode := resolveUpdateDeployMode(cwd, getBoolFlag(cmd, "no-plugin") || updatePluginOptedOut())
-		if previewErr := previewManagedCleanup(cwd, previewMode, out); previewErr != nil {
-			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Cleanup preview", "failed", previewErr.Error(), &th))
+		if previewErr := previewReconciliation(cwd, previewMode, out); previewErr != nil {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Reconciliation preview", "failed", previewErr.Error(), &th))
 		}
 		// SPEC-UPDATE-REINSTALL-LOOP-002 REQ-RIL2-024/025 (M4): the v2
 		// fingerprint is computed HERE — inside the dry-run branch, above the
@@ -549,30 +550,29 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// (REQ-008), the selection-based prune (REQ-009), REQ-023 divergence
 	// handling, the REQ-011 summary. It runs BEFORE the project phase so the
 	// upgrade first-install precedes the migration removal (REQ-024's
-	// upgrade-arm ordering; design §2.4).
+	// upgrade-arm ordering; design §2.4). The user-side install may precede
+	// the confirmation prompt; the phase's outcome rides into the sync flow
+	// as the migration's run-level removal gate (repair round — a failed or
+	// skipped install must leave every project-side asset in place).
+	userAssetsInstalled := false
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
 		if err := runUserAssetUpdatePhase(homeDir, out); err != nil {
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: user-asset phase failed (continuing with the project phase): %v\n", err)
+		} else {
+			userAssetsInstalled = true
 		}
 	}
 
-	// Item 5 (fix round 3): the migration runs AFTER the user-asset phase —
-	// on a first update the counterpart cannot be verified until the install
-	// has landed, so install + verification MUST precede the per-file
-	// removal (the gate's real-runUpdate repro: old project skills survived
-	// because the migration ran first and saw no counterparts).
-	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
-		if err := migrateProjectCommonAssets(".", homeDir, nil, func(format string, args ...interface{}) {
-			_, _ = fmt.Fprintf(out, format+"\n", args...)
-		}); err != nil {
-			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: migration warning: %v\n", err)
-		}
-	}
-
+	// Item 5 (fix round 3), relocated by the repair round (gate r5 finding):
+	// the per-file project migration's REMOVAL arm runs inside the sync
+	// flow, AFTER the confirmation gate — cancelling the update must leave
+	// the project's managed assets byte-intact, and the old placement here
+	// (before the prompt) deleted them even on a cancelled run. Ordering is
+	// preserved: the user-side install above still precedes the removal.
 	// Legacy skills are archived inside the template sync, before its managed
 	// cleanup removes .claude/skills/moai*; a skipped sync archives nothing,
 	// which keeps REQ-UAC-004.
-	syncSkipped, err := runTemplateSyncWithProgress(cmd)
+	syncSkipped, err := runTemplateSyncWithProgress(cmd, userAssetsInstalled)
 	if err != nil {
 		return err
 	}
