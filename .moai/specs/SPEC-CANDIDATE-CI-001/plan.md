@@ -261,7 +261,7 @@ Verification commands:
   go test -list '.*' ./internal/cli/ | grep '^Test' | sort > /tmp/m5-all.txt
   go test -list '<guard-selector>' ./internal/cli/ | grep '^Test' | sort > /tmp/m5-guard.txt
   comm -23 /tmp/m5-all.txt /tmp/m5-guard.txt > /tmp/m5-ordinary.txt        # full − guards
-  comm -12 /tmp/m5-all.txt /tmp/m5-guard.txt | wc -l                       # 0 — intersection empty
+  comm -12 /tmp/m5-ordinary.txt /tmp/m5-guard.txt | wc -l                  # 0 — ordinary ∩ guard empty (guards ⊆ all, so the operands are the derived ordinary set and the guard set)
   sort -u /tmp/m5-ordinary.txt /tmp/m5-guard.txt | diff - /tmp/m5-all.txt  # no output — union == full
   ```
   and the ordinary-scope RUN's observed test set matches `/tmp/m5-ordinary.txt` (the
