@@ -10,14 +10,17 @@ statusline:
   # detection, so a typo shows as an absent segment instead of a wrong count.
   # forge: gitlab
 
-  # Forge opt-out for THIS repo (SPEC-STATUSLINE-PROFILE-RESPECT-001 M7,
-  # t293): stops both the forge-pair render and the detached refresh child.
-  # OPERATIONAL AND KNOWINGLY EPHEMERAL — this file lives under the
-  # template-managed .moai/config root, which `moai update`
-  # (CleanMoaiManagedPaths) wipes and re-deploys, so this hand-added key
-  # silently vanishes on the next update (CLAUDE.local.md §2.3). Deliberately
-  # NOT mirrored to internal/template/templates/ (template neutrality).
-  forge: "none"
+  # Forge override for THIS repo — this file is NOT the durable home.
+  # Hand-added keys under .moai/config are wiped by `moai update`
+  # (managed-root redeploy), which is what kept silencing this repo's
+  # counts: t293 set `forge: none` here and the value kept coming back /
+  # vanishing across updates (card t1583). The update-durable home is
+  # .moai/statusline.local.yaml — directly under .moai/, outside the wiped
+  # root; same `statusline.forge` key, the local file wins, this managed
+  # file stays the fallback. This repo needs no explicit override (the
+  # github.com origin selects `gh` by detection), so the key stays
+  # commented out here.
+  # forge: github
 
   # Individual segment toggles — the only runtime lever.
   # All 16 segments default-on; graceful no-output handles inactive states.

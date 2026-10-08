@@ -45,6 +45,15 @@ type CleanTarget struct {
 	FullPath string
 	// IsGlob indicates the target uses filepath.Glob matching
 	IsGlob bool
+	// PreserveOnly marks a CLASSIFICATION-scope-only target (card t1547
+	// repair round): the reconciliation classifies the files under it, but no
+	// removal may ever process it. The joint t1547×t1509 contract makes the
+	// common-asset roots preserve-only for the update run — the deployer
+	// skips them (REQ-005) and the per-file user-asset migration is their
+	// only removal — so the classifier lists their files preserved without
+	// ever routing them to a removal-eligible disposition. The removal walks
+	// skip a PreserveOnly target as defense-in-depth.
+	PreserveOnly bool
 }
 
 // ManagedCleanTargets returns the fixed list of MoAI-managed paths that
@@ -127,6 +136,11 @@ func CleanMoaiManagedPathsWithTargets(projectRoot string, out io.Writer, tmplFS 
 	// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces the legacy
 	// CR-plus-format pair in this hot path (REQ-UPR-004).
 	for _, t := range targets {
+		// Defense-in-depth (card t1547 repair round): a PreserveOnly target
+		// is a classification-scope entry — the removal never processes it.
+		if t.PreserveOnly {
+			continue
+		}
 		pl := tui.ProgressLine(out, fmt.Sprintf("Removing %s...", t.DisplayPath), nil)
 
 		if t.IsGlob {
@@ -221,6 +235,151 @@ func CleanMoaiManagedPathsWithTargets(projectRoot string, out io.Writer, tmplFS 
 		return err
 	}
 
+	return nil
+}
+
+// ProtectFunc reports whether the entry at rel — a project-root-relative
+// slash path — must NOT be removed by the guarded wholesale walk
+// (SPEC-UPDATE-MIGRATION-001 REQ-UPM-015): no code path, the legacy
+// fresh-install walk included, may delete a file whose class is user-owned
+// or an unresolved user modification.
+type ProtectFunc func(rel string) bool
+
+// CleanMoaiManagedPathsWithTargetsGuarded is CleanMoaiManagedPathsWithTargets
+// under the REQ-UPM-015 guard (SPEC-UPDATE-MIGRATION-001): a protected entry
+// is skipped with its own progress line — never deleted, never overwritten —
+// while template-carried and unclassified-but-unprotected entries clear with
+// the exact per-entry machinery of the unguarded walk (t111 pre-clean backup,
+// symlink dispositions, backup-then-remove ordering). Directory roots whose
+// members were removed are pruned when empty; a directory holding protected
+// entries stays.
+//
+// The config branch of the unguarded walk is NOT hardcoded here: the caller
+// includes .moai/config in targets when the legacy flow must cover it, so the
+// guard applies per entry at file granularity. The legacy .moai/memory
+// migration still runs last (it carries its own REQ-UDS-008 backup ordering).
+func CleanMoaiManagedPathsWithTargetsGuarded(projectRoot string, out io.Writer, tmplFS fs.FS, targets []CleanTarget, protect ProtectFunc) error {
+	// One timestamp for the whole run, matching the unguarded walk's layout.
+	backupBase := filepath.Join(projectRoot, defs.BackupsDir,
+		time.Now().Format(defs.BackupTimestampFormat), preCleanBackupSubdir)
+
+	guardedRemove := func(diskPath, rel string) error {
+		if protect != nil && protect(filepath.ToSlash(rel)) {
+			// REQ-UPM-015: skip-with-report. The entry is never touched.
+			pl := tui.ProgressLine(out, fmt.Sprintf("Removing %s...", rel), nil)
+			pl.Done(fmt.Sprintf("Preserved %s (protected from wholesale removal)", rel))
+			return nil
+		}
+		_, _, err := backupThenRemove(diskPath, rel, backupBase, tmplFS)
+		return err
+	}
+
+	for _, t := range targets {
+		// Defense-in-depth (card t1547 repair round): a PreserveOnly target
+		// is a classification-scope entry — the removal never processes it.
+		if t.PreserveOnly {
+			continue
+		}
+		paths := []string{t.FullPath}
+		if t.IsGlob {
+			matches, err := filepath.Glob(t.FullPath)
+			if err != nil {
+				return fmt.Errorf("glob %s: %w", t.DisplayPath, err)
+			}
+			paths = matches
+		}
+		for _, p := range paths {
+			info, err := os.Lstat(p)
+			if err != nil {
+				if os.IsNotExist(err) {
+					continue // absent target: nothing to guard
+				}
+				return fmt.Errorf("stat %s: %w", t.DisplayPath, err)
+			}
+			rel, relErr := filepath.Rel(projectRoot, p)
+			if relErr != nil {
+				return fmt.Errorf("rel %s: %w", p, relErr)
+			}
+			if !info.IsDir() {
+				if err := guardedRemove(p, rel); err != nil {
+					return fmt.Errorf("remove %s: %w", rel, err)
+				}
+				continue
+			}
+			// Directory target: walk per entry (Lstat semantics — the
+			// SPEC-CLI-CLEAN-SYMLINK-001 rule), protect per file, then prune
+			// the directories the removal emptied.
+			var dirs []string
+			walkErr := filepath.WalkDir(p, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				relEntry, relErr := filepath.Rel(projectRoot, path)
+				if relErr != nil {
+					return relErr
+				}
+				if d.IsDir() {
+					if path != p {
+						dirs = append(dirs, path)
+					}
+					return nil
+				}
+				return guardedRemove(path, relEntry)
+			})
+			if walkErr != nil {
+				return fmt.Errorf("walk %s: %w", rel, walkErr)
+			}
+			// Prune deepest-first; a directory that still holds protected
+			// entries (or anything else) fails the remove and stays.
+			for i := len(dirs) - 1; i >= 0; i-- {
+				_ = os.Remove(dirs[i]) // ENOTEMPTY and friends are fine — the dir stays
+			}
+		}
+	}
+
+	// Legacy .moai/memory migration: unchanged from the unguarded walk (its
+	// backup ordering is its own, REQ-UDS-008).
+	return MigrateLegacyMemoryDir(projectRoot, out)
+}
+
+// DisposeSymlinks applies the existing link-dedicated dispositions
+// (SPEC-CLI-CLEAN-SYMLINK-001 §B) to a caller-recorded link list, removing
+// each LINK — never its target (SPEC-UPDATE-MIGRATION-001; card t1547 review
+// finding 3). The wholesale clean this accompanies used to remove link
+// entries before the deploy ran; a preservation pipeline that only records
+// them would let the deployer write THROUGH a live link to wherever it
+// points. Live directory links lose the link only (the target is untouched),
+// live file links get the file-link dispositions (bytes backed up unless the
+// template carries the path), dangling links are removed to unblock the
+// deploy's MkdirAll. Each removal reports on one greppable line.
+func DisposeSymlinks(projectRoot string, out io.Writer, tmplFS fs.FS, links []string) error {
+	backupBase := filepath.Join(projectRoot, defs.BackupsDir,
+		time.Now().Format(defs.BackupTimestampFormat), preCleanBackupSubdir)
+	for _, rel := range links {
+		pl := tui.ProgressLine(out, fmt.Sprintf("Resolving %s...", rel), nil)
+		abs := filepath.Join(projectRoot, filepath.FromSlash(rel))
+		info, err := os.Lstat(abs)
+		if err != nil {
+			if os.IsNotExist(err) {
+				pl.Done(fmt.Sprintf("Skipped %s (not found)", rel))
+				continue
+			}
+			pl.Fail(fmt.Sprintf("Failed to stat %s: %v", rel, err))
+			return fmt.Errorf("stat %s: %w", rel, err)
+		}
+		if info.Mode()&fs.ModeSymlink == 0 {
+			// The link disappeared (or the caller recorded a non-link):
+			// nothing to dispose, leave the entry alone.
+			pl.Done(fmt.Sprintf("Skipped %s (not a symlink)", rel))
+			continue
+		}
+		backedUp, note, rmErr := removeSymlink(abs, rel, backupBase, tmplFS)
+		if rmErr != nil {
+			pl.Fail(fmt.Sprintf("Failed to remove %s: %v", rel, rmErr))
+			return fmt.Errorf("remove symlink %s: %w", rel, rmErr)
+		}
+		pl.Done(removedMsg(rel, backedUp, note))
+	}
 	return nil
 }
 

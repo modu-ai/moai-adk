@@ -256,7 +256,7 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk && make build
 ```
 
-Already installed? Run `moai update` to move to the latest version. From v3.1.1, before `moai update` wipes a template-managed directory and redeploys it, it first moves any unmanaged file sitting inside to `.moai-backups/<timestamp>/pre-clean/`. If that backup fails it stops right there instead of going on to delete — a file you put there yourself is not quietly swept away by a redeploy.
+Already installed? Run `moai update` to move to the latest version. From v3.2.0, `moai update` updates an existing project preservation-first — it no longer wipes the template-managed directories and redeploys. Files you added yourself survive in place, your edits to template files are 3-way merged (on a conflict your file stays and the new version lands next to it as a `<path>.moai-new.N` sidecar), and files the template no longer carries are moved to `.moai/archive/files/` before removal — the summary reports every refreshed, merged, conflicted, preserved, and archived path.
 
 > 💡 **To cut costs — z.ai GLM recommended**: signing up via [this link](https://z.ai/subscribe?ic=1NDV03BGWU) grants bonus tokens. The link is also a way to sponsor moai-adk open-source development. Free models (GLM-4.7-Flash, GLM-4.5-Flash) exist too — see the [z.ai pricing](https://docs.z.ai/guides/overview/pricing).
 
@@ -737,7 +737,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai init` | Interactive project setup (auto-detects language/framework/methodology) |
 | `moai doctor` | System state diagnosis and environment verification — the Home Disk Usage check reports, as advice, how far `~/.moai` has grown |
 | `moai status` | Project status summary (Git branch, quality metrics) |
-| `moai update` | Update to latest version (pre-deletion backup · auto-rollback supported) |
+| `moai update` | Update to latest version (preserves local files · 3-way merge with conflict sidecars · archived removals) |
 | `moai graph <build\|query>` | Build/query the codebase graph (edges.jsonl) — caller lookup, blast radius, milestone cross-checks |
 | `moai cc` / `moai glm` | Claude-only / GLM-only sessions |
 | `moai codex [cli\|status\|app]` | Codex launcher — called with no verb it launches the Codex CLI; `status` prints the readiness readout and starts nothing |

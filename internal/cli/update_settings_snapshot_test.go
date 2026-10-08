@@ -202,7 +202,7 @@ func snapRunTemplateSync(t *testing.T, root string, d template.Deployer) (out, e
 	cmd.SetOut(&outBuf)
 	cmd.SetErr(&errBuf)
 	cmd.SetContext(context.Background())
-	if err := runTemplateSyncWithReporter(cmd, nil, true); err != nil {
+	if err := runTemplateSyncWithReporter(cmd, nil, true, nil); err != nil {
 		t.Fatalf("runTemplateSyncWithReporter: %v\nout:\n%s\nerr:\n%s", err, outBuf.String(), errBuf.String())
 	}
 	return outBuf.String(), errBuf.String()

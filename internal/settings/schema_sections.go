@@ -495,6 +495,25 @@ func seamSectionFields() []FieldDef {
 		// what leaves the machine, so it is surfaced in the console rather than
 		// living only in the section file.
 		s(SectionFeedback, "feedback", TypeBool, "feedback", "auto_submit"),
+		// participation (SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-020) — the
+		// automatic improvement-participation toggle. Its value is USER-scoped
+		// (PersistUserScoped): the console reads and writes
+		// <moai home>/config/participation.yaml, never this project's section
+		// file, and a change of enabled also records asked=true so the wizard
+		// and update prompts never re-ask an informed console user. The
+		// console renders it with the same two-option radio pair and hidden
+		// __present companion as every other bool (no widget code); the
+		// description carries the full REQ-ANON-005 statement set on the
+		// shared locale strings. asked itself has no FieldDef and never
+		// renders.
+		{
+			Name:          ParticipationField,
+			Section:       SectionFeedback,
+			Type:          TypeBool,
+			I18nKey:       "f.feedback.participation",
+			AbsentDefault: "false",
+			Persist:       PersistTarget{Kind: PersistUserScoped},
+		},
 
 		// observability.
 		s(SectionObservability, "observability", TypeBool, "observability", "enabled"),

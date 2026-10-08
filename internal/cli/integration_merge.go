@@ -19,9 +19,9 @@ import (
 )
 
 func newIntegrationMergeCmd() *cobra.Command {
-	var cardFlag, runFlag string
+	var cardFlag, runFlag, sessionFlag string
 	cmd := &cobra.Command{
-		Use:   "merge --card <id>",
+		Use:   "merge --card <id> [--session <id>]",
 		Short: "Run the in-window merge step for a card (holder only; thirteen causes, one path)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// REQ-SD-025: the Codex merge edge is refused on EVERY path that
@@ -35,7 +35,10 @@ func newIntegrationMergeCmd() *cobra.Command {
 			if strings.TrimSpace(cardFlag) == "" {
 				return fmt.Errorf("integration merge: --card <id> is required (the step gates on the card, so an unnamed merge merges nothing)")
 			}
-			sessionID := integrationSessionID("")
+			// t1576 review round 3: the flag the holder-refusal message
+			// advises is now registered — a session whose environment cannot
+			// carry the id passes it explicitly.
+			sessionID := integrationSessionID(sessionFlag)
 			if sessionID == "" {
 				return fmt.Errorf("integration merge: cannot resolve this session's id; pass --session <id> (the holder decision needs an address)")
 			}
@@ -110,6 +113,7 @@ func newIntegrationMergeCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&cardFlag, "card", "", "The card id whose merge the step runs")
 	cmd.Flags().StringVar(&runFlag, "run", "", "Factory run id (default: the single active run) — read for the card record")
+	cmd.Flags().StringVar(&sessionFlag, "session", "", "This session's id when the environment cannot carry it (the holder decision needs an address)")
 	return cmd
 }
 
@@ -161,6 +165,7 @@ func integrationReadMergeCardForRun(ctx context.Context, root, runID, cardID, la
 	}
 	return factory.MergeCardState{
 		Stage:          card.Stage,
+		State:          card.State,
 		LeaseUnexpired: leaseUnexpired,
 		Version:        int(card.Version),
 		WorktreePath:   card.WorktreePath,

@@ -17,6 +17,38 @@ func TestRenderOutcome_AlreadyUpToDate(t *testing.T) {
 	assert.NotContains(t, result, "--restore")
 }
 
+// TestRenderReconciliation — SPEC-UPDATE-MIGRATION-001 (card t1547): the
+// reconciliation outcome renderer. Zero total renders nothing; a populated
+// run names every category count and lists each conflict, archived removal,
+// and preserved path (deletions always visible, REQ-UPM-031); plain text
+// only (REQ-UPM-032).
+func TestRenderReconciliation(t *testing.T) {
+	// Zero boundary: nothing reconciled → empty (the caller prints no rows).
+	assert.Empty(t, RenderReconciliation(ReconciliationCounts{}, nil, nil, nil))
+
+	counts := ReconciliationCounts{
+		Refreshed:       3,
+		Merged:          2,
+		Conflicts:       1,
+		Preserved:       4,
+		ArchivedRemoved: 2,
+	}
+	result := RenderReconciliation(counts,
+		[]string{".claude/rules/moai/policy.json (sidecar: .claude/rules/moai/policy.json.moai-new)"},
+		[]string{".claude/rules/moai/local-note.md"},
+		[]string{".claude/rules/moai/old-rule.md", ".claude/rules/moai/older-rule.md"})
+
+	assert.Contains(t, result, "3 refreshed")
+	assert.Contains(t, result, "2 merged")
+	assert.Contains(t, result, "1 conflict(s)")
+	assert.Contains(t, result, "4 preserved")
+	assert.Contains(t, result, "2 archived-removed")
+	assert.Contains(t, result, "conflict: .claude/rules/moai/policy.json")
+	assert.Contains(t, result, "archived-removed: .claude/rules/moai/old-rule.md")
+	assert.Contains(t, result, "archived-removed: .claude/rules/moai/older-rule.md")
+	assert.Contains(t, result, "preserved: .claude/rules/moai/local-note.md")
+}
+
 func TestRenderOutcome_UpdatedFiles(t *testing.T) {
 	// AC-TUX3-012: UpdatedFiles outcome through same renderer
 	// AC-TUX3-013: With backup path shows recovery command

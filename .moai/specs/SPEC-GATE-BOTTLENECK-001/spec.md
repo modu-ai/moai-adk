@@ -2,7 +2,7 @@
 id: SPEC-GATE-BOTTLENECK-001
 title: "Turn-end review gate bottleneck — tree-keyed reuse, delayed block, conditional reproduction"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-07
 updated: 2026-10-07
 author: lane-6 (MoAI factory)

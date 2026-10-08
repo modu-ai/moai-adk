@@ -69,6 +69,7 @@ import "embed"
 //go:embed templates/.claude/commands/moai/todo.md
 //go:embed templates/.claude/hooks/moai/chain-event.sh
 //go:embed templates/.claude/hooks/moai/handle-agent-hook.sh.tmpl
+//go:embed templates/.claude/hooks/moai/handle-codex-review-entry.sh
 //go:embed templates/.claude/hooks/moai/handle-codex-review-gate.sh
 //go:embed templates/.claude/hooks/moai/handle-compact.sh.tmpl
 //go:embed templates/.claude/hooks/moai/handle-config-change.sh.tmpl
@@ -214,6 +215,7 @@ import "embed"
 //go:embed templates/.claude/rules/moai/workflow/skill-routing-detail.md
 //go:embed templates/.claude/rules/moai/workflow/skill-routing.md
 //go:embed templates/.claude/rules/moai/workflow/snapshot-consumer-contract.md
+//go:embed templates/.claude/rules/moai/workflow/spec-workflow-detail.md
 //go:embed templates/.claude/rules/moai/workflow/spec-workflow.md
 //go:embed templates/.claude/rules/moai/workflow/sync-backup-integrity.md
 //go:embed templates/.claude/rules/moai/workflow/sync-coverage-scope-contract.md

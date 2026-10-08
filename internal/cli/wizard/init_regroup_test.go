@@ -38,13 +38,17 @@ var groupReadRe = regexp.MustCompile(`\.Group([^A-Za-z0-9_.]|$)`)
 // The count moved 2 -> 3 with SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005: the Jev
 // opt-in carries its own Group label, because appending it to
 // "Agents & Autonomy" made that page overflow the viewport and scrolled the
-// step indicator off the top. The regroup property this AC pins — consecutive
-// same-label questions merge into ONE group — is unchanged and still asserted.
+// step indicator off the top. SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-003
+// moves it 3 -> 4: the participation opt-in carries its own Group label for
+// the same measured reason (a disclosure page the user must read is exactly
+// the page that must not depend on the viewport). The regroup property this
+// AC pins — consecutive same-label questions merge into ONE group — is
+// unchanged and still asserted.
 func TestInitRegroup_TwoPages(t *testing.T) {
 	questions := InitQuestions("/tmp/init-regroup")
 	groups := buildFormGroups(questions, &WizardResult{}, new(string))
-	if len(groups) != 3 {
-		t.Fatalf("init groups = %d, want exactly 3", len(groups))
+	if len(groups) != 4 {
+		t.Fatalf("init groups = %d, want exactly 4", len(groups))
 	}
 
 	// Membership + relative order (index-independent: the AC-ITI-021 denominator
@@ -88,7 +92,9 @@ func TestInitRegroup_TwoPages(t *testing.T) {
 // NOT asserted here (AC-ITI-018's property).
 //
 // N moved 4 -> 5 with SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005 (the init-only
-// Jev opt-in, on its own page). The test name keeps its historical number.
+// Jev opt-in, on its own page), and 5 -> 6 with SPEC-FEEDBACK-PARTICIPATION-001
+// REQ-ANON-003 (the participation opt-in, on its own page after it). The test
+// name keeps its historical number.
 func TestInitStepper_Denominator4(t *testing.T) {
 	result := &WizardResult{}
 	form := buildUnifiedForm(InitQuestions("/tmp/init-denominator"), result, "")
@@ -110,15 +116,38 @@ func TestInitStepper_Denominator4(t *testing.T) {
 				break
 			}
 		}
-		if got := strings.Count(firstLine, "●") + strings.Count(firstLine, "○"); got != 5 {
-			t.Errorf("page %d first line carries %d ●/○ marks, want 5; line: %q", i+1, got, firstLine)
+		if got := strings.Count(firstLine, "●") + strings.Count(firstLine, "○"); got != 6 {
+			t.Errorf("page %d first line carries %d ●/○ marks, want 6; line: %q", i+1, got, firstLine)
 		}
-		if want := strconv.Itoa(p.first) + " / 5"; !strings.HasSuffix(firstLine, want) {
+		if want := strconv.Itoa(p.first) + " / 6"; !strings.HasSuffix(firstLine, want) {
 			t.Errorf("page %d first line %q must end with %q", i+1, firstLine, want)
 		}
 		for range p.questions {
 			d.Enter()
 		}
+	}
+	// The participation page (page 4) is a full-viewport disclosure: huh drops
+	// the step indicator when the page fills the screen — the measured trade
+	// the Jev slot's own-group design describes ("a privacy statement the user
+	// must read before answering is exactly the text that must not depend on
+	// the page fitting"). This pins the measured shape: the disclosure title
+	// opens the frame and no ●/○ stepper line precedes it.
+	{
+		frame := ptycaptest.StripANSI(d.View())
+		var firstLine string
+		for _, line := range strings.Split(frame, "\n") {
+			if strings.TrimSpace(line) != "" {
+				firstLine = strings.TrimRight(line, " ")
+				break
+			}
+		}
+		if !strings.Contains(firstLine, "Enable automatic improvement participation") {
+			t.Errorf("participation page first line = %q, want the disclosure title", firstLine)
+		}
+		if strings.Contains(firstLine, "●") || strings.Contains(firstLine, "○") {
+			t.Errorf("participation page first line carries stepper marks %q; the full-viewport disclosure page renders without the indicator", firstLine)
+		}
+		d.Enter()
 	}
 	if form.State != huh.StateCompleted {
 		t.Fatalf("init form must complete after the last page, state=%v", form.State)
@@ -171,7 +200,8 @@ func TestGroupLabel_NotRendered(t *testing.T) {
 	if strings.Contains(initFrame, "Agents & Autonomy") {
 		t.Error("init frames render the group label Agents & Autonomy")
 	}
-	for range 3 {
+	// Agents & Autonomy (2 selects) -> Judgment Capability -> Participation.
+	for range 4 {
 		id.Enter()
 	}
 	if initForm.State != huh.StateCompleted {
@@ -231,9 +261,10 @@ func TestGroupLabel_NotRendered(t *testing.T) {
 
 // TestInitRegroup_SecondGroupGolden is the regression guard AC-ITI-021 asks
 // for: the regrouped second page (two question titles, stepper ending
-// "3 / 5"). It changes under BOTH mutants (group split, extra question), so
+// "3 / 6"). It changes under BOTH mutants (group split, extra question), so
 // it is a regression guard only — never counted as evidence for either
-// property. The denominator moved 4 -> 5 with the init-only Jev opt-in.
+// property. The denominator moved 4 -> 5 with the init-only Jev opt-in and
+// 5 -> 6 with SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-003.
 func TestInitRegroup_SecondGroupGolden(t *testing.T) {
 	result := &WizardResult{}
 	form := buildUnifiedForm(InitQuestions("/tmp/init-regroup-golden"), result, "")
@@ -244,7 +275,8 @@ func TestInitRegroup_SecondGroupGolden(t *testing.T) {
 	if err := ptycaptest.CompareGolden("testdata/axis", "init-regroup-second-group", frame, *updateAxisGolden); err != nil {
 		t.Fatal(err)
 	}
-	for range 3 {
+	// Agents & Autonomy (2 selects) -> Judgment Capability -> Participation.
+	for range 4 {
 		d.Enter()
 	}
 	if form.State != huh.StateCompleted {
