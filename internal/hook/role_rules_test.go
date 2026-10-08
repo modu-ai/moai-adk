@@ -226,6 +226,16 @@ func TestSessionStartRoleRulesFailVisible(t *testing.T) {
 		inj := roleRuleInjectionFor(root, "startup", "")
 		assertFailVisible(t, inj, "unmarked")
 	})
+	t.Run("unclosed_region", func(t *testing.T) {
+		// A start marker without its closing pair must fail visible, not
+		// pass as a legitimate empty core (the required rules would vanish
+		// from the session without any warning).
+		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+		root := build(t)
+		writeRoleRuleFixture(t, root, dispatch, "<!-- moai:role-core-start -->\nrequired core body with the end marker missing\n")
+		inj := roleRuleInjectionFor(root, "startup", "")
+		assertFailVisible(t, inj, "unclosed_region")
+	})
 }
 
 // assertFailVisible asserts the REQ-ALB-009 pair: operator warning AND agent

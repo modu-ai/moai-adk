@@ -109,6 +109,14 @@ func buildRoleCore(root string, rule roleRuleFile) (string, error) {
 	if !marked {
 		return "", fmt.Errorf("role rule file carries no %s markers: %s", config.RoleCoreMarkerStart, rule.Rel)
 	}
+	// A start marker without its closing pair is a malformed file, not an
+	// empty core: the required rules would silently vanish from the session.
+	// Balanced marker counts keep the legitimate empty-pair case (adjacent
+	// start+end) on the empty-core path while sending every unclosed region
+	// to the REQ-ALB-009 failure path.
+	if strings.Count(content, config.RoleCoreMarkerStart) != strings.Count(content, config.RoleCoreMarkerEnd) {
+		return "", fmt.Errorf("role rule file has an unclosed %s region (unbalanced marker counts): %s", config.RoleCoreMarkerStart, rule.Rel)
+	}
 	return strings.Join(regions, "\n\n"), nil
 }
 
