@@ -71,6 +71,17 @@ literal + raw-byte) closing the §E.2 mutant-claim gap; D6 AC-HZS-008 cell 1
 re-scoped to the recorded 3-test run + M1's own package baseline; O1 excerpt
 wording; O2 selector-form alignment noted in the acceptance header.
 
+Gate round 3: the prior deny-safe claim about `\U` on old bash DELETED as
+false — the reviewer measured the bypass on this host (guard allow + the
+protected file deleted through a literal-named entry: the guard judges the
+decoded path while the `\U`-less shell acts on the literal-named symlink);
+replaced with a support-boundary + residual statement (version-variance
+family, alongside zsh; follow-up-card material; candidate closures noted
+without decision). Host split pinned: `\u` renders / `\U` literal on
+`/bin/bash` 3.2.57 (three pinned re-measurements). Pin input forms
+re-verified already-compliant in f4024fbd3 (escape texts `⊇` /
+`\U00002287`, both `e2 8a 87`).
+
 ## §E.2 Run-phase Evidence
 
 _pending run-phase_

@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-ZONE-SHELL-ESCAPE-001
 title: "Protected-zone ANSI-C shell decoding judges the bytes bash executes — NUL part-terminator, raw-byte \\x, bounded no-digit escapes"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-10-09
 updated: 2026-10-09
@@ -23,6 +23,7 @@ tags: "hook, security, protected-zone, ansi-c, shell-quoting, nul-truncation, ra
 |------|---------|--------|
 | 2026-10-09 | 0.1.0 | Initial draft. Authored by manager-spec for card t1585 (t1570 follow-up), from the lane-19 RED reproduction measured 2026-10-08 (`.moai/reports/t1585/red-repro.md`; instrument committed baseline-first as `9dbe40c0a` on `WT-zone-gate-defects`). Three measured defects in the ANSI-C (`$'...'`) half of the shell decoder: a P1 protected-path bypass and two P2 decoder defects. |
 | 2026-10-09 | 0.1.1 | Review-gate rounds 1-2 + plan-audit iter-1 repair: `\u` pin bytes corrected `e2 a8 87` → `e2 8a 87` (the old value is U+2A07, a different character), pin input restated as the escape texts `⊇`/`\U00002287`, host-bash 3.2.57 footnote + full ground-truth re-measurement (all seven rows, `od`), evidence custody corrected and the canonical record TRACKED as `evidence-red-repro.md` (gitignored duplicate demoted), controls cited MEASURED at `7be9f41b5`, AC-HZS-006 §2.1 conditional-demotion sentence, new AC-HZS-009 (part-level shape) / AC-HZS-010 (octal origin) / AC-HZS-011 (non-ASCII outside-zone control), AC-HZS-008 cell 1 re-scoped to the recorded run. |
+| 2026-10-09 | 0.1.2 | Gate round 3: the prior deny-safe claim about `\U` on old bash DELETED (false — a literal-named entry, symlink included, is live and reaches the zone unjudged while the guard judges the decoded path; gate-measured: allow + protected file deleted); replaced with a support-boundary + residual statement (decoder models bash ≥ 4.2 semantics; version-variance family alongside zsh; follow-up-card material; candidate closures noted without decision). Host split pinned: `\u` renders / `\U` literal on `/bin/bash` 3.2.57 (three pinned re-measurements). |
 
 ## B. Problem Statement
 
@@ -50,14 +51,26 @@ tests) demonstrates each. The bash ground truth — fully re-measured
 | `$'⊇'` | `e2 8a 87` | `\u` renders the code point as UTF-8 (current decoder correct here) |
 | `$'⊇'` (literal char) | `e2 8a 87` | a non-ASCII literal passes through byte for byte |
 
-Host-bash note (re-measured 2026-10-09 with `od` on this host's bash 3.2.57
-— `bash` and `/bin/bash` identical): `$'⊇'` renders `e2 8a 87` (`\u` IS
-supported); `$'\U00002287'` renders the literal text `\U00002287` (`\U` is
-not supported at 3.2). The decoder models the modern `\u`/`\U` set; where an
-ancient bash renders `\U` literally the divergence is deny-safe — the guard
-zone-checks the decoded path while the shell's literal-path target does not
-exist, so the model can only over-strictly deny, never judge a different
-live path than the shell would touch.
+Host-bash note (measured 2026-10-09 with `od` on this host's bash 3.2.57 —
+`bash` and `/bin/bash` identical; the `\u`/`\U` split confirmed by three
+pinned re-measurements the same day): `$'⊇'` renders `e2 8a 87` (`\u`
+IS supported on 3.2.57); `$'\U00002287'` renders the literal text
+`\U00002287` (`\U` is not).
+
+The decoder models the modern `\u`/`\U` set (bash ≥ 4.2 ANSI-C semantics).
+SUPPORT BOUNDARY + RESIDUAL — explicitly NOT claimed safe: on a host whose
+bash lacks `\U` (measured here), the decoded word diverges from the
+executing shell's argument, and a filesystem entry named with that literal
+escape text — a symlink included — is a REAL bypass class: the guard judges
+the decoded path while the shell reaches the literal-named entry.
+Review-gate round 3 measured this class on this host (relayed lane
+measurement: guard allow + the protected file deleted through a
+literal-named entry). Accepted as a documented residual — the
+version-variance family, alongside the zsh residual (§D, §F); the repair
+belongs to a follow-up card. Candidate closures noted WITHOUT decision:
+judging both the decoded and the literal spellings of a word (a sound
+over-approximation, consistent with the walker's possible-directory-set
+semantics), or failing closed on `\u`/`\U` escapes.
 
 ### Defect ① (P1) — decoded NUL kept: protected-path bypass
 
@@ -115,9 +128,11 @@ those same bytes the shell places in the executed argument.
 ### REQ-HZS-003 — `\u`/`\U` code-point rendering preserved (Unwanted)
 
 The repair shall not change the rendering of `\u`/`\U` escapes: the code point
-shall keep rendering as UTF-8 — measured row: the escape text `⊇` decodes
-to `e2 8a 87` (re-measured 2026-10-09; host-bash note in §B: `\U` renders
-literally on bash 3.2.57) — and the
+shall keep rendering as UTF-8 — measured rows: the escape texts `⊇` and
+`\U00002287` both decode to `e2 8a 87` (re-measured 2026-10-09; host-bash
+note in §B: on bash 3.2.57 `\u` renders but `\U` renders literally, so the
+decoder's `\U` output diverges from that shell's argument — a documented
+residual, not claimed safe) — and the
 t1570 quoting matrix's ANSI-C rows (defined escape `\x2e`, escape-free text)
 keep their current decisions — the `\x` raw-byte change is behavior-visible
 only for values ≥ 0x80.
@@ -162,6 +177,11 @@ plan-phase baseline is green except the three RED defect rows).
 - **zsh NUL semantics are a recorded residual** (explicitly out of scope): the
   Bash tool runs bash; what a zsh ANSI-C string does with an embedded NUL is
   unmeasured here and not repaired here.
+- **Host `\u`/`\U` version variance is a recorded residual** (explicitly out
+  of scope, §B/§F): on a bash lacking `\U` the decoder's modern-set rendering
+  diverges from the executing shell's argument, and a literal-named entry —
+  symlink included — is a real bypass class (gate-measured). Not repaired by
+  this card — follow-up-card material.
 - **The RED instrument is the baseline-first evidence carrier**: committed as
   `9dbe40c0a` (`test(t1585)`, branch `WT-zone-gate-defects`) BEFORE any repair
   commit, per the ordering-attribution rule
@@ -228,6 +248,17 @@ This SPEC repairs the three measured ANSI-C decoder defects and nothing else.
 - zsh NUL and raw-byte semantics: unmeasured, recorded as a residual
   (constraint §D). The Bash tool runs bash; no zsh behavior is repaired or
   asserted here.
+
+### Out of Scope — host shell-version variance (`\u`/`\U`)
+
+- On hosts whose bash lacks `\U` (measured: 3.2.57 renders it literally),
+  the modern-set decode diverges from the executed argument and a
+  literal-named entry — symlink included — reaches the zone unjudged
+  (gate-measured bypass class, review-gate round 3). Documented residual,
+  explicitly NOT claimed safe; repair is follow-up-card material.
+- Candidate closures noted WITHOUT decision: judge both the decoded and the
+  literal spellings (sound over-approximation, consistent with the walker's
+  possible-directory-set semantics), or fail closed on `\u`/`\U` escapes.
 
 ### Out of Scope — sibling guard surfaces
 

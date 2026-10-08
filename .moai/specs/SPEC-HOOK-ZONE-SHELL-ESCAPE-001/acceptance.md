@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-ZONE-SHELL-ESCAPE-001
 title: "Acceptance — ANSI-C shell decoder repair"
-version: "0.1.1"
+version: "0.1.2"
 created: 2026-10-09
 updated: 2026-10-09
 author: manager-spec
@@ -175,8 +175,9 @@ literal character — a literal `⊇` would exercise only the pass-through path)
 bash-measured on this host and re-measured 2026-10-09 with `od`) — the M1 pin
 rows make the code-point path explicit so M2's `\x` split cannot regress it.
 Host-bash note: `\U00002287` renders LITERALLY on this host's bash 3.2.57
-(no `\U` support); the decoder models the modern set — a deny-safe divergence
-(spec.md §B). Green-now by design (the current decoder is correct for
+(no `\U` support); the decoder models the modern set — the divergence is a
+documented host-variance residual, explicitly NOT claimed safe (spec.md §B).
+Green-now by design (the current decoder is correct for
 `\u`/`\U`); the pin's value is POST-repair, verified again at M3.
 
 - **Cell 1**: green on the pre-repair tree (the `\u` arm decodes correctly

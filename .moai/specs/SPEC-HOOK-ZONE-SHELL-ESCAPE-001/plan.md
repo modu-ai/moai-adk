@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-ZONE-SHELL-ESCAPE-001
 title: "Plan — ANSI-C shell decoder repair (NUL part-terminator, raw-byte \\x, bounded no-digit escapes)"
-version: "0.1.1"
+version: "0.1.2"
 created: 2026-10-09
 updated: 2026-10-09
 author: manager-spec
@@ -101,6 +101,11 @@ unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go t
   (`go test -count=1 ./internal/hook/`); TRUST 5; English comments.
 - The repair must keep every existing `internal/hook` test green — the ONLY
   expected flips are the three RED defect rows going green.
+- **The `\u`/`\U` host-variance bypass class is NOT this card's repair
+  scope**: on a `\U`-less bash the literal-named entry (symlink included)
+  reaches the zone unjudged — documented residual (spec.md §B/§F) for a
+  follow-up card, with candidate closures noted there WITHOUT decision. Run
+  phase may not repair beyond the RED rows.
 - No blanket-deny mutant: REQ-HZS-001's fix must truncate, not reject — the
   outside-zone control (AC-HZS-002) fails a mutant that denies every
   NUL-bearing command.

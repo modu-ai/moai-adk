@@ -48,7 +48,7 @@ Measured with `od -An -tx1` (rows 1-5, 7 on 2026-10-08; ALL rows re-measured
 | `$'a\0b'` | `61` ("a") | octal NUL truncates identically |
 | `$'\xec\xa1\x80'` | `ec a1 80` | `\xHH` emits ONE RAW BYTE (no code-point re-encoding) |
 | `$'⊇'` | `e2 8a 87` | `\u` renders the code point as UTF-8 (current decoder correct here; supported even on bash 3.2.57) |
-| `$'\U00002287'` | `5c 55 30 30 30 30 32 32 38 37` (`\U00002287` literal) | `\U` is NOT supported on bash 3.2.57 — rendered literally; the decoder models the modern set (deny-safe divergence, see spec.md §B) |
+| `$'\U00002287'` | `5c 55 30 30 30 30 32 32 38 37` (`\U00002287` literal) | `\U` is NOT supported on bash 3.2.57 — rendered literally; the decoder models the modern set (host-variance residual — on such hosts a literal-named entry is a real bypass class, gate-measured; see spec.md §B, NOT claimed safe) |
 | `$'⊇'` (literal char) | `e2 8a 87` | a non-ASCII literal passes through byte for byte (pass-through — NOT the `\u` branch) |
 
 ## Defect ① (P1) — NUL truncation absent: protected-path bypass
