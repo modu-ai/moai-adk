@@ -243,6 +243,56 @@ baseline was measured on the affected family scope instead:
 ./...` exit 0 (this tree, `9b6ae0da5`). Lint baseline: `golangci-lint run
 internal/hook/... --timeout=2m` — `0 issues.` (this tree, M1 rows included).
 
+### M2 — decoder repair GREEN flips (2026-10-09)
+
+Fixes applied (plan §A.2 all three adopted directions, shape call per §A.2①):
+① NUL part-terminator at the `zoneWordText` ANSI-C branch — the decoded
+part's contribution is truncated at its first NUL byte (`strings.IndexByte`)
+BEFORE assembly, so later parts still append (part-level shape, fails the
+word-level mutant); ② render split in `zoneHexEscape` — new `rawByte` param:
+`\x` → `string([]byte{byte(val)})` (one raw byte), `\u`/`\U` → `string(val)`
+(code point as UTF-8), the shared digit-scanning loop unchanged; ③ the
+no-digit arm returns `v[*i-1 : *i+1]` (bounded backslash + prefix letter at
+the prefix — never indexes past the end; the caller's loop advances past the
+letter only, so a follower survives once).
+
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellAnsiCNulTruncationBypass|TestCheckProtectedZoneShellAnsiCNulTruncationOutsideZoneControl|TestCheckProtectedZoneShellHexRawByteBypass|TestCheckProtectedZoneShellHexDirectSpellingControl|TestZoneUnescapeAnsiCNoDigitHexStaysLiteral|TestCheckProtectedZoneShellGuardCompletesOnNoDigitEscape|TestZoneUnescapeAnsiCCodePointRenderingPinned|TestZoneWordTextAnsiCPartTruncatesAtNul|TestCheckProtectedZoneShellOctalNulTruncationDenied|TestCheckProtectedZoneShellNonAsciiOutsideZoneStaysAllowed' -count=1 -v`
+- **Exit code**: `0`
+- **Observed (verbatim tail)**:
+
+```
+--- PASS: TestCheckProtectedZoneShellAnsiCNulTruncationBypass (0.01s)
+--- PASS: TestCheckProtectedZoneShellAnsiCNulTruncationOutsideZoneControl (0.00s)
+--- PASS: TestCheckProtectedZoneShellHexRawByteBypass (0.01s)
+--- PASS: TestCheckProtectedZoneShellHexDirectSpellingControl (0.01s)
+--- PASS: TestZoneUnescapeAnsiCNoDigitHexStaysLiteral (0.00s)
+--- PASS: TestCheckProtectedZoneShellGuardCompletesOnNoDigitEscape (0.03s)
+--- PASS: TestZoneUnescapeAnsiCCodePointRenderingPinned (0.00s)
+--- PASS: TestZoneWordTextAnsiCPartTruncatesAtNul (0.00s)
+--- PASS: TestCheckProtectedZoneShellOctalNulTruncationDenied (0.05s)
+--- PASS: TestCheckProtectedZoneShellNonAsciiOutsideZoneStaysAllowed (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	1.878s
+```
+
+- **Tree**: M1 commit `c34021856` + the M2 source edit (uncommitted at
+  measurement time; the M2 commit carries these exact bytes).
+- Flip semantics observed: the bypass deny judges `zone_dir` (the truncated
+  word — deny reason `path=zone_dir`); the octal row denies identically; the
+  hex raw-byte deny carries `path=존/marker.md` (decoded bytes match the
+  entry); the guard no-crash row observes a DECISION (`deny`, the resolver's
+  lexical-arm over-approximation on `zone_dir\x/sub` — the safe direction;
+  the row's requirement is a decision, never a panic); both controls and the
+  code-point pin stay green.
+- Post-repair builds: `gofmt -l internal/hook/` empty; `go vet
+  ./internal/hook/` clean; `go build ./...` exit 0; `GOOS=windows go build
+  ./...` exit 0 (this tree, M2 edit included).
+
+The acceptance.md Evidence Ledger GREEN-flips section is populated by
+manager-spec (run-phase ownership boundary — reported to the orchestrator
+with the exact wording above).
+
+
 
 ## §E.3 Run-phase Audit-Ready Signal
 

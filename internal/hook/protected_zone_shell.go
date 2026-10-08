@@ -169,11 +169,11 @@ func zoneUnescapeAnsiC(v string) string {
 		case '\\', '\'', '"', '?':
 			b.WriteByte(e)
 		case 'x':
-			b.WriteString(zoneHexEscape(v, &i, 2))
+			b.WriteString(zoneHexEscape(v, &i, 2, true))
 		case 'u':
-			b.WriteString(zoneHexEscape(v, &i, 4))
+			b.WriteString(zoneHexEscape(v, &i, 4, false))
 		case 'U':
-			b.WriteString(zoneHexEscape(v, &i, 8))
+			b.WriteString(zoneHexEscape(v, &i, 8, false))
 		default:
 			if e >= '0' && e <= '7' {
 				b.WriteByte(zoneOctalEscape(v, &i, e))
@@ -187,10 +187,16 @@ func zoneUnescapeAnsiC(v string) string {
 }
 
 // zoneHexEscape reads up to maxDigits hex digits after the \x/\u/\U prefix
-// letter at v[*i], renders the code point as UTF-8, and advances *i over the
-// digits consumed. With no digit the escape is not defined: the backslash
-// and the prefix letter stay literal, the way bash renders them.
-func zoneHexEscape(v string, i *int, maxDigits int) string {
+// letter at v[*i] and advances *i over the digits consumed. The render
+// splits by prefix (card t1585): \x emits ONE RAW BYTE — bash \xHH places
+// that byte in the argument (measured $'\xec\xa1\xb4' -> ec a1 b4), while
+// \u/\U render the code point as UTF-8 (string(rune(val))). With no digit
+// the escape is not defined: the backslash and the prefix letter stay
+// literal, the way bash renders them — returned as the bounded two-byte
+// slice at the prefix, so the escape can end the string without a panic
+// and a non-digit follower survives exactly once (the caller's loop
+// advances past the letter only).
+func zoneHexEscape(v string, i *int, maxDigits int, rawByte bool) string {
 	j := *i + 1
 	val := rune(0)
 	digits := 0
@@ -215,9 +221,12 @@ func zoneHexEscape(v string, i *int, maxDigits int) string {
 		j++
 	}
 	if digits == 0 {
-		return v[*i : *i+2]
+		return v[*i-1 : *i+1]
 	}
 	*i = j - 1
+	if rawByte {
+		return string([]byte{byte(val)})
+	}
 	return string(val)
 }
 
@@ -256,7 +265,17 @@ func zoneWordText(w *syntax.Word) (string, bool) {
 			// text), whose escape set bash decodes — the guard must check
 			// the decoded path, not the source text (card t1570).
 			if p.Dollar {
-				b.WriteString(zoneUnescapeAnsiC(p.Value))
+				decoded := zoneUnescapeAnsiC(p.Value)
+				// Bash truncates the ANSI-C part's contribution at its
+				// first NUL byte ($'a\x00b'X -> "aX", measured ground
+				// truth) — the part ends there while LATER parts still
+				// append. A word-level truncation would drop the trailing
+				// part. Covers both NUL origins: hex \x00 and octal \0
+				// (card t1585).
+				if idx := strings.IndexByte(decoded, 0); idx >= 0 {
+					decoded = decoded[:idx]
+				}
+				b.WriteString(decoded)
 			} else {
 				b.WriteString(p.Value)
 			}
