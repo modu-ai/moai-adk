@@ -184,6 +184,49 @@ lock.go acquireUserLockStale 81.5%. web 0.4% / hook 1.5% / cli 6.4%는 M0 셀렉
 - AC-018의 ensure 실패 주입은 "이미 초기화된 프로젝트 + 파손 사용자 매니페스트" 상태를 만드는 간접 형태다 — run 1의 실패 원문("user-asset install failed")은 관측되어 올바른 상태를 증명하지만, 실행 중단(crash) 형태의 재개와는 다른 진입 경로일 수 있다.
 - 신규 테스트 8개 파일은 프로덕션 무변경(B10)이며, 의도 RED 22건이 패키지 스위트를 적색으로 만든다 — 본 배터리는 관측 기록이며 수리 마일스톤(M1-M7)에서 전환된다.
 
+### M1 — 저널 영속화·복구 무결성 (2026-10-09, HEAD feb6ec390 기반, 트리 WT-user-asset-bundle)
+
+프로덕션 변경: `internal/userassets/install.go`(스테이징 병합·파일별 플래그 영속화·반입 해시
+동기화·applyTarget 서명) + `journal.go`(버전 게이트) — design §2 불변 보존(journal clear는
+manifest save 성공 뒤에만, B3 플래그는 현행 run의 stage 저널, RF8 토큰 계약, C2 confinedWrite
+무변경).
+
+**AC 전환 매트릭스 (RED→GREEN)**
+
+| AC | 테스트 | M0 관측 | M1 관측 (verbatim tail) |
+|---|---|---|---|
+| AC-002 | TestJournalStageCarriesRecoveredEntries | RED | **GREEN** — 첫 스테이징이 회수 항목을 포함 (parked 관측) |
+| AC-003 | TestJournalRefreshUpdatesCarriedHash | RED | **GREEN** — `captured — the carried entry carries the refreshed hash 0f86c04a...d1823` (강제 save 실패 후 디스크 저널에서) |
+| AC-004 | TestWriteCompletedPersistedPerFile | RED | **GREEN** — 중단 시점 디스크 저널에 첫 파일 플래그 true |
+| AC-005 | TestJournalUnknownSchemaRefused | RED | **GREEN** — `LoadJournal`가 schema_version=99를 진단과 함께 거절 |
+
+회귀: userassets 전체 스위트에서 M1 4종 GREEN + 기존 테스트 전부 PASS + 미처리 RED 8건
+(M2-M7 소관)만 잔존. cli 배터리 셀렉터 11종 재실행 — FAIL 8건은 M0 RED 그대로(변화 없음),
+PASS 3건 유지. lint 0 issues, gofmt 청결.
+
+**AC-023 커버리지 (신규 파일별 집계 파이프라인, unix 실행, 전체 스위트 결합)**
+
+| 파일 | 문 커버리지 | 90% 게이트 |
+|---|---|---|
+| journal.go | 26/27 = **96.3%** | **PASS** — 미커버 1블록은 MarshalIndent 오류臂(구조적 도달 불가, Gaps 선언) |
+| lock_guard_unix.go | 15/16 = **93.8%** | **PASS** |
+| install.go | 299/364 = **82.1%** | FAIL — 미커버는 Codex 변환·divergence 백업·오류 臂 (M3/M5 착지 시 상승) |
+| lock.go | 36/44 = **81.8%** | FAIL — stale 재클레임·오류 臂 (M2 착지 시 상승) |
+| 패키지 합계 | **81.8%** | FAIL (85% 기준) — 위 두 파일의 상승분이 해소 |
+
+판정: M1 시점 게이트는 journal.go·lock_guard_unix.go 통과, install.go·lock.go·패키지 합계는
+미달 — 후속 마일스톤의 수리가 곧 커버리지 상승 수단이며, 최종 마일스톤에서 재판정한다.
+
+**이상 항목**
+
+- AC-003 관측 캐리어를 codex-agents TOML(단일 루트)로 재구성했다 — 최초의 moai-beta 스킬
+  트리 캐리어는 미청구 쌍둥이 루트(agents-skills)의 stage 항목이 첫 스테이징부터 새 해시를
+  싣워 watcher가 해시 동기화 전에 발화하는 결함이 있었다(실측). 단일 루트 캐리어로 제거.
+  테스트 파일 코멘트에 기록.
+- AC-003 테스트의 트리거는 M1 영속화 시점에 맞게 재조준되었다(M0는 post-loop 재영속
+  :301을 감시 — 파일별 영속화가 그 자리를 대체). 단정 계약(중단 뒤 디스크 저널의 반입
+  해시)은 동일하며, M0 RED 전문은 위 M0 절에 보존되어 있다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop 소관.)_

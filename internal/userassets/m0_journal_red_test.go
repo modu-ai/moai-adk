@@ -215,38 +215,31 @@ func TestJournalStageCarriesRecoveredEntries(t *testing.T) {
 // TestJournalRefreshUpdatesCarriedHash — AC-003 (ledger 6a, REQ-JRN-002).
 // Given a recovered entry whose target is refreshed to shipped bytes during
 // the run, the CARRIED journal entry's ExpectedSHA256 must equal the
-// refreshed bytes' hash — never the stale recorded one. RED-now reason: the
-// carry-in at :297 appends the OLD journal entry verbatim, so a run
-// interrupted after the refresh mis-classifies its own refresh as a case-3
-// mismatch (the entry's hash no longer matches the file it just wrote).
+// refreshed bytes' hash — never the stale recorded one. The M0 RED (stale
+// hash carried verbatim) is recorded in progress.md §E.2; the observation
+// mechanism was re-aimed at M1's persistence timing (the M0 trigger watched
+// the post-loop re-persist, which the per-file persistence replaced) while
+// the assertion stands on the same contract: the ON-DISK journal, after an
+// interrupted run, carries the refreshed hash.
 //
-// Observation mechanics: the run must be stopped between the stage
-// re-persist (:301) and the manifest save (:306) or the journal is cleared
-// atomically with a successful save. The watcher polls the journal file for
-// the carried entry's appearance (the :301 write), then makes ~/.moai
-// read-only so the save fails and the journal survives on disk. The
-// pre-seeded manifest carries filler entries purely to widen the save window
-// (a big marshal takes milliseconds, giving the watcher a wide target).
+// Observation mechanics: the watcher polls for the REFRESHED hash landing
+// in the journal file — only the REQ-JRN-002 hash sync can write it — then
+// makes ~/.moai read-only so the manifest save fails and the journal
+// survives on disk with its synced state. The filler-padded manifest keeps
+// the save window wide.
 func TestJournalRefreshUpdatesCarriedHash(t *testing.T) {
-	const recoveredKey = "claude-skills/moai-beta/extra.md"
+	const recoveredKey = "codex-agents/manager-x.toml"
 	const attempts = 40
 	var lastObservation string
-	caught := false
+	captured := false
 
-	var redEvidence string
-	for attempt := 0; attempt < attempts && redEvidence == ""; attempt++ {
+	for attempt := 0; attempt < attempts && !captured; attempt++ {
 		observed, ok := attemptRefreshHashRepro(t, recoveredKey)
 		lastObservation = observed
-		if ok && strings.HasPrefix(observed, "captured") {
-			redEvidence = observed
-		}
-		caught = caught || ok
+		captured = captured || ok
 	}
-	if redEvidence != "" {
-		t.Fatalf("RED (intended): %s", redEvidence)
-	}
-	if !caught {
-		t.Fatalf("probe inconclusive after %d attempts (tool failure, not RED): the :301→:306 window was never caught; last observation: %s", attempts, lastObservation)
+	if !captured {
+		t.Fatalf("probe inconclusive after %d attempts (tool failure, not GREEN): the hash-sync persist never landed; last observation: %s", attempts, lastObservation)
 	}
 }
 
@@ -258,27 +251,26 @@ func attemptRefreshHashRepro(t *testing.T, recoveredKey string) (string, bool) {
 	f := newFixture(t)
 	moaiHome := filepath.Join(f.home, ".moai")
 
-	oldBytes := []byte("old recovered bytes the journal still hashes\n")
-	newShipped := []byte("refreshed shipped bytes v2\n")
-	// The recovered file exists on disk with the OLD bytes; the journal
-	// hashes them (a case-2 claim) — the SOURCE carries the NEW shipped
-	// bytes, so the re-evaluation arm refreshes the file mid-run.
-	abs := filepath.Join(f.home, ".claude", "skills", "moai-beta", "extra.md")
+	oldBytes := []byte("name = \"manager-x\"\nversion = \"old\"\n")
+	newShipped := []byte("name = \"manager-x\"\nversion = \"new\"\n")
+	newSHA := shaHex(newShipped)
+	// The carrier is the codex-agents TOML — a FLAT, single-root target. A
+	// skill-tree carrier enumerates the refreshed file under BOTH skill
+	// roots, and the unclaimed twin root's stage entry carries the new hash
+	// from the FIRST staging, firing the watcher before the hash sync even
+	// ran (observed). A flat root has no twin. The recovered file exists on
+	// disk with the OLD bytes; the journal hashes them (a case-2 claim) —
+	// the SOURCE carries the NEW shipped bytes, so the re-evaluation arm
+	// refreshes the file mid-run. The codex TOML is an L0 agent target, so
+	// Install(nil) reaches it.
+	abs := filepath.Join(f.home, ".codex", "agents", "manager-x.toml")
 	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(abs, oldBytes, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	f.src[".claude/skills/moai-beta/extra.md"] = &fstest.MapFile{Data: newShipped}
-	// extra.md needs a catalog entry for fileTarget to enumerate it in
-	// reEvaluate? No — reEvaluate re-runs reconcile-claimed CATALOG targets.
-	// The refresh arm is driven by applyTarget over reEvaluate, which is
-	// built from installTargets (catalog entries). moai-beta is an
-	// extras-pack skill; the entry covers the whole tree via dirTargets, so
-	// extra.md rides the extras selection. The run therefore passes the
-	// extras selection to reach it — and the recorded selection union (RF9)
-	// keeps it honest.
+	f.src[".codex/agents/moai/manager-x.toml"] = &fstest.MapFile{Data: newShipped}
 	seedRecoveredJournal(t, f.home, recoveredKey, shaHex(oldBytes), true)
 
 	// Widen the save window: filler entries make the manifest marshal slow.
@@ -286,12 +278,10 @@ func attemptRefreshHashRepro(t *testing.T, recoveredKey string) (string, bool) {
 		t.Fatal(err)
 	}
 
-	// Watcher: the moment the journal file carries the recovered path AND is
-	// no longer the seeded bytes — i.e. the :301 re-persist landed the
-	// carried entry — make ~/.moai read-only so the manifest save at :306
-	// fails and the journal survives. The seed marker discriminates the
-	// pre-run journal (which contains the path from the start) from the
-	// run's own carried write.
+	// Watcher: the moment the journal carries the REFRESHED hash (only the
+	// REQ-JRN-002 hash sync can produce it in the journal), make ~/.moai
+	// read-only so the manifest save fails and the journal survives with
+	// its synced state.
 	stop := make(chan struct{})
 	watcherDone := make(chan struct{})
 	go func() {
@@ -303,9 +293,7 @@ func attemptRefreshHashRepro(t *testing.T, recoveredKey string) (string, bool) {
 				return
 			default:
 			}
-			if data, err := os.ReadFile(jp); err == nil &&
-				strings.Contains(string(data), recoveredKey) &&
-				!strings.Contains(string(data), seedJournalStartedAt) {
+			if data, err := os.ReadFile(jp); err == nil && strings.Contains(string(data), newSHA) {
 				_ = os.Chmod(moaiHome, 0o555)
 				return
 			}
@@ -314,7 +302,7 @@ func attemptRefreshHashRepro(t *testing.T, recoveredKey string) (string, bool) {
 	}()
 
 	inst := f.installer(t)
-	_, installErr := inst.Install([]string{"extras"})
+	_, installErr := inst.Install(nil)
 	close(stop)
 	<-watcherDone
 	// Restore writability no matter how the attempt ends.
@@ -322,11 +310,10 @@ func attemptRefreshHashRepro(t *testing.T, recoveredKey string) (string, bool) {
 		t.Fatalf("restore .moai perms: %v", err)
 	}
 
-	// The design point: the save must have FAILED (journal survives). A nil
-	// error means the watcher lost the race — the save+clear succeeded, so
-	// the window was missed and the attempt is retried.
+	// The save must have FAILED (journal survives). A nil error means the
+	// watcher lost the race — the save+clear succeeded, so retry.
 	if installErr == nil {
-		return "save succeeded — watcher lost the :301→:306 race", false
+		return "save succeeded — watcher lost the persist→save race", false
 	}
 	if !strings.Contains(installErr.Error(), "save user manifest") {
 		return "run failed differently: " + installErr.Error(), false
@@ -350,10 +337,11 @@ func attemptRefreshHashRepro(t *testing.T, recoveredKey string) (string, bool) {
 	}
 	for _, e := range j.Entries {
 		if e.Path == recoveredKey {
-			if e.ExpectedSHA256 != shaHex(newShipped) {
-				return "captured: the carried entry hash " + e.ExpectedSHA256 + " != the refreshed bytes hash " + shaHex(newShipped) + " — the :297 carry-in wrote the stale hash over a file the same run had already refreshed", true
+			if e.ExpectedSHA256 != newSHA {
+				t.Errorf("stale carried hash survived on disk after the interrupted run: %q, want the refreshed %q — REQ-JRN-002 regressed", e.ExpectedSHA256, newSHA)
+				return "captured", true
 			}
-			return "captured: carried hash already correct (unexpected on this tree)", true
+			return "captured — the carried entry carries the refreshed hash " + newSHA, true
 		}
 	}
 	return "journal survived but lost the carried entry (entries: " + strconv.Itoa(len(j.Entries)) + ")", false

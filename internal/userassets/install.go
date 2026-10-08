@@ -223,7 +223,11 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	}
 
 	// Stage the pending-install journal BEFORE the asset writes (the
-	// intent-and-content proof, E4) — over ONLY the installable delta.
+	// intent-and-content proof, E4) — over ONLY the installable delta,
+	// MERGED with the recovered journal's entries (M1, REQ-JRN-001): the
+	// carry used to land only in a post-loop re-persist, so the FIRST
+	// staging's file lacked the recovered entries and an interruption
+	// between the staging and that re-persist dropped them.
 	stage := &PendingJournal{
 		SchemaVersion:    SchemaVersion,
 		BundlesSelection: manifest.Bundles,
@@ -236,70 +240,73 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 			InstalledAt: now.UTC().Format(time.RFC3339),
 		})
 	}
+	stageIndexOf := make(map[string]int, len(stage.Entries))
+	for i := range stage.Entries {
+		stageIndexOf[stage.Entries[i].Path] = i
+	}
+	if journal != nil {
+		// B3 (review-fix round 2 addendum) + Item 3 (fix round 3 addendum):
+		// carry EVERY old-journal entry into the stage unconditionally — the
+		// stage replaces the old journal at staging time, and dropping any
+		// entry loses the ownership evidence if the manifest save fails
+		// AGAIN (the double-interruption repro: recovered files flip to
+		// permanent collisions). The entries keep their WriteCompleted
+		// state; cleared only with a successful save.
+		for _, e := range journal.Entries {
+			if _, staged := stageIndexOf[e.Path]; staged {
+				continue
+			}
+			stageIndexOf[e.Path] = len(stage.Entries)
+			stage.Entries = append(stage.Entries, e)
+		}
+	}
 	if err := WriteJournal(JournalPath(in.Home), stage); err != nil {
 		return nil, fmt.Errorf("stage journal: %w", err)
 	}
 
 	// The per-asset judgment, one file at a time (REQ-013 fail-open per file).
 	// F8 (review-fix round 2): each successful write flips the staged
-	// journal entry's WriteCompleted flag and the journal is re-persisted
-	// BEFORE the manifest save — an interruption after the manifest-save
-	// failure then classifies the run's OWN installs by the flag (divergence
-	// with shipped backup) instead of misreading them as collisions.
-	completed := map[string]bool{}
+	// journal entry's WriteCompleted flag. M1 (REQ-JRN-003): the flip is
+	// PERSISTED immediately, before the next file — an interruption mid-loop
+	// then finds the completed files' flags on disk instead of batched at
+	// the end of the run. The per-file write reuses WriteJournal's
+	// atomicWrite path (design §2: the amplification is one small-file
+	// atomic write per installed file, bounded by the staged delta).
 	for _, tgt := range installable {
-		if err := in.applyTarget(tgt, manifest, roots, res); err != nil {
+		if _, err := in.applyTarget(tgt, manifest, roots, res); err != nil {
 			res.Failures = append(res.Failures, FileOutcome{Path: tgt.manifestKey, Reason: err.Error()})
 			continue
 		}
-		completed[tgt.manifestKey] = true
+		if i, ok := stageIndexOf[tgt.manifestKey]; ok && !stage.Entries[i].WriteCompleted {
+			stage.Entries[i].WriteCompleted = true
+			if err := WriteJournal(JournalPath(in.Home), stage); err != nil {
+				res.Failures = append(res.Failures, FileOutcome{Path: JournalPath(in.Home), Reason: "persist completion flag: " + err.Error()})
+			}
+		}
 	}
 	// Journal-recovered entries flow through the same truth table (the
 	// sharpening): a recovered file whose bytes differ from shipped is
-	// refreshed like any manifest-match file.
-	for _, tgt := range reEvaluate {
-		if err := in.applyTarget(tgt, manifest, roots, res); err != nil {
-			res.Failures = append(res.Failures, FileOutcome{Path: tgt.manifestKey, Reason: err.Error()})
-		}
-	}
-	// B3 (review-fix round 2 addendum) + Item 3 (fix round 3 addendum): the
-	// completion flags go on the CURRENT run's stage journal, and the
-	// journal-carried entries (recovered claims + classified divergences)
-	// are CARRIED INTO the stage — the stage replaces the old journal at
-	// staging time, and dropping the carried entries would lose the
-	// ownership evidence if the manifest save failed AGAIN (the double-
-	// interruption repro: recovered files flip to permanent collisions).
+	// refreshed like any manifest-match file. M1 (REQ-JRN-002): the refresh
+	// updates the CARRIED entry's recorded hash too — a stale hash would
+	// make the next recovery mis-classify the run's own refresh as a case-3
+	// mismatch (collision/divergence) instead of claiming it.
 	stageChanged := false
-	for i := range stage.Entries {
-		if completed[stage.Entries[i].Path] && !stage.Entries[i].WriteCompleted {
-			stage.Entries[i].WriteCompleted = true
-			stageChanged = true
-		}
-	}
-	stagePaths := map[string]bool{}
-	for _, e := range stage.Entries {
-		stagePaths[e.Path] = true
-	}
-	journalCarried := []JournalEntry{}
-	if journal != nil {
-		journalCarried = journal.Entries
-	}
-	for _, e := range journalCarried {
-		if stagePaths[e.Path] {
+	for _, tgt := range reEvaluate {
+		recorded, err := in.applyTarget(tgt, manifest, roots, res)
+		if err != nil {
+			res.Failures = append(res.Failures, FileOutcome{Path: tgt.manifestKey, Reason: err.Error()})
 			continue
 		}
-		// Item 3 (fix round 3 addendum): carry EVERY old-journal entry into
-		// the stage unconditionally — the old journal is about to be
-		// replaced, and dropping any entry loses the ownership evidence if
-		// the manifest save fails AGAIN (the double-interruption repro:
-		// recovered files flip to permanent collisions). The entries carry
-		// their WriteCompleted state; cleared only with a successful save.
-		stage.Entries = append(stage.Entries, e)
-		stageChanged = true
+		if recorded != "" {
+			if i, ok := stageIndexOf[tgt.manifestKey]; ok && stage.Entries[i].ExpectedSHA256 != recorded {
+				stage.Entries[i].ExpectedSHA256 = recorded
+				stageChanged = true
+			}
+		}
 	}
 	if stageChanged {
 		if err := WriteJournal(JournalPath(in.Home), stage); err != nil {
-			res.Failures = append(res.Failures, FileOutcome{Path: JournalPath(in.Home), Reason: "persist completion flags: " + err.Error()})
+			res.Failures = append(res.Failures, FileOutcome{Path: JournalPath(in.Home), Reason: "persist refreshed hashes: " + err.Error()})
 		}
 	}
 
@@ -576,14 +583,18 @@ const (
 	stateCollision     // present AND untracked → REQ-010 skip
 )
 
-// applyTarget applies the truth table to one destination file.
-func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots map[RootSlug]resolvedRoot, res *Result) error {
+// applyTarget applies the truth table to one destination file. It returns
+// the SHA256 the run recorded for the file when the record's hash was
+// updated to shipped bytes (install / refresh / manifest-repair arms), or
+// "" when the record's hash did not move — the caller syncs journal-carried
+// entries against it (M1, REQ-JRN-002).
+func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots map[RootSlug]resolvedRoot, res *Result) (string, error) {
 	root := roots[tgt.root]
 	abs := filepath.Join(root.dir, filepath.FromSlash(tgt.rel))
 
 	shipped, err := fs.ReadFile(in.Source, tgt.sourcePath)
 	if err != nil {
-		return fmt.Errorf("read shipped bytes: %w", err)
+		return "", fmt.Errorf("read shipped bytes: %w", err)
 	}
 	current, err := os.ReadFile(abs)
 	st := classifyTarget(manifest.Files[tgt.manifestKey], current, err, shipped, tgt.sha)
@@ -598,10 +609,11 @@ func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots ma
 		fe.InstalledAt = in.now().UTC().Format(time.RFC3339)
 		fe.MoaiVersion = in.MoaiVersion
 		if err := in.confinedWrite(root, tgt.rel, shipped, true); err != nil {
-			return err
+			return "", err
 		}
 		manifest.Files[tgt.manifestKey] = fe
 		res.Installed++
+		return tgt.sha, nil
 	case stateUpToDate:
 		// Refresh the provenance only if the record drifted (bundle rename).
 		fe := manifest.Files[tgt.manifestKey]
@@ -619,10 +631,11 @@ func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots ma
 		fe.InstalledAt = in.now().UTC().Format(time.RFC3339)
 		fe.MoaiVersion = in.MoaiVersion
 		if err := in.confinedWrite(root, tgt.rel, shipped, true); err != nil {
-			return err
+			return "", err
 		}
 		manifest.Files[tgt.manifestKey] = fe
 		res.Refreshed++
+		return tgt.sha, nil
 	case stateManifestStale:
 		// REQ-023 truth table: repair the manifest record, no rewrite,
 		// counted refreshed (REQ-011) — known fields only (RF6).
@@ -631,10 +644,11 @@ func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots ma
 		fe.Bundle = tgt.bundle
 		manifest.Files[tgt.manifestKey] = fe
 		res.Refreshed++
+		return tgt.sha, nil
 	case stateDivergent:
 		// REQ-023 preserve + backup + report.
 		if err := in.backupShipped(root, tgt.rel, shipped); err != nil {
-			return fmt.Errorf("backup shipped bytes: %w", err)
+			return "", fmt.Errorf("backup shipped bytes: %w", err)
 		}
 		res.DivergencePreserved++
 		res.Divergences = append(res.Divergences, tgt.manifestKey)
@@ -642,7 +656,7 @@ func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots ma
 		res.CollisionSkipped++
 		res.Collisions = append(res.Collisions, tgt.manifestKey)
 	}
-	return nil
+	return "", nil
 }
 
 func classifyTarget(record FileEntry, current []byte, readErr error, shipped []byte, shippedSHA string) targetState {

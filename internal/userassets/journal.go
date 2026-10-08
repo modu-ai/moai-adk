@@ -82,7 +82,10 @@ func WriteJournal(path string, j *PendingJournal) error {
 	return atomicWrite(path, data, 0o644)
 }
 
-// LoadJournal reads the journal. Absent → (nil, nil).
+// LoadJournal reads the journal. Absent → (nil, nil). A journal whose
+// schema_version this binary does not write is refused with a diagnostic —
+// a silent decode would mis-read an unknown schema's recovery data as if it
+// were this binary's (SPEC-USERASSET-DEPLOY-GUARD-001 M1, REQ-JRN-004).
 func LoadJournal(path string) (*PendingJournal, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -94,6 +97,9 @@ func LoadJournal(path string) (*PendingJournal, error) {
 	var j PendingJournal
 	if err := json.Unmarshal(data, &j); err != nil {
 		return nil, fmt.Errorf("userassets: journal corrupt at %s: %w", path, err)
+	}
+	if j.SchemaVersion != SchemaVersion {
+		return nil, fmt.Errorf("userassets: journal at %s carries schema_version %d, this binary writes %d — refusing to decode (preserve the file; the interrupted install's selection + ownership recovery data must not be silently reinterpreted)", path, j.SchemaVersion, SchemaVersion)
 	}
 	return &j, nil
 }
