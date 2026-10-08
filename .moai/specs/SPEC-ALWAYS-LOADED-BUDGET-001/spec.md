@@ -2,9 +2,9 @@
 id: SPEC-ALWAYS-LOADED-BUDGET-001
 title: "배포 표면 상시 로드 지시문 예산 — 역할 한정 규칙의 SessionStart 주입, 대형 규칙의 core+companion 분할, 배포 템플릿 기준 회귀 가드"
 version: "0.7.0"
-status: draft
+status: in-progress
 created: 2026-10-03
-updated: 2026-10-04
+updated: 2026-10-08
 author: manager-spec
 priority: P1
 phase: "next release after v3.2.0"

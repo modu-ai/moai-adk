@@ -35,7 +35,59 @@ Justification: the SPEC restructures binding instruction text (semantic, inter-f
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M0 — re-anchor, binding ledger baseline, feasibility measurements (2026-10-08, manager-develop)
+
+**Claim.** M0 deliverables landed on `WT-always-loaded-char-budget`: the §C.2 re-anchor onto this trunk, the binding ledger baseline fixture (363 rows, one per unit of every ledger-scope file at the anchor), the Q4/Q8 measurements, the candidate table, the STE-lite sample, and the floor calculation. No template file was touched (B10-2 preserved); `sessionCharBudget` and `AlwaysLoadedTokenBudget` untouched (B10-1).
+
+**Re-anchor note (plan.md §C.2, deliverable 1).** The SPEC was planned against develop-era pin `2771626b5`; this worktree is cut from the post-GitHub-Flow trunk (branch base `a2a184ad3`). §C.2 step-1 drift `2771626b5 → HEAD 326c29a00`: `git diff --stat 2771626b5 HEAD -- internal/template/templates/.claude/rules internal/template/templates/CLAUDE.md internal/template/templates/AGENTS.md.tmpl` → 45 files changed, +871/−492. Load-bearing drift: (1) `internal/template/templates/CLAUDE.md` was **removed upstream** (183 lines; present at `2771626b5` as blob `6db21741`, absent at `a2a184ad3`) — the deployed root instruction file is now `AGENTS.md`, rendered from `AGENTS.md.tmpl` (23,684 UTF-16, no template variables, no `@`-imports), loaded by both Claude Code and Codex; (2) the factory-dispatch family re-split upstream (`factory-dispatch-detail.md` 40,659 → 27,250; new `paths:`-scoped companions `-cards`/`-gates`/`-mechanics`); (3) the always-loaded 13-rule subtotal moved 154,652 → 157,217. **NEW ledger anchor declared: `a2a184ad3` (template bytes; empty `git diff --stat a2a184ad3 HEAD -- internal/template/templates` at `326c29a00`)**. Ledger scope = the 13 always-loaded rules only; `AGENTS.md` stays in the measured surface but carries no ledger rows (edit-out-of-scope per plan §B t1450 boundary — exclusion recorded in the ledger head).
+
+**Ledger fixture (deliverable 2).** `internal/template/testdata/binding_ledger.json` — 363 rows = 127 `binding` / 121 `normative` / 115 `rationale`; one row per unit of every ledger-scope file at the anchor; head carries anchor SHA, expected values (below), counting conventions, and the normative decision rule. Unit boundary per spec §B 단위 경계 with code fences opaque; coverage proof: every non-blank, non-heading body line of all 13 files sits in exactly one unit (missing_lines=0 per file, extractor coverage check). All 248 binding+normative rows carry `entry_points` (REQ-ALB-015); `companion:` locations appear on rationale rows only; role-core rows (36, all `workflow/factory-dispatch.md`) carry only REQ-ALB-007/REQ-ALB-024 deliveries. Location vocabulary: `always:` 230, `companion:` 97, `role-core:` 36.
+
+**Anchor expected values (head of record; plan-era figures are history).** Rules subtotal **157,217**; `AGENTS.md` **23,684**; render-independent deployed-surface total **180,901** UTF-16 (fixed inputs `UserName=""`, `ConversationLanguage=en`); always-loaded files over 40,000: **none** (largest member `workflow/factory-dispatch.md` 28,769). Measured commands recorded in the ledger head.
+
+**Q4 (SessionStart `additionalContext` delivery limit — REQ-ALB-010 cap basis).** Documented bound: **10,000 characters per string**. Official hooks reference (code.claude.com/docs/en/hooks, § JSON output and § Add context for Claude): a hook's `additionalContext`, `systemMessage`, `initialUserMessage`, and plain stdout are capped at 10,000 characters, measured per string; over the limit, Claude Code saves the output to a session-directory file and passes a file path plus a preview of up to the first 2,000 characters; no setting or env var raises the cap; behavior landed in CC 2.1.89 (CHANGELOG). Unit ≈ JS string length = UTF-16 code units — same unit as this SPEC's counting. In-tree corroboration: `internal/hook/factory_messages.go:21` already self-caps factory hook context at 2,048 (`factoryHookContextLimit`). **Design consequence for M2 (recorded):** the measured factory-dispatch role core is 17,341 UTF-16 > 10,000 — the REQ-ALB-010 degradation path (binding+normative units + Read directive) is the expected operating mode for it, or the role core must be sized under 10,000 at M2 marker time.
+
+**Q8 (role-marker registry seed).** Every marker found (`grep -rn 'MOAI_FACTORY_\|MOAI_KANBAN_' internal/cli internal/hook internal/config --include='*.go'`, non-test), by file:line in `internal/config/envkeys.go`: `MOAI_KANBAN_ID` (:189), `MOAI_KANBAN_SETTINGS_INJECTED` (:200), `MOAI_KANBAN_LEAD_ADDR` (:209), `MOAI_KANBAN_BACKEND` (:222), `MOAI_KANBAN_CARD` (:237), `MOAI_KANBAN_LEAD_NAME` (:257), `MOAI_FACTORY_WORKERS` (:272), `MOAI_FACTORY_SLOW_LAUNCH_MS` (:280), `MOAI_FACTORY_WORKER` (:289), `MOAI_FACTORY_MANAGED` (:296), `MOAI_FACTORY_MANAGED_TUI` (:303), `MOAI_FACTORY_APP_SERVER_TOKEN` (:309), `MOAI_FACTORY_ROLE`=:382 with lane value `lane` (:392), `MOAI_FACTORY_CLEAR_POLICY` (:402), `MOAI_FACTORY_AUTO_DISPATCH` (:417). Leader/lane discrimination as read by launcher+hook: **lane** = `MOAI_FACTORY_WORKER` set (hook `internal/hook/session_start_factory.go:49`; launcher stamp `internal/cli/factory.go:840`, codex `codex_launcher.go:1027`), corroborated by `MOAI_FACTORY_ROLE=lane` (guard `internal/hook/contract_sign_guard.go:145`); **leader** = `MOAI_FACTORY_WORKERS` set (hook `:58`; `MOAI_KANBAN_LEAD_NAME` exported on leader only, `internal/cli/factory.go:579`). Registry seed names used in the ledger: `factory-leader`, `factory-lane`.
+
+**Candidate table (deliverable 4; non-binding = rationale rows, UTF-16).**
+
+| ledger-scope file | non-binding | planned companion (`paths:`-scoped) | companion remaining (40,000) |
+|---|---:|---|---:|
+| core/agent-common-protocol.md | 2,667 | `core/agent-common-protocol-detail.md` (NEW companion proposal — sibling reference has 1,563 left) | 40,000 (new) |
+| core/askuser-protocol.md | 3,937 | `core/askuser-protocol-reference.md` | 17,067 |
+| core/moai-constitution.md | 1,186 | `core/moai-constitution-detail.md` | 32,563 |
+| core/moai-mcp-tools.md | 2,874 | `core/moai-mcp-tools-catalogue.md` | 16,138 |
+| core/native-idiom-and-register.md | 1,019 | `core/native-idiom-and-register-detail.md` | 35,567 |
+| core/verification-claim-integrity.md | 2,749 | `core/verification-claim-integrity-detail.md` | 18,707 |
+| workflow/cache-aware-execution.md | 1,485 | `workflow/cache-aware-execution-reference.md` | 34,464 |
+| workflow/context-window-management.md | 1,418 | `workflow/context-window-management-detail.md` | 28,257 |
+| workflow/cross-session-messaging.md | 3,944 | `workflow/cross-session-messaging-detail.md` | 20,916 |
+| workflow/factory-dispatch.md | 3,066 | `workflow/factory-dispatch-mechanics.md` | 18,741 |
+| workflow/goal-directive.md | 2,812 | `workflow/goal-directive-detail.md` | 18,405 |
+| workflow/main-checkout-branch-guard.md | 1,232 | `workflow/main-checkout-branch-guard-detail.md` | 28,093 |
+| workflow/session-handoff.md | 1,525 | `workflow/session-handoff-format.md` (`-examples.md` has only 939 left) | 33,756 |
+
+All destinations fit with wide margins; no new `paths:` key on any behavior-triggered rule (REQ-ALB-014) — the one new file is a rationale-only detail companion, same class as the 96 existing `paths:` companions.
+
+**STE-lite sample (deliverable 5, Q10(c)).** File: `workflow/context-window-management.md` — all 11 binding+normative rows rewritten meaning-preserving in the ledger (`processing: rewrite` + `rewrite_note`; ASD-STE100-inspired: one instruction per sentence, imperative, active voice, short sentences). Measured: before 5,374 → after 4,008 UTF-16 = **ratio 0.746**. Method carries to M3; obligations preserved (all `[HARD]` steps, thresholds, and pointers kept — e.g. the six-row threshold table merged to two rows with every model→threshold mapping intact).
+
+**Floor calculation (deliverable 6).** Per file: floor = overhead (frontmatter+headings) + (binding+normative chars − role-core-leave) × ratio + in-place separators + one 60-char pointer per migrated section. Role-core leave: `factory-dispatch.md` 17,341 (36 rows, every entry point covered by REQ-ALB-007/024); cross-session-messaging stays general (channel binds any session — REQ-ALB-025 borderline→general). Rationale migration: 28,577 chars total to the companions above. Ratios: sample file uses its measured after-texts; others extrapolated at the measured 0.746 (point), with 0.70/0.80 sensitivity.
+
+| bound | rules-side floor | + AGENTS.md (untouchable) | vs budget 115,000 |
+|---|---:|---:|---|
+| aggressive (ratio 0.70) | 82,875 | 106,559 | −8,441 |
+| **point (measured 0.746)** | **87,596** | **111,280** | **−3,720** |
+| conservative (ratio 0.80) | 93,234 | 116,918 | +1,918 |
+
+**REQ-ALB-022 verdict: floor (lowest reachable total, point estimate) = 111,280 ≤ 115,000 — the stop condition is NOT met; M1 proceeds.** Break-even: the budget holds while M3's achieved average compression on binding+normative text stays ≤ **0.782** (measured sample: 0.746). Residual risk is recorded below; M1's budget guard makes any bust mechanical before M3 lands.
+
+**Commit ordering (deliverable 3).** The ledger fixture lands in its own commit BEFORE any template edit; `git log --first-parent` witnesses fixture-before-edit (no template file is edited anywhere in M0).
+
+**Baseline-attribution.** Every measurement above was run in this session against this tree: branch `WT-always-loaded-char-budget`, HEAD `326c29a00` at pre-flight (advances with my commits), template bytes = anchor `a2a184ad3`. Commands: pre-flight batch (build/Windows-build/ledger-absence/template-diff), the extractor coverage run, the Q8 grep, and the floor script — outputs quoted above are this run's.
+
+**Gaps.** (1) Q4 is a documented bound, not an empirical probe on this machine's runtime build — the doc page and CHANGELOG were verified, the cap was not triggered-and-observed here; in-tree `factoryHookContextLimit` (2,048) corroborates the self-protective posture. (2) The floor's non-sample ratios are extrapolations from one sample file; the point estimate is a best estimate, not a per-file measurement (per-file actuals arrive at M3). (3) Ledger `after_text` for non-sample rows is the baseline placeholder (= before-text); M3 planning owns the real after-texts. (4) The renderer-equivalence of template-source UTF-16 counts vs `moai init` rendered output is argued (no template variables in any measured file) and not re-proven by a rendered deploy in M0 — M1's budget test measures the production deploy-and-render path and re-derives the expected values from this head.
+
+**Residual-risk.** (1) Compression sensitivity: an M3 averaging worse than 0.782 busts the 115,000 budget (conservative bound 116,918); the M1 guard converts that into a visible red. (2) The factory role core (17,341) exceeds the Q4 cap — M2 must either design for the REQ-ALB-010 degraded mode or size the role core under 10,000; both are design decisions the lane should see before M2 dispatch. (3) `AGENTS.md` (23,684) sits in the measured surface but outside this SPEC's edit scope; if the budget later needs its ~7k of rule-duplicated prose (design §6 pointer conversion), that is a t1450-scope decision, not this card's. (4) AC-ALB-008's "deployed-surface-member= 줄에 … stub 2개가 있음" vs REQ-ALB-004's pure `paths:` derivation implies the budget test must count the two role stubs as members at their stub size — recorded here so M1 implements the member derivation with that carve-out rather than discovering it as a contradiction.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
