@@ -115,8 +115,8 @@ README 0-hit finding (the AC's own enumerated escape).
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_status: complete
-sync_complete_at: 2026-10-08T13:04Z
-sync_commit_sha: 9fe1e0e6280454460d34a58187db8a711b1aaa52
+sync_complete_at: 2026-10-08T16:35Z
+sync_commit_sha: pending-backfill-sync
 sync_owner: manager-docs
 changelog_entry_position: "[Unreleased] → ### Added, first bullet (newest-card-first house order)"
 b12_self_test_a: pre-emission grep -c 'SPEC-CC-HAIKU55-STATUSLINE-001' CHANGELOG.md → 0 (exit 1) — no duplicate entry; emission permitted
