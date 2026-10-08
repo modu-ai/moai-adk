@@ -6,11 +6,9 @@
 package userassets
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
-	"syscall"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -22,19 +20,18 @@ import (
 // reads the target with os.ReadFile (install.go:211), which blocks forever on
 // a FIFO with no writer. The command per acceptance.md carries
 // `-timeout 30s`; this in-test watchdog makes the same observation
-// deterministically without relying on the framework kill.
+// deterministically without relying on the framework kill. Teardown is
+// guaranteed (gate round 13): on the RED arm the FIFO's write end is opened
+// and closed, delivering EOF to the parked reader so the install goroutine
+// exits BEFORE the test returns — a leaked blocked reader would survive past
+// TempDir cleanup.
 func TestCollisionPrecheckSkipsFifoWithoutBlock(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("FIFO semantics are unix — the windows axis of this family is the GOOS=windows build gate (B1)")
-	}
 	f := newFixture(t)
 	fifoPath := filepath.Join(f.home, ".claude", "skills", "moai-alpha", "SKILL.md")
 	if err := os.MkdirAll(filepath.Dir(fifoPath), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := syscall.Mkfifo(fifoPath, 0o644); err != nil {
-		t.Fatalf("mkfifo: %v", err)
-	}
+	mkfifoOrSkip(t, fifoPath)
 
 	done := make(chan error, 1)
 	go func() {
@@ -47,7 +44,16 @@ func TestCollisionPrecheckSkipsFifoWithoutBlock(t *testing.T) {
 			t.Fatalf("install returned an error on a FIFO target: %v", err)
 		}
 		// Completed without blocking — the contract held (GREEN shape).
+		return
 	case <-time.After(10 * time.Second):
+		// RED observed. Release the parked reader, then wait for the
+		// goroutine to actually exit before any cleanup.
+		releaseFifoWriter(t, fifoPath)
+		select {
+		case <-done:
+		case <-time.After(10 * time.Second):
+			t.Fatal("the install goroutine never exited after the FIFO was released — teardown leak")
+		}
 		t.Fatalf("RED (intended): the collision precheck blocked for over 10s on a FIFO target — os.ReadFile at install.go:211 reads the FIFO with no writer and never returns")
 	}
 }
@@ -62,37 +68,45 @@ func TestCollisionPrecheckSkipsFifoWithoutBlock(t *testing.T) {
 // validated parent for the confinedWrite temp file (.ua-write-*); the moment
 // one appears — i.e. validation passed and the window :725→:750 is open — it
 // swaps the mid-chain directory for a symlink into an external sentinel dir.
-// The rename at :750 then resolves dest through the swapped parent. Up to
-// 300 fresh attempts; a caught external write is the RED evidence.
+// The rename at :750 then resolves dest through the swapped parent.
+//
+// Three-way verdict (gate round 14: the probe must own a success path, not
+// only a RED arm):
+//   - the REAL destination ("file.txt") appears in the sentinel → escaped
+//     (the RED evidence at HEAD);
+//   - no escape, and the write landed in the pinned parent (or confinedWrite
+//     refused) → the contract held — PASS;
+//   - neither → the race window was never observed → inconclusive (retry,
+//     then fail as a tool finding, never as a pass).
+//
+// The sentinel judgment names the destination only — the watcher's own
+// .ua-write-* shuttle never counts as a product write (gate round 13).
 func TestConfinedWritePinnedToValidatedParent(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink-swap probe uses unix rename/symlink semantics — the windows axis is the GOOS=windows build gate (B1)")
 	}
 	const attempts = 60
-	externalWrite := ""
-	var writeErrs []string
+	var lastDetail string
+	escaped := false
+	held := false
 
-	for i := 0; i < attempts && externalWrite == ""; i++ {
-		ext, werr := attemptParentSwapProbe(t)
-		if ext != "" {
-			externalWrite = ext
-			break
-		}
-		if werr != nil {
-			writeErrs = append(writeErrs, werr.Error())
+	for i := 0; i < attempts && !escaped && !held; i++ {
+		outcome, detail := attemptParentSwapProbe(t)
+		lastDetail = detail
+		switch outcome {
+		case probeEscaped:
+			escaped = true
+		case probeHeld:
+			held = true
 		}
 	}
-	if externalWrite == "" {
-		summary := "no write errors observed"
-		if len(writeErrs) > 0 {
-			summary = "write errors: " + writeErrs[0]
-			if len(writeErrs) > 1 {
-				summary += fmt.Sprintf(" (+%d more)", len(writeErrs)-1)
-			}
-		}
-		t.Fatalf("probe inconclusive after %d attempts (tool failure, not RED): the validation→rename window was never caught by the watcher; %s", attempts, summary)
+	if escaped {
+		t.Fatalf("RED (intended): the write escaped the validated parent after the post-validation swap — external sentinel received the destination (%s) (rename at install.go:750 followed the swapped parent)", lastDetail)
 	}
-	t.Fatalf("RED (intended): the write escaped the validated parent after the post-validation swap — external sentinel received %s (rename at install.go:750 followed the swapped parent)", externalWrite)
+	if held {
+		return // the contract held: pinned write or safe refusal, no escape
+	}
+	t.Fatalf("probe inconclusive after %d attempts (tool failure, not a verdict): the race window was never observed; last attempt: %s", attempts, lastDetail)
 }
 
 // attemptParentSwapProbe runs one probe attempt: a fresh root, a
@@ -100,9 +114,22 @@ func TestConfinedWritePinnedToValidatedParent(t *testing.T) {
 // sentinel symlink the moment the temp file appears inside it. The payload
 // is large on purpose — the Write duration IS the :725→:750 window the
 // watcher aims at, and a multi-megabyte write turns it into milliseconds.
-// Returns (external path that received the write, confinedWrite's error), or
-// ("", nil) when the attempt ended without an escape and without an error.
-func attemptParentSwapProbe(t *testing.T) (string, error) {
+// probe outcomes for one parent-swap attempt.
+const (
+	probeEscaped = iota // the destination appeared in the sentinel — RED
+	probeHeld           // pinned write or safe refusal, no escape — contract held
+	probeLost           // the race window was never observed — inconclusive
+)
+
+// attemptParentSwapProbe runs one probe attempt: a fresh root, a
+// root/sub/file.txt confinedWrite, and a watcher that swaps root/sub to a
+// sentinel symlink the moment the temp file appears inside it. The payload
+// is large on purpose — the Write duration IS the :725→:750 window the
+// watcher aims at, and a multi-megabyte write turns it into milliseconds.
+// It returns (outcome, detail): the sentinel is judged on the REAL
+// destination name only — the watcher's own .ua-write-* shuttle file is
+// probe apparatus, never a product write.
+func attemptParentSwapProbe(t *testing.T) (int, string) {
 	t.Helper()
 	home := t.TempDir()
 	sentinel := t.TempDir()
@@ -130,6 +157,7 @@ func attemptParentSwapProbe(t *testing.T) (string, error) {
 	// repoint the mid-chain dir at the sentinel. confinedWrite's Chmod and
 	// Rename then resolve tmpName THROUGH the new symlink — straight into
 	// the sentinel.
+	armed := false
 	stop := make(chan struct{})
 	watcherDone := make(chan struct{})
 	go func() {
@@ -157,6 +185,7 @@ func attemptParentSwapProbe(t *testing.T) (string, error) {
 						if linkErr := os.Symlink(filepath.Join(sentinel, "sub"), subDir); linkErr != nil {
 							return
 						}
+						armed = true
 						return
 					}
 				}
@@ -169,8 +198,13 @@ func attemptParentSwapProbe(t *testing.T) (string, error) {
 	close(stop)
 	<-watcherDone
 
-	// Restore the stashed dir so t.TempDir cleanup stays trivial; the probe
-	// reads the sentinel either way.
+	// The external record: ONLY the real destination counts. The .ua-write-*
+	// file in the sentinel is the watcher's own shuttle.
+	destExternal := filepath.Join(sentinel, "sub", "file.txt")
+	_, externalStatErr := os.Stat(destExternal)
+
+	// Restore the stashed dir so t.TempDir cleanup stays trivial and the
+	// pinned-parent check reads the real layout.
 	stash := subDir + ".stash"
 	if fi, statErr := os.Lstat(subDir); statErr == nil && fi.Mode()&os.ModeSymlink != 0 {
 		_ = os.Remove(subDir)
@@ -183,12 +217,27 @@ func attemptParentSwapProbe(t *testing.T) (string, error) {
 		}
 	}
 
-	// The external record: any file inside the sentinel.
-	sentEntries, err := os.ReadDir(filepath.Join(sentinel, "sub"))
-	if err == nil && len(sentEntries) > 0 {
-		return filepath.Join(sentinel, "sub", sentEntries[0].Name()), writeErr
+	if externalStatErr == nil {
+		return probeEscaped, destExternal
 	}
-	return "", writeErr // a refused or failed write without an escape is a missed attempt
+	// No escape: the contract holds when the write landed in the pinned
+	// parent, or confinedWrite refused (both are safe dispositions). A write
+	// error that is neither (an internal failure) and a no-write attempt are
+	// unobserved windows — the caller retries.
+	if _, pinnedErr := os.Stat(filepath.Join(subDir, "file.txt")); pinnedErr == nil {
+		return probeHeld, "the write landed in the pinned parent"
+	}
+	if writeErr != nil && armed {
+		return probeHeld, "the write was refused under the swap: " + writeErr.Error()
+	}
+	if !armed {
+		return probeLost, "the watcher never caught the temp-file window"
+	}
+	detail := "the swap armed but neither an escape nor a pinned write was observed"
+	if writeErr != nil {
+		detail += "; write error: " + writeErr.Error()
+	}
+	return probeLost, detail
 }
 
 // TestConfinedWritePreservesExecBit — AC-025 (ledger 6b, REQ-COL-003).

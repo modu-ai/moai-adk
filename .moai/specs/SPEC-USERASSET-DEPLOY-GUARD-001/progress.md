@@ -227,6 +227,37 @@ PASS 3건 유지. lint 0 issues, gofmt 청결.
   :301을 감시 — 파일별 영속화가 그 자리를 대체). 단정 계약(중단 뒤 디스크 저널의 반입
   해시)은 동일하며, M0 RED 전문은 위 M0 절에 보존되어 있다.
 
+### M1 후속 (게이트 14 버킷 B) + M0.1 테스트 수리 (게이트 13/14, 2026-10-09)
+
+**버킷 B — M1 축 프로덕션 수리 (RED 관측: stash 롤백 verbatim — `the refusal does not
+carry the schema diagnosis: pending-install journal corrupt — preserved at
+...corrupt-20261008T193558`)**
+
+| 항목 | 수리 | 검증 |
+|---|---|---|
+| B3 journal.go:101 | 스키마 불일치 저널은 corrupt 사이드카로 라우팅되지 않는다 — `JournalSchemaError` 타입 신설, Install이 **원본 경로 보존 + 재거절**. corrupt(파싱 실패)만 사이드카로 | TestJournalUnsupportedSchemaPreservedInPlace GREEN (수정 전 RED 관측: 사이드카 라우팅 + 진단 은닉) |
+| B4 install.go:302 | refresh된 반입 항목이 해시와 **provenance(MoaiVersion·InstalledAt)를 함께 동기화** — REQ-006 (디스크 바이트를 만든 빌드가 기록된다) | AC-003 캡처 단정에 MoaiVersion 검증 추가 — GREEN |
+
+**버킷 A — M0.1 테스트 수리 6건 (전부 적용, 영향 셀렉터 재실행)**
+
+| 결함 | 수리 | 재관측 |
+|---|---|---|
+| A1 [P1] Mkfifo가 windows 컴파일 파괴 | `m0_fifo_{unix,windows}_test.go` 빌드태그 분할 — 런타임 skip이 아닌 컴파일타임 분리 | **`GOOS=windows GOARCH=amd64 go test -c ./internal/userassets` OK (P1 합격)**, hook 동일 OK, 전체 windows 빌드 OK |
+| A2 watcher 조건 광역 일치 | 저널을 파싱해 recoveredKey 항목의 해시를 **특정 검사** | AC-003 GREEN 유지 |
+| A3 watcher가 자기 shuttle을 제품 쓰기로 오판 | 센티널 판정을 **실 목적지명(file.txt) 한정** — .ua-write-* 셔틀은 probe 장치 | TOCTOU RED 재관측 (올바른 근거) |
+| A4 decideBash가 Handle의 zone 셸 분기 우회 | **Handle 실제 진입** + overlay 보호 구성 + harness-learner 신원 + control 팔 | control(프로젝트측 covered 삭제)=**DENY 관측**(가드 생존 증명), 결함 팔(사용자측)=ALLOW → RED 성립. 실측 필드: `HookSpecificOutput.PermissionDecision` |
+| A5 FIFO 설치 고루틴이 cleanup 생존 | RED 팔에서 write-end 개방·폐쇄로 EOF 주입 → 고루틴 종료 대기 후 종료 | TempDir cleanup 오류 소멸, teardown 보장 |
+| A6 lock 경로 항법 동일성(tautology) | **획득이 실제 만든 파일**을 디스크 diff로 관측 — 실측 마커명 `user-assets.acquire-guard.guard` (게이트 지적명 `user-assets.lock.guard`와 다름 — 본 트리 실측값 기록) | PASS + 보유 중 2차 획득 거절(직렬화 실측) |
+| A7 TOCTOU 무성공 경로 | 3-way 판정: 탈출=RED / 고정·안전거절=**GREEN 성공 경로** / 미관측=재시도 후 도구 소관 | HEAD에서 RED 유지 (M5 수리 시 GREEN 전환 가능) |
+
+**버킷 C — 구조 처분 (레인 재정, §E.2 기록)**: 의도 RED 테스트는 빌드태그 격리 없이 기본
+run에 남는다. 각 마일스톤이 자기 가족을 GREEN으로 전환하며, 미착지 브랜치에서의 중간
+적색은 예상되고 설명된 상태다 — 영향 패밀리 판정이 레인의 실행 면이고, 저장소 전체
+판정은 전 가족 GREEN 시점의 통합 CI가 소관이다.
+
+**게이트**: lint 0 issues (userassets+hook), gofmt 청결, userassets 전체 스위트 = 의도
+RED 8건(M2-M7 소관)만 잔존, M1 GREEN 4종+버킷 B 1종 유지.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop 소관.)_

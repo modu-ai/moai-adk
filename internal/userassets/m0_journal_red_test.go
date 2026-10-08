@@ -278,10 +278,13 @@ func attemptRefreshHashRepro(t *testing.T, recoveredKey string) (string, bool) {
 		t.Fatal(err)
 	}
 
-	// Watcher: the moment the journal carries the REFRESHED hash (only the
-	// REQ-JRN-002 hash sync can produce it in the journal), make ~/.moai
-	// read-only so the manifest save fails and the journal survives with
-	// its synced state.
+	// Watcher: the moment the journal carries the REFRESHED hash ON THE
+	// RECOVERED ENTRY, make ~/.moai read-only so the manifest save fails
+	// and the journal survives with its synced state. The condition parses
+	// the journal and inspects the recovered entry's hash specifically
+	// (gate round 14: a raw substring match over the whole file also hits
+	// staged NEW entries carrying the same bytes under other roots — the
+	// watcher then fires before the hash sync even ran).
 	stop := make(chan struct{})
 	watcherDone := make(chan struct{})
 	go func() {
@@ -293,9 +296,16 @@ func attemptRefreshHashRepro(t *testing.T, recoveredKey string) (string, bool) {
 				return
 			default:
 			}
-			if data, err := os.ReadFile(jp); err == nil && strings.Contains(string(data), newSHA) {
-				_ = os.Chmod(moaiHome, 0o555)
-				return
+			if data, err := os.ReadFile(jp); err == nil {
+				var probe PendingJournal
+				if json.Unmarshal(data, &probe) == nil {
+					for _, e := range probe.Entries {
+						if e.Path == recoveredKey && e.ExpectedSHA256 == newSHA {
+							_ = os.Chmod(moaiHome, 0o555)
+							return
+						}
+					}
+				}
 			}
 			time.Sleep(100 * time.Microsecond)
 		}
@@ -340,6 +350,13 @@ func attemptRefreshHashRepro(t *testing.T, recoveredKey string) (string, bool) {
 			if e.ExpectedSHA256 != newSHA {
 				t.Errorf("stale carried hash survived on disk after the interrupted run: %q, want the refreshed %q — REQ-JRN-002 regressed", e.ExpectedSHA256, newSHA)
 				return "captured", true
+			}
+			// Gate round 14 bucket B4: the hash sync carries the PROVENANCE
+			// with it — new bytes recorded under the old run's origin would
+			// violate REQ-006 (the per-file version names the build that
+			// produced the bytes on disk).
+			if e.MoaiVersion != "v3.2.0-test" {
+				t.Errorf("the refreshed carried entry kept the stale provenance: MoaiVersion=%q, want the current run's v3.2.0-test", e.MoaiVersion)
 			}
 			return "captured — the carried entry carries the refreshed hash " + newSHA, true
 		}

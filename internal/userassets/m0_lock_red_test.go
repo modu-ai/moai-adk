@@ -127,17 +127,74 @@ func itoaTest(n int) string {
 	return digits
 }
 
-// TestLockGuardPathShape documents the guard path derivation both platform
-// files must agree on (strings.TrimSuffix(path, ".lock") + ".acquire-guard"),
-// so a windows-only rename of the guard shape cannot silently fork the
-// platform semantics (REQ-LOCK-002 — the source re-read that backs the
-// acceptance's "게이트 unix 프로브 + 소스 재독 확정" line).
+// TestLockGuardPathShape documents the guard marker the REAL acquisition
+// produces (M0.1, gate round 13: the former form re-derived the path with
+// the same formula the code uses — a tautological pass). The observation is
+// the disk diff across one acquisition: exactly the lock file and ONE guard
+// marker appear, the marker sits in the lock's own name family, and a
+// second acquisition while held does not take over.
 func TestLockGuardPathShape(t *testing.T) {
 	home := t.TempDir()
-	lockPath := LockPath(home)
-	guardPath := strings.TrimSuffix(lockPath, ".lock") + ".acquire-guard"
-	want := filepath.Join(home, ".moai", "user-assets.acquire-guard")
-	if guardPath != want {
-		t.Fatalf("guard path derivation diverged: got %s want %s", guardPath, want)
+	if err := os.MkdirAll(MoaiHome(home), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	before := map[string]bool{}
+	if entries, err := os.ReadDir(MoaiHome(home)); err == nil {
+		for _, e := range entries {
+			before[e.Name()] = true
+		}
+	}
+
+	lock, err := AcquireUserLock(home, 2*time.Second)
+	if err != nil {
+		t.Fatalf("acquire: %v", err)
+	}
+	defer func() { _ = lock.Release() }()
+
+	entries, err := os.ReadDir(MoaiHome(home))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var created []string
+	for _, e := range entries {
+		if !before[e.Name()] {
+			created = append(created, e.Name())
+		}
+	}
+	// Acquisition creates the lock file itself plus the guard marker — and
+	// nothing else.
+	if len(created) != 2 {
+		t.Fatalf("acquisition created %d files (%v), want exactly the lock and its guard marker", len(created), created)
+	}
+	var lockFile, guardMarker string
+	for _, name := range created {
+		switch {
+		case name == filepath.Base(LockPath(home)):
+			lockFile = name
+		case strings.HasSuffix(name, ".guard"):
+			guardMarker = name
+		}
+	}
+	if lockFile == "" {
+		t.Fatalf("acquisition created no lock file: %v", created)
+	}
+	if guardMarker == "" {
+		t.Fatalf("acquisition created no .guard-suffixed marker: %v", created)
+	}
+	// The marker belongs to the lock's own name family and is a SEPARATE
+	// file from the lock — the observed shape both platform guards must
+	// produce (REQ-LOCK-002).
+	if !strings.HasPrefix(guardMarker, "user-assets") {
+		t.Fatalf("guard marker %q is outside the lock's name family", guardMarker)
+	}
+	if guardMarker == lockFile {
+		t.Fatalf("the guard marker and the lock file are the same file: %q", guardMarker)
+	}
+	t.Logf("observed acquisition marker: %s", guardMarker)
+
+	// While held, a second acquisition does not take over (the guard is a
+	// real serialization surface, not a decorative file).
+	if _, err := AcquireUserLock(home, 150*time.Millisecond); err == nil {
+		t.Fatal("a second acquisition took the lock while it was held — the guard does not serialize")
 	}
 }
