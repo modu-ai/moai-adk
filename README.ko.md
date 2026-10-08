@@ -256,7 +256,7 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk && make build
 ```
 
-이미 설치했다면 `moai update`로 최신 버전으로 올린다. v3.1.1부터 `moai update`는 템플릿 관리 디렉터리를 지우고 다시 깔기 전에, 그 안에 있던 관리 대상 밖 파일을 `.moai-backups/<타임스탬프>/pre-clean/`으로 먼저 옮겨 둔다. 백업이 실패하면 삭제로 넘어가지 않고 그 자리에서 멈춘다 — 직접 넣어 둔 파일이 재배포에 조용히 쓸려 나가지 않는다.
+이미 설치했다면 `moai update`로 최신 버전으로 올린다. v3.2.0부터 `moai update`는 기존 프로젝트를 보존 기반으로 갱신한다 — 템플릿 관리 디렉터리를 통째로 지우고 다시 깔지 않는다. 직접 넣어 둔 파일은 그 자리에 살아남고, 템플릿 파일을 편집했다면 3-way 병합한다(충돌이면 편집본을 그대로 두고 새 버전을 `<경로>.moai-new.N` 사이드카로 옆에 둔다). 템플릿이 더 이상 운반하지 않는 파일은 삭제 전에 `.moai/archive/files/`로 옮겨 둔다 — 요약이 갱신·병합·충돌·보존·아카이브를 경로별로 모두 보고한다.
 
 > 💡 **비용을 줄이려면 — z.ai GLM 추천**: [이 링크](https://z.ai/subscribe?ic=1NDV03BGWU)로 z.ai에 가입하면 일정 토큰을 보너스로 받는다. 이 링크는 moai-adk 오픈소스 개발을 후원하는 경로이기도 하다. 무료 모델(GLM-4.7-Flash, GLM-4.5-Flash)도 있으니 [z.ai 요금제](https://docs.z.ai/guides/overview/pricing)를 참고한다.
 
@@ -736,7 +736,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai init` | 대화형 프로젝트 설정 (언어/프레임워크/방법론 자동 감지) |
 | `moai doctor` | 시스템 상태 진단과 환경 검증 — Home Disk Usage 항목이 `~/.moai`가 얼마나 불었는지 권고로 알려준다 |
 | `moai status` | 프로젝트 상태 요약 (Git 브랜치, 품질 지표) |
-| `moai update` | 최신 버전으로 업데이트 (삭제 전 백업 · 자동 롤백 지원) |
+| `moai update` | 최신 버전으로 업데이트 (로컬 파일 보존 · 3-way 병합과 충돌 사이드카 · 삭제 전 아카이브) |
 | `moai graph <build\|query>` | 코드베이스 그래프(edges.jsonl) 생성·조회 — 호출자 찾기, 폭발 반경, 마일스톤 교차검사 |
 | `moai cc` / `moai glm` | Claude 전용 / GLM 전용 세션 |
 | `moai codex [cli\|status\|app]` | Codex 런처 — 인자 없이 부르면 Codex CLI를 기동한다. `status`는 준비 상태만 보여주고 아무것도 띄우지 않는다 |

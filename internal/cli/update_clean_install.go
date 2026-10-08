@@ -28,6 +28,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"io"
 	"io/fs"
 	"os"
@@ -601,7 +603,9 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 
 	if !result.IntegrityPassed {
 		_, _ = fmt.Fprintf(out, "[clean-reinstall] Integrity check FAILED: %d mismatches\n", len(mismatches))
-		return result, recovery.fail("step 7", fmt.Errorf("PRESERVE integrity violation on %d paths (backup retained at %s)", len(mismatches), finalBackupDir))
+		preserveErr := fmt.Errorf("PRESERVE integrity violation on %d paths (backup retained at %s)", len(mismatches), finalBackupDir)
+		bugreport.Capture(bugreport.KindTemplateDeployFailure, preserveErr, bugreport.ReasonPreserveIntegrity, bugreport.TokenPreserveIntegrity)
+		return result, recovery.fail("step 7", preserveErr)
 	}
 	// Log-claim accuracy: the integrity check covers ONLY the PRESERVE
 	// inventory hashes (inv.Files) — not merged config, settings, or

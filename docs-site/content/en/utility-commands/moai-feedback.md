@@ -7,7 +7,7 @@ draft: false
 The command for submitting feedback or bug reports to MoAI-ADK.
 
 {{< callout type="info" >}}
-**One-line summary**: `/moai feedback` **auto-creates a GitHub issue** from your improvement proposal or bug report about MoAI-ADK itself.
+**One-line summary**: `/moai feedback` turns your improvement proposal or bug report about MoAI-ADK itself into a **GitHub issue only after you confirm** it.
 {{< /callout >}}
 
 {{< callout type="info" >}}
@@ -196,7 +196,7 @@ Not spawning a subagent for a simple single-procedure task is also a tokenomics 
 > /moai feedback
 ```
 
-The MoAI orchestrator asks for the feedback type, title, and description in turn. Once you answer, a GitHub issue is created automatically and the issue URL is returned.
+The MoAI orchestrator asks for the feedback type, title, and description in turn. You review the composed issue, and only after you confirm is the GitHub issue created and the issue URL returned.
 
 ```
 A GitHub issue has been created:

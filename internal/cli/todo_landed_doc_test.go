@@ -32,8 +32,8 @@ import (
 // docRowPrefixes are the two verb-table rows that carry the contract: the verb
 // this milestone documents, and the row stating the column count.
 var docRowPrefixes = []string{
-	"| `moai gtd landed ",
-	"| `moai gtd pr ",
+	"| `moai todo landed ",
+	"| `moai todo pr ",
 }
 
 // statedColumnCount matches the count a `todo pr` row states in prose. The
@@ -72,9 +72,9 @@ func TestTodoDoctrine_MirrorParityAndStatedColumnCount(t *testing.T) {
 	// Half 2 — the number the prose states equals the number the render emits.
 	rendered := renderedColumnCount(t)
 	for name, rows := range map[string]map[string]string{"live": liveRows, "template mirror": mirrorRows} {
-		stated := statedColumns(t, name, rows["| `moai gtd pr "])
+		stated := statedColumns(t, name, rows["| `moai todo pr "])
 		if stated != rendered {
-			t.Errorf("%s gtd.md states %d columns; `moai gtd pr` renders %d",
+			t.Errorf("%s gtd.md states %d columns; `moai todo pr` renders %d",
 				name, stated, rendered)
 		}
 	}
@@ -110,7 +110,7 @@ func statedColumns(t *testing.T, surface, row string) int {
 	t.Helper()
 	m := statedColumnCount.FindStringSubmatch(row)
 	if m == nil {
-		t.Fatalf("%s gtd.md: the `moai gtd pr` row states no column count", surface)
+		t.Fatalf("%s gtd.md: the `moai todo pr` row states no column count", surface)
 	}
 	n, ok := numberWords[m[1]]
 	if !ok {

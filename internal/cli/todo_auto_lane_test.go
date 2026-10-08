@@ -371,6 +371,169 @@ func TestAutoLaneCycleRunsThroughCommandSurface(t *testing.T) {
 	}
 }
 
+// TestAutoLaneCycleAssignedCardBeforeQueuedRanking — card t1577: a quota-free
+// pass still owes the lane's own assigned card before any new-candidate
+// ranking. The leader-dispatched card (t1: picked in the queue, leased to
+// lane-1 in the factory record) is invisible to the queued-only candidate
+// list, so the cycle skipped it entirely and worked only the fresh candidate.
+func TestAutoLaneCycleAssignedCardBeforeQueuedRanking(t *testing.T) {
+	root, store := nmBase(t, factory.BacklogStatePicked, factory.BacklogStateQueued)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+	nmLaneEnv(t, "lane-1", "")
+	nmIsolatedWorktrees(t, "t1", "t2")
+	laneAutoSeams(t)
+	laneAutoSeedEvidence(t, root, "t1", "t2")
+
+	tick := 0
+	sleep, now := laneAutoTickClock(&tick)
+	var out, errOut bytes.Buffer
+	if err := runAutoLaneCycle(context.Background(), root, &out, &errOut, laneAutoOpts(t, 5*time.Minute, sleep, now)); err != nil {
+		t.Fatalf("lane cycle: %v (stderr %q)", err, errOut.String())
+	}
+	got := out.String()
+	t1At := strings.Index(got, "t1 stage=")
+	t2At := strings.Index(got, "t2 stage=")
+	if t1At < 0 {
+		t.Fatalf("the lane's own assigned card was never worked (the candidate list is queued-only):\n%s", got)
+	}
+	if t2At >= 0 && t2At < t1At {
+		t.Errorf("a fresh queued candidate was ranked ahead of the lane's assigned card:\n%s", got)
+	}
+	if !strings.Contains(got, "card: t1") {
+		t.Errorf("the dispatch directive does not name the assigned card:\n%s", got)
+	}
+	nmAssertLeased(t, root, "t1", "lane-1")
+	if s := nmQueueState(t, store, "t2"); s != factory.BacklogStatePicked {
+		t.Errorf("t2 queue state = %s, want picked (the cycle continues past the assigned card)", s)
+	}
+}
+
+// TestAutoLaneCycleHonorsLauncherRunID — card t1577: the launcher names the
+// factory run in the environment (config.EnvFactoryRunID) and the lane cycle
+// must honor that selection, falling back to auto-discovery only when the
+// environment names none. With two active runs the old auto-discovery-only
+// resolution failed AMBIGUOUS_FACTORY even though the launcher had chosen.
+func TestAutoLaneCycleHonorsLauncherRunID(t *testing.T) {
+	t.Run("env selection wins over auto-discovery", func(t *testing.T) {
+		root, _ := nmBase(t, factory.BacklogStateQueued)
+		nmLaneEnv(t, "lane-1", "")
+		nmIsolatedWorktrees(t, "t1")
+		// The ranking seams are stubbed inert, but the RUN RESOLUTION stays
+		// real: this cell is about the resolution's own precedence.
+		origLanded, origJev := todoAutoLandedLookup, todoAutoJevRanker
+		t.Cleanup(func() { todoAutoLandedLookup, todoAutoJevRanker = origLanded, origJev })
+		todoAutoLandedLookup = func(*factory.BacklogRecord) (map[string]factory.PRLinkKind, error) { return nil, nil }
+		todoAutoJevRanker = func(jev.Request) jev.Result { return jev.Result{Availability: jev.Disabled} }
+
+		// Two active runs: without an explicit selection the resolution is
+		// ambiguous; the launcher's env names one of them.
+		db := fcOpen(t, root)
+		for _, run := range []string{"run-a", "run-launcher"} {
+			if _, err := db.DB.Exec(`INSERT INTO runs(run_id,status,created_at,updated_at) VALUES(?,'active','t','t')`, run); err != nil {
+				t.Fatalf("seed run %s: %v", run, err)
+			}
+		}
+		_ = db.Close()
+		t.Setenv(config.EnvFactoryRunID, "run-launcher")
+		laneAutoSeedEvidence(t, root, "t1")
+
+		tick := 0
+		sleep, now := laneAutoTickClock(&tick)
+		var out, errOut bytes.Buffer
+		if err := runAutoLaneCycle(context.Background(), root, &out, &errOut, laneAutoOpts(t, 5*time.Minute, sleep, now)); err != nil {
+			t.Fatalf("lane cycle with a launcher-selected run: %v (stderr %q)", err, errOut.String())
+		}
+		db = fcOpen(t, root)
+		c, err := db.LoadCard(context.Background(), "run-launcher", "t1")
+		if err != nil {
+			t.Fatalf("load t1 under run-launcher: %v", err)
+		}
+		_ = db.Close()
+		if c.RunID != "run-launcher" {
+			t.Errorf("t1 leased under run %q, want the launcher-selected run-launcher", c.RunID)
+		}
+	})
+	t.Run("no env selection still fails closed on ambiguity", func(t *testing.T) {
+		root, _ := nmBase(t, factory.BacklogStateQueued)
+		nmLaneEnv(t, "lane-1", "")
+		origLanded, origJev := todoAutoLandedLookup, todoAutoJevRanker
+		t.Cleanup(func() { todoAutoLandedLookup, todoAutoJevRanker = origLanded, origJev })
+		todoAutoLandedLookup = func(*factory.BacklogRecord) (map[string]factory.PRLinkKind, error) { return nil, nil }
+		todoAutoJevRanker = func(jev.Request) jev.Result { return jev.Result{Availability: jev.Disabled} }
+
+		db := fcOpen(t, root)
+		for _, run := range []string{"run-a", "run-launcher"} {
+			if _, err := db.DB.Exec(`INSERT INTO runs(run_id,status,created_at,updated_at) VALUES(?,'active','t','t')`, run); err != nil {
+				t.Fatalf("seed run %s: %v", run, err)
+			}
+		}
+		_ = db.Close()
+		t.Setenv(config.EnvFactoryRunID, "")
+
+		var out, errOut bytes.Buffer
+		if err := runAutoLaneCycle(context.Background(), root, &out, &errOut, laneAutoOpts(t, time.Millisecond, func(time.Duration) {}, func() time.Time { return fcNow })); err == nil {
+			t.Errorf("two active runs with no env selection resolved without an error; discovery must fail closed:\n%s", out.String())
+		}
+	})
+	t.Run("retired env run id fails closed", func(t *testing.T) {
+		root, store := nmBase(t, factory.BacklogStateQueued)
+		nmLaneEnv(t, "lane-1", "")
+		origLanded, origJev := todoAutoLandedLookup, todoAutoJevRanker
+		t.Cleanup(func() { todoAutoLandedLookup, todoAutoJevRanker = origLanded, origJev })
+		todoAutoLandedLookup = func(*factory.BacklogRecord) (map[string]factory.PRLinkKind, error) { return nil, nil }
+		todoAutoJevRanker = func(jev.Request) jev.Result { return jev.Result{Availability: jev.Disabled} }
+
+		db := fcOpen(t, root)
+		if _, err := db.DB.Exec(`INSERT INTO runs(run_id,status,created_at,updated_at) VALUES('run-old','retired','t','t')`); err != nil {
+			t.Fatalf("seed retired run: %v", err)
+		}
+		_ = db.Close()
+		t.Setenv(config.EnvFactoryRunID, "run-old")
+
+		var out, errOut bytes.Buffer
+		if err := runAutoLaneCycle(context.Background(), root, &out, &errOut, laneAutoOpts(t, time.Millisecond, func(time.Duration) {}, func() time.Time { return fcNow })); err == nil {
+			t.Errorf("a retired env run id leased anyway (t1 state %s); the selection must fail closed:\n%s", nmQueueState(t, store, "t1"), out.String())
+		}
+		if s := nmQueueState(t, store, "t1"); s != factory.BacklogStateQueued {
+			t.Errorf("t1 queue state = %s, want queued (nothing leases against a retired run)", s)
+		}
+	})
+}
+
+// TestAutoLaneCycleSkipsExcludedAssignedCard — card t1577 card-review: an
+// assigned card the operator later excluded (queue item dropped, or the text
+// hold-marked) must not lease through the assigned arm — the same keep-set
+// the nominated path applies. Assigned priority is preserved: the cycle skips
+// the excluded card and works the fresh candidate.
+func TestAutoLaneCycleSkipsExcludedAssignedCard(t *testing.T) {
+	root, store := nmBase(t, factory.BacklogStateDropped, factory.BacklogStateQueued)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+	nmSetText(t, store, "t1", nmHoldMarker+" parked after dispatch")
+	nmSetText(t, store, "t2", "the fresh candidate")
+	nmLaneEnv(t, "lane-1", "")
+	nmIsolatedWorktrees(t, "t1", "t2")
+	laneAutoSeams(t)
+	laneAutoSeedEvidence(t, root, "t2")
+
+	tick := 0
+	sleep, now := laneAutoTickClock(&tick)
+	var out, errOut bytes.Buffer
+	if err := runAutoLaneCycle(context.Background(), root, &out, &errOut, laneAutoOpts(t, 5*time.Minute, sleep, now)); err != nil {
+		t.Fatalf("lane cycle: %v (stderr %q)", err, errOut.String())
+	}
+	got := out.String()
+	if strings.Contains(got, "t1 stage=") {
+		t.Errorf("an operator-excluded assigned card was leased anyway:\n%s", got)
+	}
+	if !strings.Contains(got, "t2 stage=") {
+		t.Errorf("the fresh candidate was not worked after the excluded card was skipped:\n%s", got)
+	}
+	if s := nmQueueState(t, store, "t1"); s != factory.BacklogStateDropped {
+		t.Errorf("t1 queue state = %s, want dropped (the exclusion stands)", s)
+	}
+	nmAssertLeased(t, root, "t2", "lane-1")
+}
+
 // TestAutoLaneCycleNoteNamesNextCandidate — a permanent refusal names the
 // candidate it skipped, so the cycle's narration is checkable against the
 // queue (one line per fall-through).
