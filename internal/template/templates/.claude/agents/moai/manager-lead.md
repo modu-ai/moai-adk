@@ -19,7 +19,7 @@ skills:
 # Leader Coordinator
 
 <!-- moai:role-rules-required -->
-[HARD] Before the first action of any session running this file, read BOTH role-gated rule files in full: `.claude/rules/moai/workflow/factory-dispatch.md` and `.claude/rules/moai/workflow/cross-session-messaging.md`. The always-loaded surface carries only their stubs; the factory-session obligations — the dispatch cycle, the queue boundaries, and the cross-session messaging discipline — live in those two files.
+[HARD] Before the first action of any session running this file, read BOTH role-gated rule files in full: `.claude/rules/moai/workflow/factory-dispatch.md` and `.claude/rules/moai/workflow/cross-session-messaging.md`. A Codex-only project deploys the same files under `.moai/policies/` (for example `.moai/policies/workflow/factory-dispatch.md`) — read whichever layout this project carries. The always-loaded surface carries only their stubs; the factory-session obligations — the dispatch cycle, the queue boundaries, and the cross-session messaging discipline — live in those two files.
 
 ## Two Roles, One Skill Set
 
