@@ -76,3 +76,36 @@ Handoff directives by activation mechanism: (a) paste-time keywords (bare `ultra
 - `mode:` is omitted entirely for `serial` (the default), keeping the common case byte-identical.
 - `mode:` values and the fan-out phrase are protocol tokens preserved verbatim in every locale; only the parenthesized scope qualifier translates.
 - Legacy pre-rename tokens (`solo-sequential`, `parallel-subagents`, `dynamic-workflow`) remain parse-accepted on read and map to `serial` / `fanout` / `sweep` — new emissions use the new tokens only.
+
+## Migrated from the core body
+
+
+### Session Handoff Protocol
+
+
+Long-running session continuity: clean transitions across context boundaries via paste-ready resume messages.
+
+
+> **Loading scope**: Intentionally always-loaded (no `paths:` restriction) because Trigger #3 (user explicit session-end) can fire from any session context, including those without SPEC files. The always-loaded cost is justified by cross-cutting applicability.
+
+
+> **Format companion**: `session-handoff-format.md` owns the marker spec, locale tables, and activation mechanics relocated from this file — § Why This Matters · § Cut-line Marker Specification · § Localization Table · § Paste-Time Activation Matrix · § Auto-Injected Resume Flow (mode=auto) · § Pre-emit self-check (emission surface) — 3 items · § Anti-Patterns · § Cross-references (the relocated four). Sibling companion: `session-handoff-examples.md` (examples, appendices, the anti-pattern catalogue). Load a companion when rendering a handoff block, translating a label, or authoring output-style §8.
+
+
+### Auto-Injected Resume Flow (mode=auto)
+
+
+[ZONE:Evolvable] Under `handoff.mode: auto` the saved pending record is consumed at the next `/clear` session start, collapsing the resume to **ONE** user message. Flow, the `/clear`-only injection boundary, and resumed-turn precondition verification: `session-handoff-format.md` § Auto-Injected Resume Flow (mode=auto) · `session-handoff-examples.md` § Auto-Injected Resume Flow (mode=auto).
+
+
+### Auto-Memory Integration (Mandatory)
+
+
+The message then survives `/clear` and is discoverable at the next session's start.
+
+
+### Cross-references
+
+
+Status: HARD operational rule, applies to all multi-phase MoAI workflows
+

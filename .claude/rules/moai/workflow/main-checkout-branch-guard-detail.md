@@ -33,7 +33,7 @@ flows. The hook applies the doctrine conditionally.
 - **Handler**: `internal/hook/pre_tool.go` `preToolHandler.Handle` calls
   `checkBranchState` (in `internal/hook/branch_guard.go`) after the existing
   dangerous-pattern check and before the default-allow fall-through.
-- **Opt-in gate (v1.2.0, SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-3)**:
+- **Opt-in gate (v1.2.0)**:
   the call to `checkBranchState` is gated at the call site by
   `Workflow.BranchGuard.Enabled` (read via the handler's ConfigProvider). The
   distributed default is **false** — the guard ships INERT to all users,
@@ -44,8 +44,8 @@ flows. The hook applies the doctrine conditionally.
   returns the allow fall-through without evaluating patterns, checkout state,
   or exemption logic. The exemption logic (`MOAI_BRANCH_GUARD_EXEMPT` +
   `manager-git` identity) is unchanged and is consulted only on the enabled
-  path (REQ-6 backward compat).
-- **Pattern refinement (v1.2.0, REQ-2)**: the regex set no longer matches the
+  path.
+- **Pattern refinement (v1.2.0)**: the regex set no longer matches the
   read-only forms `git stash list`, `git stash show`, and `git merge-base`.
   `git merge` anchors on trailing whitespace so `merge-base` is excluded;
   `git stash` requires either bare end-of-input or one of the mutating
@@ -93,7 +93,7 @@ flows. The hook applies the doctrine conditionally.
   in whether a spawned agent can reach them:
   - `AgentType` arrives in the hook payload, and Claude Code **does** populate
     `agent_type` for an agent spawned through the Agent tool — measured
-    2026-09-27 under SPEC-BRANCHGUARD-EXEMPT-REACH-001, in the same snake_case
+    against a live runtime, in the same snake_case
     spelling `HookInput` decodes, carrying the spawn name verbatim rather than a
     catalog name. The identity axis therefore fires for a spawned agent named
     `manager-git`, and the three-arm check confirmed the deny is suppressed for
@@ -116,7 +116,7 @@ flows. The hook applies the doctrine conditionally.
   axis reaches a spawned agent and simply did not match the name it was given.
 
   The deny reason's remediation text must not suggest delegating to a
-  `manager-git` agent (card t43). The ORIGINAL reason for that wording —
+  `manager-git` agent. The ORIGINAL reason for that wording —
   "such a delegation reproduces the same deny" — is false as measured, so the
   wording now stands on a different and stronger footing: the delegation would
   actually SUCCEED, and succeeding is precisely the outcome the guard exists to
@@ -147,11 +147,12 @@ flows. The hook applies the doctrine conditionally.
   the opt-in gate: when disabled the guard returns allow BEFORE reaching any
   uncertainty path, so fail-open is trivially preserved.
 
-Origin: SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-001 through REQ-WBG-013).
-Opt-in gate + pattern refinement: SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001
-(REQ-1 through REQ-6).
-Discriminant directory correction: SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001
-(REQ-WBG-D-001 through REQ-WBG-D-008).
+Origin: the branch-guard doctrine specification (its full requirement set).
+Opt-in gate + pattern refinement: the follow-on opt-in specification
+(its requirement set).
+Discriminant directory correction: the discriminant-correction specification
+(its requirement set).
+
 
 
 ---

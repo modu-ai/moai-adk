@@ -1,24 +1,9 @@
----
-description: "Role-gated cross-session messaging doctrine. Delivery is role-injection (SessionStart hook) plus the read-first directive on the unmarked leader-grade entry points; this top-level paths key is a non-delivery placement. The always-loaded stub is cross-session-messaging-core.md"
-paths: "**/cross-session-messaging*.md,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai-factory-foreman/SKILL.md,**/.claude/skills/moai/workflows/gtd.md"
----
+# Cross-Session Messaging Core
 
-# Cross-Session Messaging
+> **Role-injection delivery.** Factory leader and lane sessions receive the role core of this rule and of `factory-dispatch.md` through the SessionStart hook (sources startup, clear, compact); this rule's own blocks are all general, so the injection carries the pointer to the full body at `workflow/cross-session-messaging.md`. The unmarked leader-grade entry points — the manager-lead agent, the factory foreman skill, the todo `--auto` path — carry a read-first directive (`moai:role-rules-required`) to read that full body. This stub holds the rule's always-surface blocks.
 
-> Moved to the detail companion: `cross-session-messaging-detail.md` ("Cross-Session Messaging").
-
-> **Loading scope**: Role-gated — delivered by injection, not session-start loading. Factory leader and lane sessions receive the role-core pointer for this rule through the SessionStart hook (sources startup, clear, compact); this rule's blocks are all general, so the injection carries the read directive for this full body. The unmarked leader-grade entry points — the manager-lead agent, the factory foreman skill, the todo `--auto` path — carry the same read-first directive. The always-loaded stub is `cross-session-messaging-core.md`; the top-level `paths:` key is a non-delivery placement.
-
-<!-- moai:role-core-start --><!-- moai:role-core-end -->
-<!-- role-core region: none — this rule binds every session, so its binding blocks stay in the always-loaded body above; the SessionStart injection carries the pointer to this file only -->
-
-## What the channel is
-
-> Moved to the detail companion: `cross-session-messaging-detail.md` ("What the channel is").
 
 ## Availability constraints
-
-> Moved to the detail companion: `cross-session-messaging-detail.md` ("Availability constraints").
 
 Where a constraint bites, the failure is quiet — nothing errors, dispatch just has no channel. Surface the constraint to the operator instead of retrying or re-spawning.
 
@@ -66,13 +51,9 @@ respawn the name deliberately. Registry path, audit rows, and the entry lifecycl
 | A `routing` object | An in-process mailbox took it; the peer never sees it | Re-send to `name [ref]` |
 | A `[Cross-session delivery notice]` follows | The receiving session's permission policy is **holding** the message for its user's approval, or refused it outright | Treat it as undelivered: surface it to the operator rather than re-sending, because the same policy holds the next copy too |
 
-> Moved to the detail companion: `cross-session-messaging-detail.md` ("A send result has three shapes, and none of them says "read"").
-
 **The queue is what survives all three shapes.** Because a dispatch is delegated through the queue on disk and completion is read from evidence (`factory-dispatch.md` § The delegation channel is the queue, § Completion is read, never trusted), a held or lost message costs the run nothing. That is exactly why reading the send result matters: it tells the sender whether a *nudge* landed, and nothing more. Advancing a card because a send reported success is an unobserved completion claim (`verification-claim-integrity.md` §1.1 surface 1).
 
 ## An idle notice is a scheduling hint
-
-> Moved to the detail companion: `cross-session-messaging-detail.md` ("An idle notice is a scheduling hint").
 
 [ZONE:Evolvable] [HARD] **An idle notice is not completion evidence.** A session goes idle when it finishes, when it stops at a permission prompt, and when it dies, and the notice cannot tell those three apart. What it establishes is *when to go look*; what it says about the work is nothing. Treating it as a completion signal converts the [HARD] read-don't-trust rule (`factory-dispatch.md` § Completion is read, never trusted) into an unobserved completion claim (`verification-claim-integrity.md` §1.1 surface 1) — the notice arrives, the card advances, and no one read the evidence.
 
@@ -84,6 +65,9 @@ A Codex peer is unreachable by the channel above — a Codex session has no Clau
 
 ## Cross-references
 
-> Moved to the detail companion: `cross-session-messaging-detail.md` ("Cross-references").
+---
+
 
 ---
+
+*The full body at `workflow/cross-session-messaging.md` carries this rule's detail companions and the origin record of the channel doctrine.*

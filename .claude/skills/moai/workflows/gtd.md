@@ -327,6 +327,9 @@ Once picked:
 
 ### `--auto` — the serial batch consumption
 
+<!-- moai:role-rules-required -->
+[HARD] Before accepting the first card, read BOTH role-gated rule files in full: `.claude/rules/moai/workflow/factory-dispatch.md` and `.claude/rules/moai/workflow/cross-session-messaging.md`. The always-loaded surface carries only their stubs; the queue-authority boundaries and the dispatch/messaging rules this cycle operates under live in those two files.
+
 `moai todo --auto` (the same verb tree the `gtd` spelling serves) processes
 the queue serially: pick one card, dispatch one isolated in-session worker
 for it, judge completion only by reading the worker's disk evidence, record

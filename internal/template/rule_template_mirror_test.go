@@ -286,6 +286,39 @@ var workflowOptMirroredPaths = []string{
 	// byte-parity cannot hold. Its doctrine-propagation parity is enforced by
 	// TestSanitizedPairParity (sanitized_pair_parity_test.go registry) and its
 	// mirror cleanliness by TestTemplateNoInternalContentLeak — not here.
+
+	// SPEC-ALWAYS-LOADED-BUDGET-001 M4 (card t1469): every rule pair this
+	// SPEC's M3 split changed or created, enrolled so a future single-tree
+	// edit is caught at CI (AC-ALB-024). The role-gated full bodies
+	// (factory-dispatch.md, cross-session-messaging.md) carry top-level
+	// paths: and ship byte-identically; their always-loaded representatives
+	// are the stub pair. Three pairs of this SPEC's touched set are
+	// deliberately NOT here — they are the declared forked pairs above
+	// (verification-claim-integrity.md, agent-common-protocol-reference.md,
+	// cross-session-messaging-detail.md) whose local copies carry internal
+	// provenance the template must not absorb.
+	".claude/rules/moai/core/agent-common-protocol-detail.md",
+	".claude/rules/moai/core/askuser-protocol.md",
+	".claude/rules/moai/core/moai-constitution.md",
+	".claude/rules/moai/core/moai-constitution-detail.md",
+	".claude/rules/moai/core/moai-mcp-tools.md",
+	".claude/rules/moai/core/moai-mcp-tools-catalogue.md",
+	".claude/rules/moai/core/native-idiom-and-register.md",
+	".claude/rules/moai/core/native-idiom-and-register-detail.md",
+	".claude/rules/moai/core/verification-claim-integrity-detail.md",
+	".claude/rules/moai/development/agent-authoring.md",
+	".claude/rules/moai/workflow/cache-aware-execution-reference.md",
+	".claude/rules/moai/workflow/context-window-management.md",
+	".claude/rules/moai/workflow/context-window-management-detail.md",
+	".claude/rules/moai/workflow/cross-session-messaging.md",
+	".claude/rules/moai/workflow/cross-session-messaging-core.md",
+	".claude/rules/moai/workflow/factory-dispatch-core.md",
+	".claude/rules/moai/workflow/factory-dispatch-mechanics.md",
+	".claude/rules/moai/workflow/goal-directive.md",
+	".claude/rules/moai/workflow/goal-directive-detail.md",
+	".claude/rules/moai/workflow/main-checkout-branch-guard.md",
+	".claude/rules/moai/workflow/main-checkout-branch-guard-detail.md",
+	".claude/rules/moai/workflow/session-handoff-format.md",
 }
 
 // SPEC-V3R5-LATE-BRANCH-001 mirrored files. Each entry MUST have a byte-identical
