@@ -18,6 +18,11 @@ import (
 // (d) "INCONCLUSIVE" keyword
 // (e) ".moai/reports/plan-audit/" path
 //
+// Card t1586 split note: for spec-workflow.md the audit intent (the deployed
+// ruleset documents gate + verdict routing + report streams) is preserved
+// across the core+companion pair — patterns (a)(b)(d) stay in the core stub,
+// pattern (e) moved to the lazy companion with the Report Persistence body.
+//
 // Source: SPEC-WF-AUDIT-GATE-001 T-06
 func TestSkillsContainPlanAuditGateMarkers(t *testing.T) {
 	t.Parallel()
@@ -59,12 +64,25 @@ func TestSkillsContainPlanAuditGateMarkers(t *testing.T) {
 		},
 		{
 			// spec-workflow.md must document Phase 1 and its verdicts.
+			// Card t1586 core+detail split: the gate header, the plan-auditor
+			// invocation, and the INCONCLUSIVE verdict routing stay in the core
+			// stub; the run-gate report-stream path moved to the detail companion
+			// (next entry) with the Report Persistence body it belongs to.
 			name:     "spec-workflow.md — Phase 1 documentation",
 			filePath: ".claude/rules/moai/workflow/spec-workflow.md",
 			requiredPatterns: []string{
 				"Phase 1: Plan Audit Gate",
 				"plan-auditor",
 				"INCONCLUSIVE",
+			},
+		},
+		{
+			// spec-workflow-detail.md (card t1586 lazy companion of
+			// spec-workflow.md) owns Report Persistence — the two plan-audit
+			// report streams and the run-gate record directory.
+			name:     "spec-workflow-detail.md — Report Persistence stream path",
+			filePath: ".claude/rules/moai/workflow/spec-workflow-detail.md",
+			requiredPatterns: []string{
 				".moai/reports/plan-audit/",
 			},
 		},
