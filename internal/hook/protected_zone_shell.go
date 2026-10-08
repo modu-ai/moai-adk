@@ -549,6 +549,11 @@ func zoneRelativeToSet(cwds []zoneCwd, cand string, gen int) []string {
 // zoneCands expands every candidate against the walker's possible directories.
 func (w *zoneWalker) zoneCands(cands [2][]string) {
 	for world := 0; world < 2; world++ {
+		if w.world >= 0 && w.world != world {
+			// inside a generation-scoped function execution: only that
+			// world's redirection candidates judge (gate round 27 P2)
+			continue
+		}
 		for _, cand := range cands[world] {
 			w.cands = append(w.cands, zoneRelativeToSet(w.cwds, cand, world)...)
 		}
@@ -566,17 +571,32 @@ func zoneRedirectTargets(redirs []*syntax.Redirect) (bool, [2][]string) {
 		if rd.Op == syntax.DplOut {
 			// `>&` onto a NUMBERED descriptor (`2>&1`) duplicates a file
 			// descriptor and writes nothing; onto a word (`>& file`) it is a
-			// file write in the dialects that accept the spelling — only the
-			// numeric form skips (round 11 P1, correcting round 10 P3's
-			// blanket skip)
-			if t, literal := zoneWordText(rd.Word); literal && isZoneDigits(t) {
-				continue
+			// file write in the dialects that accept the spelling. The
+			// descriptor decision is PER WORLD: a reading that is numeric in
+			// its world dup's the fd there, while the other world's reading
+			// can be a real path that world WRITES (gate round 27 P1 —
+			// `>& $'1\u0000/../zone_dir/marker.md'`: descriptor in the
+			// modern world, a zone write in the pre-4.2 world).
+			readings, literal := zoneWordWorldReadings(rd.Word)
+			if !literal {
+				continue // dynamic target: under-match
 			}
-		} else {
-			switch rd.Op {
-			case syntax.RdrIn, syntax.Hdoc, syntax.DashHdoc, syntax.WordHdoc, syntax.DplIn:
-				continue
+			anyPath := false
+			for world := 0; world < 2; world++ {
+				if t := readings[world]; t != "" && !isZoneDigits(t) {
+					anyPath = true
+					mutating = true
+					targets[world] = append(targets[world], t)
+				}
 			}
+			if !anyPath {
+				continue // numeric in both worlds: the fd dups, nothing writes
+			}
+			continue
+		}
+		switch rd.Op {
+		case syntax.RdrIn, syntax.Hdoc, syntax.DashHdoc, syntax.WordHdoc, syntax.DplIn:
+			continue
 		}
 		readings, literal := zoneWordWorldReadings(rd.Word)
 		if !literal {
@@ -1006,9 +1026,17 @@ func zoneSedInPlace(args []*syntax.Word) bool {
 // already-overwritten anchor is a false deny (gate round 17 P2). Only the
 // FIRST non-option word is the subcommand (round 7 P2); valued global
 // options consume their argument (rounds 4-5 P1).
+// zoneGitArgs judges a git command for ONE generation: everything here —
+// the anchors, the file arguments, the subcommand — binds to the PASSED
+// world's readings, because this world's name reached the git dispatch
+// (gate round 27 P2: the inner world loops this replaces shadowed the
+// passed generation and generated cross-generation candidates no
+// generation executes). The subcommand word itself stays an exact-string
+// match on the modern reading (the justified single-world exception — git
+// dispatches subcommands internally, the shell never path-resolves them).
 func (w *zoneWalker) zoneGitArgs(world int, cmd *syntax.CallExpr) bool {
-	dirOpts := [2][]string{{""}, {""}}
-	wtOpts := [2][]string{{""}, {""}}
+	dirOpt := ""
+	var wtOpts []string
 	sub := ""
 	subIdx := -1
 	for j := 1; j < len(cmd.Args); j++ {
@@ -1018,11 +1046,11 @@ func (w *zoneWalker) zoneGitArgs(world int, cmd *syntax.CallExpr) bool {
 		}
 		if strings.HasPrefix(t, "--work-tree=") {
 			if readings, wl := zoneWordWorldReadings(cmd.Args[j]); wl {
-				for world := 0; world < 2; world++ {
-					wtOpts[world] = []string{""}
-					if wText := readings[world]; len(wText) > len("--work-tree=") && strings.HasPrefix(wText, "--work-tree=") {
-						wtOpts[world] = append(wtOpts[world], strings.TrimPrefix(wText, "--work-tree="))
-					}
+				if wt := readings[world]; len(wt) > len("--work-tree=") && strings.HasPrefix(wt, "--work-tree=") {
+					// git's LAST --work-tree wins: the option REPLACES the
+					// anchor — judging an already-overwritten anchor is a
+					// false deny (gate round 17 P2, preserved per world)
+					wtOpts = []string{strings.TrimPrefix(wt, "--work-tree=")}
 				}
 			}
 			continue
@@ -1031,30 +1059,20 @@ func (w *zoneWalker) zoneGitArgs(world int, cmd *syntax.CallExpr) bool {
 			if t == "-C" || t == "-c" || t == "--git-dir" || t == "--work-tree" || t == "--namespace" || t == "--super-prefix" {
 				if t == "-C" && j+1 < len(cmd.Args) {
 					if readings, lit2 := zoneWordWorldReadings(cmd.Args[j+1]); lit2 {
-						for world := 0; world < 2; world++ {
-							dir := readings[world]
-							if dir == "" {
-								continue
+						if dir := readings[world]; dir != "" {
+							if dirOpt == "" || zoneIsAbs(dir) {
+								dirOpt = dir
+							} else {
+								dirOpt = dirOpt + "/" + dir
 							}
-							next := make([]string, 0, len(dirOpts[world]))
-							for _, d := range dirOpts[world] {
-								if d == "" || zoneIsAbs(dir) {
-									next = append(next, dir)
-								} else {
-									next = append(next, d+"/"+dir)
-								}
-							}
-							dirOpts[world] = zoneDedupStrings(next)
 						}
 					}
 				}
 				if t == "--work-tree" && j+1 < len(cmd.Args) {
 					if readings, lit2 := zoneWordWorldReadings(cmd.Args[j+1]); lit2 {
-						for world := 0; world < 2; world++ {
-							wtOpts[world] = []string{""}
-							if readings[world] != "" {
-								wtOpts[world] = append(wtOpts[world], readings[world])
-							}
+						if wt := readings[world]; wt != "" {
+							// overwrite-wins, as above
+							wtOpts = []string{wt}
 						}
 					}
 				}
@@ -1070,60 +1088,50 @@ func (w *zoneWalker) zoneGitArgs(world int, cmd *syntax.CallExpr) bool {
 		return false
 	}
 	w.mutating = true
-	var fileArgs [2][]string
+	var fileArgs []string
 	for _, a := range cmd.Args[subIdx+1:] {
 		readings, flit := zoneWordWorldReadings(a)
 		if !flit {
 			continue
 		}
-		// per-candidate emptiness/option checks (gate round 17 P1), and
-		// each generation keeps ITS OWN readings: generation i's directory
-		// joins generation i's file arguments only — a cross-generation
-		// join is a path no generation executes (gate round 19 P2)
-		for world := 0; world < 2; world++ {
-			wText := readings[world]
-			if wText == "" || wText == "--" || strings.HasPrefix(wText, "-") {
-				continue
-			}
-			fileArgs[world] = append(fileArgs[world], wText)
+		// per-candidate emptiness/option checks (gate round 17 P1), bound
+		// to the passed generation (gate round 27 P2)
+		if t := readings[world]; t != "" && t != "--" && !strings.HasPrefix(t, "-") {
+			fileArgs = append(fileArgs, t)
 		}
 	}
 	// every possible directory is a base the subcommand's file arguments
 	// can resolve against (round 6 P1); a -C moves that base — an absolute
 	// -C replaces it, a relative one accumulates (round 5 P1); a
-	// --work-tree is its own anchor (round 12 P1). Every anchor reading is
-	// judged per world (gate rounds 15/17).
+	// --work-tree is its own anchor (round 12 P1). The bases join only the
+	// passed generation's file arguments (gate rounds 19/22/27).
 	for _, base := range w.cwds {
-		for world := 0; world < 2; world++ {
-			// the generation relation rides the base: a generation-tagged
-			// base joins its OWN generation's file arguments, a neutral
-			// base joins both (gate round 22 P1)
-			if base.gen == 1-world {
+		// the generation relation rides the base: a generation-tagged base
+		// joins its own generation's file arguments, a neutral base joins
+		// the calling generation (gate round 22 P1)
+		if base.gen != -1 && base.gen != world {
+			continue
+		}
+		gitDir := base.dir
+		if dirOpt != "" {
+			if zoneIsAbs(dirOpt) || gitDir == "" || gitDir == "." {
+				gitDir = dirOpt
+			} else {
+				gitDir = gitDir + "/" + dirOpt
+			}
+		}
+		w.cands = append(w.cands, zoneRelativeTo(gitDir, fileArgs)...)
+		for _, wtOpt := range wtOpts {
+			if wtOpt == "" {
 				continue
 			}
-			for _, dirOpt := range dirOpts[world] {
-				gitDir := base.dir
-				if dirOpt != "" {
-					if zoneIsAbs(dirOpt) || gitDir == "" || gitDir == "." {
-						gitDir = dirOpt
-					} else {
-						gitDir = gitDir + "/" + dirOpt
-					}
-				}
-				w.cands = append(w.cands, zoneRelativeTo(gitDir, fileArgs[world])...)
-				for _, wtOpt := range wtOpts[world] {
-					if wtOpt == "" {
-						continue
-					}
-					wtDir := base.dir
-					if zoneIsAbs(wtOpt) || wtDir == "" || wtDir == "." {
-						wtDir = wtOpt
-					} else {
-						wtDir = wtDir + "/" + wtOpt
-					}
-					w.cands = append(w.cands, zoneRelativeTo(wtDir, fileArgs[world])...)
-				}
+			wtDir := base.dir
+			if zoneIsAbs(wtOpt) || wtDir == "" || wtDir == "." {
+				wtDir = wtOpt
+			} else {
+				wtDir = wtDir + "/" + wtOpt
 			}
+			w.cands = append(w.cands, zoneRelativeTo(wtDir, fileArgs)...)
 		}
 	}
 	return true

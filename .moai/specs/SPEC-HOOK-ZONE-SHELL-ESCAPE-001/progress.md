@@ -1118,6 +1118,43 @@ Row 1 is a deny-miss (the bypass); rows 2-3 are OVER-BLOCK inverse rows.
 Fixture: the narrowed marker manifest; inputs transport-verified
 (whole-file NUL-byte scan zero, doubled backslash).
 
+**M2.10 remedy — funnel-scoped world binding (GREEN record).** Shape:
+(1) `zoneRedirectTargets` makes the numeric-descriptor decision PER WORLD
+(`>& $'1\u0000/../zone_dir/marker.md'`: the modern reading "1" dup's the
+descriptor in its world, while the pre-4.2 reading is a real path that
+world WRITES — only all-numeric readings skip); (2) `zoneGitArgs` binds
+EVERYTHING to the passed generation — the -C/--work-tree anchors, the file
+arguments, and the base loop's generation filter all read
+`readings[world]`/`base.gen` (the inner world loops that shadowed the
+passed generation and generated cross-generation candidates are gone); (3)
+`zoneCands`/`zoneCandsWorld` respect `w.world` — during a
+generation-scoped function execution only that world's redirection
+candidates judge (the modern-only function no longer judges the pre-4.2
+redirect reading's protected path). Own-sweep fix in the same commit: the
+--work-tree overwrite-wins semantics (gate-17 P2) were re-broken by the
+rewrite (append instead of replace — caught by
+TestCheckProtectedZoneShellGitWorkTreeOverwriteWins failing in the
+instrument re-run) and restored.
+
+- **Command** (all 34 instrument tests): `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test
+  ./internal/hook -run 'TestCheckProtectedZoneShell|TestZoneUnescapeAnsiC|TestZoneWordText' -count=1`
+- **Exit code**: `0`
+- **Observed (verbatim)**: `ok  	github.com/modu-ai/moai-adk/internal/hook	1.556s`
+  (34/34 PASS — the numeric-FD row now DENIES; the two over-block rows now
+  ALLOW; the overwrite-wins row re-verified after the in-commit sweep fix;
+  the 30 earlier rows hold).
+- **Full package regression (M2.10)**: `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1
+  -timeout=25m -v ./internal/hook/` — exit 0, verbatim tail `PASS` / `ok
+  github.com/modu-ai/moai-adk/internal/hook	335.301s` /
+  `PACKAGE_POST30_EXIT=0`; 3668 RUN lines, ZERO `--- FAIL` lines. Slot
+  lease `hook-suite` held for the run, released after.
+- Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
+  `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
+  clean; family coverage `13.8%` (all-rows selector).
+
+
 
 **M2.7 remedy — full dispatch pre-classification + function shadowing
 (GREEN record).** Shape: `zoneExecNames` (the possible base names of the
