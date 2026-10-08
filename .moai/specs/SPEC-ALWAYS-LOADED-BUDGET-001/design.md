@@ -1,7 +1,7 @@
 ---
 id: SPEC-ALWAYS-LOADED-BUDGET-001
 title: "design — 역할 주입 경로와 분할 배치"
-version: "0.8.0"
+version: "0.9.0"
 created: 2026-10-03
 updated: 2026-10-08
 ---
@@ -92,7 +92,7 @@ Q10(a) 범위 축소(2026-10-04, `decision-index.md` Q11): 기존 `paths:` compa
 
 ## §7. 예산 가드
 
-`TestDeployedAlwaysLoadedCharBudget` 는 내장 템플릿을 고정 렌더 입력으로 `t.TempDir()` 에 배포·렌더링하고, 배포 트리에서 표면을 기계적으로 도출해 UTF-16 길이를 합한다. 매 실행마다 합계와 구성원별 크기를 로그로 남긴다. 렌더 입력에 따라 변하는 것은 `user.yaml`·`language.yaml`·`AGENTS.md` 뿐이므로, 사용자 표면과의 동치는 렌더 독립 소계(규칙 13개 + `CLAUDE.md`)와 구성원 목록으로 증명한다. 기대값은 고정 숫자가 아니라 원장 앵커에서 잰 값이다 — `b5815ca80` 에서 169,018, 로컬 develop `d7112d005` 에서 170,593 으로 이미 움직였다(`research.md` §1.1, AC-ALB-002).
+`TestDeployedAlwaysLoadedCharBudget` 는 내장 템플릿을 고정 렌더 입력으로 `t.TempDir()` 에 배포·렌더링하고, 배포 트리에서 표면을 기계적으로 도출해 UTF-16 길이를 합한다. 매 실행마다 합계와 구성원별 크기를 로그로 남긴다. 예산 상수 150,000 의 가드 대상은 규칙-only 소계다(2026-10-08 운영자 처분 (a), REQ-ALB-002 수정): 최상위 `AGENTS.md` 는 구성원 로그에는 남지만 상수 축 밖이며, 그 계정은 별도 always-loaded-headroom 줄(카드 t1450)이 갖는다. 렌더 입력에 따라 변하는 것은 `user.yaml`·`language.yaml`·`AGENTS.md` 뿐이므로, 사용자 표면과의 동치는 구성원 목록과 렌더 독립 소계로 증명한다(M0 재앵커 `a2a184ad3` 기준 — 최상위 지시 파일은 `AGENTS.md` 이고 `CLAUDE.md` 는 상류에서 제거됐다; 원장 머리 예상값 규칙 157,217 + `AGENTS.md` 23,684 = 180,901). 기대값은 고정 숫자가 아니라 원장 앵커에서 잰 값이다(`research.md` §1.1, AC-ALB-002).
 
 ## §8. 문서 정합
 

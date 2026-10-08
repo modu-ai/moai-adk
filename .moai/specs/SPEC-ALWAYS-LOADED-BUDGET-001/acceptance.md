@@ -1,7 +1,7 @@
 ---
 id: SPEC-ALWAYS-LOADED-BUDGET-001
 title: "acceptance — 배포 표면 상시 로드 지시문 예산"
-version: "0.8.0"
+version: "0.9.0"
 created: 2026-10-03
 updated: 2026-10-08
 ---
@@ -20,12 +20,12 @@ updated: 2026-10-08
 | AC | REQ | 분류 | 기준 | RED-now 명령 → stdout (exit) | 초록 조건 |
 |---|---|---|---|---|---|
 | AC-ALB-001 | REQ-ALB-001 | RB | 예산 테스트 존재 | `grep -rl TestDeployedAlwaysLoadedCharBudget internal/template` → (출력 없음) (exit 1) | 같은 명령이 테스트 파일 1개 출력 |
-| AC-ALB-002 | REQ-ALB-001, REQ-ALB-004 | RB | 표면이 사용자 `moai init` 표면과 같음 | `grep -rl TestDeployedAlwaysLoadedCharBudget internal/template` → (출력 없음) (exit 1) — 측정할 테스트가 없음 | `go test ./internal/template/ -run '^TestDeployedAlwaysLoadedCharBudget$' -count=1 -v` 를 M1 RED 커밋(앵커 뒤 착지, 그 커밋과 앵커 사이 템플릿 diff 무출력)에서 실행할 때 `deployed-surface-member=` 줄이 원장 머리의 구성원 목록과 정확히 같고(plan 단계 참고: `b5815ca80` 트리에서는 규칙 13개, `CLAUDE.md`, `AGENTS.md`, `.moai/config/sections/user.yaml`, `.moai/config/sections/language.yaml` 이었다 — 기대값은 이 참고가 아니라 원장 머리다), 렌더 독립 구성원 합이 원장 머리의 소계와 같음 |
-| AC-ALB-003 | REQ-ALB-002 | RB | 예산 초과 시 실패 | `grep -rl TestDeployedAlwaysLoadedCharBudget internal/template` → (출력 없음) (exit 1) | M1 RED 커밋의 같은 명령 출력에 `--- FAIL: TestDeployedAlwaysLoadedCharBudget `, `115000`, `deployed-surface-total=` 줄, 상위 5개 이름 |
+| AC-ALB-002 | REQ-ALB-001, REQ-ALB-004 | RB | 표면이 사용자 `moai init` 표면과 같음 | `grep -rl TestDeployedAlwaysLoadedCharBudget internal/template` → (출력 없음) (exit 1) — 측정할 테스트가 없음 | `go test ./internal/template/ -run '^TestDeployedAlwaysLoadedCharBudget$' -count=1 -v` 를 M1 RED 커밋(앵커 뒤 착지, 그 커밋과 앵커 사이 템플릿 diff 무출력)에서 실행할 때 `deployed-surface-member=` 줄이 원장 머리의 구성원 목록과 정확히 같고(plan 단계 참고: `b5815ca80` 트리에서는 규칙 13개, `CLAUDE.md`, `AGENTS.md`, `.moai/config/sections/user.yaml`, `.moai/config/sections/language.yaml` 이었다 — 기대값은 이 참고가 아니라 원장 머리다), 렌더 독립 구성원 합이 원장 머리의 소계와 같음 — 가드 대상 수치는 규칙-only 소계다(수정 REQ-ALB-002: `AGENTS.md` 는 구성원 로그에는 남지만 상수 축 밖) |
+| AC-ALB-003 | REQ-ALB-002 | RB | 예산 초과 시 실패 | `grep -rl TestDeployedAlwaysLoadedCharBudget internal/template` → (출력 없음) (exit 1) | 예산 초과 상태에서 같은 명령 출력에 `--- FAIL: TestDeployedAlwaysLoadedCharBudget `, 규칙-only 소계(축 명시)와 상수 `150000`, `deployed-surface-total=` 줄, 상위 5개 이름. (역사적 RED — 지우지 않고 남긴다: 실제 M1 RED 커밋의 관측 출력은 종전 전면-표면 상수 `115000` 과 전면 합계 `total=180901` 이었다; 상수 전환과 RED→GREEN 재측정은 이 수정 뒤 manager-develop 몫이다) |
 | AC-ALB-004 | REQ-ALB-003 | RB | 상시 표면 파일당 40,000 초과 시 실패 | `grep -rl TestDeployedAlwaysLoadedCharBudget internal/template` → (출력 없음) (exit 1) — 파일당 검사가 없음. 참고: 이 트리(`2771626b5`)의 UTF-16 계수기 40,000 초과는 `workflow/factory-dispatch-detail.md` 40,659 와 `workflow/spec-workflow.md` 40,052 둘이지만, 둘 다 최상위 `paths:` 를 가진 파일이라 Q10(a) 축소 뒤 이 검사의 대상이 아니다(`research.md` §1.2·§1.3 — 앵커 기준 상시 표면 40,000 초과는 0개) | M1 RED 커밋의 같은 출력에 원장 머리가 기록한 상시 표면 초과 파일 목록이 그대로 기록되고(앵커 기준 빈 목록), 40,001 단위 이상을 넘긴 상시 규칙 픽스처 하위 테스트가 `--- FAIL` 과 그 파일명·크기를 냄 |
 | AC-ALB-005 | REQ-ALB-004 | RB | 표면 도출 변이 검사 | `grep -rl TestDeployedAlwaysLoadedCharBudget internal/template` → (출력 없음) (exit 1) | 픽스처 하위 테스트 각각 `--- PASS`: 상시 규칙 추가 → 합계 증가, `paths:` 규칙 추가 → 불변, import 추가 → 증가. 하드코딩 목록 변이에서 `--- FAIL` |
-| AC-ALB-006 | REQ-ALB-005 | RB | 상수 옆 근거 주석 | `grep -rl TestDeployedAlwaysLoadedCharBudget internal/template` → (출력 없음) (exit 1) — 테스트와 상수가 없음 | 상수 선언 바로 위 주석에 `120000` 과 증가 실측 근거 문구 |
-| AC-ALB-007 | REQ-ALB-002 | RB | **최종 초록** | `grep -rl TestDeployedAlwaysLoadedCharBudget internal/template` → (출력 없음) (exit 1) — 가드가 없음. 표면 크기는 `research.md` §1.1(`d7112d005` 렌더 독립 소계 170,593 > 115,000) | 착지 트리에서 AC-ALB-002 명령 출력에 `--- PASS: TestDeployedAlwaysLoadedCharBudget ` |
+| AC-ALB-006 | REQ-ALB-005 | RB | 상수 옆 근거 주석 | `grep -rl TestDeployedAlwaysLoadedCharBudget internal/template` → (출력 없음) (exit 1) — 테스트와 상수가 없음 | 상수 선언 바로 위 주석에 `150000`, 규칙-only 축 명시, 런타임 1M 모델 한도(150,000자) 근거, 그리고 2026-10-08 운영자 처분 (a) 문구(REQ-ALB-022 중단 집행 — 종전 전면-표면 상수 115,000 위에서 측정한 바닥 122,000–126,000, 기록치 규칙-only 114,594 에서 여유 35,406) |
+| AC-ALB-007 | REQ-ALB-002 | RB | **최종 초록** | `grep -rl TestDeployedAlwaysLoadedCharBudget internal/template` → (출력 없음) (exit 1) — 가드가 없음. 표면 크기는 `research.md` §1.1(`d7112d005` 렌더 독립 소계 170,593 — 이 참고는 원 상수 축 기준이다; 수정 뒤 가드 축은 규칙-only 소계 ≤ 150,000) | 착지 트리에서 AC-ALB-002 명령 출력에 `--- PASS: TestDeployedAlwaysLoadedCharBudget ` — 규칙-only 소계 ≤ 150,000 판정(새 축) |
 | AC-ALB-008 | REQ-ALB-006, REQ-ALB-020 | RB | 역할 한정 2개가 상시 표면에 stub 로만 남음 | `/usr/bin/grep -c 'Intentionally always-loaded' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md internal/template/templates/.claude/rules/moai/workflow/cross-session-messaging.md` → `internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md:1` `internal/template/templates/.claude/rules/moai/workflow/cross-session-messaging.md:1` (exit 0) | 같은 명령이 두 파일 모두 `:0`(exit 1), AC-ALB-007 실행의 `deployed-surface-member=` 줄에 두 전체 본문이 없고 stub 2개가 있음 |
 | AC-ALB-009 | REQ-ALB-007 | RB | 역할 세션 주입 | `grep -l -e role-core -e factory-dispatch internal/hook/session_start_factory.go internal/hook/factory_messages.go internal/hook/subagent_start.go` → (출력 없음) (exit 1) — 구 `session_start_kanban.go` 는 t1399 M5b 에서 제거됨 | 훅 테스트 `--- PASS`: 레지스트리의 리더·레인 표지 × source `startup`/`clear`/`compact` 각각에서 주입 맥락에 역할 core 블록 |
 | AC-ALB-010 | REQ-ALB-008 | RG | 비역할 세션·`resume` 무주입 | 현재 훅은 역할 core 를 주입하지 않음(AC-ALB-009 RED-now) | 훅 테스트 `--- PASS`: 표지 없는 환경 `startup` 과 역할 환경 `resume` 에서 역할 core 블록 0회 |
@@ -76,6 +76,6 @@ updated: 2026-10-08
 ## §D.4 완료 정의
 
 - RB 23개 초록, RG 2개(AC-ALB-010·022) 성립.
-- 착지 트리에서 예산 테스트가 보고하는 합계가 115,000 이하.
+- 착지 트리에서 예산 테스트가 보고하는 규칙-only 소계가 150,000 이하(2026-10-08 운영자 처분 (a) — `AGENTS.md` 는 구성원 로그에 남고 가드 축 밖).
 - 구속 원장의 `rewrite` 행 전부가 감사에서 의미 보존으로 판정됨.
 - `decision-index.md` 의 Q4·Q8 실측이 `progress.md` 에 기록됨.
