@@ -625,6 +625,27 @@ PASS
 ok  	github.com/modu-ai/moai-adk/internal/cli	5.630s
 ```
 
+### EL-018 — TestReviewFindingMergingRetryValidatesLeaseBeforeRemote (baseline NOT-REPRODUCED — defect 7 regression guard)
+
+- tree: 271d71ab9 (M2 commit's production bytes, the M3 characterization
+  uncommitted — the test enters the branch in the M3 commit)
+- command: `go test ./internal/cli -run '^TestReviewFindingMergingRetryValidatesLeaseBeforeRemote$' -count=1 -v`
+- exit code: 0
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingMergingRetryValidatesLeaseBeforeRemote
+=== RUN   TestReviewFindingMergingRetryValidatesLeaseBeforeRemote/foreign_lane_holder
+    review_observation_test.go:567: merging retry: lane=lane-2 err=factory complete: refused — card t1 belongs to lane-1 (lease lane-1), not lane-2; a lane completes only its own card
+=== RUN   TestReviewFindingMergingRetryValidatesLeaseBeforeRemote/expired_caller_lease
+    review_observation_test.go:567: merging retry: lane=lane-1 err=factory complete: refused — card t1's merging lease held by lane-1 expired at 2026-09-01T00:00:00Z; the expiry must be collected before the delivery is retried
+--- PASS: TestReviewFindingMergingRetryValidatesLeaseBeforeRemote (3.89s)
+    --- PASS: TestReviewFindingMergingRetryValidatesLeaseBeforeRemote/foreign_lane_holder (1.83s)
+    --- PASS: TestReviewFindingMergingRetryValidatesLeaseBeforeRemote/expired_caller_lease (2.06s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	5.161s
+```
+
 ## Quality gates and closure
 
 - TRUST 5: Tested (every AC above; 85%+ on touched packages per repo

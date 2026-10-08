@@ -534,3 +534,53 @@ func TestReviewFindingNoRecordArmSkipsBlockedCandidate(t *testing.T) {
 		t.Fatal("the blocked candidate's record row was created — the skip must record nothing")
 	}
 }
+
+// TestReviewFindingMergingRetryValidatesLeaseBeforeRemote is AC-DI-008
+// (defect 7): a delivery RETRY on a card at the merging state validates the
+// lease BEFORE any remote mutation — a foreign-lane holder's retry and an
+// expired caller lease both refuse naming the cause, and the fixture remote
+// observes zero mutation: no push, no pull request, no auto-merge request.
+func TestReviewFindingMergingRetryValidatesLeaseBeforeRemote(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		lane    string
+		expire  bool
+		wantErr string
+	}{
+		{"foreign lane holder", "lane-2", false, "lane-1"},
+		{"expired caller lease", ghfLane, true, "expired"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := ghfNew(t, ghfOpts{syncStatus: "complete", state: homestate.CardMerging})
+			d := newGHDouble(t, f)
+			if tc.expire {
+				// fcFixture pins factoryCardNow to 2026-09-26; the fixture
+				// lease (2026-10-01) is therefore live — expire it in place.
+				db := fcOpen(t, f.root)
+				if _, err := db.DB.Exec(`UPDATE cards SET lease_expires_at='2026-09-01T00:00:00Z' WHERE card_id='t1'`); err != nil {
+					t.Fatalf("expire the lease: %v", err)
+				}
+				_ = db.Close()
+			}
+			sdLaneEnv(t, tc.lane, "")
+			_, err := ghfComplete(t)
+			t.Logf("merging retry: lane=%s err=%v", tc.lane, err)
+			if err == nil {
+				t.Fatal("the delivery retry ran on an ineligible lease")
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("refusal does not name the lease cause: %v", err)
+			}
+			// The fixture remote observes zero mutation.
+			if d.count("pr", "create") != 0 || d.count("pr", "merge") != 0 {
+				t.Errorf("the refused retry still called gh: create=%d merge=%d", d.count("pr", "create"), d.count("pr", "merge"))
+			}
+			if tip := f.remoteBranchTip(t); tip != "" {
+				t.Errorf("the refused retry pushed %s to origin (tip %q)", ghfBranch, tip)
+			}
+			if c := fcCard(t, f.root, "t1"); c.State != homestate.CardMerging {
+				t.Errorf("the refused retry moved the card to %s", c.State)
+			}
+		})
+	}
+}

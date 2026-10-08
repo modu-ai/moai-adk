@@ -170,6 +170,31 @@ beyond factory_card_test.go's 10 tests and the nomination family; every
 swept test passed. Slot lease: the M1 lease on `internal-cli-suite` still
 held (15m window).
 
+### M3 — Merging-retry lease validation, defect (7) (complete)
+
+No production fix in M3 — the defect classified NOT REPRODUCED and its test
+stands as the committed regression guard (§G):
+
+- **(7) `TestReviewFindingMergingRetryValidatesLeaseBeforeRemote`** —
+  authored RED-first from the `factory_card_pr_test.go` delivery fixtures
+  (ghf local-remote + gh double), measured on HEAD `271d71ab9` (EL-018):
+  the merging-state retry refuses in BOTH ineligible shapes — the
+  foreign-lane holder (`refused — card t1 belongs to lane-1 (lease lane-1),
+  not lane-2 …` — the entry owner/holder check) and the expired caller
+  lease (`refused — card t1's merging lease held by lane-1 expired at
+  2026-09-01T00:00:00Z …`) — and the fixture remote observes ZERO mutation
+  in both: no push (`remoteBranchTip` empty), no `gh pr create`, no
+  `gh pr merge` (double counts 0/0), the card still at merging. exit 0.
+  The entry checks + `verifyLease` (t1533 r2c/r5/r13) satisfy
+  REQ-DISPATCH-007.
+
+AC-DI-012 re-measurement — family list recorded BEFORE the run: no
+production function touched (classification-only milestone); the plan's
+family sweep ran as confirmation: `factory_card_pr_test.go` (15 tests) +
+`factory_card_pr_guard_test.go` (1), anchored selector over all 16 names →
+exit 0, `ok … 79.079s`, all green. Slot lease: the M1
+`internal-cli-suite` lease still held (15m window).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _Pending run-phase (manager-develop)._
