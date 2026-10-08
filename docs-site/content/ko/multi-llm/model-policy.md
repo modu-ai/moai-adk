@@ -59,8 +59,10 @@ description: 메인 세션이 쓰는 모델과 추론 깊이를 정하는 모델
 > **Haiku 5.5 팩트 (Claude Code v2.1.293+)**: Anthropic API에서 `haiku` 별칭은 Haiku
 > 5.5(`claude-haiku-5-5`, 1M 컨텍스트 전 플랜, `[1m]` 접미사 불요)로 해석됩니다. auto-compact
 > 기본 ~967K. 요금은 input $0.10 / output $0.50 per Mtok이고, 프롬프트가 over 100K(10만 토큰
-> 초과)이면 input $0.50 / output $2.50으로 증액됩니다. adaptive thinking은 항상 켜져 있어 끌 수
-> 없습니다. 한편 AWS Bedrock·GCP Agent Platform·Microsoft Foundry에서는 `haiku`가 Haiku
+> 초과)이면 input $0.50 / output $2.50으로 증액됩니다. adaptive thinking은 기본적으로 켜져 있고,
+> `high` effort 이하(low/medium/high)에서는 `thinking: {"type": "disabled"}`로 끌 수 있습니다.
+> 품질과 비용의 균형은 effort 파라미터로 조정하는 것이 좋습니다. 한편 AWS
+> Bedrock·GCP Agent Platform·Microsoft Foundry에서는 `haiku`가 Haiku
 > 4.5(200K)로 해석됩니다 — 별칭 해석은 provider별입니다.
 
 > MoAI의 세션 라인업은 기본적으로 Haiku를 쓰지 않습니다. 긴 호흡의 에이전틱

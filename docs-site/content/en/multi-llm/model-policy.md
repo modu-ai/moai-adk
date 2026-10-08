@@ -63,9 +63,10 @@ the lineup below runs the session, and at which reasoning depth.
 > **Haiku 5.5 facts (Claude Code v2.1.293+)**: on the Anthropic API the `haiku` alias resolves
 > to Haiku 5.5 (`claude-haiku-5-5`, 1M context on all plans, no `[1m]` suffix needed). Auto-compact
 > defaults to ~967K. Rates are input $0.10 / output $0.50 per Mtok, rising to input $0.50 /
-> output $2.50 for prompts over 100K tokens. Adaptive thinking is always on and cannot be
-> disabled. On AWS Bedrock / GCP Agent Platform / Microsoft Foundry the alias still resolves to
-> Haiku 4.5 (200K) — alias resolution is provider-split.
+> output $2.50 for prompts over 100K tokens. Adaptive thinking is on by default and can be
+> disabled with `thinking: {"type": "disabled"}` at `high` effort or below; the effort parameter
+> is the better quality/cost lever. On AWS Bedrock / GCP Agent Platform / Microsoft Foundry the
+> alias still resolves to Haiku 4.5 (200K) — alias resolution is provider-split.
 
 > The MoAI session lineup does not use Haiku by default. Slotting Haiku into
 > long-horizon agentic work raises the per-task cost — confirmed by the DeepSWE
