@@ -27,3 +27,11 @@ _pending run-phase_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _pending sync-phase_
+
+## Lane Kickoff Decision Record (2026-10-09, lane-11)
+
+decision record: decided_by=claude+lane-11 (self-dispatch lane, ladder terminal) evidence_refs=.moai/reports/t1478/verdict.md (PASS-WITH-DEBT 1.0, must_pass 0, blocking 0; receipts rcpt-69038b8e4d8f0c9ad4499861, rcpt-37a7694cccd61c7df7470e64, rcpt-b38299720acf23c31b7a497a; Addendum 2 records the final-tree codex re-run) ladder_path=plan→run Kickoff gate, autonomous form (audit cross + evidence criteria met)
+
+Judgment: PASS-WITH-DEBT is a passing form — 0 must-pass failures, 0 blocking; the codex required-backend machine disagreement is transparently adjudicated per-item in the verdict (P2-A refuted with tree evidence ci.yml:67/:234/:246, P2-B/P2-C accepted as optional/debts N2/N1). Post-verdict deltas (bc4d46f63, b10bcfd0e) are M5 verification-command mechanics the auditor confirmed non-conflicting at b10bcfd0e. Debts 1-3 and optional N5-N7 travel with the SPEC; N5 (one-word doc fix) rides the sync phase.
+
+Run-phase entry: M1 first (config gate workflow.candidate_ci.enabled + candidate record schema), RED-first per plan.md test-name conventions.
