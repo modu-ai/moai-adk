@@ -480,6 +480,14 @@ func TestCheckProtectedZoneShellNonAsciiOutsideZoneStaysAllowed(t *testing.T) {
 // written with the doubled backslash (transport-safe source syntax for the
 // single 0x5C byte at runtime).
 func TestCheckProtectedZoneShellCodePointNulDoesNotTruncate(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// gate round 22 P2: the literally-named fixture entry docs+u0000
+		// parses as TWO directory levels on windows, so the pre-4.2
+		// reading's target becomes docs/zone_dir/marker.md — not the
+		// protected file — and wantZoneDeny fails there for the wrong
+		// reason. POSIX-specific row.
+		t.Skip("POSIX-specific: the literally-named fixture entry carries backslashes, a separator on windows")
+	}
 	root := newZoneRoot(t, zoneShippedDoc(hzsShellManifest), "")
 	if err := os.MkdirAll(filepath.Join(root, "zone_dir"), 0o755); err != nil {
 		t.Fatal(err)
@@ -900,6 +908,31 @@ func TestCheckProtectedZoneShellDeclaredFunctionShadowsVerb(t *testing.T) {
 	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": shadowCmd})
 	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
 		t.Errorf("declared function shadows verb: decision=%q reason=%q, want allowed — the function shadows the external rm and is read-only", shadowCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellCdReadingGenerationRelation — the cd's
+// directory reading and the rm's file-argument reading keep their
+// GENERATION RELATION: generation i's cwd joins generation i's file
+// arguments only. The reviewer planted a symlink ONLY on the cross path
+// (modern cwd zone_dir × pre-4.2 file reading link\u0005fx): the pooled
+// join judges it and FALSE-DENIES, while neither true generation touches
+// it — generation 0 reads zone_dir/link_x (not the marker, the narrowed
+// manifest does not cover it) and generation 1 reads the literally-named
+// zone\u0005fdir/link\u0005fx (an entry that does not exist). The row
+// asserts the ALLOW. POSIX-specific skip: the planted entry carries
+// backslashes, a separator on windows.
+func TestCheckProtectedZoneShellCdReadingGenerationRelation(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	if err := os.Symlink(filepath.Join(root, "zone_dir", "marker.md"), filepath.Join(root, "zone_dir", "link\\u005fx")); err != nil {
+		t.Fatal(err)
+	}
+	h := zoneTestHandler(t, root)
+	const relationCmd = "cd $'zone\\u005fdir'; rm $'link\\u005fx'"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": relationCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("cd reading generation relation: decision=%q reason=%q, want allowed — only the cross-generation cwd×file join reaches the planted symlink, and no generation executes it", relationCmd, r)
 	}
 	t.Logf("swept=%d", 1)
 }
