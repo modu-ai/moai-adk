@@ -65,7 +65,7 @@ tree: .moai/worktrees/t1591 @ WT-user-asset-bundle
 5. **원장 13a/13b 미검증 릴레이** — M0 재현이 반박 시 REQ-CNV 적용 범위 축소 절차 (7a만 잔존) 사전 승인 요청.
 6. **template/bundle.go:145 부재** — 원장 좌표 소관 종료 또는 cli/bundle.go 재지정 판정.
 7. **원장 8b prune 절반** — remove.go R-f-② 유예 팔과의 관계 변별을 M0에 포함할지.
-8. **windows 커버리지** — 원장 1의 검증 구성(표 테스트 + GOOS 빌드 게이트)이 plan-audit 기준에 충분한지.
+8. **windows 커버리지** — 원장 1의 검증 구성(표 테스트 + GOOS 빌드 게이트, REQ-LOCK-002)이 plan-audit 기준에 충분한지.
 9. **web 폼 계약 변경(8a)** — 폼 키 스코프화의 호환 기간 필요성.
 
 ## §E.1 Plan-phase Audit-Ready Signal

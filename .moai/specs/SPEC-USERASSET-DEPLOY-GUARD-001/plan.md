@@ -30,7 +30,7 @@
 ## §D Constraints
 
 - 부모 계약 유지: C2 경계(confinedWrite/confinedMkdir), REQ-010 사용자 파일 불가침, REQ-023 백업, 저널-매니페스트 원자적 해제.
-- 병합 전략: git-flow 레인 규약 — develop 흡수, WT-* 브랜치, 커밋 메시지 카드 id(t1591) 포함. 레인은 develop을 push하지 않는다(리더 일괄).
+- 병합·베이스 축: 카드 워크트리 기저 브랜치는 **main**이다(AGENTS.local.md §4.1 — develop은 legacy, 카드 PR base `main`). 착지는 `moai factory complete` 경유(push·PR·병합 관측)이며 병합·push는 리더 일괄 소관이다. WT-* 브랜치와 커밋 메시지 카드 id(t1591) 추적성은 유지한다.
 - 커밋 주제 규약: `fix(SPEC-USERASSET-DEPLOY-GUARD-001): M<N> ...` — 마일스톤 단위.
 - 아티팩트 소관: progress.md §E.2/§E.3은 manager-develop, §E.4는 manager-docs 소관 — 런/싱크 에이전트만 채운다.
 - 시간 예측 금지 — 우선순위와 순서만.
@@ -78,10 +78,10 @@
 - 판정: AC-009 (TestFrozenGuardDeniesUserPathDelete).
 - 위험: 보호 과잉으로 사용자 합법 편집 차단 — 보호 대상은 "사용자 설치 루트 아래 moai 관리 파일"로 한정, 집합 정의를 design.md에 고정.
 
-### M5 — 충돌 판정 안전화 (원장 8c, 12) (Priority Medium, 12=P1)
+### M5 — 충돌 판정·confined 쓰기 안전화 (원장 8c, 12, 6b) (Priority Medium, 12=P1)
 - 좌표: `internal/userassets/install.go`(211, 715-755).
-- 과업: 충돌 사전 판정의 Lstat 선행(REQ-COL-001), rename 직전 부모 재검증(REQ-COL-002).
-- 판정: AC-010~011 (TestCollisionPrecheckSkipsFifoWithoutBlock, TestConfinedWriteRevalidatesParentBeforeRename).
+- 과업: 충돌 사전 판정의 Lstat 선행(REQ-COL-001), rename 직전 부모 재검증(REQ-COL-002), 설치 스크립트 실행 권한 보존(REQ-COL-003).
+- 판정: AC-010, AC-011, AC-025 (TestCollisionPrecheckSkipsFifoWithoutBlock, TestConfinedWriteRevalidatesParentBeforeRename, TestConfinedWritePreservesExecBit).
 - 위험: FIFO 재현은 mkfifo 플랫폼 차 — unix 표 테스트 + windows 빌드 게이트.
 
 ### M6 — 배포·번들 표면 정합화 (원장 4, 5-잔여, 8a, 8b, 8d, 11a-가드, 11b) (Priority Medium)

@@ -202,9 +202,16 @@
 - **When** §B의 스코프 명령에 `-cover`를 결합해 측정한다 — 예: `go test -cover ./internal/userassets ./internal/template ./internal/web -count=1` (internal/cli는 위 스코프 명령에 `-cover` 결합)
 - **Then** 영향 패키지 85% 이상, 저널·잠금·변환 critical 경로 90% 이상
 
-### AC-024 — windows 패리티 빌드 게이트 (REQ-NFR-002/LOCK-002 · M2)
+### AC-024 — windows 패리티 빌드 게이트 (REQ-LOCK-002 · M2)
 - **When** `GOOS=windows go build ./internal/userassets ./internal/cli`
 - **Then** 빌드 성공 (exit 0) — windows 전용 잠금 가족 수정이 크로스 컴파일로 판정 가능
+
+### AC-025 — 설치 스크립트 실행 권한 보존 (원장 6b · REQ-COL-003 · M5)
+- **Given** 설치 대상에 실행 가능한 스크립트 자산(navigator-audit.sh 재현 형태)이 포함
+- **When** `go test ./internal/userassets -run '^TestConfinedWritePreservesExecBit$' -count=1`
+- **Then** 설치된 .sh의 파일 모드가 0755로 기록된다 (실행 권한 보존 — 0644 하락 없음)
+- RED-now: 현행 confinedWrite의 0o644 하드코딩(install.go:743, 관측됨)으로 RED (관측 예정 — M0)
+- green path: M5
 
 ## §D 추적성 매트릭스 (원장 → REQ → AC → 테스트 → 마일스톤)
 
@@ -216,7 +223,8 @@
 | 4 | REQ-SRF-001 | AC-012 | TestMigrationClassifiesUnregisteredMirrorCopy | M6 |
 | 5-잔여 | REQ-SRF-002, 003 | AC-013, AC-014 | TestDoctorAgentEmissionUncomparedNotOK, TestSkillsDisableResolvesUserInstalledSkill | M6 |
 | 6a | REQ-JRN-002 | AC-003 | TestJournalRefreshUpdatesCarriedHash | M1 |
-| 6b | REQ-NFR-003 | AC-023 | (커버리지 게이트 — confinedWrite 경로 포함) | M1·M5 |
+| 6b | REQ-COL-003 | AC-025 | TestConfinedWritePreservesExecBit | M5 |
+| (커버리지 게이트) | REQ-NFR-003 | AC-023 | go test -cover (§B 결합) | 전 마일스톤 |
 | 7a | REQ-CNV-001, 002 | AC-006 | TestCodexAgentTOMLReferencesConverted | M3 |
 | 7b | REQ-DOC-004 | AC-022 | TestDoctorFallbackKeepsProjectScopeL1 | M7 |
 | 8a | REQ-SRF-004 | AC-015 | TestAgentFormDuplicateNameRowsBothApplied | M6 |
@@ -232,7 +240,7 @@
 | 12 | REQ-COL-002 | AC-011 | TestConfinedWriteRevalidatesParentBeforeRename | M5 |
 | 13a | REQ-CNV-001, 002 | AC-007 | TestCodexUserSkillInstallNoClaudeOnlyRefs | M3 (조건부) |
 | 13b | REQ-CNV-001 | AC-008 | TestCodexRoleTOMLNotVerbatim | M3 (조건부·병합 후보) |
-| (windows 패리티 게이트) | REQ-NFR-002 | AC-024 | GOOS=windows go build | M2 |
+| (windows 패리티 게이트) | REQ-LOCK-002 | AC-024 | GOOS=windows go build | M2 |
 
 ## §E 간접 검증과 폐쇄 게이트
 

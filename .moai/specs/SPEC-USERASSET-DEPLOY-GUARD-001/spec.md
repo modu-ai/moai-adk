@@ -40,7 +40,7 @@ related_specs: [SPEC-USER-ASSET-INSTALL-001, SPEC-PROGRESS-RECORD-IO-001]
 ### 3.1 잠금 가족 — R-LOCK (원장 1, 10-P1)
 
 - REQ-LOCK-001: **When** 잠금 획득 프로세스가 `.guard` 마커(`lock_guard_windows.go`의 `path+".guard"`, `lock.go`의 `path+".acquire-guard"`)를 보유한 채 죽으면, the guard shall 마커에 회복 가능한 소유권 증거(PID)를 남기고, 이후 획득자는 소유자 사망을 확인한 뒤 잔존 마커를 회수한다 — **While** 살아 있는 소유자 없는 잔존 마커가 존재하는 동안 init/update/bundle의 획득이 유한한 회수 창을 넘겨 차단되지 아니한다. `lock.go`의 `lockOwnerGone` 자세(사망 확인 전 인수 금지)를 재사용한다.
-- REQ-LOCK-002: The guard shall windows 빌드와 unix 빌드에서 동일한 회수 의미를 제공한다(플랫폼 패리티 — 원장 10-P1 "init/update/bundle 전면 차단"은 windows 관측).
+- REQ-LOCK-002: The guard shall windows 빌드와 unix 빌드에서 동일한 회수 의미를 제공한다(플랫폼 패리티 — 원장 10-P1 "init/update/bundle 전면 차단"은 windows 관측). **Where** CI windows 매트릭스가 릴레이 시점 미검증이면, the SPEC shall `GOOS=windows` 빌드 게이트와 플랫폼 중립 표 테스트로 이 패리티를 판정 가능하게 한다.
 
 ### 3.2 저널 가족 — R-JRN (원장 3, 6a, 10, 10a-릴레이)
 
@@ -60,10 +60,11 @@ related_specs: [SPEC-USER-ASSET-INSTALL-001, SPEC-PROGRESS-RECORD-IO-001]
 - REQ-GRD-001: The protected-zone guard shall 보호 경로 집합에 네 사용자 설치 루트(`userassets.ResolveRoots`, paths.go:38 축)를 포함한다. 보호 집합은 config 적재면(`internal/hook/pre_tool.go:355` `config.LoadProtectedZone`)이며, 사용자 루트 불포함 주장 자체는 릴레이 상태이다.
 - REQ-GRD-002: **When** 보호 대상 사용자 폴더 자산(예: plan-auditor.md)의 삭제가 시도되면, the guard shall 프로젝트 경로와 동일하게 거절한다 — 사용자 폴더의 삭제가 allow 통과하는 것은 결함이다.
 
-### 3.5 충돌 판정 가족 — R-COL (원장 8c, 12)
+### 3.5 충돌 판정·confined 쓰기 가족 — R-COL (원장 8c, 12, 6b)
 
 - REQ-COL-001: **When** 충돌 사전 판정이 대상을 읽을 때, the installer shall 먼저 항목 유형을 분류(Lstat 선행)하고 정규 파일이 아닌 대상(FIFO 등)에서 무한정 막히지 아니한다 (install.go:211 축).
 - REQ-COL-002: **When** confined 쓰기가 대상 부모로 rename할 때, the installer shall rename 직전 부모 해석을 재검증한다 (install.go:750 축 — 검증(725-728)과 rename(750) 사이의 symlink-swap 창 폐쇄).
+- REQ-COL-003: **When** the installer가 설치 대상 중 실행 가능한 스크립트 자산(예: .sh)을 기록할 때, the installer shall 실행 권한(0755)을 보존해 설치한다 — 0644로의 하락은 결함이다 (install.go:743 축 — navigator-audit.sh 재현).
 
 ### 3.6 배포·번들 표면 가족 — R-SRF (원장 4, 5-잔여, 8a, 8b, 8d, 11a, 11b)
 
@@ -84,7 +85,6 @@ related_specs: [SPEC-USER-ASSET-INSTALL-001, SPEC-PROGRESS-RECORD-IO-001]
 
 ### 3.8 비기능 요구사항
 
-- REQ-NFR-002: **Where** 결함이 windows 전용 빌드(잠금 가족)이면, the SPEC shall `GOOS=windows` 빌드 게이트와 플랫폼 중립 표 테스트로 검증 가능하게 한다 — CI windows 매트릭스는 릴레이 시점 미검증(게이트 자체 선언)이다.
 - REQ-NFR-003: **While** 본 SPEC의 수리가 착지하는 동안, the codebase shall 영향 패키지(internal/userassets, internal/cli 해당 파일, internal/template, internal/web)의 커버리지를 85% 이상으로, 저널·잠금·변환의 critical 경로를 90% 이상으로 유지한다.
 
 ## 4. 좌표 상태 — 관측 vs 릴레이 (요약)
@@ -144,4 +144,4 @@ related_specs: [SPEC-USER-ASSET-INSTALL-001, SPEC-PROGRESS-RECORD-IO-001]
 5. 원장 13a/13b: 미검증 릴레이(카드 본문 "미검증 전달"). 재현이 반박할 경우 REQ-CNV 적용 범위 축소 — 런 페이즈 M0의 관측이 우선한다.
 6. `internal/template/bundle.go:145` 좌표: 파일이 HEAD에 없다. 최근생 면은 internal/cli/bundle.go(RemoveBundle 영역)이나 ListTemplates 행은 없다 — 원장 좌표의 소관 종료 또는 재지정 판정 대상.
 7. 원장 8b prune 측: remove.go에 R-f-② 의존 유예 팔이 이미 존재한다. 재현이 prune 결함을 반박하면 REQ-SRF-005는 설치 클로저 절반만 남는다.
-8. windows 커버리지: 원장 1은 windows 마커이며 CI windows 매트릭스는 릴레이 시점 미검증이다. REQ-NFR-002의 빌드 게이트 + 플랫폼 중립 표 테스트 구성이 충분한지.
+8. windows 커버리지: 원장 1은 windows 마커이며 CI windows 매트릭스는 릴레이 시점 미검증이다. REQ-LOCK-002의 빌드 게이트 + 플랫폼 중립 표 테스트 구성이 충분한지.

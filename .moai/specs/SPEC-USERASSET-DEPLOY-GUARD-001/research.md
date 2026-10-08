@@ -61,4 +61,4 @@
 
 ## §5 M0 재현 인벤토리 (런 페이즈 최초 과업)
 
-acceptance.md §C의 24 AC가 지시하는 테스트 이름군을 본 트리에 작성하고, 각각 HEAD에서 1회 실행해 verbatim 관측한다. 판정 규율: `EXPECTED_RED`(의도 단정 실패)만 RED로 인정 — `TOOL_FAILURE`(컴파일 실패 등)와 무관 회귀는 RED가 아니다(tdd-result-contract). 이미 수리 판정 좌표(11a, 5-ListTemplates)는 회귀 가드로 전환 기록.
+acceptance.md §C의 25 AC가 지시하는 테스트 이름군을 본 트리에 작성하고, 각각 HEAD에서 1회 실행해 verbatim 관측한다. 판정 규율: `EXPECTED_RED`(의도 단정 실패)만 RED로 인정 — `TOOL_FAILURE`(컴파일 실패 등)와 무관 회귀는 RED가 아니다(tdd-result-contract). 이미 수리 판정 좌표(11a, 5-ListTemplates)는 회귀 가드로 전환 기록.
