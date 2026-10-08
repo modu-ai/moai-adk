@@ -840,6 +840,47 @@ evidence for the /tmp shape; the committed row carries the corrected shape.
 - Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
   `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
   clean; family coverage `13.5%` (all-rows selector).
+
+### Gate round 19 — M2.6 dispatch order, per-generation joins, dedup-before-cap (2026-10-09)
+
+Three findings on the in-flight M2.5 (the reviewer saw the test file change
+mid-review): (1) P1 the cd BRANCH's early return skipped the dual-world verb
+classification — `$'cd\u0000/../rm' zone_dir/marker.md` truncates to the
+name "cd", the walker takes the cd branch and returns, and the pre-4.2
+world's rm (through a literally-named `cd\u0000` entry) is never tested; a
+word truncating to a DECLARED FUNCTION name is the same class; (2) P2 git
+fileArgs pooled BOTH generations' readings and joined them against each
+generation's directory — the CROSS-generation join (modern dir × pre-4.2
+file text) is a path no generation executes and landing it is a FALSE DENY;
+(3) P2 dedup ran AFTER the cap: a unicode-free command contributes the same
+path from both worlds (2,050 files → 4,100 candidates → past the 4,096 cap
+→ a loop-unbounded FALSE DENY on a plain command).
+
+**Three regression rows — RED under the M2.5 tip (`474a99e92` + the rows,
+uncommitted at measurement):**
+
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellDualWorldVerbBeforeDispatch|TestCheckProtectedZoneShellGitFileArgsOwnGeneration|TestCheckProtectedZoneShellCandidateCapAfterDedup' -count=1 -v`
+- **Exit code**: `1`
+- **Observed (verbatim, decision lines)**:
+
+```
+    protected_zone_shell_repro_test.go:807: dual world verb before dispatch: decision="allow" reason="", want deny
+--- FAIL: TestCheckProtectedZoneShellDualWorldVerbBeforeDispatch (0.01s)
+    protected_zone_shell_repro_test.go:825: git file args own generation: decision="git -C $'zone\\u005fdir' rm -f $'x\\u0000/../marker.md'" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=zone_dir/x", want allowed — only the cross-generation join lands in the zone, and no generation executes it
+--- FAIL: TestCheckProtectedZoneShellGitFileArgsOwnGeneration (0.01s)
+    protected_zone_shell_repro_test.go:845: candidate cap after dedup: decision="git rm -f f0000.txt … f2049.txt" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=loop-unbounded route=human next=return-blocker-report path=loop", want allowed — the deduped candidate set (2,050) fits the cap
+--- FAIL: TestCheckProtectedZoneShellCandidateCapAfterDedup (0.56s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	1.091s
+```
+
+Rows 1 is a deny-miss; rows 2-3 are OVER-BLOCK inverse rows (false deny
+observed verbatim). The cross-generation row's first draft
+(`$'../other.txt\u0000/../marker.md'`) was Clean-neutralized (the leading
+`..` popped the joined dir) and was rewritten BEFORE the fix commit to the
+committed shape whose escape text contributes its own component
+(`x\u0000`), so the crossed join collapses into the zone. Inputs
+transport-verified: whole-file NUL-byte scan zero, doubled backslash.
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

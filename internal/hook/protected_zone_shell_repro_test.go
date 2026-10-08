@@ -785,3 +785,64 @@ func TestCheckProtectedZoneShellGitWorkTreeOverwriteWins(t *testing.T) {
 	}
 	t.Logf("swept=%d", 1)
 }
+
+// The three gate-round-19 regression rows (card t1585): branch dispatch
+// must not preempt the dual-world verb classification, git file arguments
+// must join their OWN generation's directory, and the candidate cap applies
+// AFTER dedup.
+
+// TestCheckProtectedZoneShellDualWorldVerbBeforeDispatch — the cd branch's
+// early return skipped the dual-world verb classification: the modern
+// reading truncates to "cd" (the walker takes the cd branch and returns)
+// while the pre-4.2 path executes rm through the literally-named
+// cd+u0000 entry. A word truncating to a DECLARED FUNCTION name is the
+// same class — the verb classification completes BEFORE any dispatch.
+func TestCheckProtectedZoneShellDualWorldVerbBeforeDispatch(t *testing.T) {
+	root := hzsLiteralNameFixture(t)
+	if err := os.MkdirAll(filepath.Join(root, "cd\\u0000"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	h := zoneTestHandler(t, root)
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "$'cd\\u0000/../rm' zone_dir/marker.md"})
+	wantZoneDeny(t, "dual world verb before dispatch", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellGitFileArgsOwnGeneration — git file arguments
+// join their OWN generation's directory: the cross-generation join
+// (modern dir × pre-4.2 file text) is a path NO generation executes, and
+// landing it is a FALSE DENY — an over-block. The row asserts the ALLOW:
+// generation 0 reads zone_dir/x (outside the zone), generation 1 reads
+// zone\u0005fdir/marker.md against the literally-named zone\u0005fdir
+// entry (which does not exist) — only the crossed join collapses into
+// zone_dir/marker.md.
+func TestCheckProtectedZoneShellGitFileArgsOwnGeneration(t *testing.T) {
+	root := hzsLiteralNameFixture(t)
+	h := zoneTestHandler(t, root)
+	const crossCmd = "git -C $'zone\\u005fdir' rm -f $'x\\u0000/../marker.md'"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": crossCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("git file args own generation: decision=%q reason=%q, want allowed — only the cross-generation join lands in the zone, and no generation executes it", crossCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellCandidateCapAfterDedup — dedup BEFORE the
+// cap: a unicode-free command contributes the same path from BOTH worlds,
+// so 2,050 files pool 4,100 candidates — past the 4,096 cap — while the
+// deduped set is 2,050. Capping before dedup false-denies the plain
+// command (an over-block). The row asserts the ALLOW.
+func TestCheckProtectedZoneShellCandidateCapAfterDedup(t *testing.T) {
+	root := hzsLiteralNameFixture(t)
+	h := zoneTestHandler(t, root)
+	var b strings.Builder
+	b.WriteString("git rm -f")
+	for i := 0; i < 2050; i++ {
+		fmt.Fprintf(&b, " f%04d.txt", i)
+	}
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": b.String()})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("candidate cap after dedup: decision=%q reason=%q, want allowed — the deduped candidate set (2,050) fits the cap", b.String(), r)
+	}
+	t.Logf("swept=%d", 1)
+}
