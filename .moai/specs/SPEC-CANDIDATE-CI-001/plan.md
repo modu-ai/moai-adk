@@ -171,8 +171,18 @@ Files touched:
 - `internal/cli/integration_merge.go` — replace the LOUD-refusal LandingCheck placeholder
   (:95-99) with the real check: read the candidate record for (card, pinned SHA), require
   green + ancestry; refuse cause 5 otherwise.
+- `internal/cli/factory_card.go` — wire the SAME shared LandingCheck at the complete
+  call site (:1977-1988, the self-issued merge path): its seams today carry ONLY
+  `ReadCard`, and the step gates on `seams.LandingCheck != nil`
+  (integration_merge_step.go:305), so without this wiring `factory complete` merges with
+  no landing gate even after the key is enabled (audited plan-auditor defect D2).
+- `internal/factory/integration_merge_step.go` — the fail-closed guard in gate 5: when
+  the key is enabled and the seam is nil, refuse (cause-5 class) instead of merging
+  unchecked — no caller, current or future, omits the gate.
 - `internal/factory/candidate_record.go` — verdict observation update path (REQ-CCI-010):
-  read CI run state via the gh surface, write verdict + run identity + observed-at.
+  read CI run state via the gh surface, write verdict + run identity + observed-at;
+  enforce the verdict-SHA binding — run head SHA == record candidate SHA and run ref ==
+  record candidate branch, else the observation is discarded.
 - `internal/cli/integration.go` (acquire verb) — the card-aware candidate precondition
   (REQ-CCI-012's per-card hold): when the ACQUIRING card's candidate record reads red,
   refuse naming card + verdict + pinned SHA BEFORE any window-record mutation — the
@@ -186,8 +196,12 @@ Files touched:
   `want.Card` is the sanctioned fallback only.
 
 Test families: `go test ./internal/factory/ -run '^(TestLandingCheck|TestCandidateVerdict)$'`
-(green admits past gate 5; red/missing/stale refuse with MergeExitLandingRefused — the
-run phase creates `TestLandingCheck` and `TestCandidateVerdict` beside the existing
+(green admits past gate 5; red/missing/stale refuse with MergeExitLandingRefused; the
+stale-run observation — an older green arriving for a superseded candidate on the same
+ref — writes nothing; the run phase creates `TestLandingCheck` and `TestCandidateVerdict`
+beside the existing family); `go test ./internal/cli/ -run '^TestCompleteRefusesRedCandidate$'`
+(the complete call site refuses a red/missing candidate with cause 5 when the key is
+true — the run phase creates `TestCompleteRefusesRedCandidate` in the factory_card test
 family); `go test ./internal/cli/ -run '^TestCandidateAcquirePrecondition$'` (the per-card
 hold: card A red → A's acquire refused with record+policy byte-unchanged; card B green
 acquires and merges unaffected in the same state; a green re-candidate clears the hold —
@@ -198,25 +212,50 @@ contract tests at internal/factory/integration_merge_step_test.go:210 and :320; 
 `TestMergeStep*` family of 22 runs in the ordinary suite).
 
 Verification command:
-`go test ./internal/factory/ ./internal/cli/ -run '^(TestLandingCheck|TestCandidateVerdict|TestCandidateAcquirePrecondition|TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepPreMergeCausesReleaseWithDistinctCodes|TestIntegrationCandidate)$' -count=1`
+`go test ./internal/factory/ ./internal/cli/ -run '^(TestLandingCheck|TestCandidateVerdict|TestCandidateAcquirePrecondition|TestCompleteRefusesRedCandidate|TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepPreMergeCausesReleaseWithDistinctCodes|TestIntegrationCandidate)$' -count=1`
 
-### M5 — Guard bundle job + candidate vet legs (P2)
+### M5 — Guard bundle job, guard/ordinary separation, candidate vet legs (P2)
 
 Files touched:
-- `.github/workflows/ci.yml` — new `guard-bundle` job running the three guard families
-  (source-scan static-parse guards, line-key guards, census scripts) as one named check;
-  its gating reads `workflow.candidate_ci.guard_bundle_required` semantics at the WORKFLOW
-  layer (a required-check name is static — the key governs whether the bundle's result is
-  admitted into the candidate verdict; run phase implements the exact mechanism, likely a
-  tiny verdict-collecting step rather than dynamic `if:`).
+- `internal/cli/` — the three guard families' test membership (source-scan static-parse
+  guards, line-key guards) is recorded as an EXPLICIT selector alternation, measured at
+  run start (`go test -list`) and kept in the workflow step. Separation mechanism:
+  SELECTOR-based, not build tags — the tree's established test-partition convention is
+  `-run`/`-skip` (the race split at ci.yml:298/:357); the cli test build tags that exist
+  are OS/backend conditionals, not a family convention. The required `test` job's
+  `go test ./...` gains the complementary `-skip '<guard-selector>'`. Without this
+  separation the bundle is cosmetic: a guard failure still reddens the ordinary test
+  job, so `guard_bundle_required: false` could not mean anything (AC-CCI-008-2). The
+  two scopes must PARTITION: no guard test in both jobs (silent duplicate), none in
+  neither (silent gap — the empty-sweep hazard,
+  verification-completeness.md §1.1). The census family needs no go-test separation —
+  it is shell (`bash scripts/ci-census/census-check.sh`) and moves to the bundle as-is.
+- `.github/workflows/ci.yml` — new `guard-bundle` job running ONLY the three families
+  (the guard go-test selector + census-check.sh) as one named check; the
+  `test` job gains the complementary skip; the verdict-collecting step implements
+  `workflow.candidate_ci.guard_bundle_required` at the WORKFLOW layer (a required-check
+  name is static — the key governs whether the bundle's result is admitted into the
+  candidate verdict).
 - Confirm the build job's vet matrix (:577-582) runs on candidate pushes (trigger-only
   change; assert in the same milestone's verification).
 
-Test families: the guard families themselves (they run inside the bundle); the census
-fixture check (`bash scripts/ci-census/census-check.sh`).
+Test families: the guard families themselves (they run inside the bundle — the bundle
+selector's `-list` count is the family count); the census fixture check.
 
-Verification command:
-`bash scripts/ci-census/census-check.sh && git grep -n "guard-bundle" .github/workflows/ci.yml`
+Verification commands:
+- Bundle scope runs guards only: `go test -list '<guard-selector>' ./internal/cli/`
+  names exactly the family set (count N), and
+  `go test -run '^<guard-selector>$' -count=1 ./internal/cli/` is green with every RUN
+  line inside the selector.
+- Ordinary scope runs without guards: `go test -skip '<guard-selector>' -count=1 ./internal/cli/`
+  green, and `go test -skip '<guard-selector>' -count=1 -v ./internal/cli/ | grep -c "=== RUN <sample-guard-name>"`
+  reads 0 — a guard name absent from the ordinary scope's output.
+- Partition exactness: the ordinary scope's `-list` plus the bundle `-list` equals the
+  full `go test -list '.*' ./internal/cli/` set, intersections empty (same property
+  form as AC-CCI-009-1).
+- Census fixture: `bash scripts/ci-census/census-check.sh` exits 0.
+- Workflow: `git grep -n "guard-bundle" .github/workflows/ci.yml` shows the job and the
+  test job's complementary skip.
 
 ### M6 — Race split restructure + flaky single retry (P2)
 
@@ -228,6 +267,13 @@ Files touched:
 - The ~369s internal/cli test (B2: re-measure first) — repair per its measured cause.
 - `scripts/ci/flaky-registry.txt` (new) + the retry wrapper the race/test jobs call —
   exactly-one recorded retry for registry tests (REQ-CCI-013).
+- `.github/test-input-filters.yml` — register BOTH new paths under `go_code`:
+  `- 'scripts/ci/**'` (the flaky registry + retry wrapper), following the census
+  precedent already at :63 (`- 'scripts/ci-census/**'` — same rationale: the test/race
+  jobs shell out to them) with an evidence comment in the file's per-root style naming
+  the consumer steps. WITHOUT the registration, a diff touching only the wrapper or the
+  registry reads go_code=false, the skip-marker stub satisfies the required check
+  (ci.yml:376-384), and the retry logic lands over a path CI never exercised.
 
 Test families: the repartitioned shards (each exercised in CI), the repaired test and its
 package suite, the retry wrapper unit-checked against a fixture stream
@@ -236,7 +282,13 @@ package suite, the retry wrapper unit-checked against a fixture stream
 Verification command:
 partition check — `go test -list '.*' ./... | sort` diffed against the union of shard
 selectors (the milestone records the exact one-command form it lands);
-`bash scripts/ci/census-check.sh`-style fixture run for the retry wrapper.
+`bash scripts/ci/census-check.sh`-style fixture run for the retry wrapper;
+filter registration — `grep -n "scripts/ci" .github/test-input-filters.yml` shows the
+new `scripts/ci/**` pattern;
+script-only-change observance — after landing, push a candidate whose ONLY diff is a
+comment edit inside `scripts/ci/flaky-registry.txt` and read the run's job list: the
+detect job must report go_code=true and the test/race jobs must EXECUTE (not
+skip-marker) — the retry logic's CI surface exercised by its own file's change.
 
 ### M7 (sync phase, not a run milestone) — Doctrine amendment
 

@@ -198,7 +198,11 @@ When a candidate run completes on `ci/<card>`, the candidate record for that car
 carry the run's verdict — `green` when the required check set passed, `red` otherwise —
 together with the run identity and observation timestamp; the observation is performed by
 an explicit read of the CI run state (the same gh-based read surface the local CI-watch
-protocols use), never assumed from the push alone.
+protocols use), never assumed from the push alone. A run's verdict may be recorded for a
+candidate only when the observed run's head SHA equals the record's candidate commit SHA
+AND the run's ref equals the record's candidate branch; a completed run matching neither
+— a late-arriving run from a superseded candidate on the same `ci/<card>` ref — shall be
+discarded and never recorded as the current candidate's verdict.
 
 ### REQ-CCI-011 — The shared landing check (Ubiquitous — pre-allocated anchor)
 
@@ -208,7 +212,13 @@ the real implementation, and the implementation shall admit a merge only when a 
 record exists whose pinned SHA equals the merge step's pinned SHA, whose candidate commit
 still descends from that pinned SHA, and whose verdict is `green`. A red, missing, or
 stale candidate shall refuse the merge with cause 5 (`MergeExitLandingRefused`,
-internal/factory/integration_merge_step.go:43).
+internal/factory/integration_merge_step.go:43). The gate is UNAVOIDABLE: the step gates
+on `seams.LandingCheck != nil` (:305), so BOTH of its call sites — the integration merge
+verb (internal/cli/integration_merge.go:100) and the factory complete self-issued merge
+path (internal/cli/factory_card.go:1977-1988, whose seams today carry only `ReadCard`) —
+shall wire the same shared check, and the step shall refuse (fail closed) when the key
+is enabled and no LandingCheck is wired, so no current or future caller merges without
+the gate.
 
 ### REQ-CCI-012 — Red-candidate per-card hold (Event-driven)
 
