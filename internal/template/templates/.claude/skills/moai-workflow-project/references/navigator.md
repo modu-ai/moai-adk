@@ -85,7 +85,7 @@ bash script (no `jq`, no `moai` binary, only `git` + `awk` + `sed` + `grep`).
 Invoke it from the project root:
 
 ```bash
-bash ".claude/skills/moai-workflow-project/scripts/navigator-regen.sh"
+bash "$HOME/.claude/skills/moai-workflow-project/scripts/navigator-regen.sh"
 ```
 
 The script resolves the project root via `CLAUDE_PROJECT_DIR` (falling back to

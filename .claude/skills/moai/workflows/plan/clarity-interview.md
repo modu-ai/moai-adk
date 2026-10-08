@@ -6,9 +6,8 @@ metadata:
   phase: "Phase 4 through Decision Point 1: Clarity Interview, Research, and Plan Review"
 ---
 
-<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
-<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
-<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
+<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
 ### Phase 4: Deep Interview Loop (Conditional)
 
@@ -17,16 +16,6 @@ Purpose: Gather missing context through a structured, topic-focused interview be
 **Entry condition:** Clarity score 4-10 AND skip conditions not met (from Phase 3).
 
 **Guard:** [HARD] During the interview loop, the agent MUST NOT write implementation code or start codebase exploration. The sole output is `.moai/specs/SPEC-{ID}/interview.md`.
-
-**Provisional tier before research:** At the end of the clarity loop, record a
-`provisional_tier` in the interview handoff before Phase 6 research starts.
-Reuse an explicit user tier; otherwise classify from the observed scope,
-number of affected files/domains, and security or compatibility risk. This is a
-routing hint, not a final artifact decision. Research may promote S→M or M→L
-when it discovers cross-domain or constitutional risk, but it must not create a
-research artifact solely to decide a tier that was already explicit and narrow.
-If the evidence is ambiguous, carry `provisional_tier: undecided` and ask the
-final Tier question once in spec assembly.
 
 **Round topics:**
 
@@ -177,7 +166,7 @@ Tasks for manager-spec:
 - Analyze project documents (product.md, structure.md, tech.md)
 - Propose 1-3 SPEC candidates with proper naming
 - Check for duplicate SPECs in .moai/specs/
-- Design GEARS structure for each candidate using the 5 GEARS patterns (Ubiquitous, Event-driven `When`, State-driven `While`, Capability-gate `Where`, Event-detected unwanted). EARS legacy form is accepted for pre-v3 SPECs until 2026-11-22; new SPECs MUST use GEARS. Canonical authoring reference: `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format.
+- Design GEARS structure for each candidate using the 5 GEARS patterns (Ubiquitous, Event-driven `When`, State-driven `While`, Capability-gate `Where`, Event-detected unwanted). EARS legacy form is accepted for pre-v3 SPECs until 2026-11-22; new SPECs MUST use GEARS. Canonical authoring reference: `~/.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format.
 - Create implementation plan with technical constraints
 - Identify library versions (production stable only, no beta/alpha)
 - Search for reference implementations: Identify similar patterns in the existing codebase or well-documented approaches that can guide implementation

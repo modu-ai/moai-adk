@@ -10,12 +10,9 @@ package cli
 // touches the real HOME.
 
 import (
-	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // TestInitCodexOnlyDeploysNoClaudeSurface is the negative half of REQ-IH-005
@@ -39,11 +36,13 @@ func TestInitCodexOnlyDeploysNoClaudeSurface(t *testing.T) {
 
 // TestInitCodexOnlyRequiredSurfaces is the positive half of REQ-IH-005
 // (AC-IH-003): after a codex-only init, every universal + Codex surface IS
-// deployed — AGENTS.md, the wiring trio, the codex agent TOMLs, the 16
-// published skills, the remapped catalog skills, the config sections, and the
-// git infrastructure.
+// deployed — AGENTS.md, the wiring trio, the config sections, and the git
+// infrastructure. SPEC-USER-ASSET-INSTALL-001 (REQ-005 / AC-011): the
+// project tree carries NO common skill or agent file — the user folders
+// (isolated HOME) carry the L0 set, and this test now pins the absence of
+// the project placement alongside the surviving project surfaces.
 func TestInitCodexOnlyRequiredSurfaces(t *testing.T) {
-	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "gpt"})
+	projectDir, homeDir := runInitForAutonomy(t, nil, map[string]string{"llm": "gpt"})
 
 	// AGENTS.md — universal contract surface.
 	if _, err := os.Stat(filepath.Join(projectDir, "AGENTS.md")); err != nil {
@@ -57,48 +56,24 @@ func TestInitCodexOnlyRequiredSurfaces(t *testing.T) {
 		}
 	}
 
-	// .codex/agents/moai/*.toml — 12 template TOMLs (manager-todo added).
-	tomls, err := filepath.Glob(filepath.Join(projectDir, ".codex", "agents", "moai", "*.toml"))
-	if err != nil {
-		t.Fatalf("glob codex agent tomls: %v", err)
-	}
-	if len(tomls) != 12 {
-		t.Errorf(".codex/agents/moai/*.toml count = %d, want 12", len(tomls))
-	}
-
-	// 16 published skills — real template files.
-	for _, cmd := range []string{"plan", "run", "sync", "fix", "gate", "goal", "loop",
-		"mx", "clean", "codemaps", "e2e", "feedback", "harness", "project", "review", "todo"} {
-		p := filepath.Join(projectDir, ".agents", "skills", "moai-"+cmd, "SKILL.md")
-		if _, err := os.Stat(p); err != nil {
-			t.Errorf("published skill missing after codex-only init: %s: %v", p, err)
+	// NO project-side common-asset placement (AC-011's placement set):
+	// no .codex/agents/moai/, no .agents/skills/moai*, no .claude/skills/.
+	for _, rel := range []string{".codex/agents/moai", ".agents/skills/moai", ".agents/skills/moai-plan", ".claude/skills/moai"} {
+		if _, err := os.Stat(filepath.Join(projectDir, rel)); !os.IsNotExist(err) {
+			t.Errorf("common-asset placement %s exists project-side — REQ-005 forbids it", rel)
 		}
 	}
 
-	// Catalog skills remapped to .agents/skills/<name> — every catalog skill
-	// directory present under the new root. The catalog source of truth is the
-	// embedded FS's .claude/skills listing (34 directories).
-	embeddedFS, fsErr := template.EmbeddedTemplates()
-	if fsErr != nil {
-		t.Fatalf("embedded templates: %v", fsErr)
-	}
-	entries, rdErr := fs.ReadDir(embeddedFS, filepath.ToSlash(filepath.Join(".claude", "skills")))
-	if rdErr != nil {
-		t.Fatalf("read embedded catalog skills: %v", rdErr)
-	}
-	catalogNames := make([]string, 0, len(entries))
-	for _, e := range entries {
-		if e.IsDir() {
-			catalogNames = append(catalogNames, e.Name())
-		}
-	}
-	if len(catalogNames) == 0 {
-		t.Fatal("embedded catalog skill listing is empty — precondition broken")
-	}
-	for _, name := range catalogNames {
-		p := filepath.Join(projectDir, ".agents", "skills", name, "SKILL.md")
+	// The user folders carry the L0 set instead (the M2 installer; the
+	// dispatcher mirror included — AC-002).
+	for _, p := range []string{
+		filepath.Join(homeDir, ".agents", "skills", "moai", "SKILL.md"),
+		filepath.Join(homeDir, ".agents", "skills", "moai-plan", "SKILL.md"),
+		filepath.Join(homeDir, ".claude", "skills", "moai-workflow-tdd", "SKILL.md"),
+		filepath.Join(homeDir, ".codex", "agents", "manager-develop.toml"),
+	} {
 		if _, err := os.Stat(p); err != nil {
-			t.Errorf("remapped catalog skill missing after codex-only init: %s: %v", name, err)
+			t.Errorf("user-folder install missing after codex-only init: %s: %v", p, err)
 		}
 	}
 

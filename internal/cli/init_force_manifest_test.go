@@ -25,8 +25,13 @@ func TestInitForceCarriesManifestProvenance(t *testing.T) {
 	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
 
 	const (
-		olderRule  = ".claude/rules/moai/core/moai-constitution.md"
-		olderSkill = ".agents/skills/moai-gate/SKILL.md"
+		olderRule = ".claude/rules/moai/core/moai-constitution.md"
+		// SPEC-USER-ASSET-INSTALL-001 (REQ-005): the project payload no
+		// longer carries any common skill — the pre-SPEC fixture skill
+		// (moai-gate, later moai-plan) is retired from the project tree
+		// entirely. A second RULE file (still project-deployed) carries the
+		// template-managed redeploy half of the fixture.
+		olderSkill = ".claude/rules/moai/development/coding-standards.md"
 		editedRule = ".claude/rules/moai/workflow/mx-tag-protocol.md"
 		ownedRule  = ".claude/rules/moai/languages/go.md"
 		olderBody  = "older deploy\n"

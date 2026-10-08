@@ -32,15 +32,15 @@ On acceptance, proceed to § 5.1 (Entry — hand off to the v4 Builder entry wor
 
 ### 5.1 Entry — Hand off to the v4 Builder entry workflow
 
-Compose a natural-language harness-creation request from `.moai/project/harness-spec.yaml` (the machine-readable interview output written by `project/doc-generation.md` Phase 8) together with the completed project documentation (`product.md` / `structure.md` / `tech.md`) and the user's stated intent from Phase 14, then hand off to `.claude/skills/moai/workflows/harness-build-entry.md` (the same entry point the `/moai:harness <request>` invocation uses). Carrying `harness-spec.yaml` forward means the interview data is no longer discarded — its recorded `domain` / `goal` / `constraints` / `scope` (plus the extended `verification` / `external_systems` / `ui_surface` / `team_sharing` axes) reach harness generation as pre-satisfied context. That workflow runs its own Context-First Discovery, harness `<name>` derivation, and orchestrator-issued approval gate — none of which are duplicated here.
+Compose a natural-language harness-creation request from `.moai/project/harness-spec.yaml` (the machine-readable interview output written by `project/doc-generation.md` Phase 8) together with the completed project documentation (`product.md` / `structure.md` / `tech.md`) and the user's stated intent from Phase 14, then hand off to `~/.claude/skills/moai/workflows/harness-build-entry.md` (the same entry point the `/moai:harness <request>` invocation uses). Carrying `harness-spec.yaml` forward means the interview data is no longer discarded — its recorded `domain` / `goal` / `constraints` / `scope` (plus the extended `verification` / `external_systems` / `ui_surface` / `team_sharing` axes) reach harness generation as pre-satisfied context. That workflow runs its own Context-First Discovery, harness `<name>` derivation, and orchestrator-issued approval gate — none of which are duplicated here.
 
 ### 5.2 Generation — Orchestrator-direct Builder
 
-On approval, the entry workflow transitions directly into the orchestrator-direct Builder (`.claude/skills/moai/workflows/harness-builder.md`), which runs the 4 signal-driven phases (ANALYZE / PLAN / GENERATE / ACTIVATE) and emits the 5 canonical artifact types (thin-wrapper entry command, Runner Workflow, specialist sub-agent definitions, companion Progressive-Disclosure skills, `manifest.json`).
+On approval, the entry workflow transitions directly into the orchestrator-direct Builder (`~/.claude/skills/moai/workflows/harness-builder.md`), which runs the 4 signal-driven phases (ANALYZE / PLAN / GENERATE / ACTIVATE) and emits the 5 canonical artifact types (thin-wrapper entry command, Runner Workflow, specialist sub-agent definitions, companion Progressive-Disclosure skills, `manifest.json`).
 
 [HARD] The GENERATE phase MUST run the FROZEN guard (`EnsureAllowed`) as the **first check**
-before any write attempt. Paths in `.claude/agents/moai/`, `.claude/skills/moai-*/`,
-`.claude/skills/moai/`, or `.claude/rules/moai/` are permanently FROZEN and must be
+before any write attempt. Paths in `~/.claude/agents/`, `~/.claude/skills/moai-*/`,
+`~/.claude/skills/moai/`, or `.claude/rules/moai/` are permanently FROZEN and must be
 rejected immediately.
 
 [HARD] If the Builder's generation fails mid-way, its own cleanup handling removes all
@@ -72,16 +72,16 @@ exists, then verifies all five with the smoke gate (7.3):
 |-------|-----------|-------|
 | L1 | `hns-*` skill frontmatter triggers (paths / keywords / agents / phases) | Phase 15 (generation) |
 | L2 | `.moai/config/sections/workflow.yaml` `harness:` section | Phase 15 (generation) |
-| L3 | `CLAUDE.md` `<!-- moai:harness-start -->` ~ `<!-- moai:harness-end -->` marker block | **Phase 16 (install)** |
-| L4 | `.claude/skills/moai/workflows/{plan,run,sync,design}.md` static `@.moai/harness/` import line | Phase 15 (already present in workflow files) |
-| L5 | `.moai/harness/main.md` task-shape router (the CLAUDE.md @import entry point) | **Phase 16 (install ensures present)** |
+| L3 | `AGENTS.md` `<!-- moai:harness-start -->` ~ `<!-- moai:harness-end -->` marker block | **Phase 16 (install)** |
+| L4 | `~/.claude/skills/moai/workflows/{plan,run,sync,design}.md` static `@.moai/harness/` import line | Phase 15 (already present in workflow files) |
+| L5 | `.moai/harness/main.md` task-shape router (the AGENTS.md @import entry point) | **Phase 16 (install ensures present)** |
 
 ### 7.2 Install Invocation (orchestrator instruction)
 
 The orchestrator runs the harness activation wiring by invoking the
 `moai harness install` CLI surface with the generating SPEC ID and the project
 domain. The command (a) scaffolds `.moai/harness/` so `main.md` exists (L5
-entry point), and (b) injects the CLAUDE.md routing marker block (L3). It is
+entry point), and (b) injects the AGENTS.md routing marker block (L3). It is
 idempotent — re-running replaces the existing block rather than appending a
 duplicate.
 
@@ -91,7 +91,7 @@ moai harness install --spec-id <SPEC-PROJ-INIT-NNN> --domain <domain>
 ```
 
 The command takes positional flag inputs and never invokes `AskUserQuestion`
-(subagent boundary). On a CLAUDE.md write failure (file absent / read-only) it
+(subagent boundary). On a AGENTS.md write failure (file absent / read-only) it
 returns a structured error and does NOT report success — surface that error to
 the user.
 
@@ -108,7 +108,7 @@ The gate FAILs (non-OK status) when a generated harness is structurally
 incomplete — covering:
 
 - `.moai/harness/main.md` absent (L5 entry point missing).
-- CLAUDE.md does not contain exactly one paired
+- AGENTS.md does not contain exactly one paired
   `<!-- moai:harness-start -->` / `<!-- moai:harness-end -->` block (L3 marker).
 - a generated `.claude/agents/harness/*.md` agent has an empty `description`.
 - a generated agent's `skills:` preload references a `hns-*` (or legacy
@@ -125,7 +125,7 @@ incomplete harness must be regenerated or repaired before it can auto-trigger.
 ### 7.4 Retrofit Note (existing incomplete harnesses)
 
 A harness generated **before** this activation wiring existed has its agents and
-skills but lacks the CLAUDE.md marker (L3) and may lack `main.md` (L5), so it
+skills but lacks the AGENTS.md marker (L3) and may lack `main.md` (L5), so it
 never auto-triggers. To retrofit such a project, re-run the harness generation
 flow (re-run `/moai project` Phase 15-7) OR run `moai harness install --spec-id
 <SPEC-ID> --domain <domain>` directly against the project root. The install is

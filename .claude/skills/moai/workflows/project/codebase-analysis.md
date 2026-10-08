@@ -6,9 +6,8 @@ metadata:
   phase: "Phase 3/1.5/2: Codebase Analysis and User Confirmation"
 ---
 
-<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
-<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
-<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
+<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
 ## Phase 3: Codebase Analysis (Existing Projects Only)
 
@@ -64,7 +63,7 @@ round uncollected:
 
 Stage A is clarity-driven, NOT fixed-length. It scores accumulated answer clarity on a
 0-10 scale and adapts the round count, reusing the adaptive mechanism defined in
-`.claude/skills/moai/workflows/plan/clarity-interview.md` (the SAME 0-10 scale
+`~/.claude/skills/moai/workflows/plan/clarity-interview.md` (the SAME 0-10 scale
 semantics — do NOT invent a divergent rubric):
 
 - **Entry floor**: `clarity_threshold` (4, from `.moai/config/sections/interview.yaml`)
