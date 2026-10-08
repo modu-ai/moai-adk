@@ -83,11 +83,23 @@ and are NOT retrofitted into EL-001..004.
 
 ## Provenance
 
-Extracted verbatim from the t1498 overlay suite `cli_all_test.go`
+Extracted gofmt-normalized from the t1498 overlay suite `cli_all_test.go`
 (origin `/tmp/t1498-review-overlay/`, archived local-only under
-`.moai/reports/t1595/overlay/`). The EL-001..004 measurements dropped the
+`.moai/reports/t1595/overlay/`); function-body logic verbatim. The
+EL-001..004 measurements dropped the
 FULL overlay superset file (7 tests, including 3 foreign-card tests); the
 single-test selectors mean the foreign tests did not participate in the
 four cells. This mirror carries the owned four only — the t1596-owned
 three are mirrored separately under `../deferred/` per the lane-probe
 deferral (decision-index Q1).
+
+Run-phase intake (M0, card t1595): the canonical committed drop-in is now
+ON THE BRANCH — `internal/cli/review_observation_test.go` (this SPEC's M0
+commit) carries the owned five, the RE-AUTHORED
+`TestReviewFindingFoldInterleavedArchiveLoss` (AC-DI-010's serialized
+shape), the two arch-coverage instruments
+(`TestReviewFindingFoldArchiveConcurrentWrite`,
+`TestReviewFindingFoldGuardArchiveChange`), and the fold subprocess entry
+(`TestFoldSubprocessHelper`). From the M0 commit onward this mirror is the
+provenance record of the bodies EL-001..004 executed; the committed file
+is the replayable input for every later cell.

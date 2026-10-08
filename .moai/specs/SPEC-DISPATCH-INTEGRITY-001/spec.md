@@ -2,7 +2,7 @@
 id: SPEC-DISPATCH-INTEGRITY-001
 title: "Factory dispatch and bundle integrity — eight P1 review findings"
 version: "0.1.6"
-status: draft
+status: in-progress
 created: 2026-10-09
 updated: 2026-10-09
 author: manager-spec

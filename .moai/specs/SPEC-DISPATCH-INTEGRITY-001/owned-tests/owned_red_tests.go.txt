@@ -5,11 +5,11 @@
 // selectors against the cited revision without them), so each ledger cell
 // binds to the tree SHA AND this tracked input.
 //
-// Extraction: verbatim from the t1498 overlay suite cli_all_test.go,
-// imports trimmed to what these four tests use (os, path/filepath,
-// strings, testing, factory, homestate). Helper symbols used here live in
-// the repo's existing internal/cli test files — see README.md for the
-// drop-in procedure and the full helper list.
+// Extraction: gofmt-normalized from the t1498 overlay suite cli_all_test.go
+// (function-body logic verbatim); imports trimmed to what these four tests
+// use (os, path/filepath, strings, testing, factory, homestate). Helper
+// symbols used here live in the repo's existing internal/cli test files —
+// see README.md for the drop-in procedure and the full helper list.
 package cli
 
 import (

@@ -12,7 +12,79 @@ open_operator_decisions: 0 blocking (2 default-applied — decision-index.md)
 
 ## §E.2 Run-phase Evidence
 
-_Pending run-phase (manager-develop)._
+Run-phase owner: manager-develop (card t1595). Tree: worktree
+`.moai/worktrees/t1595`, branch `WT-dispatch-integrity`. Baseline HEAD at
+run entry: `5a91b5758` (re-read before every commit). All measurements are
+env-scrubbed compound invocations
+(`unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test …`),
+worktree-guard refusals named where they occurred, full-suite runs excluded
+(C2).
+
+### M0 — Overlay intake & baseline re-verification (complete)
+
+Pre-flight: `git branch --show-current` → `WT-dispatch-integrity`;
+`git rev-parse --short HEAD` → `5a91b5758`; `go build ./...` → exit 0;
+`GOOS=windows GOARCH=amd64 go build ./...` → exit 0; `golangci-lint run
+--timeout=2m` → `0 issues.` (baseline, no NEW findings after the M0 test
+files either — re-run below); Go-bytes identity vs the classification tree
+verified: `git diff 81786284e..HEAD --stat -- internal/ cmd/` → empty.
+
+Canonical drop-in measured (superset + worktree file + hook file from
+`.moai/reports/t1595/overlay/`), env-scrubbed `-run 'TestReviewFinding'
+-count=1 -v` per package, then trimmed to the owned subset before commit:
+
+| Test | Pkg | §B @ 81786284e | This run @ 5a91b5758 | Divergence |
+|---|---|---|---|---|
+| MergedPRPredecessor (defect 5) | cli | PASS | PASS | none |
+| NominatedOverwritesDependency (defect 4) | cli | PASS | PASS | none |
+| FoldConcurrentWrite (defect 8a) | cli | FAIL | FAIL | none |
+| FoldInterleavedArchiveLoss (defect 8b) | cli | FAIL | FAIL | none |
+| LaneProbe (deferred → t1596) | cli | FAIL 3/3 | FAIL 3/3 | none |
+| ExplicitCandidateFiles (t1596) | cli | FAIL | FAIL | none |
+| DryRunFactoryMigration (t1596) | cli | FAIL | FAIL | none |
+| WhitespaceLanding (t1561) | cli/worktree | PASS | PASS | none |
+| ZoneExistingDotDot (control) | hook | PASS | PASS | none |
+| BackgroundReceiptRecycling (t1562) | hook | FAIL | FAIL | none |
+
+Classification re-affirmed on THIS tree (AC-DI-001): (4)(5) NOT REPRODUCED
+→ regression guards (M2); (8a)(8b) RED-LIVE → fix in M4; (1)(2)(3)(6)(7)
+UNDETERMINED (no overlay test) → RED-first characterization in M1–M3.
+Zero divergences; no re-classification.
+
+M0's authored instruments (committed in the M0 commit as
+`internal/cli/review_observation_test.go` +
+`internal/hook/review_observation_test.go`; foreign tests trimmed per
+decision-index Q2):
+
+- Re-authored `TestReviewFindingFoldInterleavedArchiveLoss` — AC-DI-010's
+  serialized shape: fold B is a separate OS process
+  (re-exec of the test binary through `TestFoldSubprocessHelper`, env-gated,
+  skipped in ordinary runs) started at fold A's archive-write probe; A's
+  critical section is held open until B's whole fold finishes or a
+  60s-bounded wait expires. RED-now measured (EL-009): B completed inside
+  A's window, B's line landed in NEITHER index, A's line duplicated — M4's
+  lock flips it green. Selector anchored; the exit-code capture of the
+  guard-refused compound shape (`${PIPESTATUS[…]}`) was split to a plain
+  invocation + separate exit read — deviation named per §C.
+- Arch-coverage debt instruments (iter-7 debt, dispose_in=run):
+  `TestReviewFindingFoldArchiveConcurrentWrite` (the guard=nil archive
+  write's post-probe window; RED-now EL-010 — the rename published over a
+  concurrent author's bytes) and `TestReviewFindingFoldGuardArchiveChange`
+  (the guard file's post-probe recheck; RED-now EL-011 — the codex gate's
+  data-loss mutant reproduced through the fold verb, line in neither
+  index). M4's post-probe final comparisons flip both green.
+- EL-005 replaced with the measured four elements (control PASS, exit 0,
+  tree 5a91b5758, input e7c0e4791 mirror + the M0-committed drop-in).
+- M0 intake observations recorded: strengthened nomination body GREEN
+  (EL-006), positive control's FIRST compile+run GREEN-at-adoption
+  (EL-007), strengthened fold body RED (EL-008).
+
+Family state after M0 (confirmation only — the per-fix re-measures are
+AC-DI-012's, at each milestone): the owned set runs
+(`^TestReviewFindingMergedPRPredecessor$|…|^TestFoldSubprocessHelper$` →
+3 PASS + 1 SKIP + FoldConcurrentWrite FAIL-as-expected, exit 1 from the
+expected RED); existing families untouched by M0 (no production bytes
+changed in M0).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -21,3 +93,19 @@ _Pending run-phase (manager-develop)._
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _Pending sync-phase (manager-docs)._
+
+## §F Phase 4 Mode Selection
+
+Input parameters: tier=M; scope≈4 production files + 5 owned test sources + SPEC artifacts; domains=1 (Go `internal/cli` + `internal/hook` control mirror); language mix=Go + Markdown artifacts; concurrency benefit=LOW (coding-heavy sequential defect repair, single worktree, M0 gates every later classification); agent-teams prereqs=not requested (never auto-selected).
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| direct | no | multi-milestone semantic fixes exceed direct execution |
+| serial | **YES** | coding-heavy repair — sequential manager-develop delegation per milestone (Anthropic coding-task parallelism caveat) |
+| fanout | no | not multi-domain research; coding-heavy work stays serial |
+| sweep | no | not a uniform mechanical transform; scope is semantic |
+| agent-team | no | explicit-request-only; not requested |
+
+Decision: serial
+
+Justification: the card is coding-heavy defect repair across four production files with a strict milestone order — M0's re-classification gates M1–M4 — on a single worktree under one-writer discipline. The serial envelope (one manager-develop delegation at a time, milestones in plan order) is the default fallback and no other mode's selection criteria are met.

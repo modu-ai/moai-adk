@@ -269,6 +269,22 @@ ledger captures use anchored selectors (`-run '^TestName$'`); the
 EL-001..004 commands below remain verbatim as measured (unanchored —
 over-selection only, and each recorded output shows exactly one test ran).
 
+M0 capture form (run-phase, 2026-10-09): every EL-005..011 command is a
+plain single invocation recorded verbatim; the output was captured by
+redirecting to a file with `> file 2>&1` (the capture mechanism, not part
+of the recorded command), so each verbatim block is the merged
+stdout+stderr of that invocation and the exit code is the command's own.
+Deviation, named not silent: as with the EL-001..004 captures, the session
+env carried the three scrub-target variables; the compound
+`unset … && go test` form ran for every M0 measurement and the plain form
+is what is recorded. The EL-006..011 input binds to
+`internal/cli/review_observation_test.go` as introduced by this SPEC's M0
+commit — at measurement time (tree 5a91b5758) the file was the untracked
+working-tree form whose bytes the M0 commit carries; replaying these
+selectors against a checkout of that commit or later is the durable replay
+path, against 5a91b5758 itself it is not (the D10 hazard, self-fulfilled
+for the M0-introduced inputs).
+
 ### EL-001 — TestReviewFindingFoldConcurrentWrite (RED)
 
 - tree: 544462a8d (Go bytes identical to 81786284e — the plan commit
@@ -344,23 +360,158 @@ PASS
 ok  	github.com/modu-ai/moai-adk/internal/cli	4.245s
 ```
 
-### EL-005 — TestReviewFindingZoneExistingDotDot (baseline PASS — PENDING M0 capture)
+### EL-005 — TestReviewFindingZoneExistingDotDot (baseline PASS — measured M0)
 
-- status: **PENDING** — stated as pending; this is NOT a reconstructed
-  record. No four-element cell exists yet.
-- interim pointer: plan.md §B auxiliary observations — the 2026-10-08
-  env-scrubbed hook-package run observed the control PASS on tree
-  81786284e (`--- PASS: TestReviewFindingZoneExistingDotDot (0.08s)`),
-  but that observation was captured through a piped, tail-bounded
-  command (`… | tail -12`) WITHOUT the exit code as its own field, so it
-  cannot honestly satisfy §2.1's four elements and is not promoted to a
-  cell.
-- M0 capture: drop `zone_control_test.go.txt` per
-  `owned-tests/README.md` (target package `internal/hook`), run the
-  anchored single invocation
-  `go test ./internal/hook -run '^TestReviewFindingZoneExistingDotDot$' -count=1 -v`,
-  and replace this entry with the measured four elements (command, raw
-  stdout, exit code, tree SHA).
+- tree: 5a91b5758 (M0 intake, run-phase; the pending placeholder this
+  entry replaces was stated AS pending, never as a pass — the 2026-10-08
+  PASS observation behind plan §B's interim pointer could not satisfy
+  §2.1's four elements, and this cell is the measured replacement)
+- input: `owned-tests/zone_control_test.go.txt` as of e7c0e4791 (the
+  revision that added the tracked mirror — the named commit, literal SHA
+  stamped per the iter-7 advisory); the committed drop-in
+  `internal/hook/review_observation_test.go` enters the branch in this
+  SPEC's M0 commit and is the replayable form from that commit onward
+- command: `go test ./internal/hook -run '^TestReviewFindingZoneExistingDotDot$' -count=1 -v`
+- exit code: 0
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingZoneExistingDotDot
+    review_observation_test.go:35: OS physical target contents="safe"
+    review_observation_test.go:42: tool=Write decision="deny" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=zone_dir/secret.md"
+    review_observation_test.go:42: tool=Bash decision="deny" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=secret.md"
+--- PASS: TestReviewFindingZoneExistingDotDot (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.642s
+```
+
+### EL-006 — TestReviewFindingNominatedOverwritesDependency (M0 intake — strengthened body, GREEN-at-adoption)
+
+- tree: 5a91b5758 (M0 intake; the strengthened two-arm body's first
+  compile+run on THIS tree — re-affirms the codex gate's observed PASS
+  at HEAD, AC-DI-005's recorded classification)
+- input: `internal/cli/review_observation_test.go` (this SPEC's M0
+  commit — the strengthened D13/D15 body, gofmt-normalized from the
+  mirror's post-e725633e0 forms)
+- command: `go test ./internal/cli -run '^TestReviewFindingNominatedOverwritesDependency$' -count=1 -v`
+- exit code: 0
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingNominatedOverwritesDependency
+    review_observation_test.go:62: err=factory next: predecessor card not merged: t1 has not reached merged-local (git-flow) or merged-pr (github-flow) t3 state=picked after="t1"; original t1 state=picked
+--- PASS: TestReviewFindingNominatedOverwritesDependency (1.84s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.733s
+```
+
+### EL-007 — TestReviewFindingNominatedLeasesAfterPredecessorMerges (M0 intake — positive control, GREEN-at-adoption)
+
+- tree: 5a91b5758 (M0 intake; the D13 positive control's FIRST
+  compile+run — its M0 RED/GREEN status was genuinely undetermined until
+  this capture, per AC-DI-005)
+- input: `internal/cli/review_observation_test.go` (this SPEC's M0 commit)
+- command: `go test ./internal/cli -run '^TestReviewFindingNominatedLeasesAfterPredecessorMerges$' -count=1 -v`
+- exit code: 0
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingNominatedLeasesAfterPredecessorMerges
+    review_observation_test.go:99: positive control: err=<nil> t3 state=leased after="t1"
+--- PASS: TestReviewFindingNominatedLeasesAfterPredecessorMerges (2.07s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.094s
+```
+
+### EL-008 — TestReviewFindingFoldConcurrentWrite (RED — strengthened body, this tree)
+
+- tree: 5a91b5758 (M0 intake; the strengthened D12 body's first compile+run
+  on THIS tree — re-affirms the original-body RED of EL-001 and extends it:
+  all three clauses fire)
+- input: `internal/cli/review_observation_test.go` (this SPEC's M0 commit)
+- command: `go test ./internal/cli -run '^TestReviewFindingFoldConcurrentWrite$' -count=1 -v`
+- exit code: 1
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingFoldConcurrentWrite
+    review_observation_test.go:126: err=<nil> final bytes="fold output\n"
+    review_observation_test.go:132: concurrent update between recheck and rename lost without refusal
+    review_observation_test.go:135: concurrent author's bytes were not preserved after refusal; final = "fold output\n"
+--- FAIL: TestReviewFindingFoldConcurrentWrite (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.762s
+FAIL
+```
+
+### EL-009 — TestReviewFindingFoldInterleavedArchiveLoss (RED — RE-AUTHORED serialized body)
+
+- tree: 5a91b5758 (M0; the re-authored AC-DI-010 body's RED-now —
+  fold B a separate OS process completing inside fold A's held-open
+  transaction window; B's completed line lands in neither index and
+  A's line is DUPLICATED across both — the loss plus the duplicate the
+  exactly-once clause forbids; the ordering clause shows B's process
+  finished before A's transaction closed)
+- input: `internal/cli/review_observation_test.go` (this SPEC's M0 commit)
+- command: `go test ./internal/cli -run '^TestReviewFindingFoldInterleavedArchiveLoss$' -count=1 -v`
+- exit code: 1
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingFoldInterleavedArchiveLoss
+    review_observation_test.go:215: fold A err=memory fold: MEMORY.md changed since the plan was computed — aborting without writing; fold B err=<nil> in-window=true; line t9003 in MEMORY=false archive=false; line t9001 in MEMORY=true archive=true
+    review_observation_test.go:225: fold B's process finished at 2026-10-09 04:29:35.891342 +0900 KST m=+0.146701959, before fold A's transaction closed at 2026-10-09 04:29:35.893391 +0900 KST m=+0.148751584 — it did not wait for the store lock
+    review_observation_test.go:228: completed fold B's line is present 0 times across the indexes after both folds terminated, want exactly 1
+    review_observation_test.go:231: completed fold A's line is present 2 times across the indexes after both folds terminated, want exactly 1
+--- FAIL: TestReviewFindingFoldInterleavedArchiveLoss (0.06s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.359s
+FAIL
+```
+
+### EL-010 — TestReviewFindingFoldArchiveConcurrentWrite (RED — arch-coverage instrument, archive write path)
+
+- tree: 5a91b5758 (M0; the iter-7 arch-coverage debt's archive-write
+  instrument: the fold's archive append — the guard=nil write — renamed
+  over a non-cooperating concurrent author's bytes with no refusal)
+- input: `internal/cli/review_observation_test.go` (this SPEC's M0 commit)
+- command: `go test ./internal/cli -run '^TestReviewFindingFoldArchiveConcurrentWrite$' -count=1 -v`
+- exit code: 1
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingFoldArchiveConcurrentWrite
+    review_observation_test.go:267: fold A err=<nil> archive="---\nname: a\ndescription: d\ntype: reference\n---\n- [a](feedback_a.md) — one\n- [b](feedback_b.md) — two\n- [c](feedback_c.md) — three\n- [t9001 alpha card — done, merged](project_card_t9001_alpha.md) — merged; detail lives in the topic file\n"
+    review_observation_test.go:269: the archive rename published over a concurrent author's bytes without refusal
+    review_observation_test.go:272: concurrent author's archive bytes were not preserved; archive = "---\nname: a\ndescription: d\ntype: reference\n---\n- [a](feedback_a.md) — one\n- [b](feedback_b.md) — two\n- [c](feedback_c.md) — three\n- [t9001 alpha card — done, merged](project_card_t9001_alpha.md) — merged; detail lives in the topic file\n"
+--- FAIL: TestReviewFindingFoldArchiveConcurrentWrite (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.834s
+FAIL
+```
+
+### EL-011 — TestReviewFindingFoldGuardArchiveChange (RED — arch-coverage instrument, guard post-probe window)
+
+- tree: 5a91b5758 (M0; the iter-7 arch-coverage debt's guard instrument —
+  the codex gate's data-loss mutant reproduced through the fold verb: a
+  non-cooperating author stripped the appended line from the archive after
+  the guard's byte comparison; MEMORY.md renamed over it and the line is
+  present in NEITHER index)
+- input: `internal/cli/review_observation_test.go` (this SPEC's M0 commit)
+- command: `go test ./internal/cli -run '^TestReviewFindingFoldGuardArchiveChange$' -count=1 -v`
+- exit code: 1
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingFoldGuardArchiveChange
+    review_observation_test.go:321: fold A err=<nil>; card line in MEMORY=false archive=false
+    review_observation_test.go:323: MEMORY.md renamed over a concurrent archive change the guard no longer sees
+    review_observation_test.go:329: the folded card's line is present 0 times across the indexes after the concurrent archive change, want exactly 1
+--- FAIL: TestReviewFindingFoldGuardArchiveChange (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.748s
+FAIL
+```
 
 ## Quality gates and closure
 
