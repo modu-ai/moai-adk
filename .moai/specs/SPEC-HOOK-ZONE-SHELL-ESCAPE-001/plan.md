@@ -82,7 +82,7 @@ no deviation:
 ```bash
 git branch --show-current && git rev-parse --short HEAD   # WT-zone-gate-defects @ 9dbe40c0a (or a descendant carrying only plan docs)
 go build ./... && GOOS=windows go build ./...              # both exit 0
-unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellAnsiCNulTruncationBypass|TestCheckProtectedZoneShellHexRawByteBypass|TestZoneUnescapeAnsiCNoDigitHexStaysLiteral' -count=1   # exit 1 — RED re-confirmed at the committed baseline
+unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run '^(TestCheckProtectedZoneShellAnsiCNulTruncationBypass|TestCheckProtectedZoneShellHexRawByteBypass|TestZoneUnescapeAnsiCNoDigitHexStaysLiteral)$' -count=1   # exit 1 — RED re-confirmed at the committed baseline
 ```
 
 ## §D Constraints

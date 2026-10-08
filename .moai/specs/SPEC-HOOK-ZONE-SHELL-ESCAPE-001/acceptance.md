@@ -27,6 +27,8 @@ author: manager-spec
 
 ### AC-HZS-001 — NUL-truncation bypass denied (release-blocking; REQ-HZS-001)
 
+Maps REQ-HZS-001
+
 **Given** a project root whose manifest declares `probe_zone: paths: ["zone_dir/"]`
 with a populated `zone_dir` (marker present),
 **When** the Bash guard receives `rm -r zone_dir$'\x00/sub'`,
@@ -47,6 +49,8 @@ Two-cell adoption:
 
 ### AC-HZS-002 — Mutant probe: NUL truncating OUTSIDE the zone stays allowed (control; REQ-HZS-001)
 
+Maps REQ-HZS-001
+
 **Given** the AC-HZS-001 fixture plus an unprotected `docs` directory,
 **When** the Bash guard receives `rm -r docs$'\x00/zone_dir'` (truncates to
 `docs` — outside the zone),
@@ -62,6 +66,8 @@ business.
   blanket-denies every NUL-bearing command fails HERE, not on AC-HZS-001.
 
 ### AC-HZS-003 — Raw-byte `\x` path bypass denied (release-blocking; REQ-HZS-002)
+
+Maps REQ-HZS-002
 
 **Given** a project root whose manifest declares a protected directory whose
 name is the multi-byte spelling `존` (bytes `ec a1 b4`), with a marker inside,
@@ -83,6 +89,8 @@ Two-cell adoption:
 
 ### AC-HZS-004 — Control: the direct spelling stays denied (control; REQ-HZS-002/006)
 
+Maps REQ-HZS-002, REQ-HZS-006
+
 **Given** the AC-HZS-003 fixture,
 **When** the Bash guard receives `rm 존/marker.md` (the same target written
 literally),
@@ -97,6 +105,8 @@ confined to the decoder.
 - **Cell 2 (post-repair green)**: M2 keeps it denied.
 
 ### AC-HZS-005 — No-digit escapes render literally, no panic (release-blocking; REQ-HZS-004)
+
+Maps REQ-HZS-004
 
 **Given** the decoder surface `zoneUnescapeAnsiC` (panic contained per row by
 the instrument's helper),
@@ -117,6 +127,8 @@ Two-cell adoption:
 
 ### AC-HZS-006 — The walk completes on malformed escape text (release-blocking; REQ-HZS-005)
 
+Maps REQ-HZS-005
+
 **Given** the zone fixture of AC-HZS-001,
 **When** the Bash guard receives a command carrying `$'\x'` (a no-digit
 escape embedded in a real call),
@@ -136,6 +148,8 @@ instead of crashing the binary.
 
 ### AC-HZS-007 — `\u`/`\U` code-point rendering pinned (regression pin; REQ-HZS-003)
 
+Maps REQ-HZS-003
+
 **Given** the decoder surface,
 **When** `⊇` decodes,
 **Then** the result is the three UTF-8 bytes `e2 a8 87` (the measured bash
@@ -148,6 +162,8 @@ cannot regress it. Green-now by design (the current decoder is correct for
 - **Cell 2**: green after M2 and at M3 — the split keeps the code-point arm.
 
 ### AC-HZS-008 — Family green + windows build (regression guard; REQ-HZS-006)
+
+Maps REQ-HZS-006
 
 **Given** the M2 repair,
 **When** `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 ./internal/hook/` runs,
