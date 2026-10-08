@@ -1583,35 +1583,46 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	overCap := len(w.cands) > zoneCandidateCap
 	if overCap {
 		// a candidate set beyond the cap cannot be judged soundly at this
-		// scale — denied fail-closed, the bounded-walk philosophy (gate
-		// round 17 P2). Fail-closed fires IMMEDIATELY: no per-candidate
-		// resolution of an over-cap set (gate rounds 29/30 P2)
-		w.unbounded = true
+		// scale — denied fail-closed REGARDLESS of manifest state: a set
+		// too large to verify is unverifiable whether or not a manifest
+		// exists, and the compiled baseline floor alone (frozenZonePrefixes
+		// + frozenInstructionFiles) justifies protection (gate round 32
+		// P1). Fail-closed fires IMMEDIATELY: no per-candidate resolution
+		// of an over-cap set (gate rounds 29/30 P2)
+		reason := zoneDenyReason(agentID, "category", "loop-unbounded", "over-cap")
+		h.recordZoneAudit(root, zoneAuditRow{
+			Identity: agentID, Tool: "Bash", Path: "over-cap",
+			Category: "loop-unbounded", Decision: "deny", ManifestState: load.State,
+		})
+		return reason
 	}
-	if !overCap {
-		for _, cand := range w.cands {
-			forms := resolveZoneTarget(root, cand)
-			category, covered := zoneShellCovered(forms, load, root)
-			if !covered {
-				continue
-			}
-			display := cand
-			if len(forms) > 0 {
-				display = forms[0].Display
-			}
-			reason := zoneDenyReason(agentID, "category", category, display)
-			h.recordZoneAudit(root, zoneAuditRow{
-				Identity: agentID, Tool: "Bash", Path: display,
-				Category: category, Decision: "deny", ManifestState: load.State,
-			})
-			return reason
+	for _, cand := range w.cands {
+		forms := resolveZoneTarget(root, cand)
+		category, covered := zoneShellCovered(forms, load, root)
+		if !covered {
+			continue
 		}
+		display := cand
+		if len(forms) > 0 {
+			display = forms[0].Display
+		}
+		reason := zoneDenyReason(agentID, "category", category, display)
+		h.recordZoneAudit(root, zoneAuditRow{
+			Identity: agentID, Tool: "Bash", Path: display,
+			Category: category, Decision: "deny", ManifestState: load.State,
+		})
+		return reason
 	}
 
-	if w.unbounded && load.State != config.ZoneStateAbsent {
+	if w.unbounded {
 		// a loop whose directory states outgrew the fixed-point bound cannot
 		// be verified against the zone: the mutating command is denied fail-
-		// closed rather than allowed on an incomplete walk (round 9 P1)
+		// closed rather than allowed on an incomplete walk (round 9 P1).
+		// REGARDLESS of manifest state — the same Absent carve-out hole as
+		// the over-cap deny: an unverifiable walk in a manifest-less
+		// project still skips the compiled baseline floor that protects
+		// AGENTS.md and the frozen instruction files (gate round 32, sibling
+		// audit)
 		reason := zoneDenyReason(agentID, "category", "loop-unbounded", "loop")
 		h.recordZoneAudit(root, zoneAuditRow{
 			Identity: agentID, Tool: "Bash", Path: "loop",

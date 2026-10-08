@@ -1199,3 +1199,29 @@ func TestCheckProtectedZoneShellInvalidManifestRedirectAllow(t *testing.T) {
 	}
 	t.Logf("swept=%d", 1)
 }
+
+// TestCheckProtectedZoneShellOverCapBaselineFloorDenied — gate round 32
+// P1: the over-cap fail-closed deny applies REGARDLESS of manifest state.
+// In a manifest-less project an over-cap candidate set previously skipped
+// ALL path judging — including the compiled baseline floor that protects
+// AGENTS.md and the frozen instruction files WITHOUT any manifest — and
+// fell to the Absent allow while `rm -f AGENTS.md` removed the protected
+// file. The row asserts the fail-closed DENY in a manifest-less project.
+func TestCheckProtectedZoneShellOverCapBaselineFloorDenied(t *testing.T) {
+	root := newZoneRoot(t, "", "") // no manifests: ZoneStateAbsent
+	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h := zoneTestHandler(t, root)
+	var b strings.Builder
+	b.WriteString("rm -f AGENTS.md")
+	for i := 0; i < 4096; i++ {
+		b.WriteString(" p")
+		b.WriteString(strconv.Itoa(i))
+	}
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": b.String()})
+	if d != DecisionDeny || !strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("over cap baseline floor denied: decision=%q reason=%q, want deny — an over-cap candidate set is unverifiable whether or not a manifest exists, and the compiled baseline floor protects AGENTS.md without one", b.String(), r)
+	}
+	t.Logf("swept=%d", 1)
+}

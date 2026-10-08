@@ -1186,6 +1186,65 @@ the deny sound and the row unadoptable; the committed executable IS the
 dual word itself. Fixture: narrowed marker manifest. Inputs
 transport-verified: whole-file NUL-byte scan zero, doubled backslash.
 
+### Gate round 32 — M2.13 over-cap fail-closed regardless of manifest state (2026-10-09)
+
+A REAL P1 on the M2.12 immediate cap (reviewer: base deny → current allow,
+real bash deleted AGENTS.md): the over-cap fail-closed return was GATED on
+`load.State != ZoneStateAbsent` — in a manifest-less project an over-cap
+candidate set skipped ALL path judging, INCLUDING the compiled baseline
+floor that protects AGENTS.md and the frozen instruction files WITHOUT any
+manifest, and fell to the Absent allow. Repro: `rm -f AGENTS.md` + 4,096
+distinct harmless paths.
+
+**Regression row — RED under the M2.12 tip (`8dd61db7d` + the row,
+uncommitted at measurement):**
+
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellOverCapBaselineFloorDenied' -count=1 -v`
+- **Exit code**: `1`
+- **Observed (verbatim, decision line; the 3,995-path enumeration
+  abbreviated)**:
+
+```
+    protected_zone_shell_repro_test.go:1224: over cap baseline floor denied: decision="rm -f AGENTS.md p0 p1 … p3995" reason="", want deny — an over-cap candidate set is unverifiable whether or not a manifest exists, and the compiled baseline floor protects AGENTS.md without one
+--- FAIL: TestCheckProtectedZoneShellOverCapBaselineFloorDenied (0.03s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.740s
+```
+
+**M2.13 remedy — the over-cap deny applies REGARDLESS of manifest state
+(GREEN record).** Shape: the immediate cap site returns the fail-closed
+deny directly (category `loop-unbounded`, path `over-cap`, audit row
+recorded with the actual ManifestState) — before any Absent handling. The
+narrower first-cap-slice shape (judge the first cap-sized slice against
+the baseline floor before denying) was not taken: the unconditional
+deny is the stronger sound closure and the reviewer's shape demands it.
+
+**Sibling audit — CONFIRMED and closed in the same commit.** The OLD
+unbounded-deny gate (`w.unbounded && load.State != ZoneStateAbsent`, the
+pre-M2.12 fixed-point carve-out) has the SAME hole: `for ((;;)); do rm
+AGENTS.md; done` in a manifest-less project → unbounded → absent → the
+baseline floor unprotected. Fixed identically: the unbounded deny is now
+UNCONDITIONAL (the Absent carve-out removed). Note for the orchestrator:
+this alters the documented REQ-SIPZ-010 degrade-visibly behavior for
+unbounded walks in manifest-less projects — the fail-closed philosophy
+and the baseline-floor rationale justify it; flagged for the sync audit.
+
+- **Command** (all 38 instrument tests): `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test
+  ./internal/hook -run 'TestCheckProtectedZoneShell|TestZoneUnescapeAnsiC|TestZoneWordText' -count=1`
+- **Exit code**: `0`
+- **Observed (verbatim)**: `ok  	github.com/modu-ai/moai-adk/internal/hook	2.541s`
+  (38/38 PASS — the gate-32 row flipped to DENY; the 37 earlier rows hold).
+- **Full package regression (M2.13)**: `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1
+  -timeout=25m -v ./internal/hook/` — exit 0, verbatim tail `PASS` / `ok
+  github.com/modu-ai/moai-adk/internal/hook	267.889s` /
+  `PACKAGE_POST32_EXIT=0`; 3675 RUN lines, ZERO `--- FAIL` lines. Slot
+  lease `hook-suite` held for the run, released after.
+- Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
+  `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
+  clean; family coverage `13.8%` (all-rows selector).
+
 ### Gate rounds 29/30/31 — M2.12 subcommand binding, linear dedup, immediate cap (2026-10-09)
 
 Five findings folded: (1) P1 git SUBCOMMAND word generation binding —
