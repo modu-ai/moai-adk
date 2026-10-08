@@ -370,6 +370,6 @@ func newFactoryApproveCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&runID, "run", "", "factory run id the receipt binds")
-	cmd.Flags().StringVar(&issuer, "issuer", "", "leader label recorded on the receipt (default: MOAI_FACTORY_WORKER, else \"leader\")")
+	cmd.Flags().StringVar(&issuer, "issuer", "", "leader label recorded on the receipt (default: "+config.EnvMoaiFactoryWorker+", else \"leader\")")
 	return cmd
 }
