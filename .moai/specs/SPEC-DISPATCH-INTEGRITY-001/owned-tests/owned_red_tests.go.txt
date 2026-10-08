@@ -1,0 +1,114 @@
+// Mirror of the four t1595-owned RED test sources measured in the
+// acceptance.md evidence ledger (EL-001..004). At measurement time these
+// were untracked overlay drop-ins (plan-audit iter-2 D10: the codex gate
+// demonstrated `no tests to run`, exit 0, when replaying the recorded
+// selectors against the cited revision without them), so each ledger cell
+// binds to the tree SHA AND this tracked input.
+//
+// Extraction: verbatim from the t1498 overlay suite cli_all_test.go,
+// imports trimmed to what these four tests use (os, path/filepath,
+// strings, testing, factory, homestate). Helper symbols used here live in
+// the repo's existing internal/cli test files — see README.md for the
+// drop-in procedure and the full helper list.
+package cli
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
+)
+
+func TestReviewFindingMergedPRPredecessor(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStateHold, factory.BacklogStatePicked)
+	for _, id := range []string{"t1", "t2"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	}
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardMergedPR}, homestate.Card{CardID: "t2", State: homestate.CardPicked, HintAfter: "t1"})
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+	got := fbLeasedCard(t, root, "lane-1")
+	t.Logf("predecessor=merged-pr; factory next leased=%q", got)
+	if got != "t2" {
+		t.Errorf("merged-pr predecessor still blocks t2")
+	}
+}
+
+func TestReviewFindingNominatedOverwritesDependency(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStateHold, factory.BacklogStateHold, factory.BacklogStatePicked)
+	for _, id := range []string{"t1", "t2", "t3"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	}
+	fbSeedFiles(t, store, "t2", "internal/template/catalog.yaml")
+	fbSeedFiles(t, store, "t3", "internal/template/catalog.yaml")
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked}, homestate.Card{CardID: "t2", State: homestate.CardMergedPR}, homestate.Card{CardID: "t3", State: homestate.CardPicked, HintAfter: "t1"})
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+	sdLaneEnv(t, "lane-1", "")
+	_, _, err := runFactory(t, "next", "--card", "t3", "--run", fcRun)
+	c := fcCard(t, root, "t3")
+	t.Logf("err=%v t3 state=%s after=%q; original t1 state=%s", err, c.State, c.HintAfter, fcCard(t, root, "t1").State)
+	if c.HintAfter != "t1" {
+		t.Error("nominated lease replaced the existing dependency with its computed hub hint")
+	}
+}
+
+func TestReviewFindingFoldConcurrentWrite(t *testing.T) {
+	dir := t.TempDir()
+	name := "MEMORY.md"
+	old := []byte("original\n")
+	if err := os.WriteFile(filepath.Join(dir, name), old, 0644); err != nil {
+		t.Fatal(err)
+	}
+	prev := memoryFoldSeam
+	t.Cleanup(func() { memoryFoldSeam = prev })
+	memoryFoldSeam.orderProbe = func(stage string) {
+		if stage == "bytes-done" {
+			if err := os.WriteFile(filepath.Join(dir, name), []byte("concurrent author's new memory\n"), 0644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	err := atomicWriteFoldFile(dir, name, []byte("fold output\n"), old, nil, nil, nil)
+	got, e := os.ReadFile(filepath.Join(dir, name))
+	if e != nil {
+		t.Fatal(e)
+	}
+	t.Logf("err=%v final bytes=%q", err, got)
+	if err == nil {
+		t.Error("concurrent update between recheck and rename lost without refusal")
+	}
+}
+
+func TestReviewFindingFoldInterleavedArchiveLoss(t *testing.T) {
+	line2 := "- [t9003 other card](project_card_t9003_other.md)"
+	files := minimalFiles()
+	files[fixtureArchive] = minimalArchive()
+	files["project_card_t9003_other.md"] = "---\n---\nother\n"
+	dir := seedFoldStore(t, minimalMemory(line9001)+line2+"\n", files)
+	prev := memoryFoldSeam
+	t.Cleanup(func() { memoryFoldSeam = prev })
+	// Pause fold A after the archive comparison; fold B completes before A's rename.
+	memoryFoldSeam.orderProbe = func(stage string) {
+		if stage != "bytes-done" {
+			return
+		}
+		memoryFoldSeam = foldTestSeam{}
+		second := runMemoryFold(t, "--card", "t9003", "--yes", "--dir", dir)
+		if second.err != nil {
+			t.Fatalf("fold B did not complete: %v", second.err)
+		}
+	}
+	first := runMemoryFold(t, "--card", "t9001", "--yes", "--dir", dir)
+	mem := foldRead(t, dir, "MEMORY.md")
+	archive := foldRead(t, dir, fixtureArchive)
+	t.Logf("fold A err=%v; completed fold B line in MEMORY=%v archive=%v", first.err, strings.Contains(mem, line2), strings.Contains(archive, line2))
+	if !strings.Contains(mem, line2) && !strings.Contains(archive, line2) {
+		t.Errorf("completed fold B's line disappeared from both indexes after fold A resumed")
+	}
+}

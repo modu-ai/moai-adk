@@ -1,7 +1,7 @@
 ---
 id: SPEC-DISPATCH-INTEGRITY-001
 title: "Factory dispatch and bundle integrity — eight P1 review findings"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-10-09
 updated: 2026-10-09
@@ -44,6 +44,17 @@ tier: M
   merge); §2.1 four-element evidence ledger added for the baseline cells;
   lane-probe deferral made two-sided via the tracked `deferred/` archive
   (owner card t1596).
+- v0.1.2 (2026-10-09) — plan-audit round-2 repairs (iter-2 delta 0.90,
+  D1–D8 verified RESOLVED; D9/D10 blocking): AC-DI-009 Given/Then and plan
+  §G/M4 state the consistent post-fix write geometry explicitly (byte
+  comparison cmp1 → seam probe → NEW final byte comparison → rename;
+  "final byte comparison" is a role the post-probe comparison takes — a
+  byte comparison must follow the probe in every acceptable geometry;
+  gate option (a), strong AC kept); the evidence ledger gains
+  measurement-input binding — the four owned test sources are tracked at
+  `owned-tests/` (mirror + drop-in procedure), closing the replay hazard
+  (`no tests to run`, exit 0, demonstrated by the codex gate); new ledger
+  captures use anchored selectors.
 
 ## Requirements
 

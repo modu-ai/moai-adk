@@ -120,7 +120,10 @@ M1 first.
   the current tree, and every baseline cell — including the re-authored
   AC-DI-010 body's RED-now — captured into the acceptance.md evidence
   ledger in the §2.1 four-element form (single-invocation command, raw
-  stdout, exit code, tree SHA).
+  stdout, exit code, tree SHA), with anchored selectors
+  (`-run '^TestName$'`, D11) and the measurement input named — the
+  canonical committed drop-in per `owned-tests/README.md`, never the tree
+  SHA alone (D10).
 - **M1 — Bundle predecessor semantics, defects (1)(2)(3)** (P1). (a) Author
   characterization tests RED-first into the committed internal/cli test file
   from the existing helper surface (`fcFixture`, `fcQueue`, `fcClassify`,
@@ -147,10 +150,12 @@ M1 first.
   families.
 - **M4 — Memory-fold cross-process serialization, defect (8)** (P1, LIVE).
   Fix: a cross-process lock spanning the fold's whole write transaction
-  (both index writes inside one lock hold — §B mechanism note) while the
-  byte-recheck remains the last step before each rename (it is the only
-  defense against a non-cooperating writer — the FoldConcurrentWrite author
-  writes without any lock). Re-author the committed
+  (both index writes inside one lock hold — §B mechanism note), with the
+  write geometry brought to the consistent four-step shape — byte
+  comparison (cmp1) → seam probe → NEW final byte comparison → rename —
+  the post-probe comparison being the last check before each rename (D9;
+  it is the only defense against a non-cooperating writer — the
+  FoldConcurrentWrite author writes without any lock). Re-author the committed
   `TestReviewFindingFoldInterleavedArchiveLoss` body to the serialized
   shape AC-DI-010 now pins: fold B runs as a separate process with its own
   lock acquisition, its wait and completion are observed from B's own
@@ -174,16 +179,20 @@ M1 first.
 
 - Do NOT satisfy `TestReviewFindingFoldConcurrentWrite` by relocating the
   `orderProbe("bytes-done")` call site — in EITHER direction: not UPSTREAM
-  of the final byte comparison (the existing recheck would then refuse the
-  test's write while the post-recheck→rename window — where the original
-  defect manifested — stays unguarded), and not DOWNSTREAM into a window a
-  real concurrent writer could not occupy. The call site stays pinned
-  between the final byte comparison and the rename (the memory_fold.go
-  seam). The refusal must be real detection at that boundary; the
-  guarantee is scoped to the last observable byte comparison, and the
-  irreducible TOCTOU tail between it and the rename is AC-DI-009's stated
-  residual risk — do not absolutize the guarantee and do not weaken the
-  lock span (AC-DI-010) to make an old test body pass.
+  of the byte comparison that precedes it (that existing recheck would
+  then refuse the test's write while the post-comparison window — where
+  the original defect manifested — stays unguarded), and not DOWNSTREAM
+  into a window a real concurrent writer could not occupy. The post-fix
+  write geometry is fixed: byte comparison (cmp1) → seam probe → NEW final
+  byte comparison → rename. A byte comparison must follow the probe in
+  every acceptable geometry, and that follower IS the last check before
+  the rename — "final byte comparison" is a ROLE the post-probe comparison
+  takes, not a fixed call site (plan-audit iter-2 D9; codex gate 재발화 2,
+  gate option (a)). The refusal must be real detection at that boundary;
+  the guarantee is scoped to the comparison that follows the probe, and
+  the irreducible TOCTOU tail between it and the rename is AC-DI-009's
+  stated residual risk — do not absolutize the guarantee and do not weaken
+  the lock span (AC-DI-010) to make an old test body pass.
 - Do NOT re-implement (4) or (5) — they measure PASS on this tree;
   re-implementing double-writes behavior already pinned.
 - Do NOT commit foreign cards' RED tests (t1596 ×2, t1562 ×1; t1561's green

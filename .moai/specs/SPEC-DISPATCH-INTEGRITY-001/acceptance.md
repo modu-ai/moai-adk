@@ -112,28 +112,38 @@ observes zero mutation — no push, no pull request, no auto-merge request.
 Two-cell: RED-now observed in M3; green path M3 (expected regression
 guard). Trace: REQ-DISPATCH-007.
 
-## AC-DI-009 — Defect (8a): concurrent write detected at the last observable byte comparison
+## AC-DI-009 — Defect (8a): concurrent write detected by the comparison that follows the probe
 
 **Given** the fold seam injects a NON-cooperating concurrent author write
-(plain `os.WriteFile` — it honors no lock) at the pinned seam point — the
-`orderProbe("bytes-done")` call site, which remains between the final byte
-comparison and the rename —
+(plain `os.WriteFile` — it honors no lock) at the pinned
+`orderProbe("bytes-done")` call site — which TODAY sits between the
+current final byte comparison and the rename, and AFTER the fix sits
+between that comparison and the ADDED final comparison. The post-fix
+write geometry is: byte comparison (cmp1) → seam probe → NEW final byte
+comparison → rename —
 **When** the fold write completes,
-**Then** the fold returns an error: the concurrent change is detected at
-the last observable byte comparison, and the file carries the concurrent
-author's bytes (no silent overwrite observable at that boundary).
-(`TestReviewFindingFoldConcurrentWrite`; evidence ledger EL-001.)
+**Then** the concurrent change injected at the seam is detected by the
+byte comparison that FOLLOWS the injection — the new last comparison
+before the rename — the fold returns an error, and the file carries the
+concurrent author's bytes (no silent overwrite observable at that
+boundary). "Final byte comparison" is a ROLE: in every acceptable
+geometry, a byte comparison follows the probe and is the last check
+before the rename. (`TestReviewFindingFoldConcurrentWrite`; evidence
+ledger EL-001.)
 
 Guarantee scope — residual risk, stated explicitly rather than
-absolutized: the guarantee extends to the last byte comparison, not to the
-rename itself. An irreducible TOCTOU tail remains between that comparison
-and the rename against a writer that bypasses every protocol; eliminating
-it entirely would require the concurrent writer to honor the shared write
-protocol, which nothing can force on a raw `os.WriteFile` author. The
-cross-process lock (REQ-DISPATCH-008) closes the tail for cooperating
-writers; the last-comparison detection is the defense for the rest.
-Baseline cell: EL-001 (RED, exit 1, trees 81786284e/544462a8d); green
-path: M4 flips it green. Trace: REQ-DISPATCH-008.
+absolutized: the guarantee extends to the comparison that follows the
+probe, not to the rename itself. An irreducible TOCTOU tail remains
+between that comparison and the rename against a writer that bypasses
+every protocol — the codex gate's standalone reproduction (a held
+exclusive flock, with the non-cooperating write still overwritten by the
+rename) is the empirical record of that tail. Eliminating it entirely
+would require the concurrent writer to honor the shared write protocol,
+which nothing can force on a raw `os.WriteFile` author. The cross-process
+lock (REQ-DISPATCH-008) closes the tail for cooperating writers; the
+follow-the-probe detection is the defense for the rest. Baseline cell:
+EL-001 (RED, exit 1, trees 81786284e/544462a8d); green path: M4 flips it
+green. Trace: REQ-DISPATCH-008.
 
 ## AC-DI-010 — Defect (8b): a waiting fold completes without losing a completed fold's line
 
@@ -206,6 +216,18 @@ queue, and their outputs are byte-identical to the env-scrubbed records of
 2026-10-08 (plan §B). Entries for the M1–M3 characterization tests and the
 re-authored AC-DI-010 body are added at their first run (M0/M1–M3), each
 in this four-element form.
+
+Measurement-input binding (round-2, D10): the tree SHA alone does not make
+a cell replayable — the four owned test sources were untracked drop-ins at
+measurement time, and the codex gate demonstrated the hazard (`no tests to
+run`, exit 0, replaying the selectors against the cited revision without
+them). The four owned sources are tracked at `owned-tests/owned_red_tests.go.txt`
+(drop-in procedure: `owned-tests/README.md`); every cell binds to the
+tree SHA AND that input, and M0's re-measurement from the canonical
+committed drop-in is the durable re-pin. Selector anchoring (D11): new
+ledger captures use anchored selectors (`-run '^TestName$'`); the
+EL-001..004 commands below remain verbatim as measured (unanchored —
+over-selection only, and each recorded output shows exactly one test ran).
 
 ### EL-001 — TestReviewFindingFoldConcurrentWrite (RED)
 
