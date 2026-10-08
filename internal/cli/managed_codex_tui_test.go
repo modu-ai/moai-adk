@@ -78,8 +78,8 @@ const (
 	// tuiQuiet is the "exactly once / nothing happens" window.
 	tuiQuiet = 500 * time.Millisecond
 	// tuiResumeHelpFixture is the vendored `codex resume --help` text of
-	// codex-cli 0.160.0.
-	tuiResumeHelpFixture = "testdata/codex-0.160.0/resume-help.txt"
+	// codex-cli 0.161.0.
+	tuiResumeHelpFixture = "testdata/codex-0.161.0/resume-help.txt"
 )
 
 // ---------------------------------------------------------------- fake codex
@@ -1057,7 +1057,7 @@ func TestManagedCodexRemoteSupportProbe(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !managedCodexRemoteSupport(string(b)) {
-			t.Errorf("the vendored codex-cli 0.160.0 resume help must be read as supporting --remote and --remote-auth-token-env")
+			t.Errorf("the vendored codex-cli 0.161.0 resume help must be read as supporting --remote and --remote-auth-token-env")
 		}
 	})
 	t.Run("no_options_unsupported", func(t *testing.T) {

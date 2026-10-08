@@ -1,6 +1,6 @@
 # SPEC-CODEX-CONFORMANCE-001 — progress.md
 
-status: draft
+status: in-progress
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -13,7 +13,58 @@ open_items: decision-index Q4 (EVIDENCE-NEEDED — 0.161.0 login-status 출력; 
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — fixture 재생성 + 소비자 이전 (2026-10-09, tree dce9596be 이후 본 카드 브랜치)
+
+**생성 환경 관측 (npx -y @openai/codex@0.161.0, lane 지정 핀)**:
+
+- `npx -y @openai/codex@0.161.0 --version` → stdout `codex-cli 0.161.0`, exit 0 (본 실행 재관측; 레인 선행 실측과 일치).
+- `npx -y @openai/codex@0.161.0 app-server generate-json-schema --out /tmp/t1607-m1/schema-staging` → exit 0. 출력: 최상위 39파일 + `v1/`(2파일) + `v2/`(274파일) = 총 315파일, 4.3MB. 소비 8종 Response 스키마는 최상위에 전부 존재(레인 선행 관측과 일치; plan §A "실파일 39개"는 최상위 기준).
+- **소비 8종 바이트 동일성**: `cmp`로 0.160.0 vendored 세트와 전수 대조 → 8종 전부 IDENTICAL (ApplyPatchApprovalResponse/CommandExecutionRequestApprovalResponse/DynamicToolCallResponse/ExecCommandApprovalResponse/FileChangeRequestApprovalResponse/JSONRPCError/McpServerElicitationRequestResponse/PermissionsRequestApprovalResponse). 0.160.0 → 0.161.0 응답 스키마 불변 — M1 전환이 동작 보존임을 기계가 증명.
+- **REQ-CONF-004 판정 재료 — resume --help 옵션 집합 관측**: `npx -y @openai/codex@0.161.0 resume --help` → exit 0, 115행. `--remote <ADDR>`(37행)와 `--remote-auth-token-env <ENV_VAR>`(42행) **둘 다 존재** → **옵션 존재 세계** 확정. `real_help_supported` 기대값 갱신 불요(acceptance.md §C AC-CONF-003의 첫 Then이 완결 경로). 신규 캡처 본문은 커밋된 0.160.0 resume-help.txt와 `diff` exit 0 = 바이트 동일.
+- vendoring: 소비 8종을 스테이징에서 이름 지정 기계 복사(내용 편집 0) + resume-help.txt 캡처본 + README 재생성(0.161.0 명기, 생성 명령, 부분집합 구성 근거) → `internal/cli/testdata/codex-0.161.0/` 8+2 구성. `codex-0.160.0/` 디렉터 삭제. decision-index Q7(소비 부분집합)·Q1(교체) 기본 적용 이행.
+
+**RED 원문 (소비자 이전 직후·vendoring 전, tree dce9596be)**:
+
+```text
+$ go test ./internal/cli -run '^(TestManagedServerRequestPolicyMatchesCodexSchema|TestManagedCodexRemoteSupportProbe|TestManagedCodexServerRequestPolicy)$' -count=1
+--- FAIL: TestManagedCodexRemoteSupportProbe (0.00s)
+    --- FAIL: TestManagedCodexRemoteSupportProbe/real_help_supported (0.00s)
+        managed_codex_tui_test.go:1057: open testdata/codex-0.161.0/resume-help.txt: no such file or directory
+--- FAIL: TestManagedServerRequestPolicyMatchesCodexSchema (0.00s)
+    managed_hardening_test.go:626: read vendored schema JSONRPCError.json: open testdata/codex-0.161.0/JSONRPCError.json: no such file or directory
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.835s
+```
+
+(acceptance.md §B가 예고한 두 실패 입력 그대로 — resume-help `os.ReadFile` 실패 + `read vendored schema` 실패. `TestManagedCodexServerRequestPolicy`는 fixture 디렉터를 직접 읽지 않아 적색 대상이 아니며, 그 0.161.0 정합은 AC-CONF-002/003의 가드가 대리한다.)
+
+**GREEN 원문 (vendoring 후)**:
+
+```text
+$ go test ./internal/cli -run '^(TestManagedServerRequestPolicyMatchesCodexSchema|TestManagedCodexRemoteSupportProbe|TestManagedCodexServerRequestPolicy)$' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.100s
+```
+
+**M1 폐쇄 관측 (두 세계 공통 요구 — family green)**:
+
+```text
+$ go test ./internal/cli -run '^TestManagedCodexTUIPreconditionsAndFallback$' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	13.329s
+$ grep -rn "codex-0.160.0" internal/cli | wc -l
+       0
+```
+
+(프로브는 실제 새 help 텍스트를 입력으로 실행됐다 — fake의 `tuiFakeHelpFileEnv`가 `tuiResumeHelpFixture` 절대경로를 읽고, 그 fixture가 이제 0.161.0 캡처이다. 합성 텍스트만의 녹색 아님.)
+
+**빌드**: `go build ./...` exit 0 / `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+
+**AC-CONF-005 예비 관측 (M2 소관이지만 동일 생성 환경에서 포획 — REQ-CONF-007 최소 필수 관측)**:
+
+- 명령: `CODEX_HOME=<빈 디렉터> npx -y @openai/codex@0.161.0 login status` (미인증 상태 보장 — 격리 CODEX_HOME)
+- verbatim 출력: **stderr에 `Not logged in` 한 줄**, stdout 빈 송출, **exit 1**
+- 바이너리 버전: codex-cli 0.161.0
+- 판정 재료: 이 출력은 stage 2 전체라인 문법 `logged in using (chatgpt|api key)`와 불일치 → `parseCodexAuthLine`은 `codexAuthUnknown`(갭)이어야 하며, "미인증" 판정을 내선 안 된다 — REQ-CONF-006 계약과 정합. M2가 이 포획본을 vendored 샘플로 삼아 분류 시험으로 봉인한다.
+
 
 ## §E.3 Run-phase Audit-Ready Signal
 
