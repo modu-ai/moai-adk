@@ -1,0 +1,6 @@
+version: 1
+branches:
+  main:
+    contexts:
+      - "Test (lint & test)"
+auxiliary: []

@@ -64,10 +64,27 @@ import (
 // points at a directory owned by this binary, and the two lane variables are
 // cleared. A helper process re-executed from this binary inherits the marker
 // and keeps the MOAI_HOME its parent test chose rather than minting its own.
+//
+// The sandbox also covers HOME and USERPROFILE (SPEC-MEMORY-FOLD-BUDGET-001
+// follow-up card, audit finding D5): the SessionStart memory-budget advisory
+// derives its store from the home directory, so a pre-existing handler test
+// that runs Handle would otherwise point that derivation at the developer's
+// real ~/.claude. HOME and USERPROFILE are redirected to the sandbox root
+// (os.UserHomeDir reads HOME on Unix, USERPROFILE on Windows), the advisory's
+// read seam is wrapped in a path-recording recorder that never opens a path
+// outside the sandbox root, and a post-run containment assertion fails the
+// package naming every recorded path outside it — so dropping the home
+// sandbox below turns the package red naming the attempted real-store read,
+// without that read ever being made (the recorder returns not-exist for
+// outside paths instead of opening them).
 func TestMain(m *testing.M) {
 	_ = os.Unsetenv(config.EnvClaudeProjectDir)
 	_ = os.Unsetenv("MOAI_PROFILE_LEASE_TOKEN")
 	_ = os.Unsetenv(config.EnvClaudeConfigDir)
+	// SPEC-TEST-ENV-HERMETIC-001 M3: strip the lane-gate family axes before
+	// the first test runs, beside the CLAUDE_PROJECT_DIR scrub above; the
+	// guard pair in lane_env_axes_test.go keeps the declared set honest.
+	scrubLaneEnvAxes()
 	// Git fixtures must not inherit a hook's or lane's repository (GH #1691).
 	if err := gitenv.ScrubProcess(); err != nil {
 		fmt.Fprintf(os.Stderr, "TestMain: %v\n", err)
@@ -84,10 +101,38 @@ func TestMain(m *testing.M) {
 		_ = os.Setenv(config.EnvHome, dir)
 		_ = os.Setenv(moaiHomeSandboxEnv, dir)
 	}
+	// Home sandbox (D5): every home-shaped derivation in this package — the
+	// memory-budget advisory's store keys first among them — resolves inside
+	// a directory this binary owns. The originals are restored at exit so an
+	// in-process inspection of the environment after the run sees the real
+	// values.
+	sandboxRoot := os.Getenv(moaiHomeSandboxEnv)
+	origHome, origUserProfile := os.Getenv("HOME"), os.Getenv("USERPROFILE")
+	_ = os.Setenv("HOME", sandboxRoot)
+	_ = os.Setenv("USERPROFILE", sandboxRoot)
+	installMemoryBudgetReadRecorder(sandboxRoot)
 	deferredScanSeamMu.Lock()
 	deferredScansAsync = false
 	deferredScanSeamMu.Unlock()
 	goleak.VerifyTestMain(m, goleak.Cleanup(func(code int) {
+		// Containment (D5): every path the advisory's read seam was asked
+		// for must lie beneath the sandbox root. An offense is a handler
+		// test that steered the advisory at a real store — including the
+		// one an unsandboxed HOME would derive.
+		if offenders := memoryBudgetRecorderPathsOutside(sandboxRoot); len(offenders) > 0 {
+			fmt.Fprintf(os.Stderr, "TestMain: memory-budget read seam recorded paths outside the home sandbox: %v\n", offenders)
+			code = 1
+		}
+		if origHome != "" {
+			_ = os.Setenv("HOME", origHome)
+		} else {
+			_ = os.Unsetenv("HOME")
+		}
+		if origUserProfile != "" {
+			_ = os.Setenv("USERPROFILE", origUserProfile)
+		} else {
+			_ = os.Unsetenv("USERPROFILE")
+		}
 		if moaiHome != "" {
 			_ = os.RemoveAll(moaiHome)
 		}

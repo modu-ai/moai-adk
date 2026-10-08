@@ -256,7 +256,7 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk && make build
 ```
 
-이미 설치했다면 `moai update`로 최신 버전으로 올린다. v3.1.1부터 `moai update`는 템플릿 관리 디렉터리를 지우고 다시 깔기 전에, 그 안에 있던 관리 대상 밖 파일을 `.moai-backups/<타임스탬프>/pre-clean/`으로 먼저 옮겨 둔다. 백업이 실패하면 삭제로 넘어가지 않고 그 자리에서 멈춘다 — 직접 넣어 둔 파일이 재배포에 조용히 쓸려 나가지 않는다.
+이미 설치했다면 `moai update`로 최신 버전으로 올린다. v3.2.0부터 `moai update`는 기존 프로젝트를 보존 기반으로 갱신한다 — 템플릿 관리 디렉터리를 통째로 지우고 다시 깔지 않는다. 직접 넣어 둔 파일은 그 자리에 살아남고, 템플릿 파일을 편집했다면 3-way 병합한다(충돌이면 편집본을 그대로 두고 새 버전을 `<경로>.moai-new.N` 사이드카로 옆에 둔다). 템플릿이 더 이상 운반하지 않는 파일은 삭제 전에 `.moai/archive/files/`로 옮겨 둔다 — 요약이 갱신·병합·충돌·보존·아카이브를 경로별로 모두 보고한다.
 
 > 💡 **비용을 줄이려면 — z.ai GLM 추천**: [이 링크](https://z.ai/subscribe?ic=1NDV03BGWU)로 z.ai에 가입하면 일정 토큰을 보너스로 받는다. 이 링크는 moai-adk 오픈소스 개발을 후원하는 경로이기도 하다. 무료 모델(GLM-4.7-Flash, GLM-4.5-Flash)도 있으니 [z.ai 요금제](https://docs.z.ai/guides/overview/pricing)를 참고한다.
 
@@ -279,9 +279,11 @@ cd my-project
 | `gpt` | Codex 단독 배포: `AGENTS.md`와 Codex 표면(`.codex/`, `.agents/skills/`, `.moai/`)만 설치. `.claude/` 디렉터리, `CLAUDE.md`, `.mcp.json`은 생기지 않는다. Claude 전용 런타임 기능(AskUserQuestion, 서브에이전트 소환, output style, 슬래시 명령, Workflow 스크립트)은 사용할 수 없다 |
 | `both` | `claude` 배포에 `.codex/` 연결을 더한다. `.mcp.json` 프로비저닝은 강제로 켜진다 |
 
-#### 배포 모드: 플러그인 기본과 전체 로컬 배포
+#### 공용 에셋은 사용자 폴더에
 
-기본 경로(플러그인 모드)에서는 스킬과 명령를 프로젝트에 복사하지 않는다 — moai 플러그인이 운반한다. `.claude/` 표면의 나머지(에이전트, 룰, 훅 등록, 설정)는 오늘과 같이 배포된다. 스킬과 명령을 로컬 파일로 유지하려면 `--no-plugin`(전체 로컬 배포 — `.mcp.json`의 moai 항목과 Codex 미러 포함)을, 선택적 팩 카탈로그까지 모두 로컬로 깔려면 `--all`을 쓴다. 배포 모드는 `.moai/config/sections/llm.yaml`의 `deployment_mode`에 기록되고 `moai update`는 그 기록을 따라 같은 범위를 유지한다. 플러그인 설치가 확인되지 않은 프로젝트는 안전한 쪽인 `local`로 기록된다.
+공용 스킬과 에이전트는 더 이상 프로젝트 파일이 아니다. 어떤 하니스를 고르든 `moai init`은 핵심 스킬 세트와 에이전트를 사용자 폴더 — `~/.claude/`, `~/.agents/`, `~/.codex/` — 에 설치하고, 놓은 파일 하나하나를 `~/.moai/user-assets.json`에 기록한다(파일별 해시, 소속 번들, 설치한 moai 버전). `--bundles <이름>` 플래그로 첫 init에서 추가 번들을 함께 설치할 수 있다. 프로젝트 트리에는 프로젝트 고유 내용만 남는다: 설정, 룰, 훅, `AGENTS.md`/`CLAUDE.md`, 템플릿 잠금 파일, `.mcp.json`. 예전의 moai 플러그인 운반체는 은퇴했다 — 플러그인과 마켓플레이스 매니페스트는 더 이상 배포되지 않으며, `.moai/config/sections/llm.yaml`의 `deployment_mode`는 기록으로만 남는다.
+
+`moai update`는 이 매니페스트를 기준으로 사용자 설치를 갱신한다: 배포본이 바뀐 추적 파일은 제자리에서 다시 쓰고, 직접 편집한 파일은 보존하며 `~/.moai/` 아래에 백업하고, 선택을 해제한 번들의 파일은 걷어내고, 기존 프로젝트의 템플릿 관리 스킬·에이전트는 첫 update에서 사용자 폴더로 이전한다. `moai bundle add|remove <이름>`으로 설치 번들 선택을 조정하고, `moai doctor`가 User Install과 Project Lock 어긋남을 보고한다. 선언된 v1 한계 하나: MoAI 프로필 루트(`~/.moai/claude-profiles/<이름>`)로 실행한 세션은 공유 사용자 에셋을 보지 못한다.
 
 
 > **GPT 게이트웨이 철회(2026-09-16).** 내장 번역 게이트웨이로 GPT 모델을 Claude Code에 얹던 옛 `moai gpt`
@@ -734,7 +736,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai init` | 대화형 프로젝트 설정 (언어/프레임워크/방법론 자동 감지) |
 | `moai doctor` | 시스템 상태 진단과 환경 검증 — Home Disk Usage 항목이 `~/.moai`가 얼마나 불었는지 권고로 알려준다 |
 | `moai status` | 프로젝트 상태 요약 (Git 브랜치, 품질 지표) |
-| `moai update` | 최신 버전으로 업데이트 (삭제 전 백업 · 자동 롤백 지원) |
+| `moai update` | 최신 버전으로 업데이트 (로컬 파일 보존 · 3-way 병합과 충돌 사이드카 · 삭제 전 아카이브) |
 | `moai graph <build\|query>` | 코드베이스 그래프(edges.jsonl) 생성·조회 — 호출자 찾기, 폭발 반경, 마일스톤 교차검사 |
 | `moai cc` / `moai glm` | Claude 전용 / GLM 전용 세션 |
 | `moai codex [cli\|status\|app]` | Codex 런처 — 인자 없이 부르면 Codex CLI를 기동한다. `status`는 준비 상태만 보여주고 아무것도 띄우지 않는다 |

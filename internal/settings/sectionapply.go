@@ -94,6 +94,34 @@ func ApplySchemaEdits(projectRoot string, edits map[string]string) error {
 		case PersistTypedSection:
 			typedEdits = append(typedEdits, f)
 			typedValues = append(typedValues, edits[name])
+		case PersistUserScoped:
+			// SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-020: the value lives in
+			// the USER-scoped consent file, and the same value-invariant shapes
+			// as the seam gate apply — a submission equal to the persisted
+			// value, or a false submission over an absent key (the declared
+			// AbsentDefault), writes nothing. A real change writes BOTH
+			// participation.enabled and participation.asked=true in one patch:
+			// the console description carries the full disclosure, so a
+			// console-first user records an informed consent and the wizard
+			// and update prompts never re-ask.
+			cur := config.ReadUserParticipation()
+			if edits[name] == strconv.FormatBool(cur.Enabled) {
+				continue
+			}
+			if edits[name] == "false" && !cur.Asked && !userParticipationFileExists() {
+				// Absent file and never asked: false IS the current state.
+				continue
+			}
+			if edits[name] != "true" && edits[name] != "false" {
+				return fmt.Errorf("settings: field %q: user-scoped bool accepts only true/false, got %q", name, edits[name])
+			}
+			if err := WriteUserParticipation(config.UserParticipation{
+				Enabled:    edits[name] == "true",
+				Asked:      true,
+				Repository: cur.Repository,
+			}); err != nil {
+				return fmt.Errorf("settings: field %q: %w", name, err)
+			}
 		default:
 			return fmt.Errorf("settings: field %q is not a schema-section field (kind %s)", name, f.Persist.Kind)
 		}
@@ -119,6 +147,17 @@ func ApplySchemaEdits(projectRoot string, edits map[string]string) error {
 		}
 	}
 	return nil
+}
+
+// userParticipationFileExists reports whether the user-scoped consent file is
+// present — the absent-key arm of the user-scoped value-invariant gate.
+func userParticipationFileExists() bool {
+	path, err := config.UserParticipationFilePath()
+	if err != nil {
+		return false
+	}
+	_, err = os.Stat(path)
+	return err == nil
 }
 
 // applyTypedEdits는 typed 섹션(git_strategy/llm/quality) 필드를 yamlpatch seam

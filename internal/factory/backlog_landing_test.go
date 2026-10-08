@@ -40,7 +40,9 @@ func TestBacklogLanding_ItemsColumnShape(t *testing.T) {
 		// SPEC-TODO-CLAIM-LEASE-001 (card t1342): the lease columns, appended
 		// after the classification by the same path.
 		"picked_by:TEXT:0:NULL " +
-		"lease_expires_at:TEXT:0:NULL"
+		"lease_expires_at:TEXT:0:NULL " +
+		// SPEC-TODO-CARD-ISSUANCE-001: issuance is the next additive column on the same ensure path (card t1454).
+		"issuance:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "items"); got != want {
 		t.Errorf("items column tuples =\n %s\nwant\n %s", got, want)
 	}
@@ -78,7 +80,8 @@ func TestBacklogLanding_ArchivedItemsColumnShape(t *testing.T) {
 		"landing_verdict:TEXT:0:NULL " +
 		"classification:TEXT:0:NULL " +
 		"picked_by:TEXT:0:NULL " +
-		"lease_expires_at:TEXT:0:NULL"
+		"lease_expires_at:TEXT:0:NULL " +
+		"issuance:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "archived_items"); got != want {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, want)
 	}

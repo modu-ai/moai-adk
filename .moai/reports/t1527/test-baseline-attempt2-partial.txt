@@ -1,0 +1,631 @@
+# t1527 test baseline (pre-change characterization) — attempt 2
+base_sha: d0e54b322
+branch: WT-tui-tux-overhaul
+command: go test -count=1 -timeout 30m ./internal/cli/... ./internal/tui/...
+lease: moai slot acquire --resource go-test-internal-cli --max-duration 60m (held by this lane)
+attempt1: preserved at test-baseline-attempt1-timeout.txt — killed at 37min wall under
+system load 20-30/16 cores; the 30m binary timeout fired
+(panic: test timed out after 30m0s, running TestQWR_AC008_SurfacesSeeWorktreeReading)
+before any package summary line was written — a machine measurement, not a code one.
+2026/10/05 17:33:52 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+moai-cli-test: userHomeDirFn redirected real home to sandbox /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-cli-home-3434662251
+2026/10/05 17:33:54 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInitDeprecatedModelFlags_WriteNothing4167189064/001/.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+2026/10/05 17:33:54 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+2026/10/05 17:33:55 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+2026/10/05 17:33:56 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+2026/10/05 17:33:57 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+2026/10/05 17:34:01 INFO session started session_id=sess-seam cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBinaryLag_OneSeamServesBothSurfaces4211332753/001 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBinaryLag_OneSeamServesBothSurfaces4211332753/001
+2026/10/05 17:34:01 WARN configuration not available, proceeding with defaults session_id=sess-seam
+2026/10/05 17:34:01 INFO teammateMode updated mode=auto in_tmux=false
+2026/10/05 17:34:02 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCCCmd_Execution_NoDeps814524652/001/.moai/config/sections
+Launching Claude Code...
+Launching Claude Code...
+Notice: profile "work" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+moai cg is retired; run moai migrate cg to preview an explicit teammate-role migration
+moai cg is retired; run moai migrate cg to preview an explicit teammate-role migration
+moai cg is retired; run moai migrate cg to preview an explicit teammate-role migration
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainStatus1009503882/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainLineage1039220802/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainBack372247457/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainBackAtRoot4061402873/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainList544243666/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainList544243666/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainStatusNoContext2622384734/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainPruneDryRun2938594941/001
+2026/10/05 17:34:04 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLaunchClaudeDefault_LaunchesPinnedBinary1061251739/001/proj/.moai/config/sections
+2026/10/05 17:34:04 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLaunchClaudeDefault_UnsetPinFallsBackToPATH3684523200/001/proj/.moai/config/sections
+warn: skipping symlink /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateSymlinkSkip_Repro3268665114/001/src/link.txt
+2026/10/05 17:35:25 INFO pre-compact context preservation session_id=codex-compact-1 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexCompactCheckpointRoundTrip1503425620/001
+2026/10/05 17:35:25 INFO pre-compact: session memo written path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexCompactCheckpointRoundTrip1503425620/001/.moai/state/session-memo.md
+2026/10/05 17:35:25 INFO post-compact recovery session_id=codex-compact-1
+2026/10/05 17:35:25 INFO post-compact: session memo restored project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexCompactCheckpointRoundTrip1503425620/001
+codex-adapter: dropped "systemMessage" on PostCompact (243 bytes): no delivery channel on this event
+2026/10/05 17:35:25 INFO permission requested session_id=codex-perm-1 tool_name=Bash
+2026/10/05 17:35:25 WARN denying permission: tool input contains updated_input_marker session_id=codex-perm-1 tool_name=Bash
+2026/10/05 17:35:25 INFO handler blocked action event=PermissionRequest handler_index=0 reason="tool input was modified by a previous hook (updatedInput re-verification)"
+2026/10/05 17:35:25 INFO permission requested session_id=codex-perm-2 tool_name=Bash
+codex-adapter: dropped "hook-fault" on PermissionRequest (40 bytes): hook fault on a decision-bearing event answered with a fail-closed deny
+2026/10/05 17:36:17 INFO session started session_id=codex-lane cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerlane342833260/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerlane342833260/002
+2026/10/05 17:36:17 WARN configuration not available, proceeding with defaults session_id=codex-lane
+2026/10/05 17:36:17 INFO teammateMode updated mode=auto in_tmux=false
+2026/10/05 17:36:17 INFO user prompt submitted session_id=codex-lane prompt_preview="t1242 probe"
+2026/10/05 17:36:17 INFO session started session_id=claude-lane cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerlane342833260/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerlane342833260/002
+2026/10/05 17:36:17 WARN configuration not available, proceeding with defaults session_id=claude-lane
+<system-reminder>
+Multi-Session Coordination: 1 other active session(s) on this host
+(this session claude-l):
+  - codex-la spec=(none) phase=(none) age=0m pid=41678 cwd=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli
+</system-reminder>
+2026/10/05 17:36:18 INFO user prompt submitted session_id=claude-lane prompt_preview="t1242 probe"
+2026/10/05 17:36:21 INFO session started session_id=codex-leader cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerleader3988795779/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerleader3988795779/002
+2026/10/05 17:36:21 WARN configuration not available, proceeding with defaults session_id=codex-leader
+2026/10/05 17:36:21 INFO teammateMode updated mode=auto in_tmux=false
+2026/10/05 17:36:21 INFO user prompt submitted session_id=codex-leader prompt_preview="t1242 probe"
+2026/10/05 17:36:21 INFO session started session_id=claude-leader cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerleader3988795779/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexHarnessHooksRegisterNoFactoryPeerleader3988795779/002
+2026/10/05 17:36:21 WARN configuration not available, proceeding with defaults session_id=claude-leader
+<system-reminder>
+Multi-Session Coordination: 1 other active session(s) on this host
+(this session claude-l):
+  - codex-le spec=(none) phase=(none) age=0m pid=41678 cwd=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli
+</system-reminder>
+2026/10/05 17:36:23 INFO user prompt submitted session_id=claude-leader prompt_preview="t1242 probe"
+2026/10/05 17:36:26 INFO session started session_id=codex-lane-uuid cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexFactoryHarnessHookBindsLane2613400592/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexFactoryHarnessHookBindsLane2613400592/002
+2026/10/05 17:36:26 WARN configuration not available, proceeding with defaults session_id=codex-lane-uuid
+2026/10/05 17:36:26 INFO teammateMode updated mode=auto in_tmux=false
+2026/10/05 17:36:26 INFO user prompt submitted session_id=codex-lane-uuid prompt_preview="factory lane probe"
+codex-adapter: dropped "codex-stop-chain/goal/unverified" on Stop (0 bytes): goal: unverified — 3 consecutive Stops found no receipt for this tree and the goal condition was never measured. The stop is allowed to bound the loop; the goal is NOT satisfied (its state is unchanged). Run `moai verify record`, then end the turn again — or re-arm the goal.
+codex review: pass: Verdict: pass
+
+The change introduces no blocking issues.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+codex-adapter: dropped "codex-stop-chain/multi-review/result-missing" on Stop (0 bytes): multi review gate: result missing (no multi-model review result is recorded for this session); the stop was allowed (fail-open, as on Claude)
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+codex-adapter: dropped "codex-stop-chain/multi-review/result-missing" on Stop (0 bytes): multi review gate: result missing (no multi-model review result is recorded for this session); the stop was allowed (fail-open, as on Claude)
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+codex-adapter: dropped "codex-stop-chain/goal/unverified" on Stop (0 bytes): moai hook stop-goal: unverified — 3 consecutive Stops found no valid receipt for this tree (the member did not finish within its internal budget), and `moai verify record` was never run for it. The stop is allowed to bound the loop; the gate is NOT passed.
+codex-adapter: dropped "codex-stop-chain/multi-review/result-missing" on Stop (0 bytes): multi review gate: result missing (no multi-model review result is recorded for this session); the stop was allowed (fail-open, as on Claude)
+install the desktop app from https://example.invalid/codex-desktop
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+2026/10/05 17:38:48 WARN failed to load workflow config, using defaults error="parse workflow.yaml: config: invalid YAML syntax"
+{"basis":"no card branch: develop","gate":"codex-review-gate","scope":"tree","tree_scope":"skip"}
+codex review: fail: - [P1] ownership probe finding
+codex review: fail: - [P1] found issues
+- [P2] more
+codex review: pass: Verdict: pass
+
+The change introduces no blocking issues.
+codex review: inconclusive (review call failed: fake: session start failed)
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"branch match: WT-fixture-card","branch":"WT-fixture-card","gate":"codex-review-gate","scope":"card"}
+{"basis":"no card branch: develop","branch":"develop","env":{"MOAI_FACTORY_WORKER":"orca-lane-77"},"gate":"codex-review-gate","scope":"tree"}
+{"basis":"branch match: WT-fixture-card","branch":"WT-fixture-card","gate":"codex-review-gate","scope":"card"}
+{"basis":"branch match: WT-fixture-empty","branch":"WT-fixture-empty","gate":"codex-review-gate","scope":"card"}
+codex review: fail: - [P1] card findings
+{"basis":"branch match: WT-fixture-card","branch":"WT-fixture-card","gate":"codex-review-gate","scope":"card"}
+codex review: fail: - [P1] card findings
+{"basis":"branch match: WT-fixture-card","branch":"WT-fixture-card","gate":"codex-review-gate","scope":"card"}
+codex review: fail: - [P1] card findings
+BEHAVIOUR_FIELDS_MUTATED 2 OF 2
+COUPLED_MUTANT_DIVERGED 24
+CONTRACT_NEUTRAL_LOAD_TRUE 12 NONCE_TRUE 10
+FINGERPRINT_POSITIVE_MATCHES 12
+PARENT_SESSIONS_FALSE 14
+SELECTED_BY_LABEL 14 OF 28
+PARSE_LEADING_DELTA 1 0x0a
+TABLE_DISTINCT_REASONS 3
+{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
+sync gate: go vet failed: fake vet
+sync gate: go vet failed: fake vet
+sync gate: go vet failed: fake vet
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex review: pass: Verdict: pass
+
+The change introduces no blocking issues.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex review: inconclusive: Looks good to me — no blocking findings.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex review: fail: - [P1] found issues
+- [P2] more issues
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex review: pass: Verdict: pass
+
+The change introduces no blocking issues.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex-adapter: dropped "codex-stop-chain/sync-gate/unverified" on Stop (0 bytes): sync-phase quality gate: unverified — 3 consecutive Stops found no valid receipt for this tree (receipt absent), and `moai verify sync-gate` was never run for it. The stop is allowed to bound the loop; the gate is NOT passed.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex-adapter: dropped "codex-stop-chain/codex-review/unverified" on Stop (0 bytes): moai hook codex-review-gate: unverified — 3 consecutive Stops found no valid receipt for this tree (receipt absent), and `moai verify codex-review` was never run for it. The stop is allowed to bound the loop; the gate is NOT passed.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex review: pass: Verdict: pass
+
+The change introduces no blocking issues.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+2026/10/05 17:41:48 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+sync gate: go vet failed: fake vet
+codex review: fail: - [P1] found issues
+- [P2] more
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex stop chain: advisory member 4 (moai hook security-turn) failed: injected advisory failure
+codex stop chain: advisory member 5 (moai hook security-commit) failed: cut off at its internal budget 50ms
+codex review: pass: Verdict: pass
+
+The change introduces no blocking issues.
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+codex-adapter: dropped "codex-stop-chain/multi-review/result-missing" on Stop (0 bytes): multi review gate: result missing (the multi review gate did not finish within its internal budget); the stop was allowed (fail-open, as on Claude)
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex stop chain: advisory member 4 (moai hook security-turn) failed: cut off at its internal budget 100ms
+codex review: pass: Verdict: pass
+
+The change introduces no blocking issues.
+2026/10/05 17:42:00 INFO stop requested session_id=timing-s stop_hook_active=false
+2026/10/05 17:42:00 INFO stop requested session_id=timing-s stop_hook_active=false
+2026/10/05 17:42:00 INFO stop requested session_id=timing-s stop_hook_active=false
+2026/10/05 17:42:00 INFO stop requested session_id=timing-s stop_hook_active=false
+2026/10/05 17:42:00 INFO stop requested session_id=timing-s stop_hook_active=false
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+2026/10/05 17:42:11 INFO stop requested session_id=timing-s stop_hook_active=false
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+2026/10/05 17:42:12 INFO stop requested session_id=timing-s stop_hook_active=false
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+2026/10/05 17:42:14 INFO stop requested session_id=timing-s stop_hook_active=false
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+2026/10/05 17:42:15 INFO stop requested session_id=timing-s stop_hook_active=false
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+2026/10/05 17:42:17 INFO stop requested session_id=timing-s stop_hook_active=false
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+sync gate: go vet failed: fake vet
+Spawned pane %7 running `CODEX_HOME=/Users/goos/.codex CLAUDE_CODE_SESSION_ID= MOAI_SESSION_PID= MOAI_KANBAN= MOAI_KANBAN_ID= MOAI_KANBAN_SPEC= MOAI_KANBAN_LABEL= MOAI_KANBAN_LEAD_ADDR= MOAI_KANBAN_LEAD_NAME= MOAI_KANBAN_BACKEND= MOAI_KANBAN_CARD= MOAI_KANBAN_SETTINGS_INJECTED= MOAI_FACTORY_WORKER= MOAI_FACTORY_WORKERS= MOAI_FACTORY_ROLE= MOAI_HOME=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-cli-moai-home-41985683 exec /test/codex` in /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexSpawnAnchorsToPanePID1623854260/001
+Switch to it with: tmux select-window -t %7
+Spawned pane %7 running `CODEX_HOME=/Users/goos/.codex CLAUDE_CODE_SESSION_ID= MOAI_SESSION_PID= MOAI_KANBAN= MOAI_KANBAN_ID= MOAI_KANBAN_SPEC= MOAI_KANBAN_LABEL= MOAI_KANBAN_LEAD_ADDR= MOAI_KANBAN_LEAD_NAME= MOAI_KANBAN_BACKEND= MOAI_KANBAN_CARD= MOAI_KANBAN_SETTINGS_INJECTED= MOAI_FACTORY_WORKER= MOAI_FACTORY_WORKERS= MOAI_FACTORY_ROLE= MOAI_HOME=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexSpawnAnchorsToPanePIDUnderLaneEnv868100622/001 exec /test/codex` in /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexSpawnAnchorsToPanePIDUnderLaneEnv868100622/002
+Switch to it with: tmux select-window -t %7
+2026/10/05 17:43:52 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_0011358853906/001/primary/.moai/config/sections
+2026/10/05 17:43:53 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_0011358853906/001/primary/.moai/config/sections
+2026/10/05 17:43:53 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_0011358853906/001/primary/.moai/config/sections
+2026/10/05 17:43:55 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_019ready3569107872/001/primary/.moai/config/sections
+2026/10/05 17:43:57 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_019not_ready_names_the_SPEC_and_codes1757954240/001/primary/.moai/config/sections
+2026/10/05 17:44:00 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_019refspec_from_another_tree3274750237/001/primary/.moai/config/sections
+2026/10/05 17:44:08 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_020agent_marker_refuses1664979551/001/primary/.moai/config/sections
+2026/10/05 17:44:10 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_020not_a_terminal_refuses1837231878/001/primary/.moai/config/sections
+2026/10/05 17:44:12 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_020wrong_confirmation_refuses284247004/001/primary/.moai/config/sections
+2026/10/05 17:44:15 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_020records_on_the_terminal_path110514256/001/primary/.moai/config/sections
+2026/10/05 17:44:16 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_0241865476403/001/primary/.moai/config/sections
+2026/10/05 17:44:17 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_0241865476403/001/primary/.moai/config/sections
+2026/10/05 17:44:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAC_CLOSURE_0241865476403/001/primary/.moai/config/sections
+2026/10/05 17:44:25 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResetTeamModeForCC_ConfigLoadError906209164/001/.moai/config/sections
+2026/10/05 17:44:35 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoctor_WithExport3006227464/001/.moai/config/sections
+2026/10/05 17:44:41 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoctor_WithFix2290466435/001/.moai/config/sections
+2026/10/05 17:44:52 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoctor_Verbose277126841/001/.moai/config/sections
+2026/10/05 17:44:52 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_SuccessfulExecution1920095534/001/.moai/config/sections
+Launching Claude Code...
+2026/10/05 17:44:53 INFO gopls bridge disabled (lsp.yaml: enabled=false)
+2026/10/05 17:44:53 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_WithProjectRoot3519302083/001/.moai/config/sections
+Launching Claude Code...
+2026/10/05 17:44:57 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+
+╭─────────────────────────────────────────────────╮
+│                                                 │
+│  ✓ MoAI project initialized                     │
+│   13 dirs    2 files                            │
+│                                                 │
+│  Next steps:                                    │
+│    1. cd test-project                           │
+│    2. moai cc                                   │
+│    3. /moai plan "describe your first feature"  │
+│                                                 │
+╰─────────────────────────────────────────────────╯
+  Pre-push hook installed (.git/hooks/pre-push)
+  Pre-commit hook installed (.git/hooks/pre-commit)
+2026/10/05 17:44:59 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_DotArg_NonInteractive1057756496/001/.moai/config/sections
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+
+╭─────────────────────────────────────────────────╮
+│                                                 │
+│  ✓ MoAI project initialized                     │
+│   13 dirs    2 files                            │
+│                                                 │
+│  Next steps:                                    │
+│    1. cd dot-project                            │
+│    2. moai cc                                   │
+│    3. /moai plan "describe your first feature"  │
+│                                                 │
+╰─────────────────────────────────────────────────╯
+  Pre-push hook installed (.git/hooks/pre-push)
+  Pre-commit hook installed (.git/hooks/pre-commit)
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ Shared Flag Slot
+  ✓ Shared Flag Slot
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Provider Duplicates
+  ✓ MCP Provider Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Hook Missing Log
+  ✓ Hook Missing Log
+  ○ Served Model
+  ✓ Served Model
+  ○ Todo Store Divergence
+  ✓ Todo Store Divergence
+  ○ Todo Ghost Inventory
+  ✓ Todo Ghost Inventory
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Settings DefaultMode
+  ✓ Settings DefaultMode
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ Git Strategy Workflow
+  ✓ Git Strategy Workflow
+  ○ Factory Run
+  ✓ Factory Run
+  ○ Owner Label Drift
+  ✓ Owner Label Drift
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+  ○ Jev
+  ✓ Jev
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ Shared Flag Slot
+  ✓ Shared Flag Slot
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Provider Duplicates
+  ✓ MCP Provider Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Hook Missing Log
+  ✓ Hook Missing Log
+  ○ Served Model
+  ✓ Served Model
+  ○ Todo Store Divergence
+  ✓ Todo Store Divergence
+  ○ Todo Ghost Inventory
+  ✓ Todo Ghost Inventory
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Settings DefaultMode
+  ✓ Settings DefaultMode
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ Git Strategy Workflow
+  ✓ Git Strategy Workflow
+  ○ Factory Run
+  ✓ Factory Run
+  ○ Owner Label Drift
+  ✓ Owner Label Drift
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+  ○ Jev
+2026/10/05 17:45:08 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoctor_WithFixFlag3970583758/001/.moai/config/sections
+  ✓ Jev
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ Shared Flag Slot
+  ✓ Shared Flag Slot
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Provider Duplicates
+  ✓ MCP Provider Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Hook Missing Log
+  ✓ Hook Missing Log
+  ○ Served Model
+  ✓ Served Model
+  ○ Todo Store Divergence
+  ✓ Todo Store Divergence
+  ○ Todo Ghost Inventory
+  ✓ Todo Ghost Inventory
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Settings DefaultMode
+  ✓ Settings DefaultMode
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ Git Strategy Workflow
+  ✓ Git Strategy Workflow
+  ○ Factory Run
+  ✓ Factory Run
+  ○ Owner Label Drift
+  ✓ Owner Label Drift
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+  ○ Jev
+  ✓ Jev
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Version Check: Checking template version......
+  ✓ Version check complete
+  ○ Loading Templates: Reading embedded templates......
+  ✓ Templates loaded
+  ○ Loading Manifest: Reading project manifest......
+  ✓ Manifest loaded
+· Found 190 files to sync
+2026/10/05 17:45:13 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_NamedDirectoryArg514173355/001/.moai/config/sections
+2026/10/05 17:45:14 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+Team mode disabled (was: glm)
+Launching Claude Code...
+Team mode disabled (was: glm)
+Launching Claude Code...
+2026/10/05 17:45:16 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1453/internal/cli/.moai/config/sections
+2026/10/05 17:45:16 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_WithPositionalArg735766928/001/.moai/config/sections
+2026/10/05 17:45:17 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_WithDotArg763090588/001/.moai/config/sections
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ Shared Flag Slot
+  ✓ Shared Flag Slot
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Provider Duplicates
+  ✓ MCP Provider Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Hook Missing Log
+  ✓ Hook Missing Log
+  ○ Served Model
+  ✓ Served Model
+  ○ Todo Store Divergence
+  ✓ Todo Store Divergence
+  ○ Todo Ghost Inventory
+  ✓ Todo Ghost Inventory
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+signal: terminated
+FAIL	github.com/modu-ai/moai-adk/internal/cli	688.730s
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	1.363s
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	4.340s
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	0.762s
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	1.862s
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	0.942s
+ok  	github.com/modu-ai/moai-adk/internal/cli/ptycaptest	5.860s
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	0.662s
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	0.756s
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	0.448s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	0.766s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	1.795s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	1.848s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	0.757s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	0.694s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	0.736s
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	7.171s
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	338.077s
+ok  	github.com/modu-ai/moai-adk/internal/tui	0.361s
+ok  	github.com/modu-ai/moai-adk/internal/tui/golden	0.302s
+ok  	github.com/modu-ai/moai-adk/internal/tui/internal	0.280s
+FAIL

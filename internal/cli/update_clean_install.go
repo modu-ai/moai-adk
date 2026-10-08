@@ -28,6 +28,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"io"
 	"io/fs"
 	"os"
@@ -563,6 +565,11 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	if stripErr := stripRetiredV2DenyEntries(projectRoot, out); stripErr != nil {
 		_, _ = fmt.Fprintf(out, "[clean-reinstall] deny-rule migration warning: %v\n", stripErr)
 	}
+	// Card t1569 M2: replace the pre-t1569 root-denial deny rules with their
+	// canonical forms (merge-preservation above keeps them alive otherwise).
+	if normErr := normalizeLegacyRootDenySpecifiers(projectRoot, out); normErr != nil {
+		_, _ = fmt.Fprintf(out, "[clean-reinstall] deny-rule migration warning: %v\n", normErr)
+	}
 
 	// ---------------------------------------------------------------
 	// Step 6 — MERGE-back PRESERVE inventory
@@ -596,7 +603,9 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 
 	if !result.IntegrityPassed {
 		_, _ = fmt.Fprintf(out, "[clean-reinstall] Integrity check FAILED: %d mismatches\n", len(mismatches))
-		return result, recovery.fail("step 7", fmt.Errorf("PRESERVE integrity violation on %d paths (backup retained at %s)", len(mismatches), finalBackupDir))
+		preserveErr := fmt.Errorf("PRESERVE integrity violation on %d paths (backup retained at %s)", len(mismatches), finalBackupDir)
+		bugreport.Capture(bugreport.KindTemplateDeployFailure, preserveErr, bugreport.ReasonPreserveIntegrity, bugreport.TokenPreserveIntegrity)
+		return result, recovery.fail("step 7", preserveErr)
 	}
 	// Log-claim accuracy: the integrity check covers ONLY the PRESERVE
 	// inventory hashes (inv.Files) — not merged config, settings, or

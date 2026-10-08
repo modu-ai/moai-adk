@@ -11,7 +11,7 @@ Rules for managing persistent context across sessions.
 Claude Code supports multiple memory levels (highest priority first):
 
 1. Managed Policy: Organization-level rules (read-only)
-2. Project Instructions: CLAUDE.md (checked into repo)
+2. Project Instructions: AGENTS.md (checked into repo)
 3. Project Rules: .claude/rules/**/*.md (auto-discovered, conditional via paths)
 4. User Instructions: ~/.claude/CLAUDE.md (personal global)
 5. Optional local instructions file (e.g., a project-local override document if your team maintains one; not committed)
@@ -29,7 +29,7 @@ Auto memory (level 6 above) is a native Claude Code feature (requires v2.1.59 or
 | Index loading | `MEMORY.md` is loaded at the start of every session, and the index truncates at **200 lines or 25KB, whichever comes first** — upstream-enforced, announced in the Claude Code CHANGELOG under **2.1.83**. The cut is **not silent**: an over-limit write is an explicit error (2.1.210) and the truncation warning names how many lines were cut (2.1.268). See § MEMORY.md Index Budget |
 | Topic files | `debugging.md`, `api-conventions.md`, etc. are NOT loaded at startup; Claude reads them on demand. They are plain markdown with **no mandated frontmatter schema** |
 | Subagents | Subagents can maintain their own auto memory (see the Claude Code sub-agents documentation) |
-| Inspect | `/memory` lists the loaded CLAUDE.md and rules files, toggles auto memory, and links to the auto-memory folder |
+| Inspect | `/memory` lists the loaded instruction (AGENTS.md) and rules files, toggles auto memory, and links to the auto-memory folder |
 
 Full reference: `.claude/skills/moai-foundation-cc/reference/claude-code-memory-official.md`.
 
@@ -237,7 +237,7 @@ The following content MUST NOT be stored in memory files:
 | Code patterns / conventions | Architecture diagrams, file path conventions already in the codebase |
 | Git history | `git log` output, who changed what |
 | Debug recipes | Step-by-step fix instructions already captured in the fix commit |
-| CLAUDE.md mirrors | Anything already documented in CLAUDE.md or `.claude/rules/` |
+| Instruction mirrors | Anything already documented in AGENTS.md or `.claude/rules/` |
 | Ephemeral state | In-progress task lists, current session context |
 
 Use the `MOAI_MEMORY_AUDIT=0` environment variable to temporarily disable taxonomy enforcement during bulk memory migrations.

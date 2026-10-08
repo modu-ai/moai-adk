@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"github.com/mattn/go-isatty"
-	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/update"
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
@@ -59,23 +58,21 @@ import (
 // policy is None: REQ-019 holds the .agents/skills entries STABLE on update
 // runs — the re-home belongs to the fresh plugin deploy (init), and the
 // update never adds, restores, or rewrites mirror entries.
-var newTemplateSyncDeployer = func(embedded fs.FS, deployMode template.DeployMode) (template.Deployer, error) {
+var newTemplateSyncDeployer = func(embedded fs.FS, _ template.DeployMode) (template.Deployer, error) {
 	renderer := template.NewRenderer(embedded)
 	cat, catErr := template.LoadEmbeddedCatalog()
 	if catErr != nil {
 		return nil, fmt.Errorf("load harness catalog: %w", catErr)
 	}
-	modeOpts := []template.DeployerOption{template.WithDeployMode(deployMode)}
-	if deployMode == template.DeployModePlugin {
-		modeOpts = append(modeOpts, template.WithPluginMirrorPolicy(template.MirrorPolicyNone))
-	}
+	// SPEC-USER-ASSET-INSTALL-001 (M7): no deploy-mode options — the
+	// deployer carries a single project payload shape.
 	switch config.ReadHarness(".") {
 	case "gpt":
-		return template.NewCodexOnlyDeployerWithRendererAndForceUpdate(cat, renderer, modeOpts...)
+		return template.NewCodexOnlyDeployerWithRendererAndForceUpdate(cat, renderer)
 	case "both":
-		return template.NewDualHarnessDeployerWithRendererAndForceUpdate(cat, renderer, modeOpts...)
+		return template.NewDualHarnessDeployerWithRendererAndForceUpdate(cat, renderer)
 	default:
-		return template.NewClaudeHarnessDeployerWithRendererAndForceUpdate(cat, renderer, modeOpts...)
+		return template.NewClaudeHarnessDeployerWithRendererAndForceUpdate(cat, renderer)
 	}
 }
 
@@ -87,15 +84,31 @@ var newTemplateSyncDeployer = func(embedded fs.FS, deployMode template.DeployMod
 // untouched, and the opted-out arm deploys the full local payload.
 func resolveUpdateDeployMode(projectRoot string, noPlugin bool) template.DeployMode {
 	switch config.ReadDeployMode(projectRoot) {
-	case "plugin":
-		return template.DeployModePlugin
 	case "local":
 		return template.DeployModeLocal
 	}
-	if noPlugin {
-		return template.DeployModeLocal
+	// SPEC-USER-ASSET-INSTALL-001 (M7): every arm resolves LOCAL — the
+	// plugin payload is retired with its carrier.
+	return template.DeployModeLocal
+}
+
+// mergeableFilePaths is the fixed mergeable-file set — the files merged with
+// the 3-way merge engine after the deploy (NOT handled by restoreMoaiConfig,
+// which owns .moai/config/sections/*.yaml). Package-level so the
+// reconciliation merge-phase exclusion (update_reconcile.go) shares the one
+// definition (card t1547 review finding 2; the 429-interrupted refactor
+// moved it out of the runTemplateSyncWithReporter closure).
+//
+// .mcp.json IS shipped (internal/template/templates/.mcp.json, deployed by
+// deployer.go's no-dotfile-skip WalkDir) and IS a 3-way merge target so a
+// user's own MCP entries survive `moai update` instead of being clobbered
+// by the template deploy (SPEC-MCP-DEFAULT-ON-001 REQ-A-4 / AC-A-012).
+func mergeableFilePaths() []string {
+	return []string{
+		".claude/settings.json",
+		".moai/status_line.sh",
+		".mcp.json",
 	}
-	return template.DeployModePlugin
 }
 
 // runTemplateSync synchronizes embedded templates with the project directory.
@@ -105,7 +118,7 @@ func resolveUpdateDeployMode(projectRoot string, noPlugin bool) template.DeployM
 // Template deployment uses a 3-way merge strategy to preserve local modifications.
 // Users are prompted to confirm the merge before proceeding.
 func runTemplateSync(cmd *cobra.Command) error {
-	return runTemplateSyncWithReporter(cmd, nil, false)
+	return runTemplateSyncWithReporter(cmd, nil, false, nil)
 }
 
 // managedRedeployCount derives the outcome-summary accounting from the
@@ -179,7 +192,12 @@ func newArchiveDriftRoots(projectRoot string, before map[string]bool) []string {
 // Design source: screens.jsx ScreenUpdate.
 //
 // runTemplateSyncWithReporter synchronizes templates with progress reporting.
-func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressReporter, skipConfirm bool) error {
+// runTemplateSyncWithReporter drives the update step table.
+// migrationRemoved carries the paths the per-file user-asset migration
+// removed before this call (gate round 12) — the outcome's deletion tally
+// counts them with their own content-safe disposition, since the
+// reconciliation can no longer see an already-removed file.
+func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressReporter, skipConfirm bool, migrationRemoved []string) error {
 	out := cmd.OutOrStdout()
 	// The mirror notice is a warning, so it gets its own stderr writer rather
 	// than riding `out` — which is stdout here (internal/cli/CLAUDE.md:14).
@@ -193,7 +211,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// SPEC-INIT-SHRINK-001: the deploy mode and the opt-out resolve before
 	// the deployer is constructed; the migration trigger (below) reads the
 	// same opt-out.
-	updateNoPlugin := getBoolFlag(cmd, "no-plugin") || pluginOptOutFromEnv()
+	updateNoPlugin := getBoolFlag(cmd, "no-plugin") || updatePluginOptedOut()
 	deployMode := resolveUpdateDeployMode(".", updateNoPlugin)
 
 	// REQ-018: a recorded project is mode-aware, and update never flips the
@@ -207,14 +225,19 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	currentVersion := version.GetVersion()
 	// Identity header band (REQ-TUXIU-015): "◆ MoAI-ADK <version> <go-runtime>
-	// · claude" with the version as a solid brand pill.
+	// · claude" with the version as a solid brand pill. Card t1527 D1: the band
+	// is THE single version surface of a sync — the former duplicate
+	// "Current version" KV beside it is gone.
 	_, _ = fmt.Fprintln(out, renderIdentityBand(currentVersion, th))
-	_, _ = fmt.Fprintln(out, tui.KV("Current version", "moai-adk "+currentVersion, tui.KVOpts{Theme: &th, KeyWidth: 16}))
 	_, _ = fmt.Fprintln(out, tui.CheckLine("run", "Syncing templates", "from embedded filesystem", "", &th))
 
-	if reporter != nil {
-		reporter.StepStart("Version Check", "Checking template version...")
-	}
+	// Card t1527 D2: the three pre-deploy phases render on the SAME stdout
+	// ✓-line model as the deploy steps (tui.ProgressLine). They previously rode
+	// the printerReporter — a second (stderr) surface whose ○/✓ pairs
+	// interleaved with the stdout progress the operator was already reading.
+	// The reporter parameter stays for error surfacing below; no production
+	// caller drives step pairs through it any more.
+	plVersion := tui.ProgressLine(out, "Checking template version...", nil)
 
 	// Stage 2: Config Version Comparison (before template sync)
 	// Compare package template_version with project config template_version
@@ -222,51 +245,41 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	packageVersion := version.GetVersion()
 	projectVersion, err := plan.GetProjectConfigVersion(projectRoot)
 	if err == nil && packageVersion == projectVersion && !forceBackup {
-		if reporter != nil {
-			reporter.StepComplete("Already up-to-date")
-		}
+		plVersion.Done("Already up-to-date")
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
 		return nil
 	}
 
-	if reporter != nil {
-		reporter.StepComplete("Version check complete")
-	}
+	plVersion.Done("Version check complete")
 
-	if reporter != nil {
-		reporter.StepStart("Loading Templates", "Reading embedded templates...")
-	}
+	plLoad := tui.ProgressLine(out, "Loading embedded templates...", nil)
 
 	// Load embedded templates
 	embedded, err := template.EmbeddedTemplates()
 	if err != nil {
+		plLoad.Fail(fmt.Sprintf("Template load failed: %v", err))
 		if reporter != nil {
 			reporter.StepError(err)
 		}
 		return fmt.Errorf("load embedded templates: %w", err)
 	}
 
-	if reporter != nil {
-		reporter.StepComplete("Templates loaded")
-	}
+	plLoad.Done("Templates loaded")
 
-	if reporter != nil {
-		reporter.StepStart("Loading Manifest", "Reading project manifest...")
-	}
+	plManifest := tui.ProgressLine(out, "Loading project manifest...", nil)
 
 	// Initialize manifest manager
 	mgr := manifest.NewManager()
 	if _, err := mgr.Load(projectRoot); err != nil {
+		plManifest.Fail(fmt.Sprintf("Manifest load failed: %v", err))
 		if reporter != nil {
 			reporter.StepError(err)
 		}
 		return fmt.Errorf("load manifest: %w", err)
 	}
 
-	if reporter != nil {
-		reporter.StepComplete("Manifest loaded")
-	}
+	plManifest.Done("Manifest loaded")
 
 	// Create deployer with renderer and force update enabled for template sync
 	// This ensures template files are rendered (.tmpl -> actual file) and updated even if they exist
@@ -289,21 +302,27 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// y/n confirmation — reprinting them here duplicates the visible output.
 	analysis := updatemerge.AnalyzeMergeChanges(deployer, projectRoot)
 
+	// Card t1527 D3: derive the class counts ONCE for the whole flow — the
+	// pre-confirm card and the end-of-run outcome breakdown read the same
+	// numbers, so a --yes run (which skips the card) still carries the
+	// add/update/conflict summary to the outcome.
+	addCount, updateCount, conflictCount := classifyUpdateCounts(analysis.Files)
+
 	if !skipConfirm {
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Section("Analyzing merge changes", tui.SectionOpts{Theme: &th}))
 		// Card-style classification summary (REQ-TUXIU-010/011): accent box with
 		// up to three count pills; zero-count pills omitted; suppressed entirely
 		// when the run is clean (all counts zero).
-		addCount, updateCount, conflictCount := classifyUpdateCounts(analysis.Files)
 		if card := renderClassificationSummary(addCount, updateCount, conflictCount, th); card != "" {
 			_, _ = fmt.Fprintln(out, card)
 		}
 	}
 
-	if reporter != nil {
-		reporter.StepUpdate("Found " + fmt.Sprintf("%d files to sync", len(analysis.Files)))
-	}
+	// Card t1527 D2: the found-count rides the same stdout model (the former
+	// reporter.StepUpdate printed it on the interleaved stderr surface).
+	_, _ = fmt.Fprintf(out, "%s Found %d files to sync\n",
+		paintToken(tui.StatusIcon("info"), th.Faint, false), len(analysis.Files))
 
 	// Skip confirmation if --yes flag is provided (CI/CD mode) or pre-confirmed
 	var proceed bool
@@ -340,7 +359,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// record reads at the end of the run.
 	var migration *migrationPlan
 	if config.ReadDeployMode(projectRoot) == "" {
-		plan, migErr := runUpdateMigrationTrigger(projectRoot, updateNoPlugin, pluginRunner, out, errOut)
+		plan, migErr := runUpdateMigrationTrigger(projectRoot, updateNoPlugin, out, errOut)
 		if migErr != nil {
 			// The abort-before-removal contract: nothing was removed, the
 			// record is unwritten, the next update re-triggers.
@@ -374,6 +393,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// account for what was deleted (and what the templates do not restore).
 	var preCleanFiles []string
 
+	// SPEC-UPDATE-MIGRATION-001 (card t1547): the preservation pipeline's
+	// state, produced by the Clean step's reconcile phase and consumed by the
+	// Restore step's merge phase. Empty on the legacy fresh-install branch.
+	var reconSummary update.ReconciliationSummary
+	var reconPending []update.PendingMerge
+
 	// The Clean Managed Paths step removes .moai/config before Deploy Templates
 	// renders, so the project's git mode is read here, while the file exists.
 	// Without it every render falls back to the template default (manual).
@@ -384,6 +409,21 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// loadUpdateUserValues for when the merge then keeps it).
 	userValues := loadUpdateUserValues(projectRoot)
 
+	// SPEC-UPDATE-MIGRATION-001 (card t1547, REQ-UPM-040): computed once —
+	// the Clean step branches on it and the outcome accounting differs
+	// between the legacy wholesale branch and the default reconcile path.
+	legacyClean := legacyFreshConfigInstall(projectRoot)
+
+	// collectMergeableFiles returns a list of files that should be merged
+	// using the 3-way merge engine during update.
+	// Note: .moai/config/sections/*.yaml files are already handled by
+	// restoreMoaiConfig with 3-way merge, so they are excluded here.
+	// (Moved above the step table: the Clean step's reconcile closure reads
+	// it for the merge-phase exclusion set — card t1547 review finding 2.)
+	collectMergeableFiles := func(projectRoot string) []string {
+		return mergeableFilePaths()
+	}
+
 	// Define deployment steps
 	steps := []struct {
 		name    string
@@ -391,26 +431,14 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		execute func() error
 	}{
 		{
+			// Card t1527 D2: the loop intercepts "Backup" by name before any
+			// execute runs (the interception owns config backup, namespace
+			// backup, and the pre-merge snapshots) — this closure was dead
+			// in-loop and is now gone. The message keeps the stage readable if
+			// it is ever listed.
 			name:    "Backup",
 			message: "Backing up configuration",
-			execute: func() error {
-				// Always backup before update (even with --force)
-				// --force only skips version check, not backup/merge
-				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
-				// the legacy CR-plus-format pair (REQ-UPR-004).
-				pl := tui.ProgressLine(out, "Backing up .moai/config...", nil)
-				configBackupPath, backupErr := backup.BackupMoaiConfig(projectRoot)
-				if backupErr != nil {
-					pl.Fail(fmt.Sprintf("Backup failed: %v", backupErr))
-					return backupErr
-				}
-				if configBackupPath != "" {
-					pl.Done(".moai/config backed up")
-				} else {
-					pl.Done("No config to backup")
-				}
-				return nil
-			},
+			execute: nil,
 		},
 		{
 			name:    "Validate Templates",
@@ -436,6 +464,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				pl := tui.ProgressLine(out, "Validating templates...", nil)
 				if validateErr := deployer.ValidateAll(ctx, tmplCtx); validateErr != nil {
 					pl.Fail(fmt.Sprintf("Template validation failed: %v", validateErr))
+					captureHarnessDefect(validateErr)
 					return fmt.Errorf("template validation: %w", validateErr)
 				}
 				pl.Done("All templates validated")
@@ -459,11 +488,11 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				driftBefore := presentArchiveDriftRoots(projectRoot)
 				archived, archiveErr := archiveLegacySkills(projectRoot, out, forceBackup)
 				if archiveErr != nil {
-					_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Legacy skill archive", "failed", archiveErr.Error(), &th))
+					// Card t1527 D5 + repair round: ONE surface — unarchived
+					// skills are removed by this step's cleanup, so the
+					// terminal ACTION REQUIRED row is the failure's home.
+					updateLedger.requiref(sevWarn, "legacy skill archive failed: %v", archiveErr)
 				}
-				// A skill present now but not archived is deleted by the removal
-				// below, so the shortfall is reported as a loss.
-				reportArchiveShortfall(legacyBefore, archived, out)
 				archiveDriftRootsCreated = newArchiveDriftRoots(projectRoot, driftBefore)
 
 				// SPEC-INIT-SHRINK-001 (REQ-011/REQ-013/REQ-016, design §3
@@ -483,27 +512,90 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// review finding 4), so the preview can never announce a
 				// removal the run does not make.
 				cleanTargets := computeRunCleanTargets(projectRoot, deployMode, migration)
-				// t40 defect 2: snapshot what exists under THIS run's target
-				// list BEFORE the removal (read-only; the accounting matches
-				// the removal scope).
-				preCleanFiles = deploy.InventoryManagedPathsWithTargets(projectRoot, cleanTargets)
-				// SPEC-UPDATE-DATA-SURVIVAL-001 REQ-UDS-001/003/005: the three
-				// in-memory-only files reach disk before this step removes
-				// anything. A backup-write failure aborts here, so the removal
-				// never runs while a file's only copy is in the heap.
-				// Card t111: the embedded FS rides along so the removal can
-				// back up every file the template does not carry before
-				// deleting the root it lives under.
-				return guardFirstDestructiveStep(projectRoot, configBackupPath, func() error {
-					tmplFS, tmplErr := template.EmbeddedTemplates()
-					if tmplErr != nil {
-						// Without the template FS the removal cannot tell
-						// managed from unmanaged files, so it cannot back
-						// anything up — abort rather than delete blind.
-						return fmt.Errorf("load embedded templates: %w", tmplErr)
+
+				switch {
+				case legacyClean:
+					// t40 defect 2: snapshot what exists under THIS run's
+					// wholesale scope BEFORE the removal (read-only; the
+					// accounting matches the removal scope).
+					preCleanFiles = deploy.InventoryManagedPathsWithTargets(projectRoot, cleanTargets)
+					// A skill present now but not archived is deleted by the
+					// wholesale removal below, so the shortfall is reported as
+					// a loss — this branch only.
+					reportArchiveShortfall(legacyBefore, archived, out)
+					plLegacy := tui.ProgressLine(out, "Checking config compatibility...", nil)
+					plLegacy.Done("Legacy config detected: fresh config install required (full backup already taken)")
+					// SPEC-UPDATE-MIGRATION-001 (card t1547, REQ-UPM-040): the
+					// legacy v1→v2 fresh-install branch keeps the wholesale
+					// walk behind the REQ-UPM-015 guard.
+					if err := guardFirstDestructiveStep(projectRoot, configBackupPath, func() error {
+						tmplFS, tmplErr := template.EmbeddedTemplates()
+						if tmplErr != nil {
+							// Without the template FS the removal cannot tell
+							// managed from unmanaged files, so it cannot back
+							// anything up — abort rather than delete blind.
+							return fmt.Errorf("load embedded templates: %w", tmplErr)
+						}
+						// REQ-UPM-015: even the fresh-install walk refuses
+						// user-owned namespace and unresolved user-modified
+						// files.
+						protect := update.ProtectFuncFor(projectRoot, mgr.Manifest())
+						return deploy.CleanMoaiManagedPathsWithTargetsGuarded(projectRoot, out, tmplFS, cleanTargets, protect)
+					}); err != nil {
+						return err
 					}
-					return deploy.CleanMoaiManagedPathsWithTargets(projectRoot, out, tmplFS, cleanTargets)
-				})
+
+				case migration != nil:
+					// SPEC-INIT-SHRINK-001 (REQ-011, design §3 step 4): the
+					// migration's WHOLESALE removal is exactly its classified
+					// dropped-root list (identical + already-archived
+					// modified) — the unguarded form is correct because that
+					// list IS classified by the migration classifier. The
+					// MANAGED roots no longer ride the wholesale walk (gate
+					// round 10, finding 1): a record-less --no-plugin run
+					// must not delete the local files the dry-run preview
+					// promised to preserve — they reconcile like every
+					// default run.
+					preCleanFiles = deploy.InventoryManagedPathsWithTargets(projectRoot, migration.removalTargets)
+					reportArchiveShortfall(legacyBefore, archived, out)
+					if err := guardFirstDestructiveStep(projectRoot, configBackupPath, func() error {
+						tmplFS, tmplErr := template.EmbeddedTemplates()
+						if tmplErr != nil {
+							return fmt.Errorf("load embedded templates: %w", tmplErr)
+						}
+						if len(migration.removalTargets) > 0 {
+							if err := deploy.CleanMoaiManagedPathsWithTargets(projectRoot, out, tmplFS, migration.removalTargets); err != nil {
+								return err
+							}
+						}
+						return reconcileManagedRoots(projectRoot, out, tmplFS, mgr, deployMode, &reconSummary, &reconPending)
+					}); err != nil {
+						return err
+					}
+
+				default:
+					// t40 defect 2: snapshot what exists under THIS run's
+					// target list BEFORE the removal (read-only; the
+					// accounting matches the removal scope).
+					preCleanFiles = deploy.InventoryManagedPathsWithTargets(projectRoot, cleanTargets)
+					// SPEC-UPDATE-DATA-SURVIVAL-001 REQ-UDS-001/003/005: the
+					// three in-memory-only files reach disk before this step
+					// removes anything. A backup-write failure aborts here,
+					// so the removal never runs while a file's only copy is
+					// in the heap. Card t111: the embedded FS rides along so
+					// the removal can back up every file the template does
+					// not carry before deleting the root it lives under.
+					if err := guardFirstDestructiveStep(projectRoot, configBackupPath, func() error {
+						tmplFS, tmplErr := template.EmbeddedTemplates()
+						if tmplErr != nil {
+							return fmt.Errorf("load embedded templates: %w", tmplErr)
+						}
+						return reconcileManagedRoots(projectRoot, out, tmplFS, mgr, deployMode, &reconSummary, &reconPending)
+					}); err != nil {
+						return err
+					}
+				}
+				return nil
 			},
 		},
 		{
@@ -532,6 +624,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 				if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {
 					pl.Fail(fmt.Sprintf("Deployment failed: %v", deployErr))
+					captureTemplateDeployFailure(deployErr)
 					return fmt.Errorf("deploy templates: %w", deployErr)
 				}
 				// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-001): stage the
@@ -568,13 +661,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			},
 		},
 		{
+			// Card t1527 D2: like "Backup", the loop intercepts "Restore
+			// Settings" by name — the interception owns the restore + merge
+			// + retrack work, so the no-op closure is gone.
 			name:    "Restore Settings",
 			message: "Restoring user settings",
-			execute: func() error {
-				// This step's status is tracked via configBackupPath variable
-				// We'll handle this in the main flow
-				return nil
-			},
+			execute: nil,
 		},
 	}
 
@@ -589,23 +681,6 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// Backups of mergeable files for 3-way merge after deploy
 	var mergeableBackups []updatemerge.FileBackup
 
-	// collectMergeableFiles returns a list of files that should be merged
-	// using the 3-way merge engine during update.
-	// Note: .moai/config/sections/*.yaml files are already handled by
-	// restoreMoaiConfig with 3-way merge, so they are excluded here.
-	collectMergeableFiles := func(projectRoot string) []string {
-		// Fixed mergeable files at project root that are NOT handled by restoreMoaiConfig.
-		// .mcp.json IS shipped (internal/template/templates/.mcp.json, deployed by
-		// deployer.go's no-dotfile-skip WalkDir) and IS a 3-way merge target so a
-		// user's own MCP entries survive `moai update` instead of being clobbered
-		// by the template deploy (SPEC-MCP-DEFAULT-ON-001 REQ-A-4 / AC-A-012).
-		return []string{
-			".claude/settings.json",
-			".moai/status_line.sh",
-			".mcp.json",
-		}
-	}
-
 	// Execute each step with progress reporting. The per-step in-flight line is
 	// rendered by the inline tui.ProgressLine primitive inside each step body;
 	// the coarse reporter Step wrapper is intentionally NOT driven here — doing
@@ -613,7 +688,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// in-flight line) alongside the stdout ProgressLine, producing the two-part
 	// "○…○" spinner residue on a TTY (REQ-TUXIU-020/021). Errors still surface
 	// via reporter.StepError (orphan-safe) below.
-	for i, step := range steps {
+	for _, step := range steps {
 		// Special handling for backup/restore steps; default executes normally
 		switch step.name {
 		case "Backup":
@@ -701,14 +776,35 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// t63: RestoreMoaiConfigRetained collects the retained-key refs
 				// instead of letting the merge append raw per-key "advisory:"
 				// lines to stderr mid-redraw; the advisory renders through the
-				// same stdout channel as the progress line below.
+				// same stdout channel as the progress line below. The skip
+				// filter excludes the reconciliation's archived-removed
+				// section files (gate round 10, finding 3): the pipeline
+				// archived and removed them, and a restore that re-created
+				// them from the backup would contradict the reported removal.
+				archivedSet := make(map[string]bool, len(reconSummary.ArchivedRemoved))
+				for _, a := range reconSummary.ArchivedRemoved {
+					if rel, ok := strings.CutPrefix(a, ".moai/config/sections/"); ok {
+						archivedSet[rel] = true
+					}
+				}
+				// Gate round 23, finding 2 (P2): preserved section files are
+				// excluded too — a preserved local-only file was reported
+				// untouched, and the restore's merge rewrote it with normalized
+				// YAML bytes (4-space indent collapsed), the same contradiction
+				// as the archived arm, on the preserve side (REQ-UPM-002).
+				preservedSet := make(map[string]bool, len(reconSummary.Preserved))
+				for _, p := range reconSummary.Preserved {
+					if rel, ok := strings.CutPrefix(p, ".moai/config/sections/"); ok {
+						preservedSet[rel] = true
+					}
+				}
 				retainedKeys, restoreErr := backup.RestoreMoaiConfigRetained(projectRoot, configBackupPath, func(pr, relPath string, success bool, errOut io.Writer) {
 					// Bridge to the noise-suppression ledger (recordMergeFallback +
 					// updateVerboseMode), which stays in package cli. The closure
 					// captures updateVerboseMode so the backup subpackage does not
 					// need a cross-package mutable-state seam.
 					recordMergeFallback(pr, relPath, success, updateVerboseMode, errOut)
-				})
+				}, func(relPath string) bool { return archivedSet[relPath] || preservedSet[relPath] })
 				if restoreErr != nil {
 					plRestore.Fail(fmt.Sprintf("Restore failed: %v", restoreErr))
 					if reporter != nil {
@@ -724,7 +820,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// itself already succeeded.
 				removedModelKeys, stripErr := stripRetiredModelConfig(out, projectRoot, configBackupPath)
 				if stripErr != nil {
-					_, _ = fmt.Fprintf(out, "  %s retired model key removal warning: %v\n", uikit.SymWarning(), stripErr)
+					// Card t1527 repair round: one surface (terminal row).
+					updateLedger.requiref(sevWarn, "retired model key removal failed: %v", stripErr)
 				}
 				retainedKeys = withoutStrippedKeys(retainedKeys, removedModelKeys)
 				// t63: one summary line by default; the key list expands only
@@ -740,7 +837,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// absent key does.
 				if harness := config.ReadHarnessFrom(filepath.Join(configBackupPath, "sections")); harness != "" {
 					if err := template.ApplyHarness(projectRoot, harness); err != nil {
-						_, _ = fmt.Fprintf(out, "  %s llm.harness re-assert warning: %v\n", uikit.SymWarning(), err)
+						// Card t1527 repair round: one surface (terminal row).
+						updateLedger.requiref(sevWarn, "llm.harness re-assert failed: %v", err)
 					}
 				}
 				// SPEC-INIT-SHRINK-001 (REQ-009, OD-5 settled condition): the
@@ -755,8 +853,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// card t1275: RestoreMoaiConfigRetained + ApplyHarness just
 				// rewrote .moai/config/sections/*.yaml on top of the deployed
 				// render — re-record those hashes so the manifest matches what
-				// this update actually left on disk.
-				retrackSectionFiles(projectRoot, errOut)
+				// this update actually left on disk. Card t1527 repair round 3:
+				// the failure now returns; the ! line keeps the immediate
+				// surface the internal print used to own.
+				if retrackErr := retrackSectionFiles(projectRoot, errOut); retrackErr != nil {
+					emitSeverityLine(errOut, sevWarn, resolveTheme(), "manifest retrack (config sections) failed: %v", retrackErr)
+				}
 				deletedCount := backup.CleanupOldBackups(projectRoot, 5)
 				if deletedCount > 0 {
 					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
@@ -766,7 +868,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			if len(gitignoreBackup) > 0 {
 				gitignorePath := filepath.Join(projectRoot, ".gitignore")
 				if mergeErr := updatemerge.MergeGitignoreFile(gitignorePath, gitignoreBackup); mergeErr != nil {
-					_, _ = fmt.Fprintf(out, "  %s .gitignore merge warning: %v\n", uikit.SymWarning(), mergeErr)
+					// Card t1527 repair round: one surface (terminal row).
+					updateLedger.requiref(sevWarn, ".gitignore merge failed: %v", mergeErr)
 				} else {
 					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", uikit.SymSuccess())
 					// card t1276 F1 (leader-approved option A): the EntryMerge
@@ -791,7 +894,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			// run even with no backups: the promotion decision belongs to every
 			// flow that deployed (plan.md D4 ③, M-07d).
 			if err := mergeUserFilesSettlingSnapshot(projectRoot, mergeableBackups, out, errOut); err != nil {
-				_, _ = fmt.Fprintf(out, "  %s File merge warning: %v\n", uikit.SymWarning(), err)
+				// Card t1527 repair round: one surface (terminal row).
+				updateLedger.requiref(sevWarn, "mergeable-file merge failed: %v (a pre-update copy is in the run backup)", err)
 			}
 			// card t1275: the 3-way merge rewrote the mergeable set
 			// (.claude/settings.json, .moai/status_line.sh, .mcp.json, ...)
@@ -801,6 +905,48 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			// alone changed keeps its drift and still reads user_modified.
 			if retrackErr := retrackManifestFiles(projectRoot, mgr, errOut, collectMergeableFiles(projectRoot)); retrackErr != nil {
 				_, _ = fmt.Fprintf(errOut, "  manifest retrack (mergeable set): %v\n", retrackErr)
+			}
+			// SPEC-UPDATE-MIGRATION-001 (card t1547): the reconciliation merge
+			// phase — the deploy rewrote every template-carried path, so each
+			// user-modified file captured by the reconcile phase is now merged
+			// (clean) or conflicted (operator bytes restored + .moai-new
+			// sidecar) against the fresh render, with the deploy-time snapshot
+			// as the base where one exists. Runs after the config restore so
+			// already-converged section files cost nothing. Failures here are
+			// partial-update failures and ride the recovery guard like the
+			// config restore above (REQ-UDS-019).
+			if len(reconPending) > 0 {
+				plRecon := tui.ProgressLine(out, "Reconciling local modifications...", nil)
+				var reconErr error
+				reconSummary, reconErr = update.ReconcileMerges(projectRoot, out,
+					nil, mgr.Manifest(),
+					update.ReconcileMergeOptions{Base: update.SnapshotBaseSource(projectRoot)},
+					reconPending, reconSummary)
+				if reconErr != nil {
+					plRecon.Fail(fmt.Sprintf("Reconciliation failed: %v", reconErr))
+					if reporter != nil {
+						reporter.StepError(reconErr)
+					}
+					return recovery.fail(step.name, reconErr)
+				}
+				plRecon.Done(fmt.Sprintf("%d merged, %d conflict(s), %d preserved",
+					len(reconSummary.Merged), len(reconSummary.Conflicts), len(reconSummary.Preserved)))
+				// The merges rewrote files the deploy just tracked — re-record
+				// the MERGED set (the t1275 pattern). Conflict-preserved paths
+				// are deliberately EXCLUDED (gate round 9, finding 1): their
+				// on-disk bytes are the OPERATOR's restored content, not this
+				// run's intended state — re-tracking one would register the
+				// user's bytes as a healthy template_managed record, and the
+				// next update would classify the file template-owned and
+				// overwrite it with the render (the R-2 recurrence path). An
+				// untouched record keeps the divergent hash, so the next run
+				// classifies the file user-modified and reports the conflict
+				// again instead of silently overwriting.
+				if len(reconSummary.Merged) > 0 {
+					if retrackErr := retrackManifestFiles(projectRoot, mgr, errOut, reconSummary.Merged); retrackErr != nil {
+						_, _ = fmt.Fprintf(errOut, "  manifest retrack (reconciled set): %v\n", retrackErr)
+					}
+				}
 			}
 		default:
 			// Execute normal step under the recovery guard: a failure after the
@@ -817,12 +963,13 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				return err
 			}
 		}
-
-		// Block progress bar reflecting completed/total deploy steps
-		// (REQ-TUXIU-014). Replaces the legacy "N/M steps complete" reporter
-		// text; the bar rides the same stdout channel as the step ProgressLines.
-		_, _ = fmt.Fprintln(out, renderDeployProgress(i+1, len(steps), th))
 	}
+
+	// Card t1527 D2: the block progress bar (REQ-TUXIU-014) renders ONCE at
+	// completion. The former per-step render printed five intermediate bars
+	// ("1/5"…"5/5") that read as the accumulated-snapshot breakage t694 already
+	// fixed inside the bar glyph — one completed bar is the whole story.
+	_, _ = fmt.Fprintln(out, renderDeployProgress(len(steps), len(steps), th))
 
 	_, _ = fmt.Fprintln(out)
 	// Outcome banner (REQ-TUXIU-016): solid success pill + dim detail note.
@@ -833,38 +980,104 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		ManagedRedeployed:   managedRedeployed,
 		NamespaceBackupPath: nsBackupDisplay,
 		ArchiveDriftRoots:   archiveDriftRootsCreated,
+		AddFiles:            addCount,
+		UpdatedFiles:        updateCount,
+		ConflictFiles:       conflictCount,
 	}
-	for _, f := range preCleanFiles {
-		detail.RemovedManaged++
-		if !restoredSet[f] {
-			detail.RemovedLocalOnly++
+	if legacyClean || migration != nil {
+		// Wholesale branches (legacy fresh-install, init-shrink migration):
+		// the walk removed what its target list covered — the t40 accounting
+		// applies unchanged.
+		for _, f := range preCleanFiles {
+			detail.RemovedManaged++
+			if !restoredSet[f] {
+				detail.RemovedLocalOnly++
+			}
 		}
+		if migration != nil {
+			// Gate round 8 (card t1547 repair round): the record-less
+			// migration arm carries NO removal targets of its own — the
+			// reconcile the same branch drives is what archives-then-removes
+			// the stale managed set, and that removal never reached this
+			// tally (the wholesale inventory above is empty on that arm).
+			// REQ-UPM-030/031: a run that removed N managed files says so,
+			// whatever branch removed them.
+			detail.RemovedManaged += len(reconSummary.ArchivedRemoved)
+			detail.ArchivedForRecovery += len(reconSummary.ArchivedRemoved)
+		}
+	} else {
+		// SPEC-UPDATE-MIGRATION-001 (card t1547, review finding 6): the
+		// default path removed NOTHING wholesale — its only removals are the
+		// reconciler's archive-then-remove stale set, and every one of those
+		// carries a recovery copy. Counting the pre-clean snapshot as
+		// deletions reported preserved files as removed; the accounting now
+		// reads the reconciliation's actual dispositions (REQ-UPM-031:
+		// deletions reported, never a deletion-free claim over removals).
+		detail.RemovedManaged = len(reconSummary.ArchivedRemoved)
+		// Gate round 21: the recovery copies are named as exactly that —
+		// the breakdown must not claim "all re-deployed" over files that are
+		// gone from place and only recoverable from the archive.
+		detail.ArchivedForRecovery = len(reconSummary.ArchivedRemoved)
+		// RemovedLocalOnly stays 0: an archived removal is recoverable by
+		// definition, and preserved files were never removed.
 	}
+	// Gate round 12 (card t1547): the asset migration's confirmed-counterpart
+	// removals are deletions too — the tally carries them with their own
+	// content-safe disposition (the user copy holds the bytes), on every arm:
+	// the migration runs after the confirm gate regardless of branch.
+	detail.MigrationRemoved = len(migrationRemoved)
+	detail.RemovedManaged += len(migrationRemoved)
 	renderUpdateOutcome(out, len(analysis.Files), detail, configBackupPath, th)
+	// SPEC-UPDATE-MIGRATION-001 (card t1547, REQ-UPM-030/031): the
+	// reconciliation outcome rides the existing report structures — plain
+	// counts and per-path lists, every deletion named.
+	renderReconciliationOutcome(out, reconSummary, th)
+
+	// Card t1527 D5, repaired by gate round 4 (card t1547): the ACTION
+	// REQUIRED row keys on the ACTUAL unresolved conflicts — the
+	// reconciliation's conflict list (files preserved byte-for-byte with a
+	// .moai-new sidecar) — never on the pre-merge risk classification:
+	// conflictCount counts RiskLevel=="high" files, and a fresh project's
+	// high-risk AGENTS.md/settings.json merge clean, so the risk-derived
+	// count cried wolf on every such run.
+	if unresolved := len(reconSummary.Conflicts); unresolved > 0 {
+		updateLedger.requiref(sevErr, "%d conflicting file(s) flagged by the 3-way merge — resolve them before the next template sync (see the backup at %s)", unresolved, configBackupPath)
+	}
+
 	// REQ-DHR-007: a .codex/ template the target harness profile (or this
 	// version) no longer ships is reported and left in place, never deleted.
 	reportUndeployedCodexTemplates(errOut, projectRoot, mgr.Manifest().Files, restoredSet)
-	report.EmitHooksReviewGuidance(out)
 
-	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintln(out, "To reconfigure project settings (development mode, git, model policy), run:")
-	_, _ = fmt.Fprintln(out, "   moai update -c")
+	// Card t1527 D5: the tail's mid-noise emitters move into the terminal
+	// block — the hook-restart step is ACTION REQUIRED, the -c hint and the
+	// worktree advisory are Reference one-liners. The block renders at the end
+	// of runUpdate, after the post-sync steps.
+	updateLedger.requiref(sevWarn, "%s", hooksReviewGuidanceMsg())
+
+	updateLedger.referencef("Reconfigure project settings (development mode, git, model policy): moai update -c")
 
 	// Ensure global settings.json has required env variables
 	if err := ensureGlobalSettingsEnv(); err != nil {
-		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Global settings env", "update failed", err.Error(), &th))
+		// Card t1527 repair round: one surface (terminal row).
+		updateLedger.requiref(sevWarn, "global settings env update failed: %v", err)
 	}
 
 	// Install pre-push hook (REQ-CIAUT-002). Non-fatal; --no-hooks opts out.
-	installPrePushHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out, errOut)
+	// Card t1527 D5: a failed install is escalated into the terminal block.
+	if pushErr := installPrePushHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out, errOut); pushErr != nil {
+		updateLedger.requiref(sevErr, "pre-push hook installation failed: %v", pushErr)
+	}
 
 	// Install pre-commit hook (REQ-PC-001). Fast-subset commit tier; --no-hooks opts out.
-	installPreCommitHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out, errOut)
+	if commitErr := installPreCommitHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out, errOut); commitErr != nil {
+		updateLedger.requiref(sevErr, "pre-commit hook installation failed: %v", commitErr)
+	}
 
 	// SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-009): one-line worktree advisory on
 	// update completion. The primary checkout is shared; branch-changing work
-	// belongs in a worktree.
-	emitWorktreeAdvisory(out, projectRoot)
+	// belongs in a worktree. Card t1527 D5: routed into the Reference section
+	// (the AC-WBG-009 wording travels with it verbatim).
+	updateLedger.referencef("%s", worktreeAdvisoryText(projectRoot))
 
 	// SPEC-INIT-SHRINK-001 (REQ-015, design §3 step 5): a completed
 	// migration run writes the record — plugin after a confirmed install,
@@ -906,17 +1119,23 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 // A skipped sync is not an error; callers receive (true, nil).
 // A user-cancelled merge is also (true, nil) — it is a no-op for downstream
 // purposes (no files written), so archive does not need to run.
-func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
+// runTemplateSyncWithProgress is `moai update`'s sync entry: the
+// version-match skip, the interactive confirmation (unless --yes), then the
+// reporter-driven flow. userAssetsInstalled rides in from the user-asset
+// phase (runUpdate) as the project migration's run-level removal gate — the
+// migration itself runs BELOW, after this function's confirmation gate.
+func runTemplateSyncWithProgress(cmd *cobra.Command, userAssetsInstalled bool) (skipped bool, err error) {
 	out := cmd.OutOrStdout()
 	th := resolveTheme()
 	projectRoot := "."
 	autoConfirm := getBoolFlag(cmd, "yes")
 	forceUpdate := getBoolFlag(cmd, "force")
 
-	// Use printer-backed console output for progress reporting
-	// (REQ-CTX-015: routes step events through the Printer to stderr).
-	consoleReporter := newPrinterReporter(
-		printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr())))
+	// Card t1527 D2: pass nil — the sync renders its pre-deploy phases on the
+	// same stdout ✓-line model as the deploy steps, and the former
+	// printer-backed stderr phase pairs no longer interleave with it. (The
+	// reporter parameter itself stays: it surfaces step errors for any future
+	// spinner-backed caller, exactly as runInit does.)
 
 	// Check for version match before proceeding
 	packageVersion := version.GetVersion()
@@ -951,7 +1170,28 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
 		}
 	}
 
-	return false, runTemplateSyncWithReporter(cmd, consoleReporter, true)
+	// Item 5 (fix round 3), relocated by the repair round (gate r5 finding):
+	// the per-file project migration runs HERE — after the confirmation gate
+	// above, whose cancel return already exited — so a cancelled update
+	// leaves the project's managed assets byte-intact. The user-side install
+	// (runUpdate, before this prompt) still precedes the removal, and
+	// userAssetsInstalled gates every removal: a failed or skipped install
+	// leaves the project-side assets in place (leader scope addition #5 —
+	// the stale-counterpart deletion hazard). The removed paths ride into
+	// the reporter so the outcome's deletion tally carries them (gate round
+	// 12 — a removal that only bumped a counter vanished from every list).
+	var migrationRemoved []string
+	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+		removed, err := migrateProjectCommonAssets(projectRoot, homeDir, userAssetsInstalled, nil, func(format string, args ...interface{}) {
+			_, _ = fmt.Fprintf(out, format+"\n", args...)
+		})
+		if err != nil {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: migration warning: %v\n", err)
+		}
+		migrationRemoved = removed
+	}
+
+	return false, runTemplateSyncWithReporter(cmd, nil, true, migrationRemoved)
 }
 
 // toPreviewInputs maps a merge.MergeAnalysis into the neutral

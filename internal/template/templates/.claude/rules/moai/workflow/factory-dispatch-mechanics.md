@@ -107,7 +107,7 @@ Two measured constraints make the lane enter the release worktree rather than dr
 - **Return the same way.** `ExitWorktree` returns to the primary checkout, not to the lane's own worktree — the lane re-enters its card worktree with `EnterWorktree(<own-path>)` before continuing.
 - **One integrating session at a time — and an empty `MERGE_HEAD` does not establish that.** The release worktree is the serialization point. `git rev-parse -q --verify MERGE_HEAD` printing nothing is NECESSARY, never sufficient: it prints nothing just as readily while another lane is mid-resolution. Reading that silence as "the tree is free" is what lets two lanes overlap, invisibly until one commits.
 
-    [HARD] **Serialize by the recorded hold and the announcement, not by probe.** `moai integration acquire` records the hold, `moai integration status` says who has it, `moai integration release` gives it back when the completion report is sent. Taking a live holder's window needs `--force`, which records what it displaced — deliberate, never quiet. The recorded hold is what the PreToolUse guard reads to refuse a second lane's `git merge`; the deny layer is opt-in (`workflow.integration_lock.enabled`, default off), the record works either way. The announcement to the lead rides alongside it. The probe stays — but it is the last check, never the first.
+    [HARD] **The window schedules itself: the queue, the policy, and the merge verb — not a probe, and not a nomination.** The expensive re-measure runs BEFORE the lane joins the queue (`moai integration remeasure -- <command>`, keyed to the candidate tree). `moai integration acquire --wait[=<bound>]` queues the lane behind a live holder instead of refusing; the FIFO promotes the first live ticket the moment the holder releases, stamping the promoted holder with the ticket's owner pid and integration target. The leader governs by policy only — `moai integration policy open|hold --reason` — and hold suspends every promotion. `moai integration merge --card <id>` is the one in-window step: a seconds-long identity check plus `git merge --no-ff` of the pinned SHA, no test suite inside the window; `moai factory complete` merges only by calling that step. Taking a live holder's window still needs `--force`, which records what it displaced — deliberate, never quiet. The recorded hold is what the PreToolUse guard reads to refuse a second lane's `git merge`; the deny layer is opt-in (`workflow.integration_lock.enabled`, default off), the record works either way. The probe stays — but it is the last check, never the first.
 
     [HARD] **`acquire` asserts the caller's tree first.** Detail: `factory-dispatch-gates.md` § The pre-merge settings-drift assertion.
 
@@ -117,6 +117,65 @@ Two measured constraints make the lane enter the release worktree rather than dr
 - **Push the release branch; the batch pull request stays with the lead.** A rejected push means another lane pushed first — fetch, integrate, push again; never force. Until that branch's batch PR merges, the disposal rule above still binds.
 
 The completion signal is the branch name, merge SHA, and evidence path.
+
+## The lane's standard landing
+
+A lane lands its own card. The sequence is fixed, and every step leaves a
+file the completion report names:
+
+1. **Verify lane-locally** — the affected packages only, env-scrubbed, one
+   compound invocation (§ Verification load is lane-local).
+2. **Card-review** — `codex_review` with `scope: "card"` into
+   `.moai/reports/<card-id>/card-review.md` (`factory-dispatch-detail.md` §
+   The card-review stage). The receipt the review returns is the mechanical
+   basis of the lane's own completion verdict — a completion carrying
+   neither a review receipt nor a recorded reason for its absence is a gap.
+3. **Deliver** — `moai factory complete`: under github-flow (the
+   distributed default) the verb runs the merge-readiness triple against
+   the integration target, pushes the card branch, opens the pull request
+   (its title carries the card id — the traceability carrier), and requests
+   auto-merge; a re-run after the PR merges records `merged-pr`. The
+   git-flow variant (integration window, `--no-ff` merge, release-branch
+   push) is the section above and applies only where the project's git
+   strategy names git-flow.
+4. **Close** — the merged-pr record closes the lane's own queue card by the
+   runtime-completion archive authority (`auto-semantics.md` §13): the
+   archive lands with the landing verdict the edge answered, and the
+   runtime completion row is recorded. No leader `todo done` is needed.
+5. **Read the review on the pull request** — a `gh pr checks` row naming
+   CodeRabbit is not evidence (`factory-dispatch.md` § CodeRabbit is not
+   read from `gh pr checks`): the combined commit-status API must show
+   `state == "success"` with description `Review completed`, AND a
+   `Merge Risk:` line whose commit prefix matches the current
+   `headRefOid`. Anything else is a gap.
+6. **Sweep** — once the remote landing is confirmed, `moai worktree sweep`
+   disposes the card tree (owner check, dirty trees skipped — the
+   `worktree-integration.md` disposal contract).
+
+The landing writes one decision record (`auto-semantics.md` §10) in the
+card's progress record, and the completion report to the leader carries the
+PR URL and the merge SHA — information, not a gate. The lane's verdict is
+its own, evidenced by the review receipt, CI, and the readiness triple.
+
+## The leader's remaining role
+
+Lane autonomy moved the per-card judgment and landing duties to the lanes.
+What the leader keeps is enumerated, and the enumeration is the boundary —
+a duty not listed is a lane's:
+
+| Retained | Why it stays |
+|---|---|
+| Queue production and issuance | translating operator requests into cards; nothing enters the queue the operator did not ask for |
+| Dispatch | routing whole cards to lanes, with the pre-dispatch cross-check |
+| Cross-lane conflict coordination | semantic clashes a lane cannot resolve alone; dispute coordination |
+| Serial-slot policy | the ordering gate on new leases, and its recorded wedge repairs |
+| Keep-set gate relay | environment-impossible, operator-held, and irreversible external-shared decisions reach the operator through the leader |
+
+Everything that used to sit with the leader per card — the completion
+verdict, the merge approval, the `todo done`, the stage advancement — is
+the lane's now, under the same evidence discipline: the lane self-verifies
+with a receipt, and a completion is still read, never trusted — by the lane
+itself.
 
 ## Boundaries
 

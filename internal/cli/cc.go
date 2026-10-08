@@ -139,6 +139,13 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	}
 	endEntry := debugTiming.beginDebug(launchStepEntryParse, "")
 
+	// REQ-SCV-012 (SPEC-SESSION-CC-VERSION-002): the option model the resume
+	// interpreters read is derived once per process from the claude binary on
+	// PATH. Every derivation failure degrades silently to the compile-time
+	// snapshot and changes no exit status; the scan below stays a pure argv
+	// walk over package state.
+	refreshActiveClaudeOptionModel()
+
 	// REQ-SCV-009 (SPEC-SESSION-CC-VERSION-001): a --resume token with no
 	// session id is a broken launch — refuse before any launch side effect,
 	// including the --spawn window. Pure argv scan: no environment, no
@@ -239,24 +246,12 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
 		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes, entry.ClearPolicy, laneDispatchSelection(entry))()
 		defer exportFactoryLaunchFacts(entry.Spec, backend)()
-		// REQ-SD-020: the relaunch policy turns this launcher into the
-		// supervising loop — it stays the parent, leases the next card,
-		// starts one interactive session per card, and never exec's in
-		// place (design.md §6). The stamps above are live for the loop's
-		// own `next` calls and reach every child through the environment.
+		// Card t1554 (operator decision): the relaunch policy's lease chain
+		// is removed — card consumption is the unified `moai todo --auto`
+		// engine's alone. The flag stays accepted and degrades to the
+		// one-shot lane session below, which consumes the queue itself.
 		if entry.ClearPolicy == config.FactoryClearPolicyRelaunch {
-			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
-			settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
-			endSettings()
-			defer settingsCleanup()
-			filteredArgs = laneJoinChildArgv(filteredArgs, finalLabel, settingsFlag)
-			if debugRequested {
-				// The relaunch loop replaces the one-shot launch: the dump is
-				// this launcher's pre-exec trace, printed before the loop's
-				// first session handoff (REQ-009's cc/glm form).
-				debugTiming.debugDump(cmd.ErrOrStderr())
-			}
-			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs, entry.FactoryRun, entry.FactoryLead)
+			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), factoryRelaunchSupersededNote)
 		}
 		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 		settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)

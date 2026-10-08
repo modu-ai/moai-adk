@@ -76,15 +76,43 @@ func checkGitStrategyWorkflow(projectRoot string, verbose bool) DiagnosticCheck 
 	}
 
 	target := gitFlow.IntegrationTarget
-	targetPhrase := fmt.Sprintf("integration target: %s", target)
+
+	// An empty target is no longer a caller fallback: worktree done / sweep,
+	// goal approve, factory merge ready / complete and the card diff base all
+	// refuse it (card t1453 M1). Warn, naming the key to set.
 	if target == "" {
-		targetPhrase = "integration target unset (consumers fall back to the caller's branch)"
+		check.Status = uikit.CheckWarn
+		check.Message = fmt.Sprintf(
+			"git_strategy workflow = %s; integration target unset — the base-branch consumers refuse it: %s",
+			gitFlow.Workflow, gitFlow.EmptyTargetGuidance(projectRoot, ""))
+		if verbose {
+			check.Detail = "resolved through the validated reader (LoadGitFlowIntegrationConfig); no consumer substitutes a branch"
+		}
+		return check
+	}
+
+	// A target that differs from worktree_base_branch is the signature of a
+	// primary-config revert (the flow and the base branch disagree). Only when
+	// both are set — an unset base branch is a deliberate "follow the default".
+	// Since SPEC-GITHUB-FLOW-CI-RESIDUE-001 the LANDING checks resolve their
+	// base from the worktree_base_branch chain, not the target, so this stays
+	// an informational mismatch warning — naming both values, no repair
+	// imperative (design D-1.3).
+	if wtBase := config.LoadWorktreeBaseBranch(projectRoot); wtBase != "" && wtBase != target {
+		check.Status = uikit.CheckWarn
+		check.Message = fmt.Sprintf(
+			"git_strategy workflow = %s resolves integration target %s but git_strategy.worktree_base_branch is %s — landing checks follow the worktree_base_branch chain (else refs/remotes/origin/HEAD, else origin/main), not the target; informational (a reverted config reads this way)",
+			gitFlow.Workflow, target, wtBase)
+		if verbose {
+			check.Detail = fmt.Sprintf("landing checks resolve their base from worktree_base_branch first (here %s) while the %s flow names the target %s; card worktrees are cut from %s", wtBase, gitFlow.Workflow, target, wtBase)
+		}
+		return check
 	}
 
 	check.Status = uikit.CheckOK
 	check.Message = fmt.Sprintf(
-		"git_strategy workflow = %s; %s; %s",
-		gitFlow.Workflow, workflowStandingBranches(gitFlow.Workflow), targetPhrase)
+		"git_strategy workflow = %s; %s; integration target: %s",
+		gitFlow.Workflow, workflowStandingBranches(gitFlow.Workflow), target)
 
 	if verbose {
 		check.Detail = "resolved through the validated reader (LoadGitFlowIntegrationConfig)"

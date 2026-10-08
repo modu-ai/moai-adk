@@ -21,6 +21,13 @@ const (
 	// internal/paths mirrors this constant locally to stay stdlib-only.
 	EnvHome = "MOAI_HOME"
 
+	// EnvHookDispatch marks the process as a hook dispatch: the
+	// `moai hook` command sets it to "1" at dispatch entry, and the
+	// participation sender refuses to publish while it is present
+	// (SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-015 — the sender never
+	// runs on the hook path).
+	EnvHookDispatch = "MOAI_HOOK_DISPATCH"
+
 	// EnvConfigDir overrides the MoAI configuration directory path.
 	EnvConfigDir = "MOAI_CONFIG_DIR"
 
@@ -336,6 +343,23 @@ const (
 	// operator-authored misconfiguration fails loud, never silently reverts
 	// to the default. --classification-file outranks it.
 	EnvTodoDecider = "MOAI_TODO_DECIDER"
+
+	// EnvMemoryFoldOnDone gates the card-close memory fold
+	// (SPEC-MEMORY-FOLD-BUDGET-001 REQ-MFB-007). Accepted enabling values are
+	// "1" and "true" (case-insensitive, surrounding whitespace ignored) — the
+	// repository's existing environment-flag vocabulary — and every other
+	// value, including unset and empty, keeps the fold off. The compiled
+	// default is off (config.DefaultMemoryFoldOnDone); wiring every queue
+	// close to a shared-store mutation is opt-in (plan.md OD-1/OD-2).
+	EnvMemoryFoldOnDone = "MOAI_MEMORY_FOLD_ON_DONE"
+
+	// EnvMemoryAudit is the memory-subsystem kill switch. The value "0"
+	// silences every unasked memory surface — the SessionStart budget line
+	// (SPEC-MEMORY-FOLD-BUDGET-001 follow-up card, REQ-MFB-011) and the
+	// staleness audit path (SPEC-V3R2-EXT-001 T6) read it. The constant gives
+	// the gate's name one home; the SessionStart advisory was the first reader
+	// to cite it, the older literal readers predate it.
+	EnvMemoryAudit = "MOAI_MEMORY_AUDIT"
 )
 
 // Factory-role marker constants (SPEC-AUTONOMY-PRECONDITION-001

@@ -777,6 +777,16 @@ type BranchGuardConfig struct {
 // DENY layer is gated, exactly as BranchGuard gates only its deny.
 type IntegrationLockConfig struct {
 	Enabled bool `yaml:"enabled"`
+
+	// LeaseMinutes is the window lease duration in minutes (card t1479,
+	// REQ-MWQ-008). A pointer because ABSENT and ZERO mean different
+	// things: absent ships the 30-minute factory default, and an explicit
+	// zero DISABLES the lease — validity then decided by owning-session
+	// liveness alone, as before the lease existed. M0's measurement
+	// (.moai/reports/t1479/m0-window-duration.md) found the in-window
+	// section sub-second, so the default stays 30 until a measurement
+	// legitimately lowers it.
+	LeaseMinutes *int `yaml:"lease_minutes,omitempty"`
 }
 
 // SettingsDriftGateConfig mirrors workflow.settings_drift_gate.* — the opt-in
@@ -1368,18 +1378,9 @@ type HarnessConfig struct {
 	Evaluator EvaluatorConfig `yaml:"evaluator"`
 }
 
-// PlanAuditCeilingPolicyConfig is the configuration struct for the
-// plan_audit_ceiling_policy block: what happens when a plan audit reaches its
-// tier ceiling without an admitted verdict.
-type PlanAuditCeilingPolicyConfig struct {
-	// AutoDeltaRounds is the count of delta audits that run without asking
-	// when the fix stays inside fix_scope. Parsed and carried here; the
-	// eligibility computation stays prose-consumed (SPEC-AUDIT-CEILING-002 §E).
-	AutoDeltaRounds int `yaml:"auto_delta_rounds"`
-	// OnFinalHit is the policy value applied when the final ceiling hit
-	// reaches no admitted verdict. Shipped value: hold-and-split.
-	OnFinalHit string `yaml:"on_final_hit"`
-}
+// PlanAuditCeilingPolicyConfig is declared once below, next to its
+// Defaults() — the SPEC-AUDIT-CEILING-002 merge kept this site for the
+// on_final_hit value set only.
 
 // The on_final_hit policy values the ceiling evaluation selects on (the closed
 // set; any other value — or an empty/unreadable one — fails closed to `hold`).
@@ -1495,6 +1496,46 @@ type PlanAuditGlobalConfig struct {
 	EnforceGateOnSpecCreation bool `yaml:"enforce_gate_on_spec_creation"`
 	// Rationale describes the reason for these settings.
 	Rationale string `yaml:"rationale,omitempty"`
+}
+
+// PlanAuditTierCeilingsConfig is the configuration struct for the
+// plan_audit_tier_ceilings block — the per-Tier plan-auditor retry ceiling
+// SSOT (SPEC-AUDIT-CEILING-001 REQ-ACE-002).
+type PlanAuditTierCeilingsConfig struct {
+	// S is the Tier S ceiling (single-pass audit, no iteration 2+).
+	S int `yaml:"S"`
+	// M is the Tier M ceiling (up to two spawns).
+	M int `yaml:"M"`
+	// L is the Tier L ceiling and the backward-compatible default when a
+	// SPEC's frontmatter carries no tier: field.
+	L int `yaml:"L"`
+}
+
+// PlanAuditCeilingPolicyConfig is the configuration struct for the
+// plan_audit_ceiling_policy block — what happens when a plan audit reaches
+// its tier ceiling without an admitted verdict (REQ-ACE-002).
+type PlanAuditCeilingPolicyConfig struct {
+	// AutoDeltaRounds is the count of delta audits that run without asking,
+	// when the fix stays inside the verdict's fix_scope anchors.
+	AutoDeltaRounds int `yaml:"auto_delta_rounds"`
+	// OnFinalHit names the final-hit policy. The documented value — the only
+	// one the prose policy and the CLI ladder implement — is hold-and-split;
+	// any other explicitly-set value is a config error, because a reader that
+	// silently accepts a policy name it does not enforce would read the key
+	// while ignoring its meaning.
+	OnFinalHit string `yaml:"on_final_hit"`
+}
+
+// Defaults returns the canonical ceiling defaults, matching the template
+// harness.yaml SSOT map.
+func (c PlanAuditTierCeilingsConfig) Defaults() PlanAuditTierCeilingsConfig {
+	return PlanAuditTierCeilingsConfig{S: 1, M: 2, L: 3}
+}
+
+// Defaults returns the canonical ceiling-policy defaults, matching the
+// template harness.yaml.
+func (c PlanAuditCeilingPolicyConfig) Defaults() PlanAuditCeilingPolicyConfig {
+	return PlanAuditCeilingPolicyConfig{AutoDeltaRounds: 1, OnFinalHit: "hold-and-split"}
 }
 
 // EvaluatorConfig is the sub-configuration struct for the evaluator.

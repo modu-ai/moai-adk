@@ -538,7 +538,12 @@ func tuiFakeScript(t *testing.T) string {
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX sh fixture backend; the Windows lane proves the owner by cross build")
 	}
-	script := "#!/bin/sh\nexec \"" + os.Args[0] + "\" -test.run='^TestManagedCodexTUIFakeCodex$' -- \"$@\"\n"
+	// The fake TUI child is the test binary re-executed, and it carries the
+	// App Server token in its env as the payload under test — export the pin
+	// marker so the child's TestMain ambient clear (factory_test.go) leaves the
+	// composed family env alone (the t1252 pattern; M2 widened the scrub set to
+	// include EnvMoaiFactoryAppServerToken).
+	script := "#!/bin/sh\nexport " + factoryEnvPinnedEnv + "=1\nexec \"" + os.Args[0] + "\" -test.run='^TestManagedCodexTUIFakeCodex$' -- \"$@\"\n"
 	path := filepath.Join(t.TempDir(), "fake-codex.sh")
 	if err := os.WriteFile(path, []byte(script), 0o700); err != nil {
 		t.Fatal(err)
@@ -620,6 +625,24 @@ type tuiFake struct {
 func newTUIFake(t *testing.T, run string, extraEnv ...string) *tuiFake {
 	t.Helper()
 	program := tuiFakeScript(t)
+	// Keep the child environment isolated: broker identity resolution needs real
+	// Git, while every Codex process still uses the absolute fake program.
+	gitPath, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	gitPath, err = filepath.Abs(gitPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gitDir := filepath.Join(t.TempDir(), "git tools")
+	if err := os.Mkdir(gitDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	gitShim := "#!/bin/sh\nexec " + shellQuote(gitPath) + " \"$@\"\n"
+	if err := os.WriteFile(filepath.Join(gitDir, "git"), []byte(gitShim), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("MOAI_HOME", t.TempDir())
 	root := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
@@ -645,6 +668,7 @@ func newTUIFake(t *testing.T, run string, extraEnv ...string) *tuiFake {
 		t.Fatal(err)
 	}
 	f.env = append([]string{
+		"PATH=" + gitDir,
 		config.EnvFactoryRunID + "=" + run,
 		config.EnvFactoryBackend + "=" + BackendCodex,
 		config.EnvMoaiFactoryWorker + "=" + factory.FactoryLaneLabel(1),

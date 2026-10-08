@@ -109,6 +109,34 @@ var sanitizedPairPaths = []string{
 	".claude/rules/moai/core/verification-claim-integrity-detail.md",
 	".claude/rules/moai/workflow/cross-session-messaging-detail.md",
 	".claude/rules/moai/workflow/main-checkout-branch-guard-detail.md",
+	// card t1525 re-sync enrolments: pairs whose divergence is sanctioned
+	// §25 sanitization shape, now measured instead of unmeasured.
+	// orchestration-mode-selection.md: the resolver-gated §C.1 doctrine and
+	// genealogy were propagated to the mirror verbatim; the local copy
+	// additionally retains the measurement-corpus provenance (ISO date range,
+	// absolute poll counts) that the distribution copy generalizes.
+	".claude/rules/moai/workflow/orchestration-mode-selection.md",
+	// agent-authoring.md: local carries the SPEC-ID provenance and one stale
+	// in-file section reference (§ CG Mode; both copies of glm-web-tooling.md
+	// name the section "CG Retirement and Migration") — the mirror copy is
+	// token-free and its section reference resolves.
+	".claude/rules/moai/development/agent-authoring.md",
+	// agent-patterns.md: token-only divergence (SPEC-ID stripped from the
+	// distribution copy).
+	".claude/rules/moai/development/agent-patterns.md",
+	// spec-frontmatter-schema.md: local names the implementing Go path; the
+	// distribution copy omits it.
+	".claude/rules/moai/development/spec-frontmatter-schema.md",
+	// contract-sign-guard.md: the paths: frontmatter glob differs — local
+	// uses a "**/<file>" glob, the distribution copy pins the template-tree
+	// path.
+	".claude/rules/moai/workflow/contract-sign-guard.md",
+	// cross-session-messaging.md: local retains the Origin provenance line
+	// stripped from the distribution copy.
+	".claude/rules/moai/workflow/cross-session-messaging.md",
+	// moai-memory.md: local cites this repository's own store measurements;
+	// the distribution copy generalizes them.
+	".claude/rules/moai/workflow/moai-memory.md",
 }
 
 // tokenNormalizer pairs a regex matching an intentionally-divergent internal

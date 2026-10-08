@@ -48,13 +48,9 @@ const (
 	reviewScopeTree = "tree"
 )
 
-// cardBaseBranch is the gitflow integration branch the card diff is measured
-// against; cardBranchPrefix is the committed lane-protocol invariant the
+// cardBranchPrefix is the committed lane-protocol invariant the
 // discriminator's primary signal rides (REQ-CGS-004).
-const (
-	cardBaseBranch   = "develop"
-	cardBranchPrefix = "WT-"
-)
+const cardBranchPrefix = "WT-"
 
 // cardDigestHexLen mirrors internal/verify's binding-digest width so the card
 // receipt key reads like every other receipt key ("<head>:<digest[:16]>").
@@ -189,14 +185,28 @@ func reviewScopeGit(dir string, args ...string) (string, error) {
 
 // cardMergeBase computes the card diff base at evaluation time — never a
 // pinned SHA (REQ-CGS-002, gitflow-lane-protocol §8: an absorption must move
-// the base, and only a recompute follows it).
+// the base, and only a recompute follows it); the ref is the integration target.
 func cardMergeBase(dir string) (string, error) {
-	// The ONE ancestry read in this file — the card-diff base measurement, not
+	cfg := config.LoadGitFlowIntegrationConfig(dir)
+	target := strings.TrimSpace(cfg.IntegrationTarget)
+	if target == "" {
+		return "", fmt.Errorf("card merge base: no integration target configured: %s", cfg.EmptyTargetGuidance(dir, ""))
+	}
+	// Card-diff ancestry measurements, not
 	// a binary-lag comparison (REQ-ABI-006: binlag.Evaluate stays the only
 	// binary-lag judge; the sweep allowlist pins this coordinate).
-	base, err := reviewScopeGit(dir, "merge-base", cardBaseBranch, "HEAD")
+	base, err := reviewScopeGit(dir, "merge-base", target, "HEAD")
 	if err != nil {
 		return "", fmt.Errorf("card merge base: %s", execerr.StatusDetail(err))
+	}
+	// Exclude already-landed remote changes when the local target is stale.
+	// An unpushed newer local target remains the review base.
+	remote, remoteErr := runReviewGit(dir, "merge-base", "refs/remotes/origin/"+target, "HEAD")
+	remote = strings.TrimSpace(remote)
+	if remoteErr == nil && remote != "" {
+		if _, err := runReviewGit(dir, "merge-base", "--is-ancestor", base, remote); err == nil {
+			base = remote
+		}
 	}
 	return base, nil
 }

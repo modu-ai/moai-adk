@@ -89,6 +89,22 @@ func TestCCCmd_Execution_NoDeps(t *testing.T) {
 }
 
 func TestCCCmd_WithProfile(t *testing.T) {
+	// Use a temporary project root to prevent any mutation of real project
+	// files (card t1529): only launchClaudeFunc is stubbed below, so the REAL
+	// unifiedLaunch flow runs to completion, and its applyCCMode →
+	// resetTeamModeForCC step rewrites .moai/config/sections/llm.yaml under
+	// whatever root findProjectRootFn resolves. Without this override the
+	// root resolved to this repository and each run re-marshaled the
+	// developer's llm.yaml into schema defaults (team_mode: glm lost).
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
+
 	origDeps := deps
 	defer func() { deps = origDeps }()
 	deps = nil

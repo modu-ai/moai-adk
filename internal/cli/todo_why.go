@@ -13,10 +13,16 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // newTodoWhyCmd — `moai todo why <n>` (REQ-TA-012): print every finding
-// naming the card, lock-free.
+// naming the card, lock-free. SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-014: the
+// output additionally shows the card's issuance attribute projections and
+// the GTD relations, all through the common relation resolver (card t1454
+// card-review r2 findings 11/14) — the follow-up projection reads child →
+// origin, the parent projection parent → child.
 func newTodoWhyCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "why <n>",
@@ -32,16 +38,33 @@ func newTodoWhyCmd() *cobra.Command {
 				return err
 			}
 			out := cmd.OutOrStdout()
-			findings, indexes := rec.FindingsNaming(id)
-			if len(findings) == 0 {
+			// The common relation resolver (card t1454 card-review r2
+			// findings 11/14): findings keep their finding-line rendering;
+			// the resolver's other edges — the spawned_by projections
+			// (follow-up child → origin, parent parent → child) and the GTD
+			// relations — render one line each, before the findings so the
+			// operator sees the card's provenance first.
+			edges := factory.ResolveCardEdges(rec, factory.ListGTDCardRelations(cmd.Context(), newTodoStore()), id)
+			hasFinding := false
+			for _, e := range edges {
+				if e.Index > 0 {
+					hasFinding = true
+					continue
+				}
+				_, _ = fmt.Fprintf(out, "  %s %s → %s  source=%s\n", e.Kind, e.From, e.To, e.Source)
+			}
+			if !hasFinding {
 				_, _ = fmt.Fprintf(out, "%s: no findings\n", id)
 				return nil
 			}
-			for i, f := range findings {
+			for _, e := range edges {
+				if e.Index <= 0 {
+					continue
+				}
 				// The index is the address `unrelate` takes, so it leads
 				// the line rather than trailing it.
-				_, _ = fmt.Fprintf(out, "%d %s\n", indexes[i],
-					strings.TrimPrefix(todoFindingLine(rec, id, f), "\t"))
+				_, _ = fmt.Fprintf(out, "%d %s\n", e.Index,
+					strings.TrimPrefix(todoFindingLine(rec, id, rec.Findings[e.Index-1]), "\t"))
 			}
 			return nil
 		},

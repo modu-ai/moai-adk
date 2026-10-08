@@ -57,10 +57,12 @@ const orphanTmpMinAge = 10 * time.Minute
 const maxStampBytes = 128
 
 // Retention archives and cleans up old entries in usage-log.jsonl.
-// REQ-HL-011: Lazy pruning on every RecordEvent call, skip if within 1 hour of last prune.
+// REQ-HL-011 (amended by SPEC-HARNESS-DETACHED-PRUNE-001 REQ-DP-008): the prune
+// runs off the observer record path, on the gated detached child; skip if within
+// 1 hour of last prune.
 //
-// @MX:ANCHOR: [AUTO] PruneStaleEntries is called by observer and tests.
-// @MX:REASON: [AUTO] fan_in >= 3: observer.go, observer_test.go, integration_test.go
+// @MX:ANCHOR: [AUTO] PruneStaleEntries is the prune entry: the retention-prune child verb and the tests call it.
+// @MX:REASON: [AUTO] fan_in >= 3: internal/cli hook.go (child verb, SPEC-HARNESS-DETACHED-PRUNE-001), observer_test.go, integration_test.go
 type Retention struct {
 	// logPath is the usage-log.jsonl file path.
 	logPath string

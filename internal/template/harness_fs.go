@@ -127,14 +127,24 @@ func (h *harnessFS) isHidden(name string) bool {
 	return false
 }
 
-// sharedSource projects the existing rule and workflow catalog into the
-// harness-neutral paths used by both hosts. The source is read-only and the
-// projection is deterministic; no user file is copied or rewritten in place.
-func (h *harnessFS) sharedSource(name string) (string, bool) {
-	for _, p := range []struct{ target, source string }{
-		{".moai/policies", ".claude/rules/moai"},
-		{".moai/workflows", ".claude/skills/moai/workflows"},
-	} {
+// sharedDeploySurfaces is the harness-neutral surface table: each deploy-side
+// target directory and the shared template source directory its deployed
+// bytes are projected from. One table serves both consumers — the harnessFS
+// open path below and the update reconciliation's classification scope +
+// carriage mapping (internal/cli) — so a deployed .moai/policies or
+// .moai/workflows file classifies against the source that actually produced
+// it (card t1547 repair round, gate finding 1).
+var sharedDeploySurfaces = []struct{ target, source string }{
+	{".moai/policies", ".claude/rules/moai"},
+	{".moai/workflows", ".claude/skills/moai/workflows"},
+}
+
+// SharedDeploySource projects a harness-neutral deploy path onto the shared
+// template source path its deployed bytes come from; ok=false for paths
+// outside the shared surfaces. The projection is deterministic and read-only;
+// no user file is copied or rewritten in place.
+func SharedDeploySource(name string) (string, bool) {
+	for _, p := range sharedDeploySurfaces {
 		if name == p.target {
 			return p.source, true
 		}
@@ -143,6 +153,24 @@ func (h *harnessFS) sharedSource(name string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// SharedDeployTargets lists the deploy-side directories of the shared
+// surfaces — the classification-scope entries the update reconciliation adds
+// (the surfaces are real deploy paths of the dual/codex deployers).
+func SharedDeployTargets() []string {
+	targets := make([]string, len(sharedDeploySurfaces))
+	for i, p := range sharedDeploySurfaces {
+		targets[i] = p.target
+	}
+	return targets
+}
+
+// sharedSource projects the existing rule and workflow catalog into the
+// harness-neutral paths used by both hosts. The source is read-only and the
+// projection is deterministic; no user file is copied or rewritten in place.
+func (h *harnessFS) sharedSource(name string) (string, bool) {
+	return SharedDeploySource(name)
 }
 
 // NormalizeCodexRoleForDeploy returns the bytes the deployer writes for a
@@ -428,9 +456,12 @@ func newCodexOnlyDeployer(cat *Catalog, renderer Renderer, forceUpdate bool, opt
 	if err != nil {
 		return nil, fmt.Errorf("codex-only deployer: slim base: %w", err)
 	}
-	// The catalog root is the same package-local embed, sub-paths to
-	// .claude/skills. fs.Sub on a pre-computed FS is cheap and read-only.
-	catalogRoot, err := fs.Sub(embeddedRaw, "templates/"+CanonicalSkillsRelDir)
+	// The relocation catalog root is the SLIM-FILTERED skills root, not the
+	// raw embed: reading the raw tree re-homed every skill directory into
+	// .agents/skills regardless of tier, deploying newly-optional bundle
+	// skills with no bundle selection (SPEC-USER-ASSET-INSTALL-001 leader
+	// mid-run finding P2). fs.Sub of a filtered FS stays filtered.
+	catalogRoot, err := fs.Sub(baseFS, CanonicalSkillsRelDir)
 	if err != nil {
 		return nil, fmt.Errorf("codex-only deployer: catalog root: %w", err)
 	}
@@ -484,7 +515,15 @@ func newProfileDeployer(cat *Catalog, renderer Renderer, slim, hideClaude, hideC
 	if err != nil {
 		return nil, fmt.Errorf("harness deployer: base: %w", err)
 	}
-	catalogRoot, err := fs.Sub(embeddedRaw, "templates/"+CanonicalSkillsRelDir)
+	// The relocation catalog root is ALWAYS the catalog-filtered skills
+	// root — the same fix as newCodexOnlyDeployer (SPEC-USER-ASSET-INSTALL-001
+	// P2): a distribute-all base must not leak bundle skills through the
+	// .agents/skills relocation either.
+	slimSkills, err := SlimFS(embeddedRaw, cat)
+	if err != nil {
+		return nil, fmt.Errorf("harness deployer: slim skills root: %w", err)
+	}
+	catalogRoot, err := fs.Sub(slimSkills, CanonicalSkillsRelDir)
 	if err != nil {
 		return nil, fmt.Errorf("harness deployer: catalog: %w", err)
 	}

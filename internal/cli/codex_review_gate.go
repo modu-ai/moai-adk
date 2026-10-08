@@ -10,7 +10,14 @@
 // types). It returns the standard ALLOW/BLOCK HookOutput and NEVER invokes
 // AskUserQuestion (subagent boundary — the orchestrator translates a BLOCK).
 //
+// SPEC-GATE-BOTTLENECK-001 rebalances this gate onto the receipt store: the
+// live verdict is reused from the tree-keyed cache (REQ-GBN-001), a cache
+// miss kicks the review in the background and allows the turn (REQ-GBN-002),
+// and the verdict is enforced at the NEXT turn entry by HandleCodexReviewEntry
+// (codex_review_delay.go). The gate itself never runs an RPC anymore.
+//
 // @MX:SPEC: SPEC-MOAI-MCP-SERVER-001
+// @MX:SPEC: SPEC-GATE-BOTTLENECK-001
 package cli
 
 import (
@@ -22,10 +29,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
-	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/verify"
 
 	"github.com/spf13/cobra"
 )
@@ -80,11 +88,12 @@ var reviewGateChangeDetector = hasReviewableChanges
 //     3a. tree class, no WT- branch, tree_scope skip → ALLOW before the self-gate
 //     (SPEC-CODEX-REVIEW-OWNERSHIP-001 REQ-CRO-002; one policy row logged)
 //  4. no reviewable change IN THE SCOPE     → ALLOW (self-gate; no false block)
-//  5. codex missing                         → ALLOW (fail-open; can't trap the session)
-//  6. codex review pass / inconclusive      → ALLOW
-//  7. codex review FAIL, every finding on a runtime-managed config surface
-//     → ALLOW + recorded reclassification (REQ-CGSC-008); otherwise BLOCK
-//     (the gate's only block path)
+//  5. codex missing                         → ALLOW (fail-open; no reviewer to kick)
+//  6. fresh receipt for the tree key        → reuse its verdict (REQ-GBN-001):
+//     FAIL blocks carrying the preserved detail, otherwise ALLOW
+//  7. cache miss                            → kick the review in the background
+//     and ALLOW (REQ-GBN-002); the verdict is enforced at the NEXT turn entry
+//     (HandleCodexReviewEntry). A failed kick allows (AC-GBN-004).
 //
 // `enabled` is read by the caller (runCodexReviewGate via
 // readCodexReviewGateEnabled) and passed in; it is re-checked here as
@@ -106,6 +115,21 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 	// serves both execution paths (REQ-CGS-009).
 	scope := reviewScopeResolver(reviewScopeSessionDir(input, projectDir))
 	reviewGateScopeLogger(scope, reviewGateEnvContext())
+	// The state root anchors on the git toplevel for a tree-scope session: a
+	// subdirectory CWD would root .moai/state inside the subdirectory, where
+	// the repo's .gitignore does not cover it — the receipt write itself would
+	// then move the tree key and the next turn entry could never match the
+	// verdict. Run, store, and consult all use the same git root.
+	if scope.Class == reviewScopeTree {
+		scope.Dir = reviewExclusionRoot(scope.Dir)
+	}
+	// (3a-0) The binary-age policy (card t1528): a gate binary whose build
+	// commit predates the session tree judges the tree with policy older than
+	// the code under review — skip before any scope-dependent policy runs.
+	// Shared with the Codex Stop-chain path (REQ-CRO-006).
+	if staleBinarySkipApplies(scope.Dir) {
+		return allow, nil
+	}
 	// (3a) The tree_scope policy: a tree-class session with no WT- evidence has
 	// no card to attribute its tree to. The read root is the one `enabled` came
 	// from (reviewGateConfigRoot), resolved only when the class is tree.
@@ -121,44 +145,69 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 		return allow, nil // (5) fail-open: a missing reviewer must not trap the session
 	}
 
-	// The 900s override (config.DefaultCodexReviewGateTimeout) is pinned in the
-	// hook manifest (M4) for this hook only; here we enforce it on the codex
-	// call itself so a hung review cannot stall the Stop beyond the manifest
-	// budget. The moai-default 5s hook timeout does NOT apply (AC-MCP-010).
-	ctx, cancel := context.WithTimeout(context.Background(), config.DefaultCodexReviewGateTimeout)
-	defer cancel()
-	// The review request carries the scope: tree scope stays shape-identical
-	// to its pre-SPEC form (REQ-CGS-003 / REQ-CRT-006), card scope names the
-	// card diff (REQ-CGS-002). projectDir is the CONFIG root only (it feeds
-	// reviewGateConfigRoot for the tree_scope read in step 3a) — never the
-	// review target when the session tree differs (REQ-CGS-005).
-	out, rpcErr := runCodexReviewRPC(ctx, binaryPath, codexMethodReviewStart, reviewRequestParams(scope))
-	if rpcErr != nil {
-		// (6) fail-open: an inconclusive or erroring reviewer ⇒ ALLOW. The error
-		// rides back with the ALLOW so runCodexReviewGate can log WHY on stderr;
-		// it does not change the decision. Swallowing it here made a gate that
-		// was turned on but structurally unable to reach a verdict look exactly
-		// like a gate that had reviewed the change and found nothing wrong.
-		return allow, rpcErr
-	}
-	if isBlockVerdict(out.Verdict) {
-		// (7-pre) REQ-CGSC-008: a TREE-scope review whose every finding targets
-		// only the runtime-managed configuration surfaces is known local drift
-		// (settings/config churn), not a review defect this session owns — the
-		// turn is allowed and the reclassification recorded (REQ-CGSC-011).
-		// Mixed findings keep the gate's only block path below.
-		if scope.Class == reviewScopeTree {
-			if targets, ok := runtimeConfigOnlyFindings(out.Findings, scope.Dir); ok {
-				logRuntimeDriftReclassification(scope, targets)
-				return allow, nil
+	// (4a) SPEC-GATE-BOTTLENECK-001 REQ-GBN-001 — the tree-keyed reuse cache:
+	// a FRESH receipt for the resolved scope's key (HEAD + tree digest or the
+	// card-scope binding) is the same reviewer judging the same code, so its
+	// verdict is reused without the RPC. The key covers HEAD, the porcelain
+	// digest, the review selection config, and the reviewer version — an
+	// untouched tree cannot shed a fail, and any edit (or a reviewer upgrade)
+	// makes the key stale. The consult needs no review-length budget: nothing
+	// below runs an RPC anymore (the 900s context left with the live arm,
+	// REQ-GBN-002).
+	state, stateErr := codexReviewReceiptStateForScope(context.Background(), scope, binaryPath)
+	if stateErr == nil {
+		if chk := verify.CheckReceipt(verify.LoadReceipt(scope.Dir, state), state, time.Now(), codexReviewCacheTTL); chk.Run {
+			codexReviewCacheSkips.Add(1)
+			if isBlockVerdict(chk.Receipt.Verdict) {
+				// The cached block still says WHAT to fix: the fail's summary
+				// and findings were preserved at record time by the receipt
+				// producer (the receipt store carries no free text). An
+				// unreadable detail file keeps the bare verdict — fail-open,
+				// never invented.
+				reason := "codex review gate (cached verdict): " + chk.Receipt.Verdict
+				if detail := codexReviewCachedDetail(scope.Dir, *chk.Receipt); detail != "" {
+					reason += "\n\n" + detail
+				}
+				return &hook.HookOutput{
+					Decision: hook.DecisionBlock,
+					Reason:   reason,
+				}, nil
 			}
+			_, _ = fmt.Fprintf(os.Stderr, "codex review gate: reusing the cached %s verdict for the unchanged tree (skip #%d)\n",
+				chk.Receipt.Verdict, codexReviewCacheSkips.Load())
+			return allow, nil
 		}
-		return &hook.HookOutput{
-			Decision: hook.DecisionBlock, // (7) the gate's only BLOCK path
-			Reason:   "codex review gate: " + out.Summary,
-		}, nil
 	}
-	return allow, nil // pass / inconclusive ⇒ ALLOW
+	// A state or cache-read failure falls through to the kick — the cache is
+	// an accelerator, never an authority (fail-open, REQ-GBN-004).
+
+	// (4b) SPEC-GATE-BOTTLENECK-001 REQ-GBN-002 — the delayed block: a cache
+	// miss no longer runs the synchronous review (the measured bottleneck:
+	// 11 of 12 Stops blocked, 14m13s). The gate kicks the SAME review the
+	// receipt producer runs (`moai verify codex-review`) as a detached
+	// background process and ALLOWS the turn. The verdict is enforced at the
+	// NEXT turn entry (HandleCodexReviewEntry) and reused from this cache at
+	// the next Stop. A kick for THIS tree state already in flight is not
+	// repeated (the turn-end gate's P2: consecutive Stops over the unchanged
+	// tree deduplicated by the per-key marker). A failed kick is fail-open
+	// (AC-GBN-004): the marker is removed — retryable — the allow stands.
+	// `async:true` is deliberately not adopted — an async hook can only
+	// deliver additionalContext and would surrender the block capability
+	// (REQ-GBN-002).
+	inFlight, markerPath := kickInFlight(scope.Dir, state, time.Now())
+	if inFlight {
+		_, _ = fmt.Fprintln(os.Stderr, "codex review gate: a background review for this tree state is already in flight; not re-kicking")
+		return allow, nil
+	}
+	if kickErr := codexReviewBackgroundKick(scope.Dir); kickErr != nil {
+		if markerPath != "" {
+			_ = os.Remove(markerPath) // a failed start is retryable on the next Stop
+		}
+		_, _ = fmt.Fprintf(os.Stderr, "codex review gate: background review not started (%v) — allowing; the next Stop re-kicks\n", kickErr)
+		return allow, nil
+	}
+	_, _ = fmt.Fprintln(os.Stderr, "codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)")
+	return allow, nil
 }
 
 // isBlockVerdict reports whether a codex verdict should BLOCK the session. A

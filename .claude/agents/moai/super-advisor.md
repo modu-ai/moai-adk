@@ -65,16 +65,14 @@ prescription, then either re-seeds the executor with the prescription or escalat
 user via `AskUserQuestion`. The prescription is **advisory** — the orchestrator remains the
 decision owner and may override it with justification.
 
-## GLM Carve-out + CG Leader-Review Absorption
+## GLM Carve-out and Independent Advice
 
-super-advisor natively captures two concerns from the superseded advisor-rung design:
+super-advisor retains provider-aware advice without replacing an independent audit:
 
-- **GLM carve-out**: under `moai glm` / `moai cg` GLM panes, super-advisor runs on
-  the session's GLM reasoning model with the session's effort — the natural consequence
-  of inheriting: the runtime resolves the session model.
-- **CG leader-review-as-advisor**: the CG-mode leader (Claude orchestrator)
-  consults super-advisor as a peer reviewer when a GLM teammate's output is suspect. The
-  consultation surface is identical; only the model backing changes.
+- **GLM carve-out**: under `moai glm`, super-advisor runs on the session's GLM
+  reasoning model (glm-5.3) with the session's effort — the natural consequence of
+  inheriting: the runtime resolves the session model.
+- **Independent advice**: the orchestrator may consult super-advisor about uncertain results. This advisory consultation does not replace sync-auditor evaluation or reactivate retired CG roles.
 
 ## Output Contract
 
@@ -126,8 +124,7 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 ## Cross-References
 
-- Design authority (architecture SSOT): `.moai/reports/agent-architecture-redesign-v2-20260709.html` (§01 change ② + §05).
-- Advisor/Evaluator separation: `.claude/agents/moai/{plan-auditor,sync-auditor}.md` (`NOT for: consultation`).
+- Advisor/Evaluator separation: `.claude/agents/moai/{plan-auditor,sync-auditor}.md`.
 - Entry conditions (E1-E4) doctrine home: `.claude/rules/moai/core/agent-common-protocol-reference.md` § Super-Advisor Escalation (E1-E4).
 - Per-spawn `Agent(general-purpose)` pattern basis: `.claude/rules/moai/workflow/archived-agent-rejection.md` §C.
 - Read-only verification batching (single-turn parallel Bash): `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution.

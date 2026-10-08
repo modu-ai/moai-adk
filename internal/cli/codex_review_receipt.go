@@ -137,7 +137,15 @@ func produceCodexReviewReceipt(ctx context.Context, root string) (verify.Receipt
 	// One discriminator for both paths (plan §C [HARD]): root IS the session
 	// tree here — the command runs inside the session's working tree, so the
 	// scope resolves from it exactly as the Stop chain resolves from c.root.
+	// The state root anchors on the git toplevel (the same anchoring the Stop
+	// and entry hooks apply): the receipt must land where the entry hook
+	// reads it, even when the caller named a subdirectory — so the storage
+	// root follows the anchored scope, not the raw --project-root.
 	scope := reviewScopeResolver(root)
+	if scope.Class == reviewScopeTree {
+		scope.Dir = reviewExclusionRoot(scope.Dir)
+		root = scope.Dir
+	}
 	state, err := codexReviewReceiptStateForScope(ctx, scope, binaryPath)
 	if err != nil {
 		return verify.Receipt{}, fmt.Errorf("codex review receipt: %w", err)
@@ -150,7 +158,10 @@ func produceCodexReviewReceipt(ctx context.Context, root string) (verify.Receipt
 	drift := false
 	switch {
 	case rpcErr != nil:
-		verdict = codexReviewVerdictInconclusive
+		// Inconclusive records a non-zero exit (2): HasLocalPass keys on
+		// ExitCode == 0, so the zero value would read the failed call as
+		// local-pass evidence (the same class the gate's recorder fixes).
+		verdict, exit = codexReviewVerdictInconclusive, 2
 	case isBlockVerdict(out.Verdict):
 		// REQ-CGSC-008 (card-review repair R2): BOTH automatic paths take the
 		// one reclassification decision. On a TREE-scope review whose every
@@ -169,7 +180,9 @@ func produceCodexReviewReceipt(ctx context.Context, root string) (verify.Receipt
 			verdict, exit = codexReviewVerdictFail, 1
 		}
 	case !strings.HasPrefix(strings.ToLower(strings.TrimSpace(out.Verdict)), codexReviewVerdictPass):
-		verdict = codexReviewVerdictInconclusive
+		// Same non-zero rule as the error arm above: a review that ran but
+		// produced no verdict is not local-pass evidence.
+		verdict, exit = codexReviewVerdictInconclusive, 2
 	}
 	r := verify.Receipt{
 		CheckID:      codexReviewCheckID,
@@ -184,6 +197,14 @@ func produceCodexReviewReceipt(ctx context.Context, root string) (verify.Receipt
 	}
 	if err := verify.RecordReceipt(root, r); err != nil {
 		return r, fmt.Errorf("codex review receipt: %w", err)
+	}
+	// SPEC-GATE-BOTTLENECK-001 REQ-GBN-002: the receipt store carries no free
+	// text, so a fail's summary and findings ride the local detail file — the
+	// delayed verdict (the next-turn entry hook) and the next Stop's cached
+	// block must still say WHAT to fix. Mirrors the gate's former recorder;
+	// a preservation failure loses only the detail text (fail-open).
+	if verdict == codexReviewVerdictFail {
+		codexReviewPreserveFindings(scope.Dir, state, out)
 	}
 	// The receipt store carries no free text, so the findings reach the
 	// working agent here, on the runner's stderr.

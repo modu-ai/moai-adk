@@ -153,6 +153,48 @@ func (e *backlogEngine) copyRuntime(ctx context.Context, runtime TodoRuntime) er
 	return tx.Commit()
 }
 
+// ArchiveOnRuntimeCompletion is the runtime completion's archive authority
+// (card t1542, the audit P1 repair): a card whose completion a mechanical
+// edge just established — the merged pull request of the github-flow
+// delivery, for one — is closed by the session that completed it, in one
+// locked write that archives the live card and rides the landing verdict the
+// edge answered. Before this method the report row landed and the card sat
+// live forever, so a leader ran `todo done` for every lane completion.
+//
+// Idempotent by reconciliation: a card already in the archive — with any
+// verdict — reads as closed and returns nil, so the delivery edge can run it
+// on every observation. A card in neither the queue nor the archive refuses,
+// and a refusal writes nothing (Mutate's byte-identity contract).
+func (s *BacklogStore) ArchiveOnRuntimeCompletion(cardID string, verdict LandingVerdict) error {
+	err := s.Mutate(func(rec *BacklogRecord) error {
+		for i := range rec.Items {
+			if rec.Items[i].ID != cardID {
+				continue
+			}
+			if err := rec.ArchiveCard(cardID); err != nil {
+				return err
+			}
+			// REQ-TST-008 shape: the answering edge persists what its query
+			// said — verdict, answering ref, verdict time — onto the entry
+			// ArchiveCard just appended, alongside (never instead of) any
+			// operator-recorded evidence the row already carried.
+			rec.Archived[len(rec.Archived)-1].LandingVerdict = &verdict
+			return nil
+		}
+		// Reconciliation: a card that is already archived reads as closed.
+		for i := range rec.Archived {
+			if rec.Archived[i].Item.ID == cardID {
+				return nil
+			}
+		}
+		return fmt.Errorf("no backlog item %s", cardID)
+	})
+	if err != nil {
+		return fmt.Errorf("runtime completion archive: %w", err)
+	}
+	return nil
+}
+
 // recordRuntime shares the card mutation lock and commits seed/assignment together.
 // @MX:NOTE: [AUTO] External provenance is captured before acquiring this lock; a reported completion never archives a card.
 func (s *BacklogStore) recordRuntime(run TodoRuntimeRun, assignment *TodoRuntimeAssignment) (err error) {

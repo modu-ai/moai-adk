@@ -96,7 +96,7 @@ GEARS Format (5 patterns; current notation):
 - Where (capability gate): "Where <capability or feature flag>, the <subject> shall <behavior>"
 - Event-detected (replaces the deprecated conditional modality): "When <undesired-condition-detected>, the <subject> shall <response>"
 
-Unified compound clause: `[Where ...][While ...][When ...] The <subject> shall <behavior>` — any subset may chain. `<subject>` is generalized (any noun: system, component, service, agent, function, artifact). See `.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format" for the canonical authoring guide.
+Unified compound clause: `[Where ...][While ...][When ...] The <subject> shall <behavior>` — any subset may chain. `<subject>` is generalized (any noun: system, component, service, agent, function, artifact). See `~/.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format" for the canonical authoring guide.
 
 EARS Format (legacy reference, 6-month backward-compat — expires 2026-11-22):
 - WHEN (trigger conditions)
@@ -333,8 +333,7 @@ Results reported to user
 | Total          | 145-175K       | 250K per feature                      |
 
 Optimization:
-- Use Haiku 4.5 for `/moai run` (fast, cost-effective)
-- Use Sonnet 4.5 for `/moai plan` (high-quality SPEC)
+- Model selection is not per-task: subagents inherit the session's model (model-policy.md § Inherit-by-Default Convention). Cost routing happens at the session level (`/model`, launcher).
 - Execute `/clear` between phases (critical)
 
 ---

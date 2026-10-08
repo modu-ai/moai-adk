@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"io"
 	"os"
 	"path/filepath"
@@ -424,6 +426,7 @@ func (c *codexStopChain) advisoryMember(ctx context.Context, n int) stopMemberOu
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
+				bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 				done <- result{err: fmt.Errorf("panic: %v", r), sentAt: time.Now()}
 			}
 		}()
@@ -623,6 +626,12 @@ func (c *codexStopChain) codexReviewMember(ctx context.Context) stopMemberOutcom
 	}
 	scope := reviewScopeResolver(c.root)
 	reviewGateScopeLogger(scope, reviewGateEnvContext())
+	// The binary-age policy, shared with the Claude path (card t1528): a gate
+	// binary predating this session tree judges it with policy older than the
+	// code under review — skip before any scope-dependent policy runs.
+	if staleBinarySkipApplies(scope.Dir) {
+		return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: stopStatusNotApplicable, Reason: "binary_age=behind"}
+	}
 	// The tree_scope policy, shared with the Claude path (REQ-CRO-006): the key
 	// is read from c.root, the same root `enabled` was read from above. A skip
 	// reads no receipt.

@@ -164,6 +164,24 @@ func init() {
 		RunE:  runHarnessObserveUserPromptSubmit,
 	})
 
+	// retention-prune: hidden utility child verb (SPEC-HARNESS-DETACHED-PRUNE-001
+	// REQ-DP-003, spec D1). Spawned detached by the harness-observe record gate;
+	// runs the same lock-protected, idempotent PruneStaleEntries path when invoked
+	// manually, so a stray manual call is harmless.
+	retentionPruneCmd := &cobra.Command{
+		Use:    "retention-prune",
+		Short:  "Run the harness usage-log prune (detached child of the observe gate)",
+		Long:   "Runs Retention.PruneStaleEntries against --log, archiving retention-expired events into monthly gzip archives under --archive (<YYYY-MM>.jsonl.gz). Hidden child spawned detached by the harness-observe spawn gate (SPEC-HARNESS-DETACHED-PRUNE-001); the state-file lock and the once-per-interval stamp make a manual invocation harmless.",
+		Hidden: true,
+		RunE:   runHookRetentionPrune,
+	}
+	retentionPruneCmd.Flags().String("log", "", "path to usage-log.jsonl (required)")
+	retentionPruneCmd.Flags().String("archive", "", "monthly archive directory (required)")
+	retentionPruneCmd.Flags().Int("days", harness.DefaultRetentionDays, "retention window in days")
+	_ = retentionPruneCmd.MarkFlagRequired("log")
+	_ = retentionPruneCmd.MarkFlagRequired("archive")
+	hookCmd.AddCommand(retentionPruneCmd)
+
 	// Add "spec-status" subcommand (SPEC-STATUS-AUTO-001)
 	specStatusCmd := &cobra.Command{
 		Use:   "spec-status",
@@ -250,6 +268,19 @@ fail-open).`,
 		RunE:         runCodexReviewGate,
 	})
 
+	// Add "codex-review-entry" subcommand (SPEC-GATE-BOTTLENECK-001
+	// REQ-GBN-002). Next-turn-entry enforcement of the delayed review block:
+	// reads the receipt the background review recorded and blocks the prompt
+	// on a fresh FAIL. Opt-in default-off via the same
+	// workflow.codex.review_gate.enabled flag as the Stop gate; fail-open.
+	hookCmd.AddCommand(&cobra.Command{
+		Use:          "codex-review-entry",
+		Short:        "Turn-entry codex review enforcement (opt-in; blocks the prompt on a fresh FAIL receipt)",
+		Long:         `Read the codex review receipt the background review of the previous turn recorded and emit the standard ALLOW/BLOCK hook output for the current tree state: a fresh FAIL blocks the prompt with the preserved finding detail, every other state allows. Never runs a review itself. Opt-in via workflow.codex.review_gate.enabled (default off). Fail-open: any error logs to stderr and exits 0. SPEC-GATE-BOTTLENECK-001 REQ-GBN-002 / AC-GBN-004.`,
+		SilenceUsage: true,
+		RunE:         runCodexReviewEntry,
+	})
+
 	// Add "multi-review-gate" subcommand (SPEC-AUDIT-MULTI-MODEL-001 M5
 	// REQ-AMM-013 / REQ-AMM-014 / REQ-AMM-015). Stop-hook gate that reads the
 	// most recent multi-model ConvergenceResult and blocks only on an
@@ -290,6 +321,10 @@ type registryShutdowner interface{ Shutdown() }
 // @MX:REASON: [AUTO] fan_in=3, called from hook.go init(), coverage_test.go, hook_e2e_test.go
 // runHookEvent dispatches a hook event by reading JSON from stdin and writing to stdout.
 func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
+	// SPEC-FEEDBACK-PARTICIPATION-001 (REQ-ANON-015): the process is marked
+	// as a hook dispatch so the participation sender refuses to publish
+	// from this path — flush runs from the CLI's flush triggers only.
+	_ = os.Setenv(config.EnvHookDispatch, "1")
 	if deps == nil || deps.HookProtocol == nil || deps.HookRegistry == nil {
 		return fmt.Errorf("hook system not initialized")
 	}
@@ -504,6 +539,8 @@ func runHookList(cmd *cobra.Command, _ []string) error {
 // runAgentHook executes an agent-specific hook action.
 // Agent actions are like: cycle-pre-transformation, backend-validation, etc.
 func runAgentHook(cmd *cobra.Command, args []string) error {
+	// Same hook-dispatch marking as runHookEvent (REQ-ANON-015).
+	_ = os.Setenv(config.EnvHookDispatch, "1")
 	if deps == nil || deps.HookProtocol == nil || deps.HookRegistry == nil {
 		return fmt.Errorf("hook system not initialized")
 	}
@@ -787,6 +824,33 @@ func readNormalizedHookInput() *hook.HookInput {
 	return input
 }
 
+// retentionSpawnImpl is the replaceable source of the detached-prune spawn
+// (SPEC-HARNESS-DETACHED-PRUNE-001 REQ-DP-007, wrapper layer). Production binds
+// the platform real spawn (harness.SpawnDetachedRetentionPruner, the build-tag
+// implementation); cli tests override it in-package with recording fakes and
+// restore via defer/t.Cleanup — the overriding tests never run parallel
+// (package-var override discipline).
+var retentionSpawnImpl = harness.SpawnDetachedRetentionPruner
+
+// recordHarnessEventWithGate is the ONE record-then-gate wrapper (spec D2): it
+// appends the event through the observer and, when recording succeeds, runs the
+// spawn gate — one lock-free stamp read, and on a stale-or-absent stamp one
+// spawn of the detached prune child (REQ-DP-002). Fail-open (REQ-DP-004): a
+// spawn failure is written to errOut and the wrapper returns nil — the event is
+// already on disk and the hook still exits 0.
+//
+// @MX:ANCHOR: [AUTO] recordHarnessEventWithGate is the single record-then-gate wrapper for all four observe handlers.
+// @MX:REASON: [AUTO] fan_in = 4: runHarnessObserve, harnessObserveStop, runHarnessObserveSubagentStop, runHarnessObserveUserPromptSubmit
+func recordHarnessEventWithGate(obs *harness.Observer, evt harness.Event, logPath string, errOut io.Writer) error {
+	if err := obs.RecordExtendedEvent(evt); err != nil {
+		return err
+	}
+	if err := harness.MaybeSpawnRetentionPruner(logPath, retentionSpawnImpl); err != nil {
+		_, _ = fmt.Fprintf(errOut, "harness-observe: retention prune spawn failed (non-blocking): %v\n", err)
+	}
+	return nil
+}
+
 func runHarnessObserve(cmd *cobra.Command, _ []string) error {
 	// Resolve project root env-first (CLAUDE_PROJECT_DIR then os.Getwd()).
 	root := resolveHookProjectRoot()
@@ -839,8 +903,9 @@ func runHarnessObserve(cmd *cobra.Command, _ []string) error {
 	}
 	harness.EstimateContextWeight(&evt, root)
 
-	// log error to stderr but return exit 0 (non-blocking)
-	if err := obs.RecordExtendedEvent(evt); err != nil {
+	// log error to stderr but return exit 0 (non-blocking); on success the
+	// record-then-gate wrapper runs the spawn gate (SPEC-HARNESS-DETACHED-PRUNE-001)
+	if err := recordHarnessEventWithGate(obs, evt, logPath, cmd.ErrOrStderr()); err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe: event recording failed: %v\n", err)
 	}
 
@@ -930,7 +995,7 @@ func harnessObserveStop(root string, hookInput *hook.HookInput, errOut io.Writer
 	// SPEC-V3R6-CONTEXT-GOV-AXIS-001 REQ-CGA-001: populate eager-vs-on-demand weight.
 	harness.EstimateContextWeight(&evt, root)
 
-	if err := obs.RecordExtendedEvent(evt); err != nil {
+	if err := recordHarnessEventWithGate(obs, evt, logPath, errOut); err != nil {
 		_, _ = fmt.Fprintf(errOut, "harness-observe-stop: event recording failed: %v\n", err)
 	}
 
@@ -1068,7 +1133,7 @@ func runHarnessObserveSubagentStop(cmd *cobra.Command, _ []string) error {
 	// SPEC-V3R6-CONTEXT-GOV-AXIS-001 REQ-CGA-001: populate eager-vs-on-demand weight.
 	harness.EstimateContextWeight(&evt, root)
 
-	if err := obs.RecordExtendedEvent(evt); err != nil {
+	if err := recordHarnessEventWithGate(obs, evt, logPath, cmd.ErrOrStderr()); err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-subagent-stop: event recording failed: %v\n", err)
 	}
 
@@ -1247,10 +1312,26 @@ func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
 		evt.PromptContent = prompt
 	}
 
-	if err := obs.RecordExtendedEvent(evt); err != nil {
+	if err := recordHarnessEventWithGate(obs, evt, logPath, cmd.ErrOrStderr()); err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-user-prompt-submit: event recording failed: %v\n", err)
 	}
 
+	return nil
+}
+
+// runHookRetentionPrune is the RunE of the hidden `moai hook retention-prune`
+// child verb (REQ-DP-003). It enters the prune through Retention.PruneStaleEntries
+// — never the lock internals directly (spec D5) — so the child inherits
+// pruneLocked's stamp re-check under the state-file exclusive lock and a
+// double-spawn collapses into one worker (REQ-DP-003/AC-DP-004).
+func runHookRetentionPrune(cmd *cobra.Command, _ []string) error {
+	logPath, _ := cmd.Flags().GetString("log")
+	archiveDir, _ := cmd.Flags().GetString("archive")
+	days, _ := cmd.Flags().GetInt("days")
+	retention := harness.NewRetention(logPath, archiveDir, nil)
+	if err := retention.PruneStaleEntries(days); err != nil {
+		return fmt.Errorf("retention-prune: %w", err)
+	}
 	return nil
 }
 
@@ -1404,7 +1485,16 @@ func classifyHarnessPatterns(root string) (patternCount, promoCount int, err err
 	// REQ-HCW-002: aggregate patterns from the usage log. AggregatePatterns
 	// returns an empty map when the file does not exist (normal first-run state
 	// on a fresh project) — no error in that path.
-	patterns, aggErr := harness.AggregatePatterns(logPath)
+	//
+	// SPEC-HARNESS-DETACHED-PRUNE-001 REQ-DP-009: the classifier applies the
+	// retention window itself at the aggregation input — the read feeding
+	// AggregatePatternsSince skips events older than DefaultRetentionDays,
+	// because Pattern carries no per-event timestamps and a post-aggregate
+	// filter cannot distinguish vintages. The detached prune child is
+	// asynchronous, so its result is not visible at classification time; the
+	// window is applied here, never assumed.
+	cutoff := time.Now().AddDate(0, 0, -harness.DefaultRetentionDays)
+	patterns, aggErr := harness.AggregatePatternsSince(logPath, cutoff)
 	if aggErr != nil {
 		return 0, 0, fmt.Errorf("aggregate patterns: %w", aggErr)
 	}

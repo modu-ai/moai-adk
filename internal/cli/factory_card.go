@@ -248,19 +248,32 @@ func factorySerialSlotFree(state string) bool {
 		homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone, homestate.CardFailed,
 		homestate.CardAbandoned:
 		return true
+	case homestate.CardPROpen, homestate.CardMergedPR: // github-flow delivery: the PR edge ended the lane's work on the card
+		return true
 	default:
 		return false
 	}
 }
 
 // factorySerialSlotHeld reports whether a recorded card holds the serial slot
-// at now: its state is not one of the releasing states, and — for a card in a
-// lease-holding state — its lease has not expired. An expired lease is only
-// collected lazily, by the next transition on that same card, so the row keeps
-// its lease-holding state after the lane that held it is gone; reading the
-// state alone would hold the slot for that lane indefinitely (card t1407).
+// at now. Three conditions hold together: the state is not one of the
+// releasing states; — for a card in a lease-holding state — its lease has not
+// expired; and a driver is recorded. An expired lease is only collected
+// lazily, by the next transition on that same card, so the row keeps its
+// lease-holding state after the lane that held it is gone; reading the state
+// alone would hold the slot for that lane indefinitely (card t1407).
+//
+// The driver condition (card t1513): a row whose OwnerLabel is empty holds
+// nothing. A picked row recorded without a lane (`factory assign` with no
+// --lane) names a nomination nobody is driving, and the lease-expiry net
+// above never applies to it because it carries no lease — the slot would
+// hold for as long as the row exists. Measured 2026-10-05: run tmf011's
+// t1453 sat picked, ownerless, and lease-less for a day while every lane
+// lease in the run was refused `serial-slot`. A later `factory assign
+// --lane` or the nominate arm sets the owner and the row holds again, so
+// only genuinely driverless rows release.
 func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
-	return !factorySerialSlotFree(c.State) && !c.LeaseExpired(now)
+	return !factorySerialSlotFree(c.State) && !c.LeaseExpired(now) && c.OwnerLabel != ""
 }
 
 // factorySerialInFlightExcluding reports whether a serial card OTHER than
@@ -269,17 +282,34 @@ func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
 // against DISTINCT cards (REQ-TCD-008). The unnominated arms and the nominated
 // lease read the slot through this one function.
 //
-// ignoreAssigned is arm (a)'s read (operator ruling 2026-10-03, card t1407): a
-// lane leasing the card assigned TO ITSELF does not count sibling cards that
-// are merely `assigned`, which would otherwise wedge every leader-assigned
-// serial card against the others with nothing in flight. Every path that takes
-// a NEW card, the nominated lease included, passes false.
+// ignoreAssigned is arm (a)'s read (operator ruling 2026-10-03, card t1407):
+// a lane leasing the card assigned TO ITSELF does not count sibling cards
+// that are merely `assigned`, which would otherwise wedge every
+// leader-assigned serial card against the others with nothing in flight. The
+// unnominated arm and — since card t1542 — the nominated lease of the lane's
+// own assigned card pass true; every path that takes a NEW card passes
+// false.
+//
+// A `picked` row carrying a bundle identity is excluded the same way (card
+// t1454 card-review r2 P1-2): it is a chain member waiting on its head, not
+// an independently picked serial card — its bundle orders it, and selection
+// skips it until the predecessor merges. The sibling class (card t1533,
+// card-review r2f finding 2): a `picked` row carrying an AFTER hint is
+// chain-ordered work the same way — it waits on its predecessor's merge and
+// nobody is implementing it — so it is excluded too, while a standalone
+// driven picked row (no bundle identity, no hint) keeps holding the slot
+// exactly as the t1407 ruling's tests pin.
+//
+// @MX:NOTE: [AUTO] The one serial-slot read of selection — fan-in 3 (both selection closures and the nominated validation); an ANCHOR is owed but factory_card.go is at its 3-anchor limit, and a queue-mutation path bypassing this read would break REQ-TCD-008.
 func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string) factory.CardClassification, cardID string, now time.Time, ignoreAssigned bool) bool {
 	for _, c := range cards {
 		if c.CardID == cardID {
 			continue
 		}
 		if ignoreAssigned && c.State == homestate.CardAssigned {
+			continue
+		}
+		if c.State == homestate.CardPicked && (c.BundleID != "" || c.HintAfter != "") {
 			continue
 		}
 		if factorySerialSlotHeld(c, now) && classOf(c.CardID).Mode == factory.ClassModeSerial {
@@ -664,6 +694,61 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		}
 		return !serialInFlightExcluding(cardID, false)
 	}
+	// Bundle attributes of the recorded rows (REQ-TCI-018): the bundle's
+	// lane is the owner recorded on any of its members (the loader assigns
+	// the head), and a member whose after predecessor has not reached the
+	// local merge is SKIPPED by selection rather than handed to the claim to
+	// fail — the skip-not-error hook of design §7.2. The same skip covers a
+	// hub-chained card (REQ-TCI-020): its hint waits the same way, so no
+	// lane wedges on a lease its predecessor has not earned yet.
+	//
+	// mergedLocal reads every run (card t1454 card-review r2 finding 5):
+	// predecessorMerged — the T2 guard the hint claims against — reads every
+	// run, so the selection's skip must read the same set; a predecessor
+	// merged under a previous run id would otherwise wedge its successor
+	// forever.
+	bundleLane := make(map[string]string, len(cards))
+	rowByID := make(map[string]homestate.Card, len(cards))
+	for _, c := range cards {
+		rowByID[c.CardID] = c
+		if c.BundleID != "" && strings.TrimSpace(c.OwnerLabel) != "" {
+			if _, seen := bundleLane[c.BundleID]; !seen {
+				bundleLane[c.BundleID] = strings.TrimSpace(c.OwnerLabel)
+			}
+		}
+	}
+	allRuns, err := db.ListCards(ctx, "")
+	if err != nil {
+		return homestate.Card{}, false, false, err
+	}
+	mergedLocal := factoryMergedCards(allRuns)
+	// selectionSkips reports why a recorded candidate must not lease on this
+	// pass: it is another lane's bundle member, its predecessor is
+	// unmerged, or an open sharer of one of its hub paths is unmerged —
+	// the stored hint names one predecessor, a multi-hub candidate has one
+	// per hub path (card t1533, card-review r2f finding 4). The direct
+	// nominated path keeps the T2 error — the skip is the un-nominated
+	// selection's shape alone.
+	hubWaitUnmerged := func(cardID string) (string, bool) {
+		return factoryHubWaitUnmerged(queueRec, cards, mergedLocal, cardID)
+	}
+	selectionSkips := func(c homestate.Card) bool {
+		if c.BundleID != "" {
+			if owner, ok := bundleLane[c.BundleID]; ok && owner != lane {
+				return true
+			}
+		}
+		if c.HintAfter != "" && !mergedLocal[c.HintAfter] {
+			return true
+		}
+		_, wait := hubWaitUnmerged(c.CardID)
+		return wait
+	}
+	// hubFields computes the hub-chain hint a record CREATION carries for
+	// cardID, from the same one queue read every arm sees (REQ-TCI-020).
+	hubFields := func(cardID string) homestate.CardFields {
+		return factoryHubChainFields(queueRec, cards, cardID, nil)
+	}
 	// (a) a card assigned to this lane — the lease edge alone (T3).
 	for _, c := range cards {
 		if c.State != homestate.CardAssigned || c.OwnerLabel != lane {
@@ -671,6 +756,25 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		}
 		if skip(c) {
 			continue
+		}
+		if selectionSkips(c) {
+			continue
+		}
+		// The queue item's CURRENT state gates the row's lease edge through
+		// the same keep-set predicate the nominated path applies (card t1577
+		// card-review; the t1516 gate this replaces covered hold and queued
+		// only): an operator exclusion — dropped, held, hold-marked, blocked,
+		// or back at queued (card t1516) — skips the assigned row. The row
+		// re-enters a lease only once the item is picked again — an operator
+		// pick, or arm (c)'s promotion on this same pass, which flips the
+		// state before the next attempt re-reads it. A card in no queue row is
+		// not gated: the record row is all that remains of it. The serial-slot
+		// clause is arm (a)'s own check below (a self-excluding read the
+		// predicate's shared form does not carry).
+		if it, inQueue := queueItemIn(queueRec, c.CardID); inQueue {
+			if r := factoryKeepSetRefusal(it, &c, lane, false); r != nil {
+				continue
+			}
 		}
 		if classOf(c.CardID).Mode == factory.ClassModeSerial && serialInFlightExcluding(c.CardID, true) {
 			continue
@@ -683,6 +787,29 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	if noNewCards {
 		return homestate.Card{}, false, false, nil
 	}
+	// (b-priority) this lane's own bundle's next member outranks unowned
+	// picked cards (REQ-TCI-018): the bundle lane serves its chain before
+	// anything else an unowned picked row could offer. The conditions are
+	// arm (b)'s, tightened by the bundle ownership.
+	for _, c := range cards {
+		if c.State != homestate.CardPicked || strings.TrimSpace(c.OwnerLabel) != "" || c.BundleID == "" {
+			continue
+		}
+		if owner, ok := bundleLane[c.BundleID]; !ok || owner != lane {
+			continue
+		}
+		if skip(c) || !modeEligible(c.CardID) || selectionSkips(c) {
+			continue
+		}
+		state, inQueue := queueItemStateIn(queueRec, c.CardID)
+		if !inQueue || state != factory.BacklogStatePicked {
+			continue
+		}
+		if err := factoryLeaseBeforeClaim("b-priority", c.CardID); err != nil {
+			return homestate.Card{}, false, false, err
+		}
+		return factoryNextClaim(ctx, db, root, runID, c, lane)
+	}
 	// (b) an operator-picked card assigned to no lane. The record row sits at
 	// `picked` with no owner; the queue item must still be picked, so an
 	// unpicked queue item disqualifies the row rather than failing the verb.
@@ -694,6 +821,9 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 			continue
 		}
 		if !modeEligible(c.CardID) {
+			continue
+		}
+		if selectionSkips(c) {
 			continue
 		}
 		state, inQueue := queueItemStateIn(queueRec, c.CardID)
@@ -715,10 +845,18 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 			if !modeEligible(it.ID) {
 				continue
 			}
+			// The no-record arm waits like every other path (card t1533,
+			// review-gate r6/r7): recording first and refusing at the claim
+			// errored the whole next call while unrelated ready cards waited
+			// behind it. Skipped here, the card is neither recorded nor
+			// claimed, and selection reaches the ready cards.
+			if _, wait := hubWaitUnmerged(it.ID); wait {
+				continue
+			}
 			if err := factoryLeaseBeforeClaim("b2", it.ID); err != nil {
 				return homestate.Card{}, false, false, err
 			}
-			return factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane)
+			return factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane, hubFields(it.ID))
 		}
 	}
 	// (c) the highest-ranked eligible queued card (REQ-TCD-007/-008). The
@@ -748,6 +886,25 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 				if cls.Blocked {
 					continue
 				}
+				// Another lane's bundle member, a candidate whose after
+				// predecessor is unmerged, or a candidate with an unmerged
+				// sharer on ANY of its hub paths is never auto-promoted
+				// (REQ-TCI-018/-020): the record row, when one exists, says
+				// which. A rowless candidate's hub hint is computed at
+				// promotion, so its predecessor condition is checked HERE —
+				// the same predicate selectionSkips applies to rows
+				// (card t1454 card-review r2 finding 4, multi-hub sweep card
+				// t1533). Promoting a candidate whose hint names an unmerged
+				// predecessor failed the claim and errored the whole verb.
+				if row, ok := rowByID[it.ID]; ok {
+					if selectionSkips(row) {
+						continue
+					}
+				} else if hf := hubFields(it.ID); hf.HintAfter != nil && !mergedLocal[*hf.HintAfter] {
+					continue
+				} else if _, wait := hubWaitUnmerged(it.ID); wait {
+					continue
+				}
 				if cls.Mode == factory.ClassModeSerial && serialInFlightExcluding(it.ID, false) {
 					continue
 				}
@@ -765,7 +922,18 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		if err := factoryLeaseBeforeClaim("c", promoted); err != nil {
 			return homestate.Card{}, false, false, err
 		}
-		return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane)
+		// Generated hub hints are creation inputs; preserve every existing row's hint.
+		var promotedRow *homestate.Card
+		if row, exists := rowByID[promoted]; exists {
+			promotedRow = &row
+		}
+		fields := factoryGeneratedHubFields(hubFields(promoted), promotedRow)
+		if promotedRow != nil && promotedRow.State == homestate.CardAssigned {
+			// Reuse the assignment unchanged, then re-select through arm (a).
+			// Hub hints are creation inputs, not edits to an assigned row.
+			fields = homestate.CardFields{}
+		}
+		return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane, fields)
 	case sawQueued > 0:
 		// Queued cards existed but none was eligible (blocked, or serial with
 		// the slot held). That is the no-card answer, not a race: re-selecting
@@ -779,10 +947,13 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 }
 
 // factoryNextRecordAndClaim records a queue-picked card (T1) and claims it.
-func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID, lane string) (homestate.Card, bool, bool, error) {
+// fields carries the record-creation attributes the caller computed — the
+// hub-chain after hint (REQ-TCI-020); the unnominated arms pass the hub
+// read's answer, the nominated path the one computed inside its section.
+func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID, lane string, fields homestate.CardFields) (homestate.Card, bool, bool, error) {
 	ctx, cancel := factoryClaimContext(ctx)
 	defer cancel()
-	fresh, err := db.RecordPicked(ctx, runID, cardID, homestate.CardFields{}, "factory-next", factoryCardNow())
+	fresh, err := db.RecordPicked(ctx, runID, cardID, fields, "factory-next", factoryCardNow())
 	if err != nil {
 		return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
 	}
@@ -978,6 +1149,15 @@ func factoryKeepSetRefusal(it factory.BacklogItem, row *homestate.Card, lane str
 			return r
 		}
 	}
+	// An assigned row whose queue item is back at queued is a shape no lease
+	// path takes (card t1516): the item is promotable pool material again, so
+	// the nomination does not re-arm the row — an operator pick re-arms it, and
+	// the bare path reaches the card only through arm (c)'s promotion, which
+	// flips the state to picked first. `hold` is refused above; this clause
+	// names `queued` alone.
+	if row != nil && row.State == homestate.CardAssigned && it.State == factory.BacklogStateQueued {
+		return factoryRefusal(factoryRefuseRecorded, "the record row sits assigned while the queue item is queued; an operator pick re-arms the lease")
+	}
 	if factoryQueuedHoldMarked(it) {
 		return factoryRefusal(factoryRefuseHoldMarker, "the card's text opens with the hold marker %s; the operator parked it", autoRankHoldMarker)
 	}
@@ -1031,9 +1211,50 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 		}
 	}
 	classOf := func(id string) factory.CardClassification { return factoryQueueClassification(queueRec, id) }
-	nom.serialHeld = classOf(cardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(cards, classOf, cardID, now, false)
+	// Arm (a) through the nominated door (card t1542): a lane nominating the
+	// card assigned TO ITSELF takes the same read the unnominated arm takes —
+	// sibling rows that are merely `assigned` hold nothing against it, or the
+	// leader's own batch pre-assignment would wedge every assigned card out
+	// of its lane (measured 2026-10-07: nine assigned rows in run tmhxo0
+	// refused the one lease a lane was dispatched to run). A nomination of a
+	// card NOT assigned to this lane is a NEW card and still passes false.
+	assignedHere := nom.row != nil && nom.row.State == homestate.CardAssigned && nom.row.OwnerLabel == lane
+	nom.serialHeld = classOf(cardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(cards, classOf, cardID, now, assignedHere)
 	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld); r != nil {
 		return nom, r, nil
+	}
+	// Another lane's bundle member is never a nominee (card t1454
+	// card-review r2c finding C2). The unnominated selection skips it; the
+	// nominated path refused nothing once the head had merged — the member's
+	// own after guard passed and lane-2 leased lane-1's member outright. The
+	// bundle's lane is the owner recorded on any of its members, the same
+	// read the selection's bundleLane map makes.
+	if nom.row != nil && nom.row.BundleID != "" {
+		for i := range cards {
+			c := cards[i]
+			owner := strings.TrimSpace(c.OwnerLabel)
+			if c.BundleID != nom.row.BundleID || owner == "" {
+				continue
+			}
+			if owner != lane {
+				return nom, factoryRefusal(factoryRefuseOwned, "the card is %s's bundle member", owner), nil
+			}
+			break
+		}
+	}
+	// The multi-hub wait the un-nominated selection applies runs here too
+	// (card t1533, review-gate r5): the stored hint names ONE predecessor,
+	// and a candidate sharing other hub paths leased straight past their
+	// still-in-flight sharers through the direct path. The wait is decided
+	// before the promotion, so the refusal writes nothing, and it carries the
+	// T2 guard's own sentinel so both paths read as the same predecessor
+	// error.
+	allRuns, err := db.ListCards(ctx, "")
+	if err != nil {
+		return nom, nil, err
+	}
+	if blocker, wait := factoryHubWaitUnmerged(queueRec, cards, factoryMergedCards(allRuns), cardID); wait {
+		return nom, nil, fmt.Errorf("factory next: %w: %s has not reached %s (git-flow) or %s (github-flow)", homestate.ErrPredecessorUnmerged, blocker, homestate.CardMergedLocal, homestate.CardMergedPR)
 	}
 	// The claim would refuse a foreign tree only after the promotion; deciding
 	// it here keeps the refusal write-free. The carry-over read runs first: a
@@ -1054,7 +1275,6 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 	}
 	// The quota hold leaves only a card already assigned to this lane leasable
 	// (arm (a) is not a new lease).
-	assignedHere := nom.row != nil && nom.row.State == homestate.CardAssigned && nom.row.OwnerLabel == lane
 	if quotaHold != "" && !assignedHere {
 		return nom, factoryRefusal(factoryRefuseQuotaHold, "%s", quotaHold), nil
 	}
@@ -1157,9 +1377,27 @@ func factoryNominateInSection(ctx context.Context, l *factory.LockedBacklog, db 
 		}
 	}
 
+	// Hub-chain hint (REQ-TCI-020): computed inside the section from the
+	// same locked queue the validation read — a read failing under a held
+	// lock is infrastructural and fails the lease loudly, never silently
+	// hint-less.
+	queueRec, err := l.LoadPure()
+	if err != nil {
+		return homestate.Card{}, fmt.Errorf("read the queue for the hub chain: %w", err)
+	}
+	hubRows, err := db.ListCards(ctx, runID)
+	if err != nil {
+		return homestate.Card{}, fmt.Errorf("read the records for the hub chain: %w", err)
+	}
+	// A row that already carries a hint keeps it (card t1533): the generated
+	// hint is a record-creation input, never an overwrite — the recomputed
+	// tail drifts as the chain moves, and overwriting with it re-ordered a
+	// bundle member against its own stored chain.
+	hubHint := factoryGeneratedHubFields(factoryHubChainFields(queueRec, hubRows, cardID, nil), nom.row)
+
 	// A claim that neither leased nor errored lost a race (the same signal the
 	// unnominated arms re-select on); an error is a failure of the claim.
-	card, leased, _, claimErr := factoryNextNominatedClaim(ctx, db, root, runID, lane, nom)
+	card, leased, _, claimErr := factoryNextNominatedClaim(ctx, db, root, runID, lane, nom, hubHint)
 	if claimErr == nil && leased {
 		return card, nil
 	}
@@ -1180,14 +1418,14 @@ func factoryNominateInSection(ctx context.Context, l *factory.LockedBacklog, db 
 // already `assigned` to this lane is arm (a)'s lease edge; every other leasable
 // shape (no row, or an unowned `picked` row) records the card and claims it,
 // which re-reads the row fresh.
-func factoryNextNominatedClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, nom factoryNominee) (homestate.Card, bool, bool, error) {
+func factoryNextNominatedClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, nom factoryNominee, fields homestate.CardFields) (homestate.Card, bool, bool, error) {
 	if err := factoryNominateBeforeRecord(nom.item.ID); err != nil {
 		return homestate.Card{}, false, false, err
 	}
 	if nom.row != nil && nom.row.State == homestate.CardAssigned {
 		return factoryNextClaim(ctx, db, root, runID, *nom.row, lane)
 	}
-	return factoryNextRecordAndClaim(ctx, db, root, runID, nom.item.ID, lane)
+	return factoryNextRecordAndClaim(ctx, db, root, runID, nom.item.ID, lane, fields)
 }
 
 // factoryNominateCompensate is step 4. It acts only on a promotion this
@@ -1254,6 +1492,8 @@ func cardStageAtOrAfterMergeReady(s string) bool {
 	switch s {
 	case homestate.CardMergeReady, homestate.CardMerging, homestate.CardMergedLocal,
 		homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone:
+		return true
+	case homestate.CardPROpen, homestate.CardMergedPR: // github-flow delivery states sit past merge-ready
 		return true
 	}
 	return false
@@ -1496,7 +1736,7 @@ func newFactoryCompleteCommand() *cobra.Command {
 	var run string
 	cmd := &cobra.Command{
 		Use:   "complete <card> [remeasure]",
-		Short: "Take a merge-ready card through merging to merged-local (lane session)",
+		Short: "Take a merge-ready card through merging to merged-local; under github-flow, to pr-open then merged-pr (lane session)",
 		Args:  cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !factoryLaneAdmission() {
@@ -1534,6 +1774,11 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	if err := factoryRefuseCodexMergeEdge("complete"); err != nil {
 		return err
 	}
+	// github-flow delivers by pull request, takes no integration window and
+	// never merges locally (factory_card_pr.go, REQ-GFD-004/005/006).
+	if factoryGitHubFlow(root) {
+		return factoryCompleteGitHubFlow(ctx, out, root, cardID, remeasure, run, lane)
+	}
 	// The same session identity acquire resolves: a window whose holder is
 	// unresolvable can be neither taken nor re-taken, so an empty id is a
 	// blocker to report, never a value to invent.
@@ -1555,12 +1800,36 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 		return fmt.Errorf("factory complete: %w", err)
 	}
 
+	// REQ-MWQ-019 step 1 — the card gates run READ-ONLY, before the window
+	// is taken or the branch moves: merge-ready, the caller's own unexpired
+	// lease, version as read. O4 pins this to ONE read predicate shared
+	// with the merge verb's gate — the state the gate sees is the state the
+	// merge step sees, and the version rides through untouched.
+	cardState, err := integrationReadMergeCardForRun(ctx, root, runID, cardID, lane)
+	if err != nil {
+		return fmt.Errorf("factory complete: %w", err)
+	}
+	if cardState.Stage != "merge-ready" {
+		return fmt.Errorf("factory complete: refused — card %s is %q, not merge-ready; the integration branch and the card state are unchanged (REQ-MWQ-019 step 1)", cardID, cardState.Stage)
+	}
+	if !cardState.LeaseUnexpired {
+		return fmt.Errorf("factory complete: refused — the caller does not hold card %s's unexpired lease; the integration branch and the card state are unchanged (REQ-MWQ-019 step 1)", cardID)
+	}
+
 	// REQ-SD-023: the window phase. A window this session already holds
 	// keeps ITS recorded branch — the branch the window records is the
 	// integration branch — so a lane that pre-acquired with --branch is not
 	// re-resolved underneath its own choice. A window held by another live
 	// session refuses naming the holder; a free or stale window is resolved
-	// exactly as acquire resolves it and taken over.
+	// exactly as acquire resolves it and taken over. The refusal releases
+	// NOTHING: the window is the other session's (O1).
+	//
+	// F7 (card-review r3): the merge step reads WindowLeaseDuration when its
+	// seam is unset, so complete initializes the override here — the same
+	// initialization every other window verb performs at entry — or a
+	// configured lease_minutes: 0 would read as the shipped default in this
+	// process alone.
+	initWindowLeaseOverride(lockRoot)
 	lock, err := factory.ReadIntegrationLock(lockRoot)
 	if err != nil {
 		return fmt.Errorf("factory complete: %w", err)
@@ -1582,7 +1851,11 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// tree, which for a lane is its card worktree — never an integration
 	// branch. The remedy is acquire's --branch.
 	if source == factory.BranchSourceCaller {
-		return fmt.Errorf("factory complete: refused — the integration window's branch %q is the caller's own tree (source %s); re-acquire with --branch <integration-target> (a card's own tree is not its integration branch)", branch, factory.BranchSourceCaller)
+		fix := "re-acquire with --branch <integration-target>"
+		if g := config.LoadGitFlowIntegrationConfig(root).EmptyTargetGuidance(root, fix); g != "" {
+			fix = g
+		}
+		return fmt.Errorf("factory complete: refused — the integration window's branch %q is the caller's own tree (source %s); %s (a card's own tree is not its integration branch)", branch, factory.BranchSourceCaller, fix)
 	}
 	// (2) A card's own branch never serves as its integration branch.
 	cardBranch := factoryBranchOfWorktree(card.WorktreePath)
@@ -1608,9 +1881,10 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// Hold the window as the lane: the same record acquire writes, resolved
 	// the same way (the owner pid, never this process's). A window already
 	// ours is not re-written — the recorded branch choice stands.
+	acquiredHere := false
 	if !heldByUs {
 		ownerPID, _ := session.ResolveOwnerPID()
-		replaced, err := factory.AcquireIntegrationLock(lockRoot, factory.IntegrationLock{
+		replaced, err := factory.AcquireIntegrationWindow(lockRoot, factory.IntegrationLock{
 			SessionID:    sessionID,
 			SessionName:  lane,
 			PID:          ownerPID,
@@ -1619,10 +1893,11 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 			BranchSource: source,
 			Worktree:     integTree,
 			Card:         card.CardID,
-		}, false)
+		}, false, &factory.AcquireWindowOptions{LeaseDuration: integrationLeaseDuration(lockRoot)})
 		if err != nil {
 			return fmt.Errorf("factory complete: %w", err)
 		}
+		acquiredHere = true
 		if replaced != nil {
 			// Never silent, exactly like acquire: the next lane must be able
 			// to say what was cleared.
@@ -1630,44 +1905,237 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 		}
 	}
 
-	// T14 — merge-ready → merging: the lease holder's edge, so a lane that
-	// does not hold this card's lease is refused by F1 verbatim.
-	merging, err := db.Transition(ctx, homestate.TransitionRequest{
-		RunID: runID, CardID: card.CardID, To: homestate.CardMerging,
-		ExpectedVersion: card.Version, Actor: lane, Now: factoryCardNow(),
-	})
-	if err != nil {
-		return fmt.Errorf("factory complete: %w", err)
-	}
-	mergeSHA, err := factoryMergeNoFF(integTree, cardBranch, card.CardID, branch)
-	if err != nil {
-		// The card stays in `merging` — the honest state for a merge in
-		// progress that failed; the lane resolves the tree (T15) or the lease
-		// expiry moves it to blocked. The window stays held by this lane.
-		return fmt.Errorf("factory complete: card %s is in merging; the merge failed: %w", card.CardID, err)
-	}
-	path := remeasure
-	if path == "" {
-		if path, err = factoryWriteMergeRecord(root, card.CardID, mergeSHA, branch, integTree); err != nil {
-			return fmt.Errorf("factory complete: card %s is in merging; recording the merge evidence failed: %w", card.CardID, err)
+	// REQ-MWQ-019 step 2 — adoption. The integration branch's tip already
+	// carries a merge commit whose second parent is the card branch's
+	// CURRENT tip and whose tree matches a VALID re-measure record: the lane
+	// merged through the merge verb first, and complete records merged-local
+	// from that commit without calling the merge step and without a fresh
+	// re-measure. A card branch that gained commits after that merge is NOT
+	// adopted and falls through to step 3.
+	tip := factoryBranchTip(integTree, branch)
+	cardTip := factoryBranchTip(card.WorktreePath, cardBranch)
+	adopted := ""
+	if parents := factoryCommitParents(integTree, tip); len(parents) == 3 && parents[2] == cardTip {
+		if tipTree := factoryTreeOf(integTree, branch); tipTree != "" {
+			if record, recErr := factory.ReadRemeasureRecord(lockRoot, tipTree); recErr == nil && factory.ValidateRemeasureRecord(record) == nil {
+				adopted = tip
+			}
 		}
 	}
-	done, err := db.Transition(ctx, homestate.TransitionRequest{
-		RunID: runID, CardID: card.CardID, To: homestate.CardMergedLocal,
-		ExpectedVersion: merging.Version, Actor: lane,
-		MergeSHA: mergeSHA, RemeasurePath: path, IntegrationBranch: branch, Now: factoryCardNow(),
+	if adopted != "" {
+		done, err := completeTransitions(ctx, db, out, lockRoot, runID, card, cardID, lane, adopted, remeasure, branch, integTree)
+		if err != nil {
+			// O1: the adoption's transition failure is the post-merge class
+			// (the commit already sits on the integration branch) — but the
+			// window held by ANOTHER session is never released or altered;
+			// the caller releases only its own hold.
+			return completePostMergeConflict(out, lockRoot, sessionID, cardID, adopted, err)
+		}
+		_ = done
+		// P2-6 (card-review r1): the adoption releases the window after its
+		// transitions too — step 4's deferred release is not a reason for
+		// step 2 to hold the window forever; the next live ticket is what
+		// proves the release.
+		if _, err := factory.ReleaseIntegrationLock(lockRoot, sessionID, 0, false); err != nil {
+			_, _ = fmt.Fprintf(out, "  releasing the window failed (%v) — moai integration release by hand\n", err)
+		}
+		factoryPrintClearPolicyLine(out, root)
+		return nil
+	}
+
+	// REQ-MWQ-019 step 3 — no valid re-measure record for the CURRENT
+	// candidate tree refuses with the integration branch and the card state
+	// unchanged, under the re-measure-and-re-acquire code.
+	//
+	// t1576 review round 2: the refusals also release the window complete
+	// acquired in THIS invocation — returning with it held parked the next
+	// lane until the lease lapsed. A hold the lane brought (heldByUs) is
+	// its deliberate place and stays.
+	releaseOwnAcquisition := func() {
+		if !acquiredHere {
+			return
+		}
+		if _, err := factory.ReleaseIntegrationLock(lockRoot, sessionID, 0, false); err != nil {
+			_, _ = fmt.Fprintf(out, "  releasing the window failed (%v) — moai integration release by hand\n", err)
+		}
+	}
+	candidateTree := factoryTreeOf(card.WorktreePath, cardBranch)
+	if candidateTree == "" {
+		releaseOwnAcquisition()
+		return fmt.Errorf("factory complete: card %s's candidate tree cannot be read from %s — everything is unchanged (REQ-MWQ-019 step 3)", cardID, card.WorktreePath)
+	}
+	if _, err := factory.ReadRemeasureRecord(lockRoot, candidateTree); err != nil {
+		releaseOwnAcquisition()
+		return &exitCodeError{code: factory.MergeExitBaseMoved, msg: fmt.Sprintf("factory complete: refused — no valid re-measure record for the candidate tree %s (%v); run moai integration remeasure, then re-acquire --wait — the re-measure-and-re-acquire code", candidateTree[:12], err)}
+	}
+
+	// REQ-MWQ-019 step 4 — the merge runs ONLY by calling the REQ-MWQ-017
+	// step (its own merge is gone), with the step's release DEFERRED until
+	// complete's state transitions are done. The step's pre-merge causes
+	// release inside it; a step failure leaves the card state unchanged
+	// (REQ-MWQ-019: the card state shall not change).
+	mergeSHA, err := factory.RunMergeStep(factory.MergeStepInput{
+		Root:                lockRoot,
+		IntegrationWorktree: integTree,
+		IntegrationBranch:   branch,
+		CardID:              cardID,
+		CallerSessionID:     sessionID,
+		DeferRelease:        true,
+	}, factory.MergeStepSeams{
+		ReadCard: func(id string) (factory.MergeCardState, error) {
+			return integrationReadMergeCardForRun(ctx, root, runID, id, lane)
+		},
 	})
 	if err != nil {
-		return fmt.Errorf("factory complete: card %s is in merging; the F1 merge gate refused: %w", card.CardID, err)
+		if code, ok := factory.MergeExitCode(err); ok {
+			return &exitCodeError{code: code, msg: fmt.Sprintf("factory complete: the merge step refused: %v", err)}
+		}
+		return fmt.Errorf("factory complete: the merge step failed: %w", err)
 	}
-	_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s worktree=%s\n",
-		done.CardID, done.State, done.MergeSHA, branch, integTree)
-	_, _ = fmt.Fprintln(out, "  the integration window is still held by this session — run moai integration release next")
-	// REQ-SD-020: the clear policy the launch selected decides the line the
-	// lane follows now that this card is done.
+
+	// The transitions ride the merge (T14 then T16), and a transition
+	// failing AFTER the merge commit exists is the post-merge-transition-
+	// conflict outcome: the commit stays, the hold names it, the window
+	// releases only after the hold is written, and the exit code is
+	// complete's own (REQ-MWQ-019; distinct from the thirteen).
+	if factoryCompleteTransitionHook != nil {
+		factoryCompleteTransitionHook()
+	}
+	if _, err := completeTransitions(ctx, db, out, lockRoot, runID, card, cardID, lane, mergeSHA, remeasure, branch, integTree); err != nil {
+		return completePostMergeConflict(out, lockRoot, sessionID, cardID, mergeSHA, err)
+	}
+
+	// The transitions finished: release the window (the step's deferred
+	// release — the next live ticket is promoted).
+	if _, err := factory.ReleaseIntegrationLock(lockRoot, sessionID, 0, false); err != nil {
+		_, _ = fmt.Fprintf(out, "  releasing the window failed (%v) — moai integration release by hand\n", err)
+	}
 	factoryPrintClearPolicyLine(out, root)
 	return nil
 }
+
+// completeTransitions runs T14 then T16 for the merge the step (or the
+// adoption) produced: merge-ready → merging at the version step 1 read,
+// then merging → merged-local through the F1 merge gate. remeasure stays
+// what the lane passed — the GATE no longer reads a lane file for the
+// re-measure (REQ-MWQ-021: the record is the gate), so a stand-in file can
+// never satisfy it (REQ-MWQ-020).
+func completeTransitions(ctx context.Context, db *homestate.FactoryDB, out io.Writer, lockRoot, runID string, card homestate.Card, cardID, lane, mergeSHA, remeasure, branch, integTree string) (homestate.Card, error) {
+	merging, err := db.Transition(ctx, homestate.TransitionRequest{
+		RunID: runID, CardID: cardID, To: homestate.CardMerging,
+		ExpectedVersion: card.Version, Actor: lane, Now: factoryCardNow(),
+	})
+	if err != nil {
+		return homestate.Card{}, fmt.Errorf("the merge-ready → merging transition failed: %w", err)
+	}
+	done, err := db.Transition(ctx, homestate.TransitionRequest{
+		RunID: runID, CardID: cardID, To: homestate.CardMergedLocal,
+		ExpectedVersion: merging.Version, Actor: lane,
+		MergeSHA: mergeSHA, RemeasurePath: remeasure, IntegrationBranch: branch, Now: factoryCardNow(),
+		// REQ-MWQ-021: the re-measure the gate accepts is the RECORD keyed
+		// to the merge commit's tree — a file naming the merge SHA as text
+		// is no longer sufficient, so a stand-in can never satisfy the gate
+		// (REQ-MWQ-020).
+		VerifyRemeasure: func(treeSHA, mergeSHA string) error {
+			rec, err := factory.ReadRemeasureRecord(lockRoot, treeSHA)
+			if err != nil {
+				return err
+			}
+			return factory.ValidateRemeasureRecord(rec)
+		},
+	})
+	if err != nil {
+		return homestate.Card{}, fmt.Errorf("the merging → merged-local transition failed: %w", err)
+	}
+	_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s worktree=%s\n",
+		done.CardID, done.State, done.MergeSHA, branch, integTree)
+	return done, nil
+}
+
+// completePostMergeConflict is REQ-MWQ-019's conflict outcome: the merge
+// commit stays on the integration branch, the policy holds with cause
+// post-merge-transition-conflict naming the merge SHA (no queued ticket is
+// promoted onto the conflict), the window is released ONLY after the hold
+// is written — and only the caller's own hold; O1 pins that a window held
+// by another session is never touched — and the exit code is complete's
+// own, distinct from the thirteen.
+func completePostMergeConflict(out io.Writer, lockRoot, sessionID, cardID, mergeSHA string, transitionErr error) error {
+	if holdErr := factory.CompletePostMergeHold(lockRoot, cardID, mergeSHA); holdErr != nil {
+		_, _ = fmt.Fprintf(out, "  writing the hold also failed (%v) — the merge commit %s stays on the integration branch; moai integration policy hold by hand\n", holdErr, mergeSHA[:12])
+	}
+	if _, err := factory.ReleaseIntegrationLock(lockRoot, sessionID, 0, false); err != nil {
+		_, _ = fmt.Fprintf(out, "  releasing the window failed (%v) — release it by hand after reading the hold\n", err)
+	}
+	return &exitCodeError{code: completePostMergeTransitionConflictExit, msg: fmt.Sprintf("factory complete: %v — the merge commit %s stays on the integration branch; the window policy holds with cause post-merge-transition-conflict", transitionErr, mergeSHA[:12])}
+}
+
+// completePostMergeTransitionConflictExit is complete's own exit code
+// (REQ-MWQ-019), distinct from the thirteen merge-step codes and the
+// holder refusals.
+const completePostMergeTransitionConflictExit = 20
+
+// factoryCompleteTransitionHook is a TEST-ONLY interleaving point invoked
+// between the merge step's success and complete's state transitions — the
+// exact window a concurrent version bump occupies in AC-MWQ-019 scenario
+// 8. Unexported and package-level, so only `package cli` assigns it, and
+// no non-test file does (the closure-gate convention
+// integrationLockMutationTestHook established). Every production path
+// leaves it nil, and the call site is nil-guarded.
+var factoryCompleteTransitionHook func()
+
+// cliGitIn runs one git command in dir — the small adoption probes' helper.
+func cliGitIn(dir string, args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	return string(out), err
+}
+
+// factoryBranchTip reads dir's tip for branch (empty dir falls back to the
+// process repository — the caller's resolution already ran).
+func factoryBranchTip(dir, branch string) string {
+	if strings.TrimSpace(dir) == "" {
+		return ""
+	}
+	out, err := cliGitIn(dir, "rev-parse", "refs/heads/"+branch)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out)
+}
+
+// factoryTreeOf reads dir's tip tree for branch.
+func factoryTreeOf(dir, branch string) string {
+	tip := factoryBranchTip(dir, branch)
+	if tip == "" {
+		return ""
+	}
+	out, err := cliGitIn(dir, "rev-parse", tip+"^{tree}")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out)
+}
+
+// factoryCommitParents reads the tip's parent list (a two-parent merge
+// commit yields three fields).
+func factoryCommitParents(dir, tip string) []string {
+	if tip == "" {
+		return nil
+	}
+	out, err := cliGitIn(dir, "rev-list", "--parents", "-n", "1", tip)
+	if err != nil {
+		return nil
+	}
+	return strings.Fields(out)
+}
+
+// factoryRelaunchSupersededNote is the one line the relaunch policy prints
+// before degrading to the one-shot lane session (card t1554): the
+// supervising lease loop is removed — card consumption moved to the unified
+// `moai todo --auto` engine — so the launcher starts one lane session, which
+// consumes the queue itself.
+const factoryRelaunchSupersededNote = "moai: --clear-policy relaunch is superseded (card t1554): card consumption moved to the unified `moai todo --auto` engine; starting one lane session"
 
 // factoryClearPolicySelected reads the lane's clear policy from the carrier
 // constant. Absence — and any value that is not one of the three policies —
@@ -1729,12 +2197,13 @@ func factoryPrintClearPolicyLine(out io.Writer, root string) {
 }
 
 // factoryResolveIntegrationBranch mirrors acquire's branch resolution
-// (resolveIntegrationTarget) without its $PWD legs: the configured git-flow
-// develop branch decides; with none configured the caller's own tree decided
-// the window, which complete refuses, so the branch is the caller's — taken
-// from the card worktree, the lane's own tree, never from the process cwd.
+// (resolveIntegrationTarget) without its $PWD legs: the configured integration
+// target decides (git-flow: the develop branch; github-flow: main); with none
+// configured the caller's own tree decided the window, which complete refuses,
+// so the branch is the caller's — taken from the card worktree, the lane's own
+// tree, never from the process cwd.
 func factoryResolveIntegrationBranch(root string, card homestate.Card) (string, string) {
-	if branch := strings.TrimSpace(config.LoadGitFlowIntegrationConfig(root).DevelopBranch); branch != "" {
+	if branch := strings.TrimSpace(config.LoadGitFlowIntegrationConfig(root).IntegrationTarget); branch != "" {
 		return branch, factory.BranchSourceConfig
 	}
 	return factoryBranchOfWorktree(card.WorktreePath), factory.BranchSourceCaller
@@ -1818,47 +2287,10 @@ func factoryHolderLabel(lock *factory.IntegrationLock) string {
 	return "unknown"
 }
 
-// factoryMergeNoFF performs `git merge --no-ff` of the card branch inside
-// the worktree holding the integration branch, and returns the resulting
-// HEAD. A branch already merged answers "Already up to date" and leaves HEAD
-// at the existing merge commit — the AC-SD-013 shape where the lane merged
-// before running complete.
-func factoryMergeNoFF(integTree, cardBranch, cardID, branch string) (string, error) {
-	if cardBranch == "" {
-		return "", fmt.Errorf("the card records no worktree, so its branch cannot be resolved")
-	}
-	merge := exec.Command("git", "merge", "--no-ff", "-m",
-		fmt.Sprintf("Merge %s into %s (card %s, factory complete)", cardBranch, branch, cardID), cardBranch)
-	merge.Dir = integTree
-	if out, err := merge.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("git merge in %s: %v: %s", integTree, err, strings.TrimSpace(string(out)))
-	}
-	rev := exec.Command("git", "rev-parse", "HEAD")
-	rev.Dir = integTree
-	out, err := rev.Output()
-	if err != nil {
-		return "", fmt.Errorf("read HEAD of %s: %v", integTree, err)
-	}
-	return strings.TrimSpace(string(out)), nil
-}
-
-// factoryWriteMergeRecord writes the merge record complete records when the
-// lane passed no re-measure file: it names the merge commit and the tree
-// identity the F1 merge gate verifies. It records the merge identity only —
-// a re-measure the lane ran is the lane's own file, passed as the positional.
-func factoryWriteMergeRecord(root, cardID, mergeSHA, branch, integTree string) (string, error) {
-	dir := filepath.Join(root, ".moai", "reports", cardID)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", err
-	}
-	path := filepath.Join(dir, "merge-record.txt")
-	body := fmt.Sprintf("merge %s\nbranch %s\nintegration worktree %s\nrecorded by moai factory complete (card %s)\n",
-		mergeSHA, branch, integTree, cardID)
-	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
-		return "", err
-	}
-	return path, nil
-}
+// (factoryMergeNoFF and factoryWriteMergeRecord were retired with card
+// t1479, REQ-MWQ-019 step 4 and REQ-MWQ-020: complete merges ONLY by
+// calling the REQ-MWQ-017 step, and no record complete writes ever stands
+// in for the re-measure — the record store is the gate.)
 
 // resolveFactoryCardRun returns the explicit --run value, or the single active
 // factory run.
@@ -1885,19 +2317,29 @@ func queueItemState(root, cardID string) (factory.BacklogState, bool, error) {
 	return state, ok, nil
 }
 
-// queueItemStateIn is queueItemState's search over a record already in hand —
+// queueItemIn is the item-returning search over a record already in hand —
 // the live items, then the archive. The lease section reads the queue once
 // through its locked handle and searches that record.
-func queueItemStateIn(record *factory.BacklogRecord, cardID string) (factory.BacklogState, bool) {
+func queueItemIn(record *factory.BacklogRecord, cardID string) (factory.BacklogItem, bool) {
 	for _, item := range record.Items {
 		if item.ID == cardID {
-			return item.State, true
+			return item, true
 		}
 	}
 	for _, entry := range record.Archived {
 		if entry.Item.ID == cardID {
-			return entry.Item.State, true
+			return entry.Item, true
 		}
+	}
+	return factory.BacklogItem{}, false
+}
+
+// queueItemStateIn is queueItemState's search over a record already in hand —
+// the live items, then the archive. The lease section reads the queue once
+// through its locked handle and searches that record.
+func queueItemStateIn(record *factory.BacklogRecord, cardID string) (factory.BacklogState, bool) {
+	if item, ok := queueItemIn(record, cardID); ok {
+		return item.State, true
 	}
 	return "", false
 }
@@ -1981,6 +2423,32 @@ func newFactoryAssignCommand() *cobra.Command {
 			// decided the factory DB was absent (review round-7 P1-REPEAT);
 			// the two paths serialize on the same lock.
 			queueStore := newTodoStore()
+			// Hub-chain hint (REQ-TCI-020): filled ONLY on record creation,
+			// and ONLY when the operator gave no --after of their own — an
+			// explicit input outranks the computed one, and a card that
+			// already has a record keeps whatever hint it carries.
+			if fields.HintAfter == nil {
+				if _, cerr := db.LoadCard(ctx, runID, cardID); errors.Is(cerr, homestate.ErrCardNotFound) {
+					if rec, qerr := newTodoStore().LoadPure(); qerr == nil {
+						if rows, rerr := db.ListCards(ctx, runID); rerr == nil {
+							// Merge ONLY the computed after hint — the operator's
+							// own fields (prefer, spec, worktree, contract) were
+							// set above and must survive the fill (AC-TCI-020's
+							// explicit-input-outranks clause cuts the other way
+							// for --after alone, never for the whole struct).
+							if hub := factoryHubChainFields(rec, rows, cardID, nil); hub.HintAfter != nil {
+								fields.HintAfter = hub.HintAfter
+							}
+						} else {
+							return fmt.Errorf("factory assign: read the records for the hub chain: %w", rerr)
+						}
+					} else {
+						return fmt.Errorf("factory assign: read the queue for the hub chain: %w", qerr)
+					}
+				} else if cerr != nil {
+					return fmt.Errorf("factory assign: %w", cerr)
+				}
+			}
 			now := factoryCardNow()
 			var card homestate.Card
 			err = queueStore.WithLock(func(l *factory.LockedBacklog) error {
@@ -2033,7 +2501,7 @@ func newFactoryAssignCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&to, "to", "", "assign the card to this lane label (picked → assigned)")
 	cmd.Flags().StringVar(&prefer, "prefer", "", "assignment preference hint, key=value (reported, never enforced)")
-	cmd.Flags().StringVar(&after, "after", "", "predecessor card that must reach merged-local first (\"\" clears)")
+	cmd.Flags().StringVar(&after, "after", "", "predecessor card that must reach merged-local (git-flow) or merged-pr (github-flow) first (\"\" clears)")
 	cmd.Flags().StringVar(&spec, "spec", "", "SPEC identifier for the card")
 	cmd.Flags().StringVar(&worktree, "worktree", "", "card worktree path")
 	cmd.Flags().StringVar(&contractRef, "contract-ref", "", "contract pointer <spec-id>,<sha256>,<signed-at>[,<event>]")
@@ -2317,6 +2785,8 @@ func decideOne(ctx context.Context, db *homestate.FactoryDB, projectRoot, runID,
 		if choice == "reject" {
 			to = homestate.CardBlocked
 		}
+	case gate == "push" && cur.State == homestate.CardMergedPR:
+		to = homestate.CardDone // github-flow: the merge is already on the remote — the gate closes the card, nothing is pushed
 	case gate == "push":
 		if err := want(homestate.CardMergedLocal); err != nil {
 			return cur, err

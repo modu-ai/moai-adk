@@ -27,6 +27,11 @@ import (
 var factoryAmbientEnvKeys = []string{
 	config.EnvMoaiFactoryWorkers,
 	config.EnvMoaiFactoryWorker,
+	// Card t1516: the lane-admission predicate reads the role variable
+	// (factoryLaneAdmission), so an ambient MOAI_FACTORY_ROLE=lane that
+	// survived this clear refused every unscrubbed fixture's `todo add` as a
+	// lane queue mutation — 21 local-only false reds on 2026-10-05.
+	config.EnvFactoryRole,
 	retiredLeaderMarker,
 	config.EnvFactoryRunID,
 	retiredSpecMarker,
@@ -37,6 +42,18 @@ var factoryAmbientEnvKeys = []string{
 	config.EnvFactoryCard,
 	config.EnvFactoryLeadName,
 	config.EnvClaudeCodeMaxConcurrentSubagents,
+	// SPEC-TEST-ENV-HERMETIC-001 M2: the eight family axes production code
+	// references that the lane-gate sweep measured flipping tests when a lane
+	// session's ambient value reached the binary (c1 lane arms, progress.md
+	// §E.2). TestMain now strips them with the rest of the family.
+	config.EnvFactoryRole,
+	config.EnvAutonomyTier,
+	config.EnvFactoryClearPolicy,
+	config.EnvFactoryAutoDispatch,
+	config.EnvMoaiFactoryManaged,
+	config.EnvMoaiFactorySlowLaunchMS,
+	config.EnvMoaiFactoryManagedTUI,
+	config.EnvMoaiFactoryAppServerToken,
 }
 
 // factoryEnvPinnedEnv exempts a re-executed helper child from the TestMain

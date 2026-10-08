@@ -647,11 +647,12 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 	// (git conditionals hidden for manual) + 3 page-3 questions = 8.
 	// SPEC-INIT-QUIET-WIZARD-001 left page 3 with agent_wiring and
 	// autonomy_tier only (13 -> 2); SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005
-	// added jev_enabled (2 -> 3).
+	// added jev_enabled (2 -> 3); SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-003
+	// added feedback_participation (3 -> 4), so the denominator is 9.
 	all := append(ReconfigureQuestions("/tmp/steppertotal"), Page3Questions("/tmp/steppertotal")...)
 	std := &WizardResult{GitMode: "manual", DesignEnabled: true}
-	if got := stepperDenominator(all, std); got != 8 {
-		t.Errorf("page-3 denominator: expected 8 (5 + 3 page-3), got %d", got)
+	if got := stepperDenominator(all, std); got != 9 {
+		t.Errorf("page-3 denominator: expected 9 (5 + 4 page-3), got %d", got)
 	}
 	// Single dynamic source invariant: stepperDenominator == TotalVisibleQuestions.
 	if stepperDenominator(all, std) != TotalVisibleQuestions(all, std) {

@@ -1,0 +1,13 @@
+name: ci
+on: [push]
+jobs:
+  Test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: ""
+            version: "18"
+    steps:
+      - run: "true"

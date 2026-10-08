@@ -662,6 +662,13 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	want := map[string]bool{
 		"graph_stamp.go:68":  true,
 		"graph_stamp.go:131": true,
+		// Card t1576 (leader anchor): the configuredIntegrationBranch doc
+		// comment quotes the pre-fix failure message ("merge-base ..HEAD …
+		// exit status 128") verbatim. The sweep's text matcher sees the
+		// primitive name in that COMMENT — a doc mention, the same class as
+		// the t1561 lane-12 doc-block precedent: no ancestry call executes
+		// here, so binlag.Evaluate stays the one binary-lag comparison.
+		"integration.go:277": true,
 		// Re-measured at card t948: the coverage-budget constant and its
 		// deadline attribution were added above these two comparisons, moving
 		// them from 245/253. Same two comparisons, same count — only the
@@ -673,7 +680,11 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// review-diff base measurement, same count — only the coordinate moved.
 		"mcp_review_material.go:175": true,
 		"todo_landed.go:231":         true,
-		"todo_autodone.go:349":       true,
+		// Re-measured at card t1502: M4's card-close wiring added three lines
+		// above this comparison, moving it from :349. Same single ancestry
+		// comparison (the auto-done scan's merge-base --is-ancestor), same
+		// count — only the coordinate moved.
+		"todo_autodone.go:352": true,
 		// SPEC-CODEX-GATE-SCOPE-001 (card t1383): the card-diff BASE
 		// measurement — gitflow-lane-protocol §8 requires the gate to recompute
 		// `git merge-base develop HEAD` per evaluation. It selects which
@@ -688,18 +699,69 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// Re-measured again at the card-review round-2 repair: N4's
 		// reviewScopeEvalPath insertion above cardMergeBase moved the same
 		// single comparison from 182. Same one comparison, same count.
-		"codex_review_scope.go:197": true,
+		// Re-measured at card t1453: SPEC-GITHUB-FLOW-DEFAULT-001 M1 replaced
+		// the literal develop read above the comparison with the configured
+		// integration-target resolution (three lines), moving the same single
+		// comparison from 197. Same one comparison, same count.
+		// Card t1555 also orders local and remote common ancestors. These
+		// three reads select the review diff; none judges binary freshness.
+		"codex_review_scope.go:198": true,
+		"codex_review_scope.go:204": true,
+		"codex_review_scope.go:207": true,
 		// SPEC-WEB-SETTINGS-SAVE-001 scope ③ (card t1393): the session-worktree
 		// disposal landing check — arm (i) of the decided predicate asks
-		// whether the branch tip is an ancestor of refs/remotes/origin/develop
-		// before `git worktree remove`. The :810 coordinate is the predicate's
-		// doc comment naming the primitive, :836 the comparison itself. It is
-		// a disposal-safety reachability question about two repo refs — the
+		// whether the branch tip is an ancestor of the remote-tracking
+		// integration ref before `git worktree remove`. It is a
+		// disposal-safety reachability question about two repo refs — the
 		// same family as the todo_landed/todo_autodone coordinates — not a
 		// binary-vs-source freshness comparison, so binlag.Evaluate is not its
 		// owner (REQ-WSS-302's fail-open preserve is the safety net there).
-		"session_worktree.go:810": true,
-		"session_worktree.go:836": true,
+		// Re-measured at card t1453: SPEC-GITHUB-FLOW-DEFAULT-001 M2-A
+		// (REQ-GFD-002) rewrote gitBranchLandedReal's predicate to three
+		// documented arms and moved the integration ref to the configured
+		// target. The comment coordinates moved 810→839 (arm (i) naming
+		// `git merge-base --is-ancestor`) and gained :844 (arm (iii)'s comment
+		// naming the merge-base of worktree.LandedByPatchID — a doc mention,
+		// the same family as :839), and the comparison itself moved 836→875.
+		// Same single comparison, one more doc-comment mention — same count of
+		// actual ancestry comparisons.
+		// PR #1754's cleanup repair removes the obsolete third-arm comment
+		// and requires exact Git objects after cumulative patch matching.
+		// Re-measured hits: the arm (i) comment stays at 839, its one actual
+		// ancestry comparison moves to 876, and the removed comment at 844
+		// is no longer a hit. This remains a disposal check, not binary lag.
+		// Re-measured at card t1561 (SPEC-GFD-PATCHID-VERBATIM-001): M2
+		// replaced the `git cherry` arm with worktree.LandedByCommitPatchIDs
+		// and grew the predicate doc block above the comparison, moving the
+		// one actual ancestry comparison 876→879 and adding a doc-comment
+		// mention at 845 (arm (iii) naming worktree.LandedByPatchID — the
+		// same doc-mention family as the t1453 844 precedent). Same single
+		// comparison plus one doc mention — same count of actual ancestry
+		// comparisons.
+		"session_worktree.go:839": true,
+		"session_worktree.go:845": true,
+		"session_worktree.go:879": true,
+		// SPEC-TODO-CARD-ISSUANCE-001 (card t1454): the in-flight lane
+		// changed-files probe — productionLaneFilesProbe resolves the fork
+		// point between the integration branch and the card's lane branch
+		// before diffing the lane's changed files. :165 is the doc comment
+		// naming the primitive, :173 the probe itself. A reachability
+		// precondition about two repo refs (which changes belong to the
+		// lane), the same family as the todo_landed/todo_autodone
+		// coordinates — not a binary-vs-source freshness comparison, so
+		// binlag.Evaluate is not its owner.
+		// Re-measured at the card-review r2 closure: the issuance probe's
+		// repairs moved the same two hits from 165/173 to 204/212. Same
+		// probe, same count — only the coordinates moved (the t948
+		// precedent).
+		// Re-measured at the #1789 repair round (card t1535): the
+		// REQ-GFC-017 comment reword (configured-first landed-ref chain,
+		// never a literal branch name) grew the doc comment above
+		// productionLaneFilesProbe and moved the comparison 212→215. Same
+		// probe, same count — only the coordinate moved (the t948
+		// precedent).
+		"todo_issuance.go:204": true,
+		"todo_issuance.go:215": true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")

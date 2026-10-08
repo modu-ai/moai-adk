@@ -175,7 +175,7 @@ Language-to-LSP Mapping (all 16 MoAI-supported languages, alphabetical):
 - TypeScript: typescript-language-server (check: which typescript-language-server)
 
 Note: The canonical language name for Dart/Flutter ecosystem is "Flutter",
-matching `.claude/skills/moai/workflows/sync.md` Phase 9. Per
+matching `~/.claude/skills/moai/workflows/sync.md` Phase 9. Per
 `.claude/rules/moai/development/coding-standards.md` § Language Policy
 (16-language neutrality contract), all 16 languages are treated as equal
 first-class citizens; the user's project marker files determine which
@@ -337,7 +337,7 @@ Development Mode: [tdd/ddd] (auto-configured in Phase 12)
 
 [HARD] Under `card` and `pipeline` alike, issue exactly ONE backlog card carrying the project's first feature, so the run ends with the next piece of work on the queue instead of only in prose.
 
-`/moai project` is a **standing source** under `.claude/skills/moai/workflows/gtd.md` § Standing sources — the operator authorized the card in advance, and this step derives it rather than inventing it. Every condition there binds; the mechanics here implement them.
+`/moai project` is a **standing source** under `~/.claude/skills/moai/workflows/gtd.md` § Standing sources — the operator authorized the card in advance, and this step derives it rather than inventing it. Every condition there binds; the mechanics here implement them.
 
 1. Read `.moai/project/harness-spec.yaml` (written in Phase 8). Take `goal` as the card's subject and `scope` as its boundary.
 2. If `goal` is empty, absent, or null: **skip this step entirely** and say so in the Step 4.2 report. An unresolved interview answer is nothing to derive from, and a card invented to fill the gap is exactly what the doctrine forbids.

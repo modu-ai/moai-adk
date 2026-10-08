@@ -1,5 +1,5 @@
 ---
-paths: ".claude/**/*.md,.claude/**/*.yaml,.moai/**/*.yaml,CLAUDE.md"
+paths: ".claude/**/*.md,.claude/**/*.yaml,.moai/**/*.yaml,AGENTS.md"
 ---
 
 # Coding Standards
@@ -9,7 +9,7 @@ MoAI-specific coding standards. General coding conventions are not included as C
 ## Language Policy
 
 All instruction documents must be in English:
-- CLAUDE.md
+- AGENTS.md
 - Agent definitions (.claude/agents/**/*.md)
 - Slash commands (.claude/commands/**/*.md)
 - Skill definitions (.claude/skills/**/*.md)
@@ -39,7 +39,7 @@ elixir, cpp, scala, r, flutter, swift (Dart's canonical name is "flutter").
 
 ## File Size Limits
 
-CLAUDE.md should stay under 40,000 characters. This is a MoAI CI-enforceable heuristic; the official Claude Code spec instead targets "under 200 lines per CLAUDE.md" and loads the file in full regardless of length. The budget applies to every instruction file the InstructionsLoaded hook measures — always-loaded and `paths:`-scoped alike; scoping changes when a file loads, not whether it is measured.
+AGENTS.md should stay under 40,000 characters. This is a MoAI CI-enforceable heuristic; the official Claude Code spec instead targets "under 200 lines per AGENTS.md" and loads the file in full regardless of length. The budget applies to every instruction file the InstructionsLoaded hook measures — always-loaded and `paths:`-scoped alike; scoping changes when a file loads, not whether it is measured.
 
 When approaching the limit, reduce launch-time context (priority order):
 - Move detailed content to path-scoped rules (.claude/rules/ with `paths:` frontmatter) so it loads only when matching files are touched — a `paths:`-scoped destination is subject to the same 40,000-character budget; the move narrows when the content loads, not whether it is measured
@@ -150,9 +150,9 @@ Claude Code adds a separate native check for dangerous recursive `rm` commands. 
 
 The `handle-pre-tool.sh` PreToolUse hook, on detecting a Bash command whose subcommand count exceeds `BASH_SUBCOMMAND_SOFT_CAP`, emits a warn-only signal (a stderr line AND a structured `[moai:bash-risk] WARN` marker) and then exits **0** (fail-open). The hook MUST NOT block, exit non-zero, or otherwise prevent the Bash call from proceeding. A blocking hook here would itself instantiate the death-spiral hazard book1 ch06 warns about. This fail-open constraint is **non-negotiable**. The counter is a **heuristic** — shell-metacharacter counting over-counts in edge cases (e.g., `echo "a && b && c && d && e && f"` inside a quoted string would over-count); the counter is NOT a parser and MUST NOT be the basis of a hard block.
 
-### (5) Additive-only — no regression to CLAUDE.md safeguards
+### (5) Additive-only — no regression to AGENTS.md safeguards
 
-This doctrine is **strictly additive**. It layers a Bash-specific risk tier on top of the existing uniform PreToolUse hook behavior. It does NOT contradict, weaken, or supersede `CLAUDE.md §7 Safe Development Protocol` or `CLAUDE.md §14 Parallel Execution Safeguards`. Both sections remain the authoritative compatibility targets; this doctrine only adds a Bash-specific risk-amplifier lens that was previously absent.
+This doctrine is **strictly additive**. It layers a Bash-specific risk tier on top of the existing uniform PreToolUse hook behavior. It does NOT contradict, weaken, or supersede `AGENTS.md §13 Safe Development Protocol` or `worktree-integration.md Parallel Execution Safeguards`. Both sections remain the authoritative compatibility targets; this doctrine only adds a Bash-specific risk-amplifier lens that was previously absent.
 
 ## Advisory-Check Discipline
 

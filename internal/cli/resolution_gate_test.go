@@ -118,22 +118,9 @@ func TestShrinkVerificationNeverReachesRealHome(t *testing.T) {
 		}
 	})
 
-	t.Run("default-runner-refuses-under-test-binary", func(t *testing.T) {
-		// Positive control for the REQ-017 seam: under a Go test binary the
-		// default runner refuses, and the install step stays silent and
-		// nil-returning even with a non-empty tool list and no opt-out.
-		if !isPluginTestBinary() {
-			t.Skip("not a test binary (unexpected under go test)")
-		}
-		var buf strings.Builder
-		opts := newPluginInstallOptions([]pluginTool{pluginToolClaude}, t.TempDir(), false)
-		if err := runPluginInstallStep(&buf, opts); err != nil {
-			t.Fatalf("runPluginInstallStep under a test binary returned %v, want nil", err)
-		}
-		if buf.Len() != 0 {
-			t.Fatalf("the refusing path wrote output: %q", buf.String())
-		}
-	})
+	// SPEC-USER-ASSET-INSTALL-001 (M6): the default-runner-refuses control
+	// retired with runPluginInstallStep — no plugin install step exists to
+	// refuse anything (REQ-017).
 }
 
 // homeAssignAt reports whether line assigns the HOME variable: the token

@@ -8,15 +8,38 @@ package template
 import (
 	"context"
 	"errors"
-	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/manifest"
 )
+
+// TestCodexOnlyRelocationRespectsCatalogFilter pins the P2 fix
+// (SPEC-USER-ASSET-INSTALL-001 leader mid-run finding), re-baselined by the
+// t1547 repair round (gate r4 finding 1): the listing now applies the SAME
+// common-asset exclusion as the deploy walk (isCommonAssetRoot — REQ-005,
+// in any mode), so NO .agents/skills path appears in the listing — the
+// unselected-bundle leak assertion holds, and the former L0-presence
+// assertions retired with the listing-superset contract they pinned (a real
+// deployment writes no .agents/skills — REQ-005; pinned on disk by
+// TestCodexOnlyForceUpdateVariant). The catalog remap integrity itself stays
+// pinned at the harnessFS Open/ReadDir layer.
+func TestCodexOnlyRelocationRespectsCatalogFilter(t *testing.T) {
+	d := newCodexOnlyTestDeployer(t)
+
+	seen := make(map[string]bool)
+	for _, p := range d.ListTemplates() {
+		seen[p] = true
+		if strings.HasPrefix(p, ".agents/skills/") {
+			t.Errorf("common-asset path %q visible in the listing — the deploy walk never writes it (deploy parity)", p)
+		}
+	}
+	if seen[".agents/skills/moai-workflow-loop/SKILL.md"] {
+		t.Error("CATALOG_FILTER_LEAK: .agents/skills/moai-workflow-loop/SKILL.md visible in codex-only deployment — the relocation path bypassed the catalog filter (unselected-bundle skill deployed)")
+	}
+}
 
 // newCodexOnlyTestDeployer builds the codex-only deployer against the real
 // embedded tree (the production path under test).
@@ -65,74 +88,9 @@ func TestCodexOnlyDeployerWalkIntegrity(t *testing.T) {
 		// `AGENTS.md.tmpl`, while this listing sees deploy targets.
 		"AGENTS.md",
 		".gitignore",
-		".agents/skills/moai-workflow-tdd/SKILL.md", // remapped catalog skill
-		".agents/skills/moai-plan/SKILL.md",         // published skill
 	} {
 		if !seen[want] {
 			t.Errorf("%q missing from codex-only template listing", want)
-		}
-	}
-}
-
-// TestCodexOnlyDeployerRealDeployment deploys into a temp dir and checks the
-// remapped skills are REAL directories (no symlinks) with readable content
-// (AC-IH-004).
-func TestCodexOnlyDeployerRealDeployment(t *testing.T) {
-	d := newCodexOnlyTestDeployer(t)
-
-	root := t.TempDir()
-	mgr := manifest.NewManager()
-	if _, err := mgr.Load(root); err != nil {
-		t.Fatalf("load manifest: %v", err)
-	}
-	if err := d.Deploy(context.Background(), root, mgr, nil); err != nil {
-		t.Fatalf("deploy: %v", err)
-	}
-
-	skillsDir := filepath.Join(root, ".agents", "skills")
-	entries, err := os.ReadDir(skillsDir)
-	if err != nil {
-		t.Fatalf("read .agents/skills: %v", err)
-	}
-	symlinks := 0
-	for _, e := range entries {
-		if e.Type()&fs.ModeSymlink != 0 {
-			symlinks++
-			t.Errorf("symlink at .agents/skills/%s — codex-only must materialize real directories (REQ-IH-006)", e.Name())
-		}
-	}
-	if symlinks > 0 {
-		t.Errorf("symlink count = %d, want 0", symlinks)
-	}
-
-	// Every catalog skill from the embedded .claude/skills listing is present
-	// as a real directory under .agents/skills with a readable SKILL.md.
-	embedded, err := EmbeddedTemplates()
-	if err != nil {
-		t.Fatalf("embedded: %v", err)
-	}
-	catalogEntries, err := fs.ReadDir(embedded, filepath.ToSlash(filepath.Join(".claude", "skills")))
-	if err != nil {
-		t.Fatalf("read catalog listing: %v", err)
-	}
-	for _, e := range catalogEntries {
-		if !e.IsDir() {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(skillsDir, e.Name(), "SKILL.md"))
-		if err != nil {
-			t.Errorf("remapped catalog skill %s unreadable: %v", e.Name(), err)
-			continue
-		}
-		if len(data) == 0 {
-			t.Errorf("remapped catalog skill %s: SKILL.md empty", e.Name())
-		}
-	}
-
-	// The claude-only surfaces did not deploy.
-	for _, rel := range []string{".claude", "CLAUDE.md", ".mcp.json", ".claudeignore", ".moai/status_line.sh"} {
-		if _, err := os.Stat(filepath.Join(root, rel)); err == nil {
-			t.Errorf("%s deployed by codex-only deployer (REQ-IH-005 violation)", rel)
 		}
 	}
 }
@@ -215,49 +173,6 @@ func TestCodexOnlyHiddenPathsErrNotExist(t *testing.T) {
 	}
 }
 
-// TestCodexOnlyRemapSkipsOccupiedTarget covers REQ-IH-007: a codex-only
-// remap whose destination path is already occupied by a user-owned
-// non-symlink entry is left untouched and reported, not overwritten.
-func TestCodexOnlyRemapSkipsOccupiedTarget(t *testing.T) {
-	d := newCodexOnlyTestDeployer(t)
-
-	root := t.TempDir()
-	// A user-owned file occupies a remapped destination path.
-	occupied := filepath.Join(root, ".agents", "skills", "moai-workflow-tdd", "SKILL.md")
-	if err := os.MkdirAll(filepath.Dir(occupied), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(occupied, []byte("user-owned bytes"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	mgr := manifest.NewManager()
-	if _, err := mgr.Load(root); err != nil {
-		t.Fatalf("load manifest: %v", err)
-	}
-	rd, ok := d.(ResultDeployer)
-	if !ok {
-		t.Fatal("codex-only deployer must implement ResultDeployer")
-	}
-	res, err := rd.DeployWithResult(context.Background(), root, mgr, nil)
-	if err != nil {
-		t.Fatalf("deploy: %v", err)
-	}
-
-	// The user-owned file survives byte-identically.
-	data, err := os.ReadFile(occupied)
-	if err != nil {
-		t.Fatalf("occupied file vanished: %v", err)
-	}
-	if string(data) != "user-owned bytes" {
-		t.Error("occupied file was overwritten by the remap (REQ-IH-007 violation)")
-	}
-	// And the skip is reported somewhere observable.
-	if len(res.ProtectedSkips) == 0 && len(res.Warnings()) == 0 {
-		t.Error("occupied remap target: neither ProtectedSkips nor Warnings recorded the skip")
-	}
-}
-
 func TestHarnessProfilesResolveSharedReferences(t *testing.T) {
 	cat, err := LoadEmbeddedCatalog()
 	if err != nil {
@@ -271,12 +186,11 @@ func TestHarnessProfilesResolveSharedReferences(t *testing.T) {
 	profiles := []struct {
 		name        string
 		newDeployer func() (Deployer, error)
-		wantClaude  bool
 		wantCodex   bool
 	}{
-		{"claude", func() (Deployer, error) { return NewClaudeHarnessDeployerWithRenderer(cat, renderer) }, true, false},
-		{"gpt", func() (Deployer, error) { return NewCodexOnlyDeployerWithRenderer(cat, renderer) }, false, true},
-		{"both", func() (Deployer, error) { return NewDualHarnessDeployerWithRenderer(cat, renderer) }, true, true},
+		{"claude", func() (Deployer, error) { return NewClaudeHarnessDeployerWithRenderer(cat, renderer) }, false},
+		{"gpt", func() (Deployer, error) { return NewCodexOnlyDeployerWithRenderer(cat, renderer) }, true},
+		{"both", func() (Deployer, error) { return NewDualHarnessDeployerWithRenderer(cat, renderer) }, true},
 	}
 	for _, tc := range profiles {
 		t.Run(tc.name, func(t *testing.T) {
@@ -307,108 +221,25 @@ func TestHarnessProfilesResolveSharedReferences(t *testing.T) {
 					t.Errorf("required shared reference %s: %v", rel, err)
 				}
 			}
-			if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); (err == nil) != tc.wantClaude {
-				t.Errorf("CLAUDE.md presence = %v, want %v", err == nil, tc.wantClaude)
+			// AGENTS.md-primary product: AGENTS.md (deployed from
+			// AGENTS.md.tmpl) is the sole instruction file for every harness
+			// value; CLAUDE.md is never deployed on any profile.
+			if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
+				t.Errorf("AGENTS.md presence = %v, want true on every profile", err == nil)
 			}
-			if _, err := os.Stat(filepath.Join(root, ".codex", "agents", "moai", "manager-develop.toml")); (err == nil) != tc.wantCodex {
-				t.Errorf("Codex agent presence = %v, want %v", err == nil, tc.wantCodex)
+			if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); err == nil {
+				t.Error("CLAUDE.md presence = true, want false on every profile")
 			}
-			if tc.wantCodex {
-				// Only concrete file references are checked. Placeholders and
-				// directory examples do not pretend to be required read targets.
-				concreteRef := regexp.MustCompile(`(?:\.moai/(?:policies|workflows)|\.agents/skills)/[A-Za-z0-9_./-]+\.(?:md|yaml|json|toml)`)
-				checkedRefs := 0
-				checkReferences := func(path string, data []byte) {
-					for _, line := range strings.Split(string(data), "\n") {
-						lower := strings.ToLower(line)
-						if !strings.Contains(lower, "read ") && !strings.Contains(lower, "load ") {
-							continue
-						}
-						for _, ref := range concreteRef.FindAllString(line, -1) {
-							checkedRefs++
-							if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(ref))); err != nil {
-								t.Errorf("%s requires absent %s: %v", strings.TrimPrefix(path, root), ref, err)
-							}
-						}
-					}
-				}
-				body, err := os.ReadFile(filepath.Join(root, ".agents", "skills", "moai", "SKILL.md"))
-				if err != nil {
-					t.Fatal(err)
-				}
-				if strings.Contains(string(body), ".claude/rules/moai/") || strings.Contains(string(body), ".claude/skills/moai/workflows/") {
-					t.Error("Codex dispatcher contains unavailable Claude reference")
-				}
-				if !strings.Contains(string(body), ".moai/policies/") || !strings.Contains(string(body), ".moai/workflows/") {
-					t.Error("Codex dispatcher does not link shared references")
-				}
-				role, err := os.ReadFile(filepath.Join(root, ".codex", "agents", "moai", "manager-develop.toml"))
-				if err != nil {
-					t.Fatal(err)
-				}
-				if strings.Contains(string(role), ".claude/rules/moai/") || strings.Contains(string(role), ".claude/skills/") {
-					t.Error("Codex role contains unavailable Claude reference")
-				}
-				err = filepath.WalkDir(filepath.Join(root, ".codex", "agents"), func(path string, entry fs.DirEntry, err error) error {
-					if err != nil {
-						return err
-					}
-					if entry.IsDir() || !strings.HasSuffix(path, ".toml") {
-						return nil
-					}
-					data, err := os.ReadFile(path)
-					if err != nil {
-						return err
-					}
-					if strings.Contains(string(data), ".claude/rules/moai/") || strings.Contains(string(data), ".claude/skills/") {
-						t.Errorf("Codex role %s contains unavailable Claude reference", filepath.Base(path))
-					}
-					checkReferences(path, data)
-					return nil
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
-				err = filepath.WalkDir(filepath.Join(root, ".agents", "skills"), func(path string, entry fs.DirEntry, err error) error {
-					if err != nil {
-						return err
-					}
-					if entry.IsDir() || !strings.HasSuffix(path, ".md") {
-						return nil
-					}
-					data, err := os.ReadFile(path)
-					if err != nil {
-						return err
-					}
-					if strings.Contains(string(data), ".claude/rules/moai/") || strings.Contains(string(data), ".claude/skills/") {
-						t.Errorf("Codex skill %s contains unavailable Claude reference", strings.TrimPrefix(path, root))
-					}
-					checkReferences(path, data)
-					return nil
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
-				for _, rel := range []string{".moai/policies", ".moai/workflows"} {
-					err := filepath.WalkDir(filepath.Join(root, rel), func(path string, entry fs.DirEntry, err error) error {
-						if err != nil {
-							return err
-						}
-						if entry.IsDir() || !strings.HasSuffix(path, ".md") {
-							return nil
-						}
-						data, err := os.ReadFile(path)
-						if err != nil {
-							return err
-						}
-						checkReferences(path, data)
-						return nil
-					})
-					if err != nil {
-						t.Fatal(err)
-					}
-				}
-				t.Logf("checked %d concrete read/load references", checkedRefs)
+			// SPEC-USER-ASSET-INSTALL-001 (REQ-005): NO common agent or
+			// skill lands project-side in any profile — the user installer
+			// owns both (its collision/confinement semantics are covered in
+			// internal/userassets). The profile deploy only owes the shared
+			// references and the harness-axis files.
+			if _, err := os.Stat(filepath.Join(root, ".codex", "agents", "moai")); !os.IsNotExist(err) {
+				t.Error("project .codex/agents/moai placement exists — REQ-005 forbids it")
+			}
+			if _, err := os.Stat(filepath.Join(root, ".agents", "skills")); !os.IsNotExist(err) {
+				t.Error("project .agents/skills placement exists — REQ-005 forbids it")
 			}
 		})
 	}

@@ -1,7 +1,32 @@
 # moai update와 로컬 전용 파일 — 관리 대상 삭제의 실측과 생존 규칙
 
-> CLAUDE.local.md §2.3 에서 이관했다(card t750, 2026-09-14). **로컬 전용 문서** — 템플릿에 미러하지 않는다(내부 카드 id·SPEC id·내부 날짜를 포함하므로 템플릿 중립성 §25 의 금지 클래스에 해당). 이 문서의 정본은 develop 트리의 이 사본이다(CLAUDE.local.md §0.1 판별식 준용) — 갱신은 카드 워크트리에서 한 뒤 develop 으로 병합한다.
+> CLAUDE.local.md §2.3 에서 이관했다(card t750, 2026-09-14). **로컬 전용 문서** — 템플릿에 미러하지 않는다(내부 카드 id·SPEC id·내부 날짜를 포함하므로 템플릿 중립성 §25 의 금지 클래스에 해당). 이 문서의 정본은 main 트리의 이 사본이다(CLAUDE.local.md §0.1 판별식 준용 — 2026-10-05 GitHub Flow 전환 후 분기 트리는 `main` 이다) — 갱신은 카드 워크트리에서 한 뒤 main 으로 PR을 낸다.
 > CLAUDE.local.md 쪽에는 이 요지만 남는다: `CleanMoaiManagedPaths` 가 관리 대상 뿌리를 통째로 삭제하며 보호 목록이 없다는 사실, 로컬 전용 파일 배치 [HARD], update 후 검증·git-strategy 재적용 [HARD].
+
+---
+
+## 2026-10-07 — 생존 규칙이 코드로 강제된다 (card t1547, SPEC-UPDATE-MIGRATION-001)
+
+아래의 실측은 **역사 기록**이다. 기본 update 경로는 더 이상 wipe-first가 아니다 — 기존 프로젝트 update는 관리 대상 뿌리를 **분류**하고 네 부류로 갈린다:
+
+| 부류 | 판정 | 처분 |
+|---|---|---|
+| `template-owned` | 템플릿이 경로를 운반 + manifest 기록 정상(해시가 추적 상태와 일치) | 새 렌더로 **제자리 갱신** — 아카이브 없음(템플릿이 복구원) |
+| `user-modified` | 템플릿이 운반하나 내용이 추적 상태와 갈림(또는 기록 부재/스테일) | **3-way 병합** — 깨끗하면 병합본 기록, 충돌이면 아래 참고 |
+| `user-owned` | 템플릿이 운반하지 않음(로컬 전용 전부 포함, `IsUserOwnedNamespace` 강제 포함) | **손대지 않음** — 무백업·무아카이브·무덮어쓰기, 요약에 나열 |
+| `stale` | 이전 템플릿이 운반했으나 현재 템플릿이 운반하지 않음(manifest 근거 필요) | **아카이브 후 삭제** — `.moai/archive/files/update-migration/<실행시각>/` 에 원본 경로 레이아웃으로 복사한 뒤 제거 |
+
+**충돌 처분**: 사용자 파일은 바이트 동일 보존되고, 새 렌더는 형제 `<경로>.moai-new`에 기록된다(이름이 점유돼 있으면 `.moai-new.2`, `.3`… 첫 빈 번호 — 기존 형제는 절대 덮지 않는다). 요약이 충돌을 보고한다. 자동 해결은 없다.
+
+**코드로 보장되는 것**: 로컬 전용 파일 생존(AC-UPM-020), operator-set git-strategy **값** 생존 — `worktree_base_branch: develop`, `workflow: git-flow` (AC-UPM-021), 요약이 삭제를 전부 나열(REQ-UPM-031), wholesale 경로조차 user-owned·미해결 user-modified 삭제 거부(REQ-UPM-015).
+
+**여전히 주의가 필요한 것**:
+
+1. **`.moai-new` 사이드카 적체** — 미해결 충돌이 쌓이면 사이드카가 쌓인다. 자동 정리 없음; 사용자가 병합하고 사이드카를 지운다.
+2. **레거시 fresh-install 경로** — config가 섹션 모델과 비호환(시스템 YAML 파싱 실패)일 때만 wholesale 제거가 남는다. 그때도 REQ-UPM-015 가드가 user-owned·미해결 user-modified는 건너뛰고, 전체 백업이 선행한다.
+3. **아카이브는 기밀 경계가 아니다** — 사본은 패키지 기본 모드(0644)로 기록되고 원본 모드를 상속하지 않는다. 보존·청소 정책은 이 SPEC이 정의하지 않는다(쌓인다).
+4. **덮어쓰기 2종 중 "경로 충돌"은 해소**됐다(위 user-modified 병합/충돌 처분). **`.sh`/`.sh.tmpl` 쌍 드리프트는 여전하다** — 아래 실측 절의 쌍 점검 명령은 유효하다.
+5. **`git status --porcelain | grep '^ D'` 검증은 이제 통과가 기본이다** — 통과해도 관리 뿌리 밖 실수는 잡지 못한다. `--dry-run`이 분류 예정표(refresh/merge/preserve/stale)를 미리 보여 주므로 큰 update 전에 본다.
 
 ---
 
@@ -35,22 +60,24 @@ git status --porcelain | grep '^ D'                   # 삭제된 파일 — 0�
 git status --porcelain | grep '^ D' | sed 's/^...//' | tr '\n' '\0' | xargs -0 git restore --
 ```
 
-**[HARD] update 후 `git-strategy.yaml`의 git-flow 키를 반드시 재적용한다.** `.moai/config`는 위 wipe 대상이므로, `moai update` 는 `.moai/config/sections/git-strategy.yaml` 을 템플릿 기본값(`workflow: github-flow`, develop/release 키 없음)으로 되돌린다. 이 파일은 **템플릿에 미러하지 않는다** — 미러하면 16개 언어 배포판 전체에 이 프로젝트의 사설 워크플로가 실려 나간다(§15). 그러니 매 update 후 로컬에서 다시 넣는다:
+**[HARD] update 후 `git-strategy.yaml`의 운영자 키를 반드시 재적용한다.** `.moai/config`는 위 wipe 대상이므로, `moai update` 는 `.moai/config/sections/git-strategy.yaml` 을 템플릿 기본값(`workflow: github-flow`, `worktree_base_branch: ""`)으로 되돌린다. 이 파일은 **템플릿에 미러하지 않는다** — 미러하면 16개 언어 배포판 전체에 이 프로젝트의 사설 워크플로가 실려 나간다(§15). 그러니 매 update 후 로컬에서 다시 넣는다:
 
 ```bash
 # 확인 — 두 키를 함께 본다. 하나만 보면 나머지가 되돌아간 것을 놓친다 (card t1159)
-grep -n 'workflow: git-flow' .moai/config/sections/git-strategy.yaml || echo 'REVERTED(workflow) — 재적용 필요'
-grep -n 'worktree_base_branch: develop' .moai/config/sections/git-strategy.yaml || echo 'REVERTED(worktree_base_branch) — 재적용 필요'
-# 재적용 — **--source=develop 이다. HEAD 가 아니다** (card t1159)
-git restore --source=develop -- .moai/config/sections/git-strategy.yaml
+grep -n 'workflow: github-flow' .moai/config/sections/git-strategy.yaml || echo 'REVERTED(workflow) — 재적용 필요'
+grep -n 'worktree_base_branch: main' .moai/config/sections/git-strategy.yaml || echo 'REVERTED(worktree_base_branch) — 재적용 필요'
+# 재적용 — **원천은 main의 커밋 사본이다** (2026-10-05 GitHub Flow 전환; §0.1 판별식)
+git restore --source=main -- .moai/config/sections/git-strategy.yaml
 ```
 
-**[HARD] `--source=HEAD` 를 쓰지 않는다.** primary 체크아웃은 `main` 에 체크아웃돼 있고, `main` 커밋본에는 `worktree_base_branch` 키가 **아예 없으며** 세 블록 모두 `workflow: github-flow` 다(2026-09-24 실측: `git show main:.moai/config/sections/git-strategy.yaml`). `HEAD` 에서 복원하면 두 키가 함께 되돌아간다 — 확인 grep 은 실패하는데 복원은 고쳐 주지 않는 순환이 된다. 정본은 `develop` 이다(§0.1 과 같은 판별식: 레인이 분기하는 트리가 지배한다).
+**[HARD] 복원 원천은 「레인이 분기하는 트리」의 커밋 사본이다(§0.1) — 현재 그 트리는 `main` 이므로 `--source=main` 이다.** 이전 판(develop 시대)의 `--source=develop` 경고는 develop 체인과 함께 폐기됐다: main 커밋본이 운영자 키 두 개(`worktree_base_branch: main`, `lead_push_threshold`)를 모두 운반하므로 restore 한 번이면 재적용이 끝난다. `--source=HEAD` 는 primary 체크아웃(`main` 체크아웃)에서 `--source=main` 과 같지만, 표기는 후자를 쓴다 — HEAD 가 무엇인지는 세션마다 다를 수 있다.
 
-`git restore` 가 통하지 않는 상황(커밋 전 상태)이면 `git_strategy` 아래를 손으로 되돌린다 — **네 줄이 아니라 다섯 줄이다**:
+`git restore` 가 통하지 않는 상황(커밋 전 상태)이면 `git_strategy` 아래를 손으로 되돌린다 — **운영자 키는 두 개다**:
 
-- `git_strategy.manual`: `workflow: git-flow` [2026-08-27 감사 정정], 그리고 `main_branch:` 바로 아래에 `develop_branch: develop` / `release_branch_prefix: release/` / `rc_version_format: vX.Y.Z-rc.N` 세 줄.
-- `git_strategy` 최상위: `worktree_base_branch: develop` — **이 줄이 목록에서 빠져 있어 2026-09-24 에 카드 트리 6개가 develop 이 아니라 main 에서 났다**(t1154·t1153·t1075·t1157·t1158·t1159). 빈 값은 `SPEC-WORKTREE-BASEREF-001` 의 중립 기본값이라 `moai worktree new` 가 base 오퍼랜드 없이 `git worktree add` 를 돌리고, git 은 호출 트리의 HEAD(= primary 의 `main`)에서 판다. 손실이 조용하다 — 확인 grep 이 `workflow` 만 보면 이 되돌림은 통과한다. 근거: `.moai/reports/t1159/measurement.md`.
+- `git_strategy` 최상위: `worktree_base_branch: main` — **이 줄이 빠지면 카드 트리가 기저 브랜치 없이 판다**(2026-09-24 실측: 카드 트리 6건이 되돌려진 채 생성됐다 — t1154·t1153·t1075·t1157·t1158·t1159). 빈 값은 `SPEC-WORKTREE-BASEREF-001` 의 중립 기본값이라 `moai worktree new` 가 base 오퍼랜드 없이 `git worktree add` 를 돌리고, git 은 호출 트리의 HEAD에서 판다. 손실이 조용하다 — 확인 grep 이 `workflow` 만 보면 이 되돌림은 통과한다. 근거: `.moai/reports/t1159/measurement.md`.
+- `git_strategy.manual.lead_push_threshold`: 운영자 값(현재 20 — 기록값이며 유도값이 아니다).
+
+히스토리: 2026-08-27~2026-10-05 의 develop GitFlow 체인에서는 `manual.workflow: git-flow` + `develop_branch: develop` 등 다섯 키를 매 update 후 재적용했다. 2026-10-05 GitHub Flow 전환(card t1522)으로 그 키들은 폐기됐고, 이 절의 구 지시(`--source=develop`, `worktree_base_branch: develop`)는 card t1564 가 main 기준으로 갱신했다.
 
 **[HARD] AC 스냅숏 커밋 가드의 무장 상태는 세션 시작마다 읽는다 (card t1161).** t1150 이
 넣은 가드(`git config hook.ac-baseline-guard.{event,command}` + `scripts/ac-baseline/check-staged.sh`)는

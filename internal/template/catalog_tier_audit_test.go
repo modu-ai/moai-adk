@@ -87,19 +87,29 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	}
 	cat := loadCatalog(t)
 
-	// Build catalog name set (union of all tier sections)
-	catalogSkills := make(map[string]bool)
-	for _, e := range cat.Catalog.Core.Skills {
-		catalogSkills[e.Name] = true
-	}
-	for _, pack := range cat.Catalog.OptionalPacks {
-		for _, e := range pack.Skills {
-			catalogSkills[e.Name] = true
+	// Build catalog name sets per deploy root. SPEC-USER-ASSET-INSTALL-001
+	// M0 re-keyed the catalog onto the user-install view: the published
+	// command skills live under templates/.agents/skills/ (bundle entries +
+	// the L0 trio), so the .claude/skills population is compared against the
+	// catalog entries whose PATH names that root, and the same for
+	// .agents/skills.
+	claudeCatalog := make(map[string]bool)
+	agentsCatalog := make(map[string]bool)
+	addSkills := func(entries []Entry) {
+		for _, e := range entries {
+			switch {
+			case strings.HasPrefix(e.Path, "templates/.claude/skills/"):
+				claudeCatalog[e.Name] = true
+			case strings.HasPrefix(e.Path, "templates/.agents/skills/"):
+				agentsCatalog[e.Name] = true
+			}
 		}
 	}
-	for _, e := range cat.Catalog.HarnessGenerated.Skills {
-		catalogSkills[e.Name] = true
+	addSkills(cat.Catalog.Core.Skills)
+	for _, pack := range cat.Catalog.OptionalPacks {
+		addSkills(pack.Skills)
 	}
+	addSkills(cat.Catalog.HarnessGenerated.Skills)
 
 	// Walk .claude/skills/ top-level directories
 	diskSkills := []string{}
@@ -123,6 +133,15 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	})
 	if walkErr != nil {
 		t.Fatalf("WalkDir(.claude/skills) error: %v", walkErr)
+	}
+
+	// The published command-skill population under .agents/skills/.
+	agentsCatalogNames, _ := fs.ReadDir(fsys, ".agents/skills")
+	diskPublished := []string{}
+	for _, e := range agentsCatalogNames {
+		if e.IsDir() && strings.HasPrefix(e.Name(), "moai-") {
+			diskPublished = append(diskPublished, e.Name())
+		}
 	}
 
 	// SPEC-V3R5-CORE-SLIM-B-001 (2026-05-20): 4 Category B skills retired
@@ -186,18 +205,31 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// stale at every catalog addition — the 35-vs-36 red of card t1367 was
 	// its latest recurrence; this conversion follows the dispatch's
 	// recommendation.
-	if len(diskSkills) != len(catalogSkills) {
-		t.Errorf("expected %d skill directories per catalog, found %d on disk: %v",
-			len(catalogSkills), len(diskSkills), diskSkills)
+	if len(diskSkills) != len(claudeCatalog) {
+		t.Errorf("expected %d skill directories per catalog (.claude root), found %d on disk: %v",
+			len(claudeCatalog), len(diskSkills), diskSkills)
 	}
 
 	for _, skillName := range diskSkills {
-		if !catalogSkills[skillName] {
+		if !claudeCatalog[skillName] {
 			t.Errorf("CATALOG_ENTRY_MISSING: .claude/skills/%s/ exists on disk but is not in catalog.yaml", skillName)
 		}
 	}
 
-	t.Logf("audited %d skills on disk against catalog", len(diskSkills))
+	// The published command-skill root carries exactly the catalog's
+	// .agents/skills entries.
+	if len(diskPublished) != len(agentsCatalog) {
+		t.Errorf("expected %d published command skills per catalog (.agents root), found %d on disk: %v",
+			len(agentsCatalog), len(diskPublished), diskPublished)
+	}
+	for _, skillName := range diskPublished {
+		if !agentsCatalog[skillName] {
+			t.Errorf("CATALOG_ENTRY_MISSING: .agents/skills/%s/ exists on disk but is not in catalog.yaml", skillName)
+		}
+	}
+
+	t.Logf("audited %d skills (.claude) + %d published (.agents) on disk against catalog",
+		len(diskSkills), len(diskPublished))
 }
 
 // TestAllAgentsInCatalog walks the .claude/agents/moai/*.md files in the embedded FS
@@ -619,8 +651,26 @@ func TestCatalogNoDuplicateEntries(t *testing.T) {
 	}
 
 	for name, tiers := range seenIn {
-		if len(tiers) > 1 {
-			t.Errorf("CATALOG_DUPLICATE_ENTRY: %s appears in multiple sections: %v", name, tiers)
+		if len(tiers) <= 1 {
+			continue
+		}
+		// SPEC-USER-ASSET-INSTALL-001 M0 allows exactly ONE duplicate shape:
+		// the E3 shared-asset case — an entry sitting in core AND in one
+		// optional pack (the historical devops pack carries the L0 trio:
+		// owasp-checklist / cross-model-audit / secops). Any other multi-
+		// section appearance is still a duplicate.
+		coreShared := false
+		packSections := 0
+		for _, s := range tiers {
+			switch {
+			case strings.HasPrefix(s, "core."):
+				coreShared = true
+			case strings.HasPrefix(s, "optional_packs."):
+				packSections++
+			}
+		}
+		if !coreShared || packSections != 1 || len(tiers) != 2 {
+			t.Errorf("CATALOG_DUPLICATE_ENTRY: %s appears in multiple sections: %v (only the core+one-pack E3 shared form is allowed)", name, tiers)
 		}
 	}
 

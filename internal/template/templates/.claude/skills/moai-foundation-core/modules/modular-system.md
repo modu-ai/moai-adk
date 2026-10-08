@@ -277,7 +277,7 @@ class FileSplittingDecision:
 # Usage
 splitter = FileSplittingDecision()
 
-decision = splitter.should_split(".claude/skills/moai-foundation-core/SKILL.md")
+decision = splitter.should_split("~/.claude/skills/moai-foundation-core/SKILL.md")
 
 if decision["split_needed"]:
  print(f" SKILL.md needs splitting: {decision['line_count']} lines")
@@ -288,7 +288,7 @@ if decision["split_needed"]:
  
  # Execute splitting
  splitter.execute_split(
- ".claude/skills/moai-foundation-core",
+ "~/.claude/skills/moai-foundation-core",
  decision["recommendations"]
  )
  
@@ -533,7 +533,7 @@ class SkillOrganizer:
  return "".join(navigation)
 
 # Usage
-organizer = SkillOrganizer(".claude/skills/moai-foundation-core")
+organizer = SkillOrganizer("~/.claude/skills/moai-foundation-core")
 
 # Validate current structure
 validation = organizer.validate_structure()
@@ -545,7 +545,7 @@ organizer.organize_skill()
 
 # Generate navigation
 navigation = organizer.generate_navigation()
-with open(".claude/skills/moai-foundation-core/NAVIGATION.md", 'w') as f:
+with open("~/.claude/skills/moai-foundation-core/NAVIGATION.md", 'w') as f:
  f.write(navigation)
 ```
 
@@ -624,7 +624,7 @@ class ModuleDiscovery:
  return sorted(results, key=lambda x: x["relevance"], reverse=True)
 
 # Usage
-discovery = ModuleDiscovery(".claude/skills/moai-foundation-core")
+discovery = ModuleDiscovery("~/.claude/skills/moai-foundation-core")
 
 # Discover all modules
 modules = discovery.discover_modules()

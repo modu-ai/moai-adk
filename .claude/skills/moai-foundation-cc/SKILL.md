@@ -63,7 +63,7 @@ Advanced Features:
 
 Skills: Model-invoked extensions in ~/.claude/skills/ (personal) or .claude/skills/ (project). Three-level progressive disclosure. Max 500 lines.
 
-Sub-agents: Specialized assistants via Agent(subagent_type="..."). Context window follows the session model (Sonnet 5 = 1M native on the Anthropic API; Haiku / gateway / older models = 200K — CC 2.1.197). Nesting: by default a subagent CAN spawn subagents of its own, up to three layers below the main conversation; `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` changes the limit and `1` turns nesting off (CC 2.1.217+). At the depth limit Claude Code withholds the `Agent` tool. To stop one specific subagent from spawning, omit `Agent` from its `tools` list or add it to `disallowedTools` — MoAI retained agents omit `Agent` with one deliberate carve-out — `manager-lead` carries it as the sole depth-1 fan-out seam, and every leaf worker it spawns MUST omit `Agent` (the depth-2 seal, enforced at lint time; sentinel `DEPTH_SEAL_VIOLATION`) — so nothing re-delegates below that one layer regardless of the depth setting. To create or manage subagents, ask Claude or edit `.claude/agents/` directly — the `/agents` wizard was removed in CC 2.1.198 (the official sub-agents doc still documented a `/agents` tabbed interface as of 2026-07-03; doc lag — verify in a live 2.1.198 session).
+Sub-agents: Specialized assistants via Agent(subagent_type="..."). Context window follows the session model (Sonnet 5 = 1M native on the Anthropic API; Haiku / gateway / older models = 200K — CC 2.1.197). Nesting: by default a subagent CAN spawn subagents of its own, up to three layers below the main conversation; `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` changes the limit and `1` turns nesting off (CC 2.1.217+). At the depth limit Claude Code withholds the `Agent` tool. To stop one specific subagent from spawning, omit `Agent` from its `tools` list or add it to `disallowedTools` — MoAI retained agents omit `Agent` with one deliberate carve-out — `manager-lead` carries it as the sole depth-1 fan-out seam, and every leaf worker it spawns MUST omit `Agent` (the depth-2 seal, enforced at lint time; sentinel `DEPTH_SEAL_VIOLATION`) — so nothing re-delegates below that one layer, regardless of the depth setting. To create or manage subagents, ask Claude or edit `.claude/agents/` directly — the `/agents` wizard was removed in CC 2.1.198 (the official sub-agents doc still documented a `/agents` tabbed interface as of 2026-07-03; doc lag — verify in a live 2.1.198 session).
 
 Plugins: Reusable bundles in .claude-plugin/plugin.json. Include commands, agents, skills, hooks, MCP servers.
 
@@ -115,7 +115,7 @@ Create a markdown file with YAML frontmatter containing name, description explai
 
 ### Critical Rules
 
-- Nesting is allowed by default (three layers below the main conversation); MoAI retained agents omit `Agent` from `tools` with one deliberate carve-out — `manager-lead` carries it as the sole depth-1 fan-out seam, and every leaf worker it spawns MUST omit `Agent` (the depth-2 seal, enforced at lint time; sentinel `DEPTH_SEAL_VIOLATION`) — so nothing re-delegates below that one layer
+- Nesting is allowed by default (three layers below the main conversation); MoAI retained agents omit `Agent` from `tools`, so they do not spawn subagents of their own
 - Cannot use AskUserQuestion effectively
 - All user interaction before delegation
 - Context window follows the session model (Sonnet 5 = 1M native on the Anthropic API; Haiku / gateway / older models = 200K — CC 2.1.197)
@@ -239,10 +239,10 @@ For detailed patterns and working examples, see the reference directory.
 
 Version History:
 
-- v5.0.0 (2026-01-11): Converted to narrative format per CLAUDE.md Documentation Standards
-- v4.0.0 (2026-01-06): Added plugins, sandboxing, headless, statusline, dev containers, CLI reference, advanced patterns
-- v3.0.0 (2025-12-06): Added progressive disclosure, sub-agent details, integration patterns
-- v2.0.0 (2025-11-26): Initial comprehensive release
+- v5.0.0: Converted to narrative format per CLAUDE.md Documentation Standards
+- v4.0.0: Added plugins, sandboxing, headless, statusline, dev containers, CLI reference, advanced patterns
+- v3.0.0: Added progressive disclosure, sub-agent details, integration patterns
+- v2.0.0: Initial comprehensive release
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations
@@ -254,7 +254,7 @@ Version History:
 | "I can put all logic in CLAUDE.md, rules are overkill" | CLAUDE.md has a 40K character limit. Rules load conditionally and scale without bloating the prompt. |
 | "Settings.json changes are low risk" | Incorrect settings.json breaks hooks, permissions, and model routing. Validate the JSON after every edit. |
 | "I will skip progressive disclosure, all content is needed" | Loading 5K tokens for every skill wastes 67% of context. Level 1 metadata is sufficient for routing. |
-| "This skill does not need allowed-tools, Claude will figure it out" | Missing allowed-tools means the skill silently inherits all tools. Explicit is safer than implicit. |
+| "allowed-tools restricts which tools the skill may use" | It does the opposite: `allowed-tools` pre-approves those tools for the turn that invokes the skill, so they run without a permission prompt. The field that removes tools is `disallowed-tools`. Omitting `allowed-tools` is not a leak — the standard permission model still applies. |
 
 <!-- moai:evolvable-end -->
 
@@ -263,12 +263,10 @@ Version History:
 
 - CLAUDE.md exceeds 40,000 characters
 - Hook registered in settings.json without a corresponding script file
-- Skill frontmatter uses space-separated allowed-tools instead of comma-separated
+- Skill frontmatter grants a broad allowed-tools set when a narrow one would do (the field pre-approves tools, so every entry is a permission prompt waived)
 - Agent definition uses YAML array for tools instead of CSV string
 - settings.json contains hardcoded absolute paths instead of $CLAUDE_PROJECT_DIR
 - Progressive disclosure disabled for a skill that exceeds 3000 tokens
-
-Provenance (frontmatter CSV-format drift): space-separated `allowed-tools` silently breaks tool permissions (CONST-V3R5-038) — observed recurrence, provenance pending in memory.
 
 <!-- moai:evolvable-end -->
 
@@ -278,21 +276,9 @@ Provenance (frontmatter CSV-format drift): space-separated `allowed-tools` silen
 - [ ] CLAUDE.md character count is under 40,000 (show wc -c output)
 - [ ] settings.json is valid JSON (show json validation output)
 - [ ] Every hook in settings.json has a matching script file in .claude/hooks/
-- [ ] All skill frontmatter uses CSV format for allowed-tools
+- [ ] Skill allowed-tools lists only the tools the skill actually runs (space-separated, comma-separated, and YAML-list forms are all accepted)
 - [ ] Agent frontmatter uses CSV for tools and YAML array for skills
 - [ ] All metadata values in skill frontmatter are quoted strings
 - [ ] $CLAUDE_PROJECT_DIR used instead of absolute paths in hook commands
 
 <!-- moai:evolvable-end -->
-
----
-
-## Decision Heuristics
-
-Fast defaults — always confirm against the cited body section for non-trivial decisions.
-
-- If a deferred tool (AskUserQuestion etc.) is needed, default to a `ToolSearch` preload first (<- §Documentation Index / sub-agents).
-- If declaring `allowed-tools`, default to a comma-separated string, never space-separated (<- §Red Flags).
-- If CLAUDE.md nears 40K chars, default to moving detail into path-scoped rules (<- §Verification).
-- If a hook is registered, default to also setting an explicit timeout (<- §Common Rationalizations).
-- If a skill exceeds ~3000 tokens, default to keeping progressive disclosure enabled (<- §Common Rationalizations).

@@ -182,8 +182,8 @@ Operations:
    - Render "Tier-4 rate-limit window active — proposal <id> deferred" and STOP. Do NOT open the round.
 2. **Load next pending proposal**: Read `.moai/harness/proposals/` directory; pick the oldest pending entry (`.json` payload). If none, render "No Tier-4 proposals awaiting approval" and stop.
 3. **Layer 1 (Frozen Guard) pre-screen**: Read the proposal's `target_path`. Match against the FROZEN prefix list:
-   - `.claude/agents/moai/` (template-managed agents are FROZEN; `.claude/agents/harness/` is a user-owned allowed-write target, NOT frozen — it matches the guard's allowed-prefix list, not the frozen list)
-   - `.claude/skills/moai-`
+   - `~/.claude/agents/` (template-managed agents are FROZEN; `.claude/agents/harness/` is a user-owned allowed-write target, NOT frozen — it matches the guard's allowed-prefix list, not the frozen list)
+   - `~/.claude/skills/moai-`
    - `.claude/rules/moai/`
    If any prefix matches, append a JSONL entry to `.moai/harness/learning-history/frozen-guard-violations.jsonl` with at minimum: ISO-8601 timestamp, the attempted target path, the proposal id (as calling subject), and a rejection rationale. Then move the proposal to `.moai/harness/learning-history/rejected/` and stop. Do NOT raise an error to the user; the rejection is silent except for the audit log.
 4. **Layer 3 (Contradiction Detector) pre-screen**: Out of scope for the foundation release. Downstream `the harness lifecycle policy` introduces principle-based scoring; this workflow body documents the contract assertion and treats Layer 3 as a no-op pass-through for the foundation release.
@@ -297,8 +297,8 @@ After any successful verb execution, render a one-paragraph summary in the user'
 
 ## Cross-references
 
-- Skill: `.claude/skills/moai-harness-learner/SKILL.md` (Tier-4 surfacing companion)
-- Skill: `.claude/skills/moai-meta-harness/SKILL.md` (project-specific harness generation — text-annotated only)
+- Skill: `~/.claude/skills/moai-harness-learner/SKILL.md` (Tier-4 surfacing companion)
+- Skill: `~/.claude/skills/moai-meta-harness/SKILL.md` (project-specific harness generation — text-annotated only)
 - README: `.moai/harness/README.md` (subsystem overview)
 - Attribution: `.claude/rules/moai/NOTICE.md` (Apache-2.0 attribution to revfactory/harness)
 - Constitution: `.claude/rules/moai/design/constitution.md` §5 (5-Layer Safety — preserved verbatim)

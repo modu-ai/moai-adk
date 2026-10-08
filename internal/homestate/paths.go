@@ -2,8 +2,10 @@
 package homestate
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -19,6 +21,12 @@ import (
 // share one key through the repository common directory — the primary
 // checkout's key in an ordinary repository; see CanonicalProjectRoot for the
 // layouts where that shared root is a git directory instead.
+//
+// @MX:ANCHOR: [AUTO] the one project identity key all home-state paths derive from.
+// @MX:REASON: [AUTO] fan_in >= 3 (10 non-test caller files across homestate, cli,
+// hook, factory and profile); every per-project state path (todo, factory,
+// search cache, run dirs) is keyed here, so a key change silently orphans
+// every existing project's state.
 func ProjectKey(projectRoot string) string {
 	return projectKeyFromCanonicalRoot(CanonicalProjectRoot(projectRoot))
 }
@@ -55,7 +63,57 @@ func projectKeyFromCanonicalRoot(root string) string {
 // for the main worktree, so a linked worktree resolves to the git directory
 // itself (the metadata dir, the bare repo, .git/modules/<name>). That root is a
 // key, not a place to write: ProjectDir never lays state out inside it (t1221).
+//
+// @MX:ANCHOR: [AUTO] worktree-to-shared-root normalization feeding ProjectKey.
+// @MX:REASON: [AUTO] fan_in >= 3 (discovery, cli migration/handoff-recovery and
+// factory todo-root callers outside homestate, plus the in-package path
+// builders); every caller must land on the same root or one repository splits
+// across two project keys.
 func CanonicalProjectRoot(projectRoot string) string {
+	root, _ := canonicalProjectRoot(projectRoot, gitcore.ResolveGitDirs, func(dir string, args ...string) ([]byte, error) {
+		return scrubbedGit(dir, args...).Output()
+	}, false)
+	return root
+}
+
+// CanonicalProjectRootContext preserves repository identity and reports interrupted or uncertain Git resolution.
+func CanonicalProjectRootContext(ctx context.Context, projectRoot string) (string, error) {
+	return canonicalProjectRoot(projectRoot, func(dir string) (*gitcore.GitDirs, error) {
+		return gitcore.ResolveGitDirsContext(ctx, dir)
+	}, func(dir string, args ...string) ([]byte, error) {
+		return contextGitOutput(ctx, dir, args...)
+	}, true)
+}
+
+func contextGitOutput(ctx context.Context, dir string, args ...string) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)
+	cmd.Env = append(gitenv.Env(), "LC_ALL=C", "LANGUAGE=C")
+	cmd.WaitDelay = gitcore.DefaultGitPathWaitDelay
+	out, err := cmd.Output()
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	return out, err
+}
+
+func notGitRepository(err error) bool {
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != 128 {
+		return false
+	}
+	diagnostic := strings.TrimSpace(string(exit.Stderr))
+	if diagnostic == "fatal: not a git repository (or any of the parent directories): .git" {
+		return true
+	}
+	first, second, multiline := strings.Cut(diagnostic, "\n")
+	return multiline && strings.HasPrefix(first, "fatal: not a git repository (or any parent up to mount point ") &&
+		strings.HasSuffix(first, ")") && second == "Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set)."
+}
+
+func canonicalProjectRoot(projectRoot string, resolve func(string) (*gitcore.GitDirs, error), output func(string, ...string) ([]byte, error), strict bool) (string, error) {
 	if projectRoot == "" {
 		projectRoot = "."
 	}
@@ -63,27 +121,43 @@ func CanonicalProjectRoot(projectRoot string) string {
 	if err == nil {
 		projectRoot = abs
 	}
-	if dirs, err := gitcore.ResolveGitDirs(projectRoot); err == nil && dirs.CommonDir != "" {
+	dirs, resolveErr := resolve(projectRoot)
+	if strict && resolveErr != nil && !notGitRepository(resolveErr) {
+		return "", resolveErr
+	}
+	if resolveErr == nil && dirs.CommonDir != "" {
 		if dirs.GitDir == dirs.CommonDir {
 			// Metadata may live outside the checkout (--separate-git-dir).
-			if out, err := scrubbedGit(projectRoot, "rev-parse", "--show-toplevel").Output(); err == nil {
+			if out, err := output(projectRoot, "rev-parse", "--show-toplevel"); err == nil {
 				projectRoot = strings.TrimSpace(string(out))
+			} else if strict {
+				inside, probeErr := output(projectRoot, "rev-parse", "--is-inside-git-dir")
+				if probeErr != nil {
+					return "", probeErr
+				}
+				if strings.TrimSpace(string(inside)) != "true" {
+					return "", err
+				}
 			}
 		} else if root, ok := primaryCheckoutRootFromCommonDir(dirs.CommonDir); ok {
 			projectRoot = root
-		} else if out, err := scrubbedGit(projectRoot, "worktree", "list", "--porcelain").Output(); err == nil {
+		} else if out, err := output(projectRoot, "worktree", "list", "--porcelain"); err == nil {
 			// Git lists the main worktree first. With --separate-git-dir, bare
 			// or submodule layouts that entry is the git directory itself.
 			first, _, _ := strings.Cut(string(out), "\n")
 			if root, ok := strings.CutPrefix(first, "worktree "); ok {
 				projectRoot = root
+			} else if strict {
+				return "", fmt.Errorf("invalid Git worktree output")
 			}
+		} else if strict {
+			return "", err
 		}
 	}
 	if resolved, err := filepath.EvalSymlinks(projectRoot); err == nil {
 		projectRoot = resolved
 	}
-	return filepath.Clean(projectRoot)
+	return filepath.Clean(projectRoot), nil
 }
 
 // scrubbedGit builds `git -C dir args...` without the caller's repository-
@@ -159,6 +233,39 @@ func ProjectDir(projectRoot string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(home, "db", key), nil
+}
+
+// ProjectDirContext derives a state directory without contextless Git fallbacks.
+func ProjectDirContext(ctx context.Context, projectRoot string) (string, error) {
+	canonical, err := CanonicalProjectRootContext(ctx, projectRoot)
+	if err != nil {
+		return "", err
+	}
+	key := projectKeyFromCanonicalRoot(canonical)
+	if !explicitMoaiHome() && insideTempRoots(canonical) {
+		out, err := contextGitOutput(ctx, canonical, "rev-parse", "--absolute-git-dir", "--is-inside-git-dir")
+		if err != nil && !notGitRepository(err) {
+			return "", err
+		}
+		gitDir, inside, _ := strings.Cut(strings.TrimSpace(string(out)), "\n")
+		if err != nil || (!sameDir(gitDir, canonical) && strings.TrimSpace(inside) != "true") {
+			return filepath.Join(canonical, ".moai", "db", key), nil
+		}
+	}
+	home, err := paths.MoaiHome()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, "db", key), nil
+}
+
+// FactoryDirContext is the context-bound factory namespace path.
+func FactoryDirContext(ctx context.Context, projectRoot string) (string, error) {
+	dir, err := ProjectDirContext(ctx, projectRoot)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "factory"), nil
 }
 
 // rootLayout reports whether project state lives under <canonical>/.moai
@@ -273,6 +380,10 @@ func EnsureHomeLayout() error {
 		filepath.Join(home, "config"),
 		filepath.Join(home, "credentials"),
 		filepath.Join(home, "db"),
+		// SPEC-FEEDBACK-PARTICIPATION-001 (design.md section 6, D36): the
+		// bugreport stores are user-scoped — <moai home>/state/bugreport/ —
+		// so the state directory joins the private 0700 set.
+		filepath.Join(home, "state"),
 		filepath.Join(home, "cache", "search"),
 		filepath.Join(home, "run"),
 		filepath.Join(home, "logs"),

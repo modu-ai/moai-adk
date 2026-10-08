@@ -91,15 +91,6 @@ type deployer struct {
 	// value keeps mirroring ON; WithSkillMirror(false) is the seam that lets a
 	// test deploy the same tree with and without the mirror in one process.
 	skillMirrorDisabled bool
-	// deployMode selects the deploy file set (SPEC-INIT-SHRINK-001): the
-	// zero value is DeployModeLocal (today's full payload); DeployModePlugin
-	// excludes .claude/skills/** and .claude/commands/** from the walk and
-	// from ListTemplates. See deployer_mode.go.
-	deployMode DeployMode
-	// pluginMirrorPolicy selects what plugin mode does with the
-	// .agents/skills mirror. The zero value is MirrorPolicyRehome (the
-	// conservative OD-6 fallback: real copies, never dangling links).
-	pluginMirrorPolicy PluginMirrorPolicy
 	// symlinkFn and mirrorCopyFn are test seams for the two mirror syscalls.
 	// nil means "use the real one" (see skill_mirror.go).
 	symlinkFn    func(oldname, newname string) error
@@ -194,13 +185,11 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 			return err
 		}
 
-		// SPEC-INIT-SHRINK-001 REQ-001: on the plugin path the walk skips
-		// the dropped component roots entirely — before any content read or
-		// render, so an excluded file costs only the walk step. destRelPath
-		// is the path minus its .tmpl suffix for rendered files; both
-		// spellings share the same prefix decision, so testing the walk path
-		// is enough.
-		if d.pluginModeExcluded(path) {
+		// SPEC-USER-ASSET-INSTALL-001 (REQ-005): the project payload carries
+		// NO common skill or agent file in ANY mode — the four user roots
+		// are the install surface (the M2 installer), so the walk skips the
+		// common-asset roots before any content read.
+		if isCommonAssetRoot(path) {
 			return nil
 		}
 
@@ -233,16 +222,6 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 			destRelPath = path
 		}
 
-		// SPEC-INIT-SHRINK-001 REQ-005 (OD-1 settled (c)): on the plugin
-		// path the project .mcp.json render never carries the `moai` entry —
-		// the plugin is its carrier — and the post-install provision call
-		// writes the entry back when the probe reads not-demonstrated. The
-		// filter runs at render time because the deploy precedes the probe;
-		// design §2.3's sequencing note names exactly this split.
-		if d.deployMode == DeployModePlugin && destRelPath == ".mcp.json" {
-			content = stripMoaiFromMcpJSON(content)
-		}
-
 		// Record the skill this file belongs to, before any skip branch: a
 		// re-deploy whose files all already exist still owes its mirror.
 		if skill, ok := skillNameFromDeployPath(destRelPath); ok {
@@ -265,7 +244,7 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 		// Existing file protection: skip files that already exist at the
 		// destination. This prevents overwriting user-created or
 		// programmatically-generated files (e.g., config YAMLs from Step 2
-		// of init, or pre-existing CLAUDE.md).
+		// of init, or a pre-existing AGENTS.md).
 		// Skip this check in forceUpdate mode (used for template updates) —
 		// EXCEPT on published-skill paths (R-011): update mode exists to
 		// refresh template-managed content, not to overwrite a user-owned
@@ -331,21 +310,10 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 	// NOT registered with the manifest manager (hashing a directory symlink
 	// fails EISDIR, and the canonical files are already tracked).
 	//
-	// SPEC-INIT-SHRINK-001 REQ-006: plugin mode replaces the walk-derived
-	// mirror with the mirror policy — MirrorPolicyNone deploys no mirror at
-	// all; MirrorPolicyRehome (the conservative default) writes real
-	// directory copies straight from the embedded tree, because the walk
-	// deployed no .claude/skills for links to point at. Local mode keeps the
-	// existing behavior unchanged.
-	if d.deployMode == DeployModePlugin {
-		policy := d.pluginMirrorPolicy
-		if policy == "" {
-			policy = MirrorPolicyRehome
-		}
-		if policy == MirrorPolicyRehome {
-			result.SkillMirrors = d.pluginRehomedMirror(projectRoot, tmplCtx)
-		}
-	} else if !d.skillMirrorDisabled {
+	// SPEC-USER-ASSET-INSTALL-001 (M7): the deployer returns to a single
+	// project payload shape — the mode split and the mirror policy are
+	// retired with the plugin carrier.
+	if !d.skillMirrorDisabled {
 		result.SkillMirrors = d.mirrorSkills(projectRoot, deployedSkills)
 	}
 
@@ -362,10 +330,14 @@ func (d *deployer) ExtractTemplate(name string) ([]byte, error) {
 }
 
 // ListTemplates returns sorted relative paths of all files in the embedded FS.
-// The deploy-mode exclusion (SPEC-INIT-SHRINK-001 REQ-001) applies here too:
-// a plugin-mode deployer lists no .claude/skills/** or .claude/commands/**
-// entry, so every consumer that derives the deploy scope from the listing
-// (merge analysis, outcome accounting) sees exactly what the run writes.
+// The deploy walk's common-asset exclusion (isCommonAssetRoot,
+// SPEC-USER-ASSET-INSTALL-001 REQ-005) applies here TOO (card t1547 repair
+// round, gate r4 finding 1): the deploy skips those roots before any content
+// read, so a listing that counted them reported files the run never writes —
+// every consumer that derives the deploy scope or the outcome accounting
+// from the listing (merge analysis, the "Updated N files" pill, the
+// managed-redeploy count) saw phantom entries (measured: 758 reported for a
+// 414-file deploy). The listing and the deploy now see one scope.
 func (d *deployer) ListTemplates() []string {
 	var list []string
 
@@ -376,7 +348,9 @@ func (d *deployer) ListTemplates() []string {
 		if path == "." || entry.IsDir() {
 			return nil
 		}
-		if d.pluginModeExcluded(path) {
+		// Deploy parity: the same exclusion, at the same walk position as
+		// DeployWithResult's skip.
+		if isCommonAssetRoot(path) {
 			return nil
 		}
 		// Strip .tmpl suffix to return deployment target paths

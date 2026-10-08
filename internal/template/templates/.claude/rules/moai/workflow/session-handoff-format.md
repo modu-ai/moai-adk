@@ -41,7 +41,7 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
 
 ## Paste-Time Activation Matrix
 
-Handoff directives by activation mechanism: (a) paste-time keywords (`ultrathink`, bare `ultracode`) and (b) the fan-out phrase fire from a pasted body; (c) orchestrator-interpreted text (`mode:` seed, Block 5 `/moai …` including the `/moai goal` directive) routes via orchestrator reading, so it needs no standalone user message; (d) user-only TUI commands (`/effort`, `/clear`) fire ONLY as a standalone user message.
+Handoff directives by activation mechanism: (a) paste-time keywords (bare `ultracode`; the runtime `ultrathink` keyword remains available for the user to type, but the handoff format no longer emits it) and (b) the fan-out phrase fire from a pasted body; (c) orchestrator-interpreted text (`mode:` seed, Block 5 `/moai …` including the `/moai goal` directive) routes via orchestrator reading, so it needs no standalone user message; (d) user-only TUI commands (`/effort`, `/clear`) fire ONLY as a standalone user message.
 
 > **Full classification table**: `session-handoff-examples.md` § Paste-Time Activation Matrix.
 
@@ -64,7 +64,7 @@ Handoff directives by activation mechanism: (a) paste-time keywords (`ultrathink
 ## Cross-references
 
 - `.claude/output-styles/moai/moai.md` §6 (Persistence & Context Awareness)
-- CLAUDE.md §11 (Error Handling) — token-limit recovery
+- context-window-management.md — token-limit recovery
 
 ## Block 1 couplings
 

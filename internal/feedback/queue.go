@@ -20,6 +20,7 @@
 package feedback
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,6 +29,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
@@ -61,14 +63,46 @@ const (
 // would let the retry path publish what the gate declined.
 var ErrQueueBlockedResult = errors.New("feedback: refusing to queue a blocked result")
 
+// ErrQueueUnreadable wraps the load-step failures an over-cap or corrupted
+// queue file produces. A PURGE may ignore it — the user asked for the
+// store GONE, and the removal happens under the lock either way — while
+// every other consumer treats it as a retryable failure.
+var ErrQueueUnreadable = errors.New("feedback: queue file unreadable")
+
+// ErrQueueFull is returned when an enqueue would push the queue file past
+// its size cap: the store it would create could not be loaded back.
+var ErrQueueFull = errors.New("feedback: queue is full")
+
 // QueueItem is one report awaiting re-send. Title and Body are MASKED — the
 // queue never carries pre-scrub text.
+//
+// The optional participation fields (SPEC-FEEDBACK-PARTICIPATION-001) carry
+// the automatic pipeline's per-item decisions; all three are omitempty so
+// existing readers of the manual queue stay compatible and a hand-written
+// queue file parses unchanged.
 type QueueItem struct {
 	ID       string `json:"id"`
 	Title    string `json:"title"`
 	Body     string `json:"body"`
 	QueuedAt string `json:"queued_at"`
 	Attempts int    `json:"attempts"`
+
+	// Fingerprint is the report's family key (bugreport.Fingerprint's 16
+	// hex); the sender matches it against the remote title key.
+	Fingerprint string `json:"fingerprint,omitempty"`
+	// Kind is the bugreport kind token.
+	Kind string `json:"kind,omitempty"`
+	// Summary is the validated model summary, or the deterministic template
+	// text; SummaryDecision records which ("model" | "template"). Both are
+	// persisted BEFORE the create attempt so a retry never repeats a paid
+	// step (design.md section 8).
+	Summary         string `json:"summary,omitempty"`
+	SummaryDecision string `json:"summary_decision,omitempty"`
+	// SummaryRequested is the durable marker persisted before the model
+	// call: a crash between the call and the persist leaves the marker
+	// without a summary, and recovery takes the template decision — the
+	// per-item model-call bound survives the crash window (D28).
+	SummaryRequested bool `json:"summary_requested,omitempty"`
 }
 
 // QueueRecord is the queue file's document shape. LastSeq is the persisted id
@@ -110,17 +144,47 @@ func (s *QueueStore) LockPath() string {
 // queue, never an error. A malformed file surfaces as a parse error with the
 // file untouched: the queued report is the one thing that cannot be
 // regenerated, so there is no repair-on-load path.
+//
+// The read is BOUNDED (review gate finding, P2): a non-regular queue file is
+// refused WITHOUT opening it — a FIFO swapped in at the queue path used to
+// park the read past every deadline, hanging the auto-flush AND `moai
+// update` — and the open+read runs under
+// DefaultFeedbackQueueReadTimeBox with the DefaultFeedbackQueueMaxBytes
+// size cap. On deadline the helper goroutine is left parked on the blocked
+// handle; it exits when the blocking writer closes, and the caller never
+// waits for it.
 func (s *QueueStore) Load() (*QueueRecord, error) {
-	raw, err := atomicfile.ReadFile(s.path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return &QueueRecord{Version: queueVersion, Items: []QueueItem{}}, nil
+	if info, serr := os.Stat(s.path); serr == nil && !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("load feedback queue %s: not a regular file", s.path)
+	}
+	type readResult struct {
+		raw []byte
+		err error
+	}
+	done := make(chan readResult, 1)
+	go func() {
+		raw, err := atomicfile.ReadFile(s.path)
+		done <- readResult{raw: raw, err: err}
+	}()
+	var raw []byte
+	select {
+	case r := <-done:
+		if r.err != nil {
+			if errors.Is(r.err, os.ErrNotExist) {
+				return &QueueRecord{Version: queueVersion, Items: []QueueItem{}}, nil
+			}
+			return nil, fmt.Errorf("load feedback queue %s: %w", s.path, r.err)
 		}
-		return nil, fmt.Errorf("load feedback queue %s: %w", s.path, err)
+		raw = r.raw
+	case <-time.After(config.DefaultFeedbackQueueReadTimeBox):
+		return nil, fmt.Errorf("load feedback queue %s: read exceeded its %s time box", s.path, config.DefaultFeedbackQueueReadTimeBox)
+	}
+	if len(raw) > config.DefaultFeedbackQueueMaxBytes {
+		return nil, fmt.Errorf("load feedback queue %s: %d bytes, over the %d cap: %w", s.path, len(raw), config.DefaultFeedbackQueueMaxBytes, ErrQueueUnreadable)
 	}
 	var rec QueueRecord
 	if err := json.Unmarshal(raw, &rec); err != nil {
-		return nil, fmt.Errorf("load feedback queue %s: parsing: %w", s.path, err)
+		return nil, fmt.Errorf("load feedback queue %s: parsing: %w: %w", s.path, err, ErrQueueUnreadable)
 	}
 	normalizeQueueRecord(&rec)
 	return &rec, nil
@@ -136,7 +200,15 @@ func (s *QueueStore) Load() (*QueueRecord, error) {
 // Ids are issued from rec.LastSeq inside the callback, so issuance is covered
 // by the same lock as the write.
 func (s *QueueStore) Mutate(mutate func(*QueueRecord) error) (err error) {
-	release, err := s.acquireLock()
+	return s.MutateContext(context.Background(), mutate)
+}
+
+// MutateContext is Mutate under a caller's context: the sibling-lock
+// acquisition honors cancellation (SPEC-FEEDBACK-PARTICIPATION-001 — a
+// drain whose deadline expired must stop waiting for the lock instead of
+// accumulating a full retry budget per queued item).
+func (s *QueueStore) MutateContext(ctx context.Context, mutate func(*QueueRecord) error) (err error) {
+	release, err := s.acquireLock(ctx)
 	if err != nil {
 		return err
 	}
@@ -176,6 +248,17 @@ func (s *QueueStore) EnqueueMasked(res Result) (*QueueItem, error) {
 			QueuedAt: time.Now().UTC().Format(time.RFC3339),
 		}
 		rec.Items = append(rec.Items, item)
+		// The save-side cap (review gate finding, P2): the load side
+		// refuses a queue past DefaultFeedbackQueueMaxBytes, so a save that
+		// would CROSS the cap is rejected here instead — otherwise a
+		// manually-enqueued store could grow unreadable, and every resend,
+		// remove, and add on it would fail with the load. The cap is
+		// measured in the ACTUAL stored shape (review gate finding, P2):
+		// writeAtomic writes MarshalIndent plus a trailing newline, so a
+		// compact-Marshal check let a boundary report in over the read cap.
+		if raw, merr := json.MarshalIndent(rec, "", "  "); merr == nil && len(raw)+1 > config.DefaultFeedbackQueueMaxBytes {
+			return fmt.Errorf("%w: %d bytes would exceed the %d cap", ErrQueueFull, len(raw)+1, config.DefaultFeedbackQueueMaxBytes)
+		}
 		return nil
 	})
 	if err != nil {
@@ -209,37 +292,29 @@ func (s *QueueStore) Resolve(id string) (bool, error) {
 
 // acquireLock takes the sibling advisory lock, returning its release func.
 //
-// The primitive is atomicfile.Claim — an exclusive create, atomic on POSIX
-// (O_CREATE|O_EXCL) and on Windows (CREATE_NEW) — which is the repository's
-// existing answer to "exactly one caller proceeds". Contention retries within
-// a bounded window; it never blocks indefinitely.
-func (s *QueueStore) acquireLock() (func() error, error) {
+// The primitive is atomicfile.ClaimSection — the owner-verified claim
+// machinery (SPEC-FEEDBACK-PARTICIPATION-001 D37/D40): an exclusive create
+// labelled with the owner's pid and boot identity, contention retried
+// within a bounded window, and a stale-lock break that fires ONLY on a
+// verified-dead owner (a recorded boot different from the current one, or
+// a pid that no longer names a live process). A live owner always blocks,
+// however long its mutation runs: there is NO age-based break and none may
+// be added, because the retry budget governs acquisition retries and
+// Mutate enforces no hold-time bound — an age-only break could discard a
+// live slow owner's committed mutation, the lost-update defect this repair
+// closes. The invariant is absolute: verified owner death, nothing else.
+// The machinery lives in internal/config/atomicfile so the capture spool's
+// section lock shares the same implementation.
+func (s *QueueStore) acquireLock(ctx context.Context) (func() error, error) {
 	dir := filepath.Dir(s.path)
 	if err := os.MkdirAll(dir, queueDirPerm); err != nil {
 		return nil, fmt.Errorf("mutate feedback queue %s: creating dir: %w", s.path, err)
 	}
-
-	lockPath := s.LockPath()
-	var lastErr error
-	for attempt := 0; attempt <= queueLockRetries; attempt++ {
-		err := atomicfile.Claim(lockPath, queueFilePerm)
-		if err == nil {
-			return func() error {
-				if rmErr := os.Remove(lockPath); rmErr != nil && !errors.Is(rmErr, os.ErrNotExist) {
-					// A surviving artifact blocks every later writer, so the
-					// failure is reported rather than swallowed.
-					return fmt.Errorf("mutate feedback queue %s: lock release failed: %w", s.path, rmErr)
-				}
-				return nil
-			}, nil
-		}
-		if !errors.Is(err, os.ErrExist) {
-			return nil, fmt.Errorf("mutate feedback queue %s: lock %s: %w", s.path, lockPath, err)
-		}
-		lastErr = err
-		time.Sleep(queueLockRetryDelay)
+	release, err := atomicfile.ClaimSection(ctx, s.LockPath(), queueFilePerm, queueLockRetries, queueLockRetryDelay)
+	if err != nil {
+		return nil, fmt.Errorf("mutate feedback queue %s: %w", s.path, err)
 	}
-	return nil, fmt.Errorf("mutate feedback queue %s: lock %s held: %w", s.path, lockPath, lastErr)
+	return release, nil
 }
 
 // writeAtomic persists rec through same-directory temp + atomic rename, so a

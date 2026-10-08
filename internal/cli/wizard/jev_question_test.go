@@ -23,12 +23,14 @@ const jevQuestionIDUnderTest = "jev_enabled"
 // TestInitQuestions_CarriesExactlyOneJevQuestion is AC-JEVO-007.
 func TestInitQuestions_CarriesExactlyOneJevQuestion(t *testing.T) {
 	qs := InitQuestions(t.TempDir())
-	if len(qs) != 5 {
+	// The set grew to six with SPEC-FEEDBACK-PARTICIPATION-001
+	// REQ-ANON-003 (the init-only participation opt-in after the Jev slot).
+	if len(qs) != 6 {
 		ids := make([]string, 0, len(qs))
 		for _, q := range qs {
 			ids = append(ids, q.ID)
 		}
-		t.Fatalf("InitQuestions length = %d, want 5; got %v", len(qs), ids)
+		t.Fatalf("InitQuestions length = %d, want 6; got %v", len(qs), ids)
 	}
 	count := 0
 	for _, q := range qs {

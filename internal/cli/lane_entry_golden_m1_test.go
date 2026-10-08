@@ -6,17 +6,18 @@ package cli
 // The golden pins the lane environment markers (the MOAI_FACTORY* and
 // MOAI_KANBAN* families) that today's `-f lane` launch publishes for the three
 // backends: the cc and glm rows are the environment live at the engine launch
-// seam, the codex row is the per-card child environment of the supervising
-// loop. It is captured from today's code BEFORE the `-l` entry exists
+// seam, the codex row is the single parent session's run environment. It was
+// originally captured BEFORE the `-l` entry existed
 // (internal/config/testdata/lane_entry_env_golden.json, committed alone) and compared here
 // against the same launches, so a later milestone that adds `-l` can prove the
 // new entry publishes the identical set (label aside), and so a milestone that
 // removes the kanban surface can prove it dropped no lane marker.
+// The Codex row now pins the parent run ID rather than a boot-leased card ID.
 //
 // The codex row carries MOAI_KANBAN_LABEL because today's lane child did; the
 // stamp was removed at M5a (REQ-012) and the comparison excludes exactly that
 // key from both sides (REQ-003's one exception, withoutRetiredLabel), so the
-// golden needs no re-pin and stays byte-unchanged.
+// retired label remains in the golden as historical evidence.
 //
 // Capture: MOAI_LANE_GOLDEN_WRITE=<path> go test ./internal/cli -run
 // '^TestLaneMarkerGoldenMatchesFLane$' -count=1 rewrites the golden at <path>

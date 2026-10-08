@@ -58,20 +58,23 @@ func requireGTDID(id string) error {
 	return nil
 }
 
-// NewGTDCommand returns the canonical user-facing name for the established
-// queue command. The entire verb tree is built by newTodoCmd so gtd and the
-// compatibility todo spelling cannot acquire different handlers or flags.
+// NewGTDCommand mounts the established queue command under `gtd`, the fully
+// supported compatibility alias of the canonical `todo` spelling. The entire
+// verb tree is built by newTodoCmd so todo and the compatibility gtd spelling
+// cannot acquire different handlers or flags.
 // Internal package names and the on-disk todo/backlog.db location deliberately
 // remain unchanged.
 func NewGTDCommand() *cobra.Command {
 	cmd := newTodoCmd()
 	cmd.Use = "gtd"
-	cmd.Short = "Operate the GTD-managed backlog queue"
+	cmd.Short = "Operate the backlog queue (compatibility alias of moai todo)"
 	cmd.Long = `Manage captured work through Capture, Clarify, Organize, Reflect, and Engage.
 
+This is the compatibility alias of the canonical moai todo command — same
+database, same card identities, same ordering, archive, and restore path.
 Captured GTD items stay separate from the established development queue. Only
 an explicitly approved Engage operation may publish into the same backlog.db
-used by the todo compatibility command; the queue's existing states, IDs,
+used by the canonical todo command; the queue's existing states, IDs,
 ordering, archive, and restore behavior remain unchanged.`
 	cmd.AddCommand(newGTDCaptureCmd(), newGTDClarifyCmd(), newGTDOrganizeCmd(), newGTDReflectCmd(), newGTDEngageCmd(), newGTDAnswerCmd())
 	return cmd
@@ -285,6 +288,12 @@ func newGTDEngageCmd() *cobra.Command {
 			if _, err = factory.ExecuteGTDOperation(cmd.Context(), store, dispatchOp, dispatchOwner); err != nil {
 				return err
 			}
+		}
+		// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-005: engage carries the same
+		// presentation — read-only, after the admission, recording no finding
+		// and refusing nothing.
+		if result.CardID != "" {
+			todoEngagePresentation(cmd, store, result.CardID)
 		}
 		return printGTD(cmd, result, jsonOutput)
 	}}

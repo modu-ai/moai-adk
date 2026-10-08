@@ -256,7 +256,7 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk && make build
 ```
 
-Already installed? Run `moai update` to move to the latest version. From v3.1.1, before `moai update` wipes a template-managed directory and redeploys it, it first moves any unmanaged file sitting inside to `.moai-backups/<timestamp>/pre-clean/`. If that backup fails it stops right there instead of going on to delete — a file you put there yourself is not quietly swept away by a redeploy.
+Already installed? Run `moai update` to move to the latest version. From v3.2.0, `moai update` updates an existing project preservation-first — it no longer wipes the template-managed directories and redeploys. Files you added yourself survive in place, your edits to template files are 3-way merged (on a conflict your file stays and the new version lands next to it as a `<path>.moai-new.N` sidecar), and files the template no longer carries are moved to `.moai/archive/files/` before removal — the summary reports every refreshed, merged, conflicted, preserved, and archived path.
 
 > 💡 **To cut costs — z.ai GLM recommended**: signing up via [this link](https://z.ai/subscribe?ic=1NDV03BGWU) grants bonus tokens. The link is also a way to sponsor moai-adk open-source development. Free models (GLM-4.7-Flash, GLM-4.5-Flash) exist too — see the [z.ai pricing](https://docs.z.ai/guides/overview/pricing).
 
@@ -279,9 +279,11 @@ The wizard asks which agent harness to deploy and wire; `--llm` gives the same c
 | `gpt` | Codex only deployment: `AGENTS.md` and Codex surfaces (`.codex/`, `.agents/skills/`, `.moai/`) only. No `.claude/` tree, no `CLAUDE.md`, no `.mcp.json`. Claude-only runtime features (AskUserQuestion, sub-agent spawning, output styles, slash commands, Workflow scripts) are not available |
 | `both` | Same `claude` deployment plus `.codex/` wiring; `.mcp.json` provisioning forced on |
 
-#### Deploy mode: plugin default and full local deploy
+#### Common assets in user folders
 
-On the default path (plugin mode), skills and commands are not copied into the project — the moai plugin carries them. The rest of the `.claude/` surface (agents, rules, hook registration, settings) deploys as today. To keep skills and commands as local files use `--no-plugin` (a full local deploy — including the `.mcp.json` moai entry and the Codex mirror); `--all` deploys every catalog tier locally as well. The deploy mode is recorded as `deployment_mode` in `.moai/config/sections/llm.yaml`, and `moai update` keeps the same scope per that record. A project whose plugin install could not be demonstrated is recorded on the safe side, as `local`.
+Common skills and agents are no longer project files. On every harness, `moai init` installs the core skill set and agents into your user folders — `~/.claude/`, `~/.agents/`, and `~/.codex/` — and records every file it placed in `~/.moai/user-assets.json` (per-file hash, owning bundle, and the moai version that wrote it). Pass `--bundles <names>` to opt into additional bundles on first init. The project tree keeps only project-specific content: settings, rules, hooks, `AGENTS.md`/`CLAUDE.md`, the template lock file, and `.mcp.json`. The former moai plugin carrier is retired — no plugin or marketplace manifest ships, and `deployment_mode` in `.moai/config/sections/llm.yaml` remains only as a record.
+
+`moai update` refreshes the user install against that manifest: shipped changes are rewritten in place, a file you edited by hand is preserved and backed up under `~/.moai/`, files of a deselected bundle are pruned, and an existing project's template-managed skills and agents migrate into the user folders on the first update. `moai bundle add|remove <name>` adjusts the installed bundle selection, and `moai doctor` reports User Install and Project Lock drift. One declared v1 limitation: sessions launched through a MoAI profile root (`~/.moai/claude-profiles/<name>`) do not see the shared user assets.
 
 ```bash
 moai init my-project --llm gpt   # Codex-only project
@@ -735,7 +737,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai init` | Interactive project setup (auto-detects language/framework/methodology) |
 | `moai doctor` | System state diagnosis and environment verification — the Home Disk Usage check reports, as advice, how far `~/.moai` has grown |
 | `moai status` | Project status summary (Git branch, quality metrics) |
-| `moai update` | Update to latest version (pre-deletion backup · auto-rollback supported) |
+| `moai update` | Update to latest version (preserves local files · 3-way merge with conflict sidecars · archived removals) |
 | `moai graph <build\|query>` | Build/query the codebase graph (edges.jsonl) — caller lookup, blast radius, milestone cross-checks |
 | `moai cc` / `moai glm` | Claude-only / GLM-only sessions |
 | `moai codex [cli\|status\|app]` | Codex launcher — called with no verb it launches the Codex CLI; `status` prints the readiness readout and starts nothing |

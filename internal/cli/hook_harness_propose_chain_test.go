@@ -35,6 +35,8 @@ func seedEligibleUsageLog(t *testing.T, dir string, n int) {
 // classify pass produces ≥1 eligible promotion, the Stop path auto-runs
 // proposal generation so that proposal files land in .moai/harness/proposals/.
 func TestRunHarnessObserveStop_ProposeChainAutoRuns(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -73,6 +75,8 @@ func TestRunHarnessObserveStop_ProposeChainAutoRuns(t *testing.T) {
 // still returns nil (exit 0, non-blocking) — session end is NEVER blocked by a
 // propose error.
 func TestRunHarnessObserveStop_ProposeChainFailOpen(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)

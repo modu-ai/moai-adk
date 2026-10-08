@@ -17,7 +17,7 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
-const factorySchemaVersion = 5
+const factorySchemaVersion = 6
 
 const factoryDDL = `
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS cards (
   merge_sha TEXT NOT NULL DEFAULT '',
   merge_tree TEXT NOT NULL DEFAULT '',
   remeasure_path TEXT NOT NULL DEFAULT '',
+  bundle_id TEXT NOT NULL DEFAULT '',
+  bundle_order INTEGER NOT NULL DEFAULT 0,
   contract_spec_id TEXT NOT NULL DEFAULT '',
   contract_sha256 TEXT NOT NULL DEFAULT '',
   contract_signed_at TEXT NOT NULL DEFAULT '',
@@ -333,6 +335,12 @@ func openFactoryPathBusy(path string, busy time.Duration) (*FactoryDB, error) {
 			version = "5"
 		}
 	}
+	if err == nil && version == "5" {
+		err = migrateFactoryV5ToV6(ctx, db)
+		if err == nil {
+			version = "6"
+		}
+	}
 	if err == nil && version != strconv.Itoa(factorySchemaVersion) {
 		err = fmt.Errorf("unsupported factory schema version %q", version)
 	}
@@ -524,6 +532,40 @@ func migrateFactoryV4ToV5(ctx context.Context, db *sql.DB) error {
 		}
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE meta SET value='5' WHERE key='schema_version' AND value='4'`); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// migrateFactoryV5ToV6 adds the bundle columns (SPEC-TODO-CARD-ISSUANCE-001
+// REQ-TCI-018, card t1454): bundle_id groups cards into a bundle chain and
+// bundle_order sequences them within the chain. Both are TEXT/INTEGER NOT
+// NULL with zero-value defaults, so no backfill is needed and every v5 row
+// stays valid — a row whose bundle_id is empty is simply not a bundle member.
+func migrateFactoryV5ToV6(ctx context.Context, db *sql.DB) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	existing, err := factoryTableColumns(ctx, tx, "cards")
+	if err != nil {
+		return err
+	}
+	for _, column := range []string{"bundle_id", "bundle_order"} {
+		if existing[column] {
+			continue
+		}
+		// SQL: column comes from the constant list above, never from input.
+		colType := "TEXT NOT NULL DEFAULT ''"
+		if column == "bundle_order" {
+			colType = "INTEGER NOT NULL DEFAULT 0"
+		}
+		if _, err := tx.ExecContext(ctx, `ALTER TABLE cards ADD COLUMN `+column+` `+colType); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE meta SET value='6' WHERE key='schema_version' AND value='5'`); err != nil {
 		return err
 	}
 	return tx.Commit()

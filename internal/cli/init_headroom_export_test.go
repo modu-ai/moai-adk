@@ -24,9 +24,10 @@ import (
 var headroomExportDir = flag.String("headroom-export", "",
 	"export the init-produced project tree to this directory (TestHeadroomInitSurfaceExport)")
 
-// headroomCountPaths are the 18 always-loaded paths of the headroom SPEC.
+// headroomCountPaths are the always-loaded paths of the headroom SPEC. The
+// former CLAUDE.md entry retired with the AGENTS.md-primary conversion —
+// AGENTS.md is the sole instruction file.
 var headroomCountPaths = []string{
-	"CLAUDE.md",
 	"AGENTS.md",
 	".moai/config/sections/user.yaml",
 	".moai/config/sections/language.yaml",

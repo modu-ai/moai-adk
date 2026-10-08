@@ -9,9 +9,8 @@ package cli
 //
 // The decided predicate (decision-index Q1) is fetch-less remote-tracking
 // reachability: the branch tip is an ancestor of refs/remotes/origin/develop,
-// OR `git cherry refs/remotes/origin/develop <branch>` is empty (patch-id
-// equivalence — covers squash merges, the SPEC-WORKTREE-SQUASH-MERGE-001
-// lesson). A stale remote-tracking ref can only misjudge toward "not landed"
+// OR its cumulative verbatim patch matches a commit on the configured ref
+// (covers squash merges, the SPEC-WORKTREE-SQUASH-MERGE-001 lesson). A stale remote-tracking ref can only misjudge toward "not landed"
 // → preserve (fail-open, the safe direction).
 //
 // These tests drive the REAL cleanup function against REAL temporary git
@@ -69,6 +68,18 @@ func realLandingRepo(t *testing.T, withDevelop bool) (repoDir, wtPath string) {
 	if withDevelop {
 		git("-C", repoDir, "branch", "-q", "develop", "main")
 		git("-C", repoDir, "push", "-q", "origin", "develop")
+	}
+
+	// The landing predicate reads the CONFIGURED integration target (card
+	// t1453 M2-A; before it, a literal origin/develop): seed the git-flow
+	// configuration these cells exercise, untracked like the M1 fixtures.
+	cfgDir := filepath.Join(repoDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatalf("mkdir config: %v", err)
+	}
+	gitFlowYAML := "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n        develop_branch: develop\n"
+	if err := os.WriteFile(filepath.Join(cfgDir, "git-strategy.yaml"), []byte(gitFlowYAML), 0o644); err != nil {
+		t.Fatalf("write git-strategy.yaml: %v", err)
 	}
 
 	wtPath = filepath.Join(tmp, "wt")
@@ -135,10 +146,10 @@ func TestCleanupSessionWorktree_MergedIntoDevelopRemoved(t *testing.T) {
 	}
 }
 
-// TestCleanupSessionWorktree_SquashMergedPatchIdRemoved pins the git-cherry
+// TestCleanupSessionWorktree_SquashMergedPatchIdRemoved pins the cumulative-patch
 // arm of the decided predicate: a SQUASH merge leaves no commit ancestry
 // (the branch tip is NOT an ancestor of origin/develop), but the patches are
-// upstream — `git cherry` answers empty and the disposal proceeds.
+// upstream — the verbatim cumulative patch matches and disposal proceeds.
 // SPEC-WORKTREE-SQUASH-MERGE-001: reachability alone cannot see a squash.
 func TestCleanupSessionWorktree_SquashMergedPatchIdRemoved(t *testing.T) {
 	repoDir, wtPath := realLandingRepo(t, true)
@@ -202,5 +213,67 @@ func TestCleanupSessionWorktree_LandingCheckErrorPreserved(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "landing-check failed") {
 		t.Fatalf("preserved notice must name the failed landing check, got %q", out.String())
+	}
+}
+
+// TestSessionExitWhitespaceDivergencePreserves is card t1561's second
+// survival point (SPEC-GFD-PATCHID-VERBATIM-001 AC-GPV-007): the
+// session-exit predicate's equivalence arm must compare
+// whitespace-faithfully. A remote squash commit amended with a
+// whitespace-only reformat carries the card's changes but not its bytes;
+// `git cherry`'s internal patch-id equivalence normalized the difference
+// away and answered "landed", so the exit disposed the only copy of the tip
+// content. With the divergent squash on origin/develop the exit must
+// preserve.
+func TestSessionExitWhitespaceDivergencePreserves(t *testing.T) {
+	repoDir, wtPath := realLandingRepo(t, true)
+	git := func(args ...string) {
+		cmd := exec.Command("git", args...)
+		cmd.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	// Land the card as a squash on develop, then fold a whitespace-only
+	// rewrite of the card's own line into the squash commit: develop's
+	// content differs from the card tip byte-wise, and only a patch-id
+	// equivalence can confuse the two.
+	git("-C", repoDir, "switch", "-q", "develop")
+	git("-C", repoDir, "merge", "--squash", "WT-landing03-fix")
+	git("-C", repoDir, "commit", "-qm", "card work: squash-merged")
+	card := filepath.Join(repoDir, "card.txt")
+	raw, err := os.ReadFile(card)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inflated := strings.Replace(string(raw), "card work", "card     work", 1)
+	if inflated == string(raw) {
+		t.Fatal("fixture invalid: the whitespace rewrite did not apply")
+	}
+	if err := os.WriteFile(card, []byte(inflated), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git("-C", repoDir, "commit", "-q", "-a", "--amend", "--no-edit")
+	git("-C", repoDir, "push", "-q", "origin", "develop")
+
+	// Premise, measured: the divergence is real — the card tip's bytes are
+	// not on develop.
+	tipRaw, err := os.ReadFile(filepath.Join(wtPath, "card.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(tipRaw) == string(inflated) {
+		t.Fatal("fixture invalid: the card tip must differ from develop byte-wise")
+	}
+
+	var out bytes.Buffer
+	cleanupSessionWorktree(worktreeCfg(true), wtPath, true, &out)
+
+	if _, err := os.Stat(wtPath); err != nil {
+		t.Fatalf("whitespace-divergent worktree was REMOVED by session-exit cleanup (the t1561 second survival point, observed); stat: %v\nnotice: %s", err, out.String())
+	}
+	if !strings.Contains(out.String(), "unconfirmed") {
+		t.Fatalf("preserved notice must name the unconfirmed landing, got %q", out.String())
 	}
 }

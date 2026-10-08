@@ -95,6 +95,8 @@ func repoRootForSync(t *testing.T) string {
 func registrySyncMirrors(t *testing.T) []registrySyncMirror {
 	t.Helper()
 	repoRoot := repoRootForSync(t)
+	templateRoot := filepath.Join(repoRoot, "internal", "template", "templates")
+	deployedRoot := deployedRegistryMirror(t, templateRoot)
 	return []registrySyncMirror{
 		{
 			name:       "local",
@@ -103,10 +105,49 @@ func registrySyncMirrors(t *testing.T) []registrySyncMirror {
 		},
 		{
 			name:       "template",
-			registry:   filepath.Join(repoRoot, "internal", "template", "templates", ".claude", "rules", "moai", "core", "zone-registry.md"),
-			projectDir: filepath.Join(repoRoot, "internal", "template", "templates"),
+			registry:   filepath.Join(deployedRoot, constitution.RegistryRelPath),
+			projectDir: deployedRoot,
 		},
 	}
+}
+
+// deployedRegistryMirror gives the production validator the shipped sources
+// under their deployment names. No production missing-file fallback is used.
+func deployedRegistryMirror(t *testing.T, sourceRoot string) string {
+	t.Helper()
+	registryPath := filepath.Join(sourceRoot, constitution.RegistryRelPath)
+	reg, err := constitution.LoadRegistry(registryPath, sourceRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths := map[string]bool{constitution.RegistryRelPath: true}
+	for _, entry := range reg.Entries {
+		paths[entry.File] = true
+	}
+	targetRoot := t.TempDir()
+	for rel := range paths {
+		sourceRel := rel
+		if rel == "AGENTS.md" {
+			sourceRel = "AGENTS.md.tmpl"
+		}
+		data, err := os.ReadFile(filepath.Join(sourceRoot, sourceRel))
+		if err != nil {
+			t.Fatalf("read shipped source %s: %v", sourceRel, err)
+		}
+		// AGENTS currently contains no substitutions; require explicit rendering
+		// if it gains any rather than silently validating unrendered directives.
+		if rel == "AGENTS.md" && strings.Contains(string(data), "{{") {
+			t.Fatal("AGENTS.md.tmpl gained substitutions; render them in this deployment fixture")
+		}
+		target := filepath.Join(targetRoot, rel)
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(target, data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return targetRoot
 }
 
 func TestRegistrySyncGuard(t *testing.T) {

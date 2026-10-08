@@ -87,7 +87,7 @@ A subagent never invokes Aside (the `aside` CLI or the Aside MCP tools); a task 
 
 ### desktop-native (non-Electron/non-Tauri) — OS-accessibility lane
 
-Native desktop toolkits (AppKit, WinUI/Win32, Qt, GTK) are automated through the host OS accessibility layer. The per-OS recipes (macOS / Windows / Linux — defaults, fallbacks, install and probe commands, permission prerequisites) and the desktop-native evidence-source + token-cost ordering live in `.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md`; load that reference before any desktop-native work (§ Conditional Skill Loading). Only the recipe matching the HOST OS is probed and executed — state a host-OS/target-OS mismatch in the report instead of probing it. Scripts and flows live under `e2e/desktop-native/`; AX-tree snapshots and run logs ride the existing `e2e/.runs/` timestamped-log convention.
+Native desktop toolkits (AppKit, WinUI/Win32, Qt, GTK) are automated through the host OS accessibility layer. The per-OS recipes (macOS / Windows / Linux — defaults, fallbacks, install and probe commands, permission prerequisites) and the desktop-native evidence-source + token-cost ordering live in `~/.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md`; load that reference before any desktop-native work (§ Conditional Skill Loading). Only the recipe matching the HOST OS is probed and executed — state a host-OS/target-OS mismatch in the report instead of probing it. Scripts and flows live under `e2e/desktop-native/`; AX-tree snapshots and run logs ride the existing `e2e/.runs/` timestamped-log convention.
 
 Missing toolchain, on any platform: probe → the ORCHESTRATOR surfaces the exact install command(s) for approval → install → re-probe. Missing prerequisites (permission grants, absent toolchains) produce structured blocker reports.
 
@@ -138,7 +138,7 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 - When running gate / TRUST 5 quality checks on a suite run, invoke Skill("moai-foundation-quality") to load it on demand.
 - When deciding test-suite structure or the unit/integration/E2E balance for a journey, invoke Skill("moai-ref-testing-pyramid") to load it on demand.
-- When the detected project type is `desktop-native`, read `.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md` for the per-OS accessibility recipes before probing.
+- When the detected project type is `desktop-native`, read `~/~/.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md` for the per-OS accessibility recipes before probing.
 
 ## Subagent Boundary
 

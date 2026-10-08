@@ -81,7 +81,7 @@ func TestCwdChangedHandler_RelocatesRegistryCwd(t *testing.T) {
 		t.Fatalf("Handle() error = %v", err)
 	}
 
-	if got := readFirstCWD(t, primary, sid); got != tree {
+	if got := readFirstCWD(t, primary, sid); !sameHookDirectory(t, got, tree) {
 		t.Fatalf("registry CWD after entry = %q, want the new worktree %q", got, tree)
 	}
 }
@@ -101,7 +101,7 @@ func TestCwdChangedHandler_RelocateIsSymmetricOnExit(t *testing.T) {
 		t.Fatalf("Handle() error = %v", err)
 	}
 
-	if got := readFirstCWD(t, primary, sid); got != primary {
+	if got := readFirstCWD(t, primary, sid); !sameHookDirectory(t, got, primary) {
 		t.Fatalf("registry CWD after exit = %q, want the original %q", got, primary)
 	}
 }
@@ -186,4 +186,19 @@ func TestCwdChangedHandler_RelocateNoRegistryNoOp(t *testing.T) {
 	if out == nil {
 		t.Fatal("Handle() returned nil output")
 	}
+}
+
+// Registry CWD names the same directory even when its canonical spelling
+// differs (Windows 8.3 aliases; macOS /var versus /private/var).
+func sameHookDirectory(t *testing.T, a, b string) bool {
+	t.Helper()
+	first, err := os.Stat(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := os.Stat(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return os.SameFile(first, second)
 }

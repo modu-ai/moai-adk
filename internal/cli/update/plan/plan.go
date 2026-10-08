@@ -23,8 +23,9 @@ const MaxConfigSize = 10 * 1024 * 1024 // 10MB
 func ClassifyFileRisk(filename string, exists bool) string {
 	base := filepath.Base(filename)
 
-	// High risk files
-	highRiskFiles := []string{"CLAUDE.md", "settings.json"}
+	// High risk files — AGENTS.md is the primary instruction file of the
+	// AGENTS.md-primary product; CLAUDE.md stays listed for legacy projects.
+	highRiskFiles := []string{"AGENTS.md", "CLAUDE.md", "settings.json"}
 	if slices.Contains(highRiskFiles, base) {
 		return "high"
 	}
@@ -42,7 +43,7 @@ func DetermineStrategy(filename string) merge.MergeStrategy {
 	ext := filepath.Ext(filename)
 
 	switch {
-	case base == "CLAUDE.md":
+	case base == "AGENTS.md" || base == "CLAUDE.md":
 		return merge.SectionMerge
 	case base == ".gitignore":
 		return merge.EntryMerge
@@ -62,6 +63,14 @@ func DetermineChangeType(exists bool) string {
 }
 func AnalyzeFiles(templates []string, projectRoot string) []merge.FileAnalysis {
 	var files []merge.FileAnalysis
+	// Gate round 20 (card t1547): each rendered deployment target counts
+	// ONCE. A `.sh`/`.sh.tmpl` deployment pair — both list entries converging
+	// on the same stripped target — is one deployed file, not two; without
+	// the dedupe the analysis (and the counted total downstream) inflated by
+	// every pair (607 analyzed vs 603 targets on the current template). The
+	// dedupe key is the rendered target path, the same accounting rule the
+	// cli's managedRedeployCount already applies.
+	seenTargets := make(map[string]bool, len(templates))
 	for _, tmpl := range templates {
 		// Strip .tmpl suffix first - display and filter using rendered target path
 		displayPath := tmpl
@@ -69,10 +78,18 @@ func AnalyzeFiles(templates []string, projectRoot string) []merge.FileAnalysis {
 			displayPath = before
 		}
 
-		// Filter out MoAI-managed files - they are automatically installed
-		if IsMoaiManaged(displayPath) {
+		target := filepath.ToSlash(displayPath)
+		if seenTargets[target] {
 			continue
 		}
+		seenTargets[target] = true
+
+		// SPEC-UPDATE-MIGRATION-001 (card t1547, REQ-UPM-032): MoAI-managed
+		// files join the analysis and the counted total. The exclusion here
+		// premised the wholesale wipe — the summary under-counted the run's
+		// real footprint ("reported 32, actual 175", 2026-08-15) and hid the
+		// managed set entirely. The pipeline no longer wipes, so managed
+		// files are ordinary counted participants.
 
 		// Use rendered target path for existence check
 		targetPath := filepath.Join(projectRoot, displayPath)

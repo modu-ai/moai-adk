@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
@@ -30,6 +29,8 @@ func writeTemplateSnapshotBestEffort(projectRoot string, errOut io.Writer) {
 		errOut = io.Discard
 	}
 	if err := backup.WriteSnapshot(projectRoot); err != nil {
-		_, _ = fmt.Fprintf(errOut, "Warning: template snapshot write failed: %v\n", err)
+		// Card t1527 D4 (repair round 2): the ! severity line replaces the raw
+		// "Warning: " prefix.
+		emitSeverityLine(errOut, sevWarn, resolveTheme(), "template snapshot write failed: %v", err)
 	}
 }

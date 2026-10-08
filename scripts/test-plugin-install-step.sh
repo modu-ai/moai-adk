@@ -1,21 +1,10 @@
 #!/bin/sh
-# Stub harness for the moai plugin install step, the verb and the install scripts (SPEC-PLUGIN-MARKETPLACE-001, REQ-025,
-# AC-018 (a), AC-019 (c), AC-025, design.md section 6).
-#
-# Usage: test-plugin-install-step.sh [FLAG] <path-to-moai>
-#   no flag                          the twelve default cases; exit 0 only when none fails
-#   --negative-control               the scrub disabled and a working directory inside a project whose llm.yaml pins the
-#                                    recorder: the isolation cases that depend on them must go red (AC-025 (b))
-#   --negative-control-cwd           the scrub working, the working directory inside that project (AC-025 (c))
-#   --typed-list-mutant              the scrub replaced by a typed list of two names (AC-025 (c))
-#   --negative-control-install-dir   the four installer cases without --install-dir (AC-025 (f))
-#   --negative-control-decoy-missing one decoy root removed: the installer must never run
-# Each negative control exits 0 only when exactly the expected cases go red and the others stay green.
-#
-# Why the decoys matter: without --install-dir, install.sh installs into `go env GOBIN`, else `$GOPATH/bin`, else
-# `$HOME/.local/bin`. A stub `go` answers the first two with decoy directories inside the scratch. `$HOME/.local/bin`
-# (a real directory) is reached only when BOTH decoys are absent, so the harness asserts that both exist, and aborts
-# before the installer runs if one does not. Nothing here sets HOME and nothing here runs pwsh.
+# Offline installer contract harness. The legacy filename is retained for callers.
+# Binary installation never installs host plugins or project assets: users deploy
+# project assets with moai init/update after choosing their project and harness.
+# Usage: test-plugin-install-step.sh [negative-control flag] <path-to-moai>
+# Controls retain environment enumeration, project-free cwd, install-dir decoys,
+# protected-root hashing, and cleanup. Nothing here sets HOME or runs pwsh.
 set -eu
 
 usage="usage: $0 [--negative-control | --negative-control-cwd | --typed-list-mutant | --negative-control-install-dir | --negative-control-decoy-missing] <path-to-moai>"
@@ -167,27 +156,12 @@ finish_case() {
     printf '%s\t%s\t%s\n' "$st" "$1" "$reasons" >> "$S/results.tsv"
 }
 
-# count_calls <log> <field-2-word>: recorded calls whose first argument is that word (`plugin`), so a tool invoked for
-# another reason does not pollute a case.
-count_calls() { awk -v w="$2" '$2 == w' "$1" 2>/dev/null | wc -l | tr -d ' '; }
-
-# The four vectors the step runs through the real binary (the stub tools record them): both tools, add before install.
-assert_four_vectors() { # <calls log>
-    n=$(count_calls "$1" plugin)
-    [ "$n" -eq 4 ] || add_reason "plugin-calls=$n(want 4)"
-    for want in "claude plugin marketplace add modu-ai/moai-adk" "claude plugin install moai@moai-adk" \
-        "codex plugin marketplace add modu-ai/moai-adk" "codex plugin add moai@moai-adk"; do
-        grep -qxF "$want" "$1" 2>/dev/null || add_reason "missing[$want]"
-    done
-}
-
-# run_verb <name> [VAR=value ...]: run the real verb from the harness working directory; output in out-<name>.txt and the
-# recorded stub calls in calls-<name>.log; the exit status lands in verb_rc.
-run_verb() {
-    vname=$1; shift
+# Run a harmless real-binary smoke command: it must never invoke host tools.
+run_version() {
+    vname=$1
     : > "$S/calls-$vname.log"
     verb_rc=0
-    env HARNESS_CALLS="$S/calls-$vname.log" "$@" "$moai_bin" plugin install > "$S/out-$vname.txt" 2>&1 || verb_rc=$?
+    env HARNESS_CALLS="$S/calls-$vname.log" "$moai_bin" version > "$S/out-$vname.txt" 2>&1 || verb_rc=$?
 }
 
 # BI-2: the decoys are what keeps a flag-less install.sh away from the real $GOBIN, $GOPATH/bin and $HOME/.local/bin, so
@@ -233,15 +207,16 @@ isolation_static() {
     finish_case isolation-resolves-to-stubs
 }
 
-# poisoned-pin-never-executed: the real verb runs once; the recorder behind the pin must not, and the stub claude must
-# (the positive control: the verb did reach a tool, and it was the stub).
+# A real version command is the positive execution control; neither a poisoned
+# project pin nor PATH host-tool stubs may execute during binary installation.
 isolation_pin() {
-    run_verb isolation-pin
+    run_version isolation-pin
     reasons=""
     recorder_runs=$(wc -l < "$S/recorder.log" | tr -d ' ')
-    stub_claude=$(awk '$1 == "claude" && $2 == "plugin"' "$S/calls-isolation-pin.log" | wc -l | tr -d ' ')
     [ "$recorder_runs" -eq 0 ] || add_reason "recorder-executed($recorder_runs)"
-    [ "$stub_claude" -ge 1 ] || add_reason "stub-claude-never-called"
+    [ "$verb_rc" -eq 0 ] || add_reason "version-exit-$verb_rc"
+    [ -s "$S/out-isolation-pin.txt" ] || add_reason "version-produced-no-output"
+    [ ! -s "$S/calls-isolation-pin.log" ] || add_reason "host-tool-executed"
     finish_case isolation-poisoned-pin-never-executed
 }
 
@@ -254,35 +229,6 @@ isolation_real_home() {
     after=$(sh "$hashsh" --roots-file "$S/roots" --dump "$S/after.txt")
     [ "$before" = "$after" ] || add_reason "real-roots-changed"
     finish_case isolation-real-home-unchanged
-}
-
-# --- the verb cases (AC-019 (c)) ----------------------------------------------------------------------------------
-
-verb_cases() {
-    run_verb verb-install-all-tools
-    reasons=""
-    [ "$verb_rc" -eq 0 ] || add_reason "exit-$verb_rc"
-    assert_four_vectors "$S/calls-verb-install-all-tools.log"
-    finish_case verb-install-all-tools
-
-    # no tool on PATH: the precondition is shown first, so a claude that resolves outside the shims cannot hide behind a pass
-    run_verb verb-no-tools-exit-0 PATH="$S/empty-shim:/usr/bin:/bin"
-    reasons=""
-    found=$(env PATH="$S/empty-shim:/usr/bin:/bin" sh -c 'command -v claude; command -v codex' 2>/dev/null || true)
-    [ -z "$found" ] || add_reason "a tool resolves outside the shims: $found"
-    [ "$verb_rc" -eq 0 ] || add_reason "exit-$verb_rc"
-    n=$(count_calls "$S/calls-verb-no-tools-exit-0.log" plugin)
-    [ "$n" -eq 0 ] || add_reason "plugin-calls=$n(want 0)"
-    skips=$(grep -c 'not found on PATH' "$S/out-verb-no-tools-exit-0.txt" || true)
-    [ "$skips" -eq 2 ] || add_reason "skip-lines=$skips(want 2)"
-    finish_case verb-no-tools-exit-0
-
-    run_verb verb-optout-zero-calls MOAI_SKIP_PLUGIN_INSTALL=1
-    reasons=""
-    [ "$verb_rc" -eq 0 ] || add_reason "exit-$verb_rc"
-    n=$(count_calls "$S/calls-verb-optout-zero-calls.log" plugin)
-    [ "$n" -eq 0 ] || add_reason "plugin-calls=$n(want 0)"
-    finish_case verb-optout-zero-calls
 }
 
 # --- the installer cases (AC-018 (a), AC-025 (f)) -----------------------------------------------------------------
@@ -321,36 +267,25 @@ run_case() {
     for held in "$HARNESS_DECOY_GOBIN/moai" "$HARNESS_DECOY_GOPATH/bin/moai"; do
         [ ! -e "$held" ] || add_reason "decoy-holds-moai($held)"
     done
-    case $name in
-        installer-calls-verb-by-installed-path)
-            # the install directory is not on PATH, so a bare `moai` records nothing; the four vectors prove the installed path
-            case ":$PATH:" in *":$inst:"*) add_reason "install-dir-is-on-PATH" ;; esac
-            assert_four_vectors "$S/calls-$name.log"
-            ;;
-        installer-optout)
-            n=$(count_calls "$S/calls-$name.log" plugin)
-            [ "$n" -eq 0 ] || add_reason "plugin-calls-recorded($n)"
-            ;;
-        installer-set-e-guard|installer-old-binary-unknown-verb)
-            # the verb was called (a script that never calls it would pass "exit 0" vacuously) and it failed
-            n=$(awk '$1 == "moai" && $2 == "plugin" && $3 == "install"' "$S/calls-$name.log" 2>/dev/null | wc -l | tr -d ' ')
-            [ "$n" -eq 1 ] || add_reason "verb-calls=$n(want 1)"
-            if [ "$name" = installer-old-binary-unknown-verb ]; then
-                grep -q 'Unknown command "plugin" for "moai"' "$S/out-$name.txt" || add_reason "unknown-verb-text-not-seen"
-            fi
-            ;;
-    esac
+    # The installer completes with old/failing binaries but never invokes a
+    # retired post-install verb, even when host tools or a legacy opt-out exist.
+    # A version probe of the installed fixture is harmless; no other binary
+    # command and no Claude/Codex host-tool command belongs in installation.
+    n=$(awk '$1 != "moai" || $2 != "version"' "$S/calls-$name.log" 2>/dev/null | wc -l | tr -d ' ')
+    [ "$n" -eq 0 ] || add_reason "post-install-calls=$n(want 0)"
+    if grep -q 'Installing the moai plugin' "$S/out-$name.txt"; then add_reason "retired-plugin-step-ran"; fi
+    [ ! -s "$S/recorder.log" ] || add_reason "poisoned-pin-executed"
     finish_case "$name"
 }
 
 run_installer_cases() { # <with|without>
-    run_case installer-calls-verb-by-installed-path real "$1"
+    run_case installer-binary-only real "$1"
     [ "$mode" != omit-flag ] || clean_decoys
-    run_case installer-optout real "$1" MOAI_SKIP_PLUGIN_INSTALL=1
+    run_case installer-legacy-optout real "$1" MOAI_SKIP_PLUGIN_INSTALL=1
     [ "$mode" != omit-flag ] || clean_decoys
-    run_case installer-set-e-guard fail-verb "$1"
+    run_case installer-failing-binary fail-verb "$1"
     [ "$mode" != omit-flag ] || clean_decoys
-    run_case installer-old-binary-unknown-verb old-binary "$1"
+    run_case installer-old-binary old-binary "$1"
     [ "$mode" != omit-flag ] || clean_decoys
 }
 
@@ -419,8 +354,7 @@ judge_negative() {
 }
 
 iso_names="isolation-env-scrubbed isolation-cwd-has-no-project isolation-resolves-to-stubs isolation-poisoned-pin-never-executed isolation-real-home-unchanged"
-verb_names="verb-install-all-tools verb-no-tools-exit-0 verb-optout-zero-calls"
-inst_names="installer-calls-verb-by-installed-path installer-optout installer-set-e-guard installer-old-binary-unknown-verb"
+inst_names="installer-binary-only installer-legacy-optout installer-failing-binary installer-old-binary"
 
 # --- modes -----------------------------------------------------------------------------------------------------
 
@@ -429,11 +363,10 @@ case $mode in
     normal)
         isolation_static
         isolation_pin
-        verb_cases
         run_installer_cases with
         isolation_real_home
         pass=0; fail=0
-        for name in $iso_names $verb_names $inst_names; do
+        for name in $iso_names $inst_names; do
             if [ "$(status_of "$name")" = PASS ]; then
                 echo "PASS $name"
                 pass=$((pass + 1))
@@ -449,14 +382,14 @@ case $mode in
     neg-scrub)
         isolation_static; isolation_pin; isolation_real_home
         judge_negative negative-control \
-            "isolation-env-scrubbed isolation-cwd-has-no-project isolation-poisoned-pin-never-executed isolation-real-home-unchanged" \
-            "isolation-resolves-to-stubs"
+            "isolation-env-scrubbed isolation-cwd-has-no-project" \
+            "isolation-resolves-to-stubs isolation-poisoned-pin-never-executed isolation-real-home-unchanged"
         ;;
     neg-cwd)
         isolation_static; isolation_pin; isolation_real_home
         judge_negative negative-control-cwd \
-            "isolation-cwd-has-no-project isolation-poisoned-pin-never-executed" \
-            "isolation-env-scrubbed isolation-resolves-to-stubs isolation-real-home-unchanged"
+            "isolation-cwd-has-no-project" \
+            "isolation-env-scrubbed isolation-resolves-to-stubs isolation-poisoned-pin-never-executed isolation-real-home-unchanged"
         ;;
     typed-list)
         isolation_static; isolation_pin; isolation_real_home
@@ -482,7 +415,7 @@ case $mode in
             rmdir "$victim"
             : > "$S/installer-invocations.log"
             out_rc=0
-            out=$( (run_case installer-optout real without MOAI_SKIP_PLUGIN_INSTALL=1) 2>&1 ) || out_rc=$?
+            out=$( (run_case installer-legacy-optout real without MOAI_SKIP_PLUGIN_INSTALL=1) 2>&1 ) || out_rc=$?
             runs=$(wc -l < "$S/installer-invocations.log" | tr -d ' ')
             case $out in *"ABORT:"*) aborted=yes ;; *) aborted=no ;; esac
             # status 2 is abort's own: a different failure that merely stopped the run would not prove the guard fired

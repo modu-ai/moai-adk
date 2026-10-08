@@ -134,10 +134,15 @@ func snapAssertNoPending(t *testing.T, root string) {
 	}
 }
 
+// snapCountPrefixed counts the lines of out whose VISIBLE text contains
+// prefix. Card t1527 repair round 4: severity lines lead with a glyph (and
+// its ANSI escape when the theme colours it), so a raw HasPrefix under-counted
+// every migrated warning to zero — the helper strips SGR first and matches on
+// contains, so it is agnostic to both the glyph and its colouring.
 func snapCountPrefixed(out, prefix string) int {
 	n := 0
 	for _, line := range strings.Split(out, "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), prefix) {
+		if strings.Contains(stripSGR(strings.TrimSpace(line)), prefix) {
 			n++
 		}
 	}
@@ -197,7 +202,7 @@ func snapRunTemplateSync(t *testing.T, root string, d template.Deployer) (out, e
 	cmd.SetOut(&outBuf)
 	cmd.SetErr(&errBuf)
 	cmd.SetContext(context.Background())
-	if err := runTemplateSyncWithReporter(cmd, nil, true); err != nil {
+	if err := runTemplateSyncWithReporter(cmd, nil, true, nil); err != nil {
 		t.Fatalf("runTemplateSyncWithReporter: %v\nout:\n%s\nerr:\n%s", err, outBuf.String(), errBuf.String())
 	}
 	return outBuf.String(), errBuf.String()
@@ -516,7 +521,7 @@ func TestSettingsSnapshot_WriteFailureDoesNotBlock(t *testing.T) {
 		if n := snapCountPrefixed(errOut, backup.SettingsSnapshotWriteFailedPrefix); n != 1 {
 			t.Errorf("write-failed lines on stderr = %d, want 1:\n%s", n, errOut)
 		}
-		if n := snapCountPrefixed(out+errOut, "Warning: template snapshot write failed:"); n != 0 {
+		if n := snapCountPrefixed(out+errOut, "template snapshot write failed:"); n != 0 {
 			t.Errorf("the sections-snapshot warning fired (%d); the planted file must not affect sections", n)
 		}
 		if got, _ := snapRead(t, root, snapLiveRel); got != want {

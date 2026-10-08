@@ -474,17 +474,15 @@ func TestMoaiMCPServer_BranchCoverage(t *testing.T) {
 // it builds the real `moai mcp-server` binary and drives a genuine stdio
 // JSON-RPC round-trip (initialize → tools/list → tools/call session_list) over
 // pipes — exercising the blocking ServeStdio entry (runMCPServer) and the
-// newline-delimited transport the in-process tests bypass. Skipped when the
-// build cannot run.
+// newline-delimited transport the in-process tests bypass.
 func TestMCPServer_StdioRoundTripSubprocess(t *testing.T) {
-	tmp := t.TempDir()
-	bin := filepath.Join(tmp, "moai-test")
-	if out, err := exec.Command("go", "build", "-o", bin, "./cmd/moai").CombinedOutput(); err != nil {
-		t.Skipf("skip subprocess smoke: cannot build ./cmd/moai: %v\n%s", err, out)
-	}
+	bin := buildMoaiBinary(t)
 
 	workdir := t.TempDir() // isolated CLAUDE_PROJECT_DIR → session_list reads an empty registry
-	cmd := exec.Command(bin, moaiMCPServerSubcommand)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, bin, moaiMCPServerSubcommand)
+	cmd.WaitDelay = time.Second
 	cmd.Dir = workdir
 	cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+workdir)
 	stdin, err := cmd.StdinPipe()
@@ -506,7 +504,28 @@ func TestMCPServer_StdioRoundTripSubprocess(t *testing.T) {
 		case <-done:
 		case <-time.After(5 * time.Second):
 			_ = cmd.Process.Kill()
+			<-done
 		}
+	}()
+
+	// One scanner owns the pipe for the entire conversation. Replacing it per
+	// response can discard read-ahead bytes; scanning in recv would also prevent
+	// its deadline from firing when the server stays silent.
+	lines := make(chan []byte)
+	var scanErr error
+	go func() {
+		defer close(lines)
+		scan := bufio.NewScanner(stdout)
+		scan.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+		for scan.Scan() {
+			line := append([]byte(nil), scan.Bytes()...)
+			select {
+			case lines <- line:
+			case <-ctx.Done():
+				return
+			}
+		}
+		scanErr = scan.Err()
 	}()
 
 	// write sends one NDJSON request line.
@@ -530,27 +549,29 @@ func TestMCPServer_StdioRoundTripSubprocess(t *testing.T) {
 	// like initialized/progress are skipped), or the deadline passes.
 	recv := func(wantID int) map[string]any {
 		t.Helper()
-		scan := bufio.NewScanner(stdout)
-		scan.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-		deadline := time.Now().Add(10 * time.Second)
-		for time.Now().Before(deadline) {
-			if !scan.Scan() {
-				if err := scan.Err(); err != nil {
-					t.Fatalf("read stdout: %v", err)
+		timer := time.NewTimer(10 * time.Second)
+		defer timer.Stop()
+		for {
+			var line []byte
+			select {
+			case value, ok := <-lines:
+				if !ok {
+					t.Fatalf("stdout closed before response id=%d: %v", wantID, scanErr)
 				}
-				time.Sleep(20 * time.Millisecond)
-				continue
+				line = value
+			case <-timer.C:
+				t.Fatalf("no response with id=%d within deadline", wantID)
+			case <-ctx.Done():
+				t.Fatalf("MCP subprocess deadline: %v", ctx.Err())
 			}
 			var msg map[string]any
-			if jErr := json.Unmarshal(scan.Bytes(), &msg); jErr != nil {
+			if jErr := json.Unmarshal(line, &msg); jErr != nil {
 				continue // non-JSON line (server log); skip
 			}
 			if id, ok := msg["id"].(float64); ok && int(id) == wantID {
 				return msg
 			}
 		}
-		t.Fatalf("no response with id=%d within deadline", wantID)
-		return nil
 	}
 
 	// initialize
