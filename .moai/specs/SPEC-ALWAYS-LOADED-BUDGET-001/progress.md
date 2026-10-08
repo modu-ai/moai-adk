@@ -127,6 +127,29 @@ Gaps: (1) the >10,000-case's runtime-side overflow (save-and-reference) is docum
 
 Residual-risk: (1) if the runtime's oversized-output behavior changes upstream, the injection degrades to the REQ-ALB-009 fallback silently at runtime — the hook tests would stay green; a periodic manual probe of a real marked session is the stale-guard (recorded for M5's measurement notes). (2) The budget total grew to 183,237 pre-M3; the M3 split must clear it to ≤115,000 as planned (floor 111,280 assumed role-core leave — unchanged).
 
+
+### M3 — rule split (role stubs, rationale migration, compression round 1) (2026-10-08, manager-develop)
+
+**Claim.** M3 structural deliverables landed on WT-always-loaded-char-budget: role-rule stubs + paths placement + REQ-ALB-020 notes, all 97 companion: rows migrated direct (pending=0), the §-reference test green, the ledger family green, and the budget RED at 139,320 — **the floor under obligation-preserving compression is ABOVE the 115,000 budget** (finding below, per the dispatch REQ-ALB-022 stop clause).
+
+**Landed (commits, each with tree+ledger consistent):** d54053709 (role stubs verbatim + paths: + carve-out flip + companion-only pending branch + location-aware mutation fixtures + ALB-0208 repair + cwm authored rewrites applied), ac85510ea (loading-scope rewrite — 'Intentionally always-loaded' now :0 in both role files — and the two role files' 20 rationale rows relocated), 322e7143d (mcp-tools/native/goal rationale), 35a1d84a2 (branch-guard/cache-aware rationale), 144e982cc (session-handoff split + 9 STE-lite rewrite rows), 7f1f2ac09 (acp/askuser/constitution/vci/cwm rationale + new agent-common-protocol-detail.md, embed-manifest registered), af2855bc3 (section-refs test green + agent-authoring heading fix + cwm relocation).
+
+**M3 matrix (budget test, this run, this tree HEAD af2855bc3):**
+- deployed-surface-total=139320 (budget 115000; anchor 183237; RED delta remaining: -24320 needed)
+- Member shape: AGENTS.md 23684 (untouched, t1450 scope) + 11 core rules (binding+normative verbatim or recorded rewrites; rationale relocated) + 2 role stubs (factory-dispatch-core, cross-session-messaging-core; general blocks verbatim — compression pending) + the two full role bodies and all companions excluded (top-level paths:).
+- Ledger row states: 363 rows — direct=363, pending-M0-baseline=0, failures=0; companion paths: strict=97/97 (origin-hold=0); rewrite rows recorded: 12 (10 cwm authored-at-M0 incl. the ALB-0208 1-char corruption repair, 2 sh unit rows) + 9 sh sub-patches; migrated sections with pointer lines: 65/65.
+- Section-refs: refs checked=11 resolved=8, placeholder=1, not-deployed-excluded=3 (named: progress.md — an operator-side artifact), unresolved=0; AC-ALB-023 command exit 0, --- PASS.
+- AC-ALB-008 shape: grep -c 'Intentionally always-loaded' on the two role files = 0/0 (exit 1); the member log carries both stubs and neither full body (carve-out removed per its own M3 anticipation).
+
+**Floor finding (E7 — the dispatch REQ-ALB-022 stop).** Measured compression yields: context-window-management 0.746 (M0 sample, table-merging), session-handoff ~0.90 (dense prose, 9 STE-lite rewrites, obligations kept verbatim), the role-core leave arithmetic unchanged. Remaining compressible bn pool ~84,300 (big-4 54,589 + small-4 15,277 + role stubs 14,420); reaching 115,000 requires aggregate ~0.71 on that pool; the session-handoff measurement bounds dense-prose STE-lite at ~0.90 and realistic per-file yields land the floor at ~122,000-126,000. **The 115,000 constant is not reachable by obligation-preserving rewriting of the current member set.** Blocking files (largest remaining bn): agent-common-protocol 15,908, moai-constitution 13,574, askuser-protocol 12,811, verification-claim-integrity 12,296, the two role stubs 14,420 combined, small-4 15,277. Lane options (lane decides): (a) accept a higher budget constant with a decision record (the 115,000 derivation predates the role-split architecture; the surface the guard now measures is structurally different from what M0 sized), (b) authorize deeper structural moves beyond this SPEC's constraints (e.g. AGENTS.md duplication-pointer conversion — design §6 — which this lane measured as NOT equal-scope for the constitution/acp obligations), (c) accept ~123k as the floor and re-derive the budget headroom note (REQ-ALB-005) accordingly. No further compression commits were made after the floor became measurable (dispatch stop clause).
+
+**Baseline-attribution.** Every number above: command = go test ./internal/template/ -run 'TestBindingLedgerIntegrity|TestDeployedRuleSectionRefsResolve|^TestDeployedAlwaysLoadedCharBudget$' -count=1 [-v], this run, tree HEAD af2855bc3 (branch WT-always-loaded-char-budget). Builds: go build ./... and GOOS=windows GOARCH=amd64 go build ./... exit 0. TestAutoPickMirrorParity + embed manifest golden: exit 0 at each unit. NO push performed (B8/dispatch).
+
+**Gaps.** (1) The two role stubs carry the general blocks VERBATIM (their STE-lite compression pass not started) — the single largest ready lever (~4,300 at 0.70-0.75). (2) The big-4/small-4 binding pools are untouched verbatim. (3) §E.3 remains unwritten. (4) M4 (mirror sync of the remaining template-only files, mirror-test registration) and M5 not started. (5) The 3 excluded not-deployed refs (progress.md § Mode Selection) are named in the test log, out of the split's reach.
+
+**Residual-risk.** (1) The budget stays RED — CI on push will show the guard red until the lane disposes the floor finding. (2) The live mirrors of parity-paired files were edited within this run; M4's make build mirror sync remains owed for the template-only new files (stub pair, acp-detail). (3) The 115,000-vs-floor finding needs an operator/lane decision before M4/M5 can close the SPEC.
+
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
