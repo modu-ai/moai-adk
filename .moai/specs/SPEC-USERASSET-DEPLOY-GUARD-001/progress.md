@@ -346,6 +346,58 @@ IgnoredGoFiles — AC-023의 windows 판정 절차에 속함). lock.go의 환경
 probe 신설 분기), 패키지 82.7%→**83.2%**. 게이트: lint 0, gofmt 청결, windows build +
 test compile OK, 의도 RED 8건 유지.
 
+### M3 — Codex 정규화 배선 + 게이트 20 (7a+13a+13b 흡수, 2026-10-09)
+
+프로덕션 변경: `internal/userassets/install.go`(installTarget에 codexFace·data 단일
+판독 필드 — targetBytes가 Codex 면에 NormalizeCodexRoleForDeploy 적용, applyTarget이
+동일 바이트 기록, REQ-CNV-002 스캔, afterTargetPersist 시음) + `Result.Unconverted`
+신설 + `remove.go` readShippedForKey의 Codex 면 백업 바이트 동일 변환 +
+`internal/cli/user_asset_phase.go` 요약 렌더 + `lock.go` ClassifyLockFile 분리(게이트 20).
+
+**AC 전환 (AC-006 + AC-007 13a/13b + AC-026) — RED→GREEN 4종**
+
+| AC | 테스트 | M0/M3 | M3 관측 |
+|---|---|---|---|
+| AC-006 (7a) | TestCodexAgentTOMLReferencesConverted | RED | **GREEN** — 설치 TOML이 변환 면(.moai/policies·.moai/workflows·AGENTS.md)으로 착지, 무변환 참조 0 |
+| AC-007 13a | TestCodexUserSkillInstallNoClaudeOnlyRefs | RED (재현 확정) | **GREEN** — Codex 루트 스킬 사본 무변환 참조 0 |
+| AC-007 13b | TestCodexRoleTOMLNotVerbatim | RED (AC-006 흡수 확정) | **GREEN** — 설치 TOML ≠ 소스 byte-identical |
+| AC-026 | TestCodexUnconvertibleReferenceReported | RED | **GREEN** — 변환 후에도 `.claude/` 참조 잔존 파일이 Result.Unconverted에 파일 단위 나열 (신규 보고 면 — M0 테스트 코멘트가 예고한 flip) |
+
+출처 규율(REQ-CNV-001): installTarget.data = **단일 판독의 변환 바이트** — 기록 바이트,
+manifest sha, journal 해시가 전부 같은 바이트에서 산출된다(원문 해시+변환 기록 혼합이
+구조적으로 불가능). Claude 면은 verbatim 유지(참조가 옳은 면) — 기존 verbatim 단정
+테스트(TestInstallFirstRunLandsL0)가 무참조 fixture에서 계속 GREEN으로 이를 지킨다.
+백업 바이트(readShippedForKey)도 Codex 면 동일 변환으로 정렬.
+
+**M0 시음 이관 (단일 판독 설계의 부수 효과)**: applyTarget이 소스를 재판독하지 않게
+되어 M0의 read-counting park 지점이 소멸 — 중단 재현 시음을 Installer.afterTargetPersist
+(정렬 순서 N번째 기록 target의 플래그 영속 직후, 프로덕션 nil)으로 이관하고 두 저널
+테스트를 재조준. 단정 계약 동일, 전문은 M0/M1 절 보존.
+
+**게이트 20**
+
+| # | 수리 | 검증 |
+|---|---|---|
+| 20-1 [P1] | flock 테스트 본문의 빌드태그 분리 — 이미 f80590426에 착지됨(재검증: m2_lock_guard_unix_test.go만 syscall.Flock 보유, `GOOS=windows go test -c` OK) | 현재 HEAD 실측 OK |
+| 20-2 | **.lock 파일의 flock 오분류 제거**: ClassifyGuardMarker(가드 파일 — unix flock 진실)와 ClassifyLockFile(.lock — O_EXCL 기반, 무 flock — pid-less 잔여는 전 플랫폼 ownerless=수동 복구 상태)로 분리, doctor가 파일 종류별로 선택 | TestLockFilePidlessLeftoverIsOwnerlessNotAbsent GREEN — 분류=ownerless + 획득=ErrLocked 일치 (게이트 재현 상태) |
+
+**라운드 19 잔여 A-D — 이미 6627769b5에 착지 (재검증)**: (A) Lstat 선입검사 lock.go:119/
+166/228 실측, (B) flock 상태 판정 classifyPidlessMarker + TestDoctorUserLockMarkers
+UnixFlockLeftoverIsOK, (C) IsNotExist-only + Irregular 노출, (D) stale window 안내.
+리더 실측은 6627769b5 이전 트리 기준이었음으로 재보고.
+
+**AC-023 커버리지 (unix, 전체 스위트 결합)**
+
+| 파일 | 문 커버리지 | 게이트 |
+|---|---|---|
+| install.go | 322/391 = **82.4%** | 미달 — M3 전환 분기는 커버되나 충돌 패밀리(FIFO/TOCTOU/exec-bit) applyTarget 팔이 여전히 미실행: **M5 착지가 계획된 riser** |
+| lock.go | 84/96 = **87.5%** | ClassifyLockFile 분리로 분모 증가 |
+| journal.go 93.8% / lock_guard_unix.go 92.3% | | PASS |
+| 패키지 합계 | **82.9%** | FAIL (85%) — M4-M7 착지분이 해소 |
+
+**게이트**: lint 0, gofmt 청결, windows build+test compile OK, userassets 잔여 RED 4건
+(M5/M6 소관), cli 배터리 의도 RED 8건 변화 없음, 저널 가족 6종 + Codex 가족 4종 GREEN.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop 소관.)_

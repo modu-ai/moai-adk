@@ -380,7 +380,17 @@ func (in *Installer) readShippedForKey(e template.Entry, key string) ([]byte, er
 	if !ok {
 		return nil, fmt.Errorf("no shipped source for %s", key)
 	}
-	return fs.ReadFile(in.Source, sourcePath)
+	data, err := fs.ReadFile(in.Source, sourcePath)
+	if err != nil {
+		return nil, err
+	}
+	// M3 (REQ-CNV-001): the divergence BACKUP references the bytes moai
+	// would write — for the Codex faces those are the deploy-path
+	// converted bytes, same as the install writes.
+	if slug == RootCodexAgents || slug == RootAgentsSkills {
+		data = template.NormalizeCodexRoleForDeploy(data)
+	}
+	return data, nil
 }
 
 // sourcePathFor maps a (root slug, entry, rel) triple back to the source

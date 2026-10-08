@@ -148,6 +148,9 @@ instructions = "Coordinate with .claude/agents/moai/plan-auditor.md."
 
 // writeM0ResultReport renders the Result's report categories the way the
 // cli layer's writeInstallSummary does — the M0-observable install report.
+// M3 landing note: the unconverted-reference category (REQ-CNV-002) was
+// added to the Result and to this render together — the M0 test comment
+// sanctioned exactly this flip.
 func writeM0ResultReport(b *strings.Builder, res *Result) {
 	for _, c := range res.Collisions {
 		b.WriteString("collision: " + c + "\n")
@@ -163,6 +166,9 @@ func writeM0ResultReport(b *strings.Builder, res *Result) {
 	}
 	for _, d := range res.DeferredDeps {
 		b.WriteString("deferred: " + d + "\n")
+	}
+	for _, u := range res.Unconverted {
+		b.WriteString("unconverted: " + u + "\n")
 	}
 }
 

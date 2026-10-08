@@ -216,44 +216,64 @@ func (s GuardMarkerState) String() string {
 	return "unknown"
 }
 
-// ClassifyGuardMarker classifies the marker at path for the doctor's
+// ClassifyGuardMarker classifies the GUARD marker at path for the doctor's
 // visible-recovery row. Gate rounds 18/19: only os.IsNotExist reads as
 // absent; the file TYPE is judged before any read (a FIFO must never be
 // read — it hangs); and the pid-less residual is PLATFORM-DECIDED — on
 // unix the guard file survives a clean release by design (flock is the
 // truth), so a free file is a clean leftover while a held file is alive;
 // on windows the marker's existence is the held evidence and a pid-less
-// marker is ownerless.
+// marker is ownerless. For the .LOCK file use ClassifyLockFile — the lock
+// file takes no flock itself, so the flock-based absence judgment does not
+// apply to it (gate round 20).
 func ClassifyGuardMarker(markerPath string) (GuardMarkerState, int) {
-	info, err := os.Lstat(markerPath)
+	state, pid, has := classifyLockRecord(markerPath)
+	if !has {
+		return classifyPidlessMarker(markerPath)
+	}
+	return state, pid
+}
+
+// ClassifyLockFile classifies the .lock FILE for the doctor's row (gate
+// round 20): the lock file is O_EXCL-guarded and carries no flock, so the
+// guard file's flock-based absence judgment must not be applied to it — a
+// pid-less leftover .lock is a genuine manual-recovery state (acquisition
+// refuses with ErrLocked) on EVERY platform.
+func ClassifyLockFile(lockPath string) (GuardMarkerState, int) {
+	state, pid, has := classifyLockRecord(lockPath)
+	if !has {
+		return GuardMarkerOwnerless, 0
+	}
+	return state, pid
+}
+
+// classifyLockRecord reads and pid-classifies one lock-family record. The
+// boolean reports whether a usable classification was reached (false = the
+// pid-less residual, which the caller decides per file kind).
+func classifyLockRecord(path string) (state GuardMarkerState, pid int, has bool) {
+	info, err := os.Lstat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return GuardMarkerAbsent, 0
+			return GuardMarkerAbsent, 0, true
 		}
-		return GuardMarkerIrregular, 0 // access error — surfaced, not absence
+		return GuardMarkerIrregular, 0, true // access error — surfaced, not absence
 	}
 	if !info.Mode().IsRegular() {
-		return GuardMarkerIrregular, 0
+		return GuardMarkerIrregular, 0, true
 	}
-	raw, readErr := os.ReadFile(markerPath)
+	raw, readErr := os.ReadFile(path)
 	if readErr != nil {
-		return GuardMarkerIrregular, 0
+		return GuardMarkerIrregular, 0, true
 	}
-	pid := 0
-	hasPID := false
 	for _, field := range strings.Fields(string(raw)) {
 		if strings.HasPrefix(field, "pid=") {
 			if parsed, convErr := strconv.Atoi(strings.TrimPrefix(field, "pid=")); convErr == nil && parsed > 0 && int64(parsed) <= 2147483647 {
-				pid = parsed
-				hasPID = true
+				if lockProcessGone(parsed) {
+					return GuardMarkerOwnerDead, parsed, true
+				}
+				return GuardMarkerOwnerAlive, parsed, true
 			}
 		}
 	}
-	if hasPID {
-		if lockProcessGone(pid) {
-			return GuardMarkerOwnerDead, pid
-		}
-		return GuardMarkerOwnerAlive, pid
-	}
-	return classifyPidlessMarker(markerPath)
+	return GuardMarkerOwnerless, 0, false
 }

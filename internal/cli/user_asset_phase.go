@@ -93,6 +93,9 @@ func writeInstallSummary(out io.Writer, label string, res *userassets.Result) {
 	for _, d := range res.DeferredDeps {
 		_, _ = fmt.Fprintf(out, "  kept (declared dependency of a preserved asset — re-evaluated at the next removal/update): %s\n", d)
 	}
+	for _, u := range res.Unconverted {
+		_, _ = fmt.Fprintf(out, "  unconverted reference (no Codex-side mapping — report to the harness maintainers): %s\n", u)
+	}
 }
 
 // runUserAssetUpdatePhase is `moai update`'s user-asset phase (SPEC-USER-

@@ -52,6 +52,13 @@ type Installer struct {
 	MoaiVersion string
 	// Now stamps installed_at; nil means time.Now.
 	Now func() time.Time
+	// afterTargetPersist is the interruption-repro seam (M0/M1 journal
+	// tests): invoked after each written target's completion flag is
+	// persisted, in sorted-target order. Production leaves it nil — the
+	// single-read design (REQ-CNV-001) removed the source-read interleave
+	// the former parking fixture counted, and this hook restores a
+	// deterministic mid-loop suspension point without re-reading.
+	afterTargetPersist func(tgt installTarget)
 }
 
 // Result is the run's per-file outcome summary (REQ-011 counts + REQ-013
@@ -67,6 +74,7 @@ type Result struct {
 	Divergences         []string
 	SharedSurvivors     []string // E3: entries kept because a remaining selection or L0 shares them
 	DeferredDeps        []string // R-f-②: deletions deferred — the entry is a declared dependency of a preserved asset
+	Unconverted         []string // M3 REQ-CNV-002: Codex-face files whose CONVERTED bytes still carry a harness-specific reference with no conversion mapping — named per file, never silently shipped
 }
 
 // FileOutcome is one file-level failure (REQ-013: path + reason).
@@ -193,6 +201,17 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	// M3 (REQ-CNV-002): name every Codex-face target whose CONVERTED bytes
+	// still carry a harness-specific reference — the converter maps the
+	// reproduced coordinates (.claude/rules/moai/, .claude/skills/,
+	// CLAUDE.md) and nothing else; a surviving .claude/ reference has no
+	// mapping and must be reported per file, never silently shipped. The
+	// scan reads the target's own single-read bytes (no second source read).
+	for _, tgt := range targets {
+		if tgt.codexFace && strings.Contains(string(tgt.data), ".claude/") {
+			res.Unconverted = append(res.Unconverted, tgt.manifestKey)
+		}
+	}
 
 	// RF5 (review fix): run the collision determination FIRST — a target
 	// holding an untracked content-identical user file is a REQ-010
@@ -297,6 +316,9 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 				}
 			}
 		}
+		if in.afterTargetPersist != nil {
+			in.afterTargetPersist(tgt)
+		}
 	}
 	// Journal-recovered entries flow through the same truth table (the
 	// sharpening): a recovered file whose bytes differ from shipped is
@@ -382,6 +404,13 @@ type installTarget struct {
 	sourcePath  string // source-tree slash path
 	bundle      string // "core" for L0
 	sha         string
+	// data is the EXACT bytes the run writes for this target — for the
+	// Codex faces these are the deploy-path-converted bytes (M3,
+	// REQ-CNV-001): the written bytes and the recorded hashes come from
+	// this one read, so a converted record beside verbatim content is
+	// structurally impossible.
+	data      []byte
+	codexFace bool // the target lands on a Codex-deployment face
 }
 
 // installTargets enumerates the destination files for L0 ∪ selection:
@@ -453,18 +482,42 @@ func (in *Installer) fileTarget(slug RootSlug, rel, sourcePath string, e templat
 	if err != nil {
 		return installTarget{}, fmt.Errorf("target %s: %w", rel, err)
 	}
-	data, err := fs.ReadFile(in.Source, sourcePath)
-	if err != nil {
-		return installTarget{}, fmt.Errorf("read source %s: %w", sourcePath, err)
-	}
-	return installTarget{
+	tgt := installTarget{
 		manifestKey: string(slug) + "/" + clean,
 		root:        slug,
 		rel:         clean,
 		sourcePath:  sourcePath,
 		bundle:      bundleLabel(e),
-		sha:         sha256Hex(data),
-	}, nil
+		// M3 (REQ-CNV-001): the Codex faces — the Codex agent TOML and the
+		// .agents/skills skill root — carry the deploy-path CONVERTED bytes;
+		// the Claude faces stay verbatim (their references are correct
+		// there). Only the reproduced reference mappings apply (design §4:
+		// no over-generalization — anything without a mapping is reported,
+		// not guessed at).
+		codexFace: slug == RootCodexAgents || slug == RootAgentsSkills,
+	}
+	data, err := in.targetBytes(tgt)
+	if err != nil {
+		return installTarget{}, fmt.Errorf("read source %s: %w", sourcePath, err)
+	}
+	tgt.data = data
+	tgt.sha = sha256Hex(data)
+	return tgt, nil
+}
+
+// targetBytes reads one target's source bytes and applies the Codex-face
+// normalization — the SAME conversion the deploy path writes
+// (template.NormalizeCodexRoleForDeploy). The returned bytes are exactly
+// what applyTarget writes and what the recorded sha256 hashes.
+func (in *Installer) targetBytes(tgt installTarget) ([]byte, error) {
+	data, err := fs.ReadFile(in.Source, tgt.sourcePath)
+	if err != nil {
+		return nil, err
+	}
+	if tgt.codexFace {
+		data = template.NormalizeCodexRoleForDeploy(data)
+	}
+	return data, nil
 }
 
 func bundleLabel(e template.Entry) string {
@@ -626,9 +679,16 @@ func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots ma
 	root := roots[tgt.root]
 	abs := filepath.Join(root.dir, filepath.FromSlash(tgt.rel))
 
-	shipped, err := fs.ReadFile(in.Source, tgt.sourcePath)
-	if err != nil {
-		return "", false, fmt.Errorf("read shipped bytes: %w", err)
+	// M3 (REQ-CNV-001): the shipped bytes come from the target's OWN
+	// single read — the converted bytes the sha was computed over — so the
+	// written content and every recorded hash describe the same bytes.
+	shipped := tgt.data
+	if shipped == nil {
+		data, err := in.targetBytes(tgt)
+		if err != nil {
+			return "", false, fmt.Errorf("read shipped bytes: %w", err)
+		}
+		shipped = data
 	}
 	current, err := os.ReadFile(abs)
 	st := classifyTarget(manifest.Files[tgt.manifestKey], current, err, shipped, tgt.sha)

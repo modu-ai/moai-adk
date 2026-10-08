@@ -13,7 +13,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -23,46 +22,35 @@ import (
 	"time"
 )
 
-// parkingSource wraps a MapFS and parks the Nth ReadFile of one source path
-// on a channel — the deterministic mid-loop interruption seam the M0 risk
-// note calls for (table tests + injected suspension, no production change).
-// Read counting for a skill source path (.claude/skills/<name>/SKILL.md):
-// installTargets reads it once per skill-root slug (claude-skills +
-// agents-skills = reads #1-#2), then applyTarget reads it once per sorted
-// target (reads #3 = the agents-skills target, #4 = the claude-skills
-// target). Parking read #4 suspends the write loop AFTER the targets that
-// sort before claude-skills — including claude-agents/manager-x.md — were
-// fully applied.
-type parkingSource struct {
-	inner   fs.FS
-	parkAt  string
-	parkOn  int
-	seen    int
-	parked  chan struct{} // closed when the park is reached
-	release chan struct{} // closed by the test to resume the run
+// suspension is the deterministic mid-loop interruption seam for the
+// journal tests. The M0 form parked source-file READS; the M3 single-read
+// design (REQ-CNV-001 — target bytes are read once in installTargets and
+// written from memory) removed the read interleave, so the seam moved to
+// the Installer's afterTargetPersist hook: the run suspends after the Nth
+// written target's completion-flag persist, in sorted-target order.
+type suspension struct {
+	parkAfter string        // the manifest key whose persist parks the run
+	parked    chan struct{} // closed when the park is reached
+	release   chan struct{} // closed by the test to resume the run
 }
 
-func newParkingSource(inner fstest.MapFS, parkAt string, parkOn int) *parkingSource {
-	return &parkingSource{
-		inner:   inner,
-		parkAt:  parkAt,
-		parkOn:  parkOn,
-		parked:  make(chan struct{}),
-		release: make(chan struct{}),
+func newSuspension(parkAfter string) *suspension {
+	return &suspension{
+		parkAfter: parkAfter,
+		parked:    make(chan struct{}),
+		release:   make(chan struct{}),
 	}
 }
 
-func (p *parkingSource) Open(name string) (fs.File, error) { return p.inner.Open(name) }
-
-func (p *parkingSource) ReadFile(name string) ([]byte, error) {
-	if name == p.parkAt {
-		p.seen++
-		if p.seen == p.parkOn {
-			close(p.parked)
-			<-p.release
+// wire attaches the suspension to an installer.
+func (s *suspension) wire(inst *Installer) {
+	inst.afterTargetPersist = func(tgt installTarget) {
+		if tgt.manifestKey != s.parkAfter {
+			return
 		}
+		close(s.parked)
+		<-s.release
 	}
-	return fs.ReadFile(p.inner, name)
 }
 
 func waitChannel(t *testing.T, ch chan struct{}, what string) {
@@ -116,16 +104,16 @@ func seedRecoveredJournal(t *testing.T, home, extraRel, entrySHA string, writeCo
 // mis-reads its own install as a collision (REQ-010) instead of claiming it.
 func TestWriteCompletedPersistedPerFile(t *testing.T) {
 	f := newFixture(t)
-	// Park read #4 of the alpha SKILL.md source: by then the targets sorting
-	// before claude-skills/moai-alpha — agents-skills SKILL.md, its
-	// workflows/a.md, and claude-agents/manager-x.md — are fully written.
-	src := newParkingSource(f.src, ".claude/skills/moai-alpha/SKILL.md", 4)
+	// Suspend after the FIRST sorted target's (claude-agents/manager-x.md)
+	// completion-flag persist: the journal on disk must already carry its
+	// flag while the rest of the run is still unwritten.
+	susp := newSuspension("claude-agents/manager-x.md")
 	inst := f.installer(t)
-	inst.Source = src
+	susp.wire(inst)
 
 	done := make(chan error, 1)
 	go func() { _, err := inst.Install(nil); done <- err }()
-	waitChannel(t, src.parked, "mid-loop park")
+	waitChannel(t, susp.parked, "mid-loop park")
 
 	j, err := LoadJournal(JournalPath(f.home))
 	if err != nil {
@@ -146,7 +134,7 @@ func TestWriteCompletedPersistedPerFile(t *testing.T) {
 	}
 	// Resume the suspended run and let it finish before the test returns —
 	// a still-running writer races the TempDir cleanup.
-	close(src.release)
+	close(susp.release)
 	select {
 	case <-done:
 	case <-time.After(30 * time.Second):
@@ -177,13 +165,15 @@ func TestJournalStageCarriesRecoveredEntries(t *testing.T) {
 	}
 	seedRecoveredJournal(t, f.home, recoveredKey, shaHex(recoveredBytes), true)
 
-	src := newParkingSource(f.src, ".claude/skills/moai-alpha/SKILL.md", 3)
+	// Suspend after the FIRST sorted target's persist — the journal on disk
+	// is then the first staging (the recovered entry must already be in it).
+	susp := newSuspension("agents-skills/moai-alpha/SKILL.md")
 	inst := f.installer(t)
-	inst.Source = src
+	susp.wire(inst)
 
 	done := make(chan error, 1)
 	go func() { _, err := inst.Install(nil); done <- err }()
-	waitChannel(t, src.parked, "mid-loop park")
+	waitChannel(t, susp.parked, "mid-loop park")
 
 	j, err := LoadJournal(JournalPath(f.home))
 	if err != nil {
@@ -200,7 +190,7 @@ func TestJournalStageCarriesRecoveredEntries(t *testing.T) {
 	}
 	// Resume the suspended run and let it finish — a still-running writer
 	// races the TempDir cleanup.
-	close(src.release)
+	close(susp.release)
 	select {
 	case <-done:
 	case <-time.After(30 * time.Second):

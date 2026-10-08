@@ -35,7 +35,13 @@ func checkUserLockMarkers(homeDir string, verbose bool) DiagnosticCheck {
 	dead := ""
 	irregular := ""
 	for _, m := range markers {
-		state, pid := userassets.ClassifyGuardMarker(m.path)
+		classify := userassets.ClassifyGuardMarker
+		if m.label == "lock file" {
+			// Gate round 20: the .lock file takes no flock — the guard
+			// marker's flock-based absence judgment must not classify it.
+			classify = userassets.ClassifyLockFile
+		}
+		state, pid := classify(m.path)
 		switch state {
 		case userassets.GuardMarkerOwnerless:
 			if ownerless == "" {
