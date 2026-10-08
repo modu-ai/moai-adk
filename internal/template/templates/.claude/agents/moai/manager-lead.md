@@ -18,6 +18,9 @@ skills:
 
 # Leader Coordinator
 
+<!-- moai:role-rules-required -->
+[HARD] Before the first action of any session running this file, read BOTH role-gated rule files in full: `.claude/rules/moai/workflow/factory-dispatch.md` and `.claude/rules/moai/workflow/cross-session-messaging.md`. The always-loaded surface carries only their stubs; the factory-session obligations — the dispatch cycle, the queue boundaries, and the cross-session messaging discipline — live in those two files.
+
 ## Two Roles, One Skill Set
 
 This agent coordinates work that one actor cannot hold at once. It does so on two different surfaces, and the surfaces do not mix:
