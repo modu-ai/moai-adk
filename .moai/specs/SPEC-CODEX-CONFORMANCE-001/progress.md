@@ -105,7 +105,10 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	0.880s
 **AC-CONF-006 재생 프레임 내성 — 신규 시험 `TestManagedCodexTUIConsumesResumedThreadReplayFrames`(`managed_codex_tui_test.go` AC-CONF-006 절)**:
 
 - **프레임 근거 (REQ-CONF-005의 근거 절 이행)**: 재생 프레임 필드는 **0.161.0 바이너리가 자체 생성한 프로토콜 스키마에서 유도**했다 — M1 생성 산출의 `v2/ItemStartedNotification.json`·`v2/ItemCompletedNotification.json`·`v2/TurnCompletedNotification.json`·`v2/ThreadTokenUsageUpdatedNotification.json`·`v2/TurnDiffUpdatedNotification.json`(npx @openai/codex@0.161.0 generate-json-schema 출력; rust-v0.161.0 태그=커밋 979011409de0a60b52f179721948e65531d26144의 `codex-rs/app-server-protocol/src/protocol/v2/item.rs`·`turn.rs`·`thread.rs` 정의와 교차 확인). fake 서버 자체 생성 응답은 근거로 사용하지 않았다(자기-생성 순환 배제 — mutant-probe 채용 규칙). 재생 버스트 5프레임: agentMessage ThreadItem(phase/memoryCitation/delivery/questions 포함)의 item/started, commandExecution ThreadItem(commandActions/durationMs/pluginId 등 전 필드)의 item/completed, 0.161.0 Turn 형상(id/items/status 필수)을 실은 **외래 턴**의 turn/completed, 어댑터가 모르는 메서드 thread/tokenUsage/updated, turn/diff/updated.
-- **양성 대조 (AC 요구)**: 재생 버스트 소비 직후 ① 서버 요청이 여전히 답변됨(read loop 생존 증명) ② `claims.release`로 소유자 자신의 턴(fake-turn-2)이 재생 프레임 **뒤에서** 완료됨 ③ 세션 로그에 `Factory turn failed` 부재 ④ 드라이버가 bye/exit로 오류 없이 종료.
+- **양성 대조 (AC 요구 — 동기화 감사 F1+추가 지적을 반영한 최종 형태, 소유자 측 3축)**: 재생 버스트의 양성 대조는 **소유자 측 신호만으로** 소비를 증명한다 — fake의 송신 측 로그(`turn-completed` 등)는 전송 시점에 기록되므로 증거로 불충분하고(동기화 감사 F1), 드라이버 종료 nil도 증거가 못 된다(TUI 종료가 대기 턴을 접속-종료 경로로 풀어 드라이버가 TUI의 종료 상태를 반환한다 — REQ-MT-010; 턴종료 리뷰 게이트 추가 지적, 채택). 서브시험은 `f.drive` 대신 **세션을 직접 구동**해(`newSession` + `AttachOperator`) `DeliverTurn` 반환값을 시험이 직접 쥔다:
+  1. **재생 외래 턴의 turn/started가 소유자 턴 테이블에 접힘**: 프라이밍 턴 소강(`!sess.Busy()` 확인으로 모호성 제거) 뒤 버스트 첫 프레임(0.161.0 TurnStartedNotification 형상 — threadId+Turn) 주입 → `waitUntil(sess.Busy)` — 소유자의 read 고루린이 프레임을 접을 때만 뒤집히는 소유자 상태(`noteTurnStarted` → `trackStartedLocked` 무조건 트래킹, `managed_codex_factory.go:312-322`). fake 송신만으로는 이 상태가 변하지 않는다.
+  2. **재생 외래 턴의 turn/completed가 소유자 테이블에서 접혀 나옴**: 버스트 나머지 주입 뒤 `waitUntil(!sess.Busy)` — 재생 완료 프레임의 소유자 측 소비.
+  3. **소유자 자신의 DeliverTurn 성공 반환을 종료 전 직접 관측**: 버스트 뒤 소유자 턴의 `DeliverTurn`을 고루린으로 띄우고 `tuiRunWait` 상한으로 **반환값을 블로킹 관측**(err == nil 단언) — 이 단계에는 TUI 종료가 없어 접속-종료 완화로 증거가 덮이는 빠짐이 구조적으로 없다. 프라이밍 턴의 DeliverTurn 성공 반환도 선행 관측해 소비 기계가 버스트 전부터 작동함을 확인. "bye/exit 종료"는 모든 단언이 예치된 뒤에야 실행.
 - **실패 관측 가능성 — canary 서브시험**: 동일 버스트 + `tuiFakeStatusesEnv=completed,failed`로 소유자 턴을 스크립트 실패시키면 `Factory turn failed`가 **관측된다** — 위 부재 단언이 살아 있는 신호에 묶여 있음을 증명(verification-completeness §1.1의 관측된 실패 축).
 - **mutant probe (채용 전 관찰된 실패 — 본 AC의 E8 RED 원문)**: read loop의 미모델 프레임 폐기 지점(`managed_codex_factory.go` `read()`의 `case event.Method != "" || !event.hasID(): continue`)을 일시 변이(`continue` → `return` — 디코드 실패형 접속 종료 시뮬레이션)한 뒤 시험 실행 → **적색 관측**:
 
@@ -127,6 +130,45 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.589s
 ```
 
   (정상 트리에서의 이 시험은 착시적 green이 아니다 — canary가 실패 관측을, mutant probe가 결함 클래스 검출을 각각 실측했다. 내성 그 자체는 구조적 lenient 디코드가 이미 보유한 계약이라 구현 변경 0건.)
+
+**F1 수리 — 소유자 측 양성 대조의 변이 검증 (동기화 감사 결함 delta + 턴종료 게이트 추가 지적, 2026-10-09)**: 세 결함 클래스에 대해 강화된 컨트롤의 검출력을 각각 변이로 실측했다. 변이는 전부 `managed_codex_factory.go`에 일시 적용 후 바이트 동일 원복(`git diff --stat` 빈 출력) + 재실행 GREEN 확인.
+
+- **변이 1 — 리더 사망** (`read()`의 미모델 프레임 폐기 `continue` → `return`): 1차 mutant probe. 적색: `a server request after the replay burst was not answered: the reader died on the replay frames` + `the owner's own turn after the replay burst never completed` (FAIL, 22.00s). 원복 후 `ok ... 2.589s`.
+- **변이 2 — 재생 프레임 무소비(리더 생존)** (동기화 감사 F1): `case event.Method == "turn/started":` 라벨 무효화 — 재생 외래 turn/started가 폐기 분기로 떨어짐. 구 컨트롤의 관측면(send-side 완료선·turn failure 부재·요청 응답)은 이 변이에서 모두 통과했을 것이다. **RED 원문**:
+
+```text
+$ go test ./internal/cli -run '^TestManagedCodexTUIConsumesResumedThreadReplayFrames$' -count=1
+--- FAIL: TestManagedCodexTUIConsumesResumedThreadReplayFrames (6.83s)
+    --- FAIL: TestManagedCodexTUIConsumesResumedThreadReplayFrames/replay_frames_keep_the_owner_turn_alive (6.34s)
+        managed_codex_tui_test.go:1504: the owner never consumed the replayed foreign turn/started (Busy never flipped): the replay burst is not proven consumed
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	7.672s
+FAIL
+```
+
+  원복 후 `ok ... 2.422s`.
+
+- **변이 3 — 소유자 턴 완료 프레임 폐기(종료-완화 빠짐)** (턴종료 리뷰 게이트 추가 지적): `observe()`의 완료 접기에서 `fake-turn-2`를 스킵 — 프라이밍은 정상(컨트롤 기반 작동 증명), 소유자 턴의 완료 프레임만 미소비. **구 컨트롤(드라이버 nil)은 이 변이에서 TUI 종료가 대기 턴을 풀어 REQ-MT-010 경로로 nil을 반환해 통과했을 것이다; 신설 직접 반환 단언은 TUI 종료 전에 적색으로 잡는다. RED 원문**:
+
+```text
+$ go test ./internal/cli -run '^TestManagedCodexTUIConsumesResumedThreadReplayFrames$' -count=1
+--- FAIL: TestManagedCodexTUIConsumesResumedThreadReplayFrames (26.58s)
+    --- FAIL: TestManagedCodexTUIConsumesResumedThreadReplayFrames/replay_frames_keep_the_owner_turn_alive (20.81s)
+        managed_codex_tui_test.go:1554: the owner's DeliverTurn after the replay burst never returned while the TUI was still running: the completion frame was not consumed
+    --- FAIL: TestManagedCodexTUIConsumesResumedThreadReplayFrames/failed_own_turn_still_marks_Factory_turn_failed (5.77s)
+        managed_codex_tui_test.go:1599: a failed own turn did not mark Factory turn failed — the tolerance assertion above would pass vacuously:
+            fake-appserver-stderr-line
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	27.706s
+FAIL
+```
+
+  적색 지점이 정확히 신설 직접 반환 단언이다(20.81s = tuiRunWait 상한 바운드 — 정지가 아니라 신속 적색). canary의 적색은 이 변이의 필연적 부수(canary의 실패 턴도 fake-turn-2라 마커가 안 찍힘)이며, 관찰된 실패의 2차 확인이다. 원복 확인: `git diff --stat internal/cli/managed_codex_factory.go` 빈 출력 + 재실행 GREEN:
+
+```text
+$ go test ./internal/cli -run '^TestManagedCodexTUIConsumesResumedThreadReplayFrames$' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.409s
+```
 
 **codex_role_fingerprint.go rollout 소비 재확인 (plan §F M3)**:
 

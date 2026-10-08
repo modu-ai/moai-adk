@@ -1390,9 +1390,21 @@ func tuiReplayFrame0161(method string, params map[string]any) string {
 
 // tuiReplayBurst0161 is the resumed-thread replay: history items and turn
 // lifecycle frames of a thread resumed on another client, streamed to the
-// owner's connection while it is mid-session.
+// owner's connection while it is mid-session. The FIRST frame is the replayed
+// foreign turn's start (the 0.161.0 TurnStartedNotification shape: threadId +
+// Turn), so the owner-side consumption probe has a lifecycle frame to fold.
 func tuiReplayBurst0161() []string {
 	return []string{
+		// The replayed foreign turn's start: only the owner's read goroutine
+		// folding this frame into its turn table can flip the owner's Busy
+		// state — the sender side cannot.
+		tuiReplayFrame0161("turn/started", map[string]any{
+			"threadId": "replay-thread",
+			"turn": map[string]any{
+				"id": "replay-turn-1", "status": "inProgress", "items": []any{},
+				"startedAt": nil, "completedAt": nil, "durationMs": nil,
+			},
+		}),
 		// item/started of a replayed agentMessage item, carrying every extended
 		// field the 0.161.0 ThreadItem::agentMessage schema names (phase,
 		// memoryCitation, delivery, questions).
@@ -1460,44 +1472,103 @@ func tuiReplayBurst0161() []string {
 
 // TestManagedCodexTUIConsumesResumedThreadReplayFrames pins REQ-CONF-005: a
 // resumed thread's replay history — frames carrying fields the adapter does
-// not model (#49599 class) — is consumed without a decode failure and without
-// a marked turn failure, and a normal owner turn issued AFTER the replay burst
-// still completes (the positive control that proves consumption actually
-// happened, not merely that the frames were dropped by a dead reader).
+// not model (#49599 class) — is CONSUMED by the managed owner, without a
+// decode failure and without a marked turn failure. The positive control is
+// OWNER-SIDE and closes both known escape hatches (AC-CONF-006: it must prove
+// consumption actually happened, not that frames were sent): (1) the owner's
+// turn table folds the replayed foreign turn/started — the owner's Busy state
+// flips true, which only its read goroutine can do; (2) the replayed foreign
+// turn/completed is folded back out — Busy returns false; (3) the owner's own
+// DeliverTurn return is observed DIRECTLY, blocking on its success (err ==
+// nil) BEFORE the TUI is shut down — a driver-exit nil is NOT evidence, because
+// a TUI exit releases a pending turn through the connection-loss path and the
+// driver would return the TUI's own exit status (REQ-MT-010). The fake's own
+// log lines are never sufficient evidence: they are written at send time.
 func TestManagedCodexTUIConsumesResumedThreadReplayFrames(t *testing.T) {
 	t.Run("replay_frames_keep_the_owner_turn_alive", func(t *testing.T) {
 		f := newTUIFake(t, "tui-replay-consume")
 		sess := f.newSession()
-		claims := &tuiClaims{}
-		done := f.drive(sess, claims)
+		// Drive the session DIRECTLY (no delivery driver): the positive control
+		// must hold the DeliverTurn return value itself, which the driver does
+		// not expose — and a driver-exit nil would survive a TUI-exit release
+		// of a pending turn (REQ-MT-010), proving nothing about the turn.
+		done, attached := sess.AttachOperator()
+		if !attached {
+			t.Fatalf("the session did not attach the TUI")
+		}
 		if !f.waitLog("tui-start", tuiAttachWait) {
 			t.Errorf("the TUI never started within %s", tuiAttachWait)
 		}
-		for _, frame := range tuiReplayBurst0161() {
+		// The priming turn's DeliverTurn return is the first directly-observed
+		// success: it also proves the completion-consumption machinery works
+		// before the replay burst arrives.
+		turnDone := make(chan error, 1)
+		go func() { turnDone <- sess.DeliverTurn(managedPrimingPrompt) }()
+		select {
+		case err := <-turnDone:
+			if err != nil {
+				t.Fatalf("the priming turn's DeliverTurn failed before the replay burst: %v", err)
+			}
+		case <-time.After(tuiRunWait):
+			t.Fatalf("the priming turn's DeliverTurn never returned: the owner does not consume turn completions, so the positive control could not run")
+		}
+		// Quiesce before the burst so the Busy flip below is attributable to the
+		// replayed frame alone.
+		if !waitUntil(func() bool { return !sess.Busy() }, tuiWatchdog) {
+			t.Fatalf("the priming turn never quiesced; the consumption probe would be ambiguous")
+		}
+		burst := tuiReplayBurst0161()
+		// Owner-side consumption proof 1: the replayed foreign turn/started is
+		// folded into the owner's turn table.
+		f.control("frame " + burst[0])
+		f.controlSync("replay-started-sent")
+		if !waitUntil(sess.Busy, tuiWatchdog) {
+			t.Errorf("the owner never consumed the replayed foreign turn/started (Busy never flipped): the replay burst is not proven consumed")
+		}
+		// The rest of the burst, ending in the replayed foreign turn/completed.
+		for _, frame := range burst[1:] {
 			f.control("frame " + frame)
 		}
 		f.controlSync("replay-burst-sent")
+		// Owner-side consumption proof 2: the replayed completion is folded back
+		// out of the owner's turn table.
+		if !waitUntil(func() bool { return !sess.Busy() }, tuiWatchdog) {
+			t.Errorf("the owner never consumed the replayed foreign turn/completed: the replayed turn stayed active")
+		}
 		// The replay frames must leave the read loop live: a server request
 		// issued right after the burst is still answered.
 		f.control("frame " + tuiJSON(tuiRequest("replay-alive-1", "item/commandExecution/requestApproval", "fake-turn-1")))
 		if _, ok := f.waitReply("replay-alive-1", tuiWatchdog); !ok {
 			t.Errorf("a server request after the replay burst was not answered: the reader died on the replay frames")
 		}
-		// Positive control: the owner's own turn issued after the burst still
-		// completes.
-		claims.release.Store(true)
+		// Positive control (THE direct assertion): the owner's own DeliverTurn
+		// issued after the burst returns nil — observed while the TUI is still
+		// running, before any shutdown. A hung or failed return cannot be
+		// masked here: there is no TUI exit yet to release it.
+		turnDone = make(chan error, 1)
+		go func() { turnDone <- sess.DeliverTurn("second owner turn after the replay burst") }()
+		var turnErr error
+		select {
+		case turnErr = <-turnDone:
+		case <-time.After(tuiRunWait):
+			t.Fatalf("the owner's DeliverTurn after the replay burst never returned while the TUI was still running: the completion frame was not consumed")
+		}
+		if turnErr != nil {
+			t.Errorf("the owner's own turn after the replay burst failed: %v", turnErr)
+		}
 		if !f.waitLog("turn-completed fake-turn-2", tuiWatchdog) {
-			t.Errorf("the owner's own turn after the replay burst never completed:\n%s", f.logText())
+			t.Errorf("the fake never sent the owner's own turn completion after the replay burst:\n%s", f.logText())
 		}
 		time.Sleep(tuiQuiet)
 		if _, text := f.sessionLog(); strings.Contains(text, "Factory turn failed") {
 			t.Errorf("replay frames marked a Factory turn failed:\n%s", text)
 		}
+		// Only now, with every assertion banked, is the TUI shut down.
 		f.say("bye\n/exit\n")
 		if ok, err := tuiAwait(done, tuiRunWait); !ok {
-			t.Errorf("the driver hung after the replay burst")
+			t.Errorf("the TUI did not exit after bye/exit")
 		} else if err != nil {
-			t.Errorf("the driver errored after the replay burst: %v", err)
+			t.Errorf("the TUI exited with an error: %v", err)
 		}
 	})
 	t.Run("failed_own_turn_still_marks_Factory_turn_failed", func(t *testing.T) {
