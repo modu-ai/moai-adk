@@ -375,8 +375,8 @@ PENDING at report time.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-run_complete_at: 2026-10-09T21:30+09:00
-run_commit_sha: c97d50a1e
+run_complete_at: 2026-10-09T22:30+09:00
+run_commit_sha: 281d490bc
 run_status: complete
 ac_pass_count: 13
 ac_fail_count: 0
@@ -386,9 +386,9 @@ l44_post_push_fetch: not-run (this worker never pushes; the lane lands the branc
 new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues at every measurement; gofmt clean; go vet clean)
 cross_platform_build.native: PASS (go build ./..., exit 0)
 cross_platform_build.windows: PASS (GOOS=windows GOARCH=amd64 go build ./..., exit 0)
-total_run_phase_files: 12 (4 production: memory_fold.go, factory_bundle.go, memory_fold_lock_unix.go, memory_fold_lock_windows.go; 5 test: review_observation_test.go, review_observation_fifo_unix_test.go, memory_fold_test.go, memory_budget_test.go, internal/hook/review_observation_test.go + internal/cli/review_observation_test.go's hook twin counted once — 5 test files touched or created; 3 SPEC artifacts: acceptance.md ledger, progress.md §E.2/§E.3, spec.md frontmatter transition)
-m1_to_mN_commit_strategy: per-milestone commits (M0 345eb6483, M1 96f392d06, M2 271d71ab9, M3 c0a0d7cbd, M4 c97d50a1e) plus this audit-ready stamp
-notes: 13/13 ACs PASS (5 as committed regression guards with recorded not-reproduced observations per C1; 8 flipped or held green with measured cells EL-001..EL-024). Two in-gate repair rounds and one selector defect recorded in §E.2 as failed measurements, never as passes. The turn-end codex gate's 2 mid-flight findings on the lock were folded into M4 with RED-first tests (EL-023/EL-024). The full-suite verdict is CI's job (C2) and PENDING at report time.
+total_run_phase_files: 15 (5 production: memory_fold.go, factory_bundle.go, memory_fold_lock_unix.go, memory_fold_lock_windows.go, + the verb preview restructure in memory_fold.go counted once; 6 test: review_observation_test.go, review_observation_fifo_unix_test.go, memory_fold_test.go, memory_budget_test.go, internal/hook/review_observation_test.go; 3 SPEC artifacts: acceptance.md ledger EL-001..EL-027, progress.md §E.2/§E.3, spec.md frontmatter transition)
+m1_to_mN_commit_strategy: per-milestone commits (M0 345eb6483, M1 96f392d06, M2 271d71ab9, M3 c0a0d7cbd, M4 c97d50a1e) + the post-report repair pass 281d490bc + this audit-ready stamp
+notes: 13/13 ACs PASS (5 as committed regression guards with recorded not-reproduced observations per C1; 8 flipped or held green with measured cells EL-001..EL-027). Two in-gate repair rounds, one selector defect, one default-timeout gate kill, and the post-report gate round (2 findings + the abandonment trio's third member) are recorded in §E.2 as failed measurements and repair records, never as passes. The mid-flight gate's 2 findings and the post-report gate's 3 findings were all folded with RED-first tests. The full-suite verdict is CI's job (C2) and PENDING at report time.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
