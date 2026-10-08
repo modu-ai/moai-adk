@@ -555,6 +555,43 @@ stay green — the dual world adds no deny pressure on words without
   `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
   clean; family coverage `12.6%` (all-rows selector — the new rows exercise
   the dual-world paths; pre-change family pair baseline was 12.2%).
+
+### Gate round 14 — M2.3 old-bash rendering correction + windows skip (2026-10-09)
+
+Two findings on the dual-candidate v1 (reviewer, real bash): **P1** — the
+old-bash (literal) candidate carried the WHOLE ANSI-C raw text, but bash 3.2
+DECODES `\xHH` and octal escapes and truncates the argument at their NULs;
+ONLY `\u`/`\U` stay literal (decisively measured this card: the `⊇`
+escape text passes as `5c 75 32 32 38 37`). For `printf changed >
+$'link\u0000\x00/../\x7aone_dir/marker.md'` the true 3.2 path truncates at
+the `\x00` NUL — `link\u0000` — and the literally-named symlink resolves
+INTO the zone, while the whole-raw candidate judged the hex-escaped zone
+component (0x5C x 7a = "z") as an undecoded name and ALLOWED (base deny,
+marker overwritten). **P2** — the four mixed rows died in `t.Fatal` on the
+windows release matrix: the literal `link\u0000` name carries a backslash, a
+separator on windows, so `os.Symlink` fails.
+
+**New gate-14 regression row — RED under the dual-candidate v1 tip
+(`b58eaed73` + the rows, uncommitted at measurement):**
+
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellMixedOriginNulDeniedHexComponent' -count=1 -v`
+- **Exit code**: `1`
+- **Observed (verbatim)**:
+
+```
+=== RUN   TestCheckProtectedZoneShellMixedOriginNulDeniedHexComponent
+    protected_zone_shell_repro_test.go:615: mixed origin nul hex component: decision="allow" reason="", want deny
+    protected_zone_shell_repro_test.go:619: swept=1
+--- FAIL: TestCheckProtectedZoneShellMixedOriginNulDeniedHexComponent (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.875s
+FAIL
+```
+
+The same commit adds the windows `t.Skip` to the shared mixed fixture
+(`hzsMixedNulFixture` — one skip point covers all five literal-named rows,
+P2). Inputs transport-verified: whole-file NUL-byte scan zero, doubled
+backslash on the new escape literals.
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

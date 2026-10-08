@@ -507,9 +507,14 @@ func TestCheckProtectedZoneShellCodePointNulDoesNotTruncate(t *testing.T) {
 // the pre-4.2 shell's argument walks through: the names are TEXT — backslash
 // followed by u (or U) and hex digits — each pointing at the protected
 // marker (the reviewer's measured landing: the write goes through the
-// literal-named entry into the zone).
+// literal-named entry into the zone). POSIX-specific: the entry names carry
+// backslashes, which are separators on windows — os.Symlink would fail
+// there, so the rows skip (gate round 14 P2).
 func hzsMixedNulFixture(t *testing.T) string {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX-specific: the literally-named fixture entries carry backslashes, a separator on windows")
+	}
 	root := newZoneRoot(t, zoneShippedDoc(hzsShellManifest), "")
 	if err := os.MkdirAll(filepath.Join(root, "zone_dir"), 0o755); err != nil {
 		t.Fatal(err)
@@ -585,4 +590,31 @@ func TestCheckProtectedZoneShellMixedOriginNulDeniedUpperHex(t *testing.T) {
 func TestCheckProtectedZoneShellMixedOriginNulDeniedUpperOctal(t *testing.T) {
 	hzsWantMixedDeny(t, "mixed origin nul upper octal",
 		"rm -r $'link\\U00000000\\0/../zone_dir'")
+}
+
+// TestCheckProtectedZoneShellMixedOriginNulDeniedHexComponent — gate round
+// 14 P1 (card t1585): the old-bash world must DECODE \xHH and octal escapes
+// exactly like modern bash (raw bytes, the argument truncated at their NUL)
+// and keep ONLY \u/\U as verbatim literal text — bash 3.2 has no \u/\U, so
+// an unknown escape keeps its backslash and letter and the digits that
+// follow are ordinary characters (measured: the ⊇ escape text passes
+// as 5c 75 32 32 38 37). The whole-raw-text candidate judged the
+// hex-escaped zone component (0x5C x 7a = "z" spelled \x7a) as an
+// undecoded name, matched no entry, and ALLOWED — while the true pre-4.2
+// path truncates at the \x00 NUL, `link\u0000`, and the symlink resolves
+// INTO the zone (reviewer-measured: base deny, marker overwritten). The
+// old-bash candidate lands the deny. Escape texts are written with the
+// doubled backslash (transport-safe source syntax for the single 0x5C byte
+// at runtime).
+func TestCheckProtectedZoneShellMixedOriginNulDeniedHexComponent(t *testing.T) {
+	root := hzsMixedNulFixture(t)
+	marker := filepath.Join(root, "zone_dir", "marker.md")
+	h := zoneTestHandler(t, root)
+	const hexCompCmd = "printf changed > $'link\\u0000\\x00/../\\x7aone_dir/marker.md'"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": hexCompCmd})
+	wantZoneDeny(t, "mixed origin nul hex component", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	if _, err := os.Stat(marker); err != nil {
+		t.Errorf("mixed origin nul hex component: deny observed but the protected marker is gone: %v", err)
+	}
+	t.Logf("swept=%d", 1)
 }
