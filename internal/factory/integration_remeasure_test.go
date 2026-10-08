@@ -274,7 +274,7 @@ func TestClassifyQuotedWordsAndGOFLAGSCarryJSON(t *testing.T) {
 		"'go' 'test' '-json' ./p/...",
 		"GOFLAGS=-json go test ./p/...",
 	} {
-		count, structured, err := ClassifyStructuredOutput(command, strings.NewReader(`{"Action":"pass","Package":"p"}`+"\n"))
+		count, structured, err := ClassifyStructuredOutput(command, strings.NewReader(`{"Action":"pass","Package":"p"}` + "\n"))
 		if err != nil {
 			t.Fatalf("%q must classify: %v", command, err)
 		}
