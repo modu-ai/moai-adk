@@ -2,7 +2,7 @@
 id: SPEC-CODEX-CONFORMANCE-001
 title: "Codex CLI 0.161.0 adapter conformance re-measure"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-09
 updated: 2026-10-09
 author: manager-spec

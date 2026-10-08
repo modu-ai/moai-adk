@@ -194,7 +194,16 @@ residual_risks: 전체 internal/cli 스위트 등판면은 본 카드의 main �
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-10-09
+sync_commit_sha: "pending-backfill-sync"
+sync_status: complete
+b12_self_test_a: pre-emission grep `grep -c 'SPEC-CODEX-CONFORMANCE-001' CHANGELOG.md` → 0 적중(exit 1) — 중복 항목 위험 없음
+b12_self_test_b: AC counter on acceptance.md → live=8 excluded=0 ambiguous=0 — CHANGELOG 항목의 8건(AC-CONF-001..008)과 일치
+b12_self_test_c: file paths verified via ls — `internal/cli/testdata/codex-0.161.0/`(스키마 8종+resume-help.txt+README), `internal/cli/testdata/codex-0.161.0-auth/`(login-status-not-logged-in.txt+README), 구 `codex-0.160.0/` 부재 확인
+changelog_entry_position: [Unreleased] § 최상단 `### Fixed` 블록 첫 행
+frontmatter_status_transitions.in-progress_to_completed: 단일 sync 커밋에 병합 반영(3-phase close — 별도 Mx 커밋 없음)
+canary_compliance_check: n/a — 본 SPEC이 정의하는 forward-looking policy 없음(§F는 다음 스윕 카드의 입력 절차 기술뿐)
+public_surface_assessment: 공개 표면 변경 불요 — README 4파일·docs-site에서 `codex-0.160` 0 적중(실측 grep 2026-10-09); fixture 핀을 기술하는 문서 표면은 내부 전용 `.moai/docs/factory-managed-session.md`뿐이며 M4에서 갱신 완료; CHANGELOG 역사 항목(SPEC-FACTORY-MANAGED-HARDEN-001)의 0.160.0 언급은 당시 상태 기록으로 유지
 
 ## §F Phase 4 Mode Selection
 
