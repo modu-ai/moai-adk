@@ -591,6 +591,40 @@ PASS
 ok  	github.com/modu-ai/moai-adk/internal/cli	1.775s
 ```
 
+### EL-016 — TestReviewFindingNoRecordArmSkipsBlockedCandidate (baseline NOT-REPRODUCED — defect 6 regression guard)
+
+- tree: 96f392d06 (M1 commit's production bytes, the M2 characterization
+  uncommitted — the test enters the branch in the M2 commit)
+- command: `go test ./internal/cli -run '^TestReviewFindingNoRecordArmSkipsBlockedCandidate$' -count=1 -v`
+- exit code: 0
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingNoRecordArmSkipsBlockedCandidate
+    review_observation_test.go:529: lane lease: "t3"
+--- PASS: TestReviewFindingNoRecordArmSkipsBlockedCandidate (2.26s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.424s
+```
+
+### EL-017 — TestReviewFindingNominatedOverwritesDependency + TestReviewFindingMergedPRPredecessor (M2 re-affirm — defects 4/5 regression guards)
+
+- tree: 96f392d06 (M2)
+- command: `go test ./internal/cli -run '^TestReviewFindingNominatedOverwritesDependency$|^TestReviewFindingMergedPRPredecessor$' -count=1 -v`
+- exit code: 0
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingMergedPRPredecessor
+    review_observation_test.go:42: predecessor=merged-pr; factory next leased="t2"
+--- PASS: TestReviewFindingMergedPRPredecessor (2.51s)
+=== RUN   TestReviewFindingNominatedOverwritesDependency
+    review_observation_test.go:62: err=factory next: predecessor card not merged: t1 has not reached merged-local (git-flow) or merged-pr (github-flow) t3 state=picked after="t1"; original t1 state=picked
+--- PASS: TestReviewFindingNominatedOverwritesDependency (1.94s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	5.630s
+```
+
 ## Quality gates and closure
 
 - TRUST 5: Tested (every AC above; 85%+ on touched packages per repo

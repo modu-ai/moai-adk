@@ -383,7 +383,6 @@ func foldSubprocess(t *testing.T, dir, card string) *exec.Cmd {
 // defects (1)(2)(3); AC-DI-002/003/004). RED-first on the run-entry tree;
 // a GREEN baseline classifies the defect not-reproduced and the test becomes
 // its regression guard (C1).
-
 // TestReviewFindingBundleDuplicateMemberRefused is AC-DI-002 (defect 3):
 // a bundle load whose member list names the same card id twice is refused
 // with a duplicate-member refusal, and the refusal records nothing — no
@@ -502,5 +501,36 @@ func TestReviewFindingBundleMultiHubMemberWaits(t *testing.T) {
 				t.Errorf("the member leased past an unmerged hub sharer (got %q)", got)
 			}
 		})
+	}
+}
+
+// TestReviewFindingNoRecordArmSkipsBlockedCandidate is AC-DI-007 (defect 6):
+// the no-record selection arm (b2) skips a queue-picked card whose hub path
+// is shared with an unmerged predecessor and progresses the next ready card
+// — the skip, not a whole-pass abort. The blocked candidate is left with no
+// record row and no claim.
+func TestReviewFindingNoRecordArmSkipsBlockedCandidate(t *testing.T) {
+	root, store := fcFixture(t)
+	// Queue order matters: the blocked candidate t2 precedes the ready t3,
+	// so arm (b2) meets the skip first. t1 is the unmerged sharer (recorded,
+	// queue-held so no arm takes it); t2 is the rowless picked candidate
+	// sharing its hub path; t3 is the ready card behind it.
+	fcQueue(t, store, factory.BacklogStateHold, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	for _, id := range []string{"t1", "t2", "t3"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	}
+	fbSeedFiles(t, store, "t1", "internal/template/catalog.yaml")
+	fbSeedFiles(t, store, "t2", "internal/template/catalog.yaml")
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked})
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	got := fbLeasedCard(t, root, "lane-1")
+	t.Logf("lane lease: %q", got)
+	if got != "t3" {
+		t.Errorf("the ready card was not progressed past the blocked candidate (lease %q)", got)
+	}
+	if fcHasCard(t, root, "t2") {
+		t.Fatal("the blocked candidate's record row was created — the skip must record nothing")
 	}
 }

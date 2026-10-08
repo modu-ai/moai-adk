@@ -138,6 +138,38 @@ green. Slot lease taken for the family run
 (`moai slot acquire --resource internal-cli-suite --max-duration 15m`;
 displaced one expired holder from 2026-10-06).
 
+### M2 — Card selection & after-overwrite, defects (4)(5)(6) (complete)
+
+No production fix in M2 — all three defects classified NOT REPRODUCED and
+their tests stand as the committed regression guards (§G prohibits
+re-implementation):
+
+- **(4) `TestReviewFindingNominatedOverwritesDependency`** — the M0
+  strengthened two-arm body (EL-006) re-affirmed on the M2 tree HEAD
+  `96f392d06`: the refusal names the unmerged predecessor, t3 stays picked
+  with the stored hint, and the positive control
+  (TestReviewFindingNominatedLeasesAfterPredecessorMerges, EL-007) proves
+  the merged-predecessor path actually leases. Combined selector run exit 0
+  (both PASS, `ok … 5.630s`).
+- **(5) `TestReviewFindingMergedPRPredecessor`** — re-affirmed in the same
+  run (`predecessor=merged-pr; factory next leased="t2"`).
+- **(6) `TestReviewFindingNoRecordArmSkipsBlockedCandidate`** — authored
+  RED-first, measured on `96f392d06` (EL-016): the no-record arm (b2) skips
+  the blocked candidate (no record row created — `fcHasCard` false — no
+  claim) and progresses the ready card behind it (`lease "t3"`), the whole
+  pass unerrored. exit 0. The b2 pre-filter (t1533 r6/r7) satisfies
+  REQ-DISPATCH-006.
+
+M2 family re-measure (plan M2; no production change — confirmation run
+over the selection/nomination families the regression guards exercise):
+selector `^TestFactoryCard|^TestFactoryNextNominate|^TestFactoryNominated|
+^TestFactoryNext` → exit 0, `ok github.com/modu-ai/moai-adk/internal/cli
+276.772s`. Deviation, named: the `^TestFactoryNext` prefix over-selected —
+the run swept the whole factory-next family (hundreds of seconds), far
+beyond factory_card_test.go's 10 tests and the nomination family; every
+swept test passed. Slot lease: the M1 lease on `internal-cli-suite` still
+held (15m window).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _Pending run-phase (manager-develop)._
