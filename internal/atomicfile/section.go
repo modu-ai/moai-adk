@@ -86,20 +86,20 @@ const breakingSuffix = ".breaking"
 // so a late delete can never land on a live marker.
 const reclaimSuffix = ".reclaim"
 
-// maxReclaimDepth bounds how deep a chain of nested dead guards is
-// followed. Each level of a chain is one historical process death (a
-// reclaimer that died holding its guard), so a chain deeper than a couple
-// of levels is a pathological accumulation, not a working state. The cap
-// is deliberately small for a second reason: each level's contention retry
-// loop re-walks the chain below it (the recursion re-enters through
-// ClaimSection's own attempts), so the walk cost grows exponentially with
-// the cap — at 3 the worst case is a bounded handful of chain walks. Past
-// the cap the reclaim REFUSES — no delete ever runs without its guard
-// claim — and the caller's budget backs off; a wedge beats a race, and the
-// store then needs an operator's cleanup. The depth is read from the path
-// itself (the number of reclaimSuffix occurrences), because the recursion
-// re-enters through ClaimSection's contention path.
-const maxReclaimDepth = 3
+// maxReclaimGuardAttempts bounds the non-recursive guard claim's attempts
+// (card t1606): one initial O_EXCL and one after breaking a verified-dead
+// rival guard. The guard claim NEVER recurses — a rival guard that is
+// itself dead is disposed by breakStaleLockBare's own verified-dead gate,
+// and a live rival simply owns its disposal — so nested guard chains are
+// never created by contention and every historical dead chain, however
+// deep, reclaims in bounded time. The former depth cap refused a chain at
+// 3, and the refusal was permanent: the recursion that read the depth from
+// the path self-propagated under contention (each level's guard went
+// through ClaimSection, whose own contention path spawned the next
+// .reclaim level), and past the cap no later walk could ever collect the
+// chain — a single dead reclaimer wedged the lock for the life of the
+// boot.
+const maxReclaimGuardAttempts = 2
 
 // ClaimSection takes the advisory lock at path, returning its release
 // func. Contention retries within the given budget, breaking the lock only
@@ -131,8 +131,8 @@ func ClaimSection(ctx context.Context, path string, perm os.FileMode, retries in
 		// Contention: check whether the holder is a verified-dead owner. A
 		// live owner blocks through the budget; a verified-dead one is
 		// broken and the claim retried immediately. The caller's context
-		// reaches the recursive reclaim, so a cancelled claim does not
-		// re-walk a deep guard chain.
+		// reaches the guard claim, so a cancelled claim does not re-walk
+		// any guard chain.
 		if BreakStaleLockContext(ctx, path) {
 			lastErr = err
 			continue
@@ -226,30 +226,61 @@ func BreakStaleLock(path string) bool {
 	return BreakStaleLockContext(context.Background(), path)
 }
 
+// claimGuard takes a break's guard marker WITHOUT recursing (card t1606):
+// one O_EXCL attempt, and on contention a verified-dead rival guard is
+// disposed through breakStaleLockBare's own gate and the claim retried —
+// never through ClaimSection, whose contention path would spawn the next
+// guard level and let the chain self-propagate under contention. A live
+// rival guard owns its disposal: the caller refuses and its own retry
+// budget backs off, exactly as a live section holder blocks a claim.
+func claimGuard(ctx context.Context, guardPath string) (func() error, bool) {
+	for range maxReclaimGuardAttempts {
+		if err := ctx.Err(); err != nil {
+			return nil, false
+		}
+		err := Claim(guardPath, 0o600)
+		if err == nil {
+			if werr := writeOwnerLabel(guardPath, 0o600); werr != nil {
+				// Held but unlabelled: remove and refuse — the same
+				// conservative direction ClaimSection takes.
+				_ = os.Remove(guardPath)
+				return nil, false
+			}
+			return releaseSectionFunc(guardPath), true
+		}
+		if !errors.Is(err, os.ErrExist) {
+			return nil, false
+		}
+		if !breakStaleLockBare(guardPath) {
+			select {
+			case <-ctx.Done():
+				return nil, false
+			case <-time.After(2 * time.Millisecond):
+			}
+		}
+	}
+	return nil, false
+}
+
 // BreakStaleLockContext is BreakStaleLock under a caller's context: the
-// cancellation reaches EVERY level of the recursive guard reclaim — each
-// level's guard ClaimSection selects on it — so a cancelled caller's walk
-// stops at the next claim boundary instead of re-walking the chain through
-// the retry loops (each level's loop re-walks the chain below it, which is
-// what makes an uncancelled deep walk expensive).
+// cancellation reaches the guard claim's every retry boundary, so a
+// cancelled caller's walk stops at the next claim boundary instead of
+// burning its whole budget.
 func BreakStaleLockContext(ctx context.Context, path string) bool {
 	if strings.HasSuffix(path, reclaimSuffix) || strings.HasSuffix(path, breakingSuffix) {
 		// Reclaiming a marker — a breaker's (.breaking) or a reclaimer's
 		// (.reclaim): hold ITS OWN guard marker first — delete only on
-		// creation success, at EVERY level (review-gate residual: the
-		// .reclaim path's verify-and-delete was bare, so a reclaimer
-		// pausing between its check and its delete could remove a rival's
-		// LIVE re-acquired guard). The recursion re-enters through
-		// ClaimSection's contention path when the guard is itself a dead
-		// marker; the chain depth read from the path bounds it — past
-		// maxReclaimDepth the reclaim refuses and nothing is deleted.
-		if strings.Count(path, reclaimSuffix) >= maxReclaimDepth {
-			slog.Warn("lock section: reclaim chain too deep; refusing to break",
-				"lock", path, "depth", strings.Count(path, reclaimSuffix))
-			return false
-		}
-		release, err := ClaimSection(ctx, path+reclaimSuffix, 0o600, 2, 2*time.Millisecond)
-		if err != nil {
+		// creation success (review-gate residual: the .reclaim path's
+		// verify-and-delete was bare, so a reclaimer pausing between its
+		// check and its delete could remove a rival's LIVE re-acquired
+		// guard). The guard is claimed through the non-recursive
+		// claimGuard: when the guard is itself a dead marker it is
+		// disposed through breakStaleLockBare's verified-dead gate, never
+		// by spawning a deeper guard — the self-propagating recursion that
+		// once rigidified chains at the depth cap is gone, so a dead chain
+		// of ANY depth reclaims.
+		release, ok := claimGuard(ctx, path+reclaimSuffix)
+		if !ok {
 			return false // a live reclaimer owns the disposal, or the caller's context is done
 		}
 		defer func() { _ = release() }()

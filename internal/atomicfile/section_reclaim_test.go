@@ -67,44 +67,65 @@ func TestReclaimMarkerReclaimIsGuardedToo(t *testing.T) {
 	}
 }
 
-// TestDeepDeadReclaimChainRefuses: a chain of dead nested guards deeper
-// than the cap is refused outright — no delete ever runs without its guard
-// claim, so nothing is removed and the caller's budget backs off (a wedge
-// beats a race).
-func TestDeepDeadReclaimChainRefuses(t *testing.T) {
+// TestDeepDeadReclaimChainIsReclaimable pins the wedge repair (card
+// t1606): the guard claim is a non-recursive bounded primitive, so a dead
+// guard chain of ANY depth reclaims — each level is broken in turn and the
+// walk never spawns a deeper guard. The former depth cap refused a chain
+// at 3, and that refusal was permanent: no later walk could collect the
+// chain, so a single dead reclaimer wedged the lock past the cap for the
+// life of the boot — the rigidity this repair removes.
+func TestDeepDeadReclaimChainIsReclaimable(t *testing.T) {
 	dir := t.TempDir()
 	markerPath := filepath.Join(dir, "queue.lock.breaking")
 	previousBootFixture(t, markerPath)
 	chain := []string{markerPath}
 	p := markerPath
-	for i := 0; i < maxReclaimDepth+1; i++ {
+	for range 5 {
 		p += reclaimSuffix
 		previousBootFixture(t, p)
 		chain = append(chain, p)
 	}
 
-	if BreakStaleLock(markerPath) {
-		t.Fatal("a deeper-than-cap dead chain was broken instead of refused")
+	if !BreakStaleLock(markerPath) {
+		t.Fatal("a deep dead guard chain wedged the reclaim — the guard claim must not recurse")
+	}
+	// The top marker and its immediate guard are gone. The deeper orphan
+	// guards are collected on the way — a reclaim disposes its guard's
+	// verified-dead rival, so an upper level may sweep the level below it —
+	// and whichever survive are directly reclaimable. Either way NOTHING
+	// wedges: after one pass every dead artifact of the chain is off the
+	// disk, which is the contract the former depth cap could not honor.
+	if _, serr := os.Stat(markerPath); serr == nil {
+		t.Fatal("the dead breaker marker survived the reclaim")
+	}
+	if _, serr := os.Stat(markerPath + reclaimSuffix); serr == nil {
+		t.Fatal("the dead reclaimer's guard survived the reclaim")
+	}
+	for _, deeper := range chain[2:] {
+		if _, serr := os.Stat(deeper); serr != nil {
+			continue // already swept as a rival guard by an upper reclaim
+		}
+		if _, serr := os.Stat(deeper); serr == nil && !BreakStaleLock(deeper) {
+			t.Fatalf("an orphaned deep guard is not reclaimable: %s", deeper)
+		}
 	}
 	for _, path := range chain {
-		if _, serr := os.Stat(path); serr != nil {
-			t.Fatalf("a chain marker was deleted despite the refusal: %s", path)
+		if _, serr := os.Stat(path); serr == nil {
+			t.Fatalf("a dead chain marker survived every reclaim: %s", path)
 		}
 	}
 }
 
 // TestBreakHonorsCallerCancellation pins the budget half of the hardening
-// round: the recursive guard reclaim must honor the CALLER's cancellation —
-// a cancelled reclaim refuses before it walks, never re-entering the chain
-// through ClaimSection's retry loops (each level's loop re-walks the chain
-// below it, so an uncancelled walk of a deep chain costs exponentially many
-// chain reads).
+// round: the guard reclaim must honor the CALLER's cancellation — a
+// cancelled reclaim refuses before it reads anything, never entering the
+// guard claim's retry loop.
 func TestBreakHonorsCallerCancellation(t *testing.T) {
 	dir := t.TempDir()
 	markerPath := filepath.Join(dir, "queue.lock.breaking")
 	previousBootFixture(t, markerPath)
 	p := markerPath
-	for i := 0; i < maxReclaimDepth; i++ { // a max-depth dead chain
+	for range 5 { // a deep dead chain, deeper than any historical cap
 		p += reclaimSuffix
 		previousBootFixture(t, p)
 	}
