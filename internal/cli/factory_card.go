@@ -996,24 +996,24 @@ func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, root, runID 
 		}
 	}
 	// T2 and T3 each re-point the factory binding onto this run in their own
-	// transaction, so the queue's current-dispatch record names the run FIRST
-	// (turn-end gate relay #4, after review round-24 V2): the claim runs
-	// inside the lease section, which holds the queue lock on this same
-	// store, and a record that cannot be written fails the claim closed —
-	// before any lease exists. Recording after the transition would leave a
+	// transaction, so the queue's current-dispatch record is written inside
+	// each, right before its commit (turn-end gate relay #4, after review
+	// round-24 V2; the in-transaction form after the turn-end gate that
+	// followed): the claim runs inside the lease section, which holds the queue
+	// lock on this same store. A record that cannot be written rolls that
+	// transition back — no lease, no binding move — and a refused transition
+	// never moves the record. Recording after the transition would leave a
 	// committed lease and binding ahead of a stale record, where a retried
 	// older dispatch reads the record as current and drags the binding back.
-	// A transition that is then refused leaves the record ahead of the
-	// binding instead, the safe direction: an older operation reads as
-	// superseded and moves nothing. The owner is the row's own — empty for a
-	// picked card, which claims none until T2 names the lane.
-	if err := todoStoreAt(root).RefreshDispatchCurrentLockHeld(c.CardID, runID, c.OwnerLabel); err != nil {
-		return homestate.Card{}, false, false, err
+	// The owner is the row the transition writes — the lane once T2 names it.
+	followRecord := func(next homestate.Card) error {
+		return todoStoreAt(root).RefreshDispatchCurrentLockHeld(next.CardID, runID, next.OwnerLabel)
 	}
 	if c.State == homestate.CardPicked {
 		next, err := db.Transition(ctx, homestate.TransitionRequest{
 			RunID: runID, CardID: c.CardID, To: homestate.CardAssigned,
 			ExpectedVersion: c.Version, Actor: "factory-next", Owner: lane, Now: factoryCardNow(),
+			BeforeCommit: followRecord,
 		})
 		if err != nil {
 			return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
@@ -1023,6 +1023,7 @@ func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, root, runID 
 	leased, err := db.Transition(ctx, homestate.TransitionRequest{
 		RunID: runID, CardID: c.CardID, To: homestate.CardLeased,
 		ExpectedVersion: c.Version, Actor: lane, Now: factoryCardNow(),
+		BeforeCommit: followRecord,
 	})
 	if err != nil {
 		return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
@@ -2490,10 +2491,14 @@ func newFactoryAssignCommand() *cobra.Command {
 							return fmt.Errorf("factory assign: refused — %s: dispatch-binding recovery is the leader path's act (%s=%s marks a lane)",
 								factoryLaneBoundarySentinel, config.EnvFactoryRole, config.FactoryRoleLane)
 						}
-						if err := db.RecordDispatchBinding(ctx, cardID, runID, now); err != nil {
+						// The queue's record is written FIRST (turn-end gate, card
+						// t1538): this branch's factory write has no guard that can
+						// refuse after it, so a record that cannot be written stops
+						// the re-bind before the binding moves.
+						if err := l.RefreshDispatchCurrent(cardID, runID, card.OwnerLabel); err != nil {
 							return err
 						}
-						return l.RefreshDispatchCurrent(cardID, runID, card.OwnerLabel)
+						return db.RecordDispatchBinding(ctx, cardID, runID, now)
 					}
 					return fmt.Errorf("factory assign: card %s is %s (owner %q); only a picked card can move to assigned%s", cardID, card.State, dash(card.OwnerLabel), func() string {
 						if !card.Legacy() && toTrim != "" && toTrim != card.OwnerLabel {
@@ -2503,20 +2508,25 @@ func newFactoryAssignCommand() *cobra.Command {
 					}())
 				}
 				if toTrim != "" {
-					card, err = db.Transition(ctx, homestate.TransitionRequest{RunID: runID, CardID: cardID, To: homestate.CardAssigned, ExpectedVersion: card.Version, Actor: "assign", Owner: to, Now: now})
-					if err != nil {
-						return err
-					}
-					// The queue's current-dispatch identity follows every
-					// assignment path (review round-24 P1-3).
-					return l.RefreshDispatchCurrent(cardID, runID, toTrim)
-				}
-				// A --to-less successful assign records THIS run as the
-				// current dispatch at any version (review round-7 P1-1).
-				if err := db.RecordDispatchBinding(ctx, cardID, runID, now); err != nil {
+					// T2 re-points the binding in its own transaction, so the
+					// queue's current-dispatch identity (review round-24 P1-3)
+					// is written inside it, right before its commit (turn-end
+					// gate, card t1538): a record that cannot be written rolls
+					// the assignment back — the binding stays where it was — and
+					// a refused T2 never moves the record.
+					card, err = db.Transition(ctx, homestate.TransitionRequest{
+						RunID: runID, CardID: cardID, To: homestate.CardAssigned, ExpectedVersion: card.Version, Actor: "assign", Owner: to, Now: now,
+						BeforeCommit: func(homestate.Card) error { return l.RefreshDispatchCurrent(cardID, runID, toTrim) },
+					})
 					return err
 				}
-				return l.RefreshDispatchCurrent(cardID, runID, card.OwnerLabel)
+				// A --to-less successful assign records THIS run as the
+				// current dispatch at any version (review round-7 P1-1); the
+				// queue's record is written first, as in the re-bind above.
+				if err := l.RefreshDispatchCurrent(cardID, runID, card.OwnerLabel); err != nil {
+					return err
+				}
+				return db.RecordDispatchBinding(ctx, cardID, runID, now)
 			})
 			if err != nil {
 				return fmt.Errorf("factory assign: %w", err)

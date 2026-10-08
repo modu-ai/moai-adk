@@ -1639,12 +1639,14 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 							// touches the binding. Non-factory selections (no
 							// run env) skip the axis.
 							if runID := os.Getenv(config.EnvFactoryRunID); runID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
-								if err := recordDispatchBindingAtRoot(id, runID, queueRoot); err != nil {
+								// The queue's current-dispatch record is written
+								// FIRST (the selection claims no owner; turn-end
+								// gate, card t1538): a record that cannot be written
+								// stops the selection before the binding moves.
+								if err := l.RefreshDispatchCurrent(id, runID, ""); err != nil {
 									return err
 								}
-								// The queue's current-dispatch record follows the
-								// binding (the selection claims no owner).
-								if err := l.RefreshDispatchCurrent(id, runID, ""); err != nil {
+								if err := recordDispatchBindingAtRoot(id, runID, queueRoot); err != nil {
 									return err
 								}
 							}

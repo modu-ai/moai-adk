@@ -75,6 +75,18 @@ type TransitionRequest struct {
 	// is no longer sufficient. Nil keeps the pre-t1479 file read (callers
 	// that predate the record store).
 	VerifyRemeasure func(treeSHA, mergeSHA string) error
+	// BeforeCommit (card t1538, turn-end gate), when set, runs once inside the
+	// transition's transaction — after every guard has passed and the new row
+	// is written, right before the commit; its error rolls the whole
+	// transition back. It orders a write to ANOTHER store ahead of this
+	// commit: the queue's current-dispatch record has to name the run before
+	// the binding moves onto it (T2, T3, T8a re-point the binding in their own
+	// transaction), and only for a transition that will land — a refused
+	// transition never reaches the hook, and a record that cannot be written
+	// stops the transition instead of trailing it. The hook must not touch
+	// this factory database (its transaction is open); next is the row the
+	// transition writes.
+	BeforeCommit func(next Card) error
 	// Now is the injected clock; zero means time.Now().
 	Now time.Time
 }
@@ -270,6 +282,11 @@ func (f *FactoryDB) Transition(ctx context.Context, req TransitionRequest) (Card
 		c, err := transitionTx(ctx, f, tx, req, now)
 		if err != nil {
 			return nil, err
+		}
+		if req.BeforeCommit != nil {
+			if err := req.BeforeCommit(c); err != nil {
+				return nil, err
+			}
 		}
 		result = c
 		return nil, nil

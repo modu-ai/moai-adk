@@ -1,6 +1,10 @@
 package factory
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func dispatchCurrentTables(t *testing.T, s *BacklogStore) int {
 	t.Helper()
@@ -43,6 +47,41 @@ func TestRefreshDispatchCurrentLeavesAQueueWithoutTheRecordUntouched(t *testing.
 	}
 	if got := dispatchCurrentTables(t, s); got != 0 {
 		t.Fatalf("a refresh created todo_dispatch_current in a queue that never had it")
+	}
+}
+
+// A queue still in its legacy JSON layout cannot carry the record, and the
+// refresh does not adopt it: no database appears and the document stays as it
+// was (turn-end gate, card t1538; AC-FR-021). A queue that does not exist at
+// all is not created either.
+func TestRefreshDispatchCurrentDoesNotMigrateALegacyQueue(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "backlog.json")
+	legacy := `{"version":1,"last_seq":1,"items":[{"id":"t1","text":"legacy","added_at":"2026-01-01T00:00:00Z","spec_id":null,"state":"picked"}],"findings":[]}` + "\n"
+	if err := os.WriteFile(path, []byte(legacy), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := NewBacklogStore(path)
+	if err := s.RefreshDispatchCurrentLockHeld("t1", "run-1", "lane-1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(s.EnginePath()); err == nil {
+		t.Fatalf("a refresh migrated the legacy queue into %s", s.EnginePath())
+	}
+	if raw, err := os.ReadFile(path); err != nil || string(raw) != legacy {
+		t.Fatalf("legacy queue document changed: err=%v\n%s", err, raw)
+	}
+}
+
+func TestRefreshDispatchCurrentDoesNotCreateAnAbsentQueue(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "backlog.json")
+	s := NewBacklogStore(path)
+	if err := s.RefreshDispatchCurrentLockHeld("t1", "run-1", "lane-1"); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{path, s.EnginePath()} {
+		if _, err := os.Stat(p); err == nil {
+			t.Fatalf("a refresh created %s in a directory with no queue", p)
+		}
 	}
 }
 

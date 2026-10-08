@@ -345,13 +345,15 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 						// is set (non-factory auto usage); a binding
 						// failure refuses the pick.
 						if envRunID := os.Getenv(config.EnvFactoryRunID); envRunID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
-							if berr := recordDispatchBindingAtRoot(card.ID, envRunID, root); berr != nil {
-								return berr
-							}
 							// Mutate holds the queue lock; the current-dispatch
-							// record follows the binding (no owner is claimed).
+							// record is written FIRST (no owner is claimed; turn-end
+							// gate, card t1538), so a record that cannot be written
+							// stops the re-selection before the binding moves.
 							if cerr := store.RefreshDispatchCurrentLockHeld(card.ID, envRunID, ""); cerr != nil {
 								return cerr
+							}
+							if berr := recordDispatchBindingAtRoot(card.ID, envRunID, root); berr != nil {
+								return berr
 							}
 						}
 						return nil

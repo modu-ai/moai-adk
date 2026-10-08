@@ -489,7 +489,7 @@ func TestFactoryBundleRecordsUnderTheQueueLock(t *testing.T) {
 	}
 	t.Cleanup(finishProbe)
 	prev := factoryBundleRecord
-	factoryBundleRecord = func(ctx context.Context, db *homestate.FactoryDB, runID string, members []homestate.BundleMemberSpec, lane string, now time.Time) (homestate.Card, error) {
+	factoryBundleRecord = func(ctx context.Context, db *homestate.FactoryDB, runID string, members []homestate.BundleMemberSpec, lane string, now time.Time, beforeCommit func(homestate.Card) error) (homestate.Card, error) {
 		started = true
 		go func() {
 			defer close(done)
@@ -507,7 +507,7 @@ func TestFactoryBundleRecordsUnderTheQueueLock(t *testing.T) {
 		case <-time.After(200 * time.Millisecond):
 			// Still blocked after the window — the lock is held.
 		}
-		return db.RecordBundleChain(ctx, runID, members, lane, "bundle", now)
+		return db.RecordBundleChain(ctx, runID, members, lane, "bundle", now, beforeCommit)
 	}
 	t.Cleanup(func() { factoryBundleRecord = prev })
 

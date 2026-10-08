@@ -204,11 +204,13 @@ func runTodoClaimRoot(root string, cmd *cobra.Command, lane, renew string) error
 		}
 		result = res
 		if envRunID := os.Getenv(config.EnvFactoryRunID); envRunID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
-			berr := recordDispatchBindingAtRoot(result.Item.ID, envRunID, root)
+			// The queue's current-dispatch record is written FIRST under the
+			// same held lock (no owner is claimed; turn-end gate, card t1538):
+			// a record that cannot be written stops the claim before the
+			// binding moves.
+			berr := l.RefreshDispatchCurrent(result.Item.ID, envRunID, "")
 			if berr == nil {
-				// The queue's current-dispatch record follows the binding
-				// under the same held lock (no owner is claimed).
-				berr = l.RefreshDispatchCurrent(result.Item.ID, envRunID, "")
+				berr = recordDispatchBindingAtRoot(result.Item.ID, envRunID, root)
 			}
 			if berr != nil {
 				// Roll the claim back under the same held lock: no
