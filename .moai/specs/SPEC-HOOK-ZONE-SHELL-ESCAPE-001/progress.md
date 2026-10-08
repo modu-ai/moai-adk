@@ -890,6 +890,38 @@ against the pre-fix source by temporarily restoring
 `HEAD:internal/hook/protected_zone_shell.go` (the M2.6 fix sat in the
 working tree; restored after the capture). Inputs transport-verified:
 whole-file NUL-byte scan zero, doubled backslash.
+
+**M2.6 remedy — dispatch order, per-generation joins, dedup-before-cap
+(GREEN record).** Shape: (1) the dual-world verb classification moved BEFORE
+any branch dispatch — `zoneMutationVerbName` fires at the top of the
+command analysis, so a word whose modern reading truncates to `cd` or to a
+declared-function name still runs the mutation analysis for its pre-4.2
+world; the modern dispatch (functions/cd/sed/git) still runs below, and the
+candidate set unions both worlds' effects; (2) git file arguments keep
+their OWN generation's readings (`fileArgs [2][]string` via
+`zoneWordWorldReadings`) — generation i's directory joins generation i's
+file arguments only, so the cross-generation join no longer exists; (3)
+dedup runs BEFORE the cap at judgment (`zoneDedupStrings` then the
+`zoneCandidateCap` check) — a unicode-free command's both-worlds-identical
+candidates collapse first and a plain 2,050-file command fits the cap.
+
+- **Command** (all 29 instrument tests): `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test
+  ./internal/hook -run 'TestCheckProtectedZoneShell|TestZoneUnescapeAnsiC|TestZoneWordText' -count=1`
+- **Exit code**: `0`
+- **Observed (verbatim)**: `ok  	github.com/modu-ai/moai-adk/internal/hook	1.413s`
+  (29/29 PASS — the three gate-19 rows flipped: verb-before-dispatch now
+  DENIES; the two over-block rows now ALLOW).
+- **Full package regression (M2.6)**: `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1
+  -timeout=25m -v ./internal/hook/` — exit 0, verbatim tail `PASS` / `ok
+  github.com/modu-ai/moai-adk/internal/hook	281.102s` /
+  `PACKAGE_POST26_EXIT=0`; 3658 RUN lines, ZERO `--- FAIL` lines. Slot
+  lease `hook-suite` held for the run, released after.
+- Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
+  `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
+  clean; family coverage `13.5%` (all-rows selector).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

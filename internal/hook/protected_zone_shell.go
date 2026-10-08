@@ -770,6 +770,18 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		// base that matches no verb, exactly as before
 		name = path.Base(name)
 	}
+	// the dual-world verb classification completes BEFORE any branch
+	// dispatch: a word whose PRE-4.2 reading names a mutating executable is
+	// judged as that verb regardless of what the modern reading alone would
+	// dispatch — the cd branch's early return used to skip it, and a word
+	// truncating to a declared-function name is the same class (gate round
+	// 19 P1). The modern world's own dispatch still runs below: both
+	// worlds' effects are possible and the candidate set unions them.
+	verbWorld := zoneMutationVerbName(cmd.Args)
+	if verbWorld != "" {
+		w.mutating = true
+		w.zoneCands(zonePathCandidates(cmd.Args[1:]))
+	}
 	if bodies, declared := w.funcs[name]; declared {
 		// a call to a function declared in this command runs every body the
 		// name may have (round 10 P2). Each body is a separate WORLD, not a
@@ -882,11 +894,13 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 	if gitWorld {
 		w.zoneGitArgs(cmd)
 	}
-	if !zoneMutationVerbs[name] && zoneMutationVerbName(cmd.Args) == "" {
-		return
+	if verbWorld == "" {
+		if !zoneMutationVerbs[name] {
+			return
+		}
+		w.mutating = true
+		w.zoneCands(zonePathCandidates(cmd.Args[1:]))
 	}
-	w.mutating = true
-	w.zoneCands(zonePathCandidates(cmd.Args[1:]))
 }
 
 // zoneMutationVerbName returns the mutation verb the command's EXECUTABLE
@@ -1047,19 +1061,22 @@ func (w *zoneWalker) zoneGitArgs(cmd *syntax.CallExpr) {
 		return
 	}
 	w.mutating = true
-	var fileArgs []string
+	var fileArgs [2][]string
 	for _, a := range cmd.Args[subIdx+1:] {
-		worlds, flit := zoneWordCandidates(a)
+		readings, flit := zoneWordWorldReadings(a)
 		if !flit {
 			continue
 		}
-		// per-candidate emptiness/option checks: an empty MODERN reading
-		// must not discard the word's old-bash candidate (gate round 17 P1)
-		for _, wText := range worlds {
+		// per-candidate emptiness/option checks (gate round 17 P1), and
+		// each generation keeps ITS OWN readings: generation i's directory
+		// joins generation i's file arguments only — a cross-generation
+		// join is a path no generation executes (gate round 19 P2)
+		for world := 0; world < 2; world++ {
+			wText := readings[world]
 			if wText == "" || wText == "--" || strings.HasPrefix(wText, "-") {
 				continue
 			}
-			fileArgs = append(fileArgs, wText)
+			fileArgs[world] = append(fileArgs[world], wText)
 		}
 	}
 	// every possible directory is a base the subcommand's file arguments
@@ -1078,7 +1095,7 @@ func (w *zoneWalker) zoneGitArgs(cmd *syntax.CallExpr) {
 						gitDir = gitDir + "/" + dirOpt
 					}
 				}
-				w.cands = append(w.cands, zoneRelativeTo(gitDir, fileArgs)...)
+				w.cands = append(w.cands, zoneRelativeTo(gitDir, fileArgs[world])...)
 				for _, wtOpt := range wtOpts[world] {
 					if wtOpt == "" {
 						continue
@@ -1089,7 +1106,7 @@ func (w *zoneWalker) zoneGitArgs(cmd *syntax.CallExpr) {
 					} else {
 						wtDir = wtDir + "/" + wtOpt
 					}
-					w.cands = append(w.cands, zoneRelativeTo(wtDir, fileArgs)...)
+					w.cands = append(w.cands, zoneRelativeTo(wtDir, fileArgs[world])...)
 				}
 			}
 		}
@@ -1477,6 +1494,10 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 		return reason
 	}
 
+	// dedup BEFORE the cap: a unicode-free command contributes the same
+	// path from both worlds, and capping before dedup would false-deny a
+	// plain command whose deduped set fits (gate round 19 P2)
+	w.cands = zoneDedupStrings(w.cands)
 	if len(w.cands) > zoneCandidateCap {
 		// a candidate set beyond the cap cannot be judged soundly at this
 		// scale — denied fail-closed, the bounded-walk philosophy (gate
