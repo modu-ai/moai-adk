@@ -449,19 +449,26 @@ func (env *ledgerCheckEnv) errf(format string, args ...any) {
 
 // checkRowCoverage re-runs the unit extractor against the anchor texts and
 // proves every extracted unit has exactly one row at the same position and
-// text, and no row is orphaned (REQ-ALB-015 row-coverage condition).
+// text, and no row is orphaned (REQ-ALB-015 row-coverage condition). The
+// sweep enumerates the DECLARED ledger scope (Head.LedgerScope.Members),
+// never a row-derived file set: a file whose rows were all deleted must
+// still be swept, or its obligations silently leave the check.
 func (env *ledgerCheckEnv) checkRowCoverage() {
 	byFile := map[string][]*bindingLedgerRow{}
 	for i := range env.ledger.Rows {
 		r := &env.ledger.Rows[i]
-		byFile[r.Source.File] = append(byFile[r.Source.File], r)
+		member := templatePathToMember(r.Source.File)
+		byFile[member] = append(byFile[member], r)
 	}
-	unitCount, matched, uncovered, orphans, textMismatch, headingDrift := 0, 0, 0, 0, 0, 0
+	unitCount, matched, uncovered, orphans, textMismatch, headingDrift, dupes := 0, 0, 0, 0, 0, 0, 0
 	filesExtracted := 0
-	for file, rows := range byFile {
-		content, ok := env.anchor(file)
+	inScope := map[string]bool{}
+	for _, member := range env.ledger.Head.LedgerScope.Members {
+		inScope[member] = true
+		rows := byFile[member]
+		content, ok := env.anchor(memberTemplatePath(member))
 		if !ok {
-			env.errf("row coverage: anchor content unavailable for %s", file)
+			env.errf("row coverage: anchor content unavailable for declared member %s", member)
 			continue
 		}
 		units, _ := extractUnits(content)
@@ -475,13 +482,18 @@ func (env *ledgerCheckEnv) checkRowCoverage() {
 		for _, r := range rows {
 			u, ok := byStart[r.Source.StartLine]
 			if !ok {
-				env.errf("row coverage: row %s (%s:%d) has no extracted anchor unit", r.ID, file, r.Source.StartLine)
+				env.errf("row coverage: row %s (%s:%d) has no extracted anchor unit", r.ID, member, r.Source.StartLine)
 				orphans++
+				continue
+			}
+			if claimed[r.Source.StartLine] {
+				env.errf("row coverage: row %s duplicates a claim on unit %s:%d — exactly one row per unit", r.ID, member, r.Source.StartLine)
+				dupes++
 				continue
 			}
 			claimed[r.Source.StartLine] = true
 			if u.Text != r.BeforeText {
-				env.errf("row coverage: row %s before_text differs from the anchor unit at %s:%d", r.ID, file, r.Source.StartLine)
+				env.errf("row coverage: row %s before_text differs from the anchor unit at %s:%d", r.ID, member, r.Source.StartLine)
 				textMismatch++
 				continue
 			}
@@ -492,16 +504,34 @@ func (env *ledgerCheckEnv) checkRowCoverage() {
 		}
 		for _, u := range units {
 			if !claimed[u.StartLine] {
-				env.errf("row coverage: uncovered anchor unit at %s:%d (%q...)", file, u.StartLine, firstN(u.Text, 60))
+				env.errf("row coverage: uncovered anchor unit at %s:%d in declared member %s (%q...)", member, u.StartLine, member, firstN(u.Text, 60))
 				uncovered++
 			}
 		}
 	}
-	env.t.Logf("[row coverage] swept files=%d units=%d rows matched=%d uncovered=%d orphan rows=%d text mismatches=%d heading drift=%d",
-		filesExtracted, unitCount, matched, uncovered, orphans, textMismatch, headingDrift)
+	for member, rows := range byFile {
+		if !inScope[member] {
+			env.errf("row coverage: %d rows reference %s which is not in the declared ledger scope", len(rows), member)
+		}
+	}
+	env.t.Logf("[row coverage] swept files=%d units=%d rows matched=%d uncovered=%d orphan rows=%d text mismatches=%d heading drift=%d duplicate claims=%d",
+		filesExtracted, unitCount, matched, uncovered, orphans, textMismatch, headingDrift, dupes)
 	if filesExtracted == 0 || unitCount == 0 {
 		env.errf("row coverage swept nothing (files=%d units=%d) — empty sweep is a failure, not a pass", filesExtracted, unitCount)
 	}
+}
+
+// memberTemplatePath maps a declared ledger-scope member (rules-dir-relative,
+// e.g. "core/agent-common-protocol.md") to its full template path — the form
+// the anchor-content function takes and rows' Source.File carries.
+func memberTemplatePath(member string) string {
+	return templatePrefix + ".claude/rules/moai/" + member
+}
+
+// templatePathToMember is the inverse of memberTemplatePath; paths outside
+// the rules tree come back unchanged (and are reported as out-of-scope rows).
+func templatePathToMember(repoRel string) string {
+	return strings.TrimPrefix(repoRel, templatePrefix+".claude/rules/moai/")
 }
 
 func firstN(s string, n int) string {
@@ -817,12 +847,18 @@ func (env *ledgerCheckEnv) checkAC021FragmentRule() {
 		files = append(files, onDemandFile{rel: slash, lines: trimmedLineSet(string(data))})
 		return nil
 	})
-	// Deployed skill files.
-	_ = filepath.Walk(filepath.Join(env.root, ".claude", "skills"), func(path string, info os.FileInfo, err error) error {
+	// Skill files. The deployer excludes the project .claude/skills/ tree from
+	// the deployed project, so sweeping env.root/.claude/skills is void — the
+	// skills sweep must walk the deployment ORIGIN (the embedded template
+	// source) instead. Rules-vs-skills counts are reported separately so
+	// neither sweep can go silently empty.
+	skillFiles := 0
+	skillsRoot := filepath.Join(repoRootFromTemplatePkg(env.t), "internal", "template", "templates", ".claude", "skills")
+	_ = filepath.Walk(skillsRoot, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !strings.HasSuffix(info.Name(), ".md") {
 			return nil //nolint:nilerr
 		}
-		rel, relErr := filepath.Rel(env.root, path)
+		rel, relErr := filepath.Rel(repoRootFromTemplatePkg(env.t), path)
 		if relErr != nil {
 			return nil //nolint:nilerr
 		}
@@ -831,16 +867,31 @@ func (env *ledgerCheckEnv) checkAC021FragmentRule() {
 			return nil //nolint:nilerr
 		}
 		files = append(files, onDemandFile{rel: filepath.ToSlash(rel), lines: trimmedLineSet(string(data))})
+		skillFiles++
 		return nil
 	})
 	for j := range files {
 		files[j].anchorLines = map[string]bool{}
-		if anchorData, ok := env.anchor(templatePrefix + files[j].rel); ok {
+		anchorRel := files[j].rel
+		if !strings.HasPrefix(anchorRel, templatePrefix) {
+			anchorRel = templatePrefix + anchorRel
+		}
+		if anchorData, ok := env.anchor(anchorRel); ok {
 			files[j].anchorLines = trimmedLineSet(string(anchorData))
 		}
 	}
 
-	linesChecked, hits, exemptAtAnchor := 0, 0, 0
+	linesChecked, hits, exemptAtAnchor := env.sweepFragmentLines(files)
+	env.t.Logf("[AC-ALB-021(2)] fragment sweep: binding/normative qualifying lines=%d on-demand rule files=%d skill files=%d violations=%d lines exempt (already in anchor copy)=%d",
+		linesChecked, len(files)-skillFiles, skillFiles, hits, exemptAtAnchor)
+	if linesChecked == 0 || len(files) == 0 || skillFiles == 0 {
+		env.errf("AC-ALB-021(2) fragment sweep empty (lines=%d files=%d skill files=%d) — empty sweep is a failure, not a pass", linesChecked, len(files), skillFiles)
+	}
+}
+
+// sweepFragmentLines scans every binding/normative after-text line of 40+
+// UTF-16 units against the on-demand file line sets; returns the swept counts.
+func (env *ledgerCheckEnv) sweepFragmentLines(files []onDemandFile) (linesChecked, hits, exemptAtAnchor int) {
 	for i := range env.ledger.Rows {
 		r := &env.ledger.Rows[i]
 		if r.Kind != "binding" && r.Kind != "normative" {
@@ -865,11 +916,7 @@ func (env *ledgerCheckEnv) checkAC021FragmentRule() {
 			}
 		}
 	}
-	env.t.Logf("[AC-ALB-021(2)] fragment sweep: binding/normative qualifying lines=%d on-demand files=%d violations=%d lines exempt (already in anchor copy)=%d",
-		linesChecked, len(files), hits, exemptAtAnchor)
-	if linesChecked == 0 || len(files) == 0 {
-		env.errf("AC-ALB-021(2) fragment sweep empty (lines=%d files=%d) — empty sweep is a failure, not a pass", linesChecked, len(files))
-	}
+	return linesChecked, hits, exemptAtAnchor
 }
 
 // ---------------------------------------------------------------------------
@@ -1071,6 +1118,67 @@ func TestBindingLedgerIntegrity(t *testing.T) {
 			}
 			mutated := newLedgerCheckEnv(t, root, mutatedLedger, members, anchor)
 			observeMutationFailure(t, mutated, "fixture (g): companion: location on a binding row must fail", row.ID)
+		})
+
+		// (h) deleting ALL rows of one declared member must not remove that
+		// member from the sweep: the coverage check enumerates the DECLARED
+		// ledger scope, so the file's units come back uncovered naming the
+		// member (gate finding — a row-derived file list let a whole file
+		// vanish from the check).
+		t.Run("h_member_rows_all_deleted_still_swept", func(t *testing.T) {
+			member := led.Head.LedgerScope.Members[0]
+			mutatedLedger := cloneLedger(led)
+			kept := mutatedLedger.Rows[:0]
+			for _, r := range mutatedLedger.Rows {
+				if templatePathToMember(r.Source.File) != member {
+					kept = append(kept, r)
+				}
+			}
+			mutatedLedger.Rows = kept
+			mutated := newLedgerCheckEnv(t, root, mutatedLedger, members, anchor)
+			observeMutationFailure(t, mutated, "fixture (h): all rows of a declared member deleted — its units must be reported uncovered", member)
+		})
+
+		// (i) two rows claiming the same anchor unit must fail — exactly one
+		// row per unit (REQ-ALB-015); the claim map must reject, not
+		// overwrite (gate finding — a duplicated row passed with errors=[]).
+		t.Run("i_duplicate_unit_claim_fails", func(t *testing.T) {
+			row := firstRowOfKind(led, "binding")
+			dup := *row
+			dup.ID = row.ID + "-duplicate"
+			mutatedLedger := cloneLedger(led)
+			mutatedLedger.Rows = append(mutatedLedger.Rows, dup)
+			mutated := newLedgerCheckEnv(t, root, mutatedLedger, members, anchor)
+			observeMutationFailure(t, mutated, "fixture (i): a duplicated unit claim must fail", "duplicates a claim")
+		})
+
+		// (j) a binding fragment planted on the skill sweep surface must be
+		// caught (AC-ALB-021(2)) — the skills sweep walks the deployment
+		// origin (the template source), not the void project .claude/skills
+		// path the deployer excludes (gate finding — the skill scan was
+		// entirely hollow).
+		t.Run("j_fragment_in_skill_surface_caught", func(t *testing.T) {
+			row := firstRowOfKind(led, "binding")
+			fragment := ""
+			for _, line := range strings.Split(row.AfterText, "\n") {
+				if utf16CodeUnits(strings.TrimSpace(line)) >= 40 {
+					fragment = strings.TrimSpace(line)
+					break
+				}
+			}
+			if fragment == "" {
+				t.Skipf("row %s has no 40+ unit line; this fixture needs a multi-line binding row", row.ID)
+			}
+			mutated := newLedgerCheckEnv(t, root, led, members, anchor)
+			files := []onDemandFile{{
+				rel:   "internal/template/templates/.claude/skills/moai/workflows/planted-fixture.md",
+				lines: map[string]bool{fragment: true},
+			}}
+			_, hits, _ := mutated.sweepFragmentLines(files)
+			if hits == 0 {
+				t.Fatalf("fixture (j): planted skill-surface fragment of row %s was NOT caught", row.ID)
+			}
+			t.Logf("fixture (j) observed red: planted skill-surface fragment of row %s caught (hits=%d)", row.ID, hits)
 		})
 	})
 }
