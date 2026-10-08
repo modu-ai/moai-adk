@@ -458,3 +458,47 @@ func TestCheckProtectedZoneShellNonAsciiOutsideZoneStaysAllowed(t *testing.T) {
 	}
 	t.Logf("swept=%d", swept)
 }
+
+// TestCheckProtectedZoneShellCodePointNulDoesNotTruncate — gate round 10 P1
+// regression pin (card t1585): the part-level NUL termination is scoped to
+// the origins REQ-HZS-001 names — hex 0x5C x 0 0 and the octal escapes, the
+// two origins EVERY bash renders as a NUL byte. A code-point escape whose
+// value is 0 must NOT terminate the part: its support is version-variant
+// (this host's bash 3.2.57 renders the escape text literally — both-literal,
+// decisively od-measured on this card), so a pre-4.2 shell acts on the FULL
+// literal path while a decoder that truncates at any NUL byte judges a
+// SHORTER word and allows. The reviewer's measured shape: a literally-named
+// entry "docs" + backslash + u + 0 0 0 0 (text, created below as a
+// directory) plus a command of the form rm $'docs<esc0>/../zone_dir/
+// marker.md' — bash 3.2 resolves it through the literal-named entry into
+// zone_dir and deletes the marker (gate-measured). The judgment keeps the
+// pre-fix shape for code-point-origin NUL bytes — the NUL-bearing text
+// Clean-collapses into the zone on the lexical arm and the row stays DENY.
+// Green pre-M2, RED under the first M2 cut (any-NUL truncation judged
+// "docs" and allowed), DENY again under the origin-scoped refinement —
+// this row pins that scoping. In the Go source below the escape text is
+// written with the doubled backslash (transport-safe source syntax for the
+// single 0x5C byte at runtime).
+func TestCheckProtectedZoneShellCodePointNulDoesNotTruncate(t *testing.T) {
+	root := newZoneRoot(t, zoneShippedDoc(hzsShellManifest), "")
+	if err := os.MkdirAll(filepath.Join(root, "zone_dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(root, "zone_dir", "marker.md")
+	if err := os.WriteFile(marker, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The literally-named entry the pre-4.2 shell's argument walks through:
+	// d o c s backslash u 0 0 0 0 — TEXT.
+	if err := os.MkdirAll(filepath.Join(root, "docs\\u0000"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	h := zoneTestHandler(t, root)
+	const scopingCmd = "rm $'docs\\u0000/../zone_dir/marker.md'"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": scopingCmd})
+	wantZoneDeny(t, "code-point nul origin scoping", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	if _, err := os.Stat(marker); err != nil {
+		t.Errorf("code-point nul origin scoping: deny observed but the protected marker is gone: %v", err)
+	}
+	t.Logf("swept=%d", 1)
+}

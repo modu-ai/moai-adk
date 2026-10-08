@@ -369,6 +369,51 @@ long test names; the unanchored selector forms used in §E.2 above are the
 measured-working set; (2) the GREEN-flips ledger entries may cite this §E.2
 per the ledger's citation convention (as the M1-final entry already does).
 
+### Gate round 10 — M2.1 origin-scoping refinement (2026-10-09)
+
+The review gate fired a P1 on the first M2 cut: the part-level truncation
+implemented there cut at ANY decoded NUL byte, while REQ-HZS-001 scopes the
+terminator to "a NUL byte — from `\x00` or from an octal escape". A
+code-point-origin NUL (`\u0000`) must NOT terminate: the escape's support is
+version-variant (this host's bash 3.2.57 renders the escape text literally —
+the card's own both-literal measurement), so a truncating decoder judges a
+SHORTER word than the pre-4.2 shell acts on. Reviewer-measured regression: a
+literally-named `docs\u0000` entry plus `rm $'docs\u0000/../zone_dir/
+marker.md'` — bash 3.2 resolves through the literal-named entry and deletes
+the protected marker; the broad truncation judged `docs` and ALLOWED.
+
+**New instrument row (RED under the first M2 cut `f4a0227f3`)** — command +
+verbatim output + exit code + tree, the four elements: tree `f4a0227f3` +
+the row edit (committed in the M2.1 row commit preceding the refinement
+commit).
+
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellCodePointNulDoesNotTruncate' -count=1 -v`
+- **Exit code**: `1`
+- **Observed (verbatim)**:
+
+```
+=== RUN   TestCheckProtectedZoneShellCodePointNulDoesNotTruncate
+    protected_zone_shell_repro_test.go:499: code-point nul origin scoping: decision="allow" reason="", want deny
+    protected_zone_shell_repro_test.go:503: swept=1
+--- FAIL: TestCheckProtectedZoneShellCodePointNulDoesNotTruncate (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.848s
+FAIL
+```
+
+The row's inputs were transport-verified after authoring: `od -c` shows the
+doubled-backslash form (`5c 5c 75 30 30 30 30`) on both literals and a
+whole-file NUL-byte scan returns zero.
+
+**Origin-scoping note (the one-line record the refinement owes):** the NUL
+terminator truncates ONLY at `\x00` and octal-escape origins — the two
+origins every bash renders as a NUL byte, named verbatim by REQ-HZS-001. A
+`\u`/`\U` code point whose value is 0 stays in the decoded text (pre-fix
+judgment shape): its rendering is version-variant, the divergence is the
+documented `\u`/`\U` host-variance residual (spec §B), and the NUL-bearing
+text under-matches toward deny on the lexical arm (Clean-collapse).
+
+
 
 
 
