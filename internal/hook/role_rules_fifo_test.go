@@ -11,8 +11,10 @@ package hook
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
@@ -40,4 +42,36 @@ func TestSessionStartRoleRulesFifoFailVisible(t *testing.T) {
 	// test deadline.
 	inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
 	assertFailVisible(t, inj, "fifo")
+}
+
+// TestReadRuleFileBytesFifoNonblocking is the TOCTOU-hardening seam test:
+// the POSIX reader opens NON-BLOCKING and judges the opened handle, so a
+// FIFO at the rule path is rejected immediately — no writer, no hang. This
+// exercises the seam directly (a swap-race fixture would be flaky; the
+// open-regular-file path is exercised by every other fixture in this file).
+func TestReadRuleFileBytesFifoNonblocking(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("FIFO fixture is POSIX-only")
+	}
+	root := t.TempDir()
+	fifo := filepath.Join(root, "role_rules_fifo_probe")
+	if err := syscall.Mkfifo(fifo, 0o644); err != nil {
+		t.Fatalf("mkfifo: %v", err)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		if _, err := readRuleFileBytes(fifo); err == nil {
+			t.Errorf("FIFO read succeeded — the non-regular rejection did not fire")
+		}
+	}()
+	select {
+	case <-done:
+		// rejected without a writer: the non-blocking open + handle fstat
+		// path held
+	case <-time.After(4 * time.Second):
+		t.Fatal("readRuleFileBytes blocked 4s on a FIFO with no writer — the TOCTOU window is open")
+	}
+	<-done
 }

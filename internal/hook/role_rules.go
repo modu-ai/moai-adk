@@ -156,25 +156,29 @@ func roleRuleDeployRel(root string, rule roleRuleFile) string {
 // lines. An empty marker pair yields an empty core (a legitimate state —
 // the caller emits the pointer only). Every failure names its cause; the
 // binding ledger is never read (REQ-ALB-023).
+
+// errNotRegularFile is the shared non-regular rejection: the platform reader
+// (role_rules_read_{unix,windows}.go) returns it when the opened handle is
+// not a regular file, and the caller wraps it into the REQ-ALB-009 failure
+// path with the rule path named.
+var errNotRegularFile = fmt.Errorf("role rule file is not a regular file")
+
 func buildRoleCore(root string, rule roleRuleFile) (string, error) {
 	rel := roleRuleDeployRel(root, rule)
 	path := filepath.Join(root, filepath.FromSlash(rel))
-	// Only regular files are read: a FIFO (or any special file) at the rule
-	// path would block os.ReadFile forever waiting for a writer, hanging
-	// SessionStart with no rules, warning, or directive. Non-regular files
-	// take the REQ-ALB-009 failure path instead.
-	if fi, err := os.Stat(path); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return "", fmt.Errorf("role rule file absent: %s", rel)
-		}
-		return "", fmt.Errorf("role rule file unreadable: %s: %w", rel, err)
-	} else if !fi.Mode().IsRegular() {
-		return "", fmt.Errorf("role rule file is not a regular file: %s", rel)
-	}
-	data, err := os.ReadFile(path)
+	// Only regular files are read, judged on the OPENED HANDLE (POSIX
+	// TOCTOU guard — role_rules_read_unix.go): a FIFO (or any special file)
+	// at the rule path — including one swapped in after a path Stat — would
+	// block a plain read forever waiting for a writer, hanging SessionStart
+	// with no rules, warning, or directive. Non-regular opens take the
+	// REQ-ALB-009 failure path instead.
+	data, err := readRuleFileBytes(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return "", fmt.Errorf("role rule file absent: %s", rel)
+		}
+		if errors.Is(err, errNotRegularFile) {
+			return "", fmt.Errorf("%w: %s", errNotRegularFile, rel)
 		}
 		return "", fmt.Errorf("role rule file unreadable: %s: %w", rel, err)
 	}
