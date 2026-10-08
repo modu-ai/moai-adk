@@ -16,7 +16,9 @@ Directory convention:
 - **User-generated harness agents**: `.claude/agents/harness/<agent-name>.md` — created by the v4 harness Builder (`builder-harness` agent via `/moai harness`; the legacy `moai-meta-harness` skill now only redirects to it). **NOT template-distributed**, **NOT touched by `moai update`**.
 - **Maintainer-only local agents**: `.claude/agents/local/<agent-name>.md` — domain specialist agents created and maintained locally by the project maintainer (e.g., `release-update-specialist.md`, `github-specialist.md`). **NOT template-distributed**, **NOT touched by `moai update`**. Distinguished from `harness/` which is auto-generated; `local/` is hand-authored maintainer infrastructure.
 
-[ZONE:Frozen] [HARD] Agent Directory Convention (Namespace Separation):
+## Agent Directory Convention
+
+[ZONE:Frozen] [HARD] (Namespace separation applies.)
 
 | Path | Scope | Source of Truth | `moai update` behavior |
 |------|-------|-----------------|------------------------|

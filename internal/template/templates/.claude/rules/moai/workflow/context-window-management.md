@@ -1,6 +1,6 @@
 # Context Window Management
 
-Long-horizon session continuity guidance for both users and the MoAI orchestrator.
+> Moved to the detail companion: `context-window-management-detail.md` ("Context Window Management").
 
 ## Context Window Targets
 
@@ -54,20 +54,14 @@ Estimate context usage state-file-first: read `<projectDir>/.moai/state/context-
 
 **Snapshot confidence.** The snapshot relays the percentage Claude Code already computed; the statusline writes it through without recomputation, so an upstream metering change reaches every snapshot on disk. Measurement puts it within about a percentage point of transcript-rebuilt occupancy, with no double-counting signature either way. Treat it as trustworthy to about a point. Re-derive the number rather than cite it when a verdict needs it — a relayed figure carries the upstream's defects silently. Sample size, command, distribution, and dated baseline: `context-window-management-detail.md` § Snapshot confidence.
 
-The statusline's two-stage `/clear` marker is a signal, not a guarantee: the hard stage is
-frequently pre-empted by the runtime's auto-compact and rarely fires. Snapshot field list and the
-guide-gated advisory: `context-window-management-detail.md` § Detection Heuristics.
+> Moved to the detail companion: `context-window-management-detail.md` ("Detection Heuristics").
 
 ## Applies To
 
-All MoAI workflows: `/moai plan|run|sync`, multi-SPEC Epics, iterative loops (`/moai loop`, GAN loop).
+> Moved to the detail companion: `context-window-management-detail.md` ("Applies To").
 
 ## Cross-references
 
-- `.claude/rules/moai/workflow/cache-aware-execution.md` — prompt-cache-aware `/clear` timing (its directive 4 permits an earlier `/clear` before a large multi-spawn batch, below the thresholds above) + gate placement and stagger-spawn ordering.
-- `.claude/rules/moai/workflow/session-handoff.md` — paste-ready resume format + auto-memory integration. Trigger #1 consumes the model-specific threshold table from this file (1M = 50%, 200K = 90%); `/clear` recommendation and paste-ready emission both fire at the same boundary.
-- `context-window-management-detail.md` — the lazy companion. Load it for § Why This Matters · § Claude Code's Graduated-Compaction Layers · § Reduction Ladder — cheaper moves before `/clear` (the four cheaper rungs and the checkpoint mechanics) · § GLM-5.3 context window · § Multi-session work — resume rather than re-establish · § Detection Heuristics · § Snapshot confidence
+> Moved to the detail companion: `context-window-management-detail.md` ("Cross-references").
 
 ---
-
-Status: HARD operational rule, applies to all sessions
