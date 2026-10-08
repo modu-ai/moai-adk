@@ -268,6 +268,19 @@ fail-open).`,
 		RunE:         runCodexReviewGate,
 	})
 
+	// Add "codex-review-entry" subcommand (SPEC-GATE-BOTTLENECK-001
+	// REQ-GBN-002). Next-turn-entry enforcement of the delayed review block:
+	// reads the receipt the background review recorded and blocks the prompt
+	// on a fresh FAIL. Opt-in default-off via the same
+	// workflow.codex.review_gate.enabled flag as the Stop gate; fail-open.
+	hookCmd.AddCommand(&cobra.Command{
+		Use:          "codex-review-entry",
+		Short:        "Turn-entry codex review enforcement (opt-in; blocks the prompt on a fresh FAIL receipt)",
+		Long:         `Read the codex review receipt the background review of the previous turn recorded and emit the standard ALLOW/BLOCK hook output for the current tree state: a fresh FAIL blocks the prompt with the preserved finding detail, every other state allows. Never runs a review itself. Opt-in via workflow.codex.review_gate.enabled (default off). Fail-open: any error logs to stderr and exits 0. SPEC-GATE-BOTTLENECK-001 REQ-GBN-002 / AC-GBN-004.`,
+		SilenceUsage: true,
+		RunE:         runCodexReviewEntry,
+	})
+
 	// Add "multi-review-gate" subcommand (SPEC-AUDIT-MULTI-MODEL-001 M5
 	// REQ-AMM-013 / REQ-AMM-014 / REQ-AMM-015). Stop-hook gate that reads the
 	// most recent multi-model ConvergenceResult and blocks only on an
@@ -308,6 +321,10 @@ type registryShutdowner interface{ Shutdown() }
 // @MX:REASON: [AUTO] fan_in=3, called from hook.go init(), coverage_test.go, hook_e2e_test.go
 // runHookEvent dispatches a hook event by reading JSON from stdin and writing to stdout.
 func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
+	// SPEC-FEEDBACK-PARTICIPATION-001 (REQ-ANON-015): the process is marked
+	// as a hook dispatch so the participation sender refuses to publish
+	// from this path — flush runs from the CLI's flush triggers only.
+	_ = os.Setenv(config.EnvHookDispatch, "1")
 	if deps == nil || deps.HookProtocol == nil || deps.HookRegistry == nil {
 		return fmt.Errorf("hook system not initialized")
 	}
@@ -522,6 +539,8 @@ func runHookList(cmd *cobra.Command, _ []string) error {
 // runAgentHook executes an agent-specific hook action.
 // Agent actions are like: cycle-pre-transformation, backend-validation, etc.
 func runAgentHook(cmd *cobra.Command, args []string) error {
+	// Same hook-dispatch marking as runHookEvent (REQ-ANON-015).
+	_ = os.Setenv(config.EnvHookDispatch, "1")
 	if deps == nil || deps.HookProtocol == nil || deps.HookRegistry == nil {
 		return fmt.Errorf("hook system not initialized")
 	}

@@ -21,6 +21,13 @@ const (
 	// internal/paths mirrors this constant locally to stay stdlib-only.
 	EnvHome = "MOAI_HOME"
 
+	// EnvHookDispatch marks the process as a hook dispatch: the
+	// `moai hook` command sets it to "1" at dispatch entry, and the
+	// participation sender refuses to publish while it is present
+	// (SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-015 — the sender never
+	// runs on the hook path).
+	EnvHookDispatch = "MOAI_HOOK_DISPATCH"
+
 	// EnvConfigDir overrides the MoAI configuration directory path.
 	EnvConfigDir = "MOAI_CONFIG_DIR"
 

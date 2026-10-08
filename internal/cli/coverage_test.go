@@ -449,6 +449,11 @@ func TestRunUpdate_DefaultIsTemplateSync(t *testing.T) {
 	if err := updateCmd.Flags().Set("yes", "true"); err != nil {
 		t.Fatal(err)
 	}
+	// The flag set is PACKAGE-LEVEL state shared by every later test: the
+	// value set here survived this test and tripped the participation
+	// gates' mode-flag check for every subtest that followed (review
+	// finding, r7 — the CI-only divergence). Restore it.
+	t.Cleanup(func() { _ = updateCmd.Flags().Set("yes", "false") })
 
 	// Default flow should attempt template sync, not binary update
 	err = updateCmd.RunE(updateCmd, []string{})

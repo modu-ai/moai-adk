@@ -173,7 +173,7 @@ func TestUpdateRepair_RenderUsesProjectGitMode(t *testing.T) {
 		root, cmd, out := syncFixture(t)
 		writeTestFile(t, root, ".moai/config/sections/git-strategy.yaml", teamStrategy)
 
-		if err := runTemplateSyncWithReporter(cmd, nil, true); err != nil {
+		if err := runTemplateSyncWithReporter(cmd, nil, true, nil); err != nil {
 			t.Fatalf("runTemplateSyncWithReporter: %v\noutput: %s", err, out.String())
 		}
 
@@ -229,7 +229,7 @@ func TestUpdateRepair_SyncArchivesLegacySkillsBeforeCleanup(t *testing.T) {
 	root, cmd, out := syncFixture(t)
 	writeTestFile(t, root, ".claude/skills/"+skillID+"/SKILL.md", userCopy)
 
-	if err := runTemplateSyncWithReporter(cmd, nil, true); err != nil {
+	if err := runTemplateSyncWithReporter(cmd, nil, true, nil); err != nil {
 		t.Fatalf("runTemplateSyncWithReporter: %v\noutput: %s", err, out.String())
 	}
 

@@ -4,8 +4,6 @@ import (
 	"context"
 	"strings"
 	"testing"
-
-	"github.com/modu-ai/moai-adk/internal/hook"
 )
 
 // withStubCodex installs BOTH the single-shot runner seam (for codex_setup /
@@ -68,21 +66,21 @@ func TestRunCodexReviewRPC_SurfacesServerError(t *testing.T) {
 	}
 }
 
-// TestHandleCodexReviewGate_ReturnsRPCErrorWithAllow pins that the gate keeps
-// ALLOWing on a reviewer error (fail-open is unchanged) while handing the cause
-// back to the caller, which logs it. Swallowing the error made a gate that
-// could not reach a verdict look like a gate that had found nothing wrong.
-func TestHandleCodexReviewGate_ReturnsRPCErrorWithAllow(t *testing.T) {
+// TestProduceCodexReviewReceipt_RPCErrorRecordsInconclusive pins the reviewer
+// error contract at its M2 home, the receipt producer (the gate no longer
+// calls the RPC in-hook — REQ-GBN-002): a protocol-rejected review records
+// inconclusive with the non-zero exit — fail-open holds, and the record never
+// reads as a local pass. Swallowing the error made a pipeline that could not
+// reach a verdict look like one that had found nothing wrong.
+func TestProduceCodexReviewReceipt_RPCErrorRecordsInconclusive(t *testing.T) {
 	withStubCodex(t, []string{codexProtocolRejection})
-	prevDetector := reviewGateChangeDetector
-	reviewGateChangeDetector = func(string) bool { return true } // reviewable change present
-	t.Cleanup(func() { reviewGateChangeDetector = prevDetector })
+	root := cacheTestRoot(t)
 
-	out, err := HandleCodexReviewGate(&hook.HookInput{}, true /* enabled */, t.TempDir())
-	if err == nil {
-		t.Fatal("the reviewer error must reach the caller so it can be logged")
+	r, err := produceCodexReviewReceipt(context.Background(), root)
+	if err != nil {
+		t.Fatalf("a reviewer error must not fail the producer (fail-open): %v", err)
 	}
-	if out == nil || out.Decision == hook.DecisionBlock {
-		t.Errorf("fail-open must hold: decision = %+v, want ALLOW", out)
+	if r.Verdict != codexReviewVerdictInconclusive || r.ExitCode != 2 {
+		t.Fatalf("a protocol-rejected review must record inconclusive/2, got %q/%d", r.Verdict, r.ExitCode)
 	}
 }
