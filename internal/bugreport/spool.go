@@ -354,9 +354,22 @@ func BumpSpoolGeneration() error {
 	// propagates: an unbumped generation is a withdrawal that did not
 	// happen, and every in-flight reader treating the store as live is the
 	// failure this bump exists to prevent.
-	release, err := atomicfile.ClaimSection(context.Background(), path+".lock", 0o600, spoolSectionRetries, spoolSectionDelay)
-	if err != nil {
-		return err
+	//
+	// Contention beyond one ClaimSection retry budget (CI, Race Test 2:
+	// 32 concurrent purges under -race exhausted the 8×5ms budget — "lock
+	// held" skips a bump) retries on the lock-held shape until the bump
+	// deadline: every purge's withdrawal must land, serialized.
+	deadline := time.Now().Add(spoolBumpClaimDeadline)
+	var release func() error
+	for {
+		release, err = atomicfile.ClaimSection(context.Background(), path+".lock", 0o600, spoolSectionRetries, spoolSectionDelay)
+		if err == nil {
+			break
+		}
+		if !errors.Is(err, os.ErrExist) || !time.Now().Before(deadline) {
+			return err
+		}
+		time.Sleep(spoolSectionDelay)
 	}
 	defer func() { _ = release() }()
 	gen, err := SpoolGeneration()
@@ -486,6 +499,14 @@ const (
 	spoolSectionRetries = 8
 	spoolSectionDelay   = 5 * time.Millisecond
 )
+
+// spoolBumpClaimDeadline bounds how long a generation bump keeps retrying
+// the section claim under contention before propagating the lock-held
+// error. Sized for the observed worst contender fan-out (the CI race test's
+// 32 concurrent purges under -race scheduling) with an order of magnitude
+// of headroom — the bump's P1 contract is that every purge's withdrawal
+// lands, serialized, so contention waits instead of failing.
+const spoolBumpClaimDeadline = 10 * time.Second
 
 // claimSpoolSection takes the spool's critical section, returning its
 // release func. The lock is the SAME owner-verified claim the queue uses
