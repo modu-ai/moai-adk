@@ -11,7 +11,9 @@ package hook
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -247,6 +249,26 @@ func TestSessionStartRoleRulesFailVisible(t *testing.T) {
 		writeRoleRuleFixture(t, root, dispatch, "<!-- moai:role-core-start -->\nrequired core body with the end marker missing\n")
 		inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
 		assertFailVisible(t, inj, "unclosed_region")
+	})
+	t.Run("fifo_not_regular", func(t *testing.T) {
+		// A FIFO at the rule path must fail visible, not hang: the builder
+		// reads regular files only (os.ReadFile on a FIFO blocks forever
+		// waiting for a writer, hanging SessionStart with no rules, warning,
+		// or directive). POSIX-only fixture.
+		if runtime.GOOS == "windows" {
+			t.Skip("FIFO fixture is POSIX-only")
+		}
+		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+		root := build(t)
+		path := filepath.Join(root, filepath.FromSlash(dispatch.Rel))
+		if err := os.Remove(path); err != nil {
+			t.Fatalf("remove regular fixture: %v", err)
+		}
+		if err := syscall.Mkfifo(path, 0o600); err != nil {
+			t.Fatalf("mkfifo: %v", err)
+		}
+		inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
+		assertFailVisible(t, inj, "fifo")
 	})
 	t.Run("end_before_start", func(t *testing.T) {
 		// Balanced counts alone still pass an END-before-START file: the

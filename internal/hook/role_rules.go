@@ -159,6 +159,18 @@ func roleRuleDeployRel(root string, rule roleRuleFile) string {
 func buildRoleCore(root string, rule roleRuleFile) (string, error) {
 	rel := roleRuleDeployRel(root, rule)
 	path := filepath.Join(root, filepath.FromSlash(rel))
+	// Only regular files are read: a FIFO (or any special file) at the rule
+	// path would block os.ReadFile forever waiting for a writer, hanging
+	// SessionStart with no rules, warning, or directive. Non-regular files
+	// take the REQ-ALB-009 failure path instead.
+	if fi, err := os.Stat(path); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", fmt.Errorf("role rule file absent: %s", rel)
+		}
+		return "", fmt.Errorf("role rule file unreadable: %s: %w", rel, err)
+	} else if !fi.Mode().IsRegular() {
+		return "", fmt.Errorf("role rule file is not a regular file: %s", rel)
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
