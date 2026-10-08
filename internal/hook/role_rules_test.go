@@ -251,6 +251,57 @@ func TestSessionStartRoleRulesFailVisible(t *testing.T) {
 	})
 }
 
+// TestSessionStartRoleRulesRootFollowsSessionCWD pins the role-rules ROOT
+// resolution: the injection serves the role rules of the tree the session
+// runs in (the hook input's CWD), not the tree CLAUDE_PROJECT_DIR points at
+// — in a worktree session CWD is the worktree while ProjectDir stays the
+// primary checkout, and the ProjectDir-first resolution delivered the
+// primary tree's rules. Two trees carry DIFFERENT marked rule content; the
+// injected context must carry the CWD tree's text only.
+func TestSessionStartRoleRulesRootFollowsSessionCWD(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv("ANTHROPIC_BASE_URL", "")
+
+	primary := t.TempDir()
+	worktree := t.TempDir()
+	for _, d := range []string{primary, worktree} {
+		if err := os.MkdirAll(filepath.Join(d, ".moai", "state"), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+	}
+	mark := func(root, text string) {
+		t.Helper()
+		writeRoleRuleFixture(t, root, roleRuleFiles[0], smallMarkedRule(text))
+		writeRoleRuleFixture(t, root, roleRuleFiles[1], smallMarkedRule("messaging"))
+	}
+	mark(primary, "PRIMARY-TREE-CORE")
+	mark(worktree, "WORKTREE-TREE-CORE")
+
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
+	h := NewSessionStartHandler(nil)
+	input := &HookInput{
+		SessionID:  "role-rules-cwd-root",
+		ProjectDir: primary,
+		CWD:        worktree,
+		Source:     "startup",
+	}
+	out, err := h.Handle(t.Context(), input)
+	if err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+	ctx := ""
+	if out.HookSpecificOutput != nil {
+		ctx = out.HookSpecificOutput.AdditionalContext
+	}
+	if !strings.Contains(ctx, "WORKTREE-TREE-CORE") {
+		t.Fatalf("injection does not carry the session CWD (worktree) tree's role core:\n%s", ctx)
+	}
+	if strings.Contains(ctx, "PRIMARY-TREE-CORE") {
+		t.Fatalf("injection carried the project (primary) tree's role core:\n%s", ctx)
+	}
+	t.Logf("PASS: injection serves the session CWD tree's role core (CWD %q), primary %q excluded", worktree, primary)
+}
+
 // assertFailVisible asserts the REQ-ALB-009 pair: operator warning AND agent
 // read directive together, and no silent partial core.
 func assertFailVisible(t *testing.T, inj roleRuleInjection, fixture string) {
