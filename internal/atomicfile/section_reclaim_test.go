@@ -10,8 +10,10 @@ package atomicfile
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -189,6 +191,42 @@ func TestDeadChainBlockedByLiveTailWalksLinearly(t *testing.T) {
 	}
 	if reads > 40 {
 		t.Fatalf("refusing the dead-chain-with-live-tail cost %d verdict reads — the walk must not repeat a failed sub-walk", reads)
+	}
+}
+
+// TestOversizeOwnerIsRefused pins the round-5 review-gate finding: the
+// bounded read refuses a lock file past the owner-record cap. A file whose
+// first 4096 bytes are a valid verified-dead record padded inside its
+// boot_id, with garbage past the cap, is NOT a valid owner record — the
+// disposal must refuse it, never unlink on a truncated byte-compare (the
+// pre-cap full-file read refused it; the bounded read must too).
+func TestOversizeOwnerIsRefused(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "queue.lock")
+
+	identity := BootIDIdentity()
+	if identity == "" {
+		t.Skip("no boot identity on this platform; the boot-comparison path is not exercised")
+	}
+	paddedBoot := "previous-boot-" + identity + strings.Repeat(" ", sectionOwnerReadMaxBytes)
+	owner := LockOwner{PID: os.Getpid(), BootID: paddedBoot}
+	raw, err := json.Marshal(owner)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if len(raw) < sectionOwnerReadMaxBytes {
+		t.Fatalf("fixture builder: padded record is only %d bytes", len(raw))
+	}
+	oversize := append(raw, []byte("garbage past the cap")...)
+	if err := os.WriteFile(path, oversize, 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	if BreakStaleLock(path) {
+		t.Fatal("removed an oversized invalid owner record by trusting its truncated prefix")
+	}
+	if _, serr := os.Stat(path); serr != nil {
+		t.Fatal("the oversized lock file was deleted despite the refusal")
 	}
 }
 

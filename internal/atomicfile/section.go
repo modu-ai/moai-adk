@@ -57,7 +57,20 @@ var sectionRereadFn = func(path string) ([]byte, error) {
 		return nil, err
 	}
 	defer func() { _ = f.Close() }()
-	return io.ReadAll(io.LimitReader(f, sectionOwnerReadMaxBytes))
+	// One byte PAST the cap (review-gate finding on card t1606, round 5):
+	// a silent truncation would let the disposal gate compare a valid
+	// owner record's first 4096 bytes while garbage past the cap slipped
+	// the byte-compare — an oversized file is not a valid owner record
+	// anywhere, so refusing it is the conservative direction for every
+	// reader (verdict, release, pre-check).
+	raw, err := io.ReadAll(io.LimitReader(f, sectionOwnerReadMaxBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) > sectionOwnerReadMaxBytes {
+		return nil, fmt.Errorf("section owner %s: %d bytes, over the %d-byte owner-record cap", path, len(raw), sectionOwnerReadMaxBytes)
+	}
+	return raw, nil
 }
 
 // sectionRemoveFn is the removal seam.
