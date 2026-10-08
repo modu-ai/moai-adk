@@ -77,5 +77,5 @@ card: t1586
 pr_surface: github-flow — push + PR to origin/main, lane-executed landing. No CHANGELOG/docs-site surface in this card's scope: the split rules are product-internal deployed assets (`.claude/rules/moai/workflow/` + template mirrors), not user-facing product behavior — release notes carry them.
 card_review: advisory fail, 0/3 findings attributable to card scope (all 3 on PR #1772 content / pre-existing content; relays issued t1591-1, t1587-1, t1594) — see `.moai/reports/t1586/card-review.md`
 landing_plan: lane pushes the branch and opens the PR to origin/main after this commit
-pr: pending
-sync_commit_sha: pending-backfill-sync (real SHA backfilled in a follow-up commit — spec-frontmatter-schema.md § SHA placeholder backfill exemption)
+pr: #1814 (https://github.com/modu-ai/moai-adk/pull/1814)
+sync_commit_sha: 55d1e1606 (backfilled post-landing in this commit)
