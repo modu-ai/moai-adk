@@ -298,3 +298,84 @@ Trigger detected
 
 Version: 1.3.0
 Classification: Canonical Reference — do not duplicate content; cross-reference this file instead.
+
+## Migrated from the core body
+
+
+### AskUserQuestion Protocol — Canonical Reference
+
+
+> This file is the **single source of truth** for AskUserQuestion interaction rules.
+> Cross-referenced by: askuser-protocol.md, moai-constitution.md §MoAI Orchestrator, agent-common-protocol.md §User Interaction Boundary, output-styles/moai/moai.md §3/§10.
+>
+> **Loading scope**: Intentionally always-loaded (no `paths:` restriction). The orchestrator may compose an `AskUserQuestion` on any non-trivial turn, so the channel-monopoly rule and the ToolSearch deferred-tool preload procedure must be available every session.
+>
+> **Detail companion**: `askuser-protocol-reference.md` — recommendation-placement evidence base, preview-field usage catalogue, the Non-ASCII encoding root-cause mechanism / pollution-loop detail, § Blind Spot Pass, and the bodies relocated from here: § General Rule for Deferred Tools · § The Four Triggers · § The Five Exceptions · § The Unknowns 4-Quadrant Lens · § First-Action Sequence After Trigger · § Directive and Recovery · § Pre-Emit Self-Check (non-ASCII) — 3 items · § Pre-emit self-check (report-before-ask) — 5 items. Load it when classifying an ambiguity trigger, preloading a deferred tool, recovering a rejected non-ASCII payload, or running a pre-emit self-check.
+
+
+### Channel Monopoly
+
+
+Applies to every orchestrator turn involving clarification (Stage 1 Clarify), a preference or decision ("Which approach?", "Continue or abort?"), a Socratic interview round during Context-First Discovery (AGENTS.md §13 (Context-First Discovery)), branch and workflow selection, or conflict resolution.
+
+
+### ToolSearch Preload Procedure
+
+
+`AskUserQuestion` is a **deferred tool**: its JSON schema is not loaded at agent initialization, so invoking it without selecting it first yields `InputValidationError: tool not in schema`.
+
+
+### Structural Constraints (all mandatory)
+
+
+> **Note**: "Interview round" denotes a turn of Socratic questioning (generic English usage), NOT the retired SPEC taxonomy term `Round` (folded into `Milestone` per `.claude/rules/moai/development/sprint-round-naming.md`).
+
+
+### Recommendation mode
+
+
+The five principles above state the `push` branch — the distributed default, and the behavior
+whenever the key below is absent, empty, or unrecognized. `pull` is the judgment-first branch,
+generalizing principle 5 rather than adding a parallel mechanism.
+
+```yaml
+interview:
+  recommendation_mode: push   # push (default) | pull (judgment-first)
+```
+
+
+### Orchestrator–Subagent Boundary
+
+
+The `AskUserQuestion` interaction channel is **asymmetric** by design.
+
+
+### Blocker Report Format / Re-delegation Procedure
+
+
+Owned by `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format and `.claude/rules/moai/core/agent-common-protocol-reference.md` § Re-delegation Procedure — see there.
+
+
+### Ambiguity Triggers and Exceptions
+
+
+This section is the **single source of truth** for Stage 1 Clarify trigger conditions. Both `AGENTS.md §13 (Context-First Discovery)` and `askuser-protocol.md Ambiguity Triggers` cross-reference this definition.
+
+
+### Free-form Circumvention Prohibition
+
+
+`AskUserQuestion` automatically appends an **"Other"** option to every question set: users preferring free-form answers select "Other" and type their response, so the orchestrator does NOT need free-form questions to support free-form answers. The "Other" mechanism covers edge cases not anticipated in the option list, preferences that do not fit the options, and free-form elaboration on a structured choice.
+
+
+### Completion-Report Next-Step Discipline
+
+
+**Pre-emit self-check (completion report)** — the three checks (a `?`-bearing prose prompt must become `AskUserQuestion` or be dropped; a needed decision routes through the tool; no manufactured question) live in `askuser-protocol-reference.md` § Pre-emit self-check (completion report).
+
+
+### Non-ASCII Tool-Call Encoding
+
+
+**Failure Mode**: a malformed escape (stray space, truncated code point, half-written `\u`) corrupts the JSON so the `questions` array parses as a bare string — the call is rejected with `Invalid tool parameters` / `InputValidationError`, and the clarification round silently fails on its first attempt. (Root-cause mechanism, the self-reinforcing pollution loop, and the scope note: `askuser-protocol-reference.md` § Non-ASCII Tool-Call Encoding detail.)
+

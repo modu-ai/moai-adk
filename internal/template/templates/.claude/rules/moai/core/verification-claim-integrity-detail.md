@@ -218,3 +218,56 @@ A divergence figure measured once — `git rev-list --count --left-right` return
 Classification: Lazy companion — rationale, elaboration, cross-references, incident records, and
 the §2.1 predicate procedure. Every obligation stays in `verification-claim-integrity.md`: the
 predicate procedure here is HOW a class is reached, never WHETHER it must be applied.
+
+## Migrated from the core body
+
+
+### Verification-Claim Integrity
+
+
+Doctrine establishing the **"no unobserved-verification-claim" invariant** for all MoAI actors. This rule is automatically loaded for the orchestrator and all agents. It is a policy-layer doctrine — it defines the norm; it does not itself run a runtime detector.
+
+
+> The motivating defect class is general: an actor claiming a verification or completion it did not actually observe. A complementary runtime layer (advisory, warn-first, fail-open) may detect one shape of this violation; this doctrine codifies the policy norm that binds every actor regardless of whether such a runtime layer is present.
+
+
+### 1. The Invariant — no unobserved-claim (verification, defect, OR premise)
+
+
+> **Evidence absent ≠ evidence of success — NOR of failure.**
+
+
+This direction is the more dangerous one, because its failure is silent. A wrong "remove it" claim is contradicted by the next build or test run; a wrong "keep it" claim preserves dead code and is never contradicted by any signal at all.
+
+
+This is a policy-layer norm, not a mechanical guarantee. A complementary mechanical-detection layer may surface one shape of this violation at runtime, but the norm binds every actor independently of that layer.
+
+
+### 2.2 Tool-provenance attribution — which build judged the tree
+
+
+The silence is **symmetric**: a stale build and a current build produce the same clean-pass signals, so a green result is evidence only that whatever checks the invoked build carries reported nothing.
+
+
+**Not a substitute for the tooling's own verdict.** Where the tooling already computes a freshness verdict, that verdict is the mechanism; this clause governs the **citation**, and holds whether or not the invoked build is one that reports it. A build old enough to predate the freshness check is exactly the build that cannot warn you about itself.
+
+
+### 3. The 5-Section Evidence-Bearing Report Format
+
+
+What each section contains in full, the cross-reference table, and the two worked-example incident
+records (the defect-claim hazard and the retention-claim hazard the §1 clauses were written from)
+live in the detail companion `verification-claim-integrity-detail.md`. Load it when composing an
+evidence-bearing report for the first time, or when tracing a clause back to its originating
+failure.
+
+
+### 3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution
+
+
+The hazard is quiet in a specific way: a refusal is loud to the actor when it happens and invisible in the artifact afterwards. An auditor whose command was refused can still reach a PASS by reading source — "confirmed by measurement" becomes "inferred by reading" with nothing in the verdict recording the change. §1 already forbids the resulting claim; this clause fixes WHERE the difference is written down.
+
+
+Version: 1.3.0
+Classification: Canonical Reference (policy-layer codification) — do not duplicate cross-referenced content; cross-reference this file instead.
+

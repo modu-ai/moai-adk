@@ -226,7 +226,7 @@ internal/config/atomicfile/write.go     원자적 쓰기
 ```
 internal/cli/update_template_sync.go    NewDeployerWithRendererAndForceUpdate(embedded, renderer, true)
 internal/cli/update/plan/plan.go        분석·분류·네임스페이스 보호 (t1547 판부터 관리 뿌리 파일도 분석 대상)
-internal/cli/update/reconcile_classify.go   소유권 분류기 — 4부류 (template-owned/user-modified/user-owned/stale)
+(update/reconcile_classify.go)             소유권 분류기 — 4부류 (template-owned/user-modified/user-owned/stale)
 internal/cli/update/reconcile.go        조정 파이프라인 — 갱신·3-way 병합·무접촉 보존·아카이브 후 삭제
                                           (t1547 판 — 기본 경로의 wipe-first 대체,
                                            충돌은 `<경로>.moai-new[.N]` 사이드카로 보고)

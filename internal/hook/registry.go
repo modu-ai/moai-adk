@@ -178,7 +178,29 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 		mergeHandlerOutput(merged, output)
 	}
 
+	// SessionStart finalize step (SPEC-ALWAYS-LOADED-BUDGET-001): a handler
+	// may owe a gate that must measure the FINAL merged additionalContext —
+	// the role-rules size gate cannot run inside its own Handle because the
+	// handoff/compact handlers merge their contributions AFTER it. Handlers
+	// implementing sessionStartFinalizer get the merged output once, after
+	// the loop.
+	if event == EventSessionStart {
+		for _, h := range handlers {
+			if fin, ok := h.(sessionStartFinalizer); ok {
+				fin.FinalizeSessionStartOutput(merged)
+			}
+		}
+	}
+
 	return merged, nil
+}
+
+// sessionStartFinalizer marks a SessionStart handler that must judge the
+// FINAL merged additionalContext — a gate REQ-ALB-010 pins to the final
+// string cannot run inside the handler's own Handle (earlier-registered
+// producers' contributions are visible there, later ones are not).
+type sessionStartFinalizer interface {
+	FinalizeSessionStartOutput(merged *HookOutput)
 }
 
 // alwaysRunHandler marks a handler that must still run when a preceding handler

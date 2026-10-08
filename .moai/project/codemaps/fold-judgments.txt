@@ -1,12 +1,6 @@
 # Fold and omission judgments from the last codemaps refresh.
 # fold <unit>: folded into a parent's description; the unit stays unnamed.
 # omission <unit>: left out earlier; the documents owe it a description.
-fold internal/core/git
-fold internal/cli/doctor_hook_delivery.go
-fold internal/hook/quality/step_git_env.go
-fold internal/kanban/prlink_landedref.go
-fold internal/factory/prlink_landedref.go
-fold internal/web/fieldsets_codex_templ.go
 
 omission internal/chain
 omission internal/stateanchor
@@ -28,14 +22,6 @@ omission internal/web/codexmirror.go
 # 위 항목들은 이 refresh 에서도 문서 본문과 대조해 그대로 성립함을 확인했으므로 남겨 둡니다.
 # 아래는 이번 refresh 가 새로 내린 판정입니다.
 
-fold internal/cli/init_executor_seam.go
-fold internal/cli/todo_triage.go
-fold internal/config/drift_cache_fill.go
-fold internal/hook/session_start_drift_fill.go
-fold internal/spec/drift_fill_lock.go
-fold internal/spec/lint_coverage_sibling_maps.go
-fold internal/spec/lint_req_heading.go
-fold internal/statusline/config_root.go
 
 omission internal/auditreceipt
 omission internal/harness/rosterguard
@@ -45,30 +31,6 @@ omission internal/harness/cellguard
 # 위 항목들은 이 refresh 에서도 문서 본문과 대조해 그대로 성립함을 확인했으므로 남겨 둡니다.
 # 아래는 이번 refresh 가 새로 내린 판정입니다.
 
-fold internal/cli/update/backup/settings_snapshot.go
-fold internal/spec/closer.go
-fold internal/spec/era.go
-fold internal/constitution/contradiction.go
-fold internal/session/session_pid.go
-fold internal/session/registry.go
-fold internal/merge/strategies.go
-fold internal/merge/types.go
-fold internal/binlag/binlag.go
-fold internal/hook/branch_guard.go
-fold internal/hook/cwd_changed_relocate.go
-fold internal/hook/memo/taxonomy/linkage.go
-fold internal/cli/session.go
-fold internal/cli/home_state_coverage.go
-fold internal/cli/hook_install.go
-fold internal/cli/hook_install_precommit.go
-fold internal/migration/migrations/m001_hardcoded_path.go
-fold internal/settings/yamlpatch/yamlpatch.go
-fold internal/settings/schema_sections.go
-fold internal/defs/dirs.go
-fold internal/homestate/admission.go
-fold internal/config/cache.go
-fold internal/config/envkeys.go
-fold internal/template/catalog.yaml
 
 omission internal/jev
 omission internal/jevcred
@@ -123,3 +85,62 @@ omission internal/cli/wizard/questions.go
 # (t1454·t1528·t1502 창 몫) — 전부 named row(modules.md 각 카드 단락).
 # taxonomy/budget.go · taxonomy/reach.go는 기존 패키지의 +2 파일로 modules.md t1510 판이 이름을 운반한다.
 # 위 기존 fold/omission 판정들은 이번 판에서 문서 본문과 대조해 그대로 성립함을 확인했다.
+
+fold internal/core/git
+fold internal/cli/doctor_hook_delivery.go
+fold internal/hook/quality/step_git_env.go
+fold internal/kanban/prlink_landedref.go
+fold internal/factory/prlink_landedref.go
+fold internal/web/fieldsets_codex_templ.go
+fold internal/cli/init_executor_seam.go
+fold internal/cli/todo_triage.go
+fold internal/config/drift_cache_fill.go
+fold internal/hook/session_start_drift_fill.go
+fold internal/spec/drift_fill_lock.go
+fold internal/spec/lint_coverage_sibling_maps.go
+fold internal/spec/lint_req_heading.go
+fold internal/statusline/config_root.go
+fold internal/cli/update/backup/settings_snapshot.go
+fold internal/spec/closer.go
+fold internal/spec/era.go
+fold internal/constitution/contradiction.go
+fold internal/session/session_pid.go
+fold internal/session/registry.go
+fold internal/merge/strategies.go
+fold internal/merge/types.go
+fold internal/binlag/binlag.go
+fold internal/hook/branch_guard.go
+fold internal/hook/cwd_changed_relocate.go
+fold internal/hook/memo/taxonomy/linkage.go
+fold internal/cli/session.go
+fold internal/cli/home_state_coverage.go
+fold internal/cli/hook_install.go
+fold internal/cli/hook_install_precommit.go
+fold internal/migration/migrations/m001_hardcoded_path.go
+fold internal/settings/yamlpatch/yamlpatch.go
+fold internal/settings/schema_sections.go
+fold internal/defs/dirs.go
+fold internal/homestate/admission.go
+fold internal/config/cache.go
+fold internal/config/envkeys.go
+fold internal/template/catalog.yaml
+
+# --- 2026-10-09 refresh (card t1469, branch WT-always-loaded-char-budget, HEAD 77e296541) ---
+# 이번 판 신규: 피드백 참여 파이프라인·업데이트 조정·원자 파일 부팅 id·런타임 진행 파일의 fold.
+# 주의: fold 단위의 전체 경로 토큰은 생성 문서가 이름 대면 안 된다(guard REQ-CFG-002) —
+# modules.md 행은 뼈대 없는 파일명 형태로 서술한다.
+fold internal/bugreport/captureframesprobe
+fold internal/cli/update/reconcile_classify.go
+fold internal/runtime/progress_fd_unix.go
+fold internal/runtime/progress_fd_other.go
+fold internal/runtime/progress_metadata_acl.go
+fold internal/runtime/progress_metadata_darwin.go
+fold internal/runtime/progress_metadata_linux.go
+fold internal/runtime/progress_metadata_other.go
+fold internal/runtime/progress_nlink_other.go
+fold internal/runtime/progress_ownership_unix.go
+fold internal/atomicfile/bootid_bsd.go
+fold internal/atomicfile/bootid_linux.go
+fold internal/atomicfile/bootid_other.go
+fold internal/atomicfile/owner.go
+fold internal/atomicfile/section.go

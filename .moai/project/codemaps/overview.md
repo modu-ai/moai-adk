@@ -1,6 +1,14 @@
 # 아키텍처 개요
 
-## 현재 최종 통합 트리 — e65b3b
+## 현재 최종 통합 트리 — t1469 판 (main 흡수 병합 트리)
+
+기준은 카드 t1469 병합 트리(브랜치 `WT-always-loaded-char-budget`, HEAD `77e296541` — origin/main 흡수 병합 `1f3606d0f` 직후)다. `find internal cmd pkg`와 `go list -deps -json ./...`를 이 트리에서 실행했다. 비테스트 Go 파일 1663개, 테스트 Go 파일 3086개, 모듈 패키지는 174개, 최상위 디렉터리는 89개(`internal` 85·`cmd` 2·`pkg` 2)다. 내부 import 엣지는 패키지 단위 512쌍, 최상위로 접고 self-edge를 뺀 집계는 320쌍이다. 임베드 원본은 624파일이다.
+
+스탬프 앵커 `e65b3b469`(PR #1772 판) 뒤 `moai graph check`가 보고한 described-source-diff 132(임계 40)를 이 트리에서 소진한다. 창은 두 절반이다. **① 카드 t1469 착지분** — 상시 로드 지시문 예산(SPEC-ALWAYS-LOADED-BUDGET-001): 역할 한정 규칙 주입 코어(`internal/hook/role_rules.go` — 역할 core 추출·크기 게이트·회복 지시의 합본 선두 배치·`.moai/` 중첩 프로젝트 경계를 포함한 루트 산출, +`handler_names.go`), 배포 템플릿의 역할 규칙 stub 쌍과 진입점 읽기 지시, 원장·예산·§참조 테스트. **② 흡수된 main 창** — 피드백 참여 파이프라인(신규 `internal/bugreport` 13파일 + 테스트 전용 `captureframesprobe`, `internal/feedback/outbox` 7파일 · `publish` 7파일 하위 패키지, cli의 `bugreport_capture.go`·`feedback_participation.go`·`init_participation_wizard.go`), 업데이트 조정(`update_participation.go`와 § `modules.md` 행의 조정 분류기), 런타임 진행 파일 세부(플랫폼 분기 8파일 — § `modules.md` t1469 판 행이 전체 경로를 운반), 원자 파일 부팅 id 판독과 소유자·구간 절편(§ `modules.md` 행), `internal/cli` 루트의 하위 패키지 재편. 패키지별 서술은 § `modules.md` t1469 판이 운반한다. § 규모 표의 일곱 값을 같은 명령으로 다시 쟀다 — 비테스트 1607→**1663**, 테스트 2975→**3086**, 패키지 170→**174**(신규 `internal/bugreport`+`captureframesprobe`·`internal/feedback/outbox`·`internal/feedback/publish`; `internal/atomicfile`·`internal/feedback` 등 기존 패키지는 파일 증가), 최상위 디렉터리 88→**89**(internal 84→85 — 신규 `internal/bugreport`), 내부 import 엣지 481/306→**512/320**, 임베드 템플릿 619→**624**(역할 규칙 stub 쌍·`agent-common-protocol-detail.md` 등 이 카드의 템플릿 신규·분할분). go.mod는 앵커 이후 main 흡수로 움직였다(§ `dependencies.md` t1469 판).
+
+이 절은 소스 구조 측정이며 OS 런타임이나 원격 실행의 성공 판정이 아니다.
+
+## 이전 최종 통합 트리 — e65b3b
 
 소스 기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. PR #1772를 실제 main `d5fe44c424fbf818e766370da97d5c0d212377ed`까지 정상 통합한 뒤 읽기 전용으로 재측정했다. `go list -deps -json ./...`의 현재 darwin/arm64 패키지 선택과 모든 OS 파일을 포함한 파일 census를 구분한다. 비테스트 Go 파일은 1607개, 테스트 파일은 2975개, 모듈 패키지는 170개, 최상위 디렉터리는 88개다. 내부 import는 패키지 단위 481쌍, 최상위로 접고 self-edge를 뺀 집계는 306쌍이다.
 
@@ -58,15 +66,15 @@
 
 | 값 | 수치 | 산출 명령 |
 |---|---|---|
-| 비테스트 Go 파일 | 1607 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
-| 테스트 Go 파일 | 2975 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
-| Go 패키지 총수 | 170 | `go list ./... \| wc -l` |
-| 최상위 디렉터리 | 88 | `internal` 84(`ls -d internal/*/`) + `cmd` 2 + `pkg` 2 |
-| 내부 import 엣지 (패키지 단위) | 481 | `go list -deps -json ./...`의 프로젝트 패키지 `Imports` 중 **모듈 내부 경로**(`github.com/modu-ai/moai-adk/` 접두 — `internal`·`pkg`·`cmd` 전부 포함; `internal` 전용 필터로는 이 값보다 작게 나온다 — t1456 판에서 t1443 감사 F1대로 문언을 실측 필터와 일치시켰다) |
-| 내부 import 엣지 (최상위 집계) | 306 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
-| 임베드 템플릿 파일 | 619 | `find internal/template/templates -type f \| wc -l` |
+| 비테스트 Go 파일 | 1663 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
+| 테스트 Go 파일 | 3086 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
+| Go 패키지 총수 | 174 | `go list ./... \| wc -l` |
+| 최상위 디렉터리 | 89 | `internal` 85(`ls -d internal/*/`) + `cmd` 2 + `pkg` 2 |
+| 내부 import 엣지 (패키지 단위) | 512 | `go list -deps -json ./...`의 프로젝트 패키지 `Imports` 중 **모듈 내부 경로**(`github.com/modu-ai/moai-adk/` 접두 — `internal`·`pkg`·`cmd` 전부 포함; `internal` 전용 필터로는 이 값보다 작게 나온다 — t1456 판에서 t1443 감사 F1대로 문언을 실측 필터와 일치시켰다) |
+| 내부 import 엣지 (최상위 집계) | 320 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
+| 임베드 템플릿 파일 | 624 | `find internal/template/templates -type f \| wc -l` |
 
-테스트 대 비테스트 비율은 **1.85 : 1**입니다. `go list`의 패키지 가운데 테스트 Go 파일이
+테스트 대 비테스트 비율은 **1.86 : 1**입니다. `go list`의 패키지 가운데 테스트 Go 파일이
 0개인 곳은 6개입니다. 그중 `cmd/moai`·`cmd/t657-merge`·`internal/template/scripts`·
 `scripts/convert-nextra-to-hextra`는 실행 파일이고, `internal/closure/closuretest`·
 `internal/escalation/escalationtest`는 다른 패키지의 테스트가 쓰는 픽스처입니다.
