@@ -931,6 +931,74 @@ observed verbatim on the protected marker). Fixture: the narrowed
 marker-file manifest; inputs transport-verified (whole-file NUL-byte scan
 zero, doubled backslash).
 
+### Gate round 22 — M2.8 per-generation possible-directory set (2026-10-09)
+
+Two P2s: (1) the GENERAL-command per-generation path relation — the cd's
+directory reading and a later command's file-argument reading must keep
+their generation relation (`cd $'zone_dir'; rm $'link_x'`: the
+pooled join judged `zone_dir/link\u0005fx`, a path NO generation touches —
+the reviewer planted a symlink only there; both a false deny and the
+inverse bypass hang on it); (2) windows skip on the docs+u0000 row (the
+literally-named entry parses as TWO directory levels on windows, so the
+pre-4.2 target misses the protected file and wantZoneDeny fails there for
+the wrong reason).
+
+**Regression row 1 — RED under the M2.7 tip (`d28cab054` + the row,
+uncommitted at measurement):**
+
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellCdReadingGenerationRelation' -count=1 -v`
+- **Exit code**: `1`
+- **Observed (verbatim, decision line)**:
+
+```
+    protected_zone_shell_repro_test.go:927: cd reading generation relation: decision="cd $'zone\\u005fdir'; rm $'link\\u005fx'" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=zone_dir/link/u005fx", want allowed — only the cross-generation cwd×file join reaches the planted symlink, and no generation executes it
+--- FAIL: TestCheckProtectedZoneShellCdReadingGenerationRelation (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.902s
+```
+
+Row 2 (the windows skip) is instrument hardening with no darwin-observable
+RED — the failure mode is windows-only (the two-level parse), per the
+reviewer's analysis; the skip's correctness rides the windows release
+matrix. Fixture: narrowed marker manifest + the planted cross-only symlink
+`zone_dir/link\u0005fx` → the marker; POSIX-skipped. Inputs
+transport-verified: whole-file NUL-byte scan zero, doubled backslash.
+
+**M2.8 remedy — the per-generation possible-directory set (GREEN record).**
+Shape: `w.cwds` carries its generation tag — `type zoneCwd { dir string;
+gen int }` with gen -1 = generation-neutral (a generation-identical reading
+put the walk there), 0/1 = a dir only that generation's reading reached.
+The relation composes through the whole walk: a generation-tagged directory
+moves only under its own generation's cd reading (a neutral directory
+splits into per-generation entries), `zoneRelativeToSet` joins a candidate
+reading of generation i only with gen -1/gen i directories (the
+cross-generation cwd×file join is gone), and the git base loop binds
+`fileArgs[world]` to bases of its own generation (neutral bases join both).
+All the control-flow unions (fixed point, subshell, case, if/else) carry
+entries with their tags mechanically. The funnel outputs are per-world
+(`zonePathCandidates`/`zoneRedirectTargets` return [2][]string;
+`zoneCands` takes [2][]string); the judgment's dedup-before-cap collapses
+the both-worlds duplicates.
+
+- **Command** (all 32 instrument tests): `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test
+  ./internal/hook -run 'TestCheckProtectedZoneShell|TestZoneUnescapeAnsiC|TestZoneWordText' -count=1`
+- **Exit code**: `0`
+- **Observed (verbatim)**: `ok  	github.com/modu-ai/moai-adk/internal/hook	1.181s`
+  (32/32 PASS — the cd-relation row flipped to ALLOW; the 31 earlier rows
+  hold, including the t1570 matrix and every earlier gate row).
+- **Full package regression (M2.8)**: on the FINAL tree (a 2-line
+  dead-store fix landed after the first run; both runs green):
+  `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED
+  && go test -count=1 -timeout=25m -v ./internal/hook/` — exit 0, verbatim
+  tail `PASS` / `ok github.com/modu-ai/moai-adk/internal/hook	264.828s` /
+  `PACKAGE_POST28B_EXIT=0`; 3659 RUN lines, ZERO `--- FAIL` lines. Slot
+  lease `hook-suite` held for the runs, released after.
+- Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
+  `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
+  clean; family coverage `13.5%` (all-rows selector).
+
+
 **M2.7 remedy — full dispatch pre-classification + function shadowing
 (GREEN record).** Shape: `zoneExecNames` (the possible base names of the
 executable word, one per generation, deduped) classifies EVERY name-driven
