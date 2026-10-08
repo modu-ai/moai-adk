@@ -338,6 +338,12 @@ func SpoolGeneration() (uint64, error) {
 // BumpSpoolGeneration invalidates every batch an in-flight drain read
 // before this bump. The purge calls it before removing the stores; a lost
 // race between two concurrent bumps only skips a number.
+//
+// spoolGenerationFn is the marker-read seam (card t1606): tests inject a
+// read failure to pin that a failed read propagates instead of silently
+// rewinding the counter.
+var spoolGenerationFn = SpoolGeneration
+
 func BumpSpoolGeneration() error {
 	path, err := SpoolGenerationPath()
 	if err != nil {
@@ -354,14 +360,33 @@ func BumpSpoolGeneration() error {
 	// propagates: an unbumped generation is a withdrawal that did not
 	// happen, and every in-flight reader treating the store as live is the
 	// failure this bump exists to prevent.
-	release, err := atomicfile.ClaimSection(context.Background(), path+".lock", 0o600, spoolSectionRetries, spoolSectionDelay)
+	release, err := atomicfile.ClaimSection(context.Background(), path+".lock", 0o600, generationSectionRetries, generationSectionDelay)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = release() }()
-	gen, err := SpoolGeneration()
+	gen, err := spoolGenerationFn()
 	if err != nil {
-		gen = 0 // an unreadable marker still bumps past itself
+		// One retry with a yielding pause: the bounded read's time box
+		// trips on transient scheduler starvation under a loaded machine,
+		// not on a persistent condition — the pause surrenders the core
+		// the starved read goroutine needs, so the fresh read starts on a
+		// calmer scheduler. A persistent failure (a corrupt marker) fails
+		// both attempts and propagates.
+		time.Sleep(5 * time.Millisecond)
+		gen, err = spoolGenerationFn()
+	}
+	if err != nil {
+		// An unreadable marker must NOT silently rewind the counter to 1
+		// (card t1606, the residual lost-update path): under a loaded
+		// machine the bounded read can miss its time box, and a reset here
+		// makes every generation a prior withdrawal had retired
+		// publishable again — the exact hazard this bump exists to close,
+		// and strictly worse than a failed bump, which the purge retries.
+		// The marker ABSENT reads as (0, nil) and still bumps past itself;
+		// every other read failure propagates, the same policy the lock
+		// claim above follows.
+		return err
 	}
 	// Atomic replacement (tmp + rename): a concurrent reader never sees a
 	// half-written number — a partial read already degrades safely (the
@@ -485,6 +510,21 @@ const spoolSectionClaim = "spool.lock"
 const (
 	spoolSectionRetries = 8
 	spoolSectionDelay   = 5 * time.Millisecond
+)
+
+// generationSectionRetries / generationSectionDelay bound the generation
+// bump's wait for the marker's own section. Unlike the capture append, a
+// failed bump FAILS THE PURGE — dropping is not the acceptable outcome —
+// so the budget is generous. Under 32-way contention with the race
+// detector a live holder's section runs tens of ms, and the old 8×5ms
+// budget exhausted while every holder was alive (4-dim audit, card t1606:
+// 6 of 8 repeated -race -count=5 runs failed on claim exhaustion); even
+// the 40×10ms follow-up failed once under a fully loaded machine, so the
+// budget is a full second — the bump is operator-triggered, and waiting
+// costs nothing next to a failed purge.
+const (
+	generationSectionRetries = 50
+	generationSectionDelay   = 20 * time.Millisecond
 )
 
 // claimSpoolSection takes the spool's critical section, returning its
