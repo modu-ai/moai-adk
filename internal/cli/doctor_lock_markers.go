@@ -11,6 +11,7 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/userassets"
@@ -32,6 +33,7 @@ func checkUserLockMarkers(homeDir string, verbose bool) DiagnosticCheck {
 	ownerlessPath := ""
 	alive := ""
 	dead := ""
+	irregular := ""
 	for _, m := range markers {
 		state, pid := userassets.ClassifyGuardMarker(m.path)
 		switch state {
@@ -48,12 +50,23 @@ func checkUserLockMarkers(homeDir string, verbose bool) DiagnosticCheck {
 			if dead == "" {
 				dead = fmt.Sprintf("%s %s (dead pid %d)", m.label, m.path, pid)
 			}
+		case userassets.GuardMarkerIrregular:
+			if irregular == "" {
+				irregular = fmt.Sprintf("%s %s", m.label, m.path)
+			}
 		case userassets.GuardMarkerAbsent:
 			// nothing to report for this one
 		}
 	}
 
 	switch {
+	case irregular != "":
+		// Gate round 19: a non-regular object at a marker path (a FIFO
+		// would hang any read) is surfaced, never read, and needs the
+		// user's explicit attention.
+		check.Status = uikit.CheckWarn
+		check.Message = fmt.Sprintf("an irregular object occupies a lock marker path: %s — moai never reads it; inspect and remove it manually once you know what created it", irregular)
+		return check
 	case ownerless != "":
 		// REQ-LOCK-001: the marker is never auto-reclaimed — the explicit
 		// confirmed removal is the resolution, gated on the user's own
@@ -70,7 +83,16 @@ func checkUserLockMarkers(homeDir string, verbose bool) DiagnosticCheck {
 		return check
 	case dead != "":
 		check.Status = uikit.CheckOK
-		check.Message = fmt.Sprintf("a stale %s remains from a dead owner — the next moai run reclaims it automatically", dead)
+		// Gate round 19: the reclaim CONDITION differs by marker kind —
+		// the guard marker carries no age gate, but the .lock file's
+		// takeover additionally requires its age to pass the stale window
+		// (DefaultStaleAfter). State the condition the code actually
+		// applies.
+		if strings.Contains(dead, "lock file") {
+			check.Message = fmt.Sprintf("a stale %s remains from a dead owner — a later moai run takes it over once the lock's age passes the stale window (%s)", dead, userassets.DefaultStaleAfter)
+		} else {
+			check.Message = fmt.Sprintf("a stale %s remains from a dead owner — the next moai run reclaims it automatically", dead)
+		}
 		return check
 	default:
 		check.Status = uikit.CheckOK

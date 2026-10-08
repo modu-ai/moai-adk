@@ -549,7 +549,16 @@ func (in *Installer) reconcileJournal(j *PendingJournal, manifest *Manifest, roo
 		// Case 3: never reinstall on a mismatch. The classification is
 		// recorded so the RF5 collision pre-pass does not re-count it.
 		classified[e.Path] = true
-		if e.WriteCompleted {
+		// Gate round 18: a flag-less entry is "not written THIS run", not
+		// "not owned" — an ALREADY-TRACKED target (a record an earlier
+		// successful run wrote; e.g. the failed-save up-to-date-run repro)
+		// carries its ownership in the manifest, and a user edit on it is
+		// REQ-023 divergence (backup + preserve + report), never a
+		// collision. Only an UNTRACKED mismatching target reads as
+		// collision: no manifest record AND no completion flag is the
+		// foreign-file shape RF5 guards against.
+		_, tracked := manifest.Files[e.Path]
+		if e.WriteCompleted || tracked {
 			// REQ-023 divergence: preserve + backup + report — the backup
 			// arm fires HERE (not in applyTarget) because the classified
 			// set excludes the path from the per-asset pass.

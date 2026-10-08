@@ -41,3 +41,23 @@ func acquireGuard(path string, timeout time.Duration) (func(), error) {
 	}
 	return release, nil
 }
+
+// classifyPidlessMarker decides a pid-less guard file's state on unix
+// (SPEC-USERASSET-DEPLOY-GUARD-001 M2, gate rounds 18/19): the flock IS the
+// truth here — the guard file survives a clean release by design, so a
+// free file is a clean leftover with no recovery meaning (absent, to the
+// doctor), while a flock-held file belongs to a live process. A probe
+// error fails closed to held.
+func classifyPidlessMarker(markerPath string) (GuardMarkerState, int) {
+	fd, err := os.Open(markerPath)
+	if err != nil {
+		return GuardMarkerOwnerAlive, 0
+	}
+	defer func() { _ = fd.Close() }()
+	err = syscall.Flock(int(fd.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+	if err != nil {
+		return GuardMarkerOwnerAlive, 0 // held by a live process
+	}
+	_ = syscall.Flock(int(fd.Fd()), syscall.LOCK_UN)
+	return GuardMarkerAbsent, 0 // a cleanly-released leftover, not a recovery target
+}

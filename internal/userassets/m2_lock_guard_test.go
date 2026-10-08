@@ -16,7 +16,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -121,12 +123,6 @@ func TestGuardMarkerReclaimPolicy(t *testing.T) {
 		if state, _ := ClassifyGuardMarker(marker); state != GuardMarkerAbsent {
 			t.Fatalf("absent marker classified %s", state)
 		}
-		if err := os.WriteFile(marker, []byte("orphaned\n"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		if state, pid := ClassifyGuardMarker(marker); state != GuardMarkerOwnerless || pid != 0 {
-			t.Fatalf("ownerless marker classified %s pid=%d", state, pid)
-		}
 		if err := os.WriteFile(marker, []byte("pid="+itoaTest(dead)+" acquired=2026-10-08T00:00:00Z\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -139,14 +135,99 @@ func TestGuardMarkerReclaimPolicy(t *testing.T) {
 		if state, _ := ClassifyGuardMarker(marker); state != GuardMarkerOwnerAlive {
 			t.Fatalf("live-owner marker classified %s", state)
 		}
-		// Malformed pid records classify ownerless (fail closed) — the same
-		// records lockOwnerGone refuses.
-		for _, record := range []string{"pid=invalid", "pid=0", "pid=-1", "pid=4294967296", "acquired=2026-10-08T00:00:00Z"} {
+		// Malformed pid records carry no USABLE ownership — the parse arms
+		// fail closed into the platform residual (unix: the flock decides —
+		// a free file reads absent; windows: ownerless).
+		for _, record := range []string{"pid=invalid", "pid=0", "pid=-1", "pid=4294967296"} {
 			if err := os.WriteFile(marker, []byte(record), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if state, pid := ClassifyGuardMarker(marker); state != GuardMarkerOwnerless || pid != 0 {
-				t.Fatalf("malformed record %q classified %s pid=%d, want ownerless/0", record, state, pid)
+			state, pid := ClassifyGuardMarker(marker)
+			if pid != 0 || (state != GuardMarkerOwnerless && state != GuardMarkerAbsent) {
+				t.Fatalf("malformed record %q classified %s pid=%d — a malformed record must never grade dead or alive", record, state, pid)
+			}
+		}
+	})
+
+	t.Run("irregular_marker_is_surfaced_never_read", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("FIFO semantics are unix — the windows axis is the build gate")
+		}
+		fifo := filepathJoin(t, "guard.guard")
+		mkfifoOrSkip(t, fifo)
+		// Gate round 19: a FIFO at the marker path must classify WITHOUT
+		// reading (a read would hang forever waiting for a writer — this
+		// test returning at all is the proof).
+		if state, _ := ClassifyGuardMarker(fifo); state != GuardMarkerIrregular {
+			t.Fatalf("a FIFO marker classified %s, want irregular", state)
+		}
+		if guardMarkerDead(fifo) {
+			t.Fatal("a FIFO marker graded as reclaimable — the read-hazard class reached the reclaim predicate")
+		}
+		dir := filepathJoin(t, "guard-dir")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if state, _ := ClassifyGuardMarker(dir); state != GuardMarkerIrregular {
+			t.Fatalf("a directory marker classified %s, want irregular", state)
+		}
+	})
+
+	t.Run("reclaim_identity_survives_concurrent_acquirers", func(t *testing.T) {
+		// Gate round 18 P1, the repro as a quiescent safety property: two
+		// acquirers racing to reclaim ONE dead marker must never leave the
+		// path holding the DEAD bytes, a foreign winner's bytes, or
+		// nothing-at-all while a winner believes it holds the guard. With
+		// the byte-identity check, a loser's late rename displaces the
+		// winner's marker only TRANSIENTLY and restores it; at quiescence
+		// the path carries exactly one winner's fresh record — never the
+		// dead bytes the round started with, and never gone.
+		const rounds = 200
+		for i := 0; i < rounds; i++ {
+			marker := filepathJoin(t, "guard.guard")
+			deadBytes := "pid=" + itoaTest(deadProcessPID(t)) + " acquired=2026-10-08T00:00:00.000000001Z\n"
+			if err := os.WriteFile(marker, []byte(deadBytes), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			var wg sync.WaitGroup
+			var mu sync.Mutex
+			winnerBytes := map[int]string{}
+			for g := 0; g < 2; g++ {
+				g := g
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					if !reclaimGuardMarker(marker) {
+						return // the other contender won — fine
+					}
+					fresh := "pid=" + itoaTest(os.Getpid()) + " acquired=" + time.Now().UTC().Format(time.RFC3339Nano) + "-racer-" + itoaTest(g) + "\n"
+					f, err := os.OpenFile(marker, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+					if err != nil {
+						return // the other winner created first — fine
+					}
+					_, _ = f.Write([]byte(fresh))
+					_ = f.Close()
+					mu.Lock()
+					winnerBytes[g] = fresh
+					mu.Unlock()
+				}()
+			}
+			wg.Wait()
+			now, err := os.ReadFile(marker)
+			if err != nil {
+				t.Fatalf("round %d: the marker vanished at quiescence — a loser's late reclaim deleted it: %v", i, err)
+			}
+			if string(now) == deadBytes {
+				t.Fatalf("round %d: the dead marker survived its own reclaim", i)
+			}
+			matched := false
+			for _, fresh := range winnerBytes {
+				if string(now) == fresh {
+					matched = true
+				}
+			}
+			if !matched {
+				t.Fatalf("round %d: the marker at quiescence carries foreign bytes %q — a loser's late reclaim displaced a live winner's marker without restoring it", i, now)
 			}
 		}
 	})

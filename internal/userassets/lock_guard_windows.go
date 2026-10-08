@@ -35,8 +35,11 @@ func acquireGuard(path string, timeout time.Duration) (func(), error) {
 		fd, err = os.OpenFile(marker, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 		if err == nil {
 			// REQ-LOCK-001: stamp the caller's PID — the .lock posture.
-			// The record is the death evidence a later acquirer needs.
-			_, _ = fmt.Fprintf(fd, "pid=%d acquired=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339))
+			// The record is the death evidence a later acquirer needs, and
+			// the nanosecond stamp makes it byte-unique per create — the
+			// identity check in reclaimGuardMarker (gate round 18 P1)
+			// compares these bytes.
+			_, _ = fmt.Fprintf(fd, "pid=%d acquired=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339Nano))
 			break
 		}
 		if !errors.Is(err, os.ErrExist) {
@@ -59,4 +62,13 @@ func acquireGuard(path string, timeout time.Duration) (func(), error) {
 		_ = os.Remove(marker)
 	}
 	return release, nil
+}
+
+// classifyPidlessMarker decides a pid-less guard file's state on windows
+// (SPEC-USERASSET-DEPLOY-GUARD-001 M2, gate rounds 18/19): on windows the
+// marker's EXISTENCE is the held evidence — there is no flock fallback —
+// so a pid-less marker is ownerless: never auto-reclaimed, resolved through
+// the doctor's visible-recovery row.
+func classifyPidlessMarker(markerPath string) (GuardMarkerState, int) {
+	return GuardMarkerOwnerless, 0
 }

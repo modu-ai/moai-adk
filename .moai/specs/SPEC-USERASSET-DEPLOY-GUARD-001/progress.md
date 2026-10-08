@@ -330,6 +330,22 @@ IgnoredGoFiles — AC-023의 windows 판정 절차에 속함). lock.go의 환경
 전체 스위트 의도 RED 8건(M2 제외 — 이 마일스톤 RED는 darwin-skip 팔) 유지, doctor
 가족 3종 GREEN, 정책 표 7종 GREEN.
 
+### 게이트 18/19 — M2 정밀화 9건 (P1 회수 신원 경합 포함, 2026-10-09)
+
+| # | 수리 | 검증 |
+|---|---|---|
+| 18-1 [P1] | **회수 신원 경합**: reclaimGuardMarker가 rename 전후 바이트 동일성을 검증한다 — 예비 판독(사망 입증)과 이후 rename 사이에 경합 승자의 새 마커가 끼어들면 displaced 바이트가 불일치하고 **원위 복원** 후 실패 반환. windows 마커 기록은 나노초 타임스탬프로 바이트 유일화. (미세 노출: 복원 창의 과도 displacement는 남는다 — 삭제가 아니라 자기치유 displacement이며, 제2 기록자 재개창은 닫힌다) | TestGuardMarkerReclaimPolicy/reclaim_identity_survives_concurrent_acquirers — 200라운드 경합 후 정지 상태 안전 속성 (dead 바이트 잔존 없음·외부 바이트 없음·소실 없음) GREEN |
+| 18-2 | **소유-vs-미기록 구분**: reconcile 사례 3에서 플래그 없어도 매니페스트 추적 대상은 REQ-023 divergence(백업+보존+보고)로 분류 — "이번 런 미기록"을 "무소유"로 읽던 결함 수리 | TestJournalTrackedMismatchIsDivergenceNotCollision GREEN — divergence 분류+백업 존재+사용자 바이트 불변 |
+| 18-3/19-2 | **unix flock 잔여물 오분류 제거**: pid-less 잔여 분류를 플랫폼 잔여 함수로 분리 — unix는 flock 상태가 진실(자유=clean leftover→absent, 점유=alive), windows는 존재=점유 증거(무 pid=ownerless) | TestUnixFlockLeftoverClassification + TestDoctorUserLockMarkersUnixFlockLeftoverIsOK GREEN |
+| 18-4/19-3 | **IsNotExist-only 부재 + Lstat 타입 판정**: marker 경로의 비정규 객체(FIFO 포함)는 절대 읽지 않고 Irregular 경고로 노출 — doctor 행이 FIFO에서 hang하지 않는다 (이 테스트가 반환하는 것 자체가 증명) | TestGuardMarkerReclaimPolicy/irregular + TestDoctorUserLockMarkersIrregularIsSurfaced GREEN; lockOwnerGone도 동일 Lstat 폐쇄 |
+| 19-4 | **회수 조건 안내 정합**: doctor의 .lock dead-owner 안내가 stale 창(DefaultStaleAfter) 조건을 명시 — guard marker(무 연령 게이트)와 .lock(연령+사망)의 실제 조건 구분 | TestDoctorUserLockMarkersDeadOwnerIsInformational — "stale window" 문구 단정 |
+| 18-5 | **frozen-guard 재현 배선(M4 준비)**: 결함 팔이 temp home의 절대 경로로 사용자 twin을 겨냥 + 사용자 매니페스트가 대상을 추적(관리 파일 증거 — REQ-GRD-002 한정의 자격 증명). control 팔(프로젝트측 DENY) 유지 | RED 유지 — 올바른 근거 (HEAD에서 사용자 루트 미보호), M4가 user-root 해석을 착지하면 flip |
+
+**커버리지 변동**: lock.go 89.0%→**88.2%** (신설 플랫폼 잔여·Irregular·identity 분기로
+분모 증가 — 잔여 미커버는 환경적 오류 臂), lock_guard_unix.go 93.8%→**92.3%** (flock
+probe 신설 분기), 패키지 82.7%→**83.2%**. 게이트: lint 0, gofmt 청결, windows build +
+test compile OK, 의도 RED 8건 유지.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop 소관.)_

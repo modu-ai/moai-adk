@@ -55,9 +55,33 @@ categories:
 			t.Fatal(err)
 		}
 	}
+	// Gate round 18: the user twin's MANAGED status is evidenced by the user
+	// manifest tracking it (REQ-GRD-002 limits the protection to moai-
+	// managed files — the record is what proves this target qualifies).
+	if err := os.MkdirAll(filepath.Join(home, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	userManifest := `{
+  "schema_version": 1,
+  "bundles": ["core"],
+  "files": {
+    "claude-agents/moai/plan-auditor.md": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bundle": "core",
+      "installed_at": "2026-10-08T00:00:00Z",
+      "moai_version": "test"
+    }
+  }
+}
+`
+	if err := os.WriteFile(filepath.Join(home, ".moai", "user-assets.json"), []byte(userManifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	// The zone resolver resolves relative command paths against the hook
-	// process cwd — pin it to the guarded project for the control arm.
+	// process cwd — pin it to the guarded project for the control arm. The
+	// defect arm targets the USER twin by its ABSOLUTE path — the real
+	// shape the user-root resolution (design §5) must judge.
 	prevGetwd := zoneGetwd
 	zoneGetwd = func() (string, error) { return root, nil }
 	t.Cleanup(func() { zoneGetwd = prevGetwd })
@@ -90,10 +114,12 @@ categories:
 		t.Fatalf("control arm broke: deleting the PROJECT-side covered twin was not denied (decision %q) — the guard/config setup is invalid, the defect arm below would be meaningless", got)
 	}
 
-	// DEFECT ARM: the user-side twin of the same managed file.
+	// DEFECT ARM: the user-side twin of the same managed file, named by its
+	// absolute path under the real user home (and its tilde alias — both
+	// spellings a real deletion uses).
 	for _, command := range []string{
-		"rm -f ~/.claude/agents/moai/plan-auditor.md",
-		"rm -rf ~/.claude/skills/moai-foundation-core",
+		"rm -f \"" + filepath.Join(home, ".claude", "agents", "moai", "plan-auditor.md") + "\"",
+		"rm -rf \"" + filepath.Join(home, ".claude", "skills", "moai-foundation-core") + "\"",
 	} {
 		if got := decide(command); got != DecisionDeny {
 			t.Errorf("RED (intended): delete of a user-installed managed asset was allowed (decision %q, want %q) — command: %s; the user install roots are not in the loaded protection set", got, DecisionDeny, command)

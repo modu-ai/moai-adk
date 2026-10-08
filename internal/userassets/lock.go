@@ -112,11 +112,23 @@ func (l *UserLock) Release() error {
 
 // lockOwnerGone fails closed for unreadable or malformed ownership records.
 // PID reuse can delay recovery, but cannot authorize a second live writer.
+// Gate round 19: the record's file TYPE is judged before any read — a FIFO
+// at a marker path would hang os.ReadFile forever waiting for a writer
+// (the install.go:211 hazard class), so a non-regular file fails closed.
 func lockOwnerGone(path string) bool {
-	raw, err := os.ReadFile(path)
-	if err != nil {
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() {
 		return false
 	}
+	raw, readErr := os.ReadFile(path)
+	if readErr != nil {
+		return false
+	}
+	return ownerRecordGone(raw)
+}
+
+// ownerRecordGone parses one pid-record's death evidence from raw bytes.
+func ownerRecordGone(raw []byte) bool {
 	for _, field := range strings.Fields(string(raw)) {
 		if strings.HasPrefix(field, "pid=") {
 			pid, err := strconv.Atoi(strings.TrimPrefix(field, "pid="))
@@ -140,15 +152,34 @@ func guardMarkerDead(markerPath string) bool {
 
 // reclaimGuardMarker moves a death-proven marker aside. It re-proves the
 // owner itself (fail closed): an unproven marker is never moved, whatever
-// the caller assumed. rename(2) makes exactly one racing acquirer the
-// winner; the losers see ENOENT and re-run their create loop (the lock
-// file's F5 posture). Reports whether THIS caller reclaimed the marker.
+// the caller assumed.
+//
+// Gate round 18 P1 — the reclaim IDENTITY race: two callers may verify the
+// same dead owner; the loser's rename would then act on the WINNER'S newly
+// created live marker and its delete would remove a live owner's marker
+// (gate-reproduced). The rename is therefore IDENTITY-CHECKED: the bytes
+// read before the rename must be byte-identical to the renamed file's —
+// the marker record carries a nanosecond stamp, so a new owner's marker
+// never matches. On a mismatch the displaced file is restored to its
+// original path and the caller re-runs its loop.
 func reclaimGuardMarker(markerPath string) bool {
-	if !guardMarkerDead(markerPath) {
+	info, err := os.Lstat(markerPath)
+	if err != nil || !info.Mode().IsRegular() {
+		return false
+	}
+	proven, readErr := os.ReadFile(markerPath)
+	if readErr != nil || !ownerRecordGone(proven) {
 		return false // never move a marker whose owner is not PROVEN dead
 	}
 	reclaim := markerPath + ".reclaim-" + fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
-	if err := os.Rename(markerPath, reclaim); err != nil {
+	if renameErr := os.Rename(markerPath, reclaim); renameErr != nil {
+		return false
+	}
+	displaced, readErr := os.ReadFile(reclaim)
+	if readErr != nil || string(displaced) != string(proven) {
+		// Not the marker whose death we proved — a racing winner's live
+		// marker took the path. Put it back exactly where it was.
+		_ = os.Rename(reclaim, markerPath)
 		return false
 	}
 	_ = os.Remove(reclaim)
@@ -161,10 +192,11 @@ func reclaimGuardMarker(markerPath string) bool {
 type GuardMarkerState int
 
 const (
-	GuardMarkerAbsent     GuardMarkerState = iota // no marker on disk
+	GuardMarkerAbsent     GuardMarkerState = iota // no marker on disk (or a clean leftover with no recovery meaning)
 	GuardMarkerOwnerDead                          // pid record + owner proven dead — reclaimable
-	GuardMarkerOwnerAlive                         // pid record + owner still running
-	GuardMarkerOwnerless                          // no pid record — NEVER auto-reclaimed (design §3)
+	GuardMarkerOwnerAlive                         // pid record + owner still running (or a flock-held unix guard)
+	GuardMarkerOwnerless                          // no pid record on a platform where the record is the truth — NEVER auto-reclaimed (design §3)
+	GuardMarkerIrregular                          // present but not a readable regular file — surfaced, never read
 )
 
 // String renders the state for reports.
@@ -178,18 +210,34 @@ func (s GuardMarkerState) String() string {
 		return "owner-alive"
 	case GuardMarkerOwnerless:
 		return "ownerless"
+	case GuardMarkerIrregular:
+		return "irregular"
 	}
 	return "unknown"
 }
 
 // ClassifyGuardMarker classifies the marker at path for the doctor's
-// visible-recovery row. The pid-less form is Ownerless — the suspended-
-// process shape age alone can never refute — and the returned pid is 0
-// whenever no readable pid record exists.
+// visible-recovery row. Gate rounds 18/19: only os.IsNotExist reads as
+// absent; the file TYPE is judged before any read (a FIFO must never be
+// read — it hangs); and the pid-less residual is PLATFORM-DECIDED — on
+// unix the guard file survives a clean release by design (flock is the
+// truth), so a free file is a clean leftover while a held file is alive;
+// on windows the marker's existence is the held evidence and a pid-less
+// marker is ownerless.
 func ClassifyGuardMarker(markerPath string) (GuardMarkerState, int) {
-	raw, err := os.ReadFile(markerPath)
+	info, err := os.Lstat(markerPath)
 	if err != nil {
-		return GuardMarkerAbsent, 0
+		if os.IsNotExist(err) {
+			return GuardMarkerAbsent, 0
+		}
+		return GuardMarkerIrregular, 0 // access error — surfaced, not absence
+	}
+	if !info.Mode().IsRegular() {
+		return GuardMarkerIrregular, 0
+	}
+	raw, readErr := os.ReadFile(markerPath)
+	if readErr != nil {
+		return GuardMarkerIrregular, 0
 	}
 	pid := 0
 	hasPID := false
@@ -201,11 +249,11 @@ func ClassifyGuardMarker(markerPath string) (GuardMarkerState, int) {
 			}
 		}
 	}
-	if !hasPID {
-		return GuardMarkerOwnerless, 0
+	if hasPID {
+		if lockProcessGone(pid) {
+			return GuardMarkerOwnerDead, pid
+		}
+		return GuardMarkerOwnerAlive, pid
 	}
-	if lockProcessGone(pid) {
-		return GuardMarkerOwnerDead, pid
-	}
-	return GuardMarkerOwnerAlive, pid
+	return classifyPidlessMarker(markerPath)
 }
