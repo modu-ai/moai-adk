@@ -29,7 +29,7 @@ artifacts: spec.md + plan.md + acceptance.md + progress.md (Tier M set)
    `BYPASS — decision="allow" reason="", want deny; real bash ran the allowed command and the protected directory is GONE (rm output: "")`
 2. **② P2 `\x` raw-byte vs code-point confusion** — a raw-byte spelling of a
    protected path decodes to re-encoded text no zone entry matches. Evidence
-   (red-repro.md §Defect ②, exit 1):
+   (evidence-red-repro.md §Defect ②, exit 1):
    `BYPASS — decision="allow" reason="", want deny; real bash ran the allowed command and the protected marker is GONE (rm output: "")`
 3. **③ P2 no-digit hex panic + mangling** — `\x`/`\u`/`\U` with no digit
    panics (slice bounds) at end-of-string and mangles text after a non-digit.

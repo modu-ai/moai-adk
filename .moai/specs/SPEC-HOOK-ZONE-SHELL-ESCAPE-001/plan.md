@@ -51,7 +51,8 @@ author: manager-spec
 
 ### §A.2 Fix-direction validation (plan input adjudication)
 
-The dispatch supplied three fix directions (red-repro.md §Fix direction) as
+The dispatch supplied three fix directions (evidence-red-repro.md §Fix
+direction) as
 plan INPUT. Each was validated against the code; all three are ADOPTED with
 no deviation:
 
@@ -117,13 +118,13 @@ unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go t
 Per the attribution discipline (manager-develop-prompt-template §E): every
 item names command + verbatim output + tree SHA.
 
-- **E1** AC binary PASS/FAIL matrix (AC-HZS-001..008) with the verbatim test
+- **E1** AC binary PASS/FAIL matrix (AC-HZS-001..011) with the verbatim test
   output per row.
 - **E2** `go build ./...` and `GOOS=windows go build ./...` — both exit 0.
 - **E3** `go test -cover ./internal/hook/` — package coverage ≥ the
   pre-change figure (85%+ maintained).
-- **E8** RED failure output verbatim — already carried by
-  `.moai/reports/t1585/red-repro.md` (measured 2026-10-08); M1 re-confirms it
+- **E8** RED failure output verbatim — already carried by the tracked record
+  `evidence-red-repro.md` (measured 2026-10-08); M1 re-confirms it
   at the committed baseline `9dbe40c0a` and records the re-run in progress.md
   §E.2 (the pre-GREEN evidence citation).
 
@@ -141,15 +142,15 @@ re-runs of M3).
   `$'\x'` judged with the panic contained in the test helper
   (`hzsDecodeAnsiC` pattern extended to the guard call): RED pre-fix (the
   walk panics), decision post-fix; (b) `\u`/`\U` code-point pin — the
-  ESCAPE TEXTS — numerically: byte 0x5C followed by `u2287`, and
+  ESCAPE TEXTS — numerically: byte 0x5C followed by the ASCII characters
+  u, 2, 2, 8, 7 (six bytes; in Go test source the literal is written
+  `\\u2287`, where the doubled backslash is Go source syntax denoting the
+  single 0x5C byte at runtime), and
   `\U00002287` (the decoder receives the inner text, so the rows name the
-  escape TEXT, not the glyph; the test author types the backslash form
-  directly in the Go test source — the doubled-backslash form is a transport
-  artifact and reaches no `\u` branch) — both decode
-  to bytes `e2 8a 87` — the Go output string(rune(0x2287)) and the
-  modern-bash (≥4.2) documented expansion (green-now by design; pins fix ②'s
-  split from regressing the code-point arm — a mutant that breaks the `\u`
-  branch, e.g. maxDigits 4→2, must FAIL here); (c) part-level NUL row — `zoneWordText`
+  escape TEXT, not the glyph) — the current decoder returns bytes `e2 8a 87`
+  (the `\u` branch, maxDigits 4), and a maxDigits 4→2 mutant returns a
+  different byte sequence and FAILS the row (pins fix ②'s split from
+  regressing the code-point arm); (c) part-level NUL row — `zoneWordText`
   over `$'a\x00b'X` yields `aX` (RED pre-fix: the current decode keeps the
   NUL, `a\x00bX`; fails a word-level-truncation mutant that satisfies the
   command rows); (d) octal-origin command row — `rm -r zone_dir$'\0/sub'`

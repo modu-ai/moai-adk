@@ -46,7 +46,7 @@ command's real target. The protected marker still exists after the decision.
 
 Two-cell adoption:
 
-- **RED-now cell** (MEASURED 2026-10-08, red-repro.md §Defect ①):
+- **RED-now cell** (MEASURED 2026-10-08, `evidence-red-repro.md` §Defect ①):
   - **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellAnsiCNulTruncationBypass|TestCheckProtectedZoneShellHexRawByteBypass|TestZoneUnescapeAnsiCNoDigitHexStaysLiteral' -count=1 -v`
   - **Observed stdout (excerpt; full 3-test run in the tracked record
     `evidence-red-repro.md` §Defect ①)**: `BYPASS — decision="allow" reason="", want deny; real bash ran the allowed command and the protected directory is GONE (rm output: "")`
@@ -170,10 +170,14 @@ Maps REQ-HZS-003
 **Given** the decoder surface `zoneUnescapeAnsiC`, which receives the INNER
 TEXT of a `$'...'` part (the pin therefore names the ESCAPE TEXTS, not the
 literal character — a literal `⊇` would exercise only the pass-through path),
-**When** the escape texts — byte 0x5C followed by `u2287`, and `\U00002287` — decode (the raw
+**When** the escape texts — byte 0x5C followed by the ASCII characters u,
+2, 2, 8, 7 (six bytes; in Go test source the literal is written `\\u2287`,
+where the doubled backslash is Go source syntax denoting the single 0x5C
+byte at runtime), and `\U00002287` — decode (the raw
 backslash-letter TEXT forms fed to zoneUnescapeAnsiC — a literal `⊇`
 character returns via the backslash-free early path and pins nothing: a
-mutant that breaks the `\u` branch, e.g. maxDigits 4→2, must FAIL here),
+mutant that breaks the `\u` branch, e.g. maxDigits 4→2, returns a different
+byte sequence and FAILS the row),
 **Then** both render the three UTF-8 bytes `e2 8a 87` (U+2287; the Go decoder
 output — string(rune(0x2287)) — and the modern-bash (≥4.2) documented
 expansion). Host-bash note: BOTH escape texts render LITERALLY on this
@@ -337,6 +341,6 @@ ok  	github.com/modu-ai/moai-adk/internal/hook	0.947s
   Unified (gofmt), Secured (the repair closes a measured P1 bypass),
   Trackable (Conventional Commits carrying the card id; the baseline-first
   commit `9dbe40c0a` carries the ordering attribution).
-- Definition of Done: AC-HZS-001..008 all GREEN with both cells recorded;
+- Definition of Done: AC-HZS-001..011 all GREEN with both cells recorded;
   ledger complete; progress.md §E.2/§E.3 populated; no PRESERVE-list file
   touched.
