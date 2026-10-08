@@ -413,6 +413,45 @@ judgment shape): its rendering is version-variant, the divergence is the
 documented `\u`/`\U` host-variance residual (spec §B), and the NUL-bearing
 text under-matches toward deny on the lexical arm (Clean-collapse).
 
+**M2.1 refinement — origin-scoped truncation (GREEN record).** Shape: the
+termination moved INTO `zoneUnescapeAnsiC` where the origin is known — the
+`\x` case returns the accumulated text when the escape rendered byte 0, the
+octal case likewise on `byte(0)`; the `\u`/`\U` cases never terminate; the
+`zoneWordText` post-truncation of the first M2 cut is REVERTED (it cut at
+any-origin NULs — the gate-10 P1). Later word parts still append.
+
+- **Command** (all 11 instrument tests on the refined tree):
+  `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run '<the ten names above>|TestCheckProtectedZoneShellCodePointNulDoesNotTruncate' -count=1 -v`
+- **Exit code**: `0`
+- **Observed (verbatim tail)**:
+
+```
+=== RUN   TestCheckProtectedZoneShellCodePointNulDoesNotTruncate
+2026/10/09 03:36:33 WARN protected zone shell violation agent_id="" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=zone_dir/marker.md"
+    protected_zone_shell_repro_test.go:503: swept=1
+--- PASS: TestCheckProtectedZoneShellCodePointNulDoesNotTruncate (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.961s
+```
+
+The three defect rows + 006/009/010 stay green; controls 002/004/011 and the
+pin 007 stay green; the new row's deny reason carries
+`path=zone_dir/marker.md` — the Clean-collapse judgment shape the reviewer
+measured at the comparison commit.
+
+- **Full package regression (M2.1)**: `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1
+  -timeout=25m -v ./internal/hook/` — exit 0, verbatim tail `PASS` / `ok
+  github.com/modu-ai/moai-adk/internal/hook	359.150s` /
+  `PACKAGE_POST21_EXIT=0`; 3640 RUN lines, ZERO `--- FAIL` lines; the new row
+  passes inside the package run (`--- PASS:
+  TestCheckProtectedZoneShellCodePointNulDoesNotTruncate (0.00s)`). Slot
+  lease `hook-suite` held for the run and released after.
+- Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
+  `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
+  clean; family coverage unchanged post-M2.1 (`12.4%`, all-rows selector).
+
+
 
 
 

@@ -133,9 +133,15 @@ func zoneUnescapeDbl(v string) string {
 // single-character escapes, octal \nnn, hex \xH.., and \u/\U code points.
 // An escape with no defined meaning keeps the backslash and the character —
 // bash renders `$'a\qb'` as `a\qb` — so the guard checks the same text bash
-// writes. Before this decoder ANSI-C words were matched on their raw source
-// text, so any defined escape (`\\`, `\x2e`, ...) hid the real path (card
-// t1570).
+// writes. The part's contribution ends at its first NUL byte, scoped to the
+// origins REQ-HZS-001 names: \x00 and the octal escapes — the two origins
+// EVERY bash renders as a NUL. A \u/\U code point whose value is 0 does NOT
+// terminate: its support is version-variant (pre-4.2 bash renders the
+// escape text literally), so the judgment keeps the NUL-bearing text — the
+// sound over-approximation — and the divergence stays the documented \u/\U
+// host-variance residual (spec §B; gate round 10 P1, card t1585). Before
+// this decoder ANSI-C words were matched on their raw source text, so any
+// defined escape (`\\`, `\x2e`, ...) hid the real path (card t1570).
 func zoneUnescapeAnsiC(v string) string {
 	if !strings.Contains(v, "\\") {
 		return v
@@ -169,14 +175,25 @@ func zoneUnescapeAnsiC(v string) string {
 		case '\\', '\'', '"', '?':
 			b.WriteByte(e)
 		case 'x':
-			b.WriteString(zoneHexEscape(v, &i, 2, true))
+			r := zoneHexEscape(v, &i, 2, true)
+			if len(r) == 1 && r[0] == 0 {
+				// bash terminates the argument at the NUL: the rest of
+				// this part is dropped, later word parts still append.
+				return b.String()
+			}
+			b.WriteString(r)
 		case 'u':
 			b.WriteString(zoneHexEscape(v, &i, 4, false))
 		case 'U':
 			b.WriteString(zoneHexEscape(v, &i, 8, false))
 		default:
 			if e >= '0' && e <= '7' {
-				b.WriteByte(zoneOctalEscape(v, &i, e))
+				o := zoneOctalEscape(v, &i, e)
+				if o == 0 {
+					// the octal NUL terminates exactly like \x00.
+					return b.String()
+				}
+				b.WriteByte(o)
 				continue
 			}
 			b.WriteByte('\\')
@@ -263,19 +280,11 @@ func zoneWordText(w *syntax.Word) (string, bool) {
 			// Plain single quotes carry no escapes. $'...' is ANSI-C
 			// quoting (mvdan marks it with Dollar and keeps the raw source
 			// text), whose escape set bash decodes — the guard must check
-			// the decoded path, not the source text (card t1570).
+			// the decoded path, not the source text (card t1570). The NUL
+			// termination lives inside the decoder, scoped to the
+			// \x00/octal origins (gate round 10 P1, card t1585).
 			if p.Dollar {
-				decoded := zoneUnescapeAnsiC(p.Value)
-				// Bash truncates the ANSI-C part's contribution at its
-				// first NUL byte ($'a\x00b'X -> "aX", measured ground
-				// truth) — the part ends there while LATER parts still
-				// append. A word-level truncation would drop the trailing
-				// part. Covers both NUL origins: hex \x00 and octal \0
-				// (card t1585).
-				if idx := strings.IndexByte(decoded, 0); idx >= 0 {
-					decoded = decoded[:idx]
-				}
-				b.WriteString(decoded)
+				b.WriteString(zoneUnescapeAnsiC(p.Value))
 			} else {
 				b.WriteString(p.Value)
 			}
