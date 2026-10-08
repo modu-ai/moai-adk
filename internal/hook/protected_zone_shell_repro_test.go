@@ -87,8 +87,10 @@ func hzsHexWord(s string) string {
 // guard decodes the NUL and the text after it, sees `zone_dir\x00/sub`, and
 // allows a command whose real target is `zone_dir` itself. The demonstration
 // branch runs the allowed command under real bash and shows the protected
-// directory disappearing. The positive control truncates to a path OUTSIDE
-// the zone: a mutant that denies every NUL-bearing command fails there.
+// directory disappearing. The mutant-probe control (the same NUL shape
+// truncating OUTSIDE the zone must stay allowed) is its own test below, so
+// its pre-repair green is recorded even while this row returns early on red
+// (review gate, card t1585).
 func TestCheckProtectedZoneShellAnsiCNulTruncationBypass(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX-specific: the demonstration runs bash ANSI-C quoting")
@@ -133,37 +135,58 @@ func TestCheckProtectedZoneShellAnsiCNulTruncationBypass(t *testing.T) {
 		t.Errorf("nul truncation: deny observed but the protected marker is gone: %v", err)
 	}
 
-	// positive control: the same NUL shape truncating to a path OUTSIDE the
-	// zone stays allowed — a mutant that blanket-denies NUL-bearing commands
-	// fails here, not on the rows above.
-	swept++
+	if swept != 1 {
+		t.Fatalf("swept %d rows, want exactly 1 (the bypass row; the mutant-probe control lives in its own test)", swept)
+	}
+	t.Logf("swept=%d", swept)
+}
+
+// TestCheckProtectedZoneShellAnsiCNulTruncationOutsideZoneControl —
+// AC-HZS-002 (mutant probe): the same NUL shape truncating to a path OUTSIDE
+// the zone stays allowed, pre- AND post-repair — a fix that blanket-denies
+// every NUL-bearing command fails HERE, not on the bypass row. Independent
+// of the bypass test so the control's pre-repair green is measured and
+// recorded even while the bypass row returns early on red.
+func TestCheckProtectedZoneShellAnsiCNulTruncationOutsideZoneControl(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX-specific: the demonstration runs bash ANSI-C quoting")
+	}
+	root := newZoneRoot(t, zoneShippedDoc(hzsShellManifest), "")
+	if err := os.MkdirAll(filepath.Join(root, "zone_dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Join(root, "docs"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": `rm -r docs$'\x00/zone_dir'`})
+	h := zoneTestHandler(t, root)
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": `rm -r docs$'\x00/zone_dir'`})
 	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
 		t.Errorf("positive control outside-zone truncation: decision=%q reason=%q, want allowed — the truncation lands on docs, not the zone", d, r)
 	}
+	t.Logf("swept=%d", 1)
+}
 
-	if swept != 2 {
-		t.Fatalf("swept %d rows, want exactly 2 (1 bypass + 1 positive control)", swept)
-	}
-	t.Logf("swept=%d", swept)
+// hzsHangulManifest declares the protected directory hzsHangulDir under the
+// probe category — one builder so the manifest and the created directory are
+// the same bytes by construction.
+func hzsHangulManifest() string {
+	return fmt.Sprintf("  probe_zone:\n    paths: [\"%s/\"]\n", hzsHangulDir)
 }
 
 // TestCheckProtectedZoneShellHexRawByteBypass — defect ②: \xHH emits one raw
 // byte (measured), so a protected path spelled in raw UTF-8 bytes decodes —
 // under the current rune rendering — to re-encoded text no zone entry
-// matches. The direct-spelling control proves the manifest and folding are
-// not the defect: the same target written literally is denied on the
-// pre-repair tree too.
+// matches. The direct-spelling control (the same target written literally
+// must stay denied) is its own test below, so its pre-repair green is
+// recorded even while this row returns early on red (review gate, card
+// t1585).
 func TestCheckProtectedZoneShellHexRawByteBypass(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX-specific: the demonstration runs bash ANSI-C quoting")
 	}
 	swept := 0
 
-	root := newZoneRoot(t, zoneShippedDoc(fmt.Sprintf("  probe_zone:\n    paths: [\"%s/\"]\n", hzsHangulDir)), "")
+	root := newZoneRoot(t, zoneShippedDoc(hzsHangulManifest()), "")
 	if err := os.MkdirAll(filepath.Join(root, hzsHangulDir), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -197,16 +220,34 @@ func TestCheckProtectedZoneShellHexRawByteBypass(t *testing.T) {
 	}
 	wantZoneDeny(t, "hex raw byte", d, r, harnessLearnerIdentity, "category", "probe_zone")
 
-	// control: the same target spelled directly is denied pre-repair — the
-	// zone entry itself works; the defect is confined to the decoder.
-	swept++
-	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": `rm ` + hzsHangulDir + `/marker.md`})
-	wantZoneDeny(t, "direct spelling control", d, r, harnessLearnerIdentity, "category", "probe_zone")
-
-	if swept != 2 {
-		t.Fatalf("swept %d rows, want exactly 2 (1 bypass + 1 direct-spelling control)", swept)
+	if swept != 1 {
+		t.Fatalf("swept %d rows, want exactly 1 (the bypass row; the direct-spelling control lives in its own test)", swept)
 	}
 	t.Logf("swept=%d", swept)
+}
+
+// TestCheckProtectedZoneShellHexDirectSpellingControl — AC-HZS-004
+// (control): the same protected target spelled directly is denied on the
+// pre-repair tree too — the manifest and the folding are not the defect;
+// defect ② is confined to the decoder. Independent of the bypass test so
+// the control's pre-repair deny is measured and recorded even while the
+// bypass row returns early on red.
+func TestCheckProtectedZoneShellHexDirectSpellingControl(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX-specific: the demonstration runs bash ANSI-C quoting")
+	}
+	root := newZoneRoot(t, zoneShippedDoc(hzsHangulManifest()), "")
+	if err := os.MkdirAll(filepath.Join(root, hzsHangulDir), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(root, hzsHangulDir, "marker.md")
+	if err := os.WriteFile(marker, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h := zoneTestHandler(t, root)
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": `rm ` + hzsHangulDir + `/marker.md`})
+	wantZoneDeny(t, "direct spelling control", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	t.Logf("swept=%d", 1)
 }
 
 // TestZoneUnescapeAnsiCNoDigitHexStaysLiteral — defect ③ at the decoder
