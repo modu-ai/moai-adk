@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -378,6 +379,111 @@ func foldSubprocess(t *testing.T, dir, card string) *exec.Cmd {
 		}
 	})
 	return cmd
+}
+
+// gateBlockingWriter passes the first `pass` writes and blocks every write
+// after that until its channel closes — the stdout stand-in for the
+// print-inside-the-hold probes.
+type gateBlockingWriter struct {
+	mu   sync.Mutex
+	pass int
+	ch   chan struct{}
+}
+
+func (w *gateBlockingWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	w.pass--
+	free := w.pass >= 0
+	w.mu.Unlock()
+	if free {
+		return len(p), nil
+	}
+	<-w.ch
+	return len(p), nil
+}
+
+// TestReviewFindingResultPrintedOutsideLockHold is the post-close gate's
+// lock-scope finding: the applied result's stdout write ran INSIDE the
+// lock hold — a blocked stdout pipe kept every other fold on the store
+// waiting even after the file update had completed. The probe: the apply's
+// rename lands (observable in the store) while stdout is blocked; the
+// store's lock must already be acquirable by a follow-up locker.
+func TestReviewFindingResultPrintedOutsideLockHold(t *testing.T) {
+	files := minimalFiles()
+	files[fixtureArchive] = minimalArchive()
+	dir := seedFoldStore(t, minimalMemory(line9001), files)
+	w := &gateBlockingWriter{pass: 1, ch: make(chan struct{})} // the store line passes; later writes block
+	var unblockOnce sync.Once
+	unblock := func() { unblockOnce.Do(func() { close(w.ch) }) }
+	t.Cleanup(unblock)
+
+	cmd := newMemoryFoldCmd()
+	cmd.SetOut(w)
+	cmd.SetErr(w)
+	cmd.SetArgs([]string{"--card", "t9001", "--yes", "--dir", dir})
+	done := make(chan error, 1)
+	go func() { done <- cmd.Execute() }()
+
+	// The apply's rename is observable in the store: the card's line left
+	// MEMORY.md.
+	deadline := time.Now().Add(10 * time.Second)
+	for strings.Contains(foldRead(t, dir, "MEMORY.md"), line9001) {
+		if time.Now().After(deadline) {
+			t.Fatal("the fold's apply never completed")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	// The result's print is (or was) next: the lock must be FREE now.
+	probe := make(chan error, 1)
+	go func() {
+		r, err := acquireFoldStoreLock(dir, nil)
+		if err == nil {
+			defer r()
+		}
+		probe <- err
+	}()
+	select {
+	case err := <-probe:
+		if err != nil {
+			t.Fatalf("the follow-up locker failed to acquire the store lock: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("the store lock stayed held while the fold was blocked printing its result — the stdout write happened inside the lock hold")
+	}
+	unblock()
+	if err := <-done; err != nil {
+		t.Errorf("the fold failed after stdout was unblocked: %v", err)
+	}
+}
+
+// TestReviewFindingOnDoneNoOpSucceedsOnReadOnlyStore is the no-op parity of
+// the --yes fix on the on-done auto-fold path: the step creates no lock
+// file and answers quietly when no line names the target card — a
+// readable-but-not-writable store must not fail at lock creation, and no
+// other fold's hold must be waited out for a fold with nothing to do.
+func TestReviewFindingOnDoneNoOpSucceedsOnReadOnlyStore(t *testing.T) {
+	root, _ := todoFixture(t)
+	cfgDir := t.TempDir()
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("USERPROFILE", t.TempDir())
+	t.Setenv(config.EnvClaudeConfigDir, cfgDir)
+	memDir := filepath.Join(cfgDir, "projects", memoryProjectSlug(root), "memory")
+	if err := os.MkdirAll(memDir, 0o700); err != nil {
+		t.Fatalf("memory dir: %v", err)
+	}
+	copyFixtureStore(t, memDir)
+	if err := os.Chmod(memDir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(memDir, 0o755) })
+
+	summary, err := foldOnDoneStep("t9900", &foldOnDoneRun{})
+	if err != nil {
+		t.Fatalf("the no-op on-done fold failed on a read-only store: %v", err)
+	}
+	if summary != "" {
+		t.Errorf("the no-op on-done fold reported %q, want a quiet success", summary)
+	}
 }
 
 // TestReviewFindingNoOpFoldSucceedsOnReadOnlyStore is the preview fix's

@@ -479,6 +479,65 @@ races**, 0 failures, 112 `=== RUN` lines (the fold family + the no-op and
 preview tests × 2). Builds native + windows green; gofmt/vet/lint clean
 (0 issues). The full-suite verdict remains CI's job (C2) and is PENDING.
 
+### Post-close repair row 4 (gate findings on lock scope + on-done parity — with the self-sweep the round's main ask)
+
+Two findings, each RED-first, plus the self-sweep over every entry path
+and every in-hold region:
+
+- **Finding 1 — the applied result's stdout write ran INSIDE the lock
+  hold** (the verb's apply closure): a blocked stdout pipe kept every
+  other fold on the store waiting even after the file update completed.
+  Fix: the closure CAPTURES the result render (`var render func() error`)
+  and runs it AFTER `withFoldStoreLock` returns — the hold spans exactly
+  the index-write critical section; the no-fold answer's render is
+  deferred the same way.
+  RED `TestReviewFindingResultPrintedOutsideLockHold` (a stdout writer
+  that passes the store line and blocks every later write; the apply's
+  rename is observed in the store, then a follow-up locker must acquire):
+  verbatim RED "the store lock stayed held while the fold was blocked
+  printing its result — the stdout write happened inside the lock hold"
+  (probe timeout, exit 1) → GREEN ×2.
+- **Finding 2 — the on-done auto-fold required the lock to discover
+  nothing to do** (the no-op parity of row 3's --yes fix): the step
+  created `.moai-store-lock` before checking whether the target card's
+  line exists — a read-only store failed with `permission denied` where
+  the baseline quietly succeeded, and a no-op waited out another fold's
+  hold needlessly. Fix: bounded snapshot + plan OUTSIDE the lock first —
+  no line → quiet success; only an actual change takes the lock and
+  re-plans inside it (the bounded re-plan is already the
+  abandonment-polled read).
+  RED `TestReviewFindingOnDoneNoOpSucceedsOnReadOnlyStore`: verbatim RED
+  "open …/.moai-store-lock: permission denied" (exit 1) → GREEN ×2
+  (quiet success, empty summary).
+
+**Self-sweep enumeration** (every fold entry path × every in-hold region,
+against theme (a) lock-scope discipline and theme (b) no-op parity):
+
+| Entry path | No-op discovery | In-hold regions | Disposition |
+|---|---|---|---|
+| Verb preview (`--yes` off, ±`--json`) | unlocked plan (row 3) | none — no lock taken | (a) ✓ (b) ✓ |
+| Verb apply (`--yes`, ±`--json`) | unlocked plan (row 3) | authoritative re-plan (bounded reads n/a — the verb is unbounded by design), `mutateDisk` seam (test-only), `applyFold`'s temp/cmp/rename critical section; result print DEFERRED outside (finding 1) | (a) ✓ after this pass (b) ✓ |
+| On-done auto-fold (`foldOnDoneStep`, all close paths) | bounded unlocked plan (finding 2) | bounded re-plan (`snapshotStoreBounded`), `applyFold` with forbidden-threaded reads; the summary string is RETURNED and printed after release | (a) ✓ after this pass (b) ✓ |
+| Direct `atomicWriteFoldFile` callers | n/a (write primitive) | the write's own cmp/probe/final-cmp/rename geometry | (a) ✓ |
+| `acquireFoldStoreLock` production callers | — | `withFoldStoreLock` (verb, on-done) only; tests pass nil/plain | ✓ |
+
+No further deviations found: every read inside either hold is
+bounded/cancellable on the bounded path; every output write, log line,
+and no-op answer now happens outside the hold; both no-op-parity entry
+paths discover no-op before requiring write access.
+
+Re-measure judgment: the hold spans SHRANK (printing moved out) and the
+on-done path restructured (double-read on the bounded path) — the family
+sweep re-ran at `-count=2 -race`; outcome below.
+
+**Row-4 sweep outcome**: PASS — single-pass family green first
+(`ok … 96.320s`), then `-count=2 -race -v`: `ok
+github.com/modu-ai/moai-adk/internal/cli 242.724s`, exit 0, **0 data
+races**, 0 failures, 116 `=== RUN` lines (the fold family + the
+print-outside and on-done no-op tests × 2). Builds native + windows
+green; gofmt/vet/lint clean (0 issues). The full-suite verdict remains
+CI's job (C2) and is PENDING.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-09T22:30+09:00

@@ -192,14 +192,20 @@ func newMemoryFoldCmd() *cobra.Command {
 			// REQ-DISPATCH-008: the whole transaction — snapshot read, plan,
 			// and both index writes — runs inside the store's cross-process
 			// lock, so a concurrent fold's process waits and re-plans
-			// against the post-transaction store.
-			return withFoldStoreLock(store.Dir, nil, func() error {
+			// against the post-transaction store. The hold spans exactly
+			// the index-write critical section: the result's printing is
+			// captured here and runs AFTER the lock is released — a blocked
+			// stdout pipe must never extend the hold past the completed
+			// file update (post-close gate finding, lock-scope discipline).
+			var render func() error
+			err = withFoldStoreLock(store.Dir, nil, func() error {
 				plan, comp, before, err := computeFoldPlan()
 				if err != nil {
 					return err
 				}
 				if len(comp.plan.Removed) == 0 {
-					return renderNoFold(plan, comp)
+					render = func() error { return renderNoFold(plan, comp) }
+					return nil
 				}
 				if memoryFoldSeam.mutateDisk != nil {
 					// Test seam (AC-MFB-007 iii): a concurrent writer lands
@@ -211,14 +217,21 @@ func newMemoryFoldCmd() *cobra.Command {
 					return err
 				}
 				plan.Applied = true
-				if jsonOutput {
-					return renderFoldPlanJSON(out, plan)
+				render = func() error {
+					if jsonOutput {
+						return renderFoldPlanJSON(out, plan)
+					}
+					_, _ = fmt.Fprintf(out, "filed %d line(s) into %s\n", len(comp.plan.Removed), comp.archive)
+					renderFoldUnlinked(out, comp.unlinked)
+					renderFoldKept(out, comp.kept)
+					return nil
 				}
-				_, _ = fmt.Fprintf(out, "filed %d line(s) into %s\n", len(comp.plan.Removed), comp.archive)
-				renderFoldUnlinked(out, comp.unlinked)
-				renderFoldKept(out, comp.kept)
 				return nil
 			})
+			if err != nil {
+				return err
+			}
+			return render()
 		},
 	}
 	cmd.Flags().StringVar(&card, "card", "", "Card id whose open-work lines to fold (t<digits> or bare digits)")
@@ -1306,6 +1319,26 @@ func foldOnDoneStep(cardID string, run *foldOnDoneRun) (string, error) {
 	}
 	if rec != nil {
 		rec.fileOpen(filepath.Join(chosen.Dir, memoryIndexName))
+	}
+	// The no-change discovery is a bounded, LOCK-FREE read: a fold with
+	// nothing to do answers quietly without creating the store's lock file
+	// or waiting out another fold's hold (the no-op parity of the verb's
+	// --yes path, post-close gate finding). Only an actual change takes the
+	// lock — and re-plans inside it, so the applied plan is always computed
+	// from the post-wait store.
+	before, err := snapshotStoreBounded(chosen.Dir, forbidden)
+	if err != nil {
+		return "", err
+	}
+	comp, err := buildFoldPlan(before, cardID)
+	if err != nil {
+		return "", err
+	}
+	if len(comp.plan.Removed) == 0 {
+		return "", nil
+	}
+	if forbidden() {
+		return "", fmt.Errorf("the step was abandoned before its write")
 	}
 	// REQ-DISPATCH-008: the on-done step's transaction takes the store's
 	// cross-process lock like the verb. The wait happens inside the
