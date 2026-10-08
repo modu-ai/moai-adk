@@ -63,3 +63,9 @@ decision record: decided_by=lane-14(glm) evidence_refs=.moai/reports/t1605/plan-
 - gate conditions: verdict PASS (0.90 ≥ Tier M 0.80) + must_pass_failed 0 + blocking_count 0 + plan_artifact_hash unchanged since verdict (hash recorded in verdict file, §E.1 quotes it) + plan-phase artifacts committed (74b5bc647) + no blocker open (lease serial-slot contention is scheduling, not a blocker — t1606 sync-audit live lease until 11:52:19Z)
 - progression mode: semi-autonomous NOT armed — /moai goal not armed; milestones driven by lane task list and cron rechecks
 - mode selection: serial (manager-develop per-milestone sequential spawns; coding+docs work, no fanout benefit) — logged per orchestration-mode-selection §D; Phase 1 re-execution skip: NOT taken (hash-verified verdict consumption via §E.1, gate evidence = r3-delta verdict; no `/moai run` Phase-1 re-run occurs in lane mode — this record IS the gate)
+
+## Run-phase Entry (lane record 2026-10-08T11:56Z)
+
+decision record: decided_by=lane-14(glm) evidence_refs=.moai/reports/t1605/plan-audit-r3-delta.md §E.1 ladder_path=§9.1 autonomous (recorded above at 492d21387)
+- Run rebound: active run changed tmhxo0→tml7c1 (leader action, 11:45:38Z); t1605 re-leased under tml7c1 (lane-14), stage transitioned run (v5 lease renewed, evidence 492d21387).
+- manager-develop spawned for M1-M5 (serial mode, cycle_type=tdd). Lane duties reserved: stage transitions, card-review, factory_complete — the delegate commits to the card branch only, no push (gitflow lane protocol §4).
