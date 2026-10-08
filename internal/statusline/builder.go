@@ -152,6 +152,20 @@ func (b *defaultBuilder) Build(ctx context.Context, r io.Reader) (string, error)
 	// Parse stdin JSON
 	input := b.parseStdin(r)
 
+	// Subagent status lines (Claude Code v2.1.293+, SPEC-CC-HAIKU55-
+	// STATUSLINE-001 REQ-CC-HAIKU55-010): when the payload carries the
+	// subagentStatusLine tasks[] array, the output contract is one JSON line
+	// per row — {"id","content"} — not the multi-line bar. Branch BEFORE
+	// collection: a row refresh needs none of the bar's collectors (git,
+	// usage, version), the 800ms render budget belongs to the row paint, and
+	// the context-usage snapshot is the main session's record, not a
+	// subagent's. Presence is the discriminator: an absent key decodes nil
+	// (ordinary payload → bar); a present `[]` decodes non-nil and takes the
+	// JSONL contract with zero rows.
+	if input != nil && input.SubagentTasks != nil {
+		return renderSubagentOutput(input.SubagentTasks), nil
+	}
+
 	// Collect data from all sources
 	data := b.collectAll(ctx, input)
 
@@ -342,14 +356,6 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	// Segment opt-in gating (SegmentPR enable check) happens in renderer.go.
 	if input != nil && input.PR != nil {
 		data.PR = input.PR
-	}
-
-	// Extract subagentStatusLine tasks[] (SPEC-CC-HAIKU55-STATUSLINE-001,
-	// REQ-CC-HAIKU55-010). Nil-slice pattern: absent / null tasks[] stays nil
-	// (backward compat with CC payloads pre-2.1.293); rendering degrades
-	// silently per REQ-CC-HAIKU55-011.
-	if input != nil && len(input.SubagentTasks) > 0 {
-		data.SubagentTasks = input.SubagentTasks
 	}
 
 	// Extract workspace.repo (v2.1.145+, REQ-SSE-001) — feeds renderRepoSegment.

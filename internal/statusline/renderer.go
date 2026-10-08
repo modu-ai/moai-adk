@@ -1,6 +1,7 @@
 package statusline
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -169,12 +170,6 @@ func (r *Renderer) renderDefaultV3(data *StatusData) string {
 		lines = append(lines, ls)
 	}
 
-	// Subagent tasks (Claude Code v2.1.293+ subagentStatusLine event,
-	// SPEC-CC-HAIKU55-STATUSLINE-001 REQ-CC-HAIKU55-010): one line per task
-	// row, the agentType badge only when the row carries it. Nil/empty
-	// tasks[] renders nothing, so an ordinary session keeps the old layout.
-	lines = append(lines, renderSubagentTasks(data)...)
-
 	if len(lines) == 0 {
 		return ""
 	}
@@ -248,30 +243,92 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 	return r.joinSegments(segs)
 }
 
-// renderSubagentTasks renders one line per subagentStatusLine tasks[] row
-// (SPEC-CC-HAIKU55-STATUSLINE-001, REQ-CC-HAIKU55-010/011). Row format:
-// "⚙ [agentType] name (status)"; a row whose agentType is nil, absent, or
-// empty renders without the badge — the row itself is never dropped, and no
-// decode or render error can surface from it. An empty/absent tasks[] slice
-// renders nothing.
-func renderSubagentTasks(data *StatusData) []string {
-	if len(data.SubagentTasks) == 0 {
-		return nil
-	}
-	lines := make([]string, 0, len(data.SubagentTasks))
-	for _, task := range data.SubagentTasks {
-		var b strings.Builder
-		b.WriteString("⚙ ")
-		if task.AgentType != nil && *task.AgentType != "" {
-			b.WriteString("[" + *task.AgentType + "] ")
+// renderSubagentOutput writes one JSON line per visible subagent row — the
+// output shape the official subagentStatusLine contract requires:
+// {"id":"<task id>","content":"<row body>"}. The id is echoed verbatim so
+// Claude Code can key partial row updates; a task with an empty id is
+// SKIPPED entirely (an omitted row keeps Claude Code's default rendering for
+// it). Content carries the agentType badge only when the row carries one
+// (REQ-CC-HAIKU55-010); an absent or null agentType degrades to a badge-less
+// row and never errors (REQ-CC-HAIKU55-011). An empty tasks[] produces an
+// empty string.
+//
+// @MX:ANCHOR: [AUTO] subagentStatusLine JSONL row output — called from Build() in builder.go
+// @MX:REASON: [AUTO] External contract boundary: Claude Code parses each stdout line as JSON
+// keyed by task id (docs: statusline #subagent-status-lines).
+func renderSubagentOutput(tasks []SubagentTaskInfo) string {
+	var out strings.Builder
+	for _, task := range tasks {
+		if task.ID == "" {
+			continue
 		}
-		b.WriteString(task.Name)
-		if task.Status != "" {
-			b.WriteString(" (" + task.Status + ")")
+		row := struct {
+			ID      string `json:"id"`
+			Content string `json:"content"`
+		}{ID: task.ID, Content: formatSubagentTaskRow(task)}
+		line, err := json.Marshal(row)
+		if err != nil {
+			continue
 		}
-		lines = append(lines, b.String())
+		out.Write(line)
+		out.WriteByte('\n')
 	}
-	return lines
+	return out.String()
+}
+
+// formatSubagentTaskRow renders one subagent row body:
+// "⚙ [agentType] display (status) · N tokens", each element omitted when its
+// source is absent. The display name falls back name → label → description →
+// #<id-prefix> so two unnamed tasks never render identically (the optional
+// name field is absent on most rows).
+func formatSubagentTaskRow(task SubagentTaskInfo) string {
+	var b strings.Builder
+	b.WriteString("⚙ ")
+	if task.AgentType != nil && *task.AgentType != "" {
+		b.WriteString("[" + *task.AgentType + "] ")
+	}
+	b.WriteString(subagentTaskDisplayName(task))
+	if task.Status != "" {
+		b.WriteString(" (" + task.Status + ")")
+	}
+	if task.TokenCount > 0 {
+		b.WriteString(fmt.Sprintf(" · %s tokens", formatTokenCount(task.TokenCount)))
+	}
+	return b.String()
+}
+
+// subagentTaskDisplayName resolves the row's display name through the
+// null-fallback chain: name (optional, pointer-nil) → label → description →
+// "#"+id-prefix. The id prefix is truncated to 8 characters so a long UUID
+// never dominates the row.
+func subagentTaskDisplayName(task SubagentTaskInfo) string {
+	switch {
+	case task.Name != nil && *task.Name != "":
+		return *task.Name
+	case task.Label != "":
+		return task.Label
+	case task.Description != "":
+		return task.Description
+	default:
+		id := task.ID
+		if len(id) > 8 {
+			id = id[:8]
+		}
+		return "#" + id
+	}
+}
+
+// formatTokenCount abbreviates a running token count for row display:
+// 850 → "850", 12_300 → "12.3k", 1_234_567 → "1.2M".
+func formatTokenCount(n int) string {
+	switch {
+	case n >= 1_000_000:
+		return fmt.Sprintf("%.1fM", float64(n)/1_000_000)
+	case n >= 1_000:
+		return fmt.Sprintf("%.1fk", float64(n)/1_000)
+	default:
+		return fmt.Sprintf("%d", n)
+	}
 }
 
 func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
