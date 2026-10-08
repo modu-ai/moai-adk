@@ -39,7 +39,7 @@ related_specs: [SPEC-USER-ASSET-INSTALL-001, SPEC-PROGRESS-RECORD-IO-001]
 
 ### 3.1 잠금 가족 — R-LOCK (원장 1, 10-P1)
 
-- REQ-LOCK-001: **When** 잠금 획득 프로세스가 `.guard` 마커(`lock_guard_windows.go`의 `path+".guard"`, `lock.go`의 `path+".acquire-guard"`)를 보유한 채 죽으면, the guard shall 마커에 회복 가능한 소유권 증거(PID)를 남기고, 이후 획득자는 소유자 사망을 확인한 뒤 잔존 마커를 회수한다 — **While** 살아 있는 소유자 없는 잔존 마커가 존재하는 동안 init/update/bundle의 획득이 유한한 회수 창을 넘겨 차단되지 아니한다. `lock.go`의 `lockOwnerGone` 자세(사망 확인 전 인수 금지)를 재사용한다.
+- REQ-LOCK-001: **When** 잠금 획득 프로세스가 `.guard` 마커(`lock_guard_windows.go`의 `path+".guard"`, `lock.go`의 `path+".acquire-guard"`)를 보유한 채 죽으면, the guard shall 마커에 회복 가능한 소유권 증거(PID)를 남기고, 이후 획득자는 소유자 사망을 확인한 뒤 잔존 마커를 회수한다 — **While** 소유자 사망이 입증된(pid 기록 + 사망 확인) 잔존 마커는 회수된다; 소유권 증거가 없는 마커의 자동 회수는 금지되며 획득 거부·대기와 doctor 보고 + 명시적 확인 제거라는 가시 회복 경로로 해소된다. `lock.go`의 `lockOwnerGone` 자세(사망 확인 전 인수 금지)를 재사용한다.
 - REQ-LOCK-002: The guard shall windows 빌드와 unix 빌드에서 동일한 회수 의미를 제공한다(플랫폼 패리티 — 원장 10-P1 "init/update/bundle 전면 차단"은 windows 관측). **Where** CI windows 매트릭스가 릴레이 시점 미검증이면, the SPEC shall `GOOS=windows` 빌드 게이트와 플랫폼 중립 표 테스트로 이 패리티를 판정 가능하게 한다.
 
 ### 3.2 저널 가족 — R-JRN (원장 3, 6a, 10, 10a-릴레이)

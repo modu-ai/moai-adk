@@ -54,6 +54,7 @@
 ## §4 미관측 (Gaps — 정직 목록)
 
 - 라운드 3 재독 추가 관측: doctor_user_install.go:24-38의 checkUserInstallIntegrity는 CorruptError를 CheckWarn·기타 적재 오류를 CheckFail로 정직 보고한다 — 원장 2a의 도달 가능한 RED 앵커는 프로젝트 측 checkProjectVsLock(:134-137)이다 (AC-019a/b 분할 근거).
+- 라운드 9 게이트 실측 + 소스 재독: unix `acquireGuard`는 flock(2) 기반(`lock_guard_unix.go:18-43` — `LOCK_EX|LOCK_NB` 재시도)이라 죽은 소유자의 pid-less 잔존 파일이 재획득을 막지 않는다(재획득 성공) — 원장 1의 차단 결함은 windows 마커 특유 (AC-001 플랫폼 분할 근거).
 - 라운드 8 게이트 실측(릴레이 — 본 트리 미재현, 설계 반영): (i) 일시중단 생존 프로세스의 빈 마커가 연령 조건 통과 → 제2 소유자 인수 → 제1 소유자 release가 제2 소유자 마커 삭제("A release deleted B marker: true") — 연령 기반 무소유 마커 회수의 UNSAFE 증명, design.md §3 재정의 근거. (ii) 보존 가드 테스트 TestRF2F3b_MigrationPreservesUntracked·TestRF5_IdenticalUntrackedNotJournaled 존재·통과(cli/review_fix2_test.go·userassets/review_fix_test.go 관측) — 해시 일치의 소유권 증명 부적격 근거. (iii) 비windows 실행에서 `go list` IgnoredGoFiles = `[lock_guard_windows.go lock_owner_windows.go]` 본 머신 재현 — AC-023 플랫폼별 판정 분리 근거.
 
 - 어떤 Go 테스트도 실행하지 않았다(런 M0 소관). 본 문서의 RED 예상은 전부 재현 예고다.

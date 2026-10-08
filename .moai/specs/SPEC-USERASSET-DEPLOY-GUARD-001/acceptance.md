@@ -24,13 +24,10 @@
 
 > 각 AC: [RED-now — M0에서 관측, HEAD db0c514d3] → [green path — 지정 마일스톤].
 
-### AC-001 — 잔존 .guard 마커의 소유자 사망 후 회복 (원장 1/10-P1 · REQ-LOCK-001/002 · M2)
-- **Given** 마커(`path+".acquire-guard"` 또는 windows `path+".guard"`)를 보유한 채 죽은 소유자가 잔존 마커를 남긴 상태
-- **When** `go test ./internal/userassets -run '^TestGuardMarkerReclaimAfterOwnerDeath$' -count=1`
-- **Then** 새 획득자가 소유자 사망을 확인하고 마커를 회수해 획득이 성공한다 (exit 0)
-- RED-now: 현재 마커는 무소유권·무회수라 획득이 타임아웃 실패로 RED (관측 예정 — M0)
+### AC-001 — 잔존 .guard 마커의 소유자 사망 후 회복 (원장 1/10-P1 · REQ-LOCK-001/002 · M2) — 플랫폼 분할
+- **Windows 마커 케이스 (분류 RED-first)**: **Given** windows `path+".guard"`를 보유한 채 죽은 소유자가 잔존 마커를 남긴 상태 — **When** `go test ./internal/userassets -run '^TestGuardMarkerReclaimAfterOwnerDeath$' -count=1` — **Then** 새 획득자가 소유자 사망을 확인하고 마커를 회수해 획득이 성공한다 (exit 0). RED-now: windows 마커는 무소유권·무회수라 획득이 타임아웃 실패로 RED (관측 예정 — M0). green path: M2 — PID 기록+회수 구현 후 GREEN
+- **Unix 케이스 (분류 born-green 회귀 가드)**: **Given** unix에서 소유자 사망 후 남은 pid 없는 잔존 마커 파일 — **When** 재획득 시도 — **Then** flock 기반 가드(lock_guard_unix.go:18-43 — 파일 존재가 아니라 잠금 보유를 검사, `LOCK_EX|LOCK_NB`)가 잔존 파일에도 불구하고 재획득에 성공한다 — 기존 자동 해제 동작의 불변 고정. RED 관측 시 퇴행 결함 보고 (원장 1의 차단 결함은 windows 마커 특유 — 게이트 unix 프로브 + 소스 재독 확정)
 - 사례 2 (레거시 무소유 마커 — 분류 born-green/행위 가드): **Given** pid 기록이 없는 마커(현행 windows 형태; 일시중단 생존 프로세스의 마커가 이 형태가 될 수 있음 — 게이트 재현) — **When** 같은 테스트의 레거시 케이스 실행 — **Then** 연령 기반 자동 회수가 아니다: 획득은 거부·대기하고, 잔존 마커는 사용자 가시 보고(doctor) + 명시적 확인 제거 절차로만 해소된다 (연령 자동 회수 금지 — design.md §3 라운드 8 재정의)
-- green path: M2 — PID 기록+회수 구현 후 GREEN
 
 ### AC-002 — 첫 스테이징 전 회수 항목 병합 (원장 3 · REQ-JRN-001 · M1)
 - **Given** 회수 대상 항목을 가진 기존 저널 + 새 설치 런
@@ -141,12 +138,12 @@
 ### AC-018 — init 실패 후 재개 경로 (원장 11b · REQ-SRF-007 · M6)
 - **Given** 사용자 자산 ensure 실패로 끝난 직후의 프로젝트
 - **When** `go test ./internal/cli -run '^TestInitResumeAfterUserAssetEnsureFailure$' -count=1`
-- **Then** 재실행이 "already initialized" 거절 대신 부족분 완성 재개를 제공한다
-- RED-now: :944-948 실패 후 재실행이 :905에서 거절되는 흐름으로 RED (관측 예정)
+- **Then** 재실행이 "already initialized" 거절 대신 재개를 제공하며, ensure 부족분 완성 + 미실행 후속 설정 단계까지 완료된다 — 하니스 적용(`template.ApplyHarness`)·MCP 등록(`provisionMCPEntryUnlessDeclined`)·Codex 배선(`wireCodexUnlessClaude`)의 산출물이 재개 뒤 프로젝트에 존재한다 (runInit는 :947에서 반환하므로 실패 시도에서 이 단계들이 실행되지 않았다 — 라운드 11)
+- RED-now: :944-948 실패 후 재실행이 :905에서 거절되는 흐름 + ensure-only 재개 시 후속 설정 부재로 RED (관측 예정)
 - green path: M6
 
 ### AC-019 — doctor 적재 실패 보고 정직성 (원장 2a · REQ-DOC-001 · M7) — 논리 AC 1건, 하위 2팔
-- **AC-019a** (프로젝트 측 — 분류 RED-first): **Given** 파손된 프로젝트 매니페스트 — **When** `go test ./internal/cli -run '^TestDoctorProjectManifestLoadFailureNotDisguised$' -count=1` — **Then** checkProjectVsLock의 임의 적재 오류가 CheckOK로 위장되지 않고 실패 등급으로 별도 보고된다 (RED-now: :134-137 OK 위장 관측 — 관측 예정). green path: M7
+- **AC-019a** (프로젝트 측 — 분류 RED-first): **Given** 파손된 프로젝트 매니페스트 + 기존 .corrupt 복구 사본 — **When** `go test ./internal/cli -run '^TestDoctorProjectManifestLoadFailureNotDisguised$' -count=1` — **Then** (1) checkProjectVsLock의 임의 적재 오류가 CheckOK로 위장되지 않고 실패 등급으로 별도 보고되며, (2) 바이트·경로 보존이 동시 단정된다 — 파손 원본 매니페스트는 원본 경로에 원본 바이트로 유지되고 기존 .corrupt 복구 사본은 덮어쓰이지 않는다 (상태 플립만 하는 변이는 보존 단정에 실패한다 — verification-completeness §2 변이 프로브; REQ-DOC-001의 읽기 전용 조건). (RED-now: :134-137 OK 위장 관측 — 관측 예정). green path: M7
 - **AC-019b** (사용자 측 — 분류 born-green 회귀 가드): **Given** 파손된 사용자 매니페스트 — **When** `go test ./internal/cli -run '^TestDoctorUserInstallHonestFailureAndReadOnly$' -count=1` — **Then** checkUserInstallIntegrity가 실패 등급을 정직히 보고하고 복구 사본을 덮어쓰지 않는다 (현행 :24-38 정직 관측 — RED 관측 시 퇴행 보고). green path: M7 (가드 테스트 상륙)
 
 ### AC-020 — 공허 잠금 비교의 정직 보고 (원장 2b · REQ-DOC-002 · M7)

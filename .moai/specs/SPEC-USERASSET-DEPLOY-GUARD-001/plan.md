@@ -86,7 +86,7 @@
 
 ### M6 — 배포·번들 표면 정합화 (원장 4, 5-잔여, 8a, 8b, 8d, 11a-가드, 11b) (Priority Medium)
 - 좌표: `internal/cli/migrate_project_assets.go`(89, 119-122), `internal/cli/doctor_agentemit_embed.go`(135-160), `internal/cli/skills.go`+`codex_skills_disable.go`, `internal/web/agentfm.go`(123-132, 278-285), `internal/userassets/install.go`(455-468)+`remove.go`, `internal/cli/update_template_sync.go`(회귀 가드 대상), `internal/cli/init.go`(905, 944-948).
-- 과업: (a) 미등록 미러 사본 분류·보고·제거(REQ-SRF-001), (b) emission 미비보고 불변 가드 상륙(REQ-SRF-002 — CheckFail 유지, design.md §7), (c) skills disable의 사용자 계층 폴백(REQ-SRF-003), (d) 동명 에이전트 행의 단일 설정 통합(REQ-SRF-004 — 저장 계약 design.md §7, end-to-end AC-015), (e) depends_on 클로저 설치+보존 집합(REQ-SRF-005 — prune 절반은 M0 변별 후), (f) 취소 불변 회귀 가드(REQ-SRF-006), (g) init 재개 경로(REQ-SRF-007).
+- 과업: (a) 미등록 미러 사본 분류·보고·제거(REQ-SRF-001), (b) emission 미비보고 불변 가드 상륙(REQ-SRF-002 — CheckFail 유지, design.md §7), (c) skills disable의 사용자 계층 폴백(REQ-SRF-003), (d) 동명 에이전트 행의 단일 설정 통합(REQ-SRF-004 — 저장 계약 design.md §7, end-to-end AC-015), (e) depends_on 클로저 설치+보존 집합(REQ-SRF-005 — prune 절반은 M0 변별 후), (f) 취소 불변 회귀 가드(REQ-SRF-006), (g) init 재개 경로(REQ-SRF-007 — ensure + 미실행 후속 설정 단계, design.md §7).
 - 판정: AC-012~018.
 - 위험: (d)는 web 폼 계약 변경 — 폼 키 스코프화가 기존 소비자(post 핸들러)와 정합하는지 회귀. (g)는 UX 문구·재개 범위의 설계 판단 포함.
 

@@ -54,7 +54,7 @@
 - 동명 에이전트 행(REQ-SRF-004) — 저장 계약 포함: 게이트 실측에 따르면 `parseAgentFMForm`은 `pins[a.Name]`에(agentfm.go:317 관측), `applyAgentOverrides`가 이를 `llm.agent_overrides`에(:330 관측) 저장하며 `LLMConfig.AgentOverrides`·`config.validateAgentOverrides`(:167)는 이름당 하나의 값만 유지·수용한다 — (i) 폼 키 분할만으로는 한쪽 설정이 다른쪽을 조용히 덮어쓰고, (ii) 스코프 접미사 저장 키는 검증기가 기각한다(양안 오버레이 확인). 선택한 계약: **동명 행의 단일 설정 통합** — 같은 이름의 사용자·프로젝트 에이전트는 하나의 설정으로 통합되어 폼에 한 행(스코프 출처 병기)으로 렌더되고, POST는 그 단일 설정을 저장하며, 저장소 키와 검증기는 변경하지 않는다. 기각 대안(스코프 저장 키 + 검증기 수용)은 공유 설정 스키마·검증 면을 건드리는 더 큰 반경 때문에 기각했다. AC-015는 폼→파싱→저장→재독록(end-to-end)으로 이 계약을 판정한다.
 - depends_on 클로저(REQ-SRF-005): 설치는 `collectEntries`에서 선택 번들의 `DependsOn`을 순환 없이(사이클 검출) 전개한다. 보존 집합은 보존 번들의 의존을 포함한다. prune 측 R-f-② 유예 팔(remove.go RF2)은 이미 존재 — M0 변별 결과에 따라 prune 절반은 유지·보강만.
 - 취소 불변(REQ-SRF-006): 회귀 가드 테스트 상륙만 — 이미 수리된 이전(확인창 뒤 제거)의 퇴행 감시.
-- init 재개(REQ-SRF-007): "already initialized" 거절에 사용자 자산 부족분 조건의 재개 분기 추가. 재개 범위는 ensure만(템플릿 재배치 아님) — 실패 원인과 무관하게 최소 재개다.
+- init 재개(REQ-SRF-007, 라운드 11 범위 확정): "already initialized" 거절에 사용자 자산 부족분 조건의 재개 분기 추가. 재개 범위는 **ensure + 미실행 후속 설정 단계 전부**다 — runInit는 ensure 실패 시 init.go:947에서 반환하므로 그 뒤의 하니스 적용(:1032 `template.ApplyHarness`)·MCP 등록(:1138 `provisionMCPEntryUnlessDeclined`)·Codex 배선(:1147 `wireCodexUnlessClaude`)은 실패 시도에서 실행되지 않았고, ensure-only 재개는 초기화를 불완전하게 남긴다. 템플릿 재배치는 이미 수행됐으므로 건너뛴다(재실행 금지).
 
 ## §8 doctor 진단 가족 (M7) — 원장 2, 7b, 9b
 
