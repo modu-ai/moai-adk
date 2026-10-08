@@ -479,3 +479,40 @@ func TestFR_AC019_ReservedCIEdgesRefused(t *testing.T) {
 		}
 	}
 }
+
+// The T20 version re-stamp is scoped to the receipt the gate verified
+// (review round-22, card t1538): a run/card carrying approvals from several
+// card identities must not have an unverified stale one refreshed back to
+// validity by another identity's completion.
+func TestFR_FCR_T20RebindScopesToVerifiedUUID(t *testing.T) {
+	db := frOpen(t)
+	repo := frNewRepo(t, true)
+	ctx := context.Background()
+
+	c := frFixtureCard(repo, "t20-scope", CardCIGreen, CardDone)
+	c.Version = 1
+	frPlace(t, db, c)
+	// Two approvals on the same run/card: the valid one the completion
+	// uses, and a stale identity's whose version must stay untouched.
+	frApprove(t, db, LeaderApproval{
+		CardUUID: "uuid-stale", RunID: frRun, CardID: c.CardID, FactoryVersion: 1,
+		EvidenceHash: repo.Commit, Issuer: "lead", IssuerRole: ApprovalIssuerLeader,
+	})
+	frApprove(t, db, LeaderApproval{
+		CardUUID: "uuid-new", RunID: frRun, CardID: c.CardID, FactoryVersion: 1,
+		EvidenceHash: repo.Commit, Issuer: "lead", IssuerRole: ApprovalIssuerLeader,
+	})
+	req := TransitionRequest{RunID: frRun, CardID: c.CardID, To: CardDone, ExpectedVersion: c.Version, Actor: "lead", Decider: DeciderHuman, Now: frNow, ApprovalUUID: "uuid-new"}
+	if _, err := db.Transition(ctx, req); err != nil {
+		t.Fatalf("T20 with the verified receipt: %v", err)
+	}
+	for uuid, want := range map[string]int{"uuid-new": 2, "uuid-stale": 1} {
+		var got int
+		if err := db.DB.QueryRow(`SELECT factory_version FROM leader_approvals WHERE card_uuid=? AND run_id=?`, uuid, frRun).Scan(&got); err != nil {
+			t.Fatalf("approval %s read: %v", uuid, err)
+		}
+		if got != want {
+			t.Errorf("approval %s factory_version = %d, want %d", uuid, got, want)
+		}
+	}
+}

@@ -239,11 +239,16 @@ func (s *BacklogStore) recordRuntimeHook(run TodoRuntimeRun, assignment *TodoRun
 	if _, err := migrateOwnerLabelVocabularyTx(ctx, tx); err != nil {
 		return err
 	}
-	if err := tx.Commit(); err != nil {
-		return err
-	}
 	if hook != nil {
-		return hook()
+		// The hook runs INSIDE the assignment transaction (review round-22
+		// P1, SPEC-FACTORY-COMPLETION-RECOVERY-001): a hook failure rolls
+		// the assignment back with it — the dispatch fails cleanly instead
+		// of leaving the record pointing at a run whose binding never
+		// landed, which would let the completion gate close on the
+		// previous run's approval.
+		if err := hook(); err != nil {
+			return err
+		}
 	}
-	return nil
+	return tx.Commit()
 }

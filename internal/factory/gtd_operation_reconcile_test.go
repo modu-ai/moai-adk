@@ -2,6 +2,7 @@ package factory
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -233,5 +234,120 @@ func TestGTDDispatchRepairRestoresAssignedOwner(t *testing.T) {
 	}
 	if row.OwnerLabel != NormalizeOwnerLabel("worker-9") {
 		t.Fatalf("repaired row owner = %q, want the authoritative assignment's owner", row.OwnerLabel)
+	}
+}
+
+// The assignment rolls BACK when its binding hook fails (review round-22
+// P1, card t1538): a dispatch that cannot bind must not leave the record
+// pointing at the new run — that partial state let the completion gate
+// close the card on the previous run's approval.
+func TestGTDAssignmentRollsBackWhenBindingHookFails(t *testing.T) {
+	root, s, card := gtdReconcileFixture(t)
+	gtdPlaceRow(t, root, card, "run-0") // the card is factory-engaged: the hook attempts the binding
+
+	p, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(p, p+".preserved"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(p, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	assignErr := RecordFactoryCardAssignment(root, "run-1", card, "worker-1", "")
+	if err := os.Remove(p); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(p+".preserved", p); err != nil {
+		t.Fatal(err)
+	}
+	if assignErr == nil {
+		t.Fatal("the binding failure did not fail the assignment")
+	}
+	rec, err := s.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range rec.Runtime.Assignments {
+		if a.RunID == "run-1" && a.CardID == card {
+			t.Fatalf("the assignment survived the failed binding: %+v", a)
+		}
+	}
+}
+
+// A dispatch op stuck at invoking (its assignment applied, its completion
+// never verified) must not drag the binding back to its run when replayed
+// after the card moved on — its run is no longer the card's latest
+// assignment (review round-22 P1, card t1538).
+type failingApplyOwner struct {
+	gtdDispatchOwner
+}
+
+func (o failingApplyOwner) Apply(ctx context.Context, op GTDOperation) error {
+	if err := o.gtdDispatchOwner.Apply(ctx, op); err != nil {
+		return err
+	}
+	return errors.New("injected mid-flight failure")
+}
+
+func TestGTDSupersededInvokingOpDoesNotRegressBinding(t *testing.T) {
+	root, s, card := gtdReconcileFixture(t)
+	ctx := context.Background()
+	gtdPlaceRow(t, root, card, "run-old")
+	op := GTDOperation{OperationID: "gtd-dispatch:run-old:" + card, MissionID: "run-old", Action: GTDActionDispatch, Target: card, SnapshotHash: "snap", ReceiptJSON: []byte(`{}`)}
+	owner := failingApplyOwner{gtdDispatchOwner{store: s, root: root, runID: "run-old", card: card, owner: "worker-1"}}
+	if _, err := ExecuteGTDOperation(ctx, s, op, owner); err == nil {
+		t.Fatal("the injected mid-flight failure did not fail the dispatch")
+	}
+
+	// A new run takes the card over: assignment, row, and binding.
+	if err := RecordFactoryCardAssignment(root, "run-new", card, "worker-2", ""); err != nil {
+		t.Fatal(err)
+	}
+	gtdPlaceRow(t, root, card, "run-new")
+
+	// Replaying the stuck old operation leaves the binding on the new run.
+	if _, err := ExecuteGTDOperation(ctx, s, op, owner); err != nil {
+		t.Fatal(err)
+	}
+	if got := gtdBindingRun(t, root, card); got != "run-new" {
+		t.Fatalf("superseded-op replay regressed the binding to %q, want run-new", got)
+	}
+}
+
+// A row parked at picked with no owner is the mirror's failed T2 — the
+// dispatch reconciliation must not read it as current factory state; the
+// repair restores the assignment half (review round-22, card t1538).
+func TestGTDBindingCurrentRejectsPickedOwnerlessRow(t *testing.T) {
+	root, s, card := gtdReconcileFixture(t)
+	gtdPlaceRow(t, root, card, "run-1") // T1 landed; the T2 half never did
+	if err := RecordFactoryCardAssignment(root, "run-1", card, "worker-9", ""); err != nil {
+		t.Fatal(err)
+	}
+	current, err := gtdDispatchBindingCurrent(context.Background(), s, card, "run-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current {
+		t.Fatal("a picked, ownerless row read as reconciled factory state")
+	}
+	// The full operation flow repairs the half-landed row.
+	op := GTDOperation{OperationID: "gtd-dispatch:run-1:" + card, MissionID: "run-1", Action: GTDActionDispatch, Target: card, SnapshotHash: "snap", ReceiptJSON: []byte(`{}`)}
+	owner := gtdDispatchOwner{store: s, root: root, runID: "run-1", card: card, owner: "worker-9"}
+	if _, err := ExecuteGTDOperation(context.Background(), s, op, owner); err != nil {
+		t.Fatal(err)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	row, err := db.LoadCard(context.Background(), "run-1", card)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row.State != homestate.CardAssigned || row.OwnerLabel != NormalizeOwnerLabel("worker-9") {
+		t.Fatalf("repaired row = %s/%q, want assigned/worker-9", row.State, row.OwnerLabel)
 	}
 }

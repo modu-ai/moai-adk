@@ -165,11 +165,20 @@ func ExecuteGTDOperation(ctx context.Context, store *BacklogStore, candidate GTD
 	// re-running the reconcile would regress the binding to the replayed
 	// operation's run, arming the old run's approval against the new run's
 	// work (review round-21 P1). Only an operation still in flight
-	// (prepared or invoking) reconciles the factory record's half.
+	// (prepared or invoking) reconciles the factory record's half — and
+	// even then only while its run is the card's LATEST assignment: a
+	// later assignment means the card moved on, and the stuck operation's
+	// repair must not drag the binding back to it (review round-22 P1).
 	if applied && stored.Action == GTDActionDispatch && stored.State != GTDOperationReconciled {
 		cardID, runID := gtdDispatchReconcileIdentifiers(ctx, owner, stored)
-		if rerr := reconcileGTDDispatchBinding(ctx, store, cardID, runID); rerr != nil {
-			return stored, rerr
+		latest, lerr := gtdAssignmentIsLatest(ctx, store, cardID, runID)
+		if lerr != nil {
+			return stored, lerr
+		}
+		if latest {
+			if rerr := reconcileGTDDispatchBinding(ctx, store, cardID, runID); rerr != nil {
+				return stored, rerr
+			}
 		}
 	}
 	if applied {
@@ -208,6 +217,37 @@ func ExecuteGTDOperation(ctx context.Context, store *BacklogStore, candidate GTD
 		return stored, err
 	}
 	return LoadGTDOperation(ctx, store, stored.OperationID)
+}
+
+// gtdAssignmentIsLatest reports whether runID holds the card's most recent
+// runtime assignment — insert order is the engagement order the queue
+// record witnesses (review round-22 P1): a dispatch operation may repair
+// the factory record only while its run is the engagement the card is on.
+// No assignment rows at all — or a store whose runtime tables were never
+// materialized (the crash-cut fixtures) — reads as latest (the axis stays
+// vacuous).
+func gtdAssignmentIsLatest(ctx context.Context, store *BacklogStore, cardID, runID string) (bool, error) {
+	db, err := openGTDDB(store)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = db.Close() }()
+	var tables int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM sqlite_master WHERE type='table' AND name='todo_runtime_assignments'`).Scan(&tables); err != nil {
+		return false, mapBacklogEngineError("probe runtime assignments table", err)
+	}
+	if tables == 0 {
+		return true, nil
+	}
+	var latest string
+	err = db.QueryRowContext(ctx, `SELECT run_id FROM todo_runtime_assignments WHERE card_id=? ORDER BY rowid DESC LIMIT 1`, cardID).Scan(&latest)
+	if errors.Is(err, sql.ErrNoRows) {
+		return true, nil
+	}
+	if err != nil {
+		return false, mapBacklogEngineError("read latest runtime assignment", err)
+	}
+	return latest == runID, nil
 }
 
 // reconcileGTDDispatchBinding verifies — and repairs — the factory record's
@@ -394,15 +434,17 @@ func gtdDispatchBindingCurrent(ctx context.Context, store *BacklogStore, cardID,
 	if bound != runID {
 		return false, nil
 	}
-	// The binding names this run, but the mirror half may still be missing:
-	// reconciliation requires the card row the bound run resolves against
-	// (review round-20 P1) — without it the completion gate reads the
-	// binding as run-unresolvable and every close refuses.
+	// The binding names this run, but the mirror half may still be missing
+	// or half-landed: reconciliation requires the card row the bound run
+	// resolves against AND that row to carry the assignment the dispatch
+	// read back — a row parked at picked with no owner is the mirror's
+	// failed T2, never current (review round-22).
 	var row int
-	if err := db.DB.QueryRowContext(ctx, `SELECT count(*) FROM cards WHERE run_id=? AND card_id=?`, runID, cardID).Scan(&row); err != nil {
+	var state, ownerLabel string
+	if err := db.DB.QueryRowContext(ctx, `SELECT count(*), IFNULL(state,''), IFNULL(owner_label,'') FROM cards WHERE run_id=? AND card_id=?`, runID, cardID).Scan(&row, &state, &ownerLabel); err != nil {
 		return false, err
 	}
-	return row > 0, nil
+	return row > 0 && state == homestate.CardAssigned && ownerLabel != "", nil
 }
 
 // gtdFactoryDBForStore locates the project factory database for a queue

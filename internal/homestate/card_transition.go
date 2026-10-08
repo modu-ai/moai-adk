@@ -227,7 +227,12 @@ type transitionPlan struct {
 	// receipt's factory_version to this value inside the commit transaction
 	// (review round-8 P2-2): a validated approval that a state advance
 	// (T17) would otherwise stale stays bound to the post-transition row.
-	approvalRebindTo int64
+	// approvalRebindUUID scopes that re-stamp to the receipt the gate
+	// actually verified (review round-22): a run/card can carry approvals
+	// from several card identities, and an unverified stale one must never
+	// be refreshed back to validity.
+	approvalRebindTo   int64
+	approvalRebindUUID string
 }
 
 // Transition applies one requested card transition as a single transaction:
@@ -636,6 +641,7 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 			// re-stamped to the post-transition version in this same
 			// transaction, so the follow-up backlog archive accepts it.
 			plan.approvalRebindTo = cur.Version + 1
+			plan.approvalRebindUUID = strings.TrimSpace(req.ApprovalUUID)
 			plan.note = "no remote — leader approval verified"
 		} else {
 			if !remote {
@@ -658,6 +664,7 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 				if a, err := findLeaderApprovalForCardTx(ctx, tx, cur.RunID, cur.CardID); err == nil {
 					if a.VerifyBinding(uuid, cur.RunID, cur.Version, cur.EvidenceSHA, cur.OwnerLabel) == nil {
 						plan.approvalRebindTo = cur.Version + 1
+						plan.approvalRebindUUID = uuid
 					}
 				} else if !errors.Is(err, ErrApprovalMissing) {
 					return plan, err
@@ -676,6 +683,7 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 			return plan, err
 		}
 		plan.approvalRebindTo = cur.Version + 1
+		plan.approvalRebindUUID = strings.TrimSpace(req.ApprovalUUID)
 		plan.note = "leader approval verified"
 	case guardQuestion:
 		q := strings.TrimSpace(req.Question)
@@ -729,10 +737,14 @@ func commitTransition(ctx context.Context, tx *sql.Tx, cur Card, plan transition
 		return Card{}, err
 	}
 	// The approval chain planned by guardPush: the receipt stays bound to
-	// the post-transition version, committed in this same transaction.
+	// the post-transition version, committed in this same transaction. The
+	// re-stamp is scoped to the receipt the gate actually verified — a
+	// run/card can carry approvals from several card identities, and an
+	// unverified stale one must never be refreshed back to validity
+	// (review round-22).
 	if plan.approvalRebindTo != 0 {
-		if _, err := tx.ExecContext(ctx, `UPDATE leader_approvals SET factory_version=? WHERE run_id=? AND card_id=?`,
-			plan.approvalRebindTo, cur.RunID, cur.CardID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE leader_approvals SET factory_version=? WHERE run_id=? AND card_id=? AND card_uuid=?`,
+			plan.approvalRebindTo, cur.RunID, cur.CardID, plan.approvalRebindUUID); err != nil {
 			return Card{}, err
 		}
 	}
