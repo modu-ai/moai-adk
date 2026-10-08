@@ -592,6 +592,57 @@ The same commit adds the windows `t.Skip` to the shared mixed fixture
 (`hzsMixedNulFixture` — one skip point covers all five literal-named rows,
 P2). Inputs transport-verified: whole-file NUL-byte scan zero, doubled
 backslash on the new escape literals.
+
+**M2.3 remedy — old-bash rendering correction (GREEN record).** Shape: the
+two worlds became explicit decoders of one shared loop
+(`zoneUnescapeAnsiCWorld`): the MODERN world (`zoneUnescapeAnsiC`) renders
+`\u`/`\U` as UTF-8 code points and ends the part at the first NUL of ANY
+origin (modern bash truncates however spelled — superseding the M2.1
+origin-scoped truncation; the pre-4.2 divergence it deferred is now carried
+by the second candidate instead of the judged text); the PRE-4.2 world
+(`zoneUnescapeAnsiCPre42`) decodes `\xHH`/octal/simple escapes exactly the
+same — raw bytes, part ending at their NUL — while `\u`/`\U` are UNKNOWN
+escapes (backslash + letter stay, digits are ordinary characters; measured
+`5c 75 32 32 38 37`). `zoneWordRawText` (whole-raw candidate) is REPLACED by
+`zoneWordTextPre42`; the candidate set per `\u`/`\U`-bearing word is
+{modern, pre-4.2}, deny when either lands in the zone. The sync-phase
+`@MX:DEBT` on `zoneUnescapeAnsiC` (single-modern-decode divergence,
+upgrade=fail-closed) is REMOVED by this change: the simplification it
+described is replaced by the two-world pair, and the fail-closed upgrade
+option was rejected at gate 13 (over-blocks legal modern-bash paths).
+
+- **Command** (all 16 instrument tests): `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test
+  ./internal/hook -run '<the 15 names above>|TestCheckProtectedZoneShellMixedOriginNulDeniedHexComponent' -count=1 -v`
+- **Exit code**: `0`
+- **Observed (verbatim)**:
+
+```
+--- PASS: TestCheckProtectedZoneShellMixedOriginNulDeniedHexComponent (0.00s)
+--- PASS: TestCheckProtectedZoneShellMixedOriginNulDeniedRedirect (0.00s)
+--- PASS: TestCheckProtectedZoneShellMixedOriginNulDeniedOctalTerm (0.00s)
+--- PASS: TestCheckProtectedZoneShellMixedOriginNulDeniedUpperHex (0.00s)
+--- PASS: TestCheckProtectedZoneShellMixedOriginNulDeniedUpperOctal (0.00s)
+--- PASS: TestCheckProtectedZoneShellCodePointNulDoesNotTruncate (0.00s)
+--- PASS: TestCheckProtectedZoneShellAnsiCNulTruncationOutsideZoneControl (0.00s)
+--- PASS: TestCheckProtectedZoneShellNonAsciiOutsideZoneStaysAllowed (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.934s
+```
+
+All 16 green: the gate-14 row flipped DENY (the old-bash candidate resolves
+`link\u0000` through the symlink arm), the fifteen earlier rows hold.
+
+- **Full package regression (M2.3)**: `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1
+  -timeout=25m -v ./internal/hook/` — exit 0, verbatim tail `PASS` / `ok
+  github.com/modu-ai/moai-adk/internal/hook	377.691s` /
+  `PACKAGE_POST23_EXIT=0`; 3645 RUN lines, ZERO `--- FAIL` lines; the new
+  row passes inside the package run. Slot lease `hook-suite` held for the
+  run, released after.
+- Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
+  `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
+  clean; family coverage `12.8%` (all-rows selector).
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

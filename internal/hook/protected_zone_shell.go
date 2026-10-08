@@ -129,29 +129,43 @@ func zoneUnescapeDbl(v string) string {
 	return b.String()
 }
 
-// zoneUnescapeAnsiC decodes the ANSI-C ($'...') escape set bash honors: the
-// single-character escapes, octal \nnn, hex \xH.., and \u/\U code points.
-// An escape with no defined meaning keeps the backslash and the character —
+// zoneUnescapeAnsiC decodes one ANSI-C ($'...') part for a MODERN bash: the
+// single-character escapes, octal \nnn, hex \xH.., and \u/\U code points as
+// UTF-8. The part's contribution ends at the first NUL of ANY origin —
+// modern bash truncates the argument at the first NUL however spelled. An
+// escape with no defined meaning keeps the backslash and the character —
 // bash renders `$'a\qb'` as `a\qb` — so the guard checks the same text bash
-// writes. The part's contribution ends at its first NUL byte, scoped to the
-// origins REQ-HZS-001 names: \x00 and the octal escapes — the two origins
-// EVERY bash renders as a NUL. A \u/\U code point whose value is 0 does NOT
-// terminate: its support is version-variant (pre-4.2 bash renders the
-// escape text literally), so the judgment keeps the NUL-bearing text — the
-// sound over-approximation — and the divergence stays the documented \u/\U
-// host-variance residual (spec §B; gate round 10 P1, card t1585). Before
-// this decoder ANSI-C words were matched on their raw source text, so any
-// defined escape (`\\`, `\x2e`, ...) hid the real path (card t1570).
-//
-// @MX:DEBT: models bash >=4.2 \u/\U semantics — on a host whose bash renders
-// the escape texts literally (measured: 3.2.57, both families), the judged
-// path diverges from the argument the executing shell acts on and a
-// literal-named zone entry (symlink included) is a measured bypass class
-// (spec §B; card t1585).
-// @MX:CEILING: hosts running bash >= 4.2
-// @MX:UPGRADE: deny fail-closed on any \u/\U escape when the follow-up card
-// lands (spec §F run-phase design option)
+// writes. Words carrying \u/\U escapes are judged in BOTH this world and
+// the pre-4.2 reading (zoneUnescapeAnsiCPre42): the rendering is
+// version-variant, so the guard's candidate set carries one text per bash
+// generation and denies when EITHER lands in the zone — the possible-worlds
+// union, the same soundness as the possible-directory set (gate rounds
+// 13-14, card t1585). Before this decoder ANSI-C words were matched on
+// their raw source text, so any defined escape (`\\`, `\x2e`, ...) hid the
+// real path (card t1570).
 func zoneUnescapeAnsiC(v string) string {
+	return zoneUnescapeAnsiCWorld(v, false)
+}
+
+// zoneUnescapeAnsiCPre42 decodes one ANSI-C part the way a PRE-4.2 bash
+// renders it: \xHH, octal, and the single-character escapes decode exactly
+// like the modern decoder — raw bytes, the part ending at the first
+// \x/octal-origin NUL — while \u/\U are UNKNOWN escapes: the backslash and
+// the letter stay and the digits that follow are ordinary characters
+// (measured on bash 3.2.57: the ⊇ escape text renders as
+// 5c 75 32 32 38 37). The old-bash candidate of the words pair (gate round
+// 14 P1: the true pre-4.2 path for `link\u0000\x00/...` truncates at the
+// \x00 NUL — `link\u0000` — which a literally-named symlink resolves into
+// the zone).
+func zoneUnescapeAnsiCPre42(v string) string {
+	return zoneUnescapeAnsiCWorld(v, true)
+}
+
+// zoneUnescapeAnsiCWorld is the shared decode loop behind both worlds; the
+// flag selects only the \u/\U arms and, through them, which NULs can end
+// the part (any origin in the modern world; \x/octal origins only in the
+// pre-4.2 world, where a \u/\U is text and renders no NUL at all).
+func zoneUnescapeAnsiCWorld(v string, pre42 bool) string {
 	if !strings.Contains(v, "\\") {
 		return v
 	}
@@ -192,9 +206,29 @@ func zoneUnescapeAnsiC(v string) string {
 			}
 			b.WriteString(r)
 		case 'u':
-			b.WriteString(zoneHexEscape(v, &i, 4, false))
+			if pre42 {
+				// unknown to pre-4.2 bash: the backslash and the letter
+				// stay, the digits that follow are ordinary characters.
+				b.WriteByte('\\')
+				b.WriteByte(e)
+				break
+			}
+			r := zoneHexEscape(v, &i, 4, false)
+			if len(r) == 1 && r[0] == 0 {
+				return b.String()
+			}
+			b.WriteString(r)
 		case 'U':
-			b.WriteString(zoneHexEscape(v, &i, 8, false))
+			if pre42 {
+				b.WriteByte('\\')
+				b.WriteByte(e)
+				break
+			}
+			r := zoneHexEscape(v, &i, 8, false)
+			if len(r) == 1 && r[0] == 0 {
+				return b.String()
+			}
+			b.WriteString(r)
 		default:
 			if e >= '0' && e <= '7' {
 				o := zoneOctalEscape(v, &i, e)
@@ -321,16 +355,13 @@ func zoneFirstArgWord(args []*syntax.Word) (string, bool) {
 	return zoneWordText(args[0])
 }
 
-// zoneWordRawText returns the word's text as a PRE-4.2 shell reads it:
-// identical to zoneWordText except that ANSI-C parts keep their escape text
-// undecoded. \u/\U support is version-variant (bash 3.2 renders the escape
-// text literally — the card's both-literal measurement), so a word carrying
-// \u/\U escapes is judged in BOTH worlds and denied when EITHER lands in
-// the zone (gate round 13 P1, card t1585): the mixed word decodes to a
-// short modern-world text while the old shell acts on the full literal path
-// through a literally-named entry. Parts without \u/\U decode identically
-// on every bash generation and never need this second candidate.
-func zoneWordRawText(w *syntax.Word) (string, bool) {
+// zoneWordTextPre42 returns the word's text as a PRE-4.2 shell reads it:
+// identical to zoneWordText except that ANSI-C parts decode through the
+// pre-4.2 rendering — \x/octal and the simple escapes decode exactly the
+// same (raw bytes, NUL termination included), while \u/\U stay verbatim
+// literal text. A word WITHOUT \u/\U decodes identically in both worlds and
+// never needs this second candidate (zoneWordDual gates it).
+func zoneWordTextPre42(w *syntax.Word) (string, bool) {
 	if w == nil {
 		return "", false
 	}
@@ -340,10 +371,11 @@ func zoneWordRawText(w *syntax.Word) (string, bool) {
 		case *syntax.Lit:
 			b.WriteString(zoneUnescapeLit(p.Value))
 		case *syntax.SglQuoted:
-			// both quoting forms keep their source text in the raw
-			// world: plain single quotes decode nothing on any bash,
-			// and the ANSI-C part's escapes stay text pre-4.2.
-			b.WriteString(p.Value)
+			if p.Dollar {
+				b.WriteString(zoneUnescapeAnsiCPre42(p.Value))
+			} else {
+				b.WriteString(p.Value)
+			}
 		case *syntax.DblQuoted:
 			for _, dp := range p.Parts {
 				lit, ok := dp.(*syntax.Lit)
@@ -377,9 +409,9 @@ func zoneWordDual(w *syntax.Word) bool {
 }
 
 // zoneWordCandidates returns the candidate texts one word contributes to
-// judgment: the decoded text, plus the raw pre-4.2 reading when the word
-// carries \u/\U escapes (gate round 13 P1). The bool is false when the word
-// is dynamic.
+// judgment: the modern-decoded text, plus the pre-4.2 reading when the word
+// carries \u/\U escapes (gate rounds 13-14) — deny when EITHER lands in the
+// zone. The bool is false when the word is dynamic.
 func zoneWordCandidates(w *syntax.Word) ([]string, bool) {
 	t, literal := zoneWordText(w)
 	if !literal {
@@ -388,11 +420,11 @@ func zoneWordCandidates(w *syntax.Word) ([]string, bool) {
 	if !zoneWordDual(w) {
 		return []string{t}, true
 	}
-	raw, lit := zoneWordRawText(w)
-	if !lit || raw == t {
+	old, lit := zoneWordTextPre42(w)
+	if !lit || old == t {
 		return []string{t}, true
 	}
-	return []string{t, raw}, true
+	return []string{t, old}, true
 }
 
 // zoneWalker carries one shell-policy walk. cwds is the set of POSSIBLE
