@@ -134,12 +134,63 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.589s
 - 판정: **라인 형상 불변** — type 판별자(snake_case)·payload·ordinal 필드 모두 0.161.0에서 유지. `agent_role` 필드도 세션 소스 표면에 존재 유지(상위 자체 테스트 픽스처에서 `agent_role: None` 필드 관측). `codex_role_fingerprint.go` 소비는 failure-soft(파스 실패 → 라벨 없음, 오류 아님 — REQ-RLP-015)라 잔여 리스크가 낮다. **어댑터 변경 0건 — 비목표/후속 없음.**
 - 갭: `session_meta` payload 내 `subagent.thread_spawn.agent_role` 중첩 경로의 바이트 수준 재확인은 상위 프로토콜 크레이트 추가 fetch 없이는 미수행 — 라인 형상과 agent_role 존재로 뒷받침되는 결정이며, failure-soft 소비가 형상 변화를 "오류"가 아닌 "라벨 없음"으로 강하므로 본 카드 범위의 재검증 결론에는 영향 없다.
 
+### M4 — 불변 표면 검증 + 문서 (2026-10-09, tree 9767bdbb1 이후)
+
+**AC-CONF-007 기각 정책 불변 (회귀 가드)**:
+
+```text
+$ go test ./internal/cli -run '^TestManagedCodexServerRequestPolicy$' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.406s
+```
+
+11 서브시험(명령 실행·파일 변경·권한·elicitation·사용자 입력·동적 도구·토큰 갱신·attestation·레거시 승인 2종·미지 method) 전부 통과 — fixture 갱신과 무관하게 소유자의 답 정책표 불변. 스키마 가드 재실행: `go test ./internal/cli -run '^(TestManagedServerRequestPolicyMatchesCodexSchema|TestManagedCodexRemoteSupportProbe)$' -count=1` → `ok ... 1.434s`.
+
+**REQ-CONF-008 오퍼레이터 경로 노출면 관측 기록 (기록 전용 — 새 승인 처리 없음)**: 오퍼레이터가 붙은 턴의 서버 요청은 `leavesForOperator`(`internal/cli/managed_codex_tui.go:654`, 분기 `managed_codex_factory.go` answerServerRequest)에 따라 소유자가 답하지 않고 오퍼레이터 TUI에 남는다("Factory server request left for the operator"). 파일시스템 escalation(#49353)의 의미 확장이 넓힐 수 있는 권한 폭은 그 **인간 승인**이 풀 수 있는 것으로, codex 자체 승인 프롬프트의 영역이다 — 어댑터 답 정책의 변화가 아니므로 본 카드는 코드 변경 0건으로 NO-OP 확정한다(decision-index Q6 기본 적용). 본 실행에서 소유자 경로 정책 시험이 갱신 fixture 위에서 green으로 재관측됐고, 오퍼레이터 경로 파일은 전혀 손대지 않았다(PRESERVE).
+
+**AC-CONF-008 모델 핀 정합 (회귀 가드)**:
+
+```text
+$ go test ./internal/config -count=1
+ok  	github.com/modu-ai/moai-adk/internal/config	3.748s
+```
+
+`DefaultCodexAuditModel = "gpt-6.1-sol"`(`internal/config/closed_sets.go:96`)과 defaults의 `{gpt-6.1-sol, high}` Codex 핀 — 어댑터 코드 변경 0건 하에 기존 시험 전부 통과.
+
+**문서 갱신**: `.moai/docs/factory-managed-session.md` — 버전 표기 0.160.0 → 0.161.0 2곳(:51 스키마 서술·vendored 경로, :120 검증 명령 절) 및 vendored 경로 `codex-0.161.0/` 반영. CHANGELOG는 sync 소관이라 손대지 않음.
+
+**최종 빌드 (E2)**:
+
+```text
+$ go build ./...                           → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./... → exit 0
+```
+
+**경계 grep (E4)**: `grep -rn 'AskUserQuestion' internal/cli | grep -v _test.go | grep -v '// '` → **44행, 병합 기준 트리(81786284e→dce9596be)에서의 44행과 동일 — 본 카드 신규 발생 0건**. 44행 전부 기존 존재물로, raw string 안의 문서 텍스트(하네스 도움말의 "does not directly call AskUserQuestion" 서술 등)와 vendored rollout testdata JSONL이라 프로덕션 호출면이 아니다.
+
+**lint (E5)**: `golangci-lint run --timeout=2m` → `0 issues.` (exit 0) — 신규/기존 구분 불요(0건).
+
+
 
 
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_complete_at: 2026-10-09
+run_commit_sha: pending-backfill-m4
+run_status: complete
+ac_pass_count: 8
+ac_fail_count: 0
+ac_matrix: AC-CONF-001~003 PASS(M1 — 차단, LEDGER-1/3 RED 소멸), AC-CONF-004 PASS(회귀 가드 — 부재-하강 명시 시험 기존 존재 확인), AC-CONF-005 PASS(차단 — M2 최소 관측 포획 + vendored 샘플 자동 시험; keyring 변형만 기록 갭), AC-CONF-006 PASS(차단 — M3 채용: 프레임 근거 0.161.0 생성 스키마 + canary + mutant probe RED 실측), AC-CONF-007/008 PASS(회귀 가드)
+preserve_list_post_run_count: 0 — PRESERVE 대상(mcp_codex.go auth 사다리 본문, 기각 정책표, internal/config 핀 3파일, templates/**, 타 SPEC 산출물) 전부 무변경; 내성은 기존 계약이라 구현 변경 0건(mcp_codex.go/closed_sets.go/defaults.go/audit_models.go diff 0)
+l44_pre_commit_fetch: not-run (카드 워크트리 세션 — 공유 체크아웃 직접 편집 아님, B8 위생 경로)
+l44_post_push_fetch: not-applicable (본 스폰은 push 소관 아님 — 카드 브랜치 커밋까지만; push는 레인/리더 후속)
+new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues)
+cross_platform_build.darwin: pass (go build ./... exit 0)
+cross_platform_build.windows: pass (GOOS=windows GOARCH=amd64 go build ./... exit 0)
+total_run_phase_files: 17 (신규 12: testdata/codex-0.161.0 8스키마+resume-help+README 10 + testdata/codex-0.161.0-auth 샘플+README 2; 수정 5: managed_hardening_test.go, managed_codex_tui_test.go, codex_auth_ladder_test.go, factory-managed-session.md, SPEC artifacts[spec.md 상태 전이+progress.md]; 삭제 10: testdata/codex-0.160.0 전체 — git rename 감지로 8스키마+resume-help는 동일 바이트 이동)
+m1_to_mN_commit_strategy: 마일스톤별 1커밋(M1 fixture+소비자 이전+상태 전이 → M2 auth 샘플 봉인 → M3 재생 내성+mutant probe → M4 불변 검증+문서), 전부 Conventional Commits + card: t1607 + Authored-By-Agent 트레일러
+residual_risks: 전체 internal/cli 스위트 등판면은 본 카드의 main 통합 PR 병합 헤드 CI run(DoD-5) — 레인-로컬 명명 계열 green은 조기 신호; keyring 로그인 변형 login-status 출력 미포획(REQ-CONF-007 기록 갭); session_meta 중첩 경로 바이트 재확인은 failure-soft 소비로 강하다(§E.2 M3 갭)
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
