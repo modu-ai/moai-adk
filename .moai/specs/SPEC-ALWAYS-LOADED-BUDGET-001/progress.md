@@ -31,6 +31,8 @@ Input parameters: tier L · scope >15 files (13 always-loaded rules + template m
 
 Decision: **serial** — sequential manager-develop delegation per milestone, lane verifies evidence between milestones.
 
+M2 design decision (lane, 2026-10-08, evidence-backed): Q4's documented cap (10,000 chars per `additionalContext` string, unraisable) makes BOTH REQ-ALB-010 tiers unachievable for the factory role core — the ledger shows all 36 role-core rows are `binding` totalling 17,341 chars, and the existing factory context (`factoryHookContextLimit` 2,048) leaves a ~7.9k fit (ratio 0.46 vs the 0.746 STE sample); shrinking the role-core set is barred by REQ-ALB-025 (all 36 rows' entry points are registry-covered). **Decision: deliberate overflow-file delivery** — the hook emits the role core INTACT (never truncated) with an operator-visible warning and an agent-facing directive; the runtime's documented oversized-output behavior (save intact to a session file + path + 2,000-char preview, Q4 research, CC 2.1.89) is the delivery channel; fallback to the REQ-ALB-009 read-directive pattern when overflow is unavailable. REQ-ALB-011/AC-ALB-013 need no change (the guard asserts at hook-output level). Amendment surface: REQ-ALB-010 ladder wording + AC-ALB-012 green conditions + design §4 크기 절 — manager-spec round next, then M2 dispatch.
+
 Justification: the SPEC restructures binding instruction text (semantic, inter-file dependencies via the binding ledger), so neither mechanical sweep nor research fanout applies; serial keeps one writer per tree and lets each milestone's evidence gate the next.
 
 ## §E.2 Run-phase Evidence
