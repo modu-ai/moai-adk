@@ -336,7 +336,7 @@ _<pending run-phase>_
 
 sync_status: complete (3-phase close — route (ii) operative, card t1598)
 sync_complete_at: 2026-10-08T12:44:19Z
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 8d10007ca9804eeb58bcb0a34aca922989603198
 governing_audit: plan-audit-4 PASS-WITH-DEBT 0.94 (audited_sha 6abc63d30e4bb133fead8fc24b5b1013c00581a9, must_pass_failed=0, blocking_count=0) — re-affirmed unchanged by plan-audit-5 (receipt rcpt-5bbbb0b8650328de4d6b115f; the seven hash-subject paths carry a zero diff 6abc63d30..a2fcca6c3)
 frontmatter_status_transitions:
   in-progress→implemented→completed: manager-docs, the single sync commit (merged close per the Status Transition Ownership Matrix; trailer Authored-By-Agent: manager-docs)
