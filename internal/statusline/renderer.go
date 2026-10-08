@@ -329,19 +329,24 @@ func agentTypeValue(task SubagentTaskInfo) string {
 
 // subagentTaskDisplayName resolves the row's display name through the
 // null-fallback chain: name (optional, pointer-nil) → label → description →
-// "#"+full-id. The full id (not a truncated prefix) is used so two distinct
-// task ids never render identically.
+// "#"+full-id. Each candidate is sanitized BEFORE the emptiness test, so a
+// candidate made entirely of control characters (sanitize → empty) falls
+// through to the next candidate instead of rendering as blank space. The
+// full id (not a truncated prefix) is used so two distinct task ids never
+// render identically.
 func subagentTaskDisplayName(task SubagentTaskInfo) string {
-	switch {
-	case task.Name != nil && *task.Name != "":
-		return *task.Name
-	case task.Label != "":
-		return task.Label
-	case task.Description != "":
-		return task.Description
-	default:
-		return "#" + task.ID
+	if task.Name != nil {
+		if name := sanitizeSubagentText(*task.Name); name != "" {
+			return name
+		}
 	}
+	if label := sanitizeSubagentText(task.Label); label != "" {
+		return label
+	}
+	if description := sanitizeSubagentText(task.Description); description != "" {
+		return description
+	}
+	return "#" + task.ID
 }
 
 // formatTokenCount abbreviates a running token count for row display:

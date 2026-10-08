@@ -221,4 +221,25 @@ func TestAgentType(t *testing.T) {
 			t.Errorf("second row should carry its full id, got %q", rows[1].Content)
 		}
 	})
+
+	t.Run("all_control_char_name_falls_through_to_label", func(t *testing.T) {
+		// A name made entirely of control characters sanitizes to empty and
+		// must NOT be selected — the chain advances to the valid label
+		// (sanitize-then-test, not test-then-sanitize; audit N1 regression).
+		out := renderSubagentOutput([]SubagentTaskInfo{
+			{ID: "task-11", AgentType: strPtr("Explore"), Name: strPtr("\u001b\u0007"), Label: "real-label"},
+		})
+		rows := parseSubagentRows(t, out)
+		if len(rows) != 1 {
+			t.Fatalf("expected 1 JSONL row, got %d", len(rows))
+		}
+		if !strings.Contains(rows[0].Content, "real-label") {
+			t.Errorf("valid label must render when the name sanitizes to empty, got %q", rows[0].Content)
+		}
+		for _, bad := range []string{"\x1b", "\a"} {
+			if strings.Contains(rows[0].Content, bad) {
+				t.Errorf("content must not carry control byte %q, got %q", bad, rows[0].Content)
+			}
+		}
+	})
 }
