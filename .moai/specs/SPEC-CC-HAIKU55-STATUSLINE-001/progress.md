@@ -113,7 +113,19 @@ README 0-hit finding (the AC's own enumerated escape).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: complete
+sync_complete_at: 2026-10-08T13:04Z
+sync_commit_sha: pending-backfill-sync
+sync_owner: manager-docs
+changelog_entry_position: "[Unreleased] → ### Added, first bullet (newest-card-first house order)"
+b12_self_test_a: pre-emission grep -c 'SPEC-CC-HAIKU55-STATUSLINE-001' CHANGELOG.md → 0 (exit 1) — no duplicate entry; emission permitted
+b12_self_test_b: live AC count = 16 (AC-001..016, acceptance.md §D.2 traceability; zero [RETIRED]/[REF] markers file-wide). MOAI-AC-COUNTER raw stdout 32 = 16 base criteria + 16 §D.0 RED-cell label tokens (RED-AC-XXXa/b forms match as distinct sub-lettered identifiers — evidence-cell labels, not criterion declarations); ambiguous=0, halt not fired
+b12_self_test_c: file paths verified via ls — internal/statusline/types.go, builder.go, renderer.go, internal/template/templates/.claude/settings.json.tmpl all exist; implementation files read before entry drafting (B12 read-first)
+frontmatter_status_transitions: spec.md status in-progress → completed (merged close on this single sync commit per the 3-phase contract; implemented is not separately committed); updated: 2026-10-08 already current — no churn
+plan_acceptance_updated_refresh: skipped — plan.md and acceptance.md carry no frontmatter block (artifact statelessness); nothing to refresh
+canary_compliance_check: n/a — this SPEC defines no forward-looking policy with its own sync tests; the sync-phase gate here is spec lint + the CHANGELOG grep below
+mx_tag_validation: sync sub-step, PASS — new-code tags carry mandatory fields (@MX:NOTE on SubagentTaskInfo types.go; @MX:ANCHOR + @MX:REASON on renderSubagentOutput renderer.go)
+lint_pre_commit: moai spec lint SPEC-CC-HAIKU55-STATUSLINE-001 → `✓ No findings — all SPEC documents are valid` exit 0 (observed 2026-10-08T13:04Z, working tree with completed status)
 
 ---
 
