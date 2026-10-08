@@ -247,10 +247,13 @@ candidate pushes — so platform drift reds a candidate instead of the integrati
 The candidate path shall REPLACE the "WT push · CI 요청 금지" prohibition for this one
 path: a lane's public surface extends to pushing `ci/<card>` candidate branches via the
 candidate verb, while the integration branch push remains the leader's batch act
-(gitflow-lane-protocol.md §4). The sync phase shall amend
-`.claude/rules/local/gitflow-lane-protocol.md` (local-only by its own header, line 10 —
-never mirrored to internal/template/templates/) and the untracked CLAUDE.local.md §4.1
-sibling, recording the operator approval of 2026-10-03.
+(AGENTS.local.md §4.1 discipline 2-3; gitflow-lane-protocol.md §4, itself drift-flagged
+by AGENTS.local.md:203). The sync phase shall amend the canonical integration-chain
+section `AGENTS.local.md` §4.1 (AGENTS.local.md:175) and the drift-flagged develop-era
+rule `.claude/rules/local/gitflow-lane-protocol.md` §2/§4 (local-only by its own header,
+line 10 — never mirrored to internal/template/templates/), recording the operator
+approval of 2026-10-03. The retired CLAUDE.local.md (AGENTS.local.md §0.3, lines 27-29)
+is neither read nor amended.
 
 ### REQ-CCI-017 — Candidate failure modes (Event-detected)
 

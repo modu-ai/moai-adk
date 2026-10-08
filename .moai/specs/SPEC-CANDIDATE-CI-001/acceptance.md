@@ -80,8 +80,10 @@ it is red, and the green path names the milestone that flips it.
 
 - Given: the merge step's resolver as the contract holder
   (internal/factory/integration_merge_step.go:677 `resolveCardBranch`).
-- When: `go test ./internal/factory/ ./internal/cli/ -run '^(CardBranch|ResolveCard)$' -count=1`
-  runs after M2.
+- When: `go test ./internal/factory/ -run '^(TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepPreMergeCausesReleaseWithDistinctCodes)$' -count=1` runs after M2
+  (the EXISTING contract tests carrying the resolver and gate-order contract today,
+  internal/factory/integration_merge_step_test.go:210 and :320) plus the M2 family
+  `go test ./internal/cli/ -run '^TestIntegrationCandidate$' -count=1`.
 - Then: the candidate verb's resolution shares the resolver (or its extracted form):
   card worktree → `WT-*` branch → one pinned SHA; detached HEAD, missing worktree, and
   non-WT branch each refuse with a message naming the card. RED-now: the candidate verb
@@ -95,7 +97,8 @@ it is red, and the green path names the milestone that flips it.
 - Then: the primary checkout's state store contains a record whose key is (card id,
   pinned SHA) and whose fields include candidate SHA, integration branch, integration
   tip, candidate branch, verdict (initially `pending`), and push timestamp. Proven by the
-  store's read-back test in `go test ./internal/factory/ -run '^CandidateRecord$' -count=1`.
+  store's read-back test in `go test ./internal/factory/ -run '^TestCandidateRecord$' -count=1` (the run phase
+creates `TestCandidateRecord`).
 
 ## AC-CCI-006-1 — Gate default false (release-blocking)
 
@@ -108,7 +111,8 @@ it is red, and the green path names the milestone that flips it.
 
 ## AC-CCI-006-2 — Config symmetry audit stays green
 
-- When: `go test ./internal/config/ -run '^(StructYAML|LoaderCompleteness)$' -count=1` runs.
+- When: `go test ./internal/config/ -run '^(TestAuditLoaderCompleteness|TestWorkflowConfigFields|TestNewDefaultWorkflowConfig|TestNewDefaultWorkflowConfigNestedDefaults)$' -count=1` runs
+  (EXISTING exact test names, measured via `go test -list`).
 - Then: exit 0 (the struct side of `candidate_ci` matches the YAML on both mirrors).
 
 ## AC-CCI-006-3 — Disabled gate refuses the verb (release-blocking)
@@ -236,11 +240,17 @@ it is red, and the green path names the milestone that flips it.
 
 ## AC-CCI-016-1 — Doctrine amendment landed (sync-phase gate)
 
-- When: the sync commit is read (`git show <sync-sha> -- .claude/rules/local/gitflow-lane-protocol.md`).
-- Then: §2/§4 carry the candidate-path exception naming `moai integration candidate` and
-  the 2026-10-03 operator approval, while the integration-branch leader-batch rule stands.
-  The commit-graph order is the witness: the amendment commit is the sync phase's, after
-  the run-phase landing commits.
+- When: the sync commit is read
+  (`git show <sync-sha> -- AGENTS.local.md .claude/rules/local/gitflow-lane-protocol.md`).
+- Then: `AGENTS.local.md` §4.1 (the canonical integration-chain section,
+  AGENTS.local.md:175) carries the candidate-path exception naming
+  `moai integration candidate` and the 2026-10-03 operator approval;
+  gitflow-lane-protocol.md §2/§4 gains the same exception with its develop-era drift
+  notice retained (AGENTS.local.md:203 already flags that file's develop text as drift);
+  the integration-branch leader-batch rule stands in both. The retired CLAUDE.local.md
+  is untouched (AGENTS.local.md §0.3 — a discarded model, never a citation target). The
+  commit-graph order is the witness: the amendment commit is the sync phase's, after the
+  run-phase landing commits.
 
 ---
 

@@ -83,7 +83,9 @@ plan-phase research (2026-10-09).
 | The file is local-only, never mirrored to templates | .claude/rules/local/gitflow-lane-protocol.md:10, :188 |
 | Remote CI on the integration branch is the authoritative verdict surface | .claude/rules/local/gitflow-lane-protocol.md:83 |
 | Conflict resolution is the owning lane's duty; unsolvable conflicts are a leader blocker | .claude/rules/local/gitflow-lane-protocol.md:93 (§5) |
-| The card text's "§4.1" names the WT-push/CI-request prohibition; CLAUDE.local.md is the untracked sibling (.gitignore line 276) carrying §4.1 | card text (verbatim in the dispatch); /CLAUDE.local.md gitignore entry (worktree .gitignore:276); CLAUDE.local.md absent from the worktree (untracked) |
+| The card text's "§4.1" names the integration-chain canon: `AGENTS.local.md` §4.1 (`### §4.1 통합 체인 (main)`, line 175 — card branches from `main`, card PRs via the serial integration window, leader-batch push, `origin/main` CI as the verdict, green-conditional batch push), post-2026-10-05 GitHub Flow cutover | AGENTS.local.md:158-205 read directly in this worktree |
+| CLAUDE.local.md is RETIRED — "a discarded model, never a citation target" (AGENTS.local.md §0.3, lines 27-29); the canonical copy is the main-merged AGENTS.local.md (§0.4) | AGENTS.local.md:27-41 read directly |
+| gitflow-lane-protocol.md's develop-era text is itself declared drift: "전환 후 규범의 정본은 이 §4.1과 전환 규칙" (AGENTS.local.md:203) | AGENTS.local.md:203 read directly |
 
 ## R8 — Guard families (the bundle's members)
 

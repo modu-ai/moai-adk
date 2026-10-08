@@ -113,11 +113,21 @@ Files touched:
   LandingCheck wiring a LOUD refusal until M4 replaces it.
 
 Test families: `go test ./internal/config/...` (loader + YAML symmetry audits),
-`go test ./internal/factory/ -run '^CandidateRecord$'` (record round-trip, key lookup,
-absent-key = refuse), `go test ./internal/cli/ -run '^TestCandidateCIEnabled$'`.
+`go test ./internal/factory/ -run '^TestCandidateRecord$'` (record round-trip, key lookup,
+absent-key = refuse — the run phase creates `TestCandidateRecord` in
+internal/factory/candidate_record_test.go), `go test ./internal/cli/ -run '^TestCandidateCIEnabled$'`
+(the run phase creates `TestCandidateCIEnabled` replacing the placeholder's tests).
+The config-side gate-flag precedent names the intended new tests:
+`TestWorkflowCandidateCIDefaultFalse` / `TestWorkflowCandidateCILoaderRoundTrip`, after
+the existing `TestWorkflowSettingsDriftGateDefaultFalse` /
+`TestWorkflowSettingsDriftGateLoaderRoundTrip` pair.
 
 Verification command:
-`go test ./internal/config/... ./internal/factory/ -run '^(CandidateRecord|StructYAML)$' -count=1 && go vet ./internal/cli/`
+`go test ./internal/config/ -run '^(TestAuditLoaderCompleteness|TestWorkflowConfigFields|TestNewDefaultWorkflowConfig|TestNewDefaultWorkflowConfigNestedDefaults)$' -count=1 && go test ./internal/factory/ -run '^TestCandidateRecord$' -count=1 && go vet ./internal/cli/`
+(every branch is an EXISTING exact test name, measured via `go test -list`:
+TestAuditLoaderCompleteness at internal/config/audit_loader_completeness_test.go:58;
+TestWorkflowConfigFields, TestNewDefaultWorkflowConfig, and
+TestNewDefaultWorkflowConfigNestedDefaults in the same package).
 
 ### M2 — The candidate verb (P1)
 
@@ -166,13 +176,16 @@ Files touched:
 - `internal/factory/integration_window_policy.go` (or the policy record's existing home) —
   red-verdict auto-hold writer (REQ-CCI-012), the CompletePostMergeHold shape.
 
-Test families: `go test ./internal/factory/ -run '^(LandingCheck|CandidateVerdict)$'`
+Test families: `go test ./internal/factory/ -run '^(TestLandingCheck|TestCandidateVerdict)$'`
 (green admits past gate 5; red/missing/stale refuse with MergeExitLandingRefused; red
-writes the policy hold naming the card); `go test ./internal/cli/ -run '^TestIntegrationMerge$'`
-(regression: the 13-cause gate order unchanged, exit codes 1-15 stable).
+writes the policy hold naming the card — the run phase creates `TestLandingCheck` and
+`TestCandidateVerdict` beside the existing family); `go test ./internal/factory/ -run '^(TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepPreMergeCausesReleaseWithDistinctCodes)$'`
+(regression: the 13-cause gate order unchanged, exit codes 1-15 stable — the two EXISTING
+contract tests at internal/factory/integration_merge_step_test.go:210 and :320; the full
+`TestMergeStep*` family of 22 runs in the ordinary suite).
 
 Verification command:
-`go test ./internal/factory/ ./internal/cli/ -run '^(Landing|CandidateVerdict|IntegrationMerge)$' -count=1`
+`go test ./internal/factory/ ./internal/cli/ -run '^(TestLandingCheck|TestCandidateVerdict|TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepPreMergeCausesReleaseWithDistinctCodes|TestIntegrationCandidate)$' -count=1`
 
 ### M5 — Guard bundle job + candidate vet legs (P2)
 
@@ -214,10 +227,19 @@ selectors (the milestone records the exact one-command form it lands);
 
 ### M7 (sync phase, not a run milestone) — Doctrine amendment
 
-`.claude/rules/local/gitflow-lane-protocol.md` §2/§4 and the untracked CLAUDE.local.md
-§4.1 gain the candidate-path exception (REQ-CCI-016), recording the 2026-10-03 operator
-approval. Owned by manager-docs in sync; listed here so the landing is not judged
-incomplete without it (the local rule file is the doctrine the lanes actually read).
+The canonical amendment target is `AGENTS.local.md` §4.1 (`### §4.1 통합 체인 (main)`,
+AGENTS.local.md:175 — the post-cutover integration-chain canon: card branches from
+`main`, card PRs via the serial integration window, leader-batch push, CI on
+`origin/main` as the verdict): it gains the candidate-path exception (REQ-CCI-016)
+recording the 2026-10-03 operator approval. The develop-era procedure docs that
+AGENTS.local.md:203 already flags as drift — `.claude/rules/local/gitflow-lane-protocol.md`
+§2/§4, `.moai/docs/git-workflow-doctrine.md`, `.moai/docs/git-local-workflow-doctrine.md`,
+`.moai/docs/gitflow-integration-chain.md` — gain the same candidate-path exception WITH
+their develop-era drift notice retained (폐기 표시 유지). CLAUDE.local.md is RETIRED
+(AGENTS.local.md §0.3, lines 27-29: a discarded model, never a citation target) — it is
+neither read nor amended. Owned by manager-docs in sync; listed here so the landing is
+not judged incomplete without it (AGENTS.local.md §4.1 is the doctrine the lanes
+actually read, per its own §0.4 canonical-copy registry).
 
 ## §G. Anti-Patterns
 
