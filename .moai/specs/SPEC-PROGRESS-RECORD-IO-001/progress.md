@@ -173,12 +173,13 @@ carrier for the dispositioned ACs. The M1 evidence above is manager-develop's, u
   darwin seeder is KEPT (Q2 ruling (a)); the following is the operative route-(ii) record:
   - **Residual window `fd-verify→rename`**: the seeder's path-based steps (`chmod -N`, `cp -p`)
     sit behind the held-fd pre-checks (`audit_ceiling.go:685/697/712`) and the seeder's own
-    immediate Lstat+fd-match pre/post checks (`progress_metadata_darwin.go:39-45, :52-58`). The
-    microsecond gap between the post-copy re-check and `cp`'s own open remains a
-    name-swap→symlink race in which **victim-overwrite stays possible** — named here as the
-    LIVE residual harm class (route-(ii) honesty: naming it is required, not stale). The window
-    cannot close on darwin without cgo (copyfile(3) is userspace; no fd-anchored ACL copy
-    exists).
+    immediate Lstat+fd-match pre/post checks (`progress_metadata_darwin.go`). The unprotected
+    swap window runs from the seeder's immediate pre-seed verification to `cp`'s own open — a
+    name-swap→symlink race inside it means **victim-overwrite stays possible**; the post-copy
+    re-check bounds the post-copy span before the rename and fails closed. Named here as the
+    LIVE residual harm class (route-(ii) honesty: naming it is required, not stale). The
+    window cannot close on darwin without cgo (copyfile(3) is userspace; no fd-anchored ACL
+    copy exists).
   - **kauth_filesec follow-up disposition**: M1 (ad9ba32b2) measured the inert
     `kauth_filesec`-class name — a nil-error fd-set write to it leaves the enforced ACL
     unchanged (the kernel ignores it on APFS) — and the EPERM-gated `com.apple.system.*`
@@ -380,7 +381,7 @@ Open-items ledger (honest carry-forward at close):
    reviewer owns the AC-PRI-008 pinned-content review; AC-PRI-001's §E.2 verbatim-quote duty is
    met by the M1 record (the decisive raw output quoted above).
 
-§G ceiling-release record: intact and untouched by this close — the 3 ceiling-refusal holds, the
+§G ceiling-release record: intact and untouched by this close — the 4 ceiling-refusal holds, the
 LEADER-RULING release (receipts rcpt-ce322e7663362a796bf14bde + rcpt-f8998a6b0b8f1acd2b23d016),
 and the OPERATOR row-level override row stand as recorded.
 

@@ -20,11 +20,13 @@ import (
 // replace — there is no mode-only fallback (sync-audit-4 F8).
 //
 // Live residuals under route (ii), named at their measured harm class:
-//   - fd-verify→rename: the pre/post Lstat+fdMatchesName checks below
-//     bound, but cannot close, a name-swap→symlink race between the final
-//     re-check and cp's own open — victim-overwrite stays possible inside
-//     that microsecond window (darwin has no fd-anchored ACL copy;
-//     copyfile(3) is userspace).
+//   - fd-verify→rename: the pre/post Lstat+fdMatchesName checks bound the
+//     spans around the path-based steps, but the unprotected swap window
+//     from the immediate pre-seed verification to cp's own open remains —
+//     a name-swap→symlink race there keeps victim-overwrite possible
+//     (darwin has no fd-anchored ACL copy; copyfile(3) is userspace); the
+//     post-copy re-check bounds the post-copy span before the rename and
+//     fails closed.
 //   - delete-denied rename (decision-index Q5): a write-allowed/
 //     delete-denied ACL on the target makes the caller's atomic rename
 //     fail EPERM where the pre-repair in-place write succeeded, so no
@@ -38,7 +40,7 @@ import (
 // namespace EPERM-gated for non-root.
 //
 // @MX:DEBT: [AUTO] route-(ii) kept exec seeder (decision-index Q2, leader ruling (a) — OVERRIDABLE by an operator ruling): cp -p shells out, so the fd-verify→rename microsecond race keeps victim-overwrite possible; kept because darwin offers no fd-anchored ACL copy without cgo
-// @MX:CEILING: victim-overwrite is bounded to the window between the post-copy re-check and cp's own open, behind the pre/post Lstat+fdMatchesName symlink rejection named in the header above
+// @MX:CEILING: victim-overwrite is bounded to the unprotected swap window from the immediate pre-seed verification to cp's own open; the post-copy re-check bounds the post-copy span before the rename and fails closed, behind the pre/post Lstat+fdMatchesName symlink rejection named in the header above
 // @MX:UPGRADE: a kauth_filesec fd-anchored ACL seeder measured writable as non-root, or an operator ruling reverses Q2 to route (i)
 // @MX:SPEC: SPEC-PROGRESS-RECORD-IO-001
 func seedFileMetadata(tmp *os.File, tmpPath, original string) error {
@@ -54,7 +56,7 @@ func seedFileMetadata(tmp *os.File, tmpPath, original string) error {
 	// seeder re-validates the temp IMMEDIATELY before its path-based steps
 	// and rejects a swapped-in SYMLINK outright — chmod/cp must never
 	// write through an attacker-planted link — then re-checks after them.
-	// The residual between the re-check and cp's own open is a
+	// The residual between the pre-step re-check and cp's own open is a
 	// microsecond race that darwin's platform constraints cannot close
 	// without cgo (copyfile(3) is userspace; no fd-anchored ACL copy
 	// exists) — dispositioned LIVE under route (ii) (decision-index Q2,
