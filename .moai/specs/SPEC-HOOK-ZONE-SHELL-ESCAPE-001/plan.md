@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-ZONE-SHELL-ESCAPE-001
 title: "Plan — ANSI-C shell decoder repair (NUL part-terminator, raw-byte \\x, bounded no-digit escapes)"
-version: "0.1.0"
+version: "0.1.1"
 created: 2026-10-09
 updated: 2026-10-09
 author: manager-spec
@@ -16,15 +16,24 @@ author: manager-spec
 - Baseline HEAD: `9dbe40c0a` — the baseline-first commit
   (`test(t1585): RED reproduction for protected-zone shell escape defects`)
   carrying the instrument `internal/hook/protected_zone_shell_repro_test.go`
-  and the evidence record `.moai/reports/t1585/red-repro.md`, on top of
-  `81786284e` (= local main tip). Ordering attribution satisfied: the RED
-  baseline precedes every repair commit.
+  (its header comment is the COMMITTED carrier of the bash ground truth), on
+  top of `81786284e` (= local main tip). The evidence record
+  `.moai/reports/t1585/red-repro.md` is MACHINE-LOCAL (`.moai/reports/*` is
+  gitignored — verified `git cat-file -e 9dbe40c0a:...` exit 128); it is the
+  working record, never a citation target for fresh checkouts. The CANONICAL
+  record is the TRACKED `evidence-red-repro.md` in the SPEC directory
+  (round-2 repair). Ordering attribution satisfied: the RED baseline
+  precedes every repair commit.
 - Development mode: `tdd` (quality.yaml `constitution.development_mode`) —
   RED is already in place; run phase is GREEN-first on the three defect rows.
 - SPEC artifacts: `.moai/specs/SPEC-HOOK-ZONE-SHELL-ESCAPE-001/{spec,plan,acceptance,progress}.md`.
-- Evidence: `.moai/reports/t1585/red-repro.md` (committed at `9dbe40c0a`) —
-  bash ground-truth table, per-defect verbatim test output (exit 1), tree
-  attribution, fix directions, gaps.
+- Evidence: `evidence-red-repro.md` in the SPEC directory (canonical TRACKED
+  record, committed — corrected and fully re-measured 2026-10-09 on bash
+  3.2.57) — bash ground-truth table, per-defect verbatim test output
+  (exit 1), tree attribution, fix directions, gaps. The gitignored
+  `.moai/reports/t1585/red-repro.md` is the demoted card-scoped duplicate;
+  the instrument header comment (`9dbe40c0a`) is the committed in-code
+  carrier.
 
 ### §A.1 The surface (read, verified against the RED record)
 
@@ -121,12 +130,22 @@ re-runs of M3).
 
 - Re-run the three defect rows at the committed baseline; record the verbatim
   output in progress.md §E.2 (pre-GREEN evidence).
-- ADD two instrument rows: (a) guard-level no-crash — a Bash call carrying
+- ADD instrument rows: (a) guard-level no-crash — a Bash call carrying
   `$'\x'` judged with the panic contained in the test helper
   (`hzsDecodeAnsiC` pattern extended to the guard call): RED pre-fix (the
-  walk panics), decision post-fix; (b) `\u` code-point pin —
-  `⊇` decodes to bytes `e2 a8 87` (green-now by design; pins fix ②'s
-  split from regressing `\u`).
+  walk panics), decision post-fix; (b) `\u`/`\U` code-point pin — the
+  ESCAPE TEXTS `⊇` and `\U00002287` (the decoder receives the inner
+  text, so the rows name the escapes, not the literal character) both decode
+  to bytes `e2 8a 87` (green-now by design; pins fix ②'s split from
+  regressing the code-point arm); (c) part-level NUL row — `zoneWordText`
+  over `$'a\x00b'X` yields `aX` (RED pre-fix: the current decode keeps the
+  NUL, `a\x00bX`; fails a word-level-truncation mutant that satisfies the
+  command rows); (d) octal-origin command row — `rm -r zone_dir$'\0/sub'`
+  denied (RED pre-fix: allow — the same judged-text path as the hex case
+  through `zoneOctalEscape`'s `byte(0)`); (e) non-ASCII outside-zone allow
+  controls — a non-ASCII-named file outside the zone stays ALLOWED in both
+  the literal and the raw-byte spelling (fails a deny-all-non-ASCII mutant;
+  plan-audit D5).
 - No repair in this milestone.
 
 ### M2 — Decoder repair (the three defect fixes)
@@ -165,8 +184,11 @@ re-runs of M3).
 - SPEC-HOOK-ZONE-BACKSLASH-001 (t1570) — the ANSI-C decoder's origin SPEC;
   its quoting matrix is the family regression floor.
 - SPEC-SELF-IMPROVE-PROTECTED-ZONE-001 — the protected-zone guard root SPEC.
-- `.moai/reports/t1585/red-repro.md` — the measured RED record (committed
-  `9dbe40c0a`).
+- `evidence-red-repro.md` (in this SPEC directory) — the canonical TRACKED
+  RED record (corrected + fully re-measured 2026-10-09 on bash 3.2.57). The
+  gitignored `.moai/reports/t1585/red-repro.md` is the demoted card-scoped
+  duplicate; the instrument header (`9dbe40c0a`) is the committed in-code
+  carrier.
 - `.claude/rules/moai/development/verification-completeness.md` §2 — the
   two-cell adoption rule every AC follows.
 - `.claude/rules/moai/core/verification-claim-integrity.md` §2.3 — the

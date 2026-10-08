@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-ZONE-SHELL-ESCAPE-001
 title: "Protected-zone ANSI-C shell decoding judges the bytes bash executes — NUL part-terminator, raw-byte \\x, bounded no-digit escapes"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-10-09
 updated: 2026-10-09
@@ -22,6 +22,7 @@ tags: "hook, security, protected-zone, ansi-c, shell-quoting, nul-truncation, ra
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-10-09 | 0.1.0 | Initial draft. Authored by manager-spec for card t1585 (t1570 follow-up), from the lane-19 RED reproduction measured 2026-10-08 (`.moai/reports/t1585/red-repro.md`; instrument committed baseline-first as `9dbe40c0a` on `WT-zone-gate-defects`). Three measured defects in the ANSI-C (`$'...'`) half of the shell decoder: a P1 protected-path bypass and two P2 decoder defects. |
+| 2026-10-09 | 0.1.1 | Review-gate rounds 1-2 + plan-audit iter-1 repair: `\u` pin bytes corrected `e2 a8 87` → `e2 8a 87` (the old value is U+2A07, a different character), pin input restated as the escape texts `⊇`/`\U00002287`, host-bash 3.2.57 footnote + full ground-truth re-measurement (all seven rows, `od`), evidence custody corrected and the canonical record TRACKED as `evidence-red-repro.md` (gitignored duplicate demoted), controls cited MEASURED at `7be9f41b5`, AC-HZS-006 §2.1 conditional-demotion sentence, new AC-HZS-009 (part-level shape) / AC-HZS-010 (octal origin) / AC-HZS-011 (non-ASCII outside-zone control), AC-HZS-008 cell 1 re-scoped to the recorded run. |
 
 ## B. Problem Statement
 
@@ -35,9 +36,10 @@ string bash actually places in the executed command — anything else splits the
 judged path from the acted-on path.
 
 Three defects in the ANSI-C half are MEASURED (not inferred): the RED
-reproduction (`.moai/reports/t1585/red-repro.md`, measured 2026-10-08 in this
-card worktree, exit code 1 on all three defect tests) demonstrates each. The
-bash ground truth was measured first with real bash:
+reproduction (the tracked record `evidence-red-repro.md` in this directory,
+measured 2026-10-08 in this card worktree, exit code 1 on all three defect
+tests) demonstrates each. The bash ground truth — fully re-measured
+2026-10-09 on this host's bash 3.2.57 (`od`, all seven rows):
 
 | Command | Output bytes | Reading |
 |---|---|---|
@@ -45,7 +47,17 @@ bash ground truth was measured first with real bash:
 | `zone_dir$'\x00/sub'` | `7a 6f 6e 65 5f 64 69 72` ("zone_dir") | whole word = the pre-NUL text |
 | `$'a\0b'` | `61` ("a") | octal NUL truncates identically |
 | `$'\xec\xa1\x80'` | `ec a1 80` | `\xHH` emits ONE RAW BYTE (no code-point re-encoding) |
-| `$'⊇'` | `e2 a8 87` | `\u` renders the code point as UTF-8 (current decoder correct here) |
+| `$'⊇'` | `e2 8a 87` | `\u` renders the code point as UTF-8 (current decoder correct here) |
+| `$'⊇'` (literal char) | `e2 8a 87` | a non-ASCII literal passes through byte for byte |
+
+Host-bash note (re-measured 2026-10-09 with `od` on this host's bash 3.2.57
+— `bash` and `/bin/bash` identical): `$'⊇'` renders `e2 8a 87` (`\u` IS
+supported); `$'\U00002287'` renders the literal text `\U00002287` (`\U` is
+not supported at 3.2). The decoder models the modern `\u`/`\U` set; where an
+ancient bash renders `\U` literally the divergence is deny-safe — the guard
+zone-checks the decoded path while the shell's literal-path target does not
+exist, so the model can only over-strictly deny, never judge a different
+live path than the shell would touch.
 
 ### Defect ① (P1) — decoded NUL kept: protected-path bypass
 
@@ -103,7 +115,9 @@ those same bytes the shell places in the executed argument.
 ### REQ-HZS-003 — `\u`/`\U` code-point rendering preserved (Unwanted)
 
 The repair shall not change the rendering of `\u`/`\U` escapes: the code point
-shall keep rendering as UTF-8 (measured row: `⊇` → `e2 a8 87`), and the
+shall keep rendering as UTF-8 — measured row: the escape text `⊇` decodes
+to `e2 8a 87` (re-measured 2026-10-09; host-bash note in §B: `\U` renders
+literally on bash 3.2.57) — and the
 t1570 quoting matrix's ANSI-C rows (defined escape `\x2e`, escape-free text)
 keep their current decisions — the `\x` raw-byte change is behavior-visible
 only for values ≥ 0x80.
@@ -169,18 +183,23 @@ plan-phase baseline is green except the three RED defect rows).
 ## E. Success Criteria
 
 1. Two-cell adoption (`.claude/rules/moai/development/verification-completeness.md`
-   §2) for AC-HZS-001/003/005: the RED cells are ALREADY measured
-   (`.moai/reports/t1585/red-repro.md`, verbatim outputs + exit 1, tree
-   `81786284e` + the instrument, re-runnable at the committed baseline
-   `9dbe40c0a`), and the M2 repair flips them GREEN — both sides observed on
-   this tree, no carry-over.
-2. The mutant-probe controls (AC-HZS-002 outside-zone truncation stays
-   allowed; AC-HZS-004 direct-spelling deny stays denied) are green on BOTH
-   sides of the repair — a fix that blanket-denies NUL-bearing or non-ASCII
-   commands fails them.
-3. The run-phase-finalized instrument carries the guard-level no-crash row
-   (AC-HZS-006) and the `\u` code-point pin row (AC-HZS-007), both GREEN
-   after M2.
+   §2): AC-HZS-001/003/005's RED cells are ALREADY measured (the tracked
+   record `evidence-red-repro.md` in this directory — verbatim outputs +
+   exit 1, tree `81786284e` + the instrument, re-runnable at the committed
+   baseline `9dbe40c0a`), and the M2 repair flips them GREEN. AC-HZS-009/010
+   carry MEASURED bash-side ground truth with their decoder rows authored at
+   M1 under the §2.1 conditional-demotion sentence.
+2. The mutant-probe controls — AC-HZS-002 (outside-zone NUL truncation stays
+   allowed), AC-HZS-004 (direct-spelling deny stays denied), AC-HZS-011
+   (non-ASCII outside-zone stays allowed, literal AND raw-byte spellings) —
+   are green on BOTH sides of the repair: a fix that blanket-denies
+   NUL-bearing or non-ASCII commands fails them.
+3. The run-phase-finalized instrument carries the M1 rows — the guard-level
+   no-crash row (AC-HZS-006), the `\u`/`\U` code-point pin rows (AC-HZS-007,
+   escape texts `⊇`/`\U00002287`), the part-level NUL row (AC-HZS-009:
+   `$'a\x00b'X` → `aX`), the octal-origin command row (AC-HZS-010), and the
+   non-ASCII outside-zone allow controls (AC-HZS-011) — all GREEN after M2
+   (AC-HZS-006/009/010 under their §2.1 conditionals).
 4. The affected package family is green: `go test -count=1 ./internal/hook/`
    (only the three RED defect rows flip; countable delta, no new failure), and
    `GOOS=windows go build ./...` exits 0.
