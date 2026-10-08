@@ -1053,3 +1053,30 @@ func TestCheckProtectedZoneShellFunctionRedirectsOwnGeneration(t *testing.T) {
 	}
 	t.Logf("swept=%d", 1)
 }
+
+// TestCheckProtectedZoneShellSedInPlaceOwnGeneration — gate round 28 P2
+// (over-block): the in-place option scan binds to the EXECUTING
+// generation. The sed NAME is dual such that only the pre-4.2 world
+// dispatches sed (the modern reading truncates to a non-sed name), and
+// the option word decodes to -i ONLY in the modern world — the pre-4.2
+// reading keeps the escape text literal (an invalid option: sed exits,
+// touching nothing). The pooled modern scan read "-i" and false-denied
+// while NEITHER world's sed runs in-place. The row asserts the ALLOW.
+// Escape texts are written with the doubled backslash (transport-safe
+// source syntax for the single 0x5C byte at runtime).
+func TestCheckProtectedZoneShellSedInPlaceOwnGeneration(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	const sedCmd = "sed $'no\\u0005f/../sed' $'-i\\u0000' 's/a/b/' zone_dir/marker.md"
+	// the name word: the modern reading truncates to "no" (nothing
+	// dispatches), the pre-4.2 reading resolves to sed through the
+	// literally-named no+u0005f entry.
+	if err := os.MkdirAll(filepath.Join(root, "no\\u005f"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": sedCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("sed in place own generation: decision=%q reason=%q, want allowed — the executing generation's option reading is the literal escape text, an invalid option: sed touches nothing", sedCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}

@@ -1154,6 +1154,35 @@ instrument re-run) and restored.
   `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
   clean; family coverage `13.8%` (all-rows selector).
 
+### Gate round 28 — M2.11 sed in-place generation binding (2026-10-09)
+
+One P2 (over-block): `zoneSedInPlace` applied the MODERN bash's option
+reading to every sed dispatch — `sed $'no\u0005f/../sed' $'-i\u0000'
+'s/a/b/' zone_dir/marker.md`: the sed NAME is dual such that only the
+pre-4.2 world dispatches sed (the modern reading truncates to "no"), and
+the option word decodes to `-i` ONLY in the modern world — the pre-4.2
+reading keeps the escape text literal (an invalid option: sed exits,
+touching nothing). The pooled modern scan read "-i" and false-denied while
+NEITHER world's sed runs in-place.
+
+**Regression row — RED under the M2.10 tip (`352ce8b70` + the row,
+uncommitted at measurement):**
+
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellSedInPlaceOwnGeneration' -count=1 -v`
+- **Exit code**: `1`
+- **Observed (verbatim, decision line)**:
+
+```
+    protected_zone_shell_repro_test.go:1079: sed in place own generation: decision="sed $'no\\u0005f/../sed' $'-i\\u0000' 's/a/b/' zone_dir/marker.md" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=zone_dir/marker.md", want allowed — the executing generation's option reading is the literal escape text, an invalid option: sed touches nothing
+--- FAIL: TestCheckProtectedZoneShellSedInPlaceOwnGeneration (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.672s
+```
+
+Fixture: narrowed marker manifest + the literally-named `no\u0005f`
+directory (the pre-4.2 name reading resolves sed through it). Inputs
+transport-verified: whole-file NUL-byte scan zero, doubled backslash.
+
 
 
 **M2.7 remedy — full dispatch pre-classification + function shadowing
