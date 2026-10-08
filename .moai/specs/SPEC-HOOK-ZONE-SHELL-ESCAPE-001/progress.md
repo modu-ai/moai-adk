@@ -643,6 +643,55 @@ All 16 green: the gate-14 row flipped DENY (the old-bash candidate resolves
 - Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
   `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
   clean; family coverage `12.8%` (all-rows selector).
+
+### Gate round 15 — M2.4 consumer-set sweep: four P1s (2026-10-09)
+
+Four P1s on the dual-world integration (reviewer overlay test
+TestReviewDualWorldRegression, 5 shapes, base deny → current allow, real
+bash): the dual worlds were wired into the PATH-CANDIDATE funnels only, and
+four other consumers still read a single world — (1) an EMPTY modern
+candidate discarded the whole word (`$'\u0000/../zone_dir/marker.md'`:
+modern truncation yields "" and the pre-4.2 candidate was lost with it);
+(2) the cd/git directory anchors read the modern world only (`cd
+$'docs\u0000/../zone_dir'; rm marker.md` tracks docs while 3.2 lands inside
+zone_dir); (3) the executable name truncated (`$'docs\u0000/../rm'
+zone_dir/marker.md` extracted "docs", never recognizing the mutation verb);
+(4) the long-option value took worlds[0] (`cp source.md
+$'--target-directory=docs\u0000/../zone_dir'` extracted "docs"). The
+completing principle: every consumption site of word text consumes the
+candidate SET, or carries an explicitly justified single-world exception.
+
+**Five regression rows — RED under the M2.3 tip (`d8eefcc79` + the rows,
+uncommitted at measurement):**
+
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellDualWorld' -count=1 -v`
+- **Exit code**: `1`
+- **Observed (verbatim)**:
+
+```
+    protected_zone_shell_repro_test.go:680: dual world empty modern kept: decision="allow" reason="", want deny
+    protected_zone_shell_repro_test.go:680: swept=1
+--- FAIL: TestCheckProtectedZoneShellDualWorldEmptyModernKept (0.00s)
+    protected_zone_shell_repro_test.go:688: dual world cd readings: decision="allow" reason="", want deny
+    protected_zone_shell_repro_test.go:688: swept=1
+--- FAIL: TestCheckProtectedZoneShellDualWorldCdReadings (0.01s)
+    protected_zone_shell_repro_test.go:697: dual world verb recognition: decision="allow" reason="", want deny
+    protected_zone_shell_repro_test.go:697: swept=1
+--- FAIL: TestCheckProtectedZoneShellDualWorldVerbRecognition (0.00s)
+    protected_zone_shell_repro_test.go:705: dual world long option value: decision="allow" reason="", want deny
+    protected_zone_shell_repro_test.go:705: swept=1
+--- FAIL: TestCheckProtectedZoneShellDualWorldLongOptionValue (0.00s)
+    protected_zone_shell_repro_test.go:713: dual world git anchor: decision="allow" reason="", want deny
+    protected_zone_shell_repro_test.go:713: swept=1
+--- FAIL: TestCheckProtectedZoneShellDualWorldGitAnchor (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.857s
+FAIL
+```
+
+Fixture: literally-named `docs\u0000` directory + marker + source.md;
+windows-skipped (backslash separator). Inputs transport-verified
+(whole-file NUL scan zero, doubled backslash).
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

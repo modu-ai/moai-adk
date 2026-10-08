@@ -618,3 +618,98 @@ func TestCheckProtectedZoneShellMixedOriginNulDeniedHexComponent(t *testing.T) {
 	}
 	t.Logf("swept=%d", 1)
 }
+
+// hzsLiteralNameFixture builds the zone root, the protected marker, a
+// source.md for the cp shape, and the literally-named docs+backslash+u0000
+// DIRECTORY the pre-4.2 shell's argument walks through. POSIX-specific: the
+// entry name carries backslashes, a separator on windows (gate round 14
+// P2).
+func hzsLiteralNameFixture(t *testing.T) string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX-specific: the literally-named fixture entry carries backslashes, a separator on windows")
+	}
+	root := newZoneRoot(t, zoneShippedDoc(hzsShellManifest), "")
+	if err := os.MkdirAll(filepath.Join(root, "zone_dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(root, "zone_dir", "marker.md")
+	if err := os.WriteFile(marker, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "source.md"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "docs\\u0000"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+// hzsWantLiteralDeny drives one gate-round-15 row and asserts the zone deny
+// with the marker intact.
+func hzsWantLiteralDeny(t *testing.T, name, cmd string) {
+	t.Helper()
+	root := hzsLiteralNameFixture(t)
+	marker := filepath.Join(root, "zone_dir", "marker.md")
+	h := zoneTestHandler(t, root)
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+	wantZoneDeny(t, name, d, r, harnessLearnerIdentity, "category", "probe_zone")
+	if _, err := os.Stat(marker); err != nil {
+		t.Errorf("%s: deny observed but the protected marker is gone: %v", name, err)
+	}
+	t.Logf("swept=%d", 1)
+}
+
+// The five gate-round-15 regression rows (card t1585, the reviewer's
+// TestReviewDualWorldRegression shapes): every consumption site of word
+// text must consume the CANDIDATE SET, not a single world. The dual worlds
+// were wired into the path-candidate funnels only; these five shapes each
+// reach a consumer still reading one world and ALLOW while the pre-4.2
+// shell lands inside the zone through the literally-named docs+u0000
+// entry. Green at the M2.3 base for the shapes the base judged whole-text,
+// RED under the M2.3 tip, DENY under the consumer-set fix. Escape texts are
+// written with the doubled backslash (transport-safe source syntax for the
+// single 0x5C byte at runtime).
+
+// TestCheckProtectedZoneShellDualWorldEmptyModernKept — an EMPTY modern
+// candidate must not discard the word: the modern reading truncates to ""
+// at the leading code-point NUL while the pre-4.2 reading still names the
+// ../zone_dir climb.
+func TestCheckProtectedZoneShellDualWorldEmptyModernKept(t *testing.T) {
+	hzsWantLiteralDeny(t, "dual world empty modern kept",
+		"printf changed > $'\\u0000/../zone_dir/marker.md'")
+}
+
+// TestCheckProtectedZoneShellDualWorldCdReadings — the cd destination
+// tracks BOTH readings: on 3.2 the cd lands in zone_dir through the
+// literally-named entry, so the following rm judges from inside the zone.
+func TestCheckProtectedZoneShellDualWorldCdReadings(t *testing.T) {
+	hzsWantLiteralDeny(t, "dual world cd readings",
+		"cd $'docs\\u0000/../zone_dir'; rm marker.md")
+}
+
+// TestCheckProtectedZoneShellDualWorldVerbRecognition — the executable
+// NAME tests every candidate: the modern reading truncates to "docs" (no
+// mutation verb recognized) while the pre-4.2 path resolves to an rm
+// executable through the literally-named entry.
+func TestCheckProtectedZoneShellDualWorldVerbRecognition(t *testing.T) {
+	hzsWantLiteralDeny(t, "dual world verb recognition",
+		"$'docs\\u0000/../rm' zone_dir/marker.md")
+}
+
+// TestCheckProtectedZoneShellDualWorldLongOptionValue — a long option's
+// attached value is extracted from EVERY world: the modern value truncates
+// to "docs" while the pre-4.2 value carries the ../zone_dir climb.
+func TestCheckProtectedZoneShellDualWorldLongOptionValue(t *testing.T) {
+	hzsWantLiteralDeny(t, "dual world long option value",
+		"cp source.md $'--target-directory=docs\\u0000/../zone_dir'")
+}
+
+// TestCheckProtectedZoneShellDualWorldGitAnchor — the git -C anchor tracks
+// BOTH readings: on 3.2 the subcommand's file arguments resolve from
+// inside the zone.
+func TestCheckProtectedZoneShellDualWorldGitAnchor(t *testing.T) {
+	hzsWantLiteralDeny(t, "dual world git anchor",
+		"git -C $'docs\\u0000/../zone_dir' rm marker.md")
+}
