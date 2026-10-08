@@ -513,6 +513,84 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	0.748s
 FAIL
 ```
 
+### EL-012 — TestReviewFindingBundleDuplicateMemberRefused (RED — defect 3 LIVE)
+
+- tree: 345eb6483 (M1; the M0 commit's production bytes, the M1
+  characterization uncommitted in the working tree — the test enters the
+  branch in this SPEC's M1 commit)
+- command: `go test ./internal/cli -run '^TestReviewFindingBundleDuplicateMemberRefused$' -count=1 -v`
+- exit code: 1
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingBundleDuplicateMemberRefused
+    review_observation_test.go:401: duplicate member load: err=stale card version: card t1 is at version 2, request expected 1
+    review_observation_test.go:406: refusal does not name the duplicate member: stale card version: card t1 is at version 2, request expected 1
+--- FAIL: TestReviewFindingBundleDuplicateMemberRefused (1.26s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.559s
+FAIL
+```
+
+### EL-013 — TestReviewFindingBundleHeadHubConstraint (baseline NOT-REPRODUCED — defect 2 regression guard)
+
+- tree: 345eb6483 (as EL-012)
+- command: `go test ./internal/cli -run '^TestReviewFindingBundleHeadHubConstraint$' -count=1 -v`
+- exit code: 0
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingBundleHeadHubConstraint
+    review_observation_test.go:439: head hub load: err=predecessor card not merged: t2 has not reached merged-local (git-flow) or merged-pr (github-flow)
+    review_observation_test.go:441: the load refused — AC-DI-004 admits refusal as the constraint
+--- PASS: TestReviewFindingBundleHeadHubConstraint (0.92s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.881s
+```
+
+### EL-014 — TestReviewFindingBundleMultiHubMemberWaits (baseline NOT-REPRODUCED — defect 1 regression guard)
+
+- tree: 345eb6483 (as EL-012)
+- command: `go test ./internal/cli -run '^TestReviewFindingBundleMultiHubMemberWaits$' -count=1 -v`
+- exit code: 0
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingBundleMultiHubMemberWaits
+=== RUN   TestReviewFindingBundleMultiHubMemberWaits/both_unmerged
+    review_observation_test.go:497: member lease: ""
+=== RUN   TestReviewFindingBundleMultiHubMemberWaits/t1_merged_t2_unmerged
+    review_observation_test.go:497: member lease: ""
+=== RUN   TestReviewFindingBundleMultiHubMemberWaits/t2_merged_t1_unmerged
+    review_observation_test.go:497: member lease: ""
+=== RUN   TestReviewFindingBundleMultiHubMemberWaits/both_merged
+    review_observation_test.go:497: member lease: "t3"
+--- PASS: TestReviewFindingBundleMultiHubMemberWaits (8.01s)
+    --- PASS: TestReviewFindingBundleMultiHubMemberWaits/both_unmerged (2.01s)
+    --- PASS: TestReviewFindingBundleMultiHubMemberWaits/t1_merged_t2_unmerged (1.63s)
+    --- PASS: TestReviewFindingBundleMultiHubMemberWaits/t2_merged_t1_unmerged (1.58s)
+    --- PASS: TestReviewFindingBundleMultiHubMemberWaits/both_merged (2.78s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	8.994s
+```
+
+### EL-015 — TestReviewFindingBundleDuplicateMemberRefused (GREEN post-fix — defect 3 closed)
+
+- tree: 345eb6483 working tree with the M1 fix applied uncommitted; the fix
+  and this cell land together in the M1 commit (the replayable form from
+  that commit onward)
+- command: `go test ./internal/cli -run '^TestReviewFindingBundleDuplicateMemberRefused$' -count=1 -v`
+- exit code: 0
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingBundleDuplicateMemberRefused
+    review_observation_test.go:401: duplicate member load: err=duplicate member t1 in the bundle member list
+--- PASS: TestReviewFindingBundleDuplicateMemberRefused (0.81s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.775s
+```
+
 ## Quality gates and closure
 
 - TRUST 5: Tested (every AC above; 85%+ on touched packages per repo

@@ -86,6 +86,58 @@ AC-DI-012's, at each milestone): the owned set runs
 expected RED); existing families untouched by M0 (no production bytes
 changed in M0).
 
+### M1 — Bundle predecessor semantics, defects (1)(2)(3) (complete)
+
+Characterizations authored RED-first into
+`internal/cli/review_observation_test.go` from the existing helper surface
+(`fcFixture`/`fcQueue`/`fcClassify`/`fbSeedFiles`/`fcPlace`/`runFactory`/
+`fbLeasedCard`), each measured on THIS tree (HEAD `345eb6483`, production
+bytes of the M0 commit) before any fix:
+
+- **(3) `TestReviewFindingBundleDuplicateMemberRefused` — LIVE, RED**
+  (EL-012): the duplicate-id load failed only via an incidental version
+  conflict (`stale card version: card t1 is at version 2, request expected
+  1`), not a duplicate-member refusal; exit 1. Nothing recorded (the
+  rollback held), but the refusal named no duplicate — the AC demands the
+  named refusal before any record.
+- **(2) `TestReviewFindingBundleHeadHubConstraint` — NOT REPRODUCED**
+  (EL-013, regression guard per C1): the load REFUSED with
+  `predecessor card not merged: t2 has not reached merged-local …` — the
+  head-hint T2 guard (t1533 r2a) refuses the load outright; AC-DI-004
+  admits refusal as the constraint. exit 0.
+- **(1) `TestReviewFindingBundleMultiHubMemberWaits` — NOT REPRODUCED**
+  (EL-014, regression guard per C1): with the member RECORDED (loaded while
+  the sharers were rowless) and the sharers' open rows placed afterwards,
+  all three partially-blocked states refuse the lease (`""`) and both-merged
+  leases (`"t3"`) — the selection-level multi-hub sweep
+  (`factoryHubWaitUnmerged`, t1533 r10) satisfies REQ-DISPATCH-001's
+  behavioral requirement in all four cells. exit 0.
+
+Fix (b) — the LIVE one only: `runFactoryBundleLocked` now refuses a
+duplicate member id BY NAME before any read or record
+(`duplicate member %s in the bundle member list`); GREEN re-measured
+(EL-015, exit 0). Re-implementation of (1)/(2) is prohibited (§G); their
+tests stand as the committed regression guards.
+
+AC-DI-012 re-measurement — family list recorded BEFORE the run: the touched
+function `runFactoryBundleLocked`'s callers are `runFactoryBundle` (same
+file); selection code untouched, so the entered family is
+`factory_bundle_test.go` — 13 tests, selector
+`^(TestFactoryNextBundleSerialLane|TestFactoryBundleKeepsSerialSlot|
+TestFactoryAssignBundleOrderGuard|TestFactoryAssignBundleHubChain|
+TestFactorySerialBundleHeadLeasesDespitePickedMembers|
+TestFactoryBundleLoadAtomicWhenAMemberIsLeased|
+TestFactoryNextSkipsHubCandidateWhosePredecessorIsUnmerged|
+TestFactoryNextAfterGuardCountsOtherRunsMerges|
+TestFactoryHubChainRequiresSharedHubPath|
+TestFactoryHubChainChainsToTheLastPredecessor|
+TestFactoryNominateRefusesForeignBundleMember|
+TestFactoryBundleRecordsUnderTheQueueLock|
+TestFactoryKeepSetReadsNoFileOverlap)$` → exit 0, `ok … 36.175s`, all 13
+green. Slot lease taken for the family run
+(`moai slot acquire --resource internal-cli-suite --max-duration 15m`;
+displaced one expired holder from 2026-10-06).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _Pending run-phase (manager-develop)._

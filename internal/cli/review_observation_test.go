@@ -378,3 +378,129 @@ func foldSubprocess(t *testing.T, dir, card string) *exec.Cmd {
 	})
 	return cmd
 }
+
+// The M1 bundle-predecessor characterizations (SPEC-DISPATCH-INTEGRITY-001,
+// defects (1)(2)(3); AC-DI-002/003/004). RED-first on the run-entry tree;
+// a GREEN baseline classifies the defect not-reproduced and the test becomes
+// its regression guard (C1).
+
+// TestReviewFindingBundleDuplicateMemberRefused is AC-DI-002 (defect 3):
+// a bundle load whose member list names the same card id twice is refused
+// with a duplicate-member refusal, and the refusal records nothing — no
+// bundle identity, no after relation (a self-dependency included), no lane
+// assignment.
+func TestReviewFindingBundleDuplicateMemberRefused(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked)
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	sdClearLaneEnv(t)
+	_, _, err := runFactory(t, "bundle", "lane-1", "t1", "t1", "--run", fcRun)
+	t.Logf("duplicate member load: err=%v", err)
+	if err == nil {
+		t.Fatal("the bundle load accepted a duplicate member id")
+	}
+	if !strings.Contains(err.Error(), "duplicate") {
+		t.Errorf("refusal does not name the duplicate member: %v", err)
+	}
+	if fcHasCard(t, root, "t1") {
+		t.Fatal("the refused load recorded a row for t1 — bundle identity, after relation, and lane assignment must all be absent")
+	}
+	rec, err := store.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.Items[0].State != factory.BacklogStatePicked {
+		t.Errorf("t1 queue state = %s, want still picked (the refused load changed nothing)", rec.Items[0].State)
+	}
+}
+
+// TestReviewFindingBundleHeadHubConstraint is AC-DI-004 (defect 2): a
+// bundle head whose files cross a hub path shared with an open, recorded
+// non-member carries a hub-predecessor constraint against that sharer, or
+// the load refuses — never an empty after that leaves the sharer unchecked.
+func TestReviewFindingBundleHeadHubConstraint(t *testing.T) {
+	root, store := fcFixture(t)
+	// t1 is the head (files cross hub path X); t2 is the open, recorded
+	// non-member sharing X, queue-held so no arm takes it.
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStateHold)
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	fbSeedFiles(t, store, "t1", "internal/template/catalog.yaml")
+	fbSeedFiles(t, store, "t2", "internal/template/catalog.yaml")
+	fcPlace(t, root, homestate.Card{CardID: "t2", State: homestate.CardPicked})
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	sdClearLaneEnv(t)
+	_, _, err := runFactory(t, "bundle", "lane-1", "t1", "--run", fcRun)
+	t.Logf("head hub load: err=%v", err)
+	if err != nil {
+		t.Logf("the load refused — AC-DI-004 admits refusal as the constraint")
+		return
+	}
+	c := fcCard(t, root, "t1")
+	t.Logf("head recorded: state=%s after=%q", c.State, c.HintAfter)
+	if c.HintAfter != "t2" {
+		t.Errorf("first member recorded with after=%q — the hub sharer t2 is left unchecked", c.HintAfter)
+	}
+}
+
+// TestReviewFindingBundleMultiHubMemberWaits is AC-DI-003 (defect 1): a
+// recorded bundle member whose files cross two hub paths is not leased
+// while EITHER hub's sharer is unmerged — each sharer independently blocks
+// — and becomes lease-eligible only once both have merged. The stored hint
+// names one predecessor at most; selection must not lease the member past
+// the other hub's still-open sharer.
+func TestReviewFindingBundleMultiHubMemberWaits(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		t1, t2    string // sharer row states
+		wantLease bool
+	}{
+		{"both unmerged", homestate.CardPicked, homestate.CardPicked, false},
+		{"t1 merged t2 unmerged", homestate.CardMergedLocal, homestate.CardPicked, false},
+		{"t2 merged t1 unmerged", homestate.CardPicked, homestate.CardMergedLocal, false},
+		{"both merged", homestate.CardMergedLocal, homestate.CardMergedLocal, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, store := fcFixture(t)
+			// t1 crosses hub X, t2 crosses hub Y (disjoint from X), t3 is the
+			// member crossing BOTH; the sharers are queue-held so no arm
+			// takes them.
+			fcQueue(t, store, factory.BacklogStateHold, factory.BacklogStateHold, factory.BacklogStatePicked)
+			for _, id := range []string{"t1", "t2", "t3"} {
+				fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+			}
+			fbSeedFiles(t, store, "t1", "internal/template/catalog.yaml")
+			fbSeedFiles(t, store, "t2", "internal/config/defaults.go")
+			fbSeedFiles(t, store, "t3", "internal/template/catalog.yaml", "internal/config/defaults.go")
+			sdRegisterLane(t, root, "lane-1")
+			t.Chdir(root)
+
+			// AC-DI-003's Given is a RECORDED member facing selection, so the
+			// member is recorded while the sharers have no rows (the record
+			// path's hint candidates need rows — a load facing a recorded
+			// unmerged sharer refuses there instead), and the sharers' open
+			// rows are placed afterwards.
+			sdClearLaneEnv(t)
+			if _, _, err := runFactory(t, "bundle", "lane-1", "t3", "--run", fcRun); err != nil {
+				t.Fatalf("member bundle load: %v", err)
+			}
+			fcPlace(t, root,
+				homestate.Card{CardID: "t1", State: tc.t1},
+				homestate.Card{CardID: "t2", State: tc.t2},
+			)
+			got := fbLeasedCard(t, root, "lane-1")
+			t.Logf("member lease: %q", got)
+			if tc.wantLease && got != "t3" {
+				t.Errorf("both sharers merged, but the member was not leased (got %q)", got)
+			}
+			if !tc.wantLease && got != "" {
+				t.Errorf("the member leased past an unmerged hub sharer (got %q)", got)
+			}
+		})
+	}
+}
