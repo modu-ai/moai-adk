@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-ZONE-SHELL-ESCAPE-001
 title: "Plan — ANSI-C shell decoder repair (NUL part-terminator, raw-byte \\x, bounded no-digit escapes)"
-version: "0.1.3"
+version: "0.1.4"
 created: 2026-10-09
 updated: 2026-10-09
 author: manager-spec
@@ -102,7 +102,9 @@ unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go t
 - The repair must keep every existing `internal/hook` test green — the ONLY
   expected flips are the three RED defect rows going green.
 - **The `\u`/`\U` host-variance bypass class is NOT this card's repair
-  scope**: on a `\U`-less bash the literal-named entry (symlink included)
+  scope**: on a pre-4.2 bash — this host renders BOTH `\u` and `\U` literally
+  (decisive od-proven re-measurement) —
+  the literal-named entry (symlink included)
   reaches the zone unjudged — documented residual (spec.md §B/§F) for a
   follow-up card, with candidate closures noted there WITHOUT decision. Run
   phase may not repair beyond the RED rows.
@@ -139,11 +141,15 @@ re-runs of M3).
   `$'\x'` judged with the panic contained in the test helper
   (`hzsDecodeAnsiC` pattern extended to the guard call): RED pre-fix (the
   walk panics), decision post-fix; (b) `\u`/`\U` code-point pin — the
-  ESCAPE TEXTS `\\u2287` and `\U00002287` (the decoder receives the inner
-  text, so the rows name the escapes, not the literal character) both decode
-  to bytes `e2 8a 87` (green-now by design; pins fix ②'s split from
-  regressing the code-point arm — a mutant that breaks the `\u` branch,
-  e.g. maxDigits 4→2, must FAIL here); (c) part-level NUL row — `zoneWordText`
+  ESCAPE TEXTS — numerically: byte 0x5C followed by `u2287`, and
+  `\U00002287` (the decoder receives the inner text, so the rows name the
+  escape TEXT, not the glyph; the test author types the backslash form
+  directly in the Go test source — the doubled-backslash form is a transport
+  artifact and reaches no `\u` branch) — both decode
+  to bytes `e2 8a 87` — the Go output string(rune(0x2287)) and the
+  modern-bash (≥4.2) documented expansion (green-now by design; pins fix ②'s
+  split from regressing the code-point arm — a mutant that breaks the `\u`
+  branch, e.g. maxDigits 4→2, must FAIL here); (c) part-level NUL row — `zoneWordText`
   over `$'a\x00b'X` yields `aX` (RED pre-fix: the current decode keeps the
   NUL, `a\x00bX`; fails a word-level-truncation mutant that satisfies the
   command rows); (d) octal-origin command row — `rm -r zone_dir$'\0/sub'`
