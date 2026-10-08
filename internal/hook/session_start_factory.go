@@ -15,12 +15,14 @@
 // The same two-audience split applies. The orchestrator reads
 // hookSpecificOutput.additionalContext, the operator reads systemMessage, and
 // the operator needs the lane-start sentence because a session cannot launch
-// another session — those terminals are opened by hand. Each copy is rendered
-// in its own language (agent-facing English, operator-facing
-// conversation_language); the commands, run id, and socket path are protocol
-// tokens and are emitted verbatim in every locale so the operator's paste
-// keeps working. The notice states no lane count, no per-lane line, and no
-// free-slot list (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-009).
+// another session — those terminals are opened by hand. Both copies render in
+// the session's conversation_language (SPEC-SESSION-START-GUIDE-I18N-001:
+// card t1603 amends the bootstrap guide's two-audience English rule for this
+// surface only — decision-index Q1; agent_prompt_language still governs the
+// other agent-facing surfaces); the commands, run id, and socket path are
+// protocol tokens and are emitted verbatim in every locale so the operator's
+// paste keeps working. The notice states no lane count, no per-lane line, and
+// no free-slot list (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-009).
 package hook
 
 import (
@@ -209,6 +211,11 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 	}
 	blocks = append(blocks, strings.Join(context, "\n"))
 
+	// (f) the two-mode auto guidance (leader variant, carrying the
+	// design-surface marker REQ-005 pins) and the online docs pointer
+	// (card t1603).
+	blocks = append(blocks, strings.Join([]string{m.autoModeGuideLeader, m.docsPointer}, "\n"))
+
 	return strings.Join(blocks, "\n\n") + "\n"
 }
 
@@ -239,6 +246,14 @@ func factoryLaneNotice(label string, lanes int, lang string) string {
 	// Card t224: the standing spawn authority rides the join notice — it is
 	// the one message the lane is guaranteed to read at startup, and the
 	// tk8hce incident showed a lane without it refusing to spawn the
-	// phase-required specialist. English-only; see lane_spawn_authority.go.
-	return join + "\n\n" + laneSpawnAuthority
+	// phase-required specialist. Card t1603 moved it into the message table
+	// (the laneSpawnAuthority field), so it renders in the session's
+	// conversation language; en carries the canonical sentence. The lane
+	// variant of the two-mode auto guidance and the docs pointer ride the
+	// same notice (SPEC-SESSION-START-GUIDE-I18N-001).
+	return strings.Join([]string{
+		join,
+		m.laneSpawnAuthority,
+		strings.Join([]string{m.autoModeGuideLane, m.docsPointer}, "\n"),
+	}, "\n\n")
 }

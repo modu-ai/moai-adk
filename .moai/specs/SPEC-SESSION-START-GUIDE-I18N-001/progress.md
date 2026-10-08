@@ -27,7 +27,64 @@ plan_complete_at: 2026-10-08
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+- 측정 기준: 본 워크트리(.moai/worktrees/t1603, 브랜치 WT-session-start-i18n), HEAD `19cd7218c`(plan 종결 커밋) 위 M1 구현 **미커밋 상태**(D10 — RED 테스트 파일은 M2 전환 커밋과 함께; M1 구현 파일은 레인이 M1 경계에서 스테이지). 측정일 2026-10-08.
+- M1 변경 파일: `internal/hook/session_start_factory_i18n.go`(+54행 — factoryMessages 필드 4종 신설 `laneSpawnAuthority`·`autoModeGuideLeader`·`autoModeGuideLane`·`docsPointer`, 4-로케일 전 항목 작성), `internal/hook/session_start_factory.go`(리더 안내 신설 블록 (f) + 레인 join 결합점의 테이블 참조 전환 + 파일 머리말 주석 갱신), `internal/hook/session_start.go`(additionalContext 채널 langEnglish → operatorLang(h.cfg) 교체 + 채널 주석 갱신), `internal/hook/lane_spawn_authority.go`(영어 단일 상수 제거 — 설계 결정 문서로 전환, 문구는 테이블로 이항), `internal/hook/session_start_lang.go`(langEnglish 주석 갱신).
+
+### AC-001 (TestRedAgentChannelFollowsConversationLanguage) — PASS
+
+- command: `go test ./internal/hook -run 'TestRed' -v -count=1`
+- verbatim 출력(결정 행):
+  ```
+  --- PASS: TestRedAgentChannelFollowsConversationLanguage (1.29s)
+  --- PASS: TestRedLaneJoinAuthorityLocalized (0.00s)
+  --- PASS: TestRedAutoModeGuidancePresent (0.00s)
+  ok  	github.com/modu-ai/moai-adk/internal/hook	2.329s
+  ```
+  (동일 3종이 최종 고정 실행에서도 녹색 — 아래 M4 셀렉터 행 참조. RED→GREEN 전환: plan-phase LEDGER-RED 원장의 적색 3종이 본 M1+배선 구현으로 녹색 전환됨.)
+
+### AC-002 (TestRedLaneJoinAuthorityLocalized) — PASS
+
+- 상기 동일 실행의 verbatim 행: `--- PASS: TestRedLaneJoinAuthorityLocalized (0.00s)`. ko·ja·zh join에서 영어 접두 `Standing spawn authority:`와 영어 본문 단편 부재 + 4-로케일 매트릭스 경로 `.claude/rules/moai/development/spec-frontmatter-schema.md` 존재, en 정준 문장 유지 확인.
+- 기존 회귀 가드도 녹색: `--- PASS: TestFactoryWorkerNoticeCarriesSpawnAuthority` / `--- PASS: TestLaneSpawnAuthorityFailOpenPreserved` / `--- PASS: TestFactoryWorkerNoticeNamesLabel` / `--- PASS: TestFactoryWorkerNoticeLocaleWordOrders`(동일 -v 실행).
+
+### AC-005 (TestRedAutoModeGuidancePresent) — PASS
+
+- 상기 동일 실행의 verbatim 행: `--- PASS: TestRedAutoModeGuidancePresent (0.00s)`. 리더 안내의 `--auto-leader` 블록 안에 온전한 리터럴 `designed surface — t1600, not yet shipped` 동일 블록 존재 확인.
+
+### M4 레인-로컬 고정 셀렉터 — PASS
+
+- command: `go test ./internal/hook -run 'TestRed|Factory' -count=1` → verbatim: `ok  	github.com/modu-ai/moai-adk/internal/hook	133.093s`
+- command: `go test ./internal/cli -run 'TestRed|AutoRank' -count=1` → verbatim: `ok  	github.com/modu-ai/moai-adk/internal/cli	38.863s`
+- 비고: plan-audit이 기록한 카드-트리 구조적 적색(환경 신호, t1350/t1542 계열)은 본 실행 두 번(사후 윤문 전 158.408s, 후 133.093s) 모두 재현되지 않았다 — 관측값은 `ok`. 구조적 적색은 재현-의존 환경 신호로 기록을 유지한다.
+
+### 품질 게이트 (TRUST 5 — Unified/Tested/Secured)
+
+- command: `gofmt -l internal/hook/` → verbatim 출력: (빈 출력, rc=0 — gofmt 클린)
+- command: `go build ./...` → verbatim: `BUILD_OK`(echo 마커, rc=0)
+- command: `GOOS=windows GOARCH=amd64 go build ./...` → verbatim: `windows_build_ok rc=0`
+- Secured: 해당 없음(문자열 테이블 + 호출점 1곳 — 신뢰 경계 없음, acceptance §D.4 참조).
+
+### AC-009 원어 윤문 게이트 (moai-domain-humanize 실행 기록)
+
+- 실행: moai-domain-humanize 스킬 로드 → 한국어 모듈(modules/korean.md) 산문 카탈로그 A–J + ja/zh 모듈 대조 검토 대상: 본 M1 신설 ko·ja·zh 산문 전체(spawn authority 번역·2모드 설명 리더/레인 변형·문서 안내 문장).
+- 교정 반영(1차 초안에서 발견된 계어·AI 흔적 수정): (a) ko — 의무 대명사 `당신` 제거(house style `이 세션은`), `그래서` 접속 계어 제거, under-후위사 계어 `승인 하나 아래에서` → `승인 하나로`, 접속 종결 뒤 쉼표(C-11) 제거; (b) ja — `すなわち` 재진술 계어 제거, 목적어를 가로막던 이중 대시 삽입구 해체(괄호 보충형으로 전환); (c) zh — `你` 의무 대명사 → `本会话`(house style 정합), 같은 대시 삽입구 해체. 프로토콜 토큰(플래그명·`moai factory next`·매트릭스 경로·URL·설계-노면 리터럴)은 전 로케일에서 원문 유지 확인(REQ-001/REQ-005).
+- 잔여 판정: 잔여 S1 0(로케일별). 잔여 S2 — em-dash 부가(J 계열)가 기존 테이블 전체의 기조 밀도와 동일 수준으로 로케일당 ≤2. 등급 판정 행(AC-009 판정 형식, 로케일당 1행):
+
+AC-009-verdict: ko grade A S1 0
+
+AC-009-verdict: ja grade A S1 0
+
+AC-009-verdict: zh grade A S1 0
+
+### Gaps
+
+- M4 신설 필드의 렌더 테스트 확장(4-로케일 전수 비공백·레이아웃 불변식·원문 리터럴 핀)과 AC-006/AC-007/AC-008 판정 테스트는 plan §F-M4의 후속 단계다 — 본 위임은 M1 내용 + additionalContext 배선만 운반하며 세 TestRed 종료가 판정 기준이었다.
+- 커밋 미실행: D10 고정과 위임 지시(7번 항목)에 따라 본 위임은 아무것도 커밋하지 않는다. `git status --short` 기준 변경 5파일 + 미커밋 RED 테스트 파일 1파일이 워크트리에 남는다. §E.3(run_commit_sha 포함)은 커밋 착지 후 채움.
+
+### Residual-risk
+
+- ja/zh 산문의 원어성 판정은 스킬 카탈로그 기반 수동 검토다(자동 검출기 미사용 — 스킬 자체의 한계 고지대로). 판정 행의 등급은 이 검토의 관측값이다.
+- `설계 노면` 용어는 본 SPEC 아티팩트(plan/spec 본문)가 확립한 프로젝트 내 용어로 ko 산문에 사용했다 — t1600 착지 후 M3 재확인에서 마커·용어 제거 판정과 함께 재검토 대상이다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
