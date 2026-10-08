@@ -629,7 +629,43 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	appendAdditionalContext(out, memoryBudgetAdvisory(ctx, memoryBudgetRoot, h.asyncDeferredScans()))
 	clock.lap("memory_budget_advisory")
 
+	// Role-gated rule injection (SPEC-ALWAYS-LOADED-BUDGET-001
+	// REQ-ALB-007..011). A factory leader or lane session (the config
+	// role-marker registry decides, never a hand-written list) receives the
+	// role core of the two role-gated rules on startup, clear, and compact —
+	// the sources that start a session or discard the previous injection;
+	// resume restores the transcript and receives nothing (REQ-ALB-008).
+	// The core is built solely from the DEPLOYED rule files (REQ-ALB-023);
+	// a failure is fail-visible — operator warning plus agent read
+	// directive, never a silent start (REQ-ALB-009). The 10,000-character
+	// delivery cap applies to the FINAL additionalContext string, so this
+	// block runs LAST and measures everything the producers above already
+	// assembled; over the cap the core goes out INTACT with the
+	// overflow-file directive (REQ-ALB-010) — factoryRoot is the same
+	// ProjectDir/CWD resolution the factory notice block computed above.
+	inj := roleRuleInjectionFor(factoryRoot, input.Source, accumulatedAdditionalContext(out))
+	if inj.Context != "" {
+		appendAdditionalContext(out, inj.Context)
+	}
+	if inj.OperatorNotice != "" {
+		if out.SystemMessage == "" {
+			out.SystemMessage = inj.OperatorNotice
+		} else {
+			out.SystemMessage += "\n\n" + inj.OperatorNotice
+		}
+	}
+	clock.lap("role_rules_injection")
+
 	return out, nil
+}
+
+// accumulatedAdditionalContext reads the additionalContext accumulated so
+// far on the SessionStart output ("" when no producer has written one yet).
+func accumulatedAdditionalContext(out *HookOutput) string {
+	if out == nil || out.HookSpecificOutput == nil {
+		return ""
+	}
+	return out.HookSpecificOutput.AdditionalContext
 }
 
 func registerProfileLease(ctx context.Context, input *HookInput) {
