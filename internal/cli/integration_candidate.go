@@ -16,6 +16,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -75,7 +76,11 @@ func newIntegrationCandidateCmd() *cobra.Command {
 			}
 			root := integrationLockRoot()
 			// The card worktree is the CALLER's tree: the verb is the
-			// lane's act, run from the card worktree it stands in.
+			// lane's act, run from the card worktree it stands in. The
+			// guard (card t1478 M2 repair) verifies the caller's tree IS
+			// the card's recorded worktree before anything is built — a
+			// candidate constructed from a foreign tree would overwrite
+			// ci/<card> in place.
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("integration candidate: resolve the card worktree: %w", err)
@@ -83,6 +88,15 @@ func newIntegrationCandidateCmd() *cobra.Command {
 			integBranch := configuredIntegrationBranch()
 			if integBranch == "" {
 				return fmt.Errorf("integration candidate: no integration branch is configured — resolve git_strategy's flow-scoped integration target first")
+			}
+			if gateOn := candidateCIEnabled(root); gateOn {
+				callerTree, treeErr := factorylane.ExecGitRunner{Dir: cwd}.Git("rev-parse", "--show-toplevel")
+				if treeErr != nil {
+					return fmt.Errorf("integration candidate: resolve the caller's tree: %v", treeErr)
+				}
+				if guardErr := candidateCallerTreeGuard(root, cardFlag, strings.TrimSpace(callerTree)); guardErr != nil {
+					return guardErr
+				}
 			}
 			rec, err := runIntegrationCandidate(integrationCandidateInput{
 				Root:              root,
@@ -141,6 +155,16 @@ func runIntegrationCandidate(in integrationCandidateInput, seams integrationCand
 	}
 	tip = strings.TrimSpace(tip)
 
+	// The tip-equality refusal (card t1478 M2 repair): when the card branch
+	// IS the integration tip, commit-tree dedupes the identical parents and
+	// the "candidate" carries ONE parent — a shape AC-CCI-002-1's two-parent
+	// witness rejects, pushed and recorded pending by the former code. The
+	// card is already merged; refuse before any construction, push, or
+	// record (the merge step's own cause-10 twin).
+	if pinned == tip {
+		return factory.CandidateRecord{}, fmt.Errorf("integration candidate: card %s's branch is at %s — the %s tip itself, nothing to candidate (the would-be commit would carry a single parent); advance the card branch or skip the candidate for an already-merged card", in.CardID, shortSHA(pinned), in.IntegrationBranch)
+	}
+
 	// The two-parent construction (REQ-CCI-002, design.md D1):
 	// merge-tree --write-tree produces the would-be merge tree; a conflict
 	// is git's exit 1 — a RESULT the verb reads, refusing with the card
@@ -163,31 +187,87 @@ func runIntegrationCandidate(in integrationCandidateInput, seams integrationCand
 	}
 	candidateSHA = strings.TrimSpace(candidateSHA)
 
-	// The push (REQ-CCI-003): replace-in-place on the disposable ci/
-	// branch. The --force scope is the guard, not a habit: the refspec is
-	// exactly ci/<validated-card-id>, and candidate branches are never
-	// protected refs. A push failure reports the stage reached and leaves
-	// every recorded verdict untouched (REQ-CCI-017) — the record below
-	// is written only after this succeeds.
+	// The push + record section is ONE per-card critical section (card
+	// t1478 M2 repair): two invocations of the same card interleaving as
+	// A.push → B.push+record → A.record left the remote naming B's commit
+	// while the record named A's. Inside the section the verdict decision
+	// reads the record the previous section published — never a read taken
+	// before the wait (the integration mutation lock's own placement rule).
+	// The lock is the candidate store's scope over the shared state-lock
+	// substrate, never the integration window (design.md D4).
 	candidateBranch := "ci/" + in.CardID
-	if _, err := git(in.CardWorktree, "push", "--force", "origin", candidateSHA+":refs/heads/"+candidateBranch); err != nil {
-		return factory.CandidateRecord{}, fmt.Errorf("integration candidate: push failed (stage: push to %s): %v — no candidate record was written and no existing verdict was touched", candidateBranch, err)
-	}
-
-	rec := factory.CandidateRecord{
-		CardID:            in.CardID,
-		PinnedSHA:         pinned,
-		CandidateSHA:      candidateSHA,
-		IntegrationBranch: in.IntegrationBranch,
-		IntegrationTip:    tip,
-		CandidateBranch:   candidateBranch,
-		Verdict:           factory.CandidateVerdictPending,
-		PushedAt:          now,
-	}
-	if err := factory.WriteCandidateRecord(in.Root, rec); err != nil {
-		return factory.CandidateRecord{}, fmt.Errorf("integration candidate: record the candidate: %v", err)
+	var rec factory.CandidateRecord
+	if lockErr := factory.WithCandidateMutation(in.Root, in.CardID, func() error {
+		// The identical-SHA re-candidate (card t1478 M2 repair): fixed git
+		// dates (or any deterministic construction) reproduce the SAME
+		// candidate commit, whose re-push does not move the remote ref and
+		// fires no CI event — the only verdict it will ever have is the one
+		// already recorded. Preserve verdict, run id, and observation time;
+		// refresh only PushedAt. A DIFFERENT candidate SHA is a genuine
+		// re-candidate: fresh pending (AC-CCI-003-1's supersede).
+		verdict, runID, observedAt := factory.CandidateVerdictPending, "", ""
+		if existing, readErr := factory.ReadCandidateRecord(in.Root, in.CardID, pinned); readErr == nil && existing.CandidateSHA == candidateSHA {
+			verdict, runID, observedAt = existing.Verdict, existing.RunID, existing.ObservedAt
+		}
+		if _, err := git(in.CardWorktree, "push", "--force", "origin", candidateSHA+":refs/heads/"+candidateBranch); err != nil {
+			// REQ-CCI-017: a push failure reports the stage reached and
+			// leaves every recorded verdict untouched — the write below is
+			// the only mutation, and it is not reached.
+			return fmt.Errorf("push failed (stage: push to %s): %v — no candidate record was written and no existing verdict was touched", candidateBranch, err)
+		}
+		rec = factory.CandidateRecord{
+			CardID:            in.CardID,
+			PinnedSHA:         pinned,
+			CandidateSHA:      candidateSHA,
+			IntegrationBranch: in.IntegrationBranch,
+			IntegrationTip:    tip,
+			CandidateBranch:   candidateBranch,
+			Verdict:           verdict,
+			RunID:             runID,
+			PushedAt:          now,
+			ObservedAt:        observedAt,
+		}
+		if err := factory.WriteCandidateRecord(in.Root, rec); err != nil {
+			return fmt.Errorf("record the candidate: %v", err)
+		}
+		return nil
+	}); lockErr != nil {
+		// %w: the busy sentinel must travel — a caller distinguishes
+		// transient contention (retry-me) from a real refusal.
+		return factory.CandidateRecord{}, fmt.Errorf("integration candidate: card %s: %w", in.CardID, lockErr)
 	}
 	return rec, nil
+}
+
+// candidateCallerTreeGuard refuses a caller standing outside the card's
+// recorded worktree (card t1478 M2 repair): the verb builds the candidate
+// from the CALLER's tree, so running it from another WT-* tree would
+// force-overwrite ci/<card> with a foreign candidate. The factory card
+// record's WorktreePath is what the merge step itself trusts for branch
+// resolution, so it is what the guard verifies against. An unknown card
+// refuses fail-closed: an unverifiable caller is exactly the shape the
+// guard exists to stop. The comparison reads DIRECTORIES (factorySameTree),
+// never strings — macOS presents /var/... and /private/var/... for one
+// directory.
+func candidateCallerTreeGuard(root, cardID, callerTree string) error {
+	ctx := context.Background()
+	runID, err := resolveFactoryCardRun(ctx, root, "")
+	if err != nil {
+		return fmt.Errorf("integration candidate: card %s: cannot verify the caller's tree — %w (the candidate is built from the caller's tree, so an unverifiable caller refuses)", cardID, err)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return fmt.Errorf("integration candidate: card %s: cannot verify the caller's tree: %w", cardID, err)
+	}
+	defer func() { _ = db.Close() }()
+	card, err := db.LoadCard(ctx, runID, cardID)
+	if err != nil {
+		return fmt.Errorf("integration candidate: card %s: no factory card record to verify the caller's tree against — run the card through the factory first, or run the candidate verb from the card's own worktree (%w)", cardID, err)
+	}
+	if !factorySameTree(callerTree, card.WorktreePath) {
+		return fmt.Errorf("integration candidate: refused — the caller's tree %s is not card %s's recorded worktree %s; a candidate built here would overwrite ci/%s with a foreign candidate (run the verb from the card's own worktree)", callerTree, cardID, card.WorktreePath, cardID)
+	}
+	return nil
 }
 
 // firstLine returns the first line of a git output blob — merge-tree
