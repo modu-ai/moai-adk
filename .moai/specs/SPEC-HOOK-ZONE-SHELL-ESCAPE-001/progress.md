@@ -692,6 +692,66 @@ FAIL
 Fixture: literally-named `docs\u0000` directory + marker + source.md;
 windows-skipped (backslash separator). Inputs transport-verified
 (whole-file NUL scan zero, doubled backslash).
+
+**M2.4 remedy — the consumer-set sweep (GREEN record).** Every consumption
+site of word text now consumes the candidate set; the four named sites plus
+one found during the fix re-run:
+
+1. `zonePathCandidates` — empty readings filter PER WORLD (the modern "" at
+   a leading code-point NUL no longer discards the word) AND the long
+   option's attached value is extracted from EVERY world's spelling (sites
+   1+4).
+2. cd — the single argument's non-empty readings each become a POSSIBLE
+   destination (`zoneNextCwd` per reading); the possible-directory set
+   unions them; multi/zero-arg and dynamic shapes keep the original
+   behavior (site 2-cd).
+3. Executable name — new `zoneMutationVerbName`: if ANY world's base name of
+   Args[0] is a mutation verb, the command is judged as that verb (site 3).
+4. git anchors — `-C`/`--work-tree` values (and the `--work-tree=` attached
+   prefix form) build READING SETS (`dirOpts`/`wtOpts`); the anchoring loop
+   unions every combination (site 2-git).
+5. `zoneRedirectTargets` — found during the fix re-run (the empty-modern
+   row initially still failed): the same per-world empty filter (the word
+   drops only when EVERY world is empty).
+
+**Consumer-site sweep inventory** (grep of zoneWordText /
+zoneFirstArgWord / zoneWordCandidates callers): executable name (fixed,
+site 3); cd dirs (fixed, site 2); git `-C`/`--work-tree`/attached-prefix
+values (fixed, site 2); git fileArgs (already dual, gate 13);
+zoneRedirectTargets targets (fixed, item 5); zonePathCandidates words +
+attached values (fixed, sites 1+4); zoneWordCandidates internals (dual by
+construction). **Justified single-world exceptions:** (a) the git
+SUBCOMMAND word — git dispatches subcommands internally on the exact
+decoded string; the shell never path-resolves a subcommand name, so
+cross-generation base-name matching would deny commands no generation
+executes as a mutation (the modern decode covers modern bash exactly;
+pre-4.2 renders \u literally and cannot form the verb from \u escapes);
+(b) the sed `--in-place` option scan — the same exact-string argument;
+(c) the `>&`-digits check (`isZoneDigits`) — a digits-only word contains
+no backslash, so both worlds read identically (vacuously dual). **Bounded
+residual documented:** the sed/git BRANCH DISPATCH (`switch name`) and the
+function-declaration lookup key on the modern name — a word whose modern
+reading is exactly `sed`/`git`/`cd`/a declared function while a pre-4.2
+reading names a mutating executable is doubly-crafted and bounded (the
+direct shapes are covered by zoneMutationVerbName; dispatch restructure
+was not directed).
+
+- **Command** (all 21 instrument tests): `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test
+  ./internal/hook -run 'TestCheckProtectedZoneShell|TestZoneUnescapeAnsiC|TestZoneWordText' -count=1`
+- **Exit code**: `0`
+- **Observed (verbatim)**: `ok  	github.com/modu-ai/moai-adk/internal/hook	1.002s`
+  (21/21 PASS — the five gate-15 rows flipped DENY, the sixteen earlier
+  rows hold).
+- **Full package regression (M2.4)**: `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1
+  -timeout=25m -v ./internal/hook/` — exit 0, verbatim tail `PASS` / `ok
+  github.com/modu-ai/moai-adk/internal/hook	300.005s` /
+  `PACKAGE_POST24_EXIT=0`; 3650 RUN lines, ZERO `--- FAIL` lines. Slot
+  lease `hook-suite` held for the run, released after.
+- Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
+  `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
+  clean; family coverage `13.2%` (all-rows selector).
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

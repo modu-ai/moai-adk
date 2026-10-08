@@ -528,11 +528,18 @@ func zoneRedirectTargets(redirs []*syntax.Redirect) (bool, []string) {
 			}
 		}
 		worlds, literal := zoneWordCandidates(rd.Word)
-		if !literal || len(worlds) == 0 || worlds[0] == "" {
+		if !literal {
 			continue // dynamic target: under-match
 		}
+		// an empty world filters PER WORLD: the modern reading may truncate
+		// to "" at a leading code-point NUL while the pre-4.2 reading still
+		// names the real write target (gate round 15 P1)
 		mutating = true
-		targets = append(targets, worlds...)
+		for _, wText := range worlds {
+			if wText != "" {
+				targets = append(targets, wText)
+			}
+		}
 	}
 	return mutating, targets
 }
@@ -760,17 +767,40 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		return
 	}
 	if name == "cd" {
-		var dirs []string
-		for _, a := range cmd.Args[1:] {
-			if t, lit := zoneWordText(a); lit {
-				dirs = append(dirs, t)
-			} else {
-				dirs = append(dirs, "?dynamic")
+		// The cd's ONE argument may carry multiple readings (\u/\U words:
+		// gate round 15 P1) — each non-empty reading is a POSSIBLE
+		// destination and the possible-directory set unions them, the same
+		// structure as the control-flow set. Several arguments still fail
+		// the cd (bash rejects them) and a dynamic argument under-matches,
+		// exactly as before.
+		multi := len(cmd.Args) != 2
+		var readings []string
+		if multi {
+			for _, a := range cmd.Args[1:] {
+				if t, lit := zoneWordText(a); lit {
+					readings = append(readings, t)
+				} else {
+					readings = append(readings, "?dynamic")
+				}
 			}
+		} else if worlds, lit := zoneWordCandidates(cmd.Args[1]); lit {
+			for _, dir := range worlds {
+				if dir != "" {
+					readings = append(readings, dir)
+				}
+			}
+		} else {
+			readings = []string{"?dynamic"}
 		}
 		next := make([]string, 0, len(w.cwds)*2)
 		for _, cwd := range w.cwds {
-			next = append(next, zoneNextCwd(cwd, dirs))
+			if multi {
+				next = append(next, zoneNextCwd(cwd, readings))
+				continue
+			}
+			for _, dir := range readings {
+				next = append(next, zoneNextCwd(cwd, []string{dir}))
+			}
 		}
 		// the cd may fail (a missing directory leaves the caller where it
 		// was): the pre-cd set survives into the next statement either way
@@ -807,8 +837,11 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		// argument; a -C <dir> records the directory the subcommand's file
 		// arguments resolve against, relative values accumulating across
 		// consecutive -C options, quoted spellings included (rounds 4–5 P1).
-		dirOpt := ""
-		wtOpt := ""
+		// The anchor VALUES may carry multiple readings (\u/\U words: gate
+		// round 15 P1) — each reading is a possible anchor and the
+		// anchoring loop unions them.
+		dirOpts := []string{""}
+		wtOpts := []string{""}
 		sub := ""
 		subIdx := -1
 		for j := 1; j < len(cmd.Args); j++ {
@@ -816,29 +849,48 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 			if !lit {
 				break // dynamic global argument: under-match
 			}
-			if t == "--work-tree=" || strings.HasPrefix(t, "--work-tree=") && len(t) > len("--work-tree=") {
-				// git's --work-tree moves where the subcommand's paths
-				// resolve; capture it as its own anchor alongside -C
-				// (round 12 P1)
-				if len(t) > len("--work-tree=") {
-					wtOpt = strings.TrimPrefix(t, "--work-tree=")
+			if strings.HasPrefix(t, "--work-tree=") {
+				// the attached form's value has readings too: every
+				// world's spelling carrying the prefix anchors (gate
+				// round 15 P1)
+				if worlds, wl := zoneWordCandidates(cmd.Args[j]); wl {
+					for _, wText := range worlds {
+						if len(wText) > len("--work-tree=") && strings.HasPrefix(wText, "--work-tree=") {
+							wtOpts = append(wtOpts, strings.TrimPrefix(wText, "--work-tree="))
+						}
+					}
 				}
 				continue
 			}
 			if strings.HasPrefix(t, "-") {
 				if t == "-C" || t == "-c" || t == "--git-dir" || t == "--work-tree" || t == "--namespace" || t == "--super-prefix" {
 					if t == "-C" && j+1 < len(cmd.Args) {
-						if dir, lit2 := zoneWordText(cmd.Args[j+1]); lit2 {
-							if dirOpt == "" || zoneIsAbs(dir) {
-								dirOpt = dir
-							} else {
-								dirOpt = dirOpt + "/" + dir
+						if worlds, lit2 := zoneWordCandidates(cmd.Args[j+1]); lit2 {
+							next := make([]string, 0, len(dirOpts)*len(worlds))
+							for _, d := range dirOpts {
+								for _, dir := range worlds {
+									if dir == "" {
+										continue
+									}
+									if d == "" || zoneIsAbs(dir) {
+										next = append(next, dir)
+									} else {
+										next = append(next, d+"/"+dir)
+									}
+								}
+							}
+							if len(next) > 0 {
+								dirOpts = next
 							}
 						}
 					}
 					if t == "--work-tree" && j+1 < len(cmd.Args) {
-						if wt, lit2 := zoneWordText(cmd.Args[j+1]); lit2 && wt != "" {
-							wtOpt = wt
+						if worlds, lit2 := zoneWordCandidates(cmd.Args[j+1]); lit2 {
+							for _, wt := range worlds {
+								if wt != "" {
+									wtOpts = append(wtOpts, wt)
+								}
+							}
 						}
 					}
 					j++ // the option's value is consumed
@@ -865,34 +917,68 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		// can resolve against (round 6 P1); a -C moves that base — an absolute
 		// -C replaces it, a relative one accumulates (round 5 P1); a
 		// --work-tree is its own anchor, so both anchorings are judged when
-		// both are present (round 12 P1)
+		// both are present (round 12 P1). Every anchor READING is judged
+		// (gate round 15 P1).
 		for _, base := range w.cwds {
-			gitDir := base
-			if dirOpt != "" {
-				if zoneIsAbs(dirOpt) || gitDir == "" || gitDir == "." {
-					gitDir = dirOpt
-				} else {
-					gitDir = gitDir + "/" + dirOpt
+			for _, dirOpt := range dirOpts {
+				gitDir := base
+				if dirOpt != "" {
+					if zoneIsAbs(dirOpt) || gitDir == "" || gitDir == "." {
+						gitDir = dirOpt
+					} else {
+						gitDir = gitDir + "/" + dirOpt
+					}
 				}
-			}
-			w.cands = append(w.cands, zoneRelativeTo(gitDir, fileArgs)...)
-			if wtOpt != "" {
-				wtDir := base
-				if zoneIsAbs(wtOpt) || wtDir == "" || wtDir == "." {
-					wtDir = wtOpt
-				} else {
-					wtDir = wtDir + "/" + wtOpt
+				w.cands = append(w.cands, zoneRelativeTo(gitDir, fileArgs)...)
+				for _, wtOpt := range wtOpts {
+					if wtOpt == "" {
+						continue
+					}
+					wtDir := base
+					if zoneIsAbs(wtOpt) || wtDir == "" || wtDir == "." {
+						wtDir = wtOpt
+					} else {
+						wtDir = wtDir + "/" + wtOpt
+					}
+					w.cands = append(w.cands, zoneRelativeTo(wtDir, fileArgs)...)
 				}
-				w.cands = append(w.cands, zoneRelativeTo(wtDir, fileArgs)...)
 			}
 		}
 		return
 	}
-	if !zoneMutationVerbs[name] {
+	if !zoneMutationVerbs[name] && zoneMutationVerbName(cmd.Args) == "" {
 		return
 	}
 	w.mutating = true
 	w.zoneCands(zonePathCandidates(cmd.Args[1:]))
+}
+
+// zoneMutationVerbName returns the mutation verb the command's EXECUTABLE
+// word names in ANY world, or "" when none does. The shell path-resolves
+// the executable, so the pre-4.2 reading's base name is what an old shell
+// executes — a word whose modern reading truncates away the verb
+// (`$'docs\u0000/../rm'`) is still judged as that verb (gate round 15 P1).
+func zoneMutationVerbName(args []*syntax.Word) string {
+	if len(args) == 0 {
+		return ""
+	}
+	worlds, literal := zoneWordCandidates(args[0])
+	if !literal {
+		return ""
+	}
+	for _, t := range worlds {
+		if t == "" {
+			continue
+		}
+		name := t
+		if strings.Contains(name, "/") {
+			name = path.Base(name)
+		}
+		if zoneMutationVerbs[name] {
+			return name
+		}
+	}
+	return ""
 }
 
 // zonePathCandidates collects the candidates an argument list names: plain
@@ -900,25 +986,39 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 // source.txt` writes into the option's value (round 13 P1). A value that is
 // not a path matches nothing and costs one lookup. Short flags carry no
 // extractable path here (a GNU short option with an attached value, `-tDIR`,
-// stays an accepted under-match).
+// stays an accepted under-match). Empty readings filter PER WORLD — the
+// modern reading may truncate to "" at a leading code-point NUL while the
+// pre-4.2 reading still names a real path — and the attached value is
+// extracted from EVERY world's spelling (gate round 15 P1).
 func zonePathCandidates(args []*syntax.Word) []string {
 	out := make([]string, 0, len(args))
 	for _, a := range args {
 		worlds, literal := zoneWordCandidates(a)
-		if !literal || len(worlds) == 0 || worlds[0] == "" {
+		if !literal {
 			continue
 		}
-		t := worlds[0]
+		kept := make([]string, 0, len(worlds))
+		for _, wText := range worlds {
+			if wText != "" {
+				kept = append(kept, wText)
+			}
+		}
+		if len(kept) == 0 {
+			continue
+		}
+		t := kept[0]
 		if strings.HasPrefix(t, "--") {
-			if idx := strings.Index(t, "="); idx >= 0 && idx+1 < len(t) {
-				out = append(out, t[idx+1:])
+			for _, wText := range kept {
+				if idx := strings.Index(wText, "="); idx >= 0 && idx+1 < len(wText) {
+					out = append(out, wText[idx+1:])
+				}
 			}
 			continue
 		}
 		if strings.HasPrefix(t, "-") {
 			continue
 		}
-		out = append(out, worlds...)
+		out = append(out, kept...)
 	}
 	return out
 }
