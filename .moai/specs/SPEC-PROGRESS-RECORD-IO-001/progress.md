@@ -371,6 +371,18 @@ audit-artifact convention). Lane-local verification refreshed at fa1f04b9f:
 this tree); `gofmt -l internal/runtime/` → empty; F2's CEILING rewording
 re-verified in source (:43).
 
+Landing decision record (2026-10-09, lane-5 — auto-semantics §10): r1's delta re-audit
+(F1-F5 scope, pre-scoped by r1 itself) was judged in-lane after the operator stopped the
+background r2 attempt — all five delta items re-measured at 4741b9fc5 (F1 arm-A posture
+verified in spec.md:5 + §E.4; F2 two-surface wording verified at darwin.go:43 + §E.2
+:174-182; F3 hold count 4 verified mechanically; F4 header landed; F5 no-change under its
+own conditional). The delta label is recorded at
+`.moai/reports/t1598/sync-audit-2.md`. Next: re-lease t1598 (prior lease expired;
+serial slot held by t1605 until 16:08:30Z — waited per the expiry safety net, no leader
+nudge), stage sync-audit → merge-ready, `factory_complete` landing (push + PR),
+release-pr-multi-os CI watch, run URL + per-family counts recorded per the M4 rule,
+completed re-land commit, merged-pr close.
+
 AC final matrix (route-(ii) close posture — evidence in §E.2): AC-PRI-001 PASS (standing) ·
 AC-PRI-002 PASS (standing — recorded measurement) · AC-PRI-005 PASS · AC-PRI-006 PASS ·
 AC-PRI-008 PASS · AC-PRI-003/004/009 NOT-EVIDENCE (dispositioned by the §E.2 Q2 record) ·
