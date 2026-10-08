@@ -147,7 +147,14 @@ func newAnchorContentFn(t *testing.T, anchorSHA string) func(repoRel string) ([]
 			if err == nil {
 				data = out
 			} else {
-				t.Logf("[anchor-content] git show %s:%s failed (%v); falling back to the current tree copy", anchorSHA, repoRel, err)
+				// git is available and the object lookup failed: the file does
+				// not exist at the anchor (exit 128 for a missing path). The
+				// current-tree fallback here would fill anchor content with
+				// TODAY's bytes and let a later-added binding fragment pass
+				// the AC-ALB-021(2) "already in anchor copy" exemption — the
+				// absent-at-anchor case must read as absent.
+				t.Logf("[anchor-content] %s absent at anchor %s (git show: %v); anchorLines stays empty", repoRel, anchorSHA, err)
+				return nil, false
 			}
 		} else {
 			t.Logf("[anchor-content] git unavailable (%v); falling back to the current tree copy for %s", gitErr, repoRel)
@@ -840,6 +847,35 @@ func trimmedLineSet(content string) map[string]bool {
 	return set
 }
 
+// stripRoleCoreRegions removes the marker-enclosed regions of content (the
+// lines between moai:role-core-start/end, markers included). The role core
+// of a role-gated rule is its SANCTIONED delivery path — the SessionStart
+// hook injects exactly those regions (REQ-ALB-007) — so a binding row's
+// after-text appearing there is delivery, not a forbidden migration onto an
+// on-demand file. The AC-ALB-021(2) fragment sweep therefore never sees
+// marker-enclosed content as on-demand material.
+func stripRoleCoreRegions(content string) string {
+	if !strings.Contains(content, config.RoleCoreMarkerStart) {
+		return content
+	}
+	var out []string
+	inRegion := false
+	for _, line := range strings.Split(content, "\n") {
+		t := strings.TrimSpace(line)
+		switch {
+		case strings.Contains(t, config.RoleCoreMarkerStart):
+			inRegion = true
+		case strings.Contains(t, config.RoleCoreMarkerEnd):
+			inRegion = false
+		case inRegion:
+			// marker-enclosed: delivered by injection, not swept
+		default:
+			out = append(out, line)
+		}
+	}
+	return strings.Join(out, "\n")
+}
+
 // checkAC021FragmentRule asserts each line of >=40 UTF-16 units in a
 // binding/normative row's after_text appears as no line of any deployed
 // on-demand file — top-level paths:-scoped rules (minus carve-out members)
@@ -866,7 +902,7 @@ func (env *ledgerCheckEnv) checkAC021FragmentRule() {
 		if readErr != nil || !frontmatterPathsScoped(data) {
 			return nil //nolint:nilerr
 		}
-		files = append(files, onDemandFile{rel: slash, lines: trimmedLineSet(string(data))})
+		files = append(files, onDemandFile{rel: slash, lines: trimmedLineSet(stripRoleCoreRegions(string(data)))})
 		return nil
 	})
 	// Skill files. The deployer excludes the project .claude/skills/ tree from
@@ -1262,6 +1298,61 @@ func TestBindingLedgerIntegrity(t *testing.T) {
 				t.Fatalf("fixture (j2): planted .agents/skills-origin fragment of row %s was NOT caught", row.ID)
 			}
 			t.Logf("fixture (j2) observed red: planted .agents/skills-origin fragment of row %s caught (hits=%d)", row.ID, hits)
+		})
+
+		// (k) a binding fragment planted in a NEW companion — a file that did
+		// not exist at the anchor — must be caught. The anchor fetcher reads
+		// absent-at-anchor as ABSENT (empty anchorLines), so the planted line
+		// cannot slip through the "already in anchor copy" exemption; before
+		// that repair the fetcher fell back to the current-tree copy and the
+		// fixture passed with hits=0.
+		t.Run("k_fragment_in_anchor_absent_companion_caught", func(t *testing.T) {
+			row := firstRowOfKind(led, "binding")
+			fragment := ""
+			for _, line := range strings.Split(row.AfterText, "\n") {
+				if utf16CodeUnits(strings.TrimSpace(line)) >= 40 {
+					fragment = strings.TrimSpace(line)
+					break
+				}
+			}
+			if fragment == "" {
+				t.Skipf("row %s has no 40+ unit line; this fixture needs a multi-line binding row", row.ID)
+			}
+			if _, ok := anchor("internal/template/templates/.claude/rules/moai/core/agent-common-protocol-detail.md"); ok {
+				t.Skip("the companion exists at the anchor — this fixture needs an anchor-absent file")
+			}
+			const companionRel = ".claude/rules/moai/core/agent-common-protocol-detail.md"
+			abs := filepath.Join(root, filepath.FromSlash(companionRel))
+			base, err := os.ReadFile(abs)
+			if err != nil {
+				t.Fatalf("read new companion in deployed tree: %v", err)
+			}
+			mutatedBody := string(base) + "\n" + fragment + "\n"
+			if err := os.WriteFile(abs, []byte(mutatedBody), 0o644); err != nil {
+				t.Fatalf("plant fragment: %v", err)
+			}
+			t.Cleanup(func() { _ = os.WriteFile(abs, base, 0o644) })
+
+			mutated := newLedgerCheckEnv(t, root, led, members, anchor)
+			var ruleFiles []onDemandFile
+			data, readErr := os.ReadFile(abs)
+			if readErr != nil {
+				t.Fatalf("re-read planted companion: %v", readErr)
+			}
+			if frontmatterPathsScoped(data) {
+				ruleFiles = append(ruleFiles, onDemandFile{
+					rel:   templatePrefix + companionRel,
+					lines: trimmedLineSet(stripRoleCoreRegions(string(data))),
+				})
+			}
+			linesChecked, hits, exempt := mutated.sweepFragmentLines(ruleFiles)
+			if linesChecked == 0 {
+				t.Fatal("fixture (k): swept 0 lines — the fixture asserts nothing")
+			}
+			if hits == 0 {
+				t.Fatalf("fixture (k): planted fragment in the anchor-absent companion was NOT caught (exempt=%d) — the anchor-absent case is leaking current content as anchor content", exempt)
+			}
+			t.Logf("fixture (k) observed red: planted fragment of row %s caught in %s (hits=%d, exempt-at-anchor=%d)", row.ID, companionRel, hits, exempt)
 		})
 	})
 }

@@ -72,9 +72,18 @@ func roleCoreBlocksFromDeployed(t *testing.T, root string) []string {
 	t.Helper()
 	var blocks []string
 	for _, rule := range roleRuleFiles {
-		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rule.Rel)))
+		rel := rule.Rel
+		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		if err != nil && strings.HasPrefix(rel, ".claude/rules/moai/") {
+			// Codex-only deployment shape: the rules install under
+			// .moai/policies. The helper projects the same way the deployer
+			// does so the expected block set stays derived in that layout.
+			alt := ".moai/policies/" + strings.TrimPrefix(rel, ".claude/rules/moai/")
+			data, err = os.ReadFile(filepath.Join(root, filepath.FromSlash(alt)))
+			rel = alt
+		}
 		if err != nil {
-			t.Fatalf("read deployed rule %s: %v", rule.Rel, err)
+			t.Fatalf("read deployed rule %s: %v", rel, err)
 		}
 		regions, marked := config.ExtractRoleCoreRegions(string(data))
 		if !marked {
@@ -614,6 +623,43 @@ func TestSessionStartRoleRulesMarkerSequence(t *testing.T) {
 	writeRoleRuleFixture(t, root, roleRuleFiles[1], smallMarkedRule("messaging"))
 	inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
 	assertFailVisible(t, inj, "marker_sequence")
+}
+
+// TestSessionStartRoleRulesCodexOnlyDeploymentLayout is the Codex-only
+// deployment shape: the rules install under .moai/policies (the
+// harness-neutral projection of .claude/rules/moai) and no .claude/rules
+// tree exists. A session there must receive the normal core — not the
+// REQ-ALB-009 absent warning plus a read directive naming a path that
+// does not exist in its tree.
+func TestSessionStartRoleRulesCodexOnlyDeploymentLayout(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+
+	root := t.TempDir()
+	for _, rule := range roleRuleFiles {
+		alt := rule.Rel
+		if strings.HasPrefix(alt, ".claude/rules/moai/") {
+			alt = ".moai/policies/" + strings.TrimPrefix(alt, ".claude/rules/moai/")
+		}
+		writeRoleRuleFixture(t, root, roleRuleFile{Rel: alt, Name: rule.Name}, smallMarkedRule("dispatch"))
+	}
+	blocks := roleCoreBlocksFromDeployed(t, root)
+
+	inj := roleRuleInjectionFor(root, "startup", "", langEnglish)
+	if inj.OperatorNotice != "" {
+		t.Fatalf("Codex-only layout raised an operator notice instead of delivering the core: %q", inj.OperatorNotice)
+	}
+	if missing := injectionMissingBlocks(inj.Context, blocks); len(missing) > 0 {
+		t.Fatalf("Codex-only layout injection misses %d of %d blocks; first: %q", len(missing), len(blocks), missing[0])
+	}
+	// The recovery directive names the paths the rules are actually deployed
+	// at — in this tree, the .moai/policies projections.
+	directive := roleRulesReadDirective(root, "")
+	if !strings.Contains(directive, ".moai/policies/workflow/factory-dispatch.md") ||
+		!strings.Contains(directive, ".moai/policies/workflow/cross-session-messaging.md") {
+		t.Errorf("Codex-only layout recovery directive does not name the deployed policies paths: %q", directive)
+	}
+	t.Logf("PASS Codex-only deployment: all %d blocks delivered from .moai/policies, recovery directive names the deployed paths", len(blocks))
 }
 
 // TestSessionStartRoleRulesRootFromSubdirectoryCWD is the subdirectory-CWD

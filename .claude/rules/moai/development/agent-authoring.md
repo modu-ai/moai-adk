@@ -129,7 +129,7 @@ The `memory` field enables cross-session learning for agents. Three scope levels
 
 ## Agent Categories
 
-The MoAI agent catalog consists of exactly **13 retained agents** (12 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with .moai/config/sections/delegation.yaml. The v2 architecture added `super-advisor` (on-demand high-reasoning consultation) and `manager-design` (Claude Design collaboration) to the former 8-agent catalog; `manager-lead` (hierarchical-team Tier L coordination) was added later, and the original GTD auto-mission decision role was later renamed and repurposed as `manager-todo` (todo-queue management + dispatch ownership, judgment retained as a read-only sub-role). Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
+The MoAI agent catalog consists of exactly **13 retained agents** (12 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with .moai/config/sections/delegation.yaml. The v2 architecture (SPEC-AGENT-ARCH-V2-001) added `super-advisor` (on-demand high-reasoning consultation) and `manager-design` (Claude Design collaboration) to the former 8-agent catalog; `manager-lead` (hierarchical-team Tier L coordination) was added later, and the original GTD auto-mission decision role was later renamed and repurposed as `manager-todo` (todo-queue management + dispatch ownership, judgment retained as a read-only sub-role). Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
 
 ### Retained MoAI-custom Agents (12)
 
@@ -183,7 +183,7 @@ Role profiles were formerly defined in workflow.yaml under a `team.role_profiles
 | designer | sonnet | acceptEdits | worktree | UI/UX design with MCP tools |
 | reviewer | haiku | plan (read-only) | none | Code review, quality validation |
 
-The Agent Teams layer that consumed these role profiles is experimental (re-allowed; a `--mode team` request selects it per `orchestration-mode-selection.md` §C.1 — the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back). Native teammate availability does not verify mixed-provider routing. Legacy CG requires explicit migration (see `.claude/rules/moai/core/glm-web-tooling.md` § CG Retirement and Migration).
+The Agent Teams layer that consumed these role profiles is experimental (re-allowed; a `--mode team` request selects it per `orchestration-mode-selection.md` §C.1 — the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back). The native `moai cg` teammate runtime is unaffected (see `.claude/rules/moai/core/glm-web-tooling.md` § CG Mode).
 
 ## Frontmatter Format Rules
 

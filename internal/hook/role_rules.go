@@ -88,27 +88,57 @@ type roleRuleInjection struct {
 	OperatorNotice string
 }
 
+// roleRulePoliciesRel projects a Claude-layout rule path onto the
+// harness-neutral deployment surface the Codex-only install uses (.moai/policies
+// — the deploy-side projection of .claude/rules/moai in the shared deploy
+// surfaces table). ok=false for paths outside the rules tree.
+func roleRulePoliciesRel(rel string) (string, bool) {
+	if strings.HasPrefix(rel, ".claude/rules/moai/") {
+		return ".moai/policies/" + strings.TrimPrefix(rel, ".claude/rules/moai/"), true
+	}
+	return "", false
+}
+
+// roleRuleDeployRel resolves the path rule is actually deployed at under
+// root: the Claude-layout path when present, else the Codex-only deployment
+// shape (.moai/policies). The Claude form is returned when neither exists —
+// the caller's failure path names the canonical path.
+func roleRuleDeployRel(root string, rule roleRuleFile) string {
+	path := filepath.Join(root, filepath.FromSlash(rule.Rel))
+	if fi, err := os.Stat(path); err == nil && !fi.IsDir() {
+		return rule.Rel
+	}
+	if alt, ok := roleRulePoliciesRel(rule.Rel); ok {
+		altPath := filepath.Join(root, filepath.FromSlash(alt))
+		if fi, err := os.Stat(altPath); err == nil && !fi.IsDir() {
+			return alt
+		}
+	}
+	return rule.Rel
+}
+
 // buildRoleCore reads the deployed role-gated rule file under root and
 // returns its role core: the marker-enclosed regions joined with blank
 // lines. An empty marker pair yields an empty core (a legitimate state —
 // the caller emits the pointer only). Every failure names its cause; the
 // binding ledger is never read (REQ-ALB-023).
 func buildRoleCore(root string, rule roleRuleFile) (string, error) {
-	path := root + string(os.PathSeparator) + rule.Rel
+	rel := roleRuleDeployRel(root, rule)
+	path := filepath.Join(root, filepath.FromSlash(rel))
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return "", fmt.Errorf("role rule file absent: %s", rule.Rel)
+			return "", fmt.Errorf("role rule file absent: %s", rel)
 		}
-		return "", fmt.Errorf("role rule file unreadable: %s: %w", rule.Rel, err)
+		return "", fmt.Errorf("role rule file unreadable: %s: %w", rel, err)
 	}
 	content := string(data)
 	if strings.TrimSpace(content) == "" {
-		return "", fmt.Errorf("role rule file empty: %s", rule.Rel)
+		return "", fmt.Errorf("role rule file empty: %s", rel)
 	}
 	regions, marked := config.ExtractRoleCoreRegions(content)
 	if !marked {
-		return "", fmt.Errorf("role rule file carries no %s markers: %s", config.RoleCoreMarkerStart, rule.Rel)
+		return "", fmt.Errorf("role rule file carries no %s markers: %s", config.RoleCoreMarkerStart, rel)
 	}
 	// A start marker without its closing pair is a malformed file, not an
 	// empty core: the required rules would silently vanish from the session.
@@ -260,8 +290,9 @@ func roleRuleInjectionFor(root, source, existing, lang string) roleRuleInjection
 		}
 		if core == "" {
 			// A role-gated rule whose core is empty contributes its pointer
-			// only (acceptance §D.2 boundary case).
-			pointer = fmt.Sprintf("Role rule (no role-core region — its binding blocks are always-loaded): `%s`", rule.Rel)
+			// only (acceptance §D.2 boundary case). The pointer names the
+			// path the rule is actually deployed at.
+			pointer = fmt.Sprintf("Role rule (no role-core region — its binding blocks are always-loaded): `%s`", roleRuleDeployRel(root, rule))
 			continue
 		}
 		parts = append(parts, core)
@@ -269,7 +300,7 @@ func roleRuleInjectionFor(root, source, existing, lang string) roleRuleInjection
 	if len(failures) > 0 {
 		loc := roleRuleLocaleFor(lang)
 		return roleRuleInjection{
-			Context: roleRulesReadDirective(""),
+			Context: roleRulesReadDirective(root, ""),
 			OperatorNotice: loc.InjectionFailed(role.Name, strings.Join(failures, "; ")),
 		}
 	}
@@ -296,7 +327,7 @@ func roleRuleInjectionFor(root, source, existing, lang string) roleRuleInjection
 		// warning plus read directive, no core, zero truncated units.
 		loc := roleRuleLocaleFor(lang)
 		return roleRuleInjection{
-			Context:        roleRulesReadDirective(""),
+			Context:        roleRulesReadDirective(root, ""),
 			OperatorNotice: loc.OverflowUnavailable(role.Name, total, roleRulesContextLimit),
 		}
 	}
@@ -304,7 +335,7 @@ func roleRuleInjectionFor(root, source, existing, lang string) roleRuleInjection
 	// Deliberate overflow-file delivery: the core goes out INTACT (zero
 	// truncated units); the runtime saves it to a session file and passes
 	// the path plus a 2,000-character preview.
-	context += "\n\n" + roleRulesOverflowDirective()
+	context += "\n\n" + roleRulesOverflowDirective(root)
 	loc := roleRuleLocaleFor(lang)
 	return roleRuleInjection{Context: context, OperatorNotice: loc.Overflow(role.Name, total, roleRulesContextLimit)}
 }
@@ -325,9 +356,19 @@ func roleRulesRootFromCWD(cwd string) string {
 	if strings.TrimSpace(cwd) == "" {
 		return ""
 	}
-	probe := filepath.Join(roleRuleFiles[0].Rel)
+	deployedHere := func(dir string) bool {
+		for _, rule := range roleRuleFiles {
+			if rel := roleRuleDeployRel(dir, rule); rel != rule.Rel {
+				return true // found at the alternate (Codex-only) surface
+			}
+			if fi, err := os.Stat(filepath.Join(dir, filepath.FromSlash(rule.Rel))); err == nil && !fi.IsDir() {
+				return true
+			}
+		}
+		return false
+	}
 	for dir := filepath.Clean(cwd); ; {
-		if fi, err := os.Stat(filepath.Join(dir, filepath.FromSlash(probe))); err == nil && !fi.IsDir() {
+		if deployedHere(dir) {
 			return dir
 		}
 		if _, err := os.Lstat(filepath.Join(dir, ".git")); err == nil {
@@ -375,16 +416,18 @@ func utf16Len(s string) int {
 
 // roleRulesReadDirective is the agent-facing REQ-ALB-009 directive: read the
 // full rule files by path before acting.
-func roleRulesReadDirective(reason string) string {
+func roleRulesReadDirective(root, reason string) string {
+	rel0 := roleRuleDeployRel(root, roleRuleFiles[0])
+	rel1 := roleRuleDeployRel(root, roleRuleFiles[1])
 	var sb strings.Builder
 	if reason != "" {
 		sb.WriteString(reason)
 		sb.WriteString(" ")
 	}
 	sb.WriteString("[HARD] Read both role-gated rule files in full before your first action: `")
-	sb.WriteString(roleRuleFiles[0].Rel)
+	sb.WriteString(rel0)
 	sb.WriteString("` and `")
-	sb.WriteString(roleRuleFiles[1].Rel)
+	sb.WriteString(rel1)
 	sb.WriteString("`.")
 	return sb.String()
 }
@@ -392,8 +435,8 @@ func roleRulesReadDirective(reason string) string {
 // roleRulesOverflowDirective is the agent-facing REQ-ALB-010 directive that
 // rides an intact over-cap emission: the runtime file is the delivery
 // channel, and the rule files are the fallback read.
-func roleRulesOverflowDirective() string {
+func roleRulesOverflowDirective(root string) string {
 	return fmt.Sprintf(
 		"NOTE: the output above exceeds the session-start delivery cap (%d characters). The runtime saves the intact output to a file in the session directory and passes its path with a preview of the first 2,000 characters — read the role core from that file, or read the rule files by path: `%s`, `%s`.",
-		roleRulesContextLimit, roleRuleFiles[0].Rel, roleRuleFiles[1].Rel)
+		roleRulesContextLimit, roleRuleDeployRel(root, roleRuleFiles[0]), roleRuleDeployRel(root, roleRuleFiles[1]))
 }
