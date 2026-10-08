@@ -354,6 +354,12 @@ b12_self_test_c: PASS — every path claimed in the CHANGELOG entry ls-verified 
 canary_compliance_check: n/a — this SPEC defines no forward-looking policy exercised by its own sync tests
 mx_tag_validation: 1 @MX:DEBT added on seedFileMetadata (internal/runtime/progress_metadata_darwin.go) with @MX:CEILING + @MX:UPGRADE + @MX:SPEC sub-lines — the route-(ii) kept exec seeder recorded as a deliberate working simplification; 0 tags removed; audit_ceiling.go's 3 existing tags validated unchanged (at the per-file ANCHOR cap); the new probe test file needs no tag (test-only surface)
 
+Status-revert note (sync-audit r1 F1, 2026-10-09): status reverted to implemented
+2026-10-09 pending AC-CI-007's landing-flow CI evidence (release-pr-multi-os 3-OS
+run URL + per-family counts); the completed transition re-lands via a follow-up
+manager-docs commit once the run URL is recorded — plan-audit-4 hash binding
+unaffected (progress.md is a non-subject).
+
 AC final matrix (route-(ii) close posture — evidence in §E.2): AC-PRI-001 PASS (standing) ·
 AC-PRI-002 PASS (standing — recorded measurement) · AC-PRI-005 PASS · AC-PRI-006 PASS ·
 AC-PRI-008 PASS · AC-PRI-003/004/009 NOT-EVIDENCE (dispositioned by the §E.2 Q2 record) ·
