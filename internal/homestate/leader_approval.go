@@ -325,6 +325,54 @@ func (f *FactoryDB) RecordDispatchBinding(ctx context.Context, cardID, runID str
 	})
 }
 
+// RestampDispatchOwner rewrites an existing card row's owner to the
+// dispatch's authoritative owner (review round-23, card t1538,
+// SPEC-FACTORY-COMPLETION-RECOVERY-001): the queue's runtime assignment is
+// the owner of record, and a factory row still carrying a prior dispatch's
+// owner is that engagement's residue — the completion gate reads the row's
+// owner to select the approval, so an unrepaired mismatch keeps the prior
+// owner's approval armed against the current dispatch's work. Idempotent: a
+// row already carrying the owner returns unchanged. The state, lease, and
+// evidence columns are untouched — only the ownership identity moves, with
+// a version bump and a card.dispatch-owner event.
+func (f *FactoryDB) RestampDispatchOwner(ctx context.Context, runID, cardID, owner string, now time.Time) (Card, error) {
+	owner = strings.TrimSpace(owner)
+	if strings.TrimSpace(runID) == "" || !ValidCardID(cardID) || owner == "" {
+		return Card{}, fmt.Errorf("%w: run id, a valid card id, and an owner label are required", ErrInvalidCardInput)
+	}
+	if now.IsZero() {
+		now = time.Now()
+	}
+	now = now.UTC()
+	var result Card
+	err := f.withCardTx(ctx, runID, func(tx *sql.Tx) (func(), error) {
+		cur, err := loadCard(ctx, tx, runID, cardID)
+		if err != nil {
+			return nil, err
+		}
+		if cur.OwnerLabel == owner {
+			result = cur
+			return nil, nil
+		}
+		next := cur
+		next.OwnerLabel = owner
+		next.Version = cur.Version + 1
+		next.UpdatedAt = now.Format(time.RFC3339Nano)
+		if err := updateCardRow(ctx, tx, next, cur.Version); err != nil {
+			return nil, err
+		}
+		if err := appendEvent(ctx, tx, runID, "card.dispatch-owner", map[string]any{"card_id": cardID, "from": cur.OwnerLabel, "to": owner, "version": next.Version, "actor": "dispatch"}, now); err != nil {
+			return nil, err
+		}
+		result = next
+		return nil, nil
+	})
+	if err != nil {
+		return Card{}, err
+	}
+	return result, nil
+}
+
 // VerifyApprovalReadonly is the scan-time counterpart of the gate: the same
 // row resolution and the same receipt selection as the archive-moment gate,
 // outside any transaction. Its verdict is advisory — the gate is

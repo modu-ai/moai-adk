@@ -15,6 +15,16 @@ import (
 type TodoRuntime struct {
 	Runs        []TodoRuntimeRun        `json:"runs"`
 	Assignments []TodoRuntimeAssignment `json:"assignments"`
+	// DispatchCurrent is the queue's own record of each card's CURRENT
+	// dispatch engagement — the (run, owner) identity the last dispatch
+	// assignment carried (review round-23, card t1538). Written only by the
+	// hook-bearing assignment path (RecordFactoryCardAssignment), in the
+	// same transaction as the assignment and the factory binding hook, so
+	// the reconciliation adjudicates supersession by IDENTITY — what the
+	// queue names — instead of deriving engagement order from row history.
+	// omitempty: queues written before the record existed carry no key and
+	// marshal byte-identically to before.
+	DispatchCurrent []TodoDispatchCurrent `json:"dispatch_current,omitempty"`
 }
 
 type TodoRuntimeRun struct {
@@ -33,6 +43,14 @@ type TodoRuntimeAssignment struct {
 	ReportedState  string  `json:"reported_state"`
 	EventKind      string  `json:"event_kind"`
 	ProvenanceJSON string  `json:"provenance_json"`
+}
+
+// TodoDispatchCurrent is one card's current dispatch engagement per the
+// queue's own record (review round-23, card t1538).
+type TodoDispatchCurrent struct {
+	CardID     string `json:"card_id"`
+	RunID      string `json:"run_id"`
+	OwnerLabel string `json:"owner_label"`
 }
 
 // MarshalJSON keeps old/absent queues compatible with the additive array contract.
@@ -55,6 +73,9 @@ CREATE TABLE IF NOT EXISTS todo_runtime_assignments (
  run_id TEXT NOT NULL, card_id TEXT NOT NULL, owner_label TEXT NOT NULL,
  reported_state TEXT NOT NULL, event_kind TEXT NOT NULL, provenance_json TEXT NOT NULL,
  PRIMARY KEY(run_id, card_id)
+);
+CREATE TABLE IF NOT EXISTS todo_dispatch_current (
+ card_id TEXT PRIMARY KEY, run_id TEXT NOT NULL, owner_label TEXT NOT NULL
 );
 INSERT INTO meta(key,value) VALUES('runtime_schema_version','1')
  ON CONFLICT(key) DO NOTHING;
@@ -123,13 +144,39 @@ func (e *backlogEngine) readRuntime(ctx context.Context, result *TodoRuntime) er
 		}
 		result.Assignments = append(result.Assignments, a)
 	}
-	return rows.Err()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	// The dispatch-identity table is additive (review round-23): a queue
+	// stamped at runtime schema version 1 carries the two runtime tables
+	// only until its next dispatch write creates this one, so its absence
+	// reads as "no identity recorded", never as corruption.
+	var currentTables int
+	if err := e.queryDB().QueryRowContext(ctx, `SELECT count(*) FROM sqlite_master WHERE type='table' AND name='todo_dispatch_current'`).Scan(&currentTables); err != nil {
+		return err
+	}
+	if currentTables == 0 {
+		return nil
+	}
+	curRows, err := e.queryDB().QueryContext(ctx, `SELECT card_id,run_id,owner_label FROM todo_dispatch_current ORDER BY card_id`)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = curRows.Close() }()
+	for curRows.Next() {
+		var c TodoDispatchCurrent
+		if err := curRows.Scan(&c.CardID, &c.RunID, &c.OwnerLabel); err != nil {
+			return err
+		}
+		result.DispatchCurrent = append(result.DispatchCurrent, c)
+	}
+	return curRows.Err()
 }
 
 // copyRuntime is only for an unpublished migration database, never a card edit.
 // @MX:NOTE: [AUTO] Publication verifies runtime parity before the staging DB becomes visible.
 func (e *backlogEngine) copyRuntime(ctx context.Context, runtime TodoRuntime) error {
-	if len(runtime.Runs) == 0 && len(runtime.Assignments) == 0 {
+	if len(runtime.Runs) == 0 && len(runtime.Assignments) == 0 && len(runtime.DispatchCurrent) == 0 {
 		return nil
 	}
 	tx, err := e.db.BeginTx(ctx, nil)
@@ -147,6 +194,15 @@ func (e *backlogEngine) copyRuntime(ctx context.Context, runtime TodoRuntime) er
 	}
 	for _, a := range runtime.Assignments {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO todo_runtime_assignments(run_id,card_id,owner_label,reported_state,event_kind,provenance_json) VALUES(?,?,?,?,?,?)`, a.RunID, a.CardID, a.OwnerLabel, a.ReportedState, a.EventKind, a.ProvenanceJSON); err != nil {
+			return err
+		}
+	}
+	// The dispatch-identity record is engagement state, not a cache: a
+	// migration that dropped it would leave every later reconciliation on
+	// this queue unadjudicable until each card re-dispatches (review
+	// round-23).
+	for _, c := range runtime.DispatchCurrent {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO todo_dispatch_current(card_id,run_id,owner_label) VALUES(?,?,?)`, c.CardID, c.RunID, c.OwnerLabel); err != nil {
 			return err
 		}
 	}
@@ -271,23 +327,25 @@ func (s *BacklogStore) recordRuntimeHook(run TodoRuntimeRun, assignment *TodoRun
 		// new legacy row is ever written.
 		a := *assignment
 		a.OwnerLabel = canonicalOwnerLabel(a.OwnerLabel)
-		// Delete-then-insert instead of an upsert (review round-22): the
-		// dispatch reconciliation reads insert order (rowid) as the
-		// engagement order, and an upsert keeps the conflicting row's
-		// original rowid — an A→B→A re-dispatch would leave the last A
-		// looking older than B. Re-inserting bumps the rowid on every
-		// dispatch, so latest assignment == latest engagement.
-		// Delete-then-insert instead of an upsert (review round-22): the
-		// dispatch reconciliation reads insert order (rowid) as the
-		// engagement order, and an upsert keeps the conflicting row's
-		// original rowid — an A→B→A re-dispatch would leave the last A
-		// looking older than B. Re-inserting bumps the rowid on every
-		// dispatch, so latest assignment == latest engagement.
-		if _, err := tx.ExecContext(ctx, `DELETE FROM todo_runtime_assignments WHERE run_id=? AND card_id=?`, a.RunID, a.CardID); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO todo_runtime_assignments(run_id,card_id,owner_label,reported_state,event_kind,provenance_json) VALUES(?,?,?,?,?,?) ON CONFLICT(run_id,card_id) DO UPDATE SET owner_label=excluded.owner_label,reported_state=excluded.reported_state,event_kind=excluded.event_kind,provenance_json=excluded.provenance_json`, a.RunID, a.CardID, a.OwnerLabel, a.ReportedState, a.EventKind, a.ProvenanceJSON); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO todo_runtime_assignments(run_id,card_id,owner_label,reported_state,event_kind,provenance_json) VALUES(?,?,?,?,?,?)`, a.RunID, a.CardID, a.OwnerLabel, a.ReportedState, a.EventKind, a.ProvenanceJSON); err != nil {
-			return err
+		if hook != nil {
+			// The hook-bearing call is the dispatch assignment path
+			// (RecordFactoryCardAssignment is its only caller); a state
+			// report carries no hook. A dispatch records the queue's own
+			// current-engagement identity in the SAME transaction as the
+			// assignment and the binding hook (review round-23, card
+			// t1538): the reconciliation then adjudicates supersession by
+			// what the queue NAMES — an identity — instead of deriving
+			// engagement order from row history, which three review rounds
+			// measured unable to tell a mid-flight dispatch from
+			// legitimate after-history. Last dispatch wins under the same
+			// lock every binding writer holds; a hook failure rolls this
+			// back with the assignment.
+			if _, err := tx.ExecContext(ctx, `INSERT INTO todo_dispatch_current(card_id,run_id,owner_label) VALUES(?,?,?) ON CONFLICT(card_id) DO UPDATE SET run_id=excluded.run_id,owner_label=excluded.owner_label`, a.CardID, a.RunID, a.OwnerLabel); err != nil {
+				return err
+			}
 		}
 	}
 	// REQ-TSP-050: the one-time relabel rides the same locked transaction —

@@ -213,54 +213,59 @@ func ExecuteGTDOperation(ctx context.Context, store *BacklogStore, candidate GTD
 	return LoadGTDOperation(ctx, store, stored.OperationID)
 }
 
-// gtdAssignmentIsLatest reports whether runID holds the card's most recent
-// runtime assignment — insert order is the engagement order the queue
-// record witnesses (review round-22 P1): a dispatch operation may repair
-// the factory record only while its run is the engagement the card is on.
-// No assignment rows at all — or a store whose runtime tables were never
-// materialized (the crash-cut fixtures) — reads as latest (the axis stays
-// vacuous).
-func gtdAssignmentIsLatest(ctx context.Context, store *BacklogStore, cardID, runID string) (bool, error) {
-	db, err := openGTDDB(store)
-	if err != nil {
-		return false, err
-	}
-	defer func() { _ = db.Close() }()
-	var tables int
-	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM sqlite_master WHERE type='table' AND name='todo_runtime_assignments'`).Scan(&tables); err != nil {
-		return false, mapBacklogEngineError("probe runtime assignments table", err)
-	}
-	if tables == 0 {
-		return true, nil
-	}
-	var latest string
-	err = db.QueryRowContext(ctx, `SELECT run_id FROM todo_runtime_assignments WHERE card_id=? ORDER BY rowid DESC LIMIT 1`, cardID).Scan(&latest)
-	if errors.Is(err, sql.ErrNoRows) {
-		return true, nil
-	}
-	if err != nil {
-		return false, mapBacklogEngineError("read latest runtime assignment", err)
-	}
-	return latest == runID, nil
-}
-
 // errGTDReconcileSuperseded is returned by repairGTDDispatchRecord when the
-// card's latest runtime assignment no longer names the repairing run — the
-// card moved on while this operation was in flight, and the repair must
-// leave the binding to the newer engagement (review round-22 P1).
-var errGTDReconcileSuperseded = errors.New("gtd dispatch reconcile: superseded by a later assignment")
+// queue's own current-dispatch record names another run — a later dispatch
+// wrote its identity over this operation's, and the repair must leave the
+// engagement to it (review round-23, card t1538).
+var errGTDReconcileSuperseded = errors.New("gtd dispatch reconcile: superseded by a later engagement")
+
+// errGTDReconcileUnadjudicated is returned by repairGTDDispatchRecord when
+// the factory binding names another run but the queue carries NO
+// current-dispatch record to adjudicate with — the binding's run may be a
+// genuine later engagement or the prior engagement's stale residue, and no
+// identity in the data tells the two apart (review round-23, card t1538).
+// Skipping would bless a possibly-stale binding; repairing would possibly
+// drag a genuine engagement back. The reconciliation refuses loudly: the
+// operation does not reconcile, the binding does not move, and the recovery
+// is one re-dispatch, which records the identity the next retry adjudicates
+// on.
+var errGTDReconcileUnadjudicated = errors.New("gtd dispatch reconcile: the binding names another run and the queue records no current dispatch for the card — re-dispatch to adjudicate")
+
+// gtdDispatchOwnerOfRecord resolves the authoritative owner for a dispatch
+// from the queue's runtime assignment — the owner of record the factory
+// row's owner must match (review round-23 P1-a, card t1538). "" means the
+// queue holds no assignment for the pair.
+func gtdDispatchOwnerOfRecord(store *BacklogStore, cardID, runID string) (string, error) {
+	record, err := store.LoadPure()
+	if err != nil {
+		return "", err
+	}
+	for _, a := range record.Runtime.Assignments {
+		if a.CardID == cardID && a.RunID == runID {
+			return a.OwnerLabel, nil
+		}
+	}
+	return "", nil
+}
 
 // reconcileGTDDispatchBinding verifies — and repairs — the factory record's
 // half of a dispatch success (review round-20 P1): the owner's readback
 // proves the assignment, and the dispatch binding must name the operation's
-// run before the operation may reconcile. The repair runs
-// repairGTDDispatchRecord, because the missing writes are the factory
-// record's alone — the assignment they pair with already committed — and
-// re-running the owner's apply would repeat that committed save. A repair
-// skipped as superseded reconciles without touching the binding: the
-// binding belongs to the newer engagement (review round-22 P1).
+// run — with the row carrying the dispatch's OWNER identity, not merely an
+// owner (review round-23 P1-a) — before the operation may reconcile. The
+// repair runs repairGTDDispatchRecord, because the missing writes are the
+// factory record's alone — the assignment they pair with already committed
+// — and re-running the owner's apply would repeat that committed save. A
+// repair skipped as superseded reconciles without touching the binding: the
+// queue's current-dispatch record names the newer engagement (review
+// round-23). An unadjudicable binding propagates its refusal — the
+// operation does not reconcile over a shape identity cannot decide.
 func reconcileGTDDispatchBinding(ctx context.Context, store *BacklogStore, cardID, runID string) error {
-	current, err := gtdDispatchBindingCurrent(ctx, store, cardID, runID)
+	owner, err := gtdDispatchOwnerOfRecord(store, cardID, runID)
+	if err != nil {
+		return err
+	}
+	current, err := gtdDispatchBindingCurrent(ctx, store, cardID, runID, owner)
 	if err != nil {
 		return err
 	}
@@ -278,7 +283,7 @@ func reconcileGTDDispatchBinding(ctx context.Context, store *BacklogStore, cardI
 	if err != nil {
 		return err
 	}
-	current, err = gtdDispatchBindingCurrent(ctx, store, cardID, runID)
+	current, err = gtdDispatchBindingCurrent(ctx, store, cardID, runID, owner)
 	if err != nil {
 		return err
 	}
@@ -299,11 +304,52 @@ func reconcileGTDDispatchBinding(ctx context.Context, store *BacklogStore, cardI
 // record. The completion gate reads the repaired triple as one binding: the
 // row resolves the bound run, the owner names the engaged lane, and the
 // binding re-targets the gate away from the superseded approval.
+//
+// Supersession is adjudicated by the queue's own current-dispatch record —
+// an IDENTITY written atomically with each dispatch assignment (review
+// round-23, card t1538) — never by engagement order derived from row
+// history: the record names the card's current engagement, so a repair by
+// any other run exits superseded, and a repair by the named run proceeds
+// over whatever the factory half lagged to, including a prior engagement's
+// stale binding (the P1-b shape: a prior binding is not evidence of a
+// subsequent dispatch). Where no record exists and the binding names
+// another run, identity cannot decide — the repair refuses closed rather
+// than guess in either direction.
 func repairGTDDispatchRecord(ctx context.Context, store *BacklogStore, factoryDBPath, cardID, runID string) error {
 	return store.WithLock(func(l *LockedBacklog) error {
+		// The currency adjudication runs FIRST, under this lock, before any
+		// queue-state refusal (review round-22 gate 3 ②): a card whose
+		// queue state moved on (held, unpicked, re-queued) after a newer
+		// run took over must exit as superseded — never die on "not
+		// picked" before the cleanup is reached.
 		record, err := l.LoadPure()
 		if err != nil {
 			return fmt.Errorf("read queue: %w", err)
+		}
+		db, err := homestate.OpenFactoryPath(factoryDBPath)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = db.Close() }()
+		if currentRun, ok := gtdRecordDispatchCurrent(record, cardID); ok {
+			if currentRun != runID {
+				return errGTDReconcileSuperseded
+			}
+		} else {
+			// No identity record: the dispatches were written before the
+			// record existed. A binding naming another run is then
+			// unadjudicable from identity — it may name a genuine later
+			// engagement or this card's prior one, and the two shapes are
+			// data-indistinguishable (three review rounds measured every
+			// order derivation dead). Refuse closed: no skip, no drag.
+			var bound string
+			bindErr := db.DB.QueryRowContext(ctx, `SELECT run_id FROM card_dispatch WHERE card_id=?`, cardID).Scan(&bound)
+			if bindErr != nil && !errors.Is(bindErr, sql.ErrNoRows) {
+				return bindErr
+			}
+			if bindErr == nil && bound != runID {
+				return errGTDReconcileUnadjudicated
+			}
 		}
 		picked := false
 		owner := ""
@@ -324,24 +370,6 @@ func repairGTDDispatchRecord(ctx context.Context, store *BacklogStore, factoryDB
 		if owner == "" {
 			return fmt.Errorf("queue item %s carries no runtime assignment for run %s — the authoritative owner is unknown", cardID, runID)
 		}
-		// The latest-engagement check runs INSIDE this lock (review
-		// round-22 P1): checking it outside leaves a window where a newer
-		// dispatch lands between the check and the repair, and the repair
-		// would drag the binding back to this operation's run. The check
-		// and the factory writes now serialize on the same lock the
-		// dispatch writers hold.
-		latest, lerr := gtdAssignmentIsLatest(ctx, store, cardID, runID)
-		if lerr != nil {
-			return lerr
-		}
-		if !latest {
-			return errGTDReconcileSuperseded
-		}
-		db, err := homestate.OpenFactoryPath(factoryDBPath)
-		if err != nil {
-			return err
-		}
-		defer func() { _ = db.Close() }()
 		now := time.Now().UTC()
 		card, err := db.LoadCard(ctx, runID, cardID)
 		if errors.Is(err, homestate.ErrCardNotFound) {
@@ -357,13 +385,36 @@ func repairGTDDispatchRecord(ctx context.Context, store *BacklogStore, factoryDB
 			if _, err := db.Transition(ctx, homestate.TransitionRequest{RunID: runID, CardID: cardID, To: homestate.CardAssigned, ExpectedVersion: card.Version, Actor: "dispatch", Owner: owner, Now: now}); err != nil {
 				return err
 			}
-		case card.State == homestate.CardAssigned && card.OwnerLabel == owner:
-			// Already the authoritative assignment.
+		case canonicalOwnerLabel(card.OwnerLabel) == canonicalOwnerLabel(owner):
+			// Assigned — or progressed past it (leased/running) — under
+			// the dispatch's owner: the assignment half landed and the
+			// card's progress is orthogonal to the binding this repair
+			// restores (review round-22 cont.).
 		default:
-			return fmt.Errorf("factory record for %s is %s (owner %q), not assignable to %s", cardID, card.State, card.OwnerLabel, owner)
+			// A row assigned-or-later under a DIFFERENT owner is the prior
+			// dispatch's residue (review round-23 P1-a): the queue's
+			// assignment is the owner of record, and the completion gate
+			// selects the approval by this row's owner — leaving the
+			// mismatch keeps the prior owner's approval armed.
+			if _, err := db.RestampDispatchOwner(ctx, runID, cardID, canonicalOwnerLabel(owner), now); err != nil {
+				return err
+			}
 		}
 		return db.RecordDispatchBinding(ctx, cardID, runID, now)
 	})
+}
+
+// gtdRecordDispatchCurrent reads one card's current-dispatch identity from
+// the queue record — the engagement the last dispatch assignment recorded
+// (review round-23, card t1538). ok=false means the queue carries no record
+// for the card.
+func gtdRecordDispatchCurrent(record *BacklogRecord, cardID string) (string, bool) {
+	for _, c := range record.Runtime.DispatchCurrent {
+		if c.CardID == cardID {
+			return c.RunID, true
+		}
+	}
+	return "", false
 }
 
 // RecordDispatchBindingIfEngaged records cardID -> runID as the card's
@@ -405,17 +456,22 @@ func RecordDispatchBindingIfEngaged(root, cardID, runID string) error {
 
 // gtdDispatchBindingCurrent reports whether the card's recorded dispatch
 // binding names the operation's run AND the card row that run resolves
-// against — the factory record's whole half of a dispatch reconciliation
-// (review round-20 P1, completed by round-21). Scope follows REQ-FCR-002's
-// sentence: a missing factory database, a missing card_dispatch table, or a
-// card with no factory row leaves the axis vacuous (the completion gate does
-// not apply); a binding naming another run, or factory rows orphaned from
-// any binding, reads stale — repairGTDDispatchRecord recovers both.
+// against carries the dispatch's OWNER identity — the factory record's
+// whole half of a dispatch reconciliation (review round-20 P1, completed by
+// round-21; the owner identity comparison is round-23 P1-a). Scope follows
+// REQ-FCR-002's sentence: a missing factory database, a missing
+// card_dispatch table, or a card with no factory row leaves the axis
+// vacuous (the completion gate does not apply); a binding naming another
+// run, factory rows orphaned from any binding, or a row whose owner is not
+// the dispatch's authoritative owner reads stale — repairGTDDispatchRecord
+// recovers all three. owner is the queue's runtime-assignment owner for the
+// pair ("" when the queue holds none); both sides compare in the canonical
+// owner vocabulary.
 //
 // The factory database is located by gtdFactoryDBForStore — homestate's
 // canonical resolution when a project root sits above the queue, and the
 // queue directory's state-directory sibling for a home-resolved queue.
-func gtdDispatchBindingCurrent(ctx context.Context, store *BacklogStore, cardID, runID string) (bool, error) {
+func gtdDispatchBindingCurrent(ctx context.Context, store *BacklogStore, cardID, runID, owner string) (bool, error) {
 	path := gtdFactoryDBForStore(store)
 	if path == "" {
 		return true, nil
@@ -453,17 +509,25 @@ func gtdDispatchBindingCurrent(ctx context.Context, store *BacklogStore, cardID,
 	if bound != runID {
 		return false, nil
 	}
-	// The binding names this run, but the mirror half may still be missing
-	// or half-landed: reconciliation requires the card row the bound run
-	// resolves against AND that row to carry the assignment the dispatch
-	// read back — a row parked at picked with no owner is the mirror's
-	// failed T2, never current (review round-22).
+	// The binding names this run, but the mirror half may still be missing,
+	// half-landed, or landed under a PRIOR dispatch's owner: reconciliation
+	// requires the card row the bound run resolves against AND that row to
+	// carry the dispatch's own owner — a row parked at picked with no owner
+	// is the mirror's failed T2, and a row under a different owner is the
+	// prior engagement's residue whose approval the gate would otherwise
+	// keep armed (round-23 P1-a); both read stale. A row that PROGRESSED
+	// past assigned (leased/running) under the dispatch's owner still reads
+	// current: progress after a dispatch is normal, and refusing it would
+	// leave the operation permanently unfinished (review round-22 cont.).
+	// An unknown authoritative owner ("") can never match a carried owner,
+	// so it forces the repair, which resolves the owner under its lock or
+	// refuses loudly.
 	var row int
-	var state, ownerLabel string
-	if err := db.DB.QueryRowContext(ctx, `SELECT count(*), IFNULL(state,''), IFNULL(owner_label,'') FROM cards WHERE run_id=? AND card_id=?`, runID, cardID).Scan(&row, &state, &ownerLabel); err != nil {
+	var ownerLabel string
+	if err := db.DB.QueryRowContext(ctx, `SELECT count(*), IFNULL(owner_label,'') FROM cards WHERE run_id=? AND card_id=?`, runID, cardID).Scan(&row, &ownerLabel); err != nil {
 		return false, err
 	}
-	return row > 0 && state == homestate.CardAssigned && ownerLabel != "", nil
+	return owner != "" && row > 0 && canonicalOwnerLabel(ownerLabel) == canonicalOwnerLabel(owner), nil
 }
 
 // gtdFactoryDBForStore locates the project factory database for a queue
