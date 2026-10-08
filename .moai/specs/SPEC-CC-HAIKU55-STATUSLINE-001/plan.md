@@ -141,8 +141,16 @@ Files (verify names by grep at edit time):
      AWS Bedrock / GCP Agent Platform / Foundry keep Haiku 4.5);
    - c. the effort sentence: "Haiku 5.5 supports all five effort levels
      (low/medium/high/xhigh/max), default medium" (replaces "Haiku 4.5 supports neither");
-   - d. the thinking clause: "adaptive reasoning cannot be disabled" (mirroring the Opus 5.5
-     phrasing already at ~:169).
+   - d. the thinking clause (CORRECTED FACT — replaces the r3-era "adaptive reasoning
+     cannot be disabled" clause, which is factually wrong per the official model-config
+     page): insert the exact sentence "Haiku 5.5's adaptive reasoning can be disabled with
+     `thinking: {"type": "disabled"}` at `high` effort or below (low/medium/high); effort is
+     the better lever for controlling reasoning depth." — AC-015 condition 4 greps the
+     fixed-string fragment `disabled with `thinking: {"type": "disabled"}` at `high` effort
+     or below`, so this sentence's wording is AC-anchor-paired (update both together if
+     reworded). Insert the sentence as ONE line — the grep is line-based, so a wrap inside
+     the fragment breaks the match (validated: the fragment matches single-line content,
+     misses multi-line wraps).
 3. `.claude/rules/moai/development/prompting-best-practices.md:7` — family list →
    (Opus 5/5.5, Sonnet 5.5, Haiku 5.5) (REQ-CC-HAIKU55-004).
 4. Mirror all three byte-identically into

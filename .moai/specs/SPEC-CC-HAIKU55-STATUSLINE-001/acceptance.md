@@ -239,7 +239,7 @@ sees neither).
 1. `grep -c "claude-haiku-5-5" .claude/rules/moai/development/model-policy.md` → ≥1 (model id)
 2. `grep -c "2.1.293" .claude/rules/moai/development/model-policy.md` → ≥1 (CC version requirement)
 3. ``grep -cF 'resolves `haiku` to Haiku 4.5 (200K)' .claude/rules/moai/development/model-policy.md`` → ≥1 (provider split — exact clause plan M3 step 2b inserts; bare backticks, fixed-string match — the r2 `` \` `` escape artifact is repaired; the quoting form is validated on this tree by RED-AC-016, which matches the same file with the same form)
-4. `grep -c "adaptive reasoning cannot be disabled" .claude/rules/moai/development/model-policy.md` → ≥1 (always-on thinking — exact clause plan M3 step 2d inserts)
+4. ``grep -cF 'disabled with `thinking: {"type": "disabled"}` at `high` effort or below' .claude/rules/moai/development/model-policy.md`` → ≥1 (thinking-disable path — the corrected fact per the official model-config page: Haiku 5.5 thinking CAN be disabled, at `high` effort or below (low/medium/high), effort being the better lever; exact fixed-string fragment of the sentence plan M3 step 2d inserts. The r3-era "adaptive reasoning cannot be disabled" clause was factually wrong and is retracted)
 5. `grep -c "claude-haiku-5-5" docs-site/content/ko/multi-llm/model-policy.md` → ≥1 (ko canonical page row)
 6. `grep -cF '~967K' docs-site/content/ko/multi-llm/model-policy.md` → ≥1 (auto-compact figure, unit-bearing — a bare `967` mutant such as `967 tokens` does not pass)
 7. `grep -cF '$0.10' docs-site/content/ko/multi-llm/model-policy.md` → ≥1 and
