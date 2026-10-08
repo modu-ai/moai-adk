@@ -823,7 +823,7 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		case n == "cd":
 			w.zoneCdMove(world, cmd)
 		case n == "sed":
-			if zoneSedInPlace(cmd.Args) {
+			if zoneSedInPlace(world, cmd.Args) {
 				// in-place is decided by THIS command's options alone — an
 				// earlier mutating command must not turn a read-only sed
 				// into a denial (round 6 P2)
@@ -1002,15 +1002,21 @@ func zonePathCandidates(args []*syntax.Word) [2][]string {
 	return out
 }
 
-// zoneSedInPlace reports whether the argument list makes sed in-place:
-// --in-place, GNU's suffixed --in-place=.bak form, or a short cluster
-// carrying i (rounds 6 P2 / 13 P1).
-func zoneSedInPlace(args []*syntax.Word) bool {
+// zoneSedInPlace reports whether the argument list makes sed in-place for
+// the PASSED generation: each option word is read through that world's
+// reading — --in-place, GNU's suffixed --in-place=.bak form, or a short
+// cluster carrying i (rounds 6 P2 / 13 P1). A word whose escape text
+// decodes to an in-place spelling in the modern world reads as its
+// literal escape text in the pre-4.2 world — an invalid option there —
+// and must not fire the other world's sed (gate round 28 P2).
+func zoneSedInPlace(world int, args []*syntax.Word) bool {
 	for _, a := range args[1:] {
-		if t, lit := zoneWordText(a); lit {
-			if t == "--in-place" || strings.HasPrefix(t, "--in-place=") || (strings.HasPrefix(t, "-") && !strings.HasPrefix(t, "--") && strings.Contains(strings.TrimPrefix(t, "-"), "i")) {
-				return true
-			}
+		readings, lit := zoneWordWorldReadings(a)
+		if !lit {
+			continue
+		}
+		if t := readings[world]; t == "--in-place" || strings.HasPrefix(t, "--in-place=") || (strings.HasPrefix(t, "-") && !strings.HasPrefix(t, "--") && strings.Contains(strings.TrimPrefix(t, "-"), "i")) {
+			return true
 		}
 	}
 	return false

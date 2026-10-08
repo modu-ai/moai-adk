@@ -1186,6 +1186,32 @@ the deny sound and the row unadoptable; the committed executable IS the
 dual word itself. Fixture: narrowed marker manifest. Inputs
 transport-verified: whole-file NUL-byte scan zero, doubled backslash.
 
+**M2.11 remedy — sed in-place generation binding (GREEN record).** Shape:
+`zoneSedInPlace(world, args)` reads each option word through the PASSED
+generation's reading (`readings[world]` via zoneWordWorldReadings) — the
+per-world sed dispatch in zoneCall passes its own world, so a
+generation-scoped sed judges only its own option spellings.
+
+- **Command** (all 35 instrument tests): `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test
+  ./internal/hook -run 'TestCheckProtectedZoneShell|TestZoneUnescapeAnsiC|TestZoneWordText' -count=1`
+- **Exit code**: `0`
+- **Observed (verbatim)**: `ok  	github.com/modu-ai/moai-adk/internal/hook	1.029s`
+  (35/35 PASS — the sed over-block row flipped to ALLOW; the 34 earlier
+  rows hold).
+- **Full package regression (M2.11, final tree)**: `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1
+  -timeout=25m -v ./internal/hook/` — exit 1 with ONE environmental flake
+  OUTSIDE the instrument: `TestScanWriteContentNoConfigNoTempFile`'s
+  control subtest expected exactly 1 security-scan temp file and saw 3
+  (the t1356-class temp-file sensitivity; the row passed the two prior
+  full-package runs AND passed 3× in isolation immediately after).
+  Everything in the instrument: zero failures. Slot lease `hook-suite`
+  held for the run, released after; the flake re-verified green.
+- Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
+  `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
+  clean; family coverage `13.8%` (all-rows selector).
+
 
 
 **M2.7 remedy — full dispatch pre-classification + function shadowing
