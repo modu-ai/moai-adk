@@ -669,6 +669,17 @@ func validateCardGate(card MergeCardState, requestedCard, windowCard string) err
 	return nil
 }
 
+// ResolveCardBranch is the exported form of the REQ-CCI-004 resolution
+// contract (SPEC-CANDIDATE-CI-001): the card's worktree resolves to its
+// WT- branch, and a missing, detached, or non-WT tree refuses naming the
+// card. The candidate verb shares this resolver so the candidate, the
+// merge step, and the record all name the same branch — the contract the
+// two committed anchors cite (integration_merge_step.go's resolveCardBranch
+// comment and its caller).
+func ResolveCardBranch(cardWorktree, cardID string) (string, error) {
+	return resolveCardBranch(cardWorktree, cardID)
+}
+
 // resolveCardBranch resolves the card's WT- branch at the card's tree: the
 // branch checked out there, which MUST carry the WT- prefix (kanban
 // dispatch § Isolation). The card worktree path is the read the card gate
